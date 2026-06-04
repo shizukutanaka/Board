@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.0 — Design Tokens
+   Board v1.6 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -701,7 +701,7 @@ body{visibility:visible}
 
 <script>
 /* ==========================================================================
-   Board v1.0 — single-file infinite whiteboard
+   Board v1.6 — single-file infinite whiteboard
    Design: Carmack (perf) · Martin (layers) · Pike (simple composition)
    License: MIT
    ==========================================================================
@@ -722,7 +722,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.5';
+const V='1.6.6';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -987,8 +987,14 @@ const Store={
   },
   // Apply a remote op. Idempotent (dedup by clock). Does NOT enter local
   // undo stack — remote changes are not undoable from this peer.
+  // Allow-list of op types a peer may apply. Anything else is dropped so a
+  // malicious/buggy peer can't drive _apply down an unexpected path.
+  REMOTE_OPS:new Set(['add','del','upd','move','z','clear','group','ungroup','zorder','align']),
   applyRemote(op){
-    if(!op||!op.clock)return;
+    if(!op||!op.clock||!this.REMOTE_OPS.has(op.op))return;
+    // `add` carries a whole shape — reject malformed ones (same check the
+    // share-import path uses) so the renderer/hit-test never sees garbage.
+    if(op.op==='add'&&!(op.shape&&typeof op.shape==='object'&&op.shape.id&&op.shape.type&&typeof op.shape.z==='number'))return;
     const k=op.clock.peer+':'+op.clock.seq;
     if(state.seenOps.has(k))return;
     state.seenOps.add(k);
@@ -1091,12 +1097,18 @@ const Store={
         }
         break;}
       case 'zorder':{
-        // forward: send to front/back; backward: invert
-        const ids2=op.ids||[];
-        if((forward&&op.dir==='front')||((!forward)&&op.dir==='back')){
-          for(const id of ids2){const i=state.shapes.findIndex(s=>s.id===id);if(i<0)continue;const sh=state.shapes[i];sh.z=nextZ();state.shapes.splice(i,1);state.shapes.push(sh)}
-        }else{
-          for(const id of ids2){const i=state.shapes.findIndex(s=>s.id===id);if(i<0)continue;const sh=state.shapes[i];const minZ=Math.min(...state.shapes.map(s=>s.z||0));sh.z=minZ-1;state.shapes.splice(i,1);state.shapes.unshift(sh)}
+        // Reversible: the snapshot lists every shape's {id,z} in array order, so
+        // restore both the z values AND the exact array order. Order-preserving
+        // even when z values tie (where a z-only restore + sortZ would not be).
+        // A true inverse for single- and multi-selection alike; the old
+        // dir-based form was not invertible.
+        const snap=forward?op.after:op.before;
+        if(snap){
+          const map=new Map(state.shapes.map(s=>[s.id,s]));
+          const next=[];
+          for(const p of snap){const sh=map.get(p.id);if(sh){sh.z=p.z;next.push(sh);map.delete(p.id)}}
+          for(const sh of map.values())next.push(sh);   // keep any extras (defensive)
+          state.shapes.length=0;Array.prototype.push.apply(state.shapes,next);
         }
         break;}
       case 'align':{
@@ -1183,7 +1195,12 @@ function draw(){
   drawSelection();
   if(state.marquee)drawMarquee();
 }
-function getCSS(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()}
+// Design-token lookups are read every frame (per shape for frames/grid). The
+// values only change when the OS theme / forced-colors mode flips, so memoise
+// them and drop the cache on those media changes (see wire()).
+let _cssCache=Object.create(null);
+function getCSS(v){let x=_cssCache[v];if(x===undefined){x=getComputedStyle(document.documentElement).getPropertyValue(v).trim();_cssCache[v]=x}return x}
+function clearCSSCache(){_cssCache=Object.create(null);invalidate()}
 function drawGrid(W,H){
   const v=state.viewport;
   const gs=GRID_SIZE;
@@ -1392,7 +1409,7 @@ function drawSelection(){
     const sh=sel[0];
     const hs=HANDLE_SIZE*DPR;
     ctx.fillStyle=getCSS('--paper');
-    ctx.strokeStyle=getCSS('--brand');
+    ctx.strokeStyle=getCSS('--brand-ink');  // dark ring: AAA non-text contrast vs cyan
     ctx.lineWidth=1.5;
     for(const h of getHandles(sh)){
       const sp=G.w2s({x:h.x,y:h.y});
@@ -1402,7 +1419,7 @@ function drawSelection(){
   }else{
     // Multi-selection: corner handles only on bounding box
     const hs=HANDLE_SIZE*DPR;
-    ctx.fillStyle=getCSS('--paper');ctx.strokeStyle=getCSS('--brand');ctx.lineWidth=1.5;
+    ctx.fillStyle=getCSS('--paper');ctx.strokeStyle=getCSS('--brand-ink');ctx.lineWidth=1.5;
     for(const[hx,hy] of [[x,y],[x+w,y],[x,y+h],[x+w,y+h]]){
       ctx.fillRect(hx-hs/2,hy-hs/2,hs,hs);
       ctx.strokeRect(hx-hs/2,hy-hs/2,hs,hs);
@@ -2106,48 +2123,60 @@ function doDelete(){
   state.selection.clear();
   UI.toast(t('deleted')+' '+sel.length);
 }
+// z-order ops snapshot every shape's z so they record a reversible `zorder` op
+// (before/after) and broadcast to peers. Empty/no-op changes are not committed.
+function _zSnapshot(){return state.shapes.map(s=>({id:s.id,z:s.z||0}))}
+function _commitZ(before){
+  const after=_zSnapshot();
+  if(JSON.stringify(before)===JSON.stringify(after)){invalidate();return}
+  Store._recordCommitted({op:'zorder',before,after});
+  invalidate();Persist.schedule();
+}
 function doBringFront(){
   const ids=[...state.selection];
   if(!ids.length)return;
+  const before=_zSnapshot();
   for(const id of ids){
     const i=state.shapes.findIndex(s=>s.id===id);if(i<0)continue;
     const sh=state.shapes[i];sh.z=nextZ();
     state.shapes.splice(i,1);state.shapes.push(sh);
   }
-  Store._recordCommitted({op:'zorder',ids,dir:'front'});
-  invalidate();Persist.schedule();
+  _commitZ(before);
 }
 function doSendBack(){
   const ids=[...state.selection];
   if(!ids.length)return;
+  const before=_zSnapshot();
+  const minZ=Math.min(...state.shapes.map(s=>s.z||0));
+  let off=1;
   for(const id of ids){
     const i=state.shapes.findIndex(s=>s.id===id);if(i<0)continue;
     const sh=state.shapes[i];
-    const minZ=Math.min(...state.shapes.map(s=>s.z||0));
-    sh.z=minZ-1;
+    sh.z=minZ-(off++);
     state.shapes.splice(i,1);state.shapes.unshift(sh);
   }
-  Store._recordCommitted({op:'zorder',ids,dir:'back'});
-  invalidate();Persist.schedule();
+  _commitZ(before);
 }
 function doBringForward(){
   // move up one step in z-order
   const ids=[...state.selection];if(!ids.length)return;
+  const before=_zSnapshot();
   for(const id of ids){
     const i=state.shapes.findIndex(s=>s.id===id);if(i<0||i===state.shapes.length-1)continue;
     const tmp=state.shapes[i];state.shapes[i]=state.shapes[i+1];state.shapes[i+1]=tmp;
     tmp.z=(state.shapes[i].z||0)+1;
   }
-  invalidate();Persist.schedule();
+  _commitZ(before);
 }
 function doSendBackward(){
   const ids=[...state.selection];if(!ids.length)return;
+  const before=_zSnapshot();
   for(const id of ids){
     const i=state.shapes.findIndex(s=>s.id===id);if(i<=0)continue;
     const tmp=state.shapes[i];state.shapes[i]=state.shapes[i-1];state.shapes[i-1]=tmp;
     tmp.z=Math.max(0,(state.shapes[i].z||0)-1);
   }
-  invalidate();Persist.schedule();
+  _commitZ(before);
 }
 function doGroup(){
   const ids=[...state.selection];
@@ -2251,7 +2280,7 @@ function exportPDF(){
     const url=URL.createObjectURL(bl);
     const w2=window.open('');
     if(!w2){UI.toast('ポップアップをブロックしてください','warn');return}
-    w2.document.write(`<!DOCTYPE html><html><head><title>${state.docName||'board'}</title><style>*{margin:0;padding:0}img{max-width:100%;display:block}</style></head><body><img src="${url}" onload="window.print();window.close()"></body></html>`);
+    w2.document.write(`<!DOCTYPE html><html><head><title>${_esc(state.docName||'board')}</title><style>*{margin:0;padding:0}img{max-width:100%;display:block}</style></head><body><img src="${url}" onload="window.print();window.close()"></body></html>`);
     w2.document.close();setTimeout(()=>URL.revokeObjectURL(url),30e3);
   };
   if(typeof off.toBlob==='function')off.toBlob(fin,'image/png');
@@ -2259,60 +2288,75 @@ function exportPDF(){
 }
 
 function exportSVG(){
-  const b=G.bboxAll(state.shapes);
-  if(!b){UI.toast(t('empty'),'warn');return}
+  const svg=buildSVG(state.shapes,getCSS('--paper'));
+  if(svg===null){UI.toast(t('empty'),'warn');return}
+  const blob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`${state.docName||'board'}.svg`;
+  a.click();setTimeout(()=>URL.revokeObjectURL(url),1e4);
+  UI.toast(t('exportedSVG')||'SVG exported','ok');
+}
+// Pure SVG assembly. Returns the SVG string (or null if no shapes). Every
+// user/peer-controlled attribute value goes through _esc so a crafted color,
+// label or data-URL can't break out of its attribute and inject markup into
+// the exported file (which the in-app innerHTML guard does not cover).
+function buildSVG(shapes,paper){
+  const b=G.bboxAll(shapes);
+  if(!b)return null;
   const pad=32;
   const w=Math.ceil(b.w+pad*2),h=Math.ceil(b.h+pad*2);
   const ox=-b.x+pad,oy=-b.y+pad;
   const els=[];
   els.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`);
-  els.push(`<rect width="100%" height="100%" fill="${getCSS('--paper')}"/>`);
+  els.push(`<rect width="100%" height="100%" fill="${_esc(paper||'#FFFFFF')}"/>`);
   // Frames first (background layer), then other shapes
-  const svgShapes=[...state.shapes.filter(s=>s.type==="frame"),...state.shapes.filter(s=>s.type!=="frame")];
+  const svgShapes=[...shapes.filter(s=>s.type==="frame"),...shapes.filter(s=>s.type!=="frame")];
   for(const s of svgShapes){
-    const a=s.opacity!=null&&s.opacity<1?` opacity="${s.opacity}"`:'';
+    const a=s.opacity!=null&&s.opacity<1?` opacity="${_esc(s.opacity)}"`:'';
+    const stroke=_esc(s.stroke||'#000');
     switch(s.type){
       case 'rect':{
         const r=Math.min(8,Math.abs(s.w)/4,Math.abs(s.h)/4);
-        els.push(`<rect x="${s.x+ox}" y="${s.y+oy}" width="${s.w}" height="${s.h}" rx="${r}"${s.fill?` fill="${s.fill}"`:' fill="none"'} stroke="${s.stroke||'#000'}" stroke-width="${s.size||1}"${a}/>`);
+        els.push(`<rect x="${s.x+ox}" y="${s.y+oy}" width="${s.w}" height="${s.h}" rx="${r}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${s.size||1}"${a}/>`);
         break;}
       case 'ellipse':
-        els.push(`<ellipse cx="${s.x+s.w/2+ox}" cy="${s.y+s.h/2+oy}" rx="${Math.abs(s.w/2)}" ry="${Math.abs(s.h/2)}"${s.fill?` fill="${s.fill}"`:' fill="none"'} stroke="${s.stroke||'#000'}" stroke-width="${s.size||1}"${a}/>`);
+        els.push(`<ellipse cx="${s.x+s.w/2+ox}" cy="${s.y+s.h/2+oy}" rx="${Math.abs(s.w/2)}" ry="${Math.abs(s.h/2)}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${s.size||1}"${a}/>`);
         break;
       case 'line':
-        els.push(`<line x1="${s.x1+ox}" y1="${s.y1+oy}" x2="${s.x2+ox}" y2="${s.y2+oy}" stroke="${s.stroke||'#000'}" stroke-width="${s.size||1}" stroke-linecap="round"${a}/>`);
+        els.push(`<line x1="${s.x1+ox}" y1="${s.y1+oy}" x2="${s.x2+ox}" y2="${s.y2+oy}" stroke="${stroke}" stroke-width="${s.size||1}" stroke-linecap="round"${a}/>`);
         break;
       case 'arrow':{
-        els.push(`<line x1="${s.x1+ox}" y1="${s.y1+oy}" x2="${s.x2+ox}" y2="${s.y2+oy}" stroke="${s.stroke||'#000'}" stroke-width="${s.size||1}" stroke-linecap="round"${a}/>`);
+        els.push(`<line x1="${s.x1+ox}" y1="${s.y1+oy}" x2="${s.x2+ox}" y2="${s.y2+oy}" stroke="${stroke}" stroke-width="${s.size||1}" stroke-linecap="round"${a}/>`);
         const ah=Math.max(6,(s.size||2)*3);
         const ang=Math.atan2(s.y2-s.y1,s.x2-s.x1);
         const a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5;
         const tx=s.x2+ox,ty=s.y2+oy;
-        els.push(`<polygon points="${tx},${ty} ${tx+Math.cos(a1)*ah},${ty+Math.sin(a1)*ah} ${tx+Math.cos(a2)*ah},${ty+Math.sin(a2)*ah}" fill="${s.stroke||'#000'}"${a}/>`);
+        els.push(`<polygon points="${tx},${ty} ${tx+Math.cos(a1)*ah},${ty+Math.sin(a1)*ah} ${tx+Math.cos(a2)*ah},${ty+Math.sin(a2)*ah}" fill="${stroke}"${a}/>`);
         break;}
       case 'pen':{
         if(s.pts.length<2)break;
         const d=s.pts.map((p,i)=>`${i?'L':'M'}${p[0]+ox},${p[1]+oy}`).join(' ');
-        els.push(`<path d="${d}" fill="none" stroke="${s.stroke||'#000'}" stroke-width="${s.size||1}" stroke-linecap="round" stroke-linejoin="round"${a}/>`);
+        els.push(`<path d="${_esc(d)}" fill="none" stroke="${stroke}" stroke-width="${s.size||1}" stroke-linecap="round" stroke-linejoin="round"${a}/>`);
         break;}
       case 'text':{
         const fs=s.fontSize||16;
         const svgLines=(s.text||'').split('\n');
-        els.push(`<text x="${s.x+ox}" y="${s.y+oy+fs}" font-family="Hiragino Sans,Helvetica Neue,system-ui,sans-serif" font-size="${fs}" fill="${s.stroke||'#000'}"${a}>`);
+        els.push(`<text x="${s.x+ox}" y="${s.y+oy+fs}" font-family="Hiragino Sans,Helvetica Neue,system-ui,sans-serif" font-size="${fs}" fill="${stroke}"${a}>`);
         for(let i=0;i<svgLines.length;i++)els.push(`<tspan x="${s.x+ox}" dy="${i?fs*1.25:0}">${_esc(svgLines[i])}</tspan>`);
         els.push('</text>');break;}
       case 'image':
-        if(s.dataUrl)els.push(`<image x="${s.x+ox}" y="${s.y+oy}" width="${s.w}" height="${s.h}" href="${s.dataUrl}"${a}/>`);
+        if(s.dataUrl&&/^data:image\//.test(s.dataUrl))els.push(`<image x="${s.x+ox}" y="${s.y+oy}" width="${s.w}" height="${s.h}" href="${_esc(s.dataUrl)}"${a}/>`);
         break;
       case 'frame':{
         const fr=Math.min(4,s.w/10,s.h/10);
-        const clr=s.stroke||'#00C4CC';
+        const clr=_esc(s.stroke||'#00C4CC');
         els.push(`<rect x="${s.x+ox}" y="${s.y+oy}" width="${s.w}" height="${s.h}" rx="${fr}" fill="rgba(248,250,252,0.6)" stroke="${clr}" stroke-width="${s.size||1.5}"${a}/>`);
         if(s.label)els.push(`<text x="${s.x+ox+6}" y="${s.y+oy-4}" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="${clr}">${_esc(s.label)}</text>`);
         break;}
       case 'sticky':{
         const r=Math.min(6,Math.abs(s.w)/6,Math.abs(s.h)/6);
-        els.push(`<rect x="${s.x+ox}" y="${s.y+oy}" width="${s.w}" height="${s.h}" rx="${r}" fill="${s.color||'#FEF08A'}" stroke="rgba(0,0,0,.06)"/>`);
+        els.push(`<rect x="${s.x+ox}" y="${s.y+oy}" width="${s.w}" height="${s.h}" rx="${r}" fill="${_esc(s.color||'#FEF08A')}" stroke="rgba(0,0,0,.06)"/>`);
         if(s.text){
           const fs=s.fontSize||14;const pad2=8;
           const lines2=(s.text||'').split('\n');
@@ -2323,15 +2367,9 @@ function exportSVG(){
     }
   }
   els.push('</svg>');
-  const svg=els.join('\n');
-  const blob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;a.download=`${state.docName||'board'}.svg`;
-  a.click();setTimeout(()=>URL.revokeObjectURL(url),1e4);
-  UI.toast(t('exportedSVG')||'SVG exported','ok');
+  return els.join('\n');
 }
-function _esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function _esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 
 // ====================== NET (sync layer) ======================
 // BroadcastChannel for same-browser tab sync (zero infra).
@@ -2828,6 +2866,10 @@ function wire(){
   window.addEventListener('resize',resize);
   // some Android devices fire orientationchange separately from resize
   if('orientation' in screen)screen.orientation.addEventListener('change',resize);
+  // theme / high-contrast switches change design-token values → drop getCSS cache
+  if(window.matchMedia)for(const q of ['(prefers-color-scheme:dark)','(forced-colors:active)','(prefers-contrast:more)']){
+    try{matchMedia(q).addEventListener('change',clearCSSCache)}catch(_){}
+  }
   // close ctx on click outside
   document.addEventListener('mousedown',e=>{
     if(!e.target.closest('.ctx-menu'))UI.closeCtxMenu();

@@ -1,11 +1,13 @@
-// Board v1.0 — smoke test for op-log reversibility and geometry purity.
+// Board — smoke test for op-log reversibility and geometry purity.
 // Run: node test.mjs
 // Extracts subset of board.js and tests it in isolation.
 
 import { readFileSync } from 'fs';
+import { gzipSync } from 'zlib';
 import assert from 'assert';
 
 const html = readFileSync('./index.html', 'utf8');
+const GZIP_BUDGET = 45056; // 44KB gzip — must match .github/workflows/ci.yml
 
 // ---- presence checks ----
 const checks = [
@@ -24,7 +26,7 @@ const checks = [
       .every(t => html.includes(`data-tool="${t}"`))],
   ['Keymap covers all tools',
     /KEYMAP\s*=\s*\{v:'select'[^}]+h:'hand'[^}]+p:'pen'/.test(html)],
-  ['Size under 125KB budget', html.length < 125 * 1024],
+  ['Size under 44KB gzip budget', gzipSync(html).length < GZIP_BUDGET],
   ['No innerHTML anywhere (XSS-safe)', !/innerHTML\s*=/.test(html)],
   // v1.1: ctx must be let (not const) for exportPNG swap
   ['ctx declared as let (not const)', /let ctx=canvas\.getContext/.test(html)],
@@ -134,6 +136,18 @@ const checks = [
   ['copyStyle captures stroke/fill/size/opacity', html.includes("stroke:sh.stroke,fill:sh.fill") && html.includes("size:sh.size,opacity:sh.opacity")],
   ['pasteStyle filters undefined keys', html.includes("filter(([,v])=>v!==undefined)")],
   ['applyStyleToSelection records undo', html.includes("Store._recordCommitted({op:'upd'")],
+  // v1.6.6: reversibility + security hardening
+  ['zorder op carries before/after snapshot', html.includes("op:'zorder',before,after")],
+  ['zorder _apply restores order+z from snapshot', html.includes("const snap=forward?op.after:op.before") && html.includes("sh.z=p.z")],
+  ['z-step ops route through _commitZ (undoable)', html.includes("_commitZ(before)") && html.includes("function _commitZ")],
+  ['applyRemote whitelists op types', html.includes("REMOTE_OPS") && html.includes("this.REMOTE_OPS.has(op.op)")],
+  ['applyRemote validates remote add shape', html.includes("op.op==='add'&&!(op.shape")],
+  ['SVG export uses testable buildSVG', html.includes("function buildSVG") && html.includes("buildSVG(state.shapes")],
+  ['SVG attrs escaped via _esc', html.includes("stroke=\"${stroke}\"") && html.includes("_esc(s.fill)")],
+  ['SVG image dataUrl validated', html.includes("/^data:image\\//.test(s.dataUrl)")],
+  ['PDF export escapes docName', html.includes("_esc(state.docName||'board')")],
+  ['getCSS is memoised', html.includes("_cssCache") && html.includes("function clearCSSCache")],
+  ['resize handles use AAA brand-ink ring', html.includes("getCSS('--brand-ink')")],
 ];
 
 let pass = 0, fail = 0;
@@ -226,7 +240,7 @@ try {
              doBringFront, doSendBack, doBringForward, doSendBackward,
              doAlign, snapV, snapPt,
              getHandles, applyResize, handleCursor,
-             doGroup, doUngroup, pickTop,
+             doGroup, doUngroup, pickTop, buildSVG,
              copyStyle, pasteStyle, applyStyleToSelection };
   `);
   const api = fn(
@@ -238,7 +252,7 @@ try {
           doBringFront, doSendBack, doBringForward, doSendBackward,
           doAlign, snapV, snapPt,
           getHandles, applyResize, handleCursor,
-          doGroup, doUngroup, pickTop,
+          doGroup, doUngroup, pickTop, buildSVG,
           copyStyle, pasteStyle, applyStyleToSelection } = api;
 
   console.log('\n-- behavioural --');
@@ -365,6 +379,67 @@ try {
   doSendBack();
   assert.strictEqual(state.shapes[0].id, za.id, 'send back puts shape at start');
   console.log('  ✓ doSendBack moves shape to start of array');
+
+  // z-order undo must be a TRUE inverse (regression: dir-based zorder undo
+  // used to send-to-back instead of restoring the original stacking order)
+  state.shapes.length = 0; state.history.length = 0; state.histIdx = -1;
+  state.seq = 0; state.seenOps = new Set();
+  const o1 = Shape.make('rect', {x:0,y:0,w:10,h:10});
+  const o2 = Shape.make('rect', {x:5,y:5,w:10,h:10});
+  const o3 = Shape.make('rect', {x:9,y:9,w:10,h:10});
+  Store.commit({op:'add', shape:o1});
+  Store.commit({op:'add', shape:o2});
+  Store.commit({op:'add', shape:o3});
+  const beforeOrder = state.shapes.map(s => s.id).join(',');
+  state.selection = new Set([o2.id]);
+  doBringFront();
+  assert.notStrictEqual(state.shapes.map(s => s.id).join(','), beforeOrder, 'bring front changed order');
+  Store.undo();
+  assert.strictEqual(state.shapes.map(s => s.id).join(','), beforeOrder, 'undo restores exact prior z-order');
+  console.log('  ✓ zorder undo restores the exact original stacking order');
+
+  // forward/backward step ops must be undoable (regression: they mutated
+  // state directly with no Store entry, so Ctrl+Z did nothing)
+  state.shapes.length = 0; state.history.length = 0; state.histIdx = -1;
+  state.seq = 0; state.seenOps = new Set();
+  const f1 = Shape.make('rect', {x:0,y:0,w:10,h:10}); f1.z = 1;
+  const f2 = Shape.make('rect', {x:5,y:5,w:10,h:10}); f2.z = 2;
+  const f3 = Shape.make('rect', {x:9,y:9,w:10,h:10}); f3.z = 3;
+  state.shapes.push(f1, f2, f3);
+  const fOrder = state.shapes.map(s => s.id).join(',');
+  state.selection = new Set([f1.id]);
+  doBringForward();
+  assert.notStrictEqual(state.shapes.map(s => s.id).join(','), fOrder, 'bring forward changed order');
+  Store.undo();
+  assert.strictEqual(state.shapes.map(s => s.id).join(','), fOrder, 'undo reverts doBringForward');
+  state.selection = new Set([f3.id]);
+  doSendBackward();
+  assert.notStrictEqual(state.shapes.map(s => s.id).join(','), fOrder, 'send backward changed order');
+  Store.undo();
+  assert.strictEqual(state.shapes.map(s => s.id).join(','), fOrder, 'undo reverts doSendBackward');
+  console.log('  ✓ doBringForward / doSendBackward are undoable');
+
+  // remote ops: unknown op types and malformed `add` payloads are rejected
+  state.shapes.length = 0; state.history.length = 0; state.histIdx = -1;
+  state.seenOps = new Set();
+  Store.applyRemote({op:'EVIL', payload:'x', clock:{peer:'attacker', seq:1, ts:1}});
+  assert.strictEqual(state.shapes.length, 0, 'unknown remote op type is dropped');
+  Store.applyRemote({op:'add', shape:{id:'bad'}, clock:{peer:'attacker', seq:2, ts:1}});
+  assert.strictEqual(state.shapes.length, 0, 'malformed remote add (no type/z) is dropped');
+  const goodShape = Shape.make('rect', {x:0,y:0,w:5,h:5});
+  Store.applyRemote({op:'add', shape:goodShape, clock:{peer:'peerB', seq:1, ts:1}});
+  assert.strictEqual(state.shapes.length, 1, 'well-formed remote add is accepted');
+  console.log('  ✓ applyRemote rejects unknown op types and malformed adds');
+
+  // SVG export escapes attribute values (regression: colors/labels/dataUrls
+  // were interpolated raw → an exported .svg could execute injected markup)
+  const evil = Shape.make('rect', {x:0,y:0,w:20,h:20});
+  evil.stroke = '"/><script>alert(1)</script>';
+  evil.fill = '"onmouseover="alert(2)';
+  const svgOut = buildSVG([evil], '#FFFFFF');
+  assert.ok(!/<script/i.test(svgOut), 'no unescaped <script in exported SVG');
+  assert.ok(svgOut.includes('&lt;script'), 'malicious stroke was HTML-escaped');
+  console.log('  ✓ buildSVG escapes attribute values (no markup injection)');
 
   // align
   state.shapes.length = 0; state.history.length = 0; state.histIdx = -1;
