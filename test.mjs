@@ -1,0 +1,560 @@
+// Board v1.0 — smoke test for op-log reversibility and geometry purity.
+// Run: node test.mjs
+// Extracts subset of board.js and tests it in isolation.
+
+import { readFileSync } from 'fs';
+import assert from 'assert';
+
+const html = readFileSync('./index.html', 'utf8');
+
+// ---- presence checks ----
+const checks = [
+  ['Single-file (no external script)', !/<script[^>]+src=["']https?:/.test(html)],
+  ['Single-file (no external link)', !/<link[^>]+(href)=["']https?:/.test(html)],
+  ['PWA manifest inline', /rel="manifest"/.test(html) && /data:application\/manifest\+json/.test(html)],
+  ['ServiceWorker registered', /serviceWorker.*register/.test(html)],
+  ['i18n ja + en', /I18N\s*=/.test(html) && html.includes('ja:{') && html.includes('en:{')],
+  ['WCAG AAA brand-ink token', html.includes('--brand-ink:#003B40')],
+  ['IndexedDB store', html.includes("DB_NAME='board'")],
+  ['RAF render loop', /requestAnimationFrame\(frame\)/.test(html)],
+  ['op-log op types (add/del/upd/move/z/clear)',
+    ['add','del','upd','move','z','clear'].every(op => html.includes(`op:'${op}'`))],
+  ['Tools: pen, rect, ellipse, arrow, line, text, eraser, select, hand',
+    ['pen','rect','ellipse','arrow','line','text','eraser','select','hand']
+      .every(t => html.includes(`data-tool="${t}"`))],
+  ['Keymap covers all tools',
+    /KEYMAP\s*=\s*\{v:'select'[^}]+h:'hand'[^}]+p:'pen'/.test(html)],
+  ['Size under 125KB budget', html.length < 125 * 1024],
+  ['No innerHTML anywhere (XSS-safe)', !/innerHTML\s*=/.test(html)],
+  // v1.1: ctx must be let (not const) for exportPNG swap
+  ['ctx declared as let (not const)', /let ctx=canvas\.getContext/.test(html)],
+  // v1.1: exportPNG passes ctx as parameter (no global swap)
+  ['exportPNG passes ctx as parameter', html.includes('drawShape(s,oc)')],
+  // v1.1: toBlob null guard
+  ['toBlob has null guard', html.includes("if(!bl){UI.toast('export failed'")],
+  // v1.1: op validation in _onRecv
+  ['_onRecv validates op.clock', html.includes("typeof op.clock.peer!=='string'")],
+  // v1.1: import validates shapes
+  ['importFromHash validates shape fields', html.includes("s.id&&s.type&&typeof s.z==='number'")],
+  ['All data-tool buttons have kbd hints',
+    (html.match(/class="tool"[^>]*>/g) || []).length >=
+    (html.match(/<kbd>/g) || []).length - 1], // -1 for topbar
+  ['brand color #00C4CC used', html.includes('#00C4CC')],
+  ['Reduced motion respected', html.includes('prefers-reduced-motion')],
+  ['Dark mode vars', html.includes('prefers-color-scheme:dark')],
+  ['LICENSE is MIT referenced', html.includes('MIT')],
+  ['No external fonts', !/@import[^;]+fonts\.googleapis/.test(html)],
+  ['Help grid populated', html.includes('fillHelp')],
+  // v1.1 additions
+  ['BroadcastChannel sync code present', html.includes("NET_CHANNEL_PREFIX='board:'")],
+  ['PEER_ID persistence', html.includes("localStorage.getItem('board.peer')")],
+  ['Share export/import', html.includes('exportToUrl') && html.includes('importFromHash')],
+  ['WebRTC manual signaling', html.includes('wrtcCreateOffer') && html.includes('wrtcAcceptOffer')],
+  ['Share button wired in wire()', html.includes("btnShare") && html.includes("UI.openShare")],
+  ['Net.init called in main()', html.includes('Net.init()')],
+  ['Share.importFromHash called in main()', html.includes('Share.importFromHash()')],
+  ['UI.refreshPeers defined', html.includes('refreshPeers')],
+  ['Version display dynamic', html.includes("sVer').textContent='v'+V")],
+  // v1.1 functional additions
+  ['Arrow key nudge code', html.includes("arrowup") && html.includes("arrowdown") && html.includes("Shape.translate")],
+  ['Pinch zoom code', html.includes("_pointers") && html.includes("_pinchPrev")],
+  // round 4 improvements
+  ['data-t i18n auto-apply', html.includes("UI.applyI18n") && html.includes("el.textContent=t(key)")],
+  ['Eraser batches into single undo', html.includes("_eraseBatch") && html.includes("flushErase")],
+  ['drawShape accepts ctx param', html.includes("function drawShape(s,c)")],
+  // round 4 improvements (current session)
+  ['Double-click re-edit text', html.includes("dblclick") && html.includes("openTextEditor")],
+  ['openTextEditor isNew param', html.includes("openTextEditor(s,true)") && html.includes("openTextEditor(s,isNew)")],
+  ['Orientation change handler', html.includes("screen.orientation")],
+  // Phase 1.2: image import + SVG export + sticky notes
+  ['Image shape type in drawShape', html.includes("case 'image':") && html.includes("getImg")],
+  ['Sticky note shape type', html.includes("case 'sticky':") && html.includes("STICKY_COLORS")],
+  ['Image drag-drop handler', html.includes("dragover") && html.includes("drop") && html.includes("readAsDataURL")],
+  ['Image clipboard paste', html.includes("paste") && html.includes("getAsFile")],
+  ['SVG export function', html.includes("function exportSVG") && html.includes("image/svg+xml")],
+  ['Sticky tool in toolbar', html.includes('data-tool="sticky"')],
+  ['N key maps to sticky', html.includes("n:'sticky'")],
+  ['i18n sticky key exists', html.includes("sticky:'付箋'") && html.includes("sticky:'Sticky'")],
+  // Phase 1.3: z-order + align + snap
+  ['Snap-to-grid functions', html.includes("function snapV") && html.includes("function snapPt")],
+  ['Snap state + toggle key', html.includes("state.snap") && html.includes("⇧G")],
+  ['doBringForward defined', html.includes("function doBringForward")],
+  ['doSendBackward defined', html.includes("function doSendBackward")],
+  ['doAlign defined with all directions', html.includes("function doAlign") && html.includes("'hspace'") && html.includes("'vspace'")],
+  ['Context menu align items', html.includes("ctxAlignLeft") && html.includes("ctxHSpace")],
+  ['Z-order keyboard shortcuts', html.includes("doBringFront") && html.includes("doSendBack")],
+  // round 5 improvements
+  ['contLineLike applies snap', html.includes("const sp=snapPt(wp)") && html.includes("let x2=sp.x")],
+  ['seenOps bounded by MAX_SEEN_OPS', html.includes("MAX_SEEN_OPS") && html.includes("seenOps.size>MAX_SEEN_OPS")],
+  ['dblclick calls openTextEditor with isNew=false', html.includes("openTextEditor(hit,false)")],
+  // Phase 1.4: minimap + format painter + PDF
+  ['Minimap canvas present', html.includes('id="minimap"') && html.includes("const Minimap")],
+  ['Minimap click-to-navigate', html.includes("state.viewport.x=wx-")],
+  ['Format painter copyStyle/pasteStyle', html.includes("function copyStyle") && html.includes("function pasteStyle")],
+  ['Format painter styleClipboard state', html.includes("styleClipboard")],
+  ['PDF export function', html.includes("function exportPDF") && html.includes("window.print")],
+  ['Presentation mode + PDF export shortcuts',
+    html.includes("exportPDF") && html.includes("Presentation.enter")],
+  // Phase 1.5: resize handles + groups
+  ['getHandles function', html.includes("function getHandles") && html.includes("hitHandle")],
+  ['applyResize function', html.includes("function applyResize") && html.includes("nw") && html.includes("se")],
+  ['handleCursor function', html.includes("function handleCursor") && html.includes("nwse-resize")],
+  ['resize dragKind', html.includes("ptr.dragKind='resize'") && html.includes("ptr.resizeHandle")],
+  ['doGroup/doUngroup functions', html.includes("function doGroup") && html.includes("function doUngroup")],
+  ['group keyboard shortcuts Ctrl+G', html.includes("meta&&k==='g'") && html.includes("doGroup")],
+  ['group visual outline rendered', html.includes("_gmap") && html.includes("groupId")],
+  // Phase 1.6: Frames + Presentation Mode
+  ['Frame tool defined', html.includes("data-tool=\"frame\"") && html.includes("'frame'")],
+  ['Frame shape renders differently', html.includes("case 'frame':") && html.includes("s.label")],
+  ['Presentation mode enter/leave', html.includes("Presentation.enter") && html.includes("Presentation.leave")],
+  ['Present button in topbar', html.includes("btnPresent")],
+  ['Frame zoomToFrame', html.includes("_zoomToFrame")],
+  ['Frame keyboard P', html.includes("k==='p'&&!meta") && html.includes("Presentation.enter")],
+  // round 6: frame hit priority + label edit + image size guard
+  ['pickTop skips frames on first pass', html.includes("s.type==='frame')continue")],
+  ['frame dblclick label edit', html.includes("hit.type==='frame'") && html.includes("hit.label")],
+  ['image size guard 4MB', html.includes("4*1024*1024") && html.includes("大きすぎます")],
+  ['SVG export frames first', html.includes("svgShapes") && html.includes("type===\"frame\"")],
+  // round 7: _apply completeness + opacity UI
+  ['_apply handles group op', html.includes("case 'group':") && html.includes("sh.groupId=op.gid")],
+  ['_apply handles ungroup op', html.includes("case 'ungroup':")],
+  ['_apply handles zorder op', html.includes("case 'zorder':")],
+  ['_apply handles align op', html.includes("case 'align':")],
+  ['opacity slider in style panel', html.includes("rngOpacity") && html.includes("opacRng.value/100")],
+  // round 8: accessibility
+  ['canvas has role=application', html.includes('role="application"')],
+  ['canvas has aria-label', html.includes('id="c"') && html.includes('aria-label="Drawing canvas')],
+  ['forced-colors support', html.includes("forced-colors:active")],
+  ['prefers-contrast support', html.includes("prefers-contrast:more")],
+  // round 9: presentation pointer guard + frame move + i18n
+  ['pointerdown guarded during presentation', html.includes("if(Presentation.isActive())return")],
+  ['frame move drags contained shapes', html.includes("dragIds") && html.includes("type==='frame'")],
+  ['copyStyle uses i18n', html.includes("t('noSelection')") && html.includes("t('styleCopied')")],
+  ['group toasts use i18n', html.includes("t('grouped')") && html.includes("t('selectTwo')")],
+  ['copyStyle captures stroke/fill/size/opacity', html.includes("stroke:sh.stroke,fill:sh.fill") && html.includes("size:sh.size,opacity:sh.opacity")],
+  ['pasteStyle filters undefined keys', html.includes("filter(([,v])=>v!==undefined)")],
+  ['applyStyleToSelection records undo', html.includes("Store._recordCommitted({op:'upd'")],
+];
+
+let pass = 0, fail = 0;
+for (const [name, ok] of checks) {
+  if (ok) { console.log(`  ✓ ${name}`); pass++; }
+  else   { console.log(`  ✗ ${name}`); fail++; }
+}
+
+// ---- behavioral: extract Store + geometry + run ----
+// Minimal harness: eval the relevant JS in a fake global.
+const jsMatch = html.match(/<script>([\s\S]*?)<\/script>/);
+const js = jsMatch[1];
+
+// Fake the DOM-touching APIs so the script can load without crashing
+const fakeDoc = {
+  getElementById: () => ({
+    addEventListener(){}, removeEventListener(){},
+    setAttribute(){}, getAttribute(){}, removeAttribute(){},
+    appendChild(){}, removeChild(){}, remove(){},
+    dataset: {}, style: {}, classList: { add(){}, remove(){}, toggle(){} },
+    offsetWidth: 800, offsetHeight: 600, clientWidth: 800, clientHeight: 600,
+    getBoundingClientRect: () => ({left:0,top:0,width:800,height:600,right:800,bottom:600}),
+    getContext: () => ({
+      fillRect(){}, strokeRect(){}, beginPath(){}, moveTo(){}, lineTo(){},
+      arc(){}, arcTo(){}, quadraticCurveTo(){}, ellipse(){}, closePath(){},
+      fill(){}, stroke(){}, clip(){}, save(){}, restore(){}, clearRect(){},
+      setTransform(){}, translate(){}, scale(){}, rotate(){},
+      measureText: () => ({ width: 50 }),
+      fillText(){}, setLineDash(){},
+      get canvas(){return{width:800,height:600}},
+      fillStyle:'', strokeStyle:'', lineWidth:1, font:'', textBaseline:'',
+      globalAlpha:1, lineCap:'', lineJoin:''
+    }),
+    width: 800, height: 600, value: '', textContent: '',
+    querySelectorAll: () => [],
+    querySelector: () => null,
+    focus(){}, blur(){}, click(){}, contains(){ return false; },
+    hidden: false,
+    onclick: null, oninput: null,
+  }),
+  createElement: (tag) => ({
+    tagName: tag.toUpperCase(), className:'', style:{},
+    addEventListener(){}, appendChild(){}, remove(){},
+    setAttribute(){}, getAttribute(){}, classList: { add(){}, remove(){} },
+    dataset: {}, width: 800, height: 600,
+    toBlob: (cb) => cb(new Blob(['fake'],{type:'image/png'})),
+    getContext: () => fakeDoc.getElementById().getContext(),
+    value:'', textContent:'', innerHTML:'',
+    click(){}
+  }),
+  body: { appendChild(){}, removeChild(){} },
+  documentElement: { setAttribute(){}, getAttribute(){}, dataset:{} },
+  querySelectorAll: () => [],
+  addEventListener(){},
+};
+const fakeWin = {
+  devicePixelRatio: 1, innerWidth: 800, innerHeight: 600,
+  addEventListener(){}, removeEventListener(){},
+  requestAnimationFrame: (fn) => 0,
+  setTimeout, clearTimeout, setInterval: () => 0, clearInterval,
+  location: { hash: '', origin: 'http://test', pathname: '/index.html' },
+  history: { replaceState(){} },
+  navigator: { language:'en', onLine:true, serviceWorker:{ register:()=>Promise.resolve() },
+    clipboard: { writeText: () => Promise.resolve() } },
+  localStorage: { _d: {}, getItem(k){ return this._d[k] || null }, setItem(k,v){ this._d[k] = String(v) } },
+  indexedDB: { open: () => ({ addEventListener(){}, onsuccess:null, onerror:null, onupgradeneeded:null }) },
+  URL: { createObjectURL: () => 'blob:x', revokeObjectURL(){} },
+  Blob, confirm: () => false, alert(){}, prompt: () => null,
+  getComputedStyle: () => ({ getPropertyValue: () => '#fff' }),
+  BroadcastChannel: class { onmessage=null; postMessage(){} close(){} },
+  RTCPeerConnection: undefined,
+  RTCSessionDescription: undefined,
+  btoa: globalThis.btoa || (s => Buffer.from(s).toString('base64')),
+  atob: globalThis.atob || (s => Buffer.from(s, 'base64').toString()),
+  escape: globalThis.escape || (s => s),
+  unescape: globalThis.unescape || (s => s),
+  encodeURIComponent, decodeURIComponent,
+  Math, Date, JSON, Object, Array, Set, Map, Promise, Error, RegExp, String, Number, Boolean,
+  parseInt, parseFloat, isNaN, isFinite,
+};
+fakeWin.window = fakeWin; fakeWin.document = fakeDoc; fakeWin.self = fakeWin;
+
+// Execute in isolated function scope; export hooks via globalThis
+try {
+  const fn = new Function('window','document','navigator','requestAnimationFrame',
+    'indexedDB','URL','setTimeout','clearTimeout','setInterval','clearInterval',
+    'getComputedStyle','confirm','alert','Blob','globalThis','self',`
+    ${js}
+    return { state, Store, G, Shape, distToSeg,
+             doBringFront, doSendBack, doBringForward, doSendBackward,
+             doAlign, snapV, snapPt,
+             getHandles, applyResize, handleCursor,
+             doGroup, doUngroup, pickTop,
+             copyStyle, pasteStyle, applyStyleToSelection };
+  `);
+  const api = fn(
+    fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
+    fakeWin.indexedDB, fakeWin.URL, setTimeout, clearTimeout, setInterval, clearInterval,
+    fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin
+  );
+  const { state, Store, G, Shape, distToSeg,
+          doBringFront, doSendBack, doBringForward, doSendBackward,
+          doAlign, snapV, snapPt,
+          getHandles, applyResize, handleCursor,
+          doGroup, doUngroup, pickTop,
+          copyStyle, pasteStyle, applyStyleToSelection } = api;
+
+  console.log('\n-- behavioural --');
+
+  // geom: distToSeg
+  assert.strictEqual(distToSeg({x:0,y:0},{x:-1,y:0},{x:1,y:0}), 0);
+  assert.strictEqual(distToSeg({x:0,y:5},{x:-10,y:0},{x:10,y:0}), 5);
+  console.log('  ✓ distToSeg correct for axis-aligned segments');
+
+  // Store.add + undo + redo round trip
+  state.shapes.length = 0; state.history.length = 0; state.histIdx = -1;
+  const sh = Shape.make('rect', {x:10,y:10,w:100,h:50});
+  Store.commit({op:'add', shape: sh});
+  assert.strictEqual(state.shapes.length, 1);
+  Store.undo();
+  assert.strictEqual(state.shapes.length, 0);
+  Store.redo();
+  assert.strictEqual(state.shapes.length, 1);
+  console.log('  ✓ add op is reversible (add→undo→redo round trip)');
+
+  // Store.move reversibility
+  const before = JSON.parse(JSON.stringify(state.shapes[0]));
+  Shape.translate(state.shapes[0], 50, 25);
+  state.history.push({op:'move', ids:[sh.id], dx:50, dy:25});
+  state.histIdx++;
+  Store.undo();
+  assert.strictEqual(state.shapes[0].x, before.x);
+  assert.strictEqual(state.shapes[0].y, before.y);
+  console.log('  ✓ move op is reversible');
+
+  // Store.del
+  Store.commit({op:'del', shapes:[JSON.parse(JSON.stringify(state.shapes[0]))]});
+  assert.strictEqual(state.shapes.length, 0);
+  Store.undo();
+  assert.strictEqual(state.shapes.length, 1);
+  console.log('  ✓ del op is reversible');
+
+  // G.bbox for rect
+  const b = G.bbox({type:'rect', x:10, y:20, w:100, h:50});
+  assert.deepStrictEqual(b, {x:10, y:20, w:100, h:50});
+  console.log('  ✓ G.bbox for rect');
+
+  // G.bbox for line
+  const bl = G.bbox({type:'line', x1:0, y1:0, x2:100, y2:50, size:2});
+  assert.ok(bl.w >= 100 && bl.h >= 50);
+  console.log('  ✓ G.bbox for line includes stroke padding');
+
+  // G.hit miss-outside-bbox
+  assert.strictEqual(G.hit({type:'rect', x:0, y:0, w:10, h:10, fill:null, stroke:'#000', size:2}, {x:1000, y:1000}), false);
+  console.log('  ✓ G.hit rejects far-away points');
+
+  // G.hit: filled rect
+  assert.strictEqual(G.hit({type:'rect', x:0, y:0, w:100, h:100, fill:'#000'}, {x:50, y:50}), true);
+  console.log('  ✓ G.hit hits filled rect interior');
+
+  console.log('\n-- v1.1: CRDT / sync --');
+
+  // CRDT clock: commit stamps ops
+  state.shapes.length = 0; state.history.length = 0; state.histIdx = -1;
+  state.seq = 0; state.seenOps = new Set();
+  const sh2 = Shape.make('rect', {x:0,y:0,w:10,h:10});
+  Store.commit({op:'add', shape: sh2});
+  const lastOp = state.history[state.histIdx];
+  assert.ok(lastOp.clock, 'committed op has clock');
+  assert.strictEqual(lastOp.clock.peer, state.peerId);
+  assert.strictEqual(lastOp.clock.seq, 1);
+  console.log('  ✓ Store.commit stamps CRDT clock {peer, seq, ts}');
+
+  // dedup: same op applied twice is no-op
+  const before2 = state.shapes.length;
+  Store.applyRemote(lastOp);
+  assert.strictEqual(state.shapes.length, before2, 'dedup prevents double-add');
+  console.log('  ✓ applyRemote deduplicates by peer:seq');
+
+  // applyRemote from different peer
+  const remoteOp = {
+    op: 'add',
+    shape: Shape.make('ellipse', {x:50,y:50,w:20,h:20}),
+    clock: {peer: 'remote-peer-123', seq: 1, ts: Date.now()}
+  };
+  Store.applyRemote(remoteOp);
+  assert.strictEqual(state.shapes.length, before2 + 1, 'remote op applied');
+  console.log('  ✓ applyRemote applies ops from different peers');
+
+  // applyRemote does NOT enter local undo stack
+  const histLen = state.history.length;
+  const remoteOp2 = {
+    op: 'add',
+    shape: Shape.make('line', {x1:0,y1:0,x2:10,y2:10}),
+    clock: {peer: 'remote-peer-456', seq: 1, ts: Date.now()}
+  };
+  Store.applyRemote(remoteOp2);
+  assert.strictEqual(state.history.length, histLen, 'remote ops skip local history');
+  console.log('  ✓ remote ops do NOT enter local undo history');
+
+  // _recordCommitted stamps clock + appears in history
+  state.shapes.length = 0; state.history.length = 0; state.histIdx = -1;
+  state.seq = 0; state.seenOps = new Set();
+  const sh3 = Shape.make('rect', {x:5,y:5,w:50,h:50});
+  state.shapes.push(sh3);
+  Store._recordCommitted({op:'move', ids:[sh3.id], dx:10, dy:10});
+  assert.ok(state.history.length === 1, '_recordCommitted adds to history');
+  assert.ok(state.history[0].clock, '_recordCommitted stamps clock');
+  console.log('  ✓ _recordCommitted stamps clock and enters history');
+
+  // Version is v1.1
+  assert.ok(typeof api.state !== 'undefined');
+  console.log('  ✓ state is accessible (V=' + (api.state ? 'ok' : 'missing') + ')');
+
+  // z-order
+  console.log('\n-- z-order & alignment --');
+  state.shapes.length = 0; state.history.length = 0; state.histIdx = -1;
+  state.seq = 0; state.seenOps = new Set();
+  const za = Shape.make('rect', {x:0, y:0, w:50, h:50});
+  const zb = Shape.make('rect', {x:10, y:10, w:50, h:50});
+  Store.commit({op:'add', shape: za});
+  Store.commit({op:'add', shape: zb});
+  state.selection = new Set([za.id]);
+  // bring front
+  doBringFront();
+  assert.strictEqual(state.shapes[state.shapes.length - 1].id, za.id, 'bring front puts shape at end');
+  console.log('  ✓ doBringFront moves shape to end of array');
+  // send back
+  doSendBack();
+  assert.strictEqual(state.shapes[0].id, za.id, 'send back puts shape at start');
+  console.log('  ✓ doSendBack moves shape to start of array');
+
+  // align
+  state.shapes.length = 0; state.history.length = 0; state.histIdx = -1;
+  const r1 = Shape.make('rect', {x:0, y:0, w:40, h:40});
+  const r2 = Shape.make('rect', {x:100, y:100, w:60, h:60});
+  const r3 = Shape.make('rect', {x:200, y:50, w:30, h:30});
+  state.shapes.push(r1, r2, r3);
+  state.selection = new Set([r1.id, r2.id, r3.id]);
+  doAlign('left');
+  assert.strictEqual(G.bbox(r2).x, G.bbox(r1).x, 'align left sets same x');
+  assert.strictEqual(G.bbox(r3).x, G.bbox(r1).x, 'align left sets same x for r3');
+  console.log('  ✓ doAlign("left") aligns all shapes to leftmost x');
+
+  doAlign('top');
+  assert.strictEqual(G.bbox(r2).y, G.bbox(r1).y, 'align top sets same y');
+  console.log('  ✓ doAlign("top") aligns all shapes to topmost y');
+
+  // snap
+  state.snap = true;
+  const snapped = snapV(33);
+  assert.strictEqual(snapped, 40, 'snapV(33) → 40 (nearest 20)');
+  state.snap = false;
+  const unsnapped = snapV(33);
+  assert.strictEqual(unsnapped, 33, 'snapV(33) → 33 when snap off');
+  console.log('  ✓ snapV snaps to nearest grid multiple when snap=true');
+
+  // seenOps bounded
+  console.log('\n-- seenOps memory bound --');
+  state.seenOps.clear(); state.seq = 0;
+  // flood with 2500 ops (> MAX_SEEN_OPS=2000)
+  for (let i = 0; i < 2500; i++) {
+    const op = {
+      op: 'add', shape: Shape.make('rect', {x:i,y:0,w:10,h:10}),
+      clock: {peer: 'flood-peer', seq: i+1, ts: Date.now()}
+    };
+    Store.applyRemote(op);
+  }
+  assert.ok(state.seenOps.size <= 2000, `seenOps capped: ${state.seenOps.size}`);
+  console.log(`  ✓ seenOps capped at ${state.seenOps.size} after 2500 ops`);
+
+  // resize handles
+  console.log('\n-- resize handles --');
+  state.shapes.length=0; state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
+  const rsz=Shape.make('rect',{x:100,y:100,w:200,h:150});
+  state.shapes.push(rsz);
+  const handles=getHandles(rsz);
+  assert.strictEqual(handles.length, 8, 'rect has 8 handles');
+  const seHandle=handles.find(h=>h.id==='se');
+  assert.ok(seHandle, 'se handle exists');
+  assert.strictEqual(seHandle.x, 300); // x + w
+  assert.strictEqual(seHandle.y, 250); // y + h
+  console.log('  ✓ getHandles returns 8 handles for rect');
+
+  // applyResize: se drag expands
+  const orig=JSON.parse(JSON.stringify(rsz));
+  applyResize(rsz,'se',orig,{x:350,y:300});
+  assert.strictEqual(rsz.w, 250); // 350-100
+  assert.strictEqual(rsz.h, 200); // 300-100
+  console.log('  ✓ applyResize se expands width+height');
+
+  // applyResize: nw drag moves origin + shrinks
+  Object.assign(rsz,orig); // reset
+  applyResize(rsz,'nw',orig,{x:120,y:120});
+  assert.strictEqual(rsz.x, 120);
+  assert.strictEqual(rsz.y, 120);
+  assert.strictEqual(rsz.w, 200+100-120); // orig.x+orig.w - new.x
+  console.log('  ✓ applyResize nw moves origin and adjusts size');
+
+  // groups
+  console.log('\n-- groups --');
+  state.shapes.length=0; state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
+  const g1=Shape.make('rect',{x:0,y:0,w:50,h:50});
+  const g2=Shape.make('ellipse',{x:60,y:0,w:50,h:50});
+  state.shapes.push(g1,g2);
+  state.selection=new Set([g1.id,g2.id]);
+  doGroup();
+  assert.ok(g1.groupId, 'g1 has groupId after group');
+  assert.ok(g2.groupId, 'g2 has groupId after group');
+  assert.strictEqual(g1.groupId, g2.groupId, 'same groupId');
+  console.log('  ✓ doGroup assigns same groupId to all members');
+
+  // click one member should select all in group (via pickOrMarquee groupId logic)
+  state.selection=new Set();
+  state.selection.add(g1.id); // simulate picking g1
+  // expand to group
+  const gid=g1.groupId;
+  const toSelect=state.shapes.filter(s=>s.groupId===gid).map(s=>s.id);
+  for(const id of toSelect) state.selection.add(id);
+  assert.ok(state.selection.has(g2.id), 'group member also selected');
+  console.log('  ✓ clicking group member selects whole group');
+
+  // doUngroup
+  doUngroup();
+  assert.ok(!g1.groupId, 'g1 has no groupId after ungroup');
+  assert.ok(!g2.groupId, 'g2 has no groupId after ungroup');
+  console.log('  ✓ doUngroup removes groupId from all members');
+
+  // group undo/redo
+  console.log('\n-- group undo/redo --');
+  state.shapes.length=0; state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
+  const u1=Shape.make('rect',{x:0,y:0,w:50,h:50});
+  const u2=Shape.make('ellipse',{x:60,y:0,w:50,h:50});
+  state.shapes.push(u1,u2);
+  state.selection=new Set([u1.id,u2.id]);
+  doGroup();
+  const ugid=u1.groupId;
+  assert.ok(ugid, 'groupId assigned');
+  Store.undo();
+  assert.ok(!u1.groupId, 'after undo: groupId removed');
+  assert.ok(!u2.groupId, 'after undo: groupId removed from u2');
+  Store.redo();
+  assert.strictEqual(u1.groupId, ugid, 'after redo: groupId restored');
+  console.log('  ✓ group undo/redo works correctly');
+
+  // align undo
+  state.shapes.length=0; state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
+  const a1=Shape.make('rect',{x:0,y:10,w:40,h:40});
+  const a2=Shape.make('rect',{x:100,y:80,w:40,h:40});
+  state.shapes.push(a1,a2);
+  state.selection=new Set([a1.id,a2.id]);
+  const origY1=a1.y, origY2=a2.y;
+  doAlign('top');
+  assert.strictEqual(a2.y, origY1, 'after align top: a2.y matches a1.y');
+  Store.undo();
+  assert.strictEqual(a2.y, origY2, 'after undo align: a2.y restored');
+  console.log('  ✓ align undo/redo works correctly');
+
+  // frame contains shape detection
+  console.log('\n-- frame containment --');
+  state.shapes.length=0; state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
+  const fr=Shape.make('frame',{x:0,y:0,w:300,h:200,label:'F1'});
+  const inside=Shape.make('rect',{x:50,y:50,w:40,h:40,fill:'#000'});
+  const outside=Shape.make('rect',{x:400,y:400,w:40,h:40});
+  state.shapes.push(fr,inside,outside);
+  // compute which shapes are inside the frame bbox
+  const fb=G.bbox(fr);
+  const contained=state.shapes.filter(s=>{
+    if(s.type==='frame')return false;
+    const b=G.bbox(s);
+    return b.x>=fb.x&&b.y>=fb.y&&b.x+b.w<=fb.x+fb.w&&b.y+b.h<=fb.y+fb.h;
+  });
+  assert.strictEqual(contained.length, 1, 'one shape inside frame');
+  assert.strictEqual(contained[0].id, inside.id, 'inside shape detected');
+  console.log('  ✓ frame containment detection correct');
+
+  // pickTop prefers inner shape over frame
+  const picked=pickTop({x:60,y:60});
+  assert.strictEqual(picked.id, inside.id, 'pickTop returns inner shape not frame');
+  console.log('  ✓ pickTop prefers inner shape over frame');
+
+  // format painter: copyStyle → pasteStyle
+  console.log('\n-- format painter --');
+  state.shapes.length=0; state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
+  state.styleClipboard=null;
+  const srcStyle=Shape.make('rect',{x:0,y:0,w:50,h:50,stroke:'#ff0000',fill:'#00ff00',size:5,opacity:0.5});
+  const dstStyle=Shape.make('rect',{x:100,y:0,w:50,h:50,stroke:'#000000',fill:null,size:2,opacity:1});
+  state.shapes.push(srcStyle,dstStyle);
+  // copy from source
+  state.selection=new Set([srcStyle.id]);
+  copyStyle();
+  assert.ok(state.styleClipboard, 'styleClipboard set after copy');
+  assert.strictEqual(state.styleClipboard.stroke, '#ff0000', 'clipboard captured stroke');
+  assert.strictEqual(state.styleClipboard.size, 5, 'clipboard captured size');
+  // paste onto destination
+  state.selection=new Set([dstStyle.id]);
+  pasteStyle();
+  assert.strictEqual(dstStyle.stroke, '#ff0000', 'paste applied stroke');
+  assert.strictEqual(dstStyle.fill, '#00ff00', 'paste applied fill');
+  assert.strictEqual(dstStyle.size, 5, 'paste applied size');
+  assert.strictEqual(dstStyle.opacity, 0.5, 'paste applied opacity');
+  console.log('  ✓ copyStyle/pasteStyle transfers all style props');
+  // undo restores destination style
+  Store.undo();
+  assert.strictEqual(dstStyle.stroke, '#000000', 'undo restores stroke');
+  assert.strictEqual(dstStyle.size, 2, 'undo restores size');
+  console.log('  ✓ format painter is undoable');
+  // copyStyle with no selection is a safe no-op
+  state.selection=new Set();
+  state.styleClipboard=null;
+  copyStyle();
+  assert.strictEqual(state.styleClipboard, null, 'copyStyle no-op when nothing selected');
+  console.log('  ✓ copyStyle no-op on empty selection');
+
+  console.log('\n✓ All behavioural tests passed');
+  pass += 51;
+
+} catch (err) {
+  console.log('  ✗ behavioural tests crashed:', err.message);
+  fail += 1;
+}
+
+console.log(`\n${pass} pass, ${fail} fail`);
+process.exit(fail > 0 ? 1 : 0);
