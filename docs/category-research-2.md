@@ -10,8 +10,8 @@
 
 11. ✅ テキスト & リッチテキスト編集(折返し・字形・Bidi)
 12. ✅ 手書き文字認識 / OCR(ink → text)
-13. ⬜ モバイル / タッチ / スタイラス入力(palm rejection・Pencil)
-14. ⬜ プレゼン & ファシリテーション(タイマー・投票・follow)
+13. ✅ モバイル / タッチ / スタイラス入力(palm rejection・Pencil)
+14. ✅ プレゼン & ファシリテーション(タイマー・投票・follow)
 15. ⬜ テンプレート / 図形ライブラリ / ステンシル
 16. ⬜ 検索 & コマンドパレット & ナビゲーション
 17. ⬜ 国際化(1000言語・MT・RTL・フォント)
@@ -65,6 +65,53 @@
 
 ---
 
-## 残り(13〜20)
+## 13. モバイル / タッチ / スタイラス入力 ✅
+
+### 収集情報(arxiv / GitHub)
+- [GitHub: shuding/apple-pencil-safari-api-test](https://github.com/shuding/apple-pencil-safari-api-test) — Safari の **force touch + リアルタイム Bezier** スケッチ。Pencil API の実例。
+- [GitHub: PCrompton/ApplePencilExperiments](https://github.com/PCrompton/ApplePencilExperiments) — TouchCanvas 流の **coalesced/predictive touches**、azimuth/altitude 利用。
+- [GitHub: mdn/content — Using Pointer Events](https://github.com/mdn/content/blob/main/files/en-us/web/api/pointer_events/using_pointer_events/index.md) — pointer 非依存入力、coalesced events の基礎。
+- [GitHub: bigbluebutton PR #11224](https://github.com/bigbluebutton/bigbluebutton/pull/11224) — アクティブペン使用中の **誤描画を防止**(palm rejection)。
+- [GitHub: logseq #9863](https://github.com/logseq/logseq/issues/9863) — タッチ端末の palm rejection 要望。
+- [GitHub: fabricjs #3946](https://github.com/fabricjs/fabric.js/issues/3946) — iPad Pencil が canvas 外タップで線を引く不具合。
+- [GitHub: pixijs #8037](https://github.com/pixijs/pixijs/issues/8037) — Apple Pencil が pointerdown/up を二重発火。
+- [GitHub: excalidraw discussion #9215](https://github.com/excalidraw/excalidraw/discussions/9215) — **入力を Apple Pencil に限定**するペンオプション。
+- [arxiv/特許: Probabilistic palm rejection using spatiotemporal touch features](https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/10031619) — 時空間特徴 + 反復分類で確率的に手のひらを棄却。
+- 技術一般: pen 在席中は touch 描画を無効化、接触面積/形状で palm 判定。
+
+### Board への改善点
+- **P1: `getCoalescedEvents()` 採用** — pointermove でサブフレームの全点を取得し、120Hz ペンでも滑らかに(現状は 1 move=1 点の可能性)。`getPredictedEvents()` で知覚遅延も低減(カテゴリー3 と連動)。
+- **P1: pen-only モード(palm rejection)** — `pointerType` で pen/touch/mouse を判別。ペン描画中は finger touch を描画に使わず **パン/ズーム** に回す(Excalidraw #9215 流)。
+- **P2: 筆圧/傾き** — `pressure`/`tiltX,tiltY`/`altitudeAngle,azimuthAngle` を可変幅・回転ブラシに反映。
+- **P2: Pencil 二重イベント対策** — 同座標 pointerdown/up の dedup(pixijs #8037)。canvas 外開始の誤描画ガード(fabric #3946)。
+- **設計判断**: すべて標準 Pointer Events で実装(依存ゼロ)。
+
+---
+
+## 14. プレゼン & ファシリテーション ✅
+
+### 収集情報(arxiv / GitHub)
+- [GitHub: microsoft/live-share-sdk](https://github.com/microsoft/live-share-sdk) — **同期ペン/レーザーポインタ/カーソル**(LiveCanvas が InkingManager のストロークとリモートカーソルを同期)。follow の手本。
+- [GitHub: AstraDraw/astradraw](https://github.com/AstraDraw/astradraw) — frames-as-slides の **プレゼンモード + レーザーポインタ**、presence/カーソル、スレッドコメント、動画ウォークスルー(PiP)。Board の上位像。
+- [GitHub: bigbluebutton #24555](https://github.com/bigbluebutton/bigbluebutton/issues/24555) — 発表者カーソルを赤い「レーザー」点として全員に表示。
+- [GitHub: excalidraw #9356](https://github.com/excalidraw/excalidraw/issues/9356) — プレゼン中のハイパーリンククリック。
+- [GitHub: microsoft/PowerToys #16703](https://github.com/microsoft/PowerToys/issues/16703) — レーザーポインタ/スポットライトのユーティリティ。
+- [arxiv 2302.07909 — MAGIC: Manipulating Avatars and Gestures for Remote Collaboration](https://arxiv.org/abs/2302.07909) — deixis(指示)の復元で相互理解向上。
+- [arxiv 2406.05209 — SPARC: Shared Perspective for Remote Collaboration](https://arxiv.org/abs/2406.05209) — 視点共有。
+- [arxiv 1001.3150 — Gaze and Gestures in Telepresence](https://arxiv.org/pdf/1001.3150) — gaze/deixis と workspace awareness、common ground。
+- 知見: 生産的協調には **workspace awareness** と deictic(「ここ」「これ」)が要。
+
+### Board への改善点
+- **P1: レーザーポインタ** — プレゼン中、消えるトレイル付きの指示点を既存 sync でブロードキャスト(発表者→視聴者)。プレゼンの定番。
+- **P1: follow / 視点追従** — 発表者の viewport を視聴者に追従させる(live-share LiveCanvas 流)。
+- **P2: ライブカーソル + 名前** — 既存 peer avatar に加え、協調中のカーソル位置を表示(deixis を支える、arxiv awareness 研究)。
+- **P2: エフェメラルな指示マーカー(reactions/point-here)** — 一時的な「ここ」マーカーを共有(common ground)。
+- **P2: スレッドコメント**(roadmap v1.3)+ 発表者タイマー/ノート(facilitation)、プレゼン中リンククリック(excalidraw #9356)。
+- **awareness**: 各 peer の viewport 矩形を薄く表示(MAGIC/SPARC の視点共有を 2D で簡易化)。
+- **設計判断**: 一時的(ephemeral)情報は undo 履歴に入れず、op-log と別チャネルで同期。
+
+---
+
+## 残り(15〜20)
 
 `/loop` 再実行ごとに 2 カテゴリーずつ、上記書式で追記する。
