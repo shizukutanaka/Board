@@ -136,6 +136,45 @@ replicated undo 論文群。
 
 ---
 
+## 5. 追補(第2次調査): 単一HTML制約に最適な具体手法
+
+第1次の方向性を、Board の「単一HTML / 依存ゼロ」制約に**最も適合する実装手段**へ落とし込む追加調査。
+
+### K. 同期は「重い CRDT ライブラリ」を避け、Excalidraw 方式(version + versionNonce の LWW)を採る ★sync の本命
+- **背景**: CRDT ライブラリ比較(Yjs / Automerge / Loro)では Loro/Yjs が高速だが、**WASM / バンドルが単一HTML原則と相反**
+  する(Yjs でも別バンドル、Loro は WASM ロード)。Board に丸ごと取り込むのは原則違反。
+- **改善**: Excalidraw は各 element に `version`(変更ごと +1)と `versionNonce`(変更ごとの乱数)を持たせ、マージ時に
+  **version が大きい方を採用、同 version は versionNonce が小さい方を決定的に採用**(LWW + 決定的タイブレーク)。
+  これだけで実用上の協調問題の大半を解決し、E2E 暗号化と両立。**依存ゼロで実装でき、Board 既存の op-log/clock と親和**。
+- **Board 対応**: shape に `version`/`versionNonce` を付与し、`Store.applyRemote` の dedup/適用を「clock 順」から
+  「version/versionNonce 比較」へ。これが項目 D(LWW レジスタ)の具体実装。
+- **出典**: [Excalidraw — Building P2P Collaboration](https://plus.excalidraw.com/blog/building-excalidraw-p2p-collaboration-feature) ·
+  [Excalidraw Collaboration System (DeepWiki)](https://deepwiki.com/excalidraw/excalidraw/7-collaboration-system) ·
+  [CRDT benchmark — Yjs/Automerge/Loro](https://www.pkgpulse.com/guides/yjs-vs-automerge-vs-loro-crdt-libraries-2026) ·
+  [crdt-benchmarks](https://github.com/dmonad/crdt-benchmarks)
+
+### L. 並べ替え/移動の同時編集 = Kleppmann の move op + 安定 position ID
+- 項目 A の fractional index に **「安定 position ID への単一 move op」** を組み合わせると、複数ユーザが同じ要素を
+  同時に reorder しても破綻しない。既存の list CRDT に後付け可能な汎用アルゴリズム。
+- **出典**: [Kleppmann — Moving Elements in List CRDTs (PaPoC 2020, PDF)](https://martin.kleppmann.com/papers/list-move-papoc20.pdf) ·
+  [Extending JSON CRDTs with Move Operations (arxiv 2311.14007)](https://arxiv.org/pdf/2311.14007) ·
+  [move-op 実装](https://github.com/trvedata/move-op)
+
+### M. 図形認識 MVP = **$Q / $1 Unistroke Recognizer**(<100行・依存ゼロ)★AI機能の現実的な入口
+- **背景**: 項目 G の ML 認識は強力だが WASM/BYOK が必要。一方 **$1/$Q はテンプレートマッチのみ**で
+  line/circle/rectangle/triangle 等を **97% 認識**、位置・拡縮・回転不変、**コード <100 行・依存ゼロ**。
+- **改善**: ペンストローク終了時に $Q を走らせ「ラフ図形を整形(beautify / snap-to-shape)」やジェスチャコマンドへ。
+  **単一HTML・完全オフラインのまま** Excalidraw 的な体験を最小コストで実現。ML 版(G)は将来の上位互換。
+- **出典**: [Wobbrock et al. — $1 Unistroke Recognizer (UW)](https://depts.washington.edu/acelab/proj/dollar/index.html) ·
+  ($Q: super-quick, articulation-invariant, low-resource 版)
+
+### まとめ: 制約適合の sync スタック提案
+Board の Phase 1.1(P2P sync 本番化)は、**重量級 CRDT ライブラリではなく**以下の依存ゼロ構成が最適:
+`fractional index(順序, A)` + `Kleppmann move op(同時並べ替え, L)` + `version/versionNonce LWW(プロパティ衝突, K)`
++ `WebCrypto AES-GCM(E2E, H)` + `因果情報付き逆opによる undo(F)`。すべて単一HTMLに収まり、原則を破らない。
+
+---
+
 ## 出典一覧 (主要)
 
 - Ink & Switch, *Local-first software: you own your data, in spite of the cloud* — https://www.inkandswitch.com/essay/local-first/
@@ -151,5 +190,11 @@ replicated undo 論文群。
 - arxiv 1811.08170, *Sketch-R2CNN* — https://arxiv.org/pdf/1811.08170
 - arxiv 2405.07601, *On-device Online Learning of TinyML Systems* — https://arxiv.org/abs/2405.07601
 - arxiv 2212.02618, *Collabs: A Flexible and Performant CRDT Collaboration Framework* — https://ar5iv.labs.arxiv.org/html/2212.02618
+- Kleppmann, *Moving Elements in List CRDTs* (PaPoC 2020) — https://martin.kleppmann.com/papers/list-move-papoc20.pdf
+- arxiv 2311.14007, *Extending JSON CRDTs with Move Operations* — https://arxiv.org/pdf/2311.14007
+- Excalidraw, *Building Excalidraw's P2P Collaboration Feature* (version/versionNonce) — https://plus.excalidraw.com/blog/building-excalidraw-p2p-collaboration-feature
+- Wobbrock et al., *$1 Unistroke Recognizer* (and $Q) — https://depts.washington.edu/acelab/proj/dollar/index.html
+- *Yjs vs Automerge vs Loro* CRDT benchmark — https://www.pkgpulse.com/guides/yjs-vs-automerge-vs-loro-crdt-libraries-2026
+- dmonad, *crdt-benchmarks* — https://github.com/dmonad/crdt-benchmarks
 - W3C WCAG 2.2, *Keyboard Accessible* — https://www.w3.org/WAI/WCAG22/Understanding/keyboard-accessible.html
 - HTML `<canvas>` Accessibility (Paul J. Adam) — https://pauljadam.com/demos/canvas.html
