@@ -12,8 +12,8 @@
 12. ✅ 手書き文字認識 / OCR(ink → text)
 13. ✅ モバイル / タッチ / スタイラス入力(palm rejection・Pencil)
 14. ✅ プレゼン & ファシリテーション(タイマー・投票・follow)
-15. ⬜ テンプレート / 図形ライブラリ / ステンシル
-16. ⬜ 検索 & コマンドパレット & ナビゲーション
+15. ✅ テンプレート / 図形ライブラリ / ステンシル
+16. ✅ 検索 & コマンドパレット & ナビゲーション
 17. ⬜ 国際化(1000言語・MT・RTL・フォント)
 18. ⬜ テスト / CI / 品質(property-based・fuzz・visual regression)
 19. ⬜ 埋め込み & メディア(iframe/動画/web embed)
@@ -112,6 +112,50 @@
 
 ---
 
-## 残り(15〜20)
+## 15. テンプレート / 図形ライブラリ / ステンシル ✅
+
+### 収集情報(arxiv / GitHub)
+- [GitHub: excalidraw/excalidraw-libraries](https://github.com/excalidraw/excalidraw-libraries) — 公開ライブラリ集(`.excalidrawlib` JSON)。UX/ワイヤフレーム、数学記号、IT アーキ、調整可能な矢印など**カテゴリ別の再利用部品**。
+- [GitHub: vadimdemedes/excalidraw-ui](https://github.com/vadimdemedes/excalidraw-ui) — 再利用可能な UI 要素群。
+- [GitHub: jorgedlcruz/excalidraw-library](https://github.com/jorgedlcruz/excalidraw-library) / [thgvinni/excalidrawLib](https://github.com/thgvinni/excalidrawLib) — アイコンライブラリ。
+- [GitHub: ExcaliMath discussion #11110](https://github.com/excalidraw/excalidraw/discussions/11110) — **80+ STEM 図形**(幾何/代数/統計/物理/生物/化学)+ LaTeX/関数グラフ。
+- [GitHub: excalidraw #1091](https://github.com/excalidraw/excalidraw/issues/1091) — Assets/Component Library 機能要望。
+- [GitHub: zsviczian/obsidian-excalidraw-plugin](https://github.com/zsviczian/obsidian-excalidraw-plugin) — テンプレ/ライブラリ運用の実例。
+- [arxiv/特許: Parametric Shape Grammar Interpreter](https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/7415156) — 形状をサブ形状へ分解し**パラメトリックに再構成**。
+- [arxiv 2603.22386 — From Static Templates to Dynamic Runtime Graphs](https://arxiv.org/pdf/2603.22386) — 静的テンプレ→動的構成。
+- [arxiv 1904.02222 — Architectures in Parametric Component-Based Systems](https://arxiv.org/pdf/1904.02222) — インスタンス数をパラメータ化する部品系。
+
+### Board への改善点
+- **P1: 図形ライブラリ(`.boardlib` JSON)** — 既存の group を「再利用部品」として保存/挿入。`.excalidrawlib` 流のオープン JSON、パネルから挿入、URL/ファイルから opt-in import。Board は group 機構があるので低コスト。
+- **P1: スターターテンプレート** — kanban / フローチャート / レトロ / マインドマップを埋め込み JSON で同梱(数 KB)。「0 秒で使い始める」を強化。
+- **P2: シンボル(master+instance)** — マスタ編集が全インスタンスに伝播(Figma コンポーネント風)。パラメトリック上書き。
+- **P2: 調整可能図形(parametric)** — shape grammar 的にパラメータで可変(矢印頭/角丸等。excalidraw の adjustable arrow)。
+- **設計判断**: ライブラリは**コードでなくデータ(JSON)** → state に読み込むだけで単一HTML/依存ゼロに収まる。
+
+---
+
+## 16. 検索 & コマンドパレット & ナビゲーション ✅
+
+### 収集情報(arxiv / GitHub)
+- [GitHub: Nozbe/microfuzz](https://github.com/Nozbe/microfuzz) — **2KB・依存ゼロ・フレームワーク非依存**の fuzzy search。数千件をミリ秒で。**そのまま移植候補**。
+- [GitHub: timc1/kbar](https://github.com/timc1/kbar) — cmd+k インターフェース(キーボードナビ + ショートカット登録)。設計参考。
+- [GitHub: pacocoursey/cmdk](https://github.com/pacocoursey/cmdk) — 高速・unstyled コマンドメニュー(カスタム filter/ranking、aria 配慮)。
+- [GitHub: albingroen/react-cmdk](https://github.com/albingroen/react-cmdk) / [asabaylus/react-command-palette](https://github.com/asabaylus/react-command-palette) — コマンドパレット実装(fuzzysort 連携)。
+- [GitHub: stefanjudis/awesome-command-palette](https://github.com/stefanjudis/awesome-command-palette) — 実装集。
+- [arxiv 1701.08688 — Approximate String Matching: Theory and Applications](https://arxiv.org/abs/1701.08688) — 近似文字列照合の体系。
+- [arxiv 2211.02767 — Fuzzy Substring Matching: On-device Fuzzy Search at Snapchat](https://arxiv.org/pdf/2211.02767) — **skip-bigram 検索 + 局所 Levenshtein ランキング**(オンデバイス志向、Board の検索に最適)。
+- [arxiv 1310.1440 — Approximate String Matching using a Bidirectional Index](https://arxiv.org/pdf/1310.1440) — 双方向索引。
+- 技術一般: Levenshtein / Jaro / token-sort、Aho-Corasick / KMP / Boyer-Moore。
+
+### Board への改善点
+- **P1: コマンドパレット(Cmd/Ctrl+K)** — 全アクション/ツール/ショートカットを fuzzy 検索して実行。発見性が大幅向上。microfuzz(~2KB)移植 or 部分列スコアラ自前(~50行)で**依存ゼロ**。
+- **P1: 図形/テキスト検索** — text/sticky 内の文字を検索→該当へジャンプ&ハイライト。オンデバイス fuzzy(skip-bigram, 2211.02767)。
+- **P2: クイックナビ** — frame/名前付き shape へ「go to」(既存の frame + minimap と統合)。
+- **P2: キーボードファースト** — a11y(カテゴリー6)と既存 KEYMAP に整合。
+- **設計判断**: 純 JS の部分列/Levenshtein スコアラをインライン(~50行)、外部依存なし。
+
+---
+
+## 残り(17〜20)
 
 `/loop` 再実行ごとに 2 カテゴリーずつ、上記書式で追記する。
