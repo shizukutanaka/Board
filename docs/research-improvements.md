@@ -1,0 +1,155 @@
+# 改善点調査 — 同種ソフト & arxiv リサーチ
+
+> Board を「単一HTML / ゼロ登録 / 完全無料 / offline-first」の原則を守ったまま 100 点へ近づけるための、
+> 競合ソフトウェアと学術研究 (arxiv 等) を参照した改善点リスト。
+> 各項目に **出典**・**Board への対応づけ (該当コード)**・**原則との整合** を付す。
+> 調査日: 2026-06-05。
+
+## 調査範囲
+
+**同種ソフト**: Excalidraw, tldraw (SDK), Figma / FigJam, Miro, AFFiNE, WBO, Pixelboard。
+**研究 / 技術文献**: Ink & Switch "Local-first software" (CACM 2019)、Figma multiplayer 技術記事、
+fractional indexing (Figma / tldraw / Linear)、perfect-freehand、arxiv の sketch 認識・beautification・
+replicated undo 論文群。
+
+---
+
+## 1. 競合ソフトから学ぶ改善点
+
+### A. Z-order を **fractional indexing** に置き換える ★最優先
+- **現状 (Board)**: `zorder` op が **全 shape の `{id,z}` スナップショット** を before/after で保持し、`]`/`[`
+  1回ごとに O(N) のデータを undo 履歴と peer ブロードキャストに積む (1000 shape で 1 回 ~2000 エントリ)。
+  該当: `index.html` `_zSnapshot` / `_commitZ` / `Store._apply` `case 'zorder'`。
+- **改善**: 各 shape に文字列の分数インデックス `frac`(例 base62)を持たせ、並べ替えは **1 shape の `frac` だけ**
+  更新する。描画・SVG 出力は `frac` 昇順でソート。move/reorder が O(1) データになり、undo は当該 shape の
+  before/after のみ、同時並行の並べ替えも衝突せずマージできる(Phase 1.1 の CRDT 化に直結)。
+- **caveat**: fractional indexing は同時挿入の interleaving を防げないが、図形では実害が小さい(Figma の見解)。
+  精度枯渇を避けるため 64bit float ではなく **文字列 + base-N 平均** を使う(Figma は base95、tldraw は jittered fork)。
+- **出典**: [Figma — Realtime Editing of Ordered Sequences](https://www.figma.com/blog/realtime-editing-of-ordered-sequences/) ·
+  [tldraw PR #6646 jittered-fractional-indexing](https://github.com/tldraw/tldraw/pull/6646) ·
+  [Liveblocks — fractional indexing](https://liveblocks.io/blog/how-crdts-and-sync-engines-keep-realtime-lists-ordered-with-fractional-indexing) ·
+  [madebyevan — CRDT Fractional Indexing](https://madebyevan.com/algos/crdt-fractional-indexing/)
+- **原則整合**: 単一HTML可(~30行の純関数)。サイズ予算内。**コードレビューで指摘した z-order の肥大化を構造的に解消**。
+
+### B. ペンを **筆圧/速度連動の可変幅ストローク** に (perfect-freehand アルゴリズム)
+- **現状**: ペンは固定幅ポリライン (`drawShape` の `case 'pen'`、`size` 一定)。
+- **改善**: Excalidraw・tldraw が採用した perfect-freehand のアルゴリズム(thinning / streamline / smoothing /
+  pressure or velocity)を **インラインで移植**(外部依存不可なので ~200 行を自前実装)。pointer events の
+  `pressure` を使い、非対応デバイスは速度から擬似筆圧。描き味の体感品質が大幅向上。
+- **出典**: [perfect-freehand (steveruizok)](https://github.com/steveruizok/perfect-freehand) ·
+  [tldraw Draw shape docs](https://tldraw.dev/sdk-features/draw-shape) ·
+  [Excalidraw issue #4802](https://github.com/excalidraw/excalidraw/issues/4802)
+- **原則整合**: 依存追加なし。SVG 出力は path の variable-width 化(複数 path or filled outline)。
+
+### C. **空間インデックス**(quadtree / uniform grid)でヒットテストと描画カリング
+- **現状**: `architecture.md` が >500 shape での quadtree 導入を予告済みだが未実装。hover ヒットテスト
+  (`pickTop`)が毎 pointermove で O(N)、`draw()` は全 shape を毎フレーム描画。
+- **改善**: commit 毎に遅延再構築する coarse uniform-grid を持ち、`pickTop`/marquee と **画面外 shape の描画カリング**
+  に使う。tldraw は culling + 空間索引で数千オブジェクトを 60fps 維持。
+- **出典**: [tldraw performance/culling (toolpick 比較)](https://www.toolpick.dev/blog/excalidraw-vs-tldraw-2026) ·
+  Board `docs/architecture.md`(既存の予告)
+- **原則整合**: ~40 行、単一HTML可。
+
+### D. 同期データモデル: **per-property LWW レジスタ + 因果順序**(Figma 方式)
+- **現状**: op 全体をブロードキャスト + `{peer,seq,ts}` clock。受信 op は型 allow-list のみ検証
+  (`Store.applyRemote`)、payload は `add` 以外未検証(レビュー指摘)。
+- **改善**: Figma は OT ではなく **プロパティ単位の last-writer-wins レジスタ** + ツリー parent ポインタで
+  実装。Board も「shape = レジスタの集合」と捉え、上記 A の `frac` と組み合わせると衝突が激減し payload も縮小。
+  併せて `upd`/`move`/`del`/`zorder` の受信 payload も数値・構造を検証(NaN 注入で shape が消える事故を防ぐ)。
+- **出典**: [Figma — How Figma's multiplayer technology works](https://www.figma.com/blog/how-figmas-multiplayer-technology-works/) ·
+  [Hex — pragmatic live collaboration](https://hex.tech/blog/a-pragmatic-approach-to-live-collaboration/)
+
+### E. **マルチページ**(frame をページに昇格)
+- 競合(Miro / FigJam / tldraw)は複数ページ標準。Board は frame + presentation を持つので、frame を
+  ページ抽象に拡張すれば自然に到達(README roadmap v1.7 相当)。
+
+---
+
+## 2. 研究 (arxiv 等) から学ぶ改善点
+
+### F. **協調 undo/redo の正しさ**(P2P sync を実験から本番にする前の必須課題)
+- **問題**: ローカル op-log の undo は、peer が同じ shape を並行編集した後に自分の op を undo すると整合性が崩れる。
+  「単純な per-peer undo スタック」は CRDT 環境で破綻する。Board は remote op を undo 対象外にしている点は正しいが、
+  本格 sync 化でこの設計判断を体系化する必要がある。
+- **指針**: undo を「スタックの巻き戻し」ではなく **因果情報付きの逆 op を新規に発行** する方式にする
+  (replicated register への undo 適用)。
+- **出典**: [arxiv 2404.11308 — Undo and Redo Support for Replicated Registers (2024)](https://arxiv.org/abs/2404.11308) ·
+  [Ink & Switch — Local-first software](https://www.inkandswitch.com/essay/local-first/)(Automerge)
+
+### G. **スケッチ認識 / beautification(オンデバイス, BYOK)**
+- README roadmap v1.4「AI shape recognition (BYOK)」に対応。研究を踏まえた現実的設計:
+  - **shape detection / beautification**: ラフな矩形・円・矢印を整形(Excalidraw 風)。
+    参照: [Sketch Beautification (arxiv 2306.05832)](https://arxiv.org/html/2306.05832v2)、
+    幾何ヒューリスティック(角度・閉路検出)だけでも MVP 可。
+  - **stroke ベース認識**: [SSR-GNNs (arxiv 2204.13153)](https://arxiv.org/abs/2204.13153)、
+    [Sketch-R2CNN (arxiv 1811.08170)](https://arxiv.org/pdf/1811.08170)。
+  - **手書き→テキスト / オンデバイス推論**: [TinyML on-device (arxiv 2405.07601)](https://arxiv.org/abs/2405.07601)。
+    小型 WASM モデル or BYOK API を **任意機能** とし、offline-first を壊さない(クラウド必須にしない)。
+- **原則整合**: 幾何ヒューリスティックは依存ゼロで単一HTML可。ML は WASM/BYOK でオプトイン。
+
+### H. **E2E 暗号化同期**(local-first の Privacy 原則)
+- README が予告する `#roomId:key` + AES-GCM を具体化。URL fragment の鍵はサーバへ送られない。
+  WebCrypto(ブラウザ内蔵=依存ゼロ)で op payload を WebRTC 送信前に AES-GCM 暗号化。
+- **出典**: [Ink & Switch — Local-first software](https://www.inkandswitch.com/essay/local-first/)(7 原則: Privacy / Longevity 等)
+
+### I. **アクセシビリティ: canvas の DOM ミラー / 意味的フォールバック**
+- **研究知見**: canvas の中身はスクリーンリーダーから不可視。SVG は意味論を内蔵。Board は
+  `role="application"`+`aria-label` まで実装済みだが per-shape の意味が無い。
+- **改善**: 画面外に shape 一覧を反映する **aria-live な DOM ミラー** を持ち、Tab で shape を巡回 + 読み上げ、
+  各 shape に alt/label。v2.0「外部 a11y 監査通過」へ前進。
+- **出典**: [HTML canvas accessibility (pauljadam)](https://pauljadam.com/demos/canvas.html) ·
+  [W3C WCAG 2.2 — Keyboard Accessible](https://www.w3.org/WAI/WCAG22/Understanding/keyboard-accessible.html) ·
+  [MDN — Keyboard accessibility](https://developer.mozilla.org/en-US/docs/Web/Accessibility/Guides/Understanding_WCAG/Keyboard)
+
+### J. **描画パフォーマンス: dirty-rect / 静的レイヤキャッシュ**
+- Board は毎フレーム全 canvas を再描画。Figma/tldraw は静的部分をキャッシュ。大規模ボードで
+  dirty-rect 部分再描画 or オフスクリーン静的レイヤ合成を導入。(C の culling と併用)
+
+---
+
+## 3. 近接の正しさ修正(コードレビュー由来・着手容易)
+
+研究テーマと独立に、すぐ直すべき確定バグ(`/code-review` で検出):
+1. **SVG エクスポートの座標フィールド未エスケープ**: 色/ラベルはエスケープ済みだが `x`/`y`/`w`/`h`/`size`/
+   `fontSize` 等の数値属性が生挿入。共有URL/peer 由来の文字列座標で markup 注入が依然可能。
+   → 数値強制(`+s.x`)または全属性 `_esc`、加えて validator で座標型を要求。
+2. **受信 op の検証が `add` のみ**: `upd`/`move`/`zorder` の payload 未検証 → NaN 等で shape 消失。
+3. (参考)`Array.prototype.push.apply` の超大規模ボードでの RangeError、旧 Safari の matchMedia リスナ。
+
+---
+
+## 4. 優先度付き提案
+
+| 優先 | 項目 | 効果 | 規模 | 原則整合 |
+|---|---|---|---|---|
+| ★1 | A. fractional index z-order | sync 衝突解消 + 履歴/帯域の肥大化解消(レビュー指摘の構造的解決) | 中 | ◎ 依存ゼロ |
+| ★2 | §3 近接バグ修正 | セキュリティ/整合性 | 小 | ◎ |
+| ★3 | C. 空間インデックス + カリング | 大規模で 60fps | 中 | ◎ |
+| ★4 | B. perfect-freehand ペン | 体感品質 | 中 | ◎ 自前移植 |
+| ★5 | H. WebCrypto E2E sync | Privacy 原則 | 中 | ◎ 内蔵API |
+| ★6 | I. a11y DOM ミラー | v2.0 監査 | 中 | ◎ |
+| ★7 | F. 協調 undo 体系化 | sync 本番化の前提 | 大 | ○ |
+| ★8 | G. shape beautification(幾何のみ) | AI 機能の入口 | 中 | ◎(ML はオプトイン) |
+| 後 | D/E/J/K | データモデル・ページ・描画最適化 | 大 | ○ |
+
+各項目は **ADR を 1 枚書いてから** 着手(CLAUDE.md WORKFLOWS 準拠)。一度に全部はやらない。
+
+---
+
+## 出典一覧 (主要)
+
+- Ink & Switch, *Local-first software: you own your data, in spite of the cloud* — https://www.inkandswitch.com/essay/local-first/
+- Figma, *How Figma's multiplayer technology works* — https://www.figma.com/blog/how-figmas-multiplayer-technology-works/
+- Figma, *Realtime Editing of Ordered Sequences* — https://www.figma.com/blog/realtime-editing-of-ordered-sequences/
+- Liveblocks, *Fractional indexing* — https://liveblocks.io/blog/how-crdts-and-sync-engines-keep-realtime-lists-ordered-with-fractional-indexing
+- tldraw, *jittered-fractional-indexing* (PR #6646) — https://github.com/tldraw/tldraw/pull/6646
+- steveruizok, *perfect-freehand* — https://github.com/steveruizok/perfect-freehand
+- tldraw Docs, *Draw shape* — https://tldraw.dev/sdk-features/draw-shape
+- arxiv 2404.11308, *Undo and Redo Support for Replicated Registers* (2024) — https://arxiv.org/abs/2404.11308
+- arxiv 2306.05832, *Sketch Beautification* — https://arxiv.org/html/2306.05832v2
+- arxiv 2204.13153, *SSR-GNNs: Stroke-based Sketch Representation* — https://arxiv.org/abs/2204.13153
+- arxiv 1811.08170, *Sketch-R2CNN* — https://arxiv.org/pdf/1811.08170
+- arxiv 2405.07601, *On-device Online Learning of TinyML Systems* — https://arxiv.org/abs/2405.07601
+- arxiv 2212.02618, *Collabs: A Flexible and Performant CRDT Collaboration Framework* — https://ar5iv.labs.arxiv.org/html/2212.02618
+- W3C WCAG 2.2, *Keyboard Accessible* — https://www.w3.org/WAI/WCAG22/Understanding/keyboard-accessible.html
+- HTML `<canvas>` Accessibility (Paul J. Adam) — https://pauljadam.com/demos/canvas.html
