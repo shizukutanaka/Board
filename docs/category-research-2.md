@@ -14,8 +14,8 @@
 14. ✅ プレゼン & ファシリテーション(タイマー・投票・follow)
 15. ✅ テンプレート / 図形ライブラリ / ステンシル
 16. ✅ 検索 & コマンドパレット & ナビゲーション
-17. ⬜ 国際化(1000言語・MT・RTL・フォント)
-18. ⬜ テスト / CI / 品質(property-based・fuzz・visual regression)
+17. ✅ 国際化(1000言語・MT・RTL・フォント)
+18. ✅ テスト / CI / 品質(property-based・fuzz・visual regression)
 19. ⬜ 埋め込み & メディア(iframe/動画/web embed)
 20. ⬜ AI 生成アシスト(text-to-diagram・LLM copilot・BYOK)
 
@@ -156,6 +156,52 @@
 
 ---
 
-## 残り(17〜20)
+## 17. 国際化(1000言語・MT・RTL・フォント)✅
+
+### 収集情報(arxiv / GitHub)
+- [GitHub: wikimedia/jquery.i18n](https://github.com/wikimedia/jquery.i18n) / [wikimedia/banana-i18n](https://github.com/wikimedia/banana-i18n) — 複数形/性/**`{{bidi:…}}` による Bidi 破損回避**、magic words。実運用の堅牢な i18n。
+- [GitHub: fnando/i18n-js](https://github.com/fnando/i18n-js) / [fnando/i18n](https://github.com/fnando/i18n) — 軽量 JS i18n。
+- [GitHub: codingcommons/typesafe-i18n](https://github.com/codingcommons/typesafe-i18n) — 型安全・軽量(~300B 実装も)。
+- [GitHub: i18n-pro/core](https://github.com/i18n-pro/core) — 軽量・自動翻訳の i18n。
+- [GitHub: oh-jon-paul/awesome-i18n](https://github.com/oh-jon-paul/awesome-i18n) — i18n リソース集。
+- [arxiv 2401.16582 — Massively Multilingual Text Translation for Low-Resource Languages](https://arxiv.org/abs/2401.16582) — 多言語転移で低資源言語を底上げ。
+- [arxiv 2210.11621 — SMaLL-100: Shallow Multilingual MT for Low-Resource](https://arxiv.org/pdf/2210.11621) — 12 層エンコーダ/3 層デコーダの**浅い軽量 MT**。
+- [arxiv 2503.24102 — Is LLM the Silver Bullet to Low-Resource MT?](https://arxiv.org/html/2503.24102v1) — LLM 翻訳の限界。
+- [arxiv 2410.03215 — Low-Resource MT for WMT24 Indic](https://arxiv.org/pdf/2410.03215) — 低資源言語の実務。
+- 技術一般: 動的フォントサブセット化(必要グリフのみ)。
+
+### Board への改善点
+- **P1: i18n インフラ強化** — 現状 `I18N` は ja/en のみ。複数形・**Bidi 安全な補間**(banana-i18n の `{{bidi:}}` 流)を導入。
+- **P1: RTL / Bidi** — RTL ロケールで UI ミラーリング、canvas テキストの Bidi 並べ替え(カテゴリー11 と連動)。アラビア/ヘブライ対応。
+- **P2: 1000言語(roadmap v1.4)** — 全言語文字列を単一HTMLに同梱すると肥大化 → **ロケール JSON をオンデマンドロード**(opt-in、ja/en は内蔵)。コミュニティ翻訳(Crowdin 風)。
+- **P2: MT は opt-in/BYOK** — 浅い MT(SMaLL-100)でもモデルは大 → 本体に同梱せず任意ロード。
+- **フォント**: CJK/アラビアフォントは巨大で同梱不可 → OS フォント前提(現 ui-font スタック維持)。SVG/PDF 出力時も system font に委ねる。
+- **設計判断**: 「使い始め 0 秒/単一HTML」を守るため、追加言語・MT・フォントは**外部リソースの opt-in ロード**に限る。
+
+---
+
+## 18. テスト / CI / 品質(property-based・fuzz・visual regression)✅
+
+### 収集情報(arxiv / GitHub)
+- [GitHub: dubzzz/fast-check](https://github.com/dubzzz/fast-check) — JS の **property-based testing**(QuickCheck 風)。op-log の可逆性不変条件の検証に最適。
+- [GitHub: satelllte/playwright-canvas](https://github.com/satelllte/playwright-canvas) — Playwright で **canvas シナリオ**を E2E(Clock API + 視覚比較)。
+- [GitHub: asgaardlab/canvas-visual-bugs-testbed](https://github.com/asgaardlab/canvas-visual-bugs-testbed) — canvas/PixiJS の**視覚回帰テスト**フレームワーク。
+- [GitHub: microsoft/playwright #8161](https://github.com/microsoft/playwright/issues/8161) — visual regression(`toMatchSnapshot`)。
+- [GitHub: vitest #2212](https://github.com/vitest-dev/vitest/discussions/2212) — PBT/fuzzing のネイティブ対応議論。
+- [arxiv 2211.12003 — Application of PBT Tools for Metamorphic Testing](https://arxiv.org/abs/2211.12003) — PBT ⊃ metamorphic、**round-trip/不変条件**を MR として形式化。
+- [arxiv 2510.09907 — Agentic Property-Based Testing](https://arxiv.org/html/2510.09907v1) — エコシステム横断のバグ発見。
+- [arxiv 2112.10328 — Deriving Semantics-Aware Fuzzers from Web API Schemas](https://arxiv.org/pdf/2112.10328) — スキーマ駆動の意味的ファザー。
+- [arxiv 2208.09505 — Metamorphic Testing for Web System Security](https://arxiv.org/pdf/2208.09505) — セキュリティの MR。
+
+### Board への改善点
+- **P1: op-log の property-based テスト** — fast-check で**ランダムな op 列**を生成し、metamorphic relation を検証:「全 op 適用→全 undo = 初期状態」「redo = undo 前」。Board の中核不変条件(可逆性)を網羅的に検証し、レビューで見つけた zorder 級バグを未然に捕捉。**dev 依存のみ**(index.html は依存ゼロのまま)。
+- **P1: 視覚回帰テスト** — ヘッドレスで canvas を描画→PNG スナップショット比較(playwright-canvas / asgaardlab testbed)。描画リグレッションを検出。
+- **P2: 受信 op のファジング** — 不正 op を生成し `applyRemote` が状態を壊さないことを検証(検証強化の指摘と接続)。
+- **P2: メタモルフィック関係** — translate(d)→translate(-d)=恒等、group→ungroup=恒等、SVG export→import ラウンドトリップ。
+- **設計判断**: テスト基盤は **dev 専用**(fast-check/Playwright は devDependency)。本体 index.html の単一HTML/依存ゼロは不変。既存 fake-DOM ハーネスに fast-check を統合可能。
+
+---
+
+## 残り(19〜20)
 
 `/loop` 再実行ごとに 2 カテゴリーずつ、上記書式で追記する。
