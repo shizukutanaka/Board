@@ -659,8 +659,41 @@ try {
   assert.strictEqual(state.styleClipboard, null, 'copyStyle no-op when nothing selected');
   console.log('  ✓ copyStyle no-op on empty selection');
 
+  // ---- property-based: op-log reversibility over random scenarios ----
+  // Dependency-free PBT (no fast-check): seeded random op sequences asserting the
+  // core invariant — apply N ops, undo all == initial; redo all == post-ops.
+  // This is the net to catch reversibility regressions like the old zorder bug.
+  {
+    const mulberry32 = (a) => () => { a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; };
+    const ser = () => JSON.stringify(state.shapes);
+    let scenarios = 0;
+    for (let seed = 1; seed <= 30; seed++) {
+      const rnd = mulberry32((seed * 2654435761) >>> 0), ri = (n) => Math.floor(rnd() * n);
+      state.shapes.length = 0; state.history.length = 0; state.histIdx = -1;
+      state.seq = 0; state.seenOps = new Set(); state.selection = new Set();
+      for (let i = 0; i < 4; i++) { const s = Shape.make('rect', {x:ri(120),y:ri(120),w:10+ri(40),h:10+ri(40)}); s.z = i+1; Store.commit({op:'add', shape:s}); }
+      const baseIdx = state.histIdx, snap0 = ser();
+      for (let k = 0; k < 10; k++) {
+        const ids = state.shapes.map(s => s.id), kind = ri(6);
+        if (kind === 0) Store.commit({op:'add', shape:Shape.make('ellipse', {x:ri(200),y:ri(200),w:20,h:20})});
+        else if (kind === 1) { const sel = ids.filter(() => rnd() < 0.5); Store.commit({op:'move', ids: sel.length?sel:[ids[ri(ids.length)]], dx:ri(20)-10, dy:ri(20)-10}); }
+        else if (kind === 2) { const id = ids[ri(ids.length)], sh = state.shapes.find(s => s.id===id); Store.commit({op:'upd', id, before:{size:sh.size}, after:{size:1+ri(20)}}); }
+        else if (kind === 3 && state.shapes.length > 1) { const id = ids[ri(ids.length)], sh = state.shapes.find(s => s.id===id); Store.commit({op:'del', shapes:[JSON.parse(JSON.stringify(sh))]}); }
+        else if (kind === 4) { state.selection = new Set([ids[ri(ids.length)]]); [doBringFront,doSendBack,doBringForward,doSendBackward][ri(4)](); }
+        else if (ids.length >= 2) { state.selection = new Set(ids); doAlign(['left','right','top','bottom','cx','cy'][ri(6)]); }
+      }
+      const snapA = ser();
+      while (state.histIdx > baseIdx) { if (!Store.undo()) break; }
+      assert.strictEqual(ser(), snap0, `seed ${seed}: undo-all restores initial state`);
+      while (Store.redo()) {}
+      assert.strictEqual(ser(), snapA, `seed ${seed}: redo-all restores post-op state`);
+      scenarios++;
+    }
+    console.log(`  ✓ property-based reversibility: ${scenarios} random scenarios round-trip`);
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 51;
+  pass += 52;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

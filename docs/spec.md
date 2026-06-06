@@ -107,10 +107,11 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
 - **大規模描画(viewport カリング)**: `draw()` が `visibleWorldRect()`/`inView()` で画面外 shape を
   描画スキップ(architecture.md 予告分の前半)。空間索引(quadtree)は引き続き将来課題。
 - **`Persist.load` の shape 検証**: IDB から読む shape を他 intake と同条件で検証。
+- **可逆性の網羅検証**: `test.mjs` に**依存ゼロの property-based テスト**を追加(seeded 乱数で
+  add/move/upd/del/zorder/align を混在生成、30 シナリオで apply→undo=初期 / redo=適用後 を検証)。
+  fast-check 等の外部 PBT 導入は任意の発展課題。
 
 ### ⬜ 既知の未充足(将来 ADR で対応 / 詳細は research docs)
-- **可逆性の網羅検証**: property-based テスト(fast-check)未導入。op 列ランダム生成で
-  「全適用→全undo=初期」を検証すべき(`category-research-2.md` §18)。
 - **z 順序 op のスケーラビリティ**: `zorder` が全 shape スナップショットを保持(大規模で履歴/帯域肥大)。
   fractional index へ移行が望ましい(`research-improvements.md` 項目A)。
 - **空間索引**: ヒットテスト(`pickTop`)は依然 O(n)。quadtree/uniform grid 未導入(cat 1)。

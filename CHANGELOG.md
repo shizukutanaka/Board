@@ -17,7 +17,9 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
   破損データや前方非互換スキーマの混入を防止。
 
 ### Tests
-- **168/168 全通過** (+3): `inView` の画面内/遠方/部分重なり/横断線、カリング・load 検証の presence。
+- **169/169 全通過** (+4): `inView` の画面内/遠方/部分重なり/横断線、カリング・load 検証の presence、
+  および**依存ゼロの property-based 可逆性テスト** — seeded 乱数で add/move/upd/del/zorder/align を混在生成し、
+  30 シナリオで「全適用→全 undo = 初期状態」「redo = 適用後状態」を検証(zorder 級の可逆性退行を網羅的に捕捉)。
 
 ## [1.6.7] — 2026-06-06
 
