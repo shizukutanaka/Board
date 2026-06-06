@@ -153,6 +153,10 @@ const checks = [
   ['buildSVG coerces numeric coords via _num', html.includes("const X=_num(s.x)") && html.includes("_num(s.size)")],
   ['applyRemote validates op payloads', html.includes("function validRemotePayload") && html.includes("if(!validRemotePayload(op))return")],
   ['remote move requires finite deltas', html.includes("Number.isFinite(+op.dx)&&Number.isFinite(+op.dy)")],
+  // v1.6.8: viewport culling + load validation
+  ['viewport culling helpers present', html.includes("function visibleWorldRect") && html.includes("function inView")],
+  ['draw() culls via inView', html.includes("inView(s,_view)")],
+  ['Persist.load validates shapes', html.includes("d.shapes.filter(s=>s&&typeof s==='object'&&s.id&&s.type")],
 ];
 
 let pass = 0, fail = 0;
@@ -245,7 +249,7 @@ try {
              doBringFront, doSendBack, doBringForward, doSendBackward,
              doAlign, snapV, snapPt,
              getHandles, applyResize, handleCursor,
-             doGroup, doUngroup, pickTop, buildSVG,
+             doGroup, doUngroup, pickTop, buildSVG, inView,
              copyStyle, pasteStyle, applyStyleToSelection };
   `);
   const api = fn(
@@ -257,7 +261,7 @@ try {
           doBringFront, doSendBack, doBringForward, doSendBackward,
           doAlign, snapV, snapPt,
           getHandles, applyResize, handleCursor,
-          doGroup, doUngroup, pickTop, buildSVG,
+          doGroup, doUngroup, pickTop, buildSVG, inView,
           copyStyle, pasteStyle, applyStyleToSelection } = api;
 
   console.log('\n-- behavioural --');
@@ -464,6 +468,14 @@ try {
   assert.ok(!/<script/i.test(svgNum), 'no <script via string numeric attr');
   assert.ok(!/alert\(3\)/.test(svgNum), 'malicious coord neutralised, not emitted');
   console.log('  ✓ buildSVG coerces numeric attrs (no breakout via coords)');
+
+  // viewport culling predicate (drives draw() skip of off-screen shapes)
+  const cv = { x:0, y:0, w:800, h:600 };
+  assert.ok(inView({type:'rect',x:10,y:10,w:50,h:50}, cv), 'on-screen shape drawn');
+  assert.ok(!inView({type:'rect',x:5000,y:5000,w:50,h:50}, cv), 'far off-screen shape culled');
+  assert.ok(inView({type:'rect',x:-30,y:-30,w:50,h:50}, cv), 'partially-overlapping shape drawn');
+  assert.ok(inView({type:'line',x1:-1000,y1:300,x2:1000,y2:300,size:2}, cv), 'line crossing view drawn');
+  console.log('  ✓ inView culls off-screen shapes, keeps overlapping ones');
 
   // align
   state.shapes.length = 0; state.history.length = 0; state.histIdx = -1;

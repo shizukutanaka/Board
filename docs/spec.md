@@ -1,6 +1,6 @@
 # Board — 仕様書 (Specification)
 
-> Board v1.6.7 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
+> Board v1.6.8 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
 > **§13 適合ギャップ(不足)** で仕様と実装の差分を列挙する。本書は実装と対で更新する。
 > 関連: 設計=`docs/architecture.md`、改善調査=`docs/research-improvements.md` /
 > `docs/category-research*.md`、変更履歴=`CHANGELOG.md`。
@@ -97,21 +97,25 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
 
 ## 13. 適合ギャップ(不足)— 仕様 vs 実装
 
-### ✅ 本リビジョン(v1.6.7)で解消
+### ✅ v1.6.7 で解消
 - **SVG 数値属性の注入**: 文字列色は escape 済みだったが `x/y/w/h/x1..` 等が生挿入で、
   共有URL/sync 由来の文字列座標で markup 注入が可能だった → `buildSVG` を `_num` で全数値強制。
 - **受信 op 検証が `add` のみ**: `move`/`upd`/`zorder` 等の payload 未検証で、`move dx={}` 等が
   NaN で shape を破壊し得た → `validRemotePayload` で全 op の構造/有限数を検証。
+
+### ✅ v1.6.8 で解消
+- **大規模描画(viewport カリング)**: `draw()` が `visibleWorldRect()`/`inView()` で画面外 shape を
+  描画スキップ(architecture.md 予告分の前半)。空間索引(quadtree)は引き続き将来課題。
+- **`Persist.load` の shape 検証**: IDB から読む shape を他 intake と同条件で検証。
 
 ### ⬜ 既知の未充足(将来 ADR で対応 / 詳細は research docs)
 - **可逆性の網羅検証**: property-based テスト(fast-check)未導入。op 列ランダム生成で
   「全適用→全undo=初期」を検証すべき(`category-research-2.md` §18)。
 - **z 順序 op のスケーラビリティ**: `zorder` が全 shape スナップショットを保持(大規模で履歴/帯域肥大)。
   fractional index へ移行が望ましい(`research-improvements.md` 項目A)。
+- **空間索引**: ヒットテスト(`pickTop`)は依然 O(n)。quadtree/uniform grid 未導入(cat 1)。
 - **キーボードでの図形作成/巡回**: 作成系はマウス専用。Tab 巡回 + DOM ミラー a11y 未実装(§10、cat 6)。
-- **`Persist.load` の shape 検証**: IDB から読む shape は未検証(他 intake は検証済み)。前方互換のため検証追加が望ましい。
 - **テキスト自動折返し**: text/sticky は改行のみで幅折返し無し(cat 11)。
-- **大規模描画**: viewport カリング / 空間索引未実装(architecture.md 予告、cat 1)。
 - **ペン品質**: 固定幅。筆圧/平滑化(perfect-freehand)未実装(cat 3)。
 - CI の `ci.yml` は GitHub App 権限の都合でブランチ未反映(手動適用要)。
 

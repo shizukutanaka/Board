@@ -2,6 +2,23 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.8] — 2026-06-06
+
+仕様書(`docs/spec.md`)§13 の未充足ギャップから 2 件を実装(描画スケーラビリティ + intake 一貫性)。
+
+### Added
+- **ビューポートカリング** — `draw()` が可視ワールド矩形(`visibleWorldRect()`)の外にある shape を
+  `inView()` で判定して描画スキップ。大規模/散在ボードで描画コスト(パス構築・stroke)を削減し、
+  画面内に収まる場合は no-op。エクスポート/ヒットテスト/ミニマップは `state.shapes` を直接走査するため不変。
+
+### Fixed
+- **`Persist.load` が shape を未検証で採用** — IDB から読む shape を他の intake パス
+  (importFromHash / snapshot)と同じ条件(`id`・`type`・数値 `z`)で検証してから採用。
+  破損データや前方非互換スキーマの混入を防止。
+
+### Tests
+- **168/168 全通過** (+3): `inView` の画面内/遠方/部分重なり/横断線、カリング・load 検証の presence。
+
 ## [1.6.7] — 2026-06-06
 
 仕様書(`docs/spec.md`)を新規作成し、仕様 vs 実装の差分(不足)を洗い出して、確定した

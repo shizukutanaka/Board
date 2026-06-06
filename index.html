@@ -722,7 +722,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.7';
+const V='1.6.8';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1186,6 +1186,20 @@ function resize(){
   canvas.height=Math.round(r.height*DPR);
   invalidate();
 }
+// Visible world rectangle (for culling). screen = (world - vp) * zoom * DPR,
+// so the visible world span is the canvas size divided by zoom*DPR.
+function visibleWorldRect(){
+  const v=state.viewport;
+  return {x:v.x,y:v.y,w:canvas.width/(v.zoom*DPR),h:canvas.height/(v.zoom*DPR)};
+}
+// True if a shape's bbox intersects the view (small margin for strokes).
+// Normalises negative w/h; unknown bbox → draw (fail safe).
+function inView(s,view){
+  const b=G.bbox(s);if(!b)return true;
+  const x0=Math.min(b.x,b.x+b.w),x1=Math.max(b.x,b.x+b.w);
+  const y0=Math.min(b.y,b.y+b.h),y1=Math.max(b.y,b.y+b.h),m=4;
+  return x1>=view.x-m&&x0<=view.x+view.w+m&&y1>=view.y-m&&y0<=view.y+view.h+m;
+}
 function draw(){
   const W=canvas.width,H=canvas.height;
   const bg=getCSS('--paper');
@@ -1197,9 +1211,12 @@ function draw(){
 
   if(state.showGrid)drawGrid(W,H);
 
+  // Viewport culling: skip shapes whose bbox is fully outside the visible world.
+  // Big win on large/scattered boards; no-op when everything is on screen.
+  const _view=visibleWorldRect();
   // Frames first (background layer)
-  for(const s of state.shapes){if(s.type==='frame')drawShape(s)}
-  for(const s of state.shapes){if(s.type!=='frame')drawShape(s)}
+  for(const s of state.shapes){if(s.type==='frame'&&inView(s,_view))drawShape(s)}
+  for(const s of state.shapes){if(s.type!=='frame'&&inView(s,_view))drawShape(s)}
   if(state.draft)drawShape(state.draft);
 
   // selection overlay in screen space
@@ -2665,7 +2682,9 @@ const Persist={
     const rq=tx.objectStore(DB_STORE).get(DOC_KEY);
     const d=await reqDone(rq);
     if(d&&Array.isArray(d.shapes)){
-      state.shapes=d.shapes;
+      // Validate like the other intake paths (importFromHash / snapshot): never
+      // adopt malformed shapes from IDB (corruption / forward-incompat schema).
+      state.shapes=d.shapes.filter(s=>s&&typeof s==='object'&&s.id&&s.type&&typeof s.z==='number');
       if(d.viewport)Object.assign(state.viewport,d.viewport);
       if(d.docName){state.docName=d.docName;document.getElementById('docName').value=d.docName}
       state.lastSaveAt=d.savedAt||0;
