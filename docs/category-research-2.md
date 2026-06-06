@@ -16,8 +16,8 @@
 16. ✅ 検索 & コマンドパレット & ナビゲーション
 17. ✅ 国際化(1000言語・MT・RTL・フォント)
 18. ✅ テスト / CI / 品質(property-based・fuzz・visual regression)
-19. ⬜ 埋め込み & メディア(iframe/動画/web embed)
-20. ⬜ AI 生成アシスト(text-to-diagram・LLM copilot・BYOK)
+19. ✅ 埋め込み & メディア(iframe/動画/web embed)
+20. ✅ AI 生成アシスト(text-to-diagram・LLM copilot・BYOK)
 
 ---
 
@@ -202,6 +202,65 @@
 
 ---
 
-## 残り(19〜20)
+## 19. 埋め込み & メディア(iframe/動画/web embed)✅
 
-`/loop` 再実行ごとに 2 カテゴリーずつ、上記書式で追記する。
+### 収集情報(arxiv / GitHub)
+- [GitHub: paulirish/lite-youtube-embed](https://github.com/paulirish/lite-youtube-embed) — **facade 方式の高速 YouTube 埋め込み**(クリックまでスクリプト非読込)。
+- [GitHub: gugray/youtube-privacy-embed](https://github.com/gugray/youtube-privacy-embed) — 訪問者のプライバシーを守る埋め込み(no-cookie)。
+- [GitHub: EDpuzzle/YouTubeEmbedSandbox](https://github.com/EDpuzzle/YouTubeEmbedSandbox) — iframe API の sandbox 検証。
+- [GitHub: cure53/DOMPurify #340](https://github.com/cure53/DOMPurify/issues/340) — 埋め込み(iframe)の sanitize 課題。HTML 取込時の XSS 対策。
+- [GitHub: microsoft/BotFramework-WebChat #4566](https://github.com/microsoft/BotFramework-WebChat/issues/4566) — YouTube/Vimeo player への `sandbox` 付与。
+- [GitHub: thredded #314](https://github.com/thredded/thredded/issues/314) — sandbox で YouTube が再生不可になる問題(権限調整)。
+- 知見: `sandbox="allow-scripts allow-same-origin"` 等の最小権限、sanitize は iframe を丸ごと除去しがち。
+
+### Board への改善点
+- **原則との緊張**: web 埋め込みは Board の「**完全オフライン / 単一ファイル / ゼロトラッキング**」と相反(外部ネット・第三者スクリプト)。→ **既定では入れない**。
+- **P1(推奨): ローカルメディア優先** — ローカル動画/音声を object URL で埋め込み(オフライン維持)。画像は既存対応。Board の理念に合致。
+- **P2(opt-in, online): サンドボックス埋め込み** — YouTube/Vimeo/web を **明示的オンライン機能**として sandboxed iframe + lite-youtube facade + nocookie で。URL スキーム/ホスト allowlist + sandbox 最小権限。`innerHTML` に生 URL を流さない(既存 XSS ガード遵守)。
+- **設計判断**: 埋め込みは「オフライン保証を破る」と UI で明示し、既定 OFF。ローカルメディアを第一級に。
+
+---
+
+## 20. AI 生成アシスト(text-to-diagram・LLM copilot・BYOK)✅
+
+### 収集情報(arxiv / GitHub)
+- [GitHub: excalidraw/mermaid-to-excalidraw](https://github.com/excalidraw/mermaid-to-excalidraw) — **LLM 不要**の Mermaid テキスト→図形(決定的)。オフライン・依存ゼロの入口。
+- [GitHub: mermaid-js/mermaid](https://github.com/mermaid-js/mermaid) — テキスト→フローチャート/シーケンス図。
+- [GitHub: Lavanukee/ExcaliDraw-Local](https://github.com/Lavanukee/ExcaliDraw-Local) — **BYOK ローカル LLM**(llama-server / OpenAI 互換)で mermaid 生成。
+- [GitHub: nadomani/excalidraw-copilot](https://github.com/nadomani/excalidraw-copilot) — 自然言語→図(Copilot)。
+- [GitHub: swark-io/swark](https://github.com/swark-io/swark) — コード→アーキ図(LLM)。
+- [GitHub: yctimlin/mcp_excalidraw](https://github.com/yctimlin/mcp_excalidraw) / [Scofieldfree/excalidraw-mcp](https://github.com/Scofieldfree/excalidraw-mcp) — **MCP でエージェントが canvas を操作**。
+- [arxiv 2508.15222 — See it. Say it. Sorted: Agentic Compositional Diagram Generation](https://arxiv.org/html/2508.15222v1) — エージェント型の作図。
+- [arxiv 2605.25447 — GeoSVG-RL: Layout-Constrained Text-to-SVG](https://arxiv.org/html/2605.25447) — **レイアウト計画→SVG** で幾何制約を満たす。
+- [arxiv 2502.13855 — MagicGeo: Training-Free Geometric Diagram Generation](https://arxiv.org/html/2502.13855) — 学習不要の幾何図生成。
+- [arxiv 2504.09479 — Draw with Thought: Multimodal Reasoning for Scientific Diagrams](https://arxiv.org/html/2504.09479v1) — 推論で図の正確性向上。
+
+### Board への改善点
+- **P1(依存ゼロ・オフライン): 決定的 text→diagram** — Mermaid サブセット/簡易 DSL を shapes に変換(LLM 不要)。excalidraw/mermaid-to-excalidraw が実証。最も原則に合う AI 的入口。
+- **P2(opt-in, online/local, BYOK): LLM copilot** — ユーザの API キー/ローカル llama-server で NL→図。**レイアウト計画→Board op/JSON 生成**(GeoSVG-RL / See-it-Say-it 流)。モデルは同梱せず、既定は完全オフライン。
+- **P2: エージェント API(MCP)** — op-log を介して外部エージェントが作図/編集(mcp_excalidraw 流、カテゴリー10 プラグイン API と接続)。
+- **P2: LLM 出力のクリーンアップ** — LLM は幾何制約を破りがち → 既存の align/snap + コネクタルータ(カテゴリー8)で整形。
+- **設計判断**: AI は厳密に **opt-in BYOK**。既定の Board はネット非通信・ゼロトラッキングを維持。
+
+---
+
+## 総括(第2バッチ 11〜20)
+
+第2バッチの P1 を横断ランキング(原則適合 × 効果):
+
+| 順 | 改善 | 由来 | 一言 |
+|---|---|---|---|
+| 1 | テキスト自動折返し(Unicode/Knuth–Plass) | 11 | sticky/text の基本品質。今すぐ効く |
+| 2 | コマンドパレット(Cmd+K, fuzzy) | 16 | 発見性が激変、~2KB 依存ゼロ |
+| 3 | `getCoalescedEvents` + pen-only(palm rejection) | 13 | スタイラス体験の core |
+| 4 | property-based テスト(op-log 可逆性) | 18 | レビュー級バグを網羅的に防ぐ(dev 専用) |
+| 5 | 図形ライブラリ/テンプレート(`.boardlib`) | 15 | 「0 秒で使える」を強化、データのみ |
+| 6 | レーザーポインタ + follow + ライブカーソル | 14 | 協調/プレゼンの定番 |
+| 7 | 決定的 text→diagram(Mermaid サブセット) | 20 | LLM 不要・オフラインの AI 入口 |
+| 8 | ink→text / OCR(opt-in, 遅延ロード) | 12 | roadmap v1.4、原則維持 |
+| 9 | i18n の Bidi/RTL + ロケール遅延ロード | 17 | 1000言語へ現実的な道 |
+| 10 | ローカルメディア優先(埋め込みは慎重に) | 19 | オフライン原則を守る判断 |
+
+共通方針(第1バッチと同一): **重量級依存(WASM/モデル/巨大フォント/外部 SDK)は本体に組み込まない**。必要時はアルゴリズム内製 or **opt-in 外部ロード/BYOK**。AI・埋め込み・MT 等「ネットを要する機能」は既定 OFF で**オフライン等価とゼロトラッキングを死守**。各項目は ADR を 1 枚書いてから着手(CLAUDE.md 準拠)。
+
+> 第2バッチ完了: 11〜20 の 10 カテゴリー。第1バッチ(`docs/category-research.md`, 1〜10)と総括(`docs/research-improvements.md`)で計 20 カテゴリー + 横断優先度が揃った。
