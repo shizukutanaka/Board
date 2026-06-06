@@ -722,7 +722,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.6';
+const V='1.6.7';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -952,6 +952,26 @@ function distToSeg(p,a,b){
 // ====================== STORE (op-log, Command pattern) ======================
 // An op is a reversible change. History = reversed chronology of ops.
 // Undo = apply inverse. Redo = re-apply.
+
+// Validate a REMOTE op's payload before it reaches _apply. Local ops are
+// generated in-process and trusted; remote ops (BroadcastChannel/WebRTC) are
+// not — require the exact fields each forward-apply path dereferences, with
+// finite numeric deltas. Returns true only for structurally-sound ops.
+function validRemotePayload(op){
+  switch(op.op){
+    case 'add':    return !!(op.shape&&typeof op.shape==='object'&&op.shape.id&&op.shape.type&&typeof op.shape.z==='number');
+    case 'del':
+    case 'clear':  return Array.isArray(op.shapes);
+    case 'upd':    return typeof op.id==='string'&&!!op.after&&typeof op.after==='object';
+    case 'move':   return Array.isArray(op.ids)&&Number.isFinite(+op.dx)&&Number.isFinite(+op.dy);
+    case 'z':      return typeof op.id==='string'&&Number.isFinite(+op.from)&&Number.isFinite(+op.to);
+    case 'zorder':
+    case 'align':  return Array.isArray(op.after);
+    case 'group':
+    case 'ungroup':return Array.isArray(op.ids);
+    default:       return false;
+  }
+}
 const Store={
   // Ops:
   //   {op:'add',shape}             / inverse: delete
@@ -992,9 +1012,10 @@ const Store={
   REMOTE_OPS:new Set(['add','del','upd','move','z','clear','group','ungroup','zorder','align']),
   applyRemote(op){
     if(!op||!op.clock||!this.REMOTE_OPS.has(op.op))return;
-    // `add` carries a whole shape — reject malformed ones (same check the
-    // share-import path uses) so the renderer/hit-test never sees garbage.
-    if(op.op==='add'&&!(op.shape&&typeof op.shape==='object'&&op.shape.id&&op.shape.type&&typeof op.shape.z==='number'))return;
+    // Peers are semi-trusted: reject structurally-bad payloads (wrong types,
+    // non-finite deltas) so a malicious/buggy peer can't corrupt local state
+    // via _apply (e.g. a `move` with dx={} would NaN out every shape).
+    if(!validRemotePayload(op))return;
     const k=op.clock.peer+':'+op.clock.seq;
     if(state.seenOps.has(k))return;
     state.seenOps.add(k);
@@ -2313,55 +2334,60 @@ function buildSVG(shapes,paper){
   // Frames first (background layer), then other shapes
   const svgShapes=[...shapes.filter(s=>s.type==="frame"),...shapes.filter(s=>s.type!=="frame")];
   for(const s of svgShapes){
-    const a=s.opacity!=null&&s.opacity<1?` opacity="${_esc(s.opacity)}"`:'';
+    // Coerce every geometry field to a finite number so a crafted shape can't
+    // break out of a numeric attribute; strings (colors/labels/dataUrl) go via _esc.
+    const X=_num(s.x),Y=_num(s.y),W=_num(s.w),H=_num(s.h);
+    const X1=_num(s.x1),Y1=_num(s.y1),X2=_num(s.x2),Y2=_num(s.y2);
+    const SZ=_num(s.size),opv=_num(s.opacity);
+    const a=(s.opacity!=null&&opv<1)?` opacity="${opv}"`:'';
     const stroke=_esc(s.stroke||'#000');
     switch(s.type){
       case 'rect':{
-        const r=Math.min(8,Math.abs(s.w)/4,Math.abs(s.h)/4);
-        els.push(`<rect x="${s.x+ox}" y="${s.y+oy}" width="${s.w}" height="${s.h}" rx="${r}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${s.size||1}"${a}/>`);
+        const r=Math.min(8,Math.abs(W)/4,Math.abs(H)/4);
+        els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${a}/>`);
         break;}
       case 'ellipse':
-        els.push(`<ellipse cx="${s.x+s.w/2+ox}" cy="${s.y+s.h/2+oy}" rx="${Math.abs(s.w/2)}" ry="${Math.abs(s.h/2)}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${s.size||1}"${a}/>`);
+        els.push(`<ellipse cx="${X+W/2+ox}" cy="${Y+H/2+oy}" rx="${Math.abs(W/2)}" ry="${Math.abs(H/2)}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${a}/>`);
         break;
       case 'line':
-        els.push(`<line x1="${s.x1+ox}" y1="${s.y1+oy}" x2="${s.x2+ox}" y2="${s.y2+oy}" stroke="${stroke}" stroke-width="${s.size||1}" stroke-linecap="round"${a}/>`);
+        els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${a}/>`);
         break;
       case 'arrow':{
-        els.push(`<line x1="${s.x1+ox}" y1="${s.y1+oy}" x2="${s.x2+ox}" y2="${s.y2+oy}" stroke="${stroke}" stroke-width="${s.size||1}" stroke-linecap="round"${a}/>`);
-        const ah=Math.max(6,(s.size||2)*3);
-        const ang=Math.atan2(s.y2-s.y1,s.x2-s.x1);
+        els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${a}/>`);
+        const ah=Math.max(6,(SZ||2)*3);
+        const ang=Math.atan2(Y2-Y1,X2-X1);
         const a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5;
-        const tx=s.x2+ox,ty=s.y2+oy;
+        const tx=X2+ox,ty=Y2+oy;
         els.push(`<polygon points="${tx},${ty} ${tx+Math.cos(a1)*ah},${ty+Math.sin(a1)*ah} ${tx+Math.cos(a2)*ah},${ty+Math.sin(a2)*ah}" fill="${stroke}"${a}/>`);
         break;}
       case 'pen':{
-        if(s.pts.length<2)break;
-        const d=s.pts.map((p,i)=>`${i?'L':'M'}${p[0]+ox},${p[1]+oy}`).join(' ');
-        els.push(`<path d="${_esc(d)}" fill="none" stroke="${stroke}" stroke-width="${s.size||1}" stroke-linecap="round" stroke-linejoin="round"${a}/>`);
+        if(!Array.isArray(s.pts)||s.pts.length<2)break;
+        const d=s.pts.map((p,i)=>`${i?'L':'M'}${_num(p&&p[0])+ox},${_num(p&&p[1])+oy}`).join(' ');
+        els.push(`<path d="${d}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${a}/>`);
         break;}
       case 'text':{
-        const fs=s.fontSize||16;
-        const svgLines=(s.text||'').split('\n');
-        els.push(`<text x="${s.x+ox}" y="${s.y+oy+fs}" font-family="Hiragino Sans,Helvetica Neue,system-ui,sans-serif" font-size="${fs}" fill="${stroke}"${a}>`);
-        for(let i=0;i<svgLines.length;i++)els.push(`<tspan x="${s.x+ox}" dy="${i?fs*1.25:0}">${_esc(svgLines[i])}</tspan>`);
+        const fs=_num(s.fontSize)||16;
+        const svgLines=String(s.text==null?'':s.text).split('\n');
+        els.push(`<text x="${X+ox}" y="${Y+oy+fs}" font-family="Hiragino Sans,Helvetica Neue,system-ui,sans-serif" font-size="${fs}" fill="${stroke}"${a}>`);
+        for(let i=0;i<svgLines.length;i++)els.push(`<tspan x="${X+ox}" dy="${i?fs*1.25:0}">${_esc(svgLines[i])}</tspan>`);
         els.push('</text>');break;}
       case 'image':
-        if(s.dataUrl&&/^data:image\//.test(s.dataUrl))els.push(`<image x="${s.x+ox}" y="${s.y+oy}" width="${s.w}" height="${s.h}" href="${_esc(s.dataUrl)}"${a}/>`);
+        if(typeof s.dataUrl==='string'&&/^data:image\//.test(s.dataUrl))els.push(`<image x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" href="${_esc(s.dataUrl)}"${a}/>`);
         break;
       case 'frame':{
-        const fr=Math.min(4,s.w/10,s.h/10);
+        const fr=Math.min(4,W/10,H/10);
         const clr=_esc(s.stroke||'#00C4CC');
-        els.push(`<rect x="${s.x+ox}" y="${s.y+oy}" width="${s.w}" height="${s.h}" rx="${fr}" fill="rgba(248,250,252,0.6)" stroke="${clr}" stroke-width="${s.size||1.5}"${a}/>`);
-        if(s.label)els.push(`<text x="${s.x+ox+6}" y="${s.y+oy-4}" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="${clr}">${_esc(s.label)}</text>`);
+        els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${fr}" fill="rgba(248,250,252,0.6)" stroke="${clr}" stroke-width="${SZ||1.5}"${a}/>`);
+        if(s.label)els.push(`<text x="${X+ox+6}" y="${Y+oy-4}" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="${clr}">${_esc(s.label)}</text>`);
         break;}
       case 'sticky':{
-        const r=Math.min(6,Math.abs(s.w)/6,Math.abs(s.h)/6);
-        els.push(`<rect x="${s.x+ox}" y="${s.y+oy}" width="${s.w}" height="${s.h}" rx="${r}" fill="${_esc(s.color||'#FEF08A')}" stroke="rgba(0,0,0,.06)"/>`);
+        const r=Math.min(6,Math.abs(W)/6,Math.abs(H)/6);
+        els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}" fill="${_esc(s.color||'#FEF08A')}" stroke="rgba(0,0,0,.06)"/>`);
         if(s.text){
-          const fs=s.fontSize||14;const pad2=8;
-          const lines2=(s.text||'').split('\n');
-          els.push(`<text x="${s.x+ox+pad2}" y="${s.y+oy+pad2+fs}" font-family="Hiragino Sans,Helvetica Neue,system-ui,sans-serif" font-size="${fs}" fill="#1E293B">`);
-          for(let i=0;i<lines2.length;i++)els.push(`<tspan x="${s.x+ox+pad2}" dy="${i?fs*1.3:0}">${_esc(lines2[i])}</tspan>`);
+          const fs=_num(s.fontSize)||14;const pad2=8;
+          const lines2=String(s.text).split('\n');
+          els.push(`<text x="${X+ox+pad2}" y="${Y+oy+pad2+fs}" font-family="Hiragino Sans,Helvetica Neue,system-ui,sans-serif" font-size="${fs}" fill="#1E293B">`);
+          for(let i=0;i<lines2.length;i++)els.push(`<tspan x="${X+ox+pad2}" dy="${i?fs*1.3:0}">${_esc(lines2[i])}</tspan>`);
           els.push('</text>');
         }break;}
     }
@@ -2370,6 +2396,10 @@ function buildSVG(shapes,paper){
   return els.join('\n');
 }
 function _esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+// Coerce any value to a finite number (0 otherwise). Used so a crafted shape
+// with string geometry (via share-URL / sync) can't break out of a numeric SVG
+// attribute — numbers can't contain quotes or angle brackets.
+function _num(v){const n=+v;return Number.isFinite(n)?n:0}
 
 // ====================== NET (sync layer) ======================
 // BroadcastChannel for same-browser tab sync (zero infra).

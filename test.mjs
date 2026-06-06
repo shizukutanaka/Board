@@ -141,13 +141,18 @@ const checks = [
   ['zorder _apply restores order+z from snapshot', html.includes("const snap=forward?op.after:op.before") && html.includes("sh.z=p.z")],
   ['z-step ops route through _commitZ (undoable)', html.includes("_commitZ(before)") && html.includes("function _commitZ")],
   ['applyRemote whitelists op types', html.includes("REMOTE_OPS") && html.includes("this.REMOTE_OPS.has(op.op)")],
-  ['applyRemote validates remote add shape', html.includes("op.op==='add'&&!(op.shape")],
+  ['applyRemote validates remote add shape', html.includes("op.shape.id&&op.shape.type&&typeof op.shape.z==='number'")],
   ['SVG export uses testable buildSVG', html.includes("function buildSVG") && html.includes("buildSVG(state.shapes")],
   ['SVG attrs escaped via _esc', html.includes("stroke=\"${stroke}\"") && html.includes("_esc(s.fill)")],
   ['SVG image dataUrl validated', html.includes("/^data:image\\//.test(s.dataUrl)")],
   ['PDF export escapes docName', html.includes("_esc(state.docName||'board')")],
   ['getCSS is memoised', html.includes("_cssCache") && html.includes("function clearCSSCache")],
   ['resize handles use AAA brand-ink ring', html.includes("getCSS('--brand-ink')")],
+  // spec-gap fixes
+  ['_num coerces to finite number', html.includes("function _num") && html.includes("Number.isFinite(n)?n:0")],
+  ['buildSVG coerces numeric coords via _num', html.includes("const X=_num(s.x)") && html.includes("_num(s.size)")],
+  ['applyRemote validates op payloads', html.includes("function validRemotePayload") && html.includes("if(!validRemotePayload(op))return")],
+  ['remote move requires finite deltas', html.includes("Number.isFinite(+op.dx)&&Number.isFinite(+op.dy)")],
 ];
 
 let pass = 0, fail = 0;
@@ -431,6 +436,17 @@ try {
   assert.strictEqual(state.shapes.length, 1, 'well-formed remote add is accepted');
   console.log('  ✓ applyRemote rejects unknown op types and malformed adds');
 
+  // remote op PAYLOAD validation (not just op type): malformed move/upd are
+  // dropped so a peer can't NaN-out or corrupt shapes (state has goodShape)
+  const mvId = state.shapes[0].id, mx0 = state.shapes[0].x;
+  Store.applyRemote({op:'move', ids:[mvId], dx:{}, dy:0, clock:{peer:'attacker', seq:3, ts:1}});
+  assert.strictEqual(state.shapes[0].x, mx0, 'remote move with non-finite dx is dropped');
+  Store.applyRemote({op:'upd', id:123, after:'evil', clock:{peer:'attacker', seq:4, ts:1}});
+  assert.ok(Number.isFinite(state.shapes[0].x), 'remote upd with bad id/after is dropped');
+  Store.applyRemote({op:'move', ids:[mvId], dx:5, dy:0, clock:{peer:'peerB', seq:2, ts:1}});
+  assert.strictEqual(state.shapes[0].x, mx0 + 5, 'well-formed remote move is applied');
+  console.log('  ✓ applyRemote validates op payloads (move/upd) and applies valid move');
+
   // SVG export escapes attribute values (regression: colors/labels/dataUrls
   // were interpolated raw → an exported .svg could execute injected markup)
   const evil = Shape.make('rect', {x:0,y:0,w:20,h:20});
@@ -440,6 +456,14 @@ try {
   assert.ok(!/<script/i.test(svgOut), 'no unescaped <script in exported SVG');
   assert.ok(svgOut.includes('&lt;script'), 'malicious stroke was HTML-escaped');
   console.log('  ✓ buildSVG escapes attribute values (no markup injection)');
+
+  // SVG NUMERIC attributes are coerced (regression: string coords like x could
+  // break out of an attribute even after color/label strings were escaped)
+  const evilNum = { id:'n1', type:'rect', z:0, x:'0"/><script>alert(3)</script>', y:0, w:10, h:10 };
+  const svgNum = buildSVG([evilNum], '#FFFFFF') || '';
+  assert.ok(!/<script/i.test(svgNum), 'no <script via string numeric attr');
+  assert.ok(!/alert\(3\)/.test(svgNum), 'malicious coord neutralised, not emitted');
+  console.log('  ✓ buildSVG coerces numeric attrs (no breakout via coords)');
 
   // align
   state.shapes.length = 0; state.history.length = 0; state.histIdx = -1;
