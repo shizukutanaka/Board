@@ -161,6 +161,11 @@ const checks = [
   ['wrapText helper present', html.includes("function wrapText")],
   ['sticky render wraps text', html.includes("wrapText(s.text,Math.abs(s.w)-pad*2")],
   ['SVG sticky export wraps text', html.includes("wrapText(s.text,Math.abs(W)-pad2*2")],
+  // v1.6.10: keyboard shape navigation (a11y)
+  ['cycleSel/describeShape helpers present', html.includes("function cycleSel") && html.includes("function describeShape")],
+  ['Tab cycles shape selection', html.includes("else if(k==='tab')") && html.includes("cycleSel(ids,")],
+  ['toasts region is aria-live (SR announce)', html.includes('id="toasts"') && html.includes('aria-live="polite"')],
+  ['canvas aria-label advertises Tab nav', html.includes("Tab / Shift+Tab cycle through shapes")],
 ];
 
 let pass = 0, fail = 0;
@@ -253,7 +258,7 @@ try {
              doBringFront, doSendBack, doBringForward, doSendBackward,
              doAlign, snapV, snapPt,
              getHandles, applyResize, handleCursor,
-             doGroup, doUngroup, pickTop, buildSVG, inView, wrapText,
+             doGroup, doUngroup, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection };
   `);
   const api = fn(
@@ -265,7 +270,7 @@ try {
           doBringFront, doSendBack, doBringForward, doSendBackward,
           doAlign, snapV, snapPt,
           getHandles, applyResize, handleCursor,
-          doGroup, doUngroup, pickTop, buildSVG, inView, wrapText,
+          doGroup, doUngroup, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection } = api;
 
   console.log('\n-- behavioural --');
@@ -491,6 +496,17 @@ try {
   assert.ok(wrapText('x'.repeat(200), 50, m10).every(l => m10(l) <= 50), 'every wrapped line fits width');
   console.log('  ✓ wrapText word-wraps and char-breaks to width');
 
+  // keyboard navigation: cycle selection through shapes (a11y)
+  const cids = ['a','b','c'];
+  assert.strictEqual(cycleSel(cids,'a',1), 'b', 'next wraps forward');
+  assert.strictEqual(cycleSel(cids,'c',1), 'a', 'forward wraps at end');
+  assert.strictEqual(cycleSel(cids,'a',-1), 'c', 'prev wraps at start');
+  assert.strictEqual(cycleSel(cids,null,1), 'a', 'no selection => first on Tab');
+  assert.strictEqual(cycleSel(cids,'x',-1), 'c', 'unknown selection => last on Shift+Tab');
+  assert.strictEqual(cycleSel([],'a',1), null, 'empty board => null');
+  assert.strictEqual(describeShape({type:'rect',x:10.4,y:20.6,w:5,h:5}), 'rect @ 10,21', 'shape description for SR');
+  console.log('  ✓ cycleSel cycles selection, describeShape labels for screen readers');
+
   // align
   state.shapes.length = 0; state.history.length = 0; state.histIdx = -1;
   const r1 = Shape.make('rect', {x:0, y:0, w:40, h:40});
@@ -707,7 +723,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 53;
+  pass += 54;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

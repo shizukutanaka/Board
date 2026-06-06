@@ -580,7 +580,7 @@ body{visibility:visible}
 
   <!-- ==== Canvas ==== -->
   <main class="canvas-wrap">
-    <canvas id="c" data-tool="select" role="application" aria-label="Drawing canvas — use toolbar buttons or keyboard shortcuts (V select, P pen, R rectangle, T text, F frame) to create shapes. Arrow keys move selection." tabindex="0"></canvas>
+    <canvas id="c" data-tool="select" role="application" aria-label="Drawing canvas — use toolbar buttons or keyboard shortcuts (V select, P pen, R rectangle, T text, F frame) to create shapes. Tab / Shift+Tab cycle through shapes, arrow keys move the selection." tabindex="0"></canvas>
 
     <!-- Style panel -->
     <aside class="style-panel" id="stylePanel" aria-label="Style">
@@ -722,7 +722,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.9';
+const V='1.6.10';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1199,6 +1199,24 @@ function inView(s,view){
   const x0=Math.min(b.x,b.x+b.w),x1=Math.max(b.x,b.x+b.w);
   const y0=Math.min(b.y,b.y+b.h),y1=Math.max(b.y,b.y+b.h),m=4;
   return x1>=view.x-m&&x0<=view.x+view.w+m&&y1>=view.y-m&&y0<=view.y+view.h+m;
+}
+// Keyboard navigation helpers (a11y): cycle the selection through shapes in
+// z-order, recentre the viewport on an off-screen target, and describe a shape
+// for the aria-live toast region (screen-reader announcement).
+function cycleSel(ids,cur,dir){
+  if(!ids.length)return null;
+  const i=ids.indexOf(cur);
+  if(i<0)return dir>0?ids[0]:ids[ids.length-1];
+  return ids[(i+dir+ids.length)%ids.length];
+}
+function centerOn(sh){
+  const b=G.bbox(sh),v=state.viewport;
+  v.x=b.x+b.w/2-(canvas.width/(v.zoom*DPR))/2;
+  v.y=b.y+b.h/2-(canvas.height/(v.zoom*DPR))/2;
+}
+function describeShape(s){
+  const b=G.bbox(s);
+  return `${s.type} @ ${Math.round(b.x)},${Math.round(b.y)}`;
 }
 function draw(){
   const W=canvas.width,H=canvas.height;
@@ -2085,6 +2103,22 @@ window.addEventListener('keydown',e=>{
   else if(meta&&k==='-'){e.preventDefault();zoomBy(1/1.2)}
   else if(meta&&k==='0'){e.preventDefault();zoomReset()}
   else if(k==='delete'||k==='backspace'){e.preventDefault();doDelete()}
+  else if(k==='tab'){
+    // Cycle selection through shapes (z-order) for keyboard/SR users. Wraps at
+    // ends. Recentres the viewport if the target is off-screen; the description
+    // is toasted into the aria-live region so screen readers announce it.
+    e.preventDefault();
+    const ids=state.shapes.map(s=>s.id);
+    if(!ids.length)return;
+    const id=cycleSel(ids,[...state.selection][0],e.shiftKey?-1:1);
+    state.selection=new Set([id]);
+    const sh=byId(id);
+    if(sh){
+      if(!inView(sh,visibleWorldRect()))centerOn(sh);
+      UI.toast(`${describeShape(sh)} (${ids.indexOf(id)+1}/${ids.length})`);
+    }
+    invalidate();
+  }
   else if(k==='arrowup'||k==='arrowdown'||k==='arrowleft'||k==='arrowright'){
     if(state.selection.size){
       e.preventDefault();

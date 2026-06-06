@@ -2,6 +2,25 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.10] — 2026-06-06
+
+仕様書 §13 の「キーボードでの図形巡回」ギャップ(a11y)を実装。
+
+### Added
+- **キーボードで図形を巡回(Tab / Shift+Tab)** — canvas にフォーカス時、Tab で z 順に選択を巡回
+  (端で循環)。対象が画面外なら viewport を中央寄せ、説明文(`describeShape`)を `aria-live` の
+  トースト領域に出してスクリーンリーダーが読み上げる。純粋ヘルパ `cycleSel()` / `describeShape()` /
+  `centerOn()` を追加。canvas の `aria-label` に Tab 操作を明記。
+- 既存トースト(undo/redo/export 等)も `#toasts` の `aria-live="polite"` 経由で SR 読み上げ対象に
+  (副次的な a11y 改善)。
+
+### Tests
+- **178/178 全通過** (+5): `cycleSel` の前後巡回・端循環・未選択/未知 ID・空ボード、`describeShape` の
+  整形、Tab ハンドラ/aria-live/aria-label の presence。
+
+### Note
+- 図形の**作成**は依然マウス操作が必要(キーボード作成は将来課題、§13)。
+
 ## [1.6.9] — 2026-06-06
 
 仕様書(`docs/spec.md`)§13 の「テキスト自動折返し」ギャップを付箋(sticky)に実装。
