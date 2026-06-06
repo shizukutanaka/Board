@@ -157,6 +157,10 @@ const checks = [
   ['viewport culling helpers present', html.includes("function visibleWorldRect") && html.includes("function inView")],
   ['draw() culls via inView', html.includes("inView(s,_view)")],
   ['Persist.load validates shapes', html.includes("d.shapes.filter(s=>s&&typeof s==='object'&&s.id&&s.type")],
+  // v1.6.9: sticky text auto-wrap
+  ['wrapText helper present', html.includes("function wrapText")],
+  ['sticky render wraps text', html.includes("wrapText(s.text,Math.abs(s.w)-pad*2")],
+  ['SVG sticky export wraps text', html.includes("wrapText(s.text,Math.abs(W)-pad2*2")],
 ];
 
 let pass = 0, fail = 0;
@@ -249,7 +253,7 @@ try {
              doBringFront, doSendBack, doBringForward, doSendBackward,
              doAlign, snapV, snapPt,
              getHandles, applyResize, handleCursor,
-             doGroup, doUngroup, pickTop, buildSVG, inView,
+             doGroup, doUngroup, pickTop, buildSVG, inView, wrapText,
              copyStyle, pasteStyle, applyStyleToSelection };
   `);
   const api = fn(
@@ -261,7 +265,7 @@ try {
           doBringFront, doSendBack, doBringForward, doSendBackward,
           doAlign, snapV, snapPt,
           getHandles, applyResize, handleCursor,
-          doGroup, doUngroup, pickTop, buildSVG, inView,
+          doGroup, doUngroup, pickTop, buildSVG, inView, wrapText,
           copyStyle, pasteStyle, applyStyleToSelection } = api;
 
   console.log('\n-- behavioural --');
@@ -476,6 +480,16 @@ try {
   assert.ok(inView({type:'rect',x:-30,y:-30,w:50,h:50}, cv), 'partially-overlapping shape drawn');
   assert.ok(inView({type:'line',x1:-1000,y1:300,x2:1000,y2:300,size:2}, cv), 'line crossing view drawn');
   console.log('  ✓ inView culls off-screen shapes, keeps overlapping ones');
+
+  // text wrapping (sticky notes): pure helper with an injected measure (10px/char)
+  const m10 = (t) => t.length * 10;
+  assert.deepStrictEqual(wrapText('hi', 100, m10), ['hi'], 'short text not wrapped');
+  assert.deepStrictEqual(wrapText('hello world', 100, m10), ['hello', 'world'], 'wraps on whitespace');
+  assert.deepStrictEqual(wrapText('a\nb', 100, m10), ['a', 'b'], 'honours explicit newlines');
+  assert.deepStrictEqual(wrapText('abcdefghij', 50, m10), ['abcde', 'fghij'], 'hard-breaks an overlong token');
+  assert.deepStrictEqual(wrapText('hello', 0, m10), ['hello'], 'non-positive width => no wrap');
+  assert.ok(wrapText('x'.repeat(200), 50, m10).every(l => m10(l) <= 50), 'every wrapped line fits width');
+  console.log('  ✓ wrapText word-wraps and char-breaks to width');
 
   // align
   state.shapes.length = 0; state.history.length = 0; state.histIdx = -1;
@@ -693,7 +707,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 52;
+  pass += 53;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

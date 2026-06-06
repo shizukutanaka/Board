@@ -1,6 +1,6 @@
 # Board — 仕様書 (Specification)
 
-> Board v1.6.8 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
+> Board v1.6.9 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
 > **§13 適合ギャップ(不足)** で仕様と実装の差分を列挙する。本書は実装と対で更新する。
 > 関連: 設計=`docs/architecture.md`、改善調査=`docs/research-improvements.md` /
 > `docs/category-research*.md`、変更履歴=`CHANGELOG.md`。
@@ -111,12 +111,16 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
   add/move/upd/del/zorder/align を混在生成、30 シナリオで apply→undo=初期 / redo=適用後 を検証)。
   fast-check 等の外部 PBT 導入は任意の発展課題。
 
+### ✅ v1.6.9 で解消
+- **テキスト自動折返し(付箋)**: sticky テキストを箱幅へ word-wrap + 長語の文字 hard-break、
+  箱でクリップ。純粋ヘルパ `wrapText()` を canvas/SVG で共有(表示=出力)。text shape は
+  内容追従の自動サイズのため対象外(設計上 wrap 不要)。
+
 ### ⬜ 既知の未充足(将来 ADR で対応 / 詳細は research docs)
 - **z 順序 op のスケーラビリティ**: `zorder` が全 shape スナップショットを保持(大規模で履歴/帯域肥大)。
   fractional index へ移行が望ましい(`research-improvements.md` 項目A)。
 - **空間索引**: ヒットテスト(`pickTop`)は依然 O(n)。quadtree/uniform grid 未導入(cat 1)。
 - **キーボードでの図形作成/巡回**: 作成系はマウス専用。Tab 巡回 + DOM ミラー a11y 未実装(§10、cat 6)。
-- **テキスト自動折返し**: text/sticky は改行のみで幅折返し無し(cat 11)。
 - **ペン品質**: 固定幅。筆圧/平滑化(perfect-freehand)未実装(cat 3)。
 - CI の `ci.yml` は GitHub App 権限の都合でブランチ未反映(手動適用要)。
 

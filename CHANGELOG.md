@@ -2,6 +2,20 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.9] — 2026-06-06
+
+仕様書(`docs/spec.md`)§13 の「テキスト自動折返し」ギャップを付箋(sticky)に実装。
+
+### Added
+- **付箋テキストの自動折返し** — sticky note のテキストが箱幅を超えると空白で word-wrap し、
+  単語が長すぎる場合は文字単位で hard-break。描画は箱でクリップして溢れを防止。新しい純粋ヘルパ
+  `wrapText(text, maxWidth, measure)` を canvas 描画(`ctx.measureText`)と SVG 出力(推定 measure)で
+  共有し、表示とエクスポートを一致させた。テキスト shape は内容に追従して自動サイズするため対象外。
+
+### Tests
+- **173/173 全通過** (+4): `wrapText` の折返し/改行/長語の文字分割/幅 0 no-op/全行が幅に収まる、
+  および sticky 描画・SVG 出力が `wrapText` を使う presence。
+
 ## [1.6.8] — 2026-06-06
 
 仕様書(`docs/spec.md`)§13 の未充足ギャップから 2 件を実装(描画スケーラビリティ + intake 一貫性)。
