@@ -2,6 +2,25 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.15] — 2026-06-08
+
+同種ソフト(Excalidraw / tldraw)の調査で最大の欠落と判明した「オブジェクトスナップ」を実装。
+
+### Added
+- **スマート整列ガイド(オブジェクトスナップ)** — 図形をドラッグ移動する際、選択範囲の辺・中心が
+  他の図形の辺・中心に近づく(閾値 8px)と自動で整列し、ブランド色の破線ガイドを表示する。
+  Excalidraw の「Snap to objects(Alt+S)」/ tldraw の整列スナップに相当する目玉 UX 機能で、
+  これまで Board はグリッドスナップしか持っていなかった。純粋幾何関数 `snapBox(mov,targets,tol)`
+  (最近傍アンカー採用)を `objectSnap` / `moveDelta` から呼び、ライブドラッグと確定 op が完全に一致。
+  グリッドスナップ(⇧G)が ON のときはそちらが優先。最終 delta は従来どおり `move` op なので
+  完全に undo/redo 可能。
+
+### Tests
+- **200/200 全通過** (+4): `snapBox` の辺/中心スナップ、最近傍アンカー採用、両軸同時スナップ、
+  範囲外 no-op、presence × 3。
+
+---
+
 ## [1.6.14] — 2026-06-08
 
 仕様書 §13 の「真の筆圧入力」を実装(ペン品質の筆圧パートを完了)。

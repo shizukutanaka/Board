@@ -1,6 +1,6 @@
 # Board — 仕様書 (Specification)
 
-> Board v1.6.14 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
+> Board v1.6.15 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
 > **§13 適合ギャップ(不足)** で仕様と実装の差分を列挙する。本書は実装と対で更新する。
 > 関連: 設計=`docs/architecture.md`、改善調査=`docs/research-improvements.md` /
 > `docs/category-research*.md`、変更履歴=`CHANGELOG.md`。
@@ -58,6 +58,7 @@ eraser(E) / sticky(N) / frame(F)。Shift で軸拘束・正方形/正円。
 ## 5. 編集機能
 マーキー/加算選択、移動、8 ハンドルリサイズ(line/arrow は端点)、group/ungroup(⌘G/⌘⇧G)、
 整列(左右上下中央/均等)、z 順序(`]`/`[`/⇧付き)、グリッドスナップ(⇧G)、
+オブジェクトスナップ(移動時に他図形の辺/中心へ整列、ガイド線表示。グリッドスナップ off 時)、
 フォーマットペインター(Alt+C/V)、不透明度、コピー/貼付/切取/複製、undo/redo 最大 500。
 
 ## 6. キーマップ
@@ -147,9 +148,17 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
   欠落(レガシー 2-tuple)/非有限は速度プロキシへフォールバック。canvas/SVG 両方で反映(パリティ維持)。
   `_penPr` で有限値に強制、データモデル後方互換(既存 pen は 2-tuple のまま動作)。
 
+### ✅ v1.6.15 で解消
+- **オブジェクトスナップ(スマート整列ガイド)**: 競合(Excalidraw の Alt+S / tldraw)が持ち Board に
+  無かった目玉機能。移動ドラッグ中、選択 bbox の辺/中心が他図形の辺/中心に閾値内(8px)で近づくと
+  整列し、ブランド色の破線ガイドを表示。純粋幾何 `snapBox(mov,targets,tol)`(最近傍アンカー採用、
+  単体テスト可)+ `objectSnap`/`moveDelta` で live drag と commit が一致。グリッドスナップ(⇧G)が
+  優先、off 時に有効。最終 delta は従来通り `move` op なので完全可逆。
+
 ### ⬜ 既知の未充足(将来 ADR で対応 / 詳細は research docs)
 - **z 順序 op のスケーラビリティ**: `zorder` が全 shape スナップショットを保持(大規模で履歴/帯域肥大)。
   fractional index へ移行が望ましい(`research-improvements.md` 項目A)。専用 ADR 予定(P0 可逆性に触れるため)。
+- **リサイズ時のオブジェクトスナップ**: 現状スナップは移動のみ。リサイズハンドルへの拡張は将来課題。
 - **DOM ミラー a11y**: 図形ごとの DOM ノードによるネイティブ SR 対応は将来課題(§10、cat 6)。
 - CI の `ci.yml` は GitHub App 権限の都合でブランチ未反映(手動適用要)。
 

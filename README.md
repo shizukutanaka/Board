@@ -4,7 +4,7 @@
 単一HTMLファイル。ダブルクリックで動く。アカウント不要。広告なし。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-00C4CC.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.6.14-00C4CC.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.6.15-00C4CC.svg)](CHANGELOG.md)
 [![Size](https://img.shields.io/badge/size-~37KB%20gzip-00C4CC.svg)](index.html)
 [![Offline](https://img.shields.io/badge/offline-first-00C4CC.svg)](#offline)
 [![A11y](https://img.shields.io/badge/WCAG-AAA-00C4CC.svg)](#accessibility)
@@ -56,6 +56,7 @@ start index.html      # Windows
 - ドラッグ移動、キーボード移動、8 ハンドルでリサイズ (line/arrow は端点)
 - グループ化 / 解除 (Ctrl+G / Ctrl+Shift+G)
 - 整列 (左右上下・中央・均等配置)、z 順序操作 (前面 / 背面 / 一段前後)
+- スマート整列ガイド (移動時に他図形の辺・中心へスナップ、ガイド線表示 — Excalidraw 風)
 - フォーマットペインター (Alt+C / Alt+V でスタイル転写)
 - Undo/Redo 最大 500 段 — **全 op が完全可逆** (z 順序・グループ・整列も含む)
 - コピー / ペースト / 切り取り / 複製 (Ctrl+C/V/X/D)

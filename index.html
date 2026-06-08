@@ -722,7 +722,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.14';
+const V='1.6.15';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -733,6 +733,7 @@ const GRID_SIZE=20;
 function snapV(v){return state.snap?Math.round(v/GRID_SIZE)*GRID_SIZE:v}
 function snapPt(p){return{x:snapV(p.x),y:snapV(p.y)}}
 const SNAP_THRESHOLD=6;                 // pixels
+const SNAP_OBJ=8;                        // object-snap distance (screen px)
 const HANDLE_SIZE=8;
 const PI2=Math.PI*2;
 const NET_CHANNEL_PREFIX='board:';      // BroadcastChannel name prefix
@@ -857,6 +858,7 @@ const state={
   draft:null,               // shape being created (not yet committed)
   editing:null,             // id of shape being text-edited
   marquee:null,             // {x1,y1,x2,y2} in world coords
+  guides:null,              // object-snap alignment guide lines (during drag)
   showGrid:true,
   snap:true,        // snap-to-grid when dragging shapes
   docName:'Untitled',
@@ -1253,7 +1255,17 @@ function draw(){
     ctx.strokeRect(p1.x,p1.y,p2.x-p1.x,p2.y-p1.y);ctx.setLineDash([]);
   }
   drawSelection();
+  drawGuides();
   if(state.marquee)drawMarquee();
+}
+function drawGuides(){
+  if(!state.guides||!state.guides.length)return;
+  ctx.strokeStyle=getCSS('--brand');ctx.lineWidth=1;ctx.setLineDash([4*DPR,4*DPR]);
+  for(const g of state.guides){
+    const p1=G.w2s({x:g.x1,y:g.y1}),p2=G.w2s({x:g.x2,y:g.y2});
+    ctx.beginPath();ctx.moveTo(p1.x*DPR,p1.y*DPR);ctx.lineTo(p2.x*DPR,p2.y*DPR);ctx.stroke();
+  }
+  ctx.setLineDash([]);
 }
 // Design-token lookups are read every frame (per shape for frames/grid). The
 // values only change when the OS theme / forced-colors mode flips, so memoise
@@ -1927,11 +1939,43 @@ function pickOrMarquee(wp,e){
     ptr.dragKind='marquee';
   }
 }
+// Object snap (smart alignment guides): nudge a moving box so one of its edges or
+// centres aligns with a target box's edge/centre within `tol`. Returns the {dx,dy}
+// adjustment plus guide line segments to draw. Pure → unit-testable; the nearest
+// candidate per axis wins. Mirrors Excalidraw/tldraw "snap to objects".
+function snapBox(mov,targets,tol){
+  const mX=[mov.x,mov.x+mov.w/2,mov.x+mov.w],mY=[mov.y,mov.y+mov.h/2,mov.y+mov.h];
+  let bx=null,by=null;
+  for(const b of targets){
+    const tX=[b.x,b.x+b.w/2,b.x+b.w],tY=[b.y,b.y+b.h/2,b.y+b.h];
+    for(const m of mX)for(const t of tX){const d=t-m;if(Math.abs(d)<=tol&&(!bx||Math.abs(d)<Math.abs(bx.d)))bx={d,at:t,b};}
+    for(const m of mY)for(const t of tY){const d=t-m;if(Math.abs(d)<=tol&&(!by||Math.abs(d)<Math.abs(by.d)))by={d,at:t,b};}
+  }
+  const guides=[];let dx=0,dy=0;
+  if(bx){dx=bx.d;const ys=[mov.y,mov.y+mov.h,bx.b.y,bx.b.y+bx.b.h];guides.push({x1:bx.at,y1:Math.min(...ys),x2:bx.at,y2:Math.max(...ys)});}
+  if(by){dy=by.d;const xs=[mov.x,mov.x+mov.w,by.b.x,by.b.x+by.b.w];guides.push({x1:Math.min(...xs),y1:by.at,x2:Math.max(...xs),y2:by.at});}
+  return{dx,dy,guides};
+}
+function objectSnap(dx,dy){
+  if(!ptr.dragStartShapes)return{dx:0,dy:0,guides:[]};
+  const ids=new Set(ptr.dragStartShapes.keys());
+  const bb=G.bboxAll([...ptr.dragStartShapes.values()]);
+  if(!bb)return{dx:0,dy:0,guides:[]};
+  const mov={x:bb.x+dx,y:bb.y+dy,w:bb.w,h:bb.h},targets=[];
+  for(const s of state.shapes){if(ids.has(s.id))continue;const b=G.bbox(s);if(b)targets.push(b)}
+  return snapBox(mov,targets,SNAP_OBJ/state.viewport.zoom);
+}
+// Shared by live drag (doMove) and commit (endSelect) so they agree exactly.
+// Grid snap (⇧G) takes precedence; otherwise snap to nearby objects.
+function moveDelta(wp){
+  const sp=snapPt(wp),sx0=snapV(ptr.wx0),sy0=snapV(ptr.wy0);
+  let dx=sp.x-sx0,dy=sp.y-sy0;
+  if(!state.snap){const a=objectSnap(dx,dy);dx+=a.dx;dy+=a.dy;state.guides=a.guides.length?a.guides:null;}
+  else state.guides=null;
+  return{dx,dy};
+}
 function doMove(wp){
-  // snap the destination, then derive dx/dy
-  const sp=snapPt(wp);
-  const sx0=snapV(ptr.wx0),sy0=snapV(ptr.wy0);
-  const dx=sp.x-sx0,dy=sp.y-sy0;
+  const{dx,dy}=moveDelta(wp);
   for(const [id,orig] of ptr.dragStartShapes){
     const sh=byId(id);if(!sh)continue;
     Object.assign(sh,clone(orig));
@@ -1941,9 +1985,8 @@ function doMove(wp){
 }
 function endSelect(wp){
   if(ptr.dragKind==='move'&&ptr.dragStartShapes){
-    const sp=snapPt(wp);
-    const sx0=snapV(ptr.wx0),sy0=snapV(ptr.wy0);
-    const dx=sp.x-sx0,dy=sp.y-sy0;
+    const{dx,dy}=moveDelta(wp);
+    state.guides=null;
     if(Math.hypot(dx,dy)>0.5){
       Store._recordCommitted({op:'move',ids:[...ptr.dragStartShapes.keys()],dx,dy});
     }
@@ -2247,7 +2290,7 @@ window.addEventListener('keydown',e=>{
       invalidate();
     }
   }
-  else if(k==='escape'){state.selection.clear();state.marquee=null;state.draft=null;invalidate()}
+  else if(k==='escape'){state.selection.clear();state.marquee=null;state.draft=null;state.guides=null;invalidate()}
   else if(k==='?'||(e.shiftKey&&e.key==='/')){e.preventDefault();UI.toggleHelp()}
   else if(k===']'&&!meta&&e.shiftKey){e.preventDefault();doBringFront()}
   else if(k==='['&&!meta&&e.shiftKey){e.preventDefault();doSendBack()}

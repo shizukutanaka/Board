@@ -183,6 +183,10 @@ const checks = [
   ['pen captures pointer pressure', html.includes("function _penPr") && html.includes("[wp.x,wp.y,_penPr(e)]")],
   ['penWidths uses varying pressure signal', html.includes("usePr=hasPr&&(mx-mn)>0.05")],
   ['SVG pen carries pressure for parity', html.includes("_num(p&&p[1])+oy,p&&p[2]")],
+  // v1.6.15: smart alignment guides (snap to objects)
+  ['snapBox helper present', html.includes("function snapBox")],
+  ['move uses object snap when grid off', html.includes("function objectSnap") && html.includes("if(!state.snap)")],
+  ['guides rendered during drag', html.includes("function drawGuides") && html.includes("state.guides")],
 ];
 
 let pass = 0, fail = 0;
@@ -279,7 +283,7 @@ try {
              getHandles, applyResize, handleCursor,
              doGroup, doUngroup, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
-             _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths };
+             _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -292,7 +296,7 @@ try {
           getHandles, applyResize, handleCursor,
           doGroup, doUngroup, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
-          _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths } = api;
+          _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox } = api;
 
   console.log('\n-- behavioural --');
 
@@ -853,6 +857,30 @@ try {
     console.log('  ✓ pointer pressure: varying signal drives width, constant/none → velocity, legacy safe');
   }
 
+  // v1.6.15: smart alignment guides (snap to objects)
+  {
+    const tol = 8;
+    // Moving box near a target whose left edge is 5 away → snaps left edges, emits a vertical guide.
+    let r = snapBox({x:105,y:200,w:50,h:30}, [{x:100,y:0,w:40,h:40}], tol);
+    assert.strictEqual(r.dx, -5, 'left edge snaps to nearby target left edge');
+    assert.ok(r.guides.some(g => g.x1 === g.x2 && g.x1 === 100), 'vertical guide at snap x');
+    // Centre-x alignment: target centre at 120, moving centre at 124 (w=40 → x=104) → snap by -4.
+    r = snapBox({x:104,y:300,w:40,h:20}, [{x:100,y:0,w:40,h:40}], tol);
+    assert.ok(Math.abs(r.dx) <= tol && r.dx !== 0, 'centre-x within tol snaps');
+    // Out of range → no snap, no guides.
+    r = snapBox({x:500,y:500,w:40,h:20}, [{x:100,y:0,w:40,h:40}], tol);
+    assert.strictEqual(r.dx, 0); assert.strictEqual(r.dy, 0);
+    assert.strictEqual(r.guides.length, 0, 'no guides when nothing in range');
+    // Nearest anchor wins: two anchors of the one target are in range, smallest adj chosen.
+    r = snapBox({x:113,y:0,w:20,h:10}, [{x:100,y:0,w:20,h:10}], tol);
+    assert.strictEqual(r.dx, -3, 'nearest anchor (offset 3) wins over farther ones (>8 ignored)');
+    // Both axes can snap simultaneously → two guides.
+    r = snapBox({x:103,y:103,w:20,h:20}, [{x:100,y:100,w:20,h:20}], tol);
+    assert.strictEqual(r.dx, -3); assert.strictEqual(r.dy, -3);
+    assert.strictEqual(r.guides.length, 2, 'x and y snap emit two guides');
+    console.log('  ✓ alignment guides: edge/centre snap, nearest wins, dual-axis, out-of-range no-op');
+  }
+
   // core invariant — apply N ops, undo all == initial; redo all == post-ops.
   // This is the net to catch reversibility regressions like the old zorder bug.
   {
@@ -885,7 +913,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 59;
+  pass += 60;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
