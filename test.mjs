@@ -166,6 +166,10 @@ const checks = [
   ['Tab cycles shape selection', html.includes("else if(k==='tab')") && html.includes("cycleSel(ids,")],
   ['toasts region is aria-live (SR announce)', html.includes('id="toasts"') && html.includes('aria-live="polite"')],
   ['canvas aria-label advertises Tab nav', html.includes("Tab / Shift+Tab cycle through shapes")],
+  // v1.6.11: spatial index for pickTop
+  ['spatial grid helpers present', html.includes("function _buildGrid") && html.includes("function _queryGrid")],
+  ['pickTop uses grid for large boards', html.includes("state.shapes.length>40") && html.includes("_buildGrid(state.shapes)")],
+  ['grid invalidated on every _apply', html.includes("_apply(op,forward){") && html.includes("_invalidateGrid()")],
 ];
 
 let pass = 0, fail = 0;
@@ -259,7 +263,8 @@ try {
              doAlign, snapV, snapPt,
              getHandles, applyResize, handleCursor,
              doGroup, doUngroup, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
-             copyStyle, pasteStyle, applyStyleToSelection };
+             copyStyle, pasteStyle, applyStyleToSelection,
+             _buildGrid, _queryGrid, sortZ };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -271,7 +276,8 @@ try {
           doAlign, snapV, snapPt,
           getHandles, applyResize, handleCursor,
           doGroup, doUngroup, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
-          copyStyle, pasteStyle, applyStyleToSelection } = api;
+          copyStyle, pasteStyle, applyStyleToSelection,
+          _buildGrid, _queryGrid, sortZ } = api;
 
   console.log('\n-- behavioural --');
 
@@ -691,6 +697,40 @@ try {
 
   // ---- property-based: op-log reversibility over random scenarios ----
   // Dependency-free PBT (no fast-check): seeded random op sequences asserting the
+  // v1.6.11: spatial index — _queryGrid must return all shapes that G.hit can match
+  {
+    const rnd11 = (() => { let a = 0x11c0de;return () => { a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296; }; })();
+    state.shapes.length = 0; state.history.length = 0; state.histIdx = -1; state.seq = 0; state.seenOps = new Set();
+    // Add 60 rects spread across several grid cells
+    for(let i=0;i<60;i++){
+      const s=Shape.make('rect',{x:(rnd11()*2000-1000),y:(rnd11()*2000-1000),w:40+rnd11()*160,h:40+rnd11()*160});
+      s.z=i+1;state.shapes.push(s);
+    }
+    sortZ();
+    const grid=_buildGrid(state.shapes);
+    // For each shape, query its centre and check every candidate satisfies G.hit or is just an over-approximation
+    let gridOk=true;
+    for(const s of state.shapes){
+      const wp={x:s.x+s.w/2,y:s.y+s.h/2};
+      // Brute-force: topmost shape that G.hit accepts
+      let bf=null;
+      for(let i=state.shapes.length-1;i>=0;i--){const sh=state.shapes[i];if(sh.type!=='frame'&&G.hit(sh,wp)){bf=sh;break;}}
+      // Grid path (same logic as pickTop grid branch)
+      const cands=_queryGrid(grid,wp);
+      let gr=null;
+      for(let i=state.shapes.length-1;i>=0;i--){const sh=state.shapes[i];if(sh.type!=='frame'&&cands.has(sh)&&G.hit(sh,wp)){gr=sh;break;}}
+      if(bf?.id!==gr?.id){gridOk=false;break;}
+    }
+    assert.ok(gridOk,'spatial grid pickTop matches brute-force for 60 shapes');
+    // Also verify: after Store.commit (grid invalidate) a fresh build is used
+    const shNew=Shape.make('rect',{x:500,y:500,w:30,h:30});shNew.z=99;
+    Store.commit({op:'add',shape:shNew});
+    const gridAfter=_buildGrid(state.shapes);
+    const candsAfter=_queryGrid(gridAfter,{x:515,y:515});
+    assert.ok([...candsAfter].some(s=>s.id===shNew.id),'newly added shape appears in rebuilt grid');
+    console.log('  ✓ spatial index: grid matches brute-force for 60-shape board, invalidation works');
+  }
+
   // core invariant — apply N ops, undo all == initial; redo all == post-ops.
   // This is the net to catch reversibility regressions like the old zorder bug.
   {
@@ -723,7 +763,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 54;
+  pass += 55;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

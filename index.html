@@ -722,7 +722,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.10';
+const V='1.6.11';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1027,6 +1027,7 @@ const Store={
     invalidate();
   },
   _recordCommitted(op){
+    _invalidateGrid();
     if(!op.clock)op.clock={peer:state.peerId,seq:++state.seq,ts:Date.now()};
     const k=op.clock.peer+':'+op.clock.seq;
     if(state.seenOps.has(k))return;
@@ -1060,6 +1061,7 @@ const Store={
     return true;
   },
   _apply(op,forward){
+    _invalidateGrid();
     switch(op.op){
       case 'add':{
         if(forward){state.shapes.push(clone(op.shape));sortZ();}
@@ -1799,10 +1801,43 @@ function fitToContent(){
   UI.refreshZoom();invalidate();
 }
 
+// ---- spatial index (uniform grid, lazy rebuild, invalidated on every _apply) ----
+// Cell size 200 world-units. Shapes spanning >8 cells in either axis go into the
+// `big` list and are always included in query results. tol <= 60wu < 200wu, so
+// querying the 3×3 neighbourhood of the point's cell always covers all possible hits.
+const _GCELL=200;let _grid=null;
+function _invalidateGrid(){_grid=null;}
+function _buildGrid(shapes){
+  const cells=new Map(),big=[];
+  for(const s of shapes){
+    const b=G.bbox(s);if(!b)continue;
+    const x0=Math.floor(Math.min(b.x,b.x+b.w)/_GCELL),x1=Math.floor(Math.max(b.x,b.x+b.w)/_GCELL);
+    const y0=Math.floor(Math.min(b.y,b.y+b.h)/_GCELL),y1=Math.floor(Math.max(b.y,b.y+b.h)/_GCELL);
+    if(x1-x0>8||y1-y0>8){big.push(s);continue;}
+    for(let cx=x0;cx<=x1;cx++)for(let cy=y0;cy<=y1;cy++){
+      const k=cx+'|'+cy;let bk=cells.get(k);if(!bk){bk=[];cells.set(k,bk);}bk.push(s);
+    }
+  }
+  return{cells,big};
+}
+function _queryGrid(grid,pt){
+  const cx=Math.floor(pt.x/_GCELL),cy=Math.floor(pt.y/_GCELL),cands=new Set(grid.big);
+  for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){
+    const bk=grid.cells.get((cx+dx)+'|'+(cy+dy));if(bk)for(const s of bk)cands.add(s);
+  }
+  return cands;
+}
 // ---- select tool ----
 function pickTop(wp){
   // Walk backwards (highest z first). Skip frames on first pass
   // so shapes inside a frame are always preferred over the frame itself.
+  if(state.shapes.length>40){
+    if(!_grid)_grid=_buildGrid(state.shapes);
+    const cands=_queryGrid(_grid,wp);
+    for(let i=state.shapes.length-1;i>=0;i--){const s=state.shapes[i];if(s.type!=='frame'&&cands.has(s)&&G.hit(s,wp))return s;}
+    for(let i=state.shapes.length-1;i>=0;i--){const s=state.shapes[i];if(s.type==='frame'&&cands.has(s)&&G.hit(s,wp))return s;}
+    return null;
+  }
   for(let i=state.shapes.length-1;i>=0;i--){
     const s=state.shapes[i];
     if(s.type==='frame')continue;

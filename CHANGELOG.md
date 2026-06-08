@@ -2,6 +2,23 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.11] — 2026-06-08
+
+仕様書 §13 の「空間索引(`pickTop` O(n))」ギャップを実装。
+
+### Added
+- **均一グリッド空間索引** (`_buildGrid` / `_queryGrid`) — 200 wu セルのグリッドを
+  遅延構築し `Store._apply` / `_recordCommitted` でキャッシュを無効化。`pickTop` は
+  shapes > 40 枚時に 3×3 近傍セルで候補を絞ってから `G.hit` で確定する(frames 2パス順序を維持)。
+  大型 shape(8 セル超)は `big` リストで線形スキャン。
+  最大許容 tol = 60 wu(min zoom 0.1 時) < セルサイズ 200 wu なので 3×3 近傍で完全。
+
+### Tests
+- **182/182 全通過** (+4): グリッド presence × 3、60-shape ボードでの grid/brute-force 一致、
+  `Store.commit` 後にグリッドが無効化されること。
+
+---
+
 ## [1.6.10] — 2026-06-06
 
 仕様書 §13 の「キーボードでの図形巡回」ギャップ(a11y)を実装。

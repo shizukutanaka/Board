@@ -1,6 +1,6 @@
 # Board — 仕様書 (Specification)
 
-> Board v1.6.10 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
+> Board v1.6.11 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
 > **§13 適合ギャップ(不足)** で仕様と実装の差分を列挙する。本書は実装と対で更新する。
 > 関連: 設計=`docs/architecture.md`、改善調査=`docs/research-improvements.md` /
 > `docs/category-research*.md`、変更履歴=`CHANGELOG.md`。
@@ -121,10 +121,15 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
   中央寄せ(`centerOn`)、`describeShape` を `aria-live` トーストで SR 読み上げ。既存トーストも
   `#toasts` の aria-live で読み上げ対象に。
 
+### ✅ v1.6.11 で解消
+- **空間索引(pickTop O(n)→O(1) amortised)**: 200wu セル均一グリッドを `_buildGrid` で遅延構築し、
+  `Store._apply`/`_recordCommitted` でキャッシュ無効化。`pickTop` は shapes > 40 枚時にグリッドの
+  3×3 近傍セルで候補を絞り `G.hit` で確定(frames 2パス順序を維持)。大型 shape(8セル超)は
+  `big` リストで線形スキャン(フレームは少数)。tol ≤ 60wu < 200wu なので 3×3 は完全。
+
 ### ⬜ 既知の未充足(将来 ADR で対応 / 詳細は research docs)
 - **z 順序 op のスケーラビリティ**: `zorder` が全 shape スナップショットを保持(大規模で履歴/帯域肥大)。
   fractional index へ移行が望ましい(`research-improvements.md` 項目A)。
-- **空間索引**: ヒットテスト(`pickTop`)は依然 O(n)。quadtree/uniform grid 未導入(cat 1)。
 - **キーボードでの図形作成**: 作成系はマウス専用(巡回は v1.6.10 で対応)。DOM ミラー a11y も将来課題(§10、cat 6)。
 - **ペン品質**: 固定幅。筆圧/平滑化(perfect-freehand)未実装(cat 3)。
 - CI の `ci.yml` は GitHub App 権限の都合でブランチ未反映(手動適用要)。
