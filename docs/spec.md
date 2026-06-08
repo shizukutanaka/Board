@@ -1,6 +1,6 @@
 # Board — 仕様書 (Specification)
 
-> Board v1.6.13 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
+> Board v1.6.14 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
 > **§13 適合ギャップ(不足)** で仕様と実装の差分を列挙する。本書は実装と対で更新する。
 > 関連: 設計=`docs/architecture.md`、改善調査=`docs/research-improvements.md` /
 > `docs/category-research*.md`、変更履歴=`CHANGELOG.md`。
@@ -27,7 +27,7 @@ Board は「サインアップ/重量/有料/プライバシー侵害」を全�
 ### 2.2 shape(共通フィールド)
 `{ id:string, type, z:number, stroke, fill, size:number, opacity:number }` +
 種別固有: rect/ellipse/frame/sticky/image/text=`x,y,w,h`、line/arrow=`x1,y1,x2,y2`、
-pen=`pts:[[x,y],…]`、text/sticky=`text,fontSize`、sticky=`color`、image=`dataUrl`、
+pen=`pts:[[x,y(,pressure)],…]`(pressure は任意の第3要素 0..1)、text/sticky=`text,fontSize`、sticky=`color`、image=`dataUrl`、
 frame=`label`、group=`groupId`。
 - **MUST**: 全 shape は `id`・`type`・数値 `z` を持つ。座標/サイズは**有限数**(intake で保証)。
 
@@ -141,11 +141,15 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
   可変幅セグメントを出力(**表示=出力パリティ**、座標は 1dp 丸めでサイズ抑制)。データモデル
   (`pts:[[x,y]]`)は不変なので保存/同期/undo/hit-test/bbox に影響なし。
 
+### ✅ v1.6.14 で解消
+- **真の筆圧入力**: pointer の `pressure` を pen の第3要素 `[x,y,pressure]` として取り込み。
+  `penWidths` はストロークが**変化する**筆圧信号を持つ時のみ採用(stylus)、一定値(マウスは常に 0.5)/
+  欠落(レガシー 2-tuple)/非有限は速度プロキシへフォールバック。canvas/SVG 両方で反映(パリティ維持)。
+  `_penPr` で有限値に強制、データモデル後方互換(既存 pen は 2-tuple のまま動作)。
+
 ### ⬜ 既知の未充足(将来 ADR で対応 / 詳細は research docs)
 - **z 順序 op のスケーラビリティ**: `zorder` が全 shape スナップショットを保持(大規模で履歴/帯域肥大)。
-  fractional index へ移行が望ましい(`research-improvements.md` 項目A)。
-- **真の筆圧入力**: 線幅は速度プロキシ。pointer の `pressure` を取り込めばペンタブで更に自然
-  (データモデルに第3要素を足す拡張、cat 3)。
+  fractional index へ移行が望ましい(`research-improvements.md` 項目A)。専用 ADR 予定(P0 可逆性に触れるため)。
 - **DOM ミラー a11y**: 図形ごとの DOM ノードによるネイティブ SR 対応は将来課題(§10、cat 6)。
 - CI の `ci.yml` は GitHub App 権限の都合でブランチ未反映(手動適用要)。
 

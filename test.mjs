@@ -179,6 +179,10 @@ const checks = [
   ['penWidths helper present', html.includes("function penWidths")],
   ['drawPen uses variable width', html.includes("penWidths(p,s.size)") && html.includes("c.lineWidth=(w[i]+w[i+1])/2")],
   ['SVG pen export uses penWidths (display=output parity)', html.includes("penWidths(P,SZ)")],
+  // v1.6.14: pointer pressure input
+  ['pen captures pointer pressure', html.includes("function _penPr") && html.includes("[wp.x,wp.y,_penPr(e)]")],
+  ['penWidths uses varying pressure signal', html.includes("usePr=hasPr&&(mx-mn)>0.05")],
+  ['SVG pen carries pressure for parity', html.includes("_num(p&&p[1])+oy,p&&p[2]")],
 ];
 
 let pass = 0, fail = 0;
@@ -823,6 +827,32 @@ try {
     console.log('  ✓ variable-width pen: SVG export parity + non-finite coord safety');
   }
 
+  // v1.6.14: pointer pressure — a varying pressure signal drives width; constant/none falls back to velocity
+  {
+    const size = 8, base = size, LO = 0.45;
+    // Closely-spaced points (so velocity would say "thick everywhere"), but pressure ramps low→high.
+    const pr = [];
+    for (let i = 0; i < 10; i++) pr.push([i, 0, i / 9]); // pressure 0 .. 1
+    const wp = penWidths(pr, size);
+    assert.ok(wp[8] > wp[1] + 1, 'high-pressure end is thicker than low-pressure start');
+    for (const w of wp) assert.ok(w <= base + 1e-9 && w >= LO * base - 1e-9, 'pressure width bounded');
+    // Constant pressure (mouse 0.5) → ignored as a signal, velocity proxy used instead.
+    // Build a stroke that is slow then fast; constant pressure must NOT flatten the taper.
+    const mixed = [];
+    for (let i = 0; i < 6; i++) mixed.push([i * 1, 0, 0.5]);     // slow
+    for (let i = 1; i < 5; i++) mixed.push([6 + i * 200, 0, 0.5]); // fast
+    const wm = penWidths(mixed, size);
+    assert.ok(wm[2] > wm[8] + 0.5, 'constant pressure falls back to velocity (slow thicker than fast)');
+    // Legacy 2-tuples (no pressure element) still work unchanged.
+    const legacy = penWidths([[0,0],[1,0],[2,0],[200,0],[400,0]], size);
+    assert.strictEqual(legacy.length, 5, 'legacy 2-tuple penWidths unchanged');
+    assert.ok(legacy[1] > legacy[3], 'legacy stroke still velocity-tapered');
+    // Non-finite pressure → treated as no-signal, no throw.
+    const badPr = penWidths([[0,0,NaN],[1,0,0.9],[2,0,0.2]], size);
+    assert.ok(badPr.every(Number.isFinite), 'non-finite pressure tolerated');
+    console.log('  ✓ pointer pressure: varying signal drives width, constant/none → velocity, legacy safe');
+  }
+
   // core invariant — apply N ops, undo all == initial; redo all == post-ops.
   // This is the net to catch reversibility regressions like the old zorder bug.
   {
@@ -855,7 +885,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 58;
+  pass += 59;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

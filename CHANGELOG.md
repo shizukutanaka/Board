@@ -2,6 +2,23 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.14] — 2026-06-08
+
+仕様書 §13 の「真の筆圧入力」を実装(ペン品質の筆圧パートを完了)。
+
+### Added
+- **筆圧連動のペン入力** — pointer の `pressure` を pen の第3要素 `[x,y,pressure]` として取り込む。
+  `penWidths()` はストロークが**変化する**筆圧信号を持つ場合(stylus)にそれを採用し、一定値
+  (マウスは常に 0.5)・欠落(レガシー 2-tuple)・非有限の場合は v1.6.13 の速度プロキシへフォールバック。
+  canvas と SVG 書き出しの両方に反映(表示=出力パリティを維持)。`_penPr()` で有限値に強制。
+  データモデルは後方互換 — 既存の 2-tuple ペンはそのまま velocity 描画で動作する。
+
+### Tests
+- **196/196 全通過** (+4): 変化する筆圧で太さが追従、一定筆圧は velocity にフォールバック、
+  レガシー 2-tuple の不変、非有限筆圧の許容、presence × 3。
+
+---
+
 ## [1.6.13] — 2026-06-08
 
 仕様書 §13 の「ペン品質(固定幅)」ギャップを実装。

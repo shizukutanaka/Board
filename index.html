@@ -722,7 +722,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.13';
+const V='1.6.14';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1385,13 +1385,23 @@ function drawArrow(s,c){
 // base size (so the existing size/2 bbox padding still covers it).
 function penWidths(pts,size){
   const n=pts.length,base=Math.max(0.5,size||2),REF=base*3+8,LO=0.45;
+  // Prefer real pointer pressure when the stroke carries a *varying* signal (a
+  // stylus); a constant value (mouse always reports 0.5) or none (legacy 2-tuples
+  // / non-finite) falls back to the spacing-based velocity proxy.
+  let hasPr=true,mn=Infinity,mx=-Infinity;
+  for(let i=0;i<n;i++){const pr=pts[i][2];if(!Number.isFinite(pr)){hasPr=false;break}if(pr<mn)mn=pr;if(pr>mx)mx=pr}
+  const usePr=hasPr&&(mx-mn)>0.05,PLO=0.35;
   const raw=new Array(n);
   for(let i=0;i<n;i++){
-    let d=0,c=0;
-    if(i>0){d+=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);c++}
-    if(i<n-1){d+=Math.hypot(pts[i+1][0]-pts[i][0],pts[i+1][1]-pts[i][1]);c++}
-    const sp=c?d/c:0,t=Math.min(1,sp/REF);
-    raw[i]=base*(1-(1-LO)*t);
+    if(usePr){
+      raw[i]=base*Math.max(LO,Math.min(1,PLO+(1-PLO)*pts[i][2]));
+    }else{
+      let d=0,c=0;
+      if(i>0){d+=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);c++}
+      if(i<n-1){d+=Math.hypot(pts[i+1][0]-pts[i][0],pts[i+1][1]-pts[i][1]);c++}
+      const sp=c?d/c:0,t=Math.min(1,sp/REF);
+      raw[i]=base*(1-(1-LO)*t);
+    }
   }
   // 3-tap smooth so width doesn't jitter between adjacent samples
   const w=new Array(n);
@@ -1566,7 +1576,7 @@ canvas.addEventListener('pointerdown',e=>{
         }
       }
       pickOrMarquee(wp,e);break;
-    case 'pen':beginPen(wp);break;
+    case 'pen':beginPen(wp,e);break;
     case 'rect':case 'ellipse':case 'sticky':case 'frame':beginRectLike(wp);break;
     case 'line':case 'arrow':beginLineLike(wp);break;
     case 'text':beginText(wp);break;
@@ -1613,7 +1623,7 @@ canvas.addEventListener('pointermove',e=>{
       }else if(ptr.dragKind==='move')doMove(wp);
       else if(ptr.dragKind==='marquee'){state.marquee={x1:ptr.wx0,y1:ptr.wy0,x2:wp.x,y2:wp.y};invalidate()}
       break;
-    case 'pen':contPen(wp);break;
+    case 'pen':contPen(wp,e);break;
     case 'rect':case 'ellipse':case 'sticky':case 'frame':contRectLike(wp,e.shiftKey);break;
     case 'line':case 'arrow':contLineLike(wp,e.shiftKey);break;
     case 'eraser':eraseAt(wp);break;
@@ -1949,16 +1959,20 @@ function endSelect(wp){
 }
 
 // ---- pen ----
-function beginPen(wp){
-  state.draft=Shape.make('pen',{pts:[[wp.x,wp.y]]});
+// Pointer pressure → 3rd pts element. Mouse reports a constant 0.5 (ignored as a
+// signal by penWidths); a real stylus reports a varying 0..1. Coerced finite so
+// downstream geometry/export stay safe even on a malformed device value.
+function _penPr(e){const p=e&&e.pressure;return Number.isFinite(p)&&p>0?Math.min(1,p):0.5}
+function beginPen(wp,e){
+  state.draft=Shape.make('pen',{pts:[[wp.x,wp.y,_penPr(e)]]});
 }
-function contPen(wp){
+function contPen(wp,e){
   if(!state.draft)return;
   const pts=state.draft.pts;
   const last=pts[pts.length-1];
   // decimate by min distance for smoothness
   const d=Math.hypot(wp.x-last[0],wp.y-last[1]);
-  if(d>1/state.viewport.zoom)pts.push([wp.x,wp.y]);
+  if(d>1/state.viewport.zoom)pts.push([wp.x,wp.y,_penPr(e)]);
   invalidate();
 }
 function endPen(){
@@ -2520,7 +2534,7 @@ function buildSVG(shapes,paper){
         if(!Array.isArray(s.pts)||s.pts.length<2)break;
         // Mirror the canvas render: variable-width, midpoint-quadratic smoothed
         // segments (display = output parity). Coords rounded to 1dp to curb size.
-        const P=s.pts.map(p=>[_num(p&&p[0])+ox,_num(p&&p[1])+oy]),n=P.length,W=penWidths(P,SZ);
+        const P=s.pts.map(p=>[_num(p&&p[0])+ox,_num(p&&p[1])+oy,p&&p[2]]),n=P.length,W=penWidths(P,SZ);
         const r=v=>Math.round(v*10)/10;
         const seg=(d,sw)=>els.push(`<path d="${d}" fill="none" stroke="${stroke}" stroke-width="${r(sw)}" stroke-linecap="round" stroke-linejoin="round"${a}/>`);
         let px=P[0][0],py=P[0][1];
