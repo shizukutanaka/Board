@@ -580,7 +580,7 @@ body{visibility:visible}
 
   <!-- ==== Canvas ==== -->
   <main class="canvas-wrap">
-    <canvas id="c" data-tool="select" role="application" aria-label="Drawing canvas — use toolbar buttons or keyboard shortcuts (V select, P pen, R rectangle, T text, F frame) to create shapes. Tab / Shift+Tab cycle through shapes, arrow keys move the selection." tabindex="0"></canvas>
+    <canvas id="c" data-tool="select" role="application" aria-label="Drawing canvas — use toolbar buttons or keyboard shortcuts (V select, P pen, R rectangle, T text, F frame) to pick a tool, then press Enter to create a shape at the centre. Tab / Shift+Tab cycle through shapes, arrow keys move the selection." tabindex="0"></canvas>
 
     <!-- Style panel -->
     <aside class="style-panel" id="stylePanel" aria-label="Style">
@@ -722,7 +722,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.11';
+const V='1.6.12';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -758,7 +758,7 @@ const I18N={
     selectTwo:'2つ以上選択してください',grouped:'グループ化',noGroup:'グループなし',
     ungrouped:'グループ解除',noFrames:'フレームがありません (F キーで作成)',
     copied:'コピー',pasted:'貼り付け',deleted:'削除',cleared:'クリア',
-    undone:'元に戻した',redone:'やり直した',
+    undone:'元に戻した',redone:'やり直した',created:'作成',
     confirmClear:'すべて削除しますか？',
     ctxCopy:'コピー',ctxPaste:'貼り付け',ctxDuplicate:'複製',
     ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',
@@ -791,7 +791,8 @@ const I18N={
       selAll:'全選択',copy:'コピー',paste:'貼付',cut:'切取',
       zoomIn:'拡大',zoomOut:'縮小',zoom100:'100%にリセット',
       fit:'画面にフィット',pan:'パン',help:'ヘルプ',exp:'PNG書き出し',
-      save:'即時保存',grid:'グリッド',esc:'選択解除/キャンセル'}},
+      save:'即時保存',grid:'グリッド',esc:'選択解除/キャンセル',
+      cycle:'図形を巡回',create:'中央に作成'}},
   en:{export:'Export',size:'Size',helpTitle:'Shortcuts',
     helpSub:'No need to memorise. You\'ll pick it up.',
     saved:'saved',savedNow:'just now',savedAgo:'s ago',
@@ -801,7 +802,7 @@ const I18N={
     selectTwo:'Select 2 or more',grouped:'Grouped',noGroup:'No group',
     ungrouped:'Ungrouped',noFrames:'No frames (press F to create)',
     copied:'Copied',pasted:'Pasted',deleted:'Deleted',cleared:'Cleared',
-    undone:'Undone',redone:'Redone',
+    undone:'Undone',redone:'Redone',created:'Created',
     confirmClear:'Delete everything?',
     ctxCopy:'Copy',ctxPaste:'Paste',ctxDuplicate:'Duplicate',
     ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',
@@ -834,7 +835,8 @@ const I18N={
       selAll:'Select all',copy:'Copy',paste:'Paste',cut:'Cut',
       zoomIn:'Zoom in',zoomOut:'Zoom out',zoom100:'Reset zoom',
       fit:'Fit to content',pan:'Pan',help:'Help',exp:'Export PNG',
-      save:'Save now',grid:'Toggle grid',esc:'Deselect / cancel'}}};
+      save:'Save now',grid:'Toggle grid',esc:'Deselect / cancel',
+      cycle:'Cycle shapes',create:'Create at centre'}}};
 const LANG=(navigator.language||'en').startsWith('ja')?'ja':'en';
 const T=I18N[LANG];
 const t=k=>T[k]||I18N.en[k]||k;
@@ -2012,6 +2014,39 @@ function beginText(wp){
   openTextEditor(s,true);
   pickTool('select');
 }
+// ---- keyboard shape creation (a11y) ----
+// Create a default-sized shape of the active tool, centred in the viewport, so the
+// whole create→select→edit loop is reachable without a pointer (complements the
+// Tab navigation added in v1.6.10). Returns true if a shape was created/handled.
+function createShapeKbd(){
+  const tool=state.tool,view=visibleWorldRect();
+  const cx=Math.round(view.x+view.w/2),cy=Math.round(view.y+view.h/2);
+  let s;
+  if(tool==='rect'||tool==='ellipse'){
+    s=Shape.make(tool,{x:cx-60,y:cy-40,w:120,h:80});
+  }else if(tool==='line'||tool==='arrow'){
+    s=Shape.make(tool,{x1:cx-80,y1:cy,x2:cx+80,y2:cy});
+  }else if(tool==='sticky'){
+    s=Shape.make('sticky',{x:cx-80,y:cy-80,w:160,h:160,
+      color:STICKY_COLORS[Math.floor(Math.random()*STICKY_COLORS.length)],text:'',fontSize:14});
+  }else if(tool==='frame'){
+    const n=state.shapes.filter(x=>x.type==='frame').length+1;
+    s=Shape.make('frame',{x:cx-400,y:cy-250,w:800,h:500,
+      label:`Frame ${n}`,stroke:getCSS('--brand')||'#00C4CC',fill:null,size:1.5});
+  }else if(tool==='text'){
+    beginText({x:cx-60,y:cy-12});   // opens editor + switches to select
+    return true;
+  }else{
+    return false;   // pen/select/hand/eraser — nothing to create from the keyboard
+  }
+  Store.commit({op:'add',shape:s});
+  pickTool('select');
+  state.selection=new Set([s.id]);
+  UI.toast(`${t('created')}: ${describeShape(s)}`);
+  if(s.type==='sticky')openTextEditor(s,true);
+  invalidate();
+  return true;
+}
 function openTextEditor(s,isNew){
   state.editing=s.id;invalidate();
   const ta=document.createElement('textarea');
@@ -2153,6 +2188,11 @@ window.addEventListener('keydown',e=>{
       UI.toast(`${describeShape(sh)} (${ids.indexOf(id)+1}/${ids.length})`);
     }
     invalidate();
+  }
+  else if(k==='enter'&&!meta&&!e.shiftKey){
+    // Keyboard shape creation: place a default shape of the active tool at the
+    // viewport centre (no-op for select/hand/eraser/pen).
+    if(createShapeKbd())e.preventDefault();
   }
   else if(k==='arrowup'||k==='arrowdown'||k==='arrowleft'||k==='arrowright'){
     if(state.selection.size){
@@ -2890,7 +2930,8 @@ const UI={
       ['⇧1',k.fit],['⌘E',k.exp],['⌘⇧E','SVG'],['⌘P','PDF'],['⌘S',k.save],
       ['G',k.grid],['⇧G','Snap'],['Esc',k.esc],['?',k.help],
       ['↑↓←→','移動 (⇧: 10px)'],
-      [']/[','前面/背面'],['⇧]/⇧[','最前面/最背面']
+      [']/[','前面/背面'],['⇧]/⇧[','最前面/最背面'],
+      ['Tab / ⇧Tab',k.cycle],['Enter',k.create]
     ];
     while(g.firstChild)g.removeChild(g.firstChild);
     for(const [key,val] of rows){

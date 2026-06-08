@@ -170,6 +170,11 @@ const checks = [
   ['spatial grid helpers present', html.includes("function _buildGrid") && html.includes("function _queryGrid")],
   ['pickTop uses grid for large boards', html.includes("state.shapes.length>40") && html.includes("_buildGrid(state.shapes)")],
   ['grid invalidated on every _apply', html.includes("_apply(op,forward){") && html.includes("_invalidateGrid()")],
+  // v1.6.12: keyboard shape creation (a11y)
+  ['createShapeKbd helper present', html.includes("function createShapeKbd")],
+  ['Enter creates shape at viewport centre', html.includes("k==='enter'&&!meta&&!e.shiftKey") && html.includes("createShapeKbd()")],
+  ['canvas aria-label advertises Enter create', html.includes("press Enter to create a shape")],
+  ['help grid lists Tab cycle and Enter create', html.includes("['Tab / ⇧Tab',k.cycle]") && html.includes("['Enter',k.create]")],
 ];
 
 let pass = 0, fail = 0;
@@ -218,6 +223,8 @@ const fakeDoc = {
     toBlob: (cb) => cb(new Blob(['fake'],{type:'image/png'})),
     getContext: () => fakeDoc.getElementById().getContext(),
     value:'', textContent:'', innerHTML:'',
+    scrollWidth: 50, scrollHeight: 20, spellcheck: false,
+    focus(){}, blur(){}, select(){}, setSelectionRange(){},
     click(){}
   }),
   body: { appendChild(){}, removeChild(){} },
@@ -264,7 +271,7 @@ try {
              getHandles, applyResize, handleCursor,
              doGroup, doUngroup, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
-             _buildGrid, _queryGrid, sortZ };
+             _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -277,7 +284,7 @@ try {
           getHandles, applyResize, handleCursor,
           doGroup, doUngroup, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
-          _buildGrid, _queryGrid, sortZ } = api;
+          _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool } = api;
 
   console.log('\n-- behavioural --');
 
@@ -731,6 +738,51 @@ try {
     console.log('  ✓ spatial index: grid matches brute-force for 60-shape board, invalidation works');
   }
 
+  // v1.6.12: keyboard shape creation — each creation tool yields a default shape
+  {
+    state.shapes.length = 0; state.history.length = 0; state.histIdx = -1; state.seq = 0; state.seenOps = new Set(); state.selection = new Set();
+    state.viewport = { x: 0, y: 0, zoom: 1 };
+    for (const [tool, type, check] of [
+      ['rect','rect', s => s.w===120 && s.h===80],
+      ['ellipse','ellipse', s => s.w===120 && s.h===80],
+      ['line','line', s => s.x1!==s.x2 && s.y1===s.y2],
+      ['arrow','arrow', s => s.x1!==s.x2],
+      ['sticky','sticky', s => s.w===160 && s.h===160 && typeof s.color==='string'],
+      ['frame','frame', s => s.w===800 && s.h===500 && /^Frame /.test(s.label)],
+    ]) {
+      const before = state.shapes.length;
+      state.tool = tool;
+      const ok = createShapeKbd();
+      assert.ok(ok, `createShapeKbd returns true for ${tool}`);
+      assert.strictEqual(state.shapes.length, before + 1, `${tool} adds exactly one shape`);
+      const s = state.shapes[state.shapes.length - 1];
+      assert.strictEqual(s.type, type, `${tool} creates a ${type}`);
+      assert.ok(check(s), `${tool} default geometry correct`);
+      assert.ok(state.selection.has(s.id), `${tool} new shape is selected`);
+      // Reversible like any add op
+      const n = state.shapes.length;
+      Store.undo();
+      assert.strictEqual(state.shapes.length, n - 1, `${tool} creation is undoable`);
+      Store.redo();
+      assert.strictEqual(state.shapes.length, n, `${tool} creation redoable`);
+      state.tool = tool; // pickTool('select') ran inside; reset for next loop
+    }
+    // text path returns true (opens editor) and creates a text shape
+    state.tool = 'text';
+    const tn = state.shapes.length;
+    assert.ok(createShapeKbd(), 'createShapeKbd returns true for text');
+    assert.strictEqual(state.shapes.length, tn + 1, 'text adds one shape');
+    assert.strictEqual(state.shapes[state.shapes.length-1].type, 'text', 'text creates a text shape');
+    // non-creation tools are a no-op
+    for (const tool of ['select','hand','eraser','pen']) {
+      state.tool = tool;
+      const c = state.shapes.length;
+      assert.ok(!createShapeKbd(), `createShapeKbd no-op for ${tool}`);
+      assert.strictEqual(state.shapes.length, c, `${tool} creates nothing`);
+    }
+    console.log('  ✓ keyboard creation: all tools default-create, undoable, no-op for select/hand/eraser/pen');
+  }
+
   // core invariant — apply N ops, undo all == initial; redo all == post-ops.
   // This is the net to catch reversibility regressions like the old zorder bug.
   {
@@ -763,7 +815,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 55;
+  pass += 56;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

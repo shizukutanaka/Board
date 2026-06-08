@@ -2,6 +2,24 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.12] — 2026-06-08
+
+仕様書 §13 の「キーボードでの図形作成」ギャップ(a11y)を実装。
+
+### Added
+- **キーボードで図形を作成(Enter)** — 作成ツール(R/O/A/L/T/N/F)を選んでから Enter で
+  viewport 中央に既定サイズの図形を作成(`createShapeKbd`)。rect/ellipse=120×80、
+  line/arrow=水平 160、sticky=160²(色ランダム + テキストエディタ起動)、frame=800×500(連番ラベル)、
+  text=テキストエディタ起動。作成は通常の `add` op なので完全に undo/redo 可能。
+  pen/select/hand/eraser では no-op。canvas `aria-label` とヘルプグリッドに Enter / Tab を明記。
+  これで「作成→巡回(v1.6.10)→移動(矢印)→編集」がポインタ無しで完結する。
+
+### Tests
+- **187/187 全通過** (+5): 各ツールの既定生成・可逆性・選択状態、text パス、
+  非作成ツールの no-op、presence(`createShapeKbd`/Enter ハンドラ/aria-label/help grid)。
+
+---
+
 ## [1.6.11] — 2026-06-08
 
 仕様書 §13 の「空間索引(`pickTop` O(n))」ギャップを実装。
