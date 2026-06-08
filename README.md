@@ -4,7 +4,7 @@
 単一HTMLファイル。ダブルクリックで動く。アカウント不要。広告なし。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-00C4CC.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.6.12-00C4CC.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.6.13-00C4CC.svg)](CHANGELOG.md)
 [![Size](https://img.shields.io/badge/size-~37KB%20gzip-00C4CC.svg)](index.html)
 [![Offline](https://img.shields.io/badge/offline-first-00C4CC.svg)](#offline)
 [![A11y](https://img.shields.io/badge/WCAG-AAA-00C4CC.svg)](#accessibility)
@@ -44,7 +44,7 @@ start index.html      # Windows
 ## 機能 / Features (v1.6)
 
 ### 描画
-- ペン (手描き) / 矩形 / 楕円 / 直線 / 矢印 / テキスト / 消しゴム / 付箋 (Sticky) / フレーム (Frame)
+- ペン (手描き、速度連動の可変線幅) / 矩形 / 楕円 / 直線 / 矢印 / テキスト / 消しゴム / 付箋 (Sticky) / フレーム (Frame)
 - 無限キャンバス、パン & ズーム (0.1x–16x)、ピンチズーム
 - ストローク色 7 / 塗り 7 / 太さ 1–32 / 不透明度 10–100%
 - グリッド表示 + グリッドスナップ (⇧G)、サブピクセル描画

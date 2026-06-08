@@ -722,7 +722,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.12';
+const V='1.6.13';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1378,21 +1378,49 @@ function drawArrow(s,c){
   c.lineTo(s.x2+Math.cos(a2)*ah,s.y2+Math.sin(a2)*ah);
   c.closePath();c.fillStyle=s.stroke||'#0F172A';c.fill();
 }
+// Variable stroke width from local point spacing (a velocity proxy): slow,
+// closely-spaced samples → full width; fast, widely-spaced → tapered. Pure and
+// render-time only (the pts data model is untouched), so saved/synced pens are
+// unaffected, hit-test/bbox/undo all keep working, and width never exceeds the
+// base size (so the existing size/2 bbox padding still covers it).
+function penWidths(pts,size){
+  const n=pts.length,base=Math.max(0.5,size||2),REF=base*3+8,LO=0.45;
+  const raw=new Array(n);
+  for(let i=0;i<n;i++){
+    let d=0,c=0;
+    if(i>0){d+=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);c++}
+    if(i<n-1){d+=Math.hypot(pts[i+1][0]-pts[i][0],pts[i+1][1]-pts[i][1]);c++}
+    const sp=c?d/c:0,t=Math.min(1,sp/REF);
+    raw[i]=base*(1-(1-LO)*t);
+  }
+  // 3-tap smooth so width doesn't jitter between adjacent samples
+  const w=new Array(n);
+  for(let i=0;i<n;i++)w[i]=(raw[Math.max(0,i-1)]+raw[i]+raw[Math.min(n-1,i+1)])/3;
+  return w;
+}
 function drawPen(s,c){
   c=c||ctx;
-  const p=s.pts;if(p.length<2){
+  const p=s.pts,n=p.length;
+  if(n<2){
     c.fillStyle=s.stroke;
     c.beginPath();c.arc(p[0][0],p[0][1],(s.size||2)/2,0,PI2);c.fill();
     return;
   }
-  c.beginPath();
-  c.moveTo(p[0][0],p[0][1]);
-  for(let i=1;i<p.length-1;i++){
-    const x=(p[i][0]+p[i+1][0])/2, y=(p[i][1]+p[i+1][1])/2;
-    c.quadraticCurveTo(p[i][0],p[i][1],x,y);
+  // Variable-width ink: draw each smoothed (midpoint-quadratic) segment with its
+  // own lineWidth. Round caps/joins make consecutive segments blend seamlessly,
+  // which avoids the self-intersection artifacts of a hand-rolled outline ribbon.
+  const w=penWidths(p,s.size),oldCap=c.lineCap,oldJoin=c.lineJoin,oldW=c.lineWidth;
+  c.strokeStyle=s.stroke;c.lineCap='round';c.lineJoin='round';
+  let px=p[0][0],py=p[0][1];
+  for(let i=1;i<n-1;i++){
+    const mx=(p[i][0]+p[i+1][0])/2,my=(p[i][1]+p[i+1][1])/2;
+    c.lineWidth=(w[i]+w[i+1])/2;
+    c.beginPath();c.moveTo(px,py);c.quadraticCurveTo(p[i][0],p[i][1],mx,my);c.stroke();
+    px=mx;py=my;
   }
-  c.lineTo(p[p.length-1][0],p[p.length-1][1]);
-  c.stroke();
+  c.lineWidth=(w[n-2]+w[n-1])/2;
+  c.beginPath();c.moveTo(px,py);c.lineTo(p[n-1][0],p[n-1][1]);c.stroke();
+  c.lineCap=oldCap;c.lineJoin=oldJoin;c.lineWidth=oldW;
 }
 function drawText(s,c){
   c=c||ctx;
@@ -2490,8 +2518,18 @@ function buildSVG(shapes,paper){
         break;}
       case 'pen':{
         if(!Array.isArray(s.pts)||s.pts.length<2)break;
-        const d=s.pts.map((p,i)=>`${i?'L':'M'}${_num(p&&p[0])+ox},${_num(p&&p[1])+oy}`).join(' ');
-        els.push(`<path d="${d}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${a}/>`);
+        // Mirror the canvas render: variable-width, midpoint-quadratic smoothed
+        // segments (display = output parity). Coords rounded to 1dp to curb size.
+        const P=s.pts.map(p=>[_num(p&&p[0])+ox,_num(p&&p[1])+oy]),n=P.length,W=penWidths(P,SZ);
+        const r=v=>Math.round(v*10)/10;
+        const seg=(d,sw)=>els.push(`<path d="${d}" fill="none" stroke="${stroke}" stroke-width="${r(sw)}" stroke-linecap="round" stroke-linejoin="round"${a}/>`);
+        let px=P[0][0],py=P[0][1];
+        for(let i=1;i<n-1;i++){
+          const mx=(P[i][0]+P[i+1][0])/2,my=(P[i][1]+P[i+1][1])/2;
+          seg(`M${r(px)},${r(py)} Q${r(P[i][0])},${r(P[i][1])} ${r(mx)},${r(my)}`,(W[i]+W[i+1])/2);
+          px=mx;py=my;
+        }
+        seg(`M${r(px)},${r(py)} L${r(P[n-1][0])},${r(P[n-1][1])}`,(W[n-2]+W[n-1])/2);
         break;}
       case 'text':{
         const fs=_num(s.fontSize)||16;

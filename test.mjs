@@ -175,6 +175,10 @@ const checks = [
   ['Enter creates shape at viewport centre', html.includes("k==='enter'&&!meta&&!e.shiftKey") && html.includes("createShapeKbd()")],
   ['canvas aria-label advertises Enter create', html.includes("press Enter to create a shape")],
   ['help grid lists Tab cycle and Enter create', html.includes("['Tab / ⇧Tab',k.cycle]") && html.includes("['Enter',k.create]")],
+  // v1.6.13: variable-width pen (velocity-based)
+  ['penWidths helper present', html.includes("function penWidths")],
+  ['drawPen uses variable width', html.includes("penWidths(p,s.size)") && html.includes("c.lineWidth=(w[i]+w[i+1])/2")],
+  ['SVG pen export uses penWidths (display=output parity)', html.includes("penWidths(P,SZ)")],
 ];
 
 let pass = 0, fail = 0;
@@ -271,7 +275,7 @@ try {
              getHandles, applyResize, handleCursor,
              doGroup, doUngroup, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
-             _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool };
+             _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -284,7 +288,7 @@ try {
           getHandles, applyResize, handleCursor,
           doGroup, doUngroup, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
-          _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool } = api;
+          _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths } = api;
 
   console.log('\n-- behavioural --');
 
@@ -783,6 +787,42 @@ try {
     console.log('  ✓ keyboard creation: all tools default-create, undoable, no-op for select/hand/eraser/pen');
   }
 
+  // v1.6.13: variable-width pen — slow (closely spaced) ink is thicker than fast (widely spaced)
+  {
+    const size = 8, base = size, LO = 0.45;
+    // Slow stroke: points 1wu apart. Fast stroke: points 200wu apart.
+    const slow = [], fast = [];
+    for (let i = 0; i < 10; i++) { slow.push([i * 1, 0]); fast.push([i * 200, 0]); }
+    const ws = penWidths(slow, size), wf = penWidths(fast, size);
+    assert.strictEqual(ws.length, slow.length, 'penWidths returns one width per point');
+    // every width within [LO*base, base]
+    for (const w of ws.concat(wf)) {
+      assert.ok(w <= base + 1e-9 && w >= LO * base - 1e-9, 'pen width stays within [LO*base, base]');
+    }
+    // slow ink is meaningfully thicker than fast ink at the interior
+    assert.ok(ws[5] > wf[5] + 0.5, 'slow stroke is thicker than fast stroke');
+    // slow stroke near full base width (closely spaced)
+    assert.ok(ws[5] > 0.9 * base, 'slow stroke approaches full width');
+    // fast stroke tapers toward the floor
+    assert.ok(wf[5] < 0.7 * base, 'fast stroke tapers thin');
+    // degenerate inputs don't throw
+    assert.strictEqual(penWidths([[0,0]], size).length, 1, 'single-point penWidths ok');
+    console.log('  ✓ variable-width pen: slow ink thicker than fast, widths bounded [LO*base, base]');
+    // SVG export emits variable-width segments and tolerates non-finite coords
+    const penShape = { id:'pn', type:'pen', z:0, stroke:'#111', size:6,
+      pts:[[0,0],[1,0],[2,0],[200,0],[400,0]] };
+    const penSvg = buildSVG([penShape], '#FFFFFF') || '';
+    const widths = [...penSvg.matchAll(/stroke-width="([\d.]+)"/g)].map(m => +m[1]);
+    assert.ok(widths.length >= 2, 'pen SVG emits multiple segments');
+    assert.ok(Math.max(...widths) > Math.min(...widths), 'pen SVG segments have varying width');
+    const badPen = { id:'pb', type:'pen', z:0, stroke:'#111', size:6, pts:[[0,0],[Infinity,NaN],[5,5]] };
+    const badSvg = buildSVG([badPen], '#FFFFFF') || '';
+    const badPaths = [...badSvg.matchAll(/<path[^>]*\/>/g)].map(m => m[0]);
+    assert.ok(badPaths.length > 0 && badPaths.every(p => !/(NaN|Infinity)/.test(p)),
+      'pen SVG path coords/widths coerce non-finite via _num');
+    console.log('  ✓ variable-width pen: SVG export parity + non-finite coord safety');
+  }
+
   // core invariant — apply N ops, undo all == initial; redo all == post-ops.
   // This is the net to catch reversibility regressions like the old zorder bug.
   {
@@ -815,7 +855,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 56;
+  pass += 58;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

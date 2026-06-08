@@ -1,6 +1,6 @@
 # Board — 仕様書 (Specification)
 
-> Board v1.6.12 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
+> Board v1.6.13 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
 > **§13 適合ギャップ(不足)** で仕様と実装の差分を列挙する。本書は実装と対で更新する。
 > 関連: 設計=`docs/architecture.md`、改善調査=`docs/research-improvements.md` /
 > `docs/category-research*.md`、変更履歴=`CHANGELOG.md`。
@@ -134,11 +134,19 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
   pen/select/hand/eraser は no-op。canvas `aria-label` と help grid に明記。これで作成→巡回(v1.6.10)
   →移動(矢印)→編集のループがポインタ無しで完結。
 
+### ✅ v1.6.13 で解消
+- **ペン品質(可変線幅)**: 固定幅を脱却。`penWidths()` が描画時にサンプル間隔(速度プロキシ)から
+  線幅を算出(遅い=太い / 速い=細く先細り、`[0.45×base, base]` にクランプ + 3-tap 平滑)。canvas は
+  中点二次平滑の各セグメントを round-cap で重ね描き(外形リボンの自己交差を回避)、SVG も同じ
+  可変幅セグメントを出力(**表示=出力パリティ**、座標は 1dp 丸めでサイズ抑制)。データモデル
+  (`pts:[[x,y]]`)は不変なので保存/同期/undo/hit-test/bbox に影響なし。
+
 ### ⬜ 既知の未充足(将来 ADR で対応 / 詳細は research docs)
 - **z 順序 op のスケーラビリティ**: `zorder` が全 shape スナップショットを保持(大規模で履歴/帯域肥大)。
   fractional index へ移行が望ましい(`research-improvements.md` 項目A)。
+- **真の筆圧入力**: 線幅は速度プロキシ。pointer の `pressure` を取り込めばペンタブで更に自然
+  (データモデルに第3要素を足す拡張、cat 3)。
 - **DOM ミラー a11y**: 図形ごとの DOM ノードによるネイティブ SR 対応は将来課題(§10、cat 6)。
-- **ペン品質**: 固定幅。筆圧/平滑化(perfect-freehand)未実装(cat 3)。
 - CI の `ci.yml` は GitHub App 権限の都合でブランチ未反映(手動適用要)。
 
 > 凡例: MUST=必須契約、✅=本版で適合、⬜=未充足(優先度は research docs の総括表)。
