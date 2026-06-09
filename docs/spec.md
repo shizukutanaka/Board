@@ -1,6 +1,6 @@
 # Board — 仕様書 (Specification)
 
-> Board v1.6.18 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
+> Board v1.6.19 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
 > **§13 適合ギャップ(不足)** で仕様と実装の差分を列挙する。本書は実装と対で更新する。
 > 関連: 設計=`docs/architecture.md`、改善調査=`docs/research-improvements.md` /
 > `docs/category-research*.md`、変更履歴=`CHANGELOG.md`。
@@ -147,6 +147,12 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
   `penWidths` はストロークが**変化する**筆圧信号を持つ時のみ採用(stylus)、一定値(マウスは常に 0.5)/
   欠落(レガシー 2-tuple)/非有限は速度プロキシへフォールバック。canvas/SVG 両方で反映(パリティ維持)。
   `_penPr` で有限値に強制、データモデル後方互換(既存 pen は 2-tuple のまま動作)。
+
+### ✅ v1.6.19 で解消(深掘り監査 第3弾 — sync/PWA — `docs/audit-2026-06.md`)
+- **スナップショット マージの dedup 衝突 (P1)**: `_sendSnapshot` が全 op に `seq:0` を付与し、
+  `applyRemote` の `peer:seq` dedup で**先頭 1 図形しか適用されなかった**(既存盤面への参加=マージ時)。
+  各 op に一意 `seq:'snap'+i` を付与し、マージは id 既存の図形を skip(重複再追加も防止)。
+- **Service Worker の旧キャッシュ滞留 (P2)**: `activate` で `board-v*` の旧版キャッシュを purge。
 
 ### ✅ v1.6.18 で解消(深掘り監査 第2弾 — `docs/audit-2026-06.md`)
 - **キーボードのペン到達不能 (P1)**: 平打ち `p` がプレゼンに横取りされ、`KEYMAP.p='pen'` に到達せず

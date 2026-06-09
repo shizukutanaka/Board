@@ -2,6 +2,26 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.19] — 2026-06-08
+
+深掘り監査 第3弾(同期 / PWA — `docs/audit-2026-06.md`)。未監査だった CRDT・WebRTC・
+共有 URL・Service Worker を精査し、確認できた不具合を修正。
+
+### Fixed
+- **スナップショット マージで先頭 1 図形しか同期されない (P1)** — `_sendSnapshot` が全 op に
+  同一クロック `seq:0` を付与していたため、既存盤面を持つ peer へのマージ時に `applyRemote` の
+  `peer:seq` 重複排除が**2 個目以降を全て duplicate として破棄**していた。各 op に一意な
+  `seq:'snap'+i` を付与し、マージ側は既に保有する id の図形を skip(重複再追加も防止)。
+- **Service Worker が旧キャッシュを残す (P2)** — `activate` で現行 `board-v<version>` 以外の
+  キャッシュを削除。リリースごとに古いキャッシュが滞留する問題を解消。
+
+### Tests
+- **223/223 全通過** (+4): 一意 seq のスナップショット op が全て適用される/同一 seq は衝突する
+  ことの回帰検証、+ presence × 3。`seenOps` トリム・seq 開始値・DataChannel の防御的 catch 等は
+  検証の結果**問題なし**と確認。
+
+---
+
 ## [1.6.18] — 2026-06-08
 
 深掘り監査 第2弾(`docs/audit-2026-06.md`)。ツールハンドラ・キーバインド・プレゼン・

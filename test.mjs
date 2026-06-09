@@ -206,6 +206,10 @@ const checks = [
   ['presentation saves+restores viewport', html.includes("_savedVp={x:state.viewport.x") && html.includes("Object.assign(state.viewport,_savedVp)")],
   ['help grid present row uses i18n', html.includes("['⇧P',k.present]") && html.includes("['↑↓←→',k.nudge]")],
   ['help i18n keys in ja and en', html.includes("present:'プレゼン'") && html.includes("present:'Present'")],
+  // v1.6.19: sync + PWA fixes
+  ['snapshot ops get distinct clock keys', html.includes("seq:'snap'+i")],
+  ['snapshot merge skips already-present shapes', html.includes("op.shape&&byId(op.shape.id))continue")],
+  ['service worker purges stale caches', html.includes("caches.keys()") && html.includes("k!==C")],
 ];
 
 let pass = 0, fail = 0;
@@ -949,6 +953,24 @@ try {
     console.log('  ✓ getHandles: pen move-only (0 handles), line=2 endpoints, rect=8 box');
   }
 
+  // v1.6.19: snapshot merge dedup — distinct clock seqs must all apply (the seq:0 bug)
+  {
+    state.shapes.length = 0; state.history.length = 0; state.histIdx = -1; state.seenOps = new Set();
+    const mk = (id, seq) => ({ op:'add', clock:{peer:'remote', seq},
+      shape:{id, type:'rect', z:1, x:0, y:0, w:5, h:5, stroke:'#000', size:1, opacity:1} });
+    // Fixed behaviour: each snapshot op has a distinct seq → all adopted.
+    Store.applyRemote(mk('a','snap0'));
+    Store.applyRemote(mk('b','snap1'));
+    Store.applyRemote(mk('c','snap2'));
+    assert.strictEqual(state.shapes.length, 3, 'distinct-seq snapshot ops all apply on merge');
+    // Regression guard: same seq collapses to one (this is exactly why the fix was needed).
+    state.shapes.length = 0; state.seenOps = new Set();
+    Store.applyRemote(mk('d', 0));
+    Store.applyRemote(mk('e', 0));
+    assert.strictEqual(state.shapes.length, 1, 'same-seq ops collide under peer:seq dedup');
+    console.log('  ✓ snapshot merge: distinct clock keys let every shape through dedup');
+  }
+
   // core invariant — apply N ops, undo all == initial; redo all == post-ops.
   // This is the net to catch reversibility regressions like the old zorder bug.
   {
@@ -981,7 +1003,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 63;
+  pass += 64;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

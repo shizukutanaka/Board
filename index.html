@@ -733,7 +733,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.18';
+const V='1.6.19';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -2749,8 +2749,11 @@ const Net={
         break;
       case 'snapshot':
         if(state.shapes.length===0)this._applySnapshot(msg);
-        // If we already have shapes, merge: apply any ops we don't know
-        else if(msg.ops)for(const op of msg.ops)Store.applyRemote(op);
+        // Already have shapes: merge — adopt only shapes we don't have yet.
+        else if(Array.isArray(msg.ops))for(const op of msg.ops){
+          if(op.op==='add'&&op.shape&&byId(op.shape.id))continue;
+          Store.applyRemote(op);
+        }
         break;
       case 'ping':
         this._touchPeer(msg.peer);
@@ -2759,9 +2762,11 @@ const Net={
   },
   _sendSnapshot(){
     // Send a snapshot consisting of all add ops re-derived from current shapes.
-    const ops=state.shapes.map(s=>({
+    // Each op needs a DISTINCT clock key, else applyRemote's peer:seq dedup
+    // collapses the whole batch to the first shape on a merge (peer:0 collision).
+    const ops=state.shapes.map((s,i)=>({
       op:'add',shape:clone(s),
-      clock:{peer:state.peerId,seq:0,ts:0,_snap:true}
+      clock:{peer:state.peerId,seq:'snap'+i,ts:0,_snap:true}
     }));
     this._send({k:'snapshot',shapes:clone(state.shapes),ops,peer:state.peerId});
   },
@@ -3446,7 +3451,10 @@ if('serviceWorker' in navigator){
   const sw=`
     const C='board-v${V}';
     self.addEventListener('install',e=>{self.skipWaiting()});
-    self.addEventListener('activate',e=>{e.waitUntil(clients.claim())});
+    self.addEventListener('activate',e=>{e.waitUntil((async()=>{
+      for(const k of await caches.keys())if(k!==C)await caches.delete(k);
+      await clients.claim();
+    })())});
     self.addEventListener('fetch',e=>{
       e.respondWith(caches.open(C).then(async c=>{
         const r=await c.match(e.request);
