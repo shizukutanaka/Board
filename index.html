@@ -2630,7 +2630,7 @@ function importBoard(file){
       if(!shapes.length){UI.toast(t('empty'),'warn');return}
       Store.commit({op:'clear',shapes:clone(state.shapes)});
       for(const s of shapes)Store.commit({op:'add',shape:s});
-      if(d.docName){state.docName=d.docName;UI.syncDoc()}
+      if(d.docName){state.docName=d.docName;document.getElementById('docName').value=d.docName}
       invalidate();
       UI.toast(t('loadedBoard')+' ('+shapes.length+')','ok');
     }catch{UI.toast('Invalid .board file','err')}
