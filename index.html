@@ -733,7 +733,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.22';
+const V='1.6.23';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -764,7 +764,7 @@ const I18N={
   ja:{export:'書き出し',size:'太さ',lineStyle:'線種',helpTitle:'ショートカット',
     helpSub:'全部覚えなくていい。使いながら自然に。',
     saved:'保存済み',savedNow:'たった今',savedAgo:'秒前',
-    exported:'PNGを書き出しました',exportedSVG:'SVGを書き出しました',
+    exported:'PNGを書き出しました',exportedSVG:'SVGを書き出しました',exportedBoard:'.boardファイルを保存しました',loadedBoard:'ボードを読み込みました',
     imagePasted:'画像を貼り付けました',empty:'キャンバスが空',
     noSelection:'選択なし',styleCopied:'スタイルコピー',stylePasted:'スタイル適用',
     selectTwo:'2つ以上選択してください',grouped:'グループ化',noGroup:'グループなし',
@@ -809,7 +809,7 @@ const I18N={
   en:{export:'Export',size:'Size',lineStyle:'Line',helpTitle:'Shortcuts',
     helpSub:'No need to memorise. You\'ll pick it up.',
     saved:'saved',savedNow:'just now',savedAgo:'s ago',
-    exported:'PNG exported',exportedSVG:'SVG exported',
+    exported:'PNG exported',exportedSVG:'SVG exported',exportedBoard:'Board file saved',loadedBoard:'Board loaded',
     imagePasted:'Image pasted',empty:'Canvas is empty',
     noSelection:'No selection',styleCopied:'Style copied',stylePasted:'Style applied',
     selectTwo:'Select 2 or more',grouped:'Grouped',noGroup:'No group',
@@ -1770,6 +1770,8 @@ canvas.addEventListener('dblclick',e=>{
 canvas.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='copy'});
 canvas.addEventListener('drop',e=>{
   e.preventDefault();
+  const bf=[...e.dataTransfer.files].find(f=>f.name.endsWith('.board'));
+  if(bf){importBoard(bf);return}
   const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith('image/'));
   if(!files.length)return;
   const wp=G.s2w({x:e.offsetX,y:e.offsetY});
@@ -2323,6 +2325,7 @@ window.addEventListener('keydown',e=>{
   else if(meta&&k==='e'&&!e.shiftKey){e.preventDefault();exportPNG()}
   else if(k==='c'&&e.altKey&&!meta){e.preventDefault();copyStyle()}
   else if(k==='v'&&e.altKey&&!meta){e.preventDefault();pasteStyle()}
+  else if(meta&&k==='s'&&e.shiftKey){e.preventDefault();exportBoard()}
   else if(meta&&k==='s'&&!e.shiftKey){e.preventDefault();Persist.save(true)}
   else if(meta&&(k==='='||k==='+')){e.preventDefault();zoomBy(1.2)}
   else if(meta&&k==='-'){e.preventDefault();zoomBy(1/1.2)}
@@ -2609,6 +2612,30 @@ function exportSVG(){
   a.href=url;a.download=`${state.docName||'board'}.svg`;
   a.click();setTimeout(()=>URL.revokeObjectURL(url),1e4);
   UI.toast(t('exportedSVG')||'SVG exported','ok');
+}
+function exportBoard(){
+  if(!state.shapes.length){UI.toast(t('empty'),'warn');return}
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify({v:V,docName:state.docName,shapes:state.shapes})],{type:'application/json'}));
+  a.download=(state.docName||'board')+'.board';
+  a.click();
+  UI.toast(t('exportedBoard'),'ok');
+}
+function importBoard(file){
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const d=JSON.parse(r.result);
+      const shapes=(d.shapes||[]).filter(validShape);
+      if(!shapes.length){UI.toast(t('empty'),'warn');return}
+      Store.commit({op:'clear',shapes:clone(state.shapes)});
+      for(const s of shapes)Store.commit({op:'add',shape:s});
+      if(d.docName){state.docName=d.docName;UI.syncDoc()}
+      invalidate();
+      UI.toast(t('loadedBoard')+' ('+shapes.length+')','ok');
+    }catch{UI.toast('Invalid .board file','err')}
+  };
+  r.readAsText(file);
 }
 // Pure SVG assembly. Returns the SVG string (or null if no shapes). Every
 // user/peer-controlled attribute value goes through _esc so a crafted color,

@@ -2,6 +2,24 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.23] — 2026-06-09
+
+`.board` ファイルによるボードの保存・復元。
+
+### Added
+- **`.board` ファイルエクスポート** — `Ctrl+Shift+S` でボード全体を JSON 形式の
+  `.board` ファイルとして保存。IDB は同一ブラウザ内のみ有効なため、ファイルによる
+  バックアップ・端末間移行・サイズ無制限共有の経路が生まれた。
+- **`.board` ファイルインポート** — `.board` ファイルをキャンバスにドラッグ&ドロップ
+  して読み込み。`validShape` フィルタを通過した図形のみ適用するため、改ざんされた
+  ファイルが不正な shape を混入させることを防止。
+
+### Tests
+- **243/243 全通過** (+4): presence チェック × 4 (exportBoard、importBoard、
+  Ctrl+Shift+S、drag-drop `.board`)。
+
+---
+
 ## [1.6.22] — 2026-06-09
 
 IME 対応・ペン点列間引き・テスト精度向上。

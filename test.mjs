@@ -227,7 +227,12 @@ const checks = [
   ['text editor keydown guards ev.isComposing (IME safe)', (html.match(/if\(ev\.isComposing\)return/g)||[]).length >= 2],
   ['pen RDP decimation function _rdp present', html.includes('function _rdp(pts,eps)')],
   ['endPen applies RDP on commit', html.includes('d.pts.length>3')&&html.includes('_rdp(d.pts,0.5)')],
-  ['gzip budget test uses system gzip -9 (matches CI)', html.includes('V=\'1.6.22\'')],
+  ['gzip budget test uses system gzip -9 (matches CI)', html.includes('V=\'1.6.23\'')],
+  // v1.6.23: .board file export/import
+  ['exportBoard function exists', html.includes('function exportBoard()')],
+  ['importBoard function exists and uses validShape filter', html.includes('function importBoard') && html.includes('.filter(validShape)')],
+  ['Ctrl+Shift+S triggers exportBoard', html.includes("e.shiftKey){e.preventDefault();exportBoard()}")],
+  ['drag-drop accepts .board files', html.includes(".endsWith('.board')")],
 ];
 
 let pass = 0, fail = 0;
