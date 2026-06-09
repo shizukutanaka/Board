@@ -210,6 +210,12 @@ const checks = [
   ['snapshot ops get distinct clock keys', html.includes("seq:'snap'+i")],
   ['snapshot merge skips already-present shapes', html.includes("op.shape&&byId(op.shape.id))continue")],
   ['service worker purges stale caches', html.includes("caches.keys()") && html.includes("k!==C")],
+  // v1.6.20: fourth audit pass
+  ['drawShape opacity uses nullish coalescing (opacity=0 invisible, not opaque)', html.includes('c.globalAlpha=s.opacity??1')],
+  ['pointercancel restores in-progress resize/move shapes', html.includes("ptr.dragKind==='resize'&&ptr.resizeOrig")],
+  ['frame label Escape removes blur listener before cancelling', html.includes("inp.removeEventListener('blur',commit)")],
+  ['context menu items have role=menuitem (WCAG 4.1.2)', html.includes("setAttribute('role','menuitem')")],
+  ['context menu separators have role=separator', html.includes("setAttribute('role','separator')")],
 ];
 
 let pass = 0, fail = 0;

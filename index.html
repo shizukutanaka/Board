@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.6 — Design Tokens
+   Board v1.6.20 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -733,7 +733,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.19';
+const V='1.6.20';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1321,7 +1321,7 @@ function drawGrid(W,H){
 }
 function drawShape(s,c){
   c=c||ctx;
-  c.globalAlpha=s.opacity||1;
+  c.globalAlpha=s.opacity??1;
   c.lineCap='round';c.lineJoin='round';
   c.strokeStyle=s.stroke||'#0F172A';
   c.lineWidth=s.size||1;
@@ -1708,7 +1708,17 @@ canvas.addEventListener('pointerup',e=>{
   invalidate();
 });
 canvas.addEventListener('pointercancel',()=>{
+  // Restore shape(s) that were being resized or moved so they don't stay at a
+  // partial/corrupt position with no undo entry (pointercancel fires e.g. on
+  // Android when the OS takes over the touch, or when a stylus goes out of range).
+  if(ptr.dragKind==='resize'&&ptr.resizeOrig){
+    const rsh=byId([...state.selection][0]);
+    if(rsh)Object.assign(rsh,clone(ptr.resizeOrig));
+  }else if(ptr.dragKind==='move'&&ptr.dragStartShapes){
+    for(const[id,orig] of ptr.dragStartShapes){const sh=byId(id);if(sh)Object.assign(sh,clone(orig));}
+  }
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;
+  ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.dragStartShapes=null;
   canvas.dataset.panning='false';state.draft=null;state.marquee=null;invalidate();
 });
 canvas.addEventListener('contextmenu',e=>{e.preventDefault();UI.openCtxMenu(e.clientX,e.clientY)});
@@ -1746,7 +1756,10 @@ canvas.addEventListener('dblclick',e=>{
     inp.addEventListener('blur',commit);
     inp.addEventListener('keydown',ev=>{
       if(ev.key==='Enter'){ev.preventDefault();commit()}
-      if(ev.key==='Escape'){inp.remove()}
+      // Detach the blur→commit listener before removing so Escape truly cancels:
+      // inp.remove() triggers blur, which would otherwise run commit() and record
+      // the partial label change as a real undo-able edit.
+      if(ev.key==='Escape'){inp.removeEventListener('blur',commit);inp.remove()}
     });
   }
 });
@@ -3040,11 +3053,12 @@ const UI={
     ].filter(Boolean);
     for(const it of items){
       if(it==='sep'){
-        const s=document.createElement('div');s.className='ctx-sep';m.appendChild(s);continue;
+        const s=document.createElement('div');s.className='ctx-sep';
+        s.setAttribute('role','separator');m.appendChild(s);continue;
       }
       const [k,shortcut,fn]=it;
       const b=document.createElement('button');
-      b.className='ctx-item';
+      b.className='ctx-item';b.setAttribute('role','menuitem');
       const lbl=document.createElement('span');lbl.textContent=t(k);
       b.appendChild(lbl);
       if(shortcut){
@@ -3054,9 +3068,11 @@ const UI={
       b.onclick=()=>{fn();this.closeCtxMenu()};
       m.appendChild(b);
     }
+    // Show first so offsetHeight reflects actual rendered height, then clamp
+    // position so the menu never overflows the viewport bottom edge.
+    m.dataset.open='true';
     m.style.left=Math.min(x,innerWidth-200)+'px';
     m.style.top=Math.min(y,innerHeight-m.offsetHeight-20)+'px';
-    m.dataset.open='true';
   },
   closeCtxMenu(){document.getElementById('ctx').dataset.open='false'},
   fillHelp(){

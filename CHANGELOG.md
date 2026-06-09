@@ -2,6 +2,33 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.20] — 2026-06-09
+
+深掘り監査 第4弾(`docs/audit-2026-06.md`)。描画・入力・アクセシビリティ・コンテキストメニューの
+未踏サブシステムを精査し、確認できた不具合を修正。
+
+### Fixed
+- **`opacity=0` の図形が不透明で描画される (P1)** — `drawShape` が `c.globalAlpha=s.opacity||1`
+  を使用。`0||1=1` のため完全透明な図形が完全不透明で描画されていた。`??1` (nullish coalescing)
+  に修正し、`null/undefined` は 1、`0` は 0 として扱う。
+- **`pointercancel` 時に resize/move が中途半端な状態で確定される (P1)** — スタイラスが範囲外に
+  出るなど OS がポインタを奪ったとき、`pointercancel` ハンドラが図形を元に戻さず、undo エントリも
+  作成しなかった。resize/move 中断時にそれぞれ `resizeOrig`/`dragStartShapes` から元の状態を復元。
+  `ptr.resizeHandle`/`resizeOrig`/`dragStartShapes` のクリアも追加。
+- **フレームラベルのインライン編集で Escape がキャンセルではなく保存を実行 (P1)** — `inp.remove()`
+  が blur を発火し `commit()` が呼ばれていた。Escape キー時に先に `blur` リスナーを除去してから
+  `inp.remove()` することで真のキャンセルを実現。
+- **コンテキストメニューに `role="menuitem"` が欠落 (P1 a11y)** — `role="menu"` 内の `<button>`
+  には `role="menuitem"` が必要 (WCAG 4.1.2)。セパレータ `<div>` にも `role="separator"` を追加。
+- **コンテキストメニューの位置が非表示時の高さ 0 を基準に計算される (P2)** — `m.offsetHeight` を
+  `data-open='true'` 設定前に読んでいたため常に 0 。`data-open` を先に設定してから位置を計算。
+
+### Tests
+- **228/228 全通過** (+5): presence チェック × 5 (opacity `??1`、pointercancel 復元、
+  frame Escape キャンセル、role=menuitem、role=separator)。
+
+---
+
 ## [1.6.19] — 2026-06-08
 
 深掘り監査 第3弾(同期 / PWA — `docs/audit-2026-06.md`)。未監査だった CRDT・WebRTC・
