@@ -715,7 +715,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.24';
+const V='1.6.25';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -976,6 +976,7 @@ function validRemotePayload(op){
     case 'move':   return Array.isArray(op.ids)&&Number.isFinite(+op.dx)&&Number.isFinite(+op.dy);
     case 'z':      return typeof op.id==='string'&&Number.isFinite(+op.from)&&Number.isFinite(+op.to);
     case 'zorder':
+    case 'style':
     case 'align':  return Array.isArray(op.after);
     case 'group':
     case 'ungroup':return Array.isArray(op.ids);
@@ -1019,7 +1020,7 @@ const Store={
   // undo stack — remote changes are not undoable from this peer.
   // Allow-list of op types a peer may apply. Anything else is dropped so a
   // malicious/buggy peer can't drive _apply down an unexpected path.
-  REMOTE_OPS:new Set(['add','del','upd','move','z','clear','group','ungroup','zorder','align']),
+  REMOTE_OPS:new Set(['add','del','upd','move','z','clear','group','ungroup','zorder','align','style']),
   applyRemote(op){
     if(!op||!op.clock||!this.REMOTE_OPS.has(op.op))return;
     // Peers are semi-trusted: reject structurally-bad payloads (wrong types,
@@ -1144,6 +1145,7 @@ const Store={
           state.shapes.length=0;Array.prototype.push.apply(state.shapes,next);
         }
         break;}
+      case 'style':
       case 'align':{
         const patches=forward?op.after:op.before;
         for(const p of patches){const sh=byId(p.id);if(sh)Object.assign(sh,clone(p))}
@@ -3284,13 +3286,16 @@ function wire(){
   Net._onConnChange=()=>UI.refreshPeers();
 }
 function applyStyleToSelection(patch){
+  if(!state.selection.size)return;
+  const before=[],after=[];
   for(const id of state.selection){
     const sh=byId(id);if(!sh)continue;
-    const before={};const after={};
-    for(const k of Object.keys(patch)){before[k]=sh[k];after[k]=patch[k]}
+    const b={id},a={id};
+    for(const k of Object.keys(patch)){b[k]=sh[k];a[k]=patch[k]}
     Object.assign(sh,patch);
-    Store._recordCommitted({op:'upd',id,before,after});
+    before.push(b);after.push(a);
   }
+  if(before.length)Store._recordCommitted({op:'style',before,after});
   invalidate();
 }
 

@@ -2,6 +2,25 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.25] — 2026-06-09
+
+マルチ選択スタイル変更の単一 Undo。
+
+### Fixed
+- **複数選択でのスタイル変更が shape 数ぶん Undo を消費する (P2)** —
+  `applyStyleToSelection` が shape ごとに `upd` op を積んでいたため、
+  3 shape 選択で色変更すると Ctrl+Z を 3 回押さないと戻らなかった。
+  `align` op と同方式の `style` op (before/after 配列スナップショット) を
+  新設し、1 回の Ctrl+Z で全 shape が戻るよう修正。
+  `style` op は `_apply` / `validRemotePayload` / `REMOTE_OPS` に追加済みで
+  undo・redo・P2P sync で正しく動作する。
+
+### Tests
+- **246/246 全通過** (+3): presence チェック × 3 (case 'style'、REMOTE_OPS、
+  applyStyleToSelection → style op)。
+
+---
+
 ## [1.6.24] — 2026-06-09
 
 バイト削減で予算を回復。機能変化なし。
