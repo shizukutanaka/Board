@@ -475,7 +475,7 @@ canvas#c[data-tool=eraser]{cursor:crosshair}
 }
 /* High-contrast / forced-colors (Windows High Contrast Mode) */
 @media (forced-colors:active){
-  .btn,.tool,.swatch{border:1px solid ButtonText}
+  .btn,.tool,.swatch,.dashbtn{border:1px solid ButtonText}
   .tool[aria-pressed=true]{outline:2px solid Highlight}
   .toast{border:1px solid CanvasText}
 }
@@ -733,7 +733,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.16';
+const V='1.6.17';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -817,8 +817,8 @@ const I18N={
     undone:'Undone',redone:'Redone',created:'Created',
     confirmClear:'Delete everything?',
     ctxCopy:'Copy',ctxPaste:'Paste',ctxDuplicate:'Duplicate',
-    ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',
-    ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringForward:'Bring forward',
+    ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',
+    ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
     ctxSendBackward:'Send backward',ctxSendBack:'Send to back',
     ctxAlignLeft:'Align left',ctxAlignCX:'Center horizontal',ctxAlignRight:'Align right',
     ctxAlignTop:'Align top',ctxAlignCY:'Center vertical',ctxAlignBottom:'Align bottom',
@@ -968,13 +968,23 @@ function distToSeg(p,a,b){
 // An op is a reversible change. History = reversed chronology of ops.
 // Undo = apply inverse. Redo = re-apply.
 
+// Structural shape validation shared by every intake path (IDB load, sync
+// snapshot, remote add, URL import). Rejects malformed shapes — notably pen
+// shapes with a missing/empty/non-numeric `pts`, which would otherwise crash
+// drawPen/G.hit/G.bbox (they dereference pts[i][0]) on render or hover.
+function validShape(s){
+  if(!s||typeof s!=='object'||!s.id||!s.type||typeof s.z!=='number')return false;
+  if(s.type==='pen')return Array.isArray(s.pts)&&s.pts.length>0&&
+    s.pts.every(p=>Array.isArray(p)&&Number.isFinite(p[0])&&Number.isFinite(p[1]));
+  return true;
+}
 // Validate a REMOTE op's payload before it reaches _apply. Local ops are
 // generated in-process and trusted; remote ops (BroadcastChannel/WebRTC) are
 // not — require the exact fields each forward-apply path dereferences, with
 // finite numeric deltas. Returns true only for structurally-sound ops.
 function validRemotePayload(op){
   switch(op.op){
-    case 'add':    return !!(op.shape&&typeof op.shape==='object'&&op.shape.id&&op.shape.type&&typeof op.shape.z==='number');
+    case 'add':    return validShape(op.shape);
     case 'del':
     case 'clear':  return Array.isArray(op.shapes);
     case 'upd':    return typeof op.id==='string'&&!!op.after&&typeof op.after==='object';
@@ -1175,14 +1185,17 @@ const Shape={
   }};
 
 // ====================== IMAGE CACHE ======================
-// Cache loaded Image objects by dataUrl to avoid re-decoding.
-const _imgCache=new Map();
+// Cache loaded Image objects by dataUrl to avoid re-decoding. Bounded LRU
+// (Map keeps insertion order): on access we re-insert to mark recent, and evict
+// the oldest past the cap so a board with many pasted images can't leak memory.
+const _imgCache=new Map(),IMG_CACHE_MAX=60;
 function getImg(dataUrl){
   let img=_imgCache.get(dataUrl);
-  if(img)return img;
+  if(img){_imgCache.delete(dataUrl);_imgCache.set(dataUrl,img);return img}
   img=new Image();
   img.onload=()=>invalidate();
   img.src=dataUrl;
+  if(_imgCache.size>=IMG_CACHE_MAX)_imgCache.delete(_imgCache.keys().next().value);
   _imgCache.set(dataUrl,img);
   return img;
 }
@@ -2306,7 +2319,14 @@ window.addEventListener('keydown',e=>{
       invalidate();
     }
   }
-  else if(k==='escape'){state.selection.clear();state.marquee=null;state.draft=null;state.guides=null;invalidate()}
+  else if(k==='escape'){
+    // Dismiss an open modal first (WCAG: dialogs must be Escape-closable),
+    // otherwise clear the current selection/draft.
+    const hp=document.getElementById('help'),sp2=document.getElementById('share');
+    if(hp.dataset.open==='true')UI.toggleHelp();
+    else if(sp2.dataset.open==='true')UI.closeShare();
+    else{state.selection.clear();state.marquee=null;state.draft=null;state.guides=null;invalidate()}
+  }
   else if(k==='?'||(e.shiftKey&&e.key==='/')){e.preventDefault();UI.toggleHelp()}
   else if(k===']'&&!meta&&e.shiftKey){e.preventDefault();doBringFront()}
   else if(k==='['&&!meta&&e.shiftKey){e.preventDefault();doSendBack()}
@@ -2745,7 +2765,7 @@ const Net={
     // Validate snapshot shapes before adopting
     const shapes=msg.shapes;
     if(!Array.isArray(shapes))return;
-    const valid=shapes.filter(s=>s&&typeof s==='object'&&s.id&&s.type&&typeof s.z==='number');
+    const valid=shapes.filter(validShape);
     state.shapes=clone(valid);
     sortZ();
     invalidate();UI.refreshUndo();Persist.schedule();
@@ -2877,7 +2897,7 @@ const Share={
       const data=JSON.parse(json);
       if(!Array.isArray(data.shapes))return false;
       // validate each shape — reject anything without id/type/z
-      const valid=data.shapes.filter(s=>s&&typeof s==='object'&&s.id&&s.type&&typeof s.z==='number');
+      const valid=data.shapes.filter(validShape);
       if(!valid.length)return false;
       // confirm if local has content
       if(state.shapes.length&&!confirm(t('importConfirm')||'Replace current board with shared content?'))return false;
@@ -2935,8 +2955,8 @@ const Persist={
     if(d&&Array.isArray(d.shapes)){
       // Validate like the other intake paths (importFromHash / snapshot): never
       // adopt malformed shapes from IDB (corruption / forward-incompat schema).
-      state.shapes=d.shapes.filter(s=>s&&typeof s==='object'&&s.id&&s.type&&typeof s.z==='number');
-      if(d.viewport)Object.assign(state.viewport,d.viewport);
+      state.shapes=d.shapes.filter(validShape);
+      if(d.viewport&&Number.isFinite(+d.viewport.x)&&Number.isFinite(+d.viewport.y)&&Number.isFinite(+d.viewport.zoom)&&d.viewport.zoom>0)Object.assign(state.viewport,d.viewport);
       if(d.docName){state.docName=d.docName;document.getElementById('docName').value=d.docName}
       state.lastSaveAt=d.savedAt||0;
       sortZ();

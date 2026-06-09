@@ -37,7 +37,7 @@ const checks = [
   // v1.1: op validation in _onRecv
   ['_onRecv validates op.clock', html.includes("typeof op.clock.peer!=='string'")],
   // v1.1: import validates shapes
-  ['importFromHash validates shape fields', html.includes("s.id&&s.type&&typeof s.z==='number'")],
+  ['importFromHash validates shape fields', html.includes("data.shapes.filter(validShape)")],
   ['All data-tool buttons have kbd hints',
     (html.match(/class="tool"[^>]*>/g) || []).length >=
     (html.match(/<kbd>/g) || []).length - 1], // -1 for topbar
@@ -141,7 +141,7 @@ const checks = [
   ['zorder _apply restores order+z from snapshot', html.includes("const snap=forward?op.after:op.before") && html.includes("sh.z=p.z")],
   ['z-step ops route through _commitZ (undoable)', html.includes("_commitZ(before)") && html.includes("function _commitZ")],
   ['applyRemote whitelists op types', html.includes("REMOTE_OPS") && html.includes("this.REMOTE_OPS.has(op.op)")],
-  ['applyRemote validates remote add shape', html.includes("op.shape.id&&op.shape.type&&typeof op.shape.z==='number'")],
+  ['applyRemote validates remote add shape', html.includes("case 'add':    return validShape(op.shape)")],
   ['SVG export uses testable buildSVG', html.includes("function buildSVG") && html.includes("buildSVG(state.shapes")],
   ['SVG attrs escaped via _esc', html.includes("stroke=\"${stroke}\"") && html.includes("_esc(s.fill)")],
   ['SVG image dataUrl validated', html.includes("/^data:image\\//.test(s.dataUrl)")],
@@ -156,7 +156,7 @@ const checks = [
   // v1.6.8: viewport culling + load validation
   ['viewport culling helpers present', html.includes("function visibleWorldRect") && html.includes("function inView")],
   ['draw() culls via inView', html.includes("inView(s,_view)")],
-  ['Persist.load validates shapes', html.includes("d.shapes.filter(s=>s&&typeof s==='object'&&s.id&&s.type")],
+  ['Persist.load validates shapes', html.includes("d.shapes.filter(validShape)")],
   // v1.6.9: sticky text auto-wrap
   ['wrapText helper present', html.includes("function wrapText")],
   ['sticky render wraps text', html.includes("wrapText(s.text,Math.abs(s.w)-pad*2")],
@@ -193,6 +193,13 @@ const checks = [
   ['SVG export emits stroke-dasharray', html.includes("stroke-dasharray=") && html.includes("dashArr(s.dash,SZ)")],
   ['line-style buttons in style panel', html.includes('data-dash="1"') && html.includes('data-dash="2"')],
   ['dash wired to selection', html.includes("applyStyleToSelection({dash:state.style.dash})")],
+  // v1.6.17: audit fixes
+  ['shared validShape used at intake', html.includes("function validShape") && html.includes("filter(validShape)")],
+  ['en context menu has ctxDelete + ctxBringFront', html.includes("ctxDelete:'Delete'") && html.includes("ctxBringFront:'Bring to front'")],
+  ['Escape closes open modal', html.includes("if(hp.dataset.open==='true')UI.toggleHelp()")],
+  ['dashbtn covered by forced-colors', html.includes(".btn,.tool,.swatch,.dashbtn{border:1px solid ButtonText}")],
+  ['image cache is bounded LRU', html.includes("IMG_CACHE_MAX") && html.includes("_imgCache.keys().next().value")],
+  ['load validates viewport finiteness', html.includes("d.viewport.zoom>0)Object.assign(state.viewport")],
 ];
 
 let pass = 0, fail = 0;
@@ -289,7 +296,7 @@ try {
              getHandles, applyResize, handleCursor,
              doGroup, doUngroup, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
-             _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr };
+             _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -302,7 +309,7 @@ try {
           getHandles, applyResize, handleCursor,
           doGroup, doUngroup, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
-          _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr } = api;
+          _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape } = api;
 
   console.log('\n-- behavioural --');
 
@@ -911,6 +918,23 @@ try {
     console.log('  ✓ line styles: solid/dashed/dotted patterns, SVG dasharray, size-scaled, reversible');
   }
 
+  // v1.6.17: validShape rejects malformed shapes (notably bad pen pts that crash render)
+  {
+    assert.ok(validShape({id:'a',type:'rect',z:0}), 'valid rect accepted');
+    assert.ok(validShape({id:'p',type:'pen',z:0,pts:[[0,0],[1,1]]}), 'valid pen accepted');
+    assert.ok(!validShape(null), 'null rejected');
+    assert.ok(!validShape({type:'rect',z:0}), 'missing id rejected');
+    assert.ok(!validShape({id:'x',type:'rect'}), 'missing z rejected');
+    assert.ok(!validShape({id:'x',z:'no',type:'rect'}), 'non-number z rejected');
+    // The crash-causing cases: pen with bad pts
+    assert.ok(!validShape({id:'p',type:'pen',z:0,pts:null}), 'pen with null pts rejected');
+    assert.ok(!validShape({id:'p',type:'pen',z:0,pts:[]}), 'pen with empty pts rejected');
+    assert.ok(!validShape({id:'p',type:'pen',z:0,pts:'nope'}), 'pen with string pts rejected');
+    assert.ok(!validShape({id:'p',type:'pen',z:0,pts:[[0,0],[NaN,1]]}), 'pen with NaN coord rejected');
+    assert.ok(!validShape({id:'p',type:'pen',z:0,pts:[[0,0],[null]]}), 'pen with malformed point rejected');
+    console.log('  ✓ validShape: accepts sound shapes, rejects malformed pens that would crash render');
+  }
+
   // core invariant — apply N ops, undo all == initial; redo all == post-ops.
   // This is the net to catch reversibility regressions like the old zorder bug.
   {
@@ -943,7 +967,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 61;
+  pass += 62;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

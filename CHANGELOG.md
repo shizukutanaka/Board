@@ -2,6 +2,32 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.17] — 2026-06-08
+
+プロダクトを 12 カテゴリに分割した徹底監査(`docs/audit-2026-06.md`)で見つかった
+正確性・堅牢性・a11y・i18n の不具合をまとめて修正。
+
+### Fixed
+- **不正な pen `pts` によるクラッシュ防止 (P1)** — 共有バリデータ `validShape()` を新設し、
+  全 intake 経路(IDB ロード / sync スナップショット / remote `add` / URL インポート)で使用。
+  pen の `pts` が null/空/非配列/NaN 座標だと `drawPen`/`G.hit`/`G.bbox` が `pts[i][0]` 参照で
+  クラッシュしていた(破損 IDB や悪意ある peer 経由で発火可能)。4 箇所の重複検証式も一元化。
+- **モーダルが Escape で閉じない (P0 a11y)** — `#help`/`#share` は `aria-modal` だが Escape 未対応
+  だった(WCAG 違反)。Escape ハンドラで開いているモーダルを優先的に閉じる。
+- **英語 UI の右クリックメニュー欠落 (P1 i18n)** — `ctxDelete`(Delete)/`ctxBringFront`(Bring to
+  front)が en に無く、英語環境で `undefined` 表示。補完し全 45 キーの ja/en 突合も実施。
+- **線種ボタンが forced-colors で不可視 (P1 a11y)** — `.dashbtn` を Windows ハイコントラストの
+  境界線ルールに追加。
+- **viewport の有限性検証 (P2)** — IDB ロード時に `x/y/zoom` が有限かつ `zoom>0` の時のみ採用
+  (NaN viewport の保存で全ズーム計算が壊れるのを防止)。
+- **画像キャッシュのメモリリーク (P2)** — `_imgCache` を上限 60 の LRU 化(多数画像貼付時の
+  無制限増加を防止)。
+
+### Tests
+- **213/213 全通過** (+7): `validShape` の正常受理/不正 pen 拒否、+ 監査修正の presence × 6。
+
+---
+
 ## [1.6.16] — 2026-06-08
 
 同種ソフト(Excalidraw / tldraw / Figma)標準の線種(破線・点線)を実装。

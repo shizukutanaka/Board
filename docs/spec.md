@@ -1,6 +1,6 @@
 # Board — 仕様書 (Specification)
 
-> Board v1.6.16 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
+> Board v1.6.17 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
 > **§13 適合ギャップ(不足)** で仕様と実装の差分を列挙する。本書は実装と対で更新する。
 > 関連: 設計=`docs/architecture.md`、改善調査=`docs/research-improvements.md` /
 > `docs/category-research*.md`、変更履歴=`CHANGELOG.md`。
@@ -147,6 +147,14 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
   `penWidths` はストロークが**変化する**筆圧信号を持つ時のみ採用(stylus)、一定値(マウスは常に 0.5)/
   欠落(レガシー 2-tuple)/非有限は速度プロキシへフォールバック。canvas/SVG 両方で反映(パリティ維持)。
   `_penPr` で有限値に強制、データモデル後方互換(既存 pen は 2-tuple のまま動作)。
+
+### ✅ v1.6.17 で解消(カテゴリ別徹底監査 — `docs/audit-2026-06.md`)
+- **不正 shape の intake 一元検証**: 共有 `validShape()` を IDB ロード / sync スナップショット /
+  remote `add` / URL インポートの全経路で使用。特に pen の `pts`(null/空/非配列/NaN)を弾く
+  — これらは `drawPen`/`G.hit`/`G.bbox` を `pts[i][0]` 参照でクラッシュさせ得た。
+- **a11y**: モーダル(help/share)を Escape で閉じる(WCAG)。線種ボタン `.dashbtn` を forced-colors 対応。
+- **i18n**: en の `ctxDelete`/`ctxBringFront` 欠落を補完(英語環境の右クリックメニュー `undefined` 解消)。
+- **堅牢性**: IDB ロード時に viewport の有限性(`zoom>0`)を検証。画像キャッシュ `_imgCache` を上限 60 の LRU 化。
 
 ### ✅ v1.6.16 で解消
 - **線種(破線/点線)**: 競合(Excalidraw/tldraw/Figma)標準の線スタイルを追加。shape の `dash`
