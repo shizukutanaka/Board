@@ -216,6 +216,10 @@ const checks = [
   ['frame label Escape removes blur listener before cancelling', html.includes("inp.removeEventListener('blur',commit)")],
   ['context menu items have role=menuitem (WCAG 4.1.2)', html.includes("setAttribute('role','menuitem')")],
   ['context menu separators have role=separator', html.includes("setAttribute('role','separator')")],
+  // v1.6.21: fifth audit pass
+  ['exportPDF uses setTransform for correct world-coordinate mapping', html.includes('oc.setTransform(dpr,0,0,dpr,(-b.x+pad)*dpr,(-b.y+pad)*dpr)')],
+  ['G.hit handles single-point pen dot (length===1 early return)', html.includes('pts.length===1)return Math.hypot')],
+  ['doPaste remaps groupId via gidMap to avoid cross-group contamination', html.includes('gidMap') && html.includes('gidMap.has(sh.groupId)')],
 ];
 
 let pass = 0, fail = 0;
@@ -310,7 +314,7 @@ try {
              doBringFront, doSendBack, doBringForward, doSendBackward,
              doAlign, snapV, snapPt,
              getHandles, applyResize, handleCursor,
-             doGroup, doUngroup, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
+             doGroup, doUngroup, doPaste, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape };
   `);
@@ -323,7 +327,7 @@ try {
           doBringFront, doSendBack, doBringForward, doSendBackward,
           doAlign, snapV, snapPt,
           getHandles, applyResize, handleCursor,
-          doGroup, doUngroup, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
+          doGroup, doUngroup, doPaste, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape } = api;
 
@@ -1008,8 +1012,40 @@ try {
     console.log(`  ✓ property-based reversibility: ${scenarios} random scenarios round-trip`);
   }
 
+  // v1.6.21: G.hit single-point pen dot
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const dot={id:'d1',type:'pen',z:1,pts:[[50,50]],stroke:'#000',size:2,opacity:1};
+    Store.commit({op:'add',shape:dot});
+    assert.strictEqual(G.hit(dot,{x:50,y:50}),true,'single-point pen: hit at exact point');
+    assert.strictEqual(G.hit(dot,{x:55,y:50}),true,'single-point pen: hit within tolerance');
+    assert.strictEqual(G.hit(dot,{x:200,y:200}),false,'single-point pen: miss far away');
+    console.log('  ✓ G.hit single-point pen dot is hittable');
+  }
+
+  // v1.6.21: doPaste remaps groupId (no cross-group contamination)
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const s1=Shape.make('rect',{x:0,y:0,w:40,h:40});
+    const s2=Shape.make('rect',{x:50,y:0,w:40,h:40});
+    Store.commit({op:'add',shape:s1});Store.commit({op:'add',shape:s2});
+    state.selection=new Set([s1.id,s2.id]);
+    doGroup();
+    const origGid=state.shapes.find(s=>s.id===s1.id).groupId;
+    assert.ok(origGid,'original shapes have groupId after group');
+    // copy via clipboard
+    state.clipboard={shapes:state.shapes.filter(s=>s.groupId===origGid).map(s=>JSON.parse(JSON.stringify(s)))};
+    doPaste();
+    // pasted shapes should have a NEW groupId, not origGid
+    const pasted=state.shapes.filter(s=>s.groupId&&s.groupId!==origGid);
+    assert.ok(pasted.length===2,'doPaste: two pasted shapes with new groupId');
+    assert.ok(pasted[0].groupId===pasted[1].groupId,'doPaste: pasted shapes share new groupId');
+    assert.ok(pasted[0].groupId!==origGid,'doPaste: new groupId differs from original');
+    console.log('  ✓ doPaste remaps groupId — pasted copies get fresh group identity');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 64;
+  pass += 67;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

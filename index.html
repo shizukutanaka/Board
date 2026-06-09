@@ -733,7 +733,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.20';
+const V='1.6.21';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -943,6 +943,7 @@ const G={
         return distToSeg(p,{x:s.x1,y:s.y1},{x:s.x2,y:s.y2})<=tol+3;}
       case 'pen':{
         const pts=s.pts;
+        if(pts.length===1)return Math.hypot(p.x-pts[0][0],p.y-pts[0][1])<=tol+3;
         for(let i=1;i<pts.length;i++){
           if(distToSeg(p,{x:pts[i-1][0],y:pts[i-1][1]},{x:pts[i][0],y:pts[i][1]})<=tol+3)return true;
         }return false;}
@@ -2382,9 +2383,14 @@ function doPaste(){
   if(!state.clipboard)return;
   const offset=20/state.viewport.zoom;
   const added=[];
+  const gidMap=new Map();
   for(const orig of state.clipboard.shapes){
     const sh=clone(orig);
     sh.id=uid();sh.z=nextZ();
+    if(sh.groupId){
+      if(!gidMap.has(sh.groupId))gidMap.set(sh.groupId,uid());
+      sh.groupId=gidMap.get(sh.groupId);
+    }
     Shape.translate(sh,offset,offset);
     Store.commit({op:'add',shape:sh});
     added.push(sh.id);
@@ -2556,12 +2562,9 @@ function exportPDF(){
   const pad=32,W=Math.ceil(b.w+pad*2),H=Math.ceil(b.h+pad*2),dpr=window.devicePixelRatio||1;
   let off;try{off=new OffscreenCanvas(W*dpr,H*dpr)}catch(_){off=document.createElement('canvas');off.width=W*dpr;off.height=H*dpr}
   const oc=off.getContext('2d');
-  oc.scale(dpr,dpr);
-  oc.fillStyle=getCSS('--paper')||'#fff';oc.fillRect(0,0,W,H);
-  const saved={...state.viewport};
-  state.viewport={x:b.x-pad,y:b.y-pad,zoom:1};
+  oc.fillStyle=getCSS('--paper')||'#fff';oc.fillRect(0,0,W*dpr,H*dpr);
+  oc.setTransform(dpr,0,0,dpr,(-b.x+pad)*dpr,(-b.y+pad)*dpr);
   for(const s of state.shapes)drawShape(s,oc);
-  state.viewport=saved;
   const fin=bl=>{
     if(!bl){UI.toast('export failed','err');return}
     const url=URL.createObjectURL(bl);

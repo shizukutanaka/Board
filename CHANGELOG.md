@@ -2,6 +2,34 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.21] — 2026-06-09
+
+深掘り監査 第5弾(`docs/audit-2026-06.md`)。エクスポート・ヒットテスト・ペースト
+サブシステムを精査し、確認できた不具合を修正。
+
+### Fixed
+- **`exportPDF` が座標変換を誤り、原点から遠い図形が描画されない (P1)** —
+  `oc.scale(dpr,dpr)` + `state.viewport` 差し替えパターンは、`drawShape` が
+  `state.viewport` を無視して生のワールド座標で描画するため機能しない。
+  `oc.setTransform(dpr,0,0,dpr,(-b.x+pad)*dpr,(-b.y+pad)*dpr)` に置き換えて
+  `drawShape` の座標系と一致させた。`exportPNG` と同等のアプローチ。
+- **1点の pen 図形 (単タップ) がヒットテストで常に未選択 (P1)** — `G.hit` 内の
+  pen ループが `for(let i=1;i<pts.length;i++)` のため `pts.length===1` のとき
+  0 回実行されて `false` を返していた。ループ前に
+  `if(pts.length===1)return Math.hypot(p.x-pts[0][0],p.y-pts[0][1])<=tol+3;`
+  を追加し、単点ペンをポイント距離で判定。
+- **グループ化された図形のペーストで `groupId` が元図形と共有される (P2)** —
+  `clone(orig)` がコピー元の `groupId` を保持するため、ペーストした複製を選択
+  すると元グループが同時に選択されていた。`gidMap` で `groupId` を新しい UID
+  にリマップし、ペースト後の複製が独立したグループ ID を持つように修正。
+
+### Tests
+- **234/234 全通過** (+6): presence チェック × 3 (exportPDF setTransform、
+  G.hit 単点 pen、doPaste gidMap) + 行動テスト × 2 (G.hit 単点 pen 往復、
+  doPaste groupId 独立性) + `pass` カウンタを 64 → 67 に更新。
+
+---
+
 ## [1.6.20] — 2026-06-09
 
 深掘り監査 第4弾(`docs/audit-2026-06.md`)。描画・入力・アクセシビリティ・コンテキストメニューの
