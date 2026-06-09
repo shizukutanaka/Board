@@ -2,6 +2,29 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.18] — 2026-06-08
+
+深掘り監査 第2弾(`docs/audit-2026-06.md`)。ツールハンドラ・キーバインド・プレゼン・
+テキスト編集をサブシステム単位で精査し、確認できた不具合を修正。
+
+### Fixed
+- **キーボードでペンが選べない (P1)** — 平打ち `P` がプレゼンモードに横取りされ、`KEYMAP` の
+  `p:'pen'` に到達せずペンツールがキーボードから選択不能だった。`P`=ペン、`⇧P`=プレゼンに分離
+  (Ctrl+Enter でのプレゼン開始も継続)。
+- **プレゼン終了後に表示が戻らない (P1)** — プレゼン開始時に viewport を保存し、終了(Esc)時に
+  復元。最終フレームの位置・ズームに取り残されなくなった。
+- **ヘルプ表が英語環境で日本語表示 (P1 i18n)** — 'プレゼン' / '移動 (⇧: 10px)' / '前面/背面' /
+  '最前面/最背面' がハードコードされていた。i18n キー(`present`/`nudge`/`zorder`/`zorderEnds`)に
+  置換し ja/en 両方を用意。
+- **ペンのリサイズで NaN 混入 (P2)** — ペンはボックスハンドルを表示しない(移動のみ)に。ペンの
+  幾何は `pts` にあるため box-resize は `x/y/w/h` を NaN にしていた(描画には無影響だが不正プロパティ)。
+
+### Tests
+- **219/219 全通過** (+6): `getHandles` の pen=0/line=2/rect=8、+ 監査修正の presence × 5。
+  クリップボード offset・ungroup 意味論・fitToContent・eraser z 順序などは検証の結果**正しい**と確認。
+
+---
+
 ## [1.6.17] — 2026-06-08
 
 プロダクトを 12 カテゴリに分割した徹底監査(`docs/audit-2026-06.md`)で見つかった

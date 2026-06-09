@@ -111,7 +111,7 @@ const checks = [
   ['Presentation mode enter/leave', html.includes("Presentation.enter") && html.includes("Presentation.leave")],
   ['Present button in topbar', html.includes("btnPresent")],
   ['Frame zoomToFrame', html.includes("_zoomToFrame")],
-  ['Frame keyboard P', html.includes("k==='p'&&!meta") && html.includes("Presentation.enter")],
+  ['Presentation on Shift+P / Ctrl+Enter', html.includes("k==='p'&&e.shiftKey") && html.includes("Presentation.enter")],
   // round 6: frame hit priority + label edit + image size guard
   ['pickTop skips frames on first pass', html.includes("s.type==='frame')continue")],
   ['frame dblclick label edit', html.includes("hit.type==='frame'") && html.includes("hit.label")],
@@ -200,6 +200,12 @@ const checks = [
   ['dashbtn covered by forced-colors', html.includes(".btn,.tool,.swatch,.dashbtn{border:1px solid ButtonText}")],
   ['image cache is bounded LRU', html.includes("IMG_CACHE_MAX") && html.includes("_imgCache.keys().next().value")],
   ['load validates viewport finiteness', html.includes("d.viewport.zoom>0)Object.assign(state.viewport")],
+  // v1.6.18: deeper audit fixes
+  ['P selects pen, Shift+P presents', html.includes("k==='p'&&e.shiftKey&&!meta&&!e.altKey")],
+  ['pen has no resize handles', html.includes("if(s.type==='pen')return [];")],
+  ['presentation saves+restores viewport', html.includes("_savedVp={x:state.viewport.x") && html.includes("Object.assign(state.viewport,_savedVp)")],
+  ['help grid present row uses i18n', html.includes("['⇧P',k.present]") && html.includes("['↑↓←→',k.nudge]")],
+  ['help i18n keys in ja and en', html.includes("present:'プレゼン'") && html.includes("present:'Present'")],
 ];
 
 let pass = 0, fail = 0;
@@ -935,6 +941,14 @@ try {
     console.log('  ✓ validShape: accepts sound shapes, rejects malformed pens that would crash render');
   }
 
+  // v1.6.18: getHandles — pen exposes no box handles (box-resize would NaN its x/y/w/h)
+  {
+    assert.strictEqual(getHandles({type:'pen',pts:[[0,0],[10,10]],z:0}).length, 0, 'pen: no resize handles');
+    assert.strictEqual(getHandles({type:'line',x1:0,y1:0,x2:5,y2:5,z:0}).length, 2, 'line: 2 endpoint handles');
+    assert.strictEqual(getHandles({type:'rect',x:0,y:0,w:10,h:10,z:0}).length, 8, 'rect: 8 box handles');
+    console.log('  ✓ getHandles: pen move-only (0 handles), line=2 endpoints, rect=8 box');
+  }
+
   // core invariant — apply N ops, undo all == initial; redo all == post-ops.
   // This is the net to catch reversibility regressions like the old zorder bug.
   {
@@ -967,7 +981,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 62;
+  pass += 63;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

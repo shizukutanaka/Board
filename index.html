@@ -733,7 +733,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.17';
+const V='1.6.18';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -804,7 +804,8 @@ const I18N={
       zoomIn:'拡大',zoomOut:'縮小',zoom100:'100%にリセット',
       fit:'画面にフィット',pan:'パン',help:'ヘルプ',exp:'PNG書き出し',
       save:'即時保存',grid:'グリッド',esc:'選択解除/キャンセル',
-      cycle:'図形を巡回',create:'中央に作成'}},
+      cycle:'図形を巡回',create:'中央に作成',
+      present:'プレゼン',nudge:'移動 (⇧: 10px)',zorder:'前面/背面',zorderEnds:'最前面/最背面'}},
   en:{export:'Export',size:'Size',lineStyle:'Line',helpTitle:'Shortcuts',
     helpSub:'No need to memorise. You\'ll pick it up.',
     saved:'saved',savedNow:'just now',savedAgo:'s ago',
@@ -848,7 +849,8 @@ const I18N={
       zoomIn:'Zoom in',zoomOut:'Zoom out',zoom100:'Reset zoom',
       fit:'Fit to content',pan:'Pan',help:'Help',exp:'Export PNG',
       save:'Save now',grid:'Toggle grid',esc:'Deselect / cancel',
-      cycle:'Cycle shapes',create:'Create at centre'}}};
+      cycle:'Cycle shapes',create:'Create at centre',
+      present:'Present',nudge:'Move (⇧: 10px)',zorder:'Front / back',zorderEnds:'To front / to back'}}};
 const LANG=(navigator.language||'en').startsWith('ja')?'ja':'en';
 const T=I18N[LANG];
 const t=k=>T[k]||I18N.en[k]||k;
@@ -1492,6 +1494,8 @@ function getHandles(s){
   if(s.type==='line'||s.type==='arrow'){
     return [{id:'p1',x:s.x1,y:s.y1},{id:'p2',x:s.x2,y:s.y2}];
   }
+  if(s.type==='pen')return [];   // freehand has no box handles; box-resize would
+                                 // set NaN x/y/w/h (pen geometry lives in pts). Move-only.
   const b=G.bbox(s);
   const{x,y,w,h}=b;
   return[
@@ -2272,7 +2276,7 @@ window.addEventListener('keydown',e=>{
     else if(k==='escape'){Presentation.leave()}
     return;
   }
-  if(k==='p'&&!meta&&!e.altKey&&!e.shiftKey){Presentation.enter();return}
+  if(k==='p'&&e.shiftKey&&!meta&&!e.altKey){e.preventDefault();Presentation.enter();return}
   else if(meta&&k==='enter'){e.preventDefault();Presentation.enter()}
   else if(meta&&k==='c'){e.preventDefault();doCopy()}
   else if(meta&&k==='v'){e.preventDefault();doPaste()}
@@ -3057,14 +3061,14 @@ const UI={
       ['V',k.select],['H / Space',k.pan],['P',k.pen],
       ['R',k.rect],['O',k.ellipse],['A',k.arrow],
       ['L',k.line],['T',k.text],['N',k.sticky],['F',k.frame],['E',k.eraser],
-      ['P','プレゼン'],
+      ['⇧P',k.present],
       ['⌘Z',k.undo],['⌘⇧Z',k.redo],['⌘A',k.selAll],
       ['⌘C/V/X',k.copy+'/'+k.paste+'/'+k.cut],['⌘D',k.dup],['⌫',k.del],
       ['⌘+/−/0',k.zoomIn+'/'+k.zoomOut+'/'+k.zoom100],
       ['⇧1',k.fit],['⌘E',k.exp],['⌘⇧E','SVG'],['⌘P','PDF'],['⌘S',k.save],
       ['G',k.grid],['⇧G','Snap'],['Esc',k.esc],['?',k.help],
-      ['↑↓←→','移動 (⇧: 10px)'],
-      [']/[','前面/背面'],['⇧]/⇧[','最前面/最背面'],
+      ['↑↓←→',k.nudge],
+      [']/[',k.zorder],['⇧]/⇧[',k.zorderEnds],
       ['Tab / ⇧Tab',k.cycle],['Enter',k.create]
     ];
     while(g.firstChild)g.removeChild(g.firstChild);
@@ -3277,6 +3281,7 @@ const Presentation=(()=>{
   let _frames=[];
   let _idx=0;
   let _overlay=null;
+  let _savedVp=null;   // viewport before entering, restored on leave
 
   function _getFrames(){
     return [...state.shapes]
@@ -3303,6 +3308,7 @@ const Presentation=(()=>{
     _frames=_getFrames();
     if(!_frames.length){UI.toast(t('noFrames'),'warn');return}
     _active=true;_idx=0;
+    _savedVp={x:state.viewport.x,y:state.viewport.y,zoom:state.viewport.zoom};
     // Build overlay
     _overlay=document.createElement('div');
     _overlay.id='presOverlay';
@@ -3340,6 +3346,7 @@ const Presentation=(()=>{
     document.querySelector('.topbar').style.display='';
     document.querySelector('.statusbar').style.display='';
     document.querySelector('.minimap-wrap')?.style.removeProperty('display');
+    if(_savedVp){Object.assign(state.viewport,_savedVp);_savedVp=null;UI.refreshZoom()}
     invalidate();
   }
 

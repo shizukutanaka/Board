@@ -4,7 +4,7 @@
 単一HTMLファイル。ダブルクリックで動く。アカウント不要。広告なし。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-00C4CC.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.6.17-00C4CC.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.6.18-00C4CC.svg)](CHANGELOG.md)
 [![Size](https://img.shields.io/badge/size-~37KB%20gzip-00C4CC.svg)](index.html)
 [![Offline](https://img.shields.io/badge/offline-first-00C4CC.svg)](#offline)
 [![A11y](https://img.shields.io/badge/WCAG-AAA-00C4CC.svg)](#accessibility)
@@ -69,7 +69,7 @@ start index.html      # Windows
 - CRDT clock 付き op-log、受信 op は型 allow-list で検証
 
 ### プレゼンテーション
-- フレームを左→右順に全画面表示 (P / Ctrl+Enter)、←/→/Space でナビゲート
+- フレームを左→右順に全画面表示 (⇧P / Ctrl+Enter)、←/→/Space でナビゲート
 - ミニマップ (右下、クリックでジャンプ)
 
 ### 永続化

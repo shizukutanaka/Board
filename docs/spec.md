@@ -1,6 +1,6 @@
 # Board — 仕様書 (Specification)
 
-> Board v1.6.17 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
+> Board v1.6.18 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
 > **§13 適合ギャップ(不足)** で仕様と実装の差分を列挙する。本書は実装と対で更新する。
 > 関連: 設計=`docs/architecture.md`、改善調査=`docs/research-improvements.md` /
 > `docs/category-research*.md`、変更履歴=`CHANGELOG.md`。
@@ -64,7 +64,7 @@ eraser(E) / sticky(N) / frame(F)。Shift で軸拘束・正方形/正円。
 ## 6. キーマップ
 `KEYMAP` が全ツールを網羅。⌘Z/⌘⇧Z=undo/redo、⌘A=全選択、⌘C/V/X/D、⌫=削除、
 ⌘±/0=ズーム、⇧1=フィット、⌘E=PNG、⌘⇧E=SVG、⌘P=PDF、⌘S=保存、`?`=ヘルプ、Esc=解除、
-矢印=ナッジ(⇧で10px)、F→present、Ctrl+Enter=present。
+矢印=ナッジ(⇧で10px)、**P=ペン**、**⇧P / Ctrl+Enter=プレゼン**。Esc は開いているモーダルを優先的に閉じる。
 
 ## 7. 永続化
 IndexedDB(`board`/`docs`/`main`)。保存対象=`{v,shapes,viewport,docName,savedAt}`。
@@ -147,6 +147,16 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
   `penWidths` はストロークが**変化する**筆圧信号を持つ時のみ採用(stylus)、一定値(マウスは常に 0.5)/
   欠落(レガシー 2-tuple)/非有限は速度プロキシへフォールバック。canvas/SVG 両方で反映(パリティ維持)。
   `_penPr` で有限値に強制、データモデル後方互換(既存 pen は 2-tuple のまま動作)。
+
+### ✅ v1.6.18 で解消(深掘り監査 第2弾 — `docs/audit-2026-06.md`)
+- **キーボードのペン到達不能 (P1)**: 平打ち `p` がプレゼンに横取りされ、`KEYMAP.p='pen'` に到達せず
+  ペンがキーボード選択不能だった → `p`=ペン、`⇧P`=プレゼンに分離(Ctrl+Enter も継続)。
+- **プレゼン後の viewport 未復帰 (P1)**: `enter` で保存し `leave` で復元。Esc 後に最終フレーム位置に
+  取り残されなくなった。
+- **pen のリサイズで NaN 混入 (P2)**: pen はボックスハンドル非表示(移動のみ)に。box-resize が
+  `x/y/w/h` を NaN にしていた。
+- **ヘルプ表のハードコード日本語 (P1 i18n)**: 'プレゼン'/'移動'/'前面/背面'/'最前面/最背面' を i18n 化
+  (英語環境で日本語表示だった)。
 
 ### ✅ v1.6.17 で解消(カテゴリ別徹底監査 — `docs/audit-2026-06.md`)
 - **不正 shape の intake 一元検証**: 共有 `validShape()` を IDB ロード / sync スナップショット /
