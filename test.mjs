@@ -187,6 +187,12 @@ const checks = [
   ['snapBox helper present', html.includes("function snapBox")],
   ['move uses object snap when grid off', html.includes("function objectSnap") && html.includes("if(!state.snap)")],
   ['guides rendered during drag', html.includes("function drawGuides") && html.includes("state.guides")],
+  // v1.6.16: dashed/dotted line styles
+  ['dashArr helper present', html.includes("function dashArr")],
+  ['drawShape applies line dash', html.includes("c.setLineDash((s.dash&&")],
+  ['SVG export emits stroke-dasharray', html.includes("stroke-dasharray=") && html.includes("dashArr(s.dash,SZ)")],
+  ['line-style buttons in style panel', html.includes('data-dash="1"') && html.includes('data-dash="2"')],
+  ['dash wired to selection', html.includes("applyStyleToSelection({dash:state.style.dash})")],
 ];
 
 let pass = 0, fail = 0;
@@ -283,7 +289,7 @@ try {
              getHandles, applyResize, handleCursor,
              doGroup, doUngroup, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
-             _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox };
+             _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -296,7 +302,7 @@ try {
           getHandles, applyResize, handleCursor,
           doGroup, doUngroup, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
-          _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox } = api;
+          _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr } = api;
 
   console.log('\n-- behavioural --');
 
@@ -881,6 +887,30 @@ try {
     console.log('  ✓ alignment guides: edge/centre snap, nearest wins, dual-axis, out-of-range no-op');
   }
 
+  // v1.6.16: dashed/dotted line styles
+  {
+    assert.deepStrictEqual(dashArr(0, 4), [], 'dash 0 = solid (empty pattern)');
+    assert.strictEqual(dashArr(1, 4).length, 2, 'dash 1 = dashed (2-tuple)');
+    assert.strictEqual(dashArr(2, 4).length, 2, 'dash 2 = dotted (2-tuple)');
+    // pattern scales with stroke size
+    assert.ok(dashArr(1, 8)[0] > dashArr(1, 2)[0], 'dash pattern scales with size');
+    assert.deepStrictEqual(dashArr(99, 4), [], 'unknown dash value falls back to solid');
+    // SVG: dashed rect emits stroke-dasharray; solid rect does not.
+    const dashed = buildSVG([{id:'d1',type:'rect',z:0,x:0,y:0,w:40,h:30,stroke:'#111',size:2,dash:1}], '#FFF');
+    assert.ok(/stroke-dasharray="[\d. ]+"/.test(dashed), 'dashed rect SVG has stroke-dasharray');
+    const solid = buildSVG([{id:'s1',type:'rect',z:0,x:0,y:0,w:40,h:30,stroke:'#111',size:2,dash:0}], '#FFF');
+    assert.ok(!/stroke-dasharray/.test(solid), 'solid rect SVG has no stroke-dasharray');
+    // dash applied through the generic style path is reversible (upd op)
+    state.shapes.length = 0; state.history.length = 0; state.histIdx = -1; state.seq = 0; state.seenOps = new Set();
+    const rc = Shape.make('rect', {x:0,y:0,w:10,h:10}); rc.dash = 0; Store.commit({op:'add',shape:rc});
+    state.selection = new Set([rc.id]);
+    applyStyleToSelection({dash:1});
+    assert.strictEqual(state.shapes[0].dash, 1, 'dash applied to selection');
+    Store.undo();
+    assert.strictEqual(state.shapes[0].dash, 0, 'dash change is undoable');
+    console.log('  ✓ line styles: solid/dashed/dotted patterns, SVG dasharray, size-scaled, reversible');
+  }
+
   // core invariant — apply N ops, undo all == initial; redo all == post-ops.
   // This is the net to catch reversibility regressions like the old zorder bug.
   {
@@ -913,7 +943,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 60;
+  pass += 61;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

@@ -2,6 +2,23 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.16] — 2026-06-08
+
+同種ソフト(Excalidraw / tldraw / Figma)標準の線種(破線・点線)を実装。
+
+### Added
+- **線種スタイル(実線・破線・点線)** — スタイルパネルに線種ボタンを追加。shape の `dash`
+  (0=実線 / 1=破線 / 2=点線)を `dashArr(dash,size)` が太さ連動のパターンに変換し、
+  画面は `setLineDash`、SVG 書き出しは `stroke-dasharray` で同一に描画する(表示=出力パリティ)。
+  矩形・楕円・直線・矢印に適用(フレームは構造線のため常に実線)。新規図形は現在の線種を継承し、
+  選択中の図形へは汎用 `upd` op で適用するので完全に undo/redo 可能。フォーマットペインターも線種を転写。
+
+### Tests
+- **206/206 全通過** (+6): `dashArr` の実線/破線/点線・太さ連動・未知値フォールバック、
+  SVG の `stroke-dasharray` 有無、選択適用の可逆性、presence × 5。
+
+---
+
 ## [1.6.15] — 2026-06-08
 
 同種ソフト(Excalidraw / tldraw)の調査で最大の欠落と判明した「オブジェクトスナップ」を実装。

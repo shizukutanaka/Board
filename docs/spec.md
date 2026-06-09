@@ -1,6 +1,6 @@
 # Board — 仕様書 (Specification)
 
-> Board v1.6.15 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
+> Board v1.6.16 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
 > **§13 適合ギャップ(不足)** で仕様と実装の差分を列挙する。本書は実装と対で更新する。
 > 関連: 設計=`docs/architecture.md`、改善調査=`docs/research-improvements.md` /
 > `docs/category-research*.md`、変更履歴=`CHANGELOG.md`。
@@ -59,7 +59,7 @@ eraser(E) / sticky(N) / frame(F)。Shift で軸拘束・正方形/正円。
 マーキー/加算選択、移動、8 ハンドルリサイズ(line/arrow は端点)、group/ungroup(⌘G/⌘⇧G)、
 整列(左右上下中央/均等)、z 順序(`]`/`[`/⇧付き)、グリッドスナップ(⇧G)、
 オブジェクトスナップ(移動時に他図形の辺/中心へ整列、ガイド線表示。グリッドスナップ off 時)、
-フォーマットペインター(Alt+C/V)、不透明度、コピー/貼付/切取/複製、undo/redo 最大 500。
+フォーマットペインター(Alt+C/V)、不透明度、線種(実線/破線/点線)、コピー/貼付/切取/複製、undo/redo 最大 500。
 
 ## 6. キーマップ
 `KEYMAP` が全ツールを網羅。⌘Z/⌘⇧Z=undo/redo、⌘A=全選択、⌘C/V/X/D、⌫=削除、
@@ -147,6 +147,13 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
   `penWidths` はストロークが**変化する**筆圧信号を持つ時のみ採用(stylus)、一定値(マウスは常に 0.5)/
   欠落(レガシー 2-tuple)/非有限は速度プロキシへフォールバック。canvas/SVG 両方で反映(パリティ維持)。
   `_penPr` で有限値に強制、データモデル後方互換(既存 pen は 2-tuple のまま動作)。
+
+### ✅ v1.6.16 で解消
+- **線種(破線/点線)**: 競合(Excalidraw/tldraw/Figma)標準の線スタイルを追加。shape の `dash`
+  (0=実線/1=破線/2=点線)を `dashArr(dash,size)` で太さ連動のパターンに変換し、canvas は
+  `setLineDash`、SVG は `stroke-dasharray` で同一描画(パリティ)。rect/ellipse/line/arrow に適用
+  (frame は構造線なので常に実線)。スタイルパネルに線種ボタンを追加、選択へ適用は汎用 `upd` op
+  なので可逆。`dash` は描画専用かつ `dashArr` が未知値を実線にフォールバックするので intake 検証不要。
 
 ### ✅ v1.6.15 で解消
 - **オブジェクトスナップ(スマート整列ガイド)**: 競合(Excalidraw の Alt+S / tldraw)が持ち Board に
