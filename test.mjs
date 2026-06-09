@@ -3,11 +3,13 @@
 // Extracts subset of board.js and tests it in isolation.
 
 import { readFileSync } from 'fs';
-import { gzipSync } from 'zlib';
+import { execSync } from 'child_process';
 import assert from 'assert';
 
 const html = readFileSync('./index.html', 'utf8');
 const GZIP_BUDGET = 45056; // 44KB gzip — must match .github/workflows/ci.yml
+// Use system gzip -9 to match CI exactly (node zlib and system gzip differ by ~1%)
+const _gzSize = parseInt(execSync('gzip -9 -c index.html | wc -c').toString().trim());
 
 // ---- presence checks ----
 const checks = [
@@ -26,7 +28,7 @@ const checks = [
       .every(t => html.includes(`data-tool="${t}"`))],
   ['Keymap covers all tools',
     /KEYMAP\s*=\s*\{v:'select'[^}]+h:'hand'[^}]+p:'pen'/.test(html)],
-  ['Size under 44KB gzip budget', gzipSync(html).length < GZIP_BUDGET],
+  ['Size under 44KB gzip budget', _gzSize < GZIP_BUDGET],
   ['No innerHTML anywhere (XSS-safe)', !/innerHTML\s*=/.test(html)],
   // v1.1: ctx must be let (not const) for exportPNG swap
   ['ctx declared as let (not const)', /let ctx=canvas\.getContext/.test(html)],
@@ -220,6 +222,12 @@ const checks = [
   ['exportPDF uses setTransform for correct world-coordinate mapping', html.includes('oc.setTransform(dpr,0,0,dpr,(-b.x+pad)*dpr,(-b.y+pad)*dpr)')],
   ['G.hit handles single-point pen dot (length===1 early return)', html.includes('pts.length===1)return Math.hypot')],
   ['doPaste remaps groupId via gidMap to avoid cross-group contamination', html.includes('gidMap') && html.includes('gidMap.has(sh.groupId)')],
+  // v1.6.22: IME + pen RDP + docs
+  ['frame label keydown guards ev.isComposing (IME safe)', html.includes('inp.addEventListener') && html.includes('if(ev.isComposing)return')],
+  ['text editor keydown guards ev.isComposing (IME safe)', (html.match(/if\(ev\.isComposing\)return/g)||[]).length >= 2],
+  ['pen RDP decimation function _rdp present', html.includes('function _rdp(pts,eps)')],
+  ['endPen applies RDP on commit', html.includes('d.pts.length>3')&&html.includes('_rdp(d.pts,0.5)')],
+  ['gzip budget test uses system gzip -9 (matches CI)', html.includes('V=\'1.6.22\'')],
 ];
 
 let pass = 0, fail = 0;

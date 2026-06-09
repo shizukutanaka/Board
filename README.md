@@ -4,8 +4,8 @@
 単一HTMLファイル。ダブルクリックで動く。アカウント不要。広告なし。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-00C4CC.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.6.21-00C4CC.svg)](CHANGELOG.md)
-[![Size](https://img.shields.io/badge/size-~37KB%20gzip-00C4CC.svg)](index.html)
+[![Version](https://img.shields.io/badge/version-1.6.22-00C4CC.svg)](CHANGELOG.md)
+[![Size](https://img.shields.io/badge/size-~44KB%20gzip-00C4CC.svg)](index.html)
 [![Offline](https://img.shields.io/badge/offline-first-00C4CC.svg)](#offline)
 [![A11y](https://img.shields.io/badge/WCAG-AAA-00C4CC.svg)](#accessibility)
 
@@ -21,7 +21,7 @@
 | 単一ファイル配布 | ✗ | ✗ | ✗ | **✓** |
 | E2E 暗号化 (予定) | ✗ | 部分 | ✗ | **URL fragment key** |
 | 完全オフライン | 部分 | ✓ | ✓ | **✓ PWA** |
-| サイズ | 数MB | ~1MB | ~2MB | **単一HTML ~37KB gzip** |
+| サイズ | 数MB | ~1MB | ~2MB | **単一HTML ~44KB gzip** |
 | 広告・トラッキング | あり | なし | なし | **ゼロ** |
 | 料金 | $10-16/月 | 無料 + Plus | SDK商用有料 | **完全無料** |
 
@@ -192,7 +192,7 @@ npx serve .
 
 - Issue / PR 歓迎
 - 外部依存の追加は慎重に (単一ファイル原則 — 外部 `<script src>` / `<link href>` は不可)
-- サイズ予算は **gzip 44KB 未満** (CI が `gzip -9` で計測。現状 ~37KB)
+- サイズ予算は **gzip 44KB 未満** (CI が `gzip -9` で計測。現状 ~44KB)
 - `node test.mjs` を通すこと (CI が presence + behavioural テストを実行)
 
 ## ライセンス / License

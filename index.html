@@ -733,7 +733,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.21';
+const V='1.6.22';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1756,6 +1756,7 @@ canvas.addEventListener('dblclick',e=>{
     };
     inp.addEventListener('blur',commit);
     inp.addEventListener('keydown',ev=>{
+      if(ev.isComposing)return;
       if(ev.key==='Enter'){ev.preventDefault();commit()}
       // Detach the blur→commit listener before removing so Escape truly cancels:
       // inp.remove() triggers blur, which would otherwise run commit() and record
@@ -2065,10 +2066,31 @@ function contPen(wp,e){
   if(d>1/state.viewport.zoom)pts.push([wp.x,wp.y,_penPr(e)]);
   invalidate();
 }
+// Ramer-Douglas-Peucker decimation for pen point arrays [[x,y,p?],…].
+// Preserves pressure on retained points. eps in world units.
+function _rdp(pts,eps){
+  if(pts.length<=2)return pts;
+  const [ax,ay]=pts[0],[bx,by]=pts[pts.length-1];
+  const dx=bx-ax,dy=by-ay,len=Math.hypot(dx,dy)||1;
+  let mx=0,idx=1;
+  for(let i=1;i<pts.length-1;i++){
+    const d=Math.abs(dy*pts[i][0]-dx*pts[i][1]+bx*ay-by*ax)/len;
+    if(d>mx){mx=d;idx=i}
+  }
+  if(mx>eps){
+    const L=_rdp(pts.slice(0,idx+1),eps);
+    const R=_rdp(pts.slice(idx),eps);
+    return L.slice(0,-1).concat(R);
+  }
+  return [pts[0],pts[pts.length-1]];
+}
 function endPen(){
   if(!state.draft)return;
   const d=state.draft;state.draft=null;
-  if(d.pts.length>=1)Store.commit({op:'add',shape:d});
+  if(d.pts.length>=1){
+    if(d.pts.length>3)d.pts=_rdp(d.pts,0.5);
+    Store.commit({op:'add',shape:d});
+  }
 }
 
 // ---- rect / ellipse ----
@@ -2234,6 +2256,7 @@ function openTextEditor(s,isNew){
     ta.remove();invalidate();
   });
   ta.addEventListener('keydown',ev=>{
+    if(ev.isComposing)return;
     if(ev.key==='Escape'){ev.preventDefault();ta.blur()}
     if(ev.key==='Enter'&&(ev.metaKey||ev.ctrlKey)){ev.preventDefault();ta.blur()}
   });

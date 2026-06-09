@@ -2,6 +2,36 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.22] — 2026-06-09
+
+IME 対応・ペン点列間引き・テスト精度向上。
+
+### Fixed
+- **テキスト編集 / フレームラベル編集で日本語 IME の Escape/Enter がエディタを誤閉じ (P1)** —
+  `keydown` ハンドラ先頭に `if(ev.isComposing)return` を追加。変換候補 Escape が
+  エディタ閉じではなく変換キャンセルとして機能するよう修正。日本語ファーストの製品として
+  基本動作だった。
+
+### Changed
+- **ペン点列の RDP 間引き** — `endPen()` コミット前に
+  Ramer-Douglas-Peucker (ε=0.5 world unit) を適用。高速描画で蓄積された
+  冗長点を除去しつつ、見た目の形状を保持。ストロークのメモリ・履歴・
+  sync ペイロードが削減される。
+- **gzip バジェットテストを system `gzip -9` に統一** — `node zlib` と
+  `gzip -9` の ~1% 差により test.mjs が偽陰性を生じていた。`execSync('gzip -9 -c')` に
+  変更して CI と完全一致。
+
+### Docs
+- README サイズバッジを `~37KB` → `~44KB` に修正(実測値に合わせた)
+- 比較表・開発ガイドの `~37KB` も同様修正
+- CLAUDE.md の勝利条件「64KB に収まる」→「gzip 44KB 未満」に修正
+
+### Tests
+- **239/239 全通過** (+5): presence チェック × 5 (isComposing × 2、_rdp 関数、
+  endPen RDP 適用、v1.6.22 バージョン確認)。
+
+---
+
 ## [1.6.21] — 2026-06-09
 
 深掘り監査 第5弾(`docs/audit-2026-06.md`)。エクスポート・ヒットテスト・ペースト
