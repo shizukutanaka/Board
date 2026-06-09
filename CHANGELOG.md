@@ -2,6 +2,24 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.24] — 2026-06-09
+
+バイト削減で予算を回復。機能変化なし。
+
+### Changed
+- **JS ヘッダーコメントブロック削除** — `docs/architecture.md` / `CLAUDE.md` と内容が
+  重複していた 19 行の設計注記を削除し、`// Board — MIT License.` 1 行に置き換え。
+  ~290 B のバジェットを回復。
+- **`docName` の `getElementById` 二重取得を解消** — `wire()` 内で
+  `input` と `change` リスナーに別々に要素を取得していたのを `docNameEl` で統一。
+- **WebRTC wire-up の `getElementById` 重複を統合** — ブロックスコープの `_g` 短縮を
+  使い 5 回の長い `document.getElementById` 呼び出しを削減。
+
+### Tests
+- **243/243 全通過** (変化なし)。
+
+---
+
 ## [1.6.23] — 2026-06-09
 
 `.board` ファイルによるボードの保存・復元。

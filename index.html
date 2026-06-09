@@ -711,29 +711,11 @@ body{visibility:visible}
 <div class="toast-stack" id="toasts" aria-live="polite" aria-atomic="false"></div>
 
 <script>
-/* ==========================================================================
-   Board v1.6 — single-file infinite whiteboard
-   Design: Carmack (perf) · Martin (layers) · Pike (simple composition)
-   License: MIT
-   ==========================================================================
-   Layers:
-     CONSTANTS  → atomic config
-     I18N       → language strings
-     STATE      → single source of truth
-     STORE      → op-log, undo/redo (Command pattern)
-     GEOM       → pure geometry, hit testing
-     RENDER     → RAF loop, draws everything from state
-     INPUT      → pointer/keyboard/wheel → dispatched to tools
-     TOOLS      → pen / shape / select / eraser / text / hand
-     PERSIST    → IndexedDB
-     EXPORT     → PNG
-     UI         → DOM side-effects
-     MAIN       → wire it up
-   ========================================================================== */
+// Board — MIT License. See LICENSE file.
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.23';
+const V='1.6.24';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -3214,15 +3196,13 @@ function wire(){
   if(docNameEl){
     docNameEl.value=state.docName||'Untitled';
     docNameEl.addEventListener('input',()=>{state.docName=docNameEl.value;state.dirty=true;Persist.schedule()});
+    docNameEl.addEventListener('change',()=>{state.docName=docNameEl.value||'Untitled';Persist.schedule()});
   }
   document.getElementById('btnHelp').onclick=()=>UI.toggleHelp();
   document.getElementById('helpClose').onclick=()=>UI.toggleHelp();
   document.getElementById('help').addEventListener('click',e=>{
     if(e.target.id==='help')UI.toggleHelp();
   });
-  // doc name
-  const dn=document.getElementById('docName');
-  dn.addEventListener('change',()=>{state.docName=dn.value||'Untitled';Persist.schedule()});
   // swatches
   for(const b of document.querySelectorAll('[data-stroke]'))
     b.addEventListener('click',()=>{
@@ -3295,25 +3275,11 @@ function wire(){
     if(url){try{await navigator.clipboard.writeText(url);UI.toast(t('shareUrlCopied'),'ok')}catch(_){}}
   };
   // WebRTC manual signaling
-  document.getElementById('rtcCreateOffer').onclick=async()=>{
-    try{
-      const tok=await Net.wrtcCreateOffer();
-      document.getElementById('rtcOffer').value=tok;
-    }catch(e){UI.toast(String(e),'err')}
-  };
-  document.getElementById('rtcConnect').onclick=async()=>{
-    const ans=document.getElementById('rtcAnswerIn').value.trim();
-    if(!ans)return;
-    try{await Net.wrtcConsumeAnswer(ans);UI.toast(t('connected')||'connected','ok')}catch(e){UI.toast(String(e),'err')}
-  };
-  document.getElementById('rtcCreateAnswer').onclick=async()=>{
-    const offer=document.getElementById('rtcOfferIn').value.trim();
-    if(!offer)return;
-    try{
-      const tok=await Net.wrtcAcceptOffer(offer);
-      document.getElementById('rtcAnswer').value=tok;
-    }catch(e){UI.toast(String(e),'err')}
-  };
+  {const _g=id=>document.getElementById(id);
+  _g('rtcCreateOffer').onclick=async()=>{try{_g('rtcOffer').value=await Net.wrtcCreateOffer()}catch(e){UI.toast(String(e),'err')}};
+  _g('rtcConnect').onclick=async()=>{const a=_g('rtcAnswerIn').value.trim();if(!a)return;try{await Net.wrtcConsumeAnswer(a);UI.toast(t('connected')||'connected','ok')}catch(e){UI.toast(String(e),'err')}};
+  _g('rtcCreateAnswer').onclick=async()=>{const o=_g('rtcOfferIn').value.trim();if(!o)return;try{_g('rtcAnswer').value=await Net.wrtcAcceptOffer(o)}catch(e){UI.toast(String(e),'err')}};
+  }
   // Net presence → UI
   Net._onConnChange=()=>UI.refreshPeers();
 }
