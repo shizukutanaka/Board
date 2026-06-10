@@ -1139,6 +1139,37 @@ try {
     console.log('  ✓ doPaste remaps groupId — pasted copies get fresh group identity');
   }
 
+  // v1.6.38: snapV / snapPt grid-snap helpers (GRID_SIZE=20)
+  {
+    state.snap = true;
+    assert.strictEqual(snapV(0),  0,  'snapV: 0 stays 0');
+    assert.strictEqual(snapV(20), 20, 'snapV: 20 is already on grid');
+    assert.strictEqual(snapV(9),  0,  'snapV: 9 rounds to 0 (below midpoint)');
+    assert.strictEqual(snapV(11), 20, 'snapV: 11 rounds to 20 (above midpoint)');
+    assert.strictEqual(snapV(-11),-20, 'snapV: -11 rounds to -20');
+    assert.deepStrictEqual(snapPt({x:9,y:11}), {x:0,y:20}, 'snapPt rounds both axes');
+    state.snap = false;
+    assert.strictEqual(snapV(9), 9, 'snapV: passes through when snap disabled');
+    state.snap = true;
+    console.log('  ✓ snapV/snapPt: grid snap quantisation, disable pass-through');
+  }
+
+  // v1.6.38: snapBox smart alignment guide helper
+  {
+    const mov={x:50,y:50,w:40,h:40};
+    const targets=[{x:0,y:0,w:40,h:40}];
+    // mov.x=50, mov.y=50; target bottom/right edge=40 → both axes snap by -10
+    const r1=snapBox(mov,targets,15);
+    assert.strictEqual(r1.dx,-10,'snapBox: snaps left edge to target right edge (d=-10)');
+    assert.strictEqual(r1.dy,-10,'snapBox: snaps top edge to target bottom edge (d=-10)');
+    assert.strictEqual(r1.guides.length,2,'snapBox: emits x and y guide when both axes snap');
+    // out of tolerance: tol=4 but nearest is 10 away → no snap
+    const r2=snapBox(mov,targets,4);
+    assert.strictEqual(r2.dx,0,'snapBox: no snap when out of tolerance');
+    assert.strictEqual(r2.guides.length,0,'snapBox: no guides when out of tolerance');
+    console.log('  ✓ snapBox: edge/centre snap, nearest wins, out-of-range no-op');
+  }
+
   // v1.6.38: dashArr patterns
   {
     assert.deepStrictEqual(dashArr(0,4),[],  'dashArr solid returns []');

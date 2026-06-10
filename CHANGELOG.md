@@ -27,6 +27,8 @@ a11y: トーストの ARIA ロール修正、コンテキストメニューの E
 ### Tests
 - 2 presence checks 追加 (288 total); gzip 45,016B (40B under 45,056B budget)
 - `copyStyle`/`pasteStyle` ラウンドトリップの behavioral test 追加 (全スタイルプロパティ転送 + undo 検証)
+- `snapV`/`snapPt` グリッドスナップの behavioral test 追加 (GRID_SIZE=20 で正確な量子化)
+- `snapBox` スマート整列の behavioral test 追加 (エッジスナップ、許容値外は no-op)
 
 ---
 
