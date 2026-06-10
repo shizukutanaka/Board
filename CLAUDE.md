@@ -14,7 +14,7 @@ Board は 4 つ全部を否定する: **単一HTML、ゼロ登録、完全無料
 
 ```
 Board/
-├── index.html             # 本体 (単一ファイル、~50KB raw / ~44KB gzip)
+├── index.html             # 本体 (単一ファイル、~150KB raw / ~45KB gzip)
 │   ├── <style>            # デザイントークン + レイアウト + モーション
 │   └── <script>
 │       ├── CONSTANTS      # atomic config
@@ -37,14 +37,15 @@ Board/
 ├── LICENSE                # MIT
 ├── docs/
 │   ├── architecture.md    # 詳細設計
-│   ├── roadmap.md         # Phase 1.0 → 2.0
-│   └── ADR-*.md           # Architectural Decision Records
+│   ├── spec.md            # 仕様書 + 適合ギャップ追跡
+│   ├── audit-2026-06.md   # カテゴリ別改善監査
+│   └── research-improvements.md  # 改善案調査
 └── .github/workflows/     # CI (lint + size budget)
 ```
 
 **重要な不変条件**:
 - `index.html` は単一ファイル。外部 `<script src>` / `<link href>` を絶対に追加しない。
-- JS バンドル合計 < 100KB (gzip前)。超えたら機能を削る。
+- gzip サイズ < **45,056 B** (44KB)。CI と `test.mjs` の両方で強制。超えたら機能を削る。
 - `state` は Store 経由でしか書き換えない (undo の完全性のため)。
 - Render は純粋: `state` を読むのみ、副作用なし。
 
