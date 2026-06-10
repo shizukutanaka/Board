@@ -718,7 +718,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.57';
+const V='1.6.58';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1014,16 +1014,11 @@ const Store={
     Persist.schedule();
     if(op.clock.peer===state.peerId)Net.broadcast(op);   // outbound only
   },
-  // Apply a remote op. Idempotent (dedup by clock). Does NOT enter local
-  // undo stack — remote changes are not undoable from this peer.
-  // Allow-list of op types a peer may apply. Anything else is dropped so a
-  // malicious/buggy peer can't drive _apply down an unexpected path.
+  // Apply remote op: dedup by clock, NOT in local undo stack.
+  // REMOTE_OPS allow-list guards type; validRemotePayload checks payload.
   REMOTE_OPS:new Set(['add','del','upd','move','clear','group','ungroup','zorder','align','style']),
   applyRemote(op){
     if(!op||!op.clock||!this.REMOTE_OPS.has(op.op))return;
-    // Peers are semi-trusted: reject structurally-bad payloads (wrong types,
-    // non-finite deltas) so a malicious/buggy peer can't corrupt local state
-    // via _apply (e.g. a `move` with dx={} would NaN out every shape).
     if(!validRemotePayload(op))return;
     const k=op.clock.peer+':'+op.clock.seq;
     if(state.seenOps.has(k))return;
@@ -1366,6 +1361,12 @@ function drawShape(s,c){
       }
       break;}
   }
+  if((s.type==='rect'||s.type==='ellipse')&&s.label){
+    const cx=s.x+s.w/2,cy=s.y+s.h/2;
+    c.font='14px system-ui,sans-serif';c.textBaseline='middle';c.textAlign='center';
+    c.fillStyle=s.stroke||'#0F172A';c.fillText(s.label,cx,cy);
+    c.textBaseline='alphabetic';c.textAlign='left';
+  }
   c.globalAlpha=1;
   c.setLineDash([]);
 }
@@ -1400,9 +1401,7 @@ function drawArrow(s,c){
 // base size (so the existing size/2 bbox padding still covers it).
 function penWidths(pts,size){
   const n=pts.length,base=Math.max(0.5,size||2),REF=base*3+8,LO=0.45;
-  // Prefer real pointer pressure when the stroke carries a *varying* signal (a
-  // stylus); a constant value (mouse always reports 0.5) or none (legacy 2-tuples
-  // / non-finite) falls back to the spacing-based velocity proxy.
+  // Use varying pointer pressure if available; fall back to velocity proxy.
   let hasPr=true,mn=Infinity,mx=-Infinity;
   for(let i=0;i<n;i++){const pr=pts[i][2];if(!Number.isFinite(pr)){hasPr=false;break}if(pr<mn)mn=pr;if(pr>mx)mx=pr}
   const usePr=hasPr&&(mx-mn)>0.05,PLO=0.35;
@@ -1431,9 +1430,7 @@ function drawPen(s,c){
     c.beginPath();c.arc(p[0][0],p[0][1],(s.size||2)/2,0,PI2);c.fill();
     return;
   }
-  // Variable-width ink: draw each smoothed (midpoint-quadratic) segment with its
-  // own lineWidth. Round caps/joins make consecutive segments blend seamlessly,
-  // which avoids the self-intersection artifacts of a hand-rolled outline ribbon.
+  // Variable-width ink: each segment gets its own lineWidth; round caps blend them.
   const w=penWidths(p,s.size),oldCap=c.lineCap,oldJoin=c.lineJoin,oldW=c.lineWidth;
   c.strokeStyle=s.stroke;c.lineCap='round';c.lineJoin='round';
   let px=p[0][0],py=p[0][1];
@@ -1679,9 +1676,7 @@ canvas.addEventListener('pointerup',e=>{
   state.marquee=null;canvas.style.cursor='default';invalidate();
 });
 canvas.addEventListener('pointercancel',()=>{
-  // Restore shape(s) that were being resized or moved so they don't stay at a
-  // partial/corrupt position with no undo entry (pointercancel fires e.g. on
-  // Android when the OS takes over the touch, or when a stylus goes out of range).
+  // Restore partial resize/move on cancel (Android touch-takeover, stylus OOR).
   if(ptr.dragKind==='resize'&&ptr.resizeOrig){
     const rsh=byId([...state.selection][0]);
     if(rsh)Object.assign(rsh,clone(ptr.resizeOrig));
@@ -1701,36 +1696,27 @@ canvas.addEventListener('dblclick',e=>{
   if(!hit)return;
   if(hit.type==='text'||hit.type==='sticky'){
     openTextEditor(hit,false);
-  } else if(hit.type==='frame'){
-    // Inline-edit the frame label via a small prompt-like input
-    const sp=G.w2s({x:hit.x,y:hit.y});
+  } else if(hit.type==='frame'||hit.type==='rect'||hit.type==='ellipse'){
+    const isFrame=hit.type==='frame';
+    const sp=G.w2s(isFrame?{x:hit.x,y:hit.y}:{x:hit.x+hit.w/2,y:hit.y+hit.h/2});
     const r=canvas.getBoundingClientRect();
     const inp=document.createElement('input');
-    inp.value=hit.label||'';
-    inp.maxLength=80;
-    inp.style.cssText=`position:fixed;left:${r.left+sp.x+6}px;top:${r.top+sp.y-24}px;`+
-      `font:600 12px system-ui,sans-serif;color:${hit.stroke||getCSS('--brand')};`+
-      `background:${getCSS('--paper')};border:1px solid ${hit.stroke||getCSS('--brand')};`+
+    inp.value=hit.label||'';inp.maxLength=80;
+    inp.style.cssText=`position:fixed;left:${r.left+sp.x+(isFrame?6:-40)}px;top:${r.top+sp.y+(isFrame?-24:-12)}px;`+
+      `font:${isFrame?'600 ':''}12px system-ui,sans-serif;color:${hit.stroke||getCSS(isFrame?'--brand':'--ink')};`+
+      `background:${getCSS('--paper')};border:1px solid ${hit.stroke||getCSS(isFrame?'--brand':'--ink')};`+
       `padding:2px 6px;outline:none;z-index:9500;min-width:80px;`;
-    document.body.appendChild(inp);
-    inp.select();
+    document.body.appendChild(inp);inp.select();
     const commit=()=>{
       const lbl=inp.value.trim();
-      if(lbl!==hit.label){
-        const before={label:hit.label};const after={label:lbl};
-        hit.label=lbl;
-        Store._recordCommitted({op:'upd',id:hit.id,before,after});
-        invalidate();
-      }
+      if(lbl!==hit.label){const before={label:hit.label??null};const after={label:lbl||null};hit.label=lbl||null;Store._recordCommitted({op:'upd',id:hit.id,before,after});invalidate()}
       inp.remove();
     };
     inp.addEventListener('blur',commit);
     inp.addEventListener('keydown',ev=>{
       if(ev.isComposing)return;
       if(ev.key==='Enter'){ev.preventDefault();commit()}
-      // Detach the blur→commit listener before removing so Escape truly cancels:
-      // inp.remove() triggers blur, which would otherwise run commit() and record
-      // the partial label change as a real undo-able edit.
+      // Escape: detach blur→commit first so inp.remove() doesn't trigger it.
       if(ev.key==='Escape'){inp.removeEventListener('blur',commit);inp.remove()}
     });
   }
@@ -2663,9 +2649,11 @@ function buildSVG(shapes,paper){
       case 'rect':{
         const r=Math.min(8,Math.abs(W)/4,Math.abs(H)/4);
         els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}/>`);
+        if(s.label)els.push(`<text x="${X+W/2+ox}" y="${Y+H/2+oy+7}" font-family="system-ui,sans-serif" font-size="14" text-anchor="middle" fill="${stroke}"${a}>${_esc(s.label)}</text>`);
         break;}
       case 'ellipse':
         els.push(`<ellipse cx="${X+W/2+ox}" cy="${Y+H/2+oy}" rx="${Math.abs(W/2)}" ry="${Math.abs(H/2)}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}/>`);
+        if(s.label)els.push(`<text x="${X+W/2+ox}" y="${Y+H/2+oy+7}" font-family="system-ui,sans-serif" font-size="14" text-anchor="middle" fill="${stroke}"${a}>${_esc(s.label)}</text>`);
         break;
       case 'line':
         els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}/>`);
@@ -2731,13 +2719,9 @@ function buildSVG(shapes,paper){
   return els.join('\n');
 }
 function _esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
-// Coerce any value to a finite number (0 otherwise). Used so a crafted shape
-// with string geometry (via share-URL / sync) can't break out of a numeric SVG
-// attribute — numbers can't contain quotes or angle brackets.
+// Coerce to finite number; prevents string geometry breaking SVG numeric attributes.
 function _num(v){const n=+v;return Number.isFinite(n)?n:0}
-// Word-wrap text to maxWidth using a measure(str)->px function. Honours explicit
-// \n, wraps on whitespace, and hard-breaks tokens longer than the line. Pure and
-// measure-agnostic so canvas (ctx.measureText) and SVG (estimate) share one path.
+// Word-wrap to maxWidth: honours \n, wraps on whitespace, hard-breaks long tokens.
 function wrapText(text,maxWidth,measure){
   const out=[];
   for(const para of String(text==null?'':text).split('\n')){

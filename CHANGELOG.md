@@ -2,6 +2,33 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.58] — 2026-06-10
+
+feat: rect / ellipse 中央ラベル — 機能ギャップ監査の P1 項目。
+ダブルクリックで中央にテキストラベルを追加・編集できる(フローチャートのボックス等に便利)。
+
+### Added
+- rect / ellipse をダブルクリックすると inline input が shape 中央付近に表示され、
+  `label` フィールドを編集できる
+- `drawShape`: `s.label` が存在する場合、rect / ellipse の中央にテキストを描画
+  (`textAlign='center'`, `textBaseline='middle'`)
+- SVG export: rect / ellipse の `label` を `<text text-anchor="middle">` として出力
+- label の変更は `{op:'upd', before:{label:…}, after:{label:…}}` で記録 — **完全可逆**
+  (null sentinel でアンドゥ時に確実に消去)
+
+### Changed
+- dblclick ハンドラのフレームラベル editor を rect/ellipse にも適用するよう拡張
+  (コード共有: `isFrame` フラグで分岐)
+- gzip 予算確保のため冗長なインラインコメント 5 ブロックを簡潔化
+  (`penWidths` 圧力、`drawPen` 可変幅、`pointercancel`、`applyRemote`、`_num`/`wrapText`)
+
+### Tests
+- behavioral テスト 9 件(rect ラベル設定/undo、ellipse ラベル undo/redo、SVG エスケープ)
+- presence テスト 3 件 — 472 total
+- gzip 44,580B (476B under 45,056B budget)
+
+---
+
 ## [1.6.57] — 2026-06-10
 
 feat: シェイプ反転 (flip H/V) — 機能ギャップ監査の P1 項目。選択シェイプを選択 bbox の

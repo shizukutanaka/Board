@@ -322,6 +322,10 @@ const checks = [
   ['flip ctx labels in ja and en', html.includes("ctxFlipH:'左右反転'") && html.includes("ctxFlipH:'Flip horizontal'")],
   ['flip context-menu entries present', html.includes("['ctxFlipH','⇧H',()=>doFlip('h')]") && html.includes("['ctxFlipV','⇧V',()=>doFlip('v')]")],
   ['flip keyboard shortcut (⇧H/⇧V) guarded by selection', html.includes("(k==='h'||k==='v')&&state.selection.size){e.preventDefault();doFlip(k)}")],
+  // v1.6.58: rect/ellipse centre labels — dblclick to set, rendered centred, SVG export
+  ['rect/ellipse label rendered centred in canvas', html.includes("(s.type==='rect'||s.type==='ellipse')&&s.label") && html.includes("c.textAlign='center'")],
+  ['dblclick label editor handles rect and ellipse', html.includes("hit.type==='frame'||hit.type==='rect'||hit.type==='ellipse'") && html.includes("isFrame?'--brand':'--ink'")],
+  ['SVG export emits label for rect', html.includes("if(s.label)els.push") && html.includes("text-anchor=\"middle\"")],
 ];
 
 let pass = 0, fail = 0;
@@ -1703,8 +1707,46 @@ try {
     console.log('  ✓ doFlip: empty selection is a safe no-op');
   }
 
+  // v1.6.58: rect/ellipse centre labels via upd op
+  {
+    // Setting a label on a rect via upd op and undoing restores it
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const lb=Shape.make('rect',{x:0,y:0,w:100,h:60});
+    Store.commit({op:'add',shape:lb});
+    Store.commit({op:'upd',id:lb.id,before:{label:null},after:{label:'Hello'}});
+    assert.strictEqual(state.shapes.find(s=>s.id===lb.id).label,'Hello','label set via upd op');
+    Store.undo();
+    assert.strictEqual(state.shapes.find(s=>s.id===lb.id).label,null,'label null after undo (not rendered)');
+    console.log('  ✓ rect label: set via upd op, undo clears it');
+  }
+  {
+    // Ellipse label round-trip: set → undo → redo
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const le=Shape.make('ellipse',{x:0,y:0,w:80,h:60});
+    Store.commit({op:'add',shape:le});
+    Store.commit({op:'upd',id:le.id,before:{label:null},after:{label:'OK'}});
+    assert.strictEqual(state.shapes.find(s=>s.id===le.id).label,'OK','ellipse label set');
+    Store.undo();
+    assert.strictEqual(state.shapes.find(s=>s.id===le.id).label,null,'ellipse label null after undo');
+    Store.redo();
+    assert.strictEqual(state.shapes.find(s=>s.id===le.id).label,'OK','ellipse label redo');
+    console.log('  ✓ ellipse label: upd op round-trip undo/redo');
+  }
+  {
+    // SVG export includes label text for labelled rect
+    const lr=Shape.make('rect',{x:0,y:0,w:100,h:60});lr.label='SVG';
+    const svgLbl=buildSVG([lr],'#FFFFFF');
+    assert.ok(svgLbl.includes('text-anchor="middle"'),'SVG rect label uses text-anchor middle');
+    assert.ok(svgLbl.includes('>SVG<'),'SVG rect label text is present');
+    // ensure label is escaped
+    const lrEvil=Shape.make('rect',{x:0,y:0,w:100,h:60});lrEvil.label='<script>';
+    const svgEvil=buildSVG([lrEvil],'#FFFFFF');
+    assert.ok(!/<script/.test(svgEvil),'SVG rect label is HTML-escaped');
+    console.log('  ✓ SVG export: rect label rendered with text-anchor, escaped');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 219; // prev 208 + 5 flipH boxes + 3 flipV pen + 2 flipH line + 1 no-op
+  pass += 228; // prev 219 + 3 rect label + 4 ellipse label + 2 SVG label
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
