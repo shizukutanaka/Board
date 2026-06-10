@@ -2,6 +2,20 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.33] — 2026-06-10
+
+i18n: スナップ/グリッド切替トースト日本語化、Present ボタン翻訳、コメント修正。
+
+### Fixed
+- **スナップ/グリッド切替トーストが英語固定 (P2)** — `⇧G` / `G` でスナップ・グリッドを切替すると日本語ユーザーに `"snap on"` / `"grid off"` と英語で表示されていた。`snap:'スナップ'` / `grid:'グリッド'` / `on:'オン'` / `off:'オフ'` を ja テーブルに追加し、英語はキー名フォールバック (`t('snap')` → `'snap'`) で対応。
+- **Present ボタンのラベルが日本語化されない (P3)** — `<span>Present</span>` が `data-t` なしで固定英語だった。`<span data-t="present">` に変更し ja テーブルに `present:'プレゼン'` を追加。
+- **`marqueeHit` コメントが不正確 (P3)** — "OR overlaps for pen" はコード上実装されていない機能説明だった。正確に "fully contains the shape's bbox" に修正。
+
+### Tests
+- 4 presence checks 追加 (`present` data-t、`snap`/`grid`/`on` i18n、トースト使用; 272 total)
+
+---
+
 ## [1.6.32] — 2026-06-10
 
 i18n 修正: PDF ポップアップブロック通知・`.board` インポートエラーが英語ユーザーに誤表示。ドラッグ&ドロップ画像インポートの成功トーストを追加。

@@ -261,6 +261,11 @@ const checks = [
   ['drop-image handler shows toast', html.includes("invalidate();UI.toast(t('imagePasted')")],
   ['popupBlocked used via t()', html.includes("t('popupBlocked')")],
   ['invalidBoard used via t()', html.includes("t('invalidBoard')")],
+  // v1.6.33: Present button data-t, snap/grid i18n, comment fix
+  ['Present button span has data-t attribute', html.includes('data-t="present"')],
+  ['present key in ja i18n', html.includes("present:'プレゼン'")],
+  ['snap/grid on/off keys in ja i18n', html.includes("snap:'スナップ'") && html.includes("on:'オン'")],
+  ['snap/grid toasts use t()', html.includes("t('snap')") && html.includes("t('grid')") && html.includes("t('on')")],
 ];
 
 let pass = 0, fail = 0;
