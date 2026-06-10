@@ -2,6 +2,18 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.50] — 2026-06-10
+
+tests: pickTop と sortZ の behavioral テスト追加。
+
+### Tests
+- `pickTop`: 最上位 z シェイプを返す、ミスで null、フレームより非フレーム優先、フレームのみの場合はフレームを返す
+- `sortZ`: shapes 配列が z 値の昇順にソートされる
+- 備考: 未塗りの rect は内部をヒットしない (境界のみ) — テストで filled rect を使用
+- 404 total; gzip 44,987B (69B under budget)
+
+---
+
 ## [1.6.49] — 2026-06-10
 
 tests: doGroup/doUngroup の behavioral テスト追加 (グループ化・解除の完全undo/redoサイクル)。

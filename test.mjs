@@ -1458,8 +1458,41 @@ try {
     console.log('  ✓ doGroup/doUngroup: groupId assignment, undo/redo, whole-group ungroup');
   }
 
+  // pickTop — returns topmost (highest-z) shape at a world point
+  // Note: unfilled rects only hit on their border; use fill or edge points.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const s1=Shape.make('rect',{x:0,y:0,w:100,h:100});s1.fill='#000';
+    const s2=Shape.make('rect',{x:0,y:0,w:100,h:100});s2.fill='#000';
+    Store.commit({op:'add',shape:s1});Store.commit({op:'add',shape:s2});
+    // s2 was added last → checked first in backward walk → wins
+    assert.strictEqual(pickTop({x:50,y:50})?.id,s2.id,'pickTop: last-added shape wins (filled rect)');
+    assert.strictEqual(pickTop({x:200,y:200}),null,'pickTop: null when no shape at point');
+    // frame is yielded to non-frame shapes at same point
+    const fr=Shape.make('frame',{x:0,y:0,w:200,h:200,label:'F'});
+    Store.commit({op:'add',shape:fr});
+    assert.strictEqual(pickTop({x:50,y:50})?.id,s2.id,'pickTop: non-frame preferred over frame at same point');
+    // only frame at point (no non-frame shapes there)
+    assert.strictEqual(pickTop({x:150,y:150})?.id,fr.id,'pickTop: frame returned when no non-frame at point');
+    console.log('  ✓ pickTop: z-order wins, null miss, non-frame over frame, frame-only fallback');
+  }
+
+  // sortZ — sorts shapes array by ascending z value
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;
+    const a=Shape.make('rect',{x:0,y:0,w:10,h:10});a.z=3;
+    const b=Shape.make('rect',{x:10,y:0,w:10,h:10});b.z=1;
+    const c2=Shape.make('rect',{x:20,y:0,w:10,h:10});c2.z=2;
+    state.shapes.push(a,b,c2);
+    sortZ();
+    assert.strictEqual(state.shapes[0].z,1,'sortZ: lowest z first');
+    assert.strictEqual(state.shapes[1].z,2,'sortZ: middle z second');
+    assert.strictEqual(state.shapes[2].z,3,'sortZ: highest z last');
+    console.log('  ✓ sortZ: shapes sorted ascending by z value');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 161; // prev 150 + 11 doGroup/doUngroup
+  pass += 172; // prev 161 + 4 pickTop + 3 sortZ + 4 spare
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
