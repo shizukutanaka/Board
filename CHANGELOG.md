@@ -2,6 +2,19 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.49] — 2026-06-10
+
+tests: doGroup/doUngroup の behavioral テスト追加 (グループ化・解除の完全undo/redoサイクル)。
+
+### Tests
+- `doGroup`: 2 shapes に同じ groupId が付与される
+- `doGroup` undo/redo: groupId が消去・復元される
+- `doUngroup`: 選択 1 枚でもグループ全体が解除される
+- `doUngroup` undo: before スナップショットから groupId が復元される
+- 393 total; gzip 44,986B (70B under budget)
+
+---
+
 ## [1.6.48] — 2026-06-10
 
 tests: applyResize, penWidths, _buildGrid/_queryGrid の behavioral テスト追加。

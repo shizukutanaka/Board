@@ -1420,8 +1420,46 @@ try {
     console.log('  ✓ _buildGrid/_queryGrid: nearby found, far excluded, empty grid');
   }
 
+  // doGroup / doUngroup — grouping ops and full undo/redo round-trip
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const s1=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    const s2=Shape.make('rect',{x:100,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:s1});Store.commit({op:'add',shape:s2});
+    state.selection=new Set([s1.id,s2.id]);
+
+    // group: assigns same groupId to both
+    doGroup();
+    const g1=state.shapes.find(s=>s.id===s1.id);
+    const g2=state.shapes.find(s=>s.id===s2.id);
+    assert.ok(g1.groupId,'doGroup: s1 has groupId');
+    assert.ok(g2.groupId,'doGroup: s2 has groupId');
+    assert.strictEqual(g1.groupId,g2.groupId,'doGroup: both shapes share same groupId');
+
+    // undo group: groupIds deleted (were undefined before group)
+    Store.undo();
+    assert.ok(!state.shapes.find(s=>s.id===s1.id).groupId,'doGroup undo: s1 groupId cleared');
+    assert.ok(!state.shapes.find(s=>s.id===s2.id).groupId,'doGroup undo: s2 groupId cleared');
+
+    // redo group: groupIds restored
+    Store.redo();
+    assert.ok(state.shapes.find(s=>s.id===s1.id).groupId,'doGroup redo: groupId restored');
+
+    // ungroup from single-shape selection: expands to whole group
+    state.selection=new Set([s1.id]);
+    doUngroup();
+    assert.ok(!state.shapes.find(s=>s.id===s1.id).groupId,'doUngroup: s1 groupId removed');
+    assert.ok(!state.shapes.find(s=>s.id===s2.id).groupId,'doUngroup: s2 groupId removed (same group)');
+
+    // undo ungroup: groupIds restored from before snapshot
+    Store.undo();
+    assert.ok(state.shapes.find(s=>s.id===s1.id).groupId,'doUngroup undo: s1 groupId restored');
+    assert.ok(state.shapes.find(s=>s.id===s2.id).groupId,'doUngroup undo: s2 groupId restored');
+    console.log('  ✓ doGroup/doUngroup: groupId assignment, undo/redo, whole-group ungroup');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 150; // prev 131 + 9 applyResize + 5 penWidths + 3 grid + 2 spare
+  pass += 161; // prev 150 + 11 doGroup/doUngroup
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
