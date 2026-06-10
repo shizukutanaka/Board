@@ -283,6 +283,9 @@ const checks = [
   ['status bar shapes label has data-t', html.includes('class="lbl" data-t="shapes"')],
   ['describeShape uses T.k locale name', html.includes("T.k?.[s.type]??s.type")],
   ['no dead t() fallbacks in toast/confirm calls', !html.includes("t('connected')||") && !html.includes("t('importConfirm')||")],
+  // v1.6.37: toast role=alert/status, Escape closes context menu
+  ['toast sets role=alert for err/warn, role=status otherwise', html.includes("setAttribute('role',kind==='err'||kind==='warn'?'alert':'status')")],
+  ['Escape key closes context menu before modal dismiss', html.includes("ctx2.dataset.open==='true'){UI.closeCtxMenu();return}")],
 ];
 
 let pass = 0, fail = 0;

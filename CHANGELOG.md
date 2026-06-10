@@ -2,6 +2,19 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.37] — 2026-06-10
+
+a11y: トーストの ARIA ロール修正、コンテキストメニューの Escape キー対応 (WCAG 2.2)。
+
+### Fixed
+- **トーストに `role` 属性なし (WCAG 4.1.2)** — 各トースト `div` に `role="alert"` (err/warn 種別) または `role="status"` (ok/default 種別) を追加。親の `aria-live="polite"` はそのまま残し、個別トーストに意味的なロールを与える。これにより `err`/`warn` トーストが `aria-live="assertive"` 相当のアナウンスとなる。
+- **コンテキストメニューが Escape キーで閉じない (WCAG 2.1.2, キーボードトラップ防止)** — `keydown` ハンドラの Escape 分岐にコンテキストメニュー判定を追加。メニューが開いている場合は `closeCtxMenu()` を呼んで即 `return`、モーダルの Escape 処理より前に実行。
+
+### Tests
+- 2 presence checks 追加 (288 total); gzip 45,016B (40B under 45,056B budget)
+
+---
+
 ## [1.6.36] — 2026-06-10
 
 i18n 完成: 残存ハードコード文字列を i18n 化、冗長フォールバック削除、ステータスバーラベル i18n、`describeShape` ローカライズ。
