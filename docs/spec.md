@@ -1,6 +1,6 @@
 # Board — 仕様書 (Specification)
 
-> Board v1.6.56 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
+> Board v1.6.57 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
 > **§13 適合ギャップ(不足)** で仕様と実装の差分を列挙する。本書は実装と対で更新する。
 > 関連: 設計=`docs/architecture.md`、改善調査=`docs/research-improvements.md` /
 > `docs/category-research*.md`、変更履歴=`CHANGELOG.md`。
@@ -227,6 +227,11 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
 ### ✅ v1.6.41 で解消(a11y: 残余 sp-label)
 - **"Line style" グループの sp-label に `aria-hidden` なし**: `data-t="lineStyle"` スパンに
   `aria-hidden="true"` を追加。v1.6.40 で 4 件修正したが、このラベルのみ残存していた。
+
+### ✅ v1.6.57 で実装(feat: シェイプ反転 flip H/V)
+- **回転・反転が無い**: 機能ギャップ監査の P1。`doFlip(axis)` が選択 bbox 中心軸でミラー。
+  専用 op を持たず `align` op を再利用するため `_apply` 分岐の追加ゼロで完全可逆。
+  ⇧H/⇧V とコンテキストメニューから実行。box は x/y、line/arrow は端点、pen は全点を反転。
 
 ### ✅ v1.6.56 で実装(feat: カスタムカラーピッカー)
 - **プリセット 7 色以外を選べない**: 機能ギャップ監査(`docs/feature-gap-2026-06.md`)で最頻出の

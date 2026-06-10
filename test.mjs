@@ -21,8 +21,8 @@ const checks = [
   ['WCAG AAA brand-ink token', html.includes('--brand-ink:#003B40')],
   ['IndexedDB store', html.includes("DB_NAME='board'")],
   ['RAF render loop', /requestAnimationFrame\(frame\)/.test(html)],
-  ['op-log op types (add/del/upd/move/z/clear)',
-    ['add','del','upd','move','z','clear'].every(op => html.includes(`op:'${op}'`))],
+  ['op-log op types (add/del/upd/move/clear/zorder)',
+    ['add','del','upd','move','clear','zorder'].every(op => html.includes(`op:'${op}'`))],
   ['Tools: pen, rect, ellipse, arrow, line, text, eraser, select, hand',
     ['pen','rect','ellipse','arrow','line','text','eraser','select','hand']
       .every(t => html.includes(`data-tool="${t}"`))],
@@ -318,6 +318,10 @@ const checks = [
   ['custom stroke color picker present', html.includes('class="swatch cp" data-cp="stroke"')],
   ['custom fill color picker present', html.includes('class="swatch cp" data-cp="fill"')],
   ['custom color pickers route through applyStyleToSelection', html.includes("for(const cp of document.querySelectorAll('input.cp'))")],
+  // v1.6.57: flip H/V — reuses the align op, context menu + ⇧H/⇧V shortcut
+  ['flip ctx labels in ja and en', html.includes("ctxFlipH:'左右反転'") && html.includes("ctxFlipH:'Flip horizontal'")],
+  ['flip context-menu entries present', html.includes("['ctxFlipH','⇧H',()=>doFlip('h')]") && html.includes("['ctxFlipV','⇧V',()=>doFlip('v')]")],
+  ['flip keyboard shortcut (⇧H/⇧V) guarded by selection', html.includes("(k==='h'||k==='v')&&state.selection.size){e.preventDefault();doFlip(k)}")],
 ];
 
 let pass = 0, fail = 0;
@@ -410,7 +414,7 @@ try {
     ${js}
     return { state, Store, G, Shape, distToSeg,
              doBringFront, doSendBack, doBringForward, doSendBackward,
-             doAlign, snapV, snapPt,
+             doAlign, doFlip, snapV, snapPt,
              getHandles, applyResize, handleCursor,
              doGroup, doUngroup, doPaste, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
@@ -424,7 +428,7 @@ try {
   );
   const { state, Store, G, Shape, distToSeg,
           doBringFront, doSendBack, doBringForward, doSendBackward,
-          doAlign, snapV, snapPt,
+          doAlign, doFlip, snapV, snapPt,
           getHandles, applyResize, handleCursor,
           doGroup, doUngroup, doPaste, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
@@ -1648,8 +1652,59 @@ try {
     console.log('  ✓ Store.applyRemote del op removes the targeted shape');
   }
 
+  // v1.6.57: doFlip — mirror selection across its bbox centre, reversible via align op
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    // two boxes: left [0,40], right [120,160] → bbox x 0..160, centre cx=80
+    const fl=Shape.make('rect',{x:0,y:0,w:40,h:40});
+    const fr=Shape.make('rect',{x:120,y:0,w:40,h:40});
+    Store.commit({op:'add',shape:fl});Store.commit({op:'add',shape:fr});
+    state.selection=new Set([fl.id,fr.id]);
+    doFlip('h');
+    assert.strictEqual(state.shapes.find(s=>s.id===fl.id).x,120,'flipH: left box mirrors to right (2*80-(0+40))');
+    assert.strictEqual(state.shapes.find(s=>s.id===fr.id).x,0,'flipH: right box mirrors to left (2*80-(120+40))');
+    Store.undo();
+    assert.strictEqual(state.shapes.find(s=>s.id===fl.id).x,0,'flipH undo: left box x restored');
+    assert.strictEqual(state.shapes.find(s=>s.id===fr.id).x,120,'flipH undo: right box x restored');
+    console.log('  ✓ doFlip h: boxes mirror about selection centre, undo restores');
+  }
+  {
+    // pen: vertical flip inverts y order of points
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const pn={id:'fp',type:'pen',z:1,pts:[[0,0],[10,20]],stroke:'#000',size:2,opacity:1};
+    Store.commit({op:'add',shape:pn});
+    state.selection=new Set([pn.id]);
+    doFlip('v');
+    const p2=state.shapes.find(s=>s.id===pn.id);
+    assert.ok(p2.pts[0][1]>p2.pts[1][1],'flipV pen: top point (y=0) now below bottom point (y=20)');
+    assert.strictEqual(p2.pts[0][0],0,'flipV pen: x coords untouched on vertical flip');
+    Store.undo();
+    assert.strictEqual(state.shapes.find(s=>s.id===pn.id).pts[0][1],0,'flipV pen undo: pts restored');
+    console.log('  ✓ doFlip v: pen pts mirror vertically, x untouched, undo restores');
+  }
+  {
+    // line: horizontal flip mirrors endpoints (reverses arrow direction)
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const ln={id:'fln',type:'line',z:1,x1:0,y1:0,x2:100,y2:0,stroke:'#000',size:2,opacity:1};
+    Store.commit({op:'add',shape:ln});
+    state.selection=new Set([ln.id]);
+    doFlip('h');
+    const l2=state.shapes.find(s=>s.id===ln.id);
+    assert.ok(l2.x1>l2.x2,'flipH line: endpoints mirrored (x1 now > x2)');
+    assert.strictEqual(l2.y1,0,'flipH line: y untouched on horizontal flip');
+    console.log('  ✓ doFlip h: line endpoints mirror, y untouched');
+  }
+  {
+    // empty selection is a safe no-op (no history entry, no throw)
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const baseLen=state.history.length;
+    doFlip('h');
+    assert.strictEqual(state.history.length,baseLen,'doFlip no-op on empty selection');
+    console.log('  ✓ doFlip: empty selection is a safe no-op');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 208; // prev 197 + 4 align variants + 5 ellipse G.hit + 2 remote del
+  pass += 219; // prev 208 + 5 flipH boxes + 3 flipV pen + 2 flipH line + 1 no-op
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

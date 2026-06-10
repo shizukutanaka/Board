@@ -2,6 +2,31 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.57] — 2026-06-10
+
+feat: シェイプ反転 (flip H/V) — 機能ギャップ監査の P1 項目。選択シェイプを選択 bbox の
+中心軸でミラーリング。box は x/y、line/arrow は端点、pen は全点を反転。
+
+### Added
+- `doFlip(axis)` / `flipShape(s,axis,c)`: 専用 op を持たず **`align` op を再利用**(変更前後の
+  完全クローンを記録)するため、`_apply` 分岐の追加ゼロで完全可逆
+- ⇧H(左右反転)/ ⇧V(上下反転)キーボードショートカット(選択時のみ発火)
+- コンテキストメニューに「左右反転 / 上下反転」エントリ(ショートカット表示付き)
+- i18n: `ctxFlipH` / `ctxFlipV`(ja/en)
+
+### Changed
+- gzip 予算確保のため冗長なインラインコメント(`validShape` / `validRemotePayload` /
+  Store op リスト / Tab 巡回)を簡潔化。設計根拠は `docs/architecture.md` に集約・保存
+  (反転の仕組み・受信 op 検証の節を追記)
+- presence テスト `op-log op types`: stale な `op:'z'` を実在の `op:'zorder'` に修正
+
+### Tests
+- `doFlip` の behavioral テスト 11 件(box ミラー+undo、pen 垂直反転、line 端点反転、空選択 no-op)
+- flip 配線の presence テスト 3 件 — 460 total
+- gzip 45,043B (13B under 45,056B budget)
+
+---
+
 ## [1.6.56] — 2026-06-10
 
 feat: カスタムカラーピッカー — プリセット 7 色に加え、ネイティブ `<input type="color">` で
