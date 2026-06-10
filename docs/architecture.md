@@ -1,12 +1,12 @@
 # Architecture
 
-> Board v1.0 の内部設計。Carmack (perf) · Martin (clean) · Pike (simple) の適用。
+> Board v1.6 の内部設計。Carmack (perf) · Martin (clean) · Pike (simple) の適用。
 
 ## 全体像
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ index.html (single file, ~64KB)                             │
+│ index.html (single file, ~134KB raw / ~45KB gzip)           │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  ┌──────────┐   ┌────────┐   ┌──────┐   ┌──────────┐       │
@@ -32,23 +32,31 @@
 ### 2. Tools
 現在のツール (`state.tool`) に応じて `begin* / cont* / end*` の三段階で gesture を処理。途中状態は `state.draft` に置く (undo に入れない)。`end*` で Store.commit。
 
+11 ツール: select, hand, pen, rect, ellipse, arrow, line, text, sticky, frame, eraser。
+
 ### 3. Store (op-log, Command pattern)
 ```js
-Store.commit(op)    // apply + append + cap history
-Store.undo()        // apply inverse + decrement idx
-Store.redo()        // re-apply + increment idx
-Store._apply(op, forward)   // switch on op.op
+Store.commit(op)              // apply + append + cap history
+Store.undo()                  // apply inverse + decrement idx
+Store.redo()                  // re-apply + increment idx
+Store._apply(op, forward)     // switch on op.op
+Store._recordCommitted(op)    // record pre-applied op (no re-apply)
+Store.applyRemote(op)         // validate + apply remote op
+Store.broadcast(op)           // send to peers via BroadcastChannel + WebRTC
 ```
 
-op 型:
+op 型 (全て可逆; `_apply(op, false)` で完全に戻る):
 - `{op:'add', shape}` — shape を push
 - `{op:'del', shapes:[...]}` — 複数削除を1つに
 - `{op:'upd', id, before, after}` — 汎用プロパティ変更
 - `{op:'move', ids:[...], dx, dy}` — 平行移動
-- `{op:'z', id, from, to}` — z 順序移動
+- `{op:'zorder', before:[{id,z},...], after:[{id,z},...]}` — z 順序スナップショット差分
+- `{op:'style', before:[{id,...},...], after:[{id,...},...]}` — マルチ選択スタイル一括変更 (スライダーコアレス)
+- `{op:'align', before:[{id,...},...], after:[{id,...},...]}` — 整列
+- `{op:'group', ids, gid}` / `{op:'ungroup', ids, gids}` — グループ
 - `{op:'clear', shapes:[...]}` — 全消去
 
-**全 op が可逆**。`_apply(op, false)` で完全に戻せる。これが Phase 2 で CRDT 化する時のベース。
+**全 op が可逆**。`_apply(op, false)` で完全に戻せる。`test.mjs` のプロパティベーステストで30シナリオ往復検証。
 
 ### 4. State
 唯一の真実。以下しか存在しない:
@@ -58,8 +66,10 @@ op 型:
   selection: Set<id>,
   viewport: {x, y, zoom},
   tool, style, history, histIdx,
-  clipboard, hover, draft, editing, marquee,
-  showGrid, docName, dirty, lastSaveAt
+  clipboard, styleClipboard,
+  hover, draft, editing, marquee, guides,
+  showGrid, snap, docName, dirty, lastSaveAt,
+  peerId, roomId, seq, seenOps,
 }
 ```
 
@@ -70,13 +80,16 @@ RAF ループ。`needsRender` フラグで再描画をゲート。毎フレー�
 1. 背景クリア
 2. world→screen transform 設定
 3. グリッド (zoom が十分なら)
-4. 全 shape (z順)
-5. draft (if any)
-6. screen space で選択枠 + handle
-7. marquee (if any)
+4. フレーム (最初に描画して他の shape が上に乗る)
+5. 全 shape (z順、viewport culling で範囲外スキップ)
+6. draft (if any)
+7. スマート整列ガイド (drag 中のみ)
+8. screen space で選択枠 + 8 handle (line/arrow は端点 2 つ)
+9. marquee (if any)
+10. ミニマップ (独立 canvas)
 
 ### 6. Persist
-IndexedDB (`board` / `docs` / `main`)。500ms デバウンス。`beforeunload` で最終セーブ。
+IndexedDB (`board` / `docs` / `main`)。500ms デバウンス。`beforeunload` で最終セーブ。`Ctrl+S` で即時保存。読み込み時に `validShape` で全 shape を検証。
 
 ## 座標系
 
@@ -89,9 +102,9 @@ IndexedDB (`board` / `docs` / `main`)。500ms デバウンス。`beforeunload` �
 
 bbox 先置き (quick reject) → shape 型別詳細。`tol = 6/zoom` でズーム時も一定の当たり判定。
 
-ペンは line segments の距離チェック。O(n×m) だが pts を間引いている (1px未満 drop) ので問題なし。1000 shape × 100 pts まで目視60fps確認。
+ペンは line segments の距離チェック。エンドポイント: Ramer-Douglas-Peucker (ε=0.5px) で commit 時に decimation。
 
-Phase 1.1 で quadtree 導入予定 (shape > 500 で線形探索が重くなる)。
+**Spatial index** (`v1.6.11`): board に 40+ shape 以上ある場合、`pickTop` は `_buildGrid` でグリッドセルインデックスを構築し `_queryGrid` で候補を絞る。`_apply` ごとに `_invalidateGrid()` で無効化、次の `pickTop` で再構築。
 
 ## フレームレート
 
@@ -102,6 +115,8 @@ requestAnimationFrame 1 本。ユーザー操作中も常に 60fps を目標。
 - `needsRender` でスキップ
 - グリッドは `gsZ<6` で描画スキップ + `opacity` で fade
 - 選択枠は screen space で描画 (transform 切替 1 回のみ)
+- Viewport culling: `inView(s, visibleWorldRect())` で範囲外 shape をスキップ
+- getCSS: `_cssCache` でテーマカラーを memoize (テーマ変更時に `clearCSSCache`)
 
 ## DPR
 
@@ -109,20 +124,42 @@ requestAnimationFrame 1 本。ユーザー操作中も常に 60fps を目標。
 
 ## i18n
 
-`I18N` オブジェクトに ja / en を併記。`navigator.language` で起動時判定。Phase 1.4 で JSON 分離 + 1000 言語 MT infra 導入予定。
+`I18N` オブジェクトに ja / en を併記。`navigator.language` で起動時判定。`T = I18N[LANG]`。
+DOM 要素は `data-t` 属性 + `UI.applyI18n()` で翻訳 (起動時に 1 回走査)。
+`t(key)` = `T[key] || I18N.en[key] || key` (キー名フォールバックで破綻しない)。
 
-## Service Worker
+## セキュリティ
 
-インライン Blob で登録。単一 HTML を cache-first で返す。初回アクセス後は完全オフライン。
+- `innerHTML =` は CI の grep で禁止 (ゼロ件確認)
+- 外部リソース (`<script src>` / `<link href>`) は CI の grep で禁止
+- SVG / PDF エクスポート: 全属性値を `_esc()` でエスケープ (`& < > "`)
+- 画像: `data:image/` プレフィックス検証のみ許可
+- 受信 op: `REMOTE_OPS` 許可リスト + `validRemotePayload` で型チェック
+- `validShape` を全 intake パス (IDB, sync, URL, .board import) で適用
 
-## XSS
+## アクセシビリティ (v1.6.37+)
 
-- `innerHTML` は help grid と context menu のみ、かつ値は定数/i18n のみ (ユーザー入力不含)
-- テキスト shape は `fillText`/`textContent` 描画 (HTML としては評価されない)
-- Doc name は `<input>` value (DOM エスケープ済み)
+- Canvas: `role="application"`, `aria-label` でキーボード操作を説明
+- Toast: 親 `aria-live="polite"` + 個別 `role="alert"` (err/warn) / `role="status"` (ok)
+- コンテキストメニュー: `role="menu"` / `role="menuitem"` / `role="separator"`, Escape で閉じる, 開時に最初の項目へフォーカス
+- ヘルプモーダル / 共有モーダル: Escape で閉じる, `role="dialog"` + `aria-modal`
+- 全インタラクティブ要素: `aria-label`, `aria-pressed`
+- WCAG AAA: テキスト 18:1+, ブランドカラー `--brand-ink` (#003B40) で 7.5:1 非テキスト
+- `prefers-reduced-motion` / `prefers-color-scheme` / `forced-colors` / `prefers-contrast` 対応
+
+## P2P 同期
+
+### BroadcastChannel (同一オリジン間)
+`NET_CHANNEL_PREFIX+'board.'+roomId` チャンネルで op をブロードキャスト。`ping/pong` でピア検出 (`NET_PRESENCE_INTERVAL` 間隔)。
+
+### WebRTC DataChannel (端末間)
+手動シグナリング (offer/answer をコピーして交換)。DTLS 暗号化。
+
+### CRDT clock
+各 op は `{peer, seq}` clock を持ち、`seenOps` (Set) で重複排除。スナップショット sync は `seq:'snap'+i` で個別 clock を割当。
 
 ## 今後
 
-Phase 1.1: op-log を WebRTC DataChannel でブロードキャスト → CRDT に昇格 (op に `clock:{peer,seq}` 追加、last-writer-wins)。
-
-Phase 2.0: プラグイン API (iframe sandbox + postMessage)、カスタム shape 型、Figma import。
+- マルチページ、レーザーポインタ、スレッドコメント (v1.7+)
+- Plugin API (iframe sandbox + postMessage)、Figma import (v2.0)
+- AES-GCM E2E 暗号化 (URL fragment key + WebRTC DataChannel)
