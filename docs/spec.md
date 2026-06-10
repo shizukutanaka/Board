@@ -1,6 +1,6 @@
 # Board — 仕様書 (Specification)
 
-> Board v1.6.51 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
+> Board v1.6.52 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
 > **§13 適合ギャップ(不足)** で仕様と実装の差分を列挙する。本書は実装と対で更新する。
 > 関連: 設計=`docs/architecture.md`、改善調査=`docs/research-improvements.md` /
 > `docs/category-research*.md`、変更履歴=`CHANGELOG.md`。
@@ -227,6 +227,10 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
 ### ✅ v1.6.41 で解消(a11y: 残余 sp-label)
 - **"Line style" グループの sp-label に `aria-hidden` なし**: `data-t="lineStyle"` スパンに
   `aria-hidden="true"` を追加。v1.6.40 で 4 件修正したが、このラベルのみ残存していた。
+
+### ✅ v1.6.52 で解消(a11y: ダイアログフォーカス管理 WCAG 2.4.3)
+- **ヘルプ/共有ダイアログ開閉でフォーカスが移動しない**: `toggleHelp`/`openShare`/`closeShare` を改修。
+  開くとき Close ボタンへ、閉じるときトリガーボタンへフォーカスを移動。
 
 ### ✅ v1.6.45 で解消(a11y: sConn aria-live + zoom-badge グループ)
 - **オンライン/オフライン遷移が SR に無音**: `sConn` span に `aria-live="polite"` を追加。

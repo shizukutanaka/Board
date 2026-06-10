@@ -715,7 +715,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.51';
+const V='1.6.52';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -3057,8 +3057,9 @@ const UI={
       setTimeout(()=>div.remove(),240)},1600);
   },
   toggleHelp(){
-    const h=document.getElementById('help');
-    h.dataset.open=h.dataset.open!=='true';
+    const h=document.getElementById('help'),open=h.dataset.open!=='true';
+    h.dataset.open=open;
+    document.getElementById(open?'helpClose':'btnHelp').focus();
   },
   openCtxMenu(x,y){
     const m=document.getElementById('ctx');
@@ -3164,9 +3165,11 @@ const UI={
     Share.exportToUrl().then(url=>{
       document.getElementById('shareUrl').value=url;
     }).catch(()=>{});
+    document.getElementById('shareClose').focus();
   },
   closeShare(){
     document.getElementById('share').dataset.open='false';
+    document.getElementById('btnShare').focus();
   },
   refreshPeers(){
     const stack=document.getElementById('peerStack');

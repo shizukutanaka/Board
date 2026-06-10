@@ -310,6 +310,10 @@ const checks = [
   ['sConn has aria-live=polite (online/offline announces to SR)', html.includes('id="sConn" aria-live="polite"')],
   // v1.6.45: zoom badge has role=group for semantic grouping
   ['zoom-badge has role=group and aria-label', html.includes('class="zoom-badge" role="group" aria-label="Zoom controls"')],
+  // v1.6.52: dialog focus management (WCAG 2.4.3)
+  ['toggleHelp moves focus to helpClose on open', html.includes("open?'helpClose':'btnHelp'")],
+  ['openShare moves focus to shareClose', html.includes("document.getElementById('shareClose').focus()")],
+  ['closeShare returns focus to btnShare', html.includes("document.getElementById('btnShare').focus()")],
 ];
 
 let pass = 0, fail = 0;

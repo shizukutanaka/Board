@@ -2,6 +2,23 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.52] — 2026-06-10
+
+a11y: ダイアログ開閉時のフォーカス管理 (WCAG 2.4.3 Focus Order)。
+
+### Fixed
+- **ヘルプダイアログ開閉時にフォーカスが移動しない (WCAG 2.4.3)** — `toggleHelp()` を改修。
+  - 開くとき: `helpClose` ボタンにフォーカス移動 (SR ユーザーがダイアログ内容にアクセス可)。
+  - 閉じるとき: `btnHelp` にフォーカスを戻す (モーダルを開いたボタンに復帰)。
+- **共有ダイアログ開閉時にフォーカスが移動しない (WCAG 2.4.3)** — `openShare()`/`closeShare()` を改修。
+  - 開くとき: `shareClose` ボタンにフォーカス。
+  - 閉じるとき: `btnShare` にフォーカスを戻す。
+
+### Tests
+- 3 presence checks 追加 → 418 total; gzip 45,023B (33B under 45,056B budget)
+
+---
+
 ## [1.6.51] — 2026-06-10
 
 tests: Shape.translate と G.marqueeHit の behavioral テスト追加。
