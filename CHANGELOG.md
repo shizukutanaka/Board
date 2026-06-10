@@ -2,6 +2,18 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.34] — 2026-06-10
+
+i18n: ステータスバーのオンライン/オフライン表示を日本語化。
+
+### Fixed
+- **ステータスバーのオンライン/オフライン表示が英語固定 (P3)** — `updateOnline()` で `'online'`/`'offline'` をハードコードしていた。`online:'オンライン'`/`offline:'オフライン'` を ja テーブルに追加し `t()` 経由に変更。英語はキー名フォールバックで対応。
+
+### Tests
+- 2 presence checks 追加 (274 total); gzip 44,924B (132B under 45,056B budget)
+
+---
+
 ## [1.6.33] — 2026-06-10
 
 i18n: スナップ/グリッド切替トースト日本語化、Present ボタン翻訳、コメント修正。

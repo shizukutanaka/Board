@@ -266,6 +266,9 @@ const checks = [
   ['present key in ja i18n', html.includes("present:'プレゼン'")],
   ['snap/grid on/off keys in ja i18n', html.includes("snap:'スナップ'") && html.includes("on:'オン'")],
   ['snap/grid toasts use t()', html.includes("t('snap')") && html.includes("t('grid')") && html.includes("t('on')")],
+  // v1.6.34: online/offline status i18n
+  ['online/offline keys in ja i18n', html.includes("online:'オンライン'") && html.includes("offline:'オフライン'")],
+  ['updateOnline uses t()', html.includes("t('online')") && html.includes("t('offline')")],
 ];
 
 let pass = 0, fail = 0;

@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.6.33 — Design Tokens
+   Board v1.6.34 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -715,7 +715,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.33';
+const V='1.6.34';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -753,7 +753,7 @@ const I18N={
     ungrouped:'グループ解除',noFrames:'フレームがありません (F キーで作成)',
     imgBig:'画像が大きすぎます。縮小してください',
     popupBlocked:'ポップアップをブロックしてください',invalidBoard:'ボードファイルが無効です',
-    snap:'スナップ',grid:'グリッド',on:'オン',off:'オフ',
+    snap:'スナップ',grid:'グリッド',on:'オン',off:'オフ',online:'オンライン',offline:'オフライン',
     copied:'コピー',pasted:'貼り付け',deleted:'削除',cleared:'クリア',
     undone:'元に戻した',redone:'やり直した',created:'作成',
     confirmClear:'すべて削除しますか？',
@@ -3140,8 +3140,8 @@ const UI={
   },
   updateOnline(){
     const dot=document.getElementById('sDot'),lbl=document.getElementById('sConn');
-    if(navigator.onLine){dot.classList.remove('offline');lbl.textContent='online'}
-    else{dot.classList.add('offline');lbl.textContent='offline'}
+    if(navigator.onLine){dot.classList.remove('offline');lbl.textContent=t('online')}
+    else{dot.classList.add('offline');lbl.textContent=t('offline')}
   },
   applyI18n(){
     // Walk all elements with data-t and replace textContent with the
