@@ -1,6 +1,6 @@
 # Board — 仕様書 (Specification)
 
-> Board v1.6.41 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
+> Board v1.6.42 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
 > **§13 適合ギャップ(不足)** で仕様と実装の差分を列挙する。本書は実装と対で更新する。
 > 関連: 設計=`docs/architecture.md`、改善調査=`docs/research-improvements.md` /
 > `docs/category-research*.md`、変更履歴=`CHANGELOG.md`。
@@ -227,6 +227,12 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
 ### ✅ v1.6.41 で解消(a11y: 残余 sp-label)
 - **"Line style" グループの sp-label に `aria-hidden` なし**: `data-t="lineStyle"` スパンに
   `aria-hidden="true"` を追加。v1.6.40 で 4 件修正したが、このラベルのみ残存していた。
+
+### ✅ v1.6.42 で解消(a11y: canvas aria-label 動的更新)
+- **canvas `aria-label` がツール変更時に更新されない (WCAG 2.4.6)** (audit §9 ⬜ 解消):
+  静的な長いラベルを `pickTool` 呼び出し時に `"${tool} — Drawing canvas. Tab/Shift+Tab cycles shapes,
+  Enter creates, arrows move."` で動的更新。ツール名を含む記述で現在モードを SR が読み上げ可能に。
+  副作用: 静的 HTML が 244 文字 → 14 文字に短縮し、gzip 54B 節約 (44,956B、100B under budget)。
 
 ### ⬜ 既知の未充足(将来 ADR で対応 / 詳細は research docs)
 - **z 順序 op のスケーラビリティ**: `zorder` が全 shape スナップショットを保持(大規模で履歴/帯域肥大)。

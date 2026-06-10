@@ -2,6 +2,23 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.42] — 2026-06-10
+
+a11y: canvas `aria-label` をツール切替時に動的更新 (WCAG 2.1.1)。静的な長い説明文を削除し 54B 節約。
+
+### Changed
+- **canvas `aria-label` を `pickTool` で動的更新 (WCAG 2.4.6)** — 静的な 244 文字ラベル (全ショートカット列挙) を
+  `"Drawing canvas"` プレースホルダーに置き換え、`pickTool` が呼ばれるたびに
+  `"${tool} — Drawing canvas. Tab/Shift+Tab cycles shapes, Enter creates, arrows move."` をセット。
+  - ユーザーが選択中のツールが `aria-live` 対応 SR でリアルタイムにアナウンスされる
+  - ツール名 (e.g. `pen`/`rect`/`frame`) が含まれ、どのモードにいるかが明確
+  - 44 文字に短縮した静的文字列により **gzip 54B 節約** → 44,956B (100B under budget)
+
+### Tests
+- 2 presence checks 更新 (canvas aria-label の静的文字列 → 動的パターン); 318 total, 0 fail
+
+---
+
 ## [1.6.41] — 2026-06-10
 
 a11y: 「Line style」グループの sp-label に `aria-hidden` 追加。テスト: `G.hit` の追加 shape 種別カバレッジ。

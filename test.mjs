@@ -167,7 +167,7 @@ const checks = [
   ['cycleSel/describeShape helpers present', html.includes("function cycleSel") && html.includes("function describeShape")],
   ['Tab cycles shape selection', html.includes("else if(k==='tab')") && html.includes("cycleSel(ids,")],
   ['toasts region is aria-live (SR announce)', html.includes('id="toasts"') && html.includes('aria-live="polite"')],
-  ['canvas aria-label advertises Tab nav', html.includes("Tab / Shift+Tab cycle through shapes")],
+  ['canvas aria-label is updated dynamically in pickTool', html.includes("tool+' — Drawing canvas. Tab/Shift+Tab cycles shapes,")],
   // v1.6.11: spatial index for pickTop
   ['spatial grid helpers present', html.includes("function _buildGrid") && html.includes("function _queryGrid")],
   ['pickTop uses grid for large boards', html.includes("state.shapes.length>40") && html.includes("_buildGrid(state.shapes)")],
@@ -175,7 +175,7 @@ const checks = [
   // v1.6.12: keyboard shape creation (a11y)
   ['createShapeKbd helper present', html.includes("function createShapeKbd")],
   ['Enter creates shape at viewport centre', html.includes("k==='enter'&&!meta&&!e.shiftKey") && html.includes("createShapeKbd()")],
-  ['canvas aria-label advertises Enter create', html.includes("press Enter to create a shape")],
+  ['canvas aria-label includes Enter creates hint', html.includes("Enter creates, arrows move.")],
   ['help grid lists Tab cycle and Enter create', html.includes("['Tab / ⇧Tab',k.cycle]") && html.includes("['Enter',k.create]")],
   // v1.6.13: variable-width pen (velocity-based)
   ['penWidths helper present', html.includes("function penWidths")],
