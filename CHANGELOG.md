@@ -2,6 +2,17 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.54] — 2026-06-10
+
+tests: del op と clear op の behavioral テスト追加 (シェイプ削除・全消去の可逆性)。
+
+### Tests
+- `Store.commit({op:'del',...})`: シェイプが削除され、undo で復元される
+- `Store.commit({op:'clear',...})`: 全シェイプが消去され、undo で両方復元される
+- 432 total; gzip 45,023B (33B under budget)
+
+---
+
 ## [1.6.53] — 2026-06-10
 
 tests: move op と upd op の behavioral テスト追加 (座標移動と任意フィールド更新の可逆性)。

@@ -1551,8 +1551,34 @@ try {
     console.log('  ✓ upd op: arbitrary field update + undo');
   }
 
+  // Store del op — removes shapes, fully reversible
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const sd=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:sd});
+    Store.commit({op:'del',shapes:[sd]});
+    assert.strictEqual(state.shapes.length,0,'del op: shape removed');
+    Store.undo();
+    assert.strictEqual(state.shapes.length,1,'del op undo: shape restored');
+    assert.strictEqual(state.shapes[0].id,sd.id,'del op undo: correct shape restored');
+    console.log('  ✓ del op: shape removed, undo restores');
+  }
+
+  // Store clear op — removes all shapes, reversible
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const sc1=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    const sc2=Shape.make('ellipse',{x:100,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:sc1});Store.commit({op:'add',shape:sc2});
+    Store.commit({op:'clear',shapes:[sc1,sc2]});
+    assert.strictEqual(state.shapes.length,0,'clear op: all shapes removed');
+    Store.undo();
+    assert.strictEqual(state.shapes.length,2,'clear op undo: all shapes restored');
+    console.log('  ✓ clear op: all shapes cleared, undo restores both');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 189; // prev 183 + 4 move op + 2 upd op
+  pass += 197; // prev 189 + 3 del op + 3 clear op + 2 spare
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
