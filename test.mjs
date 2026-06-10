@@ -1577,8 +1577,75 @@ try {
     console.log('  ✓ clear op: all shapes cleared, undo restores both');
   }
 
+  // v1.6.55: doAlign remaining variants — right, bottom, cx, cy
+  {
+    // right: all right edges align to rightmost
+    state.shapes.length=0; state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
+    const ar1=Shape.make('rect',{x:0,y:0,w:40,h:40});     // right edge = 40
+    const ar2=Shape.make('rect',{x:100,y:0,w:60,h:60});   // right edge = 160 (max)
+    state.shapes.push(ar1,ar2); state.selection=new Set([ar1.id,ar2.id]);
+    doAlign('right');
+    assert.strictEqual(G.bbox(ar1).x+G.bbox(ar1).w, G.bbox(ar2).x+G.bbox(ar2).w, 'align right: right edges equal');
+    console.log('  ✓ doAlign("right") aligns all shapes to rightmost right edge');
+
+    // bottom: all bottom edges align to bottommost
+    state.shapes.length=0; state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
+    const ab1=Shape.make('rect',{x:0,y:0,w:40,h:40});     // bottom = 40
+    const ab2=Shape.make('rect',{x:0,y:100,w:40,h:60});   // bottom = 160 (max)
+    state.shapes.push(ab1,ab2); state.selection=new Set([ab1.id,ab2.id]);
+    doAlign('bottom');
+    assert.strictEqual(G.bbox(ab1).y+G.bbox(ab1).h, G.bbox(ab2).y+G.bbox(ab2).h, 'align bottom: bottom edges equal');
+    console.log('  ✓ doAlign("bottom") aligns all shapes to bottommost bottom edge');
+
+    // cx: all shapes center-x aligns to midpoint of bounding union
+    state.shapes.length=0; state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
+    const ac1=Shape.make('rect',{x:0,y:0,w:40,h:40});     // cx = 20
+    const ac2=Shape.make('rect',{x:100,y:0,w:60,h:40});   // cx = 130
+    state.shapes.push(ac1,ac2); state.selection=new Set([ac1.id,ac2.id]);
+    doAlign('cx');
+    const bc1=G.bbox(ac1), bc2=G.bbox(ac2);
+    assert.strictEqual(bc1.x+bc1.w/2, bc2.x+bc2.w/2, 'align cx: centers-x equal after cx align');
+    console.log('  ✓ doAlign("cx") aligns all shapes to horizontal center of union');
+
+    // cy: all shapes center-y aligns to midpoint of bounding union
+    state.shapes.length=0; state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
+    const ay1=Shape.make('rect',{x:0,y:0,w:40,h:40});     // cy = 20
+    const ay2=Shape.make('rect',{x:0,y:100,w:40,h:60});   // cy = 130
+    state.shapes.push(ay1,ay2); state.selection=new Set([ay1.id,ay2.id]);
+    doAlign('cy');
+    const by1=G.bbox(ay1), by2=G.bbox(ay2);
+    assert.strictEqual(by1.y+by1.h/2, by2.y+by2.h/2, 'align cy: centers-y equal after cy align');
+    console.log('  ✓ doAlign("cy") aligns all shapes to vertical center of union');
+  }
+
+  // v1.6.55: G.hit ellipse — filled interior vs boundary (unfilled edge)
+  {
+    // Ellipse: x=0,y=0,w=100,h=80 → cx=50,cy=40,rx=50,ry=40
+    const elf={type:'ellipse',x:0,y:0,w:100,h:80,fill:'#f00',size:2}; // filled
+    const elu={type:'ellipse',x:0,y:0,w:100,h:80,fill:null,size:2};   // unfilled (outline only)
+    // filled: interior point hits, far exterior misses
+    assert.strictEqual(G.hit(elf,{x:50,y:40}),true,'ellipse filled: center hit');
+    assert.strictEqual(G.hit(elf,{x:95,y:40}),true,'ellipse filled: near-edge interior hit');
+    assert.strictEqual(G.hit(elf,{x:150,y:40}),false,'ellipse filled: outside bbox misses');
+    // unfilled: right boundary (rx from center = 50) hits; deep interior misses
+    assert.strictEqual(G.hit(elu,{x:100,y:40}),true,'ellipse unfilled: right edge boundary hit');
+    assert.strictEqual(G.hit(elu,{x:20,y:40}),false,'ellipse unfilled: deep interior misses (outline only)');
+    console.log('  ✓ G.hit ellipse: filled interior + exterior, unfilled boundary vs interior');
+  }
+
+  // v1.6.55: Store.applyRemote del op — remote peer can delete a local shape
+  {
+    state.shapes.length=0; state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
+    const rd=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    Store.commit({op:'add',shape:rd});
+    assert.strictEqual(state.shapes.length,1,'remote del setup: shape present');
+    Store.applyRemote({op:'del',shapes:[JSON.parse(JSON.stringify(rd))],clock:{peer:'remoteD',seq:1,ts:1}});
+    assert.strictEqual(state.shapes.length,0,'remote del op: shape removed');
+    console.log('  ✓ Store.applyRemote del op removes the targeted shape');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 197; // prev 189 + 3 del op + 3 clear op + 2 spare
+  pass += 208; // prev 197 + 4 align variants + 5 ellipse G.hit + 2 remote del
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

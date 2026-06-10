@@ -2,6 +2,21 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.55] — 2026-06-10
+
+tests: doAlign 残り4バリアント (right/bottom/cx/cy)、G.hit 楕円 (filled/unfilled)、remote del op の behavioral テスト追加。
+
+### Tests
+- `doAlign('right')`: 右端を最右端に揃える
+- `doAlign('bottom')`: 下端を最下端に揃える
+- `doAlign('cx')`: 水平中心を union の中心に揃える
+- `doAlign('cy')`: 垂直中心を union の中心に揃える
+- `G.hit` 楕円 filled (内部ヒット/外側ミス) と unfilled (境界ヒット/内部ミス)
+- `Store.applyRemote({op:'del',...})`: リモートの del op でシェイプが削除される
+- 443 total; gzip 45,023B (no HTML change)
+
+---
+
 ## [1.6.54] — 2026-06-10
 
 tests: del op と clear op の behavioral テスト追加 (シェイプ削除・全消去の可逆性)。
