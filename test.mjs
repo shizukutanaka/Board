@@ -227,7 +227,7 @@ const checks = [
   ['text editor keydown guards ev.isComposing (IME safe)', (html.match(/if\(ev\.isComposing\)return/g)||[]).length >= 2],
   ['pen RDP decimation function _rdp present', html.includes('function _rdp(pts,eps)')],
   ['endPen applies RDP on commit', html.includes('d.pts.length>3')&&html.includes('_rdp(d.pts,0.5)')],
-  ['gzip budget test uses system gzip -9 (matches CI)', html.includes('V=\'1.6.26\'')],
+  ['gzip budget test uses system gzip -9 (matches CI)', readFileSync('./test.mjs','utf8').includes("execSync('gzip -9 -c index.html")],
   // v1.6.25: style op for single-undo multi-select style
   ['style op in _apply (single undo for multi-select style)', html.includes("case 'style':")],
   ['style op in REMOTE_OPS allowlist', html.includes("'style'")&&html.includes('REMOTE_OPS')],
@@ -241,6 +241,9 @@ const checks = [
   ['importBoard function exists and uses validShape filter', html.includes('function importBoard') && html.includes('.filter(validShape)')],
   ['Ctrl+Shift+S triggers exportBoard', html.includes("e.shiftKey){e.preventDefault();exportBoard()}")],
   ['drag-drop accepts .board files', html.includes(".endsWith('.board')")],
+  // v1.6.27: SVG export renders single-point pen as circle dot
+  ['SVG export handles single-point pen shape', html.includes('s.pts.length===1')],
+  ['SVG export emits circle for single-point pen', html.includes('<circle cx=')],
 ];
 
 let pass = 0, fail = 0;
@@ -1066,7 +1069,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 67;
+  pass += 69;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

@@ -2,6 +2,22 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.27] — 2026-06-10
+
+SVG エクスポートで単点ペン shape (ドット) が出力されないバグを修正。
+
+### Fixed
+- **SVG エクスポートで単点ペン (タップ/クリック 1 点のみ) が消える (P2)** —
+  `buildSVG` の `case 'pen'` が `s.pts.length < 2` でスキップしていたため、
+  Canvas では表示される点ドットが SVG に出力されなかった。
+  `pts.length === 1` 時に `<circle>` 要素を生成するよう修正し、
+  Canvas の `arc` 描画と出力を一致させた。
+
+### Tests
+- **251/251 全通過** (+2): presence チェック × 2 (単点ペン分岐、`<circle>` 出力)。
+
+---
+
 ## [1.6.26] — 2026-06-09
 
 既存テキストを空にした時の二重 Undo を修正。

@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.6.20 — Design Tokens
+   Board v1.6.27 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -715,7 +715,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.26';
+const V='1.6.27';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -2666,7 +2666,13 @@ function buildSVG(shapes,paper){
         els.push(`<polygon points="${tx},${ty} ${tx+Math.cos(a1)*ah},${ty+Math.sin(a1)*ah} ${tx+Math.cos(a2)*ah},${ty+Math.sin(a2)*ah}" fill="${stroke}"${a}/>`);
         break;}
       case 'pen':{
-        if(!Array.isArray(s.pts)||s.pts.length<2)break;
+        if(!Array.isArray(s.pts)||!s.pts.length)break;
+        if(s.pts.length===1){
+          const p=s.pts[0];
+          els.push(`<circle cx="${_num(p&&p[0])+ox}" cy="${_num(p&&p[1])+oy}" r="${(SZ||1)/2}" fill="${stroke}"${a}/>`);
+          break;
+        }
+        if(s.pts.length<2)break;
         // Mirror the canvas render: variable-width, midpoint-quadratic smoothed
         // segments (display = output parity). Coords rounded to 1dp to curb size.
         const P=s.pts.map(p=>[_num(p&&p[0])+ox,_num(p&&p[1])+oy,p&&p[2]]),n=P.length,W=penWidths(P,SZ);
