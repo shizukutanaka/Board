@@ -1523,8 +1523,36 @@ try {
     console.log('  ✓ G.marqueeHit: full containment passes, partial overlap fails');
   }
 
+  // Store move op — translates shapes, fully reversible
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const smv=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:smv});
+    Store.commit({op:'move',ids:[smv.id],dx:30,dy:20});
+    const moved=state.shapes.find(s=>s.id===smv.id);
+    assert.strictEqual(moved.x,30,'move op: x += dx');
+    assert.strictEqual(moved.y,20,'move op: y += dy');
+    Store.undo();
+    const back=state.shapes.find(s=>s.id===smv.id);
+    assert.strictEqual(back.x,0,'move op undo: x restored');
+    assert.strictEqual(back.y,0,'move op undo: y restored');
+    console.log('  ✓ move op: translates coords and undo restores');
+  }
+
+  // Store upd op — updates arbitrary fields, reversible
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const sup=Shape.make('rect',{x:0,y:0,w:50,h:50});sup.stroke='#000000';
+    Store.commit({op:'add',shape:sup});
+    Store.commit({op:'upd',id:sup.id,before:{stroke:'#000000'},after:{stroke:'#FF0000'}});
+    assert.strictEqual(state.shapes.find(s=>s.id===sup.id).stroke,'#FF0000','upd op: field updated');
+    Store.undo();
+    assert.strictEqual(state.shapes.find(s=>s.id===sup.id).stroke,'#000000','upd op undo: field restored');
+    console.log('  ✓ upd op: arbitrary field update + undo');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 183; // prev 172 + 8 Shape.translate + 3 G.marqueeHit
+  pass += 189; // prev 183 + 4 move op + 2 upd op
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

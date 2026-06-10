@@ -2,6 +2,17 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.53] — 2026-06-10
+
+tests: move op と upd op の behavioral テスト追加 (座標移動と任意フィールド更新の可逆性)。
+
+### Tests
+- `Store.commit({op:'move',...})`: dx/dy で座標が移動、undo で復元
+- `Store.commit({op:'upd',...})`: after パッチでフィールド更新、undo で before に復元
+- 424 total; gzip 45,022B (34B under budget)
+
+---
+
 ## [1.6.52] — 2026-06-10
 
 a11y: ダイアログ開閉時のフォーカス管理 (WCAG 2.4.3 Focus Order)。
