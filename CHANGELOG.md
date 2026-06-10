@@ -2,6 +2,18 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.48] — 2026-06-10
+
+tests: applyResize, penWidths, _buildGrid/_queryGrid の behavioral テスト追加。
+
+### Tests
+- `applyResize`: se/nw ドラッグ展開、最小サイズクランプ(4px)、p1 ライン端点
+- `penWidths`: 出力長、単一点=フル幅、遠い間隔でテーパー、筆圧スケール
+- `_buildGrid`/`_queryGrid`: 近傍ヒット、遠方除外、空グリッド
+- 382 total; gzip 44,986B (70B under budget)
+
+---
+
 ## [1.6.47] — 2026-06-10
 
 tests: wrapText (6 cases) と getHandles(ellipse/sticky) の behavioral テスト追加。

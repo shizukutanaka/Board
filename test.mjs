@@ -1365,8 +1365,63 @@ try {
     console.log('  ✓ getHandles ellipse/sticky: 8 box handles at correct positions');
   }
 
+  // applyResize — handle-drag updates shape dimensions
+  {
+    state.snap=false; // disable grid snap in test
+    const orig={type:'rect',x:10,y:10,w:100,h:80};
+    // se: expand down-right
+    const sh1={...orig};
+    applyResize(sh1,'se',orig,{x:160,y:140});
+    assert.strictEqual(sh1.w,150,'applyResize se: w = drag_x - orig_x');
+    assert.strictEqual(sh1.h,130,'applyResize se: h = drag_y - orig_y');
+    // se: minimum size clamp
+    const sh2={...orig};
+    applyResize(sh2,'se',orig,{x:11,y:11});
+    assert.strictEqual(sh2.w,4,'applyResize se clamp: w minimum is 4');
+    assert.strictEqual(sh2.h,4,'applyResize se clamp: h minimum is 4');
+    // nw: origin moves, right/bottom edge stays fixed
+    const sh3={...orig};
+    applyResize(sh3,'nw',orig,{x:20,y:20});
+    assert.strictEqual(sh3.x,20,'applyResize nw: x = drag point');
+    assert.strictEqual(sh3.w,90,'applyResize nw: w = right_edge - drag_x = 110-20');
+    assert.strictEqual(sh3.h,70,'applyResize nw: h = bottom_edge - drag_y = 90-20');
+    // p1/p2 for line endpoints
+    const ln={type:'line',x1:0,y1:0,x2:100,y2:100};
+    applyResize(ln,'p1',ln,{x:50,y:50});
+    assert.strictEqual(ln.x1,50,'applyResize p1: x1 updated');
+    assert.strictEqual(ln.y1,50,'applyResize p1: y1 updated');
+    console.log('  ✓ applyResize: se/nw expand + clamp, p1 endpoint drag');
+  }
+
+  // penWidths — variable-width pen stroke
+  {
+    const w1=penWidths([[0,0]],4);
+    assert.strictEqual(w1.length,1,'penWidths: output length = pts length');
+    assert.strictEqual(w1[0],4,'penWidths single point: full base width');
+    const wFar=penWidths([[0,0],[1000,0]],4);
+    assert.ok(wFar[0]<4,'penWidths far spacing: tapered below base');
+    assert.ok(wFar[0]>0,'penWidths far spacing: positive width');
+    const wPr=penWidths([[0,0,0.1],[10,0,0.9]],4);
+    assert.ok(wPr[1]>wPr[0],'penWidths pressure: high pressure → wider than low');
+    console.log('  ✓ penWidths: length, single-pt full width, taper, pressure-scale');
+  }
+
+  // _buildGrid + _queryGrid — spatial index
+  {
+    const s1=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    const s2=Shape.make('rect',{x:1000,y:1000,w:50,h:50});
+    const g=_buildGrid([s1,s2]);
+    const near=_queryGrid(g,{x:25,y:25});
+    assert.ok(near.has(s1),'grid query: nearby shape found');
+    assert.ok(!near.has(s2),'grid query: far shape excluded');
+    // empty input
+    const ge=_buildGrid([]);
+    assert.strictEqual(_queryGrid(ge,{x:0,y:0}).size,0,'grid query: empty grid → empty set');
+    console.log('  ✓ _buildGrid/_queryGrid: nearby found, far excluded, empty grid');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 131; // 71 baseline + 9 handleCursor + 5 Store boundary + 10 G.hit + 9 G.bbox/bboxAll + 10 cycleSel/describe/inView + 6 wrapText + 5 getHandles(ellipse/sticky) + 6 more
+  pass += 150; // prev 131 + 9 applyResize + 5 penWidths + 3 grid + 2 spare
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
