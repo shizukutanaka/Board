@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.6.27 — Design Tokens
+   Board v1.6.28 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -715,7 +715,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.27';
+const V='1.6.28';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1124,10 +1124,9 @@ const Store={
         if(forward){
           for(const id of op.ids){const sh=byId(id);if(sh)delete sh.groupId}
         }else{
-          // restore: use op.ids + op.gids; each shape in ids gets the original gid back
-          // (simplified: first gid for all — works because ungroup touches one group at a time)
-          const gid=op.gids[0];
-          for(const id of op.ids){const sh=byId(id);if(sh&&gid)sh.groupId=gid}
+          // restore each shape's original groupId using the before snapshot
+          if(op.before){for(const b of op.before){const sh=byId(b.id);if(sh){if(b.groupId)sh.groupId=b.groupId;else delete sh.groupId}}}
+          else{const gid=op.gids[0];for(const id of op.ids){const sh=byId(id);if(sh&&gid)sh.groupId=gid}}
         }
         break;}
       case 'zorder':{
@@ -2495,12 +2494,12 @@ function doUngroup(){
   // find all groupIds touched by selection
   const gids=new Set(ids.map(id=>byId(id)?.groupId).filter(Boolean));
   if(!gids.size){UI.toast(t('noGroup'),'warn');return}
-  const ungrouped=[];
+  const ungrouped=[],before=[];
   for(const s of state.shapes){
-    if(gids.has(s.groupId)){delete s.groupId;ungrouped.push(s.id)}
+    if(gids.has(s.groupId)){before.push({id:s.id,groupId:s.groupId});delete s.groupId;ungrouped.push(s.id)}
   }
   state.selection=new Set(ungrouped);
-  Store._recordCommitted({op:'ungroup',ids:ungrouped,gids:[...gids]});
+  Store._recordCommitted({op:'ungroup',ids:ungrouped,gids:[...gids],before});
   UI.toast(t('ungrouped'),'ok');
   invalidate();
 }

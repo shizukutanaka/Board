@@ -2,6 +2,24 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.28] — 2026-06-10
+
+複数グループを一括 Ungroup したときの Undo が全 shape を最初のグループに入れてしまうバグを修正。
+
+### Fixed
+- **複数グループを同時に Ungroup すると Undo が誤ったグループへ戻す (P2)** —
+  `doUngroup` の undo 実装が `op.gids[0]` (最初のグループID) を全 shape に一律適用していた。
+  選択範囲が 2 つ以上のグループにまたがる場合 (例: Ctrl+A → Ctrl+Shift+G)、
+  Undo 後に全 shape が同一グループになってしまっていた。
+  `doUngroup` 実行前に `before=[{id,groupId}...]` スナップショットを取得し、
+  `_apply` の backward パスでそれを復元するよう修正。
+
+### Tests
+- **257/257 全通過** (+4): presence チェック × 2 (before スナップショット、backward ブランチ);
+  behavioral テスト × 1 (multi-group ungroup undo round-trip), counter +2。
+
+---
+
 ## [1.6.27] — 2026-06-10
 
 SVG エクスポートで単点ペン shape (ドット) が出力されないバグを修正。

@@ -244,6 +244,9 @@ const checks = [
   // v1.6.27: SVG export renders single-point pen as circle dot
   ['SVG export handles single-point pen shape', html.includes('s.pts.length===1')],
   ['SVG export emits circle for single-point pen', html.includes('<circle cx=')],
+  // v1.6.28: ungroup undo preserves per-shape groupId across multi-group ungroup
+  ['doUngroup captures before snapshot', html.includes('before.push({id:s.id,groupId:s.groupId})')],
+  ['ungroup backward uses before snapshot when available', html.includes('if(op.before){for(const b of op.before)')],
 ];
 
 let pass = 0, fail = 0;
@@ -702,6 +705,31 @@ try {
   assert.strictEqual(u1.groupId, ugid, 'after redo: groupId restored');
   console.log('  ✓ group undo/redo works correctly');
 
+  // ungroup undo with multiple groups (the multi-group undo bug)
+  {
+    state.shapes.length=0; state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
+    const mg1=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    const mg2=Shape.make('rect',{x:20,y:0,w:10,h:10});
+    const mg3=Shape.make('rect',{x:40,y:0,w:10,h:10});
+    const mg4=Shape.make('rect',{x:60,y:0,w:10,h:10});
+    state.shapes.push(mg1,mg2,mg3,mg4);
+    // create two separate groups
+    state.selection=new Set([mg1.id,mg2.id]); doGroup(); const gA=mg1.groupId;
+    state.selection=new Set([mg3.id,mg4.id]); doGroup(); const gB=mg3.groupId;
+    assert.notStrictEqual(gA, gB, 'two distinct groupIds');
+    // select all and ungroup both at once
+    state.selection=new Set([mg1.id,mg2.id,mg3.id,mg4.id]);
+    doUngroup();
+    assert.ok(!mg1.groupId && !mg2.groupId && !mg3.groupId && !mg4.groupId, 'all ungrouped');
+    // undo — shapes must return to their ORIGINAL groups
+    Store.undo();
+    assert.strictEqual(mg1.groupId, gA, 'mg1 restored to group A');
+    assert.strictEqual(mg2.groupId, gA, 'mg2 restored to group A');
+    assert.strictEqual(mg3.groupId, gB, 'mg3 restored to group B');
+    assert.strictEqual(mg4.groupId, gB, 'mg4 restored to group B');
+    console.log('  ✓ ungroup undo with multiple groups restores per-shape groupIds');
+  }
+
   // align undo
   state.shapes.length=0; state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
   const a1=Shape.make('rect',{x:0,y:10,w:40,h:40});
@@ -1069,7 +1097,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 69;
+  pass += 71;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
