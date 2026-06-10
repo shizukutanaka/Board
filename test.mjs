@@ -269,6 +269,10 @@ const checks = [
   // v1.6.34: online/offline status i18n
   ['online/offline keys in ja i18n', html.includes("online:'オンライン'") && html.includes("offline:'オフライン'")],
   ['updateOnline uses t()', html.includes("t('online')") && html.includes("t('offline')")],
+  // v1.6.35: snap key in en, present in en, help grid uses t('snap')
+  ['snap key in en i18n', html.includes("snap:'Snap'")],
+  ['present key in en i18n (fixes lowercase regression)', html.includes("en:{export:'Export',present:'Present'")],
+  ['help grid snap row uses t()', html.includes("t('snap')")],
 ];
 
 let pass = 0, fail = 0;

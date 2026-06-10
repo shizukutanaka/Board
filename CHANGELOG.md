@@ -2,6 +2,19 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.35] — 2026-06-10
+
+i18n 修正: en テーブルの `present`/`snap` キー追加、ヘルプグリッドの 'Snap' を i18n 化。
+
+### Fixed
+- **英語で Present ボタンが小文字 'present' で表示される (P2-regression)** — v1.6.33 で `data-t="present"` を追加した際、en テーブルに `present:'Present'` キーを追加し忘れた。`t('present')` がキー名フォールバックで `'present'` (小文字) を返していた。
+- **ヘルプグリッドの 'Snap' 行が英語固定 (P3)** — `['⇧G','Snap']` を `['⇧G',t('snap')]` に変更。en テーブルに `snap:'Snap'` を追加。日本語では `'スナップ'` (v1.6.33 で ja テーブルに追加済み) を表示。
+
+### Tests
+- 3 presence checks 追加 (277 total); gzip 44,936B (120B under 45,056B budget)
+
+---
+
 ## [1.6.34] — 2026-06-10
 
 i18n: ステータスバーのオンライン/オフライン表示を日本語化。

@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.6.34 — Design Tokens
+   Board v1.6.35 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -715,7 +715,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.34';
+const V='1.6.35';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -791,7 +791,7 @@ const I18N={
       save:'即時保存',grid:'グリッド',esc:'選択解除/キャンセル',
       cycle:'図形を巡回',create:'中央に作成',
       present:'プレゼン',nudge:'移動 (⇧: 10px)',zorder:'前面/背面',zorderEnds:'最前面/最背面'}},
-  en:{export:'Export',size:'Size',lineStyle:'Line',helpTitle:'Shortcuts',
+  en:{export:'Export',present:'Present',snap:'Snap',size:'Size',lineStyle:'Line',helpTitle:'Shortcuts',
     helpSub:'No need to memorise. You\'ll pick it up.',
     saved:'saved',savedNow:'just now',savedAgo:'s ago',
     exported:'PNG exported',exportedSVG:'SVG exported',exportedBoard:'Board file saved',loadedBoard:'Board loaded',
@@ -3124,7 +3124,7 @@ const UI={
       ['⌘C/V/X',k.copy+'/'+k.paste+'/'+k.cut],['⌘D',k.dup],['⌫',k.del],
       ['⌘+/−/0',k.zoomIn+'/'+k.zoomOut+'/'+k.zoom100],
       ['⇧1',k.fit],['⌘E',k.exp],['⌘⇧E','SVG'],['⌘P','PDF'],['⌘S',k.save],['⌘⇧S','.board'],
-      ['G',k.grid],['⇧G','Snap'],['Esc',k.esc],['?',k.help],
+      ['G',k.grid],['⇧G',t('snap')],['Esc',k.esc],['?',k.help],
       ['↑↓←→',k.nudge],
       [']/[',k.zorder],['⇧]/⇧[',k.zorderEnds],
       ['Tab / ⇧Tab',k.cycle],['Enter',k.create]
