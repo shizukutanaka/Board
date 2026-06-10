@@ -2,6 +2,17 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.47] — 2026-06-10
+
+tests: wrapText (6 cases) と getHandles(ellipse/sticky) の behavioral テスト追加。
+
+### Tests
+- `wrapText`: 短文/改行/空文字/null/単語折り返し/文字折り返し の 6 ケース
+- `getHandles` ellipse と sticky: 8 ハンドル、各位置の検証
+- 363 total; gzip 44,986B (70B under budget)
+
+---
+
 ## [1.6.46] — 2026-06-10
 
 tests: G.bbox/bboxAll, cycleSel, describeShape, inView の behavioral テスト追加。

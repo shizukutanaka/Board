@@ -1333,8 +1333,40 @@ try {
   assert.strictEqual(inView({type:'rect',x:-300,y:100,w:200,h:150},vp0),false,'inView: shape outside left edge');
   console.log('  ✓ inView: culls off-screen shapes, passes on-screen');
 
+  // wrapText — pure text-wrapping function
+  {
+    const m=s=>s.length*10; // 10px per char
+    // text shorter than maxWidth → single line, unchanged
+    assert.deepStrictEqual(wrapText('hello',1000,m),['hello'],'wrapText short text: no wrap');
+    // explicit newlines → paragraph breaks
+    assert.deepStrictEqual(wrapText('a\nb',1000,m),['a','b'],'wrapText \\n → paragraph break');
+    // empty string → one empty paragraph
+    assert.deepStrictEqual(wrapText('',1000,m),[''],'wrapText empty string → one empty line');
+    // null → treated as empty
+    assert.deepStrictEqual(wrapText(null,1000,m),[''],'wrapText null → one empty line');
+    // word-wrap: 'hello world' with maxWidth 70 → ['hello', 'world']
+    assert.deepStrictEqual(wrapText('hello world',70,m),['hello','world'],'wrapText word-wrap at space');
+    // char-break: single token 'abcde' with maxWidth 30 → ['abc','de']
+    assert.deepStrictEqual(wrapText('abcde',30,m),['abc','de'],'wrapText char-break for long token');
+    console.log('  ✓ wrapText: no-wrap, newline, empty, null, word-wrap, char-break');
+  }
+
+  // getHandles — ellipse/sticky use same box-handles as rect
+  {
+    const el=Shape.make('ellipse',{x:0,y:0,w:100,h:50});
+    const eh=getHandles(el);
+    assert.strictEqual(eh.length,8,'getHandles ellipse: 8 box handles');
+    assert.ok(eh.find(h=>h.id==='nw'&&h.x===0&&h.y===0),'getHandles ellipse: nw at origin');
+    assert.ok(eh.find(h=>h.id==='se'&&h.x===100&&h.y===50),'getHandles ellipse: se at corner');
+    const sk=Shape.make('sticky',{x:10,y:20,w:120,h:80});
+    const sh=getHandles(sk);
+    assert.strictEqual(sh.length,8,'getHandles sticky: 8 box handles');
+    assert.ok(sh.find(h=>h.id==='n'&&h.x===70&&h.y===20),'getHandles sticky: n midpoint');
+    console.log('  ✓ getHandles ellipse/sticky: 8 box handles at correct positions');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 114; // 71 baseline + 9 handleCursor + 5 Store boundary + 10 G.hit + 9 G.bbox/bboxAll + 10 cycleSel/describe/inView
+  pass += 131; // 71 baseline + 9 handleCursor + 5 Store boundary + 10 G.hit + 9 G.bbox/bboxAll + 10 cycleSel/describe/inView + 6 wrapText + 5 getHandles(ellipse/sticky) + 6 more
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
