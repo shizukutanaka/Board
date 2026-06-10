@@ -1,6 +1,6 @@
 # Board — 仕様書 (Specification)
 
-> Board v1.6.42 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
+> Board v1.6.43 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
 > **§13 適合ギャップ(不足)** で仕様と実装の差分を列挙する。本書は実装と対で更新する。
 > 関連: 設計=`docs/architecture.md`、改善調査=`docs/research-improvements.md` /
 > `docs/category-research*.md`、変更履歴=`CHANGELOG.md`。
@@ -227,6 +227,10 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
 ### ✅ v1.6.41 で解消(a11y: 残余 sp-label)
 - **"Line style" グループの sp-label に `aria-hidden` なし**: `data-t="lineStyle"` スパンに
   `aria-hidden="true"` を追加。v1.6.40 で 4 件修正したが、このラベルのみ残存していた。
+
+### ✅ v1.6.43 で解消(a11y: ズームボタン)
+- **ズーム表示が `<div>` で非インタラクティブ (WCAG 2.1.1)**: `<button class="zoom-val">` に変換し
+  Tab フォーカス・Enter/Space キーボードアクセスを可能に。`aria-label` 追加。
 
 ### ✅ v1.6.42 で解消(a11y: canvas aria-label 動的更新)
 - **canvas `aria-label` がツール変更時に更新されない (WCAG 2.4.6)** (audit §9 ⬜ 解消):

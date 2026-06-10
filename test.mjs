@@ -298,6 +298,9 @@ const checks = [
   ['SW dead code removed: r|| before new Response is gone', !html.includes('return r||new Response')],
   // v1.6.41: line style sp-label is aria-hidden (group has aria-label)
   ['line style sp-label is aria-hidden', html.includes('data-t="lineStyle" aria-hidden="true"')],
+  // v1.6.43: zoom display is a button (keyboard accessible) with aria-label
+  ['zoom level is a button not a div (keyboard-accessible)', html.includes('<button class="zoom-val"')],
+  ['zoom button has aria-label', html.includes('aria-label="Zoom level, click to reset"')],
 ];
 
 let pass = 0, fail = 0;

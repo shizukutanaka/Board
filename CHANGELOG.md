@@ -2,6 +2,22 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.43] — 2026-06-10
+
+a11y: ズーム表示を `<div>` から `<button>` に変換 (WCAG 2.1.1 キーボードアクセス)。
+
+### Fixed
+- **ズーム表示がキーボードで操作できない (WCAG 2.1.1)** — `<div class="zoom-val">` を
+  `<button class="zoom-val">` に変換。これにより Tab フォーカス・Enter/Space でズームリセット・
+  スクリーンリーダーへのインタラクティブ要素告知が可能に。
+  `aria-label="Zoom level, click to reset"` を追加し現在値と動作を説明。
+  CSS の `cursor:pointer` は削除 (button グローバルリセットで不要)。
+
+### Tests
+- 2 presence checks 追加 (320 total); gzip 44,966B (90B under 45,056B budget)
+
+---
+
 ## [1.6.42] — 2026-06-10
 
 a11y: canvas `aria-label` をツール切替時に動的更新 (WCAG 2.1.1)。静的な長い説明文を削除し 54B 節約。
