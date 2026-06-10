@@ -1135,6 +1135,28 @@ try {
     console.log('  ✓ doPaste remaps groupId — pasted copies get fresh group identity');
   }
 
+  // v1.6.37: copyStyle / pasteStyle round-trip
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const src=Shape.make('rect',{x:0,y:0,w:40,h:40});src.stroke='#ff0000';src.fill='#00ff00';src.size=8;src.opacity=0.5;src.dash=2;
+    const dst=Shape.make('rect',{x:100,y:0,w:40,h:40});
+    Store.commit({op:'add',shape:src});Store.commit({op:'add',shape:dst});
+    state.selection=new Set([src.id]);
+    copyStyle();
+    state.selection=new Set([dst.id]);
+    pasteStyle();
+    const d=state.shapes.find(s=>s.id===dst.id);
+    assert.strictEqual(d.stroke,'#ff0000','pasteStyle transfers stroke');
+    assert.strictEqual(d.fill,'#00ff00','pasteStyle transfers fill');
+    assert.strictEqual(d.size,8,'pasteStyle transfers size');
+    assert.strictEqual(d.opacity,0.5,'pasteStyle transfers opacity');
+    assert.strictEqual(d.dash,2,'pasteStyle transfers dash');
+    Store.undo();
+    const d2=state.shapes.find(s=>s.id===dst.id);
+    assert.notStrictEqual(d2.stroke,'#ff0000','pasteStyle undo reverts stroke');
+    console.log('  ✓ copyStyle/pasteStyle round-trip transfers all style props; undo reverts');
+  }
+
   console.log('\n✓ All behavioural tests passed');
   pass += 71; // presence only, no new behavioral
 
