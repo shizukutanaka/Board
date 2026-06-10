@@ -2,6 +2,26 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.36] — 2026-06-10
+
+i18n 完成: 残存ハードコード文字列を i18n 化、冗長フォールバック削除、ステータスバーラベル i18n、`describeShape` ローカライズ。
+
+### Fixed
+- **`'export failed'` ハードコード英語 (P2)** — `exportPNG()` と `exportPDF()` の `toBlob` null ガードが日本語未対応。`exportFailed:'書き出し失敗'` キーを ja/en テーブルに追加し、`t('exportFailed')` を使用するよう変更。
+- **`'save failed: ...'` ハードコード英語 (P2)** — `Persist.save()` の IndexedDB エラートーストが日本語未対応。`saveFailed:'保存失敗'` キーを ja/en テーブルに追加し、`t('saveFailed')` を使用するよう変更。
+- **ステータスバー "shapes" / "saved" ラベルが英語固定 (P3)** — `<span class="lbl">shapes</span>` / `saved` に `data-t` 属性を付与。`applyI18n()` が初期化時にローカライズ済みラベルを設定。`shapes:'図形'` キーを ja/en テーブルに追加 (`saved` キーは既存)。
+- **`describeShape()` がツール型の英語 raw 値を使用 (P3)** — Tab ナビゲーションやシェイプ作成のトーストが `'rect @ x,y'` 等の英語 raw 型名を表示していた。`T.k?.[s.type]??s.type` を使用することで日本語では `'矩形 @ x,y'`、英語では `'Rectangle @ x,y'` を表示。
+
+### Changed
+- **7 つの冗長 `||'fallback'` パターンを削除** — `t(key)` は既にキー名をフォールバックとして返すため、`t('connected')||'connected'` 等のパターンは常に不達コードだった。`imagePasted`、`exportedSVG`、`connected` (×2)、`disconnected`、`imported`、`importConfirm` の各コールサイトから冗長フォールバックを削除。
+
+### Tests
+- Line 38 のプレゼンスチェックを更新 (`'export failed'` ハードコード → `t('exportFailed')`)
+- Behavioral test: `describeShape` の期待値を `'rect @ ...'` → `'Rectangle @ ...'` (en ロケール名) に更新
+- 12 presence checks 追加 (286 total); gzip 44,958B (98B under 45,056B budget)
+
+---
+
 ## [1.6.35] — 2026-06-10
 
 i18n 修正: en テーブルの `present`/`snap` キー追加、ヘルプグリッドの 'Snap' を i18n 化。

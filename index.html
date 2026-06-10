@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.6.35 — Design Tokens
+   Board v1.6.36 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -642,10 +642,10 @@ body{visibility:visible}
   <!-- ==== Status bar ==== -->
   <footer class="statusbar">
     <div class="status-item"><span class="status-dot" id="sDot"></span><span id="sConn">offline</span></div>
-    <div class="status-item optional"><span class="lbl">shapes</span><span id="sCount">0</span></div>
+    <div class="status-item optional"><span class="lbl" data-t="shapes">shapes</span><span id="sCount">0</span></div>
     <div class="status-item optional"><span class="lbl">x,y</span><span id="sXY">0, 0</span></div>
     <div class="status-spacer"></div>
-    <div class="status-item optional"><span class="lbl">saved</span><span id="sSaved">—</span></div>
+    <div class="status-item optional"><span class="lbl" data-t="saved">saved</span><span id="sSaved">—</span></div>
     <div class="status-item"><span id="sVer">v1.0</span></div>
   </footer>
 </div>
@@ -715,7 +715,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.35';
+const V='1.6.36';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -752,8 +752,8 @@ const I18N={
     selectTwo:'2つ以上選択してください',grouped:'グループ化',noGroup:'グループなし',
     ungrouped:'グループ解除',noFrames:'フレームがありません (F キーで作成)',
     imgBig:'画像が大きすぎます。縮小してください',
-    popupBlocked:'ポップアップをブロックしてください',invalidBoard:'ボードファイルが無効です',
-    snap:'スナップ',grid:'グリッド',on:'オン',off:'オフ',online:'オンライン',offline:'オフライン',
+    popupBlocked:'ポップアップをブロックしてください',invalidBoard:'ボードファイルが無効です',exportFailed:'書き出し失敗',saveFailed:'保存失敗',
+    snap:'スナップ',grid:'グリッド',on:'オン',off:'オフ',online:'オンライン',offline:'オフライン',shapes:'図形',
     copied:'コピー',pasted:'貼り付け',deleted:'削除',cleared:'クリア',
     undone:'元に戻した',redone:'やり直した',created:'作成',
     confirmClear:'すべて削除しますか？',
@@ -800,7 +800,7 @@ const I18N={
     selectTwo:'Select 2 or more',grouped:'Grouped',noGroup:'No group',
     ungrouped:'Ungrouped',noFrames:'No frames (press F to create)',
     imgBig:'Image too large — please resize',
-    popupBlocked:'Pop-up blocked — please allow pop-ups for PDF export',invalidBoard:'Invalid .board file',
+    popupBlocked:'Pop-up blocked — please allow pop-ups for PDF export',invalidBoard:'Invalid .board file',exportFailed:'Export failed',saveFailed:'Save failed',
     copied:'Copied',pasted:'Pasted',deleted:'Deleted',cleared:'Cleared',
     undone:'Undone',redone:'Redone',created:'Created',
     confirmClear:'Delete everything?',
@@ -828,7 +828,7 @@ const I18N={
     connected:'Connected',disconnected:'Disconnected',
     importConfirm:'Replace current board with shared content?',
     imported:'Imported',
-    peers:'peers',
+    peers:'peers',shapes:'Shapes',
     k:{select:'Select',hand:'Pan',pen:'Pen',rect:'Rectangle',ellipse:'Ellipse',
       arrow:'Arrow',line:'Line',text:'Text',sticky:'Sticky',frame:'Frame',eraser:'Eraser',
       undo:'Undo',redo:'Redo',del:'Delete',dup:'Duplicate',
@@ -1228,7 +1228,8 @@ function centerOn(sh){
 }
 function describeShape(s){
   const b=G.bbox(s);
-  return `${s.type} @ ${Math.round(b.x)},${Math.round(b.y)}`;
+  const nm=T.k?.[s.type]??s.type;
+  return `${nm} @ ${Math.round(b.x)},${Math.round(b.y)}`;
 }
 function draw(){
   const W=canvas.width,H=canvas.height;
@@ -1801,7 +1802,7 @@ window.addEventListener('paste',e=>{
         Store.commit({op:'add',shape:sh});
         state.selection.clear();state.selection.add(sh.id);
         invalidate();
-        UI.toast(t('imagePasted')||'image pasted','ok');
+        UI.toast(t('imagePasted'),'ok');
       };
       img.src=reader.result;
     };
@@ -2551,7 +2552,7 @@ function exportPNG(){
   oc.setTransform(scale,0,0,scale,-b.x*scale+pad*scale,-b.y*scale+pad*scale);
   for(const s of state.shapes)drawShape(s,oc);
   off.toBlob(bl=>{
-    if(!bl){UI.toast('export failed','err');return}
+    if(!bl){UI.toast(t('exportFailed'),'err');return}
     const url=URL.createObjectURL(bl);
     const a=document.createElement('a');
     a.href=url;a.download=`${state.docName||'board'}.png`;
@@ -2570,7 +2571,7 @@ function exportPDF(){
   oc.setTransform(dpr,0,0,dpr,(-b.x+pad)*dpr,(-b.y+pad)*dpr);
   for(const s of state.shapes)drawShape(s,oc);
   const fin=bl=>{
-    if(!bl){UI.toast('export failed','err');return}
+    if(!bl){UI.toast(t('exportFailed'),'err');return}
     const url=URL.createObjectURL(bl);
     const w2=window.open('');
     if(!w2){UI.toast(t('popupBlocked'),'warn');return}
@@ -2589,7 +2590,7 @@ function exportSVG(){
   const a=document.createElement('a');
   a.href=url;a.download=`${state.docName||'board'}.svg`;
   a.click();setTimeout(()=>URL.revokeObjectURL(url),1e4);
-  UI.toast(t('exportedSVG')||'SVG exported','ok');
+  UI.toast(t('exportedSVG'),'ok');
 }
 function exportBoard(){
   if(!state.shapes.length){UI.toast(t('empty'),'warn');return}
@@ -2893,7 +2894,7 @@ const Net={
   },
   _wireDC(){
     this.dc.onopen=()=>{
-      UI.toast(t('connected')||'connected','ok');
+      UI.toast(t('connected'),'ok');
       this._touchPeer('rtc:'+uid().slice(0,4));
       // send snapshot to new peer
       try{this.dc.send(JSON.stringify({k:'snapshot',shapes:clone(state.shapes),peer:state.peerId}))}catch(_){}
@@ -2901,7 +2902,7 @@ const Net={
     this.dc.onmessage=e=>{
       try{this._onRecv(JSON.parse(e.data))}catch(_){}
     };
-    this.dc.onclose=()=>{UI.toast(t('disconnected')||'disconnected','warn');if(this._onConnChange)this._onConnChange()};
+    this.dc.onclose=()=>{UI.toast(t('disconnected'),'warn');if(this._onConnChange)this._onConnChange()};
   },
   _encodeToken(sdp){
     return btoa(unescape(encodeURIComponent(JSON.stringify({type:sdp.type,sdp:sdp.sdp}))));
@@ -2959,13 +2960,13 @@ const Share={
       const valid=data.shapes.filter(validShape);
       if(!valid.length)return false;
       // confirm if local has content
-      if(state.shapes.length&&!confirm(t('importConfirm')||'Replace current board with shared content?'))return false;
+      if(state.shapes.length&&!confirm(t('importConfirm')))return false;
       state.shapes=valid;state.docName=data.name||'Shared';
       sortZ();invalidate();
       document.getElementById('docName').value=state.docName;
       // clean URL
       history.replaceState(null,'',location.pathname);
-      UI.toast(t('imported')||'imported','ok');
+      UI.toast(t('imported'),'ok');
       Persist.schedule();
       return true;
     }catch(err){console.warn('import failed',err);return false}
@@ -3003,7 +3004,7 @@ const Persist={
       if(explicit)UI.toast(t('saved'),'ok');
     }catch(err){
       console.error('save failed',err);
-      UI.toast('save failed: '+err.message,'err');
+      UI.toast(t('saveFailed')+': '+err.message,'err');
     }
   },
   async load(){
@@ -3285,7 +3286,7 @@ function wire(){
   // WebRTC manual signaling
   {const _g=id=>document.getElementById(id);
   _g('rtcCreateOffer').onclick=async()=>{try{_g('rtcOffer').value=await Net.wrtcCreateOffer()}catch(e){UI.toast(String(e),'err')}};
-  _g('rtcConnect').onclick=async()=>{const a=_g('rtcAnswerIn').value.trim();if(!a)return;try{await Net.wrtcConsumeAnswer(a);UI.toast(t('connected')||'connected','ok')}catch(e){UI.toast(String(e),'err')}};
+  _g('rtcConnect').onclick=async()=>{const a=_g('rtcAnswerIn').value.trim();if(!a)return;try{await Net.wrtcConsumeAnswer(a);UI.toast(t('connected'),'ok')}catch(e){UI.toast(String(e),'err')}};
   _g('rtcCreateAnswer').onclick=async()=>{const o=_g('rtcOfferIn').value.trim();if(!o)return;try{_g('rtcAnswer').value=await Net.wrtcAcceptOffer(o)}catch(e){UI.toast(String(e),'err')}};
   }
   // Net presence → UI

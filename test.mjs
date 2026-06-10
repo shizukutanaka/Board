@@ -35,7 +35,7 @@ const checks = [
   // v1.1: exportPNG passes ctx as parameter (no global swap)
   ['exportPNG passes ctx as parameter', html.includes('drawShape(s,oc)')],
   // v1.1: toBlob null guard
-  ['toBlob has null guard', html.includes("if(!bl){UI.toast('export failed'")],
+  ['toBlob has null guard', html.includes("if(!bl){UI.toast(t('exportFailed')")],
   // v1.1: op validation in _onRecv
   ['_onRecv validates op.clock', html.includes("typeof op.clock.peer!=='string'")],
   // v1.1: import validates shapes
@@ -273,6 +273,16 @@ const checks = [
   ['snap key in en i18n', html.includes("snap:'Snap'")],
   ['present key in en i18n (fixes lowercase regression)', html.includes("en:{export:'Export',present:'Present'")],
   ['help grid snap row uses t()', html.includes("t('snap')")],
+  // v1.6.36: exportFailed/saveFailed i18n, shapes status label, describeShape locale
+  ['exportFailed key in ja and en', html.includes("exportFailed:'書き出し失敗'") && html.includes("exportFailed:'Export failed'")],
+  ['saveFailed key in ja and en', html.includes("saveFailed:'保存失敗'") && html.includes("saveFailed:'Save failed'")],
+  ['toBlob null guard uses t(exportFailed)', html.includes("t('exportFailed')")],
+  ['Persist.save error uses t(saveFailed)', html.includes("t('saveFailed')")],
+  ['shapes key in ja and en', html.includes("shapes:'図形'") && html.includes("shapes:'Shapes'")],
+  ['status bar saved label has data-t', html.includes('class="lbl" data-t="saved"')],
+  ['status bar shapes label has data-t', html.includes('class="lbl" data-t="shapes"')],
+  ['describeShape uses T.k locale name', html.includes("T.k?.[s.type]??s.type")],
+  ['no dead t() fallbacks in toast/confirm calls', !html.includes("t('connected')||") && !html.includes("t('importConfirm')||")],
 ];
 
 let pass = 0, fail = 0;
@@ -615,7 +625,7 @@ try {
   assert.strictEqual(cycleSel(cids,null,1), 'a', 'no selection => first on Tab');
   assert.strictEqual(cycleSel(cids,'x',-1), 'c', 'unknown selection => last on Shift+Tab');
   assert.strictEqual(cycleSel([],'a',1), null, 'empty board => null');
-  assert.strictEqual(describeShape({type:'rect',x:10.4,y:20.6,w:5,h:5}), 'rect @ 10,21', 'shape description for SR');
+  assert.strictEqual(describeShape({type:'rect',x:10.4,y:20.6,w:5,h:5}), 'Rectangle @ 10,21', 'shape description for SR (en locale name)');
   console.log('  ✓ cycleSel cycles selection, describeShape labels for screen readers');
 
   // align
