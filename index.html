@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.6.31 — Design Tokens
+   Board v1.6.32 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -715,7 +715,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.31';
+const V='1.6.32';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -752,6 +752,7 @@ const I18N={
     selectTwo:'2つ以上選択してください',grouped:'グループ化',noGroup:'グループなし',
     ungrouped:'グループ解除',noFrames:'フレームがありません (F キーで作成)',
     imgBig:'画像が大きすぎます。縮小してください',
+    popupBlocked:'ポップアップをブロックしてください',invalidBoard:'ボードファイルが無効です',
     copied:'コピー',pasted:'貼り付け',deleted:'削除',cleared:'クリア',
     undone:'元に戻した',redone:'やり直した',created:'作成',
     confirmClear:'すべて削除しますか？',
@@ -798,6 +799,7 @@ const I18N={
     selectTwo:'Select 2 or more',grouped:'Grouped',noGroup:'No group',
     ungrouped:'Ungrouped',noFrames:'No frames (press F to create)',
     imgBig:'Image too large — please resize',
+    popupBlocked:'Pop-up blocked — please allow pop-ups for PDF export',invalidBoard:'Invalid .board file',
     copied:'Copied',pasted:'Pasted',deleted:'Deleted',cleared:'Cleared',
     undone:'Undone',redone:'Redone',created:'Created',
     confirmClear:'Delete everything?',
@@ -1765,7 +1767,7 @@ canvas.addEventListener('drop',e=>{
         const sh=Shape.make('image',{x:wp.x+ox,y:wp.y,w,h,dataUrl:reader.result});
         Store.commit({op:'add',shape:sh});
         state.selection.clear();state.selection.add(sh.id);
-        invalidate();
+        invalidate();UI.toast(t('imagePasted'),'ok');
       };
       img.src=reader.result;
     };
@@ -2570,7 +2572,7 @@ function exportPDF(){
     if(!bl){UI.toast('export failed','err');return}
     const url=URL.createObjectURL(bl);
     const w2=window.open('');
-    if(!w2){UI.toast('ポップアップをブロックしてください','warn');return}
+    if(!w2){UI.toast(t('popupBlocked'),'warn');return}
     w2.document.write(`<!DOCTYPE html><html><head><title>${_esc(state.docName||'board')}</title><style>*{margin:0;padding:0}img{max-width:100%;display:block}</style></head><body><img src="${url}" onload="window.print();window.close()"></body></html>`);
     w2.document.close();setTimeout(()=>URL.revokeObjectURL(url),30e3);
   };
@@ -2608,7 +2610,7 @@ function importBoard(file){
       if(d.docName){state.docName=d.docName;document.getElementById('docName').value=d.docName}
       invalidate();
       UI.toast(t('loadedBoard')+' ('+shapes.length+')','ok');
-    }catch{UI.toast('Invalid .board file','err')}
+    }catch{UI.toast(t('invalidBoard'),'err')}
   };
   r.readAsText(file);
 }

@@ -2,6 +2,20 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.32] — 2026-06-10
+
+i18n 修正: PDF ポップアップブロック通知・`.board` インポートエラーが英語ユーザーに誤表示。ドラッグ&ドロップ画像インポートの成功トーストを追加。
+
+### Fixed
+- **PDF エクスポートのポップアップブロック通知が日本語固定 (P2)** — 英語ユーザーに `ポップアップをブロックしてください` と表示されていた。`t('popupBlocked')` を使う i18n キーに移行し、英語訳 `Pop-up blocked — please allow pop-ups for PDF export` を追加。
+- **`.board` インポートエラーが英語固定 (P2)** — 日本語ユーザーに `Invalid .board file` と表示されていた。`t('invalidBoard')` に移行し、日本語訳 `ボードファイルが無効です` を追加。
+- **ドラッグ&ドロップ画像インポートが成功時にトーストを表示しない (P3)** — クリップボード貼り付けでは `imagePasted` トーストを表示していたが、ドラッグ&ドロップでは表示されなかった。一貫性のためトーストを追加。
+
+### Tests
+- 5 presence checks 追加 (`popupBlocked`/`invalidBoard` i18n 両ロケール、ドロップトースト)
+
+---
+
 ## [1.6.31] — 2026-06-10
 
 Present ボタンのツールチップ誤記修正。

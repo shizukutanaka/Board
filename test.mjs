@@ -255,6 +255,12 @@ const checks = [
   // v1.6.29: dead op:'z' code removed; i18n for image-too-large
   ['dead op-z case removed from _apply', !html.includes('// Array reorder')],
   ['imgBig i18n key present in ja and en', html.includes("imgBig:'画像が大きすぎます") && html.includes("imgBig:'Image too large")],
+  // v1.6.32: i18n for popup-blocked and invalid-board; drop-image toast
+  ['popupBlocked i18n key in both locales', html.includes("popupBlocked:'ポップアップ") && html.includes("popupBlocked:'Pop-up blocked")],
+  ['invalidBoard i18n key in both locales', html.includes("invalidBoard:'ボードファイル") && html.includes("invalidBoard:'Invalid .board")],
+  ['drop-image handler shows toast', html.includes("invalidate();UI.toast(t('imagePasted')")],
+  ['popupBlocked used via t()', html.includes("t('popupBlocked')")],
+  ['invalidBoard used via t()', html.includes("t('invalidBoard')")],
 ];
 
 let pass = 0, fail = 0;
