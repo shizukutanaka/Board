@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.6.28 — Design Tokens
+   Board v1.6.29 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -715,7 +715,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.28';
+const V='1.6.29';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -751,6 +751,7 @@ const I18N={
     noSelection:'選択なし',styleCopied:'スタイルコピー',stylePasted:'スタイル適用',
     selectTwo:'2つ以上選択してください',grouped:'グループ化',noGroup:'グループなし',
     ungrouped:'グループ解除',noFrames:'フレームがありません (F キーで作成)',
+    imgBig:'画像が大きすぎます。縮小してください',
     copied:'コピー',pasted:'貼り付け',deleted:'削除',cleared:'クリア',
     undone:'元に戻した',redone:'やり直した',created:'作成',
     confirmClear:'すべて削除しますか？',
@@ -796,6 +797,7 @@ const I18N={
     noSelection:'No selection',styleCopied:'Style copied',stylePasted:'Style applied',
     selectTwo:'Select 2 or more',grouped:'Grouped',noGroup:'No group',
     ungrouped:'Ungrouped',noFrames:'No frames (press F to create)',
+    imgBig:'Image too large — please resize',
     copied:'Copied',pasted:'Pasted',deleted:'Deleted',cleared:'Cleared',
     undone:'Undone',redone:'Redone',created:'Created',
     confirmClear:'Delete everything?',
@@ -974,7 +976,6 @@ function validRemotePayload(op){
     case 'clear':  return Array.isArray(op.shapes);
     case 'upd':    return typeof op.id==='string'&&!!op.after&&typeof op.after==='object';
     case 'move':   return Array.isArray(op.ids)&&Number.isFinite(+op.dx)&&Number.isFinite(+op.dy);
-    case 'z':      return typeof op.id==='string'&&Number.isFinite(+op.from)&&Number.isFinite(+op.to);
     case 'zorder':
     case 'style':
     case 'align':  return Array.isArray(op.after);
@@ -1020,7 +1021,7 @@ const Store={
   // undo stack — remote changes are not undoable from this peer.
   // Allow-list of op types a peer may apply. Anything else is dropped so a
   // malicious/buggy peer can't drive _apply down an unexpected path.
-  REMOTE_OPS:new Set(['add','del','upd','move','z','clear','group','ungroup','zorder','align','style']),
+  REMOTE_OPS:new Set(['add','del','upd','move','clear','group','ungroup','zorder','align','style']),
   applyRemote(op){
     if(!op||!op.clock||!this.REMOTE_OPS.has(op.op))return;
     // Peers are semi-trusted: reject structurally-bad payloads (wrong types,
@@ -1099,14 +1100,6 @@ const Store={
         const d=forward?1:-1;
         for(const id of op.ids){const sh=byId(id);if(!sh)continue;
           Shape.translate(sh,op.dx*d,op.dy*d);}
-        break;}
-      case 'z':{
-        // Array reorder
-        const {id,from,to}=op;
-        const src=forward?from:to,dst=forward?to:from;
-        const i=state.shapes.findIndex(s=>s.id===id);if(i<0)break;
-        const [sh]=state.shapes.splice(i,1);
-        state.shapes.splice(dst,0,sh);
         break;}
       case 'clear':{
         if(forward){state.shapes.length=0;state.selection.clear();}
@@ -1689,7 +1682,6 @@ canvas.addEventListener('pointerup',e=>{
   ptr.down=false;ptr.dragKind=null;ptr.dragStartShapes=null;
   ptr.resizeHandle=null;ptr.resizeOrig=null;
   state.marquee=null;canvas.style.cursor='default';invalidate();
-  invalidate();
 });
 canvas.addEventListener('pointercancel',()=>{
   // Restore shape(s) that were being resized or moved so they don't stay at a
@@ -1763,7 +1755,7 @@ canvas.addEventListener('drop',e=>{
     const reader=new FileReader();
     reader.onload=()=>{
       if(reader.result.length > 4*1024*1024){
-        UI.toast(`画像が大きすぎます (${Math.round(reader.result.length/1024)}KB)。縮小してください`,'warn');return;
+        UI.toast(t('imgBig')+' ('+Math.round(reader.result.length/1024)+'KB)','warn');return;
       }
       const img=new Image();
       img.onload=()=>{
@@ -1793,7 +1785,7 @@ window.addEventListener('paste',e=>{
     const reader=new FileReader();
     reader.onload=()=>{
       if(reader.result.length > 4*1024*1024){
-        UI.toast(`画像が大きすぎます (${Math.round(reader.result.length/1024)}KB)。縮小してください`,'warn');return;
+        UI.toast(t('imgBig')+' ('+Math.round(reader.result.length/1024)+'KB)','warn');return;
       }
       const img=new Image();
       img.onload=()=>{
@@ -3232,18 +3224,24 @@ function wire(){
   const rng=document.getElementById('rngSize');
   const opacRng=document.getElementById('rngOpacity');
   const opacVal=document.getElementById('opacVal');
+  rng.addEventListener('pointerdown',()=>_sfbCapture('size'));
   rng.addEventListener('input',()=>{
     state.style.size=+rng.value;
     document.getElementById('sizeVal').textContent=rng.value;
-    if(state.selection.size)applyStyleToSelection({size:state.style.size});
+    for(const id of state.selection){const s=byId(id);if(s)s.size=state.style.size}
+    if(state.selection.size)invalidate();
   });
+  rng.addEventListener('change',()=>_sfbFlush('size',state.style.size));
   if(opacRng){
+    opacRng.addEventListener('pointerdown',()=>_sfbCapture('opacity'));
     opacRng.addEventListener('input',()=>{
       const v=+opacRng.value/100;
       state.style.opacity=v;
       if(opacVal)opacVal.textContent=opacRng.value;
-      if(state.selection.size)applyStyleToSelection({opacity:v});
+      for(const id of state.selection){const s=byId(id);if(s)s.opacity=v}
+      if(state.selection.size)invalidate();
     });
+    opacRng.addEventListener('change',()=>_sfbFlush('opacity',state.style.opacity));
   }
   // zoom
   document.getElementById('btnZoomIn').onclick=()=>zoomBy(1.2);
@@ -3302,6 +3300,11 @@ function applyStyleToSelection(patch){
   if(before.length)Store._recordCommitted({op:'style',before,after});
   invalidate();
 }
+// Slider undo coalescing: capture shape prop values on pointerdown, flush a single
+// style op on change. Multiple input events during a drag never hit the undo stack.
+const _sbf={};
+function _sfbCapture(p){for(const id of state.selection){const s=byId(id);if(s)_sbf[id+p]=s[p]}}
+function _sfbFlush(p,v){const b=[],a=[];for(const id of state.selection){const k=id+p;if(k in _sbf){b.push({id,[p]:_sbf[k]});a.push({id,[p]:v});delete _sbf[k]}}if(b.length&&b.some(x=>x[p]!==v))Store._recordCommitted({op:'style',before:b,after:a});}
 
 function copyStyle(){
   // Copy style from the first selected shape

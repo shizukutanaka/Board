@@ -247,6 +247,14 @@ const checks = [
   // v1.6.28: ungroup undo preserves per-shape groupId across multi-group ungroup
   ['doUngroup captures before snapshot', html.includes('before.push({id:s.id,groupId:s.groupId})')],
   ['ungroup backward uses before snapshot when available', html.includes('if(op.before){for(const b of op.before)')],
+  // v1.6.29: slider undo coalescing — single op per drag, not per input event
+  ['slider before-capture helper _sfbCapture defined', html.includes('function _sfbCapture(p)')],
+  ['slider flush helper _sfbFlush defined', html.includes('function _sfbFlush(p,v)')],
+  ['size slider uses pointerdown/change for undo, not input', html.includes("_sfbCapture('size')") && html.includes("_sfbFlush('size'")],
+  ['opacity slider uses pointerdown/change for undo', html.includes("_sfbCapture('opacity')") && html.includes("_sfbFlush('opacity'")],
+  // v1.6.29: dead op:'z' code removed; i18n for image-too-large
+  ['dead op-z case removed from _apply', !html.includes('// Array reorder')],
+  ['imgBig i18n key present in ja and en', html.includes("imgBig:'画像が大きすぎます") && html.includes("imgBig:'Image too large")],
 ];
 
 let pass = 0, fail = 0;
@@ -1097,7 +1105,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 71;
+  pass += 71; // presence only, no new behavioral
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

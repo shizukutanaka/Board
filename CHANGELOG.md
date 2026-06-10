@@ -2,6 +2,31 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.29] — 2026-06-10
+
+スライダー (太さ・不透明度) を使ったスタイル変更が Undo を大量消費するバグ修正、デッドコード削除、i18n 修正。
+
+### Fixed
+- **スライダードラッグ中に Undo エントリが連続生成される (P2)** —
+  太さ・不透明度スライダーの `input` イベントが `applyStyleToSelection` → `_recordCommitted`
+  を毎回呼び出していたため、スライダーを一回動かすだけで多数の Undo ステップが積まれていた。
+  `_sfbCapture(prop)` / `_sfbFlush(prop, v)` ヘルパーを追加し、`pointerdown` 時にスナップショットを
+  取得、`change` 時 (ドラッグ解放時) にのみ単一の `style` op を記録するよう変更。
+
+### Changed
+- **デッドコード `op:'z'` 削除** — `_apply` の `case 'z'` と `validRemotePayload` の対応行を削除。
+  このオペレーションは当初の設計ドキュメントに記載されていたが、実際には一度も生成されず、
+  すべての z 順序変更は `op:'zorder'` (before/after スナップショット) が担う。
+- **画像サイズ超過エラーを i18n 化** — ドロップ・クリップボード両方のハードコード日本語を
+  `t('imgBig')` + サイズ文字列に置き換え。英語 UI でも正しいメッセージが表示される。
+- **重複 `invalidate()` 削除** — ポインタアップハンドラの末尾に存在した二重呼び出しを削除。
+
+### Tests
+- **263/263 全通過** (+6): presence チェック × 6 (slider helpers, size/opacity coalescing,
+  dead-code removed, i18n key)。
+
+---
+
 ## [1.6.28] — 2026-06-10
 
 複数グループを一括 Ungroup したときの Undo が全 shape を最初のグループに入れてしまうバグを修正。
