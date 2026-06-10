@@ -1,6 +1,6 @@
 # Board — 仕様書 (Specification)
 
-> Board v1.6.19 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
+> Board v1.6.38 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
 > **§13 適合ギャップ(不足)** で仕様と実装の差分を列挙する。本書は実装と対で更新する。
 > 関連: 設計=`docs/architecture.md`、改善調査=`docs/research-improvements.md` /
 > `docs/category-research*.md`、変更履歴=`CHANGELOG.md`。
@@ -185,6 +185,31 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
   整列し、ブランド色の破線ガイドを表示。純粋幾何 `snapBox(mov,targets,tol)`(最近傍アンカー採用、
   単体テスト可)+ `objectSnap`/`moveDelta` で live drag と commit が一致。グリッドスナップ(⇧G)が
   優先、off 時に有効。最終 delta は従来通り `move` op なので完全可逆。
+
+### ✅ v1.6.32–1.6.35 で解消(i18n 監査 第1弾)
+- **ハードコード日本語/英語 (P2)**: `exportPDF` の popup-blocked トースト(日本語固定)、`importBoard` の
+  invalid-board トースト(英語固定)、ドロップ画像の toast 未発火 — i18n キー追加+`t()` で解消。
+- **Present ボタン小文字回帰 (P2)**: `data-t="present"` 追加時に en キー追加漏れ →
+  `t('present')` がキー名フォールバックで `'present'`(小文字)を返していた。en テーブルに追加。
+- **スナップ/グリッド/オンライン/オフライン 固定表示**: snap・grid・on/off・online/offline を i18n 化。
+
+### ✅ v1.6.36 で解消(i18n 監査 第2弾)
+- **exportFailed/saveFailed ハードコード英語 (P2)**: `exportPNG`/`exportPDF` の `'export failed'` と
+  `Persist.save` の `'save failed: ...'` を `t('exportFailed')` / `t('saveFailed')` へ。
+- **ステータスバーラベル固定 (P3)**: `shapes`/`saved` ラベルに `data-t` 付与(shapes='図形'等)。
+- **describeShape が英語 raw 型名を使用 (P3)**: `T.k?.[s.type]??s.type` でロケール名を表示
+  (日本語: '矩形 @ x,y'、英語: 'Rectangle @ x,y')。
+- **7 つの冗長 `||'fallback'` 削除**: `t()` がキー名をフォールバックとして返すため常に不達だったコードを削除。
+
+### ✅ v1.6.37 で解消(a11y 監査)
+- **トースト `role` 属性なし (WCAG 4.1.2)**: 各トースト div に `role="alert"` (err/warn)
+  または `role="status"` (ok) を設定。スクリーンリーダーが severity を正確に認識。
+- **コンテキストメニューが Escape キーで閉じない (WCAG 2.1.2)**: `keydown` の Escape 分岐に
+  コンテキストメニュー判定を追加。モーダル閉じより前に実行。
+
+### ✅ v1.6.38 で解消(a11y 監査 続)
+- **コンテキストメニュー開時にフォーカスなし (WCAG 2.1.1)**: `m.querySelector('.ctx-item')?.focus()`
+  でメニュー開時に最初の項目へフォーカス移動。キーボードユーザーが Tab で項目を巡回可能に。
 
 ### ⬜ 既知の未充足(将来 ADR で対応 / 詳細は research docs)
 - **z 順序 op のスケーラビリティ**: `zorder` が全 shape スナップショットを保持(大規模で履歴/帯域肥大)。
