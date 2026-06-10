@@ -222,6 +222,7 @@ canvas#c[data-tool=eraser]{cursor:crosshair}
   background:var(--paper);color:var(--ink);cursor:pointer;display:flex;align-items:center;justify-content:center}
 .dashbtn:hover{border-color:var(--ink-3)}
 .dashbtn[aria-pressed=true]{border-color:var(--brand-ink);box-shadow:0 0 0 1px var(--brand-ink) inset}
+.swatch.cp{padding:1px}
 .swatch.null{background:
   linear-gradient(45deg,transparent 45%,var(--danger) 45%,var(--danger) 55%,transparent 55%),
   var(--paper);
@@ -597,6 +598,7 @@ body{visibility:visible}
         <button class="swatch" data-stroke="#2563EB" style="background:#2563EB" title="Blue"></button>
         <button class="swatch" data-stroke="#7C3AED" style="background:#7C3AED" title="Violet"></button>
         <button class="swatch" data-stroke="#00C4CC" style="background:#00C4CC" title="Brand"></button>
+        <input type="color" class="swatch cp" data-cp="stroke" value="#0F172A" aria-label="Custom stroke">
       </div>
       <div style="width:1px;height:22px;background:var(--line)"></div>
       <div class="sp-group" role="group" aria-label="Fill">
@@ -608,6 +610,7 @@ body{visibility:visible}
         <button class="swatch" data-fill="#DCFCE7" style="background:#DCFCE7" title="Green tint"></button>
         <button class="swatch" data-fill="#DBEAFE" style="background:#DBEAFE" title="Blue tint"></button>
         <button class="swatch" data-fill="#E6F9FA" style="background:#E6F9FA" title="Brand tint"></button>
+        <input type="color" class="swatch cp" data-cp="fill" value="#2563EB" aria-label="Custom fill">
       </div>
       <div style="width:1px;height:22px;background:var(--line)"></div>
       <div class="sp-group" role="group" aria-label="Size">
@@ -715,7 +718,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.55';
+const V='1.6.56';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -968,10 +971,9 @@ function validShape(s){
     s.pts.every(p=>Array.isArray(p)&&Number.isFinite(p[0])&&Number.isFinite(p[1]));
   return true;
 }
-// Validate a REMOTE op's payload before it reaches _apply. Local ops are
-// generated in-process and trusted; remote ops (BroadcastChannel/WebRTC) are
-// not — require the exact fields each forward-apply path dereferences, with
-// finite numeric deltas. Returns true only for structurally-sound ops.
+// Validate a REMOTE op's payload before _apply. Local ops are trusted; remote
+// ops (BroadcastChannel/WebRTC) must carry the exact fields each path needs,
+// with finite deltas. True only for structurally-sound ops.
 function validRemotePayload(op){
   switch(op.op){
     case 'add':    return validShape(op.shape);
@@ -1126,11 +1128,8 @@ const Store={
         }
         break;}
       case 'zorder':{
-        // Reversible: the snapshot lists every shape's {id,z} in array order, so
-        // restore both the z values AND the exact array order. Order-preserving
-        // even when z values tie (where a z-only restore + sortZ would not be).
-        // A true inverse for single- and multi-selection alike; the old
-        // dir-based form was not invertible.
+        // Reversible: snapshot of {id,z} in array order restores z AND order
+        // (tie-safe inverse for single/multi-select; old dir-based form was not).
         const snap=forward?op.after:op.before;
         if(snap){
           const map=new Map(state.shapes.map(s=>[s.id,s]));
@@ -3232,6 +3231,13 @@ function wire(){
       state.style.dash=+b.dataset.dash;
       for(const x of document.querySelectorAll('[data-dash]'))x.setAttribute('aria-pressed',x===b);
       if(state.selection.size)applyStyleToSelection({dash:state.style.dash});
+    });
+  for(const cp of document.querySelectorAll('input.cp'))
+    cp.addEventListener('input',()=>{
+      const k=cp.dataset.cp;
+      state.style[k]=cp.value;
+      for(const x of document.querySelectorAll('[data-'+k+']'))x.setAttribute('aria-pressed',x===cp);
+      if(state.selection.size)applyStyleToSelection({[k]:cp.value});
     });
   const rng=document.getElementById('rngSize');
   const opacRng=document.getElementById('rngOpacity');

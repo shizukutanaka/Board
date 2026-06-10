@@ -314,6 +314,10 @@ const checks = [
   ['toggleHelp moves focus to helpClose on open', html.includes("open?'helpClose':'btnHelp'")],
   ['openShare moves focus to shareClose', html.includes("document.getElementById('shareClose').focus()")],
   ['closeShare returns focus to btnShare', html.includes("document.getElementById('btnShare').focus()")],
+  // v1.6.56: custom color pickers (native <input type=color>) for stroke and fill
+  ['custom stroke color picker present', html.includes('class="swatch cp" data-cp="stroke"')],
+  ['custom fill color picker present', html.includes('class="swatch cp" data-cp="fill"')],
+  ['custom color pickers route through applyStyleToSelection', html.includes("for(const cp of document.querySelectorAll('input.cp'))")],
 ];
 
 let pass = 0, fail = 0;

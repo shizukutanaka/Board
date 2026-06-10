@@ -2,6 +2,30 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.56] — 2026-06-10
+
+feat: カスタムカラーピッカー — プリセット 7 色に加え、ネイティブ `<input type="color">` で
+ストローク・塗りに任意の 24bit 色を指定可能に。機能ギャップ監査 (`docs/feature-gap-2026-06.md`) で
+「プリセット以外の色が選べない」が最頻出の欠落と判明したため最優先で実装。
+
+### Added
+- スタイルパネルにストローク用・塗り用のカスタムカラー入力を追加 (`input.cp`)
+- 選択中シェイプにも即時反映 (既存の `applyStyleToSelection` 経路を再利用)
+- カスタム色選択時はプリセットスウォッチの `aria-pressed` を解除
+
+### Changed
+- gzip 予算内に収めるため `zorder` / `validRemotePayload` の冗長コメントを簡潔化
+  (設計根拠は `docs/architecture.md` に保持)
+
+### Docs
+- `docs/feature-gap-2026-06.md`: 長所・短所・欠落機能の監査と優先度付きロードマップを新規追加
+
+### Tests
+- カスタムカラーピッカーの presence テスト 3 件追加 (446 total)
+- gzip 45,032B (24B under 45,056B budget)
+
+---
+
 ## [1.6.55] — 2026-06-10
 
 tests: doAlign 残り4バリアント (right/bottom/cx/cy)、G.hit 楕円 (filled/unfilled)、remote del op の behavioral テスト追加。

@@ -1,6 +1,6 @@
 # Board — 仕様書 (Specification)
 
-> Board v1.6.54 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
+> Board v1.6.56 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
 > **§13 適合ギャップ(不足)** で仕様と実装の差分を列挙する。本書は実装と対で更新する。
 > 関連: 設計=`docs/architecture.md`、改善調査=`docs/research-improvements.md` /
 > `docs/category-research*.md`、変更履歴=`CHANGELOG.md`。
@@ -227,6 +227,11 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
 ### ✅ v1.6.41 で解消(a11y: 残余 sp-label)
 - **"Line style" グループの sp-label に `aria-hidden` なし**: `data-t="lineStyle"` スパンに
   `aria-hidden="true"` を追加。v1.6.40 で 4 件修正したが、このラベルのみ残存していた。
+
+### ✅ v1.6.56 で実装(feat: カスタムカラーピッカー)
+- **プリセット 7 色以外を選べない**: 機能ギャップ監査(`docs/feature-gap-2026-06.md`)で最頻出の
+  欠落と判明。スタイルパネルにネイティブ `<input type="color">`(ストローク用・塗り用)を追加。
+  既存の `applyStyleToSelection` 経路を再利用し、選択中シェイプにも即時反映。外部依存なし。
 
 ### ✅ v1.6.52 で解消(a11y: ダイアログフォーカス管理 WCAG 2.4.3)
 - **ヘルプ/共有ダイアログ開閉でフォーカスが移動しない**: `toggleHelp`/`openShare`/`closeShare` を改修。
