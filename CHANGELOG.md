@@ -2,6 +2,18 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.38] — 2026-06-10
+
+a11y: コンテキストメニュー開時に最初の項目へフォーカス移動 (キーボードユーザー対応)。
+
+### Fixed
+- **コンテキストメニューがキーボードでアクセスできない (WCAG 2.1.1)** — メニュー表示時に `m.querySelector('.ctx-item')?.focus()` を呼び出し、最初のメニュー項目にフォーカスを移動。キーボードユーザーはメニューを開いた後 Tab キーで項目を巡回・選択できるようになる。
+
+### Tests
+- 1 presence check 追加 (289 total); gzip 45,026B (30B under 45,056B budget)
+
+---
+
 ## [1.6.37] — 2026-06-10
 
 a11y: トーストの ARIA ロール修正、コンテキストメニューの Escape キー対応 (WCAG 2.2)。

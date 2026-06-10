@@ -286,6 +286,8 @@ const checks = [
   // v1.6.37: toast role=alert/status, Escape closes context menu
   ['toast sets role=alert for err/warn, role=status otherwise', html.includes("setAttribute('role',kind==='err'||kind==='warn'?'alert':'status')")],
   ['Escape key closes context menu before modal dismiss', html.includes("ctx2.dataset.open==='true'){UI.closeCtxMenu();return}")],
+  // v1.6.38: context menu auto-focuses first item on open (keyboard a11y)
+  ['context menu focuses first item on open', html.includes("m.querySelector('.ctx-item')?.focus()")],
 ];
 
 let pass = 0, fail = 0;
