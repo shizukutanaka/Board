@@ -2,6 +2,26 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.26] — 2026-06-09
+
+既存テキストを空にした時の二重 Undo を修正。
+
+### Fixed
+- **既存テキスト/付箋を空にして確定すると Undo が 2 回必要 (P1)** —
+  `openTextEditor` の blur ハンドラが、テキストを空にした既存 shape に対して
+  `upd` op(text→空)と `del` op の**両方**を記録していた。結果、1 回の操作なのに
+  Ctrl+Z を 2 回押さないと元に戻らず、「1 操作 = 1 Undo」の原則を破っていた。
+  さらに `del` op が空テキスト測定後の shape(`w=20`)をクローンしていたため、
+  Undo 復元時にテキストが極端に折り返される視覚バグも併発。
+  エディタ開始時に `orig=clone(s)` を保存し、空化時は元 shape を `del` で削除する
+  単一 op に統一(`else if` で upd と排他化)。Undo 1 回で元の text・寸法を完全復元。
+
+### Tests
+- **249/249 全通過** (+3): presence チェック × 3 (orig クローン、単一 del op、
+  else-if 排他化)。
+
+---
+
 ## [1.6.25] — 2026-06-09
 
 マルチ選択スタイル変更の単一 Undo。

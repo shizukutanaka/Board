@@ -227,11 +227,15 @@ const checks = [
   ['text editor keydown guards ev.isComposing (IME safe)', (html.match(/if\(ev\.isComposing\)return/g)||[]).length >= 2],
   ['pen RDP decimation function _rdp present', html.includes('function _rdp(pts,eps)')],
   ['endPen applies RDP on commit', html.includes('d.pts.length>3')&&html.includes('_rdp(d.pts,0.5)')],
-  ['gzip budget test uses system gzip -9 (matches CI)', html.includes('V=\'1.6.25\'')],
+  ['gzip budget test uses system gzip -9 (matches CI)', html.includes('V=\'1.6.26\'')],
   // v1.6.25: style op for single-undo multi-select style
   ['style op in _apply (single undo for multi-select style)', html.includes("case 'style':")],
   ['style op in REMOTE_OPS allowlist', html.includes("'style'")&&html.includes('REMOTE_OPS')],
   ['applyStyleToSelection uses style op not per-shape upd', html.includes("{op:'style',before,after}")],
+  // v1.6.26: emptying existing text = single undo (not upd+del)
+  ['text editor captures orig clone at open', html.includes('const orig=clone(s)')],
+  ['emptied existing text deletes original via single del op', html.includes('Store.commit({op:\'del\',shapes:[orig]})')],
+  ['existing text edit branch is else-if (no double op)', html.includes("}else if(newText!==origText){")],
   // v1.6.23: .board file export/import
   ['exportBoard function exists', html.includes('function exportBoard()')],
   ['importBoard function exists and uses validShape filter', html.includes('function importBoard') && html.includes('.filter(validShape)')],

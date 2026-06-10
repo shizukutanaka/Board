@@ -715,7 +715,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.25';
+const V='1.6.26';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -2192,6 +2192,7 @@ function openTextEditor(s,isNew){
   const ta=document.createElement('textarea');
   ta.className='text-overlay';
   const origText=s.text||'';
+  const orig=clone(s);
   ta.value=origText;
   ta.spellcheck=false;
   positionTextEditor(ta,s);
@@ -2228,15 +2229,13 @@ function openTextEditor(s,isNew){
         state.dirty=true;Persist.schedule();
       }
     }else{
-      // Existing text: record changes as upd op
-      if(newText!==origText){
-        const before={text:origText,w:s.w,h:s.h};
+      // Existing text: emptied → delete original (single undo); else changed → upd
+      if(!newText.trim()){
+        Store.commit({op:'del',shapes:[orig]});
+      }else if(newText!==origText){
+        const before={text:origText,w:orig.w,h:orig.h};
         const after={text:newText,w:s.w,h:s.h};
         Store._recordCommitted({op:'upd',id:s.id,before,after});
-      }
-      // If emptied, delete the shape
-      if(!newText.trim()){
-        Store.commit({op:'del',shapes:[clone(s)]});
       }
     }
     ta.remove();invalidate();
