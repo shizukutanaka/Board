@@ -296,6 +296,8 @@ const checks = [
   ['style panel S/F labels are aria-hidden (decorative)', html.includes('<span class="sp-label" aria-hidden="true">S</span>') && html.includes('<span class="sp-label" aria-hidden="true">F</span>')],
   ['size and opacity groups have role=group', html.includes('role="group" aria-label="Size"') && html.includes('role="group" aria-label="Opacity"')],
   ['SW dead code removed: r|| before new Response is gone', !html.includes('return r||new Response')],
+  // v1.6.41: line style sp-label is aria-hidden (group has aria-label)
+  ['line style sp-label is aria-hidden', html.includes('data-t="lineStyle" aria-hidden="true"')],
 ];
 
 let pass = 0, fail = 0;
@@ -461,6 +463,24 @@ try {
   // G.hit: filled rect
   assert.strictEqual(G.hit({type:'rect', x:0, y:0, w:100, h:100, fill:'#000'}, {x:50, y:50}), true);
   console.log('  ✓ G.hit hits filled rect interior');
+
+  // v1.6.41: G.hit for ellipse, line/arrow, sticky/frame
+  {
+    // Filled ellipse: centre point hits
+    assert.strictEqual(G.hit({type:'ellipse',x:0,y:0,w:100,h:60,fill:'#000'},{x:50,y:30}),true,'ellipse filled centre');
+    // Unfilled ellipse: point deep inside misses
+    assert.strictEqual(G.hit({type:'ellipse',x:0,y:0,w:100,h:60,fill:null},{x:50,y:30}),false,'ellipse outline: interior miss');
+    // Unfilled ellipse: point on edge hits
+    assert.strictEqual(G.hit({type:'ellipse',x:0,y:0,w:100,h:60,fill:null},{x:100,y:30}),true,'ellipse outline: edge hit');
+    // Line: point on the segment hits
+    assert.strictEqual(G.hit({type:'line',x1:0,y1:0,x2:100,y2:0,size:2},{x:50,y:2}),true,'line: near midpoint hits');
+    // Line: point far away misses
+    assert.strictEqual(G.hit({type:'line',x1:0,y1:0,x2:100,y2:0,size:2},{x:50,y:200}),false,'line: far away misses');
+    // Sticky: bbox interior hits
+    assert.strictEqual(G.hit({type:'sticky',x:10,y:10,w:100,h:80},{x:60,y:50}),true,'sticky: interior hits');
+    assert.strictEqual(G.hit({type:'sticky',x:10,y:10,w:100,h:80},{x:200,y:50}),false,'sticky: outside misses');
+    console.log('  ✓ G.hit: ellipse filled/outline, line proximity, sticky bbox');
+  }
 
   console.log('\n-- v1.1: CRDT / sync --');
 
@@ -1257,7 +1277,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 85; // 71 baseline + 9 handleCursor + 5 Store boundary
+  pass += 93; // 71 baseline + 9 handleCursor + 5 Store boundary + 8 G.hit shapes
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

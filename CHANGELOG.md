@@ -2,6 +2,21 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.41] — 2026-06-10
+
+a11y: 「Line style」グループの sp-label に `aria-hidden` 追加。テスト: `G.hit` の追加 shape 種別カバレッジ。
+
+### Fixed
+- **Line style ラベルに `aria-hidden` なし**: "Line" スパンに `aria-hidden="true"` を追加。親の
+  `role="group" aria-label="Line style"` でコンテキストは既に提供されており、ラベルテキストは冗長。
+  (v1.6.40 で S/F/Size/α を修正し、この 1 件だけ残っていた)
+
+### Tests
+- 1 presence check 追加 (318 total); gzip 45,010B (46B under 45,056B budget)
+- `G.hit` の shape 種別拡張 behavioral test 追加: 塗り楕円・輪郭楕円・線分・sticky の当たり判定を検証
+
+---
+
 ## [1.6.40] — 2026-06-10
 
 a11y: スタイルパネルの装飾ラベルに `aria-hidden` 追加、サイズ・不透明度グループに `role=group` 付与。SW の到達不能コード削除。
