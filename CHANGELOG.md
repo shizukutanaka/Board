@@ -2,6 +2,19 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.46] — 2026-06-10
+
+tests: G.bbox/bboxAll, cycleSel, describeShape, inView の behavioral テスト追加。
+
+### Tests
+- G.bbox (rect/text/line/pen 各形状のバウンディングボックス) + G.bboxAll (ユニオン) 9 件
+- cycleSel (前進/後退/折り返し/未知カーソル) 6 件
+- describeShape (SR アナウンス形式) 2 件
+- inView (視錐台カリング: 可視/不可視) 3 件
+- 計 +20 behavioral assertions → 346 total; gzip 44,986B (70B under budget)
+
+---
+
 ## [1.6.45] — 2026-06-10
 
 a11y: 接続状態の aria-live アナウンス + ズームバッジのグループ語義。

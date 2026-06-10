@@ -1296,8 +1296,45 @@ try {
   assert.strictEqual(G.hit({type:'frame',x:10,y:10,w:100,h:80,size:2},{x:200,y:50}),false,'frame: far outside misses');
   console.log('  ✓ G.hit text and frame shapes');
 
+  // G.bbox — per-shape bounding box
+  assert.deepStrictEqual(G.bbox({type:'rect',x:10,y:20,w:100,h:50}),{x:10,y:20,w:100,h:50},'bbox rect returns exact dims');
+  assert.deepStrictEqual(G.bbox({type:'text',x:5,y:5,w:80,h:24}),{x:5,y:5,w:80,h:24},'bbox text returns exact dims');
+  const lbx=G.bbox({type:'line',x1:0,y1:0,x2:60,y2:0,size:2});
+  assert.ok(lbx.x<0&&lbx.w>60&&lbx.h>0,'bbox line expanded by size padding');
+  const pbx=G.bbox({type:'pen',pts:[[10,20],[50,40]],size:4});
+  assert.ok(pbx.x<10&&pbx.y<20&&pbx.x+pbx.w>50&&pbx.y+pbx.h>40,'bbox pen expands beyond all pts');
+  // G.bboxAll — union of multiple shapes
+  assert.strictEqual(G.bboxAll([]),null,'bboxAll empty → null');
+  const abx=G.bboxAll([{type:'rect',x:0,y:0,w:50,h:50},{type:'rect',x:60,y:10,w:40,h:30}]);
+  assert.strictEqual(abx.x,0,'bboxAll union: left edge');
+  assert.strictEqual(abx.y,0,'bboxAll union: top edge');
+  assert.strictEqual(abx.w,100,'bboxAll union: total width');
+  assert.strictEqual(abx.h,50,'bboxAll union: total height');
+  console.log('  ✓ G.bbox rect/text/line/pen and G.bboxAll union');
+
+  // cycleSel — keyboard Tab cycling
+  assert.strictEqual(cycleSel([],null,1),null,'cycleSel empty ids → null');
+  assert.strictEqual(cycleSel(['a','b','c'],'a',1),'b','cycleSel forward from first');
+  assert.strictEqual(cycleSel(['a','b','c'],'c',1),'a','cycleSel forward wraps to start');
+  assert.strictEqual(cycleSel(['a','b','c'],'a',-1),'c','cycleSel backward wraps to end');
+  assert.strictEqual(cycleSel(['a','b','c'],'x',1),'a','cycleSel unknown cur + forward → first');
+  assert.strictEqual(cycleSel(['a','b','c'],'x',-1),'c','cycleSel unknown cur + backward → last');
+  console.log('  ✓ cycleSel: forward/backward/wrap/unknown-current');
+
+  // describeShape — SR shape announcement
+  assert.ok(describeShape({type:'rect',x:10,y:20,w:100,h:50}).endsWith('@ 10,20'),'describeShape includes rounded position');
+  assert.ok(describeShape({type:'rect',x:10,y:20,w:100,h:50}).length>5,'describeShape not empty');
+  console.log('  ✓ describeShape: position suffix present');
+
+  // inView — frustum culling
+  const vp0={x:0,y:0,w:800,h:600};
+  assert.strictEqual(inView({type:'rect',x:100,y:100,w:200,h:150},vp0),true,'inView: shape within viewport');
+  assert.strictEqual(inView({type:'rect',x:900,y:100,w:200,h:150},vp0),false,'inView: shape outside right edge');
+  assert.strictEqual(inView({type:'rect',x:-300,y:100,w:200,h:150},vp0),false,'inView: shape outside left edge');
+  console.log('  ✓ inView: culls off-screen shapes, passes on-screen');
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 95; // 71 baseline + 9 handleCursor + 5 Store boundary + 10 G.hit shapes
+  pass += 114; // 71 baseline + 9 handleCursor + 5 Store boundary + 10 G.hit + 9 G.bbox/bboxAll + 10 cycleSel/describe/inView
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
