@@ -2,6 +2,27 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.30] — 2026-06-10
+
+PDF エクスポートキーボードショートカット未接続の修正、ツールチップ誤記修正、ヘルプグリッドへの `.board` ショートカット追加。
+
+### Fixed
+- **`⌘P` が PDF エクスポートを起動しない (P2)** — `exportPDF()` は定義されていたが、
+  キーボードハンドラに `meta&&k==='p'` の条件がなかったため、`⌘P` はブラウザのネイティブ
+  印刷ダイアログを開くだけだった。`exportPDF()` を呼び出す handler を追加し、
+  ブラウザデフォルトも `preventDefault()` でキャンセル。
+- **Share ボタンのツールチップが `⌘⇧S` と誤記 (P3)** — Share ボタンのタイトル属性が
+  `"Share (⌘⇧S)"` だったが、`⌘⇧S` は `.board` ファイル書き出し。ツールチップを修正。
+
+### Added
+- **ヘルプグリッドに `⌘⇧S` (.board) を追加** — `.board` 書き出しショートカットが
+  ヘルプパネルに表示されていなかった。
+
+### Tests
+- **263/263 全通過** (変更なし)。
+
+---
+
 ## [1.6.29] — 2026-06-10
 
 スライダー (太さ・不透明度) を使ったスタイル変更が Undo を大量消費するバグ修正、デッドコード削除、i18n 修正。

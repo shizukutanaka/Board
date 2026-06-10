@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.6.29 — Design Tokens
+   Board v1.6.30 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -569,7 +569,7 @@ body{visibility:visible}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
       <span>Present</span>
     </button>
-    <button class="btn" id="btnShare" title="Share (⌘⇧S)">
+    <button class="btn" id="btnShare" title="Share">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg>
       <span data-t="share">Share</span>
     </button>
@@ -715,7 +715,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.29';
+const V='1.6.30';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -2301,6 +2301,7 @@ window.addEventListener('keydown',e=>{
   else if(k==='v'&&e.altKey&&!meta){e.preventDefault();pasteStyle()}
   else if(meta&&k==='s'&&e.shiftKey){e.preventDefault();exportBoard()}
   else if(meta&&k==='s'&&!e.shiftKey){e.preventDefault();Persist.save(true)}
+  else if(meta&&k==='p'){e.preventDefault();exportPDF()}
   else if(meta&&(k==='='||k==='+')){e.preventDefault();zoomBy(1.2)}
   else if(meta&&k==='-'){e.preventDefault();zoomBy(1/1.2)}
   else if(meta&&k==='0'){e.preventDefault();zoomReset()}
@@ -3119,7 +3120,7 @@ const UI={
       ['⌘Z',k.undo],['⌘⇧Z',k.redo],['⌘A',k.selAll],
       ['⌘C/V/X',k.copy+'/'+k.paste+'/'+k.cut],['⌘D',k.dup],['⌫',k.del],
       ['⌘+/−/0',k.zoomIn+'/'+k.zoomOut+'/'+k.zoom100],
-      ['⇧1',k.fit],['⌘E',k.exp],['⌘⇧E','SVG'],['⌘P','PDF'],['⌘S',k.save],
+      ['⇧1',k.fit],['⌘E',k.exp],['⌘⇧E','SVG'],['⌘P','PDF'],['⌘S',k.save],['⌘⇧S','.board'],
       ['G',k.grid],['⇧G','Snap'],['Esc',k.esc],['?',k.help],
       ['↑↓←→',k.nudge],
       [']/[',k.zorder],['⇧]/⇧[',k.zorderEnds],
