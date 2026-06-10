@@ -2,6 +2,16 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.31] — 2026-06-10
+
+Present ボタンのツールチップ誤記修正。
+
+### Fixed
+- **Present ボタンのツールチップが `P` と誤表示 (P3)** — 実際のショートカットは `⇧P` (Shift+P)。
+  `title="Present (P)"` → `title="Present (⇧P)"` に修正。
+
+---
+
 ## [1.6.30] — 2026-06-10
 
 PDF エクスポートキーボードショートカット未接続の修正、ツールチップ誤記修正、ヘルプグリッドへの `.board` ショートカット追加。
