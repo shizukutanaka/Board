@@ -1,6 +1,6 @@
 # Board — 仕様書 (Specification)
 
-> Board v1.6.39 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
+> Board v1.6.40 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
 > **§13 適合ギャップ(不足)** で仕様と実装の差分を列挙する。本書は実装と対で更新する。
 > 関連: 設計=`docs/architecture.md`、改善調査=`docs/research-improvements.md` /
 > `docs/category-research*.md`、変更履歴=`CHANGELOG.md`。
@@ -217,6 +217,12 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
 - **保存失敗時の重複 console.error**: `Persist.save` が `console.error` と toast を両発行。
   toast は維持し `console.error` 行を削除。
 - **BroadcastChannel 初期化失敗の console.warn**: 非クリティカル catch を `catch{}` に簡略化。
+
+### ✅ v1.6.40 で解消(a11y: スタイルパネル + SW dead code)
+- **スタイルパネル装飾ラベルが SR で読み上げられる (WCAG 1.3.1)**: "S"/"F"/"α" スパンに
+  `aria-hidden="true"` 追加。各グループには `aria-label` が既存のため冗長ラベルを非表示化。
+- **サイズ・不透明度グループの `role` 不在**: `role="group" aria-label="Size/Opacity"` を付与。
+- **SW catch の dead code `r||`**: cache miss 後の catch で `r` は常に falsy。不要な `r||` を削除。
 
 ### ⬜ 既知の未充足(将来 ADR で対応 / 詳細は research docs)
 - **z 順序 op のスケーラビリティ**: `zorder` が全 shape スナップショットを保持(大規模で履歴/帯域肥大)。

@@ -2,6 +2,23 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.40] — 2026-06-10
+
+a11y: スタイルパネルの装飾ラベルに `aria-hidden` 追加、サイズ・不透明度グループに `role=group` 付与。SW の到達不能コード削除。
+
+### Fixed
+- **スタイルパネル装飾ラベルがスクリーンリーダーで不必要に読み上げられる (WCAG 1.3.1)** — ストロークカラー
+  グループ内の "S" ラベル、塗りグループ内の "F" ラベル、不透明度の "α" ラベルに `aria-hidden="true"` を追加。
+  各グループはすでに `aria-label="Stroke color"` / `aria-label="Fill"` を持つため、1文字ラベルは冗長かつ混乱を招く。
+- **サイズ・不透明度 `sp-group` に `role="group"` 不在 (ARIA best practices)** — `<div class="sp-group">` に
+  `role="group" aria-label="Size"` / `role="group" aria-label="Opacity"` を追加し、スライダーの意味的コンテキストを確立。
+- **Service Worker の到達不能分岐** — `caches.match` がヒットすれば即 `return`、到達しない catch 内の `r||` を削除 (dead code)。
+
+### Tests
+- 3 presence checks 追加 (309 total); gzip 45,009B (47B under 45,056B budget)
+
+---
+
 ## [1.6.39] — 2026-06-10
 
 コードクリーンアップ: 冗長な `console.warn`/`console.error` 3箇所を削除し、インポート失敗時に適切なエラートーストを表示。

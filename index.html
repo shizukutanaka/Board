@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.6.39 — Design Tokens
+   Board v1.6.40 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -589,7 +589,7 @@ body{visibility:visible}
     <!-- Style panel -->
     <aside class="style-panel" id="stylePanel" aria-label="Style">
       <div class="sp-group" role="group" aria-label="Stroke color">
-        <span class="sp-label">S</span>
+        <span class="sp-label" aria-hidden="true">S</span>
         <button class="swatch" data-stroke="#0F172A" style="background:#0F172A" aria-pressed="true" title="Ink"></button>
         <button class="swatch" data-stroke="#DC2626" style="background:#DC2626" title="Red"></button>
         <button class="swatch" data-stroke="#F59E0B" style="background:#F59E0B" title="Amber"></button>
@@ -600,7 +600,7 @@ body{visibility:visible}
       </div>
       <div style="width:1px;height:22px;background:var(--line)"></div>
       <div class="sp-group" role="group" aria-label="Fill">
-        <span class="sp-label">F</span>
+        <span class="sp-label" aria-hidden="true">F</span>
         <button class="swatch null" data-fill="null" aria-pressed="true" title="No fill"></button>
         <button class="swatch" data-fill="#0F172A" style="background:#0F172A" title="Ink"></button>
         <button class="swatch" data-fill="#FEE2E2" style="background:#FEE2E2" title="Red tint"></button>
@@ -610,14 +610,14 @@ body{visibility:visible}
         <button class="swatch" data-fill="#E6F9FA" style="background:#E6F9FA" title="Brand tint"></button>
       </div>
       <div style="width:1px;height:22px;background:var(--line)"></div>
-      <div class="sp-group">
-        <span class="sp-label" data-t="size">Size</span>
+      <div class="sp-group" role="group" aria-label="Size">
+        <span class="sp-label" data-t="size" aria-hidden="true">Size</span>
         <input type="range" min="1" max="32" value="2" class="range" id="rngSize" aria-label="Stroke size">
         <span class="sp-val" id="sizeVal">2</span>
       </div>
       <div style="width:1px;height:22px;background:var(--line)"></div>
-      <div class="sp-group">
-        <span class="sp-label" title="Opacity">α</span>
+      <div class="sp-group" role="group" aria-label="Opacity">
+        <span class="sp-label" title="Opacity" aria-hidden="true">α</span>
         <input type="range" min="10" max="100" value="100" step="10" class="range" id="rngOpacity" aria-label="Opacity">
         <span class="sp-val" id="opacVal">100</span>
       </div>
@@ -715,7 +715,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.39';
+const V='1.6.40';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -3515,7 +3515,7 @@ if('serviceWorker' in navigator){
         const r=await c.match(e.request);
         if(r)return r;
         try{const n=await fetch(e.request);if(e.request.method==='GET')c.put(e.request,n.clone());return n}
-        catch(_){return r||new Response('offline',{status:503})}
+        catch(_){return new Response('offline',{status:503})}
       }));
     });`;
   const bl=new Blob([sw],{type:'text/javascript'});

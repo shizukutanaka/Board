@@ -292,6 +292,10 @@ const checks = [
   ['no console.warn in BroadcastChannel catch', !html.includes("console.warn('BroadcastChannel init failed'")],
   ['no console.error in save catch (user gets toast)', !html.includes("console.error('save failed'")],
   ['import parse failure shows invalidBoard toast (not silent)', html.includes("UI.toast(t('invalidBoard'),'err')")],
+  // v1.6.40: style panel a11y — decorative labels hidden, panel groups have role/aria-label
+  ['style panel S/F labels are aria-hidden (decorative)', html.includes('<span class="sp-label" aria-hidden="true">S</span>') && html.includes('<span class="sp-label" aria-hidden="true">F</span>')],
+  ['size and opacity groups have role=group', html.includes('role="group" aria-label="Size"') && html.includes('role="group" aria-label="Opacity"')],
+  ['SW dead code removed: r|| before new Response is gone', !html.includes('return r||new Response')],
 ];
 
 let pass = 0, fail = 0;
@@ -1253,7 +1257,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 85; // 71 previous + 9 handleCursor + 5 Store boundary
+  pass += 85; // 71 baseline + 9 handleCursor + 5 Store boundary
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
