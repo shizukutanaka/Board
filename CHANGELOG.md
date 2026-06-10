@@ -2,6 +2,22 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.39] — 2026-06-10
+
+コードクリーンアップ: 冗長な `console.warn`/`console.error` 3箇所を削除し、インポート失敗時に適切なエラートーストを表示。
+
+### Fixed
+- **`importFromHash` の JSON パースエラーが無音で失敗** — `catch(err)` ブロックが `console.warn` のみで終了していたため、ユーザーには何も通知されなかった。`UI.toast(t('invalidBoard'),'err')` を表示し、破損した共有 URL を開いたときの診断性を向上。
+- **保存失敗時の重複 `console.error`** — `Persist.save` の catch ブロックが `console.error('save failed',err)` と `UI.toast(t('saveFailed')+': '+err.message,'err')` の両方を呼んでいた。ユーザーはトーストで通知されるため `console.error` 行を削除。
+- **`BroadcastChannel` 初期化失敗時の `console.warn`** — 非クリティカルなエラー (`catch(err){console.warn('BroadcastChannel init failed',err)}`) を `catch{}` に簡略化。アプリは BC なしでも動作する。
+
+### Tests
+- 3 presence checks 追加 (306 total); gzip 45,001B (55B under 45,056B budget)
+- `handleCursor` behavioral test 追加 (8方向リサイズハンドル → 正しい CSS カーソル文字列)
+- `Store.undo`/`Store.redo` 境界条件の behavioral test 追加 (空履歴・先頭・末尾での false 返却)
+
+---
+
 ## [1.6.38] — 2026-06-10
 
 a11y: コンテキストメニュー開時に最初の項目へフォーカス移動 (キーボードユーザー対応)。

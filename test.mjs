@@ -288,6 +288,10 @@ const checks = [
   ['Escape key closes context menu before modal dismiss', html.includes("ctx2.dataset.open==='true'){UI.closeCtxMenu();return}")],
   // v1.6.38: context menu auto-focuses first item on open (keyboard a11y)
   ['context menu focuses first item on open', html.includes("m.querySelector('.ctx-item')?.focus()")],
+  // v1.6.39: console cleanup — no redundant console.warn/error in production paths
+  ['no console.warn in BroadcastChannel catch', !html.includes("console.warn('BroadcastChannel init failed'")],
+  ['no console.error in save catch (user gets toast)', !html.includes("console.error('save failed'")],
+  ['import parse failure shows invalidBoard toast (not silent)', html.includes("UI.toast(t('invalidBoard'),'err')")],
 ];
 
 let pass = 0, fail = 0;
@@ -1220,8 +1224,36 @@ try {
     console.log('  ✓ copyStyle/pasteStyle round-trip transfers all style props; undo reverts');
   }
 
+  // v1.6.39: handleCursor — correct CSS cursor for each resize handle
+  {
+    assert.strictEqual(handleCursor('nw'),'nwse-resize','nw corner → nwse-resize');
+    assert.strictEqual(handleCursor('se'),'nwse-resize','se corner → nwse-resize (same axis)');
+    assert.strictEqual(handleCursor('ne'),'nesw-resize','ne corner → nesw-resize');
+    assert.strictEqual(handleCursor('sw'),'nesw-resize','sw corner → nesw-resize');
+    assert.strictEqual(handleCursor('n'), 'ns-resize',  'n edge → ns-resize');
+    assert.strictEqual(handleCursor('s'), 'ns-resize',  's edge → ns-resize');
+    assert.strictEqual(handleCursor('e'), 'ew-resize',  'e edge → ew-resize');
+    assert.strictEqual(handleCursor('w'), 'ew-resize',  'w edge → ew-resize');
+    assert.strictEqual(handleCursor('p1'),'crosshair',  'line endpoint → crosshair fallback');
+    console.log('  ✓ handleCursor: 8 resize handles map to correct CSS cursor, endpoints → crosshair');
+  }
+
+  // v1.6.39: Store undo/redo boundary — undo at bottom and redo at top are no-ops
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    assert.strictEqual(Store.undo(),false,'undo on empty history returns false');
+    assert.strictEqual(Store.redo(),false,'redo on empty history returns false');
+    const sh=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    Store.commit({op:'add',shape:sh});
+    assert.strictEqual(Store.redo(),false,'redo at top (no redo branch) returns false');
+    Store.undo();
+    assert.strictEqual(Store.undo(),false,'undo past bottom returns false');
+    assert.strictEqual(state.shapes.length,0,'shapes empty after undo past all ops');
+    console.log('  ✓ Store.undo/redo return false at boundaries, no double-undo past floor');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 71; // presence only, no new behavioral
+  pass += 85; // 71 previous + 9 handleCursor + 5 Store boundary
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
