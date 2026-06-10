@@ -2,6 +2,21 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.45] — 2026-06-10
+
+a11y: 接続状態の aria-live アナウンス + ズームバッジのグループ語義。
+
+### Fixed
+- **オンライン/オフライン切り替えが SR に伝わらない** — `sConn` span に `aria-live="polite"`
+  を追加。`updateOnline()` でテキストが書き換えられるとき、SR が変更を読み上げるように。
+- **ズームコントロールに役割がない** — `.zoom-badge` div に `role="group" aria-label="Zoom controls"`
+  を追加。ズームアウト / ズームレベル / ズームイン / FIT ボタンが 1 つの制御グループとして SR に認識される。
+
+### Tests
+- 2 presence checks 追加 → 327 total; gzip 44,986B (70B under 45,056B budget)
+
+---
+
 ## [1.6.44] — 2026-06-10
 
 a11y: minimap canvas に `role="img"` と説明的 `aria-label` を追加; 装飾的 `x,y` ラベルを `aria-hidden` に。

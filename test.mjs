@@ -306,6 +306,10 @@ const checks = [
   ['minimap canvas has descriptive aria-label', html.includes('aria-label="Board minimap — click to navigate"')],
   // v1.6.44: x,y decorative label is aria-hidden
   ['x,y status label is aria-hidden (decorative)', html.includes('<span class="lbl" aria-hidden="true">x,y</span>')],
+  // v1.6.45: connection status is aria-live (announces online/offline to SR)
+  ['sConn has aria-live=polite (online/offline announces to SR)', html.includes('id="sConn" aria-live="polite"')],
+  // v1.6.45: zoom badge has role=group for semantic grouping
+  ['zoom-badge has role=group and aria-label', html.includes('class="zoom-badge" role="group" aria-label="Zoom controls"')],
 ];
 
 let pass = 0, fail = 0;
@@ -1293,7 +1297,7 @@ try {
   console.log('  ✓ G.hit text and frame shapes');
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 95; // 71 baseline + 9 handleCursor + 5 Store boundary + 8 G.hit shapes + 2 G.hit text/frame
+  pass += 95; // 71 baseline + 9 handleCursor + 5 Store boundary + 10 G.hit shapes
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

@@ -631,7 +631,7 @@ body{visibility:visible}
     </aside>
 
     <!-- Zoom badge -->
-    <div class="zoom-badge">
+    <div class="zoom-badge" role="group" aria-label="Zoom controls">
       <button id="btnZoomOut" aria-label="Zoom out" title="Zoom out (⌘-)">−</button>
       <button class="zoom-val" id="zoomVal" title="Reset zoom (⌘0)" aria-label="Zoom level, click to reset">100%</button>
       <button id="btnZoomIn" aria-label="Zoom in" title="Zoom in (⌘+)">+</button>
@@ -641,7 +641,7 @@ body{visibility:visible}
 
   <!-- ==== Status bar ==== -->
   <footer class="statusbar">
-    <div class="status-item"><span class="status-dot" id="sDot"></span><span id="sConn">offline</span></div>
+    <div class="status-item"><span class="status-dot" id="sDot"></span><span id="sConn" aria-live="polite">offline</span></div>
     <div class="status-item optional"><span class="lbl" data-t="shapes">shapes</span><span id="sCount">0</span></div>
     <div class="status-item optional"><span class="lbl" aria-hidden="true">x,y</span><span id="sXY">0, 0</span></div>
     <div class="status-spacer"></div>
@@ -715,7 +715,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.44';
+const V='1.6.45';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
