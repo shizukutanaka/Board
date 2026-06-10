@@ -1491,8 +1491,36 @@ try {
     console.log('  ✓ sortZ: shapes sorted ascending by z value');
   }
 
+  // Shape.translate — moves shape coordinates per type
+  {
+    const r=Shape.make('rect',{x:10,y:20,w:100,h:50});
+    Shape.translate(r,5,10);
+    assert.strictEqual(r.x,15,'translate rect: x += dx');
+    assert.strictEqual(r.y,30,'translate rect: y += dy');
+    const l=Shape.make('line',{x1:0,y1:0,x2:100,y2:50});
+    Shape.translate(l,10,20);
+    assert.strictEqual(l.x1,10,'translate line: x1 += dx');
+    assert.strictEqual(l.y1,20,'translate line: y1 += dy');
+    assert.strictEqual(l.x2,110,'translate line: x2 += dx');
+    assert.strictEqual(l.y2,70,'translate line: y2 += dy');
+    const pn=Shape.make('pen',{pts:[[0,0],[10,5]]});
+    Shape.translate(pn,3,7);
+    assert.strictEqual(pn.pts[0][0],3,'translate pen: first pt x');
+    assert.strictEqual(pn.pts[1][0],13,'translate pen: second pt x');
+    console.log('  ✓ Shape.translate: rect x/y, line x1y1/x2y2, pen pts all shifted');
+  }
+
+  // G.marqueeHit — marquee fully contains shape's bbox
+  {
+    const s=Shape.make('rect',{x:20,y:20,w:60,h:40});
+    assert.strictEqual(G.marqueeHit(s,{x:0,y:0,w:200,h:200}),true,'marqueeHit: shape fully inside marquee');
+    assert.strictEqual(G.marqueeHit(s,{x:0,y:0,w:50,h:200}),false,'marqueeHit: shape right edge outside marquee');
+    assert.strictEqual(G.marqueeHit(s,{x:25,y:25,w:200,h:200}),false,'marqueeHit: shape left edge outside marquee');
+    console.log('  ✓ G.marqueeHit: full containment passes, partial overlap fails');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 172; // prev 161 + 4 pickTop + 3 sortZ + 4 spare
+  pass += 183; // prev 172 + 8 Shape.translate + 3 G.marqueeHit
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

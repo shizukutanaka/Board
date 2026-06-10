@@ -2,6 +2,17 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.51] — 2026-06-10
+
+tests: Shape.translate と G.marqueeHit の behavioral テスト追加。
+
+### Tests
+- `Shape.translate`: rect (x/y)、line (x1y1/x2y2)、pen (全 pts) の座標シフト
+- `G.marqueeHit`: 完全包含でtrue、部分重複でfalse
+- 415 total; gzip 44,987B (69B under budget)
+
+---
+
 ## [1.6.50] — 2026-06-10
 
 tests: pickTop と sortZ の behavioral テスト追加。
