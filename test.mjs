@@ -301,6 +301,11 @@ const checks = [
   // v1.6.43: zoom display is a button (keyboard accessible) with aria-label
   ['zoom level is a button not a div (keyboard-accessible)', html.includes('<button class="zoom-val"')],
   ['zoom button has aria-label', html.includes('aria-label="Zoom level, click to reset"')],
+  // v1.6.44: minimap canvas has role=img and descriptive aria-label
+  ['minimap canvas has role=img', html.includes('id="minimap"') && html.includes('role="img"')],
+  ['minimap canvas has descriptive aria-label', html.includes('aria-label="Board minimap — click to navigate"')],
+  // v1.6.44: x,y decorative label is aria-hidden
+  ['x,y status label is aria-hidden (decorative)', html.includes('<span class="lbl" aria-hidden="true">x,y</span>')],
 ];
 
 let pass = 0, fail = 0;
@@ -1279,8 +1284,16 @@ try {
     console.log('  ✓ Store.undo/redo return false at boundaries, no double-undo past floor');
   }
 
+  // G.hit — text (exact bbox, no tolerance)
+  assert.strictEqual(G.hit({type:'text',x:0,y:0,w:120,h:24,size:14},{x:60,y:12}),true,'text: interior hits');
+  assert.strictEqual(G.hit({type:'text',x:0,y:0,w:120,h:24,size:14},{x:130,y:12}),false,'text: outside right misses');
+  // G.hit — frame (bbox + tolerance, same as sticky/image)
+  assert.strictEqual(G.hit({type:'frame',x:10,y:10,w:100,h:80,size:2},{x:60,y:50}),true,'frame: interior hits');
+  assert.strictEqual(G.hit({type:'frame',x:10,y:10,w:100,h:80,size:2},{x:200,y:50}),false,'frame: far outside misses');
+  console.log('  ✓ G.hit text and frame shapes');
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 93; // 71 baseline + 9 handleCursor + 5 Store boundary + 8 G.hit shapes
+  pass += 95; // 71 baseline + 9 handleCursor + 5 Store boundary + 8 G.hit shapes + 2 G.hit text/frame
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

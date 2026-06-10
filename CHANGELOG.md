@@ -2,6 +2,24 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.44] — 2026-06-10
+
+a11y: minimap canvas に `role="img"` と説明的 `aria-label` を追加; 装飾的 `x,y` ラベルを `aria-hidden` に。
+
+### Fixed
+- **minimap canvas のスクリーンリーダー表現** — `aria-label="minimap"` (非説明的) を
+  `role="img" aria-label="Board minimap — click to navigate"` に変更。
+  画像ロールで SR が「画像」と告知し、ラベルで目的と操作方法を説明。
+- **ステータスバー `x,y` ラベルが SR に読まれる** — `<span class="lbl">x,y</span>` は
+  隣の座標値 (`id="sXY"`) の装飾的見出し。`aria-hidden="true"` を追加し、SR が
+  座標値のみ読み上げるよう修正 (他の `data-t` ラベルと同じ扱い)。
+
+### Tests
+- 3 presence checks 追加 (minimap role/label, x,y aria-hidden)
+- 2 behavioral tests 追加 (G.hit text/frame shapes) → 325 total; gzip 44,978B (78B under budget)
+
+---
+
 ## [1.6.43] — 2026-06-10
 
 a11y: ズーム表示を `<div>` から `<button>` に変換 (WCAG 2.1.1 キーボードアクセス)。

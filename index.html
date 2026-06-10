@@ -643,7 +643,7 @@ body{visibility:visible}
   <footer class="statusbar">
     <div class="status-item"><span class="status-dot" id="sDot"></span><span id="sConn">offline</span></div>
     <div class="status-item optional"><span class="lbl" data-t="shapes">shapes</span><span id="sCount">0</span></div>
-    <div class="status-item optional"><span class="lbl">x,y</span><span id="sXY">0, 0</span></div>
+    <div class="status-item optional"><span class="lbl" aria-hidden="true">x,y</span><span id="sXY">0, 0</span></div>
     <div class="status-spacer"></div>
     <div class="status-item optional"><span class="lbl" data-t="saved">saved</span><span id="sSaved">—</span></div>
     <div class="status-item"><span id="sVer">v1.0</span></div>
@@ -652,7 +652,7 @@ body{visibility:visible}
 
 <!-- Minimap -->
 <div class="minimap-wrap" id="minimapWrap" title="Minimap — click to navigate">
-  <canvas id="minimap" width="160" height="100" aria-label="minimap"></canvas>
+  <canvas id="minimap" width="160" height="100" role="img" aria-label="Board minimap — click to navigate"></canvas>
 </div>
 
 <!-- Help overlay -->
@@ -715,7 +715,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.43';
+const V='1.6.44';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
