@@ -11,6 +11,8 @@ a11y: コンテキストメニュー開時に最初の項目へフォーカス�
 
 ### Tests
 - 1 presence check 追加 (289 total); gzip 45,026B (30B under 45,056B budget)
+- `dashArr` パターン検証 behavioral test 追加 (solid/dashed/dotted × サイズスケール)
+- `_sfbCapture`/`_sfbFlush` slider コアレス behavioral test 追加 (複数 tick → 1 op → undo 確認)
 
 ---
 

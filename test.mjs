@@ -384,7 +384,8 @@ try {
              getHandles, applyResize, handleCursor,
              doGroup, doUngroup, doPaste, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
-             _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape };
+             _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
+             _sfbCapture, _sfbFlush, _sbf };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -397,7 +398,8 @@ try {
           getHandles, applyResize, handleCursor,
           doGroup, doUngroup, doPaste, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
-          _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape } = api;
+          _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
+          _sfbCapture, _sfbFlush, _sbf } = api;
 
   console.log('\n-- behavioural --');
 
@@ -1135,6 +1137,34 @@ try {
     assert.ok(pasted[0].groupId===pasted[1].groupId,'doPaste: pasted shapes share new groupId');
     assert.ok(pasted[0].groupId!==origGid,'doPaste: new groupId differs from original');
     console.log('  ✓ doPaste remaps groupId — pasted copies get fresh group identity');
+  }
+
+  // v1.6.38: dashArr patterns
+  {
+    assert.deepStrictEqual(dashArr(0,4),[],  'dashArr solid returns []');
+    assert.deepStrictEqual(dashArr(1,4),[12,10],'dashArr dashed: [3s,2.5s] at size 4');
+    assert.deepStrictEqual(dashArr(2,4),[2,8],  'dashArr dotted: [0.5s,2s] at size 4');
+    assert.deepStrictEqual(dashArr(1,0),[3,2.5],'dashArr dashed: size defaults to 1');
+    console.log('  ✓ dashArr: solid/dashed/dotted patterns, size-scaled');
+  }
+
+  // v1.6.38: _sfbCapture/_sfbFlush slider undo coalescing
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const sh=Shape.make('rect',{x:0,y:0,w:40,h:40});sh.size=4;
+    Store.commit({op:'add',shape:sh});
+    const baseLen=state.history.length;
+    state.selection=new Set([sh.id]);
+    // simulate slider pointerdown → multiple input events → change (release)
+    _sfbCapture('size');
+    sh.size=8; // first drag tick
+    sh.size=12; // second drag tick — no history entries yet
+    _sfbFlush('size',12); // release: commits one style op
+    assert.strictEqual(state.history.length,baseLen+1,'_sfbFlush: single history entry for whole drag');
+    assert.strictEqual(state.history[state.history.length-1].op,'style','style op recorded');
+    Store.undo();
+    assert.strictEqual(state.shapes.find(s=>s.id===sh.id).size,4,'undo restores original size');
+    console.log('  ✓ slider coalescing: multiple drag ticks → one style op → undo restores');
   }
 
   // v1.6.37: copyStyle / pasteStyle round-trip
