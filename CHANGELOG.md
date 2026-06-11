@@ -2,6 +2,33 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.60] — 2026-06-11
+
+feat: バインドコネクタ — 機能ギャップ監査の最高価値 P2 項目。矢印 / 直線の端点を
+シェイプに束縛し、シェイプ移動・リサイズに追従させる(フロー図作成の定番操作)。
+
+### Added
+- 矢印 / 直線の端点をシェイプ上にドロップすると、その端点が `s.a` / `s.b`
+  (シェイプ id)として束縛される。両端を同一シェイプには束縛しない。
+- `connEnds(s)`: 束縛端点を**描画 / ヒットテスト / bbox / SVG・PNG・minimap 出力時に
+  動的計算** — 束縛シェイプの bbox エッジ上に投影。シェイプが動けばコネクタが追従。
+  保存座標 `x1/y1/x2/y2` は未束縛端・フォールバック用。
+- `_edgePt(box,fx,fy)`: 中心から方向 (fx,fy) への bbox エッジ交点。
+- 束縛端点はリサイズハンドルを表示しない(シェイプに追従するため)。
+
+### Changed
+- `G.bbox` / `G.hit` の line/arrow、`drawArrow` / line 描画、SVG export、minimap を
+  全て `connEnds` 経由に統一(描画と当たり判定の一貫性)。
+- 束縛シェイプ削除時は保存座標へグレースフルにフォールバック。undo で復活すれば再束縛。
+- gzip 予算確保のため冗長コメント 4 ブロックを簡潔化(spatial index、getCSS、SVG coerce、connEnds)
+
+### Tests
+- behavioral 1 ブロック(エッジ投影 / 移動追従 / bbox 追従 / 削除フォールバック)
+- presence 7 件 — 492 total
+- gzip 44,860B (196B under 45,056B budget)
+
+---
+
 ## [1.6.59] — 2026-06-11
 
 feat: レーザーポインタ + シェイプロック — 機能ギャップ監査の P2 項目 2 件。

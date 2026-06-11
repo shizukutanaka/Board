@@ -718,7 +718,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.59';
+const V='1.6.60';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -899,9 +899,10 @@ const G={
       return{x:s.x,y:s.y,w:s.w,h:s.h};
     }
     if(s.type==='line'||s.type==='arrow'){
-      const x=Math.min(s.x1,s.x2),y=Math.min(s.y1,s.y2);
+      const e=connEnds(s);
+      const x=Math.min(e.x1,e.x2),y=Math.min(e.y1,e.y2);
       const p=(s.size||1)/2+(s.type==='arrow'?s.size*3:0);
-      return{x:x-p,y:y-p,w:Math.abs(s.x2-s.x1)+2*p,h:Math.abs(s.y2-s.y1)+2*p};
+      return{x:x-p,y:y-p,w:Math.abs(e.x2-e.x1)+2*p,h:Math.abs(e.y2-e.y1)+2*p};
     }
     // rect / ellipse
     return{x:s.x,y:s.y,w:s.w,h:s.h};
@@ -932,7 +933,8 @@ const G={
         if(s.fill)return d<=1;
         const edge=Math.abs(d-1);return edge<0.15;}
       case 'line':case 'arrow':{
-        return distToSeg(p,{x:s.x1,y:s.y1},{x:s.x2,y:s.y2})<=tol+3;}
+        const e=connEnds(s);
+        return distToSeg(p,{x:e.x1,y:e.y1},{x:e.x2,y:e.y2})<=tol+3;}
       case 'pen':{
         const pts=s.pts;
         if(pts.length===1)return Math.hypot(p.x-pts[0][0],p.y-pts[0][1])<=tol+3;
@@ -1135,6 +1137,24 @@ const Store={
   }};
 function byId(id){return state.shapes.find(s=>s.id===id)}
 function clone(o){return JSON.parse(JSON.stringify(o))}
+// Bound connectors: line/arrow endpoints (s.a/s.b = shape id) derive from the bound
+// shape's edge at render/hit/export, so the connector follows. Stored coords = fallback.
+function _edgePt(b,fx,fy){
+  const cx=b.x+b.w/2,cy=b.y+b.h/2,dx=fx-cx,dy=fy-cy;
+  if(!dx&&!dy)return{x:cx,y:cy};
+  const k=Math.min(Math.abs(dx)>1e-6?(b.w/2)/Math.abs(dx):1e9,Math.abs(dy)>1e-6?(b.h/2)/Math.abs(dy):1e9);
+  return{x:cx+dx*k,y:cy+dy*k};
+}
+function connEnds(s){
+  if(!s.a&&!s.b)return s;
+  const a=s.a&&byId(s.a),b=s.b&&byId(s.b);
+  const ba=a&&G.bbox(a),bb=b&&G.bbox(b);
+  const ac=ba?{x:ba.x+ba.w/2,y:ba.y+ba.h/2}:{x:s.x1,y:s.y1};
+  const bc=bb?{x:bb.x+bb.w/2,y:bb.y+bb.h/2}:{x:s.x2,y:s.y2};
+  const p1=ba?_edgePt(ba,bc.x,bc.y):{x:s.x1,y:s.y1};
+  const p2=bb?_edgePt(bb,ac.x,ac.y):{x:s.x2,y:s.y2};
+  return{x1:p1.x,y1:p1.y,x2:p2.x,y2:p2.y};
+}
 function sortZ(){state.shapes.sort((a,b)=>(a.z||0)-(b.z||0))}
 function nextZ(){return state.shapes.length?Math.max(...state.shapes.map(s=>s.z||0))+1:1}
 
@@ -1259,9 +1279,7 @@ function drawGuides(){
   }
   ctx.setLineDash([]);
 }
-// Design-token lookups are read every frame (per shape for frames/grid). The
-// values only change when the OS theme / forced-colors mode flips, so memoise
-// them and drop the cache on those media changes (see wire()).
+// Design-token lookups run every frame; memoise and drop on theme flip (see wire()).
 let _cssCache=Object.create(null);
 function getCSS(v){let x=_cssCache[v];if(x===undefined){x=getComputedStyle(document.documentElement).getPropertyValue(v).trim();_cssCache[v]=x}return x}
 function clearCSSCache(){_cssCache=Object.create(null);invalidate()}
@@ -1305,8 +1323,8 @@ function drawShape(s,c){
       c.ellipse(s.x+s.w/2,s.y+s.h/2,Math.abs(s.w/2),Math.abs(s.h/2),0,0,PI2);
       if(s.fill){c.fill()}
       if(s.stroke){c.stroke()}break;
-    case 'line':
-      c.beginPath();c.moveTo(s.x1,s.y1);c.lineTo(s.x2,s.y2);c.stroke();break;
+    case 'line':{
+      const e=connEnds(s);c.beginPath();c.moveTo(e.x1,e.y1);c.lineTo(e.x2,e.y2);c.stroke();break;}
     case 'arrow':
       drawArrow(s,c);break;
     case 'pen':
@@ -1383,14 +1401,15 @@ function roundRect(c,x,y,w,h,r){
 }
 function drawArrow(s,c){
   c=c||ctx;
-  c.beginPath();c.moveTo(s.x1,s.y1);c.lineTo(s.x2,s.y2);c.stroke();
+  const e=connEnds(s);
+  c.beginPath();c.moveTo(e.x1,e.y1);c.lineTo(e.x2,e.y2);c.stroke();
   const ah=Math.max(6,(s.size||2)*3);
-  const ang=Math.atan2(s.y2-s.y1,s.x2-s.x1);
+  const ang=Math.atan2(e.y2-e.y1,e.x2-e.x1);
   const a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5;
   c.beginPath();
-  c.moveTo(s.x2,s.y2);
-  c.lineTo(s.x2+Math.cos(a1)*ah,s.y2+Math.sin(a1)*ah);
-  c.lineTo(s.x2+Math.cos(a2)*ah,s.y2+Math.sin(a2)*ah);
+  c.moveTo(e.x2,e.y2);
+  c.lineTo(e.x2+Math.cos(a1)*ah,e.y2+Math.sin(a1)*ah);
+  c.lineTo(e.x2+Math.cos(a2)*ah,e.y2+Math.sin(a2)*ah);
   c.closePath();c.fillStyle=s.stroke||'#0F172A';c.fill();
 }
 // Variable stroke width from spacing (velocity proxy); render-only, no model change.
@@ -1457,7 +1476,10 @@ function drawText(s,c){
 function getHandles(s){
   if(s.locked)return [];
   if(s.type==='line'||s.type==='arrow'){
-    return [{id:'p1',x:s.x1,y:s.y1},{id:'p2',x:s.x2,y:s.y2}];
+    const e=connEnds(s),h=[];   // bound endpoints follow their shape, so no drag handle
+    if(!s.a)h.push({id:'p1',x:e.x1,y:e.y1});
+    if(!s.b)h.push({id:'p2',x:e.x2,y:e.y2});
+    return h;
   }
   if(s.type==='pen')return [];   // freehand has no box handles; box-resize would
                                  // set NaN x/y/w/h (pen geometry lives in pts). Move-only.
@@ -1862,10 +1884,8 @@ function fitToContent(){
   UI.refreshZoom();invalidate();
 }
 
-// ---- spatial index (uniform grid, lazy rebuild, invalidated on every _apply) ----
-// Cell size 200 world-units. Shapes spanning >8 cells in either axis go into the
-// `big` list and are always included in query results. tol <= 60wu < 200wu, so
-// querying the 3×3 neighbourhood of the point's cell always covers all possible hits.
+// ---- spatial index: uniform 200wu grid, lazy rebuild on _apply; big shapes in
+// a `big` list always returned; query covers the 3×3 cell neighbourhood (tol<200wu).
 const _GCELL=200;let _grid=null;
 function _invalidateGrid(){_grid=null;}
 function _buildGrid(shapes){
@@ -2113,8 +2133,22 @@ function endLineLike(){
   if(!state.draft)return;
   const d=state.draft;state.draft=null;
   if(Math.hypot(d.x2-d.x1,d.y2-d.y1)<2)return;
+  // Bind endpoints dropped onto a shape so the connector follows it (not both to the same one).
+  const ba=_bindAt(d.x1,d.y1),bb=_bindAt(d.x2,d.y2);
+  if(ba&&ba!==bb)d.a=ba;
+  if(bb&&bb!==ba)d.b=bb;
   Store.commit({op:'add',shape:d});
   pickTool('select');state.selection.clear();state.selection.add(d.id);
+}
+// Topmost non-connector shape whose bbox contains (x,y), for connector binding.
+function _bindAt(x,y){
+  for(let i=state.shapes.length-1;i>=0;i--){
+    const s=state.shapes[i],t=s.type;
+    if(t==='line'||t==='arrow'||t==='pen')continue;
+    const b=G.bbox(s);
+    if(x>=b.x&&y>=b.y&&x<=b.x+b.w&&y<=b.y+b.h)return s.id;
+  }
+  return null;
 }
 
 // ---- text ----
@@ -2641,10 +2675,10 @@ function buildSVG(shapes,paper){
   // Frames first (background layer), then other shapes
   const svgShapes=[...shapes.filter(s=>s.type==="frame"),...shapes.filter(s=>s.type!=="frame")];
   for(const s of svgShapes){
-    // Coerce every geometry field to a finite number so a crafted shape can't
-    // break out of a numeric attribute; strings (colors/labels/dataUrl) go via _esc.
+    // Coerce geometry to finite numbers (no attr breakout); strings go via _esc.
     const X=_num(s.x),Y=_num(s.y),W=_num(s.w),H=_num(s.h);
-    const X1=_num(s.x1),Y1=_num(s.y1),X2=_num(s.x2),Y2=_num(s.y2);
+    const _e=connEnds(s);
+    const X1=_num(_e.x1),Y1=_num(_e.y1),X2=_num(_e.x2),Y2=_num(_e.y2);
     const SZ=_num(s.size),opv=_num(s.opacity);
     const a=(s.opacity!=null&&opv<1)?` opacity="${opv}"`:'';
     const stroke=_esc(s.stroke||'#000');
@@ -3469,7 +3503,7 @@ const Minimap=(()=>{
       switch(s.type){
         case 'rect':{const rx=s.x*sc+ox,ry=s.y*sc+oy,rw=s.w*sc,rh=s.h*sc;if(s.fill)mx.fillRect(rx,ry,rw,rh);mx.strokeRect(rx,ry,rw,rh);break}
         case 'ellipse':mx.beginPath();mx.ellipse(s.x*sc+ox+s.w*sc/2,s.y*sc+oy+s.h*sc/2,Math.abs(s.w*sc/2),Math.abs(s.h*sc/2),0,0,Math.PI*2);if(s.fill)mx.fill();mx.stroke();break;
-        case 'line':case 'arrow':mx.beginPath();mx.moveTo(s.x1*sc+ox,s.y1*sc+oy);mx.lineTo(s.x2*sc+ox,s.y2*sc+oy);mx.stroke();break;
+        case 'line':case 'arrow':{const me=connEnds(s);mx.beginPath();mx.moveTo(me.x1*sc+ox,me.y1*sc+oy);mx.lineTo(me.x2*sc+ox,me.y2*sc+oy);mx.stroke();break}
         case 'pen':if(s.pts.length<2)break;mx.beginPath();mx.moveTo(s.pts[0][0]*sc+ox,s.pts[0][1]*sc+oy);for(let i=1;i<s.pts.length;i++)mx.lineTo(s.pts[i][0]*sc+ox,s.pts[i][1]*sc+oy);mx.stroke();break;
         case 'text':case 'sticky':{const rx2=s.x*sc+ox,ry2=s.y*sc+oy,rw2=Math.max(2,s.w*sc),rh2=Math.max(2,s.h*sc);mx.fillStyle=s.type==='sticky'?(s.color||'#FEF08A'):(s.fill||getCSS('--brand'));mx.fillRect(rx2,ry2,rw2,rh2);break}
         case 'image':{const rx3=s.x*sc+ox,ry3=s.y*sc+oy,rw3=Math.max(2,s.w*sc),rh3=Math.max(2,s.h*sc);const img=_imgCache.get(s.dataUrl);if(img&&img.complete&&img.naturalWidth)mx.drawImage(img,rx3,ry3,rw3,rh3);else{mx.fillStyle='#CBD5E1';mx.fillRect(rx3,ry3,rw3,rh3)}break}

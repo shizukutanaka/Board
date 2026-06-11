@@ -338,6 +338,14 @@ const checks = [
   ['lock/unlock ctx labels in ja and en', html.includes("ctxLock:'ロック'") && html.includes("ctxLock:'Lock'")],
   ['lock context-menu entry toggles label by locked state', html.includes("?'ctxUnlock':'ctxLock','',doLock")],
   ['locked selection drawn with dashed outline, no handles', html.includes("const lockedSel=sel.every(s=>s.locked)") && html.includes("if(lockedSel)return")],
+  // v1.6.60: bound connectors — arrow/line endpoints follow bound shapes
+  ['connEnds helper derives bound endpoints', html.includes("function connEnds") && html.includes("function _edgePt")],
+  ['G.bbox line uses connEnds', html.includes("const e=connEnds(s);\n      const x=Math.min(e.x1,e.x2)")],
+  ['G.hit line uses connEnds', html.includes("const e=connEnds(s);\n        return distToSeg")],
+  ['drawArrow uses connEnds', html.includes("const e=connEnds(s);\n  c.beginPath();c.moveTo(e.x1,e.y1)")],
+  ['endLineLike binds endpoints dropped on a shape', html.includes("const ba=_bindAt(d.x1,d.y1),bb=_bindAt(d.x2,d.y2)") && html.includes("function _bindAt")],
+  ['bound endpoints expose no resize handle', html.includes("if(!s.a)h.push({id:'p1'") && html.includes("if(!s.b)h.push({id:'p2'")],
+  ['SVG export derives bound endpoints', html.includes("const _e=connEnds(s);\n    const X1=_num(_e.x1)")],
 ];
 
 let pass = 0, fail = 0;
@@ -435,7 +443,7 @@ try {
              doGroup, doUngroup, doPaste, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-             _sfbCapture, _sfbFlush, _sbf, doLock };
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -449,7 +457,7 @@ try {
           doGroup, doUngroup, doPaste, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-          _sfbCapture, _sfbFlush, _sbf, doLock } = api;
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds } = api;
 
   console.log('\n-- behavioural --');
 
@@ -1785,8 +1793,37 @@ try {
     console.log('  ✓ shape lock: toggle locked, no handles when locked, undo/redo, empty no-op');
   }
 
+  // v1.6.60: bound connectors — arrow endpoints derive from bound shapes and follow them
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const box=Shape.make('rect',{x:100,y:100,w:80,h:60});   // centre (140,130), edges x∈[100,180]
+    const arr=Shape.make('arrow',{x1:0,y1:130,x2:90,y2:130});
+    arr.a=box.id;  // bind start to the box
+    Store.commit({op:'add',shape:box});
+    Store.commit({op:'add',shape:arr});
+    const e1=connEnds(state.shapes.find(s=>s.id===arr.id));
+    // bound start sits on the box's left edge (x=100) since the free end (x2=90) is to the left
+    assert.strictEqual(e1.x1,100,'bound start projects to box left edge');
+    assert.strictEqual(e1.y1,130,'bound start keeps centre y');
+    assert.strictEqual(e1.x2,90,'free end unchanged');
+    const ab1=G.bbox(state.shapes.find(s=>s.id===arr.id));
+    // move the box right by 200 → bound endpoint follows (derived, not stored)
+    state.selection=new Set([box.id]);
+    Store.commit({op:'move',ids:[box.id],dx:200,dy:0});
+    const e2=connEnds(state.shapes.find(s=>s.id===arr.id));
+    assert.ok(e2.x1>e1.x1,'bound endpoint follows the moved box');
+    // bbox of the arrow reflects the derived endpoint (so culling/selection track it)
+    const ab2=G.bbox(state.shapes.find(s=>s.id===arr.id));
+    assert.ok(ab2.w>ab1.w,'arrow bbox widens as the bound endpoint moves away');
+    // deleting the bound shape degrades gracefully to the stored fallback coord
+    Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(state.shapes.find(s=>s.id===box.id)))]});
+    const e3=connEnds(state.shapes.find(s=>s.id===arr.id));
+    assert.strictEqual(e3.x1,0,'after bound shape deleted, start falls back to stored x1');
+    console.log('  ✓ bound connectors: endpoint projects to edge, follows move, bbox tracks, graceful fallback');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 229; // prev 228 + 1 shape-lock behavioural (presence checks counted in checks[])
+  pass += 230; // prev 229 + 1 bound-connector behavioural (presence checks counted in checks[])
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
