@@ -1510,9 +1510,13 @@ function drawSelection(){
   const b=G.bboxAll(sel);
   const p1=G.w2s({x:b.x,y:b.y}),p2=G.w2s({x:b.x+b.w,y:b.y+b.h});
   const x=p1.x*DPR,y=p1.y*DPR,w=(p2.x-p1.x)*DPR,h=(p2.y-p1.y)*DPR;
+  const lockedSel=sel.every(s=>s.locked);
   ctx.strokeStyle=getCSS('--brand');
-  ctx.lineWidth=1.5;ctx.setLineDash([]);
+  ctx.lineWidth=1.5;ctx.setLineDash(lockedSel?[5*DPR,4*DPR]:[]);
   ctx.strokeRect(x-1,y-1,w+2,h+2);
+  ctx.setLineDash([]);
+  // Locked shapes: no handles, dashed outline already signals state.
+  if(lockedSel)return;
 
   // Functional resize handles for single selection
   if(state.selection.size===1){

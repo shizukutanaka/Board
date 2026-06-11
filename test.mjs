@@ -337,6 +337,7 @@ const checks = [
   ['locked hover shows not-allowed cursor', html.includes("top.locked?'not-allowed':'move'")],
   ['lock/unlock ctx labels in ja and en', html.includes("ctxLock:'ロック'") && html.includes("ctxLock:'Lock'")],
   ['lock context-menu entry toggles label by locked state', html.includes("?'ctxUnlock':'ctxLock','',doLock")],
+  ['locked selection drawn with dashed outline, no handles', html.includes("const lockedSel=sel.every(s=>s.locked)") && html.includes("if(lockedSel)return")],
 ];
 
 let pass = 0, fail = 0;

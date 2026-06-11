@@ -12,7 +12,8 @@ feat: レーザーポインタ + シェイプロック — 機能ギャップ監
   発表時に図を指し示せる。状態は一切永続化しない(描画のみ)。
 - **シェイプロック**: コンテキストメニューで選択シェイプの `locked` をトグル。
   ロック中は移動・リサイズ不可(`getHandles` が空配列、`doMove` がスキップ、
-  move op から除外)、ホバー時 `not-allowed` カーソル。**選択は可能**
+  move op から除外)、ホバー時 `not-allowed` カーソル、選択時は破線アウトライン
+  (ハンドル非表示)でロック状態を可視化。**選択は可能**
   (レイヤーパネルが無いため、ロック解除の唯一の手段として選択を許可)。
 - `doLock()`: 専用 op を持たず **`align` op を再利用**(`{id,locked}` パッチの
   before/after を記録)するため `_apply` 分岐の追加ゼロで完全可逆。
@@ -23,8 +24,8 @@ feat: レーザーポインタ + シェイプロック — 機能ギャップ監
 
 ### Tests
 - behavioral テスト 1 ブロック(ロック toggle / ハンドル無効 / undo・redo / 空選択 no-op)
-- presence テスト 10 件 — 483 total
-- gzip 44,326B (730B under 45,056B budget)
+- presence テスト 11 件 — 484 total
+- gzip 44,390B (666B under 45,056B budget)
 
 ---
 
