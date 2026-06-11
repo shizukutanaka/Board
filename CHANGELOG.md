@@ -2,6 +2,32 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.59] — 2026-06-11
+
+feat: レーザーポインタ + シェイプロック — 機能ギャップ監査の P2 項目 2 件。
+
+### Added
+- **レーザーポインタ**: プレゼンモード中、ポインタ位置に赤い発光ドットを追従表示
+  (`_laser` state、`pointermove` で更新、`draw()` で描画、退出/`pointerleave` でクリア)。
+  発表時に図を指し示せる。状態は一切永続化しない(描画のみ)。
+- **シェイプロック**: コンテキストメニューで選択シェイプの `locked` をトグル。
+  ロック中は移動・リサイズ不可(`getHandles` が空配列、`doMove` がスキップ、
+  move op から除外)、ホバー時 `not-allowed` カーソル。**選択は可能**
+  (レイヤーパネルが無いため、ロック解除の唯一の手段として選択を許可)。
+- `doLock()`: 専用 op を持たず **`align` op を再利用**(`{id,locked}` パッチの
+  before/after を記録)するため `_apply` 分岐の追加ゼロで完全可逆。
+
+### Changed
+- gzip 予算確保のため冗長なインラインコメント 6 ブロックを簡潔化
+  (cycleSel a11y、penWidths、snapBox、_penPr、buildSVG ヘッダ)
+
+### Tests
+- behavioral テスト 1 ブロック(ロック toggle / ハンドル無効 / undo・redo / 空選択 no-op)
+- presence テスト 10 件 — 483 total
+- gzip 44,326B (730B under 45,056B budget)
+
+---
+
 ## [1.6.58] — 2026-06-10
 
 feat: rect / ellipse 中央ラベル — 機能ギャップ監査の P1 項目。

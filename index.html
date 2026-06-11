@@ -718,7 +718,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.58';
+const V='1.6.59';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -764,7 +764,7 @@ const I18N={
     ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',
     ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
     ctxSendBackward:'背面へ',ctxSendBack:'最背面へ',
-    ctxFlipH:'左右反転',ctxFlipV:'上下反転',
+    ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxLock:'ロック',ctxUnlock:'ロック解除',
     ctxAlignLeft:'左揃え',ctxAlignCX:'左右中央',ctxAlignRight:'右揃え',
     ctxAlignTop:'上揃え',ctxAlignCY:'上下中央',ctxAlignBottom:'下揃え',
     ctxHSpace:'水平均等配置',ctxVSpace:'垂直均等配置',
@@ -812,7 +812,7 @@ const I18N={
     ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',
     ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
     ctxSendBackward:'Send backward',ctxSendBack:'Send to back',
-    ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',
+    ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxLock:'Lock',ctxUnlock:'Unlock',
     ctxAlignLeft:'Align left',ctxAlignCX:'Center horizontal',ctxAlignRight:'Align right',
     ctxAlignTop:'Align top',ctxAlignCY:'Center vertical',ctxAlignBottom:'Align bottom',
     ctxHSpace:'Distribute horizontal',ctxVSpace:'Distribute vertical',
@@ -1198,9 +1198,7 @@ function inView(s,view){
   const y0=Math.min(b.y,b.y+b.h),y1=Math.max(b.y,b.y+b.h),m=4;
   return x1>=view.x-m&&x0<=view.x+view.w+m&&y1>=view.y-m&&y0<=view.y+view.h+m;
 }
-// Keyboard navigation helpers (a11y): cycle the selection through shapes in
-// z-order, recentre the viewport on an off-screen target, and describe a shape
-// for the aria-live toast region (screen-reader announcement).
+// a11y: cycle selection in z-order, recentre viewport, describe shape for aria-live.
 function cycleSel(ids,cur,dir){
   if(!ids.length)return null;
   const i=ids.indexOf(cur);
@@ -1250,6 +1248,7 @@ function draw(){
   drawSelection();
   drawGuides();
   if(state.marquee)drawMarquee();
+  if(_laser&&Presentation.isActive()){const lp=G.w2s(_laser);ctx.beginPath();ctx.arc(lp.x*DPR,lp.y*DPR,8*DPR,0,PI2);ctx.fillStyle='rgba(255,50,50,.75)';ctx.fill();}
 }
 function drawGuides(){
   if(!state.guides||!state.guides.length)return;
@@ -1394,11 +1393,7 @@ function drawArrow(s,c){
   c.lineTo(s.x2+Math.cos(a2)*ah,s.y2+Math.sin(a2)*ah);
   c.closePath();c.fillStyle=s.stroke||'#0F172A';c.fill();
 }
-// Variable stroke width from local point spacing (a velocity proxy): slow,
-// closely-spaced samples → full width; fast, widely-spaced → tapered. Pure and
-// render-time only (the pts data model is untouched), so saved/synced pens are
-// unaffected, hit-test/bbox/undo all keep working, and width never exceeds the
-// base size (so the existing size/2 bbox padding still covers it).
+// Variable stroke width from spacing (velocity proxy); render-only, no model change.
 function penWidths(pts,size){
   const n=pts.length,base=Math.max(0.5,size||2),REF=base*3+8,LO=0.45;
   // Use varying pointer pressure if available; fall back to velocity proxy.
@@ -1460,6 +1455,7 @@ function drawText(s,c){
 // Returns world-space handle positions for a shape.
 // IDs: nw/n/ne/e/se/s/sw/w for box-shapes; p1/p2 for lines.
 function getHandles(s){
+  if(s.locked)return [];
   if(s.type==='line'||s.type==='arrow'){
     return [{id:'p1',x:s.x1,y:s.y1},{id:'p2',x:s.x2,y:s.y2}];
   }
@@ -1557,6 +1553,7 @@ function drawMarquee(){
 // ====================== INPUT / TOOLS ======================
 // One pointer-down starts a tool gesture. Movement accumulates.
 // Pointerup commits (add/move/etc) into Store.commit.
+let _laser=null;
 let ptr={down:false,x:0,y:0,x0:0,y0:0,wx:0,wy:0,wx0:0,wy0:0,
   panning:false,dragKind:null,dragStartShapes:null};
 
@@ -1601,6 +1598,7 @@ canvas.addEventListener('pointerdown',e=>{
 canvas.addEventListener('pointermove',e=>{
   const sp={x:e.offsetX,y:e.offsetY};
   const wp=G.s2w(sp);
+  if(Presentation.isActive()){_laser=wp;invalidate();return;}
   UI.setStatusXY(Math.round(wp.x),Math.round(wp.y));
   if(!ptr.down){
     // hover feedback
@@ -1614,7 +1612,7 @@ canvas.addEventListener('pointermove',e=>{
         }
       }
       const top=pickTop(wp);
-      canvas.style.cursor=top?'move':'default';
+      canvas.style.cursor=top?(top.locked?'not-allowed':'move'):'default';
       if(top?.id!==state.hover){state.hover=top?.id||null;invalidate()}
     }
     return;
@@ -1688,6 +1686,7 @@ canvas.addEventListener('pointercancel',()=>{
   canvas.dataset.panning='false';state.draft=null;state.marquee=null;invalidate();
 });
 canvas.addEventListener('contextmenu',e=>{e.preventDefault();UI.openCtxMenu(e.clientX,e.clientY)});
+canvas.addEventListener('pointerleave',()=>{if(_laser){_laser=null;invalidate()}});
 
 // Double-click: re-edit text shapes
 canvas.addEventListener('dblclick',e=>{
@@ -1945,10 +1944,7 @@ function pickOrMarquee(wp,e){
     ptr.dragKind='marquee';
   }
 }
-// Object snap (smart alignment guides): nudge a moving box so one of its edges or
-// centres aligns with a target box's edge/centre within `tol`. Returns the {dx,dy}
-// adjustment plus guide line segments to draw. Pure → unit-testable; the nearest
-// candidate per axis wins. Mirrors Excalidraw/tldraw "snap to objects".
+// Snap moving bbox to target edges/centres; returns {dx,dy,guides}. Pure.
 function snapBox(mov,targets,tol){
   const mX=[mov.x,mov.x+mov.w/2,mov.x+mov.w],mY=[mov.y,mov.y+mov.h/2,mov.y+mov.h];
   let bx=null,by=null;
@@ -1983,7 +1979,7 @@ function moveDelta(wp){
 function doMove(wp){
   const{dx,dy}=moveDelta(wp);
   for(const [id,orig] of ptr.dragStartShapes){
-    const sh=byId(id);if(!sh)continue;
+    const sh=byId(id);if(!sh||sh.locked)continue;
     Object.assign(sh,clone(orig));
     Shape.translate(sh,dx,dy);
   }
@@ -1993,8 +1989,9 @@ function endSelect(wp){
   if(ptr.dragKind==='move'&&ptr.dragStartShapes){
     const{dx,dy}=moveDelta(wp);
     state.guides=null;
-    if(Math.hypot(dx,dy)>0.5){
-      Store._recordCommitted({op:'move',ids:[...ptr.dragStartShapes.keys()],dx,dy});
+    const mids=[...ptr.dragStartShapes.keys()].filter(id=>!byId(id)?.locked);
+    if(Math.hypot(dx,dy)>0.5&&mids.length){
+      Store._recordCommitted({op:'move',ids:mids,dx,dy});
     }
   }else if(ptr.dragKind==='marquee'&&state.marquee){
     const m=state.marquee;
@@ -2008,9 +2005,7 @@ function endSelect(wp){
 }
 
 // ---- pen ----
-// Pointer pressure → 3rd pts element. Mouse reports a constant 0.5 (ignored as a
-// signal by penWidths); a real stylus reports a varying 0..1. Coerced finite so
-// downstream geometry/export stay safe even on a malformed device value.
+// Coerce pen pressure: mouse=const 0.5, stylus=0..1; finite-safe.
 function _penPr(e){const p=e&&e.pressure;return Number.isFinite(p)&&p>0?Math.min(1,p):0.5}
 function beginPen(wp,e){
   state.draft=Shape.make('pen',{pts:[[wp.x,wp.y,_penPr(e)]]});
@@ -2540,6 +2535,16 @@ function doFlip(axis){
   invalidate();Persist.schedule();
 }
 
+function doLock(){
+  const sel=[...state.selection].map(byId).filter(Boolean);
+  if(!sel.length)return;
+  const lk=!sel[0].locked;
+  const before=sel.map(s=>({id:s.id,locked:s.locked??null}));
+  for(const s of sel)s.locked=lk||null;
+  const after=sel.map(s=>({id:s.id,locked:s.locked??null}));
+  Store._recordCommitted({op:'align',dir:'lock',before,after});
+  invalidate();Persist.schedule();
+}
 // ====================== EXPORT ======================
 function exportPNG(){
   const b=G.bboxAll(state.shapes);
@@ -2619,10 +2624,7 @@ function importBoard(file){
   };
   r.readAsText(file);
 }
-// Pure SVG assembly. Returns the SVG string (or null if no shapes). Every
-// user/peer-controlled attribute value goes through _esc so a crafted color,
-// label or data-URL can't break out of its attribute and inject markup into
-// the exported file (which the in-app innerHTML guard does not cover).
+// Pure SVG assembly; returns string or null. All attr values through _esc.
 function buildSVG(shapes,paper){
   const b=G.bboxAll(shapes);
   if(!b)return null;
@@ -3080,6 +3082,7 @@ const UI={
       has&&['ctxSendBack','⇧[',doSendBack],
       has&&['ctxFlipH','⇧H',()=>doFlip('h')],
       has&&['ctxFlipV','⇧V',()=>doFlip('v')],
+      has&&[byId([...state.selection][0])?.locked?'ctxUnlock':'ctxLock','',doLock],
       has&&state.selection.size>1&&'sep',
       has&&state.selection.size>1&&['ctxAlignLeft','',()=>doAlign('left')],
       has&&state.selection.size>1&&['ctxAlignCX','',()=>doAlign('cx')],
@@ -3410,7 +3413,7 @@ const Presentation=(()=>{
 
   function leave(){
     if(!_active)return;
-    _active=false;
+    _laser=null;_active=false;
     _overlay?.remove();_overlay=null;
     canvas.style.position='';canvas.style.inset='';canvas.style.zIndex='';
     document.querySelector('.toolbar').style.display='';

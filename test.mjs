@@ -326,6 +326,17 @@ const checks = [
   ['rect/ellipse label rendered centred in canvas', html.includes("(s.type==='rect'||s.type==='ellipse')&&s.label") && html.includes("c.textAlign='center'")],
   ['dblclick label editor handles rect and ellipse', html.includes("hit.type==='frame'||hit.type==='rect'||hit.type==='ellipse'") && html.includes("isFrame?'--brand':'--ink'")],
   ['SVG export emits label for rect', html.includes("if(s.label)els.push") && html.includes("text-anchor=\"middle\"")],
+  // v1.6.59: laser pointer (presentation) + shape lock
+  ['laser pointer state + presentation intercept', html.includes("let _laser=null") && html.includes("if(Presentation.isActive()){_laser=wp")],
+  ['laser dot drawn during presentation', html.includes("_laser&&Presentation.isActive()") && html.includes("rgba(255,50,50,.75)")],
+  ['laser cleared on presentation leave and pointerleave', html.includes("_laser=null;_active=false") && html.includes("pointerleave")],
+  ['doLock toggles locked via align op', html.includes("function doLock") && html.includes("op:'align',dir:'lock'")],
+  ['locked shapes have no resize handles', html.includes("if(s.locked)return [];")],
+  ['doMove skips locked shapes', html.includes("if(!sh||sh.locked)continue")],
+  ['endSelect move op filters out locked shapes', html.includes("filter(id=>!byId(id)?.locked)")],
+  ['locked hover shows not-allowed cursor', html.includes("top.locked?'not-allowed':'move'")],
+  ['lock/unlock ctx labels in ja and en', html.includes("ctxLock:'ロック'") && html.includes("ctxLock:'Lock'")],
+  ['lock context-menu entry toggles label by locked state', html.includes("?'ctxUnlock':'ctxLock','',doLock")],
 ];
 
 let pass = 0, fail = 0;
@@ -423,7 +434,7 @@ try {
              doGroup, doUngroup, doPaste, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-             _sfbCapture, _sfbFlush, _sbf };
+             _sfbCapture, _sfbFlush, _sbf, doLock };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -437,7 +448,7 @@ try {
           doGroup, doUngroup, doPaste, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-          _sfbCapture, _sfbFlush, _sbf } = api;
+          _sfbCapture, _sfbFlush, _sbf, doLock } = api;
 
   console.log('\n-- behavioural --');
 
@@ -1745,8 +1756,36 @@ try {
     console.log('  ✓ SVG export: rect label rendered with text-anchor, escaped');
   }
 
+  // v1.6.59: shape lock — locked shapes resist move/resize, toggle is reversible
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const lk=Shape.make('rect',{x:10,y:10,w:50,h:50});
+    Store.commit({op:'add',shape:lk});
+    state.selection=new Set([lk.id]);
+    // lock it
+    doLock();
+    assert.strictEqual(state.shapes.find(s=>s.id===lk.id).locked,true,'doLock sets locked=true');
+    // locked shape exposes no resize handles
+    assert.strictEqual(getHandles(state.shapes.find(s=>s.id===lk.id)).length,0,'locked shape has 0 handles');
+    // undo restores unlocked (null)
+    Store.undo();
+    assert.strictEqual(state.shapes.find(s=>s.id===lk.id).locked,null,'doLock undo clears locked');
+    // redo re-locks
+    Store.redo();
+    assert.strictEqual(state.shapes.find(s=>s.id===lk.id).locked,true,'doLock redo re-locks');
+    // toggle off again
+    doLock();
+    assert.strictEqual(state.shapes.find(s=>s.id===lk.id).locked,null,'doLock toggles off (unlock)');
+    // empty selection is a safe no-op
+    state.selection=new Set();
+    const baseLen=state.history.length;
+    doLock();
+    assert.strictEqual(state.history.length,baseLen,'doLock no-op on empty selection');
+    console.log('  ✓ shape lock: toggle locked, no handles when locked, undo/redo, empty no-op');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 228; // prev 219 + 3 rect label + 4 ellipse label + 2 SVG label
+  pass += 229; // prev 228 + 1 shape-lock behavioural (presence checks counted in checks[])
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
