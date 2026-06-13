@@ -364,6 +364,11 @@ const checks = [
   ['search placeholder uses i18n t(search)', html.includes("sq.placeholder=t('search')")],
   ['rotate + search i18n keys in ja and en', html.includes("rotate:'回転 (15°)',search:'検索'") && html.includes("rotate:'Rotate (15°)',search:'Search'")],
   ['help grid lists rotate and search shortcuts', html.includes("[', / .',k.rotate],['⌘F',k.search]")],
+  // v1.6.63: Socratic round 3 — internal consistency + a11y
+  ['doFlip skips locked shapes (consistent with doRotate)', html.includes("function doFlip(axis){\n  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);")],
+  ['doRotate orbits selection about group centre', html.includes("orbit about group centre, like doFlip") && html.includes("Shape.translate(s,nx-cx,ny-cy)")],
+  ['search input has aria-label', html.includes("sq.setAttribute('aria-label',t('search'))")],
+  ['search Escape returns focus to canvas', html.includes("invalidate();canvas.focus();}});}")],
 ];
 
 let pass = 0, fail = 0;
@@ -1756,6 +1761,41 @@ try {
     assert.strictEqual(state.shapes.find(s=>s.id===r.id).rotate,30,'flip undo restores rotate=30');
     console.log('  ✓ doFlip + rotation: reflection negates the rotation angle, undo restores');
   }
+  {
+    // v1.6.63: doFlip skips locked shapes (was: only doRotate did)
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const lk={id:'flk',type:'rect',z:1,x:0,y:0,w:50,h:50,locked:true,stroke:'#000',size:2,opacity:1};
+    Store.commit({op:'add',shape:lk});
+    state.selection=new Set([lk.id]);
+    const hlen=state.history.length;
+    doFlip('h');
+    assert.strictEqual(state.history.length,hlen,'doFlip is a no-op when all selected shapes are locked');
+    console.log('  ✓ doFlip + lock: locked shapes are not flipped (consistent with doRotate)');
+  }
+  {
+    // v1.6.63: multi-selection rotation orbits about the group centre (like doFlip),
+    // while a single shape spins in place. Verify both.
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const a={id:'ra',type:'rect',z:1,x:0,y:0,w:20,h:20,stroke:'#000',size:2,opacity:1};
+    const b={id:'rb',type:'rect',z:2,x:100,y:0,w:20,h:20,stroke:'#000',size:2,opacity:1};
+    Store.commit({op:'add',shape:a});Store.commit({op:'add',shape:b});
+    state.selection=new Set([a.id,b.id]);
+    doRotate(90); // group centre is (60,10); 90° orbit moves each shape's centre
+    const a2=state.shapes.find(s=>s.id===a.id),b2=state.shapes.find(s=>s.id===b.id);
+    assert.strictEqual(a2.rotate,90,'multi-rotate sets rotate=90 on first shape');
+    // a centre was (10,10); orbit 90° about (60,10): new centre (60,-40) → x=50,y=-50
+    assert.ok(Math.abs((a2.x+a2.w/2)-60)<0.01&&Math.abs((a2.y+a2.h/2)-(-40))<0.01,'shape orbits about group centre, not in place');
+    Store.undo();
+    const a3=state.shapes.find(s=>s.id===a.id);
+    assert.ok(a3.x===0&&a3.y===0&&(a3.rotate||0)===0,'multi-rotate undo restores position and rotation');
+    // single shape spins in place (position unchanged)
+    state.selection=new Set([a.id]);
+    doRotate(45);
+    const a4=state.shapes.find(s=>s.id===a.id);
+    assert.ok(a4.x===0&&a4.y===0,'single-shape rotate does not move the shape (spins in place)');
+    assert.strictEqual(a4.rotate,45,'single-shape rotate sets angle');
+    console.log('  ✓ doRotate: multi-selection orbits group centre, single shape spins in place, undo restores');
+  }
 
   // v1.6.58: rect/ellipse centre labels via upd op
   {
@@ -1890,7 +1930,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 232; // prev 231 + 1 flip+rotation behavioural
+  pass += 234; // prev 232 + doFlip-lock + group-rotate behavioural
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

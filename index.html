@@ -718,7 +718,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.62';
+const V='1.6.63';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -990,7 +990,7 @@ function validRemotePayload(op){
 const Store={
   // Op types + reversibility: see docs/architecture.md (Store section).
   commit(op){
-    // Stamp CRDT clock (Phase 1.1). Local-origin only — remote ops keep theirs.
+    // Stamp CRDT clock; local-origin only, remote ops keep theirs.
     if(!op.clock)op.clock={peer:state.peerId,seq:++state.seq,ts:Date.now()};
     const k=op.clock.peer+':'+op.clock.seq;
     if(state.seenOps.has(k))return;       // already applied (rare race)
@@ -1330,7 +1330,7 @@ function drawShape(s,c){
       else{c.strokeStyle=s.stroke||'#CBD5E1';c.lineWidth=1;c.strokeRect(s.x,s.y,s.w,s.h)}
       break;}
     case 'frame':{
-      // Frame: thin labeled border — drawn with transparency so content shows through
+      // Frame: thin labeled border, transparent so content shows through
       const r=4;
       c.save();
       c.globalAlpha=(s.opacity??1)*0.9;
@@ -1425,7 +1425,7 @@ function penWidths(pts,size){
       raw[i]=base*(1-(1-LO)*t);
     }
   }
-  // 3-tap smooth so width doesn't jitter between adjacent samples
+  // 3-tap smooth so width doesn't jitter between samples
   const w=new Array(n);
   for(let i=0;i<n;i++)w[i]=(raw[Math.max(0,i-1)]+raw[i]+raw[Math.min(n-1,i+1)])/3;
   return w;
@@ -1438,7 +1438,7 @@ function drawPen(s,c){
     c.beginPath();c.arc(p[0][0],p[0][1],(s.size||2)/2,0,PI2);c.fill();
     return;
   }
-  // Variable-width ink: each segment gets its own lineWidth; round caps blend them.
+  // Variable-width ink: per-segment lineWidth; round caps blend them.
   const w=penWidths(p,s.size),oldCap=c.lineCap,oldJoin=c.lineJoin,oldW=c.lineWidth;
   c.strokeStyle=s.stroke;c.lineCap='round';c.lineJoin='round';
   let px=p[0][0],py=p[0][1];
@@ -1541,7 +1541,7 @@ function drawSelection(){
       ctx.strokeRect(sp.x*DPR-hs/2,sp.y*DPR-hs/2,hs,hs);
     }
   }else{
-    // Multi-selection: corner handles only on bounding box
+    // Multi-selection: corner handles only
     const hs=HANDLE_SIZE*DPR;
     ctx.fillStyle=getCSS('--paper');ctx.strokeStyle=getCSS('--brand-ink');ctx.lineWidth=1.5;
     for(const[hx,hy] of [[x,y],[x+w,y],[x,y+h],[x+w,y+h]]){
@@ -1588,7 +1588,7 @@ canvas.addEventListener('pointerdown',e=>{
   UI.closeCtxMenu();
   switch(state.tool){
     case 'select':
-      // Check resize handles BEFORE normal pick (single selection only)
+      // Resize handles take priority over pick (single selection only)
       if(state.selection.size===1){
         const onlySel=byId([...state.selection][0]);
         if(onlySel){
@@ -1730,7 +1730,7 @@ canvas.addEventListener('dblclick',e=>{
     inp.addEventListener('keydown',ev=>{
       if(ev.isComposing)return;
       if(ev.key==='Enter'){ev.preventDefault();commit()}
-      // Escape: detach blur→commit first so inp.remove() doesn't trigger it.
+      // Escape: detach blur→commit so inp.remove() doesn't fire it.
       if(ev.key==='Escape'){inp.removeEventListener('blur',commit);inp.remove()}
     });
   }
@@ -1920,7 +1920,7 @@ function pickTop(wp){
 function pickOrMarquee(wp,e){
   const hit=pickTop(wp);
   if(hit){
-    // If the hit shape belongs to a group, expand selection to whole group
+    // Hit shape in a group → select the whole group
     const gid=hit.groupId;
     const toSelect=gid
       ? state.shapes.filter(s=>s.groupId===gid).map(s=>s.id)
@@ -2118,7 +2118,7 @@ function endLineLike(){
   if(!state.draft)return;
   const d=state.draft;state.draft=null;
   if(Math.hypot(d.x2-d.x1,d.y2-d.y1)<2)return;
-  // Bind endpoints dropped onto a shape so the connector follows it (not both to the same one).
+  // Bind each endpoint dropped on a shape so the connector follows it (not both to one).
   const ba=_bindAt(d.x1,d.y1),bb=_bindAt(d.x2,d.y2);
   if(ba&&ba!==bb)d.a=ba;
   if(bb&&bb!==ba)d.b=bb;
@@ -2261,7 +2261,7 @@ function eraseAt(wp){
 }
 function flushErase(){
   if(!_eraseBatch.length)return;
-  // Put shapes back temporarily so Store.commit's _apply can find & remove them
+  // Restore shapes so Store.commit's _apply can find & remove them
   for(const s of _eraseBatch)state.shapes.push(s);
   sortZ();
   Store.commit({op:'del',shapes:clone(_eraseBatch)});
@@ -2320,8 +2320,7 @@ window.addEventListener('keydown',e=>{
     invalidate();
   }
   else if(k==='enter'&&!meta&&!e.shiftKey){
-    // Keyboard shape creation: place a default shape of the active tool at the
-    // viewport centre (no-op for select/hand/eraser/pen).
+    // Place active tool's default shape at viewport centre (no-op for select/hand/eraser/pen).
     if(createShapeKbd())e.preventDefault();
   }
   else if(k==='arrowup'||k==='arrowdown'||k==='arrowleft'||k==='arrowright'){
@@ -2336,8 +2335,7 @@ window.addEventListener('keydown',e=>{
     }
   }
   else if(k==='escape'){
-    // Dismiss an open modal first (WCAG: dialogs must be Escape-closable),
-    // otherwise clear the current selection/draft.
+    // WCAG: Escape dismisses an open modal first, else clears selection/draft.
     const ctx2=document.getElementById('ctx');
     if(ctx2.dataset.open==='true'){UI.closeCtxMenu();return}
     const hp=document.getElementById('help'),sp2=document.getElementById('share');
@@ -2551,7 +2549,7 @@ function flipShape(s,axis,c){
   if(s.rotate)s.rotate=(360-s.rotate)%360;
 }
 function doFlip(axis){
-  const sel=[...state.selection].map(byId).filter(Boolean);
+  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);
   if(!sel.length)return;
   const bb=G.bboxAll(sel),c=axis==='h'?bb.x+bb.w/2:bb.y+bb.h/2;
   const before=sel.map(s=>clone(s));
@@ -2574,9 +2572,16 @@ function doLock(){
 function doRotate(d){
   const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);
   if(!sel.length)return;
-  const before=sel.map(s=>({id:s.id,rotate:s.rotate||0}));
-  for(const s of sel)s.rotate=((s.rotate||0)+d+360)%360;
-  const after=sel.map(s=>({id:s.id,rotate:s.rotate}));
+  const bb=G.bboxAll(sel),gx=bb.x+bb.w/2,gy=bb.y+bb.h/2; // orbit about group centre, like doFlip
+  const r=d*Math.PI/180,cs=Math.cos(r),sn=Math.sin(r);
+  const before=sel.map(s=>clone({...s,rotate:s.rotate||0}));
+  for(const s of sel){
+    const b=G.bbox(s),cx=b.x+b.w/2,cy=b.y+b.h/2;
+    const nx=gx+(cx-gx)*cs-(cy-gy)*sn,ny=gy+(cx-gx)*sn+(cy-gy)*cs;
+    Shape.translate(s,nx-cx,ny-cy);
+    s.rotate=((s.rotate||0)+d+360)%360;
+  }
+  const after=sel.map(s=>clone(s));
   Store._recordCommitted({op:'align',dir:'rotate',before,after});
   invalidate();Persist.schedule();
 }
@@ -2847,9 +2852,8 @@ const Net={
     }
   },
   _sendSnapshot(){
-    // Send a snapshot consisting of all add ops re-derived from current shapes.
-    // Each op needs a DISTINCT clock key, else applyRemote's peer:seq dedup
-    // collapses the whole batch to the first shape on a merge (peer:0 collision).
+    // Snapshot = all shapes as add ops. Each needs a DISTINCT clock key, else
+    // applyRemote's peer:seq dedup collapses the batch to the first shape (peer:0 collision).
     const ops=state.shapes.map((s,i)=>({
       op:'add',shape:clone(s),
       clock:{peer:state.peerId,seq:'snap'+i,ts:0,_snap:true}
@@ -2952,7 +2956,7 @@ const Share={
   async exportToUrl(){
     const data={v:V,shapes:state.shapes,name:state.docName};
     const json=JSON.stringify(data);
-    // try CompressionStream if available; otherwise just base64
+    // CompressionStream if available, else base64
     let payload=json;
     if(typeof CompressionStream!=='undefined'){
       try{
@@ -2993,7 +2997,6 @@ const Share={
       // validate each shape — reject anything without id/type/z
       const valid=data.shapes.filter(validShape);
       if(!valid.length)return false;
-      // confirm if local has content
       if(state.shapes.length&&!confirm(t('importConfirm')))return false;
       state.shapes=valid;state.docName=data.name||'Shared';
       sortZ();invalidate();
@@ -3228,7 +3231,7 @@ const UI={
 
 // ====================== WIRE-UP ======================
 function wire(){
-  {const sq=document.createElement('input');sq.id='sqinput';sq.type='text';sq.placeholder=t('search');sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--brand);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';document.body.appendChild(sq);sq.addEventListener('input',()=>{_sq=sq.value;invalidate()});sq.addEventListener('keydown',ev=>{if(ev.key==='Escape'){_sq='';sq.style.display='none';sq.value='';invalidate();}});}
+  {const sq=document.createElement('input');sq.id='sqinput';sq.type='text';sq.placeholder=t('search');sq.setAttribute('aria-label',t('search'));sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--brand);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';document.body.appendChild(sq);sq.addEventListener('input',()=>{_sq=sq.value;invalidate()});sq.addEventListener('keydown',ev=>{if(ev.key==='Escape'){_sq='';sq.style.display='none';sq.value='';invalidate();canvas.focus();}});}
   // tool buttons
   for(const b of document.querySelectorAll('.tool'))
     b.addEventListener('click',()=>pickTool(b.dataset.tool));

@@ -2,6 +2,28 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.63] — 2026-06-13
+
+ソクラテス問答監査の第 3 ラウンド: 新機能（回転・検索）の内部的一貫性と
+アクセシビリティの矛盾を修正。
+
+### Fixed
+- **複数選択回転の中心が不統一**: `doRotate` は各シェイプをその場で回転させる一方、
+  `doFlip` は選択 bbox 中心でミラーしていた。回転も群中心で公転するよう統一
+  (単一選択はその場回転のまま)。位置と角度の両方が undo 可逆。
+- **`doFlip` がロックを無視**: `doRotate` はロックシェイプを除外するのに `doFlip` は
+  していなかった。`filter(s=>s&&!s.locked)` に統一(ロック中は反転も不可)。
+- **検索 Esc でフォーカス喪失** (WCAG): Esc 後に `canvas.focus()` でフォーカスを
+  キャンバスへ返す(ヘルプ・共有モーダルと同じ作法)。
+- **検索入力に aria-label 欠落** (WCAG): placeholder だけでなく `aria-label` も付与。
+
+### Docs
+- `docs/architecture.md` の回転制約を更新(複数選択は群中心で公転)。
+
+### Tests
+- 515 assertions。追加: 群中心公転 / 単体その場回転 / ロック反転 no-op の振る舞い
+  テスト + presence 4 件。冗長コメント簡潔化で gzip 予算を確保(45,037B)。
+
 ## [1.6.62] — 2026-06-13
 
 ソクラテス問答監査の第 2 ラウンド: 新機能（回転・検索）が既存機能を静かに壊している
