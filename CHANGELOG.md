@@ -2,6 +2,19 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.66] — 2026-06-13
+
+### Added
+- **リサイズ時のオブジェクトスナップ**: リサイズハンドルをドラッグすると、動かしている辺が
+  近傍シェイプの辺/中心にスナップ (移動スナップとパリティ)。`resizeSnap` が動かす座標のみを
+  スナップし、整列ガイドを表示。グリッドスナップ ON 時は従来通りグリッド優先 (排他)、回転
+  シェイプと線端点 (p1/p2) はスキップ。コミット時にガイドをクリア。これで spec §13 の
+  「リサイズ時のオブジェクトスナップ」将来課題を解消。
+
+### Tests
+- 536 assertions (+6 振る舞い: east-resize スナップ・ガイド発火・遠距離無スナップ・
+  グリッド/回転/線端点バイパス、+2 presence)。
+
 ## [1.6.65] — 2026-06-13
 
 44KB gzip 予算の撤去後、予算の壁で据え置いていた実改善を全実装。

@@ -381,6 +381,9 @@ const checks = [
   ['SVG rotation applies to text/image/sticky/frame', html.includes("font-size=\"${fs}\" fill=\"${stroke}\"${a}${rT}>") && html.includes("href=\"${_esc(s.dataUrl)}\"${a}${rT}/>")],
   ['minimap applies rotation transform', html.includes("const _mr=s.rotate&&s.w!=null;") && html.includes("if(_mr)mx.restore();")],
   ['describeShape announces locked and rotated state', html.includes("if(s.locked)d+=` ${t('ctxLock')}`;") && html.includes("if(s.rotate)d+=` ${s.rotate}°`;")],
+  // v1.6.66: resize object-snap
+  ['resizeSnap exists and applyResize uses it', html.includes("function resizeSnap(orig,handle,wp)") && html.includes("const os=resizeSnap(orig,handle,wp);")],
+  ['resize commit clears alignment guides', html.includes("ptr.resizeHandle=null;ptr.resizeOrig=null;state.guides=null;")],
 ];
 
 let pass = 0, fail = 0;
@@ -474,7 +477,7 @@ try {
     return { state, Store, G, Shape, distToSeg,
              doBringFront, doSendBack, doBringForward, doSendBackward,
              doAlign, doFlip, snapV, snapPt,
-             getHandles, applyResize, handleCursor,
+             getHandles, applyResize, resizeSnap, handleCursor,
              doGroup, doUngroup, doPaste, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
@@ -488,7 +491,7 @@ try {
   const { state, Store, G, Shape, distToSeg,
           doBringFront, doSendBack, doBringForward, doSendBackward,
           doAlign, doFlip, snapV, snapPt,
-          getHandles, applyResize, handleCursor,
+          getHandles, applyResize, resizeSnap, handleCursor,
           doGroup, doUngroup, doPaste, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
@@ -1871,6 +1874,33 @@ try {
     assert.ok(d1.length>d0.length,'locked+rotated description is richer than plain');
     console.log('  ✓ describeShape: announces locked + rotated state to screen readers');
   }
+  {
+    // v1.6.66: resize handles object-snap to nearby shape edges (parity with move-snap)
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.snap=false;state.viewport={x:0,y:0,zoom:1};
+    const tgt={id:'rt',type:'rect',z:1,x:200,y:0,w:80,h:80,stroke:'#000',size:1,opacity:1};
+    const me={id:'rm',type:'rect',z:2,x:0,y:0,w:100,h:100,stroke:'#000',size:1,opacity:1};
+    state.shapes=[tgt,me];
+    // drag the east edge to x=195 — within 8px of the target's left edge (200) → snaps
+    const s1=resizeSnap(me,'e',{x:195,y:50});
+    assert.strictEqual(s1.x,200,'east-resize snaps right edge to the nearby target left edge');
+    assert.ok(s1.guides.length===1,'a vertical alignment guide is emitted on snap');
+    // far away → no snap
+    const s2=resizeSnap(me,'e',{x:150,y:50});
+    assert.strictEqual(s2.x,150,'far from any edge → no snap');
+    assert.strictEqual(s2.guides.length,0,'no guide when nothing snaps');
+    // grid-snap mode bypasses object-snap (mutually exclusive, like move)
+    state.snap=true;
+    assert.strictEqual(resizeSnap(me,'e',{x:195,y:50}).x,195,'grid-snap mode bypasses object-snap');
+    state.snap=false;
+    // rotated shapes are skipped (axis-aligned edge snap would be incoherent)
+    me.rotate=30;
+    assert.strictEqual(resizeSnap(me,'e',{x:195,y:50}).x,195,'rotated shape resize is not object-snapped');
+    delete me.rotate;
+    // line endpoints (p1/p2) are not box-edge snapped
+    assert.strictEqual(resizeSnap(me,'p2',{x:195,y:50}).x,195,'line endpoint handles are not box-snapped');
+    console.log('  ✓ resize object-snap: edges snap to nearby shapes, guides emitted, grid/rotate/line bypass');
+  }
 
   // v1.6.58: rect/ellipse centre labels via upd op
   {
@@ -2005,7 +2035,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 239; // prev 236 + sticky-rotate + connector-rotated-edge + describeShape behavioural
+  pass += 245; // prev 239 + resize object-snap behavioural (6 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

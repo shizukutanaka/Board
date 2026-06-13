@@ -718,7 +718,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.65';
+const V='1.6.66';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1494,9 +1494,27 @@ function hitHandle(wp,s){
   }
   return null;
 }
+// Object-snap for resize: snap the dragged handle's moving edge(s) to nearby shape
+// edges/centres. Only the coordinates the handle actually moves are snapped. Pure-ish
+// (reads state.shapes/viewport). Mirrors move's objectSnap; active only when grid-snap
+// is off. Rotated shapes are skipped (axis-aligned edge snap would be incoherent).
+function resizeSnap(orig,handle,wp){
+  if(state.snap||orig.rotate||handle==='p1'||handle==='p2')return{x:wp.x,y:wp.y,guides:[]};
+  const tol=SNAP_OBJ/state.viewport.zoom;
+  const movesX=/[ew]/.test(handle),movesY=/[ns]/.test(handle);
+  let x=wp.x,y=wp.y;const guides=[],targets=[];
+  for(const s of state.shapes){if(s.id===orig.id)continue;const b=G.bbox(s);if(b)targets.push(b)}
+  if(movesX){let best=null;for(const b of targets)for(const t of[b.x,b.x+b.w/2,b.x+b.w]){const d=t-wp.x;if(Math.abs(d)<=tol&&(!best||Math.abs(d)<Math.abs(best.d)))best={d,at:t,b};}
+    if(best){x=best.at;const ys=[orig.y,orig.y+orig.h,best.b.y,best.b.y+best.b.h];guides.push({x1:best.at,y1:Math.min(...ys),x2:best.at,y2:Math.max(...ys)});}}
+  if(movesY){let best=null;for(const b of targets)for(const t of[b.y,b.y+b.h/2,b.y+b.h]){const d=t-wp.y;if(Math.abs(d)<=tol&&(!best||Math.abs(d)<Math.abs(best.d)))best={d,at:t,b};}
+    if(best){y=best.at;const xs=[orig.x,orig.x+orig.w,best.b.x,best.b.x+best.b.w];guides.push({x1:Math.min(...xs),y1:best.at,x2:Math.max(...xs),y2:best.at});}}
+  return{x,y,guides};
+}
 // Apply resize given handle id, original shape, and new world point
 function applyResize(sh,handle,orig,wp){
-  const sp=snapPt(wp);
+  const os=resizeSnap(orig,handle,wp);           // object-snap (grid off) → adjusted point
+  state.guides=os.guides.length?os.guides:null;  // alignment guides during drag
+  const sp=snapPt({x:os.x,y:os.y});              // grid-snap (grid on); identity otherwise
   const ox=orig.x,oy=orig.y,ow=orig.w,oh=orig.h;
   const clamp=4; // min size
   if(handle==='p1'){sh.x1=sp.x;sh.y1=sp.y;return}
@@ -1678,7 +1696,7 @@ canvas.addEventListener('pointerup',e=>{
             Store._recordCommitted({op:'upd',id:rsh.id,before,after});
           }
         }
-        ptr.resizeHandle=null;ptr.resizeOrig=null;
+        ptr.resizeHandle=null;ptr.resizeOrig=null;state.guides=null;
       }else{
         endSelect(wp);
       }
