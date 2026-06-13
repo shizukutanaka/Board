@@ -45,7 +45,8 @@ Board/
 │   ├── architecture.md    # 詳細設計
 │   ├── spec.md            # 仕様書 + 適合ギャップ追跡
 │   ├── audit-2026-06.md   # カテゴリ別改善監査
-│   └── research-improvements.md  # 改善案調査
+│   ├── research-improvements.md  # 改善案調査
+│   └── ADR-0001-fractional-index-zorder.md  # z順序の分数インデックス化 (Proposed)
 └── .github/workflows/     # CI (lint + size budget)
 ```
 

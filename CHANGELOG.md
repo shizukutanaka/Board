@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — docs
+
+- **ADR-0001 (fractional-index z-order)**: ★最優先の z 順序 fractional-index 化について、判断・
+  キー表現の選択 (文字列 between-key) ・op-log/sync/永続化への影響・後方互換マイグレーション・
+  段階移行 (Step 1〜4) ・テスト計画をまとめた設計 ADR を `docs/ADR-0001-fractional-index-zorder.md`
+  に追加 (Proposed)。コード変更なし。spec §13 / research-improvements / CLAUDE.md から参照。
+
 ## [1.6.70] — 2026-06-13
 
 ### Added

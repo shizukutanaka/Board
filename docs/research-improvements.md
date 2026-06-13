@@ -17,6 +17,8 @@ replicated undo 論文群。
 ## 1. 競合ソフトから学ぶ改善点
 
 ### A. Z-order を **fractional indexing** に置き換える ★最優先
+> **設計 ADR**: `docs/ADR-0001-fractional-index-zorder.md` (Proposed, 2026-06-13) に判断・段階移行・
+> 後方互換・テスト計画をまとめた。以下はその要約。
 - **現状 (Board)**: `zorder` op が **全 shape の `{id,z}` スナップショット** を before/after で保持し、`]`/`[`
   1回ごとに O(N) のデータを undo 履歴と peer ブロードキャストに積む (1000 shape で 1 回 ~2000 エントリ)。
   該当: `index.html` `_zSnapshot` / `_commitZ` / `Store._apply` `case 'zorder'`。

@@ -269,7 +269,8 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
 
 ### ⬜ 既知の未充足(将来 ADR で対応 / 詳細は research docs)
 - **z 順序 op のスケーラビリティ**: `zorder` が全 shape スナップショットを保持(大規模で履歴/帯域肥大)。
-  fractional index へ移行が望ましい(`research-improvements.md` 項目A)。専用 ADR 予定(P0 可逆性に触れるため)。
+  fractional index へ移行が望ましい(`research-improvements.md` 項目A)。設計は **`docs/ADR-0001-fractional-index-zorder.md`**
+  にまとめた(Proposed)。P0 可逆性/sync/永続化に触れるため承認後に段階実装。
 - **DOM ミラー a11y**: 図形ごとの DOM ノードによるネイティブ SR 対応は将来課題(§10、cat 6)。
 - CI の `ci.yml` は GitHub App 権限の都合でブランチ未反映(手動適用要)。
 
