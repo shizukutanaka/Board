@@ -206,7 +206,7 @@ const checks = [
   ['load validates viewport finiteness', html.includes("d.viewport.zoom>0)Object.assign(state.viewport")],
   // v1.6.18: deeper audit fixes
   ['P selects pen, Shift+P presents', html.includes("k==='p'&&e.shiftKey&&!meta&&!e.altKey")],
-  ['pen has no resize handles', html.includes("if(s.type==='pen')return [];")],
+  ['pen has no resize handles', html.includes("if(s.type==='pen'||s.w==null)return [];")],
   ['presentation saves+restores viewport', html.includes("_savedVp={x:state.viewport.x") && html.includes("Object.assign(state.viewport,_savedVp)")],
   ['help grid present row uses i18n', html.includes("['⇧P',k.present]") && html.includes("['↑↓←→',k.nudge]")],
   ['help i18n keys in ja and en', html.includes("present:'プレゼン'") && html.includes("present:'Present'")],
@@ -333,7 +333,7 @@ const checks = [
   ['laser dot drawn during presentation', html.includes("_laser&&Presentation.isActive()") && html.includes("rgba(255,50,50,.75)")],
   ['laser cleared on presentation leave and pointerleave', html.includes("_laser=null;_active=false") && html.includes("pointerleave")],
   ['doLock toggles locked via align op', html.includes("function doLock") && html.includes("op:'align',dir:'lock'")],
-  ['locked or rotated shapes have no resize handles', html.includes("if(s.locked||s.rotate)return [];")],
+  ['locked shapes have no resize handles', html.includes("function getHandles(s){\n  if(s.locked)return [];")],
   ['doMove skips locked shapes', html.includes("if(!sh||sh.locked)continue")],
   ['endSelect move op filters out locked shapes', html.includes("filter(id=>!byId(id)?.locked)")],
   ['locked hover shows not-allowed cursor', html.includes("top.locked?'not-allowed':'move'")],
@@ -362,7 +362,7 @@ const checks = [
   ['Ctrl+F toggles search input', html.includes("meta&&k==='f'") && html.includes("sq.style.display")],
   // v1.6.62: Socratic feature-interaction fixes
   ['flip negates rotation angle (reflection reverses sense)', html.includes("if(s.rotate)s.rotate=(360-s.rotate)%360;")],
-  ['rotated shapes suppress resize handles', html.includes("if(s.locked||s.rotate)return [];")],
+  ['rotated box shapes expose handles at rotated positions', html.includes("return hs.map(p=>{const r=_rotPt(p.x,p.y,cx,cy,s.rotate);return{id:p.id,x:r.x,y:r.y}});")],
   ['search placeholder uses i18n t(search)', html.includes("sq.placeholder=t('search')")],
   ['rotate + search i18n keys in ja and en', html.includes("rotate:'回転 (15° / ノブdrag)',search:'検索'") && html.includes("rotate:'Rotate (15° / knob drag)',search:'Search'")],
   ['help grid lists rotate and search shortcuts', html.includes("[', / .',k.rotate],['⌘F',k.search]")],
@@ -393,6 +393,10 @@ const checks = [
   ['rotation knob drawn in drawSelection', html.includes("const rh=getRotHandle(sh);") && html.includes("ctx.arc(kp.x*DPR,kp.y*DPR,hs/2,0,PI2)")],
   // v1.6.68: Alt resize-from-centre
   ['Alt resizes about original centre', html.includes("function applyResize(sh,handle,orig,wp,shift,alt)") && html.includes("if(alt){sh.x=cx0-sh.w/2;sh.y=cy0-sh.h/2;}") && html.includes("applyResize(rsh,ptr.resizeHandle,ptr.resizeOrig,wp,e.shiftKey,e.altKey);")],
+  // v1.6.69: rotated-box resize
+  ['_rotPt shared rotation helper present', html.includes("function _rotPt(px,py,cx,cy,deg)")],
+  ['rotated resize works in local frame + world re-pin', html.includes("sp=_rotPt(wp.x,wp.y,cx0,cy0,-orig.rotate);") && html.includes("sh.x+=tgt.x-cur.x;sh.y+=tgt.y-cur.y;")],
+  ['selection outline traces rotated box', html.includes("if(single&&single.rotate&&single.w!=null){")],
 ];
 
 let pass = 0, fail = 0;
@@ -1987,6 +1991,35 @@ try {
     assert.ok(Math.abs((sh3.x+sh3.w/2)-150)<1e-9&&Math.abs((sh3.y+sh3.h/2)-150)<1e-9,'Shift+Alt: centre invariant');
     console.log('  ✓ resize from centre: Alt mirrors about original centre; Shift+Alt stays proportional');
   }
+  {
+    // v1.6.69: rotated-box resize keeps the opposite anchor fixed in WORLD space
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.snap=false;state.viewport={x:0,y:0,zoom:1};
+    const rot=30,toR=d=>d*Math.PI/180;
+    const rotPt=(px,py,cx,cy,d)=>{const a=toR(d),c=Math.cos(a),s=Math.sin(a),dx=px-cx,dy=py-cy;return{x:cx+dx*c-dy*s,y:cy+dx*s+dy*c};};
+    const orig={id:'rr',type:'rect',x:0,y:0,w:100,h:100,rotate:rot,stroke:'#000',size:1,opacity:1};
+    // grabbing 'se' should keep the nw corner pinned in world
+    const sh={...orig};
+    applyResize(sh,'se',orig,{x:140,y:120},false,false);
+    const nwWorldOrig=rotPt(0,0,50,50,rot);
+    const nwWorldNew=rotPt(sh.x,sh.y,sh.x+sh.w/2,sh.y+sh.h/2,rot);
+    assert.ok(Math.abs(nwWorldNew.x-nwWorldOrig.x)<1e-6&&Math.abs(nwWorldNew.y-nwWorldOrig.y)<1e-6,'se-resize: nw corner fixed in world');
+    // handles are exposed for rotated shapes now, at rotated positions
+    const hs=getHandles(orig);
+    assert.strictEqual(hs.length,8,'rotated box exposes all 8 handles');
+    const se=hs.find(h=>h.id==='se'),seW=rotPt(100,100,50,50,rot);
+    assert.ok(Math.abs(se.x-seW.x)<1e-6&&Math.abs(se.y-seW.y)<1e-6,'se handle sits at the rotated corner');
+    // edge handle 'e' keeps the left-edge midpoint pinned in world
+    const sh2={...orig};
+    applyResize(sh2,'e',orig,{x:160,y:50},false,false);
+    const lmOrig=rotPt(0,50,50,50,rot),lmNew=rotPt(sh2.x,sh2.y+sh2.h/2,sh2.x+sh2.w/2,sh2.y+sh2.h/2,rot);
+    assert.ok(Math.abs(lmNew.x-lmOrig.x)<1e-6&&Math.abs(lmNew.y-lmOrig.y)<1e-6,'e-resize: left-edge midpoint fixed in world');
+    // Alt on a rotated box keeps the centre fixed
+    const sh3={...orig};
+    applyResize(sh3,'se',orig,{x:140,y:120},false,true);
+    assert.ok(Math.abs((sh3.x+sh3.w/2)-50)<1e-6&&Math.abs((sh3.y+sh3.h/2)-50)<1e-6,'Alt+rotated: centre invariant');
+    console.log('  ✓ rotated resize: anchor fixed in world, handles rotate, Alt keeps centre');
+  }
 
   // v1.6.58: rect/ellipse centre labels via upd op
   {
@@ -2121,7 +2154,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 271; // prev 262 + alt resize-from-centre behavioural (9 asserts)
+  pass += 277; // prev 271 + rotated-resize world-anchor behavioural (6 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

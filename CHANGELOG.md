@@ -2,6 +2,19 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.69] — 2026-06-13
+
+### Added
+- **回転シェイプのリサイズ**: 従来 `getHandles` は回転中に `[]` を返し、回転シェイプは一切
+  リサイズ不可だった (回転を戻すしかなかった)。8 ハンドルを回転位置に表示し、ドラッグを
+  シェイプのローカル (未回転) フレームに変換 → 既存の switch/Shift/Alt ロジックを適用 →
+  反対側のアンカー (角/辺中点) を**ワールド座標で固定**するよう平行移動。これで回転シェイプも
+  掴んだハンドルから自然に伸縮。選択枠も回転矩形を描くように (包絡矩形でなく実体に密着)。
+  共有回転ヘルパ `_rotPt` を追加。Shift (比率) / Alt (中心固定) も回転シェイプで機能。
+
+### Tests
+- 578 assertions (+6 ワールドアンカー不変の振る舞い, +3 presence; 既存 3 件を新挙動へ更新)。
+
 ## [1.6.68] — 2026-06-13
 
 ### Added
