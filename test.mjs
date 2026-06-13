@@ -364,7 +364,7 @@ const checks = [
   ['flip negates rotation angle (reflection reverses sense)', html.includes("if(s.rotate)s.rotate=(360-s.rotate)%360;")],
   ['rotated shapes suppress resize handles', html.includes("if(s.locked||s.rotate)return [];")],
   ['search placeholder uses i18n t(search)', html.includes("sq.placeholder=t('search')")],
-  ['rotate + search i18n keys in ja and en', html.includes("rotate:'回転 (15°)',search:'検索'") && html.includes("rotate:'Rotate (15°)',search:'Search'")],
+  ['rotate + search i18n keys in ja and en', html.includes("rotate:'回転 (15° / ノブdrag)',search:'検索'") && html.includes("rotate:'Rotate (15° / knob drag)',search:'Search'")],
   ['help grid lists rotate and search shortcuts', html.includes("[', / .',k.rotate],['⌘F',k.search]")],
   // v1.6.63: Socratic round 3 — internal consistency + a11y
   ['doFlip skips locked shapes (consistent with doRotate)', html.includes("function doFlip(axis){\n  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);")],
