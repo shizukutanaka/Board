@@ -718,7 +718,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.63';
+const V='1.6.64';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1098,7 +1098,6 @@ const Store={
         else{for(const s of op.shapes)state.shapes.push(clone(s));sortZ();}
         break;}
       case 'group':{
-        // forward: assign groupId to all ids; backward: restore previous groupIds
         if(forward){
           for(const id of op.ids){const sh=byId(id);if(sh)sh.groupId=op.gid}
         }else{
@@ -1109,14 +1108,12 @@ const Store={
         if(forward){
           for(const id of op.ids){const sh=byId(id);if(sh)delete sh.groupId}
         }else{
-          // restore each shape's original groupId using the before snapshot
           if(op.before){for(const b of op.before){const sh=byId(b.id);if(sh){if(b.groupId)sh.groupId=b.groupId;else delete sh.groupId}}}
           else{const gid=op.gids[0];for(const id of op.ids){const sh=byId(id);if(sh&&gid)sh.groupId=gid}}
         }
         break;}
       case 'zorder':{
-        // Reversible: snapshot of {id,z} in array order restores z AND order
-        // (tie-safe inverse for single/multi-select; old dir-based form was not).
+        // {id,z} snapshot in array order restores z AND order (tie-safe inverse).
         const snap=forward?op.after:op.before;
         if(snap){
           const map=new Map(state.shapes.map(s=>[s.id,s]));
@@ -2251,7 +2248,7 @@ function positionTextEditor(ta,s){
 let _eraseBatch=[];    // shapes collected during one eraser stroke
 function eraseAt(wp){
   const hit=pickTop(wp);
-  if(hit&&!_eraseBatch.some(s=>s.id===hit.id)){
+  if(hit&&!hit.locked&&!_eraseBatch.some(s=>s.id===hit.id)){
     // Remove from rendering immediately for feedback
     const i=state.shapes.findIndex(s=>s.id===hit.id);
     if(i>=0)state.shapes.splice(i,1);
@@ -2413,7 +2410,7 @@ function doDuplicate(){
   doPaste();
 }
 function doDelete(){
-  const sel=[...state.selection].map(byId).filter(Boolean);
+  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);
   if(!sel.length)return;
   Store.commit({op:'del',shapes:clone(sel)});
   state.selection.clear();
@@ -2570,7 +2567,8 @@ function doLock(){
   invalidate();Persist.schedule();
 }
 function doRotate(d){
-  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);
+  // rect/ellipse only: pen/line/arrow have no box centre (rotation → NaN).
+  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked&&(s.type==='rect'||s.type==='ellipse'));
   if(!sel.length)return;
   const bb=G.bboxAll(sel),gx=bb.x+bb.w/2,gy=bb.y+bb.h/2; // orbit about group centre, like doFlip
   const r=d*Math.PI/180,cs=Math.cos(r),sn=Math.sin(r);
@@ -2714,8 +2712,7 @@ function buildSVG(shapes,paper){
           break;
         }
         if(s.pts.length<2)break;
-        // Mirror the canvas render: variable-width, midpoint-quadratic smoothed
-        // segments (display = output parity). Coords rounded to 1dp to curb size.
+        // Mirror canvas render: variable-width quadratic segments, coords at 1dp.
         const P=s.pts.map(p=>[_num(p&&p[0])+ox,_num(p&&p[1])+oy,p&&p[2]]),n=P.length,W=penWidths(P,SZ);
         const r=v=>Math.round(v*10)/10;
         const seg=(d,sw)=>els.push(`<path d="${d}" fill="none" stroke="${stroke}" stroke-width="${r(sw)}" stroke-linecap="round" stroke-linejoin="round"${a}/>`);

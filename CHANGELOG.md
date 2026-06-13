@@ -2,6 +2,28 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.64] — 2026-06-13
+
+ソクラテス問答監査の第 4 ラウンド: 回転・ロック(新機能)が、それ以前に書かれた
+サブシステムへ波及していない箇所を発見し修正。
+
+### Fixed
+- **回転が pen/line/arrow で破綻**: これらは点ジオメトリ(s.x/s.w が無い)のため
+  回転中心が NaN になり、描画が原点周りに飛んでいた。回転を**幾何学的に整合する
+  rect/ellipse に限定**(draw/hit/bbox/SVG/PNG が全て一致する型のみ)。
+- **ロックが削除を防がない**: `doMove` はロックを尊重するのに `doDelete` と消しゴムは
+  ロックシェイプを削除できた(半端な保護)。両者ともロックシェイプをスキップし、
+  ロックを完全な「保護」に。混在選択では未ロックのみ削除。
+
+### Docs
+- `docs/architecture.md` に回転スコープ(rect/ellipse 限定の理由)と、据え置いた
+  既知ギャップ(ミニマップは回転非表示・describeShape はロック/回転を未読み上げ・
+  マーキーはロックを選択するが移動はしない)を明記。
+
+### Tests
+- 520 assertions。追加: 回転スコープ(line no-op)・ロック削除保護の振る舞い
+  テスト + presence 3 件。冗長コメント簡潔化で予算確保(44,964B)。
+
 ## [1.6.63] — 2026-06-13
 
 ソクラテス問答監査の第 3 ラウンド: 新機能（回転・検索）の内部的一貫性と

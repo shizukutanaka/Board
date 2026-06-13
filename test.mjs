@@ -369,6 +369,10 @@ const checks = [
   ['doRotate orbits selection about group centre', html.includes("orbit about group centre, like doFlip") && html.includes("Shape.translate(s,nx-cx,ny-cy)")],
   ['search input has aria-label', html.includes("sq.setAttribute('aria-label',t('search'))")],
   ['search Escape returns focus to canvas', html.includes("invalidate();canvas.focus();}});}")],
+  // v1.6.64: Socratic round 4 — rotation scope + lock completeness
+  ['doRotate restricted to rect/ellipse (NaN-safe)', html.includes("s.type==='rect'||s.type==='ellipse'))")],
+  ['doDelete skips locked shapes', html.includes("function doDelete(){\n  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);")],
+  ['eraser skips locked shapes', html.includes("if(hit&&!hit.locked&&!_eraseBatch.some")],
 ];
 
 let pass = 0, fail = 0;
@@ -466,7 +470,7 @@ try {
              doGroup, doUngroup, doPaste, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate };
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -480,7 +484,7 @@ try {
           doGroup, doUngroup, doPaste, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate } = api;
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete } = api;
 
   console.log('\n-- behavioural --');
 
@@ -1796,6 +1800,30 @@ try {
     assert.strictEqual(a4.rotate,45,'single-shape rotate sets angle');
     console.log('  ✓ doRotate: multi-selection orbits group centre, single shape spins in place, undo restores');
   }
+  {
+    // v1.6.64: rotation only applies to rect/ellipse; pen/line/arrow are skipped (NaN-safe)
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const ln={id:'rln',type:'line',z:1,x1:0,y1:0,x2:100,y2:0,stroke:'#000',size:2,opacity:1};
+    Store.commit({op:'add',shape:ln});
+    state.selection=new Set([ln.id]);
+    const hlen=state.history.length;
+    doRotate(15);
+    assert.strictEqual(state.history.length,hlen,'doRotate is a no-op on a line (point geometry)');
+    assert.ok(state.shapes.find(s=>s.id===ln.id).rotate==null,'line never gets a rotate field');
+    console.log('  ✓ doRotate scope: pen/line/arrow excluded (no NaN rotation)');
+  }
+  {
+    // v1.6.64: lock protects against deletion, not just movement
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const lk={id:'dlk',type:'rect',z:1,x:0,y:0,w:50,h:50,locked:true,stroke:'#000',size:2,opacity:1};
+    const fr={id:'dfr',type:'rect',z:2,x:60,y:0,w:50,h:50,stroke:'#000',size:2,opacity:1};
+    Store.commit({op:'add',shape:lk});Store.commit({op:'add',shape:fr});
+    state.selection=new Set([lk.id,fr.id]);
+    doDelete();
+    assert.ok(state.shapes.find(s=>s.id===lk.id),'locked shape survives doDelete');
+    assert.ok(!state.shapes.find(s=>s.id===fr.id),'unlocked shape in same selection is deleted');
+    console.log('  ✓ lock + delete: locked shapes are protected, unlocked siblings still delete');
+  }
 
   // v1.6.58: rect/ellipse centre labels via upd op
   {
@@ -1930,7 +1958,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 234; // prev 232 + doFlip-lock + group-rotate behavioural
+  pass += 236; // prev 234 + rotation-scope + lock-delete behavioural
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
