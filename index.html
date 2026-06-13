@@ -718,7 +718,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.67';
+const V='1.6.68';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -796,7 +796,7 @@ const I18N={
       save:'即時保存',grid:'グリッド',esc:'選択解除/キャンセル',
       cycle:'図形を巡回',create:'中央に作成',
       present:'プレゼン',nudge:'移動 (⇧: 10px)',zorder:'前面/背面',zorderEnds:'最前面/最背面',
-      rotate:'回転 (15° / ノブdrag)',search:'検索',resizeRatio:'比率保持リサイズ'}},
+      rotate:'回転 (15° / ノブdrag)',search:'検索',resizeRatio:'比率保持リサイズ',resizeCenter:'中心固定リサイズ'}},
   en:{export:'Export',present:'Present',snap:'Snap',size:'Size',lineStyle:'Line',helpTitle:'Shortcuts',
     helpSub:'No need to memorise. You\'ll pick it up.',
     saved:'saved',savedNow:'just now',savedAgo:'s ago',
@@ -845,7 +845,7 @@ const I18N={
       save:'Save now',grid:'Toggle grid',esc:'Deselect / cancel',
       cycle:'Cycle shapes',create:'Create at centre',
       present:'Present',nudge:'Move (⇧: 10px)',zorder:'Front / back',zorderEnds:'To front / to back',
-      rotate:'Rotate (15° / knob drag)',search:'Search',resizeRatio:'Keep ratio (resize)'}}};
+      rotate:'Rotate (15° / knob drag)',search:'Search',resizeRatio:'Keep ratio (resize)',resizeCenter:'Resize from centre'}}};
 const LANG=(navigator.language||'en').startsWith('ja')?'ja':'en';
 const T=I18N[LANG];
 const t=k=>T[k]||I18N.en[k]||k;
@@ -1527,15 +1527,17 @@ function resizeSnap(orig,handle,wp){
     if(best){y=best.at;const xs=[orig.x,orig.x+orig.w,best.b.x,best.b.x+best.b.w];guides.push({x1:Math.min(...xs),y1:best.at,x2:Math.max(...xs),y2:best.at});}}
   return{x,y,guides};
 }
-// Apply resize given handle id, original shape, new world point, and Shift state.
-// Shift on a corner handle = lock the original aspect ratio (anchor = opposite corner).
-function applyResize(sh,handle,orig,wp,shift){
+// Apply resize given handle id, original shape, new world point, Shift and Alt state.
+// Shift on a corner = lock the original aspect ratio. Alt = resize about the original
+// centre (opposite edge mirrors). Shift+Alt = symmetric AND proportional.
+function applyResize(sh,handle,orig,wp,shift,alt){
   const corner=handle.length===2;                // nw/ne/se/sw
   const lock=shift&&corner&&orig.w>0&&orig.h>0;   // aspect-ratio lock
-  const os=lock?{x:wp.x,y:wp.y,guides:[]}:resizeSnap(orig,handle,wp); // lock overrides obj-snap
+  const os=(lock||alt)?{x:wp.x,y:wp.y,guides:[]}:resizeSnap(orig,handle,wp); // lock/alt override obj-snap
   state.guides=os.guides.length?os.guides:null;  // alignment guides during drag
   const sp=snapPt({x:os.x,y:os.y});              // grid-snap (grid on); identity otherwise
   const ox=orig.x,oy=orig.y,ow=orig.w,oh=orig.h;
+  const cx0=ox+ow/2,cy0=oy+oh/2;                  // original centre (Alt pivot)
   const clamp=4; // min size
   if(handle==='p1'){sh.x1=sp.x;sh.y1=sp.y;return}
   if(handle==='p2'){sh.x2=sp.x;sh.y2=sp.y;return}
@@ -1549,16 +1551,21 @@ function applyResize(sh,handle,orig,wp,shift){
     case 'sw':{const nx=Math.min(sp.x,ox+ow-clamp);sh.x=nx;sh.w=ox+ow-nx;sh.h=Math.max(clamp,sp.y-oy);break}
     case 'w': {const nx=Math.min(sp.x,ox+ow-clamp);sh.x=nx;sh.w=ox+ow-nx;break}
   }
+  if(alt){
+    // Mirror the dragged edge about the original centre (symmetric resize).
+    if(/[ew]/.test(handle)){const half=/e/.test(handle)?sh.x+sh.w-cx0:cx0-sh.x;sh.w=Math.max(clamp,2*half);sh.x=cx0-sh.w/2;}
+    if(/[ns]/.test(handle)){const half=/s/.test(handle)?sh.y+sh.h-cy0:cy0-sh.y;sh.h=Math.max(clamp,2*half);sh.y=cy0-sh.h/2;}
+  }
   if(lock){
     const a=ow/oh;                                // original aspect
     let w=sh.w,h=sh.h;
     if(w/ow>h/oh)h=w/a;else w=h*a;               // drive off the axis that moved more
     sh.w=Math.max(clamp,w);sh.h=Math.max(clamp,h);
-    // keep the corner opposite the dragged handle pinned
-    if(handle==='nw'){sh.x=ox+ow-sh.w;sh.y=oy+oh-sh.h;}
+    if(alt){sh.x=cx0-sh.w/2;sh.y=cy0-sh.h/2;}     // Alt: keep centre fixed
+    else if(handle==='nw'){sh.x=ox+ow-sh.w;sh.y=oy+oh-sh.h;}
     else if(handle==='ne'){sh.x=ox;sh.y=oy+oh-sh.h;}
     else if(handle==='sw'){sh.x=ox+ow-sh.w;sh.y=oy;}
-    else{sh.x=ox;sh.y=oy;}                        // se
+    else{sh.x=ox;sh.y=oy;}                        // se: pin opposite corner (top-left)
   }
 }
 // Cursor CSS for a handle id
@@ -1715,7 +1722,7 @@ canvas.addEventListener('pointermove',e=>{
         const rsh=byId([...state.selection][0]);
         if(rsh){
           Object.assign(rsh,clone(ptr.resizeOrig));
-          applyResize(rsh,ptr.resizeHandle,ptr.resizeOrig,wp,e.shiftKey);
+          applyResize(rsh,ptr.resizeHandle,ptr.resizeOrig,wp,e.shiftKey,e.altKey);
         }
         invalidate();
       }else if(ptr.dragKind==='rotate'){
@@ -3263,7 +3270,7 @@ const UI={
       ['↑↓←→',k.nudge],
       [']/[',k.zorder],['⇧]/⇧[',k.zorderEnds],
       [', / .',k.rotate],['⌘F',k.search],
-      ['⇧ + ⤡',k.resizeRatio],
+      ['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],
       ['Tab / ⇧Tab',k.cycle],['Enter',k.create]
     ];
     while(g.firstChild)g.removeChild(g.firstChild);

@@ -382,15 +382,17 @@ const checks = [
   ['minimap applies rotation transform', html.includes("const _mr=s.rotate&&s.w!=null;") && html.includes("if(_mr)mx.restore();")],
   ['describeShape announces locked and rotated state', html.includes("if(s.locked)d+=` ${t('ctxLock')}`;") && html.includes("if(s.rotate)d+=` ${s.rotate}°`;")],
   // v1.6.66: resize object-snap
-  ['resizeSnap exists and applyResize uses it', html.includes("function resizeSnap(orig,handle,wp)") && html.includes(":resizeSnap(orig,handle,wp); // lock overrides obj-snap")],
+  ['resizeSnap exists and applyResize uses it', html.includes("function resizeSnap(orig,handle,wp)") && html.includes(":resizeSnap(orig,handle,wp); // lock/alt override obj-snap")],
   ['resize commit clears alignment guides', html.includes("ptr.resizeHandle=null;ptr.resizeOrig=null;state.guides=null;")],
-  ['resize Shift locks aspect ratio on corners', html.includes("const lock=shift&&corner&&orig.w>0&&orig.h>0;") && html.includes("applyResize(rsh,ptr.resizeHandle,ptr.resizeOrig,wp,e.shiftKey);")],
+  ['resize Shift locks aspect ratio on corners', html.includes("const lock=shift&&corner&&orig.w>0&&orig.h>0;")],
   // v1.6.67: drag-to-rotate handle
   ['rotation handle helper + hit-test present', html.includes("function getRotHandle(s)") && html.includes("function hitRotHandle(wp,s)")],
   ['pointerdown enters rotate dragKind on knob hit', html.includes("const rh=hitRotHandle(wp,onlySel);") && html.includes("ptr.dragKind='rotate';")],
   ['rotate drag maps angle (knob-up=0°), Shift snaps 15°', html.includes("Math.atan2(wp.y-ptr.rotCy,wp.x-ptr.rotCx)*180/Math.PI+90") && html.includes("deg=Math.round(deg/15)*15;")],
   ['rotate commit records upd + announces angle', html.includes("ptr.dragKind==='rotate'") && html.includes("UI.toast(describeShape(rsh)); // SR announce new angle")],
   ['rotation knob drawn in drawSelection', html.includes("const rh=getRotHandle(sh);") && html.includes("ctx.arc(kp.x*DPR,kp.y*DPR,hs/2,0,PI2)")],
+  // v1.6.68: Alt resize-from-centre
+  ['Alt resizes about original centre', html.includes("function applyResize(sh,handle,orig,wp,shift,alt)") && html.includes("if(alt){sh.x=cx0-sh.w/2;sh.y=cy0-sh.h/2;}") && html.includes("applyResize(rsh,ptr.resizeHandle,ptr.resizeOrig,wp,e.shiftKey,e.altKey);")],
 ];
 
 let pass = 0, fail = 0;
@@ -1960,6 +1962,31 @@ try {
     assert.strictEqual(deg,90,'knob east of pivot maps to 90°');
     console.log('  ✓ rotation handle: knob geometry tracks rotation, excludes locked/point shapes');
   }
+  {
+    // v1.6.68: Alt = resize about the original centre (opposite edge mirrors)
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.snap=false;state.viewport={x:0,y:0,zoom:1};
+    const orig={id:'cz',type:'rect',x:100,y:100,w:100,h:100,stroke:'#000',size:1,opacity:1}; // centre (150,150)
+    // east handle + Alt: drag right edge to x=200 → half=50 → w=100... extend to x=250 → half=100
+    const sh={...orig};
+    applyResize(sh,'e',orig,{x:250,y:150},false,true);
+    assert.strictEqual(sh.w,200,'Alt east: width = 2×(edge−centre) = 200');
+    assert.strictEqual(sh.x,50,'Alt east: centre stays at 150 (x=50)');
+    assert.ok(Math.abs((sh.x+sh.w/2)-150)<1e-9,'Alt east: centre invariant');
+    assert.strictEqual(sh.h,100,'Alt east: height untouched');
+    // corner + Alt: both axes mirror about centre
+    const sh2={...orig};
+    applyResize(sh2,'se',orig,{x:250,y:250},false,true);
+    assert.ok(Math.abs((sh2.x+sh2.w/2)-150)<1e-9&&Math.abs((sh2.y+sh2.h/2)-150)<1e-9,'Alt corner: centre invariant on both axes');
+    assert.strictEqual(sh2.w,200,'Alt se: width mirrored');
+    assert.strictEqual(sh2.h,200,'Alt se: height mirrored');
+    // Shift+Alt: symmetric AND proportional (1:1 here)
+    const sh3={...orig};
+    applyResize(sh3,'se',orig,{x:300,y:200},true,true);
+    assert.ok(Math.abs(sh3.w-sh3.h)<1e-9,'Shift+Alt: aspect locked (square stays square)');
+    assert.ok(Math.abs((sh3.x+sh3.w/2)-150)<1e-9&&Math.abs((sh3.y+sh3.h/2)-150)<1e-9,'Shift+Alt: centre invariant');
+    console.log('  ✓ resize from centre: Alt mirrors about original centre; Shift+Alt stays proportional');
+  }
 
   // v1.6.58: rect/ellipse centre labels via upd op
   {
@@ -2094,7 +2121,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 262; // prev 254 + rotation-handle geometry behavioural (8 asserts)
+  pass += 271; // prev 262 + alt resize-from-centre behavioural (9 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

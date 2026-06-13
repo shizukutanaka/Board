@@ -4,7 +4,7 @@
 単一HTMLファイル。ダブルクリックで動く。アカウント不要。広告なし。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-00C4CC.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.6.67-00C4CC.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.6.68-00C4CC.svg)](CHANGELOG.md)
 [![Size](https://img.shields.io/badge/size-~45KB%20gzip-00C4CC.svg)](index.html)
 [![Offline](https://img.shields.io/badge/offline-first-00C4CC.svg)](#offline)
 [![A11y](https://img.shields.io/badge/WCAG-AAA-00C4CC.svg)](#accessibility)
@@ -55,7 +55,7 @@ start index.html      # Windows
 ### 編集
 - マーキー選択、Shift+クリックで加算選択
 - ドラッグ移動、キーボード移動、8 ハンドルでリサイズ (line/arrow は端点)。リサイズ中は近傍
-  シェイプの辺/中心へオブジェクトスナップ、角ハンドル + Shift で縦横比を保持
+  シェイプの辺/中心へオブジェクトスナップ、角ハンドル + Shift で縦横比を保持、Alt で中心固定リサイズ
 - グループ化 / 解除 (Ctrl+G / Ctrl+Shift+G)
 - 整列 (左右上下・中央・均等配置)、z 順序操作 (前面 / 背面 / 一段前後)
 - 左右反転 / 上下反転 (⇧H / ⇧V、選択 bbox 中心でミラー、可逆)

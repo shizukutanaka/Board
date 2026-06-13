@@ -2,6 +2,17 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.68] — 2026-06-13
+
+### Added
+- **中心固定リサイズ (Alt)**: リサイズ中に Alt を押すと、ドラッグした辺/角の反対側も対称に
+  動き、元の中心を固定したままサイズ変更。Shift+Alt で対称かつ比率保持。Alt 時はオブジェクト
+  スナップを抑止 (対称優先)。help grid に `⌥ + ⤡` を追加 (ja: 中心固定リサイズ / en:
+  Resize from centre)。
+
+### Tests
+- 569 assertions (+9 中心固定リサイズ 振る舞い, +1 presence)。
+
 ## [1.6.67] — 2026-06-13
 
 ### Added
