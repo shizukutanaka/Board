@@ -2,6 +2,30 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.62] — 2026-06-13
+
+ソクラテス問答監査の第 2 ラウンド: 新機能（回転・検索）が既存機能を静かに壊している
+相互作用の矛盾を発見し修正。
+
+### Fixed
+- **反転 + 回転の合成バグ**: `flipShape` が座標のみ反転し `rotate` を補正しないため、
+  回転シェイプの反転結果が視覚的に破綻していた。反転は角度の向きを反転させるため
+  `s.rotate=(360-s.rotate)%360` を適用(undo 可逆)。
+- **回転シェイプの誤解を招くリサイズハンドル**: ハンドルは未回転 bbox 角に描画され、
+  視覚的にシェイプから浮いて見えた。`getHandles` で回転中は `[]` を返し非表示に。
+- **検索 placeholder の i18n 漏れ**: ハードコードの `'Search / 検索'` を `t('search')` に。
+- **新機能の発見性**: 回転 (`,`/`.`) と検索 (Ctrl+F) をヘルプグリッドに追加。
+
+### Added
+- i18n キー `rotate` / `search` を ja/en 両方に追加。
+
+### Docs
+- `docs/architecture.md` に回転の既知の制約を明記(コネクタは包絡矩形接続・整列は
+  包絡矩形基準・回転中リサイズ不可)。予算 44KB 制約下での意図的トレードオフ。
+
+### Tests
+- 509 assertions。追加: flip+rotation 合成の振る舞いテスト + presence 6 件。
+
 ## [1.6.61] — 2026-06-13
 
 機能ギャップ監査の残り P3 項目: 回転とシェイプ検索を実装。

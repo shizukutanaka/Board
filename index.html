@@ -718,7 +718,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.61';
+const V='1.6.62';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -794,7 +794,8 @@ const I18N={
       fit:'画面にフィット',pan:'パン',help:'ヘルプ',exp:'PNG書き出し',
       save:'即時保存',grid:'グリッド',esc:'選択解除/キャンセル',
       cycle:'図形を巡回',create:'中央に作成',
-      present:'プレゼン',nudge:'移動 (⇧: 10px)',zorder:'前面/背面',zorderEnds:'最前面/最背面'}},
+      present:'プレゼン',nudge:'移動 (⇧: 10px)',zorder:'前面/背面',zorderEnds:'最前面/最背面',
+      rotate:'回転 (15°)',search:'検索'}},
   en:{export:'Export',present:'Present',snap:'Snap',size:'Size',lineStyle:'Line',helpTitle:'Shortcuts',
     helpSub:'No need to memorise. You\'ll pick it up.',
     saved:'saved',savedNow:'just now',savedAgo:'s ago',
@@ -842,7 +843,8 @@ const I18N={
       fit:'Fit to content',pan:'Pan',help:'Help',exp:'Export PNG',
       save:'Save now',grid:'Toggle grid',esc:'Deselect / cancel',
       cycle:'Cycle shapes',create:'Create at centre',
-      present:'Present',nudge:'Move (⇧: 10px)',zorder:'Front / back',zorderEnds:'To front / to back'}}};
+      present:'Present',nudge:'Move (⇧: 10px)',zorder:'Front / back',zorderEnds:'To front / to back',
+      rotate:'Rotate (15°)',search:'Search'}}};
 const LANG=(navigator.language||'en').startsWith('ja')?'ja':'en';
 const T=I18N[LANG];
 const t=k=>T[k]||I18N.en[k]||k;
@@ -1462,19 +1464,16 @@ function drawText(s,c){
   for(let i=0;i<lines.length;i++)c.fillText(lines[i],s.x,s.y+i*lh);
 }
 
-// ---- resize handle helpers ----
-// Returns world-space handle positions for a shape.
-// IDs: nw/n/ne/e/se/s/sw/w for box-shapes; p1/p2 for lines.
+// World-space resize handles: nw/n/ne/e/se/s/sw/w for boxes; p1/p2 for lines.
 function getHandles(s){
-  if(s.locked)return [];
+  if(s.locked||s.rotate)return [];
   if(s.type==='line'||s.type==='arrow'){
     const e=connEnds(s),h=[];   // bound endpoints follow their shape, so no drag handle
     if(!s.a)h.push({id:'p1',x:e.x1,y:e.y1});
     if(!s.b)h.push({id:'p2',x:e.x2,y:e.y2});
     return h;
   }
-  if(s.type==='pen')return [];   // freehand has no box handles; box-resize would
-                                 // set NaN x/y/w/h (pen geometry lives in pts). Move-only.
+  if(s.type==='pen')return []; // pen geometry lives in pts; box-resize would NaN it. Move-only.
   const b=G.bbox(s);
   const{x,y,w,h}=b;
   return[
@@ -2549,6 +2548,7 @@ function flipShape(s,axis,c){
     else if(s.y1!=null){s.y1=m(s.y1);s.y2=m(s.y2)}
     else s.y=m(s.y+s.h);
   }
+  if(s.rotate)s.rotate=(360-s.rotate)%360;
 }
 function doFlip(axis){
   const sel=[...state.selection].map(byId).filter(Boolean);
@@ -3167,6 +3167,7 @@ const UI={
       ['G',k.grid],['⇧G',t('snap')],['Esc',k.esc],['?',k.help],
       ['↑↓←→',k.nudge],
       [']/[',k.zorder],['⇧]/⇧[',k.zorderEnds],
+      [', / .',k.rotate],['⌘F',k.search],
       ['Tab / ⇧Tab',k.cycle],['Enter',k.create]
     ];
     while(g.firstChild)g.removeChild(g.firstChild);
@@ -3227,7 +3228,7 @@ const UI={
 
 // ====================== WIRE-UP ======================
 function wire(){
-  {const sq=document.createElement('input');sq.id='sqinput';sq.type='text';sq.placeholder='Search / 検索';sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--brand);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';document.body.appendChild(sq);sq.addEventListener('input',()=>{_sq=sq.value;invalidate()});sq.addEventListener('keydown',ev=>{if(ev.key==='Escape'){_sq='';sq.style.display='none';sq.value='';invalidate();}});}
+  {const sq=document.createElement('input');sq.id='sqinput';sq.type='text';sq.placeholder=t('search');sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--brand);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';document.body.appendChild(sq);sq.addEventListener('input',()=>{_sq=sq.value;invalidate()});sq.addEventListener('keydown',ev=>{if(ev.key==='Escape'){_sq='';sq.style.display='none';sq.value='';invalidate();}});}
   // tool buttons
   for(const b of document.querySelectorAll('.tool'))
     b.addEventListener('click',()=>pickTool(b.dataset.tool));

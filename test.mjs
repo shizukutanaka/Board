@@ -331,7 +331,7 @@ const checks = [
   ['laser dot drawn during presentation', html.includes("_laser&&Presentation.isActive()") && html.includes("rgba(255,50,50,.75)")],
   ['laser cleared on presentation leave and pointerleave', html.includes("_laser=null;_active=false") && html.includes("pointerleave")],
   ['doLock toggles locked via align op', html.includes("function doLock") && html.includes("op:'align',dir:'lock'")],
-  ['locked shapes have no resize handles', html.includes("if(s.locked)return [];")],
+  ['locked or rotated shapes have no resize handles', html.includes("if(s.locked||s.rotate)return [];")],
   ['doMove skips locked shapes', html.includes("if(!sh||sh.locked)continue")],
   ['endSelect move op filters out locked shapes', html.includes("filter(id=>!byId(id)?.locked)")],
   ['locked hover shows not-allowed cursor', html.includes("top.locked?'not-allowed':'move'")],
@@ -358,6 +358,12 @@ const checks = [
   ['search input DOM element created in wire()', html.includes("sq.id='sqinput'") && html.includes("sq.addEventListener('input'")],
   ['search highlight drawn in world space', html.includes("if(_sq){const q=_sq.toLowerCase()") && html.includes("ctx.strokeStyle='#F97316'")],
   ['Ctrl+F toggles search input', html.includes("meta&&k==='f'") && html.includes("sq.style.display")],
+  // v1.6.62: Socratic feature-interaction fixes
+  ['flip negates rotation angle (reflection reverses sense)', html.includes("if(s.rotate)s.rotate=(360-s.rotate)%360;")],
+  ['rotated shapes suppress resize handles', html.includes("if(s.locked||s.rotate)return [];")],
+  ['search placeholder uses i18n t(search)', html.includes("sq.placeholder=t('search')")],
+  ['rotate + search i18n keys in ja and en', html.includes("rotate:'回転 (15°)',search:'検索'") && html.includes("rotate:'Rotate (15°)',search:'Search'")],
+  ['help grid lists rotate and search shortcuts', html.includes("[', / .',k.rotate],['⌘F',k.search]")],
 ];
 
 let pass = 0, fail = 0;
@@ -1738,6 +1744,18 @@ try {
     assert.strictEqual(state.history.length,baseLen,'doFlip no-op on empty selection');
     console.log('  ✓ doFlip: empty selection is a safe no-op');
   }
+  {
+    // v1.6.62: flipping a rotated shape negates the rotation angle (reflection reverses sense)
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const r={id:'frr',type:'rect',z:1,x:0,y:0,w:100,h:60,rotate:30,stroke:'#000',size:2,opacity:1};
+    Store.commit({op:'add',shape:r});
+    state.selection=new Set([r.id]);
+    doFlip('h');
+    assert.strictEqual(state.shapes.find(s=>s.id===r.id).rotate,330,'flipH negates rotate 30°→330°');
+    Store.undo();
+    assert.strictEqual(state.shapes.find(s=>s.id===r.id).rotate,30,'flip undo restores rotate=30');
+    console.log('  ✓ doFlip + rotation: reflection negates the rotation angle, undo restores');
+  }
 
   // v1.6.58: rect/ellipse centre labels via upd op
   {
@@ -1872,7 +1890,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 231; // prev 230 + 1 rotation behavioural
+  pass += 232; // prev 231 + 1 flip+rotation behavioural
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
