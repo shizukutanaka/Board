@@ -382,8 +382,9 @@ const checks = [
   ['minimap applies rotation transform', html.includes("const _mr=s.rotate&&s.w!=null;") && html.includes("if(_mr)mx.restore();")],
   ['describeShape announces locked and rotated state', html.includes("if(s.locked)d+=` ${t('ctxLock')}`;") && html.includes("if(s.rotate)d+=` ${s.rotate}°`;")],
   // v1.6.66: resize object-snap
-  ['resizeSnap exists and applyResize uses it', html.includes("function resizeSnap(orig,handle,wp)") && html.includes("const os=resizeSnap(orig,handle,wp);")],
+  ['resizeSnap exists and applyResize uses it', html.includes("function resizeSnap(orig,handle,wp)") && html.includes(":resizeSnap(orig,handle,wp); // lock overrides obj-snap")],
   ['resize commit clears alignment guides', html.includes("ptr.resizeHandle=null;ptr.resizeOrig=null;state.guides=null;")],
+  ['resize Shift locks aspect ratio on corners', html.includes("const lock=shift&&corner&&orig.w>0&&orig.h>0;") && html.includes("applyResize(rsh,ptr.resizeHandle,ptr.resizeOrig,wp,e.shiftKey);")],
 ];
 
 let pass = 0, fail = 0;
@@ -1901,6 +1902,33 @@ try {
     assert.strictEqual(resizeSnap(me,'p2',{x:195,y:50}).x,195,'line endpoint handles are not box-snapped');
     console.log('  ✓ resize object-snap: edges snap to nearby shapes, guides emitted, grid/rotate/line bypass');
   }
+  {
+    // v1.6.66: Shift on a corner handle locks the original aspect ratio
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.snap=false;state.viewport={x:0,y:0,zoom:1};
+    const orig={id:'ar',type:'rect',x:0,y:0,w:100,h:50,stroke:'#000',size:1,opacity:1}; // 2:1
+    // se handle dragged to (300,300); without lock that's 300x300, with lock aspect stays 2:1
+    const sh={...orig};
+    applyResize(sh,'se',orig,{x:300,y:300},true);
+    assert.ok(Math.abs(sh.w/sh.h-2)<1e-6,'aspect ratio preserved (2:1) under Shift');
+    assert.strictEqual(sh.x,0,'se anchor: top-left pinned (x)');
+    assert.strictEqual(sh.y,0,'se anchor: top-left pinned (y)');
+    // nw handle: opposite (se) corner stays pinned at (100,50)
+    const sh2={...orig};
+    applyResize(sh2,'nw',orig,{x:-100,y:-100},true);
+    assert.ok(Math.abs(sh2.w/sh2.h-2)<1e-6,'nw aspect ratio preserved');
+    assert.ok(Math.abs((sh2.x+sh2.w)-100)<1e-6,'nw anchor: se corner pinned (x)');
+    assert.ok(Math.abs((sh2.y+sh2.h)-50)<1e-6,'nw anchor: se corner pinned (y)');
+    // without Shift, free resize (no aspect constraint)
+    const sh3={...orig};
+    applyResize(sh3,'se',orig,{x:300,y:300},false);
+    assert.ok(Math.abs(sh3.w-300)<1e-6&&Math.abs(sh3.h-300)<1e-6,'no Shift → free resize');
+    // edge handles ignore Shift (only corners lock aspect)
+    const sh4={...orig};
+    applyResize(sh4,'e',orig,{x:300,y:0},true);
+    assert.strictEqual(sh4.h,50,'edge handle height unchanged by Shift');
+    console.log('  ✓ resize aspect-lock: Shift on corner preserves ratio with opposite corner pinned');
+  }
 
   // v1.6.58: rect/ellipse centre labels via upd op
   {
@@ -2035,7 +2063,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 245; // prev 239 + resize object-snap behavioural (6 asserts)
+  pass += 254; // prev 245 + resize aspect-lock behavioural (9 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

@@ -10,10 +10,12 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
   スナップし、整列ガイドを表示。グリッドスナップ ON 時は従来通りグリッド優先 (排他)、回転
   シェイプと線端点 (p1/p2) はスキップ。コミット時にガイドをクリア。これで spec §13 の
   「リサイズ時のオブジェクトスナップ」将来課題を解消。
+- **比率保持リサイズ (Shift)**: 角ハンドルを Shift 押下でドラッグすると元の縦横比を維持
+  (対角のコーナーを固定)。動いた方の軸を基準に他軸を従動。Shift 時はオブジェクトスナップを
+  抑止 (比率優先)。辺ハンドルは影響なし。help grid に `⇧ + ⤡` を追加 (ja/en)。
 
 ### Tests
-- 536 assertions (+6 振る舞い: east-resize スナップ・ガイド発火・遠距離無スナップ・
-  グリッド/回転/線端点バイパス、+2 presence)。
+- 546 assertions (+6 obj-snap, +9 aspect-lock 振る舞い, +3 presence)。
 
 ## [1.6.65] — 2026-06-13
 
