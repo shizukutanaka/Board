@@ -372,9 +372,15 @@ const checks = [
   ['search input has aria-label', html.includes("sq.setAttribute('aria-label',t('search'))")],
   ['search Escape returns focus to canvas', html.includes("invalidate();canvas.focus();}});}")],
   // v1.6.64: Socratic round 4 — rotation scope + lock completeness
-  ['doRotate restricted to rect/ellipse (NaN-safe)', html.includes("s.type==='rect'||s.type==='ellipse'))")],
+  ['doRotate restricted to box shapes (s.w!=null, NaN-safe)', html.includes("filter(s=>s&&!s.locked&&s.w!=null)")],
   ['doDelete skips locked shapes', html.includes("function doDelete(){\n  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);")],
   ['eraser skips locked shapes', html.includes("if(hit&&!hit.locked&&!_eraseBatch.some")],
+  // v1.6.65: budget removed — deferred fixes implemented
+  ['_edgePt is rotation-aware (projects to true rotated edge)', html.includes("const ub=sh.w!=null?{x:sh.x,y:sh.y,w:sh.w,h:sh.h}:G.bbox(sh)") && html.includes("const cx=ub.x+ub.w/2,cy=ub.y+ub.h/2,rot=sh.rotate")],
+  ['rotation extends to all box types (text bbox uses envelope)', !html.includes("if(s.type==='text'){\n      return{x:s.x,y:s.y,w:s.w,h:s.h};")],
+  ['SVG rotation applies to text/image/sticky/frame', html.includes("font-size=\"${fs}\" fill=\"${stroke}\"${a}${rT}>") && html.includes("href=\"${_esc(s.dataUrl)}\"${a}${rT}/>")],
+  ['minimap applies rotation transform', html.includes("const _mr=s.rotate&&s.w!=null;") && html.includes("if(_mr)mx.restore();")],
+  ['describeShape announces locked and rotated state', html.includes("if(s.locked)d+=` ${t('ctxLock')}`;") && html.includes("if(s.rotate)d+=` ${s.rotate}°`;")],
 ];
 
 let pass = 0, fail = 0;
@@ -1826,6 +1832,45 @@ try {
     assert.ok(!state.shapes.find(s=>s.id===fr.id),'unlocked shape in same selection is deleted');
     console.log('  ✓ lock + delete: locked shapes are protected, unlocked siblings still delete');
   }
+  {
+    // v1.6.65: rotation now covers all box types (sticky/text/image/frame), not just rect/ellipse
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const st={id:'rst',type:'sticky',z:1,x:0,y:0,w:100,h:60,color:'#FEF08A',size:1,opacity:1};
+    Store.commit({op:'add',shape:st});
+    state.selection=new Set([st.id]);
+    doRotate(90);
+    const s2=state.shapes.find(s=>s.id===st.id);
+    assert.strictEqual(s2.rotate,90,'sticky rotates (box-type expansion)');
+    const bb=G.bbox(s2);
+    assert.ok(Math.abs(bb.w-60)<1&&Math.abs(bb.h-100)<1,'rotated sticky bbox is the 90° envelope (w/h swapped)');
+    console.log('  ✓ rotation scope: extends to sticky/text/image/frame (box types), bbox envelope tracks');
+  }
+  {
+    // v1.6.65: connector bound to a rotated shape projects to the TRUE rotated edge,
+    // not the axis-aligned envelope. A 45°-rotated square's corner pokes past x=100.
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const sq={id:'csq',type:'rect',z:1,x:0,y:0,w:100,h:100,fill:'#eee',stroke:'#000',size:2,opacity:1};
+    const ar={id:'car',type:'arrow',z:2,a:sq.id,x1:50,y1:50,x2:200,y2:50,stroke:'#000',size:2,opacity:1};
+    Store.commit({op:'add',shape:sq});Store.commit({op:'add',shape:ar});
+    const eUnrot=connEnds(state.shapes.find(s=>s.id===ar.id));
+    assert.ok(Math.abs(eUnrot.x1-100)<0.5,'unrotated: east-aimed connector exits the right edge at x=100');
+    state.shapes.find(s=>s.id===sq.id).rotate=45;
+    const eRot=connEnds(state.shapes.find(s=>s.id===ar.id));
+    assert.ok(eRot.x1>110,'rotated 45°: connector exits the rotated corner past x=110 (true edge, not envelope)');
+    assert.ok(Math.abs(eRot.y1-50)<0.5,'rotated edge point stays on the centre line by symmetry');
+    console.log('  ✓ connector + rotation: endpoint projects to the true rotated edge, not the bbox envelope');
+  }
+  {
+    // v1.6.65: describeShape announces locked + rotated state for screen readers
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const plain={id:'dp',type:'rect',z:1,x:10,y:20,w:30,h:30,stroke:'#000',size:2,opacity:1};
+    const lr={id:'dlr',type:'rect',z:2,x:10,y:20,w:30,h:30,locked:true,rotate:45,stroke:'#000',size:2,opacity:1};
+    const d0=describeShape(plain),d1=describeShape(lr);
+    assert.ok(!d0.includes('°'),'plain shape description has no rotation marker');
+    assert.ok(d1.includes('45°'),'rotated shape description includes the angle');
+    assert.ok(d1.length>d0.length,'locked+rotated description is richer than plain');
+    console.log('  ✓ describeShape: announces locked + rotated state to screen readers');
+  }
 
   // v1.6.58: rect/ellipse centre labels via upd op
   {
@@ -1960,7 +2005,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 236; // prev 234 + rotation-scope + lock-delete behavioural
+  pass += 239; // prev 236 + sticky-rotate + connector-rotated-edge + describeShape behavioural
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

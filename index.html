@@ -718,7 +718,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.64';
+const V='1.6.65';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -894,9 +894,6 @@ const G={
       for(const [x,y] of s.pts){if(x<mnx)mnx=x;if(y<mny)mny=y;if(x>mxx)mxx=x;if(y>mxy)mxy=y}
       const p=(s.size||1)/2;
       return{x:mnx-p,y:mny-p,w:mxx-mnx+2*p,h:mxy-mny+2*p};
-    }
-    if(s.type==='text'){
-      return{x:s.x,y:s.y,w:s.w,h:s.h};
     }
     if(s.type==='line'||s.type==='arrow'){
       const e=connEnds(s);
@@ -1134,11 +1131,19 @@ function byId(id){return state.shapes.find(s=>s.id===id)}
 function clone(o){return JSON.parse(JSON.stringify(o))}
 // Bound connectors: line/arrow endpoints (s.a/s.b = shape id) derive from the bound
 // shape's edge at render/hit/export, so the connector follows. Stored coords = fallback.
-function _edgePt(b,fx,fy){
-  const cx=b.x+b.w/2,cy=b.y+b.h/2,dx=fx-cx,dy=fy-cy;
+// Where a ray from shape centre toward (fx,fy) exits the shape's true edge.
+// Rotation-aware: projects onto the UNROTATED box, then rotates the hit back to world.
+function _edgePt(sh,fx,fy){
+  const ub=sh.w!=null?{x:sh.x,y:sh.y,w:sh.w,h:sh.h}:G.bbox(sh); // unrotated box
+  const cx=ub.x+ub.w/2,cy=ub.y+ub.h/2,rot=sh.rotate;
+  let px=fx,py=fy;
+  if(rot){const a=-rot*Math.PI/180,c=Math.cos(a),sn=Math.sin(a),dx=fx-cx,dy=fy-cy;px=cx+dx*c-dy*sn;py=cy+dx*sn+dy*c;}
+  const dx=px-cx,dy=py-cy;
   if(!dx&&!dy)return{x:cx,y:cy};
-  const k=Math.min(Math.abs(dx)>1e-6?(b.w/2)/Math.abs(dx):1e9,Math.abs(dy)>1e-6?(b.h/2)/Math.abs(dy):1e9);
-  return{x:cx+dx*k,y:cy+dy*k};
+  const k=Math.min(Math.abs(dx)>1e-6?(ub.w/2)/Math.abs(dx):1e9,Math.abs(dy)>1e-6?(ub.h/2)/Math.abs(dy):1e9);
+  let ex=cx+dx*k,ey=cy+dy*k;
+  if(rot){const a=rot*Math.PI/180,c=Math.cos(a),sn=Math.sin(a),dX=ex-cx,dY=ey-cy;ex=cx+dX*c-dY*sn;ey=cy+dX*sn+dY*c;}
+  return{x:ex,y:ey};
 }
 function connEnds(s){
   if(!s.a&&!s.b)return s;
@@ -1146,8 +1151,8 @@ function connEnds(s){
   const ba=a&&G.bbox(a),bb=b&&G.bbox(b);
   const ac=ba?{x:ba.x+ba.w/2,y:ba.y+ba.h/2}:{x:s.x1,y:s.y1};
   const bc=bb?{x:bb.x+bb.w/2,y:bb.y+bb.h/2}:{x:s.x2,y:s.y2};
-  const p1=ba?_edgePt(ba,bc.x,bc.y):{x:s.x1,y:s.y1};
-  const p2=bb?_edgePt(bb,ac.x,ac.y):{x:s.x2,y:s.y2};
+  const p1=a?_edgePt(a,bc.x,bc.y):{x:s.x1,y:s.y1};
+  const p2=b?_edgePt(b,ac.x,ac.y):{x:s.x2,y:s.y2};
   return{x1:p1.x,y1:p1.y,x2:p2.x,y2:p2.y};
 }
 function sortZ(){state.shapes.sort((a,b)=>(a.z||0)-(b.z||0))}
@@ -1228,7 +1233,10 @@ function centerOn(sh){
 function describeShape(s){
   const b=G.bbox(s);
   const nm=T.k?.[s.type]??s.type;
-  return `${nm} @ ${Math.round(b.x)},${Math.round(b.y)}`;
+  let d=`${nm} @ ${Math.round(b.x)},${Math.round(b.y)}`;
+  if(s.locked)d+=` ${t('ctxLock')}`;
+  if(s.rotate)d+=` ${s.rotate}°`;
+  return d;
 }
 function draw(){
   const W=canvas.width,H=canvas.height;
@@ -2567,8 +2575,8 @@ function doLock(){
   invalidate();Persist.schedule();
 }
 function doRotate(d){
-  // rect/ellipse only: pen/line/arrow have no box centre (rotation → NaN).
-  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked&&(s.type==='rect'||s.type==='ellipse'));
+  // Box shapes only (s.w defined): pen/line/arrow are point geometry with no box centre.
+  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked&&s.w!=null);
   if(!sel.length)return;
   const bb=G.bboxAll(sel),gx=bb.x+bb.w/2,gy=bb.y+bb.h/2; // orbit about group centre, like doFlip
   const r=d*Math.PI/180,cs=Math.cos(r),sn=Math.sin(r);
@@ -2727,26 +2735,26 @@ function buildSVG(shapes,paper){
       case 'text':{
         const fs=_num(s.fontSize)||16;
         const svgLines=String(s.text==null?'':s.text).split('\n');
-        els.push(`<text x="${X+ox}" y="${Y+oy+fs}" font-family="Hiragino Sans,Helvetica Neue,system-ui,sans-serif" font-size="${fs}" fill="${stroke}"${a}>`);
+        els.push(`<text x="${X+ox}" y="${Y+oy+fs}" font-family="Hiragino Sans,Helvetica Neue,system-ui,sans-serif" font-size="${fs}" fill="${stroke}"${a}${rT}>`);
         for(let i=0;i<svgLines.length;i++)els.push(`<tspan x="${X+ox}" dy="${i?fs*1.25:0}">${_esc(svgLines[i])}</tspan>`);
         els.push('</text>');break;}
       case 'image':
-        if(typeof s.dataUrl==='string'&&/^data:image\//.test(s.dataUrl))els.push(`<image x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" href="${_esc(s.dataUrl)}"${a}/>`);
+        if(typeof s.dataUrl==='string'&&/^data:image\//.test(s.dataUrl))els.push(`<image x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" href="${_esc(s.dataUrl)}"${a}${rT}/>`);
         break;
       case 'frame':{
         const fr=Math.min(4,W/10,H/10);
         const clr=_esc(s.stroke||'#00C4CC');
-        els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${fr}" fill="rgba(248,250,252,0.6)" stroke="${clr}" stroke-width="${SZ||1.5}"${a}/>`);
-        if(s.label)els.push(`<text x="${X+ox+6}" y="${Y+oy-4}" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="${clr}">${_esc(s.label)}</text>`);
+        els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${fr}" fill="rgba(248,250,252,0.6)" stroke="${clr}" stroke-width="${SZ||1.5}"${a}${rT}/>`);
+        if(s.label)els.push(`<text x="${X+ox+6}" y="${Y+oy-4}" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="${clr}"${rT}>${_esc(s.label)}</text>`);
         break;}
       case 'sticky':{
         const r=Math.min(6,Math.abs(W)/6,Math.abs(H)/6);
-        els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}" fill="${_esc(s.color||'#FEF08A')}" stroke="rgba(0,0,0,.06)"/>`);
+        els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}" fill="${_esc(s.color||'#FEF08A')}" stroke="rgba(0,0,0,.06)"${rT}/>`);
         if(s.text){
           const fs=_num(s.fontSize)||14;const pad2=8;
           // estimate measure (no canvas here); wraps to the same box as the app
           const lines2=wrapText(s.text,Math.abs(W)-pad2*2,t=>t.length*fs*0.6);
-          els.push(`<text x="${X+ox+pad2}" y="${Y+oy+pad2+fs}" font-family="Hiragino Sans,Helvetica Neue,system-ui,sans-serif" font-size="${fs}" fill="#1E293B">`);
+          els.push(`<text x="${X+ox+pad2}" y="${Y+oy+pad2+fs}" font-family="Hiragino Sans,Helvetica Neue,system-ui,sans-serif" font-size="${fs}" fill="#1E293B"${rT}>`);
           for(let i=0;i<lines2.length;i++)els.push(`<tspan x="${X+ox+pad2}" dy="${i?fs*1.3:0}">${_esc(lines2[i])}</tspan>`);
           els.push('</text>');
         }break;}
@@ -3495,6 +3503,8 @@ const Minimap=(()=>{
       mx.fillStyle=s.fill||'transparent';
       mx.strokeStyle=s.stroke||getCSS('--ink');
       mx.lineWidth=Math.max(0.5,(s.size||1)*sc);
+      const _mr=s.rotate&&s.w!=null;
+      if(_mr){const ccx=(s.x+s.w/2)*sc+ox,ccy=(s.y+s.h/2)*sc+oy;mx.save();mx.translate(ccx,ccy);mx.rotate(s.rotate*Math.PI/180);mx.translate(-ccx,-ccy);}
       switch(s.type){
         case 'rect':{const rx=s.x*sc+ox,ry=s.y*sc+oy,rw=s.w*sc,rh=s.h*sc;if(s.fill)mx.fillRect(rx,ry,rw,rh);mx.strokeRect(rx,ry,rw,rh);break}
         case 'ellipse':mx.beginPath();mx.ellipse(s.x*sc+ox+s.w*sc/2,s.y*sc+oy+s.h*sc/2,Math.abs(s.w*sc/2),Math.abs(s.h*sc/2),0,0,Math.PI*2);if(s.fill)mx.fill();mx.stroke();break;
@@ -3503,6 +3513,7 @@ const Minimap=(()=>{
         case 'text':case 'sticky':{const rx2=s.x*sc+ox,ry2=s.y*sc+oy,rw2=Math.max(2,s.w*sc),rh2=Math.max(2,s.h*sc);mx.fillStyle=s.type==='sticky'?(s.color||'#FEF08A'):(s.fill||getCSS('--brand'));mx.fillRect(rx2,ry2,rw2,rh2);break}
         case 'image':{const rx3=s.x*sc+ox,ry3=s.y*sc+oy,rw3=Math.max(2,s.w*sc),rh3=Math.max(2,s.h*sc);const img=_imgCache.get(s.dataUrl);if(img&&img.complete&&img.naturalWidth)mx.drawImage(img,rx3,ry3,rw3,rh3);else{mx.fillStyle='#CBD5E1';mx.fillRect(rx3,ry3,rw3,rh3)}break}
       }
+      if(_mr)mx.restore();
     }
     mx.globalAlpha=1;
     const vp=state.viewport,cW=window.innerWidth,cH=window.innerHeight;

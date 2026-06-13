@@ -2,6 +2,29 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.65] — 2026-06-13
+
+44KB gzip 予算の撤去後、予算の壁で据え置いていた実改善を全実装。
+
+### Added / Fixed
+- **回転を全 box 型へ拡張**: rect/ellipse に加え sticky/text/image/frame も回転可能に
+  (`doRotate` フィルタを `s.w!=null` に)。pen/line/arrow は点ジオメトリのため引き続き除外。
+- **コネクタの実エッジ投影**: `_edgePt` を回転対応に。束縛シェイプが回転していても、
+  包絡矩形ではなく**実際の回転エッジ**へ端点を投影 (対象点を逆回転 → エッジ計算 → 順回転)。
+- **text の bbox 回転包絡**: text の早期 return を撤去し、回転時に包絡矩形を返すように
+  (選択枠・エクスポートクロップが回転 text を正しく含む)。
+- **SVG 回転の全型対応**: text/image/sticky/frame に `transform="rotate(...)"` を適用。
+- **ミニマップ回転**: ミニマップの各 box シェイプに回転変換を適用 (本体描画と一致)。
+- **describeShape の a11y**: Tab 巡回時の SR アナウンスにロック状態 (`ctxLock`) と回転角
+  (`45°`) を追加。
+
+### Changed
+- gzip サイズ 44,964B → 45,350B (予算撤去済み、raw 153KB は 512KB 上限内)。
+
+### Tests
+- 528 assertions。追加: sticky 回転・回転コネクタ実エッジ・describeShape a11y の
+  振る舞いテスト + presence 5 件。
+
 ## [1.6.64] — 2026-06-13
 
 ソクラテス問答監査の第 4 ラウンド: 回転・ロック(新機能)が、それ以前に書かれた
