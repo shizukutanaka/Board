@@ -718,7 +718,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.60';
+const V='1.6.61';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -884,10 +884,8 @@ let DPR=Math.max(1,Math.min(3,window.devicePixelRatio||1));
 // ====================== GEOM ======================
 // Pure functions. Deterministic. No state mutation.
 const G={
-  // world ↔ screen
   w2s(p){const v=state.viewport;return{x:(p.x-v.x)*v.zoom,y:(p.y-v.y)*v.zoom}},
   s2w(p){const v=state.viewport;return{x:p.x/v.zoom+v.x,y:p.y/v.zoom+v.y}},
-  // bbox of a single shape, in world
   bbox(s){
     if(s.type==='pen'){
       let mnx=Infinity,mny=Infinity,mxx=-Infinity,mxy=-Infinity;
@@ -904,8 +902,9 @@ const G={
       const p=(s.size||1)/2+(s.type==='arrow'?s.size*3:0);
       return{x:x-p,y:y-p,w:Math.abs(e.x2-e.x1)+2*p,h:Math.abs(e.y2-e.y1)+2*p};
     }
-    // rect / ellipse
-    return{x:s.x,y:s.y,w:s.w,h:s.h};
+    const _rb={x:s.x,y:s.y,w:s.w,h:s.h};
+    if(s.rotate){const _cx=_rb.x+_rb.w/2,_cy=_rb.y+_rb.h/2,_r=s.rotate*Math.PI/180,_c=Math.abs(Math.cos(_r)),_si=Math.abs(Math.sin(_r)),_hw=_rb.w/2,_hh=_rb.h/2,_nw=_hw*_c+_hh*_si,_nh=_hw*_si+_hh*_c;return{x:_cx-_nw,y:_cy-_nh,w:2*_nw,h:2*_nh};}
+    return _rb;
   },
   bboxAll(shapes){
     if(!shapes.length)return null;
@@ -915,10 +914,9 @@ const G={
       if(b.x+b.w>mxx)mxx=b.x+b.w;if(b.y+b.h>mxy)mxy=b.y+b.h;}
     return{x:mnx,y:mny,w:mxx-mnx,h:mxy-mny};
   },
-  // hit test (world point)
   hit(s,p){
+    if(s.rotate){const _cx=s.x+(s.w||0)/2,_cy=s.y+(s.h||0)/2,_r=-s.rotate*Math.PI/180,_c=Math.cos(_r),_si=Math.sin(_r),_dx=p.x-_cx,_dy=p.y-_cy;p={x:_cx+_dx*_c-_dy*_si,y:_cy+_dx*_si+_dy*_c};}
     const b=G.bbox(s);
-    // quick reject using bbox + tolerance
     const tol=Math.max(6/state.viewport.zoom,(s.size||0)/2);
     if(p.x<b.x-tol||p.y<b.y-tol||p.x>b.x+b.w+tol||p.y>b.y+b.h+tol)return false;
     switch(s.type){
@@ -947,7 +945,6 @@ const G={
         return p.x>=s.x-tol&&p.y>=s.y-tol&&p.x<=s.x+s.w+tol&&p.y<=s.y+s.h+tol;
     }return false;
   },
-  // marquee test: world rect fully contains the shape's bbox
   marqueeHit(s,r){
     const b=G.bbox(s);
     return b.x>=r.x&&b.y>=r.y&&b.x+b.w<=r.x+r.w&&b.y+b.h<=r.y+r.h;
@@ -1016,8 +1013,7 @@ const Store={
     Persist.schedule();
     if(op.clock.peer===state.peerId)Net.broadcast(op);   // outbound only
   },
-  // Apply remote op: dedup by clock, NOT in local undo stack.
-  // REMOTE_OPS allow-list guards type; validRemotePayload checks payload.
+  // Apply remote op: dedup by clock; REMOTE_OPS allow-list + validRemotePayload guard.
   REMOTE_OPS:new Set(['add','del','upd','move','clear','group','ungroup','zorder','align','style']),
   applyRemote(op){
     if(!op||!op.clock||!this.REMOTE_OPS.has(op.op))return;
@@ -1240,23 +1236,18 @@ function draw(){
   const bg=getCSS('--paper');
   ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
 
-  // transform: screen = (world - vp) * zoom * DPR
   const v=state.viewport;
   ctx.setTransform(v.zoom*DPR,0,0,v.zoom*DPR,-v.x*v.zoom*DPR,-v.y*v.zoom*DPR);
 
   if(state.showGrid)drawGrid(W,H);
 
-  // Viewport culling: skip shapes whose bbox is fully outside the visible world.
-  // Big win on large/scattered boards; no-op when everything is on screen.
   const _view=visibleWorldRect();
-  // Frames first (background layer)
   for(const s of state.shapes){if(s.type==='frame'&&inView(s,_view))drawShape(s)}
   for(const s of state.shapes){if(s.type!=='frame'&&inView(s,_view))drawShape(s)}
   if(state.draft)drawShape(state.draft);
+  if(_sq){const q=_sq.toLowerCase();ctx.strokeStyle='#F97316';ctx.lineWidth=3/state.viewport.zoom;ctx.setLineDash([]);for(const s of state.shapes){if(!(s.label||s.text||s.type||'').toLowerCase().includes(q))continue;const b=G.bbox(s);ctx.strokeRect(b.x,b.y,b.w,b.h);}}
 
-  // selection overlay in screen space
   ctx.setTransform(DPR,0,0,DPR,0,0);
-  // Draw group bounding boxes
   const _gmap=new Map();
   for(const s of state.shapes){if(s.groupId){if(!_gmap.has(s.groupId))_gmap.set(s.groupId,[]);_gmap.get(s.groupId).push(s)}}
   for(const[,members] of _gmap){
@@ -1287,8 +1278,7 @@ function drawGrid(W,H){
   const v=state.viewport;
   const gs=GRID_SIZE;
   const gsZ=gs*v.zoom*DPR;
-  if(gsZ<6)return;              // too dense, skip
-  // visible world rect
+  if(gsZ<6)return;
   const wl=v.x, wt=v.y;
   const wr=wl+W/(v.zoom*DPR), wb=wt+H/(v.zoom*DPR);
   const x0=Math.floor(wl/gs)*gs, y0=Math.floor(wt/gs)*gs;
@@ -1309,9 +1299,10 @@ function drawShape(s,c){
   c.lineCap='round';c.lineJoin='round';
   c.strokeStyle=s.stroke||'#0F172A';
   c.lineWidth=s.size||1;
-  // Line style (solid/dashed/dotted) for outline shapes; frames stay solid.
   c.setLineDash((s.dash&&(s.type==='rect'||s.type==='ellipse'||s.type==='line'||s.type==='arrow'))?dashArr(s.dash,s.size):[]);
   if(s.fill){c.fillStyle=s.fill}
+  const _rot=s.rotate;
+  if(_rot){const _cx=s.x+(s.w||0)/2,_cy=s.y+(s.h||0)/2;c.save();c.translate(_cx,_cy);c.rotate(_rot*Math.PI/180);c.translate(-_cx,-_cy);}
   switch(s.type){
     case 'rect':
       c.beginPath();
@@ -1386,6 +1377,7 @@ function drawShape(s,c){
   }
   c.globalAlpha=1;
   c.setLineDash([]);
+  if(_rot)c.restore();
 }
 // Dash pattern (world units, scaled by stroke size). dash: 1=dashed, 2=dotted.
 function dashArr(dash,size){const s=Math.max(1,size||1);return dash===2?[s*0.5,s*2]:dash===1?[s*3,s*2.5]:[]}
@@ -1537,10 +1529,7 @@ function drawSelection(){
   ctx.lineWidth=1.5;ctx.setLineDash(lockedSel?[5*DPR,4*DPR]:[]);
   ctx.strokeRect(x-1,y-1,w+2,h+2);
   ctx.setLineDash([]);
-  // Locked shapes: no handles, dashed outline already signals state.
   if(lockedSel)return;
-
-  // Functional resize handles for single selection
   if(state.selection.size===1){
     const sh=sel[0];
     const hs=HANDLE_SIZE*DPR;
@@ -1580,6 +1569,7 @@ function drawMarquee(){
 // One pointer-down starts a tool gesture. Movement accumulates.
 // Pointerup commits (add/move/etc) into Store.commit.
 let _laser=null;
+let _sq='';
 let ptr={down:false,x:0,y:0,x0:0,y0:0,wx:0,wy:0,wx0:0,wy0:0,
   panning:false,dragKind:null,dragStartShapes:null};
 
@@ -1910,8 +1900,6 @@ function _queryGrid(grid,pt){
 }
 // ---- select tool ----
 function pickTop(wp){
-  // Walk backwards (highest z first). Skip frames on first pass
-  // so shapes inside a frame are always preferred over the frame itself.
   if(state.shapes.length>40){
     if(!_grid)_grid=_buildGrid(state.shapes);
     const cands=_queryGrid(_grid,wp);
@@ -1924,7 +1912,6 @@ function pickTop(wp){
     if(s.type==='frame')continue;
     if(G.hit(s,wp))return s;
   }
-  // Second pass: only frames
   for(let i=state.shapes.length-1;i>=0;i--){
     const s=state.shapes[i];
     if(s.type==='frame'&&G.hit(s,wp))return s;
@@ -2043,8 +2030,7 @@ function contPen(wp,e){
   if(d>1/state.viewport.zoom)pts.push([wp.x,wp.y,_penPr(e)]);
   invalidate();
 }
-// Ramer-Douglas-Peucker decimation for pen point arrays [[x,y,p?],…].
-// Preserves pressure on retained points. eps in world units.
+// RDP decimation for pen pts [[x,y,p?],…]; keeps pressure, eps in world units.
 function _rdp(pts,eps){
   if(pts.length<=2)return pts;
   const [ax,ay]=pts[0],[bx,by]=pts[pts.length-1];
@@ -2371,6 +2357,9 @@ window.addEventListener('keydown',e=>{
   else if(k==='g'&&!meta){state.showGrid=!state.showGrid;invalidate();UI.toast(`${t('grid')} ${state.showGrid?t('on'):t('off')}`)}
   else if(e.shiftKey&&k==='1'){e.preventDefault();fitToContent()}
   else if(e.shiftKey&&!meta&&!e.altKey&&(k==='h'||k==='v')&&state.selection.size){e.preventDefault();doFlip(k)}
+  else if(k===','&&!meta&&state.selection.size){e.preventDefault();doRotate(-15)}
+  else if(k==='.'&&!meta&&state.selection.size){e.preventDefault();doRotate(15)}
+  else if(meta&&k==='f'){e.preventDefault();const sq=document.getElementById('sqinput');if(sq){sq.style.display=sq.style.display==='none'?'block':'none';if(sq.style.display!=='none'){sq.focus();sq.select();}else{_sq='';invalidate();}}}
   else if(!meta&&KEYMAP[k]){pickTool(KEYMAP[k])}
   else if(k===' '&&!meta){e.preventDefault();pickTool('hand',true)}
 });
@@ -2433,8 +2422,7 @@ function doDelete(){
   state.selection.clear();
   UI.toast(t('deleted')+' '+sel.length);
 }
-// z-order ops snapshot every shape's z so they record a reversible `zorder` op
-// (before/after) and broadcast to peers. Empty/no-op changes are not committed.
+// z-order ops snapshot every shape's z → reversible `zorder` op (before/after), broadcast.
 function _zSnapshot(){return state.shapes.map(s=>({id:s.id,z:s.z||0}))}
 function _commitZ(before){
   const after=_zSnapshot();
@@ -2583,6 +2571,15 @@ function doLock(){
   Store._recordCommitted({op:'align',dir:'lock',before,after});
   invalidate();Persist.schedule();
 }
+function doRotate(d){
+  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);
+  if(!sel.length)return;
+  const before=sel.map(s=>({id:s.id,rotate:s.rotate||0}));
+  for(const s of sel)s.rotate=((s.rotate||0)+d+360)%360;
+  const after=sel.map(s=>({id:s.id,rotate:s.rotate}));
+  Store._recordCommitted({op:'align',dir:'rotate',before,after});
+  invalidate();Persist.schedule();
+}
 // ====================== EXPORT ======================
 function exportPNG(){
   const b=G.bboxAll(state.shapes);
@@ -2672,28 +2669,26 @@ function buildSVG(shapes,paper){
   const els=[];
   els.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`);
   els.push(`<rect width="100%" height="100%" fill="${_esc(paper||'#FFFFFF')}"/>`);
-  // Frames first (background layer), then other shapes
   const svgShapes=[...shapes.filter(s=>s.type==="frame"),...shapes.filter(s=>s.type!=="frame")];
   for(const s of svgShapes){
-    // Coerce geometry to finite numbers (no attr breakout); strings go via _esc.
     const X=_num(s.x),Y=_num(s.y),W=_num(s.w),H=_num(s.h);
     const _e=connEnds(s);
     const X1=_num(_e.x1),Y1=_num(_e.y1),X2=_num(_e.x2),Y2=_num(_e.y2);
     const SZ=_num(s.size),opv=_num(s.opacity);
     const a=(s.opacity!=null&&opv<1)?` opacity="${opv}"`:'';
     const stroke=_esc(s.stroke||'#000');
-    // Line style (dashed/dotted) — only for outline shapes, mirrors the canvas.
     const _dsh=dashArr(s.dash,SZ);
     const dA=_dsh.length?` stroke-dasharray="${_dsh.map(n=>Math.round(n*10)/10).join(' ')}"`:'';
+    const rT=s.rotate?` transform="rotate(${_num(s.rotate)},${X+W/2+ox},${Y+H/2+oy})"`:''
     switch(s.type){
       case 'rect':{
         const r=Math.min(8,Math.abs(W)/4,Math.abs(H)/4);
-        els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}/>`);
-        if(s.label)els.push(`<text x="${X+W/2+ox}" y="${Y+H/2+oy+7}" font-family="system-ui,sans-serif" font-size="14" text-anchor="middle" fill="${stroke}"${a}>${_esc(s.label)}</text>`);
+        els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}/>`);
+        if(s.label)els.push(`<text x="${X+W/2+ox}" y="${Y+H/2+oy+7}" font-family="system-ui,sans-serif" font-size="14" text-anchor="middle" fill="${stroke}"${a}${rT}>${_esc(s.label)}</text>`);
         break;}
       case 'ellipse':
-        els.push(`<ellipse cx="${X+W/2+ox}" cy="${Y+H/2+oy}" rx="${Math.abs(W/2)}" ry="${Math.abs(H/2)}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}/>`);
-        if(s.label)els.push(`<text x="${X+W/2+ox}" y="${Y+H/2+oy+7}" font-family="system-ui,sans-serif" font-size="14" text-anchor="middle" fill="${stroke}"${a}>${_esc(s.label)}</text>`);
+        els.push(`<ellipse cx="${X+W/2+ox}" cy="${Y+H/2+oy}" rx="${Math.abs(W/2)}" ry="${Math.abs(H/2)}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}/>`);
+        if(s.label)els.push(`<text x="${X+W/2+ox}" y="${Y+H/2+oy+7}" font-family="system-ui,sans-serif" font-size="14" text-anchor="middle" fill="${stroke}"${a}${rT}>${_esc(s.label)}</text>`);
         break;
       case 'line':
         els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}/>`);
@@ -2786,9 +2781,8 @@ function wrapText(text,maxWidth,measure){
 }
 
 // ====================== NET (sync layer) ======================
-// BroadcastChannel for same-browser tab sync (zero infra).
-// WebRTC DataChannel for cross-machine (manual signalling, no server).
-// All ops carry CRDT clock, dedup by peer:seq, idempotent.
+// BroadcastChannel (same-browser tabs) + WebRTC DataChannel (cross-machine, manual
+// signalling, no server). All ops carry a CRDT clock, dedup by peer:seq, idempotent.
 const Net={
   bc:null,                    // BroadcastChannel
   rtc:null,                   // RTCPeerConnection
@@ -2890,8 +2884,7 @@ const Net={
   },
   peerCount(){return state.peers.size},
 
-  // ---- WebRTC manual signaling (no server) ----
-  // Initiator → createOffer → exchange tokens → DataChannel opens.
+  // ---- WebRTC manual signaling (no server): createOffer → exchange tokens → DataChannel ----
   async wrtcCreateOffer(){
     this._wrtcInit();
     this.dc=this.rtc.createDataChannel('board',{ordered:true});
@@ -3234,6 +3227,7 @@ const UI={
 
 // ====================== WIRE-UP ======================
 function wire(){
+  {const sq=document.createElement('input');sq.id='sqinput';sq.type='text';sq.placeholder='Search / 検索';sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--brand);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';document.body.appendChild(sq);sq.addEventListener('input',()=>{_sq=sq.value;invalidate()});sq.addEventListener('keydown',ev=>{if(ev.key==='Escape'){_sq='';sq.style.display='none';sq.value='';invalidate();}});}
   // tool buttons
   for(const b of document.querySelectorAll('.tool'))
     b.addEventListener('click',()=>pickTool(b.dataset.tool));

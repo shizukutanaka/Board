@@ -4,7 +4,7 @@
 単一HTMLファイル。ダブルクリックで動く。アカウント不要。広告なし。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-00C4CC.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.6.60-00C4CC.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.6.61-00C4CC.svg)](CHANGELOG.md)
 [![Size](https://img.shields.io/badge/size-~44KB%20gzip-00C4CC.svg)](index.html)
 [![Offline](https://img.shields.io/badge/offline-first-00C4CC.svg)](#offline)
 [![A11y](https://img.shields.io/badge/WCAG-AAA-00C4CC.svg)](#accessibility)
@@ -61,6 +61,8 @@ start index.html      # Windows
 - rect / ellipse の中央ラベル (ダブルクリックで編集、フローチャート向け)
 - シェイプロック (右クリック → ロック、誤操作防止。移動・リサイズ不可、可逆)
 - バインドコネクタ (矢印/直線の端点をシェイプに束縛、移動に追従 — フロー図向け)
+- 回転 (`,`/`.` で 15° 単位 CCW/CW 回転、undo/redo 対応)
+- シェイプ検索 (Ctrl+F でラベル・テキスト・型名を検索、マッチをオレンジ枠ハイライト)
 - スマート整列ガイド (移動時に他図形の辺・中心へスナップ、ガイド線表示 — Excalidraw 風)
 - フォーマットペインター (Alt+C / Alt+V でスタイル転写)
 - Undo/Redo 最大 500 段 — **全 op が完全可逆** (z 順序・グループ・整列も含む)

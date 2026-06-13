@@ -2,6 +2,25 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.61] — 2026-06-13
+
+機能ギャップ監査の残り P3 項目: 回転とシェイプ検索を実装。
+
+### Added
+- **回転 (rotate)**: `,` / `.` キーで選択シェイプを 15° 単位で反時計回り / 時計回りに回転。
+  `shape.rotate` フィールド(度数)。Canvas 描画 / G.hit 逆変換 / G.bbox 包絡矩形 /
+  SVG エクスポート `transform="rotate(...)"` 全て対応。完全 undo/redo 可逆。
+- **シェイプ検索 (Ctrl+F)**: 検索バー表示、label / text / type にマッチするシェイプを
+  オレンジ枠でワールド座標上にハイライト。Esc で閉じる。undo 不要 (表示専用)。
+
+### Changed
+- 冗長コメント 9 ブロックを簡潔化して gzip 予算確保 (≈485B 削減)。
+- gzip サイズ: ~44,295B → ~45,045B (予算 45,056B 内)。
+
+### Tests
+- 503 assertions (presence + behavioural). 追加チェック 11 件:
+  doRotate / G.bbox 包絡 / G.hit 逆変換 / SVG transform / 検索 DOM / 検索ハイライト。
+
 ## [1.6.60] — 2026-06-11
 
 feat: バインドコネクタ — 機能ギャップ監査の最高価値 P2 項目。矢印 / 直線の端点を

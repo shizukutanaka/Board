@@ -346,6 +346,18 @@ const checks = [
   ['endLineLike binds endpoints dropped on a shape', html.includes("const ba=_bindAt(d.x1,d.y1),bb=_bindAt(d.x2,d.y2)") && html.includes("function _bindAt")],
   ['bound endpoints expose no resize handle', html.includes("if(!s.a)h.push({id:'p1'") && html.includes("if(!s.b)h.push({id:'p2'")],
   ['SVG export derives bound endpoints', html.includes("const _e=connEnds(s);\n    const X1=_num(_e.x1)")],
+  // v1.6.61: rotation — shapes rotate on canvas, undo/redo, keyboard ,/.
+  ['doRotate function exists', html.includes("function doRotate") && html.includes("op:'align',dir:'rotate'")],
+  ['rotation applied in drawShape (save/restore)', html.includes("const _rot=s.rotate;") && html.includes("if(_rot)c.restore()")],
+  ['G.hit applies inverse rotation', html.includes("if(s.rotate){const _cx=s.x+(s.w||0)/2") && html.includes("_r=-s.rotate*Math.PI/180")],
+  ['G.bbox returns rotation envelope', html.includes("if(s.rotate){const _cx=_rb.x+_rb.w/2")],
+  ['rotation keyboard shortcuts , and .', html.includes("k===','&&!meta&&state.selection.size") && html.includes("k==='.'&&!meta&&state.selection.size")],
+  ['SVG export rotation transform', html.includes("rT=s.rotate?` transform=") && html.includes("rotate(${_num(s.rotate)}")],
+  // v1.6.61: shape search — Ctrl+F highlights matching shapes
+  ['_sq search state variable', html.includes("let _sq='';")],
+  ['search input DOM element created in wire()', html.includes("sq.id='sqinput'") && html.includes("sq.addEventListener('input'")],
+  ['search highlight drawn in world space', html.includes("if(_sq){const q=_sq.toLowerCase()") && html.includes("ctx.strokeStyle='#F97316'")],
+  ['Ctrl+F toggles search input', html.includes("meta&&k==='f'") && html.includes("sq.style.display")],
 ];
 
 let pass = 0, fail = 0;
@@ -443,7 +455,7 @@ try {
              doGroup, doUngroup, doPaste, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds };
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -457,7 +469,7 @@ try {
           doGroup, doUngroup, doPaste, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds } = api;
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate } = api;
 
   console.log('\n-- behavioural --');
 
@@ -1822,8 +1834,45 @@ try {
     console.log('  ✓ bound connectors: endpoint projects to edge, follows move, bbox tracks, graceful fallback');
   }
 
+  // v1.6.61: rotation
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const r=Shape.make('rect',{x:0,y:0,w:100,h:60,fill:'#eee'});
+    Store.commit({op:'add',shape:r});
+    state.selection=new Set([r.id]);
+    // initial rotate undefined/null → bbox matches raw shape
+    const b0=G.bbox(state.shapes.find(s=>s.id===r.id));
+    assert.strictEqual(b0.w,100,'unrotated bbox.w=100');
+    doRotate(90);
+    const rsh=state.shapes.find(s=>s.id===r.id);
+    assert.strictEqual(rsh.rotate,90,'doRotate sets rotate=90');
+    // rotated 90°: axis-aligned bbox should swap w/h
+    const b1=G.bbox(rsh);
+    assert.ok(Math.abs(b1.w-60)<1,'rotated 90°: bbox.w≈h=60');
+    assert.ok(Math.abs(b1.h-100)<1,'rotated 90°: bbox.h≈w=100');
+    // undo restores rotate to 0
+    Store.undo();
+    assert.strictEqual(state.shapes.find(s=>s.id===r.id).rotate,0,'doRotate undo restores rotate=0');
+    // redo re-applies
+    Store.redo();
+    assert.strictEqual(state.shapes.find(s=>s.id===r.id).rotate,90,'doRotate redo restores rotate=90');
+    // G.hit: point at shape centre always hits regardless of rotation
+    const sh2=state.shapes.find(s=>s.id===r.id);
+    const cx=sh2.x+sh2.w/2,cy=sh2.y+sh2.h/2;
+    assert.ok(G.hit(sh2,{x:cx,y:cy}),'centre point always hits a rotated rect');
+    // wrap-around: 360→0
+    doRotate(270); // 90+270=360 → 0
+    assert.strictEqual(state.shapes.find(s=>s.id===r.id).rotate,0,'doRotate 360° wraps to 0');
+    // empty selection is a no-op
+    state.selection=new Set();
+    const hlen=state.history.length;
+    doRotate(45);
+    assert.strictEqual(state.history.length,hlen,'doRotate no-op on empty selection');
+    console.log('  ✓ doRotate: rotate field, bbox envelope, G.hit centre, undo/redo, wrap, empty no-op');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 230; // prev 229 + 1 bound-connector behavioural (presence checks counted in checks[])
+  pass += 231; // prev 230 + 1 rotation behavioural
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
