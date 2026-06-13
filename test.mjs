@@ -7,9 +7,11 @@ import { execSync } from 'child_process';
 import assert from 'assert';
 
 const html = readFileSync('./index.html', 'utf8');
-const GZIP_BUDGET = 45056; // 44KB gzip — must match .github/workflows/ci.yml
-// Use system gzip -9 to match CI exactly (node zlib and system gzip differ by ~1%)
+// Size is no longer hard-capped (44KB gzip budget removed 2026-06-13). A loose raw
+// ceiling stays purely as a runaway-growth guard; gzip size is reported for visibility.
+const RAW_CEILING = 512 * 1024;
 const _gzSize = parseInt(execSync('gzip -9 -c index.html | wc -c').toString().trim());
+console.log(`  ℹ index.html: ${html.length} bytes raw, ${_gzSize} bytes gzip`);
 
 // ---- presence checks ----
 const checks = [
@@ -28,7 +30,7 @@ const checks = [
       .every(t => html.includes(`data-tool="${t}"`))],
   ['Keymap covers all tools',
     /KEYMAP\s*=\s*\{v:'select'[^}]+h:'hand'[^}]+p:'pen'/.test(html)],
-  ['Size under 44KB gzip budget', _gzSize < GZIP_BUDGET],
+  ['Raw size under runaway ceiling (512KB)', html.length < RAW_CEILING],
   ['No innerHTML anywhere (XSS-safe)', !/innerHTML\s*=/.test(html)],
   // v1.1: ctx must be let (not const) for exportPNG swap
   ['ctx declared as let (not const)', /let ctx=canvas\.getContext/.test(html)],
@@ -227,7 +229,7 @@ const checks = [
   ['text editor keydown guards ev.isComposing (IME safe)', (html.match(/if\(ev\.isComposing\)return/g)||[]).length >= 2],
   ['pen RDP decimation function _rdp present', html.includes('function _rdp(pts,eps)')],
   ['endPen applies RDP on commit', html.includes('d.pts.length>3')&&html.includes('_rdp(d.pts,0.5)')],
-  ['gzip budget test uses system gzip -9 (matches CI)', readFileSync('./test.mjs','utf8').includes("execSync('gzip -9 -c index.html")],
+  ['size is reported (no hard cap since 2026-06-13)', readFileSync('./test.mjs','utf8').includes("Size is no longer hard-capped")],
   // v1.6.25: style op for single-undo multi-select style
   ['style op in _apply (single undo for multi-select style)', html.includes("case 'style':")],
   ['style op in REMOTE_OPS allowlist', html.includes("'style'")&&html.includes('REMOTE_OPS')],

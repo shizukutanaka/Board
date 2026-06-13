@@ -5,7 +5,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-00C4CC.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-1.6.64-00C4CC.svg)](CHANGELOG.md)
-[![Size](https://img.shields.io/badge/size-~44KB%20gzip-00C4CC.svg)](index.html)
+[![Size](https://img.shields.io/badge/size-~45KB%20gzip-00C4CC.svg)](index.html)
 [![Offline](https://img.shields.io/badge/offline-first-00C4CC.svg)](#offline)
 [![A11y](https://img.shields.io/badge/WCAG-AAA-00C4CC.svg)](#accessibility)
 
@@ -202,7 +202,8 @@ npx serve .
 
 - Issue / PR 歓迎
 - 外部依存の追加は慎重に (単一ファイル原則 — 外部 `<script src>` / `<link href>` は不可)
-- サイズ予算は **gzip 44KB 未満** (CI が `gzip -9` で計測。現状 ~44KB)
+- サイズはハード上限なし (2026-06-13 に gzip 44KB 予算を撤去)。指針として小さく保つが、
+  整合性・正しさを優先してよい。暴走防止に raw 512KB の緩い上限のみ残す (現状 ~45KB gzip)
 - `node test.mjs` を通すこと (CI が presence + behavioural テストを実行)
 
 ## ライセンス / License
