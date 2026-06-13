@@ -385,6 +385,12 @@ const checks = [
   ['resizeSnap exists and applyResize uses it', html.includes("function resizeSnap(orig,handle,wp)") && html.includes(":resizeSnap(orig,handle,wp); // lock overrides obj-snap")],
   ['resize commit clears alignment guides', html.includes("ptr.resizeHandle=null;ptr.resizeOrig=null;state.guides=null;")],
   ['resize Shift locks aspect ratio on corners', html.includes("const lock=shift&&corner&&orig.w>0&&orig.h>0;") && html.includes("applyResize(rsh,ptr.resizeHandle,ptr.resizeOrig,wp,e.shiftKey);")],
+  // v1.6.67: drag-to-rotate handle
+  ['rotation handle helper + hit-test present', html.includes("function getRotHandle(s)") && html.includes("function hitRotHandle(wp,s)")],
+  ['pointerdown enters rotate dragKind on knob hit', html.includes("const rh=hitRotHandle(wp,onlySel);") && html.includes("ptr.dragKind='rotate';")],
+  ['rotate drag maps angle (knob-up=0°), Shift snaps 15°', html.includes("Math.atan2(wp.y-ptr.rotCy,wp.x-ptr.rotCx)*180/Math.PI+90") && html.includes("deg=Math.round(deg/15)*15;")],
+  ['rotate commit records upd + announces angle', html.includes("ptr.dragKind==='rotate'") && html.includes("UI.toast(describeShape(rsh)); // SR announce new angle")],
+  ['rotation knob drawn in drawSelection', html.includes("const rh=getRotHandle(sh);") && html.includes("ctx.arc(kp.x*DPR,kp.y*DPR,hs/2,0,PI2)")],
 ];
 
 let pass = 0, fail = 0;
@@ -478,7 +484,7 @@ try {
     return { state, Store, G, Shape, distToSeg,
              doBringFront, doSendBack, doBringForward, doSendBackward,
              doAlign, doFlip, snapV, snapPt,
-             getHandles, applyResize, resizeSnap, handleCursor,
+             getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
              doGroup, doUngroup, doPaste, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
@@ -492,7 +498,7 @@ try {
   const { state, Store, G, Shape, distToSeg,
           doBringFront, doSendBack, doBringForward, doSendBackward,
           doAlign, doFlip, snapV, snapPt,
-          getHandles, applyResize, resizeSnap, handleCursor,
+          getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
           doGroup, doUngroup, doPaste, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
@@ -1929,6 +1935,31 @@ try {
     assert.strictEqual(sh4.h,50,'edge handle height unchanged by Shift');
     console.log('  ✓ resize aspect-lock: Shift on corner preserves ratio with opposite corner pinned');
   }
+  {
+    // v1.6.67: drag-to-rotate handle geometry
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.viewport={x:0,y:0,zoom:1};
+    const box={id:'rh',type:'rect',x:0,y:0,w:100,h:100,stroke:'#000',size:1,opacity:1};
+    state.shapes=[box];
+    const rh=getRotHandle(box);
+    // unrotated: knob sits directly above top-centre (50,0) by ROT_OFFSET=24
+    assert.ok(Math.abs(rh.x-50)<1e-6&&Math.abs(rh.y-(-24))<1e-6,'knob above top-centre when unrotated');
+    assert.ok(Math.abs(rh.cx-50)<1e-6&&Math.abs(rh.cy-50)<1e-6,'pivot is the shape centre');
+    assert.ok(Math.abs(rh.ax-50)<1e-6&&Math.abs(rh.ay-0)<1e-6,'anchor on the top edge');
+    // rotated 90°: knob swings to the left of centre (pivot 50,50; up→left)
+    box.rotate=90;
+    const rh2=getRotHandle(box);
+    assert.ok(Math.abs(rh2.x-(50+74))<1e-4,'90°: knob x = pivot + (cy - knobY_unrot) = 50+74');
+    assert.ok(Math.abs(rh2.y-50)<1e-4,'90°: knob y stays at pivot height');
+    // locked / point geometry → no handle
+    box.rotate=0;box.locked=true;
+    assert.strictEqual(getRotHandle(box),null,'locked shape has no rotation handle');
+    assert.strictEqual(getRotHandle({type:'pen',pts:[[0,0]]}),null,'pen has no rotation handle (no box centre)');
+    // angle math the drag uses: knob dragged due-east of pivot → 90°
+    const deg=((Math.round(Math.atan2(0,100)*180/Math.PI+90)%360)+360)%360;
+    assert.strictEqual(deg,90,'knob east of pivot maps to 90°');
+    console.log('  ✓ rotation handle: knob geometry tracks rotation, excludes locked/point shapes');
+  }
 
   // v1.6.58: rect/ellipse centre labels via upd op
   {
@@ -2063,7 +2094,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 254; // prev 245 + resize aspect-lock behavioural (9 asserts)
+  pass += 262; // prev 254 + rotation-handle geometry behavioural (8 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

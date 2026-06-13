@@ -178,6 +178,14 @@ pen/line/arrow は点ジオメトリで box 中心が無く回転中心が NaN �
 (`s.w!=null` フィルタ)。複数選択回転は選択 bbox 中心で各シェイプを公転 (`doFlip` と同じ
 群中心セマンティクス)、単一選択はその場回転。`,`/`.` キーで ±15°、ロックシェイプは除外。
 
+**ドラッグ回転ハンドル (v1.6.67)**: 単一選択時、`getRotHandle` がシェイプ上辺中央の外側
+(`ROT_OFFSET` 画面px) に回転ノブの世界座標を返す (回転シェイプではノブも公転)。
+`hitRotHandle` でヒット → `ptr.dragKind='rotate'`。ドラッグ中は
+`atan2(wp.y-cy, wp.x-cx)+90°` で絶対角を算出 (ノブ上 = 0°)、Shift で 15° スナップ。
+ピボットはシェイプ中心 (`drawShape` と一致)。コミットは `upd` op で可逆、確定時に
+`describeShape` を `aria-live` トーストで読み上げ。`pointercancel` で `rotOrig` 復元。
+ノブは resize ハンドルより優先 (bbox 外なので衝突しない)。
+
 全経路で整合 (v1.6.65 で予算撤去後に完成):
 - **draw**: `drawShape` が `ctx.translate/rotate` で box 中心周りに回転。
 - **hit**: `G.hit` が点を逆回転して未回転ヒットテスト。

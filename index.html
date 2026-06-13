@@ -718,7 +718,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.66';
+const V='1.6.67';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -731,6 +731,7 @@ function snapPt(p){return{x:snapV(p.x),y:snapV(p.y)}}
 const SNAP_THRESHOLD=6;                 // pixels
 const SNAP_OBJ=8;                        // object-snap distance (screen px)
 const HANDLE_SIZE=8;
+const ROT_OFFSET=24;                     // rotation handle distance above top edge (screen px)
 const PI2=Math.PI*2;
 const NET_CHANNEL_PREFIX='board:';      // BroadcastChannel name prefix
 const NET_PRESENCE_INTERVAL=5000;       // 5s heartbeat
@@ -795,7 +796,7 @@ const I18N={
       save:'即時保存',grid:'グリッド',esc:'選択解除/キャンセル',
       cycle:'図形を巡回',create:'中央に作成',
       present:'プレゼン',nudge:'移動 (⇧: 10px)',zorder:'前面/背面',zorderEnds:'最前面/最背面',
-      rotate:'回転 (15°)',search:'検索',resizeRatio:'比率保持リサイズ'}},
+      rotate:'回転 (15° / ノブdrag)',search:'検索',resizeRatio:'比率保持リサイズ'}},
   en:{export:'Export',present:'Present',snap:'Snap',size:'Size',lineStyle:'Line',helpTitle:'Shortcuts',
     helpSub:'No need to memorise. You\'ll pick it up.',
     saved:'saved',savedNow:'just now',savedAgo:'s ago',
@@ -844,7 +845,7 @@ const I18N={
       save:'Save now',grid:'Toggle grid',esc:'Deselect / cancel',
       cycle:'Cycle shapes',create:'Create at centre',
       present:'Present',nudge:'Move (⇧: 10px)',zorder:'Front / back',zorderEnds:'To front / to back',
-      rotate:'Rotate (15°)',search:'Search',resizeRatio:'Keep ratio (resize)'}}};
+      rotate:'Rotate (15° / knob drag)',search:'Search',resizeRatio:'Keep ratio (resize)'}}};
 const LANG=(navigator.language||'en').startsWith('ja')?'ja':'en';
 const T=I18N[LANG];
 const t=k=>T[k]||I18N.en[k]||k;
@@ -1494,6 +1495,22 @@ function hitHandle(wp,s){
   }
   return null;
 }
+// Rotation handle: a knob above the (possibly rotated) top-centre of a box shape.
+// Returns world {x,y} of the knob, {ax,ay} of its anchor on the shape, and {cx,cy}
+// the rotation pivot. null for locked shapes and point geometry (pen/line/arrow).
+function getRotHandle(s){
+  if(!s||s.locked||s.w==null)return null;
+  const cx=s.x+s.w/2,cy=s.y+s.h/2,d=ROT_OFFSET/state.viewport.zoom;
+  const r=s.rotate?s.rotate*Math.PI/180:0,c=Math.cos(r),sn=Math.sin(r);
+  const R=(px,py)=>({x:cx+(px-cx)*c-(py-cy)*sn,y:cy+(px-cx)*sn+(py-cy)*c});
+  const k=R(cx,s.y-d),an=R(cx,s.y);
+  return{x:k.x,y:k.y,ax:an.x,ay:an.y,cx,cy};
+}
+function hitRotHandle(wp,s){
+  const rh=getRotHandle(s);if(!rh)return null;
+  const tol=HANDLE_SIZE/state.viewport.zoom;
+  return(Math.abs(wp.x-rh.x)<=tol&&Math.abs(wp.y-rh.y)<=tol)?rh:null;
+}
 // Object-snap for resize: snap the dragged handle's moving edge(s) to nearby shape
 // edges/centres. Only the coordinates the handle actually moves are snapped. Pure-ish
 // (reads state.shapes/viewport). Mirrors move's objectSnap; active only when grid-snap
@@ -1577,6 +1594,15 @@ function drawSelection(){
       ctx.fillRect(sp.x*DPR-hs/2,sp.y*DPR-hs/2,hs,hs);
       ctx.strokeRect(sp.x*DPR-hs/2,sp.y*DPR-hs/2,hs,hs);
     }
+    // Rotation knob: a circle above the (rotated) top edge, tethered to the shape.
+    const rh=getRotHandle(sh);
+    if(rh){
+      const kp=G.w2s({x:rh.x,y:rh.y}),ap=G.w2s({x:rh.ax,y:rh.ay});
+      ctx.strokeStyle=getCSS('--brand');ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(ap.x*DPR,ap.y*DPR);ctx.lineTo(kp.x*DPR,kp.y*DPR);ctx.stroke();
+      ctx.fillStyle=getCSS('--paper');ctx.strokeStyle=getCSS('--brand-ink');
+      ctx.beginPath();ctx.arc(kp.x*DPR,kp.y*DPR,hs/2,0,PI2);ctx.fill();ctx.stroke();
+    }
   }else{
     // Multi-selection: corner handles only
     const hs=HANDLE_SIZE*DPR;
@@ -1629,6 +1655,13 @@ canvas.addEventListener('pointerdown',e=>{
       if(state.selection.size===1){
         const onlySel=byId([...state.selection][0]);
         if(onlySel){
+          const rh=hitRotHandle(wp,onlySel);
+          if(rh){
+            ptr.dragKind='rotate';
+            ptr.rotOrig=clone(onlySel);
+            ptr.rotCx=rh.cx;ptr.rotCy=rh.cy;
+            return;
+          }
           const hid=hitHandle(wp,onlySel);
           if(hid){
             ptr.dragKind='resize';
@@ -1659,6 +1692,7 @@ canvas.addEventListener('pointermove',e=>{
       if(state.selection.size===1){
         const onlySel=byId([...state.selection][0]);
         if(onlySel){
+          if(hitRotHandle(wp,onlySel)){canvas.style.cursor='grab';return}
           const hid=hitHandle(wp,onlySel);
           if(hid){canvas.style.cursor=handleCursor(hid);return}
         }
@@ -1682,6 +1716,14 @@ canvas.addEventListener('pointermove',e=>{
         if(rsh){
           Object.assign(rsh,clone(ptr.resizeOrig));
           applyResize(rsh,ptr.resizeHandle,ptr.resizeOrig,wp,e.shiftKey);
+        }
+        invalidate();
+      }else if(ptr.dragKind==='rotate'){
+        const rsh=byId([...state.selection][0]);
+        if(rsh){
+          let deg=Math.atan2(wp.y-ptr.rotCy,wp.x-ptr.rotCx)*180/Math.PI+90; // knob-up = 0°
+          if(e.shiftKey)deg=Math.round(deg/15)*15;                          // Shift snaps to 15°
+          rsh.rotate=((Math.round(deg)%360)+360)%360;
         }
         invalidate();
       }else if(ptr.dragKind==='move')doMove(wp);
@@ -1711,6 +1753,16 @@ canvas.addEventListener('pointerup',e=>{
           }
         }
         ptr.resizeHandle=null;ptr.resizeOrig=null;state.guides=null;
+      }else if(ptr.dragKind==='rotate'){
+        const rsh=byId([...state.selection][0]);
+        if(rsh){
+          const after=clone(rsh),before=ptr.rotOrig;
+          if(JSON.stringify(before)!==JSON.stringify(after)){
+            Store._recordCommitted({op:'upd',id:rsh.id,before,after});
+            UI.toast(describeShape(rsh)); // SR announce new angle
+          }
+        }
+        ptr.rotOrig=null;
       }else{
         endSelect(wp);
       }
@@ -1730,11 +1782,14 @@ canvas.addEventListener('pointercancel',()=>{
   if(ptr.dragKind==='resize'&&ptr.resizeOrig){
     const rsh=byId([...state.selection][0]);
     if(rsh)Object.assign(rsh,clone(ptr.resizeOrig));
+  }else if(ptr.dragKind==='rotate'&&ptr.rotOrig){
+    const rsh=byId([...state.selection][0]);
+    if(rsh)Object.assign(rsh,clone(ptr.rotOrig));
   }else if(ptr.dragKind==='move'&&ptr.dragStartShapes){
     for(const[id,orig] of ptr.dragStartShapes){const sh=byId(id);if(sh)Object.assign(sh,clone(orig));}
   }
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;
-  ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.dragStartShapes=null;
+  ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.rotOrig=null;ptr.dragStartShapes=null;
   canvas.dataset.panning='false';state.draft=null;state.marquee=null;invalidate();
 });
 canvas.addEventListener('contextmenu',e=>{e.preventDefault();UI.openCtxMenu(e.clientX,e.clientY)});

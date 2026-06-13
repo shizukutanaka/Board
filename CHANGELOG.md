@@ -2,6 +2,16 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.67] — 2026-06-13
+
+### Added
+- **ドラッグ回転ハンドル**: 単一選択した box シェイプ (rect/ellipse/sticky/text/image/frame) の
+  上辺中央に回転ノブを表示。ドラッグで自由回転、Shift で 15° スナップ。ノブは回転に追従して
+  公転し、回転中のシェイプでも操作可 (resize ハンドルが消える状態でも回転で 0° に戻せる)。
+  ピボットはシェイプ中心 (drawShape と一致)、コミットは可逆な `upd` op、確定時に角度を
+  `aria-live` トーストで読み上げ。ホバーカーソルは `grab`。これでキーボード (`,`/`.`) と
+  ポインタの両方で回転が完結。
+
 ## [1.6.66] — 2026-06-13
 
 ### Added
