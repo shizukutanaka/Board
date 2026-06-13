@@ -8,3 +8,5 @@ dist/
 build/
 coverage/
 .cache/
+# GitHub Actions — requires `workflows` permission to push; managed manually
+.github/
