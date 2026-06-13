@@ -718,7 +718,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.69';
+const V='1.6.70';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -796,7 +796,7 @@ const I18N={
       save:'即時保存',grid:'グリッド',esc:'選択解除/キャンセル',
       cycle:'図形を巡回',create:'中央に作成',
       present:'プレゼン',nudge:'移動 (⇧: 10px)',zorder:'前面/背面',zorderEnds:'最前面/最背面',
-      rotate:'回転 (15° / ノブdrag)',search:'検索',resizeRatio:'比率保持リサイズ',resizeCenter:'中心固定リサイズ'}},
+      rotate:'回転 (15° / ノブdrag)',search:'検索',resizeRatio:'比率保持リサイズ',resizeCenter:'中心固定リサイズ',kbdResize:'リサイズ (⇧:×10)'}},
   en:{export:'Export',present:'Present',snap:'Snap',size:'Size',lineStyle:'Line',helpTitle:'Shortcuts',
     helpSub:'No need to memorise. You\'ll pick it up.',
     saved:'saved',savedNow:'just now',savedAgo:'s ago',
@@ -845,7 +845,7 @@ const I18N={
       save:'Save now',grid:'Toggle grid',esc:'Deselect / cancel',
       cycle:'Cycle shapes',create:'Create at centre',
       present:'Present',nudge:'Move (⇧: 10px)',zorder:'Front / back',zorderEnds:'To front / to back',
-      rotate:'Rotate (15° / knob drag)',search:'Search',resizeRatio:'Keep ratio (resize)',resizeCenter:'Resize from centre'}}};
+      rotate:'Rotate (15° / knob drag)',search:'Search',resizeRatio:'Keep ratio (resize)',resizeCenter:'Resize from centre',kbdResize:'Resize (⇧:×10)'}}};
 const LANG=(navigator.language||'en').startsWith('ja')?'ja':'en';
 const T=I18N[LANG];
 const t=k=>T[k]||I18N.en[k]||k;
@@ -979,6 +979,7 @@ function validRemotePayload(op){
     case 'move':   return Array.isArray(op.ids)&&Number.isFinite(+op.dx)&&Number.isFinite(+op.dy);
     case 'zorder':
     case 'style':
+    case 'resize':
     case 'align':  return Array.isArray(op.after);
     case 'group':
     case 'ungroup':return Array.isArray(op.ids);
@@ -1014,7 +1015,7 @@ const Store={
     if(op.clock.peer===state.peerId)Net.broadcast(op);   // outbound only
   },
   // Apply remote op: dedup by clock; REMOTE_OPS allow-list + validRemotePayload guard.
-  REMOTE_OPS:new Set(['add','del','upd','move','clear','group','ungroup','zorder','align','style']),
+  REMOTE_OPS:new Set(['add','del','upd','move','clear','group','ungroup','zorder','align','style','resize']),
   applyRemote(op){
     if(!op||!op.clock||!this.REMOTE_OPS.has(op.op))return;
     if(!validRemotePayload(op))return;
@@ -1122,6 +1123,7 @@ const Store={
         }
         break;}
       case 'style':
+      case 'resize':
       case 'align':{
         const patches=forward?op.after:op.before;
         for(const p of patches){const sh=byId(p.id);if(sh)Object.assign(sh,clone(p))}
@@ -2460,6 +2462,26 @@ window.addEventListener('keydown',e=>{
     // Place active tool's default shape at viewport centre (no-op for select/hand/eraser/pen).
     if(createShapeKbd())e.preventDefault();
   }
+  else if((k==='arrowup'||k==='arrowdown'||k==='arrowleft'||k==='arrowright')&&e.altKey){
+    // Alt+arrow = keyboard resize (a11y: pointer-free). L/R = width, U/D = height,
+    // top-left anchored; ⇧ = ×10 step. Box shapes only. Single reversible `resize` op.
+    const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked&&s.w!=null);
+    if(sel.length){
+      e.preventDefault();
+      const step=e.shiftKey?10:1;
+      const dw=k==='arrowright'?step:k==='arrowleft'?-step:0;
+      const dh=k==='arrowdown'?step:k==='arrowup'?-step:0;
+      const before=[],after=[];
+      for(const sh of sel){
+        before.push({id:sh.id,w:sh.w,h:sh.h});
+        sh.w=Math.max(4,sh.w+dw);sh.h=Math.max(4,sh.h+dh);
+        after.push({id:sh.id,w:sh.w,h:sh.h});
+      }
+      Store._recordCommitted({op:'resize',before,after});
+      if(sel.length===1)UI.toast(describeShape(sel[0]));
+      invalidate();
+    }
+  }
   else if(k==='arrowup'||k==='arrowdown'||k==='arrowleft'||k==='arrowright'){
     if(state.selection.size){
       e.preventDefault();
@@ -2505,7 +2527,7 @@ window.addEventListener('keyup',e=>{
 function pickTool(tool,temporary){
   if(temporary&&!window._prevTool)window._prevTool=state.tool;
   state.tool=tool;canvas.dataset.tool=tool;
-  canvas.setAttribute('aria-label',tool+' — Drawing canvas. Tab/Shift+Tab cycles shapes, Enter creates, arrows move.');
+  canvas.setAttribute('aria-label',tool+' — Drawing canvas. Tab/Shift+Tab cycles shapes, Enter creates, arrows move, Alt+arrows resize.');
   for(const b of document.querySelectorAll('.tool'))b.setAttribute('aria-pressed',b.dataset.tool===tool);
   // hide style panel for select/hand
   const sp=document.getElementById('stylePanel');
@@ -3305,7 +3327,7 @@ const UI={
       ['⌘+/−/0',k.zoomIn+'/'+k.zoomOut+'/'+k.zoom100],
       ['⇧1',k.fit],['⌘E',k.exp],['⌘⇧E','SVG'],['⌘P','PDF'],['⌘S',k.save],['⌘⇧S','.board'],
       ['G',k.grid],['⇧G',t('snap')],['Esc',k.esc],['?',k.help],
-      ['↑↓←→',k.nudge],
+      ['↑↓←→',k.nudge],['⌥ ↑↓←→',k.kbdResize],
       [']/[',k.zorder],['⇧]/⇧[',k.zorderEnds],
       [', / .',k.rotate],['⌘F',k.search],
       ['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],

@@ -177,7 +177,7 @@ const checks = [
   // v1.6.12: keyboard shape creation (a11y)
   ['createShapeKbd helper present', html.includes("function createShapeKbd")],
   ['Enter creates shape at viewport centre', html.includes("k==='enter'&&!meta&&!e.shiftKey") && html.includes("createShapeKbd()")],
-  ['canvas aria-label includes Enter creates hint', html.includes("Enter creates, arrows move.")],
+  ['canvas aria-label includes Enter creates hint', html.includes("Enter creates, arrows move, Alt+arrows resize.")],
   ['help grid lists Tab cycle and Enter create', html.includes("['Tab / ⇧Tab',k.cycle]") && html.includes("['Enter',k.create]")],
   // v1.6.13: variable-width pen (velocity-based)
   ['penWidths helper present', html.includes("function penWidths")],
@@ -397,6 +397,9 @@ const checks = [
   ['_rotPt shared rotation helper present', html.includes("function _rotPt(px,py,cx,cy,deg)")],
   ['rotated resize works in local frame + world re-pin', html.includes("sp=_rotPt(wp.x,wp.y,cx0,cy0,-orig.rotate);") && html.includes("sh.x+=tgt.x-cur.x;sh.y+=tgt.y-cur.y;")],
   ['selection outline traces rotated box', html.includes("if(single&&single.rotate&&single.w!=null){")],
+  // v1.6.70: keyboard resize (Alt+arrow)
+  ['resize op registered (apply, validate, remote)', html.includes("case 'resize':\n      case 'align':{") && html.includes("case 'resize':\n    case 'align':  return Array.isArray(op.after);") && html.includes("'align','style','resize'])")],
+  ['Alt+arrow keyboard-resizes box shapes', html.includes("Store._recordCommitted({op:'resize',before,after});") && html.includes("sh.w=Math.max(4,sh.w+dw);sh.h=Math.max(4,sh.h+dh);")],
 ];
 
 let pass = 0, fail = 0;
@@ -2020,6 +2023,28 @@ try {
     assert.ok(Math.abs((sh3.x+sh3.w/2)-50)<1e-6&&Math.abs((sh3.y+sh3.h/2)-50)<1e-6,'Alt+rotated: centre invariant');
     console.log('  ✓ rotated resize: anchor fixed in world, handles rotate, Alt keeps centre');
   }
+  {
+    // v1.6.70: keyboard resize op (Alt+arrow) is a single reversible batch
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const a={id:'ka',type:'rect',z:1,x:0,y:0,w:100,h:50,stroke:'#000',size:1,opacity:1};
+    const b={id:'kb',type:'sticky',z:2,x:200,y:0,w:80,h:80,color:'#FEF08A',size:1,opacity:1};
+    Store.commit({op:'add',shape:a});Store.commit({op:'add',shape:b});
+    // grow both by a `resize` batch op (the Alt+arrow handler mutates then records;
+    // here we let Store.commit apply it so undo/redo of the op type is exercised)
+    Store.commit({op:'resize',
+      before:[{id:'ka',w:100,h:50},{id:'kb',w:80,h:80}],
+      after:[{id:'ka',w:110,h:60},{id:'kb',w:90,h:90}]});
+    assert.strictEqual(byId('ka').w,110,'resize op applied width to shape A');
+    assert.strictEqual(byId('kb').h,90,'resize op applied height to shape B');
+    Store.undo();
+    assert.strictEqual(byId('ka').w,100,'single undo reverts shape A');
+    assert.strictEqual(byId('kb').h,80,'single undo reverts shape B too (one history entry)');
+    Store.redo();
+    assert.strictEqual(byId('ka').w,110,'redo re-applies A');
+    assert.strictEqual(byId('kb').w,90,'redo re-applies B');
+    function byId(id){return state.shapes.find(s=>s.id===id)}
+    console.log('  ✓ keyboard resize: `resize` batch op is a single reversible undo/redo step');
+  }
 
   // v1.6.58: rect/ellipse centre labels via upd op
   {
@@ -2154,7 +2179,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 277; // prev 271 + rotated-resize world-anchor behavioural (6 asserts)
+  pass += 283; // prev 277 + keyboard-resize batch-op reversibility (6 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

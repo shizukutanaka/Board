@@ -2,6 +2,18 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.70] — 2026-06-13
+
+### Added
+- **キーボードリサイズ (Alt+矢印)**: ポインタ無しでの図形リサイズを追加 (a11y — Enter作成・
+  矢印移動・Tab巡回に続く操作の完結)。左右=幅、上下=高さ、左上アンカー、Shift で ×10。
+  box シェイプのみ (ロック除外)。複数選択も**単一 undo** で戻せるよう、汎用バッチパッチの
+  新 op `resize` を追加 (`style`/`align` と同じ Object.assign 機構、可逆・sync 対応)。
+  単一選択時は新サイズを `aria-live` トーストで読み上げ。help grid に `⌥ ↑↓←→` を追加。
+
+### Tests
+- 586 assertions (+6 `resize` バッチ op の apply/undo/redo, +2 presence)。
+
 ## [1.6.69] — 2026-06-13
 
 ### Added

@@ -53,6 +53,8 @@ op 型 (全て可逆; `_apply(op, false)` で完全に戻る):
 - `{op:'zorder', before:[{id,z},...], after:[{id,z},...]}` — z 順序スナップショット差分
 - `{op:'style', before:[{id,...},...], after:[{id,...},...]}` — マルチ選択スタイル一括変更 (スライダーコアレス)
 - `{op:'align', before:[{id,...},...], after:[{id,...},...]}` — 整列
+- `{op:'resize', before:[{id,w,h},...], after:[{id,w,h},...]}` — キーボードリサイズ (Alt+矢印) の
+  一括パッチ (style/align と同じ Object.assign 機構、複数選択でも単一 undo)
 - `{op:'group', ids, gid}` / `{op:'ungroup', ids, gids}` — グループ
 - `{op:'clear', shapes:[...]}` — 全消去
 
