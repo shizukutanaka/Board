@@ -978,7 +978,9 @@ function validRemotePayload(op){
     case 'upd':    return typeof op.id==='string'&&!!op.after&&typeof op.after==='object';
     case 'move':   return Array.isArray(op.ids)&&Number.isFinite(+op.dx)&&Number.isFinite(+op.dy);
     case 'zorder':  // Step2 minimal-delta {changes:[{id,before,after}]} or legacy {after:[…]}
-      return (Array.isArray(op.changes)&&op.changes.every(c=>c&&typeof c.id==='string'))||Array.isArray(op.after);
+      return (Array.isArray(op.changes)&&op.changes.every(c=>c&&typeof c.id==='string'
+                &&(c.after==null||typeof c.after==='string')&&(c.before==null||typeof c.before==='string')))
+             ||Array.isArray(op.after);
     case 'style':
     case 'resize':
     case 'align':  return Array.isArray(op.after);
@@ -1200,6 +1202,8 @@ function reindexFrac(){let p=null;for(const s of state.shapes){p=keyBetween(p,nu
 // newly added keyless shape is placed above the current top key (matching the
 // old nextZ() "new shape goes to front"). Existing keys are never reshuffled by
 // the z fallback, so an established frac order is preserved. (ADR-0001 Step 1)
+// Ties on frac (concurrent inserts into the same gap across peers) break on the
+// globally-unique replicated shape id, so every peer converges to one order. (Step 3)
 function sortZ(){
   if(!state.shapes.length)return;
   if(state.shapes.some(s=>s.frac==null)){
@@ -1212,7 +1216,7 @@ function sortZ(){
       for(const s of state.shapes)if(s.frac==null){top=keyBetween(top,null);s.frac=top;}
     }
   }
-  state.shapes.sort((a,b)=>a.frac<b.frac?-1:a.frac>b.frac?1:0);
+  state.shapes.sort((a,b)=>a.frac<b.frac?-1:a.frac>b.frac?1:a.id<b.id?-1:a.id>b.id?1:0);
 }
 function nextZ(){return state.shapes.length?Math.max(...state.shapes.map(s=>s.z||0))+1:1}
 

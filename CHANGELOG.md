@@ -5,6 +5,11 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
 ## [Unreleased]
 
 ### Added
+- **ADR-0001 fractional z-index — Step 3**: 同時並べ替えのキー衝突を **`sortZ` の `(frac, id)` 比較**で
+  決定的にタイブレークし、全ピアが同一スタッキング順序に収束するようにした (`shape.id` は複製済み
+  globally-unique なので peer 追跡不要)。`validRemotePayload` の `zorder` 検証を強化 (`changes` の各
+  要素が `id:string` / `before,after` が string|undefined — 不正キー注入を拒否)。単一ピアの挙動は不変。
+  キー衝突の決定的順序・不正ペイロード拒否をテストで担保 (587 pass)。
 - **ADR-0001 fractional z-index — Step 2**: z 操作 (前面/背面/前へ/後ろへ) を per-shape の
   キー更新に書き換え、`zorder` op を **`{op:'zorder',changes:[{id,before,after}]}` の最小デルタ**化。
   1 図形の前面化は履歴/ブロードキャストに **1 エントリだけ**載る (旧: 全 shape スナップショット)。

@@ -1,6 +1,6 @@
 # ADR-0001 — z 順序を fractional indexing に置き換える
 
-- **状態**: Accepted — **Step 1 + Step 2 実装済** (2026-06-14)。Step 3〜4 は Proposed。
+- **状態**: Accepted — **Step 1〜3 実装済** (2026-06-14)。Step 4 は Proposed。
 - **日付**: 2026-06-13
 - **関連**: `docs/research-improvements.md` 項目A (★最優先) / `docs/spec.md` §13 既知の未充足 /
   `docs/architecture.md` Store セクション
@@ -92,9 +92,13 @@ z 順序変更は 4 操作: `doBringFront / doSendBack / doBringForward / doSend
 ## sync への影響
 
 - per-shape キー更新は **可換性が高い**: 2 ピアが別図形を動かしても互いのキーを上書きしない。
-- 同一図形・同一ギャップへの同時挿入で **キー衝突**しうる → 末尾に `peerId` を付与して決定的に
-  タイブレーク (`key + '#' + peerId`)。既存の `versionNonce`/clock 方式 (research K) と整合。
-- `validRemotePayload` に `zorder` の新ペイロード (文字列キー or changes 配列) の検証を追加。
+- 同一ギャップへの同時挿入で **キー衝突**しうる → **決定的タイブレーク**で全ピアが同一順序に収束させる。
+  当初案は `key + '#' + peerId` だったが、実装では**より単純に `shape.id` でタイブレーク**した
+  (`sortZ` の比較を `(frac, id)` に変更)。`shape.id` は `uid()` で globally-unique かつ全ピアに複製済みなので、
+  peer を別途追跡せずとも衝突した 2 図形は全ピアで同じ順序に並ぶ。interleaving は許容 (Figma の見解)。
+- `validRemotePayload` の `zorder` 検証を強化: `changes` 配列の各要素が `id:string` かつ
+  `before/after` が string|undefined であることを確認 (不正キー注入で比較が壊れるのを防ぐ)。旧 `after`
+  スナップショット形式も引き続き受理。
 
 ## 永続化・後方互換 (最重要リスク)
 
@@ -133,7 +137,9 @@ z 順序変更は 4 操作: `doBringFront / doSendBack / doBringForward / doSend
    履歴/ブロードキャストに載る (1 図形の前面化 = 1 エントリ。旧: 全 shape スナップショット)。`_apply` は
    新フォーマットを主とし、**旧スナップショット形式も defensive に保持** (混在バージョン peer / 既存履歴)。
    `validRemotePayload` を新形式 (`changes` 配列) に対応。587 tests 緑。
-3. **Step 3**: sync の per-key 衝突タイブレーク (`key#peerId`) + `validRemotePayload` 強化。
+3. **Step 3 ✅ (実装済 2026-06-14)**: 同時並べ替えのキー衝突を **`sortZ` の `(frac, id)` 比較**で
+   決定的にタイブレーク → 全ピアが同一順序に収束。`validRemotePayload` の `zorder` 検証を強化
+   (`changes` の各要素が `id:string` / `before,after` が string|undefined)。587 tests 緑。
 4. **Step 4**: 整数 `z` フィールドを廃止 (完全移行)。
 
 各 Step は独立リリース + テスト緑。Step 1〜2 で履歴/帯域問題が解消、Step 3 で sync 衝突が解消。
@@ -163,8 +169,21 @@ z 順序変更は 4 操作: `doBringFront / doSendBack / doBringForward / doSend
   `JSON.stringify(state.shapes)` の往復は Step 1 同様厳密 (PBT で担保)。
 - **後方互換**: `_apply` は旧スナップショット形式 (`op.after`/`op.before`) も処理を残す。混在バージョン
   の peer や、Step 2 以前にメモリ上へ積まれた履歴に対する防御 (履歴は永続化されないので実害は限定的)。
-- **既知の限界 (Step 3 で解消)**: 2 peer が同時に並べ替えるとキーが衝突しうる (絶対キー代入のため)。
+- **既知の限界 → Step 3 で解消**: 2 peer が同時に並べ替えるとキーが衝突しうる (絶対キー代入のため)。
   これは Step 2 以前の全スナップショット方式でも同等の収束問題で、本 Step で悪化はしない。
+
+### Step 3 実装メモ
+
+- **タイブレーク = `shape.id`**: `sortZ` の比較を frac 単独から **`(frac, id)`** に変更。frac が一致した
+  2 図形 (同一ギャップへの同時挿入) は、複製済みで globally-unique な `id` で**全ピア同一順序**に並ぶ。
+  当初案の `key#peerId` 方式より単純 — peer 追跡も per-shape の追加フィールドも不要。
+- **収束の根拠**: ある状態に到達した全ピアは同じ `{frac}` 集合を持つ (op はべき等・clock で dedup)。
+  同 frac の図形は `id` で順序が一意に決まるため、ソート結果が一致する。単一ピア時は frac が distinct
+  なのでタイブレークは発火せず、Step 1〜2 の挙動・PBT 往復は不変。
+- **入力検証の強化**: `validRemotePayload('zorder')` は `changes` の各 `{id,before,after}` を型チェック
+  (id は文字列必須、key は string か未指定)。不正 peer による非文字列キー注入で比較が壊れるのを防ぐ。
+- **残課題**: interleaving (2 peer が同じ範囲に交互挿入すると順序が混ざる) は許容。厳密な意図順序が必要なら
+  将来 op に origin 情報を足す余地はあるが、図形では実害が小さい (Figma/tldraw の判断と同じ)。
 
 ## 結論
 

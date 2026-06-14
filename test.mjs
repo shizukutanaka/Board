@@ -498,7 +498,7 @@ try {
              doGroup, doUngroup, doPaste, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac };
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -512,7 +512,7 @@ try {
           doGroup, doUngroup, doPaste, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac } = api;
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload } = api;
 
   console.log('\n-- behavioural --');
 
@@ -1654,6 +1654,33 @@ try {
     doBringFront();
     assert.ok(state.histIdx===hbefore||state.history[state.histIdx].changes.length>0,'redundant front is a no-op or real move');
     console.log('  ✓ zorder minimal-delta: single move = 1 change; multi keeps relative order');
+  }
+
+  // Step 3: concurrent-reorder convergence — equal frac keys (two peers inserting
+  // into the same gap) must resolve to ONE order on every peer, via shape id.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;
+    const mkr=id=>({id,type:'rect',x:0,y:0,w:10,h:10,frac:'V',stroke:'#000',size:2,opacity:1});
+    const x=mkr('aaa'),y=mkr('bbb');
+    state.shapes=[y,x];sortZ();const o1=state.shapes.map(s=>s.id).join(',');
+    state.shapes=[x,y];sortZ();const o2=state.shapes.map(s=>s.id).join(',');
+    assert.strictEqual(o1,o2,'tie resolves identically regardless of input order (convergence)');
+    assert.strictEqual(o1,'aaa,bbb','frac tie broken by ascending shape id');
+    // distinct keys are unaffected by the id tiebreak
+    state.shapes=[{...mkr('zzz'),frac:'k'},{...mkr('aaa'),frac:'V'}];sortZ();
+    assert.deepStrictEqual(state.shapes.map(s=>s.id),['aaa','zzz'],'distinct keys still order by frac, not id');
+    console.log('  ✓ Step3 convergence: equal frac keys break ties deterministically by id');
+  }
+
+  // Step 3: validRemotePayload guards the zorder delta against malformed peers
+  {
+    assert.ok(validRemotePayload({op:'zorder',changes:[{id:'a',before:'V',after:'k'}]}),'well-formed delta accepted');
+    assert.ok(validRemotePayload({op:'zorder',changes:[{id:'a',after:'k'}]}),'missing before (null) accepted');
+    assert.ok(!validRemotePayload({op:'zorder',changes:[{id:'a',after:{evil:1}}]}),'non-string key rejected');
+    assert.ok(!validRemotePayload({op:'zorder',changes:[{before:'V',after:'k'}]}),'missing id rejected');
+    assert.ok(!validRemotePayload({op:'zorder',changes:'nope'}),'non-array changes rejected');
+    assert.ok(validRemotePayload({op:'zorder',after:[]}),'legacy snapshot format still accepted');
+    console.log('  ✓ Step3 validRemotePayload: accepts well-formed delta, rejects malformed keys/id');
   }
 
   // legacy boards (integer z, no frac) migrate to keys on first sortZ, order intact
