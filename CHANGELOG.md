@@ -2,12 +2,20 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — docs
+## [Unreleased]
 
-- **ADR-0001 (fractional-index z-order)**: ★最優先の z 順序 fractional-index 化について、判断・
-  キー表現の選択 (文字列 between-key) ・op-log/sync/永続化への影響・後方互換マイグレーション・
-  段階移行 (Step 1〜4) ・テスト計画をまとめた設計 ADR を `docs/ADR-0001-fractional-index-zorder.md`
-  に追加 (Proposed)。コード変更なし。spec §13 / research-improvements / CLAUDE.md から参照。
+### Added
+- **ADR-0001 fractional z-index — Step 1**: z 順序の正準を整数 `z` から派生キー `frac`
+  (base62 between-key) へ移行。`keyBetween` + `reindexFrac` を内蔵し、`sortZ` をキー比較に切替。
+  `zorder` op のスナップショットは `{id,z,frac}` を持ち、undo がキーも厳密復元する。旧ボード
+  (整数 z のみ) は初回 `sortZ` で自動マイグレート (描画順は不変・冪等)。z 操作 (前面/背面/前へ/
+  後ろへ) の挙動は不変、整数 `z` は後方互換フォールバックとして並走。履歴/帯域の最小デルタ化
+  (Step 2) と sync 衝突解消 (Step 3) は後続。設計は `docs/ADR-0001-fractional-index-zorder.md`。
+  キーの strict-order / dense-insert / prefix-stable と zorder undo のキー往復をテストで担保 (588 pass)。
+
+### Docs
+- ADR-0001 を追加し、Step 1 実装を反映 (Accepted / Step 2〜4 Proposed)。spec §13 /
+  research-improvements 項目A / CLAUDE.md MAP から参照。
 
 ## [1.6.70] — 2026-06-13
 

@@ -1,6 +1,6 @@
 # ADR-0001 — z 順序を fractional indexing に置き換える
 
-- **状態**: Proposed (設計のみ。実装は本 ADR 承認後の別リリース)
+- **状態**: Accepted — **Step 1 実装済** (2026-06-14)。Step 2〜4 は Proposed。
 - **日付**: 2026-06-13
 - **関連**: `docs/research-improvements.md` 項目A (★最優先) / `docs/spec.md` §13 既知の未充足 /
   `docs/architecture.md` Store セクション
@@ -122,13 +122,28 @@ z 順序変更は 4 操作: `doBringFront / doSendBack / doBringForward / doSend
 
 ## 段階的移行 (一度に全部はやらない)
 
-1. **Step 1**: `keyBetween` + `migrateZKeys` を内蔵し、`sortZ` をキー比較に切替。z 操作は
-   据え置き (整数 z と並走、キーは派生)。— ここまでで描画正準をキーへ移す。
+1. **Step 1 ✅ (実装済 2026-06-14)**: `keyBetween` を内蔵し、各 shape に派生キー `frac` を持たせ、
+   `sortZ` をキー比較に切替。描画正準をキーへ移した。z 操作 (4種) は据え置き (整数 z と並走)。
+   `zorder` op のスナップショットは `{id,z,frac}` を持ち、undo がキーも厳密復元する。
+   旧ボード (整数 z のみ) は **初回 `sortZ` で自動マイグレート** (z 昇順にキー付与) — 独立 `migrateZKeys`
+   関数は不要だった。588 tests 緑。
 2. **Step 2**: 4 つの z 操作を per-shape キー更新に書き換え、`zorder` op を最小デルタ化。
 3. **Step 3**: sync の per-key 衝突タイブレーク + `validRemotePayload` 更新。
 4. **Step 4**: 整数 `z` フィールドを廃止 (完全移行)。
 
 各 Step は独立リリース + テスト緑。Step 1〜2 で履歴/帯域問題が解消、Step 3 で sync 衝突が解消。
+
+### Step 1 実装メモ
+
+- **キー表現**: base62 (`0-9A-Za-z`)。`keyBetween(a,b)` は a<b の桁ごと中点を取り、隣接桁
+  (gap 無し) では下位境界の上に新桁を挿入するため**常に挟める**。
+- **prefix-stable 性が鍵**: `reindexFrac` は `keyBetween(null,…)` の連鎖でキーを採番する。
+  この連鎖は**総数に依存せず先頭 N 個が不変**なので、add/del の splice がキーを再採番しなくても
+  残った shape は正準キーを保ち、`JSON.stringify(state.shapes)` が undo/redo で厳密往復する
+  (PBT 30 シナリオで担保)。
+- **z 据え置きの安全策**: キーを持たない新規 shape が現れても `sortZ` は**既存キー順を崩さず**
+  最上位キーの上に積む (旧 `nextZ()` 相当)。z fallback による全並べ替えはしない (フルソートが
+  キー順と z 順の乖離で既存順序を壊すバグを実装中に検出・回避)。
 
 ## 結論
 

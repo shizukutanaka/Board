@@ -1112,12 +1112,12 @@ const Store={
         }
         break;}
       case 'zorder':{
-        // {id,z} snapshot in array order restores z AND order (tie-safe inverse).
+        // {id,z,frac} snapshot in array order restores key+z AND order (tie-safe inverse).
         const snap=forward?op.after:op.before;
         if(snap){
           const map=new Map(state.shapes.map(s=>[s.id,s]));
           const next=[];
-          for(const p of snap){const sh=map.get(p.id);if(sh){sh.z=p.z;next.push(sh);map.delete(p.id)}}
+          for(const p of snap){const sh=map.get(p.id);if(sh){sh.z=p.z;if(p.frac!=null)sh.frac=p.frac;next.push(sh);map.delete(p.id)}}
           for(const sh of map.values())next.push(sh);   // keep any extras (defensive)
           state.shapes.length=0;Array.prototype.push.apply(state.shapes,next);
         }
@@ -1158,7 +1158,55 @@ function connEnds(s){
   const p2=b?_edgePt(b,ac.x,ac.y):{x:s.x2,y:s.y2};
   return{x1:p1.x,y1:p1.y,x2:p2.x,y2:p2.y};
 }
-function sortZ(){state.shapes.sort((a,b)=>(a.z||0)-(b.z||0))}
+// ---- fractional z-index (ADR-0001 Step 1) ----------------------------------
+// keyBetween(a,b): a string key strictly ordered between a and b (lexicographic;
+// shorter compares as if 0-padded). null = open end. Pure, no deps. This is the
+// foundation for minimal-delta z-order ops (Step 2); for now keys are *derived*
+// from array order (see reindexFrac) and z is kept as a back-compat fallback.
+const FRAC_DIGITS='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+function keyBetween(a,b){
+  const N=FRAC_DIGITS.length, di=c=>FRAC_DIGITS.indexOf(c);
+  const A=a==null?[]:[...a].map(di), B=b==null?null:[...b].map(di);
+  const out=[]; let i=0;
+  while(true){
+    const x=i<A.length?A[i]:0;
+    const y=B==null?N:(i<B.length?B[i]:0);
+    if(x===y){out.push(x);i++;continue;}     // shared prefix: copy and descend
+    const mid=(x+y)>>1;
+    if(mid>x){out.push(mid);break;}          // gap between digits: take midpoint
+    out.push(x);i++;                          // y===x+1: commit x, go above lower
+    while(true){
+      const lx=i<A.length?A[i]:0;
+      if(lx<N-1){out.push((lx+N)>>1);break;}  // a digit strictly above the lower
+      out.push(lx);i++;                        // lower saturated: keep descending
+    }
+    break;
+  }
+  return out.map(d=>FRAC_DIGITS[d]).join('');
+}
+// reindexFrac: stamp every shape with a strictly increasing key from array order.
+// The keyBetween(null,…) chain is prefix-stable (first N keys are independent of
+// total count), so add/del splices that don't reindex still leave canonical keys.
+function reindexFrac(){let p=null;for(const s of state.shapes){p=keyBetween(p,null);s.frac=p;}}
+// sortZ: order shapes by fractional key. Keyless shapes are reconciled first:
+// a fully-legacy board (no keys at all) is migrated from integer z; otherwise a
+// newly added keyless shape is placed above the current top key (matching the
+// old nextZ() "new shape goes to front"). Existing keys are never reshuffled by
+// the z fallback, so an established frac order is preserved. (ADR-0001 Step 1)
+function sortZ(){
+  if(!state.shapes.length)return;
+  if(state.shapes.some(s=>s.frac==null)){
+    if(state.shapes.every(s=>s.frac==null)){
+      state.shapes.sort((a,b)=>(a.z||0)-(b.z||0));   // legacy board: seed from z
+      reindexFrac();
+    }else{
+      let top=null;
+      for(const s of state.shapes)if(s.frac!=null&&(top==null||s.frac>top))top=s.frac;
+      for(const s of state.shapes)if(s.frac==null){top=keyBetween(top,null);s.frac=top;}
+    }
+  }
+  state.shapes.sort((a,b)=>a.frac<b.frac?-1:a.frac>b.frac?1:0);
+}
 function nextZ(){return state.shapes.length?Math.max(...state.shapes.map(s=>s.z||0))+1:1}
 
 // ====================== SHAPE helpers ======================
@@ -2579,8 +2627,9 @@ function doDelete(){
   UI.toast(t('deleted')+' '+sel.length);
 }
 // z-order ops snapshot every shape's z → reversible `zorder` op (before/after), broadcast.
-function _zSnapshot(){return state.shapes.map(s=>({id:s.id,z:s.z||0}))}
+function _zSnapshot(){return state.shapes.map(s=>({id:s.id,z:s.z||0,frac:s.frac}))}
 function _commitZ(before){
+  reindexFrac();                 // derive keys from the new array order (ADR-0001)
   const after=_zSnapshot();
   if(JSON.stringify(before)===JSON.stringify(after)){invalidate();return}
   Store._recordCommitted({op:'zorder',before,after});

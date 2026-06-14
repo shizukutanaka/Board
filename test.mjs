@@ -143,6 +143,8 @@ const checks = [
   // v1.6.6: reversibility + security hardening
   ['zorder op carries before/after snapshot', html.includes("op:'zorder',before,after")],
   ['zorder _apply restores order+z from snapshot', html.includes("const snap=forward?op.after:op.before") && html.includes("sh.z=p.z")],
+  ['zorder snapshot carries frac key (ADR-0001)', html.includes("frac:s.frac") && html.includes("sh.frac=p.frac")],
+  ['fractional index keyBetween/reindexFrac present (ADR-0001)', html.includes("function keyBetween") && html.includes("function reindexFrac")],
   ['z-step ops route through _commitZ (undoable)', html.includes("_commitZ(before)") && html.includes("function _commitZ")],
   ['applyRemote whitelists op types', html.includes("REMOTE_OPS") && html.includes("this.REMOTE_OPS.has(op.op)")],
   ['applyRemote validates remote add shape', html.includes("case 'add':    return validShape(op.shape)")],
@@ -497,7 +499,7 @@ try {
              doGroup, doUngroup, doPaste, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete };
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -511,7 +513,7 @@ try {
           doGroup, doUngroup, doPaste, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete } = api;
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac } = api;
 
   console.log('\n-- behavioural --');
 
@@ -1579,6 +1581,64 @@ try {
     assert.strictEqual(state.shapes[1].z,2,'sortZ: middle z second');
     assert.strictEqual(state.shapes[2].z,3,'sortZ: highest z last');
     console.log('  ✓ sortZ: shapes sorted ascending by z value');
+  }
+
+  // keyBetween — fractional index keys (ADR-0001 Step 1)
+  {
+    // open ends
+    assert.ok(keyBetween(null,null).length>0,'keyBetween(null,null) returns a key');
+    assert.ok(keyBetween('V',null)>'V','keyBetween(a,null) is strictly above a');
+    assert.ok(keyBetween(null,'V')<'V','keyBetween(null,b) is strictly below b');
+    // strict betweenness, including adjacent digits (no integer gap)
+    const pairs=[['V','k'],['V','W'],['0','1'],['a','b'],['VV','Vk'],['','1']];
+    for(const [a,b] of pairs){
+      const m=keyBetween(a,b);
+      assert.ok((a===''||m>a)&&m<b,`keyBetween(${a},${b})=${m} lies strictly between`);
+    }
+    // dense insertion: repeatedly bisect the same gap; order must always hold
+    let lo='V',hi='k';
+    for(let i=0;i<200;i++){const m=keyBetween(lo,hi);assert.ok(m>lo&&m<hi,'dense insert stays ordered');hi=m;}
+    // appending chain (reindexFrac uses this) is strictly increasing & prefix-stable
+    const chain=[];let p=null;for(let i=0;i<50;i++){p=keyBetween(p,null);chain.push(p);}
+    for(let i=1;i<chain.length;i++)assert.ok(chain[i]>chain[i-1],'append chain strictly increases');
+    const chain2=[];p=null;for(let i=0;i<10;i++){p=keyBetween(p,null);chain2.push(p);}
+    assert.deepStrictEqual(chain.slice(0,10),chain2,'append chain is prefix-stable (count-independent)');
+    console.log('  ✓ keyBetween: strict order, dense insert, prefix-stable chain');
+  }
+
+  // frac is the canonical order; z-order ops move keys, and the zorder snapshot
+  // carries frac so undo restores keys exactly (ADR-0001 Step 1)
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();
+    const r1=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    const r2=Shape.make('rect',{x:5,y:5,w:10,h:10});
+    const r3=Shape.make('rect',{x:9,y:9,w:10,h:10});
+    Store.commit({op:'add',shape:r1});Store.commit({op:'add',shape:r2});Store.commit({op:'add',shape:r3});
+    assert.ok(state.shapes.every(s=>typeof s.frac==='string'),'every committed shape gets a frac key');
+    const asc=state.shapes.map(s=>s.frac);
+    assert.deepStrictEqual([...asc].sort(),asc,'array order matches ascending frac order');
+    const fracBefore=new Map(state.shapes.map(s=>[s.id,s.frac]));
+    state.selection=new Set([r1.id]);
+    doBringFront();
+    assert.strictEqual(state.shapes[state.shapes.length-1].id,r1.id,'bring front: r1 on top');
+    assert.ok(state.shapes[state.shapes.length-1].frac>state.shapes[0].frac,'top shape has the largest key');
+    Store.undo();
+    assert.strictEqual(state.shapes.map(s=>s.id).join(','),[r1.id,r2.id,r3.id].join(','),'undo restores order');
+    for(const s of state.shapes)assert.strictEqual(s.frac,fracBefore.get(s.id),'undo restores exact frac keys');
+    console.log('  ✓ frac canonical: keys assigned, ordered, and round-trip through zorder undo');
+  }
+
+  // legacy boards (integer z, no frac) migrate to keys on first sortZ, order intact
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;
+    const L=['c','a','b'].map((id,i)=>({id,type:'rect',x:i*10,y:0,w:10,h:10,z:[3,1,2][i],stroke:'#000',size:2,opacity:1}));
+    state.shapes.push(...L);                      // pushed out of z order, no frac
+    sortZ();
+    assert.deepStrictEqual(state.shapes.map(s=>s.id),['a','b','c'],'legacy: sorted by integer z');
+    assert.ok(state.shapes.every(s=>typeof s.frac==='string'),'legacy: keys seeded for all shapes');
+    const keys=state.shapes.map(s=>s.frac);
+    assert.deepStrictEqual([...keys].sort(),keys,'legacy: seeded keys are ascending in z order');
+    console.log('  ✓ legacy z-only board migrates to frac keys preserving order');
   }
 
   // Shape.translate — moves shape coordinates per type

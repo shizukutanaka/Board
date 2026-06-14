@@ -268,9 +268,10 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
   回転シェイプ・線端点はスキップ、コミットでガイドをクリア。
 
 ### ⬜ 既知の未充足(将来 ADR で対応 / 詳細は research docs)
-- **z 順序 op のスケーラビリティ**: `zorder` が全 shape スナップショットを保持(大規模で履歴/帯域肥大)。
-  fractional index へ移行が望ましい(`research-improvements.md` 項目A)。設計は **`docs/ADR-0001-fractional-index-zorder.md`**
-  にまとめた(Proposed)。P0 可逆性/sync/永続化に触れるため承認後に段階実装。
+- **z 順序 op のスケーラビリティ**: 正準キーを整数 `z` から派生キー `frac` (fractional index) へ移行する
+  **ADR-0001 Step 1 を実装済** — `sortZ` はキー比較、旧ボードは初回ソートで自動マイグレート。ただし
+  `zorder` op は当面**全 shape スナップショット**のまま (履歴/帯域の最小デルタ化は Step 2、sync 衝突解消は
+  Step 3)。設計・残作業は **`docs/ADR-0001-fractional-index-zorder.md`**。
 - **DOM ミラー a11y**: 図形ごとの DOM ノードによるネイティブ SR 対応は将来課題(§10、cat 6)。
 - CI の `ci.yml` は GitHub App 権限の都合でブランチ未反映(手動適用要)。
 
