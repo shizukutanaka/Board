@@ -17,6 +17,14 @@ console.log(`  ℹ index.html: ${html.length} bytes raw, ${_gzSize} bytes gzip`)
 const checks = [
   ['Single-file (no external script)', !/<script[^>]+src=["']https?:/.test(html)],
   ['Single-file (no external link)', !/<link[^>]+(href)=["']https?:/.test(html)],
+  // Socratic perspective (2026-06-14): the product is defined by NEGATIONS (no
+  // signup/weight/paywall/privacy-violation). A negation is only credible if it
+  // is falsifiable. Single-file was already enforced above; these make the two
+  // load-bearing-but-previously-prose values testable: zero third-party network
+  // (privacy / zero-tracking) and offline-equivalence (ships an offline fallback).
+  ['Privacy: no telemetry/analytics primitives', !/sendBeacon|XMLHttpRequest|\bgtag\(|google-analytics|googletagmanager|mixpanel|amplitude|\bSentry\b/i.test(html)],
+  ['Privacy: zero third-party origins (only W3C SVG namespace identifier)', ((html.match(/https?:\/\/[A-Za-z0-9._-]+/gi)||[]).every(u=>/(?:www\.)?w3\.org/i.test(u)))],
+  ['Offline-equivalence: SW ships a cache-first offline fallback', /caches\.open\(/.test(html) && (/new Response\(['"]offline/.test(html) || /status:\s*503/.test(html))],
   ['PWA manifest inline', /rel="manifest"/.test(html) && /data:application\/manifest\+json/.test(html)],
   ['ServiceWorker registered', /serviceWorker.*register/.test(html)],
   ['i18n ja + en', /I18N\s*=/.test(html) && html.includes('ja:{') && html.includes('en:{')],
