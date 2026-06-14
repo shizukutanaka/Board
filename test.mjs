@@ -399,7 +399,7 @@ const checks = [
   ['rotated resize works in local frame + world re-pin', html.includes("sp=_rotPt(wp.x,wp.y,cx0,cy0,-orig.rotate);") && html.includes("sh.x+=tgt.x-cur.x;sh.y+=tgt.y-cur.y;")],
   ['selection outline traces rotated box', html.includes("if(single&&single.rotate&&single.w!=null){")],
   // v1.6.70: keyboard resize (Alt+arrow)
-  ['resize op registered (apply, validate, remote)', html.includes("case 'resize':\n      case 'align':{") && html.includes("case 'resize':\n    case 'align':  return Array.isArray(op.after);") && html.includes("'align','style','resize'])")],
+  ['resize op registered (apply, validate, remote)', html.includes("case 'resize':\n      case 'align':{") && html.includes("case 'resize':\n    case 'align':  return patches(op.after)") && html.includes("'align','style','resize'])")],
   ['Alt+arrow keyboard-resizes box shapes', html.includes("Store._recordCommitted({op:'resize',before,after});") && html.includes("sh.w=Math.max(4,sh.w+dw);sh.h=Math.max(4,sh.h+dh);")],
 ];
 
@@ -718,6 +718,24 @@ try {
   Store.applyRemote({op:'move', ids:[mvId], dx:5, dy:0, clock:{peer:'peerB', seq:2, ts:1}});
   assert.strictEqual(state.shapes[0].x, mx0 + 5, 'well-formed remote move is applied');
   console.log('  ✓ applyRemote validates op payloads (move/upd) and applies valid move');
+
+  // §3-2: value-level payload guard — NaN/Infinity injection and prototype
+  // pollution via upd/style must be dropped (a finite shape must not vanish).
+  {
+    const x1 = state.shapes[0].x, sz0 = state.shapes[0].size;
+    Store.applyRemote({op:'upd', id:mvId, after:{x:NaN}, clock:{peer:'attacker', seq:10, ts:1}});
+    assert.strictEqual(state.shapes[0].x, x1, 'remote upd with NaN coordinate is dropped');
+    Store.applyRemote({op:'upd', id:mvId, after:{w:Infinity}, clock:{peer:'attacker', seq:11, ts:1}});
+    assert.ok(Number.isFinite(state.shapes[0].w), 'remote upd with Infinity is dropped');
+    Store.applyRemote({op:'upd', id:mvId, after:JSON.parse('{"__proto__":{"polluted":1}}'), clock:{peer:'attacker', seq:12, ts:1}});
+    assert.notStrictEqual(({}).polluted, 1, 'prototype pollution via __proto__ patch is blocked');
+    Store.applyRemote({op:'style', after:[{id:mvId, size:NaN}], clock:{peer:'attacker', seq:13, ts:1}});
+    assert.strictEqual(state.shapes[0].size, sz0, 'remote style with NaN value is dropped');
+    // a well-formed upd still applies
+    Store.applyRemote({op:'upd', id:mvId, after:{x:x1+3}, clock:{peer:'peerB', seq:3, ts:1}});
+    assert.strictEqual(state.shapes[0].x, x1+3, 'well-formed remote upd is applied');
+    console.log('  ✓ applyRemote rejects NaN/Infinity/__proto__ in upd/style payloads');
+  }
 
   // SVG export escapes attribute values (regression: colors/labels/dataUrls
   // were interpolated raw → an exported .svg could execute injected markup)

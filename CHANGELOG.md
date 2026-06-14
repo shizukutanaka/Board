@@ -4,6 +4,14 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
 
 ## [Unreleased]
 
+### Security
+- **受信 op の値検証 (research §3-2)**: `validRemotePayload` を全 op 型に拡張。新しい `validPatch()` が
+  `upd`/`style`/`resize`/`align` の patch 値から **NaN/Infinity 注入**(描画で shape が消える事故)と
+  **`__proto__`/`constructor` 等のプロトタイプ汚染**を拒否。`del`/`clear` は各 shape を `validShape` で
+  検証。悪意ある peer が遠隔 op で shape を破壊/汚染する経路を塞いだ。NaN/Infinity/__proto__ の
+  拒否と正常 op の適用をテストで担保。
+  - 注: SVG エクスポートの座標注入 (research §3-1) は `buildSVG` の `_num()`/`_esc()` で対策済を確認。
+
 ### Fixed
 - **z-order 堅牢化 (ADR-0001 後の精査)**: `keyBetween` の無限ループを修正 — `b` が全ゼロキー
   (例 `"0"`) だと無限ループしタブをフリーズし得た (任意文字列 frac を許す `validRemotePayload`

@@ -112,10 +112,12 @@ replicated undo 論文群。
 ## 3. 近接の正しさ修正(コードレビュー由来・着手容易)
 
 研究テーマと独立に、すぐ直すべき確定バグ(`/code-review` で検出):
-1. **SVG エクスポートの座標フィールド未エスケープ**: 色/ラベルはエスケープ済みだが `x`/`y`/`w`/`h`/`size`/
-   `fontSize` 等の数値属性が生挿入。共有URL/peer 由来の文字列座標で markup 注入が依然可能。
-   → 数値強制(`+s.x`)または全属性 `_esc`、加えて validator で座標型を要求。
-2. **受信 op の検証が `add` のみ**: `upd`/`move`/`zorder` の payload 未検証 → NaN 等で shape 消失。
+1. ~~**SVG エクスポートの座標フィールド未エスケープ**~~ **✅ 解決済 (2026-06-14 時点で確認)**: `buildSVG` は
+   全座標を `_num()` で数値強制し、色/ラベル/dataUrl は `_esc()` でエスケープ済み。markup 注入経路なし。
+2. ~~**受信 op の検証が `add` のみ**~~ **✅ 解決済 (2026-06-14)**: `validRemotePayload` を全 op に拡張。
+   `validPatch()` を追加し、`upd`/`style`/`resize`/`align` の patch 値に **NaN/Infinity 注入と
+   `__proto__`/`constructor` 等のプロトタイプ汚染を拒否**。`del`/`clear` は各 shape を `validShape` で検証。
+   `move`(dx/dy 有限)・`zorder`(キー型) は既に検証済。これで「NaN で shape が消える」事故を構造的に防止。
 3. (参考)`Array.prototype.push.apply` の超大規模ボードでの RangeError、旧 Safari の matchMedia リスナ。
 
 ---
@@ -124,8 +126,8 @@ replicated undo 論文群。
 
 | 優先 | 項目 | 効果 | 規模 | 原則整合 |
 |---|---|---|---|---|
-| ★1 | A. fractional index z-order | sync 衝突解消 + 履歴/帯域の肥大化解消(レビュー指摘の構造的解決) | 中 | ◎ 依存ゼロ |
-| ★2 | §3 近接バグ修正 | セキュリティ/整合性 | 小 | ◎ |
+| ★1 | A. fractional index z-order ✅ | sync 衝突解消 + 履歴/帯域の肥大化解消(レビュー指摘の構造的解決) | 中 | ◎ 依存ゼロ |
+| ★2 | §3 近接バグ修正 ✅ | セキュリティ/整合性 (SVG 注入 + 受信 op の値検証) | 小 | ◎ |
 | ★3 | C. 空間インデックス + カリング | 大規模で 60fps | 中 | ◎ |
 | ★4 | B. perfect-freehand ペン | 体感品質 | 中 | ◎ 自前移植 |
 | ★5 | H. WebCrypto E2E sync | Privacy 原則 | 中 | ◎ 内蔵API |
