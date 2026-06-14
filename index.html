@@ -1174,13 +1174,19 @@ function connEnds(s){
 // from array order (see reindexFrac) and z is kept as a back-compat fallback.
 const FRAC_DIGITS='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 function keyBetween(a,b){
-  const N=FRAC_DIGITS.length, di=c=>FRAC_DIGITS.indexOf(c);
+  const N=FRAC_DIGITS.length, di=c=>{const k=FRAC_DIGITS.indexOf(c);return k<0?0:k};
   const A=a==null?[]:[...a].map(di), B=b==null?null:[...b].map(di);
   const out=[]; let i=0;
   while(true){
     const x=i<A.length?A[i]:0;
     const y=B==null?N:(i<B.length?B[i]:0);
-    if(x===y){out.push(x);i++;continue;}     // shared prefix: copy and descend
+    if(x===y){
+      // Both sequences exhausted and still equal ⇒ a≈b (degenerate / malformed
+      // input such as b="0"). No strict midpoint exists; emit a mid digit and stop
+      // instead of looping forever (guards against a hostile peer's frac key).
+      if(i>=A.length&&(B==null||i>=B.length)){out.push(N>>1);break;}
+      out.push(x);i++;continue;                // shared prefix: copy and descend
+    }
     const mid=(x+y)>>1;
     if(mid>x){out.push(mid);break;}          // gap between digits: take midpoint
     out.push(x);i++;                          // y===x+1: commit x, go above lower
@@ -2651,10 +2657,14 @@ function _zCommit(changes){
 function doBringFront(){
   const ids=[...state.selection];if(!ids.length)return;
   sortZ();
-  const sel=new Set(ids), others=state.shapes.filter(s=>!sel.has(s.id));
+  const sel=new Set(ids), selShapes=state.shapes.filter(s=>sel.has(s.id));
+  if(!selShapes.length)return;
+  const n=state.shapes.length, k=selShapes.length;
+  if(state.shapes.slice(n-k).every(s=>sel.has(s.id))){invalidate();return}  // already at front: no churn
+  const others=state.shapes.filter(s=>!sel.has(s.id));
   let p=others.length?others[others.length-1].frac:null;
   const changes=[];
-  for(const s of state.shapes.filter(s=>sel.has(s.id))){   // current (sorted) order
+  for(const s of selShapes){   // current (sorted) order
     const before=s.frac;p=keyBetween(p,null);s.frac=p;changes.push({id:s.id,before,after:p});
   }
   _zCommit(changes);
@@ -2662,10 +2672,13 @@ function doBringFront(){
 function doSendBack(){
   const ids=[...state.selection];if(!ids.length)return;
   sortZ();
-  const sel=new Set(ids), others=state.shapes.filter(s=>!sel.has(s.id));
+  const sel=new Set(ids), selShapes=state.shapes.filter(s=>sel.has(s.id));
+  if(!selShapes.length)return;
+  if(state.shapes.slice(0,selShapes.length).every(s=>sel.has(s.id))){invalidate();return}  // already at back
+  const others=state.shapes.filter(s=>!sel.has(s.id));
   const hi=others.length?others[0].frac:null;
   const changes=[];let prev=null;
-  for(const s of state.shapes.filter(s=>sel.has(s.id))){
+  for(const s of selShapes){
     const before=s.frac, k=keyBetween(prev,hi);s.frac=k;prev=k;changes.push({id:s.id,before,after:k});
   }
   _zCommit(changes);

@@ -140,7 +140,10 @@ z 順序変更は 4 操作: `doBringFront / doSendBack / doBringForward / doSend
 3. **Step 3 ✅ (実装済 2026-06-14)**: 同時並べ替えのキー衝突を **`sortZ` の `(frac, id)` 比較**で
    決定的にタイブレーク → 全ピアが同一順序に収束。`validRemotePayload` の `zorder` 検証を強化
    (`changes` の各要素が `id:string` / `before,after` が string|undefined)。587 tests 緑。
-4. **Step 4**: 整数 `z` フィールドを廃止 (完全移行)。
+4. **Step 4 (保留)**: 整数 `z` フィールドの廃止。**現時点では見送り** — `validShape` が
+   `typeof s.z==='number'` を必須にしており、`z` はレガシーボード (frac 無し) のマイグレーション
+   アンカーでもある。完全削除は高リスク・低価値。`z` は「frac の back-compat フォールバック」として
+   並走させたまま据え置く (CLAUDE.md「最小修正」「正しさ優先」に沿う)。
 
 各 Step は独立リリース + テスト緑。Step 1〜2 で履歴/帯域問題が解消、Step 3 で sync 衝突が解消。
 
@@ -184,6 +187,17 @@ z 順序変更は 4 操作: `doBringFront / doSendBack / doBringForward / doSend
   (id は文字列必須、key は string か未指定)。不正 peer による非文字列キー注入で比較が壊れるのを防ぐ。
 - **残課題**: interleaving (2 peer が同じ範囲に交互挿入すると順序が混ざる) は許容。厳密な意図順序が必要なら
   将来 op に origin 情報を足す余地はあるが、図形では実害が小さい (Figma/tldraw の判断と同じ)。
+
+### 堅牢化メモ (2026-06-14, Step 1〜3 後の精査で発見・修正)
+
+- **`keyBetween` の無限ループ修正 (実バグ/DoS)**: `b` が全ゼロキー (例 `"0"`) の場合 `keyBetween(null,"0")`
+  が `x===y===0` で無限ループしタブをフリーズさせ得た。通常の生成経路では `"0"` は出ないが、
+  `validRemotePayload` は任意文字列 frac を許すため**悪意ある peer が `frac:"0"` を注入**すると次の
+  `doSendBack` がハングし得た。両系列が尽きてなお等しい場合は中央桁を 1 つ出して打ち切るガードを追加。
+  併せてアルファベット外の文字は 0 とみなす (`indexOf<0→0`) ことで throw を防止。fuzz テストで担保。
+- **前面/背面の no-op 化 (キー churn 抑制)**: 既に最前面/最背面に揃っている選択に対する
+  `doBringFront`/`doSendBack` は、毎回新キーを生成し履歴を汚していた。整列後に「上/下端 k 個が選択集合と
+  一致」すれば**何も記録しない**ようにした。無駄なキー長の伸びと履歴スパムを防ぐ。
 
 ## 結論
 

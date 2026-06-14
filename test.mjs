@@ -1602,7 +1602,15 @@ try {
     for(let i=1;i<chain.length;i++)assert.ok(chain[i]>chain[i-1],'append chain strictly increases');
     const chain2=[];p=null;for(let i=0;i<10;i++){p=keyBetween(p,null);chain2.push(p);}
     assert.deepStrictEqual(chain.slice(0,10),chain2,'append chain is prefix-stable (count-independent)');
-    console.log('  ✓ keyBetween: strict order, dense insert, prefix-stable chain');
+    // robustness: degenerate / hostile inputs must terminate (no infinite loop) and
+    // return a string. b="0" (all-zeros) used to hang keyBetween(null,"0") forever.
+    for(const [a,b] of [[null,'0'],[null,'00'],['0','0'],['0','00'],[null,'000'],['~weird','0']]){
+      const m=keyBetween(a,b);
+      assert.strictEqual(typeof m,'string',`keyBetween(${a},${b}) terminates with a string`);
+    }
+    // out-of-alphabet characters are treated as 0, never throw
+    assert.strictEqual(typeof keyBetween('💥','x'),'string','non-alphabet input does not throw');
+    console.log('  ✓ keyBetween: strict order, dense insert, prefix-stable, hostile-input safe');
   }
 
   // frac is the canonical order; z-order ops move keys, and the zorder snapshot
@@ -1648,12 +1656,16 @@ try {
     op=state.history[state.histIdx];
     assert.strictEqual(op.changes.length,2,'two selected = 2-shape delta (others untouched)');
     assert.deepStrictEqual(state.shapes.map(s=>s.id),[b.id,d.id,a.id,c.id],'a,c on top in relative order');
-    // no-op: bring-front when already on top records nothing
+    // bring-front when already contiguous at the top is a strict no-op (no key churn)
     const hbefore=state.histIdx;
     state.selection=new Set([a.id,c.id]);
     doBringFront();
-    assert.ok(state.histIdx===hbefore||state.history[state.histIdx].changes.length>0,'redundant front is a no-op or real move');
-    console.log('  ✓ zorder minimal-delta: single move = 1 change; multi keeps relative order');
+    assert.strictEqual(state.histIdx,hbefore,'redundant bring-front records nothing');
+    // same for send-back at the bottom
+    state.selection=new Set([b.id,d.id]);
+    doSendBack();
+    assert.strictEqual(state.histIdx,hbefore,'redundant send-back records nothing');
+    console.log('  ✓ zorder minimal-delta: single move = 1 change; multi keeps relative order; no-op at extremes');
   }
 
   // Step 3: concurrent-reorder convergence — equal frac keys (two peers inserting

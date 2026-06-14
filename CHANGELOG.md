@@ -4,6 +4,19 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
 
 ## [Unreleased]
 
+### Fixed
+- **z-order 堅牢化 (ADR-0001 後の精査)**: `keyBetween` の無限ループを修正 — `b` が全ゼロキー
+  (例 `"0"`) だと無限ループしタブをフリーズし得た (任意文字列 frac を許す `validRemotePayload`
+  経由で悪意ある peer が誘発可能な DoS)。両系列が尽きてなお等しい場合に打ち切るガードを追加し、
+  アルファベット外文字は 0 とみなして throw を防止。fuzz テストで担保。
+
+### Changed
+- **z-order キー churn 抑制**: 既に最前面/最背面に揃っている選択への bring-front / send-back は
+  キーを再生成せず**何も記録しない** no-op にした (無駄なキー長の伸びと履歴スパムを防止)。
+- **Step 4 (整数 z 廃止) は保留**: `validShape` が `z:number` を必須にしており、`z` はレガシー
+  ボードのマイグレーションアンカーでもあるため、完全削除は高リスク・低価値。`z` は frac の
+  back-compat フォールバックとして据え置く (詳細は ADR-0001)。
+
 ### Added
 - **ADR-0001 fractional z-index — Step 3**: 同時並べ替えのキー衝突を **`sortZ` の `(frac, id)` 比較**で
   決定的にタイブレークし、全ピアが同一スタッキング順序に収束するようにした (`shape.id` は複製済み
