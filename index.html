@@ -3264,6 +3264,18 @@ const Share={
 const Persist={
   db:null,
   _saveT:0,
+  _durableAsked:false,
+  // Move the autosave out of the browser's best-effort (evictable) bucket so a
+  // board survives storage pressure — the local-first *Longevity* principle.
+  // Requested lazily (only once the user has real content) to avoid a durability
+  // prompt taxing the blank first-load. Silent best-effort; no-op if unsupported.
+  async requestDurable(){
+    if(this._durableAsked)return; this._durableAsked=true;
+    try{
+      const st=navigator.storage;
+      if(st&&st.persist&&st.persisted&&!(await st.persisted()))await st.persist();
+    }catch(_){}
+  },
   async open(){
     return new Promise((res,rej)=>{
       const r=indexedDB.open(DB_NAME,DB_VER);
@@ -3291,6 +3303,7 @@ const Persist={
       state.dirty=false;
       state.lastSaveAt=Date.now();
       UI.refreshSaved();
+      if(state.shapes.length)this.requestDurable();   // user has content worth keeping
       if(explicit)UI.toast(t('saved'),'ok');
     }catch(err){
       UI.toast(t('saveFailed')+': '+err.message,'err');

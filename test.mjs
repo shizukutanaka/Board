@@ -25,6 +25,10 @@ const checks = [
   ['Privacy: no telemetry/analytics primitives', !/sendBeacon|XMLHttpRequest|\bgtag\(|google-analytics|googletagmanager|mixpanel|amplitude|\bSentry\b/i.test(html)],
   ['Privacy: zero third-party origins (only W3C SVG namespace identifier)', ((html.match(/https?:\/\/[A-Za-z0-9._-]+/gi)||[]).every(u=>/(?:www\.)?w3\.org/i.test(u)))],
   ['Offline-equivalence: SW ships a cache-first offline fallback', /caches\.open\(/.test(html) && (/new Response\(['"]offline/.test(html) || /status:\s*503/.test(html))],
+  // Longevity (local-first ownership, §3.7): the autosave must request durable
+  // (non-evictable) storage, else a board lives in the browser's best-effort
+  // bucket and a "clear site data" or disk-pressure eviction loses it.
+  ['Longevity: requests durable (non-evictable) storage', /navigator\.storage|\bst\.persist\b/.test(html) && /\.persist\(\)/.test(html)],
   ['PWA manifest inline', /rel="manifest"/.test(html) && /data:application\/manifest\+json/.test(html)],
   ['ServiceWorker registered', /serviceWorker.*register/.test(html)],
   ['i18n ja + en', /I18N\s*=/.test(html) && html.includes('ja:{') && html.includes('en:{')],

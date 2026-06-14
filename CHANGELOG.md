@@ -4,6 +4,13 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
 
 ## [Unreleased]
 
+### Added
+- **データ耐久性 / Longevity (research §3.7)**: 自動保存(IndexedDB)を `navigator.storage.persist()` で
+  **耐久(非退避)バケットへ昇格**する `Persist.requestDurable()` を追加。既定の best-effort バケットは
+  ディスク逼迫やサイトデータ消去で eviction されうるため、local-first の Longevity 原則に沿って
+  ユーザのボードが既定で失われないようにする。依存ゼロ・ネットワーク不要・UIなし。空白の初回ロードでは
+  要求せず、**実際に内容を保存した時に一度だけ**要求して第一体験を汚さない。falsifiable ガードを追加。
+
 ### Security
 - **受信 op の値検証 (research §3-2)**: `validRemotePayload` を全 op 型に拡張。新しい `validPatch()` が
   `upd`/`style`/`resize`/`align` の patch 値から **NaN/Infinity 注入**(描画で shape が消える事故)と
