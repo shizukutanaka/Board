@@ -1,6 +1,6 @@
 # ADR-0001 — z 順序を fractional indexing に置き換える
 
-- **状態**: Accepted — **Step 1 実装済** (2026-06-14)。Step 2〜4 は Proposed。
+- **状態**: Accepted — **Step 1 + Step 2 実装済** (2026-06-14)。Step 3〜4 は Proposed。
 - **日付**: 2026-06-13
 - **関連**: `docs/research-improvements.md` 項目A (★最優先) / `docs/spec.md` §13 既知の未充足 /
   `docs/architecture.md` Store セクション
@@ -74,9 +74,10 @@ z 順序変更は 4 操作: `doBringFront / doSendBack / doBringForward / doSend
 ### `zorder` op を per-shape の最小デルタに変更
 
 ```
-{op:'zorder', id, before:"<key>", after:"<key>"}            // 単一図形 (1 step / 1 keystroke)
-{op:'zorder', changes:[{id,before,after},...]}              // 複数選択 (動いた図形のみ)
+{op:'zorder', changes:[{id, before:"<key>", after:"<key>"}, …]}   // 動いた図形のみ (単数も同形)
 ```
+
+(実装は単一図形も `changes` 配列 1 要素で統一した — 分岐を増やさないため。)
 
 - `_apply(forward)` は `changes` の各 `{id}` に `forward?after:before` を代入し `sortZ()`。
 - 逆操作は対称 (before/after を入れ替えるだけ)。**動いた図形のみ**を保持 → 履歴 O(変更数)。
@@ -127,8 +128,12 @@ z 順序変更は 4 操作: `doBringFront / doSendBack / doBringForward / doSend
    `zorder` op のスナップショットは `{id,z,frac}` を持ち、undo がキーも厳密復元する。
    旧ボード (整数 z のみ) は **初回 `sortZ` で自動マイグレート** (z 昇順にキー付与) — 独立 `migrateZKeys`
    関数は不要だった。588 tests 緑。
-2. **Step 2**: 4 つの z 操作を per-shape キー更新に書き換え、`zorder` op を最小デルタ化。
-3. **Step 3**: sync の per-key 衝突タイブレーク + `validRemotePayload` 更新。
+2. **Step 2 ✅ (実装済 2026-06-14)**: 4 つの z 操作 (前面/背面/前へ/後ろへ) を per-shape キー更新に
+   書き換え、`zorder` op を **`{op:'zorder',changes:[{id,before,after}]}` の最小デルタ**化。動いた図形のみ
+   履歴/ブロードキャストに載る (1 図形の前面化 = 1 エントリ。旧: 全 shape スナップショット)。`_apply` は
+   新フォーマットを主とし、**旧スナップショット形式も defensive に保持** (混在バージョン peer / 既存履歴)。
+   `validRemotePayload` を新形式 (`changes` 配列) に対応。587 tests 緑。
+3. **Step 3**: sync の per-key 衝突タイブレーク (`key#peerId`) + `validRemotePayload` 強化。
 4. **Step 4**: 整数 `z` フィールドを廃止 (完全移行)。
 
 各 Step は独立リリース + テスト緑。Step 1〜2 で履歴/帯域問題が解消、Step 3 で sync 衝突が解消。
@@ -144,6 +149,22 @@ z 順序変更は 4 操作: `doBringFront / doSendBack / doBringForward / doSend
 - **z 据え置きの安全策**: キーを持たない新規 shape が現れても `sortZ` は**既存キー順を崩さず**
   最上位キーの上に積む (旧 `nextZ()` 相当)。z fallback による全並べ替えはしない (フルソートが
   キー順と z 順の乖離で既存順序を壊すバグを実装中に検出・回避)。
+
+### Step 2 実装メモ
+
+- **op フォーマット**: `{op:'zorder', changes:[{id,before,after}]}`。`_zCommit(changes)` が
+  `before!==after` の要素のみ残し記録 → **本当に動いた図形だけ**が履歴/sync に乗る。
+- **4 操作の移動アルゴリズム** (いずれも entry で `sortZ()` してキー存在と整列を保証):
+  - 前面 `doBringFront`: 選択を非選択の最大キーの上へ `keyBetween(p,null)` 連鎖 (相対順保持)。
+  - 背面 `doSendBack`: 非選択の最小キーの下へ `keyBetween(prev,hi)` 連鎖。
+  - 1つ前へ/後ろへ: ソート済み配列を端から走査し、選択を直近の非選択隣接の**間**へ 1 つだけ移動。
+    複数選択は衝突しない向き (前へ=上から、後ろへ=下から) に処理。
+- **逆操作**: `_apply` で `forward?after:before` を代入し `sortZ()`。動かなかった図形は不変なので
+  `JSON.stringify(state.shapes)` の往復は Step 1 同様厳密 (PBT で担保)。
+- **後方互換**: `_apply` は旧スナップショット形式 (`op.after`/`op.before`) も処理を残す。混在バージョン
+  の peer や、Step 2 以前にメモリ上へ積まれた履歴に対する防御 (履歴は永続化されないので実害は限定的)。
+- **既知の限界 (Step 3 で解消)**: 2 peer が同時に並べ替えるとキーが衝突しうる (絶対キー代入のため)。
+  これは Step 2 以前の全スナップショット方式でも同等の収束問題で、本 Step で悪化はしない。
 
 ## 結論
 

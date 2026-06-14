@@ -5,6 +5,12 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
 ## [Unreleased]
 
 ### Added
+- **ADR-0001 fractional z-index — Step 2**: z 操作 (前面/背面/前へ/後ろへ) を per-shape の
+  キー更新に書き換え、`zorder` op を **`{op:'zorder',changes:[{id,before,after}]}` の最小デルタ**化。
+  1 図形の前面化は履歴/ブロードキャストに **1 エントリだけ**載る (旧: 全 shape スナップショット)。
+  `_apply` は新形式を主とし旧スナップショット形式も defensive に処理 (混在バージョン/既存履歴)。
+  `validRemotePayload` を `changes` 配列に対応。挙動 (前面/背面/前後 1 段) は不変。単一移動 =1 変更・
+  複数選択の相対順保持・undo 往復をテストで担保 (587 pass)。sync 衝突解消は Step 3。
 - **ADR-0001 fractional z-index — Step 1**: z 順序の正準を整数 `z` から派生キー `frac`
   (base62 between-key) へ移行。`keyBetween` + `reindexFrac` を内蔵し、`sortZ` をキー比較に切替。
   `zorder` op のスナップショットは `{id,z,frac}` を持ち、undo がキーも厳密復元する。旧ボード

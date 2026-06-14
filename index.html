@@ -977,7 +977,8 @@ function validRemotePayload(op){
     case 'clear':  return Array.isArray(op.shapes);
     case 'upd':    return typeof op.id==='string'&&!!op.after&&typeof op.after==='object';
     case 'move':   return Array.isArray(op.ids)&&Number.isFinite(+op.dx)&&Number.isFinite(+op.dy);
-    case 'zorder':
+    case 'zorder':  // Step2 minimal-delta {changes:[{id,before,after}]} or legacy {after:[…]}
+      return (Array.isArray(op.changes)&&op.changes.every(c=>c&&typeof c.id==='string'))||Array.isArray(op.after);
     case 'style':
     case 'resize':
     case 'align':  return Array.isArray(op.after);
@@ -1112,14 +1113,20 @@ const Store={
         }
         break;}
       case 'zorder':{
-        // {id,z,frac} snapshot in array order restores key+z AND order (tie-safe inverse).
-        const snap=forward?op.after:op.before;
-        if(snap){
-          const map=new Map(state.shapes.map(s=>[s.id,s]));
-          const next=[];
-          for(const p of snap){const sh=map.get(p.id);if(sh){sh.z=p.z;if(p.frac!=null)sh.frac=p.frac;next.push(sh);map.delete(p.id)}}
-          for(const sh of map.values())next.push(sh);   // keep any extras (defensive)
-          state.shapes.length=0;Array.prototype.push.apply(state.shapes,next);
+        if(op.changes){
+          // minimal-delta (ADR-0001 Step 2): set moved shapes' keys, re-sort by key.
+          for(const c of op.changes){const sh=byId(c.id);if(sh)sh.frac=forward?c.after:c.before}
+          sortZ();
+        }else{
+          // legacy full-snapshot format (pre-Step2 history / mixed-version peer).
+          const snap=forward?op.after:op.before;
+          if(snap){
+            const map=new Map(state.shapes.map(s=>[s.id,s]));
+            const next=[];
+            for(const p of snap){const sh=map.get(p.id);if(sh){sh.z=p.z;if(p.frac!=null)sh.frac=p.frac;next.push(sh);map.delete(p.id)}}
+            for(const sh of map.values())next.push(sh);   // keep any extras (defensive)
+            state.shapes.length=0;Array.prototype.push.apply(state.shapes,next);
+          }
         }
         break;}
       case 'style':
@@ -2626,60 +2633,65 @@ function doDelete(){
   state.selection.clear();
   UI.toast(t('deleted')+' '+sel.length);
 }
-// z-order ops snapshot every shape's z → reversible `zorder` op (before/after), broadcast.
-function _zSnapshot(){return state.shapes.map(s=>({id:s.id,z:s.z||0,frac:s.frac}))}
-function _commitZ(before){
-  reindexFrac();                 // derive keys from the new array order (ADR-0001)
-  const after=_zSnapshot();
-  if(JSON.stringify(before)===JSON.stringify(after)){invalidate();return}
-  Store._recordCommitted({op:'zorder',before,after});
+// z-order ops (ADR-0001 Step 2): move only the selected shapes' fractional keys
+// and record a minimal `{op:'zorder',changes:[{id,before,after}]}` — only the
+// shapes that actually moved (vs. the old full-shape snapshot). sortZ() at entry
+// guarantees every shape has a key (migrates legacy/raw shapes) and a sorted array.
+function _zCommit(changes){
+  changes=changes.filter(c=>c.before!==c.after);   // keep only real key moves
+  if(!changes.length){invalidate();return}
+  sortZ();
+  Store._recordCommitted({op:'zorder',changes});
   invalidate();Persist.schedule();
 }
 function doBringFront(){
-  const ids=[...state.selection];
-  if(!ids.length)return;
-  const before=_zSnapshot();
-  for(const id of ids){
-    const i=state.shapes.findIndex(s=>s.id===id);if(i<0)continue;
-    const sh=state.shapes[i];sh.z=nextZ();
-    state.shapes.splice(i,1);state.shapes.push(sh);
+  const ids=[...state.selection];if(!ids.length)return;
+  sortZ();
+  const sel=new Set(ids), others=state.shapes.filter(s=>!sel.has(s.id));
+  let p=others.length?others[others.length-1].frac:null;
+  const changes=[];
+  for(const s of state.shapes.filter(s=>sel.has(s.id))){   // current (sorted) order
+    const before=s.frac;p=keyBetween(p,null);s.frac=p;changes.push({id:s.id,before,after:p});
   }
-  _commitZ(before);
+  _zCommit(changes);
 }
 function doSendBack(){
-  const ids=[...state.selection];
-  if(!ids.length)return;
-  const before=_zSnapshot();
-  const minZ=Math.min(...state.shapes.map(s=>s.z||0));
-  let off=1;
-  for(const id of ids){
-    const i=state.shapes.findIndex(s=>s.id===id);if(i<0)continue;
-    const sh=state.shapes[i];
-    sh.z=minZ-(off++);
-    state.shapes.splice(i,1);state.shapes.unshift(sh);
+  const ids=[...state.selection];if(!ids.length)return;
+  sortZ();
+  const sel=new Set(ids), others=state.shapes.filter(s=>!sel.has(s.id));
+  const hi=others.length?others[0].frac:null;
+  const changes=[];let prev=null;
+  for(const s of state.shapes.filter(s=>sel.has(s.id))){
+    const before=s.frac, k=keyBetween(prev,hi);s.frac=k;prev=k;changes.push({id:s.id,before,after:k});
   }
-  _commitZ(before);
+  _zCommit(changes);
 }
 function doBringForward(){
-  // move up one step in z-order
   const ids=[...state.selection];if(!ids.length)return;
-  const before=_zSnapshot();
-  for(const id of ids){
-    const i=state.shapes.findIndex(s=>s.id===id);if(i<0||i===state.shapes.length-1)continue;
-    const tmp=state.shapes[i];state.shapes[i]=state.shapes[i+1];state.shapes[i+1]=tmp;
-    tmp.z=(state.shapes[i].z||0)+1;
+  sortZ();
+  const sel=new Set(ids), arr=state.shapes, changes=[];
+  // move up = toward higher frac; process top→down so selected don't collide.
+  for(let i=arr.length-2;i>=0;i--){
+    const s=arr[i];if(!sel.has(s.id))continue;
+    const above=arr[i+1];if(sel.has(above.id))continue;       // already at the top run
+    const upper=arr[i+2]?arr[i+2].frac:null, before=s.frac;
+    const nk=keyBetween(above.frac,upper);s.frac=nk;changes.push({id:s.id,before,after:nk});
+    arr[i]=above;arr[i+1]=s;                                  // reflect for next iterations
   }
-  _commitZ(before);
+  _zCommit(changes);
 }
 function doSendBackward(){
   const ids=[...state.selection];if(!ids.length)return;
-  const before=_zSnapshot();
-  for(const id of ids){
-    const i=state.shapes.findIndex(s=>s.id===id);if(i<=0)continue;
-    const tmp=state.shapes[i];state.shapes[i]=state.shapes[i-1];state.shapes[i-1]=tmp;
-    tmp.z=Math.max(0,(state.shapes[i].z||0)-1);
+  sortZ();
+  const sel=new Set(ids), arr=state.shapes, changes=[];
+  for(let i=1;i<arr.length;i++){
+    const s=arr[i];if(!sel.has(s.id))continue;
+    const below=arr[i-1];if(sel.has(below.id))continue;
+    const lower=arr[i-2]?arr[i-2].frac:null, before=s.frac;
+    const nk=keyBetween(lower,below.frac);s.frac=nk;changes.push({id:s.id,before,after:nk});
+    arr[i]=below;arr[i-1]=s;
   }
-  _commitZ(before);
+  _zCommit(changes);
 }
 function doGroup(){
   const ids=[...state.selection];

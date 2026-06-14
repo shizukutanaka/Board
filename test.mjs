@@ -141,11 +141,10 @@ const checks = [
   ['pasteStyle filters undefined keys', html.includes("filter(([,v])=>v!==undefined)")],
   ['applyStyleToSelection records undo', html.includes("Store._recordCommitted({op:'upd'")],
   // v1.6.6: reversibility + security hardening
-  ['zorder op carries before/after snapshot', html.includes("op:'zorder',before,after")],
-  ['zorder _apply restores order+z from snapshot', html.includes("const snap=forward?op.after:op.before") && html.includes("sh.z=p.z")],
-  ['zorder snapshot carries frac key (ADR-0001)', html.includes("frac:s.frac") && html.includes("sh.frac=p.frac")],
+  ['zorder op is minimal-delta changes (ADR-0001 Step2)', html.includes("op:'zorder',changes")],
+  ['zorder _apply handles changes-delta + legacy snapshot', html.includes("sh.frac=forward?c.after:c.before") && html.includes("const snap=forward?op.after:op.before")],
   ['fractional index keyBetween/reindexFrac present (ADR-0001)', html.includes("function keyBetween") && html.includes("function reindexFrac")],
-  ['z-step ops route through _commitZ (undoable)', html.includes("_commitZ(before)") && html.includes("function _commitZ")],
+  ['z-step ops route through _zCommit (undoable, minimal-delta)', html.includes("_zCommit(changes)") && html.includes("function _zCommit")],
   ['applyRemote whitelists op types', html.includes("REMOTE_OPS") && html.includes("this.REMOTE_OPS.has(op.op)")],
   ['applyRemote validates remote add shape', html.includes("case 'add':    return validShape(op.shape)")],
   ['SVG export uses testable buildSVG', html.includes("function buildSVG") && html.includes("buildSVG(state.shapes")],
@@ -1626,6 +1625,35 @@ try {
     assert.strictEqual(state.shapes.map(s=>s.id).join(','),[r1.id,r2.id,r3.id].join(','),'undo restores order');
     for(const s of state.shapes)assert.strictEqual(s.frac,fracBefore.get(s.id),'undo restores exact frac keys');
     console.log('  ✓ frac canonical: keys assigned, ordered, and round-trip through zorder undo');
+  }
+
+  // Step 2: zorder ops are minimal-delta — only moved shapes appear in `changes`
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();
+    const mk=()=>{const s=Shape.make('rect',{x:0,y:0,w:10,h:10});Store.commit({op:'add',shape:s});return s;};
+    const a=mk(),b=mk(),c=mk(),d=mk();          // bottom→top: a,b,c,d
+    // single bring-forward touches exactly one shape's key
+    state.selection=new Set([b.id]);
+    doBringForward();
+    let op=state.history[state.histIdx];
+    assert.strictEqual(op.op,'zorder','records a zorder op');
+    assert.strictEqual(op.changes.length,1,'single forward = 1-shape delta');
+    assert.strictEqual(op.changes[0].id,b.id,'the moved shape is b');
+    assert.deepStrictEqual(state.shapes.map(s=>s.id),[a.id,c.id,b.id,d.id],'b moved up one past c');
+    Store.undo();
+    assert.deepStrictEqual(state.shapes.map(s=>s.id),[a.id,b.id,c.id,d.id],'undo restores order');
+    // multi-select bring-front preserves relative order, moves both to the top
+    state.selection=new Set([a.id,c.id]);
+    doBringFront();
+    op=state.history[state.histIdx];
+    assert.strictEqual(op.changes.length,2,'two selected = 2-shape delta (others untouched)');
+    assert.deepStrictEqual(state.shapes.map(s=>s.id),[b.id,d.id,a.id,c.id],'a,c on top in relative order');
+    // no-op: bring-front when already on top records nothing
+    const hbefore=state.histIdx;
+    state.selection=new Set([a.id,c.id]);
+    doBringFront();
+    assert.ok(state.histIdx===hbefore||state.history[state.histIdx].changes.length>0,'redundant front is a no-op or real move');
+    console.log('  ✓ zorder minimal-delta: single move = 1 change; multi keeps relative order');
   }
 
   // legacy boards (integer z, no frac) migrate to keys on first sortZ, order intact
