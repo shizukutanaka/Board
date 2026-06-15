@@ -876,6 +876,7 @@ const state={
   peerId:PEER_ID,           // self peer id (persistent)
   seq:0,                    // monotonic op counter for CRDT clock
   seenOps:new Set(),        // "peer:seq" set for dedup
+  wclock:{},                // shapeId → {prop: clock} for per-property LWW (ADR-0002)
   peers:new Map(),          // peerId → {color, lastSeen, name}
   roomId:null               // doc room id (BroadcastChannel name suffix)
 };
@@ -1026,6 +1027,7 @@ const Store={
       for(let i=0;i<Math.floor(MAX_SEEN_OPS*0.2);i++)state.seenOps.delete(keys[i]);
     }
     this._apply(op,true);
+    this._stampWrites(op);                 // record per-property write clock (LWW)
     // chop redo branch
     if(state.histIdx<state.history.length-1)
       state.history.length=state.histIdx+1;
@@ -1050,11 +1052,46 @@ const Store={
     if(state.seenOps.has(k))return;
     state.seenOps.add(k);
     if(state.seenOps.size>MAX_SEEN_OPS){const keys=[...state.seenOps];for(let i=0;i<Math.floor(MAX_SEEN_OPS*0.2);i++)state.seenOps.delete(keys[i])}
+    // Per-property LWW (ADR-0002): drop any absolute-patch writes older than what the
+    // target shape already recorded. If the whole op becomes a no-op, skip applying it
+    // (it is already deduped). move/zorder are commutative and are not gated here.
+    if(!this._lwwDrop(op))return;
     this._apply(op,true);
+    this._stampWrites(op);
     state.dirty=true;
     UI.refreshUndo();
     Persist.schedule();
     invalidate();
+  },
+  // Per-property write clocks live in state.wclock (shapeId -> {prop: clock}), NOT on
+  // the shape — so they never pollute clones, snapshots, persistence or validation.
+  // LWW is scoped to the minimal-patch ops (upd, style) where a patch key maps 1:1 to a
+  // changed property. resize/align carry full-shape snapshots ("whole-shape writes"),
+  // so per-property LWW would over-claim; they keep receipt-order semantics (ADR-0002).
+  _lwwOp(op){return op.op==='upd'||op.op==='style'},
+  // Returns false if `op` has no property newer than the target shape's recorded write
+  // clock — i.e. a no-op after filtering. Mutates op.after to drop the losing props.
+  _lwwDrop(op){
+    if(!this._lwwOp(op))return true;
+    const C=op.clock;
+    const filt=(id,patch)=>{const w=state.wclock[id];let kept=0;
+      for(const key of Object.keys(patch)){if(key==='id')continue;
+        if(clockNewer(C,w&&w[key]))kept++;else delete patch[key];}return kept;};
+    if(op.op==='upd'){if(!byId(op.id))return true;return filt(op.id,op.after)>0;}
+    if(!Array.isArray(op.after))return true;
+    op.after=op.after.filter(p=>byId(p.id)?filt(p.id,p)>0:false);
+    return op.after.length>0;
+  },
+  // Stamp the per-property write clock for an op's surviving properties, so later
+  // concurrent writes can be ordered against it. Local commits and accepted remote ops
+  // alike (both forward writes).
+  _stampWrites(op){
+    if(!this._lwwOp(op))return;
+    const C=op.clock;if(!C)return;
+    const stamp=(id,patch)=>{if(!patch)return;const w=state.wclock[id]||(state.wclock[id]={});
+      for(const key of Object.keys(patch)){if(key==='id')continue;w[key]=C;}};
+    if(op.op==='upd')stamp(op.id,op.after);
+    else if(Array.isArray(op.after))for(const p of op.after)stamp(p.id,p);
   },
   _recordCommitted(op){
     _invalidateGrid();
@@ -1063,6 +1100,7 @@ const Store={
     if(state.seenOps.has(k))return;
     state.seenOps.add(k);
     if(state.seenOps.size>MAX_SEEN_OPS){const keys=[...state.seenOps];for(let i=0;i<Math.floor(MAX_SEEN_OPS*0.2);i++)state.seenOps.delete(keys[i])}
+    this._stampWrites(op);                 // change already applied by caller; record clock
     state.history.length=state.histIdx+1;
     state.history.push(op);
     if(state.history.length>MAX_HISTORY)state.history.shift();
@@ -1103,6 +1141,7 @@ const Store={
             const i=state.shapes.findIndex(s=>s.id===sh.id);
             if(i>=0)state.shapes.splice(i,1);
             state.selection.delete(sh.id);
+            delete state.wclock[sh.id];        // drop per-property write clocks
           }
         }else{
           for(const sh of op.shapes)state.shapes.push(clone(sh));
@@ -1120,7 +1159,7 @@ const Store={
           Shape.translate(sh,op.dx*d,op.dy*d);}
         break;}
       case 'clear':{
-        if(forward){state.shapes.length=0;state.selection.clear();}
+        if(forward){state.shapes.length=0;state.selection.clear();state.wclock={};}
         else{for(const s of op.shapes)state.shapes.push(clone(s));sortZ();}
         break;}
       case 'replace':{
@@ -1128,7 +1167,7 @@ const Store={
         // shape arrays so Ctrl+Z restores the board the import overwrote.
         // Local-only by design — NOT in REMOTE_OPS, so a peer can't wipe your board.
         const next=forward?op.after:op.before;
-        state.shapes.length=0;state.selection.clear();
+        state.shapes.length=0;state.selection.clear();state.wclock={};
         for(const s of next)state.shapes.push(clone(s));
         sortZ();
         break;}
@@ -1174,6 +1213,17 @@ const Store={
   }};
 function byId(id){return state.shapes.find(s=>s.id===id)}
 function clone(o){return JSON.parse(JSON.stringify(o))}
+// Total order on op clocks for per-property LWW (ADR-0002): "newer" = larger by
+// (ts, then peer, then seq). Every peer compares identical clock triples, so the
+// winner is deterministic regardless of wall-clock skew. b may be undefined (no prior
+// recorded write for that property → a wins).
+function clockNewer(a,b){
+  if(!a)return false;
+  if(!b)return true;
+  if((a.ts||0)!==(b.ts||0))return (a.ts||0)>(b.ts||0);
+  if(a.peer!==b.peer)return a.peer>b.peer;
+  return (a.seq||0)>(b.seq||0);
+}
 // Bound connectors: line/arrow endpoints (s.a/s.b = shape id) derive from the bound
 // shape's edge at render/hit/export, so the connector follows. Stored coords = fallback.
 // Where a ray from shape centre toward (fx,fy) exits the shape's true edge.

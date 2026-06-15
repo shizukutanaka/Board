@@ -46,7 +46,8 @@ Board/
 │   ├── spec.md            # 仕様書 + 適合ギャップ追跡
 │   ├── audit-2026-06.md   # カテゴリ別改善監査
 │   ├── research-improvements.md  # 改善案調査
-│   └── ADR-0001-fractional-index-zorder.md  # z順序の分数インデックス化 (Step1-3実装済/Step4 Proposed)
+│   ├── ADR-0001-fractional-index-zorder.md  # z順序の分数インデックス化 (Step1-3実装済/Step4 Proposed)
+│   └── ADR-0002-per-property-lww.md  # 並行編集の収束: プロパティ単位 LWW (upd/style 実装済)
 └── .github/workflows/     # CI (lint + size budget)
 ```
 

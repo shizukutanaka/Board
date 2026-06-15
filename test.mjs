@@ -2442,7 +2442,7 @@ try {
     );
     const cp = o => JSON.parse(JSON.stringify(o));
     A.state.peerId='peerA'; B.state.peerId='peerB';
-    const reset = W => { W.state.shapes.length=0; W.state.history.length=0; W.state.histIdx=-1; W.state.seq=0; W.state.seenOps=new Set(); };
+    const reset = W => { W.state.shapes.length=0; W.state.history.length=0; W.state.histIdx=-1; W.state.seq=0; W.state.seenOps=new Set(); W.state.wclock={}; };
     reset(A); reset(B);
     // wire each peer's outbound to the other's _onRecv (deep-copied, like a real wire)
     A.Net.broadcast = op => B.Net._onRecv({k:'op',op:cp(op)});
@@ -2468,28 +2468,47 @@ try {
     assert.ok(idsA.includes(sa.id) && idsA.includes(sb.id), 'convergence: union contains both peers\' shapes');
     console.log('  ✓ two-peer harness: broadcast propagates + snapshot exchange converges to union (§3.14)');
 
-    // §3.15: §3.14 proved DISJOINT edits converge. Conflicting edits to the SAME
-    // property do NOT — ops apply in receipt order with no LWW tiebreak, so each peer
-    // ends holding the OTHER's value. Characterize (lock in) this known gap so the
-    // harness above can't imply "sync converges" when it only converges for disjoint
-    // edits. When version/versionNonce LWW lands (research item K), flip this to assert
-    // convergence.
+    // §3.15 → ADR-0002: concurrent edits to the SAME property now CONVERGE via
+    // per-property LWW (deterministic total order: ts, peer, seq). Both peers commit
+    // offline, buffer, then exchange — and must agree on the winner (was: diverged).
+    const conflict = (tsA, tsB) => {
+      reset(A); reset(B);
+      const cX = {id:'cX',type:'rect',x:0,y:0,w:10,h:10,z:1,frac:null,stroke:'#000',size:2,opacity:1};
+      A.state.shapes.push(cp(cX)); B.state.shapes.push(cp(cX)); A.sortZ(); B.sortZ();
+      const qAB=[], qBA=[];
+      A.Net.broadcast = op => qAB.push({k:'op',op:cp(op)});
+      B.Net.broadcast = op => qBA.push({k:'op',op:cp(op)});
+      // pin clocks so the winner is determined (A=red@tsA, B=blue@tsB)
+      A.Store.commit({op:'upd',id:'cX',before:{stroke:'#000'},after:{stroke:'red'}, clock:{peer:'peerA',seq:1,ts:tsA}});
+      B.Store.commit({op:'upd',id:'cX',before:{stroke:'#000'},after:{stroke:'blue'},clock:{peer:'peerB',seq:1,ts:tsB}});
+      qAB.forEach(m=>B.Net._onRecv(m)); qBA.forEach(m=>A.Net._onRecv(m));
+      return [A.state.shapes.find(s=>s.id==='cX').stroke, B.state.shapes.find(s=>s.id==='cX').stroke];
+    };
+    let [av,bv] = conflict(2000, 1000);   // A newer → red wins on both
+    assert.strictEqual(av, bv, 'LWW: A and B converge on the same stroke (A newer)');
+    assert.strictEqual(av, 'red', 'LWW: the newer write (A) wins deterministically');
+    ([av,bv] = conflict(1000, 2000));     // B newer → blue wins on both
+    assert.strictEqual(av, bv, 'LWW: A and B converge on the same stroke (B newer)');
+    assert.strictEqual(av, 'blue', 'LWW: the newer write (B) wins deterministically');
+    ([av,bv] = conflict(1000, 1000));     // equal ts → peer-id tiebreak (peerB > peerA)
+    assert.strictEqual(av, bv, 'LWW: equal timestamps still converge (peer-id tiebreak)');
+    console.log('  ✓ two-peer LWW: concurrent same-property edits converge deterministically (ADR-0002, §3.15)');
+
+    // disjoint properties of the SAME shape must BOTH survive (per-property, not per-shape)
     reset(A); reset(B);
-    const cX = {id:'cX',type:'rect',x:0,y:0,w:10,h:10,z:1,frac:null,stroke:'#000',size:2,opacity:1};
-    A.state.shapes.push(cp(cX)); B.state.shapes.push(cp(cX)); A.sortZ(); B.sortZ();
-    // buffered transport → true concurrency: neither op delivered until both commit
-    const qAB=[], qBA=[];
-    A.Net.broadcast = op => qAB.push({k:'op',op:cp(op)});
-    B.Net.broadcast = op => qBA.push({k:'op',op:cp(op)});
-    A.Store.commit({op:'upd',id:'cX',before:{stroke:'#000'},after:{stroke:'red'}});
-    B.Store.commit({op:'upd',id:'cX',before:{stroke:'#000'},after:{stroke:'blue'}});
-    qAB.forEach(m=>B.Net._onRecv(m)); qBA.forEach(m=>A.Net._onRecv(m));
-    const av = A.state.shapes.find(s=>s.id==='cX').stroke;
-    const bv = B.state.shapes.find(s=>s.id==='cX').stroke;
-    assert.ok(av==='red'||av==='blue', 'conflict: A holds one of the two committed values');
-    assert.ok(bv==='red'||bv==='blue', 'conflict: B holds one of the two committed values');
-    assert.notStrictEqual(av, bv, 'KNOWN GAP (§3.15): concurrent same-property edits DIVERGE — no LWW tiebreak (research item K)');
-    console.log('  ✓ two-peer conflict: same-property concurrent edits diverge — characterized as known gap (§3.15)');
+    const dX = {id:'dX',type:'rect',x:0,y:0,w:10,h:10,z:1,frac:null,stroke:'#000',size:2,opacity:1};
+    A.state.shapes.push(cp(dX)); B.state.shapes.push(cp(dX)); A.sortZ(); B.sortZ();
+    const dAB=[], dBA=[];
+    A.Net.broadcast = op => dAB.push({k:'op',op:cp(op)});
+    B.Net.broadcast = op => dBA.push({k:'op',op:cp(op)});
+    A.Store.commit({op:'upd',id:'dX',before:{stroke:'#000'},after:{stroke:'green'}});
+    B.Store.commit({op:'upd',id:'dX',before:{size:2},after:{size:9}});
+    dAB.forEach(m=>B.Net._onRecv(m)); dBA.forEach(m=>A.Net._onRecv(m));
+    const Ad = A.state.shapes.find(s=>s.id==='dX'), Bd = B.state.shapes.find(s=>s.id==='dX');
+    assert.strictEqual(Ad.stroke, Bd.stroke, 'disjoint: stroke agrees');
+    assert.strictEqual(Ad.size, Bd.size, 'disjoint: size agrees');
+    assert.ok(Ad.stroke==='green' && Ad.size===9, 'disjoint: both peers\' independent edits preserved');
+    console.log('  ✓ two-peer LWW: concurrent DISJOINT-property edits both survive (per-property)');
 
     // §3.16: but concurrent MOVES of the same shape CONVERGE — move is a delta
     // (Shape.translate adds dx,dy), and translation commutes, so receipt order is

@@ -5,6 +5,16 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
 ## [Unreleased]
 
 ### Added
+- **並行編集の収束: プロパティ単位 LWW (ADR-0002 / research §3.15–3.16, 項目 D/K)**: 二者が同じ図形の
+  同じプロパティを同時編集すると、従来は**発散**していた(受信順 `Object.assign`、タイブレーク無し。
+  §3.15 で二者ハーネスにより実測)。`(ts,peer,seq)` の全順序 `clockNewer()` と書き込みクロック
+  `state.wclock`(`shapeId→{prop:clock}`、**図形オブジェクトには載せない**ので clone/snapshot/persist/
+  validate を汚さない)を導入し、受信 op の各プロパティを記録済みクロックと比較して**古い書き込みを
+  落とす**(`_lwwDrop`)、勝った書き込みを記録(`_stampWrites`)。`upd`/`style`(最小パッチ op)に適用。
+  同一プロパティ衝突は**決定的に収束**(新しい方が勝つ。ts 同値は peer-id でタイブレーク)、互いに素な
+  プロパティは**双方生存**。二者ハーネスで A新/B新/ts同値/互いに素の収束をテスト担保(`_lwwDrop` を無効化
+  すると収束テストが落ちることを確認 = 非空虚)。単独 peer の挙動は不変。`resize`/`align`(全図形
+  スナップショット型)と undo×sync は今後 (ADR-0002 の限界節参照)。
 - **データ耐久性 / Longevity (research §3.7)**: 自動保存(IndexedDB)を `navigator.storage.persist()` で
   **耐久(非退避)バケットへ昇格**する `Persist.requestDurable()` を追加。既定の best-effort バケットは
   ディスク逼迫やサイトデータ消去で eviction されうるため、local-first の Longevity 原則に沿って
