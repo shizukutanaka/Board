@@ -35,8 +35,8 @@ const checks = [
   ['WCAG AAA brand-ink token', html.includes('--brand-ink:#003B40')],
   ['IndexedDB store', html.includes("DB_NAME='board'")],
   ['RAF render loop', /requestAnimationFrame\(frame\)/.test(html)],
-  ['op-log op types (add/del/upd/move/clear/zorder)',
-    ['add','del','upd','move','clear','zorder'].every(op => html.includes(`op:'${op}'`))],
+  ['op-log op types (add/del/upd/move/clear/zorder/replace)',
+    ['add','del','upd','move','clear','zorder','replace'].every(op => html.includes(`op:'${op}'`))],
   ['Tools: pen, rect, ellipse, arrow, line, text, eraser, select, hand',
     ['pen','rect','ellipse','arrow','line','text','eraser','select','hand']
       .every(t => html.includes(`data-tool="${t}"`))],
@@ -1818,6 +1818,40 @@ try {
     Store.undo();
     assert.strictEqual(state.shapes.length,2,'clear op undo: all shapes restored');
     console.log('  ✓ clear op: all shapes cleared, undo restores both');
+  }
+
+  // Store replace op — shared-link import is reversible (§3.9 self-overwrite guard)
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();state.seq=0;state.seenOps=new Set();
+    const own1=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    const own2=Shape.make('ellipse',{x:60,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:own1});Store.commit({op:'add',shape:own2});
+    const myBoard=state.shapes.map(s=>s.id);
+    // Simulate importFromHash's reversible whole-board swap.
+    const incoming=[Shape.make('arrow',{x1:0,y1:0,x2:10,y2:10})];
+    const before=JSON.parse(JSON.stringify(state.shapes));
+    state.shapes=incoming.map(s=>JSON.parse(JSON.stringify(s)));sortZ();
+    Store._recordCommitted({op:'replace',before,after:JSON.parse(JSON.stringify(state.shapes))});
+    assert.strictEqual(state.shapes.length,1,'replace: board swapped to imported shapes');
+    assert.strictEqual(state.shapes[0].type,'arrow','replace: imported shape present');
+    Store.undo();
+    assert.strictEqual(state.shapes.length,2,'replace undo: original board restored');
+    assert.deepStrictEqual(state.shapes.map(s=>s.id),myBoard,'replace undo: same shapes, same order');
+    Store.redo();
+    assert.strictEqual(state.shapes.length,1,'replace redo: imported board re-applied');
+    assert.strictEqual(state.shapes[0].type,'arrow','replace redo: imported shape back');
+    console.log('  ✓ replace op: import swaps board, undo restores it, redo re-applies');
+  }
+
+  // replace op is local-only — a remote peer must NOT be able to wipe your board
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();
+    const keep=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    state.shapes.push(keep);
+    Store.applyRemote({op:'replace',before:[],after:[],clock:{peer:'evil',seq:1,ts:0}});
+    assert.strictEqual(state.shapes.length,1,'replace rejected from remote: board intact');
+    assert.strictEqual(state.shapes[0].id,keep.id,'replace rejected from remote: shape unchanged');
+    console.log('  ✓ replace op: rejected over the wire (REMOTE_OPS allow-list)');
   }
 
   // v1.6.55: doAlign remaining variants — right, bottom, cx, cy

@@ -1115,6 +1115,15 @@ const Store={
         if(forward){state.shapes.length=0;state.selection.clear();}
         else{for(const s of op.shapes)state.shapes.push(clone(s));sortZ();}
         break;}
+      case 'replace':{
+        // Whole-board swap (shared-link import). Reversible: before/after are full
+        // shape arrays so Ctrl+Z restores the board the import overwrote.
+        // Local-only by design — NOT in REMOTE_OPS, so a peer can't wipe your board.
+        const next=forward?op.after:op.before;
+        state.shapes.length=0;state.selection.clear();
+        for(const s of next)state.shapes.push(clone(s));
+        sortZ();
+        break;}
       case 'group':{
         if(forward){
           for(const id of op.ids){const sh=byId(id);if(sh)sh.groupId=op.gid}
@@ -3251,8 +3260,12 @@ const Share={
       const valid=data.shapes.filter(validShape);
       if(!valid.length)return false;
       if(state.shapes.length&&!confirm(t('importConfirm')))return false;
-      state.shapes=valid;state.docName=data.name||'Shared';
+      // Reversible whole-board swap: a mistaken import is undoable (Ctrl+Z), so the
+      // shared link can't silently destroy the board it replaced (§3.9 self-overwrite).
+      const before=clone(state.shapes);
+      state.shapes=valid.map(clone);state.docName=data.name||'Shared';
       sortZ();invalidate();
+      Store._recordCommitted({op:'replace',before,after:clone(state.shapes)});
       document.getElementById('docName').value=state.docName;
       // clean URL
       history.replaceState(null,'',location.pathname);

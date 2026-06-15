@@ -20,6 +20,15 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
   - 注: SVG エクスポートの座標注入 (research §3-1) は `buildSVG` の `_num()`/`_esc()` で対策済を確認。
 
 ### Fixed
+- **共有リンク import の取り消し可能化 (research §3.9/§3.11 self-overwrite 対策)**: `Share.importFromHash`
+  はこれまで `state.shapes` を**直接置換**しており、`confirm()` を通すと現在のボードが**取り消し不能**で
+  失われた (Store 経由でないため in-session undo も効かなかった)。新たに可逆な `replace` op を `Store._apply`
+  に追加し、import を `Store._recordCommitted({op:'replace',before,after})` 経由に変更。誤 import は
+  **Ctrl+Z で元のボードに復帰**できる。`replace` は `REMOTE_OPS` allow-list に**含めない**ことで、
+  悪意ある peer が遠隔から盤面を全消去する経路を構造的に排除 (テストで担保: import→undo→redo の
+  往復、および remote `replace` の拒否)。
+  - 残課題 (今後): リロードで in-session undo 履歴が消える (§3.11) ため、リロードを跨ぐ復旧には
+    `DOC_KEY:prev` バックアップスロット (§3.9) が別途必要。本修正は in-session の安全網を提供する。
 - **z-order 堅牢化 (ADR-0001 後の精査)**: `keyBetween` の無限ループを修正 — `b` が全ゼロキー
   (例 `"0"`) だと無限ループしタブをフリーズし得た (任意文字列 frac を許す `validRemotePayload`
   経由で悪意ある peer が誘発可能な DoS)。両系列が尽きてなお等しい場合に打ち切るガードを追加し、
