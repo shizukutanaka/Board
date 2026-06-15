@@ -1,6 +1,6 @@
 # ADR-0002 — 並行編集の収束: プロパティ単位 LWW
 
-- **状態**: Accepted (2026-06-15 実装) — `upd`/`style` に適用。`resize`/`align` は将来。
+- **状態**: Accepted (2026-06-15 実装) — `upd`/`style`/`resize`/`align` に適用(変更キー検出で全 op 対応)。
 - **関連**: research-improvements.md 項目 D/K/L・§3.15(発散の実測)・§3.16(可換 vs 非可換)・
   ADR-0001(frac 順序の可換性)
 
@@ -27,13 +27,17 @@ A: upd stroke=red    B: upd stroke=blue   (concurrent)
   比較するので、**ウォールクロックのズレに関係なく勝者は決定的**。
 - **書き込みクロック `state.wclock`**: `shapeId → {prop: clock}`。**図形オブジェクトには載せない**
   (clone/snapshot/persist/validate を汚さない)。
-- **`_lwwDrop(op)`**(remote のみ): 受信パッチの各プロパティを、その図形が記録した書き込みクロック
-  と比較し、**古い書き込みを落とす**。全部落ちれば op は no-op(適用スキップ)。
-- **`_stampWrites(op)`**: ローカル commit・受理した remote op の双方で、勝ったプロパティの
+- **変更キー検出 `_chg(before,after,key)`**: パッチのキーは **値が実際に変わった**もののみ LWW 対象。
+  `before`/`after` を JSON 比較(pen `pts` 等のネストも深く比較)。これにより `resize`/`align` が
+  **全図形スナップショット**(`clone(s)`)を after に持っても、**実際に動かした geometry キーだけ**を
+  主張し、同時に編集された stroke 等を**上書きしない**。
+- **`_lwwDrop(op)`**(remote のみ): 受信パッチの各**変更**プロパティを記録クロックと比較し、**古い or
+  未変更の書き込みを落とす**(未変更キーも落とすので、スナップショット op が触っていないプロパティの
+  並行編集を潰さない)。全部落ちれば op は no-op(適用スキップ)。
+- **`_stampWrites(op)`**: ローカル commit・受理した remote op の双方で、**変更した**プロパティの
   書き込みクロックを `wclock` に記録。
-- **適用範囲**: `upd` と `style`(パッチのキー=変更プロパティが 1:1 の**最小パッチ** op)のみ。
-  `resize`/`align` は**全図形スナップショット**(`clone(s)`)を after に持つため per-property LWW では
-  過剰主張(geometry 変更が stroke 等も「書いた」ことになる)になる。よって現状は受信順のまま据置。
+- **適用範囲**: `upd`/`style`(最小パッチ)に加え、**`resize`/`align`(全図形スナップショット)も対応**。
+  変更キー検出により、スナップショット型でも per-property 精度で収束しつつ並行 disjoint 編集を保つ。
 
 ## 収束の証明スケッチ
 
@@ -63,10 +67,14 @@ A が `prop=x@cA`、B が `prop=y@cB` を同時 commit(各自ローカルで `wc
   双方が自分の clock を記録済みなので収束する(証明スケッチ同様)。
 - **undo/redo × 同期**: undo は `wclock` を巻き戻さない(§F の replicated-undo は別課題)。単独 undo は
   従来どおり。
-- `resize`/`align` の同時編集はまだ受信順(発散しうる)。最小パッチ化 or geometry 限定 LWW は今後。
 - 悪意ある peer が巨大 `ts` で将来の全書き込みに勝つ余地(low severity; 署名付き op = §3.8 完全性で対処)。
+- 変更キー検出は `before` を要する。受信 op が `before` を欠く場合は「全キー変更」とみなす(pre-LWW 挙動）。
+  Board の `upd`/`style`/`resize`/`align` は before を持って broadcast するので通常は精密。
 
 ## 影響
 
 - 単独 peer の挙動は不変(`_lwwDrop` は remote のみ。commit は常に適用)。591 テスト緑。
 - `state.wclock` 追加。`del`/`clear`/`replace` でクリーンアップ(肥大化と stale 防止)。
+- 二者ハーネスで担保: 同プロパティ衝突の決定的収束(A新/B新/ts同値)・互いに素プロパティの双方生存・
+  `resize` の収束・`resize×recolor` の双方生存(変更キー gating を外すと clobber して落ちる=非空虚)。
+- 残: undo×sync(§F)。`resize`/`align` は変更キー検出で対応済(当初「将来」としたが本コミットで実装)。

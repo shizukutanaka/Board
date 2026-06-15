@@ -13,8 +13,13 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
   落とす**(`_lwwDrop`)、勝った書き込みを記録(`_stampWrites`)。`upd`/`style`(最小パッチ op)に適用。
   同一プロパティ衝突は**決定的に収束**(新しい方が勝つ。ts 同値は peer-id でタイブレーク)、互いに素な
   プロパティは**双方生存**。二者ハーネスで A新/B新/ts同値/互いに素の収束をテスト担保(`_lwwDrop` を無効化
-  すると収束テストが落ちることを確認 = 非空虚)。単独 peer の挙動は不変。`resize`/`align`(全図形
-  スナップショット型)と undo×sync は今後 (ADR-0002 の限界節参照)。
+  すると収束テストが落ちることを確認 = 非空虚)。単独 peer の挙動は不変。
+  - **変更キー検出で `resize`/`align` も対応**: これらは after に**全図形スナップショット**(`clone(s)`)を
+    持つため、素朴な per-property LWW では geometry 変更が stroke 等も「書いた」と過剰主張する。
+    `_chg(before,after,key)`(JSON 差分、pen `pts` も深く比較)で**実際に変わったキーだけ**を gate/stamp し、
+    未変更キーは適用前に落とす(スナップショット op が触っていないプロパティの並行編集を潰さない)。
+    二者ハーネスで「同時 resize の収束」「resize×recolor の双方生存」を担保(変更キー gating を外すと
+    clobber して落ちる = 非空虚)。これで undo×sync を除く絶対パッチ op が全て収束。
 - **データ耐久性 / Longevity (research §3.7)**: 自動保存(IndexedDB)を `navigator.storage.persist()` で
   **耐久(非退避)バケットへ昇格**する `Persist.requestDurable()` を追加。既定の best-effort バケットは
   ディスク逼迫やサイトデータ消去で eviction されうるため、local-first の Longevity 原則に沿って

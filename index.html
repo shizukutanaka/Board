@@ -1065,33 +1065,40 @@ const Store={
   },
   // Per-property write clocks live in state.wclock (shapeId -> {prop: clock}), NOT on
   // the shape — so they never pollute clones, snapshots, persistence or validation.
-  // LWW is scoped to the minimal-patch ops (upd, style) where a patch key maps 1:1 to a
-  // changed property. resize/align carry full-shape snapshots ("whole-shape writes"),
-  // so per-property LWW would over-claim; they keep receipt-order semantics (ADR-0002).
-  _lwwOp(op){return op.op==='upd'||op.op==='style'},
-  // Returns false if `op` has no property newer than the target shape's recorded write
-  // clock — i.e. a no-op after filtering. Mutates op.after to drop the losing props.
+  // LWW is gated/stamped only on the keys an op ACTUALLY changed (diff before vs after),
+  // so resize/align (whole-shape snapshots) claim only the geometry they moved, never a
+  // concurrently-edited property like stroke. Scoped to the absolute-patch ops below.
+  _lwwOp(op){return op.op==='upd'||op.op==='style'||op.op==='resize'||op.op==='align'},
+  // A patch key counts for LWW only if its value actually CHANGED. pen `pts` (nested
+  // array) compared deeply via JSON; before may be absent → treat as changed.
+  _chg(before,after,key){return JSON.stringify(before?before[key]:undefined)!==JSON.stringify(after[key])},
+  // Returns false if `op` has no changed property newer than the shape's recorded write
+  // clock — a no-op after filtering. Mutates op.after to drop losing AND unchanged keys,
+  // so a snapshot op can't overwrite a concurrent edit to a property it didn't touch.
   _lwwDrop(op){
     if(!this._lwwOp(op))return true;
     const C=op.clock;
-    const filt=(id,patch)=>{const w=state.wclock[id];let kept=0;
-      for(const key of Object.keys(patch)){if(key==='id')continue;
-        if(clockNewer(C,w&&w[key]))kept++;else delete patch[key];}return kept;};
-    if(op.op==='upd'){if(!byId(op.id))return true;return filt(op.id,op.after)>0;}
+    const filt=(id,after,before)=>{const w=state.wclock[id];let kept=0;
+      for(const key of Object.keys(after)){if(key==='id')continue;
+        if(this._chg(before,after,key)&&clockNewer(C,w&&w[key]))kept++;else delete after[key];}
+      return kept;};
+    if(op.op==='upd'){if(!byId(op.id))return true;return filt(op.id,op.after,op.before)>0;}
     if(!Array.isArray(op.after))return true;
-    op.after=op.after.filter(p=>byId(p.id)?filt(p.id,p)>0:false);
+    const bb={};if(Array.isArray(op.before))for(const b of op.before)bb[b.id]=b;
+    op.after=op.after.filter(p=>byId(p.id)?filt(p.id,p,bb[p.id])>0:false);
     return op.after.length>0;
   },
-  // Stamp the per-property write clock for an op's surviving properties, so later
+  // Stamp the per-property write clock for the keys an op actually changed, so later
   // concurrent writes can be ordered against it. Local commits and accepted remote ops
-  // alike (both forward writes).
+  // alike (both forward writes; for remote, _lwwDrop already reduced op.after).
   _stampWrites(op){
     if(!this._lwwOp(op))return;
     const C=op.clock;if(!C)return;
-    const stamp=(id,patch)=>{if(!patch)return;const w=state.wclock[id]||(state.wclock[id]={});
-      for(const key of Object.keys(patch)){if(key==='id')continue;w[key]=C;}};
-    if(op.op==='upd')stamp(op.id,op.after);
-    else if(Array.isArray(op.after))for(const p of op.after)stamp(p.id,p);
+    const stamp=(id,after,before)=>{if(!after)return;const w=state.wclock[id]||(state.wclock[id]={});
+      for(const key of Object.keys(after)){if(key==='id')continue;if(this._chg(before,after,key))w[key]=C;}};
+    if(op.op==='upd')stamp(op.id,op.after,op.before);
+    else if(Array.isArray(op.after)){const bb={};if(Array.isArray(op.before))for(const b of op.before)bb[b.id]=b;
+      for(const p of op.after)stamp(p.id,p,bb[p.id]);}
   },
   _recordCommitted(op){
     _invalidateGrid();

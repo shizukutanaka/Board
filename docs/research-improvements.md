@@ -58,9 +58,10 @@ replicated undo 論文群。
 - **原則整合**: ~40 行、単一HTML可。
 
 ### D. 同期データモデル: **per-property LWW レジスタ + 因果順序**(Figma 方式)
-- **✅ 部分実装 (ADR-0002, 2026-06-15)**: `upd`/`style` にプロパティ単位 LWW を導入。`(ts,peer,seq)` 全順序 +
-  `state.wclock`(図形非汚染)で同一プロパティ衝突を決定的に収束、互いに素なプロパティは双方生存。
-  二者ハーネス(§3.14)で収束をテスト担保。残: `resize`/`align`(全図形スナップショット型)・undo×sync。
+- **✅ 実装 (ADR-0002, 2026-06-15)**: `upd`/`style`/`resize`/`align` にプロパティ単位 LWW を導入。
+  `(ts,peer,seq)` 全順序 + `state.wclock`(図形非汚染) + **変更キー検出**(before/after 差分)で、
+  全図形スナップショット型の `resize`/`align` でも「実際に動かしたキーだけ」を主張。同一プロパティ衝突は
+  決定的収束、互いに素なプロパティ(resize×recolor 含む)は双方生存。二者ハーネス(§3.14)で担保。残: undo×sync。
 - **現状(実装前)**: op 全体をブロードキャスト + `{peer,seq,ts}` clock。受信 op は型 allow-list のみ検証
   (`Store.applyRemote`)、payload は `add` 以外未検証(レビュー指摘)。
 - **改善**: Figma は OT ではなく **プロパティ単位の last-writer-wins レジスタ** + ツリー parent ポインタで

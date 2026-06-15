@@ -2529,6 +2529,41 @@ try {
     assert.strictEqual(A_mX.y, B_mX.y, 'commute: A and B agree on y after concurrent moves');
     assert.ok(A_mX.x===10 && A_mX.y===5, 'commute: both deltas applied (sum), order-independent');
     console.log('  ✓ two-peer commute: concurrent MOVES converge (delta ops commute) — §3.16');
+
+    // resize/align now LWW too (ADR-0002 follow-up): whole-shape snapshot ops gate/stamp
+    // only the keys they actually changed (diff before/after). (i) concurrent resize of
+    // the SAME geometry converges to the newer writer.
+    reset(A); reset(B);
+    const rX = {id:'rX',type:'rect',x:0,y:0,w:10,h:10,z:1,frac:null,stroke:'#000',size:2,opacity:1};
+    A.state.shapes.push(cp(rX)); B.state.shapes.push(cp(rX)); A.sortZ(); B.sortZ();
+    let rAB=[], rBA=[];
+    A.Net.broadcast = op => rAB.push({k:'op',op:cp(op)});
+    B.Net.broadcast = op => rBA.push({k:'op',op:cp(op)});
+    A.Store.commit({op:'resize',before:[cp(rX)],after:[{...cp(rX),w:40}],clock:{peer:'peerA',seq:1,ts:1000}});
+    B.Store.commit({op:'resize',before:[cp(rX)],after:[{...cp(rX),w:99}],clock:{peer:'peerB',seq:1,ts:2000}}); // B newer
+    rAB.forEach(m=>B.Net._onRecv(m)); rBA.forEach(m=>A.Net._onRecv(m));
+    const Ar = A.state.shapes.find(s=>s.id==='rX'), Br = B.state.shapes.find(s=>s.id==='rX');
+    assert.strictEqual(Ar.w, Br.w, 'resize LWW: A and B agree on width');
+    assert.strictEqual(Ar.w, 99, 'resize LWW: newer writer (B) wins');
+
+    // (ii) a resize and a recolor of the SAME shape, concurrently, must BOTH survive —
+    // the snapshot resize must not clobber stroke, which it never touched.
+    reset(A); reset(B);
+    A.state.shapes.push(cp(rX)); B.state.shapes.push(cp(rX)); A.sortZ(); B.sortZ();
+    rAB=[]; rBA=[];
+    A.Net.broadcast = op => rAB.push({k:'op',op:cp(op)});
+    B.Net.broadcast = op => rBA.push({k:'op',op:cp(op)});
+    // Pin the resize to be NEWER than the recolor: without changed-key gating the
+    // resize snapshot's (unchanged) stroke would win on timestamp and clobber B's
+    // recolor. Changed-key gating drops the untouched stroke key regardless of clock.
+    A.Store.commit({op:'resize',before:[cp(rX)],after:[{...cp(rX),w:55}],clock:{peer:'peerA',seq:1,ts:5000}}); // newer
+    B.Store.commit({op:'upd',id:'rX',before:{stroke:'#000'},after:{stroke:'purple'},clock:{peer:'peerB',seq:1,ts:1000}});
+    rAB.forEach(m=>B.Net._onRecv(m)); rBA.forEach(m=>A.Net._onRecv(m));
+    const Ar2 = A.state.shapes.find(s=>s.id==='rX'), Br2 = B.state.shapes.find(s=>s.id==='rX');
+    assert.strictEqual(Ar2.w, Br2.w, 'resize×recolor: width agrees');
+    assert.strictEqual(Ar2.stroke, Br2.stroke, 'resize×recolor: stroke agrees');
+    assert.ok(Ar2.w===55 && Ar2.stroke==='purple', 'resize×recolor: BOTH survive (newer snapshot did not clobber stroke)');
+    console.log('  ✓ two-peer LWW: resize converges + resize×recolor both survive (changed-key gating)');
   }
 
   console.log('\n✓ All behavioural tests passed');
