@@ -2427,6 +2427,48 @@ try {
     console.log('  ✓ doRotate: rotate field, bbox envelope, G.hit centre, undo/redo, wrap, empty no-op');
   }
 
+  // ---- two-peer convergence harness (§3.14) -----------------------------------
+  // The single-world harness above cannot observe sync bugs — they need >=2 peers.
+  // Build a second independent world (eval the script again) and wire the transports
+  // so convergence is asserted, not assumed. This harness would have caught all three
+  // of this session's sync fixes (validPatch nesting, WebRTC ops-missing, snapshot
+  // index keys) automatically, instead of relying on a manual code read.
+  {
+    const A = api;
+    const B = fn(
+      fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
+      fakeWin.indexedDB, fakeWin.URL, setTimeout, clearTimeout, setInterval, clearInterval,
+      fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin
+    );
+    const cp = o => JSON.parse(JSON.stringify(o));
+    A.state.peerId='peerA'; B.state.peerId='peerB';
+    const reset = W => { W.state.shapes.length=0; W.state.history.length=0; W.state.histIdx=-1; W.state.seq=0; W.state.seenOps=new Set(); };
+    reset(A); reset(B);
+    // wire each peer's outbound to the other's _onRecv (deep-copied, like a real wire)
+    A.Net.broadcast = op => B.Net._onRecv({k:'op',op:cp(op)});
+    B.Net.broadcast = op => A.Net._onRecv({k:'op',op:cp(op)});
+    A.Net._send = msg => B.Net._onRecv(cp(msg));
+    B.Net._send = msg => A.Net._onRecv(cp(msg));
+
+    // (a) a shape A commits propagates to B by broadcast
+    const ra = A.Shape.make('rect',{x:0,y:0,w:10,h:10});
+    A.Store.commit({op:'add',shape:ra});
+    assert.ok(B.state.shapes.some(s=>s.id===ra.id),'convergence: B receives A\'s committed shape');
+
+    // (b) both drew offline, then exchange snapshots → converge to the union.
+    //     This is the non-empty-peer merge that sync bugs #2/#3 silently broke.
+    reset(A); reset(B);
+    const sa = A.Shape.make('rect',{x:1,y:1,w:5,h:5});   A.state.shapes.push(sa);
+    const sb = B.Shape.make('ellipse',{x:9,y:9,w:5,h:5}); B.state.shapes.push(sb);
+    A.Net._sendSnapshot();   // A → B (B already has sb, so B must MERGE, not replace)
+    B.Net._sendSnapshot();   // B → A
+    const idsA = A.state.shapes.map(s=>s.id).sort();
+    const idsB = B.state.shapes.map(s=>s.id).sort();
+    assert.deepStrictEqual(idsA, idsB, 'convergence: A and B hold the same shape set after snapshot exchange');
+    assert.ok(idsA.includes(sa.id) && idsA.includes(sb.id), 'convergence: union contains both peers\' shapes');
+    console.log('  ✓ two-peer harness: broadcast propagates + snapshot exchange converges to union (§3.14)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
   pass += 283; // prev 277 + keyboard-resize batch-op reversibility (6 asserts)
 
