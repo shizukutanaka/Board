@@ -2467,6 +2467,49 @@ try {
     assert.deepStrictEqual(idsA, idsB, 'convergence: A and B hold the same shape set after snapshot exchange');
     assert.ok(idsA.includes(sa.id) && idsA.includes(sb.id), 'convergence: union contains both peers\' shapes');
     console.log('  ✓ two-peer harness: broadcast propagates + snapshot exchange converges to union (§3.14)');
+
+    // §3.15: §3.14 proved DISJOINT edits converge. Conflicting edits to the SAME
+    // property do NOT — ops apply in receipt order with no LWW tiebreak, so each peer
+    // ends holding the OTHER's value. Characterize (lock in) this known gap so the
+    // harness above can't imply "sync converges" when it only converges for disjoint
+    // edits. When version/versionNonce LWW lands (research item K), flip this to assert
+    // convergence.
+    reset(A); reset(B);
+    const cX = {id:'cX',type:'rect',x:0,y:0,w:10,h:10,z:1,frac:null,stroke:'#000',size:2,opacity:1};
+    A.state.shapes.push(cp(cX)); B.state.shapes.push(cp(cX)); A.sortZ(); B.sortZ();
+    // buffered transport → true concurrency: neither op delivered until both commit
+    const qAB=[], qBA=[];
+    A.Net.broadcast = op => qAB.push({k:'op',op:cp(op)});
+    B.Net.broadcast = op => qBA.push({k:'op',op:cp(op)});
+    A.Store.commit({op:'upd',id:'cX',before:{stroke:'#000'},after:{stroke:'red'}});
+    B.Store.commit({op:'upd',id:'cX',before:{stroke:'#000'},after:{stroke:'blue'}});
+    qAB.forEach(m=>B.Net._onRecv(m)); qBA.forEach(m=>A.Net._onRecv(m));
+    const av = A.state.shapes.find(s=>s.id==='cX').stroke;
+    const bv = B.state.shapes.find(s=>s.id==='cX').stroke;
+    assert.ok(av==='red'||av==='blue', 'conflict: A holds one of the two committed values');
+    assert.ok(bv==='red'||bv==='blue', 'conflict: B holds one of the two committed values');
+    assert.notStrictEqual(av, bv, 'KNOWN GAP (§3.15): concurrent same-property edits DIVERGE — no LWW tiebreak (research item K)');
+    console.log('  ✓ two-peer conflict: same-property concurrent edits diverge — characterized as known gap (§3.15)');
+
+    // §3.16: but concurrent MOVES of the same shape CONVERGE — move is a delta
+    // (Shape.translate adds dx,dy), and translation commutes, so receipt order is
+    // irrelevant. Whether an edit converges is decided by delta-vs-absolute op
+    // encoding, NOT by a sync algorithm. This is the commutative-op counterexample to
+    // §3.15's divergent absolute `upd`.
+    reset(A); reset(B);
+    const mX = {id:'mX',type:'rect',x:0,y:0,w:10,h:10,z:1,frac:null,stroke:'#000',size:2,opacity:1};
+    A.state.shapes.push(cp(mX)); B.state.shapes.push(cp(mX)); A.sortZ(); B.sortZ();
+    const mAB=[], mBA=[];
+    A.Net.broadcast = op => mAB.push({k:'op',op:cp(op)});
+    B.Net.broadcast = op => mBA.push({k:'op',op:cp(op)});
+    A.Store.commit({op:'move',ids:['mX'],dx:10,dy:0});   // A nudges +10x
+    B.Store.commit({op:'move',ids:['mX'],dx:0,dy:5});    // B nudges +5y, concurrently
+    mAB.forEach(m=>B.Net._onRecv(m)); mBA.forEach(m=>A.Net._onRecv(m));
+    const A_mX = A.state.shapes.find(s=>s.id==='mX'), B_mX = B.state.shapes.find(s=>s.id==='mX');
+    assert.strictEqual(A_mX.x, B_mX.x, 'commute: A and B agree on x after concurrent moves');
+    assert.strictEqual(A_mX.y, B_mX.y, 'commute: A and B agree on y after concurrent moves');
+    assert.ok(A_mX.x===10 && A_mX.y===5, 'commute: both deltas applied (sum), order-independent');
+    console.log('  ✓ two-peer commute: concurrent MOVES converge (delta ops commute) — §3.16');
   }
 
   console.log('\n✓ All behavioural tests passed');
