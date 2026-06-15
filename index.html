@@ -3121,15 +3121,19 @@ const Net={
         break;
     }
   },
-  _sendSnapshot(){
-    // Snapshot = all shapes as add ops. Each needs a DISTINCT clock key, else
-    // applyRemote's peer:seq dedup collapses the batch to the first shape (peer:0 collision).
+  // Build a snapshot message. Snapshot = all shapes as add ops; each needs a
+  // DISTINCT clock key, else applyRemote's peer:seq dedup collapses the batch to
+  // the first shape (peer:0 collision). `ops` is REQUIRED: when the receiver already
+  // has shapes it merges via `ops` (see _onRecv 'snapshot'), so any transport that
+  // omits ops silently fails to sync two non-empty boards.
+  _snapshotMsg(){
     const ops=state.shapes.map((s,i)=>({
       op:'add',shape:clone(s),
       clock:{peer:state.peerId,seq:'snap'+i,ts:0,_snap:true}
     }));
-    this._send({k:'snapshot',shapes:clone(state.shapes),ops,peer:state.peerId});
+    return {k:'snapshot',shapes:clone(state.shapes),ops,peer:state.peerId};
   },
+  _sendSnapshot(){ this._send(this._snapshotMsg()); },
   _applySnapshot(msg){
     // Validate snapshot shapes before adopting
     const shapes=msg.shapes;
@@ -3204,8 +3208,8 @@ const Net={
     this.dc.onopen=()=>{
       UI.toast(t('connected'),'ok');
       this._touchPeer('rtc:'+uid().slice(0,4));
-      // send snapshot to new peer
-      try{this.dc.send(JSON.stringify({k:'snapshot',shapes:clone(state.shapes),peer:state.peerId}))}catch(_){}
+      // send snapshot to new peer (must include ops so a non-empty peer can merge)
+      try{this.dc.send(JSON.stringify(this._snapshotMsg()))}catch(_){}
     };
     this.dc.onmessage=e=>{
       try{this._onRecv(JSON.parse(e.data))}catch(_){}

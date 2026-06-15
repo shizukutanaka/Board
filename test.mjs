@@ -510,7 +510,7 @@ try {
              doGroup, doUngroup, doPaste, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload };
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, Net };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -524,7 +524,7 @@ try {
           doGroup, doUngroup, doPaste, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload } = api;
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, Net } = api;
 
   console.log('\n-- behavioural --');
 
@@ -1723,6 +1723,23 @@ try {
     assert.ok(!validRemotePayload({op:'zorder',changes:'nope'}),'non-array changes rejected');
     assert.ok(validRemotePayload({op:'zorder',after:[]}),'legacy snapshot format still accepted');
     console.log('  ✓ Step3 validRemotePayload: accepts well-formed delta, rejects malformed keys/id');
+  }
+
+  // Net._snapshotMsg carries `ops` so a non-empty peer can merge (WebRTC + BC both)
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();
+    const sa=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    const sb=Shape.make('ellipse',{x:20,y:0,w:10,h:10});
+    state.shapes.push(sa,sb);
+    const msg=Net._snapshotMsg();
+    assert.strictEqual(msg.k,'snapshot','snapshot message kind');
+    assert.ok(Array.isArray(msg.ops),'snapshot carries ops array (merge path needs it)');
+    assert.strictEqual(msg.ops.length,2,'one add-op per shape');
+    assert.ok(msg.ops.every(o=>o.op==='add'&&o.shape&&o.clock),'ops are well-formed add ops with clocks');
+    const keys=msg.ops.map(o=>o.clock.peer+':'+o.clock.seq);
+    assert.strictEqual(new Set(keys).size,keys.length,'distinct clock keys (no dedup collapse)');
+    assert.deepStrictEqual(msg.ops.map(o=>o.shape.id),[sa.id,sb.id],'ops reference the right shapes');
+    console.log('  ✓ Net._snapshotMsg includes ops with distinct clocks (fixes WebRTC merge)');
   }
 
   // validPatch recurses: nested poison in a remote `upd` (gated by validPatch alone)

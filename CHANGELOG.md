@@ -11,6 +11,14 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
   ユーザのボードが既定で失われないようにする。依存ゼロ・ネットワーク不要・UIなし。空白の初回ロードでは
   要求せず、**実際に内容を保存した時に一度だけ**要求して第一体験を汚さない。falsifiable ガードを追加。
 
+### Fixed (sync)
+- **WebRTC スナップショットに `ops` が欠落していた同期バグ**: `_onRecv` の `snapshot` 受信は、受信側が
+  **既に shape を持つ場合 `msg.ops` を使ってマージ**する (空の場合のみ全置換)。しかし WebRTC の
+  `dc.onopen` は `_sendSnapshot` を使わず `{k:'snapshot',shapes,peer}` を**手組みで `ops` 抜き**送信して
+  いたため、双方が接続前に描いていると **接続後も互いの既存 shape がマージされなかった** (BroadcastChannel
+  経由は `_sendSnapshot` が `ops` を含むので正常)。スナップショット構築を `_snapshotMsg()` に抽出し
+  両経路で共有。`ops` を含む snapshot をテストで担保 (distinct clock キーで dedup 衝突も回避)。
+
 ### Security
 - **受信 op の値検証 (research §3-2)**: `validRemotePayload` を全 op 型に拡張。新しい `validPatch()` が
   `upd`/`style`/`resize`/`align` の patch 値から **NaN/Infinity 注入**(描画で shape が消える事故)と
