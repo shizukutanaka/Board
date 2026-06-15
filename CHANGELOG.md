@@ -18,6 +18,13 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
   検証。悪意ある peer が遠隔 op で shape を破壊/汚染する経路を塞いだ。NaN/Infinity/__proto__ の
   拒否と正常 op の適用をテストで担保。
   - 注: SVG エクスポートの座標注入 (research §3-1) は `buildSVG` の `_num()`/`_esc()` で対策済を確認。
+- **`validPatch` を再帰化 (受信検証の深さギャップを修正)**: `validPatch` は**トップレベルのキーしか
+  見ておらず**、`upd` は `validShape` ではなく `validPatch` 単独で検証されるため、`{pts:[[1,NaN]]}` の
+  ような**ネストした配列に埋め込まれた NaN/Infinity** が素通りしていた (注入された NaN 座標は
+  `drawPen`/`penWidths` で `Math.hypot(NaN)` を生み描画を破壊)。任意の深さで非有限数・関数・
+  プロトタイプ汚染キー (`__proto__` 等) を拒否するよう再帰化。敵対的な深いネスト (スタック溢れ DoS)
+  に備え深さ上限 (8) を設けた — 正当な shape はこの深さに達しない。ネスト NaN/Infinity/__proto__/
+  関数/過剰ネストの全拒否と正当なネスト pts の受理をテストで担保。
 
 ### Fixed
 - **共有リンク import の取り消し可能化 (research §3.9/§3.11 self-overwrite 対策)**: `Share.importFromHash`

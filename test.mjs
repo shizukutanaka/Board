@@ -1725,6 +1725,24 @@ try {
     console.log('  ✓ Step3 validRemotePayload: accepts well-formed delta, rejects malformed keys/id');
   }
 
+  // validPatch recurses: nested poison in a remote `upd` (gated by validPatch alone)
+  {
+    // well-formed nested data accepted (pen pts is [[x,y,p],…])
+    assert.ok(validRemotePayload({op:'upd',id:'a',after:{pts:[[1,2,0.5],[3,4,0.5]]}}),'nested finite pts accepted');
+    assert.ok(validRemotePayload({op:'upd',id:'a',after:{x:1,label:'hi',flag:true,note:null}}),'flat valid patch accepted');
+    // NaN/Infinity buried inside a nested array must be rejected (would break drawPen)
+    assert.ok(!validRemotePayload({op:'upd',id:'a',after:{pts:[[1,NaN]]}}),'NaN in nested pts rejected');
+    assert.ok(!validRemotePayload({op:'upd',id:'a',after:{pts:[[1,2],[Infinity,4]]}}),'Infinity in nested pts rejected');
+    // prototype pollution at depth (own __proto__ key via JSON.parse) rejected
+    assert.ok(!validRemotePayload({op:'upd',id:'a',after:JSON.parse('{"meta":{"__proto__":1}}')}),'nested __proto__ key rejected');
+    // function buried in a nested object rejected
+    assert.ok(!validRemotePayload({op:'upd',id:'a',after:{box:{onload:()=>1}}}),'nested function rejected');
+    // hostile deep nesting is bounded (depth cap), returns false rather than blowing the stack
+    let deep={}; let cur=deep; for(let i=0;i<40;i++){cur.n={};cur=cur.n}
+    assert.ok(!validRemotePayload({op:'upd',id:'a',after:deep}),'over-deep nesting rejected (DoS guard)');
+    console.log('  ✓ validPatch recurses: nested NaN/Infinity/__proto__/function/over-deep rejected');
+  }
+
   // legacy boards (integer z, no frac) migrate to keys on first sortZ, order intact
   {
     state.shapes=[];state.history=[];state.histIdx=-1;

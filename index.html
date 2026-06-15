@@ -964,16 +964,24 @@ function distToSeg(p,a,b){
 
 // Structural validation shared by every intake path. See docs/architecture.md.
 // validPatch: reject value-level poison before a patch/shape is Object.assign'd
-// into state — non-finite numbers (NaN/Infinity make a shape vanish from canvas)
-// and prototype-pollution keys from a hostile peer. Shallow by design (shapes are
-// flat; pen `pts` finiteness is checked separately in validShape).
+// into state — non-finite numbers (NaN/Infinity make a shape vanish from canvas),
+// functions, and prototype-pollution keys from a hostile peer. Recurses to ANY
+// depth: a remote `upd` is gated by validPatch alone (not validShape), so a nested
+// payload like {pts:[[1,NaN]]} must be caught here. Depth-capped to bound a hostile
+// deeply-nested object (stack-overflow DoS); no valid shape nests beyond a few levels.
 function validPatch(p){
-  if(!p||typeof p!=='object')return false;
-  for(const k of Object.keys(p)){
+  if(!p||typeof p!=='object')return false;   // a patch/shape must be an object
+  return _cleanVal(p,0);
+}
+function _cleanVal(v,depth){
+  if(depth>8)return false;
+  if(typeof v==='function')return false;
+  if(typeof v==='number')return Number.isFinite(v);
+  if(v==null||typeof v!=='object')return true;   // string/boolean/null are fine
+  if(Array.isArray(v))return v.every(x=>_cleanVal(x,depth+1));
+  for(const k of Object.keys(v)){
     if(k==='__proto__'||k==='constructor'||k==='prototype')return false;
-    const v=p[k];
-    if(typeof v==='number'&&!Number.isFinite(v))return false;
-    if(typeof v==='function')return false;
+    if(!_cleanVal(v[k],depth+1))return false;
   }
   return true;
 }
