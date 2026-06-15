@@ -3121,15 +3121,17 @@ const Net={
         break;
     }
   },
-  // Build a snapshot message. Snapshot = all shapes as add ops; each needs a
-  // DISTINCT clock key, else applyRemote's peer:seq dedup collapses the batch to
-  // the first shape (peer:0 collision). `ops` is REQUIRED: when the receiver already
-  // has shapes it merges via `ops` (see _onRecv 'snapshot'), so any transport that
-  // omits ops silently fails to sync two non-empty boards.
+  // Build a snapshot message. Snapshot = all shapes as add ops. The clock seq is
+  // keyed by SHAPE ID (`snap:<id>`), not array index: ids are globally unique so keys
+  // stay distinct (no dedup collapse), AND stable across re-snapshots — an index-based
+  // key would let a newly-added shape inherit a `peer:snapN` already in seenOps after
+  // the sender's shape set changed, so applyRemote would silently drop it (missed merge).
+  // `ops` is REQUIRED: a non-empty receiver merges via `ops` (see _onRecv 'snapshot'),
+  // so any transport that omits ops fails to sync two non-empty boards.
   _snapshotMsg(){
-    const ops=state.shapes.map((s,i)=>({
+    const ops=state.shapes.map(s=>({
       op:'add',shape:clone(s),
-      clock:{peer:state.peerId,seq:'snap'+i,ts:0,_snap:true}
+      clock:{peer:state.peerId,seq:'snap:'+s.id,ts:0,_snap:true}
     }));
     return {k:'snapshot',shapes:clone(state.shapes),ops,peer:state.peerId};
   },

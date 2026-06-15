@@ -224,7 +224,7 @@ const checks = [
   ['help grid present row uses i18n', html.includes("['⇧P',k.present]") && html.includes("['↑↓←→',k.nudge]")],
   ['help i18n keys in ja and en', html.includes("present:'プレゼン'") && html.includes("present:'Present'")],
   // v1.6.19: sync + PWA fixes
-  ['snapshot ops get distinct clock keys', html.includes("seq:'snap'+i")],
+  ['snapshot ops get distinct, stable clock keys (id-based)', html.includes("seq:'snap:'+s.id")],
   ['snapshot merge skips already-present shapes', html.includes("op.shape&&byId(op.shape.id))continue")],
   ['service worker purges stale caches', html.includes("caches.keys()") && html.includes("k!==C")],
   // v1.6.20: fourth audit pass
@@ -1739,7 +1739,30 @@ try {
     const keys=msg.ops.map(o=>o.clock.peer+':'+o.clock.seq);
     assert.strictEqual(new Set(keys).size,keys.length,'distinct clock keys (no dedup collapse)');
     assert.deepStrictEqual(msg.ops.map(o=>o.shape.id),[sa.id,sb.id],'ops reference the right shapes');
-    console.log('  ✓ Net._snapshotMsg includes ops with distinct clocks (fixes WebRTC merge)');
+    // keys must be derived from shape id (stable), not array index
+    assert.strictEqual(msg.ops[0].clock.seq,'snap:'+sa.id,'clock seq keyed by shape id');
+    console.log('  ✓ Net._snapshotMsg includes ops with id-keyed distinct clocks (fixes WebRTC merge)');
+  }
+
+  // Re-snapshot after the sender's shape set changed must still merge new shapes.
+  // Builds the snapshots via the real _snapshotMsg (as sender 'A'), then replays them
+  // into receiver 'B'. Index-based clock keys regressed this — Z (new, at the index a
+  // dropped shape vacated) would inherit a seen `A:snapN` and be silently dropped.
+  {
+    const mk=(id,x)=>({id,type:'rect',x,y:0,w:10,h:10,z:x,frac:null,stroke:'#000',size:2,opacity:1});
+    const X=mk('X',10),Y=mk('Y',20),Z=mk('Z',30);
+    // --- as sender A: capture two snapshots across a shape-set change ---
+    state.peerId='A';state.shapes=[X,Y];
+    const msg1=Net._snapshotMsg();
+    state.shapes=[Y,Z];                               // A dropped X, added Z
+    const msg2=Net._snapshotMsg();
+    // --- as receiver B: starts with its own shape W, replays A's snapshots ---
+    state.peerId='B';state.shapes=[mk('W',0)];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();
+    Net._onRecv(msg1);
+    assert.deepStrictEqual(state.shapes.map(s=>s.id).sort(),['W','X','Y'],'merge 1: X,Y adopted alongside W');
+    Net._onRecv(msg2);
+    assert.ok(state.shapes.some(s=>s.id==='Z'),'merge 2: newly-added Z adopted despite prior snapshot');
+    console.log('  ✓ re-snapshot merges new shapes after sender set changed (id-keyed clocks)');
   }
 
   // validPatch recurses: nested poison in a remote `upd` (gated by validPatch alone)
