@@ -3015,10 +3015,14 @@ function importBoard(file){
       const d=JSON.parse(r.result);
       const shapes=(d.shapes||[]).filter(validShape);
       if(!shapes.length){UI.toast(t('empty'),'warn');return}
-      Store.commit({op:'clear',shapes:clone(state.shapes)});
-      for(const s of shapes)Store.commit({op:'add',shape:s});
+      // Atomic whole-board swap (mirrors importFromHash): a single replace op means
+      // one Ctrl+Z fully restores the previous board regardless of import size.
+      // clear+N-adds would overflow MAX_HISTORY for large boards and require N+1 undos.
+      const before=clone(state.shapes);
+      state.shapes=shapes.map(clone);
       if(typeof d.docName==='string'&&d.docName){state.docName=d.docName;document.getElementById('docName').value=d.docName}
-      invalidate();
+      sortZ();invalidate();
+      Store._recordCommitted({op:'replace',before,after:clone(state.shapes)});
       UI.toast(t('loadedBoard')+' ('+shapes.length+')','ok');
     }catch{UI.toast(t('invalidBoard'),'err')}
   };

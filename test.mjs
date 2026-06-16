@@ -255,7 +255,7 @@ const checks = [
   ['existing text edit branch is else-if (no double op)', html.includes("}else if(newText!==origText){")],
   // v1.6.23: .board file export/import
   ['exportBoard function exists', html.includes('function exportBoard()')],
-  ['importBoard function exists and uses validShape filter', html.includes('function importBoard') && html.includes('.filter(validShape)')],
+  ['importBoard uses atomic replace op (not clear+adds)', html.includes('function importBoard') && html.includes('.filter(validShape)') && html.includes("op:'replace',before,after")],
   ['Ctrl+Shift+S triggers exportBoard', html.includes("e.shiftKey){e.preventDefault();exportBoard()}")],
   ['drag-drop accepts .board files', html.includes(".endsWith('.board')")],
   // v1.6.27: SVG export renders single-point pen as circle dot
@@ -2025,6 +2025,28 @@ try {
     console.log('  ✓ replace op: rejected over the wire (REMOTE_OPS allow-list)');
   }
 
+  // importBoard uses atomic replace op (1 undo restores full board, not N+1 undos)
+  // Bug: old code did clear+N-adds → overflow MAX_HISTORY for large boards.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();
+    const ib1=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    const ib2=Shape.make('ellipse',{x:60,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:ib1});Store.commit({op:'add',shape:ib2});
+    const ibOrigIds=state.shapes.map(s=>s.id);
+    const histLenBefore=state.history.length;
+    // Simulate fixed importBoard: atomic replace, not clear+adds
+    const ibBefore=JSON.parse(JSON.stringify(state.shapes));
+    const ibImported=[Shape.make('arrow',{x1:0,y1:0,x2:10,y2:10}),Shape.make('rect',{x:100,y:0,w:30,h:30})];
+    state.shapes=ibImported.map(s=>JSON.parse(JSON.stringify(s)));sortZ();
+    Store._recordCommitted({op:'replace',before:ibBefore,after:JSON.parse(JSON.stringify(state.shapes))});
+    assert.strictEqual(state.history.length,histLenBefore+1,'importBoard: adds exactly 1 history entry (not N+1)');
+    Store.undo();
+    assert.deepStrictEqual(state.shapes.map(s=>s.id),ibOrigIds,'importBoard: 1 undo fully restores original board');
+    Store.redo();
+    assert.strictEqual(state.shapes[0].type,'arrow','importBoard: redo re-applies import');
+    console.log('  ✓ importBoard(fix): atomic replace op — 1 Ctrl+Z restores board, not N+1');
+  }
+
   // v1.6.55: doAlign remaining variants — right, bottom, cx, cy
   {
     // right: all right edges align to rightmost
@@ -2740,7 +2762,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 324; // prev 321 + snapshot merge rejects non-add ops (3 asserts)
+  pass += 327; // prev 324 + importBoard atomic replace (3 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
