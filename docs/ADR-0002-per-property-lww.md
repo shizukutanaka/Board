@@ -73,8 +73,12 @@ A が `prop=x@cA`、B が `prop=y@cB` を同時 commit(各自ローカルで `wc
 
 ## 影響
 
-- 単独 peer の挙動は不変(`_lwwDrop` は remote のみ。commit は常に適用)。591 テスト緑。
-- `state.wclock` 追加。`del`/`clear`/`replace` でクリーンアップ(肥大化と stale 防止)。
+- 単独 peer の挙動は不変(`_lwwDrop` は remote のみ。commit は常に適用)。603 テスト緑。
+- `state.wclock` 追加。`del`/`clear`/`replace` でクリーンアップ(肥大化と stale 防止)。さらに
+  `_stampWrites` は `byId(id)` で**存在する図形のみ stamp** する: 削除済み図形への遅延 remote `upd`
+  は `_apply` で no-op になるが、ガードが無いと `wclock[id]` を新規作成して**無限にリーク**する
+  (`del` のクリーンアップは生存 id しか掃除しないため)。`group`/`ungroup`(§3.17)に拡張した際、
+  この edge が顕在化した。
 - 二者ハーネスで担保: 同プロパティ衝突の決定的収束(A新/B新/ts同値)・互いに素プロパティの双方生存・
   `resize` の収束・`resize×recolor` の双方生存(変更キー gating を外すと clobber して落ちる=非空虚)。
 - 残: undo×sync(§F)。`resize`/`align` は変更キー検出で対応済(当初「将来」としたが本コミットで実装)。

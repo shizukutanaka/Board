@@ -1108,14 +1108,18 @@ const Store={
   _stampWrites(op){
     if(!this._lwwOp(op))return;
     const C=op.clock;if(!C)return;
-    const stamp=(id,after,before)=>{if(!after)return;const w=state.wclock[id]||(state.wclock[id]={});
+    // Only stamp shapes that actually exist: a late remote upd for a deleted/unknown
+    // shape no-ops in _apply but would otherwise create a stale wclock entry that nothing
+    // ever cleans (del/clear/replace only clean live ids), leaking unbounded over a sync
+    // session. Array/group paths are pre-filtered by _lwwDrop, but guard here too.
+    const stamp=(id,after,before)=>{if(!after||!byId(id))return;const w=state.wclock[id]||(state.wclock[id]={});
       for(const key of Object.keys(after)){if(key==='id')continue;if(this._chg(before,after,key))w[key]=C;}};
     if(op.op==='upd')stamp(op.id,op.after,op.before);
     else if(op.op==='group'||op.op==='ungroup'){
       const bmap={};for(const b of (op.before||[]))bmap[b.id]=b;
       const gval=op.op==='group'?op.gid:undefined;
       for(const id of op.ids){
-        if(this._chg({groupId:(bmap[id]||{}).groupId},{groupId:gval},'groupId')){
+        if(byId(id)&&this._chg({groupId:(bmap[id]||{}).groupId},{groupId:gval},'groupId')){
           const w=state.wclock[id]||(state.wclock[id]={});w['groupId']=C;
         }
       }

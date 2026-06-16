@@ -2525,6 +2525,17 @@ try {
     assert.ok(Ad.stroke==='green' && Ad.size===9, 'disjoint: both peers\' independent edits preserved');
     console.log('  ✓ two-peer LWW: concurrent DISJOINT-property edits both survive (per-property)');
 
+    // wclock hygiene: a late remote upd for a DELETED shape must not leave a stale
+    // wclock entry. A deletes dX; B (hadn't seen the delete) recolors dX concurrently.
+    // On A the recolor no-ops (shape gone) — but it must NOT resurrect a wclock[dX].
+    // Without the byId guard in _stampWrites this entry leaks unbounded over a session.
+    A.Store.commit({op:'del', shapes:[cp(A.state.shapes.find(s=>s.id==='dX'))]});
+    assert.ok(!A.state.shapes.some(s=>s.id==='dX'), 'wclock hygiene: dX deleted on A');
+    assert.strictEqual(A.state.wclock['dX'], undefined, 'wclock hygiene: del cleared wclock[dX]');
+    A.Net._onRecv({k:'op',op:{op:'upd',id:'dX',before:{stroke:'green'},after:{stroke:'red'},clock:{peer:'peerB',seq:99,ts:9e9}}});
+    assert.strictEqual(A.state.wclock['dX'], undefined, 'wclock hygiene: late upd for deleted shape leaves NO stale wclock entry');
+    console.log('  ✓ two-peer LWW: late upd for a deleted shape leaks no wclock entry (_stampWrites byId guard)');
+
     // §3.16: but concurrent MOVES of the same shape CONVERGE — move is a delta
     // (Shape.translate adds dx,dy), and translation commutes, so receipt order is
     // irrelevant. Whether an edit converges is decided by delta-vs-absolute op
@@ -2621,7 +2632,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 292; // prev 289 + group/ungroup payload validation (3 asserts, §3.17 follow-up)
+  pass += 295; // prev 292 + wclock hygiene: del clears + late upd leaks nothing (3 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
