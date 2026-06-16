@@ -748,6 +748,57 @@ peer)が食い違う限り、同期コードは「書けるが検証できない
 
 ---
 
+## 3.17 ソクラテス式の新視点 — 「LWW を『実装した』と言えるのは、全ての非可換 op を網羅した後だ」(2026-06-16)
+
+§3.15→ADR-0002 で per-property LWW を `upd`/`style`/`resize`/`align` に実装した。本節はその
+後に立ち「**LWW カバレッジ自体に穴はないか**」を問う。
+
+- **問**: `group`/`ungroup` op は非可換か? → `group` は `sh.groupId = op.gid`(**絶対代入**)。
+  `upd stroke=red` と構造的に同一。peer A が `[s1,s2]` を group-GA、peer B が `[s2,s3]` を
+  group-GB と同時に commit すると、受信順で **s2 の groupId が異なる**。§3.15 と同じ発散パターン。
+- **問**: `group`/`ungroup` は REMOTE_OPS に入っているのに、なぜ LWW 対象外だったのか? →
+  ADR-0002 実装時、`_lwwOp` は `upd`/`style`/`resize`/`align` の四つを列挙した。`group`/`ungroup`
+  は op 構造(`.ids`+`.gid` vs `.after` 配列)が異なるため **暗黙的に除外**されていた。
+  `_lwwDrop` の「`if(!Array.isArray(op.after))return true`」パスで素通りしていた。
+- **問**: なぜ今まで顕在化しなかったのか? → 通常の使用でグループ衝突は稀。かつテスト二者ハーネスが
+  `upd`/`resize` のみを対象としていたため、`group` の発散パターンは **false positive として隠れていた**。
+  §3.15 の「測った場合しか語らない」が再現した。
+
+**新視点(これが追加分)**: LWW の「_lwwOp のフィルタ」と「REMOTE_OPS ホワイトリスト」は意味的に
+異なる集合を管理している。REMOTE_OPS は「受け入れる op 型」、_lwwOp は「per-property 収束を
+適用する op 型」。前者に入っていても後者に入っていなければ LWW は無効化されたまま通過する。
+この二つのリストは **常に同期して意識的に管理**しなければならない。
+
+**実装(2026-06-16 コミット)**:
+- `_lwwOp` に `group`/`ungroup` を追加。
+- `_lwwDrop`: `.ids` を per-shape で `_chg(groupId)+clockNewer` でフィルタ; `.before` も同期して縮小。
+- `_stampWrites`: `group`/`ungroup` の各 ids ループで `groupId` の変化をクロック記録。
+- 証明: A が gs2 を group-GA(ts:1000)、B が gs2 を group-GB(ts:2000)で同時 commit →
+  B 受信時 `clockNewer(2000,1000)=true` → A での gs2 は GB へ更新。A の op を B が受信 →
+  `clockNewer(1000,2000)=false` → B での gs2 は GB を維持。**両 peer が GB で収束**。
+  disjoint 側: gs1(A のみ)=GA、gs3(B のみ)=GB 両方生存。
+
+**残る非可換 op の棚卸し**:
+
+| op | 型 | LWW 済? | 残課題 |
+|---|---|---|---|
+| `upd` | 絶対パッチ | ✅ ADR-0002 | — |
+| `style` | 絶対パッチ(複数形) | ✅ ADR-0002 | — |
+| `resize` | スナップショット | ✅ changed-key gating | — |
+| `align` | スナップショット | ✅ changed-key gating | — |
+| `group` | groupId 代入 | ✅ §3.17 | — |
+| `ungroup` | groupId 削除 | ✅ §3.17 | — |
+| `move` | デルタ加算 | ✅ 可換(不要) | — |
+| `zorder` | frac スナップショット | △ 未 | frac 自体は LWW 済(ADR-0001) |
+| `add`/`del` | 存在 | △ 未 | del の idempotent + 再出現は別問題 |
+| `clear`/`replace` | セッション全体 | — | local-only/remote 除外 |
+
+`zorder` は frac で ordered CRDT 化済だが、*同時並べ替え* の移動衝突は Kleppmann move-op(item L)
+を要する。`add`/`del` の並行衝突(再追加・del-after-add)は §F の因果 undo 問題と同根で、
+別 ADR に分離するのが適切。
+
+---
+
 ## 5. 追補(第2次調査): 単一HTML制約に最適な具体手法
 
 第1次の方向性を、Board の「単一HTML / 依存ゼロ」制約に**最も適合する実装手段**へ落とし込む追加調査。

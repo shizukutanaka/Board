@@ -1067,8 +1067,9 @@ const Store={
   // the shape — so they never pollute clones, snapshots, persistence or validation.
   // LWW is gated/stamped only on the keys an op ACTUALLY changed (diff before vs after),
   // so resize/align (whole-shape snapshots) claim only the geometry they moved, never a
-  // concurrently-edited property like stroke. Scoped to the absolute-patch ops below.
-  _lwwOp(op){return op.op==='upd'||op.op==='style'||op.op==='resize'||op.op==='align'},
+  // concurrently-edited property like stroke. group/ungroup are treated as per-shape
+  // writes to the 'groupId' property, so overlapping concurrent groups converge.
+  _lwwOp(op){return op.op==='upd'||op.op==='style'||op.op==='resize'||op.op==='align'||op.op==='group'||op.op==='ungroup'},
   // A patch key counts for LWW only if its value actually CHANGED. pen `pts` (nested
   // array) compared deeply via JSON; before may be absent → treat as changed.
   _chg(before,after,key){return JSON.stringify(before?before[key]:undefined)!==JSON.stringify(after[key])},
@@ -1083,6 +1084,18 @@ const Store={
         if(this._chg(before,after,key)&&clockNewer(C,w&&w[key]))kept++;else delete after[key];}
       return kept;};
     if(op.op==='upd'){if(!byId(op.id))return true;return filt(op.id,op.after,op.before)>0;}
+    if(op.op==='group'||op.op==='ungroup'){
+      const bmap={};for(const b of (op.before||[]))bmap[b.id]=b;
+      const gval=op.op==='group'?op.gid:undefined;
+      op.ids=op.ids.filter(id=>{
+        const w=state.wclock[id];
+        return byId(id)
+          &&this._chg({groupId:(bmap[id]||{}).groupId},{groupId:gval},'groupId')
+          &&clockNewer(C,w&&w['groupId']);
+      });
+      if(op.before)op.before=op.before.filter(b=>op.ids.includes(b.id));
+      return op.ids.length>0;
+    }
     if(!Array.isArray(op.after))return true;
     const bb={};if(Array.isArray(op.before))for(const b of op.before)bb[b.id]=b;
     op.after=op.after.filter(p=>byId(p.id)?filt(p.id,p,bb[p.id])>0:false);
@@ -1097,7 +1110,15 @@ const Store={
     const stamp=(id,after,before)=>{if(!after)return;const w=state.wclock[id]||(state.wclock[id]={});
       for(const key of Object.keys(after)){if(key==='id')continue;if(this._chg(before,after,key))w[key]=C;}};
     if(op.op==='upd')stamp(op.id,op.after,op.before);
-    else if(Array.isArray(op.after)){const bb={};if(Array.isArray(op.before))for(const b of op.before)bb[b.id]=b;
+    else if(op.op==='group'||op.op==='ungroup'){
+      const bmap={};for(const b of (op.before||[]))bmap[b.id]=b;
+      const gval=op.op==='group'?op.gid:undefined;
+      for(const id of op.ids){
+        if(this._chg({groupId:(bmap[id]||{}).groupId},{groupId:gval},'groupId')){
+          const w=state.wclock[id]||(state.wclock[id]={});w['groupId']=C;
+        }
+      }
+    }else if(Array.isArray(op.after)){const bb={};if(Array.isArray(op.before))for(const b of op.before)bb[b.id]=b;
       for(const p of op.after)stamp(p.id,p,bb[p.id]);}
   },
   _recordCommitted(op){

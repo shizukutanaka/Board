@@ -2564,10 +2564,49 @@ try {
     assert.strictEqual(Ar2.stroke, Br2.stroke, 'resize×recolor: stroke agrees');
     assert.ok(Ar2.w===55 && Ar2.stroke==='purple', 'resize×recolor: BOTH survive (newer snapshot did not clobber stroke)');
     console.log('  ✓ two-peer LWW: resize converges + resize×recolor both survive (changed-key gating)');
+
+    // §3.17: concurrent GROUP ops with an overlapping shape — the contested shape must
+    // land in exactly one group (LWW on groupId), while disjoint members keep their own
+    // groups. group/ungroup are absolute-assignment ops (groupId = gid), non-commutative,
+    // so they share the same divergence risk as `upd stroke` — and are now covered by LWW.
+    reset(A); reset(B);
+    A.Net.broadcast = op => B.Net._onRecv({k:'op',op:cp(op)});
+    B.Net.broadcast = op => A.Net._onRecv({k:'op',op:cp(op)});
+    A.Net._send = msg => B.Net._onRecv(cp(msg));
+    B.Net._send = msg => A.Net._onRecv(cp(msg));
+    const gsh1={id:'gs1',type:'rect',x:0,y:0,w:5,h:5,z:1,frac:null};
+    const gsh2={id:'gs2',type:'rect',x:5,y:0,w:5,h:5,z:2,frac:null};
+    const gsh3={id:'gs3',type:'rect',x:10,y:0,w:5,h:5,z:3,frac:null};
+    A.state.shapes.push(cp(gsh1),cp(gsh2),cp(gsh3)); B.state.shapes.push(cp(gsh1),cp(gsh2),cp(gsh3));
+    A.sortZ(); B.sortZ();
+    const gAB=[], gBA=[];
+    A.Net.broadcast = op => gAB.push({k:'op',op:cp(op)});
+    B.Net.broadcast = op => gBA.push({k:'op',op:cp(op)});
+    // A groups [gs1,gs2] with 'GA' (ts:1000), B groups [gs2,gs3] with 'GB' (ts:2000 = newer)
+    A.Store.commit({op:'group',ids:['gs1','gs2'],gid:'GA',
+      before:[{id:'gs1',groupId:undefined},{id:'gs2',groupId:undefined}],
+      clock:{peer:'peerA',seq:10,ts:1000}});
+    B.Store.commit({op:'group',ids:['gs2','gs3'],gid:'GB',
+      before:[{id:'gs2',groupId:undefined},{id:'gs3',groupId:undefined}],
+      clock:{peer:'peerB',seq:10,ts:2000}});
+    gAB.forEach(m=>B.Net._onRecv(m)); gBA.forEach(m=>A.Net._onRecv(m));
+    const Ags1=A.state.shapes.find(s=>s.id==='gs1'), Bgs1=B.state.shapes.find(s=>s.id==='gs1');
+    const Ags2=A.state.shapes.find(s=>s.id==='gs2'), Bgs2=B.state.shapes.find(s=>s.id==='gs2');
+    const Ags3=A.state.shapes.find(s=>s.id==='gs3'), Bgs3=B.state.shapes.find(s=>s.id==='gs3');
+    // gs1 uncontested (only A touched it) → GA on both
+    assert.strictEqual(Ags1.groupId, Bgs1.groupId, 'group LWW: disjoint member gs1 agrees');
+    assert.strictEqual(Ags1.groupId, 'GA', 'group LWW: gs1 keeps GA (B never claimed it)');
+    // gs3 uncontested (only B touched it) → GB on both
+    assert.strictEqual(Ags3.groupId, Bgs3.groupId, 'group LWW: disjoint member gs3 agrees');
+    assert.strictEqual(Ags3.groupId, 'GB', 'group LWW: gs3 keeps GB (A never claimed it)');
+    // gs2 contested — B newer (ts:2000 > ts:1000) → GB on both
+    assert.strictEqual(Ags2.groupId, Bgs2.groupId, 'group LWW: contested shape gs2 agrees');
+    assert.strictEqual(Ags2.groupId, 'GB', 'group LWW: newer writer (B) wins contested shape gs2');
+    console.log('  ✓ two-peer LWW: concurrent GROUP ops converge — contested shape yields to newer writer (§3.17)');
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 283; // prev 277 + keyboard-resize batch-op reversibility (6 asserts)
+  pass += 289; // prev 283 + group/ungroup LWW convergence (6 asserts, §3.17)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
