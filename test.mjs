@@ -749,6 +749,21 @@ try {
     console.log('  ✓ applyRemote rejects NaN/Infinity/__proto__ in upd/style payloads');
   }
 
+  // §3.17 follow-up: group/ungroup payload validation. A non-string gid would
+  // corrupt _gmap Map keys, selection equality and the clone-remap, and now also
+  // flows through the LWW _chg comparison — so reject it at the validator.
+  {
+    const gv = state.shapes[0].id;
+    delete state.shapes[0].groupId;
+    Store.applyRemote({op:'group', ids:[gv], gid:{evil:1}, clock:{peer:'attacker', seq:20, ts:1}});
+    assert.strictEqual(state.shapes[0].groupId, undefined, 'remote group with non-string gid is dropped');
+    Store.applyRemote({op:'group', ids:[{x:1}], gid:'G1', clock:{peer:'attacker', seq:21, ts:1}});
+    assert.strictEqual(state.shapes[0].groupId, undefined, 'remote group with non-string ids is dropped');
+    Store.applyRemote({op:'group', ids:[gv], gid:'GOOD', clock:{peer:'peerB', seq:4, ts:1}});
+    assert.strictEqual(state.shapes[0].groupId, 'GOOD', 'well-formed remote group is applied');
+    console.log('  ✓ applyRemote validates group/ungroup payloads (string ids + gid)');
+  }
+
   // SVG export escapes attribute values (regression: colors/labels/dataUrls
   // were interpolated raw → an exported .svg could execute injected markup)
   const evil = Shape.make('rect', {x:0,y:0,w:20,h:20});
@@ -2606,7 +2621,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 289; // prev 283 + group/ungroup LWW convergence (6 asserts, §3.17)
+  pass += 292; // prev 289 + group/ungroup payload validation (3 asserts, §3.17 follow-up)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

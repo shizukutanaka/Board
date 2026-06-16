@@ -1009,8 +1009,9 @@ function validRemotePayload(op){
     case 'style':
     case 'resize':
     case 'align':  return patches(op.after)&&(op.before==null||patches(op.before));
-    case 'group':
-    case 'ungroup':return Array.isArray(op.ids);
+    case 'group':  return Array.isArray(op.ids)&&op.ids.every(id=>typeof id==='string')
+                          &&typeof op.gid==='string';
+    case 'ungroup':return Array.isArray(op.ids)&&op.ids.every(id=>typeof id==='string');
     default:       return false;
   }
 }
