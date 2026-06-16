@@ -563,7 +563,73 @@ try {
   assert.strictEqual(state.shapes.length, 1);
   console.log('  ✓ del op is reversible');
 
-  // G.bbox for rect
+  // ---- undo/redo coverage for ops lacking behavioral round-trip tests ----
+  // The architecture's invariant: every op committed locally is reversible via
+  // _apply(op,false). String-presence checks (see above) cannot catch logic regressions
+  // here — only these end-to-end assertions do.
+
+  // clear undo: all shapes restored with original properties (frac, stroke, etc.)
+  {
+    state.shapes=[]; state.history=[]; state.histIdx=-1;
+    const ca=Shape.make('rect',{x:1,y:1,w:10,h:10}); ca.stroke='#CA0000';
+    const cb=Shape.make('ellipse',{x:20,y:1,w:10,h:10}); cb.stroke='#CB0000';
+    Store.commit({op:'add',shape:ca}); Store.commit({op:'add',shape:cb});
+    const preClear=state.shapes.map(s=>({id:s.id,stroke:s.stroke,frac:s.frac}));
+    Store.commit({op:'clear',shapes:state.shapes.map(s=>({...s}))});
+    assert.strictEqual(state.shapes.length,0,'clear: board is empty after forward');
+    Store.undo();
+    assert.strictEqual(state.shapes.length,2,'clear undo: both shapes restored');
+    assert.ok(state.shapes.some(s=>s.id===ca.id&&s.stroke==='#CA0000'),'clear undo: ca properties intact');
+    assert.ok(state.shapes.some(s=>s.id===cb.id&&s.stroke==='#CB0000'),'clear undo: cb properties intact');
+    // frac keys must be preserved so z-order is restored
+    assert.ok(state.shapes.every(s=>s.frac===preClear.find(p=>p.id===s.id).frac),'clear undo: frac (z-order) restored');
+    console.log('  ✓ clear op undo restores all shapes with original properties and frac order');
+  }
+
+  // style undo: single-shape stroke change round-trips cleanly
+  {
+    state.shapes=[]; state.history=[]; state.histIdx=-1;
+    const ss=Shape.make('rect',{x:0,y:0,w:10,h:10}); ss.stroke='#000000';
+    Store.commit({op:'add',shape:ss});
+    const live=state.shapes.find(s=>s.id===ss.id);
+    Store._recordCommitted({op:'style',before:[{id:ss.id,stroke:'#000000'}],after:[{id:ss.id,stroke:'#FF0000'}]});
+    live.stroke='#FF0000'; // _recordCommitted assumes caller already applied
+    assert.strictEqual(live.stroke,'#FF0000','style: stroke changed to red');
+    Store.undo();
+    assert.strictEqual(live.stroke,'#000000','style undo: stroke restored to original');
+    Store.redo();
+    assert.strictEqual(live.stroke,'#FF0000','style redo: stroke re-applied');
+    console.log('  ✓ style op undo/redo round-trips stroke correctly');
+  }
+
+  // group undo: groupId assigned then removed by undo; ungroup undo: groupId restored
+  {
+    state.shapes=[]; state.history=[]; state.histIdx=-1;
+    const ga=Shape.make('rect',{x:0,y:0,w:5,h:5});
+    const gb=Shape.make('rect',{x:10,y:0,w:5,h:5});
+    Store.commit({op:'add',shape:ga}); Store.commit({op:'add',shape:gb});
+    const la=state.shapes.find(s=>s.id===ga.id), lb=state.shapes.find(s=>s.id===gb.id);
+    // group
+    const gid='TEST_GID';
+    la.groupId=gid; lb.groupId=gid;
+    Store._recordCommitted({op:'group',ids:[ga.id,gb.id],gid,before:[{id:ga.id,groupId:undefined},{id:gb.id,groupId:undefined}]});
+    assert.strictEqual(la.groupId,gid,'group: groupId assigned');
+    Store.undo();
+    assert.strictEqual(la.groupId,undefined,'group undo: groupId removed from la');
+    assert.strictEqual(lb.groupId,undefined,'group undo: groupId removed from lb');
+    Store.redo();
+    assert.strictEqual(la.groupId,gid,'group redo: groupId re-assigned');
+    // ungroup
+    delete la.groupId; delete lb.groupId;
+    Store._recordCommitted({op:'ungroup',ids:[ga.id,gb.id],gids:[gid],before:[{id:ga.id,groupId:gid},{id:gb.id,groupId:gid}]});
+    assert.strictEqual(la.groupId,undefined,'ungroup: groupId removed');
+    Store.undo();
+    assert.strictEqual(la.groupId,gid,'ungroup undo: groupId restored');
+    assert.strictEqual(lb.groupId,gid,'ungroup undo: groupId restored on lb');
+    console.log('  ✓ group/ungroup undo/redo round-trips groupId correctly');
+  }
+
+
   const b = G.bbox({type:'rect', x:10, y:20, w:100, h:50});
   assert.deepStrictEqual(b, {x:10, y:20, w:100, h:50});
   console.log('  ✓ G.bbox for rect');
@@ -2653,7 +2719,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 306; // prev 299 + zorder legacy z/frac validation + move string ids (7 asserts)
+  pass += 321; // prev 306 + undo round-trips: clear(5) + style(3) + group/ungroup(7)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
