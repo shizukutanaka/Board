@@ -1739,7 +1739,16 @@ try {
     assert.ok(!validRemotePayload({op:'zorder',changes:[{before:'V',after:'k'}]}),'missing id rejected');
     assert.ok(!validRemotePayload({op:'zorder',changes:'nope'}),'non-array changes rejected');
     assert.ok(validRemotePayload({op:'zorder',after:[]}),'legacy snapshot format still accepted');
-    console.log('  ✓ Step3 validRemotePayload: accepts well-formed delta, rejects malformed keys/id');
+    assert.ok(validRemotePayload({op:'zorder',after:[{id:'a',z:1,frac:'Vz'}]}),'legacy with valid z+frac accepted');
+    // legacy path assigns sh.z=p.z and sh.frac=p.frac directly — malformed values corrupt the
+    // ADR-0001 sort invariant. Guard them at the validator.
+    assert.ok(!validRemotePayload({op:'zorder',after:[{id:'a',z:NaN}]}),'legacy with NaN z rejected (would corrupt sortZ)');
+    assert.ok(!validRemotePayload({op:'zorder',after:[{id:'a',frac:{x:1}}]}),'legacy with object frac rejected (breaks ADR-0001 sort)');
+    assert.ok(!validRemotePayload({op:'zorder',after:[{z:1}]}),'legacy entry missing id rejected');
+    // move: ids must be strings (consistent with group/ungroup fix)
+    assert.ok(validRemotePayload({op:'move',ids:['s1','s2'],dx:5,dy:3}),'move with string ids accepted');
+    assert.ok(!validRemotePayload({op:'move',ids:[{id:'s1'}],dx:5,dy:3}),'move with object ids rejected');
+    console.log('  ✓ Step3 validRemotePayload: zorder legacy validates z/frac; move validates string ids');
   }
 
   // Net._snapshotMsg carries `ops` so a non-empty peer can merge (WebRTC + BC both)
@@ -2644,7 +2653,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 299; // prev 295 + clampZoom invariant pinning (4 asserts)
+  pass += 306; // prev 299 + zorder legacy z/frac validation + move string ids (7 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
