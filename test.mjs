@@ -216,7 +216,9 @@ const checks = [
   ['Escape closes open modal', html.includes("if(hp.dataset.open==='true')UI.toggleHelp()")],
   ['dashbtn covered by forced-colors', html.includes(".btn,.tool,.swatch,.dashbtn{border:1px solid ButtonText}")],
   ['image cache is bounded LRU', html.includes("IMG_CACHE_MAX") && html.includes("_imgCache.keys().next().value")],
-  ['load validates viewport finiteness', html.includes("d.viewport.zoom>0)Object.assign(state.viewport")],
+  ['load validates viewport finiteness', html.includes("Number.isFinite(+d.viewport.zoom)&&d.viewport.zoom>0")],
+  ['load clamps viewport zoom to [MIN_ZOOM,MAX_ZOOM]', html.includes("state.viewport.zoom=clampZoom(+d.viewport.zoom)")],
+  ['clampZoom is the single zoom-invariant source', html.includes("const clampZoom=z=>Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,z))") && html.includes("const nz=clampZoom(") && html.includes("const z=clampZoom(")],
   // v1.6.18: deeper audit fixes
   ['P selects pen, Shift+P presents', html.includes("k==='p'&&e.shiftKey&&!meta&&!e.altKey")],
   ['pen has no resize handles', html.includes("if(s.type==='pen'||s.w==null)return [];")],
@@ -510,7 +512,7 @@ try {
              doGroup, doUngroup, doPaste, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, Net };
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -524,7 +526,7 @@ try {
           doGroup, doUngroup, doPaste, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, Net } = api;
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net } = api;
 
   console.log('\n-- behavioural --');
 
@@ -2182,6 +2184,16 @@ try {
     console.log('  ✓ resize object-snap: edges snap to nearby shapes, guides emitted, grid/rotate/line bypass');
   }
   {
+    // clampZoom is the single source for the zoom invariant [MIN_ZOOM,MAX_ZOOM], shared by
+    // wheel-zoom, fit, AND Persist.load. A corrupt/forward-incompat IDB record with an
+    // out-of-range zoom used to load an unusable canvas; load now routes through clampZoom.
+    assert.strictEqual(clampZoom(1e9), MAX_ZOOM, 'clampZoom: astronomical zoom pinned to MAX_ZOOM');
+    assert.strictEqual(clampZoom(0.00001), MIN_ZOOM, 'clampZoom: microscopic zoom pinned to MIN_ZOOM');
+    assert.strictEqual(clampZoom(1), 1, 'clampZoom: in-range zoom passes through unchanged');
+    assert.ok(MIN_ZOOM>0 && MAX_ZOOM>MIN_ZOOM, 'clampZoom: invariant range is sane');
+    console.log('  ✓ clampZoom pins out-of-range zoom into [MIN_ZOOM,MAX_ZOOM] (load/wheel/fit share it)');
+  }
+  {
     // v1.6.66: Shift on a corner handle locks the original aspect ratio
     state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
     state.snap=false;state.viewport={x:0,y:0,zoom:1};
@@ -2632,7 +2644,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 295; // prev 292 + wclock hygiene: del clears + late upd leaks nothing (3 asserts)
+  pass += 299; // prev 295 + clampZoom invariant pinning (4 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

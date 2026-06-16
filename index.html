@@ -725,6 +725,7 @@ const SAVE_DEBOUNCE=500;
 const MAX_HISTORY=500;
 const MAX_SEEN_OPS=2000; // cap seenOps to prevent unbounded growth
 const MIN_ZOOM=0.1, MAX_ZOOM=16;
+const clampZoom=z=>Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,z)); // single source for the zoom invariant
 const GRID_SIZE=20;
 function snapV(v){return state.snap?Math.round(v/GRID_SIZE)*GRID_SIZE:v}
 function snapPt(p){return{x:snapV(p.x),y:snapV(p.y)}}
@@ -2166,7 +2167,7 @@ canvas.addEventListener('pointercancel',_resetPinch);
 function zoomAt(sp,delta){
   const v=state.viewport;
   const wp=G.s2w(sp);
-  const nz=Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,v.zoom*Math.exp(delta)));
+  const nz=clampZoom(v.zoom*Math.exp(delta));
   v.x=wp.x-sp.x/nz;
   v.y=wp.y-sp.y/nz;
   v.zoom=nz;
@@ -2186,7 +2187,7 @@ function fitToContent(){
   const pad=40;
   const r=canvas.getBoundingClientRect();
   const zx=(r.width-pad*2)/b.w,zy=(r.height-pad*2)/b.h;
-  const z=Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,Math.min(zx,zy,2)));
+  const z=clampZoom(Math.min(zx,zy,2));
   state.viewport.zoom=z;
   state.viewport.x=b.x+b.w/2-r.width/(2*z);
   state.viewport.y=b.y+b.h/2-r.height/(2*z);
@@ -3428,7 +3429,14 @@ const Persist={
       // Validate like the other intake paths (importFromHash / snapshot): never
       // adopt malformed shapes from IDB (corruption / forward-incompat schema).
       state.shapes=d.shapes.filter(validShape);
-      if(d.viewport&&Number.isFinite(+d.viewport.x)&&Number.isFinite(+d.viewport.y)&&Number.isFinite(+d.viewport.zoom)&&d.viewport.zoom>0)Object.assign(state.viewport,d.viewport);
+      if(d.viewport&&Number.isFinite(+d.viewport.x)&&Number.isFinite(+d.viewport.y)&&Number.isFinite(+d.viewport.zoom)&&d.viewport.zoom>0){
+        // Clamp zoom to the app invariant [MIN_ZOOM,MAX_ZOOM] that every compute path
+        // (wheel/fit) maintains — a corrupt or forward-incompat IDB record with an
+        // out-of-range zoom would otherwise load an unusable (microscopic/astronomical)
+        // canvas with no recovery. Assign explicitly so junk props aren't adopted.
+        state.viewport.x=+d.viewport.x; state.viewport.y=+d.viewport.y;
+        state.viewport.zoom=clampZoom(+d.viewport.zoom);
+      }
       if(d.docName){state.docName=d.docName;document.getElementById('docName').value=d.docName}
       state.lastSaveAt=d.savedAt||0;
       sortZ();
