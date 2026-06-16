@@ -227,7 +227,7 @@ const checks = [
   ['help i18n keys in ja and en', html.includes("present:'プレゼン'") && html.includes("present:'Present'")],
   // v1.6.19: sync + PWA fixes
   ['snapshot ops get distinct, stable clock keys (id-based)', html.includes("seq:'snap:'+s.id")],
-  ['snapshot merge skips already-present shapes', html.includes("op.shape&&byId(op.shape.id))continue")],
+  ['snapshot merge accepts only add ops (non-add ops rejected at merge path)', html.includes("op.op!=='add'||!op.shape")&&html.includes("byId(op.shape.id))continue")],
   ['service worker purges stale caches', html.includes("caches.keys()") && html.includes("k!==C")],
   // v1.6.20: fourth audit pass
   ['drawShape opacity uses nullish coalescing (opacity=0 invisible, not opaque)', html.includes('c.globalAlpha=s.opacity??1')],
@@ -1857,6 +1857,27 @@ try {
     console.log('  ✓ re-snapshot merges new shapes after sender set changed (id-keyed clocks)');
   }
 
+  // Snapshot merge path hardening: a malicious peer embedding non-add ops (e.g. clear)
+  // inside snapshot.ops must be rejected — only 'add' ops are legitimate in a snapshot.
+  // _snapshotMsg() only emits add ops; accepting others here would let a hostile peer
+  // clear/delete/update via the snapshot code path, bypassing any op-level suspicion.
+  {
+    const mkShape=(id)=>Shape.make('rect',{x:0,y:0,w:5,h:5});
+    state.shapes=[]; state.history=[]; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
+    const legit=mkShape('L1'); legit.id='L1';
+    Store.commit({op:'add',shape:legit});
+    assert.strictEqual(state.shapes.length,1,'baseline: one shape present');
+    // Forge a snapshot message carrying a 'clear' op alongside a legitimate add
+    const forged={k:'snapshot',peer:'evil',ops:[
+      {op:'clear',shapes:[],clock:{peer:'evil',seq:1,ts:9e15}},
+      {op:'add',shape:Shape.make('rect',{x:0,y:0,w:5,h:5}),clock:{peer:'evil',seq:2,ts:1}},
+    ]};
+    Net._onRecv(forged);
+    assert.strictEqual(state.shapes.length,2,'snapshot merge: the add is accepted (new shape added)');
+    assert.ok(state.shapes.some(s=>s.id==='L1'),'snapshot merge: embedded clear did NOT wipe local shapes');
+    console.log('  ✓ snapshot merge: non-add ops (e.g. clear) embedded in snapshot.ops are rejected');
+  }
+
   // validPatch recurses: nested poison in a remote `upd` (gated by validPatch alone)
   {
     // well-formed nested data accepted (pen pts is [[x,y,p],…])
@@ -2719,7 +2740,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 321; // prev 306 + undo round-trips: clear(5) + style(3) + group/ungroup(7)
+  pass += 324; // prev 321 + snapshot merge rejects non-add ops (3 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
