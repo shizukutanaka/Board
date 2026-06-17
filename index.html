@@ -1171,7 +1171,12 @@ const Store={
     _invalidateGrid();
     switch(op.op){
       case 'add':{
-        if(forward){state.shapes.push(clone(op.shape));sortZ();}
+        // Idempotent on shape id: a remote add for a shape we already hold (e.g. a
+        // snapshot raced ahead of the live add op — _applySnapshot replaces shapes
+        // but doesn't populate seenOps, so the live add isn't deduped) must NOT push
+        // a duplicate. Local commits use fresh uids so this never blocks them; redo
+        // re-pushes because undo removed the shape first.
+        if(forward){if(!byId(op.shape.id)){state.shapes.push(clone(op.shape));sortZ();}}
         else{const i=state.shapes.findIndex(s=>s.id===op.shape.id);if(i>=0)state.shapes.splice(i,1);state.selection.delete(op.shape.id);}
         break;}
       case 'del':{

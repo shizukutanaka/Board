@@ -46,7 +46,10 @@ Store.broadcast(op)           // send to peers via BroadcastChannel + WebRTC
 ```
 
 op 型 (全て可逆; `_apply(op, false)` で完全に戻る):
-- `{op:'add', shape}` — shape を push
+- `{op:'add', shape}` — shape を push (**shape id で冪等**: 既に保持する id の remote add は重複
+  push しない。`_applySnapshot` は seenOps を埋めずに shapes を差し替えるため、スナップショットが
+  ライブ add op を追い越すと dedup を素通りする — 冪等性でその二重化を塞ぐ。ローカル commit は
+  毎回新規 uid なので阻害されず、redo は undo が消した後なので再 push される)
 - `{op:'del', shapes:[...]}` — 複数削除を1つに
 - `{op:'upd', id, before, after}` — 汎用プロパティ変更
 - `{op:'move', ids:[...], dx, dy}` — 平行移動

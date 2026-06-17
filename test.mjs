@@ -2047,6 +2047,22 @@ try {
     console.log('  ✓ importBoard(fix): atomic replace op — 1 Ctrl+Z restores board, not N+1');
   }
 
+  // add op is idempotent on shape id — closes a snapshot/live-add duplication race.
+  // _applySnapshot sets state.shapes directly but does NOT populate seenOps, so if a
+  // live add for an already-held shape arrives after the snapshot, the un-deduped add
+  // must not push a second copy.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const X=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    // Snapshot already adopted X (like _applySnapshot: shapes set, seenOps untouched).
+    state.shapes=[JSON.parse(JSON.stringify(X))];
+    // Live add op for the SAME shape arrives afterwards (snapshot won the race).
+    Store.applyRemote({op:'add',shape:JSON.parse(JSON.stringify(X)),clock:{peer:'A',seq:5,ts:1}});
+    assert.strictEqual(state.shapes.filter(s=>s.id===X.id).length,1,'add idempotent: no duplicate after snapshot+live-add race');
+    assert.strictEqual(state.shapes.length,1,'add idempotent: shape count stays 1');
+    console.log('  ✓ add op idempotent on shape id — snapshot/live-add race yields no duplicate');
+  }
+
   // v1.6.55: doAlign remaining variants — right, bottom, cx, cy
   {
     // right: all right edges align to rightmost
@@ -2762,7 +2778,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 327; // prev 324 + importBoard atomic replace (3 asserts)
+  pass += 329; // prev 327 + add op idempotent on shape id (2 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
