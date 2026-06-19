@@ -67,7 +67,13 @@ A が `prop=x@cA`、B が `prop=y@cB` を同時 commit(各自ローカルで `wc
   双方が自分の clock を記録済みなので収束する(証明スケッチ同様)。
 - **undo/redo × 同期**: undo は `wclock` を巻き戻さない(§F の replicated-undo は別課題)。単独 undo は
   従来どおり。
-- 悪意ある peer が巨大 `ts` で将来の全書き込みに勝つ余地(low severity; 署名付き op = §3.8 完全性で対処)。
+- 悪意ある peer が巨大だが**妥当な(有限数)** `ts` で将来の全書き込みに勝つ余地(low severity;
+  署名付き op = §3.8 完全性で対処)。これとは別に、**不正な `ts`(Infinity/NaN/オブジェクト/数値文字列)**
+  は `validClock` で**受信時に拒否**する: `clockNewer((ts:number),(ts:object))` は両向き false に
+  なるため、一度でも不正 ts が `wclock[id][key]` を汚染すると以後**いかなる正当な書き込みも勝てず**
+  プロパティが永久凍結する(denial-of-edit)。これは「妥当だが巨大な ts」(署名待ち)とは異なる純粋な
+  バリデーション漏れなので、ゲートで塞ぐ。`validClock` は `applyRemote` の単一ゲートで全 remote 経路
+  (op / snapshot merge)を覆う。snapshot add は `seq:'snap:<id>'`(文字列)・`ts:0` なので通過する。
 - 変更キー検出は `before` を要する。受信 op が `before` を欠く場合は「全キー変更」とみなす(pre-LWW 挙動）。
   Board の `upd`/`style`/`resize`/`align` は before を持って broadcast するので通常は精密。
 

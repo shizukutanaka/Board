@@ -228,6 +228,7 @@ const checks = [
   // v1.6.19: sync + PWA fixes
   ['snapshot ops get distinct, stable clock keys (id-based)', html.includes("seq:'snap:'+s.id")],
   ['snapshot merge accepts only add ops (non-add ops rejected at merge path)', html.includes("op.op!=='add'||!op.shape")&&html.includes("byId(op.shape.id))continue")],
+  ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['service worker purges stale caches', html.includes("caches.keys()") && html.includes("k!==C")],
   // v1.6.20: fourth audit pass
   ['drawShape opacity uses nullish coalescing (opacity=0 invisible, not opaque)', html.includes('c.globalAlpha=s.opacity??1')],
@@ -2063,6 +2064,28 @@ try {
     console.log('  ✓ add op idempotent on shape id — snapshot/live-add race yields no duplicate');
   }
 
+  // validClock: a malformed-ts remote op is rejected so it can't poison wclock.
+  // clockNewer((ts:number),(ts:object)) is false both ways → without the gate a single
+  // bad-ts write freezes the property forever (no later legit write can win). The gate
+  // must reject the bad op so a subsequent legitimate write still lands.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const cx=Shape.make('rect',{x:0,y:0,w:50,h:50,stroke:'#000'});
+    Store.commit({op:'add',shape:cx});
+    // Malformed clock: ts is an object. Must be REJECTED (no wclock poisoning).
+    Store.applyRemote({op:'upd',id:cx.id,before:{stroke:'#000'},after:{stroke:'red'},clock:{peer:'evil',seq:1,ts:{}}});
+    assert.strictEqual(state.shapes.find(s=>s.id===cx.id).stroke,'#000','malformed-ts upd rejected: stroke unchanged');
+    assert.strictEqual(state.wclock[cx.id]===undefined||state.wclock[cx.id].stroke===undefined,true,'malformed-ts upd left no wclock entry');
+    // A subsequent LEGITIMATE write must now win (proves wclock was not poisoned).
+    Store.applyRemote({op:'upd',id:cx.id,before:{stroke:'#000'},after:{stroke:'blue'},clock:{peer:'good',seq:1,ts:1000}});
+    assert.strictEqual(state.shapes.find(s=>s.id===cx.id).stroke,'blue','legit write wins after malformed op rejected');
+    // Sibling malformed form also rejected: Infinity ts.
+    state.wclock={};state.shapes.find(s=>s.id===cx.id).stroke='#000';
+    Store.applyRemote({op:'upd',id:cx.id,before:{stroke:'#000'},after:{stroke:'red'},clock:{peer:'e2',seq:1,ts:Infinity}});
+    assert.strictEqual(state.shapes.find(s=>s.id===cx.id).stroke,'#000','Infinity-ts upd rejected');
+    console.log('  ✓ validClock: malformed-ts remote op rejected — no wclock poisoning (denial-of-edit)');
+  }
+
   // v1.6.55: doAlign remaining variants — right, bottom, cx, cy
   {
     // right: all right edges align to rightmost
@@ -2778,7 +2801,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 329; // prev 327 + add op idempotent on shape id (2 asserts)
+  pass += 333; // prev 329 + validClock rejects malformed-ts (4 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

@@ -1021,6 +1021,21 @@ function validRemotePayload(op){
     default:       return false;
   }
 }
+// Validate a REMOTE op's CLOCK before it can stamp wclock or drive LWW. A malformed
+// `ts` (Infinity / NaN / object / numeric string) is the danger: clockNewer compares
+// (a.ts||0) > (b.ts||0), so a non-number ts coerces to NaN in the comparison and
+// returns false BOTH ways — once such a clock poisons wclock[id][key], NO future
+// legitimate write can ever win, freezing that property forever across all peers
+// (denial-of-edit). Distinct from the documented "huge but valid ts" griefing that
+// needs op-signing (§3.8). seq is a finite number for live ops OR a non-empty string
+// for snapshot adds ('snap:<id>'); ts is optional but, if present, must be finite.
+function validClock(c){
+  if(!c||typeof c!=='object')return false;
+  if(typeof c.peer!=='string'||!c.peer)return false;
+  if(!((typeof c.seq==='number'&&Number.isFinite(c.seq))||(typeof c.seq==='string'&&c.seq)))return false;
+  if(c.ts!=null&&!(typeof c.ts==='number'&&Number.isFinite(c.ts)))return false;
+  return true;
+}
 const Store={
   // Op types + reversibility: see docs/architecture.md (Store section).
   commit(op){
@@ -1054,6 +1069,7 @@ const Store={
   REMOTE_OPS:new Set(['add','del','upd','move','clear','group','ungroup','zorder','align','style','resize']),
   applyRemote(op){
     if(!op||!op.clock||!this.REMOTE_OPS.has(op.op))return;
+    if(!validClock(op.clock))return;        // reject malformed clocks (wclock poisoning)
     if(!validRemotePayload(op))return;
     const k=op.clock.peer+':'+op.clock.seq;
     if(state.seenOps.has(k))return;
