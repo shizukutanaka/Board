@@ -24,7 +24,15 @@ A: upd stroke=red    B: upd stroke=blue   (concurrent)
 非可換な**絶対パッチ op にプロパティ単位の Last-Writer-Wins (LWW)** を導入する。
 
 - **全順序 `clockNewer(a,b)`**: `(ts, peer, seq)` の辞書式比較。全 peer が同一 clock 三つ組を
-  比較するので、**ウォールクロックのズレに関係なく勝者は決定的**。
+  比較するので、**peer 間のウォールクロックのズレに関係なく勝者は決定的**。
+- **単調ローカル時刻 `nowTs()` (HLC-lite)**: `clockNewer` は ts を seq より先に比較するため、
+  **同一 peer 内でウォールクロックが逆行**(NTP 補正 / DST / 手動変更)すると、その peer 自身の
+  新しい編集(高い seq)が古い編集に**リモートで負け**、ローカルは新・リモートは旧で発散する。
+  `nowTs()=max(Date.now(), state._lastTs)` で**ローカル ts を逆行させない**。クランプで ts が
+  等しくなった場合は `(peer,seq)` のタイブレークが同一 peer の書き込みを正しく順序付ける(seq は
+  単調)。`applyRemote` でも観測した remote の ts まで floor を上げ、**remote 編集の因果後の
+  ローカル編集が ts ≥ それ**になるようにする。peer 間の厳密な因果勝利(論理カウンタ成分)は将来の
+  完全 HLC 課題。`commit`/`_recordCommitted` の clock スタンプは `nowTs()` 経由。
 - **書き込みクロック `state.wclock`**: `shapeId → {prop: clock}`。**図形オブジェクトには載せない**
   (clone/snapshot/persist/validate を汚さない)。
 - **変更キー検出 `_chg(before,after,key)`**: パッチのキーは **値が実際に変わった**もののみ LWW 対象。

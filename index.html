@@ -876,6 +876,7 @@ const state={
   // ---- v1.1 sync ----
   peerId:PEER_ID,           // self peer id (persistent)
   seq:0,                    // monotonic op counter for CRDT clock
+  _lastTs:0,                // monotonic-clock floor: local clocks never regress (HLC-lite)
   seenOps:new Set(),        // "peer:seq" set for dedup
   wclock:{},                // shapeId → {prop: clock} for per-property LWW (ADR-0002)
   peers:new Map(),          // peerId → {color, lastSeen, name}
@@ -1039,8 +1040,8 @@ function validClock(c){
 const Store={
   // Op types + reversibility: see docs/architecture.md (Store section).
   commit(op){
-    // Stamp CRDT clock; local-origin only, remote ops keep theirs.
-    if(!op.clock)op.clock={peer:state.peerId,seq:++state.seq,ts:Date.now()};
+    // Stamp CRDT clock; local-origin only, remote ops keep theirs. nowTs() is monotonic.
+    if(!op.clock)op.clock={peer:state.peerId,seq:++state.seq,ts:nowTs()};
     const k=op.clock.peer+':'+op.clock.seq;
     if(state.seenOps.has(k))return;       // already applied (rare race)
     state.seenOps.add(k);
@@ -1071,6 +1072,9 @@ const Store={
     if(!op||!op.clock||!this.REMOTE_OPS.has(op.op))return;
     if(!validClock(op.clock))return;        // reject malformed clocks (wclock poisoning)
     if(!validRemotePayload(op))return;
+    // Raise the monotonic-clock floor to any ts we observe, so a LOCAL edit made
+    // causally-after this remote edit gets a ts >= it (HLC-lite; see nowTs).
+    if(typeof op.clock.ts==='number')state._lastTs=Math.max(state._lastTs,op.clock.ts);
     const k=op.clock.peer+':'+op.clock.seq;
     if(state.seenOps.has(k))return;
     state.seenOps.add(k);
@@ -1150,7 +1154,7 @@ const Store={
   },
   _recordCommitted(op){
     _invalidateGrid();
-    if(!op.clock)op.clock={peer:state.peerId,seq:++state.seq,ts:Date.now()};
+    if(!op.clock)op.clock={peer:state.peerId,seq:++state.seq,ts:nowTs()};
     const k=op.clock.peer+':'+op.clock.seq;
     if(state.seenOps.has(k))return;
     state.seenOps.add(k);
@@ -1273,6 +1277,15 @@ const Store={
   }};
 function byId(id){return state.shapes.find(s=>s.id===id)}
 function clone(o){return JSON.parse(JSON.stringify(o))}
+// Monotonic local timestamp (HLC-lite). clockNewer compares ts BEFORE seq, so a
+// wall-clock that jumps BACKWARDS (NTP correction / DST / manual set) between two
+// edits by the SAME peer would make the peer's own newer edit (higher seq) LOSE to
+// its older edit on remote peers — local shows new, remotes keep old → divergence.
+// Clamp local ts to never regress below the highest ts we've stamped OR observed from
+// a remote op (see applyRemote). When clamped equal, the (peer,seq) tiebreak orders
+// same-peer writes correctly because seq is monotonic. Full causal strict-win across
+// peers (a logical counter component) remains future HLC work.
+function nowTs(){state._lastTs=Math.max(Date.now(),state._lastTs);return state._lastTs}
 // Total order on op clocks for per-property LWW (ADR-0002): "newer" = larger by
 // (ts, then peer, then seq). Every peer compares identical clock triples, so the
 // winner is deterministic regardless of wall-clock skew. b may be undefined (no prior

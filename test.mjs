@@ -229,6 +229,7 @@ const checks = [
   ['snapshot ops get distinct, stable clock keys (id-based)', html.includes("seq:'snap:'+s.id")],
   ['snapshot merge accepts only add ops (non-add ops rejected at merge path)', html.includes("op.op!=='add'||!op.shape")&&html.includes("byId(op.shape.id))continue")],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
+  ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['service worker purges stale caches', html.includes("caches.keys()") && html.includes("k!==C")],
   // v1.6.20: fourth audit pass
   ['drawShape opacity uses nullish coalescing (opacity=0 invisible, not opaque)', html.includes('c.globalAlpha=s.opacity??1')],
@@ -513,7 +514,7 @@ try {
              doGroup, doUngroup, doPaste, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net };
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -527,7 +528,7 @@ try {
           doGroup, doUngroup, doPaste, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net } = api;
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs } = api;
 
   console.log('\n-- behavioural --');
 
@@ -2086,6 +2087,36 @@ try {
     console.log('  ✓ validClock: malformed-ts remote op rejected — no wclock poisoning (denial-of-edit)');
   }
 
+  // nowTs monotonic floor: a BACKWARDS wall clock must not let a peer's own newer edit
+  // (higher seq) lose to its older edit on remotes. nowTs clamps ts to never regress, so
+  // the (peer,seq) tiebreak orders same-peer writes correctly.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const realNow=Date.now;
+    try{
+      // Pin wall time to 1000 BEFORE any commit so the floor starts there (the add op
+      // would otherwise stamp the real Date.now and dominate the floor).
+      Date.now=()=>1000; state._lastTs=0;
+      const nx=Shape.make('rect',{x:0,y:0,w:40,h:40,stroke:'#000'});
+      Store.commit({op:'add',shape:nx});
+      // First edit at wall time 1000.
+      Store._recordCommitted({op:'upd',id:nx.id,before:{stroke:'#000'},after:{stroke:'red'}});
+      const c1=state.history[state.history.length-1].clock;
+      // Wall clock jumps BACK to 990; second edit by the same peer.
+      Date.now=()=>990;
+      Store._recordCommitted({op:'upd',id:nx.id,before:{stroke:'red'},after:{stroke:'blue'}});
+      const c2=state.history[state.history.length-1].clock;
+      assert.strictEqual(c2.ts,1000,'nowTs clamps regressed ts up to the prior floor (not 990)');
+      assert.ok(c2.seq>c1.seq,'second edit has the higher seq');
+      assert.strictEqual(clockNewer(c2,c1),true,'peer’s newer edit wins despite backwards wall clock');
+    }finally{Date.now=realNow}
+    // Remote-ts floor: a local edit after observing a higher remote ts gets ts >= it.
+    state._lastTs=0;
+    Store.applyRemote({op:'upd',id:'zzz',before:{},after:{},clock:{peer:'R',seq:1,ts:5000}});
+    assert.ok(nowTs()>=5000,'local clock floor rises to observed remote ts (HLC-lite)');
+    console.log('  ✓ nowTs: monotonic clock floor — backwards wall clock can’t make a peer lose to itself');
+  }
+
   // v1.6.55: doAlign remaining variants — right, bottom, cx, cy
   {
     // right: all right edges align to rightmost
@@ -2801,7 +2832,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 333; // prev 329 + validClock rejects malformed-ts (4 asserts)
+  pass += 337; // prev 333 + nowTs monotonic clock floor (4 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
