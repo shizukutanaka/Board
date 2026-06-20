@@ -1386,6 +1386,29 @@ try {
     console.log('  ✓ doPaste remaps groupId - pasted copies get fresh group identity');
   }
 
+  // doPaste / doDuplicate must place pasted shapes AT THE TOP of the z-order.
+  // Regression: ADR-0001 frac system means sortZ uses frac (not z) as the primary key.
+  // A pasted shape clones frac from the original, landing it at the original's z-position
+  // instead of on top. Fix: clear frac on paste/duplicate so sortZ assigns a fresh top key.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const pa=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    const pb=Shape.make('ellipse',{x:60,y:0,w:50,h:50});
+    const pc=Shape.make('rect',{x:120,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:pa});Store.commit({op:'add',shape:pb});Store.commit({op:'add',shape:pc});
+    // Use the LIVE shape (which has frac assigned by sortZ) to replicate doDuplicate's behaviour.
+    // Bug: doPaste clones frac from original, placing copy at original's z-position instead of top.
+    const paLive=state.shapes.find(s=>s.id===pa.id);
+    assert.ok(paLive.frac!=null,'test setup: paLive has frac assigned by sortZ');
+    state.clipboard={shapes:[JSON.parse(JSON.stringify(paLive))]};
+    doPaste();
+    const top=state.shapes[state.shapes.length-1];
+    assert.notStrictEqual(top.id,pa.id,'paste z-order: pasted copy has new id');
+    assert.strictEqual(top.type,'rect','paste z-order: pasted copy is on top of z-order');
+    assert.ok(top.frac>state.shapes.find(s=>s.id===pc.id).frac,'paste z-order: pasted frac > previous top frac');
+    console.log('  ✓ doPaste: pasted shapes land on top of z-order (not at original frac)');
+  }
+
   // v1.6.38: snapV / snapPt grid-snap helpers (GRID_SIZE=20)
   {
     state.snap = true;

@@ -2771,7 +2771,7 @@ function doPaste(){
   const gidMap=new Map();
   for(const orig of state.clipboard.shapes){
     const sh=clone(orig);
-    sh.id=uid();sh.z=nextZ();
+    sh.id=uid();sh.z=nextZ();delete sh.frac;
     if(sh.groupId){
       if(!gidMap.has(sh.groupId))gidMap.set(sh.groupId,uid());
       sh.groupId=gidMap.get(sh.groupId);
