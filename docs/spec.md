@@ -1,18 +1,21 @@
 # Board — 仕様書 (Specification)
 
-> Board v1.6.57 の正式仕様。実装(`index.html`)が満たすべき契約を定義し、末尾の
-> **§13 適合ギャップ(不足)** で仕様と実装の差分を列挙する。本書は実装と対で更新する。
-> 関連: 設計=`docs/architecture.md`、改善調査=`docs/research-improvements.md` /
-> `docs/category-research*.md`、変更履歴=`CHANGELOG.md`。
+> Board v1.6.70+(`[Unreleased]` 反映)の正式仕様。実装(`index.html`)が満たすべき契約を定義し、
+> **§13 適合ギャップ** で解消済み/未充足を、**§14 長所・短所・改善点** で現状評価とロードマップを示す。
+> 本書は実装と対で更新する。関連: 設計=`docs/architecture.md`、ADR=`docs/ADR-000N-*.md`、
+> 改善調査=`docs/research-improvements.md` / `docs/category-research*.md`、変更履歴=`CHANGELOG.md`。
 
 ## 1. 目的と不変条件 (MUST)
 
 Board は「サインアップ/重量/有料/プライバシー侵害」を全否定するオフラインホワイトボード。
 
-- **単一HTMLファイル**。外部 `<script src>` / `<link href>` / CDN / フォントを**追加しない**。
-- JS バンドル < **gzip 44KB**(CI 強制)。raw 上限 160KB(暴走検知)。
+- **単一HTMLファイル**。外部 `<script src>` / `<link href>` / CDN / フォントを**追加しない**(CI grep 強制)。
+- **サイズはハード上限なし**(2026-06-13 に gzip 44KB 予算を撤去。理由は CLAUDE.md 参照)。
+  小さく保つことは依然「指針」だが、整合性・正しさを優先してよい。暴走防止に **raw 512KB の緩い上限**のみ
+  `test.mjs` で残す(現状 raw ~185KB / gzip ~56KB)。
 - `state` の変更は必ず **`Store` 経由**(undo 完全性)。
-- **Render は純粋**(`state` を読むのみ、副作用なし)。
+- **Render はほぼ純粋**(`state` を読むのみが原則)。唯一の例外は `getImg()` の `_imgCache`(LRU)書換 +
+  `img.onload` 登録(非同期画像ロード。`state` は変更しない)。`drawShape` に新たな副作用を足さない。
 - **XSS 安全**: `innerHTML =` を使わない。エクスポート(SVG/PDF)も含め、ユーザ/peer 由来の値を生挿入しない。
 - 完全オフライン動作。ネットワーク通信は同期(opt-in の WebRTC / 同一オリジン BroadcastChannel)のみ。
 - WCAG AAA コントラスト、`prefers-reduced-motion` / `prefers-color-scheme` / `forced-colors` 対応。
@@ -34,18 +37,23 @@ frame=`label`、group=`groupId`。
 ### 2.3 op(可逆変更ログ)
 | op | ペイロード | 逆操作 |
 |---|---|---|
-| `add` | `{shape}` | delete |
+| `add` | `{shape}` | delete(id 一致は idempotent) |
 | `del` | `{shapes:[]}` | re-add |
-| `upd` | `{id, before, after}` | swap |
-| `move` | `{ids:[], dx, dy}` | translate(-d) |
-| `z` | `{id, from, to}` | 配列順を戻す |
-| `zorder` | `{before:[{id,z}], after:[{id,z}]}` | スナップショット復元(配列順+z) |
+| `upd` | `{id, before, after}` | パッチ swap(最小パッチ) |
+| `move` | `{ids:[], dx, dy}` | translate(-d)(可換 = 並行収束) |
+| `zorder` | `{changes:[{id,before,after}]}`(最小デルタ)/ 旧 `{after:[…]}` | frac 復元 + `sortZ()` |
 | `group` | `{ids, gid, before}` | groupId 復元 |
-| `ungroup` | `{ids, gids}` | groupId 復元 |
-| `align` | `{before:[], after:[]}` | スナップショット復元 |
+| `ungroup` | `{ids, before}` | groupId 復元 |
+| `align` | `{before:[], after:[], dir}` | スナップショット復元(flip/lock/rotate も再利用) |
+| `style` | `{before:[], after:[]}` | スナップショット復元(色/線種/不透明度) |
+| `resize` | `{before:[], after:[]}` | スナップショット復元(w/h) |
 | `clear` | `{shapes:[]}` | re-add |
+| `replace` | `{before:[], after:[]}` | 盤面まるごと swap(共有URLインポート。**local 専用** = 非 `REMOTE_OPS`) |
 
-- **MUST**: 各 op は `_apply(op,false)` で完全に逆操作できる(テストで往復検証)。
+- **MUST**: 各 op は `_apply(op,false)` で完全に逆操作できる(`test.mjs` の property-based テストで
+  add/move/upd/del/zorder/align を混在生成し往復検証)。
+- `align` op は `dir`(`'flip'`/`'lock'`/`'rotate'`/整列方向)で意味を分けつつ同一の before/after
+  スナップショット機構を共有 — `_apply` 分岐を増やさず可逆性を担保する設計。
 
 ## 3. アーキテクチャ層
 `Input → Tools(begin/cont/end) → Store(op-log) → State → Render(RAF, Canvas2D) → Persist(IDB)`。
@@ -56,15 +64,22 @@ select(V) / hand(H,Space) / pen(P) / rect(R) / ellipse(O) / arrow(A) / line(L) /
 eraser(E) / sticky(N) / frame(F)。Shift で軸拘束・正方形/正円。
 
 ## 5. 編集機能
-マーキー/加算選択、移動、8 ハンドルリサイズ(line/arrow は端点)、group/ungroup(⌘G/⌘⇧G)、
-整列(左右上下中央/均等)、z 順序(`]`/`[`/⇧付き)、グリッドスナップ(⇧G)、
-オブジェクトスナップ(移動時に他図形の辺/中心へ整列、ガイド線表示。グリッドスナップ off 時)、
-フォーマットペインター(Alt+C/V)、不透明度、線種(実線/破線/点線)、コピー/貼付/切取/複製、undo/redo 最大 500。
+マーキー/加算選択、移動、8 ハンドルリサイズ(line/arrow は端点)、**回転**(`doRotate`、box 系のみ、
+グループ中心で公転)、**反転 H/V**(`doFlip`、⇧H/⇧V)、**ロック**(`doLock`、位置固定。移動/削除/整列/
+回転/反転すべてがスキップ)、group/ungroup(⌘G/⌘⇧G)、整列(左右上下中央/均等)、z 順序(`]`/`[`/⇧付き)、
+グリッドスナップ(⇧G)、オブジェクトスナップ(移動・**リサイズ**時に他図形の辺/中心へ整列、ガイド線表示。
+グリッドスナップ off 時)、**バインド済みコネクタ**(line/arrow 端点を図形に結合 → 図形追従、端点は実エッジへ投影)、
+フォーマットペインター(Alt+C/V)、**カスタムカラー**(`<input type=color>` ストローク/塗り)、不透明度、
+線種(実線/破線/点線)、コピー/貼付/切取/複製(`groupId`・コネクタ結合先を新 id へ再マップ)、
+**キーボード移動・リサイズ**(矢印=ナッジ、Alt+矢印=リサイズ。共に frame 子要素追従 + ロックスキップで
+ポインタドラッグとパリティ)、undo/redo 最大 500。
 
 ## 6. キーマップ
 `KEYMAP` が全ツールを網羅。⌘Z/⌘⇧Z=undo/redo、⌘A=全選択、⌘C/V/X/D、⌫=削除、
 ⌘±/0=ズーム、⇧1=フィット、⌘E=PNG、⌘⇧E=SVG、⌘P=PDF、⌘S=保存、`?`=ヘルプ、Esc=解除、
-矢印=ナッジ(⇧で10px)、**P=ペン**、**⇧P / Ctrl+Enter=プレゼン**。Esc は開いているモーダルを優先的に閉じる。
+矢印=ナッジ(⇧で10px)、**Alt+矢印=リサイズ**、**⇧H/⇧V=反転**、**`,`/`.`=回転 ∓15°**、
+**Tab/⇧Tab=図形巡回**、Enter=作成、**P=ペン**、**⇧P / Ctrl+Enter=プレゼン**。
+Esc は コンテキストメニュー → 開いているモーダル → 選択解除 の順で閉じる。
 
 ## 7. 永続化
 IndexedDB(`board`/`docs`/`main`)。保存対象=`{v,shapes,viewport,docName,savedAt}`。
@@ -73,9 +88,16 @@ IndexedDB(`board`/`docs`/`main`)。保存対象=`{v,shapes,viewport,docName,save
 ## 8. 同期プロトコル(opt-in)
 - 同一ブラウザ=BroadcastChannel、端末間=WebRTC DataChannel(手動シグナリング)。
 - op エンベロープに CRDT clock `{peer, seq, ts}`、`peer:seq` で dedup(`seenOps`、上限 `MAX_SEEN_OPS`)。
-- **MUST(受信検証)**: `applyRemote` は (a) op 型 allow-list(`REMOTE_OPS`)、
-  (b) **ペイロード検証**(`validRemotePayload`: 各 forward-apply が参照するフィールドの型 +
-  move/z の有限数)を通った op のみ適用。remote op は local undo に入れない。
+- **MUST(受信検証)**: `applyRemote` は (a) op 型 allow-list(`REMOTE_OPS` =
+  add/del/upd/move/clear/group/ungroup/zorder/align/style/resize)、(b) **ペイロード検証**
+  (`validRemotePayload`: 各 forward-apply が参照するフィールドの型 + move の有限数、`validPatch` で
+  NaN/Inf・prototype 汚染キーを再帰的に排除)、(c) **クロック検証**(`validClock`)を通った op のみ適用。
+  remote op は local undo に入れない。`replace`(盤面まるごと swap)は `REMOTE_OPS` に**含めない** —
+  悪意ある peer が盤面を消せないように local 専用。
+- **並行収束 (ADR-0002 / プロパティ単位 LWW)**: 同一図形の**同一プロパティ**への並行編集は
+  `(ts,peer,seq)` の全順序 `clockNewer()` と書込クロック `state.wclock`(`shapeId→{prop:clock}`、
+  図形には載せない)で**古い書込を落として決定的収束**。**互いに素なプロパティは双方生存**。
+  `move`/`zorder` は可換なので LWW 非適用。`upd`/`style`/`resize`/`align`/`group`/`ungroup` に適用。
 - 共有: URL fragment にスナップショット。`importFromHash` は shape を検証してから採用。
 
 ## 9. エクスポート
@@ -97,6 +119,23 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
 - ネットワーク: 既定で通信なし。共有鍵は URL fragment(サーバ非通過)。
 
 ## 13. 適合ギャップ(不足)— 仕様 vs 実装
+
+### ✅ [Unreleased] で解消(正しさ監査 第N弾 — コードパスのパリティ)
+- **キーボード移動と ポインタ移動の不整合 (P2)**: 矢印ナッジが (a) frame 子要素を追従せず
+  (ポインタドラッグは追従)、(b) **ロック図形を移動**していた(`doMove`/`endSelect`/`doDelete`/
+  `doAlign`/`doRotate`/`doFlip` は全て `!locked` をスキップ)。frame 子要素展開を `withFrameChildren`
+  に共通化し、`nudgeSelection` がドラッグと完全パリティ(子追従 + ロックスキップ)。非空虚テストで
+  「子が追従」「ロック子は不動」「move op にロック子が不在」を担保。
+- **コピー/複製でコネクタ結合先が元図形のまま (P2)**: `_placeCopies` は `groupId` を `gidMap` で
+  再マップするが `sh.a`/`sh.b` を放置。図形+コネクタをまとめて複製するとコネクタが**コピー先でなく
+  元図形**に結合したまま。二段階(`idMap` 先行生成 → `sh.a`/`sh.b` 差替)で解消。
+- **`doAlign` がロック図形を移動 (P2)**: 唯一 `filter(Boolean)` のままだった整列/分配を
+  `filter(s=>s&&!s.locked)` に。ロック図形は整列の参照計算からも除外。
+- **付箋ダブルクリック編集後に幅が崩れる (P2)**: blur ハンドラが text/sticky を区別せず幅を上書き。
+  `resizeAfterTextEdit(s,text,c)` で型分岐(text=w/h 自動、sticky=ユーザ幅保持 + `wrapText` 行数で
+  h のみ追従)。
+- **大盤面の PNG/PDF が空白化 (P2)**: 固定スケールでブラウザのキャンバス上限(~16384px / 面積)を
+  超えると `toBlob` が null/切れ。`exportScale(w,h,desired)` で幅・高さ・面積を満たす倍率にクランプ。
 
 ### ✅ v1.6.7 で解消
 - **SVG 数値属性の注入**: 文字列色は escape 済みだったが `x/y/w/h/x1..` 等が生挿入で、
@@ -277,3 +316,50 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
 - CI の `ci.yml` は GitHub App 権限の都合でブランチ未反映(手動適用要)。
 
 > 凡例: MUST=必須契約、✅=本版で適合、⬜=未充足(優先度は research docs の総括表)。
+
+## 14. 長所・短所・改善点(現状評価)
+
+仕様 vs 実装の全面レビューで洗い出した、製品としての評価とロードマップ。優先度: **P1**=価値直撃 /
+**P2**=整合性・正しさ / **P3**=磨き込み。実装済みは §13 / CHANGELOG を参照。
+
+### 14.1 長所(維持すべき価値)
+- **ゼロ摩擦**: 単一HTML・登録不要・即描画。SW でオフライン等価、URL fragment 共有はサーバ非通過。
+- **アーキテクチャの一貫性**: 全変更が可逆 op-log を通り、undo/redo・sync・永続化が同一経路。
+  property-based テストで往復可逆性を機械検証。
+- **CRDT 収束**: プロパティ単位 LWW(ADR-0002)+ 分数インデックス z 順序(ADR-0001)で、
+  並行編集が決定的に収束。二者ハーネスで実測。
+- **防御的 intake**: 全受信経路(IDB/sync/URL/remote)が `validShape`/`validPatch` を共有し、
+  NaN・prototype 汚染・型不正を一元排除。エクスポートも属性エスケープ + 数値強制で注入不可。
+- **a11y の積み上げ**: キーボードで作成→巡回→移動→リサイズ→編集が完結。WCAG AAA コントラスト、
+  forced-colors / reduced-motion 対応。
+- **表示=出力パリティ**: pen 可変線幅・破線・テキスト折返しを canvas と SVG が同一ヘルパで描画。
+
+### 14.2 短所(既知の弱み)
+- **a11y の天井**: canvas は単一の `role=application`。図形ごとの DOM ミラーが無く、スクリーン
+  リーダーは個々の図形を木構造として辿れない(巡回トーストで緩和するのみ)。**[P1]**
+- **同期の運用性**: WebRTC は手動シグナリング(URL 手渡し)。シグナリングサーバ無しは長所だが
+  「URL を開くだけで共同編集」には届かない。プレゼンス(他者カーソル/選択)も未実装。**[P1]**
+- **多ページ非対応**: 1 盤面のみ。`docs` ストアは単一 `main` 固定で、ページ追加/切替/サムネが無い。**[P2]**
+- **入出力の幅**: インポートは画像 + 自盤面 JSON のみ。`.excalidraw` / SVG 取込 / Markdown 貼付は無い。**[P2]**
+- **大規模スケール**: viewport カリングは有るが空間索引は pickTop のグリッドのみ。>2000 図形での
+  全描画・bbox 再計算は線形。quadtree / ダーティ矩形再描画は未着手。**[P3]**
+- **z 順序の二重管理**: `frac`(正準)と整数 `z`(後方互換フォールバック)が併存(ADR-0001 Step4 未完)。**[P3]**
+- **画像の肥大**: dataURL を state にインライン保持 → 大画像で盤面 JSON / IDB が膨張。
+  参照分離・再圧縮は無い。**[P3]**
+- **テストの偏り**: 多くが文字列プレゼンス検査。behavioral 比率は上がったが、レンダリング実体や
+  ポインタ操作シーケンスの検証は薄い。**[P3]**
+
+### 14.3 改善点(ロードマップ)
+| 優先 | 項目 | 概要 | 形態 |
+|---|---|---|---|
+| P1 | プレゼンス同期 | 他者カーソル/選択のブロードキャスト(非永続 op、undo 非対象) | ADR + 独立リリース |
+| P1 | DOM ミラー a11y | 図形ごとの off-screen DOM ノードで SR ネイティブ対応 | 大型 ADR |
+| P2 | 多ページ | `docs` を複数キー化 + ページ切替 UI + サムネ | ADR + リリース |
+| P2 | インポート拡張 | `.excalidraw` / SVG / Markdown 取込 | 段階実装 |
+| P2 | コードパス・パリティ監査の継続 | drag/keyboard/remote の機能差を埋める(本リリースで nudge を解消) | 継続監査 |
+| P3 | 空間索引(quadtree) | >2000 図形の描画/ヒット/bbox を準対数化 | ADR |
+| P3 | z 整数廃止 | `frac` 単一正準化(ADR-0001 Step4) | ADR 既存 |
+| P3 | 画像参照分離 | dataURL を CAS 的に分離し state を軽量化 | ADR |
+
+> 方針(CLAUDE.md 準拠): 各 P1/P2 は**別 ADR + 独立リリース**。一気に全部は作らない。
+> 「ゼロ秒で使える/オフライン等価/単一HTMLで小さく保つ」を破る改善は採用しない。

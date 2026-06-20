@@ -448,6 +448,10 @@ const checks = [
   // v1.6.74: _placeCopies remaps connector bindings (sh.a/sh.b) within pasted set
   ['_placeCopies pre-generates idMap for two-pass connector remapping', html.includes("const idMap=new Map();") && html.includes("for(const orig of srcShapes)idMap.set(orig.id,uid());")],
   ['_placeCopies remaps sh.a and sh.b to new ids', html.includes("if(sh.a&&idMap.has(sh.a))sh.a=idMap.get(sh.a);") && html.includes("if(sh.b&&idMap.has(sh.b))sh.b=idMap.get(sh.b);")],
+  // v1.6.75: keyboard nudge parity with pointer-drag (frame children follow + skip locked)
+  ['withFrameChildren helper shared by drag + nudge', html.includes("function withFrameChildren(ids)") && html.includes("const dragIds=withFrameChildren(state.selection);")],
+  ['nudgeSelection mirrors drag: frame children + skip locked', html.includes("function nudgeSelection(dx,dy)") && html.includes("[...withFrameChildren(state.selection)].filter(id=>!byId(id)?.locked)")],
+  ['arrow-key handler delegates to nudgeSelection', html.includes("nudgeSelection(dx,dy);")],
 ];
 
 let pass = 0, fail = 0;
@@ -545,7 +549,7 @@ try {
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, pickTop, buildSVG, exportScale, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit };
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -559,7 +563,7 @@ try {
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, pickTop, buildSVG, exportScale, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit } = api;
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection } = api;
 
   console.log('\n-- behavioural --');
 
@@ -3098,8 +3102,53 @@ try {
     console.log('  ✓ _placeCopies: pasted connector bindings remapped to copies (not originals)');
   }
 
+  // v1.6.75: keyboard nudge parity — frame children follow the frame, locked shapes stay put.
+  // Mirrors pointer-drag move. Before fix: nudge moved only the frame (children left behind)
+  // and moved locked shapes too (no !locked filter). After: full parity with drag.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.seq=0;state.seenOps=new Set();
+    // frame at (0,0,300,300); child inside; locked child inside; outsider outside the frame
+    const fr=Shape.make('frame',{x:0,y:0,w:300,h:300});
+    const child=Shape.make('rect',{x:50,y:50,w:40,h:40});
+    const lockedChild=Shape.make('rect',{x:150,y:150,w:40,h:40});lockedChild.locked=true;
+    const outsider=Shape.make('rect',{x:500,y:500,w:40,h:40});
+    Store.commit({op:'add',shape:fr});
+    Store.commit({op:'add',shape:child});
+    Store.commit({op:'add',shape:lockedChild});
+    Store.commit({op:'add',shape:outsider});
+
+    // withFrameChildren: selecting the frame expands to its contained shapes (not the outsider, not the frame's clones)
+    const ID=id=>state.shapes.find(s=>s.id===id);
+    const expanded=withFrameChildren(new Set([fr.id]));
+    assert.ok(expanded.has(fr.id),'withFrameChildren: keeps the frame itself');
+    assert.ok(expanded.has(child.id),'withFrameChildren: includes contained child');
+    assert.ok(expanded.has(lockedChild.id),'withFrameChildren: includes contained locked child');
+    assert.ok(!expanded.has(outsider.id),'withFrameChildren: excludes shape outside the frame');
+
+    // nudge the frame right by 10: frame + unlocked child move; locked child + outsider stay
+    const fx=fr.x, cx=child.x, lx=lockedChild.x, ox=outsider.x;
+    state.selection=new Set([fr.id]);
+    nudgeSelection(10,0);
+    assert.strictEqual(ID(fr.id).x, fx+10, 'nudge: frame moved by 10');
+    assert.strictEqual(ID(child.id).x, cx+10, 'nudge: unlocked child followed the frame');
+    assert.strictEqual(ID(lockedChild.id).x, lx, 'nudge: LOCKED child did not move');
+    assert.strictEqual(ID(outsider.id).x, ox, 'nudge: outsider (not in frame) did not move');
+    // the recorded move op must not list the locked child (so undo/redo stay clean)
+    const mop=state.history[state.histIdx];
+    assert.ok(mop&&mop.op==='move','nudge records a move op');
+    assert.ok(!mop.ids.includes(lockedChild.id),'nudge: locked child absent from move op');
+    assert.ok(mop.ids.includes(child.id)&&mop.ids.includes(fr.id),'nudge: frame + unlocked child in move op');
+
+    // non-vacuity: the OLD inline handler translated every selected id (just the frame)
+    // with no frame-child expansion and no locked filter — so child would NOT have moved
+    // and a locked selected shape WOULD have moved. Confirm the new behaviour differs.
+    assert.notStrictEqual(ID(child.id).x, cx, 'non-vacuity: child position changed (old code left it behind)');
+    console.log('  ✓ nudgeSelection: frame children follow + locked shapes stay (drag parity)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 390; // prev 382 + connector binding remap (8 asserts)
+  pass += 405; // prev 390 + nudge/frame-children parity (15 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

@@ -2298,20 +2298,7 @@ function pickOrMarquee(wp,e){
     }
     ptr.dragKind='move';
     // When moving a frame, also move shapes fully contained within it
-    const dragIds=new Set(state.selection);
-    for(const selId of state.selection){
-      const sel=byId(selId);
-      if(sel&&sel.type==='frame'){
-        const fb=G.bbox(sel);
-        for(const s of state.shapes){
-          if(s.id===selId||s.type==='frame')continue;
-          const b=G.bbox(s);
-          if(b.x>=fb.x&&b.y>=fb.y&&b.x+b.w<=fb.x+fb.w&&b.y+b.h<=fb.y+fb.h){
-            dragIds.add(s.id);
-          }
-        }
-      }
-    }
+    const dragIds=withFrameChildren(state.selection);
     ptr.dragStartShapes=new Map([...dragIds].map(id=>{
       const s=byId(id);return[id,clone(s)];
     }));
@@ -2342,6 +2329,35 @@ function objectSnap(dx,dy){
   const mov={x:bb.x+dx,y:bb.y+dy,w:bb.w,h:bb.h},targets=[];
   for(const s of state.shapes){if(ids.has(s.id))continue;const b=G.bbox(s);if(b)targets.push(b)}
   return snapBox(mov,targets,SNAP_OBJ/state.viewport.zoom);
+}
+// Expand a set of selected ids to include shapes fully contained in any selected
+// frame, so moving a frame moves its contents. Other frames are never captured as
+// children. Shared by pointer-drag (pickOrMarquee) and keyboard nudge (nudgeSelection)
+// so both move paths agree. Pure read of state.shapes; returns a fresh Set.
+function withFrameChildren(ids){
+  const out=new Set(ids);
+  for(const selId of ids){
+    const sel=byId(selId);
+    if(sel&&sel.type==='frame'){
+      const fb=G.bbox(sel);
+      for(const s of state.shapes){
+        if(s.id===selId||s.type==='frame')continue;
+        const b=G.bbox(s);
+        if(b.x>=fb.x&&b.y>=fb.y&&b.x+b.w<=fb.x+fb.w&&b.y+b.h<=fb.y+fb.h)out.add(s.id);
+      }
+    }
+  }
+  return out;
+}
+// Keyboard arrow-key nudge. Mirrors pointer-drag move: frame contents follow the
+// frame (withFrameChildren) and locked shapes never move (parity with doMove/endSelect,
+// which filter !s.locked). Records one reversible `move` op for the shapes that moved.
+function nudgeSelection(dx,dy){
+  const ids=[...withFrameChildren(state.selection)].filter(id=>!byId(id)?.locked);
+  if(!ids.length)return;
+  for(const id of ids){const sh=byId(id);if(sh)Shape.translate(sh,dx,dy)}
+  Store._recordCommitted({op:'move',ids,dx,dy});
+  invalidate();
 }
 // Shared by live drag (doMove) and commit (endSelect) so they agree exactly.
 // Grid snap (⇧G) takes precedence; otherwise snap to nearby objects.
@@ -2730,9 +2746,7 @@ window.addEventListener('keydown',e=>{
       const step=e.shiftKey?10:1;
       const dx=k==='arrowleft'?-step:k==='arrowright'?step:0;
       const dy=k==='arrowup'?-step:k==='arrowdown'?step:0;
-      for(const id of state.selection){const sh=byId(id);if(sh)Shape.translate(sh,dx,dy)}
-      Store._recordCommitted({op:'move',ids:[...state.selection],dx,dy});
-      invalidate();
+      nudgeSelection(dx,dy);
     }
   }
   else if(k==='escape'){

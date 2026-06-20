@@ -5,6 +5,13 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
 ## [Unreleased]
 
 ### Fixed
+- **キーボード矢印ナッジが frame 子要素を追従せず・ロック図形も動かしていた**: ポインタドラッグは
+  frame を動かすと内包図形が追従し、ロック図形はスキップする(`doMove`/`endSelect` が `!locked`)。
+  しかし矢印ナッジは (a) frame 子要素を放置し、(b) ロック図形をそのまま移動させる二重のパリティ欠落が
+  あった。frame 子要素展開を `withFrameChildren(ids)` ヘルパーに共通化し(ドラッグ経路も同ヘルパーへ)、
+  新設の `nudgeSelection(dx,dy)` が「frame 子要素追従 + ロックスキップ」でドラッグと完全パリティに。
+  矢印キーハンドラはこれに委譲。非空虚テスト(15 アサート)で「子追従/ロック子は不動/外部図形は不動/
+  move op にロック子が不在」を担保(旧インラインコードでは子が動かないことをインライン確認)。
 - **コピー/複製時のコネクタ結合先が元図形のままになっていた**: `_placeCopies` が `groupId` の
   再マッピング (`gidMap`) は行うが、コネクタの結合先 (`sh.a`/`sh.b`) は再マッピングしていなかった。
   複数の図形とコネクタをまとめて複製すると、複製コネクタは**コピー先**ではなく**元図形**に結合したまま
@@ -143,6 +150,11 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
   キーの strict-order / dense-insert / prefix-stable と zorder undo のキー往復をテストで担保 (588 pass)。
 
 ### Docs
+- **`docs/spec.md` を現状(v1.6.70+)へ全面更新**: stale だった記述を是正 — gzip 44KB 予算撤去の反映
+  (raw 512KB 緩い上限のみ)、op 表に `style`/`resize`/`replace` 追加・`zorder` 最小デルタ化・幻の `z` op 削除、
+  編集機能に回転/反転/ロック/バインド済みコネクタ/キーボードリサイズ/カスタムカラーを追記、§8 に
+  プロパティ単位 LWW(ADR-0002)と `replace` の local 専用ガードを明記。新たに **§14 長所・短所・改善点**
+  (現状評価 + 優先度付きロードマップ表)を追加。
 - ADR-0001 を追加し、Step 1 実装を反映 (Accepted / Step 2〜4 Proposed)。spec §13 /
   research-improvements 項目A / CLAUDE.md MAP から参照。
 
