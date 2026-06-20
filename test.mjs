@@ -434,6 +434,8 @@ const checks = [
   // v1.6.71: import sites clear stale selection + wclock (mirror replace op's _apply)
   ['importBoard clears selection+wclock on whole-board swap', html.includes("state.shapes=shapes.map(clone);\n      // Match the replace op's _apply") && html.includes("state.selection.clear();state.wclock={};\n      if(typeof d.docName")],
   ['importFromHash clears selection+wclock on whole-board swap', html.includes("state.shapes=valid.map(clone);state.docName=") && /state\.shapes=valid\.map\(clone\)[\s\S]{0,260}state\.selection\.clear\(\);state\.wclock=\{\};/.test(html)],
+  // v1.6.71: presentation-mode guard precedes editing shortcuts (no undo mid-slideshow)
+  ['presentation guard runs before undo/redo/select-all shortcuts', /if\(Presentation\.isActive\(\)\)\{[\s\S]{0,260}return;\n  \}\n  if\(meta&&k==='z'&&!e\.shiftKey\)/.test(html)],
 ];
 
 let pass = 0, fail = 0;

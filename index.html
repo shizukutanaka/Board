@@ -2644,16 +2644,19 @@ window.addEventListener('keydown',e=>{
   }
   const meta=e.metaKey||e.ctrlKey;
   const k=e.key.toLowerCase();
-  if(meta&&k==='z'&&!e.shiftKey){e.preventDefault();if(Store.undo())UI.toast(t('undone'))}
-  else if(meta&&(k==='y'||(k==='z'&&e.shiftKey))){e.preventDefault();if(Store.redo())UI.toast(t('redone'))}
-  else if(meta&&k==='a'){e.preventDefault();state.selection=new Set(state.shapes.map(s=>s.id));invalidate()}
-  // Presentation mode navigation
+  // Presentation mode is view-only (see "no editing during presentation"): handle
+  // navigation keys and suppress EVERYTHING else — undo/redo/select-all/copy etc.
+  // This guard must precede the editing shortcuts below, or they'd mutate the board
+  // mid-slideshow before the early return.
   if(Presentation.isActive()){
     if(k==='arrowright'||k==='arrowdown'||k===' '){e.preventDefault();Presentation.next()}
     else if(k==='arrowleft'||k==='arrowup'){e.preventDefault();Presentation.prev()}
     else if(k==='escape'){Presentation.leave()}
     return;
   }
+  if(meta&&k==='z'&&!e.shiftKey){e.preventDefault();if(Store.undo())UI.toast(t('undone'))}
+  else if(meta&&(k==='y'||(k==='z'&&e.shiftKey))){e.preventDefault();if(Store.redo())UI.toast(t('redone'))}
+  else if(meta&&k==='a'){e.preventDefault();state.selection=new Set(state.shapes.map(s=>s.id));invalidate()}
   if(k==='p'&&e.shiftKey&&!meta&&!e.altKey){e.preventDefault();Presentation.enter();return}
   else if(meta&&k==='enter'){e.preventDefault();Presentation.enter()}
   else if(meta&&k==='c'){e.preventDefault();doCopy()}
