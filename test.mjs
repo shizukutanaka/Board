@@ -445,6 +445,9 @@ const checks = [
   ['text branch still auto-sizes width', html.includes("}else{\n    const lines=(s.text||'').split('\\n');")],
   // v1.6.73: doAlign skips locked shapes (parity with doDelete/doRotate/doFlip)
   ['doAlign filters locked shapes', html.includes("const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);\n  if(sel.length<2)return;")],
+  // v1.6.74: _placeCopies remaps connector bindings (sh.a/sh.b) within pasted set
+  ['_placeCopies pre-generates idMap for two-pass connector remapping', html.includes("const idMap=new Map();") && html.includes("for(const orig of srcShapes)idMap.set(orig.id,uid());")],
+  ['_placeCopies remaps sh.a and sh.b to new ids', html.includes("if(sh.a&&idMap.has(sh.a))sh.a=idMap.get(sh.a);") && html.includes("if(sh.b&&idMap.has(sh.b))sh.b=idMap.get(sh.b);")],
 ];
 
 let pass = 0, fail = 0;
@@ -3064,8 +3067,39 @@ try {
     console.log('  ✓ resizeAfterTextEdit: sticky preserves chosen width; text auto-sizes both dims; non-vacuous');
   }
 
+  // v1.6.74: _placeCopies remaps connector bindings (sh.a/sh.b) within pasted set
+  // Before fix: C'.a===A.id (original); After fix: C'.a===A'.id, C'.b===B'.id.
+  {
+    // Reset seq+seenOps to avoid collision with hardcoded seq:10 in two-peer tests
+    // (which leave 'peerA:10' in seenOps; without reset the 10th commit is silently dropped).
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.seq=0;state.seenOps=new Set();
+    const A=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    const B=Shape.make('rect',{x:200,y:0,w:50,h:50});
+    const C=Shape.make('arrow',{x1:25,y1:25,x2:225,y2:25});
+    C.a=A.id; C.b=B.id;
+    Store.commit({op:'add',shape:A});
+    Store.commit({op:'add',shape:B});
+    Store.commit({op:'add',shape:C});
+    state.selection=new Set([A.id,B.id,C.id]);
+    doDuplicate();
+    // doDuplicate sets state.selection to the 3 new copy ids
+    const copyIds=new Set(state.selection);
+    assert.strictEqual(copyIds.size,3,'_placeCopies: 3 copies in selection');
+    const cC=state.shapes.find(s=>copyIds.has(s.id)&&s.type==='arrow');
+    assert.ok(cC,'_placeCopies: arrow copy found in selection');
+    assert.ok(cC.a!==A.id,'_placeCopies: pasted arrow .a is NOT the original A.id');
+    assert.ok(cC.b!==B.id,'_placeCopies: pasted arrow .b is NOT the original B.id');
+    assert.ok(copyIds.has(cC.a),'_placeCopies: pasted arrow .a is one of the copy ids');
+    assert.ok(copyIds.has(cC.b),'_placeCopies: pasted arrow .b is one of the copy ids');
+    assert.ok(cC.a!==cC.b,'_placeCopies: .a and .b point to distinct copies');
+    // non-vacuity: original connector still has its original bindings (not modified)
+    assert.strictEqual(C.a,A.id,'non-vacuity: original connector C.a still equals A.id');
+    console.log('  ✓ _placeCopies: pasted connector bindings remapped to copies (not originals)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 382; // prev 374 + doAlign locked skip (8 asserts)
+  pass += 390; // prev 382 + connector binding remap (8 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

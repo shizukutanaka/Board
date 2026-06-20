@@ -2799,13 +2799,19 @@ function _placeCopies(srcShapes){
   const offset=20/state.viewport.zoom;
   const added=[];
   const gidMap=new Map();
+  // Pre-generate new ids so connector bindings (sh.a/sh.b) can be remapped
+  // when both endpoints are in the pasted set (two-pass required).
+  const idMap=new Map();
+  for(const orig of srcShapes)idMap.set(orig.id,uid());
   for(const orig of srcShapes){
     const sh=clone(orig);
-    sh.id=uid();sh.z=nextZ();delete sh.frac;
+    sh.id=idMap.get(orig.id);sh.z=nextZ();delete sh.frac;
     if(sh.groupId){
       if(!gidMap.has(sh.groupId))gidMap.set(sh.groupId,uid());
       sh.groupId=gidMap.get(sh.groupId);
     }
+    if(sh.a&&idMap.has(sh.a))sh.a=idMap.get(sh.a);
+    if(sh.b&&idMap.has(sh.b))sh.b=idMap.get(sh.b);
     Shape.translate(sh,offset,offset);
     Store.commit({op:'add',shape:sh});
     added.push(sh.id);

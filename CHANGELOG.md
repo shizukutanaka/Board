@@ -5,6 +5,12 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
 ## [Unreleased]
 
 ### Fixed
+- **コピー/複製時のコネクタ結合先が元図形のままになっていた**: `_placeCopies` が `groupId` の
+  再マッピング (`gidMap`) は行うが、コネクタの結合先 (`sh.a`/`sh.b`) は再マッピングしていなかった。
+  複数の図形とコネクタをまとめて複製すると、複製コネクタは**コピー先**ではなく**元図形**に結合したまま
+  となり、コピー群を移動してもコネクタが元図形から伸び続けるバグ。二段階処理 (`idMap` で全 id を先行
+  生成 → 各 `sh.a`/`sh.b` を新 id に差し替え) に変更。非空虚テストで修正前は `cC.a === A.id`(元図形)、
+  修正後は `cC.a ∈ copyIds`(コピー群) であることを担保。
 - **`doAlign` がロック図形を移動していた**: `doDelete`/`doRotate`/`doFlip`/`doMove` はすべて
   `!s.locked` でロック図形をスキップするが、`doAlign` だけが `filter(Boolean)` のまま漏れており、
   コンテキストメニューの "Align left/right/top…" / "Distribute" がロック図形を無断移動していた。
