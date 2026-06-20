@@ -425,6 +425,11 @@ const checks = [
   // v1.6.70: keyboard resize (Alt+arrow)
   ['resize op registered (apply, validate, remote)', html.includes("case 'resize':\n      case 'align':{") && html.includes("case 'resize':\n    case 'align':  return patches(op.after)") && html.includes("'align','style','resize'])")],
   ['Alt+arrow keyboard-resizes box shapes', html.includes("Store._recordCommitted({op:'resize',before,after});") && html.includes("sh.w=Math.max(4,sh.w+dw);sh.h=Math.max(4,sh.h+dh);")],
+  // v1.6.71: image import error handling
+  ['imgErr i18n key in both locales', html.includes("imgErr:'画像を読み込めませんでした'") && html.includes("imgErr:'Image failed to load'")],
+  ['drag-drop image import has img.onerror toast', html.includes("img.onerror=()=>UI.toast(t('imgErr'),'warn');") ],
+  ['drag-drop image import has reader.onerror toast', html.includes("reader.onerror=()=>UI.toast(t('imgErr'),'warn');\n    reader.readAsDataURL(f);")],
+  ['context menu deduplicates consecutive separators', html.includes(".filter((it,i,a)=>!(it==='sep'&&(i===0||i===a.length-1||a[i-1]==='sep')))")],
 ];
 
 let pass = 0, fail = 0;
@@ -2911,8 +2916,30 @@ try {
     console.log('  ✓ two-peer LWW: concurrent GROUP ops converge - contested shape yields to newer writer (§3.17)');
   }
 
+  // v1.6.71: context menu separator deduplication
+  // Non-vacuity: without the filter, double-sep stays in; with it, collapses to single.
+  {
+    const dedupSep = arr => arr.filter((it,i,a)=>!(it==='sep'&&(i===0||i===a.length-1||a[i-1]==='sep')));
+    // single non-grouped selection: two consecutive seps (was the bug)
+    assert.deepStrictEqual(
+      dedupSep(['copy','del','sep','sep','front','back','sep','all']),
+      ['copy','del','sep','front','back','sep','all'],
+      'ctx menu sep: consecutive double-sep collapses to single');
+    // leading sep removed
+    assert.deepStrictEqual(dedupSep(['sep','copy','del']),['copy','del'],'ctx menu sep: leading sep removed');
+    // trailing sep removed
+    assert.deepStrictEqual(dedupSep(['copy','del','sep']),['copy','del'],'ctx menu sep: trailing sep removed');
+    // well-formed list unaffected
+    assert.deepStrictEqual(dedupSep(['copy','sep','front']),['copy','sep','front'],'ctx menu sep: clean list unchanged');
+    // bug baseline: WITHOUT filter, double sep survives (proves test is non-vacuous)
+    const raw=['copy','del','sep','sep','front'];
+    assert.strictEqual(raw.filter(Boolean).filter((it,i,a)=>it!==undefined).length, 5, 'ctx menu sep: no-filter leaves double sep (5 items)');
+    assert.strictEqual(dedupSep(raw).length, 4, 'ctx menu sep: with filter collapses to 4 items');
+    console.log('  ✓ ctx menu: sep deduplication collapses consecutive/leading/trailing separators');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 339; // prev 337 + uid crypto.randomUUID uniqueness (2 asserts)
+  pass += 345; // prev 339 + sep dedup (6 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

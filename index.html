@@ -758,7 +758,7 @@ const I18N={
     noSelection:'選択なし',styleCopied:'スタイルコピー',stylePasted:'スタイル適用',
     selectTwo:'2つ以上選択してください',grouped:'グループ化',noGroup:'グループなし',
     ungrouped:'グループ解除',noFrames:'フレームがありません (F キーで作成)',
-    imgBig:'画像が大きすぎます。縮小してください',
+    imgBig:'画像が大きすぎます。縮小してください',imgErr:'画像を読み込めませんでした',
     popupBlocked:'ポップアップをブロックしてください',invalidBoard:'ボードファイルが無効です',exportFailed:'書き出し失敗',saveFailed:'保存失敗',
     snap:'スナップ',grid:'グリッド',on:'オン',off:'オフ',online:'オンライン',offline:'オフライン',shapes:'図形',
     copied:'コピー',pasted:'貼り付け',deleted:'削除',cleared:'クリア',
@@ -808,7 +808,7 @@ const I18N={
     noSelection:'No selection',styleCopied:'Style copied',stylePasted:'Style applied',
     selectTwo:'Select 2 or more',grouped:'Grouped',noGroup:'No group',
     ungrouped:'Ungrouped',noFrames:'No frames (press F to create)',
-    imgBig:'Image too large — please resize',
+    imgBig:'Image too large — please resize',imgErr:'Image failed to load',
     popupBlocked:'Pop-up blocked — please allow pop-ups for PDF export',invalidBoard:'Invalid .board file',exportFailed:'Export failed',saveFailed:'Save failed',
     copied:'Copied',pasted:'Pasted',deleted:'Deleted',cleared:'Cleared',
     undone:'Undone',redone:'Redone',created:'Created',
@@ -2124,8 +2124,10 @@ canvas.addEventListener('drop',e=>{
         state.selection.clear();state.selection.add(sh.id);
         invalidate();UI.toast(t('imagePasted'),'ok');
       };
+      img.onerror=()=>UI.toast(t('imgErr'),'warn');
       img.src=reader.result;
     };
+    reader.onerror=()=>UI.toast(t('imgErr'),'warn');
     reader.readAsDataURL(f);
     ox+=20;
   }
@@ -2157,8 +2159,10 @@ window.addEventListener('paste',e=>{
         invalidate();
         UI.toast(t('imagePasted'),'ok');
       };
+      img.onerror=()=>UI.toast(t('imgErr'),'warn');
       img.src=reader.result;
     };
+    reader.onerror=()=>UI.toast(t('imgErr'),'warn');
     reader.readAsDataURL(f);
   }
 });
@@ -3562,7 +3566,7 @@ const UI={
       has&&'sep',
       ['ctxSelectAll','⌘A',()=>{state.selection=new Set(state.shapes.map(s=>s.id));invalidate()}],
       state.shapes.length&&['ctxClear','',doClearAll]
-    ].filter(Boolean);
+    ].filter(Boolean).filter((it,i,a)=>!(it==='sep'&&(i===0||i===a.length-1||a[i-1]==='sep')));
     for(const it of items){
       if(it==='sep'){
         const s=document.createElement('div');s.className='ctx-sep';
