@@ -3068,6 +3068,10 @@ function importBoard(file){
       // clear+N-adds would overflow MAX_HISTORY for large boards and require N+1 undos.
       const before=clone(state.shapes);
       state.shapes=shapes.map(clone);
+      // Match the replace op's _apply: drop stale selection ids and per-property write
+      // clocks from the board we just swapped out. Skipping this leaks wclock entries and
+      // can let a re-imported shape (same id) inherit a stale LWW clock.
+      state.selection.clear();state.wclock={};
       if(typeof d.docName==='string'&&d.docName){state.docName=d.docName;document.getElementById('docName').value=d.docName}
       sortZ();invalidate();
       Store._recordCommitted({op:'replace',before,after:clone(state.shapes)});
@@ -3423,6 +3427,9 @@ const Share={
       // shared link can't silently destroy the board it replaced (§3.9 self-overwrite).
       const before=clone(state.shapes);
       state.shapes=valid.map(clone);state.docName=(typeof data.name==='string'&&data.name)||'Shared';
+      // Match the replace op's _apply: drop stale selection ids and per-property write
+      // clocks from the board we just swapped out (see importBoard for rationale).
+      state.selection.clear();state.wclock={};
       sortZ();invalidate();
       Store._recordCommitted({op:'replace',before,after:clone(state.shapes)});
       document.getElementById('docName').value=state.docName;
