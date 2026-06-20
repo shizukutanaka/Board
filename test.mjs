@@ -439,6 +439,10 @@ const checks = [
   // v1.6.71: export canvas clamped to browser limits
   ['exportPNG uses exportScale clamp', html.includes("const scale=exportScale(w,h,2);")],
   ['exportPDF uses exportScale clamp for dpr', html.includes("dpr=exportScale(W,H,window.devicePixelRatio||1)")],
+  // v1.6.72: sticky note resize preserves user's chosen width
+  ['resizeAfterTextEdit helper present', html.includes("function resizeAfterTextEdit(s,text,c)")],
+  ['sticky branch preserves s.w (no text-width overwrite)', html.includes("if(s.type==='sticky'){") && html.includes("wl=wrapText(s.text||'',Math.abs(s.w)-pad*2")],
+  ['text branch still auto-sizes width', html.includes("}else{\n    const lines=(s.text||'').split('\\n');")],
 ];
 
 let pass = 0, fail = 0;
@@ -536,7 +540,7 @@ try {
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, pickTop, buildSVG, exportScale, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs };
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -550,7 +554,7 @@ try {
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, pickTop, buildSVG, exportScale, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs } = api;
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit } = api;
 
   console.log('\n-- behavioural --');
 
@@ -3006,8 +3010,33 @@ try {
     console.log('  ✓ ctx menu: sep deduplication collapses consecutive/leading/trailing separators');
   }
 
+  // v1.6.72: sticky note resize-after-edit preserves user's chosen width
+  // Non-vacuity: old text-branch code applied to sticky would set s.w = measureText(whole text)
+  {
+    const mkCtx = charW => ({ font:'', measureText: t => ({ width: t.length * charW }) });
+    // text shape: both w and h auto-sized from content
+    const ts = { type:'text', fontSize:14, text:'', w:0, h:0 };
+    resizeAfterTextEdit(ts, 'hello world', mkCtx(10));
+    assert.ok(ts.w > 0, 'text: w auto-sized to content width');
+    assert.ok(ts.h >= 14 * 1.25, 'text: h auto-sized from line count');
+    assert.strictEqual(ts.text, 'hello world', 'text: s.text updated');
+
+    // sticky shape: user's chosen w (160) must survive; only h auto-fits
+    const longText = 'This is a long sentence that would expand width if not for the sticky branch';
+    const sk = { type:'sticky', fontSize:14, text:'', w:160, h:160 };
+    resizeAfterTextEdit(sk, longText, mkCtx(10));
+    assert.strictEqual(sk.w, 160, 'sticky: chosen width preserved (not overwritten by text measure)');
+    assert.ok(sk.h > 0, 'sticky: height auto-fitted to wrapped content');
+    assert.strictEqual(sk.text, longText, 'sticky: s.text updated');
+
+    // non-vacuity: applying the TEXT branch to a sticky would overwrite s.w
+    const oldW = Math.max(20, longText.split('\n').reduce((m,l)=>Math.max(m,l.length*10),0));
+    assert.ok(oldW !== 160, `non-vacuity: old code would set s.w=${oldW} (not 160) for this sticky`);
+    console.log('  ✓ resizeAfterTextEdit: sticky preserves chosen width; text auto-sizes both dims; non-vacuous');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 367; // prev 357 + exportScale canvas-limit clamp (10 asserts)
+  pass += 374; // prev 367 + sticky resize-after-edit (7 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

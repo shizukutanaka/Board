@@ -2543,6 +2543,23 @@ function createShapeKbd(){
   invalidate();
   return true;
 }
+// Resize a text/sticky shape to fit its content after editing.
+// sticky: preserves the user's chosen width, auto-fits height via wrapText.
+// text:   auto-sizes both width and height to the unwrapped content.
+function resizeAfterTextEdit(s,text,c){
+  s.text=text;
+  const fs=s.fontSize||14;
+  c.font=`${fs}px Hiragino Sans,Helvetica Neue,system-ui,sans-serif`;
+  if(s.type==='sticky'){
+    const pad=8;
+    const wl=wrapText(s.text||'',Math.abs(s.w)-pad*2,t=>c.measureText(t).width);
+    s.h=Math.max(fs*1.3+pad*2,wl.length*fs*1.3+pad*2);
+  }else{
+    const lines=(s.text||'').split('\n');
+    let mw=0;for(const l of lines)mw=Math.max(mw,c.measureText(l).width);
+    s.w=Math.max(20,mw);s.h=Math.max(fs*1.25,lines.length*fs*1.25);
+  }
+}
 function openTextEditor(s,isNew){
   state.editing=s.id;invalidate();
   const ta=document.createElement('textarea');
@@ -2565,13 +2582,8 @@ function openTextEditor(s,isNew){
   ta.addEventListener('input',auto);
   ta.addEventListener('blur',()=>{
     const newText=ta.value;
-    s.text=newText;
-    // measure
     ctx.save();
-    ctx.font=`${s.fontSize}px Hiragino Sans,Helvetica Neue,system-ui,sans-serif`;
-    const lines=(s.text||'').split('\n');
-    let mw=0;for(const l of lines)mw=Math.max(mw,ctx.measureText(l).width);
-    s.w=Math.max(20,mw);s.h=Math.max(s.fontSize*1.25,lines.length*s.fontSize*1.25);
+    resizeAfterTextEdit(s,newText,ctx);
     ctx.restore();
     state.editing=null;
     if(isNew){

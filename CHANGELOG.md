@@ -4,6 +4,15 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
 
 ## [Unreleased]
 
+### Fixed
+- **付箋ダブルクリック編集後に幅が崩れていた**: `openTextEditor` の blur ハンドラが `text` /
+  `sticky` を区別せず `ctx.measureText`(改行分割のみ) で `s.w` を上書きしていた。ユーザが
+  リサイズハンドルで設定した付箋幅(例: 160px)が、折り返し前の全文幅(例: 690px)に**無条件で
+  置き換わる**バグ。`resizeAfterTextEdit(s,text,c)` ヘルパーを抽出し型で分岐: `text` 型は従来通り
+  w/h を自動サイズ化、`sticky` 型は `s.w` を保持して `wrapText` による折り返し後の行数から `s.h`
+  だけ更新。単体テストで sticky の `s.w` 保持と `text` の auto-size を担保 (非空虚: 旧コードでは
+  `s.w = 690` になることをインライン計算で確認)。
+
 ### Added
 - **並行編集の収束: プロパティ単位 LWW (ADR-0002 / research §3.15–3.16, 項目 D/K)**: 二者が同じ図形の
   同じプロパティを同時編集すると、従来は**発散**していた(受信順 `Object.assign`、タイブレーク無し。
