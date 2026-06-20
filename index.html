@@ -3039,9 +3039,9 @@ function exportSVG(){
 function exportBoard(){
   if(!state.shapes.length){UI.toast(t('empty'),'warn');return}
   const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([JSON.stringify({v:V,docName:state.docName,shapes:state.shapes})],{type:'application/json'}));
-  a.download=(state.docName||'board')+'.board';
-  a.click();
+  const _bu=URL.createObjectURL(new Blob([JSON.stringify({v:V,docName:state.docName,shapes:state.shapes})],{type:'application/json'}));
+  a.href=_bu;a.download=(state.docName||'board')+'.board';
+  a.click();setTimeout(()=>URL.revokeObjectURL(_bu),1e4);
   UI.toast(t('exportedBoard'),'ok');
 }
 function importBoard(file){
