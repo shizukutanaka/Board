@@ -89,6 +89,11 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
   メモリリークしていた。ダウンロード後に失効するよう修正。
 - **i18n パリティ**: `on`/`off`/`online`/`offline` キーが日本語ロケールにのみ存在し、英語では
   `t()` フォールバックでキー文字列がそのまま表示されていた。英語ロケールに 4 キーを追加。
+- **大きいボードの PNG/PDF export が無言で空白になっていた**: `exportPNG` は固定 `scale=2`、
+  `exportPDF` は `devicePixelRatio` で raster 化するため、巨大なボードはブラウザの canvas 上限
+  (1 辺 ~16384px / 総面積上限) を超え、`toBlob` が null か空白/切れた画像を返していた。幅・高さ・
+  面積すべてが上限内に収まる最大スケールを返す純関数 `exportScale(w,h,desired)` を追加し、両 export
+  に適用 (失敗ではなく解像度を落とす)。純関数なので単体テストで境界 (辺上限・面積上限・ゼロ寸法) を担保。
 
 ### Changed
 - **z-order キー churn 抑制**: 既に最前面/最背面に揃っている選択への bring-front / send-back は
