@@ -272,6 +272,10 @@ const checks = [
   ['slider flush helper _sfbFlush defined', html.includes('function _sfbFlush(p,v)')],
   ['size slider uses pointerdown/change for undo, not input', html.includes("_sfbCapture('size')") && html.includes("_sfbFlush('size'")],
   ['opacity slider uses pointerdown/change for undo', html.includes("_sfbCapture('opacity')") && html.includes("_sfbFlush('opacity'")],
+  ['size slider captures on focus (keyboard undo)', html.includes("focus',()=>_sfbCapture('size')")],
+  ['opacity slider captures on focus (keyboard undo)', html.includes("focus',()=>_sfbCapture('opacity')")],
+  ['size slider re-arms after flush for sequential keyboard presses', html.includes("_sfbFlush('size',state.style.size);_sfbCapture('size')")],
+  ['opacity slider re-arms after flush for sequential keyboard presses', html.includes("_sfbFlush('opacity',state.style.opacity);_sfbCapture('opacity')")],
   // v1.6.29: dead op:'z' code removed; i18n for image-too-large
   ['dead op-z case removed from _apply', !html.includes('// Array reorder')],
   ['imgBig i18n key present in ja and en', html.includes("imgBig:'画像が大きすぎます") && html.includes("imgBig:'Image too large")],
@@ -1466,6 +1470,39 @@ try {
     Store.undo();
     assert.strictEqual(state.shapes.find(s=>s.id===sh.id).size,4,'undo restores original size');
     console.log('  ✓ slider coalescing: multiple drag ticks → one style op → undo restores');
+  }
+
+  // Slider keyboard undo: arrow-key changes must be undoable even without a pointerdown.
+  // Bug: _sfbFlush without a prior _sfbCapture (no pointerdown) skips creating history.
+  // Fix: focus event calls _sfbCapture; change handler re-arms via _sfbCapture after flush.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const kbSh=Shape.make('rect',{x:0,y:0,w:40,h:40});
+    Store.commit({op:'add',shape:kbSh});
+    // Use live clone from state.shapes (Store.commit pushes a clone, not kbSh itself)
+    const kbLive=state.shapes.find(s=>s.id===kbSh.id);
+    kbLive.size=4;
+    const kbBase=state.history.length;
+    state.selection=new Set([kbSh.id]);
+    // Without capture (no focus/pointerdown): flush must create no history entry (bug baseline)
+    kbLive.size=8;
+    _sfbFlush('size',8);
+    assert.strictEqual(state.history.length,kbBase,'no-capture _sfbFlush: no history entry (bug baseline)');
+    // With capture (simulates focus event): first key press creates a history entry
+    _sfbCapture('size');          // focus → capture before=8 (from live clone)
+    kbLive.size=12;               // arrow-key input: live shape mutated
+    _sfbFlush('size',12);         // arrow-key change: flush (before=8,after=12)
+    _sfbCapture('size');          // re-arm from change handler: capture before=12 for next key
+    assert.strictEqual(state.history.length,kbBase+1,'keyboard first key: history entry created');
+    // Second key press — re-arm means _sbf has before=12, so this also creates a history entry
+    kbLive.size=16;
+    _sfbFlush('size',16);
+    assert.strictEqual(state.history.length,kbBase+2,'keyboard second key: second history entry');
+    Store.undo();
+    assert.strictEqual(state.shapes.find(s=>s.id===kbSh.id).size,12,'undo restores between-key size');
+    Store.undo();
+    assert.strictEqual(state.shapes.find(s=>s.id===kbSh.id).size,8,'double-undo restores pre-first-key size');
+    console.log('  ✓ slider keyboard undo: focus+change re-arm gives per-key-press undo entries');
   }
 
   // v1.6.37: copyStyle / pasteStyle round-trip
