@@ -3937,6 +3937,7 @@ const Minimap=(()=>{
       const _mr=s.rotate&&s.w!=null;
       if(_mr){const ccx=(s.x+s.w/2)*sc+ox,ccy=(s.y+s.h/2)*sc+oy;mx.save();mx.translate(ccx,ccy);mx.rotate(s.rotate*Math.PI/180);mx.translate(-ccx,-ccy);}
       switch(s.type){
+        case 'frame':
         case 'rect':{const rx=s.x*sc+ox,ry=s.y*sc+oy,rw=s.w*sc,rh=s.h*sc;if(s.fill)mx.fillRect(rx,ry,rw,rh);mx.strokeRect(rx,ry,rw,rh);break}
         case 'ellipse':mx.beginPath();mx.ellipse(s.x*sc+ox+s.w*sc/2,s.y*sc+oy+s.h*sc/2,Math.abs(s.w*sc/2),Math.abs(s.h*sc/2),0,0,Math.PI*2);if(s.fill)mx.fill();mx.stroke();break;
         case 'line':case 'arrow':{const me=connEnds(s);mx.beginPath();mx.moveTo(me.x1*sc+ox,me.y1*sc+oy);mx.lineTo(me.x2*sc+ox,me.y2*sc+oy);mx.stroke();break}
