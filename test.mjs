@@ -436,6 +436,9 @@ const checks = [
   ['importFromHash clears selection+wclock on whole-board swap', html.includes("state.shapes=valid.map(clone);state.docName=") && /state\.shapes=valid\.map\(clone\)[\s\S]{0,260}state\.selection\.clear\(\);state\.wclock=\{\};/.test(html)],
   // v1.6.71: presentation-mode guard precedes editing shortcuts (no undo mid-slideshow)
   ['presentation guard runs before undo/redo/select-all shortcuts', /if\(Presentation\.isActive\(\)\)\{[\s\S]{0,260}return;\n  \}\n  if\(meta&&k==='z'&&!e\.shiftKey\)/.test(html)],
+  // v1.6.71: export canvas clamped to browser limits
+  ['exportPNG uses exportScale clamp', html.includes("const scale=exportScale(w,h,2);")],
+  ['exportPDF uses exportScale clamp for dpr', html.includes("dpr=exportScale(W,H,window.devicePixelRatio||1)")],
 ];
 
 let pass = 0, fail = 0;
@@ -530,7 +533,7 @@ try {
              doBringFront, doSendBack, doBringForward, doSendBackward,
              doAlign, doFlip, snapV, snapPt,
              getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
-             doGroup, doUngroup, doPaste, doDuplicate, doCopy, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
+             doGroup, doUngroup, doPaste, doDuplicate, doCopy, pickTop, buildSVG, exportScale, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs };
@@ -544,7 +547,7 @@ try {
           doBringFront, doSendBack, doBringForward, doSendBackward,
           doAlign, doFlip, snapV, snapPt,
           getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
-          doGroup, doUngroup, doPaste, doDuplicate, doCopy, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
+          doGroup, doUngroup, doPaste, doDuplicate, doCopy, pickTop, buildSVG, exportScale, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs } = api;
@@ -1296,6 +1299,31 @@ try {
     Store.undo();
     assert.strictEqual(state.shapes[0].dash, 0, 'dash change is undoable');
     console.log('  ✓ line styles: solid/dashed/dotted patterns, SVG dasharray, size-scaled, reversible');
+  }
+
+  // v1.6.71: exportScale clamps PNG/PDF canvas to browser limits (no silent blank export)
+  {
+    const MAXD=16384, MAXA=16384*16384;
+    // small board: desired scale passes through untouched
+    assert.strictEqual(exportScale(800,600,2), 2, 'exportScale: small board keeps desired 2x');
+    assert.strictEqual(exportScale(800,600,1), 1, 'exportScale: small board keeps desired 1x');
+    // wide board: single-dimension cap binds (w*scale <= MAXD)
+    const wide=exportScale(20000,100,2);
+    assert.ok(wide<2, 'exportScale: oversized width reduces scale below desired');
+    assert.ok(20000*wide<=MAXD+1e-6, 'exportScale: clamped width within MAX_DIM');
+    // tall board: height cap binds
+    const tall=exportScale(100,40000,2);
+    assert.ok(100*Math.min(2,MAXD/40000) && 40000*tall<=MAXD+1e-6, 'exportScale: clamped height within MAX_DIM');
+    // huge near-square board: area cap binds before either dimension cap
+    const big=exportScale(15000,15000,2);
+    assert.ok((15000*big)*(15000*big)<=MAXA+1, 'exportScale: clamped area within MAX_AREA');
+    assert.ok(15000*big<=MAXD+1e-6 && 15000*big>0, 'exportScale: area-clamped dims still positive and within MAX_DIM');
+    // degenerate sizes: never throw, return desired
+    assert.strictEqual(exportScale(0,500,2), 2, 'exportScale: zero width returns desired (no div-by-zero)');
+    assert.strictEqual(exportScale(500,0,3), 3, 'exportScale: zero height returns desired');
+    // monotonic: clamped scale never exceeds desired
+    assert.ok(exportScale(50000,50000,2)<=2, 'exportScale: result never exceeds desired');
+    console.log('  ✓ exportScale: clamps PNG/PDF canvas to MAX_DIM/MAX_AREA, passes small boards through');
   }
 
   // v1.6.17: validShape rejects malformed shapes (notably bad pen pts that crash render)
@@ -2979,7 +3007,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 357; // prev 345 + doDuplicate clipboard independence (12 asserts)
+  pass += 367; // prev 357 + exportScale canvas-limit clamp (10 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

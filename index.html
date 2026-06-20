@@ -2997,13 +2997,22 @@ function doRotate(d){
   invalidate();Persist.schedule();
 }
 // ====================== EXPORT ======================
+// Browsers cap a canvas's single dimension (~16384px on most) and its total area.
+// At a fixed export scale a large board silently exceeds these limits: toBlob yields
+// null (or a blank/truncated image). Clamp the scale so width, height AND area all fit,
+// degrading resolution rather than failing. Pure → unit-tested.
+const EXPORT_MAX_DIM=16384, EXPORT_MAX_AREA=16384*16384;
+function exportScale(w,h,desired){
+  if(!(w>0&&h>0))return desired;
+  return Math.min(desired, EXPORT_MAX_DIM/w, EXPORT_MAX_DIM/h, Math.sqrt(EXPORT_MAX_AREA/(w*h)));
+}
 function exportPNG(){
   const b=G.bboxAll(state.shapes);
   if(!b){UI.toast(t('empty'),'warn');return}
   const pad=32;
   const w=Math.ceil(b.w+pad*2),h=Math.ceil(b.h+pad*2);
   const off=document.createElement('canvas');
-  const scale=2;
+  const scale=exportScale(w,h,2);
   off.width=w*scale;off.height=h*scale;
   const oc=off.getContext('2d');
   oc.fillStyle=getCSS('--paper');
@@ -3023,7 +3032,7 @@ function exportPNG(){
 function exportPDF(){
   if(!state.shapes.length){UI.toast(t('empty'),'warn');return}
   const b=G.bboxAll(state.shapes);if(!b)return;
-  const pad=32,W=Math.ceil(b.w+pad*2),H=Math.ceil(b.h+pad*2),dpr=window.devicePixelRatio||1;
+  const pad=32,W=Math.ceil(b.w+pad*2),H=Math.ceil(b.h+pad*2),dpr=exportScale(W,H,window.devicePixelRatio||1);
   let off;try{off=new OffscreenCanvas(W*dpr,H*dpr)}catch(_){off=document.createElement('canvas');off.width=W*dpr;off.height=H*dpr}
   const oc=off.getContext('2d');
   oc.fillStyle=getCSS('--paper')||'#fff';oc.fillRect(0,0,W*dpr,H*dpr);
