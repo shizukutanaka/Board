@@ -5,6 +5,11 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
 ## [Unreleased]
 
 ### Fixed
+- **`doAlign` がロック図形を移動していた**: `doDelete`/`doRotate`/`doFlip`/`doMove` はすべて
+  `!s.locked` でロック図形をスキップするが、`doAlign` だけが `filter(Boolean)` のまま漏れており、
+  コンテキストメニューの "Align left/right/top…" / "Distribute" がロック図形を無断移動していた。
+  `filter(s=>s&&!s.locked)` に変更し、ロック図形は align 対象から除外 (整列の参照計算からも除外)。
+  ロック図形の位置不変と undo op へのロック図形の不在をテストで担保 (非空虚)。
 - **付箋ダブルクリック編集後に幅が崩れていた**: `openTextEditor` の blur ハンドラが `text` /
   `sticky` を区別せず `ctx.measureText`(改行分割のみ) で `s.w` を上書きしていた。ユーザが
   リサイズハンドルで設定した付箋幅(例: 160px)が、折り返し前の全文幅(例: 690px)に**無条件で

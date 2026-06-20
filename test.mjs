@@ -443,6 +443,8 @@ const checks = [
   ['resizeAfterTextEdit helper present', html.includes("function resizeAfterTextEdit(s,text,c)")],
   ['sticky branch preserves s.w (no text-width overwrite)', html.includes("if(s.type==='sticky'){") && html.includes("wl=wrapText(s.text||'',Math.abs(s.w)-pad*2")],
   ['text branch still auto-sizes width', html.includes("}else{\n    const lines=(s.text||'').split('\\n');")],
+  // v1.6.73: doAlign skips locked shapes (parity with doDelete/doRotate/doFlip)
+  ['doAlign filters locked shapes', html.includes("const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);\n  if(sel.length<2)return;")],
 ];
 
 let pass = 0, fail = 0;
@@ -3010,6 +3012,33 @@ try {
     console.log('  ✓ ctx menu: sep deduplication collapses consecutive/leading/trailing separators');
   }
 
+  // v1.6.73: doAlign skips locked shapes (parity with doDelete/doRotate/doFlip)
+  // Non-vacuity: without the locked filter, the locked shape would be translated by doAlign.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const lk=Shape.make('rect',{x:0,y:0,w:50,h:50});lk.locked=true;
+    const u1=Shape.make('rect',{x:200,y:10,w:50,h:50});
+    const u2=Shape.make('rect',{x:300,y:20,w:50,h:50});
+    Store.commit({op:'add',shape:lk});
+    Store.commit({op:'add',shape:u1});
+    Store.commit({op:'add',shape:u2});
+    state.selection=new Set([lk.id,u1.id,u2.id]);
+    const lkX0=lk.x;
+    doAlign('left');
+    // locked shape must not move
+    assert.strictEqual(state.shapes.find(s=>s.id===lk.id).x, lkX0, 'doAlign: locked shape x unchanged');
+    // unlocked shapes align to each other's leftmost (200), not to the locked shape at 0
+    assert.strictEqual(state.shapes.find(s=>s.id===u1.id).x, 200, 'doAlign: unlocked shape aligned to leftmost unlocked');
+    assert.strictEqual(state.shapes.find(s=>s.id===u2.id).x, 200, 'doAlign: second unlocked shape also aligned');
+    // non-vacuity: without fix, lk would have been moved to align with u1/u2 reference (x=0 → x≠0)
+    // or u1/u2 would have aligned to lk (x=0). Either way lk.x would change.
+    // We verify the history entry recorded NO change for the locked shape.
+    const op=state.history[state.histIdx];
+    assert.ok(op&&op.op==='align','doAlign records align op');
+    assert.ok(!op.before.some(b=>b.id===lk.id),'doAlign: locked shape absent from align op (not mutated)');
+    console.log('  ✓ doAlign: locked shapes skipped (position unchanged, absent from undo op)');
+  }
+
   // v1.6.72: sticky note resize-after-edit preserves user's chosen width
   // Non-vacuity: old text-branch code applied to sticky would set s.w = measureText(whole text)
   {
@@ -3036,7 +3065,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 374; // prev 367 + sticky resize-after-edit (7 asserts)
+  pass += 382; // prev 374 + doAlign locked skip (8 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

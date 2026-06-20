@@ -2928,7 +2928,7 @@ function doClearAll(){
 
 // ---- alignment (multiple selection) ----
 function doAlign(dir){
-  const sel=[...state.selection].map(byId).filter(Boolean);
+  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);
   if(sel.length<2)return;
   const bboxes=sel.map(s=>({s,b:G.bbox(s)}));
   // Capture before state (full shape clone)
