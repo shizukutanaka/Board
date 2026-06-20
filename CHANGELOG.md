@@ -63,6 +63,32 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
   (例 `"0"`) だと無限ループしタブをフリーズし得た (任意文字列 frac を許す `validRemotePayload`
   経由で悪意ある peer が誘発可能な DoS)。両系列が尽きてなお等しい場合に打ち切るガードを追加し、
   アルファベット外文字は 0 とみなして throw を防止。fuzz テストで担保。
+- **複製がクリップボードを破壊していた (UX)**: `doDuplicate` は `state.clipboard` を選択図形で
+  **上書き**してから `doPaste` を呼んでいたため、Copy A → 別図形 B を選択 → Ctrl+D (B を複製) →
+  Ctrl+V が **A ではなく B を貼り付け**ていた。複製は本来コピー/ペーストのバッファから独立すべき
+  (Figma 等の標準挙動)。クローン配置ロジックを `_placeCopies(srcShapes)` に抽出し、複製は
+  `state.clipboard` を経由しないようにした。複製がクリップボード保持を壊さないことをテストで担保 (非空虚)。
+- **ボード import が選択 / wclock を残置していた**: `importBoard` / `importFromHash` は `state.shapes` を
+  直接置換して `replace` op を `_recordCommitted` で記録するが、`replace` の `_apply` が行う
+  `state.selection.clear()` / `state.wclock={}` は undo/redo 時しか走らない。結果、import 直後に
+  **旧ボードの選択 id が残り**、**wclock が旧 id 分リーク**(同一 id を再 import した図形が古い LWW
+  クロックを継承し並行編集判定を誤る恐れ)。両 import 箇所で `_apply` と同じクリアを行うよう修正。
+- **プレゼン中に編集ショートカットが効いていた**: keydown ハンドラが `Ctrl+Z`/`Ctrl+Y`/`Ctrl+A` を
+  `Presentation.isActive()` ガードの**前**に処理していたため、ガードの early-return より先に編集が
+  走り、スライドショー中の不意の Ctrl+Z が盤面を書き換えられた (「プレゼン中は編集不可」不変条件に
+  違反)。ガードを編集ショートカットの前に移動し、プレゼン中はナビゲーションキーのみ受け付ける。
+- **画像読み込み失敗の無反応**: ドラッグ&ドロップ / クリップボード貼り付けの画像 import に
+  `img.onerror` / `reader.onerror` が無く、壊れた画像が**無言で失敗**していた。`imgErr` トーストを
+  ja/en 両ロケールに追加し両経路で通知。
+- **コンテキストメニューの二重セパレータ**: 単一・非グループ図形の選択時、グループ/グループ解除項目
+  (複数選択限定) が消えて**セパレータが 2 本連続**で描画されていた。先頭/末尾/連続セパレータを
+  除去するフィルタを追加。
+- **ミニマップにフレームが描画されていなかった**: ミニマップの図形 switch に `frame` ケースが無く、
+  プレゼンの主要ナビ単位であるフレームがミニマップで不可視だった。`rect` ケースへフォールスルー。
+- **`exportBoard` の Blob URL リーク**: 他の export 関数と異なり `revokeObjectURL` を呼んでおらず
+  メモリリークしていた。ダウンロード後に失効するよう修正。
+- **i18n パリティ**: `on`/`off`/`online`/`offline` キーが日本語ロケールにのみ存在し、英語では
+  `t()` フォールバックでキー文字列がそのまま表示されていた。英語ロケールに 4 キーを追加。
 
 ### Changed
 - **z-order キー churn 抑制**: 既に最前面/最背面に揃っている選択への bring-front / send-back は
