@@ -738,7 +738,9 @@ const NET_CHANNEL_PREFIX='board:';      // BroadcastChannel name prefix
 const NET_PRESENCE_INTERVAL=5000;       // 5s heartbeat
 const NET_PRESENCE_TIMEOUT=15000;       // 15s drop
 const PEER_COLORS=['#00C4CC','#7C3AED','#DC2626','#F59E0B','#16A34A','#2563EB','#DB2777','#EA580C'];
-const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
+const uid=()=>typeof crypto!=='undefined'&&crypto.randomUUID
+  ?crypto.randomUUID().replace(/-/g,'')  // 122-bit UUID v4; no collision concern
+  :Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4); // fallback
 // peerId: persistent per browser, used to dedup CRDT ops
 const PEER_ID=(()=>{try{
   let id=localStorage.getItem('board.peer');

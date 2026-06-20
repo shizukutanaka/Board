@@ -1,4 +1,4 @@
-// Board — smoke test for op-log reversibility and geometry purity.
+// Board - smoke test for op-log reversibility and geometry purity.
 // Run: node test.mjs
 // Extracts subset of board.js and tests it in isolation.
 
@@ -182,7 +182,7 @@ const checks = [
   ['cycleSel/describeShape helpers present', html.includes("function cycleSel") && html.includes("function describeShape")],
   ['Tab cycles shape selection', html.includes("else if(k==='tab')") && html.includes("cycleSel(ids,")],
   ['toasts region is aria-live (SR announce)', html.includes('id="toasts"') && html.includes('aria-live="polite"')],
-  ['canvas aria-label is updated dynamically in pickTool', html.includes("tool+' — Drawing canvas. Tab/Shift+Tab cycles shapes,")],
+  ['canvas aria-label is updated dynamically in pickTool', html.includes("Drawing canvas. Tab/Shift+Tab cycles shapes,")],
   // v1.6.11: spatial index for pickTop
   ['spatial grid helpers present', html.includes("function _buildGrid") && html.includes("function _queryGrid")],
   ['pickTop uses grid for large boards', html.includes("state.shapes.length>40") && html.includes("_buildGrid(state.shapes)")],
@@ -230,6 +230,7 @@ const checks = [
   ['snapshot merge accepts only add ops (non-add ops rejected at merge path)', html.includes("op.op!=='add'||!op.shape")&&html.includes("byId(op.shape.id))continue")],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
+  ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
   ['service worker purges stale caches', html.includes("caches.keys()") && html.includes("k!==C")],
   // v1.6.20: fourth audit pass
   ['drawShape opacity uses nullish coalescing (opacity=0 invisible, not opaque)', html.includes('c.globalAlpha=s.opacity??1')],
@@ -266,7 +267,7 @@ const checks = [
   // v1.6.28: ungroup undo preserves per-shape groupId across multi-group ungroup
   ['doUngroup captures before snapshot', html.includes('before.push({id:s.id,groupId:s.groupId})')],
   ['ungroup backward uses before snapshot when available', html.includes('if(op.before){for(const b of op.before)')],
-  // v1.6.29: slider undo coalescing — single op per drag, not per input event
+  // v1.6.29: slider undo coalescing - single op per drag, not per input event
   ['slider before-capture helper _sfbCapture defined', html.includes('function _sfbCapture(p)')],
   ['slider flush helper _sfbFlush defined', html.includes('function _sfbFlush(p,v)')],
   ['size slider uses pointerdown/change for undo, not input', html.includes("_sfbCapture('size')") && html.includes("_sfbFlush('size'")],
@@ -307,11 +308,11 @@ const checks = [
   ['Escape key closes context menu before modal dismiss', html.includes("ctx2.dataset.open==='true'){UI.closeCtxMenu();return}")],
   // v1.6.38: context menu auto-focuses first item on open (keyboard a11y)
   ['context menu focuses first item on open', html.includes("m.querySelector('.ctx-item')?.focus()")],
-  // v1.6.39: console cleanup — no redundant console.warn/error in production paths
+  // v1.6.39: console cleanup - no redundant console.warn/error in production paths
   ['no console.warn in BroadcastChannel catch', !html.includes("console.warn('BroadcastChannel init failed'")],
   ['no console.error in save catch (user gets toast)', !html.includes("console.error('save failed'")],
   ['import parse failure shows invalidBoard toast (not silent)', html.includes("UI.toast(t('invalidBoard'),'err')")],
-  // v1.6.40: style panel a11y — decorative labels hidden, panel groups have role/aria-label
+  // v1.6.40: style panel a11y - decorative labels hidden, panel groups have role/aria-label
   ['style panel S/F labels are aria-hidden (decorative)', html.includes('<span class="sp-label" aria-hidden="true">S</span>') && html.includes('<span class="sp-label" aria-hidden="true">F</span>')],
   ['size and opacity groups have role=group', html.includes('role="group" aria-label="Size"') && html.includes('role="group" aria-label="Opacity"')],
   ['SW dead code removed: r|| before new Response is gone', !html.includes('return r||new Response')],
@@ -337,11 +338,11 @@ const checks = [
   ['custom stroke color picker present', html.includes('class="swatch cp" data-cp="stroke"')],
   ['custom fill color picker present', html.includes('class="swatch cp" data-cp="fill"')],
   ['custom color pickers route through applyStyleToSelection', html.includes("for(const cp of document.querySelectorAll('input.cp'))")],
-  // v1.6.57: flip H/V — reuses the align op, context menu + ⇧H/⇧V shortcut
+  // v1.6.57: flip H/V - reuses the align op, context menu + ⇧H/⇧V shortcut
   ['flip ctx labels in ja and en', html.includes("ctxFlipH:'左右反転'") && html.includes("ctxFlipH:'Flip horizontal'")],
   ['flip context-menu entries present', html.includes("['ctxFlipH','⇧H',()=>doFlip('h')]") && html.includes("['ctxFlipV','⇧V',()=>doFlip('v')]")],
   ['flip keyboard shortcut (⇧H/⇧V) guarded by selection', html.includes("(k==='h'||k==='v')&&state.selection.size){e.preventDefault();doFlip(k)}")],
-  // v1.6.58: rect/ellipse centre labels — dblclick to set, rendered centred, SVG export
+  // v1.6.58: rect/ellipse centre labels - dblclick to set, rendered centred, SVG export
   ['rect/ellipse label rendered centred in canvas', html.includes("(s.type==='rect'||s.type==='ellipse')&&s.label") && html.includes("c.textAlign='center'")],
   ['dblclick label editor handles rect and ellipse', html.includes("hit.type==='frame'||hit.type==='rect'||hit.type==='ellipse'") && html.includes("isFrame?'--brand':'--ink'")],
   ['SVG export emits label for rect', html.includes("if(s.label)els.push") && html.includes("text-anchor=\"middle\"")],
@@ -357,7 +358,7 @@ const checks = [
   ['lock/unlock ctx labels in ja and en', html.includes("ctxLock:'ロック'") && html.includes("ctxLock:'Lock'")],
   ['lock context-menu entry toggles label by locked state', html.includes("?'ctxUnlock':'ctxLock','',doLock")],
   ['locked selection drawn with dashed outline, no handles', html.includes("const lockedSel=sel.every(s=>s.locked)") && html.includes("if(lockedSel)return")],
-  // v1.6.60: bound connectors — arrow/line endpoints follow bound shapes
+  // v1.6.60: bound connectors - arrow/line endpoints follow bound shapes
   ['connEnds helper derives bound endpoints', html.includes("function connEnds") && html.includes("function _edgePt")],
   ['G.bbox line uses connEnds', html.includes("const e=connEnds(s);\n      const x=Math.min(e.x1,e.x2)")],
   ['G.hit line uses connEnds', html.includes("const e=connEnds(s);\n        return distToSeg")],
@@ -365,14 +366,14 @@ const checks = [
   ['endLineLike binds endpoints dropped on a shape', html.includes("const ba=_bindAt(d.x1,d.y1),bb=_bindAt(d.x2,d.y2)") && html.includes("function _bindAt")],
   ['bound endpoints expose no resize handle', html.includes("if(!s.a)h.push({id:'p1'") && html.includes("if(!s.b)h.push({id:'p2'")],
   ['SVG export derives bound endpoints', html.includes("const _e=connEnds(s);\n    const X1=_num(_e.x1)")],
-  // v1.6.61: rotation — shapes rotate on canvas, undo/redo, keyboard ,/.
+  // v1.6.61: rotation - shapes rotate on canvas, undo/redo, keyboard ,/.
   ['doRotate function exists', html.includes("function doRotate") && html.includes("op:'align',dir:'rotate'")],
   ['rotation applied in drawShape (save/restore)', html.includes("const _rot=s.rotate;") && html.includes("if(_rot)c.restore()")],
   ['G.hit applies inverse rotation', html.includes("if(s.rotate){const _cx=s.x+(s.w||0)/2") && html.includes("_r=-s.rotate*Math.PI/180")],
   ['G.bbox returns rotation envelope', html.includes("if(s.rotate){const _cx=_rb.x+_rb.w/2")],
   ['rotation keyboard shortcuts , and .', html.includes("k===','&&!meta&&state.selection.size") && html.includes("k==='.'&&!meta&&state.selection.size")],
   ['SVG export rotation transform', html.includes("rT=s.rotate?` transform=") && html.includes("rotate(${_num(s.rotate)}")],
-  // v1.6.61: shape search — Ctrl+F highlights matching shapes
+  // v1.6.61: shape search - Ctrl+F highlights matching shapes
   ['_sq search state variable', html.includes("let _sq='';")],
   ['search input DOM element created in wire()', html.includes("sq.id='sqinput'") && html.includes("sq.addEventListener('input'")],
   ['search highlight drawn in world space', html.includes("if(_sq){const q=_sq.toLowerCase()") && html.includes("ctx.strokeStyle='#F97316'")],
@@ -383,16 +384,16 @@ const checks = [
   ['search placeholder uses i18n t(search)', html.includes("sq.placeholder=t('search')")],
   ['rotate + search i18n keys in ja and en', html.includes("rotate:'回転 (15° / ノブdrag)',search:'検索'") && html.includes("rotate:'Rotate (15° / knob drag)',search:'Search'")],
   ['help grid lists rotate and search shortcuts', html.includes("[', / .',k.rotate],['⌘F',k.search]")],
-  // v1.6.63: Socratic round 3 — internal consistency + a11y
+  // v1.6.63: Socratic round 3 - internal consistency + a11y
   ['doFlip skips locked shapes (consistent with doRotate)', html.includes("function doFlip(axis){\n  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);")],
   ['doRotate orbits selection about group centre', html.includes("orbit about group centre, like doFlip") && html.includes("Shape.translate(s,nx-cx,ny-cy)")],
   ['search input has aria-label', html.includes("sq.setAttribute('aria-label',t('search'))")],
   ['search Escape returns focus to canvas', html.includes("invalidate();canvas.focus();}});}")],
-  // v1.6.64: Socratic round 4 — rotation scope + lock completeness
+  // v1.6.64: Socratic round 4 - rotation scope + lock completeness
   ['doRotate restricted to box shapes (s.w!=null, NaN-safe)', html.includes("filter(s=>s&&!s.locked&&s.w!=null)")],
   ['doDelete skips locked shapes', html.includes("function doDelete(){\n  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);")],
   ['eraser skips locked shapes', html.includes("if(hit&&!hit.locked&&!_eraseBatch.some")],
-  // v1.6.65: budget removed — deferred fixes implemented
+  // v1.6.65: budget removed - deferred fixes implemented
   ['_edgePt is rotation-aware (projects to true rotated edge)', html.includes("const ub=sh.w!=null?{x:sh.x,y:sh.y,w:sh.w,h:sh.h}:G.bbox(sh)") && html.includes("const cx=ub.x+ub.w/2,cy=ub.y+ub.h/2,rot=sh.rotate")],
   ['rotation extends to all box types (text bbox uses envelope)', !html.includes("if(s.type==='text'){\n      return{x:s.x,y:s.y,w:s.w,h:s.h};")],
   ['SVG rotation applies to text/image/sticky/frame', html.includes("font-size=\"${fs}\" fill=\"${stroke}\"${a}${rT}>") && html.includes("href=\"${_esc(s.dataUrl)}\"${a}${rT}/>")],
@@ -568,7 +569,7 @@ try {
   // ---- undo/redo coverage for ops lacking behavioral round-trip tests ----
   // The architecture's invariant: every op committed locally is reversible via
   // _apply(op,false). String-presence checks (see above) cannot catch logic regressions
-  // here — only these end-to-end assertions do.
+  // here - only these end-to-end assertions do.
 
   // clear undo: all shapes restored with original properties (frac, stroke, etc.)
   {
@@ -801,7 +802,7 @@ try {
   assert.strictEqual(state.shapes[0].x, mx0 + 5, 'well-formed remote move is applied');
   console.log('  ✓ applyRemote validates op payloads (move/upd) and applies valid move');
 
-  // §3-2: value-level payload guard — NaN/Infinity injection and prototype
+  // §3-2: value-level payload guard - NaN/Infinity injection and prototype
   // pollution via upd/style must be dropped (a finite shape must not vanish).
   {
     const x1 = state.shapes[0].x, sz0 = state.shapes[0].size;
@@ -821,7 +822,7 @@ try {
 
   // §3.17 follow-up: group/ungroup payload validation. A non-string gid would
   // corrupt _gmap Map keys, selection equality and the clone-remap, and now also
-  // flows through the LWW _chg comparison — so reject it at the validator.
+  // flows through the LWW _chg comparison - so reject it at the validator.
   {
     const gv = state.shapes[0].id;
     delete state.shapes[0].groupId;
@@ -1010,7 +1011,7 @@ try {
     state.selection=new Set([mg1.id,mg2.id,mg3.id,mg4.id]);
     doUngroup();
     assert.ok(!mg1.groupId && !mg2.groupId && !mg3.groupId && !mg4.groupId, 'all ungrouped');
-    // undo — shapes must return to their ORIGINAL groups
+    // undo - shapes must return to their ORIGINAL groups
     Store.undo();
     assert.strictEqual(mg1.groupId, gA, 'mg1 restored to group A');
     assert.strictEqual(mg2.groupId, gA, 'mg2 restored to group A');
@@ -1090,7 +1091,7 @@ try {
 
   // ---- property-based: op-log reversibility over random scenarios ----
   // Dependency-free PBT (no fast-check): seeded random op sequences asserting the
-  // v1.6.11: spatial index — _queryGrid must return all shapes that G.hit can match
+  // v1.6.11: spatial index - _queryGrid must return all shapes that G.hit can match
   {
     const rnd11 = (() => { let a = 0x11c0de;return () => { a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296; }; })();
     state.shapes.length = 0; state.history.length = 0; state.histIdx = -1; state.seq = 0; state.seenOps = new Set();
@@ -1124,7 +1125,7 @@ try {
     console.log('  ✓ spatial index: grid matches brute-force for 60-shape board, invalidation works');
   }
 
-  // v1.6.12: keyboard shape creation — each creation tool yields a default shape
+  // v1.6.12: keyboard shape creation - each creation tool yields a default shape
   {
     state.shapes.length = 0; state.history.length = 0; state.histIdx = -1; state.seq = 0; state.seenOps = new Set(); state.selection = new Set();
     state.viewport = { x: 0, y: 0, zoom: 1 };
@@ -1169,7 +1170,7 @@ try {
     console.log('  ✓ keyboard creation: all tools default-create, undoable, no-op for select/hand/eraser/pen');
   }
 
-  // v1.6.13: variable-width pen — slow (closely spaced) ink is thicker than fast (widely spaced)
+  // v1.6.13: variable-width pen - slow (closely spaced) ink is thicker than fast (widely spaced)
   {
     const size = 8, base = size, LO = 0.45;
     // Slow stroke: points 1wu apart. Fast stroke: points 200wu apart.
@@ -1205,7 +1206,7 @@ try {
     console.log('  ✓ variable-width pen: SVG export parity + non-finite coord safety');
   }
 
-  // v1.6.14: pointer pressure — a varying pressure signal drives width; constant/none falls back to velocity
+  // v1.6.14: pointer pressure - a varying pressure signal drives width; constant/none falls back to velocity
   {
     const size = 8, base = size, LO = 0.45;
     // Closely-spaced points (so velocity would say "thick everywhere"), but pressure ramps low→high.
@@ -1296,7 +1297,7 @@ try {
     console.log('  ✓ validShape: accepts sound shapes, rejects malformed pens that would crash render');
   }
 
-  // v1.6.18: getHandles — pen exposes no box handles (box-resize would NaN its x/y/w/h)
+  // v1.6.18: getHandles - pen exposes no box handles (box-resize would NaN its x/y/w/h)
   {
     assert.strictEqual(getHandles({type:'pen',pts:[[0,0],[10,10]],z:0}).length, 0, 'pen: no resize handles');
     assert.strictEqual(getHandles({type:'line',x1:0,y1:0,x2:5,y2:5,z:0}).length, 2, 'line: 2 endpoint handles');
@@ -1304,7 +1305,7 @@ try {
     console.log('  ✓ getHandles: pen move-only (0 handles), line=2 endpoints, rect=8 box');
   }
 
-  // v1.6.19: snapshot merge dedup — distinct clock seqs must all apply (the seq:0 bug)
+  // v1.6.19: snapshot merge dedup - distinct clock seqs must all apply (the seq:0 bug)
   {
     state.shapes.length = 0; state.history.length = 0; state.histIdx = -1; state.seenOps = new Set();
     const mk = (id, seq) => ({ op:'add', clock:{peer:'remote', seq},
@@ -1322,7 +1323,7 @@ try {
     console.log('  ✓ snapshot merge: distinct clock keys let every shape through dedup');
   }
 
-  // core invariant — apply N ops, undo all == initial; redo all == post-ops.
+  // core invariant - apply N ops, undo all == initial; redo all == post-ops.
   // This is the net to catch reversibility regressions like the old zorder bug.
   {
     const mulberry32 = (a) => () => { a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; };
@@ -1382,7 +1383,7 @@ try {
     assert.ok(pasted.length===2,'doPaste: two pasted shapes with new groupId');
     assert.ok(pasted[0].groupId===pasted[1].groupId,'doPaste: pasted shapes share new groupId');
     assert.ok(pasted[0].groupId!==origGid,'doPaste: new groupId differs from original');
-    console.log('  ✓ doPaste remaps groupId — pasted copies get fresh group identity');
+    console.log('  ✓ doPaste remaps groupId - pasted copies get fresh group identity');
   }
 
   // v1.6.38: snapV / snapPt grid-snap helpers (GRID_SIZE=20)
@@ -1435,7 +1436,7 @@ try {
     // simulate slider pointerdown → multiple input events → change (release)
     _sfbCapture('size');
     sh.size=8; // first drag tick
-    sh.size=12; // second drag tick — no history entries yet
+    sh.size=12; // second drag tick - no history entries yet
     _sfbFlush('size',12); // release: commits one style op
     assert.strictEqual(state.history.length,baseLen+1,'_sfbFlush: single history entry for whole drag');
     assert.strictEqual(state.history[state.history.length-1].op,'style','style op recorded');
@@ -1466,7 +1467,7 @@ try {
     console.log('  ✓ copyStyle/pasteStyle round-trip transfers all style props; undo reverts');
   }
 
-  // v1.6.39: handleCursor — correct CSS cursor for each resize handle
+  // v1.6.39: handleCursor - correct CSS cursor for each resize handle
   {
     assert.strictEqual(handleCursor('nw'),'nwse-resize','nw corner → nwse-resize');
     assert.strictEqual(handleCursor('se'),'nwse-resize','se corner → nwse-resize (same axis)');
@@ -1480,7 +1481,7 @@ try {
     console.log('  ✓ handleCursor: 8 resize handles map to correct CSS cursor, endpoints → crosshair');
   }
 
-  // v1.6.39: Store undo/redo boundary — undo at bottom and redo at top are no-ops
+  // v1.6.39: Store undo/redo boundary - undo at bottom and redo at top are no-ops
   {
     state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
     assert.strictEqual(Store.undo(),false,'undo on empty history returns false');
@@ -1494,22 +1495,22 @@ try {
     console.log('  ✓ Store.undo/redo return false at boundaries, no double-undo past floor');
   }
 
-  // G.hit — text (exact bbox, no tolerance)
+  // G.hit - text (exact bbox, no tolerance)
   assert.strictEqual(G.hit({type:'text',x:0,y:0,w:120,h:24,size:14},{x:60,y:12}),true,'text: interior hits');
   assert.strictEqual(G.hit({type:'text',x:0,y:0,w:120,h:24,size:14},{x:130,y:12}),false,'text: outside right misses');
-  // G.hit — frame (bbox + tolerance, same as sticky/image)
+  // G.hit - frame (bbox + tolerance, same as sticky/image)
   assert.strictEqual(G.hit({type:'frame',x:10,y:10,w:100,h:80,size:2},{x:60,y:50}),true,'frame: interior hits');
   assert.strictEqual(G.hit({type:'frame',x:10,y:10,w:100,h:80,size:2},{x:200,y:50}),false,'frame: far outside misses');
   console.log('  ✓ G.hit text and frame shapes');
 
-  // G.bbox — per-shape bounding box
+  // G.bbox - per-shape bounding box
   assert.deepStrictEqual(G.bbox({type:'rect',x:10,y:20,w:100,h:50}),{x:10,y:20,w:100,h:50},'bbox rect returns exact dims');
   assert.deepStrictEqual(G.bbox({type:'text',x:5,y:5,w:80,h:24}),{x:5,y:5,w:80,h:24},'bbox text returns exact dims');
   const lbx=G.bbox({type:'line',x1:0,y1:0,x2:60,y2:0,size:2});
   assert.ok(lbx.x<0&&lbx.w>60&&lbx.h>0,'bbox line expanded by size padding');
   const pbx=G.bbox({type:'pen',pts:[[10,20],[50,40]],size:4});
   assert.ok(pbx.x<10&&pbx.y<20&&pbx.x+pbx.w>50&&pbx.y+pbx.h>40,'bbox pen expands beyond all pts');
-  // G.bboxAll — union of multiple shapes
+  // G.bboxAll - union of multiple shapes
   assert.strictEqual(G.bboxAll([]),null,'bboxAll empty → null');
   const abx=G.bboxAll([{type:'rect',x:0,y:0,w:50,h:50},{type:'rect',x:60,y:10,w:40,h:30}]);
   assert.strictEqual(abx.x,0,'bboxAll union: left edge');
@@ -1518,7 +1519,7 @@ try {
   assert.strictEqual(abx.h,50,'bboxAll union: total height');
   console.log('  ✓ G.bbox rect/text/line/pen and G.bboxAll union');
 
-  // cycleSel — keyboard Tab cycling
+  // cycleSel - keyboard Tab cycling
   assert.strictEqual(cycleSel([],null,1),null,'cycleSel empty ids → null');
   assert.strictEqual(cycleSel(['a','b','c'],'a',1),'b','cycleSel forward from first');
   assert.strictEqual(cycleSel(['a','b','c'],'c',1),'a','cycleSel forward wraps to start');
@@ -1527,19 +1528,19 @@ try {
   assert.strictEqual(cycleSel(['a','b','c'],'x',-1),'c','cycleSel unknown cur + backward → last');
   console.log('  ✓ cycleSel: forward/backward/wrap/unknown-current');
 
-  // describeShape — SR shape announcement
+  // describeShape - SR shape announcement
   assert.ok(describeShape({type:'rect',x:10,y:20,w:100,h:50}).endsWith('@ 10,20'),'describeShape includes rounded position');
   assert.ok(describeShape({type:'rect',x:10,y:20,w:100,h:50}).length>5,'describeShape not empty');
   console.log('  ✓ describeShape: position suffix present');
 
-  // inView — frustum culling
+  // inView - frustum culling
   const vp0={x:0,y:0,w:800,h:600};
   assert.strictEqual(inView({type:'rect',x:100,y:100,w:200,h:150},vp0),true,'inView: shape within viewport');
   assert.strictEqual(inView({type:'rect',x:900,y:100,w:200,h:150},vp0),false,'inView: shape outside right edge');
   assert.strictEqual(inView({type:'rect',x:-300,y:100,w:200,h:150},vp0),false,'inView: shape outside left edge');
   console.log('  ✓ inView: culls off-screen shapes, passes on-screen');
 
-  // wrapText — pure text-wrapping function
+  // wrapText - pure text-wrapping function
   {
     const m=s=>s.length*10; // 10px per char
     // text shorter than maxWidth → single line, unchanged
@@ -1557,7 +1558,7 @@ try {
     console.log('  ✓ wrapText: no-wrap, newline, empty, null, word-wrap, char-break');
   }
 
-  // getHandles — ellipse/sticky use same box-handles as rect
+  // getHandles - ellipse/sticky use same box-handles as rect
   {
     const el=Shape.make('ellipse',{x:0,y:0,w:100,h:50});
     const eh=getHandles(el);
@@ -1571,7 +1572,7 @@ try {
     console.log('  ✓ getHandles ellipse/sticky: 8 box handles at correct positions');
   }
 
-  // applyResize — handle-drag updates shape dimensions
+  // applyResize - handle-drag updates shape dimensions
   {
     state.snap=false; // disable grid snap in test
     const orig={type:'rect',x:10,y:10,w:100,h:80};
@@ -1599,7 +1600,7 @@ try {
     console.log('  ✓ applyResize: se/nw expand + clamp, p1 endpoint drag');
   }
 
-  // penWidths — variable-width pen stroke
+  // penWidths - variable-width pen stroke
   {
     const w1=penWidths([[0,0]],4);
     assert.strictEqual(w1.length,1,'penWidths: output length = pts length');
@@ -1612,7 +1613,7 @@ try {
     console.log('  ✓ penWidths: length, single-pt full width, taper, pressure-scale');
   }
 
-  // _buildGrid + _queryGrid — spatial index
+  // _buildGrid + _queryGrid - spatial index
   {
     const s1=Shape.make('rect',{x:0,y:0,w:50,h:50});
     const s2=Shape.make('rect',{x:1000,y:1000,w:50,h:50});
@@ -1626,7 +1627,7 @@ try {
     console.log('  ✓ _buildGrid/_queryGrid: nearby found, far excluded, empty grid');
   }
 
-  // doGroup / doUngroup — grouping ops and full undo/redo round-trip
+  // doGroup / doUngroup - grouping ops and full undo/redo round-trip
   {
     state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
     const s1=Shape.make('rect',{x:0,y:0,w:50,h:50});
@@ -1664,7 +1665,7 @@ try {
     console.log('  ✓ doGroup/doUngroup: groupId assignment, undo/redo, whole-group ungroup');
   }
 
-  // pickTop — returns topmost (highest-z) shape at a world point
+  // pickTop - returns topmost (highest-z) shape at a world point
   // Note: unfilled rects only hit on their border; use fill or edge points.
   {
     state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
@@ -1683,7 +1684,7 @@ try {
     console.log('  ✓ pickTop: z-order wins, null miss, non-frame over frame, frame-only fallback');
   }
 
-  // sortZ — sorts shapes array by ascending z value
+  // sortZ - sorts shapes array by ascending z value
   {
     state.shapes=[];state.history=[];state.histIdx=-1;
     const a=Shape.make('rect',{x:0,y:0,w:10,h:10});a.z=3;
@@ -1697,7 +1698,7 @@ try {
     console.log('  ✓ sortZ: shapes sorted ascending by z value');
   }
 
-  // keyBetween — fractional index keys (ADR-0001 Step 1)
+  // keyBetween - fractional index keys (ADR-0001 Step 1)
   {
     // open ends
     assert.ok(keyBetween(null,null).length>0,'keyBetween(null,null) returns a key');
@@ -1750,7 +1751,7 @@ try {
     console.log('  ✓ frac canonical: keys assigned, ordered, and round-trip through zorder undo');
   }
 
-  // Step 2: zorder ops are minimal-delta — only moved shapes appear in `changes`
+  // Step 2: zorder ops are minimal-delta - only moved shapes appear in `changes`
   {
     state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();
     const mk=()=>{const s=Shape.make('rect',{x:0,y:0,w:10,h:10});Store.commit({op:'add',shape:s});return s;};
@@ -1783,7 +1784,7 @@ try {
     console.log('  ✓ zorder minimal-delta: single move = 1 change; multi keeps relative order; no-op at extremes');
   }
 
-  // Step 3: concurrent-reorder convergence — equal frac keys (two peers inserting
+  // Step 3: concurrent-reorder convergence - equal frac keys (two peers inserting
   // into the same gap) must resolve to ONE order on every peer, via shape id.
   {
     state.shapes=[];state.history=[];state.histIdx=-1;
@@ -1808,7 +1809,7 @@ try {
     assert.ok(!validRemotePayload({op:'zorder',changes:'nope'}),'non-array changes rejected');
     assert.ok(validRemotePayload({op:'zorder',after:[]}),'legacy snapshot format still accepted');
     assert.ok(validRemotePayload({op:'zorder',after:[{id:'a',z:1,frac:'Vz'}]}),'legacy with valid z+frac accepted');
-    // legacy path assigns sh.z=p.z and sh.frac=p.frac directly — malformed values corrupt the
+    // legacy path assigns sh.z=p.z and sh.frac=p.frac directly - malformed values corrupt the
     // ADR-0001 sort invariant. Guard them at the validator.
     assert.ok(!validRemotePayload({op:'zorder',after:[{id:'a',z:NaN}]}),'legacy with NaN z rejected (would corrupt sortZ)');
     assert.ok(!validRemotePayload({op:'zorder',after:[{id:'a',frac:{x:1}}]}),'legacy with object frac rejected (breaks ADR-0001 sort)');
@@ -1840,7 +1841,7 @@ try {
 
   // Re-snapshot after the sender's shape set changed must still merge new shapes.
   // Builds the snapshots via the real _snapshotMsg (as sender 'A'), then replays them
-  // into receiver 'B'. Index-based clock keys regressed this — Z (new, at the index a
+  // into receiver 'B'. Index-based clock keys regressed this - Z (new, at the index a
   // dropped shape vacated) would inherit a seen `A:snapN` and be silently dropped.
   {
     const mk=(id,x)=>({id,type:'rect',x,y:0,w:10,h:10,z:x,frac:null,stroke:'#000',size:2,opacity:1});
@@ -1860,7 +1861,7 @@ try {
   }
 
   // Snapshot merge path hardening: a malicious peer embedding non-add ops (e.g. clear)
-  // inside snapshot.ops must be rejected — only 'add' ops are legitimate in a snapshot.
+  // inside snapshot.ops must be rejected - only 'add' ops are legitimate in a snapshot.
   // _snapshotMsg() only emits add ops; accepting others here would let a hostile peer
   // clear/delete/update via the snapshot code path, bypassing any op-level suspicion.
   {
@@ -1911,7 +1912,7 @@ try {
     console.log('  ✓ legacy z-only board migrates to frac keys preserving order');
   }
 
-  // Shape.translate — moves shape coordinates per type
+  // Shape.translate - moves shape coordinates per type
   {
     const r=Shape.make('rect',{x:10,y:20,w:100,h:50});
     Shape.translate(r,5,10);
@@ -1930,7 +1931,7 @@ try {
     console.log('  ✓ Shape.translate: rect x/y, line x1y1/x2y2, pen pts all shifted');
   }
 
-  // G.marqueeHit — marquee fully contains shape's bbox
+  // G.marqueeHit - marquee fully contains shape's bbox
   {
     const s=Shape.make('rect',{x:20,y:20,w:60,h:40});
     assert.strictEqual(G.marqueeHit(s,{x:0,y:0,w:200,h:200}),true,'marqueeHit: shape fully inside marquee');
@@ -1939,7 +1940,7 @@ try {
     console.log('  ✓ G.marqueeHit: full containment passes, partial overlap fails');
   }
 
-  // Store move op — translates shapes, fully reversible
+  // Store move op - translates shapes, fully reversible
   {
     state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
     const smv=Shape.make('rect',{x:0,y:0,w:50,h:50});
@@ -1955,7 +1956,7 @@ try {
     console.log('  ✓ move op: translates coords and undo restores');
   }
 
-  // Store upd op — updates arbitrary fields, reversible
+  // Store upd op - updates arbitrary fields, reversible
   {
     state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
     const sup=Shape.make('rect',{x:0,y:0,w:50,h:50});sup.stroke='#000000';
@@ -1967,7 +1968,7 @@ try {
     console.log('  ✓ upd op: arbitrary field update + undo');
   }
 
-  // Store del op — removes shapes, fully reversible
+  // Store del op - removes shapes, fully reversible
   {
     state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
     const sd=Shape.make('rect',{x:0,y:0,w:50,h:50});
@@ -1980,7 +1981,7 @@ try {
     console.log('  ✓ del op: shape removed, undo restores');
   }
 
-  // Store clear op — removes all shapes, reversible
+  // Store clear op - removes all shapes, reversible
   {
     state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
     const sc1=Shape.make('rect',{x:0,y:0,w:50,h:50});
@@ -1993,7 +1994,7 @@ try {
     console.log('  ✓ clear op: all shapes cleared, undo restores both');
   }
 
-  // Store replace op — shared-link import is reversible (§3.9 self-overwrite guard)
+  // Store replace op - shared-link import is reversible (§3.9 self-overwrite guard)
   {
     state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();state.seq=0;state.seenOps=new Set();
     const own1=Shape.make('rect',{x:0,y:0,w:50,h:50});
@@ -2016,7 +2017,7 @@ try {
     console.log('  ✓ replace op: import swaps board, undo restores it, redo re-applies');
   }
 
-  // replace op is local-only — a remote peer must NOT be able to wipe your board
+  // replace op is local-only - a remote peer must NOT be able to wipe your board
   {
     state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();
     const keep=Shape.make('rect',{x:0,y:0,w:50,h:50});
@@ -2046,10 +2047,10 @@ try {
     assert.deepStrictEqual(state.shapes.map(s=>s.id),ibOrigIds,'importBoard: 1 undo fully restores original board');
     Store.redo();
     assert.strictEqual(state.shapes[0].type,'arrow','importBoard: redo re-applies import');
-    console.log('  ✓ importBoard(fix): atomic replace op — 1 Ctrl+Z restores board, not N+1');
+    console.log('  ✓ importBoard(fix): atomic replace op - 1 Ctrl+Z restores board, not N+1');
   }
 
-  // add op is idempotent on shape id — closes a snapshot/live-add duplication race.
+  // add op is idempotent on shape id - closes a snapshot/live-add duplication race.
   // _applySnapshot sets state.shapes directly but does NOT populate seenOps, so if a
   // live add for an already-held shape arrives after the snapshot, the un-deduped add
   // must not push a second copy.
@@ -2062,7 +2063,7 @@ try {
     Store.applyRemote({op:'add',shape:JSON.parse(JSON.stringify(X)),clock:{peer:'A',seq:5,ts:1}});
     assert.strictEqual(state.shapes.filter(s=>s.id===X.id).length,1,'add idempotent: no duplicate after snapshot+live-add race');
     assert.strictEqual(state.shapes.length,1,'add idempotent: shape count stays 1');
-    console.log('  ✓ add op idempotent on shape id — snapshot/live-add race yields no duplicate');
+    console.log('  ✓ add op idempotent on shape id - snapshot/live-add race yields no duplicate');
   }
 
   // validClock: a malformed-ts remote op is rejected so it can't poison wclock.
@@ -2084,7 +2085,7 @@ try {
     state.wclock={};state.shapes.find(s=>s.id===cx.id).stroke='#000';
     Store.applyRemote({op:'upd',id:cx.id,before:{stroke:'#000'},after:{stroke:'red'},clock:{peer:'e2',seq:1,ts:Infinity}});
     assert.strictEqual(state.shapes.find(s=>s.id===cx.id).stroke,'#000','Infinity-ts upd rejected');
-    console.log('  ✓ validClock: malformed-ts remote op rejected — no wclock poisoning (denial-of-edit)');
+    console.log('  ✓ validClock: malformed-ts remote op rejected - no wclock poisoning (denial-of-edit)');
   }
 
   // nowTs monotonic floor: a BACKWARDS wall clock must not let a peer's own newer edit
@@ -2108,16 +2109,32 @@ try {
       const c2=state.history[state.history.length-1].clock;
       assert.strictEqual(c2.ts,1000,'nowTs clamps regressed ts up to the prior floor (not 990)');
       assert.ok(c2.seq>c1.seq,'second edit has the higher seq');
-      assert.strictEqual(clockNewer(c2,c1),true,'peer’s newer edit wins despite backwards wall clock');
+      assert.strictEqual(clockNewer(c2,c1),true,"peer's newer edit wins despite backwards wall clock");
     }finally{Date.now=realNow}
     // Remote-ts floor: a local edit after observing a higher remote ts gets ts >= it.
     state._lastTs=0;
     Store.applyRemote({op:'upd',id:'zzz',before:{},after:{},clock:{peer:'R',seq:1,ts:5000}});
     assert.ok(nowTs()>=5000,'local clock floor rises to observed remote ts (HLC-lite)');
-    console.log('  ✓ nowTs: monotonic clock floor — backwards wall clock can’t make a peer lose to itself');
+    console.log('  ✓ nowTs: monotonic clock floor - backwards wall clock cannot make a peer lose to itself');
   }
 
-  // v1.6.55: doAlign remaining variants — right, bottom, cx, cy
+  // uid() uses crypto.randomUUID → 122-bit entropy.
+  // Old Math.random().toString(36).slice(2,10) gives ~41 bits; birthday collision at 1M
+  // shapes reaches p≈23% (old V8 32-bit engine: 100%). crypto.randomUUID is safe.
+  {
+    const ids=new Set();
+    for(let i=0;i<5000;i++)ids.add(Shape.make('rect',{x:0,y:0,w:1,h:1}).id);
+    assert.strictEqual(ids.size,5000,'uid: 5000 consecutive uids are all unique');
+    const sample=[...ids][0];
+    // UUID v4 with dashes stripped: 32 hex chars
+    assert.ok(/^[0-9a-f]{32}$/.test(sample)||sample.length>=12,
+      'uid: id matches crypto.randomUUID (32 hex) or fallback (>=12 chars)');
+    // Clean up; don't leave 5000 shapes in state
+    state.shapes=[];
+    console.log('  ✓ uid(): crypto.randomUUID gives 122-bit ids - 5000 uids all unique');
+  }
+
+  // v1.6.55: doAlign remaining variants - right, bottom, cx, cy
   {
     // right: all right edges align to rightmost
     state.shapes.length=0; state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
@@ -2158,7 +2175,7 @@ try {
     console.log('  ✓ doAlign("cy") aligns all shapes to vertical center of union');
   }
 
-  // v1.6.55: G.hit ellipse — filled interior vs boundary (unfilled edge)
+  // v1.6.55: G.hit ellipse - filled interior vs boundary (unfilled edge)
   {
     // Ellipse: x=0,y=0,w=100,h=80 → cx=50,cy=40,rx=50,ry=40
     const elf={type:'ellipse',x:0,y:0,w:100,h:80,fill:'#f00',size:2}; // filled
@@ -2173,7 +2190,7 @@ try {
     console.log('  ✓ G.hit ellipse: filled interior + exterior, unfilled boundary vs interior');
   }
 
-  // v1.6.55: Store.applyRemote del op — remote peer can delete a local shape
+  // v1.6.55: Store.applyRemote del op - remote peer can delete a local shape
   {
     state.shapes.length=0; state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
     const rd=Shape.make('rect',{x:0,y:0,w:10,h:10});
@@ -2184,7 +2201,7 @@ try {
     console.log('  ✓ Store.applyRemote del op removes the targeted shape');
   }
 
-  // v1.6.57: doFlip — mirror selection across its bbox centre, reversible via align op
+  // v1.6.57: doFlip - mirror selection across its bbox centre, reversible via align op
   {
     state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
     // two boxes: left [0,40], right [120,160] → bbox x 0..160, centre cx=80
@@ -2351,7 +2368,7 @@ try {
     const tgt={id:'rt',type:'rect',z:1,x:200,y:0,w:80,h:80,stroke:'#000',size:1,opacity:1};
     const me={id:'rm',type:'rect',z:2,x:0,y:0,w:100,h:100,stroke:'#000',size:1,opacity:1};
     state.shapes=[tgt,me];
-    // drag the east edge to x=195 — within 8px of the target's left edge (200) → snaps
+    // drag the east edge to x=195 - within 8px of the target's left edge (200) → snaps
     const s1=resizeSnap(me,'e',{x:195,y:50});
     assert.strictEqual(s1.x,200,'east-resize snaps right edge to the nearby target left edge');
     assert.ok(s1.guides.length===1,'a vertical alignment guide is emitted on snap');
@@ -2548,7 +2565,7 @@ try {
     console.log('  ✓ SVG export: rect label rendered with text-anchor, escaped');
   }
 
-  // v1.6.59: shape lock — locked shapes resist move/resize, toggle is reversible
+  // v1.6.59: shape lock - locked shapes resist move/resize, toggle is reversible
   {
     state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
     const lk=Shape.make('rect',{x:10,y:10,w:50,h:50});
@@ -2576,7 +2593,7 @@ try {
     console.log('  ✓ shape lock: toggle locked, no handles when locked, undo/redo, empty no-op');
   }
 
-  // v1.6.60: bound connectors — arrow endpoints derive from bound shapes and follow them
+  // v1.6.60: bound connectors - arrow endpoints derive from bound shapes and follow them
   {
     state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
     const box=Shape.make('rect',{x:100,y:100,w:80,h:60});   // centre (140,130), edges x∈[100,180]
@@ -2643,7 +2660,7 @@ try {
   }
 
   // ---- two-peer convergence harness (§3.14) -----------------------------------
-  // The single-world harness above cannot observe sync bugs — they need >=2 peers.
+  // The single-world harness above cannot observe sync bugs - they need >=2 peers.
   // Build a second independent world (eval the script again) and wire the transports
   // so convergence is asserted, not assumed. This harness would have caught all three
   // of this session's sync fixes (validPatch nesting, WebRTC ops-missing, snapshot
@@ -2685,7 +2702,7 @@ try {
 
     // §3.15 → ADR-0002: concurrent edits to the SAME property now CONVERGE via
     // per-property LWW (deterministic total order: ts, peer, seq). Both peers commit
-    // offline, buffer, then exchange — and must agree on the winner (was: diverged).
+    // offline, buffer, then exchange - and must agree on the winner (was: diverged).
     const conflict = (tsA, tsB) => {
       reset(A); reset(B);
       const cX = {id:'cX',type:'rect',x:0,y:0,w:10,h:10,z:1,frac:null,stroke:'#000',size:2,opacity:1};
@@ -2727,7 +2744,7 @@ try {
 
     // wclock hygiene: a late remote upd for a DELETED shape must not leave a stale
     // wclock entry. A deletes dX; B (hadn't seen the delete) recolors dX concurrently.
-    // On A the recolor no-ops (shape gone) — but it must NOT resurrect a wclock[dX].
+    // On A the recolor no-ops (shape gone) - but it must NOT resurrect a wclock[dX].
     // Without the byId guard in _stampWrites this entry leaks unbounded over a session.
     A.Store.commit({op:'del', shapes:[cp(A.state.shapes.find(s=>s.id==='dX'))]});
     assert.ok(!A.state.shapes.some(s=>s.id==='dX'), 'wclock hygiene: dX deleted on A');
@@ -2736,7 +2753,7 @@ try {
     assert.strictEqual(A.state.wclock['dX'], undefined, 'wclock hygiene: late upd for deleted shape leaves NO stale wclock entry');
     console.log('  ✓ two-peer LWW: late upd for a deleted shape leaks no wclock entry (_stampWrites byId guard)');
 
-    // §3.16: but concurrent MOVES of the same shape CONVERGE — move is a delta
+    // §3.16: but concurrent MOVES of the same shape CONVERGE - move is a delta
     // (Shape.translate adds dx,dy), and translation commutes, so receipt order is
     // irrelevant. Whether an edit converges is decided by delta-vs-absolute op
     // encoding, NOT by a sync algorithm. This is the commutative-op counterexample to
@@ -2754,7 +2771,7 @@ try {
     assert.strictEqual(A_mX.x, B_mX.x, 'commute: A and B agree on x after concurrent moves');
     assert.strictEqual(A_mX.y, B_mX.y, 'commute: A and B agree on y after concurrent moves');
     assert.ok(A_mX.x===10 && A_mX.y===5, 'commute: both deltas applied (sum), order-independent');
-    console.log('  ✓ two-peer commute: concurrent MOVES converge (delta ops commute) — §3.16');
+    console.log('  ✓ two-peer commute: concurrent MOVES converge (delta ops commute) - §3.16');
 
     // resize/align now LWW too (ADR-0002 follow-up): whole-shape snapshot ops gate/stamp
     // only the keys they actually changed (diff before/after). (i) concurrent resize of
@@ -2772,7 +2789,7 @@ try {
     assert.strictEqual(Ar.w, Br.w, 'resize LWW: A and B agree on width');
     assert.strictEqual(Ar.w, 99, 'resize LWW: newer writer (B) wins');
 
-    // (ii) a resize and a recolor of the SAME shape, concurrently, must BOTH survive —
+    // (ii) a resize and a recolor of the SAME shape, concurrently, must BOTH survive -
     // the snapshot resize must not clobber stroke, which it never touched.
     reset(A); reset(B);
     A.state.shapes.push(cp(rX)); B.state.shapes.push(cp(rX)); A.sortZ(); B.sortZ();
@@ -2791,10 +2808,10 @@ try {
     assert.ok(Ar2.w===55 && Ar2.stroke==='purple', 'resize×recolor: BOTH survive (newer snapshot did not clobber stroke)');
     console.log('  ✓ two-peer LWW: resize converges + resize×recolor both survive (changed-key gating)');
 
-    // §3.17: concurrent GROUP ops with an overlapping shape — the contested shape must
+    // §3.17: concurrent GROUP ops with an overlapping shape - the contested shape must
     // land in exactly one group (LWW on groupId), while disjoint members keep their own
     // groups. group/ungroup are absolute-assignment ops (groupId = gid), non-commutative,
-    // so they share the same divergence risk as `upd stroke` — and are now covered by LWW.
+    // so they share the same divergence risk as `upd stroke` - and are now covered by LWW.
     reset(A); reset(B);
     A.Net.broadcast = op => B.Net._onRecv({k:'op',op:cp(op)});
     B.Net.broadcast = op => A.Net._onRecv({k:'op',op:cp(op)});
@@ -2825,14 +2842,14 @@ try {
     // gs3 uncontested (only B touched it) → GB on both
     assert.strictEqual(Ags3.groupId, Bgs3.groupId, 'group LWW: disjoint member gs3 agrees');
     assert.strictEqual(Ags3.groupId, 'GB', 'group LWW: gs3 keeps GB (A never claimed it)');
-    // gs2 contested — B newer (ts:2000 > ts:1000) → GB on both
+    // gs2 contested - B newer (ts:2000 > ts:1000) → GB on both
     assert.strictEqual(Ags2.groupId, Bgs2.groupId, 'group LWW: contested shape gs2 agrees');
     assert.strictEqual(Ags2.groupId, 'GB', 'group LWW: newer writer (B) wins contested shape gs2');
-    console.log('  ✓ two-peer LWW: concurrent GROUP ops converge — contested shape yields to newer writer (§3.17)');
+    console.log('  ✓ two-peer LWW: concurrent GROUP ops converge - contested shape yields to newer writer (§3.17)');
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 337; // prev 333 + nowTs monotonic clock floor (4 asserts)
+  pass += 339; // prev 337 + uid crypto.randomUUID uniqueness (2 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
