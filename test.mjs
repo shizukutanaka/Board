@@ -430,6 +430,7 @@ const checks = [
   ['drag-drop image import has img.onerror toast', html.includes("img.onerror=()=>UI.toast(t('imgErr'),'warn');") ],
   ['drag-drop image import has reader.onerror toast', html.includes("reader.onerror=()=>UI.toast(t('imgErr'),'warn');\n    reader.readAsDataURL(f);")],
   ['context menu deduplicates consecutive separators', html.includes(".filter((it,i,a)=>!(it==='sep'&&(i===0||i===a.length-1||a[i-1]==='sep')))")],
+  ['doDuplicate does not clobber clipboard (uses _placeCopies, not state.clipboard=)', html.includes("const added=_placeCopies(sel);   // independent of state.clipboard") && html.includes("function _placeCopies(srcShapes)")],
 ];
 
 let pass = 0, fail = 0;
@@ -524,7 +525,7 @@ try {
              doBringFront, doSendBack, doBringForward, doSendBackward,
              doAlign, doFlip, snapV, snapPt,
              getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
-             doGroup, doUngroup, doPaste, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
+             doGroup, doUngroup, doPaste, doDuplicate, doCopy, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs };
@@ -538,7 +539,7 @@ try {
           doBringFront, doSendBack, doBringForward, doSendBackward,
           doAlign, doFlip, snapV, snapPt,
           getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
-          doGroup, doUngroup, doPaste, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
+          doGroup, doUngroup, doPaste, doDuplicate, doCopy, pickTop, buildSVG, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs } = api;
@@ -1419,6 +1420,40 @@ try {
     assert.strictEqual(top.type,'rect','paste z-order: pasted copy is on top of z-order');
     assert.ok(top.frac>state.shapes.find(s=>s.id===pc.id).frac,'paste z-order: pasted frac > previous top frac');
     console.log('  ✓ doPaste: pasted shapes land on top of z-order (not at original frac)');
+  }
+
+  // v1.6.71: doDuplicate must NOT clobber the copy/paste clipboard.
+  // Regression: doDuplicate used to do state.clipboard={shapes:...} then doPaste(),
+  // destroying whatever the user had copied. Fix: _placeCopies takes shapes directly,
+  // so duplicate routes around state.clipboard. Non-vacuity: assert clipboard identity
+  // is preserved through a duplicate, AND that duplicate still actually adds a copy.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const ca=Shape.make('rect',{x:0,y:0,w:30,h:30,stroke:'#AAA'});
+    const cb=Shape.make('ellipse',{x:100,y:0,w:30,h:30,stroke:'#BBB'});
+    Store.commit({op:'add',shape:ca});Store.commit({op:'add',shape:cb});
+    // user copies shape A
+    state.selection=new Set([ca.id]);
+    doCopy();
+    assert.strictEqual(state.clipboard.shapes.length,1,'copy: clipboard holds 1 shape');
+    assert.strictEqual(state.clipboard.shapes[0].stroke,'#AAA','copy: clipboard holds shape A');
+    const nBefore=state.shapes.length;
+    // user selects shape B and duplicates it
+    state.selection=new Set([cb.id]);
+    doDuplicate();
+    // duplicate added exactly one copy of B
+    assert.strictEqual(state.shapes.length,nBefore+1,'duplicate: one new shape added');
+    const dup=state.shapes[state.shapes.length-1];
+    assert.strictEqual(dup.stroke,'#BBB','duplicate: the copy is of shape B (the selection)');
+    // KEY ASSERTION: the copy/paste clipboard still holds shape A, untouched by duplicate
+    assert.strictEqual(state.clipboard.shapes.length,1,'duplicate did not grow/replace clipboard');
+    assert.strictEqual(state.clipboard.shapes[0].stroke,'#AAA','duplicate preserved clipboard = shape A (not B)');
+    // and a subsequent paste pastes A, not B
+    const nBeforePaste=state.shapes.length;
+    doPaste();
+    assert.strictEqual(state.shapes.length,nBeforePaste+1,'paste after duplicate: one shape pasted');
+    assert.strictEqual(state.shapes[state.shapes.length-1].stroke,'#AAA','paste after duplicate pastes A (clipboard intact)');
+    console.log('  ✓ doDuplicate: independent of clipboard - Copy A / Duplicate B / Paste still yields A');
   }
 
   // v1.6.38: snapV / snapPt grid-snap helpers (GRID_SIZE=20)
@@ -2939,7 +2974,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 345; // prev 339 + sep dedup (6 asserts)
+  pass += 357; // prev 345 + doDuplicate clipboard independence (12 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

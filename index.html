@@ -2770,10 +2770,21 @@ function doCopy(){
 }
 function doPaste(){
   if(!state.clipboard)return;
+  const added=_placeCopies(state.clipboard.shapes);
+  // offset next paste a bit more so repeated Ctrl+V cascades
+  const offset=20/state.viewport.zoom;
+  for(const s of state.clipboard.shapes)Shape.translate(s,offset,offset);
+  UI.toast(t('pasted')+' '+added.length);
+}
+// Clone a set of shapes onto the board with fresh ids/group ids, offset slightly,
+// and select the copies. Shared by paste (clipboard source) and duplicate (selection
+// source). Duplicate must NOT route through state.clipboard — doing so would clobber
+// the user's copy/paste buffer (Copy A, select B, Ctrl+D → Ctrl+V wrongly pastes B).
+function _placeCopies(srcShapes){
   const offset=20/state.viewport.zoom;
   const added=[];
   const gidMap=new Map();
-  for(const orig of state.clipboard.shapes){
+  for(const orig of srcShapes){
     const sh=clone(orig);
     sh.id=uid();sh.z=nextZ();delete sh.frac;
     if(sh.groupId){
@@ -2784,19 +2795,16 @@ function doPaste(){
     Store.commit({op:'add',shape:sh});
     added.push(sh.id);
   }
-  // offset next paste a bit more
-  for(const s of state.clipboard.shapes){
-    Shape.translate(s,offset,offset);
-  }
   state.selection=new Set(added);
   invalidate();
-  UI.toast(t('pasted')+' '+added.length);
+  return added;
 }
 function doDuplicate(){
   if(!state.selection.size)return;
   const sel=[...state.selection].map(byId).filter(Boolean);
-  state.clipboard={shapes:clone(sel)};
-  doPaste();
+  if(!sel.length)return;
+  const added=_placeCopies(sel);   // independent of state.clipboard (see _placeCopies)
+  UI.toast(t('pasted')+' '+added.length);
 }
 function doDelete(){
   const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);
