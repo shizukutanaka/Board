@@ -1531,6 +1531,18 @@ function drawGrid(W,H){
 // reachable via a remote `upd` — doRotate is box-only) is ignored. Keeps canvas and
 // SVG export in agreement (表示=出力パリティ) and avoids a NaN rotation centre.
 function shapeRot(s){return s.rotate&&s.w!=null?s.rotate:0;}
+// Centred label for rect/ellipse (frames draw their own corner label). Mirrors the
+// SVG export's <text> so a label added via double-click is visible on canvas too —
+// otherwise it's stored/exported but invisible while editing (表示=出力パリティ).
+function _drawBoxLabel(s,c){
+  if(!s.label)return;
+  c.save();
+  c.fillStyle=s.stroke||'#0F172A';
+  c.font='14px system-ui,sans-serif';
+  c.textAlign='center';c.textBaseline='middle';
+  c.fillText(s.label,s.x+s.w/2,s.y+s.h/2);
+  c.restore();
+}
 function drawShape(s,c){
   c=c||ctx;
   c.globalAlpha=s.opacity??1;
@@ -1546,12 +1558,14 @@ function drawShape(s,c){
       c.beginPath();
       roundRect(c,s.x,s.y,s.w,s.h,Math.min(8,Math.abs(s.w)/4,Math.abs(s.h)/4));
       if(s.fill){c.fill()}
-      if(s.stroke){c.stroke()}break;
+      if(s.stroke){c.stroke()}
+      _drawBoxLabel(s,c);break;
     case 'ellipse':
       c.beginPath();
       c.ellipse(s.x+s.w/2,s.y+s.h/2,Math.abs(s.w/2),Math.abs(s.h/2),0,0,PI2);
       if(s.fill){c.fill()}
-      if(s.stroke){c.stroke()}break;
+      if(s.stroke){c.stroke()}
+      _drawBoxLabel(s,c);break;
     case 'line':{
       const e=connEnds(s);c.beginPath();c.moveTo(e.x1,e.y1);c.lineTo(e.x2,e.y2);c.stroke();break;}
     case 'arrow':

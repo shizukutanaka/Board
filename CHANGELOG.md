@@ -16,6 +16,15 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
   丸め後も `validShape` を満たす、シリアライズ後のサイズが実際に縮むことを担保。
 
 ### Fixed
+- **矩形/楕円のラベルが canvas に描画されず SVG エクスポートにだけ現れていた(表示=出力パリティ違反)**:
+  ダブルクリックハンドラは frame だけでなく rect/ellipse にもラベル付与を許可し、`buildSVG` は
+  rect/ellipse のラベルを `<text>` で出力するが、canvas の `drawShape` の rect/ellipse 分岐は
+  `s.label` を**全く描画していなかった**。結果、矩形をダブルクリックしてラベルを入力・コミットしても
+  **canvas 上では不可視**で、SVG 書き出し時にのみ出現していた。SVG の `<text>`(中央寄せ・14px・
+  stroke 色)に合わせた `_drawBoxLabel(s,c)` を追加し rect/ellipse 分岐から呼び出し。回転ラッパー内で
+  呼ぶのでラベルも図形と一緒に回転(SVG の rT と一致)。**非空虚テスト**(3 presence + 5 アサート):
+  ラベル付き rect/ellipse が SVG に label テキストと `<text>` を出力、ラベル無しは `<text>` を出さない、
+  敵対的ラベル(`</text><script>`)が `_esc` でエスケープされる(XSS 安全)ことを担保。
 - **共同編集で新規テキスト/付箋の入力内容が他ピアに同期されていなかった(コード監査)**: `beginText` /
   付箋作成は `text:''` で add op を**即コミット=即ブロードキャスト**し、その後エディタで入力する。
   入力確定(blur)の非空文字列分岐はローカルの履歴 op を in-place で書き換えるだけで**入力テキストを

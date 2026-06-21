@@ -496,6 +496,10 @@ const checks = [
   ['_syncTextFinalize present (broadcast-only finalize op)', html.includes("function _syncTextFinalize(s,before,deleted)")],
   ['text editor finalize syncs typed content (non-empty isNew)', html.includes("_syncTextFinalize(s,origText,false);")],
   ['text editor finalize syncs removal (empty isNew)', html.includes("_syncTextFinalize(s,origText,true);")],
+  // v1.6.88: rect/ellipse labels render on canvas (parity with SVG export + dblclick feature)
+  ['_drawBoxLabel helper present', html.includes("function _drawBoxLabel(s,c)") && html.includes("c.fillText(s.label,s.x+s.w/2,s.y+s.h/2)")],
+  ['rect case renders label', html.includes("if(s.stroke){c.stroke()}\n      _drawBoxLabel(s,c);break;\n    case 'ellipse':")],
+  ['ellipse case renders label', /case 'ellipse':[\s\S]{0,200}_drawBoxLabel\(s,c\);break;/.test(html)],
 ];
 
 let pass = 0, fail = 0;
@@ -3539,8 +3543,25 @@ try {
     console.log('  ✓ drop cascade: per-iteration index capture avoids async shared-counter stacking');
   }
 
+  // v1.6.88: rect/ellipse labels must appear in BOTH canvas and SVG (parity). The canvas
+  // side is verified by presence (fake ctx records nothing); here we lock in the export
+  // side and the no-label case so the two paths can't silently drift apart again.
+  {
+    const rectLabeled = buildSVG([{id:'r',type:'rect',x:0,y:0,w:80,h:40,label:'Hello',stroke:'#000',size:1,opacity:1}], '#fff');
+    const ellLabeled  = buildSVG([{id:'e',type:'ellipse',x:0,y:0,w:80,h:40,label:'World',stroke:'#000',size:1,opacity:1}], '#fff');
+    const rectPlain   = buildSVG([{id:'r2',type:'rect',x:0,y:0,w:80,h:40,stroke:'#000',size:1,opacity:1}], '#fff');
+    assert.ok(rectLabeled.includes('>Hello<'), 'SVG: labeled rect emits its label text');
+    assert.ok(ellLabeled.includes('>World<'), 'SVG: labeled ellipse emits its label text');
+    assert.ok(/<text/.test(rectLabeled), 'SVG: labeled rect emits a <text> node');
+    assert.ok(!/<text/.test(rectPlain), 'SVG: rect without a label emits no <text> node');
+    // The label text is escaped (XSS-safe) — exercise the shared _esc path on a hostile label
+    const evil = buildSVG([{id:'x',type:'rect',x:0,y:0,w:80,h:40,label:'</text><script>',stroke:'#000',size:1,opacity:1}], '#fff');
+    assert.ok(!evil.includes('<script>'), 'SVG: rect label is escaped (no raw markup injection)');
+    console.log('  ✓ rect/ellipse labels: rendered on canvas (_drawBoxLabel) + escaped in SVG (parity)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 496; // prev 488 + two-peer text finalize sync (8 asserts)
+  pass += 501; // prev 496 + rect/ellipse label parity (5 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
