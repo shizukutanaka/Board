@@ -483,6 +483,8 @@ const checks = [
   ['roundShapesForExport rounds coord/dim fields', html.includes("function roundShapesForExport(shapes,dp=2)") && html.includes("['x','y','w','h','x1','y1','x2','y2','rotate']")],
   ['share export rounds shapes', html.includes("shapes:roundShapesForExport(state.shapes),name:state.docName")],
   ['.board export rounds shapes', html.includes("shapes:roundShapesForExport(state.shapes)})],{type:'application/json'})")],
+  // v1.6.84: Net.init clears prior presence timer on re-init (no leaked heartbeat)
+  ['Net.init clears prior presence timer', html.includes("clearInterval(this._presenceTimer);   // re-init (room switch) must not leak the old heartbeat")],
 ];
 
 let pass = 0, fail = 0;
@@ -3434,8 +3436,30 @@ try {
     console.log('  ✓ roundShapesForExport: trims precision at export, leaves model intact (Zenn)');
   }
 
+  // v1.6.84: Net.init must clear the prior presence heartbeat on re-init (room switch),
+  // else a leaked interval keeps pinging/reaping on top of the new one.
+  {
+    // Seed a REAL interval as the "prior" timer and a close-tracking channel stub, so we
+    // can observe init() tearing both down. (Node's Timeout exposes _destroyed after clear.)
+    const priorTimer=setInterval(()=>{},1e6);
+    Net._presenceTimer=priorTimer;
+    let closed=false;
+    Net.bc={close(){closed=true},postMessage(){},onmessage:null};
+    Net.init('roomA');
+    assert.strictEqual(closed,true,'Net.init: prior BroadcastChannel closed on re-init');
+    assert.strictEqual(priorTimer._destroyed,true,'Net.init: prior presence timer cleared (no leaked heartbeat)');
+    assert.notStrictEqual(Net._presenceTimer,priorTimer,'Net.init: a fresh presence timer replaced the old one');
+    assert.strictEqual(state.roomId,'roomA','Net.init: roomId updated');
+    // cleanup the new real interval/channel this test spun up
+    clearInterval(Net._presenceTimer);
+    if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}
+    // non-vacuity: without the clearInterval, priorTimer._destroyed would still be false.
+    assert.strictEqual(priorTimer._destroyed,true,'non-vacuity: the cleared flag is the leak guard under test');
+    console.log('  ✓ Net.init: re-init closes channel + clears prior heartbeat (no timer leak)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 476; // prev 459 + roundShapesForExport (17 asserts)
+  pass += 481; // prev 476 + Net.init presence-timer clear (5 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

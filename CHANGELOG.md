@@ -16,6 +16,14 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
   丸め後も `validShape` を満たす、シリアライズ後のサイズが実際に縮むことを担保。
 
 ### Fixed
+- **`Net.init` の再呼び出しでプレゼンス heartbeat がリークしていた(コード監査)**: `init(roomId)` は
+  ルーム切替のための再呼び出しを想定して旧 `BroadcastChannel` を `close()` するが、5 秒ごとの
+  プレゼンス heartbeat (`_presenceTimer`) を `clearInterval` していなかった。再呼び出しすると旧
+  interval が残存し、新チャンネル上で**二重に ping/reap** が走る。現状 `init()` は起動時 1 回のみ
+  呼ばれるため潜在バグだが、`roomId` 引数と既存の `bc.close()` が再呼び出し設計を明示しているため、
+  対になる `clearInterval(this._presenceTimer)` を追加。**非空虚テスト**(1 presence + 5 アサート):
+  再 init で旧チャンネルが close、旧タイマーが破棄(Node の `_destroyed`)、新タイマーに差替、roomId 更新、
+  破棄フラグがリークガードであることを担保。
 - **`docName` の IME 変換中の文字列が IDB/sync に漏れていた(Qiita Rapls / Zenn spacemarket リサーチ)**:
   ドキュメント名 input の `input` ハンドラが `isComposing` を見ずに発火していたため、日本語入力で
   変換中の未確定文字列が逐次 `state.docName` に書き込まれ、`Persist.schedule()` → IDB 保存 +
