@@ -474,6 +474,10 @@ const checks = [
   // v1.6.81: wheel deltaMode normalization (Firefox line-mode parity with Chrome pixels)
   ['wheelPx normalizes deltaMode to pixels', html.includes("function wheelPx(e)") && html.includes("e.deltaMode===1?16:e.deltaMode===2?400:1")],
   ['wheel handler routes through wheelPx', html.includes("const d=wheelPx(e);") && html.includes("zoomAt({x:e.offsetX,y:e.offsetY},-d.y*0.005)")],
+  // v1.6.82: IME-safe docName live update (Qiita Rapls / Zenn spacemarket)
+  ['imeShouldCommit helper present', html.includes("function imeShouldCommit(e){return !(e&&e.isComposing);}")],
+  ['docName input handler gates on imeShouldCommit', html.includes("docNameEl.addEventListener('input',e=>{if(imeShouldCommit(e))_commitDocName()})")],
+  ['docName compositionend listener wires final commit', html.includes("docNameEl.addEventListener('compositionend',_commitDocName)")],
 ];
 
 let pass = 0, fail = 0;
@@ -571,7 +575,7 @@ try {
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, pickTop, buildSVG, exportScale, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx };
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -585,7 +589,7 @@ try {
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, pickTop, buildSVG, exportScale, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx } = api;
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit } = api;
 
   console.log('\n-- behavioural --');
 
@@ -3366,8 +3370,28 @@ try {
     console.log('  ✓ wheelPx: deltaMode normalized to pixels (Firefox/Chrome parity, MDN/Zenn)');
   }
 
+  // v1.6.82: imeShouldCommit — gate live-update inputs (docName) so partial IME
+  // conversions don't leak into state/IDB/sync. Pure → directly unit-tested.
+  {
+    // Non-composing input: COMMIT
+    assert.strictEqual(imeShouldCommit({isComposing:false}),true,'imeShouldCommit: isComposing=false → commit');
+    assert.strictEqual(imeShouldCommit({}),true,'imeShouldCommit: missing isComposing → commit (mouse/paste/etc)');
+    // Composing input (Japanese mid-conversion): SKIP
+    assert.strictEqual(imeShouldCommit({isComposing:true}),false,'imeShouldCommit: isComposing=true → skip');
+    // Defensive: null/undefined event (rare but possible during teardown)
+    assert.strictEqual(imeShouldCommit(null),true,'imeShouldCommit: null event → commit (defensive default)');
+    assert.strictEqual(imeShouldCommit(undefined),true,'imeShouldCommit: undefined event → commit');
+    // Non-vacuity: the OLD code had no gate — every input was committed, including
+    // isComposing=true. So old behaviour was "always true", and the new behaviour MUST
+    // differ on the composing branch.
+    const oldBehaviour=true;
+    assert.notStrictEqual(imeShouldCommit({isComposing:true}),oldBehaviour,
+      'non-vacuity: composing input now skipped (was committed in old code)');
+    console.log('  ✓ imeShouldCommit: composing skipped, committed otherwise (Qiita/Zenn IME)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 453; // prev 447 + wheelPx deltaMode normalization (6 asserts)
+  pass += 459; // prev 453 + imeShouldCommit (6 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

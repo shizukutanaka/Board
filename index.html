@@ -2440,6 +2440,11 @@ function endSelect(wp){
 // ---- pen ----
 // Coerce pen pressure: mouse=const 0.5, stylus=0..1; finite-safe.
 function _penPr(e){const p=e&&e.pressure;return Number.isFinite(p)&&p>0?Math.min(1,p):0.5}
+// IME composition gate. Returns true when an `input`-class event is the final commit
+// (no IME in progress), false during composition. Used for live-update inputs (docName)
+// to keep mid-composition characters out of state/IDB/sync. Pure → unit-tested.
+// (Qiita: Rapls "isComposing だけでは足りなかった"; Zenn: spacemarket Safari IME 確定)
+function imeShouldCommit(e){return !(e&&e.isComposing);}
 // Every sub-sample the browser coalesced into one pointermove. High-rate styluses
 // (Apple Pencil ~240Hz) and 120Hz+ displays emit several physical samples per 60Hz
 // frame; keeping only the last (the bare event) coarsens the stroke and drops pressure
@@ -3814,7 +3819,14 @@ function wire(){
   const docNameEl=document.getElementById('docName');
   if(docNameEl){
     docNameEl.value=state.docName||'Untitled';
-    docNameEl.addEventListener('input',()=>{state.docName=docNameEl.value;state.dirty=true;Persist.schedule()});
+    // IME-safe live update. During Japanese (etc.) composition, `input` fires for
+    // each unconfirmed update, and on Safari `input` also fires twice on commit
+    // (Qiita: Rapls / Zenn: spacemarket). imeShouldCommit() returns false for
+    // mid-composition input events to keep partial conversions out of state/IDB/sync;
+    // a parallel compositionend listener picks up the final value once IME confirms.
+    const _commitDocName=()=>{state.docName=docNameEl.value;state.dirty=true;Persist.schedule()};
+    docNameEl.addEventListener('input',e=>{if(imeShouldCommit(e))_commitDocName()});
+    docNameEl.addEventListener('compositionend',_commitDocName);
     docNameEl.addEventListener('change',()=>{state.docName=docNameEl.value||'Untitled';Persist.schedule()});
   }
   document.getElementById('btnHelp').onclick=()=>UI.toggleHelp();

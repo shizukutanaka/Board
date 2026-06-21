@@ -5,6 +5,17 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
 ## [Unreleased]
 
 ### Fixed
+- **`docName` の IME 変換中の文字列が IDB/sync に漏れていた(Qiita Rapls / Zenn spacemarket リサーチ)**:
+  ドキュメント名 input の `input` ハンドラが `isComposing` を見ずに発火していたため、日本語入力で
+  変換中の未確定文字列が逐次 `state.docName` に書き込まれ、`Persist.schedule()` → IDB 保存 +
+  BroadcastChannel/WebRTC 経由 sync まで届いていた。Safari は確定時に input を**2 回**発火する
+  既知バグもあり(spacemarket 記事)、同じ更新が二重実行されていた。`imeShouldCommit(e)` を純粋
+  関数として抽出(`!(e&&e.isComposing)`)し、`input` でゲート、`compositionend` で最終確定を拾う
+  二段構え(Qiita Rapls 推奨パターン)。最終的な値は `change`(blur/Enter で発火)が引き続き拾うので
+  Safari の二重 input は片方が isComposing=true で skip され重複しない。**非空虚テスト**(3 presence
+  + 6 アサート): isComposing=true で skip、false で commit、欠損 isComposing(マウス/paste 等)も
+  commit、null/undefined event は防御的に commit(teardown 時の安全)、旧挙動(常に commit)との差分
+  を担保。
 - **Firefox のマウスホイールでパン/ズームがほぼ効かなかった(MDN/Zenn ホイール リサーチ)**: wheel
   ハンドラが `e.deltaX/deltaY` を生のまま使っていたが、`deltaMode` は **pixel(0)/line(1)/page(2)** と
   単位が異なる。Firefox のマウスホイールは line モード(`deltaY≈±3`)で報告するのに対し Chrome は
