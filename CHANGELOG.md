@@ -16,6 +16,14 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
   丸め後も `validShape` を満たす、シリアライズ後のサイズが実際に縮むことを担保。
 
 ### Fixed
+- **カスタムカラーピッカーが 1 回の色選択で undo 履歴と sync を大量生成していた(コード監査)**: ネイティブ
+  `<input type=color>` は picker を開いている間 `input` を**連続発火**するが、ハンドラは毎 `input` で
+  `applyStyleToSelection`(=`style` op コミット+ブロードキャスト)していた。1 色選ぶだけで undo が数十段
+  積まれ、共同編集では同数の op が飛んでいた。サイズ/不透明度スライダーと同じコアレッシングに統一:
+  open 時にスナップショット(`_sfbCapture`)、`input` はライブプレビュー(Store 非経由)、`change` で
+  **単一の `style` op を flush**(`_sfbFlush`)。**非空虚テスト**(3 presence + 7 アサート): ライブ input が
+  undo op を積まないこと、change が**ちょうど 1 op** を flush(3 ではなく)、1 回の undo で元色に戻ること、
+  before/after が正しいこと、未変更値の flush は no-op(ガード確認)を担保。
 - **矩形/楕円のラベルが canvas に描画されず SVG エクスポートにだけ現れていた(表示=出力パリティ違反)**:
   ダブルクリックハンドラは frame だけでなく rect/ellipse にもラベル付与を許可し、`buildSVG` は
   rect/ellipse のラベルを `<text>` で出力するが、canvas の `drawShape` の rect/ellipse 分岐は

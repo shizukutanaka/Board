@@ -500,6 +500,10 @@ const checks = [
   ['_drawBoxLabel helper present', html.includes("function _drawBoxLabel(s,c)") && html.includes("c.fillText(s.label,s.x+s.w/2,s.y+s.h/2)")],
   ['rect case renders label', html.includes("if(s.stroke){c.stroke()}\n      _drawBoxLabel(s,c);break;\n    case 'ellipse':")],
   ['ellipse case renders label', /case 'ellipse':[\s\S]{0,200}_drawBoxLabel\(s,c\);break;/.test(html)],
+  // v1.6.89: colour picker coalesces (one undo/sync op per pick, like the sliders)
+  ['colour picker captures on focus/pointerdown', html.includes("cp.addEventListener('focus',()=>_sfbCapture(k));") && html.includes("cp.addEventListener('pointerdown',()=>_sfbCapture(k));")],
+  ['colour picker input is live-only (no per-input commit)', html.includes("for(const id of state.selection){const s=byId(id);if(s)s[k]=cp.value}") && !html.includes("applyStyleToSelection({[k]:cp.value})")],
+  ['colour picker flushes one op on change', html.includes("cp.addEventListener('change',()=>{_sfbFlush(k,cp.value);_sfbCapture(k);});")],
 ];
 
 let pass = 0, fail = 0;
@@ -3560,8 +3564,39 @@ try {
     console.log('  ✓ rect/ellipse labels: rendered on canvas (_drawBoxLabel) + escaped in SVG (parity)');
   }
 
+  // v1.6.89: colour-pick coalescing — a native <input type=color> fires `input`
+  // continuously, so the pick must collapse to ONE undo/sync op (capture → live →
+  // flush), exactly like the size/opacity sliders.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.seq=0;state.seenOps=new Set();
+    const r=Shape.make('rect',{x:0,y:0,w:50,h:50,stroke:'#000000'});
+    Store.commit({op:'add',shape:r});
+    state.selection=new Set([r.id]);
+    const histAfterAdd=state.history.length;
+    // colour pick: snapshot, then several live `input` mutations (no Store), then flush
+    _sfbCapture('stroke');
+    const live=state.shapes.find(s=>s.id===r.id);
+    live.stroke='#111111'; live.stroke='#222222'; live.stroke='#333333';
+    assert.strictEqual(state.history.length,histAfterAdd,'colour pick: live inputs record NO undo ops');
+    _sfbFlush('stroke','#333333');
+    assert.strictEqual(state.history.length,histAfterAdd+1,'colour pick: change flushes exactly ONE style op (not 3)');
+    const op=state.history[state.histIdx];
+    assert.strictEqual(op.op,'style','colour pick: flushed op is a style op');
+    assert.strictEqual(op.before[0].stroke,'#000000','colour pick: before = original colour');
+    assert.strictEqual(op.after[0].stroke,'#333333','colour pick: after = final colour');
+    Store.undo();
+    assert.strictEqual(state.shapes.find(s=>s.id===r.id).stroke,'#000000','colour pick: ONE undo restores original (not three)');
+    // non-vacuity: flushing an unchanged value records nothing (proves the guard works)
+    Store.redo();
+    const hLen=state.history.length;
+    _sfbCapture('stroke'); _sfbFlush('stroke','#333333');   // same value → no-op
+    assert.strictEqual(state.history.length,hLen,'non-vacuity: flushing an unchanged colour records no op');
+    console.log('  ✓ colour picker: multi-input pick coalesces to a single undo/sync op (slider parity)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 501; // prev 496 + rect/ellipse label parity (5 asserts)
+  pass += 508; // prev 501 + colour pick coalescing (7 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

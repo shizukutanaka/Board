@@ -3915,13 +3915,22 @@ function wire(){
       for(const x of document.querySelectorAll('[data-dash]'))x.setAttribute('aria-pressed',x===b);
       if(state.selection.size)applyStyleToSelection({dash:state.style.dash});
     });
-  for(const cp of document.querySelectorAll('input.cp'))
+  // Native <input type=color> fires `input` continuously while the picker is open, so
+  // committing per-input would stack dozens of undo steps and sync broadcasts for one
+  // colour pick. Coalesce exactly like the size/opacity sliders: snapshot on open, live-
+  // preview on input (no Store), flush ONE style op on change.
+  for(const cp of document.querySelectorAll('input.cp')){
+    const k=cp.dataset.cp;   // 'stroke' or 'fill'
+    cp.addEventListener('focus',()=>_sfbCapture(k));
+    cp.addEventListener('pointerdown',()=>_sfbCapture(k));
     cp.addEventListener('input',()=>{
-      const k=cp.dataset.cp;
       state.style[k]=cp.value;
       for(const x of document.querySelectorAll('[data-'+k+']'))x.setAttribute('aria-pressed',x===cp);
-      if(state.selection.size)applyStyleToSelection({[k]:cp.value});
+      for(const id of state.selection){const s=byId(id);if(s)s[k]=cp.value}
+      if(state.selection.size)invalidate();
     });
+    cp.addEventListener('change',()=>{_sfbFlush(k,cp.value);_sfbCapture(k);});
+  }
   const rng=document.getElementById('rngSize');
   const opacRng=document.getElementById('rngOpacity');
   const opacVal=document.getElementById('opacVal');
