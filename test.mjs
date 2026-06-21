@@ -467,6 +467,10 @@ const checks = [
   ['Persist.flushIfHidden gates on vis===hidden && state.dirty', html.includes("flushIfHidden(vis){") && html.includes("if(vis==='hidden'&&state.dirty){")],
   ['Persist.flushIfHidden cancels pending debounce + calls save', html.includes("clearTimeout(this._saveT);\n      this.save();")],
   ['visibilitychange listener wires document.visibilityState to flushIfHidden', html.includes("document.addEventListener('visibilitychange',()=>Persist.flushIfHidden(document.visibilityState));")],
+  // v1.6.80: multi-touch pinch cancels the single-pointer gesture (no stray edits)
+  ['pointerdown aborts single-pointer gesture when a 2nd finger lands', html.includes("if(_pointers.size>=2){abortGesture();return;}")],
+  ['pointermove bails while pinch is active', html.includes("if(_pointers.size>=2)return;   // pinch in progress")],
+  ['abortGesture reverts move/resize/rotate from pointerdown snapshots', html.includes("function abortGesture(){") && html.includes("if(ptr.dragKind==='move'&&ptr.dragStartShapes){")],
 ];
 
 let pass = 0, fail = 0;
@@ -564,7 +568,7 @@ try {
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, pickTop, buildSVG, exportScale, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen };
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -578,7 +582,7 @@ try {
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, pickTop, buildSVG, exportScale, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen } = api;
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr } = api;
 
   console.log('\n-- behavioural --');
 
@@ -3294,8 +3298,55 @@ try {
     console.log('  ✓ Persist.flushIfHidden: dirty + hidden flushes; visible/clean does not (PWA Zenn)');
   }
 
+  // v1.6.80: abortGesture — a pinch interrupting a single-pointer gesture must revert
+  // the in-progress mutation (no stray stroke / half-move / non-undoable change) and
+  // disarm pointerup (ptr.down=false) so the lingering finger-up commits nothing.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.seq=0;state.seenOps=new Set();state.draft=null;state.marquee=null;
+
+    // (a) in-progress draft (pen/rect/etc) is dropped — it never reached state.shapes
+    state.draft={type:'rect',x:0,y:0,w:30,h:20};
+    ptr.down=true;ptr.dragKind=null;
+    abortGesture();
+    assert.strictEqual(state.draft,null,'abortGesture: in-progress draft dropped');
+    assert.strictEqual(ptr.down,false,'abortGesture: ptr.down cleared (pointerup will not commit)');
+
+    // (b) in-progress MOVE rolls back to the pre-drag positions (no orphan mutation)
+    const r=Shape.make('rect',{x:100,y:100,w:40,h:40});
+    Store.commit({op:'add',shape:r});
+    const histLen=state.history.length;
+    ptr.dragKind='move';
+    ptr.dragStartShapes=new Map([[r.id, JSON.parse(JSON.stringify(r))]]);
+    // simulate a live drag having moved the shape +50,+60
+    const live=state.shapes.find(s=>s.id===r.id); live.x=150; live.y=160;
+    ptr.down=true;
+    abortGesture();
+    const after=state.shapes.find(s=>s.id===r.id);
+    assert.strictEqual(after.x,100,'abortGesture: move reverts x to pre-drag');
+    assert.strictEqual(after.y,100,'abortGesture: move reverts y to pre-drag');
+    assert.strictEqual(state.history.length,histLen,'abortGesture: move records NO op (clean cancel, not a commit)');
+    assert.strictEqual(ptr.dragKind,null,'abortGesture: dragKind cleared');
+
+    // (c) in-progress RESIZE rolls back from ptr.resizeOrig
+    const r2=Shape.make('rect',{x:0,y:0,w:20,h:20});
+    Store.commit({op:'add',shape:r2});
+    ptr.dragKind='resize';ptr.resizeOrig=JSON.parse(JSON.stringify(r2));
+    const live2=state.shapes.find(s=>s.id===r2.id); live2.w=999; live2.h=888;
+    ptr.down=true;
+    abortGesture();
+    const after2=state.shapes.find(s=>s.id===r2.id);
+    assert.strictEqual(after2.w,20,'abortGesture: resize reverts w');
+    assert.strictEqual(after2.h,20,'abortGesture: resize reverts h');
+
+    // non-vacuity: without abortGesture the live mutation (x=150 / w=999) would persist
+    // with no op — i.e. after.x would be 150, not 100. The revert is what the test proves.
+    assert.notStrictEqual(150,after.x,'non-vacuity: reverted x (100) differs from the dragged x (150)');
+    console.log('  ✓ abortGesture: pinch cancels & reverts in-progress gesture (multi-touch, Qiita/Zenn)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 438; // prev 432 + flushIfHidden gate (3 presence + 6 asserts)
+  pass += 447; // prev 438 + abortGesture pinch-cancel (9 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

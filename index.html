@@ -1910,8 +1910,32 @@ let _sq='';
 let ptr={down:false,x:0,y:0,x0:0,y0:0,wx:0,wy:0,wx0:0,wy0:0,
   panning:false,dragKind:null,dragStartShapes:null};
 
+// Revert any in-progress single-pointer gesture without committing — used when a
+// second finger lands and a pinch-zoom takes over (multi-touch). Each branch restores
+// the pre-gesture snapshot captured at pointerdown so nothing is half-applied or left
+// non-undoable: move/resize/rotate roll back to their originals, an in-progress erase
+// restores the shapes it had optimistically removed, and an uncommitted draft (which
+// never touched state.shapes) is simply dropped. (Qiita/Zenn: multi-touch + pointer)
+function abortGesture(){
+  if(ptr.dragKind==='move'&&ptr.dragStartShapes){
+    for(const [id,orig] of ptr.dragStartShapes){const sh=byId(id);if(sh)Object.assign(sh,clone(orig))}
+  }else if(ptr.dragKind==='resize'&&ptr.resizeOrig){
+    const sh=byId(ptr.resizeOrig.id);if(sh)Object.assign(sh,clone(ptr.resizeOrig));
+  }else if(ptr.dragKind==='rotate'&&ptr.rotOrig){
+    const sh=byId(ptr.rotOrig.id);if(sh)Object.assign(sh,clone(ptr.rotOrig));
+  }
+  if(_eraseBatch.length){for(const s of _eraseBatch)state.shapes.push(s);_eraseBatch=[];sortZ();}
+  state.draft=null;state.marquee=null;state.guides=null;
+  ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.dragStartShapes=null;
+  invalidate();
+}
+
 canvas.addEventListener('pointerdown',e=>{
   if(Presentation.isActive())return;  // no editing during presentation
+  // Second finger down → pinch-zoom takes over; cancel the single-pointer gesture so
+  // it doesn't keep drawing/moving underneath the zoom. _pointers is updated by the
+  // capture-phase listener that runs before this bubble-phase one.
+  if(_pointers.size>=2){abortGesture();return;}
   canvas.setPointerCapture(e.pointerId);
   const sp={x:e.offsetX,y:e.offsetY};
   const wp=G.s2w(sp);
@@ -1959,6 +1983,7 @@ canvas.addEventListener('pointermove',e=>{
   const sp={x:e.offsetX,y:e.offsetY};
   const wp=G.s2w(sp);
   if(Presentation.isActive()){_laser=wp;invalidate();return;}
+  if(_pointers.size>=2)return;   // pinch in progress — the pinch handler owns the gesture
   UI.setStatusXY(Math.round(wp.x),Math.round(wp.y));
   if(!ptr.down){
     // hover feedback

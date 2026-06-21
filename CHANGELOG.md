@@ -5,6 +5,17 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
 ## [Unreleased]
 
 ### Fixed
+- **ピンチズーム中に単一ポインタのジェスチャが暴走していた(Qiita/Zenn マルチタッチ リサーチ)**:
+  ピンチ追跡リスナー(capture フェーズ)は `_pointers` を管理するが、メインの描画ハンドラ
+  (bubble フェーズ)は `_pointers.size` を見ていなかった。そのため描画/移動の最中に 2 本目の指で
+  ピンチを始めると、ピンチハンドラがズームする裏でメインの `pointermove` が `contPen`/`doMove`/
+  `eraseAt` を走らせ続け、ズーム中に不要なストローク・移動・消去が発生していた(Qiita: mikecat 等が
+  指摘する典型的なマルチタッチ競合)。`pointerdown` で 2 本目の指(`_pointers.size>=2`)を検知したら
+  `abortGesture()` で進行中ジェスチャを取り消し、`pointermove` も `_pointers.size>=2` で早期 return。
+  `abortGesture` は pointerdown 時のスナップショットから move/resize/rotate を**巻き戻し**、楽観的に
+  消した消しゴム対象を**復元**、未確定 draft を破棄、`ptr.down=false` で残った指の pointerup を無効化
+  (=非可逆な中途半端変更を残さない)。**非空虚テスト**(3 presence + 9 アサート): draft 破棄、move/resize
+  の原状復帰、op を記録しない(clean cancel)こと、巻き戻した x が drag 中の x と異なることを担保。
 - **モバイルでタブを閉じる際にデータが失われ得た(Zenn/PWA リサーチ)**: 既存の durability フックは
   `beforeunload` のみだったが、Zenn の PWA 系記事と web.dev が一致して指摘する通り、`beforeunload` は
   **モバイルで信頼できない** — iOS Safari はスワイプアウト時に発火しないことが多く、Chrome Android も
