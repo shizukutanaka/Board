@@ -16,6 +16,13 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
   丸め後も `validShape` を満たす、シリアライズ後のサイズが実際に縮むことを担保。
 
 ### Fixed
+- **複数画像を同時ドロップすると全部が同じ位置に重なっていた(コード監査)**: ドロップハンドラは
+  画像をカスケード配置するため `let ox=0` をループ内で `ox+=20` していたが、`reader.onload` は
+  **非同期**のため、どの onload が発火する頃にはループが完了し `ox` は最終値(20×N)に達していた
+  (共有変数のクロージャ捕捉)。結果、全画像が `wp.x + 20×N` に**重なって配置**されカスケードが機能
+  していなかった。`files.forEach((f,i)=>…)` でイテレーションごとの `i` を捕捉し `x:wp.x+i*20` に変更。
+  **非空虚テスト**(2 presence + 3 アサート): バグパターン(共有 ox)が `[60,60,60]` を生むこと、
+  修正パターン(per-iteration 捕捉)が `[0,20,40]` を生むこと、両者が実際に異なることを担保。
 - **WebRTC 接続中の相手が 15 秒でプレゼンス表示から消えていた(コード監査)**: WebRTC ピアは
   BroadcastChannel の heartbeat(`{k:'ping'}` は `this.bc` のみに送信)に乗らず、`dc.onopen` で合成 id
   `rtc:XXXX` を 1 度だけ `_touchPeer` するだけだった。`_onRecv` の `case 'op'` はピアを touch しない

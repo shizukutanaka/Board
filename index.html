@@ -2137,8 +2137,11 @@ canvas.addEventListener('drop',e=>{
   const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith('image/'));
   if(!files.length)return;
   const wp=G.s2w({x:e.offsetX,y:e.offsetY});
-  let ox=0;
-  for(const f of files){
+  // Cascade multiple dropped images by index. NOTE: the offset must be captured
+  // per-iteration (forEach's `i`), not a shared `let ox` incremented in the loop —
+  // reader.onload is async, so a shared counter would have reached its final value
+  // (20×N) by the time ANY onload fires, stacking every image at the same spot.
+  files.forEach((f,i)=>{
     const reader=new FileReader();
     reader.onload=()=>{
       if(reader.result.length > 4*1024*1024){
@@ -2149,7 +2152,7 @@ canvas.addEventListener('drop',e=>{
         const maxDim=400;
         let w=img.width,h=img.height;
         if(w>maxDim||h>maxDim){const r=Math.min(maxDim/w,maxDim/h);w*=r;h*=r}
-        const sh=Shape.make('image',{x:wp.x+ox,y:wp.y,w,h,dataUrl:reader.result});
+        const sh=Shape.make('image',{x:wp.x+i*20,y:wp.y,w,h,dataUrl:reader.result});
         Store.commit({op:'add',shape:sh});
         state.selection.clear();state.selection.add(sh.id);
         invalidate();UI.toast(t('imagePasted'),'ok');
@@ -2159,8 +2162,7 @@ canvas.addEventListener('drop',e=>{
     };
     reader.onerror=()=>UI.toast(t('imgErr'),'warn');
     reader.readAsDataURL(f);
-    ox+=20;
-  }
+  });
 });
 
 // ---- Image import: clipboard paste ----

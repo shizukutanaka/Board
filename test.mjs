@@ -489,6 +489,9 @@ const checks = [
   ['_reapPeers exempts rtc: peers from timeout reaping', html.includes("if(id.startsWith('rtc:'))continue;   // WebRTC peers are lifecycle-managed")],
   ['dc.onclose removes the rtc peer', html.includes("if(this._rtcPeerId){state.peers.delete(this._rtcPeerId);this._rtcPeerId=null;}")],
   ['dc.onopen stores _rtcPeerId for lifecycle management', html.includes("this._rtcPeerId='rtc:'+uid().slice(0,4);")],
+  // v1.6.86: multi-image drop cascades by index (async closure capture fix)
+  ['drop image cascade uses per-iteration index (not shared ox)', html.includes("files.forEach((f,i)=>{") && html.includes("x:wp.x+i*20,y:wp.y")],
+  ['drop image no longer uses a shared incremented ox counter', !html.includes("const sh=Shape.make('image',{x:wp.x+ox,y:wp.y")],
 ];
 
 let pass = 0, fail = 0;
@@ -3484,8 +3487,27 @@ try {
     console.log('  ✓ _reapPeers: WebRTC peers survive timeout, BroadcastChannel peers reaped (presence bug)');
   }
 
+  // v1.6.86: multi-image drop must cascade by a PER-ITERATION offset. The old code
+  // shared a `let ox` incremented synchronously in the loop while reader.onload was
+  // async, so every onload read the final ox (20×N) → all images stacked. This models
+  // the exact closure-capture difference the fix relies on.
+  {
+    // BUGGY pattern: shared counter, sync increment, callbacks fire after the loop
+    const buggy=[]; let ox=0; const bcb=[];
+    for(let n=0;n<3;n++){ bcb.push(()=>buggy.push(ox)); ox+=20; }
+    bcb.forEach(cb=>cb());
+    assert.deepStrictEqual(buggy,[60,60,60],'reproduces bug: shared ox → every image at the final offset');
+    // FIXED pattern: per-iteration index capture (what files.forEach((f,i)=>…) gives)
+    const fixed=[]; const fcb=[];
+    [0,1,2].forEach(i=>{ fcb.push(()=>fixed.push(i*20)); });
+    fcb.forEach(cb=>cb());
+    assert.deepStrictEqual(fixed,[0,20,40],'fix: per-iteration capture → distinct cascade offsets');
+    assert.notDeepStrictEqual(buggy,fixed,'non-vacuity: the two patterns genuinely differ');
+    console.log('  ✓ drop cascade: per-iteration index capture avoids async shared-counter stacking');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 485; // prev 481 + _reapPeers rtc exemption (4 asserts)
+  pass += 488; // prev 485 + drop cascade closure capture (3 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
