@@ -5,6 +5,13 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
 ## [Unreleased]
 
 ### Fixed
+- **回転描画が box 以外の図形で NaN 中心になっていた(表示=出力パリティ違反)**: `drawShape` の回転ラッパは
+  全種別に適用され、中心を `s.x+(s.w||0)/2` で計算していた。line/arrow/pen は `s.x`/`s.w` が undefined のため
+  中心が **NaN**(canvas は原点周りで誤回転)。一方 SVG エクスポートは line/arrow/pen に `rT` を付けないため
+  **回転を無視** — 同一図形が canvas と SVG で食い違う。回転は box 図形(x/y/w/h)のみ意味を持つ(doRotate も
+  box 限定)ため、共有ヘルパー `shapeRot(s)`(`s.rotate&&s.w!=null?s.rotate:0`)を導入し canvas/SVG 双方で使用。
+  point 幾何への stray な `rotate`(remote `upd` でのみ到達可能)は両経路で無視され一致。`shapeRot` の box/point
+  判定と、回転 rect は SVG transform を出すが回転 line は出さないことをテストで担保(非空虚: line.rotate=45 を確認)。
 - **キーボード矢印ナッジが frame 子要素を追従せず・ロック図形も動かしていた**: ポインタドラッグは
   frame を動かすと内包図形が追従し、ロック図形はスキップする(`doMove`/`endSelect` が `!locked`)。
   しかし矢印ナッジは (a) frame 子要素を放置し、(b) ロック図形をそのまま移動させる二重のパリティ欠落が

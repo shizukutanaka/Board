@@ -374,11 +374,11 @@ const checks = [
   ['SVG export derives bound endpoints', html.includes("const _e=connEnds(s);\n    const X1=_num(_e.x1)")],
   // v1.6.61: rotation - shapes rotate on canvas, undo/redo, keyboard ,/.
   ['doRotate function exists', html.includes("function doRotate") && html.includes("op:'align',dir:'rotate'")],
-  ['rotation applied in drawShape (save/restore)', html.includes("const _rot=s.rotate;") && html.includes("if(_rot)c.restore()")],
+  ['rotation applied in drawShape (save/restore)', html.includes("const _rot=shapeRot(s);") && html.includes("if(_rot)c.restore()")],
   ['G.hit applies inverse rotation', html.includes("if(s.rotate){const _cx=s.x+(s.w||0)/2") && html.includes("_r=-s.rotate*Math.PI/180")],
   ['G.bbox returns rotation envelope', html.includes("if(s.rotate){const _cx=_rb.x+_rb.w/2")],
   ['rotation keyboard shortcuts , and .', html.includes("k===','&&!meta&&state.selection.size") && html.includes("k==='.'&&!meta&&state.selection.size")],
-  ['SVG export rotation transform', html.includes("rT=s.rotate?` transform=") && html.includes("rotate(${_num(s.rotate)}")],
+  ['SVG export rotation transform', html.includes("rT=shapeRot(s)?` transform=") && html.includes("rotate(${_num(s.rotate)}")],
   // v1.6.61: shape search - Ctrl+F highlights matching shapes
   ['_sq search state variable', html.includes("let _sq='';")],
   ['search input DOM element created in wire()', html.includes("sq.id='sqinput'") && html.includes("sq.addEventListener('input'")],
@@ -452,6 +452,10 @@ const checks = [
   ['withFrameChildren helper shared by drag + nudge', html.includes("function withFrameChildren(ids)") && html.includes("const dragIds=withFrameChildren(state.selection);")],
   ['nudgeSelection mirrors drag: frame children + skip locked', html.includes("function nudgeSelection(dx,dy)") && html.includes("[...withFrameChildren(state.selection)].filter(id=>!byId(id)?.locked)")],
   ['arrow-key handler delegates to nudgeSelection', html.includes("nudgeSelection(dx,dy);")],
+  // v1.6.76: render rotation gated to box shapes (canvas/SVG parity, no NaN centre)
+  ['shapeRot helper gates rotation to box shapes', html.includes("function shapeRot(s){return s.rotate&&s.w!=null?s.rotate:0;}")],
+  ['canvas drawShape uses shapeRot (not raw s.rotate)', html.includes("const _rot=shapeRot(s);")],
+  ['SVG export rT uses shapeRot', html.includes("const rT=shapeRot(s)?")],
 ];
 
 let pass = 0, fail = 0;
@@ -549,7 +553,7 @@ try {
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, pickTop, buildSVG, exportScale, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection };
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -563,7 +567,7 @@ try {
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, pickTop, buildSVG, exportScale, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection } = api;
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot } = api;
 
   console.log('\n-- behavioural --');
 
@@ -3147,8 +3151,32 @@ try {
     console.log('  ✓ nudgeSelection: frame children follow + locked shapes stay (drag parity)');
   }
 
+  // v1.6.76: render rotation gated to box shapes — line/arrow/pen ignore a stray
+  // rotate (only reachable via remote upd), keeping canvas (NaN-centre avoided) and
+  // SVG export in agreement. shapeRot is the shared source of truth.
+  {
+    // box shapes carry their rotate through
+    assert.strictEqual(shapeRot({type:'rect',x:0,y:0,w:10,h:10,rotate:45}), 45, 'shapeRot: rect keeps rotate');
+    assert.strictEqual(shapeRot({type:'sticky',x:0,y:0,w:10,h:10,rotate:90}), 90, 'shapeRot: sticky keeps rotate');
+    assert.strictEqual(shapeRot({type:'rect',x:0,y:0,w:10,h:10,rotate:0}), 0, 'shapeRot: rotate 0 → 0');
+    assert.strictEqual(shapeRot({type:'rect',x:0,y:0,w:10,h:10}), 0, 'shapeRot: no rotate → 0');
+    // point geometry (no w) ignores a stray rotate — non-vacuity: raw s.rotate would be 45/30
+    const ln={type:'line',x1:0,y1:0,x2:50,y2:0,rotate:45};
+    const pn={type:'pen',pts:[[0,0],[5,5]],rotate:30};
+    assert.strictEqual(shapeRot(ln), 0, 'shapeRot: line ignores stray rotate (no box centre)');
+    assert.strictEqual(shapeRot(pn), 0, 'shapeRot: pen ignores stray rotate');
+    assert.strictEqual(ln.rotate, 45, 'non-vacuity: line.rotate is actually 45 (raw value would NaN the canvas centre)');
+
+    // SVG export parity: a rotated rect emits a transform; a "rotated" line does not.
+    const rectSvg = buildSVG([{id:'r1',type:'rect',x:0,y:0,w:20,h:20,rotate:45,stroke:'#000',size:1,opacity:1}], '#fff');
+    const lineSvg = buildSVG([{id:'l1',type:'line',x1:0,y1:0,x2:40,y2:0,rotate:45,stroke:'#000',size:1,opacity:1}], '#fff');
+    assert.ok(/transform="rotate\(45/.test(rectSvg), 'SVG: rotated rect emits a rotate transform');
+    assert.ok(!/rotate\(/.test(lineSvg), 'SVG: line with stray rotate emits NO rotate transform (parity with canvas)');
+    console.log('  ✓ shapeRot: rotation gated to box shapes (canvas/SVG parity, no NaN centre)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 405; // prev 390 + nudge/frame-children parity (15 asserts)
+  pass += 416; // prev 405 + shapeRot box-only rotation (3 presence + 11 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

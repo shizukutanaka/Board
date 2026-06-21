@@ -1526,6 +1526,11 @@ function drawGrid(W,H){
   ctx.stroke();
   ctx.globalAlpha=1;
 }
+// Effective render rotation. Only box shapes (x/y/w/h present) have a meaningful
+// rotation centre; line/arrow/pen are point geometry, so a stray `rotate` (only
+// reachable via a remote `upd` — doRotate is box-only) is ignored. Keeps canvas and
+// SVG export in agreement (表示=出力パリティ) and avoids a NaN rotation centre.
+function shapeRot(s){return s.rotate&&s.w!=null?s.rotate:0;}
 function drawShape(s,c){
   c=c||ctx;
   c.globalAlpha=s.opacity??1;
@@ -1534,8 +1539,8 @@ function drawShape(s,c){
   c.lineWidth=s.size||1;
   c.setLineDash((s.dash&&(s.type==='rect'||s.type==='ellipse'||s.type==='line'||s.type==='arrow'))?dashArr(s.dash,s.size):[]);
   if(s.fill){c.fillStyle=s.fill}
-  const _rot=s.rotate;
-  if(_rot){const _cx=s.x+(s.w||0)/2,_cy=s.y+(s.h||0)/2;c.save();c.translate(_cx,_cy);c.rotate(_rot*Math.PI/180);c.translate(-_cx,-_cy);}
+  const _rot=shapeRot(s);
+  if(_rot){const _cx=s.x+s.w/2,_cy=s.y+s.h/2;c.save();c.translate(_cx,_cy);c.rotate(_rot*Math.PI/180);c.translate(-_cx,-_cy);}
   switch(s.type){
     case 'rect':
       c.beginPath();
@@ -3144,7 +3149,7 @@ function buildSVG(shapes,paper){
     const stroke=_esc(s.stroke||'#000');
     const _dsh=dashArr(s.dash,SZ);
     const dA=_dsh.length?` stroke-dasharray="${_dsh.map(n=>Math.round(n*10)/10).join(' ')}"`:'';
-    const rT=s.rotate?` transform="rotate(${_num(s.rotate)},${X+W/2+ox},${Y+H/2+oy})"`:''
+    const rT=shapeRot(s)?` transform="rotate(${_num(s.rotate)},${X+W/2+ox},${Y+H/2+oy})"`:''
     switch(s.type){
       case 'rect':{
         const r=Math.min(8,Math.abs(W)/4,Math.abs(H)/4);
