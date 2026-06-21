@@ -3525,6 +3525,18 @@ const Persist={
     clearTimeout(this._saveT);
     this._saveT=setTimeout(()=>this.save(),SAVE_DEBOUNCE);
   },
+  // PWA durability: beforeunload is unreliable on mobile (Safari iOS skips it
+  // on app-switch / swipe-away; Chrome Android drops it during background
+  // eviction). visibilitychange→hidden is the most reliable "tab going away"
+  // signal — flush any dirty state immediately and cancel the pending debounce
+  // so we don't double-write right after. Pure gating function so it's unit-
+  // testable without dispatching real events through the fake DOM.
+  flushIfHidden(vis){
+    if(vis==='hidden'&&state.dirty){
+      clearTimeout(this._saveT);
+      this.save();
+    }
+  },
   // Pure mapping from a thrown error to the toast text. IndexedDB throws a
   // distinct `QuotaExceededError` when the origin's storage budget is full —
   // an actionable case the generic "save failed: <msg>" toast hides. Calling
@@ -3582,6 +3594,8 @@ function reqDone(rq){return new Promise((r,j)=>{rq.onsuccess=()=>r(rq.result);rq
 window.addEventListener('beforeunload',e=>{
   if(state.dirty){Persist.save();e.preventDefault();e.returnValue=''}
 });
+// Mobile-reliable durability flush — see Persist.flushIfHidden for context.
+document.addEventListener('visibilitychange',()=>Persist.flushIfHidden(document.visibilityState));
 
 // ====================== UI ======================
 const UI={

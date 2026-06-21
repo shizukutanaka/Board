@@ -463,6 +463,10 @@ const checks = [
   // v1.6.78: pen captures all coalesced sub-samples (high-rate stylus smoothness)
   ['coalescedSamples helper present with fallback', html.includes("function coalescedSamples(e)") && html.includes("return cs&&cs.length?cs:[e];")],
   ['pen pointermove iterates coalesced samples', html.includes("case 'pen':for(const ce of coalescedSamples(e))contPen(G.s2w({x:ce.offsetX,y:ce.offsetY}),ce);break;")],
+  // v1.6.79: Persist.flushIfHidden — visibilitychange→hidden as mobile-reliable durability signal
+  ['Persist.flushIfHidden gates on vis===hidden && state.dirty', html.includes("flushIfHidden(vis){") && html.includes("if(vis==='hidden'&&state.dirty){")],
+  ['Persist.flushIfHidden cancels pending debounce + calls save', html.includes("clearTimeout(this._saveT);\n      this.save();")],
+  ['visibilitychange listener wires document.visibilityState to flushIfHidden', html.includes("document.addEventListener('visibilitychange',()=>Persist.flushIfHidden(document.visibilityState));")],
 ];
 
 let pass = 0, fail = 0;
@@ -3253,8 +3257,45 @@ try {
     console.log('  ✓ coalescedSamples: pen captures every coalesced sub-sample (240Hz stylus, Qiita research)');
   }
 
+  // v1.6.79: Persist.flushIfHidden — pure gate, unit-testable without dispatching events.
+  // Mobile browsers (iOS Safari, Chrome Android) often skip beforeunload on swipe-away /
+  // background eviction; visibilitychange→hidden is the recommended PWA durability signal.
+  {
+    // Stub Persist.save to count calls (the fake-DB harness makes save() a no-op early-return).
+    const calls=[];
+    const orig=Persist.save;
+    Persist.save=function(...a){calls.push(a);return orig.apply(this,a);};
+    try{
+      // Case 1: hidden but not dirty → no flush
+      state.dirty=false;Persist._saveT=0;
+      Persist.flushIfHidden('hidden');
+      assert.strictEqual(calls.length,0,'flushIfHidden: hidden+clean → no save');
+      // Case 2: dirty but visible → no flush (debounce is for visible cadence)
+      state.dirty=true;
+      Persist.flushIfHidden('visible');
+      assert.strictEqual(calls.length,0,'flushIfHidden: visible+dirty → no immediate save');
+      // Case 3: dirty AND hidden → save fires, debounce timer cleared
+      const fakeTimer=setTimeout(()=>{},60000);   // pretend a save is pending
+      Persist._saveT=fakeTimer;
+      Persist.flushIfHidden('hidden');
+      assert.strictEqual(calls.length,1,'flushIfHidden: hidden+dirty → save called exactly once');
+      // Case 4: 'prerender' / other states are NOT hidden → no flush
+      state.dirty=true;
+      Persist.flushIfHidden('prerender');
+      assert.strictEqual(calls.length,1,'flushIfHidden: prerender state does not trigger save');
+      // Case 5: case-sensitive on 'hidden' (defensive)
+      Persist.flushIfHidden('Hidden');
+      assert.strictEqual(calls.length,1,'flushIfHidden: case-sensitive on "hidden"');
+      // Non-vacuity: directly call save() to confirm the counter actually moves —
+      // proves Case 1/2 zeros aren't because of a broken stub.
+      Persist.save();
+      assert.strictEqual(calls.length,2,'non-vacuity: stub counts direct Persist.save() calls');
+    }finally{Persist.save=orig;state.dirty=false;}
+    console.log('  ✓ Persist.flushIfHidden: dirty + hidden flushes; visible/clean does not (PWA Zenn)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 432; // prev 424 + coalescedSamples/pen multi-sample (2 presence + 8 asserts)
+  pass += 438; // prev 432 + flushIfHidden gate (3 presence + 6 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

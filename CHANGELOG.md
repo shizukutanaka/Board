@@ -5,6 +5,16 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
 ## [Unreleased]
 
 ### Fixed
+- **モバイルでタブを閉じる際にデータが失われ得た(Zenn/PWA リサーチ)**: 既存の durability フックは
+  `beforeunload` のみだったが、Zenn の PWA 系記事と web.dev が一致して指摘する通り、`beforeunload` は
+  **モバイルで信頼できない** — iOS Safari はスワイプアウト時に発火しないことが多く、Chrome Android も
+  バックグラウンド退避で発火を落とす。ペアになる正解は **`visibilitychange→hidden`** で、ここでは
+  ほぼ確実にタブが消える前に通知が来る。`Persist.flushIfHidden(vis)`(`vis==='hidden' && state.dirty`
+  で防御的にゲート)を抽出し、500ms デバウンスタイマーをキャンセルしてから `save()` を即時実行。
+  `document` の `visibilitychange` で `flushIfHidden(document.visibilityState)` を呼ぶ。既存 `beforeunload`
+  はデスクトップ向けの belt-and-suspenders として残す。**非空虚テスト**(3 presence + 6 アサート):
+  hidden+clean / visible+dirty / prerender / 'Hidden' (大文字) で発火しないこと、hidden+dirty で
+  ちょうど 1 回 `save` を呼ぶこと、stub カウンタが直接 `save()` 呼び出しを正しく数えることを担保。
 - **高頻度スタイラスでペンのサンプルを取りこぼしていた(Qiita リサーチ)**: ペンの `pointermove` は
   `e.offsetX/Y` を 1 点だけ取り込んでいた。ブラウザは Apple Pencil(~240Hz)や 120Hz+ ディスプレイの
   複数の物理サンプルを 1 つの 60Hz `pointermove` に**合体(coalesce)**するため、合体された 3/4 の点と
