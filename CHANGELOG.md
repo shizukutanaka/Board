@@ -4,6 +4,17 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
 
 ## [Unreleased]
 
+### Changed
+- **共有URL / `.board` エクスポートの座標を丸めてサイズ削減(Zenn 浮動小数点 リサーチ)**: シリアライズ時に
+  `JSON.stringify` がフル精度の浮動小数点(`100.00000000000001` や `123.45678901234567`)をそのまま
+  出力し、共有URL(長さ上限あり)とファイルを肥大化させていた。`roundShapesForExport(shapes,dp=2)` を
+  追加し、シリアライズ境界(共有URL・`.board`)**のみ**で x/y/w/h/x1..y2/rotate を 2dp、ペン筆圧を 3dp に
+  丸める(deep copy なので **in-memory モデル・undo 精度・ライブ描画は不変**)。ホワイトボードでは
+  サブピクセル精度は知覚不能だが URL 長・ファイルサイズを確実に削減。`_round` は NaN/Inf を素通しして
+  下流の検証が引き続き弾く。**非空虚テスト**(4 presence + 17 アサート): 座標フィールドの丸め、非座標
+  フィールド(id/stroke/z)の保持、ペン位置 2dp・筆圧 3dp、**入力配列を変更しない**(undo/描画への非影響)、
+  丸め後も `validShape` を満たす、シリアライズ後のサイズが実際に縮むことを担保。
+
 ### Fixed
 - **`docName` の IME 変換中の文字列が IDB/sync に漏れていた(Qiita Rapls / Zenn spacemarket リサーチ)**:
   ドキュメント名 input の `input` ハンドラが `isComposing` を見ずに発火していたため、日本語入力で

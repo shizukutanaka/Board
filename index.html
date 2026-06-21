@@ -3150,7 +3150,7 @@ function exportSVG(){
 function exportBoard(){
   if(!state.shapes.length){UI.toast(t('empty'),'warn');return}
   const a=document.createElement('a');
-  const _bu=URL.createObjectURL(new Blob([JSON.stringify({v:V,docName:state.docName,shapes:state.shapes})],{type:'application/json'}));
+  const _bu=URL.createObjectURL(new Blob([JSON.stringify({v:V,docName:state.docName,shapes:roundShapesForExport(state.shapes)})],{type:'application/json'}));
   a.href=_bu;a.download=(state.docName||'board')+'.board';
   a.click();setTimeout(()=>URL.revokeObjectURL(_bu),1e4);
   UI.toast(t('exportedBoard'),'ok');
@@ -3475,10 +3475,27 @@ const Net={
   }};
 
 // ====================== SHARE (URL hash snapshot + WebRTC UI) ======================
+// Round a number to `dp` decimals, shedding IEEE-754 noise (100.00000000000001) and
+// trailing precision that bloats serialized output. NaN/Inf pass through unchanged so
+// downstream validation still rejects them. Pure.
+function _round(n,dp){return typeof n==='number'&&Number.isFinite(n)?Math.round(n*10**dp)/10**dp:n;}
+// Deep copy of shapes with coordinate/dimension fields rounded, for SERIALIZATION
+// boundaries only (share URL, .board export) — never the in-memory model, so undo
+// fidelity and live rendering are untouched. Sub-pixel rounding is imperceptible on a
+// whiteboard but trims URL length / file size (Zenn: float-precision data bloat). Pen
+// pressure keeps 3dp; positions/dimensions 2dp. Returns a fresh array (no mutation).
+function roundShapesForExport(shapes,dp=2){
+  return shapes.map(s=>{
+    const o={...s};
+    for(const k of ['x','y','w','h','x1','y1','x2','y2','rotate'])if(typeof o[k]==='number')o[k]=_round(o[k],dp);
+    if(Array.isArray(o.pts))o.pts=o.pts.map(p=>Array.isArray(p)?p.map((v,i)=>_round(v,i<2?dp:3)):p);
+    return o;
+  });
+}
 // Compact, dependency-free encoding. Works for any size up to ~2MB URL-safe.
 const Share={
   async exportToUrl(){
-    const data={v:V,shapes:state.shapes,name:state.docName};
+    const data={v:V,shapes:roundShapesForExport(state.shapes),name:state.docName};
     const json=JSON.stringify(data);
     // CompressionStream if available, else base64
     let payload=json;

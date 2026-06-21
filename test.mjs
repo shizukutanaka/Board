@@ -478,6 +478,11 @@ const checks = [
   ['imeShouldCommit helper present', html.includes("function imeShouldCommit(e){return !(e&&e.isComposing);}")],
   ['docName input handler gates on imeShouldCommit', html.includes("docNameEl.addEventListener('input',e=>{if(imeShouldCommit(e))_commitDocName()})")],
   ['docName compositionend listener wires final commit', html.includes("docNameEl.addEventListener('compositionend',_commitDocName)")],
+  // v1.6.83: coordinate rounding at serialization boundaries (Zenn float-precision bloat)
+  ['_round helper sheds float noise', html.includes("function _round(n,dp){return typeof n==='number'&&Number.isFinite(n)?Math.round(n*10**dp)/10**dp:n;}")],
+  ['roundShapesForExport rounds coord/dim fields', html.includes("function roundShapesForExport(shapes,dp=2)") && html.includes("['x','y','w','h','x1','y1','x2','y2','rotate']")],
+  ['share export rounds shapes', html.includes("shapes:roundShapesForExport(state.shapes),name:state.docName")],
+  ['.board export rounds shapes', html.includes("shapes:roundShapesForExport(state.shapes)})],{type:'application/json'})")],
 ];
 
 let pass = 0, fail = 0;
@@ -575,7 +580,7 @@ try {
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, pickTop, buildSVG, exportScale, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit };
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -589,7 +594,7 @@ try {
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, pickTop, buildSVG, exportScale, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit } = api;
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round } = api;
 
   console.log('\n-- behavioural --');
 
@@ -3390,8 +3395,47 @@ try {
     console.log('  ✓ imeShouldCommit: composing skipped, committed otherwise (Qiita/Zenn IME)');
   }
 
+  // v1.6.83: roundShapesForExport — trims float precision at serialization boundaries
+  // without touching the in-memory model (undo/render stay full-precision). Pure → tested.
+  {
+    // _round sheds IEEE-754 noise and excess precision; NaN/Inf pass through
+    assert.strictEqual(_round(100.00000000000001,2),100,'_round: sheds float noise');
+    assert.strictEqual(_round(123.456789,2),123.46,'_round: rounds to 2dp');
+    assert.ok(Number.isNaN(_round(NaN,2)),'_round: NaN passes through (validation still catches)');
+    assert.strictEqual(_round(Infinity,2),Infinity,'_round: Infinity passes through');
+    assert.strictEqual(_round('x',2),'x','_round: non-number passes through');
+
+    const orig=[
+      {id:'a',type:'rect',x:10.123456,y:20.987654,w:30.5,h:40.0000001,z:1,stroke:'#000',rotate:15.333333},
+      {id:'b',type:'arrow',x1:1.111111,y1:2.222222,x2:3.333333,y2:4.444444,z:2},
+      {id:'c',type:'pen',pts:[[1.23456,2.34567,0.5123],[3.4567,4.5678,0.9876]],z:3},
+    ];
+    const before=JSON.parse(JSON.stringify(orig));
+    const out=roundShapesForExport(orig,2);
+    // coordinate/dimension fields rounded
+    assert.strictEqual(out[0].x,10.12,'roundShapes: x rounded to 2dp');
+    assert.strictEqual(out[0].h,40,'roundShapes: h float noise dropped');
+    assert.strictEqual(out[0].rotate,15.33,'roundShapes: rotate rounded');
+    assert.strictEqual(out[1].x2,3.33,'roundShapes: arrow endpoint rounded');
+    // pen pts: position 2dp, pressure 3dp
+    assert.strictEqual(out[2].pts[0][0],1.23,'roundShapes: pen x rounded to 2dp');
+    assert.strictEqual(out[2].pts[0][2],0.512,'roundShapes: pen pressure rounded to 3dp');
+    // non-coordinate fields untouched
+    assert.strictEqual(out[0].id,'a','roundShapes: id preserved');
+    assert.strictEqual(out[0].stroke,'#000','roundShapes: stroke preserved');
+    assert.strictEqual(out[0].z,1,'roundShapes: z preserved');
+    // CRITICAL: the in-memory shapes are NOT mutated (serialization-only)
+    assert.deepStrictEqual(orig,before,'roundShapes: input array not mutated (undo/render unaffected)');
+    // rounded output still passes shape validation (finite coords)
+    assert.ok(out.every(validShape),'roundShapes: output still valid shapes');
+    // non-vacuity: serialized size actually shrinks
+    assert.ok(JSON.stringify(out).length < JSON.stringify(orig).length,
+      'non-vacuity: rounded JSON is smaller than full-precision JSON');
+    console.log('  ✓ roundShapesForExport: trims precision at export, leaves model intact (Zenn)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 459; // prev 453 + imeShouldCommit (6 asserts)
+  pass += 476; // prev 459 + roundShapesForExport (17 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
