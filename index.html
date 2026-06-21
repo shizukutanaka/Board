@@ -2633,6 +2633,21 @@ function resizeAfterTextEdit(s,text,c){
     s.w=Math.max(20,mw);s.h=Math.max(fs*1.25,lines.length*fs*1.25);
   }
 }
+// New text/sticky shapes are committed — and broadcast — with empty text up front,
+// then filled in the editor. Live collaborators therefore receive a blank shape and
+// never the typed content (and a dismissed-empty editor's local undo isn't broadcast
+// either, leaving an invisible hitbox on peers). Bridge both with a broadcast-ONLY op
+// for the finalize delta: stamped for LWW correctness, but kept OUT of local history so
+// single-user undo stays one step (the local add already carries the final text).
+function _syncTextFinalize(s,before,deleted){
+  if(typeof Net==='undefined'||typeof Net.broadcast!=='function')return;
+  const op=deleted
+    ? {op:'del',shapes:[clone(s)]}
+    : {op:'upd',id:s.id,before:{text:before},after:{text:s.text,w:s.w,h:s.h}};
+  op.clock={peer:state.peerId,seq:++state.seq,ts:nowTs()};
+  if(!deleted)Store._stampWrites(op);
+  Net.broadcast(op);
+}
 function openTextEditor(s,isNew){
   state.editing=s.id;invalidate();
   const ta=document.createElement('textarea');
@@ -2665,9 +2680,11 @@ function openTextEditor(s,isNew){
         Store.undo();
         state.history.length=state.histIdx+1;
         UI.refreshUndo();
+        _syncTextFinalize(s,origText,true);    // peers got the blank add → sync its removal
       }else{
         state.history[state.histIdx].shape=clone(s);
         state.dirty=true;Persist.schedule();
+        _syncTextFinalize(s,origText,false);   // peers got the blank add → sync typed content
       }
     }else{
       // Existing text: emptied → delete original (single undo); else changed → upd

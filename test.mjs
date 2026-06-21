@@ -492,6 +492,10 @@ const checks = [
   // v1.6.86: multi-image drop cascades by index (async closure capture fix)
   ['drop image cascade uses per-iteration index (not shared ox)', html.includes("files.forEach((f,i)=>{") && html.includes("x:wp.x+i*20,y:wp.y")],
   ['drop image no longer uses a shared incremented ox counter', !html.includes("const sh=Shape.make('image',{x:wp.x+ox,y:wp.y")],
+  // v1.6.87: new text/sticky finalize syncs typed content to live peers
+  ['_syncTextFinalize present (broadcast-only finalize op)', html.includes("function _syncTextFinalize(s,before,deleted)")],
+  ['text editor finalize syncs typed content (non-empty isNew)', html.includes("_syncTextFinalize(s,origText,false);")],
+  ['text editor finalize syncs removal (empty isNew)', html.includes("_syncTextFinalize(s,origText,true);")],
 ];
 
 let pass = 0, fail = 0;
@@ -589,7 +593,7 @@ try {
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, pickTop, buildSVG, exportScale, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round };
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -603,7 +607,7 @@ try {
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, pickTop, buildSVG, exportScale, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round } = api;
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize } = api;
 
   console.log('\n-- behavioural --');
 
@@ -3035,6 +3039,35 @@ try {
     assert.strictEqual(Ags2.groupId, Bgs2.groupId, 'group LWW: contested shape gs2 agrees');
     assert.strictEqual(Ags2.groupId, 'GB', 'group LWW: newer writer (B) wins contested shape gs2');
     console.log('  ✓ two-peer LWW: concurrent GROUP ops converge - contested shape yields to newer writer (§3.17)');
+
+    // v1.6.87: a new text/sticky is committed+broadcast with EMPTY text, then filled in
+    // the editor. _syncTextFinalize must push the typed content (and a dismissed-empty
+    // removal) to already-connected peers, or collaborators see a blank shape forever.
+    reset(A); reset(B);
+    A.Net.broadcast = op => B.Net._onRecv({k:'op',op:cp(op)});
+    B.Net.broadcast = op => A.Net._onRecv({k:'op',op:cp(op)});
+    // A creates a text shape (the up-front empty add broadcasts to B)
+    const tA = A.Shape.make('text',{x:0,y:0,w:120,h:24,text:'',fontSize:16});
+    A.Store.commit({op:'add',shape:tA});
+    assert.ok(B.state.shapes.some(s=>s.id===tA.id), 'text sync: B received the (empty) add');
+    assert.strictEqual(B.state.shapes.find(s=>s.id===tA.id).text, '', 'text sync: B has empty text before finalize');
+    // A finishes typing — finalize broadcasts the typed content
+    const liveA = A.state.shapes.find(s=>s.id===tA.id);
+    liveA.text='hello world'; liveA.w=200; liveA.h=24;
+    A._syncTextFinalize(liveA, '', false);
+    const Bt = B.state.shapes.find(s=>s.id===tA.id);
+    assert.strictEqual(Bt.text, 'hello world', 'text sync: B now has the typed content (the bug: stayed empty)');
+    assert.strictEqual(Bt.w, 200, 'text sync: B adopted the auto-sized width');
+    // dismissed-empty case: A creates another text, then finalizes it as deleted
+    reset(A); reset(B);
+    A.Net.broadcast = op => B.Net._onRecv({k:'op',op:cp(op)});
+    B.Net.broadcast = op => A.Net._onRecv({k:'op',op:cp(op)});
+    const tA2 = A.Shape.make('text',{x:5,y:5,w:120,h:24,text:'',fontSize:16});
+    A.Store.commit({op:'add',shape:tA2});
+    assert.ok(B.state.shapes.some(s=>s.id===tA2.id), 'text sync: B received the blank add');
+    A._syncTextFinalize(tA2, '', true);   // dismissed empty → removal broadcast
+    assert.ok(!B.state.shapes.some(s=>s.id===tA2.id), 'text sync: B drops the blank shape after empty-dismiss (no lingering hitbox)');
+    console.log('  ✓ two-peer: new text/sticky finalize syncs typed content + empty-dismiss removal (§collab)');
   }
 
   // v1.6.71: context menu separator deduplication
@@ -3507,7 +3540,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 488; // prev 485 + drop cascade closure capture (3 asserts)
+  pass += 496; // prev 488 + two-peer text finalize sync (8 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
