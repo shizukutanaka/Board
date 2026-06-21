@@ -5,6 +5,13 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
 ## [Unreleased]
 
 ### Fixed
+- **Firefox のマウスホイールでパン/ズームがほぼ効かなかった(MDN/Zenn ホイール リサーチ)**: wheel
+  ハンドラが `e.deltaX/deltaY` を生のまま使っていたが、`deltaMode` は **pixel(0)/line(1)/page(2)** と
+  単位が異なる。Firefox のマウスホイールは line モード(`deltaY≈±3`)で報告するのに対し Chrome は
+  pixel モード(`±100`)のため、Firefox ではパン/ズームが ~16× 弱く、ほとんど動かなかった。
+  `wheelPx(e)`(line=×16 / page=×400 / pixel=×1、欠損値は 0 で NaN 防止)でピクセルに正規化。Chrome の
+  pixel 経路は不変(×1)なので既存の操作感を保つ。**非空虚テスト**(2 presence + 6 アサート): pixel
+  そのまま通過、line ×16、page ×400、欠損 deltaY→0、line 正規化(48)が生値(3)と異なることを担保。
 - **ピンチズーム中に単一ポインタのジェスチャが暴走していた(Qiita/Zenn マルチタッチ リサーチ)**:
   ピンチ追跡リスナー(capture フェーズ)は `_pointers` を管理するが、メインの描画ハンドラ
   (bubble フェーズ)は `_pointers.size` を見ていなかった。そのため描画/移動の最中に 2 本目の指で

@@ -2198,13 +2198,24 @@ window.addEventListener('paste',e=>{
 });
 
 // Wheel: zoom (ctrl) or pan
+// Wheel deltas arrive in different units per deltaMode: pixels (0), lines (1 —
+// Firefox mouse wheel) or pages (2). Reading deltaY raw makes a line-mode wheel
+// ~16× weaker, so pan/zoom barely move in Firefox while Chrome (pixel mode) is
+// fine. Normalize to pixels so behaviour is consistent across browsers. Chrome's
+// pixel path is unchanged (u=1), so the existing feel is preserved. Pure → tested.
+// (MDN wheel event; Zenn/Qiita trackpad-vs-wheel notes.)
+function wheelPx(e){
+  const u=e.deltaMode===1?16:e.deltaMode===2?400:1;
+  return{x:(e.deltaX||0)*u,y:(e.deltaY||0)*u};
+}
 canvas.addEventListener('wheel',e=>{
   e.preventDefault();
+  const d=wheelPx(e);
   if(e.ctrlKey||e.metaKey){
-    zoomAt({x:e.offsetX,y:e.offsetY},-e.deltaY*0.005);
+    zoomAt({x:e.offsetX,y:e.offsetY},-d.y*0.005);
   }else{
-    state.viewport.x+=e.deltaX/state.viewport.zoom;
-    state.viewport.y+=e.deltaY/state.viewport.zoom;
+    state.viewport.x+=d.x/state.viewport.zoom;
+    state.viewport.y+=d.y/state.viewport.zoom;
     invalidate();
   }
 },{passive:false});

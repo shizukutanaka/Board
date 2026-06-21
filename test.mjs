@@ -471,6 +471,9 @@ const checks = [
   ['pointerdown aborts single-pointer gesture when a 2nd finger lands', html.includes("if(_pointers.size>=2){abortGesture();return;}")],
   ['pointermove bails while pinch is active', html.includes("if(_pointers.size>=2)return;   // pinch in progress")],
   ['abortGesture reverts move/resize/rotate from pointerdown snapshots', html.includes("function abortGesture(){") && html.includes("if(ptr.dragKind==='move'&&ptr.dragStartShapes){")],
+  // v1.6.81: wheel deltaMode normalization (Firefox line-mode parity with Chrome pixels)
+  ['wheelPx normalizes deltaMode to pixels', html.includes("function wheelPx(e)") && html.includes("e.deltaMode===1?16:e.deltaMode===2?400:1")],
+  ['wheel handler routes through wheelPx', html.includes("const d=wheelPx(e);") && html.includes("zoomAt({x:e.offsetX,y:e.offsetY},-d.y*0.005)")],
 ];
 
 let pass = 0, fail = 0;
@@ -568,7 +571,7 @@ try {
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, pickTop, buildSVG, exportScale, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr };
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -582,7 +585,7 @@ try {
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, pickTop, buildSVG, exportScale, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr } = api;
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx } = api;
 
   console.log('\n-- behavioural --');
 
@@ -3345,8 +3348,26 @@ try {
     console.log('  ✓ abortGesture: pinch cancels & reverts in-progress gesture (multi-touch, Qiita/Zenn)');
   }
 
+  // v1.6.81: wheelPx normalizes wheel deltas across deltaMode so Firefox's line-mode
+  // mouse wheel isn't ~16× weaker than Chrome's pixel mode. Pure → directly unit-tested.
+  {
+    // pixel mode (Chrome / trackpad): unchanged
+    assert.deepStrictEqual(wheelPx({deltaMode:0,deltaX:10,deltaY:100}),{x:10,y:100},'wheelPx: pixel mode passes through');
+    // line mode (Firefox mouse wheel): ×16
+    assert.deepStrictEqual(wheelPx({deltaMode:1,deltaX:1,deltaY:3}),{x:16,y:48},'wheelPx: line mode scaled ×16');
+    // page mode (rare): ×400
+    assert.deepStrictEqual(wheelPx({deltaMode:2,deltaX:0,deltaY:1}),{x:0,y:400},'wheelPx: page mode scaled ×400');
+    // missing deltas are coerced to 0 (no NaN into viewport math)
+    assert.deepStrictEqual(wheelPx({deltaMode:0}),{x:0,y:0},'wheelPx: missing deltas → 0 (NaN-safe)');
+    // non-vacuity: line mode (×16) must differ from reading deltaY raw — that is the bug.
+    const raw=3, normalized=wheelPx({deltaMode:1,deltaY:3}).y;
+    assert.notStrictEqual(normalized,raw,'non-vacuity: line-mode normalized (48) ≠ raw deltaY (3)');
+    assert.ok(normalized>raw,'wheelPx: line-mode normalization amplifies a too-weak raw delta');
+    console.log('  ✓ wheelPx: deltaMode normalized to pixels (Firefox/Chrome parity, MDN/Zenn)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 447; // prev 438 + abortGesture pinch-cancel (9 asserts)
+  pass += 453; // prev 447 + wheelPx deltaMode normalization (6 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
