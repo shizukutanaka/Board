@@ -5,6 +5,15 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
 ## [Unreleased]
 
 ### Fixed
+- **高頻度スタイラスでペンのサンプルを取りこぼしていた(Qiita リサーチ)**: ペンの `pointermove` は
+  `e.offsetX/Y` を 1 点だけ取り込んでいた。ブラウザは Apple Pencil(~240Hz)や 120Hz+ ディスプレイの
+  複数の物理サンプルを 1 つの 60Hz `pointermove` に**合体(coalesce)**するため、合体された 3/4 の点と
+  その筆圧が失われ、ストロークが粗くなっていた。Qiita(sen-ltd)/MDN が指摘する通り
+  `getCoalescedEvents()` で全サブサンプルを回収する `coalescedSamples(e)`(未対応ブラウザは `[e]` に
+  フォールバック)を追加し、ペン分岐で各サブサンプルを `contPen` に投入。データモデル(`pts`)は不変で
+  既存の距離デシメーション・RDP・可変線幅・保存/同期に影響なし。**非空虚テスト**(2 presence + 8 アサート):
+  合体リストの回収とフォールバック、4 サブサンプルが 5 点を生む(単一サンプルの 2 点より多い)こと、
+  中間サンプルの筆圧が保持されることを担保。
 - **IndexedDB の `QuotaExceededError` がユーザに伝わらず救済策も示されなかった(Zenn / PWA リサーチ)**:
   `Persist.save` の catch は generic で `t('saveFailed')+': '+err.message` を出すのみ。Zenn の PWA データ
   永続化記事(`tosa`/`peter_norio`/`tm35` ほか)が一致して指摘する通り、IDB は容量超過時に固有名

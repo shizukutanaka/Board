@@ -2004,7 +2004,7 @@ canvas.addEventListener('pointermove',e=>{
       }else if(ptr.dragKind==='move')doMove(wp);
       else if(ptr.dragKind==='marquee'){state.marquee={x1:ptr.wx0,y1:ptr.wy0,x2:wp.x,y2:wp.y};invalidate()}
       break;
-    case 'pen':contPen(wp,e);break;
+    case 'pen':for(const ce of coalescedSamples(e))contPen(G.s2w({x:ce.offsetX,y:ce.offsetY}),ce);break;
     case 'rect':case 'ellipse':case 'sticky':case 'frame':contRectLike(wp,e.shiftKey);break;
     case 'line':case 'arrow':contLineLike(wp,e.shiftKey);break;
     case 'eraser':eraseAt(wp);break;
@@ -2404,6 +2404,15 @@ function endSelect(wp){
 // ---- pen ----
 // Coerce pen pressure: mouse=const 0.5, stylus=0..1; finite-safe.
 function _penPr(e){const p=e&&e.pressure;return Number.isFinite(p)&&p>0?Math.min(1,p):0.5}
+// Every sub-sample the browser coalesced into one pointermove. High-rate styluses
+// (Apple Pencil ~240Hz) and 120Hz+ displays emit several physical samples per 60Hz
+// frame; keeping only the last (the bare event) coarsens the stroke and drops pressure
+// detail. getCoalescedEvents recovers them all → smoother curves that match the pen
+// path. Falls back to [e] where unsupported / empty. (Qiita: sen-ltd, MDN)
+function coalescedSamples(e){
+  const cs=e&&e.getCoalescedEvents&&e.getCoalescedEvents();
+  return cs&&cs.length?cs:[e];
+}
 function beginPen(wp,e){
   state.draft=Shape.make('pen',{pts:[[wp.x,wp.y,_penPr(e)]]});
 }

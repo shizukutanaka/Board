@@ -460,6 +460,9 @@ const checks = [
   ['Persist._saveErrMsg branches on QuotaExceededError', html.includes("_saveErrMsg(err){") && html.includes("err.name==='QuotaExceededError'")],
   ['Persist.save catch delegates to _saveErrMsg', html.includes("UI.toast(this._saveErrMsg(err),'err');")],
   ['quotaExceeded i18n key in ja and en', html.includes("quotaExceeded:'保存容量が逼迫しています") && html.includes("quotaExceeded:'Storage quota exceeded")],
+  // v1.6.78: pen captures all coalesced sub-samples (high-rate stylus smoothness)
+  ['coalescedSamples helper present with fallback', html.includes("function coalescedSamples(e)") && html.includes("return cs&&cs.length?cs:[e];")],
+  ['pen pointermove iterates coalesced samples', html.includes("case 'pen':for(const ce of coalescedSamples(e))contPen(G.s2w({x:ce.offsetX,y:ce.offsetY}),ce);break;")],
 ];
 
 let pass = 0, fail = 0;
@@ -557,7 +560,7 @@ try {
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, pickTop, buildSVG, exportScale, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist };
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -571,7 +574,7 @@ try {
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, pickTop, buildSVG, exportScale, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist } = api;
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen } = api;
 
   console.log('\n-- behavioural --');
 
@@ -3211,8 +3214,47 @@ try {
     console.log('  ✓ Persist._saveErrMsg: QuotaExceededError → actionable toast (Zenn/PWA research)');
   }
 
+  // v1.6.78: coalescedSamples + pen multi-sample capture (high-rate stylus smoothness).
+  // Without getCoalescedEvents the pen keeps one point per 60Hz frame; a 240Hz stylus
+  // coalesces ~4 samples/frame, so 3/4 of the pen path (and its pressure) is lost.
+  {
+    // coalescedSamples: returns the coalesced list when non-empty, else falls back to [e]
+    const a={offsetX:1,offsetY:0,pressure:0.5},b={offsetX:2,offsetY:0,pressure:0.6},c={offsetX:3,offsetY:0,pressure:0.7};
+    const evMulti={getCoalescedEvents:()=>[a,b,c]};
+    const evEmpty={getCoalescedEvents:()=>[]};
+    const evNone={offsetX:9,offsetY:9};            // no getCoalescedEvents (old browser)
+    assert.deepStrictEqual(coalescedSamples(evMulti),[a,b,c],'coalescedSamples: returns all sub-samples');
+    assert.deepStrictEqual(coalescedSamples(evEmpty),[evEmpty],'coalescedSamples: empty list falls back to [e]');
+    assert.deepStrictEqual(coalescedSamples(evNone),[evNone],'coalescedSamples: missing API falls back to [e]');
+
+    // Integration: simulate ONE pointermove carrying 4 coalesced samples vs the old
+    // single-sample behaviour, and confirm the multi-sample path records finer detail.
+    state.viewport={x:0,y:0,zoom:1};               // decimation threshold = 1 world unit
+    state.shapes=[];state.history=[];state.histIdx=-1;state.draft=null;
+    beginPen({x:0,y:0},{pressure:0.5});
+    // OLD code: one contPen for the bare event's final position (x=10)
+    const baselineDraft=state.draft;
+    contPen({x:10,y:0},{pressure:0.5});
+    const oldCount=baselineDraft.pts.length;       // start(1) + 1 sample = 2
+    assert.strictEqual(oldCount,2,'baseline: single sample yields 2 pts (start + end)');
+
+    // NEW code: feed the 4 coalesced samples spread along the path
+    state.draft=null;
+    beginPen({x:0,y:0},{pressure:0.5});
+    const coalesced=[{offsetX:2.5,offsetY:0,pressure:0.5},{offsetX:5,offsetY:0,pressure:0.6},
+                     {offsetX:7.5,offsetY:0,pressure:0.7},{offsetX:10,offsetY:0,pressure:0.8}];
+    const evt={getCoalescedEvents:()=>coalesced};
+    for(const ce of coalescedSamples(evt))contPen({x:ce.offsetX,y:ce.offsetY},ce);
+    const newCount=state.draft.pts.length;         // start(1) + 4 samples = 5
+    assert.strictEqual(newCount,5,'coalesced: 4 sub-samples yield 5 pts (start + 4)');
+    assert.ok(newCount>oldCount,'non-vacuity: coalesced capture records MORE pen detail than single-sample');
+    // pressure of each sub-sample is preserved (not just the last) → variable-width fidelity
+    assert.strictEqual(state.draft.pts[2][2],0.6,'coalesced: intermediate sample pressure preserved');
+    console.log('  ✓ coalescedSamples: pen captures every coalesced sub-sample (240Hz stylus, Qiita research)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 424; // prev 416 + Persist._saveErrMsg quota branch (8 asserts)
+  pass += 432; // prev 424 + coalescedSamples/pen multi-sample (2 presence + 8 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
