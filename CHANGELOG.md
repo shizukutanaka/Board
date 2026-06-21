@@ -16,6 +16,15 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
   丸め後も `validShape` を満たす、シリアライズ後のサイズが実際に縮むことを担保。
 
 ### Fixed
+- **WebRTC 接続中の相手が 15 秒でプレゼンス表示から消えていた(コード監査)**: WebRTC ピアは
+  BroadcastChannel の heartbeat(`{k:'ping'}` は `this.bc` のみに送信)に乗らず、`dc.onopen` で合成 id
+  `rtc:XXXX` を 1 度だけ `_touchPeer` するだけだった。`_onRecv` の `case 'op'` はピアを touch しない
+  ため `lastSeen` が更新されず、`_reapPeers` が 15 秒(`NET_PRESENCE_TIMEOUT`)で削除 → 接続が生きていて
+  op が流れていてもアバター/ピア数が消えていた。WebRTC ピアを **DataChannel ライフサイクル管理**に変更:
+  `dc.onopen` で `_rtcPeerId` を保存して追加、`dc.onclose` で削除、`_reapPeers` は `rtc:` 接頭辞のピアを
+  タイムアウト reap から除外。BroadcastChannel ピアは従来通り heartbeat でタイムアウト reap。**非空虚
+  テスト**(3 presence + 4 アサート): 古い BC ピアは reap・新しい BC ピアは保持・古い(が接続中の)rtc
+  ピアは保持、そして rtc ピアが reap された BC ピアと**同じだけ古い**(=`rtc:` 除外だけが生存理由)ことを担保。
 - **`Net.init` の再呼び出しでプレゼンス heartbeat がリークしていた(コード監査)**: `init(roomId)` は
   ルーム切替のための再呼び出しを想定して旧 `BroadcastChannel` を `close()` するが、5 秒ごとの
   プレゼンス heartbeat (`_presenceTimer`) を `clearInterval` していなかった。再呼び出しすると旧

@@ -485,6 +485,10 @@ const checks = [
   ['.board export rounds shapes', html.includes("shapes:roundShapesForExport(state.shapes)})],{type:'application/json'})")],
   // v1.6.84: Net.init clears prior presence timer on re-init (no leaked heartbeat)
   ['Net.init clears prior presence timer', html.includes("clearInterval(this._presenceTimer);   // re-init (room switch) must not leak the old heartbeat")],
+  // v1.6.85: WebRTC peers lifecycle-managed (not heartbeat-reaped after 15s)
+  ['_reapPeers exempts rtc: peers from timeout reaping', html.includes("if(id.startsWith('rtc:'))continue;   // WebRTC peers are lifecycle-managed")],
+  ['dc.onclose removes the rtc peer', html.includes("if(this._rtcPeerId){state.peers.delete(this._rtcPeerId);this._rtcPeerId=null;}")],
+  ['dc.onopen stores _rtcPeerId for lifecycle management', html.includes("this._rtcPeerId='rtc:'+uid().slice(0,4);")],
 ];
 
 let pass = 0, fail = 0;
@@ -3458,8 +3462,30 @@ try {
     console.log('  ✓ Net.init: re-init closes channel + clears prior heartbeat (no timer leak)');
   }
 
+  // v1.6.85: _reapPeers must NOT drop WebRTC peers by timeout — they don't ride the
+  // BroadcastChannel heartbeat, so a live idle link would lose its avatar after 15s.
+  // BroadcastChannel peers ARE still reaped on timeout (existing behaviour preserved).
+  {
+    const stale=Date.now()-60000;   // well past NET_PRESENCE_TIMEOUT (15s)
+    const fresh=Date.now();
+    state.peers=new Map([
+      ['peerBC-stale',{color:'#f00',lastSeen:stale}],   // BC peer, idle → should be reaped
+      ['peerBC-fresh',{color:'#0f0',lastSeen:fresh}],    // BC peer, active → kept
+      ['rtc:ab12',{color:'#00f',lastSeen:stale}],        // WebRTC peer, idle but connected → kept
+    ]);
+    Net._onConnChange=null;   // avoid UI callback during test
+    Net._reapPeers();
+    assert.strictEqual(state.peers.has('peerBC-stale'),false,'_reapPeers: stale BroadcastChannel peer dropped');
+    assert.strictEqual(state.peers.has('peerBC-fresh'),true,'_reapPeers: fresh BroadcastChannel peer kept');
+    assert.strictEqual(state.peers.has('rtc:ab12'),true,'_reapPeers: idle WebRTC peer kept (lifecycle-managed, not heartbeat-reaped)');
+    // non-vacuity: the rtc peer's lastSeen is just as stale as the dropped BC peer — the
+    // ONLY reason it survives is the rtc: exemption. Without it, it would be reaped too.
+    assert.strictEqual(state.peers.get('rtc:ab12').lastSeen,stale,'non-vacuity: kept rtc peer is as stale as the reaped BC peer');
+    console.log('  ✓ _reapPeers: WebRTC peers survive timeout, BroadcastChannel peers reaped (presence bug)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 481; // prev 476 + Net.init presence-timer clear (5 asserts)
+  pass += 485; // prev 481 + _reapPeers rtc exemption (4 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

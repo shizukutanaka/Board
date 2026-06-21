@@ -3308,6 +3308,7 @@ const Net={
   dc:null,                    // RTCDataChannel
   _presenceTimer:0,
   _onConnChange:null,         // UI callback
+  _rtcPeerId:null,            // synthetic peer id for the WebRTC link (lifecycle-managed)
   init(roomId){
     if(this.bc){try{this.bc.close()}catch(_){}}
     clearInterval(this._presenceTimer);   // re-init (room switch) must not leak the old heartbeat
@@ -3407,6 +3408,7 @@ const Net={
   _reapPeers(){
     const now=Date.now();let changed=false;
     for(const [id,p] of state.peers){
+      if(id.startsWith('rtc:'))continue;   // WebRTC peers are lifecycle-managed (onclose), not heartbeat-reaped
       if(now-p.lastSeen>NET_PRESENCE_TIMEOUT){state.peers.delete(id);changed=true}
     }
     if(changed&&this._onConnChange)this._onConnChange();
@@ -3458,14 +3460,22 @@ const Net={
   _wireDC(){
     this.dc.onopen=()=>{
       UI.toast(t('connected'),'ok');
-      this._touchPeer('rtc:'+uid().slice(0,4));
+      // WebRTC peers don't ride the BroadcastChannel heartbeat, so they're managed by
+      // the DataChannel lifecycle (added here, removed on close) and exempted from the
+      // 15s reaper — otherwise a live, idle connection's avatar vanishes after 15s.
+      this._rtcPeerId='rtc:'+uid().slice(0,4);
+      this._touchPeer(this._rtcPeerId);
       // send snapshot to new peer (must include ops so a non-empty peer can merge)
       try{this.dc.send(JSON.stringify(this._snapshotMsg()))}catch(_){}
     };
     this.dc.onmessage=e=>{
       try{this._onRecv(JSON.parse(e.data))}catch(_){}
     };
-    this.dc.onclose=()=>{UI.toast(t('disconnected'),'warn');if(this._onConnChange)this._onConnChange()};
+    this.dc.onclose=()=>{
+      UI.toast(t('disconnected'),'warn');
+      if(this._rtcPeerId){state.peers.delete(this._rtcPeerId);this._rtcPeerId=null;}
+      if(this._onConnChange)this._onConnChange();
+    };
   },
   _encodeToken(sdp){
     return btoa(unescape(encodeURIComponent(JSON.stringify({type:sdp.type,sdp:sdp.sdp}))));
