@@ -5,6 +5,17 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
 ## [Unreleased]
 
 ### Fixed
+- **IndexedDB の `QuotaExceededError` がユーザに伝わらず救済策も示されなかった(Zenn / PWA リサーチ)**:
+  `Persist.save` の catch は generic で `t('saveFailed')+': '+err.message` を出すのみ。Zenn の PWA データ
+  永続化記事(`tosa`/`peter_norio`/`tm35` ほか)が一致して指摘する通り、IDB は容量超過時に固有名
+  `QuotaExceededError` を投げるが、これを区別しないと「保存失敗: DOMException: …」とだけ表示され、
+  ユーザは(a) 何が起きたか分からず(b) 取れる手(ローカル書き出し)も知らない。`Persist._saveErrMsg(err)`
+  を純粋関数として抽出、`err.name==='QuotaExceededError'` で専用 i18n キー `quotaExceeded`
+  (`保存容量が逼迫しています — ⌘E/⌘⇧E で書き出しを推奨` / `Storage quota exceeded — export locally
+  with ⌘E/⌘⇧E`)へ。`role="alert"` トーストで SR にも即時伝達。**非空虚テスト**(8 アサート): quota と
+  非 quota 入力で**出力が異なる**こと、quota は ⌘E/export を含み saveFailed 接頭辞を持たないこと、
+  非 quota は元の `err.message` を含み saveFailed 接頭辞を保つこと、null/undefined err も非空文字列に
+  安全に落ちることを担保。
 - **回転描画が box 以外の図形で NaN 中心になっていた(表示=出力パリティ違反)**: `drawShape` の回転ラッパは
   全種別に適用され、中心を `s.x+(s.w||0)/2` で計算していた。line/arrow/pen は `s.x`/`s.w` が undefined のため
   中心が **NaN**(canvas は原点周りで誤回転)。一方 SVG エクスポートは line/arrow/pen に `rT` を付けないため

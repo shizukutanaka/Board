@@ -759,7 +759,7 @@ const I18N={
     selectTwo:'2つ以上選択してください',grouped:'グループ化',noGroup:'グループなし',
     ungrouped:'グループ解除',noFrames:'フレームがありません (F キーで作成)',
     imgBig:'画像が大きすぎます。縮小してください',imgErr:'画像を読み込めませんでした',
-    popupBlocked:'ポップアップをブロックしてください',invalidBoard:'ボードファイルが無効です',exportFailed:'書き出し失敗',saveFailed:'保存失敗',
+    popupBlocked:'ポップアップをブロックしてください',invalidBoard:'ボードファイルが無効です',exportFailed:'書き出し失敗',saveFailed:'保存失敗',quotaExceeded:'保存容量が逼迫しています — ⌘E/⌘⇧E で書き出しを推奨',
     snap:'スナップ',grid:'グリッド',on:'オン',off:'オフ',online:'オンライン',offline:'オフライン',shapes:'図形',
     copied:'コピー',pasted:'貼り付け',deleted:'削除',cleared:'クリア',
     undone:'元に戻した',redone:'やり直した',created:'作成',
@@ -809,7 +809,7 @@ const I18N={
     selectTwo:'Select 2 or more',grouped:'Grouped',noGroup:'No group',
     ungrouped:'Ungrouped',noFrames:'No frames (press F to create)',
     imgBig:'Image too large — please resize',imgErr:'Image failed to load',
-    popupBlocked:'Pop-up blocked — please allow pop-ups for PDF export',invalidBoard:'Invalid .board file',exportFailed:'Export failed',saveFailed:'Save failed',
+    popupBlocked:'Pop-up blocked — please allow pop-ups for PDF export',invalidBoard:'Invalid .board file',exportFailed:'Export failed',saveFailed:'Save failed',quotaExceeded:'Storage quota exceeded — export locally with ⌘E/⌘⇧E',
     copied:'Copied',pasted:'Pasted',deleted:'Deleted',cleared:'Cleared',
     undone:'Undone',redone:'Redone',created:'Created',
     confirmClear:'Delete everything?',
@@ -3516,6 +3516,15 @@ const Persist={
     clearTimeout(this._saveT);
     this._saveT=setTimeout(()=>this.save(),SAVE_DEBOUNCE);
   },
+  // Pure mapping from a thrown error to the toast text. IndexedDB throws a
+  // distinct `QuotaExceededError` when the origin's storage budget is full —
+  // an actionable case the generic "save failed: <msg>" toast hides. Calling
+  // out the quota path lets the user respond (export with ⌘E/⌘⇧E) instead of
+  // watching saves silently fail. Pure → unit-tested.
+  _saveErrMsg(err){
+    if(err&&err.name==='QuotaExceededError')return t('quotaExceeded');
+    return t('saveFailed')+': '+((err&&err.message)||'unknown');
+  },
   async save(explicit){
     if(!this.db)return;
     try{
@@ -3534,7 +3543,7 @@ const Persist={
       if(state.shapes.length)this.requestDurable();   // user has content worth keeping
       if(explicit)UI.toast(t('saved'),'ok');
     }catch(err){
-      UI.toast(t('saveFailed')+': '+err.message,'err');
+      UI.toast(this._saveErrMsg(err),'err');
     }
   },
   async load(){

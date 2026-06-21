@@ -456,6 +456,10 @@ const checks = [
   ['shapeRot helper gates rotation to box shapes', html.includes("function shapeRot(s){return s.rotate&&s.w!=null?s.rotate:0;}")],
   ['canvas drawShape uses shapeRot (not raw s.rotate)', html.includes("const _rot=shapeRot(s);")],
   ['SVG export rT uses shapeRot', html.includes("const rT=shapeRot(s)?")],
+  // v1.6.77: Persist._saveErrMsg distinguishes QuotaExceededError (Zenn/PWA best practice)
+  ['Persist._saveErrMsg branches on QuotaExceededError', html.includes("_saveErrMsg(err){") && html.includes("err.name==='QuotaExceededError'")],
+  ['Persist.save catch delegates to _saveErrMsg', html.includes("UI.toast(this._saveErrMsg(err),'err');")],
+  ['quotaExceeded i18n key in ja and en', html.includes("quotaExceeded:'保存容量が逼迫しています") && html.includes("quotaExceeded:'Storage quota exceeded")],
 ];
 
 let pass = 0, fail = 0;
@@ -553,7 +557,7 @@ try {
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, pickTop, buildSVG, exportScale, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot };
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -567,7 +571,7 @@ try {
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, pickTop, buildSVG, exportScale, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot } = api;
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist } = api;
 
   console.log('\n-- behavioural --');
 
@@ -3175,8 +3179,40 @@ try {
     console.log('  ✓ shapeRot: rotation gated to box shapes (canvas/SVG parity, no NaN centre)');
   }
 
+  // v1.6.77: Persist._saveErrMsg — QuotaExceededError gets actionable message;
+  // generic errors fall through to the legacy "save failed: …" form. Pure helper,
+  // unit-testable without mocking IndexedDB. Informed by Zenn PWA-storage articles
+  // that consistently flag this as the one IDB error users need explicit guidance on.
+  {
+    const quotaErr={name:'QuotaExceededError',message:'DOMException: quota'};
+    const ioErr={name:'InvalidStateError',message:'db closed'};
+    const undefErr=undefined;
+    const quotaMsg=Persist._saveErrMsg(quotaErr);
+    const ioMsg=Persist._saveErrMsg(ioErr);
+    const undefMsg=Persist._saveErrMsg(undefErr);
+    assert.ok(!quotaMsg.includes('DOMException'),
+      '_saveErrMsg: quota toast does not leak the raw err.message verbatim');
+    assert.ok(quotaMsg.includes('⌘E')||/export/i.test(quotaMsg),
+      '_saveErrMsg: quota path mentions the export shortcut (actionable)');
+    assert.ok(!/^save failed|^保存失敗/i.test(quotaMsg),
+      '_saveErrMsg: quota path does NOT use the generic saveFailed prefix');
+    assert.ok(ioMsg.includes('db closed'),
+      '_saveErrMsg: non-quota error includes err.message');
+    assert.ok(/save failed|保存失敗/i.test(ioMsg),
+      '_saveErrMsg: non-quota error uses the generic saveFailed prefix');
+    assert.ok(typeof undefMsg==='string'&&undefMsg.length>0,
+      '_saveErrMsg: null/undefined err yields a non-empty fallback string');
+    assert.ok(undefMsg.includes('unknown'),
+      '_saveErrMsg: null err falls back to "unknown" message');
+    // non-vacuity: the OLD code (pre-extraction) used the same generic format for both;
+    // the new mapping must make them differ — that is the whole point of the fix.
+    assert.notStrictEqual(quotaMsg, ioMsg,
+      'non-vacuity: quota and non-quota errors now produce DIFFERENT toast text');
+    console.log('  ✓ Persist._saveErrMsg: QuotaExceededError → actionable toast (Zenn/PWA research)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 416; // prev 405 + shapeRot box-only rotation (3 presence + 11 asserts)
+  pass += 424; // prev 416 + Persist._saveErrMsg quota branch (8 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
