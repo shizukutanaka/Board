@@ -5,6 +5,13 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
 ## [Unreleased]
 
 ### Added
+- **検索ナビゲーション機能のヘルプグリッド登録**:
+  Ctrl+F 検索に Enter/Shift+Enter ナビゲーション機能を追加したが、ヘルプグリッド(?)には
+  この機能が記載されていなかった。新しい i18n キー `searchNav` を ja/en 両方で追加し、
+  fillHelp の shortcut 一覧に `['Enter / ⇧Enter',t('searchNav')]` を追加。
+  presence check も更新して、ヘルプグリッドに search nav 行が含まれることを自動検証。
+
+### Added
 - **README キーボードショートカット表の完全化**:
   Ctrl+F 検索のナビゲーション機能を追加したことで、README のショートカット表が複数の**実装済み機能**を
   無視していたことが明らかになった。以下のショートカットはコード内で完全実装されていたが、表に掲載されていず

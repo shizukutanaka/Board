@@ -718,7 +718,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.72';
+const V='1.6.73';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -799,7 +799,7 @@ const I18N={
       save:'即時保存',grid:'グリッド',esc:'選択解除/キャンセル',
       cycle:'図形を巡回',create:'中央に作成',
       present:'プレゼン',nudge:'移動 (⇧: 10px)',zorder:'前面/背面',zorderEnds:'最前面/最背面',
-      rotate:'回転 (15° / ノブdrag)',search:'検索',resizeRatio:'比率保持リサイズ',resizeCenter:'中心固定リサイズ',kbdResize:'リサイズ (⇧:×10)'}},
+      rotate:'回転 (15° / ノブdrag)',search:'検索',searchNav:'次/前のマッチへ移動',resizeRatio:'比率保持リサイズ',resizeCenter:'中心固定リサイズ',kbdResize:'リサイズ (⇧:×10)'}},
   en:{export:'Export',present:'Present',snap:'Snap',size:'Size',lineStyle:'Line',helpTitle:'Shortcuts',
     helpSub:'No need to memorise. You\'ll pick it up.',
     saved:'saved',savedNow:'just now',savedAgo:'s ago',
@@ -848,7 +848,7 @@ const I18N={
       save:'Save now',grid:'Toggle grid',esc:'Deselect / cancel',
       cycle:'Cycle shapes',create:'Create at centre',
       present:'Present',nudge:'Move (⇧: 10px)',zorder:'Front / back',zorderEnds:'To front / to back',
-      rotate:'Rotate (15° / knob drag)',search:'Search',resizeRatio:'Keep ratio (resize)',resizeCenter:'Resize from centre',kbdResize:'Resize (⇧:×10)'}}};
+      rotate:'Rotate (15° / knob drag)',search:'Search',searchNav:'Next / prev match',resizeRatio:'Keep ratio (resize)',resizeCenter:'Resize from centre',kbdResize:'Resize (⇧:×10)'}}};
 const LANG=(navigator.language||'en').startsWith('ja')?'ja':'en';
 const T=I18N[LANG];
 const t=k=>T[k]||I18N.en[k]||k;
@@ -3873,6 +3873,7 @@ const UI={
       ['↑↓←→',k.nudge],['⌥ ↑↓←→',k.kbdResize],
       [']/[',k.zorder],['⇧]/⇧[',k.zorderEnds],
       [', / .',k.rotate],['⌘F',k.search],
+      ['Enter / ⇧Enter',t('searchNav')],
       ['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],
       ['Tab / ⇧Tab',k.cycle],['Enter',k.create]
     ];

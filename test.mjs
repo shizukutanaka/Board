@@ -396,7 +396,7 @@ const checks = [
   ['rotated box shapes expose handles at rotated positions', html.includes("return hs.map(p=>{const r=_rotPt(p.x,p.y,cx,cy,s.rotate);return{id:p.id,x:r.x,y:r.y}});")],
   ['search placeholder uses i18n t(search)', html.includes("sq.placeholder=t('search')")],
   ['rotate + search i18n keys in ja and en', html.includes("rotate:'回転 (15° / ノブdrag)',search:'検索'") && html.includes("rotate:'Rotate (15° / knob drag)',search:'Search'")],
-  ['help grid lists rotate and search shortcuts', html.includes("[', / .',k.rotate],['⌘F',k.search]")],
+  ['help grid lists rotate and search shortcuts', html.includes("[', / .',k.rotate],['⌘F',k.search]") && html.includes("['Enter / ⇧Enter',t('searchNav')]")],
   // keyboard shortcuts (all documented in README)
   ['N shortcut for sticky (in KEYMAP)', html.includes("n:'sticky'")],
   ['⌘G / ⌘⇧G group/ungroup shortcuts', html.includes("k==='g'&&e.shiftKey") && html.includes("doUngroup") && html.includes("doGroup")],
