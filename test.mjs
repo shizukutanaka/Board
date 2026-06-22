@@ -397,6 +397,11 @@ const checks = [
   ['search placeholder uses i18n t(search)', html.includes("sq.placeholder=t('search')")],
   ['rotate + search i18n keys in ja and en', html.includes("rotate:'回転 (15° / ノブdrag)',search:'検索'") && html.includes("rotate:'Rotate (15° / knob drag)',search:'Search'")],
   ['help grid lists rotate and search shortcuts', html.includes("[', / .',k.rotate],['⌘F',k.search]")],
+  // keyboard shortcuts (all documented in README)
+  ['N shortcut for sticky (in KEYMAP)', html.includes("n:'sticky'")],
+  ['⌘G / ⌘⇧G group/ungroup shortcuts', html.includes("k==='g'&&e.shiftKey") && html.includes("doUngroup") && html.includes("doGroup")],
+  ['⌥C / ⌥V style copy/paste shortcuts', html.includes("k==='c'&&e.altKey") && html.includes("copyStyle") && html.includes("k==='v'&&e.altKey")],
+  ['⌘⇧E SVG export shortcut', html.includes("meta&&k==='e'&&e.shiftKey") && html.includes("exportSVG")],
   // v1.6.63: Socratic round 3 - internal consistency + a11y
   ['doFlip skips locked shapes (consistent with doRotate)', html.includes("function doFlip(axis){\n  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);")],
   ['doRotate orbits selection about group centre', html.includes("orbit about group centre, like doFlip") && html.includes("Shape.translate(s,nx-cx,ny-cy)")],
