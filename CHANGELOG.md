@@ -5,6 +5,13 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
 ## [Unreleased]
 
 ### Added
+- **検索ナビゲーション(Ctrl+F → Enter/Shift+Enter で次/前のマッチへ移動)**:
+  Ctrl+F の検索はマッチ図形をオレンジ枠で一覧ハイライトするが、マッチ間を**ステップ移動**できなかった。
+  Enter(次)/ Shift+Enter(前)でマッチを順に選択・ビューポートをセンタリングし、現在マッチを**太い
+  オレンジ**(`#EA580C`・5px)、他マッチを通常オレンジ(`#F97316`・3px)で区別。マッチ数は UI.toast
+  で「2/7」形式でアナウンス。新クエリ入力時にインデックスを -1 にリセットするので常に最初のマッチから
+  開始。実装は `_sqNav`(idx・lastQ)+ `_sqAdvance(dir)` + `_setSq(v)` で完結。
+  **非空虚テスト**(9 アサート): 前進・後退・ラップ・空クエリ no-op・マッチなし no-op・クエリ変更リセットを担保。
 - **コネクタ(エッジ)ラベル(新機能 / ADR-0003)**: line/arrow をダブルクリックすると結合端点の**中点**に
   インラインラベルエディタが開き、コネクタにテキストを載せられる(判断分岐の "yes"/"no"、関係名など)。
   Board 固有の bound connectors(図形追従)と組み合わせ、**軽量フローチャート/関係図**を実現。実装は既存

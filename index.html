@@ -718,7 +718,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.70';
+const V='1.6.71';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1487,7 +1487,7 @@ function draw(){
   for(const s of state.shapes){if(s.type==='frame'&&inView(s,_view))drawShape(s)}
   for(const s of state.shapes){if(s.type!=='frame'&&inView(s,_view))drawShape(s)}
   if(state.draft)drawShape(state.draft);
-  if(_sq){const q=_sq.toLowerCase();ctx.strokeStyle='#F97316';ctx.lineWidth=3/state.viewport.zoom;ctx.setLineDash([]);for(const s of state.shapes){if(!(s.label||s.text||s.type||'').toLowerCase().includes(q))continue;const b=G.bbox(s);ctx.strokeRect(b.x,b.y,b.w,b.h);}}
+  if(_sq){const q=_sq.toLowerCase();ctx.setLineDash([]);let _mi=0;for(const s of state.shapes){if(!(s.label||s.text||s.type||'').toLowerCase().includes(q))continue;const b=G.bbox(s),isCur=_sqNav.lastQ===q&&_mi===_sqNav.idx;ctx.strokeStyle=isCur?'#EA580C':'#F97316';ctx.lineWidth=(isCur?5:3)/state.viewport.zoom;ctx.strokeRect(b.x,b.y,b.w,b.h);_mi++;}}
 
   ctx.setTransform(DPR,0,0,DPR,0,0);
   const _gmap=new Map();
@@ -1945,6 +1945,27 @@ function drawMarquee(){
 // Pointerup commits (add/move/etc) into Store.commit.
 let _laser=null;
 let _sq='';
+const _sqNav={idx:-1,lastQ:''};  // step-through navigation state (exported for test)
+// Setter for _sq (exported for test: primitives can't be aliased, so callers use this
+// instead of assigning _sq directly). Also resets navigation state, mirroring the
+// search input's `input` event handler.
+function _setSq(v){_sq=v;_sqNav.idx=-1;_sqNav.lastQ='';}
+// Step through Ctrl+F search matches. dir=+1 next, -1 prev; wraps; selects + centres.
+// A new query resets the index so the first Enter always starts from match 0.
+function _sqAdvance(dir){
+  if(!_sq)return;
+  const q=_sq.toLowerCase();
+  if(q!==_sqNav.lastQ){_sqNav.idx=-1;_sqNav.lastQ=q;}
+  const matches=state.shapes.filter(s=>(s.label||s.text||s.type||'').toLowerCase().includes(q));
+  if(!matches.length)return;
+  _sqNav.idx=(_sqNav.idx+dir+matches.length)%matches.length;
+  const sh=matches[_sqNav.idx];
+  state.selection=new Set([sh.id]);
+  centerOn(sh);
+  invalidate();
+  UI.toast(`${_sqNav.idx+1}/${matches.length}`);
+  return sh;
+}
 let ptr={down:false,x:0,y:0,x0:0,y0:0,wx:0,wy:0,wx0:0,wy0:0,
   panning:false,dragKind:null,dragStartShapes:null};
 
@@ -3913,7 +3934,7 @@ const UI={
 
 // ====================== WIRE-UP ======================
 function wire(){
-  {const sq=document.createElement('input');sq.id='sqinput';sq.type='text';sq.placeholder=t('search');sq.setAttribute('aria-label',t('search'));sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--brand);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';document.body.appendChild(sq);sq.addEventListener('input',()=>{_sq=sq.value;invalidate()});sq.addEventListener('keydown',ev=>{if(ev.key==='Escape'){_sq='';sq.style.display='none';sq.value='';invalidate();canvas.focus();}});}
+  {const sq=document.createElement('input');sq.id='sqinput';sq.type='text';sq.placeholder=t('search');sq.setAttribute('aria-label',t('search'));sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--brand);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';document.body.appendChild(sq);sq.addEventListener('input',()=>{_sq=sq.value;_sqNav.idx=-1;_sqNav.lastQ='';invalidate()});sq.addEventListener('keydown',ev=>{if(ev.key==='Escape'){_sq='';_sqNav.idx=-1;_sqNav.lastQ='';sq.style.display='none';sq.value='';invalidate();canvas.focus();}else if(ev.key==='Enter'&&!ev.isComposing){ev.preventDefault();_sqAdvance(ev.shiftKey?-1:1);}});}
   // tool buttons
   for(const b of document.querySelectorAll('.tool'))
     b.addEventListener('click',()=>pickTool(b.dataset.tool));

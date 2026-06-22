@@ -389,7 +389,7 @@ const checks = [
   // v1.6.61: shape search - Ctrl+F highlights matching shapes
   ['_sq search state variable', html.includes("let _sq='';")],
   ['search input DOM element created in wire()', html.includes("sq.id='sqinput'") && html.includes("sq.addEventListener('input'")],
-  ['search highlight drawn in world space', html.includes("if(_sq){const q=_sq.toLowerCase()") && html.includes("ctx.strokeStyle='#F97316'")],
+  ['search highlight drawn in world space', html.includes("if(_sq){const q=_sq.toLowerCase()") && html.includes("'#F97316'") && html.includes("'#EA580C'")],
   ['Ctrl+F toggles search input', html.includes("meta&&k==='f'") && html.includes("sq.style.display")],
   // v1.6.62: Socratic feature-interaction fixes
   ['flip negates rotation angle (reflection reverses sense)', html.includes("if(s.rotate)s.rotate=(360-s.rotate)%360;")],
@@ -401,7 +401,7 @@ const checks = [
   ['doFlip skips locked shapes (consistent with doRotate)', html.includes("function doFlip(axis){\n  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);")],
   ['doRotate orbits selection about group centre', html.includes("orbit about group centre, like doFlip") && html.includes("Shape.translate(s,nx-cx,ny-cy)")],
   ['search input has aria-label', html.includes("sq.setAttribute('aria-label',t('search'))")],
-  ['search Escape returns focus to canvas', html.includes("invalidate();canvas.focus();}});}")],
+  ['search Escape returns focus to canvas', html.includes("invalidate();canvas.focus();}") && html.includes("_sqAdvance(ev.shiftKey?-1:1)")],
   // v1.6.64: Socratic round 4 - rotation scope + lock completeness
   ['doRotate restricted to box shapes (s.w!=null, NaN-safe)', html.includes("filter(s=>s&&!s.locked&&s.w!=null)")],
   ['doDelete skips locked shapes', html.includes("function doDelete(){\n  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);")],
@@ -609,7 +609,8 @@ try {
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, pickTop, buildSVG, exportScale, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize };
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
+             _sqNav, _sqAdvance, _setSq };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -623,7 +624,8 @@ try {
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, pickTop, buildSVG, exportScale, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize } = api;
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
+          _sqNav, _sqAdvance, _setSq } = api;
 
   console.log('\n-- behavioural --');
 
@@ -3663,8 +3665,54 @@ try {
     console.log('  ✓ colour picker: multi-input pick coalesces to a single undo/sync op (slider parity)');
   }
 
+  // search navigation: _sqAdvance steps through matches, wraps, reverses, resets on new query
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.seq=0;state.seenOps=new Set();
+    const a=Shape.make('rect',{x:0,y:0,w:10,h:10,label:'needle A'});
+    const b=Shape.make('rect',{x:50,y:0,w:10,h:10,label:'needle B'});
+    const c=Shape.make('rect',{x:100,y:0,w:10,h:10,label:'needle C'});
+    const other=Shape.make('rect',{x:200,y:0,w:10,h:10,label:'haystack'});
+    Store.commit({op:'add',shape:a});Store.commit({op:'add',shape:b});
+    Store.commit({op:'add',shape:c});Store.commit({op:'add',shape:other});
+    // seed fresh search via _setSq (mirrors the search input's `input` handler)
+    _setSq('needle');
+    // first advance selects first match (idx 0)
+    const r1=_sqAdvance(1);
+    assert.ok(r1&&r1.label==='needle A','search nav: first advance selects first match');
+    assert.ok(state.selection.has(a.id),'search nav: state.selection updated to first match');
+    // second advance → second match
+    const r2=_sqAdvance(1);
+    assert.ok(r2&&r2.label==='needle B','search nav: second advance selects second match');
+    // third advance → third match
+    _sqAdvance(1);
+    assert.ok(state.selection.has(c.id),'search nav: third advance selects third match');
+    // fourth wraps to first
+    const r4=_sqAdvance(1);
+    assert.ok(r4&&r4.label==='needle A','search nav: fourth advance wraps to first (cycle)');
+    // backward from first → last
+    const rb=_sqAdvance(-1);
+    assert.ok(rb&&rb.label==='needle C','search nav: backward from first wraps to last');
+    // empty query: _sqAdvance is a no-op (returns undefined, selection unchanged)
+    state.selection=new Set();_setSq('');
+    const rEmpty=_sqAdvance(1);
+    assert.ok(rEmpty===undefined,'search nav: empty query is a no-op (returns undefined)');
+    assert.ok(state.selection.size===0,'search nav: empty query leaves selection unchanged');
+    // no-match query: no-op
+    _setSq('zzz-no-match');
+    const rNone=_sqAdvance(1);
+    assert.ok(rNone===undefined,'search nav: no-match query is a no-op');
+    // query change resets index so next advance starts at 0
+    _setSq('something-else');_sqAdvance(1);   // seed a non-zero idx on different query
+    _sqNav.idx=2;                              // manually push to idx=2 (already on 'something-else')
+    _setSq('needle');                           // new query → _setSq resets idx to -1
+    const rReset=_sqAdvance(1);
+    assert.ok(rReset&&rReset.label==='needle A','search nav: new query resets idx, first advance restarts at 0');
+    console.log('  ✓ search navigation: _sqAdvance steps, wraps, reverses, resets on new query (9 asserts)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 526; // prev 521 + describeShape content announce (5 asserts)
+  pass += 535; // prev 526 + search navigation (9 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
