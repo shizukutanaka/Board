@@ -1462,7 +1462,13 @@ function centerOn(sh){
 function describeShape(s){
   const b=G.bbox(s);
   const nm=T.k?.[s.type]??s.type;
-  let d=`${nm} @ ${Math.round(b.x)},${Math.round(b.y)}`;
+  // Announce the shape's content (text or label) first — for a screen-reader user
+  // cycling shapes, "Arrow yes" / "Sticky buy milk" is the meaningful part, not the
+  // coordinates. Truncated so a long note doesn't flood the live region.
+  const txt=String(s.text||s.label||'').replace(/\s+/g,' ').trim();
+  let d=nm;
+  if(txt)d+=` “${txt.length>30?txt.slice(0,30)+'…':txt}”`;
+  d+=` @ ${Math.round(b.x)},${Math.round(b.y)}`;
   if(s.locked)d+=` ${t('ctxLock')}`;
   if(s.rotate)d+=` ${s.rotate}°`;
   return d;

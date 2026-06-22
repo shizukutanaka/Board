@@ -413,6 +413,7 @@ const checks = [
   ['minimap applies rotation transform', html.includes("const _mr=s.rotate&&s.w!=null;") && html.includes("if(_mr)mx.restore();")],
   ['minimap renders frame shapes (case frame fallthrough to rect)', html.includes("case 'frame':\n        case 'rect':")],
   ['describeShape announces locked and rotated state', html.includes("if(s.locked)d+=` ${t('ctxLock')}`;") && html.includes("if(s.rotate)d+=` ${s.rotate}°`;")],
+  ['describeShape announces text/label content for SR', html.includes("const txt=String(s.text||s.label||'').replace(/\\s+/g,' ').trim();") && html.includes("txt.length>30?txt.slice(0,30)+'…':txt")],
   // v1.6.66: resize object-snap
   ['resizeSnap exists and applyResize uses it', html.includes("function resizeSnap(orig,handle,wp)") && html.includes(":resizeSnap(orig,handle,wp); // lock/alt override obj-snap")],
   ['resize commit clears alignment guides', html.includes("ptr.resizeHandle=null;ptr.resizeOrig=null;state.guides=null;")],
@@ -1739,7 +1740,22 @@ try {
   // describeShape - SR shape announcement
   assert.ok(describeShape({type:'rect',x:10,y:20,w:100,h:50}).endsWith('@ 10,20'),'describeShape includes rounded position');
   assert.ok(describeShape({type:'rect',x:10,y:20,w:100,h:50}).length>5,'describeShape not empty');
-  console.log('  ✓ describeShape: position suffix present');
+  // v1.7.1: announce text/label content first (a11y) — the meaningful part for SR users
+  {
+    const arrow=describeShape({type:'arrow',x1:0,y1:0,x2:100,y2:0,label:'yes'});
+    assert.ok(arrow.includes('yes'),'describeShape: connector label announced (SR hears edge content)');
+    const sticky=describeShape({type:'sticky',x:5,y:5,w:160,h:160,text:'buy milk'});
+    assert.ok(sticky.includes('buy milk'),'describeShape: sticky text announced');
+    // text beats label when both present; whitespace collapsed
+    const both=describeShape({type:'rect',x:0,y:0,w:10,h:10,text:'  hello\n world ',label:'L'});
+    assert.ok(both.includes('hello world')&&!both.includes('\n'),'describeShape: text wins over label, whitespace collapsed');
+    // long content truncated with ellipsis so the aria-live region isn't flooded
+    const long=describeShape({type:'text',x:0,y:0,w:10,h:10,text:'x'.repeat(50)});
+    assert.ok(long.includes('…')&&!long.includes('x'.repeat(40)),'describeShape: long content truncated to ~30 chars + …');
+    // unlabeled shapes are unchanged (backward compatible — no quotes added)
+    assert.ok(!describeShape({type:'rect',x:10,y:20,w:100,h:50}).includes('“'),'describeShape: unlabeled shape adds no content quote');
+  }
+  console.log('  ✓ describeShape: position suffix + content (text/label) announced for SR');
 
   // inView - frustum culling
   const vp0={x:0,y:0,w:800,h:600};
@@ -3648,7 +3664,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 521; // prev 513 + connector edge labels (8 asserts)
+  pass += 526; // prev 521 + describeShape content announce (5 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
