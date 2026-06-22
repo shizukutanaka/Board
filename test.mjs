@@ -173,6 +173,7 @@ const checks = [
   // v1.6.8: viewport culling + load validation
   ['viewport culling helpers present', html.includes("function visibleWorldRect") && html.includes("function inView")],
   ['draw() culls via inView', html.includes("inView(s,_view)")],
+  ['inView margin covers stroke width', html.includes("m=4+(s.size||0)/2")],
   ['Persist.load validates shapes', html.includes("d.shapes.filter(validShape)")],
   // v1.6.9: sticky text auto-wrap
   ['wrapText helper present', html.includes("function wrapText")],
@@ -1740,6 +1741,27 @@ try {
   assert.strictEqual(inView({type:'rect',x:900,y:100,w:200,h:150},vp0),false,'inView: shape outside right edge');
   assert.strictEqual(inView({type:'rect',x:-300,y:100,w:200,h:150},vp0),false,'inView: shape outside left edge');
   console.log('  ✓ inView: culls off-screen shapes, passes on-screen');
+
+  // v1.6.90: inView margin must cover stroke width — G.bbox omits stroke for rect/
+  // ellipse/frame, so a thick-stroked shape at the edge would be culled with its stroke
+  // still on screen. vp0={0,0,800,600}.
+  {
+    // rect just past the right edge (x=804..814); its 32px stroke extends 16px left, to
+    // x=788 — that's inside the 800-wide view, so 12px of stroke is visible.
+    const edge={type:'rect',x:804,y:100,w:10,h:10,size:32};
+    assert.strictEqual(inView(edge,vp0),true,'inView: thick-stroked rect at edge kept (stroke visible)');
+    // non-vacuity: the OLD fixed 4px margin would have culled it (x0=804 > 800+4=804? equal,
+    // so push it 1px further to make the old margin definitively cull)
+    const edge2={type:'rect',x:806,y:100,w:10,h:10,size:32};
+    const oldInView=(sh)=>{const x0=sh.x,m=4;return x0<=vp0.x+vp0.w+m;}; // x-axis right-edge test, old margin
+    assert.strictEqual(oldInView(edge2),false,'non-vacuity: old 4px margin culls the thick-stroked edge rect');
+    assert.strictEqual(inView(edge2,vp0),true,'inView: new stroke-aware margin keeps it (12px of stroke on screen)');
+    // a genuinely far shape is still culled even with a thick stroke
+    assert.strictEqual(inView({type:'rect',x:5000,y:100,w:10,h:10,size:32},vp0),false,'inView: far thick-stroked shape still culled');
+    // strokeless rects unchanged (backward compatible with the existing assertions above)
+    assert.strictEqual(inView({type:'rect',x:900,y:100,w:200,h:150},vp0),false,'inView: strokeless off-screen rect still culled (margin unchanged)');
+    console.log('  ✓ inView: margin covers stroke width (thick-stroked edge shapes not wrongly culled)');
+  }
 
   // wrapText - pure text-wrapping function
   {
@@ -3596,7 +3618,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 508; // prev 501 + colour pick coalescing (7 asserts)
+  pass += 513; // prev 508 + inView stroke-aware margin (5 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

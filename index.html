@@ -1441,7 +1441,10 @@ function visibleWorldRect(){
 function inView(s,view){
   const b=G.bbox(s);if(!b)return true;
   const x0=Math.min(b.x,b.x+b.w),x1=Math.max(b.x,b.x+b.w);
-  const y0=Math.min(b.y,b.y+b.h),y1=Math.max(b.y,b.y+b.h),m=4;
+  // Margin covers the stroke, which for rect/ellipse/frame extends size/2 BEYOND the
+  // bbox (G.bbox omits it for box shapes). Without this, a thick-stroked shape at the
+  // viewport edge is culled while its stroke is still on screen.
+  const y0=Math.min(b.y,b.y+b.h),y1=Math.max(b.y,b.y+b.h),m=4+(s.size||0)/2;
   return x1>=view.x-m&&x0<=view.x+view.w+m&&y1>=view.y-m&&y0<=view.y+view.h+m;
 }
 // a11y: cycle selection in z-order, recentre viewport, describe shape for aria-live.

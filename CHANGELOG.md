@@ -16,6 +16,14 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
   丸め後も `validShape` を満たす、シリアライズ後のサイズが実際に縮むことを担保。
 
 ### Fixed
+- **太い線幅の図形がビューポート端で誤ってカリングされ、線が消えていた(コード監査)**: `draw()` は
+  `inView()` で画面外図形を描画スキップするが、`inView` の余白は固定 4px だった。`G.bbox` は
+  rect/ellipse/frame の**ストロークを含まない**(box 図形は x/y/w/h のみ)ため、線幅が太い(最大 32px →
+  bbox から 16px はみ出す)図形が端にあると、ストロークがまだ画面に見えているのに bbox が枠外になった
+  瞬間にカリングされ、線の端が消えていた。余白を `4+(s.size||0)/2` に変更しストローク半幅を含めた
+  (pen/line は G.bbox が既にストロークを含むので過剰側=安全側に倒れるだけ)。**非空虚テスト**(1 presence
+  + 5 アサート): 端の太線 rect が保持される、旧 4px 余白なら culling される、遠方図形は依然 culling、
+  線幅なし rect は従来通り(後方互換)を担保。
 - **カスタムカラーピッカーが 1 回の色選択で undo 履歴と sync を大量生成していた(コード監査)**: ネイティブ
   `<input type=color>` は picker を開いている間 `input` を**連続発火**するが、ハンドラは毎 `input` で
   `applyStyleToSelection`(=`style` op コミット+ブロードキャスト)していた。1 色選ぶだけで undo が数十段
