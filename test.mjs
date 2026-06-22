@@ -174,6 +174,12 @@ const checks = [
   ['viewport culling helpers present', html.includes("function visibleWorldRect") && html.includes("function inView")],
   ['draw() culls via inView', html.includes("inView(s,_view)")],
   ['inView margin covers stroke width', html.includes("m=4+(s.size||0)/2")],
+  // v1.7.0: connector (edge) labels (ADR-0003)
+  ['openLabelEditor shared by boxes + connectors', html.includes("function openLabelEditor(hit,leftPx,topPx,bold)")],
+  ['dblclick opens label editor on line/arrow at midpoint', html.includes("hit.type==='line'||hit.type==='arrow'") && html.includes("(en.x1+en.x2)/2,y:(en.y1+en.y2)/2")],
+  ['_drawConnLabel renders edge label on canvas', html.includes("function _drawConnLabel(s,c)") && html.includes("c.fillText(s.label,mx,my)")],
+  ['line/arrow drawShape calls _drawConnLabel', html.includes("c.stroke();_drawConnLabel(s,c);break;") && html.includes("drawArrow(s,c);_drawConnLabel(s,c);break;")],
+  ['_connLabelSVG emits edge label in SVG', html.includes("function _connLabelSVG(s,x1,y1,x2,y2,ox,oy,stroke,paper)")],
   ['Persist.load validates shapes', html.includes("d.shapes.filter(validShape)")],
   // v1.6.9: sticky text auto-wrap
   ['wrapText helper present', html.includes("function wrapText")],
@@ -351,7 +357,7 @@ const checks = [
   ['flip keyboard shortcut (⇧H/⇧V) guarded by selection', html.includes("(k==='h'||k==='v')&&state.selection.size){e.preventDefault();doFlip(k)}")],
   // v1.6.58: rect/ellipse centre labels - dblclick to set, rendered centred, SVG export
   ['rect/ellipse label rendered centred in canvas', html.includes("(s.type==='rect'||s.type==='ellipse')&&s.label") && html.includes("c.textAlign='center'")],
-  ['dblclick label editor handles rect and ellipse', html.includes("hit.type==='frame'||hit.type==='rect'||hit.type==='ellipse'") && html.includes("isFrame?'--brand':'--ink'")],
+  ['dblclick label editor handles rect and ellipse', html.includes("hit.type==='frame'||hit.type==='rect'||hit.type==='ellipse'") && html.includes("getCSS(bold?'--brand':'--ink')")],
   ['SVG export emits label for rect', html.includes("if(s.label)els.push") && html.includes("text-anchor=\"middle\"")],
   // v1.6.59: laser pointer (presentation) + shape lock
   ['laser pointer state + presentation intercept', html.includes("let _laser=null") && html.includes("if(Presentation.isActive()){_laser=wp")],
@@ -3586,6 +3592,30 @@ try {
     console.log('  ✓ rect/ellipse labels: rendered on canvas (_drawBoxLabel) + escaped in SVG (parity)');
   }
 
+  // v1.7.0: connector (edge) labels (ADR-0003). A labeled line/arrow emits its label as
+  // a centred <text> at the segment midpoint in SVG (canvas verified by presence). The
+  // label is escaped, and an unlabeled connector emits no <text>.
+  {
+    // arrow from (0,0)→(100,0): midpoint x=50; with pad=32 and bbox at 0, ox≈32 → text x≈82
+    const arrSvg = buildSVG([{id:'a',type:'arrow',x1:0,y1:0,x2:100,y2:0,label:'yes',stroke:'#000',size:2,opacity:1}], '#fff');
+    const lineSvg = buildSVG([{id:'l',type:'line',x1:0,y1:0,x2:80,y2:60,label:'no',stroke:'#000',size:2,opacity:1}], '#fff');
+    const plain = buildSVG([{id:'p',type:'arrow',x1:0,y1:0,x2:100,y2:0,stroke:'#000',size:2,opacity:1}], '#fff');
+    assert.ok(arrSvg.includes('>yes<'), 'edge label: labeled arrow emits its label text');
+    assert.ok(/<text[^>]*text-anchor="middle"[^>]*>yes</.test(arrSvg), 'edge label: arrow label is centred <text>');
+    assert.ok(lineSvg.includes('>no<'), 'edge label: labeled line emits its label text');
+    assert.ok(!/<text/.test(plain), 'edge label: unlabeled connector emits no <text>');
+    // midpoint placement: for the (0,0)->(100,0) arrow the label x must sit near 50+ox (=82),
+    // i.e. between the endpoints, not at an endpoint
+    const m = arrSvg.match(/<text x="([\d.]+)"[^>]*>yes</);
+    assert.ok(m, 'edge label: <text> has an x coordinate');
+    const lx = parseFloat(m[1]);
+    assert.ok(lx > 60 && lx < 105, `edge label: x (${lx}) is near the segment midpoint, not an endpoint`);
+    // XSS: hostile label is escaped via the shared _esc path
+    const evil = buildSVG([{id:'x',type:'arrow',x1:0,y1:0,x2:100,y2:0,label:'</text><script>',stroke:'#000',size:2,opacity:1}], '#fff');
+    assert.ok(!evil.includes('<script>'), 'edge label: hostile label escaped (no markup injection)');
+    console.log('  ✓ connector edge labels: midpoint <text> in SVG, escaped, omitted when unlabeled (ADR-0003)');
+  }
+
   // v1.6.89: colour-pick coalescing — a native <input type=color> fires `input`
   // continuously, so the pick must collapse to ONE undo/sync op (capture → live →
   // flush), exactly like the size/opacity sliders.
@@ -3618,7 +3648,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 513; // prev 508 + inView stroke-aware margin (5 asserts)
+  pass += 521; // prev 513 + connector edge labels (8 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

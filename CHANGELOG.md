@@ -4,6 +4,18 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
 
 ## [Unreleased]
 
+### Added
+- **コネクタ(エッジ)ラベル(新機能 / ADR-0003)**: line/arrow をダブルクリックすると結合端点の**中点**に
+  インラインラベルエディタが開き、コネクタにテキストを載せられる(判断分岐の "yes"/"no"、関係名など)。
+  Board 固有の bound connectors(図形追従)と組み合わせ、**軽量フローチャート/関係図**を実現。実装は既存
+  資産の再利用に徹した: インラインラベルエディタを `openLabelEditor()` に抽出して box 図形/コネクタで共有
+  (frame の太字スタイルは引数分岐、既存挙動を厳密維持・IME 安全・Enter 確定・Escape 破棄)、コミットは
+  汎用 `upd` op(可逆・同期対応)、canvas は `_drawConnLabel`(paper 色の背景ピル付きで線が文字を貫かない、
+  ズーム追従)、SVG は `_connLabelSVG`(背景 rect + 中点 `<text>`、全属性 `_esc`)で**表示=出力パリティ**。
+  データモデル不変(`label` は既存フィールド)で保存/同期/undo/hit-test/bbox に無影響。**非空虚テスト**
+  (6 presence + 8 アサート): ラベル付き line/arrow が SVG 中点に centred `<text>` を出力、x 座標が端点でなく
+  中点付近、未ラベルは `<text>` を出さない、敵対的ラベルは `_esc` でエスケープされることを担保。
+
 ### Changed
 - **共有URL / `.board` エクスポートの座標を丸めてサイズ削減(Zenn 浮動小数点 リサーチ)**: シリアライズ時に
   `JSON.stringify` がフル精度の浮動小数点(`100.00000000000001` や `123.45678901234567`)をそのまま

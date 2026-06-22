@@ -1546,6 +1546,21 @@ function _drawBoxLabel(s,c){
   c.fillText(s.label,s.x+s.w/2,s.y+s.h/2);
   c.restore();
 }
+// Connector (edge) label at the midpoint of the bound endpoints (ADR-0003). A paper-
+// coloured background pill keeps the line from striking through the text. Mirrors the
+// SVG export. World-space → scales with zoom like every other label.
+function _drawConnLabel(s,c){
+  if(!s.label)return;
+  const e=connEnds(s),mx=(e.x1+e.x2)/2,my=(e.y1+e.y2)/2;
+  c.save();
+  c.font='12px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';
+  const w=c.measureText(s.label).width,pad=4;
+  c.fillStyle=getCSS('--paper')||'#fff';
+  c.fillRect(mx-w/2-pad,my-9,w+pad*2,18);
+  c.fillStyle=s.stroke||'#0F172A';
+  c.fillText(s.label,mx,my);
+  c.restore();
+}
 function drawShape(s,c){
   c=c||ctx;
   c.globalAlpha=s.opacity??1;
@@ -1570,9 +1585,9 @@ function drawShape(s,c){
       if(s.stroke){c.stroke()}
       _drawBoxLabel(s,c);break;
     case 'line':{
-      const e=connEnds(s);c.beginPath();c.moveTo(e.x1,e.y1);c.lineTo(e.x2,e.y2);c.stroke();break;}
+      const e=connEnds(s);c.beginPath();c.moveTo(e.x1,e.y1);c.lineTo(e.x2,e.y2);c.stroke();_drawConnLabel(s,c);break;}
     case 'arrow':
-      drawArrow(s,c);break;
+      drawArrow(s,c);_drawConnLabel(s,c);break;
     case 'pen':
       drawPen(s,c);break;
     case 'text':
@@ -2112,38 +2127,48 @@ canvas.addEventListener('pointercancel',()=>{
 canvas.addEventListener('contextmenu',e=>{e.preventDefault();UI.openCtxMenu(e.clientX,e.clientY)});
 canvas.addEventListener('pointerleave',()=>{if(_laser){_laser=null;invalidate()}});
 
-// Double-click: re-edit text shapes
+// Double-click: re-edit text shapes / label boxes & connectors
 canvas.addEventListener('dblclick',e=>{
   const wp=G.s2w({x:e.offsetX,y:e.offsetY});
   const hit=pickTop(wp);
   if(!hit)return;
+  const r=canvas.getBoundingClientRect();
   if(hit.type==='text'||hit.type==='sticky'){
     openTextEditor(hit,false);
   } else if(hit.type==='frame'||hit.type==='rect'||hit.type==='ellipse'){
     const isFrame=hit.type==='frame';
     const sp=G.w2s(isFrame?{x:hit.x,y:hit.y}:{x:hit.x+hit.w/2,y:hit.y+hit.h/2});
-    const r=canvas.getBoundingClientRect();
-    const inp=document.createElement('input');
-    inp.value=hit.label||'';inp.maxLength=80;
-    inp.style.cssText=`position:fixed;left:${r.left+sp.x+(isFrame?6:-40)}px;top:${r.top+sp.y+(isFrame?-24:-12)}px;`+
-      `font:${isFrame?'600 ':''}12px system-ui,sans-serif;color:${hit.stroke||getCSS(isFrame?'--brand':'--ink')};`+
-      `background:${getCSS('--paper')};border:1px solid ${hit.stroke||getCSS(isFrame?'--brand':'--ink')};`+
-      `padding:2px 6px;outline:none;z-index:9500;min-width:80px;`;
-    document.body.appendChild(inp);inp.select();
-    const commit=()=>{
-      const lbl=inp.value.trim();
-      if(lbl!==hit.label){const before={label:hit.label??null};const after={label:lbl||null};hit.label=lbl||null;Store._recordCommitted({op:'upd',id:hit.id,before,after});invalidate()}
-      inp.remove();
-    };
-    inp.addEventListener('blur',commit);
-    inp.addEventListener('keydown',ev=>{
-      if(ev.isComposing)return;
-      if(ev.key==='Enter'){ev.preventDefault();commit()}
-      // Escape: detach blur→commit so inp.remove() doesn't fire it.
-      if(ev.key==='Escape'){inp.removeEventListener('blur',commit);inp.remove()}
-    });
+    openLabelEditor(hit,r.left+sp.x+(isFrame?6:-40),r.top+sp.y+(isFrame?-24:-12),isFrame);
+  } else if(hit.type==='line'||hit.type==='arrow'){
+    // Edge label at the connector midpoint (ADR-0003) — enables flowchart-style edges.
+    const en=connEnds(hit),sp=G.w2s({x:(en.x1+en.x2)/2,y:(en.y1+en.y2)/2});
+    openLabelEditor(hit,r.left+sp.x-40,r.top+sp.y-12,false);
   }
 });
+// Shared inline label editor for boxes (rect/ellipse/frame) and connectors. Commits via
+// the generic `upd` op (reversible + synced). bold = frame styling. IME-safe; Enter
+// commits, Escape discards (detaching blur so remove() doesn't re-commit).
+function openLabelEditor(hit,leftPx,topPx,bold){
+  const inp=document.createElement('input');
+  inp.value=hit.label||'';inp.maxLength=80;
+  const col=hit.stroke||getCSS(bold?'--brand':'--ink');
+  inp.style.cssText=`position:fixed;left:${leftPx}px;top:${topPx}px;`+
+    `font:${bold?'600 ':''}12px system-ui,sans-serif;color:${col};`+
+    `background:${getCSS('--paper')};border:1px solid ${col};`+
+    `padding:2px 6px;outline:none;z-index:9500;min-width:80px;`;
+  document.body.appendChild(inp);inp.select();
+  const commit=()=>{
+    const lbl=inp.value.trim();
+    if(lbl!==hit.label){const before={label:hit.label??null};const after={label:lbl||null};hit.label=lbl||null;Store._recordCommitted({op:'upd',id:hit.id,before,after});invalidate()}
+    inp.remove();
+  };
+  inp.addEventListener('blur',commit);
+  inp.addEventListener('keydown',ev=>{
+    if(ev.isComposing)return;
+    if(ev.key==='Enter'){ev.preventDefault();commit()}
+    if(ev.key==='Escape'){inp.removeEventListener('blur',commit);inp.remove()}
+  });
+}
 
 // ---- Image import: drag-drop ----
 canvas.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='copy'});
@@ -3215,6 +3240,16 @@ function importBoard(file){
   };
   r.readAsText(file);
 }
+// Connector edge label as SVG (ADR-0003): a paper background rect + centred text at the
+// segment midpoint. Width is estimated (no canvas measure); mirrors the canvas pill.
+// Returns '' when unlabeled so callers can push unconditionally. All values via _esc.
+function _connLabelSVG(s,x1,y1,x2,y2,ox,oy,stroke,paper){
+  if(!s.label)return '';
+  const mx=(x1+x2)/2+ox,my=(y1+y2)/2+oy;
+  const lw=String(s.label).length*7+8;
+  return `<rect x="${mx-lw/2}" y="${my-9}" width="${lw}" height="18" fill="${_esc(paper||'#FFFFFF')}" opacity="0.9"/>`+
+    `<text x="${mx}" y="${my}" font-family="system-ui,sans-serif" font-size="12" text-anchor="middle" dominant-baseline="central" fill="${stroke}">${_esc(s.label)}</text>`;
+}
 // Pure SVG assembly; returns string or null. All attr values through _esc.
 function buildSVG(shapes,paper){
   const b=G.bboxAll(shapes);
@@ -3248,6 +3283,7 @@ function buildSVG(shapes,paper){
         break;
       case 'line':
         els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}/>`);
+        els.push(_connLabelSVG(s,X1,Y1,X2,Y2,ox,oy,stroke,paper));
         break;
       case 'arrow':{
         els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}/>`);
@@ -3256,6 +3292,7 @@ function buildSVG(shapes,paper){
         const a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5;
         const tx=X2+ox,ty=Y2+oy;
         els.push(`<polygon points="${tx},${ty} ${tx+Math.cos(a1)*ah},${ty+Math.sin(a1)*ah} ${tx+Math.cos(a2)*ah},${ty+Math.sin(a2)*ah}" fill="${stroke}"${a}/>`);
+        els.push(_connLabelSVG(s,X1,Y1,X2,Y2,ox,oy,stroke,paper));
         break;}
       case 'pen':{
         if(!Array.isArray(s.pts)||!s.pts.length)break;
