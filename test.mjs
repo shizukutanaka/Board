@@ -7,6 +7,8 @@ import { execSync } from 'child_process';
 import assert from 'assert';
 
 const html = readFileSync('./index.html', 'utf8');
+const readme = readFileSync('./README.md', 'utf8');
+const _codeVer = (html.match(/const V='([^']+)'/) || [])[1];
 // Size is no longer hard-capped (44KB gzip budget removed 2026-06-13). A loose raw
 // ceiling stays purely as a runaway-growth guard; gzip size is reported for visibility.
 const RAW_CEILING = 512 * 1024;
@@ -43,6 +45,10 @@ const checks = [
   ['Keymap covers all tools',
     /KEYMAP\s*=\s*\{v:'select'[^}]+h:'hand'[^}]+p:'pen'/.test(html)],
   ['Raw size under runaway ceiling (512KB)', html.length < RAW_CEILING],
+  // v1.6.77: enforce docs-vs-reality — the README version badge must track `const V`.
+  // Root cause of prior drift (README said 1.6.70 while code shipped 1.6.77): nothing
+  // tied them. This check fails the build the moment a version bump forgets the README.
+  ['README version badge matches const V', !!_codeVer && readme.includes(`version-${_codeVer}-`)],
   ['No innerHTML anywhere (XSS-safe)', !/innerHTML\s*=/.test(html)],
   // v1.1: ctx must be let (not const) for exportPNG swap
   ['ctx declared as let (not const)', /let ctx=canvas\.getContext/.test(html)],
