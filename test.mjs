@@ -3746,8 +3746,47 @@ try {
     console.log('  ✓ search navigation a11y: announces matched shape (describeShape), not bare count (Tab-cycle parity)');
   }
 
+  // v1.6.75: doDuplicate frame parity — duplicating a frame must include contained children,
+  // mirroring withFrameChildren used by drag-move and nudge.
+  // Before fix: only the frame shell duplicated (1 new shape, children left behind).
+  // After fix: frame + all spatially-contained children duplicated (2+ new shapes).
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.seq=0;state.seenOps=new Set();
+    const fr=Shape.make('frame',{x:0,y:0,w:300,h:300});
+    const child=Shape.make('rect',{x:50,y:50,w:40,h:40});
+    const outsider=Shape.make('rect',{x:500,y:500,w:40,h:40});
+    Store.commit({op:'add',shape:fr});
+    Store.commit({op:'add',shape:child});
+    Store.commit({op:'add',shape:outsider});
+    const beforeCount=state.shapes.length;  // 3
+
+    state.selection=new Set([fr.id]);  // select only the frame, NOT the child or outsider
+    doDuplicate();
+
+    const addedCount=state.shapes.length-beforeCount;
+    // after fix: frame+child both copied = 2 new shapes in selection
+    assert.strictEqual(addedCount,2,'doDuplicate frame: duplicates frame AND contained child, not just the shell');
+    // outsider (x=500) should NOT appear among the copies
+    const copyIds=state.selection;
+    assert.ok(!state.shapes.some(s=>copyIds.has(s.id)&&s.x>400),'doDuplicate frame: outsider not included in copies');
+    // original frame still present (3 originals intact)
+    assert.strictEqual(state.shapes.filter(s=>!copyIds.has(s.id)).length,3,'doDuplicate frame: originals untouched');
+    // new frame and new child both appear in selection
+    const newFrame=state.shapes.find(s=>copyIds.has(s.id)&&s.type==='frame');
+    assert.ok(newFrame,'doDuplicate frame: frame copy is in the new selection');
+    const newChild=state.shapes.find(s=>copyIds.has(s.id)&&s.type!=='frame');
+    assert.ok(newChild,'doDuplicate frame: child copy is in the new selection');
+    // spatial relationship preserved: child copy lands inside the new frame copy
+    const nb=G.bbox(newFrame);
+    const cb=G.bbox(newChild);
+    assert.ok(cb.x>=nb.x&&cb.y>=nb.y&&cb.x+cb.w<=nb.x+nb.w&&cb.y+cb.h<=nb.y+nb.h,
+      'doDuplicate frame: duplicated child is spatially inside the duplicated frame');
+    console.log('  ✓ doDuplicate: frame duplication includes children (withFrameChildren parity with drag/nudge)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 541; // prev 535 + search nav a11y describeShape announce (6 asserts)
+  pass += 547; // prev 541 + doDuplicate frame-children parity (6 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

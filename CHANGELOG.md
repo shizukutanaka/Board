@@ -5,6 +5,18 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
 ## [Unreleased]
 
 ### Fixed
+- **`doDuplicate` がフレームの子図形を無視していた(drag/nudge との動作不一致)**:
+  `withFrameChildren` はドラッグ移動・キーボードナッジで使われており、フレームを選択して移動すると
+  内部の子図形も一緒に動く。しかし `doDuplicate` (Ctrl+D) は `state.selection` の id のみを
+  `_placeCopies` に渡していたため、フレームシェルだけが複製されて子図形は元の位置に残った。
+  `[...state.selection]` を `[...withFrameChildren(state.selection)]` に差し替え、
+  drag/nudge/duplicate の三操作で `withFrameChildren` 展開を統一。
+  **非空虚テスト**(6 アサート、修正前は 1 形状増加 → 失敗を確認、修正後は 2 形状増加):
+  フレーム + 内部子 + 外部 shape のシナリオで、複製後の選択がフレームコピー + 子コピーの
+  2 形状であること、外部 shape が含まれないこと、元の 3 形状が保持されること、
+  子コピーが新フレームコピーの bbox 内に収まることを担保。
+
+
 - **検索ナビゲーションがスクリーンリーダーに「何が見つかったか」を伝えていなかった(a11y / ソクラテス式
   問答 — 新視点「検索機能は他の a11y と同じユーザーに奉仕しているか?」)**: 直前に追加した検索
   ナビゲーション(Enter/Shift+Enter)は、マッチへ移動するたびに `UI.toast` で**裸のカウント

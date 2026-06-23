@@ -718,7 +718,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.74';
+const V='1.6.75';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -2981,7 +2981,7 @@ function _placeCopies(srcShapes){
 }
 function doDuplicate(){
   if(!state.selection.size)return;
-  const sel=[...state.selection].map(byId).filter(Boolean);
+  const sel=[...withFrameChildren(state.selection)].map(byId).filter(Boolean);
   if(!sel.length)return;
   const added=_placeCopies(sel);   // independent of state.clipboard (see _placeCopies)
   UI.toast(t('pasted')+' '+added.length);
