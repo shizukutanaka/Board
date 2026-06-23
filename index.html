@@ -718,7 +718,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.76';
+const V='1.6.77';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1002,6 +1002,7 @@ function validRemotePayload(op){
   const patches=a=>Array.isArray(a)&&a.every(p=>p&&typeof p.id==='string'&&validPatch(p));
   switch(op.op){
     case 'add':    return validShape(op.shape);
+    case 'addMany':    return Array.isArray(op.shapes)&&op.shapes.every(validShape);
     case 'del':
     case 'clear':  return Array.isArray(op.shapes)&&op.shapes.every(validShape);
     case 'upd':    return typeof op.id==='string'&&validPatch(op.after)&&(op.before==null||validPatch(op.before));
@@ -1069,7 +1070,7 @@ const Store={
     if(op.clock.peer===state.peerId)Net.broadcast(op);   // outbound only
   },
   // Apply remote op: dedup by clock; REMOTE_OPS allow-list + validRemotePayload guard.
-  REMOTE_OPS:new Set(['add','del','upd','move','clear','group','ungroup','zorder','align','style','resize']),
+  REMOTE_OPS:new Set(['add','addMany','del','upd','move','clear','group','ungroup','zorder','align','style','resize']),
   applyRemote(op){
     if(!op||!op.clock||!this.REMOTE_OPS.has(op.op))return;
     if(!validClock(op.clock))return;        // reject malformed clocks (wclock poisoning)
@@ -1200,6 +1201,12 @@ const Store={
         // re-pushes because undo removed the shape first.
         if(forward){if(!byId(op.shape.id)){state.shapes.push(clone(op.shape));sortZ();}}
         else{const i=state.shapes.findIndex(s=>s.id===op.shape.id);if(i>=0)state.shapes.splice(i,1);state.selection.delete(op.shape.id);}
+        break;}
+      case 'addMany':{
+        // Atomic multi-add (paste/duplicate): N copies as ONE undo step. Forward mirrors
+        // 'add' (idempotent on id); reverse mirrors 'del' (remove all, drop selection).
+        if(forward){for(const sh of op.shapes){if(!byId(sh.id))state.shapes.push(clone(sh));}sortZ();}
+        else{for(const sh of op.shapes){const i=state.shapes.findIndex(s=>s.id===sh.id);if(i>=0)state.shapes.splice(i,1);state.selection.delete(sh.id);}}
         break;}
       case 'del':{
         if(forward){
@@ -2958,14 +2965,19 @@ function doPaste(){
 function _placeCopies(srcShapes){
   const offset=20/state.viewport.zoom;
   const added=[];
+  const built=[];
   const gidMap=new Map();
   // Pre-generate new ids so connector bindings (sh.a/sh.b) can be remapped
   // when both endpoints are in the pasted set (two-pass required).
   const idMap=new Map();
   for(const orig of srcShapes)idMap.set(orig.id,uid());
+  // Deferred single commit (atomic undo): build every copy first, then commit ONE
+  // addMany op. nextZ() reads state.shapes, which we don't mutate until commit, so
+  // assign z incrementally off a captured base to keep copies' paint order distinct.
+  let zBase=nextZ();
   for(const orig of srcShapes){
     const sh=clone(orig);
-    sh.id=idMap.get(orig.id);sh.z=nextZ();delete sh.frac;
+    sh.id=idMap.get(orig.id);sh.z=zBase++;delete sh.frac;
     if(sh.groupId){
       if(!gidMap.has(sh.groupId))gidMap.set(sh.groupId,uid());
       sh.groupId=gidMap.get(sh.groupId);
@@ -2973,9 +2985,10 @@ function _placeCopies(srcShapes){
     if(sh.a&&idMap.has(sh.a))sh.a=idMap.get(sh.a);
     if(sh.b&&idMap.has(sh.b))sh.b=idMap.get(sh.b);
     Shape.translate(sh,offset,offset);
-    Store.commit({op:'add',shape:sh});
+    built.push(sh);
     added.push(sh.id);
   }
+  if(built.length)Store.commit({op:'addMany',shapes:built});
   state.selection=new Set(added);
   invalidate();
   return added;

@@ -522,6 +522,11 @@ const checks = [
   ['doLock has ⌘⇧L keyboard shortcut', html.includes("meta&&k==='l'&&e.shiftKey")&&html.includes("doLock()")],
   ['lockToggle i18n key present in ja and en', (html.match(/lockToggle:/g)||[]).length>=2],
   ['lockToggle in help grid', html.includes("t('lockToggle')")],
+  // v1.6.77: paste/duplicate is one atomic undo — _placeCopies commits a single addMany op
+  ['_placeCopies commits one addMany (not per-shape add)', html.includes("if(built.length)Store.commit({op:'addMany',shapes:built})")],
+  ['addMany op has an _apply case', /case 'addMany':/.test(html)],
+  ['addMany in REMOTE_OPS allow-list', /REMOTE_OPS[\s\S]{0,160}'addMany'/.test(html)],
+  ['addMany validated in validRemotePayload', /case 'addMany':/.test(html)&&html.includes("case 'addMany':    return Array.isArray(op.shapes)&&op.shapes.every(validShape)")],
 ];
 
 let pass = 0, fail = 0;
@@ -1572,6 +1577,41 @@ try {
     assert.strictEqual(state.shapes.length,nBeforePaste+1,'paste after duplicate: one shape pasted');
     assert.strictEqual(state.shapes[state.shapes.length-1].stroke,'#AAA','paste after duplicate pastes A (clipboard intact)');
     console.log('  ✓ doDuplicate: independent of clipboard - Copy A / Duplicate B / Paste still yields A');
+  }
+
+  // v1.6.77: paste/duplicate of N shapes is ONE undo step (atomic gesture).
+  // Before fix: _placeCopies committed one {op:'add'} per shape, so pasting 3 shapes
+  // pushed 3 history entries and took 3 Ctrl+Z to reverse. After: one {op:'addMany'}.
+  // This matters most after the withFrameChildren duplicate fix (v1.6.75): duplicating
+  // a frame+child silently needed 2 undos. A user gesture should map to one undo.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const a=Shape.make('rect',{x:0,y:0,w:30,h:30});
+    const b=Shape.make('ellipse',{x:50,y:0,w:30,h:30});
+    const c=Shape.make('rect',{x:100,y:0,w:30,h:30});
+    Store.commit({op:'add',shape:a});Store.commit({op:'add',shape:b});Store.commit({op:'add',shape:c});
+    const histAfterSetup=state.history.length;   // 3
+    state.selection=new Set([a.id,b.id,c.id]);
+    doDuplicate();
+    // 3 copies added
+    assert.strictEqual(state.shapes.length,6,'atomic dup: 3 originals + 3 copies = 6 shapes');
+    // KEY: exactly ONE new history entry for the whole 3-shape duplicate
+    assert.strictEqual(state.history.length,histAfterSetup+1,'atomic dup: 3-shape duplicate pushes exactly ONE history entry');
+    assert.strictEqual(state.history[state.history.length-1].op,'addMany','atomic dup: the entry is an addMany op');
+    assert.strictEqual(state.history[state.history.length-1].shapes.length,3,'atomic dup: addMany carries all 3 copies');
+    // KEY: a SINGLE undo removes all 3 copies (not just one)
+    Store.undo();
+    assert.strictEqual(state.shapes.length,3,'atomic dup: one undo removes ALL 3 copies (not 1)');
+    // redo restores all 3 in one step
+    Store.redo();
+    assert.strictEqual(state.shapes.length,6,'atomic dup: one redo restores ALL 3 copies');
+    // distinct frac (the ADR-0001 paint-order key) — deferred batch commit must not
+    // collide copies into one z/frac slot. sortZ stacks null-frac copies on top, each
+    // higher than the last, so all 6 shapes have a unique frac.
+    const fracs=state.shapes.map(s=>s.frac);
+    assert.ok(fracs.every(f=>f!=null),'atomic dup: every shape has a frac key after redo');
+    assert.strictEqual(new Set(fracs).size,fracs.length,'atomic dup: all 6 shapes have distinct frac (no batch z-collision)');
+    console.log('  ✓ doDuplicate/doPaste: N-shape paste is ONE atomic undo (addMany op, distinct z)');
   }
 
   // v1.6.38: snapV / snapPt grid-snap helpers (GRID_SIZE=20)
@@ -3824,7 +3864,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 553; // prev 547 + doLock undo round-trip (6 asserts)
+  pass += 561; // prev 553 + atomic paste/duplicate addMany undo (8 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

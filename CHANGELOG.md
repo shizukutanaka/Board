@@ -4,6 +4,21 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
 
 ## [Unreleased]
 
+### Fixed
+- **ペースト / 複製の N 図形が N 回の Undo を要していた(原子性の欠落)**:
+  ソクラテス式問答「1 つのユーザー操作は 1 回の Ctrl+Z に対応するか?」で発見。
+  `_placeCopies` は図形ごとに `Store.commit({op:'add'})` を呼んでいたため、3 図形を
+  ペーストすると履歴に 3 エントリが積まれ、元に戻すのに 3 回の Ctrl+Z が必要だった。
+  v1.6.75 のフレーム子図形複製対応以降、フレーム+子の複製が暗黙に 2 回 Undo を要して
+  いた点が特に問題。原子的な単一 `{op:'addMany',shapes:[...]}` op を新設し、forward は
+  `add` を、reverse は `del` を踏襲(id 冪等・選択クリア)。`_placeCopies` は全コピーを
+  先に構築してから 1 度だけ commit する。遅延 commit でも z が衝突しないよう、捕捉した
+  `nextZ()` を基点に z をインクリメント割り当て(実際の描画順キー `frac` は sortZ が
+  null-frac コピーを上に積層して一意化)。sync 対応として `REMOTE_OPS` と
+  `validRemotePayload` に `addMany` を追加。**非空虚テスト**(8 behavioral assert +
+  4 presence check、修正前は 5 失敗を確認): 3 図形複製が履歴 1 エントリ・addMany 型・
+  単一 Undo で全 3 コピー消去・単一 Redo で全復元・全 6 図形が一意 frac を持つことを担保。
+
 ### Added
 - **シェイプロックのキーボードショートカット `⌘⇧L` (Ctrl+Shift+L)**:
   README は「全機能キーボード操作可能」と謳っているが、`doLock` は右クリック
