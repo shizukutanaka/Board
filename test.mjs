@@ -615,7 +615,7 @@ try {
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
-             _sqNav, _sqAdvance, _setSq };
+             _sqNav, _sqAdvance, _setSq, UI };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -630,7 +630,7 @@ try {
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
-          _sqNav, _sqAdvance, _setSq } = api;
+          _sqNav, _sqAdvance, _setSq, UI } = api;
 
   console.log('\n-- behavioural --');
 
@@ -3716,8 +3716,38 @@ try {
     console.log('  ✓ search navigation: _sqAdvance steps, wraps, reverses, resets on new query (9 asserts)');
   }
 
+  // search navigation a11y: SR users search BY content, so the announcement must name
+  // WHICH shape was found (describeShape), not a bare "2/7" count — parity with Tab cycle.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.seq=0;state.seenOps=new Set();state.viewport={x:0,y:0,zoom:1};
+    const a=Shape.make('rect',{x:0,y:0,w:10,h:10,label:'alpha'});
+    const b=Shape.make('arrow',{x1:50,y1:0,x2:90,y2:0,label:'alphabet'});
+    Store.commit({op:'add',shape:a});Store.commit({op:'add',shape:b});
+    // spy on UI.toast to capture the live-region announcement
+    const seen=[];const origToast=UI.toast;UI.toast=(msg,kind)=>{seen.push(msg);};
+    try{
+      _setSq('alpha');
+      const r1=_sqAdvance(1);
+      const msg1=seen[seen.length-1];
+      // the announcement must contain the matched shape's content (describeShape), not only a count
+      assert.ok(msg1.includes(describeShape(r1)),'search a11y: announcement includes describeShape of the match');
+      assert.ok(msg1.includes('alpha'),'search a11y: announcement names the matched shape content');
+      assert.ok(/\(1\/2\)/.test(msg1),'search a11y: announcement still carries the position count (1/2)');
+      // non-vacuity: a bare-count-only announcement (the old behaviour) would NOT contain the
+      // shape type — prove the new message is strictly richer than "1/2"
+      assert.ok(msg1!=='1/2'&&msg1.length>'1/2'.length,'search a11y: announcement is richer than the bare count');
+      // advancing to the 2nd match announces the OTHER shape (content differs)
+      const r2=_sqAdvance(1);
+      const msg2=seen[seen.length-1];
+      assert.ok(msg2.includes(describeShape(r2)),'search a11y: 2nd advance announces the 2nd match content');
+      assert.ok(/\(2\/2\)/.test(msg2),'search a11y: 2nd announcement carries position 2/2');
+    }finally{UI.toast=origToast;}
+    console.log('  ✓ search navigation a11y: announces matched shape (describeShape), not bare count (Tab-cycle parity)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 535; // prev 526 + search navigation (9 asserts)
+  pass += 541; // prev 535 + search nav a11y describeShape announce (6 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

@@ -718,7 +718,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.73';
+const V='1.6.74';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1952,6 +1952,8 @@ const _sqNav={idx:-1,lastQ:''};  // step-through navigation state (exported for 
 function _setSq(v){_sq=v;_sqNav.idx=-1;_sqNav.lastQ='';}
 // Step through Ctrl+F search matches. dir=+1 next, -1 prev; wraps; selects + centres.
 // A new query resets the index so the first Enter always starts from match 0.
+// Announces WHICH shape was found via describeShape (parity with Tab cycle): a SR user
+// searches by content, so hearing only "2/7" without the matched shape is uninformative.
 function _sqAdvance(dir){
   if(!_sq)return;
   const q=_sq.toLowerCase();
@@ -1963,7 +1965,7 @@ function _sqAdvance(dir){
   state.selection=new Set([sh.id]);
   centerOn(sh);
   invalidate();
-  UI.toast(`${_sqNav.idx+1}/${matches.length}`);
+  UI.toast(`${describeShape(sh)} (${_sqNav.idx+1}/${matches.length})`);
   return sh;
 }
 let ptr={down:false,x:0,y:0,x0:0,y0:0,wx:0,wy:0,wx0:0,wy0:0,
