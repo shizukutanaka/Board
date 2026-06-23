@@ -3869,8 +3869,36 @@ try {
     console.log('  ✓ doDuplicate: frame duplication includes children (withFrameChildren parity with drag/nudge)');
   }
 
+  // v1.6.78: doDelete clears stale connector bindings atomically inside the del op.
+  // Before fix: when rA (the bound shape) is deleted, arrow.a stays as rA.id (dangling).
+  // connEnds falls back to the arrow's draw-time x1,y1 — NOT where rA actually was.
+  // After fix: a=null and x1,y1 = the resolved endpoint (edge of rA at delete time).
+  // Undo must restore both: rA back in state.shapes AND arrow.a = rA.id.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const rA=Shape.make('rect',{x:200,y:200,w:80,h:60});
+    Store.commit({op:'add',shape:rA});
+    // Arrow with stale stored x1=140 (draw-time position, before rA moved)
+    const arr=Shape.make('arrow',{x1:140,y1:130,x2:400,y2:400});
+    const liveArr=()=>state.shapes.find(s=>s.id===arr.id);
+    arr.a=rA.id;
+    Store.commit({op:'add',shape:arr});
+    // Delete rA — connector should clean up atomically
+    state.selection=new Set([rA.id]);
+    doDelete();
+    assert.ok(liveArr(),'connector survives deletion of its bound shape');
+    assert.strictEqual(liveArr().a,null,'doDelete: connector .a binding cleared when bound shape deleted');
+    assert.notStrictEqual(liveArr().x1,140,'doDelete: connector x1 updated to resolved position (not stale draw-time value)');
+    // Undo restores rA AND restores the connector binding — both in one Ctrl+Z
+    Store.undo();
+    assert.ok(state.shapes.find(s=>s.id===rA.id),'doDelete undo: deleted rect is restored');
+    assert.strictEqual(liveArr().a,rA.id,'doDelete undo: connector .a binding restored');
+    assert.strictEqual(liveArr().x1,140,'doDelete undo: original stored x1 restored');
+    console.log('  ✓ doDelete: connector bindings resolved+cleared; undo restores both atomically');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 561; // prev 553 + atomic paste/duplicate addMany undo (8 asserts)
+  pass += 567; // prev 561 + connector binding cleanup on delete (6 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

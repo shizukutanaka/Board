@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.6.43 — Design Tokens
+   Board v1.6.78 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -718,7 +718,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.77';
+const V='1.6.78';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1216,9 +1216,13 @@ const Store={
             state.selection.delete(sh.id);
             delete state.wclock[sh.id];        // drop per-property write clocks
           }
+          // Apply connector binding clears after shapes are gone (connectors still live)
+          if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh)Object.assign(sh,p.after);}}
         }else{
           for(const sh of op.shapes)state.shapes.push(clone(sh));
           sortZ();
+          // Restore connector bindings after shapes are back so references are valid
+          if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh)Object.assign(sh,p.before);}}
         }
         break;}
       case 'upd':{
@@ -3003,7 +3007,24 @@ function doDuplicate(){
 function doDelete(){
   const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);
   if(!sel.length)return;
-  Store.commit({op:'del',shapes:clone(sel)});
+  const delIds=new Set(sel.map(s=>s.id));
+  // Resolve connector bindings BEFORE splicing so connEnds can see the live shapes.
+  const connClears=[];
+  for(const sh of state.shapes){
+    if(sh.type!=='line'&&sh.type!=='arrow')continue;
+    if(delIds.has(sh.id))continue;          // connector itself is being deleted
+    const aAffected=sh.a&&delIds.has(sh.a);
+    const bAffected=sh.b&&delIds.has(sh.b);
+    if(!aAffected&&!bAffected)continue;
+    const e=connEnds(sh);                   // resolve current endpoint before deletion
+    const p={id:sh.id,before:{},after:{}};
+    if(aAffected){p.before.a=sh.a;p.before.x1=sh.x1;p.before.y1=sh.y1;p.after.a=null;p.after.x1=e.x1;p.after.y1=e.y1;}
+    if(bAffected){p.before.b=sh.b;p.before.x2=sh.x2;p.before.y2=sh.y2;p.after.b=null;p.after.x2=e.x2;p.after.y2=e.y2;}
+    connClears.push(p);
+  }
+  const op={op:'del',shapes:clone(sel)};
+  if(connClears.length)op.connClears=connClears;
+  Store.commit(op);
   state.selection.clear();
   UI.toast(t('deleted')+' '+sel.length);
 }

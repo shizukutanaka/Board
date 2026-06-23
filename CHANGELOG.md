@@ -5,6 +5,20 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
 ## [Unreleased]
 
 ### Fixed
+- **コネクタのバインド先図形を削除すると座標がスナップバックする**:
+  ソクラテス式問答「関係の一方が消えたとき何が起きるか?」で発見。バインドされた図形
+  (rect A) を移動後に削除すると、コネクタはそのまま描画時の静的座標 (x1, y1) へ戻り、
+  図形が最後に存在した位置ではなくなる。原因: `doDelete` は `state.shapes` をスプライス
+  するだけで、バインドを参照するコネクタの `a`/`b` を一切更新しなかった。
+  修正: `doDelete` はスプライス前に `connEnds()` で現在のエッジ交点を解決し、
+  `{connClears:[{id, before:{a,x1,y1}, after:{a:null,x1:resolved,y1:resolved}},...]}` を
+  `del` op に同梱して単一コミットにまとめる。`_apply case 'del'` の forward では
+  shapes をスプライス後にコネクタを更新し、reverse (undo) では shapes を復元後に
+  バインドを元に戻す。1 回の Ctrl+Z で図形復元とバインド復元が両方起きる。
+  **非空虚テスト** (6 behavioral assert、修正前は `assert.strictEqual(liveArr().a, null)` で失敗):
+  rA を (200,200) に置き、描画時座標 x1=140 のコネクタをバインド → rA 削除 →
+  `a===null` かつ `x1 !== 140` を検証 → undo で rA と `a===rA.id` と `x1===140` が復元。
+
 - **ペースト / 複製の N 図形が N 回の Undo を要していた(原子性の欠落)**:
   ソクラテス式問答「1 つのユーザー操作は 1 回の Ctrl+Z に対応するか?」で発見。
   `_placeCopies` は図形ごとに `Store.commit({op:'add'})` を呼んでいたため、3 図形を
