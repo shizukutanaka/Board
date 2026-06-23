@@ -718,7 +718,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.75';
+const V='1.6.76';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -768,7 +768,7 @@ const I18N={
     ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',
     ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
     ctxSendBackward:'背面へ',ctxSendBack:'最背面へ',
-    ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxLock:'ロック',ctxUnlock:'ロック解除',
+    ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxLock:'ロック',ctxUnlock:'ロック解除',lockToggle:'ロック切り替え',
     ctxAlignLeft:'左揃え',ctxAlignCX:'左右中央',ctxAlignRight:'右揃え',
     ctxAlignTop:'上揃え',ctxAlignCY:'上下中央',ctxAlignBottom:'下揃え',
     ctxHSpace:'水平均等配置',ctxVSpace:'垂直均等配置',
@@ -817,7 +817,7 @@ const I18N={
     ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',
     ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
     ctxSendBackward:'Send backward',ctxSendBack:'Send to back',
-    ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxLock:'Lock',ctxUnlock:'Unlock',
+    ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxLock:'Lock',ctxUnlock:'Unlock',lockToggle:'Toggle lock',
     ctxAlignLeft:'Align left',ctxAlignCX:'Center horizontal',ctxAlignRight:'Align right',
     ctxAlignTop:'Align top',ctxAlignCY:'Center vertical',ctxAlignBottom:'Align bottom',
     ctxHSpace:'Distribute horizontal',ctxVSpace:'Distribute vertical',
@@ -2910,6 +2910,7 @@ window.addEventListener('keydown',e=>{
   else if(k==='['&&!meta){e.preventDefault();doSendBackward()}
   else if(meta&&k==='g'&&e.shiftKey){e.preventDefault();doUngroup()}
   else if(meta&&k==='g'&&!e.shiftKey){e.preventDefault();doGroup()}
+  else if(meta&&k==='l'&&e.shiftKey&&state.selection.size){e.preventDefault();doLock()}
   else if(k==='g'&&!meta&&e.shiftKey){state.snap=!state.snap;UI.toast(`${t('snap')} ${state.snap?t('on'):t('off')}`)}
   else if(k==='g'&&!meta){state.showGrid=!state.showGrid;invalidate();UI.toast(`${t('grid')} ${state.showGrid?t('on'):t('off')}`)}
   else if(e.shiftKey&&k==='1'){e.preventDefault();fitToContent()}
@@ -3874,7 +3875,7 @@ const UI={
       ['G',k.grid],['⇧G',t('snap')],['Esc',k.esc],['?',k.help],
       ['↑↓←→',k.nudge],['⌥ ↑↓←→',k.kbdResize],
       [']/[',k.zorder],['⇧]/⇧[',k.zorderEnds],
-      [', / .',k.rotate],['⌘F',k.search],
+      [', / .',k.rotate],['⌘⇧L',t('lockToggle')],['⌘F',k.search],
       ['Enter / ⇧Enter',t('searchNav')],
       ['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],
       ['Tab / ⇧Tab',k.cycle],['Enter',k.create]

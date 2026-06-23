@@ -396,7 +396,7 @@ const checks = [
   ['rotated box shapes expose handles at rotated positions', html.includes("return hs.map(p=>{const r=_rotPt(p.x,p.y,cx,cy,s.rotate);return{id:p.id,x:r.x,y:r.y}});")],
   ['search placeholder uses i18n t(search)', html.includes("sq.placeholder=t('search')")],
   ['rotate + search i18n keys in ja and en', html.includes("rotate:'回転 (15° / ノブdrag)',search:'検索'") && html.includes("rotate:'Rotate (15° / knob drag)',search:'Search'")],
-  ['help grid lists rotate and search shortcuts', html.includes("[', / .',k.rotate],['⌘F',k.search]") && html.includes("['Enter / ⇧Enter',t('searchNav')]")],
+  ['help grid lists rotate and search shortcuts', html.includes("[', / .',k.rotate]") && html.includes("['⌘F',k.search]") && html.includes("['Enter / ⇧Enter',t('searchNav')]")],
   // keyboard shortcuts (all documented in README)
   ['N shortcut for sticky (in KEYMAP)', html.includes("n:'sticky'")],
   ['⌘G / ⌘⇧G group/ungroup shortcuts', html.includes("k==='g'&&e.shiftKey") && html.includes("doUngroup") && html.includes("doGroup")],
@@ -517,6 +517,11 @@ const checks = [
   ['colour picker captures on focus/pointerdown', html.includes("cp.addEventListener('focus',()=>_sfbCapture(k));") && html.includes("cp.addEventListener('pointerdown',()=>_sfbCapture(k));")],
   ['colour picker input is live-only (no per-input commit)', html.includes("for(const id of state.selection){const s=byId(id);if(s)s[k]=cp.value}") && !html.includes("applyStyleToSelection({[k]:cp.value})")],
   ['colour picker flushes one op on change', html.includes("cp.addEventListener('change',()=>{_sfbFlush(k,cp.value);_sfbCapture(k);});")],
+  // v1.6.76: ⌘⇧L keyboard shortcut for lock/unlock — README claims "全機能キーボード操作可能"
+  // but doLock was right-click-only. Fix adds Ctrl+Shift+L → doLock().
+  ['doLock has ⌘⇧L keyboard shortcut', html.includes("meta&&k==='l'&&e.shiftKey")&&html.includes("doLock()")],
+  ['lockToggle i18n key present in ja and en', (html.match(/lockToggle:/g)||[]).length>=2],
+  ['lockToggle in help grid', html.includes("t('lockToggle')")],
 ];
 
 let pass = 0, fail = 0;
@@ -3746,6 +3751,39 @@ try {
     console.log('  ✓ search navigation a11y: announces matched shape (describeShape), not bare count (Tab-cycle parity)');
   }
 
+  // v1.6.76: doLock undo round-trip (⌘⇧L keyboard accessibility).
+  // README claims "全機能キーボード操作可能" but lock was right-click-only before this fix.
+  // Behavioral non-vacuity: tests the lock/unlock toggle and undo/redo symmetry.
+  // (Presence checks above — 3 new — fail before the fix and pass after.)
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.seq=0;state.seenOps=new Set();
+    const sh=Shape.make('rect',{x:0,y:0,w:100,h:100});
+    Store.commit({op:'add',shape:sh});
+    state.selection=new Set([sh.id]);
+    // byId reads the live clone in state.shapes (add op clones the shape)
+    const live=()=>state.shapes.find(s=>s.id===sh.id);
+
+    // initial: unlocked
+    assert.ok(!live().locked,'lock: shape starts unlocked');
+    // lock
+    doLock();
+    assert.ok(live().locked===true,'lock: doLock() sets locked=true');
+    // toggle → unlock
+    doLock();
+    assert.ok(live().locked===null,'lock: second doLock() clears locked to null');
+    // undo unlock → locked again
+    Store.undo();
+    assert.ok(live().locked===true,'lock: undo of unlock restores locked=true');
+    // undo lock → unlocked
+    Store.undo();
+    assert.ok(!live().locked,'lock: undo of lock restores unlocked');
+    // redo lock
+    Store.redo();
+    assert.ok(live().locked===true,'lock: redo of lock restores locked=true');
+    console.log('  ✓ doLock: toggle + undo/redo symmetric (⌘⇧L keyboard accessibility)');
+  }
+
   // v1.6.75: doDuplicate frame parity — duplicating a frame must include contained children,
   // mirroring withFrameChildren used by drag-move and nudge.
   // Before fix: only the frame shell duplicated (1 new shape, children left behind).
@@ -3786,7 +3824,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 547; // prev 541 + doDuplicate frame-children parity (6 asserts)
+  pass += 553; // prev 547 + doLock undo round-trip (6 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

@@ -4,6 +4,17 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
 
 ## [Unreleased]
 
+### Added
+- **シェイプロックのキーボードショートカット `⌘⇧L` (Ctrl+Shift+L)**:
+  README は「全機能キーボード操作可能」と謳っているが、`doLock` は右クリック
+  コンテキストメニューからのみアクセス可能だった。ソクラテス式問答「アプリ自身の
+  アクセシビリティ約束を履行しているか?」により発見。`⌘⇧L` → `doLock()` の
+  キーバインドを追加し、i18n キー `lockToggle` (ja: ロック切り替え / en: Toggle lock)
+  とヘルプグリッド行 `['⌘⇧L', t('lockToggle')]` も追加。
+  **非空虚テスト**: 3 presence check (ショートカット存在・i18n・ヘルプグリッド) が
+  修正前に失敗することを確認。6 behavioral assert でロック/アンロックのトグルと
+  undo/redo の対称性を担保。
+
 ### Fixed
 - **`doDuplicate` がフレームの子図形を無視していた(drag/nudge との動作不一致)**:
   `withFrameChildren` はドラッグ移動・キーボードナッジで使われており、フレームを選択して移動すると
