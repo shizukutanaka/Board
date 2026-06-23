@@ -5,6 +5,15 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
 ## [Unreleased]
 
 ### Fixed
+- **消しゴムもコネクタバインドをクリアするよう修正(doDelete との一貫性)**:
+  ソクラテス式問答「修正はすべての削除パスで一貫しているか?」。v1.6.78 で `doDelete`
+  のバインドクリアを修正したが、消しゴム (`eraseAt`/`flushErase`) は別コードパスで
+  同じバグを持っていた。`flushErase` は `eraseAt` が先取り除去した図形を一旦
+  `state.shapes` に戻してから `Store.commit` を呼ぶため、`connEnds` が解決可能。
+  修正: `flushErase` も `doDelete` と同様に `connClears` を計算・同梱する。
+  **非空虚テスト** (5 behavioral assert、修正前は `liveArr2().a !== null` で失敗):
+  `_eraseBatch` への直接プッシュ → `flushErase()` → バインドクリア + undo 復元 を検証。
+
 - **コネクタのバインド先図形を削除すると座標がスナップバックする**:
   ソクラテス式問答「関係の一方が消えたとき何が起きるか?」で発見。バインドされた図形
   (rect A) を移動後に削除すると、コネクタはそのまま描画時の静的座標 (x1, y1) へ戻り、

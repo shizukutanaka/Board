@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.6.78 — Design Tokens
+   Board v1.6.79 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -718,7 +718,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.78';
+const V='1.6.79';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -2814,7 +2814,24 @@ function flushErase(){
   // Restore shapes so Store.commit's _apply can find & remove them
   for(const s of _eraseBatch)state.shapes.push(s);
   sortZ();
-  Store.commit({op:'del',shapes:clone(_eraseBatch)});
+  // Resolve connector bindings now that erased shapes are back in state (connEnds works)
+  const delIds=new Set(_eraseBatch.map(s=>s.id));
+  const connClears=[];
+  for(const sh of state.shapes){
+    if(sh.type!=='line'&&sh.type!=='arrow')continue;
+    if(delIds.has(sh.id))continue;
+    const aAffected=sh.a&&delIds.has(sh.a);
+    const bAffected=sh.b&&delIds.has(sh.b);
+    if(!aAffected&&!bAffected)continue;
+    const e=connEnds(sh);
+    const p={id:sh.id,before:{},after:{}};
+    if(aAffected){p.before.a=sh.a;p.before.x1=sh.x1;p.before.y1=sh.y1;p.after.a=null;p.after.x1=e.x1;p.after.y1=e.y1;}
+    if(bAffected){p.before.b=sh.b;p.before.x2=sh.x2;p.before.y2=sh.y2;p.after.b=null;p.after.x2=e.x2;p.after.y2=e.y2;}
+    connClears.push(p);
+  }
+  const op={op:'del',shapes:clone(_eraseBatch)};
+  if(connClears.length)op.connClears=connClears;
+  Store.commit(op);
   _eraseBatch=[];
 }
 

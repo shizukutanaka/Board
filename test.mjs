@@ -631,7 +631,8 @@ try {
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
-             _sqNav, _sqAdvance, _setSq, UI };
+             _sqNav, _sqAdvance, _setSq, UI,
+             flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s) };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -646,7 +647,8 @@ try {
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
-          _sqNav, _sqAdvance, _setSq, UI } = api;
+          _sqNav, _sqAdvance, _setSq, UI,
+          flushErase, _pushEraseBatch } = api;
 
   console.log('\n-- behavioural --');
 
@@ -3897,8 +3899,36 @@ try {
     console.log('  ✓ doDelete: connector bindings resolved+cleared; undo restores both atomically');
   }
 
+  // v1.6.79: flushErase must clear stale connector bindings, same as doDelete.
+  // The eraser removes shapes from state.shapes immediately in eraseAt (visual feedback),
+  // then flushErase pushes them BACK before calling Store.commit so _apply can do the
+  // canonical splice. At that push-back point, connEnds can still resolve live positions.
+  // Before fix: flushErase committed a bare del op (no connClears) → dangling a/b bindings.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const rB=Shape.make('rect',{x:100,y:100,w:60,h:50});
+    Store.commit({op:'add',shape:rB});
+    const arr2=Shape.make('arrow',{x1:50,y1:50,x2:300,y2:300});
+    arr2.a=rB.id;
+    Store.commit({op:'add',shape:arr2});
+    const liveArr2=()=>state.shapes.find(s=>s.id===arr2.id);
+    // Simulate eraseAt: remove rB from state.shapes, push to _eraseBatch
+    const liveRB=state.shapes.find(s=>s.id===rB.id);
+    state.shapes.splice(state.shapes.indexOf(liveRB),1);
+    _pushEraseBatch(JSON.parse(JSON.stringify(liveRB)));
+    // flushErase pushes rB back, computes connClears, commits del op with cleanup
+    flushErase();
+    assert.ok(liveArr2(),'arrow survives erasing its bound shape');
+    assert.strictEqual(liveArr2().a,null,'flushErase: connector .a cleared when bound shape erased');
+    assert.notStrictEqual(liveArr2().x1,50,'flushErase: connector x1 updated to resolved position');
+    Store.undo();
+    assert.ok(state.shapes.find(s=>s.id===rB.id),'flushErase undo: erased shape restored');
+    assert.strictEqual(liveArr2().a,rB.id,'flushErase undo: connector .a binding restored');
+    console.log('  ✓ flushErase: connector bindings cleared atomically (eraser parity with doDelete)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 567; // prev 561 + connector binding cleanup on delete (6 asserts)
+  pass += 572; // prev 567 + eraser connector binding cleanup (5 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
