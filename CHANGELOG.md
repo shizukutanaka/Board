@@ -19,6 +19,17 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
   エンドツーエンドで悪意ある del がコネクタを汚染も victim を削除もしないことを検証。
 
 ### Fixed
+- **モーダル(ヘルプ / 共有)を開いている間も背後のキャンバスショートカットが発火 + フォーカストラップ欠如 (WCAG 2.4.3 / 2.1.2)**:
+  Qiita / Zenn のアクセシブルなモーダル / フォーカストラップ記事を調査して発見。モーダルは
+  `role="dialog" aria-modal="true"` を持ち、開いたときにフォーカス移動・Escape で閉じる処理は
+  あったが、(1) `aria-modal` はブラウザの Tab を実際にはトラップしないため Tab が背後の
+  キャンバス図形巡回に流れ、(2) モーダルを開いたままツールキー(`r`/`e` 等)や Delete を
+  押すと背後のボードが操作されてしまった。keydown ハンドラに「開いているダイアログ」検出
+  (`_openDialog`)を追加し、ダイアログが開いている間は Escape 以外のグローバルショートカットを
+  抑制、Tab/Shift+Tab は純粋関数 `_trapStep` でダイアログ内に閉じ込め(端で巡回、中間はネイティブ
+  Tab に委譲、外部フォーカスは引き戻す)。**非空虚テスト** (11 assert + presence 2 件):
+  `_trapStep` の端での巡回・中間での null・外部フォーカスの引き戻し・空集合・単一要素を検証。
+
 - **`<html lang>` が検出ロケールと一致せずスクリーンリーダーの発音が崩れる (WCAG 3.1.1)**:
   Qiita / Zenn の Canvas 日本語フォント・CJK han unification(「日本語が中国語っぽい字形に
   化ける」)記事の調査から派生して発見。`<html lang="ja">` がハードコードされている一方、

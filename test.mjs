@@ -467,7 +467,7 @@ const checks = [
   ['importBoard clears selection+wclock on whole-board swap', html.includes("state.shapes=shapes.map(clone);\n      // Match the replace op's _apply") && html.includes("state.selection.clear();state.wclock={};\n      if(typeof d.docName")],
   ['importFromHash clears selection+wclock on whole-board swap', html.includes("state.shapes=valid.map(clone);state.docName=") && /state\.shapes=valid\.map\(clone\)[\s\S]{0,260}state\.selection\.clear\(\);state\.wclock=\{\};/.test(html)],
   // v1.6.71: presentation-mode guard precedes editing shortcuts (no undo mid-slideshow)
-  ['presentation guard runs before undo/redo/select-all shortcuts', /if\(Presentation\.isActive\(\)\)\{[\s\S]{0,260}return;\n  \}\n  if\(meta&&k==='z'&&!e\.shiftKey\)/.test(html)],
+  ['presentation guard runs before undo/redo/select-all shortcuts', /if\(Presentation\.isActive\(\)\)\{[\s\S]{0,260}return;\n  \}[\s\S]{0,700}if\(meta&&k==='z'&&!e\.shiftKey\)/.test(html)],
   // v1.6.71: export canvas clamped to browser limits
   ['exportPNG uses exportScale clamp', html.includes("const scale=exportScale(w,h,2);")],
   ['exportPDF uses exportScale clamp for dpr', html.includes("dpr=exportScale(W,H,window.devicePixelRatio||1)")],
@@ -546,6 +546,11 @@ const checks = [
   ['addMany op has an _apply case', /case 'addMany':/.test(html)],
   ['addMany in REMOTE_OPS allow-list', /REMOTE_OPS[\s\S]{0,160}'addMany'/.test(html)],
   ['addMany validated in validRemotePayload', /case 'addMany':/.test(html)&&html.includes("case 'addMany':    return Array.isArray(op.shapes)&&op.shapes.every(validShape)")],
+  // v1.6.85: modal dialog isolation — global canvas shortcuts must not fire behind an
+  // open help/share dialog, and Tab is trapped inside it (WCAG 2.4.3 / 2.1.2).
+  ['modal focus-trap helpers present', html.includes('function _trapStep')&&html.includes('function _openDialog')],
+  ['keydown isolates an open dialog (suppress shortcuts, trap Tab)',
+    /const _dlg=_openDialog\(\);[\s\S]{0,200}if\(_dlg&&k!=='escape'\)/.test(html)],
 ];
 
 let pass = 0, fail = 0;
@@ -644,7 +649,7 @@ try {
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
-             _sqNav, _sqAdvance, _setSq, UI,
+             _sqNav, _sqAdvance, _setSq, UI, _trapStep,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s) };
   `);
   const api = fn(
@@ -660,7 +665,7 @@ try {
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
-          _sqNav, _sqAdvance, _setSq, UI,
+          _sqNav, _sqAdvance, _setSq, UI, _trapStep,
           flushErase, _pushEraseBatch } = api;
 
   console.log('\n-- behavioural --');
@@ -4055,8 +4060,32 @@ try {
     console.log('  ✓ applyI18n syncs <html lang> to UI locale (WCAG 3.1.1 Language of Page)');
   }
 
+  // v1.6.85: modal focus trap (WCAG 2.4.3/2.1.2). _trapStep is the pure wrap step that
+  // keeps Tab/Shift+Tab cycling inside an open dialog. Returns the element to focus at a
+  // boundary (or when focus is outside the dialog), or null to let native Tab move within.
+  {
+    const a={},b={},c={},items=[a,b,c];
+    // middle positions → null (native Tab handles intra-dialog movement)
+    assert.strictEqual(_trapStep(items,a,false),null,'trap: forward from first → native (null)');
+    assert.strictEqual(_trapStep(items,b,false),null,'trap: forward from middle → native (null)');
+    assert.strictEqual(_trapStep(items,c,true),null,'trap: backward from last → native (null)');
+    assert.strictEqual(_trapStep(items,b,true),null,'trap: backward from middle → native (null)');
+    // boundaries wrap
+    assert.strictEqual(_trapStep(items,c,false),a,'trap: forward off the last wraps to first');
+    assert.strictEqual(_trapStep(items,a,true),c,'trap: backward off the first wraps to last');
+    // focus currently outside the dialog → pull it in (first on Tab, last on Shift+Tab)
+    assert.strictEqual(_trapStep(items,{},false),a,'trap: outside focus + Tab → first');
+    assert.strictEqual(_trapStep(items,{},true),c,'trap: outside focus + Shift+Tab → last');
+    // degenerate: no focusables → null (nothing to trap)
+    assert.strictEqual(_trapStep([],a,false),null,'trap: empty focusables → null');
+    // single focusable: any Tab keeps it focused (first===last)
+    assert.strictEqual(_trapStep([a],a,false),a,'trap: lone control, Tab wraps to itself');
+    assert.strictEqual(_trapStep([a],a,true),a,'trap: lone control, Shift+Tab wraps to itself');
+    console.log('  ✓ _trapStep: focus wraps at dialog boundaries, native in the middle (WCAG focus trap)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 598; // prev 597 + <html lang> locale sync (1 assert)
+  pass += 609; // prev 598 + modal focus-trap _trapStep (11 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

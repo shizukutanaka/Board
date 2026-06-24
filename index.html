@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.6.84 — Design Tokens
+   Board v1.6.85 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -718,7 +718,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.84';
+const V='1.6.85';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -2871,6 +2871,27 @@ function flushErase(){
 // ====================== KEYBOARD ======================
 const KEYMAP={v:'select',h:'hand',p:'pen',r:'rect',o:'ellipse',
   a:'arrow',l:'line',t:'text',n:'sticky',f:'frame',e:'eraser'};
+// Focus trap for open dialogs (WCAG 2.4.3 Focus Order / 2.1.2 No Keyboard Trap-escape).
+// _focusables lists the tabbable controls inside a root; _trapStep is the pure wrap step:
+// given those controls, the active element and direction, it returns which element to
+// focus to keep Tab/Shift+Tab cycling INSIDE the dialog, or null to let native Tab move.
+function _focusables(root){
+  return [...root.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])')]
+    .filter(el=>!el.disabled&&!el.hidden);
+}
+function _trapStep(items,active,back){
+  if(!items.length)return null;
+  if(!items.includes(active))return back?items[items.length-1]:items[0];   // focus entered from outside → pull in
+  if(!back&&active===items[items.length-1])return items[0];                 // wrap forward off the last
+  if(back&&active===items[0])return items[items.length-1];                  // wrap backward off the first
+  return null;                                                              // middle → let native Tab move
+}
+// The currently-open modal dialog (help/share), or null. While one is open, global canvas
+// shortcuts must not fire behind it.
+function _openDialog(){
+  for(const id of ['help','share']){const m=document.getElementById(id);if(m&&m.dataset.open==='true')return m;}
+  return null;
+}
 window.addEventListener('keydown',e=>{
   if(e.target.matches('input,textarea')){
     if(e.key==='Escape')e.target.blur();
@@ -2886,6 +2907,14 @@ window.addEventListener('keydown',e=>{
     if(k==='arrowright'||k==='arrowdown'||k===' '){e.preventDefault();Presentation.next()}
     else if(k==='arrowleft'||k==='arrowup'){e.preventDefault();Presentation.prev()}
     else if(k==='escape'){Presentation.leave()}
+    return;
+  }
+  // Dialog isolation + focus trap: while help/share is open, keep Tab inside the dialog and
+  // stop canvas shortcuts (tool keys, Delete, undo…) from firing behind it. Escape falls
+  // through to the close handler below.
+  const _dlg=_openDialog();
+  if(_dlg&&k!=='escape'){
+    if(k==='tab'){const tgt=_trapStep(_focusables(_dlg),document.activeElement,e.shiftKey);if(tgt){e.preventDefault();tgt.focus()}}
     return;
   }
   if(meta&&k==='z'&&!e.shiftKey){e.preventDefault();if(Store.undo())UI.toast(t('undone'))}
