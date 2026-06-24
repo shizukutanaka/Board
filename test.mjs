@@ -66,6 +66,19 @@ const checks = [
   ['brand color #00C4CC used', html.includes('#00C4CC')],
   ['Reduced motion respected', html.includes('prefers-reduced-motion')],
   ['Dark mode vars', html.includes('prefers-color-scheme:dark')],
+  // v1.6.83: iOS notch / home-indicator safe area. viewport-fit=cover extends the page
+  // under the notch, so the fixed chrome MUST pad with env(safe-area-inset-*) or it hides
+  // behind the notch/home bar (a concrete PWA bug per Qiita/Zenn safe-area articles).
+  ['viewport-fit=cover for safe-area opt-in', /viewport-fit=cover/.test(html)],
+  ['safe-area-inset applied to fixed chrome (topbar/toolbar/statusbar)',
+    (html.match(/env\(safe-area-inset-/g)||[]).length>=5
+    && /\.topbar\{[^}]*env\(safe-area-inset-top\)/.test(html)
+    && /\.toolbar\{[^}]*env\(safe-area-inset-left\)/.test(html)
+    && /\.statusbar\{[^}]*env\(safe-area-inset-bottom\)/.test(html)],
+  ['safe-area uses max() so non-notch devices are unaffected (env→0)',
+    /max\([^)]*env\(safe-area-inset/.test(html)],
+  ['mobile media query preserves safe-area (not overridden away)',
+    /@media \(max-width:720px\)\{[\s\S]*\.statusbar\{[^}]*env\(safe-area-inset-bottom\)/.test(html)],
   ['LICENSE is MIT referenced', html.includes('MIT')],
   ['No external fonts', !/@import[^;]+fonts\.googleapis/.test(html)],
   ['Help grid populated', html.includes('fillHelp')],

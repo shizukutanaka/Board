@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.6.82 — Design Tokens
+   Board v1.6.83 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -92,7 +92,7 @@ button{background:none;border:0;cursor:pointer;padding:0}
 .topbar{
   grid-area:top;
   display:flex;align-items:center;gap:var(--gap);
-  padding:var(--pad) 14px;
+  padding:max(var(--pad),env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) var(--pad) 14px;
   background:var(--paper);
   border-bottom:1px solid var(--line);
   z-index:10;
@@ -146,7 +146,7 @@ button{background:none;border:0;cursor:pointer;padding:0}
 .toolbar{
   grid-area:tools;
   display:flex;flex-direction:column;
-  gap:4px;padding:var(--pad) 8px;
+  gap:4px;padding:var(--pad) 8px var(--pad) max(8px,env(safe-area-inset-left));
   background:var(--paper);
   border-right:1px solid var(--line);
   z-index:10;
@@ -280,7 +280,7 @@ canvas#c[data-tool=eraser]{cursor:crosshair}
 .statusbar{
   grid-area:status;
   display:flex;align-items:center;gap:16px;
-  padding:6px 14px;
+  padding:6px max(14px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));
   background:var(--paper);
   border-top:1px solid var(--line);
   font:500 11px/1 var(--mono-font);
@@ -309,7 +309,7 @@ canvas#c[data-tool=eraser]{cursor:crosshair}
 
 /* Minimap */
 .minimap-wrap{
-  position:fixed;bottom:36px;right:12px;
+  position:fixed;bottom:max(36px,calc(env(safe-area-inset-bottom) + 12px));right:max(12px,env(safe-area-inset-right));
   width:160px;height:100px;
   border:1px solid var(--ln);border-radius:6px;
   background:var(--paper);box-shadow:0 2px 8px rgba(0,0,0,.12);
@@ -459,13 +459,13 @@ canvas#c[data-tool=eraser]{cursor:crosshair}
 
 
 @media (max-width:720px){
-  .topbar{padding:6px 8px;gap:4px}
+  .topbar{padding:max(6px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) 6px 8px;gap:4px}
   .doc-name{max-width:100px;font-size:12px}
-  .toolbar{width:44px;padding:6px 4px}
+  .toolbar{width:44px;padding:6px 4px 6px max(4px,env(safe-area-inset-left))}
   .tool{width:36px;height:36px}
   .brand span{display:none}
   .topbar .btn span:not(.k){display:none}
-  .statusbar{padding:4px 10px;gap:8px;font-size:10px}
+  .statusbar{padding:4px max(10px,env(safe-area-inset-right)) max(4px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));gap:8px;font-size:10px}
   .status-item.optional{display:none}
   .help-grid{grid-template-columns:1fr}
 }
@@ -718,7 +718,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.82';
+const V='1.6.83';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;

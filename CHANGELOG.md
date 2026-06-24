@@ -18,6 +18,20 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
   整形式 connClears の受理、NaN/Infinity/`__proto__`/id 欠落/非配列の拒否、および
   エンドツーエンドで悪意ある del がコネクタを汚染も victim を削除もしないことを検証。
 
+### Fixed
+- **iOS ノッチ / ホームインジケータのセーフエリアに固定 UI が隠れる**:
+  Qiita / Zenn の iOS Safari セーフエリア記事(`viewport-fit=cover` + `env(safe-area-inset-*)`、
+  PWA standalone でのホームバー重なり)を調査して発見。`<meta viewport>` に
+  `viewport-fit=cover` を指定済みでページをノッチ領域まで広げているのに、固定クロム
+  (`.topbar` 上端・`.toolbar` 左端・`.statusbar` 下端・`.minimap-wrap`) が
+  `env(safe-area-inset-*)` で退避していなかったため、ノッチ付き iPhone でツールバーや
+  ステータスバーがノッチ / ホームインジケータに隠れていた。各固定要素のパディング /
+  位置を `max(既存値, env(safe-area-inset-*))` で補正(`env` が 0 の非ノッチ端末では
+  描画不変)。`@media (max-width:720px)` のモバイル上書きがパディングをリセットして
+  セーフエリアを打ち消していた点も修正(最も影響の大きいモバイルで効くように)。
+  **presence テスト 4 件**(`env(safe-area-inset-` が修正前は皆無のため非空虚): viewport-fit
+  オプトイン、3 クロムバーへの適用、`max()` ラップ、モバイル media query での保持を検証。
+
 ### Added
 - **付箋・テキストの日本語折り返しに禁則処理 (kinsoku shori) を実装**:
   Qiita / Zenn の日本語テキスト折り返し記事(HTML5 Canvas 縦書き・形態素解析ベースの
