@@ -3970,8 +3970,42 @@ try {
     console.log('  ✓ remote del connClears validated (NaN/Infinity/__proto__/non-string-id rejected)');
   }
 
+  // v1.6.81: a REMOTE del of a bound shape must clean up the receiver's LOCAL connectors
+  // that the sender didn't include in connClears (e.g. drawn locally, not yet synced to
+  // the sender, or a concurrent-edit race). connEnds resolution must happen BEFORE the
+  // shape is spliced from state.shapes, else the connector snaps to its stale draw-time
+  // coords instead of where the bound shape actually was.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};
+    const A=Shape.make('rect',{x:200,y:200,w:80,h:60});
+    const C=Shape.make('arrow',{x1:140,y1:130,x2:400,y2:400});
+    C.a=A.id;
+    Store.commit({op:'add',shape:A});Store.commit({op:'add',shape:C});
+    const liveC=()=>state.shapes.find(s=>s.id===C.id);
+    // Remote peer deletes A but does NOT include C in connClears (C is local-only to us).
+    Store.applyRemote({op:'del',shapes:[JSON.parse(JSON.stringify(A))],clock:{peer:'remote',seq:1,ts:1}});
+    assert.ok(liveC(),'remote del: receiver-local connector survives');
+    assert.strictEqual(liveC().a,null,'remote del: receiver-local connector binding cleared');
+    assert.notStrictEqual(liveC().x1,140,'remote del: connector x1 resolved to bound-shape edge (not stale draw-time)');
+    assert.ok(Number.isFinite(liveC().x1)&&Number.isFinite(liveC().y1),'remote del: resolved endpoint is finite');
+    assert.ok(!state.shapes.find(s=>s.id===A.id),'remote del: bound shape removed');
+    // A connector already covered by the sender's connClears is NOT double-processed:
+    // the sender-provided after wins (idempotent — both resolve to the same severed state).
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};
+    const A2=Shape.make('rect',{x:0,y:0,w:40,h:40});
+    const C2=Shape.make('arrow',{x1:5,y1:5,x2:100,y2:100});
+    C2.a=A2.id;
+    Store.commit({op:'add',shape:A2});Store.commit({op:'add',shape:C2});
+    Store.applyRemote({op:'del',shapes:[JSON.parse(JSON.stringify(A2))],
+      connClears:[{id:C2.id,before:{a:A2.id,x1:5,y1:5},after:{a:null,x1:20,y1:20}}],clock:{peer:'remote',seq:2,ts:1}});
+    const liveC2=state.shapes.find(s=>s.id===C2.id);
+    assert.strictEqual(liveC2.a,null,'remote del w/ connClears: shared connector still severed');
+    assert.strictEqual(liveC2.x1,20,'remote del w/ connClears: sender-provided endpoint applied (not double-clobbered)');
+    console.log('  ✓ remote del cleans up receiver-local connectors; respects sender connClears for shared ones');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 583; // prev 572 + remote del connClears validation (11 asserts)
+  pass += 590; // prev 583 + remote del receiver-local connector cleanup (7 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
