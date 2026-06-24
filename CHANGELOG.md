@@ -4,6 +4,20 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
 
 ## [Unreleased]
 
+### Security
+- **リモート `del` op の `connClears` を検証(upd/style とのセキュリティパリティ)**:
+  ソクラテス式問答「そのクリーンアップはネットワーク境界を越えても安全か?」で発見。
+  v1.6.78 で追加した `connClears`(バインドクリーンアップ差分)は `_apply case 'del'` 内で
+  `Object.assign(sh, p.after)` により生きたコネクタに適用される。しかし `validRemotePayload`
+  の `del` ケースは `op.shapes` のみを検証し `connClears` を素通ししていた。悪意ある peer は
+  `del` op に `connClears:[{id, after:{x1:NaN, __proto__:…}}]` を載せ、他の全リモート write を
+  守る `validPatch` ゲートを迂回してコネクタに NaN 座標(図形消失)・プロトタイプ汚染・
+  関数を注入できた。修正: `del` バリデータは各 `connClears` の before/after を `validPatch`
+  (NaN/Infinity/関数/`__proto__`/過剰ネストを再帰的に拒否)に通す。`connClears` 不在の
+  レガシー del は後方互換で許可。**非空虚テスト** (11 assert、修正前は NaN 拒否で失敗):
+  整形式 connClears の受理、NaN/Infinity/`__proto__`/id 欠落/非配列の拒否、および
+  エンドツーエンドで悪意ある del がコネクタを汚染も victim を削除もしないことを検証。
+
 ### Fixed
 - **消しゴムもコネクタバインドをクリアするよう修正(doDelete との一貫性)**:
   ソクラテス式問答「修正はすべての削除パスで一貫しているか?」。v1.6.78 で `doDelete`

@@ -3927,8 +3927,51 @@ try {
     console.log('  ✓ flushErase: connector bindings cleared atomically (eraser parity with doDelete)');
   }
 
+  // v1.6.80: remote `del` connClears must be validated (security parity with upd/style).
+  // _apply case 'del' applies op.connClears via Object.assign(sh, p.after) — unvalidated.
+  // Without a guard, a hostile peer's del op can inject NaN coords (shape vanishes),
+  // prototype pollution, or functions into a connector, bypassing the validPatch gates
+  // that protect every other remote write. The del validator must run each connClears
+  // before/after through validPatch.
+  {
+    // well-formed connClears accepted
+    assert.ok(validRemotePayload({op:'del',shapes:[],connClears:[{id:'c1',before:{a:'x',x1:5},after:{a:null,x1:9}}]}),
+      'del: well-formed connClears accepted');
+    // del with no connClears still accepted (backward compatible)
+    assert.ok(validRemotePayload({op:'del',shapes:[]}),'del: missing connClears (legacy) accepted');
+    // NaN coordinate in after must be rejected (would make connector vanish)
+    assert.ok(!validRemotePayload({op:'del',shapes:[],connClears:[{id:'c1',after:{x1:NaN}}]}),
+      'del: NaN coord in connClears.after rejected');
+    // Infinity likewise
+    assert.ok(!validRemotePayload({op:'del',shapes:[],connClears:[{id:'c1',after:{y2:Infinity}}]}),
+      'del: Infinity in connClears rejected');
+    // prototype pollution via __proto__ key rejected
+    assert.ok(!validRemotePayload({op:'del',shapes:[],connClears:JSON.parse('[{"id":"c1","after":{"__proto__":{"polluted":1}}}]')}),
+      'del: __proto__ in connClears rejected');
+    // missing id rejected (Object.assign target lookup needs a string id)
+    assert.ok(!validRemotePayload({op:'del',shapes:[],connClears:[{after:{x1:1}}]}),
+      'del: connClears entry without string id rejected');
+    // non-array connClears rejected
+    assert.ok(!validRemotePayload({op:'del',shapes:[],connClears:'evil'}),
+      'del: non-array connClears rejected');
+    // End-to-end: a hostile remote del with NaN connClears must NOT corrupt the live connector.
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};
+    const victim=Shape.make('rect',{x:0,y:0,w:40,h:40});
+    const conn=Shape.make('arrow',{x1:10,y1:10,x2:200,y2:200});
+    conn.a=victim.id;
+    Store.commit({op:'add',shape:victim});Store.commit({op:'add',shape:conn});
+    Store.applyRemote({op:'del',shapes:[JSON.parse(JSON.stringify(victim))],
+      connClears:[{id:conn.id,after:{x1:NaN,polluted:1}}],clock:{peer:'evil',seq:1,ts:1}});
+    const liveConn=state.shapes.find(s=>s.id===conn.id);
+    assert.ok(liveConn,'hostile del rejected: connector still present');
+    assert.ok(Number.isFinite(liveConn.x1),'hostile del rejected: connector x1 not NaN-poisoned');
+    assert.notStrictEqual(({}).polluted,1,'hostile del rejected: no prototype pollution');
+    assert.ok(state.shapes.find(s=>s.id===victim.id),'hostile del rejected: victim shape not removed');
+    console.log('  ✓ remote del connClears validated (NaN/Infinity/__proto__/non-string-id rejected)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 572; // prev 567 + eraser connector binding cleanup (5 asserts)
+  pass += 583; // prev 572 + remote del connClears validation (11 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
