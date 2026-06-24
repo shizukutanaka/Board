@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.6.81 — Design Tokens
+   Board v1.6.82 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -718,7 +718,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.81';
+const V='1.6.82';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -3462,7 +3462,14 @@ function buildSVG(shapes,paper){
 function _esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 // Coerce to finite number; prevents string geometry breaking SVG numeric attributes.
 function _num(v){const n=+v;return Number.isFinite(n)?n:0}
+// 禁則処理 (kinsoku shori): JIS X 4051 line-break prohibitions for CJK text. Japanese has
+// no spaces, so wrapText char-breaks runs of CJK — a naive break could start a line with
+// closing punctuation/brackets/small-kana/prolonged-mark (行頭禁則) or end one with an
+// opening bracket (行末禁則). Both read as broken typography to a Japanese reader.
+const KINSOKU_START=new Set([...'、。，．・：；！？‼⁇⁈⁉）]｝」』〕〉》】〗〙〟”’｠»ヽヾゝゞ々ーぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮ〜～…‥,.!?:;)]}']);
+const KINSOKU_END=new Set([...'（[｛「『〔〈《【〖〘〝“‘｟«([{']);
 // Word-wrap to maxWidth: honours \n, wraps on whitespace, hard-breaks long tokens.
+// The char-break path applies 禁則処理 so prohibited chars never start/end a wrapped line.
 function wrapText(text,maxWidth,measure){
   const out=[];
   for(const para of String(text==null?'':text).split('\n')){
@@ -3476,8 +3483,14 @@ function wrapText(text,maxWidth,measure){
       if(measure(tok)<=maxWidth){line=tok;continue;}
       let chunk='';                                         // single token longer than the line → char-break
       for(const ch of tok){
-        if(chunk===''||measure(chunk+ch)<=maxWidth){chunk+=ch;}
-        else{out.push(chunk);chunk=ch;}
+        if(chunk===''||measure(chunk+ch)<=maxWidth){chunk+=ch;continue;}
+        // 禁則: a line-start-prohibited char must not begin the next line — let it hang on
+        // the current line (ぶら下げ) so the break falls after it instead.
+        if(KINSOKU_START.has(ch)){chunk+=ch;continue;}
+        // 禁則: an opening bracket must not end the line — push trailing ones down with ch.
+        let carry='';
+        while(chunk.length>1&&KINSOKU_END.has(chunk[chunk.length-1])){carry=chunk[chunk.length-1]+carry;chunk=chunk.slice(0,-1);}
+        out.push(chunk);chunk=carry+ch;
       }
       line=chunk;
     }

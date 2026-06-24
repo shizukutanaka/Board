@@ -4,7 +4,7 @@
 単一HTMLファイル。ダブルクリックで動く。アカウント不要。広告なし。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-00C4CC.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.6.81-00C4CC.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.6.82-00C4CC.svg)](CHANGELOG.md)
 [![Size](https://img.shields.io/badge/size-~61KB%20gzip-00C4CC.svg)](index.html)
 [![Offline](https://img.shields.io/badge/offline-first-00C4CC.svg)](#offline)
 [![A11y](https://img.shields.io/badge/WCAG-AAA-00C4CC.svg)](#accessibility)
@@ -61,6 +61,8 @@ start index.html      # Windows
 - 整列 (左右上下・中央・均等配置)、z 順序操作 (前面 / 背面 / 一段前後)
 - 左右反転 / 上下反転 (⇧H / ⇧V、選択 bbox 中心でミラー、可逆)
 - rect / ellipse の中央ラベル (ダブルクリックで編集、フローチャート向け)
+- 付箋・テキストの日本語折り返しに禁則処理 (JIS X 4051: 行頭の句読点・閉じ括弧をぶら下げ、
+  行末の開き括弧を追い出し)。描画・自動高さ・SVG 出力すべてに適用
 - シェイプロック (右クリック → ロック、誤操作防止。移動・リサイズ・削除・消去すべて不可、可逆)
 - バインドコネクタ (矢印/直線の端点をシェイプに束縛、移動に追従 — フロー図向け)
 - コネクタ(エッジ)ラベル (矢印/直線をダブルクリック → 中点にラベル、判断分岐の "yes"/"no" 等。

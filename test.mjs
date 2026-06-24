@@ -1863,6 +1863,32 @@ try {
     console.log('  ✓ wrapText: no-wrap, newline, empty, null, word-wrap, char-break');
   }
 
+  // v1.6.82: 禁則処理 (kinsoku shori) — Japanese line-break rules in wrapText.
+  // Japanese has no spaces, so wrapText char-breaks CJK text. A naive break can put
+  // 。、」 at a line start or 「（ at a line end — both typographically wrong (a flaw any
+  // Japanese reader / Qiita-Zenn dev notices). Line-start-prohibited chars hang on the
+  // current line (ぶら下げ); line-end-prohibited opening brackets push down to the next.
+  {
+    const m=s=>s.length*10; // 10px/char, maxWidth 30 → 3 chars/line
+    // 行頭禁則: 。 must not start a line — it hangs on the line it closes instead.
+    const r1=wrapText('あいう。えお',30,m);
+    assert.ok(!r1.some(l=>/^[。、，．・：；！？）」』]/.test(l)),'kinsoku: no line starts with prohibited punctuation');
+    assert.strictEqual(r1[0],'あいう。','kinsoku: 。 hangs on the line it closes (ぶら下げ)');
+    // non-vacuity: the naive char-break WOULD have started a line with 。
+    assert.notDeepStrictEqual(r1,['あいう','。えお'],'kinsoku: output differs from naive break (行頭禁則 applied)');
+    // 行末禁則: 「 (opening bracket) must not end a line — it pushes down to the next line.
+    const r2=wrapText('あい「うえお',30,m);
+    assert.ok(!r2.some(l=>/[「（『【〔]$/.test(l)),'kinsoku: no line ends with an opening bracket');
+    // a line-start-prohibited ASCII char (closing paren) also hangs, never starts a line
+    const r3=wrapText('abc)def',30,m);
+    assert.ok(!r3.some(l=>/^\)/.test(l)),'kinsoku: no line starts with ASCII )');
+    // English word-wrap path is untouched (kinsoku only affects the CJK char-break loop)
+    assert.deepStrictEqual(wrapText('hello world',70,m),['hello','world'],'kinsoku: English word-wrap unchanged');
+    // every wrapped line still respects the width budget except deliberate hangs (≤1 over)
+    assert.ok(wrapText('かきくけこ。さしすせそ',30,m).every(l=>l.length<=4),'kinsoku: hang overflow bounded (no runaway line)');
+    console.log('  ✓ wrapText 禁則処理: prohibited chars never start/end a line (ぶら下げ + push-down)');
+  }
+
   // getHandles - ellipse/sticky use same box-handles as rect
   {
     const el=Shape.make('ellipse',{x:0,y:0,w:100,h:50});
@@ -4005,7 +4031,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 590; // prev 583 + remote del receiver-local connector cleanup (7 asserts)
+  pass += 597; // prev 590 + wrapText 禁則処理 kinsoku (7 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
