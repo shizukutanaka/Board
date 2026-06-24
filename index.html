@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.6.85 — Design Tokens
+   Board v1.6.86 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -718,7 +718,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.85';
+const V='1.6.86';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1473,6 +1473,18 @@ function resize(){
   canvas.width=Math.round(r.width*DPR);
   canvas.height=Math.round(r.height*DPR);
   invalidate();
+}
+// devicePixelRatio can change with NO resize event — dragging the window between monitors
+// of different density (Retina ↔ external 1×) or an OS display-scaling change. A
+// `(resolution: Xdppx)` media query matches only the current ratio and fires `change` once
+// when it stops matching; re-arm a fresh query each time to keep tracking. Without this the
+// canvas backing store keeps the stale DPR and renders blurry on the new screen.
+function _watchDPR(){
+  if(!window.matchMedia)return;
+  const mq=window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+  const onChange=()=>{resize();_watchDPR()};   // single-fire, then re-watch the new ratio
+  if(mq.addEventListener)mq.addEventListener('change',onChange,{once:true});
+  else if(mq.addListener)mq.addListener(onChange);   // legacy Safari
 }
 // Visible world rectangle (for culling). screen = (world - vp) * zoom * DPR,
 // so the visible world span is the canvas size divided by zoom*DPR.
@@ -4167,6 +4179,8 @@ function wire(){
   window.addEventListener('offline',UI.updateOnline);
   // resize
   window.addEventListener('resize',resize);
+  // devicePixelRatio change (window dragged to a different-density monitor) fires no resize
+  _watchDPR();
   // some Android devices fire orientationchange separately from resize
   if('orientation' in screen)screen.orientation.addEventListener('change',resize);
   // theme / high-contrast switches change design-token values → drop getCSS cache

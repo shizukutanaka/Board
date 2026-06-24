@@ -551,6 +551,9 @@ const checks = [
   ['modal focus-trap helpers present', html.includes('function _trapStep')&&html.includes('function _openDialog')],
   ['keydown isolates an open dialog (suppress shortcuts, trap Tab)',
     /const _dlg=_openDialog\(\);[\s\S]{0,200}if\(_dlg&&k!=='escape'\)/.test(html)],
+  // v1.6.86: track devicePixelRatio changes (monitor switch) that fire no resize event.
+  ['DPR-change watcher present and wired',
+    html.includes('function _watchDPR')&&/resolution: \$\{window\.devicePixelRatio\}dppx/.test(html)&&html.includes('_watchDPR();')],
 ];
 
 let pass = 0, fail = 0;
@@ -649,7 +652,7 @@ try {
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
-             _sqNav, _sqAdvance, _setSq, UI, _trapStep,
+             _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s) };
   `);
   const api = fn(
@@ -665,7 +668,7 @@ try {
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
-          _sqNav, _sqAdvance, _setSq, UI, _trapStep,
+          _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR,
           flushErase, _pushEraseBatch } = api;
 
   console.log('\n-- behavioural --');
@@ -4084,8 +4087,38 @@ try {
     console.log('  ✓ _trapStep: focus wraps at dialog boundaries, native in the middle (WCAG focus trap)');
   }
 
+  // v1.6.86: devicePixelRatio change tracking. resize() only fires on window-resize /
+  // orientationchange — dragging the window between monitors of different density changes
+  // devicePixelRatio with NO resize event, leaving the canvas backing store at the stale
+  // DPR (blurry). _watchDPR arms a (resolution: Xdppx) media query that fires once when the
+  // ratio changes, then re-arms for the new ratio.
+  {
+    const armed=[];const listeners=[];
+    const realMM=fakeWin.matchMedia, realDPR=fakeWin.devicePixelRatio;
+    fakeWin.matchMedia=(q)=>{armed.push(q);return{
+      media:q,
+      addEventListener:(_ev,fn)=>listeners.push(fn),
+      removeEventListener(){},
+      addListener:(fn)=>listeners.push(fn),
+    };};
+    fakeWin.devicePixelRatio=2;
+    _watchDPR();
+    assert.ok(/resolution: *2dppx/.test(armed[armed.length-1]),'DPR watch arms a query for the current ratio (2dppx)');
+    assert.strictEqual(listeners.length,1,'DPR watch registers exactly one change listener');
+    // Simulate moving to a 1× monitor: ratio changes, the query stops matching → change fires.
+    fakeWin.devicePixelRatio=1;
+    listeners[0]();
+    assert.ok(/resolution: *1dppx/.test(armed[armed.length-1]),'on change, DPR watch re-arms for the NEW ratio (1dppx)');
+    assert.ok(listeners.length>=2,'re-arm registers a fresh single-fire listener');
+    // matchMedia absent → safe no-op (the watcher must never throw on unsupported envs)
+    fakeWin.matchMedia=undefined;
+    assert.doesNotThrow(()=>_watchDPR(),'DPR watch is a safe no-op when matchMedia is unavailable');
+    fakeWin.matchMedia=realMM;fakeWin.devicePixelRatio=realDPR;
+    console.log('  ✓ _watchDPR: tracks devicePixelRatio changes, re-arms per ratio (Retina monitor-switch)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 609; // prev 598 + modal focus-trap _trapStep (11 asserts)
+  pass += 614; // prev 609 + _watchDPR devicePixelRatio tracking (5 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

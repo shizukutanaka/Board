@@ -19,6 +19,18 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
   エンドツーエンドで悪意ある del がコネクタを汚染も victim を削除もしないことを検証。
 
 ### Fixed
+- **モニター間移動で devicePixelRatio が変わってもキャンバスが再解像度化されずぼやける**:
+  Qiita / Zenn の Canvas Retina / devicePixelRatio 対応記事(「本当は怖い HTML5 Canvas の
+  Retina対応」等)を調査して発見。`resize()` は DPR を再計算してバッキングストアを
+  `width*DPR` に拡大する正しい実装だが、`resize` / `orientationchange` イベントにしか
+  バインドされていなかった。ウィンドウを Retina ↔ 外部 1× モニター間でドラッグ移動したり
+  OS の表示スケーリングが変わると、`devicePixelRatio` は変化するのに resize イベントが
+  発火せず、キャンバスが古い DPR のままぼやける。MDN / Qiita 推奨の
+  `(resolution: Xdppx)` メディアクエリ監視 `_watchDPR` を追加(現在の比率にマッチする
+  クエリが変化時に一度だけ発火 → `resize()` 後に新しい比率で再アーム)。**非空虚テスト**
+  (5 assert + presence 1 件): 現在比率でのアーム・変化時の新比率への再アーム・単一発火・
+  matchMedia 非対応環境での安全な no-op を検証。
+
 - **モーダル(ヘルプ / 共有)を開いている間も背後のキャンバスショートカットが発火 + フォーカストラップ欠如 (WCAG 2.4.3 / 2.1.2)**:
   Qiita / Zenn のアクセシブルなモーダル / フォーカストラップ記事を調査して発見。モーダルは
   `role="dialog" aria-modal="true"` を持ち、開いたときにフォーカス移動・Escape で閉じる処理は
