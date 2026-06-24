@@ -554,6 +554,12 @@ const checks = [
   // v1.6.86: track devicePixelRatio changes (monitor switch) that fire no resize event.
   ['DPR-change watcher present and wired',
     html.includes('function _watchDPR')&&/resolution: \$\{window\.devicePixelRatio\}dppx/.test(html)&&html.includes('_watchDPR();')],
+  // v1.6.87: clipboard copy works on file:// (navigator.clipboard absent) via execCommand
+  ['copyText has execCommand fallback for non-secure contexts',
+    html.includes('async function copyText')&&html.includes("execCommand('copy')")&&html.includes('window.isSecureContext')],
+  ['share-copy button routes through copyText (not raw navigator.clipboard)',
+    html.includes('await copyText(url)')&&!/shareCopyBtn[\s\S]{0,160}navigator\.clipboard\.writeText/.test(html)],
+  ['copyFailed i18n key in ja and en', (html.match(/copyFailed:/g)||[]).length>=2],
 ];
 
 let pass = 0, fail = 0;
@@ -652,7 +658,7 @@ try {
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
-             _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR,
+             _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s) };
   `);
   const api = fn(
@@ -668,7 +674,7 @@ try {
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
-          _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR,
+          _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText,
           flushErase, _pushEraseBatch } = api;
 
   console.log('\n-- behavioural --');
@@ -4117,8 +4123,39 @@ try {
     console.log('  ✓ _watchDPR: tracks devicePixelRatio changes, re-arms per ratio (Retina monitor-switch)');
   }
 
+  // v1.6.87: copyText falls back to execCommand on non-secure contexts (file:// / http://),
+  // where navigator.clipboard is undefined — Board's primary "just open index.html" case.
+  // Before: the share-copy button called navigator.clipboard.writeText in a try/catch, so on
+  // file:// it threw, was swallowed, and copied nothing with no user feedback.
+  {
+    const realSecure=fakeWin.isSecureContext, realClip=fakeWin.navigator.clipboard, realExec=fakeDoc.execCommand;
+    // (1) secure context with Clipboard API → uses navigator.clipboard.writeText
+    let written=null;
+    fakeWin.isSecureContext=true;
+    fakeWin.navigator.clipboard={writeText:(s)=>{written=s;return Promise.resolve()}};
+    assert.strictEqual(await copyText('hello'),true,'copyText: secure context returns true');
+    assert.strictEqual(written,'hello','copyText: secure context used navigator.clipboard.writeText');
+    // (2) non-secure context (file://): clipboard absent → execCommand fallback succeeds
+    fakeWin.isSecureContext=false;
+    fakeWin.navigator.clipboard=undefined;
+    let execArg=null;
+    fakeDoc.execCommand=(cmd)=>{execArg=cmd;return true};
+    assert.strictEqual(await copyText('world'),true,'copyText: non-secure context falls back to execCommand');
+    assert.strictEqual(execArg,'copy',"copyText: fallback issues execCommand('copy')");
+    // (3) both unavailable → returns false (caller shows a copyFailed toast, not a silent no-op)
+    fakeDoc.execCommand=()=>false;
+    assert.strictEqual(await copyText('x'),false,'copyText: returns false when no copy mechanism works');
+    // (4) secure context but writeText REJECTS → falls back to execCommand (not a hard failure)
+    fakeWin.isSecureContext=true;
+    fakeWin.navigator.clipboard={writeText:()=>Promise.reject(new Error('denied'))};
+    fakeDoc.execCommand=()=>true;
+    assert.strictEqual(await copyText('y'),true,'copyText: rejected writeText falls back to execCommand');
+    fakeWin.isSecureContext=realSecure;fakeWin.navigator.clipboard=realClip;fakeDoc.execCommand=realExec;
+    console.log('  ✓ copyText: secure→Clipboard API, file://→execCommand fallback, false when neither works');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 614; // prev 609 + _watchDPR devicePixelRatio tracking (5 asserts)
+  pass += 620; // prev 614 + copyText non-secure-context fallback (6 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

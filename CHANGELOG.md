@@ -19,6 +19,19 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
   エンドツーエンドで悪意ある del がコネクタを汚染も victim を削除もしないことを検証。
 
 ### Fixed
+- **共有 URL の「コピー」が file:// で無反応(navigator.clipboard 非対応コンテキスト)**:
+  Qiita / Zenn の「http / file:// 環境で navigator.clipboard が動かない」記事を調査して発見。
+  Clipboard API はセキュアコンテキスト(HTTPS / localhost)限定で、`file://` や平文 `http://`
+  では `navigator.clipboard` が undefined。Board は README で「`open index.html` で file:// 起動」を
+  謳う核心ユースケースなのに、共有 URL コピーボタンは `navigator.clipboard.writeText` を
+  try/catch で呼ぶだけで、file:// では例外が握り潰されて**何もコピーされず無反応**だった。
+  `copyText(text)` ヘルパを新設: セキュアコンテキストでは Clipboard API、それ以外(file:// /
+  http://)では一時 textarea + `execCommand('copy')` にフォールバックし、`Promise<boolean>` を返す。
+  成功 / 失敗で `shareUrlCopied` / `copyFailed` トーストを出し分け(従来の無言失敗を解消)。
+  i18n に `copyFailed`(ja: コピーできませんでした / en: Copy failed)を追加。**非空虚テスト**
+  (6 assert + presence 3 件): セキュアコンテキストでの Clipboard API 使用、file:// での execCommand
+  フォールバック成功、両方不可時の false、writeText 拒否時のフォールバックを検証。
+
 - **モニター間移動で devicePixelRatio が変わってもキャンバスが再解像度化されずぼやける**:
   Qiita / Zenn の Canvas Retina / devicePixelRatio 対応記事(「本当は怖い HTML5 Canvas の
   Retina対応」等)を調査して発見。`resize()` は DPR を再計算してバッキングストアを

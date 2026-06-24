@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.6.86 — Design Tokens
+   Board v1.6.87 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -718,7 +718,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.86';
+const V='1.6.87';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -775,7 +775,7 @@ const I18N={
     ctxSelectAll:'すべて選択',ctxClear:'全消去',
     share:'共有',shareTitle:'共有',
     shareUrlHint:'このURLをコピーして送ると、相手に内容が共有されます',
-    shareCopyUrl:'URLをコピー',shareUrlCopied:'URLをコピーしました',
+    shareCopyUrl:'URLをコピー',shareUrlCopied:'URLをコピーしました',copyFailed:'コピーできませんでした',
     sharePeer:'相手と直接つなぐ (実験的)',
     shareStep1:'手順1: あなたが「招待コード」を作成',
     shareStep2:'手順2: 相手に送って「応答コード」をもらう',
@@ -824,7 +824,7 @@ const I18N={
     ctxSelectAll:'Select all',ctxClear:'Clear all',
     share:'Share',shareTitle:'Share',
     shareUrlHint:'Copy this URL and send it — the recipient gets your board.',
-    shareCopyUrl:'Copy URL',shareUrlCopied:'URL copied',
+    shareCopyUrl:'Copy URL',shareUrlCopied:'URL copied',copyFailed:'Copy failed',
     sharePeer:'Direct peer connection (experimental)',
     shareStep1:'Step 1: You create an "invite code"',
     shareStep2:'Step 2: Send it to peer, get "answer code" back',
@@ -3503,6 +3503,25 @@ function buildSVG(shapes,paper){
 function _esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 // Coerce to finite number; prevents string geometry breaking SVG numeric attributes.
 function _num(v){const n=+v;return Number.isFinite(n)?n:0}
+// Copy text to the clipboard with a non-secure-context fallback. navigator.clipboard is
+// undefined on file:// and plain http:// — Board's primary "just open index.html" use case —
+// so prefer it only in a secure context and otherwise fall back to a temporary textarea +
+// execCommand('copy'), which still works there. Returns Promise<boolean> for UI feedback.
+async function copyText(text){
+  if(window.isSecureContext&&navigator.clipboard){
+    try{await navigator.clipboard.writeText(text);return true}catch(_){}
+  }
+  try{
+    const ta=document.createElement('textarea');
+    ta.value=text;ta.setAttribute('readonly','');
+    ta.style.cssText='position:fixed;top:-9999px;left:-9999px;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();ta.setSelectionRange(0,String(text).length);
+    const ok=document.execCommand&&document.execCommand('copy');
+    document.body.removeChild(ta);
+    return !!ok;
+  }catch(_){return false}
+}
 // 禁則処理 (kinsoku shori): JIS X 4051 line-break prohibitions for CJK text. Japanese has
 // no spaces, so wrapText char-breaks runs of CJK — a naive break could start a line with
 // closing punctuation/brackets/small-kana/prolonged-mark (行頭禁則) or end one with an
@@ -4204,7 +4223,7 @@ function wire(){
   });
   document.getElementById('shareCopyBtn').onclick=async()=>{
     const url=document.getElementById('shareUrl').value;
-    if(url){try{await navigator.clipboard.writeText(url);UI.toast(t('shareUrlCopied'),'ok')}catch(_){}}
+    if(url){const ok=await copyText(url);UI.toast(ok?t('shareUrlCopied'):t('copyFailed'),ok?'ok':'warn')}
   };
   // WebRTC manual signaling
   {const _g=id=>document.getElementById(id);
