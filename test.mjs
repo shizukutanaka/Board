@@ -4043,8 +4043,20 @@ try {
     console.log('  ✓ remote del cleans up receiver-local connectors; respects sender connClears for shared ones');
   }
 
+  // v1.6.84: <html lang> must match the detected UI locale (WCAG 3.1.1 Language of Page).
+  // It was hardcoded to "ja"; an English-browser user gets English UI but lang stayed "ja",
+  // so a screen reader would read English text with a Japanese speech engine (and CJK han
+  // unification could pick Japanese glyph variants). applyI18n now syncs documentElement.lang
+  // to LANG. In this harness navigator.language='en' → LANG='en'.
+  {
+    fakeDoc.documentElement.lang='ja';   // simulate the hardcoded SSR default
+    UI.applyI18n();
+    assert.strictEqual(fakeDoc.documentElement.lang,'en','applyI18n syncs <html lang> to the detected locale (en in harness)');
+    console.log('  ✓ applyI18n syncs <html lang> to UI locale (WCAG 3.1.1 Language of Page)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 597; // prev 590 + wrapText 禁則処理 kinsoku (7 asserts)
+  pass += 598; // prev 597 + <html lang> locale sync (1 assert)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

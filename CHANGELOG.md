@@ -19,6 +19,18 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
   エンドツーエンドで悪意ある del がコネクタを汚染も victim を削除もしないことを検証。
 
 ### Fixed
+- **`<html lang>` が検出ロケールと一致せずスクリーンリーダーの発音が崩れる (WCAG 3.1.1)**:
+  Qiita / Zenn の Canvas 日本語フォント・CJK han unification(「日本語が中国語っぽい字形に
+  化ける」)記事の調査から派生して発見。`<html lang="ja">` がハードコードされている一方、
+  i18n は `navigator.language` で ja/en を自動検出する。英語ブラウザのユーザーは UI が英語に
+  なるのに `lang` は `ja` のままで、スクリーンリーダーが英語テキストを日本語音声エンジンで
+  読み上げてしまう(WCAG 3.1.1 Language of Page 違反)。さらに CJK 共有コードポイントの
+  字形選択(han unification)で誤った字形が選ばれる懸念もある。`applyI18n` で
+  `document.documentElement.lang=LANG` を設定し、検出ロケールに同期(`ja` は一次読者向けの
+  正しい既定値として HTML に残し、実行時に非 ja ユーザー向けへ補正)。**非空虚テスト**
+  (1 assert、harness は navigator.language='en' → LANG='en'、修正前は lang='ja' のままで失敗):
+  applyI18n 後に `documentElement.lang==='en'` を検証。
+
 - **iOS ノッチ / ホームインジケータのセーフエリアに固定 UI が隠れる**:
   Qiita / Zenn の iOS Safari セーフエリア記事(`viewport-fit=cover` + `env(safe-area-inset-*)`、
   PWA standalone でのホームバー重なり)を調査して発見。`<meta viewport>` に
