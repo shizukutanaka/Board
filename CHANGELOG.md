@@ -2,6 +2,19 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.06] - 2026-06-30
+
+### Fixed
+- **`doCopy` がロックシェイプをクリップボードから除外 (doDelete/doMove との整合)**:
+  Ctrl+C / Ctrl+X でロックされたシェイプが含まれている場合、クリップボードにコピーされていた。
+  Ctrl+X (cut) では doDelete がロックシェイプをスキップして削除しないため、クリップボードには
+  ロックシェイプが残るが board には存在し続けるという不一致が発生。Ctrl+V 後は
+  ロックシェイプが二重になっていた。
+  修正: `doCopy` の filter を `.filter(Boolean)` から `.filter(s=>s&&!s.locked)` へ変更。
+  他の選択ベース操作 (doDelete/doMove/doRotate/doFlip/doAlign) と完全に整合。
+  **非空虚テスト** (2 assert): A (解除) + B (ロック) を選択して doCopy →
+  修正前は `clipboard.shapes.length === 2` (テスト失敗)、修正後は 1 (B 除外)。
+
 ## [1.7.05] - 2026-06-30
 
 ### Fixed

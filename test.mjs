@@ -547,6 +547,8 @@ const checks = [
   ['doLock has ⌘⇧L keyboard shortcut', html.includes("meta&&k==='l'&&e.shiftKey")&&html.includes("doLock()")],
   ['lockToggle i18n key present in ja and en', (html.match(/lockToggle:/g)||[]).length>=2],
   ['lockToggle in help grid', html.includes("t('lockToggle')")],
+  // v1.7.06: doCopy excludes locked shapes (parity with doDelete/doMove/doAlign)
+  ['doCopy excludes locked shapes (cut leaves locked on board AND off clipboard)', html.includes("const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);\n  if(!sel.length)return;\n  state.clipboard")],
   // v1.6.77: paste/duplicate is one atomic undo — _placeCopies commits a single addMany op
   ['_placeCopies commits one addMany (not per-shape add)', html.includes("if(built.length)Store.commit({op:'addMany',shapes:built})")],
   ['addMany op has an _apply case', /case 'addMany':/.test(html)],
@@ -4598,6 +4600,25 @@ try {
     console.log('  ✓ doDelete: frame children deleted with frame (parity with doDuplicate); undo restores');
   }
 
+  // v1.7.06: doCopy must exclude locked shapes (parity with doDelete/doMove/doAlign/doRotate).
+  // Before fix: doCopy used .filter(Boolean) — clipboard included locked shapes. Ctrl+X then
+  // kept locked shapes on board AND in clipboard, causing duplicate on paste.
+  // After fix: .filter(s=>s&&!s.locked) — locked shapes excluded from clipboard.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const A=Shape.make('rect',{x:0,y:0,w:100,h:100});   // unlocked
+    const B=Shape.make('rect',{x:200,y:0,w:100,h:100}); // will be locked
+    Store.commit({op:'add',shape:A});Store.commit({op:'add',shape:B});
+    state.shapes.find(s=>s.id===B.id).locked=true;
+    state.selection=new Set([A.id,B.id]);
+    doCopy();
+    // Before fix: clipboard.shapes.length === 2 (A and B both copied) → FAIL
+    // After fix: clipboard.shapes.length === 1 (locked B excluded) → PASS
+    assert.strictEqual(state.clipboard.shapes.length, 1, 'doCopy: clipboard excludes locked B (only A copied)');
+    assert.strictEqual(state.clipboard.shapes[0].id, A.id, 'doCopy: clipboard contains only unlocked A');
+    console.log('  ✓ doCopy: locked shapes excluded from clipboard (parity with doDelete)');
+  }
+
   // v1.7.05: Tab cycling (cycleSel) must skip locked shapes.
   // The Tab key handler builds ids from state.shapes. Before fix, it used .map(s=>s.id) (no lock
   // filter), so cycleSel could land on a locked shape. After fix, .filter(s=>!s.locked) is applied.
@@ -4666,7 +4687,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 692; // prev 688 + Tab cycling skips locked (4)
+  pass += 694; // prev 692 + doCopy excludes locked (2)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
