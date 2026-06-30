@@ -2,6 +2,18 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.20] - 2026-06-30
+
+### Fixed
+- **`doUngroup` が選択に含まれないグループ外シェイプを消失させる**:
+  `doUngroup` の line 3275 が `state.selection` をグループ解除されたシェイプのみで上書きしていた。
+  例: シェイプ A (グループ `gid` 内) と B (グループなし) を選択してグループ解除すると、
+  選択が `{A, C}` (`gid` の全メンバー) に置き換えられ、B が失われていた。
+  修正: `state.selection=new Set([...ids.filter(id=>byId(id)),...ungrouped])` — 元の選択を保持
+  (まだ存在するシェイプのみ) し、グループ解除されたメンバーを追加する。
+  **非空虚テスト** (3 assert): グループ済み A と非グループ B を選択してグループ解除した後、
+  A・B・C (A のグループ仲間) のすべてが選択に含まれることを検証。
+
 ## [1.7.19] - 2026-06-30
 
 ### Fixed

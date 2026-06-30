@@ -5176,6 +5176,39 @@ try {
     console.log('  ✓ _remoteDelConnFix: locked connectors skipped (v1.7.16b)');
   }
 
+  // v1.7.20: doUngroup must preserve non-grouped shapes in the selection.
+  // Bug: line 3275 replaces state.selection with only the ungrouped IDs, dropping any
+  // previously-selected shapes that were not in any group.
+  // Example: select A (in group gid) and B (ungrouped), then ungroup → selection becomes {A,C}
+  // (all members of A's group), losing B entirely.
+  // Fix: `state.selection=new Set([...ids.filter(id=>byId(id)),...ungrouped])` — keep the
+  // original selection (shapes that still exist) and add all ungrouped members.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const UA=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    const UB=Shape.make('rect',{x:60,y:0,w:50,h:50});
+    const UC=Shape.make('rect',{x:120,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:UA});Store.commit({op:'add',shape:UB});Store.commit({op:'add',shape:UC});
+    // Group A and C (not B) via doGroup
+    state.selection=new Set([UA.id,UC.id]);
+    doGroup();
+    const uaLive=state.shapes.find(s=>s.id===UA.id);
+    const gId=uaLive.groupId;
+    assert.ok(gId,'doUngroup selection: group created (A and C)');
+    // Select A (grouped) and B (not grouped)
+    state.selection=new Set([UA.id,UB.id]);
+    assert.strictEqual(state.selection.size,2,'doUngroup selection: 2 shapes selected before ungroup');
+    // Ungroup. BEFORE fix: selection becomes {UA.id, UC.id} — B is lost.
+    doUngroup();
+    // Assertion 1: A (was grouped, now ungrouped) still selected
+    assert.ok(state.selection.has(UA.id),'doUngroup selection: grouped shape A still selected after ungroup');
+    // Assertion 2: B (was not grouped) must NOT be dropped from selection
+    assert.ok(state.selection.has(UB.id),'doUngroup selection: non-grouped shape B preserved in selection');
+    // Assertion 3: C (was in same group as A, not originally selected) is added to selection
+    assert.ok(state.selection.has(UC.id),'doUngroup selection: group sibling C added to selection');
+    console.log('  ✓ doUngroup: non-grouped selected shapes preserved in post-ungroup selection (v1.7.20)');
+  }
+
   // v1.7.19: G.bboxAll must return null when all input shapes produce degenerate bboxes.
   // Bug: G.bbox for a pen shape with empty pts returns {x:Infinity, y:Infinity, w:-Infinity, h:-Infinity}
   // because the pts loop doesn't execute. bboxAll then leaves mnx/mxx at initial Infinity/-Infinity
@@ -5201,7 +5234,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 764; // prev 761 + bboxAll degenerate pen guard (3)
+  pass += 767; // prev 764 + doUngroup non-grouped selection preserved (3)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
