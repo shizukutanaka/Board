@@ -18,6 +18,16 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
   整形式 connClears の受理、NaN/Infinity/`__proto__`/id 欠落/非配列の拒否、および
   エンドツーエンドで悪意ある del がコネクタを汚染も victim を削除もしないことを検証。
 
+### Added
+- **プレゼンテーションモードでディスプレイがスリープしない (Screen Wake Lock API)**:
+  Zenn「プレゼンテーション中に画面がオフになる問題」パターン。発表中にスライドから手を離すと
+  OS のスクリーンセーバー / 自動ロックが発動し、聴衆の前で画面が暗転する。Screen Wake Lock API
+  (`navigator.wakeLock.request('screen')`) を `Presentation.enter()` 時に取得し、
+  `Presentation.leave()` で解放。ブラウザは `visibilitychange→hidden` 時にロックを自動解放
+  するので、タブが前面に戻ったときに再取得する。非対応ブラウザ(Safari < 16.4 等)は
+  サイレントに無視(try/catch + `navigator.wakeLock` ガード)。テスト: 3 assert で
+  "screen" リクエスト・sentinel.release() 呼び出し・未対応時のセーフティガードを検証。
+
 ### Fixed
 - **ブラウザタブタイトルがボード名を反映しない (WCAG 2.4.2 Page Titled)**:
   Qiita 「`document.title` を更新しないとブラウザタブに反映されない」パターン。ユーザーが

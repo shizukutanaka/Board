@@ -100,6 +100,7 @@ const checks = [
   ['Eraser batches into single undo', html.includes("_eraseBatch") && html.includes("flushErase")],
   ['pointercancel restores eraser batch + clears guides', html.includes("_cancelPointerGesture") && html.includes("state.guides=null") && /if\(_eraseBatch\.length\)[\s\S]{0,120}state\.guides=null/.test(html)],
   ['document.title synced on docName change (WCAG 2.4.2)', html.includes('_syncDocTitle')&&html.includes("document.title=")&&html.includes("_syncDocTitle();")],
+  ['Screen Wake Lock in presentation mode', html.includes('navigator.wakeLock')&&html.includes('_acquireWakeLock')&&html.includes('_releaseWakeLock')],
   ['drawShape accepts ctx param', html.includes("function drawShape(s,c)")],
   // round 4 improvements (current session)
   ['Double-click re-edit text', html.includes("dblclick") && html.includes("openTextEditor")],
@@ -662,7 +663,7 @@ try {
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText,
-             flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _syncDocTitle };
+             flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _syncDocTitle, Presentation };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -678,7 +679,7 @@ try {
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText,
-          flushErase, _pushEraseBatch, _cancelPointerGesture, _syncDocTitle } = api;
+          flushErase, _pushEraseBatch, _cancelPointerGesture, _syncDocTitle, Presentation } = api;
 
   console.log('\n-- behavioural --');
 
@@ -4198,8 +4199,26 @@ try {
     console.log('  ✓ _syncDocTitle: browser-tab title tracks docName (WCAG 2.4.2 Page Titled)');
   }
 
+  // v1.6.90: Screen Wake Lock API — display must stay on during presentations.
+  // Zenn: "プレゼンテーション中に画面がオフになる" / MDN Screen Wake Lock API.
+  {
+    let requested=null;
+    const sentinel={released:false,release:async()=>{sentinel.released=true;}};
+    fakeWin.navigator.wakeLock={request:async(type)=>{requested=type;return sentinel;}};
+    await Presentation._acquireWakeLock();
+    assert.strictEqual(requested,'screen','_acquireWakeLock requests "screen" lock');
+    Presentation._releaseWakeLock();
+    await Promise.resolve();  // allow the sentinel.release() micro-task to settle
+    assert.strictEqual(sentinel.released,true,'_releaseWakeLock calls sentinel.release()');
+    // graceful no-op when wakeLock is unsupported
+    fakeWin.navigator.wakeLock=undefined;
+    assert.doesNotThrow(()=>Presentation._acquireWakeLock(),'_acquireWakeLock: safe no-op when navigator.wakeLock absent');
+    fakeWin.navigator.wakeLock=undefined;
+    console.log('  ✓ Presentation._acquireWakeLock/release: screen stays on during slides (Screen Wake Lock API)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 627; // prev 624 + _syncDocTitle docName (2) + presence check (1)
+  pass += 630; // prev 627 + wake lock acquire (1) + release (1) + no-op guard (1)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
