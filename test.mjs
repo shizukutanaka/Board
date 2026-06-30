@@ -5454,8 +5454,40 @@ try {
     console.log('  ✓ _apply replace backward: pre-import selection restored via origSel (v1.7.26)');
   }
 
+  // v1.7.27: _apply('upd', backward) must not regress properties already superseded by
+  // a remote peer with a newer clock.
+  // Bug: Store.undo() calls _apply(op, false) → Object.assign(sh, clone(op.before)) with
+  // no wclock check. If a peer wrote to the same property with a newer clock (C2 > C1),
+  // undo restores the pre-local value and the local board permanently diverges from the
+  // peer (undo does not broadcast, so the peer is never informed of Alice's revert).
+  // Fix: in _apply('upd', false), filter out any property where state.wclock[id][key]
+  // has a clock newer than op.clock before calling Object.assign.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const lwwSh=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    lwwSh.stroke='#000000';
+    Store.commit({op:'add',shape:lwwSh});
+    const liveLww=()=>state.shapes.find(s=>s.id===lwwSh.id);
+    // Alice: local upd stroke → red (clock auto-assigned C1)
+    Store.commit({op:'upd',id:lwwSh.id,before:{stroke:'#000000'},after:{stroke:'#ff0000'}});
+    const c1=state.history[state.histIdx].clock; // C1 = Alice's auto-assigned clock
+    assert.strictEqual(liveLww().stroke,'#ff0000','v1.7.27 setup: local upd stroke red');
+    // Remote peer: stroke → blue with C2 (newer than C1)
+    const c2={peer:'bob',seq:1,ts:c1.ts+1000};
+    Store.applyRemote({op:'upd',id:lwwSh.id,before:{stroke:'#ff0000'},after:{stroke:'#0000ff'},clock:c2});
+    assert.strictEqual(liveLww().stroke,'#0000ff','v1.7.27 setup: remote upd (newer clock) stroke blue');
+    // state.wclock[lwwSh.id].stroke === c2 (newer than c1)
+    // Alice undoes: must NOT restore '#000000' — wclock says c2 owns stroke
+    Store.undo();
+    // BEFORE fix: stroke === '#000000' (undo ignores wclock, clobbers peer's newer blue).
+    // AFTER fix:  stroke === '#0000ff' (stroke skipped in backward patch; wclock c2 > c1).
+    assert.strictEqual(liveLww().stroke,'#0000ff',
+      'v1.7.27: undo must not regress properties already superseded by a remote peer with newer clock');
+    console.log('  ✓ _apply upd backward: wclock-protected properties skipped in undo (v1.7.27)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 788; // prev 785 + _apply replace origSel (3)
+  pass += 791; // prev 788 + upd backward wclock guard (3)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

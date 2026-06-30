@@ -2,6 +2,23 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.27] - 2026-06-30
+
+### Fixed
+- **`_apply('upd', backward)` がリモートピアに上書きされたプロパティをアンドゥで巻き戻す**:
+  ローカル `upd` をアンドゥすると `op.before` で `Object.assign` していたため、
+  リモートピアが同じプロパティを (より新しいクロックで) 上書きしていても元の値に戻った。
+  同期セッションで「ボブが stroke を青に変えた後、アリスが Ctrl+Z したら青が消えた」という
+  分岐を引き起こす。
+  修正: `_apply('upd', false)` で `op.before` の各キーを確認し、
+  `state.wclock[id][key].peer !== state.peerId` (= リモートの書き込み) かつ
+  `clockNewer(wclock[id][key], op.clock)` が真の場合はそのキーの復元をスキップ。
+  ローカルのみの編集 (wclock エントリが自ピアのもの) は常に完全復元し、
+  ランダムシード PBT (30シード) の undo-all 不変条件を維持。
+  **非空虚テスト** (3 assert):
+  `upd` → `applyRemote` (より新しい ts) → `undo` の順で、
+  アンドゥ後もリモートの値が維持されることを確認。
+
 ## [1.7.26] - 2026-06-30
 
 ### Fixed
