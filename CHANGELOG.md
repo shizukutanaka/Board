@@ -2,6 +2,23 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.28] - 2026-06-30
+
+### Fixed
+- **リモートピアが `upd` op で `locked` を設定できる (セキュリティ)**:
+  `validRemotePayload` の `style` / `resize` / `align` は `!('locked' in p)` ガードで
+  リモートからの `locked` 変更をブロックしているが、`upd` に同ガードがなかった。
+  悪意のある peer が `{op:'upd', id:'X', after:{locked:true}, clock:{ts:999999}}` を
+  送ると `validPatch` を通過し (`boolean` は `_cleanVal` で許可される)、ターゲット
+  シェイプをリモートロックできた。逆に `{locked:false}` でロック解除も可能だった。
+  修正: `case 'upd'` に `const noLock=p=>!('locked' in p)` ガードを追加し、
+  `after` に `locked` キーを含む `upd` op を `validRemotePayload` の段階で拒否。
+  `style` / `resize` / `align` と完全に対称なパターン (v1.7.23 / v1.7.24b の拡張)。
+  **非空虚テスト** (4 assert):
+  - `{locked:true}` のみの `upd` → 拒否 ✓
+  - `{stroke, locked:true}` 混合 `upd` → op 全体を拒否 (部分適用なし) ✓
+  - `locked` キーなしの正当な `upd` → 引き続き適用される ✓
+
 ## [1.7.27] - 2026-06-30
 
 ### Fixed

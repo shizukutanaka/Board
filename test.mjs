@@ -616,6 +616,9 @@ const checks = [
   ['_apply replace backward restores origSel; import callers attach origSel to op',
     html.includes("if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));") &&
     html.includes("Store._recordCommitted({op:'replace',before,after:clone(state.shapes),wc:beforeWc,origSel});")],
+  // v1.7.28: validRemotePayload for upd must block locked key (parity with style/resize/align)
+  ['remote upd op cannot set locked (noLock guard extended to upd)',
+    html.includes("case 'upd':{const noLock=p=>!('locked' in p);\n      return typeof op.id==='string'&&validPatch(op.after)&&noLock(op.after)")],
 ];
 
 let pass = 0, fail = 0;
@@ -5486,8 +5489,32 @@ try {
     console.log('  ✓ _apply upd backward: wclock-protected properties skipped in undo (v1.7.27)');
   }
 
+  // v1.7.28: validRemotePayload for 'upd' must block 'locked' key in op.after.
+  // Bug: style/resize/align all have !('locked' in p) guard, but 'upd' does not.
+  // A hostile peer can send {op:'upd', after:{locked:true}} to lock any shape remotely.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const lkSh=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:lkSh});
+    const lkLive=()=>state.shapes.find(s=>s.id===lkSh.id);
+    assert.ok(!lkLive().locked,'v1.7.28 setup: shape starts unlocked');
+    // Hostile peer tries to lock the shape via upd
+    Store.applyRemote({op:'upd',id:lkSh.id,after:{locked:true},clock:{peer:'evil',seq:1,ts:999999}});
+    assert.ok(!lkLive().locked,
+      'v1.7.28: remote upd with locked:true must not lock the shape (noLock guard missing in upd)');
+    // Hostile peer tries to set a legitimate property AND lock simultaneously
+    Store.applyRemote({op:'upd',id:lkSh.id,after:{stroke:'#ff0000',locked:true},clock:{peer:'evil',seq:2,ts:999999}});
+    assert.ok(!lkLive().locked,
+      'v1.7.28: remote upd with mixed patch containing locked:true must not lock (whole op rejected)');
+    // Legitimate upd (no locked key) still works
+    Store.applyRemote({op:'upd',id:lkSh.id,after:{stroke:'#00ff00'},clock:{peer:'good',seq:1,ts:1000}});
+    assert.strictEqual(lkLive().stroke,'#00ff00',
+      'v1.7.28: remote upd without locked key still applies correctly');
+    console.log('  ✓ validRemotePayload upd: locked key in after rejected (v1.7.28)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 791; // prev 788 + upd backward wclock guard (3)
+  pass += 795; // prev 791 + upd locked-key remote guard (4)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
