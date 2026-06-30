@@ -2,6 +2,24 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.17] - 2026-06-30
+
+### Fixed
+- **`_apply` が `op.before==null` で undo クラッシュする**:
+  `case 'style'/'resize'/'align'` の `const patches=forward?op.after:op.before` に
+  null ガードがなかった。`validRemotePayload` は `op.before==null` を許容するため、
+  将来のインポートパスでこの状態が local history に入ると `for(const p of null)` が
+  `TypeError` をスローし undo スタックが永続的に詰まる。
+  修正: `if(!Array.isArray(patches))break;` を追加。
+  **非空虚テスト** (3 assert): `op.before=null` の style op を history に注入して `Store.undo()` が throw しないことを確認。
+- **`validPatch` が数値ジオメトリフィールドの文字列値を受け入れる**:
+  `_cleanVal` は文字列値に対して `true` を返す。敵対的ピアが
+  `{op:'resize',after:[{id:'x',x:'NaN'}]}` を送ると `validRemotePayload` を通過し、
+  `Object.assign` で `sh.x='NaN'` (文字列) が設定される。
+  `sh.x + sh.w/2` が文字列結合になり座標系が完全に壊れる。
+  修正: `validPatch` に既知の数値フィールドの型チェックを追加。
+  **非空虚テスト** (3 assert): 文字列 x/y を含む resize op が rejected、正当な数値は accepted。
+
 ## [1.7.16] - 2026-06-30
 
 ### Fixed

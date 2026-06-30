@@ -5055,6 +5055,40 @@ try {
     'dblclick: locked line/arrow guard present in source');
   console.log('  ✓ dblclick: locked shapes do not open text/label editor (presence guards, v1.7.14)');
 
+  // v1.7.17a: _apply case style/resize/align must not crash when op.before is null (undo guard).
+  // validRemotePayload allows op.before==null for these ops; if such an op reached local
+  // history (e.g., via future import), Store.undo() would throw TypeError: null is not iterable.
+  // Fix: add Array.isArray(patches) guard so the case breaks safely instead of crashing.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const sNullBefore=Shape.make('rect',{x:0,y:0,w:40,h:40});
+    Store.commit({op:'add',shape:sNullBefore});
+    // Manually inject a style op with op.before=null into history (simulates future import path)
+    state.history.push({op:'style',before:null,after:[{id:sNullBefore.id,stroke:'#ff0000'}]});
+    state.histIdx=state.history.length-1;
+    // Undo must not throw; it should silently skip the non-reversible op
+    let caughtErr=null;
+    try{ Store.undo(); } catch(e){ caughtErr=e; }
+    assert.ok(caughtErr===null,'_apply null before: Store.undo does not throw TypeError when op.before is null');
+    assert.ok(state.shapes.find(s=>s.id===sNullBefore.id),'_apply null before: shape still present (undo skipped gracefully)');
+    assert.ok(state.histIdx<state.history.length-1,'_apply null before: histIdx decremented (undo consumed the null-before op)');
+    console.log('  ✓ _apply: null op.before guard prevents TypeError crash in undo (v1.7.17a)');
+  }
+
+  // v1.7.17b: validPatch must reject string values in numeric geometry fields.
+  // Before fix, _cleanVal returned true for string values (strings are "clean"), so a
+  // hostile peer could send {x:'NaN'} passing validation, then Object.assign would set
+  // sh.x to the string 'NaN', corrupting geometry (string + number = string concat).
+  {
+    assert.ok(!validRemotePayload({op:'resize',after:[{id:'x',x:'NaN',y:0,w:10,h:10}],before:[{id:'x'}]}),
+      'validPatch: string in numeric x field rejected');
+    assert.ok(!validRemotePayload({op:'resize',after:[{id:'x',x:10,y:'99',w:10,h:10}],before:[{id:'x'}]}),
+      'validPatch: string in numeric y field rejected');
+    assert.ok(validRemotePayload({op:'resize',after:[{id:'x',x:10,y:0,w:10,h:10}],before:[{id:'x',x:0,y:0,w:10,h:10}]}),
+      'validPatch: legitimate numeric coords still accepted after fix');
+    console.log('  ✓ validPatch: string values in numeric geometry fields rejected (v1.7.17b)');
+  }
+
   // v1.7.16a: flushErase must not clear connector bindings on locked connectors
   // (exact parity with doDelete connClears fix from v1.7.15).
   // If an arrow is locked and its bound shape is erased, flushErase must NOT include
@@ -5101,7 +5135,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 749; // prev 743 + flushErase connClears locked (3) + _remoteDelConnFix locked (3)
+  pass += 755; // prev 749 + _apply null before (3) + validPatch numeric str (3)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
