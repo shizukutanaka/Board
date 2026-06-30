@@ -2,6 +2,21 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.16] - 2026-06-30
+
+### Fixed
+- **`flushErase` がロックされたコネクタのバインディングを消去する**:
+  `flushErase` の connClears ループに `sh.locked` チェックがなかった (`doDelete` v1.7.15 修正の対称パス)。
+  消しゴムで束縛元シェイプを消去するとロック済みコネクタの `a`/`b` バインディングも消去され、
+  ロックの意図が無効化されていた。修正: `if(sh.locked)continue` を追加。
+  **非空虚テスト** (3 assert): ロック済みコネクタの `.a` が eraseAt 後も保持されることを確認。
+- **`_remoteDelConnFix` がロックされたコネクタを変更する**:
+  リモートピアがバインド元シェイプを削除した際、受信側のローカルコネクタ修正処理
+  (`_remoteDelConnFix`) に `sh.locked` チェックがなかった。
+  ロック済みのローカルコネクタが、リモート del を受信した際に無断で unbind されていた。
+  修正: `if(sh.locked)continue` を追加。
+  **非空虚テスト** (3 assert): リモート del 受信後もロック済みコネクタの `.a` が保持されることを確認。
+
 ## [1.7.15] - 2026-06-30
 
 ### Fixed

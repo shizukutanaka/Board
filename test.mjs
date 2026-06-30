@@ -5055,8 +5055,53 @@ try {
     'dblclick: locked line/arrow guard present in source');
   console.log('  ✓ dblclick: locked shapes do not open text/label editor (presence guards, v1.7.14)');
 
+  // v1.7.16a: flushErase must not clear connector bindings on locked connectors
+  // (exact parity with doDelete connClears fix from v1.7.15).
+  // If an arrow is locked and its bound shape is erased, flushErase must NOT include
+  // it in connClears — locked connector's a/b bindings must remain intact.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};
+    const rE=Shape.make('rect',{x:10,y:10,w:40,h:40});
+    const arrE=Shape.make('arrow',{x1:5,y1:5,x2:80,y2:80});
+    arrE.a=rE.id; arrE.locked=true;
+    Store.commit({op:'add',shape:rE});
+    Store.commit({op:'add',shape:arrE});
+    const origX1=arrE.x1, origA=arrE.a;
+    // Simulate eraseAt: remove rE from state.shapes, push clone to _eraseBatch
+    const liveRE=state.shapes.find(s=>s.id===rE.id);
+    state.shapes.splice(state.shapes.indexOf(liveRE),1);
+    _pushEraseBatch(JSON.parse(JSON.stringify(liveRE)));
+    flushErase();
+    const liveArrE=state.shapes.find(s=>s.id===arrE.id);
+    assert.ok(liveArrE,'flushErase locked: locked arrow still present');
+    assert.strictEqual(liveArrE.a,origA,'flushErase locked: locked arrow binding NOT cleared');
+    assert.strictEqual(liveArrE.x1,origX1,'flushErase locked: locked arrow x1 NOT mutated');
+    console.log('  ✓ flushErase: locked connectors skipped in connClears (v1.7.16a)');
+  }
+
+  // v1.7.16b: _remoteDelConnFix must not clear bindings on locked connectors.
+  // When a remote peer deletes a shape that a LOCAL locked connector is bound to,
+  // the receiver-side fix (_remoteDelConnFix) must skip locked connectors.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};
+    const rR=Shape.make('rect',{x:50,y:50,w:60,h:60});
+    const arrR=Shape.make('arrow',{x1:20,y1:20,x2:200,y2:200});
+    arrR.a=rR.id; arrR.locked=true;
+    Store.commit({op:'add',shape:rR});
+    Store.commit({op:'add',shape:arrR});
+    const origX1R=arrR.x1, origAR=arrR.a;
+    const liveArrR=()=>state.shapes.find(s=>s.id===arrR.id);
+    // Remote peer deletes rR; does NOT include arrR in connClears (local-only connector)
+    Store.applyRemote({op:'del',shapes:[JSON.parse(JSON.stringify(state.shapes.find(s=>s.id===rR.id)))],
+      clock:{peer:'remote',seq:1,ts:1}});
+    assert.ok(liveArrR(),'remote del locked: locked connector still present');
+    assert.strictEqual(liveArrR().a,origAR,'remote del locked: locked connector binding NOT cleared');
+    assert.strictEqual(liveArrR().x1,origX1R,'remote del locked: locked connector x1 NOT mutated');
+    console.log('  ✓ _remoteDelConnFix: locked connectors skipped (v1.7.16b)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 743; // prev 734 + move-undo locked (3) + doDelete connClears locked (3) + _sfbFlush locked (3)
+  pass += 749; // prev 743 + flushErase connClears locked (3) + _remoteDelConnFix locked (3)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
