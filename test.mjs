@@ -583,6 +583,11 @@ const checks = [
     html.includes("replace(/'/g,'&#39;')")],
   ['openTextEditor guards auto-resize during IME composition (_textComposing)',
     html.includes('_textComposing')&&html.includes("compositionstart',()=>{_textComposing=true")&&html.includes("compositionend',()=>{_textComposing=false;auto()")],
+  // v1.6.95: context menu ARIA APG arrow-key navigation
+  ['_ctxMenuKeyNav handles ArrowDown/Up/Home/End (ARIA APG menu pattern)',
+    html.includes('function _ctxMenuKeyNav')&&html.includes("'ArrowDown'")&&html.includes("'ArrowUp'")&&html.includes("'Home'")&&html.includes("'End'")],
+  ['ctx menu keydown wired in wire() to _ctxMenuKeyNav',
+    html.includes('addEventListener(\'keydown\',e=>_ctxMenuKeyNav(')],
 ];
 
 let pass = 0, fail = 0;
@@ -640,6 +645,7 @@ const fakeDoc = {
   querySelectorAll: () => [],
   addEventListener(){},
   title: '',
+  activeElement: null,
 };
 const fakeWin = {
   devicePixelRatio: 1, innerWidth: 800, innerHeight: 600,
@@ -687,7 +693,7 @@ try {
              _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _syncDocTitle, Presentation,
              _onBtnInstall, _getInstallPrompt: () => _installPrompt, _setInstallPrompt: (v) => { _installPrompt = v; },
-             _onSwUpdate };
+             _onSwUpdate, _ctxMenuKeyNav };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -705,7 +711,7 @@ try {
           _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _syncDocTitle, Presentation,
           _onBtnInstall, _getInstallPrompt, _setInstallPrompt,
-          _onSwUpdate } = api;
+          _onSwUpdate, _ctxMenuKeyNav } = api;
 
   console.log('\n-- behavioural --');
 
@@ -4310,8 +4316,49 @@ try {
     console.log("  ✓ _esc: single-quote encoded as &#39; (SVG attr defense-in-depth)");
   }
 
+  // v1.6.95: context menu arrow-key navigation (ARIA APG menu pattern)
+  // Must fail before fix (no _ctxMenuKeyNav) and pass after.
+  {
+    let focused = null;
+    const mkItem = (name) => {
+      const el = { className:'ctx-item', _name:name,
+        focus(){ focused = el; fakeDoc.activeElement = el; } };
+      return el;
+    };
+    const [it0,it1,it2] = ['a','b','c'].map(mkItem);
+    const mockMenu = { querySelectorAll(s){ return s==='.ctx-item'?[it0,it1,it2]:[]; } };
+    const pd = {key:'',preventDefault(){}};
+
+    // ArrowDown: advance to next, wrap at end
+    fakeDoc.activeElement = it0;
+    _ctxMenuKeyNav(mockMenu, {...pd, key:'ArrowDown'});
+    assert.strictEqual(focused, it1, 'ctx ArrowDown: item0→item1');
+    _ctxMenuKeyNav(mockMenu, {...pd, key:'ArrowDown'});
+    assert.strictEqual(focused, it2, 'ctx ArrowDown: item1→item2');
+    _ctxMenuKeyNav(mockMenu, {...pd, key:'ArrowDown'});
+    assert.strictEqual(focused, it0, 'ctx ArrowDown: item2→item0 (wrap)');
+
+    // ArrowUp: previous, wrap at start
+    fakeDoc.activeElement = it2;
+    _ctxMenuKeyNav(mockMenu, {...pd, key:'ArrowUp'});
+    assert.strictEqual(focused, it1, 'ctx ArrowUp: item2→item1');
+    fakeDoc.activeElement = it0;
+    _ctxMenuKeyNav(mockMenu, {...pd, key:'ArrowUp'});
+    assert.strictEqual(focused, it2, 'ctx ArrowUp: item0→item2 (wrap)');
+
+    // Home / End
+    fakeDoc.activeElement = it1;
+    _ctxMenuKeyNav(mockMenu, {...pd, key:'Home'});
+    assert.strictEqual(focused, it0, 'ctx Home: → first item');
+    fakeDoc.activeElement = it1;
+    _ctxMenuKeyNav(mockMenu, {...pd, key:'End'});
+    assert.strictEqual(focused, it2, 'ctx End: → last item');
+
+    console.log('  ✓ ctx menu keyboard nav: ArrowDown/Up (with wrap), Home/End (ARIA APG menu pattern)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 641; // prev 639 + _esc single-quote (2 asserts)
+  pass += 648; // prev 641 + ctx nav (7 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

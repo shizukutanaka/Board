@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.6.94 — Design Tokens
+   Board v1.6.95 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -721,7 +721,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.94';
+const V='1.6.95';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -4125,6 +4125,21 @@ const UI={
     }
   }};
 
+// ====================== CONTEXT MENU KEYBOARD NAV ======================
+// v1.6.95: ARIA APG "Menu" pattern requires ArrowDown/Up/Home/End navigation.
+// Extracted as a named function so test.mjs can exercise it without a real DOM.
+// Pattern: w3.org/WAI/ARIA/apg/patterns/menu-button/
+function _ctxMenuKeyNav(m,e){
+  if(e.key==='Escape'){e.preventDefault();UI.closeCtxMenu();return;}
+  const items=[...m.querySelectorAll('.ctx-item')];
+  if(!items.length)return;
+  const cur=items.indexOf(document.activeElement);
+  if(e.key==='ArrowDown'){e.preventDefault();items[(cur+1)%items.length].focus();return;}
+  if(e.key==='ArrowUp'){e.preventDefault();items[(cur-1+items.length)%items.length].focus();return;}
+  if(e.key==='Home'){e.preventDefault();items[0].focus();return;}
+  if(e.key==='End'){e.preventDefault();items[items.length-1].focus();return;}
+}
+
 // ====================== WIRE-UP ======================
 // PWA install prompt deferred event reference (v1.6.92). Captured in 'beforeinstallprompt',
 // cleared after install or dismissal. null = browser hasn't signalled installability yet.
@@ -4266,6 +4281,8 @@ function wire(){
   document.addEventListener('mousedown',e=>{
     if(!e.target.closest('.ctx-menu'))UI.closeCtxMenu();
   });
+  // v1.6.95: Arrow-key navigation inside the context menu (ARIA APG menu pattern)
+  document.getElementById('ctx').addEventListener('keydown',e=>_ctxMenuKeyNav(document.getElementById('ctx'),e));
   // Initial tool styling
   pickTool('select');
   // periodic saved-ago refresh

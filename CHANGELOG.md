@@ -2,6 +2,22 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.95] - 2026-06-30
+
+### Fixed
+- **Context menu arrow-key navigation (ARIA APG menu pattern) — WCAG キーボードアクセシビリティ**:
+  w3.org/WAI/ARIA/apg/patterns/menu-button/「Menu Button」パターン。
+  `#ctx` は `role="menu"` + 各項目 `role="menuitem"` を持ち、開時に最初の項目へフォーカスするが、
+  ArrowDown / ArrowUp / Home / End キーによるナビゲーションがなかった。ARIA APG は
+  `role="menu"` にこれらを必須としており、スクリーンリーダーユーザーがメニュー内を移動できない
+  WCAG 2.1 SC 4.1.2 違反だった。
+  修正: `_ctxMenuKeyNav(m, e)` を名前付き関数として切り出し `wire()` 内で `#ctx` の `keydown`
+  に接続。ArrowDown: 次の項目へ(最後→最初にラップ)、ArrowUp: 前の項目へ(最初→最後にラップ)、
+  Home: 最初へ、End: 最後へ、Escape: メニューを閉じる。
+  `_ctxMenuKeyNav` をテストハーネスにエクスポートし `fakeDoc.activeElement` を使って純粋関数
+  として検証。**非空虚テスト** (7 assert): ArrowDown × 3 (前進 × 2 + ラップ)、
+  ArrowUp × 2 (前退 + ラップ)、Home × 1、End × 1。修正前失敗、修正後全通過。
+
 ## [1.6.94] - 2026-06-30
 
 ### Fixed
