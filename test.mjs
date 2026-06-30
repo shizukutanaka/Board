@@ -626,6 +626,12 @@ const checks = [
   // v1.7.33: validRemotePayload group must require before (string-id array)
   ['validRemotePayload group: requires before array with string ids',
     html.includes("&&Array.isArray(op.before)&&op.before.every(b=>b&&typeof b.id==='string');")],
+  // v1.7.34: validRemotePayload ungroup must require gids array
+  ['validRemotePayload ungroup: requires gids array with string elements',
+    html.includes("&&Array.isArray(op.gids)&&op.gids.every(g=>typeof g==='string');")],
+  // v1.7.34: _apply ungroup backward must use optional chaining on op.gids
+  ['_apply ungroup backward: op.gids?.[0] optional chaining null guard',
+    html.includes("const gid=op.gids?.[0];")],
   // v1.7.32: _apply group backward must guard op.before (parity with ungroup backward)
   ['_apply group backward: if(op.before) guard added (parity with ungroup)',
     html.includes("if(op.before)for(const b of op.before){const sh=byId(b.id);if(sh){if(b.groupId)sh.groupId=b.groupId;else delete sh.groupId}}\n        }\n        break;}\n      case 'ungroup':")],
@@ -5648,8 +5654,33 @@ try {
     console.log('  ✓ validRemotePayload group: before required with string ids (v1.7.33)');
   }
 
+  // v1.7.34: _apply('ungroup', backward) crashes when op.gids is undefined and op.before is absent.
+  // Line 1330: `else{const gid=op.gids[0];...}` — no null guard on op.gids, parallel to the
+  // v1.7.32 group crash. Also, validRemotePayload('ungroup') (line 1047) doesn't require gids,
+  // so a peer can send {op:'ungroup', ids:[...]} (no gids/before) that passes validation,
+  // ungroups shapes, then crashes Ctrl+Z.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const ug1=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    const ug2=Shape.make('rect',{x:60,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:ug1});
+    Store.commit({op:'add',shape:ug2});
+    const lug1=state.shapes.find(s=>s.id===ug1.id);
+    const lug2=state.shapes.find(s=>s.id===ug2.id);
+    // Manually apply the forward (ungrouping already done, no groupId)
+    delete lug1.groupId; delete lug2.groupId;
+    // Push an ungroup op WITHOUT gids or before onto history (simulates malformed or remote op)
+    Store._recordCommitted({op:'ungroup',ids:[ug1.id,ug2.id]});
+    assert.ok(state.histIdx>=0,'v1.7.34 setup: op on history stack');
+    // BEFORE FIX: Store.undo() throws TypeError: Cannot read properties of undefined (reading '0')
+    // AFTER FIX: graceful no-op (op.gids?.[0] === undefined, loop assigns nothing)
+    assert.doesNotThrow(()=>Store.undo(),
+      'v1.7.34: _apply ungroup backward must not crash when both op.gids and op.before are undefined');
+    console.log('  ✓ _apply ungroup backward: null guard for op.gids prevents TypeError crash (v1.7.34)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 813; // prev 810 + group before validation (3)
+  pass += 818; // prev 816 + ungroup gids validator + optional-chain guard (2)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

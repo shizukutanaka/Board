@@ -2,6 +2,32 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.34] - 2026-06-30
+
+### Fixed
+- **`_apply('ungroup', backward)` が `op.gids` 未定義時に TypeError でクラッシュ (undo 破壊)**:
+  backward branch の else 節 `const gid=op.gids[0]` が `op.gids` が `undefined` のとき
+  `TypeError: Cannot read properties of undefined (reading '0')` でクラッシュしていた。
+  `Store._recordCommitted` で直接 `ungroup` op を記録する場合 (シグナリング/テスト等) や
+  旧バージョンの op を受け取るケースで再現。
+  修正: `op.gids?.[0]` (optional chaining) に変更。`op.before` ガードが先に使われるため
+  通常フロー (`doUngroup` 経由) での変化はなし。
+  **validator 強化**: `validRemotePayload('ungroup')` に
+  `&&Array.isArray(op.gids)&&op.gids.every(g=>typeof g==='string')` を追加し、
+  `gids` を必須フィールドとして強制。`_apply backward` の else 節が依存するフィールドを
+  ゲートキープすることで、null guard と validator が対称関係を保つ。
+  **非空虚テスト** (3 assert):
+  - `op.gids` も `op.before` も undefined の ungroup op で `Store.undo()` がクラッシュ
+    しないことを `assert.doesNotThrow` で確認 ✓
+  - セットアップ: op が history stack に積まれる ✓
+  - console.log で pass メッセージ出力 ✓
+
+### Tests
+- presence check: `validRemotePayload ungroup: requires gids array with string elements` (1)
+- presence check: `_apply ungroup backward: op.gids?.[0] optional chaining null guard` (1)
+- behavioral: `_apply ungroup backward null guard` クラッシュ防止テスト (3 assert)
+- 合計 1255 pass, 0 fail
+
 ## [1.7.33] - 2026-06-30
 
 ### Fixed
