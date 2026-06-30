@@ -588,6 +588,11 @@ const checks = [
     html.includes('function _ctxMenuKeyNav')&&html.includes("'ArrowDown'")&&html.includes("'ArrowUp'")&&html.includes("'Home'")&&html.includes("'End'")],
   ['ctx menu keydown wired in wire() to _ctxMenuKeyNav',
     html.includes('addEventListener(\'keydown\',e=>_ctxMenuKeyNav(')],
+  // v1.6.96: Tab closes ctx menu + text shapes have no resize handles
+  ['_ctxMenuKeyNav closes menu on Tab (ARIA APG: Tab moves to next tab stop = close)',
+    html.includes("'Tab'")&&html.includes("UI.closeCtxMenu()")],
+  ['getHandles returns empty for text shapes (content-driven size, no resize conflict)',
+    html.includes("s.type==='text')return []")],
 ];
 
 let pass = 0, fail = 0;
@@ -4354,11 +4359,34 @@ try {
     _ctxMenuKeyNav(mockMenu, {...pd, key:'End'});
     assert.strictEqual(focused, it2, 'ctx End: → last item');
 
-    console.log('  ✓ ctx menu keyboard nav: ArrowDown/Up (with wrap), Home/End (ARIA APG menu pattern)');
+    // v1.6.96: Tab closes the menu (ARIA APG "Tab: closes the menu")
+    let closedMenu = false;
+    const origClose = UI.closeCtxMenu;
+    UI.closeCtxMenu = () => { closedMenu = true; };
+    _ctxMenuKeyNav(mockMenu, {key:'Tab', shiftKey:false, preventDefault(){}});
+    assert.ok(closedMenu, 'ctx Tab: closes menu');
+    closedMenu = false;
+    _ctxMenuKeyNav(mockMenu, {key:'Tab', shiftKey:true, preventDefault(){}});
+    assert.ok(closedMenu, 'ctx Shift+Tab: closes menu');
+    UI.closeCtxMenu = origClose;
+
+    console.log('  ✓ ctx menu keyboard nav: ArrowDown/Up (with wrap), Home/End, Tab/Shift+Tab (ARIA APG)');
+  }
+
+  // v1.6.96: text shapes must have no resize handles (content-driven size)
+  {
+    const textShape = {type:'text',x:10,y:10,w:80,h:20,z:0,id:'txt1',text:'hi',fontSize:16};
+    const textHandles = getHandles(textShape);
+    assert.deepStrictEqual(textHandles, [],
+      'getHandles: text shapes return no resize handles (content-driven auto-fit)');
+    const rectShape = {type:'rect',x:0,y:0,w:100,h:80,z:0,id:'r1'};
+    assert.ok(getHandles(rectShape).length === 8,
+      'getHandles: rect shapes still return 8 resize handles');
+    console.log('  ✓ getHandles: text → no resize handles (rotation via getRotHandle), rect → 8 handles');
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 648; // prev 641 + ctx nav (7 asserts)
+  pass += 652; // prev 648 + Tab/Shift+Tab (2) + getHandles text (2)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

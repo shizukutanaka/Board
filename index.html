@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.6.95 — Design Tokens
+   Board v1.6.96 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -721,7 +721,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.95';
+const V='1.6.96';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1823,6 +1823,9 @@ function getHandles(s){
     return h;
   }
   if(s.type==='pen'||s.w==null)return []; // pen geometry lives in pts; box-resize would NaN it
+  // v1.6.96: text size is purely content-driven (resizeAfterTextEdit overwrites w/h on edit);
+  // resize handles conflict with auto-fit, so omit them. Rotation still works via getRotHandle.
+  if(s.type==='text')return [];
   const x=s.x,y=s.y,w=s.w,h=s.h;
   const hs=[
     {id:'nw',x,y},{id:'n',x:x+w/2,y},{id:'ne',x:x+w,y},
@@ -4130,7 +4133,8 @@ const UI={
 // Extracted as a named function so test.mjs can exercise it without a real DOM.
 // Pattern: w3.org/WAI/ARIA/apg/patterns/menu-button/
 function _ctxMenuKeyNav(m,e){
-  if(e.key==='Escape'){e.preventDefault();UI.closeCtxMenu();return;}
+  // v1.6.96: Tab also closes the menu (ARIA APG: "Tab: closes the menu and moves to next tab stop")
+  if(e.key==='Escape'||e.key==='Tab'){e.preventDefault();UI.closeCtxMenu();return;}
   const items=[...m.querySelectorAll('.ctx-item')];
   if(!items.length)return;
   const cur=items.indexOf(document.activeElement);

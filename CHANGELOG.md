@@ -2,6 +2,27 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.96] - 2026-06-30
+
+### Fixed
+- **Tab キーでコンテキストメニューを閉じる (ARIA APG Tab 動作)**:
+  ARIA APG「Menu Button」パターン: "Tab: closes the menu and moves focus to the next
+  element in the tab sequence." `_ctxMenuKeyNav` は Escape / ArrowDown 等を処理していたが
+  Tab を無視していたため、メニュー項目にフォーカスがある状態で Tab を押すとメニューが開いたまま
+  フォーカスが DOM 内の次要素に抜けていた。
+  修正: `e.key==='Escape'||e.key==='Tab'` で閉じる。Shift+Tab も同じ `e.key==='Tab'` で
+  捕捉されるため同時に修正される。
+  **非空虚テスト** (2 assert): Tab → closeCtxMenu 呼び出し確認、Shift+Tab → 同上。
+
+- **テキストシェイプのリサイズハンドルを非表示 (コンテンツ駆動サイズとの競合解消)**:
+  `getHandles` は `text` 型に 8 つのリサイズハンドルを返していたが、`resizeAfterTextEdit` が
+  編集後にテキスト量に基づいて `w` と `h` を上書きするため、手動リサイズが次の編集で失われる
+  バグがあった (中程度の深刻度: 編集しなければリサイズは残るが、したら消える)。
+  `text` シェイプは内容でサイズが決まるため、リサイズハンドルに UX 価値がない。
+  修正: `getHandles` 内に `if(s.type==='text')return []` を追加。
+  回転ノブ (`getRotHandle`) は別関数のため影響なし — テキストの回転は引き続き動作する。
+  **非空虚テスト** (2 assert): text shape → `[]`、rect shape → 8 handles を確認。
+
 ## [1.6.95] - 2026-06-30
 
 ### Fixed
