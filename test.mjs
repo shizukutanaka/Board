@@ -578,6 +578,11 @@ const checks = [
     html.includes("'controllerchange'")&&html.includes('function _onSwUpdate()')&&html.includes("UI.toast(t('appUpdated'),'ok')")],
   ['appUpdated i18n key in ja and en',
     html.includes("appUpdated:'アプリが更新されました")&&html.includes("appUpdated:'App updated")],
+  // v1.6.94: _esc single-quote + IME composition guard
+  ['_esc escapes single quotes (defense-in-depth for mixed attr delimiters)',
+    html.includes("replace(/'/g,'&#39;')")],
+  ['openTextEditor guards auto-resize during IME composition (_textComposing)',
+    html.includes('_textComposing')&&html.includes("compositionstart',()=>{_textComposing=true")&&html.includes("compositionend',()=>{_textComposing=false;auto()")],
 ];
 
 let pass = 0, fail = 0;
@@ -4291,8 +4296,22 @@ try {
     console.log('  ✓ SW update notification: controllerchange → reload toast (web.dev SW lifecycle)');
   }
 
+  // v1.6.94: _esc single-quote encoding — must fail before fix, pass after
+  // Before fix: stroke "' onmouseover='xss()" passes through _esc unmodified → XSS vector
+  // After fix: single quote encoded as &#39; → attribute value closed safely
+  {
+    const evilStroke = "' onmouseover='xss()";
+    const svgOut = buildSVG([{type:'rect',x:0,y:0,w:10,h:10,z:0,id:'esc94',
+      stroke:evilStroke,fill:'none'}], '#fff');
+    assert.ok(svgOut && !svgOut.includes("' onmouseover="),
+      "_esc v1.6.94: single quote in stroke cannot break SVG attr boundary");
+    assert.ok(svgOut && svgOut.includes('&#39;'),
+      "_esc v1.6.94: single quote is encoded as &#39; in SVG output");
+    console.log("  ✓ _esc: single-quote encoded as &#39; (SVG attr defense-in-depth)");
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 639; // prev 637 + _onSwUpdate exported (1) + SW listener registered (1)
+  pass += 641; // prev 639 + _esc single-quote (2 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

@@ -2,6 +2,27 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.94] - 2026-06-30
+
+### Fixed
+- **IME composition guard in text editor — CJK 入力中のサイズちらつき修正**:
+  Zenn「入力中の文字が確定されるまでリサイズしない」パターン。
+  `openTextEditor` の `auto()` (textarea 自動リサイズ) が IME の変換中 (`compositionstart`〜
+  `compositionend` 区間) にも毎回 `input` イベントで発火し、日本語・中国語・韓国語の入力中に
+  textarea のサイズが激しくちらついていた。
+  修正: `_textComposing` フラグで compositionstart/end を追跡し、確定前は `auto()` を抑制。
+  `compositionend` 発火時に一度 `auto()` を呼んで最終サイズに確定させる。
+  docName エディタ (v1.6.22, `imeShouldCommit()` パターン) と同じ設計に揃えた。
+
+### Security
+- **`_esc()` にシングルクォートエスケープを追加 (SVG 属性の多重デリミタ防御)**:
+  `_esc` は `& < > "` をエスケープしていたが `'` (シングルクォート) を変換しなかった。
+  現在 Board の SVG 出力は全属性をダブルクォートで囲むため実害はないが、将来のコード変更や
+  コピーミスで属性区切りが `'` になった場合に `stroke="' onmouseover='xss()"` 等の
+  ブレイクアウトが成立する。Defense-in-depth として `'` → `&#39;` の変換を追加。
+  **非空虚テスト** (2 assert): `buildSVG` にシングルクォート入りの `stroke` を渡し、
+  出力に `' onmouseover=` が現れないこと、`&#39;` が含まれることを修正前失敗/修正後成功で確認。
+
 ## [1.6.93] - 2026-06-30
 
 ### Added

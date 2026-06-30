@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.6.93 — Design Tokens
+   Board v1.6.94 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -721,7 +721,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.93';
+const V='1.6.94';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -2810,7 +2810,12 @@ function openTextEditor(s,isNew){
     ta.style.width=newW+'px';
     ta.style.height=newH+'px';
   };
-  ta.addEventListener('input',auto);
+  // v1.6.94: guard auto-resize during IME composition (CJK input caused size thrashing).
+  // Pattern: Zenn「入力中の文字が確定されるまでリサイズしない」— same as docName editor.
+  let _textComposing=false;
+  ta.addEventListener('compositionstart',()=>{_textComposing=true;});
+  ta.addEventListener('compositionend',()=>{_textComposing=false;auto();});
+  ta.addEventListener('input',()=>{if(!_textComposing)auto();});
   ta.addEventListener('blur',()=>{
     const newText=ta.value;
     ctx.save();
@@ -3516,7 +3521,7 @@ function buildSVG(shapes,paper){
   els.push('</svg>');
   return els.join('\n');
 }
-function _esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function _esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
 // Coerce to finite number; prevents string geometry breaking SVG numeric attributes.
 function _num(v){const n=+v;return Number.isFinite(n)?n:0}
 // Copy text to the clipboard with a non-secure-context fallback. navigator.clipboard is
