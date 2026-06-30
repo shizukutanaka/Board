@@ -641,9 +641,19 @@ const checks = [
   // v1.7.36: flushErase must capture origSel before del commit and patch after
   ['flushErase del: origSel captured before commit and patched after (parity with doDelete)',
     html.includes("const origSel=[...state.selection];\n  const op={op:'del',shapes:clone(_eraseBatch)};")],
+  // v1.7.37: doGroup/_apply group backward must carry and restore origSel
+  ['doGroup: origSel patched onto history entry after _recordCommitted',
+    html.includes("Store._recordCommitted({op:'group',ids,gid,before});\n  if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
+  ['_apply group backward: if(op.origSel) restores selection',
+    html.includes("if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));}\n        break;}\n      case 'ungroup':")],
+  // v1.7.37: doUngroup/_apply ungroup backward must carry and restore origSel
+  ['doUngroup: origSel captured before selection expansion and patched after _recordCommitted',
+    html.includes("const origSel=[...ids];\n  // find all groupIds")],
+  ['_apply ungroup backward: if(op.origSel) restores selection',
+    html.includes("if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));}\n        break;}\n      case 'zorder':")],
   // v1.7.32: _apply group backward must guard op.before (parity with ungroup backward)
   ['_apply group backward: if(op.before) guard added (parity with ungroup)',
-    html.includes("if(op.before)for(const b of op.before){const sh=byId(b.id);if(sh){if(b.groupId)sh.groupId=b.groupId;else delete sh.groupId}}\n        }\n        break;}\n      case 'ungroup':")],
+    html.includes("if(op.before)for(const b of op.before){const sh=byId(b.id);if(sh){if(b.groupId)sh.groupId=b.groupId;else delete sh.groupId}}\n          if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));}")],
   // v1.7.31: endRectLike/endLineLike/beginText attach origSel (parity with createShapeKbd)
   ['endRectLike/endLineLike/beginText attach origSel before shape add commit',
     (html.match(/const origSel=\[\.\.\.state\.selection\];\n  Store\.commit\(\{op:'add',shape:d\}\);\n  if\(origSel\.length\)state\.history\[state\.histIdx\]\.origSel=origSel;/g)||[]).length >= 2 &&
@@ -5733,8 +5743,57 @@ try {
     console.log('  ✓ flushErase: undo restores pre-erase selection via origSel (v1.7.36)');
   }
 
+  // v1.7.37: doGroup stores origSel; _apply group backward restores it.
+  // Group doesn't change selection, but if user deselects after grouping, undo should
+  // restore the pre-group selection (parity with all other ops that change shape state).
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const gA=Shape.make('rect',{x:0,y:0,w:30,h:30});
+    const gB=Shape.make('rect',{x:50,y:0,w:30,h:30});
+    Store.commit({op:'add',shape:gA});
+    Store.commit({op:'add',shape:gB});
+    state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();
+    state.selection=new Set([gA.id,gB.id]);
+    doGroup();
+    assert.ok(state.shapes.find(s=>s.id===gA.id)?.groupId,'v1.7.37 setup: shapes grouped');
+    // Simulate user clicking elsewhere after group (clears selection)
+    state.selection.clear();
+    assert.strictEqual(state.selection.size,0,'v1.7.37 setup: selection cleared after group');
+    Store.undo();
+    assert.ok(state.selection.has(gA.id)&&state.selection.has(gB.id),
+      'v1.7.37: undo of doGroup must restore pre-group selection via origSel');
+    console.log('  ✓ doGroup: undo restores pre-group selection via origSel (v1.7.37)');
+  }
+
+  // v1.7.37: doUngroup stores origSel; _apply ungroup backward restores it.
+  // doUngroup EXPANDS state.selection (adds all group members). Without origSel, undo
+  // leaves the expanded selection instead of restoring the pre-ungroup selection.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const ugA=Shape.make('rect',{x:0,y:0,w:30,h:30});
+    const ugB=Shape.make('rect',{x:50,y:0,w:30,h:30});
+    const ugC=Shape.make('rect',{x:100,y:0,w:30,h:30});
+    const testGid='test-group-id-37';
+    ugA.groupId=testGid; ugB.groupId=testGid; ugC.groupId=testGid;
+    Store.commit({op:'add',shape:ugA});
+    Store.commit({op:'add',shape:ugB});
+    Store.commit({op:'add',shape:ugC});
+    state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();
+    // Select only A — doUngroup will expand to all three members of the group
+    state.selection=new Set([ugA.id]);
+    doUngroup();
+    assert.ok(!state.shapes.find(s=>s.id===ugA.id)?.groupId,'v1.7.37 setup: shapes ungrouped');
+    assert.ok(state.selection.size>1,'v1.7.37 setup: selection expanded after ungroup');
+    Store.undo();
+    assert.strictEqual(state.selection.size,1,
+      'v1.7.37: undo of doUngroup must restore pre-ungroup selection (1 shape) not the expanded set');
+    assert.ok(state.selection.has(ugA.id),
+      'v1.7.37: undo of doUngroup must restore origSel {ugA}');
+    console.log('  ✓ doUngroup: undo restores pre-ungroup selection via origSel (v1.7.37)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 822; // prev 820 + flushErase origSel presence + behavioral (2)
+  pass += 826; // prev 822 + group/ungroup origSel 4 presence + 2 behavioral (4+4=8 asserts → 4 checks)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

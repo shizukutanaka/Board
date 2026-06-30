@@ -2,6 +2,31 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.37] - 2026-06-30
+
+### Fixed
+- **`doGroup` / `_apply('group', backward)` の `origSel` 未設定 (selection-loss)**:
+  グループ化 (Ctrl+G) 後に選択を変更し Ctrl+Z すると、グループ化前に選択していた
+  シェイプが再選択されなかった。`doGroup` は `Store._recordCommitted` を直接呼ぶため
+  `origSel` が記録されず、`_apply('group', backward)` にも `if(op.origSel)` 復元節が
+  なかった (二重の欠落)。
+  修正: `doGroup` に origSel キャプチャ + パッチ を追加、`_apply('group', backward)` に
+  `if(op.origSel)state.selection=new Set(...)` を追加。
+
+- **`doUngroup` / `_apply('ungroup', backward)` の `origSel` 未設定 (selection-loss)**:
+  グループ解除 (Ctrl+Shift+G) は `state.selection` をグループ全メンバーに拡張するが、
+  `origSel` が記録されないため、Ctrl+Z 後も拡張された選択状態が残ってしまう。
+  解除前に選択していたシェイプのみに戻るべきところが戻らない。
+  修正: `doUngroup` に `const origSel=[...ids]` (選択拡張の**前**) + パッチ を追加、
+  `_apply('ungroup', backward)` に origSel 復元節を追加。
+
+### Tests
+- behavioral: doGroup undo restores pre-group selection (3 assert)
+- behavioral: doUngroup undo restores pre-ungroup selection (4 assert)
+- presence check × 4: doGroup origSel patch, _apply group backward restore,
+  doUngroup origSel capture, _apply ungroup backward restore
+- 合計 1270 pass, 0 fail
+
 ## [1.7.36] - 2026-06-30
 
 ### Fixed

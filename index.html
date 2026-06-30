@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.36 — Design Tokens
+   Board v1.7.37 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -721,7 +721,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.36';
+const V='1.7.37';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1321,7 +1321,7 @@ const Store={
           for(const id of op.ids){const sh=byId(id);if(sh)sh.groupId=op.gid}
         }else{
           if(op.before)for(const b of op.before){const sh=byId(b.id);if(sh){if(b.groupId)sh.groupId=b.groupId;else delete sh.groupId}}
-        }
+          if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));}
         break;}
       case 'ungroup':{
         if(forward){
@@ -1329,7 +1329,7 @@ const Store={
         }else{
           if(op.before){for(const b of op.before){const sh=byId(b.id);if(sh){if(b.groupId)sh.groupId=b.groupId;else delete sh.groupId}}}
           else{const gid=op.gids?.[0];for(const id of op.ids){const sh=byId(id);if(sh&&gid)sh.groupId=gid}}
-        }
+          if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));}
         break;}
       case 'zorder':{
         if(op.changes){
@@ -3290,14 +3290,17 @@ function doGroup(){
   const ids=[...state.selection].filter(id=>{const s=byId(id);return s&&!s.locked;});
   if(ids.length<2){UI.toast(t('selectTwo'),'warn');return}
   const gid=uid();
+  const origSel=[...state.selection];
   const before=ids.map(id=>({id,groupId:byId(id)?.groupId}));
   for(const id of ids){const sh=byId(id);if(sh)sh.groupId=gid}
   Store._recordCommitted({op:'group',ids,gid,before});
+  if(origSel.length)state.history[state.histIdx].origSel=origSel;
   UI.toast(t('grouped'),'ok');
   invalidate();
 }
 function doUngroup(){
   const ids=[...state.selection];
+  const origSel=[...ids];
   // find all groupIds touched by selection
   const gids=new Set(ids.map(id=>byId(id)?.groupId).filter(Boolean));
   if(!gids.size){UI.toast(t('noGroup'),'warn');return}
@@ -3307,6 +3310,7 @@ function doUngroup(){
   }
   state.selection=new Set([...ids.filter(id=>byId(id)),...ungrouped]);
   Store._recordCommitted({op:'ungroup',ids:ungrouped,gids:[...gids],before});
+  if(origSel.length)state.history[state.histIdx].origSel=origSel;
   UI.toast(t('ungrouped'),'ok');
   invalidate();
 }
