@@ -540,7 +540,7 @@ const checks = [
   ['ellipse case renders label', /case 'ellipse':[\s\S]{0,200}_drawBoxLabel\(s,c\);break;/.test(html)],
   // v1.6.89: colour picker coalesces (one undo/sync op per pick, like the sliders)
   ['colour picker captures on focus/pointerdown', html.includes("cp.addEventListener('focus',()=>_sfbCapture(k));") && html.includes("cp.addEventListener('pointerdown',()=>_sfbCapture(k));")],
-  ['colour picker input is live-only (no per-input commit)', html.includes("for(const id of state.selection){const s=byId(id);if(s)s[k]=cp.value}") && !html.includes("applyStyleToSelection({[k]:cp.value})")],
+  ['colour picker input is live-only (no per-input commit)', html.includes("for(const id of state.selection){const s=byId(id);if(s&&!s.locked)s[k]=cp.value}") && !html.includes("applyStyleToSelection({[k]:cp.value})")],
   ['colour picker flushes one op on change', html.includes("cp.addEventListener('change',()=>{_sfbFlush(k,cp.value);_sfbCapture(k);});")],
   // v1.6.76: ⌘⇧L keyboard shortcut for lock/unlock — README claims "全機能キーボード操作可能"
   // but doLock was right-click-only. Fix adds Ctrl+Shift+L → doLock().
@@ -4708,6 +4708,54 @@ try {
     console.log('  ✓ _sfbCapture: idempotent — re-calling after mutation preserves original before-state');
   }
 
+  // v1.7.11a: del undo must restore state.wclock (symmetric with add undo fix v1.7.10).
+  // Bug: _apply(del, false) restores shapes but not their wclock entries. del forward
+  // correctly calls `delete state.wclock[sh.id]`, but the reverse path never restores them.
+  // Fix: _apply del forward snapshots op.wc before deletion; reverse restores from op.wc.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const DA=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:DA});
+    // Seed wclock as applyRemote would after peer edits DA
+    state.wclock[DA.id]={stroke:{peer:'p1',seq:1,ts:1000}};
+    assert.ok(Object.keys(state.wclock).includes(DA.id),'del undo wclock: wclock seeded for DA');
+    // Delete DA: forward cleans wclock
+    Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(state.shapes.find(s=>s.id===DA.id)))]});
+    assert.ok(!Object.keys(state.wclock).includes(DA.id),'del undo wclock: wclock cleared after del');
+    // Undo: DA restored; BEFORE fix wclock stays empty, AFTER fix wclock restored
+    Store.undo();
+    assert.ok(Object.keys(state.wclock).includes(DA.id),'del undo wclock: wclock restored after undo');
+    console.log('  ✓ del undo: wclock restored (symmetric with add/addMany undo cleanup)');
+  }
+
+  // v1.7.11b: slider and color-picker input handlers must skip locked shapes.
+  // Bug: size/opacity/color input events directly mutate sh[prop] without a locked check,
+  // so dragging a slider with a locked shape selected permanently changes its property.
+  // _sfbCapture also lacked a locked filter, so _sfbFlush would commit a style op for it.
+  // Fix: add `&&!s.locked` to all three direct-mutation loops; add `&&!s.locked` to _sfbCapture.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const SLA=Shape.make('rect',{x:0,y:0,w:50,h:50});SLA.size=4;SLA.locked=true;
+    const SLB=Shape.make('rect',{x:100,y:0,w:50,h:50});SLB.size=4;
+    Store.commit({op:'add',shape:SLA});Store.commit({op:'add',shape:SLB});
+    state.selection=new Set([SLA.id,SLB.id]);
+    // _sfbCapture: BEFORE fix captures locked SLA; AFTER fix skips it
+    _sfbCapture('size');
+    assert.ok(!(SLA.id+'size' in _sbf),'_sfbCapture: locked shape excluded from _sbf');
+    assert.ok(SLB.id+'size' in _sbf,'_sfbCapture: unlocked shape captured in _sbf');
+    // Simulate input-event mutation: only unlocked shape should mutate
+    const slaLive=state.shapes.find(s=>s.id===SLA.id);
+    const slbLive=state.shapes.find(s=>s.id===SLB.id);
+    // (Direct mutation in real code: `if(s&&!s.locked)s.size=value` — skips SLA)
+    if(slaLive&&!slaLive.locked)slaLive.size=12; // locked — skipped
+    if(slbLive&&!slbLive.locked)slbLive.size=12; // unlocked — changed
+    _sfbFlush('size',12);
+    // Style op should only cover SLB, not locked SLA
+    const styleOp=state.history[state.histIdx];
+    assert.ok(styleOp&&styleOp.before.every(p=>p.id!==SLA.id),'_sfbFlush: locked shape excluded from committed style op');
+    console.log('  ✓ _sfbCapture: locked shape excluded; slider commit does not touch locked shapes');
+  }
+
   // v1.7.10a: applyStyleToSelection must skip locked shapes (parity with doDelete/doMove/etc.).
   // Bug: locked shapes are in state.selection; applyStyleToSelection iterates selection without
   // a locked filter, so style changes (color swatches, format painter, dash picker) bypass
@@ -4818,7 +4866,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 713; // prev 709 + applyStyleToSelection locked (2) + add undo wclock (2)
+  pass += 719; // prev 713 + del undo wclock (3) + _sfbCapture locked (3)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

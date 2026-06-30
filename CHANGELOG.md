@@ -2,6 +2,29 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.11] - 2026-06-30
+
+### Fixed
+- **`del` op undo が `state.wclock` を復元しない (add undo と対称)**:
+  `_apply(del, forward)` は `delete state.wclock[sh.id]` で wclock を消去するが、
+  reverse (undo) は消去前の wclock を復元しなかった。
+  `add` undo (v1.7.10) や `addMany` undo (v1.7.09) と同じカテゴリの不整合。
+  修正: `_apply del forward` の先頭で `if(!op.wc)` ガード付きで wclock をスナップショット
+  (op.wc に保持、redo 時の二重スナップショット防止)。
+  reverse で `if(op.wc)for(const [id,w] of Object.entries(op.wc))state.wclock[id]=clone(w)` を実行。
+  **非空虚テスト** (3 assert): add → wclock 手動設定 → del → undo →
+  修正前は wclock 空のまま (テスト失敗)、修正後は復元される。
+- **スライダー / カラーピッカーの oninput がロックシェイプを直接変更する**:
+  size スライダー、opacity スライダー、カラーピッカーの input イベントハンドラが
+  `s[prop]=value` を直接ミューテートする際に `s.locked` チェックが欠けており、
+  ドラッグ中にロックシェイプのプロパティが永続的に変更されていた。
+  また `_sfbCapture` も locked チェックを欠いていたため、`_sfbFlush` がロックシェイプ向けの
+  `style` op を history に積んでしまっていた。
+  修正: 3 つの oninput ループに `&&!s.locked` を追加。
+  `_sfbCapture` に `&&!s.locked` を追加 (キャプチャ時点でロックシェイプをスキップ)。
+  **非空虚テスト** (3 assert): _sfbCapture でロックシェイプが _sbf に入らないことを確認、
+  _sfbFlush の style op にロックシェイプが含まれないことを確認。
+
 ## [1.7.10] - 2026-06-30
 
 ### Fixed
