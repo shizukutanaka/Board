@@ -4464,8 +4464,46 @@ try {
     console.log('  ✓ Presentation.leave(): restores focus to trigger element (WCAG SC 2.4.3)');
   }
 
+  // v1.6.99: doAlign must treat grouped shapes as a single alignment unit (internal spacing preserved)
+  // Before fix: each shape snapped individually to the leftmost edge → internal spacing collapsed to 0.
+  // After fix: the group's combined bbox is the unit → spacing within the group is preserved.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    // Group 1: A (x=0,w=20) and B (x=50,w=20) — internal gap of 30px
+    const ga1=Shape.make('rect',{x:0,y:0,w:20,h:20});
+    const ga2=Shape.make('rect',{x:50,y:0,w:20,h:20});
+    Store.commit({op:'add',shape:ga1});Store.commit({op:'add',shape:ga2});
+    state.selection=new Set([ga1.id,ga2.id]);
+    doGroup();
+    const gGrpA=state.shapes.find(s=>s.id===ga1.id).groupId;
+    // Group 2: C (x=200,w=20) and D (x=250,w=20) — internal gap of 30px
+    const ga3=Shape.make('rect',{x:200,y:0,w:20,h:20});
+    const ga4=Shape.make('rect',{x:250,y:0,w:20,h:20});
+    Store.commit({op:'add',shape:ga3});Store.commit({op:'add',shape:ga4});
+    state.selection=new Set([ga3.id,ga4.id]);
+    doGroup();
+    // Select all 4 shapes and align left
+    state.selection=new Set([ga1.id,ga2.id,ga3.id,ga4.id]);
+    doAlign('left');
+    const liveA=state.shapes.find(s=>s.id===ga1.id);
+    const liveB=state.shapes.find(s=>s.id===ga2.id);
+    const liveC=state.shapes.find(s=>s.id===ga3.id);
+    const liveD=state.shapes.find(s=>s.id===ga4.id);
+    // Group 1 was already leftmost (x=0) — stays put
+    assert.strictEqual(liveA.x, 0, 'doAlign group: A.x=0 (already at left)');
+    assert.strictEqual(liveB.x - liveA.x, 50, 'doAlign group: B-A spacing preserved (50px)');
+    // Group 2 shifted left so its left edge = 0; D stays 50px right of C
+    assert.strictEqual(liveC.x, 0, 'doAlign group: C.x=0 (group 2 moved to left)');
+    assert.strictEqual(liveD.x - liveC.x, 50, 'doAlign group: D-C spacing preserved (50px)');
+    // Undo must restore original positions
+    Store.undo();
+    assert.strictEqual(liveC.x, 200, 'doAlign group undo: C.x restored to 200');
+    assert.strictEqual(liveD.x, 250, 'doAlign group undo: D.x restored to 250');
+    console.log('  ✓ doAlign: grouped shapes move as a unit, internal spacing preserved; undo restores');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 662; // prev 659 + Presentation focus (3)
+  pass += 668; // prev 662 + doAlign group-aware (6)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

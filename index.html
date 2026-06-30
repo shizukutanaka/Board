@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.6.98 — Design Tokens
+   Board v1.6.99 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -721,7 +721,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.98';
+const V='1.6.99';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -3257,26 +3257,32 @@ function doClearAll(){
 function doAlign(dir){
   const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);
   if(sel.length<2)return;
-  const bboxes=sel.map(s=>({s,b:G.bbox(s)}));
+  // Group-aware: shapes sharing a groupId move as a unit so internal spacing is preserved
+  const unitMap=new Map();
+  for(const s of sel){const k=s.groupId||s.id;if(!unitMap.has(k))unitMap.set(k,{shapes:[],b:null});unitMap.get(k).shapes.push(s);}
+  for(const u of unitMap.values())u.b=G.bboxAll(u.shapes);
+  const units=[...unitMap.values()];
+  if(units.length<2)return;
   // Capture before state (full shape clone)
   const beforeSnap=sel.map(s=>clone(s));
+  const mv=(u,dx,dy)=>{for(const s of u.shapes)Shape.translate(s,dx,dy)};
   switch(dir){
-    case 'left':{const mn=Math.min(...bboxes.map(({b})=>b.x));for(const {s,b} of bboxes)Shape.translate(s,mn-b.x,0);break}
-    case 'right':{const mx=Math.max(...bboxes.map(({b})=>b.x+b.w));for(const {s,b} of bboxes)Shape.translate(s,mx-b.x-b.w,0);break}
-    case 'cx':{const cx=(Math.min(...bboxes.map(({b})=>b.x))+Math.max(...bboxes.map(({b})=>b.x+b.w)))/2;for(const {s,b} of bboxes)Shape.translate(s,cx-b.x-b.w/2,0);break}
-    case 'top':{const mn=Math.min(...bboxes.map(({b})=>b.y));for(const {s,b} of bboxes)Shape.translate(s,0,mn-b.y);break}
-    case 'bottom':{const mx=Math.max(...bboxes.map(({b})=>b.y+b.h));for(const {s,b} of bboxes)Shape.translate(s,0,mx-b.y-b.h);break}
-    case 'cy':{const cy=(Math.min(...bboxes.map(({b})=>b.y))+Math.max(...bboxes.map(({b})=>b.y+b.h)))/2;for(const {s,b} of bboxes)Shape.translate(s,0,cy-b.y-b.h/2);break}
+    case 'left':{const mn=Math.min(...units.map(({b})=>b.x));for(const u of units)mv(u,mn-u.b.x,0);break}
+    case 'right':{const mx=Math.max(...units.map(({b})=>b.x+b.w));for(const u of units)mv(u,mx-u.b.x-u.b.w,0);break}
+    case 'cx':{const cx=(Math.min(...units.map(({b})=>b.x))+Math.max(...units.map(({b})=>b.x+b.w)))/2;for(const u of units)mv(u,cx-u.b.x-u.b.w/2,0);break}
+    case 'top':{const mn=Math.min(...units.map(({b})=>b.y));for(const u of units)mv(u,0,mn-u.b.y);break}
+    case 'bottom':{const mx=Math.max(...units.map(({b})=>b.y+b.h));for(const u of units)mv(u,0,mx-u.b.y-u.b.h);break}
+    case 'cy':{const cy=(Math.min(...units.map(({b})=>b.y))+Math.max(...units.map(({b})=>b.y+b.h)))/2;for(const u of units)mv(u,0,cy-u.b.y-u.b.h/2);break}
     case 'hspace':{
-      bboxes.sort((a,b)=>a.b.x-b.b.x);
-      const totalW=bboxes.reduce((a,{b})=>a+b.w,0);
-      const gap=(Math.max(...bboxes.map(({b})=>b.x+b.w))-Math.min(...bboxes.map(({b})=>b.x))-totalW)/(bboxes.length-1);
-      let cx2=bboxes[0].b.x;for(const {s,b} of bboxes){Shape.translate(s,cx2-b.x,0);cx2+=b.w+gap}break}
+      units.sort((a,b)=>a.b.x-b.b.x);
+      const totalW=units.reduce((s,{b})=>s+b.w,0);
+      const gap=(Math.max(...units.map(({b})=>b.x+b.w))-Math.min(...units.map(({b})=>b.x))-totalW)/(units.length-1);
+      let x0=units[0].b.x;for(const u of units){mv(u,x0-u.b.x,0);x0+=u.b.w+gap}break}
     case 'vspace':{
-      bboxes.sort((a,b)=>a.b.y-b.b.y);
-      const totalH=bboxes.reduce((a,{b})=>a+b.h,0);
-      const gap2=(Math.max(...bboxes.map(({b})=>b.y+b.h))-Math.min(...bboxes.map(({b})=>b.y))-totalH)/(bboxes.length-1);
-      let cy2=bboxes[0].b.y;for(const {s,b} of bboxes){Shape.translate(s,0,cy2-b.y);cy2+=b.h+gap2}break}
+      units.sort((a,b)=>a.b.y-b.b.y);
+      const totalH=units.reduce((s,{b})=>s+b.h,0);
+      const gap2=(Math.max(...units.map(({b})=>b.y+b.h))-Math.min(...units.map(({b})=>b.y))-totalH)/(units.length-1);
+      let y0=units[0].b.y;for(const u of units){mv(u,0,y0-u.b.y);y0+=u.b.h+gap2}break}
   }
   const afterSnap=sel.map(s=>clone(s));
   Store._recordCommitted({op:'align',dir,before:beforeSnap,after:afterSnap});

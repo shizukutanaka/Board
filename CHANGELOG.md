@@ -2,6 +2,18 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.99] - 2026-06-30
+
+### Fixed
+- **`doAlign` がグループ単位で整列 (内部スペーシングを維持)**:
+  グループ化された複数シェイプを選択して整列 (左揃え等) を実行すると、グループ内の各シェイプが
+  個別に整列軸へスナップされ、グループ内の相対スペーシングが 0 に潰れるバグ。修正: `doAlign`
+  内で `unitMap` を構築し、同じ `groupId` を持つシェイプを 1 ユニットとして扱う。各ユニットの
+  combined bbox (`G.bboxAll`) を基準に平行移動量を決定し、ユニット内全シェイプを同量移動。
+  `hspace` / `vspace` の均等配置も同様にユニット単位で計算。
+  **非空虚テスト** (6 assert): 2 グループ (各 2 シェイプ、グループ内 50px 間隔) を左揃え →
+  各グループ内スペーシングが維持されること、undo で元位置に戻ることを確認。
+
 ## [1.6.98] - 2026-06-30
 
 ### Fixed
