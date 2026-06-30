@@ -18,6 +18,16 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
   整形式 connClears の受理、NaN/Infinity/`__proto__`/id 欠落/非配列の拒否、および
   エンドツーエンドで悪意ある del がコネクタを汚染も victim を削除もしないことを検証。
 
+### Performance
+- **RAF idle-stop: アイドル時にレンダーループを止めてバッテリー消耗を防止**:
+  Qiita/Zenn「requestAnimationFrame で常にループするとバッテリーが消耗する」パターン。
+  従来の実装: `requestAnimationFrame(frame)` を unconditionally にループさせており、
+  ボードに何も変化がなくても 60fps × draw call が走り続けていた。
+  修正: `_rafId` で RAF のペンディング状態を管理。`invalidate()` は `_rafId===0` のときのみ
+  新しい RAF を登録し、`frame()` は自身の冒頭で `_rafId=0` にリセットしてから描画 → 次が
+  必要なときのみ再登録する。結果: **完全なアイドル時は 0fps** (イベントで `invalidate()` が
+  呼ばれるまで RAF は止まる)。描画品質・反応速度は変わらない。
+
 ### Added
 - **プレゼンテーションモードでディスプレイがスリープしない (Screen Wake Lock API)**:
   Zenn「プレゼンテーション中に画面がオフになる問題」パターン。発表中にスライドから手を離すと
