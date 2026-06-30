@@ -4909,8 +4909,68 @@ try {
     console.log('  ✓ doClearAll undo: state.wclock restored (LWW conflict resolution preserved)');
   }
 
+  // v1.7.13a: doUngroup must skip locked shapes (parity with doGroup/doAlign/doDelete).
+  // Bug: doUngroup iterates ALL state.shapes and strips groupId from any shape in a selected
+  // group, without a locked check. A locked shape's groupId gets cleared against the lock's intent.
+  // Fix: add `&&!s.locked` to the condition in doUngroup's for-loop.
+  // Setup: group 3 unlocked shapes, then lock one, then ungroup — the locked one must keep groupId.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const UGA=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    const UGB=Shape.make('rect',{x:60,y:0,w:50,h:50});
+    const UGC=Shape.make('rect',{x:120,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:UGA});Store.commit({op:'add',shape:UGB});Store.commit({op:'add',shape:UGC});
+    // Group all three while all are unlocked
+    state.selection=new Set([UGA.id,UGB.id,UGC.id]);
+    doGroup();
+    const ugaAfterGroup=state.shapes.find(s=>s.id===UGA.id);
+    const ugcAfterGroup=state.shapes.find(s=>s.id===UGC.id);
+    const gId=ugaAfterGroup.groupId;
+    assert.ok(gId,'doUngroup locked setup: group created (3 shapes)');
+    assert.ok(ugcAfterGroup.groupId,'doUngroup locked setup: all 3 shapes in group');
+    // Now lock UGC (it has groupId already)
+    ugcAfterGroup.locked=true;
+    // Select all and ungroup — UGA and UGB should lose groupId; locked UGC must keep it
+    state.selection=new Set([UGA.id,UGB.id,UGC.id]);
+    doUngroup();
+    const ugaLive=state.shapes.find(s=>s.id===UGA.id);
+    const ugbLive=state.shapes.find(s=>s.id===UGB.id);
+    const ugcLive=state.shapes.find(s=>s.id===UGC.id);
+    assert.ok(!ugaLive.groupId,'doUngroup locked: unlocked shape A is ungrouped (no groupId)');
+    assert.ok(!ugbLive.groupId,'doUngroup locked: unlocked shape B is ungrouped (no groupId)');
+    assert.ok(ugcLive.groupId,'doUngroup locked: locked shape C keeps its groupId');
+    console.log('  ✓ doUngroup: locked shapes excluded (groupId preserved)');
+  }
+
+  // v1.7.13b: doDuplicate must skip locked shapes (parity with nudgeSelection/doDelete).
+  // Bug: withFrameChildren expands the frame selection to include all contained children
+  // (locked or not), but doDuplicate's .filter(Boolean) does not filter locked shapes out.
+  // A locked child inside a frame gets duplicated when the frame is duplicated, bypassing lock.
+  // Fix: change .filter(Boolean) to .filter(s=>s&&!s.locked) in doDuplicate.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const DFR=Shape.make('frame',{x:0,y:0,w:300,h:300});
+    const DCHILD=Shape.make('rect',{x:50,y:50,w:40,h:40});
+    const DLOCKED=Shape.make('rect',{x:100,y:100,w:40,h:40});DLOCKED.locked=true;
+    Store.commit({op:'add',shape:DFR});
+    Store.commit({op:'add',shape:DCHILD});
+    Store.commit({op:'add',shape:DLOCKED});
+    const beforeCount=state.shapes.length;
+    state.selection=new Set([DFR.id]);
+    doDuplicate();
+    const addedCount=state.shapes.length-beforeCount;
+    // BEFORE fix: addedCount===3 (frame+child+locked child all copied). AFTER fix: 2.
+    assert.strictEqual(addedCount, 2, 'doDuplicate locked frame child: 2 copies (frame + unlocked child only)');
+    const lockedOrig=state.shapes.find(s=>s.id===DLOCKED.id);
+    assert.ok(lockedOrig&&lockedOrig.locked,'doDuplicate locked frame child: original locked child still present');
+    const copyIds=state.selection;
+    assert.strictEqual(state.shapes.filter(s=>copyIds.has(s.id)&&s.locked).length, 0,
+      'doDuplicate locked frame child: no locked copies in new selection');
+    console.log('  ✓ doDuplicate: locked frame children excluded from copies (parity with nudgeSelection)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 724; // prev 719 + move locked (2) + doGroup locked (3)
+  pass += 731; // prev 724 + doUngroup locked (4) + doDuplicate locked frame child (3)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

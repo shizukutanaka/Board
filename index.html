@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.12 — Design Tokens
+   Board v1.7.13 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -721,7 +721,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.12';
+const V='1.7.13';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -3132,7 +3132,7 @@ function _placeCopies(srcShapes,dx,dy){
 function doDuplicate(){
   if(!state.selection.size)return;
   const origSel=[...state.selection];
-  const sel=[...withFrameChildren(state.selection)].map(byId).filter(Boolean);
+  const sel=[...withFrameChildren(state.selection)].map(byId).filter(s=>s&&!s.locked);
   if(!sel.length)return;
   const added=_placeCopies(sel);   // independent of state.clipboard (see _placeCopies)
   if(origSel.length)state.history[state.histIdx].origSel=origSel;
@@ -3260,7 +3260,7 @@ function doUngroup(){
   if(!gids.size){UI.toast(t('noGroup'),'warn');return}
   const ungrouped=[],before=[];
   for(const s of state.shapes){
-    if(gids.has(s.groupId)){before.push({id:s.id,groupId:s.groupId});delete s.groupId;ungrouped.push(s.id)}
+    if(gids.has(s.groupId)&&!s.locked){before.push({id:s.id,groupId:s.groupId});delete s.groupId;ungrouped.push(s.id)}
   }
   state.selection=new Set(ungrouped);
   Store._recordCommitted({op:'ungroup',ids:ungrouped,gids:[...gids],before});

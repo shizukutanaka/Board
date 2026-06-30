@@ -2,6 +2,23 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.13] - 2026-06-30
+
+### Fixed
+- **`doUngroup` がロックシェイプをスキップしない**:
+  `doUngroup` は `state.shapes` 全体を走査して選択グループに属するシェイプの `groupId` を削除する。
+  ロックチェックがないため、ロックされたシェイプの `groupId` もロックの意図に反して消去されていた。
+  修正: for-loop の条件を `if(gids.has(s.groupId))` → `if(gids.has(s.groupId)&&!s.locked)` に変更。
+  **非空虚テスト** (4 assert): 3 シェイプをグループ化後に 1 つをロック → doUngroup で
+  修正前はロックシェイプの groupId も消える (テスト失敗)、修正後は保持される。
+- **`doDuplicate` がロックフレーム子シェイプを除外しない**:
+  `withFrameChildren` でフレーム選択が子シェイプ (ロック済み含む) に展開されるが、
+  `doDuplicate` の `.filter(Boolean)` がロックシェイプをフィルタしていなかった。
+  フレームを複製するとロックされた子シェイプも複製され、ロックの目的が無効化されていた。
+  修正: `.filter(Boolean)` → `.filter(s=>s&&!s.locked)` に変更 (`nudgeSelection` と同じパターン)。
+  **非空虚テスト** (3 assert): フレーム + 通常子 + ロック子 → フレーム複製後に
+  修正前はロック子まで複製 (addedCount===3, テスト失敗)、修正後は 2 のみ複製。
+
 ## [1.7.12] - 2026-06-30
 
 ### Fixed
