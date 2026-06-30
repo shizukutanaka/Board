@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.08 — Design Tokens
+   Board v1.7.09 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -721,7 +721,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.08';
+const V='1.7.09';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1244,7 +1244,7 @@ const Store={
         // Atomic multi-add (paste/duplicate): N copies as ONE undo step. Forward mirrors
         // 'add' (idempotent on id); reverse mirrors 'del' (remove all, drop selection).
         if(forward){for(const sh of op.shapes){if(!byId(sh.id))state.shapes.push(clone(sh));}sortZ();}
-        else{for(const sh of op.shapes){const i=state.shapes.findIndex(s=>s.id===sh.id);if(i>=0)state.shapes.splice(i,1);state.selection.delete(sh.id);}if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));}
+        else{for(const sh of op.shapes){const i=state.shapes.findIndex(s=>s.id===sh.id);if(i>=0)state.shapes.splice(i,1);state.selection.delete(sh.id);delete state.wclock[sh.id];}if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));}
         break;}
       case 'del':{
         if(forward){
@@ -1286,6 +1286,7 @@ const Store={
         state.shapes.length=0;state.selection.clear();state.wclock={};
         for(const s of next)state.shapes.push(clone(s));
         sortZ();
+        if(!forward&&op.wc)state.wclock=clone(op.wc);
         break;}
       case 'group':{
         if(forward){
@@ -3478,6 +3479,7 @@ function importBoard(file){
       // one Ctrl+Z fully restores the previous board regardless of import size.
       // clear+N-adds would overflow MAX_HISTORY for large boards and require N+1 undos.
       const before=clone(state.shapes);
+      const beforeWc=clone(state.wclock);
       state.shapes=shapes.map(clone);
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out. Skipping this leaks wclock entries and
@@ -3485,7 +3487,7 @@ function importBoard(file){
       state.selection.clear();state.wclock={};
       if(typeof d.docName==='string'&&d.docName){state.docName=d.docName;document.getElementById('docName').value=d.docName;_syncDocTitle();}
       sortZ();invalidate();
-      Store._recordCommitted({op:'replace',before,after:clone(state.shapes)});
+      Store._recordCommitted({op:'replace',before,after:clone(state.shapes),wc:beforeWc});
       UI.toast(t('loadedBoard')+' ('+shapes.length+')','ok');
     }catch{UI.toast(t('invalidBoard'),'err')}
   };
@@ -3912,12 +3914,13 @@ const Share={
       // Reversible whole-board swap: a mistaken import is undoable (Ctrl+Z), so the
       // shared link can't silently destroy the board it replaced (§3.9 self-overwrite).
       const before=clone(state.shapes);
+      const beforeWc=clone(state.wclock);
       state.shapes=valid.map(clone);state.docName=(typeof data.name==='string'&&data.name)||'Shared';
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out (see importBoard for rationale).
       state.selection.clear();state.wclock={};
       sortZ();invalidate();
-      Store._recordCommitted({op:'replace',before,after:clone(state.shapes)});
+      Store._recordCommitted({op:'replace',before,after:clone(state.shapes),wc:beforeWc});
       document.getElementById('docName').value=state.docName;_syncDocTitle();
       // clean URL
       history.replaceState(null,'',location.pathname);

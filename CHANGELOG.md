@@ -2,6 +2,26 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.09] - 2026-06-30
+
+### Fixed
+- **`addMany` undo が `state.wclock` エントリをリークする**:
+  ペースト/複製 (addMany op) を undo すると、シェイプは state.shapes から削除されるが、
+  それらのシェイプに対して applyRemote が設定した wclock エントリが state.wclock に残り続ける。
+  残留エントリはゴースト・クロックとなり、以降の同一 ID 向けリモート op が LWW 比較できなくなる。
+  修正: `_apply` addMany else ブランチに `delete state.wclock[sh.id]` を追加
+  (del 操作の forward ブランチと対称)。
+  **非空虚テスト** (4 assert): addMany → wclock 手動設定 → undo →
+  修正前はエントリが残る (テスト失敗)、修正後はエントリが削除される。
+- **`replace` op undo が `state.wclock` を復元しない**:
+  ファイルインポート / 共有リンクインポート (replace op) を undo すると、
+  インポート前のシェイプは戻るが state.wclock は空 `{}` のままになるバグ。
+  修正: `importBoard` と `importFromHash` でインポート前に `const beforeWc=clone(state.wclock)` を
+  スナップショット、`Store._recordCommitted` に `wc:beforeWc` を追加。
+  `_apply` replace reverse で `if(!forward&&op.wc)state.wclock=clone(op.wc)` を実行。
+  **非空虚テスト** (3 assert): replace → undo →
+  修正前は wclock 空のまま (テスト失敗)、修正後は元の wclock が復元される。
+
 ## [1.7.08] - 2026-06-30
 
 ### Fixed

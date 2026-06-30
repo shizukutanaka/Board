@@ -4708,6 +4708,54 @@ try {
     console.log('  ✓ _sfbCapture: idempotent — re-calling after mutation preserves original before-state');
   }
 
+  // v1.7.09a: addMany undo must delete state.wclock entries for removed shapes.
+  // Bug: _apply(addMany, false) mirrors 'del' for shapes but not for wclock — it removes
+  // shapes from state.shapes but leaves stale wclock entries for the removed IDs.
+  // If remote ops arrived after the paste (setting wclock[P.id]), those entries persist in
+  // state even though P is gone, creating a ghost clock that could corrupt future LWW.
+  // Fix: add `delete state.wclock[sh.id]` in the addMany else branch (mirrors del forward).
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const P=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    const Q=Shape.make('rect',{x:100,y:0,w:50,h:50});
+    Store.commit({op:'addMany',shapes:[P,Q]});
+    assert.strictEqual(state.shapes.length, 2, 'addMany wclock: 2 shapes after addMany');
+    // Seed wclock as applyRemote would after a peer edits the pasted shapes
+    state.wclock[P.id]={stroke:{peer:'p1',seq:1,ts:1000}};
+    state.wclock[Q.id]={fill:{peer:'p1',seq:2,ts:1000}};
+    assert.strictEqual(Object.keys(state.wclock).length, 2, 'addMany wclock: wclock has entries for P and Q (seeded)');
+    // Undo: shapes removed; BEFORE fix wclock retains stale entries, AFTER fix they're deleted
+    Store.undo();
+    assert.strictEqual(state.shapes.length, 0, 'addMany wclock: shapes gone after undo');
+    assert.strictEqual(Object.keys(state.wclock).length, 0, 'addMany wclock: stale wclock entries cleaned up after undo');
+    console.log('  ✓ addMany undo: wclock entries deleted for removed shapes (no ghost LWW clocks)');
+  }
+
+  // v1.7.09b: replace op undo must restore state.wclock.
+  // Bug: _apply replace always clears state.wclock={}, but the reverse path never restores
+  // the original wclock. After undoing a whole-board import, the pre-import shapes are back
+  // but their LWW clocks are gone — a subsequent remote upd would win unconditionally.
+  // Fix: importBoard/importFromHash snapshot wc:clone(state.wclock) into the op;
+  // _apply replace reverse restores if(!forward && op.wc) state.wclock=clone(op.wc).
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const R=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:R});
+    // Seed wclock for R as applyRemote would after a peer edit
+    state.wclock[R.id]={stroke:{peer:'p2',seq:1,ts:2000}};
+    const beforeShapes=JSON.parse(JSON.stringify(state.shapes));
+    const beforeWc=JSON.parse(JSON.stringify(state.wclock));
+    // Simulate importBoard: mutate state then call _recordCommitted (like importBoard does)
+    const imported=Shape.make('rect',{x:200,y:0,w:50,h:50});
+    state.shapes=[JSON.parse(JSON.stringify(imported))];state.wclock={};
+    Store._recordCommitted({op:'replace',before:beforeShapes,after:JSON.parse(JSON.stringify(state.shapes)),wc:beforeWc});
+    assert.strictEqual(Object.keys(state.wclock).length, 0, 'replace undo wclock: wclock empty after replace (import)');
+    // Undo: shapes restored; BEFORE fix wclock stays {}, AFTER fix wclock restored
+    Store.undo();
+    assert.ok(Object.keys(state.wclock).includes(R.id), 'replace undo wclock: original wclock restored after undo of import');
+    console.log('  ✓ replace undo: state.wclock restored (pre-import LWW clocks recovered)');
+  }
+
   // v1.7.08: doClearAll undo must restore state.wclock.
   // Bug: _apply clear forward sets state.wclock={} but reverse never restores it.
   // After undo, any subsequently-arrived remote op for the same shape would be accepted
@@ -4732,7 +4780,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 702; // prev 699 + clear undo wclock (3)
+  pass += 709; // prev 702 + addMany wclock (4) + replace wclock (3)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
