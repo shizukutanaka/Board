@@ -2,6 +2,27 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.15] - 2026-06-30
+
+### Fixed
+- **`_apply move` undo方向がロックシェイプをスキップする (undo整合性)**:
+  `case 'move'` の `if(!sh||sh.locked)continue` が forward/backward 両方向に適用されていた。
+  シェイプを移動後にロックし Ctrl+Z すると、undo方向もロックチェックでスキップされ位置が復元されなかった。
+  修正: `if(!sh)continue; if(forward&&sh.locked)continue;` — undo方向はロックを無視して常に復元。
+  **非空虚テスト** (3 assert): 移動→ロック→undo で x が 0 に戻ることを確認。
+- **`doDelete` がロックされたコネクタのバインディングを消去する**:
+  `doDelete` の connClears ループに `sh.locked` チェックがなかった。バインド先シェイプを
+  削除するとロック済みコネクタの `a`/`b` バインディングも消去され、ロックの意図が無効化されていた。
+  修正: `if(sh.locked)continue` を追加。`connEnds()` は既に byId が null を返した場合に
+  フォールバック座標を使うため、dangling binding のまま安全に描画可能。
+  **非空虚テスト** (3 assert): ロック済みコネクタの `.a` がバインド先削除後も保持されることを確認。
+- **`_sfbFlush` がキャプチャ後にロックされたシェイプへスタイルをコミットする**:
+  スライダーキャプチャ後にシェイプをロックしてスライダーを離すと、`_sfbFlush` が
+  ロック済みシェイプを含む `style` op をコミットしていた。
+  修正: `const s=byId(id); if(s&&!s.locked){...push b/a...}` でロックシェイプを除外。
+  `delete _sbf[k]` は常に実行して古いキャプチャが残留しないようにする。
+  **非空虚テスト** (3 assert): キャプチャ→ロック→フラッシュで履歴が増えないこと + size が 2 のままであることを確認。
+
 ## [1.7.14] - 2026-06-30
 
 ### Fixed

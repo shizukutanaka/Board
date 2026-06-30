@@ -4969,6 +4969,78 @@ try {
     console.log('  ✓ doDuplicate: locked frame children excluded from copies (parity with nudgeSelection)');
   }
 
+  // v1.7.15a: _apply(move, false) [undo] must restore locked shapes' positions.
+  // Bug: line 1277 used `if(!sh||sh.locked)continue` in BOTH forward and backward directions.
+  // Move shape A (unlocked), then lock it, then undo → the undo direction also skipped A.locked,
+  // so A stayed at its moved position. Undo was irrecoverable without unlocking first.
+  // Fix: `if(!sh)continue; if(forward&&sh.locked)continue;` — only forward skips locked.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const MV=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:MV});
+    // Move MV while unlocked (forward direction applies correctly)
+    Store.commit({op:'move',ids:[MV.id],dx:50,dy:0});
+    const mvLive=state.shapes.find(s=>s.id===MV.id);
+    assert.strictEqual(mvLive.x, 50,'move undo locked: move applied while unlocked (x=50)');
+    // Lock the shape post-move
+    mvLive.locked=true;
+    // Undo the move: BEFORE fix undo skips the locked shape (x stays 50); AFTER fix x restored to 0
+    Store.undo();
+    assert.strictEqual(mvLive.x, 0,'move undo locked: undo restores position even though shape is now locked');
+    // Forward direction still skips locked shapes (no regression on v1.7.12a fix)
+    Store.redo();
+    assert.strictEqual(mvLive.x, 0,'move undo locked: redo is a no-op for locked shape (forward still skips locked)');
+    console.log('  ✓ _apply move undo: undo restores locked shape position (undo direction skips locked-check)');
+  }
+
+  // v1.7.15b: doDelete must not clear connector bindings on locked connectors.
+  // Bug: the connClears loop in doDelete had no sh.locked check. Deleting a shape that a
+  // locked arrow is bound to would clear the arrow's binding and update its endpoints,
+  // bypassing lock protection on the connector.
+  // Fix: `if(sh.locked)continue` after `if(delIds.has(sh.id))continue`.
+  // After fix, when the bound shape is deleted the locked connector retains its .a binding
+  // (dangling); connEnds gracefully falls back to the stored coordinates.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const RV=Shape.make('rect',{x:100,y:100,w:80,h:60});
+    const CV=Shape.make('arrow',{x1:90,y1:130,x2:300,y2:300});
+    CV.a=RV.id; CV.locked=true;
+    Store.commit({op:'add',shape:RV});Store.commit({op:'add',shape:CV});
+    assert.strictEqual(state.shapes.find(s=>s.id===CV.id).a, RV.id,'doDelete connClears locked: locked connector has binding before delete');
+    state.selection=new Set([RV.id]);
+    doDelete();
+    // BEFORE fix: locked arrow's .a is cleared to null (locked write). AFTER fix: .a stays RV.id.
+    assert.ok(!state.shapes.find(s=>s.id===RV.id),'doDelete connClears locked: bound shape deleted');
+    assert.strictEqual(state.shapes.find(s=>s.id===CV.id).a, RV.id,'doDelete connClears locked: locked connector binding preserved');
+    console.log('  ✓ doDelete: locked connectors keep their bindings when bound shape is deleted');
+  }
+
+  // v1.7.15c: _sfbFlush must not commit style ops for shapes locked between capture and flush.
+  // Bug: slider capture happens (shape unlocked), user locks the shape, slider releases → flush
+  // commits a style op whose after includes the locked shape, and _apply style applies it.
+  // Fix: skip locked shapes inside _sfbFlush (still deletes _sbf[k] to avoid stale entries).
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const SF=Shape.make('rect',{x:0,y:0,w:50,h:50});SF.size=2;
+    Store.commit({op:'add',shape:SF});
+    state.selection=new Set([SF.id]);
+    const histBefore=state.history.length;
+    // Capture: shape is unlocked, slider down
+    _sfbCapture('size');
+    // Lock the shape (simulates Ctrl+Shift+L while slider is held)
+    state.shapes.find(s=>s.id===SF.id).locked=true;
+    // Flush: slider released at 6 — should be a no-op for locked shape
+    _sfbFlush('size', 6);
+    // BEFORE fix: history grows by 1 (style op committed for locked shape). AFTER fix: no op.
+    assert.strictEqual(state.history.length, histBefore,'_sfbFlush locked: no style op committed when shape locked at flush time');
+    // Shape size must remain at 2 (not changed to 6)
+    assert.strictEqual(state.shapes.find(s=>s.id===SF.id).size, 2,'_sfbFlush locked: size unchanged on locked shape');
+    // _sbf must be cleared (no stale capture leaks to the next slider session)
+    _sfbFlush('size', 8);  // second flush with same key must also be no-op
+    assert.strictEqual(state.history.length, histBefore,'_sfbFlush locked: stale _sbf cleared; second flush also no-op');
+    console.log('  ✓ _sfbFlush: locked shapes excluded from style op (capture-then-lock race)');
+  }
+
   // v1.7.14: dblclick handler must not open editors on locked shapes (parity with eraser/nudge/delete).
   // The handler dispatches on hit.type to openTextEditor or openLabelEditor; before fix there is
   // no !hit.locked guard, so double-clicking a locked text/sticky/rect/ellipse/line/arrow opens
@@ -4984,7 +5056,7 @@ try {
   console.log('  ✓ dblclick: locked shapes do not open text/label editor (presence guards, v1.7.14)');
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 734; // prev 731 + dblclick locked guard (3)
+  pass += 743; // prev 734 + move-undo locked (3) + doDelete connClears locked (3) + _sfbFlush locked (3)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
