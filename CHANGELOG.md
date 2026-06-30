@@ -2,6 +2,19 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.08] - 2026-06-30
+
+### Fixed
+- **`doClearAll` undo が `state.wclock` を復元しない (LWW 競合解決の破損)**:
+  「全消去」後に Ctrl+Z でシェイプは戻るが `state.wclock` が空 `{}` のままになるバグ。
+  undo 後に同一シェイプへの remote op が届くと clock 比較ができず無条件に適用されてしまい、
+  LWW (Last-Write-Wins) による競合解決が機能しなくなっていた。
+  修正: `doClearAll` が `Store.commit({op:'clear', ..., wc:clone(state.wclock)})` で
+  wclock スナップショットを op に保持。`_apply` clear reverse で `op.wc` があれば
+  `state.wclock=clone(op.wc)` で復元。
+  **非空虚テスト** (3 assert): シェイプ追加 → wclock に id あり → clear →
+  wclock 空 → undo → 修正前は wclock 空のまま (テスト失敗)、修正後は id が復元される。
+
 ## [1.7.07] - 2026-06-30
 
 ### Fixed

@@ -4708,8 +4708,31 @@ try {
     console.log('  ✓ _sfbCapture: idempotent — re-calling after mutation preserves original before-state');
   }
 
+  // v1.7.08: doClearAll undo must restore state.wclock.
+  // Bug: _apply clear forward sets state.wclock={} but reverse never restores it.
+  // After undo, any subsequently-arrived remote op for the same shape would be accepted
+  // unconditionally (no clock to compare), breaking LWW conflict resolution.
+  // Fix: doClearAll includes wc:clone(state.wclock) in the op; _apply clear reverse restores it.
+  // Note: wclock is only populated by applyRemote (remote-op LWW stamps), not local commits.
+  // We seed it directly to simulate the state after a prior remote edit, then clear and undo.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const A=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:A});
+    // Seed wclock as applyRemote would after a peer edits shape A's stroke
+    state.wclock[A.id]={stroke:{peer:'p1',seq:3,ts:1000}};
+    assert.ok(Object.keys(state.wclock).includes(A.id), 'clear undo wclock: wclock has A.id (seeded from prior remote op)');
+    // Simulate doClearAll (without confirm): snapshot wc, then clear
+    Store.commit({op:'clear',shapes:JSON.parse(JSON.stringify(state.shapes)),wc:JSON.parse(JSON.stringify(state.wclock))});
+    assert.strictEqual(Object.keys(state.wclock).length, 0, 'clear undo wclock: wclock empty after clear');
+    // Undo: wclock must be restored — FAILS before fix (wclock stays {}), PASSES after
+    Store.undo();
+    assert.ok(Object.keys(state.wclock).includes(A.id), 'clear undo wclock: wclock restored after undo');
+    console.log('  ✓ doClearAll undo: state.wclock restored (LWW conflict resolution preserved)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 699; // prev 694 + doDelete undo origSel (5)
+  pass += 702; // prev 699 + clear undo wclock (3)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
