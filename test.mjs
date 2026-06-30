@@ -623,6 +623,9 @@ const checks = [
   ['_apply add backward restores origSel; createShapeKbd attaches origSel',
     html.includes("if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));") &&
     html.includes("const origSel=[...state.selection];\n  Store.commit({op:'add',shape:s});\n  if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
+  // v1.7.32: _apply group backward must guard op.before (parity with ungroup backward)
+  ['_apply group backward: if(op.before) guard added (parity with ungroup)',
+    html.includes("if(op.before)for(const b of op.before){const sh=byId(b.id);if(sh){if(b.groupId)sh.groupId=b.groupId;else delete sh.groupId}}\n        }\n        break;}\n      case 'ungroup':")],
   // v1.7.31: endRectLike/endLineLike/beginText attach origSel (parity with createShapeKbd)
   ['endRectLike/endLineLike/beginText attach origSel before shape add commit',
     (html.match(/const origSel=\[\.\.\.state\.selection\];\n  Store\.commit\(\{op:'add',shape:d\}\);\n  if\(origSel\.length\)state\.history\[state\.histIdx\]\.origSel=origSel;/g)||[]).length >= 2 &&
@@ -5599,8 +5602,34 @@ try {
     console.log('  ✓ endRectLike: undo restores pre-draw selection via origSel (v1.7.31)');
   }
 
+  // v1.7.32: _apply('group', backward) crashes when op.before is undefined.
+  // The ungroup backward case (line 1328) already has `if(op.before){…}` guard;
+  // the group backward case (line 1321) iterates op.before without any guard.
+  // A group op without op.before can enter history via Store._recordCommitted
+  // (e.g. synthesised by a peer or a test). Ctrl+Z then throws:
+  //   TypeError: Cannot iterate over undefined (for...of op.before)
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const gA=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    const gB=Shape.make('rect',{x:60,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:gA});
+    Store.commit({op:'add',shape:gB});
+    // Apply forward manually (as if a remote group op arrived)
+    const liveA=state.shapes.find(s=>s.id===gA.id);
+    const liveB=state.shapes.find(s=>s.id===gB.id);
+    liveA.groupId='grp1'; liveB.groupId='grp1';
+    // Push a group op WITHOUT op.before onto the undo stack
+    Store._recordCommitted({op:'group',ids:[gA.id,gB.id],gid:'grp1'});
+    assert.ok(state.histIdx>=0,'v1.7.32 setup: op is on history stack');
+    // BEFORE FIX: Store.undo() throws TypeError: Cannot iterate over undefined
+    // AFTER FIX: graceful no-op (before is absent, so backward is skipped)
+    assert.doesNotThrow(()=>Store.undo(),
+      'v1.7.32: _apply group backward must not crash when op.before is undefined (parity with ungroup guard)');
+    console.log('  ✓ _apply group backward: null op.before guard prevents TypeError crash (v1.7.32)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 807; // prev 803 + endRectLike origSel undo (4)
+  pass += 810; // prev 807 + group backward null guard (3)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

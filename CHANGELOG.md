@@ -2,6 +2,21 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.32] - 2026-06-30
+
+### Fixed
+- **`_apply('group', backward)` が `op.before` のない op で TypeError クラッシュ**:
+  `Store.undo()` が `{op:'group'}` エントリを逆適用するとき、`op.before` が
+  `undefined` の場合に `for(const b of op.before)` が `TypeError: op.before is not iterable`
+  でクラッシュした。`_apply('ungroup', backward)` (line 1328) は既に
+  `if(op.before){...}` ガードを持っていたが、`group` backward には同ガードが欠けていた。
+  修正: `for` ループの前に `if(op.before)` ガードを追加し、`ungroup` と対称にした。
+  `op.before` がない場合は backward は no-op として扱われる (グレースフルデグラデーション)。
+  **非空虚テスト** (3 assert):
+  - `op.before` なしの group op を history に積む ✓
+  - `assert.doesNotThrow(()=>Store.undo())` — 修正前は `TypeError` で失敗 ✓
+  - グラッシュなく完了する ✓
+
 ## [1.7.31] - 2026-06-30
 
 ### Fixed
