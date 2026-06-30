@@ -4574,8 +4574,30 @@ try {
     console.log('  ✓ doRotate: frame children rotate with frame (parity with doAlign); undo restores');
   }
 
+  // v1.7.02: doDelete must delete frame children with the frame (parity with doDuplicate)
+  // Before fix: deleting a selected frame leaves its contained shapes orphaned on the canvas.
+  // After fix: shapes fully inside a deleted frame are also deleted (Excalidraw/Figma behavior).
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const frm=Shape.make('frame',{x:0,y:0,w:200,h:200});
+    const child=Shape.make('rect',{x:50,y:50,w:40,h:40}); // inside frame
+    const outsider=Shape.make('rect',{x:300,y:300,w:40,h:40}); // outside frame
+    Store.commit({op:'add',shape:frm});
+    Store.commit({op:'add',shape:child});
+    Store.commit({op:'add',shape:outsider});
+    state.selection=new Set([frm.id]); // only frame selected (not child)
+    doDelete();
+    // Before fix: child survives (still in state.shapes). After fix: child is deleted too.
+    assert.ok(!state.shapes.find(s=>s.id===child.id), 'doDelete frame: child inside frame is also deleted');
+    assert.ok(state.shapes.find(s=>s.id===outsider.id), 'doDelete frame: outsider survives');
+    Store.undo();
+    assert.ok(state.shapes.find(s=>s.id===child.id), 'doDelete frame undo: child restored');
+    assert.ok(state.shapes.find(s=>s.id===frm.id), 'doDelete frame undo: frame restored');
+    console.log('  ✓ doDelete: frame children deleted with frame (parity with doDuplicate); undo restores');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 677; // prev 672 + doFlip frame-children (3) + doRotate frame-children (2)
+  pass += 681; // prev 677 + doDelete frame-children (4)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

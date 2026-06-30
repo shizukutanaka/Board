@@ -2,6 +2,20 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.02] - 2026-06-30
+
+### Fixed
+- **`doDelete` がフレームの子シェイプも一緒に削除 (doDuplicate との整合)**:
+  フレームを選択して削除 (Del/Backspace) すると、フレーム内のシェイプが
+  キャンバス上に孤立して残るバグ。`doDuplicate` は `withFrameChildren` で子を展開するが、
+  `doDelete` に同等の処理がなかった。修正: doAlign/doFlip/doRotate と同じ `frameOf`
+  拡張ロジックを `doDelete` に追加。`delIds` セットも拡張後の `sel` から再構築するため、
+  コネクタ結合解除ロジックもフレーム子シェイプを自動的にカバーする。
+  `op.shapes` に子シェイプが含まれるため undo で子シェイプも正しく復元される。
+  **非空虚テスト** (4 assert): フレーム + 内部子シェイプ + 外部シェイプを作成し、
+  フレームのみ選択して削除 → 修正前は子シェイプが残存 (テスト失敗)、修正後は削除される。
+  undo で両方が復元されることも確認。
+
 ## [1.7.01] - 2026-06-30
 
 ### Fixed

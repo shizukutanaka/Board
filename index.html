@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.01 — Design Tokens
+   Board v1.7.02 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -721,7 +721,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.01';
+const V='1.7.02';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -3134,6 +3134,18 @@ function doDuplicate(){
 function doDelete(){
   const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);
   if(!sel.length)return;
+  // Frame-aware: shapes fully inside a selected frame are deleted with the frame (parity with doDuplicate)
+  const frameOf=new Map();
+  for(const f of sel){
+    if(f.type!=='frame')continue;
+    const fb=G.bbox(f);
+    for(const s of state.shapes){
+      if(s.id===f.id||s.type==='frame'||s.locked||frameOf.has(s.id))continue;
+      const b=G.bbox(s);
+      if(b.x>=fb.x&&b.y>=fb.y&&b.x+b.w<=fb.x+fb.w&&b.y+b.h<=fb.y+fb.h)frameOf.set(s.id,f.id);
+    }
+  }
+  for(const [cid] of frameOf){if(!sel.find(s=>s.id===cid)){const ch=byId(cid);if(ch&&!ch.locked)sel.push(ch);}}
   const delIds=new Set(sel.map(s=>s.id));
   // Resolve connector bindings BEFORE splicing so connEnds can see the live shapes.
   const connClears=[];
