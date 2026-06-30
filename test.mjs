@@ -638,6 +638,9 @@ const checks = [
   // v1.7.35: text-blur del origSel pattern must exist at the existing-text-empty path
   ['text-blur del: origSel captured and patched before and after Store.commit del',
     html.includes("const origSel=[...state.selection];\n        Store.commit({op:'del',shapes:[orig]});\n        if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
+  // v1.7.36: flushErase must capture origSel before del commit and patch after
+  ['flushErase del: origSel captured before commit and patched after (parity with doDelete)',
+    html.includes("const origSel=[...state.selection];\n  const op={op:'del',shapes:clone(_eraseBatch)};")],
   // v1.7.32: _apply group backward must guard op.before (parity with ungroup backward)
   ['_apply group backward: if(op.before) guard added (parity with ungroup)',
     html.includes("if(op.before)for(const b of op.before){const sh=byId(b.id);if(sh){if(b.groupId)sh.groupId=b.groupId;else delete sh.groupId}}\n        }\n        break;}\n      case 'ungroup':")],
@@ -5701,8 +5704,37 @@ try {
     console.log('  ✓ validRemotePayload style/resize/align: before:null op rejected (v1.7.35)');
   }
 
+  // v1.7.36: flushErase commits a del op without capturing origSel, so undoing an erase
+  // leaves state.selection empty instead of restoring the pre-erase selection.
+  // The del forward path removes erased shape ids from state.selection (line ~1270).
+  // Without origSel, _apply del backward doesn't restore the selection after undo.
+  // Pattern: same origSel capture + history patch that doDelete uses.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.viewport={x:0,y:0,zoom:1};state.draft=null;state.snap=false;
+    const feA=Shape.make('rect',{x:0,y:0,w:30,h:30});
+    const feB=Shape.make('rect',{x:50,y:0,w:30,h:30});
+    Store.commit({op:'add',shape:feA});
+    Store.commit({op:'add',shape:feB});
+    // Reset history so the only undo target is the upcoming erase
+    state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();
+    // A is selected and is being erased — del forward will remove A from selection
+    state.selection=new Set([feA.id]);
+    // Simulate eraser: A is removed from state.shapes into _eraseBatch
+    state.shapes=state.shapes.filter(s=>s.id!==feA.id);
+    _pushEraseBatch(feA);
+    flushErase();
+    assert.ok(!state.shapes.some(s=>s.id===feA.id),'v1.7.36 setup: A erased');
+    assert.strictEqual(state.selection.size,0,'v1.7.36 setup: selection is empty after erase');
+    Store.undo();
+    assert.ok(state.shapes.some(s=>s.id===feA.id),'v1.7.36: undo restores erased shape');
+    assert.ok(state.selection.has(feA.id),
+      'v1.7.36: undo of erase must restore pre-erase selection (origSel pattern missing in flushErase)');
+    console.log('  ✓ flushErase: undo restores pre-erase selection via origSel (v1.7.36)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 820; // prev 818 + style/resize/align validator before required (2)
+  pass += 822; // prev 820 + flushErase origSel presence + behavioral (2)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

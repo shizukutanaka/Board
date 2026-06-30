@@ -2,6 +2,27 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.36] - 2026-06-30
+
+### Fixed
+- **`flushErase` の `del` op に `origSel` が記録されない (selection-loss)**:
+  消しゴムツールで図形を消去後に Ctrl+Z すると消した図形は復元されるが、
+  消去前に選択していた図形が再選択されなかった。
+  `_apply('del', false)` の backward path は `if(op.origSel)state.selection=...` で
+  `origSel` があれば選択を復元するが、`flushErase` は `Store.commit(op)` の前後に
+  `origSel` キャプチャ/パッチを行っていなかった。
+  `doDelete` (キーボード削除) / `doClearAll` で既に正しく実装済みのパターンが
+  eraser path にのみ欠けていた。
+  修正: `const origSel=[...state.selection]` → commit → `origSel` パッチ の 3 行パターンを追加。
+  **非空虚テスト** (4 assert):
+  - 選択中シェイプを消去 → undo → `state.selection.has(shape.id)` を検証 ✓
+  - undo 前: selection size === 0 (del forward が selection.delete 済み) ✓
+
+### Tests
+- behavioral: flushErase undo restores pre-erase selection (4 assert)
+- presence check: `flushErase del: origSel captured before commit and patched after` (1)
+- 合計 1262 pass, 0 fail
+
 ## [1.7.35] - 2026-06-30
 
 ### Fixed
