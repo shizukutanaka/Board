@@ -4708,6 +4708,50 @@ try {
     console.log('  ✓ _sfbCapture: idempotent — re-calling after mutation preserves original before-state');
   }
 
+  // v1.7.12a: move op must skip locked shapes (remote move parity with local doMove).
+  // Bug: _apply move checks `if(!sh)continue` but not `sh.locked`. Local doMove filters
+  // locked shapes before building the op, so local ops never include locked IDs. But a
+  // remote op (from applyRemote or a direct Store.commit with both IDs) would move a
+  // locally-locked shape, bypassing lock protection.
+  // Fix: `if(!sh||sh.locked)continue` in _apply case 'move'.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const ML=Shape.make('rect',{x:0,y:0,w:50,h:50});ML.locked=true;
+    const MU=Shape.make('rect',{x:100,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:ML});Store.commit({op:'add',shape:MU});
+    const mlLive=state.shapes.find(s=>s.id===ML.id);
+    const muLive=state.shapes.find(s=>s.id===MU.id);
+    // Simulate move op containing both locked and unlocked ids (as a remote peer would send)
+    Store.commit({op:'move',ids:[ML.id,MU.id],dx:20,dy:0});
+    // BEFORE fix: mlLive.x becomes 20 (locked shape moved). AFTER fix: x stays 0.
+    assert.strictEqual(mlLive.x, 0, 'move op: locked shape not translated');
+    assert.strictEqual(muLive.x, 120, 'move op: unlocked shape translated correctly');
+    console.log('  ✓ move op: locked shapes skipped in _apply (parity with local doMove)');
+  }
+
+  // v1.7.12b: doGroup must exclude locked shapes (parity with doAlign/doDelete/nudgeSelection).
+  // Bug: doGroup builds ids from all of state.selection without a locked filter. A locked
+  // shape's groupId gets set by the group op, which also means doUngroup can remove its groupId
+  // — changing locked shape state contrary to the lock's intent.
+  // Fix: filter with `!s.locked` in doGroup's ids computation.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const GA=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    const GB=Shape.make('rect',{x:60,y:0,w:50,h:50});GB.locked=true;
+    const GC=Shape.make('rect',{x:120,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:GA});Store.commit({op:'add',shape:GB});Store.commit({op:'add',shape:GC});
+    state.selection=new Set([GA.id,GB.id,GC.id]);
+    doGroup();
+    const gaLive=state.shapes.find(s=>s.id===GA.id);
+    const gbLive=state.shapes.find(s=>s.id===GB.id);
+    const gcLive=state.shapes.find(s=>s.id===GC.id);
+    // BEFORE fix: gbLive.groupId gets set (locked shape included). AFTER fix: no groupId.
+    assert.ok(!gbLive.groupId,'doGroup: locked shape excluded from group');
+    assert.ok(gaLive.groupId&&gcLive.groupId,'doGroup: unlocked shapes received groupId');
+    assert.strictEqual(gaLive.groupId,gcLive.groupId,'doGroup: unlocked shapes share same groupId');
+    console.log('  ✓ doGroup: locked shapes excluded (parity with doAlign/doDelete)');
+  }
+
   // v1.7.11a: del undo must restore state.wclock (symmetric with add undo fix v1.7.10).
   // Bug: _apply(del, false) restores shapes but not their wclock entries. del forward
   // correctly calls `delete state.wclock[sh.id]`, but the reverse path never restores them.
@@ -4866,7 +4910,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 719; // prev 713 + del undo wclock (3) + _sfbCapture locked (3)
+  pass += 724; // prev 719 + move locked (2) + doGroup locked (3)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

@@ -2,6 +2,26 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.12] - 2026-06-30
+
+### Fixed
+- **`move` op が `_apply` でロックシェイプをスキップしない (リモート移動がロックを無視)**:
+  ローカルの `doMove` はロックシェイプをフィルタしてから op の `ids` を構築するため、
+  ローカル op には locked な id が含まれない。しかしリモート peer の op (applyRemote) は
+  peer 側でロックされていなかったシェイプを ids に含めて送信してくる。
+  `_apply move` に `||sh.locked` チェックがなかったため、ローカルでロックしたシェイプが
+  リモート move op で移動されてしまっていた。
+  修正: `if(!sh)continue;` → `if(!sh||sh.locked)continue;` に変更。
+  **非空虚テスト** (2 assert): locked L + unlocked U を含む move op を直接コミット →
+  修正前は L が移動 (テスト失敗)、修正後は L が保護される。
+- **`doGroup` がロックシェイプを除外しない**:
+  doAlign / doDelete / nudgeSelection / doCopy など全ての書き込み操作がロックシェイプを
+  スキップしているのに `doGroup` だけ `state.selection` をそのまま使っていた。
+  ロックシェイプの `groupId` が doGroup で変更され、doUngroup でも変更される (不整合)。
+  修正: ids 構築に `.filter(id=>{const s=byId(id);return s&&!s.locked;})` を追加。
+  **非空虚テスト** (3 assert): A + B (ロック) + C を選択して doGroup →
+  修正前は B に groupId が設定される (テスト失敗)、修正後は B の groupId が不変。
+
 ## [1.7.11] - 2026-06-30
 
 ### Fixed
