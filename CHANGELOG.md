@@ -2,6 +2,19 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.21] - 2026-06-30
+
+### Fixed
+- **`drawSelection` / `doFlip` が `G.bboxAll` の null に対してクラッシュする**:
+  v1.7.19 で `bboxAll` がデジェネレートシェイプに対して `null` を返すようになったが、
+  `drawSelection()` (line ~1965) と `doFlip()` (line ~3353) の両方が `bboxAll` の戻り値に
+  対して即座に `.x`/`.y`/`.w` にアクセスしており null チェックがなかった。
+  `drawSelection` は毎フレーム呼ばれるためデジェネレートシェイプが選択状態だとレンダリングループが
+  クラッシュし、`doFlip` は Shift+H/V で同様にクラッシュしていた。
+  修正: 両関数の `bboxAll` 呼び出し直後に `if(!b)return;` / `if(!bb)return;` を追加。
+  **非空虚テスト** (3 assert): デジェネレートペンを選択して `doFlip('h')` を呼び出した際に
+  例外が発生しないこと、および履歴エントリが追加されないこと (早期リターン) を確認。
+
 ## [1.7.20] - 2026-06-30
 
 ### Fixed

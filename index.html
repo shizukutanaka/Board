@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.20 — Design Tokens
+   Board v1.7.21 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -721,7 +721,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.20';
+const V='1.7.21';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1962,6 +1962,7 @@ function drawSelection(){
   const sel=[...state.selection].map(byId).filter(Boolean);
   if(!sel.length)return;
   const b=G.bboxAll(sel);
+  if(!b)return;
   const p1=G.w2s({x:b.x,y:b.y}),p2=G.w2s({x:b.x+b.w,y:b.y+b.h});
   const x=p1.x*DPR,y=p1.y*DPR,w=(p2.x-p1.x)*DPR,h=(p2.y-p1.y)*DPR;
   const lockedSel=sel.every(s=>s.locked);
@@ -3350,7 +3351,8 @@ function flipShape(s,axis,c){
 function doFlip(axis){
   const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);
   if(!sel.length)return;
-  const bb=G.bboxAll(sel),c=axis==='h'?bb.x+bb.w/2:bb.y+bb.h/2;
+  const bb=G.bboxAll(sel);if(!bb)return;
+  const c=axis==='h'?bb.x+bb.w/2:bb.y+bb.h/2;
   // Frame-aware: shapes fully inside a selected frame flip with the frame (parity with doAlign)
   const frameOf=new Map();
   for(const f of sel){

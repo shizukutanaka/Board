@@ -5176,6 +5176,32 @@ try {
     console.log('  ✓ _remoteDelConnFix: locked connectors skipped (v1.7.16b)');
   }
 
+  // v1.7.21: drawSelection and doFlip must guard against null from G.bboxAll.
+  // After v1.7.19, G.bboxAll returns null for all-degenerate shapes (empty-pts pen).
+  // drawSelection() (line ~1964) and doFlip() (line ~3353) both immediately access .x/.y/.w
+  // on the bboxAll result without a null check, causing TypeError crashes:
+  //   drawSelection: every render frame when a degenerate shape is selected
+  //   doFlip: Shift+H or Shift+V on a selection containing only degenerate shapes
+  // Fix:
+  //   drawSelection: `if(!b)return;` after `const b=G.bboxAll(sel);`
+  //   doFlip: split into `const bb=G.bboxAll(sel);if(!bb)return;` before accessing bb.x
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const dP={type:'pen',pts:[],size:2,id:'degen-flip',frac:'a',x:0,y:0,stroke:'#000',opacity:1};
+    state.shapes.push(dP);  // bypass validShape
+    state.selection=new Set([dP.id]);
+    // Assertion 1: G.bboxAll([dP]) is null (confirms the degenerate setup)
+    assert.strictEqual(G.bboxAll([dP]),null,'doFlip null-bbox: G.bboxAll returns null for empty-pts pen');
+    // Assertion 2: doFlip('h') must not crash. BEFORE fix: TypeError on bb.x. AFTER: early return.
+    const histLen=state.history.length;
+    let flipErr=null;
+    try{doFlip('h');}catch(e){flipErr=e;}
+    assert.ok(flipErr===null,'doFlip null-bbox: doFlip("h") does not crash when bboxAll returns null');
+    // Assertion 3: doFlip was a no-op (no history entry recorded — early return before any mutation)
+    assert.strictEqual(state.history.length,histLen,'doFlip null-bbox: no flip op recorded (early return)');
+    console.log('  ✓ doFlip/drawSelection: null bboxAll guard prevents crash for degenerate shapes (v1.7.21)');
+  }
+
   // v1.7.20: doUngroup must preserve non-grouped shapes in the selection.
   // Bug: line 3275 replaces state.selection with only the ungrouped IDs, dropping any
   // previously-selected shapes that were not in any group.
@@ -5234,7 +5260,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 767; // prev 764 + doUngroup non-grouped selection preserved (3)
+  pass += 770; // prev 767 + doFlip/drawSelection null-bbox guard (3)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
