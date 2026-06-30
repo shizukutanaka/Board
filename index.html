@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.6.96 — Design Tokens
+   Board v1.6.97 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -721,7 +721,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.96';
+const V='1.6.97';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -3069,20 +3069,32 @@ function doCopy(){
   state.clipboard={shapes:clone(sel)};
   UI.toast(t('copied')+' '+sel.length);
 }
+// v1.6.97: paste cascade counter — resets when a new clipboard is captured so that
+// Ctrl+V × N cascades from viewport center, not from the original copy position.
+let _pasteCount=0,_lastClipboard=null;
 function doPaste(){
   if(!state.clipboard)return;
-  const added=_placeCopies(state.clipboard.shapes);
-  // offset next paste a bit more so repeated Ctrl+V cascades
-  const offset=20/state.viewport.zoom;
-  for(const s of state.clipboard.shapes)Shape.translate(s,offset,offset);
+  // Reset cascade on new clipboard (new copy/cut)
+  if(state.clipboard!==_lastClipboard){_pasteCount=0;_lastClipboard=state.clipboard;}
+  // Center pasted content at the current viewport center, then offset by cascade amount.
+  // Pattern: Figma/Excalidraw — paste at viewport center so the result is always visible.
+  const bb=G.bboxAll(state.clipboard.shapes);
+  const v=state.viewport;
+  const vCx=v.x+window.innerWidth/v.zoom/2;
+  const vCy=v.y+window.innerHeight/v.zoom/2;
+  const srcCx=bb?bb.x+bb.w/2:vCx,srcCy=bb?bb.y+bb.h/2:vCy;
+  const co=(_pasteCount+1)*20/v.zoom;   // +1 so first paste has a small inset offset
+  _pasteCount++;
+  const added=_placeCopies(state.clipboard.shapes,vCx-srcCx+co,vCy-srcCy+co);
   UI.toast(t('pasted')+' '+added.length);
 }
-// Clone a set of shapes onto the board with fresh ids/group ids, offset slightly,
+// Clone a set of shapes onto the board with fresh ids/group ids, offset by (dx,dy),
 // and select the copies. Shared by paste (clipboard source) and duplicate (selection
 // source). Duplicate must NOT route through state.clipboard — doing so would clobber
 // the user's copy/paste buffer (Copy A, select B, Ctrl+D → Ctrl+V wrongly pastes B).
-function _placeCopies(srcShapes){
-  const offset=20/state.viewport.zoom;
+// dx/dy default to 20/zoom for duplicate; paste supplies viewport-centering offsets.
+function _placeCopies(srcShapes,dx,dy){
+  if(dx===undefined){const o=20/state.viewport.zoom;dx=o;dy=o;}
   const added=[];
   const built=[];
   const gidMap=new Map();
@@ -3103,7 +3115,7 @@ function _placeCopies(srcShapes){
     }
     if(sh.a&&idMap.has(sh.a))sh.a=idMap.get(sh.a);
     if(sh.b&&idMap.has(sh.b))sh.b=idMap.get(sh.b);
-    Shape.translate(sh,offset,offset);
+    Shape.translate(sh,dx,dy);
     built.push(sh);
     added.push(sh.id);
   }
@@ -3556,7 +3568,10 @@ const KINSOKU_END=new Set([...'（[｛「『〔〈《【〖〘〝“‘｟«([{'
 // The char-break path applies 禁則処理 so prohibited chars never start/end a wrapped line.
 function wrapText(text,maxWidth,measure){
   const out=[];
-  for(const para of String(text==null?'':text).split('\n')){
+  // v1.6.97: normalize Windows (\r\n) and old Mac (\r) line endings before splitting
+  // so measureText doesn't see a trailing \r that skews wrap-width calculation.
+  const norm=String(text==null?'':text).replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  for(const para of norm.split('\n')){
     if(para===''){out.push('');continue;}
     if(!(maxWidth>0)||measure(para)<=maxWidth){out.push(para);continue;}
     let line='';

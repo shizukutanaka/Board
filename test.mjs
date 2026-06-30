@@ -466,7 +466,7 @@ const checks = [
   ['drag-drop image import has img.onerror toast', html.includes("img.onerror=()=>UI.toast(t('imgErr'),'warn');") ],
   ['drag-drop image import has reader.onerror toast', html.includes("reader.onerror=()=>UI.toast(t('imgErr'),'warn');\n    reader.readAsDataURL(f);")],
   ['context menu deduplicates consecutive separators', html.includes(".filter((it,i,a)=>!(it==='sep'&&(i===0||i===a.length-1||a[i-1]==='sep')))")],
-  ['doDuplicate does not clobber clipboard (uses _placeCopies, not state.clipboard=)', html.includes("const added=_placeCopies(sel);   // independent of state.clipboard") && html.includes("function _placeCopies(srcShapes)")],
+  ['doDuplicate does not clobber clipboard (uses _placeCopies, not state.clipboard=)', html.includes("const added=_placeCopies(sel);   // independent of state.clipboard") && html.includes("function _placeCopies(srcShapes")],
   // v1.6.71: import sites clear stale selection + wclock (mirror replace op's _apply)
   ['importBoard clears selection+wclock on whole-board swap', html.includes("state.shapes=shapes.map(clone);\n      // Match the replace op's _apply") && html.includes("state.selection.clear();state.wclock={};\n      if(typeof d.docName")],
   ['importFromHash clears selection+wclock on whole-board swap', html.includes("state.shapes=valid.map(clone);state.docName=") && /state\.shapes=valid\.map\(clone\)[\s\S]{0,260}state\.selection\.clear\(\);state\.wclock=\{\};/.test(html)],
@@ -593,6 +593,11 @@ const checks = [
     html.includes("'Tab'")&&html.includes("UI.closeCtxMenu()")],
   ['getHandles returns empty for text shapes (content-driven size, no resize conflict)',
     html.includes("s.type==='text')return []")],
+  // v1.6.97: doPaste viewport centering + wrapText \\r\\n normalization
+  ['doPaste centers at viewport center (_pasteCount cascade, not clipboard mutation)',
+    html.includes('_pasteCount')&&html.includes('_lastClipboard')&&html.includes('vCx-srcCx+co')],
+  ['wrapText normalizes \\r\\n and \\r before splitting (Windows clipboard parity)',
+    html.includes("replace(/\\r\\n/g,'\\n').replace(/\\r/g,'\\n')")],
 ];
 
 let pass = 0, fail = 0;
@@ -698,7 +703,8 @@ try {
              _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _syncDocTitle, Presentation,
              _onBtnInstall, _getInstallPrompt: () => _installPrompt, _setInstallPrompt: (v) => { _installPrompt = v; },
-             _onSwUpdate, _ctxMenuKeyNav };
+             _onSwUpdate, _ctxMenuKeyNav,
+             _getPasteCount: () => _pasteCount, _resetPasteClipboard: () => { _lastClipboard = null; } };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -716,7 +722,8 @@ try {
           _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _syncDocTitle, Presentation,
           _onBtnInstall, _getInstallPrompt, _setInstallPrompt,
-          _onSwUpdate, _ctxMenuKeyNav } = api;
+          _onSwUpdate, _ctxMenuKeyNav,
+          _getPasteCount, _resetPasteClipboard } = api;
 
   console.log('\n-- behavioural --');
 
@@ -4385,8 +4392,54 @@ try {
     console.log('  ✓ getHandles: text → no resize handles (rotation via getRotHandle), rect → 8 handles');
   }
 
+  // v1.6.97: doPaste viewport centering — must fail before fix, pass after
+  // Before: paste at original coords + 20px → invisible when viewport is far away
+  // After: paste centered at viewport center
+  {
+    const origShapesLen = state.shapes.length;
+    const origViewport = JSON.parse(JSON.stringify(state.viewport));
+    const origClipboard = state.clipboard;
+    // Position viewport far from origin
+    state.viewport = {x:5000,y:5000,zoom:1};
+    // Clipboard shape at world origin (5000+px away from viewport)
+    const clipShape = {type:'rect',x:0,y:0,w:100,h:100,z:1,id:'paste-test-97'};
+    state.clipboard = {shapes:[clipShape]};
+    _resetPasteClipboard();  // force _pasteCount reset on next paste
+    doPaste();
+    // vCx = 5000 + 800/1/2 = 5400 (fakeWin.innerWidth=800)
+    // vCy = 5000 + 600/1/2 = 5300 (fakeWin.innerHeight=600)
+    // srcCx = 0+100/2=50, srcCy = 0+100/2=50; co=20
+    // placed at x≈0+(5400-50+20)=5370, center at 5420
+    const newShape = state.shapes.slice(origShapesLen)[0];
+    assert.ok(newShape, 'doPaste viewport: shape was added');
+    const pastedCx = newShape.x + (newShape.w || 0) / 2;
+    const pastedCy = newShape.y + (newShape.h || 0) / 2;
+    assert.ok(Math.abs(pastedCx - 5400) < 100,
+      `doPaste viewport: pasted center x (${pastedCx.toFixed(0)}) near viewport center (5400)`);
+    assert.ok(Math.abs(pastedCy - 5300) < 100,
+      `doPaste viewport: pasted center y (${pastedCy.toFixed(0)}) near viewport center (5300)`);
+    // Cascade: second paste should be further from viewport center than first
+    assert.strictEqual(_getPasteCount(), 1, 'doPaste: _pasteCount increments on paste');
+    // Clean up
+    state.viewport = origViewport;
+    state.clipboard = origClipboard;
+    Store.undo();
+    console.log('  ✓ doPaste: shapes centered at viewport center, not at original clipboard position');
+  }
+
+  // v1.6.97: wrapText \\r\\n normalization
+  {
+    const w = wrapText("line1\r\nline2", 1000, () => 10);
+    assert.deepStrictEqual(w, ['line1','line2'],
+      'wrapText: \\r\\n normalized to \\n (Windows clipboard line endings)');
+    const w2 = wrapText("a\rb\r\nc", 1000, () => 10);
+    assert.deepStrictEqual(w2, ['a','b','c'],
+      'wrapText: \\r and \\r\\n both normalized');
+    console.log('  ✓ wrapText: \\r\\n and \\r normalized — Windows clipboard line endings handled');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 652; // prev 648 + Tab/Shift+Tab (2) + getHandles text (2)
+  pass += 659; // prev 652 + doPaste viewport (4) + wrapText \\r\\n (2) + pasteCount (1)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

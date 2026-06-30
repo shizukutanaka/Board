@@ -2,6 +2,26 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.97] - 2026-06-30
+
+### Fixed
+- **`doPaste` がビューポート中央に貼り付け (遠くにスクロール後も見える)**:
+  コピー元から遠くにパンした後 Ctrl+V すると、貼り付けたシェイプがオリジン付近 (元座標 +20px)
+  に現れ、画面外に不可視になるバグ。Figma / Excalidraw に倣い、貼り付け位置をビューポート中央に
+  変更。連続貼り付け (Ctrl+V × N) はカスケードカウンタ `_pasteCount` で中央から 20px ずつ
+  ずらす。以前はクリップボード内シェイプを 20px 移動する副作用でカスケードしていたため、これを
+  削除して `_pasteCount/_lastClipboard` に置き換え。`doDuplicate` は引き続き
+  `_placeCopies(sel)` を「オフセットなし引数」で呼び出すため影響なし。
+  **非空虚テスト** (4 assert): ビューポート x=5000,y=5000 でペースト → 貼り付けシェイプ中心が
+  ビューポート中心に近い確認 + `_pasteCount` インクリメント確認。
+
+- **`wrapText` が `\\r\\n` / `\\r` 改行を正規化 (Windows クリップボード互換)**:
+  Windows のクリップボード等から貼り付けたテキストが `\\r\\n` 改行を含む場合、`split('\\n')` で
+  各行末に `\\r` が残り `measureText` が誤った幅を返し、意図より早く折り返されるバグ。
+  修正: `wrapText` 内で `.replace(/\\r\\n/g,'\\n').replace(/\\r/g,'\\n')` を前処理として追加。
+  **非空虚テスト** (2 assert): `"line1\\r\\nline2"` → `['line1','line2']`、
+  `"a\\rb\\r\\nc"` → `['a','b','c']` を各々修正前失敗・修正後成功で確認。
+
 ## [1.6.96] - 2026-06-30
 
 ### Fixed
