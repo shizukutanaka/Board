@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.03 — Design Tokens
+   Board v1.7.04 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -721,7 +721,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.03';
+const V='1.7.04';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1244,7 +1244,7 @@ const Store={
         // Atomic multi-add (paste/duplicate): N copies as ONE undo step. Forward mirrors
         // 'add' (idempotent on id); reverse mirrors 'del' (remove all, drop selection).
         if(forward){for(const sh of op.shapes){if(!byId(sh.id))state.shapes.push(clone(sh));}sortZ();}
-        else{for(const sh of op.shapes){const i=state.shapes.findIndex(s=>s.id===sh.id);if(i>=0)state.shapes.splice(i,1);state.selection.delete(sh.id);}}
+        else{for(const sh of op.shapes){const i=state.shapes.findIndex(s=>s.id===sh.id);if(i>=0)state.shapes.splice(i,1);state.selection.delete(sh.id);}if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));}
         break;}
       case 'del':{
         if(forward){
@@ -3126,9 +3126,11 @@ function _placeCopies(srcShapes,dx,dy){
 }
 function doDuplicate(){
   if(!state.selection.size)return;
+  const origSel=[...state.selection];
   const sel=[...withFrameChildren(state.selection)].map(byId).filter(Boolean);
   if(!sel.length)return;
   const added=_placeCopies(sel);   // independent of state.clipboard (see _placeCopies)
+  if(origSel.length)state.history[state.histIdx].origSel=origSel;
   UI.toast(t('pasted')+' '+added.length);
 }
 function doDelete(){

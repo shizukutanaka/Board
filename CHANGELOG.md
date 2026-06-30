@@ -2,6 +2,19 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.04] - 2026-06-30
+
+### Fixed
+- **`doDuplicate` undo で元の選択を復元 (Figma/Excalidraw 同等動作)**:
+  Ctrl+D で複製後に Ctrl+Z を実行すると、コピーが削除されるが元のシェイプの選択状態が
+  失われるバグ。`_apply(addMany, false)` はコピーの ID を selection から削除するだけで、
+  元の selection を復元しなかった。修正: `doDuplicate` が `_placeCopies` 呼び出し前に
+  `origSel=[...state.selection]` をスナップショットし、commitした `addMany` op に
+  `op.origSel` として付加。`_apply` addMany reverse で `op.origSel` があれば
+  `state.selection` を復元 (byId でキャンバス上に存在するシェイプのみ)。
+  **非空虚テスト** (5 assert): A + B を選択して duplicate → undo →
+  修正前は selection が空 (テスト失敗)、修正後は {A.id, B.id} が復元される。
+
 ## [1.7.03] - 2026-06-30
 
 ### Fixed

@@ -4596,6 +4596,29 @@ try {
     console.log('  ✓ doDelete: frame children deleted with frame (parity with doDuplicate); undo restores');
   }
 
+  // v1.7.04: doDuplicate undo must restore the original selection (Figma/Excalidraw parity).
+  // Before fix: _apply(addMany, false) only deletes copies from selection, leaving selection empty.
+  // After fix: doDuplicate stores origSel on the addMany op; _apply reverse restores it.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const A=Shape.make('rect',{x:0,y:0,w:100,h:100});
+    const B=Shape.make('rect',{x:200,y:0,w:100,h:100});
+    Store.commit({op:'add',shape:A});
+    Store.commit({op:'add',shape:B});
+    state.selection=new Set([A.id,B.id]);
+    doDuplicate();
+    // After duplicate: 4 shapes total; selection = copies (not originals)
+    assert.strictEqual(state.shapes.length, 4, 'doDuplicate: 4 shapes total (2 originals + 2 copies)');
+    assert.ok(!state.selection.has(A.id)&&!state.selection.has(B.id), 'doDuplicate: originals not selected after duplicate');
+    Store.undo();
+    // Before fix: selection is empty (copies deleted, originals never re-selected)
+    // After fix: selection = {A.id, B.id} (origSel restored by _apply)
+    assert.ok(state.selection.has(A.id), 'doDuplicate undo: A.id restored to selection');
+    assert.ok(state.selection.has(B.id), 'doDuplicate undo: B.id restored to selection');
+    assert.strictEqual(state.shapes.length, 2, 'doDuplicate undo: copies removed, 2 originals remain');
+    console.log('  ✓ doDuplicate undo: original selection restored (Figma/Excalidraw parity)');
+  }
+
   // v1.7.03: _sfbCapture must be idempotent — re-calling after mutation must NOT overwrite the original before-state.
   // Before fix: second _sfbCapture overwrites _sbf with current (mutated) value, so _sfbFlush sees before===after and records nothing.
   // After fix: second _sfbCapture is a no-op when the key is already captured, so _sfbFlush correctly records the style change.
@@ -4618,7 +4641,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 683; // prev 681 + _sfbCapture idempotency (2)
+  pass += 688; // prev 683 + doDuplicate undo origSel (5)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
