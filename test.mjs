@@ -4596,8 +4596,29 @@ try {
     console.log('  ✓ doDelete: frame children deleted with frame (parity with doDuplicate); undo restores');
   }
 
+  // v1.7.03: _sfbCapture must be idempotent — re-calling after mutation must NOT overwrite the original before-state.
+  // Before fix: second _sfbCapture overwrites _sbf with current (mutated) value, so _sfbFlush sees before===after and records nothing.
+  // After fix: second _sfbCapture is a no-op when the key is already captured, so _sfbFlush correctly records the style change.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const A=Shape.make('rect',{x:0,y:0,w:100,h:100,opacity:0.5});
+    Store.commit({op:'add',shape:A});
+    state.selection=new Set([A.id]);
+    _sfbCapture('opacity');                                         // captures original 0.5
+    state.shapes.find(s=>s.id===A.id).opacity=0.3;                 // simulates input-event mutation
+    _sfbCapture('opacity');                                         // OLD: overwrites to 0.3; NEW: no-op (idempotent)
+    const histBefore=state.history.length;
+    _sfbFlush('opacity', 0.3);
+    // Before fix: before===0.3===v, no op recorded → history.length unchanged
+    // After fix: before=0.5 !== v=0.3, op recorded → history.length + 1
+    assert.strictEqual(state.history.length, histBefore+1, '_sfbCapture idempotent: style op recorded even after re-capture');
+    Store.undo();
+    assert.strictEqual(state.shapes.find(s=>s.id===A.id).opacity, 0.5, '_sfbCapture idempotent: undo restores original opacity');
+    console.log('  ✓ _sfbCapture: idempotent — re-calling after mutation preserves original before-state');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 681; // prev 677 + doDelete frame-children (4)
+  pass += 683; // prev 681 + _sfbCapture idempotency (2)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

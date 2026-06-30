@@ -2,6 +2,19 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.03] - 2026-06-30
+
+### Fixed
+- **`_sfbCapture` 冪等性バグ修正 — スライダー undo の before-state が上書きされる問題**:
+  `_sfbCapture(p)` は `pointerdown`/`focus` でシェイプの元の値を `_sbf` に記録し、
+  `_sfbFlush(p,v)` が差分を `style` op として push する設計。しかし再呼び出し時に
+  既存エントリを無条件で上書きするため、変異後に再度 `_sfbCapture` が呼ばれると
+  before-state が現在値 (= after値) に上書きされ `before===after` となり op が記録されない。
+  修正: `!(id+p in _sbf)` ガードを追加し冪等にした (削除後の再キャプチャは従来通り動作)。
+  **非空虚テスト** (2 assert): A.opacity=0.5 でキャプチャ → 0.3 に変異 →
+  再度キャプチャ → flush(0.3) → 修正前は op なし (テスト失敗)、修正後は op 記録。
+  undo で 0.5 に戻ることも確認。
+
 ## [1.7.02] - 2026-06-30
 
 ### Fixed
