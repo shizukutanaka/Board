@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.6.91 — Design Tokens
+   Board v1.6.92 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -578,6 +578,9 @@ body{visibility:visible}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
       <span data-t="export">Export</span>
     </button>
+    <button class="btn icon" id="btnInstall" aria-label="Install app" title="Install Board as an app" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V3M8 12l4 4 4-4M4 20h16"/></svg>
+    </button>
     <button class="btn icon" id="btnHelp" aria-label="Help" title="Help (?)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 015 0c0 1.7-2.5 2.3-2.5 4M12 17h.01"/></svg>
     </button>
@@ -718,7 +721,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.91';
+const V='1.6.92';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -3830,7 +3833,7 @@ const Share={
       state.selection.clear();state.wclock={};
       sortZ();invalidate();
       Store._recordCommitted({op:'replace',before,after:clone(state.shapes)});
-      document.getElementById('docName').value=state.docName;
+      document.getElementById('docName').value=state.docName;_syncDocTitle();
       // clean URL
       history.replaceState(null,'',location.pathname);
       UI.toast(t('imported'),'ok');
@@ -4116,6 +4119,18 @@ const UI={
   }};
 
 // ====================== WIRE-UP ======================
+// PWA install prompt deferred event reference (v1.6.92). Captured in 'beforeinstallprompt',
+// cleared after install or dismissal. null = browser hasn't signalled installability yet.
+let _installPrompt=null;
+// Install-button click handler — exported so test.mjs can call it directly.
+async function _onBtnInstall(){
+  if(!_installPrompt)return;
+  _installPrompt.prompt();
+  await _installPrompt.userChoice;
+  _installPrompt=null;
+  const btn=document.getElementById('btnInstall');
+  if(btn)btn.hidden=true;
+}
 function wire(){
   {const sq=document.createElement('input');sq.id='sqinput';sq.type='text';sq.placeholder=t('search');sq.setAttribute('aria-label',t('search'));sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--brand);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';document.body.appendChild(sq);sq.addEventListener('input',()=>{_sq=sq.value;_sqNav.idx=-1;_sqNav.lastQ='';invalidate()});sq.addEventListener('keydown',ev=>{if(ev.key==='Escape'){_sq='';_sqNav.idx=-1;_sqNav.lastQ='';sq.style.display='none';sq.value='';invalidate();canvas.focus();}else if(ev.key==='Enter'&&!ev.isComposing){ev.preventDefault();_sqAdvance(ev.shiftKey?-1:1);}});}
   // tool buttons
@@ -4140,6 +4155,7 @@ function wire(){
     docNameEl.addEventListener('compositionend',_commitDocName);
     docNameEl.addEventListener('change',()=>{state.docName=docNameEl.value||'Untitled';_syncDocTitle();Persist.schedule()});
   }
+  document.getElementById('btnInstall').onclick=_onBtnInstall;
   document.getElementById('btnHelp').onclick=()=>UI.toggleHelp();
   document.getElementById('helpClose').onclick=()=>UI.toggleHelp();
   document.getElementById('help').addEventListener('click',e=>{
@@ -4213,6 +4229,22 @@ function wire(){
   // online
   window.addEventListener('online',UI.updateOnline);
   window.addEventListener('offline',UI.updateOnline);
+  // PWA install button (v1.6.92): show when browser signals installability; hide after install.
+  // `beforeinstallprompt` fires on Chrome/Edge/Samsung Internet when all install criteria are
+  // met. Safari/Firefox do not fire it — the button stays hidden there (progressive enhancement).
+  // We call e.preventDefault() to suppress the browser's ambient mini-infobar prompt so that
+  // install is fully user-initiated via our button. Ref: web.dev/customize-install/
+  window.addEventListener('beforeinstallprompt',e=>{
+    e.preventDefault();
+    _installPrompt=e;
+    const btn=document.getElementById('btnInstall');
+    if(btn)btn.hidden=false;
+  });
+  window.addEventListener('appinstalled',()=>{
+    _installPrompt=null;
+    const btn=document.getElementById('btnInstall');
+    if(btn)btn.hidden=true;
+  });
   // resize
   window.addEventListener('resize',resize);
   // devicePixelRatio change (window dragged to a different-density monitor) fires no resize

@@ -564,6 +564,15 @@ const checks = [
   ['share-copy button routes through copyText (not raw navigator.clipboard)',
     html.includes('await copyText(url)')&&!/shareCopyBtn[\s\S]{0,160}navigator\.clipboard\.writeText/.test(html)],
   ['copyFailed i18n key in ja and en', (html.match(/copyFailed:/g)||[]).length>=2],
+  // v1.6.92: PWA install button (beforeinstallprompt)
+  ['beforeinstallprompt handler stores deferred prompt and shows button',
+    html.includes('beforeinstallprompt')&&html.includes('e.preventDefault()')&&html.includes('_installPrompt=e')&&html.includes("btn.hidden=false")],
+  ['appinstalled handler clears prompt and hides button',
+    html.includes('appinstalled')&&html.includes('_installPrompt=null')&&html.includes("btn.hidden=true")],
+  ['btnInstall hidden by default (no unsolicited install prompt)',
+    html.includes('id="btnInstall"')&&html.includes('hidden')],
+  ['_onBtnInstall exported for testing',
+    html.includes('async function _onBtnInstall()')&&html.includes('_installPrompt.prompt()')&&html.includes('_installPrompt.userChoice')],
 ];
 
 let pass = 0, fail = 0;
@@ -664,7 +673,8 @@ try {
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText,
-             flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _syncDocTitle, Presentation };
+             flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _syncDocTitle, Presentation,
+             _onBtnInstall, _getInstallPrompt: () => _installPrompt, _setInstallPrompt: (v) => { _installPrompt = v; } };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -680,7 +690,8 @@ try {
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText,
-          flushErase, _pushEraseBatch, _cancelPointerGesture, _syncDocTitle, Presentation } = api;
+          flushErase, _pushEraseBatch, _cancelPointerGesture, _syncDocTitle, Presentation,
+          _onBtnInstall, _getInstallPrompt, _setInstallPrompt } = api;
 
   console.log('\n-- behavioural --');
 
@@ -4218,8 +4229,38 @@ try {
     console.log('  ✓ Presentation._acquireWakeLock/release: screen stays on during slides (Screen Wake Lock API)');
   }
 
+  // v1.6.92: PWA install button (beforeinstallprompt) — progressive enhancement,
+  // only shows when the browser fires the event. Tests: prompt() called on click,
+  // button hidden after install, no-op when prompt is null.
+  // Must fail before fix (_installPrompt undefined) and pass after.
+  {
+    // 1. _setInstallPrompt stores prompt and _getInstallPrompt retrieves it
+    assert.strictEqual(_getInstallPrompt(), null,
+      'beforeinstallprompt: _installPrompt starts null');
+    let promptCalled = false;
+    const mockPrompt = {
+      prompt() { promptCalled = true; },
+      userChoice: Promise.resolve({ outcome: 'accepted' }),
+    };
+    _setInstallPrompt(mockPrompt);
+    assert.strictEqual(_getInstallPrompt(), mockPrompt,
+      'beforeinstallprompt: _setInstallPrompt stores event');
+
+    // 2. _onBtnInstall calls prompt() and clears _installPrompt
+    await _onBtnInstall();
+    assert.strictEqual(promptCalled, true,
+      'beforeinstallprompt: btnInstall click calls prompt()');
+    assert.strictEqual(_getInstallPrompt(), null,
+      'beforeinstallprompt: _installPrompt cleared after userChoice');
+
+    // 3. _onBtnInstall is safe when _installPrompt is already null (no-op)
+    assert.doesNotThrow(() => _onBtnInstall(),
+      'beforeinstallprompt: _onBtnInstall no-op when prompt is null');
+    console.log('  ✓ PWA install button: prompt() called on click, cleared after install (beforeinstallprompt)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 630; // prev 627 + wake lock acquire (1) + release (1) + no-op guard (1)
+  pass += 635; // prev 630 + install prompt null (1) + stores event (1) + prompt() called (1) + cleared (1) + no-op doesNotThrow (1)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

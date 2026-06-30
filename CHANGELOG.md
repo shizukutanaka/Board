@@ -2,6 +2,22 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.92] - 2026-06-30
+
+### Added
+- **PWA install button (beforeinstallprompt) — ユーザー起動のインストール UI**:
+  Zenn/Qiita「beforeinstallprompt を使って PWA のインストールボタンを実装する」パターン。
+  Board は PWA マニフェスト + Service Worker を備えているが、ブラウザが表示する ambient
+  mini-infobar に頼るだけで、ユーザーが意図的にインストールできる UI がなかった。
+  修正: `beforeinstallprompt` イベントを `e.preventDefault()` で横取りし `_installPrompt`
+  に保存。トップバーに install ボタン(`btnInstall`)を追加しデフォルト `hidden`。ブラウザが
+  インストール可能と判断したときのみボタンが現れ、クリックすると `prompt()` + `userChoice`
+  で完全ユーザー起動のインストールフローを起動。`appinstalled` で自動非表示。
+  `navigator.wakeLock` と同じく **プログレッシブエンハンスメント**: Safari / Firefox など
+  `beforeinstallprompt` 非対応ブラウザではボタンが出ないだけ (エラーなし)。
+  **非空虚テスト** (5 assert): null スタート、イベント保存、`prompt()` 呼び出し、
+  userChoice 後クリア、null 時 no-op を各々失敗→成功で確認。
+
 ## [Unreleased]
 
 ### Security
