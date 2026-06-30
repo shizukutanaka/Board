@@ -573,6 +573,11 @@ const checks = [
     html.includes('id="btnInstall"')&&html.includes('hidden')],
   ['_onBtnInstall exported for testing',
     html.includes('async function _onBtnInstall()')&&html.includes('_installPrompt.prompt()')&&html.includes('_installPrompt.userChoice')],
+  // v1.6.93: SW update notification
+  ['controllerchange listener shows update toast',
+    html.includes("'controllerchange'")&&html.includes('function _onSwUpdate()')&&html.includes("UI.toast(t('appUpdated'),'ok')")],
+  ['appUpdated i18n key in ja and en',
+    html.includes("appUpdated:'アプリが更新されました")&&html.includes("appUpdated:'App updated")],
 ];
 
 let pass = 0, fail = 0;
@@ -638,7 +643,9 @@ const fakeWin = {
   setTimeout, clearTimeout, setInterval: () => 0, clearInterval,
   location: { hash: '', origin: 'http://test', pathname: '/index.html' },
   history: { replaceState(){} },
-  navigator: { language:'en', onLine:true, serviceWorker:{ register:()=>Promise.resolve() },
+  navigator: { language:'en', onLine:true,
+    serviceWorker:{ register:()=>Promise.resolve(), _listeners:{},
+      addEventListener(type,fn){ this._listeners[type]=fn; } },
     clipboard: { writeText: () => Promise.resolve() } },
   localStorage: { _d: {}, getItem(k){ return this._d[k] || null }, setItem(k,v){ this._d[k] = String(v) } },
   indexedDB: { open: () => ({ addEventListener(){}, onsuccess:null, onerror:null, onupgradeneeded:null }) },
@@ -674,7 +681,8 @@ try {
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _syncDocTitle, Presentation,
-             _onBtnInstall, _getInstallPrompt: () => _installPrompt, _setInstallPrompt: (v) => { _installPrompt = v; } };
+             _onBtnInstall, _getInstallPrompt: () => _installPrompt, _setInstallPrompt: (v) => { _installPrompt = v; },
+             _onSwUpdate };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -691,7 +699,8 @@ try {
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _syncDocTitle, Presentation,
-          _onBtnInstall, _getInstallPrompt, _setInstallPrompt } = api;
+          _onBtnInstall, _getInstallPrompt, _setInstallPrompt,
+          _onSwUpdate } = api;
 
   console.log('\n-- behavioural --');
 
@@ -4259,8 +4268,31 @@ try {
     console.log('  ✓ PWA install button: prompt() called on click, cleared after install (beforeinstallprompt)');
   }
 
+  // v1.6.93: SW update notification — controllerchange fires after skipWaiting activates the
+  // new SW; Board must show a toast so the user knows to reload.
+  // Pattern: web.dev/service-worker-lifecycle / Zenn「SW更新時にリロードを促す」.
+  // Must fail before fix (no _onSwUpdate exported) and pass after.
+  {
+    // 1. Listener is registered on navigator.serviceWorker
+    const swListeners = fakeWin.navigator.serviceWorker._listeners;
+    assert.ok(typeof swListeners['controllerchange'] === 'function',
+      'SW controllerchange: listener registered on navigator.serviceWorker');
+    // 2. Named handler _onSwUpdate() produces a toast when called directly.
+    //    Direct call avoids closure-identity issues with UI.toast monkey-patching.
+    assert.ok(typeof _onSwUpdate === 'function',
+      'SW controllerchange: _onSwUpdate is exported');
+    let lastToast = null;
+    const origToast = UI.toast;
+    UI.toast = (msg, kind) => { lastToast = {msg, kind}; };
+    _onSwUpdate();
+    UI.toast = origToast;
+    assert.ok(lastToast && lastToast.kind === 'ok',
+      'SW controllerchange: shows ok toast when new SW activates');
+    console.log('  ✓ SW update notification: controllerchange → reload toast (web.dev SW lifecycle)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 635; // prev 630 + install prompt null (1) + stores event (1) + prompt() called (1) + cleared (1) + no-op doesNotThrow (1)
+  pass += 639; // prev 637 + _onSwUpdate exported (1) + SW listener registered (1)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

@@ -2,6 +2,19 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.93] - 2026-06-30
+
+### Added
+- **Service Worker 更新通知 (controllerchange) — SW ライフサイクルのフィードバック**:
+  web.dev「Service Worker のライフサイクル」/ Zenn「SW 更新時にリロードを促す」パターン。
+  Board の SW は `skipWaiting()` + `clients.claim()` で即時活性化するが、ページには何の
+  フィードバックもなかった。修正: `navigator.serviceWorker` に `controllerchange` リスナーを
+  登録し、新 SW が引き継いだ瞬間に「アプリが更新されました — 再読み込みで最新版に」トーストを
+  表示。ユーザーはトーストを見て任意のタイミングでリロードできる。
+  実装は `_onSwUpdate()` 名前付き関数として切り出しテストハーネスからエクスポート。
+  **非空虚テスト** (3 assert): リスナー登録確認、`_onSwUpdate` エクスポート確認、
+  呼び出し時の `ok` トースト確認を失敗→成功で検証。
+
 ## [1.6.92] - 2026-06-30
 
 ### Added

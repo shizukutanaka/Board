@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.6.92 — Design Tokens
+   Board v1.6.93 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -721,7 +721,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.92';
+const V='1.6.93';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -779,6 +779,7 @@ const I18N={
     share:'共有',shareTitle:'共有',
     shareUrlHint:'このURLをコピーして送ると、相手に内容が共有されます',
     shareCopyUrl:'URLをコピー',shareUrlCopied:'URLをコピーしました',copyFailed:'コピーできませんでした',
+    appUpdated:'アプリが更新されました — 再読み込みで最新版に',
     sharePeer:'相手と直接つなぐ (実験的)',
     shareStep1:'手順1: あなたが「招待コード」を作成',
     shareStep2:'手順2: 相手に送って「応答コード」をもらう',
@@ -828,6 +829,7 @@ const I18N={
     share:'Share',shareTitle:'Share',
     shareUrlHint:'Copy this URL and send it — the recipient gets your board.',
     shareCopyUrl:'Copy URL',shareUrlCopied:'URL copied',copyFailed:'Copy failed',
+    appUpdated:'App updated — reload for latest version',
     sharePeer:'Direct peer connection (experimental)',
     shareStep1:'Step 1: You create an "invite code"',
     shareStep2:'Step 2: Send it to peer, get "answer code" back',
@@ -4511,6 +4513,8 @@ const Minimap=(()=>{
 })();
 
 // ====================== SERVICE WORKER (inline) ======================
+// Named handler exported for tests — avoids closure-identity issues with UI.toast mocking.
+function _onSwUpdate(){ UI.toast(t('appUpdated'),'ok'); }
 // offline-first caching of this single page
 if('serviceWorker' in navigator){
   const sw=`
@@ -4530,6 +4534,11 @@ if('serviceWorker' in navigator){
     });`;
   const bl=new Blob([sw],{type:'text/javascript'});
   navigator.serviceWorker.register(URL.createObjectURL(bl)).catch(()=>{});
+  // v1.6.93: SW update notification. skipWaiting()+clients.claim() in the SW means a
+  // new version activates immediately, but the page gets no feedback. Listen for
+  // controllerchange (fires when a new SW takes over) and prompt a reload.
+  // Pattern: web.dev/service-worker-lifecycle / Zenn「SW更新時にリロードを促す」.
+  navigator.serviceWorker.addEventListener('controllerchange',_onSwUpdate);
 }
 </script>
 </body>
