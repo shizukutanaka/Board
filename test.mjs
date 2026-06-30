@@ -461,7 +461,7 @@ const checks = [
   ['rotated resize works in local frame + world re-pin', html.includes("sp=_rotPt(wp.x,wp.y,cx0,cy0,-orig.rotate);") && html.includes("sh.x+=tgt.x-cur.x;sh.y+=tgt.y-cur.y;")],
   ['selection outline traces rotated box', html.includes("if(single&&single.rotate&&single.w!=null){")],
   // v1.6.70: keyboard resize (Alt+arrow)
-  ['resize op registered (apply, validate, remote)', html.includes("case 'resize':\n      case 'align':{") && html.includes("case 'resize':  return patches(op.after)") && html.includes("'align','style','resize'])")],
+  ['resize op registered (apply, validate, remote)', html.includes("case 'resize':\n      case 'align':{") && html.includes("case 'resize':{const noLock=") && html.includes("'align','style','resize'])")],
   ['Alt+arrow keyboard-resizes box shapes', html.includes("Store._recordCommitted({op:'resize',before,after});") && html.includes("sh.w=Math.max(4,sh.w+dw);sh.h=Math.max(4,sh.h+dh);")],
   // v1.6.71: image import error handling
   ['imgErr i18n key in both locales', html.includes("imgErr:'画像を読み込めませんでした'") && html.includes("imgErr:'Image failed to load'")],
@@ -602,6 +602,16 @@ const checks = [
     html.includes('_pasteCount')&&html.includes('_lastClipboard')&&html.includes('vCx-srcCx+co')],
   ['wrapText normalizes \\r\\n and \\r before splitting (Windows clipboard parity)',
     html.includes("replace(/\\r\\n/g,'\\n').replace(/\\r/g,'\\n')")],
+  // v1.7.23: validRemotePayload must block locked key in remote align ops
+  ['remote align op cannot set locked (noLock guard in validRemotePayload)',
+    html.includes("case 'align':{const noLock=p=>!('locked' in p);")],
+  // v1.7.24a: _apply clear backward must restore pre-clear selection
+  ['_apply clear backward restores origSel (mirror of del undo)',
+    html.includes("if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));") &&
+    html.includes("if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
+  // v1.7.24b: validRemotePayload must block locked key in remote style/resize ops
+  ['remote style/resize ops cannot set locked (noLock guard extended)',
+    html.includes("case 'resize':{const noLock=p=>!('locked' in p);")],
 ];
 
 let pass = 0, fail = 0;
@@ -701,7 +711,7 @@ try {
              doBringFront, doSendBack, doBringForward, doSendBackward,
              doAlign, doFlip, snapV, snapPt,
              getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
-             doGroup, doUngroup, doPaste, doDuplicate, doCopy, pickTop, buildSVG, exportScale, inView, wrapText, cycleSel, describeShape,
+             doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
@@ -720,7 +730,7 @@ try {
           doBringFront, doSendBack, doBringForward, doSendBackward,
           doAlign, doFlip, snapV, snapPt,
           getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
-          doGroup, doUngroup, doPaste, doDuplicate, doCopy, pickTop, buildSVG, exportScale, inView, wrapText, cycleSel, describeShape,
+          doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
@@ -5313,8 +5323,67 @@ try {
     console.log('  ✓ validRemotePayload: remote align op with locked key rejected (v1.7.23)');
   }
 
+  // v1.7.24a: _apply('clear', backward) must restore pre-clear selection (origSel).
+  // Bug: doDelete patches origSel onto the history entry after Store.commit so that
+  // _apply('del', backward) can restore the pre-delete selection. doClearAll never sets
+  // origSel, and _apply('clear', backward) never reads it — so undo of Clear-All leaves
+  // selection empty even if the user had shapes selected before clearing.
+  // Fix: (1) doClearAll captures origSel before commit and patches it onto the history
+  // entry (mirror of doDelete). (2) _apply('clear', backward) restores origSel using
+  // the same pattern as _apply('del', backward).
+  // Note: doClearAll itself cannot be called directly from the test harness (it shows a
+  // confirm() dialog that returns false in the fake window). Instead we directly commit a
+  // 'clear' op and manually patch origSel — this isolates the _apply backward fix.
+  // The doClearAll caller-side fix (capturing and patching origSel) is covered by the
+  // string presence test: "doClearAll patches origSel onto clear history entry".
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const caA=Shape.make('rect',{x:0,y:0,w:40,h:40});
+    const caB=Shape.make('rect',{x:60,y:0,w:40,h:40});
+    Store.commit({op:'add',shape:caA});Store.commit({op:'add',shape:caB});
+    state.selection=new Set([caA.id,caB.id]);
+    // Simulate doClearAll without confirm(): commit clear op + manually patch origSel
+    const origSel=[...state.selection];
+    Store.commit({op:'clear',shapes:JSON.parse(JSON.stringify(state.shapes)),wc:{}});
+    state.history[state.histIdx].origSel=origSel; // caller-side fix (doClearAll)
+    // Assertion 1: shapes gone after clear
+    assert.strictEqual(state.shapes.length,0,'v1.7.24a: clear op removes all shapes');
+    Store.undo();
+    // Assertion 2: shapes restored after undo
+    assert.strictEqual(state.shapes.length,2,'v1.7.24a: undo of clear restores shapes');
+    // Assertion 3: pre-clear selection restored by _apply('clear', backward).
+    // BEFORE fix: selection.size===0 (_apply ignores origSel). AFTER fix: both shapes selected.
+    assert.ok(state.selection.has(caA.id)&&state.selection.has(caB.id),
+      'v1.7.24a: _apply clear backward restores origSel (selection not left empty)');
+    console.log('  ✓ _apply clear backward: pre-clear selection restored via origSel (v1.7.24a)');
+  }
+
+  // v1.7.24b: remote 'style'/'resize' ops must also not be usable to lock shapes.
+  // v1.7.23 blocked 'locked' from remote 'align' ops, but 'style' and 'resize' share the
+  // same validRemotePayload path (patches() only calls validPatch, which accepts booleans).
+  // A peer can send {op:'style', after:[{id:X, locked:true}]} to achieve the same lock
+  // bypass that v1.7.23 closed for 'align'.
+  // Fix: apply the same !('locked' in p) guard to 'style' and 'resize' in validRemotePayload.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const srA=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:srA});
+    const liveSR=()=>state.shapes.find(s=>s.id===srA.id);
+    // Peer sends style op smuggling locked:true.
+    // BEFORE fix: liveSR().locked becomes true. AFTER fix: op rejected, stays falsy.
+    Store.applyRemote({op:'style',after:[{id:srA.id,locked:true}],clock:{peer:'evil2',seq:1,ts:1}});
+    assert.ok(!liveSR().locked,'v1.7.24b: remote style op with locked:true must not lock local shape');
+    // Peer sends resize op smuggling locked:true.
+    Store.applyRemote({op:'resize',after:[{id:srA.id,locked:true}],clock:{peer:'evil2',seq:2,ts:2}});
+    assert.ok(!liveSR().locked,'v1.7.24b: remote resize op with locked:true must not lock local shape');
+    // Valid remote style op (stroke change, no locked key) still applies normally.
+    Store.applyRemote({op:'style',after:[{id:srA.id,stroke:'#ff0000'}],clock:{peer:'good2',seq:1,ts:1}});
+    assert.strictEqual(liveSR().stroke,'#ff0000','v1.7.24b: valid remote style op (no locked key) still applies');
+    console.log('  ✓ validRemotePayload: remote style/resize ops with locked key rejected (v1.7.24b)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 776; // prev 773 + remote align locked-key rejection (3)
+  pass += 782; // prev 776 + doClearAll origSel (3) + style/resize locked block (3)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

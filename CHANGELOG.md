@@ -2,6 +2,26 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.24] - 2026-06-30
+
+### Fixed
+- **`undo` の Clear-All が選択状態を復元しない**:
+  `doDelete` は `Store.commit` 後に `origSel` を履歴エントリに格納し、`_apply('del', backward)` が
+  削除前の選択を復元する (`state.history[state.histIdx].origSel = origSel`)。
+  `doClearAll` はこの格納を行っておらず、`_apply('clear', backward)` も `origSel` を読まなかった。
+  結果: Clear-All の Undo でシェイプは戻るが選択は空のまま、直後の Ctrl+X が効かない。
+  修正: `doClearAll` に `origSel` キャプチャ + 履歴パッチを追加、
+  `_apply('clear', backward)` に `if(op.origSel)state.selection=...` 復元を追加
+  (`doDelete` / `_apply('del', backward)` と完全なパリティ)。
+  **非空虚テスト** (3 assert): 'clear' op に origSel をセットしてアンドゥ後に
+  選択が復元されることを確認 (`_apply` 後方パスを直接テスト)。
+- **リモートの `style`/`resize` op が `locked` キーでシェイプをロックできる**:
+  v1.7.23 は `'align'` の `validRemotePayload` に `!('locked' in p)` ガードを追加したが、
+  `'style'` と `'resize'` は同じ `patches()` ヘルパーを共有したまま残っていた。
+  修正: `'style'` / `'resize'` ケースを同様に分割し、同じ `noLock` ガードを追加。
+  **非空虚テスト** (3 assert): `{op:'style', after:[{id:X, locked:true}]}` および
+  `{op:'resize', ...}` が拒否されること、有効な style op は通常どおり適用されることを確認。
+
 ## [1.7.23] - 2026-06-30
 
 ### Fixed
