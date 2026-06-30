@@ -2,6 +2,19 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.05] - 2026-06-30
+
+### Fixed
+- **Tab キー巡回がロックされたシェイプを除外 (doMove/doDelete/doRotate/doFlip との整合)**:
+  Tab/Shift+Tab でシェイプを巡回する際、ロックされたシェイプが選択候補に含まれていた。
+  ロックシェイプは移動・リサイズ・削除が不可なため、Tab で選択できても操作できない。
+  修正: Tab ハンドラの `ids` 構築を `state.shapes.map(s=>s.id)` から
+  `state.shapes.filter(s=>!s.locked).map(s=>s.id)` へ変更。
+  ロックシェイプが 0 の場合も含め既存の `cycleSel` ロジック全体が正常に動作する。
+  **非空虚テスト** (4 assert): A (解除) + B (ロック) + C (解除) で A から Tab →
+  修正前は `cycleSel(allIds, A, +1) === B` (ロックに着地)、
+  修正後は `cycleSel(filteredIds, A, +1) === C` (B をスキップして C へ)。
+
 ## [1.7.04] - 2026-06-30
 
 ### Fixed

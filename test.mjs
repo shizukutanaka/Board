@@ -394,6 +394,8 @@ const checks = [
   ['lock/unlock ctx labels in ja and en', html.includes("ctxLock:'ロック'") && html.includes("ctxLock:'Lock'")],
   ['lock context-menu entry toggles label by locked state', html.includes("?'ctxUnlock':'ctxLock','',doLock")],
   ['locked selection drawn with dashed outline, no handles', html.includes("const lockedSel=sel.every(s=>s.locked)") && html.includes("if(lockedSel)return")],
+  // v1.7.05: Tab cycling excludes locked shapes (parity with doMove/doDelete/doRotate/doFlip)
+  ['Tab cycling excludes locked shapes (filter before cycleSel)', html.includes("const ids=state.shapes.filter(s=>!s.locked).map(s=>s.id)")],
   // v1.6.60: bound connectors - arrow/line endpoints follow bound shapes
   ['connEnds helper derives bound endpoints', html.includes("function connEnds") && html.includes("function _edgePt")],
   ['G.bbox line uses connEnds', html.includes("const e=connEnds(s);\n      const x=Math.min(e.x1,e.x2)")],
@@ -4596,6 +4598,29 @@ try {
     console.log('  ✓ doDelete: frame children deleted with frame (parity with doDuplicate); undo restores');
   }
 
+  // v1.7.05: Tab cycling (cycleSel) must skip locked shapes.
+  // The Tab key handler builds ids from state.shapes. Before fix, it used .map(s=>s.id) (no lock
+  // filter), so cycleSel could land on a locked shape. After fix, .filter(s=>!s.locked) is applied.
+  // Non-vacuous: assert unfiltered ids include locked B AND cycleSel lands on B (bug reproduced);
+  // assert filtered ids exclude B AND cycleSel skips from A straight to C (fix verified).
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const A=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    const B=Shape.make('rect',{x:100,y:0,w:50,h:50});
+    const C=Shape.make('rect',{x:200,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:A});Store.commit({op:'add',shape:B});Store.commit({op:'add',shape:C});
+    state.shapes.find(s=>s.id===B.id).locked=true;
+    // bug scenario: unfiltered ids (before fix) include locked B; cycleSel lands on it
+    const allIds=state.shapes.map(s=>s.id);
+    assert.ok(allIds.includes(B.id), 'sanity: unfiltered ids include locked B');
+    assert.strictEqual(cycleSel(allIds,A.id,1), B.id, 'bug: unfiltered cycleSel from A lands on locked B');
+    // fix scenario: filtered ids (after fix) exclude locked B; cycleSel skips from A to C
+    const filteredIds=state.shapes.filter(s=>!s.locked).map(s=>s.id);
+    assert.ok(!filteredIds.includes(B.id), 'fix: filtered ids exclude locked B');
+    assert.strictEqual(cycleSel(filteredIds,A.id,1), C.id, 'fix: filtered cycleSel from A skips locked B, lands on C');
+    console.log('  ✓ cycleSel: filtered Tab cycling correctly skips locked shapes');
+  }
+
   // v1.7.04: doDuplicate undo must restore the original selection (Figma/Excalidraw parity).
   // Before fix: _apply(addMany, false) only deletes copies from selection, leaving selection empty.
   // After fix: doDuplicate stores origSel on the addMany op; _apply reverse restores it.
@@ -4641,7 +4666,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 688; // prev 683 + doDuplicate undo origSel (5)
+  pass += 692; // prev 688 + Tab cycling skips locked (4)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
