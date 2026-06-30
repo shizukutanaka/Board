@@ -632,6 +632,12 @@ const checks = [
   // v1.7.34: _apply ungroup backward must use optional chaining on op.gids
   ['_apply ungroup backward: op.gids?.[0] optional chaining null guard',
     html.includes("const gid=op.gids?.[0];")],
+  // v1.7.35: validRemotePayload style/resize/align must require before (before==null previously allowed)
+  ['validRemotePayload style/resize/align: before required (op.before==null removed from fallback)',
+    !html.includes("(op.before==null||(patches(op.before)&&op.before.every(noLock)))")],
+  // v1.7.35: text-blur del origSel pattern must exist at the existing-text-empty path
+  ['text-blur del: origSel captured and patched before and after Store.commit del',
+    html.includes("const origSel=[...state.selection];\n        Store.commit({op:'del',shapes:[orig]});\n        if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
   // v1.7.32: _apply group backward must guard op.before (parity with ungroup backward)
   ['_apply group backward: if(op.before) guard added (parity with ungroup)',
     html.includes("if(op.before)for(const b of op.before){const sh=byId(b.id);if(sh){if(b.groupId)sh.groupId=b.groupId;else delete sh.groupId}}\n        }\n        break;}\n      case 'ungroup':")],
@@ -5347,8 +5353,8 @@ try {
     Store.applyRemote({op:'align',after:[{id:tR.id,locked:true}],clock:{peer:'evil',seq:1,ts:1}});
     assert.ok(!liveTR().locked,'v1.7.23: remote align op with locked:true must not lock local shape');
     // Verify a valid remote align op (no locked key) still applies normally.
-    Store.applyRemote({op:'align',after:[{id:tR.id,x:99}],clock:{peer:'good',seq:1,ts:1}});
-    assert.strictEqual(liveTR().x,99,'v1.7.23: valid remote align op (no locked key) still applies');
+    Store.applyRemote({op:'align',after:[{id:tR.id,x:99}],before:[{id:tR.id,x:0}],clock:{peer:'good',seq:1,ts:1}});
+    assert.strictEqual(liveTR().x,99,'v1.7.23: valid remote align op (no locked key, with before) still applies');
     console.log('  ✓ validRemotePayload: remote align op with locked key rejected (v1.7.23)');
   }
 
@@ -5406,8 +5412,8 @@ try {
     Store.applyRemote({op:'resize',after:[{id:srA.id,locked:true}],clock:{peer:'evil2',seq:2,ts:2}});
     assert.ok(!liveSR().locked,'v1.7.24b: remote resize op with locked:true must not lock local shape');
     // Valid remote style op (stroke change, no locked key) still applies normally.
-    Store.applyRemote({op:'style',after:[{id:srA.id,stroke:'#ff0000'}],clock:{peer:'good2',seq:1,ts:1}});
-    assert.strictEqual(liveSR().stroke,'#ff0000','v1.7.24b: valid remote style op (no locked key) still applies');
+    Store.applyRemote({op:'style',after:[{id:srA.id,stroke:'#ff0000'}],before:[{id:srA.id,stroke:'#0F172A'}],clock:{peer:'good2',seq:1,ts:1}});
+    assert.strictEqual(liveSR().stroke,'#ff0000','v1.7.24b: valid remote style op (no locked key, with before) still applies');
     console.log('  ✓ validRemotePayload: remote style/resize ops with locked key rejected (v1.7.24b)');
   }
 
@@ -5679,8 +5685,24 @@ try {
     console.log('  ✓ _apply ungroup backward: null guard for op.gids prevents TypeError crash (v1.7.34)');
   }
 
+  // v1.7.35: validRemotePayload style/resize/align: before==null was accepted, making it possible
+  // for a remote peer to apply a style/resize/align op that can't be undone (backward path silently
+  // no-ops when before is null). After fix, before is required by the validator.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const sv=Shape.make('rect',{x:0,y:0,w:50,h:50,fill:'blue'});
+    state.shapes.push(sv);
+    // Remote style op with before:null — should be REJECTED after fix
+    Store.applyRemote({op:'style', after:[{id:sv.id,fill:'red'}], before:null, clock:{peer:'p35',seq:1,ts:1}});
+    const sh35=state.shapes.find(s=>s.id===sv.id);
+    assert.ok(sh35,'v1.7.35 setup: shape exists after rejected remote op');
+    assert.strictEqual(sh35.fill,'blue',
+      'v1.7.35: remote style op with before:null must be rejected (before required by validRemotePayload)');
+    console.log('  ✓ validRemotePayload style/resize/align: before:null op rejected (v1.7.35)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 818; // prev 816 + ungroup gids validator + optional-chain guard (2)
+  pass += 820; // prev 818 + style/resize/align validator before required (2)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

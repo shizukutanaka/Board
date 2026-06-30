@@ -2,6 +2,37 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.35] - 2026-06-30
+
+### Fixed
+- **`validRemotePayload` の `style`/`resize`/`align` op が `op.before==null` を許容 (セキュリティ/整合性)**:
+  `_apply` の backward branch は `op.before` が必須 (`const patches=forward?op.after:op.before;
+  if(!Array.isArray(patches))break;`) だが、`validRemotePayload` では
+  `(op.before==null||(patches(op.before)&&...))` と `null` を許可していた。
+  悪意あるピアが `before:null` の `style` op を送ると、正しいスタイル変更が適用され、
+  受信端で undo が silent no-op になる (backward で `before:null` → `!Array.isArray(null)` → break)。
+  修正: `op.before==null` フォールバックを削除し、`before` を必須フィールドとして強制。
+  ローカルコミット (`doStyle`/`doResize`/`doAlign`) は常に `before` を含むため影響なし。
+  **非空虚テスト** (2 assert):
+  - `before:null` の style op が `applyRemote` で拒否され shape が変化しない ✓
+  - 既存テスト (v1.7.23/v1.7.24b) の valid op 呼び出しに `before` を追加して contract 更新 ✓
+
+- **テキスト編集ブラーで既存テキスト削除時に `origSel` を記録しない (selection-loss)**:
+  テキストシェイプをダブルクリックして内容を全消去してブラーすると
+  `Store.commit({op:'del',shapes:[orig]})` が呼ばれるが `origSel` が記録されなかった。
+  Ctrl+Z でシェイプは復元されるが、`_apply('del', backward)` の
+  `if(op.origSel)state.selection=...` が発動せず、削除前に選択していたシェイプが
+  再選択されないバグ。`doDelete` (キーボード削除) では正しく実装済みの pattern が
+  textarea blur path にのみ欠けていた。
+  修正: `const origSel=[...state.selection]` → commit → `origSel` パッチ の 3 行パターンを追加。
+
+### Tests
+- behavioral: `before:null` style op rejected by `validRemotePayload` (2 assert)
+- presence check: `validRemotePayload style/resize/align: before required` (1)
+- presence check: `text-blur del: origSel captured and patched` (1)
+- 既存テスト 2 件 (v1.7.23 align, v1.7.24b style) に `before` を追加 (正当な op contract 反映)
+- 合計 1259 pass, 0 fail
+
 ## [1.7.34] - 2026-06-30
 
 ### Fixed
