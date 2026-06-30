@@ -2,6 +2,25 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.10] - 2026-06-30
+
+### Fixed
+- **`applyStyleToSelection` がロックシェイプのスタイルを変更してしまう**:
+  カラースウォッチ / ダッシュピッカー / フォーマットペインター (Alt+V) が、
+  ロックされたシェイプを選択中のまま適用すると、ロックを無視してスタイルを変更していた。
+  doDelete / doMove / doRotate / doFlip / doAlign / doCopy / cycleSel など全ての書き込み操作が
+  ロックシェイプをスキップしているのに、`applyStyleToSelection` だけが欠けていた。
+  修正: `for` ループに `if(!sh||sh.locked)continue;` を追加。
+  **非空虚テスト** (2 assert): A (ロック) + B (解除) を選択して `applyStyleToSelection({stroke:'#FF0000'})` →
+  修正前は A.stroke が変更される (テスト失敗)、修正後は A.stroke 維持・B.stroke のみ変更。
+- **`add` op undo が `state.wclock` エントリをリークする**:
+  `_apply(add, false)` はシェイプを state.shapes から削除するが、
+  `state.wclock[op.shape.id]` を削除しない (`addMany` undo と同じカテゴリの不整合。v1.7.09 で addMany は修正済み)。
+  `del` forward が `delete state.wclock[sh.id]` を実行するのと対称になるよう修正。
+  修正: add else ブランチに `delete state.wclock[op.shape.id]` を追加。
+  **非空虚テスト** (2 assert): add → wclock 手動設定 → undo →
+  修正前はエントリが残る (テスト失敗)、修正後は削除される。
+
 ## [1.7.09] - 2026-06-30
 
 ### Fixed

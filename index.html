@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.09 — Design Tokens
+   Board v1.7.10 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -721,7 +721,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.09';
+const V='1.7.10';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1238,7 +1238,7 @@ const Store={
         // a duplicate. Local commits use fresh uids so this never blocks them; redo
         // re-pushes because undo removed the shape first.
         if(forward){if(!byId(op.shape.id)){state.shapes.push(clone(op.shape));sortZ();}}
-        else{const i=state.shapes.findIndex(s=>s.id===op.shape.id);if(i>=0)state.shapes.splice(i,1);state.selection.delete(op.shape.id);}
+        else{const i=state.shapes.findIndex(s=>s.id===op.shape.id);if(i>=0)state.shapes.splice(i,1);state.selection.delete(op.shape.id);delete state.wclock[op.shape.id];}
         break;}
       case 'addMany':{
         // Atomic multi-add (paste/duplicate): N copies as ONE undo step. Forward mirrors
@@ -4393,7 +4393,7 @@ function applyStyleToSelection(patch){
   if(!state.selection.size)return;
   const before=[],after=[];
   for(const id of state.selection){
-    const sh=byId(id);if(!sh)continue;
+    const sh=byId(id);if(!sh||sh.locked)continue;
     const b={id},a={id};
     for(const k of Object.keys(patch)){b[k]=sh[k];a[k]=patch[k]}
     Object.assign(sh,patch);

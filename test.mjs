@@ -4708,6 +4708,44 @@ try {
     console.log('  ✓ _sfbCapture: idempotent — re-calling after mutation preserves original before-state');
   }
 
+  // v1.7.10a: applyStyleToSelection must skip locked shapes (parity with doDelete/doMove/etc.).
+  // Bug: locked shapes are in state.selection; applyStyleToSelection iterates selection without
+  // a locked filter, so style changes (color swatches, format painter, dash picker) bypass
+  // the shape lock and permanently modify the locked shape's style properties.
+  // Fix: add `if(!sh||sh.locked)continue;` in the for-loop of applyStyleToSelection.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const LA=Shape.make('rect',{x:0,y:0,w:50,h:50});LA.stroke='#000000';LA.locked=true;
+    const LB=Shape.make('rect',{x:100,y:0,w:50,h:50});LB.stroke='#000000';
+    Store.commit({op:'add',shape:LA});Store.commit({op:'add',shape:LB});
+    state.selection=new Set([LA.id,LB.id]);
+    applyStyleToSelection({stroke:'#FF0000'});
+    const laLive=state.shapes.find(s=>s.id===LA.id);
+    const lbLive=state.shapes.find(s=>s.id===LB.id);
+    // FAILS before fix: locked LA was modified to '#FF0000' instead of being skipped
+    assert.strictEqual(laLive.stroke,'#000000','applyStyleToSelection: locked shape stroke unchanged');
+    assert.strictEqual(lbLive.stroke,'#FF0000','applyStyleToSelection: unlocked shape stroke updated');
+    console.log('  ✓ applyStyleToSelection: locked shapes excluded (parity with doDelete/doMove)');
+  }
+
+  // v1.7.10b: `add` op undo must delete state.wclock entry for the removed shape.
+  // Bug: _apply(add, false) removes the shape from state.shapes but leaves its wclock entry,
+  // creating a ghost LWW clock (same issue as addMany undo; del forward cleans up wclock
+  // but add reverse does not).
+  // Fix: add `delete state.wclock[op.shape.id]` in the add else branch.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const X=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:X});
+    // Seed wclock as applyRemote would after a peer edits X
+    state.wclock[X.id]={stroke:{peer:'p1',seq:1,ts:1000}};
+    assert.ok(Object.keys(state.wclock).includes(X.id),'add undo wclock: wclock seeded for X');
+    // Undo: shape removed; BEFORE fix wclock[X.id] remains, AFTER fix it is deleted
+    Store.undo();
+    assert.strictEqual(Object.keys(state.wclock).length,0,'add undo wclock: stale entry cleaned up after undo');
+    console.log('  ✓ add undo: wclock entry deleted for removed shape (parity with addMany undo)');
+  }
+
   // v1.7.09a: addMany undo must delete state.wclock entries for removed shapes.
   // Bug: _apply(addMany, false) mirrors 'del' for shapes but not for wclock — it removes
   // shapes from state.shapes but leaves stale wclock entries for the removed IDs.
@@ -4780,7 +4818,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 709; // prev 702 + addMany wclock (4) + replace wclock (3)
+  pass += 713; // prev 709 + applyStyleToSelection locked (2) + add undo wclock (2)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
