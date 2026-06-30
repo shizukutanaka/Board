@@ -5176,8 +5176,32 @@ try {
     console.log('  ✓ _remoteDelConnFix: locked connectors skipped (v1.7.16b)');
   }
 
+  // v1.7.19: G.bboxAll must return null when all input shapes produce degenerate bboxes.
+  // Bug: G.bbox for a pen shape with empty pts returns {x:Infinity, y:Infinity, w:-Infinity, h:-Infinity}
+  // because the pts loop doesn't execute. bboxAll then leaves mnx/mxx at initial Infinity/-Infinity
+  // and returns {x:Infinity, y:Infinity, w:NaN, h:NaN} — causing blank PNG/SVG exports when only
+  // degenerate shapes exist on the board.
+  // Fix: add `if(mxx===-Infinity)return null;` before the return in bboxAll.
+  // (mxx stays at its initial -Infinity sentinel only when no shape contributed a valid right-edge —
+  // i.e. all input bboxes had NaN/Infinity for b.x+b.w. A pen with *some* finite points still
+  // updates mxx, so the guard is precise: empty-pts degenerate only.)
+  {
+    const dP={type:'pen',pts:[],size:2,id:'degen-p1',frac:'a',x:0,y:0,stroke:'#000',opacity:1};
+    const dP2={type:'pen',pts:[],size:2,id:'degen-p2',frac:'b',x:0,y:0,stroke:'#000',opacity:1};
+    // Assertion 1: single degenerate pen (empty pts) → null. BEFORE fix: {x:Infinity,...}. AFTER: null.
+    assert.strictEqual(G.bboxAll([dP]),null,'bboxAll: degenerate pen (empty pts) → null not Infinity-bbox');
+    // Assertion 2: all-degenerate array → null.
+    assert.strictEqual(G.bboxAll([dP,dP2]),null,'bboxAll: all-degenerate shapes array → null');
+    // Assertion 3 (regression guard): valid rect + degenerate pen → finite valid bounds (fix must not break mixed case).
+    const vrect=Shape.make('rect',{x:10,y:20,w:30,h:40});
+    const mr=G.bboxAll([vrect,dP]);
+    assert.ok(mr!==null&&Number.isFinite(mr.x)&&Number.isFinite(mr.w),
+      'bboxAll: valid rect + degenerate pen → finite bbox (mixed case unaffected)');
+    console.log('  ✓ G.bboxAll: degenerate pen (empty pts) returns null instead of Infinity-valued bbox (v1.7.19)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 761; // prev 755 + doBringFront/doSendBack locked (3) + doBringForward/doSendBackward locked (3)
+  pass += 764; // prev 761 + bboxAll degenerate pen guard (3)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

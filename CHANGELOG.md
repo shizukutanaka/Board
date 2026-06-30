@@ -2,6 +2,20 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.19] - 2026-06-30
+
+### Fixed
+- **`G.bboxAll` がデジェネレートなペンシェイプ (空の `pts`) で `Infinity`/`NaN` を返す**:
+  `pts` が空の `pen` シェイプに対して `G.bbox` を呼ぶと、内部ループが実行されず
+  `{x:Infinity, y:Infinity, w:-Infinity, h:-Infinity}` を返す。
+  `bboxAll` はその値を受け取っても `mnx`/`mxx` の初期値を更新できず、
+  最終的に `{x:Infinity, y:Infinity, w:NaN, h:NaN}` を返していた。
+  これはデジェネレートシェイプのみのボードで PNG/SVG エクスポート時に空白出力を招く原因となっていた。
+  修正: `bboxAll` の `return` 直前に `if(mxx===-Infinity)return null;` を追加
+  (`mxx` が初期値 `-Infinity` のまま = 全入力シェイプが有効な右端を提供しなかった = 全デジェネレート)。
+  **非空虚テスト** (3 assert): 単一デジェネレートペン → `null`、全デジェネレート配列 → `null`、
+  有効 rect + デジェネレートペンの混在 → 有限な有効 bbox (回帰ガード)。
+
 ## [1.7.18] - 2026-06-30
 
 ### Fixed
