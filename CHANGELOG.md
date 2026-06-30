@@ -2,6 +2,23 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.23] - 2026-06-30
+
+### Fixed
+- **リモートピアが `align` op を悪用してシェイプをロックできる脆弱性**:
+  `validRemotePayload` の `'align'` ケースは `patches()` ヘルパー (内部で `validPatch` / `_cleanVal`)
+  を呼ぶが、`_cleanVal` はブール値をクリーンと判定するため `{id:X, locked:true}` を含む
+  パッチが検証を通過してしまっていた。悪意あるピアが
+  `{op:'align', after:[{id:X, locked:true}], clock:{...}}` を送ると Alice のボード上の
+  シェイプが強制ロックされ、その後の `move` op が `if(forward&&sh.locked)continue` で
+  サイレントに無視される状態になっていた。
+  修正: `validRemotePayload` の `'align'` ケースを `'style'`/`'resize'` から分離し、
+  各パッチに `'locked'` キーが含まれていないことを確認する `!('locked' in p)` チェックを追加。
+  正常な整列 op (x/y 調整など) は従来どおり適用される。
+  **非空虚テスト** (3 assert): リモート `align` op に `locked:true` を含めたとき
+  シェイプがロックされないこと、および `locked` キーを含まない通常の `align` op が
+  正しく適用されることを確認。
+
 ## [1.7.22] - 2026-06-30
 
 ### Fixed

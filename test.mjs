@@ -461,7 +461,7 @@ const checks = [
   ['rotated resize works in local frame + world re-pin', html.includes("sp=_rotPt(wp.x,wp.y,cx0,cy0,-orig.rotate);") && html.includes("sh.x+=tgt.x-cur.x;sh.y+=tgt.y-cur.y;")],
   ['selection outline traces rotated box', html.includes("if(single&&single.rotate&&single.w!=null){")],
   // v1.6.70: keyboard resize (Alt+arrow)
-  ['resize op registered (apply, validate, remote)', html.includes("case 'resize':\n      case 'align':{") && html.includes("case 'resize':\n    case 'align':  return patches(op.after)") && html.includes("'align','style','resize'])")],
+  ['resize op registered (apply, validate, remote)', html.includes("case 'resize':\n      case 'align':{") && html.includes("case 'resize':  return patches(op.after)") && html.includes("'align','style','resize'])")],
   ['Alt+arrow keyboard-resizes box shapes', html.includes("Store._recordCommitted({op:'resize',before,after});") && html.includes("sh.w=Math.max(4,sh.w+dw);sh.h=Math.max(4,sh.h+dh);")],
   // v1.6.71: image import error handling
   ['imgErr i18n key in both locales', html.includes("imgErr:'画像を読み込めませんでした'") && html.includes("imgErr:'Image failed to load'")],
@@ -5290,8 +5290,31 @@ try {
     console.log('  ✓ G.bboxAll: degenerate pen (empty pts) returns null instead of Infinity-valued bbox (v1.7.19)');
   }
 
+  // v1.7.23: remote 'align' op must not be usable to lock/unlock shapes.
+  // Bug: validRemotePayload for 'align' calls patches() which calls validPatch(), which
+  // accepts any boolean value via _cleanVal (booleans are not objects/functions/non-finite
+  // numbers). A hostile peer can send {op:'align', after:[{id:X, locked:true}]} to
+  // freeze shapes on the victim's board: once locked, the victim's own move ops are
+  // silently dropped (line ~1284: `if(forward&&sh.locked)continue`).
+  // Fix: in validRemotePayload for 'align', add !('locked' in p) check per patch.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const tR=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:tR});
+    const liveTR=()=>state.shapes.find(s=>s.id===tR.id);
+    assert.ok(!liveTR().locked,'v1.7.23: rect starts unlocked');
+    // Simulate a peer sending an align op that smuggles locked:true.
+    // BEFORE fix: liveTR().locked becomes true. AFTER fix: op rejected, stays falsy.
+    Store.applyRemote({op:'align',after:[{id:tR.id,locked:true}],clock:{peer:'evil',seq:1,ts:1}});
+    assert.ok(!liveTR().locked,'v1.7.23: remote align op with locked:true must not lock local shape');
+    // Verify a valid remote align op (no locked key) still applies normally.
+    Store.applyRemote({op:'align',after:[{id:tR.id,x:99}],clock:{peer:'good',seq:1,ts:1}});
+    assert.strictEqual(liveTR().x,99,'v1.7.23: valid remote align op (no locked key) still applies');
+    console.log('  ✓ validRemotePayload: remote align op with locked key rejected (v1.7.23)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 773; // prev 770 + doAlign per-unit null-bbox filter (3)
+  pass += 776; // prev 773 + remote align locked-key rejection (3)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
