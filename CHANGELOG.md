@@ -2,6 +2,22 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.30] - 2026-06-30
+
+### Fixed
+- **`createShapeKbd` がアンドゥ後に作成前の選択状態を復元しない**:
+  キーボード (Enter キー) でシェイプを作成すると `Store.commit({op:'add',...})` を呼び出した後
+  `state.selection` を新シェイプの id に切り替えるが、`origSel` パターンが欠けていたため
+  Ctrl+Z すると選択が空になった。`doDuplicate` / `doPaste` / `doClearAll` / `importBoard` で
+  使用している同パターン (`origSel=[...state.selection]` 前キャプチャ +
+  `state.history[state.histIdx].origSel=origSel` 後アタッチ) を適用。
+  さらに `_apply('add', backward)` に `if(op.origSel)state.selection=new Set(...)` を追加し、
+  `addMany` backward と同等の origSel 復元ロジックを 'add' にも付与。
+  **非空虚テスト** (4 assert):
+  - 事前選択シェイプ A が存在する状態で `createShapeKbd` を呼ぶと新シェイプ B が選択される ✓
+  - アンドゥで B が削除される ✓
+  - アンドゥ後に A が再選択される ✓
+
 ## [1.7.29] - 2026-06-30
 
 ### Fixed

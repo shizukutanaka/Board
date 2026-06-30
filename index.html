@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.29 — Design Tokens
+   Board v1.7.30 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -721,7 +721,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.29';
+const V='1.7.30';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1250,7 +1250,7 @@ const Store={
         // a duplicate. Local commits use fresh uids so this never blocks them; redo
         // re-pushes because undo removed the shape first.
         if(forward){if(!byId(op.shape.id)){state.shapes.push(clone(op.shape));sortZ();}}
-        else{const i=state.shapes.findIndex(s=>s.id===op.shape.id);if(i>=0)state.shapes.splice(i,1);state.selection.delete(op.shape.id);delete state.wclock[op.shape.id];}
+        else{const i=state.shapes.findIndex(s=>s.id===op.shape.id);if(i>=0)state.shapes.splice(i,1);state.selection.delete(op.shape.id);delete state.wclock[op.shape.id];if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));}
         break;}
       case 'addMany':{
         // Atomic multi-add (paste/duplicate): N copies as ONE undo step. Forward mirrors
@@ -2784,7 +2784,9 @@ function createShapeKbd(){
   }else{
     return false;   // pen/select/hand/eraser — nothing to create from the keyboard
   }
+  const origSel=[...state.selection];
   Store.commit({op:'add',shape:s});
+  if(origSel.length)state.history[state.histIdx].origSel=origSel;
   pickTool('select');
   state.selection=new Set([s.id]);
   UI.toast(`${t('created')}: ${describeShape(s)}`);

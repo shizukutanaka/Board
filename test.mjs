@@ -619,6 +619,10 @@ const checks = [
   // v1.7.28: validRemotePayload for upd must block locked key (parity with style/resize/align)
   ['remote upd op cannot set locked (noLock guard extended to upd)',
     html.includes("case 'upd':{const noLock=p=>!('locked' in p);\n      return typeof op.id==='string'&&validPatch(op.after)&&noLock(op.after)")],
+  // v1.7.30: _apply add backward restores origSel; createShapeKbd attaches origSel
+  ['_apply add backward restores origSel; createShapeKbd attaches origSel',
+    html.includes("if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));") &&
+    html.includes("const origSel=[...state.selection];\n  Store.commit({op:'add',shape:s});\n  if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
 ];
 
 let pass = 0, fail = 0;
@@ -5538,8 +5542,32 @@ try {
     console.log('  ✓ doPaste: undo restores pre-paste selection via origSel (v1.7.29)');
   }
 
+  // v1.7.30: createShapeKbd missing origSel — undo of keyboard shape creation doesn't
+  // restore the pre-creation selection (parity gap with doDuplicate/doPaste/doClearAll).
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.viewport={x:0,y:0,zoom:1};
+    // Create a shape to serve as the pre-existing selection
+    const preA=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:preA});
+    state.selection=new Set([preA.id]);
+    assert.ok(state.selection.has(preA.id),'v1.7.30 setup: preA is selected');
+    // Create a shape via keyboard — this commits an 'add' op and changes selection to the new shape
+    state.tool='ellipse';
+    const ok=createShapeKbd();
+    assert.ok(ok,'v1.7.30 setup: createShapeKbd returns true for ellipse');
+    const newId=[...state.selection].find(id=>id!==preA.id);
+    assert.ok(newId,'v1.7.30 setup: new shape is selected after keyboard creation');
+    // Undo: the new shape is removed; selection should be restored to {preA.id}
+    Store.undo();
+    assert.ok(!state.shapes.some(s=>s.id===newId),'v1.7.30: new shape removed by undo');
+    assert.ok(state.selection.has(preA.id),
+      'v1.7.30: undo keyboard shape creation must restore pre-creation selection (origSel pattern, parity with doDuplicate/doPaste)');
+    console.log('  ✓ createShapeKbd: undo restores pre-creation selection via origSel (v1.7.30)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 799; // prev 795 + doPaste origSel undo (4)
+  pass += 803; // prev 799 + createShapeKbd origSel undo (4)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
