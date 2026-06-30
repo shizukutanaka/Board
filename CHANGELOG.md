@@ -2,6 +2,24 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.31] - 2026-06-30
+
+### Fixed
+- **ポインタ描画ツール (`endRectLike` / `endLineLike` / `beginText`) がアンドゥ後に
+  描画前の選択状態を復元しない**:
+  矩形・楕円・付箋・フレーム・直線・矢印・テキストをポインタで描いてアンドゥすると、
+  シェイプは消えるが `state.selection` が空になり、描画開始前に選択していたシェイプが
+  再選択されなかった。`createShapeKbd` (v1.7.30) / `doPaste` (v1.7.29) / `doClearAll`
+  (v1.7.24a) / `importBoard` (v1.7.26) と同系列の `origSel` パターン欠落バグ。
+  修正: `endRectLike` / `endLineLike` / `beginText` の各関数で `Store.commit({op:'add'})`
+  呼び出し前に `origSel=[...state.selection]` をキャプチャし、コミット後に
+  `state.history[state.histIdx].origSel=origSel` を設定。v1.7.30 で追加した
+  `_apply('add', backward)` の origSel 復元ロジックがそのまま適用される。
+  **非空虚テスト** (4 assert):
+  - 2 シェイプ選択状態で矩形を `endRectLike` で描くと選択が新シェイプのみに変わる ✓
+  - アンドゥで新シェイプが削除される ✓
+  - アンドゥ後に元の 2 シェイプが再選択される ✓
+
 ## [1.7.30] - 2026-06-30
 
 ### Fixed

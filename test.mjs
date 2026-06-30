@@ -623,6 +623,10 @@ const checks = [
   ['_apply add backward restores origSel; createShapeKbd attaches origSel',
     html.includes("if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));") &&
     html.includes("const origSel=[...state.selection];\n  Store.commit({op:'add',shape:s});\n  if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
+  // v1.7.31: endRectLike/endLineLike/beginText attach origSel (parity with createShapeKbd)
+  ['endRectLike/endLineLike/beginText attach origSel before shape add commit',
+    (html.match(/const origSel=\[\.\.\.state\.selection\];\n  Store\.commit\(\{op:'add',shape:d\}\);\n  if\(origSel\.length\)state\.history\[state\.histIdx\]\.origSel=origSel;/g)||[]).length >= 2 &&
+    html.includes("const origSel=[...state.selection];\n  Store.commit({op:'add',shape:s});\n  if(origSel.length)state.history[state.histIdx].origSel=origSel;\n  openTextEditor")],
 ];
 
 let pass = 0, fail = 0;
@@ -730,7 +734,8 @@ try {
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _syncDocTitle, Presentation,
              _onBtnInstall, _getInstallPrompt: () => _installPrompt, _setInstallPrompt: (v) => { _installPrompt = v; },
              _onSwUpdate, _ctxMenuKeyNav,
-             _getPasteCount: () => _pasteCount, _resetPasteClipboard: () => { _lastClipboard = null; } };
+             _getPasteCount: () => _pasteCount, _resetPasteClipboard: () => { _lastClipboard = null; },
+             endRectLike, endLineLike };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -749,7 +754,8 @@ try {
           flushErase, _pushEraseBatch, _cancelPointerGesture, _syncDocTitle, Presentation,
           _onBtnInstall, _getInstallPrompt, _setInstallPrompt,
           _onSwUpdate, _ctxMenuKeyNav,
-          _getPasteCount, _resetPasteClipboard } = api;
+          _getPasteCount, _resetPasteClipboard,
+          endRectLike, endLineLike } = api;
 
   console.log('\n-- behavioural --');
 
@@ -5566,8 +5572,35 @@ try {
     console.log('  ✓ createShapeKbd: undo restores pre-creation selection via origSel (v1.7.30)');
   }
 
+  // v1.7.31: endRectLike/endLineLike/beginText missing origSel — undo of pointer-drawn
+  // shape doesn't restore the pre-draw selection (parity gap with createShapeKbd v1.7.30).
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.viewport={x:0,y:0,zoom:1};state.draft=null;state.snap=false;
+    // Create two shapes that will serve as the pre-existing selection
+    const pX=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    const pY=Shape.make('ellipse',{x:100,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:pX});
+    Store.commit({op:'add',shape:pY});
+    state.selection=new Set([pX.id,pY.id]);
+    assert.strictEqual(state.selection.size,2,'v1.7.31 setup: two shapes selected');
+    // Draw a rect via endRectLike (simulate beginRectLike+contRectLike result)
+    state.draft=Shape.make('rect',{x:200,y:0,w:80,h:60});
+    state.tool='rect';
+    endRectLike();
+    const newId=[...state.selection][0];
+    assert.strictEqual(state.selection.size,1,'v1.7.31 setup: only the new rect is selected after draw');
+    assert.notStrictEqual(newId,pX.id,'v1.7.31 setup: new shape has a different id');
+    // Undo: rect removed; selection should be restored to {pX, pY}
+    Store.undo();
+    assert.ok(!state.shapes.some(s=>s.id===newId),'v1.7.31: drawn rect removed by undo');
+    assert.ok(state.selection.has(pX.id)&&state.selection.has(pY.id),
+      'v1.7.31: undo pointer-drawn shape must restore pre-draw selection (origSel pattern, parity with createShapeKbd)');
+    console.log('  ✓ endRectLike: undo restores pre-draw selection via origSel (v1.7.31)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 803; // prev 799 + createShapeKbd origSel undo (4)
+  pass += 807; // prev 803 + endRectLike origSel undo (4)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
