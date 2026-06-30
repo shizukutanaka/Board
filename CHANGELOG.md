@@ -2,6 +2,24 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.33] - 2026-06-30
+
+### Fixed
+- **`validRemotePayload` の `group` op が `op.before` を要求しない (セキュリティ/整合性)**:
+  `doGroup` は常に `before=[{id,groupId},...]` を op に含めるが、`validRemotePayload` の
+  `case 'group'` は `ids` と `gid` しか検証しなかった。悪意あるピアが `before` なしの
+  `group` op を送ると検証を通過し、シェイプがグループ化されるものの Ctrl+Z が silent no-op
+  になる (`_apply group backward` の `if(op.before)` ガードにより安全に無視されるが、
+  undo が機能しない状態が残る)。
+  修正: `validRemotePayload` の `case 'group'` に
+  `&&Array.isArray(op.before)&&op.before.every(b=>b&&typeof b.id==='string')` を追加し、
+  `before` を必須フィールドとして強制。既存テストの `applyRemote` 呼び出しも `before` を
+  含むように更新 (正当な group op は常に `before` を持つ)。
+  **非空虚テスト** (3 assert):
+  - `before` なし group op が `validRemotePayload` で拒否される ✓
+  - 正当な `before` を持つ group op が引き続き受け入れられる ✓
+  - `before` エントリに非 string な id を持つ op が拒否される ✓
+
 ## [1.7.32] - 2026-06-30
 
 ### Fixed

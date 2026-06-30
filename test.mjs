@@ -623,6 +623,9 @@ const checks = [
   ['_apply add backward restores origSel; createShapeKbd attaches origSel',
     html.includes("if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));") &&
     html.includes("const origSel=[...state.selection];\n  Store.commit({op:'add',shape:s});\n  if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
+  // v1.7.33: validRemotePayload group must require before (string-id array)
+  ['validRemotePayload group: requires before array with string ids',
+    html.includes("&&Array.isArray(op.before)&&op.before.every(b=>b&&typeof b.id==='string');")],
   // v1.7.32: _apply group backward must guard op.before (parity with ungroup backward)
   ['_apply group backward: if(op.before) guard added (parity with ungroup)',
     html.includes("if(op.before)for(const b of op.before){const sh=byId(b.id);if(sh){if(b.groupId)sh.groupId=b.groupId;else delete sh.groupId}}\n        }\n        break;}\n      case 'ungroup':")],
@@ -1059,7 +1062,7 @@ try {
     assert.strictEqual(state.shapes[0].groupId, undefined, 'remote group with non-string gid is dropped');
     Store.applyRemote({op:'group', ids:[{x:1}], gid:'G1', clock:{peer:'attacker', seq:21, ts:1}});
     assert.strictEqual(state.shapes[0].groupId, undefined, 'remote group with non-string ids is dropped');
-    Store.applyRemote({op:'group', ids:[gv], gid:'GOOD', clock:{peer:'peerB', seq:4, ts:1}});
+    Store.applyRemote({op:'group', ids:[gv], gid:'GOOD', before:[{id:gv}], clock:{peer:'peerB', seq:4, ts:1}});
     assert.strictEqual(state.shapes[0].groupId, 'GOOD', 'well-formed remote group is applied');
     console.log('  ✓ applyRemote validates group/ungroup payloads (string ids + gid)');
   }
@@ -5628,8 +5631,25 @@ try {
     console.log('  ✓ _apply group backward: null op.before guard prevents TypeError crash (v1.7.32)');
   }
 
+  // v1.7.33: validRemotePayload('group') accepts ops without op.before — a malicious
+  // peer can send {op:'group', ids:[...], gid:'g'} (no before), which passes validation
+  // and groups the shapes, but the undo becomes a silent no-op (_apply backward skips).
+  // doGroup always includes before; the validator should require it to enforce the contract.
+  {
+    // FAILS before fix: returns true for a group op without before
+    assert.ok(!validRemotePayload({op:'group',ids:['s1','s2'],gid:'g1'}),
+      'v1.7.33: group op without before must be rejected (undo would be a silent no-op)');
+    // Existing valid ops still accepted
+    assert.ok(validRemotePayload({op:'group',ids:['s1','s2'],gid:'g1',before:[{id:'s1'},{id:'s2'}]}),
+      'v1.7.33: group op with valid before array is still accepted');
+    // Non-string id in before should be rejected
+    assert.ok(!validRemotePayload({op:'group',ids:['s1'],gid:'g1',before:[{id:123}]}),
+      'v1.7.33: group op with non-string id in before is rejected');
+    console.log('  ✓ validRemotePayload group: before required with string ids (v1.7.33)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 810; // prev 807 + group backward null guard (3)
+  pass += 813; // prev 810 + group before validation (3)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
