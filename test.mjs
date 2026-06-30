@@ -98,6 +98,7 @@ const checks = [
   // round 4 improvements
   ['data-t i18n auto-apply', html.includes("UI.applyI18n") && html.includes("el.textContent=t(key)")],
   ['Eraser batches into single undo', html.includes("_eraseBatch") && html.includes("flushErase")],
+  ['pointercancel restores eraser batch + clears guides', html.includes("_cancelPointerGesture") && html.includes("state.guides=null") && /if\(_eraseBatch\.length\)[\s\S]{0,120}state\.guides=null/.test(html)],
   ['drawShape accepts ctx param', html.includes("function drawShape(s,c)")],
   // round 4 improvements (current session)
   ['Double-click re-edit text', html.includes("dblclick") && html.includes("openTextEditor")],
@@ -659,7 +660,7 @@ try {
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText,
-             flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s) };
+             flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -675,7 +676,7 @@ try {
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText,
-          flushErase, _pushEraseBatch } = api;
+          flushErase, _pushEraseBatch, _cancelPointerGesture } = api;
 
   console.log('\n-- behavioural --');
 
@@ -4154,8 +4155,30 @@ try {
     console.log('  ✓ copyText: secure→Clipboard API, file://→execCommand fallback, false when neither works');
   }
 
+  // v1.6.88: pointercancel must clear state.guides and restore _eraseBatch
+  // Bug 1 (Qiita: "ポインタキャンセル後に残るスナップガイド線"): state.guides not cleared
+  // → alignment guide lines remain drawn after stylus goes out-of-range or Android takes over.
+  {
+    state.guides=[{x1:0,y1:0,x2:200,y2:0,type:'horiz'}];
+    _cancelPointerGesture();
+    assert.strictEqual(state.guides,null,'pointercancel: state.guides cleared (no stale snap-guide lines after cancel)');
+  }
+  // Bug 2 (data-loss): _eraseBatch not restored on cancel → shapes permanently disappear.
+  // Repro: erase mid-stroke → OS gesture takes over → pointerup never fires → shapes lost.
+  {
+    const sh={id:'cancel-erase-sh',type:'rect',x:5,y:5,w:40,h:40,z:1,stroke:'#000',fill:'none',opacity:1};
+    state.shapes.push(JSON.parse(JSON.stringify(sh)));
+    const idx=state.shapes.findIndex(s=>s.id===sh.id);
+    _pushEraseBatch(state.shapes.splice(idx,1)[0]); // mid-erase: removed from shapes, queued in batch
+    assert.strictEqual(state.shapes.find(s=>s.id===sh.id),undefined,'erase-cancel pre: shape gone from state.shapes');
+    _cancelPointerGesture();
+    assert.ok(state.shapes.find(s=>s.id===sh.id),'pointercancel: eraser batch restored (no data-loss on pointer cancel)');
+    const ci=state.shapes.findIndex(s=>s.id===sh.id);if(ci>=0)state.shapes.splice(ci,1);
+    console.log('  ✓ pointercancel: state.guides cleared + eraser batch restored (stale guides + data-loss bugs fixed)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 620; // prev 614 + copyText non-secure-context fallback (6 asserts)
+  pass += 624; // prev 620 + pointercancel guides (1) + pointercancel erase data-loss (3)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

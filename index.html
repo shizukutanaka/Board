@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.6.87 — Design Tokens
+   Board v1.6.88 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -718,7 +718,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.87';
+const V='1.6.88';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -2194,8 +2194,11 @@ canvas.addEventListener('pointerup',e=>{
   ptr.resizeHandle=null;ptr.resizeOrig=null;
   state.marquee=null;canvas.style.cursor='default';invalidate();
 });
-canvas.addEventListener('pointercancel',()=>{
-  // Restore partial resize/move on cancel (Android touch-takeover, stylus OOR).
+// v1.6.88: extracted as named function so tests can call it directly.
+// Fixes: (1) state.guides not cleared → stale snap-guide lines after stylus OOR / Android
+//        gesture takeover; (2) _eraseBatch not restored → data-loss when cancel fires mid-erase.
+function _cancelPointerGesture(){
+  // Restore partial resize/move/erase on cancel (Android touch-takeover, stylus OOR).
   if(ptr.dragKind==='resize'&&ptr.resizeOrig){
     const rsh=byId([...state.selection][0]);
     if(rsh)Object.assign(rsh,clone(ptr.resizeOrig));
@@ -2205,10 +2208,12 @@ canvas.addEventListener('pointercancel',()=>{
   }else if(ptr.dragKind==='move'&&ptr.dragStartShapes){
     for(const[id,orig] of ptr.dragStartShapes){const sh=byId(id);if(sh)Object.assign(sh,clone(orig));}
   }
+  if(_eraseBatch.length){for(const s of _eraseBatch)state.shapes.push(s);_eraseBatch=[];sortZ();}
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;
   ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.rotOrig=null;ptr.dragStartShapes=null;
-  canvas.dataset.panning='false';state.draft=null;state.marquee=null;invalidate();
-});
+  canvas.dataset.panning='false';state.draft=null;state.marquee=null;state.guides=null;invalidate();
+}
+canvas.addEventListener('pointercancel',_cancelPointerGesture);
 canvas.addEventListener('contextmenu',e=>{e.preventDefault();UI.openCtxMenu(e.clientX,e.clientY)});
 canvas.addEventListener('pointerleave',()=>{if(_laser){_laser=null;invalidate()}});
 

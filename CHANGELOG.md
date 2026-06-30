@@ -19,6 +19,14 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
   エンドツーエンドで悪意ある del がコネクタを汚染も victim を削除もしないことを検証。
 
 ### Fixed
+- **`pointercancel` でスナップガイド線が残留 + 消しゴムストローク途中でキャンセルするとシェイプが消える(データロストバグ)**:
+  GitHub canvas-apps Issue / Qiita「Android タッチ横取り後にガイド線が残る」「スタイラスが範囲外へ出ると消しゴムで消したはずのない図形が消える」パターンで発見。
+  `pointercancel`(Android システムジェスチャ横取り・スタイラス out-of-range・指の追加 etc.) が発生した際、
+  `pointerup` は呼ばれないため `_eraseBatch`(消しゴムが途中で `state.shapes` から取り除いた図形の一時バッファ)が
+  `state.shapes` へ戻されず **永久消失** していた。また `state.guides`(スマート整列ガイド線)が `null` にリセット
+  されないため、キャンセル後もキャンバスにガイド線の残像が描き続けられた。
+  修正: 匿名ハンドラを `_cancelPointerGesture()` に抽出。(1) `_eraseBatch` を `state.shapes` へ戻す(undo不要; cancel = 操作そのものをなかったことに) (2) `state.guides=null` を追加。
+  **非空虚テスト** 4 assert: guides 残留(1)・eraseBatch データロスト(3)、修正前に失敗・修正後に全通過を確認。
 - **共有 URL の「コピー」が file:// で無反応(navigator.clipboard 非対応コンテキスト)**:
   Qiita / Zenn の「http / file:// 環境で navigator.clipboard が動かない」記事を調査して発見。
   Clipboard API はセキュアコンテキスト(HTTPS / localhost)限定で、`file://` や平文 `http://`
