@@ -2,6 +2,20 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.00] - 2026-06-30
+
+### Fixed
+- **`doAlign` がフレームの子シェイプも一緒に整列移動 (ドラッグ/ナッジとの挙動統一)**:
+  フレームと別シェイプを選択して整列 (左揃え等) を実行すると、フレーム自体は移動するが、
+  フレーム内に含まれる子シェイプが置き去りになるバグ。`doMove`・`nudgeSelection` では
+  `withFrameChildren` が自動的に子を追従させるが、`doAlign` にはその処理がなかった。
+  修正: `doAlign` 内で `frameOf` マップを構築し、選択フレームの bbox に完全に含まれる
+  シェイプを同一ユニットとして `unitMap` にまとめる。これにより、フレームと子シェイプが
+  同じ平行移動量で移動し、undo/redo も子シェイプの位置を正しく復元する。
+  **非空虚テスト** (4 assert): フレーム (x=100) + 子シェイプ (x=120) + 参照シェイプ (x=0) で
+  左揃え → フレームが x=0 へ移動し子シェイプも x=20 へ追従。修正前は子シェイプが x=120 のまま
+  (追従せず、テストが失敗) であることを確認。undo で両方が元位置に復元されることも検証。
+
 ## [1.6.99] - 2026-06-30
 
 ### Fixed

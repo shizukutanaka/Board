@@ -4502,8 +4502,34 @@ try {
     console.log('  ✓ doAlign: grouped shapes move as a unit, internal spacing preserved; undo restores');
   }
 
+  // v1.7.00: doAlign must move frame children with the frame (parity with drag/nudge)
+  // Before fix: selecting a frame + another shape and aligning moved the frame but left
+  // frame children behind (same gap as nudge had before v1.6.75). After fix: children
+  // inside a selected frame are silently added to its alignment unit.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    // Frame at x=100; child inside at x=120; reference at x=0 (leftmost)
+    const frm=Shape.make('frame',{x:100,y:0,w:100,h:100});
+    const child=Shape.make('rect',{x:120,y:10,w:20,h:20});
+    const ref=Shape.make('rect',{x:0,y:200,w:20,h:20});
+    Store.commit({op:'add',shape:frm});
+    Store.commit({op:'add',shape:child});
+    Store.commit({op:'add',shape:ref});
+    state.selection=new Set([frm.id,ref.id]);   // child NOT explicitly selected
+    doAlign('left');
+    const liveFrame=state.shapes.find(s=>s.id===frm.id);
+    const liveChild=state.shapes.find(s=>s.id===child.id);
+    assert.strictEqual(liveFrame.x, 0, 'doAlign frame: frame moved to leftmost x=0');
+    // Before fix: liveChild.x===120 (left behind). After fix: liveChild.x===20 (moved with frame).
+    assert.strictEqual(liveChild.x, 20, 'doAlign frame: child moved with frame (120-100=20)');
+    Store.undo();
+    assert.strictEqual(state.shapes.find(s=>s.id===frm.id).x, 100, 'doAlign frame undo: frame restored to 100');
+    assert.strictEqual(state.shapes.find(s=>s.id===child.id).x, 120, 'doAlign frame undo: child restored to 120');
+    console.log('  ✓ doAlign: frame children move with frame (parity with drag/nudge); undo restores');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 668; // prev 662 + doAlign group-aware (6)
+  pass += 672; // prev 668 + doAlign frame-children (4)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
