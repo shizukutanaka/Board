@@ -612,6 +612,10 @@ const checks = [
   // v1.7.24b: validRemotePayload must block locked key in remote style/resize ops
   ['remote style/resize ops cannot set locked (noLock guard extended)',
     html.includes("case 'resize':{const noLock=p=>!('locked' in p);")],
+  // v1.7.26: _apply replace backward restores origSel; importBoard/importFromHash attach it
+  ['_apply replace backward restores origSel; import callers attach origSel to op',
+    html.includes("if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));") &&
+    html.includes("Store._recordCommitted({op:'replace',before,after:clone(state.shapes),wc:beforeWc,origSel});")],
 ];
 
 let pass = 0, fail = 0;
@@ -5411,8 +5415,47 @@ try {
     console.log('  ✓ doCopy: frame children included in copy/cut clipboard (v1.7.25)');
   }
 
+  // v1.7.26: _apply('replace', backward) must restore pre-import selection (origSel).
+  // Bug: importBoard and importFromHash call state.selection.clear() then
+  // Store._recordCommitted({op:'replace',...}) without carrying origSel in the op.
+  // _apply('replace', backward) clears selection but never restores it — so undoing
+  // a whole-board import (Ctrl+Z) leaves the board restored but selection empty,
+  // even when the shapes the user had selected are back on the board.
+  // Same family as the v1.7.24 'clear' origSel fix.
+  // Fix: (1) importBoard/importFromHash capture origSel before clear and include it
+  // in the op; (2) _apply('replace', backward) restores origSel via byId filter.
+  // Note: the callers (importBoard/importFromHash) show a confirm() dialog or parse
+  // a file — untestable directly in the harness. We manually patch origSel onto the
+  // history entry to isolate the _apply backward path (same approach as v1.7.24a).
+  // Caller-side fix is covered by the new presence check.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const rpA=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    const rpB=Shape.make('rect',{x:100,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:rpA});Store.commit({op:'add',shape:rpB});
+    state.selection=new Set([rpA.id,rpB.id]);
+    // Simulate importBoard/importFromHash without file I/O: record replace op + patch origSel
+    const before=JSON.parse(JSON.stringify(state.shapes));
+    const beforeWc=JSON.parse(JSON.stringify(state.wclock));
+    const origSel=[...state.selection];
+    const newSh=Shape.make('ellipse',{x:200,y:0,w:50,h:50});
+    state.shapes=[newSh];state.selection.clear();state.wclock={};
+    Store._recordCommitted({op:'replace',before,after:JSON.parse(JSON.stringify(state.shapes)),wc:beforeWc});
+    state.history[state.histIdx].origSel=origSel; // caller-side fix (importBoard/importFromHash)
+    // Assertion 1: import replaced the board with the new shape
+    assert.strictEqual(state.shapes.filter(s=>s.type==='ellipse').length,1,'v1.7.26: replace op applied (new shape on board)');
+    Store.undo();
+    // Assertion 2: original shapes restored by _apply('replace', backward)
+    assert.strictEqual(state.shapes.length,2,'v1.7.26: undo of replace restores original shapes');
+    // Assertion 3: pre-import selection restored.
+    // BEFORE fix: selection.size===0. AFTER fix: rpA and rpB both selected.
+    assert.ok(state.selection.has(rpA.id)&&state.selection.has(rpB.id),
+      'v1.7.26: _apply replace backward restores pre-import origSel');
+    console.log('  ✓ _apply replace backward: pre-import selection restored via origSel (v1.7.26)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 785; // prev 782 + doCopy frame children (3)
+  pass += 788; // prev 785 + _apply replace origSel (3)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

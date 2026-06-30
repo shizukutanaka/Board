@@ -2,6 +2,20 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.26] - 2026-06-30
+
+### Fixed
+- **ボードインポートの Undo が選択状態を復元しない**:
+  `importBoard` / `importFromHash` は `state.selection.clear()` を呼んだ後で
+  `Store._recordCommitted({op:'replace',...})` を記録するが、`origSel` を op に含めていなかった。
+  `_apply('replace', backward)` は選択をクリアするだけで復元しないため、ボードインポートを
+  Ctrl+Z で取り消してもシェイプは戻るが選択は空のままになっていた。
+  v1.7.24 の 'clear' 修正と完全に同じパターン。
+  修正: `importBoard` / `importFromHash` でクリア前に `origSel=[...state.selection]` を捕捉して
+  op に付与、`_apply('replace', backward)` に `if(!forward&&op.origSel)state.selection=...` を追加。
+  **非空虚テスト** (3 assert): `_apply('replace', backward)` に origSel をセットした op で
+  アンドゥ後に選択が復元されることを確認 (同家族の v1.7.24a テストと同一手法)。
+
 ## [1.7.25] - 2026-06-30
 
 ### Fixed
