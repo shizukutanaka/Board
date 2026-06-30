@@ -2,6 +2,16 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.14] - 2026-06-30
+
+### Fixed
+- **ダブルクリックでロックシェイプのエディタが開く**:
+  `dblclick` ハンドラが `hit.type` でディスパッチする際に `!hit.locked` ガードがなかった。
+  ロックされた `text`/`sticky`/`rect`/`ellipse`/`frame`/`line`/`arrow` をダブルクリックすると
+  テキスト or ラベルエディタが開き、`upd` op がコミットされてロックの意図が無効化されていた。
+  修正: 3 つの `if/else if` 条件すべてに `!hit.locked&&` を前置。
+  **非空虚テスト** (3 presence checks): 修正前はガード文字列が存在せずテスト失敗、修正後は通過。
+
 ## [1.7.13] - 2026-06-30
 
 ### Fixed

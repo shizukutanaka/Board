@@ -4969,8 +4969,22 @@ try {
     console.log('  ✓ doDuplicate: locked frame children excluded from copies (parity with nudgeSelection)');
   }
 
+  // v1.7.14: dblclick handler must not open editors on locked shapes (parity with eraser/nudge/delete).
+  // The handler dispatches on hit.type to openTextEditor or openLabelEditor; before fix there is
+  // no !hit.locked guard, so double-clicking a locked text/sticky/rect/ellipse/line/arrow opens
+  // an edit session and commits an upd op — bypassing the lock invariant.
+  // DOM event firing cannot be unit-tested in this harness, so the guard is verified by presence
+  // check: the fixed strings must exist in html (fail before fix, pass after).
+  assert.ok(html.includes("if(!hit.locked&&(hit.type==='text'||hit.type==='sticky'))"),
+    'dblclick: locked text/sticky guard present in source');
+  assert.ok(html.includes("else if(!hit.locked&&(hit.type==='frame'||hit.type==='rect'||hit.type==='ellipse'))"),
+    'dblclick: locked frame/rect/ellipse guard present in source');
+  assert.ok(html.includes("else if(!hit.locked&&(hit.type==='line'||hit.type==='arrow'))"),
+    'dblclick: locked line/arrow guard present in source');
+  console.log('  ✓ dblclick: locked shapes do not open text/label editor (presence guards, v1.7.14)');
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 731; // prev 724 + doUngroup locked (4) + doDuplicate locked frame child (3)
+  pass += 734; // prev 731 + dblclick locked guard (3)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.13 — Design Tokens
+   Board v1.7.14 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -721,7 +721,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.13';
+const V='1.7.14';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -2242,13 +2242,13 @@ canvas.addEventListener('dblclick',e=>{
   const hit=pickTop(wp);
   if(!hit)return;
   const r=canvas.getBoundingClientRect();
-  if(hit.type==='text'||hit.type==='sticky'){
+  if(!hit.locked&&(hit.type==='text'||hit.type==='sticky')){
     openTextEditor(hit,false);
-  } else if(hit.type==='frame'||hit.type==='rect'||hit.type==='ellipse'){
+  } else if(!hit.locked&&(hit.type==='frame'||hit.type==='rect'||hit.type==='ellipse')){
     const isFrame=hit.type==='frame';
     const sp=G.w2s(isFrame?{x:hit.x,y:hit.y}:{x:hit.x+hit.w/2,y:hit.y+hit.h/2});
     openLabelEditor(hit,r.left+sp.x+(isFrame?6:-40),r.top+sp.y+(isFrame?-24:-12),isFrame);
-  } else if(hit.type==='line'||hit.type==='arrow'){
+  } else if(!hit.locked&&(hit.type==='line'||hit.type==='arrow')){
     // Edge label at the connector midpoint (ADR-0003) — enables flowchart-style edges.
     const en=connEnds(hit),sp=G.w2s({x:(en.x1+en.x2)/2,y:(en.y1+en.y2)/2});
     openLabelEditor(hit,r.left+sp.x-40,r.top+sp.y-12,false);
