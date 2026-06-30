@@ -2,6 +2,19 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.98] - 2026-06-30
+
+### Fixed
+- **`Presentation.leave()` がフォーカスを元の要素に戻す (WCAG SC 2.4.3)**:
+  Shift+P または「プレゼン」ボタンでプレゼンテーションモードに入ると、オーバーレイが表示され
+  フォーカスが失われる。Esc / ボタンで退出しても `document.activeElement` が復元されなかった
+  (WCAG SC 2.4.3「Focus Order」違反)。修正: `enter()` で `_focusTrigger=document.activeElement`
+  を保存し、`leave()` で `_focusTrigger?.focus()` を呼び出して復元。
+  `_setTestState(active,trigger)` をテスト用フックとして export。
+  **非空虚テスト** (3 assert): `_setTestState(true, mockTrigger)` → `leave()` →
+  `mockTrigger.focus()` が呼ばれることを確認。非アクティブ時 (`_active=false`) は早期リターンで
+  `focus()` が呼ばれないことも確認。
+
 ## [1.6.97] - 2026-06-30
 
 ### Fixed

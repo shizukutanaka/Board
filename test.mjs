@@ -653,6 +653,7 @@ const fakeDoc = {
   body: { appendChild(){}, removeChild(){} },
   documentElement: { setAttribute(){}, getAttribute(){}, dataset:{} },
   querySelectorAll: () => [],
+  querySelector: () => ({style:{display:'',removeProperty(){}}, hidden:false}),
   addEventListener(){},
   title: '',
   activeElement: null,
@@ -4438,8 +4439,33 @@ try {
     console.log('  ✓ wrapText: \\r\\n and \\r normalized — Windows clipboard line endings handled');
   }
 
+  // v1.6.98: Presentation.leave() must restore focus to the triggering element (WCAG SC 2.4.3)
+  // Before fix: _setTestState not exported, leave() never calls focus()
+  // After fix: _focusTrigger saved in enter() and restored in leave()
+  {
+    let focusCalled = false;
+    const mockTrigger = { focus() { focusCalled = true; } };
+
+    // hook exported for testability
+    assert.ok(typeof Presentation._setTestState === 'function',
+      'Presentation._setTestState exported (v1.6.98 hook)');
+
+    // active presentation with a mock trigger: leave() must call focus()
+    Presentation._setTestState(true, mockTrigger);
+    Presentation.leave();
+    assert.ok(focusCalled, 'Presentation.leave(): restores focus to trigger (WCAG SC 2.4.3)');
+
+    // non-active path: early return means focus is NOT called
+    focusCalled = false;
+    Presentation._setTestState(false, mockTrigger);
+    Presentation.leave();
+    assert.ok(!focusCalled, 'Presentation.leave(): no-op (not active) → focus not called');
+
+    console.log('  ✓ Presentation.leave(): restores focus to trigger element (WCAG SC 2.4.3)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 659; // prev 652 + doPaste viewport (4) + wrapText \\r\\n (2) + pasteCount (1)
+  pass += 662; // prev 659 + Presentation focus (3)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

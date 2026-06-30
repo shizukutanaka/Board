@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.6.97 — Design Tokens
+   Board v1.6.98 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -721,7 +721,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.97';
+const V='1.6.98';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -4373,6 +4373,7 @@ const Presentation=(()=>{
   let _idx=0;
   let _overlay=null;
   let _savedVp=null;   // viewport before entering, restored on leave
+  let _focusTrigger=null;  // element to restore focus to on leave (WCAG SC 2.4.3)
   // v1.6.90: Screen Wake Lock — prevent the display from sleeping mid-presentation.
   // Zenn/Qiita: "プレゼンテーション中にスクリーンがオフになる問題" / Screen Wake Lock API.
   // Silent best-effort; browsers that don't support it (Safari < 16.4) simply skip.
@@ -4414,6 +4415,7 @@ const Presentation=(()=>{
   function enter(){
     _frames=_getFrames();
     if(!_frames.length){UI.toast(t('noFrames'),'warn');return}
+    _focusTrigger=document.activeElement;
     _active=true;_idx=0;
     _savedVp={x:state.viewport.x,y:state.viewport.y,zoom:state.viewport.zoom};
     // Build overlay
@@ -4457,6 +4459,7 @@ const Presentation=(()=>{
     document.querySelector('.minimap-wrap')?.style.removeProperty('display');
     if(_savedVp){Object.assign(state.viewport,_savedVp);_savedVp=null;UI.refreshZoom()}
     invalidate();
+    _focusTrigger?.focus();_focusTrigger=null;
   }
 
   function _goto(i){
@@ -4470,7 +4473,8 @@ const Presentation=(()=>{
   function prev(){if(_active&&_idx>0)_goto(_idx-1)}
   function isActive(){return _active}
 
-  return{enter,leave,next,prev,isActive,_acquireWakeLock,_releaseWakeLock};
+  return{enter,leave,next,prev,isActive,_acquireWakeLock,_releaseWakeLock,
+    _setTestState:(active,trigger)=>{_active=active;_focusTrigger=trigger;}};
 })();
 const Minimap=(()=>{
   const mc=document.getElementById('minimap');
