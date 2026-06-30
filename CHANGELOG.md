@@ -2,6 +2,21 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.29] - 2026-06-30
+
+### Fixed
+- **`doPaste` がアンドゥ後に貼付け前の選択状態を復元しない**:
+  `doDuplicate` は `origSel` パターン (`state.history[state.histIdx].origSel=origSel`) で
+  複製前の選択を履歴エントリに保持し、アンドゥで復元する。`doPaste` には同パターンが
+  欠けていたため、Ctrl+V → Ctrl+Z すると選択が空になり、元のオブジェクト (コピー元) が
+  再選択されなかった。修正: `_placeCopies` 呼び出し前に `origSel=[...state.selection]` を
+  キャプチャし、呼び出し後に `state.history[state.histIdx].origSel=origSel` を適用。
+  `doDuplicate` と完全に対称なパターン (v1.7.24a / v1.7.26 の `origSel` 系列の継続)。
+  **非空虚テスト** (4 assert):
+  - コピー後のペーストで 2 つの新シェイプが選択される ✓
+  - 貼付け後の選択は元の id と異なる (新鮮な id) ✓
+  - アンドゥ後に元の 2 シェイプ (コピー元) が再選択される ✓
+
 ## [1.7.28] - 2026-06-30
 
 ### Fixed

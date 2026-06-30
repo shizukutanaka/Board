@@ -5513,8 +5513,33 @@ try {
     console.log('  ✓ validRemotePayload upd: locked key in after rejected (v1.7.28)');
   }
 
+  // v1.7.29: doPaste missing origSel — undo of paste doesn't restore pre-paste selection.
+  // doDuplicate (line 3164) captures origSel and patches the history entry;
+  // doPaste calls _placeCopies without doing either, so undo clears selection.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.viewport={x:0,y:0,zoom:1};
+    _resetPasteClipboard();
+    const pA=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    const pB=Shape.make('rect',{x:100,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:pA});
+    Store.commit({op:'add',shape:pB});
+    state.selection=new Set([pA.id,pB.id]);
+    doCopy();
+    assert.ok(state.clipboard,'v1.7.29 setup: clipboard set after copy');
+    doPaste();
+    const pastedIds=[...state.selection];
+    assert.strictEqual(pastedIds.length,2,'v1.7.29 setup: two shapes pasted');
+    assert.ok(!pastedIds.includes(pA.id)&&!pastedIds.includes(pB.id),
+      'v1.7.29 setup: pasted shapes have fresh ids');
+    Store.undo();
+    assert.ok(state.selection.has(pA.id)&&state.selection.has(pB.id),
+      'v1.7.29: undo paste must restore pre-paste selection (origSel pattern, parity with doDuplicate)');
+    console.log('  ✓ doPaste: undo restores pre-paste selection via origSel (v1.7.29)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 795; // prev 791 + upd locked-key remote guard (4)
+  pass += 799; // prev 795 + doPaste origSel undo (4)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
