@@ -2,6 +2,19 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.22] - 2026-06-30
+
+### Fixed
+- **`doAlign` がデジェネレートシェイプを含む選択でクラッシュする**:
+  `doAlign` は各整列ユニットに対して `G.bboxAll(u.shapes)` を呼び出し (line 3308)、
+  その結果を直後の `case 'left': ... u.b.x` 等で使用していた (line 3315–3329)。
+  v1.7.19 以降、`bboxAll` はデジェネレートシェイプ (空 pts ペン) に対して null を返すため、
+  そのユニットの `u.b.x` が `TypeError: null.x` でクラッシュしていた。
+  修正: `units` 配列の生成時に `.filter(u=>u.b)` を追加し、null bbox のユニットを除外
+  (有効シェイプ同士の整列は通常どおり続行)。
+  **非空虚テスト** (3 assert): デジェネレートペンを含む 3 シェイプ選択で `doAlign('left')` が
+  クラッシュしないこと、および有効な 2 矩形が正しく左揃えされることを確認。
+
 ## [1.7.21] - 2026-06-30
 
 ### Fixed

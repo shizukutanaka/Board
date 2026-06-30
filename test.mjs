@@ -5176,6 +5176,37 @@ try {
     console.log('  ✓ _remoteDelConnFix: locked connectors skipped (v1.7.16b)');
   }
 
+  // v1.7.22: doAlign per-unit bboxAll must skip units with null bbox.
+  // Bug: doAlign computes G.bboxAll per alignment-unit at line 3308, then immediately uses
+  // u.b.x / u.b.y in the switch cases (3315–3329) without checking if u.b is null.
+  // After v1.7.19, bboxAll returns null for degenerate shapes (empty-pts pen). If such a
+  // shape is in the selection, its unit gets b=null, and the first case 'left' accesses
+  // null.x → TypeError crash. The other 2 valid-rect units would have been aligned correctly,
+  // but the whole operation aborts with an unhandled exception.
+  // Fix: filter out null-bbox units before the `if(units.length<2)return` check:
+  //   `const units=[...unitMap.values()].filter(u=>u.b);`
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const rA=Shape.make('rect',{x:50,y:0,w:40,h:40});
+    const rB=Shape.make('rect',{x:200,y:0,w:40,h:40});
+    Store.commit({op:'add',shape:rA});Store.commit({op:'add',shape:rB});
+    // Inject degenerate pen directly (bypasses validShape; triggers per-unit null bbox)
+    const dP={type:'pen',pts:[],size:2,id:'degen-align',frac:'a',x:0,y:0,stroke:'#000',opacity:1};
+    state.shapes.push(dP);
+    state.selection=new Set([dP.id,rA.id,rB.id]);
+    // Assertion 1: doAlign('left') must not crash. BEFORE fix: TypeError null.x on degenerate unit.
+    let alignErr=null;
+    try{doAlign('left');}catch(e){alignErr=e;}
+    assert.ok(alignErr===null,'doAlign null-unit: doAlign("left") does not crash with degenerate shape in selection');
+    // Assertion 2: rB (rightmost) moved to align with rA (leftmost at x=50). BEFORE: no chance to run.
+    const rBLive=state.shapes.find(s=>s.id===rB.id);
+    assert.strictEqual(rBLive.x,50,'doAlign null-unit: rB left-aligned to rA.x=50 (valid rects aligned correctly)');
+    // Assertion 3: rA (leftmost) unchanged (aligning to leftmost means no movement for rA)
+    const rALive=state.shapes.find(s=>s.id===rA.id);
+    assert.strictEqual(rALive.x,50,'doAlign null-unit: rA (leftmost) x unchanged at 50');
+    console.log('  ✓ doAlign: degenerate-bbox units filtered before alignment (v1.7.22)');
+  }
+
   // v1.7.21: drawSelection and doFlip must guard against null from G.bboxAll.
   // After v1.7.19, G.bboxAll returns null for all-degenerate shapes (empty-pts pen).
   // drawSelection() (line ~1964) and doFlip() (line ~3353) both immediately access .x/.y/.w
@@ -5260,7 +5291,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 770; // prev 767 + doFlip/drawSelection null-bbox guard (3)
+  pass += 773; // prev 770 + doAlign per-unit null-bbox filter (3)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
