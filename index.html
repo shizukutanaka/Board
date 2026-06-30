@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.6.88 — Design Tokens
+   Board v1.6.89 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -718,7 +718,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.6.88';
+const V='1.6.89';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -3392,7 +3392,7 @@ function importBoard(file){
       // clocks from the board we just swapped out. Skipping this leaks wclock entries and
       // can let a re-imported shape (same id) inherit a stale LWW clock.
       state.selection.clear();state.wclock={};
-      if(typeof d.docName==='string'&&d.docName){state.docName=d.docName;document.getElementById('docName').value=d.docName}
+      if(typeof d.docName==='string'&&d.docName){state.docName=d.docName;document.getElementById('docName').value=d.docName;_syncDocTitle();}
       sortZ();invalidate();
       Store._recordCommitted({op:'replace',before,after:clone(state.shapes)});
       UI.toast(t('loadedBoard')+' ('+shapes.length+')','ok');
@@ -3832,6 +3832,12 @@ const Share={
       return true;
     }catch{UI.toast(t('invalidBoard'),'err');return false}
   }};
+// v1.6.89: sync browser-tab title whenever the board name changes.
+// Without this, the tab always shows "index.html" regardless of what the user named their
+// board — a WCAG 2.4.2 (Page Titled) failure and a usability oversight common in canvas
+// apps (Qiita: "document.title を更新しないとブラウザタブに反映されない").
+function _syncDocTitle(){document.title=(state.docName||'Untitled')+' — Board';}
+
 const Persist={
   db:null,
   _saveT:0,
@@ -3918,7 +3924,7 @@ const Persist={
         state.viewport.x=+d.viewport.x; state.viewport.y=+d.viewport.y;
         state.viewport.zoom=clampZoom(+d.viewport.zoom);
       }
-      if(typeof d.docName==='string'&&d.docName){state.docName=d.docName;document.getElementById('docName').value=d.docName}
+      if(typeof d.docName==='string'&&d.docName){state.docName=d.docName;document.getElementById('docName').value=d.docName;_syncDocTitle();}
       state.lastSaveAt=d.savedAt||0;
       sortZ();
     }
@@ -4123,10 +4129,10 @@ function wire(){
     // (Qiita: Rapls / Zenn: spacemarket). imeShouldCommit() returns false for
     // mid-composition input events to keep partial conversions out of state/IDB/sync;
     // a parallel compositionend listener picks up the final value once IME confirms.
-    const _commitDocName=()=>{state.docName=docNameEl.value;state.dirty=true;Persist.schedule()};
+    const _commitDocName=()=>{state.docName=docNameEl.value;_syncDocTitle();state.dirty=true;Persist.schedule()};
     docNameEl.addEventListener('input',e=>{if(imeShouldCommit(e))_commitDocName()});
     docNameEl.addEventListener('compositionend',_commitDocName);
-    docNameEl.addEventListener('change',()=>{state.docName=docNameEl.value||'Untitled';Persist.schedule()});
+    docNameEl.addEventListener('change',()=>{state.docName=docNameEl.value||'Untitled';_syncDocTitle();Persist.schedule()});
   }
   document.getElementById('btnHelp').onclick=()=>UI.toggleHelp();
   document.getElementById('helpClose').onclick=()=>UI.toggleHelp();

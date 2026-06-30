@@ -99,6 +99,7 @@ const checks = [
   ['data-t i18n auto-apply', html.includes("UI.applyI18n") && html.includes("el.textContent=t(key)")],
   ['Eraser batches into single undo', html.includes("_eraseBatch") && html.includes("flushErase")],
   ['pointercancel restores eraser batch + clears guides', html.includes("_cancelPointerGesture") && html.includes("state.guides=null") && /if\(_eraseBatch\.length\)[\s\S]{0,120}state\.guides=null/.test(html)],
+  ['document.title synced on docName change (WCAG 2.4.2)', html.includes('_syncDocTitle')&&html.includes("document.title=")&&html.includes("_syncDocTitle();")],
   ['drawShape accepts ctx param', html.includes("function drawShape(s,c)")],
   // round 4 improvements (current session)
   ['Double-click re-edit text', html.includes("dblclick") && html.includes("openTextEditor")],
@@ -617,6 +618,7 @@ const fakeDoc = {
   documentElement: { setAttribute(){}, getAttribute(){}, dataset:{} },
   querySelectorAll: () => [],
   addEventListener(){},
+  title: '',
 };
 const fakeWin = {
   devicePixelRatio: 1, innerWidth: 800, innerHeight: 600,
@@ -660,7 +662,7 @@ try {
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText,
-             flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture };
+             flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _syncDocTitle };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -676,7 +678,7 @@ try {
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText,
-          flushErase, _pushEraseBatch, _cancelPointerGesture } = api;
+          flushErase, _pushEraseBatch, _cancelPointerGesture, _syncDocTitle } = api;
 
   console.log('\n-- behavioural --');
 
@@ -4177,8 +4179,27 @@ try {
     console.log('  ✓ pointercancel: state.guides cleared + eraser batch restored (stale guides + data-loss bugs fixed)');
   }
 
+  // v1.6.89: document.title must track docName (WCAG 2.4.2 Page Titled).
+  // Without this: browser tab always shows "index.html", screen readers announce wrong title.
+  // Qiita: "document.title を更新しないとブラウザタブに反映されない"
+  {
+    const prevTitle=fakeDoc.title, prevName=state.docName;
+    fakeDoc.title='';
+    state.docName='Socratic Test Board';
+    _syncDocTitle();
+    assert.strictEqual(fakeDoc.title,'Socratic Test Board — Board',
+      '_syncDocTitle: document.title updated with docName (WCAG 2.4.2)');
+    // Untitled fallback when docName is empty
+    state.docName='';
+    _syncDocTitle();
+    assert.strictEqual(fakeDoc.title,'Untitled — Board',
+      '_syncDocTitle: falls back to "Untitled" when docName is empty');
+    state.docName=prevName; fakeDoc.title=prevTitle;
+    console.log('  ✓ _syncDocTitle: browser-tab title tracks docName (WCAG 2.4.2 Page Titled)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 624; // prev 620 + pointercancel guides (1) + pointercancel erase data-loss (3)
+  pass += 627; // prev 624 + _syncDocTitle docName (2) + presence check (1)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

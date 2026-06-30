@@ -19,6 +19,14 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
   エンドツーエンドで悪意ある del がコネクタを汚染も victim を削除もしないことを検証。
 
 ### Fixed
+- **ブラウザタブタイトルがボード名を反映しない (WCAG 2.4.2 Page Titled)**:
+  Qiita 「`document.title` を更新しないとブラウザタブに反映されない」パターン。ユーザーが
+  ドキュメント名を付けてもタブは常に "index.html" のまま — スクリーンリーダーは間違った
+  タイトルを読み上げ(WCAG 2.4.2 違反)、ブックマーク/履歴にも意味のある名前が入らない。
+  `_syncDocTitle()` ヘルパを新設し、`input`/`compositionend`/`change`(docName フィールド)、
+  `Persist.load()`(IDB から復元)、`importFromJSON`(JSON 読み込み) の全ての
+  `state.docName` 書き換えパスで呼び出す。空名は "Untitled" にフォールバック。
+  **非空虚テスト** 2 assert: 通常名・空名フォールバック、修正前失敗・修正後通過を確認。
 - **`pointercancel` でスナップガイド線が残留 + 消しゴムストローク途中でキャンセルするとシェイプが消える(データロストバグ)**:
   GitHub canvas-apps Issue / Qiita「Android タッチ横取り後にガイド線が残る」「スタイラスが範囲外へ出ると消しゴムで消したはずのない図形が消える」パターンで発見。
   `pointercancel`(Android システムジェスチャ横取り・スタイラス out-of-range・指の追加 etc.) が発生した際、
