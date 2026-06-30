@@ -2,6 +2,19 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.18] - 2026-06-30
+
+### Fixed
+- **`doBringFront`/`doSendBack`/`doBringForward`/`doSendBackward` がロックシェイプをスキップしない**:
+  4 つの z 順序関数がすべて `const ids=[...state.selection]` とロックフィルタなしで開始していた。
+  ロックされたシェイプを選択して `]`/`[` を押すか前面/背面コンテキストメニューを使うと、
+  ロック済みシェイプの `frac` (z-index) が変更され、`zorder` op として undo 履歴に記録されていた
+  (ロック不変条件の侵害; `doAlign`/`doDelete`/`doMove` が既に持つ `!s.locked` フィルタのパリティ)。
+  修正: 4 関数それぞれの `ids` 初期化を
+  `[...state.selection].filter(id=>!byId(id)?.locked)` に変更。
+  **非空虚テスト** (6 assert): ロック済みシェイプの `frac` が前面/背面操作後も不変であり、
+  履歴エントリが追加されないことを確認 (前面+1ステップ、前面フル、後面+1ステップ、後面フル 各ペア)。
+
 ## [1.7.17] - 2026-06-30
 
 ### Fixed

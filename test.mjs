@@ -5055,6 +5055,48 @@ try {
     'dblclick: locked line/arrow guard present in source');
   console.log('  ✓ dblclick: locked shapes do not open text/label editor (presence guards, v1.7.14)');
 
+  // v1.7.18: doBringFront/doSendBack/doBringForward/doSendBackward must skip locked shapes.
+  // Before fix, all four used `const ids=[...state.selection]` without filtering locked shapes,
+  // so pressing ] or [ on a locked shape would change its frac (z-order) and record a zorder
+  // undo entry — bypassing the locked invariant (parity with doAlign/doDelete/doMove).
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const zA=Shape.make('rect',{x:0,y:0,w:20,h:20});
+    const zB=Shape.make('rect',{x:10,y:0,w:20,h:20});
+    const zC=Shape.make('rect',{x:20,y:0,w:20,h:20});
+    Store.commit({op:'add',shape:zA});Store.commit({op:'add',shape:zB});Store.commit({op:'add',shape:zC});
+    // Lock the LIVE shape in state.shapes (Store.commit clones, so set on live copy)
+    const livezB=state.shapes.find(s=>s.id===zB.id); livezB.locked=true;
+    const fracBefore=livezB.frac, histLen=state.history.length;
+    // doBringFront on locked shape must be a no-op
+    state.selection=new Set([livezB.id]);
+    doBringFront();
+    assert.strictEqual(livezB.frac,fracBefore,'doBringFront locked: locked shape frac unchanged');
+    assert.strictEqual(state.history.length,histLen,'doBringFront locked: no zorder history entry added');
+    // doSendBack on locked shape must be a no-op
+    doSendBack();
+    assert.strictEqual(livezB.frac,fracBefore,'doSendBack locked: locked shape frac unchanged');
+    console.log('  ✓ doBringFront/doSendBack: locked shapes skipped in z-order operations (v1.7.18a)');
+  }
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    const zA2=Shape.make('rect',{x:0,y:0,w:20,h:20});
+    const zB2=Shape.make('rect',{x:10,y:0,w:20,h:20});
+    const zC2=Shape.make('rect',{x:20,y:0,w:20,h:20});
+    Store.commit({op:'add',shape:zA2});Store.commit({op:'add',shape:zB2});Store.commit({op:'add',shape:zC2});
+    const livezB2=state.shapes.find(s=>s.id===zB2.id); livezB2.locked=true;
+    const fracBefore2=livezB2.frac, histLen2=state.history.length;
+    // doBringForward on locked shape must be a no-op
+    state.selection=new Set([livezB2.id]);
+    doBringForward();
+    assert.strictEqual(livezB2.frac,fracBefore2,'doBringForward locked: locked shape frac unchanged');
+    assert.strictEqual(state.history.length,histLen2,'doBringForward locked: no zorder history entry');
+    // doSendBackward on locked shape must be a no-op
+    doSendBackward();
+    assert.strictEqual(livezB2.frac,fracBefore2,'doSendBackward locked: locked shape frac unchanged');
+    console.log('  ✓ doBringForward/doSendBackward: locked shapes skipped in z-order operations (v1.7.18b)');
+  }
+
   // v1.7.17a: _apply case style/resize/align must not crash when op.before is null (undo guard).
   // validRemotePayload allows op.before==null for these ops; if such an op reached local
   // history (e.g., via future import), Store.undo() would throw TypeError: null is not iterable.
@@ -5135,7 +5177,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 755; // prev 749 + _apply null before (3) + validPatch numeric str (3)
+  pass += 761; // prev 755 + doBringFront/doSendBack locked (3) + doBringForward/doSendBackward locked (3)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
