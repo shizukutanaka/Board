@@ -4600,6 +4600,28 @@ try {
     console.log('  ✓ doDelete: frame children deleted with frame (parity with doDuplicate); undo restores');
   }
 
+  // v1.7.07: doDelete undo must restore the original selection (Figma/Excalidraw parity).
+  // Before fix: _apply(del, false) restores shapes but leaves selection empty.
+  // After fix: doDelete stores origSel on the del op; _apply del reverse restores it.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const A=Shape.make('rect',{x:0,y:0,w:100,h:100});
+    const B=Shape.make('rect',{x:200,y:0,w:100,h:100});
+    Store.commit({op:'add',shape:A});Store.commit({op:'add',shape:B});
+    state.selection=new Set([A.id,B.id]);
+    doDelete();
+    // After delete: 0 shapes remain, selection cleared
+    assert.strictEqual(state.shapes.length, 0, 'doDelete: both shapes deleted');
+    assert.strictEqual(state.selection.size, 0, 'doDelete: selection cleared');
+    Store.undo();
+    // Before fix: shapes restored but selection remains empty
+    // After fix: selection restored to {A.id, B.id}
+    assert.strictEqual(state.shapes.length, 2, 'doDelete undo: both shapes restored');
+    assert.ok(state.selection.has(A.id), 'doDelete undo: A.id restored to selection');
+    assert.ok(state.selection.has(B.id), 'doDelete undo: B.id restored to selection');
+    console.log('  ✓ doDelete undo: original selection restored (Figma/Excalidraw parity)');
+  }
+
   // v1.7.06: doCopy must exclude locked shapes (parity with doDelete/doMove/doAlign/doRotate).
   // Before fix: doCopy used .filter(Boolean) — clipboard included locked shapes. Ctrl+X then
   // kept locked shapes on board AND in clipboard, causing duplicate on paste.
@@ -4687,7 +4709,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 694; // prev 692 + doCopy excludes locked (2)
+  pass += 699; // prev 694 + doDelete undo origSel (5)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

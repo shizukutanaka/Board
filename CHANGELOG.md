@@ -2,6 +2,19 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.07] - 2026-06-30
+
+### Fixed
+- **`doDelete` undo で元の選択を復元 (doDuplicate との整合 / Figma・Excalidraw 同等動作)**:
+  Del/Backspace で削除後に Ctrl+Z を実行すると、シェイプは復元されるが選択状態が失われるバグ。
+  `_apply(del, false)` はシェイプをキャンバスに戻すが、selection を復元しなかった。
+  修正: `doDelete` が `Store.commit` 呼び出し後に `state.history[state.histIdx].origSel`
+  へ元の選択をスナップショット。`_apply` del reverse で `op.origSel` があれば
+  `state.selection` を復元 (byId でキャンバス上に存在するシェイプのみ)。
+  v1.7.04 の doDuplicate undo origSel と同じパターン。
+  **非空虚テスト** (5 assert): A + B を選択して削除 → undo →
+  修正前は selection が空 (テスト失敗)、修正後は {A.id, B.id} が復元される。
+
 ## [1.7.06] - 2026-06-30
 
 ### Fixed
