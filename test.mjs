@@ -4528,8 +4528,54 @@ try {
     console.log('  ✓ doAlign: frame children move with frame (parity with drag/nudge); undo restores');
   }
 
+  // v1.7.01: doFlip must mirror frame children with the frame (parity with doAlign)
+  // Before fix: selecting a frame + ref and flipping mirrors the frame but leaves its
+  // contained children at original positions. After fix: children mirror with the frame.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    // Frame at (0,0,200,200); child inside at (50,50,40,40); ref at (300,0,40,40)
+    const frm=Shape.make('frame',{x:0,y:0,w:200,h:200});
+    const child=Shape.make('rect',{x:50,y:50,w:40,h:40});
+    const ref=Shape.make('rect',{x:300,y:0,w:40,h:40});
+    Store.commit({op:'add',shape:frm});
+    Store.commit({op:'add',shape:child});
+    Store.commit({op:'add',shape:ref});
+    state.selection=new Set([frm.id,ref.id]); // child NOT explicitly selected
+    // c = (0+340)/2 = 170; child.x after flip = 2*170-(50+40) = 250
+    doFlip('h');
+    const liveChild=state.shapes.find(s=>s.id===child.id);
+    // Before fix: liveChild.x===50 (left behind). After fix: 250 (mirrored with frame).
+    assert.strictEqual(liveChild.x, 250, 'doFlip frame: child mirrored with frame (2*170-90=250)');
+    Store.undo();
+    assert.strictEqual(state.shapes.find(s=>s.id===child.id).x, 50, 'doFlip frame undo: child x restored');
+    assert.strictEqual(state.shapes.find(s=>s.id===frm.id).x, 0, 'doFlip frame undo: frame x restored');
+    console.log('  ✓ doFlip: frame children mirror with frame (parity with doAlign); undo restores');
+  }
+
+  // v1.7.01: doRotate must rotate frame children with the frame (parity with doAlign)
+  // Before fix: selecting a frame + ref and rotating spins the frame but leaves box-shape
+  // children with original rotate/position. After fix: children orbit + rotate with the frame.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    // Frame at (0,0,100,100); child inside at (20,20,20,20); ref at (200,0,100,100)
+    const frm=Shape.make('frame',{x:0,y:0,w:100,h:100});
+    const child=Shape.make('rect',{x:20,y:20,w:20,h:20});
+    const ref=Shape.make('rect',{x:200,y:0,w:100,h:100});
+    Store.commit({op:'add',shape:frm});
+    Store.commit({op:'add',shape:child});
+    Store.commit({op:'add',shape:ref});
+    state.selection=new Set([frm.id,ref.id]); // child NOT explicitly selected
+    doRotate(90);
+    const liveChild=state.shapes.find(s=>s.id===child.id);
+    // Before fix: child.rotate===undefined (not rotated). After fix: child.rotate===90.
+    assert.strictEqual(liveChild.rotate, 90, 'doRotate frame: child rotate equals 90');
+    Store.undo();
+    assert.strictEqual(state.shapes.find(s=>s.id===child.id).rotate, 0, 'doRotate frame undo: child rotate restored to 0');
+    console.log('  ✓ doRotate: frame children rotate with frame (parity with doAlign); undo restores');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 672; // prev 668 + doAlign frame-children (4)
+  pass += 677; // prev 672 + doFlip frame-children (3) + doRotate frame-children (2)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

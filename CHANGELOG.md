@@ -2,6 +2,22 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.01] - 2026-06-30
+
+### Fixed
+- **`doFlip` / `doRotate` がフレームの子シェイプも一緒に変換 (doAlign との整合)**:
+  フレームを選択して左右/上下反転 (`doFlip`) または回転 (`doRotate`) を実行すると、
+  フレーム自体は変換されるが内部のシェイプが取り残されるバグ。v1.7.00 で `doAlign` に
+  適用したフレーム子シェイプ拡張ロジックを `doFlip`・`doRotate` にも適用。`doRotate` は
+  ボックス型シェイプ (w!=null) の子のみを対象 (pen/line/arrow は点座標のため除外、既存の
+  `s.w!=null` フィルタと整合)。before/after スナップショットが子シェイプを含むため
+  undo/redo も正しく動作。
+  **非空虚テスト** (5 assert):
+  - `doFlip('h')`: フレーム+参照シェイプ選択、反転後に子シェイプが期待座標に移動すること確認
+    (修正前: 子 x=50 のまま、修正後: x=250 = 2×170−90)
+  - `doRotate(90)`: フレーム+参照シェイプ選択、回転後に子シェイプの rotate が 90 になること確認
+    (修正前: rotate=undefined/0 のまま)
+
 ## [1.7.00] - 2026-06-30
 
 ### Fixed
