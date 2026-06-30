@@ -2,6 +2,20 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.25] - 2026-06-30
+
+### Fixed
+- **`doCopy` がフレームの子シェイプをクリップボードに含めない (データロスの危険)**:
+  `doCopy` は `[...state.selection]` のみを反復しており `withFrameChildren` を呼ばなかった。
+  フレームを選択して Ctrl+C すると、フレーム内に空間的に含まれる子シェイプがクリップボードに
+  入らず、Ctrl+V でフレームのシェルだけが貼り付けられた。
+  さらに Ctrl+X (カット = コピー+削除) では `doDelete` が `withFrameChildren` でフレーム子を
+  展開して正しく削除するため、削除されるが貼り付けられない子シェイプが**永久に失われた**。
+  修正: `doCopy` の `[...state.selection]` を `[...withFrameChildren(state.selection)]` に
+  変更 (`doDuplicate` や `nudgeSelection` と完全なパリティ)。
+  **非空虚テスト** (3 assert): フレームのみ選択状態で `doCopy()` 後にクリップボードが
+  フレーム+子の 2 シェイプを含むこと、および切り取り+貼り付けで子が消えないことを確認。
+
 ## [1.7.24] - 2026-06-30
 
 ### Fixed

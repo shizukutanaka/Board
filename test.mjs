@@ -548,7 +548,7 @@ const checks = [
   ['lockToggle i18n key present in ja and en', (html.match(/lockToggle:/g)||[]).length>=2],
   ['lockToggle in help grid', html.includes("t('lockToggle')")],
   // v1.7.06: doCopy excludes locked shapes (parity with doDelete/doMove/doAlign)
-  ['doCopy excludes locked shapes (cut leaves locked on board AND off clipboard)', html.includes("const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);\n  if(!sel.length)return;\n  state.clipboard")],
+  ['doCopy expands frame children and excludes locked shapes', html.includes("const sel=[...withFrameChildren(state.selection)].map(byId).filter(s=>s&&!s.locked);\n  if(!sel.length)return;\n  state.clipboard")],
   // v1.6.77: paste/duplicate is one atomic undo — _placeCopies commits a single addMany op
   ['_placeCopies commits one addMany (not per-shape add)', html.includes("if(built.length)Store.commit({op:'addMany',shapes:built})")],
   ['addMany op has an _apply case', /case 'addMany':/.test(html)],
@@ -5382,8 +5382,37 @@ try {
     console.log('  ✓ validRemotePayload: remote style/resize ops with locked key rejected (v1.7.24b)');
   }
 
+  // v1.7.25: doCopy must expand frame children via withFrameChildren (parity with doDuplicate).
+  // Bug: doCopy iterates only state.selection, skipping shapes spatially inside a selected
+  // frame. When the user selects a frame and Ctrl+C, only the frame shell enters the
+  // clipboard — children are silently absent. For Ctrl+X (cut = copy + delete), doDelete
+  // DOES expand frame children and removes them from the board, but they are not in the
+  // clipboard, so paste cannot restore them. The children are permanently lost unless undone.
+  // Fix: change `[...state.selection]` to `[...withFrameChildren(state.selection)]` in doCopy.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.clipboard=null;
+    const cpF=Shape.make('frame',{x:0,y:0,w:300,h:300});
+    const cpC=Shape.make('rect',{x:50,y:50,w:40,h:40}); // spatially inside cpF
+    Store.commit({op:'add',shape:cpF});Store.commit({op:'add',shape:cpC});
+    state.selection=new Set([cpF.id]); // only frame selected, not child
+    doCopy();
+    // Assertion 1: clipboard must include child. BEFORE fix: length===1 (frame only). AFTER: 2.
+    assert.strictEqual(state.clipboard.shapes.length,2,
+      'v1.7.25: doCopy of selected frame includes spatially-contained child in clipboard');
+    // Assertion 2: child id specifically present in clipboard.
+    assert.ok(state.clipboard.shapes.some(s=>s.id===cpC.id),
+      'v1.7.25: doCopy clipboard contains frame child id');
+    // Assertion 3: cut (copy+delete) then paste restores child — no data loss.
+    state.selection=new Set([cpF.id]);
+    doCopy();doDelete();
+    doPaste();
+    assert.strictEqual(state.shapes.filter(s=>s.type==='rect').length,1,
+      'v1.7.25: cut+paste of frame restores child shape (no data loss)');
+    console.log('  ✓ doCopy: frame children included in copy/cut clipboard (v1.7.25)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 782; // prev 776 + doClearAll origSel (3) + style/resize locked block (3)
+  pass += 785; // prev 782 + doCopy frame children (3)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
