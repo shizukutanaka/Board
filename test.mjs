@@ -603,8 +603,8 @@ const checks = [
   ['wrapText normalizes \\r\\n and \\r before splitting (Windows clipboard parity)',
     html.includes("replace(/\\r\\n/g,'\\n').replace(/\\r/g,'\\n')")],
   // v1.7.23: validRemotePayload must block locked key in remote align ops
-  ['remote align op cannot set locked (noLock guard in validRemotePayload)',
-    html.includes("case 'align':{const noLock=p=>!('locked' in p);")],
+  ['remote align op cannot set locked (noLock guard in validRemotePayload, lock dir exempt)',
+    html.includes("case 'align':{const noLock=p=>op.dir==='lock'||!('locked' in p);")],
   // v1.7.24a: _apply clear backward must restore pre-clear selection
   ['_apply clear backward restores origSel (mirror of del undo)',
     html.includes("if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));") &&
@@ -645,8 +645,8 @@ const checks = [
   ['_apply upd forward: if(forward&&sh.locked)break guards locked shapes',
     html.includes("const sh=byId(op.id);if(!sh)break;\n        if(forward&&sh.locked)break;")],
   // v1.7.38: _apply style/resize/align forward must guard sh.locked per patch
-  ['_apply style/resize/align forward: !(forward&&sh.locked) guards locked shapes per patch',
-    html.includes("if(sh&&!(forward&&sh.locked))Object.assign(sh,clone(p))")],
+  ['_apply style/resize/align forward: !(forward&&sh.locked&&!locked-in-p) guards locked shapes per patch',
+    html.includes("if(sh&&!(forward&&sh.locked&&!('locked' in p)))Object.assign(sh,clone(p))")],
   // v1.7.39: _apply del forward connClears must guard sh.locked
   ['_apply del forward connClears: if(sh&&!sh.locked) guards locked connectors',
     html.includes("if(sh&&!sh.locked)Object.assign(sh,p.after);}}")],
@@ -5913,8 +5913,45 @@ try {
     console.log('  ✓ _apply ungroup forward: locked shape groupId not removed by remote ungroup (v1.7.40c)');
   }
 
+  // v1.7.41a: validRemotePayload('align') with dir:'lock' rejects lock ops because
+  // its noLock predicate blocks any patch containing 'locked'. Remote lock state
+  // never syncs to peers — remote shape stays unlocked.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const la=Shape.make('rect',{x:0,y:0,w:30,h:30});
+    state.shapes.push(la);
+    la.locked=null;
+    Store.applyRemote({op:'align',dir:'lock',
+      after:[{id:la.id,locked:true}],
+      before:[{id:la.id,locked:null}],
+      clock:{peer:'p41a',seq:1,ts:1}});
+    const la_after=state.shapes.find(s=>s.id===la.id);
+    assert.strictEqual(la_after.locked,true,
+      'v1.7.41a: remote lock op must propagate locked=true to shape');
+    console.log('  ✓ validRemotePayload align/lock: remote lock op syncs to peers (v1.7.41a)');
+  }
+
+  // v1.7.41b: redo of unlock broken by v1.7.38 guard — !(forward&&sh.locked) skips
+  // the unlock patch because the shape IS locked (just re-locked by undo).
+  // Fix: bypass guard when patch explicitly carries the 'locked' key.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const lb=Shape.make('rect',{x:0,y:0,w:30,h:30});
+    state.shapes.push(lb);
+    state.selection=new Set([lb.id]);
+    doLock();   // lock: locked=true
+    doLock();   // unlock: locked=null
+    Store.undo(); // undo unlock → re-locks shape
+    assert.strictEqual(state.shapes.find(s=>s.id===lb.id).locked,true,
+      'v1.7.41b setup: undo of unlock re-locks shape');
+    Store.redo(); // redo unlock → should return locked to null
+    assert.ok(!state.shapes.find(s=>s.id===lb.id).locked,
+      'v1.7.41b: redo of unlock must clear locked (v1.7.38 guard broke this)');
+    console.log('  ✓ redo of unlock: locked cleared after lock→unlock→undo→redo (v1.7.41b)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 837; // prev 833 + zorder/group/ungroup lock guards (3 presence + 3 behavioral = 6)
+  pass += 839; // prev 837 + align/lock validator + redo-of-unlock (2 behavioral)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

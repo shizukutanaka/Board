@@ -2,6 +2,28 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.41] - 2026-07-01
+
+### Fixed
+- **`validRemotePayload('align')` が `dir:'lock'` op を拒否する (P2P ロック同期不能)**:
+  `noLock=p=>!('locked' in p)` が `{locked:true}` / `{locked:null}` を含む全パッチを
+  拒否するため、`doLock()` で生成される `align/lock` op が受信ピアに適用されず、
+  シェイプのロック状態が P2P 経由で一切伝播しなかった。
+  修正: `noLock=p=>op.dir==='lock'||!('locked' in p)` — `dir:'lock'` op はガードを免除。
+
+- **redo of unlock がロック解除を適用しない (v1.7.38 ガード退行)**:
+  v1.7.38 で追加した `!(forward&&sh.locked)` ガードが `_apply` redo パス (forward=true) で
+  lock op の redo を妨害していた。lock → unlock → undo (再ロック) → redo (再アンロック) の
+  操作で redo が `sh.locked=null` を適用せずシェイプがロック状態のままになる。
+  修正: `!(forward&&sh.locked&&!('locked' in p))` — パッチに `locked` キーが含まれる場合は
+  ガードを通過させ、lock/unlock op の redo が正しく適用されるようにした。
+
+### Tests
+- behavioral × 2: remote lock op がピアの shape を `locked=true` にする (v1.7.41a);
+  lock→unlock→undo→redo が `locked=null` を正しく復元する (v1.7.41b)
+- presence check × 2: 更新された validator/guard パターンを確認
+- 合計 1289 pass, 0 fail
+
 ## [1.7.40] - 2026-07-01
 
 ### Fixed
