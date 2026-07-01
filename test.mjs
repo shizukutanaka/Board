@@ -553,7 +553,7 @@ const checks = [
   ['_placeCopies commits one addMany (not per-shape add)', html.includes("if(built.length)Store.commit({op:'addMany',shapes:built})")],
   ['addMany op has an _apply case', /case 'addMany':/.test(html)],
   ['addMany in REMOTE_OPS allow-list', /REMOTE_OPS[\s\S]{0,160}'addMany'/.test(html)],
-  ['addMany validated in validRemotePayload', /case 'addMany':/.test(html)&&html.includes("case 'addMany':    return Array.isArray(op.shapes)&&op.shapes.every(validShape)")],
+  ['addMany validated in validRemotePayload (with MAX_OP_SHAPES cap)', /case 'addMany':/.test(html)&&html.includes("case 'addMany':    return Array.isArray(op.shapes)&&op.shapes.length<=MAX_OP_SHAPES&&op.shapes.every(validShape)")],
   // v1.6.85: modal dialog isolation — global canvas shortcuts must not fire behind an
   // open help/share dialog, and Tab is trapped inside it (WCAG 2.4.3 / 2.1.2).
   ['modal focus-trap helpers present', html.includes('function _trapStep')&&html.includes('function _openDialog')],
@@ -613,9 +613,9 @@ const checks = [
   ['remote style/resize ops cannot set locked (noLock guard extended)',
     html.includes("case 'resize':{const noLock=p=>!('locked' in p);")],
   // v1.7.26: _apply replace backward restores origSel; importBoard/importFromHash attach it
-  ['_apply replace backward restores origSel; import callers attach origSel to op',
+  ['_apply replace backward restores origSel; import callers attach origSel + afterWc to op',
     html.includes("if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));") &&
-    html.includes("Store._recordCommitted({op:'replace',before,after:clone(state.shapes),wc:beforeWc,origSel});")],
+    html.includes("Store._recordCommitted({op:'replace',before,after:clone(state.shapes),wc:beforeWc,afterWc:clone(state.wclock),origSel});")],
   // v1.7.28: validRemotePayload for upd must block locked key (parity with style/resize/align)
   ['remote upd op cannot set locked (noLock guard extended to upd)',
     html.includes("case 'upd':{const noLock=p=>!('locked' in p);\n      return typeof op.id==='string'&&validPatch(op.after)&&noLock(op.after)")],
@@ -679,6 +679,15 @@ const checks = [
   // v1.7.43: _zCommit captures origSel before zorder _recordCommitted
   ['_zCommit: origSel captured before zorder commit and patched onto history entry',
     html.includes("Store._recordCommitted({op:'zorder',changes});\n  if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
+  // v1.7.44: MAX_OP_SHAPES constant defined (DoS guard for remote ops)
+  ['MAX_OP_SHAPES constant defined (remote array size cap)',
+    html.includes("const MAX_OP_SHAPES=500;")],
+  // v1.7.44: nextZ uses reduce to avoid spread RangeError on large boards
+  ['nextZ uses reduce (safe for >65K shapes, no spread RangeError)',
+    html.includes("function nextZ(){return state.shapes.length?state.shapes.reduce((m,s)=>Math.max(m,s.z||0),0)+1:1}")],
+  // v1.7.44: _apply replace forward restores afterWc on redo
+  ['_apply replace forward: if(forward&&op.afterWc) restores wclock on redo',
+    html.includes("if(forward&&op.afterWc)state.wclock=clone(op.afterWc);")],
   // v1.7.43: _apply zorder backward restores origSel (mirrors move/align/group/ungroup)
   ['_apply zorder backward: if(!forward&&op.origSel) restores selection',
     html.includes("if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));\n        break;}\n      case 'style':")],
@@ -6056,8 +6065,37 @@ try {
     console.log('  ✓ _apply upd backward: origSel restored on undo (v1.7.43b)');
   }
 
+  // v1.7.44a: validRemotePayload('addMany') has no size cap — 501 shapes pass validation,
+  // freezing the UI thread and exhausting memory.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const bigShapes=Array.from({length:501},(_,i)=>Shape.make('rect',{x:i*15,y:0,w:10,h:10}));
+    Store.applyRemote({op:'addMany',shapes:bigShapes,clock:{peer:'evil44a',seq:1,ts:1}});
+    assert.strictEqual(state.shapes.length,0,
+      'v1.7.44a: remote addMany with 501 shapes must be rejected');
+    assert.ok(!state.seenOps.has('evil44a:1'),
+      'v1.7.44a: oversized addMany op must not be added to seenOps');
+    console.log('  ✓ validRemotePayload addMany: >MAX_OP_SHAPES shapes rejected (v1.7.44a)');
+  }
+
+  // v1.7.44b: _apply replace forward does not restore op.afterWc on redo —
+  // wclock is cleared to {} instead of being restored to the afterWc snapshot.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const rAfter=[Shape.make('rect',{x:50,y:0,w:10,h:10})];
+    const testWc={'wc44b':{peer:'test',seq:1,ts:1}};
+    Store.commit({op:'replace',before:[],after:rAfter,wc:{},afterWc:testWc,origSel:[]});
+    Store.undo();
+    assert.ok(!state.wclock['wc44b'],
+      'v1.7.44b setup: undo of replace restores empty wc (not afterWc)');
+    Store.redo();
+    assert.ok(state.wclock['wc44b'],
+      'v1.7.44b: redo of replace must restore afterWc to state.wclock');
+    console.log('  ✓ _apply replace forward: afterWc restored on redo (v1.7.44b)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 849; // prev 845 + zorder origSel + upd backward origSel (2+1 behavioral)
+  pass += 854; // prev 849 + addMany size cap + replace afterWc (2+3 asserts)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

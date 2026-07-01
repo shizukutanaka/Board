@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.43 — Design Tokens
+   Board v1.7.44 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -721,12 +721,13 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.43';
+const V='1.7.44';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
 const MAX_HISTORY=500;
 const MAX_SEEN_OPS=2000; // cap seenOps to prevent unbounded growth
+const MAX_OP_SHAPES=500; // max shapes in a single remote op (DoS guard)
 const MIN_ZOOM=0.1, MAX_ZOOM=16;
 const clampZoom=z=>Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,z)); // single source for the zoom invariant
 const GRID_SIZE=20;
@@ -1010,21 +1011,21 @@ function validShape(s){
 }
 // Validate a REMOTE op's payload before _apply. See docs/architecture.md.
 function validRemotePayload(op){
-  const patches=a=>Array.isArray(a)&&a.every(p=>p&&typeof p.id==='string'&&validPatch(p));
+  const patches=a=>Array.isArray(a)&&a.length<=MAX_OP_SHAPES&&a.every(p=>p&&typeof p.id==='string'&&validPatch(p));
   switch(op.op){
     case 'add':    return validShape(op.shape);
-    case 'addMany':    return Array.isArray(op.shapes)&&op.shapes.every(validShape);
+    case 'addMany':    return Array.isArray(op.shapes)&&op.shapes.length<=MAX_OP_SHAPES&&op.shapes.every(validShape);
     case 'del':
       // connClears (binding-cleanup deltas, v1.6.78) are Object.assign'd into live
       // connectors by _apply — validate each before/after like any remote patch so a
       // hostile peer can't NaN-poison/pollute a connector through the del path.
       if(op.connClears!=null&&!(Array.isArray(op.connClears)&&op.connClears.every(p=>
           p&&typeof p.id==='string'&&(p.before==null||validPatch(p.before))&&(p.after==null||validPatch(p.after)))))return false;
-      return Array.isArray(op.shapes)&&op.shapes.every(validShape);
-    case 'clear':  return Array.isArray(op.shapes)&&op.shapes.every(validShape);
+      return Array.isArray(op.shapes)&&op.shapes.length<=MAX_OP_SHAPES&&op.shapes.every(validShape);
+    case 'clear':  return Array.isArray(op.shapes)&&op.shapes.length<=MAX_OP_SHAPES&&op.shapes.every(validShape);
     case 'upd':{const noLock=p=>!('locked' in p);
       return typeof op.id==='string'&&validPatch(op.after)&&noLock(op.after)&&(op.before==null||validPatch(op.before));}
-    case 'move':   return Array.isArray(op.ids)&&op.ids.length>0&&op.ids.every(id=>typeof id==='string')&&Number.isFinite(+op.dx)&&Number.isFinite(+op.dy)&&(op.dx!==0||op.dy!==0);
+    case 'move':   return Array.isArray(op.ids)&&op.ids.length>0&&op.ids.length<=MAX_OP_SHAPES&&op.ids.every(id=>typeof id==='string')&&Number.isFinite(+op.dx)&&Number.isFinite(+op.dy)&&(op.dx!==0||op.dy!==0);
     case 'zorder':  // Step2 minimal-delta {changes:[{id,before,after}]} or legacy {after:[…]}
       return (Array.isArray(op.changes)&&op.changes.every(c=>c&&typeof c.id==='string'
                 &&(c.after==null||typeof c.after==='string')&&(c.before==null||typeof c.before==='string')))
@@ -1316,6 +1317,7 @@ const Store={
         state.shapes.length=0;state.selection.clear();state.wclock={};
         for(const s of next)state.shapes.push(clone(s));
         sortZ();
+        if(forward&&op.afterWc)state.wclock=clone(op.afterWc);
         if(!forward&&op.wc)state.wclock=clone(op.wc);
         if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));
         break;}
@@ -1467,7 +1469,7 @@ function sortZ(){
   }
   state.shapes.sort((a,b)=>a.frac<b.frac?-1:a.frac>b.frac?1:a.id<b.id?-1:a.id>b.id?1:0);
 }
-function nextZ(){return state.shapes.length?Math.max(...state.shapes.map(s=>s.z||0))+1:1}
+function nextZ(){return state.shapes.length?state.shapes.reduce((m,s)=>Math.max(m,s.z||0),0)+1:1}
 
 // ====================== SHAPE helpers ======================
 const Shape={
@@ -3566,7 +3568,7 @@ function importBoard(file){
       state.selection.clear();state.wclock={};
       if(typeof d.docName==='string'&&d.docName){state.docName=d.docName;document.getElementById('docName').value=d.docName;_syncDocTitle();}
       sortZ();invalidate();
-      Store._recordCommitted({op:'replace',before,after:clone(state.shapes),wc:beforeWc,origSel});
+      Store._recordCommitted({op:'replace',before,after:clone(state.shapes),wc:beforeWc,afterWc:clone(state.wclock),origSel});
       UI.toast(t('loadedBoard')+' ('+shapes.length+')','ok');
     }catch{UI.toast(t('invalidBoard'),'err')}
   };
@@ -4000,7 +4002,7 @@ const Share={
       // clocks from the board we just swapped out (see importBoard for rationale).
       state.selection.clear();state.wclock={};
       sortZ();invalidate();
-      Store._recordCommitted({op:'replace',before,after:clone(state.shapes),wc:beforeWc,origSel});
+      Store._recordCommitted({op:'replace',before,after:clone(state.shapes),wc:beforeWc,afterWc:clone(state.wclock),origSel});
       document.getElementById('docName').value=state.docName;_syncDocTitle();
       // clean URL
       history.replaceState(null,'',location.pathname);

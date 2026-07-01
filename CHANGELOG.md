@@ -2,6 +2,30 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.44] - 2026-07-01
+
+### Fixed
+- **`validRemotePayload` が配列サイズを制限しない (P1 DoS / メモリ枯渇)**:
+  `addMany.shapes`、`del.shapes`、`clear.shapes`、`move.ids`、`align/style/resize` の
+  パッチ配列が無制限で、悪意あるピアが 100,000 要素の op を送ると UI スレッドが
+  フリーズし、メモリが枯渇する。修正: `const MAX_OP_SHAPES=500` を定義し、
+  各 op の配列に `length<=MAX_OP_SHAPES` チェックを追加。
+
+- **`nextZ()` が `Math.max(...array)` スプレッドを使用 (P1 クラッシュリスク)**:
+  65,536 以上のシェイプがある状態で新規シェイプを作成すると V8 の引数上限を超えて
+  `RangeError` が発生し、以降のシェイプ作成がすべて失敗する。
+  修正: `state.shapes.reduce((m,s)=>Math.max(m,s.z||0),0)` に置き換え。
+
+- **`_apply replace` forward が `afterWc` を復元しない (P2 wclock 不整合)**:
+  undo 後に redo すると `state.wclock={}` に強制リセットされ、import 時に
+  記録した `afterWc` クロックが失われる。修正: `if(forward&&op.afterWc)state.wclock=clone(op.afterWc)` を追加。
+  `importBoard`・`importFromHash` 両方に `afterWc:clone(state.wclock)` を付与。
+
+### Tests
+- behavioral × 2: addMany >500 shapes 拒否 (v1.7.44a); replace redo restores afterWc (v1.7.44b)
+- presence check × 3: MAX_OP_SHAPES 定数, nextZ reduce, replace forward afterWc
+- 合計 1312 pass, 0 fail
+
 ## [1.7.43] - 2026-07-01
 
 ### Fixed
