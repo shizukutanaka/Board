@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.45 — Design Tokens
+   Board v1.7.46 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -721,7 +721,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.45';
+const V='1.7.46';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1019,7 +1019,7 @@ function validRemotePayload(op){
       // connClears (binding-cleanup deltas, v1.6.78) are Object.assign'd into live
       // connectors by _apply — validate each before/after like any remote patch so a
       // hostile peer can't NaN-poison/pollute a connector through the del path.
-      if(op.connClears!=null&&!(Array.isArray(op.connClears)&&op.connClears.every(p=>
+      if(op.connClears!=null&&!(Array.isArray(op.connClears)&&op.connClears.length<=MAX_OP_SHAPES&&op.connClears.every(p=>
           p&&typeof p.id==='string'&&(p.before==null||validPatch(p.before))&&(p.after==null||validPatch(p.after)))))return false;
       return Array.isArray(op.shapes)&&op.shapes.length<=MAX_OP_SHAPES&&op.shapes.every(validShape);
     case 'clear':  return Array.isArray(op.shapes)&&op.shapes.length<=MAX_OP_SHAPES&&op.shapes.every(validShape);
@@ -1277,7 +1277,7 @@ const Store={
           for(const sh of op.shapes)state.shapes.push(clone(sh));
           sortZ();
           // Restore connector bindings after shapes are back so references are valid
-          if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh)Object.assign(sh,p.before);}}
+          if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)Object.assign(sh,p.before);}}
           if(op.wc)for(const [id,w] of Object.entries(op.wc))state.wclock[id]=clone(w);
           if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));
         }
@@ -1749,12 +1749,6 @@ function drawShape(s,c){
         c.restore();
       }
       break;}
-  }
-  if((s.type==='rect'||s.type==='ellipse')&&s.label){
-    const cx=s.x+s.w/2,cy=s.y+s.h/2;
-    c.font='14px system-ui,sans-serif';c.textBaseline='middle';c.textAlign='center';
-    c.fillStyle=s.stroke||'#0F172A';c.fillText(s.label,cx,cy);
-    c.textBaseline='alphabetic';c.textAlign='left';
   }
   c.globalAlpha=1;
   c.setLineDash([]);

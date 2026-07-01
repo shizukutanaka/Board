@@ -379,7 +379,7 @@ const checks = [
   ['flip context-menu entries present', html.includes("['ctxFlipH','⇧H',()=>doFlip('h')]") && html.includes("['ctxFlipV','⇧V',()=>doFlip('v')]")],
   ['flip keyboard shortcut (⇧H/⇧V) guarded by selection', html.includes("(k==='h'||k==='v')&&state.selection.size){e.preventDefault();doFlip(k)}")],
   // v1.6.58: rect/ellipse centre labels - dblclick to set, rendered centred, SVG export
-  ['rect/ellipse label rendered centred in canvas', html.includes("(s.type==='rect'||s.type==='ellipse')&&s.label") && html.includes("c.textAlign='center'")],
+  ['rect/ellipse label rendered centred in canvas', html.includes("_drawBoxLabel(s,c);break;") && html.includes("c.textAlign='center'")],
   ['dblclick label editor handles rect and ellipse', html.includes("hit.type==='frame'||hit.type==='rect'||hit.type==='ellipse'") && html.includes("getCSS(bold?'--brand':'--ink')")],
   ['SVG export emits label for rect', html.includes("if(s.label)els.push") && html.includes("text-anchor=\"middle\"")],
   // v1.6.59: laser pointer (presentation) + shape lock
@@ -706,6 +706,15 @@ const checks = [
   // v1.7.45: openTextEditor existing-text changed path must capture origSel (text-edit undo restores selection)
   ['openTextEditor existing-text: origSel captured before upd _recordCommitted',
     html.includes("Store._recordCommitted({op:'upd',id:s.id,before,after});\n        if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
+  // v1.7.46: validRemotePayload del connClears must have MAX_OP_SHAPES length cap
+  ['validRemotePayload del connClears: length<=MAX_OP_SHAPES cap added',
+    html.includes("&&op.connClears.length<=MAX_OP_SHAPES&&op.connClears.every(")],
+  // v1.7.46: drawShape duplicate rect/ellipse label block removed
+  ['drawShape: duplicate inline label block after switch removed (label drawn once via _drawBoxLabel)',
+    !html.includes("if((s.type==='rect'||s.type==='ellipse')&&s.label){\n    const cx=s.x+s.w/2")],
+  // v1.7.46: _apply del backward connClears must respect sh.locked (parity with forward)
+  ['_apply del backward connClears: if(sh&&!sh.locked) lock guard added (parity with forward path)',
+    html.includes("if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)Object.assign(sh,p.before);}}")],
 ];
 
 let pass = 0, fail = 0;
@@ -6135,8 +6144,33 @@ try {
     console.log('  ✓ applyStyleToSelection: origSel captured so undo restores selection (v1.7.45b)');
   }
 
+  // v1.7.46a: validRemotePayload del connClears must be capped at MAX_OP_SHAPES
+  {
+    // 501-entry connClears must be rejected (before fix: accepted with no length check)
+    assert.ok(!validRemotePayload({op:'del',shapes:[],connClears:Array(501).fill({id:'c1'})}),
+      'v1.7.46a: del with 501 connClears rejected (DoS cap)');
+    // Small connClears still accepted
+    assert.ok(validRemotePayload({op:'del',shapes:[],connClears:[{id:'c1',before:{a1:'t'},after:{a1:null}}]}),
+      'v1.7.46a: del with 1 valid connClear still accepted');
+    console.log('  ✓ validRemotePayload del connClears: >MAX_OP_SHAPES rejected (v1.7.46a)');
+  }
+
+  // v1.7.46c: _apply del backward connClears must respect sh.locked (parity with forward path)
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const connSh=Shape.make('arrow',{x1:0,y1:0,x2:100,y2:0,a1:'dummy_target'});
+    const targetSh=Shape.make('rect',{x:90,y:-5,w:20,h:10});
+    state.shapes.push(connSh,targetSh);
+    Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(targetSh))],connClears:[{id:connSh.id,before:{a1:'dummy_target'},after:{a1:null}}]});
+    assert.strictEqual(connSh.a1,null,'v1.7.46c setup: connector binding cleared on del');
+    connSh.locked=true;
+    Store.undo();
+    assert.strictEqual(connSh.a1,null,'v1.7.46c: locked connector binding NOT restored on del-backward (lock guard)');
+    console.log('  ✓ _apply del backward connClears: locked connector not modified (v1.7.46c)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 862; // prev 854 + zorder/group/ungroup DoS cap (6) + style origSel undo (2)
+  pass += 866; // prev 862 + del connClears DoS cap (2) + del-backward lock guard (2)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

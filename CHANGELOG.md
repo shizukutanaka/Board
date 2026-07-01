@@ -2,6 +2,32 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.46] - 2026-07-01
+
+### Fixed
+- **`validRemotePayload` `del.connClears` 配列に `MAX_OP_SHAPES` 上限がない (P1 DoS)**:
+  v1.7.44/v1.7.45 で他の配列にキャップを追加したが `connClears` が漏れていた。
+  501 エントリの `connClears` を送るだけで `validPatch()` が再帰呼び出しされ
+  CPU を枯渇できる。修正: `&&op.connClears.length<=MAX_OP_SHAPES` を追加。
+
+- **`drawShape` が rect/ellipse のラベルを 1 フレームに 2 回描画 (P2 レンダリング汚染)**:
+  `case 'rect'`/`case 'ellipse'` 内で `_drawBoxLabel(s,c)` を呼んだ後、
+  switch 外に同じラベルを描く裸のコードブロックが存在していた。
+  不透明度が低いシェイプでは `1-(1-α)²` の二重合成が発生し、ラベルが意図より暗くなる。
+  また `c.font`/`c.fillStyle` が `save()/restore()` なしで汚染されていた。
+  修正: 重複ブロック (6 行) を削除。`_drawBoxLabel` が唯一の描画経路に。
+
+- **`_apply del` backward が `connClears` に `sh.locked` チェックを行わない (P2 非対称ロック)**:
+  forward パスでは `if(sh&&!sh.locked)` でロック済みコネクタのバインディングを保護するが、
+  backward (undo) パスでは `if(sh)` のみで同じ保護がなかった。
+  del 後にコネクタをロックした状態で undo すると、ロック済みコネクタに古いバインディング
+  が強制書き戻される。修正: backward パスに `&&!sh.locked` を追加。
+
+### Tests
+- behavioral × 4: del connClears DoS cap (2); del-backward locked connector guard (2)
+- presence check × 3: connClears length cap; duplicate label block removed; backward lock guard
+- 合計 1329 pass, 0 fail
+
 ## [1.7.45] - 2026-07-01
 
 ### Fixed
