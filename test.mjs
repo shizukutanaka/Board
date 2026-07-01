@@ -192,7 +192,7 @@ const checks = [
   ['_num coerces to finite number', html.includes("function _num") && html.includes("Number.isFinite(n)?n:0")],
   ['buildSVG coerces numeric coords via _num', html.includes("const X=_num(s.x)") && html.includes("_num(s.size)")],
   ['applyRemote validates op payloads', html.includes("function validRemotePayload") && html.includes("if(!validRemotePayload(op))return")],
-  ['remote move requires finite deltas', html.includes("Number.isFinite(+op.dx)&&Number.isFinite(+op.dy)")],
+  ['remote move requires finite deltas', html.includes("Number.isFinite(op.dx)&&typeof op.dy==='number'&&Number.isFinite(op.dy)")],
   // v1.6.8: viewport culling + load validation
   ['viewport culling helpers present', html.includes("function visibleWorldRect") && html.includes("function inView")],
   ['draw() culls via inView', html.includes("inView(s,_view)")],
@@ -729,6 +729,21 @@ const checks = [
   ['_apply del: op.wc refreshed on every forward apply (if(!op.wc) guard removed)',
     !html.includes("if(!op.wc){op.wc={};for")&&
     html.includes("op.wc={};for(const sh of op.shapes)if(state.wclock[sh.id])op.wc[sh.id]=clone(state.wclock[sh.id]);")],
+  // v1.7.48: 'clear' removed from REMOTE_OPS (remote peer cannot wipe board)
+  ["REMOTE_OPS excludes 'clear' (board-wipe is local-only like 'replace')",
+    html.includes("REMOTE_OPS:new Set(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize'])")],
+  // v1.7.48: _applySnapshot caps shape count at MAX_OP_SHAPES
+  ['_applySnapshot: MAX_OP_SHAPES cap on snapshot shapes (DoS guard)',
+    html.includes("const valid=shapes.slice(0,MAX_OP_SHAPES).filter(validShape);")],
+  // v1.7.48: sticky shadow set before fill (renders correctly)
+  ['sticky note shadow set before fill (not after)',
+    html.includes("c.shadowColor='rgba(0,0,0,.08)';c.shadowBlur=8;c.shadowOffsetY=2;\n      c.beginPath();roundRect(")],
+  // v1.7.48: group gid must be non-empty string
+  ['validRemotePayload group: gid must be non-empty string (op.gid.length>0)',
+    html.includes("&&typeof op.gid==='string'&&op.gid.length>0")],
+  // v1.7.48: move dx/dy must be actual numbers not coercible strings
+  ['validRemotePayload move: typeof op.dx/dy === number (no string coercion)',
+    html.includes("&&typeof op.dx==='number'&&Number.isFinite(op.dx)&&typeof op.dy==='number'&&Number.isFinite(op.dy)")],
 ];
 
 let pass = 0, fail = 0;
@@ -6214,8 +6229,39 @@ try {
     console.log('  ✓ _apply del: op.wc refreshed on every forward apply (v1.7.47c)');
   }
 
+  // v1.7.48a: remote 'clear' must be rejected (REMOTE_OPS whitelist excludes 'clear')
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const keepSh=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    state.shapes.push(keepSh);
+    // Before fix: remote clear would wipe all shapes (no recovery via undo)
+    Store.applyRemote({op:'clear',shapes:[],clock:{peer:'evil48',seq:1,ts:1}});
+    assert.strictEqual(state.shapes.length,1,'v1.7.48a: remote clear op rejected by REMOTE_OPS whitelist');
+    console.log('  ✓ REMOTE_OPS excludes clear: remote board-wipe rejected (v1.7.48a)');
+  }
+
+  // v1.7.48b: validRemotePayload group must reject empty gid
+  {
+    assert.ok(!validRemotePayload({op:'group',ids:['s1'],gid:'',before:[{id:'s1'}]}),
+      'v1.7.48b: group with empty gid rejected (silent invisible-group trap)');
+    assert.ok(validRemotePayload({op:'group',ids:['s1'],gid:'g-1',before:[{id:'s1'}]}),
+      'v1.7.48b: group with non-empty gid still accepted');
+    console.log('  ✓ validRemotePayload group: empty gid rejected (v1.7.48b)');
+  }
+
+  // v1.7.48c: validRemotePayload move must reject string dx/dy (type coercion bypass)
+  {
+    assert.ok(!validRemotePayload({op:'move',ids:['s1'],dx:'42',dy:0}),
+      'v1.7.48c: move with string dx rejected (was coerced via +op.dx)');
+    assert.ok(!validRemotePayload({op:'move',ids:['s1'],dx:0,dy:'10'}),
+      'v1.7.48c: move with string dy rejected');
+    assert.ok(validRemotePayload({op:'move',ids:['s1'],dx:5,dy:3}),
+      'v1.7.48c: move with numeric dx/dy still accepted');
+    console.log('  ✓ validRemotePayload move: string dx/dy rejected (typeof check, v1.7.48c)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 870; // prev 866 + align dir whitelist (3 real asserts) + del wc refresh (2)
+  pass += 878; // prev 870 + clear REMOTE_OPS (1) + group empty gid (2) + move string dx/dy (3)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

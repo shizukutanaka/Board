@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.47 — Design Tokens
+   Board v1.7.48 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -721,7 +721,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.47';
+const V='1.7.48';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1025,7 +1025,7 @@ function validRemotePayload(op){
     case 'clear':  return Array.isArray(op.shapes)&&op.shapes.length<=MAX_OP_SHAPES&&op.shapes.every(validShape);
     case 'upd':{const noLock=p=>!('locked' in p);
       return typeof op.id==='string'&&validPatch(op.after)&&noLock(op.after)&&(op.before==null||validPatch(op.before));}
-    case 'move':   return Array.isArray(op.ids)&&op.ids.length>0&&op.ids.length<=MAX_OP_SHAPES&&op.ids.every(id=>typeof id==='string')&&Number.isFinite(+op.dx)&&Number.isFinite(+op.dy)&&(op.dx!==0||op.dy!==0);
+    case 'move':   return Array.isArray(op.ids)&&op.ids.length>0&&op.ids.length<=MAX_OP_SHAPES&&op.ids.every(id=>typeof id==='string')&&typeof op.dx==='number'&&Number.isFinite(op.dx)&&typeof op.dy==='number'&&Number.isFinite(op.dy)&&(op.dx!==0||op.dy!==0);
     case 'zorder':  // Step2 minimal-delta {changes:[{id,before,after}]} or legacy {after:[…]}
       return (Array.isArray(op.changes)&&op.changes.length<=MAX_OP_SHAPES&&op.changes.every(c=>c&&typeof c.id==='string'
                 &&(c.after==null||typeof c.after==='string')&&(c.before==null||typeof c.before==='string')))
@@ -1045,7 +1045,7 @@ function validRemotePayload(op){
       return patches(op.after)&&op.after.every(noLock)
           &&patches(op.before)&&op.before.every(noLock);}
     case 'group':  return Array.isArray(op.ids)&&op.ids.length<=MAX_OP_SHAPES&&op.ids.every(id=>typeof id==='string')
-                          &&typeof op.gid==='string'
+                          &&typeof op.gid==='string'&&op.gid.length>0
                           &&Array.isArray(op.before)&&op.before.length<=MAX_OP_SHAPES&&op.before.every(b=>b&&typeof b.id==='string');
     case 'ungroup':return Array.isArray(op.ids)&&op.ids.length<=MAX_OP_SHAPES&&op.ids.every(id=>typeof id==='string')
                           &&Array.isArray(op.gids)&&op.gids.length<=MAX_OP_SHAPES&&op.gids.every(g=>typeof g==='string');
@@ -1123,7 +1123,7 @@ const Store={
     return fixes.length?fixes:null;
   },
   // Apply remote op: dedup by clock; REMOTE_OPS allow-list + validRemotePayload guard.
-  REMOTE_OPS:new Set(['add','addMany','del','upd','move','clear','group','ungroup','zorder','align','style','resize']),
+  REMOTE_OPS:new Set(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize']),
   applyRemote(op){
     if(!op||!op.clock||!this.REMOTE_OPS.has(op.op))return;
     if(!validClock(op.clock))return;        // reject malformed clocks (wclock poisoning)
@@ -1735,10 +1735,10 @@ function drawShape(s,c){
     case 'sticky':{
       const r=Math.min(6,Math.abs(s.w)/6,Math.abs(s.h)/6);
       c.fillStyle=s.color||'#FEF08A';
-      c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,r);c.fill();
       c.shadowColor='rgba(0,0,0,.08)';c.shadowBlur=8;c.shadowOffsetY=2;
-      c.strokeStyle='rgba(0,0,0,.06)';c.lineWidth=1;c.stroke();
+      c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,r);c.fill();
       c.shadowColor='transparent';c.shadowBlur=0;c.shadowOffsetY=0;
+      c.strokeStyle='rgba(0,0,0,.06)';c.lineWidth=1;c.stroke();
       // text
       if(s.text){
         const fs=s.fontSize||14;
@@ -3831,7 +3831,7 @@ const Net={
     // Validate snapshot shapes before adopting
     const shapes=msg.shapes;
     if(!Array.isArray(shapes))return;
-    const valid=shapes.filter(validShape);
+    const valid=shapes.slice(0,MAX_OP_SHAPES).filter(validShape);
     state.shapes=clone(valid);
     sortZ();
     invalidate();UI.refreshUndo();Persist.schedule();

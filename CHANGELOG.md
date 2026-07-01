@@ -2,6 +2,38 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.48] - 2026-07-01
+
+### Fixed
+- **`REMOTE_OPS` に `'clear'` が含まれている (Critical セキュリティ)**:
+  BroadcastChannel/WebRTC の任意のピアが `{op:'clear',shapes:[],clock:{...}}` を送るだけで
+  全シェイプを消去できた。`clear` はローカルの undo スタックを経由せず、
+  `replace` と同様にボード全消しの破壊的操作。修正: `REMOTE_OPS` から `'clear'` を除去。
+
+- **`_applySnapshot` がシェイプ数を制限しない (P1 DoS)**:
+  join 時のスナップショット受信パスで `shapes.filter(validShape)` に上限がなく、
+  悪意あるピアが 100,000 シェイプのスナップショットを送ると UI スレッドがフリーズ。
+  修正: `shapes.slice(0,MAX_OP_SHAPES)` でキャップ。
+
+- **付箋 (sticky) のドロップシャドウが `fill()` の後に設定される (P2 描画ミス)**:
+  Canvas では shadow 状態は描画前に設定する必要がある。`c.fill()` の後に
+  `shadowColor` を設定しているため付箋の背景にシャドウが適用されず、
+  べた塗りのカードになっていた。修正: shadow 行を `c.fill()` の前に移動。
+
+- **`validRemotePayload` group: `gid` が空文字列を許容 (P2 不可視グループ)**:
+  `gid:''` を持つ remote group op が通過し、`sh.groupId=''` が設定される。
+  `draw()` の `if(s.groupId)` が falsy で視覚フィードバックなし。
+  修正: `&&op.gid.length>0` を追加。
+
+- **`validRemotePayload` move: `dx`/`dy` に文字列型を許容 (`+op.dx` 型強制)**:
+  `"42"` のような文字列が `Number.isFinite(+"42")` を通過し、シリアライズ後の
+  ワイヤ形式に文字列が含まれてしまう。修正: `typeof op.dx==='number'` を追加。
+
+### Tests
+- behavioral × 7: clear remote reject (1); group empty gid (2); move string dx/dy (3)
+- presence check × 6: REMOTE_OPS clear; _applySnapshot cap; sticky shadow order; group gid; move typeof
+- 合計 1350 pass, 0 fail
+
 ## [1.7.47] - 2026-07-01
 
 ### Fixed
