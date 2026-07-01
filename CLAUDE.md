@@ -114,15 +114,28 @@ Board/
 
 ## 100点への距離
 
-Phase 1.0 = 70点 (MVP 完成、商用配布可能)  
-残り 30点 = P2P sync (10) + Multi-page/import/export拡張 (7) + コラボ (5) + AI & i18n 1000 (4) + plugin/audit (4)
+Phase 1.0 = 70点 (MVP 完成、商用配布可能)
 
-> **未解決の製品判断 (2026-07-01 時点)**: `docs/research-improvements.md` §3.9「アーキテクチャは
-> 既に投票を終えている」が指摘する通り、現行アーキテクチャ(単一 `DOC_KEY` スロット・無 identity・
-> セッション限定 undo)は「速い・私的・使い捨ての単独スケッチ」を選び取っている。上記の
-> Multi-page/コラボは「永続する多人数ワークスペース」を志向し、この前提と衝突する。着手前に
-> どちらの正体を選ぶか(a: scratchpad を選び該当項目を100点から外す/b: workspace の対価を払う)
-> を製品判断として確定させること。ADR-0004(自己上書き保護)はどちらを選んでも無駄にならない
-> 前提整備として先行実装済み。
+> **製品判断確定 (2026-07-01)**: `docs/research-improvements.md` §3.9「アーキテクチャは既に
+> 投票を終えている」が問うた「scratchpad か workspace か」に対し、**scratchpad(速い・私的・
+> 使い捨ての単独スケッチ)を選択**。Multi-page/複数ボード・スレッドコメント・identity 前提の
+> コラボ機能は、この選択と構造的に衝突するため **100点の対象から除外**する(着手しない。
+> 将来 workspace へ舵を切る場合は、この判断自体を明示的に覆す製品判断が改めて必要)。
+
+残り 30点 (旧配点) の再定義:
+- P2P sync (10) — ほぼ達成。WebRTC/BroadcastChannel + CRDT clock (ADR-0001 frac z-order,
+  ADR-0002 per-property LWW) は「自分の複数デバイス間・信頼できる相手との私的共有」という
+  scratchpad の延長として実装済み(README v1.7 時点 95点の主要因)。identity 前提の
+  「ワークスペースとしてのコラボ」(5点分)とは別物として整理し、後者は上記の理由で対象外。
+- Multi-page/複数ボード (7) — **対象外**(scratchpad の正体と衝突、§3.9)。
+- コラボ (5) — **対象外**(identity 前提、§3.8/3.9 と衝突)。
+- 単独体験の研磨 (§3.9(a) が示す代替投資先, 目安 12点): パフォーマンス
+  (`byId` O(n) 線形探索の解消・dirty-rect 等)、a11y 外部監査通過、スケッチ認識/beautification
+  ($1/$Q unistroke recognizer、依存ゼロで実装可能 — `docs/research-improvements.md` item M)、
+  自己上書き保護 (ADR-0004) の発展形。
+- AI & i18n 1000 (4) — スケッチ認識(上記)は AI 項目の現実的な着地点として整理。i18n 1000言語
+  は MT インフラを要し scratchpad 単体では優先度低(保留)。
+- plugin/audit (4) — a11y 外部監査は上記に統合。Plugin API は multipage 同様アーキテクチャ
+  拡張が要るため保留。
 
 各 Phase は別 ADR + 独立リリース。一気に全部は作らない。
