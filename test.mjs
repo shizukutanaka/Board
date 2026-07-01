@@ -625,10 +625,10 @@ const checks = [
     html.includes("const origSel=[...state.selection];\n  Store.commit({op:'add',shape:s});\n  if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
   // v1.7.33: validRemotePayload group must require before (string-id array)
   ['validRemotePayload group: requires before array with string ids',
-    html.includes("&&Array.isArray(op.before)&&op.before.every(b=>b&&typeof b.id==='string');")],
+    html.includes("&&Array.isArray(op.before)&&op.before.length<=MAX_OP_SHAPES&&op.before.every(b=>b&&typeof b.id==='string');")],
   // v1.7.34: validRemotePayload ungroup must require gids array
   ['validRemotePayload ungroup: requires gids array with string elements',
-    html.includes("&&Array.isArray(op.gids)&&op.gids.every(g=>typeof g==='string');")],
+    html.includes("&&Array.isArray(op.gids)&&op.gids.length<=MAX_OP_SHAPES&&op.gids.every(g=>typeof g==='string');")],
   // v1.7.34: _apply ungroup backward must use optional chaining on op.gids
   ['_apply ungroup backward: op.gids?.[0] optional chaining null guard',
     html.includes("const gid=op.gids?.[0];")],
@@ -700,6 +700,12 @@ const checks = [
   // v1.7.43: _apply upd backward restores origSel (drag-resize/rotate undo)
   ['_apply upd backward: if(!forward&&op.origSel) restores selection',
     html.includes("Object.assign(sh,p);\n        if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));\n        break;}\n      case 'move':{")],
+  // v1.7.45: openLabelEditor commit closure must capture origSel (label-edit undo restores selection)
+  ['openLabelEditor commit: origSel captured before upd _recordCommitted',
+    html.includes("hit.label=lbl||null;const origSel=[...state.selection];Store._recordCommitted({op:'upd',id:hit.id,before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()")],
+  // v1.7.45: openTextEditor existing-text changed path must capture origSel (text-edit undo restores selection)
+  ['openTextEditor existing-text: origSel captured before upd _recordCommitted',
+    html.includes("Store._recordCommitted({op:'upd',id:s.id,before,after});\n        if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
 ];
 
 let pass = 0, fail = 0;
@@ -6094,8 +6100,43 @@ try {
     console.log('  ✓ _apply replace forward: afterWc restored on redo (v1.7.44b)');
   }
 
+  // v1.7.45a: validRemotePayload zorder/group/ungroup must cap array sizes at MAX_OP_SHAPES
+  {
+    // Before fix: zorder.changes had no length cap — 501-element array was accepted
+    assert.ok(!validRemotePayload({op:'zorder',changes:Array(501).fill({id:'x',before:'a',after:'b'})}),
+      'v1.7.45a: zorder with 501 changes rejected (DoS cap)');
+    // Before fix: group.ids had no length cap
+    assert.ok(!validRemotePayload({op:'group',ids:Array(501).fill('s1'),gid:'g1',before:[{id:'s1'}]}),
+      'v1.7.45a: group with 501 ids rejected (DoS cap)');
+    // Before fix: ungroup.ids had no length cap
+    assert.ok(!validRemotePayload({op:'ungroup',ids:Array(501).fill('s1'),gids:['g1']}),
+      'v1.7.45a: ungroup with 501 ids rejected (DoS cap)');
+    // Reasonable sizes must still be accepted
+    assert.ok(validRemotePayload({op:'zorder',changes:[{id:'x',before:'a',after:'b'}]}),
+      'v1.7.45a: zorder with 1 change still accepted');
+    assert.ok(validRemotePayload({op:'group',ids:['s1','s2'],gid:'g1',before:[{id:'s1'},{id:'s2'}]}),
+      'v1.7.45a: group with 2 ids still accepted');
+    assert.ok(validRemotePayload({op:'ungroup',ids:['s1','s2'],gids:['g1']}),
+      'v1.7.45a: ungroup with 2 ids still accepted');
+    console.log('  ✓ validRemotePayload zorder/group/ungroup: >MAX_OP_SHAPES arrays rejected (v1.7.45a)');
+  }
+
+  // v1.7.45b: applyStyleToSelection must capture origSel so style undo restores selection
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const stSh=Shape.make('rect',{x:0,y:0,w:50,h:50,stroke:'#000000'});
+    state.shapes.push(stSh);
+    state.selection=new Set([stSh.id]);
+    applyStyleToSelection({stroke:'#FF0000'});
+    assert.strictEqual(stSh.stroke,'#FF0000','v1.7.45b setup: style applied');
+    state.selection.clear();
+    Store.undo();
+    assert.ok(state.selection.has(stSh.id),'v1.7.45b: applyStyleToSelection undo restores origSel');
+    console.log('  ✓ applyStyleToSelection: origSel captured so undo restores selection (v1.7.45b)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 854; // prev 849 + addMany size cap + replace afterWc (2+3 asserts)
+  pass += 862; // prev 854 + zorder/group/ungroup DoS cap (6) + style origSel undo (2)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

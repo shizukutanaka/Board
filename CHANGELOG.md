@@ -2,6 +2,29 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.45] - 2026-07-01
+
+### Fixed
+- **`validRemotePayload` の `zorder.changes`・`zorder.after`・`group.ids`・`group.before`・`ungroup.ids`・`ungroup.gids` 配列に `MAX_OP_SHAPES` 上限がない (P1 DoS)**:
+  v1.7.44 で `addMany`/`del`/`clear`/`move` 等にキャップを追加したが、`zorder`・`group`・`ungroup`
+  の配列は漏れていた。悪意あるピアが 100,001 要素の zorder/group/ungroup を送ると
+  バリデーションを通過し UI スレッドをフリーズさせる。修正: 各配列に `&&<array>.length<=MAX_OP_SHAPES` チェックを追加。
+
+- **`applyStyleToSelection` / `_sfbFlush` が `origSel` を記録しない (P2 undo 選択復元欠落)**:
+  スウォッチ・カラーピッカー・サイズスライダーで色/サイズを変更後に Ctrl+Z を押しても
+  変更前の選択が復元されない。修正: `Store._recordCommitted({op:'style',...})` の直前後に
+  `origSel` キャプチャ・付与を追加 (`applyStyleToSelection` と `_sfbFlush` の両方)。
+
+- **`openLabelEditor` / `openTextEditor` の `upd` コミットが `origSel` を記録しない (P2 undo 選択復元欠落)**:
+  ボックスラベル・テキスト編集の Blur コミット後に Ctrl+Z を押しても変更前の選択が復元されない。
+  修正: 両パスの `Store._recordCommitted({op:'upd',...})` の前後に origSel キャプチャ・付与を追加。
+
+### Tests
+- behavioral × 8: zorder/group/ungroup >MAX_OP_SHAPES 拒否 (6 assertions, v1.7.45a);
+  applyStyleToSelection origSel undo (2 assertions, v1.7.45b)
+- presence check × 4: group/ungroup `MAX_OP_SHAPES` cap; openLabelEditor origSel; openTextEditor origSel
+- 合計 1322 pass, 0 fail
+
 ## [1.7.44] - 2026-07-01
 
 ### Fixed

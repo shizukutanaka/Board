@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.44 — Design Tokens
+   Board v1.7.45 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -721,7 +721,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.44';
+const V='1.7.45';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1027,12 +1027,12 @@ function validRemotePayload(op){
       return typeof op.id==='string'&&validPatch(op.after)&&noLock(op.after)&&(op.before==null||validPatch(op.before));}
     case 'move':   return Array.isArray(op.ids)&&op.ids.length>0&&op.ids.length<=MAX_OP_SHAPES&&op.ids.every(id=>typeof id==='string')&&Number.isFinite(+op.dx)&&Number.isFinite(+op.dy)&&(op.dx!==0||op.dy!==0);
     case 'zorder':  // Step2 minimal-delta {changes:[{id,before,after}]} or legacy {after:[…]}
-      return (Array.isArray(op.changes)&&op.changes.every(c=>c&&typeof c.id==='string'
+      return (Array.isArray(op.changes)&&op.changes.length<=MAX_OP_SHAPES&&op.changes.every(c=>c&&typeof c.id==='string'
                 &&(c.after==null||typeof c.after==='string')&&(c.before==null||typeof c.before==='string')))
              // legacy snapshot: each entry must carry a string id, finite z (if present),
              // and a string-or-null frac (if present) — otherwise sh.z=NaN or sh.frac=object
              // would silently corrupt the ADR-0001 sort invariant.
-             ||(Array.isArray(op.after)&&op.after.every(c=>c&&typeof c.id==='string'
+             ||(Array.isArray(op.after)&&op.after.length<=MAX_OP_SHAPES&&op.after.every(c=>c&&typeof c.id==='string'
                 &&(c.z==null||Number.isFinite(c.z))
                 &&(c.frac==null||typeof c.frac==='string')));
     case 'style':
@@ -1042,11 +1042,11 @@ function validRemotePayload(op){
     case 'align':{const noLock=p=>op.dir==='lock'||!('locked' in p);
       return patches(op.after)&&op.after.every(noLock)
           &&patches(op.before)&&op.before.every(noLock);}
-    case 'group':  return Array.isArray(op.ids)&&op.ids.every(id=>typeof id==='string')
+    case 'group':  return Array.isArray(op.ids)&&op.ids.length<=MAX_OP_SHAPES&&op.ids.every(id=>typeof id==='string')
                           &&typeof op.gid==='string'
-                          &&Array.isArray(op.before)&&op.before.every(b=>b&&typeof b.id==='string');
-    case 'ungroup':return Array.isArray(op.ids)&&op.ids.every(id=>typeof id==='string')
-                          &&Array.isArray(op.gids)&&op.gids.every(g=>typeof g==='string');
+                          &&Array.isArray(op.before)&&op.before.length<=MAX_OP_SHAPES&&op.before.every(b=>b&&typeof b.id==='string');
+    case 'ungroup':return Array.isArray(op.ids)&&op.ids.length<=MAX_OP_SHAPES&&op.ids.every(id=>typeof id==='string')
+                          &&Array.isArray(op.gids)&&op.gids.length<=MAX_OP_SHAPES&&op.gids.every(g=>typeof g==='string');
     default:       return false;
   }
 }
@@ -2306,7 +2306,7 @@ function openLabelEditor(hit,leftPx,topPx,bold){
   document.body.appendChild(inp);inp.select();
   const commit=()=>{
     const lbl=inp.value.trim();
-    if(lbl!==hit.label){const before={label:hit.label??null};const after={label:lbl||null};hit.label=lbl||null;Store._recordCommitted({op:'upd',id:hit.id,before,after});invalidate()}
+    if(lbl!==hit.label){const before={label:hit.label??null};const after={label:lbl||null};hit.label=lbl||null;const origSel=[...state.selection];Store._recordCommitted({op:'upd',id:hit.id,before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
     inp.remove();
   };
   inp.addEventListener('blur',commit);
@@ -2901,7 +2901,9 @@ function openTextEditor(s,isNew){
       }else if(newText!==origText){
         const before={text:origText,w:orig.w,h:orig.h};
         const after={text:newText,w:s.w,h:s.h};
+        const origSel=[...state.selection];
         Store._recordCommitted({op:'upd',id:s.id,before,after});
+        if(origSel.length)state.history[state.histIdx].origSel=origSel;
       }
     }
     ta.remove();invalidate();
@@ -4481,14 +4483,14 @@ function applyStyleToSelection(patch){
     Object.assign(sh,patch);
     before.push(b);after.push(a);
   }
-  if(before.length)Store._recordCommitted({op:'style',before,after});
+  if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;}
   invalidate();
 }
 // Slider undo coalescing: capture shape prop values on pointerdown, flush a single
 // style op on change. Multiple input events during a drag never hit the undo stack.
 const _sbf={};
 function _sfbCapture(p){for(const id of state.selection){const s=byId(id);if(s&&!s.locked&&!(id+p in _sbf))_sbf[id+p]=s[p]}}
-function _sfbFlush(p,v){const b=[],a=[];for(const id of state.selection){const k=id+p;if(k in _sbf){const s=byId(id);if(s&&!s.locked){b.push({id,[p]:_sbf[k]});a.push({id,[p]:v});}delete _sbf[k];}}if(b.length&&b.some(x=>x[p]!==v))Store._recordCommitted({op:'style',before:b,after:a});}
+function _sfbFlush(p,v){const b=[],a=[];for(const id of state.selection){const k=id+p;if(k in _sbf){const s=byId(id);if(s&&!s.locked){b.push({id,[p]:_sbf[k]});a.push({id,[p]:v});}delete _sbf[k];}}if(b.length&&b.some(x=>x[p]!==v)){const origSel=[...state.selection];Store._recordCommitted({op:'style',before:b,after:a});if(origSel.length)state.history[state.histIdx].origSel=origSel;}}
 
 function copyStyle(){
   // Copy style from the first selected shape
