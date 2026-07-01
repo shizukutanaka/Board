@@ -641,6 +641,12 @@ const checks = [
   // v1.7.36: flushErase must capture origSel before del commit and patch after
   ['flushErase del: origSel captured before commit and patched after (parity with doDelete)',
     html.includes("const origSel=[...state.selection];\n  const op={op:'del',shapes:clone(_eraseBatch)};")],
+  // v1.7.38: _apply('upd', forward) must guard sh.locked (parity with move forward)
+  ['_apply upd forward: if(forward&&sh.locked)break guards locked shapes',
+    html.includes("const sh=byId(op.id);if(!sh)break;\n        if(forward&&sh.locked)break;")],
+  // v1.7.38: _apply style/resize/align forward must guard sh.locked per patch
+  ['_apply style/resize/align forward: !(forward&&sh.locked) guards locked shapes per patch',
+    html.includes("if(sh&&!(forward&&sh.locked))Object.assign(sh,clone(p))")],
   // v1.7.37: doGroup/_apply group backward must carry and restore origSel
   ['doGroup: origSel patched onto history entry after _recordCommitted',
     html.includes("Store._recordCommitted({op:'group',ids,gid,before});\n  if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
@@ -5792,8 +5798,39 @@ try {
     console.log('  ✓ doUngroup: undo restores pre-ungroup selection via origSel (v1.7.37)');
   }
 
+  // v1.7.38a: _apply('upd', forward) must skip locked shapes (parity with move forward).
+  // A remote peer can send {op:'upd', after:{rotate:45}} on a locally-locked shape and have
+  // the mutation applied because _apply upd has no sh.locked guard.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const lu=Shape.make('rect',{x:0,y:0,w:50,h:50,rotate:0});
+    state.shapes.push(lu);
+    lu.locked=true;
+    Store.applyRemote({op:'upd',id:lu.id,before:{rotate:0},after:{rotate:45},clock:{peer:'evil38',seq:1,ts:1}});
+    const sh38=state.shapes.find(s=>s.id===lu.id);
+    assert.ok(sh38,'v1.7.38a setup: locked shape still present');
+    assert.strictEqual(sh38.rotate,0,
+      'v1.7.38a: _apply upd forward must not mutate a locked shape (remote upd on locked shape rejected)');
+    console.log('  ✓ _apply upd forward: locked shape not mutated by remote upd op (v1.7.38a)');
+  }
+
+  // v1.7.38b: _apply style/resize/align forward must skip locked shapes per patch.
+  // Remote peer sends a style op targeting a locked shape; fill should not change.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const ls=Shape.make('rect',{x:0,y:0,w:50,h:50,fill:'blue'});
+    state.shapes.push(ls);
+    ls.locked=true;
+    Store.applyRemote({op:'style',after:[{id:ls.id,fill:'#ff0000'}],before:[{id:ls.id,fill:'blue'}],clock:{peer:'evil38b',seq:1,ts:1}});
+    const sh38b=state.shapes.find(s=>s.id===ls.id);
+    assert.ok(sh38b,'v1.7.38b setup: locked shape still present');
+    assert.strictEqual(sh38b.fill,'blue',
+      'v1.7.38b: _apply style forward must not mutate a locked shape (remote style on locked shape rejected)');
+    console.log('  ✓ _apply style forward: locked shape not mutated by remote style op (v1.7.38b)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 826; // prev 822 + group/ungroup origSel 4 presence + 2 behavioral (4+4=8 asserts → 4 checks)
+  pass += 830; // prev 826 + locked-shape upd/style guards (2 presence + 2 behavioral = 4)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

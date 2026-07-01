@@ -2,6 +2,28 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.38] - 2026-07-01
+
+### Fixed
+- **`_apply('upd', forward)` がロック済みシェイプを保護しない (セキュリティ)**:
+  `_apply('move', forward)` は `if(forward&&sh.locked)continue` でロック済みシェイプを
+  スキップするが、`_apply('upd', forward)` には同等のガードがなかった。
+  悪意あるピアが `{op:'upd', id:X, after:{rotate:45}}` を送ると、ローカルでロックされた
+  シェイプ X の属性が書き換えられる (x/y/w/h/rotate/text/label 等すべて対象)。
+  修正: `const sh=byId(op.id);if(!sh)break;` の直後に `if(forward&&sh.locked)break;` を追加。
+  backward (undo) 方向はスキップしない — `move` と同じ設計方針 (undo はロックを超えて復元)。
+
+- **`_apply('style'/'resize'/'align', forward)` がロック済みシェイプを保護しない (セキュリティ)**:
+  パッチ適用ループ `if(sh)Object.assign(sh,clone(p))` がロック状態を確認しないため、
+  ロックされたシェイプの fill/stroke/size/x/y/w/h 等を remote op で書き換えられた。
+  修正: `if(sh&&!(forward&&sh.locked))Object.assign(sh,clone(p))` に変更。
+
+### Tests
+- behavioral: remote upd on locked shape → rotate unchanged (2 assert)
+- behavioral: remote style on locked shape → fill unchanged (2 assert)
+- presence check × 2: upd forward lock guard, style/resize/align forward lock guard
+- 合計 1276 pass, 0 fail
+
 ## [1.7.37] - 2026-06-30
 
 ### Fixed
