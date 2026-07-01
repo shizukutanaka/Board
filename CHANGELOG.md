@@ -2,6 +2,23 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.39] - 2026-07-01
+
+### Fixed
+- **`_apply('del', forward)` の `connClears` ループがロック済みコネクタを保護しない (セキュリティ)**:
+  `_apply('del', forward)` は削除シェイプに束縛されたコネクタのバインディングを `p.after` で
+  上書きする (connClears)。ローカルの `doDelete` はロック済みコネクタをスキップして
+  connClears を作らないが、`validRemotePayload` は `p.id` が指すコネクタのロック状態を
+  検証しない。悪意あるピアが ロックされたコネクタを `connClears` に含む `del` op を送ると、
+  `_apply` はそのロック済みコネクタの `a`/`x1`/`y1`/`b`/`x2`/`y2` を無条件に上書きする。
+  v1.7.38 で `upd`/`style`/`resize`/`align` forward に追加したロックガードと同クラスのバグ。
+  修正: `if(sh)Object.assign(sh,p.after)` → `if(sh&&!sh.locked)Object.assign(sh,p.after)`。
+
+### Tests
+- behavioral: remote del with connClears targeting locked connector → binding preserved (3 assert)
+- presence check: `_apply del forward connClears: if(sh&&!sh.locked) guards locked connectors` (1)
+- 合計 1280 pass, 0 fail
+
 ## [1.7.38] - 2026-07-01
 
 ### Fixed

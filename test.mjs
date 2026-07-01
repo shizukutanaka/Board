@@ -647,6 +647,9 @@ const checks = [
   // v1.7.38: _apply style/resize/align forward must guard sh.locked per patch
   ['_apply style/resize/align forward: !(forward&&sh.locked) guards locked shapes per patch',
     html.includes("if(sh&&!(forward&&sh.locked))Object.assign(sh,clone(p))")],
+  // v1.7.39: _apply del forward connClears must guard sh.locked
+  ['_apply del forward connClears: if(sh&&!sh.locked) guards locked connectors',
+    html.includes("if(sh&&!sh.locked)Object.assign(sh,p.after);}}")],
   // v1.7.37: doGroup/_apply group backward must carry and restore origSel
   ['doGroup: origSel patched onto history entry after _recordCommitted',
     html.includes("Store._recordCommitted({op:'group',ids,gid,before});\n  if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
@@ -5829,8 +5832,32 @@ try {
     console.log('  ✓ _apply style forward: locked shape not mutated by remote style op (v1.7.38b)');
   }
 
+  // v1.7.39: _apply('del', forward) connClears loop bypasses sh.locked.
+  // doDelete (local) correctly skips locked connectors when building connClears, but
+  // a remote peer can craft a del op whose connClears targets a locally-locked connector.
+  // The fix: add !sh.locked guard to the connClears Object.assign, same class as v1.7.38.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const delTarget=Shape.make('rect',{x:0,y:0,w:30,h:30});
+    const lockedConn=Shape.make('arrow',{x1:0,y1:15,x2:100,y2:15});
+    lockedConn.a=delTarget.id;
+    state.shapes.push(delTarget,lockedConn);
+    lockedConn.locked=true;
+    // Remote del of delTarget with connClears targeting the locked connector
+    Store.applyRemote({op:'del',shapes:[delTarget],
+      connClears:[{id:lockedConn.id,before:{a:delTarget.id,x1:0,y1:15},after:{a:null,x1:50,y1:50}}],
+      clock:{peer:'evil39',seq:1,ts:1}});
+    const conn39=state.shapes.find(s=>s.id===lockedConn.id);
+    assert.ok(conn39,'v1.7.39 setup: locked connector still present after del of bound shape');
+    assert.strictEqual(conn39.a,delTarget.id,
+      'v1.7.39: remote del connClears must not clear binding on a locked connector');
+    assert.strictEqual(conn39.x1,0,
+      'v1.7.39: remote del connClears must not overwrite x1 on a locked connector');
+    console.log('  ✓ _apply del forward connClears: locked connector not modified by remote del (v1.7.39)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 830; // prev 826 + locked-shape upd/style guards (2 presence + 2 behavioral = 4)
+  pass += 833; // prev 830 + del connClears lock guard (1 presence + 3 behavioral)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
