@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.50 — Design Tokens
+   Board v1.7.51 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -721,7 +721,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.50';
+const V='1.7.51';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1271,6 +1271,7 @@ const Store={
           // Snapshot wclock before deletion so undo can restore LWW clocks (mirrors add undo)
           op.wc={};for(const sh of op.shapes)if(state.wclock[sh.id])op.wc[sh.id]=clone(state.wclock[sh.id]);
           for(const sh of op.shapes){
+            if(byId(sh.id)?.locked)continue;   // parity with every other remote op: a peer cannot delete a locally-locked shape
             const i=state.shapes.findIndex(s=>s.id===sh.id);
             if(i>=0)state.shapes.splice(i,1);
             state.selection.delete(sh.id);
@@ -3255,8 +3256,11 @@ function _zCommit(changes){
   if(origSel.length)state.history[state.histIdx].origSel=origSel;
   invalidate();Persist.schedule();
 }
+// Shared by doBringFront/doSendBack/doBringForward/doSendBackward: locked shapes never
+// take part in a z-order op (parity with doDelete/doGroup excluding locked shapes).
+function unlockedSelectionIds(){return [...state.selection].filter(id=>!byId(id)?.locked);}
 function doBringFront(){
-  const ids=[...state.selection].filter(id=>!byId(id)?.locked);if(!ids.length)return;
+  const ids=unlockedSelectionIds();if(!ids.length)return;
   sortZ();
   const sel=new Set(ids), selShapes=state.shapes.filter(s=>sel.has(s.id));
   if(!selShapes.length)return;
@@ -3271,7 +3275,7 @@ function doBringFront(){
   _zCommit(changes);
 }
 function doSendBack(){
-  const ids=[...state.selection].filter(id=>!byId(id)?.locked);if(!ids.length)return;
+  const ids=unlockedSelectionIds();if(!ids.length)return;
   sortZ();
   const sel=new Set(ids), selShapes=state.shapes.filter(s=>sel.has(s.id));
   if(!selShapes.length)return;
@@ -3285,7 +3289,7 @@ function doSendBack(){
   _zCommit(changes);
 }
 function doBringForward(){
-  const ids=[...state.selection].filter(id=>!byId(id)?.locked);if(!ids.length)return;
+  const ids=unlockedSelectionIds();if(!ids.length)return;
   sortZ();
   const sel=new Set(ids), arr=state.shapes, changes=[];
   // move up = toward higher frac; process top→down so selected don't collide.
@@ -3299,7 +3303,7 @@ function doBringForward(){
   _zCommit(changes);
 }
 function doSendBackward(){
-  const ids=[...state.selection].filter(id=>!byId(id)?.locked);if(!ids.length)return;
+  const ids=unlockedSelectionIds();if(!ids.length)return;
   sortZ();
   const sel=new Set(ids), arr=state.shapes, changes=[];
   for(let i=1;i<arr.length;i++){
@@ -4609,6 +4613,12 @@ const Presentation=(()=>{
     document.querySelector('.statusbar').style.display='none';
     document.querySelector('.minimap-wrap')?.style.setProperty('display','none');
     canvas.style.position='fixed';canvas.style.inset='0';canvas.style.zIndex='8999';
+    // The CSS box just changed to fullscreen but no native window 'resize' event fires
+    // (only the canvas element's own layout moved) — the backing pixel buffer stays at
+    // its old, smaller size and gets stretched, blurring the canvas and desyncing the
+    // world↔screen transform math from what _zoomToFrame (window.innerWidth/Height)
+    // assumes. Recompute the buffer against the new box before the first frame draws.
+    resize();
     _goto(0);
     _acquireWakeLock();
   }
@@ -4623,6 +4633,9 @@ const Presentation=(()=>{
     document.querySelector('.topbar').style.display='';
     document.querySelector('.statusbar').style.display='';
     document.querySelector('.minimap-wrap')?.style.removeProperty('display');
+    // Mirror enter(): the canvas CSS box just shrank back to its in-flow size with no
+    // native resize event — re-sync the backing buffer or it stays fullscreen-sized.
+    resize();
     if(_savedVp){Object.assign(state.viewport,_savedVp);_savedVp=null;UI.refreshZoom()}
     invalidate();
     _focusTrigger?.focus();_focusTrigger=null;

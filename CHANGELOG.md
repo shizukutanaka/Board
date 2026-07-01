@@ -2,6 +2,40 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.51] - 2026-07-01
+
+v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出の修正を除外した上で新規に発見した
+問題のみ対応。
+
+### Fixed
+- **remote `del` がロック済みシェイプを無視して強制削除する (P0 セキュリティ)**:
+  `_apply` の全リモート op (`upd`/`move`/`style`/`resize`/`align`/`group`/`ungroup`/`zorder`)
+  は一貫して `forward&&sh.locked` ガードを持つが、`del` の forward 分岐だけこのガードが
+  欠落していた。悪意あるピアが `{op:'del',shapes:[{...ロック済みシェイプ...}],clock:{...}}`
+  を送ると、ローカルでロックしたシェイプが強制削除される — README が明記する
+  「シェイプロック: 移動・リサイズ・削除・消去すべて不可」という不変条件への違反。
+  修正: 削除ループの先頭に `if(byId(sh.id)?.locked)continue;` を追加 (ローカル削除経路は
+  既にロック済みシェイプを `op.shapes` から除外済みのため、ローカル操作への影響なし)。
+
+- **`Presentation.enter()`/`leave()` が canvas backing buffer を再同期しない (P1 表示バグ)**:
+  プレゼン開始/終了時に `canvas.style.position/inset/zIndex` を変更してフルスクリーン⇔通常
+  レイアウトを切り替えるが、これは純粋な CSS レイアウト変更でありネイティブの `resize` イベ
+  ントは発火しない。`canvas.width`/`height` (実ピクセルバッファ) は明示的な `resize()` 呼び
+  出しでしか更新されないため、プレゼン開始直後は古い (通常レイアウト時の) バッファがフルス
+  クリーン CSS ボックスへ引き伸ばされてぼやけ、`_zoomToFrame` の `window.innerWidth/Height`
+  前提のズーム計算ともサイズが食い違う。プレゼン終了時も同様に、フルスクリーン時のバッファが
+  通常レイアウトへ戻った後も残ってしまう。
+  修正: `enter()`/`leave()` それぞれで CSS 変更直後に `resize()` を明示呼び出し。
+
+### Changed
+- **z順序操作4関数のロック除外フィルタの重複を解消**: `doBringFront`/`doSendBack`/
+  `doBringForward`/`doSendBackward` に逐語的に重複していた
+  `[...state.selection].filter(id=>!byId(id)?.locked)` を `unlockedSelectionIds()` へ抽出。
+
+### Tests
+- behavioral × 6: remote del locked-shape guard (2) + Presentation enter/leave resize() sync (4)
+- 合計 1374 pass, 0 fail
+
 ## [1.7.50] - 2026-07-01
 
 多角的な製品監査 (正しさ・UX・パフォーマンス・a11y・コード品質・テストカバレッジ) の結果を受けた改善パス。

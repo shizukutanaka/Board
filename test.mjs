@@ -800,7 +800,7 @@ const fakeDoc = {
   body: { appendChild(){}, removeChild(){} },
   documentElement: { setAttribute(){}, getAttribute(){}, dataset:{} },
   querySelectorAll: () => [],
-  querySelector: () => ({style:{display:'',removeProperty(){}}, hidden:false}),
+  querySelector: () => ({style:{display:'',removeProperty(){},setProperty(){}}, hidden:false}),
   addEventListener(){},
   title: '',
   activeElement: null,
@@ -849,7 +849,7 @@ try {
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText,
-             flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _syncDocTitle, Presentation,
+             flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _syncDocTitle, Presentation, canvas, resize,
              _onBtnInstall, _getInstallPrompt: () => _installPrompt, _setInstallPrompt: (v) => { _installPrompt = v; },
              _onSwUpdate, _ctxMenuKeyNav,
              _getPasteCount: () => _pasteCount, _resetPasteClipboard: () => { _lastClipboard = null; },
@@ -869,7 +869,7 @@ try {
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText,
-          flushErase, _pushEraseBatch, _cancelPointerGesture, _syncDocTitle, Presentation,
+          flushErase, _pushEraseBatch, _cancelPointerGesture, _syncDocTitle, Presentation, canvas, resize,
           _onBtnInstall, _getInstallPrompt, _setInstallPrompt,
           _onSwUpdate, _ctxMenuKeyNav,
           _getPasteCount, _resetPasteClipboard,
@@ -6396,8 +6396,52 @@ try {
     console.log('  ✓ wrapTextCached: memoizes per-shape, invalidates on content change (v1.7.50c)');
   }
 
+  // v1.7.51a: _apply('del', forward) must guard sh.locked — parity with every other
+  // remote op (upd/move/style/resize/align/group/ungroup/zorder all guard forward+locked,
+  // but del's shape-removal loop did not). A malicious/buggy peer could otherwise send
+  // {op:'del',shapes:[{...a locally-locked shape...}],clock:{...}} and force-delete a
+  // shape the local user explicitly locked (violates the documented lock invariant:
+  // "移動・リサイズ・削除・消去すべて不可、可逆").
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const dl51a=Shape.make('rect',{x:0,y:0,w:30,h:30});
+    state.shapes.push(dl51a);
+    dl51a.locked=true;
+    Store.applyRemote({op:'del',shapes:[JSON.parse(JSON.stringify(dl51a))],clock:{peer:'evil51a',seq:1,ts:1}});
+    assert.ok(state.shapes.some(s=>s.id===dl51a.id),
+      'v1.7.51a: remote del must not remove a locally-locked shape');
+    assert.strictEqual(state.shapes.find(s=>s.id===dl51a.id).locked,true,
+      'v1.7.51a: locked shape survives remote del intact');
+    console.log('  ✓ _apply del forward: locked shape not deleted by remote del (v1.7.51a)');
+  }
+
+  // v1.7.51b: Presentation.enter()/leave() must resize() the canvas backing buffer.
+  // Entering/leaving presentation mode changes canvas.style (fixed fullscreen ↔ in-flow)
+  // but that is a pure CSS layout change — no native window 'resize' event fires, so the
+  // canvas's pixel buffer (canvas.width/height) is only ever recomputed by an explicit
+  // resize() call. Without it, the buffer stays stale: stretched/blurry, and desynced from
+  // _zoomToFrame's window.innerWidth/Height-based transform math.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const fr51b=Shape.make('frame',{x:0,y:0,w:200,h:150,label:'Slide 1'});
+    state.shapes.push(fr51b);
+    canvas.width=111;canvas.height=111;   // simulate a stale pre-presentation backing buffer
+    Presentation.enter();
+    assert.notStrictEqual(canvas.width,111,
+      'v1.7.51b: Presentation.enter() must recompute the canvas backing buffer (resize())');
+    assert.strictEqual(canvas.width,800,
+      'v1.7.51b: enter() resize() recomputes width from canvas.getBoundingClientRect() (800 in the fake DOM)');
+    canvas.width=222;canvas.height=222;   // simulate a stale fullscreen buffer on exit
+    Presentation.leave();
+    assert.notStrictEqual(canvas.width,222,
+      'v1.7.51b: Presentation.leave() must also recompute the canvas backing buffer (resize())');
+    assert.strictEqual(canvas.width,800,
+      'v1.7.51b: leave() resize() recomputes width back to the in-flow box size');
+    console.log('  ✓ Presentation.enter()/leave(): resize() keeps canvas backing buffer in sync (v1.7.51b)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 896; // prev 892 + wrapTextCached memoization (4)
+  pass += 902; // prev 898 + Presentation enter/leave resize() sync (4)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
