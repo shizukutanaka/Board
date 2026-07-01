@@ -5950,8 +5950,60 @@ try {
     console.log('  ✓ redo of unlock: locked cleared after lock→unlock→undo→redo (v1.7.41b)');
   }
 
+  // v1.7.42a: nudgeSelection does not capture origSel — undo of arrow-key move loses selection.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const na=Shape.make('rect',{x:0,y:0,w:30,h:30});
+    const nb=Shape.make('rect',{x:100,y:0,w:30,h:30});
+    state.shapes.push(na,nb);
+    state.selection=new Set([na.id,nb.id]);
+    nudgeSelection(10,0);
+    state.selection=new Set();
+    Store.undo();
+    assert.ok(state.selection.has(na.id),
+      'v1.7.42a: undo of nudge must restore na to selection');
+    assert.ok(state.selection.has(nb.id),
+      'v1.7.42a: undo of nudge must restore nb to selection');
+    console.log('  ✓ nudgeSelection: undo restores pre-nudge selection via origSel (v1.7.42a)');
+  }
+
+  // v1.7.42b: doAlign/doFlip/doRotate/doLock do not capture origSel — undo loses selection.
+  // Tests doAlign as representative of all four (shared _apply backward path).
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const aa=Shape.make('rect',{x:0,y:0,w:30,h:30});
+    const ab=Shape.make('rect',{x:100,y:0,w:30,h:30});
+    state.shapes.push(aa,ab);
+    state.selection=new Set([aa.id,ab.id]);
+    doAlign('left');
+    state.selection=new Set();
+    Store.undo();
+    assert.ok(state.selection.has(aa.id),
+      'v1.7.42b: undo of doAlign must restore aa to selection');
+    assert.ok(state.selection.has(ab.id),
+      'v1.7.42b: undo of doAlign must restore ab to selection');
+    console.log('  ✓ doAlign: undo restores pre-align selection via origSel (v1.7.42b)');
+  }
+
+  // v1.7.42c: validRemotePayload('move') allows empty ids[] and zero-displacement ops —
+  // no-ops that consume seenOps dedup slots without moving anything.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const mc=Shape.make('rect',{x:10,y:10,w:30,h:30});
+    state.shapes.push(mc);
+    Store.applyRemote({op:'move',ids:[],dx:100,dy:0,clock:{peer:'evil42c',seq:1,ts:1}});
+    assert.strictEqual(state.shapes.find(s=>s.id===mc.id).x,10,
+      'v1.7.42c: remote move with empty ids rejected (shape.x unchanged)');
+    assert.ok(!state.seenOps.has('evil42c:1'),
+      'v1.7.42c: empty-ids move op must not be added to seenOps');
+    Store.applyRemote({op:'move',ids:[mc.id],dx:0,dy:0,clock:{peer:'evil42c',seq:2,ts:2}});
+    assert.ok(!state.seenOps.has('evil42c:2'),
+      'v1.7.42c: zero-displacement move op must not be added to seenOps');
+    console.log('  ✓ validRemotePayload move: empty ids and zero-displacement ops rejected (v1.7.42c)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 839; // prev 837 + align/lock validator + redo-of-unlock (2 behavioral)
+  pass += 845; // prev 839 + move/align origSel + move validator (3 behavioral × 2 assert each)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

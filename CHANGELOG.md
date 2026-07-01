@@ -2,6 +2,30 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.42] - 2026-07-01
+
+### Fixed
+- **`nudgeSelection` / `endSelect` が `origSel` を記録しない (undo 後に選択が消える)**:
+  矢印キーやドラッグ移動の undo で `move` op を巻き戻しても `state.selection` が空のまま
+  だった。修正: 両関数で `const origSel=[...state.selection]` を `_recordCommitted` 前に
+  キャプチャし、commit 後に `state.history[state.histIdx].origSel=origSel` を付与。
+  `_apply case 'move'` 後退パスに `if(!forward&&op.origSel)state.selection=...` を追加。
+
+- **`doAlign` / `doFlip` / `doRotate` / `doLock` が `origSel` を記録しない (undo 後に選択消失)**:
+  整列・反転・回転・ロック操作の undo で選択が復元されなかった。修正: 4 関数とも
+  同パターンで `origSel` をキャプチャ・付与。`_apply case 'align'` 後退パスに
+  `if(!forward&&op.origSel)state.selection=...` を追加。
+
+- **`validRemotePayload('move')` が空 `ids[]` と 零変位を通過する (セキュリティ)**:
+  空の `ids` 配列 (`[].every()` は常に `true`) または `dx===0&&dy===0` の
+  no-op move op を受信しても検証が通り、`seenOps` スロットを無駄に消費する。
+  修正: `op.ids.length>0` と `(op.dx!==0||op.dy!==0)` を条件に追加。
+
+### Tests
+- behavioral × 3: nudgeSelection undo origSel (v1.7.42a); doAlign undo origSel (v1.7.42b);
+  remote empty-ids/zero-move 拒否 (v1.7.42c)
+- 合計 1295 pass, 0 fail
+
 ## [1.7.41] - 2026-07-01
 
 ### Fixed

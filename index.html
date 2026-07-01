@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.41 — Design Tokens
+   Board v1.7.42 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -721,7 +721,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.41';
+const V='1.7.42';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1024,7 +1024,7 @@ function validRemotePayload(op){
     case 'clear':  return Array.isArray(op.shapes)&&op.shapes.every(validShape);
     case 'upd':{const noLock=p=>!('locked' in p);
       return typeof op.id==='string'&&validPatch(op.after)&&noLock(op.after)&&(op.before==null||validPatch(op.before));}
-    case 'move':   return Array.isArray(op.ids)&&op.ids.every(id=>typeof id==='string')&&Number.isFinite(+op.dx)&&Number.isFinite(+op.dy);
+    case 'move':   return Array.isArray(op.ids)&&op.ids.length>0&&op.ids.every(id=>typeof id==='string')&&Number.isFinite(+op.dx)&&Number.isFinite(+op.dy)&&(op.dx!==0||op.dy!==0);
     case 'zorder':  // Step2 minimal-delta {changes:[{id,before,after}]} or legacy {after:[…]}
       return (Array.isArray(op.changes)&&op.changes.every(c=>c&&typeof c.id==='string'
                 &&(c.after==null||typeof c.after==='string')&&(c.before==null||typeof c.before==='string')))
@@ -1301,6 +1301,7 @@ const Store={
         const d=forward?1:-1;
         for(const id of op.ids){const sh=byId(id);if(!sh)continue;if(forward&&sh.locked)continue;
           Shape.translate(sh,op.dx*d,op.dy*d);}
+        if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));
         break;}
       case 'clear':{
         if(forward){state.shapes.length=0;state.selection.clear();state.wclock={};}
@@ -1355,6 +1356,7 @@ const Store={
         const patches=forward?op.after:op.before;
         if(!Array.isArray(patches))break;
         for(const p of patches){const sh=byId(p.id);if(sh&&!(forward&&sh.locked&&!('locked' in p)))Object.assign(sh,clone(p))}
+        if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));
         break;}
     }
   }};
@@ -2578,7 +2580,9 @@ function nudgeSelection(dx,dy){
   const ids=[...withFrameChildren(state.selection)].filter(id=>!byId(id)?.locked);
   if(!ids.length)return;
   for(const id of ids){const sh=byId(id);if(sh)Shape.translate(sh,dx,dy)}
+  const origSel=[...state.selection];
   Store._recordCommitted({op:'move',ids,dx,dy});
+  if(origSel.length)state.history[state.histIdx].origSel=origSel;
   invalidate();
 }
 // Shared by live drag (doMove) and commit (endSelect) so they agree exactly.
@@ -2605,7 +2609,9 @@ function endSelect(wp){
     state.guides=null;
     const mids=[...ptr.dragStartShapes.keys()].filter(id=>!byId(id)?.locked);
     if(Math.hypot(dx,dy)>0.5&&mids.length){
+      const origSel=[...state.selection];
       Store._recordCommitted({op:'move',ids:mids,dx,dy});
+      if(origSel.length)state.history[state.histIdx].origSel=origSel;
     }
   }else if(ptr.dragKind==='marquee'&&state.marquee){
     const m=state.marquee;
@@ -3369,7 +3375,9 @@ function doAlign(dir){
       let y0=units[0].b.y;for(const u of units){mv(u,0,y0-u.b.y);y0+=u.b.h+gap2}break}
   }
   const afterSnap=sel.map(s=>clone(s));
+  const origSel=[...state.selection];
   Store._recordCommitted({op:'align',dir,before:beforeSnap,after:afterSnap});
+  if(origSel.length)state.history[state.histIdx].origSel=origSel;
   invalidate();Persist.schedule();
 }
 
@@ -3407,7 +3415,9 @@ function doFlip(axis){
   const before=sel.map(s=>clone(s));
   for(const s of sel)flipShape(s,axis,c);
   const after=sel.map(s=>clone(s));
+  const origSel=[...state.selection];
   Store._recordCommitted({op:'align',dir:'flip',before,after});
+  if(origSel.length)state.history[state.histIdx].origSel=origSel;
   invalidate();Persist.schedule();
 }
 
@@ -3418,7 +3428,9 @@ function doLock(){
   const before=sel.map(s=>({id:s.id,locked:s.locked??null}));
   for(const s of sel)s.locked=lk||null;
   const after=sel.map(s=>({id:s.id,locked:s.locked??null}));
+  const origSel=[...state.selection];
   Store._recordCommitted({op:'align',dir:'lock',before,after});
+  if(origSel.length)state.history[state.histIdx].origSel=origSel;
   invalidate();Persist.schedule();
 }
 function doRotate(d){
@@ -3447,7 +3459,9 @@ function doRotate(d){
     s.rotate=((s.rotate||0)+d+360)%360;
   }
   const after=sel.map(s=>clone(s));
+  const origSel=[...state.selection];
   Store._recordCommitted({op:'align',dir:'rotate',before,after});
+  if(origSel.length)state.history[state.histIdx].origSel=origSel;
   invalidate();Persist.schedule();
 }
 // ====================== EXPORT ======================
