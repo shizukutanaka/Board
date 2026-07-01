@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.39 — Design Tokens
+   Board v1.7.40 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -721,7 +721,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.39';
+const V='1.7.40';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1319,14 +1319,14 @@ const Store={
         break;}
       case 'group':{
         if(forward){
-          for(const id of op.ids){const sh=byId(id);if(sh)sh.groupId=op.gid}
+          for(const id of op.ids){const sh=byId(id);if(sh&&!(forward&&sh.locked))sh.groupId=op.gid}
         }else{
           if(op.before)for(const b of op.before){const sh=byId(b.id);if(sh){if(b.groupId)sh.groupId=b.groupId;else delete sh.groupId}}
           if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));}
         break;}
       case 'ungroup':{
         if(forward){
-          for(const id of op.ids){const sh=byId(id);if(sh)delete sh.groupId}
+          for(const id of op.ids){const sh=byId(id);if(sh&&!(forward&&sh.locked))delete sh.groupId}
         }else{
           if(op.before){for(const b of op.before){const sh=byId(b.id);if(sh){if(b.groupId)sh.groupId=b.groupId;else delete sh.groupId}}}
           else{const gid=op.gids?.[0];for(const id of op.ids){const sh=byId(id);if(sh&&gid)sh.groupId=gid}}
@@ -1335,7 +1335,7 @@ const Store={
       case 'zorder':{
         if(op.changes){
           // minimal-delta (ADR-0001 Step 2): set moved shapes' keys, re-sort by key.
-          for(const c of op.changes){const sh=byId(c.id);if(sh)sh.frac=forward?c.after:c.before}
+          for(const c of op.changes){const sh=byId(c.id);if(sh&&!(forward&&sh.locked))sh.frac=forward?c.after:c.before}
           sortZ();
         }else{
           // legacy full-snapshot format (pre-Step2 history / mixed-version peer).
@@ -1343,7 +1343,7 @@ const Store={
           if(snap){
             const map=new Map(state.shapes.map(s=>[s.id,s]));
             const next=[];
-            for(const p of snap){const sh=map.get(p.id);if(sh){sh.z=p.z;if(p.frac!=null)sh.frac=p.frac;next.push(sh);map.delete(p.id)}}
+            for(const p of snap){const sh=map.get(p.id);if(sh){if(!(forward&&sh.locked)){sh.z=p.z;if(p.frac!=null)sh.frac=p.frac;}next.push(sh);map.delete(p.id)}}
             for(const sh of map.values())next.push(sh);   // keep any extras (defensive)
             state.shapes.length=0;Array.prototype.push.apply(state.shapes,next);
           }

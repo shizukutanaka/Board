@@ -650,6 +650,15 @@ const checks = [
   // v1.7.39: _apply del forward connClears must guard sh.locked
   ['_apply del forward connClears: if(sh&&!sh.locked) guards locked connectors',
     html.includes("if(sh&&!sh.locked)Object.assign(sh,p.after);}}")],
+  // v1.7.40: _apply zorder forward must guard sh.locked (changes path)
+  ['_apply zorder forward changes: !(forward&&sh.locked) guards locked shapes',
+    html.includes("if(sh&&!(forward&&sh.locked))sh.frac=forward?c.after:c.before}")],
+  // v1.7.40: _apply group forward must guard sh.locked
+  ['_apply group forward: !(forward&&sh.locked) guards locked shapes from remote group',
+    html.includes("if(sh&&!(forward&&sh.locked))sh.groupId=op.gid}")],
+  // v1.7.40: _apply ungroup forward must guard sh.locked
+  ['_apply ungroup forward: !(forward&&sh.locked) guards locked shapes from remote ungroup',
+    html.includes("if(sh&&!(forward&&sh.locked))delete sh.groupId}")],
   // v1.7.37: doGroup/_apply group backward must carry and restore origSel
   ['doGroup: origSel patched onto history entry after _recordCommitted',
     html.includes("Store._recordCommitted({op:'group',ids,gid,before});\n  if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
@@ -5856,8 +5865,56 @@ try {
     console.log('  ✓ _apply del forward connClears: locked connector not modified by remote del (v1.7.39)');
   }
 
+  // v1.7.40a: _apply('zorder', forward) mutates sh.frac on locked shapes without lock guard.
+  // Local zorder ops filter out locked shapes before building changes[], so local undo/redo
+  // is safe. Remote peers can still send zorder targeting locked shapes.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const zl=Shape.make('rect',{x:0,y:0,w:30,h:30});
+    state.shapes.push(zl);
+    zl.locked=true;
+    const origFrac=zl.frac||null;
+    Store.applyRemote({op:'zorder',changes:[{id:zl.id,before:'a0',after:'z0'}],clock:{peer:'evil40z',seq:1,ts:1}});
+    const zl2=state.shapes.find(s=>s.id===zl.id);
+    assert.ok(zl2,'v1.7.40a setup: locked shape present after remote zorder');
+    assert.notStrictEqual(zl2.frac,'z0',
+      'v1.7.40a: remote zorder must not mutate frac of a locked shape');
+    console.log('  ✓ _apply zorder forward: locked shape frac not mutated by remote zorder (v1.7.40a)');
+  }
+
+  // v1.7.40b: _apply('group', forward) assigns groupId to locked shapes without lock guard.
+  // Remote peer can group a locked shape, making it draggable as part of a group.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const gl=Shape.make('rect',{x:0,y:0,w:30,h:30});
+    const gl2=Shape.make('rect',{x:50,y:0,w:30,h:30});
+    state.shapes.push(gl,gl2);
+    gl.locked=true;
+    Store.applyRemote({op:'group',ids:[gl.id,gl2.id],gid:'remote-group',before:[{id:gl.id},{id:gl2.id}],clock:{peer:'evil40g',seq:1,ts:1}});
+    const gl_after=state.shapes.find(s=>s.id===gl.id);
+    assert.ok(gl_after,'v1.7.40b setup: locked shape present');
+    assert.notStrictEqual(gl_after.groupId,'remote-group',
+      'v1.7.40b: remote group must not assign groupId to a locked shape');
+    console.log('  ✓ _apply group forward: locked shape not grouped by remote group op (v1.7.40b)');
+  }
+
+  // v1.7.40c: _apply('ungroup', forward) deletes groupId from locked shapes without lock guard.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const ul=Shape.make('rect',{x:0,y:0,w:30,h:30});
+    ul.groupId='existing-group';
+    state.shapes.push(ul);
+    ul.locked=true;
+    Store.applyRemote({op:'ungroup',ids:[ul.id],gids:['existing-group'],before:[{id:ul.id,groupId:'existing-group'}],clock:{peer:'evil40u',seq:1,ts:1}});
+    const ul_after=state.shapes.find(s=>s.id===ul.id);
+    assert.ok(ul_after,'v1.7.40c setup: locked shape present');
+    assert.strictEqual(ul_after.groupId,'existing-group',
+      'v1.7.40c: remote ungroup must not delete groupId from a locked shape');
+    console.log('  ✓ _apply ungroup forward: locked shape groupId not removed by remote ungroup (v1.7.40c)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 833; // prev 830 + del connClears lock guard (1 presence + 3 behavioral)
+  pass += 837; // prev 833 + zorder/group/ungroup lock guards (3 presence + 3 behavioral = 6)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

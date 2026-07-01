@@ -2,6 +2,31 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.40] - 2026-07-01
+
+### Fixed
+- **`_apply('zorder', forward)` がロック済みシェイプの `frac`/`z` を保護しない (セキュリティ)**:
+  `changes` パスと legacy snapshot パスの両方で `sh.locked` チェックなしに `sh.frac`/`sh.z` を
+  上書きしていた。悪意あるピアがロックされたシェイプを含む `zorder` op を送ると z 順序が
+  変更される。修正: `changes` パスに `!(forward&&sh.locked)` ガードを追加、
+  legacy snapshot パスにも同ガードを追加。
+
+- **`_apply('group', forward)` がロック済みシェイプに `groupId` を書き込む (セキュリティ)**:
+  ロックされたシェイプが remote `group` op でグループに追加されると、グループ全体の
+  移動でロックシェイプも動いてしまう (シェイプロックのバイパス)。
+  修正: `if(sh&&!(forward&&sh.locked))sh.groupId=op.gid`。
+
+- **`_apply('ungroup', forward)` がロック済みシェイプの `groupId` を削除する (セキュリティ)**:
+  ロックされたシェイプが remote `ungroup` op でグループ解除される。
+  修正: `if(sh&&!(forward&&sh.locked))delete sh.groupId`。
+
+  すべて v1.7.38 で確立した `!(forward&&sh.locked)` パターンの適用。
+
+### Tests
+- behavioral × 3: remote zorder/group/ungroup が locked shape を変更しないことを確認 (各 2 assert)
+- presence check × 3: zorder changes ガード、group forward ガード、ungroup forward ガード
+- 合計 1287 pass, 0 fail
+
 ## [1.7.39] - 2026-07-01
 
 ### Fixed
