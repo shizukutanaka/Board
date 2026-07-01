@@ -60,6 +60,10 @@ Board/
 - Render は副作用を最小化する: `state` を読むのみが原則。
   - 例外: `getImg()` は `_imgCache` (LRU) を書き換え + `img.onload` コールバックを登録する。
     これは意図的な設計（非同期イメージロード + キャッシュ）であり、`state` は変更しない。
+  - 例外: `wrapTextCached()` は `_wrapCache` (shape → 折り返し結果, WeakMap) を書き換える。
+    付箋テキストの毎フレーム再計算 (measureText) を避けるための純粋なメモ化キャッシュで、
+    `state` は変更しない。shape オブジェクト参照は Store が in-place で mutate するため
+    キー (text/maxWidth/fontSize) が変わらない限りキャッシュは有効なまま安全。
   - `drawShape()` に新たな副作用を追加する前に、この例外リストを更新すること。
 
 ## RULES — やっていいこと / ダメなこと

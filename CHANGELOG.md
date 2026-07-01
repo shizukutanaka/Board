@@ -2,6 +2,44 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.50] - 2026-07-01
+
+多角的な製品監査 (正しさ・UX・パフォーマンス・a11y・コード品質・テストカバレッジ) の結果を受けた改善パス。
+
+### Fixed
+- **`_syncTextFinalize` の「新規テキストを空欄のまま放棄」経路が `connClears` を計算しない (P2 レア競合)**:
+  新規テキスト作成直後、確定前に別ピアの矢印/直線がそのテキストへ束縛される競合ウィンドウが
+  存在する。ローカルで空欄のまま確定すると `Store.undo()` がシェイプを削除するがコネクタの
+  束縛には触れず、ブロードキャストされる `del` op にも `connClears` が含まれないため、
+  ローカル・リモート双方でコネクタの `.a`/`.b` がダングリング参照のまま残る。
+  修正: 削除経路すべてで共有する `computeConnClears()` を呼び、ローカルの束縛修正とブロード
+  キャストの両方に反映。
+
+### Changed
+- **コネクタ束縛クリア (`connClears`) 計算ロジックの重複を解消**: `doDelete`/`flushErase`/
+  `openTextEditor` (既存テキスト空欄化) の3箇所にほぼ逐語的に重複していたロジックを
+  `computeConnClears(delIds)` へ抽出。同一バグクラスが新しい削除経路に紛れ込むのを構造的に防止。
+- **付箋テキストの折り返し計算をメモ化 (パフォーマンス)**: `wrapText()` が毎 RAF フレーム、
+  可視な付箋ごとに `measureText` を再計算していた。`wrapTextCached(shape,...)` で
+  `(text,maxWidth,fontSize)` をキーに WeakMap メモ化し、テキスト量の多いボードでの描画負荷を
+  削減。shape オブジェクト参照は Store が in-place mutate するため undo/redo でも安全に機能する
+  (CLAUDE.md の drawShape 副作用例外リストに追記)。
+
+### Verified (対応不要と判断)
+- `state.wclock` の del/clear/replace undo 復元 — 既に `op.wc`/`op.afterWc` スナップショットで
+  正しく実装済みだった (過去のバージョンで修正済み)。
+- エラー系トーストの `aria-live` — 個々のトースト要素は既に `role="alert"` を持ち、WAI-ARIA
+  仕様上これは祖先の `aria-live="polite"` と独立して暗黙の `assertive` ライブリージョンになる。
+  追加対応不要。
+- `validRemotePayload` の zorder レガシースナップショット `op.before` 未検証 — `_apply` の
+  リモート適用は常に `forward=true` で呼ばれるため `op.before` は到達不能パス。実害なし。
+
+### Tests
+- behavioral × 8: `_syncTextFinalize` connClears race fix (3) + `computeConnClears` 共有ヘルパ (1)
+  + `wrapTextCached` メモ化 (4)
+- presence check × 2: 更新 (text-blur del pattern, sticky wrapTextCached call site)
+- 合計 1368 pass, 0 fail
+
 ## [1.7.49] - 2026-07-01
 
 ### Fixed

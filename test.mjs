@@ -206,7 +206,7 @@ const checks = [
   ['Persist.load validates shapes', html.includes("d.shapes.filter(validShape)")],
   // v1.6.9: sticky text auto-wrap
   ['wrapText helper present', html.includes("function wrapText")],
-  ['sticky render wraps text', html.includes("wrapText(s.text,Math.abs(s.w)-pad*2")],
+  ['sticky render wraps text', html.includes("wrapTextCached(s,s.text,Math.abs(s.w)-pad*2")],
   ['SVG sticky export wraps text', html.includes("wrapText(s.text,Math.abs(W)-pad2*2")],
   // v1.6.10: keyboard shape navigation (a11y)
   ['cycleSel/describeShape helpers present', html.includes("function cycleSel") && html.includes("function describeShape")],
@@ -637,7 +637,7 @@ const checks = [
     !html.includes("(op.before==null||(patches(op.before)&&op.before.every(noLock)))")],
   // v1.7.35: text-blur del origSel pattern must exist at the existing-text-empty path
   ['text-blur del: origSel captured and patched before and after Store.commit del',
-    html.includes("const origSel=[...state.selection];\n        const _delId=orig.id;")&&
+    html.includes("const origSel=[...state.selection];\n        const connClears=computeConnClears(new Set([orig.id]));")&&
     html.includes("Store.commit(delOp);\n        if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
   // v1.7.36: flushErase must capture origSel before del commit and patch after
   ['flushErase del: origSel captured before commit and patched after (parity with doDelete)',
@@ -844,10 +844,10 @@ try {
              doBringFront, doSendBack, doBringForward, doSendBackward,
              doAlign, doFlip, snapV, snapPt,
              getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
-             doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, cycleSel, describeShape,
+             doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _syncDocTitle, Presentation,
              _onBtnInstall, _getInstallPrompt: () => _installPrompt, _setInstallPrompt: (v) => { _installPrompt = v; },
@@ -864,10 +864,10 @@ try {
           doBringFront, doSendBack, doBringForward, doSendBackward,
           doAlign, doFlip, snapV, snapPt,
           getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
-          doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, cycleSel, describeShape,
+          doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _syncDocTitle, Presentation,
           _onBtnInstall, _getInstallPrompt, _setInstallPrompt,
@@ -6333,8 +6333,71 @@ try {
     console.log('  ✓ validRemotePayload ungroup: empty gid rejected (parity fix, v1.7.49e)');
   }
 
+  // v1.7.50a: _syncTextFinalize (abandoned-new-text race) must compute connClears —
+  // a peer's connector can bind to a text shape while it is still being typed locally
+  // (Store.undo() only removes the shape; it never touches connector bindings). Before
+  // the fix, the broadcast 'del' carried no connClears, so peers (and the local state
+  // itself, if the binding arrived via remote op) kept a dangling s.a/s.b reference.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.peerId='local50a';
+    const txt50a=Shape.make('text',{x:0,y:0,w:80,h:24,text:''});
+    const arr50a=Shape.make('arrow',{x1:0,y1:0,x2:100,y2:0});
+    arr50a.a=txt50a.id;                 // simulates a peer's connector already bound to the in-progress text
+    state.shapes.push(arr50a);          // txt50a itself already removed, mirroring Store.undo() of the add
+    let broadcast50a=null;
+    Net.broadcast=op=>{broadcast50a=op;};
+    _syncTextFinalize(txt50a,'',true);
+    assert.ok(broadcast50a&&Array.isArray(broadcast50a.connClears)&&broadcast50a.connClears.length===1,
+      'v1.7.50a: _syncTextFinalize broadcasts connClears for abandoned-new-text del');
+    assert.strictEqual(broadcast50a.connClears[0].id,arr50a.id,
+      'v1.7.50a: connClears targets the bound connector');
+    assert.strictEqual(state.shapes.find(s=>s.id===arr50a.id).a,null,
+      'v1.7.50a: local dangling connector binding is cleared (not just broadcast)');
+    console.log('  ✓ _syncTextFinalize: abandoned-new-text del computes connClears (v1.7.50a)');
+  }
+
+  // v1.7.50b: computeConnClears is the single shared implementation behind
+  // doDelete/flushErase/openTextEditor/_syncTextFinalize — verify it directly for a
+  // multi-id batch (parity check for the extraction refactor).
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const dA=Shape.make('rect',{x:0,y:0,w:20,h:20});
+    const dB=Shape.make('rect',{x:100,y:0,w:20,h:20});
+    const connA=Shape.make('arrow',{x1:10,y1:10,x2:50,y2:10});
+    const connB=Shape.make('arrow',{x1:50,y1:10,x2:110,y2:10});
+    const lockedConn=Shape.make('arrow',{x1:10,y1:30,x2:110,y2:30});
+    connA.a=dA.id; connB.b=dB.id; lockedConn.a=dA.id; lockedConn.locked=true;
+    state.shapes.push(dA,dB,connA,connB,lockedConn);
+    const cc50b=computeConnClears(new Set([dA.id,dB.id]));
+    const ids50b=cc50b.map(p=>p.id).sort();
+    assert.deepStrictEqual(ids50b,[connA.id,connB.id].sort(),
+      'v1.7.50b: computeConnClears finds both affected connectors, skips the locked one');
+    console.log('  ✓ computeConnClears: shared helper resolves multi-id batch, skips locked (v1.7.50b)');
+  }
+
+  // v1.7.50c: wrapTextCached memoizes per-shape (text,maxWidth,fontSize) — a cache hit
+  // must skip calling `measure` again (perf: sticky notes were re-wrapped every RAF frame
+  // even when nothing changed), while a genuine content/size change still re-wraps.
+  {
+    const sticky50c=Shape.make('sticky',{x:0,y:0,w:120,h:60,text:'hello world'});
+    let calls50c=0;
+    const measure50c=t=>{calls50c++;return t.length*7;};
+    const l1=wrapTextCached(sticky50c,'hello world',100,14,measure50c);
+    const callsAfterFirst=calls50c;
+    assert.ok(callsAfterFirst>0,'v1.7.50c setup: first call invokes measure');
+    const l2=wrapTextCached(sticky50c,'hello world',100,14,measure50c);
+    assert.strictEqual(calls50c,callsAfterFirst,
+      'v1.7.50c: identical (text,maxWidth,fontSize) is a cache hit — measure not called again');
+    assert.deepStrictEqual(l2,l1,'v1.7.50c: cache hit returns the same wrapped lines');
+    const l3=wrapTextCached(sticky50c,'goodbye world',100,14,measure50c);
+    assert.ok(calls50c>callsAfterFirst,
+      'v1.7.50c: changed text invalidates the cache — measure called again');
+    console.log('  ✓ wrapTextCached: memoizes per-shape, invalidates on content change (v1.7.50c)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 888; // prev 878 + flat pts upd (3) + svg dominant-baseline (1) + del connClears text (3) + snapshot merge cap (1) + ungroup empty gid (2)
+  pass += 896; // prev 892 + wrapTextCached memoization (4)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
