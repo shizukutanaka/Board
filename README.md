@@ -4,7 +4,7 @@
 単一HTMLファイル。ダブルクリックで動く。アカウント不要。広告なし。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-00C4CC.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.7.52-00C4CC.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.7.53-00C4CC.svg)](CHANGELOG.md)
 [![Size](https://img.shields.io/badge/size-~61KB%20gzip-00C4CC.svg)](index.html)
 [![Offline](https://img.shields.io/badge/offline-first-00C4CC.svg)](#offline)
 [![A11y](https://img.shields.io/badge/WCAG-AAA-00C4CC.svg)](#accessibility)
@@ -86,7 +86,7 @@ start index.html      # Windows
 ### プレゼンテーション
 - フレームを左→右順に全画面表示 (⇧P / Ctrl+Enter)、←/→/Space でナビゲート
 - レーザーポインタ (発表中、ポインタ位置に赤い発光ドットを追従表示)
-- ミニマップ (右下、クリックでジャンプ)
+- ミニマップ (右下、クリックでジャンプ、`M` キーで表示切替 — 設定は次回起動後も保持)
 
 ### 永続化
 - IndexedDB 自動保存 (500ms デバウンス)、リロード後も状態復元
@@ -128,12 +128,13 @@ start index.html      # Windows
 | `F` | フレーム | `⌘⇧E` | SVG出力 |
 | `E` | 消しゴム | `⌘S` | 即時保存 |
 | `G` | グリッド切替 | `⌘F` | 検索 |
-| `Tab` | 図形を巡回 | `⇧Tab` | 逆順に巡回 |
-| `⇧H` | 左右反転 | `⇧V` | 上下反転 |
-| `,` / `.` | 回転 ±15° | `⌘G` / `⌘⇧G` | グループ / グループ解除 |
-| `Enter` | 中央に作成 | `⌥C` / `⌥V` | スタイル複製 / 適用 |
-| `↑↓←→` | 移動 (⇧:10px) | `⌥↑↓←→` | リサイズ (⇧:×10) |
-| `Esc` | 選択解除 | `?` | ヘルプ |
+| `M` | ミニマップ切替 | `Tab` | 図形を巡回 |
+| `⇧Tab` | 逆順に巡回 | `⇧H` | 左右反転 |
+| `⇧V` | 上下反転 | `,` / `.` | 回転 ±15° |
+| `⌘G` / `⌘⇧G` | グループ / グループ解除 | `Enter` | 中央に作成 |
+| `⌥C` / `⌥V` | スタイル複製 / 適用 | `↑↓←→` | 移動 (⇧:10px) |
+| `⌥↑↓←→` | リサイズ (⇧:×10) | `Esc` | 選択解除 |
+| `?` | ヘルプ | | |
 
 ## アーキテクチャ / Architecture
 

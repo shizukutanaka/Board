@@ -2,6 +2,27 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.53] - 2026-07-01
+
+`docs/research-improvements.md` §3.18「過不足の機能」— ソクラテス式問答で4つの仮説を検証、
+3つは反証、1つ(ミニマップの常時表示・非表示手段なし)が実証された結果への対応。
+
+### Added
+- **ミニマップの表示切替 (§3.18)**: `.minimap-wrap{opacity:.85}` は常時表示で、非表示に
+  できるのはプレゼンモード中のみだった。図形が数個しかない小規模ボードでも右下に常駐し続け、
+  ユーザーが閉じる手段が一切なかった。`M` キーでトグル、設定は `localStorage` に永続化(次回
+  起動後も保持)。`Minimap.schedule()` も非表示中は `requestAnimationFrame` 自体を呼ばない
+  (CSSで隠すだけでなく描画コストもゼロにする — Carmack「必要最小限の invalidate」に整合)。
+
+### Changed
+- README キーボードショートカット表に `M` を追加。
+
+### Tests
+- behavioral × 5: `UI.toggleMinimap` の状態反転 (2) + `Minimap.schedule()` の非表示時
+  RAFスキップ・二重スケジュール防止 (3、spy 付き独立サンドボックスインスタンスで検証)
+- presence check × 3: キー割り当て、ヘルプグリッド記載、schedule() のガード節
+- 合計 1402 pass, 0 fail
+
 ## [1.7.52] - 2026-07-01
 
 バグ修正パス(v1.7.45–v1.7.51)に続く「次の一手」。`docs/research-improvements.md` §3.9

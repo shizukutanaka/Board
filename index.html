@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.52 — Design Tokens
+   Board v1.7.53 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -721,7 +721,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.52';
+const V='1.7.53';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -751,6 +751,10 @@ const PEER_ID=(()=>{try{
   if(!id){id=uid();localStorage.setItem('board.peer',id)}
   return id;
 }catch(_){return uid()}})();
+// minimap visibility: persisted across reloads (§3.18 — small boards get zero value from
+// an always-on minimap with no way to dismiss it; a session-only toggle would just nag again
+// on every reload).
+const MINIMAP_ON=(()=>{try{return localStorage.getItem('board.minimap')!=='off'}catch(_){return true}})();
 
 // ====================== I18N ======================
 const I18N={
@@ -764,7 +768,7 @@ const I18N={
     ungrouped:'グループ解除',noFrames:'フレームがありません (F キーで作成)',
     imgBig:'画像が大きすぎます。縮小してください',imgErr:'画像を読み込めませんでした',
     popupBlocked:'ポップアップをブロックしてください',invalidBoard:'ボードファイルが無効です',exportFailed:'書き出し失敗',saveFailed:'保存失敗',quotaExceeded:'保存容量が逼迫しています — ⌘E/⌘⇧E で書き出しを推奨',
-    snap:'スナップ',grid:'グリッド',on:'オン',off:'オフ',online:'オンライン',offline:'オフライン',shapes:'図形',
+    snap:'スナップ',grid:'グリッド',minimap:'ミニマップ',on:'オン',off:'オフ',online:'オンライン',offline:'オフライン',shapes:'図形',
     copied:'コピー',pasted:'貼り付け',deleted:'削除',cleared:'クリア',
     undone:'元に戻した',redone:'やり直した',created:'作成',
     confirmClear:'すべて削除しますか？',
@@ -804,7 +808,7 @@ const I18N={
       selAll:'全選択',copy:'コピー',paste:'貼付',cut:'切取',
       zoomIn:'拡大',zoomOut:'縮小',zoom100:'100%にリセット',
       fit:'画面にフィット',pan:'パン',help:'ヘルプ',exp:'PNG書き出し',
-      save:'即時保存',grid:'グリッド',esc:'選択解除/キャンセル',
+      save:'即時保存',grid:'グリッド',minimap:'ミニマップ切替',esc:'選択解除/キャンセル',
       cycle:'図形を巡回',create:'中央に作成',
       present:'プレゼン',nudge:'移動 (⇧: 10px)',zorder:'前面/背面',zorderEnds:'最前面/最背面',
       rotate:'回転 (15° / ノブdrag)',search:'検索',searchNav:'次/前のマッチへ移動',resizeRatio:'比率保持リサイズ',resizeCenter:'中心固定リサイズ',kbdResize:'リサイズ (⇧:×10)'}},
@@ -850,14 +854,14 @@ const I18N={
     backupAvailable:'A board from before it was overwritten was saved. Restore it?',
     backupRestored:'Restored the previous board',
     backupRestoreFailed:'Failed to restore backup',
-    peers:'peers',shapes:'Shapes',on:'On',off:'Off',online:'Online',offline:'Offline',
+    peers:'peers',shapes:'Shapes',on:'On',off:'Off',online:'Online',offline:'Offline',minimap:'Minimap',
     k:{select:'Select',hand:'Pan',pen:'Pen',rect:'Rectangle',ellipse:'Ellipse',
       arrow:'Arrow',line:'Line',text:'Text',sticky:'Sticky',frame:'Frame',eraser:'Eraser',
       undo:'Undo',redo:'Redo',del:'Delete',dup:'Duplicate',
       selAll:'Select all',copy:'Copy',paste:'Paste',cut:'Cut',
       zoomIn:'Zoom in',zoomOut:'Zoom out',zoom100:'Reset zoom',
       fit:'Fit to content',pan:'Pan',help:'Help',exp:'Export PNG',
-      save:'Save now',grid:'Toggle grid',esc:'Deselect / cancel',
+      save:'Save now',grid:'Toggle grid',minimap:'Toggle minimap',esc:'Deselect / cancel',
       cycle:'Cycle shapes',create:'Create at centre',
       present:'Present',nudge:'Move (⇧: 10px)',zorder:'Front / back',zorderEnds:'To front / to back',
       rotate:'Rotate (15° / knob drag)',search:'Search',searchNav:'Next / prev match',resizeRatio:'Keep ratio (resize)',resizeCenter:'Resize from centre',kbdResize:'Resize (⇧:×10)'}}};
@@ -883,6 +887,7 @@ const state={
   marquee:null,             // {x1,y1,x2,y2} in world coords
   guides:null,              // object-snap alignment guide lines (during drag)
   showGrid:true,
+  showMinimap:MINIMAP_ON,
   snap:true,        // snap-to-grid when dragging shapes
   docName:'Untitled',
   dirty:false,
@@ -3126,6 +3131,7 @@ window.addEventListener('keydown',e=>{
   else if(meta&&k==='l'&&e.shiftKey&&state.selection.size){e.preventDefault();doLock()}
   else if(k==='g'&&!meta&&e.shiftKey){state.snap=!state.snap;UI.toast(`${t('snap')} ${state.snap?t('on'):t('off')}`)}
   else if(k==='g'&&!meta){state.showGrid=!state.showGrid;invalidate();UI.toast(`${t('grid')} ${state.showGrid?t('on'):t('off')}`)}
+  else if(k==='m'&&!meta){UI.toggleMinimap()}
   else if(e.shiftKey&&k==='1'){e.preventDefault();fitToContent()}
   else if(e.shiftKey&&!meta&&!e.altKey&&(k==='h'||k==='v')&&state.selection.size){e.preventDefault();doFlip(k)}
   else if(k===','&&!meta&&state.selection.size){e.preventDefault();doRotate(-15)}
@@ -4219,6 +4225,19 @@ const UI={
   refreshZoom(){
     document.getElementById('zoomVal').textContent=Math.round(state.viewport.zoom*100)+'%';
   },
+  // §3.18: minimap has no dismiss affordance — always-on is pure visual noise on a small
+  // board. `M` toggles it; the preference persists (localStorage) so it doesn't reappear
+  // on next reload. Draw is also skipped while hidden (Minimap.schedule), not just CSS-hidden.
+  refreshMinimapVis(){
+    document.querySelector('.minimap-wrap')?.style.setProperty('display',state.showMinimap?'':'none');
+  },
+  toggleMinimap(){
+    state.showMinimap=!state.showMinimap;
+    try{localStorage.setItem('board.minimap',state.showMinimap?'on':'off')}catch(_){}
+    UI.refreshMinimapVis();
+    if(state.showMinimap)Minimap.schedule();
+    UI.toast(`${t('minimap')} ${state.showMinimap?t('on'):t('off')}`);
+  },
   setStatusXY(x,y){document.getElementById('sXY').textContent=x+', '+y},
   refreshSaved(){
     const el=document.getElementById('sSaved');if(!el)return;
@@ -4312,7 +4331,7 @@ const UI={
       ['⌘C/V/X',k.copy+'/'+k.paste+'/'+k.cut],['⌘D',k.dup],['⌫',k.del],
       ['⌘+/−/0',k.zoomIn+'/'+k.zoomOut+'/'+k.zoom100],
       ['⇧1',k.fit],['⌘E',k.exp],['⌘⇧E','SVG'],['⌘P','PDF'],['⌘S',k.save],['⌘⇧S','.board'],
-      ['G',k.grid],['⇧G',t('snap')],['Esc',k.esc],['?',k.help],
+      ['G',k.grid],['⇧G',t('snap')],['M',k.minimap],['Esc',k.esc],['?',k.help],
       ['↑↓←→',k.nudge],['⌥ ↑↓←→',k.kbdResize],
       [']/[',k.zorder],['⇧]/⇧[',k.zorderEnds],
       [', / .',k.rotate],['⌘⇧L',t('lockToggle')],['⌘F',k.search],
@@ -4768,7 +4787,7 @@ const Minimap=(()=>{
     mx.strokeRect(vx,vy,vw,vh);mx.setLineDash([]);
   }
 
-  function schedule(){if(!_raf)_raf=requestAnimationFrame(draw)}
+  function schedule(){if(!state.showMinimap||_raf)return;_raf=requestAnimationFrame(draw)}
 
   mc.addEventListener('click',e=>{
     const r=mc.getBoundingClientRect();
@@ -4802,7 +4821,7 @@ const Minimap=(()=>{
       else await Persist.discardBackup();
     }
   }catch(_){}
-  UI.refreshUndo();UI.refreshZoom();UI.refreshSaved();
+  UI.refreshUndo();UI.refreshZoom();UI.refreshSaved();UI.refreshMinimapVis();
   // version display
   document.getElementById('sVer').textContent='v'+V;
   // v1.1: import shared board from URL hash (if any)

@@ -131,6 +131,11 @@ const checks = [
   // Phase 1.4: minimap + format painter + PDF
   ['Minimap canvas present', html.includes('id="minimap"') && html.includes("const Minimap")],
   ['Minimap click-to-navigate', html.includes("state.viewport.x=wx-")],
+  // §3.18: minimap had no dismiss affordance — always-on is pure visual noise on a small
+  // board with zero user control. M toggles visibility; preference persists (localStorage).
+  ['M key routes to UI.toggleMinimap', html.includes("else if(k==='m'&&!meta){UI.toggleMinimap()}")],
+  ['help grid documents the M shortcut', html.includes("['M',k.minimap]")],
+  ['Minimap.schedule skips requestAnimationFrame while hidden', html.includes("function schedule(){if(!state.showMinimap||_raf)return;_raf=requestAnimationFrame(draw)}")],
   ['Format painter copyStyle/pasteStyle', html.includes("function copyStyle") && html.includes("function pasteStyle")],
   ['Format painter styleClipboard state', html.includes("styleClipboard")],
   ['PDF export function', html.includes("function exportPDF") && html.includes("window.print")],
@@ -882,7 +887,7 @@ try {
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
-             _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText,
+             _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText, Minimap,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _syncDocTitle, Presentation, canvas, resize,
              _onBtnInstall, _getInstallPrompt: () => _installPrompt, _setInstallPrompt: (v) => { _installPrompt = v; },
              _onSwUpdate, _ctxMenuKeyNav,
@@ -902,7 +907,7 @@ try {
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
-          _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText,
+          _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText, Minimap,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _syncDocTitle, Presentation, canvas, resize,
           _onBtnInstall, _getInstallPrompt, _setInstallPrompt,
           _onSwUpdate, _ctxMenuKeyNav,
@@ -6562,8 +6567,43 @@ try {
     console.log('  ✓ doClearAll pattern: pre-clear board backed up and recoverable after reload (v1.7.52c, ADR-0004)');
   }
 
+  // v1.7.53a (§3.18): UI.toggleMinimap flips state.showMinimap and is idempotent-reversible
+  // (on→off→on). The minimap previously had zero user-facing way to dismiss it.
+  {
+    state.showMinimap=true;
+    UI.toggleMinimap();
+    assert.strictEqual(state.showMinimap,false,'v1.7.53a: toggleMinimap flips showMinimap off');
+    UI.toggleMinimap();
+    assert.strictEqual(state.showMinimap,true,'v1.7.53a: toggleMinimap flips showMinimap back on');
+    console.log('  ✓ UI.toggleMinimap: flips state.showMinimap on/off (v1.7.53a)');
+  }
+
+  // v1.7.53b (§3.18): Minimap.schedule() must not enqueue a RAF draw while hidden — the
+  // minimap was always redrawn every invalidate() regardless of visibility, wasted work on
+  // a canvas nobody can see. Verified with a spy'd requestAnimationFrame on a fresh sandboxed
+  // instance (same two-peer-harness technique used elsewhere in this file), since the shared
+  // fakeWin.requestAnimationFrame always returns 0 and can't distinguish "called" from "not".
+  {
+    const rafCalls=[];
+    const spyRaf=cb=>{rafCalls.push(cb);return rafCalls.length;};
+    const C=fn(
+      fakeWin, fakeDoc, fakeWin.navigator, spyRaf,
+      fakeWin.indexedDB, fakeWin.URL, setTimeout, clearTimeout, setInterval, clearInterval,
+      fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin
+    );
+    C.state.showMinimap=false;
+    C.Minimap.schedule();
+    assert.strictEqual(rafCalls.length,0,'v1.7.53b: Minimap.schedule() hidden — no RAF scheduled');
+    C.state.showMinimap=true;
+    C.Minimap.schedule();
+    assert.strictEqual(rafCalls.length,1,'v1.7.53b: Minimap.schedule() visible — exactly one RAF scheduled');
+    C.Minimap.schedule();
+    assert.strictEqual(rafCalls.length,1,'v1.7.53b: Minimap.schedule() re-entrant call does not double-schedule');
+    console.log('  ✓ Minimap.schedule(): skips requestAnimationFrame while hidden, no double-schedule (v1.7.53b)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 918; // prev 902 + Persist backup round-trip (10) + empty no-op (2) + doClearAll pattern recoverability (4)
+  pass += 923; // prev 918 + toggleMinimap flip (2) + Minimap.schedule RAF gating (3)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
