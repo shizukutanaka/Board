@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.53 — Design Tokens
+   Board v1.7.54 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -721,7 +721,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.53';
+const V='1.7.54';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -770,6 +770,7 @@ const I18N={
     popupBlocked:'ポップアップをブロックしてください',invalidBoard:'ボードファイルが無効です',exportFailed:'書き出し失敗',saveFailed:'保存失敗',quotaExceeded:'保存容量が逼迫しています — ⌘E/⌘⇧E で書き出しを推奨',
     snap:'スナップ',grid:'グリッド',minimap:'ミニマップ',on:'オン',off:'オフ',online:'オンライン',offline:'オフライン',shapes:'図形',
     copied:'コピー',pasted:'貼り付け',deleted:'削除',cleared:'クリア',
+    beautified:'整形しました',beautifyNone:'整形できる図形がありません(矩形・楕円・直線に近いペン描画を選択してください)',
     undone:'元に戻した',redone:'やり直した',created:'作成',
     confirmClear:'すべて削除しますか？',
     ctxCopy:'コピー',ctxPaste:'貼り付け',ctxDuplicate:'複製',
@@ -808,7 +809,7 @@ const I18N={
       selAll:'全選択',copy:'コピー',paste:'貼付',cut:'切取',
       zoomIn:'拡大',zoomOut:'縮小',zoom100:'100%にリセット',
       fit:'画面にフィット',pan:'パン',help:'ヘルプ',exp:'PNG書き出し',
-      save:'即時保存',grid:'グリッド',minimap:'ミニマップ切替',esc:'選択解除/キャンセル',
+      save:'即時保存',grid:'グリッド',minimap:'ミニマップ切替',beautify:'選択したペン描画を整形',esc:'選択解除/キャンセル',
       cycle:'図形を巡回',create:'中央に作成',
       present:'プレゼン',nudge:'移動 (⇧: 10px)',zorder:'前面/背面',zorderEnds:'最前面/最背面',
       rotate:'回転 (15° / ノブdrag)',search:'検索',searchNav:'次/前のマッチへ移動',resizeRatio:'比率保持リサイズ',resizeCenter:'中心固定リサイズ',kbdResize:'リサイズ (⇧:×10)'}},
@@ -823,6 +824,7 @@ const I18N={
     imgBig:'Image too large — please resize',imgErr:'Image failed to load',
     popupBlocked:'Pop-up blocked — please allow pop-ups for PDF export',invalidBoard:'Invalid .board file',exportFailed:'Export failed',saveFailed:'Save failed',quotaExceeded:'Storage quota exceeded — export locally with ⌘E/⌘⇧E',
     copied:'Copied',pasted:'Pasted',deleted:'Deleted',cleared:'Cleared',
+    beautified:'Beautified',beautifyNone:'Nothing to beautify (select a pen stroke close to a rectangle, ellipse, or line)',
     undone:'Undone',redone:'Redone',created:'Created',
     confirmClear:'Delete everything?',
     ctxCopy:'Copy',ctxPaste:'Paste',ctxDuplicate:'Duplicate',
@@ -861,7 +863,7 @@ const I18N={
       selAll:'Select all',copy:'Copy',paste:'Paste',cut:'Cut',
       zoomIn:'Zoom in',zoomOut:'Zoom out',zoom100:'Reset zoom',
       fit:'Fit to content',pan:'Pan',help:'Help',exp:'Export PNG',
-      save:'Save now',grid:'Toggle grid',minimap:'Toggle minimap',esc:'Deselect / cancel',
+      save:'Save now',grid:'Toggle grid',minimap:'Toggle minimap',beautify:'Beautify selected pen strokes',esc:'Deselect / cancel',
       cycle:'Cycle shapes',create:'Create at centre',
       present:'Present',nudge:'Move (⇧: 10px)',zorder:'Front / back',zorderEnds:'To front / to back',
       rotate:'Rotate (15° / knob drag)',search:'Search',searchNav:'Next / prev match',resizeRatio:'Keep ratio (resize)',resizeCenter:'Resize from centre',kbdResize:'Resize (⇧:×10)'}}};
@@ -1373,7 +1375,8 @@ const Store={
         break;}
       case 'style':
       case 'resize':
-      case 'align':{
+      case 'align':
+      case 'beautify':{     // ADR-0005: same batch-absolute-patch/single-undo mechanism
         const patches=forward?op.after:op.before;
         if(!Array.isArray(patches))break;
         for(const p of patches){const sh=byId(p.id);if(sh&&!(forward&&sh.locked&&!('locked' in p)))Object.assign(sh,clone(p))}
@@ -2709,6 +2712,64 @@ function _rdp(pts,eps){
   }
   return [pts[0],pts[pts.length-1]];
 }
+// ADR-0005: geometric-heuristic shape recognition for the "beautify" feature (Alt+B).
+// Pure, deterministic, dependency-free — classifies a rough pen stroke as line/rect/ellipse
+// if it closely matches that shape's geometry (size-relative thresholds + absolute floors,
+// so a tiny sketch and a huge one use a proportionally similar "how wobbly is too wobbly"
+// bar), else returns null. Triangle/other shapes are intentionally unsupported: Board has no
+// drawing tool to convert them into.
+function recognizeStroke(pts){
+  if(!Array.isArray(pts)||pts.length<3)return null;
+  let mnx=Infinity,mny=Infinity,mxx=-Infinity,mxy=-Infinity,pathLen=0;
+  for(let i=0;i<pts.length;i++){
+    const x=pts[i][0],y=pts[i][1];
+    if(x<mnx)mnx=x;if(x>mxx)mxx=x;if(y<mny)mny=y;if(y>mxy)mxy=y;
+    if(i>0)pathLen+=Math.hypot(x-pts[i-1][0],y-pts[i-1][1]);
+  }
+  const bw=mxx-mnx,bh=mxy-mny,diag=Math.hypot(bw,bh);
+  if(diag<8)return null;                         // too small to classify meaningfully
+  const fx=pts[0][0],fy=pts[0][1],lx=pts[pts.length-1][0],ly=pts[pts.length-1][1];
+  const closed=Math.hypot(lx-fx,ly-fy)<=Math.max(10,diag*0.15);
+
+  // ---- line: low perpendicular deviation from the first→last chord ----
+  {
+    const dx=lx-fx,dy=ly-fy,len=Math.hypot(dx,dy);
+    if(len>diag*0.6){    // must span most of the bbox diagonal, not just wobble near one end
+      let maxDev=0;
+      for(const p of pts){
+        const t=len>0?((p[0]-fx)*dx+(p[1]-fy)*dy)/(len*len):0;
+        const px=fx+dx*t,py=fy+dy*t;
+        maxDev=Math.max(maxDev,Math.hypot(p[0]-px,p[1]-py));
+      }
+      if(maxDev<=Math.max(4,len*0.08)&&pathLen<=len*1.35)return{type:'line',x1:fx,y1:fy,x2:lx,y2:ly};
+    }
+  }
+  if(!closed)return null;                        // rect/ellipse require a roughly closed loop
+
+  // ---- rect: every point hugs one of the 4 axis-aligned bbox edges ----
+  {
+    const tol=Math.max(6,Math.min(bw,bh)*0.12);
+    let maxEdgeDist=0;
+    for(const p of pts){
+      const d=Math.min(Math.abs(p[0]-mnx),Math.abs(p[0]-mxx),Math.abs(p[1]-mny),Math.abs(p[1]-mxy));
+      maxEdgeDist=Math.max(maxEdgeDist,d);
+    }
+    if(maxEdgeDist<=tol)return{type:'rect',x:mnx,y:mny,w:bw,h:bh};
+  }
+
+  // ---- ellipse: radius from centroid, normalized by bbox half-extents, has low variance ----
+  {
+    let cx=0,cy=0;for(const p of pts){cx+=p[0];cy+=p[1]}cx/=pts.length;cy/=pts.length;
+    const rx=bw/2||1,ry=bh/2||1;
+    const rads=pts.map(p=>Math.hypot((p[0]-cx)/rx,(p[1]-cy)/ry));
+    const mean=rads.reduce((a,b)=>a+b,0)/rads.length;
+    if(mean>0){
+      const variance=rads.reduce((a,r)=>a+(r-mean)*(r-mean),0)/rads.length;
+      if(Math.sqrt(variance)/mean<=0.22)return{type:'ellipse',x:mnx,y:mny,w:bw,h:bh};
+    }
+  }
+  return null;
+}
 function endPen(){
   if(!state.draft)return;
   const d=state.draft;state.draft=null;
@@ -3056,6 +3117,7 @@ window.addEventListener('keydown',e=>{
   else if(meta&&k==='e'&&!e.shiftKey){e.preventDefault();exportPNG()}
   else if(k==='c'&&e.altKey&&!meta){e.preventDefault();copyStyle()}
   else if(k==='v'&&e.altKey&&!meta){e.preventDefault();pasteStyle()}
+  else if(k==='b'&&e.altKey&&!meta&&state.selection.size){e.preventDefault();doBeautify()}
   else if(meta&&k==='s'&&e.shiftKey){e.preventDefault();exportBoard()}
   else if(meta&&k==='s'&&!e.shiftKey){e.preventDefault();Persist.save(true)}
   else if(meta&&k==='p'){e.preventDefault();exportPDF()}
@@ -3467,6 +3529,26 @@ function doLock(){
   Store._recordCommitted({op:'align',dir:'lock',before,after});
   if(origSel.length)state.history[state.histIdx].origSel=origSel;
   invalidate();Persist.schedule();
+}
+// ADR-0005: replace confidently-recognized pen strokes in the selection with clean shapes
+// (Alt+B). Local-only (not in REMOTE_OPS, like replace/clear) — converting a collaborator's
+// pen stroke to a rectangle behind their back would be confusing, not helpful.
+function doBeautify(){
+  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked&&s.type==='pen');
+  if(!sel.length){UI.toast(t('beautifyNone'),'warn');return}
+  const before=[],after=[];
+  for(const s of sel){
+    const rec=recognizeStroke(s.pts);
+    if(!rec)continue;
+    before.push({id:s.id,type:'pen',pts:clone(s.pts)});
+    after.push({id:s.id,...rec});
+  }
+  if(!after.length){UI.toast(t('beautifyNone'),'warn');return}
+  const origSel=[...state.selection];
+  for(const p of after){const sh=byId(p.id);if(sh)Object.assign(sh,clone(p))}
+  Store._recordCommitted({op:'beautify',before,after,origSel});
+  invalidate();Persist.schedule();
+  UI.toast(`${t('beautified')} (${after.length})`,'ok');
 }
 function doRotate(d){
   // Box shapes only (s.w defined): pen/line/arrow are point geometry with no box centre.
@@ -4334,7 +4416,7 @@ const UI={
       ['G',k.grid],['⇧G',t('snap')],['M',k.minimap],['Esc',k.esc],['?',k.help],
       ['↑↓←→',k.nudge],['⌥ ↑↓←→',k.kbdResize],
       [']/[',k.zorder],['⇧]/⇧[',k.zorderEnds],
-      [', / .',k.rotate],['⌘⇧L',t('lockToggle')],['⌘F',k.search],
+      [', / .',k.rotate],['⌘⇧L',t('lockToggle')],['⌘F',k.search],['⌥B',k.beautify],
       ['Enter / ⇧Enter',t('searchNav')],
       ['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],
       ['Tab / ⇧Tab',k.cycle],['Enter',k.create]

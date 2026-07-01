@@ -479,7 +479,7 @@ const checks = [
   ['rotated resize works in local frame + world re-pin', html.includes("sp=_rotPt(wp.x,wp.y,cx0,cy0,-orig.rotate);") && html.includes("sh.x+=tgt.x-cur.x;sh.y+=tgt.y-cur.y;")],
   ['selection outline traces rotated box', html.includes("if(single&&single.rotate&&single.w!=null){")],
   // v1.6.70: keyboard resize (Alt+arrow)
-  ['resize op registered (apply, validate, remote)', html.includes("case 'resize':\n      case 'align':{") && html.includes("case 'resize':{const noLock=") && html.includes("'align','style','resize'])")],
+  ['resize op registered (apply, validate, remote)', html.includes("case 'resize':\n      case 'align':\n      case 'beautify':{") && html.includes("case 'resize':{const noLock=") && html.includes("'align','style','resize'])")],
   ['Alt+arrow keyboard-resizes box shapes', html.includes("Store._recordCommitted({op:'resize',before,after});") && html.includes("sh.w=Math.max(4,sh.w+dw);sh.h=Math.max(4,sh.h+dh);")],
   // v1.6.71: image import error handling
   ['imgErr i18n key in both locales', html.includes("imgErr:'画像を読み込めませんでした'") && html.includes("imgErr:'Image failed to load'")],
@@ -887,7 +887,7 @@ try {
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
-             _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText, Minimap,
+             _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _syncDocTitle, Presentation, canvas, resize,
              _onBtnInstall, _getInstallPrompt: () => _installPrompt, _setInstallPrompt: (v) => { _installPrompt = v; },
              _onSwUpdate, _ctxMenuKeyNav,
@@ -907,7 +907,7 @@ try {
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
-          _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText, Minimap,
+          _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _syncDocTitle, Presentation, canvas, resize,
           _onBtnInstall, _getInstallPrompt, _setInstallPrompt,
           _onSwUpdate, _ctxMenuKeyNav,
@@ -6602,8 +6602,125 @@ try {
     console.log('  ✓ Minimap.schedule(): skips requestAnimationFrame while hidden, no double-schedule (v1.7.53b)');
   }
 
+  // ---- ADR-0005: sketch beautification (recognizeStroke / doBeautify, Alt+B) ----
+  // Deterministic point generators (no Math.random — reproducible pass/fail).
+  const _genRectPts=(x,y,w,h,jitter)=>{
+    const pts=[],corners=[[x,y],[x+w,y],[x+w,y+h],[x,y+h],[x,y]],steps=6;
+    for(let c=0;c<4;c++){
+      const [ax,ay]=corners[c],[bx,by]=corners[c+1];
+      for(let i=0;i<steps;i++){
+        const t=i/steps,jx=Math.sin(i*13+c*7)*jitter,jy=Math.cos(i*17+c*11)*jitter;
+        pts.push([ax+(bx-ax)*t+jx,ay+(by-ay)*t+jy]);
+      }
+    }
+    pts.push([x,y]);
+    return pts;
+  };
+  const _genEllipsePts=(cx,cy,rx,ry,jitter)=>{
+    const pts=[],steps=24;
+    for(let i=0;i<=steps;i++){
+      const a=(i/steps)*Math.PI*2,jx=Math.sin(i*13)*jitter,jy=Math.cos(i*17)*jitter;
+      pts.push([cx+Math.cos(a)*rx+jx,cy+Math.sin(a)*ry+jy]);
+    }
+    return pts;
+  };
+  const _genLinePts=(x1,y1,x2,y2,n,jitter)=>{
+    const pts=[];
+    for(let i=0;i<=n;i++){
+      const t=i/n,jAmt=(i===0||i===n)?0:jitter;   // keep endpoints exact for assertion clarity
+      const jx=Math.sin(i*13)*jAmt,jy=Math.cos(i*7)*jAmt;
+      pts.push([x1+(x2-x1)*t+jx,y1+(y2-y1)*t+jy]);
+    }
+    return pts;
+  };
+  const _genStarPts=(cx,cy,rOuter,rInner,points)=>{
+    const pts=[],n=points*2;
+    for(let i=0;i<=n;i++){
+      const r=i%2===0?rOuter:rInner,a=(i/n)*Math.PI*2;
+      pts.push([cx+Math.cos(a)*r,cy+Math.sin(a)*r]);
+    }
+    return pts;
+  };
+  const _genZigzagPts=()=>[[0,0],[20,40],[0,80],[20,120],[0,160]];   // open, not straight, not closed
+
+  {
+    const rec=recognizeStroke(_genRectPts(0,0,100,60,2));
+    assert.ok(rec&&rec.type==='rect','v1.7.54a: hand-drawn rectangle recognized as rect');
+    assert.ok(Math.abs(rec.x-0)<3&&Math.abs(rec.y-0)<3&&Math.abs(rec.w-100)<5&&Math.abs(rec.h-60)<5,
+      'v1.7.54a: recognized rect bbox matches the drawn shape');
+
+    const recEll=recognizeStroke(_genEllipsePts(50,30,50,30,1.5));
+    assert.ok(recEll&&recEll.type==='ellipse','v1.7.54a: hand-drawn ellipse (jittered circle path) recognized as ellipse');
+
+    const recLine=recognizeStroke(_genLinePts(0,0,120,40,10,1));
+    assert.ok(recLine&&recLine.type==='line','v1.7.54a: hand-drawn straight stroke recognized as line');
+    assert.strictEqual(recLine.x1,0);assert.strictEqual(recLine.y1,0);
+    assert.strictEqual(recLine.x2,120);assert.strictEqual(recLine.y2,40);
+
+    assert.strictEqual(recognizeStroke(_genStarPts(50,50,50,20,5)),null,
+      'v1.7.54a: closed star shape (high radius variance) is neither rect nor ellipse — rejected');
+    assert.strictEqual(recognizeStroke(_genZigzagPts()),null,
+      'v1.7.54a: open zigzag (not straight, not closed) rejected by all three tests');
+    assert.strictEqual(recognizeStroke([[0,0],[2,2],[4,0]]),null,
+      'v1.7.54a: stroke below the size floor (diag<8) rejected regardless of shape');
+    console.log('  ✓ recognizeStroke: rect/ellipse/line recognized, star/zigzag/tiny rejected (v1.7.54a, ADR-0005)');
+  }
+
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const rectPts=_genRectPts(0,0,100,60,2);
+    const penSh=Shape.make('pen',{pts:rectPts});
+    state.shapes.push(penSh);
+    state.selection=new Set([penSh.id]);
+    doBeautify();
+    assert.strictEqual(state.shapes.find(s=>s.id===penSh.id).type,'rect',
+      'v1.7.54b: doBeautify converts a recognized pen stroke to rect');
+    assert.strictEqual(state.history.length,1,'v1.7.54b: one beautified shape = one history entry');
+    Store.undo();
+    const undone=state.shapes.find(s=>s.id===penSh.id);
+    assert.strictEqual(undone.type,'pen','v1.7.54b: undo reverts the shape back to pen');
+    assert.deepStrictEqual(undone.pts,rectPts,'v1.7.54b: undo restores the exact original pts');
+    Store.redo();
+    assert.strictEqual(state.shapes.find(s=>s.id===penSh.id).type,'rect','v1.7.54b: redo re-applies the conversion');
+    console.log('  ✓ doBeautify: converts recognized pen stroke, undo/redo symmetric (v1.7.54b, ADR-0005)');
+  }
+
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const rectSh=Shape.make('pen',{pts:_genRectPts(0,0,80,50,1.5)});
+    const ellSh=Shape.make('pen',{pts:_genEllipsePts(200,30,40,25,1)});
+    const starSh=Shape.make('pen',{pts:_genStarPts(400,50,50,20,5)});
+    const lockedRectSh=Shape.make('pen',{pts:_genRectPts(300,0,60,40,1.5)});
+    lockedRectSh.locked=true;
+    const alreadyRect=Shape.make('rect',{x:500,y:0,w:20,h:20});
+    state.shapes.push(rectSh,ellSh,starSh,lockedRectSh,alreadyRect);
+    state.selection=new Set([rectSh.id,ellSh.id,starSh.id,lockedRectSh.id,alreadyRect.id]);
+    doBeautify();
+    assert.strictEqual(state.shapes.find(s=>s.id===rectSh.id).type,'rect','v1.7.54c: recognized rect converted');
+    assert.strictEqual(state.shapes.find(s=>s.id===ellSh.id).type,'ellipse','v1.7.54c: recognized ellipse converted');
+    assert.strictEqual(state.shapes.find(s=>s.id===starSh.id).type,'pen','v1.7.54c: unrecognized star left untouched');
+    assert.strictEqual(state.shapes.find(s=>s.id===lockedRectSh.id).type,'pen','v1.7.54c: locked pen shape untouched');
+    assert.strictEqual(state.shapes.find(s=>s.id===alreadyRect.id).type,'rect','v1.7.54c: non-pen shape in selection unaffected');
+    assert.strictEqual(state.history.length,1,'v1.7.54c: multiple beautified shapes still cost exactly ONE undo step');
+    Store.undo();
+    assert.strictEqual(state.shapes.find(s=>s.id===rectSh.id).type,'pen','v1.7.54c: single undo reverts the rect shape');
+    assert.strictEqual(state.shapes.find(s=>s.id===ellSh.id).type,'pen','v1.7.54c: single undo also reverts the ellipse shape');
+    console.log('  ✓ doBeautify: mixed selection — locked/non-pen/unrecognized skipped, single undo for the rest (v1.7.54c, ADR-0005)');
+  }
+
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const starOnly=Shape.make('pen',{pts:_genStarPts(50,50,50,20,5)});
+    state.shapes.push(starOnly);
+    state.selection=new Set([starOnly.id]);
+    doBeautify();
+    assert.strictEqual(state.history.length,0,'v1.7.54d: no history entry when nothing in the selection is recognized');
+    assert.strictEqual(state.shapes[0].type,'pen','v1.7.54d: unrecognized-only selection leaves the shape untouched');
+    console.log('  ✓ doBeautify: all-unrecognized selection is a no-op, no spurious undo step (v1.7.54d, ADR-0005)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 923; // prev 918 + toggleMinimap flip (2) + Minimap.schedule RAF gating (3)
+  pass += 949; // prev 923 + recognizeStroke (11) + doBeautify basic (5) + doBeautify mixed (8) + doBeautify no-op (2)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

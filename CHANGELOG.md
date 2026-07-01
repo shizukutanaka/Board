@@ -2,6 +2,37 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.54] - 2026-07-01
+
+製品判断「Board は scratchpad(単独体験)を選択」(2026-07-01) に基づく最初の具体的な投資。
+`docs/research-improvements.md` item M ($1/$Q unistroke recognizer) を Board の実図形
+(rect/ellipse/line)に特化した軽量版として実装。
+
+### Added
+- **スケッチ整形 (`Alt+B`, ADR-0005)**: 選択中の pen シェイプのうち、矩形・楕円・直線に幾何的に
+  近いものを対応する図形へ変換する。`recognizeStroke(pts)` は純粋関数・依存ゼロ・決定的な
+  幾何ヒューリスティック(ML なし、テンプレートDBなし):
+  - **line**: 始点→終点の弦からの最大垂直距離が弦長の8%以下、経路長が弦長の1.35倍以下。
+  - **rect**: 閉じたループ(始点≈終点)かつ全点がバウンディングボックスの4辺いずれかに
+    短辺の12%以内で密着。
+  - **ellipse**: 閉じたループかつ、重心からの距離をバウンディングボックス半幅/半高で正規化した
+    値の変動係数が0.22以下。
+  - 三角形等 Board に無い図形は意図的に非対応(変換先が無いため)。
+  新しい op 型は追加せず、既存の `case 'style':/'resize':/'align':` の「複数シェイプ絶対パッチ・
+  単一 undo」機構に `case 'beautify':` として相乗り。ロック済み・pen 以外のシェイプは対象外。
+  ローカル専用(`REMOTE_OPS` に未追加 — `replace`/`clear` と同じ「ブロードキャストされるが
+  受信側では無視される」パターン。共同編集相手のペン画を勝手に変換しないため)。
+
+### Changed
+- README ロードマップ表・キーボードショートカット表・機能一覧を更新。
+
+### Tests
+- behavioral × 26: `recognizeStroke` の rect/ellipse/line 認識 + star/zigzag/極小ストローク
+  の正しい棄却 (11)、`doBeautify` の単一変換・undo/redo (5)、ロック済み/非pen/未認識混在
+  選択での単一undo (8)、全未認識時のno-op (2)
+- presence check × 1: `_apply` の `beautify` fallthrough 登録
+- 合計 1428 pass, 0 fail
+
 ## [1.7.53] - 2026-07-01
 
 `docs/research-improvements.md` §3.18「過不足の機能」— ソクラテス式問答で4つの仮説を検証、

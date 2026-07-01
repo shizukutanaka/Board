@@ -4,7 +4,7 @@
 単一HTMLファイル。ダブルクリックで動く。アカウント不要。広告なし。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-00C4CC.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.7.53-00C4CC.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.7.54-00C4CC.svg)](CHANGELOG.md)
 [![Size](https://img.shields.io/badge/size-~61KB%20gzip-00C4CC.svg)](index.html)
 [![Offline](https://img.shields.io/badge/offline-first-00C4CC.svg)](#offline)
 [![A11y](https://img.shields.io/badge/WCAG-AAA-00C4CC.svg)](#accessibility)
@@ -73,6 +73,8 @@ start index.html      # Windows
 - シェイプ検索 (Ctrl+F でラベル・テキスト・型名を検索、マッチをオレンジ枠ハイライト)
 - スマート整列ガイド (移動時に他図形の辺・中心へスナップ、ガイド線表示 — Excalidraw 風)
 - フォーマットペインター (Alt+C / Alt+V でスタイル転写)
+- スケッチ整形 (Alt+B、ADR-0005): 矩形・楕円・直線に近いペン描画を選択して整形すると、
+  対応する図形へ変換(依存ゼロの幾何ヒューリスティック、ML なし)。複数選択でも1回の undo
 - Undo/Redo 最大 500 段 — **全 op が完全可逆** (z 順序・グループ・整列も含む)
 - コピー / ペースト / 切り取り / 複製 (Ctrl+C/V/X/D)
 - 削除 (Del/Backspace)、全選択 (Ctrl+A)、右クリックコンテキストメニュー
@@ -134,7 +136,7 @@ start index.html      # Windows
 | `⌘G` / `⌘⇧G` | グループ / グループ解除 | `Enter` | 中央に作成 |
 | `⌥C` / `⌥V` | スタイル複製 / 適用 | `↑↓←→` | 移動 (⇧:10px) |
 | `⌥↑↓←→` | リサイズ (⇧:×10) | `Esc` | 選択解除 |
-| `?` | ヘルプ | | |
+| `⌥B` | スケッチ整形 | `?` | ヘルプ |
 
 ## アーキテクチャ / Architecture
 
@@ -189,7 +191,7 @@ start index.html      # Windows
 | v1.5 | リサイズハンドル, グループ | ✅ |
 | v1.6 | フレーム + プレゼンモード, 不透明度, a11y 強化 (WCAG 2.2) | ✅ 92点 |
 | v1.7 | コネクタ束縛・ラベル (ADR-0003), 回転, レーザーポインタ, fractional-index z順序 (ADR-0001), per-property LWW 同期 (ADR-0002), 自己上書き保護 (ADR-0004), ミニマップ表示切替, 大規模な堅牢性強化 (remote-op検証・DoS上限・undo整合性) | ✅ **95点** |
-| **v1.8+** (now) | **製品判断確定 (`docs/research-improvements.md` §3.9, 2026-07-01)**: Board は「速い・私的・使い捨ての単独スケッチ」を選択。マルチページ/複数ボード・identity前提のコラボは対象外(この判断を覆さない限り着手しない)。代わりに単独体験の研磨(パフォーマンス, a11y外部監査, スケッチ認識/beautification — $1/$Q unistroke recognizer)に投資 | 進行中 |
+| **v1.8+** (now) | **製品判断確定 (`docs/research-improvements.md` §3.9, 2026-07-01)**: Board は「速い・私的・使い捨ての単独スケッチ」を選択。マルチページ/複数ボード・identity前提のコラボは対象外(この判断を覆さない限り着手しない)。単独体験の研磨としてスケッチ整形 (ADR-0005, Alt+B) を実装済み。残りはパフォーマンス最適化・a11y外部監査 | 進行中 |
 | v2.0 | 上記の残り: a11y 外部監査通過, dirty-rect パフォーマンス最適化 | 見直し中 |
 
 ## セキュリティ / Security
