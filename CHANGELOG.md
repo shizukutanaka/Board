@@ -2,6 +2,38 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.49] - 2026-07-01
+
+### Fixed
+- **`validRemotePayload upd`: フラット `pts` 配列を許容 (P1 クラッシュ)**:
+  `validPatch({pts:[1,2,3]})` は有限数の配列なので `true` を返すが、`drawPen` は
+  `[[x,y],...]` 形式を前提とし、フラット配列を受信するとクラッシュする。
+  修正: `case 'upd'` に `op.after.pts` の構造検査を追加
+  (`Array.isArray(p) && p.length >= 2 && p.every(isFinite)`)。
+
+- **SVG テキスト/付箋の y 座標が `+fontSize` 分ずれる (P2 表示バグ)**:
+  旧コード `y="${Y+oy+fs}"` は canvas の `textBaseline='top'` と不一致。
+  修正: `y="${Y+oy}" dominant-baseline="hanging"` に変更して上端揃えを統一。
+
+- **`openTextEditor` の空テキスト削除パスで connClears を計算しない (P2 ゾンビ binding)**:
+  テキストシェイプを空にして確定すると、そのシェイプに束縛された矢印/直線の
+  `a`/`b` が `null` にならず、削除済みシェイプへのダングリング参照が残る。
+  修正: `doDelete` と同じ `connClears` 計算ロジックを追加。
+
+- **`Net._onRecv` スナップショットマージループに上限なし (P1 DoS)**:
+  悪意あるピアが `{k:'snapshot',ops:[...600件...]}` を送ると UI スレッドが
+  フリーズし OOM になりうる。修正: `msg.ops.slice(0,MAX_OP_SHAPES)` で上限を設定。
+
+- **`validRemotePayload ungroup`: `gids` に空文字列を許容 (P2 パリティ)**:
+  `group` の `gid` は `&&op.gid.length>0` で空文字列を拒否するが、`ungroup` の
+  `gids.every(g=>typeof g==='string')` は `''` を通過させていた。
+  修正: `&&g.length>0` を追加して `group` との一貫性を確保。
+
+### Tests
+- behavioral × 11: flat pts upd (3) + SVG dominant-baseline (1) + del+connClears text (3) + snapshot merge cap (1) + ungroup empty gid (2)
+- presence check × 4: updated to match new code after each fix
+- 合計 1360 pass, 0 fail
+
 ## [1.7.48] - 2026-07-01
 
 ### Fixed

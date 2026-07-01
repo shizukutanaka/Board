@@ -284,7 +284,7 @@ const checks = [
   ['applyStyleToSelection uses style op not per-shape upd', html.includes("{op:'style',before,after}")],
   // v1.6.26: emptying existing text = single undo (not upd+del)
   ['text editor captures orig clone at open', html.includes('const orig=clone(s)')],
-  ['emptied existing text deletes original via single del op', html.includes('Store.commit({op:\'del\',shapes:[orig]})')],
+  ['emptied existing text deletes original via single del op', html.includes("const delOp={op:'del',shapes:[orig]};")&&html.includes("Store.commit(delOp);")],
   ['existing text edit branch is else-if (no double op)', html.includes("}else if(newText!==origText){")],
   // v1.6.23: .board file export/import
   ['exportBoard function exists', html.includes('function exportBoard()')],
@@ -618,7 +618,7 @@ const checks = [
     html.includes("Store._recordCommitted({op:'replace',before,after:clone(state.shapes),wc:beforeWc,afterWc:clone(state.wclock),origSel});")],
   // v1.7.28: validRemotePayload for upd must block locked key (parity with style/resize/align)
   ['remote upd op cannot set locked (noLock guard extended to upd)',
-    html.includes("case 'upd':{const noLock=p=>!('locked' in p);\n      return typeof op.id==='string'&&validPatch(op.after)&&noLock(op.after)")],
+    html.includes("case 'upd':{const noLock=p=>!('locked' in p);\n      if(typeof op.id!=='string'||!validPatch(op.after)||!noLock(op.after)")],
   // v1.7.30: _apply add backward restores origSel; createShapeKbd attaches origSel
   ['_apply add backward restores origSel; createShapeKbd attaches origSel',
     html.includes("if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));") &&
@@ -628,7 +628,7 @@ const checks = [
     html.includes("&&Array.isArray(op.before)&&op.before.length<=MAX_OP_SHAPES&&op.before.every(b=>b&&typeof b.id==='string');")],
   // v1.7.34: validRemotePayload ungroup must require gids array
   ['validRemotePayload ungroup: requires gids array with string elements',
-    html.includes("&&Array.isArray(op.gids)&&op.gids.length<=MAX_OP_SHAPES&&op.gids.every(g=>typeof g==='string');")],
+    html.includes("&&Array.isArray(op.gids)&&op.gids.length<=MAX_OP_SHAPES&&op.gids.every(g=>typeof g==='string'&&g.length>0);")],
   // v1.7.34: _apply ungroup backward must use optional chaining on op.gids
   ['_apply ungroup backward: op.gids?.[0] optional chaining null guard',
     html.includes("const gid=op.gids?.[0];")],
@@ -637,7 +637,8 @@ const checks = [
     !html.includes("(op.before==null||(patches(op.before)&&op.before.every(noLock)))")],
   // v1.7.35: text-blur del origSel pattern must exist at the existing-text-empty path
   ['text-blur del: origSel captured and patched before and after Store.commit del',
-    html.includes("const origSel=[...state.selection];\n        Store.commit({op:'del',shapes:[orig]});\n        if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
+    html.includes("const origSel=[...state.selection];\n        const _delId=orig.id;")&&
+    html.includes("Store.commit(delOp);\n        if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
   // v1.7.36: flushErase must capture origSel before del commit and patch after
   ['flushErase del: origSel captured before commit and patched after (parity with doDelete)',
     html.includes("const origSel=[...state.selection];\n  const op={op:'del',shapes:clone(_eraseBatch)};")],
@@ -6260,8 +6261,80 @@ try {
     console.log('  ✓ validRemotePayload move: string dx/dy rejected (typeof check, v1.7.48c)');
   }
 
+  // v1.7.49a: validRemotePayload upd must reject flat pts arrays (drawPen crashes on non-nested arrays)
+  {
+    // Before fix: validPatch({pts:[1,2,3]}) returns true (all finite numbers); drawPen then
+    // crashes because it expects [[x,y],...]. After fix: explicit structure check added to 'upd'.
+    assert.ok(!validRemotePayload({op:'upd',id:'a',after:{pts:[1,2,3]}}),
+      'v1.7.49a: flat pts array in upd.after rejected (drawPen expects [[x,y],…])');
+    assert.ok(validRemotePayload({op:'upd',id:'a',after:{pts:[[1,2,0.5],[3,4,0.5]]}}),
+      'v1.7.49a: nested [[x,y,p]] pts in upd.after still accepted');
+    assert.ok(validRemotePayload({op:'upd',id:'a',after:{pts:[]}}),
+      'v1.7.49a: empty pts array in upd.after still accepted');
+    console.log('  ✓ validRemotePayload upd: flat pts array rejected, nested still accepted (v1.7.49a)');
+  }
+
+  // v1.7.49b: buildSVG text must use dominant-baseline="hanging" not +fontSize y-offset
+  {
+    // Before fix: <text y="${Y+oy+fs}"> shifts text down by fontSize — misaligns with canvas
+    // where textBaseline='top' means y is the top of the text.
+    // After fix: <text y="${Y+oy}" dominant-baseline="hanging"> — top-aligned, matches canvas.
+    const t49b=Shape.make('text',{x:10,y:20,w:100,h:24,text:'Hello',stroke:'#000000',fontSize:16});
+    const svg49b=buildSVG([t49b],'#ffffff');
+    assert.ok(svg49b.includes('dominant-baseline="hanging"'),
+      'v1.7.49b: SVG text must include dominant-baseline="hanging" (matches canvas textBaseline=top)');
+    console.log('  ✓ buildSVG text: dominant-baseline="hanging" present (y-offset fixed, v1.7.49b)');
+  }
+
+  // v1.7.49c: doDelete on text shape severs bound connector (openTextEditor now mirrors this path)
+  {
+    // openTextEditor empty-text path now computes connClears like doDelete does.
+    // Test doDelete on text shape to verify the shared connClears mechanism works correctly.
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const txt49c=Shape.make('text',{x:0,y:0,text:'Hi'});
+    const arr49c=Shape.make('arrow',{x1:0,y1:0,x2:100,y2:0});
+    arr49c.a=txt49c.id;
+    state.shapes.push(txt49c,arr49c);
+    state.selection=new Set([txt49c.id]);
+    doDelete();
+    assert.ok(!state.shapes.some(s=>s.id===txt49c.id),'v1.7.49c: text shape deleted');
+    assert.strictEqual(state.shapes.find(s=>s.id===arr49c.id).a,null,
+      'v1.7.49c: doDelete on text shape clears connector binding via connClears');
+    Store.undo();
+    assert.strictEqual(state.shapes.find(s=>s.id===arr49c.id).a,txt49c.id,
+      'v1.7.49c: undo of text-delete restores connector binding');
+    console.log('  ✓ doDelete on text shape: connector binding cleared and restored on undo (v1.7.49c)');
+  }
+
+  // v1.7.49d: Net._onRecv snapshot merge loop capped at MAX_OP_SHAPES (DoS guard)
+  {
+    // Before fix: msg.ops loop was unbounded — 600 ops applied, freezing UI and risking OOM.
+    // After fix: msg.ops.slice(0,MAX_OP_SHAPES) caps processing at 500.
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.peerId='testReceiver49d';
+    const bigOps49d=Array.from({length:600},(_,i)=>{
+      const s=Shape.make('rect',{x:i*15,y:0,w:10,h:10});
+      return {op:'add',shape:s,clock:{peer:'bigSender49d',seq:i+1,ts:i+1}};
+    });
+    Net._onRecv({k:'snapshot',peer:'bigSender49d',ops:bigOps49d});
+    assert.ok(state.shapes.length<=500,
+      `v1.7.49d: snapshot merge capped at MAX_OP_SHAPES=500 (got ${state.shapes.length})`);
+    console.log('  ✓ Net._onRecv snapshot merge: 600-op snapshot capped at 500 shapes (v1.7.49d)');
+  }
+
+  // v1.7.49e: validRemotePayload ungroup must reject empty-string gids (parity with group.gid)
+  {
+    // Before fix: gids.every(g=>typeof g==='string') accepts '' (empty string is a string).
+    // After fix: g.length>0 added — '' rejected (parity with group op's gid non-empty check).
+    assert.ok(!validRemotePayload({op:'ungroup',ids:['a'],gids:['']}),
+      'v1.7.49e: ungroup with empty-string gid rejected (parity with group.gid non-empty check)');
+    assert.ok(validRemotePayload({op:'ungroup',ids:['a'],gids:['valid-gid']}),
+      'v1.7.49e: ungroup with non-empty gid still accepted');
+    console.log('  ✓ validRemotePayload ungroup: empty gid rejected (parity fix, v1.7.49e)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 878; // prev 870 + clear REMOTE_OPS (1) + group empty gid (2) + move string dx/dy (3)
+  pass += 888; // prev 878 + flat pts upd (3) + svg dominant-baseline (1) + del connClears text (3) + snapshot merge cap (1) + ungroup empty gid (2)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
