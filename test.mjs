@@ -676,6 +676,21 @@ const checks = [
   ['endRectLike/endLineLike/beginText attach origSel before shape add commit',
     (html.match(/const origSel=\[\.\.\.state\.selection\];\n  Store\.commit\(\{op:'add',shape:d\}\);\n  if\(origSel\.length\)state\.history\[state\.histIdx\]\.origSel=origSel;/g)||[]).length >= 2 &&
     html.includes("const origSel=[...state.selection];\n  Store.commit({op:'add',shape:s});\n  if(origSel.length)state.history[state.histIdx].origSel=origSel;\n  openTextEditor")],
+  // v1.7.43: _zCommit captures origSel before zorder _recordCommitted
+  ['_zCommit: origSel captured before zorder commit and patched onto history entry',
+    html.includes("Store._recordCommitted({op:'zorder',changes});\n  if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
+  // v1.7.43: _apply zorder backward restores origSel (mirrors move/align/group/ungroup)
+  ['_apply zorder backward: if(!forward&&op.origSel) restores selection',
+    html.includes("if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));\n        break;}\n      case 'style':")],
+  // v1.7.43: keyboard resize (Alt+Arrow) captures origSel around resize _recordCommitted
+  ['keyboard resize (Alt+Arrow): origSel captured before resize commit',
+    html.includes("const origSel=[...state.selection];\n      Store._recordCommitted({op:'resize',before,after});\n      if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
+  // v1.7.43: drag-resize upd captures origSel (mirrors endSelect/nudgeSelection pattern)
+  ['drag-resize: origSel captured before upd _recordCommitted (ptr.resizeOrig path)',
+    html.includes("const origSel=[...state.selection];\n            Store._recordCommitted({op:'upd',id:rsh.id,before,after});\n            if(origSel.length)state.history[state.histIdx].origSel=origSel;\n          }\n        }\n        ptr.resizeHandle=null")],
+  // v1.7.43: _apply upd backward restores origSel (drag-resize/rotate undo)
+  ['_apply upd backward: if(!forward&&op.origSel) restores selection',
+    html.includes("Object.assign(sh,p);\n        if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));\n        break;}\n      case 'move':{")],
 ];
 
 let pass = 0, fail = 0;
@@ -6002,8 +6017,47 @@ try {
     console.log('  ✓ validRemotePayload move: empty ids and zero-displacement ops rejected (v1.7.42c)');
   }
 
+  // v1.7.43a: _zCommit does not capture origSel — undo of doBringFront loses selection.
+  // Requires 3 shapes so doBringFront doesn't short-circuit (2 selected, 1 not).
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const za=Shape.make('rect',{x:0,y:0,w:30,h:30});
+    const zb=Shape.make('rect',{x:50,y:0,w:30,h:30});
+    const zc=Shape.make('rect',{x:100,y:0,w:30,h:30});
+    state.shapes.push(za,zb,zc);
+    state.selection=new Set([za.id,zb.id]);
+    doBringFront();
+    state.selection=new Set();
+    Store.undo();
+    assert.ok(state.selection.has(za.id),
+      'v1.7.43a: undo of doBringFront must restore za to selection');
+    assert.ok(state.selection.has(zb.id),
+      'v1.7.43a: undo of doBringFront must restore zb to selection');
+    console.log('  ✓ _zCommit/doBringFront: undo restores pre-zorder selection via origSel (v1.7.43a)');
+  }
+
+  // v1.7.43b: _apply('upd', backward) has no origSel restoration — simulates drag-resize undo.
+  // Manually patches origSel onto the op (mirrors what the fixed drag-resize call site does),
+  // then verifies _apply backward restores selection.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const ua=Shape.make('rect',{x:0,y:0,w:100,h:100});
+    state.shapes.push(ua);
+    state.selection=new Set([ua.id]);
+    const uBefore={w:100,h:100};
+    ua.w=200;
+    const uAfter={w:200,h:100};
+    Store._recordCommitted({op:'upd',id:ua.id,before:uBefore,after:uAfter});
+    state.history[state.histIdx].origSel=[ua.id];
+    state.selection=new Set();
+    Store.undo();
+    assert.ok(state.selection.has(ua.id),
+      'v1.7.43b: _apply upd backward must restore origSel (drag-resize undo)');
+    console.log('  ✓ _apply upd backward: origSel restored on undo (v1.7.43b)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 845; // prev 839 + move/align origSel + move validator (3 behavioral × 2 assert each)
+  pass += 849; // prev 845 + zorder origSel + upd backward origSel (2+1 behavioral)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

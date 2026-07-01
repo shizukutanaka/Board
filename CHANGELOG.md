@@ -2,6 +2,30 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.43] - 2026-07-01
+
+### Fixed
+- **`_zCommit` / `doBringFront` / `doSendBack` / `doBringForward` / `doSendBackward` が `origSel` を記録しない**:
+  z 順序変更 (`]`/`[`/`⇧]`/`⇧[`) の undo 後に選択が消える。修正: `_zCommit` に
+  `const origSel=[...state.selection]` キャプチャと付与を追加。
+  `_apply case 'zorder'` 後退パスに `if(!forward&&op.origSel)state.selection=...` を追加。
+
+- **キーボードリサイズ (Alt+矢印) が `origSel` を記録しない**:
+  Alt+Arrow でリサイズ後に undo すると選択が消える。修正: `Store._recordCommitted({op:'resize',...})` の
+  前後に origSel キャプチャ・付与を追加 (共有 `_apply style/resize/align` 後退パスは v1.7.42 で整備済)。
+
+- **ドラッグリサイズ・ドラッグ回転の `upd` op が `origSel` を記録しない**:
+  pointer ドラッグでリサイズ/回転後に undo すると選択が消える。
+  修正: drag-resize (line ~2218) と drag-rotate (line ~2227) の両 `_recordCommitted` 前後に
+  origSel キャプチャ・付与を追加。また `_apply case 'upd'` 後退パスに
+  `if(!forward&&op.origSel)state.selection=...` を追加 (テキスト/ラベル upd は origSel を
+  持たないため既存動作に影響なし)。
+
+### Tests
+- behavioral × 2: zorder undo origSel (v1.7.43a); upd backward origSel (v1.7.43b)
+- presence check × 5: _zCommit, zorder backward, keyboard resize, drag-resize, upd backward
+- 合計 1304 pass, 0 fail
+
 ## [1.7.42] - 2026-07-01
 
 ### Fixed

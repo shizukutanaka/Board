@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.42 — Design Tokens
+   Board v1.7.43 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -721,7 +721,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.42';
+const V='1.7.43';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1296,6 +1296,7 @@ const Store={
           }
         }
         Object.assign(sh,p);
+        if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));
         break;}
       case 'move':{
         const d=forward?1:-1;
@@ -1349,6 +1350,7 @@ const Store={
             state.shapes.length=0;Array.prototype.push.apply(state.shapes,next);
           }
         }
+        if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));
         break;}
       case 'style':
       case 'resize':
@@ -2215,7 +2217,9 @@ canvas.addEventListener('pointerup',e=>{
           const after=clone(rsh);
           const before=ptr.resizeOrig;
           if(JSON.stringify(before)!==JSON.stringify(after)){
+            const origSel=[...state.selection];
             Store._recordCommitted({op:'upd',id:rsh.id,before,after});
+            if(origSel.length)state.history[state.histIdx].origSel=origSel;
           }
         }
         ptr.resizeHandle=null;ptr.resizeOrig=null;state.guides=null;
@@ -2224,7 +2228,9 @@ canvas.addEventListener('pointerup',e=>{
         if(rsh){
           const after=clone(rsh),before=ptr.rotOrig;
           if(JSON.stringify(before)!==JSON.stringify(after)){
+            const origSel=[...state.selection];
             Store._recordCommitted({op:'upd',id:rsh.id,before,after});
+            if(origSel.length)state.history[state.histIdx].origSel=origSel;
             UI.toast(describeShape(rsh)); // SR announce new angle
           }
         }
@@ -3058,7 +3064,9 @@ window.addEventListener('keydown',e=>{
         sh.w=Math.max(4,sh.w+dw);sh.h=Math.max(4,sh.h+dh);
         after.push({id:sh.id,w:sh.w,h:sh.h});
       }
+      const origSel=[...state.selection];
       Store._recordCommitted({op:'resize',before,after});
+      if(origSel.length)state.history[state.histIdx].origSel=origSel;
       if(sel.length===1)UI.toast(describeShape(sel[0]));
       invalidate();
     }
@@ -3234,7 +3242,9 @@ function _zCommit(changes){
   changes=changes.filter(c=>c.before!==c.after);   // keep only real key moves
   if(!changes.length){invalidate();return}
   sortZ();
+  const origSel=[...state.selection];
   Store._recordCommitted({op:'zorder',changes});
+  if(origSel.length)state.history[state.histIdx].origSel=origSel;
   invalidate();Persist.schedule();
 }
 function doBringFront(){
