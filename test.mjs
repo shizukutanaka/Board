@@ -291,6 +291,19 @@ const checks = [
   ['exportBoard revokes Blob URL to prevent memory leak', html.includes("revokeObjectURL(_bu),1e4")],
   ['importBoard uses atomic replace op (not clear+adds)', html.includes('function importBoard') && html.includes('.filter(validShape)') && html.includes("op:'replace',before,after")],
   ['Ctrl+Shift+S triggers exportBoard', html.includes("e.shiftKey){e.preventDefault();exportBoard()}")],
+  // ADR-0004: doClearAll/importBoard/importFromHash back up the pre-replace board to a
+  // second IndexedDB slot before the destructive swap, so it survives past the session-only
+  // undo window (reload / closed tab). importBoard can't be exercised directly in this
+  // harness (FileReader has no fake), so its trigger wiring is presence-checked; the backup
+  // mechanism itself (Persist.saveBackup/checkBackup/restoreBackup) is behaviourally tested.
+  ['ADR-0004: doClearAll backs up pre-clear board before the destructive commit',
+    html.includes("Persist.saveBackup(clone(state.shapes),{...state.viewport},state.docName);   // ADR-0004\n  Store.commit({op:'clear'")],
+  ['ADR-0004: importBoard backs up pre-import board before the whole-board swap',
+    html.includes("if(before.length)Persist.saveBackup(before,{...state.viewport},state.docName);   // ADR-0004\n      state.shapes=shapes.map(clone);")],
+  ['ADR-0004: importFromHash backs up pre-import board before the whole-board swap',
+    html.includes("if(before.length)Persist.saveBackup(before,{...state.viewport},state.docName);\n      state.shapes=valid.map(clone);")],
+  ['ADR-0004: main() offers a one-time restore prompt when a backup exists at boot',
+    html.includes("if(await Persist.checkBackup()){") && html.includes("if(confirm(t('backupAvailable')))await Persist.restoreBackup();") && html.includes("else await Persist.discardBackup();")],
   ['drag-drop accepts .board files', html.includes(".endsWith('.board')")],
   // v1.6.27: SVG export renders single-point pen as circle dot
   ['SVG export handles single-point pen shape', html.includes('s.pts.length===1')],
@@ -833,6 +846,27 @@ const fakeWin = {
   parseInt, parseFloat, isNaN, isFinite,
 };
 fakeWin.window = fakeWin; fakeWin.document = fakeDoc; fakeWin.self = fakeWin;
+
+// Minimal working fake of the IndexedDB request/transaction async-callback shape, used to
+// exercise Persist.saveBackup/checkBackup/restoreBackup for real (not just call-counting).
+// Handlers (oncomplete/onsuccess) are always attached synchronously by txDone()/reqDone()
+// right after transaction()/get() return, so firing them via queueMicrotask is safe — it
+// runs after that synchronous attachment, in the same tick chain as the awaiting caller.
+function makeFakeIdb(){
+  const store=new Map();
+  return {_store:store,transaction(){
+    const tx={oncomplete:null,onerror:null,onabort:null,
+      objectStore(){return{
+        get(key){const rq={onsuccess:null,onerror:null};
+          queueMicrotask(()=>{rq.result=store.get(key);rq.onsuccess&&rq.onsuccess();});
+          return rq;},
+        put(val,key){store.set(key,val);},
+        delete(key){store.delete(key);},
+      };}};
+    queueMicrotask(()=>tx.oncomplete&&tx.oncomplete());
+    return tx;
+  }};
+}
 
 // Execute in isolated function scope; export hooks via globalThis
 try {
@@ -6440,8 +6474,96 @@ try {
     console.log('  ✓ Presentation.enter()/leave(): resize() keeps canvas backing buffer in sync (v1.7.51b)');
   }
 
+  // v1.7.52a (ADR-0004): Persist.saveBackup/checkBackup/restoreBackup round-trip through a
+  // working fake IndexedDB. doClearAll/importBoard/importFromHash replace state.shapes
+  // wholesale; session undo covers that but the next autosave overwrites the ONLY durable
+  // slot with the destructive result — after a reload the pre-replace board is unrecoverable.
+  // The backup slot (a second IDB key) plus this restore path close that gap.
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const origDb=Persist.db;
+    Persist.db=makeFakeIdb();
+    try{
+      const has0=await Persist.checkBackup();
+      assert.strictEqual(has0,false,'v1.7.52a: checkBackup false before any saveBackup call');
+
+      const backupSh=Shape.make('rect',{x:5,y:5,w:20,h:20});
+      await Persist.saveBackup([backupSh],{x:1,y:2,zoom:1.5},'Old Board');
+      const has1=await Persist.checkBackup();
+      assert.strictEqual(has1,true,'v1.7.52a: checkBackup true after saveBackup persisted a non-empty backup');
+
+      const currentSh=Shape.make('rect',{x:99,y:99,w:5,h:5});
+      state.shapes=[currentSh];state.docName='Current';
+      const histLenBefore=state.history.length;
+      const ok=await Persist.restoreBackup();
+      assert.strictEqual(ok,true,'v1.7.52a: restoreBackup reports success');
+      assert.deepStrictEqual(state.shapes.map(s=>s.id),[backupSh.id],
+        'v1.7.52a: restoreBackup replaces state.shapes with the backed-up shapes');
+      assert.strictEqual(state.docName,'Old Board','v1.7.52a: restoreBackup restores the backed-up docName');
+      assert.strictEqual(state.history.length,histLenBefore+1,
+        'v1.7.52a: restoreBackup records exactly one history entry (single undo, not N ops)');
+      assert.strictEqual(state.history[state.histIdx].op,'replace',
+        'v1.7.52a: restoreBackup commits via the existing replace op (reuses import undo semantics)');
+
+      Store.undo();
+      assert.deepStrictEqual(state.shapes.map(s=>s.id),[currentSh.id],
+        'v1.7.52a: undo of restoreBackup brings back the pre-restore board (session-undoable)');
+      Store.redo();
+      assert.deepStrictEqual(state.shapes.map(s=>s.id),[backupSh.id],
+        'v1.7.52a: redo re-applies the restore');
+
+      const has2=await Persist.checkBackup();
+      assert.strictEqual(has2,false,
+        'v1.7.52a: restoreBackup consumes the backup slot (single-slot, single-notification per ADR-0004)');
+    }finally{Persist.db=origDb;}
+    console.log('  ✓ Persist.saveBackup/checkBackup/restoreBackup: round-trip, undoable, single-slot consumption (v1.7.52a, ADR-0004)');
+  }
+
+  // v1.7.52b (ADR-0004): saveBackup must no-op on an empty shape list — nothing was at risk
+  // of being lost, and writing an empty backup would clobber a genuinely useful prior one.
+  {
+    const fakeDb=makeFakeIdb();
+    const origDb=Persist.db;
+    Persist.db=fakeDb;
+    try{
+      await Persist.saveBackup([],{x:0,y:0,zoom:1},'Nothing');
+      assert.strictEqual(fakeDb._store.size,0,
+        'v1.7.52b: saveBackup([]) writes nothing to the backup slot');
+      const has=await Persist.checkBackup();
+      assert.strictEqual(has,false,'v1.7.52b: checkBackup stays false after an empty saveBackup call');
+    }finally{Persist.db=origDb;}
+    console.log('  ✓ Persist.saveBackup: no-op on empty shape list (v1.7.52b, ADR-0004)');
+  }
+
+  // v1.7.52c (ADR-0004): doClearAll/importBoard/importFromHash must call Persist.saveBackup
+  // with the pre-replace shapes before the destructive commit — confirmed by simulating the
+  // same sequence each caller follows (direct invocation isn't possible: doClearAll gates on
+  // confirm(), which this harness fixes to always return false — see v1.7.08/existing tests
+  // for the same constraint on doClearAll).
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const origDb=Persist.db;
+    Persist.db=makeFakeIdb();
+    try{
+      const preSh=Shape.make('rect',{x:0,y:0,w:10,h:10});
+      state.shapes=[preSh];
+      // Simulate doClearAll's sequence: backup THEN clear.
+      await Persist.saveBackup(JSON.parse(JSON.stringify(state.shapes)),{...state.viewport},state.docName);
+      Store.commit({op:'clear',shapes:JSON.parse(JSON.stringify(state.shapes)),wc:JSON.parse(JSON.stringify(state.wclock))});
+      assert.strictEqual(state.shapes.length,0,'v1.7.52c setup: board cleared');
+      const has=await Persist.checkBackup();
+      assert.strictEqual(has,true,
+        'v1.7.52c: a backup exists after the clear — the pre-clear board survives past this session');
+      const restored=await Persist.restoreBackup();
+      assert.ok(restored,'v1.7.52c: the cleared board is recoverable via restoreBackup');
+      assert.deepStrictEqual(state.shapes.map(s=>s.id),[preSh.id],
+        'v1.7.52c: restoreBackup brings back exactly the shapes that existed before doClearAll');
+    }finally{Persist.db=origDb;}
+    console.log('  ✓ doClearAll pattern: pre-clear board backed up and recoverable after reload (v1.7.52c, ADR-0004)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 902; // prev 898 + Presentation enter/leave resize() sync (4)
+  pass += 918; // prev 902 + Persist backup round-trip (10) + empty no-op (2) + doClearAll pattern recoverability (4)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

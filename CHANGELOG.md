@@ -2,6 +2,34 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.52] - 2026-07-01
+
+バグ修正パス(v1.7.45–v1.7.51)に続く「次の一手」。`docs/research-improvements.md` §3.9
+「アーキテクチャは既に投票を終えている」が指摘した、要 green-light の最小実装に着手。
+
+### Added
+- **自己上書き保護 (ADR-0004)**: `doClearAll`(全消去)/`importBoard`/`importFromHash`(共有リンク
+  読込)は `state.shapes` を丸ごと置換する。セッション内 undo (Ctrl+Z) は有効だが、直後の自動保存が
+  唯一の IndexedDB スロットを上書きするため、**リロード後・タブを閉じた後は復元不能**だった
+  (「0秒で使い始める」の裏で「0秒で前の思考を消す」が同居していた)。
+  - `Persist.saveBackup(shapes,viewport,docName)`: 破壊的置換の**直前**の状態を副キー
+    (`DOC_KEY+':prev'`)へベストエフォートで退避。スキーマ変更・`DB_VER` bump 不要。
+  - `Persist.checkBackup()`/`restoreBackup()`/`discardBackup()`: 起動時に一度だけ
+    `confirm()` で復元を確認 (single-slot・single-notification — 単一スロット、一度だけ通知)。
+    復元は既存の `replace` op を再利用するためセッション内 undo/redo も可能。
+  - 新規 UI chrome なし。既存の `confirm()` パターン(`confirmClear`/`importConfirm` と同じ)を再利用。
+
+### Changed
+- README ロードマップ表を実態に合わせて更新(v1.6 を完了に、v1.7 の実績を明記、
+  マルチページ/スレッドコメントは§3.9の製品判断待ちである旨を明示)。
+
+### Tests
+- behavioral × 16: `Persist.saveBackup/checkBackup/restoreBackup` 往復・undo/redo・単一スロット
+  消費 (10) + 空配列での no-op (2) + `doClearAll` パターンでの復元可能性 (4)
+- presence check × 4: `doClearAll`/`importBoard`/`importFromHash` のバックアップ呼び出し、
+  起動時の一度きり復元プロンプト
+- 合計 1394 pass, 0 fail
+
 ## [1.7.51] - 2026-07-01
 
 v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出の修正を除外した上で新規に発見した

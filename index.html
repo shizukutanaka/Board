@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.51 — Design Tokens
+   Board v1.7.52 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -721,9 +721,9 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.51';
+const V='1.7.52';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
-const DOC_KEY='main';                   // single doc for v1.0
+const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
 const MAX_HISTORY=500;
 const MAX_SEEN_OPS=2000; // cap seenOps to prevent unbounded growth
@@ -794,6 +794,9 @@ const I18N={
     connected:'接続しました',disconnected:'切断しました',
     importConfirm:'共有された内容で現在のボードを置き換えますか？',
     imported:'読み込みました',
+    backupAvailable:'前回、上書きされる前のボードが保存されています。復元しますか？',
+    backupRestored:'前回のボードを復元しました',
+    backupRestoreFailed:'バックアップの復元に失敗しました',
     peers:'人',
     k:{select:'選択',hand:'手のひら',pen:'ペン',rect:'矩形',ellipse:'楕円',
       arrow:'矢印',line:'線',text:'文字',sticky:'付箋',frame:'フレーム',eraser:'消しゴム',
@@ -844,6 +847,9 @@ const I18N={
     connected:'Connected',disconnected:'Disconnected',
     importConfirm:'Replace current board with shared content?',
     imported:'Imported',
+    backupAvailable:'A board from before it was overwritten was saved. Restore it?',
+    backupRestored:'Restored the previous board',
+    backupRestoreFailed:'Failed to restore backup',
     peers:'peers',shapes:'Shapes',on:'On',off:'Off',online:'Online',offline:'Offline',
     k:{select:'Select',hand:'Pan',pen:'Pen',rect:'Rectangle',ellipse:'Ellipse',
       arrow:'Arrow',line:'Line',text:'Text',sticky:'Sticky',frame:'Frame',eraser:'Eraser',
@@ -3347,6 +3353,7 @@ function doClearAll(){
   if(!state.shapes.length)return;
   if(!confirm(t('confirmClear')))return;
   const origSel=[...state.selection];
+  Persist.saveBackup(clone(state.shapes),{...state.viewport},state.docName);   // ADR-0004
   Store.commit({op:'clear',shapes:clone(state.shapes),wc:clone(state.wclock)});
   if(origSel.length)state.history[state.histIdx].origSel=origSel;
   UI.toast(t('cleared'));
@@ -3571,6 +3578,7 @@ function importBoard(file){
       const before=clone(state.shapes);
       const beforeWc=clone(state.wclock);
       const origSel=[...state.selection];
+      if(before.length)Persist.saveBackup(before,{...state.viewport},state.docName);   // ADR-0004
       state.shapes=shapes.map(clone);
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out. Skipping this leaks wclock entries and
@@ -4022,6 +4030,8 @@ const Share={
       const before=clone(state.shapes);
       const beforeWc=clone(state.wclock);
       const origSel=[...state.selection];
+      // ADR-0004: also survives past the undo window (reload/closed-tab), not just this session.
+      if(before.length)Persist.saveBackup(before,{...state.viewport},state.docName);
       state.shapes=valid.map(clone);state.docName=(typeof data.name==='string'&&data.name)||'Shared';
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out (see importBoard for rationale).
@@ -4132,6 +4142,64 @@ const Persist={
       state.lastSaveAt=d.savedAt||0;
       sortZ();
     }
+  },
+  // ADR-0004 (self-overwrite protection): doClearAll/importBoard/importFromHash replace
+  // state.shapes wholesale. Session undo (Ctrl+Z) covers that, but the very next autosave
+  // overwrites the ONLY IndexedDB slot with the destructive result — after a reload or
+  // closed tab the pre-replace board is gone for good. Stash it in a second key first.
+  // Best-effort: a failed backup must never block the destructive op it's guarding.
+  async saveBackup(shapes,viewport,docName){
+    if(!this.db||!shapes||!shapes.length)return;
+    try{
+      const tx=this.db.transaction(DB_STORE,'readwrite');
+      tx.objectStore(DB_STORE).put({v:V,shapes,viewport,docName,savedAt:Date.now()},DOC_KEY+':prev');
+      await txDone(tx);
+    }catch(_){}
+  },
+  async checkBackup(){
+    if(!this.db)return false;
+    try{
+      const tx=this.db.transaction(DB_STORE,'readonly');
+      const rq=tx.objectStore(DB_STORE).get(DOC_KEY+':prev');
+      const d=await reqDone(rq);
+      return !!(d&&Array.isArray(d.shapes)&&d.shapes.filter(validShape).length);
+    }catch(_){return false}
+  },
+  async discardBackup(){
+    if(!this.db)return;
+    try{
+      const tx=this.db.transaction(DB_STORE,'readwrite');
+      tx.objectStore(DB_STORE).delete(DOC_KEY+':prev');
+      await txDone(tx);
+    }catch(_){}
+  },
+  // Single-slot, single-notification: whether accepted or declined, the backup is
+  // consumed so the boot-time prompt (main()) only ever surfaces once per destructive op.
+  async restoreBackup(){
+    if(!this.db)return false;
+    try{
+      const tx=this.db.transaction(DB_STORE,'readonly');
+      const rq=tx.objectStore(DB_STORE).get(DOC_KEY+':prev');
+      const d=await reqDone(rq);
+      const shapes=d&&Array.isArray(d.shapes)?d.shapes.filter(validShape):[];
+      if(!shapes.length){await this.discardBackup();return false}
+      // Reversible whole-board swap, same pattern as importBoard/importFromHash.
+      const before=clone(state.shapes);
+      const beforeWc=clone(state.wclock);
+      const origSel=[...state.selection];
+      state.shapes=shapes.map(clone);
+      state.selection.clear();state.wclock={};
+      if(typeof d.docName==='string'&&d.docName){state.docName=d.docName;document.getElementById('docName').value=d.docName;_syncDocTitle();}
+      if(d.viewport&&Number.isFinite(+d.viewport.x)&&Number.isFinite(+d.viewport.y)&&Number.isFinite(+d.viewport.zoom)&&d.viewport.zoom>0){
+        state.viewport.x=+d.viewport.x;state.viewport.y=+d.viewport.y;state.viewport.zoom=clampZoom(+d.viewport.zoom);
+      }
+      sortZ();invalidate();
+      Store._recordCommitted({op:'replace',before,after:clone(state.shapes),wc:beforeWc,afterWc:clone(state.wclock),origSel});
+      await this.discardBackup();
+      this.schedule();
+      UI.toast(t('backupRestored'),'ok');
+      return true;
+    }catch(_){UI.toast(t('backupRestoreFailed'),'err');return false}
   }};
 function txDone(tx){return new Promise((r,j)=>{tx.oncomplete=()=>r();tx.onerror=()=>j(tx.error);tx.onabort=()=>j(tx.error)})}
 function reqDone(rq){return new Promise((r,j)=>{rq.onsuccess=()=>r(rq.result);rq.onerror=()=>j(rq.error)})}
@@ -4726,6 +4794,14 @@ const Minimap=(()=>{
   UI.updateOnline();
   resize();
   try{await Persist.open();await Persist.load()}catch(err){console.warn('persist init',err)}
+  // ADR-0004: single-notification restore prompt for a backup left by the last
+  // destructive replace (clear-all/import) that was never undone before reload.
+  try{
+    if(await Persist.checkBackup()){
+      if(confirm(t('backupAvailable')))await Persist.restoreBackup();
+      else await Persist.discardBackup();
+    }
+  }catch(_){}
   UI.refreshUndo();UI.refreshZoom();UI.refreshSaved();
   // version display
   document.getElementById('sVer').textContent='v'+V;

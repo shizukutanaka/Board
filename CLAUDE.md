@@ -48,7 +48,8 @@ Board/
 │   ├── research-improvements.md  # 改善案調査
 │   ├── ADR-0001-fractional-index-zorder.md  # z順序の分数インデックス化 (Step1-3実装済/Step4 Proposed)
 │   ├── ADR-0002-per-property-lww.md  # 並行編集の収束: プロパティ単位 LWW (upd/style 実装済)
-│   └── ADR-0003-connector-labels.md  # コネクタ(エッジ)ラベル — フロー図向け (実装済)
+│   ├── ADR-0003-connector-labels.md  # コネクタ(エッジ)ラベル — フロー図向け (実装済)
+│   └── ADR-0004-self-overwrite-protection.md  # 全消去/インポート直前のボードを自動バックアップ (実装済)
 └── .github/workflows/     # CI (lint + size budget)
 ```
 
@@ -115,5 +116,13 @@ Board/
 
 Phase 1.0 = 70点 (MVP 完成、商用配布可能)  
 残り 30点 = P2P sync (10) + Multi-page/import/export拡張 (7) + コラボ (5) + AI & i18n 1000 (4) + plugin/audit (4)
+
+> **未解決の製品判断 (2026-07-01 時点)**: `docs/research-improvements.md` §3.9「アーキテクチャは
+> 既に投票を終えている」が指摘する通り、現行アーキテクチャ(単一 `DOC_KEY` スロット・無 identity・
+> セッション限定 undo)は「速い・私的・使い捨ての単独スケッチ」を選び取っている。上記の
+> Multi-page/コラボは「永続する多人数ワークスペース」を志向し、この前提と衝突する。着手前に
+> どちらの正体を選ぶか(a: scratchpad を選び該当項目を100点から外す/b: workspace の対価を払う)
+> を製品判断として確定させること。ADR-0004(自己上書き保護)はどちらを選んでも無駄にならない
+> 前提整備として先行実装済み。
 
 各 Phase は別 ADR + 独立リリース。一気に全部は作らない。

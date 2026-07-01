@@ -4,7 +4,7 @@
 単一HTMLファイル。ダブルクリックで動く。アカウント不要。広告なし。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-00C4CC.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.7.51-00C4CC.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.7.52-00C4CC.svg)](CHANGELOG.md)
 [![Size](https://img.shields.io/badge/size-~61KB%20gzip-00C4CC.svg)](index.html)
 [![Offline](https://img.shields.io/badge/offline-first-00C4CC.svg)](#offline)
 [![A11y](https://img.shields.io/badge/WCAG-AAA-00C4CC.svg)](#accessibility)
@@ -91,6 +91,8 @@ start index.html      # Windows
 ### 永続化
 - IndexedDB 自動保存 (500ms デバウンス)、リロード後も状態復元
 - ドキュメント名編集可
+- 自己上書き保護 (ADR-0004): 全消去・インポートで置き換えられる直前のボードを自動バックアップ。
+  Undo (Ctrl+Z) が有効なうちに気づかずリロード/タブを閉じても、次回起動時に一度だけ復元を確認
 
 ### 出力
 - PNG エクスポート (2x 解像度、可視領域自動クロップ、32px パディング)
@@ -184,8 +186,9 @@ start index.html      # Windows
 | v1.3 | グリッドスナップ, z 順序, 整列 | ✅ |
 | v1.4 | ミニマップ, フォーマットペインター, PDF | ✅ |
 | v1.5 | リサイズハンドル, グループ | ✅ |
-| **v1.6** (now) | フレーム + プレゼンモード, 不透明度, a11y 強化 (WCAG 2.2) | ✅ **92点** |
-| v1.7+ | 量子化なし: マルチページ, レーザーポインタ, スレッドコメント | 96 |
+| v1.6 | フレーム + プレゼンモード, 不透明度, a11y 強化 (WCAG 2.2) | ✅ 92点 |
+| **v1.7** (now) | コネクタ束縛・ラベル (ADR-0003), 回転, レーザーポインタ, fractional-index z順序 (ADR-0001), per-property LWW 同期 (ADR-0002), 自己上書き保護 (ADR-0004), 大規模な堅牢性強化 (remote-op検証・DoS上限・undo整合性) | ✅ **95点** |
+| v1.8+ | マルチページ/複数ボード・スレッドコメントは「単一ドキュメント」という現行アーキテクチャの前提と衝突するため要製品判断(`docs/research-improvements.md` §3.9)。判断確定後に着手 | 未定 |
 | v2.0 | Plugin API, Figma import, A11y 外部監査通過, 1000言語 (MT infra) | **100点** |
 
 ## セキュリティ / Security
