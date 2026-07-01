@@ -2,6 +2,32 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.47] - 2026-07-01
+
+### Fixed
+- **`validRemotePayload` align: `dir` フィールドを whitelist で検証しない (P1 セキュリティ)**:
+  不明な `dir` 値を持つ remote align op が `noLock` の評価に影響を与える可能性があった。
+  修正: `const DIRS=new Set([...])` で既知のディレクション (`left/right/cx/top/bottom/cy/hspace/vspace/flip/rotate/lock`) のみ受け入れる。未知の dir を持つ op は即 reject。
+
+- **`doPaste` が貼り付け座標に `window.innerWidth`/`window.innerHeight` を使用 (P2 ズレ)**:
+  ツールバーとステータスバーが含まれるため、実際のキャンバス領域より ~26px 右、~36px 下に貼り付けられていた。
+  修正: `canvas.getBoundingClientRect().width` / `height` を使用。
+
+- **ミニマップのビューポート矩形・クリックナビゲーションが `window.innerWidth`/`innerHeight` を使用 (P2 ズレ)**:
+  ミニマップのビューポート枠が実際の可視キャンバスより広く描画され、クリックジャンプ先も微妙にずれていた。
+  修正: `canvas.getBoundingClientRect()` を両方で使用。
+
+- **`_apply del` forward で `op.wc` が初回のみキャプチャされる (P2 LWW 収束欠陥)**:
+  del → undo → リモートが同シェイプを書き換え → redo → undo の順で操作すると、
+  undo 時に `op.wc` が初回 del 時の古いクロックを復元してしまい、
+  リモートの LWW タイムスタンプが失われ、収束が壊れる。
+  修正: `if(!op.wc)` ガードを除去し、forward apply のたびに `op.wc` を再キャプチャ。
+
+### Tests
+- behavioral × 5: align unknown dir rejected (3 asserts, v1.7.47a); del wc refresh (2 asserts, v1.7.47c)
+- presence check × 5: align DIRS whitelist; doPaste getBCR; minimap draw getBCR; minimap click getBCR; del wc non-lazy
+- 合計 1337 pass, 0 fail
+
 ## [1.7.46] - 2026-07-01
 
 ### Fixed

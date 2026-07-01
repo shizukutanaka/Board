@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.46 — Design Tokens
+   Board v1.7.47 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -721,7 +721,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.46';
+const V='1.7.47';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0
 const SAVE_DEBOUNCE=500;
@@ -1039,7 +1039,9 @@ function validRemotePayload(op){
     case 'resize':{const noLock=p=>!('locked' in p);
       return patches(op.after)&&op.after.every(noLock)
           &&patches(op.before)&&op.before.every(noLock);}
-    case 'align':{const noLock=p=>op.dir==='lock'||!('locked' in p);
+    case 'align':{const DIRS=new Set(['left','right','cx','top','bottom','cy','hspace','vspace','flip','rotate','lock']);
+      if(typeof op.dir!=='string'||!DIRS.has(op.dir))return false;
+      const noLock=p=>op.dir==='lock'||!('locked' in p);
       return patches(op.after)&&op.after.every(noLock)
           &&patches(op.before)&&op.before.every(noLock);}
     case 'group':  return Array.isArray(op.ids)&&op.ids.length<=MAX_OP_SHAPES&&op.ids.every(id=>typeof id==='string')
@@ -1264,7 +1266,7 @@ const Store={
       case 'del':{
         if(forward){
           // Snapshot wclock before deletion so undo can restore LWW clocks (mirrors add undo)
-          if(!op.wc){op.wc={};for(const sh of op.shapes)if(state.wclock[sh.id])op.wc[sh.id]=clone(state.wclock[sh.id]);}
+          op.wc={};for(const sh of op.shapes)if(state.wclock[sh.id])op.wc[sh.id]=clone(state.wclock[sh.id]);
           for(const sh of op.shapes){
             const i=state.shapes.findIndex(s=>s.id===sh.id);
             if(i>=0)state.shapes.splice(i,1);
@@ -3138,8 +3140,9 @@ function doPaste(){
   // Pattern: Figma/Excalidraw — paste at viewport center so the result is always visible.
   const bb=G.bboxAll(state.clipboard.shapes);
   const v=state.viewport;
-  const vCx=v.x+window.innerWidth/v.zoom/2;
-  const vCy=v.y+window.innerHeight/v.zoom/2;
+  const _r=canvas.getBoundingClientRect();
+  const vCx=v.x+_r.width/(v.zoom*2);
+  const vCy=v.y+_r.height/(v.zoom*2);
   const srcCx=bb?bb.x+bb.w/2:vCx,srcCy=bb?bb.y+bb.h/2:vCy;
   const co=(_pasteCount+1)*20/v.zoom;   // +1 so first paste has a small inset offset
   _pasteCount++;
@@ -4656,7 +4659,7 @@ const Minimap=(()=>{
       if(_mr)mx.restore();
     }
     mx.globalAlpha=1;
-    const vp=state.viewport,cW=window.innerWidth,cH=window.innerHeight;
+    const vp=state.viewport,_r=canvas.getBoundingClientRect(),cW=_r.width,cH=_r.height;
     const vx=vp.x*sc+ox,vy=vp.y*sc+oy,vw=(cW/vp.zoom)*sc,vh=(cH/vp.zoom)*sc;
     mx.strokeStyle=getCSS('--brand');mx.lineWidth=1.5;mx.setLineDash([3,2]);
     mx.strokeRect(vx,vy,vw,vh);mx.setLineDash([]);
@@ -4671,8 +4674,9 @@ const Minimap=(()=>{
     const pad=20,sc=Math.min(W/(bb.w+pad*2),H/(bb.h+pad*2),1);
     const ox=-bb.x*sc+(W-bb.w*sc)/2,oy=-bb.y*sc+(H-bb.h*sc)/2;
     const wx=(mc.width*mx2-ox)/sc,wy=(mc.height*my2-oy)/sc;
-    state.viewport.x=wx-window.innerWidth/state.viewport.zoom/2;
-    state.viewport.y=wy-window.innerHeight/state.viewport.zoom/2;
+    const _r=canvas.getBoundingClientRect();
+    state.viewport.x=wx-_r.width/state.viewport.zoom/2;
+    state.viewport.y=wy-_r.height/state.viewport.zoom/2;
     invalidate();
   });
 

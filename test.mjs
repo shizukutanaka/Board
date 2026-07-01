@@ -604,7 +604,7 @@ const checks = [
     html.includes("replace(/\\r\\n/g,'\\n').replace(/\\r/g,'\\n')")],
   // v1.7.23: validRemotePayload must block locked key in remote align ops
   ['remote align op cannot set locked (noLock guard in validRemotePayload, lock dir exempt)',
-    html.includes("case 'align':{const noLock=p=>op.dir==='lock'||!('locked' in p);")],
+    html.includes("const noLock=p=>op.dir==='lock'||!('locked' in p);")],
   // v1.7.24a: _apply clear backward must restore pre-clear selection
   ['_apply clear backward restores origSel (mirror of del undo)',
     html.includes("if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));") &&
@@ -715,6 +715,20 @@ const checks = [
   // v1.7.46: _apply del backward connClears must respect sh.locked (parity with forward)
   ['_apply del backward connClears: if(sh&&!sh.locked) lock guard added (parity with forward path)',
     html.includes("if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)Object.assign(sh,p.before);}}")],
+  // v1.7.47: validRemotePayload align must validate dir against a whitelist
+  ['validRemotePayload align: dir whitelist (DIRS Set) prevents unknown dir values',
+    html.includes("const DIRS=new Set(['left','right','cx','top','bottom','cy','hspace','vspace','flip','rotate','lock']);")],
+  // v1.7.47: doPaste uses canvas.getBoundingClientRect() for viewport center (not window.innerWidth)
+  ['doPaste: canvas.getBoundingClientRect() used for viewport center (not window.innerWidth)',
+    html.includes("const _r=canvas.getBoundingClientRect();\n  const vCx=v.x+_r.width/(v.zoom*2);")],
+  // v1.7.47: minimap draw and click use canvas.getBoundingClientRect() (not window.innerWidth)
+  ['minimap: canvas.getBoundingClientRect() used for viewport rect and click-navigate',
+    html.includes("_r=canvas.getBoundingClientRect(),cW=_r.width,cH=_r.height;")&&
+    html.includes("const _r=canvas.getBoundingClientRect();\n    state.viewport.x=wx-_r.width/")],
+  // v1.7.47: del op.wc refreshed on every forward apply (not lazy)
+  ['_apply del: op.wc refreshed on every forward apply (if(!op.wc) guard removed)',
+    !html.includes("if(!op.wc){op.wc={};for")&&
+    html.includes("op.wc={};for(const sh of op.shapes)if(state.wclock[sh.id])op.wc[sh.id]=clone(state.wclock[sh.id]);")],
 ];
 
 let pass = 0, fail = 0;
@@ -5422,8 +5436,8 @@ try {
     // BEFORE fix: liveTR().locked becomes true. AFTER fix: op rejected, stays falsy.
     Store.applyRemote({op:'align',after:[{id:tR.id,locked:true}],clock:{peer:'evil',seq:1,ts:1}});
     assert.ok(!liveTR().locked,'v1.7.23: remote align op with locked:true must not lock local shape');
-    // Verify a valid remote align op (no locked key) still applies normally.
-    Store.applyRemote({op:'align',after:[{id:tR.id,x:99}],before:[{id:tR.id,x:0}],clock:{peer:'good',seq:1,ts:1}});
+    // Verify a valid remote align op (no locked key, known dir) still applies normally.
+    Store.applyRemote({op:'align',dir:'left',after:[{id:tR.id,x:99}],before:[{id:tR.id,x:0}],clock:{peer:'good',seq:1,ts:1}});
     assert.strictEqual(liveTR().x,99,'v1.7.23: valid remote align op (no locked key, with before) still applies');
     console.log('  ✓ validRemotePayload: remote align op with locked key rejected (v1.7.23)');
   }
@@ -6169,8 +6183,39 @@ try {
     console.log('  ✓ _apply del backward connClears: locked connector not modified (v1.7.46c)');
   }
 
+  // v1.7.47a: validRemotePayload align must reject unknown dir values
+  {
+    // Before fix: any string dir (or no dir) was not validated — unknown dirs not blocked
+    assert.ok(!validRemotePayload({op:'align',dir:'EVIL',before:[{id:'x',x:0}],after:[{id:'x',x:1}]}),
+      'v1.7.47a: align op with unknown dir rejected');
+    // Known-good dirs still pass
+    assert.ok(validRemotePayload({op:'align',dir:'left',before:[{id:'x',x:0}],after:[{id:'x',x:1}]}),
+      'v1.7.47a: align op with valid dir accepted');
+    assert.ok(validRemotePayload({op:'align',dir:'rotate',before:[{id:'x',rotate:0}],after:[{id:'x',rotate:15}]}),
+      'v1.7.47a: align rotate op with valid dir accepted');
+    console.log('  ✓ validRemotePayload align: unknown dir rejected by whitelist (v1.7.47a)');
+  }
+
+  // v1.7.47c: del op.wc refreshed on redo — remote write wclock survives del→undo→redo→undo
+  {
+    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const wSh=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    state.shapes.push(wSh);
+    state.wclock[wSh.id]={stroke:{peer:'p1',seq:1,ts:1}};
+    Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(wSh))]});
+    Store.undo();
+    assert.ok(state.wclock[wSh.id],'v1.7.47c setup: wclock restored after undo-del');
+    // Simulate remote write stamping a newer clock
+    state.wclock[wSh.id]={stroke:{peer:'p2',seq:2,ts:999}};
+    Store.redo();   // redo del — op.wc should now capture the UPDATED wclock
+    Store.undo();   // undo del — op.wc should restore the remote write's clock
+    assert.ok(state.wclock[wSh.id]&&state.wclock[wSh.id].stroke.peer==='p2',
+      'v1.7.47c: del op.wc refreshed on redo — remote write wclock restored on subsequent undo');
+    console.log('  ✓ _apply del: op.wc refreshed on every forward apply (v1.7.47c)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 866; // prev 862 + del connClears DoS cap (2) + del-backward lock guard (2)
+  pass += 870; // prev 866 + align dir whitelist (3 real asserts) + del wc refresh (2)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
