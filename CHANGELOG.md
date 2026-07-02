@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- 機能バックログ (`docs/feature-backlog.md`) 追加 — `docs/feature-triage-2026-07.md` の
+  ソクラテス式トリアージ結果を、Opus/Sonnet が文脈なしで着手できるチケット形式に変換。
+
 ## [1.7.54] - 2026-07-01
 
 製品判断「Board は scratchpad(単独体験)を選択」(2026-07-01) に基づく最初の具体的な投資。
