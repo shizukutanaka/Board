@@ -52,7 +52,8 @@ Board/
 │   ├── ADR-0002-per-property-lww.md  # 並行編集の収束: プロパティ単位 LWW (upd/style 実装済)
 │   ├── ADR-0003-connector-labels.md  # コネクタ(エッジ)ラベル — フロー図向け (実装済)
 │   ├── ADR-0004-self-overwrite-protection.md  # 全消去/インポート直前のボードを自動バックアップ (実装済)
-│   └── ADR-0005-sketch-beautification.md  # ペンストロークの図形認識 (line/rect/ellipse, 幾何ヒューリスティック, 実装済)
+│   ├── ADR-0005-sketch-beautification.md  # ペンストロークの図形認識 (line/rect/ellipse, 幾何ヒューリスティック, 実装済)
+│   └── ADR-0006-touch-long-press.md  # タッチ long-press でコンテキストメニュー (FT-06, 実装済)
 └── .github/workflows/     # CI (lint + size budget)
 ```
 
@@ -134,8 +135,10 @@ Phase 1.0 = 70点 (MVP 完成、商用配布可能)
 - コラボ (5) — **対象外**(identity 前提、§3.8/3.9 と衝突)。
 - 単独体験の研磨 (§3.9(a) が示す代替投資先, 目安 12点): パフォーマンス
   (`byId` O(n) 線形探索の解消・dirty-rect 等)、a11y 外部監査通過、スケッチ認識/beautification
-  ($1/$Q unistroke recognizer、依存ゼロで実装可能 — `docs/research-improvements.md` item M)、
-  自己上書き保護 (ADR-0004) の発展形。
+  ($1/$Q unistroke recognizer、依存ゼロで実装可能 — `docs/research-improvements.md` item M、
+  実装済 ADR-0005)、タッチ到達性 (`docs/feature-triage-2026-07.md` §4、long-press でメニュー
+  を開く ADR-0006 実装済。残りは FT-07: ファイルピッカー/エクスポートUI)、自己上書き保護
+  (ADR-0004) の発展形。
 - AI & i18n 1000 (4) — スケッチ認識(上記)は AI 項目の現実的な着地点として整理。i18n 1000言語
   は MT インフラを要し scratchpad 単体では優先度低(保留)。
 - plugin/audit (4) — a11y 外部監査は上記に統合。Plugin API は multipage 同様アーキテクチャ

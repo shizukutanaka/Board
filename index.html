@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.54 — Design Tokens
+   Board v1.7.55 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -151,6 +151,7 @@ button{background:none;border:0;cursor:pointer;padding:0}
   border-right:1px solid var(--line);
   z-index:10;
   width:52px;
+  overflow-y:auto;   /* ADR: short landscape viewports can't fit all 11 tools otherwise */
 }
 .tool{
   width:36px;height:36px;
@@ -721,13 +722,15 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.54';
+const V='1.7.55';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
 const MAX_HISTORY=500;
 const MAX_SEEN_OPS=2000; // cap seenOps to prevent unbounded growth
 const MAX_OP_SHAPES=500; // max shapes in a single remote op (DoS guard)
+const LONG_PRESS_MS=500;        // ADR-0006: long-press duration before opening the context menu
+const LONG_PRESS_MOVE_TOL=10;   // px; movement beyond this before firing = a drag, not a hold
 const MIN_ZOOM=0.1, MAX_ZOOM=16;
 const clampZoom=z=>Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,z)); // single source for the zoom invariant
 const GRID_SIZE=20;
@@ -809,7 +812,7 @@ const I18N={
       selAll:'全選択',copy:'コピー',paste:'貼付',cut:'切取',
       zoomIn:'拡大',zoomOut:'縮小',zoom100:'100%にリセット',
       fit:'画面にフィット',pan:'パン',help:'ヘルプ',exp:'PNG書き出し',
-      save:'即時保存',grid:'グリッド',minimap:'ミニマップ切替',beautify:'選択したペン描画を整形',esc:'選択解除/キャンセル',
+      grid:'グリッド',minimap:'ミニマップ切替',beautify:'選択したペン描画を整形',esc:'選択解除/キャンセル',
       cycle:'図形を巡回',create:'中央に作成',
       present:'プレゼン',nudge:'移動 (⇧: 10px)',zorder:'前面/背面',zorderEnds:'最前面/最背面',
       rotate:'回転 (15° / ノブdrag)',search:'検索',searchNav:'次/前のマッチへ移動',resizeRatio:'比率保持リサイズ',resizeCenter:'中心固定リサイズ',kbdResize:'リサイズ (⇧:×10)'}},
@@ -863,7 +866,7 @@ const I18N={
       selAll:'Select all',copy:'Copy',paste:'Paste',cut:'Cut',
       zoomIn:'Zoom in',zoomOut:'Zoom out',zoom100:'Reset zoom',
       fit:'Fit to content',pan:'Pan',help:'Help',exp:'Export PNG',
-      save:'Save now',grid:'Toggle grid',minimap:'Toggle minimap',beautify:'Beautify selected pen strokes',esc:'Deselect / cancel',
+      grid:'Toggle grid',minimap:'Toggle minimap',beautify:'Beautify selected pen strokes',esc:'Deselect / cancel',
       cycle:'Cycle shapes',create:'Create at centre',
       present:'Present',nudge:'Move (⇧: 10px)',zorder:'Front / back',zorderEnds:'To front / to back',
       rotate:'Rotate (15° / knob drag)',search:'Search',searchNav:'Next / prev match',resizeRatio:'Keep ratio (resize)',resizeCenter:'Resize from centre',kbdResize:'Resize (⇧:×10)'}}};
@@ -2113,6 +2116,7 @@ function _sqAdvance(dir){
 }
 let ptr={down:false,x:0,y:0,x0:0,y0:0,wx:0,wy:0,wx0:0,wy0:0,
   panning:false,dragKind:null,dragStartShapes:null};
+let _longPressTimer=null;   // ADR-0006
 
 // Revert any in-progress single-pointer gesture without committing — used when a
 // second finger lands and a pinch-zoom takes over (multi-touch). Each branch restores
@@ -2152,6 +2156,9 @@ canvas.addEventListener('pointerdown',e=>{
   }
   if(e.button===2){return}       // right-click handled elsewhere
   UI.closeCtxMenu();
+  // ADR-0006: select tool only — that's where state.selection (which every menu item but
+  // clear-all operates on) is meaningful and gets set synchronously below by pickOrMarquee.
+  if(e.pointerType==='touch'&&state.tool==='select')_armLongPress(e.clientX,e.clientY);
   switch(state.tool){
     case 'select':
       // Resize handles take priority over pick (single selection only)
@@ -2241,6 +2248,7 @@ canvas.addEventListener('pointermove',e=>{
   ptr.x=sp.x;ptr.y=sp.y;ptr.wx=wp.x;ptr.wy=wp.y;
 });
 canvas.addEventListener('pointerup',e=>{
+  _clearLongPress();   // ADR-0006
   if(!ptr.down)return;
   const wp=G.s2w({x:e.offsetX,y:e.offsetY});
   if(ptr.panning){ptr.panning=false;canvas.dataset.panning='false'}
@@ -2289,6 +2297,7 @@ canvas.addEventListener('pointerup',e=>{
 // Fixes: (1) state.guides not cleared → stale snap-guide lines after stylus OOR / Android
 //        gesture takeover; (2) _eraseBatch not restored → data-loss when cancel fires mid-erase.
 function _cancelPointerGesture(){
+  _clearLongPress();   // ADR-0006: covers both the native pointercancel path and our own
   // Restore partial resize/move/erase on cancel (Android touch-takeover, stylus OOR).
   if(ptr.dragKind==='resize'&&ptr.resizeOrig){
     const rsh=byId([...state.selection][0]);
@@ -2303,6 +2312,23 @@ function _cancelPointerGesture(){
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;
   ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.rotOrig=null;ptr.dragStartShapes=null;
   canvas.dataset.panning='false';state.draft=null;state.marquee=null;state.guides=null;invalidate();
+}
+// ADR-0006: fires after LONG_PRESS_MS. Guards: gesture still active, handle-drag not in
+// progress (resize/rotate — a deliberate precision drag we shouldn't interrupt), and the
+// pointer hasn't travelled past LONG_PRESS_MOVE_TOL (a real move/marquee naturally exceeds
+// this well before the timer fires, so no separate pointermove cancellation is needed).
+function _longPressFire(cx,cy){
+  _longPressTimer=null;
+  if(!ptr.down||ptr.dragKind==='resize'||ptr.dragKind==='rotate')return;
+  if(Math.hypot(ptr.x-ptr.x0,ptr.y-ptr.y0)>LONG_PRESS_MOVE_TOL)return;
+  _cancelPointerGesture();
+  UI.openCtxMenu(cx,cy);
+}
+function _armLongPress(cx,cy){
+  _longPressTimer=setTimeout(()=>_longPressFire(cx,cy),LONG_PRESS_MS);
+}
+function _clearLongPress(){
+  if(_longPressTimer){clearTimeout(_longPressTimer);_longPressTimer=null}
 }
 canvas.addEventListener('pointercancel',_cancelPointerGesture);
 canvas.addEventListener('contextmenu',e=>{e.preventDefault();UI.openCtxMenu(e.clientX,e.clientY)});
@@ -3119,7 +3145,6 @@ window.addEventListener('keydown',e=>{
   else if(k==='v'&&e.altKey&&!meta){e.preventDefault();pasteStyle()}
   else if(k==='b'&&e.altKey&&!meta&&state.selection.size){e.preventDefault();doBeautify()}
   else if(meta&&k==='s'&&e.shiftKey){e.preventDefault();exportBoard()}
-  else if(meta&&k==='s'&&!e.shiftKey){e.preventDefault();Persist.save(true)}
   else if(meta&&k==='p'){e.preventDefault();exportPDF()}
   else if(meta&&(k==='='||k==='+')){e.preventDefault();zoomBy(1.2)}
   else if(meta&&k==='-'){e.preventDefault();zoomBy(1/1.2)}
@@ -4412,7 +4437,7 @@ const UI={
       ['⌘Z',k.undo],['⌘⇧Z',k.redo],['⌘A',k.selAll],
       ['⌘C/V/X',k.copy+'/'+k.paste+'/'+k.cut],['⌘D',k.dup],['⌫',k.del],
       ['⌘+/−/0',k.zoomIn+'/'+k.zoomOut+'/'+k.zoom100],
-      ['⇧1',k.fit],['⌘E',k.exp],['⌘⇧E','SVG'],['⌘P','PDF'],['⌘S',k.save],['⌘⇧S','.board'],
+      ['⇧1',k.fit],['⌘E',k.exp],['⌘⇧E','SVG'],['⌘P','PDF'],['⌘⇧S','.board'],
       ['G',k.grid],['⇧G',t('snap')],['M',k.minimap],['Esc',k.esc],['?',k.help],
       ['↑↓←→',k.nudge],['⌥ ↑↓←→',k.kbdResize],
       [']/[',k.zorder],['⇧]/⇧[',k.zorderEnds],

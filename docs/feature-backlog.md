@@ -42,7 +42,7 @@
 - Effort: -
 - Depends on: none
 
-## FT-04 — 手動保存 (⌘S)
+## FT-04 — 手動保存 (⌘S) — ✅ 実装済み (v1.7.55)
 - Verdict: `CUT`
 - Evidence: keydown ハンドラ内の `k==='s'` (⌘S 分岐)、`Persist.schedule` (500ms
   デバウンスの自動保存が既に存在)
@@ -60,7 +60,7 @@
 - Effort: S
 - Depends on: none
 
-## FT-06 — long-press でコンテキストメニューを開く (P1、最優先)
+## FT-06 — long-press でコンテキストメニューを開く (P1、最優先) — ✅ 実装済み (v1.7.55, ADR-0006)
 - Verdict: `FIX`
 - Evidence: コンテキストメニューの唯一の開始点は
   `canvas.addEventListener('contextmenu',e=>{e.preventDefault();UI.openCtxMenu(e.clientX,e.clientY)})`。
@@ -96,7 +96,7 @@
 - Effort: M — DOM 追加 + 既存関数の再配線、新規ロジックはほぼ無い。
 - Depends on: none (FT-06 と独立に実装可能)
 
-## FT-08 — ツールバー縦レールのオーバーフロー対応 (P3)
+## FT-08 — ツールバー縦レールのオーバーフロー対応 (P3) — ✅ 実装済み (v1.7.55)
 - Verdict: `FIX`
 - Evidence: `.toolbar{...}` (CSS)、`@media (max-width:720px){ .toolbar{width:44px;...} }`。
   11 ツールボタンが固定高の縦レールに並び、`overflow` 指定がない。
@@ -116,3 +116,7 @@ FT-04・FT-05 (CUT 群) はいつ実施してもよく、上記と独立。FT-01
 新機能(次の ⌥B のような)を追加する前に FT-06 を先に片付けること — 到達経路を直さずに
 機能を増やすと「キーボード限定の新機能」を量産するだけになる(`docs/feature-triage-2026-07.md`
 §5 参照)。
+
+**進捗 (v1.7.55)**: FT-04・FT-06・FT-08 実装済み。残るは **FT-07**(`.board` ファイル
+ピッカー + エクスポートのドロップダウン化)と FT-05(Share モーダル UX 簡素化)のみ。
+FT-07 が完了すれば `docs/feature-triage-2026-07.md` §4 のタッチ到達不能性はほぼ解消する。

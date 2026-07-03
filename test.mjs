@@ -888,7 +888,7 @@ try {
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
-             flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _syncDocTitle, Presentation, canvas, resize,
+             flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
              _onBtnInstall, _getInstallPrompt: () => _installPrompt, _setInstallPrompt: (v) => { _installPrompt = v; },
              _onSwUpdate, _ctxMenuKeyNav,
              _getPasteCount: () => _pasteCount, _resetPasteClipboard: () => { _lastClipboard = null; },
@@ -908,7 +908,7 @@ try {
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
-          flushErase, _pushEraseBatch, _cancelPointerGesture, _syncDocTitle, Presentation, canvas, resize,
+          flushErase, _pushEraseBatch, _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
           _onBtnInstall, _getInstallPrompt, _setInstallPrompt,
           _onSwUpdate, _ctxMenuKeyNav,
           _getPasteCount, _resetPasteClipboard,
@@ -6719,8 +6719,68 @@ try {
     console.log('  ✓ doBeautify: all-unrecognized selection is a no-op, no spurious undo step (v1.7.54d, ADR-0005)');
   }
 
+  // ---- ADR-0006: touch long-press → context menu (_longPressFire/_armLongPress/_clearLongPress) ----
+  // Real setTimeout/clearTimeout are wired through unmocked (see fn() call above), so these
+  // tests call _longPressFire directly instead of waiting out LONG_PRESS_MS — same discipline
+  // as _cancelPointerGesture's own tests further up.
+  {
+    const origOpenCtxMenu=UI.openCtxMenu;
+    const calls=[];
+    UI.openCtxMenu=(x,y)=>calls.push([x,y]);
+    try{
+      // normal case: pointer held still (well within LONG_PRESS_MOVE_TOL) → menu opens,
+      // gesture is cancelled (ptr.down flips false via _cancelPointerGesture)
+      ptr.down=true;ptr.dragKind='marquee';ptr.x=ptr.x0=10;ptr.y=ptr.y0=10;
+      _longPressFire(123,456);
+      assert.deepStrictEqual(calls,[[123,456]],'v1.7.55a: _longPressFire opens the context menu at the given client coords');
+      assert.strictEqual(ptr.down,false,'v1.7.55a: _longPressFire cancels the in-flight gesture (ptr.down=false)');
+
+      // movement past LONG_PRESS_MOVE_TOL before firing = a drag, not a hold → no menu
+      calls.length=0;
+      ptr.down=true;ptr.dragKind='marquee';ptr.x0=10;ptr.y0=10;ptr.x=200;ptr.y=10;
+      _longPressFire(1,2);
+      assert.deepStrictEqual(calls,[],'v1.7.55b: _longPressFire does not open the menu when movement exceeds LONG_PRESS_MOVE_TOL');
+      assert.strictEqual(ptr.down,true,'v1.7.55b: gesture is left untouched (not cancelled) when it looks like a real drag');
+
+      // resize/rotate handle-drag in progress: never interrupt a deliberate precision drag
+      calls.length=0;
+      ptr.down=true;ptr.dragKind='resize';ptr.x=ptr.x0=10;ptr.y=ptr.y0=10;
+      _longPressFire(1,2);
+      assert.deepStrictEqual(calls,[],'v1.7.55c: _longPressFire does not fire while a resize handle-drag is in progress');
+      ptr.dragKind='rotate';
+      _longPressFire(1,2);
+      assert.deepStrictEqual(calls,[],'v1.7.55c: _longPressFire does not fire while a rotate handle-drag is in progress');
+
+      // pointer already lifted (gesture ended before the timer fired) → harmless no-op
+      calls.length=0;
+      ptr.down=false;ptr.dragKind=null;
+      assert.doesNotThrow(()=>_longPressFire(1,2),'v1.7.55d: _longPressFire on an already-ended gesture does not throw');
+      assert.deepStrictEqual(calls,[],'v1.7.55d: _longPressFire does not open the menu once the pointer has already lifted');
+    }finally{
+      UI.openCtxMenu=origOpenCtxMenu;
+      ptr.down=false;ptr.dragKind=null;ptr.panning=false;
+    }
+    // _clearLongPress is called unconditionally on every pointerup; must be a harmless
+    // no-op when no timer is pending (e.g. a plain tap on desktop with mouse, never armed).
+    assert.doesNotThrow(()=>_clearLongPress(),'v1.7.55e: _clearLongPress with no pending timer does not throw');
+    // _armLongPress/_clearLongPress round-trip: arming then clearing must prevent the
+    // timer from ever firing (proves clearTimeout is actually wired, not just called).
+    {
+      let fired=false;
+      const realFire=UI.openCtxMenu;
+      UI.openCtxMenu=()=>{fired=true};
+      ptr.down=true;ptr.dragKind='marquee';ptr.x=ptr.x0=0;ptr.y=ptr.y0=0;
+      _armLongPress(1,2);
+      _clearLongPress();
+      UI.openCtxMenu=realFire;
+      ptr.down=false;ptr.dragKind=null;
+      assert.strictEqual(fired,false,'v1.7.55f: _clearLongPress prevents an armed timer from firing');
+    }
+    console.log('  ✓ ADR-0006 long-press: fires on hold, suppressed by movement/resize/rotate/ended-gesture, arm/clear round-trip (v1.7.55a-f)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 949; // prev 923 + recognizeStroke (11) + doBeautify basic (5) + doBeautify mixed (8) + doBeautify no-op (2)
+  pass += 959; // prev 949 + ADR-0006 long-press (10: fires-on-hold 2 + movement-suppresses 2 + resize/rotate-suppresses 2 + ended-gesture 2 + clear-noop 1 + arm/clear round-trip 1)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

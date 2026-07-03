@@ -4,7 +4,7 @@
 単一HTMLファイル。ダブルクリックで動く。アカウント不要。広告なし。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-00C4CC.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.7.54-00C4CC.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.7.55-00C4CC.svg)](CHANGELOG.md)
 [![Size](https://img.shields.io/badge/size-~61KB%20gzip-00C4CC.svg)](index.html)
 [![Offline](https://img.shields.io/badge/offline-first-00C4CC.svg)](#offline)
 [![A11y](https://img.shields.io/badge/WCAG-AAA-00C4CC.svg)](#accessibility)
@@ -128,7 +128,7 @@ start index.html      # Windows
 | `T` | テキスト | `⇧1` | フィット |
 | `N` | 付箋 | `⌘E` | PNG出力 |
 | `F` | フレーム | `⌘⇧E` | SVG出力 |
-| `E` | 消しゴム | `⌘S` | 即時保存 |
+| `E` | 消しゴム | | |
 | `G` | グリッド切替 | `⌘F` | 検索 |
 | `M` | ミニマップ切替 | `Tab` | 図形を巡回 |
 | `⇧Tab` | 逆順に巡回 | `⇧H` | 左右反転 |

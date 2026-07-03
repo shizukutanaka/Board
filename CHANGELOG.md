@@ -2,11 +2,34 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.7.55] - 2026-07-01
+
+`docs/feature-backlog.md` FT-06(最優先)+ FT-04/FT-08 の実装。タッチ端末での
+到達不能性(`docs/feature-triage-2026-07.md` §4)への最初の直接投資。
 
 ### Added
 - 機能バックログ (`docs/feature-backlog.md`) 追加 — `docs/feature-triage-2026-07.md` の
   ソクラテス式トリアージ結果を、Opus/Sonnet が文脈なしで着手できるチケット形式に変換。
+- **long-press でコンテキストメニューを開く (ADR-0006, FT-06)**: select ツールで
+  タッチポインタが 500ms 静止すると `UI.openCtxMenu` を開く。`_cancelPointerGesture`
+  (既存)で進行中のジェスチャーを巻き戻してから開く。移動量が閾値(10px)を超えたら
+  抑制、resize/rotate ハンドルドラッグ中も抑制。これ1件で整列/均等配置・全消去・
+  複製・グループ化/解除・z順序・フリップ・ロック・スタイル転写がタッチ到達可能に。
+
+### Removed
+- **手動保存 ⌘S (FT-04)**: 自動保存 (`Persist.schedule`、500ms デバウンス)と完全に
+  重複していたキーボード限定の冗長なショートカットを削除。help grid・i18n(ja/en)・
+  README のショートカット表からも対応する記述を削除。
+
+### Changed
+- ツールバーに `overflow-y:auto` を追加 (FT-08) — 背の低い横持ち画面でも全11ツールに
+  到達できるように。
+
+### Tests
+- behavioral × 10: `_longPressFire` の通常発火・移動量超過での抑制・resize/rotate中の
+  抑制・ポインタ離脱後の no-op、`_clearLongPress` の冪等性、`_armLongPress`/
+  `_clearLongPress` の arm/clear ラウンドトリップ(実タイマーは待たない)
+- 合計 1438 pass, 0 fail
 
 ## [1.7.54] - 2026-07-01
 
