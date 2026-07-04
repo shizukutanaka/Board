@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.55 — Design Tokens
+   Board v1.7.56 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -579,6 +579,10 @@ body{visibility:visible}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
       <span data-t="export">Export</span>
     </button>
+    <button class="btn icon" id="btnExportMenu" aria-label="More export &amp; import options" title="More export &amp; import options">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+    </button>
+    <input type="file" id="fileImport" accept=".board" hidden>
     <button class="btn icon" id="btnInstall" aria-label="Install app" title="Install Board as an app" hidden>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V3M8 12l4 4 4-4M4 20h16"/></svg>
     </button>
@@ -722,7 +726,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.55';
+const V='1.7.56';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -785,6 +789,7 @@ const I18N={
     ctxAlignTop:'上揃え',ctxAlignCY:'上下中央',ctxAlignBottom:'下揃え',
     ctxHSpace:'水平均等配置',ctxVSpace:'垂直均等配置',
     ctxSelectAll:'すべて選択',ctxClear:'全消去',
+    ctxExportPNG:'PNG書き出し',ctxExportSVG:'SVG書き出し',ctxExportPDF:'PDF書き出し',ctxExportBoard:'.boardファイル書き出し',ctxImportBoard:'.boardファイル読み込み...',
     share:'共有',shareTitle:'共有',
     shareUrlHint:'このURLをコピーして送ると、相手に内容が共有されます',
     shareCopyUrl:'URLをコピー',shareUrlCopied:'URLをコピーしました',copyFailed:'コピーできませんでした',
@@ -839,6 +844,7 @@ const I18N={
     ctxAlignTop:'Align top',ctxAlignCY:'Center vertical',ctxAlignBottom:'Align bottom',
     ctxHSpace:'Distribute horizontal',ctxVSpace:'Distribute vertical',
     ctxSelectAll:'Select all',ctxClear:'Clear all',
+    ctxExportPNG:'Export PNG',ctxExportSVG:'Export SVG',ctxExportPDF:'Export PDF',ctxExportBoard:'Export .board file',ctxImportBoard:'Import .board file...',
     share:'Share',shareTitle:'Share',
     shareUrlHint:'Copy this URL and send it — the recipient gets your board.',
     shareCopyUrl:'Copy URL',shareUrlCopied:'URL copied',copyFailed:'Copy failed',
@@ -4366,11 +4372,11 @@ const UI={
     h.dataset.open=open;
     document.getElementById(open?'helpClose':'btnHelp').focus();
   },
-  openCtxMenu(x,y){
+  openCtxMenu(x,y,customItems){
     const m=document.getElementById('ctx');
     const has=state.selection.size>0;
     while(m.firstChild)m.removeChild(m.firstChild);
-    const items=[
+    const items=customItems||[
       has&&['ctxCopy','⌘C',doCopy],
       state.clipboard&&['ctxPaste','⌘V',doPaste],
       has&&['ctxDuplicate','⌘D',doDuplicate],
@@ -4426,6 +4432,19 @@ const UI={
     m.querySelector('.ctx-item')?.focus();
   },
   closeCtxMenu(){document.getElementById('ctx').dataset.open='false'},
+  // FT-07: reuses openCtxMenu's rendering/positioning/keyboard-nav/focus-trap wholesale
+  // (all of it operates on the #ctx element generically, not on any hard-coded item set) —
+  // touch users get every export format + import via one tap, not just the PNG default.
+  openExportMenu(x,y){
+    this.openCtxMenu(x,y,[
+      ['ctxExportPNG','⌘E',exportPNG],
+      ['ctxExportSVG','⌘⇧E',exportSVG],
+      ['ctxExportPDF','⌘P',exportPDF],
+      ['ctxExportBoard','⌘⇧S',exportBoard],
+      'sep',
+      ['ctxImportBoard','',()=>document.getElementById('fileImport').click()]
+    ]);
+  },
   fillHelp(){
     const g=document.getElementById('helpGrid');
     const k=T.k;
@@ -4545,6 +4564,15 @@ function wire(){
   document.getElementById('btnUndo').onclick=()=>Store.undo()&&UI.toast(t('undone'));
   document.getElementById('btnRedo').onclick=()=>Store.redo()&&UI.toast(t('redone'));
   document.getElementById('btnExport').onclick=exportPNG;
+  document.getElementById('btnExportMenu').onclick=e=>{
+    const r=e.currentTarget.getBoundingClientRect();
+    UI.openExportMenu(r.left,r.bottom+4);
+  };
+  document.getElementById('fileImport').onchange=e=>{
+    const f=e.target.files[0];
+    if(f)importBoard(f);
+    e.target.value='';   // allow re-selecting the same filename to re-trigger change
+  };
   document.getElementById('btnPresent').onclick=()=>Presentation.enter();
   // doc name
   const docNameEl=document.getElementById('docName');

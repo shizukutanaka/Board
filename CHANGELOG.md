@@ -2,6 +2,26 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.56] - 2026-07-01
+
+`docs/feature-backlog.md` FT-07 の実装。これで `docs/feature-triage-2026-07.md` §4 の
+タッチ到達不能性はほぼ解消(ADR-0006 の long-press に続く2件目の直接投資)。
+
+### Added
+- **エクスポートメニュー + `.board` インポートのファイルピッカー (ADR-0007, FT-07)**:
+  `btnExport` 隣の新規シェブロンボタン(`btnExportMenu`)から PNG/SVG/PDF/.board の
+  全エクスポート形式 + `.board` インポートを選択可能に。非表示の
+  `<input type="file" accept=".board">` を追加し、drag-drop に加えてタッチでもファイル
+  選択で `.board` を読み込めるように。`UI.openCtxMenu` に後方互換な `customItems` 引数を
+  追加し、既存の位置決め・キーボードナビ・フォーカストラップを新規コードなしで再利用。
+
+### Tests
+- presence × 4: 新規 DOM/配線/i18n キーの存在確認
+- behavioral × 9: `UI.openExportMenu` が正しい項目(ラベル・ショートカット・実関数)で
+  `UI.openCtxMenu` に委譲することを検証(モンキーパッチによるスパイ、非空虚性を
+  pre-fix コードに対する失敗で確認)
+- 合計 1451 pass, 0 fail
+
 ## [1.7.55] - 2026-07-01
 
 `docs/feature-backlog.md` FT-06(最優先)+ FT-04/FT-08 の実装。タッチ端末での

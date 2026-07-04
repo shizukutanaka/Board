@@ -763,6 +763,15 @@ const checks = [
   // v1.7.48: move dx/dy must be actual numbers not coercible strings
   ['validRemotePayload move: typeof op.dx/dy === number (no string coercion)',
     html.includes("&&typeof op.dx==='number'&&Number.isFinite(op.dx)&&typeof op.dy==='number'&&Number.isFinite(op.dy)")],
+  // v1.7.56 (ADR-0007, FT-07): export menu + .board file-picker DOM/wiring
+  ['btnExportMenu button and hidden fileImport input present in the DOM',
+    html.includes('id="btnExportMenu"') && html.includes('id="fileImport"') && html.includes('accept=".board"')],
+  ['btnExportMenu wired to UI.openExportMenu, fileImport wired to importBoard',
+    html.includes("UI.openExportMenu(r.left,r.bottom+4)") && html.includes("if(f)importBoard(f);")],
+  ['openCtxMenu accepts an optional customItems override (backward-compatible default)',
+    html.includes("openCtxMenu(x,y,customItems){") && html.includes("const items=customItems||[")],
+  ['ctxExportPNG/SVG/PDF/Board + ctxImportBoard i18n keys present in ja and en',
+    (html.match(/ctxExportPNG:/g)||[]).length>=2 && (html.match(/ctxImportBoard:/g)||[]).length>=2],
 ];
 
 let pass = 0, fail = 0;
@@ -889,6 +898,7 @@ try {
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
+             exportPNG, exportSVG, exportPDF, exportBoard, importBoard,
              _onBtnInstall, _getInstallPrompt: () => _installPrompt, _setInstallPrompt: (v) => { _installPrompt = v; },
              _onSwUpdate, _ctxMenuKeyNav,
              _getPasteCount: () => _pasteCount, _resetPasteClipboard: () => { _lastClipboard = null; },
@@ -909,6 +919,7 @@ try {
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
+          exportPNG, exportSVG, exportPDF, exportBoard, importBoard,
           _onBtnInstall, _getInstallPrompt, _setInstallPrompt,
           _onSwUpdate, _ctxMenuKeyNav,
           _getPasteCount, _resetPasteClipboard,
@@ -6779,8 +6790,34 @@ try {
     console.log('  ✓ ADR-0006 long-press: fires on hold, suppressed by movement/resize/rotate/ended-gesture, arm/clear round-trip (v1.7.55a-f)');
   }
 
+  // ---- ADR-0007 (FT-07): UI.openExportMenu delegates to UI.openCtxMenu with the right items ----
+  {
+    const origOpenCtxMenu=UI.openCtxMenu;
+    let captured=null;
+    UI.openCtxMenu=(x,y,items)=>{captured=[x,y,items]};
+    try{
+      UI.openExportMenu(10,20);
+      assert.ok(captured,'v1.7.56a: openExportMenu calls UI.openCtxMenu');
+      assert.strictEqual(captured[0],10);assert.strictEqual(captured[1],20);
+      const items=captured[2];
+      assert.ok(Array.isArray(items),'v1.7.56a: openExportMenu passes an items array, not the default (undefined)');
+      const keys=items.map(it=>it==='sep'?'sep':it[0]);
+      assert.deepStrictEqual(keys,['ctxExportPNG','ctxExportSVG','ctxExportPDF','ctxExportBoard','sep','ctxImportBoard'],
+        'v1.7.56a: openExportMenu offers PNG/SVG/PDF/.board export + a separator + .board import, in that order');
+      const fnByKey=Object.fromEntries(items.filter(it=>it!=='sep').map(it=>[it[0],it[2]]));
+      assert.strictEqual(fnByKey.ctxExportPNG,exportPNG,'v1.7.56a: PNG item wired to the real exportPNG');
+      assert.strictEqual(fnByKey.ctxExportSVG,exportSVG,'v1.7.56a: SVG item wired to the real exportSVG');
+      assert.strictEqual(fnByKey.ctxExportPDF,exportPDF,'v1.7.56a: PDF item wired to the real exportPDF');
+      assert.strictEqual(fnByKey.ctxExportBoard,exportBoard,'v1.7.56a: .board export item wired to the real exportBoard');
+      assert.strictEqual(typeof fnByKey.ctxImportBoard,'function','v1.7.56a: import item is a callable (opens the file picker)');
+    }finally{
+      UI.openCtxMenu=origOpenCtxMenu;
+    }
+    console.log('  ✓ ADR-0007 openExportMenu: delegates to openCtxMenu with PNG/SVG/PDF/.board export + import, correctly wired (v1.7.56a)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 959; // prev 949 + ADR-0006 long-press (10: fires-on-hold 2 + movement-suppresses 2 + resize/rotate-suppresses 2 + ended-gesture 2 + clear-noop 1 + arm/clear round-trip 1)
+  pass += 968; // prev 959 + ADR-0007 openExportMenu delegation (9 asserts, v1.7.56a)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
