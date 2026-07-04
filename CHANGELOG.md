@@ -2,6 +2,29 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.57] - 2026-07-01
+
+`docs/feature-backlog.md` FT-05 の実装。これで同バックログの全項目が完了(残るは
+KEEP と判定済みの3件のみ)。
+
+### Changed
+- **Share モーダルの明確化 (ADR-0008, FT-05)**: 手動 WebRTC シグナリングの各手順ラベルに
+  「誘う側」「招待された側」を明記し、初見でも自分がどちらの手順に従うべきか一目で
+  分かるように。招待コード(`#rtcOffer`)・応答コード(`#rtcAnswer`)にコピーボタンを
+  追加(既存の `copyText()`/`shareCopyBtn` と同じパターン)し、readonly textarea を
+  手動で全選択する必要をなくした。応答コード生成後の「相手に送り返す」という次の
+  一手も明記。機能面(`Net.wrtcCreateOffer`/`wrtcConsumeAnswer`/`wrtcAcceptOffer`)は
+  無変更。
+
+### Removed
+- 未使用の i18n キー `sharePasteAnswer`(ja/en とも、どのマークアップからも参照
+  されていないことを確認済み)。
+
+### Tests
+- presence × 5: 新規コピーボタンの DOM/配線・新トーストキー・役割ラベルの存在、
+  死蔵キー削除の確認
+- 合計 1456 pass, 0 fail
+
 ## [1.7.56] - 2026-07-01
 
 `docs/feature-backlog.md` FT-07 の実装。これで `docs/feature-triage-2026-07.md` §4 の

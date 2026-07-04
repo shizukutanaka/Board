@@ -772,6 +772,19 @@ const checks = [
     html.includes("openCtxMenu(x,y,customItems){") && html.includes("const items=customItems||[")],
   ['ctxExportPNG/SVG/PDF/Board + ctxImportBoard i18n keys present in ja and en',
     (html.match(/ctxExportPNG:/g)||[]).length>=2 && (html.match(/ctxImportBoard:/g)||[]).length>=2],
+  // v1.7.57 (ADR-0008, FT-05): Share modal clarity — role-labeled steps + code copy buttons
+  ['rtcOfferCopyBtn and rtcAnswerCopyBtn present in the Share modal DOM',
+    html.includes('id="rtcOfferCopyBtn"') && html.includes('id="rtcAnswerCopyBtn"')],
+  ['signaling code copy buttons route through copyText (not raw navigator.clipboard)',
+    html.includes("_copyCode('rtcOffer')") && html.includes("_copyCode('rtcAnswer')") &&
+    html.includes("const _copyCode=async(taId)=>{const v=_g(taId).value;if(!v)return;const ok=await copyText(v);")],
+  ['shareCodeCopied i18n key present in ja and en (distinct from shareUrlCopied)',
+    (html.match(/shareCodeCopied:/g)||[]).length>=2],
+  ['stale unused i18n key sharePasteAnswer removed (verified zero references before deletion)',
+    !html.includes('sharePasteAnswer')],
+  ['Share modal step labels are role-labeled (inviting side / joining side), not just numbered',
+    html.includes('誘う側 手順1') && html.includes('招待された側 手順1') &&
+    html.includes("Inviting side, step 1") && html.includes("Joining side, step 1")],
 ];
 
 let pass = 0, fail = 0;

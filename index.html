@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.56 — Design Tokens
+   Board v1.7.57 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -694,22 +694,27 @@ body{visibility:visible}
     <details class="share-details">
       <summary data-t="sharePeer">相手と直接つなぐ (実験的)</summary>
       <div class="share-peer-body">
-        <p class="share-step" data-t="shareStep1">手順1: あなたが「招待コード」を作成</p>
-        <button class="btn" id="rtcCreateOffer" data-t="shareCreate">招待コード作成</button>
+        <p class="share-step" data-t="shareStep1">誘う側 手順1: 招待コードを作成してコピー</p>
+        <div class="share-row">
+          <button class="btn" id="rtcCreateOffer" data-t="shareCreate">招待コード作成</button>
+          <button class="btn" id="rtcOfferCopyBtn" data-t="shareCopyCode">コピー</button>
+        </div>
         <textarea id="rtcOffer" class="share-code" rows="3" readonly placeholder="…"></textarea>
 
-        <p class="share-step" data-t="shareStep2">手順2: 相手に送って「応答コード」をもらう</p>
-
-        <p class="share-step" data-t="shareStep3">手順3: 応答コードを貼り付けて接続</p>
+        <p class="share-step" data-t="shareStep2">誘う側 手順2: 相手に送り、届いた応答コードを下に貼り付けて接続</p>
         <textarea id="rtcAnswerIn" class="share-code" rows="3" placeholder=""></textarea>
         <button class="btn primary" id="rtcConnect" data-t="shareConnect">接続</button>
 
         <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
 
-        <p class="share-step" data-t="sharePaste">相手の招待コードを貼り付け</p>
+        <p class="share-step" data-t="sharePaste">招待された側 手順1: 相手の招待コードを貼り付け</p>
         <textarea id="rtcOfferIn" class="share-code" rows="3" placeholder=""></textarea>
-        <button class="btn" id="rtcCreateAnswer" data-t="shareCreateAnswer">応答コード作成</button>
+        <div class="share-row">
+          <button class="btn" id="rtcCreateAnswer" data-t="shareCreateAnswer">応答コード作成</button>
+          <button class="btn" id="rtcAnswerCopyBtn" data-t="shareCopyCode">コピー</button>
+        </div>
         <textarea id="rtcAnswer" class="share-code" rows="3" readonly placeholder=""></textarea>
+        <p class="share-step" data-t="shareStep3">招待された側 手順2: 上のコードをコピーして相手に送り返す</p>
       </div>
     </details>
   </div>
@@ -726,7 +731,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.56';
+const V='1.7.57';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -793,17 +798,17 @@ const I18N={
     share:'共有',shareTitle:'共有',
     shareUrlHint:'このURLをコピーして送ると、相手に内容が共有されます',
     shareCopyUrl:'URLをコピー',shareUrlCopied:'URLをコピーしました',copyFailed:'コピーできませんでした',
+    shareCopyCode:'コピー',shareCodeCopied:'コードをコピーしました',
     appUpdated:'アプリが更新されました — 再読み込みで最新版に',
     sharePeer:'相手と直接つなぐ (実験的)',
-    shareStep1:'手順1: あなたが「招待コード」を作成',
-    shareStep2:'手順2: 相手に送って「応答コード」をもらう',
-    shareStep3:'手順3: 応答コードを貼り付けて接続',
+    shareStep1:'誘う側 手順1: 招待コードを作成してコピー',
+    shareStep2:'誘う側 手順2: 相手に送り、届いた応答コードを下に貼り付けて接続',
+    shareStep3:'招待された側 手順2: 上のコードをコピーして相手に送り返す',
     shareCreate:'招待コード作成',
     shareCreateAnswer:'応答コード作成',
     shareConnect:'接続',
     shareInvite:'招待コード',shareAnswer:'応答コード',
-    sharePaste:'相手の招待コードを貼り付け',
-    sharePasteAnswer:'相手の応答コードを貼り付け',
+    sharePaste:'招待された側 手順1: 相手の招待コードを貼り付け',
     connected:'接続しました',disconnected:'切断しました',
     importConfirm:'共有された内容で現在のボードを置き換えますか？',
     imported:'読み込みました',
@@ -848,17 +853,17 @@ const I18N={
     share:'Share',shareTitle:'Share',
     shareUrlHint:'Copy this URL and send it — the recipient gets your board.',
     shareCopyUrl:'Copy URL',shareUrlCopied:'URL copied',copyFailed:'Copy failed',
+    shareCopyCode:'Copy',shareCodeCopied:'Code copied',
     appUpdated:'App updated — reload for latest version',
     sharePeer:'Direct peer connection (experimental)',
-    shareStep1:'Step 1: You create an "invite code"',
-    shareStep2:'Step 2: Send it to peer, get "answer code" back',
-    shareStep3:'Step 3: Paste the answer code to connect',
+    shareStep1:'Inviting side, step 1: Create the invite code and copy it',
+    shareStep2:'Inviting side, step 2: Send it to your peer, paste the answer code you get back, then connect',
+    shareStep3:'Joining side, step 2: Copy the code above and send it back to your peer',
     shareCreate:'Create invite code',
     shareCreateAnswer:'Create answer code',
     shareConnect:'Connect',
     shareInvite:'Invite code',shareAnswer:'Answer code',
-    sharePaste:'Paste invite code from peer',
-    sharePasteAnswer:'Paste answer code from peer',
+    sharePaste:'Joining side, step 1: Paste the invite code from your peer',
     connected:'Connected',disconnected:'Disconnected',
     importConfirm:'Replace current board with shared content?',
     imported:'Imported',
@@ -4714,6 +4719,11 @@ function wire(){
   _g('rtcCreateOffer').onclick=async()=>{try{_g('rtcOffer').value=await Net.wrtcCreateOffer()}catch(e){UI.toast(String(e),'err')}};
   _g('rtcConnect').onclick=async()=>{const a=_g('rtcAnswerIn').value.trim();if(!a)return;try{await Net.wrtcConsumeAnswer(a);UI.toast(t('connected'),'ok')}catch(e){UI.toast(String(e),'err')}};
   _g('rtcCreateAnswer').onclick=async()=>{const o=_g('rtcOfferIn').value.trim();if(!o)return;try{_g('rtcAnswer').value=await Net.wrtcAcceptOffer(o)}catch(e){UI.toast(String(e),'err')}};
+  // ADR-0008 (FT-05): copy buttons for the signaling codes — mirrors shareCopyBtn's pattern,
+  // avoids the earlier select-in-a-readonly-textarea friction (especially fiddly on touch).
+  const _copyCode=async(taId)=>{const v=_g(taId).value;if(!v)return;const ok=await copyText(v);UI.toast(ok?t('shareCodeCopied'):t('copyFailed'),ok?'ok':'warn')};
+  _g('rtcOfferCopyBtn').onclick=()=>_copyCode('rtcOffer');
+  _g('rtcAnswerCopyBtn').onclick=()=>_copyCode('rtcAnswer');
   }
   // Net presence → UI
   Net._onConnChange=()=>UI.refreshPeers();

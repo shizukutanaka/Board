@@ -51,7 +51,7 @@
 - Effort: S
 - Depends on: none
 
-## FT-05 — Share モーダルの手動 WebRTC シグナリング UI
+## FT-05 — Share モーダルの手動 WebRTC シグナリング UI — ✅ 実装済み (v1.7.57, ADR-0008)
 - Verdict: `CUT` (機能は残す、UI のみ簡素化— 削除ではない)
 - Evidence: Share モーダル DOM (`shareStep2` 等の step 表記)
 - Action: Step 1 (offer 生成) → Step 3 (answer 貼付) の間に「相手から answer コードを
@@ -117,6 +117,6 @@ FT-04・FT-05 (CUT 群) はいつ実施してもよく、上記と独立。FT-01
 機能を増やすと「キーボード限定の新機能」を量産するだけになる(`docs/feature-triage-2026-07.md`
 §5 参照)。
 
-**進捗 (v1.7.56)**: FT-04・FT-06・FT-07・FT-08 実装済み。`docs/feature-triage-2026-07.md`
-§4 のタッチ到達不能性はこれでほぼ解消。残るは **FT-05**(Share モーダル UX 簡素化)のみ —
-機能の欠落ではなく UX の分かりにくさの解消であり、緊急度は低い。
+**進捗 (v1.7.57)**: FT-04・FT-05・FT-06・FT-07・FT-08 すべて実装済み。本バックログの
+FIX/CUT 項目は完了。残るは FT-01〜FT-03(KEEP、変更不要の記録)のみ — 再度「過剰では」
+と疑って工数を使わないための記録として存在し続ける。
