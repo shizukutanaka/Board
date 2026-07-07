@@ -2,6 +2,47 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.58] - 2026-07-01
+
+「市販レベルの品質」への投資の第一弾。CLAUDE.md が未着手として挙げていたパフォーマンス
+項目(`byId` O(n))と、文書と実態が乖離していた CI の欠如に対応。
+
+### Added
+- **CI ワークフローを作成 (`.github/workflows/ci.yml`、未コミット)**: CLAUDE.md の MAP
+  は以前から `.github/workflows/ # CI (lint + size budget)` と記載していたが、実際には
+  ブランチに存在しなかった — `node test.mjs`・構文チェック・`innerHTML=` 禁止・外部
+  リソース禁止・512KB 暴走防止ガードのすべてが一度も機械的に強制されていなかった。
+  npm 依存ゼロ(checkout + node のみ)のワークフローを作成しローカルの全ゲートで
+  検証済みだが、リポジトリの `.gitignore` が `.github/` を意図的に除外しており
+  (push に workflows スコープが要るため、コメント曰く「managed manually」)、
+  この変更ではコミットしていない。ファイル自体は用意済みで、適切な権限を持つ人が
+  手動で追加すれば即座に有効になる。
+- **`byId()` の O(1) 化 (ADR-0009)**: 74 箇所から呼ばれる `byId` を線形探索から
+  lazy-rebuild `Map` に変更。`connEnds()` 経由で RAF 描画ループ内から実際に毎フレーム
+  線形走査されていたことを確認した上での対応。実装中に `Store._apply` 内部で
+  `byId` を冪等性/ロックチェックに使ってから同ケース内で push/splice するパターンが
+  複数箇所にあり、単純な無効化では拾えない一段階遅れたキャッシュ不整合を引き起こすことを
+  発見・修正(サイズ不一致検出を安全網として追加)。同時に、既存の空間グリッドキャッシュ
+  (`_grid`)の無効化漏れ(9箇所の `state.shapes` 再代入/splice 経路が
+  `_invalidateGrid()` を経由していなかった)も修正 — `pickTop` のヒットテストが
+  スナップショット受信直後などに陳腐化したグリッドを参照しうる潜在バグだった。
+
+### Fixed
+- **`exportPDF` の `convertToBlob` rejection が無視されていた**: `toBlob` 経路は
+  `null` blob を `exportFailed` トーストで通知するのに、`convertToBlob` の reject は
+  `.catch` が無く無言の unhandled rejection になっていた。両経路を同じ通知パスに統一。
+
+### Tests
+- behavioral × 17: `byId` が add/addMany/del(+undo)・`_applySnapshot`・
+  消しゴム(`eraseAt`+`abortGesture`)それぞれの直後に正しい参照を返すことを固定
+  (実装中に見つけた「1操作分遅れる」バグの回帰テスト)
+- presence × 2: `_invalidateGrid`/`byId` のサイズチェック実装、`exportPDF` の
+  エラーハンドリング対称化
+- 既存 143+ 箇所の `state.shapes=[]`/`state.shapes.length=0` テストリセットパターンに
+  `_invalidateGrid()` 呼び出しを機械的に追加(id インデックスが無効化されないまま
+  テスト間で状態が漏れるのを防止)
+- 合計 1475 pass, 0 fail
+
 ## [1.7.57] - 2026-07-01
 
 `docs/feature-backlog.md` FT-05 の実装。これで同バックログの全項目が完了(残るは

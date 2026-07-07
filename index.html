@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.57 — Design Tokens
+   Board v1.7.58 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -731,7 +731,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.57';
+const V='1.7.58';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1398,7 +1398,20 @@ const Store={
         break;}
     }
   }};
-function byId(id){return state.shapes.find(s=>s.id===id)}
+// ADR-0009: lazy-rebuilt id→shape index. Invalidated by _invalidateGrid() (the same
+// choke point the spatial hit-test grid already uses) whenever shapes are added/removed
+// or state.shapes is reassigned — property mutations (position, style, ...) don't touch
+// membership, so they never need to invalidate this. The size check below is a second,
+// cheap safety net: several _apply cases call byId() (idempotency/lock checks) BEFORE
+// push()ing or splice()ing state.shapes in the same op, which would otherwise leave the
+// index one membership-change stale until the *next* op's top-of-_apply invalidation —
+// comparing sizes catches exactly that gap without needing to hunt down every such
+// interior call site.
+let _idIndex=null;
+function byId(id){
+  if(!_idIndex||_idIndex.size!==state.shapes.length){_idIndex=new Map();for(const s of state.shapes)_idIndex.set(s.id,s);}
+  return _idIndex.get(id);
+}
 function clone(o){return JSON.parse(JSON.stringify(o))}
 // Monotonic local timestamp (HLC-lite). clockNewer compares ts BEFORE seq, so a
 // wall-clock that jumps BACKWARDS (NTP correction / DST / manual set) between two
@@ -2143,7 +2156,7 @@ function abortGesture(){
   }else if(ptr.dragKind==='rotate'&&ptr.rotOrig){
     const sh=byId(ptr.rotOrig.id);if(sh)Object.assign(sh,clone(ptr.rotOrig));
   }
-  if(_eraseBatch.length){for(const s of _eraseBatch)state.shapes.push(s);_eraseBatch=[];sortZ();}
+  if(_eraseBatch.length){for(const s of _eraseBatch)state.shapes.push(s);_eraseBatch=[];sortZ();_invalidateGrid();}   // ADR-0009
   state.draft=null;state.marquee=null;state.guides=null;
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.dragStartShapes=null;
   invalidate();
@@ -2319,7 +2332,7 @@ function _cancelPointerGesture(){
   }else if(ptr.dragKind==='move'&&ptr.dragStartShapes){
     for(const[id,orig] of ptr.dragStartShapes){const sh=byId(id);if(sh)Object.assign(sh,clone(orig));}
   }
-  if(_eraseBatch.length){for(const s of _eraseBatch)state.shapes.push(s);_eraseBatch=[];sortZ();}
+  if(_eraseBatch.length){for(const s of _eraseBatch)state.shapes.push(s);_eraseBatch=[];sortZ();_invalidateGrid();}   // ADR-0009
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;
   ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.rotOrig=null;ptr.dragStartShapes=null;
   canvas.dataset.panning='false';state.draft=null;state.marquee=null;state.guides=null;invalidate();
@@ -2545,7 +2558,7 @@ function fitToContent(){
 // ---- spatial index: uniform 200wu grid, lazy rebuild on _apply; big shapes in
 // a `big` list always returned; query covers the 3×3 cell neighbourhood (tol<200wu).
 const _GCELL=200;let _grid=null;
-function _invalidateGrid(){_grid=null;}
+function _invalidateGrid(){_grid=null;_idIndex=null;}   // ADR-0009: id index shares this choke point
 function _buildGrid(shapes){
   const cells=new Map(),big=[];
   for(const s of shapes){
@@ -3071,7 +3084,7 @@ function eraseAt(wp){
   if(hit&&!hit.locked&&!_eraseBatch.some(s=>s.id===hit.id)){
     // Remove from rendering immediately for feedback
     const i=state.shapes.findIndex(s=>s.id===hit.id);
-    if(i>=0)state.shapes.splice(i,1);
+    if(i>=0){state.shapes.splice(i,1);_invalidateGrid()}   // ADR-0009
     _eraseBatch.push(clone(hit));
     invalidate();
   }
@@ -3080,7 +3093,7 @@ function flushErase(){
   if(!_eraseBatch.length)return;
   // Restore shapes so Store.commit's _apply can find & remove them
   for(const s of _eraseBatch)state.shapes.push(s);
-  sortZ();
+  sortZ();_invalidateGrid();   // ADR-0009: connEnds below calls byId, must see the restored shapes
   // Resolve connector bindings now that erased shapes are back in state (connEnds works)
   const delIds=new Set(_eraseBatch.map(s=>s.id));
   const connClears=computeConnClears(delIds);
@@ -3668,7 +3681,7 @@ function exportPDF(){
     w2.document.close();setTimeout(()=>URL.revokeObjectURL(url),30e3);
   };
   if(typeof off.toBlob==='function')off.toBlob(fin,'image/png');
-  else off.convertToBlob({type:'image/png'}).then(fin);
+  else off.convertToBlob({type:'image/png'}).then(fin,()=>fin(null));   // rejection → same exportFailed toast as toBlob(null)
 }
 
 function exportSVG(){
@@ -3703,7 +3716,7 @@ function importBoard(file){
       const beforeWc=clone(state.wclock);
       const origSel=[...state.selection];
       if(before.length)Persist.saveBackup(before,{...state.viewport},state.docName);   // ADR-0004
-      state.shapes=shapes.map(clone);
+      state.shapes=shapes.map(clone);_invalidateGrid();   // ADR-0009
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out. Skipping this leaks wclock entries and
       // can let a re-imported shape (same id) inherit a stale LWW clock.
@@ -3990,7 +4003,7 @@ const Net={
     const shapes=msg.shapes;
     if(!Array.isArray(shapes))return;
     const valid=shapes.slice(0,MAX_OP_SHAPES).filter(validShape);
-    state.shapes=clone(valid);
+    state.shapes=clone(valid);_invalidateGrid();   // ADR-0009
     sortZ();
     invalidate();UI.refreshUndo();Persist.schedule();
   },
@@ -4156,7 +4169,7 @@ const Share={
       const origSel=[...state.selection];
       // ADR-0004: also survives past the undo window (reload/closed-tab), not just this session.
       if(before.length)Persist.saveBackup(before,{...state.viewport},state.docName);
-      state.shapes=valid.map(clone);state.docName=(typeof data.name==='string'&&data.name)||'Shared';
+      state.shapes=valid.map(clone);_invalidateGrid();state.docName=(typeof data.name==='string'&&data.name)||'Shared';   // ADR-0009
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out (see importBoard for rationale).
       state.selection.clear();state.wclock={};
@@ -4253,7 +4266,7 @@ const Persist={
     if(d&&Array.isArray(d.shapes)){
       // Validate like the other intake paths (importFromHash / snapshot): never
       // adopt malformed shapes from IDB (corruption / forward-incompat schema).
-      state.shapes=d.shapes.filter(validShape);
+      state.shapes=d.shapes.filter(validShape);_invalidateGrid();   // ADR-0009
       if(d.viewport&&Number.isFinite(+d.viewport.x)&&Number.isFinite(+d.viewport.y)&&Number.isFinite(+d.viewport.zoom)&&d.viewport.zoom>0){
         // Clamp zoom to the app invariant [MIN_ZOOM,MAX_ZOOM] that every compute path
         // (wheel/fit) maintains — a corrupt or forward-incompat IDB record with an
@@ -4311,7 +4324,7 @@ const Persist={
       const before=clone(state.shapes);
       const beforeWc=clone(state.wclock);
       const origSel=[...state.selection];
-      state.shapes=shapes.map(clone);
+      state.shapes=shapes.map(clone);_invalidateGrid();   // ADR-0009
       state.selection.clear();state.wclock={};
       if(typeof d.docName==='string'&&d.docName){state.docName=d.docName;document.getElementById('docName').value=d.docName;_syncDocTitle();}
       if(d.viewport&&Number.isFinite(+d.viewport.x)&&Number.isFinite(+d.viewport.y)&&Number.isFinite(+d.viewport.zoom)&&d.viewport.zoom>0){

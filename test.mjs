@@ -98,7 +98,7 @@ const checks = [
   // round 4 improvements
   ['data-t i18n auto-apply', html.includes("UI.applyI18n") && html.includes("el.textContent=t(key)")],
   ['Eraser batches into single undo', html.includes("_eraseBatch") && html.includes("flushErase")],
-  ['pointercancel restores eraser batch + clears guides', html.includes("_cancelPointerGesture") && html.includes("state.guides=null") && /if\(_eraseBatch\.length\)[\s\S]{0,120}state\.guides=null/.test(html)],
+  ['pointercancel restores eraser batch + clears guides', html.includes("_cancelPointerGesture") && html.includes("state.guides=null") && /if\(_eraseBatch\.length\)[\s\S]{0,180}state\.guides=null/.test(html)],
   ['document.title synced on docName change (WCAG 2.4.2)', html.includes('_syncDocTitle')&&html.includes("document.title=")&&html.includes("_syncDocTitle();")],
   ['Screen Wake Lock in presentation mode', html.includes('navigator.wakeLock')&&html.includes('_acquireWakeLock')&&html.includes('_releaseWakeLock')],
   ['RAF idle-stop: invalidate guards with _rafId (no 60fps busy-loop on idle board)', html.includes('let needsRender=true,_rafId=0')&&html.includes('if(!_rafId)_rafId=requestAnimationFrame(frame)')&&html.includes('_rafId=0;')],
@@ -488,8 +488,8 @@ const checks = [
   ['context menu deduplicates consecutive separators', html.includes(".filter((it,i,a)=>!(it==='sep'&&(i===0||i===a.length-1||a[i-1]==='sep')))")],
   ['doDuplicate does not clobber clipboard (uses _placeCopies, not state.clipboard=)', html.includes("const added=_placeCopies(sel);   // independent of state.clipboard") && html.includes("function _placeCopies(srcShapes")],
   // v1.6.71: import sites clear stale selection + wclock (mirror replace op's _apply)
-  ['importBoard clears selection+wclock on whole-board swap', html.includes("state.shapes=shapes.map(clone);\n      // Match the replace op's _apply") && html.includes("state.selection.clear();state.wclock={};\n      if(typeof d.docName")],
-  ['importFromHash clears selection+wclock on whole-board swap', html.includes("state.shapes=valid.map(clone);state.docName=") && /state\.shapes=valid\.map\(clone\)[\s\S]{0,260}state\.selection\.clear\(\);state\.wclock=\{\};/.test(html)],
+  ['importBoard clears selection+wclock on whole-board swap', html.includes("state.shapes=shapes.map(clone);_invalidateGrid();   // ADR-0009\n      // Match the replace op's _apply") && html.includes("state.selection.clear();state.wclock={};\n      if(typeof d.docName")],
+  ['importFromHash clears selection+wclock on whole-board swap', html.includes("state.shapes=valid.map(clone);_invalidateGrid();state.docName=") && /state\.shapes=valid\.map\(clone\)[\s\S]{0,320}state\.selection\.clear\(\);state\.wclock=\{\};/.test(html)],
   // v1.6.71: presentation-mode guard precedes editing shortcuts (no undo mid-slideshow)
   ['presentation guard runs before undo/redo/select-all shortcuts', /if\(Presentation\.isActive\(\)\)\{[\s\S]{0,260}return;\n  \}[\s\S]{0,700}if\(meta&&k==='z'&&!e\.shiftKey\)/.test(html)],
   // v1.6.71: export canvas clamped to browser limits
@@ -785,6 +785,12 @@ const checks = [
   ['Share modal step labels are role-labeled (inviting side / joining side), not just numbered',
     html.includes('誘う側 手順1') && html.includes('招待された側 手順1') &&
     html.includes("Inviting side, step 1") && html.includes("Joining side, step 1")],
+  // v1.7.58 (ADR-0009): byId() O(1) id index
+  ['byId is a lazy Map index invalidated via the shared _invalidateGrid choke point',
+    html.includes("function _invalidateGrid(){_grid=null;_idIndex=null;}") &&
+    html.includes("if(!_idIndex||_idIndex.size!==state.shapes.length){_idIndex=new Map();for(const s of state.shapes)_idIndex.set(s.id,s);}")],
+  ['exportPDF convertToBlob rejection routes to the same exportFailed toast as the toBlob(null) path',
+    html.includes("off.convertToBlob({type:'image/png'}).then(fin,()=>fin(null));")],
 ];
 
 let pass = 0, fail = 0;
@@ -911,7 +917,7 @@ try {
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
-             exportPNG, exportSVG, exportPDF, exportBoard, importBoard,
+             exportPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
              _onBtnInstall, _getInstallPrompt: () => _installPrompt, _setInstallPrompt: (v) => { _installPrompt = v; },
              _onSwUpdate, _ctxMenuKeyNav,
              _getPasteCount: () => _pasteCount, _resetPasteClipboard: () => { _lastClipboard = null; },
@@ -932,7 +938,7 @@ try {
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
-          exportPNG, exportSVG, exportPDF, exportBoard, importBoard,
+          exportPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
           _onBtnInstall, _getInstallPrompt, _setInstallPrompt,
           _onSwUpdate, _ctxMenuKeyNav,
           _getPasteCount, _resetPasteClipboard,
@@ -946,7 +952,7 @@ try {
   console.log('  ✓ distToSeg correct for axis-aligned segments');
 
   // Store.add + undo + redo round trip
-  state.shapes.length = 0; state.history.length = 0; state.histIdx = -1;
+  state.shapes.length = 0;_invalidateGrid(); state.history.length = 0; state.histIdx = -1;
   const sh = Shape.make('rect', {x:10,y:10,w:100,h:50});
   Store.commit({op:'add', shape: sh});
   assert.strictEqual(state.shapes.length, 1);
@@ -980,7 +986,7 @@ try {
 
   // clear undo: all shapes restored with original properties (frac, stroke, etc.)
   {
-    state.shapes=[]; state.history=[]; state.histIdx=-1;
+    state.shapes=[];_invalidateGrid(); state.history=[]; state.histIdx=-1;
     const ca=Shape.make('rect',{x:1,y:1,w:10,h:10}); ca.stroke='#CA0000';
     const cb=Shape.make('ellipse',{x:20,y:1,w:10,h:10}); cb.stroke='#CB0000';
     Store.commit({op:'add',shape:ca}); Store.commit({op:'add',shape:cb});
@@ -998,7 +1004,7 @@ try {
 
   // style undo: single-shape stroke change round-trips cleanly
   {
-    state.shapes=[]; state.history=[]; state.histIdx=-1;
+    state.shapes=[];_invalidateGrid(); state.history=[]; state.histIdx=-1;
     const ss=Shape.make('rect',{x:0,y:0,w:10,h:10}); ss.stroke='#000000';
     Store.commit({op:'add',shape:ss});
     const live=state.shapes.find(s=>s.id===ss.id);
@@ -1014,7 +1020,7 @@ try {
 
   // group undo: groupId assigned then removed by undo; ungroup undo: groupId restored
   {
-    state.shapes=[]; state.history=[]; state.histIdx=-1;
+    state.shapes=[];_invalidateGrid(); state.history=[]; state.histIdx=-1;
     const ga=Shape.make('rect',{x:0,y:0,w:5,h:5});
     const gb=Shape.make('rect',{x:10,y:0,w:5,h:5});
     Store.commit({op:'add',shape:ga}); Store.commit({op:'add',shape:gb});
@@ -1078,7 +1084,7 @@ try {
   console.log('\n-- v1.1: CRDT / sync --');
 
   // CRDT clock: commit stamps ops
-  state.shapes.length = 0; state.history.length = 0; state.histIdx = -1;
+  state.shapes.length = 0;_invalidateGrid(); state.history.length = 0; state.histIdx = -1;
   state.seq = 0; state.seenOps = new Set();
   const sh2 = Shape.make('rect', {x:0,y:0,w:10,h:10});
   Store.commit({op:'add', shape: sh2});
@@ -1116,7 +1122,7 @@ try {
   console.log('  ✓ remote ops do NOT enter local undo history');
 
   // _recordCommitted stamps clock + appears in history
-  state.shapes.length = 0; state.history.length = 0; state.histIdx = -1;
+  state.shapes.length = 0;_invalidateGrid(); state.history.length = 0; state.histIdx = -1;
   state.seq = 0; state.seenOps = new Set();
   const sh3 = Shape.make('rect', {x:5,y:5,w:50,h:50});
   state.shapes.push(sh3);
@@ -1131,7 +1137,7 @@ try {
 
   // z-order
   console.log('\n-- z-order & alignment --');
-  state.shapes.length = 0; state.history.length = 0; state.histIdx = -1;
+  state.shapes.length = 0;_invalidateGrid(); state.history.length = 0; state.histIdx = -1;
   state.seq = 0; state.seenOps = new Set();
   const za = Shape.make('rect', {x:0, y:0, w:50, h:50});
   const zb = Shape.make('rect', {x:10, y:10, w:50, h:50});
@@ -1149,7 +1155,7 @@ try {
 
   // z-order undo must be a TRUE inverse (regression: dir-based zorder undo
   // used to send-to-back instead of restoring the original stacking order)
-  state.shapes.length = 0; state.history.length = 0; state.histIdx = -1;
+  state.shapes.length = 0;_invalidateGrid(); state.history.length = 0; state.histIdx = -1;
   state.seq = 0; state.seenOps = new Set();
   const o1 = Shape.make('rect', {x:0,y:0,w:10,h:10});
   const o2 = Shape.make('rect', {x:5,y:5,w:10,h:10});
@@ -1167,7 +1173,7 @@ try {
 
   // forward/backward step ops must be undoable (regression: they mutated
   // state directly with no Store entry, so Ctrl+Z did nothing)
-  state.shapes.length = 0; state.history.length = 0; state.histIdx = -1;
+  state.shapes.length = 0;_invalidateGrid(); state.history.length = 0; state.histIdx = -1;
   state.seq = 0; state.seenOps = new Set();
   const f1 = Shape.make('rect', {x:0,y:0,w:10,h:10}); f1.z = 1;
   const f2 = Shape.make('rect', {x:5,y:5,w:10,h:10}); f2.z = 2;
@@ -1187,7 +1193,7 @@ try {
   console.log('  ✓ doBringForward / doSendBackward are undoable');
 
   // remote ops: unknown op types and malformed `add` payloads are rejected
-  state.shapes.length = 0; state.history.length = 0; state.histIdx = -1;
+  state.shapes.length = 0;_invalidateGrid(); state.history.length = 0; state.histIdx = -1;
   state.seenOps = new Set();
   Store.applyRemote({op:'EVIL', payload:'x', clock:{peer:'attacker', seq:1, ts:1}});
   assert.strictEqual(state.shapes.length, 0, 'unknown remote op type is dropped');
@@ -1290,7 +1296,7 @@ try {
   console.log('  ✓ cycleSel cycles selection, describeShape labels for screen readers');
 
   // align
-  state.shapes.length = 0; state.history.length = 0; state.histIdx = -1;
+  state.shapes.length = 0;_invalidateGrid(); state.history.length = 0; state.histIdx = -1;
   const r1 = Shape.make('rect', {x:0, y:0, w:40, h:40});
   const r2 = Shape.make('rect', {x:100, y:100, w:60, h:60});
   const r3 = Shape.make('rect', {x:200, y:50, w:30, h:30});
@@ -1330,7 +1336,7 @@ try {
 
   // resize handles
   console.log('\n-- resize handles --');
-  state.shapes.length=0; state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
+  state.shapes.length=0;_invalidateGrid(); state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
   const rsz=Shape.make('rect',{x:100,y:100,w:200,h:150});
   state.shapes.push(rsz);
   const handles=getHandles(rsz);
@@ -1358,7 +1364,7 @@ try {
 
   // groups
   console.log('\n-- groups --');
-  state.shapes.length=0; state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
+  state.shapes.length=0;_invalidateGrid(); state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
   const g1=Shape.make('rect',{x:0,y:0,w:50,h:50});
   const g2=Shape.make('ellipse',{x:60,y:0,w:50,h:50});
   state.shapes.push(g1,g2);
@@ -1387,7 +1393,7 @@ try {
 
   // group undo/redo
   console.log('\n-- group undo/redo --');
-  state.shapes.length=0; state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
+  state.shapes.length=0;_invalidateGrid(); state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
   const u1=Shape.make('rect',{x:0,y:0,w:50,h:50});
   const u2=Shape.make('ellipse',{x:60,y:0,w:50,h:50});
   state.shapes.push(u1,u2);
@@ -1404,7 +1410,7 @@ try {
 
   // ungroup undo with multiple groups (the multi-group undo bug)
   {
-    state.shapes.length=0; state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
+    state.shapes.length=0;_invalidateGrid(); state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
     const mg1=Shape.make('rect',{x:0,y:0,w:10,h:10});
     const mg2=Shape.make('rect',{x:20,y:0,w:10,h:10});
     const mg3=Shape.make('rect',{x:40,y:0,w:10,h:10});
@@ -1428,7 +1434,7 @@ try {
   }
 
   // align undo
-  state.shapes.length=0; state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
+  state.shapes.length=0;_invalidateGrid(); state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
   const a1=Shape.make('rect',{x:0,y:10,w:40,h:40});
   const a2=Shape.make('rect',{x:100,y:80,w:40,h:40});
   state.shapes.push(a1,a2);
@@ -1442,7 +1448,7 @@ try {
 
   // frame contains shape detection
   console.log('\n-- frame containment --');
-  state.shapes.length=0; state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
+  state.shapes.length=0;_invalidateGrid(); state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
   const fr=Shape.make('frame',{x:0,y:0,w:300,h:200,label:'F1'});
   const inside=Shape.make('rect',{x:50,y:50,w:40,h:40,fill:'#000'});
   const outside=Shape.make('rect',{x:400,y:400,w:40,h:40});
@@ -1465,7 +1471,7 @@ try {
 
   // format painter: copyStyle → pasteStyle
   console.log('\n-- format painter --');
-  state.shapes.length=0; state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
+  state.shapes.length=0;_invalidateGrid(); state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
   state.styleClipboard=null;
   const srcStyle=Shape.make('rect',{x:0,y:0,w:50,h:50,stroke:'#ff0000',fill:'#00ff00',size:5,opacity:0.5});
   const dstStyle=Shape.make('rect',{x:100,y:0,w:50,h:50,stroke:'#000000',fill:null,size:2,opacity:1});
@@ -1501,7 +1507,7 @@ try {
   // v1.6.11: spatial index - _queryGrid must return all shapes that G.hit can match
   {
     const rnd11 = (() => { let a = 0x11c0de;return () => { a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296; }; })();
-    state.shapes.length = 0; state.history.length = 0; state.histIdx = -1; state.seq = 0; state.seenOps = new Set();
+    state.shapes.length = 0;_invalidateGrid(); state.history.length = 0; state.histIdx = -1; state.seq = 0; state.seenOps = new Set();
     // Add 60 rects spread across several grid cells
     for(let i=0;i<60;i++){
       const s=Shape.make('rect',{x:(rnd11()*2000-1000),y:(rnd11()*2000-1000),w:40+rnd11()*160,h:40+rnd11()*160});
@@ -1534,7 +1540,7 @@ try {
 
   // v1.6.12: keyboard shape creation - each creation tool yields a default shape
   {
-    state.shapes.length = 0; state.history.length = 0; state.histIdx = -1; state.seq = 0; state.seenOps = new Set(); state.selection = new Set();
+    state.shapes.length = 0;_invalidateGrid(); state.history.length = 0; state.histIdx = -1; state.seq = 0; state.seenOps = new Set(); state.selection = new Set();
     state.viewport = { x: 0, y: 0, zoom: 1 };
     for (const [tool, type, check] of [
       ['rect','rect', s => s.w===120 && s.h===80],
@@ -1677,7 +1683,7 @@ try {
     const solid = buildSVG([{id:'s1',type:'rect',z:0,x:0,y:0,w:40,h:30,stroke:'#111',size:2,dash:0}], '#FFF');
     assert.ok(!/stroke-dasharray/.test(solid), 'solid rect SVG has no stroke-dasharray');
     // dash applied through the generic style path is reversible (upd op)
-    state.shapes.length = 0; state.history.length = 0; state.histIdx = -1; state.seq = 0; state.seenOps = new Set();
+    state.shapes.length = 0;_invalidateGrid(); state.history.length = 0; state.histIdx = -1; state.seq = 0; state.seenOps = new Set();
     const rc = Shape.make('rect', {x:0,y:0,w:10,h:10}); rc.dash = 0; Store.commit({op:'add',shape:rc});
     state.selection = new Set([rc.id]);
     applyStyleToSelection({dash:1});
@@ -1739,7 +1745,7 @@ try {
 
   // v1.6.19: snapshot merge dedup - distinct clock seqs must all apply (the seq:0 bug)
   {
-    state.shapes.length = 0; state.history.length = 0; state.histIdx = -1; state.seenOps = new Set();
+    state.shapes.length = 0;_invalidateGrid(); state.history.length = 0; state.histIdx = -1; state.seenOps = new Set();
     const mk = (id, seq) => ({ op:'add', clock:{peer:'remote', seq},
       shape:{id, type:'rect', z:1, x:0, y:0, w:5, h:5, stroke:'#000', size:1, opacity:1} });
     // Fixed behaviour: each snapshot op has a distinct seq → all adopted.
@@ -1748,7 +1754,7 @@ try {
     Store.applyRemote(mk('c','snap2'));
     assert.strictEqual(state.shapes.length, 3, 'distinct-seq snapshot ops all apply on merge');
     // Regression guard: same seq collapses to one (this is exactly why the fix was needed).
-    state.shapes.length = 0; state.seenOps = new Set();
+    state.shapes.length = 0;_invalidateGrid(); state.seenOps = new Set();
     Store.applyRemote(mk('d', 0));
     Store.applyRemote(mk('e', 0));
     assert.strictEqual(state.shapes.length, 1, 'same-seq ops collide under peer:seq dedup');
@@ -1763,7 +1769,7 @@ try {
     let scenarios = 0;
     for (let seed = 1; seed <= 30; seed++) {
       const rnd = mulberry32((seed * 2654435761) >>> 0), ri = (n) => Math.floor(rnd() * n);
-      state.shapes.length = 0; state.history.length = 0; state.histIdx = -1;
+      state.shapes.length = 0;_invalidateGrid(); state.history.length = 0; state.histIdx = -1;
       state.seq = 0; state.seenOps = new Set(); state.selection = new Set();
       for (let i = 0; i < 4; i++) { const s = Shape.make('rect', {x:ri(120),y:ri(120),w:10+ri(40),h:10+ri(40)}); s.z = i+1; Store.commit({op:'add', shape:s}); }
       const baseIdx = state.histIdx, snap0 = ser();
@@ -1788,7 +1794,7 @@ try {
 
   // v1.6.21: G.hit single-point pen dot
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const dot={id:'d1',type:'pen',z:1,pts:[[50,50]],stroke:'#000',size:2,opacity:1};
     Store.commit({op:'add',shape:dot});
     assert.strictEqual(G.hit(dot,{x:50,y:50}),true,'single-point pen: hit at exact point');
@@ -1799,7 +1805,7 @@ try {
 
   // v1.6.21: doPaste remaps groupId (no cross-group contamination)
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const s1=Shape.make('rect',{x:0,y:0,w:40,h:40});
     const s2=Shape.make('rect',{x:50,y:0,w:40,h:40});
     Store.commit({op:'add',shape:s1});Store.commit({op:'add',shape:s2});
@@ -1823,7 +1829,7 @@ try {
   // A pasted shape clones frac from the original, landing it at the original's z-position
   // instead of on top. Fix: clear frac on paste/duplicate so sortZ assigns a fresh top key.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const pa=Shape.make('rect',{x:0,y:0,w:50,h:50});
     const pb=Shape.make('ellipse',{x:60,y:0,w:50,h:50});
     const pc=Shape.make('rect',{x:120,y:0,w:50,h:50});
@@ -1847,7 +1853,7 @@ try {
   // so duplicate routes around state.clipboard. Non-vacuity: assert clipboard identity
   // is preserved through a duplicate, AND that duplicate still actually adds a copy.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const ca=Shape.make('rect',{x:0,y:0,w:30,h:30,stroke:'#AAA'});
     const cb=Shape.make('ellipse',{x:100,y:0,w:30,h:30,stroke:'#BBB'});
     Store.commit({op:'add',shape:ca});Store.commit({op:'add',shape:cb});
@@ -1881,7 +1887,7 @@ try {
   // This matters most after the withFrameChildren duplicate fix (v1.6.75): duplicating
   // a frame+child silently needed 2 undos. A user gesture should map to one undo.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const a=Shape.make('rect',{x:0,y:0,w:30,h:30});
     const b=Shape.make('ellipse',{x:50,y:0,w:30,h:30});
     const c=Shape.make('rect',{x:100,y:0,w:30,h:30});
@@ -1952,7 +1958,7 @@ try {
 
   // v1.6.38: _sfbCapture/_sfbFlush slider undo coalescing
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const sh=Shape.make('rect',{x:0,y:0,w:40,h:40});sh.size=4;
     Store.commit({op:'add',shape:sh});
     const baseLen=state.history.length;
@@ -1973,7 +1979,7 @@ try {
   // Bug: _sfbFlush without a prior _sfbCapture (no pointerdown) skips creating history.
   // Fix: focus event calls _sfbCapture; change handler re-arms via _sfbCapture after flush.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const kbSh=Shape.make('rect',{x:0,y:0,w:40,h:40});
     Store.commit({op:'add',shape:kbSh});
     // Use live clone from state.shapes (Store.commit pushes a clone, not kbSh itself)
@@ -2004,7 +2010,7 @@ try {
 
   // v1.6.37: copyStyle / pasteStyle round-trip
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const src=Shape.make('rect',{x:0,y:0,w:40,h:40});src.stroke='#ff0000';src.fill='#00ff00';src.size=8;src.opacity=0.5;src.dash=2;
     const dst=Shape.make('rect',{x:100,y:0,w:40,h:40});
     Store.commit({op:'add',shape:src});Store.commit({op:'add',shape:dst});
@@ -2040,7 +2046,7 @@ try {
 
   // v1.6.39: Store undo/redo boundary - undo at bottom and redo at top are no-ops
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     assert.strictEqual(Store.undo(),false,'undo on empty history returns false');
     assert.strictEqual(Store.redo(),false,'redo on empty history returns false');
     const sh=Shape.make('rect',{x:0,y:0,w:10,h:10});
@@ -2248,7 +2254,7 @@ try {
 
   // doGroup / doUngroup - grouping ops and full undo/redo round-trip
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const s1=Shape.make('rect',{x:0,y:0,w:50,h:50});
     const s2=Shape.make('rect',{x:100,y:0,w:50,h:50});
     Store.commit({op:'add',shape:s1});Store.commit({op:'add',shape:s2});
@@ -2287,7 +2293,7 @@ try {
   // pickTop - returns topmost (highest-z) shape at a world point
   // Note: unfilled rects only hit on their border; use fill or edge points.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const s1=Shape.make('rect',{x:0,y:0,w:100,h:100});s1.fill='#000';
     const s2=Shape.make('rect',{x:0,y:0,w:100,h:100});s2.fill='#000';
     Store.commit({op:'add',shape:s1});Store.commit({op:'add',shape:s2});
@@ -2305,7 +2311,7 @@ try {
 
   // sortZ - sorts shapes array by ascending z value
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
     const a=Shape.make('rect',{x:0,y:0,w:10,h:10});a.z=3;
     const b=Shape.make('rect',{x:10,y:0,w:10,h:10});b.z=1;
     const c2=Shape.make('rect',{x:20,y:0,w:10,h:10});c2.z=2;
@@ -2351,7 +2357,7 @@ try {
   // frac is the canonical order; z-order ops move keys, and the zorder snapshot
   // carries frac so undo restores keys exactly (ADR-0001 Step 1)
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();
     const r1=Shape.make('rect',{x:0,y:0,w:10,h:10});
     const r2=Shape.make('rect',{x:5,y:5,w:10,h:10});
     const r3=Shape.make('rect',{x:9,y:9,w:10,h:10});
@@ -2372,7 +2378,7 @@ try {
 
   // Step 2: zorder ops are minimal-delta - only moved shapes appear in `changes`
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();
     const mk=()=>{const s=Shape.make('rect',{x:0,y:0,w:10,h:10});Store.commit({op:'add',shape:s});return s;};
     const a=mk(),b=mk(),c=mk(),d=mk();          // bottom→top: a,b,c,d
     // single bring-forward touches exactly one shape's key
@@ -2406,7 +2412,7 @@ try {
   // Step 3: concurrent-reorder convergence - equal frac keys (two peers inserting
   // into the same gap) must resolve to ONE order on every peer, via shape id.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
     const mkr=id=>({id,type:'rect',x:0,y:0,w:10,h:10,frac:'V',stroke:'#000',size:2,opacity:1});
     const x=mkr('aaa'),y=mkr('bbb');
     state.shapes=[y,x];sortZ();const o1=state.shapes.map(s=>s.id).join(',');
@@ -2441,7 +2447,7 @@ try {
 
   // Net._snapshotMsg carries `ops` so a non-empty peer can merge (WebRTC + BC both)
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();
     const sa=Shape.make('rect',{x:0,y:0,w:10,h:10});
     const sb=Shape.make('ellipse',{x:20,y:0,w:10,h:10});
     state.shapes.push(sa,sb);
@@ -2485,7 +2491,7 @@ try {
   // clear/delete/update via the snapshot code path, bypassing any op-level suspicion.
   {
     const mkShape=(id)=>Shape.make('rect',{x:0,y:0,w:5,h:5});
-    state.shapes=[]; state.history=[]; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
+    state.shapes=[];_invalidateGrid(); state.history=[]; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
     const legit=mkShape('L1'); legit.id='L1';
     Store.commit({op:'add',shape:legit});
     assert.strictEqual(state.shapes.length,1,'baseline: one shape present');
@@ -2520,7 +2526,7 @@ try {
 
   // legacy boards (integer z, no frac) migrate to keys on first sortZ, order intact
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
     const L=['c','a','b'].map((id,i)=>({id,type:'rect',x:i*10,y:0,w:10,h:10,z:[3,1,2][i],stroke:'#000',size:2,opacity:1}));
     state.shapes.push(...L);                      // pushed out of z order, no frac
     sortZ();
@@ -2561,7 +2567,7 @@ try {
 
   // Store move op - translates shapes, fully reversible
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const smv=Shape.make('rect',{x:0,y:0,w:50,h:50});
     Store.commit({op:'add',shape:smv});
     Store.commit({op:'move',ids:[smv.id],dx:30,dy:20});
@@ -2577,7 +2583,7 @@ try {
 
   // Store upd op - updates arbitrary fields, reversible
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const sup=Shape.make('rect',{x:0,y:0,w:50,h:50});sup.stroke='#000000';
     Store.commit({op:'add',shape:sup});
     Store.commit({op:'upd',id:sup.id,before:{stroke:'#000000'},after:{stroke:'#FF0000'}});
@@ -2589,7 +2595,7 @@ try {
 
   // Store del op - removes shapes, fully reversible
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const sd=Shape.make('rect',{x:0,y:0,w:50,h:50});
     Store.commit({op:'add',shape:sd});
     Store.commit({op:'del',shapes:[sd]});
@@ -2602,7 +2608,7 @@ try {
 
   // Store clear op - removes all shapes, reversible
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const sc1=Shape.make('rect',{x:0,y:0,w:50,h:50});
     const sc2=Shape.make('ellipse',{x:100,y:0,w:50,h:50});
     Store.commit({op:'add',shape:sc1});Store.commit({op:'add',shape:sc2});
@@ -2615,7 +2621,7 @@ try {
 
   // Store replace op - shared-link import is reversible (§3.9 self-overwrite guard)
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();state.seq=0;state.seenOps=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();state.seq=0;state.seenOps=new Set();
     const own1=Shape.make('rect',{x:0,y:0,w:50,h:50});
     const own2=Shape.make('ellipse',{x:60,y:0,w:50,h:50});
     Store.commit({op:'add',shape:own1});Store.commit({op:'add',shape:own2});
@@ -2638,7 +2644,7 @@ try {
 
   // replace op is local-only - a remote peer must NOT be able to wipe your board
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();
     const keep=Shape.make('rect',{x:0,y:0,w:50,h:50});
     state.shapes.push(keep);
     Store.applyRemote({op:'replace',before:[],after:[],clock:{peer:'evil',seq:1,ts:0}});
@@ -2650,7 +2656,7 @@ try {
   // importBoard uses atomic replace op (1 undo restores full board, not N+1 undos)
   // Bug: old code did clear+N-adds → overflow MAX_HISTORY for large boards.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();
     const ib1=Shape.make('rect',{x:0,y:0,w:50,h:50});
     const ib2=Shape.make('ellipse',{x:60,y:0,w:50,h:50});
     Store.commit({op:'add',shape:ib1});Store.commit({op:'add',shape:ib2});
@@ -2674,7 +2680,7 @@ try {
   // live add for an already-held shape arrives after the snapshot, the un-deduped add
   // must not push a second copy.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const X=Shape.make('rect',{x:0,y:0,w:50,h:50});
     // Snapshot already adopted X (like _applySnapshot: shapes set, seenOps untouched).
     state.shapes=[JSON.parse(JSON.stringify(X))];
@@ -2690,7 +2696,7 @@ try {
   // bad-ts write freezes the property forever (no later legit write can win). The gate
   // must reject the bad op so a subsequent legitimate write still lands.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const cx=Shape.make('rect',{x:0,y:0,w:50,h:50,stroke:'#000'});
     Store.commit({op:'add',shape:cx});
     // Malformed clock: ts is an object. Must be REJECTED (no wclock poisoning).
@@ -2711,7 +2717,7 @@ try {
   // (higher seq) lose to its older edit on remotes. nowTs clamps ts to never regress, so
   // the (peer,seq) tiebreak orders same-peer writes correctly.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const realNow=Date.now;
     try{
       // Pin wall time to 1000 BEFORE any commit so the floor starts there (the add op
@@ -2749,14 +2755,14 @@ try {
     assert.ok(/^[0-9a-f]{32}$/.test(sample)||sample.length>=12,
       'uid: id matches crypto.randomUUID (32 hex) or fallback (>=12 chars)');
     // Clean up; don't leave 5000 shapes in state
-    state.shapes=[];
+    state.shapes=[];_invalidateGrid();
     console.log('  ✓ uid(): crypto.randomUUID gives 122-bit ids - 5000 uids all unique');
   }
 
   // v1.6.55: doAlign remaining variants - right, bottom, cx, cy
   {
     // right: all right edges align to rightmost
-    state.shapes.length=0; state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
+    state.shapes.length=0;_invalidateGrid(); state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
     const ar1=Shape.make('rect',{x:0,y:0,w:40,h:40});     // right edge = 40
     const ar2=Shape.make('rect',{x:100,y:0,w:60,h:60});   // right edge = 160 (max)
     state.shapes.push(ar1,ar2); state.selection=new Set([ar1.id,ar2.id]);
@@ -2765,7 +2771,7 @@ try {
     console.log('  ✓ doAlign("right") aligns all shapes to rightmost right edge');
 
     // bottom: all bottom edges align to bottommost
-    state.shapes.length=0; state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
+    state.shapes.length=0;_invalidateGrid(); state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
     const ab1=Shape.make('rect',{x:0,y:0,w:40,h:40});     // bottom = 40
     const ab2=Shape.make('rect',{x:0,y:100,w:40,h:60});   // bottom = 160 (max)
     state.shapes.push(ab1,ab2); state.selection=new Set([ab1.id,ab2.id]);
@@ -2774,7 +2780,7 @@ try {
     console.log('  ✓ doAlign("bottom") aligns all shapes to bottommost bottom edge');
 
     // cx: all shapes center-x aligns to midpoint of bounding union
-    state.shapes.length=0; state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
+    state.shapes.length=0;_invalidateGrid(); state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
     const ac1=Shape.make('rect',{x:0,y:0,w:40,h:40});     // cx = 20
     const ac2=Shape.make('rect',{x:100,y:0,w:60,h:40});   // cx = 130
     state.shapes.push(ac1,ac2); state.selection=new Set([ac1.id,ac2.id]);
@@ -2784,7 +2790,7 @@ try {
     console.log('  ✓ doAlign("cx") aligns all shapes to horizontal center of union');
 
     // cy: all shapes center-y aligns to midpoint of bounding union
-    state.shapes.length=0; state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
+    state.shapes.length=0;_invalidateGrid(); state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
     const ay1=Shape.make('rect',{x:0,y:0,w:40,h:40});     // cy = 20
     const ay2=Shape.make('rect',{x:0,y:100,w:40,h:60});   // cy = 130
     state.shapes.push(ay1,ay2); state.selection=new Set([ay1.id,ay2.id]);
@@ -2811,7 +2817,7 @@ try {
 
   // v1.6.55: Store.applyRemote del op - remote peer can delete a local shape
   {
-    state.shapes.length=0; state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
+    state.shapes.length=0;_invalidateGrid(); state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
     const rd=Shape.make('rect',{x:0,y:0,w:10,h:10});
     Store.commit({op:'add',shape:rd});
     assert.strictEqual(state.shapes.length,1,'remote del setup: shape present');
@@ -2822,7 +2828,7 @@ try {
 
   // v1.6.57: doFlip - mirror selection across its bbox centre, reversible via align op
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     // two boxes: left [0,40], right [120,160] → bbox x 0..160, centre cx=80
     const fl=Shape.make('rect',{x:0,y:0,w:40,h:40});
     const fr=Shape.make('rect',{x:120,y:0,w:40,h:40});
@@ -2838,7 +2844,7 @@ try {
   }
   {
     // pen: vertical flip inverts y order of points
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const pn={id:'fp',type:'pen',z:1,pts:[[0,0],[10,20]],stroke:'#000',size:2,opacity:1};
     Store.commit({op:'add',shape:pn});
     state.selection=new Set([pn.id]);
@@ -2852,7 +2858,7 @@ try {
   }
   {
     // line: horizontal flip mirrors endpoints (reverses arrow direction)
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const ln={id:'fln',type:'line',z:1,x1:0,y1:0,x2:100,y2:0,stroke:'#000',size:2,opacity:1};
     Store.commit({op:'add',shape:ln});
     state.selection=new Set([ln.id]);
@@ -2864,7 +2870,7 @@ try {
   }
   {
     // empty selection is a safe no-op (no history entry, no throw)
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const baseLen=state.history.length;
     doFlip('h');
     assert.strictEqual(state.history.length,baseLen,'doFlip no-op on empty selection');
@@ -2872,7 +2878,7 @@ try {
   }
   {
     // v1.6.62: flipping a rotated shape negates the rotation angle (reflection reverses sense)
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const r={id:'frr',type:'rect',z:1,x:0,y:0,w:100,h:60,rotate:30,stroke:'#000',size:2,opacity:1};
     Store.commit({op:'add',shape:r});
     state.selection=new Set([r.id]);
@@ -2884,7 +2890,7 @@ try {
   }
   {
     // v1.6.63: doFlip skips locked shapes (was: only doRotate did)
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const lk={id:'flk',type:'rect',z:1,x:0,y:0,w:50,h:50,locked:true,stroke:'#000',size:2,opacity:1};
     Store.commit({op:'add',shape:lk});
     state.selection=new Set([lk.id]);
@@ -2896,7 +2902,7 @@ try {
   {
     // v1.6.63: multi-selection rotation orbits about the group centre (like doFlip),
     // while a single shape spins in place. Verify both.
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const a={id:'ra',type:'rect',z:1,x:0,y:0,w:20,h:20,stroke:'#000',size:2,opacity:1};
     const b={id:'rb',type:'rect',z:2,x:100,y:0,w:20,h:20,stroke:'#000',size:2,opacity:1};
     Store.commit({op:'add',shape:a});Store.commit({op:'add',shape:b});
@@ -2919,7 +2925,7 @@ try {
   }
   {
     // v1.6.64: rotation only applies to rect/ellipse; pen/line/arrow are skipped (NaN-safe)
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const ln={id:'rln',type:'line',z:1,x1:0,y1:0,x2:100,y2:0,stroke:'#000',size:2,opacity:1};
     Store.commit({op:'add',shape:ln});
     state.selection=new Set([ln.id]);
@@ -2931,7 +2937,7 @@ try {
   }
   {
     // v1.6.64: lock protects against deletion, not just movement
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const lk={id:'dlk',type:'rect',z:1,x:0,y:0,w:50,h:50,locked:true,stroke:'#000',size:2,opacity:1};
     const fr={id:'dfr',type:'rect',z:2,x:60,y:0,w:50,h:50,stroke:'#000',size:2,opacity:1};
     Store.commit({op:'add',shape:lk});Store.commit({op:'add',shape:fr});
@@ -2943,7 +2949,7 @@ try {
   }
   {
     // v1.6.65: rotation now covers all box types (sticky/text/image/frame), not just rect/ellipse
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const st={id:'rst',type:'sticky',z:1,x:0,y:0,w:100,h:60,color:'#FEF08A',size:1,opacity:1};
     Store.commit({op:'add',shape:st});
     state.selection=new Set([st.id]);
@@ -2957,7 +2963,7 @@ try {
   {
     // v1.6.65: connector bound to a rotated shape projects to the TRUE rotated edge,
     // not the axis-aligned envelope. A 45°-rotated square's corner pokes past x=100.
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const sq={id:'csq',type:'rect',z:1,x:0,y:0,w:100,h:100,fill:'#eee',stroke:'#000',size:2,opacity:1};
     const ar={id:'car',type:'arrow',z:2,a:sq.id,x1:50,y1:50,x2:200,y2:50,stroke:'#000',size:2,opacity:1};
     Store.commit({op:'add',shape:sq});Store.commit({op:'add',shape:ar});
@@ -2971,7 +2977,7 @@ try {
   }
   {
     // v1.6.65: describeShape announces locked + rotated state for screen readers
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const plain={id:'dp',type:'rect',z:1,x:10,y:20,w:30,h:30,stroke:'#000',size:2,opacity:1};
     const lr={id:'dlr',type:'rect',z:2,x:10,y:20,w:30,h:30,locked:true,rotate:45,stroke:'#000',size:2,opacity:1};
     const d0=describeShape(plain),d1=describeShape(lr);
@@ -2982,7 +2988,7 @@ try {
   }
   {
     // v1.6.66: resize handles object-snap to nearby shape edges (parity with move-snap)
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     state.snap=false;state.viewport={x:0,y:0,zoom:1};
     const tgt={id:'rt',type:'rect',z:1,x:200,y:0,w:80,h:80,stroke:'#000',size:1,opacity:1};
     const me={id:'rm',type:'rect',z:2,x:0,y:0,w:100,h:100,stroke:'#000',size:1,opacity:1};
@@ -3019,7 +3025,7 @@ try {
   }
   {
     // v1.6.66: Shift on a corner handle locks the original aspect ratio
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     state.snap=false;state.viewport={x:0,y:0,zoom:1};
     const orig={id:'ar',type:'rect',x:0,y:0,w:100,h:50,stroke:'#000',size:1,opacity:1}; // 2:1
     // se handle dragged to (300,300); without lock that's 300x300, with lock aspect stays 2:1
@@ -3046,7 +3052,7 @@ try {
   }
   {
     // v1.6.67: drag-to-rotate handle geometry
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     state.viewport={x:0,y:0,zoom:1};
     const box={id:'rh',type:'rect',x:0,y:0,w:100,h:100,stroke:'#000',size:1,opacity:1};
     state.shapes=[box];
@@ -3071,7 +3077,7 @@ try {
   }
   {
     // v1.6.68: Alt = resize about the original centre (opposite edge mirrors)
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     state.snap=false;state.viewport={x:0,y:0,zoom:1};
     const orig={id:'cz',type:'rect',x:100,y:100,w:100,h:100,stroke:'#000',size:1,opacity:1}; // centre (150,150)
     // east handle + Alt: drag right edge to x=200 → half=50 → w=100... extend to x=250 → half=100
@@ -3096,7 +3102,7 @@ try {
   }
   {
     // v1.6.69: rotated-box resize keeps the opposite anchor fixed in WORLD space
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     state.snap=false;state.viewport={x:0,y:0,zoom:1};
     const rot=30,toR=d=>d*Math.PI/180;
     const rotPt=(px,py,cx,cy,d)=>{const a=toR(d),c=Math.cos(a),s=Math.sin(a),dx=px-cx,dy=py-cy;return{x:cx+dx*c-dy*s,y:cy+dx*s+dy*c};};
@@ -3125,7 +3131,7 @@ try {
   }
   {
     // v1.6.70: keyboard resize op (Alt+arrow) is a single reversible batch
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const a={id:'ka',type:'rect',z:1,x:0,y:0,w:100,h:50,stroke:'#000',size:1,opacity:1};
     const b={id:'kb',type:'sticky',z:2,x:200,y:0,w:80,h:80,color:'#FEF08A',size:1,opacity:1};
     Store.commit({op:'add',shape:a});Store.commit({op:'add',shape:b});
@@ -3149,7 +3155,7 @@ try {
   // v1.6.58: rect/ellipse centre labels via upd op
   {
     // Setting a label on a rect via upd op and undoing restores it
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const lb=Shape.make('rect',{x:0,y:0,w:100,h:60});
     Store.commit({op:'add',shape:lb});
     Store.commit({op:'upd',id:lb.id,before:{label:null},after:{label:'Hello'}});
@@ -3160,7 +3166,7 @@ try {
   }
   {
     // Ellipse label round-trip: set → undo → redo
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const le=Shape.make('ellipse',{x:0,y:0,w:80,h:60});
     Store.commit({op:'add',shape:le});
     Store.commit({op:'upd',id:le.id,before:{label:null},after:{label:'OK'}});
@@ -3186,7 +3192,7 @@ try {
 
   // v1.6.59: shape lock - locked shapes resist move/resize, toggle is reversible
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const lk=Shape.make('rect',{x:10,y:10,w:50,h:50});
     Store.commit({op:'add',shape:lk});
     state.selection=new Set([lk.id]);
@@ -3214,7 +3220,7 @@ try {
 
   // v1.6.60: bound connectors - arrow endpoints derive from bound shapes and follow them
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const box=Shape.make('rect',{x:100,y:100,w:80,h:60});   // centre (140,130), edges x∈[100,180]
     const arr=Shape.make('arrow',{x1:0,y1:130,x2:90,y2:130});
     arr.a=box.id;  // bind start to the box
@@ -3243,7 +3249,7 @@ try {
 
   // v1.6.61: rotation
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const r=Shape.make('rect',{x:0,y:0,w:100,h:60,fill:'#eee'});
     Store.commit({op:'add',shape:r});
     state.selection=new Set([r.id]);
@@ -3293,7 +3299,7 @@ try {
     );
     const cp = o => JSON.parse(JSON.stringify(o));
     A.state.peerId='peerA'; B.state.peerId='peerB';
-    const reset = W => { W.state.shapes.length=0; W.state.history.length=0; W.state.histIdx=-1; W.state.seq=0; W.state.seenOps=new Set(); W.state.wclock={}; };
+    const reset = W => { W.state.shapes.length=0;_invalidateGrid(); W.state.history.length=0; W.state.histIdx=-1; W.state.seq=0; W.state.seenOps=new Set(); W.state.wclock={}; };
     reset(A); reset(B);
     // wire each peer's outbound to the other's _onRecv (deep-copied, like a real wire)
     A.Net.broadcast = op => B.Net._onRecv({k:'op',op:cp(op)});
@@ -3521,7 +3527,7 @@ try {
   // v1.6.73: doAlign skips locked shapes (parity with doDelete/doRotate/doFlip)
   // Non-vacuity: without the locked filter, the locked shape would be translated by doAlign.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const lk=Shape.make('rect',{x:0,y:0,w:50,h:50});lk.locked=true;
     const u1=Shape.make('rect',{x:200,y:10,w:50,h:50});
     const u2=Shape.make('rect',{x:300,y:20,w:50,h:50});
@@ -3575,7 +3581,7 @@ try {
   {
     // Reset seq+seenOps to avoid collision with hardcoded seq:10 in two-peer tests
     // (which leave 'peerA:10' in seenOps; without reset the 10th commit is silently dropped).
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     state.seq=0;state.seenOps=new Set();
     const A=Shape.make('rect',{x:0,y:0,w:50,h:50});
     const B=Shape.make('rect',{x:200,y:0,w:50,h:50});
@@ -3605,7 +3611,7 @@ try {
   // Mirrors pointer-drag move. Before fix: nudge moved only the frame (children left behind)
   // and moved locked shapes too (no !locked filter). After: full parity with drag.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     state.seq=0;state.seenOps=new Set();
     // frame at (0,0,300,300); child inside; locked child inside; outsider outside the frame
     const fr=Shape.make('frame',{x:0,y:0,w:300,h:300});
@@ -3718,7 +3724,7 @@ try {
     // Integration: simulate ONE pointermove carrying 4 coalesced samples vs the old
     // single-sample behaviour, and confirm the multi-sample path records finer detail.
     state.viewport={x:0,y:0,zoom:1};               // decimation threshold = 1 world unit
-    state.shapes=[];state.history=[];state.histIdx=-1;state.draft=null;
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.draft=null;
     beginPen({x:0,y:0},{pressure:0.5});
     // OLD code: one contPen for the bare event's final position (x=10)
     const baselineDraft=state.draft;
@@ -3782,7 +3788,7 @@ try {
   // the in-progress mutation (no stray stroke / half-move / non-undoable change) and
   // disarm pointerup (ptr.down=false) so the lingering finger-up commits nothing.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     state.seq=0;state.seenOps=new Set();state.draft=null;state.marquee=null;
 
     // (a) in-progress draft (pen/rect/etc) is dropped — it never reached state.shapes
@@ -4010,7 +4016,7 @@ try {
   // continuously, so the pick must collapse to ONE undo/sync op (capture → live →
   // flush), exactly like the size/opacity sliders.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     state.seq=0;state.seenOps=new Set();
     const r=Shape.make('rect',{x:0,y:0,w:50,h:50,stroke:'#000000'});
     Store.commit({op:'add',shape:r});
@@ -4039,7 +4045,7 @@ try {
 
   // search navigation: _sqAdvance steps through matches, wraps, reverses, resets on new query
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     state.seq=0;state.seenOps=new Set();
     const a=Shape.make('rect',{x:0,y:0,w:10,h:10,label:'needle A'});
     const b=Shape.make('rect',{x:50,y:0,w:10,h:10,label:'needle B'});
@@ -4086,7 +4092,7 @@ try {
   // search navigation a11y: SR users search BY content, so the announcement must name
   // WHICH shape was found (describeShape), not a bare "2/7" count — parity with Tab cycle.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     state.seq=0;state.seenOps=new Set();state.viewport={x:0,y:0,zoom:1};
     const a=Shape.make('rect',{x:0,y:0,w:10,h:10,label:'alpha'});
     const b=Shape.make('arrow',{x1:50,y1:0,x2:90,y2:0,label:'alphabet'});
@@ -4118,7 +4124,7 @@ try {
   // Behavioral non-vacuity: tests the lock/unlock toggle and undo/redo symmetry.
   // (Presence checks above — 3 new — fail before the fix and pass after.)
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     state.seq=0;state.seenOps=new Set();
     const sh=Shape.make('rect',{x:0,y:0,w:100,h:100});
     Store.commit({op:'add',shape:sh});
@@ -4151,7 +4157,7 @@ try {
   // Before fix: only the frame shell duplicated (1 new shape, children left behind).
   // After fix: frame + all spatially-contained children duplicated (2+ new shapes).
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     state.seq=0;state.seenOps=new Set();
     const fr=Shape.make('frame',{x:0,y:0,w:300,h:300});
     const child=Shape.make('rect',{x:50,y:50,w:40,h:40});
@@ -4191,7 +4197,7 @@ try {
   // After fix: a=null and x1,y1 = the resolved endpoint (edge of rA at delete time).
   // Undo must restore both: rA back in state.shapes AND arrow.a = rA.id.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const rA=Shape.make('rect',{x:200,y:200,w:80,h:60});
     Store.commit({op:'add',shape:rA});
     // Arrow with stale stored x1=140 (draw-time position, before rA moved)
@@ -4219,7 +4225,7 @@ try {
   // canonical splice. At that push-back point, connEnds can still resolve live positions.
   // Before fix: flushErase committed a bare del op (no connClears) → dangling a/b bindings.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const rB=Shape.make('rect',{x:100,y:100,w:60,h:50});
     Store.commit({op:'add',shape:rB});
     const arr2=Shape.make('arrow',{x1:50,y1:50,x2:300,y2:300});
@@ -4269,7 +4275,7 @@ try {
     assert.ok(!validRemotePayload({op:'del',shapes:[],connClears:'evil'}),
       'del: non-array connClears rejected');
     // End-to-end: a hostile remote del with NaN connClears must NOT corrupt the live connector.
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};
     const victim=Shape.make('rect',{x:0,y:0,w:40,h:40});
     const conn=Shape.make('arrow',{x1:10,y1:10,x2:200,y2:200});
     conn.a=victim.id;
@@ -4290,7 +4296,7 @@ try {
   // shape is spliced from state.shapes, else the connector snaps to its stale draw-time
   // coords instead of where the bound shape actually was.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};
     const A=Shape.make('rect',{x:200,y:200,w:80,h:60});
     const C=Shape.make('arrow',{x1:140,y1:130,x2:400,y2:400});
     C.a=A.id;
@@ -4305,7 +4311,7 @@ try {
     assert.ok(!state.shapes.find(s=>s.id===A.id),'remote del: bound shape removed');
     // A connector already covered by the sender's connClears is NOT double-processed:
     // the sender-provided after wins (idempotent — both resolve to the same severed state).
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};
     const A2=Shape.make('rect',{x:0,y:0,w:40,h:40});
     const C2=Shape.make('arrow',{x1:5,y1:5,x2:100,y2:100});
     C2.a=A2.id;
@@ -4680,7 +4686,7 @@ try {
   // Before fix: each shape snapped individually to the leftmost edge → internal spacing collapsed to 0.
   // After fix: the group's combined bbox is the unit → spacing within the group is preserved.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     // Group 1: A (x=0,w=20) and B (x=50,w=20) — internal gap of 30px
     const ga1=Shape.make('rect',{x:0,y:0,w:20,h:20});
     const ga2=Shape.make('rect',{x:50,y:0,w:20,h:20});
@@ -4719,7 +4725,7 @@ try {
   // frame children behind (same gap as nudge had before v1.6.75). After fix: children
   // inside a selected frame are silently added to its alignment unit.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     // Frame at x=100; child inside at x=120; reference at x=0 (leftmost)
     const frm=Shape.make('frame',{x:100,y:0,w:100,h:100});
     const child=Shape.make('rect',{x:120,y:10,w:20,h:20});
@@ -4744,7 +4750,7 @@ try {
   // Before fix: selecting a frame + ref and flipping mirrors the frame but leaves its
   // contained children at original positions. After fix: children mirror with the frame.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     // Frame at (0,0,200,200); child inside at (50,50,40,40); ref at (300,0,40,40)
     const frm=Shape.make('frame',{x:0,y:0,w:200,h:200});
     const child=Shape.make('rect',{x:50,y:50,w:40,h:40});
@@ -4768,7 +4774,7 @@ try {
   // Before fix: selecting a frame + ref and rotating spins the frame but leaves box-shape
   // children with original rotate/position. After fix: children orbit + rotate with the frame.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     // Frame at (0,0,100,100); child inside at (20,20,20,20); ref at (200,0,100,100)
     const frm=Shape.make('frame',{x:0,y:0,w:100,h:100});
     const child=Shape.make('rect',{x:20,y:20,w:20,h:20});
@@ -4790,7 +4796,7 @@ try {
   // Before fix: deleting a selected frame leaves its contained shapes orphaned on the canvas.
   // After fix: shapes fully inside a deleted frame are also deleted (Excalidraw/Figma behavior).
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const frm=Shape.make('frame',{x:0,y:0,w:200,h:200});
     const child=Shape.make('rect',{x:50,y:50,w:40,h:40}); // inside frame
     const outsider=Shape.make('rect',{x:300,y:300,w:40,h:40}); // outside frame
@@ -4812,7 +4818,7 @@ try {
   // Before fix: _apply(del, false) restores shapes but leaves selection empty.
   // After fix: doDelete stores origSel on the del op; _apply del reverse restores it.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const A=Shape.make('rect',{x:0,y:0,w:100,h:100});
     const B=Shape.make('rect',{x:200,y:0,w:100,h:100});
     Store.commit({op:'add',shape:A});Store.commit({op:'add',shape:B});
@@ -4835,7 +4841,7 @@ try {
   // kept locked shapes on board AND in clipboard, causing duplicate on paste.
   // After fix: .filter(s=>s&&!s.locked) — locked shapes excluded from clipboard.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const A=Shape.make('rect',{x:0,y:0,w:100,h:100});   // unlocked
     const B=Shape.make('rect',{x:200,y:0,w:100,h:100}); // will be locked
     Store.commit({op:'add',shape:A});Store.commit({op:'add',shape:B});
@@ -4855,7 +4861,7 @@ try {
   // Non-vacuous: assert unfiltered ids include locked B AND cycleSel lands on B (bug reproduced);
   // assert filtered ids exclude B AND cycleSel skips from A straight to C (fix verified).
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const A=Shape.make('rect',{x:0,y:0,w:50,h:50});
     const B=Shape.make('rect',{x:100,y:0,w:50,h:50});
     const C=Shape.make('rect',{x:200,y:0,w:50,h:50});
@@ -4876,7 +4882,7 @@ try {
   // Before fix: _apply(addMany, false) only deletes copies from selection, leaving selection empty.
   // After fix: doDuplicate stores origSel on the addMany op; _apply reverse restores it.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const A=Shape.make('rect',{x:0,y:0,w:100,h:100});
     const B=Shape.make('rect',{x:200,y:0,w:100,h:100});
     Store.commit({op:'add',shape:A});
@@ -4899,7 +4905,7 @@ try {
   // Before fix: second _sfbCapture overwrites _sbf with current (mutated) value, so _sfbFlush sees before===after and records nothing.
   // After fix: second _sfbCapture is a no-op when the key is already captured, so _sfbFlush correctly records the style change.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const A=Shape.make('rect',{x:0,y:0,w:100,h:100,opacity:0.5});
     Store.commit({op:'add',shape:A});
     state.selection=new Set([A.id]);
@@ -4923,7 +4929,7 @@ try {
   // locally-locked shape, bypassing lock protection.
   // Fix: `if(!sh||sh.locked)continue` in _apply case 'move'.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const ML=Shape.make('rect',{x:0,y:0,w:50,h:50});ML.locked=true;
     const MU=Shape.make('rect',{x:100,y:0,w:50,h:50});
     Store.commit({op:'add',shape:ML});Store.commit({op:'add',shape:MU});
@@ -4943,7 +4949,7 @@ try {
   // — changing locked shape state contrary to the lock's intent.
   // Fix: filter with `!s.locked` in doGroup's ids computation.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const GA=Shape.make('rect',{x:0,y:0,w:50,h:50});
     const GB=Shape.make('rect',{x:60,y:0,w:50,h:50});GB.locked=true;
     const GC=Shape.make('rect',{x:120,y:0,w:50,h:50});
@@ -4965,7 +4971,7 @@ try {
   // correctly calls `delete state.wclock[sh.id]`, but the reverse path never restores them.
   // Fix: _apply del forward snapshots op.wc before deletion; reverse restores from op.wc.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const DA=Shape.make('rect',{x:0,y:0,w:50,h:50});
     Store.commit({op:'add',shape:DA});
     // Seed wclock as applyRemote would after peer edits DA
@@ -4986,7 +4992,7 @@ try {
   // _sfbCapture also lacked a locked filter, so _sfbFlush would commit a style op for it.
   // Fix: add `&&!s.locked` to all three direct-mutation loops; add `&&!s.locked` to _sfbCapture.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const SLA=Shape.make('rect',{x:0,y:0,w:50,h:50});SLA.size=4;SLA.locked=true;
     const SLB=Shape.make('rect',{x:100,y:0,w:50,h:50});SLB.size=4;
     Store.commit({op:'add',shape:SLA});Store.commit({op:'add',shape:SLB});
@@ -5014,7 +5020,7 @@ try {
   // the shape lock and permanently modify the locked shape's style properties.
   // Fix: add `if(!sh||sh.locked)continue;` in the for-loop of applyStyleToSelection.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const LA=Shape.make('rect',{x:0,y:0,w:50,h:50});LA.stroke='#000000';LA.locked=true;
     const LB=Shape.make('rect',{x:100,y:0,w:50,h:50});LB.stroke='#000000';
     Store.commit({op:'add',shape:LA});Store.commit({op:'add',shape:LB});
@@ -5034,7 +5040,7 @@ try {
   // but add reverse does not).
   // Fix: add `delete state.wclock[op.shape.id]` in the add else branch.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const X=Shape.make('rect',{x:0,y:0,w:50,h:50});
     Store.commit({op:'add',shape:X});
     // Seed wclock as applyRemote would after a peer edits X
@@ -5053,7 +5059,7 @@ try {
   // state even though P is gone, creating a ghost clock that could corrupt future LWW.
   // Fix: add `delete state.wclock[sh.id]` in the addMany else branch (mirrors del forward).
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const P=Shape.make('rect',{x:0,y:0,w:50,h:50});
     const Q=Shape.make('rect',{x:100,y:0,w:50,h:50});
     Store.commit({op:'addMany',shapes:[P,Q]});
@@ -5076,7 +5082,7 @@ try {
   // Fix: importBoard/importFromHash snapshot wc:clone(state.wclock) into the op;
   // _apply replace reverse restores if(!forward && op.wc) state.wclock=clone(op.wc).
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const R=Shape.make('rect',{x:0,y:0,w:50,h:50});
     Store.commit({op:'add',shape:R});
     // Seed wclock for R as applyRemote would after a peer edit
@@ -5102,7 +5108,7 @@ try {
   // Note: wclock is only populated by applyRemote (remote-op LWW stamps), not local commits.
   // We seed it directly to simulate the state after a prior remote edit, then clear and undo.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const A=Shape.make('rect',{x:0,y:0,w:50,h:50});
     Store.commit({op:'add',shape:A});
     // Seed wclock as applyRemote would after a peer edits shape A's stroke
@@ -5123,7 +5129,7 @@ try {
   // Fix: add `&&!s.locked` to the condition in doUngroup's for-loop.
   // Setup: group 3 unlocked shapes, then lock one, then ungroup — the locked one must keep groupId.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const UGA=Shape.make('rect',{x:0,y:0,w:50,h:50});
     const UGB=Shape.make('rect',{x:60,y:0,w:50,h:50});
     const UGC=Shape.make('rect',{x:120,y:0,w:50,h:50});
@@ -5156,7 +5162,7 @@ try {
   // A locked child inside a frame gets duplicated when the frame is duplicated, bypassing lock.
   // Fix: change .filter(Boolean) to .filter(s=>s&&!s.locked) in doDuplicate.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const DFR=Shape.make('frame',{x:0,y:0,w:300,h:300});
     const DCHILD=Shape.make('rect',{x:50,y:50,w:40,h:40});
     const DLOCKED=Shape.make('rect',{x:100,y:100,w:40,h:40});DLOCKED.locked=true;
@@ -5183,7 +5189,7 @@ try {
   // so A stayed at its moved position. Undo was irrecoverable without unlocking first.
   // Fix: `if(!sh)continue; if(forward&&sh.locked)continue;` — only forward skips locked.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const MV=Shape.make('rect',{x:0,y:0,w:50,h:50});
     Store.commit({op:'add',shape:MV});
     // Move MV while unlocked (forward direction applies correctly)
@@ -5209,7 +5215,7 @@ try {
   // After fix, when the bound shape is deleted the locked connector retains its .a binding
   // (dangling); connEnds gracefully falls back to the stored coordinates.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const RV=Shape.make('rect',{x:100,y:100,w:80,h:60});
     const CV=Shape.make('arrow',{x1:90,y1:130,x2:300,y2:300});
     CV.a=RV.id; CV.locked=true;
@@ -5228,7 +5234,7 @@ try {
   // commits a style op whose after includes the locked shape, and _apply style applies it.
   // Fix: skip locked shapes inside _sfbFlush (still deletes _sbf[k] to avoid stale entries).
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const SF=Shape.make('rect',{x:0,y:0,w:50,h:50});SF.size=2;
     Store.commit({op:'add',shape:SF});
     state.selection=new Set([SF.id]);
@@ -5268,7 +5274,7 @@ try {
   // so pressing ] or [ on a locked shape would change its frac (z-order) and record a zorder
   // undo entry — bypassing the locked invariant (parity with doAlign/doDelete/doMove).
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const zA=Shape.make('rect',{x:0,y:0,w:20,h:20});
     const zB=Shape.make('rect',{x:10,y:0,w:20,h:20});
     const zC=Shape.make('rect',{x:20,y:0,w:20,h:20});
@@ -5287,7 +5293,7 @@ try {
     console.log('  ✓ doBringFront/doSendBack: locked shapes skipped in z-order operations (v1.7.18a)');
   }
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const zA2=Shape.make('rect',{x:0,y:0,w:20,h:20});
     const zB2=Shape.make('rect',{x:10,y:0,w:20,h:20});
     const zC2=Shape.make('rect',{x:20,y:0,w:20,h:20});
@@ -5310,7 +5316,7 @@ try {
   // history (e.g., via future import), Store.undo() would throw TypeError: null is not iterable.
   // Fix: add Array.isArray(patches) guard so the case breaks safely instead of crashing.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const sNullBefore=Shape.make('rect',{x:0,y:0,w:40,h:40});
     Store.commit({op:'add',shape:sNullBefore});
     // Manually inject a style op with op.before=null into history (simulates future import path)
@@ -5344,7 +5350,7 @@ try {
   // If an arrow is locked and its bound shape is erased, flushErase must NOT include
   // it in connClears — locked connector's a/b bindings must remain intact.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};
     const rE=Shape.make('rect',{x:10,y:10,w:40,h:40});
     const arrE=Shape.make('arrow',{x1:5,y1:5,x2:80,y2:80});
     arrE.a=rE.id; arrE.locked=true;
@@ -5367,7 +5373,7 @@ try {
   // When a remote peer deletes a shape that a LOCAL locked connector is bound to,
   // the receiver-side fix (_remoteDelConnFix) must skip locked connectors.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};
     const rR=Shape.make('rect',{x:50,y:50,w:60,h:60});
     const arrR=Shape.make('arrow',{x1:20,y1:20,x2:200,y2:200});
     arrR.a=rR.id; arrR.locked=true;
@@ -5394,7 +5400,7 @@ try {
   // Fix: filter out null-bbox units before the `if(units.length<2)return` check:
   //   `const units=[...unitMap.values()].filter(u=>u.b);`
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const rA=Shape.make('rect',{x:50,y:0,w:40,h:40});
     const rB=Shape.make('rect',{x:200,y:0,w:40,h:40});
     Store.commit({op:'add',shape:rA});Store.commit({op:'add',shape:rB});
@@ -5425,7 +5431,7 @@ try {
   //   drawSelection: `if(!b)return;` after `const b=G.bboxAll(sel);`
   //   doFlip: split into `const bb=G.bboxAll(sel);if(!bb)return;` before accessing bb.x
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const dP={type:'pen',pts:[],size:2,id:'degen-flip',frac:'a',x:0,y:0,stroke:'#000',opacity:1};
     state.shapes.push(dP);  // bypass validShape
     state.selection=new Set([dP.id]);
@@ -5449,7 +5455,7 @@ try {
   // Fix: `state.selection=new Set([...ids.filter(id=>byId(id)),...ungrouped])` — keep the
   // original selection (shapes that still exist) and add all ungrouped members.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const UA=Shape.make('rect',{x:0,y:0,w:50,h:50});
     const UB=Shape.make('rect',{x:60,y:0,w:50,h:50});
     const UC=Shape.make('rect',{x:120,y:0,w:50,h:50});
@@ -5506,7 +5512,7 @@ try {
   // silently dropped (line ~1284: `if(forward&&sh.locked)continue`).
   // Fix: in validRemotePayload for 'align', add !('locked' in p) check per patch.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const tR=Shape.make('rect',{x:0,y:0,w:50,h:50});
     Store.commit({op:'add',shape:tR});
     const liveTR=()=>state.shapes.find(s=>s.id===tR.id);
@@ -5535,7 +5541,7 @@ try {
   // The doClearAll caller-side fix (capturing and patching origSel) is covered by the
   // string presence test: "doClearAll patches origSel onto clear history entry".
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const caA=Shape.make('rect',{x:0,y:0,w:40,h:40});
     const caB=Shape.make('rect',{x:60,y:0,w:40,h:40});
     Store.commit({op:'add',shape:caA});Store.commit({op:'add',shape:caB});
@@ -5563,7 +5569,7 @@ try {
   // bypass that v1.7.23 closed for 'align'.
   // Fix: apply the same !('locked' in p) guard to 'style' and 'resize' in validRemotePayload.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const srA=Shape.make('rect',{x:0,y:0,w:50,h:50});
     Store.commit({op:'add',shape:srA});
     const liveSR=()=>state.shapes.find(s=>s.id===srA.id);
@@ -5588,7 +5594,7 @@ try {
   // clipboard, so paste cannot restore them. The children are permanently lost unless undone.
   // Fix: change `[...state.selection]` to `[...withFrameChildren(state.selection)]` in doCopy.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.clipboard=null;
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.clipboard=null;
     const cpF=Shape.make('frame',{x:0,y:0,w:300,h:300});
     const cpC=Shape.make('rect',{x:50,y:50,w:40,h:40}); // spatially inside cpF
     Store.commit({op:'add',shape:cpF});Store.commit({op:'add',shape:cpC});
@@ -5623,7 +5629,7 @@ try {
   // history entry to isolate the _apply backward path (same approach as v1.7.24a).
   // Caller-side fix is covered by the new presence check.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const rpA=Shape.make('rect',{x:0,y:0,w:50,h:50});
     const rpB=Shape.make('rect',{x:100,y:0,w:50,h:50});
     Store.commit({op:'add',shape:rpA});Store.commit({op:'add',shape:rpB});
@@ -5657,7 +5663,7 @@ try {
   // Fix: in _apply('upd', false), filter out any property where state.wclock[id][key]
   // has a clock newer than op.clock before calling Object.assign.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const lwwSh=Shape.make('rect',{x:0,y:0,w:50,h:50});
     lwwSh.stroke='#000000';
     Store.commit({op:'add',shape:lwwSh});
@@ -5684,7 +5690,7 @@ try {
   // Bug: style/resize/align all have !('locked' in p) guard, but 'upd' does not.
   // A hostile peer can send {op:'upd', after:{locked:true}} to lock any shape remotely.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const lkSh=Shape.make('rect',{x:0,y:0,w:50,h:50});
     Store.commit({op:'add',shape:lkSh});
     const lkLive=()=>state.shapes.find(s=>s.id===lkSh.id);
@@ -5708,7 +5714,7 @@ try {
   // doDuplicate (line 3164) captures origSel and patches the history entry;
   // doPaste calls _placeCopies without doing either, so undo clears selection.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     state.viewport={x:0,y:0,zoom:1};
     _resetPasteClipboard();
     const pA=Shape.make('rect',{x:0,y:0,w:50,h:50});
@@ -5732,7 +5738,7 @@ try {
   // v1.7.30: createShapeKbd missing origSel — undo of keyboard shape creation doesn't
   // restore the pre-creation selection (parity gap with doDuplicate/doPaste/doClearAll).
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     state.viewport={x:0,y:0,zoom:1};
     // Create a shape to serve as the pre-existing selection
     const preA=Shape.make('rect',{x:0,y:0,w:50,h:50});
@@ -5756,7 +5762,7 @@ try {
   // v1.7.31: endRectLike/endLineLike/beginText missing origSel — undo of pointer-drawn
   // shape doesn't restore the pre-draw selection (parity gap with createShapeKbd v1.7.30).
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     state.viewport={x:0,y:0,zoom:1};state.draft=null;state.snap=false;
     // Create two shapes that will serve as the pre-existing selection
     const pX=Shape.make('rect',{x:0,y:0,w:50,h:50});
@@ -5787,7 +5793,7 @@ try {
   // (e.g. synthesised by a peer or a test). Ctrl+Z then throws:
   //   TypeError: Cannot iterate over undefined (for...of op.before)
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const gA=Shape.make('rect',{x:0,y:0,w:50,h:50});
     const gB=Shape.make('rect',{x:60,y:0,w:50,h:50});
     Store.commit({op:'add',shape:gA});
@@ -5829,7 +5835,7 @@ try {
   // so a peer can send {op:'ungroup', ids:[...]} (no gids/before) that passes validation,
   // ungroups shapes, then crashes Ctrl+Z.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const ug1=Shape.make('rect',{x:0,y:0,w:50,h:50});
     const ug2=Shape.make('rect',{x:60,y:0,w:50,h:50});
     Store.commit({op:'add',shape:ug1});
@@ -5852,7 +5858,7 @@ try {
   // for a remote peer to apply a style/resize/align op that can't be undone (backward path silently
   // no-ops when before is null). After fix, before is required by the validator.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const sv=Shape.make('rect',{x:0,y:0,w:50,h:50,fill:'blue'});
     state.shapes.push(sv);
     // Remote style op with before:null — should be REJECTED after fix
@@ -5870,7 +5876,7 @@ try {
   // Without origSel, _apply del backward doesn't restore the selection after undo.
   // Pattern: same origSel capture + history patch that doDelete uses.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     state.viewport={x:0,y:0,zoom:1};state.draft=null;state.snap=false;
     const feA=Shape.make('rect',{x:0,y:0,w:30,h:30});
     const feB=Shape.make('rect',{x:50,y:0,w:30,h:30});
@@ -5897,7 +5903,7 @@ try {
   // Group doesn't change selection, but if user deselects after grouping, undo should
   // restore the pre-group selection (parity with all other ops that change shape state).
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const gA=Shape.make('rect',{x:0,y:0,w:30,h:30});
     const gB=Shape.make('rect',{x:50,y:0,w:30,h:30});
     Store.commit({op:'add',shape:gA});
@@ -5919,7 +5925,7 @@ try {
   // doUngroup EXPANDS state.selection (adds all group members). Without origSel, undo
   // leaves the expanded selection instead of restoring the pre-ungroup selection.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const ugA=Shape.make('rect',{x:0,y:0,w:30,h:30});
     const ugB=Shape.make('rect',{x:50,y:0,w:30,h:30});
     const ugC=Shape.make('rect',{x:100,y:0,w:30,h:30});
@@ -5946,7 +5952,7 @@ try {
   // A remote peer can send {op:'upd', after:{rotate:45}} on a locally-locked shape and have
   // the mutation applied because _apply upd has no sh.locked guard.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const lu=Shape.make('rect',{x:0,y:0,w:50,h:50,rotate:0});
     state.shapes.push(lu);
     lu.locked=true;
@@ -5961,7 +5967,7 @@ try {
   // v1.7.38b: _apply style/resize/align forward must skip locked shapes per patch.
   // Remote peer sends a style op targeting a locked shape; fill should not change.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const ls=Shape.make('rect',{x:0,y:0,w:50,h:50,fill:'blue'});
     state.shapes.push(ls);
     ls.locked=true;
@@ -5978,7 +5984,7 @@ try {
   // a remote peer can craft a del op whose connClears targets a locally-locked connector.
   // The fix: add !sh.locked guard to the connClears Object.assign, same class as v1.7.38.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const delTarget=Shape.make('rect',{x:0,y:0,w:30,h:30});
     const lockedConn=Shape.make('arrow',{x1:0,y1:15,x2:100,y2:15});
     lockedConn.a=delTarget.id;
@@ -6001,7 +6007,7 @@ try {
   // Local zorder ops filter out locked shapes before building changes[], so local undo/redo
   // is safe. Remote peers can still send zorder targeting locked shapes.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const zl=Shape.make('rect',{x:0,y:0,w:30,h:30});
     state.shapes.push(zl);
     zl.locked=true;
@@ -6017,7 +6023,7 @@ try {
   // v1.7.40b: _apply('group', forward) assigns groupId to locked shapes without lock guard.
   // Remote peer can group a locked shape, making it draggable as part of a group.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const gl=Shape.make('rect',{x:0,y:0,w:30,h:30});
     const gl2=Shape.make('rect',{x:50,y:0,w:30,h:30});
     state.shapes.push(gl,gl2);
@@ -6032,7 +6038,7 @@ try {
 
   // v1.7.40c: _apply('ungroup', forward) deletes groupId from locked shapes without lock guard.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const ul=Shape.make('rect',{x:0,y:0,w:30,h:30});
     ul.groupId='existing-group';
     state.shapes.push(ul);
@@ -6049,7 +6055,7 @@ try {
   // its noLock predicate blocks any patch containing 'locked'. Remote lock state
   // never syncs to peers — remote shape stays unlocked.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const la=Shape.make('rect',{x:0,y:0,w:30,h:30});
     state.shapes.push(la);
     la.locked=null;
@@ -6067,7 +6073,7 @@ try {
   // the unlock patch because the shape IS locked (just re-locked by undo).
   // Fix: bypass guard when patch explicitly carries the 'locked' key.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const lb=Shape.make('rect',{x:0,y:0,w:30,h:30});
     state.shapes.push(lb);
     state.selection=new Set([lb.id]);
@@ -6084,7 +6090,7 @@ try {
 
   // v1.7.42a: nudgeSelection does not capture origSel — undo of arrow-key move loses selection.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const na=Shape.make('rect',{x:0,y:0,w:30,h:30});
     const nb=Shape.make('rect',{x:100,y:0,w:30,h:30});
     state.shapes.push(na,nb);
@@ -6102,7 +6108,7 @@ try {
   // v1.7.42b: doAlign/doFlip/doRotate/doLock do not capture origSel — undo loses selection.
   // Tests doAlign as representative of all four (shared _apply backward path).
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const aa=Shape.make('rect',{x:0,y:0,w:30,h:30});
     const ab=Shape.make('rect',{x:100,y:0,w:30,h:30});
     state.shapes.push(aa,ab);
@@ -6120,7 +6126,7 @@ try {
   // v1.7.42c: validRemotePayload('move') allows empty ids[] and zero-displacement ops —
   // no-ops that consume seenOps dedup slots without moving anything.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const mc=Shape.make('rect',{x:10,y:10,w:30,h:30});
     state.shapes.push(mc);
     Store.applyRemote({op:'move',ids:[],dx:100,dy:0,clock:{peer:'evil42c',seq:1,ts:1}});
@@ -6137,7 +6143,7 @@ try {
   // v1.7.43a: _zCommit does not capture origSel — undo of doBringFront loses selection.
   // Requires 3 shapes so doBringFront doesn't short-circuit (2 selected, 1 not).
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const za=Shape.make('rect',{x:0,y:0,w:30,h:30});
     const zb=Shape.make('rect',{x:50,y:0,w:30,h:30});
     const zc=Shape.make('rect',{x:100,y:0,w:30,h:30});
@@ -6157,7 +6163,7 @@ try {
   // Manually patches origSel onto the op (mirrors what the fixed drag-resize call site does),
   // then verifies _apply backward restores selection.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const ua=Shape.make('rect',{x:0,y:0,w:100,h:100});
     state.shapes.push(ua);
     state.selection=new Set([ua.id]);
@@ -6176,7 +6182,7 @@ try {
   // v1.7.44a: validRemotePayload('addMany') has no size cap — 501 shapes pass validation,
   // freezing the UI thread and exhausting memory.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const bigShapes=Array.from({length:501},(_,i)=>Shape.make('rect',{x:i*15,y:0,w:10,h:10}));
     Store.applyRemote({op:'addMany',shapes:bigShapes,clock:{peer:'evil44a',seq:1,ts:1}});
     assert.strictEqual(state.shapes.length,0,
@@ -6189,7 +6195,7 @@ try {
   // v1.7.44b: _apply replace forward does not restore op.afterWc on redo —
   // wclock is cleared to {} instead of being restored to the afterWc snapshot.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const rAfter=[Shape.make('rect',{x:50,y:0,w:10,h:10})];
     const testWc={'wc44b':{peer:'test',seq:1,ts:1}};
     Store.commit({op:'replace',before:[],after:rAfter,wc:{},afterWc:testWc,origSel:[]});
@@ -6225,7 +6231,7 @@ try {
 
   // v1.7.45b: applyStyleToSelection must capture origSel so style undo restores selection
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const stSh=Shape.make('rect',{x:0,y:0,w:50,h:50,stroke:'#000000'});
     state.shapes.push(stSh);
     state.selection=new Set([stSh.id]);
@@ -6250,7 +6256,7 @@ try {
 
   // v1.7.46c: _apply del backward connClears must respect sh.locked (parity with forward path)
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const connSh=Shape.make('arrow',{x1:0,y1:0,x2:100,y2:0,a1:'dummy_target'});
     const targetSh=Shape.make('rect',{x:90,y:-5,w:20,h:10});
     state.shapes.push(connSh,targetSh);
@@ -6277,7 +6283,7 @@ try {
 
   // v1.7.47c: del op.wc refreshed on redo — remote write wclock survives del→undo→redo→undo
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const wSh=Shape.make('rect',{x:0,y:0,w:50,h:50});
     state.shapes.push(wSh);
     state.wclock[wSh.id]={stroke:{peer:'p1',seq:1,ts:1}};
@@ -6295,7 +6301,7 @@ try {
 
   // v1.7.48a: remote 'clear' must be rejected (REMOTE_OPS whitelist excludes 'clear')
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const keepSh=Shape.make('rect',{x:0,y:0,w:50,h:50});
     state.shapes.push(keepSh);
     // Before fix: remote clear would wipe all shapes (no recovery via undo)
@@ -6353,7 +6359,7 @@ try {
   {
     // openTextEditor empty-text path now computes connClears like doDelete does.
     // Test doDelete on text shape to verify the shared connClears mechanism works correctly.
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const txt49c=Shape.make('text',{x:0,y:0,text:'Hi'});
     const arr49c=Shape.make('arrow',{x1:0,y1:0,x2:100,y2:0});
     arr49c.a=txt49c.id;
@@ -6373,7 +6379,7 @@ try {
   {
     // Before fix: msg.ops loop was unbounded — 600 ops applied, freezing UI and risking OOM.
     // After fix: msg.ops.slice(0,MAX_OP_SHAPES) caps processing at 500.
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     state.peerId='testReceiver49d';
     const bigOps49d=Array.from({length:600},(_,i)=>{
       const s=Shape.make('rect',{x:i*15,y:0,w:10,h:10});
@@ -6402,7 +6408,7 @@ try {
   // the fix, the broadcast 'del' carried no connClears, so peers (and the local state
   // itself, if the binding arrived via remote op) kept a dangling s.a/s.b reference.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     state.peerId='local50a';
     const txt50a=Shape.make('text',{x:0,y:0,w:80,h:24,text:''});
     const arr50a=Shape.make('arrow',{x1:0,y1:0,x2:100,y2:0});
@@ -6424,7 +6430,7 @@ try {
   // doDelete/flushErase/openTextEditor/_syncTextFinalize — verify it directly for a
   // multi-id batch (parity check for the extraction refactor).
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const dA=Shape.make('rect',{x:0,y:0,w:20,h:20});
     const dB=Shape.make('rect',{x:100,y:0,w:20,h:20});
     const connA=Shape.make('arrow',{x1:10,y1:10,x2:50,y2:10});
@@ -6466,7 +6472,7 @@ try {
   // shape the local user explicitly locked (violates the documented lock invariant:
   // "移動・リサイズ・削除・消去すべて不可、可逆").
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const dl51a=Shape.make('rect',{x:0,y:0,w:30,h:30});
     state.shapes.push(dl51a);
     dl51a.locked=true;
@@ -6485,7 +6491,7 @@ try {
   // resize() call. Without it, the buffer stays stale: stretched/blurry, and desynced from
   // _zoomToFrame's window.innerWidth/Height-based transform math.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const fr51b=Shape.make('frame',{x:0,y:0,w:200,h:150,label:'Slide 1'});
     state.shapes.push(fr51b);
     canvas.width=111;canvas.height=111;   // simulate a stale pre-presentation backing buffer
@@ -6509,7 +6515,7 @@ try {
   // slot with the destructive result — after a reload the pre-replace board is unrecoverable.
   // The backup slot (a second IDB key) plus this restore path close that gap.
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const origDb=Persist.db;
     Persist.db=makeFakeIdb();
     try{
@@ -6570,7 +6576,7 @@ try {
   // confirm(), which this harness fixes to always return false — see v1.7.08/existing tests
   // for the same constraint on doClearAll).
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const origDb=Persist.db;
     Persist.db=makeFakeIdb();
     try{
@@ -6691,7 +6697,7 @@ try {
   }
 
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const rectPts=_genRectPts(0,0,100,60,2);
     const penSh=Shape.make('pen',{pts:rectPts});
     state.shapes.push(penSh);
@@ -6710,7 +6716,7 @@ try {
   }
 
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const rectSh=Shape.make('pen',{pts:_genRectPts(0,0,80,50,1.5)});
     const ellSh=Shape.make('pen',{pts:_genEllipsePts(200,30,40,25,1)});
     const starSh=Shape.make('pen',{pts:_genStarPts(400,50,50,20,5)});
@@ -6733,7 +6739,7 @@ try {
   }
 
   {
-    state.shapes=[];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const starOnly=Shape.make('pen',{pts:_genStarPts(50,50,50,20,5)});
     state.shapes.push(starOnly);
     state.selection=new Set([starOnly.id]);
@@ -6829,8 +6835,75 @@ try {
     console.log('  ✓ ADR-0007 openExportMenu: delegates to openCtxMenu with PNG/SVG/PDF/.board export + import, correctly wired (v1.7.56a)');
   }
 
+  // ---- ADR-0009: byId() O(1) index stays correct across every membership-changing path ----
+  // Regression coverage for a real bug found while implementing this: several _apply cases
+  // call byId() (idempotency/lock checks) BEFORE push()ing/splice()ing state.shapes in the
+  // SAME op, which builds the cache from the pre-mutation state and (without the size check
+  // in byId() itself) would leave it one change stale until the next op's invalidation.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    // single add: byId must resolve the new shape on the very next call (the exact bug — an
+    // 'add' op's own idempotency check (byId) rebuilds the cache from the PRE-push state).
+    const r1=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    Store.commit({op:'add',shape:r1});   // Store clones on add, so byId(r1.id) !== r1 by reference — compare .id
+    assert.strictEqual(byId(r1.id)?.id,r1.id,'v1.7.58a: byId resolves a shape immediately after a single add op');
+    Store.undo();
+    assert.strictEqual(byId(r1.id),undefined,'v1.7.58a: byId returns undefined immediately after undoing an add');
+    Store.redo();
+    assert.strictEqual(byId(r1.id)?.id,r1.id,'v1.7.58a: byId resolves again immediately after redoing the add');
+    console.log('  ✓ byId: resolves new shape right after add/undo/redo, no one-op-stale gap (v1.7.58a, ADR-0009)');
+  }
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    // addMany: the forward case calls byId() inside a loop, once per shape, BEFORE each
+    // push — every shape after the first is checked against an increasingly-stale cache
+    // unless byId()'s own size check catches it.
+    const shapes=[Shape.make('rect',{x:0,y:0,w:10,h:10}),Shape.make('rect',{x:20,y:0,w:10,h:10}),Shape.make('rect',{x:40,y:0,w:10,h:10})];
+    Store.commit({op:'addMany',shapes});
+    for(const s of shapes)assert.strictEqual(byId(s.id)?.id,s.id,`v1.7.58b: byId resolves shape ${s.id} immediately after addMany`);
+    console.log('  ✓ byId: resolves every shape right after a multi-shape addMany, not just the first (v1.7.58b, ADR-0009)');
+  }
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    // del: the forward case calls byId() (lock check) inside a loop, once per shape, BEFORE
+    // each splice — same one-behind-stale risk as addMany, in the removal direction.
+    const shapes=[Shape.make('rect',{x:0,y:0,w:10,h:10}),Shape.make('rect',{x:20,y:0,w:10,h:10}),Shape.make('rect',{x:40,y:0,w:10,h:10})];
+    Store.commit({op:'addMany',shapes});
+    Store.commit({op:'del',shapes:JSON.parse(JSON.stringify(shapes))});
+    for(const s of shapes)assert.strictEqual(byId(s.id),undefined,`v1.7.58c: byId no longer resolves shape ${s.id} immediately after del`);
+    Store.undo();
+    for(const s of shapes)assert.strictEqual(byId(s.id).id,s.id,`v1.7.58c: byId resolves shape ${s.id} again immediately after undoing the del`);
+    console.log('  ✓ byId: no longer resolves any deleted shape right after a multi-shape del, restores on undo (v1.7.58c, ADR-0009)');
+  }
+  {
+    // _applySnapshot replaces state.shapes wholesale (bypasses Store.commit/_apply entirely)
+    // — must invalidate the id index directly, or a stale snapshot could resolve old ids
+    // that no longer exist and fail to resolve the new ones.
+    const oldShape=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    state.shapes=[oldShape];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    assert.strictEqual(byId(oldShape.id),oldShape,'v1.7.58d: sanity — byId resolves the pre-snapshot shape');
+    const newShape=Shape.make('rect',{x:5,y:5,w:8,h:8});
+    Net._applySnapshot({shapes:[newShape]});
+    assert.strictEqual(byId(oldShape.id),undefined,'v1.7.58d: byId no longer resolves a shape dropped by _applySnapshot');
+    assert.strictEqual(byId(newShape.id).id,newShape.id,'v1.7.58d: byId resolves a shape introduced by _applySnapshot');
+    console.log('  ✓ byId: _applySnapshot (bypasses Store.commit) correctly invalidates the id index (v1.7.58d, ADR-0009)');
+  }
+  {
+    // eraseAt splices the shape out of state.shapes immediately (for visual feedback) before
+    // the erase is ever committed as an op; abortGesture restores it on cancel. byId must
+    // track both transitions without needing a full op round-trip.
+    const es=Shape.make('rect',{x:0,y:0,w:10,h:10,fill:'#000'});   // filled: hit-test isn't tolerance/zoom-dependent
+    state.shapes=[es];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.viewport.zoom=1;state.viewport.x=0;state.viewport.y=0;   // undo any zoom left by an earlier test (pickTop tolerance is zoom-dependent)
+    eraseAt({x:5,y:5});
+    assert.strictEqual(byId(es.id),undefined,'v1.7.58e: byId no longer resolves a shape immediately after eraseAt splices it out');
+    abortGesture();
+    assert.strictEqual(byId(es.id)?.id,es.id,'v1.7.58e: abortGesture restores the erased shape and byId resolves it again');
+    console.log('  ✓ byId: eraseAt splice + abortGesture restore both correctly invalidate the id index (v1.7.58e, ADR-0009)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 968; // prev 959 + ADR-0007 openExportMenu delegation (9 asserts, v1.7.56a)
+  pass += 985; // prev 968 + ADR-0009 byId correctness (17: 58a=3, 58b=3, 58c=6, 58d=3, 58e=2)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

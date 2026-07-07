@@ -55,8 +55,12 @@ Board/
 │   ├── ADR-0005-sketch-beautification.md  # ペンストロークの図形認識 (line/rect/ellipse, 幾何ヒューリスティック, 実装済)
 │   ├── ADR-0006-touch-long-press.md  # タッチ long-press でコンテキストメニュー (FT-06, 実装済)
 │   ├── ADR-0007-export-menu-import-picker.md  # エクスポートメニュー + .board ファイルピッカー (FT-07, 実装済)
-│   └── ADR-0008-share-modal-clarity.md  # Share モーダルの役割明示化 + コピーボタン (FT-05, 実装済)
-└── .github/workflows/     # CI (lint + size budget)
+│   ├── ADR-0008-share-modal-clarity.md  # Share モーダルの役割明示化 + コピーボタン (FT-05, 実装済)
+│   └── ADR-0009-id-index.md  # byId O(1)化 + グリッドキャッシュ無効化の一本化 (実装済)
+└── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
+    # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
+    # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
+    # 追加する必要がある。内容は git 履歴でなくローカル/セッション成果物として存在。
 ```
 
 **重要な不変条件**:
@@ -136,13 +140,17 @@ Phase 1.0 = 70点 (MVP 完成、商用配布可能)
 - Multi-page/複数ボード (7) — **対象外**(scratchpad の正体と衝突、§3.9)。
 - コラボ (5) — **対象外**(identity 前提、§3.8/3.9 と衝突)。
 - 単独体験の研磨 (§3.9(a) が示す代替投資先, 目安 12点): パフォーマンス
-  (`byId` O(n) 線形探索の解消・dirty-rect 等)、a11y 外部監査通過、スケッチ認識/beautification
+  (`byId` O(n) 線形探索の解消 — 実装済 ADR-0009。dirty-rect は未着手のまま残る)、
+  a11y 外部監査通過(未着手)、スケッチ認識/beautification
   ($1/$Q unistroke recognizer、依存ゼロで実装可能 — `docs/research-improvements.md` item M、
   実装済 ADR-0005)、タッチ到達性 (`docs/feature-triage-2026-07.md` §4、long-press でメニュー
   を開く ADR-0006 + ファイルピッカー/エクスポートメニュー ADR-0007、実装済で解消)、
   `docs/feature-backlog.md` の全項目完了(FT-05 Share モーダル明確化 ADR-0008 含む)、
   自己上書き保護
-  (ADR-0004) の発展形。
+  (ADR-0004) の発展形。CI ワークフロー (`.github/workflows/ci.yml`) を v1.7.58 で
+  作成 — 以前は MAP に記載のみで実体が無かった。ただし `.gitignore` が `.github/` を
+  意図的に除外しており(push に workflows スコープが要るため)、コミットは未完了。
+  適切な権限を持つ人が手動で追加する必要がある(上記 MAP の注記参照)。
 - AI & i18n 1000 (4) — スケッチ認識(上記)は AI 項目の現実的な着地点として整理。i18n 1000言語
   は MT インフラを要し scratchpad 単体では優先度低(保留)。
 - plugin/audit (4) — a11y 外部監査は上記に統合。Plugin API は multipage 同様アーキテクチャ
