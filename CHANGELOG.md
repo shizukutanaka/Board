@@ -2,6 +2,33 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.59] - 2026-07-01
+
+a11y 監査 (`docs/a11y-audit-2026-07.md`)。当初は Playwright + axe-core での自動監査を
+予定していたが、npm install の許可をユーザーに確認する `AskUserQuestion` がインフラ
+エラーで届かず、自動モードの分類器が「エージェント自己判断での外部パッケージ導入」を
+正しくブロックしたため、依存ゼロの静的コントラスト検証に切り替えて実施した。
+
+### Fixed
+- **フォーカスリングが WCAG SC 1.4.11(非テキストコントラスト 3:1)未達だった**:
+  `:focus-visible`/`:focus` の7箇所すべてが `var(--brand)`(#00C4CC)を直接使用しており、
+  ライトモードでは紙面(白)に対し実測 2.15:1 で基準未達だった(ダークモードでは
+  偶然 8.71:1 で達成)。新規テーマ対応トークン `--focus-ring` を導入し、ライトモードは
+  `--brand-ink`(12.36:1 AAA)、ダークモードは `--brand`(8.71:1 AAA)を指すよう
+  切り替え。既存のテーマ切り替え慣行(`:root`/`@media`/`:root[data-theme]` の3点セット)
+  に沿って実装。
+- **`--brand-ink` のコントラスト比コメントが誤っていた**: ソース中のコメントは
+  「brand 地に brand-ink 文字: 7.5:1 AAA」と主張していたが、実測すると 5.75:1(AA)
+  だった。一度も自動検証されていなかった自己申告値の誤りを、今回の監査で発見・修正。
+
+### Tests
+- behavioral: ソースから実際の色トークン値を抽出して WCAG コントラスト比を直接計算、
+  ライト/ダーク双方のフォーカスリングが3:1を満たすことを固定。修正前のペアが実際に
+  3:1未満であることも同時に固定し、非空虚性を保証。
+- presence: `--focus-ring` トークンの3箇所定義、生の `var(--brand)` outline が0件、
+  `var(--focus-ring)` が7件であることを固定。
+- 合計 1481 pass, 0 fail
+
 ## [1.7.58] - 2026-07-01
 
 「市販レベルの品質」への投資の第一弾。CLAUDE.md が未着手として挙げていたパフォーマンス

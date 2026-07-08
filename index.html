@@ -9,15 +9,16 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.58 — Design Tokens
+   Board v1.7.59 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
 :root{
   --brand:#00C4CC;
-  --brand-ink:#003B40;      /* text on brand: 7.5:1 contrast AAA */
+  --brand-ink:#003B40;      /* text on brand: 5.75:1 contrast AA (ADR: a11y-audit-2026-07 corrected the AAA claim here — verified by computing WCAG relative luminance directly, not measured against a diff bg) */
   --brand-deep:#008A91;     /* hover/active */
   --brand-soft:#E6F9FA;     /* tint bg */
+  --focus-ring:var(--brand-ink);   /* a11y-audit-2026-07: raw --brand on white paper is 2.15:1, below the 3:1 SC 1.4.11 floor for focus indicators. brand-ink clears AAA on light paper; the dark-theme blocks below swap it back to --brand, which clears AAA on dark paper. */
   --ink:#0F172A;            /* primary text 18:1 on white AAA */
   --ink-2:#334155;          /* secondary 10:1 AAA */
   --ink-3:#64748B;          /* tertiary 4.7:1 AA */
@@ -48,6 +49,7 @@
     --ink:#F1F5F9; --ink-2:#CBD5E1; --ink-3:#94A3B8;
     --line:#1E293B; --line-2:#334155;
     --brand-soft:#003B40;
+    --focus-ring:var(--brand);   /* a11y-audit-2026-07: brand-ink is 1.52:1 on dark paper — swap to --brand (8.71:1 AAA) */
     --shadow-sm:0 1px 2px rgba(0,0,0,.4);
     --shadow-md:0 4px 12px rgba(0,0,0,.5);
     --shadow-lg:0 12px 32px rgba(0,0,0,.6);
@@ -57,8 +59,10 @@
   --paper:#FFFFFF;--mist:#F8FAFC;--mist-2:#F1F5F9;
   --ink:#0F172A;--ink-2:#334155;--ink-3:#64748B;
   --line:#E2E8F0;--line-2:#CBD5E1;--brand-soft:#E6F9FA;
+  --focus-ring:var(--brand-ink);
 }
 :root[data-theme=dark]{
+  --focus-ring:var(--brand);
   --paper:#0B1220;--mist:#0F172A;--mist-2:#1E293B;
   --ink:#F1F5F9;--ink-2:#CBD5E1;--ink-3:#94A3B8;
   --line:#1E293B;--line-2:#334155;--brand-soft:#003B40;
@@ -116,7 +120,7 @@ button{background:none;border:0;cursor:pointer;padding:0}
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .doc-name:hover{background:var(--mist-2)}
-.doc-name:focus{outline:2px solid var(--brand);outline-offset:1px;background:var(--paper)}
+.doc-name:focus{outline:2px solid var(--focus-ring);outline-offset:1px;background:var(--paper)}
 
 .top-spacer{flex:1}
 
@@ -132,7 +136,7 @@ button{background:none;border:0;cursor:pointer;padding:0}
 }
 .btn:hover{background:var(--mist-2);color:var(--ink)}
 .btn:active{background:var(--line)}
-.btn:focus-visible{outline:2px solid var(--brand);outline-offset:1px}
+.btn:focus-visible{outline:2px solid var(--focus-ring);outline-offset:1px}
 .btn.primary{background:var(--brand);color:var(--brand-ink);font-weight:600}
 .btn.primary:hover{background:var(--brand-deep);color:#fff}
 .btn.icon{width:32px;padding:0;justify-content:center}
@@ -163,7 +167,7 @@ button{background:none;border:0;cursor:pointer;padding:0}
 }
 .tool:hover{background:var(--mist-2);color:var(--ink)}
 .tool[aria-pressed=true]{background:var(--brand);color:var(--brand-ink)}
-.tool:focus-visible{outline:2px solid var(--brand);outline-offset:1px}
+.tool:focus-visible{outline:2px solid var(--focus-ring);outline-offset:1px}
 .tool svg{width:18px;height:18px}
 .tool kbd{
   position:absolute;bottom:2px;right:3px;
@@ -298,7 +302,7 @@ canvas#c[data-tool=eraser]{cursor:crosshair}
 /* Text input overlay */
 .text-overlay{
   position:absolute;
-  outline:2px solid var(--brand);outline-offset:2px;
+  outline:2px solid var(--focus-ring);outline-offset:2px;
   background:transparent;border:0;padding:0;
   resize:none;overflow:hidden;
   line-height:1.25;
@@ -306,7 +310,7 @@ canvas#c[data-tool=eraser]{cursor:crosshair}
   box-shadow:0 0 0 4px rgba(0,196,204,.12);
   font-family:var(--ui-font);
 }
-.text-overlay:focus{outline:2px solid var(--brand)}
+.text-overlay:focus{outline:2px solid var(--focus-ring)}
 
 /* Minimap */
 .minimap-wrap{
@@ -434,7 +438,7 @@ canvas#c[data-tool=eraser]{cursor:crosshair}
   border-radius:var(--radius-sm);
   font:500 12px/1.4 var(--mono-font);color:var(--ink-2);
 }
-.share-input:focus{outline:2px solid var(--brand);outline-offset:1px;border-color:var(--brand)}
+.share-input:focus{outline:2px solid var(--focus-ring);outline-offset:1px;border-color:var(--brand)}
 .share-details{margin-top:18px;border-top:1px solid var(--line);padding-top:14px}
 .share-details summary{
   cursor:pointer;font-size:13px;font-weight:600;color:var(--ink-2);
@@ -456,7 +460,7 @@ canvas#c[data-tool=eraser]{cursor:crosshair}
   margin:6px 0;
   word-break:break-all;
 }
-.share-code:focus{outline:2px solid var(--brand);outline-offset:1px}
+.share-code:focus{outline:2px solid var(--focus-ring);outline-offset:1px}
 
 
 @media (max-width:720px){
@@ -731,7 +735,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.58';
+const V='1.7.59';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;

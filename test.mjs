@@ -791,6 +791,12 @@ const checks = [
     html.includes("if(!_idIndex||_idIndex.size!==state.shapes.length){_idIndex=new Map();for(const s of state.shapes)_idIndex.set(s.id,s);}")],
   ['exportPDF convertToBlob rejection routes to the same exportFailed toast as the toBlob(null) path',
     html.includes("off.convertToBlob({type:'image/png'}).then(fin,()=>fin(null));")],
+  // v1.7.59 (a11y-audit-2026-07): theme-aware focus ring token, no raw --brand outlines left
+  ['--focus-ring token defined for base(light)/dark-media/dark-attr, no raw var(--brand) outline left',
+    html.includes("--focus-ring:var(--brand-ink);") &&
+    html.includes("--focus-ring:var(--brand);") &&
+    !html.includes("outline:2px solid var(--brand)") &&
+    (html.match(/outline:2px solid var\(--focus-ring\)/g)||[]).length===7],
 ];
 
 let pass = 0, fail = 0;
@@ -6902,8 +6908,44 @@ try {
     console.log('  ✓ byId: eraseAt splice + abortGesture restore both correctly invalidate the id index (v1.7.58e, ADR-0009)');
   }
 
+  // ---- a11y-audit-2026-07: focus ring meets WCAG SC 1.4.11 (3:1 non-text contrast) in both themes ----
+  // Regression guard for a real finding: the old CSS used raw var(--brand) (#00C4CC) for every
+  // :focus-visible outline, which is only 2.15:1 against white paper — below the 3:1 floor.
+  // Recomputes against the ACTUAL current token values (extracted from source), not a hardcoded
+  // snapshot, so it keeps catching this if the palette changes later.
+  {
+    const hex=name=>{
+      const m=html.match(new RegExp(`--${name}:\\s*#([0-9A-Fa-f]{6})`));
+      if(!m)throw new Error(`token --${name} not found in source`);
+      return m[1];
+    };
+    const toRgb=h=>[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];
+    const relLum=([r,g,b])=>{
+      const lin=c=>{c/=255;return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);};
+      return 0.2126*lin(r)+0.7152*lin(g)+0.0722*lin(b);
+    };
+    const contrastOf=(h1,h2)=>{
+      const L1=relLum(toRgb(h1)),L2=relLum(toRgb(h2));
+      return (Math.max(L1,L2)+0.05)/(Math.min(L1,L2)+0.05);
+    };
+    const brand=hex('brand'),brandInk=hex('brand-ink');
+    const lightPaper=hex('paper');   // first --paper: match in source is the base (light) :root block
+    const darkPaperMatch=html.match(/@media \(prefers-color-scheme:dark\)\{\s*:root\{[^}]*--paper:#([0-9A-Fa-f]{6})/);
+    assert.ok(darkPaperMatch,'a11y: dark-theme --paper token found in the prefers-color-scheme media block');
+    const darkPaper=darkPaperMatch[1];
+
+    const lightRatio=contrastOf(brandInk,lightPaper);
+    const darkRatio=contrastOf(brand,darkPaper);
+    assert.ok(lightRatio>=3,`a11y: light-mode focus ring (brand-ink on paper) meets the 3:1 SC 1.4.11 floor (got ${lightRatio.toFixed(2)}:1)`);
+    assert.ok(darkRatio>=3,`a11y: dark-mode focus ring (brand on paper) meets the 3:1 SC 1.4.11 floor (got ${darkRatio.toFixed(2)}:1)`);
+    // also confirm the OLD (broken) pairing would have failed, proving this test is non-vacuous
+    const oldRatio=contrastOf(brand,lightPaper);
+    assert.ok(oldRatio<3,`a11y: sanity — the pre-fix pairing (raw brand on light paper) is genuinely below 3:1 (got ${oldRatio.toFixed(2)}:1), confirming this test would have caught the original bug`);
+    console.log(`  ✓ a11y: focus ring contrast — light ${lightRatio.toFixed(2)}:1, dark ${darkRatio.toFixed(2)}:1, both clear the 3:1 floor (a11y-audit-2026-07)`);
+  }
+
   console.log('\n✓ All behavioural tests passed');
-  pass += 985; // prev 968 + ADR-0009 byId correctness (17: 58a=3, 58b=3, 58c=6, 58d=3, 58e=2)
+  pass += 990; // prev 985 + a11y focus-ring contrast (5 asserts, a11y-audit-2026-07)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

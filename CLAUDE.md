@@ -56,7 +56,8 @@ Board/
 │   ├── ADR-0006-touch-long-press.md  # タッチ long-press でコンテキストメニュー (FT-06, 実装済)
 │   ├── ADR-0007-export-menu-import-picker.md  # エクスポートメニュー + .board ファイルピッカー (FT-07, 実装済)
 │   ├── ADR-0008-share-modal-clarity.md  # Share モーダルの役割明示化 + コピーボタン (FT-05, 実装済)
-│   └── ADR-0009-id-index.md  # byId O(1)化 + グリッドキャッシュ無効化の一本化 (実装済)
+│   ├── ADR-0009-id-index.md  # byId O(1)化 + グリッドキャッシュ無効化の一本化 (実装済)
+│   └── a11y-audit-2026-07.md  # a11y監査 (依存ゼロ静的検証、フォーカスリングのコントラスト不備を発見・修正)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
@@ -141,7 +142,9 @@ Phase 1.0 = 70点 (MVP 完成、商用配布可能)
 - コラボ (5) — **対象外**(identity 前提、§3.8/3.9 と衝突)。
 - 単独体験の研磨 (§3.9(a) が示す代替投資先, 目安 12点): パフォーマンス
   (`byId` O(n) 線形探索の解消 — 実装済 ADR-0009。dirty-rect は未着手のまま残る)、
-  a11y 外部監査通過(未着手)、スケッチ認識/beautification
+  a11y 外部監査通過(依存ゼロの静的検証で実施済み — `docs/a11y-audit-2026-07.md`。
+  フォーカスリングのコントラスト不備を発見・修正。axe-core/Playwright での本格自動監査は
+  npm install の許可待ちで未着手)、スケッチ認識/beautification
   ($1/$Q unistroke recognizer、依存ゼロで実装可能 — `docs/research-improvements.md` item M、
   実装済 ADR-0005)、タッチ到達性 (`docs/feature-triage-2026-07.md` §4、long-press でメニュー
   を開く ADR-0006 + ファイルピッカー/エクスポートメニュー ADR-0007、実装済で解消)、
