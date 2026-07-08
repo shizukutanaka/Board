@@ -30,8 +30,8 @@ Board は `index.html` 一枚。自分のドメイン、USB、社内ネット、
 ## 使い方 / Quick Start
 
 ```bash
-# 1. ダウンロード
-curl -O https://raw.githubusercontent.com/shizukutanaka/Board/main/index.html
+# 1. ダウンロード (リポジトリの既定ブランチから index.html だけを取得)
+git clone --depth 1 https://github.com/shizukutanaka/Board && cp Board/index.html .
 
 # 2. 開く (サーバー不要)
 open index.html       # macOS

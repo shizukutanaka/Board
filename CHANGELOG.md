@@ -3283,5 +3283,3 @@ Initial public release. Single-file infinite whiteboard.
 - Single-file, zero external dependencies
 - Clean layered architecture (Input → Tools → Store → State → Render → Persist)
 - ~64KB total, ~41KB JS
-
-[1.0.0]: https://github.com/shizukutanaka/Board/releases/tag/v1.0.0
