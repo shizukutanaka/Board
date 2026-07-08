@@ -398,7 +398,7 @@ const checks = [
   ['flip keyboard shortcut (⇧H/⇧V) guarded by selection', html.includes("(k==='h'||k==='v')&&state.selection.size){e.preventDefault();doFlip(k)}")],
   // v1.6.58: rect/ellipse centre labels - dblclick to set, rendered centred, SVG export
   ['rect/ellipse label rendered centred in canvas', html.includes("_drawBoxLabel(s,c);break;") && html.includes("c.textAlign='center'")],
-  ['dblclick label editor handles rect and ellipse', html.includes("hit.type==='frame'||hit.type==='rect'||hit.type==='ellipse'") && html.includes("getCSS(bold?'--brand':'--ink')")],
+  ['dblclick label editor handles rect and ellipse', html.includes("hit.type==='frame'||hit.type==='rect'||hit.type==='ellipse'") && html.includes("getCSS(bold?'--accent-contrast':'--ink')")],
   ['SVG export emits label for rect', html.includes("if(s.label)els.push") && html.includes("text-anchor=\"middle\"")],
   // v1.6.59: laser pointer (presentation) + shape lock
   ['laser pointer state + presentation intercept', html.includes("let _laser=null") && html.includes("if(Presentation.isActive()){_laser=wp")],
@@ -791,12 +791,24 @@ const checks = [
     html.includes("if(!_idIndex||_idIndex.size!==state.shapes.length){_idIndex=new Map();for(const s of state.shapes)_idIndex.set(s.id,s);}")],
   ['exportPDF convertToBlob rejection routes to the same exportFailed toast as the toBlob(null) path',
     html.includes("off.convertToBlob({type:'image/png'}).then(fin,()=>fin(null));")],
-  // v1.7.59 (a11y-audit-2026-07): theme-aware focus ring token, no raw --brand outlines left
-  ['--focus-ring token defined for base(light)/dark-media/dark-attr, no raw var(--brand) outline left',
-    html.includes("--focus-ring:var(--brand-ink);") &&
-    html.includes("--focus-ring:var(--brand);") &&
+  // v1.7.59 (a11y-audit-2026-07): theme-aware accent-contrast token, no raw --brand outlines left
+  ['--accent-contrast token defined for base(light)/dark-media/dark-attr, no raw var(--brand) outline left',
+    html.includes("--accent-contrast:var(--brand-ink);") &&
+    html.includes("--accent-contrast:var(--brand);") &&
     !html.includes("outline:2px solid var(--brand)") &&
-    (html.match(/outline:2px solid var\(--focus-ring\)/g)||[]).length===7],
+    (html.match(/outline:2px solid var\(--accent-contrast\)/g)||[]).length===7],
+  // v1.7.60 (a11y-audit-2026-07 follow-up): canvas UI-indicator strokes (selection box,
+  // rotation tether, alignment guides, marquee, minimap viewport) also use the
+  // theme-aware token, not raw --brand — same contrast fix, extended past CSS to canvas.
+  // Shape-drawing DEFAULT colors (new frame/sticky stroke fallbacks) are deliberately left
+  // on raw --brand: that's a style choice, not an accessibility-critical indicator.
+  ["canvas UI-indicator strokes (selection/guides/marquee/rotation-tether/minimap-viewport) use --accent-contrast",
+    (html.match(/getCSS\('--accent-contrast'\)/g)||[]).length===5 &&
+    (html.match(/getCSS\('--brand'\)/g)||[]).length===5],
+  ['frame label editor text color uses --accent-contrast (real text, needs the 4.5:1 floor too)',
+    html.includes("getCSS(bold?'--accent-contrast':'--ink')")],
+  ['floating search box border uses --accent-contrast, not raw --brand',
+    html.includes("border:2px solid var(--accent-contrast);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;")],
 ];
 
 let pass = 0, fail = 0;

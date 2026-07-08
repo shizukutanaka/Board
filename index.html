@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.59 — Design Tokens
+   Board v1.7.60 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -18,7 +18,7 @@
   --brand-ink:#003B40;      /* text on brand: 5.75:1 contrast AA (ADR: a11y-audit-2026-07 corrected the AAA claim here — verified by computing WCAG relative luminance directly, not measured against a diff bg) */
   --brand-deep:#008A91;     /* hover/active */
   --brand-soft:#E6F9FA;     /* tint bg */
-  --focus-ring:var(--brand-ink);   /* a11y-audit-2026-07: raw --brand on white paper is 2.15:1, below the 3:1 SC 1.4.11 floor for focus indicators. brand-ink clears AAA on light paper; the dark-theme blocks below swap it back to --brand, which clears AAA on dark paper. */
+  --accent-contrast:var(--brand-ink);   /* a11y-audit-2026-07: raw --brand on white paper is 2.15:1, below the 3:1 SC 1.4.11 floor. Use this wherever the brand accent is drawn as a thin UI-indicator stroke (focus rings, selection/guide/marquee lines) rather than a shape's own color. brand-ink clears AAA on light paper; the dark-theme blocks below swap it back to --brand, which clears AAA on dark paper. */
   --ink:#0F172A;            /* primary text 18:1 on white AAA */
   --ink-2:#334155;          /* secondary 10:1 AAA */
   --ink-3:#64748B;          /* tertiary 4.7:1 AA */
@@ -49,7 +49,7 @@
     --ink:#F1F5F9; --ink-2:#CBD5E1; --ink-3:#94A3B8;
     --line:#1E293B; --line-2:#334155;
     --brand-soft:#003B40;
-    --focus-ring:var(--brand);   /* a11y-audit-2026-07: brand-ink is 1.52:1 on dark paper — swap to --brand (8.71:1 AAA) */
+    --accent-contrast:var(--brand);   /* a11y-audit-2026-07: brand-ink is 1.52:1 on dark paper — swap to --brand (8.71:1 AAA) */
     --shadow-sm:0 1px 2px rgba(0,0,0,.4);
     --shadow-md:0 4px 12px rgba(0,0,0,.5);
     --shadow-lg:0 12px 32px rgba(0,0,0,.6);
@@ -59,10 +59,10 @@
   --paper:#FFFFFF;--mist:#F8FAFC;--mist-2:#F1F5F9;
   --ink:#0F172A;--ink-2:#334155;--ink-3:#64748B;
   --line:#E2E8F0;--line-2:#CBD5E1;--brand-soft:#E6F9FA;
-  --focus-ring:var(--brand-ink);
+  --accent-contrast:var(--brand-ink);
 }
 :root[data-theme=dark]{
-  --focus-ring:var(--brand);
+  --accent-contrast:var(--brand);
   --paper:#0B1220;--mist:#0F172A;--mist-2:#1E293B;
   --ink:#F1F5F9;--ink-2:#CBD5E1;--ink-3:#94A3B8;
   --line:#1E293B;--line-2:#334155;--brand-soft:#003B40;
@@ -120,7 +120,7 @@ button{background:none;border:0;cursor:pointer;padding:0}
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .doc-name:hover{background:var(--mist-2)}
-.doc-name:focus{outline:2px solid var(--focus-ring);outline-offset:1px;background:var(--paper)}
+.doc-name:focus{outline:2px solid var(--accent-contrast);outline-offset:1px;background:var(--paper)}
 
 .top-spacer{flex:1}
 
@@ -136,7 +136,7 @@ button{background:none;border:0;cursor:pointer;padding:0}
 }
 .btn:hover{background:var(--mist-2);color:var(--ink)}
 .btn:active{background:var(--line)}
-.btn:focus-visible{outline:2px solid var(--focus-ring);outline-offset:1px}
+.btn:focus-visible{outline:2px solid var(--accent-contrast);outline-offset:1px}
 .btn.primary{background:var(--brand);color:var(--brand-ink);font-weight:600}
 .btn.primary:hover{background:var(--brand-deep);color:#fff}
 .btn.icon{width:32px;padding:0;justify-content:center}
@@ -167,7 +167,7 @@ button{background:none;border:0;cursor:pointer;padding:0}
 }
 .tool:hover{background:var(--mist-2);color:var(--ink)}
 .tool[aria-pressed=true]{background:var(--brand);color:var(--brand-ink)}
-.tool:focus-visible{outline:2px solid var(--focus-ring);outline-offset:1px}
+.tool:focus-visible{outline:2px solid var(--accent-contrast);outline-offset:1px}
 .tool svg{width:18px;height:18px}
 .tool kbd{
   position:absolute;bottom:2px;right:3px;
@@ -302,7 +302,7 @@ canvas#c[data-tool=eraser]{cursor:crosshair}
 /* Text input overlay */
 .text-overlay{
   position:absolute;
-  outline:2px solid var(--focus-ring);outline-offset:2px;
+  outline:2px solid var(--accent-contrast);outline-offset:2px;
   background:transparent;border:0;padding:0;
   resize:none;overflow:hidden;
   line-height:1.25;
@@ -310,7 +310,7 @@ canvas#c[data-tool=eraser]{cursor:crosshair}
   box-shadow:0 0 0 4px rgba(0,196,204,.12);
   font-family:var(--ui-font);
 }
-.text-overlay:focus{outline:2px solid var(--focus-ring)}
+.text-overlay:focus{outline:2px solid var(--accent-contrast)}
 
 /* Minimap */
 .minimap-wrap{
@@ -438,7 +438,7 @@ canvas#c[data-tool=eraser]{cursor:crosshair}
   border-radius:var(--radius-sm);
   font:500 12px/1.4 var(--mono-font);color:var(--ink-2);
 }
-.share-input:focus{outline:2px solid var(--focus-ring);outline-offset:1px;border-color:var(--brand)}
+.share-input:focus{outline:2px solid var(--accent-contrast);outline-offset:1px;border-color:var(--brand)}
 .share-details{margin-top:18px;border-top:1px solid var(--line);padding-top:14px}
 .share-details summary{
   cursor:pointer;font-size:13px;font-weight:600;color:var(--ink-2);
@@ -460,7 +460,7 @@ canvas#c[data-tool=eraser]{cursor:crosshair}
   margin:6px 0;
   word-break:break-all;
 }
-.share-code:focus{outline:2px solid var(--focus-ring);outline-offset:1px}
+.share-code:focus{outline:2px solid var(--accent-contrast);outline-offset:1px}
 
 
 @media (max-width:720px){
@@ -735,7 +735,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.59';
+const V='1.7.60';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1681,7 +1681,7 @@ function draw(){
 }
 function drawGuides(){
   if(!state.guides||!state.guides.length)return;
-  ctx.strokeStyle=getCSS('--brand');ctx.lineWidth=1;ctx.setLineDash([4*DPR,4*DPR]);
+  ctx.strokeStyle=getCSS('--accent-contrast');ctx.lineWidth=1;ctx.setLineDash([4*DPR,4*DPR]);   // a11y-audit-2026-07
   for(const g of state.guides){
     const p1=G.w2s({x:g.x1,y:g.y1}),p2=G.w2s({x:g.x2,y:g.y2});
     ctx.beginPath();ctx.moveTo(p1.x*DPR,p1.y*DPR);ctx.lineTo(p2.x*DPR,p2.y*DPR);ctx.stroke();
@@ -2057,7 +2057,7 @@ function drawSelection(){
   const x=p1.x*DPR,y=p1.y*DPR,w=(p2.x-p1.x)*DPR,h=(p2.y-p1.y)*DPR;
   const lockedSel=sel.every(s=>s.locked);
   const single=state.selection.size===1?sel[0]:null;
-  ctx.strokeStyle=getCSS('--brand');
+  ctx.strokeStyle=getCSS('--accent-contrast');   // a11y-audit-2026-07
   ctx.lineWidth=1.5;ctx.setLineDash(lockedSel?[5*DPR,4*DPR]:[]);
   if(single&&single.rotate&&single.w!=null){
     // rotated box: trace the rotated rectangle so the outline hugs the shape
@@ -2085,7 +2085,7 @@ function drawSelection(){
     const rh=getRotHandle(sh);
     if(rh){
       const kp=G.w2s({x:rh.x,y:rh.y}),ap=G.w2s({x:rh.ax,y:rh.ay});
-      ctx.strokeStyle=getCSS('--brand');ctx.lineWidth=1.5;
+      ctx.strokeStyle=getCSS('--accent-contrast');ctx.lineWidth=1.5;   // a11y-audit-2026-07
       ctx.beginPath();ctx.moveTo(ap.x*DPR,ap.y*DPR);ctx.lineTo(kp.x*DPR,kp.y*DPR);ctx.stroke();
       ctx.fillStyle=getCSS('--paper');ctx.strokeStyle=getCSS('--brand-ink');
       ctx.beginPath();ctx.arc(kp.x*DPR,kp.y*DPR,hs/2,0,PI2);ctx.fill();ctx.stroke();
@@ -2107,7 +2107,7 @@ function drawMarquee(){
   const w=Math.abs(p2.x-p1.x)*DPR,h=Math.abs(p2.y-p1.y)*DPR;
   ctx.fillStyle='rgba(0,196,204,.08)';
   ctx.fillRect(x,y,w,h);
-  ctx.strokeStyle=getCSS('--brand');
+  ctx.strokeStyle=getCSS('--accent-contrast');   // a11y-audit-2026-07
   ctx.lineWidth=1;
   ctx.setLineDash([4*DPR,4*DPR]);
   ctx.strokeRect(x,y,w,h);
@@ -2386,7 +2386,7 @@ canvas.addEventListener('dblclick',e=>{
 function openLabelEditor(hit,leftPx,topPx,bold){
   const inp=document.createElement('input');
   inp.value=hit.label||'';inp.maxLength=80;
-  const col=hit.stroke||getCSS(bold?'--brand':'--ink');
+  const col=hit.stroke||getCSS(bold?'--accent-contrast':'--ink');   // a11y-audit-2026-07: this is real text (label editor), needs the 4.5:1 text floor too — --accent-contrast clears both themes
   inp.style.cssText=`position:fixed;left:${leftPx}px;top:${topPx}px;`+
     `font:${bold?'600 ':''}12px system-ui,sans-serif;color:${col};`+
     `background:${getCSS('--paper')};border:1px solid ${col};`+
@@ -4578,7 +4578,7 @@ async function _onBtnInstall(){
   if(btn)btn.hidden=true;
 }
 function wire(){
-  {const sq=document.createElement('input');sq.id='sqinput';sq.type='text';sq.placeholder=t('search');sq.setAttribute('aria-label',t('search'));sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--brand);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';document.body.appendChild(sq);sq.addEventListener('input',()=>{_sq=sq.value;_sqNav.idx=-1;_sqNav.lastQ='';invalidate()});sq.addEventListener('keydown',ev=>{if(ev.key==='Escape'){_sq='';_sqNav.idx=-1;_sqNav.lastQ='';sq.style.display='none';sq.value='';invalidate();canvas.focus();}else if(ev.key==='Enter'&&!ev.isComposing){ev.preventDefault();_sqAdvance(ev.shiftKey?-1:1);}});}
+  {const sq=document.createElement('input');sq.id='sqinput';sq.type='text';sq.placeholder=t('search');sq.setAttribute('aria-label',t('search'));sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--accent-contrast);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';document.body.appendChild(sq);sq.addEventListener('input',()=>{_sq=sq.value;_sqNav.idx=-1;_sqNav.lastQ='';invalidate()});sq.addEventListener('keydown',ev=>{if(ev.key==='Escape'){_sq='';_sqNav.idx=-1;_sqNav.lastQ='';sq.style.display='none';sq.value='';invalidate();canvas.focus();}else if(ev.key==='Enter'&&!ev.isComposing){ev.preventDefault();_sqAdvance(ev.shiftKey?-1:1);}});}
   // tool buttons
   for(const b of document.querySelectorAll('.tool'))
     b.addEventListener('click',()=>pickTool(b.dataset.tool));
@@ -4945,7 +4945,7 @@ const Minimap=(()=>{
     mx.globalAlpha=1;
     const vp=state.viewport,_r=canvas.getBoundingClientRect(),cW=_r.width,cH=_r.height;
     const vx=vp.x*sc+ox,vy=vp.y*sc+oy,vw=(cW/vp.zoom)*sc,vh=(cH/vp.zoom)*sc;
-    mx.strokeStyle=getCSS('--brand');mx.lineWidth=1.5;mx.setLineDash([3,2]);
+    mx.strokeStyle=getCSS('--accent-contrast');mx.lineWidth=1.5;mx.setLineDash([3,2]);   // a11y-audit-2026-07
     mx.strokeRect(vx,vy,vw,vh);mx.setLineDash([]);
   }
 

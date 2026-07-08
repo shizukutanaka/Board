@@ -2,6 +2,37 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.60] - 2026-07-01
+
+`docs/a11y-audit-2026-07.md` のフォローアップ。前バージョンで CSS の `:focus-visible`
+のみ修正していたが、同じ「ライトモードで `--brand` が3:1未満」の問題が canvas 描画・
+実テキスト・別の UI 要素にも存在することが分かり、まとめて解消した。
+
+### Changed
+- `--focus-ring` トークンを `--accent-contrast` にリネーム(CSS フォーカスリング
+  専用ではなく、canvas の UI 指標描画にも使う汎用トークンになったため)。
+
+### Fixed
+- **canvas 描画の UI 指標5箇所**が生の `--brand` を使っていた: 選択バウンディング
+  ボックス外枠、回転ノブのテザー線、スマート整列ガイド線、ドラッグ選択マーキー、
+  ミニマップの現在ビューポート枠。すべて `--accent-contrast` に統一。
+  新規フレーム/付箋の**既定ストローク色フォールバック**(5箇所)は図形自体の
+  スタイル選択であり a11y 対象ではないため意図的に据え置き — 両者の区別は
+  presence check で固定。
+- **フレームラベル編集欄の文字色**: `openLabelEditor()` がフレームラベル
+  (`bold=true`)の文字色に生の `--brand` を使っており、非テキスト3:1どころか
+  実テキストの4.5:1基準にも届いていなかった(ライトモードで2.15:1)。
+  `--accent-contrast` に切り替え。
+- **フローティング検索ボックスの枠線**(`Ctrl+F`)も同じパターンで修正。
+
+### Tests
+- presence × 2 追加(フレームラベル・検索ボックス)、既存の focus-ring 系
+  presence check を `--accent-contrast` 命名に追従、canvas UI指標 vs シェイプ
+  既定色フォールバックの使い分け(5件/5件)を固定。
+- 既存の `dblclick label editor handles rect and ellipse` テストが古い文字列を
+  検索していたため更新(トークンリネームに追従)。
+- 合計 1484 pass, 0 fail
+
 ## [1.7.59] - 2026-07-01
 
 a11y 監査 (`docs/a11y-audit-2026-07.md`)。当初は Playwright + axe-core での自動監査を
