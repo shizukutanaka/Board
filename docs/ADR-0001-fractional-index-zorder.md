@@ -1,6 +1,8 @@
 # ADR-0001 — z 順序を fractional indexing に置き換える
 
-- **状態**: Accepted — **Step 1〜3 実装済** (2026-06-14)。Step 4 は Proposed。
+- **状態**: Accepted — **Step 1〜3 実装済** (2026-06-14)。**Step 4 は見送り確定**(下記
+  Step 4 節に理由あり — 高リスク・低価値のため、`z` を frac の back-compat フォールバック
+  として恒久的に並走させる決定。「Proposed」ではなく検討済みで決着している)。
 - **日付**: 2026-06-13
 - **関連**: `docs/research-improvements.md` 項目A (★最優先) / `docs/spec.md` §13 既知の未充足 /
   `docs/architecture.md` Store セクション
@@ -140,10 +142,13 @@ z 順序変更は 4 操作: `doBringFront / doSendBack / doBringForward / doSend
 3. **Step 3 ✅ (実装済 2026-06-14)**: 同時並べ替えのキー衝突を **`sortZ` の `(frac, id)` 比較**で
    決定的にタイブレーク → 全ピアが同一順序に収束。`validRemotePayload` の `zorder` 検証を強化
    (`changes` の各要素が `id:string` / `before,after` が string|undefined)。587 tests 緑。
-4. **Step 4 (保留)**: 整数 `z` フィールドの廃止。**現時点では見送り** — `validShape` が
-   `typeof s.z==='number'` を必須にしており、`z` はレガシーボード (frac 無し) のマイグレーション
-   アンカーでもある。完全削除は高リスク・低価値。`z` は「frac の back-compat フォールバック」として
-   並走させたまま据え置く (CLAUDE.md「最小修正」「正しさ優先」に沿う)。
+4. **Step 4 (実施しない — 決定確定)**: 整数 `z` フィールドの廃止。**恒久的に見送る**と決定
+   済み(「いずれ着手する保留」ではない)— `validShape` が `typeof s.z==='number'` を必須に
+   しており、`z` はレガシーボード (frac 無し) のマイグレーションアンカーでもある。完全削除は
+   高リスク・低価値で、この判断が将来のリスク/価値バランスで変わる具体的な予定もない。`z` は
+   「frac の back-compat フォールバック」として恒久的に並走させる (CLAUDE.md「最小修正」
+   「正しさ優先」に沿う)。将来これを覆す場合は、この決定自体を明示的に再検討する製品判断が
+   要る(CLAUDE.md の他の「対象外」判断と同じ扱い)。
 
 各 Step は独立リリース + テスト緑。Step 1〜2 で履歴/帯域問題が解消、Step 3 で sync 衝突が解消。
 
