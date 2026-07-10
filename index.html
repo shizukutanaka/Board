@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.60 — Design Tokens
+   Board v1.7.61 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -735,7 +735,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.60';
+const V='1.7.61';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -757,6 +757,7 @@ const PI2=Math.PI*2;
 const NET_CHANNEL_PREFIX='board:';      // BroadcastChannel name prefix
 const NET_PRESENCE_INTERVAL=5000;       // 5s heartbeat
 const NET_PRESENCE_TIMEOUT=15000;       // 15s drop
+const CURSOR_THROTTLE_MS=60;            // ADR-0010: peer cursor broadcast rate cap (~16/s)
 const PEER_COLORS=['#00C4CC','#7C3AED','#DC2626','#F59E0B','#16A34A','#2563EB','#DB2777','#EA580C'];
 const uid=()=>typeof crypto!=='undefined'&&crypto.randomUUID
   ?crypto.randomUUID().replace(/-/g,'')  // 122-bit UUID v4; no collision concern
@@ -918,7 +919,7 @@ const state={
   _lastTs:0,                // monotonic-clock floor: local clocks never regress (HLC-lite)
   seenOps:new Set(),        // "peer:seq" set for dedup
   wclock:{},                // shapeId → {prop: clock} for per-property LWW (ADR-0002)
-  peers:new Map(),          // peerId → {color, lastSeen, name}
+  peers:new Map(),          // peerId → {color, lastSeen, name, cursor?:{x,y}} (ADR-0010)
   roomId:null               // doc room id (BroadcastChannel name suffix)
 };
 
@@ -1678,6 +1679,19 @@ function draw(){
   drawGuides();
   if(state.marquee)drawMarquee();
   if(_laser&&Presentation.isActive()){const lp=G.w2s(_laser);ctx.beginPath();ctx.arc(lp.x*DPR,lp.y*DPR,8*DPR,0,PI2);ctx.fillStyle='rgba(255,50,50,.75)';ctx.fill();}
+  drawPeerCursors();   // ADR-0010
+}
+// ADR-0010: ephemeral, never persisted — state.peers.cursor is set only by Net's 'cursor'
+// message handler and cleared implicitly when a peer is reaped/disconnected.
+function drawPeerCursors(){
+  if(Presentation.isActive())return;   // presence is for co-editing, not solo frame review
+  for(const p of state.peers.values()){
+    if(!p.cursor)continue;
+    const sp=G.w2s(p.cursor);
+    ctx.beginPath();ctx.arc(sp.x*DPR,sp.y*DPR,5*DPR,0,PI2);
+    ctx.fillStyle=p.color;ctx.fill();
+    ctx.lineWidth=1.5*DPR;ctx.strokeStyle=getCSS('--paper');ctx.stroke();
+  }
 }
 function drawGuides(){
   if(!state.guides||!state.guides.length)return;
@@ -2223,6 +2237,7 @@ canvas.addEventListener('pointermove',e=>{
   const wp=G.s2w(sp);
   if(Presentation.isActive()){_laser=wp;invalidate();return;}
   if(_pointers.size>=2)return;   // pinch in progress — the pinch handler owns the gesture
+  Net.sendCursor(wp);   // ADR-0010
   UI.setStatusXY(Math.round(wp.x),Math.round(wp.y));
   if(!ptr.down){
     // hover feedback
@@ -3949,10 +3964,25 @@ const Net={
       try{this.dc.send(JSON.stringify({k:'op',op}))}catch(_){}
     }
   },
+  // ADR-0010: ephemeral peer cursor presence — never touches Store/history/Persist.
+  // Same dual-transport pattern as broadcast() (unlike hello/ping/sync-req, which are
+  // BroadcastChannel-only via _send): cursors are most valuable cross-device (WebRTC).
+  _lastCursorSend:0,
+  sendCursor(wp){
+    if(state.peers.size===0)return;   // nobody to tell
+    const now=Date.now();
+    if(now-this._lastCursorSend<CURSOR_THROTTLE_MS)return;
+    this._lastCursorSend=now;
+    const msg={k:'cursor',peer:state.peerId,x:wp.x,y:wp.y};
+    this._send(msg);
+    if(this.dc&&this.dc.readyState==='open'){
+      try{this.dc.send(JSON.stringify(msg))}catch(_){}
+    }
+  },
   _send(msg){
     if(this.bc){try{this.bc.postMessage(msg)}catch(_){}}
   },
-  _onRecv(msg){
+  _onRecv(msg,viaRtc){
     if(!msg||typeof msg!=='object'||msg.peer===state.peerId)return;
     switch(msg.k){
       case 'op':{
@@ -3985,6 +4015,17 @@ const Net={
       case 'ping':
         this._touchPeer(msg.peer);
         break;
+      case 'cursor':{
+        // ADR-0010: hello/sync-req/ping never ride the WebRTC DataChannel (they're sent
+        // via _send(), BroadcastChannel-only), so a WebRTC peer is tracked under a
+        // locally-generated synthetic id (_rtcPeerId), not msg.peer. Route accordingly —
+        // looking this up by msg.peer over that transport would silently miss (or worse,
+        // create a duplicate/phantom peer entry).
+        if(typeof msg.x!=='number'||!Number.isFinite(msg.x)||typeof msg.y!=='number'||!Number.isFinite(msg.y))break;
+        const peerKey=viaRtc?this._rtcPeerId:msg.peer;
+        const p=peerKey&&state.peers.get(peerKey);
+        if(p){p.cursor={x:msg.x,y:msg.y};invalidate();}
+        break;}
     }
   },
   // Build a snapshot message. Snapshot = all shapes as add ops. The clock seq is
@@ -4085,7 +4126,7 @@ const Net={
       try{this.dc.send(JSON.stringify(this._snapshotMsg()))}catch(_){}
     };
     this.dc.onmessage=e=>{
-      try{this._onRecv(JSON.parse(e.data))}catch(_){}
+      try{this._onRecv(JSON.parse(e.data),true)}catch(_){}   // ADR-0010: viaRtc=true
     };
     this.dc.onclose=()=>{
       UI.toast(t('disconnected'),'warn');

@@ -2,6 +2,31 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.61] - 2026-07-01
+
+`docs/spec.md` §14.2 が挙げていた優先度 P1 の弱点「プレゼンス(他者カーソル)未実装」に
+対応(ADR-0010)。
+
+### Added
+- **ピアカーソル表示**: 接続中のピアのポインタ位置をリアルタイムに表示する
+  `{k:'cursor',peer,x,y}` メッセージを追加。非永続(op-log/Persist/undo の対象外)。
+  既存の `broadcast()` と同じ二経路(BroadcastChannel + WebRTC DataChannel)で送信、
+  `CURSOR_THROTTLE_MS=60`(約16回/秒)でスロットル。プレゼンモード中は非表示
+  (共同編集の文脈でのみ意味を持つ機能のため)。
+  実装中、既存コードの非対称性を発見: WebRTC 経路には `hello`/`ping`/`sync-req` が
+  一切流れない(これらは BroadcastChannel 限定の `_send()` 経由)ため、WebRTC ピアは
+  相手の実 `peerId` ではなく自分側が発行した合成 `_rtcPeerId` で管理されている。
+  新規メッセージが素直に `msg.peer` でルックアップするとこの経路で見つからず
+  カーソル更新が黙って捨てられる(またはピアエントリの二重化を招く)おそれがあった
+  ため、`_onRecv` に `viaRtc` フラグを追加して正しく分岐。
+- 他者の**選択状態**のハイライトは本 ADR では意図的にスコープ外(将来の別 ADR)。
+
+### Tests
+- behavioral × 8(2-peer 収束ハーネス): BC経路での座標伝播、スロットル境界、
+  viaRtc 分岐が正しく `_rtcPeerId` に紐づき phantom ピアを作らないこと、未知ピアへの
+  更新が無視されること、非有限数(NaN)が拒否されることを固定
+- 合計 1492 pass, 0 fail
+
 ## [1.7.60] - 2026-07-01
 
 `docs/a11y-audit-2026-07.md` のフォローアップ。前バージョンで CSS の `:focus-visible`

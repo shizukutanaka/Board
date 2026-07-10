@@ -3343,6 +3343,49 @@ try {
     assert.ok(idsA.includes(sa.id) && idsA.includes(sb.id), 'convergence: union contains both peers\' shapes');
     console.log('  ✓ two-peer harness: broadcast propagates + snapshot exchange converges to union (§3.14)');
 
+    // ---- ADR-0010: peer cursor presence — ephemeral, never touches Store/history ----
+    {
+      A.state.peers.clear();B.state.peers.clear();
+      // both sides must already know of "some" peer for sendCursor's early-return guard
+      // (it checks the SENDER's own state.peers.size, not the receiver's)
+      A.state.peers.set('peerB',{color:'#111',lastSeen:Date.now()});
+      B.state.peers.set('peerA',{color:'#222',lastSeen:Date.now()});
+      A.Net._lastCursorSend=0;
+
+      // (a) BC-path: A's cursor reaches B, keyed by A's real peerId (viaRtc undefined/false)
+      A.Net.sendCursor({x:10,y:20});
+      assert.deepStrictEqual(B.state.peers.get('peerA').cursor,{x:10,y:20},'ADR-0010a: cursor position propagates A→B via the BC path, keyed by real peerId');
+
+      // (b) throttle: an immediate second send within CURSOR_THROTTLE_MS is dropped
+      A.Net.sendCursor({x:99,y:99});
+      assert.deepStrictEqual(B.state.peers.get('peerA').cursor,{x:10,y:20},'ADR-0010b: a second sendCursor within the throttle window is dropped, stale position unchanged');
+      A.Net._lastCursorSend=0;   // simulate the throttle window elapsing
+      A.Net.sendCursor({x:99,y:99});
+      assert.deepStrictEqual(B.state.peers.get('peerA').cursor,{x:99,y:99},'ADR-0010b: after the throttle window elapses, the next sendCursor goes through');
+
+      // (c) viaRtc routing: a WebRTC-received cursor must key off the LOCAL synthetic
+      // _rtcPeerId, NOT msg.peer — hello/ping/sync-req never ride the DataChannel, so
+      // msg.peer would not exist as a state.peers key on that transport.
+      B.state.peers.clear();
+      B.Net._rtcPeerId='rtc:test';
+      B.state.peers.set('rtc:test',{color:'#333',lastSeen:Date.now()});
+      B.Net._onRecv({k:'cursor',peer:'peerA',x:5,y:6},true);
+      assert.deepStrictEqual(B.state.peers.get('rtc:test').cursor,{x:5,y:6},'ADR-0010c: viaRtc cursor message updates the synthetic _rtcPeerId entry');
+      assert.strictEqual(B.state.peers.has('peerA'),false,'ADR-0010c: viaRtc routing does not create a phantom entry keyed by the real peerId');
+
+      // (d) unknown peer: a cursor for a peer we've never heard of is silently ignored
+      B.state.peers.clear();
+      assert.doesNotThrow(()=>B.Net._onRecv({k:'cursor',peer:'ghost',x:1,y:2}),'ADR-0010d: cursor for an unknown peer does not throw');
+      assert.strictEqual(B.state.peers.has('ghost'),false,'ADR-0010d: cursor for an unknown peer does not create a new entry (presence is enrich-only, not peer-creating)');
+
+      // (e) non-finite coordinates are rejected (defensive intake, same spirit as validRemotePayload)
+      B.state.peers.set('peerA',{color:'#222',lastSeen:Date.now()});
+      B.Net._onRecv({k:'cursor',peer:'peerA',x:NaN,y:5});
+      assert.strictEqual(B.state.peers.get('peerA').cursor,undefined,'ADR-0010e: a non-finite x/y is rejected, no cursor is set');
+
+      console.log('  ✓ ADR-0010 peer cursor presence: BC routing, throttle, viaRtc→_rtcPeerId, unknown-peer no-op, non-finite rejected');
+    }
+
     // §3.15 → ADR-0002: concurrent edits to the SAME property now CONVERGE via
     // per-property LWW (deterministic total order: ts, peer, seq). Both peers commit
     // offline, buffer, then exchange - and must agree on the winner (was: diverged).
@@ -6957,7 +7000,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 990; // prev 985 + a11y focus-ring contrast (5 asserts, a11y-audit-2026-07)
+  pass += 998; // prev 990 + ADR-0010 peer cursor presence (8: a=1, b=2, c=2, d=2, e=1)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
