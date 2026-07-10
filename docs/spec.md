@@ -362,7 +362,9 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
 - **入出力の幅**: インポートは画像 + 自盤面 JSON のみ。`.excalidraw` / SVG 取込 / Markdown 貼付は無い。**[P2]**
 - **大規模スケール**: viewport カリングは有るが空間索引は pickTop のグリッドのみ。>2000 図形での
   全描画・bbox 再計算は線形。quadtree / ダーティ矩形再描画は未着手。**[P3]**
-- **z 順序の二重管理**: `frac`(正準)と整数 `z`(後方互換フォールバック)が併存(ADR-0001 Step4 未完)。**[P3]**
+- **z 順序の二重管理**: `frac`(正準)と整数 `z`(レガシーボードの移行アンカー兼 back-compat
+  フォールバック)が併存。ADR-0001 Step4 で**恒久的に併存させる**と決定済み(未完の作業では
+  ない)— 完全な単一正準化は高リスク・低価値と判断されたため、ロードマップからは除外。**[P3]**
 - **画像の肥大**: dataURL を state にインライン保持 → 大画像で盤面 JSON / IDB が膨張。
   参照分離・再圧縮は無い。**[P3]**
 - **テストの偏り**: 多くが文字列プレゼンス検査。behavioral 比率は上がったが、レンダリング実体や
@@ -377,7 +379,6 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
 | P2 | インポート拡張 | `.excalidraw` / SVG / Markdown 取込 | 段階実装 |
 | P2 | コードパス・パリティ監査の継続 | drag/keyboard/remote の機能差を埋める(本リリースで nudge を解消) | 継続監査 |
 | P3 | 空間索引(quadtree) | >2000 図形の描画/ヒット/bbox を準対数化 | ADR |
-| P3 | z 整数廃止 | `frac` 単一正準化(ADR-0001 Step4) | ADR 既存 |
 | P3 | 画像参照分離 | dataURL を CAS 的に分離し state を軽量化 | ADR |
 
 > 方針(CLAUDE.md 準拠): 各 P1/P2 は**別 ADR + 独立リリース**。一気に全部は作らない。
