@@ -471,7 +471,19 @@ const checks = [
   ['pointerdown enters rotate dragKind on knob hit', html.includes("const rh=hitRotHandle(wp,onlySel);") && html.includes("ptr.dragKind='rotate';")],
   ['rotate drag maps angle (knob-up=0°), Shift snaps 15°', html.includes("Math.atan2(wp.y-ptr.rotCy,wp.x-ptr.rotCx)*180/Math.PI+90") && html.includes("deg=Math.round(deg/15)*15;")],
   ['rotate commit records upd + announces angle', html.includes("ptr.dragKind==='rotate'") && html.includes("UI.toast(describeShape(rsh)); // SR announce new angle")],
-  ['rotation knob drawn in drawSelection', html.includes("const rh=getRotHandle(sh);") && html.includes("ctx.arc(kp.x*DPR,kp.y*DPR,hs/2,0,PI2)")],
+  ['rotation knob drawn in drawSelection', html.includes("const rh=getRotHandle(sh);") && html.includes("ctx.arc(kp.x,kp.y,hs/2,0,PI2)")],
+  // v1.7.62: the overlay pass (selection/guides/marquee/laser/peer cursors) draws in CSS px
+  // under a DPR transform — multiplying w2s output by DPR double-applied it on HiDPI.
+  ['overlay pass draws in CSS px, no double DPR (HiDPI fix)',
+    html.includes('// Overlay pass: CSS-px space, the transform supplies DPR')
+    && !html.includes('sp.x*DPR') && !html.includes('kp.x*DPR') && !html.includes('lp.x*DPR')
+    && html.includes('const x=p1.x,y=p1.y,w=p2.x-p1.x,h=p2.y-p1.y;')],
+  // v1.7.62 / ADR-0011: peer selection presence
+  ['ADR-0011 selection presence: send + receive + draw wired',
+    html.includes("case 'selection':") && html.includes('sendSelectionIfChanged(){')
+    && html.includes('function drawPeerSelections()') && html.includes('Net.sendSelectionIfChanged();')],
+  ['ADR-0011 latecomer resend: _touchPeer resets _lastSelSent',
+    html.includes('this._lastSelSent=null;invalidate();')],
   // v1.6.68: Alt resize-from-centre
   ['Alt resizes about original centre', html.includes("function applyResize(sh,handle,orig,wp,shift,alt)") && html.includes("if(alt){sh.x=cx0-sh.w/2;sh.y=cy0-sh.h/2;}") && html.includes("applyResize(rsh,ptr.resizeHandle,ptr.resizeOrig,wp,e.shiftKey,e.altKey);")],
   // v1.6.69: rotated-box resize
@@ -3384,6 +3396,62 @@ try {
       assert.strictEqual(B.state.peers.get('peerA').cursor,undefined,'ADR-0010e: a non-finite x/y is rejected, no cursor is set');
 
       console.log('  ✓ ADR-0010 peer cursor presence: BC routing, throttle, viaRtc→_rtcPeerId, unknown-peer no-op, non-finite rejected');
+    }
+
+    // ---- ADR-0011: peer selection presence — change-detected at the frame boundary ----
+    {
+      A.state.peers.clear();B.state.peers.clear();
+      A.state.peers.set('peerB',{color:'#111',lastSeen:Date.now()});
+      B.state.peers.set('peerA',{color:'#222',lastSeen:Date.now()});
+      A.Net._lastSelSent='';
+
+      // (a) BC path: A's selection reaches B, keyed by A's real peerId; deselect propagates
+      A.state.selection=new Set(['s1','s2']);
+      A.Net.sendSelectionIfChanged();
+      assert.deepStrictEqual(B.state.peers.get('peerA').sel,['s1','s2'],'ADR-0011a: selection ids propagate A→B via the BC path, keyed by real peerId');
+      A.state.selection=new Set();
+      A.Net.sendSelectionIfChanged();
+      assert.deepStrictEqual(B.state.peers.get('peerA').sel,[],'ADR-0011a: deselecting propagates as an empty ids array (clears the highlight)');
+
+      // (b) change detection: an unchanged selection is NOT resent. Prove it by planting
+      // a sentinel in B's record — a resend would overwrite it.
+      A.state.selection=new Set(['s3']);
+      A.Net.sendSelectionIfChanged();
+      B.state.peers.get('peerA').sel=['sentinel'];
+      A.Net.sendSelectionIfChanged();
+      assert.deepStrictEqual(B.state.peers.get('peerA').sel,['sentinel'],'ADR-0011b: an unchanged selection is not resent (frame-boundary no-op)');
+      A.state.selection=new Set(['s3','s4']);
+      A.Net.sendSelectionIfChanged();
+      assert.deepStrictEqual(B.state.peers.get('peerA').sel,['s3','s4'],'ADR-0011b: a changed selection is resent');
+
+      // (c) latecomer resend: _touchPeer registering a NEW peer resets _lastSelSent so
+      // the next frame rebroadcasts the current selection to the newcomer.
+      B.state.peers.get('peerA').sel=['sentinel2'];
+      A.Net.sendSelectionIfChanged();
+      assert.deepStrictEqual(B.state.peers.get('peerA').sel,['sentinel2'],'ADR-0011c precondition: no resend while unchanged');
+      A.Net._touchPeer('peerC');
+      A.Net.sendSelectionIfChanged();
+      assert.deepStrictEqual(B.state.peers.get('peerA').sel,['s3','s4'],'ADR-0011c: a new peer joining forces one selection rebroadcast');
+      A.state.peers.delete('peerC');
+
+      // (d) viaRtc routing: same _rtcPeerId pitfall as ADR-0010c
+      B.state.peers.clear();
+      B.Net._rtcPeerId='rtc:test';
+      B.state.peers.set('rtc:test',{color:'#333',lastSeen:Date.now()});
+      B.Net._onRecv({k:'selection',peer:'peerA',ids:['sX']},true);
+      assert.deepStrictEqual(B.state.peers.get('rtc:test').sel,['sX'],'ADR-0011d: viaRtc selection message updates the synthetic _rtcPeerId entry');
+      assert.strictEqual(B.state.peers.has('peerA'),false,'ADR-0011d: viaRtc routing does not create a phantom entry keyed by the real peerId');
+
+      // (e) defensive intake: non-array rejected, non-string ids filtered, unknown peer no-op
+      B.state.peers.set('peerA',{color:'#222',lastSeen:Date.now()});
+      B.Net._onRecv({k:'selection',peer:'peerA',ids:'not-an-array'});
+      assert.strictEqual(B.state.peers.get('peerA').sel,undefined,'ADR-0011e: a non-array ids payload is rejected outright');
+      B.Net._onRecv({k:'selection',peer:'peerA',ids:['ok',42,null,{},'ok2']});
+      assert.deepStrictEqual(B.state.peers.get('peerA').sel,['ok','ok2'],'ADR-0011e: non-string ids are filtered out of the payload');
+      assert.doesNotThrow(()=>B.Net._onRecv({k:'selection',peer:'ghost',ids:['x']}),'ADR-0011e: selection for an unknown peer does not throw');
+      assert.strictEqual(B.state.peers.has('ghost'),false,'ADR-0011e: selection for an unknown peer does not create a new entry');
+
+      console.log('  ✓ ADR-0011 peer selection presence: change-detect send, deselect clear, join resend, viaRtc→_rtcPeerId, defensive intake');
     }
 
     // §3.15 → ADR-0002: concurrent edits to the SAME property now CONVERGE via
@@ -7000,7 +7068,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 998; // prev 990 + ADR-0010 peer cursor presence (8: a=1, b=2, c=2, d=2, e=1)
+  pass += 1010; // prev 998 + ADR-0011 peer selection presence (12: a=2, b=2, c=2, d=2, e=4)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.61 — Design Tokens
+   Board v1.7.62 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -735,7 +735,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.61';
+const V='1.7.62';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1585,7 +1585,13 @@ let needsRender=true,_rafId=0;
 function invalidate(){needsRender=true;if(!_rafId)_rafId=requestAnimationFrame(frame);Minimap.schedule()}
 function frame(){
   _rafId=0;
-  if(needsRender){draw();needsRender=false}
+  if(needsRender){
+    draw();needsRender=false;
+    // ADR-0011: selection presence rides the frame boundary — state.selection is mutated
+    // in 40+ places, but every change invalidates (selection is drawn), so this one hook
+    // catches them all. Change-detection inside keeps it a no-op on unrelated frames.
+    Net.sendSelectionIfChanged();
+  }
   if(needsRender)_rafId=requestAnimationFrame(frame);  // draw() called invalidate() (rare re-entry)
 }
 function resize(){
@@ -1666,6 +1672,9 @@ function draw(){
   if(state.draft)drawShape(state.draft);
   if(_sq){const q=_sq.toLowerCase();ctx.setLineDash([]);let _mi=0;for(const s of state.shapes){if(!(s.label||s.text||s.type||'').toLowerCase().includes(q))continue;const b=G.bbox(s),isCur=_sqNav.lastQ===q&&_mi===_sqNav.idx;ctx.strokeStyle=isCur?'#EA580C':'#F97316';ctx.lineWidth=(isCur?5:3)/state.viewport.zoom;ctx.strokeRect(b.x,b.y,b.w,b.h);_mi++;}}
 
+  // Overlay pass: CSS-px space, the transform supplies DPR. Everything below must use
+  // G.w2s output directly — multiplying by DPR here double-applies it and puts overlays
+  // at DPR× their true position on HiDPI screens (bug present v1.6.5–v1.7.61).
   ctx.setTransform(DPR,0,0,DPR,0,0);
   const _gmap=new Map();
   for(const s of state.shapes){if(s.groupId){if(!_gmap.has(s.groupId))_gmap.set(s.groupId,[]);_gmap.get(s.groupId).push(s)}}
@@ -1678,8 +1687,29 @@ function draw(){
   drawSelection();
   drawGuides();
   if(state.marquee)drawMarquee();
-  if(_laser&&Presentation.isActive()){const lp=G.w2s(_laser);ctx.beginPath();ctx.arc(lp.x*DPR,lp.y*DPR,8*DPR,0,PI2);ctx.fillStyle='rgba(255,50,50,.75)';ctx.fill();}
+  if(_laser&&Presentation.isActive()){const lp=G.w2s(_laser);ctx.beginPath();ctx.arc(lp.x,lp.y,8,0,PI2);ctx.fillStyle='rgba(255,50,50,.75)';ctx.fill();}
+  drawPeerSelections();   // ADR-0011 (before cursors: pointer renders on top of frames)
   drawPeerCursors();   // ADR-0010
+}
+// ADR-0011: ephemeral peer selection outlines — bbox frame only, in the peer's color,
+// thin [3,3] dashes. Deliberately distinct from the user's own selection on all three
+// axes (color / --accent-contrast, dash / solid, no handles) and from the locked-
+// selection dash pattern [5,4]. state.peers[].sel is set only by Net's 'selection'
+// handler and vanishes with the peer entry on reap/disconnect.
+function drawPeerSelections(){
+  if(Presentation.isActive())return;   // same rationale as drawPeerCursors
+  for(const p of state.peers.values()){
+    if(!p.sel||!p.sel.length)continue;
+    ctx.strokeStyle=p.color;ctx.lineWidth=1;ctx.setLineDash([3,3]);
+    for(const id of p.sel){
+      const s=byId(id);if(!s)continue;      // peer may reference a shape we since deleted
+      const b=G.bbox(s);if(!b)continue;
+      const p1=G.w2s({x:Math.min(b.x,b.x+b.w),y:Math.min(b.y,b.y+b.h)});
+      const p2=G.w2s({x:Math.max(b.x,b.x+b.w),y:Math.max(b.y,b.y+b.h)});
+      ctx.strokeRect(p1.x-3,p1.y-3,p2.x-p1.x+6,p2.y-p1.y+6);
+    }
+    ctx.setLineDash([]);
+  }
 }
 // ADR-0010: ephemeral, never persisted — state.peers.cursor is set only by Net's 'cursor'
 // message handler and cleared implicitly when a peer is reaped/disconnected.
@@ -1688,17 +1718,17 @@ function drawPeerCursors(){
   for(const p of state.peers.values()){
     if(!p.cursor)continue;
     const sp=G.w2s(p.cursor);
-    ctx.beginPath();ctx.arc(sp.x*DPR,sp.y*DPR,5*DPR,0,PI2);
+    ctx.beginPath();ctx.arc(sp.x,sp.y,5,0,PI2);
     ctx.fillStyle=p.color;ctx.fill();
-    ctx.lineWidth=1.5*DPR;ctx.strokeStyle=getCSS('--paper');ctx.stroke();
+    ctx.lineWidth=1.5;ctx.strokeStyle=getCSS('--paper');ctx.stroke();
   }
 }
 function drawGuides(){
   if(!state.guides||!state.guides.length)return;
-  ctx.strokeStyle=getCSS('--accent-contrast');ctx.lineWidth=1;ctx.setLineDash([4*DPR,4*DPR]);   // a11y-audit-2026-07
+  ctx.strokeStyle=getCSS('--accent-contrast');ctx.lineWidth=1;ctx.setLineDash([4,4]);   // a11y-audit-2026-07
   for(const g of state.guides){
     const p1=G.w2s({x:g.x1,y:g.y1}),p2=G.w2s({x:g.x2,y:g.y2});
-    ctx.beginPath();ctx.moveTo(p1.x*DPR,p1.y*DPR);ctx.lineTo(p2.x*DPR,p2.y*DPR);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);ctx.stroke();
   }
   ctx.setLineDash([]);
 }
@@ -2068,17 +2098,17 @@ function drawSelection(){
   const b=G.bboxAll(sel);
   if(!b)return;
   const p1=G.w2s({x:b.x,y:b.y}),p2=G.w2s({x:b.x+b.w,y:b.y+b.h});
-  const x=p1.x*DPR,y=p1.y*DPR,w=(p2.x-p1.x)*DPR,h=(p2.y-p1.y)*DPR;
+  const x=p1.x,y=p1.y,w=p2.x-p1.x,h=p2.y-p1.y;
   const lockedSel=sel.every(s=>s.locked);
   const single=state.selection.size===1?sel[0]:null;
   ctx.strokeStyle=getCSS('--accent-contrast');   // a11y-audit-2026-07
-  ctx.lineWidth=1.5;ctx.setLineDash(lockedSel?[5*DPR,4*DPR]:[]);
+  ctx.lineWidth=1.5;ctx.setLineDash(lockedSel?[5,4]:[]);
   if(single&&single.rotate&&single.w!=null){
     // rotated box: trace the rotated rectangle so the outline hugs the shape
     const cx=single.x+single.w/2,cy=single.y+single.h/2,rot=single.rotate;
     const cs=[[single.x,single.y],[single.x+single.w,single.y],[single.x+single.w,single.y+single.h],[single.x,single.y+single.h]]
       .map(([px,py])=>{const r=_rotPt(px,py,cx,cy,rot);return G.w2s(r);});
-    ctx.beginPath();ctx.moveTo(cs[0].x*DPR,cs[0].y*DPR);for(let i=1;i<4;i++)ctx.lineTo(cs[i].x*DPR,cs[i].y*DPR);ctx.closePath();ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cs[0].x,cs[0].y);for(let i=1;i<4;i++)ctx.lineTo(cs[i].x,cs[i].y);ctx.closePath();ctx.stroke();
   }else{
     ctx.strokeRect(x-1,y-1,w+2,h+2);
   }
@@ -2086,27 +2116,27 @@ function drawSelection(){
   if(lockedSel)return;
   if(state.selection.size===1){
     const sh=sel[0];
-    const hs=HANDLE_SIZE*DPR;
+    const hs=HANDLE_SIZE;
     ctx.fillStyle=getCSS('--paper');
     ctx.strokeStyle=getCSS('--brand-ink');  // dark ring: AAA non-text contrast vs cyan
     ctx.lineWidth=1.5;
     for(const h of getHandles(sh)){
       const sp=G.w2s({x:h.x,y:h.y});
-      ctx.fillRect(sp.x*DPR-hs/2,sp.y*DPR-hs/2,hs,hs);
-      ctx.strokeRect(sp.x*DPR-hs/2,sp.y*DPR-hs/2,hs,hs);
+      ctx.fillRect(sp.x-hs/2,sp.y-hs/2,hs,hs);
+      ctx.strokeRect(sp.x-hs/2,sp.y-hs/2,hs,hs);
     }
     // Rotation knob: a circle above the (rotated) top edge, tethered to the shape.
     const rh=getRotHandle(sh);
     if(rh){
       const kp=G.w2s({x:rh.x,y:rh.y}),ap=G.w2s({x:rh.ax,y:rh.ay});
       ctx.strokeStyle=getCSS('--accent-contrast');ctx.lineWidth=1.5;   // a11y-audit-2026-07
-      ctx.beginPath();ctx.moveTo(ap.x*DPR,ap.y*DPR);ctx.lineTo(kp.x*DPR,kp.y*DPR);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(ap.x,ap.y);ctx.lineTo(kp.x,kp.y);ctx.stroke();
       ctx.fillStyle=getCSS('--paper');ctx.strokeStyle=getCSS('--brand-ink');
-      ctx.beginPath();ctx.arc(kp.x*DPR,kp.y*DPR,hs/2,0,PI2);ctx.fill();ctx.stroke();
+      ctx.beginPath();ctx.arc(kp.x,kp.y,hs/2,0,PI2);ctx.fill();ctx.stroke();
     }
   }else{
     // Multi-selection: corner handles only
-    const hs=HANDLE_SIZE*DPR;
+    const hs=HANDLE_SIZE;
     ctx.fillStyle=getCSS('--paper');ctx.strokeStyle=getCSS('--brand-ink');ctx.lineWidth=1.5;
     for(const[hx,hy] of [[x,y],[x+w,y],[x,y+h],[x+w,y+h]]){
       ctx.fillRect(hx-hs/2,hy-hs/2,hs,hs);
@@ -2117,13 +2147,13 @@ function drawSelection(){
 function drawMarquee(){
   const m=state.marquee;
   const p1=G.w2s({x:m.x1,y:m.y1}),p2=G.w2s({x:m.x2,y:m.y2});
-  const x=Math.min(p1.x,p2.x)*DPR,y=Math.min(p1.y,p2.y)*DPR;
-  const w=Math.abs(p2.x-p1.x)*DPR,h=Math.abs(p2.y-p1.y)*DPR;
+  const x=Math.min(p1.x,p2.x),y=Math.min(p1.y,p2.y);
+  const w=Math.abs(p2.x-p1.x),h=Math.abs(p2.y-p1.y);
   ctx.fillStyle='rgba(0,196,204,.08)';
   ctx.fillRect(x,y,w,h);
   ctx.strokeStyle=getCSS('--accent-contrast');   // a11y-audit-2026-07
   ctx.lineWidth=1;
-  ctx.setLineDash([4*DPR,4*DPR]);
+  ctx.setLineDash([4,4]);
   ctx.strokeRect(x,y,w,h);
   ctx.setLineDash([]);
 }
@@ -3979,6 +4009,24 @@ const Net={
       try{this.dc.send(JSON.stringify(msg))}catch(_){}
     }
   },
+  // ADR-0011: ephemeral peer selection presence. Called from frame() (the rAF driver,
+  // NOT draw() — render must stay side-effect-free) once per drawn frame; sends only
+  // when the serialized selection differs from the last send, so no throttle is needed
+  // (selection changes are discrete, unlike pointermove). null forces a resend — set by
+  // _touchPeer when a new peer joins, so latecomers see the current selection.
+  _lastSelSent:'',
+  sendSelectionIfChanged(){
+    if(state.peers.size===0)return;
+    const ids=[...state.selection];
+    const key=ids.join(',');
+    if(key===this._lastSelSent)return;
+    this._lastSelSent=key;
+    const msg={k:'selection',peer:state.peerId,ids};
+    this._send(msg);
+    if(this.dc&&this.dc.readyState==='open'){
+      try{this.dc.send(JSON.stringify(msg))}catch(_){}
+    }
+  },
   _send(msg){
     if(this.bc){try{this.bc.postMessage(msg)}catch(_){}}
   },
@@ -4026,6 +4074,16 @@ const Net={
         const p=peerKey&&state.peers.get(peerKey);
         if(p){p.cursor={x:msg.x,y:msg.y};invalidate();}
         break;}
+      case 'selection':{
+        // ADR-0011: same _rtcPeerId routing as 'cursor' (hello/ping never ride WebRTC,
+        // so an RTC peer lives under a synthetic id, not msg.peer). Defensive intake:
+        // string ids only, capped — a bad peer can't flood us with a giant array.
+        if(!Array.isArray(msg.ids))break;
+        const ids=msg.ids.slice(0,MAX_OP_SHAPES).filter(id=>typeof id==='string');
+        const peerKey=viaRtc?this._rtcPeerId:msg.peer;
+        const p=peerKey&&state.peers.get(peerKey);
+        if(p){p.sel=ids;invalidate();}
+        break;}
     }
   },
   // Build a snapshot message. Snapshot = all shapes as add ops. The clock seq is
@@ -4059,6 +4117,9 @@ const Net={
     else{
       const colorIdx=[...state.peers.keys()].length%PEER_COLORS.length;
       state.peers.set(peerId,{color:PEER_COLORS[colorIdx],lastSeen:Date.now()});
+      // ADR-0011: a latecomer would otherwise not see our selection until it next
+      // changes — force one resend on the next frame.
+      this._lastSelSent=null;invalidate();
       if(this._onConnChange)this._onConnChange();
     }
   },

@@ -4,7 +4,7 @@
 単一HTMLファイル。ダブルクリックで動く。アカウント不要。広告なし。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-00C4CC.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.7.61-00C4CC.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.7.62-00C4CC.svg)](CHANGELOG.md)
 [![Size](https://img.shields.io/badge/size-~61KB%20gzip-00C4CC.svg)](index.html)
 [![Offline](https://img.shields.io/badge/offline-first-00C4CC.svg)](#offline)
 [![A11y](https://img.shields.io/badge/WCAG-AAA-00C4CC.svg)](#accessibility)
@@ -86,6 +86,8 @@ start index.html      # Windows
 - CRDT clock 付き op-log、受信 op は型 allow-list で検証
 - ピアカーソル表示 (ADR-0010): 接続中の相手のポインタ位置をリアルタイム表示。
   非永続(undo・保存の対象外)、共同編集セッション中のみ意味を持つためプレゼン中は非表示
+- ピア選択ハイライト (ADR-0011): 相手が選択中の図形に相手の色の細い破線枠を表示。
+  同じ図形を同時に編集して LWW で片方が上書きされる事故を、編集前に気づける
 
 ### プレゼンテーション
 - フレームを左→右順に全画面表示 (⇧P / Ctrl+Enter)、←/→/Space でナビゲート
