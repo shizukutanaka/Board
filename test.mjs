@@ -951,7 +951,8 @@ try {
              _onBtnInstall, _getInstallPrompt: () => _installPrompt, _setInstallPrompt: (v) => { _installPrompt = v; },
              _onSwUpdate, _ctxMenuKeyNav,
              _getPasteCount: () => _pasteCount, _resetPasteClipboard: () => { _lastClipboard = null; },
-             endRectLike, endLineLike };
+             endRectLike, endLineLike,
+             draw, _setCtx: (c) => { const p = ctx; ctx = c; return p; } };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -3452,6 +3453,62 @@ try {
       assert.strictEqual(B.state.peers.has('ghost'),false,'ADR-0011e: selection for an unknown peer does not create a new entry');
 
       console.log('  ✓ ADR-0011 peer selection presence: change-detect send, deselect clear, join resend, viaRtc→_rtcPeerId, defensive intake');
+    }
+
+    // ---- v1.7.62: recording-canvas test for the overlay coordinate space (HiDPI) --------
+    // The fake ctx above is a pure no-op, so until now NO test could observe a coordinate
+    // error — which is exactly how the double-DPR overlay bug survived from v1.6.5 to
+    // v1.7.61 (spec §14.2 "テストの偏り"). This recording ctx tracks the affine transform
+    // and captures the DEVICE-space rect of each strokeRect, turning a wrong ×DPR into a
+    // numeric failure. The invariant asserted is transform-driven (device size must scale
+    // exactly with DPR), not a hardcoded constant, so it also guards future regressions.
+    {
+      const A2 = A;
+      const mkRec = () => {
+        let T=[1,0,0,1,0,0]; const rects=[];
+        const dx=(x,y)=>T[0]*x+T[2]*y+T[4], dy=(x,y)=>T[1]*x+T[3]*y+T[5];
+        return { _rects:rects,
+          setTransform(a,b,c,d,e,f){T=[a,b,c,d,e,f];},
+          strokeRect(x,y,w,h){rects.push({x:dx(x,y),y:dy(x,y),w:T[0]*w,h:T[3]*h});},
+          fillRect(){}, beginPath(){}, moveTo(){}, lineTo(){}, arc(){}, arcTo(){},
+          quadraticCurveTo(){}, ellipse(){}, closePath(){}, fill(){}, stroke(){}, clip(){},
+          save(){}, restore(){}, translate(){}, scale(){}, rotate(){}, clearRect(){},
+          measureText:()=>({width:50}), fillText(){}, setLineDash(){},
+          get canvas(){return{width:800,height:600};},
+          fillStyle:'',strokeStyle:'',lineWidth:1,font:'',textBaseline:'',globalAlpha:1,lineCap:'',lineJoin:'' };
+      };
+      // Single selected rect placed WELL off-screen (5000,5000) so its body is culled by
+      // inView — leaving only the overlay (selection box + handles) in the recording.
+      A2.state.shapes.length=0; A2._invalidateGrid();
+      A2.state.peers.clear(); A2.state.guides=null; A2.state.marquee=null;
+      A2.state.draft=null; A2.state.showGrid=false;
+      Object.assign(A2.state.viewport,{x:0,y:0,zoom:1});
+      const rr=A2.Shape.make('rect',{x:5000,y:5000,w:100,h:100});
+      A2.state.shapes.push(rr); A2._invalidateGrid();
+      A2.state.selection=new Set([rr.id]);
+
+      // the selection box is strokeRect(x-1,y-1,w+2,h+2); at zoom 1 its CSS-px size is
+      // w+2=102, and handles are HANDLE_SIZE=8 — so w>50 isolates the box from handles.
+      const bigBox = rec => rec._rects.filter(r=>Math.abs(r.w)>50);
+      const runAt = dpr => {
+        fakeWin.devicePixelRatio=dpr; A2.resize();
+        const rec=mkRec(); const prev=A2._setCtx(rec);
+        A2.draw(); A2._setCtx(prev);
+        return bigBox(rec);
+      };
+      const at1=runAt(1), at2=runAt(2);
+      assert.strictEqual(at1.length,1,'HiDPI-record: exactly one overlay box (selection) at DPR=1 — body culled, handles filtered');
+      assert.strictEqual(at2.length,1,'HiDPI-record: exactly one overlay box at DPR=2');
+      assert.ok(Math.abs(at1[0].w-102)<1,`HiDPI-record: DPR=1 selection box device width ≈102 (got ${at1[0].w})`);
+      // the crux: doubling DPR must exactly double the device size. Buggy ×DPR-again code
+      // would give 102→~404 (ratio ~3.96); the fix gives 102→204 (ratio 2.0).
+      assert.ok(Math.abs(at2[0].w-204)<1,`HiDPI-record: DPR=2 selection box device width ≈204, NOT ~404 (double-DPR bug); got ${at2[0].w}`);
+      assert.ok(Math.abs(at2[0].w-2*at1[0].w)<0.5,'HiDPI-record: device size scales EXACTLY with DPR (transform supplies DPR, overlay must not multiply again)');
+      assert.ok(Math.abs(at2[0].x-9998)<1,`HiDPI-record: DPR=2 selection box device x ≈9998 (=DPR·(w2s.x−1)), NOT ~19998; got ${at2[0].x}`);
+      // restore harness DPR for subsequent tests
+      fakeWin.devicePixelRatio=1; A2.resize();
+      A2.state.shapes.length=0; A2.state.selection=new Set(); A2._invalidateGrid();
+      console.log('  ✓ HiDPI recording-canvas: overlay draws in CSS px, device size scales exactly with DPR (double-DPR bug would fail this, v1.7.62)');
     }
 
     // §3.15 → ADR-0002: concurrent edits to the SAME property now CONVERGE via
@@ -7068,7 +7125,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 1010; // prev 998 + ADR-0011 peer selection presence (12: a=2, b=2, c=2, d=2, e=4)
+  pass += 1017; // prev 1010 + HiDPI recording-canvas overlay test (7)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
