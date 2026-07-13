@@ -484,6 +484,20 @@ const checks = [
     && html.includes('function drawPeerSelections()') && html.includes('Net.sendSelectionIfChanged();')],
   ['ADR-0011 latecomer resend: _touchPeer resets _lastSelSent',
     html.includes('this._lastSelSent=null;invalidate();')],
+  // v1.7.63 robustness audit
+  ['SW: navigations are network-first (cache-first pinned users to the first cached version forever)',
+    html.includes("if(e.request.mode==='navigate')")
+    && html.includes("catch(_){const r=await c.match(e.request);if(r)return r;return new Response('offline',{status:503})}")],
+  ['peer flood: MAX_PEERS cap + peer-id type/length intake guard',
+    html.includes('const MAX_PEERS=32')
+    && html.includes('if(state.peers.size>=MAX_PEERS)return;')
+    && html.includes("typeof msg.peer!=='string'||msg.peer.length>MAX_PEER_ID_LEN")],
+  ['snapshot amplification: _sendSnapshot throttled',
+    html.includes('_lastSnapAt:0') && html.includes('if(now-this._lastSnapAt<1000)return;')],
+  ['importBoard: FileReader onerror toasts instead of failing silently',
+    html.includes("r.onerror=()=>UI.toast(t('invalidBoard'),'err');")],
+  ['docName clamped to 80 chars on all four intake paths (import/IDB/backup/hash)',
+    (html.match(/\.slice\(0,80\)/g)||[]).length>=4],
   // v1.6.68: Alt resize-from-centre
   ['Alt resizes about original centre', html.includes("function applyResize(sh,handle,orig,wp,shift,alt)") && html.includes("if(alt){sh.x=cx0-sh.w/2;sh.y=cy0-sh.h/2;}") && html.includes("applyResize(rsh,ptr.resizeHandle,ptr.resizeOrig,wp,e.shiftKey,e.altKey);")],
   // v1.6.69: rotated-box resize
@@ -3509,6 +3523,68 @@ try {
       fakeWin.devicePixelRatio=1; A2.resize();
       A2.state.shapes.length=0; A2.state.selection=new Set(); A2._invalidateGrid();
       console.log('  ✓ HiDPI recording-canvas: overlay draws in CSS px, device size scales exactly with DPR (double-DPR bug would fail this, v1.7.62)');
+    }
+
+    // ---- v1.7.63: peer-map flood hardening + snapshot amplification throttle ----------
+    // WebRTC delivers EVERY message kind into _onRecv unfiltered, so hello/ping flooding
+    // with arbitrary peer ids was an unbounded state.peers/DOM growth vector, and each
+    // hello/sync-req forced a full board clone×2 (snapshot) with no rate limit.
+    {
+      B.state.peers.clear();
+      for(let i=0;i<40;i++)B.Net._touchPeer('flood'+i);
+      assert.strictEqual(B.state.peers.size,32,'flood: state.peers is capped at MAX_PEERS=32');
+      const _ls=B.state.peers.get('flood0').lastSeen;
+      B.Net._touchPeer('flood0');
+      assert.ok(B.state.peers.get('flood0').lastSeen>=_ls,'flood: an already-known peer still refreshes lastSeen at the cap');
+      B.state.peers.clear();
+      B.Net._onRecv({k:'hello',peer:'x'.repeat(65)});
+      assert.strictEqual(B.state.peers.size,0,'flood: a >64-char peer id is rejected before any case runs');
+      B.Net._onRecv({k:'hello',peer:12345});
+      assert.strictEqual(B.state.peers.size,0,'flood: a non-string peer id is rejected');
+      B.Net._onRecv({k:'ping',peer:'peerZ'});
+      assert.strictEqual(B.state.peers.has('peerZ'),true,'flood: a normal peer id is still accepted');
+      // snapshot throttle: a burst of sync-req-driven snapshots collapses to one send
+      let _snaps=0;const _origSend=B.Net._send;B.Net._send=m=>{if(m&&m.k==='snapshot')_snaps++;};
+      B.Net._lastSnapAt=0;
+      B.Net._sendSnapshot();B.Net._sendSnapshot();B.Net._sendSnapshot();
+      assert.strictEqual(_snaps,1,'snapshot throttle: a burst of _sendSnapshot collapses to a single send');
+      B.Net._lastSnapAt=0;   // simulate the 1s window elapsing
+      B.Net._sendSnapshot();
+      assert.strictEqual(_snaps,2,'snapshot throttle: the next window sends again');
+      B.Net._send=_origSend;
+      B.state.peers.clear();
+      console.log('  ✓ peer-map flood hardening: MAX_PEERS cap, peer-id type/length intake, snapshot throttle (v1.7.63)');
+    }
+
+    // ---- v1.7.63: importBoard error/robustness paths ----------------------------------
+    {
+      // (a) FileReader read failure must toast (was: totally silent). Node has no global
+      // FileReader — install a shim that fails synchronously, restore afterwards.
+      const seen=[];const _origToast=A.UI.toast;A.UI.toast=(m,k)=>{seen.push({m,k});};
+      const _hadFR=Object.prototype.hasOwnProperty.call(globalThis,'FileReader');
+      const _prevFR=globalThis.FileReader;
+      try{
+        globalThis.FileReader=class{ readAsText(){ this.onerror&&this.onerror(); } };
+        A.importBoard({name:'x.board'});
+        assert.strictEqual(seen.length,1,'importBoard: a read failure produces exactly one toast (was silent)');
+        assert.strictEqual(seen[0].k,'err','importBoard: the read-failure toast is an error toast');
+        // (b) docName clamp: a crafted .board with a 200-char name must be cut to the same
+        // 80-char limit the #docName input enforces via maxlength.
+        seen.length=0;
+        A.state.shapes.length=0;A._invalidateGrid();A.state.history.length=0;A.state.histIdx=-1;
+        const _sh=A.Shape.make('rect',{x:0,y:0,w:10,h:10});
+        const _payload=JSON.stringify({docName:'D'.repeat(200),shapes:[_sh]});
+        globalThis.FileReader=class{ readAsText(){ this.result=_payload; this.onload&&this.onload(); } };
+        A.importBoard({name:'y.board'});
+        assert.strictEqual(A.state.shapes.length,1,'importBoard: crafted board imports its one valid shape');
+        assert.strictEqual(A.state.docName.length,80,'importBoard: a 200-char docName is clamped to 80 (input maxlength parity)');
+      }finally{
+        A.UI.toast=_origToast;
+        if(_hadFR)globalThis.FileReader=_prevFR;else delete globalThis.FileReader;
+        A.state.shapes.length=0;A.state.history.length=0;A.state.histIdx=-1;A.state.selection=new Set();A._invalidateGrid();
+        A.state.docName='Untitled';
+      }
+      console.log('  ✓ importBoard: read failure toasts (was silent), oversized docName clamped to 80 (v1.7.63)');
     }
 
     // §3.15 → ADR-0002: concurrent edits to the SAME property now CONVERGE via
@@ -7125,7 +7201,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 1017; // prev 1010 + HiDPI recording-canvas overlay test (7)
+  pass += 1028; // prev 1017 + v1.7.63 robustness (11: flood 5, snapshot throttle 2, importBoard 4)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

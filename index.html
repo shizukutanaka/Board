@@ -758,6 +758,8 @@ const NET_CHANNEL_PREFIX='board:';      // BroadcastChannel name prefix
 const NET_PRESENCE_INTERVAL=5000;       // 5s heartbeat
 const NET_PRESENCE_TIMEOUT=15000;       // 15s drop
 const CURSOR_THROTTLE_MS=60;            // ADR-0010: peer cursor broadcast rate cap (~16/s)
+const MAX_PEERS=32;                     // presence-map cap: a flooding peer can't grow state.peers/DOM unboundedly
+const MAX_PEER_ID_LEN=64;               // real ids are 32-char uids; anything longer is garbage
 const PEER_COLORS=['#00C4CC','#7C3AED','#DC2626','#F59E0B','#16A34A','#2563EB','#DB2777','#EA580C'];
 const uid=()=>typeof crypto!=='undefined'&&crypto.randomUUID
   ?crypto.randomUUID().replace(/-/g,'')  // 122-bit UUID v4; no collision concern
@@ -3770,12 +3772,15 @@ function importBoard(file){
       // clocks from the board we just swapped out. Skipping this leaks wclock entries and
       // can let a re-imported shape (same id) inherit a stale LWW clock.
       state.selection.clear();state.wclock={};
-      if(typeof d.docName==='string'&&d.docName){state.docName=d.docName;document.getElementById('docName').value=d.docName;_syncDocTitle();}
+      if(typeof d.docName==='string'&&d.docName){state.docName=d.docName.slice(0,80);document.getElementById('docName').value=state.docName;_syncDocTitle();}   // clamp: the input enforces maxlength=80, intake paths must too
       sortZ();invalidate();
       Store._recordCommitted({op:'replace',before,after:clone(state.shapes),wc:beforeWc,afterWc:clone(state.wclock),origSel});
       UI.toast(t('loadedBoard')+' ('+shapes.length+')','ok');
     }catch{UI.toast(t('invalidBoard'),'err')}
   };
+  // read failure (I/O, revoked permission) previously gave NO feedback at all — the
+  // image-import readers and importFromHash both toast, so this path must too.
+  r.onerror=()=>UI.toast(t('invalidBoard'),'err');
   r.readAsText(file);
 }
 // Connector edge label as SVG (ADR-0003): a paper background rect + centred text at the
@@ -4032,6 +4037,10 @@ const Net={
   },
   _onRecv(msg,viaRtc){
     if(!msg||typeof msg!=='object'||msg.peer===state.peerId)return;
+    // Defensive intake for the peer id itself (payloads are validated per-case, but the
+    // id feeds _touchPeer/state.peers directly). WebRTC delivers EVERY message kind here
+    // unfiltered — "hello/ping never ride the DataChannel" only holds for honest peers.
+    if(msg.peer!==undefined&&(typeof msg.peer!=='string'||msg.peer.length>MAX_PEER_ID_LEN))return;
     switch(msg.k){
       case 'op':{
         // Validate op shape before applying — reject garbage from bad peers
@@ -4100,7 +4109,16 @@ const Net={
     }));
     return {k:'snapshot',shapes:clone(state.shapes),ops,peer:state.peerId};
   },
-  _sendSnapshot(){ this._send(this._snapshotMsg()); },
+  // Throttled: hello/sync-req are attacker-controllable and each snapshot clones the whole
+  // board twice — unthrottled, a hostile peer gets a cheap-request/expensive-response
+  // amplifier. Honest peers only need one snapshot at join time.
+  _lastSnapAt:0,
+  _sendSnapshot(){
+    const now=Date.now();
+    if(now-this._lastSnapAt<1000)return;
+    this._lastSnapAt=now;
+    this._send(this._snapshotMsg());
+  },
   _applySnapshot(msg){
     // Validate snapshot shapes before adopting
     const shapes=msg.shapes;
@@ -4115,6 +4133,7 @@ const Net={
     const existing=state.peers.get(peerId);
     if(existing){existing.lastSeen=Date.now()}
     else{
+      if(state.peers.size>=MAX_PEERS)return;   // flood cap: known peers keep refreshing, new ones wait for a reap
       const colorIdx=[...state.peers.keys()].length%PEER_COLORS.length;
       state.peers.set(peerId,{color:PEER_COLORS[colorIdx],lastSeen:Date.now()});
       // ADR-0011: a latecomer would otherwise not see our selection until it next
@@ -4275,7 +4294,7 @@ const Share={
       const origSel=[...state.selection];
       // ADR-0004: also survives past the undo window (reload/closed-tab), not just this session.
       if(before.length)Persist.saveBackup(before,{...state.viewport},state.docName);
-      state.shapes=valid.map(clone);_invalidateGrid();state.docName=(typeof data.name==='string'&&data.name)||'Shared';   // ADR-0009
+      state.shapes=valid.map(clone);_invalidateGrid();state.docName=((typeof data.name==='string'&&data.name)||'Shared').slice(0,80);   // ADR-0009
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out (see importBoard for rationale).
       state.selection.clear();state.wclock={};
@@ -4381,7 +4400,7 @@ const Persist={
         state.viewport.x=+d.viewport.x; state.viewport.y=+d.viewport.y;
         state.viewport.zoom=clampZoom(+d.viewport.zoom);
       }
-      if(typeof d.docName==='string'&&d.docName){state.docName=d.docName;document.getElementById('docName').value=d.docName;_syncDocTitle();}
+      if(typeof d.docName==='string'&&d.docName){state.docName=d.docName.slice(0,80);document.getElementById('docName').value=state.docName;_syncDocTitle();}   // clamp: the input enforces maxlength=80, intake paths must too
       state.lastSaveAt=d.savedAt||0;
       sortZ();
     }
@@ -4432,7 +4451,7 @@ const Persist={
       const origSel=[...state.selection];
       state.shapes=shapes.map(clone);_invalidateGrid();   // ADR-0009
       state.selection.clear();state.wclock={};
-      if(typeof d.docName==='string'&&d.docName){state.docName=d.docName;document.getElementById('docName').value=d.docName;_syncDocTitle();}
+      if(typeof d.docName==='string'&&d.docName){state.docName=d.docName.slice(0,80);document.getElementById('docName').value=state.docName;_syncDocTitle();}   // clamp: the input enforces maxlength=80, intake paths must too
       if(d.viewport&&Number.isFinite(+d.viewport.x)&&Number.isFinite(+d.viewport.y)&&Number.isFinite(+d.viewport.zoom)&&d.viewport.zoom>0){
         state.viewport.x=+d.viewport.x;state.viewport.y=+d.viewport.y;state.viewport.zoom=clampZoom(+d.viewport.zoom);
       }
@@ -5110,6 +5129,13 @@ if('serviceWorker' in navigator){
     })())});
     self.addEventListener('fetch',e=>{
       e.respondWith(caches.open(C).then(async c=>{
+        if(e.request.mode==='navigate'){
+          // network-first for the document: pure cache-first pinned users to the first
+          // cached HTML forever (old HTML regenerates the old SW -> activate/controllerchange
+          // never fire, updates never arrive). Offline still falls back to the cache.
+          try{const n=await fetch(e.request);c.put(e.request,n.clone());return n}
+          catch(_){const r=await c.match(e.request);if(r)return r;return new Response('offline',{status:503})}
+        }
         const r=await c.match(e.request);
         if(r)return r;
         try{const n=await fetch(e.request);if(e.request.method==='GET')c.put(e.request,n.clone());return n}
