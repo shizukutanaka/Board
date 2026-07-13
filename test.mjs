@@ -515,6 +515,13 @@ const checks = [
   ['empty-board hint: draws only when blank, reads emptyHint i18n key',
     html.includes('function drawEmptyHint(') && html.includes("if(state.shapes.length===0&&!state.draft)drawEmptyHint(W,H);")
     && html.includes("ctx.fillText(t('emptyHint'),")],
+  // v1.7.65 (ADR-0012)
+  ['theme toggle: applyTheme/toggleTheme/refreshThemeBtn wired, boot restores persisted mode',
+    html.includes("function applyTheme(mode){") && html.includes("toggleTheme(){")
+    && html.includes("refreshThemeBtn(){") && html.includes("applyTheme(UI._themeMode());UI.refreshThemeBtn();")
+    && html.includes("document.getElementById('btnTheme').onclick=()=>UI.toggleTheme();")],
+  ['theme toggle: existing data-theme=light/dark CSS selectors are finally reachable from JS',
+    html.includes("document.documentElement.dataset.theme=mode") && html.includes(':root[data-theme=light]') && html.includes(':root[data-theme=dark]')],
   // v1.6.68: Alt resize-from-centre
   ['Alt resizes about original centre', html.includes("function applyResize(sh,handle,orig,wp,shift,alt)") && html.includes("if(alt){sh.x=cx0-sh.w/2;sh.y=cy0-sh.h/2;}") && html.includes("applyResize(rsh,ptr.resizeHandle,ptr.resizeOrig,wp,e.shiftKey,e.altKey);")],
   // v1.6.69: rotated-box resize
@@ -923,7 +930,7 @@ const fakeWin = {
     serviceWorker:{ register:()=>Promise.resolve(), _listeners:{},
       addEventListener(type,fn){ this._listeners[type]=fn; } },
     clipboard: { writeText: () => Promise.resolve() } },
-  localStorage: { _d: {}, getItem(k){ return this._d[k] || null }, setItem(k,v){ this._d[k] = String(v) } },
+  localStorage: { _d: {}, getItem(k){ return this._d[k] || null }, setItem(k,v){ this._d[k] = String(v) }, removeItem(k){ delete this._d[k] } },
   indexedDB: { open: () => ({ addEventListener(){}, onsuccess:null, onerror:null, onupgradeneeded:null }) },
   URL: { createObjectURL: () => 'blob:x', revokeObjectURL(){} },
   Blob, confirm: () => false, alert(){}, prompt: () => null,
@@ -966,7 +973,7 @@ function makeFakeIdb(){
 try {
   const fn = new Function('window','document','navigator','requestAnimationFrame',
     'indexedDB','URL','setTimeout','clearTimeout','setInterval','clearInterval',
-    'getComputedStyle','confirm','alert','Blob','globalThis','self',`
+    'getComputedStyle','confirm','alert','Blob','globalThis','self','localStorage',`
     ${js}
     return { state, Store, G, Shape, distToSeg,
              doBringFront, doSendBack, doBringForward, doSendBackward,
@@ -982,13 +989,13 @@ try {
              _onBtnInstall, _getInstallPrompt: () => _installPrompt, _setInstallPrompt: (v) => { _installPrompt = v; },
              _onSwUpdate, _ctxMenuKeyNav,
              _getPasteCount: () => _pasteCount, _resetPasteClipboard: () => { _lastClipboard = null; },
-             endRectLike, endLineLike, I18N,
+             endRectLike, endLineLike, I18N, applyTheme,
              draw, _setCtx: (c) => { const p = ctx; ctx = c; return p; } };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
     fakeWin.indexedDB, fakeWin.URL, setTimeout, clearTimeout, setInterval, clearInterval,
-    fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin
+    fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage
   );
   const { state, Store, G, Shape, distToSeg,
           doBringFront, doSendBack, doBringForward, doSendBackward,
@@ -3357,7 +3364,7 @@ try {
     const B = fn(
       fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
       fakeWin.indexedDB, fakeWin.URL, setTimeout, clearTimeout, setInterval, clearInterval,
-      fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin
+      fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage
     );
     const cp = o => JSON.parse(JSON.stringify(o));
     A.state.peerId='peerA'; B.state.peerId='peerB';
@@ -3555,6 +3562,41 @@ try {
       assert.strictEqual(rec._texts.length,0,'empty hint: disappears the instant a shape exists');
       A2.state.shapes.length=0; A2._invalidateGrid();
       console.log('  ✓ FT-17 empty-board hint: shows centered when blank, gone once populated (v1.7.64)');
+    }
+
+    // ---- ADR-0012: theme toggle (auto -> light -> dark -> auto) ------------------------
+    // localStorage is now a real Function param (fakeWin.localStorage, wired above) rather
+    // than dead weight the eval'd script's bare `localStorage` identifier could never reach
+    // — so these exercise the actual persistence path, not just the try/catch fallback.
+    {
+      const ls=fakeWin.localStorage; delete ls._d['board.theme'];
+      const de=fakeDoc.documentElement;
+      delete de.dataset.theme;
+      const themeBtn={attrs:{},setAttribute(n,v){this.attrs[n]=v},getAttribute(n){return this.attrs[n]??null},dataset:{}};
+      const _origGet=fakeDoc.getElementById;
+      fakeDoc.getElementById=id=>id==='btnTheme'?themeBtn:_origGet(id);
+      try{
+        assert.strictEqual(A.UI._themeMode(),null,'theme: no persisted value at start (auto)');
+        assert.strictEqual(de.dataset.theme,undefined,'theme: auto sets no data-theme attribute');
+        A.UI.toggleTheme();
+        assert.strictEqual(A.UI._themeMode(),'light','theme: auto -> light');
+        assert.strictEqual(de.dataset.theme,'light','theme: data-theme=light applied to <html>');
+        assert.strictEqual(themeBtn.dataset.themeMode,'light','theme: button reflects light mode');
+        A.UI.toggleTheme();
+        assert.strictEqual(A.UI._themeMode(),'dark','theme: light -> dark');
+        assert.strictEqual(de.dataset.theme,'dark','theme: data-theme=dark applied to <html>');
+        A.UI.toggleTheme();
+        assert.strictEqual(A.UI._themeMode(),null,'theme: dark -> auto (full cycle)');
+        assert.strictEqual(de.dataset.theme,undefined,'theme: auto removes the data-theme attribute again');
+        assert.strictEqual(ls._d['board.theme'],undefined,'theme: auto removes the localStorage key entirely (not stored as the string "null")');
+        // boot restore: a persisted value must apply before first paint (main()'s call)
+        ls._d['board.theme']='dark';
+        A.applyTheme(A.UI._themeMode());
+        assert.strictEqual(de.dataset.theme,'dark','theme: boot restore applies a persisted mode');
+      }finally{
+        fakeDoc.getElementById=_origGet;delete de.dataset.theme;delete ls._d['board.theme'];
+      }
+      console.log('  ✓ ADR-0012 theme toggle: auto/light/dark cycle, localStorage persistence, boot restore (v1.7.65)');
     }
 
     // ---- v1.7.63: peer-map flood hardening + snapshot amplification throttle ----------
@@ -6962,7 +7004,7 @@ try {
     const C=fn(
       fakeWin, fakeDoc, fakeWin.navigator, spyRaf,
       fakeWin.indexedDB, fakeWin.URL, setTimeout, clearTimeout, setInterval, clearInterval,
-      fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin
+      fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage
     );
     C.state.showMinimap=false;
     C.Minimap.schedule();
@@ -7282,7 +7324,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 1042; // prev 1037 + FT-17 empty-board hint (5)
+  pass += 1053; // prev 1042 + ADR-0012 theme toggle (11)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

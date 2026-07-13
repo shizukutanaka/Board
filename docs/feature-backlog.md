@@ -266,15 +266,29 @@ Opus/Sonnet が文脈なしで着手できる形式に変換していなかっ�
 - Effort: S
 - Depends on: none
 
-## FT-18 — テーマ/言語の手動トグル(第3弾)
+## FT-18 — テーマの手動トグル — ✅ 実装済み (v1.7.65, ADR-0012)
 - Verdict: `FIX`(新機能、要 ADR)
-- Evidence: `LANG` は `navigator.language` 固定で UI からの切替不可。ダークテーマは
-  OS 追従のみ — `:root[data-theme=dark/light]` セレクタは存在するが JS が `data-theme`
-  を設定する箇所が無く実質デッドコード。
-- Action: ステータスバーにトグルを追加し `documentElement.dataset.theme` 設定 +
-  `localStorage` 永続化、言語は `board.lang` 永続化 + `applyI18n()` 再実行。
-  設定 UI の設計判断(どこに置くか・アイコン)が要るため ADR を書いてから。
+- Evidence: ダークテーマは OS 追従のみ — `:root[data-theme=dark/light]` セレクタは
+  存在するが JS が `data-theme` を設定する箇所が無く実質デッドコードだった。
+- Action: トップバーにアイコンボタンを追加し、自動→ライト→ダーク→自動を循環。
+  `documentElement.dataset.theme` 設定 + `localStorage` 永続化。
 - Effort: M
+- Depends on: none
+- **解決 (v1.7.65)**: `docs/ADR-0012-theme-toggle.md`。当初は言語トグルも同一チケットに
+  束ねていたが、`LANG`/`T` が読み込み時固定の `const` で生成時キャッシュ文字列の扱いに
+  独自リスクがあるため ADR で言語側を分離・見送り、FT-18b として下記に再チケット化。
+
+## FT-18b — 言語の手動トグル(FT-18 から分離)
+- Verdict: `FIX`(新機能、要 ADR — テーマより設計コスト大)
+- Evidence: `LANG`/`T` は起動時に一度だけ決まる `const`。`t(key)` は呼び出しのたびに
+  `T` を再評価する閉包なので `const→let` にして再代入すれば大半は自動追従するが、
+  `sq.placeholder=T.k.search`(検索ボックス)のように**生成時に一度だけ**訳文を
+  キャッシュする箇所が複数あり、切替後にそれらを漏れなく再同期する保証が要る。
+- Action: `LANG`/`T` を `let` 化 + `setLang(lang)` で再代入 → `UI.applyI18n()` 再実行。
+  生成時キャッシュ箇所(検索ボックス placeholder 等)を洗い出し個別に再同期するか、
+  該当箇所を「毎回 `T.k.search` を直接参照」する形に統一する設計判断が要るため、
+  着手前に ADR-0012 とは独立の ADR を書くこと。
+- Effort: M〜L(テーマより検証範囲が広い)
 - Depends on: none
 
 ## FT-19 — コネクタ/フレームラベルのキーボード編集経路(第3弾)
@@ -286,8 +300,9 @@ Opus/Sonnet が文脈なしで着手できる形式に変換していなかっ�
 - Effort: M
 - Depends on: none
 
-**進捗 (v1.7.64)**: FT-17(空盤面ヒント)実装済み。残る FT-18(テーマ/言語トグル)・
-FT-19(ラベルのキーボード編集)は要 ADR のため未着手。
+**進捗 (v1.7.65)**: FT-17(空盤面ヒント)・FT-18(テーマトグル、ADR-0012)実装済み。
+FT-18b(言語トグル、FT-18 から分離)・FT-19(ラベルのキーボード編集)は要 ADR のため
+未着手。
 
 **進捗 (v1.7.63)**: 第3弾(FT-17〜19)は v1.7.63 の長所短所監査で発見された
 「実行しない(新機能)」側の記録。同監査の実バグ側(SW 更新不能・ピア DoS・

@@ -4,7 +4,7 @@
 単一HTMLファイル。ダブルクリックで動く。アカウント不要。広告なし。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-00C4CC.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.7.64-00C4CC.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.7.65-00C4CC.svg)](CHANGELOG.md)
 [![Size](https://img.shields.io/badge/size-~61KB%20gzip-00C4CC.svg)](index.html)
 [![Offline](https://img.shields.io/badge/offline-first-00C4CC.svg)](#offline)
 [![A11y](https://img.shields.io/badge/WCAG-AAA-00C4CC.svg)](#accessibility)
@@ -113,7 +113,9 @@ start index.html      # Windows
 - ホーム画面追加可 (モバイル)
 - iOS ノッチ / ホームインジケータのセーフエリア対応 (`viewport-fit=cover` + `env(safe-area-inset-*)`)
 
-### アクセシビリティ
+### 表示
+- テーマ手動トグル (ADR-0012): トップバーのアイコンボタンで自動(OS追従) → ライト →
+  ダーク → 自動を循環。選択は次回起動後も保持
 - 全機能キーボード操作可能(ツール切替・描画・選択・整列・エクスポート等、マウス
   操作の代替経路がすべて存在する — `role="application"` のキャンバス自体も含む)
 - ARIA ラベル完備

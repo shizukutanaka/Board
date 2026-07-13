@@ -2,6 +2,40 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.65] - 2026-07-13
+
+`docs/feature-backlog.md` FT-18 のうちテーマ側(ADR-0012)。言語トグルは別スコープに
+切り出し、着手しない(下記参照)。
+
+### Added
+- **テーマ手動トグル**: トップバーに `btnTheme` アイコンボタンを追加。クリックで
+  自動(OS の `prefers-color-scheme` 追従)→ライト→ダーク→自動を循環し、
+  `documentElement.dataset.theme` を設定/削除する。既存の `:root[data-theme=light/dark]`
+  CSS セレクタ(a11y-audit-2026-07 で整備済みだが JS から一度も設定されずデッドコード
+  だった)が初めて実際に使われるようになる。選択は `localStorage` に永続化し、次回起動時
+  ADR-0004 のバックアップ復元等より前に復元。SR には `UI.announce` で状態を通知
+  (v1.7.63 で追加した SR live region を再利用)。
+
+### Changed
+- `test.mjs`: fake-DOM ハーネスの `localStorage` が実際に Function パラメータとして
+  配線されておらず、`PEER_ID`/`toggleMinimap` の永続化コードはこれまで常に
+  try/catch のフォールバック分岐だけを通っていた(本物の read/write パスは一度も
+  実行されないままテストされていた)。今回のテーマトグル実装で初めて永続化の実際の
+  挙動を検証する必要が生じたため配線を修正 — 既存機能のテスト忠実度も副次的に上がった。
+
+### Deferred
+- 言語トグル(FT-18 の残り半分)は `docs/ADR-0012-theme-toggle.md` で意図的に
+  スコープ外にした: `LANG`/`T` は読み込み時に一度だけ決まる `const` で、検索ボックスの
+  placeholder 等「生成時に一度だけ翻訳文字列をキャッシュする」箇所が複数あり、
+  テーマ(CSS 変数が属性変化に即応)より安全な設計に手間がかかる。`docs/feature-backlog.md`
+  に FT-18b として独立記録。
+
+### Tests
+- behavioral × 11(auto→light→dark→auto の循環、localStorage 永続化・削除、
+  起動時復元)+ presence × 3
+- 非空虚性は stash 法で確認(修正前コードに対して新規テストが fail)
+- 合計 1563 pass, 0 fail
+
 ## [1.7.64] - 2026-07-13
 
 `docs/feature-backlog.md` FT-17(v1.7.63 の長所短所監査で発見、当時は新機能のため見送り）。
