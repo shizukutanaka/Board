@@ -2,6 +2,33 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.66] - 2026-07-13
+
+`docs/feature-backlog.md` FT-19(コネクタ/フレームラベルのキーボード編集経路)。
+
+### Added
+- **Enter でラベル/テキストを再編集(ADR-0013)**: 唯一の入口がダブルクリックだった
+  frame/rect/ellipse のラベル、line/arrow のコネクタラベル、text/sticky の内容を、
+  `select` ツールで単一選択中に `Enter` を押すだけで編集できるようになった。
+  `Tab`(巡回・選択)→`Enter`(編集)→入力→`Enter`(確定)/`Escape`(破棄)で
+  ポインタ無しの操作列が完結する。
+  - キー衝突なし: `Enter` は既存で「アクティブなツールの図形を中央に作成」に
+    割り当てられているが、`select` ツールのときは何もしない(no-op)ため、
+    `state.tool==='select'` のときだけ本機能を割り当てても既存動作を壊さない。
+  - ダブルクリックハンドラが個別に持っていたラベル位置計算ロジックを
+    `_openLabelEditorFor(hit)` として抽出・共有(dblclick / キーボードの両方が
+    同じ関数を呼ぶため、位置ズレや型追加漏れが構造的に起きない)。
+  - ロック中の図形・複数選択・無選択では no-op(既存のロック不変条件を維持)。
+
+### Tests
+- behavioral × 17: 無選択/複数選択/ロック中の no-op、frame/rect/ellipse の
+  ラベルエディタ起動、line のコネクタラベルエディタ起動、text の内容エディタ起動
+  (**選択中の図形の内容で**エディタが開くことをピンポイントで検証)、pen の no-op、
+  `select` ツール以外では従来通り `createShapeKbd` に委譲されること
+- presence × 2、既存の dblclick ロックガードのテストを新しい共有関数の形に追従
+- 非空虚性は stash 法で確認(修正前コードに対して新規テストが fail)
+- 合計 1582 pass, 0 fail
+
 ## [1.7.65] - 2026-07-13
 
 `docs/feature-backlog.md` FT-18 のうちテーマ側(ADR-0012)。言語トグルは別スコープに

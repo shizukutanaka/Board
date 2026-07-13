@@ -226,7 +226,7 @@ const checks = [
   ['createShapeKbd helper present', html.includes("function createShapeKbd")],
   ['Enter creates shape at viewport centre', html.includes("k==='enter'&&!meta&&!e.shiftKey") && html.includes("createShapeKbd()")],
   ['canvas aria-label includes Enter creates hint', html.includes("Enter creates, arrows move, Alt+arrows resize.")],
-  ['help grid lists Tab cycle and Enter create', html.includes("['Tab / ⇧Tab',k.cycle]") && html.includes("['Enter',k.create]")],
+  ['help grid lists Tab cycle and Enter create/edit', html.includes("['Tab / ⇧Tab',k.cycle]") && html.includes("['Enter',k.create+' / '+t('editLabel')]")],
   // v1.6.13: variable-width pen (velocity-based)
   ['penWidths helper present', html.includes("function penWidths")],
   ['drawPen uses variable width', html.includes("penWidths(p,s.size)") && html.includes("c.lineWidth=(w[i]+w[i+1])/2")],
@@ -522,6 +522,11 @@ const checks = [
     && html.includes("document.getElementById('btnTheme').onclick=()=>UI.toggleTheme();")],
   ['theme toggle: existing data-theme=light/dark CSS selectors are finally reachable from JS',
     html.includes("document.documentElement.dataset.theme=mode") && html.includes(':root[data-theme=light]') && html.includes(':root[data-theme=dark]')],
+  // v1.7.66 (ADR-0013, FT-19)
+  ['keyboard label/text edit: editSelectedShapeKbd + shared _openLabelEditorFor wired',
+    html.includes('function editSelectedShapeKbd(){') && html.includes('function _openLabelEditorFor(hit){')
+    && html.includes("if(state.tool==='select'&&editSelectedShapeKbd()){e.preventDefault();}")],
+  ['help grid documents Enter\'s dual meaning (create / edit label)', html.includes("k.create+' / '+t('editLabel')")],
   // v1.6.68: Alt resize-from-centre
   ['Alt resizes about original centre', html.includes("function applyResize(sh,handle,orig,wp,shift,alt)") && html.includes("if(alt){sh.x=cx0-sh.w/2;sh.y=cy0-sh.h/2;}") && html.includes("applyResize(rsh,ptr.resizeHandle,ptr.resizeOrig,wp,e.shiftKey,e.altKey);")],
   // v1.6.69: rotated-box resize
@@ -989,7 +994,7 @@ try {
              _onBtnInstall, _getInstallPrompt: () => _installPrompt, _setInstallPrompt: (v) => { _installPrompt = v; },
              _onSwUpdate, _ctxMenuKeyNav,
              _getPasteCount: () => _pasteCount, _resetPasteClipboard: () => { _lastClipboard = null; },
-             endRectLike, endLineLike, I18N, applyTheme,
+             endRectLike, endLineLike, I18N, applyTheme, editSelectedShapeKbd,
              draw, _setCtx: (c) => { const p = ctx; ctx = c; return p; } };
   `);
   const api = fn(
@@ -3599,6 +3604,78 @@ try {
       console.log('  ✓ ADR-0012 theme toggle: auto/light/dark cycle, localStorage persistence, boot restore (v1.7.65)');
     }
 
+    // ---- ADR-0013 (FT-19): Enter re-edits the single selected shape's label/text -------
+    // openTextEditor/openLabelEditor are plain function declarations, not overridable
+    // object methods, so their effect is observed the same way the rest of this harness
+    // observes DOM-touching code: spy on document.body.appendChild and inspect what was
+    // created (tagName distinguishes openTextEditor's <textarea> from openLabelEditor's
+    // <input>; the input's .value proves the RIGHT shape was targeted, catching a wrong-
+    // shape regression that a bare "did something get appended" check would miss).
+    {
+      const appended=[];
+      const _origAppend=fakeDoc.body.appendChild;
+      fakeDoc.body.appendChild=el=>{appended.push(el);};
+      A.state.shapes.length=0;A._invalidateGrid();A.state.history.length=0;A.state.histIdx=-1;
+      const mk=(type,extra)=>{const s=A.Shape.make(type,extra);A.Store.commit({op:'add',shape:s});return s;};
+      try{
+        // (a) no selection / multi-selection: no-op, nothing opened
+        A.state.selection=new Set();
+        assert.strictEqual(A.editSelectedShapeKbd(),false,'kbd-edit: no selection -> false');
+        const r1=mk('rect',{x:0,y:0,w:20,h:20,label:'r1'});
+        const r2=mk('rect',{x:100,y:0,w:20,h:20,label:'r2'});
+        A.state.selection=new Set([r1.id,r2.id]);
+        assert.strictEqual(A.editSelectedShapeKbd(),false,'kbd-edit: multi-selection -> false');
+        assert.strictEqual(appended.length,0,'kbd-edit: no editor opened for 0/multi selection');
+
+        // (b) locked shape: no-op. Store.commit clones on add, so mutate the STORED
+        // shape (via byId), not the local `r1` reference used only to build the op.
+        const r1Stored=A.byId(r1.id);
+        r1Stored.locked=true;
+        A.state.selection=new Set([r1.id]);
+        assert.strictEqual(A.editSelectedShapeKbd(),false,'kbd-edit: locked shape -> false');
+        assert.strictEqual(appended.length,0,'kbd-edit: no editor opened for a locked shape');
+        r1Stored.locked=false;
+
+        // (c) box label (rect): opens the shared label editor with the right shape's label
+        A.state.selection=new Set([r1.id]);
+        assert.strictEqual(A.editSelectedShapeKbd(),true,'kbd-edit: rect -> true (label editor)');
+        assert.strictEqual(appended.length,1,'kbd-edit: rect opens exactly one editor');
+        assert.strictEqual(appended[0].tagName,'INPUT','kbd-edit: rect opens an <input> (openLabelEditor), not a textarea');
+        assert.strictEqual(appended[0].value,'r1','kbd-edit: the input is pre-filled with the SELECTED shape\'s label (r1, not r2)');
+        appended.length=0;
+
+        // (d) connector label (line): shares the same _openLabelEditorFor dispatch
+        const ln=mk('line',{x1:0,y1:50,x2:40,y2:50,label:'edge1'});
+        A.state.selection=new Set([ln.id]);
+        assert.strictEqual(A.editSelectedShapeKbd(),true,'kbd-edit: line -> true (connector label editor)');
+        assert.strictEqual(appended[0].value,'edge1','kbd-edit: connector label editor pre-filled with the line\'s label');
+        appended.length=0;
+
+        // (e) text content re-edit: routes to openTextEditor (textarea), sets state.editing
+        const tx=mk('text',{x:0,y:80,w:40,h:20,text:'hello'});
+        A.state.selection=new Set([tx.id]);
+        assert.strictEqual(A.editSelectedShapeKbd(),true,'kbd-edit: text -> true (text editor)');
+        assert.strictEqual(appended[0].tagName,'TEXTAREA','kbd-edit: text shape opens a <textarea> (openTextEditor), not an input');
+        assert.strictEqual(A.state.editing,tx.id,'kbd-edit: text editor marks state.editing for the selected shape');
+        A.state.editing=null;appended.length=0;
+
+        // (f) pen: no label/text to edit -> false, nothing opened
+        const pn=mk('pen',{pts:[[0,0],[10,10]]});
+        A.state.selection=new Set([pn.id]);
+        assert.strictEqual(A.editSelectedShapeKbd(),false,'kbd-edit: pen stroke has no label -> false');
+        assert.strictEqual(appended.length,0,'kbd-edit: no editor opened for a pen stroke');
+      }finally{
+        fakeDoc.body.appendChild=_origAppend;
+        A.state.shapes.length=0;A.state.history.length=0;A.state.histIdx=-1;A.state.selection=new Set();A._invalidateGrid();
+      }
+      // (g) keydown wiring: the select-tool gate must be present verbatim, so a non-select
+      // tool still falls through to createShapeKbd() exactly as before this ADR.
+      assert.ok(html.includes("if(state.tool==='select'&&editSelectedShapeKbd()){e.preventDefault();}") &&
+                html.includes('else if(createShapeKbd())e.preventDefault();'),
+        'kbd-edit: Enter only re-edits when the select tool is active; other tools keep createShapeKbd (no clash)');
+      console.log('  ✓ ADR-0013 keyboard label/text edit: selection/lock guards, per-type dispatch, right-shape targeting, tool gate (v1.7.66)');
+    }
+
     // ---- v1.7.63: peer-map flood hardening + snapshot amplification throttle ----------
     // WebRTC delivers EVERY message kind into _onRecv unfiltered, so hello/ping flooding
     // with arbitrary peer ids was an unbounded state.peers/DOM growth vector, and each
@@ -5644,15 +5721,17 @@ try {
   // The handler dispatches on hit.type to openTextEditor or openLabelEditor; before fix there is
   // no !hit.locked guard, so double-clicking a locked text/sticky/rect/ellipse/line/arrow opens
   // an edit session and commits an upd op — bypassing the lock invariant.
+  // v1.7.66/ADR-0013: the per-branch guards were consolidated into one early return + a shared
+  // _openLabelEditorFor(hit) (reused by the new keyboard path) — same invariant, DRY source.
   // DOM event firing cannot be unit-tested in this harness, so the guard is verified by presence
   // check: the fixed strings must exist in html (fail before fix, pass after).
-  assert.ok(html.includes("if(!hit.locked&&(hit.type==='text'||hit.type==='sticky'))"),
-    'dblclick: locked text/sticky guard present in source');
-  assert.ok(html.includes("else if(!hit.locked&&(hit.type==='frame'||hit.type==='rect'||hit.type==='ellipse'))"),
-    'dblclick: locked frame/rect/ellipse guard present in source');
-  assert.ok(html.includes("else if(!hit.locked&&(hit.type==='line'||hit.type==='arrow'))"),
-    'dblclick: locked line/arrow guard present in source');
-  console.log('  ✓ dblclick: locked shapes do not open text/label editor (presence guards, v1.7.14)');
+  assert.ok(html.includes("if(!hit||hit.locked)return;"),
+    'dblclick: single early-return guard rejects locked shapes for every type (v1.7.66)');
+  assert.ok(html.includes("if(hit.type==='text'||hit.type==='sticky'){openTextEditor(hit,false);return}"),
+    'dblclick: text/sticky still routes to openTextEditor after the lock guard');
+  assert.ok(html.includes('function _openLabelEditorFor(hit){'),
+    'dblclick: frame/rect/ellipse/line/arrow now share _openLabelEditorFor with the keyboard path');
+  console.log('  ✓ dblclick: locked shapes do not open text/label editor (presence guards, v1.7.14/v1.7.66)');
 
   // v1.7.18: doBringFront/doSendBack/doBringForward/doSendBackward must skip locked shapes.
   // Before fix, all four used `const ids=[...state.selection]` without filtering locked shapes,
@@ -7324,7 +7403,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 1053; // prev 1042 + ADR-0012 theme toggle (11)
+  pass += 1070; // prev 1053 + ADR-0013 keyboard label/text edit (17)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

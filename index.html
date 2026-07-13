@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.65 — Design Tokens
+   Board v1.7.66 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -739,7 +739,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.65';
+const V='1.7.66';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -805,7 +805,7 @@ const I18N={
     snap:'スナップ',grid:'グリッド',minimap:'ミニマップ',on:'オン',off:'オフ',online:'オンライン',offline:'オフライン',shapes:'図形',
     copied:'コピー',pasted:'貼り付け',deleted:'削除',cleared:'クリア',
     beautified:'整形しました',beautifyNone:'整形できる図形がありません(矩形・楕円・直線に近いペン描画を選択してください)',
-    undone:'元に戻した',redone:'やり直した',created:'作成',
+    undone:'元に戻した',redone:'やり直した',created:'作成',editLabel:'選択中の図形を編集',
     confirmClear:'すべて削除しますか？',
     ctxCopy:'コピー',ctxPaste:'貼り付け',ctxDuplicate:'複製',
     ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',
@@ -871,7 +871,7 @@ const I18N={
     popupBlocked:'Pop-up blocked — please allow pop-ups for PDF export',invalidBoard:'Invalid .board file',exportFailed:'Export failed',saveFailed:'Save failed',quotaExceeded:'Storage quota exceeded — export locally with ⌘E/⌘⇧E',
     copied:'Copied',pasted:'Pasted',deleted:'Deleted',cleared:'Cleared',
     beautified:'Beautified',beautifyNone:'Nothing to beautify (select a pen stroke close to a rectangle, ellipse, or line)',
-    undone:'Undone',redone:'Redone',created:'Created',
+    undone:'Undone',redone:'Redone',created:'Created',editLabel:'Edit selected shape',
     confirmClear:'Delete everything?',
     ctxCopy:'Copy',ctxPaste:'Paste',ctxDuplicate:'Duplicate',
     ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',
@@ -2458,20 +2458,40 @@ canvas.addEventListener('pointerleave',()=>{if(_laser){_laser=null;invalidate()}
 canvas.addEventListener('dblclick',e=>{
   const wp=G.s2w({x:e.offsetX,y:e.offsetY});
   const hit=pickTop(wp);
-  if(!hit)return;
+  if(!hit||hit.locked)return;
+  if(hit.type==='text'||hit.type==='sticky'){openTextEditor(hit,false);return}
+  _openLabelEditorFor(hit);
+});
+// Positions and opens the shared label editor for box labels (frame/rect/ellipse, at
+// their centre/corner) and connector labels (line/arrow, at the segment midpoint).
+// Shared by dblclick and ADR-0013's keyboard path so both stay in sync by construction.
+function _openLabelEditorFor(hit){
   const r=canvas.getBoundingClientRect();
-  if(!hit.locked&&(hit.type==='text'||hit.type==='sticky')){
-    openTextEditor(hit,false);
-  } else if(!hit.locked&&(hit.type==='frame'||hit.type==='rect'||hit.type==='ellipse')){
+  if(hit.type==='frame'||hit.type==='rect'||hit.type==='ellipse'){
     const isFrame=hit.type==='frame';
     const sp=G.w2s(isFrame?{x:hit.x,y:hit.y}:{x:hit.x+hit.w/2,y:hit.y+hit.h/2});
     openLabelEditor(hit,r.left+sp.x+(isFrame?6:-40),r.top+sp.y+(isFrame?-24:-12),isFrame);
-  } else if(!hit.locked&&(hit.type==='line'||hit.type==='arrow')){
+    return true;
+  }
+  if(hit.type==='line'||hit.type==='arrow'){
     // Edge label at the connector midpoint (ADR-0003) — enables flowchart-style edges.
     const en=connEnds(hit),sp=G.w2s({x:(en.x1+en.x2)/2,y:(en.y1+en.y2)/2});
     openLabelEditor(hit,r.left+sp.x-40,r.top+sp.y-12,false);
+    return true;
   }
-});
+  return false;   // pen/image: no label to edit
+}
+// ADR-0013 (FT-19): the only entry point above was dblclick, so keyboard/SR users could
+// never edit a connector or frame label. Enter is otherwise unused with the select tool
+// active (createShapeKbd() no-ops for select/hand/eraser/pen) — see the keydown Enter
+// branch, which only calls this when state.tool==='select'.
+function editSelectedShapeKbd(){
+  if(state.selection.size!==1)return false;
+  const sh=byId([...state.selection][0]);
+  if(!sh||sh.locked)return false;
+  if(sh.type==='text'||sh.type==='sticky'){openTextEditor(sh,false);return true}
+  return _openLabelEditorFor(sh);
+}
 // Shared inline label editor for boxes (rect/ellipse/frame) and connectors. Commits via
 // the generic `upd` op (reversible + synced). bold = frame styling. IME-safe; Enter
 // commits, Escape discards (detaching blur so remove() doesn't re-commit).
@@ -3288,8 +3308,11 @@ window.addEventListener('keydown',e=>{
     invalidate();
   }
   else if(k==='enter'&&!meta&&!e.shiftKey){
-    // Place active tool's default shape at viewport centre (no-op for select/hand/eraser/pen).
-    if(createShapeKbd())e.preventDefault();
+    // ADR-0013: with the select tool active, Enter re-edits the single selected shape's
+    // label/text instead (createShapeKbd() would no-op for 'select' anyway, so no clash).
+    // Any other tool keeps the original behaviour: place its default shape at viewport centre.
+    if(state.tool==='select'&&editSelectedShapeKbd()){e.preventDefault();}
+    else if(createShapeKbd())e.preventDefault();
   }
   else if((k==='arrowup'||k==='arrowdown'||k==='arrowleft'||k==='arrowright')&&e.altKey){
     // Alt+arrow = keyboard resize (a11y: pointer-free). L/R = width, U/D = height,
@@ -4689,7 +4712,7 @@ const UI={
       ['⇧H / ⇧V',t('ctxFlipH')+' / '+t('ctxFlipV')],
       ['⌥C / ⌥V',t('ctxCopyStyle')+' / '+t('ctxPasteStyle')],
       ['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],
-      ['Tab / ⇧Tab',k.cycle],['Enter',k.create]
+      ['Tab / ⇧Tab',k.cycle],['Enter',k.create+' / '+t('editLabel')]
     ];
     while(g.firstChild)g.removeChild(g.firstChild);
     for(const [key,val] of rows){
