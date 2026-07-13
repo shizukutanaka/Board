@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.63 — Design Tokens
+   Board v1.7.64 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -736,7 +736,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.63';
+const V='1.7.64';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -787,6 +787,7 @@ const I18N={
     selectTwo:'2つ以上選択してください',grouped:'グループ化',noGroup:'グループなし',
     ungrouped:'グループ解除',noFrames:'フレームがありません (F キーで作成)',
     imgBig:'画像が大きすぎます。縮小してください',imgErr:'画像を読み込めませんでした',
+    emptyHint:'クリックまたはツールバーから描き始める · ? でショートカット一覧',
     popupBlocked:'ポップアップをブロックしてください',invalidBoard:'ボードファイルが無効です',exportFailed:'書き出し失敗',saveFailed:'保存失敗',quotaExceeded:'保存容量が逼迫しています — ⌘E/⌘⇧E で書き出しを推奨',
     snap:'スナップ',grid:'グリッド',minimap:'ミニマップ',on:'オン',off:'オフ',online:'オンライン',offline:'オフライン',shapes:'図形',
     copied:'コピー',pasted:'貼り付け',deleted:'削除',cleared:'クリア',
@@ -852,6 +853,7 @@ const I18N={
     selectTwo:'Select 2 or more',grouped:'Grouped',noGroup:'No group',
     ungrouped:'Ungrouped',noFrames:'No frames (press F to create)',
     imgBig:'Image too large — please resize',imgErr:'Image failed to load',
+    emptyHint:'Click or pick a tool to start drawing · Press ? for shortcuts',
     popupBlocked:'Pop-up blocked — please allow pop-ups for PDF export',invalidBoard:'Invalid .board file',exportFailed:'Export failed',saveFailed:'Save failed',quotaExceeded:'Storage quota exceeded — export locally with ⌘E/⌘⇧E',
     copied:'Copied',pasted:'Pasted',deleted:'Deleted',cleared:'Cleared',
     beautified:'Beautified',beautifyNone:'Nothing to beautify (select a pen stroke close to a rectangle, ellipse, or line)',
@@ -1697,6 +1699,7 @@ function draw(){
   // G.w2s output directly — multiplying by DPR here double-applies it and puts overlays
   // at DPR× their true position on HiDPI screens (bug present v1.6.5–v1.7.61).
   ctx.setTransform(DPR,0,0,DPR,0,0);
+  if(state.shapes.length===0&&!state.draft)drawEmptyHint(W,H);   // FT-17: onboarding for a blank board
   const _gmap=new Map();
   for(const s of state.shapes){if(s.groupId){if(!_gmap.has(s.groupId))_gmap.set(s.groupId,[]);_gmap.get(s.groupId).push(s)}}
   for(const[,members] of _gmap){
@@ -1711,6 +1714,15 @@ function draw(){
   if(_laser&&Presentation.isActive()){const lp=G.w2s(_laser);ctx.beginPath();ctx.arc(lp.x,lp.y,8,0,PI2);ctx.fillStyle='rgba(255,50,50,.75)';ctx.fill();}
   drawPeerSelections();   // ADR-0011 (before cursors: pointer renders on top of frames)
   drawPeerCursors();   // ADR-0010
+}
+// FT-17: a blank board previously gave zero on-canvas guidance — the only discovery
+// path was the '?' help modal. Draw-only (reads state, no mutation); disappears the
+// instant a shape is added (state.shapes.length check at the call site).
+function drawEmptyHint(W,H){
+  ctx.fillStyle=getCSS('--ink-3');   // tertiary text token: 4.7:1 AA, deliberately muted
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.font='14px '+(getCSS('--ui-font')||'system-ui,sans-serif');
+  ctx.fillText(t('emptyHint'),W/(2*DPR),H/(2*DPR));
 }
 // ADR-0011: ephemeral peer selection outlines — bbox frame only, in the peer's color,
 // thin [3,3] dashes. Deliberately distinct from the user's own selection on all three

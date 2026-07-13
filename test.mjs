@@ -511,6 +511,10 @@ const checks = [
     && html.includes("UI.announce(t(axis==='h'?'ctxFlipH':'ctxFlipV'))")],
   ['canvas aria-label localized in pickTool (was hardcoded English)',
     html.includes("canvas.setAttribute('aria-label',(T.k[tool]||tool)+' — '+t('canvasHint'))")],
+  // v1.7.64 (FT-17)
+  ['empty-board hint: draws only when blank, reads emptyHint i18n key',
+    html.includes('function drawEmptyHint(') && html.includes("if(state.shapes.length===0&&!state.draft)drawEmptyHint(W,H);")
+    && html.includes("ctx.fillText(t('emptyHint'),")],
   // v1.6.68: Alt resize-from-centre
   ['Alt resizes about original centre', html.includes("function applyResize(sh,handle,orig,wp,shift,alt)") && html.includes("if(alt){sh.x=cx0-sh.w/2;sh.y=cy0-sh.h/2;}") && html.includes("applyResize(rsh,ptr.resizeHandle,ptr.resizeOrig,wp,e.shiftKey,e.altKey);")],
   // v1.6.69: rotated-box resize
@@ -3492,15 +3496,15 @@ try {
     {
       const A2 = A;
       const mkRec = () => {
-        let T=[1,0,0,1,0,0]; const rects=[];
+        let T=[1,0,0,1,0,0]; const rects=[]; const texts=[];
         const dx=(x,y)=>T[0]*x+T[2]*y+T[4], dy=(x,y)=>T[1]*x+T[3]*y+T[5];
-        return { _rects:rects,
+        return { _rects:rects, _texts:texts,
           setTransform(a,b,c,d,e,f){T=[a,b,c,d,e,f];},
           strokeRect(x,y,w,h){rects.push({x:dx(x,y),y:dy(x,y),w:T[0]*w,h:T[3]*h});},
           fillRect(){}, beginPath(){}, moveTo(){}, lineTo(){}, arc(){}, arcTo(){},
           quadraticCurveTo(){}, ellipse(){}, closePath(){}, fill(){}, stroke(){}, clip(){},
           save(){}, restore(){}, translate(){}, scale(){}, rotate(){}, clearRect(){},
-          measureText:()=>({width:50}), fillText(){}, setLineDash(){},
+          measureText:()=>({width:50}), fillText(s,x,y){texts.push({s,x:dx(x,y),y:dy(x,y)});}, setLineDash(){},
           get canvas(){return{width:800,height:600};},
           fillStyle:'',strokeStyle:'',lineWidth:1,font:'',textBaseline:'',globalAlpha:1,lineCap:'',lineJoin:'' };
       };
@@ -3536,6 +3540,21 @@ try {
       fakeWin.devicePixelRatio=1; A2.resize();
       A2.state.shapes.length=0; A2.state.selection=new Set(); A2._invalidateGrid();
       console.log('  ✓ HiDPI recording-canvas: overlay draws in CSS px, device size scales exactly with DPR (double-DPR bug would fail this, v1.7.62)');
+
+      // ---- FT-17: empty-board onboarding hint (draw-only, disappears once populated) ----
+      A2.state.shapes.length=0; A2._invalidateGrid(); A2.state.draft=null;
+      let rec=mkRec(); let prev=A2._setCtx(rec);
+      A2.draw(); A2._setCtx(prev);
+      assert.strictEqual(rec._texts.length,1,'empty hint: exactly one fillText on a blank board');
+      assert.strictEqual(rec._texts[0].s,A2.I18N.en.emptyHint,'empty hint: text is the localized emptyHint string');
+      assert.ok(Math.abs(rec._texts[0].x-400)<1&&Math.abs(rec._texts[0].y-300)<1,'empty hint: centered in the 800x600 canvas');
+      const sh2=A2.Shape.make('rect',{x:0,y:0,w:10,h:10});
+      A2.state.shapes.push(sh2); A2._invalidateGrid();
+      rec=mkRec(); prev=A2._setCtx(rec);
+      A2.draw(); A2._setCtx(prev);
+      assert.strictEqual(rec._texts.length,0,'empty hint: disappears the instant a shape exists');
+      A2.state.shapes.length=0; A2._invalidateGrid();
+      console.log('  ✓ FT-17 empty-board hint: shows centered when blank, gone once populated (v1.7.64)');
     }
 
     // ---- v1.7.63: peer-map flood hardening + snapshot amplification throttle ----------
@@ -7263,7 +7282,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 1037; // prev 1028 + v1.7.63 UX/i18n (9: parity 2, announce 4, applyI18n aria/title 3)
+  pass += 1042; // prev 1037 + FT-17 empty-board hint (5)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

@@ -2,6 +2,23 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.64] - 2026-07-13
+
+`docs/feature-backlog.md` FT-17(v1.7.63 の長所短所監査で発見、当時は新機能のため見送り）。
+
+### Added
+- **空盤面のオンボーディングヒント**: 図形が1つも無いとき、キャンバス中央に淡色
+  (`--ink-3`, 4.7:1 AA)のヒント文字列を表示。「クリックまたはツールバーから描き始める
+  · ? でショートカット一覧」(ja) / 対応する英語。図形を1つ追加した瞬間に消える。
+  描画のみで `state` には触れない(CLAUDE.md の Render 副作用最小化を維持)。
+  それまで発見経路は `?` ヘルプモーダルのみだった。
+
+### Tests
+- behavioral × 5(記録キャンバスで fillText を捕捉): 空盤面で1回だけ描画される、
+  文字列が i18n キー由来、キャンバス中央に位置、図形追加後は描画されない
+- 非空虚性確認済み(stash 法で新規テストが fail)
+- 合計 1550 pass, 0 fail
+
 ## [1.7.63] - 2026-07-13
 
 製品全体の長所短所監査(堅牢性/セキュリティ + UX/i18n の2系統)で発見した実バグ 11 件を
