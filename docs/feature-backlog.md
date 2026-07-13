@@ -257,6 +257,39 @@ Opus/Sonnet が文脈なしで着手できる形式に変換していなかっ�
 着手前にユーザーとスコープ・検証手段を確認すること — 特に FT-13 はこのセッションに
 実ブラウザでの視覚確認手段が無いという明確な制約がある。
 
+## FT-17 — 空盤面のオンボーディングヒント(第3弾, v1.7.63 監査で発見)
+- Verdict: `FIX`(小規模な新機能 — バグではないため v1.7.63 では見送り)
+- Evidence: 空盤面は `sCount`=0 の白紙のみ。`empty` キー(「キャンバスが空」)は
+  エクスポート拒否トーストにしか使われず、初回ユーザーへの導線は `?` ヘルプのみ。
+- Action: `draw()` 内で `state.shapes.length===0&&!state.draft` のとき中央に淡色の
+  ヒント文字列(新キー `emptyHint`、ja/en)を fillText。描画のみで state に触れない。
+- Effort: S
+- Depends on: none
+
+## FT-18 — テーマ/言語の手動トグル(第3弾)
+- Verdict: `FIX`(新機能、要 ADR)
+- Evidence: `LANG` は `navigator.language` 固定で UI からの切替不可。ダークテーマは
+  OS 追従のみ — `:root[data-theme=dark/light]` セレクタは存在するが JS が `data-theme`
+  を設定する箇所が無く実質デッドコード。
+- Action: ステータスバーにトグルを追加し `documentElement.dataset.theme` 設定 +
+  `localStorage` 永続化、言語は `board.lang` 永続化 + `applyI18n()` 再実行。
+  設定 UI の設計判断(どこに置くか・アイコン)が要るため ADR を書いてから。
+- Effort: M
+- Depends on: none
+
+## FT-19 — コネクタ/フレームラベルのキーボード編集経路(第3弾)
+- Verdict: `FIX`(モダリティギャップ)
+- Evidence: ラベル編集の唯一の入口はダブルクリック(`openLabelEditor` 系)。キーボード/SR
+  ユーザーはコネクタ・フレームのラベルを編集できない。
+- Action: 選択中の単一シェイプに対する Enter(現在は図形作成に割当)または F2 相当の
+  キーで既存のラベルエディタを開く。キー割当の衝突整理が要るため ADR を書いてから。
+- Effort: M
+- Depends on: none
+
+**進捗 (v1.7.63)**: 第3弾(FT-17〜19)は v1.7.63 の長所短所監査で発見された
+「実行しない(新機能)」側の記録。同監査の実バグ側(SW 更新不能・ピア DoS・
+aria 英語固定等 11 件)はすべて v1.7.63 で修正済み。
+
 **進捗 (v1.7.62)**: FT-12 実装済み(ADR-0011)。**FT-14 は見送りを決定** —
 `_queryGrid` は単一点クエリ専用で viewport 矩形クエリへの転用には非自明な拡張が要り、
 かつ「描画が重い」という実測の証拠が無い(CLAUDE.md デバッグ優先順位は実測が前提)。

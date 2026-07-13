@@ -437,9 +437,9 @@ const checks = [
   // v1.6.62: Socratic feature-interaction fixes
   ['flip negates rotation angle (reflection reverses sense)', html.includes("if(s.rotate)s.rotate=(360-s.rotate)%360;")],
   ['rotated box shapes expose handles at rotated positions', html.includes("return hs.map(p=>{const r=_rotPt(p.x,p.y,cx,cy,s.rotate);return{id:p.id,x:r.x,y:r.y}});")],
-  ['search placeholder uses i18n t(search)', html.includes("sq.placeholder=t('search')")],
+  ['search placeholder uses localized key (T.k.search — t(search) resolved to the raw key, v1.7.63)', html.includes('sq.placeholder=T.k.search')],
   ['rotate + search i18n keys in ja and en', html.includes("rotate:'回転 (15° / ノブdrag)',search:'検索'") && html.includes("rotate:'Rotate (15° / knob drag)',search:'Search'")],
-  ['help grid lists rotate and search shortcuts', html.includes("[', / .',k.rotate]") && html.includes("['⌘F',k.search]") && html.includes("['Enter / ⇧Enter',t('searchNav')]")],
+  ['help grid lists rotate and search shortcuts', html.includes("[', / .',k.rotate]") && html.includes("['⌘F',k.search]") && html.includes("['Enter / ⇧Enter',k.searchNav]")],
   // keyboard shortcuts (all documented in README)
   ['N shortcut for sticky (in KEYMAP)', html.includes("n:'sticky'")],
   ['⌘G / ⌘⇧G group/ungroup shortcuts', html.includes("k==='g'&&e.shiftKey") && html.includes("doUngroup") && html.includes("doGroup")],
@@ -448,7 +448,7 @@ const checks = [
   // v1.6.63: Socratic round 3 - internal consistency + a11y
   ['doFlip skips locked shapes (consistent with doRotate)', html.includes("function doFlip(axis){\n  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);")],
   ['doRotate orbits selection about group centre', html.includes("orbit about group centre, like doFlip") && html.includes("Shape.translate(s,nx-cx,ny-cy)")],
-  ['search input has aria-label', html.includes("sq.setAttribute('aria-label',t('search'))")],
+  ['search input has localized aria-label', html.includes("sq.setAttribute('aria-label',T.k.search)")],
   ['search Escape returns focus to canvas', html.includes("invalidate();canvas.focus();}") && html.includes("_sqAdvance(ev.shiftKey?-1:1)")],
   // v1.6.64: Socratic round 4 - rotation scope + lock completeness
   ['doRotate restricted to box shapes (s.w!=null, NaN-safe)', html.includes("filter(s=>s&&!s.locked&&s.w!=null)")],
@@ -498,6 +498,19 @@ const checks = [
     html.includes("r.onerror=()=>UI.toast(t('invalidBoard'),'err');")],
   ['docName clamped to 80 chars on all four intake paths (import/IDB/backup/hash)',
     (html.match(/\.slice\(0,80\)/g)||[]).length>=4],
+  // v1.7.63 UX/i18n audit
+  ['ctxBeautify: sketch beautification reachable from the context menu (was ⌥B-only)',
+    html.includes("['ctxBeautify','⌥B',doBeautify]") && html.includes("ctxBeautify:'図形に整形'") && html.includes("ctxBeautify:'Beautify to shape'")],
+  ['applyI18n localizes data-t-aria / data-t-title (aria-labels were hardcoded English)',
+    html.includes("for(const el of document.querySelectorAll('[data-t-aria]'))") && html.includes('data-t-aria="k.select"')],
+  ['help grid lists flip and copy/paste-style shortcuts',
+    html.includes("['⇧H / ⇧V',t('ctxFlipH')") && html.includes("['⌥C / ⌥V',t('ctxCopyStyle')")],
+  ['SR-only live region + UI.announce wired into tool/zoom/flip/lock/rotate',
+    html.includes('<div id="sr" aria-live="polite"') && html.includes('announce(msg){')
+    && html.includes("UI.announce(T.k[tool]||tool)") && html.includes("UI.announce(t(lk?'ctxLock':'ctxUnlock'))")
+    && html.includes("UI.announce(t(axis==='h'?'ctxFlipH':'ctxFlipV'))")],
+  ['canvas aria-label localized in pickTool (was hardcoded English)',
+    html.includes("canvas.setAttribute('aria-label',(T.k[tool]||tool)+' — '+t('canvasHint'))")],
   // v1.6.68: Alt resize-from-centre
   ['Alt resizes about original centre', html.includes("function applyResize(sh,handle,orig,wp,shift,alt)") && html.includes("if(alt){sh.x=cx0-sh.w/2;sh.y=cy0-sh.h/2;}") && html.includes("applyResize(rsh,ptr.resizeHandle,ptr.resizeOrig,wp,e.shiftKey,e.altKey);")],
   // v1.6.69: rotated-box resize
@@ -965,7 +978,7 @@ try {
              _onBtnInstall, _getInstallPrompt: () => _installPrompt, _setInstallPrompt: (v) => { _installPrompt = v; },
              _onSwUpdate, _ctxMenuKeyNav,
              _getPasteCount: () => _pasteCount, _resetPasteClipboard: () => { _lastClipboard = null; },
-             endRectLike, endLineLike,
+             endRectLike, endLineLike, I18N,
              draw, _setCtx: (c) => { const p = ctx; ctx = c; return p; } };
   `);
   const api = fn(
@@ -3585,6 +3598,55 @@ try {
         A.state.docName='Untitled';
       }
       console.log('  ✓ importBoard: read failure toasts (was silent), oversized docName clamped to 80 (v1.7.63)');
+    }
+
+    // ---- v1.7.63: i18n completeness + SR announcements + aria/title localization -------
+    {
+      const I18N=A.I18N;
+      // (a) locale parity: a key present in only one locale silently renders the raw key
+      // (help grid showed "searchNav"; en was missing `grid`). Permanent structural guard.
+      assert.deepStrictEqual(Object.keys(I18N.ja).sort(),Object.keys(I18N.en).sort(),'i18n: ja/en top-level key sets are identical');
+      assert.deepStrictEqual(Object.keys(I18N.ja.k).sort(),Object.keys(I18N.en.k).sort(),'i18n: ja.k/en.k nested key sets are identical');
+
+      // (b) UI.announce — SR-only live region for tool/zoom/flip/lock/rotate (visible
+      // toasts per keypress would be sighted-user noise; silence was an a11y asymmetry)
+      const srEl={textContent:''};
+      const _origGet=fakeDoc.getElementById;
+      fakeDoc.getElementById=id=>id==='sr'?srEl:_origGet(id);
+      try{
+        A.UI.announce('hello');
+        assert.strictEqual(srEl.textContent,'hello','announce writes to the #sr live region');
+        A.UI.announce('hello');
+        assert.strictEqual(srEl.textContent,'hello ','announce nudges identical text so the live region re-fires');
+        A.pickTool('rect');
+        assert.strictEqual(srEl.textContent,I18N.en.k.rect,'pickTool announces the localized tool name (was SR-silent)');
+        A.pickTool('select');
+        // doLock announces lock state
+        A.state.shapes.length=0;A._invalidateGrid();A.state.history.length=0;A.state.histIdx=-1;
+        const _ls=A.Shape.make('rect',{x:0,y:0,w:10,h:10});
+        A.Store.commit({op:'add',shape:_ls});
+        A.state.selection=new Set([_ls.id]);
+        A.doLock();
+        assert.strictEqual(srEl.textContent,I18N.en.ctxLock,'doLock announces the new lock state (was SR-silent)');
+        A.doLock();   // unlock again so cleanup isn't lock-blocked
+      }finally{fakeDoc.getElementById=_origGet;
+        A.state.shapes.length=0;A.state.history.length=0;A.state.histIdx=-1;A.state.selection=new Set();A._invalidateGrid();}
+
+      // (c) applyI18n localizes aria-label/title from data-t-aria/data-t-title keys,
+      // preserving the authored ' (V)' shortcut suffix in titles
+      const mkEl=attrs=>({attrs,setAttribute(n,v){this.attrs[n]=v},getAttribute(n){return this.attrs[n]??null}});
+      const eAria=mkEl({'data-t-aria':'k.select','aria-label':'Select'});
+      const eTitle=mkEl({'data-t-title':'k.select','title':'Select (V)'});
+      const eClose=mkEl({'data-t-aria':'close','aria-label':'Close'});
+      const _origQSA=fakeDoc.querySelectorAll;
+      fakeDoc.querySelectorAll=sel=>sel==='[data-t-aria]'?[eAria,eClose]:sel==='[data-t-title]'?[eTitle]:[];
+      try{
+        A.UI.applyI18n();
+        assert.strictEqual(eAria.attrs['aria-label'],I18N.en.k.select,'applyI18n localizes aria-label from a nested k.* key');
+        assert.strictEqual(eTitle.attrs['title'],I18N.en.k.select+' (V)','applyI18n localizes title and keeps the shortcut suffix');
+        assert.strictEqual(eClose.attrs['aria-label'],I18N.en.close,'applyI18n localizes aria-label from a top-level key');
+      }finally{fakeDoc.querySelectorAll=_origQSA;}
+      console.log('  ✓ i18n: ja/en parity, SR announce (tool/lock), aria-label/title localization with suffix (v1.7.63)');
     }
 
     // §3.15 → ADR-0002: concurrent edits to the SAME property now CONVERGE via
@@ -7201,7 +7263,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 1028; // prev 1017 + v1.7.63 robustness (11: flood 5, snapshot throttle 2, importBoard 4)
+  pass += 1037; // prev 1028 + v1.7.63 UX/i18n (9: parity 2, announce 4, applyI18n aria/title 3)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

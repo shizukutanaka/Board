@@ -4,7 +4,7 @@
 単一HTMLファイル。ダブルクリックで動く。アカウント不要。広告なし。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-00C4CC.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.7.62-00C4CC.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.7.63-00C4CC.svg)](CHANGELOG.md)
 [![Size](https://img.shields.io/badge/size-~61KB%20gzip-00C4CC.svg)](index.html)
 [![Offline](https://img.shields.io/badge/offline-first-00C4CC.svg)](#offline)
 [![A11y](https://img.shields.io/badge/WCAG-AAA-00C4CC.svg)](#accessibility)
@@ -121,7 +121,9 @@ start index.html      # Windows
   両テーマで WCAG 非テキストコントラスト基準 (3:1) を満たすよう検証済み
   (`docs/a11y-audit-2026-07.md`)
 - `prefers-reduced-motion` / `prefers-color-scheme` 対応
-- 日本語・英語自動検出 (`navigator.language`)
+- 日本語・英語自動検出 (`navigator.language`)。ツールバー等の `aria-label`/`title` も
+  ロケールに追従 (v1.7.63 — それ以前は英語固定)、SR 専用 live region でツール切替・
+  ズーム・反転・ロック・回転もアナウンス
 - **既知の構造的制約**: 上記は「ツールをキーボードで操作できる」ことを指し、
   「キャンバスに描いた内容がスクリーンリーダーから読める」ことは意味しない。
   canvas は単一のビットマップとして描画されるため、実際に描いた図形・文字列は

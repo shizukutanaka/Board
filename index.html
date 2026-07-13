@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.62 — Design Tokens
+   Board v1.7.63 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -501,50 +501,50 @@ body{visibility:visible}
 <div id="app">
 
   <!-- ==== Toolbar (left rail) ==== -->
-  <nav class="toolbar" role="toolbar" aria-label="Tools">
-    <button class="tool" data-tool="select" aria-pressed="true" aria-label="Select" title="Select (V)">
+  <nav class="toolbar" role="toolbar" aria-label="Tools" data-t-aria="tools">
+    <button class="tool" data-tool="select" aria-pressed="true" aria-label="Select" title="Select (V)" data-t-aria="k.select" data-t-title="k.select">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
       <kbd>V</kbd>
     </button>
-    <button class="tool" data-tool="hand" aria-label="Pan" title="Pan (H / Space)">
+    <button class="tool" data-tool="hand" aria-label="Pan" title="Pan (H / Space)" data-t-aria="k.pan" data-t-title="k.pan">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 10-4 0v5m-4-1V4a2 2 0 00-4 0v10M6 10V7a2 2 0 00-4 0v9a6 6 0 006 6h4a6 6 0 006-6v-3a2 2 0 00-4 0"/></svg>
       <kbd>H</kbd>
     </button>
     <div class="tool-sep"></div>
-    <button class="tool" data-tool="pen" aria-label="Pen" title="Pen (P)">
+    <button class="tool" data-tool="pen" aria-label="Pen" title="Pen (P)" data-t-aria="k.pen" data-t-title="k.pen">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3zM18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5zM2 2l7.586 7.586M11 11a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
       <kbd>P</kbd>
     </button>
-    <button class="tool" data-tool="rect" aria-label="Rectangle" title="Rectangle (R)">
+    <button class="tool" data-tool="rect" aria-label="Rectangle" title="Rectangle (R)" data-t-aria="k.rect" data-t-title="k.rect">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/></svg>
       <kbd>R</kbd>
     </button>
-    <button class="tool" data-tool="ellipse" aria-label="Ellipse" title="Ellipse (O)">
+    <button class="tool" data-tool="ellipse" aria-label="Ellipse" title="Ellipse (O)" data-t-aria="k.ellipse" data-t-title="k.ellipse">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="12" rx="9" ry="7"/></svg>
       <kbd>O</kbd>
     </button>
-    <button class="tool" data-tool="arrow" aria-label="Arrow" title="Arrow (A)">
+    <button class="tool" data-tool="arrow" aria-label="Arrow" title="Arrow (A)" data-t-aria="k.arrow" data-t-title="k.arrow">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
       <kbd>A</kbd>
     </button>
-    <button class="tool" data-tool="line" aria-label="Line" title="Line (L)">
+    <button class="tool" data-tool="line" aria-label="Line" title="Line (L)" data-t-aria="k.line" data-t-title="k.line">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20L20 4"/></svg>
       <kbd>L</kbd>
     </button>
-    <button class="tool" data-tool="text" aria-label="Text" title="Text (T)">
+    <button class="tool" data-tool="text" aria-label="Text" title="Text (T)" data-t-aria="k.text" data-t-title="k.text">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5h16v2M9 19h6M12 5v14"/></svg>
       <kbd>T</kbd>
     </button>
-    <button class="tool" data-tool="sticky" aria-label="Sticky note" title="Sticky note (N)">
+    <button class="tool" data-tool="sticky" aria-label="Sticky note" title="Sticky note (N)" data-t-aria="k.sticky" data-t-title="k.sticky">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V8.5L15.5 3z"/><path d="M14 3v6h6"/></svg>
       <kbd>N</kbd>
     </button>
-    <button class="tool" data-tool="frame" aria-label="Frame" title="Frame (F)">
+    <button class="tool" data-tool="frame" aria-label="Frame" title="Frame (F)" data-t-aria="k.frame" data-t-title="k.frame">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>
       <kbd>F</kbd>
     </button>
     <div class="tool-sep"></div>
-    <button class="tool" data-tool="eraser" aria-label="Eraser" title="Eraser (E)">
+    <button class="tool" data-tool="eraser" aria-label="Eraser" title="Eraser (E)" data-t-aria="k.eraser" data-t-title="k.eraser">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7l-4-4a2 2 0 010-2.83L13.17 3A2 2 0 0116 3l5 5a2 2 0 010 2.83L13 19M16 11l-6-6"/></svg>
       <kbd>E</kbd>
     </button>
@@ -559,98 +559,98 @@ body{visibility:visible}
       </svg>
       <span>Board</span>
     </div>
-    <input class="doc-name" id="docName" type="text" value="Untitled" spellcheck="false" aria-label="Document name" maxlength="80">
+    <input class="doc-name" id="docName" type="text" value="Untitled" spellcheck="false" aria-label="Document name" data-t-aria="docNameLabel" maxlength="80">
 
     <div class="top-spacer"></div>
 
-    <button class="btn icon" id="btnUndo" aria-label="Undo" title="Undo (⌘Z)" disabled>
+    <button class="btn icon" id="btnUndo" aria-label="Undo" title="Undo (⌘Z)" data-t-aria="k.undo" data-t-title="k.undo" disabled>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6M3 13a9 9 0 0114.5-7"/></svg>
     </button>
-    <button class="btn icon" id="btnRedo" aria-label="Redo" title="Redo (⌘⇧Z)" disabled>
+    <button class="btn icon" id="btnRedo" aria-label="Redo" title="Redo (⌘⇧Z)" data-t-aria="k.redo" data-t-title="k.redo" disabled>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6M21 13a9 9 0 00-14.5-7"/></svg>
     </button>
     <div class="sep"></div>
-    <div class="peer-stack" id="peerStack" aria-label="Active peers"></div>
-    <button class="btn" id="btnPresent" title="Present (⇧P)">
+    <div class="peer-stack" id="peerStack" aria-label="Active peers" data-t-aria="activePeers"></div>
+    <button class="btn" id="btnPresent" title="Present (⇧P)" data-t-title="k.present">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
       <span data-t="present">Present</span>
     </button>
-    <button class="btn" id="btnShare" title="Share">
+    <button class="btn" id="btnShare" title="Share" data-t-title="share">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg>
       <span data-t="share">Share</span>
     </button>
-    <button class="btn" id="btnExport" title="Export PNG (⌘E)">
+    <button class="btn" id="btnExport" title="Export PNG (⌘E)" data-t-title="expPng">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
       <span data-t="export">Export</span>
     </button>
-    <button class="btn icon" id="btnExportMenu" aria-label="More export &amp; import options" title="More export &amp; import options">
+    <button class="btn icon" id="btnExportMenu" aria-label="More export &amp; import options" title="More export &amp; import options" data-t-aria="moreExport" data-t-title="moreExport">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
     </button>
     <input type="file" id="fileImport" accept=".board" hidden>
-    <button class="btn icon" id="btnInstall" aria-label="Install app" title="Install Board as an app" hidden>
+    <button class="btn icon" id="btnInstall" aria-label="Install app" title="Install Board as an app" data-t-aria="install" data-t-title="install" hidden>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V3M8 12l4 4 4-4M4 20h16"/></svg>
     </button>
-    <button class="btn icon" id="btnHelp" aria-label="Help" title="Help (?)">
+    <button class="btn icon" id="btnHelp" aria-label="Help" title="Help (?)" data-t-aria="k.help" data-t-title="k.help">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 015 0c0 1.7-2.5 2.3-2.5 4M12 17h.01"/></svg>
     </button>
   </header>
 
   <!-- ==== Canvas ==== -->
   <main class="canvas-wrap">
-    <canvas id="c" data-tool="select" role="application" aria-label="Drawing canvas" tabindex="0"></canvas>
+    <canvas id="c" data-tool="select" role="application" aria-label="Drawing canvas" data-t-aria="canvasHint" tabindex="0"></canvas>
 
     <!-- Style panel -->
-    <aside class="style-panel" id="stylePanel" aria-label="Style">
-      <div class="sp-group" role="group" aria-label="Stroke color">
+    <aside class="style-panel" id="stylePanel" aria-label="Style" data-t-aria="style">
+      <div class="sp-group" role="group" aria-label="Stroke color" data-t-aria="strokeColor">
         <span class="sp-label" aria-hidden="true">S</span>
-        <button class="swatch" data-stroke="#0F172A" style="background:#0F172A" aria-pressed="true" title="Ink"></button>
-        <button class="swatch" data-stroke="#DC2626" style="background:#DC2626" title="Red"></button>
-        <button class="swatch" data-stroke="#F59E0B" style="background:#F59E0B" title="Amber"></button>
-        <button class="swatch" data-stroke="#16A34A" style="background:#16A34A" title="Green"></button>
-        <button class="swatch" data-stroke="#2563EB" style="background:#2563EB" title="Blue"></button>
-        <button class="swatch" data-stroke="#7C3AED" style="background:#7C3AED" title="Violet"></button>
-        <button class="swatch" data-stroke="#00C4CC" style="background:#00C4CC" title="Brand"></button>
-        <input type="color" class="swatch cp" data-cp="stroke" value="#0F172A" aria-label="Custom stroke">
+        <button class="swatch" data-stroke="#0F172A" style="background:#0F172A" aria-pressed="true" title="Ink" data-t-title="ink"></button>
+        <button class="swatch" data-stroke="#DC2626" style="background:#DC2626" title="Red" data-t-title="red"></button>
+        <button class="swatch" data-stroke="#F59E0B" style="background:#F59E0B" title="Amber" data-t-title="amber"></button>
+        <button class="swatch" data-stroke="#16A34A" style="background:#16A34A" title="Green" data-t-title="green"></button>
+        <button class="swatch" data-stroke="#2563EB" style="background:#2563EB" title="Blue" data-t-title="blue"></button>
+        <button class="swatch" data-stroke="#7C3AED" style="background:#7C3AED" title="Violet" data-t-title="violet"></button>
+        <button class="swatch" data-stroke="#00C4CC" style="background:#00C4CC" title="Brand" data-t-title="brandColor"></button>
+        <input type="color" class="swatch cp" data-cp="stroke" value="#0F172A" aria-label="Custom stroke" data-t-aria="customStroke">
       </div>
       <div style="width:1px;height:22px;background:var(--line)"></div>
-      <div class="sp-group" role="group" aria-label="Fill">
+      <div class="sp-group" role="group" aria-label="Fill" data-t-aria="fillLabel">
         <span class="sp-label" aria-hidden="true">F</span>
-        <button class="swatch null" data-fill="null" aria-pressed="true" title="No fill"></button>
-        <button class="swatch" data-fill="#0F172A" style="background:#0F172A" title="Ink"></button>
-        <button class="swatch" data-fill="#FEE2E2" style="background:#FEE2E2" title="Red tint"></button>
-        <button class="swatch" data-fill="#FEF3C7" style="background:#FEF3C7" title="Amber tint"></button>
-        <button class="swatch" data-fill="#DCFCE7" style="background:#DCFCE7" title="Green tint"></button>
-        <button class="swatch" data-fill="#DBEAFE" style="background:#DBEAFE" title="Blue tint"></button>
-        <button class="swatch" data-fill="#E6F9FA" style="background:#E6F9FA" title="Brand tint"></button>
-        <input type="color" class="swatch cp" data-cp="fill" value="#2563EB" aria-label="Custom fill">
+        <button class="swatch null" data-fill="null" aria-pressed="true" title="No fill" data-t-title="noFill"></button>
+        <button class="swatch" data-fill="#0F172A" style="background:#0F172A" title="Ink" data-t-title="ink"></button>
+        <button class="swatch" data-fill="#FEE2E2" style="background:#FEE2E2" title="Red tint" data-t-title="redTint"></button>
+        <button class="swatch" data-fill="#FEF3C7" style="background:#FEF3C7" title="Amber tint" data-t-title="amberTint"></button>
+        <button class="swatch" data-fill="#DCFCE7" style="background:#DCFCE7" title="Green tint" data-t-title="greenTint"></button>
+        <button class="swatch" data-fill="#DBEAFE" style="background:#DBEAFE" title="Blue tint" data-t-title="blueTint"></button>
+        <button class="swatch" data-fill="#E6F9FA" style="background:#E6F9FA" title="Brand tint" data-t-title="brandTint"></button>
+        <input type="color" class="swatch cp" data-cp="fill" value="#2563EB" aria-label="Custom fill" data-t-aria="customFill">
       </div>
       <div style="width:1px;height:22px;background:var(--line)"></div>
-      <div class="sp-group" role="group" aria-label="Size">
+      <div class="sp-group" role="group" aria-label="Size" data-t-aria="size">
         <span class="sp-label" data-t="size" aria-hidden="true">Size</span>
-        <input type="range" min="1" max="32" value="2" class="range" id="rngSize" aria-label="Stroke size">
+        <input type="range" min="1" max="32" value="2" class="range" id="rngSize" aria-label="Stroke size" data-t-aria="strokeSize">
         <span class="sp-val" id="sizeVal">2</span>
       </div>
       <div style="width:1px;height:22px;background:var(--line)"></div>
-      <div class="sp-group" role="group" aria-label="Opacity">
-        <span class="sp-label" title="Opacity" aria-hidden="true">α</span>
-        <input type="range" min="10" max="100" value="100" step="10" class="range" id="rngOpacity" aria-label="Opacity">
+      <div class="sp-group" role="group" aria-label="Opacity" data-t-aria="opacity">
+        <span class="sp-label" title="Opacity" data-t-title="opacity" aria-hidden="true">α</span>
+        <input type="range" min="10" max="100" value="100" step="10" class="range" id="rngOpacity" aria-label="Opacity" data-t-aria="opacity">
         <span class="sp-val" id="opacVal">100</span>
       </div>
       <div style="width:1px;height:22px;background:var(--line)"></div>
-      <div class="sp-group" role="group" aria-label="Line style">
+      <div class="sp-group" role="group" aria-label="Line style" data-t-aria="lineStyle">
         <span class="sp-label" data-t="lineStyle" aria-hidden="true">Line</span>
-        <button class="dashbtn" data-dash="0" aria-pressed="true" title="Solid"><svg width="18" height="6" viewBox="0 0 18 6" fill="none"><line x1="1" y1="3" x2="17" y2="3" stroke="currentColor" stroke-width="2"/></svg></button>
-        <button class="dashbtn" data-dash="1" title="Dashed"><svg width="18" height="6" viewBox="0 0 18 6" fill="none"><line x1="1" y1="3" x2="17" y2="3" stroke="currentColor" stroke-width="2" stroke-dasharray="4 3"/></svg></button>
-        <button class="dashbtn" data-dash="2" title="Dotted"><svg width="18" height="6" viewBox="0 0 18 6" fill="none"><line x1="1" y1="3" x2="17" y2="3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="0.5 4"/></svg></button>
+        <button class="dashbtn" data-dash="0" aria-pressed="true" title="Solid" data-t-title="solid"><svg width="18" height="6" viewBox="0 0 18 6" fill="none"><line x1="1" y1="3" x2="17" y2="3" stroke="currentColor" stroke-width="2"/></svg></button>
+        <button class="dashbtn" data-dash="1" title="Dashed" data-t-title="dashed"><svg width="18" height="6" viewBox="0 0 18 6" fill="none"><line x1="1" y1="3" x2="17" y2="3" stroke="currentColor" stroke-width="2" stroke-dasharray="4 3"/></svg></button>
+        <button class="dashbtn" data-dash="2" title="Dotted" data-t-title="dotted"><svg width="18" height="6" viewBox="0 0 18 6" fill="none"><line x1="1" y1="3" x2="17" y2="3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="0.5 4"/></svg></button>
       </div>
     </aside>
 
     <!-- Zoom badge -->
-    <div class="zoom-badge" role="group" aria-label="Zoom controls">
-      <button id="btnZoomOut" aria-label="Zoom out" title="Zoom out (⌘-)">−</button>
-      <button class="zoom-val" id="zoomVal" title="Reset zoom (⌘0)" aria-label="Zoom level, click to reset">100%</button>
-      <button id="btnZoomIn" aria-label="Zoom in" title="Zoom in (⌘+)">+</button>
-      <button id="btnFit" aria-label="Fit to content" title="Fit (⇧1)" style="font-size:10px;padding:0 8px;width:auto">FIT</button>
+    <div class="zoom-badge" role="group" aria-label="Zoom controls" data-t-aria="zoomCtl">
+      <button id="btnZoomOut" aria-label="Zoom out" title="Zoom out (⌘-)" data-t-aria="k.zoomOut" data-t-title="k.zoomOut">−</button>
+      <button class="zoom-val" id="zoomVal" title="Reset zoom (⌘0)" aria-label="Zoom level, click to reset" data-t-aria="zoomLevel" data-t-title="zoomResetT">100%</button>
+      <button id="btnZoomIn" aria-label="Zoom in" title="Zoom in (⌘+)" data-t-aria="k.zoomIn" data-t-title="k.zoomIn">+</button>
+      <button id="btnFit" aria-label="Fit to content" title="Fit (⇧1)" data-t-aria="k.fit" data-t-title="k.fit" style="font-size:10px;padding:0 8px;width:auto">FIT</button>
     </div>
   </main>
 
@@ -666,14 +666,14 @@ body{visibility:visible}
 </div>
 
 <!-- Minimap -->
-<div class="minimap-wrap" id="minimapWrap" title="Minimap — click to navigate">
-  <canvas id="minimap" width="160" height="100" role="img" aria-label="Board minimap — click to navigate"></canvas>
+<div class="minimap-wrap" id="minimapWrap" title="Minimap — click to navigate" data-t-title="minimapNav">
+  <canvas id="minimap" width="160" height="100" role="img" aria-label="Board minimap — click to navigate" data-t-aria="minimapNav"></canvas>
 </div>
 
 <!-- Help overlay -->
 <div class="help-overlay" id="help" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
   <div class="help-card" style="position:relative">
-    <button class="help-close" id="helpClose" aria-label="Close">
+    <button class="help-close" id="helpClose" aria-label="Close" data-t-aria="close">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
     <h2 id="helpTitle" data-t="helpTitle">ショートカット</h2>
@@ -685,13 +685,13 @@ body{visibility:visible}
 <!-- Share overlay -->
 <div class="help-overlay" id="share" role="dialog" aria-modal="true" aria-labelledby="shareTitle">
   <div class="help-card" style="position:relative;max-width:520px">
-    <button class="help-close" id="shareClose" aria-label="Close">
+    <button class="help-close" id="shareClose" aria-label="Close" data-t-aria="close">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
     <h2 id="shareTitle" data-t="shareTitle">共有</h2>
     <p class="sub" data-t="shareUrlHint">このURLをコピーして送ると、相手に内容が共有されます</p>
     <div class="share-row">
-      <input id="shareUrl" type="text" class="share-input" readonly aria-label="Share URL">
+      <input id="shareUrl" type="text" class="share-input" readonly aria-label="Share URL" data-t-aria="shareUrlLabel">
       <button class="btn primary" id="shareCopyBtn" data-t="shareCopyUrl">URLをコピー</button>
     </div>
 
@@ -729,13 +729,14 @@ body{visibility:visible}
 
 <!-- Toasts -->
 <div class="toast-stack" id="toasts" aria-live="polite" aria-atomic="false"></div>
+<div id="sr" aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap"></div>
 
 <script>
 // Board — MIT License. See LICENSE file.
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.62';
+const V='1.7.63';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -796,7 +797,16 @@ const I18N={
     ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',
     ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
     ctxSendBackward:'背面へ',ctxSendBack:'最背面へ',
-    ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxLock:'ロック',ctxUnlock:'ロック解除',lockToggle:'ロック切り替え',
+    ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxLock:'ロック',ctxUnlock:'ロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
+    canvasHint:'描画キャンバス。Tab/⇧Tab で図形巡回、Enter で作成、矢印で移動、⌥+矢印でリサイズ',
+    tools:'ツール',docNameLabel:'ドキュメント名',activePeers:'接続中のピア',expPng:'PNG 書き出し',
+    moreExport:'その他の書き出し・読み込み',install:'アプリとしてインストール',style:'スタイル',
+    strokeColor:'線の色',customStroke:'カスタム線色',fillLabel:'塗り',customFill:'カスタム塗り色',
+    noFill:'塗りなし',ink:'インク',red:'赤',amber:'黄',green:'緑',blue:'青',violet:'紫',brandColor:'ブランド色',
+    redTint:'赤系',amberTint:'黄系',greenTint:'緑系',blueTint:'青系',brandTint:'ブランド系',
+    strokeSize:'線の太さ',opacity:'不透明度',solid:'実線',dashed:'破線',dotted:'点線',
+    zoomCtl:'ズーム操作',zoomLevel:'ズーム率(クリックでリセット)',zoomResetT:'ズームをリセット',
+    close:'閉じる',shareUrlLabel:'共有URL',minimapNav:'ミニマップ — クリックで移動',
     ctxAlignLeft:'左揃え',ctxAlignCX:'左右中央',ctxAlignRight:'右揃え',
     ctxAlignTop:'上揃え',ctxAlignCY:'上下中央',ctxAlignBottom:'下揃え',
     ctxHSpace:'水平均等配置',ctxVSpace:'垂直均等配置',
@@ -851,7 +861,16 @@ const I18N={
     ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',
     ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
     ctxSendBackward:'Send backward',ctxSendBack:'Send to back',
-    ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxLock:'Lock',ctxUnlock:'Unlock',lockToggle:'Toggle lock',
+    ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxLock:'Lock',ctxUnlock:'Unlock',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
+    canvasHint:'Drawing canvas. Tab/Shift+Tab cycles shapes, Enter creates, arrows move, Alt+arrows resize.',
+    tools:'Tools',docNameLabel:'Document name',activePeers:'Active peers',expPng:'Export PNG',
+    moreExport:'More export & import options',install:'Install Board as an app',style:'Style',
+    strokeColor:'Stroke color',customStroke:'Custom stroke',fillLabel:'Fill',customFill:'Custom fill',
+    noFill:'No fill',ink:'Ink',red:'Red',amber:'Amber',green:'Green',blue:'Blue',violet:'Violet',brandColor:'Brand',
+    redTint:'Red tint',amberTint:'Amber tint',greenTint:'Green tint',blueTint:'Blue tint',brandTint:'Brand tint',
+    strokeSize:'Stroke size',opacity:'Opacity',solid:'Solid',dashed:'Dashed',dotted:'Dotted',
+    zoomCtl:'Zoom controls',zoomLevel:'Zoom level, click to reset',zoomResetT:'Reset zoom',
+    close:'Close',shareUrlLabel:'Share URL',minimapNav:'Minimap — click to navigate',
     ctxAlignLeft:'Align left',ctxAlignCX:'Center horizontal',ctxAlignRight:'Align right',
     ctxAlignTop:'Align top',ctxAlignCY:'Center vertical',ctxAlignBottom:'Align bottom',
     ctxHSpace:'Distribute horizontal',ctxVSpace:'Distribute vertical',
@@ -877,7 +896,7 @@ const I18N={
     backupAvailable:'A board from before it was overwritten was saved. Restore it?',
     backupRestored:'Restored the previous board',
     backupRestoreFailed:'Failed to restore backup',
-    peers:'peers',shapes:'Shapes',on:'On',off:'Off',online:'Online',offline:'Offline',minimap:'Minimap',
+    peers:'peers',shapes:'Shapes',on:'On',off:'Off',online:'Online',offline:'Offline',grid:'Grid',minimap:'Minimap',
     k:{select:'Select',hand:'Pan',pen:'Pen',rect:'Rectangle',ellipse:'Ellipse',
       arrow:'Arrow',line:'Line',text:'Text',sticky:'Sticky',frame:'Frame',eraser:'Eraser',
       undo:'Undo',redo:'Redo',del:'Delete',dup:'Duplicate',
@@ -2589,10 +2608,12 @@ function zoomAt(sp,delta){
 function zoomBy(f){
   const r=canvas.getBoundingClientRect();
   zoomAt({x:r.width/2,y:r.height/2},Math.log(f));
+  UI.announce(Math.round(state.viewport.zoom*100)+'%');   // discrete zoom is SR-silent otherwise (wheel zoom stays quiet on purpose)
 }
 function zoomReset(){
   state.viewport.zoom=1;
   UI.refreshZoom();invalidate();
+  UI.announce('100%');
 }
 function fitToContent(){
   const b=G.bboxAll(state.shapes);if(!b){zoomReset();return}
@@ -2604,6 +2625,7 @@ function fitToContent(){
   state.viewport.x=b.x+b.w/2-r.width/(2*z);
   state.viewport.y=b.y+b.h/2-r.height/(2*z);
   UI.refreshZoom();invalidate();
+  UI.announce(Math.round(z*100)+'%');
 }
 
 // ---- spatial index: uniform 200wu grid, lazy rebuild on _apply; big shapes in
@@ -3310,7 +3332,8 @@ window.addEventListener('keyup',e=>{
 function pickTool(tool,temporary){
   if(temporary&&!window._prevTool)window._prevTool=state.tool;
   state.tool=tool;canvas.dataset.tool=tool;
-  canvas.setAttribute('aria-label',tool+' — Drawing canvas. Tab/Shift+Tab cycles shapes, Enter creates, arrows move, Alt+arrows resize.');
+  canvas.setAttribute('aria-label',(T.k[tool]||tool)+' — '+t('canvasHint'));   // localized (was hardcoded English)
+  UI.announce(T.k[tool]||tool);   // tool switches were SR-silent (undo/group等 toast, this didn't)
   for(const b of document.querySelectorAll('.tool'))b.setAttribute('aria-pressed',b.dataset.tool===tool);
   // hide style panel for select/hand
   const sp=document.getElementById('stylePanel');
@@ -3616,6 +3639,7 @@ function doFlip(axis){
   Store._recordCommitted({op:'align',dir:'flip',before,after});
   if(origSel.length)state.history[state.histIdx].origSel=origSel;
   invalidate();Persist.schedule();
+  UI.announce(t(axis==='h'?'ctxFlipH':'ctxFlipV'));
 }
 
 function doLock(){
@@ -3629,6 +3653,7 @@ function doLock(){
   Store._recordCommitted({op:'align',dir:'lock',before,after});
   if(origSel.length)state.history[state.histIdx].origSel=origSel;
   invalidate();Persist.schedule();
+  UI.announce(t(lk?'ctxLock':'ctxUnlock'));
 }
 // ADR-0005: replace confidently-recognized pen strokes in the selection with clean shapes
 // (Alt+B). Local-only (not in REMOTE_OPS, like replace/clear) — converting a collaborator's
@@ -3680,6 +3705,7 @@ function doRotate(d){
   Store._recordCommitted({op:'align',dir:'rotate',before,after});
   if(origSel.length)state.history[state.histIdx].origSel=origSel;
   invalidate();Persist.schedule();
+  UI.announce(sel.length===1?describeShape(sel[0]):sel[0].rotate+'°');   // ,/. keyboard rotate was SR-silent (knob drag announces)
 }
 // ====================== EXPORT ======================
 // Browsers cap a canvas's single dimension (~16384px on most) and its total area.
@@ -4510,6 +4536,14 @@ const UI={
     setTimeout(()=>{div.style.opacity='0';div.style.transform='translateY(4px)';
       setTimeout(()=>div.remove(),240)},1600);
   },
+  // SR-only announcement: for frequent state changes (tool switch, zoom, flip, lock,
+  // keyboard rotate) a visible toast per keypress would be UI noise for sighted users,
+  // but silence is an a11y asymmetry — undo/group/etc. all announce via toasts.
+  // Same-text repeats (V pressed twice) need a nudge for the live region to re-fire.
+  announce(msg){
+    const el=document.getElementById('sr');if(!el)return;
+    el.textContent=el.textContent===msg?msg+' ':msg;
+  },
   toggleHelp(){
     const h=document.getElementById('help'),open=h.dataset.open!=='true';
     h.dataset.open=open;
@@ -4536,6 +4570,9 @@ const UI={
       has&&['ctxSendBack','⇧[',doSendBack],
       has&&['ctxFlipH','⇧H',()=>doFlip('h')],
       has&&['ctxFlipV','⇧V',()=>doFlip('v')],
+      // ADR-0005's flagship feature was ⌥B-only — invisible to touch/mouse users
+      // (the exact "keyboard-only feature" trap FT-06 warned about).
+      has&&[...state.selection].some(id=>byId(id)?.type==='pen')&&['ctxBeautify','⌥B',doBeautify],
       has&&[byId([...state.selection][0])?.locked?'ctxUnlock':'ctxLock','',doLock],
       has&&state.selection.size>1&&'sep',
       has&&state.selection.size>1&&['ctxAlignLeft','',()=>doAlign('left')],
@@ -4604,7 +4641,9 @@ const UI={
       ['↑↓←→',k.nudge],['⌥ ↑↓←→',k.kbdResize],
       [']/[',k.zorder],['⇧]/⇧[',k.zorderEnds],
       [', / .',k.rotate],['⌘⇧L',t('lockToggle')],['⌘F',k.search],['⌥B',k.beautify],
-      ['Enter / ⇧Enter',t('searchNav')],
+      ['Enter / ⇧Enter',k.searchNav],
+      ['⇧H / ⇧V',t('ctxFlipH')+' / '+t('ctxFlipV')],
+      ['⌥C / ⌥V',t('ctxCopyStyle')+' / '+t('ctxPasteStyle')],
       ['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],
       ['Tab / ⇧Tab',k.cycle],['Enter',k.create]
     ];
@@ -4634,6 +4673,16 @@ const UI={
     for(const el of document.querySelectorAll('[data-t]')){
       const key=el.getAttribute('data-t');
       if(key){el.textContent=t(key)}
+    }
+    // aria-label / title were hardcoded English on ~44 controls — a JA screen-reader
+    // user heard the whole tool palette in English. data-t-aria / data-t-title hold an
+    // i18n key ('k.xxx' reaches the nested shortcut-name table). Titles keep their
+    // authored ' (V)' shortcut suffix.
+    const tk=key=>key.startsWith('k.')?(T.k[key.slice(2)]||I18N.en.k[key.slice(2)]||key):t(key);
+    for(const el of document.querySelectorAll('[data-t-aria]'))el.setAttribute('aria-label',tk(el.getAttribute('data-t-aria')));
+    for(const el of document.querySelectorAll('[data-t-title]')){
+      const sfx=((el.getAttribute('title')||'').match(/\s(\([^)]*\))$/)||[])[1];
+      el.setAttribute('title',tk(el.getAttribute('data-t-title'))+(sfx?' '+sfx:''));
     }
   },
   openShare(){
@@ -4699,7 +4748,7 @@ async function _onBtnInstall(){
   if(btn)btn.hidden=true;
 }
 function wire(){
-  {const sq=document.createElement('input');sq.id='sqinput';sq.type='text';sq.placeholder=t('search');sq.setAttribute('aria-label',t('search'));sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--accent-contrast);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';document.body.appendChild(sq);sq.addEventListener('input',()=>{_sq=sq.value;_sqNav.idx=-1;_sqNav.lastQ='';invalidate()});sq.addEventListener('keydown',ev=>{if(ev.key==='Escape'){_sq='';_sqNav.idx=-1;_sqNav.lastQ='';sq.style.display='none';sq.value='';invalidate();canvas.focus();}else if(ev.key==='Enter'&&!ev.isComposing){ev.preventDefault();_sqAdvance(ev.shiftKey?-1:1);}});}
+  {const sq=document.createElement('input');sq.id='sqinput';sq.type='text';sq.placeholder=T.k.search;sq.setAttribute('aria-label',T.k.search);sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--accent-contrast);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';document.body.appendChild(sq);sq.addEventListener('input',()=>{_sq=sq.value;_sqNav.idx=-1;_sqNav.lastQ='';invalidate()});sq.addEventListener('keydown',ev=>{if(ev.key==='Escape'){_sq='';_sqNav.idx=-1;_sqNav.lastQ='';sq.style.display='none';sq.value='';invalidate();canvas.focus();}else if(ev.key==='Enter'&&!ev.isComposing){ev.preventDefault();_sqAdvance(ev.shiftKey?-1:1);}});}
   // tool buttons
   for(const b of document.querySelectorAll('.tool'))
     b.addEventListener('click',()=>pickTool(b.dataset.tool));

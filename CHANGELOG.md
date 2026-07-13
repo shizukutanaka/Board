@@ -2,6 +2,63 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.63] - 2026-07-13
+
+製品全体の長所短所監査(堅牢性/セキュリティ + UX/i18n の2系統)で発見した実バグ 11 件を
+修正。長所側の再確認: XSS 皆無(innerHTML 不使用・SR/トースト出力は textContent・
+SVG/PDF は `_esc` 経由)、JSON.parse/localStorage/タイマー/主要 async 経路のエラー処理は
+健全、sticky コントラストも問題なし。
+
+### Fixed(堅牢性)
+- **SW が cache-first のみで更新が永遠に届かない**: fetch ハンドラは navigation を含む
+  全リクエストをキャッシュ優先・再検証なしで返していた。初回キャッシュ後は古い HTML が
+  返り続け、その HTML が生成する SW も古いバージョンのまま — activate のキャッシュ掃除も
+  controllerchange(v1.6.93 の更新通知)も構造的に一度も発火しなかった。navigation を
+  network-first(オフライン時はキャッシュへフォールバック)に変更。オフライン等価は不変。
+  ※ SW はフェイク環境で実行できないため、この修正の実機確認(オンラインで旧版から
+  新版へ更新されること)が望ましい。
+- **ピア id 無検証 + `state.peers` 無上限**: WebRTC DataChannel は全メッセージ種別を
+  無フィルタで `_onRecv` に流すため、悪意ピアが任意長・任意個の `peer` 文字列で
+  hello/ping を送ると Map と DOM アバターが無限成長した。`MAX_PEERS=32` の上限と
+  64 文字・string 型の intake ガードを追加。
+- **スナップショット増幅**: hello/sync-req 1通ごとに全盤面 clone×2 + JSON 化が
+  無制限に走った。`_sendSnapshot` を 1秒 1回にスロットル。
+- **`importBoard` の読み込み失敗が無反応**: FileReader に onerror が無かった
+  (画像インポート・importFromHash は失敗をトーストしており非対称)。
+- **`docName` が intake 4経路で無制限**: 入力欄の maxlength=80 と揃えて
+  `.board`/IDB/バックアップ/URL ハッシュ経路もすべて 80 文字にクランプ。
+
+### Fixed(UX / i18n / a11y)
+- **ツールバー等 44 箇所の `aria-label`/`title` が英語ハードコード**: 日本語 SR ユーザー
+  にはツールパレット全体が英語で読み上げられていた。`applyI18n()` が `data-t-aria`/
+  `data-t-title`(値は i18n キー、`k.` プレフィックスで nested テーブル参照)を処理する
+  よう拡張し、全コントロールに付与。title の `(V)` 等ショートカット表記は保持。
+  `pickTool` の canvas aria-label も同時にローカライズ。
+- **doBeautify(ADR-0005)が ⌥B 限定**: コンテキストメニューに `ctxBeautify` 項目を追加
+  (選択に pen を含むときのみ表示)。タッチ/マウスから初めて到達可能に。
+- **`t('searchNav')`/`t('search')` が生キー表示**: 両キーは nested `k:{}` にしか無く、
+  ヘルプに「searchNav」、検索ボックスに「search」がそのまま出ていた。参照を修正。
+- **en ブロックに top-level `grid` キー欠落**: 英語のグリッド切替トーストが「grid On」
+  と生キー混じりだった。
+- **SR 無音の状態変化**: SR 専用 live region(`#sr`)+ `UI.announce()` を追加し、
+  ツール切替・ズーム(⌘+/−/0/⇧1)・反転(⇧H/⇧V)・ロック(⌘⇧L)・キーボード回転
+  (,/.)をアナウンス(視覚トーストを増やすとキー操作のたびに UI ノイズになるため
+  SR 専用領域を選択。undo/グループ化等は従来どおりトーストが読み上げる)。
+- **ヘルプグリッドの欠落**: 実装済みの ⇧H/⇧V(反転)と ⌥C/⌥V(スタイル転写)の
+  2行を追加。
+
+### Added
+- ja/en の i18n キーセット完全一致テスト(top-level と nested `k` の両方)— 片言語
+  欠落キーを恒久的に構造検知。
+- `docs/feature-backlog.md` 第3弾(FT-17〜19): 監査で発見したがバグでない3件
+  (空盤面ヒント / テーマ・言語トグル / ラベルのキーボード編集)をチケット化。
+
+### Tests
+- behavioral × 20(ピアフラッド 5・スナップショットスロットル 2・importBoard 4・
+  i18n パリティ 2・announce/aria 7)+ presence × 10
+- 非空虚性は stash 法で確認(修正前コードに対して新規テストが fail)
+- 合計 1544 pass, 0 fail
+
 ## [1.7.62] - 2026-07-11
 
 ADR-0010 が明示的に持ち越した「他者の選択状態のハイライト」を実装(ADR-0011、

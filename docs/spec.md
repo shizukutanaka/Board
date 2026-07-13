@@ -121,6 +121,20 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
 
 ## 13. 適合ギャップ(不足)— 仕様 vs 実装
 
+### ✅ v1.7.63 で解消(製品全体監査 — 堅牢性 5 件 + UX/i18n 6 件)
+- **SW 更新不能(最重要)**: fetch が全リクエスト cache-first・再検証なしのため、初回
+  キャッシュ後は旧 HTML→旧 SW の自己再生産で activate/controllerchange が構造的に発火せず、
+  「オフライン等価 + 自動更新」の後者が v1.6.5 以来死んでいた。navigation を network-first に。
+- **ピア intake**: peer id の型/長さ無検証 + `state.peers` 無上限(WebRTC は全メッセージ種別を
+  無フィルタ受信)→ `MAX_PEERS=32` + 64字ガード。スナップショット送信も 1s スロットル。
+- **importBoard onerror 欠落 / docName 4経路無クランプ**。
+- **aria-label/title 英語固定(44箇所)**: `applyI18n` を data-t-aria/data-t-title 対応に拡張。
+  「a11y の積み上げ」(§14.1)と「日英対応」の主張が SR ユーザーに対して初めて同時に真になる。
+- **doBeautify のメニュー到達経路 / t() 生キー2件 / en `grid` キー欠落 / SR 無音 5 操作 /
+  ヘルプ 2 行欠落**。ja/en キーセット一致は恒久テスト化。
+- 監査で健全と再確認: XSS 皆無、remote op ペイロード検証、JSON.parse/localStorage/タイマー、
+  sticky コントラスト。
+
 ### ✅ v1.7.62 で解消(ADR-0011 — ピア選択ハイライト + HiDPI オーバーレイ修正)
 - **プレゼンス(他者の選択状態)未実装 [P2]**: ADR-0010 が明示的に持ち越した残件。
   `{k:'selection',peer,ids}` を新規メッセージ種別として追加。送信は `state.selection` の
