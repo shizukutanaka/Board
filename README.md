@@ -4,7 +4,7 @@
 単一HTMLファイル。ダブルクリックで動く。アカウント不要。広告なし。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-00C4CC.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.7.66-00C4CC.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.7.67-00C4CC.svg)](CHANGELOG.md)
 [![Size](https://img.shields.io/badge/size-~61KB%20gzip-00C4CC.svg)](index.html)
 [![Offline](https://img.shields.io/badge/offline-first-00C4CC.svg)](#offline)
 [![A11y](https://img.shields.io/badge/WCAG-AAA-00C4CC.svg)](#accessibility)
@@ -117,6 +117,8 @@ start index.html      # Windows
 ### 表示
 - テーマ手動トグル (ADR-0012): トップバーのアイコンボタンで自動(OS追従) → ライト →
   ダーク → 自動を循環。選択は次回起動後も保持
+- 言語手動トグル (ADR-0014): トップバーのアイコンボタンで日本語⇄English を切替。
+  選択は次回起動後も保持。ヘルプ・ツールバー・検索ボックス等 UI 全体が即座に追従
 - 全機能キーボード操作可能(ツール切替・描画・選択・整列・エクスポート等、マウス
   操作の代替経路がすべて存在する — `role="application"` のキャンバス自体も含む)
 - ARIA ラベル完備
@@ -126,7 +128,7 @@ start index.html      # Windows
 - `prefers-reduced-motion` / `prefers-color-scheme` 対応
 - 日本語・英語自動検出 (`navigator.language`)。ツールバー等の `aria-label`/`title` も
   ロケールに追従 (v1.7.63 — それ以前は英語固定)、SR 専用 live region でツール切替・
-  ズーム・反転・ロック・回転もアナウンス
+  ズーム・反転・ロック・回転もアナウンス。手動でも切替可能 (ADR-0014、上記「表示」参照)
 - **既知の構造的制約**: 上記は「ツールをキーボードで操作できる」ことを指し、
   「キャンバスに描いた内容がスクリーンリーダーから読める」ことは意味しない。
   canvas は単一のビットマップとして描画されるため、実際に描いた図形・文字列は

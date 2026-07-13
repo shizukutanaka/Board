@@ -527,6 +527,14 @@ const checks = [
     html.includes('function editSelectedShapeKbd(){') && html.includes('function _openLabelEditorFor(hit){')
     && html.includes("if(state.tool==='select'&&editSelectedShapeKbd()){e.preventDefault();}")],
   ['help grid documents Enter\'s dual meaning (create / edit label)', html.includes("k.create+' / '+t('editLabel')")],
+  // v1.7.67 (ADR-0014, FT-18b)
+  ['language toggle: LANG/T are reassignable lets, boot restore reads board.lang before deriving T',
+    html.includes("let LANG=(navigator.language||'en').startsWith('ja')?'ja':'en';")
+    && html.includes("const LANG_KEY='board.lang';") && html.includes('let T=I18N[LANG];')
+    && html.includes("if(_savedLang==='ja'||_savedLang==='en')LANG=_savedLang;")],
+  ['language toggle: toggleLang resyncs applyI18n/fillHelp/updateOnline/search-box/canvas, wired to btnLang',
+    html.includes('toggleLang(){') && html.includes('UI.applyI18n();') && html.includes('UI.fillHelp();')
+    && html.includes("document.getElementById('btnLang').onclick=()=>UI.toggleLang();")],
   // v1.6.68: Alt resize-from-centre
   ['Alt resizes about original centre', html.includes("function applyResize(sh,handle,orig,wp,shift,alt)") && html.includes("if(alt){sh.x=cx0-sh.w/2;sh.y=cy0-sh.h/2;}") && html.includes("applyResize(rsh,ptr.resizeHandle,ptr.resizeOrig,wp,e.shiftKey,e.altKey);")],
   // v1.6.69: rotated-box resize
@@ -995,7 +1003,8 @@ try {
              _onSwUpdate, _ctxMenuKeyNav,
              _getPasteCount: () => _pasteCount, _resetPasteClipboard: () => { _lastClipboard = null; },
              endRectLike, endLineLike, I18N, applyTheme, editSelectedShapeKbd,
-             draw, _setCtx: (c) => { const p = ctx; ctx = c; return p; } };
+             draw, _setCtx: (c) => { const p = ctx; ctx = c; return p; },
+             _getLang: () => LANG, _getT: () => T };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
@@ -3674,6 +3683,68 @@ try {
                 html.includes('else if(createShapeKbd())e.preventDefault();'),
         'kbd-edit: Enter only re-edits when the select tool is active; other tools keep createShapeKbd (no clash)');
       console.log('  ✓ ADR-0013 keyboard label/text edit: selection/lock guards, per-type dispatch, right-shape targeting, tool gate (v1.7.66)');
+    }
+
+    // ---- ADR-0014 (FT-18b): language toggle (ja <-> en) --------------------------------
+    // LANG/T are `let`; t()/T.k reads made AFTER toggleLang() reassigns them pick the new
+    // language up for free (closure semantics) — this test instead targets the few things
+    // that cache a translated string once: the search box (lazily created, never rebuilt),
+    // the canvas aria-label (only refreshed by pickTool), and the help grid (built once in
+    // main(), not on modal open/close). A later test (applyI18n <html lang> check) assumes
+    // LANG==='en', so this block must leave LANG restored to 'en' no matter which assertion
+    // fails first — hence the try/finally with an explicit toggle-back.
+    {
+      assert.strictEqual(A._getLang(),'en','lang: starts as en in this harness (navigator.language=en)');
+
+      const sqStub={placeholder:'',attrs:{},setAttribute(n,v){this.attrs[n]=v;},getAttribute(n){return this.attrs[n]??null;}};
+      const langBtn={attrs:{},setAttribute(n,v){this.attrs[n]=v;},getAttribute(n){return this.attrs[n]??null;},dataset:{}};
+      const _origGet=fakeDoc.getElementById;
+      fakeDoc.getElementById=id=>id==='sqinput'?sqStub:id==='btnLang'?langBtn:_origGet(id);
+      const canvasCalls=[];
+      const _origSetAttr=A.canvas.setAttribute;
+      A.canvas.setAttribute=(n,v)=>{canvasCalls.push([n,v]);};
+      A.canvas.dataset.tool='rect';
+      delete fakeWin.localStorage._d['board.lang'];
+
+      try{
+        A.UI.toggleLang();
+        assert.strictEqual(A._getLang(),'ja','toggleLang: en -> ja');
+        assert.strictEqual(A._getT().k.select,A.I18N.ja.k.select,'toggleLang: T now points at I18N.ja');
+        assert.strictEqual(fakeWin.localStorage._d['board.lang'],'ja','toggleLang: persists to localStorage');
+        assert.strictEqual(sqStub.placeholder,A.I18N.ja.k.search,'toggleLang: search box placeholder resynced (creation-time cache, not auto-tracked)');
+        assert.strictEqual(sqStub.attrs['aria-label'],A.I18N.ja.k.search,'toggleLang: search box aria-label resynced too');
+        assert.strictEqual(langBtn.attrs['aria-label'],'日本語','toggleLang: language button shows the CURRENT language name');
+        assert.ok(canvasCalls.some(([n,v])=>n==='aria-label'&&v.startsWith(A.I18N.ja.k.rect)),
+          'toggleLang: canvas aria-label resynced for the active tool (rect), not left in English');
+
+        A.UI.toggleLang();
+        assert.strictEqual(A._getLang(),'en','toggleLang: ja -> en (round trip)');
+        assert.strictEqual(fakeWin.localStorage._d['board.lang'],'en','toggleLang: localStorage updated on the round trip too');
+        assert.strictEqual(langBtn.attrs['aria-label'],'English','toggleLang: language button reflects English after round trip');
+      }finally{
+        fakeDoc.getElementById=_origGet;
+        A.canvas.setAttribute=_origSetAttr;
+        delete A.canvas.dataset.tool;
+        delete fakeWin.localStorage._d['board.lang'];
+        if(A._getLang()!=='en')A.UI.toggleLang();   // leave LANG=en — a later test assumes it
+      }
+
+      // boot restore: a persisted preference must be honoured by the INITIAL LANG/T
+      // derivation (module load), not just by toggleLang() at runtime. Evaluate a fresh
+      // instance with the preference already in localStorage, same pattern as the B/C
+      // instances used elsewhere in this file for independent-world tests.
+      fakeWin.localStorage._d['board.lang']='ja';
+      let D;
+      try{
+        D=fn(fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
+          fakeWin.indexedDB,fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
+          fakeWin.getComputedStyle,fakeWin.confirm,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage);
+        assert.strictEqual(D._getLang(),'ja','boot restore: a persisted board.lang=ja is honoured at module load, before any toggle');
+        assert.strictEqual(D._getT().k.select,D.I18N.ja.k.select,'boot restore: T is I18N.ja from the start, not just LANG');
+      }finally{
+        delete fakeWin.localStorage._d['board.lang'];
+      }
+      console.log('  ✓ ADR-0014 language toggle: en<->ja round trip, localStorage persistence, search box/canvas resync, boot restore (v1.7.67)');
     }
 
     // ---- v1.7.63: peer-map flood hardening + snapshot amplification throttle ----------
@@ -7403,7 +7474,7 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 1070; // prev 1053 + ADR-0013 keyboard label/text edit (17)
+  pass += 1083; // prev 1070 + ADR-0014 language toggle (13)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

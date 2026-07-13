@@ -2,6 +2,30 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.67] - 2026-07-13
+
+`docs/feature-backlog.md` FT-18b(言語トグル、ADR-0012 で言語側だけ見送っていた分)。
+
+### Added
+- **言語手動トグル(ADR-0014)**: トップバーに `btnLang` アイコンボタンを追加。
+  クリックで日本語⇄English を切替、`localStorage` に永続化し次回起動時に復元。
+  `LANG`/`T` を `const` から `let` に変更して `UI.toggleLang()` で再代入 — `t()` は
+  `T` を閉包しているため、以後のトースト・コンテキストメニュー・`applyI18n` の
+  `data-t` 走査等は**追加コード無しで自動的に新言語へ追従する**。生成時に一度だけ
+  訳文をキャッシュしていた3箇所(検索ボックスの placeholder/aria-label、
+  `main()` で一度しか呼ばれないヘルプグリッド、接続状態変化イベント待ちのオンライン
+  表示)だけ `toggleLang()` から明示的に再同期する。
+  ADR-0012 は当初この言語トグルを「生成時キャッシュ箇所が複数あり検証コストが高い」
+  として見送ったが、実際に悉皆調査したところ上記3箇所のみと判明し、想定より小さい
+  スコープで実装できた(ADR-0014 に詳細)。
+
+### Tests
+- behavioral × 13: en⇄ja の往復、`localStorage` 永続化、検索ボックス/canvas
+  aria-label の再同期、起動時の永続化済み言語の復元(新規 eval インスタンスで検証)
+- presence × 2
+- 非空虚性は stash 法で確認(修正前コードに対して新規テストが fail)
+- 合計 1597 pass, 0 fail
+
 ## [1.7.66] - 2026-07-13
 
 `docs/feature-backlog.md` FT-19(コネクタ/フレームラベルのキーボード編集経路)。
