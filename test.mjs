@@ -535,6 +535,19 @@ const checks = [
   ['language toggle: toggleLang resyncs applyI18n/fillHelp/updateOnline/search-box/canvas, wired to btnLang',
     html.includes('toggleLang(){') && html.includes('UI.applyI18n();') && html.includes('UI.fillHelp();')
     && html.includes("document.getElementById('btnLang').onclick=()=>UI.toggleLang();")],
+  // v1.7.68 (deep-audit fix): ADR-0002's per-property LWW guard against undo clobbering
+  // a newer remote write was implemented only in the 'upd' case; style/resize/align and
+  // group/ungroup shared the forward stamping (_stampWrites) but not the reverse guard.
+  ['ADR-0002 gap fix: shared _lwwSkip helper exists and is used by upd, the batch ops, and group/ungroup',
+    html.includes('function _lwwSkip(id,key,op){') && html.includes('if(!forward)for(const k of Object.keys(p)){if(_lwwSkip(op.id,k,op))delete p[k];}')
+    && html.includes("if(!forward)for(const k of Object.keys(p)){if(k!=='id'&&_lwwSkip(raw.id,k,op))delete p[k];}")
+    && (html.match(/if\(_lwwSkip\(b\.id,'groupId',op\)\)continue;/g)||[]).length>=2],
+  ['self-avatar title localized via t(you), resynced by toggleLang (deep-audit fix, was hardcoded)',
+    html.includes("self.title=t('you');") && html.includes('UI.refreshPeers();   // self-avatar title')
+    && html.includes("you:'自分'") && html.includes("you:'You'")],
+  ['theme mode cached in memory (_themeCache), not re-read from localStorage on every call (deep-audit fix)',
+    html.includes('let _themeCache=(()=>{try{return localStorage.getItem(THEME_KEY)}catch(_){return null}})();')
+    && html.includes('_themeMode(){return _themeCache;},') && html.includes('_themeCache=next;')],
   // v1.6.68: Alt resize-from-centre
   ['Alt resizes about original centre', html.includes("function applyResize(sh,handle,orig,wp,shift,alt)") && html.includes("if(alt){sh.x=cx0-sh.w/2;sh.y=cy0-sh.h/2;}") && html.includes("applyResize(rsh,ptr.resizeHandle,ptr.resizeOrig,wp,e.shiftKey,e.altKey);")],
   // v1.6.69: rotated-box resize
@@ -727,8 +740,11 @@ const checks = [
   ['_apply upd forward: if(forward&&sh.locked)break guards locked shapes',
     html.includes("const sh=byId(op.id);if(!sh)break;\n        if(forward&&sh.locked)break;")],
   // v1.7.38: _apply style/resize/align forward must guard sh.locked per patch
+  // v1.7.68/ADR-0002-gap-fix: restructured to a loop so undo can also apply the _lwwSkip
+  // guard (below) — the locked-shape guard itself is unchanged, just reshaped from the
+  // original single-expression form to an equivalent early-continue.
   ['_apply style/resize/align forward: !(forward&&sh.locked&&!locked-in-p) guards locked shapes per patch',
-    html.includes("if(sh&&!(forward&&sh.locked&&!('locked' in p)))Object.assign(sh,clone(p))")],
+    html.includes("if(!sh||(forward&&sh.locked&&!('locked' in raw)))continue;")],
   // v1.7.39: _apply del forward connClears must guard sh.locked
   ['_apply del forward connClears: if(sh&&!sh.locked) guards locked connectors',
     html.includes("if(sh&&!sh.locked)Object.assign(sh,p.after);}}")],
@@ -752,8 +768,10 @@ const checks = [
   ['_apply ungroup backward: if(op.origSel) restores selection',
     html.includes("if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));}\n        break;}\n      case 'zorder':")],
   // v1.7.32: _apply group backward must guard op.before (parity with ungroup backward)
+  // v1.7.68/ADR-0002-gap-fix: the loop body gained the same _lwwSkip guard group/ungroup
+  // now share (below); the op.before/origSel structure itself is unchanged.
   ['_apply group backward: if(op.before) guard added (parity with ungroup)',
-    html.includes("if(op.before)for(const b of op.before){const sh=byId(b.id);if(sh){if(b.groupId)sh.groupId=b.groupId;else delete sh.groupId}}\n          if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));}")],
+    html.includes("if(op.before)for(const b of op.before){\n            const sh=byId(b.id);if(!sh)continue;\n            if(_lwwSkip(b.id,'groupId',op))continue;")],
   // v1.7.31: endRectLike/endLineLike/beginText attach origSel (parity with createShapeKbd)
   ['endRectLike/endLineLike/beginText attach origSel before shape add commit',
     (html.match(/const origSel=\[\.\.\.state\.selection\];\n  Store\.commit\(\{op:'add',shape:d\}\);\n  if\(origSel\.length\)state\.history\[state\.histIdx\]\.origSel=origSel;/g)||[]).length >= 2 &&
@@ -1700,6 +1718,15 @@ try {
     assert.ok(badPaths.length > 0 && badPaths.every(p => !/(NaN|Infinity)/.test(p)),
       'pen SVG path coords/widths coerce non-finite via _num');
     console.log('  ✓ variable-width pen: SVG export parity + non-finite coord safety');
+
+    // deep-audit fix: a single-point pen shape MISSING `size` (foreign/legacy .board
+    // data — Shape.make always stamps size, so this can't come from the normal tool)
+    // must get the SAME radius in SVG as drawPen's canvas fallback (s.size||2)/2 = 1.
+    // Was (SZ||1)/2 = 0.5, half the canvas radius.
+    const dotNoSize = { id:'pd', type:'pen', z:0, stroke:'#111', pts:[[10,10]] };
+    const dotSvg = buildSVG([dotNoSize], '#FFFFFF') || '';
+    const dotR = +((dotSvg.match(/<circle[^>]*r="([\d.]+)"/)||[])[1]);
+    assert.strictEqual(dotR, 1, 'pen SVG single-point radius matches canvas fallback (was 0.5, half of 1)');
   }
 
   // v1.6.14: pointer pressure - a varying pressure signal drives width; constant/none falls back to velocity
@@ -3603,14 +3630,56 @@ try {
         assert.strictEqual(A.UI._themeMode(),null,'theme: dark -> auto (full cycle)');
         assert.strictEqual(de.dataset.theme,undefined,'theme: auto removes the data-theme attribute again');
         assert.strictEqual(ls._d['board.theme'],undefined,'theme: auto removes the localStorage key entirely (not stored as the string "null")');
-        // boot restore: a persisted value must apply before first paint (main()'s call)
-        ls._d['board.theme']='dark';
-        A.applyTheme(A.UI._themeMode());
-        assert.strictEqual(de.dataset.theme,'dark','theme: boot restore applies a persisted mode');
       }finally{
         fakeDoc.getElementById=_origGet;delete de.dataset.theme;delete ls._d['board.theme'];
       }
-      console.log('  ✓ ADR-0012 theme toggle: auto/light/dark cycle, localStorage persistence, boot restore (v1.7.65)');
+      console.log('  ✓ ADR-0012 theme toggle: auto/light/dark cycle, localStorage persistence (v1.7.65)');
+    }
+
+    // deep-audit fix (v1.7.68): _themeMode() used to re-read localStorage.getItem on
+    // EVERY call. If storage access throws on every call (blocked/partitioned storage),
+    // that always collapsed to null, so toggleTheme()/refreshThemeBtn() could never see
+    // what applyTheme() had just actually set -- the cycle got stuck re-applying 'light'
+    // forever while the button permanently showed 'auto'. Fixed by caching the mode in
+    // memory (_themeCache), mirroring ADR-0014's LANG/T fix.
+    {
+      const ls=fakeWin.localStorage; delete ls._d['board.theme'];
+      const de=fakeDoc.documentElement; delete de.dataset.theme;
+      const themeBtn={attrs:{},setAttribute(n,v){this.attrs[n]=v},getAttribute(n){return this.attrs[n]??null},dataset:{}};
+      const _origGet=fakeDoc.getElementById;
+      const _origLS=fakeWin.localStorage;
+      fakeDoc.getElementById=id=>id==='btnTheme'?themeBtn:_origGet(id);
+      try{
+        // boot restore: a persisted value must apply from a FRESH instance's initial
+        // _themeCache derivation (module load), same pattern as ADR-0014's LANG boot test.
+        ls._d['board.theme']='dark';
+        const E=fn(fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
+          fakeWin.indexedDB,fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
+          fakeWin.getComputedStyle,fakeWin.confirm,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage);
+        assert.strictEqual(E.UI._themeMode(),'dark','boot restore: a persisted board.theme=dark is honoured at module load');
+        delete ls._d['board.theme'];
+
+        // storage-throws-on-every-call: toggleTheme must still advance the cycle in memory
+        // and stay consistent with what applyTheme() actually set on the DOM (the bug: both
+        // used to permanently read back null and get stuck applying 'light' forever).
+        fakeWin.localStorage={getItem(){throw new Error('blocked')},setItem(){throw new Error('blocked')},removeItem(){throw new Error('blocked')}};
+        const F=fn(fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
+          fakeWin.indexedDB,fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
+          fakeWin.getComputedStyle,fakeWin.confirm,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage);
+        F.UI.toggleTheme();
+        assert.strictEqual(F.UI._themeMode(),'light','storage-throws: first toggle still advances to light in memory');
+        assert.strictEqual(de.dataset.theme,'light','storage-throws: DOM actually reflects light');
+        assert.strictEqual(themeBtn.dataset.themeMode,'light','storage-throws: button agrees with the DOM (was: stuck at "auto")');
+        F.UI.toggleTheme();
+        assert.strictEqual(F.UI._themeMode(),'dark','storage-throws: second toggle reaches dark (was: stuck re-applying light forever)');
+        assert.strictEqual(themeBtn.dataset.themeMode,'dark','storage-throws: button reaches dark too');
+        F.UI.toggleTheme();
+        assert.strictEqual(F.UI._themeMode(),null,'storage-throws: third toggle completes the cycle back to auto');
+      }finally{
+        fakeDoc.getElementById=_origGet;delete de.dataset.theme;delete ls._d['board.theme'];
+        fakeWin.localStorage=_origLS;
+      }
+      console.log('  ✓ ADR-0012 deep-audit fix: theme boot restore from fresh instance, in-memory cache survives a fully-throwing localStorage (v1.7.68)');
     }
 
     // ---- ADR-0013 (FT-19): Enter re-edits the single selected shape's label/text -------
@@ -3698,8 +3767,12 @@ try {
 
       const sqStub={placeholder:'',attrs:{},setAttribute(n,v){this.attrs[n]=v;},getAttribute(n){return this.attrs[n]??null;}};
       const langBtn={attrs:{},setAttribute(n,v){this.attrs[n]=v;},getAttribute(n){return this.attrs[n]??null;},dataset:{}};
+      // peerStack: firstChild stays falsy so refreshPeers()'s clear-loop is a no-op; capture
+      // what gets appended so the self-avatar's title (deep-audit finding: was hardcoded
+      // 'You', never localized) can be inspected after toggleLang().
+      const peerStackStub={firstChild:null,removeChild(){},appendChild(el){this._appended=el;}};
       const _origGet=fakeDoc.getElementById;
-      fakeDoc.getElementById=id=>id==='sqinput'?sqStub:id==='btnLang'?langBtn:_origGet(id);
+      fakeDoc.getElementById=id=>id==='sqinput'?sqStub:id==='btnLang'?langBtn:id==='peerStack'?peerStackStub:_origGet(id);
       const canvasCalls=[];
       const _origSetAttr=A.canvas.setAttribute;
       A.canvas.setAttribute=(n,v)=>{canvasCalls.push([n,v]);};
@@ -3716,11 +3789,14 @@ try {
         assert.strictEqual(langBtn.attrs['aria-label'],'日本語','toggleLang: language button shows the CURRENT language name');
         assert.ok(canvasCalls.some(([n,v])=>n==='aria-label'&&v.startsWith(A.I18N.ja.k.rect)),
           'toggleLang: canvas aria-label resynced for the active tool (rect), not left in English');
+        assert.strictEqual(peerStackStub._appended.title,A.I18N.ja.you,
+          'toggleLang: self-avatar title localized (deep-audit fix — was hardcoded \'You\', never in I18N)');
 
         A.UI.toggleLang();
         assert.strictEqual(A._getLang(),'en','toggleLang: ja -> en (round trip)');
         assert.strictEqual(fakeWin.localStorage._d['board.lang'],'en','toggleLang: localStorage updated on the round trip too');
         assert.strictEqual(langBtn.attrs['aria-label'],'English','toggleLang: language button reflects English after round trip');
+        assert.strictEqual(peerStackStub._appended.title,A.I18N.en.you,'toggleLang: self-avatar title back to English after round trip');
       }finally{
         fakeDoc.getElementById=_origGet;
         A.canvas.setAttribute=_origSetAttr;
@@ -3966,6 +4042,37 @@ try {
     assert.ok(Ar2.w===55 && Ar2.stroke==='purple', 'resize×recolor: BOTH survive (newer snapshot did not clobber stroke)');
     console.log('  ✓ two-peer LWW: resize converges + resize×recolor both survive (changed-key gating)');
 
+    // ADR-0002 gap fix (v1.7.68): the 'upd' case guarded undo against clobbering a newer
+    // remote write via state.wclock, but the batch ops (style/resize/align/beautify)
+    // shared _stampWrites' forward stamping WITHOUT sharing that reverse-apply guard —
+    // so undoing a local resize could silently regress a shape past a newer, already-
+    // converged remote write, leaving state.wclock naming the remote peer as last writer
+    // while the actual value regressed (an undetected local/remote divergence, since
+    // undo never broadcasts). (iii) reproduces the exact two-peer sequence and proves the
+    // fix; (iv) proves the fix does NOT suppress a normal solo undo with no contest.
+    reset(A); reset(B);
+    A.state.shapes.push(cp(rX)); B.state.shapes.push(cp(rX)); A.sortZ(); B.sortZ();
+    rAB=[]; rBA=[];
+    A.Net.broadcast = op => rAB.push({k:'op',op:cp(op)});
+    B.Net.broadcast = op => rBA.push({k:'op',op:cp(op)});
+    A.Store.commit({op:'resize',before:[cp(rX)],after:[{...cp(rX),w:40}],clock:{peer:'peerA',seq:1,ts:1000}});
+    B.Store.commit({op:'resize',before:[cp(rX)],after:[{...cp(rX),w:99}],clock:{peer:'peerB',seq:1,ts:2000}}); // B newer
+    rAB.forEach(m=>B.Net._onRecv(m)); rBA.forEach(m=>A.Net._onRecv(m));
+    assert.strictEqual(A.state.shapes.find(s=>s.id==='rX').w, 99, 'undo-clobber precondition: A converged to the newer remote w=99');
+    A.Store.undo();   // undo A's OWN local resize op (the only entry in A's local history)
+    assert.strictEqual(A.state.shapes.find(s=>s.id==='rX').w, 99,
+      'ADR-0002 gap fix: undoing a superseded local resize does not clobber the newer converged remote write (was: regressed to w=10)');
+
+    // (iv) non-regression: with NO concurrent remote write, undo of a local resize must
+    // still restore the prior value exactly as before this fix.
+    reset(A); reset(B);
+    A.state.shapes.push(cp(rX));
+    A.Net.broadcast = () => {};
+    A.Store.commit({op:'resize',before:[cp(rX)],after:[{...cp(rX),w:40}],clock:{peer:'peerA',seq:1,ts:1000}});
+    A.Store.undo();
+    assert.strictEqual(A.state.shapes.find(s=>s.id==='rX').w, 10, 'undo non-regression: an uncontested local resize still undoes normally (w back to 10)');
+    console.log('  ✓ ADR-0002 gap fix: undo no longer clobbers a newer converged remote write (resize); uncontested undo unaffected (v1.7.68)');
+
     // §3.17: concurrent GROUP ops with an overlapping shape - the contested shape must
     // land in exactly one group (LWW on groupId), while disjoint members keep their own
     // groups. group/ungroup are absolute-assignment ops (groupId = gid), non-commutative,
@@ -4004,6 +4111,21 @@ try {
     assert.strictEqual(Ags2.groupId, Bgs2.groupId, 'group LWW: contested shape gs2 agrees');
     assert.strictEqual(Ags2.groupId, 'GB', 'group LWW: newer writer (B) wins contested shape gs2');
     console.log('  ✓ two-peer LWW: concurrent GROUP ops converge - contested shape yields to newer writer (§3.17)');
+
+    // ADR-0002 gap fix (v1.7.68), group/ungroup half: same clobber, same fix, for groupId.
+    reset(A); reset(B);
+    A.state.shapes.push(cp(gsh2)); B.state.shapes.push(cp(gsh2));
+    const hAB=[], hBA=[];
+    A.Net.broadcast = op => hAB.push({k:'op',op:cp(op)});
+    B.Net.broadcast = op => hBA.push({k:'op',op:cp(op)});
+    A.Store.commit({op:'group',ids:['gs2'],gid:'GA2',before:[{id:'gs2',groupId:undefined}],clock:{peer:'peerA',seq:20,ts:1000}});
+    B.Store.commit({op:'group',ids:['gs2'],gid:'GB2',before:[{id:'gs2',groupId:undefined}],clock:{peer:'peerB',seq:20,ts:2000}}); // B newer
+    hAB.forEach(m=>B.Net._onRecv(m)); hBA.forEach(m=>A.Net._onRecv(m));
+    assert.strictEqual(A.state.shapes.find(s=>s.id==='gs2').groupId, 'GB2', 'undo-clobber precondition: A converged to the newer remote groupId GB2');
+    A.Store.undo();   // undo A's OWN local group op
+    assert.strictEqual(A.state.shapes.find(s=>s.id==='gs2').groupId, 'GB2',
+      'ADR-0002 gap fix: undoing a superseded local group op does not clobber the newer converged remote groupId (was: regressed to ungrouped)');
+    console.log('  ✓ ADR-0002 gap fix: undo no longer clobbers a newer converged remote groupId write (group)');
 
     // v1.6.87: a new text/sticky is committed+broadcast with EMPTY text, then filled in
     // the editor. _syncTextFinalize must push the typed content (and a dismissed-empty
@@ -4519,6 +4641,23 @@ try {
     const evil = buildSVG([{id:'x',type:'rect',x:0,y:0,w:80,h:40,label:'</text><script>',stroke:'#000',size:1,opacity:1}], '#fff');
     assert.ok(!evil.includes('<script>'), 'SVG: rect label is escaped (no raw markup injection)');
     console.log('  ✓ rect/ellipse labels: rendered on canvas (_drawBoxLabel) + escaped in SVG (parity)');
+  }
+
+  // deep-audit fix: frame is the ONE box type whose canvas rendering (drawShape's
+  // 'frame' case) falls back to the literal label 'Frame' when unlabeled, and always
+  // renders at (s.opacity??1)*0.9 regardless of the shape's own opacity — buildSVG's
+  // frame case had neither behavior, so an unlabeled and/or default-opacity frame (the
+  // common case: openLabelEditor sets label=null when cleared, and every frame created
+  // via the UI starts at opacity 1) rendered wrong ONLY in SVG export.
+  {
+    const frameNoLabel = buildSVG([{id:'f1',type:'frame',x:0,y:0,w:200,h:150,label:null,stroke:'#00C4CC',size:1.5,opacity:1}], '#fff');
+    assert.ok(frameNoLabel.includes('>Frame<'), 'SVG: unlabeled frame falls back to the literal "Frame" label (canvas parity, was: no label at all)');
+    const frameOpacity1 = buildSVG([{id:'f2',type:'frame',x:0,y:0,w:200,h:150,label:'MyFrame',stroke:'#00C4CC',size:1.5,opacity:1}], '#fff');
+    assert.ok(/<rect[^>]*opacity="0\.9"/.test(frameOpacity1), 'SVG: default-opacity (1) frame rect renders at 0.9 (canvas parity, was: fully opaque)');
+    assert.ok(/<text[^>]*opacity="0\.9"/.test(frameOpacity1), 'SVG: frame label text also gets the 0.9 factor');
+    const frameOpacity5 = buildSVG([{id:'f3',type:'frame',x:0,y:0,w:200,h:150,label:'H',stroke:'#00C4CC',size:1.5,opacity:0.5}], '#fff');
+    assert.ok(/<rect[^>]*opacity="0\.45"/.test(frameOpacity5), 'SVG: opacity=0.5 frame composes to 0.5*0.9=0.45, not just 0.5 or 0.9');
+    console.log('  ✓ frame SVG export: unlabeled fallback + 0.9 opacity factor match canvas (deep-audit fix)');
   }
 
   // v1.7.0: connector (edge) labels (ADR-0003). A labeled line/arrow emits its label as
@@ -7474,7 +7613,12 @@ try {
   }
 
   console.log('\n✓ All behavioural tests passed');
-  pass += 1083; // prev 1070 + ADR-0014 language toggle (13)
+  // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
+  // asserts but actually contains 6 (recounted directly: at1.length, at2.length, and 4
+  // Math.abs(...) checks) — that +1 was carried forward through every subsequent
+  // cumulative total below. Corrected here by -1; all deltas above this line describe
+  // what was added at the time and are otherwise left as historical record.
+  pass += 1100; // prev 1095 + theme in-memory-cache fix net +6, corrected -1 for the recount above
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

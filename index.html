@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.67 — Design Tokens
+   Board v1.7.68 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -742,7 +742,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.67';
+const V='1.7.68';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -785,6 +785,16 @@ const MINIMAP_ON=(()=>{try{return localStorage.getItem('board.minimap')!=='off'}
 // purely visual and doesn't affect board content, unlike showMinimap (a render toggle
 // for something drawn on the board itself). Not undo-tracked.
 const THEME_KEY='board.theme';
+// deep-audit fix: the current mode used to be re-read from localStorage on every call
+// (UI._themeMode() did localStorage.getItem each time). If storage access throws on
+// EVERY call — blocked cookies, storage partitioning, a sandboxed iframe: all plausible
+// for Board's privacy-focused, downloadable-single-file audience — that always collapsed
+// to null, so toggleTheme()/refreshThemeBtn() could never observe what applyTheme() had
+// actually just set on the DOM: the cycle got stuck re-applying 'light' forever while the
+// button permanently displayed/announced 'auto'. Mirrors ADR-0014's LANG/T fix: keep the
+// current mode in memory (read from storage once at load); persistence becomes best-effort
+// rather than the source of truth for what's currently applied.
+let _themeCache=(()=>{try{return localStorage.getItem(THEME_KEY)}catch(_){return null}})();
 function applyTheme(mode){   // mode: 'light'|'dark'|null (auto = follow prefers-color-scheme)
   if(mode)document.documentElement.dataset.theme=mode;
   else delete document.documentElement.dataset.theme;
@@ -849,7 +859,7 @@ const I18N={
     backupAvailable:'前回、上書きされる前のボードが保存されています。復元しますか？',
     backupRestored:'前回のボードを復元しました',
     backupRestoreFailed:'バックアップの復元に失敗しました',
-    peers:'人',
+    peers:'人',you:'自分',
     k:{select:'選択',hand:'手のひら',pen:'ペン',rect:'矩形',ellipse:'楕円',
       arrow:'矢印',line:'線',text:'文字',sticky:'付箋',frame:'フレーム',eraser:'消しゴム',
       undo:'元に戻す',redo:'やり直し',del:'削除',dup:'複製',
@@ -915,7 +925,7 @@ const I18N={
     backupAvailable:'A board from before it was overwritten was saved. Restore it?',
     backupRestored:'Restored the previous board',
     backupRestoreFailed:'Failed to restore backup',
-    peers:'peers',shapes:'Shapes',on:'On',off:'Off',online:'Online',offline:'Offline',grid:'Grid',minimap:'Minimap',
+    peers:'peers',you:'You',shapes:'Shapes',on:'On',off:'Off',online:'Online',offline:'Offline',grid:'Grid',minimap:'Minimap',
     k:{select:'Select',hand:'Pan',pen:'Pen',rect:'Rectangle',ellipse:'Ellipse',
       arrow:'Arrow',line:'Line',text:'Text',sticky:'Sticky',frame:'Frame',eraser:'Eraser',
       undo:'Undo',redo:'Redo',del:'Delete',dup:'Duplicate',
@@ -1372,14 +1382,9 @@ const Store={
         const raw=forward?op.after:op.before;
         if(!raw)break;
         const p=clone(raw);
-        if(!forward&&op.clock){
-          const wc=state.wclock[op.id];
-          if(wc)for(const k of Object.keys(p)){
-            // Only skip restoring if a *remote* peer wrote this key after our op.
-            // Local-peer writes (same peerId) are also being undone and must not block.
-            if(wc[k]&&wc[k].peer!==state.peerId&&clockNewer(wc[k],op.clock))delete p[k];
-          }
-        }
+        // Only skip restoring if a *remote* peer wrote this key after our op (_lwwSkip).
+        // Local-peer writes (same peerId) are also being undone and must not block.
+        if(!forward)for(const k of Object.keys(p)){if(_lwwSkip(op.id,k,op))delete p[k];}
         Object.assign(sh,p);
         if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));
         break;}
@@ -1409,14 +1414,20 @@ const Store={
         if(forward){
           for(const id of op.ids){const sh=byId(id);if(sh&&!(forward&&sh.locked))sh.groupId=op.gid}
         }else{
-          if(op.before)for(const b of op.before){const sh=byId(b.id);if(sh){if(b.groupId)sh.groupId=b.groupId;else delete sh.groupId}}
+          if(op.before)for(const b of op.before){
+            const sh=byId(b.id);if(!sh)continue;
+            if(_lwwSkip(b.id,'groupId',op))continue;   // a remote peer's newer groupId write wins over this undo
+            if(b.groupId)sh.groupId=b.groupId;else delete sh.groupId;}
           if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));}
         break;}
       case 'ungroup':{
         if(forward){
           for(const id of op.ids){const sh=byId(id);if(sh&&!(forward&&sh.locked))delete sh.groupId}
         }else{
-          if(op.before){for(const b of op.before){const sh=byId(b.id);if(sh){if(b.groupId)sh.groupId=b.groupId;else delete sh.groupId}}}
+          if(op.before){for(const b of op.before){
+            const sh=byId(b.id);if(!sh)continue;
+            if(_lwwSkip(b.id,'groupId',op))continue;
+            if(b.groupId)sh.groupId=b.groupId;else delete sh.groupId;}}
           else{const gid=op.gids?.[0];for(const id of op.ids){const sh=byId(id);if(sh&&gid)sh.groupId=gid}}
           if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));}
         break;}
@@ -1444,7 +1455,16 @@ const Store={
       case 'beautify':{     // ADR-0005: same batch-absolute-patch/single-undo mechanism
         const patches=forward?op.after:op.before;
         if(!Array.isArray(patches))break;
-        for(const p of patches){const sh=byId(p.id);if(sh&&!(forward&&sh.locked&&!('locked' in p)))Object.assign(sh,clone(p))}
+        for(const raw of patches){
+          const sh=byId(raw.id);
+          if(!sh||(forward&&sh.locked&&!('locked' in raw)))continue;
+          const p=clone(raw);
+          // Same LWW guard as 'upd' (_lwwSkip) — these are batch absolute-patch ops but
+          // _stampWrites records per-property write clocks for them identically, so undo
+          // must not clobber a newer remote write here either (this was the actual gap).
+          if(!forward)for(const k of Object.keys(p)){if(k!=='id'&&_lwwSkip(raw.id,k,op))delete p[k];}
+          Object.assign(sh,p);
+        }
         if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));
         break;}
     }
@@ -1483,6 +1503,19 @@ function clockNewer(a,b){
   if((a.ts||0)!==(b.ts||0))return (a.ts||0)>(b.ts||0);
   if(a.peer!==b.peer)return a.peer>b.peer;
   return (a.seq||0)>(b.seq||0);
+}
+// ADR-0002 gap fix: whether undoing `op` should skip restoring `key` on shape `id`
+// because a remote peer wrote that key more recently. Originally implemented ONLY
+// inside the 'upd' case of _apply — style/resize/align/beautify and group/ungroup
+// shared _stampWrites' forward stamping but not this reverse-apply guard, so a local
+// undo of any of those could silently clobber a newer, already-converged remote write
+// (the shape's value regresses locally while state.wclock still names the remote peer
+// as the last writer — an undetected local/remote divergence, since undo never
+// broadcasts). Shared here so every LWW-tracked op type gets the same protection.
+function _lwwSkip(id,key,op){
+  if(!op.clock)return false;
+  const wc=state.wclock[id];
+  return !!(wc&&wc[key]&&wc[key].peer!==state.peerId&&clockNewer(wc[key],op.clock));
 }
 // Bound connectors: line/arrow endpoints (s.a/s.b = shape id) derive from the bound
 // shape's edge at render/hit/export, so the connector follows. Stored coords = fallback.
@@ -3925,7 +3958,9 @@ function buildSVG(shapes,paper){
         if(!Array.isArray(s.pts)||!s.pts.length)break;
         if(s.pts.length===1){
           const p=s.pts[0];
-          els.push(`<circle cx="${_num(p&&p[0])+ox}" cy="${_num(p&&p[1])+oy}" r="${(SZ||1)/2}" fill="${stroke}"${a}/>`);
+          // fallback must match drawPen's canvas radius (s.size||2)/2 for a foreign/legacy
+          // shape missing `size` (deep-audit fix; was (SZ||1)/2, half the canvas radius).
+          els.push(`<circle cx="${_num(p&&p[0])+ox}" cy="${_num(p&&p[1])+oy}" r="${(SZ||2)/2}" fill="${stroke}"${a}/>`);
           break;
         }
         if(s.pts.length<2)break;
@@ -3953,8 +3988,13 @@ function buildSVG(shapes,paper){
       case 'frame':{
         const fr=Math.min(4,W/10,H/10);
         const clr=_esc(s.stroke||'#00C4CC');
-        els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${fr}" fill="rgba(248,250,252,0.6)" stroke="${clr}" stroke-width="${SZ||1.5}"${a}${rT}/>`);
-        if(s.label)els.push(`<text x="${X+ox+6}" y="${Y+oy-4}" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="${clr}"${rT}>${_esc(s.label)}</text>`);
+        // drawShape always renders frames at (s.opacity??1)*0.9 and falls back to the
+        // literal label 'Frame' when unlabeled — both were missing here, so an unlabeled
+        // or default-opacity frame rendered wrong (fully opaque, unlabeled) only in SVG
+        // export, not canvas/PNG/PDF (deep-audit fix).
+        const fa=` opacity="${(s.opacity==null?1:_num(s.opacity))*0.9}"`;
+        els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${fr}" fill="rgba(248,250,252,0.6)" stroke="${clr}" stroke-width="${SZ||1.5}"${fa}${rT}/>`);
+        els.push(`<text x="${X+ox+6}" y="${Y+oy-4}" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="${clr}"${fa}${rT}>${_esc(s.label||'Frame')}</text>`);
         break;}
       case 'sticky':{
         const r=Math.min(6,Math.abs(W)/6,Math.abs(H)/6);
@@ -4580,10 +4620,13 @@ const UI={
   },
   // ADR-0012: cycles auto -> light -> dark -> auto. "Auto" (no stored value) follows
   // prefers-color-scheme, matching the pre-existing default; explicit light/dark override it.
-  _themeMode(){try{return localStorage.getItem(THEME_KEY)}catch(_){return null}},
+  // _themeMode() returns the in-memory _themeCache (deep-audit fix), not a live storage
+  // re-read, so a storage failure can't desync it from what applyTheme() actually applied.
+  _themeMode(){return _themeCache;},
   toggleTheme(){
-    const cur=UI._themeMode();
+    const cur=_themeCache;
     const next=cur===null?'light':cur==='light'?'dark':null;
+    _themeCache=next;
     try{next?localStorage.setItem(THEME_KEY,next):localStorage.removeItem(THEME_KEY);}catch(_){}
     applyTheme(next);
     UI.refreshThemeBtn();
@@ -4606,6 +4649,7 @@ const UI={
     UI.applyI18n();
     UI.fillHelp();       // built once in main(); the modal doesn't rebuild it on open/close
     UI.updateOnline();   // only re-runs on connectivity change otherwise
+    UI.refreshPeers();   // self-avatar title ('You'/'自分') was hardcoded English until this fix
     const sq=document.getElementById('sqinput');
     if(sq){sq.placeholder=T.k.search;sq.setAttribute('aria-label',T.k.search);}
     if(canvas.dataset.tool)canvas.setAttribute('aria-label',(T.k[canvas.dataset.tool]||canvas.dataset.tool)+' — '+t('canvasHint'));
@@ -4803,7 +4847,7 @@ const UI={
     const self=document.createElement('div');
     self.className='peer-avatar self';
     self.textContent=state.peerId.slice(0,2).toUpperCase();
-    self.title='You';
+    self.title=t('you');
     stack.appendChild(self);
     // remote peers
     for(const [id,p] of state.peers){

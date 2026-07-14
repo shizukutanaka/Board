@@ -2,6 +2,58 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.68] - 2026-07-14
+
+多次元 deep-audit(8観測軸を並列エージェントで走査 → 各所見を3票制の敵対的検証で
+採否判定、47エージェント)で発見・確認された9件を修正。
+
+### Fixed
+- **【最重要】undo が LWW で確定済みのリモートの新しい書き込みを踏み潰す
+  (ADR-0002 の適用漏れ)**: `_stampWrites` は `upd`/`style`/`resize`/`align`/
+  `group`/`ungroup` の全てに per-property 書き込みクロックを記録するのに、
+  逆適用(undo)時に「リモートの新しい書き込みを踏み潰さない」ガードは `upd`
+  ケースにしか実装されていなかった。2者が同じ図形を並行 resize → LWW で新しい方
+  (peerB, w=99)に収束 → A が「自分の(既に無効化された)resize」を Ctrl+Z すると
+  w=10 に退行し、`wclock` は peerB を最終書き込み者と記録したままの矛盾状態に
+  静かに陥る(undo は broadcast しないため B は気づかない)。group/ungroup の
+  groupId も同型。`_lwwSkip` を共有ヘルパーとして新設し全ケースに適用。
+- **テーマトグルが localStorage 常時失敗環境で無限ループする**: `_themeMode()` が
+  毎回 `localStorage.getItem` を再読していたため、ストレージアクセスが常に例外を
+  投げる環境(Cookie 全ブロック・ストレージパーティショニング・サンドボックス
+  iframe)では「値なし」と「読み取り失敗」を区別できず、トグルボタンが永久に
+  「自動」を表示し続けたまま実際のテーマは「ライト」に固定される、という DOM と
+  UI 表示の乖離が発生した。ADR-0014 の言語トグルと同じ「メモリ内キャッシュ」方式
+  (`_themeCache`)に変更。
+- **自分のアバターのツールチップ「You」が英語固定**: i18n キー化されておらず、
+  日本語環境でも「You」のまま表示されていた。`t('you')` 化し `toggleLang()` の
+  再同期対象にも追加。
+- **SVG エクスポートがフレームの無ラベル・不透明度をキャンバスと異なって描画**:
+  (a) ラベル無しフレームは canvas では既定文字列「Frame」が出るが SVG では
+  ラベル要素自体が無かった、(b) canvas は不透明度に関わらずフレームを常に
+  `(opacity??1)*0.9` で描くが SVG にはこの 0.9 倍が無く、既定不透明度(1)の
+  フレームが SVG だけ完全不透明で書き出されていた。
+- **SVG エクスポートの単点ペン(size 欠落)の半径が canvas と不一致**: 外部/旧
+  `.board` データ由来で `size` が無い単点ペンは、canvas は半径1、SVG は半径0.5
+  (フォールバック `(SZ||1)/2` が誤り)で書き出されていた。`(SZ||2)/2` に修正し
+  canvas の `(s.size||2)/2` と一致させた。
+
+### Docs
+- `docs/ADR-0002-per-property-lww.md`: undo ガード適用漏れの発見・修正を追記。
+- `docs/spec.md` §6: `Enter` の二重の意味(ADR-0013)を反映。
+- `docs/ADR-0009-id-index.md`: 無効化箇所の内訳が「5+3=8」で本文の「9」と矛盾して
+  いた誤記を訂正(消しゴム関連は3箇所でなく4箇所: `eraseAt`/`flushErase`/
+  `abortGesture`/`_cancelPointerGesture`)。
+- `test.mjs`: HiDPI recording-canvas ブロック(commit af5c0e2)が実際には6アサート
+  なのに7と誤タグ付けされ、以降の累計 pass 数に +1 のずれが持続していたのを訂正。
+
+### Tests
+- behavioral × 30(undo-clobber の resize/group 各ペア + 非退行確認、テーマの
+  ストレージ常時失敗シナリオ + 新規インスタンスでの起動時復元、self-avatar
+  ローカライズ、フレーム SVG のラベル/不透明度、単点ペン半径)+ presence × 5
+- 非空虚性は stash 法で確認(修正前コードに対して新規テストが fail — 例:
+  resize undo-clobber は `10 !== 99` として実際に再現)
+- 合計 1617 pass, 0 fail(HiDPI ブロックの誤カウント訂正込みの実数)
+
 ## [1.7.67] - 2026-07-13
 
 `docs/feature-backlog.md` FT-18b(言語トグル、ADR-0012 で言語側だけ見送っていた分)。

@@ -58,10 +58,13 @@ ADR-0004 バックアップ復元)はこの2つの関数を経由しない。こ
    「図形の追加・削除・配列の再代入」のみ。
 3. **無効化漏れの解消**: 既存の2箇所に加え、以下 9 箇所の直後に `_invalidateGrid()`
    呼び出しを追加する(すべて `state.shapes` の再代入または splice):
-   `Net._applySnapshot`、Persist ロード、`importFromHash`、ADR-0004 バックアップ
-   復元、`importBoard`、消しゴムの楽観的復元(3箇所)。これは本 ADR の「ついでの
-   修正」ではなく、**`_idIndex` を正しく保つために必須の前提**であり、同時に
-   上記の空間グリッド陳腐化バグそのものを修正する。
+   `Net._applySnapshot`、`Persist.load`、`importFromHash`、ADR-0004 バックアップ
+   復元(`restoreBackup`)、`importBoard`(計5箇所)、消しゴムの楽観的復元
+   (`eraseAt` の splice、`flushErase`、`abortGesture`、`_cancelPointerGesture` の
+   計4箇所)。5+4=9。(2026-07-13 訂正: 旧版は消しゴム側を「3箇所」と誤記しており
+   5+3=8 で本文の「9」と矛盾していた — 深層監査で発見、実数の4箇所に訂正)
+   これは本 ADR の「ついでの修正」ではなく、**`_idIndex` を正しく保つために
+   必須の前提**であり、同時に上記の空間グリッド陳腐化バグそのものを修正する。
 4. **`Store._apply` 内のインライン `state.shapes.findIndex(s=>s.id===...)` は
    変更しない**: これは削除対象の配列内位置(splice用インデックス)が必要で
    `Map` では代替できない。呼び出し頻度も op 適用時のみでホットパスではない。
