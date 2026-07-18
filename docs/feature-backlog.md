@@ -309,6 +309,30 @@ Opus/Sonnet が文脈なしで着手できる形式に変換していなかっ�
   `_openLabelEditorFor` として抽出・共有し、キーボード経路と目視経路が構造的に
   同期するようにした。
 
+## FT-20 — WebRTC 接続失敗時のユーザーフィードバック欠如(第4弾, v1.7.68 後の未監査領域レビューで発見)
+- Verdict: `FIX`(ただし実ブラウザ検証が前提 — このセッションでは実装しない)
+- Evidence: `Net._wireDC` の `dc.onclose` は接続の切断を `t('disconnected')` でトースト
+  するが、これは**一度 open した DataChannel が閉じたとき**しか発火しない。手動
+  シグナリングの WebRTC は NAT/ファイアウォール越えの失敗で**そもそも open しない**
+  ことが多く、その場合 `dc.onopen` も `dc.onclose` も発火せず、`_wrtcInit` の
+  `RTCPeerConnection` には `onconnectionstatechange`/`oniceconnectionstatechange`
+  ハンドラが無いため、ユーザーはトークンを交換した後**無反応のまま待ち続ける**。
+- Action: `_wrtcInit` で `onconnectionstatechange` を配線し `connectionState==='failed'`
+  で失敗トーストを出す。ただし「一度も open しなかった / open 後に failed / 正常 close」
+  の3ケースで**二重トースト・トースト欠落**が起きないよう `dc.onclose` との協調が要り、
+  その分岐挙動は実ブラウザの RTC 状態機械のタイミングに依存する。**fake-DOM テスト
+  ハーネスは `RTCPeerConnection` を `undefined` としてスタブしており、この状態遷移を
+  検証できない**ため、FT-13(dirty-rect)と同じく実ブラウザでの目視/自動検証手段が
+  確保できてから着手する。盲目実装は 1617 pass の成熟コードベースに検証不能な回帰を
+  持ち込むリスクがある。
+- Effort: S(コードは小さい)/ ただし検証手段の確保が前提
+- Depends on: 実ブラウザでの WebRTC 接続テスト手段(このセッションには無い)
+
+**進捗 (v1.7.68)**: 画像インポート経路・WebRTC トークン経路をレビューし健全と確認
+(前者は decode 検証済み・LRU 正常・全エラー経路トースト、後者は不正トークンを
+catch→トースト)。唯一の実バグ級の発見が上記 FT-20(接続失敗の無反応)だが、
+実ブラウザ検証が前提のため backlog 記録に留めた。
+
 **進捗 (v1.7.67)**: FT-17・FT-18(ADR-0012)・FT-19(ADR-0013)・FT-18b(ADR-0014)
 すべて実装済み。第3弾のチケットは全件解消。残るは第2弾のブロック中項目
 (FT-09/10/11/13/15、いずれも人間側のアクション・実ブラウザ検証手段待ち)のみ。
