@@ -31,7 +31,7 @@ Board は `index.html` 一枚。自分のドメイン、USB、社内ネット、
 
 ### 最速: 1ファイルを直接ダウンロード / Download the single file
 
-**[⬇ index.html を直接ダウンロード (最新版)](https://raw.githubusercontent.com/shizukutanaka/Board/HEAD/index.html)**
+**[⬇ index.html を直接ダウンロード (最新版)](https://github.com/shizukutanaka/Board/raw/HEAD/index.html)**
 &nbsp;·&nbsp;
 [リポジトリ上でプレビュー / view on GitHub](https://github.com/shizukutanaka/Board/blob/HEAD/index.html)
 
@@ -47,7 +47,7 @@ Board は `index.html` 一枚。自分のドメイン、USB、社内ネット、
 # リポジトリの既定ブランチから index.html だけを取得
 git clone --depth 1 https://github.com/shizukutanaka/Board && cp Board/index.html .
 # または curl で1ファイルだけ
-curl -L -o index.html https://raw.githubusercontent.com/shizukutanaka/Board/HEAD/index.html
+curl -L -o index.html https://github.com/shizukutanaka/Board/raw/HEAD/index.html
 ```
 
 ```bash
