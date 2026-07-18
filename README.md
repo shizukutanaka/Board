@@ -29,11 +29,29 @@ Board は `index.html` 一枚。自分のドメイン、USB、社内ネット、
 
 ## 使い方 / Quick Start
 
-```bash
-# 1. ダウンロード (リポジトリの既定ブランチから index.html だけを取得)
-git clone --depth 1 https://github.com/shizukutanaka/Board && cp Board/index.html .
+### 最速: 1ファイルを直接ダウンロード / Download the single file
 
-# 2. 開く (サーバー不要)
+**[⬇ index.html を直接ダウンロード (最新版)](https://raw.githubusercontent.com/shizukutanaka/Board/HEAD/index.html)**
+&nbsp;·&nbsp;
+[リポジトリ上でプレビュー / view on GitHub](https://github.com/shizukutanaka/Board/blob/HEAD/index.html)
+
+上のリンクを右クリック →「名前を付けて保存」で `index.html` を保存し、ブラウザで開くだけ。
+これ以外に必要なものは何もありません(サーバー・ビルド・登録すべて不要)。
+
+> リンク先の GitHub ページ右上の「Download raw file」ボタンからも保存できます。
+> 特定バージョンの完成品が必要な場合は `HEAD` をタグ名(例 `v1.7.68`, 公開後)に置き換えてください。
+
+### CLI で取得する場合
+
+```bash
+# リポジトリの既定ブランチから index.html だけを取得
+git clone --depth 1 https://github.com/shizukutanaka/Board && cp Board/index.html .
+# または curl で1ファイルだけ
+curl -L -o index.html https://raw.githubusercontent.com/shizukutanaka/Board/HEAD/index.html
+```
+
+```bash
+# 開く (サーバー不要)
 open index.html       # macOS
 xdg-open index.html   # Linux
 start index.html      # Windows
