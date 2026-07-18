@@ -190,6 +190,10 @@ const checks = [
   ['SVG export uses testable buildSVG', html.includes("function buildSVG") && html.includes("buildSVG(state.shapes")],
   ['SVG attrs escaped via _esc', html.includes("stroke=\"${stroke}\"") && html.includes("_esc(s.fill)")],
   ['SVG image dataUrl validated', html.includes("/^data:image\\//.test(s.dataUrl)")],
+  // v1.7.69: the SAME guard now also gates the canvas/render + all remote/import intake
+  // via validPatch, so an image dataUrl can never be an external URL (getImg→img.src).
+  ['image dataUrl restricted to data:image/ at the validPatch intake gate (no external img.src)',
+    html.includes("if('dataUrl' in p&&p.dataUrl!=null&&!(typeof p.dataUrl==='string'&&/^data:image\\//.test(p.dataUrl)))return false;")],
   ['PDF export escapes docName', html.includes("_esc(state.docName||'board')")],
   ['getCSS is memoised', html.includes("_cssCache") && html.includes("function clearCSSCache")],
   ['resize handles use AAA brand-ink ring', html.includes("getCSS('--brand-ink')")],
@@ -1842,7 +1846,21 @@ try {
     assert.ok(!validShape({id:'p',type:'pen',z:0,pts:'nope'}), 'pen with string pts rejected');
     assert.ok(!validShape({id:'p',type:'pen',z:0,pts:[[0,0],[NaN,1]]}), 'pen with NaN coord rejected');
     assert.ok(!validShape({id:'p',type:'pen',z:0,pts:[[0,0],[null]]}), 'pen with malformed point rejected');
-    console.log('  ✓ validShape: accepts sound shapes, rejects malformed pens that would crash render');
+    // v1.7.69 (deep-audit fix): an image dataUrl flows into img.src, so it must be an
+    // inline data:image/ URL — an external URL would make every peer's render fetch it
+    // (tracking pixel / IP deanonymization), breaking the no-external-resources invariant.
+    assert.ok(validShape({id:'i',type:'image',z:0,dataUrl:'data:image/png;base64,iVBORw0KGgo='}), 'image with a data:image/ URL accepted');
+    assert.ok(validShape({id:'i',type:'image',z:0,dataUrl:'data:image/svg+xml;utf8,<svg/>'}), 'image with a data:image/svg+xml URL accepted (img-sourced SVG cannot run scripts/fetch)');
+    assert.ok(!validShape({id:'i',type:'image',z:0,dataUrl:'https://evil.example/pixel.gif'}), 'image with an external http(s) dataUrl REJECTED (tracking-pixel / external-fetch vector)');
+    assert.ok(!validShape({id:'i',type:'image',z:0,dataUrl:'//evil.example/p.gif'}), 'image with a protocol-relative dataUrl rejected');
+    assert.ok(!validShape({id:'i',type:'image',z:0,dataUrl:'data:text/html,<script>alert(1)</script>'}), 'image with a non-image data: URL rejected');
+    assert.ok(!validShape({id:'i',type:'image',z:0,dataUrl:42}), 'image with a non-string dataUrl rejected');
+    // the gate is shared, so the remote-sync vectors close too:
+    assert.ok(!validRemotePayload({op:'add',shape:{id:'i',type:'image',z:0,dataUrl:'https://evil.example/x'}}), 'remote add of an image with an external dataUrl rejected (malicious-peer vector)');
+    assert.ok(!validRemotePayload({op:'upd',id:'i',after:{dataUrl:'https://evil.example/x'}}), 'remote upd setting an external dataUrl on an existing image rejected');
+    // non-image shapes never carry dataUrl, so nothing regresses:
+    assert.ok(validShape({id:'r',type:'rect',z:0}), 'rect without dataUrl still accepted (no regression)');
+    console.log('  ✓ validShape: rejects malformed pens + external-URL image dataUrls (no-external-resources gate, v1.7.69)');
   }
 
   // v1.6.18: getHandles - pen exposes no box handles (box-resize would NaN its x/y/w/h)
@@ -7618,7 +7636,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1100; // prev 1095 + theme in-memory-cache fix net +6, corrected -1 for the recount above
+  pass += 1109; // prev 1100 + validShape/validRemotePayload external-dataUrl rejection (9)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);

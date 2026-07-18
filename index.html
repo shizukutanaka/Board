@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.68 — Design Tokens
+   Board v1.7.69 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -742,7 +742,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.68';
+const V='1.7.69';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1076,6 +1076,14 @@ function validPatch(p){
   for(const k of ['x','y','w','h','x1','y1','x2','y2','z','rotate','size','opacity','dash']){
     if(k in p&&p[k]!=null&&typeof p[k]!=='number')return false;
   }
+  // Security/privacy: an image shape's dataUrl flows into img.src (getImg). If it isn't
+  // an inline data:image/ URL, a crafted .board/share-link/IDB record — or a hostile sync
+  // peer's add/upd op — could point it at an external host, turning every peer's render
+  // into a tracking-pixel / IP-deanonymization request and breaking the no-external-
+  // resources invariant. This is the shared intake gate (validShape + upd/patch paths),
+  // so guarding here closes every vector at once. Mirrors buildSVG's /^data:image\// guard;
+  // SVG loaded via <img> can't run scripts or fetch subresources, so data:image/svg+xml is safe.
+  if('dataUrl' in p&&p.dataUrl!=null&&!(typeof p.dataUrl==='string'&&/^data:image\//.test(p.dataUrl)))return false;
   return true;
 }
 function _cleanVal(v,depth){

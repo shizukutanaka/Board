@@ -4,7 +4,7 @@
 単一HTMLファイル。ダブルクリックで動く。アカウント不要。広告なし。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-00C4CC.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.7.68-00C4CC.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.7.69-00C4CC.svg)](CHANGELOG.md)
 [![Size](https://img.shields.io/badge/size-~61KB%20gzip-00C4CC.svg)](index.html)
 [![Offline](https://img.shields.io/badge/offline-first-00C4CC.svg)](#offline)
 [![A11y](https://img.shields.io/badge/WCAG-AAA-00C4CC.svg)](#accessibility)
@@ -102,7 +102,9 @@ start index.html      # Windows
 - 同一ブラウザのタブ間: BroadcastChannel で即時同期
 - 端末間: WebRTC DataChannel (手動シグナリング、サーバー不要)
 - URL ハッシュにスナップショットを載せて共有 (`#...`)
-- CRDT clock 付き op-log、受信 op は型 allow-list で検証
+- CRDT clock 付き op-log、受信 op は型 allow-list で検証。画像の `dataUrl` は
+  `data:image/` のインライン URL のみ許可 — 外部 URL は拒否され、悪意あるピアが
+  トラッキングピクセル/IP 露出を仕込むことはできない (v1.7.69)
 - ピアカーソル表示 (ADR-0010): 接続中の相手のポインタ位置をリアルタイム表示。
   非永続(undo・保存の対象外)、共同編集セッション中のみ意味を持つためプレゼン中は非表示
 - ピア選択ハイライト (ADR-0011): 相手が選択中の図形に相手の色の細い破線枠を表示。

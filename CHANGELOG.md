@@ -2,6 +2,36 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.69] - 2026-07-14
+
+未監査領域(永続化/スキーマ検証)のレビューで発見したセキュリティ/プライバシー修正。
+
+### Security
+- **画像 `dataUrl` の外部 URL 注入(トラッキングピクセル / IP 露出)を遮断**:
+  `validShape`(= `.board` インポート・URL ハッシュ共有・IndexedDB ロード・**リモート
+  sync の `add`/`addMany`/`del`/`clear`/snapshot** すべてが通る単一 intake ゲート)は
+  画像シェイプの `id`/`type`/`z`/座標は検証していたが、**`dataUrl` が `data:` URL か
+  どうかを検証していなかった**。画像の `dataUrl` は `getImg()` 経由で `img.src` に流れる
+  ため、`dataUrl:"https://evil.example/pixel.gif"` を持つ画像シェイプを描画すると
+  ブラウザが**外部へネットワークリクエスト**を送る。これは「外部リソースを一切読み込まない」
+  という Board の核心的不変条件を破り、細工した `.board`/共有リンク/IDB レコード、
+  あるいは**悪意あるピアの `add` op**(= 全ピアの canvas で描画される)経由で、
+  トラッキングピクセルや P2P セッションでの IP 逆匿名化に悪用できた。`buildSVG` は
+  既に `/^data:image\//` でガードしていたが canvas/描画経路は無防備だった。修正は
+  単一チョークポイント `validPatch` に同じガードを追加し、全 intake 経路
+  (`validShape` + `upd` パッチ)を一度に塞いだ。`data:image/svg+xml` は許可
+  (`<img>` 経由の SVG はスクリプト実行・外部サブリソース取得ができないため安全)。
+
+### Tests
+- behavioral × 9: `data:image/` 許可、外部 http(s)・プロトコル相対・非画像 data:・
+  非文字列 dataUrl の拒否、リモート `add`/`upd` 経由の外部 URL 拒否、非画像シェイプの
+  非退行。presence × 1。非空虚性は stash 法で確認(修正前コードで新規テストが fail)。
+- 合計 1627 pass, 0 fail
+
+### Docs
+- `docs/feature-backlog.md` に FT-20(WebRTC 接続失敗の無反応、実ブラウザ検証待ち)を
+  記録。README のセキュリティ節に dataUrl 制限を明記。
+
 ## [1.7.68] - 2026-07-14
 
 多次元 deep-audit(8観測軸を並列エージェントで走査 → 各所見を3票制の敵対的検証で

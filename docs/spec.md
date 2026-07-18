@@ -122,6 +122,13 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
 
 ## 13. 適合ギャップ(不足)— 仕様 vs 実装
 
+### ✅ v1.7.69 で解消(セキュリティ — 画像 dataUrl の外部 URL 注入)
+- **画像 `dataUrl` が外部 URL でも通る intake ゲートの穴**: `validShape`(全受信経路の
+  単一ゲート)が画像の `dataUrl` を検証せず、`getImg()`→`img.src` 経由で外部 URL への
+  ネットワークリクエストが発生しえた(トラッキングピクセル / P2P での IP 逆匿名化、
+  「外部リソース不読込」不変条件の破れ)。悪意あるピアの `add` op でも到達。`validPatch`
+  に `/^data:image\//` ガードを追加し全経路(shape + upd パッチ)を一括で封鎖。
+
 ### ✅ v1.7.68 で解消(多次元 deep-audit — 8観測軸並列 + 3票制敵対的検証、9件確認)
 - **【最重要】undo が LWW 確定済みのリモート新規書き込みを踏み潰す(ADR-0002 適用漏れ)**:
   `_stampWrites` は `upd`/`style`/`resize`/`align`/`group`/`ungroup` 全てに書き込み
