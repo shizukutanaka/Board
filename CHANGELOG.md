@@ -2,6 +2,36 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.70] - 2026-07-14
+
+未監査領域(geometry / hit-testing)のレビューで発見した2件のヒットテスト不具合を修正。
+
+### Fixed
+- **回転した非正方形ボックスの一部がクリックできない(既存バグ)**: `G.hit` は回転
+  シェイプに対し、まずポインタをシェイプのローカル座標系に**逆回転**してから
+  `G.bbox(s)`(回転シェイプの場合は**回転後のワールド外接矩形**)で quick-reject して
+  いた。ローカル座標系の点をワールド座標系の外接矩形と比較するフレーム不一致のため、
+  回転した長方形/付箋/画像/フレームの**中心から離れた領域が不可視の当たり判定漏れ**に
+  なっていた(描画は正常なのにクリックできない)。既存の回転ヒットテストは中心点しか
+  検証しておらず(中心は逆回転しても中心のまま)見逃していた。修正: quick-reject を
+  **逆回転の前**に(ワールド点 vs ワールド外接矩形で)実行するよう順序を入れ替え。
+- **point-geometry シェイプ(line/arrow/pen)の stray `rotate` で当たり判定が NaN**:
+  `shapeRot()` は `s.w!=null`(ボックスシェイプ)のときだけ回転を描画に適用するため、
+  `rotate` を持つ line/pen は**未回転で描画**される。しかし `G.hit` の逆回転は
+  `s.w!=null` でガードされておらず、line の中心が `s.x+(undefined||0)/2 = NaN` となり
+  ポインタが `{NaN,NaN}` に飛んで**永久に当たらない**シェイプになっていた(細工した
+  インポート / リモート op 経由で到達。`validPatch` は任意シェイプに `rotate` を許可)。
+  逆回転を `s.w!=null` でガードし描画=当たり判定のパリティを回復。
+
+### Tests
+- behavioral × 4(回転ボックスの回転後フットプリント内ヒット・遠方ミス、line/pen の
+  stray rotate でのヒット維持)+ presence × 1(quick-reject が逆回転より前にある順序を固定)
+- 非空虚性は stash 法で確認(修正前コードで新規テストが fail/crash)
+- 合計 1632 pass, 0 fail
+
+### Docs
+- `docs/instructions-opus-sonnet.md`(Opus/Sonnet 向けの文脈ゼロ着手指示書)を新規追加。
+
 ## [1.7.69] - 2026-07-14
 
 未監査領域(永続化/スキーマ検証)のレビューで発見したセキュリティ/プライバシー修正。

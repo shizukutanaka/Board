@@ -120,6 +120,16 @@ IndexedDB (`board` / `docs` / `main`)。500ms デバウンス。`beforeunload` �
 
 bbox 先置き (quick reject) → shape 型別詳細。`tol = 6/zoom` でズーム時も一定の当たり判定。
 
+**回転シェイプの順序が重要 (v1.7.70 の学び)**: 回転ボックスの当たり判定は
+「① ワールド点 vs `G.bbox`(= 回転後のワールド外接矩形)で quick-reject → ② ポインタを
+シェイプのローカル座標系に**逆回転** → ③ 未回転の `s.x/s.w` で型別判定」の順で行う。
+①(quick-reject)を②(逆回転)より**後**に置くと、ローカル座標系の点をワールド座標系の
+外接矩形と比較するフレーム不一致になり、回転した非正方形シェイプの中心から離れた領域が
+**不可視の当たり判定漏れ**になる(描画は正常なのにクリックできない)。逆回転は
+`shapeRot()` と同じく `s.w!=null`(ボックスシェイプ)でガードする — line/arrow/pen は
+未回転で描画されるので当たり判定も未回転にしないと `s.x/s.w=undefined` で中心が NaN になり
+永久に当たらなくなる(表示=当たり判定パリティ)。
+
 ペンは line segments の距離チェック。エンドポイント: Ramer-Douglas-Peucker (ε=0.5px) で commit 時に decimation。
 
 **Spatial index** (`v1.6.11`): board に 40+ shape 以上ある場合、`pickTop` は `_buildGrid` でグリッドセルインデックスを構築し `_queryGrid` で候補を絞る。`_apply` ごとに `_invalidateGrid()` で無効化、次の `pickTop` で再構築。

@@ -122,6 +122,14 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
 
 ## 13. 適合ギャップ(不足)— 仕様 vs 実装
 
+### ✅ v1.7.70 で解消(geometry / hit-testing の2件)
+- **回転ボックスの当たり判定漏れ**: `G.hit` が逆回転後のローカル点を回転後ワールド外接
+  矩形と比較(フレーム不一致)し、回転した非正方形シェイプの中心から離れた領域がクリック
+  不能だった。quick-reject を逆回転の前に移動して解消。既存テストは中心点のみ検証で見逃していた。
+- **point-geometry の stray rotate で NaN 当たり判定**: line/arrow/pen が `rotate` を持つと
+  逆回転の中心が NaN になり永久に当たらなかった。`shapeRot()` と同じ `s.w!=null` ガードで
+  描画=当たり判定パリティを回復。
+
 ### ✅ v1.7.69 で解消(セキュリティ — 画像 dataUrl の外部 URL 注入)
 - **画像 `dataUrl` が外部 URL でも通る intake ゲートの穴**: `validShape`(全受信経路の
   単一ゲート)が画像の `dataUrl` を検証せず、`getImg()`→`img.src` 経由で外部 URL への

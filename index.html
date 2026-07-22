@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.69 — Design Tokens
+   Board v1.7.70 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -742,7 +742,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.69';
+const V='1.7.70';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1015,10 +1015,20 @@ const G={
     return{x:mnx,y:mny,w:mxx-mnx,h:mxy-mny};
   },
   hit(s,p){
-    if(s.rotate){const _cx=s.x+(s.w||0)/2,_cy=s.y+(s.h||0)/2,_r=-s.rotate*Math.PI/180,_c=Math.cos(_r),_si=Math.sin(_r),_dx=p.x-_cx,_dy=p.y-_cy;p={x:_cx+_dx*_c-_dy*_si,y:_cy+_dx*_si+_dy*_c};}
+    // Quick-reject the WORLD point against G.bbox — for a rotated box that's the rotated
+    // axis-aligned envelope, so this MUST run before un-rotating p. (Reversing the order
+    // compares an un-rotated local point against the rotated world envelope and wrongly
+    // rejects large parts of any rotated non-square box: it renders but can't be clicked.)
     const b=G.bbox(s);
     const tol=Math.max(6/state.viewport.zoom,(s.size||0)/2);
     if(p.x<b.x-tol||p.y<b.y-tol||p.x>b.x+b.w+tol||p.y>b.y+b.h+tol)return false;
+    // Rotation is box-only (x/y/w/h). shapeRot() gates rendering the same way, so gate
+    // hit-testing identically: un-rotate the pointer into the box's local frame for the
+    // per-type check below (which uses s.x/s.w). A line/arrow/pen carrying a stray `rotate`
+    // (crafted import or a remote op — validPatch permits `rotate` on any shape) renders
+    // UNrotated; without the `s.w!=null` guard its center would be s.x+(undefined||0)/2 =
+    // NaN, un-rotating p to {NaN,NaN} and making the shape permanently unhittable.
+    if(s.rotate&&s.w!=null){const _cx=s.x+s.w/2,_cy=s.y+(s.h||0)/2,_r=-s.rotate*Math.PI/180,_c=Math.cos(_r),_si=Math.sin(_r),_dx=p.x-_cx,_dy=p.y-_cy;p={x:_cx+_dx*_c-_dy*_si,y:_cy+_dx*_si+_dy*_c};}
     switch(s.type){
       case 'rect':
         if(s.fill)return true;

@@ -429,7 +429,12 @@ const checks = [
   // v1.6.61: rotation - shapes rotate on canvas, undo/redo, keyboard ,/.
   ['doRotate function exists', html.includes("function doRotate") && html.includes("op:'align',dir:'rotate'")],
   ['rotation applied in drawShape (save/restore)', html.includes("const _rot=shapeRot(s);") && html.includes("if(_rot)c.restore()")],
-  ['G.hit applies inverse rotation', html.includes("if(s.rotate){const _cx=s.x+(s.w||0)/2") && html.includes("_r=-s.rotate*Math.PI/180")],
+  ['G.hit applies inverse rotation (box-only, matching shapeRot)', html.includes("if(s.rotate&&s.w!=null){const _cx=s.x+s.w/2") && html.includes("_r=-s.rotate*Math.PI/180")],
+  // v1.7.70: the G.bbox quick-reject must run BEFORE the un-rotation branch — reversing
+  // them compares a local-frame point against the rotated world envelope and makes large
+  // parts of any rotated non-square box unclickable. Lock the ordering.
+  ['G.hit quick-rejects with G.bbox before un-rotating the pointer',
+    html.indexOf('const b=G.bbox(s);\n    const tol=Math.max(6/state.viewport.zoom') < html.indexOf('if(s.rotate&&s.w!=null){const _cx=s.x+s.w/2')],
   ['G.bbox returns rotation envelope', html.includes("if(s.rotate){const _cx=_rb.x+_rb.w/2")],
   ['rotation keyboard shortcuts , and .', html.includes("k===','&&!meta&&state.selection.size") && html.includes("k==='.'&&!meta&&state.selection.size")],
   ['SVG export rotation transform', html.includes("rT=shapeRot(s)?` transform=") && html.includes("rotate(${_num(s.rotate)}")],
@@ -1183,7 +1188,21 @@ try {
     // Sticky: bbox interior hits
     assert.strictEqual(G.hit({type:'sticky',x:10,y:10,w:100,h:80},{x:60,y:50}),true,'sticky: interior hits');
     assert.strictEqual(G.hit({type:'sticky',x:10,y:10,w:100,h:80},{x:200,y:50}),false,'sticky: outside misses');
-    console.log('  ✓ G.hit: ellipse filled/outline, line proximity, sticky bbox');
+    // v1.7.70: render/hit parity for point-geometry shapes carrying a stray `rotate`.
+    // shapeRot() ignores rotate unless s.w!=null (box shapes), so a line/pen with rotate
+    // renders UNrotated. Before the fix, G.hit un-rotated the pointer around a NaN center
+    // (s.x/s.w undefined) → {NaN,NaN} → the shape was permanently unhittable. Reachable
+    // via crafted import / a remote op (validPatch permits rotate on any shape).
+    assert.strictEqual(G.hit({type:'line',x1:0,y1:0,x2:100,y2:0,size:2,rotate:45},{x:50,y:2}),true,
+      'line with a stray rotate stays hittable (rotate ignored for point geometry, matching shapeRot/render)');
+    assert.strictEqual(G.hit({type:'pen',pts:[[0,0],[100,0]],size:2,rotate:90},{x:50,y:2}),true,
+      'pen with a stray rotate stays hittable (render/hit parity)');
+    // and a real rotated BOX shape still uses the inverse-rotation path (no regression):
+    assert.strictEqual(G.hit({type:'sticky',x:0,y:0,w:100,h:20,rotate:90},{x:50,y:50}),true,
+      'rotated box: a point inside the ROTATED footprint hits (inverse-rotation still applied)');
+    assert.strictEqual(G.hit({type:'sticky',x:0,y:0,w:100,h:20,rotate:90},{x:200,y:200}),false,
+      'rotated box: a far point still misses');
+    console.log('  ✓ G.hit: ellipse/line/sticky + render-hit parity for stray rotate on point geometry (v1.7.70)');
   }
 
   console.log('\n-- v1.1: CRDT / sync --');
@@ -7636,7 +7655,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1109; // prev 1100 + validShape/validRemotePayload external-dataUrl rejection (9)
+  pass += 1113; // prev 1109 + G.hit render/hit parity for stray rotate on point geometry (4)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.message);
