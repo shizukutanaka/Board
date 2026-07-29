@@ -4,7 +4,7 @@
 単一HTMLファイル。ダブルクリックで動く。アカウント不要。広告なし。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-00C4CC.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.7.70-00C4CC.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.7.71-00C4CC.svg)](CHANGELOG.md)
 [![Size](https://img.shields.io/badge/size-~61KB%20gzip-00C4CC.svg)](index.html)
 [![Offline](https://img.shields.io/badge/offline-first-00C4CC.svg)](#offline)
 [![A11y](https://img.shields.io/badge/WCAG-AAA-00C4CC.svg)](#accessibility)
@@ -19,7 +19,7 @@
 |---|---|---|---|---|
 | 登録不要 | ✗ | ✓ | ✓ | **✓** |
 | 単一ファイル配布 | ✗ | ✗ | ✗ | **✓** |
-| E2E 暗号化 (予定) | ✗ | 部分 | ✗ | **URL fragment key** |
+| E2E 暗号化 | ✗ | 部分 | ✗ | **✗ (未実装 — 計画中)** |
 | 完全オフライン | 部分 | ✓ | ✓ | **✓ PWA** |
 | サイズ | 数MB | ~1MB | ~2MB | **単一HTML ~61KB gzip** |
 | 広告・トラッキング | あり | なし | なし | **ゼロ** |
@@ -241,6 +241,9 @@ start index.html      # Windows
 - XSS 耐性: SVG / PDF エクスポートの属性値も全て `_esc` でエスケープ、画像は `data:image/` のみ許可
 - 受信 op は型 allow-list + shape 検証で防御 (不正な peer からの破損を防ぐ)
 - ローカル保存のみ。同期は手動シグナリングの WebRTC / 同一オリジンの BroadcastChannel
+- **共有リンクは暗号化されていない**: `#b=` の中身は盤面の deflate 圧縮 + base64 で、
+  URL fragment のためサーバーには送信されないが、**リンクを知る人は誰でも内容を復元できる**。
+  機微な内容を共有リンクで配らないこと。E2E 暗号化は未実装(`docs/feature-backlog.md` FT-21)
 
 将来 (P2P sync 強化時):
 - URL fragment (`#roomId:key`) = サーバー非通過

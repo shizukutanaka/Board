@@ -86,6 +86,15 @@ const checks = [
   ['BroadcastChannel sync code present', html.includes("NET_CHANNEL_PREFIX='board:'")],
   ['PEER_ID persistence', html.includes("localStorage.getItem('board.peer')")],
   ['Share export/import', html.includes('exportToUrl') && html.includes('importFromHash')],
+  // v1.7.71 (First-Principles audit): the share link is deflate+base64 — COMPRESSED, NOT
+  // ENCRYPTED — so anyone holding the link can read the whole board. The product's privacy
+  // pillar (CLAUDE.md WHY) must not be overstated. These lock the honest framing in place.
+  ['share link: exportToUrl still emits the plaintext #b= payload (no crypto claimed or used)',
+    html.includes("'#b='+encodeURIComponent(payload)") && !/crypto\.subtle|AES-GCM/.test(html)],
+  ['share modal warns the link is not encrypted (ja+en)',
+    html.includes('data-t="shareUrlWarn"')
+    && html.includes('shareUrlWarn:\'⚠ 盤面の内容はURLに埋め込まれます')
+    && html.includes("shareUrlWarn:'⚠ Your board is embedded in the URL (compressed, NOT encrypted)")],
   ['WebRTC manual signaling', html.includes('wrtcCreateOffer') && html.includes('wrtcAcceptOffer')],
   ['Share button wired in wire()', html.includes("btnShare") && html.includes("UI.openShare")],
   ['Net.init called in main()', html.includes('Net.init()')],
