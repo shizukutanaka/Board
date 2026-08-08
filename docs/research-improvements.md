@@ -121,6 +121,11 @@ replicated undo 論文群。
   `cycleSel()` (line 1306) + `describeShape()` (line 1317) で Tab/Shift+Tab が z-order を巡回し、
   `aria-live` トースト (line 2529, 2538) で各 shape を読み上げ、`canvas` の `aria-label` も操作ヒントを
   動的更新 (line 2611)。キーボード/SR ユーザは shape を巡回・選択・移動・作成でき各操作が読み上げられる。
+- **✅ 解決 (v1.7.74, ADR-0016)**: 下記「真の残差」を実装。`boardOutline()`(純粋関数)が盤面を
+  要約 + z 順の一覧に変換し、`UI.refreshMirror()` が画面外の `role="region"` に書き出す
+  (`frame()` から 250ms デバウンス)。canvas にも `aria-describedby` で要約を接続。
+  タブストップを増やさず `aria-live` にもしない設計判断、200 件上限を黙って切らない扱い、
+  および残る限界(実機 SR 未検証・階層構造は未表現)は `docs/ADR-0016-a11y-dom-mirror.md`。
 - **真の残差(改善点)**: 永続的な **offscreen DOM ミラー**(全 shape を常時 DOM に反映し、ブラウズモード/
   ランドマークで構造ナビゲーション可能に)は未実装。現在は「巡回時に1つずつ読み上げる」方式で全体の
   一覧性が無い。外部 a11y 監査通過にはこの DOM ミラーが要る。

@@ -20,7 +20,7 @@ Board は 4 つ全部を否定する: **単一HTML、ゼロ登録、完全無料
 
 ```
 Board/
-├── index.html             # 本体 (単一ファイル、~281KB raw / ~87KB gzip / ~74KB brotli)
+├── index.html             # 本体 (単一ファイル、~279KB raw / ~89KB gzip / ~74KB brotli)
 │   ├── <style>            # デザイントークン + レイアウト + モーション
 │   └── <script>
 │       ├── CONSTANTS      # atomic config
@@ -64,7 +64,8 @@ Board/
 │   ├── ADR-0012-theme-toggle.md  # テーマ手動トグル (FT-18、言語トグルは FT-18b に分離・見送り、実装済)
 │   ├── ADR-0013-keyboard-label-edit.md  # Enter でラベル/テキスト再編集 (FT-19、_openLabelEditorFor共有、実装済)
 │   ├── ADR-0014-language-toggle.md  # 言語手動トグル (FT-18b、LANG/T を let 化、実装済)
-│   └── ADR-0015-replicated-undo.md  # undo/redo を複製される op に (§F, arxiv 2404.11308, 実装済)
+│   ├── ADR-0015-replicated-undo.md  # undo/redo を複製される op に (§F, arxiv 2404.11308, 実装済)
+│   └── ADR-0016-a11y-dom-mirror.md  # 盤面の画面外DOMミラー (§I / spec P1, WCAG 1.3.1, 実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
@@ -153,7 +154,9 @@ Phase 1.0 = 70点 (MVP 完成、商用配布可能)
   (`byId` O(n) 線形探索の解消 — 実装済 ADR-0009。dirty-rect は未着手のまま残る)、
   a11y 外部監査通過(依存ゼロの静的検証で実施済み — `docs/a11y-audit-2026-07.md`。
   フォーカスリングのコントラスト不備を発見・修正。axe-core/Playwright での本格自動監査は
-  npm install の許可待ちで未着手)、スケッチ認識/beautification
+  npm install の許可待ちで未着手。**盤面内容の画面外 DOM ミラーは v1.7.74 で実装済
+  (ADR-0016)** — `spec.md` §14.3 の唯一の P1 だった項目。実機 SR 検証は FT-11 として残る)、
+  スケッチ認識/beautification
   ($1/$Q unistroke recognizer、依存ゼロで実装可能 — `docs/research-improvements.md` item M、
   実装済 ADR-0005)、タッチ到達性 (`docs/feature-triage-2026-07.md` §4、long-press でメニュー
   を開く ADR-0006 + ファイルピッカー/エクスポートメニュー ADR-0007、実装済で解消)、

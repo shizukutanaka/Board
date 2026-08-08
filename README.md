@@ -4,8 +4,8 @@
 単一HTMLファイル。ダブルクリックで動く。アカウント不要。広告なし。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-00C4CC.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.7.73-00C4CC.svg)](CHANGELOG.md)
-[![Size](https://img.shields.io/badge/size-~87KB%20gzip-00C4CC.svg)](index.html)
+[![Version](https://img.shields.io/badge/version-1.7.74-00C4CC.svg)](CHANGELOG.md)
+[![Size](https://img.shields.io/badge/size-~89KB%20gzip-00C4CC.svg)](index.html)
 [![Offline](https://img.shields.io/badge/offline-first-00C4CC.svg)](#offline)
 [![A11y](https://img.shields.io/badge/WCAG-AAA-00C4CC.svg)](#accessibility)
 
@@ -21,14 +21,14 @@
 | 単一ファイル配布 | ✗ | ✗ | ✗ | **✓** |
 | E2E 暗号化 | ✗ | 部分 | ✗ | **✗ (未実装 — 計画中)** |
 | 完全オフライン | 部分 | ✓ | ✓ | **✓ PWA** |
-| サイズ | 数MB | ~1MB | ~2MB | **単一HTML 281KB (gzip 87KB)** |
+| サイズ | 数MB | ~1MB | ~2MB | **単一HTML 279KB (gzip 89KB)** |
 | 広告・トラッキング | あり | なし | なし | **ゼロ** |
 | 料金 | $10-16/月 | 無料 + Plus | SDK商用有料 | **完全無料** |
 
 Board は `index.html` 一枚。自分のドメイン、USB、社内ネット、オフライン PC — どこでも動く。
 
-> **サイズの基準**: 他社列は非圧縮のアプリバンドル概算のため、Board も非圧縮 (281KB) を併記した。
-> 実際の転送量は静的ホストが brotli を返すので **約 71KB**。
+> **サイズの基準**: 他社列は非圧縮のアプリバンドル概算のため、Board も非圧縮 (279KB) を併記した。
+> 実際の転送量は静的ホストが brotli を返すので **約 74KB**。
 > [HTTP Archive Web Almanac 2025](https://almanac.httparchive.org/en/2025/page-weight) が報告する
 > モバイルページ重量の中央値 2,362KB に対し、およそ **1/33**。
 > 数値は `node test.mjs` が実測し、この README のバッジと ±10% 以内で一致することを検証している。
@@ -158,11 +158,17 @@ start index.html      # Windows
 - 日本語・英語自動検出 (`navigator.language`)。ツールバー等の `aria-label`/`title` も
   ロケールに追従 (v1.7.63 — それ以前は英語固定)、SR 専用 live region でツール切替・
   ズーム・反転・ロック・回転もアナウンス。手動でも切替可能 (ADR-0014、上記「表示」参照)
-- **既知の構造的制約**: 上記は「ツールをキーボードで操作できる」ことを指し、
-  「キャンバスに描いた内容がスクリーンリーダーから読める」ことは意味しない。
-  canvas は単一のビットマップとして描画されるため、実際に描いた図形・文字列は
-  他の canvas ベース描画ツールと同様に補助技術からは本質的に不可視。これは
-  修正対象のバグではなく、この種のツールに共通する構造的な限界として記載する。
+- **盤面内容の読み上げ (ADR-0016)**: canvas のピクセル自体は補助技術から不可視という
+  制約は変わらないが、盤面の**構造ミラー**を画面外の DOM に常時保持するようになった。
+  `<canvas>` の外に `role="region"` の一覧があり、ブラウズモード/ローターで
+  「12 Shapes: Rectangle 5, Sticky 3」という要約と、z 順(= `Tab` の巡回順)に並んだ
+  全図形の説明を**一度に**読める。canvas にフォーカスした時点でも要約が読み上げられる。
+  それ以前は `Tab` で1つずつ巡回して読み上げる方式のみで、盤面全体の一覧性が無かった。
+  - 一覧はタブストップを増やさず、`aria-live` でもない(編集のたびに全文読み上げると
+    かえって使えなくなるため)。図形が 200 個を超えた分は打ち切るが、
+    「ほか N 個は一覧に含まれていません」と明示し、要約は常に盤面全体を数える。
+  - **未検証の部分**: 実機のスクリーンリーダー (NVDA / VoiceOver 等) での読み上げ確認は
+    未実施。保証できるのは「正しいマークアップと内容が DOM に存在すること」まで。
 
 ## キーボード / Shortcuts
 
@@ -275,7 +281,7 @@ npx serve .
 - 外部依存の追加は慎重に (単一ファイル原則 — 外部 `<script src>` / `<link href>` は不可)
 - サイズはハード上限なし (2026-06-13 に gzip 44KB 予算を撤去)。指針として小さく保つが、
   整合性・正しさを優先してよい。暴走防止に raw 512KB の緩い上限のみ残す
-  (現状 raw ~281KB / gzip ~87KB / brotli ~74KB)。サイズが動いたら上のバッジも更新すること —
+  (現状 raw ~279KB / gzip ~89KB / brotli ~74KB)。サイズが動いたら上のバッジも更新すること —
   ±10% を超えると `test.mjs` が落ちる
 - `node test.mjs` を通すこと (CI が presence + behavioural テストを実行)
 

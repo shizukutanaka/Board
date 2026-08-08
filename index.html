@@ -606,7 +606,10 @@ body{visibility:visible}
 
   <!-- ==== Canvas ==== -->
   <main class="canvas-wrap">
-    <canvas id="c" data-tool="select" role="application" aria-label="Drawing canvas" data-t-aria="canvasHint" tabindex="0"></canvas>
+    <!-- aria-describedby points at the mirror's summary (ADR-0016): focusing the canvas
+         then says how many shapes are on the board and of what kind, instead of only
+         naming the tool. The full list is one browse-mode jump away in #srMirror. -->
+    <canvas id="c" data-tool="select" role="application" aria-label="Drawing canvas" data-t-aria="canvasHint" aria-describedby="srMirrorSummary" tabindex="0"></canvas>
 
     <!-- Style panel -->
     <aside class="style-panel" id="stylePanel" aria-label="Style" data-t-aria="style">
@@ -740,13 +743,24 @@ body{visibility:visible}
 <!-- Toasts -->
 <div class="toast-stack" id="toasts" aria-live="polite" aria-atomic="false"></div>
 <div id="sr" aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap"></div>
+<!-- ADR-0016: off-screen structural mirror of the board. Canvas pixels carry no
+     semantics, and the Tab-cycling announcements (describeShape → #sr) only ever expose
+     ONE shape at a time — a screen-reader user could never get an overview. This region
+     is a plain, always-current <ul> a browse-mode/rotor user can read end to end.
+     Deliberately NOT aria-live (it would flood on every edit) and deliberately holds no
+     focusable elements (no tab stops added). Outside the canvas's role="application"
+     so browse mode applies to it. -->
+<div id="srMirror" role="region" aria-label="Board contents" data-t-aria="boardContents" style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap">
+  <p id="srMirrorSummary"></p>
+  <ul id="srMirrorList"></ul>
+</div>
 
 <script>
 // Board — MIT License. See LICENSE file.
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.73';
+const V='1.7.74';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -770,6 +784,12 @@ const NET_PRESENCE_INTERVAL=5000;       // 5s heartbeat
 const NET_PRESENCE_TIMEOUT=15000;       // 15s drop
 const CURSOR_THROTTLE_MS=60;            // ADR-0010: peer cursor broadcast rate cap (~16/s)
 const MAX_PEERS=32;                     // presence-map cap: a flooding peer can't grow state.peers/DOM unboundedly
+// ADR-0016: how many shapes the off-screen a11y mirror lists individually. A 2000-shape
+// board would otherwise mean 2000 DOM nodes rebuilt on every edit, and a list that long
+// is not navigable anyway. The overflow is NEVER silent — the mirror ends with an
+// explicit "N more shapes not listed" item, and the summary always counts the whole board.
+const SR_MIRROR_MAX=200;
+const SR_MIRROR_DEBOUNCE=250;           // ms; browse-mode structure needs currency, not frame accuracy
 const MAX_PEER_ID_LEN=64;               // real ids are 32-char uids; anything longer is garbage
 const PEER_COLORS=['#00C4CC','#7C3AED','#DC2626','#F59E0B','#16A34A','#2563EB','#DB2777','#EA580C'];
 const uid=()=>typeof crypto!=='undefined'&&crypto.randomUUID
@@ -832,6 +852,9 @@ const I18N={
     canvasHint:'描画キャンバス。Tab/⇧Tab で図形巡回、Enter で作成、矢印で移動、⌥+矢印でリサイズ',
     tools:'ツール',docNameLabel:'ドキュメント名',activePeers:'接続中のピア',expPng:'PNG 書き出し',
     moreExport:'その他の書き出し・読み込み',install:'アプリとしてインストール',style:'スタイル',
+    // ADR-0016: off-screen structural mirror (screen readers only)
+    boardContents:'ボードの内容',srEmptyBoard:'空のボード',srSelected:'個を選択中',
+    srMoreShapes:'ほか {n} 個は一覧に含まれていません',
     strokeColor:'線の色',customStroke:'カスタム線色',fillLabel:'塗り',customFill:'カスタム塗り色',
     noFill:'塗りなし',ink:'インク',red:'赤',amber:'黄',green:'緑',blue:'青',violet:'紫',brandColor:'ブランド色',
     redTint:'赤系',amberTint:'黄系',greenTint:'緑系',blueTint:'青系',brandTint:'ブランド系',
@@ -899,6 +922,9 @@ const I18N={
     canvasHint:'Drawing canvas. Tab/Shift+Tab cycles shapes, Enter creates, arrows move, Alt+arrows resize.',
     tools:'Tools',docNameLabel:'Document name',activePeers:'Active peers',expPng:'Export PNG',
     moreExport:'More export & import options',install:'Install Board as an app',style:'Style',
+    // ADR-0016: off-screen structural mirror (screen readers only)
+    boardContents:'Board contents',srEmptyBoard:'Empty board',srSelected:'selected',
+    srMoreShapes:'{n} more shapes not listed',
     strokeColor:'Stroke color',customStroke:'Custom stroke',fillLabel:'Fill',customFill:'Custom fill',
     noFill:'No fill',ink:'Ink',red:'Red',amber:'Amber',green:'Green',blue:'Blue',violet:'Violet',brandColor:'Brand',
     redTint:'Red tint',amberTint:'Amber tint',greenTint:'Green tint',blueTint:'Blue tint',brandTint:'Brand tint',
@@ -1807,6 +1833,9 @@ function frame(){
     // in 40+ places, but every change invalidates (selection is drawn), so this one hook
     // catches them all. Change-detection inside keeps it a no-op on unrelated frames.
     Net.sendSelectionIfChanged();
+    // ADR-0016: same reasoning as the line above — shapes and selection change in far too
+    // many places to hook individually, and every change invalidates. Debounced inside.
+    UI.scheduleMirror();
   }
   if(needsRender)_rafId=requestAnimationFrame(frame);  // draw() called invalidate() (rare re-entry)
 }
@@ -1871,6 +1900,28 @@ function describeShape(s){
   if(s.locked)d+=` ${t('ctxLock')}`;
   if(s.rotate)d+=` ${s.rotate}°`;
   return d;
+}
+// ADR-0016: the board as a flat, readable outline — pure (reads state, touches no DOM),
+// so the interesting logic is testable without a browser and UI.refreshMirror stays a
+// thin writer. Order is z-order (state.shapes is kept sorted), i.e. the same order Tab
+// cycles, so what a browse-mode user reads matches what cycling will visit.
+// `limit` exists for tests; production passes nothing and gets SR_MIRROR_MAX.
+function boardOutline(limit){
+  const lim=limit==null?SR_MIRROR_MAX:limit;
+  const total=state.shapes.length;
+  const items=[];
+  for(const s of state.shapes){
+    if(items.length>=lim)break;
+    items.push({id:s.id,text:describeShape(s),selected:state.selection.has(s.id)});
+  }
+  // Counts cover the WHOLE board, not just the listed prefix — the summary is the one
+  // place a user with a large board can still learn its true size and composition.
+  const byType={};
+  for(const s of state.shapes)byType[s.type]=(byType[s.type]||0)+1;
+  const parts=Object.keys(byType).sort().map(k=>`${T.k?.[k]??k} ${byType[k]}`);
+  let summary=total?`${total} ${t('shapes')}: ${parts.join(', ')}`:t('srEmptyBoard');
+  if(state.selection.size)summary+=` — ${state.selection.size} ${t('srSelected')}`;
+  return {summary,items,truncated:total-items.length,total};
 }
 function draw(){
   const W=canvas.width,H=canvas.height;
@@ -4825,6 +4876,37 @@ const UI={
   announce(msg){
     const el=document.getElementById('sr');if(!el)return;
     el.textContent=el.textContent===msg?msg+' ':msg;
+  },
+  // ADR-0016: rewrite the off-screen structural mirror. Debounced from frame() rather
+  // than called per draw — a browse-mode structure needs to be current, not frame-exact,
+  // and pointer drags would otherwise rebuild the list on every pointermove. The
+  // signature check makes an unchanged board a no-op even when the timer does fire.
+  _mirrorSig:'',
+  _mirrorTimer:0,
+  scheduleMirror(){
+    if(this._mirrorTimer)return;
+    this._mirrorTimer=setTimeout(()=>{this._mirrorTimer=0;this.refreshMirror()},SR_MIRROR_DEBOUNCE);
+  },
+  refreshMirror(){
+    const list=document.getElementById('srMirrorList'),sum=document.getElementById('srMirrorSummary');
+    if(!list||!sum)return;
+    const o=boardOutline();
+    const sig=o.summary+' '+o.truncated+' '+o.items.map(i=>(i.selected?'*':'')+i.text).join(' ');
+    if(sig===this._mirrorSig)return;
+    this._mirrorSig=sig;
+    sum.textContent=o.summary;
+    while(list.firstChild)list.removeChild(list.firstChild);
+    for(const it of o.items){
+      const li=document.createElement('li');
+      li.textContent=it.text;               // textContent, never innerHTML — shape text is user input
+      if(it.selected)li.setAttribute('aria-current','true');
+      list.appendChild(li);
+    }
+    if(o.truncated>0){
+      const li=document.createElement('li');
+      li.textContent=t('srMoreShapes').replace('{n}',o.truncated);
+      list.appendChild(li);
+    }
   },
   toggleHelp(){
     const h=document.getElementById('help'),open=h.dataset.open!=='true';

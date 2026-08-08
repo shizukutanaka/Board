@@ -592,6 +592,28 @@ const checks = [
     && html.includes('const p=forward?clone(raw):_revPatch(op.id,raw,op);')
     && html.includes('const p=forward?clone(raw):_revPatch(raw.id,raw,op);')
     && (html.match(/if\(_lwwSkip\(b\.id,'groupId',op\)\)continue;/g)||[]).length>=2],
+  // ADR-0016: the off-screen structural mirror. Three properties the behavioural test
+  // cannot see, because they are about the markup and the wiring rather than the data:
+  // the region exists and is visually hidden without being hidden from AT, it adds no
+  // tab stops and no aria-live (either would make it worse than nothing), and it is
+  // driven from frame() through a debounce rather than from draw().
+  ['ADR-0016: off-screen mirror region exists, labelled and localizable',
+    html.includes('id="srMirror"') && html.includes('role="region"')
+    && html.includes('data-t-aria="boardContents"')
+    && html.includes('id="srMirrorSummary"') && html.includes('id="srMirrorList"')
+    && html.includes("boardContents:'Board contents'") && html.includes("boardContents:'ボードの内容'")
+    // focusing the canvas should say how big the board is, not just which tool is active
+    && /<canvas id="c"[^>]*aria-describedby="srMirrorSummary"/.test(html)],
+  ['ADR-0016: mirror is visually hidden but not display:none / aria-hidden / a tab stop',
+    (() => { const m = html.match(/<div id="srMirror"[\s\S]*?<\/div>/); return !!m
+      && m[0].includes('clip-path:inset(50%)')
+      && !/display:\s*none/.test(m[0]) && !m[0].includes('aria-hidden')
+      && !m[0].includes('tabindex') && !m[0].includes('aria-live')
+      && !m[0].includes('<button'); })()],
+  ['ADR-0016: mirror is debounced off frame(), and built with textContent (never innerHTML)',
+    html.includes('UI.scheduleMirror();') && html.includes('const SR_MIRROR_DEBOUNCE=')
+    && html.includes("this._mirrorTimer=setTimeout(()=>{this._mirrorTimer=0;this.refreshMirror()},SR_MIRROR_DEBOUNCE)")
+    && html.includes('li.textContent=it.text;') && html.includes("li.textContent=t('srMoreShapes').replace('{n}',o.truncated);")],
   // ADR-0015: undo/redo are replicated ops, not a local log rewind. The structural
   // guarantees the behavioural block above cannot see: _emit never touches history (an
   // undo must not become its own undo step), and it is gated on REMOTE_OPS so the
@@ -1077,7 +1099,7 @@ try {
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize, boardOutline, SR_MIRROR_MAX,
              _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
              exportPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
@@ -1100,7 +1122,7 @@ try {
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize, boardOutline, SR_MIRROR_MAX,
           _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
           exportPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
@@ -1473,6 +1495,108 @@ try {
   assert.strictEqual(cycleSel([],'a',1), null, 'empty board => null');
   assert.strictEqual(describeShape({type:'rect',x:10.4,y:20.6,w:5,h:5}), 'Rectangle @ 10,21', 'shape description for SR (en locale name)');
   console.log('  ✓ cycleSel cycles selection, describeShape labels for screen readers');
+
+  // ---- ADR-0016: off-screen structural mirror (§I / spec.md §14.3 P1) --------------
+  // cycleSel + describeShape expose ONE shape at a time, on demand. That is navigation,
+  // not an overview: a screen-reader user could not answer "what is on this board?"
+  // without Tab-ing through every shape. boardOutline() is the overview — pure, so the
+  // logic is testable here and UI.refreshMirror stays a thin DOM writer.
+  {
+    const keep = state.shapes.splice(0, state.shapes.length);
+    const keepSel = state.selection;
+    _invalidateGrid();
+    try {
+      // empty board: a named state, not a blank string (SR would read nothing at all)
+      state.selection = new Set();
+      let o = boardOutline();
+      assert.strictEqual(o.items.length, 0, 'outline: empty board lists nothing');
+      assert.strictEqual(o.total, 0, 'outline: empty board totals zero');
+      assert.strictEqual(o.summary, api.I18N.en.srEmptyBoard, 'outline: empty board still has a spoken summary');
+
+      const oa = Shape.make('rect',   {x:0,   y:0, w:10, h:10});
+      const ob = Shape.make('sticky', {x:100, y:0, w:10, h:10, text:'buy milk'});
+      const oc = Shape.make('rect',   {x:200, y:0, w:10, h:10});
+      state.shapes.push(oa, ob, oc); sortZ(); _invalidateGrid();
+
+      o = boardOutline();
+      assert.strictEqual(o.items.length, 3, 'outline: lists every shape');
+      assert.strictEqual(o.total, 3, 'outline: total counts the whole board');
+      assert.strictEqual(o.truncated, 0, 'outline: nothing truncated under the cap');
+      // Order must match state.shapes (z-order) — the same order Tab cycles, so the
+      // structure a browse-mode user reads lines up with what navigation will visit.
+      assert.deepStrictEqual(o.items.map(i=>i.id), state.shapes.map(s=>s.id),
+        'outline: order is z-order, matching the Tab cycle');
+      // Each entry carries the SAME description Tab announces — one vocabulary, not two.
+      assert.strictEqual(o.items[1].text, describeShape(state.shapes[1]),
+        'outline: entry text is describeShape — the mirror and the live region agree');
+      assert.ok(o.items[1].text.includes('buy milk'), 'outline: a sticky note\'s content is in its entry');
+      assert.ok(/^3 Shapes: /.test(o.summary) && /Rectangle 2/.test(o.summary) && /Sticky 1/.test(o.summary),
+        `outline: summary counts the board by type, using the same T.k names the toolbar uses (got "${o.summary}")`);
+      assert.ok(!/selected/.test(o.summary), 'outline: no selection → no selection clause');
+
+      // selection is marked per-entry AND summarised
+      state.selection = new Set([ob.id]);
+      o = boardOutline();
+      assert.deepStrictEqual(o.items.map(i=>i.selected), [false,true,false], 'outline: the selected shape is flagged');
+      assert.ok(/1 selected/.test(o.summary), 'outline: summary reports the selection count');
+
+      // the cap is real, and the overflow is NEVER silent
+      state.selection = new Set();
+      o = boardOutline(2);
+      assert.strictEqual(o.items.length, 2, 'outline: honours the cap');
+      assert.strictEqual(o.truncated, 1, 'outline: reports how many it dropped');
+      assert.strictEqual(o.total, 3, 'outline: total still counts the whole board past the cap');
+      assert.ok(/^3 Shapes: /.test(o.summary), 'outline: summary is computed over the WHOLE board, not the listed prefix');
+      assert.ok(SR_MIRROR_MAX > 0, 'outline: production cap is a positive constant');
+
+      // ja locale must be equally complete (the mirror is the only overview a SR user has)
+      const prevLang = api._getLang();
+      if (prevLang !== 'ja') UI.toggleLang();
+      const oja = boardOutline();
+      assert.ok(oja.summary.includes(api.I18N.ja.shapes), 'outline: summary is localized (ja)');
+      assert.ok(!/[A-Za-z]{4,}/.test(oja.summary.replace(/\d/g,'')), `outline: ja summary has no leftover English (got "${oja.summary}")`);
+      if (api._getLang() !== prevLang) UI.toggleLang();
+      assert.strictEqual(api._getLang(), prevLang, 'outline: locale restored for the tests that follow');
+
+      // ---- UI.refreshMirror: the DOM writer, against a stub container ----
+      const mkNode = () => ({children:[], attrs:{}, textContent:'',
+        get firstChild(){return this.children[0]||null},
+        appendChild(c){this.children.push(c);return c},
+        removeChild(c){this.children.splice(this.children.indexOf(c),1);return c},
+        setAttribute(k,v){this.attrs[k]=v}});
+      const list = mkNode(), sum = mkNode();
+      const origGet = fakeDoc.getElementById, origCreate = fakeDoc.createElement;
+      fakeDoc.getElementById = id => id==='srMirrorList' ? list : id==='srMirrorSummary' ? sum : origGet(id);
+      fakeDoc.createElement = tag => tag==='li' ? mkNode() : origCreate(tag);
+      try {
+        state.selection = new Set([oc.id]);
+        UI._mirrorSig = '';
+        UI.refreshMirror();
+        assert.strictEqual(list.children.length, 3, 'mirror: one <li> per shape');
+        assert.strictEqual(sum.textContent, boardOutline().summary, 'mirror: summary node carries the outline summary');
+        assert.strictEqual(list.children[1].textContent, describeShape(state.shapes[1]), 'mirror: <li> text is the shape description');
+        assert.strictEqual(list.children[2].attrs['aria-current'], 'true', 'mirror: the selected shape\'s entry is aria-current');
+        assert.strictEqual(list.children[0].attrs['aria-current'], undefined, 'mirror: unselected entries are not aria-current');
+        // rewriting must REPLACE, not append — a mirror that grows every edit is worse
+        // than none (the SR user reads the board several times over).
+        UI.refreshMirror();
+        assert.strictEqual(list.children.length, 3, 'mirror: an unchanged board is a no-op (signature guard)');
+        state.shapes.pop(); _invalidateGrid(); state.selection = new Set();
+        UI.refreshMirror();
+        assert.strictEqual(list.children.length, 2, 'mirror: rebuilding replaces the old entries rather than appending');
+        assert.ok(list.children.every(li => li.attrs['aria-current'] === undefined), 'mirror: stale aria-current does not survive a rebuild');
+      } finally {
+        fakeDoc.getElementById = origGet; fakeDoc.createElement = origCreate;
+      }
+    } finally {
+      state.shapes.length = 0;
+      for (const s of keep) state.shapes.push(s);
+      state.selection = keepSel;
+      _invalidateGrid();
+      UI._mirrorSig = '';
+    }
+    console.log('  ✓ ADR-0016 a11y mirror: boardOutline gives a whole-board overview (z-order, selection, localized, capped-not-silently) and refreshMirror writes it as a replaced <ul>');
+  }
 
   // align
   state.shapes.length = 0;_invalidateGrid(); state.history.length = 0; state.histIdx = -1;

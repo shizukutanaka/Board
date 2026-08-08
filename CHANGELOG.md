@@ -2,6 +2,77 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.74] - 2026-08-08
+
+`docs/spec.md` §14.3 に**唯一残っていた P1**「DOM ミラー a11y」を実装。
+`docs/research-improvements.md` §I が「真の残差」として記録していた項目で、
+根拠は [WCAG 2.2 SC 1.3.1 Info and Relationships](https://www.w3.org/WAI/WCAG22/Understanding/info-and-relationships.html)
+および [WHATWG HTML の canvas アクセシビリティ](https://html.spec.whatwg.org/multipage/canvas.html#the-canvas-element)。
+
+### Added
+- **盤面の画面外構造ミラー (ADR-0016)**: canvas の外に `role="region"` を1つ置き、
+  盤面の**要約**(型別の件数)と **z 順の全図形一覧**を常時保持する。ブラウズモード /
+  ローターで**一度に**読めるため、スクリーンリーダー利用者が初めて盤面の overview を得られる。
+  - 問題の性質: `cycleSel` + `describeShape` + `#sr` の `aria-live` により**操作は既にできた**
+    (§3.12 が v1.6.10 で確認済み)。欠けていたのは**一覧性**で、これは navigation であって
+    overview ではない。20 図形の盤面で晴眼者が 0.5 秒で得る情報に、SR 利用者は 20 回の
+    キー操作と 20 回の読み上げを聞き終えて初めて追いつく状態だった。
+  - `boardOutline()` は**純粋関数**(`state` を読み DOM に触らない)。順序・選択・件数・
+    ローカライズ・上限といった中身の論理をブラウザ無しで検証できる。項目の文言は
+    `describeShape()` をそのまま使うため、**一覧で読んだものと Tab で辿り着くものが一致**する。
+  - `UI.refreshMirror()` は `textContent` だけで `<li>` を組む(`innerHTML` 禁止 — 図形テキストは
+    ユーザー入力)。選択中の項目は `aria-current="true"`。
+  - 駆動は `frame()` から 250ms デバウンス。ADR-0011 のプレゼンス送信と同じ着眼点
+    (図形と選択は 40 箇所以上で変わるが、変われば必ず `invalidate()` する)。
+- **canvas に `aria-describedby="srMirrorSummary"`**: フォーカスした時点で
+  「12 Shapes: Rectangle 5, Sticky 3」と分かる。従来はツール名しか読まれなかった。
+- i18n キー4件を ja/en 両方に追加(`boardContents` / `srEmptyBoard` / `srSelected` /
+  `srMoreShapes`)。
+
+### 意図的に採らなかった設計(ADR-0016 に詳細)
+- **`aria-live` にしない** — 編集のたびに盤面全体を読み上げ、無いより悪くなる。
+- **フォーカス可能要素を置かない** — 200 個の `<button>` は Tab 順を破壊する。
+  ミラーは**読むため**の構造で、操作導線は既存の Tab 巡回に一本化。
+- **`display:none` を使わない** — 支援技術からも消えてしまう。`clip-path:inset(50%)` の
+  visually-hidden イディオムを既存の `#sr` と揃えた。
+- **canvas の子 DOM(フォールバック内容)にしない** — 仕様上の正攻法だが、canvas は
+  `role="application"` を持ちその内側はブラウズモードで読めず、目的である一覧性を果たせない。
+  加えて AT の対応差を実機検証できない(FT-11 と同じ制約)。
+- **上限を黙って切らない** — `SR_MIRROR_MAX=200` を超えた分は「ほか N 個は一覧に
+  含まれていません」と明示し、要約は常に**盤面全体**を数える。
+
+### Docs
+- `docs/ADR-0016-a11y-dom-mirror.md` を新規作成(却下した代替案3件、既知の限界4件)。
+- `docs/spec.md`: §14.3 の P1 行を完了に、§14.2「a11y の天井」を P3 に降格し、
+  残る天井が**木構造**(グループ/frame の入れ子)であることを明記。§14.1 の未充足も更新。
+- `README.md` のアクセシビリティ節: 「canvas 内容は本質的に不可視」という記述を実態に更新。
+  ピクセルが不可視である点は変わらないが、構造ミラー経由で読めるようになったため。
+  **実機 SR 未検証**であることも同時に明記(過大に主張しない)。
+- `docs/a11y-audit-2026-07.md` に追記 — 本監査がコントラスト比という**測れるもの**に
+  閉じており、「存在しない要素」を問えていなかったという手法上の教訓を記録。
+- `docs/research-improvements.md` §I、`CLAUDE.md` MAP / 100点への距離も同期。
+
+### Fixed
+- **サイズ表記の単位換算ミスを訂正**: v1.7.73 で更新したサイズ表記のうち raw と brotli を
+  バイト数 ÷ 1000 で計算していた(本リポジトリの表記は一貫して KiB = ÷1024)。
+  gzip 値だけは正しかったためバッジ整合テストは通過し、**検出されなかった**。
+  README / CLAUDE.md / spec.md / v1.7.73 の CHANGELOG 全箇所を訂正。
+  現在の実測は **raw 279KB / gzip 89KB / brotli 74KB**。
+  v1.7.72 が「公称値と実測値の乖離は禁じる」機構を入れた直後に、その機構が見ていない
+  2つの数値(raw / brotli)で同種のズレを出したことになる — バッジテストが守るのは
+  gzip 1点のみ、という射程の狭さを記録しておく。
+
+### Tests
+- 振る舞い: 空盤面が無言にならない、一覧が z 順(= Tab の巡回順)、項目文言が
+  `describeShape` と一致、選択が項目と要約の両方に出る、上限超過が `truncated` として明示され
+  要約は全体を数え続ける、ja で英語が残らない、`refreshMirror` が**追記ではなく置換**する、
+  同一内容の再実行が no-op、古い `aria-current` が再構築後に残らない。
+- presence checks 3件: リージョンの存在とローカライズ + `aria-describedby` 接続、
+  visually-hidden であって `display:none`/`aria-hidden`/tabindex/`aria-live`/`<button>` を
+  持たないこと、`frame()` からのデバウンス駆動と `textContent` 構築。
+- 非空虚性は stash 法で確認 — v1.7.73 の `index.html` に対して全件失敗する。
+- 合計 **1640 pass, 0 fail**。
+
 ## [1.7.73] - 2026-08-08
 
 論文由来の未着手項目の消化 — `docs/research-improvements.md` §F「協調 undo/redo の正しさ」
@@ -42,7 +113,9 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
   既知の限界3件を明記)。`docs/research-improvements.md` §F を解決済みに更新。
   `docs/ADR-0002` の「残: undo×sync(§F)」と `docs/architecture.md` の Store 節、
   `docs/spec.md` §8 の同期プロトコル MUST も同期。
-- README / CLAUDE.md / spec.md のサイズ表記を実測に更新(raw 281KB / gzip 87KB / brotli 74KB)。
+- README / CLAUDE.md / spec.md のサイズ表記を実測に更新(raw 274KB / gzip 87KB / brotli 72KB)。
+  ※ 当初この行と各ドキュメントに raw 281KB / brotli 74KB と記載したが、バイト数を 1000 で
+  割っていた誤りで、本リポジトリの表記単位は KiB(1024)。v1.7.74 で全箇所を訂正済み。
   v1.7.72 で導入したバッジ整合テストは許容内だったが、公称値は実測に合わせる方針を継続。
 
 ### Tests
