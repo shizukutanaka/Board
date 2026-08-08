@@ -3,7 +3,7 @@
 // Extracts subset of board.js and tests it in isolation.
 
 import { readFileSync } from 'fs';
-import { execSync } from 'child_process';
+import { gzipSync, brotliCompressSync, constants as zlibConstants } from 'zlib';
 import assert from 'assert';
 
 const html = readFileSync('./index.html', 'utf8');
@@ -12,8 +12,31 @@ const _codeVer = (html.match(/const V='([^']+)'/) || [])[1];
 // Size is no longer hard-capped (44KB gzip budget removed 2026-06-13). A loose raw
 // ceiling stays purely as a runaway-growth guard; gzip size is reported for visibility.
 const RAW_CEILING = 512 * 1024;
-const _gzSize = parseInt(execSync('gzip -9 -c index.html | wc -c').toString().trim());
-console.log(`  ℹ index.html: ${html.length} bytes raw, ${_gzSize} bytes gzip`);
+// Measured with Node's built-in zlib instead of shelling out to `gzip -9`: the CLI is
+// absent on stock Windows and on minimal CI images, and its output differed from zlib's
+// by ~750 bytes (differing memLevel defaults) — enough to swing the badge check below.
+// One in-process implementation keeps the published number reproducible everywhere.
+const _htmlBuf = readFileSync('./index.html');
+const _gzSize = gzipSync(_htmlBuf, { level: 9 }).length;
+// Brotli q11 is what static hosts actually serve for a pre-compressible single file, so
+// it is the honest "what the user downloads" figure. Reported for visibility only — it
+// is deliberately not asserted, since the README headlines the conservative gzip number.
+const _brSize = brotliCompressSync(_htmlBuf, {
+  params: { [zlibConstants.BROTLI_PARAM_QUALITY]: 11 },
+}).length;
+// Report/limit the on-disk BYTE count, not `html.length` — the latter is a UTF-8
+// *character* count and under-reports by ~4KB here (multi-byte glyphs in the i18n
+// strings), which is exactly the kind of figure-vs-reality gap this block guards.
+const _rawSize = _htmlBuf.length;
+console.log(`  ℹ index.html: ${_rawSize} raw, ${_gzSize} gzip, ${_brSize} brotli`);
+// The README advertises a gzip figure in its Size badge, and the comparison table uses
+// it to claim an advantage over Miro/Excalidraw/tldraw. v1.6.77 tied the *version*
+// badge to `const V` after it drifted; the *size* badge then drifted the same way
+// (claimed ~61KB while reality was ~85KB — a 38% understatement) for the same root
+// cause: nothing asserted it. Same fix. 10% tolerance so ordinary growth between
+// releases does not cause churn, while a drift of this magnitude fails the build.
+const _badgeKB = parseInt((readme.match(/size-~(\d+)KB%20gzip/) || [])[1], 10);
+const _gzKB = _gzSize / 1024;
 
 // ---- presence checks ----
 const checks = [
@@ -44,11 +67,14 @@ const checks = [
       .every(t => html.includes(`data-tool="${t}"`))],
   ['Keymap covers all tools',
     /KEYMAP\s*=\s*\{v:'select'[^}]+h:'hand'[^}]+p:'pen'/.test(html)],
-  ['Raw size under runaway ceiling (512KB)', html.length < RAW_CEILING],
+  ['Raw size under runaway ceiling (512KB)', _rawSize < RAW_CEILING],
   // v1.6.77: enforce docs-vs-reality — the README version badge must track `const V`.
   // Root cause of prior drift (README said 1.6.70 while code shipped 1.6.77): nothing
   // tied them. This check fails the build the moment a version bump forgets the README.
   ['README version badge matches const V', !!_codeVer && readme.includes(`version-${_codeVer}-`)],
+  // v1.7.72: same guarantee for the size badge (see derivation above).
+  ['README size badge within 10% of measured gzip',
+    Number.isFinite(_badgeKB) && Math.abs(_badgeKB - _gzKB) / _gzKB <= 0.10],
   ['No innerHTML anywhere (XSS-safe)', !/innerHTML\s*=/.test(html)],
   // v1.1: ctx must be let (not const) for exportPNG swap
   ['ctx declared as let (not const)', /let ctx=canvas\.getContext/.test(html)],

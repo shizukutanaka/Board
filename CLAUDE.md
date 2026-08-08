@@ -20,7 +20,7 @@ Board は 4 つ全部を否定する: **単一HTML、ゼロ登録、完全無料
 
 ```
 Board/
-├── index.html             # 本体 (単一ファイル、~200KB raw / ~61KB gzip)
+├── index.html             # 本体 (単一ファイル、~268KB raw / ~85KB gzip / ~71KB brotli)
 │   ├── <style>            # デザイントークン + レイアウト + モーション
 │   └── <script>
 │       ├── CONSTANTS      # atomic config
