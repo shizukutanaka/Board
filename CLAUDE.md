@@ -20,7 +20,7 @@ Board は 4 つ全部を否定する: **単一HTML、ゼロ登録、完全無料
 
 ```
 Board/
-├── index.html             # 本体 (単一ファイル、~268KB raw / ~85KB gzip / ~71KB brotli)
+├── index.html             # 本体 (単一ファイル、~281KB raw / ~87KB gzip / ~74KB brotli)
 │   ├── <style>            # デザイントークン + レイアウト + モーション
 │   └── <script>
 │       ├── CONSTANTS      # atomic config
@@ -63,7 +63,8 @@ Board/
 │   ├── ADR-0011-peer-selection-highlight.md  # ピア選択ハイライト (FT-12、frame() 変化検出で送信、実装済)
 │   ├── ADR-0012-theme-toggle.md  # テーマ手動トグル (FT-18、言語トグルは FT-18b に分離・見送り、実装済)
 │   ├── ADR-0013-keyboard-label-edit.md  # Enter でラベル/テキスト再編集 (FT-19、_openLabelEditorFor共有、実装済)
-│   └── ADR-0014-language-toggle.md  # 言語手動トグル (FT-18b、LANG/T を let 化、実装済)
+│   ├── ADR-0014-language-toggle.md  # 言語手動トグル (FT-18b、LANG/T を let 化、実装済)
+│   └── ADR-0015-replicated-undo.md  # undo/redo を複製される op に (§F, arxiv 2404.11308, 実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
@@ -141,8 +142,10 @@ Phase 1.0 = 70点 (MVP 完成、商用配布可能)
 
 残り 30点 (旧配点) の再定義:
 - P2P sync (10) — ほぼ達成。WebRTC/BroadcastChannel + CRDT clock (ADR-0001 frac z-order,
-  ADR-0002 per-property LWW) は「自分の複数デバイス間・信頼できる相手との私的共有」という
-  scratchpad の延長として実装済み(README v1.7 時点 95点の主要因)。identity 前提の
+  ADR-0002 per-property LWW, ADR-0015 replicated undo) は「自分の複数デバイス間・信頼できる
+  相手との私的共有」という scratchpad の延長として実装済み(README v1.7 時点 95点の主要因)。
+  v1.7.73 で `research-improvements.md` §F(協調 undo の正しさ)を解消 — undo が一切
+  broadcast されておらず Ctrl+Z のたびに発散していた穴を塞いだ。identity 前提の
   「ワークスペースとしてのコラボ」(5点分)とは別物として整理し、後者は上記の理由で対象外。
 - Multi-page/複数ボード (7) — **対象外**(scratchpad の正体と衝突、§3.9)。
 - コラボ (5) — **対象外**(identity 前提、§3.8/3.9 と衝突)。

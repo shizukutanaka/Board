@@ -78,12 +78,23 @@ replicated undo 論文群。
 
 ## 2. 研究 (arxiv 等) から学ぶ改善点
 
-### F. **協調 undo/redo の正しさ**(P2P sync を実験から本番にする前の必須課題)
+### F. **協調 undo/redo の正しさ**(P2P sync を実験から本番にする前の必須課題) — **✅ 解決済み (v1.7.73, ADR-0015)**
 - **問題**: ローカル op-log の undo は、peer が同じ shape を並行編集した後に自分の op を undo すると整合性が崩れる。
   「単純な per-peer undo スタック」は CRDT 環境で破綻する。Board は remote op を undo 対象外にしている点は正しいが、
   本格 sync 化でこの設計判断を体系化する必要がある。
 - **指針**: undo を「スタックの巻き戻し」ではなく **因果情報付きの逆 op を新規に発行** する方式にする
   (replicated register への undo 適用)。
+- **実測 (2026-08-08)**: 問題は想定より一段深刻だった。「並行編集後の undo」に限らず、
+  **`Store.undo()` は一切 broadcast していなかった** — つまり同期中のボードでは
+  *単独ユーザーが Ctrl+Z を1回押すだけで* 発散した(A が add を undo しても B は図形を持ち続ける)。
+  2ピアハーネスで add/upd/move/del の全てで発散を再現。
+- **決定 (ADR-0015)**: 指針どおり実装。`Store._revOps(op)` が逆適用の効果を*前向き適用可能な*
+  op 列に変換し、`Store._emit(op)` が新鮮なクロックを刻んで broadcast する(history には積まない)。
+  redo も同様にクロックを付け替えたコピーを送る(元 op の verbatim 再送は `peer:seq` で
+  dedup され、古い `ts` は以後の書き込みに LWW で負けるため)。
+  v1.7.68 の `_lwwSkip` ガードは `_revPatch` として共有化され、**リモートに取られたキーは
+  ローカルでも復元されず、ワイヤにも載らない** — 保証が片ピアから両ピアに拡張された。
+  詳細・限界・代替案は `docs/ADR-0015-replicated-undo.md`。
 - **出典**: [arxiv 2404.11308 — Undo and Redo Support for Replicated Registers (2024)](https://arxiv.org/abs/2404.11308) ·
   [Ink & Switch — Local-first software](https://www.inkandswitch.com/essay/local-first/)(Automerge)
 

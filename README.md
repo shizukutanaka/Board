@@ -4,8 +4,8 @@
 単一HTMLファイル。ダブルクリックで動く。アカウント不要。広告なし。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-00C4CC.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.7.72-00C4CC.svg)](CHANGELOG.md)
-[![Size](https://img.shields.io/badge/size-~85KB%20gzip-00C4CC.svg)](index.html)
+[![Version](https://img.shields.io/badge/version-1.7.73-00C4CC.svg)](CHANGELOG.md)
+[![Size](https://img.shields.io/badge/size-~87KB%20gzip-00C4CC.svg)](index.html)
 [![Offline](https://img.shields.io/badge/offline-first-00C4CC.svg)](#offline)
 [![A11y](https://img.shields.io/badge/WCAG-AAA-00C4CC.svg)](#accessibility)
 
@@ -21,13 +21,13 @@
 | 単一ファイル配布 | ✗ | ✗ | ✗ | **✓** |
 | E2E 暗号化 | ✗ | 部分 | ✗ | **✗ (未実装 — 計画中)** |
 | 完全オフライン | 部分 | ✓ | ✓ | **✓ PWA** |
-| サイズ | 数MB | ~1MB | ~2MB | **単一HTML 268KB (gzip 85KB)** |
+| サイズ | 数MB | ~1MB | ~2MB | **単一HTML 281KB (gzip 87KB)** |
 | 広告・トラッキング | あり | なし | なし | **ゼロ** |
 | 料金 | $10-16/月 | 無料 + Plus | SDK商用有料 | **完全無料** |
 
 Board は `index.html` 一枚。自分のドメイン、USB、社内ネット、オフライン PC — どこでも動く。
 
-> **サイズの基準**: 他社列は非圧縮のアプリバンドル概算のため、Board も非圧縮 (268KB) を併記した。
+> **サイズの基準**: 他社列は非圧縮のアプリバンドル概算のため、Board も非圧縮 (281KB) を併記した。
 > 実際の転送量は静的ホストが brotli を返すので **約 71KB**。
 > [HTTP Archive Web Almanac 2025](https://almanac.httparchive.org/en/2025/page-weight) が報告する
 > モバイルページ重量の中央値 2,362KB に対し、およそ **1/33**。
@@ -115,6 +115,9 @@ start index.html      # Windows
   非永続(undo・保存の対象外)、共同編集セッション中のみ意味を持つためプレゼン中は非表示
 - ピア選択ハイライト (ADR-0011): 相手が選択中の図形に相手の色の細い破線枠を表示。
   同じ図形を同時に編集して LWW で片方が上書きされる事故を、編集前に気づける
+- **Undo/Redo も同期される (ADR-0015)**: Ctrl+Z は「自分のログを巻き戻す」のではなく
+  *逆効果を持つ新しい op* を発行して相手にも届ける。取り消しが自分の画面にしか反映されず、
+  相手のボードに図形が残り続ける、という発散が起きない
 
 ### プレゼンテーション
 - フレームを左→右順に全画面表示 (⇧P / Ctrl+Enter)、←/→/Space でナビゲート
@@ -272,7 +275,7 @@ npx serve .
 - 外部依存の追加は慎重に (単一ファイル原則 — 外部 `<script src>` / `<link href>` は不可)
 - サイズはハード上限なし (2026-06-13 に gzip 44KB 予算を撤去)。指針として小さく保つが、
   整合性・正しさを優先してよい。暴走防止に raw 512KB の緩い上限のみ残す
-  (現状 raw ~268KB / gzip ~85KB / brotli ~71KB)。サイズが動いたら上のバッジも更新すること —
+  (現状 raw ~281KB / gzip ~87KB / brotli ~74KB)。サイズが動いたら上のバッジも更新すること —
   ±10% を超えると `test.mjs` が落ちる
 - `node test.mjs` を通すこと (CI が presence + behavioural テストを実行)
 

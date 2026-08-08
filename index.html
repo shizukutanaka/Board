@@ -746,7 +746,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.72';
+const V='1.7.73';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1340,10 +1340,107 @@ const Store={
     state.dirty=true;UI.refreshUndo();Persist.schedule();
     if(op.clock.peer===state.peerId)Net.broadcast(op);
   },
+  // ADR-0015 (research-improvements.md §F, arxiv 2404.11308 "Undo and Redo Support for
+  // Replicated Registers"): a local undo used to be a purely local log rewind —
+  // _apply(op,false) with nothing on the wire — so on a synced board EVERY undo
+  // diverged. A undoes an add; B keeps the shape forever. The literature's answer is
+  // that undo is not a rewind but a NEW operation carrying the inverse effect, stamped
+  // with a fresh clock and ordered exactly like any other write. _emit sends such an op:
+  // stamped + LWW-recorded + broadcast, but deliberately NOT pushed to history (undo
+  // must not become its own undo step) — the same broadcast-only shape _syncTextFinalize
+  // already uses.
+  _emit(op){
+    if(typeof Net==='undefined'||typeof Net.broadcast!=='function')return;
+    op.clock={peer:state.peerId,seq:++state.seq,ts:nowTs()};
+    const k=op.clock.peer+':'+op.clock.seq;
+    state.seenOps.add(k);                  // our own op, never re-apply it on echo
+    if(state.seenOps.size>MAX_SEEN_OPS){const keys=[...state.seenOps];for(let i=0;i<Math.floor(MAX_SEEN_OPS*0.2);i++)state.seenOps.delete(keys[i])}
+    this._stampWrites(op);                 // the undo IS the latest write for these keys
+    Net.broadcast(op);
+  },
+  // Forward-applicable ops that reproduce, on a peer, the effect _apply(op,false) has
+  // just had locally. MUST be computed BEFORE the reverse-apply runs: the `before`
+  // fields describe the pre-undo values, and _lwwSkip is read against the same wclock
+  // the reverse-apply will read. Returns [] for ops that were never replicated in the
+  // first place (clear/replace/beautify are absent from REMOTE_OPS) — nothing to
+  // reconcile — and for reverse-applies that turn out to be entirely LWW-suppressed.
+  _revOps(op){
+    const live=p=>!!byId(p.id);
+    switch(op.op){
+      // Undoing an add is a delete. No connClears needed: applyRemote's
+      // _remoteDelConnFix severs any binding the receiver holds on its own.
+      case 'add':     return byId(op.shape.id)?[{op:'del',shapes:[clone(op.shape)]}]:[];
+      case 'addMany':{const shapes=(op.shapes||[]).filter(live).map(clone);
+        return shapes.length?[{op:'del',shapes}]:[];}
+      // Undoing a delete re-adds the shapes, then restores the connector bindings the
+      // delete cleared (a separate batch patch — 'addMany' carries no binding deltas).
+      case 'del':{const out=[];
+        const shapes=(op.shapes||[]).map(clone);
+        if(shapes.length)out.push({op:'addMany',shapes});
+        const cc=(op.connClears||[]).filter(p=>p.before&&byId(p.id));
+        if(cc.length)out.push({op:'style',before:cc.map(p=>({id:p.id,...p.after})),after:cc.map(p=>({id:p.id,...p.before}))});
+        return out;}
+      case 'upd':{const sh=byId(op.id);
+        if(!sh||!op.before)return [];
+        const after=_revPatch(op.id,op.before,op);
+        delete after.locked;               // lock is deliberately not replicated (validRemotePayload)
+        const keys=Object.keys(after).filter(k=>k!=='id');
+        if(!keys.length)return [];
+        // `before` = the shape's values right now (we run pre-reverse-apply), which is
+        // what a peer that stayed in sync currently holds.
+        const before={};for(const k of keys)before[k]=sh[k];
+        return [{op:'upd',id:op.id,before,after}];}
+      case 'move':    return (op.dx||op.dy)?[{op:'move',ids:[...op.ids],dx:-op.dx,dy:-op.dy}]:[];
+      case 'zorder':
+        if(op.changes)return [{op:'zorder',changes:op.changes.map(c=>({id:c.id,before:c.after,after:c.before}))}];
+        return op.before?[{op:'zorder',after:clone(op.before)}]:[];
+      case 'group':
+      case 'ungroup':{
+        // Restoring prior groupIds is a mix of "back into group G" and "back to no
+        // group", so it needs up to one 'group' op per distinct G plus one 'ungroup'.
+        const gidOf=op.op==='group'?op.gid:(op.gids&&op.gids[0]);
+        const before=op.before||(op.op==='ungroup'&&gidOf?op.ids.map(id=>({id,groupId:gidOf})):[]);
+        const groups=new Map(),none=[];
+        for(const b of before){
+          if(!byId(b.id)||_lwwSkip(b.id,'groupId',op))continue;
+          if(b.groupId){if(!groups.has(b.groupId))groups.set(b.groupId,[]);groups.get(b.groupId).push(b.id);}
+          else none.push(b.id);
+        }
+        const out=[];
+        // `before` is not decoration: _lwwDrop diffs it against the op's target value to
+        // decide whether the write changes anything, so an ungroup without it is filtered
+        // out on the receiver as a no-op (the real doUngroup sends one for the same reason).
+        if(none.length&&gidOf)out.push({op:'ungroup',ids:none,gids:[gidOf],before:none.map(id=>({id,groupId:byId(id).groupId}))});
+        for(const [gid,ids] of groups)out.push({op:'group',ids,gid,before:ids.map(id=>({id,groupId:byId(id).groupId}))});
+        return out;}
+      case 'style':
+      case 'resize':
+      case 'align':{
+        if(!Array.isArray(op.before))return [];
+        const after=[],before=[];
+        for(const raw of op.before){
+          const sh=byId(raw.id);if(!sh)continue;
+          const p=_revPatch(raw.id,raw,op);
+          if(op.dir!=='lock')delete p.locked;   // only align/lock may carry `locked` on the wire
+          const keys=Object.keys(p).filter(k=>k!=='id');
+          if(!keys.length)continue;
+          after.push(p);
+          const b={id:raw.id};for(const k of keys)b[k]=sh[k];
+          before.push(b);
+        }
+        if(!after.length)return [];
+        const inv={op:op.op,before,after};
+        if(op.op==='align')inv.dir=op.dir;
+        return [inv];}
+      default:        return [];           // clear / replace / beautify: local-only ops
+    }
+  },
   undo(){
     if(state.histIdx<0)return false;
     const op=state.history[state.histIdx];
+    const revs=this.REMOTE_OPS.has(op.op)?this._revOps(op):[];
     this._apply(op,false);
+    for(const r of revs)this._emit(r);
     state.histIdx--;
     state.dirty=true;
     UI.refreshUndo();
@@ -1355,6 +1452,14 @@ const Store={
     state.histIdx++;
     const op=state.history[state.histIdx];
     this._apply(op,true);
+    // Redo is a new write too. The original op cannot simply be re-sent: peers deduped
+    // it by peer:seq and its old clock would lose to anything written since. Re-issue a
+    // clock-less copy so _emit stamps it fresh, and keep the history entry's own clock
+    // intact (_lwwSkip on a later undo compares against it).
+    if(this.REMOTE_OPS.has(op.op)){
+      const fwd=clone(op);delete fwd.clock;delete fwd.origSel;delete fwd.wc;
+      this._emit(fwd);
+    }
     state.dirty=true;
     UI.refreshUndo();
     Persist.schedule();
@@ -1405,10 +1510,9 @@ const Store={
         if(forward&&sh.locked)break;
         const raw=forward?op.after:op.before;
         if(!raw)break;
-        const p=clone(raw);
         // Only skip restoring if a *remote* peer wrote this key after our op (_lwwSkip).
         // Local-peer writes (same peerId) are also being undone and must not block.
-        if(!forward)for(const k of Object.keys(p)){if(_lwwSkip(op.id,k,op))delete p[k];}
+        const p=forward?clone(raw):_revPatch(op.id,raw,op);
         Object.assign(sh,p);
         if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));
         break;}
@@ -1482,11 +1586,10 @@ const Store={
         for(const raw of patches){
           const sh=byId(raw.id);
           if(!sh||(forward&&sh.locked&&!('locked' in raw)))continue;
-          const p=clone(raw);
           // Same LWW guard as 'upd' (_lwwSkip) — these are batch absolute-patch ops but
           // _stampWrites records per-property write clocks for them identically, so undo
           // must not clobber a newer remote write here either (this was the actual gap).
-          if(!forward)for(const k of Object.keys(p)){if(k!=='id'&&_lwwSkip(raw.id,k,op))delete p[k];}
+          const p=forward?clone(raw):_revPatch(raw.id,raw,op);
           Object.assign(sh,p);
         }
         if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));
@@ -1540,6 +1643,16 @@ function _lwwSkip(id,key,op){
   if(!op.clock)return false;
   const wc=state.wclock[id];
   return !!(wc&&wc[key]&&wc[key].peer!==state.peerId&&clockNewer(wc[key],op.clock));
+}
+// The patch that undoing `op` will ACTUALLY write onto shape `id` — `raw` minus every
+// key a remote peer has since claimed (_lwwSkip). Shared by _apply's reverse branches
+// and by Store._revOps, so the op we broadcast for an undo (ADR-0015) carries exactly
+// the keys the local reverse-apply wrote and no others. Two call sites reading one
+// definition is what keeps local state and the wire in agreement.
+function _revPatch(id,raw,op){
+  const p=clone(raw);
+  for(const k of Object.keys(p)){if(k!=='id'&&_lwwSkip(id,k,op))delete p[k];}
+  return p;
 }
 // Bound connectors: line/arrow endpoints (s.a/s.b = shape id) derive from the bound
 // shape's edge at render/hit/export, so the connector follows. Stored coords = fallback.
@@ -3163,18 +3276,21 @@ function resizeAfterTextEdit(s,text,c){
 }
 // New text/sticky shapes are committed — and broadcast — with empty text up front,
 // then filled in the editor. Live collaborators therefore receive a blank shape and
-// never the typed content (and a dismissed-empty editor's local undo isn't broadcast
-// either, leaving an invisible hitbox on peers). Bridge both with a broadcast-ONLY op
-// for the finalize delta: stamped for LWW correctness, but kept OUT of local history so
-// single-user undo stays one step (the local add already carries the final text).
+// never the typed content. Bridge that with a broadcast-ONLY op for the finalize delta:
+// stamped for LWW correctness, but kept OUT of local history so single-user undo stays
+// one step (the local add already carries the final text).
+// Since ADR-0015 the `deleted` branch is no longer what removes the shape on peers —
+// Store.undo() now broadcasts its own del. What this branch still contributes is the
+// connector-binding cleanup: it severs local dangling bindings (undo doesn't) and
+// carries connClears so peers apply the same severing. The two dels are idempotent.
 function _syncTextFinalize(s,before,deleted){
   if(typeof Net==='undefined'||typeof Net.broadcast!=='function')return;
   const op=deleted
     ? {op:'del',shapes:[clone(s)]}
     : {op:'upd',id:s.id,before:{text:before},after:{text:s.text,w:s.w,h:s.h}};
   if(deleted){
-    // Rare race: a peer's connector bound to this shape while it was still being
-    // typed (Store.undo() already removed it locally without touching bindings).
+    // A peer's connector may have bound to this shape while it was still being typed
+    // (Store.undo() already removed it locally without touching bindings).
     // Fix any local dangling binding AND include connClears so remote peers do too.
     const cc=computeConnClears(new Set([s.id]));
     if(cc.length){op.connClears=cc;for(const p of cc){const sh=byId(p.id);if(sh)Object.assign(sh,p.after);}}

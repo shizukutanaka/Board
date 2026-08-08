@@ -12,7 +12,7 @@ Board は「サインアップ/重量/有料/プライバシー侵害」を全�
 - **単一HTMLファイル**。外部 `<script src>` / `<link href>` / CDN / フォントを**追加しない**(CI grep 強制)。
 - **サイズはハード上限なし**(2026-06-13 に gzip 44KB 予算を撤去。理由は CLAUDE.md 参照)。
   小さく保つことは依然「指針」だが、整合性・正しさを優先してよい。暴走防止に **raw 512KB の緩い上限**のみ
-  `test.mjs` で残す(現状 raw ~268KB / gzip ~85KB / brotli ~71KB)。
+  `test.mjs` で残す(現状 raw ~281KB / gzip ~87KB / brotli ~74KB)。
   上限は課さないが、**公称値と実測値の乖離は禁じる**: `test.mjs` が Node 組込み `zlib` で実測し、
   README の Size バッジと ±10% 以内で一致することを検証する(v1.7.72。乖離した経緯は §13 参照)。
 - `state` の変更は必ず **`Store` 経由**(undo 完全性)。
@@ -98,6 +98,12 @@ IndexedDB(`board`/`docs`/`main`)。保存対象=`{v,shapes,viewport,docName,save
   NaN/Inf・prototype 汚染キーを再帰的に排除)、(c) **クロック検証**(`validClock`)を通った op のみ適用。
   remote op は local undo に入れない。`replace`(盤面まるごと swap)は `REMOTE_OPS` に**含めない** —
   悪意ある peer が盤面を消せないように local 専用。
+- **MUST(undo/redo の複製、ADR-0015)**: `Store.undo()` は逆適用の効果を**前向き適用可能な
+  新しい op** として、新鮮なクロック付きで broadcast する(`_revOps` → `_emit`)。`redo` は
+  クロックを付け替えた元 op のコピーを送る。`_emit` は `state.history` に積まない。
+  `REMOTE_OPS` に無い op(`clear`/`replace`/`beautify`)の undo は**何も送らない** —
+  前向きの op がピアに届いていない以上、その逆を送ればピアの状態を一方的に壊すため。
+  undo が復元しなかったキー(`_lwwSkip` でリモートに譲ったキー)はワイヤにも載せない。
 - **並行収束 (ADR-0002 / プロパティ単位 LWW)**: 同一図形の**同一プロパティ**への並行編集は
   `(ts,peer,seq)` の全順序 `clockNewer()` と書込クロック `state.wclock`(`shapeId→{prop:clock}`、
   図形には載せない)で**古い書込を落として決定的収束**。**互いに素なプロパティは双方生存**。

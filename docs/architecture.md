@@ -37,13 +37,22 @@
 ### 3. Store (op-log, Command pattern)
 ```js
 Store.commit(op)              // apply + append + cap history
-Store.undo()                  // apply inverse + decrement idx
-Store.redo()                  // re-apply + increment idx
+Store.undo()                  // apply inverse + emit inverse op + decrement idx
+Store.redo()                  // re-apply + emit fresh-clock copy + increment idx
 Store._apply(op, forward)     // switch on op.op
 Store._recordCommitted(op)    // record pre-applied op (no re-apply)
 Store.applyRemote(op)         // validate + apply remote op
+Store._revOps(op)             // op → forward ops reproducing its reverse-apply (ADR-0015)
+Store._emit(op)               // fresh clock + stamp + broadcast, NOT pushed to history
 Store.broadcast(op)           // send to peers via BroadcastChannel + WebRTC
 ```
+
+**undo/redo は複製される (ADR-0015)**。`undo()` はローカルで巻き戻すだけでなく、その逆効果を
+*前向きに適用できる新しい op* として `_emit` する (新鮮なクロック付き)。歴史は書き換えられない —
+ピアは既に元 op を観測済みなので、取り消しは未来向きの新しい書き込みとしてしか表現できない。
+`_emit` は `state.history` に積まない (undo が自分自身の undo ステップになってはならない)。
+`REMOTE_OPS` に無い op (`clear`/`replace`/`beautify`) は前向きにも複製されないため、その undo も
+何も送らない。詳細と逆 op の対応表は `docs/ADR-0015-replicated-undo.md`。
 
 op 型 (全て可逆; `_apply(op, false)` で完全に戻る):
 - `{op:'add', shape}` — shape を push (**shape id で冪等**: 既に保持する id の remote add は重複

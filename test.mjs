@@ -582,10 +582,30 @@ const checks = [
   // v1.7.68 (deep-audit fix): ADR-0002's per-property LWW guard against undo clobbering
   // a newer remote write was implemented only in the 'upd' case; style/resize/align and
   // group/ungroup shared the forward stamping (_stampWrites) but not the reverse guard.
+  // v1.7.73 (ADR-0015): the two inline reverse-filter loops became one shared _revPatch,
+  // so Store._revOps can broadcast exactly the keys the reverse-apply wrote. The guard
+  // itself is unchanged — this check now pins the shared form at all three sites.
   ['ADR-0002 gap fix: shared _lwwSkip helper exists and is used by upd, the batch ops, and group/ungroup',
-    html.includes('function _lwwSkip(id,key,op){') && html.includes('if(!forward)for(const k of Object.keys(p)){if(_lwwSkip(op.id,k,op))delete p[k];}')
-    && html.includes("if(!forward)for(const k of Object.keys(p)){if(k!=='id'&&_lwwSkip(raw.id,k,op))delete p[k];}")
+    html.includes('function _lwwSkip(id,key,op){')
+    && html.includes("function _revPatch(id,raw,op){")
+    && html.includes("if(k!=='id'&&_lwwSkip(id,k,op))delete p[k];")
+    && html.includes('const p=forward?clone(raw):_revPatch(op.id,raw,op);')
+    && html.includes('const p=forward?clone(raw):_revPatch(raw.id,raw,op);')
     && (html.match(/if\(_lwwSkip\(b\.id,'groupId',op\)\)continue;/g)||[]).length>=2],
+  // ADR-0015: undo/redo are replicated ops, not a local log rewind. The structural
+  // guarantees the behavioural block above cannot see: _emit never touches history (an
+  // undo must not become its own undo step), and it is gated on REMOTE_OPS so the
+  // deliberately local-only ops (clear/replace/beautify) stay local.
+  ['ADR-0015: undo/redo emit a fresh-clock inverse via Store._emit/_revOps',
+    html.includes('_emit(op){') && html.includes('_revOps(op){')
+    && html.includes('const revs=this.REMOTE_OPS.has(op.op)?this._revOps(op):[];')
+    && html.includes('for(const r of revs)this._emit(r);')
+    && html.includes('const fwd=clone(op);delete fwd.clock;delete fwd.origSel;delete fwd.wc;')],
+  ['ADR-0015: _emit is broadcast-only — stamps + dedups + sends, never pushes history',
+    (() => { const m = html.match(/_emit\(op\)\{[\s\S]*?\n  \},/); return !!m
+      && m[0].includes('op.clock={peer:state.peerId,seq:++state.seq,ts:nowTs()}')
+      && m[0].includes('state.seenOps.add(k)') && m[0].includes('this._stampWrites(op)')
+      && m[0].includes('Net.broadcast(op)') && !m[0].includes('state.history'); })()],
   ['self-avatar title localized via t(you), resynced by toggleLang (deep-audit fix, was hardcoded)',
     html.includes("self.title=t('you');") && html.includes('UI.refreshPeers();   // self-avatar title')
     && html.includes("you:'自分'") && html.includes("you:'You'")],
@@ -4058,6 +4078,214 @@ try {
     A.Net._onRecv({k:'op',op:{op:'upd',id:'dX',before:{stroke:'green'},after:{stroke:'red'},clock:{peer:'peerB',seq:99,ts:9e9}}});
     assert.strictEqual(A.state.wclock['dX'], undefined, 'wclock hygiene: late upd for deleted shape leaves NO stale wclock entry');
     console.log('  ✓ two-peer LWW: late upd for a deleted shape leaks no wclock entry (_stampWrites byId guard)');
+
+    // ---- ADR-0015: undo/redo as REPLICATED ops (research-improvements.md §F) --------
+    // Until v1.7.73 Store.undo() was a purely local log rewind — _apply(op,false) and
+    // nothing on the wire — so on a synced board EVERY undo diverged: A undid an add,
+    // B kept the shape forever. Nine op families, one assertion each: after A undoes,
+    // A and B must agree. Each of these fails on the pre-fix build.
+    {
+      const wire = () => {
+        reset(A); reset(B);
+        A.Net.broadcast = op => B.Net._onRecv({k:'op',op:cp(op)});
+        B.Net.broadcast = op => A.Net._onRecv({k:'op',op:cp(op)});
+      };
+      const ids   = W => W.state.shapes.map(s=>s.id).join(',');
+      const props = (W,f) => W.state.shapes.map(f).join(',');
+
+      // (1) add — the canonical case from §F.
+      wire();
+      const u1 = A.Shape.make('rect',{x:0,y:0,w:10,h:10});
+      A.Store.commit({op:'add',shape:u1});
+      assert.strictEqual(B.state.shapes.length, 1, 'undo-sync precondition: B received the add');
+      A.Store.undo();
+      assert.strictEqual(B.state.shapes.length, 0, 'undo add: the delete reaches B (was: B kept the shape forever)');
+      assert.strictEqual(ids(A), ids(B), 'undo add: peers agree');
+      // Redo re-issues the forward effect with a FRESH clock (the original peer:seq is
+      // already in B's seenOps, so a verbatim resend would be silently deduped). B is
+      // emptied first so this asserts the redo half on its own merits rather than
+      // passing because the undo above never removed anything.
+      B.state.shapes.length = 0;
+      const redoSeq = A.state.seq;
+      A.Store.redo();
+      assert.ok(A.state.seq > redoSeq, 'redo add: a fresh clock was drawn (not the original peer:seq)');
+      assert.strictEqual(B.state.shapes.length, 1, 'redo add: the re-add reaches B (fresh clock, not deduped)');
+      assert.strictEqual(ids(A), ids(B), 'redo add: peers agree');
+
+      // (2) addMany (paste/duplicate) — one undo step, one delete on the wire.
+      wire();
+      const m1 = A.Shape.make('rect',{x:0,y:0,w:5,h:5}), m2 = A.Shape.make('rect',{x:20,y:0,w:5,h:5});
+      A.Store.commit({op:'addMany',shapes:[cp(m1),cp(m2)]});
+      assert.strictEqual(B.state.shapes.length, 2, 'undo addMany precondition: B received both');
+      A.Store.undo();
+      assert.strictEqual(ids(A), ids(B), 'undo addMany: peers agree (both copies removed on B)');
+      assert.strictEqual(B.state.shapes.length, 0, 'undo addMany: B has neither copy');
+
+      // (3) del — undo re-adds, and must also restore the connector bindings the delete
+      //     cleared, or B keeps a connector snapped to the deleted shape's stale coords.
+      wire();
+      const box = A.Shape.make('rect',{x:0,y:0,w:10,h:10});
+      A.Store.commit({op:'add',shape:box});
+      const conn = A.Shape.make('arrow',{x1:50,y1:50,x2:5,y2:5});
+      conn.b = box.id;
+      A.Store.commit({op:'add',shape:conn});
+      const cc = [{id:conn.id, before:{b:box.id,x2:5,y2:5}, after:{b:null,x2:5,y2:5}}];
+      A.Store.commit({op:'del',shapes:[cp(box)],connClears:cc});
+      assert.strictEqual(B.state.shapes.find(s=>s.id===conn.id).b, null, 'undo del precondition: B cleared the binding');
+      A.Store.undo();
+      assert.strictEqual(ids(A), ids(B), 'undo del: peers agree on shape set (box is back on B)');
+      assert.strictEqual(B.state.shapes.find(s=>s.id===conn.id).b, box.id,
+        'undo del: the connector binding is restored on B too, not just locally');
+
+      // (4) upd — an absolute-patch write; the inverse carries a fresh clock so it wins
+      //     LWW on B exactly as a fresh manual edit would.
+      wire();
+      const u4 = A.Shape.make('rect',{x:0,y:0,w:10,h:10,stroke:'#000'});
+      A.Store.commit({op:'add',shape:u4});
+      A.Store.commit({op:'upd',id:u4.id,before:{stroke:'#000'},after:{stroke:'red'}});
+      assert.strictEqual(B.state.shapes[0].stroke, 'red', 'undo upd precondition: B is red');
+      A.Store.undo();
+      assert.strictEqual(B.state.shapes[0].stroke, '#000', 'undo upd: B reverts too');
+      B.state.shapes[0].stroke = '#000';                  // isolate the redo half (see above)
+      A.Store.redo();
+      assert.strictEqual(B.state.shapes[0].stroke, 'red', 'redo upd: B re-applies too');
+      assert.strictEqual(A.state.shapes[0].stroke, B.state.shapes[0].stroke, 'undo/redo upd: peers agree');
+
+      // (5) move — a delta op; the inverse is the negated delta.
+      wire();
+      const u5 = A.Shape.make('rect',{x:0,y:0,w:10,h:10});
+      A.Store.commit({op:'add',shape:u5});
+      A.Store.commit({op:'move',ids:[u5.id],dx:30,dy:-7});
+      A.Store.undo();
+      assert.strictEqual(B.state.shapes[0].x, 0, 'undo move: B translates back');
+      assert.strictEqual(B.state.shapes[0].y, 0, 'undo move: B translates back on y too');
+      assert.strictEqual(A.state.shapes[0].x, B.state.shapes[0].x, 'undo move: peers agree');
+
+      // (6) group / ungroup — restoring a prior groupId is a mix of "back into group G"
+      //     and "back to no group", so the inverse is up to one op of each kind. The
+      //     emitted ungroup must carry `before`, or _lwwDrop discards it as a no-op.
+      wire();
+      const g1 = A.Shape.make('rect',{x:0,y:0,w:5,h:5}), g2 = A.Shape.make('rect',{x:20,y:0,w:5,h:5});
+      A.Store.commit({op:'add',shape:g1}); A.Store.commit({op:'add',shape:g2});
+      A.Store.commit({op:'group',ids:[g1.id,g2.id],gid:'GG',before:[{id:g1.id},{id:g2.id}]});
+      assert.strictEqual(props(B,s=>s.groupId), 'GG,GG', 'undo group precondition: B grouped');
+      A.Store.undo();
+      assert.strictEqual(props(B,s=>s.groupId), ',', 'undo group: B ungroups too (needs `before` on the wire)');
+      assert.strictEqual(props(A,s=>s.groupId), props(B,s=>s.groupId), 'undo group: peers agree');
+      // now the ungroup direction: group, then ungroup, then undo the ungroup
+      A.Store.redo();                                     // regroup both under GG
+      A.Store.commit({op:'ungroup',ids:[g1.id,g2.id],gids:['GG'],before:[{id:g1.id,groupId:'GG'},{id:g2.id,groupId:'GG'}]});
+      assert.strictEqual(props(B,s=>s.groupId), ',', 'undo ungroup precondition: B ungrouped');
+      A.Store.undo();
+      assert.strictEqual(props(B,s=>s.groupId), 'GG,GG', 'undo ungroup: B is regrouped too');
+      assert.strictEqual(props(A,s=>s.groupId), props(B,s=>s.groupId), 'undo ungroup: peers agree');
+
+      // (7) zorder — minimal-delta form: the inverse swaps before/after per change.
+      wire();
+      const z1 = A.Shape.make('rect',{x:0,y:0,w:5,h:5}), z2 = A.Shape.make('rect',{x:20,y:0,w:5,h:5});
+      A.Store.commit({op:'add',shape:z1}); A.Store.commit({op:'add',shape:z2});
+      A.sortZ(); B.sortZ();
+      const zBefore = ids(A);
+      const z2now = A.state.shapes.find(s=>s.id===z2.id);
+      // A real key move, not a no-op: send z2 strictly below z1 so the array order flips.
+      A.Store.commit({op:'zorder',changes:[{id:z2.id,before:z2now.frac,after:A.keyBetween(null,A.state.shapes.find(s=>s.id===z1.id).frac)}]});
+      assert.notStrictEqual(ids(A), zBefore, 'undo zorder precondition: the z-order op actually reordered A');
+      assert.strictEqual(ids(A), ids(B), 'undo zorder precondition: B took the reorder');
+      A.Store.undo();
+      assert.strictEqual(ids(A), zBefore, 'undo zorder: A restores the original order');
+      assert.strictEqual(ids(A), ids(B), 'undo zorder: peers agree on stacking order');
+
+      // (8) style / resize / align — batch absolute patches.
+      wire();
+      const s8 = A.Shape.make('rect',{x:0,y:0,w:10,h:10,stroke:'#000'});
+      A.Store.commit({op:'add',shape:s8});
+      A.Store.commit({op:'style',before:[{id:s8.id,stroke:'#000'}],after:[{id:s8.id,stroke:'blue'}]});
+      A.Store.commit({op:'resize',before:[{...cp(s8),w:10}],after:[{...cp(s8),stroke:'blue',w:44}]});
+      A.Store.undo();                                     // undo the resize
+      assert.strictEqual(B.state.shapes[0].w, 10, 'undo resize: B restores width');
+      A.Store.undo();                                     // undo the style
+      assert.strictEqual(B.state.shapes[0].stroke, '#000', 'undo style: B restores stroke');
+      assert.strictEqual(A.state.shapes[0].stroke, B.state.shapes[0].stroke, 'undo style: peers agree');
+      // align carries `dir`, which validRemotePayload requires — drop it and B rejects.
+      wire();
+      const a8 = A.Shape.make('rect',{x:0,y:0,w:10,h:10});
+      A.Store.commit({op:'add',shape:a8});
+      A.Store.commit({op:'align',dir:'left',before:[{id:a8.id,x:0}],after:[{id:a8.id,x:100}]});
+      assert.strictEqual(B.state.shapes[0].x, 100, 'undo align precondition: B moved');
+      A.Store.undo();
+      assert.strictEqual(B.state.shapes[0].x, 0, 'undo align: B restores x (inverse keeps `dir`)');
+
+      console.log('  ✓ ADR-0015: undo AND redo replicate — add/addMany/del(+bindings)/upd/move/group/ungroup/zorder/style/resize/align all converge (§F)');
+
+      // (9) The LWW guard still wins over replication: a key a remote peer claimed more
+      //     recently is neither restored locally NOR broadcast. This is the v1.7.68 fix
+      //     extended to the wire — previously only A's side could be asserted, because
+      //     nothing was sent. Partial suppression: A's op touched w AND stroke; only w is
+      //     contested, so stroke must still revert on BOTH peers.
+      reset(A); reset(B);
+      const qAB2=[], qBA2=[];
+      A.Net.broadcast = op => qAB2.push({k:'op',op:cp(op)});
+      B.Net.broadcast = op => qBA2.push({k:'op',op:cp(op)});
+      const cShape = {id:'cS',type:'rect',x:0,y:0,w:10,h:10,z:1,frac:null,stroke:'#000',size:2,opacity:1};
+      A.state.shapes.push(cp(cShape)); B.state.shapes.push(cp(cShape)); A.sortZ(); B.sortZ();
+      A.Store.commit({op:'resize',before:[cp(cShape)],after:[{...cp(cShape),w:40,stroke:'gold'}],clock:{peer:'peerA',seq:1,ts:1000}});
+      B.Store.commit({op:'resize',before:[cp(cShape)],after:[{...cp(cShape),w:99}],clock:{peer:'peerB',seq:1,ts:2000}}); // newer, w only
+      qAB2.forEach(m=>B.Net._onRecv(m)); qBA2.forEach(m=>A.Net._onRecv(m));
+      qAB2.length=0; qBA2.length=0;
+      // The clocks above are hand-pinned to force the winner; state.seq never advanced,
+      // so the undo's fresh clock would re-use peerA:1 and be deduped as already-seen.
+      // Real ops always draw seq from ++state.seq, so this is a fixture concern only.
+      A.state.seq = 50;
+      assert.strictEqual(A.state.shapes[0].w, 99, 'contested-undo precondition: A converged to B\'s newer w=99');
+      assert.strictEqual(B.state.shapes[0].stroke, 'gold', 'contested-undo precondition: B took A\'s uncontested stroke');
+      A.Store.undo();
+      qAB2.forEach(m=>B.Net._onRecv(m));
+      assert.strictEqual(A.state.shapes[0].w, 99, 'contested undo: A does not regress the newer remote w');
+      assert.strictEqual(B.state.shapes[0].w, 99, 'contested undo: B is not asked to regress it either');
+      assert.strictEqual(A.state.shapes[0].stroke, '#000', 'partial suppression: the uncontested stroke still reverts on A');
+      assert.strictEqual(B.state.shapes[0].stroke, '#000', 'partial suppression: ...and that revert does reach B');
+      console.log('  ✓ ADR-0015: an undo broadcasts only the keys it actually restored — LWW-lost keys are dropped from the wire too');
+
+      // (10) Ops that were never replicated must stay unreplicated on undo. `clear` and
+      //      `replace` are deliberately absent from REMOTE_OPS (a peer must not be able
+      //      to wipe your board), so undoing them may not put a delete/add on the wire.
+      wire();
+      const k1 = A.Shape.make('rect',{x:0,y:0,w:5,h:5});
+      A.Store.commit({op:'add',shape:k1});
+      const bSnapshot = ids(B);
+      A.Store.commit({op:'clear',shapes:[cp(k1)]});
+      assert.strictEqual(ids(B), bSnapshot, 'local-only precondition: `clear` itself never reached B');
+      A.Store.undo();
+      assert.strictEqual(ids(B), bSnapshot, 'undo clear: emits nothing — B is untouched, as it was for the forward op');
+      assert.strictEqual(ids(A), bSnapshot, 'undo clear: A still restores its own board locally');
+
+      // (11) An undo must not become its own undo step, and the redo branch must survive:
+      //      _emit is broadcast-only by construction (never pushed to history).
+      wire();
+      const h1 = A.Shape.make('rect',{x:0,y:0,w:5,h:5});
+      A.Store.commit({op:'add',shape:h1});
+      const hLen = A.state.history.length, hIdx = A.state.histIdx;
+      A.Store.undo();
+      assert.strictEqual(A.state.history.length, hLen, 'undo emits broadcast-only: history length unchanged');
+      assert.strictEqual(A.state.histIdx, hIdx - 1, 'undo emits broadcast-only: histIdx just steps back');
+      assert.ok(A.Store.redo(), 'undo emits broadcast-only: the redo branch was not chopped');
+      assert.strictEqual(ids(A), ids(B), 'undo→redo round trip: peers still agree');
+
+      // (12) The emitting peer records its own inverse in seenOps, so an echoing
+      //      transport (BroadcastChannel loopback, a relay) cannot re-apply it.
+      wire();
+      const e1 = A.Shape.make('rect',{x:0,y:0,w:5,h:5});
+      A.Store.commit({op:'add',shape:e1});
+      let echoed = null;
+      A.Net.broadcast = op => { echoed = cp(op); B.Net._onRecv({k:'op',op:cp(op)}); };
+      A.Store.undo();
+      assert.ok(echoed && echoed.op==='del', 'echo guard precondition: the undo did emit a del');
+      assert.ok(A.state.seenOps.has(echoed.clock.peer+':'+echoed.clock.seq), 'echo guard: the emitter recorded its own inverse in seenOps');
+      const beforeEcho = ids(A);
+      A.Net._onRecv({k:'op',op:echoed});                  // transport echoes it straight back
+      assert.strictEqual(ids(A), beforeEcho, 'echo guard: re-receiving our own inverse is a no-op');
+      console.log('  ✓ ADR-0015: local-only ops stay local, undo is not its own history entry, and the emitter dedups its own inverse');
+    }
 
     // §3.16: but concurrent MOVES of the same shape CONVERGE - move is a delta
     // (Shape.translate adds dx,dy), and translation commutes, so receipt order is

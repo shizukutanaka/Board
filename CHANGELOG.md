@@ -2,6 +2,59 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.73] - 2026-08-08
+
+論文由来の未着手項目の消化 — `docs/research-improvements.md` §F「協調 undo/redo の正しさ」
+([arxiv 2404.11308 *Undo and Redo Support for Replicated Registers*](https://arxiv.org/abs/2404.11308))。
+2ピアハーネスで実装を突き合わせたところ、§F が想定していた「並行編集後の undo が崩れる」より
+**一段手前で壊れていた**ことが判明した。
+
+### Fixed
+- **undo が一切 broadcast されておらず、同期中のボードでは Ctrl+Z のたびに発散していた**:
+  `Store.commit` / `_recordCommitted` / `_syncTextFinalize` はいずれも `Net.broadcast` するのに、
+  `Store.undo()` は `_apply(op,false)` でローカルを巻き戻すだけだった。並行編集も競合も要らない —
+  **単独ユーザーが図形を1つ足して Ctrl+Z を押すだけ**で、相手のボードにはその図形が残り続ける。
+  2ピアハーネスで `add`/`upd`/`move`/`del` の全てについて発散を実測(A=0図形 / B=1図形 等)。
+- **修正 (ADR-0015)**: 論文の指針どおり、undo を「ローカル・スタックの巻き戻し」ではなく
+  **逆効果を持つ新しい op の発行**として実装。歴史は書き換えられない(ピアは既に元 op を
+  観測済み)ので、取り消しは未来向きの新しい書き込みとしてしか表現できない。
+  - `Store._revOps(op)` — 逆適用の効果を、ピア側で*前向きに*適用できる op 列に変換
+    (`add`→`del`、`del`→`addMany`+コネクタ束縛復元、`move`→負のデルタ、`group`/`ungroup`→
+    復元先 groupId ごとの op、`zorder`→before/after 入れ替え、`style`/`resize`/`align`→同型 op)。
+  - `Store._emit(op)` — 新鮮なクロックを刻み `seenOps` 登録・`_stampWrites`・`Net.broadcast`。
+    **`state.history` には積まない**(undo が自分自身の undo ステップになってはならない)。
+    `_syncTextFinalize` が既に使っていた「broadcast 専用 op」と同じ形。
+  - `redo` も新鮮なクロックを付けたコピーを送る。元 op の verbatim 再送は `peer:seq` で
+    dedup され、古い `ts` は以後の書き込みに LWW で負けるため機能しない。
+- **v1.7.68 の LWW ガードが片ピアから両ピアに拡張された**: `_apply` 内に2箇所インラインで
+  書かれていた逆適用フィルタを `_revPatch(id,raw,op)` に括り出し、`_revOps` と `_apply` が
+  同じ1つの定義を読むようにした。結果、**リモートに取られたキーはローカルで復元されないだけで
+  なく、ワイヤにも載らない**。ADR-0002 の 2026-07-13 追記が記録していた
+  「値は戻ったのに `wclock` はリモートを最終書き込み者と記録したまま」という不整合は、
+  undo 自身が新しい書き込みとして `wclock` を前進させるため構造的に消えた。
+- **複製されない op の undo は複製しない**: `clear` / `replace` / `beautify` は `REMOTE_OPS` に
+  無い(前2つは「悪意ある peer が盤面を消せない」ための意図的な防御)。前向きの op が届いて
+  いない以上、その undo が `del`/`addMany` を送れば**ピアの状態を一方的に壊す**。
+  `undo()` は `REMOTE_OPS.has(op.op)` で門を作る。
+
+### Docs
+- `docs/ADR-0015-replicated-undo.md` を新規作成(逆 op の対応表、代替案3件の却下理由、
+  既知の限界3件を明記)。`docs/research-improvements.md` §F を解決済みに更新。
+  `docs/ADR-0002` の「残: undo×sync(§F)」と `docs/architecture.md` の Store 節、
+  `docs/spec.md` §8 の同期プロトコル MUST も同期。
+- README / CLAUDE.md / spec.md のサイズ表記を実測に更新(raw 281KB / gzip 87KB / brotli 74KB)。
+  v1.7.72 で導入したバッジ整合テストは許容内だったが、公称値は実測に合わせる方針を継続。
+
+### Tests
+- 2ピアハーネスに3ブロック追加。9つの op ファミリすべてで undo 後に A と B が一致すること、
+  redo も同様(redo 側は B を「正しく伝播した undo が残す状態」に置いてから検証し、undo の
+  成否に相乗りして通ってしまわないようにした)。部分抑止(`w` はリモートに取られ `stroke` だけ
+  復元)、local-only op の undo が何も送らないこと、undo が history エントリを作らず redo 分岐を
+  切らないこと、発信ピアが自分の逆 op をエコーで再適用しないこと。
+- 非空虚性は stash 法で確認 — v1.7.72 の `index.html` に対して **26 assertion が失敗**する。
+- presence checks を2件追加(`_emit`/`_revOps` の存在と結線、`_emit` が `state.history` に
+  触れないこと)。合計 **1637 pass, 0 fail**。
+
 ## [1.7.72] - 2026-08-08
 
 First Principles 監査の続き。`CLAUDE.md` WHY は4本柱に加えて**3つの勝利条件**
