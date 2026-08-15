@@ -109,9 +109,20 @@ replicated undo 論文群。
     小型 WASM モデル or BYOK API を **任意機能** とし、offline-first を壊さない(クラウド必須にしない)。
 - **原則整合**: 幾何ヒューリスティックは依存ゼロで単一HTML可。ML は WASM/BYOK でオプトイン。
 
-### H. **E2E 暗号化同期**(local-first の Privacy 原則)
+### H. **E2E 暗号化同期**(local-first の Privacy 原則) — **共有リンクのみ ✅ 解決 (v1.7.75, ADR-0017) / 同期経路は未着手**
 - README が予告する `#roomId:key` + AES-GCM を具体化。URL fragment の鍵はサーバへ送られない。
   WebCrypto(ブラウザ内蔵=依存ゼロ)で op payload を WebRTC 送信前に AES-GCM 暗号化。
+- **実装済みの範囲 (ADR-0017)**: **共有リンク**を AES-GCM 256bit で暗号化し、鍵を fragment に置く
+  (`#b=e:<b64url(iv‖ct)>.<b64url(key)>`)。圧縮→暗号の順、平文先頭 1 バイトが deflate 有無を自己記述。
+  旧 `z:`/`j:` リンクは恒久サポート。`crypto.subtle` 不在時は平文へフォールバックし、
+  モーダルが実態を表示する。
+- **未着手の範囲**: 本項目本来の射程である「**op payload を WebRTC 送信前に暗号化**」は別物として残る。
+  鍵配布(ルーム鍵)・`Net` の全経路・スナップショットマージ・既存ピアとの互換設計が要るため、
+  独立した ADR に値する。現状の同期は DTLS による転送路暗号化のみ。
+- **副産物として実バグを1件発見**: 共有経路をハーネスから初めて駆動したところ、`z:` の deflate 分岐が
+  `getWriter()` による writable ロックで**毎回例外**になり、無圧縮 base64 に落ちていた
+  (共有 URL が意図の約 7.2 倍)。テストで駆動していない領域は、コードを読んでも
+  「書いてあるから動く」と誤認されうるという一例。
 - **出典**: [Ink & Switch — Local-first software](https://www.inkandswitch.com/essay/local-first/)(7 原則: Privacy / Longevity 等)
 
 ### I. **アクセシビリティ: canvas の DOM ミラー / 意味的フォールバック**

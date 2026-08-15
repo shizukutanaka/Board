@@ -112,15 +112,33 @@ const checks = [
   ['BroadcastChannel sync code present', html.includes("NET_CHANNEL_PREFIX='board:'")],
   ['PEER_ID persistence', html.includes("localStorage.getItem('board.peer')")],
   ['Share export/import', html.includes('exportToUrl') && html.includes('importFromHash')],
-  // v1.7.71 (First-Principles audit): the share link is deflate+base64 — COMPRESSED, NOT
-  // ENCRYPTED — so anyone holding the link can read the whole board. The product's privacy
-  // pillar (CLAUDE.md WHY) must not be overstated. These lock the honest framing in place.
-  ['share link: exportToUrl still emits the plaintext #b= payload (no crypto claimed or used)',
-    html.includes("'#b='+encodeURIComponent(payload)") && !/crypto\.subtle|AES-GCM/.test(html)],
-  ['share modal warns the link is not encrypted (ja+en)',
-    html.includes('data-t="shareUrlWarn"')
+  // v1.7.71 asserted the OPPOSITE of these two — that the link was still plaintext and
+  // that no crypto was claimed — deliberately, so that the day E2E landed the suite would
+  // fail and force the framing to be revisited rather than silently drift. v1.7.75
+  // (ADR-0017) landed it, both failed exactly as designed, and these replace them.
+  ['ADR-0017: share link is AES-GCM encrypted with the key in the fragment',
+    html.includes("'#b=e:'+_b64u(blob)+'.'+_b64u(raw)")
+    && html.includes("sub.generateKey({name:'AES-GCM',length:256}")
+    && html.includes("crypto.getRandomValues(new Uint8Array(12))")
+    && html.includes("sub.importKey('raw',raw,{name:'AES-GCM'}")],
+  ['ADR-0017: plaintext z:/j: import kept for backward compatibility',
+    html.includes("}else if(kind==='z:'&&typeof DecompressionStream!=='undefined'){")
+    && html.includes("}else if(kind==='j:'){")],
+  // The modal must describe the link it ACTUALLY produced. Keeping the warning
+  // unconditional after encryption would be as wrong as claiming encryption was before.
+  ['share modal states encryption status honestly, both ja+en, chosen from the export result',
+    html.includes('data-t="shareUrlWarn"') && html.includes('data-t="shareUrlEnc"')
     && html.includes('shareUrlWarn:\'⚠ 盤面の内容はURLに埋め込まれます')
-    && html.includes("shareUrlWarn:'⚠ Your board is embedded in the URL (compressed, NOT encrypted)")],
+    && html.includes("shareUrlWarn:'⚠ Your board is embedded in the URL (compressed, NOT encrypted)")
+    && html.includes("shareUrlEnc:'🔒 このリンクは暗号化されています")
+    && html.includes("shareUrlEnc:'🔒 This link is encrypted (AES-GCM)")
+    && html.includes("document.getElementById('shareEnc').hidden=!r.encrypted;")
+    && html.includes("document.getElementById('shareWarn').hidden=!!r.encrypted;")],
+  // v1.7.75: `const w=cs.writable.getWriter()` (unused variable) locked the writable, so
+  // the next pipeThrough threw every time and the catch silently emitted uncompressed
+  // base64. Compression never ran in any browser. Keep the helper getWriter-free.
+  ['ADR-0017 regression: deflate helper does not lock the stream with a stray getWriter',
+    html.includes('async function _deflate(bytes){') && !/cs\.writable\.getWriter\(\)/.test(html)],
   ['WebRTC manual signaling', html.includes('wrtcCreateOffer') && html.includes('wrtcAcceptOffer')],
   ['Share button wired in wire()', html.includes("btnShare") && html.includes("UI.openShare")],
   ['Net.init called in main()', html.includes('Net.init()')],
@@ -1042,7 +1060,8 @@ const fakeWin = {
   requestAnimationFrame: (fn) => 0,
   setTimeout, clearTimeout, setInterval: () => 0, clearInterval,
   location: { hash: '', origin: 'http://test', pathname: '/index.html' },
-  history: { replaceState(){} },
+  history: { _calls: [], replaceState(a,b,url){ this._calls.push(url); } },
+  screen: { orientation: { addEventListener(){}, removeEventListener(){} } },
   navigator: { language:'en', onLine:true,
     serviceWorker:{ register:()=>Promise.resolve(), _listeners:{},
       addEventListener(type,fn){ this._listeners[type]=fn; } },
@@ -1050,7 +1069,9 @@ const fakeWin = {
   localStorage: { _d: {}, getItem(k){ return this._d[k] || null }, setItem(k,v){ this._d[k] = String(v) }, removeItem(k){ delete this._d[k] } },
   indexedDB: { open: () => ({ addEventListener(){}, onsuccess:null, onerror:null, onupgradeneeded:null }) },
   URL: { createObjectURL: () => 'blob:x', revokeObjectURL(){} },
-  Blob, confirm: () => false, alert(){}, prompt: () => null,
+  // `confirm` is captured BY VALUE when a world is built, so a test cannot swap it
+  // afterwards. Delegate through a mutable slot instead; the default is unchanged.
+  Blob, _confirmImpl: () => false, confirm: (...a) => fakeWin._confirmImpl(...a), alert(){}, prompt: () => null,
   getComputedStyle: () => ({ getPropertyValue: () => '#fff' }),
   BroadcastChannel: class { onmessage=null; postMessage(){} close(){} },
   RTCPeerConnection: undefined,
@@ -1088,9 +1109,17 @@ function makeFakeIdb(){
 
 // Execute in isolated function scope; export hooks via globalThis
 try {
+  // `location` and `history` are injected the same way `document`/`navigator` are.
+  // Without them, Share.exportToUrl/importFromHash throw ReferenceError under the
+  // script's 'use strict' (they read location.origin/hash and call history.replaceState),
+  // so the share path could never be exercised behaviourally — which is exactly how a
+  // dead compression branch and a plaintext payload both survived code review.
+  // `crypto` needs no injection: it resolves to Node's globalThis.crypto, the same way
+  // uid()'s crypto.randomUUID already does, and Node 22 ships subtle + CompressionStream.
   const fn = new Function('window','document','navigator','requestAnimationFrame',
     'indexedDB','URL','setTimeout','clearTimeout','setInterval','clearInterval',
-    'getComputedStyle','confirm','alert','Blob','globalThis','self','localStorage',`
+    'getComputedStyle','confirm','alert','Blob','globalThis','self','localStorage',
+    'location','history','screen',`
     ${js}
     return { state, Store, G, Shape, distToSeg,
              doBringFront, doSendBack, doBringForward, doSendBackward,
@@ -1099,7 +1128,7 @@ try {
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize, boardOutline, SR_MIRROR_MAX,
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize, boardOutline, SR_MIRROR_MAX, Share, _deflateForTest: _deflate,
              _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
              exportPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
@@ -1113,7 +1142,8 @@ try {
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
     fakeWin.indexedDB, fakeWin.URL, setTimeout, clearTimeout, setInterval, clearInterval,
-    fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage
+    fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage,
+      fakeWin.location, fakeWin.history, fakeWin.screen
   );
   const { state, Store, G, Shape, distToSeg,
           doBringFront, doSendBack, doBringForward, doSendBackward,
@@ -1122,7 +1152,7 @@ try {
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize, boardOutline, SR_MIRROR_MAX,
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize, boardOutline, SR_MIRROR_MAX, Share, _deflateForTest: _deflate,
           _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
           exportPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
@@ -1495,6 +1525,7 @@ try {
   assert.strictEqual(cycleSel([],'a',1), null, 'empty board => null');
   assert.strictEqual(describeShape({type:'rect',x:10.4,y:20.6,w:5,h:5}), 'Rectangle @ 10,21', 'shape description for SR (en locale name)');
   console.log('  ✓ cycleSel cycles selection, describeShape labels for screen readers');
+
 
   // ---- ADR-0016: off-screen structural mirror (§I / spec.md §14.3 P1) --------------
   // cycleSel + describeShape expose ONE shape at a time, on demand. That is navigation,
@@ -3621,7 +3652,8 @@ try {
     const B = fn(
       fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
       fakeWin.indexedDB, fakeWin.URL, setTimeout, clearTimeout, setInterval, clearInterval,
-      fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage
+      fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage,
+      fakeWin.location, fakeWin.history, fakeWin.screen
     );
     const cp = o => JSON.parse(JSON.stringify(o));
     A.state.peerId='peerA'; B.state.peerId='peerB';
@@ -3871,7 +3903,8 @@ try {
         ls._d['board.theme']='dark';
         const E=fn(fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
           fakeWin.indexedDB,fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
-          fakeWin.getComputedStyle,fakeWin.confirm,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage);
+          fakeWin.getComputedStyle,fakeWin.confirm,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
+          fakeWin.location,fakeWin.history,fakeWin.screen);
         assert.strictEqual(E.UI._themeMode(),'dark','boot restore: a persisted board.theme=dark is honoured at module load');
         delete ls._d['board.theme'];
 
@@ -3881,7 +3914,8 @@ try {
         fakeWin.localStorage={getItem(){throw new Error('blocked')},setItem(){throw new Error('blocked')},removeItem(){throw new Error('blocked')}};
         const F=fn(fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
           fakeWin.indexedDB,fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
-          fakeWin.getComputedStyle,fakeWin.confirm,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage);
+          fakeWin.getComputedStyle,fakeWin.confirm,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
+          fakeWin.location,fakeWin.history,fakeWin.screen);
         F.UI.toggleTheme();
         assert.strictEqual(F.UI._themeMode(),'light','storage-throws: first toggle still advances to light in memory');
         assert.strictEqual(de.dataset.theme,'light','storage-throws: DOM actually reflects light');
@@ -4030,7 +4064,8 @@ try {
       try{
         D=fn(fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
           fakeWin.indexedDB,fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
-          fakeWin.getComputedStyle,fakeWin.confirm,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage);
+          fakeWin.getComputedStyle,fakeWin.confirm,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
+          fakeWin.location,fakeWin.history,fakeWin.screen);
         assert.strictEqual(D._getLang(),'ja','boot restore: a persisted board.lang=ja is honoured at module load, before any toggle');
         assert.strictEqual(D._getT().k.select,D.I18N.ja.k.select,'boot restore: T is I18N.ja from the start, not just LANG');
       }finally{
@@ -7717,9 +7752,16 @@ try {
     const C=fn(
       fakeWin, fakeDoc, fakeWin.navigator, spyRaf,
       fakeWin.indexedDB, fakeWin.URL, setTimeout, clearTimeout, setInterval, clearInterval,
-      fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage
+      fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage,
+      fakeWin.location, fakeWin.history, fakeWin.screen
     );
     C.state.showMinimap=false;
+    // v1.7.75: building a world now runs its main()/wire() far enough to schedule its own
+    // frames (the harness gained the `screen` global, so wire() no longer throws). Run
+    // those queued callbacks so Minimap's internal pending-RAF latch clears, then zero the
+    // counter — the three assertions below then read exactly the deltas schedule() causes.
+    for(let i=0;i<4&&rafCalls.length;i++){const q=rafCalls.splice(0);for(const cb of q){try{cb()}catch(_){}}}
+    rafCalls.length=0;
     C.Minimap.schedule();
     assert.strictEqual(rafCalls.length,0,'v1.7.53b: Minimap.schedule() hidden — no RAF scheduled');
     C.state.showMinimap=true;
@@ -8035,6 +8077,165 @@ try {
     assert.ok(oldRatio<3,`a11y: sanity — the pre-fix pairing (raw brand on light paper) is genuinely below 3:1 (got ${oldRatio.toFixed(2)}:1), confirming this test would have caught the original bug`);
     console.log(`  ✓ a11y: focus ring contrast — light ${lightRatio.toFixed(2)}:1, dark ${darkRatio.toFixed(2)}:1, both clear the 3:1 floor (a11y-audit-2026-07)`);
   }
+
+  // ADR-0017's share tests run LAST and are the only awaiting tests in the suite.
+  // Yielding to the microtask queue lets the script's own main() IIFE — parked on its
+  // first await since load — resume and finish, which schedules RAF work and mutates the
+  // shared world. Running these at the end keeps that side effect out of every other
+  // assertion. Any future async test belongs down here too.
+  // ---- ADR-0017: share-link E2E (FT-21) ------------------------------------------
+  // Until v1.7.75 the share path had NO behavioural coverage at all — `location` and
+  // `history` were not injected into the harness, so nothing could call it. Two defects
+  // lived in that blind spot: the payload was plaintext (found by reading code, v1.7.71)
+  // and deflate never ran (found the moment this harness could drive it). Both are now
+  // pinned by execution, not by inspection.
+  await (async () => {
+    const keep = state.shapes.splice(0, state.shapes.length);
+    const keepName = state.docName, keepSel = state.selection;
+    _invalidateGrid();
+    const SECRET = 'launch codes hunter2', DOCNAME = 'Q3-Reorg-Confidential';
+    const seed = () => {
+      state.shapes.length = 0;
+      state.shapes.push(Shape.make('sticky', {x:0,y:0,w:80,h:60,text:SECRET}));
+      state.shapes.push(Shape.make('rect',   {x:100,y:0,w:40,h:40}));
+      _invalidateGrid(); state.docName = DOCNAME; state.selection = new Set();
+    };
+    const wipe = () => { state.shapes.length = 0; _invalidateGrid(); state.docName = 'Untitled'; };
+    const hashOf = url => url.slice(url.indexOf('#'));
+    try {
+      // (1) round trip through a real AES-GCM link
+      seed();
+      const r = await Share.exportToUrl();
+      assert.strictEqual(r.encrypted, true, 'e2e: exportToUrl reports the link as encrypted');
+      assert.ok(r.url.includes('#b=e:'), `e2e: link uses the e: kind (got ${r.url.slice(0,48)})`);
+      assert.ok(/#b=e:[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+$/.test(r.url), 'e2e: fragment is b64url ciphertext . b64url key');
+      // base64url must survive encodeURIComponent untouched — that is why it was chosen
+      assert.strictEqual(r.url, fakeWin.location.origin + fakeWin.location.pathname + hashOf(r.url), 'e2e: no percent-escaping in the fragment');
+
+      // (2) THE claim under test: the ciphertext is opaque. v1.7.71 found the board
+      //     recoverable straight out of the link; this fails if that ever returns.
+      const frag = hashOf(r.url);
+      assert.ok(!frag.includes(SECRET), 'e2e: sticky text is not in the link verbatim');
+      assert.ok(!frag.includes(DOCNAME), 'e2e: document name is not in the link verbatim');
+      const cipherPart = frag.slice(frag.indexOf('e:') + 2).split('.')[0];
+      // Decode with Buffer, not a harness internal — an undefined helper would throw and
+      // make this assertion pass vacuously, which is precisely the failure mode it exists
+      // to catch. Assert the decode actually produced bytes first.
+      const cipherBytes = Buffer.from(cipherPart, 'base64url');
+      assert.ok(cipherBytes.length > 12, 'e2e: payload decodes to iv+ciphertext bytes (guard against a vacuous check below)');
+      const decoded = cipherBytes.toString('latin1');
+      assert.ok(!decoded.includes(SECRET) && !decoded.includes(DOCNAME) && !decoded.includes('shapes'),
+        'e2e: base64-decoding the payload yields no plaintext (compression is NOT encryption)');
+
+      // (3) it really does import back
+      wipe();
+      fakeWin.location.hash = frag;
+      assert.strictEqual(await Share.importFromHash(), true, 'e2e: encrypted link imports');
+      assert.strictEqual(state.shapes.length, 2, 'e2e: both shapes restored');
+      assert.strictEqual(state.shapes.find(s=>s.type==='sticky').text, SECRET, 'e2e: sticky text round-trips exactly');
+      assert.strictEqual(state.docName, DOCNAME, 'e2e: document name round-trips');
+      assert.strictEqual(fakeWin.history._calls.at(-1), fakeWin.location.pathname,
+        'e2e: the key is stripped from the address bar after import');
+
+      // (4) a truncated link (chat apps break long URLs) is diagnosed as such
+      const toasts = [];
+      const origToast = UI.toast; UI.toast = (m, k) => { toasts.push(m); };
+      try {
+        wipe();
+        fakeWin.location.hash = frag.slice(0, frag.lastIndexOf('.'));
+        assert.strictEqual(await Share.importFromHash(), false, 'e2e: key-less link is refused');
+        assert.strictEqual(state.shapes.length, 0, 'e2e: key-less link imports nothing');
+        assert.strictEqual(toasts.at(-1), api.I18N.en.shareKeyMissing, 'e2e: key-less link says the key is missing, not "invalid board"');
+
+        // (5) wrong key — GCM's auth tag makes this indistinguishable from tampering
+        const goodKey = frag.slice(frag.lastIndexOf('.') + 1);
+        seed();
+        const other = await Share.exportToUrl();
+        const otherKey = other.url.slice(other.url.lastIndexOf('.') + 1);
+        assert.notStrictEqual(otherKey, goodKey, 'e2e: every link gets a freshly generated key');
+        wipe();
+        fakeWin.location.hash = frag.slice(0, frag.lastIndexOf('.') + 1) + otherKey;
+        assert.strictEqual(await Share.importFromHash(), false, 'e2e: wrong key is refused');
+        assert.strictEqual(state.shapes.length, 0, 'e2e: wrong key imports nothing');
+        assert.strictEqual(toasts.at(-1), api.I18N.en.shareKeyBad, 'e2e: wrong key is reported as a key mismatch');
+      } finally { UI.toast = origToast; }
+
+      console.log('  ✓ ADR-0017 share E2E: AES-GCM round trip, ciphertext is opaque (no plaintext recoverable), truncated and wrong-key links diagnosed distinctly');
+
+      // (6) links already in the wild must keep working. Build both legacy payloads the
+      //     way pre-v1.7.75 did and import them.
+      const legacy = {v:'1.7.0', name:'Legacy Board', shapes:[{id:'lg1',type:'rect',x:1,y:2,w:3,h:4,z:1}]};
+      const legacyJson = JSON.stringify(legacy);
+      wipe();
+      fakeWin.location.hash = '#b=' + encodeURIComponent('j:' + Buffer.from(legacyJson,'utf8').toString('base64'));
+      assert.strictEqual(await Share.importFromHash(), true, 'back-compat: a legacy j: link still imports');
+      assert.strictEqual(state.shapes.length, 1, 'back-compat: j: shapes restored');
+      assert.strictEqual(state.docName, 'Legacy Board', 'back-compat: j: name restored');
+      const zBytes = await api._deflateForTest(new TextEncoder().encode(legacyJson));
+      wipe();
+      fakeWin.location.hash = '#b=' + encodeURIComponent('z:' + Buffer.from(zBytes).toString('base64'));
+      assert.strictEqual(await Share.importFromHash(), true, 'back-compat: a legacy z: link still imports');
+      assert.strictEqual(state.shapes.length, 1, 'back-compat: z: shapes restored');
+
+      // (7) deflate must ACTUALLY run. Pre-v1.7.75 an unused `getWriter()` locked the
+      //     stream so every pipeThrough threw and the catch silently shipped uncompressed
+      //     base64 — share URLs ran ~7x larger than the format docs claimed.
+      const bulky = JSON.stringify({shapes:Array.from({length:40},(_,i)=>({id:'s'+i,type:'rect',x:i,y:i,w:10,h:10,z:i,stroke:'#0F172A'}))});
+      const packed = await api._deflateForTest(new TextEncoder().encode(bulky));
+      assert.ok(packed && packed.length > 0, 'deflate: the helper returns bytes instead of throwing (stray getWriter would make this null)');
+      assert.ok(packed.length < bulky.length / 3,
+        `deflate: repetitive board compresses to well under a third (${packed.length}B from ${bulky.length}B) — proves compression is really applied`);
+
+      // (8) no WebCrypto (non-secure context): fall back to plaintext and SAY so, rather
+      //     than emitting an unencrypted link while the modal claims encryption.
+      seed();
+      const realCrypto = globalThis.crypto;
+      let fb;
+      try {
+        Object.defineProperty(globalThis, 'crypto', {value:{getRandomValues:realCrypto.getRandomValues.bind(realCrypto)}, configurable:true});
+        fb = await Share.exportToUrl();
+      } finally {
+        Object.defineProperty(globalThis, 'crypto', {value:realCrypto, configurable:true});
+      }
+      assert.strictEqual(fb.encrypted, false, 'fallback: exportToUrl reports the link as NOT encrypted when subtle is missing');
+      assert.ok(/#b=z(%3A|:)/.test(fb.url), `fallback: emits the legacy compressed payload (got ${fb.url.slice(0,44)})`);
+      wipe();
+      fakeWin.location.hash = hashOf(fb.url);
+      assert.strictEqual(await Share.importFromHash(), true, 'fallback: the plaintext link still imports');
+      assert.strictEqual(state.shapes.find(s=>s.type==='sticky').text, SECRET, 'fallback: round-trips content');
+
+      // (9) the encrypted path must not bypass the import safety net: ADR-0004 backup,
+      //     the confirm() prompt, and a reversible replace op.
+      seed();
+      const enc2 = await Share.exportToUrl();
+      const backups = [];
+      const origBackup = Persist.saveBackup; Persist.saveBackup = (...a) => { backups.push(a); };
+      const origConfirm = fakeWin._confirmImpl; let asked = 0;
+      fakeWin._confirmImpl = () => { asked++; return true; };
+      try {
+        // a NON-empty board is what triggers both the prompt and the backup
+        state.shapes.length = 0;
+        state.shapes.push(Shape.make('rect', {x:9,y:9,w:9,h:9}));
+        _invalidateGrid();
+        const histBefore = state.history.length;
+        fakeWin.location.hash = hashOf(enc2.url);
+        assert.strictEqual(await Share.importFromHash(), true, 'safety net: encrypted import proceeds after confirm');
+        assert.strictEqual(asked, 1, 'safety net: encrypted import still asks before replacing a non-empty board');
+        assert.strictEqual(backups.length, 1, 'safety net: encrypted import still writes the ADR-0004 backup');
+        assert.strictEqual(state.history.length, histBefore + 1, 'safety net: encrypted import records exactly one op');
+        assert.strictEqual(state.history.at(-1).op, 'replace', 'safety net: that op is the reversible whole-board replace');
+        Store.undo();
+        assert.strictEqual(state.shapes.length, 1, 'safety net: Ctrl+Z restores the board the shared link replaced');
+        assert.strictEqual(state.shapes[0].w, 9, 'safety net: the restored board is the pre-import one');
+      } finally { Persist.saveBackup = origBackup; fakeWin._confirmImpl = origConfirm; }
+      console.log('  ✓ ADR-0017 share E2E: legacy z:/j: links still import, deflate genuinely compresses (7x regression pinned), no-WebCrypto falls back honestly, and ADR-0004 backup + undo still guard the encrypted path');
+    } finally {
+      state.shapes.length = 0;
+      for (const s of keep) state.shapes.push(s);
+      state.docName = keepName; state.selection = keepSel;
+      fakeWin.location.hash = ''; _invalidateGrid();
+    }
+  })();
 
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7

@@ -2,6 +2,76 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.75] - 2026-08-15
+
+`CLAUDE.md` WHY の4本柱(単一HTML / ゼロ登録 / 完全無料 / **プライバシー**)のうち、
+最後まで未実装だった4本目を**共有リンクの範囲で**実装。`docs/feature-backlog.md` FT-21、
+`docs/research-improvements.md` §H。根拠は
+[Ink & Switch *Local-first software*](https://www.inkandswitch.com/essay/local-first/) の
+Privacy 原則と [RFC 3986 §3.5](https://www.rfc-editor.org/rfc/rfc3986#section-3.5)
+(fragment はリクエストに含まれない)。
+
+### Added
+- **共有リンクの E2E 暗号化 (ADR-0017)**: `#b=e:<b64url(iv‖ct)>.<b64url(key)>`。
+  AES-GCM 256bit、IV は 12 バイトのランダム。鍵は URL fragment にのみ置かれるため、
+  リンクを中継するサーバー・短縮 URL・プロキシ・アクセスログのいずれも鍵を受け取らない。
+  改竄されたリンクは GCM の認証タグにより復号時に弾かれる。
+  - **圧縮 → 暗号**の順(暗号文は圧縮できない)。`CompressionStream` が無くても
+    `crypto.subtle` は使えうるので、平文先頭の **1 バイトのフラグ**が deflate の有無を
+    自己記述する。
+  - 区切りを `.` にしたのは base64url のアルファベット外だから — `encodeURIComponent` で
+    エスケープされず URL が伸びない。
+  - **旧 `z:` / `j:` リンクの取り込みは恒久サポート**。配布済みリンクを壊さない。
+  - `crypto.subtle` が無い環境では平文へフォールバックし、共有モーダルが**実態を表示**する。
+- 共有モーダルの文言を条件分岐に。`exportToUrl()` は `{url, encrypted}` を返し、
+  `UI.openShare` が結果を見て「暗号化されています」と v1.7.71 の警告を出し分ける。
+  警告を無条件に出し続けることは、暗号化後は逆方向の不正確さになるため。
+- 取り込み失敗の区別: **鍵欠落**(`shareKeyMissing` — チャットアプリでの URL 途中切れが最頻)、
+  **鍵不一致**(`shareKeyBad`)、**暗号 API 不在**(`shareNoCrypto`)。従来はすべて
+  `invalidBoard` に潰れていた。i18n は ja/en 両方。
+
+### Fixed
+- **共有リンクの deflate 圧縮が一度も実行されていなかった**: `z:` 分岐は
+  `const w=cs.writable.getWriter();`(**一度も使われない変数**)で writable をロックし、
+  直後の `pipeThrough` が必ず `TypeError: Invalid state: The WritableStream is locked` に
+  なって、`catch` が黙って無圧縮 base64 (`j:`) に落としていた。ブラウザでも同じ仕様なので、
+  **どの環境でも圧縮は効いていなかった**。
+  実測(40 図形): JSON 3,212B → deflate 446B。base64 後で 596B のはずが 4,284B で、
+  共有 URL は意図の**約 7.2 倍**。多くのチャット / ブラウザの URL 長の実用限界を考えると、
+  中規模の盤面で共有が単に失敗しうる欠陥だった。`spec.md` と過去の CHANGELOG が共有形式を
+  「deflate-raw + base64」と記述していたのは、**実行されないコードパスの説明**だった。
+
+### Tests
+- **共有経路に振る舞いテストが初めて入った**。ハーネスに `location` / `history` / `screen` を
+  注入し `Share` をエクスポートするまで、`exportToUrl` / `importFromHash` は
+  **1行も実行されないまま** 1600 件超のテストを通過していた。v1.7.71 が平文であることを
+  *コードを読んで*発見し、圧縮が死んでいたことを*誰も*発見できなかったのは、この穴が原因。
+- 追加: AES-GCM 往復、**暗号文の不透明性**(生成 URL に盤面の既知文字列が平文でも base64 でも
+  現れない — v1.7.71 が発見した状態なら落ちる、主張そのものの検査)、鍵欠落 / 鍵不一致が
+  固有メッセージで拒否されること、旧 `z:`/`j:` リンクの後方互換、**deflate が実際に圧縮する**
+  こと(上記バグの回帰防止)、`subtle` 不在時のフォールバックが `encrypted:false` を返すこと、
+  暗号経路でも ADR-0004 のバックアップ・`confirm`・可逆 `replace` op が働くこと。
+- v1.7.71 が「平文のままであること」「crypto が存在しないこと」を主張していた presence 検査
+  2件は、**この機能が入ったら落ちるよう意図的に置かれていた**もの。設計どおり落ちたので
+  暗号化を主張する検査に置き換えた。
+- 非空虚性は stash 法で確認 — presence 4件と振る舞い 4 assertion が v1.7.74 に対して失敗し、
+  旧ビルドの出力が `j:eyJ2IjoiMS43Ljc0Iiw…`(平文 base64 JSON)であることも同時に示される。
+- 合計 **1642 pass, 0 fail**。
+
+### Docs
+- `docs/ADR-0017-share-link-e2e.md` を新規作成(fragment 文法、1バイトフラグ、
+  却下した代替案4件、**既知の限界4件**)。
+- README 比較表の E2E 行を **`✓ 共有リンク (AES-GCM) ※同期は未対応`** に更新。
+  v1.7.71 が正した誇大表記を別の形で再発させないため、スコープを行内に明示した。
+  セキュリティ節も「守るのはリンクを知らない第三者まで」「鍵はリンク保持者全員が持つ」
+  「失効手段は無い」「同期経路は DTLS のみ」を明記。
+- `CLAUDE.md` WHY の「E2E 対応予定」を実態に更新。`docs/spec.md` §8・§12、
+  `docs/research-improvements.md` §H、`docs/feature-backlog.md` FT-21 も同期。
+- **FT-21 の記述を訂正**: 設計論点として挙げていた「`crypto.subtle` は `file://` で使えない」は
+  **誤りの可能性が高い**(W3C *Secure Contexts* は `file:` を potentially trustworthy に含み、
+  主要ブラウザは `isSecureContext === true` を返す)。実ブラウザ検証ができないため仮定はせず
+  実行時 feature-detect で安全側に倒したが、これを「ブロッカー」として扱うべきではなかった。
+
 ## [1.7.74] - 2026-08-08
 
 `docs/spec.md` §14.3 に**唯一残っていた P1**「DOM ミラー a11y」を実装。

@@ -12,7 +12,7 @@ Board は「サインアップ/重量/有料/プライバシー侵害」を全�
 - **単一HTMLファイル**。外部 `<script src>` / `<link href>` / CDN / フォントを**追加しない**(CI grep 強制)。
 - **サイズはハード上限なし**(2026-06-13 に gzip 44KB 予算を撤去。理由は CLAUDE.md 参照)。
   小さく保つことは依然「指針」だが、整合性・正しさを優先してよい。暴走防止に **raw 512KB の緩い上限**のみ
-  `test.mjs` で残す(現状 raw ~279KB / gzip ~89KB / brotli ~74KB)。
+  `test.mjs` で残す(現状 raw ~285KB / gzip ~91KB / brotli ~75KB)。
   上限は課さないが、**公称値と実測値の乖離は禁じる**: `test.mjs` が Node 組込み `zlib` で実測し、
   README の Size バッジと ±10% 以内で一致することを検証する(v1.7.72。乖離した経緯は §13 参照)。
 - `state` の変更は必ず **`Store` 経由**(undo 完全性)。
@@ -108,7 +108,11 @@ IndexedDB(`board`/`docs`/`main`)。保存対象=`{v,shapes,viewport,docName,save
   `(ts,peer,seq)` の全順序 `clockNewer()` と書込クロック `state.wclock`(`shapeId→{prop:clock}`、
   図形には載せない)で**古い書込を落として決定的収束**。**互いに素なプロパティは双方生存**。
   `move`/`zorder` は可換なので LWW 非適用。`upd`/`style`/`resize`/`align`/`group`/`ungroup` に適用。
-- 共有: URL fragment にスナップショット。`importFromHash` は shape を検証してから採用。
+- **共有リンク (ADR-0017)**: `#b=e:<b64url(iv‖ct)>.<b64url(key)>`。AES-GCM 256bit、IV は 12B ランダム。
+  圧縮→暗号の順で、平文先頭 1 バイトが deflate 有無を自己記述する。鍵は fragment のみ(RFC 3986 §3.5 =
+  リクエスト非送信)。`crypto.subtle` 不在時は旧 `z:`/`j:` 平文へフォールバックし、モーダルが実態を表示。
+  旧形式リンクの取り込みは**恒久サポート**。`importFromHash` は復号後も shape を検証してから採用し、
+  鍵欠落 / 鍵不一致 / 暗号 API 不在をそれぞれ別メッセージで報告する。
 
 ## 9. エクスポート
 - **PNG**: 2x、可視領域クロップ + 32px パディング。`toBlob` null ガード。
@@ -127,6 +131,9 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
 - XSS: `innerHTML=` 不使用(CI grep 強制)。SVG/PDF 出力は全属性エスケープ + 数値強制。
 - 同期: op 型 allow-list + ペイロード検証。`clone()`(JSON)で prototype 汚染を無効化。
 - ネットワーク: 既定で通信なし。共有鍵は URL fragment(サーバ非通過)。
+- **共有リンクは E2E 暗号化 (ADR-0017)**。ただし守るのは「リンクを知らない第三者」までで、
+  鍵はリンク保持者全員が持ち、失効手段は無い。**同期経路 (WebRTC) は DTLS のみでアプリ層 E2E ではない** —
+  この境界を README/仕様で曖昧にしないこと(v1.7.71 が是正した誇大表記の再発防止)。
 
 ## 13. 適合ギャップ(不足)— 仕様 vs 実装
 

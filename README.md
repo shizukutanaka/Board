@@ -4,8 +4,8 @@
 単一HTMLファイル。ダブルクリックで動く。アカウント不要。広告なし。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-00C4CC.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.7.74-00C4CC.svg)](CHANGELOG.md)
-[![Size](https://img.shields.io/badge/size-~89KB%20gzip-00C4CC.svg)](index.html)
+[![Version](https://img.shields.io/badge/version-1.7.75-00C4CC.svg)](CHANGELOG.md)
+[![Size](https://img.shields.io/badge/size-~91KB%20gzip-00C4CC.svg)](index.html)
 [![Offline](https://img.shields.io/badge/offline-first-00C4CC.svg)](#offline)
 [![A11y](https://img.shields.io/badge/WCAG-AAA-00C4CC.svg)](#accessibility)
 
@@ -19,16 +19,16 @@
 |---|---|---|---|---|
 | 登録不要 | ✗ | ✓ | ✓ | **✓** |
 | 単一ファイル配布 | ✗ | ✗ | ✗ | **✓** |
-| E2E 暗号化 | ✗ | 部分 | ✗ | **✗ (未実装 — 計画中)** |
+| E2E 暗号化 | ✗ | 部分 | ✗ | **✓ 共有リンク (AES-GCM)** ※同期は未対応 |
 | 完全オフライン | 部分 | ✓ | ✓ | **✓ PWA** |
-| サイズ | 数MB | ~1MB | ~2MB | **単一HTML 279KB (gzip 89KB)** |
+| サイズ | 数MB | ~1MB | ~2MB | **単一HTML 285KB (gzip 91KB)** |
 | 広告・トラッキング | あり | なし | なし | **ゼロ** |
 | 料金 | $10-16/月 | 無料 + Plus | SDK商用有料 | **完全無料** |
 
 Board は `index.html` 一枚。自分のドメイン、USB、社内ネット、オフライン PC — どこでも動く。
 
-> **サイズの基準**: 他社列は非圧縮のアプリバンドル概算のため、Board も非圧縮 (279KB) を併記した。
-> 実際の転送量は静的ホストが brotli を返すので **約 74KB**。
+> **サイズの基準**: 他社列は非圧縮のアプリバンドル概算のため、Board も非圧縮 (285KB) を併記した。
+> 実際の転送量は静的ホストが brotli を返すので **約 75KB**。
 > [HTTP Archive Web Almanac 2025](https://almanac.httparchive.org/en/2025/page-weight) が報告する
 > モバイルページ重量の中央値 2,362KB に対し、およそ **1/33**。
 > 数値は `node test.mjs` が実測し、この README のバッジと ±10% 以内で一致することを検証している。
@@ -108,6 +108,16 @@ start index.html      # Windows
 - 同一ブラウザのタブ間: BroadcastChannel で即時同期
 - 端末間: WebRTC DataChannel (手動シグナリング、サーバー不要)
 - URL ハッシュにスナップショットを載せて共有 (`#...`)
+- **共有リンクの E2E 暗号化 (ADR-0017)**: 共有 URL は AES-GCM 256bit で暗号化され、鍵は
+  URL の `#` 以降にのみ置かれる。[RFC 3986 §3.5](https://www.rfc-editor.org/rfc/rfc3986#section-3.5)
+  のとおり fragment は**リクエストに含まれない**ため、リンクを中継するサーバー・短縮 URL・
+  プロキシ・アクセスログのいずれも鍵を受け取らない。
+  - **スコープ**: 暗号化されるのは**共有リンクだけ**。WebRTC の同期は DTLS による転送路
+    暗号化のみでアプリ層 E2E ではなく、BroadcastChannel は同一オリジン内。
+  - **守れる範囲**: 「リンクを知らない第三者」から守る。鍵はリンクを持つ全員が持つため、
+    平文チャットにリンクを貼れば鍵ごと渡る。配布後の失効手段も無い(サーバーレスの帰結)。
+  - 旧形式の平文リンクは引き続き開ける。暗号 API が使えない環境では平文にフォールバックし、
+    共有モーダルがその旨を明示する(暗号化されたかどうかを常に実態どおり表示する)。
 - CRDT clock 付き op-log、受信 op は型 allow-list で検証。画像の `dataUrl` は
   `data:image/` のインライン URL のみ許可 — 外部 URL は拒否され、悪意あるピアが
   トラッキングピクセル/IP 露出を仕込むことはできない (v1.7.69)
@@ -256,13 +266,20 @@ start index.html      # Windows
 - XSS 耐性: SVG / PDF エクスポートの属性値も全て `_esc` でエスケープ、画像は `data:image/` のみ許可
 - 受信 op は型 allow-list + shape 検証で防御 (不正な peer からの破損を防ぐ)
 - ローカル保存のみ。同期は手動シグナリングの WebRTC / 同一オリジンの BroadcastChannel
-- **共有リンクは暗号化されていない**: `#b=` の中身は盤面の deflate 圧縮 + base64 で、
-  URL fragment のためサーバーには送信されないが、**リンクを知る人は誰でも内容を復元できる**。
-  機微な内容を共有リンクで配らないこと。E2E 暗号化は未実装(`docs/feature-backlog.md` FT-21)
+- **共有リンクは E2E 暗号化される (v1.7.75 / ADR-0017)**: `#b=e:<暗号文>.<鍵>` の形式で、
+  盤面は AES-GCM 256bit で暗号化され、鍵は URL fragment にのみ置かれる(= サーバー非通過)。
+  リンクを中継するサーバー・短縮 URL・プロキシ・アクセスログのいずれも鍵を受け取らない。
+  改竄されたリンクは GCM の認証タグにより復号時に弾かれる。
+  - **守るのは「リンクを知らない第三者」まで**。鍵はリンクを持つ全員が持つので、
+    平文チャットに貼れば鍵ごと渡る。配布後に失効させる手段も無い。
+  - **同期経路は E2E ではない**: WebRTC DataChannel は DTLS による転送路暗号化のみで、
+    アプリ層の E2E は未実装。BroadcastChannel は同一オリジン内。
+  - 暗号 API が使えない環境(非セキュアコンテキスト)では平文にフォールバックし、
+    共有モーダルがその旨を明示する。旧形式の平文リンクは引き続き開ける。
 
 将来 (P2P sync 強化時):
-- URL fragment (`#roomId:key`) = サーバー非通過
-- WebRTC DataChannel + AES-GCM E2E 暗号化 (DTLS トランスポート)
+- WebRTC DataChannel の op ペイロードにも AES-GCM を適用 (現状は DTLS トランスポートのみ。
+  鍵配布・スナップショットマージ・既存ピア互換の設計が要るため別 ADR)
 - 署名付き op-log (各 peer の公開鍵で検証)
 
 ## 開発 / Development
@@ -281,7 +298,7 @@ npx serve .
 - 外部依存の追加は慎重に (単一ファイル原則 — 外部 `<script src>` / `<link href>` は不可)
 - サイズはハード上限なし (2026-06-13 に gzip 44KB 予算を撤去)。指針として小さく保つが、
   整合性・正しさを優先してよい。暴走防止に raw 512KB の緩い上限のみ残す
-  (現状 raw ~279KB / gzip ~89KB / brotli ~74KB)。サイズが動いたら上のバッジも更新すること —
+  (現状 raw ~285KB / gzip ~91KB / brotli ~75KB)。サイズが動いたら上のバッジも更新すること —
   ±10% を超えると `test.mjs` が落ちる
 - `node test.mjs` を通すこと (CI が presence + behavioural テストを実行)
 

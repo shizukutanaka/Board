@@ -706,7 +706,11 @@ body{visibility:visible}
       <input id="shareUrl" type="text" class="share-input" readonly aria-label="Share URL" data-t-aria="shareUrlLabel">
       <button class="btn primary" id="shareCopyBtn" data-t="shareCopyUrl">URLをコピー</button>
     </div>
-    <p class="sub share-warn" data-t="shareUrlWarn">⚠ 盤面の内容はURLに埋め込まれます(圧縮のみ・暗号化なし)。リンクを知る人は誰でも閲覧できます。</p>
+    <!-- ADR-0017: exactly one of these is shown, chosen by UI.openShare from the actual
+         export result. Showing the warning unconditionally would be as inaccurate after
+         encryption as claiming encryption was before it. -->
+    <p class="sub share-warn" id="shareWarn" data-t="shareUrlWarn" hidden>⚠ 盤面の内容はURLに埋め込まれます(圧縮のみ・暗号化なし)。リンクを知る人は誰でも閲覧できます。</p>
+    <p class="sub" id="shareEnc" data-t="shareUrlEnc" hidden>🔒 このリンクは暗号化されています(AES-GCM)。鍵は URL の # 以降にのみ含まれ、サーバーには送信されません。リンクを知る人は誰でも閲覧できます。</p>
 
     <details class="share-details">
       <summary data-t="sharePeer">相手と直接つなぐ (実験的)</summary>
@@ -760,7 +764,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.74';
+const V='1.7.75';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -869,6 +873,11 @@ const I18N={
     share:'共有',shareTitle:'共有',
     shareUrlHint:'このURLをコピーして送ると、相手に内容が共有されます',
     shareUrlWarn:'⚠ 盤面の内容はURLに埋め込まれます(圧縮のみ・暗号化なし)。リンクを知る人は誰でも閲覧できます。',
+    // ADR-0017: share-link E2E
+    shareUrlEnc:'🔒 このリンクは暗号化されています(AES-GCM)。鍵は URL の # 以降にのみ含まれ、サーバーには送信されません。リンクを知る人は誰でも閲覧できます。',
+    shareKeyMissing:'リンクに鍵が含まれていません — URL が途中で切れている可能性があります',
+    shareKeyBad:'鍵が一致しません — このリンクは復号できませんでした',
+    shareNoCrypto:'この環境では暗号化リンクを開けません(暗号 API が利用できません)',
     shareCopyUrl:'URLをコピー',shareUrlCopied:'URLをコピーしました',copyFailed:'コピーできませんでした',
     shareCopyCode:'コピー',shareCodeCopied:'コードをコピーしました',
     appUpdated:'アプリが更新されました — 再読み込みで最新版に',
@@ -939,6 +948,11 @@ const I18N={
     share:'Share',shareTitle:'Share',
     shareUrlHint:'Copy this URL and send it — the recipient gets your board.',
     shareUrlWarn:'⚠ Your board is embedded in the URL (compressed, NOT encrypted). Anyone with the link can read it.',
+    // ADR-0017: share-link E2E
+    shareUrlEnc:'🔒 This link is encrypted (AES-GCM). The key lives only after the # and is never sent to a server. Anyone with the link can still read it.',
+    shareKeyMissing:'This link has no key — it may have been truncated',
+    shareKeyBad:'Wrong key — this link could not be decrypted',
+    shareNoCrypto:'Encrypted links cannot be opened here (crypto API unavailable)',
     shareCopyUrl:'Copy URL',shareUrlCopied:'URL copied',copyFailed:'Copy failed',
     shareCopyCode:'Copy',shareCodeCopied:'Code copied',
     appUpdated:'App updated — reload for latest version',
@@ -4556,28 +4570,70 @@ function roundShapesForExport(shapes,dp=2){
   });
 }
 // Compact, dependency-free encoding. Works for any size up to ~2MB URL-safe.
+// base64url (RFC 4648 §5) — the URL-safe alphabet, unpadded. Used for the ADR-0017
+// encrypted payload so the fragment survives encodeURIComponent unchanged (no %XX
+// expansion) and can be split on '.', a character outside the alphabet.
+function _b64u(bytes){let bin='';for(const b of bytes)bin+=String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
+function _unb64u(str){
+  const b64=str.replace(/-/g,'+').replace(/_/g,'/');
+  const bin=atob(b64+'==='.slice((b64.length+3)%4));
+  const out=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)out[i]=bin.charCodeAt(i);
+  return out;}
+// deflate-raw round-trip. Returns null when the platform lacks the stream (caller falls
+// back to uncompressed).
+// NOTE (v1.7.75): the previous inline version called getWriter() on the writable side
+// into an unused variable, which LOCKS it — so the very next `pipeThrough(cs)` threw
+// "WritableStream is locked" every single time and the caller's catch silently emitted
+// the uncompressed `j:` payload instead. Compression never once ran, in any browser,
+// making share URLs ~7x larger than the format docs claimed. Keep this helper
+// getWriter-free.
+async function _deflate(bytes){
+  if(typeof CompressionStream==='undefined')return null;
+  try{
+    const cs=new CompressionStream('deflate-raw');
+    const buf=await new Response(new Blob([bytes]).stream().pipeThrough(cs)).arrayBuffer();
+    return new Uint8Array(buf);
+  }catch(_){return null}
+}
+async function _inflate(bytes){
+  const ds=new DecompressionStream('deflate-raw');
+  const buf=await new Response(new Blob([bytes]).stream().pipeThrough(ds)).arrayBuffer();
+  return new Uint8Array(buf);
+}
+function _subtle(){return (typeof crypto!=='undefined'&&crypto&&crypto.subtle)||null}
 const Share={
+  // ADR-0017. Returns {url, encrypted} — openShare needs to know which note to show,
+  // and a caller that cannot tell encrypted from plaintext is how v1.7.71's overstatement
+  // happened in the first place.
   async exportToUrl(){
     const data={v:V,shapes:roundShapesForExport(state.shapes),name:state.docName};
     const json=JSON.stringify(data);
-    // CompressionStream if available, else base64
-    let payload=json;
-    if(typeof CompressionStream!=='undefined'){
-      try{
-        const cs=new CompressionStream('deflate-raw');
-        const w=cs.writable.getWriter();
-        const blob=new Blob([json]);
-        const stream=blob.stream().pipeThrough(cs);
-        const buf=await new Response(stream).arrayBuffer();
-        const bytes=new Uint8Array(buf);
-        let bin='';for(const b of bytes)bin+=String.fromCharCode(b);
-        payload='z:'+btoa(bin);
-      }catch(_){payload='j:'+btoa(unescape(encodeURIComponent(json)))}
-    }else{
-      payload='j:'+btoa(unescape(encodeURIComponent(json)));
+    const utf8=new TextEncoder().encode(json);
+    const packed=await _deflate(utf8);
+    const sub=_subtle();
+    if(sub){
+      // compress-then-encrypt (ciphertext is incompressible, so the reverse is pointless).
+      // A 1-byte flag inside the plaintext keeps the payload self-describing, so the
+      // importer knows whether to inflate without a second marker on the wire.
+      const body=packed||utf8;
+      const pt=new Uint8Array(1+body.length);
+      pt[0]=packed?1:0;pt.set(body,1);
+      const key=await sub.generateKey({name:'AES-GCM',length:256},true,['encrypt','decrypt']);
+      const iv=crypto.getRandomValues(new Uint8Array(12));
+      const ct=new Uint8Array(await sub.encrypt({name:'AES-GCM',iv},key,pt));
+      const raw=new Uint8Array(await sub.exportKey('raw',key));
+      const blob=new Uint8Array(iv.length+ct.length);blob.set(iv,0);blob.set(ct,iv.length);
+      // The key rides in the fragment, which RFC 3986 §3.5 keeps out of the request —
+      // no relaying server, shortener, proxy or access log ever receives it.
+      return {url:location.origin+location.pathname+'#b=e:'+_b64u(blob)+'.'+_b64u(raw),encrypted:true};
     }
-    const url=location.origin+location.pathname+'#b='+encodeURIComponent(payload);
-    return url;
+    // No WebCrypto (non-secure context): fall back to the legacy plaintext payload and
+    // say so in the modal, rather than pretending the link is protected.
+    let bin='';if(packed)for(const b of packed)bin+=String.fromCharCode(b);   // loop, not spread: a big board would blow the stack
+    const payload=packed?'z:'+btoa(bin):'j:'+btoa(unescape(encodeURIComponent(json)));
+    return {url:location.origin+location.pathname+'#b='+encodeURIComponent(payload),encrypted:false};
   },
   async importFromHash(){
     const h=location.hash;
@@ -4586,13 +4642,31 @@ const Share={
     const kind=enc.slice(0,2),body=enc.slice(2);
     let json;
     try{
-      if(kind==='z:'&&typeof DecompressionStream!=='undefined'){
+      if(kind==='e:'){
+        // ADR-0017: e:<b64url(iv‖ct)>.<b64url(key)>. Failures here are distinguished
+        // rather than folded into invalidBoard — a truncated link (chat apps break long
+        // URLs) and a wrong key call for different user actions.
+        const dot=body.lastIndexOf('.');
+        if(dot<0||dot===body.length-1){UI.toast(t('shareKeyMissing'),'err');return false}
+        const sub=_subtle();
+        if(!sub){UI.toast(t('shareNoCrypto'),'err');return false}
+        const blob=_unb64u(body.slice(0,dot)),raw=_unb64u(body.slice(dot+1));
+        const iv=blob.slice(0,12),ct=blob.slice(12);
+        let pt;
+        try{
+          const key=await sub.importKey('raw',raw,{name:'AES-GCM'},false,['decrypt']);
+          pt=new Uint8Array(await sub.decrypt({name:'AES-GCM',iv},key,ct));
+        }catch(_){
+          // Wrong key OR tampered ciphertext — GCM's auth tag makes these the same event.
+          UI.toast(t('shareKeyBad'),'err');return false;
+        }
+        const payload=pt.slice(1);
+        json=new TextDecoder().decode(pt[0]===1?await _inflate(payload):payload);
+      }else if(kind==='z:'&&typeof DecompressionStream!=='undefined'){
         const bin=atob(body);
         const bytes=new Uint8Array(bin.length);
         for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
-        const ds=new DecompressionStream('deflate-raw');
-        const stream=new Blob([bytes]).stream().pipeThrough(ds);
-        json=await new Response(stream).text();
+        json=new TextDecoder().decode(await _inflate(bytes));
       }else if(kind==='j:'){
         json=decodeURIComponent(escape(atob(body)));
       }else{return false}
@@ -5052,9 +5126,12 @@ const UI={
   openShare(){
     const m=document.getElementById('share');
     m.dataset.open='true';
-    // generate share URL eagerly
-    Share.exportToUrl().then(url=>{
-      document.getElementById('shareUrl').value=url;
+    // generate share URL eagerly. ADR-0017: the note under the field reports what the
+    // link ACTUALLY is, read off the export result rather than assumed.
+    Share.exportToUrl().then(r=>{
+      document.getElementById('shareUrl').value=r.url;
+      document.getElementById('shareEnc').hidden=!r.encrypted;
+      document.getElementById('shareWarn').hidden=!!r.encrypted;
     }).catch(()=>{});
     document.getElementById('shareClose').focus();
   },

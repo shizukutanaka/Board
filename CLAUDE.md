@@ -5,7 +5,7 @@
 ## WHY — 目的
 
 既存のホワイトボードはサインアップ / 重量 / 有料 / プライバシーのいずれかを要求する。  
-Board は 4 つ全部を否定する: **単一HTML、ゼロ登録、完全無料、E2E 対応予定**。
+Board は 4 つ全部を否定する: **単一HTML、ゼロ登録、完全無料、E2E (共有リンクは実装済 ADR-0017 / 同期経路は未対応)**。
 
 勝利条件: 「使い始めるのに 0 秒」「オフラインで等価に動く」「単一HTMLで小さく保つ」。  
 破れたらプロダクト価値は消える。
@@ -20,7 +20,7 @@ Board は 4 つ全部を否定する: **単一HTML、ゼロ登録、完全無料
 
 ```
 Board/
-├── index.html             # 本体 (単一ファイル、~279KB raw / ~89KB gzip / ~74KB brotli)
+├── index.html             # 本体 (単一ファイル、~285KB raw / ~91KB gzip / ~75KB brotli)
 │   ├── <style>            # デザイントークン + レイアウト + モーション
 │   └── <script>
 │       ├── CONSTANTS      # atomic config
@@ -65,7 +65,8 @@ Board/
 │   ├── ADR-0013-keyboard-label-edit.md  # Enter でラベル/テキスト再編集 (FT-19、_openLabelEditorFor共有、実装済)
 │   ├── ADR-0014-language-toggle.md  # 言語手動トグル (FT-18b、LANG/T を let 化、実装済)
 │   ├── ADR-0015-replicated-undo.md  # undo/redo を複製される op に (§F, arxiv 2404.11308, 実装済)
-│   └── ADR-0016-a11y-dom-mirror.md  # 盤面の画面外DOMミラー (§I / spec P1, WCAG 1.3.1, 実装済)
+│   ├── ADR-0016-a11y-dom-mirror.md  # 盤面の画面外DOMミラー (§I / spec P1, WCAG 1.3.1, 実装済)
+│   └── ADR-0017-share-link-e2e.md  # 共有リンクの E2E 暗号化 (FT-21, AES-GCM + fragment key, 実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
