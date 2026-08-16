@@ -12,7 +12,7 @@ Board は「サインアップ/重量/有料/プライバシー侵害」を全�
 - **単一HTMLファイル**。外部 `<script src>` / `<link href>` / CDN / フォントを**追加しない**(CI grep 強制)。
 - **サイズはハード上限なし**(2026-06-13 に gzip 44KB 予算を撤去。理由は CLAUDE.md 参照)。
   小さく保つことは依然「指針」だが、整合性・正しさを優先してよい。暴走防止に **raw 512KB の緩い上限**のみ
-  `test.mjs` で残す(現状 raw ~285KB / gzip ~91KB / brotli ~75KB)。
+  `test.mjs` で残す(現状 raw ~287KB / gzip ~92KB / brotli ~76KB)。
   上限は課さないが、**公称値と実測値の乖離は禁じる**: `test.mjs` が Node 組込み `zlib` で実測し、
   README の Size バッジと ±10% 以内で一致することを検証する(v1.7.72。乖離した経緯は §13 参照)。
 - `state` の変更は必ず **`Store` 経由**(undo 完全性)。
@@ -91,6 +91,12 @@ IndexedDB(`board`/`docs`/`main`)。保存対象=`{v,shapes,viewport,docName,save
 
 ## 8. 同期プロトコル(opt-in)
 - 同一ブラウザ=BroadcastChannel、端末間=WebRTC DataChannel(手動シグナリング)。
+- **MUST(接続失敗の可視化、FT-20)**: `_wrtcInit` は `connectionState` を監視し、`'failed'` で
+  ユーザーに報告する。手動シグナリングの WebRTC は「そもそも open しない」形で失敗するのが典型で、
+  その場合 `dc.onopen`/`dc.onclose` は**一度も発火しない**。`'disconnected'` は W3C WebRTC 1.0 上
+  一時的で自然回復しうるため**報告しない**。一度も接続しなかった場合 (`rtcFailed`) と接続後の切断
+  (`disconnected`) は文言を分ける。`_rtcNotified` ラッチを `dc.onclose` と共有し、
+  どの順序でも報告は**ちょうど1回**。
 - op エンベロープに CRDT clock `{peer, seq, ts}`、`peer:seq` で dedup(`seenOps`、上限 `MAX_SEEN_OPS`)。
 - **MUST(受信検証)**: `applyRemote` は (a) op 型 allow-list(`REMOTE_OPS` =
   add/del/upd/move/clear/group/ungroup/zorder/align/style/resize)、(b) **ペイロード検証**

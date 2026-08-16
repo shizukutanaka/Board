@@ -2,6 +2,51 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.76] - 2026-08-16
+
+v1.7.75 の教訓 —「テストで駆動していない経路にはバグが潜み、コードを読んでも見つからない」—
+をそのまま次の一手に適用。`docs/feature-backlog.md` FT-20 は **ハーネスの制約**を理由に
+ブロック扱いされていたが、制約は問題の性質ではなく**ハーネスの性質**であり、外せる。
+
+### Fixed
+- **WebRTC 接続失敗が完全に無反応だった (FT-20)**: `_wireDC` の `dc.onclose` は
+  **一度 open した DataChannel が閉じたとき**しか発火しない。しかし手動シグナリングの
+  WebRTC が失敗する典型は「NAT / ファイアウォールを越えられず、**そもそも open しない**」で、
+  この場合 `dc.onopen` も `dc.onclose` も発火せず、`_wrtcInit` には
+  `onconnectionstatechange` も無かったため、ユーザーはトークンを交換したあと
+  **不変のモーダルを見つめたまま**「まだ交渉中」なのか「もう繋がらない」のか判別できなかった。
+- **修正**: `_wrtcInit` で `connectionState` を監視する
+  ([W3C WebRTC 1.0](https://www.w3.org/TR/webrtc/) の ICE+DTLS 集約状態)。
+  - `'failed'` のみを失敗として報告する。**`'disconnected'` は仕様上一時的**で自然回復しうるため
+    報告しない — 自己修復する瞬断で警告を出すのはそれ自体がバグになる。
+  - `'connected'` を観測したらラッチを解除し、その後の切断は改めて報告できるようにする。
+  - **一度も open しなかった場合と、繋がった後で落ちた場合で文言を分ける**。前者は
+    ネットワーク / ファイアウォールを疑うべきで、後者とは取るべき行動が違う
+    (新 i18n キー `rtcFailed`、ja/en)。
+  - FT-20 が懸念していた「**二重トースト / トースト欠落**」は、`_rtcNotified` という
+    **1つのラッチを `dc.onclose` と共有**することで解消。先に発火した方が報告し、他方は黙る。
+
+### Tests
+- **WebRTC サブシステムに振る舞いテストが初めて入った**。ハーネスは
+  `RTCPeerConnection: undefined` としてスタブしており、FT-20 はまさにそれを根拠に
+  「検証できない」とブロック指定されていた。最小の状態機械スタブ
+  (`connectionState` を意図的に遷移させる `_setState` レバー + DataChannel スタブ)を用意し、
+  `wrtcCreateOffer` / `wrtcAcceptOffer` / `_wireDC` / 接続ライフサイクルを実際に駆動する。
+- 検証した順序: (a) 一度も繋がらない → 1回だけ報告、`failed` 連発でも増えない、後続の close で
+  二重にならない、(b) 繋がった後の切断 → 別文言で1回、ピアのアバターも撤去、
+  (c) 通常の close → ラッチに飲まれず1回報告、(d) `disconnected` は無視し、回復後の
+  本物の失敗は再び報告、(e) 応答側 (`wrtcAcceptOffer`) も同じ監視を張る(バグは対称だった)。
+- 非空虚性は stash 法で確認 — v1.7.75 に対して presence 2件と assertion 2件が失敗し、
+  失敗経路では**トーストが1つも出ない**ためプローブ自体が `toasts[0]` で落ちる。
+  これが FT-20 の defect そのもの。
+- 合計 **1644 pass, 0 fail**。
+
+### Docs
+- `docs/feature-backlog.md` FT-20 を解決済みに。**「実ブラウザ検証が前提」という判断自体が
+  誤りだった**ことを明記 — 必要だったのは実ブラウザではなく、状態機械のスタブだった。
+- `docs/architecture.md` に「ハーネスの穴は仕様ではない」という教訓を追記
+  (CLAUDE.md のバグ修正ワークフロー3項)。
+
 ## [1.7.75] - 2026-08-15
 
 `CLAUDE.md` WHY の4本柱(単一HTML / ゼロ登録 / 完全無料 / **プライバシー**)のうち、

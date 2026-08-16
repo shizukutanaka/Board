@@ -764,7 +764,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.75';
+const V='1.7.76';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -890,7 +890,7 @@ const I18N={
     shareConnect:'接続',
     shareInvite:'招待コード',shareAnswer:'応答コード',
     sharePaste:'招待された側 手順1: 相手の招待コードを貼り付け',
-    connected:'接続しました',disconnected:'切断しました',
+    connected:'接続しました',disconnected:'切断しました',rtcFailed:'接続できませんでした — ネットワークやファイアウォールに阻まれた可能性があります。招待コードを作り直してもう一度お試しください',
     importConfirm:'共有された内容で現在のボードを置き換えますか？',
     imported:'読み込みました',
     backupAvailable:'前回、上書きされる前のボードが保存されています。復元しますか？',
@@ -965,7 +965,7 @@ const I18N={
     shareConnect:'Connect',
     shareInvite:'Invite code',shareAnswer:'Answer code',
     sharePaste:'Joining side, step 1: Paste the invite code from your peer',
-    connected:'Connected',disconnected:'Disconnected',
+    connected:'Connected',disconnected:'Disconnected',rtcFailed:'Could not connect — a network or firewall likely blocked it. Create a new invite code and try again',
     importConfirm:'Replace current board with shared content?',
     imported:'Imported',
     backupAvailable:'A board from before it was overwritten was saved. Restore it?',
@@ -4505,13 +4505,41 @@ const Net={
     const sdp=this._decodeToken(tokenB);
     await this.rtc.setRemoteDescription(sdp);
   },
+  // FT-20: one lifecycle notification per connection attempt, shared by the
+  // connectionState watcher and dc.onclose so the two can never double-toast (or both
+  // stay silent). Reset in _wrtcInit — a new attempt earns a new notification.
+  _rtcNotified:false,
+  _rtcTeardownPeer(){
+    if(this._rtcPeerId){state.peers.delete(this._rtcPeerId);this._rtcPeerId=null;}
+    if(this._onConnChange)this._onConnChange();
+  },
   _wrtcInit(){
     if(this.rtc){try{this.rtc.close()}catch(_){}}
     if(typeof RTCPeerConnection==='undefined')throw new Error('WebRTC not supported');
+    this._rtcNotified=false;
     this.rtc=new RTCPeerConnection({iceServers:[
       {urls:'stun:stun.l.google.com:19302'},
       {urls:'stun:stun1.l.google.com:19302'}
     ]});
+    // FT-20: manual-signaling WebRTC most often fails by never connecting AT ALL — a NAT
+    // or firewall that STUN can't traverse. In that case the DataChannel never opens, so
+    // neither dc.onopen nor dc.onclose ever fires and the user was left staring at an
+    // unchanging modal with no way to tell "still negotiating" from "never going to work".
+    // connectionState is the aggregate ICE+DTLS signal (W3C WebRTC 1.0); 'failed' is the
+    // state that means give up. 'disconnected' is explicitly transient in the spec and can
+    // recover on its own, so it is NOT reported — crying wolf on a blip that heals itself
+    // would be its own bug.
+    this.rtc.onconnectionstatechange=()=>{
+      const st=this.rtc&&this.rtc.connectionState;
+      if(st==='connected'){this._rtcNotified=false;return}   // a later drop is worth reporting
+      if(st!=='failed'||this._rtcNotified)return;
+      this._rtcNotified=true;
+      // Never opened → a connection that never happened, and the user needs different
+      // advice (network/firewall) than for a link that dropped after working.
+      const lost=!!this._rtcPeerId;
+      UI.toast(t(lost?'disconnected':'rtcFailed'),lost?'warn':'err');
+      this._rtcTeardownPeer();
+    };
   },
   _wrtcGather(){
     return new Promise(res=>{
@@ -4538,9 +4566,11 @@ const Net={
       try{this._onRecv(JSON.parse(e.data),true)}catch(_){}   // ADR-0010: viaRtc=true
     };
     this.dc.onclose=()=>{
-      UI.toast(t('disconnected'),'warn');
-      if(this._rtcPeerId){state.peers.delete(this._rtcPeerId);this._rtcPeerId=null;}
-      if(this._onConnChange)this._onConnChange();
+      // Shares _rtcNotified with the connectionState watcher: whichever fires first
+      // reports, the other stays quiet. A failed-then-closed sequence used to be able to
+      // toast twice; a close with no prior signal still always reports exactly once.
+      if(!this._rtcNotified){this._rtcNotified=true;UI.toast(t('disconnected'),'warn');}
+      this._rtcTeardownPeer();
     };
   },
   _encodeToken(sdp){

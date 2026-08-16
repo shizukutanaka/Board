@@ -140,6 +140,18 @@ const checks = [
   ['ADR-0017 regression: deflate helper does not lock the stream with a stray getWriter',
     html.includes('async function _deflate(bytes){') && !/cs\.writable\.getWriter\(\)/.test(html)],
   ['WebRTC manual signaling', html.includes('wrtcCreateOffer') && html.includes('wrtcAcceptOffer')],
+  // FT-20: a connection that never establishes fires neither dc.onopen nor dc.onclose,
+  // so connectionState is the only signal that the attempt is over. 'disconnected' is
+  // transient per W3C WebRTC 1.0 and deliberately NOT reported.
+  ['FT-20: _wrtcInit watches connectionState and reports only "failed"',
+    html.includes('this.rtc.onconnectionstatechange=()=>{')
+    && html.includes("if(st!=='failed'||this._rtcNotified)return;")
+    && html.includes("if(st==='connected'){this._rtcNotified=false;return}")
+    && html.includes("rtcFailed:'接続できませんでした") && html.includes("rtcFailed:'Could not connect")],
+  ['FT-20: the failure watcher and dc.onclose share one latch (no double/missing toast)',
+    html.includes('_rtcNotified:false,')
+    && html.includes("if(!this._rtcNotified){this._rtcNotified=true;UI.toast(t('disconnected'),'warn');}")
+    && html.includes('_rtcTeardownPeer(){')],
   ['Share button wired in wire()', html.includes("btnShare") && html.includes("UI.openShare")],
   ['Net.init called in main()', html.includes('Net.init()')],
   ['Share.importFromHash called in main()', html.includes('Share.importFromHash()')],
@@ -1074,8 +1086,35 @@ const fakeWin = {
   Blob, _confirmImpl: () => false, confirm: (...a) => fakeWin._confirmImpl(...a), alert(){}, prompt: () => null,
   getComputedStyle: () => ({ getPropertyValue: () => '#fff' }),
   BroadcastChannel: class { onmessage=null; postMessage(){} close(){} },
-  RTCPeerConnection: undefined,
-  RTCSessionDescription: undefined,
+  // FT-20 was recorded as blocked because "the fake-DOM harness stubs RTCPeerConnection
+  // as undefined, so this state transition cannot be verified". That is a property of the
+  // harness, not of the problem — so give it a real (if minimal) state machine. Nothing
+  // here simulates ICE; it exposes the exact surface index.html touches plus a `_setState`
+  // lever so a test can drive the W3C connectionState transitions deliberately.
+  FakeDataChannel: class {
+    constructor(label){ this.label=label; this.readyState='connecting'; this.sent=[];
+      this.onopen=null; this.onmessage=null; this.onclose=null; }
+    send(d){ this.sent.push(d); }
+    close(){ this._fire('closed'); }
+    _fire(state){ this.readyState=state;
+      if(state==='open'&&this.onopen)this.onopen();
+      if(state==='closed'&&this.onclose)this.onclose(); }
+  },
+  RTCPeerConnection: class {
+    constructor(cfg){ this.config=cfg; this.connectionState='new'; this.iceGatheringState='complete';
+      this.localDescription=null; this.remoteDescription=null; this.closed=false;
+      this.onconnectionstatechange=null; this.ondatachannel=null; this.onicegatheringstatechange=null;
+      fakeWin._lastRTC=this; }
+    createDataChannel(label){ this.dc=new fakeWin.FakeDataChannel(label); return this.dc; }
+    async createOffer(){ return {type:'offer', sdp:'v=0\r\nfake-offer'}; }
+    async createAnswer(){ return {type:'answer', sdp:'v=0\r\nfake-answer'}; }
+    async setLocalDescription(d){ this.localDescription=d; }
+    async setRemoteDescription(d){ this.remoteDescription=d; }
+    close(){ this.closed=true; }
+    // the lever: drive a W3C connectionState transition and fire the handler
+    _setState(s){ this.connectionState=s; if(this.onconnectionstatechange)this.onconnectionstatechange(); }
+  },
+  RTCSessionDescription: class { constructor(j){ this.type=j.type; this.sdp=j.sdp; } },
   btoa: globalThis.btoa || (s => Buffer.from(s).toString('base64')),
   atob: globalThis.atob || (s => Buffer.from(s, 'base64').toString()),
   escape: globalThis.escape || (s => s),
@@ -1119,7 +1158,7 @@ try {
   const fn = new Function('window','document','navigator','requestAnimationFrame',
     'indexedDB','URL','setTimeout','clearTimeout','setInterval','clearInterval',
     'getComputedStyle','confirm','alert','Blob','globalThis','self','localStorage',
-    'location','history','screen',`
+    'location','history','screen','RTCPeerConnection','RTCSessionDescription',`
     ${js}
     return { state, Store, G, Shape, distToSeg,
              doBringFront, doSendBack, doBringForward, doSendBackward,
@@ -1143,7 +1182,7 @@ try {
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
     fakeWin.indexedDB, fakeWin.URL, setTimeout, clearTimeout, setInterval, clearInterval,
     fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage,
-      fakeWin.location, fakeWin.history, fakeWin.screen
+      fakeWin.location, fakeWin.history, fakeWin.screen, fakeWin.RTCPeerConnection, fakeWin.RTCSessionDescription
   );
   const { state, Store, G, Shape, distToSeg,
           doBringFront, doSendBack, doBringForward, doSendBackward,
@@ -3653,7 +3692,7 @@ try {
       fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
       fakeWin.indexedDB, fakeWin.URL, setTimeout, clearTimeout, setInterval, clearInterval,
       fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage,
-      fakeWin.location, fakeWin.history, fakeWin.screen
+      fakeWin.location, fakeWin.history, fakeWin.screen, fakeWin.RTCPeerConnection, fakeWin.RTCSessionDescription
     );
     const cp = o => JSON.parse(JSON.stringify(o));
     A.state.peerId='peerA'; B.state.peerId='peerB';
@@ -3904,7 +3943,7 @@ try {
         const E=fn(fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
           fakeWin.indexedDB,fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
           fakeWin.getComputedStyle,fakeWin.confirm,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
-          fakeWin.location,fakeWin.history,fakeWin.screen);
+          fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.RTCPeerConnection,fakeWin.RTCSessionDescription);
         assert.strictEqual(E.UI._themeMode(),'dark','boot restore: a persisted board.theme=dark is honoured at module load');
         delete ls._d['board.theme'];
 
@@ -3915,7 +3954,7 @@ try {
         const F=fn(fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
           fakeWin.indexedDB,fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
           fakeWin.getComputedStyle,fakeWin.confirm,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
-          fakeWin.location,fakeWin.history,fakeWin.screen);
+          fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.RTCPeerConnection,fakeWin.RTCSessionDescription);
         F.UI.toggleTheme();
         assert.strictEqual(F.UI._themeMode(),'light','storage-throws: first toggle still advances to light in memory');
         assert.strictEqual(de.dataset.theme,'light','storage-throws: DOM actually reflects light');
@@ -4065,7 +4104,7 @@ try {
         D=fn(fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
           fakeWin.indexedDB,fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
           fakeWin.getComputedStyle,fakeWin.confirm,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
-          fakeWin.location,fakeWin.history,fakeWin.screen);
+          fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.RTCPeerConnection,fakeWin.RTCSessionDescription);
         assert.strictEqual(D._getLang(),'ja','boot restore: a persisted board.lang=ja is honoured at module load, before any toggle');
         assert.strictEqual(D._getT().k.select,D.I18N.ja.k.select,'boot restore: T is I18N.ja from the start, not just LANG');
       }finally{
@@ -7753,7 +7792,7 @@ try {
       fakeWin, fakeDoc, fakeWin.navigator, spyRaf,
       fakeWin.indexedDB, fakeWin.URL, setTimeout, clearTimeout, setInterval, clearInterval,
       fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage,
-      fakeWin.location, fakeWin.history, fakeWin.screen
+      fakeWin.location, fakeWin.history, fakeWin.screen, fakeWin.RTCPeerConnection, fakeWin.RTCSessionDescription
     );
     C.state.showMinimap=false;
     // v1.7.75: building a world now runs its main()/wire() far enough to schedule its own
@@ -8077,6 +8116,94 @@ try {
     assert.ok(oldRatio<3,`a11y: sanity — the pre-fix pairing (raw brand on light paper) is genuinely below 3:1 (got ${oldRatio.toFixed(2)}:1), confirming this test would have caught the original bug`);
     console.log(`  ✓ a11y: focus ring contrast — light ${lightRatio.toFixed(2)}:1, dark ${darkRatio.toFixed(2)}:1, both clear the 3:1 floor (a11y-audit-2026-07)`);
   }
+
+  // ---- FT-20: WebRTC connection-failure feedback -----------------------------------
+  // Recorded as blocked ("the harness stubs RTCPeerConnection as undefined, so this
+  // state transition cannot be verified"). That was a harness property, not a property
+  // of the problem: the stub above now exposes a real connectionState lever. The defect
+  // it unblocks is that manual-signaling WebRTC usually fails by never connecting at all
+  // — no dc.onopen, no dc.onclose, and so, before this, no feedback whatsoever.
+  await (async () => {
+    const toasts = [];
+    const origToast = UI.toast;
+    UI.toast = (m, k) => toasts.push({m, k});
+    try {
+      // (a) the reported bug: tokens exchanged, connection never establishes.
+      toasts.length = 0;
+      const offer = await Net.wrtcCreateOffer();
+      assert.ok(typeof offer === 'string' && offer.length > 0, 'FT-20: createOffer returns an encoded token');
+      assert.deepStrictEqual(JSON.parse(Buffer.from(offer,'base64').toString('utf8')).type, 'offer',
+        'FT-20: the token round-trips as an SDP offer');
+      const pc = fakeWin._lastRTC;
+      assert.ok(typeof pc.onconnectionstatechange === 'function',
+        'FT-20: _wrtcInit wires onconnectionstatechange (this handler did not exist before)');
+      assert.strictEqual(toasts.length, 0, 'FT-20: negotiating quietly is correct — no toast yet');
+      pc._setState('connecting');
+      assert.strictEqual(toasts.length, 0, 'FT-20: "connecting" is not a failure');
+      pc._setState('failed');
+      assert.strictEqual(toasts.length, 1, 'FT-20: a connection that never opens now reports exactly once (was: silent forever)');
+      assert.strictEqual(toasts[0].m, api.I18N.en.rtcFailed, 'FT-20: never-connected says "could not connect", not "disconnected"');
+      assert.strictEqual(toasts[0].k, 'err', 'FT-20: reported as an error');
+      // repeated 'failed' events must not spam
+      pc._setState('failed');
+      assert.strictEqual(toasts.length, 1, 'FT-20: repeated failed events do not re-toast');
+      // and a close arriving afterwards must not double up
+      Net.dc._fire('closed');
+      assert.strictEqual(toasts.length, 1, 'FT-20: a close following a failure does not double-toast');
+
+      // (b) a link that worked and then dropped is a DIFFERENT message.
+      toasts.length = 0;
+      await Net.wrtcCreateOffer();
+      const pc2 = fakeWin._lastRTC;
+      pc2._setState('connected');
+      Net.dc._fire('open');
+      assert.strictEqual(toasts.at(-1).m, api.I18N.en.connected, 'FT-20 precondition: opening still reports connected');
+      assert.ok(Net._rtcPeerId, 'FT-20 precondition: an open channel registers a peer');
+      toasts.length = 0;
+      pc2._setState('failed');
+      assert.strictEqual(toasts.length, 1, 'FT-20: losing an established link reports once');
+      assert.strictEqual(toasts[0].m, api.I18N.en.disconnected, 'FT-20: an established link that drops says "disconnected", not "could not connect"');
+      assert.strictEqual(Net._rtcPeerId, null, 'FT-20: the peer avatar is torn down on failure');
+
+      // (c) an ordinary close, with no failure event at all, still reports exactly once.
+      toasts.length = 0;
+      await Net.wrtcCreateOffer();
+      fakeWin._lastRTC._setState('connected');
+      Net.dc._fire('open');
+      toasts.length = 0;
+      Net.dc._fire('closed');
+      assert.strictEqual(toasts.length, 1, 'FT-20: a plain close still reports (the shared latch did not swallow it)');
+      assert.strictEqual(toasts[0].m, api.I18N.en.disconnected, 'FT-20: plain close says disconnected');
+
+      // (d) 'disconnected' is transient per W3C WebRTC 1.0 and can heal — reporting it
+      //     would be crying wolf, and a recovery must re-arm the latch for a real drop.
+      toasts.length = 0;
+      await Net.wrtcCreateOffer();
+      const pc4 = fakeWin._lastRTC;
+      pc4._setState('connected');
+      Net.dc._fire('open');
+      toasts.length = 0;
+      pc4._setState('disconnected');
+      assert.strictEqual(toasts.length, 0, 'FT-20: a transient "disconnected" is not reported');
+      pc4._setState('connected');
+      pc4._setState('failed');
+      assert.strictEqual(toasts.length, 1, 'FT-20: after recovering, a genuine failure is still reported');
+
+      // (e) the answering side wires the same watcher — the bug was symmetric.
+      toasts.length = 0;
+      const answer = await Net.wrtcAcceptOffer(offer);
+      assert.ok(typeof answer === 'string' && answer.length > 0, 'FT-20: acceptOffer returns an encoded answer token');
+      const pc5 = fakeWin._lastRTC;
+      assert.ok(typeof pc5.onconnectionstatechange === 'function', 'FT-20: the answering peer wires the watcher too');
+      pc5._setState('failed');
+      assert.strictEqual(toasts.at(-1).m, api.I18N.en.rtcFailed, 'FT-20: the answering side reports failure as well');
+      console.log('  ✓ FT-20 WebRTC failure feedback: a never-connecting link now reports (was silent), established-drop vs never-connected worded differently, transient "disconnected" ignored, no double- or missing toast on any ordering');
+    } finally {
+      UI.toast = origToast;
+      try { Net.rtc && Net.rtc.close(); } catch (_) {}
+      Net.rtc = null; Net.dc = null; Net._rtcPeerId = null; state.peers.clear();
+    }
+  })();
 
   // ADR-0017's share tests run LAST and are the only awaiting tests in the suite.
   // Yielding to the microtask queue lets the script's own main() IIFE — parked on its
