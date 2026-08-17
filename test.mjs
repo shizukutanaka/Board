@@ -278,6 +278,16 @@ const checks = [
   ['line/arrow drawShape calls _drawConnLabel', html.includes("c.stroke();_drawConnLabel(s,c);break;") && html.includes("drawArrow(s,c);_drawConnLabel(s,c);break;")],
   ['_connLabelSVG emits edge label in SVG', html.includes("function _connLabelSVG(s,x1,y1,x2,y2,ox,oy,stroke,paper)")],
   ['Persist.load validates shapes', html.includes("d.shapes.filter(validShape)")],
+  // v1.7.78: validation used to drop shapes silently, and with a single `main` slot the
+  // next autosave overwrote the record with the survivors. Preserve the raw record in the
+  // ADR-0004 slot and say so — but never over an existing (pre-clear) backup.
+  ['Persist.load reports a partial read and stashes the RAW record (not the survivors)',
+    html.includes('const dropped=d.shapes.length-kept.length;')
+    && html.includes('if(!(await this.checkBackup()))')
+    && html.includes('await this.saveBackup(d.shapes,')
+    && html.includes("UI.toast(t('loadDropped').replace('{n}',dropped),'warn');")
+    && html.includes("loadDropped:'保存データの一部を読み込めませんでした")
+    && html.includes("loadDropped:'Could not read {n} shape(s)")],
   // v1.6.9: sticky text auto-wrap
   ['wrapText helper present', html.includes("function wrapText")],
   ['sticky render wraps text', html.includes("wrapTextCached(s,s.text,Math.abs(s.w)-pad*2")],
@@ -8143,6 +8153,87 @@ try {
     assert.ok(oldRatio<3,`a11y: sanity — the pre-fix pairing (raw brand on light paper) is genuinely below 3:1 (got ${oldRatio.toFixed(2)}:1), confirming this test would have caught the original bug`);
     console.log(`  ✓ a11y: focus ring contrast — light ${lightRatio.toFixed(2)}:1, dark ${darkRatio.toFixed(2)}:1, both clear the 3:1 floor (a11y-audit-2026-07)`);
   }
+
+  // ---- Persist.load partial-read protection (v1.7.78) ------------------------------
+  // `node coverage.mjs` flagged Persist.load (1.3KB) as never executed — the path that
+  // restores the user's board on EVERY startup. Driving it showed the filter dropping
+  // shapes silently; with one `main` slot, the next autosave then overwrote the record
+  // with the survivors and the rest were gone for good.
+  await (async () => {
+    const keep = state.shapes.splice(0, state.shapes.length);
+    const keepName = state.docName;
+    _invalidateGrid();
+    const origDb = Persist.db, origToast = UI.toast;
+    const toasts = [];
+    UI.toast = (m, k) => toasts.push({m, k});
+    const good = n => Array.from({length: n}, (_, i) => ({id:'g'+i, type:'rect', x:i, y:i, w:10, h:10, z:i}));
+    const bad  = n => Array.from({length: n}, (_, i) => ({id:'b'+i, type:'pen', z:900+i, pts:null}));
+    try {
+      // (1) a clean record loads whole, warns nothing, and writes no backup
+      {
+        const db = makeFakeIdb(); Persist.db = db;
+        db._store.set('main', {v:'1.7.77', shapes:good(5), viewport:{x:0,y:0,zoom:1}, docName:'Clean', savedAt:1});
+        toasts.length = 0;
+        await Persist.load();
+        assert.strictEqual(state.shapes.length, 5, 'load: a clean record restores every shape');
+        assert.strictEqual(state.docName, 'Clean', 'load: docName restored');
+        assert.strictEqual(toasts.length, 0, 'load: a clean record warns about nothing');
+        assert.ok(!db._store.has('main:prev'), 'load: a clean record writes no backup');
+      }
+
+      // (2) THE BUG: an unreadable slice must not vanish quietly.
+      {
+        const db = makeFakeIdb(); Persist.db = db;
+        const raw = [...good(100), ...bad(40)];
+        db._store.set('main', {v:'1.7.77', shapes:raw, viewport:{x:0,y:0,zoom:1}, docName:'Big Board', savedAt:1});
+        toasts.length = 0;
+        await Persist.load();
+        assert.strictEqual(state.shapes.length, 100, 'load: the readable shapes are still adopted');
+        assert.strictEqual(toasts.length, 1, 'load: a partial read is reported, not silent');
+        assert.ok(toasts[0].m.includes('40'), `load: the warning names how many were lost (got "${toasts[0].m}")`);
+        assert.strictEqual(toasts[0].k, 'warn', 'load: reported as a warning');
+        const backup = db._store.get('main:prev');
+        assert.ok(backup, 'load: the unreadable record is preserved in the ADR-0004 backup slot');
+        assert.strictEqual(backup.shapes.length, 140,
+          'load: the backup holds the RAW record (all 140), not the filtered survivors — otherwise it preserves nothing');
+        assert.strictEqual(backup.docName, 'Big Board', 'load: the backup keeps the document name');
+        assert.ok(await Persist.checkBackup(), 'load: the boot-time restore prompt will surface it');
+      }
+
+      // (3) an existing ADR-0004 backup outranks this one. A board stashed just before a
+      //     clear/import is more valuable, and there is only one slot — clobbering it
+      //     would turn a data-loss fix into a data-loss bug.
+      {
+        const db = makeFakeIdb(); Persist.db = db;
+        db._store.set('main:prev', {v:'1.7.77', shapes:good(7), viewport:{x:0,y:0,zoom:1}, docName:'PreClear', savedAt:1});
+        db._store.set('main', {v:'1.7.77', shapes:[...good(3), ...bad(2)], viewport:{x:0,y:0,zoom:1}, docName:'Now', savedAt:2});
+        toasts.length = 0;
+        await Persist.load();
+        assert.strictEqual(toasts.length, 1, 'load: still warns when a backup already exists');
+        assert.strictEqual(db._store.get('main:prev').docName, 'PreClear',
+          'load: an existing pre-clear backup is NOT overwritten by the partial-read stash');
+        assert.strictEqual(db._store.get('main:prev').shapes.length, 7, 'load: the older backup is untouched');
+      }
+
+      // (4) a wholly unreadable record: nothing loads, everything is preserved.
+      {
+        const db = makeFakeIdb(); Persist.db = db;
+        db._store.set('main', {v:'99.0', shapes:bad(12), viewport:{x:0,y:0,zoom:1}, docName:'FromTheFuture', savedAt:1});
+        toasts.length = 0;
+        await Persist.load();
+        assert.strictEqual(state.shapes.length, 0, 'load: an unreadable record adopts nothing');
+        assert.strictEqual(toasts.length, 1, 'load: and says so');
+        assert.strictEqual(db._store.get('main:prev').shapes.length, 12,
+          'load: the whole unreadable record is preserved rather than overwritten by the next autosave');
+      }
+      console.log('  ✓ Persist.load partial-read protection: a silently-dropped slice is now reported AND stashed in the ADR-0004 slot (raw, not filtered), without clobbering an older pre-clear backup');
+    } finally {
+      Persist.db = origDb; UI.toast = origToast;
+      state.shapes.length = 0;
+      for (const s of keep) state.shapes.push(s);
+      state.docName = keepName; _invalidateGrid();
+    }
+  })();
 
   // ---- the pointer layer, driven for real (v1.7.78) -------------------------------
   // `node coverage.mjs` put five pointer handlers (~9KB at index.html:2504/2556/2614/

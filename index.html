@@ -764,7 +764,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.77';
+const V='1.7.78';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -842,7 +842,7 @@ const I18N={
     imgBig:'画像が大きすぎます。縮小してください',imgErr:'画像を読み込めませんでした',
     emptyHint:'クリックまたはツールバーから描き始める · ? でショートカット一覧',
     themeAuto:'テーマ: 自動(OS 追従)',themeLight:'テーマ: ライト',themeDark:'テーマ: ダーク',
-    popupBlocked:'ポップアップをブロックしてください',invalidBoard:'ボードファイルが無効です',exportFailed:'書き出し失敗',saveFailed:'保存失敗',quotaExceeded:'保存容量が逼迫しています — ⌘E/⌘⇧E で書き出しを推奨',
+    popupBlocked:'ポップアップをブロックしてください',invalidBoard:'ボードファイルが無効です',exportFailed:'書き出し失敗',saveFailed:'保存失敗',quotaExceeded:'保存容量が逼迫しています — ⌘E/⌘⇧E で書き出しを推奨',loadDropped:'保存データの一部を読み込めませんでした({n}件)。読めなかった記録はバックアップに退避しました — 次回起動時に復元を確認できます',
     snap:'スナップ',grid:'グリッド',minimap:'ミニマップ',on:'オン',off:'オフ',online:'オンライン',offline:'オフライン',shapes:'図形',
     copied:'コピー',pasted:'貼り付け',deleted:'削除',cleared:'クリア',
     beautified:'整形しました',beautifyNone:'整形できる図形がありません(矩形・楕円・直線に近いペン描画を選択してください)',
@@ -918,7 +918,7 @@ const I18N={
     imgBig:'Image too large — please resize',imgErr:'Image failed to load',
     emptyHint:'Click or pick a tool to start drawing · Press ? for shortcuts',
     themeAuto:'Theme: Auto (follows OS)',themeLight:'Theme: Light',themeDark:'Theme: Dark',
-    popupBlocked:'Pop-up blocked — please allow pop-ups for PDF export',invalidBoard:'Invalid .board file',exportFailed:'Export failed',saveFailed:'Save failed',quotaExceeded:'Storage quota exceeded — export locally with ⌘E/⌘⇧E',
+    popupBlocked:'Pop-up blocked — please allow pop-ups for PDF export',invalidBoard:'Invalid .board file',exportFailed:'Export failed',saveFailed:'Save failed',quotaExceeded:'Storage quota exceeded — export locally with ⌘E/⌘⇧E',loadDropped:'Could not read {n} shape(s) from your saved board. The unreadable record was moved to backup — you will be offered a restore on next launch',
     copied:'Copied',pasted:'Pasted',deleted:'Deleted',cleared:'Cleared',
     beautified:'Beautified',beautifyNone:'Nothing to beautify (select a pen stroke close to a rectangle, ellipse, or line)',
     undone:'Undone',redone:'Redone',created:'Created',editLabel:'Edit selected shape',
@@ -4810,7 +4810,23 @@ const Persist={
     if(d&&Array.isArray(d.shapes)){
       // Validate like the other intake paths (importFromHash / snapshot): never
       // adopt malformed shapes from IDB (corruption / forward-incompat schema).
-      state.shapes=d.shapes.filter(validShape);_invalidateGrid();   // ADR-0009
+      const kept=d.shapes.filter(validShape);
+      // Partial-read protection (v1.7.78). The filter above used to drop silently, and
+      // because there is ONE `main` slot the next autosave (500ms after any edit)
+      // overwrote the record with the survivors — permanent, unannounced data loss.
+      // Related software refuses to degrade rather than lose: tldraw won't open a record
+      // its schema can't handle, Excalidraw's restore() migrates elements instead of
+      // discarding them. Board can't migrate what it cannot parse, but it must not lose it
+      // quietly — stash the RAW record in the ADR-0004 slot before any autosave runs, and
+      // tell the user. Never clobber an existing backup: a board saved just before a
+      // clear/import is more valuable than this one, and ADR-0004 has only one slot.
+      const dropped=d.shapes.length-kept.length;
+      if(dropped>0){
+        if(!(await this.checkBackup()))
+          await this.saveBackup(d.shapes,d.viewport||{...state.viewport},d.docName||state.docName);
+        UI.toast(t('loadDropped').replace('{n}',dropped),'warn');
+      }
+      state.shapes=kept;_invalidateGrid();   // ADR-0009
       if(d.viewport&&Number.isFinite(+d.viewport.x)&&Number.isFinite(+d.viewport.y)&&Number.isFinite(+d.viewport.zoom)&&d.viewport.zoom>0){
         // Clamp zoom to the app invariant [MIN_ZOOM,MAX_ZOOM] that every compute path
         // (wheel/fit) maintains — a corrupt or forward-incompat IDB record with an
