@@ -1022,7 +1022,18 @@ const js = jsMatch[1];
 // Fake the DOM-touching APIs so the script can load without crashing
 const fakeDoc = {
   getElementById: () => ({
-    addEventListener(){}, removeEventListener(){},
+    // Element listeners are recorded ON the element. index.html does
+    // `const canvas=document.getElementById('c')` once and keeps that object, and tests
+    // get the very same object via api.canvas — so api.canvas._h.pointerdown is the real
+    // handler list. This is what makes the pointer layer drivable without making
+    // getElementById memoize (which other tests override and would disturb).
+    _h: null,
+    addEventListener(type, fn){ (this._h = this._h || {}); (this._h[type] = this._h[type] || []).push(fn); },
+    removeEventListener(type, fn){
+      const a = this._h && this._h[type]; if (!a) return;
+      const i = a.indexOf(fn); if (i >= 0) a.splice(i, 1);
+    },
+    setPointerCapture(){}, releasePointerCapture(){}, hasPointerCapture(){ return false; },
     setAttribute(){}, getAttribute(){}, removeAttribute(){},
     appendChild(){}, removeChild(){}, remove(){},
     dataset: {}, style: {}, classList: { add(){}, remove(){}, toggle(){} },
@@ -8131,6 +8142,145 @@ try {
     const oldRatio=contrastOf(brand,lightPaper);
     assert.ok(oldRatio<3,`a11y: sanity — the pre-fix pairing (raw brand on light paper) is genuinely below 3:1 (got ${oldRatio.toFixed(2)}:1), confirming this test would have caught the original bug`);
     console.log(`  ✓ a11y: focus ring contrast — light ${lightRatio.toFixed(2)}:1, dark ${darkRatio.toFixed(2)}:1, both clear the 3:1 floor (a11y-audit-2026-07)`);
+  }
+
+  // ---- the pointer layer, driven for real (v1.7.78) -------------------------------
+  // `node coverage.mjs` put five pointer handlers (~9KB at index.html:2504/2556/2614/
+  // 2766/2802) at the top of the never-executed list. Every gesture test so far called
+  // beginRectLike/contRectLike/endSelect directly, so the pointerdown→move→up plumbing
+  // that decides WHICH gesture a drag becomes had no coverage at all. Drag-to-create and
+  // marquee-select are the two most-used interactions in the whole product.
+  {
+    const keep = state.shapes.splice(0, state.shapes.length);
+    const keepTool = state.tool;
+    _invalidateGrid();
+    const H = canvas._h || {};
+    const pdown = (H.pointerdown || [])[0], pmove = (H.pointermove || [])[0], pup = (H.pointerup || [])[0];
+    const ev = (x, y, o = {}) => ({
+      offsetX: x, offsetY: y, clientX: x, clientY: y, pointerId: 1,
+      pointerType: o.pointerType || 'mouse', button: o.button || 0, buttons: o.buttons ?? 1,
+      shiftKey: !!o.shift, altKey: !!o.alt, metaKey: !!o.meta, ctrlKey: !!o.ctrl,
+      isPrimary: true, pressure: 0.5,
+      preventDefault(){}, stopPropagation(){},
+      getCoalescedEvents(){ return []; },
+    });
+    const drag = (x1, y1, x2, y2, o) => { pdown(ev(x1, y1, o)); pmove(ev(x2, y2, o)); pup(ev(x2, y2, o)); };
+    try {
+      assert.ok(pdown && pmove && pup, 'pointer: the canvas handlers were captured by the harness');
+
+      // (1) drag-to-create with the rect tool — the single most common gesture there is.
+      state.tool = 'rect'; state.selection = new Set();
+      drag(100, 100, 180, 160);
+      assert.strictEqual(state.shapes.length, 1, 'pointer drag with the rect tool creates exactly one shape');
+      const made = state.shapes[0];
+      assert.strictEqual(made.type, 'rect', 'pointer drag creates the tool\'s shape type');
+      assert.ok(made.w > 0 && made.h > 0, `pointer drag gives the shape positive extent (got ${made.w}x${made.h})`);
+      assert.strictEqual(state.history.at(-1).op, 'add', 'pointer drag commits a reversible add op');
+      assert.strictEqual(state.draft, null, 'pointer up clears the in-progress draft');
+      Store.undo();
+      assert.strictEqual(state.shapes.length, 0, 'a pointer-created shape is undoable');
+      Store.redo();
+
+      // (2) Shift constrains a rect drag to a square — a modifier read off the live event.
+      state.shapes.length = 0; _invalidateGrid();
+      state.tool = 'rect';
+      drag(0, 0, 120, 40, {shift: true});
+      assert.strictEqual(state.shapes.length, 1, 'shift-drag still creates a shape');
+      const sq = state.shapes[0];
+      assert.ok(Math.abs(sq.w - sq.h) < 0.5, `shift-drag constrains rect to a square (got ${sq.w}x${sq.h})`);
+
+      // Each case below builds its own board. The first draft of this block reused one,
+      // and case (3) silently MOVED the shape instead of marqueeing it — the marquee began
+      // at (5,5), inside the 6px hit tolerance of a shape at x=10, so pickTop claimed it
+      // and the drag became a move. Both marquee assertions still passed (a moved shape
+      // stays selected, and a move creates nothing), and only the NEXT case exposed it.
+      // Hence: fresh shapes per case, and start empty-canvas drags far from any shape.
+      const board = () => {
+        state.shapes.length = 0;
+        const a = Shape.make('rect', {x:50, y:50, w:20, h:20});
+        const b = Shape.make('rect', {x:400, y:400, w:20, h:20});
+        state.shapes.push(a, b); sortZ(); _invalidateGrid();
+        state.tool = 'select'; state.selection = new Set();
+        return {a, b};
+      };
+
+      // (3) marquee select — drag from genuinely empty canvas selects what it encloses,
+      //     creates nothing, and leaves the shapes where they were.
+      {
+        const {a, b} = board();
+        const nBefore = state.shapes.length, ax = a.x, ay = a.y;
+        drag(5, 5, 200, 200);
+        assert.strictEqual(state.shapes.length, nBefore, 'marquee drag creates nothing');
+        assert.ok(state.selection.has(a.id), 'marquee selects the shape it encloses');
+        assert.ok(!state.selection.has(b.id), 'marquee does not select a shape outside it');
+        assert.strictEqual(byId(a.id).x, ax, 'marquee does NOT move the shape it selected (a move-drag would)');
+        assert.strictEqual(byId(a.id).y, ay, 'marquee leaves y untouched too');
+        assert.strictEqual(state.marquee, null, 'pointer up clears the marquee');
+      }
+
+      // (4) click to select. An UNFILLED rect is grabbable only by its outline
+      //     (G.hit: `if(s.fill)return true` then an edge-band test) — the same convention
+      //     other drawing tools use, and worth pinning in both directions, because my
+      //     first draft of this test clicked dead centre and read the miss as a bug.
+      {
+        const {a} = board();
+        assert.ok(!a.fill, 'precondition: Shape.make gives a rect no fill');
+        pdown(ev(60, 60)); pup(ev(60, 60));
+        assert.strictEqual(state.selection.size, 0, 'the CENTRE of an unfilled rect is deliberately not clickable');
+        pdown(ev(50, 60)); pup(ev(50, 60));
+        assert.ok(state.selection.has(a.id), 'clicking an unfilled rect\'s outline selects it');
+        pdown(ev(300, 100)); pup(ev(300, 100));
+        assert.strictEqual(state.selection.size, 0, 'clicking empty canvas clears the selection');
+        // ...and a FILLED rect is clickable anywhere inside.
+        byId(a.id).fill = '#2563EB';
+        pdown(ev(60, 60)); pup(ev(60, 60));
+        assert.ok(state.selection.has(a.id), 'a filled rect IS clickable at its centre');
+      }
+
+      // (5) drag a selected shape to move it — commits ONE reversible op, not one per move.
+      {
+        const {a} = board();
+        state.selection = new Set([a.id]);
+        // Grab the INTERIOR: once selected, the outline is covered by the 8 resize handles,
+        // so an outline grab resizes rather than moves. Fill it so the interior is hittable.
+        a.fill = '#2563EB';
+        const x0 = a.x, y0 = a.y, hist0 = state.history.length;
+        pdown(ev(60, 60)); pmove(ev(100, 90)); pup(ev(100, 90));
+        const moved = byId(a.id);
+        assert.strictEqual(moved.x, x0 + 40, 'dragging a selected shape moves it by the pointer delta');
+        assert.strictEqual(moved.y, y0 + 30, 'the y delta is applied too');
+        assert.strictEqual(state.history.length, hist0 + 1, 'a whole drag is a single history entry, not one per pointermove');
+        Store.undo();
+        assert.strictEqual(byId(a.id).x, x0, 'undo returns the dragged shape to its origin');
+        assert.strictEqual(byId(a.id).y, y0, 'undo restores y too');
+      }
+
+      // (6) presentation mode must not accept drawing input either (the keydown guard has
+      //     a pointer counterpart, and it had no coverage).
+      const realActive = Presentation.isActive;
+      Presentation.isActive = () => true;
+      try {
+        state.tool = 'rect';
+        const n2 = state.shapes.length;
+        drag(500, 500, 560, 560);
+        assert.strictEqual(state.shapes.length, n2, 'presentation mode: a drag cannot draw on the board');
+      } finally { Presentation.isActive = realActive; }
+
+      // (7) a locked shape resists a move drag (parity with the keyboard/remote paths).
+      state.shapes.length = 0; _invalidateGrid();
+      const lk = Shape.make('rect', {x:100, y:100, w:40, h:40});
+      lk.locked = true;
+      state.shapes.push(lk); sortZ(); _invalidateGrid();
+      state.tool = 'select'; state.selection = new Set([lk.id]);
+      pdown(ev(120, 120)); pmove(ev(200, 200)); pup(ev(200, 200));
+      assert.strictEqual(byId(lk.id).x, 100, 'a locked shape does not move on a pointer drag');
+      console.log('  ✓ pointer layer driven end-to-end: drag-to-create (+shift square), marquee select, click select/deselect, drag-move as one undo step, presentation and lock guards');
+    } finally {
+      state.shapes.length = 0;
+      for (const s of keep) state.shapes.push(s);
+      state.tool = keepTool; state.selection = new Set();
+      state.draft = null; state.marquee = null; _invalidateGrid();
+    }
   }
 
   // ---- the keydown dispatcher, driven for real (v1.7.77) --------------------------
