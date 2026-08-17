@@ -1068,7 +1068,23 @@ const fakeDoc = {
 };
 const fakeWin = {
   devicePixelRatio: 1, innerWidth: 800, innerHeight: 600,
-  addEventListener(){}, removeEventListener(){},
+  // Capture window listeners instead of dropping them. `node coverage.mjs` showed the
+  // whole input layer — the 7KB keydown dispatcher and five pointer handlers — was never
+  // executed by any test, purely because this was a no-op. Handlers accumulate across the
+  // worlds the suite builds. Firing all of them would drive several worlds' state at once,
+  // so _dispatch targets ONE registration by index — default 0, the `api` world, which is
+  // built first and is the world whose `state` the assertions read.
+  _handlers: {},
+  addEventListener(type, fn){ (this._handlers[type] = this._handlers[type] || []).push(fn); },
+  removeEventListener(type, fn){
+    const a = this._handlers[type]; if (!a) return;
+    const i = a.indexOf(fn); if (i >= 0) a.splice(i, 1);
+  },
+  _dispatch(type, ev, idx = 0){
+    const a = this._handlers[type];
+    if (!a || !a[idx]) throw new Error(`fakeWin._dispatch: no ${type} listener at index ${idx}`);
+    a[idx](ev);
+  },
   requestAnimationFrame: (fn) => 0,
   setTimeout, clearTimeout, setInterval: () => 0, clearInterval,
   location: { hash: '', origin: 'http://test', pathname: '/index.html' },
@@ -8115,6 +8131,121 @@ try {
     const oldRatio=contrastOf(brand,lightPaper);
     assert.ok(oldRatio<3,`a11y: sanity — the pre-fix pairing (raw brand on light paper) is genuinely below 3:1 (got ${oldRatio.toFixed(2)}:1), confirming this test would have caught the original bug`);
     console.log(`  ✓ a11y: focus ring contrast — light ${lightRatio.toFixed(2)}:1, dark ${darkRatio.toFixed(2)}:1, both clear the 3:1 floor (a11y-audit-2026-07)`);
+  }
+
+  // ---- the keydown dispatcher, driven for real (v1.7.77) --------------------------
+  // `node coverage.mjs` named this the single largest never-executed function in
+  // index.html (~7KB at index.html:3498). Every keyboard test until now called the
+  // ACTION directly (pickTool, nudgeSelection, Store.undo) and so verified nothing about
+  // the dispatch that decides which action a keystroke reaches. The guards below are the
+  // load-bearing part: they are what stops a keystroke from editing the board during a
+  // presentation, or leaking through an open modal.
+  {
+    const keep = state.shapes.splice(0, state.shapes.length);
+    const keepTool = state.tool;
+    _invalidateGrid();
+    const bodyTarget = { matches: () => false };
+    const inputTarget = { matches: sel => /input|textarea/.test(sel), _blurred: false, blur(){ this._blurred = true; } };
+    const key = (k, opts = {}) => {
+      let prevented = false;
+      fakeWin._dispatch('keydown', {
+        key: k, target: opts.target || bodyTarget,
+        metaKey: !!opts.meta, ctrlKey: !!opts.ctrl, shiftKey: !!opts.shift, altKey: !!opts.alt,
+        preventDefault(){ prevented = true; },
+      });
+      return prevented;
+    };
+    try {
+      // (1) a bare tool key reaches pickTool through the real KEYMAP wiring
+      state.tool = 'select';
+      key('r');
+      assert.strictEqual(state.tool, 'rect', 'keydown: "r" selects the rect tool via KEYMAP');
+      key('v');
+      assert.strictEqual(state.tool, 'select', 'keydown: "v" returns to select');
+      // ...and a modifier must NOT let it through, or ⌘A would also swap the tool
+      state.tool = 'select';
+      key('a', {meta: true});
+      assert.strictEqual(state.tool, 'select', '⌘A selects all WITHOUT also switching to the arrow tool (the !meta guard on the tool branch)');
+      const sh1 = Shape.make('rect', {x:0,y:0,w:10,h:10});
+      const sh2 = Shape.make('rect', {x:50,y:0,w:10,h:10});
+      state.shapes.push(sh1, sh2); sortZ(); _invalidateGrid();
+      state.selection = new Set();
+      key('a', {meta: true});
+      assert.strictEqual(state.selection.size, 2, '⌘A does select every shape');
+
+      // (2) undo/redo route through the dispatcher, not just Store
+      state.selection = new Set();
+      Store.commit({op:'add', shape: Shape.make('rect', {x:200,y:0,w:10,h:10})});
+      const n = state.shapes.length;
+      assert.ok(key('z', {meta: true}), '⌘Z is preventDefault-ed');
+      assert.strictEqual(state.shapes.length, n - 1, '⌘Z undoes through the dispatcher');
+      key('z', {meta: true, shift: true});
+      assert.strictEqual(state.shapes.length, n, '⌘⇧Z redoes through the dispatcher');
+
+      // (3) Delete removes the selection
+      state.selection = new Set([sh1.id]);
+      key('Delete');
+      assert.ok(!byId(sh1.id), 'Delete removes the selected shape');
+
+      // (4) focus inside a text field must swallow canvas shortcuts entirely — otherwise
+      //     typing "r" while renaming the document would switch tools underneath you.
+      state.tool = 'select';
+      key('r', {target: inputTarget});
+      assert.strictEqual(state.tool, 'select', 'a keystroke aimed at an input does not reach canvas shortcuts');
+      assert.strictEqual(inputTarget._blurred, false, 'a non-Escape key in an input is left alone');
+      key('Escape', {target: inputTarget});
+      assert.ok(inputTarget._blurred, 'Escape in an input blurs it');
+
+      // (5) presentation mode is view-only. This guard precedes the editing shortcuts on
+      //     purpose; if it ever stops doing so, ⌘Z would mutate the board mid-slideshow.
+      const realActive = Presentation.isActive;
+      Presentation.isActive = () => true;
+      try {
+        const before = state.shapes.length;
+        state.selection = new Set([sh2.id]);
+        key('Delete');
+        assert.strictEqual(state.shapes.length, before, 'presentation mode: Delete cannot edit the board');
+        key('z', {meta: true});
+        assert.strictEqual(state.shapes.length, before, 'presentation mode: ⌘Z cannot edit the board');
+        state.tool = 'select';
+        key('r');
+        assert.strictEqual(state.tool, 'select', 'presentation mode: tool keys are suppressed');
+      } finally { Presentation.isActive = realActive; }
+
+      // (6) an open modal must not leak shortcuts to the canvas behind it
+      const dlg = { dataset: {open: 'true'}, querySelectorAll: () => [] };
+      const origGet = fakeDoc.getElementById;
+      fakeDoc.getElementById = id => id === 'help' ? dlg : origGet(id);
+      try {
+        state.tool = 'select';
+        key('r');
+        assert.strictEqual(state.tool, 'select', 'open modal: tool keys do not fire behind it');
+        const before = state.shapes.length;
+        state.selection = new Set([sh2.id]);
+        key('Delete');
+        assert.strictEqual(state.shapes.length, before, 'open modal: Delete does not fire behind it');
+      } finally { fakeDoc.getElementById = origGet; }
+
+      // (7) Tab cycles selection in z-order and skips locked shapes
+      state.selection = new Set();
+      const lockA = Shape.make('rect', {x:300,y:0,w:10,h:10});
+      lockA.locked = true;
+      state.shapes.push(lockA); sortZ(); _invalidateGrid();
+      const cycled = new Set();
+      for (let i = 0; i < 4; i++) { key('Tab'); cycled.add([...state.selection][0]); }
+      assert.ok(!cycled.has(lockA.id), 'Tab cycling never lands on a locked shape');
+      assert.ok(cycled.size >= 1 && [...cycled].every(id => byId(id)), 'Tab cycling selects live shapes');
+
+      // (8) Escape clears selection when nothing is open
+      state.selection = new Set([sh2.id]);
+      key('Escape');
+      assert.strictEqual(state.selection.size, 0, 'Escape clears the selection when no modal is open');
+      console.log('  ✓ keydown dispatcher driven end-to-end: KEYMAP tool keys, ⌘A/⌘Z/⌘⇧Z, Delete, Tab cycling, Escape — plus the three guards (input focus, presentation view-only, modal isolation)');
+    } finally {
+      state.shapes.length = 0;
+      for (const s of keep) state.shapes.push(s);
+      state.tool = keepTool; state.selection = new Set(); _invalidateGrid();
+    }
   }
 
   // ---- FT-20: WebRTC connection-failure feedback -----------------------------------

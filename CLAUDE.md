@@ -37,6 +37,7 @@ Board/
 │       ├── wire()         # event binding
 │       ├── main()         # bootstrap
 │       └── Service Worker # inline blob, offline cache
+├── coverage.mjs           # index.html の未実行関数を列挙 (依存ゼロ / V8 カバレッジ)
 ├── README.md              # 公開用
 ├── CHANGELOG.md           # セマンティックバージョニング
 ├── CLAUDE.md              # この文書
