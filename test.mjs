@@ -1152,6 +1152,24 @@ const fakeWin = {
     _setState(s){ this.connectionState=s; if(this.onconnectionstatechange)this.onconnectionstatechange(); }
   },
   RTCSessionDescription: class { constructor(j){ this.type=j.type; this.sdp=j.sdp; } },
+  // Node has no FileReader, so importBoard — the read half of "your data is yours" — was
+  // presence-checked only and never run. Same class of harness gap as location/history/
+  // screen/RTCPeerConnection. Fires onload/onerror asynchronously, like the real one.
+  FileReader: class {
+    constructor(){
+      // Injecting this as a parameter shadows globalThis, and older tests install their
+      // own shim there. Defer to one if present so both styles keep working.
+      const Installed = globalThis.FileReader;
+      if (Installed) return new Installed();
+      this.onload=null; this.onerror=null; this.result=null;
+    }
+    readAsText(file){
+      Promise.resolve()
+        .then(() => typeof file === 'string' ? file : file.text())
+        .then(txt => { this.result = txt; this.onload && this.onload(); })
+        .catch(() => { this.onerror && this.onerror(); });
+    }
+  },
   btoa: globalThis.btoa || (s => Buffer.from(s).toString('base64')),
   atob: globalThis.atob || (s => Buffer.from(s, 'base64').toString()),
   escape: globalThis.escape || (s => s),
@@ -1195,7 +1213,7 @@ try {
   const fn = new Function('window','document','navigator','requestAnimationFrame',
     'indexedDB','URL','setTimeout','clearTimeout','setInterval','clearInterval',
     'getComputedStyle','confirm','alert','Blob','globalThis','self','localStorage',
-    'location','history','screen','RTCPeerConnection','RTCSessionDescription',`
+    'location','history','screen','RTCPeerConnection','RTCSessionDescription','FileReader',`
     ${js}
     return { state, Store, G, Shape, distToSeg,
              doBringFront, doSendBack, doBringForward, doSendBackward,
@@ -1219,7 +1237,7 @@ try {
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
     fakeWin.indexedDB, fakeWin.URL, setTimeout, clearTimeout, setInterval, clearInterval,
     fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage,
-      fakeWin.location, fakeWin.history, fakeWin.screen, fakeWin.RTCPeerConnection, fakeWin.RTCSessionDescription
+      fakeWin.location, fakeWin.history, fakeWin.screen, fakeWin.RTCPeerConnection, fakeWin.RTCSessionDescription, fakeWin.FileReader
   );
   const { state, Store, G, Shape, distToSeg,
           doBringFront, doSendBack, doBringForward, doSendBackward,
@@ -3729,7 +3747,7 @@ try {
       fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
       fakeWin.indexedDB, fakeWin.URL, setTimeout, clearTimeout, setInterval, clearInterval,
       fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage,
-      fakeWin.location, fakeWin.history, fakeWin.screen, fakeWin.RTCPeerConnection, fakeWin.RTCSessionDescription
+      fakeWin.location, fakeWin.history, fakeWin.screen, fakeWin.RTCPeerConnection, fakeWin.RTCSessionDescription, fakeWin.FileReader
     );
     const cp = o => JSON.parse(JSON.stringify(o));
     A.state.peerId='peerA'; B.state.peerId='peerB';
@@ -3980,7 +3998,7 @@ try {
         const E=fn(fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
           fakeWin.indexedDB,fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
           fakeWin.getComputedStyle,fakeWin.confirm,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
-          fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.RTCPeerConnection,fakeWin.RTCSessionDescription);
+          fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.RTCPeerConnection,fakeWin.RTCSessionDescription,fakeWin.FileReader);
         assert.strictEqual(E.UI._themeMode(),'dark','boot restore: a persisted board.theme=dark is honoured at module load');
         delete ls._d['board.theme'];
 
@@ -3991,7 +4009,7 @@ try {
         const F=fn(fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
           fakeWin.indexedDB,fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
           fakeWin.getComputedStyle,fakeWin.confirm,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
-          fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.RTCPeerConnection,fakeWin.RTCSessionDescription);
+          fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.RTCPeerConnection,fakeWin.RTCSessionDescription,fakeWin.FileReader);
         F.UI.toggleTheme();
         assert.strictEqual(F.UI._themeMode(),'light','storage-throws: first toggle still advances to light in memory');
         assert.strictEqual(de.dataset.theme,'light','storage-throws: DOM actually reflects light');
@@ -4141,7 +4159,7 @@ try {
         D=fn(fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
           fakeWin.indexedDB,fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
           fakeWin.getComputedStyle,fakeWin.confirm,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
-          fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.RTCPeerConnection,fakeWin.RTCSessionDescription);
+          fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.RTCPeerConnection,fakeWin.RTCSessionDescription,fakeWin.FileReader);
         assert.strictEqual(D._getLang(),'ja','boot restore: a persisted board.lang=ja is honoured at module load, before any toggle');
         assert.strictEqual(D._getT().k.select,D.I18N.ja.k.select,'boot restore: T is I18N.ja from the start, not just LANG');
       }finally{
@@ -7829,7 +7847,7 @@ try {
       fakeWin, fakeDoc, fakeWin.navigator, spyRaf,
       fakeWin.indexedDB, fakeWin.URL, setTimeout, clearTimeout, setInterval, clearInterval,
       fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage,
-      fakeWin.location, fakeWin.history, fakeWin.screen, fakeWin.RTCPeerConnection, fakeWin.RTCSessionDescription
+      fakeWin.location, fakeWin.history, fakeWin.screen, fakeWin.RTCPeerConnection, fakeWin.RTCSessionDescription, fakeWin.FileReader
     );
     C.state.showMinimap=false;
     // v1.7.75: building a world now runs its main()/wire() far enough to schedule its own
@@ -8153,6 +8171,97 @@ try {
     assert.ok(oldRatio<3,`a11y: sanity — the pre-fix pairing (raw brand on light paper) is genuinely below 3:1 (got ${oldRatio.toFixed(2)}:1), confirming this test would have caught the original bug`);
     console.log(`  ✓ a11y: focus ring contrast — light ${lightRatio.toFixed(2)}:1, dark ${darkRatio.toFixed(2)}:1, both clear the 3:1 floor (a11y-audit-2026-07)`);
   }
+
+  // ---- .board export → import round-trip (v1.7.81) --------------------------------
+  // "Your data is yours" is the product's whole thesis, and `node coverage.mjs` showed
+  // exportBoard/exportSVG never executed while importBoard was presence-checked only
+  // (Node has no FileReader; the harness now supplies one). A silent field loss here
+  // would be the worst bug in the product — you would only discover it after trusting
+  // the export and deleting the original.
+  await (async () => {
+    const keep = state.shapes.splice(0, state.shapes.length);
+    const keepName = state.docName;
+    _invalidateGrid();
+    const origToast = UI.toast, origCreate = fakeWin.URL.createObjectURL;
+    const toasts = []; let captured = null;
+    UI.toast = (m, k) => toasts.push({m, k});
+    fakeWin.URL.createObjectURL = blob => { captured = blob; return 'blob:captured'; };
+    try {
+      // a board using every feature that carries state beyond plain geometry
+      const box   = Shape.make('rect',   {x:10, y:20, w:40, h:30});
+      const note  = Shape.make('sticky', {x:80, y:20, w:60, h:60, text:'買う: 牛乳'});
+      const pen   = Shape.make('pen',    {pts:[[0,0],[3,4],[7,1]]});
+      const conn  = Shape.make('arrow',  {x1:0, y1:0, x2:50, y2:50});
+      const frame = Shape.make('frame',  {x:0, y:200, w:300, h:200});
+      box.groupId = 'G1'; note.groupId = 'G1';
+      box.rotate = 45; box.locked = true; box.fill = '#2563EB';
+      conn.a = box.id; conn.b = note.id; conn.label = 'yes';
+      frame.label = 'Slide 1';
+      state.shapes.push(box, note, pen, conn, frame); sortZ(); _invalidateGrid();
+      state.docName = '設計メモ';
+      const expected = JSON.parse(JSON.stringify(state.shapes));
+
+      exportBoard();
+      assert.ok(captured, 'export: .board produced a blob');
+      assert.strictEqual(toasts.at(-1).k, 'ok', 'export: .board reports success');
+      const text = await captured.text();
+      const parsed = JSON.parse(text);
+      assert.strictEqual(parsed.docName, '設計メモ', 'export: the document name is in the file (incl. non-ASCII)');
+      assert.strictEqual(parsed.shapes.length, 5, 'export: every shape is in the file');
+
+      // wipe, then import the exact bytes back
+      state.shapes.length = 0; state.docName = 'Untitled'; _invalidateGrid();
+      state.history.length = 0; state.histIdx = -1;
+      toasts.length = 0;
+      importBoard(text);
+      await new Promise(r => setTimeout(r, 0));
+      assert.strictEqual(state.shapes.length, 5, 'import: every shape came back');
+      assert.strictEqual(state.docName, '設計メモ', 'import: the document name came back');
+
+      const back = id => state.shapes.find(s => s.id === id);
+      // The fields that are NOT plain geometry are the ones a naive serializer drops.
+      assert.strictEqual(back(box.id).groupId, 'G1', 'round-trip: group membership survives');
+      assert.strictEqual(back(note.id).groupId, 'G1', 'round-trip: both group members survive');
+      assert.strictEqual(back(box.id).locked, true, 'round-trip: the lock survives');
+      assert.strictEqual(back(box.id).rotate, 45, 'round-trip: rotation survives');
+      assert.strictEqual(back(box.id).fill, '#2563EB', 'round-trip: fill survives');
+      assert.strictEqual(back(conn.id).a, box.id, 'round-trip: the connector stays BOUND to its shape (not snapped to stale coords)');
+      assert.strictEqual(back(conn.id).b, note.id, 'round-trip: the far binding survives too');
+      assert.strictEqual(back(conn.id).label, 'yes', 'round-trip: the connector label survives');
+      assert.strictEqual(back(frame.id).label, 'Slide 1', 'round-trip: the frame label survives');
+      assert.strictEqual(back(note.id).text, '買う: 牛乳', 'round-trip: sticky text survives verbatim, non-ASCII included');
+      assert.deepStrictEqual(back(pen.id).pts, expected.find(s=>s.id===pen.id).pts, 'round-trip: pen points survive exactly');
+      // z-order is what makes a drawing look like itself
+      assert.deepStrictEqual(state.shapes.map(s=>s.id), expected.map(s=>s.id), 'round-trip: stacking order is preserved');
+      // and the import must be undoable in one step (ADR-0004 / replace op)
+      assert.strictEqual(state.history.at(-1).op, 'replace', 'import: recorded as one reversible replace op');
+
+      // SVG export must not silently emit an empty document for a real board
+      captured = null; toasts.length = 0;
+      exportSVG();
+      assert.ok(captured, 'export: SVG produced a blob');
+      const svg = await captured.text();
+      assert.ok(svg.startsWith('<svg') && svg.includes('</svg>'), 'export: SVG is a complete document');
+      // Sticky text is line-wrapped (JIS X 4051 kinsoku) before it reaches the SVG, so it
+      // arrives split across <text> elements — assert the tokens, not the joined string.
+      assert.ok(svg.includes('買う') && svg.includes('牛乳'), 'export: sticky text reaches the SVG (wrapped across lines)');
+      assert.ok(/<text/.test(svg), 'export: SVG actually contains text elements');
+      assert.ok(!svg.includes('undefined') && !svg.includes('NaN'), 'export: no undefined/NaN leaked into the SVG');
+
+      // empty board must refuse rather than write a useless file
+      state.shapes.length = 0; _invalidateGrid();
+      captured = null; toasts.length = 0;
+      exportBoard();
+      assert.strictEqual(captured, null, 'export: an empty board writes no .board file');
+      assert.strictEqual(toasts.at(-1).k, 'warn', 'export: and says why');
+      console.log('  ✓ .board round-trip: group/lock/rotate/fill/connector bindings/labels/pen points/z-order/non-ASCII all survive export→import; SVG is well-formed; empty board refuses');
+    } finally {
+      UI.toast = origToast; fakeWin.URL.createObjectURL = origCreate;
+      state.shapes.length = 0;
+      for (const s of keep) state.shapes.push(s);
+      state.docName = keepName; _invalidateGrid();
+    }
+  })();
 
   // ---- the perf requirement, measured instead of assumed (v1.7.79) ------------------
   // spec.md carried three roadmap items — dirty-rect (FT-13), quadtree for the draw pass
