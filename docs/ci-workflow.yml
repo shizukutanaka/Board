@@ -1,0 +1,41 @@
+# ⚠️ THIS FILE CANNOT LIVE AT .github/workflows/ci.yml IN THIS REPO — verified 2026-08-17.
+# Pushing it is rejected by GitHub with:
+#   refusing to allow a GitHub App to create or update workflow `.github/workflows/ci.yml`
+#   without `workflows` permission
+# The long-standing note in .gitignore was therefore CORRECT, and v1.7.79's criticism of it
+# was only half right: the reasoning had never been verified, but the conclusion held.
+# Tested rather than assumed — the answer just came back "the block is real".
+#
+# TO ACTIVATE (a human with repo write access, ~30 seconds):
+#   mkdir -p .github/workflows && cp docs/ci-workflow.yml .github/workflows/ci.yml
+#   # then remove the `.github/` line from .gitignore and commit
+#
+# Step 5 of the algorithm — automate, and only after the rest.
+# This deliberately re-implements NOTHING. Every invariant (single-file, no external
+# origins, no innerHTML, size-badge honesty, 1600+ behavioural checks) already lives in
+# test.mjs, which any contributor runs in ~2s. CI's only job is to run it where nobody
+# can forget to. Duplicating the checks here would create a second source of truth.
+name: CI
+on:
+  push:
+    branches: ['**']
+  pull_request:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Tests, invariants and size-badge honesty
+        run: node test.mjs
+      - name: Inline script parses standalone
+        run: |
+          node -e "
+          const fs=require('fs');
+          const js=fs.readFileSync('index.html','utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
+          fs.writeFileSync('/tmp/inline.js', js);
+          " && node --check /tmp/inline.js
+      - name: Unexecuted-function baseline does not regress
+        run: node coverage.mjs --max=139

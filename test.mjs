@@ -1204,7 +1204,7 @@ try {
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize, boardOutline, SR_MIRROR_MAX, Share, _deflateForTest: _deflate,
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize, boardOutline, SR_MIRROR_MAX, Share, _deflateForTest: _deflate, SHARE_URL_MAX,
              _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
              exportPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
@@ -1228,7 +1228,7 @@ try {
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize, boardOutline, SR_MIRROR_MAX, Share, _deflateForTest: _deflate,
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize, boardOutline, SR_MIRROR_MAX, Share, _deflateForTest: _deflate, SHARE_URL_MAX,
           _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
           exportPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
@@ -8771,7 +8771,31 @@ try {
         assert.strictEqual(state.shapes.length, 1, 'safety net: Ctrl+Z restores the board the shared link replaced');
         assert.strictEqual(state.shapes[0].w, 9, 'safety net: the restored board is the pre-import one');
       } finally { Persist.saveBackup = origBackup; fakeWin._confirmImpl = origConfirm; }
-      console.log('  ✓ ADR-0017 share E2E: legacy z:/j: links still import, deflate genuinely compresses (7x regression pinned), no-WebCrypto falls back honestly, and ADR-0004 backup + undo still guard the encrypted path');
+      // (10) FT-15 restated (v1.7.79): the board travels IN the URL, so one image can make
+      //      the link unusable — a 0.5MB image yields ~686k chars, 21x Chrome's ~32k limit,
+      //      and servers/chat apps cap far lower. Separating dataURLs (the original FT-15
+      //      proposal) would not have helped: the bytes still have to travel. Warn instead.
+      {
+        seed();
+        const img = Shape.make('image', {x:0, y:0, w:100, h:100});
+        // Incompressible payload, deterministic (LCG, no Math.random). A repetitive string
+        // would deflate to nothing and make this assertion pass for the wrong reason —
+        // real PNG/JPEG bytes are already compressed, which is the whole problem.
+        const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+        let seedv = 12345, buf = '';
+        for (let i = 0; i < 200000; i++) { seedv = (seedv * 1103515245 + 12345) & 0x7fffffff; buf += B64[(seedv >>> 15) & 63]; }   // high bits: LCG low bits have short periods and would compress
+        img.dataUrl = 'data:image/png;base64,' + buf;   // ~200k chars, ~150KB of "image"
+        state.shapes.push(img); _invalidateGrid();
+        const big = await Share.exportToUrl();
+        assert.ok(big.url.length > api.SHARE_URL_MAX,
+          `share length: a board with an image exceeds the shareable threshold (got ${big.url.length} chars)`);
+        const small = (() => { state.shapes.pop(); _invalidateGrid(); return null; })();
+        const ok2 = await Share.exportToUrl();
+        assert.ok(ok2.url.length <= api.SHARE_URL_MAX,
+          `share length: an ordinary board stays comfortably under it (got ${ok2.url.length} chars)`);
+        void small;
+      }
+      console.log('  ✓ ADR-0017 share E2E: legacy z:/j: links still import, deflate genuinely compresses (7x regression pinned), no-WebCrypto falls back honestly, ADR-0004 backup + undo guard the encrypted path, and an unshareably-long link is flagged (FT-15 restated)');
     } finally {
       state.shapes.length = 0;
       for (const s of keep) state.shapes.push(s);
