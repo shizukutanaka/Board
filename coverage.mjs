@@ -128,6 +128,10 @@ if (Number.isFinite(MAX)) {
   if (dead.length > MAX) {
     console.log(`\n✗ ${dead.length} unexecuted functions exceeds the --max=${MAX} baseline.`);
     console.log(`  Either cover the new code, or raise the baseline deliberately.`);
+    console.log(`  NOTE: covering an outer function for the first time can RAISE this count,`);
+    console.log(`  because V8 then compiles its nested closures and they start being counted.`);
+    console.log(`  Covering openCtxMenu once moved it 137 -> 147. A rise is not automatically`);
+    console.log(`  a regression — check whether total functions grew by a similar amount.`);
     process.exit(1);
   }
   console.log(`\n✓ ${dead.length} unexecuted functions is within the --max=${MAX} baseline.`);

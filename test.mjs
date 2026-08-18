@@ -1213,7 +1213,7 @@ try {
   const fn = new Function('window','document','navigator','requestAnimationFrame',
     'indexedDB','URL','setTimeout','clearTimeout','setInterval','clearInterval',
     'getComputedStyle','confirm','alert','Blob','globalThis','self','localStorage',
-    'location','history','screen','RTCPeerConnection','RTCSessionDescription','FileReader',`
+    'location','history','screen','RTCPeerConnection','RTCSessionDescription','FileReader','innerWidth','innerHeight',`
     ${js}
     return { state, Store, G, Shape, distToSeg,
              doBringFront, doSendBack, doBringForward, doSendBackward,
@@ -1237,7 +1237,7 @@ try {
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
     fakeWin.indexedDB, fakeWin.URL, setTimeout, clearTimeout, setInterval, clearInterval,
     fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage,
-      fakeWin.location, fakeWin.history, fakeWin.screen, fakeWin.RTCPeerConnection, fakeWin.RTCSessionDescription, fakeWin.FileReader
+      fakeWin.location, fakeWin.history, fakeWin.screen, fakeWin.RTCPeerConnection, fakeWin.RTCSessionDescription, fakeWin.FileReader, fakeWin.innerWidth, fakeWin.innerHeight
   );
   const { state, Store, G, Shape, distToSeg,
           doBringFront, doSendBack, doBringForward, doSendBackward,
@@ -3747,7 +3747,7 @@ try {
       fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
       fakeWin.indexedDB, fakeWin.URL, setTimeout, clearTimeout, setInterval, clearInterval,
       fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage,
-      fakeWin.location, fakeWin.history, fakeWin.screen, fakeWin.RTCPeerConnection, fakeWin.RTCSessionDescription, fakeWin.FileReader
+      fakeWin.location, fakeWin.history, fakeWin.screen, fakeWin.RTCPeerConnection, fakeWin.RTCSessionDescription, fakeWin.FileReader, fakeWin.innerWidth, fakeWin.innerHeight
     );
     const cp = o => JSON.parse(JSON.stringify(o));
     A.state.peerId='peerA'; B.state.peerId='peerB';
@@ -3998,7 +3998,7 @@ try {
         const E=fn(fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
           fakeWin.indexedDB,fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
           fakeWin.getComputedStyle,fakeWin.confirm,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
-          fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.RTCPeerConnection,fakeWin.RTCSessionDescription,fakeWin.FileReader);
+          fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.RTCPeerConnection,fakeWin.RTCSessionDescription,fakeWin.FileReader,fakeWin.innerWidth,fakeWin.innerHeight);
         assert.strictEqual(E.UI._themeMode(),'dark','boot restore: a persisted board.theme=dark is honoured at module load');
         delete ls._d['board.theme'];
 
@@ -4009,7 +4009,7 @@ try {
         const F=fn(fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
           fakeWin.indexedDB,fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
           fakeWin.getComputedStyle,fakeWin.confirm,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
-          fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.RTCPeerConnection,fakeWin.RTCSessionDescription,fakeWin.FileReader);
+          fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.RTCPeerConnection,fakeWin.RTCSessionDescription,fakeWin.FileReader,fakeWin.innerWidth,fakeWin.innerHeight);
         F.UI.toggleTheme();
         assert.strictEqual(F.UI._themeMode(),'light','storage-throws: first toggle still advances to light in memory');
         assert.strictEqual(de.dataset.theme,'light','storage-throws: DOM actually reflects light');
@@ -4159,7 +4159,7 @@ try {
         D=fn(fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
           fakeWin.indexedDB,fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
           fakeWin.getComputedStyle,fakeWin.confirm,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
-          fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.RTCPeerConnection,fakeWin.RTCSessionDescription,fakeWin.FileReader);
+          fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.RTCPeerConnection,fakeWin.RTCSessionDescription,fakeWin.FileReader,fakeWin.innerWidth,fakeWin.innerHeight);
         assert.strictEqual(D._getLang(),'ja','boot restore: a persisted board.lang=ja is honoured at module load, before any toggle');
         assert.strictEqual(D._getT().k.select,D.I18N.ja.k.select,'boot restore: T is I18N.ja from the start, not just LANG');
       }finally{
@@ -7847,7 +7847,7 @@ try {
       fakeWin, fakeDoc, fakeWin.navigator, spyRaf,
       fakeWin.indexedDB, fakeWin.URL, setTimeout, clearTimeout, setInterval, clearInterval,
       fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage,
-      fakeWin.location, fakeWin.history, fakeWin.screen, fakeWin.RTCPeerConnection, fakeWin.RTCSessionDescription, fakeWin.FileReader
+      fakeWin.location, fakeWin.history, fakeWin.screen, fakeWin.RTCPeerConnection, fakeWin.RTCSessionDescription, fakeWin.FileReader, fakeWin.innerWidth, fakeWin.innerHeight
     );
     C.state.showMinimap=false;
     // v1.7.75: building a world now runs its main()/wire() far enough to schedule its own
@@ -8170,6 +8170,123 @@ try {
     const oldRatio=contrastOf(brand,lightPaper);
     assert.ok(oldRatio<3,`a11y: sanity — the pre-fix pairing (raw brand on light paper) is genuinely below 3:1 (got ${oldRatio.toFixed(2)}:1), confirming this test would have caught the original bug`);
     console.log(`  ✓ a11y: focus ring contrast — light ${lightRatio.toFixed(2)}:1, dark ${darkRatio.toFixed(2)}:1, both clear the 3:1 floor (a11y-audit-2026-07)`);
+  }
+
+  // ---- the context menu, built for real (v1.7.81) ---------------------------------
+  // The largest never-executed function in index.html (~3.2KB). It is also the ONLY way
+  // touch users reach most of the product — FT-06/ADR-0006 exist because ⌥B-style
+  // keyboard-only affordances were invisible on a tablet. An item that renders but whose
+  // handler is undefined would look fine and do nothing.
+  {
+    const keep = state.shapes.splice(0, state.shapes.length);
+    const keepClip = state.clipboard, keepStyleClip = state.styleClipboard;
+    _invalidateGrid();
+    const mkNode = () => ({
+      children: [], attrs: {}, dataset: {}, style: {}, className: '', textContent: '',
+      get firstChild(){ return this.children[0] || null; },
+      appendChild(c){ this.children.push(c); return c; },
+      removeChild(c){ this.children.splice(this.children.indexOf(c), 1); return c; },
+      setAttribute(k, v){ this.attrs[k] = v; },
+      querySelector(){ return this.children.find(c => c.className === 'ctx-item') || null; },
+      focus(){}, offsetHeight: 100, onclick: null,
+    });
+    const ctx = mkNode();
+    const origGet = fakeDoc.getElementById, origCreate = fakeDoc.createElement;
+    fakeDoc.getElementById = id => id === 'ctx' ? ctx : origGet(id);
+    fakeDoc.createElement = tag => (tag === 'button' || tag === 'span' || tag === 'div') ? mkNode() : origCreate(tag);
+    // label of an item = its first child span's text
+    const labels = () => ctx.children.filter(c => c.className === 'ctx-item')
+      .map(b => (b.children[0] || {}).textContent);
+    const open = () => { ctx.children.length = 0; UI.openCtxMenu(10, 10); };
+    try {
+      const a = Shape.make('rect', {x:0, y:0, w:20, h:20});
+      const b = Shape.make('rect', {x:50, y:0, w:20, h:20});
+      const pen = Shape.make('pen', {pts:[[0,0],[5,5]]});
+      state.shapes.push(a, b, pen); sortZ(); _invalidateGrid();
+      const T = api.I18N.en;
+
+      // (1) empty selection: no per-shape actions, but the board-level ones are there
+      state.selection = new Set(); state.clipboard = null; state.styleClipboard = null;
+      open();
+      let L = labels();
+      assert.ok(L.length > 0, 'ctx: the menu renders items with no selection');
+      assert.ok(!L.includes(T.ctxDelete), 'ctx: no Delete without a selection');
+      assert.ok(!L.includes(T.ctxCopy), 'ctx: no Copy without a selection');
+      assert.ok(L.includes(T.ctxSelectAll), 'ctx: Select All is always offered');
+      assert.ok(L.includes(T.ctxClear), 'ctx: Clear is offered when the board has shapes');
+
+      // (2) every rendered item must actually DO something. An item with no handler
+      //     renders identically and silently does nothing when tapped.
+      for (const item of ctx.children.filter(c => c.className === 'ctx-item')) {
+        assert.strictEqual(typeof item.onclick, 'function',
+          `ctx: every menu item has a working handler (found one without: ${(item.children[0]||{}).textContent})`);
+      }
+      assert.ok(ctx.children.every(c => c.attrs.role === 'menuitem' || c.attrs.role === 'separator'),
+        'ctx: every node is a menuitem or a separator (screen-reader structure)');
+
+      // (3) one shape selected: per-shape actions appear, multi-select ones do not
+      state.selection = new Set([a.id]);
+      open(); L = labels();
+      assert.ok(L.includes(T.ctxDelete) && L.includes(T.ctxCopy), 'ctx: a selection brings Delete and Copy');
+      assert.ok(!L.includes(T.ctxGroup), 'ctx: Group needs more than one shape');
+      assert.ok(!L.includes(T.ctxAlignLeft), 'ctx: alignment needs more than one shape');
+      assert.ok(L.includes(T.ctxLock), 'ctx: Lock is offered for an unlocked shape');
+      assert.ok(!L.includes(T.ctxBeautify), 'ctx: Beautify is not offered for a non-pen shape');
+
+      // (4) the lock label reflects the shape's state rather than being fixed
+      byId(a.id).locked = true;
+      open(); L = labels();
+      assert.ok(L.includes(T.ctxUnlock) && !L.includes(T.ctxLock), 'ctx: a locked shape offers Unlock, not Lock');
+      byId(a.id).locked = false;
+
+      // (5) FT-06/ADR-0005: Beautify must be reachable WITHOUT the keyboard, or the
+      //     feature does not exist for touch users at all.
+      state.selection = new Set([pen.id]);
+      open(); L = labels();
+      assert.ok(L.includes(T.ctxBeautify), 'ctx: selecting a pen stroke offers Beautify (the touch path FT-06 was filed for)');
+
+      // (6) two shapes: group + alignment appear; ungroup only once grouped
+      state.selection = new Set([a.id, b.id]);
+      open(); L = labels();
+      assert.ok(L.includes(T.ctxGroup), 'ctx: two shapes offer Group');
+      assert.ok(L.includes(T.ctxAlignLeft) && L.includes(T.ctxVSpace), 'ctx: two shapes offer alignment and distribution');
+      assert.ok(!L.includes(T.ctxUngroup), 'ctx: Ungroup is hidden until something is grouped');
+      byId(a.id).groupId = 'G1';
+      open(); L = labels();
+      assert.ok(L.includes(T.ctxUngroup), 'ctx: a grouped member offers Ungroup');
+      delete byId(a.id).groupId;
+
+      // (7) clipboard-dependent entries appear only when there is something to paste
+      state.selection = new Set([a.id]);
+      state.clipboard = null; open();
+      assert.ok(!labels().includes(T.ctxPaste), 'ctx: no Paste with an empty clipboard');
+      state.clipboard = [JSON.parse(JSON.stringify(a))]; open();
+      assert.ok(labels().includes(T.ctxPaste), 'ctx: Paste appears once the clipboard has content');
+
+      // (8) separators must never lead, trail, or double up — the filter that guarantees
+      //     it is easy to break when items are added conditionally.
+      const kinds = ctx.children.map(c => c.className === 'ctx-sep' ? 'sep' : 'item');
+      assert.notStrictEqual(kinds[0], 'sep', 'ctx: the menu never starts with a separator');
+      assert.notStrictEqual(kinds.at(-1), 'sep', 'ctx: the menu never ends with a separator');
+      assert.ok(!kinds.some((k, i) => k === 'sep' && kinds[i-1] === 'sep'), 'ctx: no doubled separators');
+
+      // (9) an item actually invokes its action and closes the menu
+      state.selection = new Set([a.id]);
+      open();
+      const del = ctx.children.find(c => (c.children[0]||{}).textContent === T.ctxDelete);
+      const before = state.shapes.length;
+      del.onclick();
+      assert.strictEqual(state.shapes.length, before - 1, 'ctx: activating Delete really deletes');
+      assert.strictEqual(ctx.dataset.open, 'false', 'ctx: activating an item closes the menu');
+      Store.undo();
+      console.log('  ✓ context menu built for real: item set tracks selection/lock/group/clipboard, Beautify reachable by touch (FT-06), every item has a handler and a role, separators never lead/trail/double, activation works and closes');
+    } finally {
+      fakeDoc.getElementById = origGet; fakeDoc.createElement = origCreate;
+      state.shapes.length = 0;
+      for (const s of keep) state.shapes.push(s);
+      state.selection = new Set(); state.clipboard = keepClip; state.styleClipboard = keepStyleClip;
+      _invalidateGrid();
+    }
   }
 
   // ---- .board export → import round-trip (v1.7.81) --------------------------------
