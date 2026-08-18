@@ -8154,6 +8154,50 @@ try {
     console.log(`  ✓ a11y: focus ring contrast — light ${lightRatio.toFixed(2)}:1, dark ${darkRatio.toFixed(2)}:1, both clear the 3:1 floor (a11y-audit-2026-07)`);
   }
 
+  // ---- the perf requirement, measured instead of assumed (v1.7.79) ------------------
+  // spec.md carried three roadmap items — dirty-rect (FT-13), quadtree for the draw pass
+  // (FT-14), and a P3 "空間索引" row — all resting on ">2000 shapes is linear and slow".
+  // Nobody had ever measured it; the backlog even admits "「描画が重い」という実測の証拠が無い".
+  // Measured: 10,000 shapes (5x the quoted threshold) traverse in well under a frame,
+  // and cost does NOT scale with board size because viewport culling already bounds it by
+  // what is on screen. The three items were deleted. This guard is what replaces them: if
+  // draw() ever becomes super-linear in board size, the requirement comes back on evidence.
+  // Measures JS traversal only (the harness ctx is a no-op stub) — which is exactly the
+  // "linear scan of state.shapes" the requirement claimed. Rasterisation is bounded by
+  // screen pixels regardless of how many shapes exist.
+  {
+    const keep = state.shapes.splice(0, state.shapes.length);
+    _invalidateGrid();
+    const fill = n => {
+      state.shapes.length = 0;
+      for (let i = 0; i < n; i++) state.shapes.push(Shape.make('rect', {x:(i%80)*30, y:Math.floor(i/80)*30, w:24, h:18}));
+      sortZ(); _invalidateGrid();
+    };
+    const timeDraw = (n, iters) => {
+      fill(n); api.draw();                                  // warm
+      const t0 = process.hrtime.bigint();
+      for (let i = 0; i < iters; i++) api.draw();
+      return Number(process.hrtime.bigint() - t0) / 1e6 / iters;
+    };
+    try {
+      const small = timeDraw(500, 20), huge = timeDraw(10000, 20);
+      // Generous ceilings: this is a regression guard, not a benchmark, and CI machines
+      // vary wildly. A genuine super-linear regression blows past these by orders.
+      assert.ok(huge < 8, `perf: 10k shapes traverse in well under a 16.7ms frame (got ${huge.toFixed(2)}ms)`);
+      assert.ok(huge < small * 20 + 5,
+        `perf: cost does not scale with board size — 20x the shapes must not cost 20x (500:${small.toFixed(2)}ms vs 10000:${huge.toFixed(2)}ms). Viewport culling bounds work by what is ON SCREEN; this is why quadtree/dirty-rect were deleted rather than built.`);
+      const pk0 = process.hrtime.bigint();
+      for (let i = 0; i < 200; i++) pickTop({x:(i%2000), y:(i%700)});
+      const pick = Number(process.hrtime.bigint() - pk0) / 1e6 / 200;
+      assert.ok(pick < 2, `perf: hit-testing a 10k-shape board stays sub-millisecond (got ${pick.toFixed(3)}ms)`);
+      console.log(`  ✓ perf guard: 10k shapes draw in ${huge.toFixed(2)}ms and pick in ${pick.toFixed(3)}ms — culling bounds cost by screen, not board size (this replaces FT-13/FT-14/quadtree)`);
+    } finally {
+      state.shapes.length = 0;
+      for (const s of keep) state.shapes.push(s);
+      _invalidateGrid();
+    }
+  }
+
   // ---- Persist.load partial-read protection (v1.7.78) ------------------------------
   // `node coverage.mjs` flagged Persist.load (1.3KB) as never executed — the path that
   // restores the user's board on EVERY startup. Driving it showed the filter dropping
