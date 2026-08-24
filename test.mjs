@@ -1245,7 +1245,7 @@ try {
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize, boardOutline, SR_MIRROR_MAX, Share, _deflateForTest: _deflate, SHARE_URL_MAX,
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize, boardOutline, SR_MIRROR_MAX, Share, _deflateForTest: _deflate, SHARE_URL_MAX, fitToContent, visibleWorldRect,
              _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
              exportPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
@@ -1269,7 +1269,7 @@ try {
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize, boardOutline, SR_MIRROR_MAX, Share, _deflateForTest: _deflate, SHARE_URL_MAX,
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize, boardOutline, SR_MIRROR_MAX, Share, _deflateForTest: _deflate, SHARE_URL_MAX, fitToContent, visibleWorldRect,
           _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
           exportPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
@@ -8195,6 +8195,165 @@ try {
     console.log(`  ✓ a11y: focus ring contrast — light ${lightRatio.toFixed(2)}:1, dark ${darkRatio.toFixed(2)}:1, both clear the 3:1 floor (a11y-audit-2026-07)`);
   }
 
+  // ---- fit-to-content and clear-all (v1.7.81) -------------------------------------
+  // Both were unexecuted. fitToContent is the only way back when a user pans into empty
+  // space and loses their board; doClearAll is the most destructive button in the app and
+  // ADR-0004's backup is the only thing standing behind it.
+  {
+    const keep = state.shapes.splice(0, state.shapes.length);
+    const keepVp = {...state.viewport};
+    _invalidateGrid();
+    const origToast = UI.toast, origConfirm = fakeWin._confirmImpl;
+    UI.toast = () => {};
+    try {
+      // (1) fit frames every shape, from a viewport that had lost them entirely
+      const a = Shape.make('rect', {x:0, y:0, w:100, h:100});
+      const b = Shape.make('rect', {x:900, y:700, w:100, h:100});
+      state.shapes.push(a, b); sortZ(); _invalidateGrid();
+      Object.assign(state.viewport, {x: 50000, y: 50000, zoom: 8});
+      fitToContent();
+      const v = visibleWorldRect();
+      const bb = G.bboxAll(state.shapes);
+      assert.ok(v.x <= bb.x && v.y <= bb.y && v.x + v.w >= bb.x + bb.w && v.y + v.h >= bb.y + bb.h,
+        `fit: every shape is inside the viewport afterwards (view ${JSON.stringify(v)} vs content ${JSON.stringify(bb)})`);
+      assert.ok(state.viewport.zoom >= MIN_ZOOM && state.viewport.zoom <= MAX_ZOOM, 'fit: the resulting zoom is in range');
+      // (2) fit on an empty board resets rather than dividing by a zero-size bbox
+      state.shapes.length = 0; _invalidateGrid();
+      Object.assign(state.viewport, {x: 12345, y: 6789, zoom: 5});
+      fitToContent();
+      assert.strictEqual(state.viewport.zoom, 1, 'fit: an empty board resets zoom to 100% instead of producing NaN');
+      assert.ok(Number.isFinite(state.viewport.x) && Number.isFinite(state.viewport.y), 'fit: the empty-board viewport stays finite');
+
+      // (3) clear-all wipes the board, is undoable, and leaves an ADR-0004 backup
+      state.shapes.push(Shape.make('rect', {x:1, y:1, w:10, h:10}), Shape.make('rect', {x:20, y:1, w:10, h:10}));
+      sortZ(); _invalidateGrid();
+      state.history.length = 0; state.histIdx = -1;
+      const backups = []; const origBackup = Persist.saveBackup;
+      Persist.saveBackup = (...args) => { backups.push(args); };
+      fakeWin._confirmImpl = () => true;
+      try {
+        doClearAll();
+        assert.strictEqual(state.shapes.length, 0, 'clear: the board is emptied');
+        assert.strictEqual(backups.length, 1, 'clear: the pre-clear board is backed up first (ADR-0004)');
+        assert.strictEqual(backups[0][0].length, 2, 'clear: the backup holds the shapes that were about to be destroyed');
+        assert.strictEqual(state.history.at(-1).op, 'clear', 'clear: recorded as a reversible clear op');
+        Store.undo();
+        assert.strictEqual(state.shapes.length, 2, 'clear: Ctrl+Z brings the whole board back');
+        // (4) declining the confirm must change nothing at all
+        state.history.length = 0; state.histIdx = -1; backups.length = 0;
+        fakeWin._confirmImpl = () => false;
+        doClearAll();
+        assert.strictEqual(state.shapes.length, 2, 'clear: declining the prompt leaves the board alone');
+        assert.strictEqual(state.history.length, 0, 'clear: declining records no op');
+        assert.strictEqual(backups.length, 0, 'clear: declining writes no backup');
+      } finally { Persist.saveBackup = origBackup; }
+      console.log('  ✓ fit + clear: fit frames all content and survives an empty board (no NaN viewport); clear backs up first, is undoable, and declining the prompt is a true no-op');
+    } finally {
+      UI.toast = origToast; fakeWin._confirmImpl = origConfirm;
+      state.shapes.length = 0;
+      for (const s of keep) state.shapes.push(s);
+      Object.assign(state.viewport, keepVp); _invalidateGrid();
+    }
+  }
+
+  // ---- every shape type actually renders (v1.7.81) --------------------------------
+  // coverage.mjs still listed drawPen / drawArrow / drawText / drawMarquee /
+  // _drawConnLabel as never executed. A bug in any of them means that shape type
+  // silently draws nothing — the single most visible failure a drawing tool can have,
+  // and one no other test in this suite would notice, since every existing render test
+  // uses rectangles.
+  {
+    const keep = state.shapes.splice(0, state.shapes.length);
+    const keepSel = state.selection, keepVp = {...state.viewport};
+    _invalidateGrid();
+    // Counts every drawing call, not just the two the HiDPI test cares about, so
+    // "this shape type emitted nothing at all" is detectable.
+    const mkCount = () => {
+      const c = {ops: 0, texts: [], _t: [1,0,0,1,0,0]};
+      const bump = k => (...a) => { c.ops++; void a; void k; };
+      Object.assign(c, {
+        setTransform(a,b,cc,d,e,f){ c._t = [a,b,cc,d,e,f]; },
+        strokeRect: bump('strokeRect'), fillRect: bump('fillRect'),
+        beginPath: bump('beginPath'), moveTo: bump('moveTo'), lineTo: bump('lineTo'),
+        arc: bump('arc'), arcTo: bump('arcTo'), quadraticCurveTo: bump('quadraticCurveTo'),
+        ellipse: bump('ellipse'), closePath(){}, fill: bump('fill'), stroke: bump('stroke'),
+        clip(){}, save(){}, restore(){}, translate(){}, scale(){}, rotate(){}, clearRect(){},
+        drawImage: bump('drawImage'), setLineDash(){},
+        measureText: () => ({width: 50}),
+        fillText(s){ c.ops++; c.texts.push(s); },
+        get canvas(){ return {width: 800, height: 600}; },
+        fillStyle:'', strokeStyle:'', lineWidth:1, font:'', textBaseline:'',
+        globalAlpha:1, lineCap:'', lineJoin:'',
+      });
+      return c;
+    };
+    const renderOnly = shape => {
+      state.shapes.length = 0;
+      state.shapes.push(shape); sortZ(); _invalidateGrid();
+      state.selection = new Set(); state.draft = null; state.marquee = null;
+      state.guides = null; state.showGrid = false; state.peers.clear();
+      Object.assign(state.viewport, {x:0, y:0, zoom:1});
+      const rec = mkCount(); const prev = api._setCtx(rec);
+      try { api.draw(); } finally { api._setCtx(prev); }
+      return rec;
+    };
+    try {
+      // Every type the product can create, each placed inside the 800x600 viewport.
+      const cases = [
+        ['rect',    Shape.make('rect',    {x:20, y:20, w:80, h:60})],
+        ['ellipse', Shape.make('ellipse', {x:20, y:20, w:80, h:60})],
+        ['line',    Shape.make('line',    {x1:20, y1:20, x2:200, y2:150})],
+        ['arrow',   Shape.make('arrow',   {x1:20, y1:20, x2:200, y2:150})],
+        ['pen',     Shape.make('pen',     {pts:[[20,20],[60,80],[120,40],[200,150]]})],
+        ['text',    Shape.make('text',    {x:20, y:20, w:150, h:24, text:'hello 世界', fontSize:16})],
+        ['sticky',  Shape.make('sticky',  {x:20, y:20, w:120, h:100, text:'買う: 牛乳'})],
+        ['frame',   Shape.make('frame',   {x:20, y:20, w:300, h:200, label:'Slide 1'})],
+      ];
+      for (const [name, sh] of cases) {
+        const rec = renderOnly(sh);
+        assert.ok(rec.ops > 0, `render: a ${name} emits drawing calls — a shape type that draws NOTHING is invisible to every other test here`);
+      }
+      // Text-bearing types must actually put their text on the canvas, not just a box.
+      for (const [name, sh, needle] of [
+        ['text',   cases[5][1], 'hello 世界'],
+        ['sticky', cases[6][1], '買う'],
+        ['frame',  cases[7][1], 'Slide 1'],
+      ]) {
+        const rec = renderOnly(sh);
+        assert.ok(rec.texts.join(' ').includes(needle),
+          `render: a ${name}'s text reaches the canvas (looked for ${JSON.stringify(needle)}, got ${JSON.stringify(rec.texts)})`);
+      }
+      // ADR-0003: a connector's label is drawn at its midpoint (_drawConnLabel).
+      {
+        const conn = Shape.make('arrow', {x1:20, y1:20, x2:220, y2:120});
+        conn.label = 'yes';
+        const rec = renderOnly(conn);
+        assert.ok(rec.texts.includes('yes'), `render: a connector label is drawn (got ${JSON.stringify(rec.texts)})`);
+      }
+      // The marquee is an overlay, drawn only while a selection drag is in flight.
+      {
+        state.shapes.length = 0; _invalidateGrid();
+        state.marquee = {x:10, y:10, w:120, h:90};
+        const rec = mkCount(); const prev = api._setCtx(rec);
+        try { api.draw(); } finally { api._setCtx(prev); state.marquee = null; }
+        assert.ok(rec.ops > 0, 'render: an in-flight marquee is drawn');
+      }
+      // A rotated shape must still emit — shapeRot() gates on s.w, and a type that
+      // carries no w would otherwise vanish the moment it was rotated.
+      {
+        const rot = Shape.make('rect', {x:40, y:40, w:100, h:60});
+        rot.rotate = 37;
+        assert.ok(renderOnly(rot).ops > 0, 'render: a rotated shape still draws');
+      }
+      console.log('  ✓ render: all 8 shape types emit drawing calls, text/sticky/frame put their text on the canvas, connector labels draw, marquee and rotation render (the "invisible shape type" class of bug)');
+    } finally {
+      state.shapes.length = 0;
+      for (const s of keep) state.shapes.push(s);
+      state.selection = keepSel; Object.assign(state.viewport, keepVp);
+      state.marquee = null; state.draft = null; _invalidateGrid();
+    }
+  }
+
   // ---- wheel zoom/pan and drag-drop image import, driven for real (v1.7.81) --------
   // The last two user-facing handlers coverage.mjs listed as never executed. The wheel
   // handler owns the zoom-at-cursor math (the invariant every canvas app must hold:
@@ -8766,7 +8925,42 @@ try {
         assert.strictEqual(state.shapes.length, n2, 'presentation mode: a drag cannot draw on the board');
       } finally { Presentation.isActive = realActive; }
 
-      // (7) a locked shape resists a move drag (parity with the keyboard/remote paths).
+      // (7) the other creation gestures. The rect path above shares beginRectLike with
+      //     ellipse/sticky/frame, but line/arrow and pen have their own handlers, and pen
+      //     runs Ramer-Douglas-Peucker on commit — a decimation bug there would corrupt
+      //     the flagship tool's output at the moment it is saved.
+      for (const tool of ['line', 'arrow']) {
+        state.shapes.length = 0; _invalidateGrid();
+        state.tool = tool;
+        drag(40, 40, 260, 180);
+        assert.strictEqual(state.shapes.length, 1, `pointer: the ${tool} tool creates one shape`);
+        const ln = state.shapes[0];
+        assert.strictEqual(ln.type, tool, `pointer: the shape is a ${tool}`);
+        assert.ok(Math.abs(ln.x1 - 40) < 1 && Math.abs(ln.y1 - 40) < 1, `pointer: ${tool} starts at the press point`);
+        assert.ok(Math.abs(ln.x2 - 260) < 1 && Math.abs(ln.y2 - 180) < 1, `pointer: ${tool} ends at the release point`);
+        assert.strictEqual(state.history.at(-1).op, 'add', `pointer: ${tool} commits a reversible add`);
+      }
+      {
+        state.shapes.length = 0; _invalidateGrid();
+        state.tool = 'pen';
+        // a many-point stroke that is mostly collinear — RDP should keep the shape but
+        // shed the redundant samples
+        pdown(ev(20, 20));
+        for (let i = 1; i <= 40; i++) pmove(ev(20 + i * 4, 20 + i * 4));
+        pmove(ev(200, 20));
+        pup(ev(200, 20));
+        assert.strictEqual(state.shapes.length, 1, 'pointer: a pen drag creates one stroke');
+        const st = state.shapes[0];
+        assert.strictEqual(st.type, 'pen', 'pointer: the stroke is a pen shape');
+        assert.ok(Array.isArray(st.pts) && st.pts.length >= 2, 'pointer: the stroke keeps its points');
+        assert.ok(st.pts.every(p => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1])),
+          'pointer: every committed pen point is a finite [x,y] pair (validShape depends on this)');
+        assert.ok(st.pts.length < 42,
+          `pointer: RDP decimates a mostly-collinear stroke instead of storing every sample (kept ${st.pts.length} of 42)`);
+        assert.ok(G.bbox(st).w > 100, 'pointer: decimation preserves the stroke\'s extent');
+      }
+
+      // (8) a locked shape resists a move drag (parity with the keyboard/remote paths).
       state.shapes.length = 0; _invalidateGrid();
       const lk = Shape.make('rect', {x:100, y:100, w:40, h:40});
       lk.locked = true;
