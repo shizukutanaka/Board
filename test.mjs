@@ -1163,11 +1163,34 @@ const fakeWin = {
       if (Installed) return new Installed();
       this.onload=null; this.onerror=null; this.result=null;
     }
+    // The read result is settled FIRST and the handler fired outside the promise chain's
+    // error path — a .catch around onload() would relabel an app crash inside the handler
+    // as a "read error" and hide it behind the imgErr/invalidBoard toast.
+    _finish(p){
+      p.then(v => { this.result = v; return this.onload; }, () => this.onerror)
+       .then(fn => { fn && fn(); });
+    }
     readAsText(file){
-      Promise.resolve()
-        .then(() => typeof file === 'string' ? file : file.text())
-        .then(txt => { this.result = txt; this.onload && this.onload(); })
-        .catch(() => { this.onerror && this.onerror(); });
+      this._finish(Promise.resolve().then(() => typeof file === 'string' ? file : file.text()));
+    }
+    readAsDataURL(file){
+      // Test files carry their dataURL directly (the 4MB gate cares only about
+      // result.length, so the test controls it precisely).
+      this._finish(Promise.resolve().then(() => {
+        if (file && file._dataUrl != null) return file._dataUrl;
+        throw new Error('no _dataUrl on test file');
+      }));
+    }
+  },
+  // Image element for the import paths: "decodes" any data:image/ URL except ones
+  // marked bad; dimensions come from fakeWin._imgDims so a test can pick them.
+  _imgDims: {width: 800, height: 600},
+  Image: class {
+    constructor(){ this.onload=null; this.onerror=null; this.width=0; this.height=0; }
+    set src(v){
+      const ok = typeof v === 'string' && v.startsWith('data:image/') && !v.includes('CORRUPT');
+      if (ok) { this.width = fakeWin._imgDims.width; this.height = fakeWin._imgDims.height; }
+      queueMicrotask(() => { (ok ? this.onload : this.onerror)?.(); });
     }
   },
   btoa: globalThis.btoa || (s => Buffer.from(s).toString('base64')),
@@ -1213,7 +1236,7 @@ try {
   const fn = new Function('window','document','navigator','requestAnimationFrame',
     'indexedDB','URL','setTimeout','clearTimeout','setInterval','clearInterval',
     'getComputedStyle','confirm','alert','Blob','globalThis','self','localStorage',
-    'location','history','screen','RTCPeerConnection','RTCSessionDescription','FileReader','innerWidth','innerHeight',`
+    'location','history','screen','RTCPeerConnection','RTCSessionDescription','FileReader','Image','innerWidth','innerHeight',`
     ${js}
     return { state, Store, G, Shape, distToSeg,
              doBringFront, doSendBack, doBringForward, doSendBackward,
@@ -1237,7 +1260,7 @@ try {
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
     fakeWin.indexedDB, fakeWin.URL, setTimeout, clearTimeout, setInterval, clearInterval,
     fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage,
-      fakeWin.location, fakeWin.history, fakeWin.screen, fakeWin.RTCPeerConnection, fakeWin.RTCSessionDescription, fakeWin.FileReader, fakeWin.innerWidth, fakeWin.innerHeight
+      fakeWin.location, fakeWin.history, fakeWin.screen, fakeWin.RTCPeerConnection, fakeWin.RTCSessionDescription, fakeWin.FileReader, fakeWin.Image, fakeWin.innerWidth, fakeWin.innerHeight
   );
   const { state, Store, G, Shape, distToSeg,
           doBringFront, doSendBack, doBringForward, doSendBackward,
@@ -3747,7 +3770,7 @@ try {
       fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
       fakeWin.indexedDB, fakeWin.URL, setTimeout, clearTimeout, setInterval, clearInterval,
       fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage,
-      fakeWin.location, fakeWin.history, fakeWin.screen, fakeWin.RTCPeerConnection, fakeWin.RTCSessionDescription, fakeWin.FileReader, fakeWin.innerWidth, fakeWin.innerHeight
+      fakeWin.location, fakeWin.history, fakeWin.screen, fakeWin.RTCPeerConnection, fakeWin.RTCSessionDescription, fakeWin.FileReader, fakeWin.Image, fakeWin.innerWidth, fakeWin.innerHeight
     );
     const cp = o => JSON.parse(JSON.stringify(o));
     A.state.peerId='peerA'; B.state.peerId='peerB';
@@ -3998,7 +4021,7 @@ try {
         const E=fn(fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
           fakeWin.indexedDB,fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
           fakeWin.getComputedStyle,fakeWin.confirm,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
-          fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.RTCPeerConnection,fakeWin.RTCSessionDescription,fakeWin.FileReader,fakeWin.innerWidth,fakeWin.innerHeight);
+          fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.RTCPeerConnection,fakeWin.RTCSessionDescription,fakeWin.FileReader,fakeWin.Image,fakeWin.innerWidth,fakeWin.innerHeight);
         assert.strictEqual(E.UI._themeMode(),'dark','boot restore: a persisted board.theme=dark is honoured at module load');
         delete ls._d['board.theme'];
 
@@ -4009,7 +4032,7 @@ try {
         const F=fn(fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
           fakeWin.indexedDB,fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
           fakeWin.getComputedStyle,fakeWin.confirm,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
-          fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.RTCPeerConnection,fakeWin.RTCSessionDescription,fakeWin.FileReader,fakeWin.innerWidth,fakeWin.innerHeight);
+          fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.RTCPeerConnection,fakeWin.RTCSessionDescription,fakeWin.FileReader,fakeWin.Image,fakeWin.innerWidth,fakeWin.innerHeight);
         F.UI.toggleTheme();
         assert.strictEqual(F.UI._themeMode(),'light','storage-throws: first toggle still advances to light in memory');
         assert.strictEqual(de.dataset.theme,'light','storage-throws: DOM actually reflects light');
@@ -4159,7 +4182,7 @@ try {
         D=fn(fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
           fakeWin.indexedDB,fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
           fakeWin.getComputedStyle,fakeWin.confirm,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
-          fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.RTCPeerConnection,fakeWin.RTCSessionDescription,fakeWin.FileReader,fakeWin.innerWidth,fakeWin.innerHeight);
+          fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.RTCPeerConnection,fakeWin.RTCSessionDescription,fakeWin.FileReader,fakeWin.Image,fakeWin.innerWidth,fakeWin.innerHeight);
         assert.strictEqual(D._getLang(),'ja','boot restore: a persisted board.lang=ja is honoured at module load, before any toggle');
         assert.strictEqual(D._getT().k.select,D.I18N.ja.k.select,'boot restore: T is I18N.ja from the start, not just LANG');
       }finally{
@@ -7847,7 +7870,7 @@ try {
       fakeWin, fakeDoc, fakeWin.navigator, spyRaf,
       fakeWin.indexedDB, fakeWin.URL, setTimeout, clearTimeout, setInterval, clearInterval,
       fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage,
-      fakeWin.location, fakeWin.history, fakeWin.screen, fakeWin.RTCPeerConnection, fakeWin.RTCSessionDescription, fakeWin.FileReader, fakeWin.innerWidth, fakeWin.innerHeight
+      fakeWin.location, fakeWin.history, fakeWin.screen, fakeWin.RTCPeerConnection, fakeWin.RTCSessionDescription, fakeWin.FileReader, fakeWin.Image, fakeWin.innerWidth, fakeWin.innerHeight
     );
     C.state.showMinimap=false;
     // v1.7.75: building a world now runs its main()/wire() far enough to schedule its own
@@ -8171,6 +8194,122 @@ try {
     assert.ok(oldRatio<3,`a11y: sanity — the pre-fix pairing (raw brand on light paper) is genuinely below 3:1 (got ${oldRatio.toFixed(2)}:1), confirming this test would have caught the original bug`);
     console.log(`  ✓ a11y: focus ring contrast — light ${lightRatio.toFixed(2)}:1, dark ${darkRatio.toFixed(2)}:1, both clear the 3:1 floor (a11y-audit-2026-07)`);
   }
+
+  // ---- wheel zoom/pan and drag-drop image import, driven for real (v1.7.81) --------
+  // The last two user-facing handlers coverage.mjs listed as never executed. The wheel
+  // handler owns the zoom-at-cursor math (the invariant every canvas app must hold:
+  // the world point under the cursor stays under the cursor); the drop handler owns the
+  // image intake gates (4MB cap, MIME filter) that v1.7.69's security work relies on.
+  await (async () => {
+    const keep = state.shapes.splice(0, state.shapes.length);
+    const keepVp = {...state.viewport};
+    _invalidateGrid();
+    const H = canvas._h || {};
+    const wheel = (H.wheel || [])[0];
+    const drop = (H.drop || [])[0];
+    const origToast = UI.toast; const toasts = [];
+    UI.toast = (m, k) => toasts.push({m, k});
+    const wheelEv = (o) => ({
+      offsetX: o.x, offsetY: o.y, deltaX: o.dx || 0, deltaY: o.dy || 0, deltaMode: 0,
+      ctrlKey: !!o.ctrl, metaKey: false, preventDefault(){},
+    });
+    const dropEv = files => ({
+      offsetX: 100, offsetY: 100, preventDefault(){},
+      dataTransfer: {files},
+    });
+    const tick = () => new Promise(r => setTimeout(r, 0));
+    try {
+      assert.ok(wheel && drop, 'wheel/drop: handlers captured by the harness');
+
+      // (1) THE invariant: ctrl+wheel zooms about the cursor — the world point under it
+      //     must not move. Get this wrong and the canvas "slides" while zooming.
+      state.viewport.x = 37; state.viewport.y = -12; state.viewport.zoom = 1;
+      const sp = {x: 300, y: 200};
+      const before = G.s2w(sp);
+      wheel(wheelEv({x: sp.x, y: sp.y, dy: -120, ctrl: true}));   // wheel up = zoom in
+      assert.ok(state.viewport.zoom > 1, `wheel: ctrl+wheel-up zooms in (got ${state.viewport.zoom.toFixed(3)})`);
+      const after = G.s2w(sp);
+      assert.ok(Math.abs(after.x - before.x) < 1e-9 && Math.abs(after.y - before.y) < 1e-9,
+        `wheel: the world point under the cursor stays put through a zoom (drifted ${(after.x-before.x).toFixed(6)},${(after.y-before.y).toFixed(6)})`);
+      wheel(wheelEv({x: sp.x, y: sp.y, dy: 120, ctrl: true}));    // and back out
+      assert.ok(Math.abs(state.viewport.zoom - 1) < 1e-9, 'wheel: zoom in + equal zoom out returns to 1');
+
+      // (2) plain wheel pans, zoom untouched, distance divided by zoom (screen px → world)
+      state.viewport.x = 0; state.viewport.y = 0; state.viewport.zoom = 2;
+      wheel(wheelEv({x: 10, y: 10, dx: 40, dy: 60}));
+      assert.strictEqual(state.viewport.zoom, 2, 'wheel: plain scroll never zooms');
+      assert.strictEqual(state.viewport.x, 20, 'wheel: horizontal pan is screen-px / zoom');
+      assert.strictEqual(state.viewport.y, 30, 'wheel: vertical pan is screen-px / zoom');
+
+      // (3) zoom clamps at both ends instead of running away
+      state.viewport.zoom = 1;
+      for (let i = 0; i < 200; i++) wheel(wheelEv({x: 400, y: 300, dy: -500, ctrl: true}));
+      assert.ok(state.viewport.zoom <= MAX_ZOOM + 1e-9, `wheel: zoom clamps at MAX_ZOOM (${MAX_ZOOM})`);
+      for (let i = 0; i < 400; i++) wheel(wheelEv({x: 400, y: 300, dy: 500, ctrl: true}));
+      assert.ok(state.viewport.zoom >= MIN_ZOOM - 1e-9, `wheel: zoom clamps at MIN_ZOOM (${MIN_ZOOM})`);
+
+      // (4) dropping an image creates a committed, undoable, scaled-down shape
+      state.viewport.x = 0; state.viewport.y = 0; state.viewport.zoom = 1;
+      state.shapes.length = 0; state.history.length = 0; state.histIdx = -1; _invalidateGrid();
+      fakeWin._imgDims = {width: 800, height: 600};
+      toasts.length = 0;
+      drop(dropEv([{name:'photo.png', type:'image/png', _dataUrl:'data:image/png;base64,AAAA'}]));
+      await tick(); await tick();
+      assert.strictEqual(state.shapes.length, 1, 'drop: an image file becomes one shape');
+      const img = state.shapes[0];
+      assert.strictEqual(img.type, 'image', 'drop: shape type is image');
+      assert.ok(img.w === 400 && img.h === 300, `drop: an 800x600 image is scaled to fit 400px (got ${img.w}x${img.h})`);
+      assert.strictEqual(img.x, 100, 'drop: the image lands at the drop point');
+      assert.strictEqual(state.history.at(-1).op, 'add', 'drop: committed as a reversible add');
+      assert.ok(state.selection.has(img.id), 'drop: the new image is selected');
+      Store.undo();
+      assert.strictEqual(state.shapes.length, 0, 'drop: an image drop is undoable');
+
+      // (5) the 4MB gate: an oversized dataURL is refused with the size in the toast
+      toasts.length = 0;
+      drop(dropEv([{name:'huge.png', type:'image/png', _dataUrl:'data:image/png;base64,' + 'A'.repeat(4*1024*1024 + 64)}]));
+      await tick(); await tick();
+      assert.strictEqual(state.shapes.length, 0, 'drop: an oversized image adds nothing');
+      assert.ok(toasts.some(t2 => t2.k === 'warn'), 'drop: the 4MB gate warns instead of failing silently');
+
+      // (6) a non-image file is ignored without a crash, and a corrupt image toasts
+      toasts.length = 0;
+      drop(dropEv([{name:'notes.txt', type:'text/plain', _dataUrl:'data:text/plain;base64,AAAA'}]));
+      await tick();
+      assert.strictEqual(state.shapes.length, 0, 'drop: a non-image file is filtered out');
+      drop(dropEv([{name:'x.png', type:'image/png', _dataUrl:'data:image/png;base64,CORRUPT'}]));
+      await tick(); await tick();
+      assert.strictEqual(state.shapes.length, 0, 'drop: a corrupt image adds nothing');
+      assert.ok(toasts.some(t2 => t2.k === 'warn'), 'drop: a corrupt image is reported');
+
+      // (7) the cascade regression the code comments about: two images must land at
+      //     DIFFERENT offsets even though their reads resolve asynchronously.
+      state.shapes.length = 0; _invalidateGrid();
+      drop(dropEv([
+        {name:'a.png', type:'image/png', _dataUrl:'data:image/png;base64,AAAA'},
+        {name:'b.png', type:'image/png', _dataUrl:'data:image/png;base64,BBBB'},
+      ]));
+      await tick(); await tick(); await tick();
+      assert.strictEqual(state.shapes.length, 2, 'drop: both images arrive');
+      const xs = state.shapes.map(s2 => s2.x).sort((p, q) => p - q);
+      assert.deepStrictEqual(xs, [100, 120], `drop: images cascade by 20px, not stack (got ${xs})`);
+
+      // (8) a .board file in the drop routes to importBoard, not the image path
+      state.shapes.length = 0; state.history.length = 0; state.histIdx = -1; _invalidateGrid();
+      const boardFile = JSON.stringify({v:'1.7.80', docName:'Dropped', shapes:[{id:'db1', type:'rect', x:1, y:2, w:3, h:4, z:1}]});
+      drop(dropEv([{name:'saved.board', type:'', text: async () => boardFile}]));
+      await tick(); await tick();
+      assert.strictEqual(state.shapes.length, 1, 'drop: a .board file imports as a board');
+      assert.strictEqual(state.docName, 'Dropped', 'drop: the board import takes the doc name');
+      console.log('  ✓ wheel + drop driven for real: zoom-at-cursor invariant holds exactly, pan/clamp correct, image intake gates (4MB, MIME, corrupt) enforced, cascade offsets survive async, .board routing works');
+    } finally {
+      UI.toast = origToast;
+      state.shapes.length = 0;
+      for (const s of keep) state.shapes.push(s);
+      Object.assign(state.viewport, keepVp);
+      state.selection = new Set(); _invalidateGrid();
+    }
+  })();
 
   // ---- the context menu, built for real (v1.7.81) ---------------------------------
   // The largest never-executed function in index.html (~3.2KB). It is also the ONLY way
