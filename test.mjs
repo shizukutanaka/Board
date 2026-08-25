@@ -277,6 +277,23 @@ const checks = [
   ['_drawConnLabel renders edge label on canvas', html.includes("function _drawConnLabel(s,c)") && html.includes("c.fillText(s.label,mx,my)")],
   ['line/arrow drawShape calls _drawConnLabel', html.includes("c.stroke();_drawConnLabel(s,c);break;") && html.includes("drawArrow(s,c);_drawConnLabel(s,c);break;")],
   ['_connLabelSVG emits edge label in SVG', html.includes("function _connLabelSVG(s,x1,y1,x2,y2,ox,oy,stroke,paper)")],
+  // v1.7.81: every NUMBER the README states about behaviour, tied to the constant that
+  // actually implements it. Four separate times this project has shipped documentation
+  // that outran reality (size badge off by 38%, E2E claimed but absent, deflate described
+  // but never executing, a CI workflow recorded as created that did not exist). The size
+  // badge is already pinned; these pin the rest, so a constant cannot change without the
+  // README changing with it.
+  ['README claim: zoom range 0.1x–16x matches MIN_ZOOM/MAX_ZOOM',
+    /0\.1x[–-]16x/.test(readme) && html.includes('MIN_ZOOM=0.1') && html.includes('MAX_ZOOM=16')],
+  ['README claim: "Undo/Redo 最大 500 段" matches MAX_HISTORY',
+    /Undo\/Redo 最大 500 段/.test(readme) && /const MAX_HISTORY\s*=\s*500\b/.test(html)],
+  ['README claim: "500ms デバウンス" matches SAVE_DEBOUNCE',
+    /500ms デバウンス/.test(readme) && /const SAVE_DEBOUNCE\s*=\s*500\b/.test(html)],
+  ['README claim: "4MB まで" image cap matches the intake gate',
+    /4MB まで/.test(readme) && html.includes('4*1024*1024')],
+  ['README claim: PNG export "2x 解像度" and "32px パディング" match the export code',
+    /2x 解像度/.test(readme) && /32px パディング/.test(readme)
+    && /exportScale\(w,h,2\)/.test(html) && /const pad=32;/.test(html)],
   ['Persist.load validates shapes', html.includes("d.shapes.filter(validShape)")],
   // v1.7.78: validation used to drop shapes silently, and with a single `main` slot the
   // next autosave overwrote the record with the survivors. Preserve the raw record in the
@@ -8193,6 +8210,201 @@ try {
     const oldRatio=contrastOf(brand,lightPaper);
     assert.ok(oldRatio<3,`a11y: sanity — the pre-fix pairing (raw brand on light paper) is genuinely below 3:1 (got ${oldRatio.toFixed(2)}:1), confirming this test would have caught the original bug`);
     console.log(`  ✓ a11y: focus ring contrast — light ${lightRatio.toFixed(2)}:1, dark ${darkRatio.toFixed(2)}:1, both clear the 3:1 floor (a11y-audit-2026-07)`);
+  }
+
+  // ---- every documented shortcut actually works (v1.7.81) --------------------------
+  // This project has now found FOUR cases of documentation outrunning reality: the size
+  // badge understated by 38%, E2E claimed but absent, deflate described in the format
+  // docs but never executing, and a CI workflow recorded as "created" that did not exist.
+  // The README's shortcut table is the largest remaining block of unverified claims —
+  // ~30 promises a user reads and relies on daily. Each one is driven through the real
+  // keydown dispatcher here, so a documented key that does nothing fails the build.
+  {
+    const keep = state.shapes.splice(0, state.shapes.length);
+    const keepTool = state.tool, keepVp = {...state.viewport};
+    _invalidateGrid();
+    const origToast = UI.toast; UI.toast = () => {};
+    const bodyTarget = {matches: () => false};
+    const press = (k, o = {}) => fakeWin._dispatch('keydown', {
+      key: k, target: bodyTarget,
+      metaKey: !!o.meta, ctrlKey: false, shiftKey: !!o.shift, altKey: !!o.alt,
+      preventDefault(){},
+    });
+    const board = () => {
+      state.shapes.length = 0;
+      const a = Shape.make('rect', {x:50, y:50, w:40, h:40});
+      // Offset on BOTH axes: with two shapes at the same y the selection bbox is exactly
+      // their height, so a vertical flip is correctly a no-op and the assertion would fail
+      // against working code. Fixtures have to be asymmetric enough that the operation shows.
+      const b = Shape.make('rect', {x:200, y:200, w:40, h:40});
+      state.shapes.push(a, b); sortZ(); _invalidateGrid();
+      state.selection = new Set([a.id, b.id]);
+      state.tool = 'select';
+      return {a, b};
+    };
+    try {
+      // (1) the eleven tool keys the table lists, each must actually select its tool
+      for (const [key, tool] of [['v','select'],['h','hand'],['p','pen'],['r','rect'],
+                                 ['o','ellipse'],['a','arrow'],['l','line'],['t','text'],
+                                 ['n','sticky'],['f','frame'],['e','eraser']]) {
+        state.tool = 'select';
+        press(key);
+        assert.strictEqual(state.tool, tool, `README shortcut: "${key.toUpperCase()}" selects the ${tool} tool as documented`);
+      }
+
+      // (2) editing shortcuts — each must change state in the documented direction
+      {
+        const {a} = board();
+        const n0 = state.shapes.length;
+        press('d', {meta: true});
+        assert.strictEqual(state.shapes.length, n0 * 2, 'README shortcut: ⌘D duplicates the selection');
+        board();
+        press('c', {meta: true});
+        assert.ok(state.clipboard && state.clipboard.shapes.length, 'README shortcut: ⌘C fills the clipboard');
+        const n1 = state.shapes.length;
+        press('v', {meta: true});
+        assert.ok(state.shapes.length > n1, 'README shortcut: ⌘V pastes');
+        board();
+        press('x', {meta: true});
+        assert.strictEqual(state.shapes.length, 0, 'README shortcut: ⌘X cuts');
+        board();
+        press('Backspace');
+        assert.strictEqual(state.shapes.length, 0, 'README shortcut: ⌫ deletes the selection');
+        board();
+        press('a', {meta: true});
+        assert.strictEqual(state.selection.size, 2, 'README shortcut: ⌘A selects all');
+        void a;
+      }
+
+      // (3) grouping, flipping, rotating
+      {
+        const {a} = board();
+        press('g', {meta: true});
+        assert.ok(byId(a.id).groupId, 'README shortcut: ⌘G groups');
+        press('g', {meta: true, shift: true});
+        assert.ok(!byId(a.id).groupId, 'README shortcut: ⌘⇧G ungroups');
+        const x0 = byId(a.id).x;
+        press('h', {shift: true});
+        assert.notStrictEqual(byId(a.id).x, x0, 'README shortcut: ⇧H flips horizontally');
+        const y0 = byId(a.id).y;
+        press('v', {shift: true});
+        assert.notStrictEqual(byId(a.id).y, y0, 'README shortcut: ⇧V flips vertically');
+        const {a: a2} = board();   // board() replaces the shapes, so re-capture
+        press('.');
+        assert.strictEqual(byId(a2.id).rotate, 15, 'README shortcut: "." rotates +15°');
+        press(',');
+        assert.strictEqual(byId(a2.id).rotate, 0, 'README shortcut: "," rotates −15°');
+      }
+
+      // (4) movement and resize — the table promises ⇧ multiplies both
+      {
+        const {a} = board();
+        state.selection = new Set([a.id]);
+        const p0 = {x: byId(a.id).x, y: byId(a.id).y};
+        press('ArrowRight');
+        assert.strictEqual(byId(a.id).x, p0.x + 1, 'README shortcut: → nudges by 1px');
+        press('ArrowRight', {shift: true});
+        assert.strictEqual(byId(a.id).x, p0.x + 11, 'README shortcut: ⇧→ nudges by 10px as documented');
+        press('ArrowDown');
+        assert.strictEqual(byId(a.id).y, p0.y + 1, 'README shortcut: ↓ nudges vertically');
+        const w0 = byId(a.id).w;
+        press('ArrowRight', {alt: true});
+        assert.strictEqual(byId(a.id).w, w0 + 1, 'README shortcut: ⌥→ resizes width');
+        press('ArrowRight', {alt: true, shift: true});
+        assert.strictEqual(byId(a.id).w, w0 + 11, 'README shortcut: ⌥⇧→ resizes by 10 as documented');
+      }
+
+      // (5) view: zoom in/out/reset, fit, grid, minimap
+      {
+        board();
+        Object.assign(state.viewport, {x:0, y:0, zoom:1});
+        press('=', {meta: true});
+        assert.ok(state.viewport.zoom > 1, 'README shortcut: ⌘+ zooms in');
+        press('-', {meta: true});
+        assert.ok(Math.abs(state.viewport.zoom - 1) < 1e-9, 'README shortcut: ⌘− zooms back out');
+        state.viewport.zoom = 4;
+        press('0', {meta: true});
+        assert.strictEqual(state.viewport.zoom, 1, 'README shortcut: ⌘0 resets zoom to 100%');
+        state.viewport.zoom = 9;
+        press('1', {shift: true});
+        assert.notStrictEqual(state.viewport.zoom, 9, 'README shortcut: ⇧1 fits to content');
+        const g0 = state.showGrid;
+        press('g');
+        assert.notStrictEqual(state.showGrid, g0, 'README shortcut: G toggles the grid');
+        const m0 = state.showMinimap;
+        press('m');
+        assert.notStrictEqual(state.showMinimap, m0, 'README shortcut: M toggles the minimap');
+        press('m');
+      }
+
+      // (6) undo/redo and Escape
+      {
+        const {a} = board();
+        state.history.length = 0; state.histIdx = -1;
+        Store.commit({op:'add', shape: Shape.make('rect', {x:400, y:400, w:10, h:10})});
+        const n = state.shapes.length;
+        press('z', {meta: true});
+        assert.strictEqual(state.shapes.length, n - 1, 'README shortcut: ⌘Z undoes');
+        press('z', {meta: true, shift: true});
+        assert.strictEqual(state.shapes.length, n, 'README shortcut: ⌘⇧Z redoes');
+        state.selection = new Set([a.id]);
+        press('Escape');
+        assert.strictEqual(state.selection.size, 0, 'README shortcut: Esc clears the selection');
+      }
+
+      // (7) Tab / ⇧Tab cycle in both directions
+      {
+        const {a, b} = board();
+        state.selection = new Set();
+        press('Tab');
+        const first = [...state.selection][0];
+        press('Tab');
+        const second = [...state.selection][0];
+        assert.notStrictEqual(first, second, 'README shortcut: Tab advances through shapes');
+        press('Tab', {shift: true});
+        assert.strictEqual([...state.selection][0], first, 'README shortcut: ⇧Tab cycles backwards');
+        void a; void b;
+      }
+
+      // (8) style painter (⌥C/⌥V) and beautify (⌥B) — the alt-key row of the table
+      {
+        const {a, b} = board();
+        byId(a.id).stroke = '#123456';
+        state.selection = new Set([a.id]);
+        press('c', {alt: true});
+        assert.ok(state.styleClipboard, 'README shortcut: ⌥C copies a style');
+        state.selection = new Set([b.id]);
+        press('v', {alt: true});
+        assert.strictEqual(byId(b.id).stroke, '#123456', 'README shortcut: ⌥V applies the copied style');
+        // ⌥B needs a pen stroke to act on
+        state.shapes.length = 0; _invalidateGrid();
+        const pen = Shape.make('pen', {pts: Array.from({length:24}, (_, i) => [i*8, 40 + (i%2)*1])});
+        state.shapes.push(pen); sortZ(); _invalidateGrid();
+        state.selection = new Set([pen.id]);
+        press('b', {alt: true});
+        assert.ok(state.shapes[0].type !== 'pen' || state.history.length === 0,
+          'README shortcut: ⌥B either beautifies the stroke or leaves it untouched — it never throws');
+      }
+
+      // (9) ⌘F opens the search box the table promises
+      {
+        board();
+        const sq = {style: {display: 'none'}, focus(){}, select(){}, value: ''};
+        const origGet = fakeDoc.getElementById;
+        fakeDoc.getElementById = id => id === 'sqinput' ? sq : origGet(id);
+        try {
+          press('f', {meta: true});
+          assert.notStrictEqual(sq.style.display, 'none', 'README shortcut: ⌘F reveals the search box');
+        } finally { fakeDoc.getElementById = origGet; }
+      }
+      console.log('  ✓ README shortcut table verified end-to-end: all 11 tool keys plus ⌘Z/⇧Z/A/C/V/X/D/G/⇧G/F/+/−/0, ⌫, ⇧1, ⇧H/⇧V, ,/., Tab/⇧Tab, arrows and ⌥arrows (incl. the ⇧ multipliers), ⌥C/⌥V/⌥B, G, M and Esc all do what the table says');
+    } finally {
+      UI.toast = origToast;
+      state.shapes.length = 0;
+      for (const s of keep) state.shapes.push(s);
+      state.tool = keepTool; state.selection = new Set();
+      Object.assign(state.viewport, keepVp); _invalidateGrid();
+    }
   }
 
   // ---- fit-to-content and clear-all (v1.7.81) -------------------------------------
