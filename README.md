@@ -4,8 +4,8 @@
 単一HTMLファイル。ダブルクリックで動く。アカウント不要。広告なし。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-00C4CC.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.7.81-00C4CC.svg)](CHANGELOG.md)
-[![Size](https://img.shields.io/badge/size-~92KB%20gzip-00C4CC.svg)](index.html)
+[![Version](https://img.shields.io/badge/version-1.7.82-00C4CC.svg)](CHANGELOG.md)
+[![Size](https://img.shields.io/badge/size-~94KB%20gzip-00C4CC.svg)](index.html)
 [![Offline](https://img.shields.io/badge/offline-first-00C4CC.svg)](#offline)
 [![A11y](https://img.shields.io/badge/WCAG-AAA-00C4CC.svg)](#accessibility)
 
@@ -21,16 +21,16 @@
 | 単一ファイル配布 | ✗ | ✗ | ✗ | **✓** |
 | E2E 暗号化 | ✗ | 部分 | ✗ | **✓ 共有リンク (AES-GCM)** ※同期は未対応 |
 | 完全オフライン | 部分 | ✓ | ✓ | **✓ PWA** |
-| サイズ | 数MB | ~1MB | ~2MB | **単一HTML 287KB (gzip 92KB)** |
+| サイズ | 数MB | ~1MB | ~2MB | **単一HTML 291KB (gzip 94KB)** |
 | 広告・トラッキング | あり | なし | なし | **ゼロ** |
 | 料金 | $10-16/月 | 無料 + Plus | SDK商用有料 | **完全無料** |
 
 Board は `index.html` 一枚。自分のドメイン、USB、社内ネット、オフライン PC — どこでも動く。
 
-> **サイズの基準**: 他社列は非圧縮のアプリバンドル概算のため、Board も非圧縮 (287KB) を併記した。
-> 実際の転送量は静的ホストが brotli を返すので **約 76KB**。
+> **サイズの基準**: 他社列は非圧縮のアプリバンドル概算のため、Board も非圧縮 (291KB) を併記した。
+> 実際の転送量は静的ホストが brotli を返すので **約 77KB**。
 > [HTTP Archive Web Almanac 2025](https://almanac.httparchive.org/en/2025/page-weight) が報告する
-> モバイルページ重量の中央値 2,362KB に対し、およそ **1/33**。
+> モバイルページ重量の中央値 2,362KB に対し、およそ **1/31**。
 > 数値は `node test.mjs` が実測し、この README のバッジと ±10% 以内で一致することを検証している。
 
 ## 使い方 / Quick Start
@@ -159,7 +159,10 @@ start index.html      # Windows
 - 言語手動トグル (ADR-0014): トップバーのアイコンボタンで日本語⇄English を切替。
   選択は次回起動後も保持。ヘルプ・ツールバー・検索ボックス等 UI 全体が即座に追従
 - 全機能キーボード操作可能(ツール切替・描画・選択・整列・エクスポート等、マウス
-  操作の代替経路がすべて存在する — `role="application"` のキャンバス自体も含む)
+  操作の代替経路がすべて存在する — `role="application"` のキャンバス自体も含む)。
+  **整列・均等配置はコンテキストメニュー内にあり、`⇧F10` / `ContextMenu` キーで開く**
+  (v1.7.82 以前は右クリック / タッチ long-press のみで、キーボードから到達できなかった
+  — WCAG 2.1.1 の不適合。`test.mjs` が表の全ショートカットを実際に配送器へ流して検証する)
 - ARIA ラベル完備
 - WCAG AAA カラーコントラスト (テキスト 18:1+)、フォーカスリング等の UI 指標も
   両テーマで WCAG 非テキストコントラスト基準 (3:1) を満たすよう検証済み
@@ -203,6 +206,7 @@ start index.html      # Windows
 | `⌥C` / `⌥V` | スタイル複製 / 適用 | `↑↓←→` | 移動 (⇧:10px) |
 | `⌥↑↓←→` | リサイズ (⇧:×10) | `Esc` | 選択解除 |
 | `⌥B` | スケッチ整形 | `?` | ヘルプ |
+| `⇧F10` / `ContextMenu` | コンテキストメニュー (整列・均等配置はここ) | | |
 
 ## アーキテクチャ / Architecture
 
@@ -298,7 +302,7 @@ npx serve .
 - 外部依存の追加は慎重に (単一ファイル原則 — 外部 `<script src>` / `<link href>` は不可)
 - サイズはハード上限なし (2026-06-13 に gzip 44KB 予算を撤去)。指針として小さく保つが、
   整合性・正しさを優先してよい。暴走防止に raw 512KB の緩い上限のみ残す
-  (現状 raw ~287KB / gzip ~92KB / brotli ~76KB)。サイズが動いたら上のバッジも更新すること —
+  (現状 raw ~291KB / gzip ~94KB / brotli ~77KB)。サイズが動いたら上のバッジも更新すること —
   ±10% を超えると `test.mjs` が落ちる
 - `node test.mjs` を通すこと (CI が presence + behavioural テストを実行)
 

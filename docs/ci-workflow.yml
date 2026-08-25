@@ -38,4 +38,4 @@ jobs:
           fs.writeFileSync('/tmp/inline.js', js);
           " && node --check /tmp/inline.js
       - name: Unexecuted-function baseline does not regress
-        run: node coverage.mjs --max=129
+        run: node coverage.mjs --max=127

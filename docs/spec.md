@@ -128,7 +128,12 @@ IndexedDB(`board`/`docs`/`main`)。保存対象=`{v,shapes,viewport,docName,save
 
 ## 10. アクセシビリティ
 canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/リサイズハンドルは
-`--brand-ink`(AAA 非テキストコントラスト)。全機能キーボード操作可(作成系を除く、§13 参照)。
+`--brand-ink`(AAA 非テキストコントラスト)。
+**MUST (WCAG 2.1.1 Keyboard)**: 全機能がポインタ無しで到達可能。作成は `Enter`
+(`createShapeKbd`、select 以外のツール)、**整列・均等配置はコンテキストメニュー経由**で、
+そのメニューは **`Shift+F10` / `ContextMenu` キー**で開く(v1.7.82。それ以前は右クリックと
+タッチ long-press のみで、整列8種がキーボードから到達不能だった)。
+「作成系を除く」という旧記述は `createShapeKbd` 実装後に陳腐化していたもので、削除。
 
 ## 11. PWA / オフライン
 インライン manifest + inline Service Worker(cache-first)。初回後オフライン等価。

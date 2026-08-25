@@ -765,7 +765,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.81';
+const V='1.7.82';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3608,6 +3608,20 @@ window.addEventListener('keydown',e=>{
     if(hp.dataset.open==='true')UI.toggleHelp();
     else if(sp2.dataset.open==='true')UI.closeShare();
     else{state.selection.clear();state.marquee=null;state.draft=null;state.guides=null;invalidate()}
+  }
+  // WCAG 2.1.1 (Keyboard): the context menu is the ONLY route to align and distribute
+  // (8 actions), and until v1.7.82 it opened solely by right-click or touch long-press —
+  // so those were unreachable without a pointer, while the README listed 整列 among the
+  // keyboard-accessible features. Shift+F10 and the dedicated ContextMenu key are the
+  // platform convention for this, so honour both. Anchor on the selection when there is
+  // one (the menu should appear where the user is looking), else the viewport centre.
+  else if(k==='contextmenu'||(k==='f10'&&e.shiftKey)){
+    e.preventDefault();
+    const r=canvas.getBoundingClientRect();
+    let x=r.width/2,y=r.height/2;
+    const sel=[...state.selection].map(byId).filter(Boolean);
+    if(sel.length){const b=G.bboxAll(sel),p=G.w2s({x:b.x,y:b.y+b.h});x=p.x;y=p.y;}
+    UI.openCtxMenu(x,y);
   }
   else if(k==='?'||(e.shiftKey&&e.key==='/')){e.preventDefault();UI.toggleHelp()}
   else if(k===']'&&!meta&&e.shiftKey){e.preventDefault();doBringFront()}
