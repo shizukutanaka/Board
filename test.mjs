@@ -132,8 +132,12 @@ const checks = [
     && html.includes("shareUrlWarn:'⚠ Your board is embedded in the URL (compressed, NOT encrypted)")
     && html.includes("shareUrlEnc:'🔒 このリンクは暗号化されています")
     && html.includes("shareUrlEnc:'🔒 This link is encrypted (AES-GCM)")
-    && html.includes("document.getElementById('shareEnc').hidden=!r.encrypted;")
-    && html.includes("document.getElementById('shareWarn').hidden=!!r.encrypted;")],
+    // The property is that both notes are DERIVED from the export result, with the right
+    // polarity — not that the expression is byte-for-byte what it was. Pinning the whole
+    // line failed the moment v1.7.84 added a legitimate `||tooLong` term, reporting a
+    // dishonesty that was not there.
+    && /getElementById\('shareEnc'\)\.hidden=!r\.encrypted/.test(html)
+    && /getElementById\('shareWarn'\)\.hidden=!!r\.encrypted/.test(html)],
   // v1.7.75: `const w=cs.writable.getWriter()` (unused variable) locked the writable, so
   // the next pipeThrough threw every time and the catch silently emitted uncompressed
   // base64. Compression never ran in any browser. Keep the helper getWriter-free.
@@ -9661,6 +9665,36 @@ try {
           `share length: an ordinary board stays comfortably under it (got ${ok2.url.length} chars)`);
         void small;
       }
+
+      // FT-15, closed by MEASUREMENT (v1.7.84) rather than by the means the ticket named
+      // ("split dataURLs out of the document"). Measured in real Chromium: a 1200x900 JPEG
+      // (1.16MB dataURL) SAVES in 20ms and survives an IndexedDB round trip — that half of
+      // the requirement was deleted on the evidence. SHARE was the real harm: the same board
+      // produced a 1,167,158-char URL (71x the limit) and still offered a live Copy button.
+      //
+      // An estimator that skipped the work for "obviously too big" boards was written here
+      // and DELETED: summing image dataURL lengths is not a sound lower bound, because
+      // nothing checks the bytes are high-entropy. This fixture is exactly the counterexample
+      // that killed it — 21,406 bytes of repeated 'R' deflate to a 429-char URL, so the
+      // estimate would have refused a board that shares perfectly well. Keep it as the
+      // regression: whatever gates sharing must key off the ACTUAL length.
+      {
+        const keepS = state.shapes.splice(0, state.shapes.length); _invalidateGrid();
+        try {
+          state.shapes.push(Shape.make('image', {x:0,y:0,w:10,h:10,
+            dataUrl: 'data:image/png;base64,' + 'R'.repeat(api.SHARE_URL_MAX + 5000)}));
+          _invalidateGrid();
+          const compressible = await Share.exportToUrl();
+          assert.ok(compressible.url.length <= api.SHARE_URL_MAX,
+            `a big-but-compressible image still yields a shareable link (${compressible.url.length} chars ` +
+            `from ${api.SHARE_URL_MAX + 5000} bytes) — any size ESTIMATE would have refused this`);
+        } finally {
+          state.shapes.length = 0;
+          for (const s of keepS) state.shapes.push(s);
+          _invalidateGrid();
+        }
+      }
+
       console.log('  ✓ ADR-0017 share E2E: legacy z:/j: links still import, deflate genuinely compresses (7x regression pinned), no-WebCrypto falls back honestly, ADR-0004 backup + undo guard the encrypted path, and an unshareably-long link is flagged (FT-15 restated)');
     } finally {
       state.shapes.length = 0;

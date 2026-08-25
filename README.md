@@ -4,7 +4,7 @@
 単一HTMLファイル。ダブルクリックで動く。アカウント不要。広告なし。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-00C4CC.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.7.83-00C4CC.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.7.84-00C4CC.svg)](CHANGELOG.md)
 [![Size](https://img.shields.io/badge/size-~94KB%20gzip-00C4CC.svg)](index.html)
 [![Offline](https://img.shields.io/badge/offline-first-00C4CC.svg)](#offline)
 [![A11y](https://img.shields.io/badge/WCAG-AAA-00C4CC.svg)](#accessibility)
@@ -186,8 +186,13 @@ start index.html      # Windows
   - 一覧はタブストップを増やさず、`aria-live` でもない(編集のたびに全文読み上げると
     かえって使えなくなるため)。図形が 200 個を超えた分は打ち切るが、
     「ほか N 個は一覧に含まれていません」と明示し、要約は常に盤面全体を数える。
-  - **未検証の部分**: 実機のスクリーンリーダー (NVDA / VoiceOver 等) での読み上げ確認は
-    未実施。保証できるのは「正しいマークアップと内容が DOM に存在すること」まで。
+  - **どこまで検証済みか** (v1.7.83 で前進): `a11y-browser.mjs` が実 Chromium の
+    アクセシビリティツリーを取得し、この画面外一覧が `clip-path` で視覚的に隠れていても
+    **ツリーから刈られていない**こと、`role="region"` として "Board contents" の名前で
+    露出していること、実際に描いた図形の説明文がツリーに到達していることを確認する。
+    「DOM に在る」ではなく「**ブラウザが補助技術に渡す形になっている**」まで検証済み。
+  - **未検証の部分**: 実機スクリーンリーダーでの**読み上げ品質** — 冗長さ、実際の読み順、
+    音にしたときの自然さ。これは耳が要る。名前・role・state の**正しさ**は上記で機械化済み。
 
 ## キーボード / Shortcuts
 

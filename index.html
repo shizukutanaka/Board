@@ -710,7 +710,7 @@ body{visibility:visible}
          export result. Showing the warning unconditionally would be as inaccurate after
          encryption as claiming encryption was before it. -->
     <p class="sub share-warn" id="shareWarn" data-t="shareUrlWarn" hidden>⚠ 盤面の内容はURLに埋め込まれます(圧縮のみ・暗号化なし)。リンクを知る人は誰でも閲覧できます。</p>
-    <p class="sub share-warn" id="shareLong" data-t="shareTooLong" hidden>⚠ このリンクは長すぎて共有できない可能性が高い(画像を含む盤面)。⌘⇧S の .board 書き出しを使ってください。</p>
+    <p class="sub share-warn" id="shareLong" data-t="shareTooLong" hidden>⚠ この盤面はリンクで共有するには大きすぎます(画像を含む盤面)。貼り付けても届かないリンクをお渡ししないため、URL は表示していません。⌘⇧S の .board 書き出しをお使いください。</p>
     <p class="sub" id="shareEnc" data-t="shareUrlEnc" hidden>🔒 このリンクは暗号化されています(AES-GCM)。鍵は URL の # 以降にのみ含まれ、サーバーには送信されません。リンクを知る人は誰でも閲覧できます。</p>
 
     <details class="share-details">
@@ -765,7 +765,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.83';
+const V='1.7.84';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -795,6 +795,19 @@ const CURSOR_THROTTLE_MS=60;            // ADR-0010: peer cursor broadcast rate 
 // so warn above a threshold that is comfortably past ordinary boards and well short of
 // where truncation starts, and point at .board export instead.
 const SHARE_URL_MAX=16384;
+// FT-15 note — a size-estimating shortcut was BUILT HERE AND THEN DELETED (v1.7.84).
+// It summed image dataURL lengths so UI.openShare could skip the ~1s of deflate+AES that a
+// megabyte board spends producing a link we would only have to disown. The argument was
+// "image dataURLs are already-compressed bytes, so deflate cannot shrink them — a provable
+// lower bound with no false rejections". THE ARGUMENT WAS WRONG, and a test caught it:
+// nothing in such a sum verifies the bytes are actually high-entropy. A pathologically
+// compressible payload (an uncompressed BMP, a synthetic dataURL) deflates to almost
+// nothing — the fixture went from 21,406 bytes of "floor" to a 429-char URL. The estimate
+// would then have told a user their board could not be shared when it could.
+// Refusing something that would have worked is worse than making them wait a second, so
+// the shortcut is gone rather than patched with a fudge factor. The defect it was bundled
+// with — offering a live Copy button for a link nobody can paste — is real, and is fixed
+// in UI.openShare using the ACTUAL length, which needs no estimate at all.
 const MAX_PEERS=32;                     // presence-map cap: a flooding peer can't grow state.peers/DOM unboundedly
 // ADR-0016: how many shapes the off-screen a11y mirror lists individually. A 2000-shape
 // board would otherwise mean 2000 DOM nodes rebuilt on every edit, and a list that long
@@ -850,7 +863,7 @@ const I18N={
     imgBig:'画像が大きすぎます。縮小してください',imgErr:'画像を読み込めませんでした',
     emptyHint:'クリックまたはツールバーから描き始める · ? でショートカット一覧',
     themeAuto:'テーマ: 自動(OS 追従)',themeLight:'テーマ: ライト',themeDark:'テーマ: ダーク',
-    popupBlocked:'ポップアップをブロックしてください',invalidBoard:'ボードファイルが無効です',exportFailed:'書き出し失敗',saveFailed:'保存失敗',quotaExceeded:'保存容量が逼迫しています — ⌘E/⌘⇧E で書き出しを推奨',shareTooLong:'⚠ このリンクは長すぎて共有できない可能性が高い(画像を含む盤面)。⌘⇧S の .board 書き出しを使ってください。',loadDropped:'保存データの一部を読み込めませんでした({n}件)。読めなかった記録はバックアップに退避しました — 次回起動時に復元を確認できます',
+    popupBlocked:'ポップアップをブロックしてください',invalidBoard:'ボードファイルが無効です',exportFailed:'書き出し失敗',saveFailed:'保存失敗',quotaExceeded:'保存容量が逼迫しています — ⌘E/⌘⇧E で書き出しを推奨',shareTooLong:'⚠ この盤面はリンクで共有するには大きすぎます(画像を含む盤面)。貼り付けても届かないリンクをお渡ししないため、URL は表示していません。⌘⇧S の .board 書き出しをお使いください。',loadDropped:'保存データの一部を読み込めませんでした({n}件)。読めなかった記録はバックアップに退避しました — 次回起動時に復元を確認できます',
     snap:'スナップ',grid:'グリッド',minimap:'ミニマップ',on:'オン',off:'オフ',online:'オンライン',offline:'オフライン',shapes:'図形',
     copied:'コピー',pasted:'貼り付け',deleted:'削除',cleared:'クリア',
     beautified:'整形しました',beautifyNone:'整形できる図形がありません(矩形・楕円・直線に近いペン描画を選択してください)',
@@ -926,7 +939,7 @@ const I18N={
     imgBig:'Image too large — please resize',imgErr:'Image failed to load',
     emptyHint:'Click or pick a tool to start drawing · Press ? for shortcuts',
     themeAuto:'Theme: Auto (follows OS)',themeLight:'Theme: Light',themeDark:'Theme: Dark',
-    popupBlocked:'Pop-up blocked — please allow pop-ups for PDF export',invalidBoard:'Invalid .board file',exportFailed:'Export failed',saveFailed:'Save failed',quotaExceeded:'Storage quota exceeded — export locally with ⌘E/⌘⇧E',shareTooLong:'⚠ This link is probably too long to share (the board contains images). Use the .board export (⌘⇧S) instead.',loadDropped:'Could not read {n} shape(s) from your saved board. The unreadable record was moved to backup — you will be offered a restore on next launch',
+    popupBlocked:'Pop-up blocked — please allow pop-ups for PDF export',invalidBoard:'Invalid .board file',exportFailed:'Export failed',saveFailed:'Save failed',quotaExceeded:'Storage quota exceeded — export locally with ⌘E/⌘⇧E',shareTooLong:'⚠ This board is too large to share as a link (it contains images). The URL is withheld rather than handing you one that will not survive being pasted. Use the .board export (⌘⇧S) instead.',loadDropped:'Could not read {n} shape(s) from your saved board. The unreadable record was moved to backup — you will be offered a restore on next launch',
     copied:'Copied',pasted:'Pasted',deleted:'Deleted',cleared:'Cleared',
     beautified:'Beautified',beautifyNone:'Nothing to beautify (select a pen stroke close to a rectangle, ellipse, or line)',
     undone:'Undone',redone:'Redone',created:'Created',editLabel:'Edit selected shape',
@@ -5205,15 +5218,32 @@ const UI={
   openShare(){
     const m=document.getElementById('share');
     m.dataset.open='true';
+    const inp=document.getElementById('shareUrl'),copy=document.getElementById('shareCopyBtn');
+    // FT-15, settled by measurement on 2026-08-25 rather than by the means the ticket
+    // originally specified ("split dataURLs out of the document").
+    //
+    // What was measured, in real Chromium: a 1200x900 JPEG (1.16MB dataURL) saves in 20ms,
+    // exports, and survives an IndexedDB round trip — SAVE IS FINE, and that half of the
+    // requirement was deleted on the evidence instead of being built. SHARE is where the
+    // harm is: the same board produced a 1,167,158-character URL after 974ms of
+    // deflate+AES. That is 71x SHARE_URL_MAX, and the Copy button was still live for it.
+    //
+    // The defect is not the wait. It is offering a dud that LOOKS like it worked: the user
+    // copies a link, sends it, and it fails at the other end. So the fix is to withhold the
+    // artifact, and it keys off the ACTUAL length — no size estimate, no prediction. (An
+    // estimator was written and deleted; see the FT-15 note by SHARE_URL_MAX for why
+    // predicting this cheaply is unsound.)
     // generate share URL eagerly. ADR-0017: the note under the field reports what the
     // link ACTUALLY is, read off the export result rather than assumed.
     Share.exportToUrl().then(r=>{
-      document.getElementById('shareUrl').value=r.url;
-      document.getElementById('shareEnc').hidden=!r.encrypted;
-      document.getElementById('shareWarn').hidden=!!r.encrypted;
+      const tooLong=r.url.length>SHARE_URL_MAX;
+      inp.value=tooLong?'':r.url;
+      copy.disabled=tooLong;
+      document.getElementById('shareEnc').hidden=!r.encrypted||tooLong;
+      document.getElementById('shareWarn').hidden=!!r.encrypted||tooLong;
       // Honest about reach, not just about encryption: a link nobody can paste is broken
       // no matter how well it is encrypted.
-      document.getElementById('shareLong').hidden=r.url.length<=SHARE_URL_MAX;
+      document.getElementById('shareLong').hidden=!tooLong;
     }).catch(()=>{});
     document.getElementById('shareClose').focus();
   },
