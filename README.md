@@ -4,7 +4,7 @@
 単一HTMLファイル。ダブルクリックで動く。アカウント不要。広告なし。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-00C4CC.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.7.82-00C4CC.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.7.83-00C4CC.svg)](CHANGELOG.md)
 [![Size](https://img.shields.io/badge/size-~94KB%20gzip-00C4CC.svg)](index.html)
 [![Offline](https://img.shields.io/badge/offline-first-00C4CC.svg)](#offline)
 [![A11y](https://img.shields.io/badge/WCAG-AAA-00C4CC.svg)](#accessibility)
@@ -162,8 +162,14 @@ start index.html      # Windows
   操作の代替経路がすべて存在する — `role="application"` のキャンバス自体も含む)。
   **整列・均等配置はコンテキストメニュー内にあり、`⇧F10` / `ContextMenu` キーで開く**
   (v1.7.82 以前は右クリック / タッチ long-press のみで、キーボードから到達できなかった
-  — WCAG 2.1.1 の不適合。`test.mjs` が表の全ショートカットを実際に配送器へ流して検証する)
-- ARIA ラベル完備
+  — WCAG 2.1.1 の不適合。`test.mjs` が表の全ショートカットを実際に配送器へ流して検証し、
+  `a11y-browser.mjs` が**実ブラウザで** ⌘A → ⇧F10 → ↓ → Enter の整列完遂を
+  マウス皆無で再現して検証する)
+- ARIA ラベル完備 — しかも**「そう書いた」ではなく「ブラウザがそう計算した」を検証**。
+  `a11y-browser.mjs` が実 Chromium のアクセシビリティツリー
+  (NVDA / VoiceOver が実際に読む対象そのもの) を CDP で取得し、45個のコントロール全てが
+  非空のアクセシブル名を持つこと・記号だけの名前が無いこと・フォーカス可能要素が
+  `aria-hidden` 配下に無いことを毎回確認する
 - WCAG AAA カラーコントラスト (テキスト 18:1+)、フォーカスリング等の UI 指標も
   両テーマで WCAG 非テキストコントラスト基準 (3:1) を満たすよう検証済み
   (`docs/a11y-audit-2026-07.md`)

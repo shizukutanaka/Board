@@ -765,7 +765,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.82';
+const V='1.7.83';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3520,6 +3520,17 @@ window.addEventListener('keydown',e=>{
     else if(k==='escape'){Presentation.leave()}
     return;
   }
+  // Context-menu isolation. The menu runs its own roving-focus handler bound to #ctx
+  // (_ctxMenuKeyNav), and #ctx is inside the document, so every key it sees ALSO bubbles to
+  // this window listener. Without this guard both run: ArrowDown moves the menu highlight
+  // AND nudges the selection 1px behind it, so a keyboard user silently displaces their
+  // shapes just by browsing the menu. A mouse user never touches this path, and driving the
+  // handler directly (as test.mjs does) cannot see it either — the double-dispatch only
+  // exists in a real DOM. Found by a11y-browser.mjs against real Chromium.
+  // Escape is deliberately let through: line ~3606 closes the menu, which keeps Escape
+  // working even if focus somehow never entered #ctx.
+  const _ctxEl=document.getElementById('ctx');
+  if(_ctxEl&&_ctxEl.dataset.open==='true'&&k!=='escape')return;
   // Dialog isolation + focus trap: while help/share is open, keep Tab inside the dialog and
   // stop canvas shortcuts (tool keys, Delete, undo…) from firing behind it. Escape falls
   // through to the close handler below.

@@ -741,7 +741,16 @@ const checks = [
   ['importBoard clears selection+wclock on whole-board swap', html.includes("state.shapes=shapes.map(clone);_invalidateGrid();   // ADR-0009\n      // Match the replace op's _apply") && html.includes("state.selection.clear();state.wclock={};\n      if(typeof d.docName")],
   ['importFromHash clears selection+wclock on whole-board swap', html.includes("state.shapes=valid.map(clone);_invalidateGrid();state.docName=") && /state\.shapes=valid\.map\(clone\)[\s\S]{0,320}state\.selection\.clear\(\);state\.wclock=\{\};/.test(html)],
   // v1.6.71: presentation-mode guard precedes editing shortcuts (no undo mid-slideshow)
-  ['presentation guard runs before undo/redo/select-all shortcuts', /if\(Presentation\.isActive\(\)\)\{[\s\S]{0,260}return;\n  \}[\s\S]{0,700}if\(meta&&k==='z'&&!e\.shiftKey\)/.test(html)],
+  // The property is ORDER, not distance. This was a regex with a {0,700} byte gap between the
+  // two anchors, so merely adding a comment between them failed it — v1.7.83 did exactly that
+  // while fixing a real bug, and the check reported a defect that did not exist. An index
+  // comparison says what is actually meant and cannot be broken by formatting.
+  ['presentation guard runs before undo/redo/select-all shortcuts', (() => {
+    const guard = html.indexOf('if(Presentation.isActive()){');
+    const ret   = html.indexOf('return;', guard);
+    const undo  = html.indexOf("if(meta&&k==='z'&&!e.shiftKey)");
+    return guard > 0 && undo > 0 && ret > guard && ret < undo && guard < undo;
+  })()],
   // v1.6.71: export canvas clamped to browser limits
   ['exportPNG uses exportScale clamp', html.includes("const scale=exportScale(w,h,2);")],
   ['exportPDF uses exportScale clamp for dpr', html.includes("dpr=exportScale(W,H,window.devicePixelRatio||1)")],

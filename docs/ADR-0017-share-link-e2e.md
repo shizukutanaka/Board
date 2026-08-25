@@ -126,12 +126,22 @@ const stream=blob.stream().pipeThrough(cs);   // → 常に throw
    サーバー・履歴・ログ」であって、リンクの転送経路そのものではない。平文チャットに貼れば
    鍵ごと渡る。
 3. **失効・世代管理は無い**。配った後に取り消す手段が無いのはサーバーレスの帰結。
-4. **`file://` での可用性は未検証**。FT-21 は「`crypto.subtle` はセキュアコンテキスト限定で
-   `file://` では使えない」と記録していたが、W3C *Secure Contexts* は `file:` スキームを
-   *potentially trustworthy* に含めており、主要ブラウザは `file://` で
-   `isSecureContext === true` を返す。**したがって FT-21 の当該記述は誤りの可能性が高い**が、
-   実ブラウザ検証ができないため**仮定せず実行時に feature-detect** し、無ければ平文へ
-   フォールバックする安全側の設計にした。実機確認は残作業(FT-11 と同種)。
+4. ~~**`file://` での可用性は未検証**~~ → **2026-08-25 に実測で解決 (v1.7.83)**。
+   FT-21 は「`crypto.subtle` はセキュアコンテキスト限定で `file://` では使えない」と
+   記録していた。W3C *Secure Contexts* が `file:` を *potentially trustworthy* に含めて
+   いることから本 ADR は「誤りの可能性が高い」と書いたが、**それも推定でしかなかった**。
+   `a11y-browser.mjs` が実 Chromium 141 に `index.html` を `file://` で読み込ませて計測:
+
+   ```
+   isSecureContext=true  crypto.subtle=true  CompressionStream=true
+   ```
+
+   **FT-21 の当該記述は誤りだった**。ダブルクリックで開いた `index.html` でも共有リンクは
+   暗号化され、deflate 経路も生きている(フラグ `0x00` の非圧縮フォールバックには落ちない)。
+   実行時 feature-detect は**残す** — 判明したのは「Chromium 141 の `file://` で使える」
+   ことであって全ブラウザ全バージョンの保証ではなく、安全側フォールバックを削る理由には
+   ならないため。この3行は `a11y-browser.mjs` の assertion として固定してあり、
+   将来ブラウザ側が変えれば CI が落ちる。
 
 ## 検証
 

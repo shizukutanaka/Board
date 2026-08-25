@@ -2,6 +2,55 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.83] - 2026-08-25
+
+**「人間の手が要る」も要件である以上、疑う対象**。FT-11 は1年間「実機 SR が必要」として
+据え置かれていたが、**一度も疑われていなかった**。疑ったら大半が機械検証に移った。
+
+### Added
+- **`a11y-browser.mjs`** — 実 Chromium の**アクセシビリティツリー**を検査する依存ゼロの
+  ハーネス (Node 22 内蔵 WebSocket で CDP を直接話す。Playwright も puppeteer も不要)。
+
+  根拠: **NVDA も VoiceOver も読み上げ内容を発明しない**。プラットフォームの
+  アクセシビリティツリー (IAccessible2 / UIA / NSAccessibility) を読むだけで、そのツリーは
+  ブラウザが DOM + ARIA から accname / role アルゴリズムで計算したもの。Chromium は
+  **それ自体を** `Accessibility.getFullAXTree` で外に出す。よって「名前が在るか・正しいか・
+  role・state・ミラーの到達性」は**機械で決まる**。人間に残るのは「聞いて快いか」だけ。
+
+  `test.mjs` が **source** を見るのに対し、これは **result** を見る。両者は退屈な理由で
+  食い違う — ブラウザが刈るノードに付けた label、祖先の `aria-hidden`、子から名前を取る
+  ことを禁じる role。28項目を検証:
+  - 45個のコントロール全てが**ブラウザ計算の**アクセシブル名を持つ
+  - 記号だけの名前がゼロ (NVDA はコードポイントを読み上げてしまう)
+  - ADR-0016 のミラーが `clip-path:inset(50%)` で隠れても**ツリーから刈られていない**
+  - canvas が無名の穴でない (WHATWG フォールバック)
+  - **⌘A → ⇧F10 → ↓ → Enter でマウス皆無の整列完遂** (v1.7.82 の主張の実ブラウザ証明)
+
+### Fixed
+- **【a11y / 実バグ】メニューを矢印で辿るだけで図形が動いていた**。`#ctx` の keydown は
+  `window` まで**バブルする**ため、メニュー用 `_ctxMenuKeyNav` と window のショートカット
+  配送器が**両方**走り、1押下につき選択が1px ずれていた。マウス利用者は絶対に踏まず、
+  ハンドラを直接叩く `test.mjs` にも見えない — **二重配送は実 DOM にしか存在しない**。
+  上記ハーネスの**初回実行で発見**。dialog isolation と同型のガードを追加 (Escape は
+  従来どおり通し、既存の閉じる処理を活かす)。修正前ビルドで実際に落ちることを確認済み。
+- **`file://` の可用性が「未検証」だった件を実測で解決** (ADR-0017 既知の限界4)。
+  実 Chromium 141 に `file://` で読ませて `isSecureContext=true` / `crypto.subtle=true` /
+  `CompressionStream=true`。**FT-21 の「`file://` では `crypto.subtle` が使えない」は誤り
+  だった** — ダブルクリックで開いても共有リンクは暗号化される。ただし実行時 feature-detect
+  は**残す**: 判明したのは1ブラウザ1バージョンの事実で、安全側フォールバックを削る根拠には
+  ならない。この3点は assertion として固定したので、将来変われば CI が落ちる。
+
+### Changed
+- **`test.mjs` の「presentation ガードが先」検査を距離から順序へ**。
+  `{0,700}` バイトの間隔を持つ正規表現だったため、**間にコメントを足しただけで落ちた**
+  (v1.7.83 が実バグを直す過程で実際に踏んだ)。存在しない欠陥を報告する検査は害。
+  index 比較に書き換え、**意図した性質そのもの**を述べるようにした。
+- `docs/ci-workflow.yml` に `a11y-browser` ジョブを追加 (`continue-on-error` は**付けない** —
+  実バグを見つけた検査は落とせなければ意味が無い)。`.github/workflows/` へ置けないことを
+  **2つ目の独立した認証経路でも確認**: REST contents API も
+  `403 Resource not accessible by integration`。git push の拒否と合わせ、権限境界で確定。
+- 未実行関数ベースラインを 127 に (CI 定義も同期)。
+
 ## [1.7.82] - 2026-08-25
 
 「文書が実態を上回る」の**5例目**。ただし今回は文書の誤りではなく、**実装の欠落**だった。
