@@ -277,6 +277,37 @@ const checks = [
   ['_drawConnLabel renders edge label on canvas', html.includes("function _drawConnLabel(s,c)") && html.includes("c.fillText(s.label,mx,my)")],
   ['line/arrow drawShape calls _drawConnLabel', html.includes("c.stroke();_drawConnLabel(s,c);break;") && html.includes("drawArrow(s,c);_drawConnLabel(s,c);break;")],
   ['_connLabelSVG emits edge label in SVG', html.includes("function _connLabelSVG(s,x1,y1,x2,y2,ox,oy,stroke,paper)")],
+  // v1.7.81 (FT-11 groundwork): mechanical ARIA validity. This cannot replace testing
+  // with a real screen reader, but it catches the class of mistake that makes one behave
+  // unexpectedly — and unlike NVDA it runs in 2 seconds on every commit.
+  ['a11y: every aria-labelledby/describedby/controls/owns target actually exists',
+    (() => {
+      const ids = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]));
+      for (const attr of ['aria-labelledby','aria-describedby','aria-controls','aria-owns'])
+        for (const m of html.matchAll(new RegExp(attr + '="([^"]+)"', 'g')))
+          for (const ref of m[1].split(/\s+/)) if (!ids.has(ref)) return false;
+      return true;
+    })()],
+  ['a11y: no focusable element is hidden from assistive tech',
+    ![...html.matchAll(/<(?:button|a|input|textarea|select|canvas)\b[^>]*>/g)]
+      .some(m => m[0].includes('aria-hidden="true"') && !m[0].includes('tabindex="-1"'))],
+  // v1.7.81: 17 style-panel buttons (colour swatches, fill swatches, line styles) had no
+  // accessible name except `title` — the last-resort fallback in the accname computation,
+  // and the one ARIA authoring practice tells you not to rely on. v1.7.63 established the
+  // data-t-aria pattern across 44 controls for exactly this reason; these were missed.
+  ['a11y: every icon-only button has an explicit accessible name, not just a title',
+    (() => {
+      const body = html.slice(0, html.indexOf('<script>'));
+      for (const m of body.matchAll(/<button\b[^>]*>([\s\S]{0,200}?)<\/button>/g)) {
+        const tag = m[0].slice(0, m[0].indexOf('>'));
+        const inner = m[1].replace(/<[^>]+>/g, '').trim();
+        if (!inner && !/aria-label(?:ledby)?=/.test(tag)) return false;
+      }
+      return true;
+    })()],
+  ['a11y: the style-panel swatches carry localizable aria-labels (data-t-aria)',
+    (html.match(/<button class="swatch"[^>]*data-t-aria="/g) || []).length >= 13
+    && (html.match(/<button class="dashbtn"[^>]*data-t-aria="/g) || []).length === 3],
   // v1.7.81: every NUMBER the README states about behaviour, tied to the constant that
   // actually implements it. Four separate times this project has shipped documentation
   // that outran reality (size badge off by 38%, E2E claimed but absent, deflate described
