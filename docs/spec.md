@@ -135,8 +135,22 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
 タッチ long-press のみで、整列8種がキーボードから到達不能だった)。
 「作成系を除く」という旧記述は `createShapeKbd` 実装後に陳腐化していたもので、削除。
 
-## 11. PWA / オフライン
-インライン manifest + inline Service Worker(cache-first)。初回後オフライン等価。
+## 11. PWA / オフライン (ADR-0018)
+
+インライン manifest + **任意の兄弟ファイル `sw.js`**。
+
+- **MUST**: `index.html` は `sw.js` の有無にかかわらず**単体で全機能が動作する**。
+  存在しないホストでは登録が拒否され `.catch()` が拾う(エラーを出さない)。
+- **MUST**: SW を `index.html` にインライン化しない。Service Workers 仕様の Register
+  アルゴリズムは http(s) スクリプト URL のみを受理し、blob:/data: を `TypeError` で拒否する。
+  旧実装(blob 登録)は**全ブラウザで一度も動作しなかった**(実測 2026-08-31 / ADR-0018)。
+- **MUST**: navigation は network-first(cache-first は利用者を初回キャッシュに固定する)。
+  オフライン時のみキャッシュへフォールバックし、それも無ければ 503。
+- **MUST**: 更新トーストは初回インストールを除外する(`clients.claim()` は初回も
+  `controllerchange` を発火させるため、`navigator.serviceWorker.controller` を事前確認)。
+- **MUST**: 上記は `offline-browser.mjs` が**実ブラウザ × 実 http オリジン**で検証する。
+  ソース文字列の一致で代替してはならない — それが本欠陥を1年見逃した直接原因。
+- `file://` / USB 配布はネットワークを介さないため、SW と無関係に完全動作する。
 
 ## 12. セキュリティモデル
 - XSS: `innerHTML=` 不使用(CI grep 強制)。SVG/PDF 出力は全属性エスケープ + 数値強制。
@@ -158,8 +172,13 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
   約4KB 過少報告していた。512KB 上限判定とログをバイト基準に是正。
 - 付随改善: gzip 計測を外部コマンドから Node 組込み `zlib` へ一本化(可搬性 + 約750バイトの
   実装差の解消)、brotli q11 実測(~71KB)を参考値として併記。
-- なお勝利条件「0秒で使い始める」「オフラインで等価に動く」は実測の結果**乖離なし**
-  (起動は `Persist` を try/catch で包み非ブロッキング、オフライン表示あり)。
+- なお勝利条件「0秒で使い始める」は実測の結果**乖離なし**
+  (起動は `Persist` を try/catch で包み非ブロッキング)。
+  **【v1.7.85 訂正】** 同じ行にあった「オフラインで等価に動く … 乖離なし」は**誤りだった**。
+  当時の「実測」は *`index.html` にオフライン用コードが書かれていること* の確認であって、
+  *ブラウザでオフラインが成立すること* の確認ではなかった。実際には SW が blob URL で
+  登録されており全ブラウザで拒否されていた(ADR-0018)。v1.7.85 で `sw.js` へ分離し、
+  `offline-browser.mjs` が実ブラウザで往復を検証する。
 
 ### ✅ v1.7.71 で解消(First Principles 監査 — プライバシー柱の主張と実装の乖離)
 - **共有リンクの暗号化に関する誇大表記**: README 比較表が「E2E 暗号化 … URL fragment key」と

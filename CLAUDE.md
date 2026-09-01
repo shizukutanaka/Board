@@ -20,7 +20,7 @@ Board は 4 つ全部を否定する: **単一HTML、ゼロ登録、完全無料
 
 ```
 Board/
-├── index.html             # 本体 (単一ファイル、~291KB raw / ~94KB gzip / ~77KB brotli)
+├── index.html             # 本体 (単一ファイル、~294KB raw / ~95KB gzip / ~78KB brotli)
 │   ├── <style>            # デザイントークン + レイアウト + モーション
 │   └── <script>
 │       ├── CONSTANTS      # atomic config
@@ -37,11 +37,21 @@ Board/
 │       ├── wire()         # event binding
 │       ├── main()         # bootstrap
 │       └── Service Worker # inline blob, offline cache
+├── sw.js                  # 任意の Service Worker (ADR-0018)。index.html 単体でも完全動作し、
+│                          # ホストがこれを併置したときだけオフラインが有効になる。
+│                          # **インライン化は仕様上不可能** — Register アルゴリズムは
+│                          # http(s) スクリプト URL しか受け付けず blob:/data: を拒否する。
+│                          # 旧実装は blob 登録で全ブラウザで死んでいた (実測 2026-08-31)。
 ├── coverage.mjs           # index.html の未実行関数を列挙 (依存ゼロ / V8 カバレッジ)
 ├── a11y-browser.mjs       # 実 Chromium の**アクセシビリティツリー**を検査 (依存ゼロ / CDP)
 │                          # test.mjs が source を見るのに対し、これは result を見る。
 │                          # 初回実行で実バグを発見 (ctx メニューの keydown 二重配送)。
 │                          # ブラウザが無い環境では SKIP (exit 0) するが黙らない。
+├── offline-browser.mjs    # 実 Chromium × 実 http オリジンで**オフラインの柱**を検証 (依存ゼロ / CDP)
+│                          # SW が activated に到達 → オリジンを落とす → リロードで盤面が
+│                          # 生還し、オフラインのまま描画できるところまで見る。
+│                          # a11y-browser.mjs は file:// のため SW に触れられず、この欠陥は
+│                          # どのハーネスにも見えていなかった。修正前ビルドでは 13 中 8 が落ちる。
 ├── README.md              # 公開用
 ├── CHANGELOG.md           # セマンティックバージョニング
 ├── CLAUDE.md              # この文書
@@ -71,7 +81,9 @@ Board/
 │   ├── ADR-0014-language-toggle.md  # 言語手動トグル (FT-18b、LANG/T を let 化、実装済)
 │   ├── ADR-0015-replicated-undo.md  # undo/redo を複製される op に (§F, arxiv 2404.11308, 実装済)
 │   ├── ADR-0016-a11y-dom-mirror.md  # 盤面の画面外DOMミラー (§I / spec P1, WCAG 1.3.1, 実装済)
-│   └── ADR-0017-share-link-e2e.md  # 共有リンクの E2E 暗号化 (FT-21, AES-GCM + fragment key, 実装済)
+│   ├── ADR-0017-share-link-e2e.md  # 共有リンクの E2E 暗号化 (FT-21, AES-GCM + fragment key, 実装済)
+│   └── ADR-0018-offline-sw-file.md # SW を任意の sw.js へ分離 (勝利条件「オフライン」が
+│                          # 全ブラウザで死んでいたのを修復。ソース検査 4件が全て緑だった)
 └── docs/ci-workflow.yml    # CI 定義 (v1.7.80)。**`.github/` には置けない — 実測で確認済み**:
     # この GitHub App は workflows 権限を持たず push が拒否される (2026-08-17 に実行して確認)。
     # .gitignore の長年の注記は**正しかった** — ただし「検証されていなかった」のも事実で、

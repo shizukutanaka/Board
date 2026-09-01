@@ -1,0 +1,38 @@
+#!/bin/sh
+# Board — pre-commit. Runs the fast invariant suite (~4s) before every commit.
+#
+# WHY THIS EXISTS ALONGSIDE docs/ci-workflow.yml
+#
+# Step 5 of the algorithm is "automate", and the end it serves is: THE INVARIANTS RUN
+# WHERE NOBODY CAN FORGET THEM. GitHub Actions is one implementation of that end — and in
+# this repository it is gated: the GitHub App has no `workflows` permission, verified
+# through two independent credential paths (git push, and the REST contents API). So the
+# workflow definition waits in docs/ci-workflow.yml for someone who can enable it.
+#
+# A git hook reaches the same end without that permission, and covers something Actions
+# never does: the moment BEFORE the commit exists. Nothing here is re-implemented — the
+# invariants live in test.mjs / coverage.mjs / a11y-browser.mjs, and these hooks only
+# choose when to run them.
+#
+# INSTALL (one command, per clone — git does not track its own config):
+#   git config core.hooksPath .githooks
+#
+# BYPASS (deliberate, occasionally correct — a WIP commit on a scratch branch):
+#   git commit --no-verify
+
+set -e
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "pre-commit: node not found — skipping invariant checks." >&2
+  echo "  The checks are the point; install Node 22+ or use --no-verify knowingly." >&2
+  exit 0
+fi
+
+echo "pre-commit: running invariants (node test.mjs)…"
+node test.mjs >/dev/null || {
+  echo "" >&2
+  echo "pre-commit: FAILED. Run 'node test.mjs' to see which invariant broke." >&2
+  echo "  (--no-verify bypasses this, but the same checks run on push.)" >&2
+  exit 1
+}
+echo "pre-commit: OK"

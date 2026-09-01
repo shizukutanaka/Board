@@ -8,6 +8,12 @@ import assert from 'assert';
 
 const html = readFileSync('./index.html', 'utf8');
 const readme = readFileSync('./README.md', 'utf8');
+// ADR-0018: the service worker CANNOT live inside index.html — the Register algorithm only
+// accepts http(s) script URLs and every browser rejects blob:/data:. So sw.js is a real,
+// OPTIONAL sibling file, and the offline invariants are asserted against IT, not against a
+// string embedded in the HTML. Missing file reads as '' so the checks below fail loudly
+// rather than throwing an unhelpful ENOENT at import time.
+const swjs = (() => { try { return readFileSync('./sw.js', 'utf8'); } catch { return ''; } })();
 const _codeVer = (html.match(/const V='([^']+)'/) || [])[1];
 // Size is no longer hard-capped (44KB gzip budget removed 2026-06-13). A loose raw
 // ceiling stays purely as a runaway-growth guard; gzip size is reported for visibility.
@@ -49,13 +55,19 @@ const checks = [
   // (privacy / zero-tracking) and offline-equivalence (ships an offline fallback).
   ['Privacy: no telemetry/analytics primitives', !/sendBeacon|XMLHttpRequest|\bgtag\(|google-analytics|googletagmanager|mixpanel|amplitude|\bSentry\b/i.test(html)],
   ['Privacy: zero third-party origins (only W3C SVG namespace identifier)', ((html.match(/https?:\/\/[A-Za-z0-9._-]+/gi)||[]).every(u=>/(?:www\.)?w3\.org/i.test(u)))],
-  ['Offline-equivalence: SW ships a cache-first offline fallback', /caches\.open\(/.test(html) && (/new Response\(['"]offline/.test(html) || /status:\s*503/.test(html))],
+  ['Offline: sw.js exists as a real sibling file (a SW script must be a same-origin http(s) URL)', swjs.length > 0],
+  ['Offline: sw.js is syntactically valid JavaScript', (() => {
+    if (!swjs) return false;
+    try { new (Function.prototype.constructor)(swjs); return true; } catch { return false; }
+  })()],
+  ['Offline-equivalence: sw.js ships the cache + 503 offline fallback (ADR-0018: it CANNOT be inlined)', /caches\.open\(/.test(swjs) && (/new Response\(['"]offline/.test(swjs) || /status:\s*503/.test(swjs))],
   // Longevity (local-first ownership, §3.7): the autosave must request durable
   // (non-evictable) storage, else a board lives in the browser's best-effort
   // bucket and a "clear site data" or disk-pressure eviction loses it.
   ['Longevity: requests durable (non-evictable) storage', /navigator\.storage|\bst\.persist\b/.test(html) && /\.persist\(\)/.test(html)],
   ['PWA manifest inline', /rel="manifest"/.test(html) && /data:application\/manifest\+json/.test(html)],
-  ['ServiceWorker registered', /serviceWorker.*register/.test(html)],
+  ['ServiceWorker registered from a real URL, not a blob (blob: is rejected by every browser — measured 2026-08-31)',
+    /serviceWorker\.register\(['"]\.\/sw\.js['"]\)/.test(html) && !/register\(URL\.createObjectURL/.test(html)],
   ['i18n ja + en', /I18N\s*=/.test(html) && html.includes('ja:{') && html.includes('en:{')],
   ['WCAG AAA brand-ink token', html.includes('--brand-ink:#003B40')],
   ['IndexedDB store', html.includes("DB_NAME='board'")],
@@ -397,7 +409,7 @@ const checks = [
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
-  ['service worker purges stale caches', html.includes("caches.keys()") && html.includes("k!==C")],
+  ['service worker purges stale caches (old board-v* names)', swjs.includes("caches.keys()") && swjs.includes("k !== C")],
   // v1.6.20: fourth audit pass
   ['drawShape opacity uses nullish coalescing (opacity=0 invisible, not opaque)', html.includes('c.globalAlpha=s.opacity??1')],
   ['pointercancel restores in-progress resize/move shapes', html.includes("ptr.dragKind==='resize'&&ptr.resizeOrig")],
@@ -622,8 +634,11 @@ const checks = [
     html.includes('this._lastSelSent=null;invalidate();')],
   // v1.7.63 robustness audit
   ['SW: navigations are network-first (cache-first pinned users to the first cached version forever)',
-    html.includes("if(e.request.mode==='navigate')")
-    && html.includes("catch(_){const r=await c.match(e.request);if(r)return r;return new Response('offline',{status:503})}")],
+    swjs.includes("e.request.mode === 'navigate'")
+    && /catch \(_\) \{ const r = await c\.match\(e\.request\); if \(r\) return r; return new Response\('offline', \{ status: 503 \}\); \}/.test(swjs)],
+  ['SW update toast is guarded against the FIRST install (clients.claim() also fires controllerchange)',
+    html.includes('if(navigator.serviceWorker.controller)')
+    && html.includes("navigator.serviceWorker.addEventListener('controllerchange',_onSwUpdate)")],
   ['peer flood: MAX_PEERS cap + peer-id type/length intake guard',
     html.includes('const MAX_PEERS=32')
     && html.includes('if(state.peers.size>=MAX_PEERS)return;')
@@ -1173,7 +1188,16 @@ const fakeWin = {
   history: { _calls: [], replaceState(a,b,url){ this._calls.push(url); } },
   screen: { orientation: { addEventListener(){}, removeEventListener(){} } },
   navigator: { language:'en', onLine:true,
-    serviceWorker:{ register:()=>Promise.resolve(), _listeners:{},
+    // register() REJECTS here, and that is the faithful fake: the harness serves no http
+    // origin, so ./sw.js cannot resolve — exactly what a host shipping index.html alone
+    // sees (404 → HTML → wrong MIME). It also keeps index.html's .catch() on a covered
+    // path; if that catch is ever deleted, this suite reports an unhandled rejection.
+    serviceWorker:{ _registered: [],
+      register(u){ this._registered.push(u);
+        return Promise.reject(new TypeError("Failed to register a ServiceWorker: The script has an unsupported MIME type ('text/html').")); },
+      // truthy controller = "a SW controlled this page before", so the update listener
+      // attaches (ADR-0018 first-install guard skips it when controller is null).
+      controller: {}, _listeners:{},
       addEventListener(type,fn){ this._listeners[type]=fn; } },
     clipboard: { writeText: () => Promise.resolve() } },
   localStorage: { _d: {}, getItem(k){ return this._d[k] || null }, setItem(k,v){ this._d[k] = String(v) }, removeItem(k){ delete this._d[k] } },
@@ -5840,6 +5864,61 @@ try {
     assert.ok(lastToast && lastToast.kind === 'ok',
       'SW controllerchange: shows ok toast when new SW activates');
     console.log('  ✓ SW update notification: controllerchange → reload toast (web.dev SW lifecycle)');
+  }
+
+  // ADR-0018: registration is BEHAVIOURAL, not a regex over the source. The previous
+  // implementation registered a blob: URL, which every browser rejects — and the check that
+  // was supposed to guard it only asserted the string "serviceWorker...register" appeared
+  // somewhere in the HTML, so it stayed green for the entire life of the bug.
+  //
+  // Rebuilding the whole world twice is expensive, so instead lift the SHIPPED block out of
+  // index.html verbatim and run it against two different navigators. This executes the real
+  // code — if the block is edited, this test runs the edit.
+  {
+    const swBlock = (html.match(/if\('serviceWorker' in navigator\)\{[\s\S]*?\n\}/) || [])[0];
+    assert.ok(swBlock, 'SW: the registration block is locatable in index.html');
+    const runSw = (controller, registerImpl) => {
+      const sw = { controller, _registered: [], _listeners: {},
+        register(u) { this._registered.push(u); return (registerImpl || (() => Promise.resolve()))(u); },
+        addEventListener(type, fn) { this._listeners[type] = fn; } };
+      new Function('navigator', '_onSwUpdate', swBlock)({ serviceWorker: sw }, () => {});
+      return sw;
+    };
+
+    const returning = runSw({});      // a controller already controls this page
+    const firstTime = runSw(null);    // genuine first install
+
+    assert.deepStrictEqual(returning._registered, ['./sw.js'],
+      'SW: the page registers the real sibling file ./sw.js');
+    assert.ok(!returning._registered.some(u => String(u).startsWith('blob:')),
+      'SW: nothing is registered from a blob: URL (rejected by Chrome/Firefox — measured 2026-08-31)');
+    assert.deepStrictEqual(firstTime._registered, ['./sw.js'],
+      'SW: a first-time visitor still registers sw.js');
+
+    // The guard, asserted in BOTH directions — one that never suppresses anything is not a
+    // guard. clients.claim() fires controllerchange on the first install too, so without
+    // this the very first visit toasts "app updated" to someone who has never seen the app.
+    assert.strictEqual(typeof firstTime._listeners['controllerchange'], 'undefined',
+      'SW: first install attaches NO controllerchange listener (no bogus "updated" toast)');
+    assert.strictEqual(typeof returning._listeners['controllerchange'], 'function',
+      'SW: a returning visitor (controller present) DOES listen for a real update');
+    // A host that ships index.html ALONE is a supported deployment (ADR-0018), and there
+    // register() rejects: 404 → HTML → wrong MIME type. The .catch() exists precisely for
+    // that, so exercise it — an unhandled rejection here would surface as a console error
+    // on a perfectly valid install.
+    let unhandled = null;
+    const onUnhandled = r => { unhandled = r; };
+    process.on('unhandledRejection', onUnhandled);
+    const noSwFile = runSw({}, () => Promise.reject(new TypeError(
+      "Failed to register a ServiceWorker: The script has an unsupported MIME type ('text/html').")));
+    await new Promise(r => setImmediate(r));   // let the rejection settle
+    process.off('unhandledRejection', onUnhandled);
+    assert.deepStrictEqual(noSwFile._registered, ['./sw.js'],
+      'SW: the attempt is still made when sw.js is absent');
+    assert.strictEqual(unhandled, null,
+      'SW: a host WITHOUT sw.js produces no unhandled rejection — index.html alone is a supported deployment');
+
+    console.log('  ✓ ADR-0018 SW registration: ./sw.js registered for real (never a blob:), missing sw.js swallowed cleanly, update toast suppressed on first install but armed for returning visitors');
   }
 
   // v1.6.94: _esc single-quote encoding — must fail before fix, pass after

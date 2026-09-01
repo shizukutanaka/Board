@@ -2,6 +2,55 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.85] - 2026-09-01
+
+**勝利条件が1つ、リリース以来どのブラウザでも成立していなかった。**
+「文書が実態を上回る」の**6例目にして最重症** — そして今回は文書だけでなく**検査**も
+実態を上回っていた。
+
+### Fixed
+- **【オフライン】Service Worker が全ブラウザで一度も登録されていなかった** (ADR-0018)。
+  `index.html` は SW を文字列 → Blob → `register(URL.createObjectURL(bl))` で登録していたが、
+  **Service Workers 仕様の Register アルゴリズムは http(s) スクリプト URL しか受理せず**、
+  blob:/data: を `TypeError` で拒否する。実 Chromium で実測:
+  `REJECTED: The URL protocol of the script ('blob:...') is not supported` /
+  `getRegistration(): NONE`。`.catch(()=>{})` がこれを完全に黙殺していた。
+  結果として**キャッシュは一度も作られず**、ネットワークが無い2回目の訪問は
+  Chrome のエラーページになっていた (修正前ビルドで再現: `title: 127.0.0.1`、ボタン0個)。
+  → SW を**任意の兄弟ファイル `sw.js`** へ分離。`index.html` 単体の完全動作は不変で、
+  ホストが `sw.js` を併置したときだけオフラインが有効になる。`file://` / USB 配布は
+  元からネットワーク非依存のため影響なし。
+- **更新トーストが初回訪問者にも出る状態だった**: `clients.claim()` は初回インストールでも
+  `controllerchange` を発火させる。`navigator.serviceWorker.controller` を事前確認する
+  ガードを追加。**登録自体が死んでいたため今まで発現しようがなかった**バグ。
+- **`docs/spec.md` の「オフラインで等価に動く … 実測の結果乖離なし」を訂正**。
+  当時の「実測」は*コードが書かれていること*の確認で、*ブラウザで成立すること*の
+  確認ではなかった。
+
+### Added
+- **`offline-browser.mjs`** (新規, 依存ゼロ, `a11y-browser.mjs` の兄弟):
+  **実 Chromium × 実 http オリジン**で結果を検証する。SW が `activated` に到達 →
+  リロードで `controller` が付く → **オリジンを落として**リロード → 盤面が生還し、
+  **オフラインのまま実際に図形が描ける**ところまで。加えて `sw.js` **無し**のオリジンでも
+  `index.html` が完全 boot しエラーを出さないこと (任意ファイルであることの証明) 。
+  計13検査。**修正前ビルドでは 13 中 8 が落ちる**ことを確認済 (非空虚性)。
+  `a11y-browser.mjs` は `file://` で読み込むため `'serviceWorker' in navigator` が偽で、
+  **既存のどのハーネスもこの欠陥に触れられなかった**。
+- CI (`docs/ci-workflow.yml`) と `.githooks/pre-push` に上記を追加 (Chromium を再利用)。
+- **`.githooks/` を追跡下に**: pre-commit (高速な不変条件) / pre-push (全検査)。
+  有効化は `git config core.hooksPath .githooks`。検査の定義は増やさず実行機会だけ増やす。
+
+### Changed
+- **SW 検査4件を「ソースの正規表現」から「実体の検証」へ反転**。
+  L52/L58/L400/L626 はいずれも `index.html` の本文に文字列が現れることだけを見ており、
+  **すべて真・すべて緑・すべて無意味**だった (コードは存在した。実行されなかっただけ)。
+  主張を `sw.js` の内容へ移し、`index.html` 側には**「blob 登録が復活していないこと」**を
+  主張させる。加えて**該当ブロックを実際に実行**して登録先と初回ガードを両方向に固定する
+  振る舞いテストを追加。
+- **キャッシュ名を `board-v${V}` から固定 `'board'` へ簡約**。navigate が network-first で
+  毎回 `put` するためキャッシュは常に最新版を保持し、バージョン別名は不要。
+  `activate` の掃除ループは**旧 `board-v*` からの移行のためだけに**残る。
+
 ## [1.7.84] - 2026-08-25
 
 **FT-15 を「作るか否か」ではなく「測ってから決める」で閉じた回**。要件は手段

@@ -765,7 +765,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.84';
+const V='1.7.85';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -5721,40 +5721,21 @@ const Minimap=(()=>{
   _rafId=requestAnimationFrame(frame);
 })();
 
-// ====================== SERVICE WORKER (inline) ======================
+// ====================== SERVICE WORKER (optional ./sw.js) ======================
 // Named handler exported for tests — avoids closure-identity issues with UI.toast mocking.
 function _onSwUpdate(){ UI.toast(t('appUpdated'),'ok'); }
-// offline-first caching of this single page
+// ADR-0018: the SW cannot be inlined — the Register algorithm only accepts http(s) script
+// URLs, and Chrome/Firefox reject blob:/data: registrations. The logic lives in ./sw.js,
+// an OPTIONAL sibling file: hosts that deploy it get offline-after-first-load; hosts that
+// serve index.html alone get exactly today's behaviour (404 → wrong MIME → rejected →
+// caught). file:// never reaches here ('serviceWorker' is absent outside http(s)).
 if('serviceWorker' in navigator){
-  const sw=`
-    const C='board-v${V}';
-    self.addEventListener('install',e=>{self.skipWaiting()});
-    self.addEventListener('activate',e=>{e.waitUntil((async()=>{
-      for(const k of await caches.keys())if(k!==C)await caches.delete(k);
-      await clients.claim();
-    })())});
-    self.addEventListener('fetch',e=>{
-      e.respondWith(caches.open(C).then(async c=>{
-        if(e.request.mode==='navigate'){
-          // network-first for the document: pure cache-first pinned users to the first
-          // cached HTML forever (old HTML regenerates the old SW -> activate/controllerchange
-          // never fire, updates never arrive). Offline still falls back to the cache.
-          try{const n=await fetch(e.request);c.put(e.request,n.clone());return n}
-          catch(_){const r=await c.match(e.request);if(r)return r;return new Response('offline',{status:503})}
-        }
-        const r=await c.match(e.request);
-        if(r)return r;
-        try{const n=await fetch(e.request);if(e.request.method==='GET')c.put(e.request,n.clone());return n}
-        catch(_){return new Response('offline',{status:503})}
-      }));
-    });`;
-  const bl=new Blob([sw],{type:'text/javascript'});
-  navigator.serviceWorker.register(URL.createObjectURL(bl)).catch(()=>{});
-  // v1.6.93: SW update notification. skipWaiting()+clients.claim() in the SW means a
-  // new version activates immediately, but the page gets no feedback. Listen for
-  // controllerchange (fires when a new SW takes over) and prompt a reload.
-  // Pattern: web.dev/service-worker-lifecycle / Zenn「SW更新時にリロードを促す」.
-  navigator.serviceWorker.addEventListener('controllerchange',_onSwUpdate);
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  // v1.6.93: SW update notification via controllerchange. clients.claim() also fires
+  // controllerchange on the FIRST install, which is not an update — only announce when a
+  // previous controller existed (web.dev/service-worker-lifecycle first-load guard).
+  if(navigator.serviceWorker.controller)
+    navigator.serviceWorker.addEventListener('controllerchange',_onSwUpdate);
 }
 </script>
 </body>

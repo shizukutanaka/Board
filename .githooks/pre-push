@@ -1,0 +1,51 @@
+#!/bin/sh
+# Board — pre-push. Runs the FULL check set (~30s) before anything leaves this machine.
+#
+# These are exactly the jobs in docs/ci-workflow.yml, in the same order, running the same
+# commands. Nothing is re-implemented here: if a check belongs to the project, it lives in
+# test.mjs / coverage.mjs / a11y-browser.mjs and both this hook and CI merely invoke it.
+# Two places that RUN the checks is fine; two places that DEFINE them would be a second
+# source of truth.
+#
+# INSTALL:  git config core.hooksPath .githooks
+# BYPASS:   git push --no-verify
+
+set -e
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "pre-push: node not found — skipping invariant checks." >&2
+  exit 0
+fi
+
+fail() {
+  echo "" >&2
+  echo "pre-push: $1 FAILED — not pushing." >&2
+  echo "  Run it directly to see the detail: $2" >&2
+  exit 1
+}
+
+echo "pre-push: [1/5] invariants + behavioural suite…"
+node test.mjs >/dev/null || fail "test.mjs" "node test.mjs"
+
+echo "pre-push: [2/5] inline script parses standalone…"
+node -e "
+const fs=require('fs'),os=require('os'),path=require('path');
+const js=fs.readFileSync('index.html','utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
+fs.writeFileSync(path.join(os.tmpdir(),'board-inline-check.js'), js);
+" && node --check "$(node -e "console.log(require('path').join(require('os').tmpdir(),'board-inline-check.js'))")" \
+  || fail "inline script syntax" "node --check on the extracted <script>"
+
+echo "pre-push: [3/5] unexecuted-function baseline…"
+node coverage.mjs --max=127 >/dev/null || fail "coverage baseline" "node coverage.mjs --max=127"
+
+# Self-skips with exit 0 when no browser is present, and says so — a machine without
+# Chromium must not turn into a red build, but must not look silently green either.
+echo "pre-push: [4/5] real-browser accessibility tree…"
+node a11y-browser.mjs >/dev/null || fail "a11y-browser.mjs" "node a11y-browser.mjs"
+
+# ADR-0018. Serves over a real http origin: a service worker cannot register on file://,
+# so the a11y harness above physically could not see the offline pillar. Same skip rule.
+echo "pre-push: [5/5] service worker + offline round-trip…"
+node offline-browser.mjs >/dev/null || fail "offline-browser.mjs" "node offline-browser.mjs"
+
+echo "pre-push: all checks passed."

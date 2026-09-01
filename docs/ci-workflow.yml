@@ -62,3 +62,10 @@ jobs:
         run: node a11y-browser.mjs
         env:
           PLAYWRIGHT_BROWSERS_PATH: /home/runner/.cache/ms-playwright
+      # ADR-0018. Runs in the same job to reuse the Chromium install. This one serves over a
+      # real http origin — a service worker cannot register on file://, which is precisely
+      # why the a11y harness above could never have caught the offline pillar being dead.
+      - name: Service worker registers, and the board survives the network going away
+        run: node offline-browser.mjs
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: /home/runner/.cache/ms-playwright
