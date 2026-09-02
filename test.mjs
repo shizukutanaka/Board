@@ -122,7 +122,15 @@ const checks = [
   ['Help grid populated', html.includes('fillHelp')],
   // v1.1 additions
   ['BroadcastChannel sync code present', html.includes("NET_CHANNEL_PREFIX='board:'")],
-  ['PEER_ID persistence', html.includes("localStorage.getItem('board.peer')")],
+  // ADR-0019. This check used to assert the OPPOSITE — that PEER_ID is read from
+  // localStorage['board.peer'] — and in doing so it pinned a silent data-loss bug as an
+  // invariant. The CRDT dedup key is `clock.peer + ':' + clock.seq`, unique only while the
+  // id is unique PER REPLICA; two tabs of one browser are two replicas, each counting seq
+  // from 0, so a per-browser id collides on the second tab's very first op and one tab's
+  // work is discarded without any error.
+  ['PEER_ID identifies a REPLICA, not a browser: never persisted (ADR-0019)',
+    /const PEER_ID=uid\(\);/.test(html) && !html.includes("localStorage.getItem('board.peer')")
+    && !html.includes("localStorage.setItem('board.peer'")],
   ['Share export/import', html.includes('exportToUrl') && html.includes('importFromHash')],
   // v1.7.71 asserted the OPPOSITE of these two — that the link was still plaintext and
   // that no crypto was claimed — deliberately, so that the day E2E landed the suite would
@@ -3871,6 +3879,52 @@ try {
     const ra = A.Shape.make('rect',{x:0,y:0,w:10,h:10});
     A.Store.commit({op:'add',shape:ra});
     assert.ok(B.state.shapes.some(s=>s.id===ra.id),'convergence: B receives A\'s committed shape');
+
+    // (a2) ADR-0019 — WHY the replica id must not be per-browser.
+    //
+    // Note the two lines above: this harness assigns 'peerA'/'peerB' BY HAND. That is
+    // exactly how the defect stayed invisible for the life of the product — the harness
+    // supplied, as a convenience, the one property the shipped code violated. In a real
+    // browser both tabs read the same localStorage['board.peer'] and WERE the same id.
+    //
+    // The dedup key is clock.peer + ':' + clock.seq. Two replicas each count seq from 0,
+    // so with a shared id their Nth ops are indistinguishable. Store.commit() checks
+    // seenOps BEFORE _apply (index.html:1256), so the loser does not merely fail to
+    // transmit — it discards its OWN edit. The user draws a shape and nothing appears.
+    {
+      reset(A); reset(B);
+      const shared = 'sameBrowserId';
+      A.state.peerId = shared; B.state.peerId = shared;
+
+      const fromA = A.Shape.make('rect',{x:0,y:0,w:10,h:10});
+      A.Store.commit({op:'add',shape:fromA});      // A: seq 1 → sameBrowserId:1, reaches B
+      assert.ok(B.state.shapes.some(s => s.id === fromA.id),
+        'ADR-0019 (setup): B received A\'s shape, so B now has sameBrowserId:1 in seenOps');
+
+      const fromB = B.Shape.make('ellipse',{x:50,y:50,w:10,h:10});
+      B.Store.commit({op:'add',shape:fromB});      // B: seq 1 → sameBrowserId:1 — COLLIDES
+
+      assert.ok(!B.state.shapes.some(s => s.id === fromB.id),
+        'ADR-0019: with a SHARED replica id, B silently discards its OWN drawing — commit() returns on the seenOps hit before _apply ever runs');
+      assert.ok(!A.state.shapes.some(s => s.id === fromB.id),
+        'ADR-0019: and A never hears about it either — the work is gone from both boards, with no error');
+
+      // Distinct ids: the very same two commits both survive. This is what the fix restores.
+      reset(A); reset(B);
+      A.state.peerId = 'peerA'; B.state.peerId = 'peerB';
+      const a2 = A.Shape.make('rect',{x:0,y:0,w:10,h:10});
+      A.Store.commit({op:'add',shape:a2});
+      const b2 = B.Shape.make('ellipse',{x:50,y:50,w:10,h:10});
+      B.Store.commit({op:'add',shape:b2});
+      assert.deepStrictEqual(
+        A.state.shapes.map(s => s.id).sort(), B.state.shapes.map(s => s.id).sort(),
+        'ADR-0019: with DISTINCT replica ids the same two commits converge');
+      assert.ok(A.state.shapes.length === 2,
+        'ADR-0019: and BOTH shapes survive (2 on each board), where the shared id left only 1');
+      console.log('  ✓ ADR-0019 replica identity: a shared peerId makes peer:seq collide and a tab discards its OWN edit; distinct ids keep both (index.html no longer persists the id)');
+    }
+    reset(A); reset(B);
+    A.state.peerId='peerA'; B.state.peerId='peerB';
 
     // (b) both drew offline, then exchange snapshots → converge to the union.
     //     This is the non-empty-peer merge that sync bugs #2/#3 silently broke.

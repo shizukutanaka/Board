@@ -209,6 +209,31 @@ try {
   const controlled = await evaluate(`!!navigator.serviceWorker.controller`);
   ok(controlled, 'after a reload the page is CONTROLLED by the worker (so its fetch handler is live)');
 
+  // Local-first persistence, measured in the same flow: draw something NOW, while online,
+  // and require it to still be there after the offline reload below. "Offline-equivalent"
+  // includes "your board is still your board" — a blank canvas served from cache would pass
+  // every check above and still betray the user. IndexedDB autosave is debounced
+  // (SAVE_DEBOUNCE = 500ms), so wait past it before pulling the plug.
+  const key = async (k, opts = {}) => {
+    const base = { key: k, code: opts.code || k, windowsVirtualKeyCode: opts.vk,
+                   nativeVirtualKeyCode: opts.vk, modifiers: opts.modifiers || 0, text: opts.text };
+    await cdp.send('Input.dispatchKeyEvent', { type: opts.text ? 'keyDown' : 'rawKeyDown', ...base });
+    await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', ...base });
+  };
+  const mouse = async (type, x, y) => cdp.send('Input.dispatchMouseEvent', {
+    type, x, y, button: 'left', buttons: type === 'mouseReleased' ? 0 : 1, clickCount: 1 });
+  const drawRect = async (x, y) => {
+    await evaluate(`document.getElementById('c').focus()`);
+    await key('r', { code: 'KeyR', vk: 82, text: 'r' });
+    await mouse('mousePressed', x, y);
+    await mouse('mouseMoved',   x + 140, y + 100);
+    await mouse('mouseReleased', x + 140, y + 100);
+  };
+  await drawRect(300, 320);
+  await sleep(1500);                                  // > SAVE_DEBOUNCE, and > mirror debounce
+  const drawnOnline = await evaluate(`document.querySelectorAll("#srMirrorList li").length`).catch(() => -1);
+  ok(drawnOnline === 1, `a shape drawn while ONLINE is on the board before the plug is pulled (${drawnOnline})`);
+
   // === the actual claim: kill the origin, reload, and see the board come back ===
   origin.goOffline();
   await cdp.send('Network.enable');
@@ -233,26 +258,18 @@ try {
     `the full UI came back offline (${offlineState?.toolbarButtons ?? 0} buttons)`);
   ok(!!offlineState && offlineState.mirror, 'the a11y mirror is present offline too (ADR-0016 survives the cache path)');
 
+  // The board itself came back, not just the app: the shape drawn online is still here.
+  await sleep(800);                                   // mirror debounce after boot
+  const survived = await evaluate(`document.querySelectorAll("#srMirrorList li").length`).catch(() => -1);
+  ok(survived === 1, `the shape drawn ONLINE survived the OFFLINE reload via IndexedDB (${survived} item(s)) — local-first, not a blank cached shell`);
+
   // Offline equivalence is the actual promise: not "it loads" but "you can still draw".
   // Driven through REAL browser input (Input.dispatchMouseEvent), the same way
   // a11y-browser.mjs does it — synthetic DOM events would prove less than the real pipeline.
-  const key = async (k, opts = {}) => {
-    const base = { key: k, code: opts.code || k, windowsVirtualKeyCode: opts.vk,
-                   nativeVirtualKeyCode: opts.vk, modifiers: opts.modifiers || 0, text: opts.text };
-    await cdp.send('Input.dispatchKeyEvent', { type: opts.text ? 'keyDown' : 'rawKeyDown', ...base });
-    await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', ...base });
-  };
-  const mouse = async (type, x, y) => cdp.send('Input.dispatchMouseEvent', {
-    type, x, y, button: 'left', buttons: type === 'mouseReleased' ? 0 : 1, clickCount: 1 });
-
-  await evaluate(`document.getElementById('c').focus()`);
-  await key('r', { code: 'KeyR', vk: 82, text: 'r' });
-  await mouse('mousePressed', 300, 320);
-  await mouse('mouseMoved',   440, 420);
-  await mouse('mouseReleased', 440, 420);
+  await drawRect(600, 320);
   await sleep(1200);                                  // mirror is debounced (SR_MIRROR_DEBOUNCE)
   const drewOffline = await evaluate(`document.querySelectorAll("#srMirrorList li").length`).catch(() => -1);
-  ok(drewOffline > 0, `a shape can still be DRAWN while offline (${drewOffline} item(s) in the mirror) — "offline-EQUIVALENT", not merely "offline-loads"`);
+  ok(drewOffline === 2, `a NEW shape can still be drawn while offline (${drewOffline} item(s) in the mirror) — "offline-EQUIVALENT", not merely "offline-loads"`);
 
   await cdp.send('Network.emulateNetworkConditions',
     { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });

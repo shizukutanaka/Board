@@ -29,6 +29,17 @@ Board は「サインアップ/重量/有料/プライバシー侵害」を全�
 `history[]`, `histIdx`, `clipboard`, `styleClipboard`, `hover`, `draft`, `editing`, `marquee`,
 `snap`, `showGrid`, `docName`, `dirty`, `lastSaveAt`, `peerId`, `seq`, `seenOps:Set`。
 
+**`peerId` の MUST (ADR-0019)**: `peerId` は**レプリカ**を識別する。ブラウザでも人でもない。
+- **MUST**: **永続化しない**(ページロードごとに新規生成)。CRDT の重複排除キーは
+  `clock.peer + ':' + clock.seq` であり、一意性は**レプリカ単位の id** を前提とする。
+- **理由**: 同一ブラウザの2タブは2つの独立レプリカで、各々 `seq` を 0 から数える。
+  id を共有すると N 番目の op が区別不能になり、`Store.commit()` は `_apply` の**前に**
+  `seenOps` を検査するため、衝突した側は**自分の編集を自分で捨てる**
+  (ユーザーが描いても何も現れない)。単一タブのリロードでも `seq` が 0 に戻るため同様。
+- **MUST**: この性質は `sync-browser.mjs` が**実ブラウザの2タブ**で検証する。
+  `test.mjs` の2ピアハーネスは `peerA`/`peerB` を手で代入するため、**この欠陥を構造的に
+  観測できない**(親切なハーネスは検証されていない仮定を注入する)。
+
 ### 2.2 shape(共通フィールド)
 `{ id:string, type, z:number, stroke, fill, size:number, opacity:number }` +
 種別固有: rect/ellipse/frame/sticky/image/text=`x,y,w,h`、line/arrow=`x1,y1,x2,y2`、

@@ -20,7 +20,7 @@ Board は 4 つ全部を否定する: **単一HTML、ゼロ登録、完全無料
 
 ```
 Board/
-├── index.html             # 本体 (単一ファイル、~294KB raw / ~95KB gzip / ~78KB brotli)
+├── index.html             # 本体 (単一ファイル、~294KB raw / ~95KB gzip / ~79KB brotli)
 │   ├── <style>            # デザイントークン + レイアウト + モーション
 │   └── <script>
 │       ├── CONSTANTS      # atomic config
@@ -52,6 +52,11 @@ Board/
 │                          # 生還し、オフラインのまま描画できるところまで見る。
 │                          # a11y-browser.mjs は file:// のため SW に触れられず、この欠陥は
 │                          # どのハーネスにも見えていなかった。修正前ビルドでは 13 中 8 が落ちる。
+├── sync-browser.mjs       # 実 Chromium の**2タブ**で同期の柱を検証 (依存ゼロ / CDP)
+│                          # 双方向伝播・複製 undo・リロード後・盤面一致まで見る。
+│                          # test.mjs の2ピアテストは fake channel の上で動き、しかも
+│                          # peerA/peerB を**手で代入**していた — 製品が破っていた当の
+│                          # 性質をハーネスが供給しており、実バグが1年見えなかった。
 ├── README.md              # 公開用
 ├── CHANGELOG.md           # セマンティックバージョニング
 ├── CLAUDE.md              # この文書
@@ -82,8 +87,11 @@ Board/
 │   ├── ADR-0015-replicated-undo.md  # undo/redo を複製される op に (§F, arxiv 2404.11308, 実装済)
 │   ├── ADR-0016-a11y-dom-mirror.md  # 盤面の画面外DOMミラー (§I / spec P1, WCAG 1.3.1, 実装済)
 │   ├── ADR-0017-share-link-e2e.md  # 共有リンクの E2E 暗号化 (FT-21, AES-GCM + fragment key, 実装済)
-│   └── ADR-0018-offline-sw-file.md # SW を任意の sw.js へ分離 (勝利条件「オフライン」が
+│   ├── ADR-0018-offline-sw-file.md # SW を任意の sw.js へ分離 (勝利条件「オフライン」が
 │                          # 全ブラウザで死んでいたのを修復。ソース検査 4件が全て緑だった)
+│   └── ADR-0019-replica-identity.md # peerId はレプリカ単位 (永続化を削除)。同一ブラウザの
+│                          # 2タブが id を共有し peer:seq が衝突、片方が**自分の編集を
+│                          # 自分で捨てて**いた。静かなデータ損失の修正
 └── docs/ci-workflow.yml    # CI 定義 (v1.7.80)。**`.github/` には置けない — 実測で確認済み**:
     # この GitHub App は workflows 権限を持たず push が拒否される (2026-08-17 に実行して確認)。
     # .gitignore の長年の注記は**正しかった** — ただし「検証されていなかった」のも事実で、

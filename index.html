@@ -765,7 +765,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.85';
+const V='1.7.86';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -820,12 +820,16 @@ const PEER_COLORS=['#00C4CC','#7C3AED','#DC2626','#F59E0B','#16A34A','#2563EB','
 const uid=()=>typeof crypto!=='undefined'&&crypto.randomUUID
   ?crypto.randomUUID().replace(/-/g,'')  // 122-bit UUID v4; no collision concern
   :Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4); // fallback
-// peerId: persistent per browser, used to dedup CRDT ops
-const PEER_ID=(()=>{try{
-  let id=localStorage.getItem('board.peer');
-  if(!id){id=uid();localStorage.setItem('board.peer',id)}
-  return id;
-}catch(_){return uid()}})();
+// peerId: identifies a REPLICA, and is deliberately NOT persisted (ADR-0019).
+// The CRDT dedup key is `clock.peer + ':' + clock.seq`, so it is unique only while the id
+// is unique per replica. Two tabs of one browser are two independent replicas: each counts
+// its own state.seq from 0 and starts with an empty seenOps. A per-browser id (the old
+// localStorage['board.peer']) made them collide — tab B's first op is sharedId:1, which
+// tab A already has in seenOps from its own first op, so A silently DISCARDED B's work.
+// The same collision hit a single tab across a reload (seq restarts at 0 while the remote
+// peer still remembers the old ops). Nothing needs this id to survive a reload: dedup does
+// not, snapshot election needs only an ordering, and the avatar initials are decoration.
+const PEER_ID=uid();
 // minimap visibility: persisted across reloads (§3.18 — small boards get zero value from
 // an always-on minimap with no way to dismiss it; a session-only toggle would just nag again
 // on every reload).
@@ -1037,7 +1041,7 @@ const state={
   dirty:false,
   lastSaveAt:0,
   // ---- v1.1 sync ----
-  peerId:PEER_ID,           // self peer id (persistent)
+  peerId:PEER_ID,           // self peer id (per replica, per load — ADR-0019)
   seq:0,                    // monotonic op counter for CRDT clock
   _lastTs:0,                // monotonic-clock floor: local clocks never regress (HLC-lite)
   seenOps:new Set(),        // "peer:seq" set for dedup

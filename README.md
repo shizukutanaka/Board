@@ -4,7 +4,7 @@
 単一HTMLファイル。ダブルクリックで動く。アカウント不要。広告なし。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-00C4CC.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.7.85-00C4CC.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.7.86-00C4CC.svg)](CHANGELOG.md)
 [![Size](https://img.shields.io/badge/size-~95KB%20gzip-00C4CC.svg)](index.html)
 [![Offline](https://img.shields.io/badge/offline-first-00C4CC.svg)](#offline)
 [![A11y](https://img.shields.io/badge/WCAG-AAA-00C4CC.svg)](#accessibility)
@@ -28,7 +28,7 @@
 Board は `index.html` 一枚。自分のドメイン、USB、社内ネット、オフライン PC — どこでも動く。
 
 > **サイズの基準**: 他社列は非圧縮のアプリバンドル概算のため、Board も非圧縮 (294KB) を併記した。
-> 実際の転送量は静的ホストが brotli を返すので **約 78KB**。
+> 実際の転送量は静的ホストが brotli を返すので **約 79KB**。
 > [HTTP Archive Web Almanac 2025](https://almanac.httparchive.org/en/2025/page-weight) が報告する
 > モバイルページ重量の中央値 2,362KB に対し、およそ **1/30**。
 > 数値は `node test.mjs` が実測し、この README のバッジと ±10% 以内で一致することを検証している。
@@ -105,7 +105,7 @@ start index.html      # Windows
 - 削除 (Del/Backspace)、全選択 (Ctrl+A)、右クリックコンテキストメニュー
 
 ### コラボレーション / Sync
-- 同一ブラウザのタブ間: BroadcastChannel で即時同期
+- 同一ブラウザのタブ間: BroadcastChannel で即時同期 (双方向・実ブラウザ2タブで検証済 — `sync-browser.mjs`)
 - 端末間: WebRTC DataChannel (手動シグナリング、サーバー不要)
 - URL ハッシュにスナップショットを載せて共有 (`#...`)
 - **共有リンクの E2E 暗号化 (ADR-0017)**: 共有 URL は AES-GCM 256bit で暗号化され、鍵は
@@ -316,11 +316,12 @@ npx serve .
 - 外部依存の追加は慎重に (単一ファイル原則 — 外部 `<script src>` / `<link href>` は不可)
 - サイズはハード上限なし (2026-06-13 に gzip 44KB 予算を撤去)。指針として小さく保つが、
   整合性・正しさを優先してよい。暴走防止に raw 512KB の緩い上限のみ残す
-  (現状 raw ~294KB / gzip ~95KB / brotli ~78KB)。サイズが動いたら上のバッジも更新すること —
+  (現状 raw ~294KB / gzip ~95KB / brotli ~79KB)。サイズが動いたら上のバッジも更新すること —
   ±10% を超えると `test.mjs` が落ちる
 - `node test.mjs` を通すこと (CI が presence + behavioural テストを実行)
 - 実ブラウザ検査も併せて: `node a11y-browser.mjs` (アクセシビリティツリー) /
-  `node offline-browser.mjs` (SW + オフライン往復)。ブラウザが無い環境では SKIP される
+  `node offline-browser.mjs` (SW + オフライン往復) / `node sync-browser.mjs` (2タブ同期)。
+  ブラウザが無い環境では SKIP される
 - git フックで自動実行 (クローンごとに1回): `git config core.hooksPath .githooks`
   — pre-commit は高速な不変条件、pre-push は全検査。検査の定義は増やさず、実行機会だけ増やす
 

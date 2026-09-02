@@ -24,10 +24,10 @@ fail() {
   exit 1
 }
 
-echo "pre-push: [1/5] invariants + behavioural suite…"
+echo "pre-push: [1/6] invariants + behavioural suite…"
 node test.mjs >/dev/null || fail "test.mjs" "node test.mjs"
 
-echo "pre-push: [2/5] inline script parses standalone…"
+echo "pre-push: [2/6] inline script parses standalone…"
 node -e "
 const fs=require('fs'),os=require('os'),path=require('path');
 const js=fs.readFileSync('index.html','utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
@@ -35,17 +35,22 @@ fs.writeFileSync(path.join(os.tmpdir(),'board-inline-check.js'), js);
 " && node --check "$(node -e "console.log(require('path').join(require('os').tmpdir(),'board-inline-check.js'))")" \
   || fail "inline script syntax" "node --check on the extracted <script>"
 
-echo "pre-push: [3/5] unexecuted-function baseline…"
+echo "pre-push: [3/6] unexecuted-function baseline…"
 node coverage.mjs --max=127 >/dev/null || fail "coverage baseline" "node coverage.mjs --max=127"
 
 # Self-skips with exit 0 when no browser is present, and says so — a machine without
 # Chromium must not turn into a red build, but must not look silently green either.
-echo "pre-push: [4/5] real-browser accessibility tree…"
+echo "pre-push: [4/6] real-browser accessibility tree…"
 node a11y-browser.mjs >/dev/null || fail "a11y-browser.mjs" "node a11y-browser.mjs"
 
 # ADR-0018. Serves over a real http origin: a service worker cannot register on file://,
 # so the a11y harness above physically could not see the offline pillar. Same skip rule.
-echo "pre-push: [5/5] service worker + offline round-trip…"
+echo "pre-push: [5/6] service worker + offline round-trip…"
 node offline-browser.mjs >/dev/null || fail "offline-browser.mjs" "node offline-browser.mjs"
+
+# ADR-0019. Two real tabs: the fake-channel two-peer tests assign peerA/peerB by hand and
+# so cannot observe a shared-identity bug. Same skip rule when no browser is present.
+echo "pre-push: [6/6] two-tab sync convergence…"
+node sync-browser.mjs >/dev/null || fail "sync-browser.mjs" "node sync-browser.mjs"
 
 echo "pre-push: all checks passed."

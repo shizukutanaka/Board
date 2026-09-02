@@ -69,3 +69,9 @@ jobs:
         run: node offline-browser.mjs
         env:
           PLAYWRIGHT_BROWSERS_PATH: /home/runner/.cache/ms-playwright
+      # ADR-0019. Two real tabs on one origin. The fake-channel two-peer tests in test.mjs
+      # assign peerA/peerB by hand, so they structurally cannot see a shared-identity bug.
+      - name: Two tabs converge, in both directions and across a reload
+        run: node sync-browser.mjs
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: /home/runner/.cache/ms-playwright
