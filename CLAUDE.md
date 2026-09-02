@@ -57,6 +57,8 @@ Board/
 │                          # test.mjs の2ピアテストは fake channel の上で動き、しかも
 │                          # peerA/peerB を**手で代入**していた — 製品が破っていた当の
 │                          # 性質をハーネスが供給しており、実バグが1年見えなかった。
+│                          # WebRTC の**成功**パス (offer→answer→DataChannel) もここで
+│                          # 初めて実測。BroadcastChannel を閉じて経路を分離する。
 ├── README.md              # 公開用
 ├── CHANGELOG.md           # セマンティックバージョニング
 ├── CLAUDE.md              # この文書

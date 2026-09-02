@@ -4,7 +4,7 @@
 単一HTMLファイル。ダブルクリックで動く。アカウント不要。広告なし。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-00C4CC.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.7.86-00C4CC.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.7.87-00C4CC.svg)](CHANGELOG.md)
 [![Size](https://img.shields.io/badge/size-~95KB%20gzip-00C4CC.svg)](index.html)
 [![Offline](https://img.shields.io/badge/offline-first-00C4CC.svg)](#offline)
 [![A11y](https://img.shields.io/badge/WCAG-AAA-00C4CC.svg)](#accessibility)
@@ -106,6 +106,8 @@ start index.html      # Windows
 
 ### コラボレーション / Sync
 - 同一ブラウザのタブ間: BroadcastChannel で即時同期 (双方向・実ブラウザ2タブで検証済 — `sync-browser.mjs`)
+- 別マシン間: 手動シグナリングの WebRTC DataChannel (offer→answer 交換。サーバー不要)。
+  接続確立から op 伝播までを実ブラウザで検証済 (同上)
 - 端末間: WebRTC DataChannel (手動シグナリング、サーバー不要)
 - URL ハッシュにスナップショットを載せて共有 (`#...`)
 - **共有リンクの E2E 暗号化 (ADR-0017)**: 共有 URL は AES-GCM 256bit で暗号化され、鍵は

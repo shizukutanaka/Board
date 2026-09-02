@@ -206,6 +206,43 @@ try {
   const [sa, sb, na, nb] = [await sig(A), await sig(B), await A.shapes(), await B.shapes()];
   ok(sa === sb && sa.length > 0, `both tabs hold IDENTICAL boards (A[${na}]=${sa} vs B[${nb}]=${sb})`);
 
+  /* 6. The WebRTC transport — the cross-machine path — SUCCEEDING.
+        FT-20 added feedback for a link that never connects, and test.mjs covers the
+        failure wiring, but the path actually WORKING had never been observed in a
+        browser: the fake harness stubs RTCPeerConnection outright.
+
+        Transport isolation matters here. Both tabs share a room, so BroadcastChannel
+        would carry the op and the assertion would prove nothing. Net.init(room) is not
+        reachable from the product UI (main() calls Net.init() with no argument), so
+        rather than lean on a path users cannot take, close the BroadcastChannel on both
+        sides. Net.broadcast() then has only the DataChannel left. */
+  const offer = await A.evaluate(`Net.wrtcCreateOffer()`);
+  ok(typeof offer === 'string' && offer.length > 100, `A produced an offer token (${String(offer).length} chars)`);
+  const answer = await B.evaluate(`Net.wrtcAcceptOffer(${JSON.stringify(offer)})`);
+  ok(typeof answer === 'string' && answer.length > 100, `B answered it (${String(answer).length} chars)`);
+  await A.evaluate(`Net.wrtcConsumeAnswer(${JSON.stringify(answer)}).then(()=>'ok',e=>'ERR '+e.message)`);
+
+  let dcOpen = false;
+  for (let i = 0; i < 15 && !dcOpen; i++) {
+    await sleep(1000);
+    dcOpen = await A.evaluate(`(Net.dc&&Net.dc.readyState)==='open'`) &&
+             await B.evaluate(`(Net.dc&&Net.dc.readyState)==='open'`);
+  }
+  ok(dcOpen, 'the manually-signalled WebRTC DataChannel actually OPENS on both sides (no server, no STUN required on loopback)');
+  ok(await A.evaluate(`Net.rtc && Net.rtc.connectionState`) === 'connected',
+     'RTCPeerConnection reports connectionState "connected" (the state FT-20 watches for failure)');
+
+  // Cut the other transport, so anything that arrives can only have come over WebRTC.
+  for (const T of [A, B]) await T.evaluate(`(()=>{try{Net.bc.close()}catch(_){} Net.bc=null; return true})()`);
+  const beforeRtc = await B.shapes();
+  await A.drawRect(300, 700);
+  await sleep(1200);
+  const afterRtc = await B.shapes();
+  ok(afterRtc === beforeRtc + 1,
+     `an op drawn in A reached B over the DataChannel with BroadcastChannel CLOSED (${beforeRtc} → ${afterRtc}) — the cross-machine path works, not just same-browser tabs`);
+  ok(String(await A.evaluate(`[...state.peers.keys()].join(',')`)).includes('rtc:'),
+     'the WebRTC link is tracked under a synthetic rtc: peer id (ADR-0010 routing)');
+
 } catch (e) {
   failures.push(`harness error: ${e.message}`);
 } finally {
