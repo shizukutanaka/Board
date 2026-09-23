@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.80 — Design Tokens
+   Board v1.7.81 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -751,7 +751,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.80';
+const V='1.7.81';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1883,6 +1883,19 @@ function draw(){
   for(const s of _drawIter){if(s.type==='frame'&&inView(s,_view))drawShape(s)}
   for(const s of _drawIter){if(s.type!=='frame'&&inView(s,_view))drawShape(s)}
   if(state.draft)drawShape(state.draft);
+  // Predicted ink tail (ADR-0023) — a single segment past the last committed
+  // point, discarded when the next real sample lands. Render-only: never
+  // touches draft.pts, so it can't leak into Store/persist/share payloads.
+  if(_penPred&&state.draft&&state.draft.type==='pen'){
+    const _pp=state.draft.pts,_pn=_pp.length;
+    if(_pn>1){
+      const _pw=penWidths(_pp,state.draft.size);
+      const _oc=ctx.lineCap,_ow=ctx.lineWidth;
+      ctx.strokeStyle=state.draft.stroke;ctx.lineCap='round';ctx.lineWidth=_pw[_pn-1];
+      ctx.beginPath();ctx.moveTo(_pp[_pn-1][0],_pp[_pn-1][1]);ctx.lineTo(_penPred.x,_penPred.y);ctx.stroke();
+      ctx.lineCap=_oc;ctx.lineWidth=_ow;
+    }
+  }
   if(_sq){const q=_sq.toLowerCase();ctx.setLineDash([]);let _mi=0;for(const s of state.shapes){if(!(s.label||s.text||s.type||'').toLowerCase().includes(q))continue;const b=G.bbox(s),isCur=_sqNav.lastQ===q&&_mi===_sqNav.idx;ctx.strokeStyle=isCur?'#EA580C':'#F97316';ctx.lineWidth=(isCur?5:3)/state.viewport.zoom;ctx.strokeRect(b.x,b.y,b.w,b.h);_mi++;}}
 
   // Overlay pass: CSS-px space, the transform supplies DPR. Everything below must use
@@ -2428,6 +2441,7 @@ function abortGesture(){
     const sh=byId(ptr.rotOrig.id);if(sh)Object.assign(sh,clone(ptr.rotOrig));
   }
   if(_eraseBatch.length){for(const s of _eraseBatch)state.shapes.push(s);_eraseBatch=[];sortZ();_invalidateGrid();}   // ADR-0009
+  _penPred=null;
   state.draft=null;state.marquee=null;state.guides=null;
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.dragStartShapes=null;
   invalidate();
@@ -2536,7 +2550,14 @@ canvas.addEventListener('pointermove',e=>{
       }else if(ptr.dragKind==='move')doMove(wp);
       else if(ptr.dragKind==='marquee'){state.marquee={x1:ptr.wx0,y1:ptr.wy0,x2:wp.x,y2:wp.y};invalidate()}
       break;
-    case 'pen':for(const ce of coalescedSamples(e))contPen(G.s2w({x:ce.offsetX,y:ce.offsetY}),ce);break;
+    case 'pen':{
+      for(const ce of coalescedSamples(e))contPen(G.s2w({x:ce.offsetX,y:ce.offsetY}),ce);
+      // Predicted tail (ADR-0023): one render-only segment ahead of the last
+      // committed sample, shaves ~1 frame of perceived stylus latency.
+      const pr=_predTail(e);
+      _penPred=pr?G.s2w(pr):null;
+      break;
+    }
     case 'rect':case 'ellipse':case 'sticky':case 'frame':contRectLike(wp,e.shiftKey);break;
     case 'line':case 'arrow':contLineLike(wp,e.shiftKey);break;
     case 'eraser':eraseAt(wp);break;
@@ -2607,7 +2628,7 @@ function _cancelPointerGesture(){
   if(_eraseBatch.length){for(const s of _eraseBatch)state.shapes.push(s);_eraseBatch=[];sortZ();_invalidateGrid();}   // ADR-0009
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;
   ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.rotOrig=null;ptr.dragStartShapes=null;
-  canvas.dataset.panning='false';state.draft=null;state.marquee=null;state.guides=null;invalidate();
+  canvas.dataset.panning='false';state.draft=null;state.marquee=null;state.guides=null;_penPred=null;invalidate();
 }
 // ADR-0006: fires after LONG_PRESS_MS. Guards: gesture still active, handle-drag not in
 // progress (resize/rotate — a deliberate precision drag we shouldn't interrupt), and the
@@ -3086,7 +3107,18 @@ function coalescedSamples(e){
   const cs=e&&e.getCoalescedEvents&&e.getCoalescedEvents();
   return cs&&cs.length?cs:[e];
 }
+// ADR-0023: read the last predicted pointer position for the render-only ink
+// tail. Predicted events exist on the pointermove event itself (not on the
+// coalesced children), so callers must pass the original `e`. Returns a screen
+// pt or null; unsupported/empty → null (pure feature-detect, unit-testable).
+function _predTail(e){
+  const ps=e&&e.getPredictedEvents&&e.getPredictedEvents();
+  const t=ps&&ps.length?ps[ps.length-1]:null;
+  return t?{x:t.offsetX,y:t.offsetY}:null;
+}
+let _penPred=null;   // world pt of the last predicted sample — render-only
 function beginPen(wp,e){
+  _penPred=null;
   state.draft=Shape.make('pen',{pts:[[wp.x,wp.y,_penPr(e)]]});
 }
 function contPen(wp,e){
@@ -3174,6 +3206,7 @@ function recognizeStroke(pts){
   return null;
 }
 function endPen(){
+  _penPred=null;
   if(!state.draft)return;
   const d=state.draft;state.draft=null;
   if(d.pts.length>=1){
@@ -3586,7 +3619,7 @@ window.addEventListener('keydown',e=>{
     const hp=document.getElementById('help'),sp2=document.getElementById('share');
     if(hp.dataset.open==='true')UI.toggleHelp();
     else if(sp2.dataset.open==='true')UI.closeShare();
-    else{state.selection.clear();state.marquee=null;state.draft=null;state.guides=null;invalidate()}
+    else{state.selection.clear();state.marquee=null;state.draft=null;state.guides=null;_penPred=null;invalidate()}
   }
   else if(k==='?'||(e.shiftKey&&e.key==='/')){e.preventDefault();UI.toggleHelp()}
   else if(k===']'&&!meta&&e.shiftKey){e.preventDefault();doBringFront()}
