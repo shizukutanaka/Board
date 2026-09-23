@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.131';
+const V='1.7.132';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2439,9 +2439,12 @@ function _drawBoxLabel(s,c){
   if(!s.label)return;
   c.save();
   c.fillStyle=s.stroke||'#0F172A';
-  c.font='14px system-ui,sans-serif';
+  const fs=14;
+  c.font=fs+'px system-ui,sans-serif';
   c.textAlign='center';c.textBaseline='middle';
-  c.fillText(s.label,s.x+s.w/2,s.y+s.h/2);
+  const lines=wrapTextCached(s,s.label,Math.max(10,s.w-8),fs,t=>c.measureText(t).width);   // ADR-0074
+  const lh=fs*1.25,cy=s.y+s.h/2-(lines.length*lh)/2+lh/2;
+  for(let i=0;i<lines.length;i++)c.fillText(lines[i],s.x+s.w/2,cy+i*lh);
   c.restore();
 }
 // Connector (edge) label at the midpoint of the bound endpoints (ADR-0003). A paper-
@@ -5450,15 +5453,15 @@ function buildSVG(shapes,paper){
       case 'rect':{
         const r=Math.min(8,Math.abs(W)/4,Math.abs(H)/4);
         els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}/>`);
-        if(s.label)els.push(`<text x="${X+W/2+ox}" y="${Y+H/2+oy+7}" font-family="system-ui,sans-serif" font-size="14" text-anchor="middle" fill="${stroke}"${a}${rT}>${_esc(s.label)}</text>`);
+        if(s.label)_svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT);
         break;}
       case 'ellipse':
         els.push(`<ellipse cx="${X+W/2+ox}" cy="${Y+H/2+oy}" rx="${Math.abs(W/2)}" ry="${Math.abs(H/2)}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}/>`);
-        if(s.label)els.push(`<text x="${X+W/2+ox}" y="${Y+H/2+oy+7}" font-family="system-ui,sans-serif" font-size="14" text-anchor="middle" fill="${stroke}"${a}${rT}>${_esc(s.label)}</text>`);
+        if(s.label)_svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT);
         break;
       case 'diamond':{
         els.push(`<polygon points="${X+W/2+ox},${Y+oy} ${X+W+ox},${Y+H/2+oy} ${X+W/2+ox},${Y+H+oy} ${X+ox},${Y+H/2+oy}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}/>`);
-        if(s.label)els.push(`<text x="${X+W/2+ox}" y="${Y+H/2+oy+7}" font-family="system-ui,sans-serif" font-size="14" text-anchor="middle" fill="${stroke}"${a}${rT}>${_esc(s.label)}</text>`);
+        if(s.label)_svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT);
         break;}
       case 'line':{
         if(s.curve){
@@ -5579,6 +5582,17 @@ function buildSVG(shapes,paper){
   }
   els.push('</svg>');
   return els.join('\n');
+}
+// ADR-0074: box-shape label wrapped to the shape width, vertically centred —
+// mirrors _drawBoxLabel so canvas and SVG agree (wrap uses the same char-est
+// heuristic as sticky's export path).
+function _svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT){
+  const fs=14,pad=4;
+  const lines=wrapText(s.label,Math.max(10,W-pad*2),t=>t.length*fs*0.6);
+  const lh=fs*1.25,cy=Y+H/2+oy-(lines.length*lh)/2;
+  els.push(`<text x="${X+W/2+ox}" y="${cy}" dominant-baseline="hanging" font-family="system-ui,sans-serif" font-size="${fs}" text-anchor="middle" fill="${stroke}"${a}${rT}>`);
+  for(let i=0;i<lines.length;i++)els.push(`<tspan x="${X+W/2+ox}" dy="${i?lh:0}">${_esc(lines[i])}</tspan>`);
+  els.push('</text>');
 }
 function _esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
 // Coerce to finite number; prevents string geometry breaking SVG numeric attributes.

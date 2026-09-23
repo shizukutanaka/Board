@@ -2,6 +2,15 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.132]
+
+### 修正
+- **ボックスラベルの折返し** (ADR-0074)。rect/ellipse/diamond のラベルが
+  図形幅からはみ出していた問題を解消 — `wrapTextCached` (禁則処理付き) で
+  `w-8` に wrap し中央揃えで複数行描画。SVG export も同幅で wrap し
+  `<tspan>` 複数行化 (表示=出力パリティ)。長いラベルがフロー図で
+  読めるようになる。
+
 ## [1.7.131]
 
 ### 追加

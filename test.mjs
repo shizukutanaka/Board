@@ -442,6 +442,7 @@ const checks = [
   ['eqGap snap: same-row gaps → candidate slots + edge-snap priority', html.includes('function _eqGapSnap(mov,excl,tol)')&&html.includes('for(const cand of[a[L]-g-mov[D], b[L]+b[D]+g, a[L]+a[D]+g, b[L]-g-mov[D]])')&&html.includes('const eq=_eqGapSnap(mov,excl')],
   ['elbow bend: s.bend two-corner route + trunk hit + ebend dragKind', html.includes('if(s.bend){')&&html.includes('function _elbowTrunk(s)')&&html.includes("ptr.dragKind='ebend'")&&html.includes('ptr.ebendOrig=clone(onlySel)')],
   ['text align: align prop cycles + canvas/SVG/editor respect it', html.includes('function cycleTextAlign()')&&html.includes("['ctxTextAlign','',cycleTextAlign]")&&html.includes('c.textAlign=s.align')&&html.includes('text-anchor')],
+  ['box label wrap: canvas wraps to w-8 + SVG multi-tspan centred', html.includes('wrapTextCached(s,s.label,Math.max(10,s.w-8)')&&html.includes('function _svgBoxLabel(els,s,X,Y,W,H')&&html.includes('wrapText(s.label')],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
@@ -639,7 +640,7 @@ const checks = [
   // v1.6.58: rect/ellipse centre labels - dblclick to set, rendered centred, SVG export
   ['rect/ellipse label rendered centred in canvas', html.includes("_drawBoxLabel(s,c);break;") && html.includes("c.textAlign='center'")],
   ['dblclick label editor handles rect and ellipse', html.includes("hit.type==='frame'||hit.type==='rect'||hit.type==='ellipse'") && html.includes("getCSS(bold?'--accent-contrast':'--ink')")],
-  ['SVG export emits label for rect', html.includes("if(s.label)els.push") && html.includes("text-anchor=\"middle\"")],
+  ['SVG export emits label for rect', html.includes("if(s.label)_svgBoxLabel(") && html.includes("text-anchor=\"middle\"")],
   // v1.6.59: laser pointer (presentation) + shape lock
   ['laser pointer state + presentation intercept', html.includes("let _laser=null") && html.includes("if(Presentation.isActive()){_laser=wp")],
   ['laser dot drawn during presentation', html.includes("_laser&&Presentation.isActive()") && html.includes("rgba(255,50,50,.75)")],
@@ -881,7 +882,7 @@ const checks = [
   ['text editor finalize syncs typed content (non-empty isNew)', html.includes("_syncTextFinalize(s,origText,false);")],
   ['text editor finalize syncs removal (empty isNew)', html.includes("_syncTextFinalize(s,origText,true);")],
   // v1.6.88: rect/ellipse labels render on canvas (parity with SVG export + dblclick feature)
-  ['_drawBoxLabel helper present', html.includes("function _drawBoxLabel(s,c)") && html.includes("c.fillText(s.label,s.x+s.w/2,s.y+s.h/2)")],
+  ['_drawBoxLabel helper present', html.includes("function _drawBoxLabel(s,c)") && html.includes("wrapTextCached(s,s.label")],
   ['rect case renders label', html.includes("if(s.stroke){c.stroke()}\n      _drawBoxLabel(s,c);break;\n    case 'ellipse':")],
   ['ellipse case renders label', /case 'ellipse':[\s\S]{0,200}_drawBoxLabel\(s,c\);break;/.test(html)],
   // v1.6.89: colour picker coalesces (one undo/sync op per pick, like the sliders)
@@ -1286,7 +1287,7 @@ try {
              endRectLike, endLineLike, I18N, applyTheme, editSelectedShapeKbd, Share,
              draw, drawOverlay, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; }, _setOCtx: (c) => { const p = octx; octx = c; return p; },
              _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg,
-             _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText,
+             _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText,
              _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER,
              _getLang: () => LANG, _getT: () => T };
   `);
@@ -1312,7 +1313,7 @@ try {
           _getPasteCount, _resetPasteClipboard,
           endRectLike, endLineLike, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
           _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg,
-          _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgMMul, _svgMPt, svgToShapes, excToShapes,
+          _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes,
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER } = api;
 
   console.log('\n-- behavioural --');
