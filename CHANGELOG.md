@@ -2,6 +2,16 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.101] - 2026-09-23
+
+**ADR-0043: .excalidraw インポート** — `JSON.parse` で scene を走査し
+rectangle/ellipse/diamond/line/arrow/freedraw/text/frame を Board 図形に写像
+(diamond は polygon pen、3点以上の line/arrow は pen)。`points` の相対座標を
+絶対化、`strokeColor/backgroundColor/strokeWidth/opacity/strokeStyle/angle` を
+Board スタイルへ対応付け、`isDeleted` tombstone は読まない。検出は
+`.excalidraw` 拡張子 + `"type":"excalidraw"` 内容マーカー (中身優先)。
+`EXC_MAX_ELEMS=50000`/`EXC_MAX_PTS=10000` の天井、`addMany` 単一 op。
+
 ## [1.7.100] - 2026-09-23
 
 **ADR-0042: SVG インポート** — DOMParser で SVG を走査し対応要素

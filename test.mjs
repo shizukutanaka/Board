@@ -517,8 +517,16 @@ const checks = [
   ['svg transform matrix accumulator', html.includes('function _svgMOf(t)') && html.includes('function _svgMMul(P,Q)')],
   ['svg claimed before image branch on drop', html.includes("f.name.endsWith('.svg')||f.type==='image/svg+xml')")],
   ['svg markup paste hook', html.includes("i.type==='text/plain'") && html.includes('importSvgText(s)')],
-  ['file picker accepts svg', html.includes('accept=".board,.svg,image/svg+xml"')],
+  ['file picker accepts svg + excalidraw', html.includes('accept=".board,.svg,image/svg+xml,.excalidraw"')],
   ['i18n has svgImported ja+en', html.includes("svgImported:'SVG を取り込みました'") && html.includes("svgImported:'SVG imported'")],
+  // v1.7.101: ADR-0043 .excalidraw import
+  ['excalidraw import ceilings defined', html.includes('EXC_MAX_ELEMS') && html.includes('EXC_MAX_PTS')],
+  ['excToShapes checks type marker + elements array', html.includes("d.type!=='excalidraw'||!Array.isArray(d.elements)")],
+  ['isDeleted tombstones skipped', html.includes('e.isDeleted')],
+  ['relative points absolutised', html.includes('pts.push([e.x+p[0],e.y+p[1]])')],
+  ['content beats extension routing', html.includes("d.type==='excalidraw'){importExcText(r.result);return}")],
+  ['.excalidraw file entry points', html.includes("f.name.endsWith('.excalidraw')") && html.includes('.excalidraw"')],
+  ['i18n has excImported ja+en', html.includes("excImported:'Excalidraw を取り込みました'") && html.includes("excImported:'Excalidraw imported'")],
   // v1.6.44: x,y decorative label is aria-hidden
   ['x,y status label is aria-hidden (decorative)', html.includes('<span class="lbl" aria-hidden="true">x,y</span>')],
   // v1.6.45: connection status is aria-live (announces online/offline to SR)
@@ -999,7 +1007,7 @@ const checks = [
     html.includes("&&typeof op.dx==='number'&&Number.isFinite(op.dx)&&typeof op.dy==='number'&&Number.isFinite(op.dy)")],
   // v1.7.56 (ADR-0007, FT-07): export menu + .board file-picker DOM/wiring
   ['btnExportMenu button and hidden fileImport input present in the DOM',
-    html.includes('id="btnExportMenu"') && html.includes('id="fileImport"') && html.includes('accept=".board,.svg,image/svg+xml"')],
+    html.includes('id="btnExportMenu"') && html.includes('id="fileImport"') && html.includes('accept=".board,.svg,image/svg+xml,.excalidraw"')],
   ['btnExportMenu wired to UI.openExportMenu, fileImport routes by type',
     html.includes("UI.openExportMenu(r.left,r.bottom+4)") && html.includes("?importSvgFile(f):importBoard(f);")],
   ['openCtxMenu accepts an optional customItems override (backward-compatible default)',
@@ -1187,7 +1195,7 @@ try {
              endRectLike, endLineLike, I18N, applyTheme, editSelectedShapeKbd, Share,
              draw, drawOverlay, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; }, _setOCtx: (c) => { const p = octx; octx = c; return p; },
              _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg,
-             _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgMMul, _svgMPt, svgToShapes, importSvgText,
+             _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText,
              _getLang: () => LANG, _getT: () => T };
   `);
   const api = fn(
@@ -1212,7 +1220,7 @@ try {
           _getPasteCount, _resetPasteClipboard,
           endRectLike, endLineLike, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
           _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg,
-          _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgMMul, _svgMPt, svgToShapes } = api;
+          _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgMMul, _svgMPt, svgToShapes, excToShapes } = api;
 
   console.log('\n-- behavioural --');
 
@@ -8257,6 +8265,37 @@ try {
     // covered by presence checks + headless verification
     assert.ok(svgToShapes('<svg><rect/></svg>')===null,'no DOMParser → null');
     console.log('  ✓ svg import helpers (transform + path flattening)');
+  }
+
+  // ---- ADR-0043: .excalidraw import (pure JSON, no DOMParser needed) ----
+  {
+    const scene=JSON.stringify({type:'excalidraw',version:2,elements:[
+      {type:'rectangle',x:10,y:20,width:100,height:50,strokeColor:'#f00',backgroundColor:'#fee',strokeWidth:3,opacity:80,strokeStyle:'dashed',angle:0},
+      {type:'ellipse',x:0,y:0,width:40,height:40,angle:Math.PI/4},
+      {type:'diamond',x:0,y:0,width:20,height:20},
+      {type:'arrow',x:5,y:5,points:[[0,0],[30,40]],strokeColor:'#00f'},
+      {type:'line',x:0,y:0,points:[[0,0],[10,10],[20,0]]},   // 3+ points → pen
+      {type:'freedraw',x:100,y:100,points:[[0,0],[5,5],[10,0]]},
+      {type:'text',x:7,y:8,width:60,height:20,text:'hello world',fontSize:24},
+      {type:'frame',x:0,y:0,width:200,height:200,name:'My frame'},
+      {type:'rectangle',x:999,y:999,width:5,height:5,isDeleted:true},   // tombstone — skipped
+      {type:'image',x:0,y:0,width:10,height:10,fileId:'abc'},           // needs files — skipped
+      {type:'mysteryelement',x:0,y:0,width:1,height:1}                  // unknown — skipped
+    ]});
+    const sh=excToShapes(scene);
+    assert.ok(sh.length===8,'mapped element count');
+    assert.ok(sh[0].type==='rect'&&sh[0].stroke==='#f00'&&sh[0].fill==='#fee'&&sh[0].size===3&&Math.abs(sh[0].opacity-0.8)<1e-9&&sh[0].dash===1,'style mapping');
+    assert.ok(sh[1].type==='ellipse'&&Math.abs(sh[1].rotate-45)<0.11,'angle → rotate');
+    assert.ok(sh[2].type==='pen'&&sh[2].pts.length===5,'diamond → closed polygon pen');
+    assert.ok(sh[3].type==='arrow'&&sh[3].x2===35&&sh[3].y2===45,'relative points absolutised');
+    assert.ok(sh[4].type==='pen'&&sh[4].pts.length===3,'3-point line → pen');
+    assert.ok(sh[5].type==='pen','freedraw → pen');
+    assert.ok(sh[6].type==='text'&&sh[6].fontSize===24&&sh[6].text==='hello world','text + fontSize');
+    assert.ok(sh[7].type==='frame'&&sh[7].label==='My frame','frame + name');
+    assert.ok(excToShapes('not json')===null,'bad JSON → null');
+    assert.ok(excToShapes('{"type":"other"}')===null,'wrong marker → null');
+    assert.ok(excToShapes('{"type":"excalidraw"}')===null,'no elements → null');
+    console.log('  ✓ excalidraw import (element mapping, styles, tombstones, reject paths)');
   }
 
   console.log('\n✓ All behavioural tests passed');
