@@ -2,6 +2,49 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.73] - 2026-09-23
+
+**FT-21 (ADR-0015): 共有リンクの E2E 暗号化** — 製品の第4柱「プライバシー」の構造的
+ギャップを解消。v1.7.71 が「圧縮のみ・暗号化なし」と正直化した平文リンクを、実際に
+AES-256-GCM で暗号化する本実装。先行例は Excalidraw の `#json=<id>,<key>`
+(鍵は URL fragment 内 = サーバー非通過) で、これを単一ファイル配布の Board に合わせた
+`#b=e:<base64url(iv‖ct)>&k=<base64url(key)>` 形式に落とした。
+
+### Added
+- **共有リンクの AES-256-GCM 暗号化** (`Share.exportToUrl(enc)`, `Share._encrypt`):
+  `e:` kind は既存の `z:`/`j:` ペイロード文字列全体を UTF-8 で暗号化したもの
+  (圧縮→暗号の正しい順序で、将来の内部形式変更にも無条件で追随)。IV は 12B 乱数、
+  `additionalData='board:e1'` で形式バージョンに束縛。鍵は `generateKey` で毎リンク新規
+  生成され `&k=` でフラグメント内に載る — fragment は HTTP リクエストに含まれないため
+  中間者・ホスティング先は内容を読めない。file:// ではそもそも送信自体が発生しない。
+- **Share モーダルの暗号化オプション** (`shareEnc` チェックボックス): `crypto.subtle`
+  が使える環境では**既定 ON** (推奨)。外すと従来の平文リンク (`z:`/`j:`) を発行できる
+  (opt-out + 後方互換)。暗号時は警告文が「鍵はリンク内に含まれ、リンクを知る人だけが
+  開けます」という注記に切り替わる (`shareUrlNoteEnc`)。
+- **インポート側の3エラー経路** (`importFromHash`): 鍵欠落 `shareNoKey` / 復号失敗
+  `shareBadKey` / 非セキュアコンテキスト `shareNoCrypto` (全て ja/en)。失敗時にも
+  `history.replaceState` でハッシュを除去し、破損リンクでのエラーループと
+  アドレスバーへの鍵残留を防ぐ。
+- **test.mjs: 共有リンクの振る舞いテスト** (ADR-0015 ブロック): 暗号化 export の
+  `e:` 形式・フラグメント内鍵・毎リンク新規鍵+IV、fresh world での復号 round-trip
+  (import が可逆な replace op として undo 可能であることも検証)、誤鍵/鍵欠落の
+  拒否、平文 opt-out + 旧形式インポートの後方互換。
+- **test.mjs: `location`/`history`/`screen`/`BroadcastChannel` を Function パラメータ化** —
+  従来は裸識別子が Node の未定義グローバルに解決され、`main()` が `wire()` 内の
+  `screen` 参照で毎回 reject していた (非同期 IIFE のため未配送のままスイートが
+  完走していた潜伏不具合)。併せて `Share` を API エクスポートに追加。
+
+### Changed
+- **README 競合比較表の E2E 欄を `✓ AES-256-GCM (ADR-0015)` に更新** — v1.7.71 で
+  `✗ (未実装 — 計画中)` に落とした正直化を、実装側から閉じた。セキュリティ節も
+  「リンク自体が資格情報になる」という正確なトレードオフを明記。
+
+### Notes
+- 既存の `z:`/`j:` リンクは変更なく開き続ける (後方互換)。
+- `crypto.subtle` はセキュアコンテキスト限定: `file://` 直開き (Board の主用途) では
+  Chrome/Firefox が potentially trustworthy として扱うため動作する。`http://`
+  非 localhost 配信では生成側が自動で平文フォールバック + 警告表示。
+
 ## [1.7.72] - 2026-08-08
 
 First Principles 監査の続き。`CLAUDE.md` WHY は4本柱に加えて**3つの勝利条件**

@@ -329,7 +329,12 @@ Opus/Sonnet が文脈なしで着手できる形式に変換していなかっ�
 - Depends on: 実ブラウザでの WebRTC 接続テスト手段(このセッションには無い)
 
 ## FT-21 — 共有リンクの E2E 暗号化(第4弾, v1.7.71 の First-Principles 監査で発見)
-- Verdict: `FIX`(製品の第一原理「プライバシー」の実装ギャップ。**要 ADR**、今回は未実装)
+- Verdict: **`DONE`** (v1.7.73, ADR-0015) — AES-256-GCM、鍵は URL fragment 内 (`#b=e:<iv‖ct>&k=<key>`)。
+  設計論点は全て解決済み: (a) fragment 内の `&k=` 配置 + `z:`/`j:` 後方互換維持、
+  (b) 鍵欠落 `shareNoKey` / 復号失敗 `shareBadKey` / 非セキュアコンテキスト `shareNoCrypto`
+  の3経路を toast + ハッシュ除去で処理、(c) `crypto.subtle` 非対応時はチェックボックス
+  無効化 + 平文リンクへ自動フォールバック + 従来警告を表示、(d) 圧縮→暗号の順序。
+- Verdict(当初): `FIX`(製品の第一原理「プライバシー」の実装ギャップ。**要 ADR**、今回は未実装)
 - Evidence: `CLAUDE.md` WHY は Board を「サインアップ/重量/有料/**プライバシー**を要求しない」
   製品と定義し、4本柱の1つに「E2E 対応予定」を挙げる。しかし `crypto.subtle`/AES-GCM の
   実装は**0件**で、`Share.exportToUrl` の共有 URL は `#b=z:<deflate-raw + base64>` の**平文**。
