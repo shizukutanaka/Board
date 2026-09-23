@@ -491,9 +491,13 @@ const checks = [
   // v1.7.96: ADR-0038 share-link reject paths all toast + clear hash
   ['importFromHash hoists clearHash helper', html.includes("const clearHash=()=>{try{history.replaceState(null,'',location.pathname)}catch(_){}};")],
   ['unknown kind toasts + clears', html.includes("}else{UI.toast(t('invalidBoard'),'err');clearHash();return false}")],
-  ['non-array shapes toasts + clears', html.includes("if(!Array.isArray(data.shapes)){UI.toast(t('invalidBoard'),'err');clearHash();return false}")],
+  ['non-array shapes toasts + clears', html.includes("if(!Array.isArray(data.shapes)||data.shapes.length>SHARE_MAX_SHAPES){UI.toast(t('invalidBoard'),'err');clearHash();return false}")],
   ['all-invalid shapes toasts + clears', html.includes("if(!valid.length){UI.toast(t('invalidBoard'),'err');clearHash();return false}")],
   ['decode-throw catch also clears hash', html.includes("}catch{UI.toast(t('invalidBoard'),'err');clearHash();return false}")],
+  // v1.7.97: ADR-0039 share-link resource-bomb guard
+  ['share payload ceilings defined', html.includes('SHARE_MAX_BYTES') && html.includes('SHARE_MAX_SHAPES')],
+  ['decompressed payload byte cap before parse', html.includes('json.length>SHARE_MAX_BYTES')],
+  ['shape count cap on imported payload', html.includes('data.shapes.length>SHARE_MAX_SHAPES')],
   // v1.6.44: x,y decorative label is aria-hidden
   ['x,y status label is aria-hidden (decorative)', html.includes('<span class="lbl" aria-hidden="true">x,y</span>')],
   // v1.6.45: connection status is aria-live (announces online/offline to SR)

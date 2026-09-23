@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.97] - 2026-09-23
+
+**ADR-0039: 共有リンクペイロードのリソース上限** — `z:` リンクの展開+parse は
+confirm より先に走るため、巨大な deflate ボムでタブがフリーズし得た。
+展開後 128MB・形状数 200,000 の天井を設け、超過は `invalidBoard` toast +
+ハッシュクリアで拒否 (ADR-0038 と同じ経路)。.board ファイル取り込みは
+ユーザー自身の選択なので対象外。
+
 ## [1.7.96] - 2026-09-23
 
 **ADR-0038: 共有リンク拒否経路のフィードバック統一** — 未知の kind・非ボード JSON・

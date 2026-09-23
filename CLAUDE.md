@@ -87,7 +87,8 @@ Board/
 │   ├── ADR-0035-img-ref-hygiene.md  # 画像参照ハイジーン (_imgKey 3点指紋, img 輸出遮断, 欠落画像クラッシュ防止)
 │   ├── ADR-0036-minimap-drag-scrub.md  # ミニマップ押下ドラッグで連続ナビゲート
 │   ├── ADR-0037-sr-selection-announce.md  # ポインタ選択の SR アナウンス (クリック/マーキー/⌘A/Esc)
-│   └── ADR-0038-share-link-reject-feedback.md  # 共有リンク拒否経路を toast+ハッシュクリアで統一
+│   ├── ADR-0038-share-link-reject-feedback.md  # 共有リンク拒否経路を toast+ハッシュクリアで統一
+│   └── ADR-0039-share-payload-ceiling.md  # 共有リンクの展開後サイズ/形状数の上限 (deflate ボム対策)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
