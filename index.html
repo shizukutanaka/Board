@@ -766,7 +766,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.105';
+const V='1.7.106';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2282,8 +2282,7 @@ function drawOverlay(){
     const v=state.viewport;
     c.setTransform(v.zoom*DPR,0,0,v.zoom*DPR,-v.x*v.zoom*DPR,-v.y*v.zoom*DPR);
     const q=_sq.toLowerCase();c.setLineDash([]);let _mi=0;
-    for(const s of state.shapes){
-      if(!(s.label||s.text||s.type||'').toLowerCase().includes(q))continue;
+    for(const s of _sqMatches()){
       const b=G.bbox(s),isCur=_sqNav.lastQ===q&&_mi===_sqNav.idx;
       c.strokeStyle=isCur?'#EA580C':'#F97316';c.lineWidth=(isCur?5:3)/v.zoom;c.strokeRect(b.x,b.y,b.w,b.h);_mi++;
     }
@@ -2782,6 +2781,18 @@ const _sqNav={idx:-1,lastQ:''};  // step-through navigation state (exported for 
 // instead of assigning _sq directly). Also resets navigation state, mirroring the
 // search input's `input` event handler.
 function _setSq(v){_sq=v;_sqNav.idx=-1;_sqNav.lastQ='';}
+// ADR-0048: ordered match list keyed on {_gridVer, _sq} — membership can't change
+// otherwise (text edits go through ops; _sq only via the input handler). The
+// current-match index (_sqNav.idx) styles per frame and stays out of the key.
+let _sqVer=-1,_sqQ='',_sqList=null;
+function _sqMatches(){
+  const q=_sq.toLowerCase();
+  if(_sqVer===_gridVer&&_sqQ===q)return _sqList;
+  _sqList=[];
+  for(const s of state.shapes){if((s.label||s.text||s.type||'').toLowerCase().includes(q))_sqList.push(s)}
+  _sqVer=_gridVer;_sqQ=q;
+  return _sqList;
+}
 // Step through Ctrl+F search matches. dir=+1 next, -1 prev; wraps; selects + centres.
 // A new query resets the index so the first Enter always starts from match 0.
 // Announces WHICH shape was found via describeShape (parity with Tab cycle): a SR user
@@ -2790,7 +2801,7 @@ function _sqAdvance(dir){
   if(!_sq)return;
   const q=_sq.toLowerCase();
   if(q!==_sqNav.lastQ){_sqNav.idx=-1;_sqNav.lastQ=q;}
-  const matches=state.shapes.filter(s=>(s.label||s.text||s.type||'').toLowerCase().includes(q));
+  const matches=_sqMatches();   // same ordered list the overlay highlights use (ADR-0048)
   if(!matches.length)return;
   _sqNav.idx=(_sqNav.idx+dir+matches.length)%matches.length;
   const sh=matches[_sqNav.idx];
