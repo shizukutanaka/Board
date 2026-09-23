@@ -527,6 +527,11 @@ const checks = [
   ['content beats extension routing', html.includes("d.type==='excalidraw'){importExcText(r.result);return}")],
   ['.excalidraw file entry points', html.includes("f.name.endsWith('.excalidraw')") && html.includes('.excalidraw"')],
   ['i18n has excImported ja+en', html.includes("excImported:'Excalidraw を取り込みました'") && html.includes("excImported:'Excalidraw imported'")],
+  // v1.7.102: ADR-0044 text paste → text shape
+  ['text paste ceiling defined', html.includes('PASTE_MAX_CHARS')],
+  ['plain text pastes as text shape', html.includes("Shape.make('text'") && html.includes('text:body')],
+  ['svg markup still wins over plain text', html.includes("importSvgText(s);return}")],
+  ['i18n has textPasted ja+en', html.includes("textPasted:'テキストを貼り付けました'") && html.includes("textPasted:'Text pasted'")],
   // v1.6.44: x,y decorative label is aria-hidden
   ['x,y status label is aria-hidden (decorative)', html.includes('<span class="lbl" aria-hidden="true">x,y</span>')],
   // v1.6.45: connection status is aria-live (announces online/offline to SR)

@@ -765,7 +765,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.101';
+const V='1.7.102';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -779,6 +779,7 @@ const SHARE_URL_WARN=32768;   // ADR-0040: share links longer than this risk cha
 const MIRROR_MAX=300;         // ADR-0041: cap the SR DOM-mirror list on huge boards
 const SVG_MAX_ELEMS=5000,SVG_MAX_PTS=2000;   // ADR-0042: SVG import ceilings (same anti-bomb spirit as ADR-0039)
 const EXC_MAX_ELEMS=50000,EXC_MAX_PTS=10000;   // ADR-0043: .excalidraw import ceilings
+const PASTE_MAX_CHARS=4000;                    // ADR-0044: cap a clipboard text dump
 const LONG_PRESS_MS=500;        // ADR-0006: long-press duration before opening the context menu
 const LONG_PRESS_MOVE_TOL=10;   // px; movement beyond this before firing = a drag, not a hold
 const MIN_ZOOM=0.1, MAX_ZOOM=16;
@@ -894,7 +895,7 @@ const I18N={
     sharePaste:'招待された側 手順1: 相手の招待コードを貼り付け',
     connected:'接続しました',disconnected:'切断しました',connectFailed:'接続に失敗しました',
     importConfirm:'共有された内容で現在のボードを置き換えますか？',
-    imported:'読み込みました',svgImported:'SVG を取り込みました',excImported:'Excalidraw を取り込みました',
+    imported:'読み込みました',svgImported:'SVG を取り込みました',excImported:'Excalidraw を取り込みました',textPasted:'テキストを貼り付けました',
     backupAvailable:'前回、上書きされる前のボードが保存されています。復元しますか？',
     backupRestored:'前回のボードを復元しました',
     backupRestoreFailed:'バックアップの復元に失敗しました',
@@ -966,7 +967,7 @@ const I18N={
     sharePaste:'Joining side, step 1: Paste the invite code from your peer',
     connected:'Connected',disconnected:'Disconnected',connectFailed:'Connection failed',
     importConfirm:'Replace current board with shared content?',
-    imported:'Imported',svgImported:'SVG imported',excImported:'Excalidraw imported',
+    imported:'Imported',svgImported:'SVG imported',excImported:'Excalidraw imported',textPasted:'Text pasted',
     backupAvailable:'A board from before it was overwritten was saved. Restore it?',
     backupRestored:'Restored the previous board',
     backupRestoreFailed:'Failed to restore backup',
@@ -3150,7 +3151,23 @@ window.addEventListener('paste',e=>{
     if(!ti)return;
     ti.getAsString(tx=>{
       const s=String(tx||'');
-      if(/^\s*(<\?xml[^?]*\?>\s*)?<svg[\s>]/i.test(s)){e.preventDefault();importSvgText(s)}
+      if(/^\s*(<\?xml[^?]*\?>\s*)?<svg[\s>]/i.test(s)){e.preventDefault();importSvgText(s);return}
+      // ADR-0044: any other non-empty text pastes in as a text shape — editors,
+      // browsers, chat logs, markdown-as-plain-text all land on the board.
+      const txt=s.trim();
+      if(!txt)return;
+      e.preventDefault();
+      const fs=16,body=txt.slice(0,PASTE_MAX_CHARS);
+      const lines=body.split('\n');
+      const w=Math.min(600,Math.max(60,Math.max(...lines.map(l=>l.length))*fs*0.55));
+      const r=canvas.getBoundingClientRect();
+      const wp=G.s2w({x:r.width/2,y:r.height/2});
+      const sh=Shape.make('text',{x:wp.x-w/2,y:wp.y-(lines.length*fs*1.4)/2,w,h:lines.length*fs*1.4,text:body,fontSize:fs});
+      const origSel=[...state.selection];
+      Store.commit({op:'add',shape:sh});
+      if(origSel.length)state.history[state.histIdx].origSel=origSel;
+      state.selection.clear();state.selection.add(sh.id);
+      invalidate();UI.toast(t('textPasted'),'ok');
     });
     return;
   }
