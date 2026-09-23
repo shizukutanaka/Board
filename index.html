@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.97 — Design Tokens
+   Board v1.7.98 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -718,6 +718,7 @@ body{visibility:visible}
     <label class="share-enc"><input type="checkbox" id="shareEnc"> <span data-t="shareEncLabel">🔒 暗号化リンク (推奨)</span></label>
     <p class="sub share-warn" id="shareWarnPlain" data-t="shareUrlWarn">⚠ 盤面の内容はURLに埋め込まれます(圧縮のみ・暗号化なし)。リンクを知る人は誰でも閲覧できます。</p>
     <p class="sub" id="shareWarnEnc" hidden data-t="shareUrlNoteEnc">🔒 盤面は暗号化されてURLに埋め込まれます。鍵はリンク内に含まれ、リンクを知る人だけが開けます。</p>
+    <p class="sub share-warn" id="shareWarnLong" hidden data-t="shareUrlTooLong">⚠ URL が非常に長いため、チャット経由だと切り詰められる恐れがあります。大きい盤面は .board エクスポート (⌘⇧E) の方が確実です。</p>
 
     <details class="share-details">
       <summary data-t="sharePeer">相手と直接つなぐ (実験的)</summary>
@@ -758,7 +759,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.97';
+const V='1.7.98';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -768,6 +769,7 @@ const MAX_OP_SHAPES=500; // max shapes in a single remote op (DoS guard)
 // ADR-0039: importFromHash payload ceilings — decompression runs before the
 // confirm prompt, so an absurd z: payload would peg the tab on link open.
 const SHARE_MAX_BYTES=128*1024*1024,SHARE_MAX_SHAPES=200000;
+const SHARE_URL_WARN=32768;   // ADR-0040: share links longer than this risk chat-app truncation
 const LONG_PRESS_MS=500;        // ADR-0006: long-press duration before opening the context menu
 const LONG_PRESS_MOVE_TOL=10;   // px; movement beyond this before firing = a drag, not a hold
 const MIN_ZOOM=0.1, MAX_ZOOM=16;
@@ -864,6 +866,8 @@ const I18N={
     shareUrlHint:'このURLをコピーして送ると、相手に内容が共有されます',
     shareEncLabel:'🔒 暗号化リンク (推奨)',
     shareUrlWarn:'⚠ 盤面の内容はURLに埋め込まれます(圧縮のみ・暗号化なし)。リンクを知る人は誰でも閲覧できます。',
+    shareUrlTooLong:'⚠ URL が非常に長いため、チャット経由だと切り詰められる恐れがあります。大きい盤面は .board エクスポート (⌘⇧E) の方が確実です。',
+    shareExportFailed:'共有リンクの生成に失敗しました',
     shareUrlNoteEnc:'🔒 盤面は暗号化されてURLに埋め込まれます。鍵はリンク内に含まれ、リンクを知る人だけが開けます。',
     shareNoKey:'このリンクには復号鍵がありません',shareBadKey:'復号できませんでした — リンクが壊れているか、鍵が一致しません',shareNoCrypto:'この環境では暗号化リンクを開けません(セキュアコンテキストが必要です)',
     shareCopyUrl:'URLをコピー',shareUrlCopied:'URLをコピーしました',copyFailed:'コピーできませんでした',
@@ -934,6 +938,8 @@ const I18N={
     shareUrlHint:'Copy this URL and send it — the recipient gets your board.',
     shareEncLabel:'🔒 Encrypted link (recommended)',
     shareUrlWarn:'⚠ Your board is embedded in the URL (compressed, NOT encrypted). Anyone with the link can read it.',
+    shareUrlTooLong:'⚠ This URL is very long and may get truncated when shared over chat. For large boards, exporting .board (⌘⇧E) is more reliable.',
+    shareExportFailed:'Failed to build the share link',
     shareUrlNoteEnc:'🔒 Your board is encrypted inside the URL — the key travels in the link, so only people with the link can open it.',
     shareNoKey:'This link is missing its decryption key',shareBadKey:'Could not decrypt — the link is corrupt or the key does not match',shareNoCrypto:'Encrypted links cannot be opened in this context (a secure context is required)',
     shareCopyUrl:'Copy URL',shareUrlCopied:'URL copied',copyFailed:'Copy failed',
@@ -5547,7 +5553,16 @@ const UI={
       document.getElementById('shareWarnEnc').hidden=!enc;
       Share.exportToUrl(enc).then(url=>{
         document.getElementById('shareUrl').value=url;
-      }).catch(()=>{});
+        // ADR-0040: links this long get mangled by chat apps — nudge toward
+        // .board export instead of letting the user send a broken link.
+        document.getElementById('shareWarnLong').hidden=url.length<=SHARE_URL_WARN;
+      }).catch(()=>{
+        // ADR-0040: previously swallowed — an old/stale URL stayed in the
+        // field and the user would copy a broken link.
+        document.getElementById('shareUrl').value='';
+        document.getElementById('shareWarnLong').hidden=true;
+        UI.toast(t('shareExportFailed'),'err');
+      });
     };
     chk.onchange=refresh;
     refresh();

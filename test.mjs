@@ -498,6 +498,12 @@ const checks = [
   ['share payload ceilings defined', html.includes('SHARE_MAX_BYTES') && html.includes('SHARE_MAX_SHAPES')],
   ['decompressed payload byte cap before parse', html.includes('json.length>SHARE_MAX_BYTES')],
   ['shape count cap on imported payload', html.includes('data.shapes.length>SHARE_MAX_SHAPES')],
+  // v1.7.98: ADR-0040 share URL length warning + export-failure feedback
+  ['share URL length warn threshold defined', html.includes('SHARE_URL_WARN')],
+  ['long-URL warning element exists', html.includes('id="shareWarnLong"')],
+  ['overlong URL shows the warn', html.includes('url.length<=SHARE_URL_WARN')],
+  ['export failure clears field + toasts', html.includes("shareUrl').value=''") && html.includes("UI.toast(t('shareExportFailed'),'err')")],
+  ['i18n has shareUrlTooLong/shareExportFailed ja+en', html.includes("shareUrlTooLong:'⚠ URL が非常に長い") && html.includes("shareUrlTooLong:'⚠ This URL is very long") && html.includes("shareExportFailed:'共有リンクの生成に失敗しました'") && html.includes("shareExportFailed:'Failed to build the share link'")],
   // v1.6.44: x,y decorative label is aria-hidden
   ['x,y status label is aria-hidden (decorative)', html.includes('<span class="lbl" aria-hidden="true">x,y</span>')],
   // v1.6.45: connection status is aria-live (announces online/offline to SR)
