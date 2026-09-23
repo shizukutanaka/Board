@@ -211,8 +211,11 @@ Opus/Sonnet が文脈なしで着手できる形式に変換していなかっ�
 - Effort: L — レンダーループの再設計、影響範囲が広い。
 - Depends on: 実ブラウザでの検証手段(このセッションには無い)
 
-## FT-14 — 空間索引(quadtree)を pickTop 以外(全描画・bbox再計算)にも拡張
-- Verdict: `FIX`
+## FT-14 — 空間索引(quadtree)を pickTop 以外(全描画・bbox再計算)にも拡張 — ✅ 実装済み (v1.7.75, ADR-0016)
+- Verdict: `DONE`(2026-09-23)。`draw()` が `_gridRectCandidates(grid,view)` で
+  粗選し `inView()` が精密判定する2段構成。`big` は bbox 無し/巨大シェイプの
+  常時候補として機能。実ブラウザ計測の値は ADR-0016「計測」節を参照。
+- Verdict(当初): `FIX`
 - Evidence: `_buildGrid`/`_queryGrid`(`pickTop` のヒットテスト高速化)は実装済みだが、
   `draw()` の `for(const s of state.shapes)` は依然として全図形を毎フレーム走査する
   線形処理。2000図形超の盤面で顕在化。
