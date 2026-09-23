@@ -766,7 +766,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.116';
+const V='1.7.117';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2046,6 +2046,7 @@ function frame(){
     Net.sendSelectionIfChanged();
     _mirrorSync();   // ADR-0041: DOM mirror rebuilds only on _gridVer change
     _teFollow();     // ADR-0053: open text overlay tracks pan/zoom
+    _syncStylePanelIfChanged();   // ADR-0059
   }
   if(needsRender||needOverlay)_rafId=requestAnimationFrame(frame);  // draw() called invalidate() (rare re-entry)
 }
@@ -6483,6 +6484,47 @@ function wire(){
   }
   // Net presence → UI
   Net._onConnChange=()=>UI.refreshPeers();
+}
+// ADR-0059: reflect the selection's style in the panel. For each property, only
+// when EVERY unlocked selected shape shares the value is it adopted into
+// state.style + the matching control — a mixed prop is left alone rather than
+// shown a misleading value. Selection changes are detected by a sorted-id
+// signature compared once per frame (same hook pattern as ADR-0011: the Set is
+// mutated in 39 places, so a frame-boundary diff is the only universal hook).
+let _selSig=null;
+function _syncStylePanelIfChanged(){
+  const sig=state.selection.size+'|'+[...state.selection].sort().join(',');
+  if(sig===_selSig)return;
+  _selSig=sig;
+  _syncStylePanel();
+}
+function _syncStylePanel(){
+  if(!state.selection.size)return;   // empty selection keeps the panel as-is
+  const sel=[];
+  for(const id of state.selection){const s=byId(id);if(s&&!s.locked)sel.push(s)}
+  if(!sel.length)return;
+  // common value across the selection, undefined when mixed / absent
+  const uni=k=>{const v=sel[0][k]??null;return sel.every(s=>(s[k]??null)===v)?v:undefined};
+  const press=(attr,v)=>{for(const b of document.querySelectorAll('[data-'+attr+']'))b.setAttribute('aria-pressed',String(b.dataset[attr])===String(v))};
+  let v;
+  v=uni('stroke');
+  if(v!=null){state.style.stroke=v;press('stroke',v);
+    const cp=document.querySelector('input.cp[data-cp="stroke"]');
+    if(cp&&/^#[0-9a-f]{6}$/i.test(v))cp.value=v;}
+  v=uni('fill');
+  if(v!==undefined){state.style.fill=v;press('fill',v===null?'null':v);
+    const cp=document.querySelector('input.cp[data-cp="fill"]');
+    if(cp&&/^#[0-9a-f]{6}$/i.test(v))cp.value=v;}
+  v=uni('dash');
+  if(v!=null){state.style.dash=v;press('dash',v)}
+  v=uni('size');
+  if(v!=null){state.style.size=v;
+    const r=document.getElementById('rngSize'),sv=document.getElementById('sizeVal');
+    if(r)r.value=v;if(sv)sv.textContent=v;}
+  v=uni('opacity');
+  if(v!=null){state.style.opacity=v;
+    const r=document.getElementById('rngOpacity'),ov=document.getElementById('opacVal'),p=Math.round(v*100);
+    if(r)r.value=p;if(ov)ov.textContent=p;}
 }
 function applyStyleToSelection(patch){
   if(!state.selection.size)return;
