@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.103] - 2026-09-23
+
+**ADR-0045: 招待リンク** — WebRTC 手動シグナリングの受け手側手順を一段削減。
+招待コードを `#s=<offer>` として URL に埋め込み「招待リンクをコピー」ボタンで
+発行。受け手はリンクを開くだけで Share モーダルが開き招待欄が充填される
+(貼り付け不要)。プライバシーのため自動接続はしない — 「応答コード作成」の
+クリックは従来どおり必須。
+
 ## [1.7.102] - 2026-09-23
 
 **ADR-0044: テキストのペースト** — OS クリップボードの `text/plain` が
