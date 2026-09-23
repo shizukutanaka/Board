@@ -446,13 +446,20 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
 - **表示=出力パリティ**: pen 可変線幅・破線・テキスト折返しを canvas と SVG が同一ヘルパで描画。
 
 ### 14.2 短所(既知の弱み)
-- **a11y の天井**: canvas は単一の `role=application`。図形ごとの DOM ミラーが無く、スクリーン
-  リーダーは個々の図形を木構造として辿れない(巡回トーストで緩和するのみ)。**[P1]**
+- **a11y の天井**: **段階解消** — ADR-0041 で視覚的に隠した `#shapeMirror` region に
+  図形一覧の DOM ミラーを生成 (`_gridVer` 連動再構築、`MIRROR_MAX=300` 上限+末尾
+  「N個未掲載」明示)。SR は一覧を走査し Enter で選択+中央寄せ+アナウンスできる。
+  巡回トースト (§短所の記載どおり) と併用。**[DONE]** (v1.7.99)
 - **同期の運用性**: WebRTC は手動シグナリング(URL 手渡し)。シグナリングサーバ無しは長所だが
   「URL を開くだけで共同編集」には届かない。プレゼンス(他者カーソル ADR-0010・選択状態の
   ハイライト ADR-0011)は実装済みで、残る弱点はシグナリング UX のみ。**[P2]**
 - **多ページ非対応**: 1 盤面のみ。`docs` ストアは単一 `main` 固定で、ページ追加/切替/サムネが無い。**[P2]**
-- **入出力の幅**: インポートは画像 + 自盤面 JSON のみ。`.excalidraw` / SVG 取込 / Markdown 貼付は無い。**[P2]**
+- **入出力の幅**: **解消済み** — 画像 + 自盤面 JSON に加え、SVG (ADR-0042:
+  DOMParser walk → rect/circle/ellipse/line/polyline/polygon/path/text、
+  貼付/ドロップ/ピッカー)・`.excalidraw` (ADR-0043: 拡張子+`type`内容検出、
+  tombstone/未知要素スキップ)・`text/plain` ペースト (ADR-0044、Markdown は
+  平文として取込) の3形式を追加。それぞれ `SVG_MAX_*`/`EXC_MAX_*`/
+  `PASTE_MAX_CHARS` の天井付き。**[DONE]** (v1.7.100-102)
 - **大規模スケール**: **解消済み** — 空間索引は `_grid`/`_queryGrid` として draw() の可視列挙
   (ADR-0016)・マーキー/pickTop (ADR-0032)・ダメージ矩形交差判定に拡張済み。dirty-rect も
   ADR-0026/0027/0028/0030/0033 のダメージ矩形+スナップショットプレビュー経路として実装済み
