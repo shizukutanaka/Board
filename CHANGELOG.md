@@ -2,6 +2,16 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.93] - 2026-09-23
+
+**ADR-0035: 画像参照の輸出入ハイジーン** — ADR-0031 の後始末3件。
+`_imgKey` を 3 セグメント指紋 (mime+長さ+先頭/中間/末尾各48文字) に強化 —
+同一長・同一末尾の別画像がキャッシュ上誤表示され得る隙を塞ぐ。
+`roundShapesForExport` で内部 blob 参照 `img` を輸出から遮断。
+dataUrl 欠落の画像 (細工された import) が `drawShape`→`getImg` で
+TypeError となり draw() 全体が停止する経路を、プレースホルダ描画 + 
+`getImg` の `data:` ガードで解消。
+
 ## [1.7.92] - 2026-09-23
 
 **ADR-0034: ペンコミット時 RDP — 反復インデックス実装 + ズーム適応 eps** —

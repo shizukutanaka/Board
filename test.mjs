@@ -306,6 +306,11 @@ const checks = [
   ['image cache is bounded LRU', html.includes("IMG_CACHE_MAX") && html.includes("_imgCache.keys().next().value")],
   // v1.7.80: ADR-0021 + ADR-0022
   ['img cache keyed by O(1) fingerprint not full dataUrl', html.includes("function _imgKey(") && html.includes("const k=_imgKey(dataUrl)") && !html.includes("_imgCache.get(dataUrl)")],
+  // v1.7.93: ADR-0035 image import/export hygiene
+  ['_imgKey uses three-segment fingerprint', html.includes("u.slice(0,48)+':'+u.slice(m-24,m+24)+':'+u.slice(-48)")],
+  ['export strips internal img blob ref', html.includes("delete o.img;        // ADR-0035")],
+  ['drawShape guards dataUrl-less image', html.includes("const img=s.dataUrl?getImg(s.dataUrl):null;")],
+  ['getImg rejects non-dataUrl input', html.includes("!dataUrl.startsWith('data:'))return null;")],
   ['image ingest shared + oversized import downscales via webp', html.includes("function _imgImportFile(") && html.includes("IMG_IMPORT_MAX_DIM") && html.includes("toDataURL('image/webp'")],
   // v1.7.81: ADR-0023
   ['pen predicted-events ink tail', html.includes("getPredictedEvents") && html.includes("_penPred") && html.includes("function _predTail(")],
@@ -1140,7 +1145,7 @@ try {
              _getPasteCount: () => _pasteCount, _resetPasteClipboard: () => { _lastClipboard = null; },
              endRectLike, endLineLike, I18N, applyTheme, editSelectedShapeKbd, Share,
              draw, drawOverlay, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; }, _setOCtx: (c) => { const p = octx; octx = c; return p; },
-             _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp,
+             _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg,
              _getLang: () => LANG, _getT: () => T };
   `);
   const api = fn(
@@ -1164,7 +1169,7 @@ try {
           _onSwUpdate, _ctxMenuKeyNav,
           _getPasteCount, _resetPasteClipboard,
           endRectLike, endLineLike, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
-          _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp } = api;
+          _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg } = api;
 
   console.log('\n-- behavioural --');
 
@@ -2096,7 +2101,24 @@ try {
     assert.strictEqual(_imgKey(u1), _imgKey(u1), '_imgKey deterministic');
     assert.notStrictEqual(_imgKey(u1), _imgKey(u2), '_imgKey differs on tail');
     assert.notStrictEqual(_imgKey(u1), _imgKey(u3), '_imgKey differs on mime/length');
+    // v1.7.93 / ADR-0035: same length + same tail-64 but different head/mid must
+    // produce different keys — the single-tail fingerprint could render the wrong
+    // cached image when two distinct files shared those bytes.
+    const mk=u=>{const head='data:image/png;base64,';let mid='M'.repeat(200);const tail='T'.repeat(64);
+      return head+u+mid+tail;};
+    assert.notStrictEqual(_imgKey(mk('AAAA')), _imgKey(mk('BBBB')), '_imgKey differs on payload head (same len+tail)');
+    assert.notStrictEqual(_imgKey('data:image/png;base64,AAAA'+'X'.repeat(100)+'ZZZZ'), _imgKey('data:image/png;base64,AAAA'+'Y'.repeat(100)+'ZZZZ'), '_imgKey differs on payload middle');
+    assert.strictEqual(_imgKey(undefined), '', '_imgKey(non-string) returns empty');
+    assert.strictEqual(_imgKey(null), '', '_imgKey(null) returns empty');
     assert.ok(_imgKey(u1).length < 200, '_imgKey output is small regardless of input');
+    // v1.7.93 / ADR-0035: export must not leak the internal img blob ref
+    const slim={id:'im1',type:'image',x:0,y:0,w:10,h:10,z:1,img:'i1x',dataUrl:u1,stroke:'#000',strokeStyle:'#000',lineWidth:1,size:2,opacity:1,fill:'#fff',text:'',color:'#000',label:''};
+    const ex=roundShapesForExport([slim])[0];
+    assert.ok(!('img' in ex), 'roundShapesForExport strips img');
+    assert.strictEqual(ex.dataUrl, u1, 'roundShapesForExport keeps dataUrl');
+    // getImg must not attempt decode on non-dataUrl input (dangling img ref)
+    assert.strictEqual(getImg(undefined), null, 'getImg(undefined) -> null');
+    assert.strictEqual(getImg('i1x'), null, 'getImg(blob-key) -> null');
     console.log('  ✓ _imgKey: deterministic, injective on head/len/tail, small');
   }
 
