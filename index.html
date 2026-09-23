@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.91 — Design Tokens
+   Board v1.7.92 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -758,7 +758,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.91';
+const V='1.7.92';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3449,21 +3449,27 @@ function contPen(wp,e){
   invalidateDamage({x:Math.min(wp.x,last[0])-_m,y:Math.min(wp.y,last[1])-_m,w:Math.abs(wp.x-last[0])+2*_m,h:Math.abs(wp.y-last[1])+2*_m});
 }
 // RDP decimation for pen pts [[x,y,p?],…]; keeps pressure, eps in world units.
+// ADR-0034: iterative index-range version — the recursive pts.slice() form made
+// O(n log n) array copies on long strokes; this walks [lo,hi) ranges on a stack
+// and emits kept points in order.
 function _rdp(pts,eps){
   if(pts.length<=2)return pts;
-  const [ax,ay]=pts[0],[bx,by]=pts[pts.length-1];
-  const dx=bx-ax,dy=by-ay,len=Math.hypot(dx,dy)||1;
-  let mx=0,idx=1;
-  for(let i=1;i<pts.length-1;i++){
-    const d=Math.abs(dy*pts[i][0]-dx*pts[i][1]+bx*ay-by*ax)/len;
-    if(d>mx){mx=d;idx=i}
+  const keep=new Uint8Array(pts.length);keep[0]=keep[pts.length-1]=1;
+  const stack=[[0,pts.length-1]];
+  while(stack.length){
+    const [lo,hi]=stack.pop();
+    if(hi-lo<2)continue;
+    const ax=pts[lo][0],ay=pts[lo][1],bx=pts[hi][0],by=pts[hi][1];
+    const dx=bx-ax,dy=by-ay,len=Math.hypot(dx,dy)||1;
+    let mx=0,idx=-1;
+    for(let i=lo+1;i<hi;i++){
+      const d=Math.abs(dy*pts[i][0]-dx*pts[i][1]+bx*ay-by*ax)/len;
+      if(d>mx){mx=d;idx=i}
+    }
+    if(mx>eps){keep[idx]=1;stack.push([lo,idx],[idx,hi]);}
   }
-  if(mx>eps){
-    const L=_rdp(pts.slice(0,idx+1),eps);
-    const R=_rdp(pts.slice(idx),eps);
-    return L.slice(0,-1).concat(R);
-  }
-  return [pts[0],pts[pts.length-1]];
+  const out=[];for(let i=0;i<pts.length;i++)if(keep[i])out.push(pts[i]);
+  return out;
 }
 // ADR-0005: geometric-heuristic shape recognition for the "beautify" feature (Alt+B).
 // Pure, deterministic, dependency-free — classifies a rough pen stroke as line/rect/ellipse
@@ -3528,7 +3534,10 @@ function endPen(){
   if(!state.draft)return;
   const d=state.draft;state.draft=null;
   if(d.pts.length>=1){
-    if(d.pts.length>3)d.pts=_rdp(d.pts,0.5);
+    // ADR-0034: eps scales with the capture resolution (contPen keeps ~1/zoom
+    // spacing), so zoomed-in strokes keep the detail they were drawn with —
+    // 0.5 world units at zoom 1, finer when zoomed in, coarser when zoomed out.
+    if(d.pts.length>3)d.pts=_rdp(d.pts,0.5/state.viewport.zoom);
     Store.commit({op:'add',shape:d});
   }
 }

@@ -2,6 +2,15 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.92] - 2026-09-23
+
+**ADR-0034: ペンコミット時 RDP — 反復インデックス実装 + ズーム適応 eps** —
+再帰 `pts.slice()` 版は長いストロークで O(n log n) の配列コピーを行っていたのを、
+`[lo,hi)` レンジをスタックで回る反復版へ (出力は再帰版と完全一致を検証:
+21ストローク×4eps)。`eps` を固定 0.5 から `0.5/state.viewport.zoom` へ —
+`contPen` の採点分解能 (~1/zoom) と揃え、ズームインで描いた精密ストロークの
+詳細がコミット時に消えないようになった。
+
 ## [1.7.91] - 2026-09-23
 
 **ADR-0033: ctrl+wheel ズームのスナップショットプレビュー** — トラックパッドの

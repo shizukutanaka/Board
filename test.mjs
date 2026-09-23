@@ -374,7 +374,9 @@ const checks = [
   ['frame label keydown guards ev.isComposing (IME safe)', html.includes('inp.addEventListener') && html.includes('if(ev.isComposing)return')],
   ['text editor keydown guards ev.isComposing (IME safe)', (html.match(/if\(ev\.isComposing\)return/g)||[]).length >= 2],
   ['pen RDP decimation function _rdp present', html.includes('function _rdp(pts,eps)')],
-  ['endPen applies RDP on commit', html.includes('d.pts.length>3')&&html.includes('_rdp(d.pts,0.5)')],
+  ['endPen applies RDP on commit', html.includes('d.pts.length>3')&&html.includes('_rdp(d.pts,0.5/state.viewport.zoom)')],
+  // v1.7.92: ADR-0034 iterative index-range RDP + zoom-adaptive eps
+  ['RDP is iterative index-range (no slice recursion)', html.includes('const keep=new Uint8Array(pts.length)')&&html.includes('stack.push([lo,idx],[idx,hi])')],
   ['size is reported (no hard cap since 2026-06-13)', readFileSync('./test.mjs','utf8').includes("Size is no longer hard-capped")],
   // v1.6.25: style op for single-undo multi-select style
   ['style op in _apply (single undo for multi-select style)', html.includes("case 'style':")],
@@ -1138,7 +1140,7 @@ try {
              _getPasteCount: () => _pasteCount, _resetPasteClipboard: () => { _lastClipboard = null; },
              endRectLike, endLineLike, I18N, applyTheme, editSelectedShapeKbd, Share,
              draw, drawOverlay, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; }, _setOCtx: (c) => { const p = octx; octx = c; return p; },
-             _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY,
+             _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp,
              _getLang: () => LANG, _getT: () => T };
   `);
   const api = fn(
@@ -1162,7 +1164,7 @@ try {
           _onSwUpdate, _ctxMenuKeyNav,
           _getPasteCount, _resetPasteClipboard,
           endRectLike, endLineLike, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
-          _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY } = api;
+          _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp } = api;
 
   console.log('\n-- behavioural --');
 
@@ -7735,6 +7737,46 @@ try {
         'v1.7.89: dataUrl <=128B stays inline (no blob overhead)');
     }finally{Persist.db=origDb;}
     console.log('  ✓ Persist ADR-0031: img ref separation, doc/:prev dedup, GC, attach round-trip, collision chain, inline threshold (v1.7.89)');
+  }
+
+  // v1.7.92 (ADR-0034): iterative index-range _rdp must return identical output to
+  // the classic recursive RDP it replaced — same points kept, same order.
+  {
+    const rdpRec=(pts,eps)=>{
+      if(pts.length<=2)return pts;
+      const [ax,ay]=pts[0],[bx,by]=pts[pts.length-1];
+      const dx=bx-ax,dy=by-ay,len=Math.hypot(dx,dy)||1;
+      let mx=0,idx=1;
+      for(let i=1;i<pts.length-1;i++){
+        const d=Math.abs(dy*pts[i][0]-dx*pts[i][1]+bx*ay-by*ax)/len;
+        if(d>mx){mx=d;idx=i}
+      }
+      if(mx>eps){
+        const L=rdpRec(pts.slice(0,idx+1),eps),R=rdpRec(pts.slice(idx),eps);
+        return L.slice(0,-1).concat(R);
+      }
+      return [pts[0],pts[pts.length-1]];
+    };
+    let ok=true;
+    // deterministic pseudo-random strokes + a straight line + a single bend
+    const strokes=[[[0,0],[10,0],[20,0]]];
+    for(let s=0;s<20;s++){
+      const pts=[];let x=0,y=0;
+      for(let i=0;i<200;i++){x+=((i*31+s*7)%17)-8;y+=((i*13+s*11)%13)-6;pts.push([x,y,i%3?0.5:0.9]);}
+      strokes.push(pts);
+    }
+    for(const eps of [0.1,0.5,2,10]){
+      for(const pts of strokes){
+        const a=rdpRec(pts,eps),b=_rdp(pts,eps);
+        if(a.length!==b.length||a.some((p,i)=>p[0]!==b[i][0]||p[1]!==b[i][1]||p[2]!==b[i][2]))ok=false;
+      }
+    }
+    assert.ok(ok,'v1.7.92: iterative _rdp matches recursive RDP exactly on 21 strokes x 4 eps');
+    // zoom-adaptive eps at commit: finer eps keeps more points at high zoom
+    const dense=[];for(let i=0;i<60;i++)dense.push([i*0.3,Math.sin(i*0.5)*0.4,0.5]);
+    const coarse=_rdp(dense,0.5/1),fine=_rdp(dense,0.5/4);
+    assert.ok(fine.length>=coarse.length,'v1.7.92: smaller eps (higher zoom) keeps >= points');
+    console.log('  ✓ _rdp: iterative == recursive on deterministic strokes; zoom-adaptive eps monotonic (v1.7.92, ADR-0034)');
   }
 
   // v1.7.53a (§3.18): UI.toggleMinimap flips state.showMinimap and is idempotent-reversible

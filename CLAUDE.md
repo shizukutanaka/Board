@@ -82,7 +82,8 @@ Board/
 │   ├── ADR-0030-pinch-zoom-preview.md  # ピンチズームのスナップショット・スケールプレビュー
 │   ├── ADR-0031-image-blob-separation.md  # 画像 dataUrl を content-hash の imgs ストアへ分離 (FT-15 stage1、IDB v2)
 │   ├── ADR-0032-grid-accelerated-hit-testing.md  # マーキー選択・pickTop の空間索引流用 (per-pointermove 全走査の解消)
-│   └── ADR-0033-wheel-zoom-preview.md  # ctrl+wheel (トラックパッドピンチ) ズームのスナップショットプレビュー
+│   ├── ADR-0033-wheel-zoom-preview.md  # ctrl+wheel (トラックパッドピンチ) ズームのスナップショットプレビュー
+│   └── ADR-0034-pen-rdp-zoom.md  # ペン RDP 反復化 + ズーム適応 eps (精密筆跡の保持)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
