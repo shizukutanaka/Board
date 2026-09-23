@@ -64,6 +64,14 @@ Board/
 │   ├── ADR-0012-theme-toggle.md  # テーマ手動トグル (FT-18、言語トグルは FT-18b に分離・見送り、実装済)
 │   ├── ADR-0013-keyboard-label-edit.md  # Enter でラベル/テキスト再編集 (FT-19、_openLabelEditorFor共有、実装済)
 │   └── ADR-0014-language-toggle.md  # 言語手動トグル (FT-18b、LANG/T を let 化、実装済)
+│   ├── ADR-0015-share-link-e2e-encryption.md  # 共有リンクの AES-256-GCM E2E 暗号化 (FT-21)
+│   ├── ADR-0016-spatial-index-draw-culling.md  # draw() の可視判定を空間索引化 (FT-14)
+│   ├── ADR-0017-webrtc-failure-feedback.md  # WebRTC 接続失敗のトースト通知 (FT-20)
+│   ├── ADR-0018-pen-bitmap-cache.md  # ペン stroke のオフスクリーン rasterize キャッシュ
+│   ├── ADR-0019-pen-bbox-memoization.md  # G.bbox ペン包絡の O(1) シグネチャメモ化
+│   ├── ADR-0020-snap-edge-index.md  # オブジェクトスナップのソート済みエッジ索引
+│   ├── ADR-0021-image-cache-key.md  # 画像キャッシュの O(1) フィンガープリントキー
+│   └── ADR-0022-image-import-downscale.md  # 2048px 超過画像の WebP 縮退 (ドロップ/ペースト統合)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

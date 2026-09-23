@@ -2,6 +2,28 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.80] - 2026-09-23
+
+**ADR-0021: 画像キャッシュの O(1) フィンガープリントキー** — `_imgCache` が
+dataURL 本体 (最大 ~4MB) を Map キーにしていたため、可視画像ごとに毎フレーム
+文字列全体のハッシュが走っていた (メイン+ミニマップ)。mimeヘッド+長さ+末尾64
+文字の `_imgKey()` に置換 — キー計算が入力長に依らず一定 (~100 chars)。LRU
+セマンティクスと dedup 効果は不変。
+
+**ADR-0022: 画像インポートの条件付きダウンスケール** — ドロップ/ペーストの
+2経路に重複していた ingest ロジックを `_imgImportFile(f, cb)` に統合し、
+2048px 超の画像を `image/webp` q0.85 に縮退。WebP 非対応・元より増大する
+場合は元の dataURL を維持 (劣化しない条件付き最適化)。表示サイズ 400wu に
+対して数 MB のフル解像度が IDB・op history・共有リンクに乗っていた問題を
+緩和。実測: 4000×3000 JPEG の dataURL 1.63MB → 364KB (4.5×)。
+
+### Performance
+- `_imgKey`: per-frame の multi-MB 文字列ハッシュを排除 (画像ボードで最大
+  数ms/frame)
+
+### Fixed
+- 画像取り込み2経路 (drag-drop / paste) のコード重複を解消
+
 ## [1.7.79] - 2026-09-23
 
 **ADR-0020: オブジェクトスナップのエッジ索引** — `objectSnap` (move) と
