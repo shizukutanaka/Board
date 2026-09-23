@@ -2,6 +2,16 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.106] - 2026-09-23
+
+**ADR-0048: 検索ハイライトのマッチリストキャッシュ** — 検索ボックスに文字が
+入っている間、overlay リペイントのたびに全形状の `label|text|type` を
+`toLowerCase().includes()` で再走査していたのを `{_gridVer, _sq}` 連動の
+`_sqMatches()` 化 (ADR-0047 と同イディオム)。検索を開いたままの
+マーキードラッグ/カーソル移動で O(matches) に。`_sqAdvance` (Enter ナビ) も
+同じ順序付きリストを共有するよう統一。現在マッチ強調 (`_sqNav.idx`) は
+メンバーシップに影響しないためキー外・毎フレーム評価のまま。
+
 ## [1.7.105] - 2026-09-23
 
 **ADR-0047: グループハローのキャッシュ** — `drawOverlay` が毎フレーム全形状を

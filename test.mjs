@@ -289,6 +289,8 @@ const checks = [
   ['draft stamp leaves end-taper primitives live', html.includes("while(d.c<n-9)")],
   // v1.7.105: ADR-0047 group-halo map keyed on _gridVer (was rebuilt every overlay frame)
   ['group halo map cached on _gridVer', html.includes("function _grpMapGet(") && html.includes("_grpMapVer===_gridVer") && html.includes("_grpMapGet()")],
+  // v1.7.106: ADR-0048 search-match list keyed on {_gridVer, _sq}
+  ['search match list cached on _gridVer+query', html.includes("function _sqMatches(") && html.includes("_sqVer===_gridVer&&_sqQ===q") && html.includes("_sqMatches()")],
   ['SVG pen exports same primitive union', html.includes('_penTaperE(n-1-i)') && html.includes("<circle cx=") && html.includes("<g fill=")],
   ['SVG pen export uses penWidths (display=output parity)', html.includes("penWidths(P,SZ)")],
   // v1.6.14: pointer pressure input
