@@ -110,6 +110,7 @@ Board/
 - [ADR-0058](docs/ADR-0058-snapshot-lww-merge.md) スナップショットマージを per-property LWW で収束 (snapshot op に wclock 同梱、既存図形のプロパティ単位マージ)
 - [ADR-0059](docs/ADR-0059-style-panel-selection-sync.md) スタイルパネルを選択図形に同期 (選択署名で per-property 同期、混在 prop は据置)
 - [ADR-0060](docs/ADR-0060-alt-drag-duplicate.md) Alt+ドラッグ複製 (_placeCopies 再利用、selection→コピーで move-drag)
+- [ADR-0061](docs/ADR-0061-diamond-shape.md) diamond シェイプ (Excalidraw-parity、ボックス型で全既存経路対応)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

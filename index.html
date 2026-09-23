@@ -535,6 +535,10 @@ body{visibility:visible}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="12" rx="9" ry="7"/></svg>
       <kbd>O</kbd>
     </button>
+    <button class="tool" data-tool="diamond" aria-label="Diamond" title="Diamond (D)" data-t-aria="k.diamond" data-t-title="k.diamond">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l8 9-8 9-8-9z"/></svg>
+      <kbd>D</kbd>
+    </button>
     <button class="tool" data-tool="arrow" aria-label="Arrow" title="Arrow (A)" data-t-aria="k.arrow" data-t-title="k.arrow">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
       <kbd>A</kbd>
@@ -906,7 +910,7 @@ const I18N={
     backupRestoreFailed:'バックアップの復元に失敗しました',
     peers:'人',you:'自分',
     k:{select:'選択',hand:'手のひら',pen:'ペン',rect:'矩形',ellipse:'楕円',
-      arrow:'矢印',line:'線',text:'文字',sticky:'付箋',frame:'フレーム',eraser:'消しゴム',
+      arrow:'矢印',line:'線',text:'文字',sticky:'付箋',frame:'フレーム',eraser:'消しゴム',diamond:'ダイヤ',
       undo:'元に戻す',redo:'やり直し',del:'削除',dup:'複製',
       selAll:'全選択',copy:'コピー',paste:'貼付',cut:'切取',
       zoomIn:'拡大',zoomOut:'縮小',zoom100:'100%にリセット',
@@ -984,7 +988,7 @@ const I18N={
     selCount:' selected',selNone:'Selection cleared',
     mirrorLabel:'Shapes on the board',mirrorMore:' more not listed',
     k:{select:'Select',hand:'Pan',pen:'Pen',rect:'Rectangle',ellipse:'Ellipse',
-      arrow:'Arrow',line:'Line',text:'Text',sticky:'Sticky',frame:'Frame',eraser:'Eraser',
+      arrow:'Arrow',line:'Line',text:'Text',sticky:'Sticky',frame:'Frame',eraser:'Eraser',diamond:'Diamond',
       undo:'Undo',redo:'Redo',del:'Delete',dup:'Duplicate',
       selAll:'Select all',copy:'Copy',paste:'Paste',cut:'Cut',
       zoomIn:'Zoom in',zoomOut:'Zoom out',zoom100:'Reset zoom',
@@ -1118,6 +1122,12 @@ const G={
         const dx=(p.x-cx)/rx,dy=(p.y-cy)/ry,d=dx*dx+dy*dy;
         if(s.fill)return d<=1;
         const edge=Math.abs(d-1);return edge<0.15;}
+      case 'diamond':{
+        const cx=s.x+s.w/2,cy=s.y+s.h/2,rx=s.w/2,ry=s.h/2;
+        if(rx<=0||ry<=0)return false;
+        const dx=Math.abs(p.x-cx)/rx,dy=Math.abs(p.y-cy)/ry,d=dx+dy;
+        if(s.fill)return d<=1;
+        return Math.abs(d-1)<0.15;}
       case 'line':case 'arrow':{
         const e=connEnds(s);
         return distToSeg(p,{x:e.x1,y:e.y1},{x:e.x2,y:e.y2})<=tol+3;}
@@ -2410,7 +2420,7 @@ function drawShape(s,c){
   c.lineCap='round';c.lineJoin='round';
   c.strokeStyle=s.stroke||'#0F172A';
   c.lineWidth=s.size||1;
-  c.setLineDash((s.dash&&(s.type==='rect'||s.type==='ellipse'||s.type==='line'||s.type==='arrow'))?dashArr(s.dash,s.size):[]);
+  c.setLineDash((s.dash&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond'||s.type==='line'||s.type==='arrow'))?dashArr(s.dash,s.size):[]);
   if(s.fill){c.fillStyle=s.fill}
   const _rot=shapeRot(s);
   if(_rot){const _cx=s.x+s.w/2,_cy=s.y+s.h/2;c.save();c.translate(_cx,_cy);c.rotate(_rot*Math.PI/180);c.translate(-_cx,-_cy);}
@@ -2427,6 +2437,13 @@ function drawShape(s,c){
       if(s.fill){c.fill()}
       if(s.stroke){c.stroke()}
       _drawBoxLabel(s,c);break;
+    case 'diamond':{
+      const cx=s.x+s.w/2,cy=s.y+s.h/2;
+      c.beginPath();
+      c.moveTo(cx,s.y);c.lineTo(s.x+s.w,cy);c.lineTo(cx,s.y+s.h);c.lineTo(s.x,cy);c.closePath();
+      if(s.fill)c.fill();
+      if(s.stroke)c.stroke();
+      _drawBoxLabel(s,c);break;}
     case 'line':{
       const e=connEnds(s);c.beginPath();c.moveTo(e.x1,e.y1);c.lineTo(e.x2,e.y2);c.stroke();_drawConnLabel(s,c);break;}
     case 'arrow':
@@ -3043,7 +3060,7 @@ canvas.addEventListener('pointerdown',e=>{
       }
       pickOrMarquee(wp,e);break;
     case 'pen':beginPen(wp,e);break;
-    case 'rect':case 'ellipse':case 'sticky':case 'frame':beginRectLike(wp);break;
+    case 'rect':case 'ellipse':case 'diamond':case 'sticky':case 'frame':beginRectLike(wp);break;
     case 'line':case 'arrow':beginLineLike(wp);break;
     case 'text':beginText(wp);break;
     case 'eraser':_eraseBatch=[];eraseAt(wp);break;
@@ -3130,7 +3147,7 @@ canvas.addEventListener('pointermove',e=>{
       _penPred=pr?G.s2w(pr):null;
       break;
     }
-    case 'rect':case 'ellipse':case 'sticky':case 'frame':contRectLike(wp,e.shiftKey);break;
+    case 'rect':case 'ellipse':case 'diamond':case 'sticky':case 'frame':contRectLike(wp,e.shiftKey);break;
     case 'line':case 'arrow':contLineLike(wp,e.shiftKey);break;
     case 'eraser':eraseAt(wp);break;
   }
@@ -3180,7 +3197,7 @@ canvas.addEventListener('pointerup',e=>{
       }
       break;
       case 'pen':endPen();break;
-      case 'rect':case 'ellipse':case 'sticky':case 'frame':endRectLike();break;
+      case 'rect':case 'ellipse':case 'diamond':case 'sticky':case 'frame':endRectLike();break;
       case 'line':case 'arrow':endLineLike();break;
       case 'eraser':flushErase();break;
     }
@@ -4214,7 +4231,7 @@ function flushErase(){
 
 // ====================== KEYBOARD ======================
 const KEYMAP={v:'select',h:'hand',p:'pen',r:'rect',o:'ellipse',
-  a:'arrow',l:'line',t:'text',n:'sticky',f:'frame',e:'eraser'};
+  a:'arrow',l:'line',t:'text',n:'sticky',f:'frame',e:'eraser',d:'diamond'};
 // Focus trap for open dialogs (WCAG 2.4.3 Focus Order / 2.1.2 No Keyboard Trap-escape).
 // _focusables lists the tabbable controls inside a root; _trapStep is the pure wrap step:
 // given those controls, the active element and direction, it returns which element to
@@ -5048,8 +5065,7 @@ function excToShapes(txt){
     switch(e.type){
       case'rectangle':s=Shape.make('rect',{x:e.x,y:e.y,w:W,h:H});break;
       case'ellipse':s=Shape.make('ellipse',{x:e.x,y:e.y,w:W,h:H});break;
-      case'diamond':   // no diamond type — polygon pen is the faithful shape
-        s=Shape.make('pen',{pts:[[e.x+W/2,e.y],[e.x+W,e.y+H/2],[e.x+W/2,e.y+H],[e.x,e.y+H/2],[e.x+W/2,e.y]]});break;
+      case'diamond':s=Shape.make('diamond',{x:e.x,y:e.y,w:W,h:H});break;   // ADR-0061: real type
       case'frame':s=Shape.make('frame',{x:e.x,y:e.y,w:W,h:H,label:typeof e.name==='string'?e.name.slice(0,120):''});break;
       case'text':{
         const fs=Number.isFinite(e.fontSize)?e.fontSize:16;
@@ -5171,6 +5187,10 @@ function buildSVG(shapes,paper){
         els.push(`<ellipse cx="${X+W/2+ox}" cy="${Y+H/2+oy}" rx="${Math.abs(W/2)}" ry="${Math.abs(H/2)}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}/>`);
         if(s.label)els.push(`<text x="${X+W/2+ox}" y="${Y+H/2+oy+7}" font-family="system-ui,sans-serif" font-size="14" text-anchor="middle" fill="${stroke}"${a}${rT}>${_esc(s.label)}</text>`);
         break;
+      case 'diamond':{
+        els.push(`<polygon points="${X+W/2+ox},${Y+oy} ${X+W+ox},${Y+H/2+oy} ${X+W/2+ox},${Y+H+oy} ${X+ox},${Y+H/2+oy}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}/>`);
+        if(s.label)els.push(`<text x="${X+W/2+ox}" y="${Y+H/2+oy+7}" font-family="system-ui,sans-serif" font-size="14" text-anchor="middle" fill="${stroke}"${a}${rT}>${_esc(s.label)}</text>`);
+        break;}
       case 'line':
         els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}/>`);
         els.push(_connLabelSVG(s,X1,Y1,X2,Y2,ox,oy,stroke,paper));
@@ -6180,7 +6200,7 @@ const UI={
     const rows=[
       ['V',k.select],['H / Space',k.pan],['P',k.pen],
       ['R',k.rect],['O',k.ellipse],['A',k.arrow],
-      ['L',k.line],['T',k.text],['N',k.sticky],['F',k.frame],['E',k.eraser],
+      ['L',k.line],['T',k.text],['N',k.sticky],['F',k.frame],['E',k.eraser],['D',k.diamond],
       ['⇧P',k.present],
       ['⌘Z',k.undo],['⌘⇧Z',k.redo],['⌘A',k.selAll],
       ['⌘C/V/X',k.copy+'/'+k.paste+'/'+k.cut],['⌘D',k.dup],['⌫',k.del],
@@ -6736,6 +6756,7 @@ const Minimap=(()=>{
         case 'frame':
         case 'rect':{const rx=s.x*sc+ox,ry=s.y*sc+oy,rw=s.w*sc,rh=s.h*sc;if(s.fill)sx.fillRect(rx,ry,rw,rh);sx.strokeRect(rx,ry,rw,rh);break}
         case 'ellipse':sx.beginPath();sx.ellipse(s.x*sc+ox+s.w*sc/2,s.y*sc+oy+s.h*sc/2,Math.abs(s.w*sc/2),Math.abs(s.h*sc/2),0,0,Math.PI*2);if(s.fill)sx.fill();sx.stroke();break;
+        case 'diamond':{const dcx=s.x*sc+ox+s.w*sc/2,dcy=s.y*sc+oy+s.h*sc/2;sx.beginPath();sx.moveTo(dcx,s.y*sc+oy);sx.lineTo(s.x*sc+ox+s.w*sc,dcy);sx.lineTo(dcx,s.y*sc+oy+s.h*sc);sx.lineTo(s.x*sc+ox,dcy);sx.closePath();if(s.fill)sx.fill();sx.stroke();break;}
         case 'line':case 'arrow':{const me=connEnds(s);sx.beginPath();sx.moveTo(me.x1*sc+ox,me.y1*sc+oy);sx.lineTo(me.x2*sc+ox,me.y2*sc+oy);sx.stroke();break}
         case 'pen':if(s.pts.length<2)break;sx.beginPath();sx.moveTo(s.pts[0][0]*sc+ox,s.pts[0][1]*sc+oy);for(let i=1;i<s.pts.length;i++)sx.lineTo(s.pts[i][0]*sc+ox,s.pts[i][1]*sc+oy);sx.stroke();break;
         case 'text':case 'sticky':{const rx2=s.x*sc+ox,ry2=s.y*sc+oy,rw2=Math.max(2,s.w*sc),rh2=Math.max(2,s.h*sc);sx.fillStyle=s.type==='sticky'?(s.color||'#FEF08A'):(s.fill||getCSS('--brand'));sx.fillRect(rx2,ry2,rw2,rh2);break}

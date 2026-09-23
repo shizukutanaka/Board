@@ -408,6 +408,10 @@ const checks = [
   ['_syncStylePanel adopts only uniform props (mixed skipped)', html.includes("sel.every(s=>(s[k]??null)===v)")&&html.includes("if(v!==undefined){state.style.fill")],
   // v1.7.118: ADR-0060 Alt+drag duplicate
   ['alt+drag duplicates picked shape then drags copies', html.includes("if(e.altKey&&!hit.locked){")&&html.includes("_placeCopies(srcShapes,0,0)")&&html.includes("dupSet=alreadySel")],
+  // v1.7.118: ADR-0061 diamond shape
+  ['diamond tool in KEYMAP + toolbar + help', html.includes("e:'eraser',d:'diamond'")&&html.includes('data-tool="diamond"')&&html.includes("['D',k.diamond]")],
+  ['diamond draw/hit/svg/minimap paths', html.includes("case 'diamond':{")&&html.includes("case'diamond':s=Shape.make('diamond'")&&html.includes('Math.abs(d-1)<0.15')],
+  ['diamond i18n ja+en', html.includes("diamond:'ダイヤ'")&&html.includes("diamond:'Diamond'")],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
@@ -3185,6 +3189,25 @@ try {
     assert.strictEqual(state.style.fill,'#123456','multi: mixed fill left alone');
     assert.strictEqual(state.style.dash,1,'multi: uniform dash adopted');
     console.log('  ✓ style panel sync: uniform adopted, mixed left (8 asserts)');
+  }
+
+  // ADR-0061: diamond is a first-class box shape — draw, hit, undo, svg all work.
+  {
+    state.shapes=[];_invalidateGrid();state.selection=new Set();state.history=[];state.histIdx=-1;
+    const D={id:'D',type:'diamond',x:0,y:0,w:100,h:80,z:1,stroke:'#000',fill:'#fff',size:2,opacity:1,dash:0};
+    Store.commit({op:'add',shape:D});
+    const dl=byId('D');
+    assert.ok(G.bbox(dl).w===100&&G.bbox(dl).h===80,'diamond bbox');
+    assert.ok(G.hit(dl,{x:50,y:40}),'centre hit');
+    assert.ok(G.hit(dl,{x:2,y:40}),'near left vertex hit (fill)');
+    assert.ok(!G.hit(dl,{x:4,y:4}),'corner outside → miss');
+    dl.fill=null;
+    assert.ok(!G.hit(dl,{x:50,y:40}),'unfilled centre → miss');
+    assert.ok(G.hit(dl,{x:50,y:1}),'unfilled edge → hit');
+    const svg=buildSVG([dl],'#fff');
+    assert.ok(svg.includes('<polygon'),'svg polygon emitted');
+    Store.undo();assert.strictEqual(state.shapes.length,0,'undo removes diamond');
+    console.log('  ✓ diamond shape: draw/hit/svg/undo (8 asserts)');
   }
 
   // validPatch recurses: nested poison in a remote `upd` (gated by validPatch alone)
@@ -8730,7 +8753,7 @@ try {
     assert.ok(sh.length===8,'mapped element count');
     assert.ok(sh[0].type==='rect'&&sh[0].stroke==='#f00'&&sh[0].fill==='#fee'&&sh[0].size===3&&Math.abs(sh[0].opacity-0.8)<1e-9&&sh[0].dash===1,'style mapping');
     assert.ok(sh[1].type==='ellipse'&&Math.abs(sh[1].rotate-45)<0.11,'angle → rotate');
-    assert.ok(sh[2].type==='pen'&&sh[2].pts.length===5,'diamond → closed polygon pen');
+    assert.ok(sh[2].type==='diamond'&&sh[2].w===20&&sh[2].h===20,'diamond → real type (ADR-0061)');
     assert.ok(sh[3].type==='arrow'&&sh[3].x2===35&&sh[3].y2===45,'relative points absolutised');
     assert.ok(sh[4].type==='pen'&&sh[4].pts.length===3,'3-point line → pen');
     assert.ok(sh[5].type==='pen','freedraw → pen');
