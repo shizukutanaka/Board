@@ -2,6 +2,15 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.110] - 2026-09-23
+
+**ADR-0052: 選択図形のみのエクスポート** — 選択コンテキストメニューに
+「選択をPNG書き出し / 選択のPNGをコピー / 選択をSVG書き出し」を追加
+(Excalidraw parity)。`exportPNG`/`copyPNG`/`exportSVG`/`_renderPngBlob`
+に shapes 引数を導入 (既定 `state.shapes` で後方互換) — 全面・選択の
+両経路が同一レンダラを共有するため、出力は常に同一生成経路由来。
+選択 bbox + pad 32 で切り出し、空選択は `noSelection` トースト。
+
 ## [1.7.109] - 2026-09-23
 
 **ADR-0051: ペンストロークの真のリサイズ** — ペンが従来「リサイズ不可」
