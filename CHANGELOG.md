@@ -2,6 +2,15 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.111] - 2026-09-23
+
+**ADR-0053: テキスト編集中の pan/zoom 追従** — 編集中の textarea は DOM
+アンカーのため、編集を閉じずにパン/ズームすると図形から取り残されていた
+(audit-2026-06 の残課題)。`frame()` の最後に `_teFollow()` を追加 —
+viewport 署名 (x,y,zoom) が変わったフレームだけ `positionTextEditor` を
+再実行し、エディタを図形に追従させる (fontSize の zoom 乗算込み)。
+ADR-0011/0041 と同じ「frame 境界で追従」パターン。新 op なし。
+
 ## [1.7.110] - 2026-09-23
 
 **ADR-0052: 選択図形のみのエクスポート** — 選択コンテキストメニューに

@@ -766,7 +766,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.110';
+const V='1.7.111';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2045,6 +2045,7 @@ function frame(){
     // catches them all. Change-detection inside keeps it a no-op on unrelated frames.
     Net.sendSelectionIfChanged();
     _mirrorSync();   // ADR-0041: DOM mirror rebuilds only on _gridVer change
+    _teFollow();     // ADR-0053: open text overlay tracks pan/zoom
   }
   if(needsRender||needOverlay)_rafId=requestAnimationFrame(frame);  // draw() called invalidate() (rare re-entry)
 }
@@ -3962,7 +3963,7 @@ function openTextEditor(s,isNew){
         if(origSel.length)state.history[state.histIdx].origSel=origSel;
       }
     }
-    ta.remove();invalidate();
+    _teTa=null;ta.remove();invalidate();
   });
   ta.addEventListener('keydown',ev=>{
     if(ev.isComposing)return;
@@ -3970,6 +3971,19 @@ function openTextEditor(s,isNew){
     if(ev.key==='Enter'&&(ev.metaKey||ev.ctrlKey)){ev.preventDefault();ta.blur()}
   });
   auto();
+  _teTa=ta;_teVp='';   // ADR-0053: track the live overlay for viewport follow
+}
+// ADR-0053: while the inline editor is open, pan/zoom moves the scene but the
+// textarea is DOM-anchored — re-position it whenever the viewport signature
+// changes (cheap no-op otherwise; runs once per frame). The textarea commits
+// only on blur, so a mid-pan edit still lands on the right shape.
+let _teTa=null,_teVp='';
+function _teFollow(){
+  if(!_teTa||!state.editing)return;
+  const s=byId(state.editing);if(!s)return;
+  const v=state.viewport,sig=v.x+','+v.y+','+v.zoom;
+  if(sig===_teVp)return;
+  _teVp=sig;positionTextEditor(_teTa,s);
 }
 function positionTextEditor(ta,s){
   const sp=G.w2s({x:s.x,y:s.y});

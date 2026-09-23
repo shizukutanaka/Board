@@ -101,7 +101,8 @@ Board/
 │   ├── ADR-0049-zoom-to-selection.md  # ⇧2 選択ズーム + _fitViewport 共通化
 │   ├── ADR-0050-copy-png-clipboard.md  # PNG のクリップボードコピー (_renderPngBlob 共有)
 │   ├── ADR-0051-pen-resize.md  # ペンの真のリサイズ (pts アフィン写像、仮想ボックス経由)
-│   └── ADR-0052-export-selection.md  # 選択図形のみのエクスポート (shapes 引数で共有レンダラ)
+│   ├── ADR-0052-export-selection.md  # 選択図形のみのエクスポート (shapes 引数で共有レンダラ)
+│   └── ADR-0053-text-editor-follows-viewport.md  # テキスト編集中の pan/zoom 追従 (frame 境界 _teFollow)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
