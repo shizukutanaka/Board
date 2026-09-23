@@ -230,7 +230,7 @@ const checks = [
   ['z-step ops route through _zCommit (undoable, minimal-delta)', html.includes("_zCommit(changes)") && html.includes("function _zCommit")],
   ['applyRemote whitelists op types', html.includes("REMOTE_OPS") && html.includes("this.REMOTE_OPS.has(op.op)")],
   ['applyRemote validates remote add shape', html.includes("case 'add':    return validShape(op.shape)")],
-  ['SVG export uses testable buildSVG', html.includes("function buildSVG") && html.includes("buildSVG(state.shapes")],
+  ['SVG export uses testable buildSVG', html.includes("function buildSVG") && html.includes("buildSVG(shapes")],
   ['SVG attrs escaped via _esc', html.includes("stroke=\"${stroke}\"") && html.includes("_esc(s.fill)")],
   ['SVG image dataUrl validated', html.includes("/^data:image\\//.test(s.dataUrl)")],
   // v1.7.69: the SAME guard now also gates the canvas/render + all remote/import intake
@@ -296,7 +296,14 @@ const checks = [
   ['shared _fitViewport used by all three fit paths', html.includes("function _fitViewport(") && html.includes("_fitViewport(b,40,2)") && html.includes("_fitViewport(b,60,4)")],
   ['selFit i18n ja+en', html.includes("selFit:'選択にフィット'") && html.includes("selFit:'Zoom to selection'")],
   // v1.7.108: ADR-0050 copy PNG to clipboard via shared _renderPngBlob
-  ['shared _renderPngBlob drives export + copy', html.includes("function _renderPngBlob(") && html.includes("exportPNG(){\n  _renderPngBlob" ) && html.includes("function copyPNG(")],
+  ['shared _renderPngBlob drives export + copy', html.includes("function _renderPngBlob(shapes,cb)") && html.includes("exportPNG(shapes=state.shapes){\n  _renderPngBlob(shapes," ) && html.includes("function copyPNG(")],
+  // v1.7.110: ADR-0052 selection-scoped export (PNG / copy / SVG)
+  ['exports take a shapes arg (default whole board)', html.includes("exportPNG(shapes=state.shapes)") && html.includes("copyPNG(shapes=state.shapes)") && html.includes("exportSVG(shapes=state.shapes)")],
+  ['selection export items in ctx menu', html.includes("['ctxExportSelPNG','',()=>exportSelection('png')]") && html.includes("['ctxCopySelPNG','',()=>exportSelection('copy')]") && html.includes("['ctxExportSelSVG','',()=>exportSelection('svg')]")],
+  ['selection export i18n ja+en', html.includes("ctxExportSelPNG:'選択をPNG書き出し'") && html.includes("ctxExportSelSVG:'Export selection to SVG'")],
+  // v1.7.111: ADR-0053 text overlay follows pan/zoom
+  ['text overlay tracked for viewport follow', html.includes("_teTa=ta;_teVp=''") && html.includes("_teTa=null;ta.remove();")],
+  ['_teFollow per-frame, viewport-signature gated', html.includes("_teFollow();     // ADR-0053") && html.includes("positionTextEditor(_teTa,s)") && html.includes("sig=v.x+','+v.y+','+v.zoom")],
   ['copyPNG guards ClipboardItem + write', html.includes("typeof ClipboardItem==='undefined'") && html.includes("copyUnsupported")],
   ['copyPNG in export menu', html.includes("['ctxCopyPNG','',copyPNG]")],
   ['ctxCopyPNG i18n ja+en', html.includes("ctxCopyPNG:'PNGをクリップボードにコピー'") && html.includes("ctxCopyPNG:'Copy PNG to clipboard'")],
@@ -1217,7 +1224,7 @@ try {
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
-             _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
+             _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa: () => _teTa,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
              exportPNG, copyPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
              _onBtnInstall, _getInstallPrompt: () => _installPrompt, _setInstallPrompt: (v) => { _installPrompt = v; },
@@ -1244,7 +1251,7 @@ try {
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
-          _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
+          _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
           exportPNG, copyPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
           _onBtnInstall, _getInstallPrompt, _setInstallPrompt,
@@ -5366,6 +5373,53 @@ try {
     zoomToSelection();
     assert.ok(state.viewport.zoom===0.5&&state.viewport.x===11,'zoomToSelection: empty selection is a no-op');
     console.log('  ✓ zoomToSelection: cap, centre, fit-below-cap, empty-selection no-op (5 asserts)');
+  }
+
+  // ADR-0052: selection-scoped export — _selShapes filters the live selection and
+  // exportSelection routes PNG/SVG/copy through the whole-board renderers; an
+  // empty selection warns instead of exporting nothing.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+    state.seq=0;state.seenOps=new Set();state.selection=new Set();
+    const a=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    const b=Shape.make('rect',{x:100,y:100,w:10,h:10});
+    Store.commit({op:'add',shape:a});Store.commit({op:'add',shape:b});
+    state.selection=new Set([b.id]);
+    const sel=_selShapes();
+    assert.ok(sel.length===1&&sel[0].id===b.id,'_selShapes: filters to the live selection');
+    const toasts=[];const _ot=UI.toast;UI.toast=(m,k)=>{toasts.push(k)};
+    try{
+      exportSelection('png');exportSelection('svg');exportSelection('copy');
+      state.selection=new Set();
+      exportSelection('png');
+    }finally{UI.toast=_ot}
+    // PNG+SVG reach a.toBlob/buildSVG → 'ok'; copy hits the ClipboardItem guard →
+    // 'copyUnsupported' warn; empty selection → 'noSelection' warn.
+    assert.deepStrictEqual(toasts,['ok','ok','warn','warn'],'exportSelection: routes+guards in order');
+    console.log('  ✓ exportSelection: filter, PNG/SVG ok, copy + empty guards (2 asserts)');
+  }
+
+  // ADR-0053: an open text overlay is DOM-anchored — without a follow pass, pan/zoom
+  // detaches it from its shape. _teFollow re-positions on every viewport signature
+  // change and is a no-op when the signature (or the editor) is unchanged.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+    state.seq=0;state.seenOps=new Set();state.selection=new Set();
+    state.viewport={x:0,y:0,zoom:1};
+    const s=Shape.make('text',{x:100,y:100,w:120,h:24,text:'hi',fontSize:16});
+    Store.commit({op:'add',shape:s});
+    openTextEditor(s,false);
+    const ta=_getTeTa();
+    assert.ok(ta&&ta.style.left==='100px'&&ta.style.top==='100px','overlay anchored at shape screen pos');
+    state.viewport.zoom=2;_teFollow();
+    assert.ok(ta.style.left==='200px'&&ta.style.fontSize==='32px','overlay follows zoom (pos + font scale)');
+    state.viewport={x:50,y:20,zoom:2};_teFollow();
+    assert.ok(ta.style.left==='100px'&&ta.style.top==='160px','overlay follows pan');
+    ta.style.left='999px';_teFollow();
+    assert.strictEqual(ta.style.left,'999px','unchanged viewport signature → no reposition');
+    state.editing=null;state.viewport.zoom=3;_teFollow();
+    assert.strictEqual(ta.style.left,'999px','editor closed → no follow');
+    console.log('  ✓ _teFollow: zoom+pan follow, signature no-op, closed-editor guard (4 asserts)');
   }
 
   // search navigation a11y: SR users search BY content, so the announcement must name
