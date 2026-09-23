@@ -766,7 +766,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.103';
+const V='1.7.104';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1857,25 +1857,57 @@ function drawPenMaybeCached(s,c){
 }
 
 // ====================== DRAFT INK STAMP (ADR-0029) ======================
+// ADR-0046: variable-width ink is a union fill of convex primitives — one
+// trapezoid per segment + one disc per vertex, all the same winding direction,
+// so a nonzero fill always covers the union (no boundary-walk self-intersections
+// on sharp turns, no gaps at segment joints). Ends taper over PEN_TAPER samples:
+// start taper is an absolute-index ramp (settles), end taper tracks the live
+// end so primitives within reach of it must stay in the live tail.
+const PEN_TAPER=8,PEN_TAPER_LO=0.15;
+function _penTaperI(i){return i>=PEN_TAPER?1:PEN_TAPER_LO+(1-PEN_TAPER_LO)*i/PEN_TAPER}
+function _penTaperE(d){return d>=PEN_TAPER?1:PEN_TAPER_LO+(1-PEN_TAPER_LO)*d/PEN_TAPER}
+function _penR(w,i,n){return w[i]*0.5*_penTaperI(i)*_penTaperE(n-1-i)}
+function _penQuad(c,p,ra,rb,i){
+  let dx=p[i][0]-p[i-1][0],dy=p[i][1]-p[i-1][1];
+  const l=Math.hypot(dx,dy)||1;dx/=l;dy/=l;
+  const nx=-dy,ny=dx;
+  c.moveTo(p[i-1][0]+nx*ra,p[i-1][1]+ny*ra);
+  c.lineTo(p[i][0]+nx*rb,p[i][1]+ny*rb);
+  c.lineTo(p[i][0]-nx*rb,p[i][1]-ny*rb);
+  c.lineTo(p[i-1][0]-nx*ra,p[i-1][1]-ny*ra);
+}
+function _penDisc(c,x,y,r){c.moveTo(x+r,y);c.arc(x,y,r,0,PI2,true)}
+// Fill the union covering vertices lo..hi: quads lo+1..hi, discs lo..hi.
+// Committed strokes call this on the whole range; the draft splits it at the
+// stamped boundary — the partition is exact, so draft and committed render
+// identically.
+function _penFillRange(c,p,w,n,lo,hi){
+  c.beginPath();
+  for(let i=lo+1;i<=hi;i++)_penQuad(c,p,_penR(w,i-1,n),_penR(w,i,n),i);
+  for(let i=lo;i<=hi;i++)_penDisc(c,p[i][0],p[i][1],_penR(w,i,n));
+  c.fill();
+}
 // The live pen draft used to re-stroke all n points every frame — O(n) per
 // pointermove on long strokes. Since each new sample only affects the last few
-// segments (width smoothing is a 3-tap filter; the quad at segment i uses
-// w[i],w[i+1] — both stable once pts[i+3] exists), we stamp committed segments
-// onto an offscreen bitmap and draw only the ~3-segment live tail vectorially.
+// primitives (width smoothing is a 3-tap filter; quad i uses w[i-1],w[i] —
+// stable once i<=n-3 — and the end taper stays live for n-1-i<PEN_TAPER), we
+// stamp committed primitives onto an offscreen bitmap and draw only the
+// ~PEN_TAPER-primitive live tail. Index i settles once i<=n-3 AND i<=n-1-PEN_TAPER
+// → stamp bound is n-9.
 // Pressure mode: raw widths use GLOBAL pressure extrema, so a new mn/mx
-// invalidates every committed width -> full rebuild (rare). Velocity-fallback
-// raw[i] needs pts i±1, so segment i commits once pts[i+3] exists (i<=n-4).
+// invalidates every committed width -> full rebuild (rare).
 let _inkD=null;
 function _inkSegDraw(cc,p,w,i){
-  cc.lineWidth=(w[i]+w[i+1])/2;
-  const mx=(p[i][0]+p[i+1][0])/2,my=(p[i][1]+p[i+1][1])/2;
+  // bake disc(i-1) + quad(i-1→i) — index i's own disc stays live in the tail
+  const n=p.length;
   cc.beginPath();
-  cc.moveTo(i>1?(p[i-1][0]+p[i][0])/2:p[0][0],i>1?(p[i-1][1]+p[i][1])/2:p[0][1]);
-  cc.quadraticCurveTo(p[i][0],p[i][1],mx,my);
-  cc.stroke();
+  _penDisc(cc,p[i-1][0],p[i-1][1],_penR(w,i-1,n));
+  _penQuad(cc,p,_penR(w,i-1,n),_penR(w,i,n),i);
+  cc.fill();
 }
 // Rebuild the stamp bitmap + full width arrays (fresh stroke, extrema flip,
-// zoom-bucket crossing, or a shrink). Commits segments 1..n-4.
+// zoom-bucket crossing, or a shrink). Commits indices 1..n-9 (ADR-0046: index i
+// bakes disc(i-1)+quad(i-1→i); end-taper primitives never settle).
 function _inkRebuild(s,d){
   const p=s.pts,n=p.length,R=_penRes();
   let mnx=Infinity,mny=Infinity,mxx=-Infinity,mxy=-Infinity;
@@ -1893,10 +1925,10 @@ function _inkRebuild(s,d){
   d.cv.width=Math.max(2,Math.ceil(d.bw*R));d.cv.height=Math.max(2,Math.ceil(d.bh*R));
   d.c2=d.cv.getContext('2d');
   d.c2.setTransform(R,0,0,R,-d.bx*R,-d.by*R);
-  d.c2.strokeStyle=s.stroke;d.c2.lineCap='round';d.c2.lineJoin='round';
+  d.c2.fillStyle=s.stroke;
   d.R=R;
   d.w=penWidths(p,s.size);
-  const stop=Math.max(0,n-4);   // stampable segments: 1..n-4 (see drawPenDraft)
+  const stop=Math.max(0,n-9);   // stampable indices: i<=n-9 (see drawPenDraft)
   for(let i=1;i<=stop;i++)_inkSegDraw(d.c2,p,d.w,i);
   d.c=stop;
 }
@@ -1916,7 +1948,7 @@ function _inkGrow(d,pad){
   const n2=ncv.getContext('2d');
   n2.drawImage(d.cv,(d.bx-mnx)*d.R,(d.by-mny)*d.R);
   n2.setTransform(d.R,0,0,d.R,-mnx*d.R,-mny*d.R);
-  n2.strokeStyle=d.stroke;n2.lineCap='round';n2.lineJoin='round';
+  n2.fillStyle=d.stroke;
   d.cv=ncv;d.c2=n2;d.bx=mnx;d.by=mny;d.bw=mxx-mnx;d.bh=mxy-mny;
 }
 function drawPenDraft(s){
@@ -1961,7 +1993,7 @@ function drawPenDraft(s){
     if(q[0]<d.bx||q[0]>d.bx+d.bw||q[1]<d.by||q[1]>d.by+d.bh)_inkGrow(d,pad);
     // Commit newly-stable segments: segment i bakes w[i],w[i+1]; w[i+1] needs
     // raw[i+2]; velocity-mode raw[i+2] needs pts[i+3] → stable only when i<=n-4.
-    while(d.c<n-4){d.c++;_inkSegDraw(d.c2,p,d.w,d.c);}
+    while(d.c<n-9){d.c++;_inkSegDraw(d.c2,p,d.w,d.c);}
   }
   // Frame: blit committed bitmap + live tail (segments d.c+1..n-2 + final line).
   const _z=state.viewport.zoom*DPR;
@@ -1973,19 +2005,9 @@ function drawPenDraft(s){
     ctx.restore();
   }
   else ctx.drawImage(d.cv,d.bx,d.by,d.bw,d.bh);
-  const w=d.w;
-  ctx.strokeStyle=s.stroke;ctx.lineCap='round';ctx.lineJoin='round';
-  const i0=Math.max(1,d.c+1);
-  let px,py;
-  if(i0>1){px=(p[i0-1][0]+p[i0][0])/2;py=(p[i0-1][1]+p[i0][1])/2}else{px=p[0][0];py=p[0][1];}
-  for(let i=i0;i<n-1;i++){
-    const mx=(p[i][0]+p[i+1][0])/2,my=(p[i][1]+p[i+1][1])/2;
-    ctx.lineWidth=(w[i]+w[i+1])/2;
-    ctx.beginPath();ctx.moveTo(px,py);ctx.quadraticCurveTo(p[i][0],p[i][1],mx,my);ctx.stroke();
-    px=mx;py=my;
-  }
-  ctx.lineWidth=(w[n-2]+w[n-1])/2;
-  ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(p[n-1][0],p[n-1][1]);ctx.stroke();
+  // ADR-0046: live tail = unstamped primitives (discs d.c..n-1, quads d.c+1..n-1)
+  ctx.fillStyle=s.stroke;
+  _penFillRange(ctx,p,d.w,n,Math.max(0,d.c),n-1);
 }
 
 // ====================== RENDER ======================
@@ -2527,19 +2549,12 @@ function drawPen(s,c){
     c.beginPath();c.arc(p[0][0],p[0][1],(s.size||2)/2,0,PI2);c.fill();
     return;
   }
-  // Variable-width ink: per-segment lineWidth; round caps blend them.
-  const w=penWidths(p,s.size),oldCap=c.lineCap,oldJoin=c.lineJoin,oldW=c.lineWidth;
-  c.strokeStyle=s.stroke;c.lineCap='round';c.lineJoin='round';
-  let px=p[0][0],py=p[0][1];
-  for(let i=1;i<n-1;i++){
-    const mx=(p[i][0]+p[i+1][0])/2,my=(p[i][1]+p[i+1][1])/2;
-    c.lineWidth=(w[i]+w[i+1])/2;
-    c.beginPath();c.moveTo(px,py);c.quadraticCurveTo(p[i][0],p[i][1],mx,my);c.stroke();
-    px=mx;py=my;
-  }
-  c.lineWidth=(w[n-2]+w[n-1])/2;
-  c.beginPath();c.moveTo(px,py);c.lineTo(p[n-1][0],p[n-1][1]);c.stroke();
-  c.lineCap=oldCap;c.lineJoin=oldJoin;c.lineWidth=oldW;
+  // ADR-0046: union fill of trapezoid+disc primitives — gap-free joints and
+  // naturally tapered ends; identical primitive set to the draft stamp.
+  const w=penWidths(p,s.size),oldFill=c.fillStyle;
+  c.fillStyle=s.stroke;
+  _penFillRange(c,p,w,n,0,n-1);
+  c.fillStyle=oldFill;
 }
 function drawText(s,c){
   c=c||ctx;
@@ -4892,17 +4907,21 @@ function buildSVG(shapes,paper){
           break;
         }
         if(s.pts.length<2)break;
-        // Mirror canvas render: variable-width quadratic segments, coords at 1dp.
+        // ADR-0046 display=output parity: same union of trapezoid+disc primitives
+        // as canvas. Circles need no winding-direction care — a <g> composites
+        // the primitives as a true union.
         const P=s.pts.map(p=>[_num(p&&p[0])+ox,_num(p&&p[1])+oy,p&&p[2]]),n=P.length,W=penWidths(P,SZ);
         const r=v=>Math.round(v*10)/10;
-        const seg=(d,sw)=>els.push(`<path d="${d}" fill="none" stroke="${stroke}" stroke-width="${r(sw)}" stroke-linecap="round" stroke-linejoin="round"${a}/>`);
-        let px=P[0][0],py=P[0][1];
-        for(let i=1;i<n-1;i++){
-          const mx=(P[i][0]+P[i+1][0])/2,my=(P[i][1]+P[i+1][1])/2;
-          seg(`M${r(px)},${r(py)} Q${r(P[i][0])},${r(P[i][1])} ${r(mx)},${r(my)}`,(W[i]+W[i+1])/2);
-          px=mx;py=my;
+        const Rr=i=>W[i]*0.5*_penTaperI(i)*_penTaperE(n-1-i);
+        let d='',circles='';
+        for(let i=1;i<n;i++){
+          let dx=P[i][0]-P[i-1][0],dy=P[i][1]-P[i-1][1];
+          const l=Math.hypot(dx,dy)||1;dx/=l;dy/=l;
+          const nx=-dy,ny=dx,ra=Rr(i-1),rb=Rr(i);
+          d+=`M${r(P[i-1][0]+nx*ra)},${r(P[i-1][1]+ny*ra)}L${r(P[i][0]+nx*rb)},${r(P[i][1]+ny*rb)}L${r(P[i][0]-nx*rb)},${r(P[i][1]-ny*rb)}L${r(P[i-1][0]-nx*ra)},${r(P[i-1][1]-ny*ra)}Z`;
         }
-        seg(`M${r(px)},${r(py)} L${r(P[n-1][0])},${r(P[n-1][1])}`,(W[n-2]+W[n-1])/2);
+        for(let i=0;i<n;i++)circles+=`<circle cx="${r(P[i][0])}" cy="${r(P[i][1])}" r="${r(Rr(i))}"/>`;
+        els.push(`<g fill="${stroke}"${a}><path d="${d}"/>${circles}</g>`);
         break;}
       case 'text':{
         const fs=_num(s.fontSize)||16;

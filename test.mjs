@@ -282,7 +282,12 @@ const checks = [
   ['Shift+1 fit shortcut also matches !', html.includes("e.shiftKey&&(k==='1'||k==='!')")],
   // v1.6.13: variable-width pen (velocity-based)
   ['penWidths helper present', html.includes("function penWidths")],
-  ['drawPen uses variable width', html.includes("penWidths(p,s.size)") && html.includes("c.lineWidth=(w[i]+w[i+1])/2")],
+  ['drawPen uses variable width', html.includes("penWidths(p,s.size)") && html.includes("_penFillRange(c,p,w,n,0,n-1)")],
+  // v1.7.104: ADR-0046 union-fill outline (trapezoid+disc primitives, tapered ends)
+  ['pen outline primitives present', html.includes("function _penQuad(") && html.includes("function _penDisc(") && html.includes("function _penFillRange(")],
+  ['pen end taper defined', html.includes("PEN_TAPER=8") && html.includes("_penTaperE(n-1-i)")],
+  ['draft stamp leaves end-taper primitives live', html.includes("while(d.c<n-9)")],
+  ['SVG pen exports same primitive union', html.includes('_penTaperE(n-1-i)') && html.includes("<circle cx=") && html.includes("<g fill=")],
   ['SVG pen export uses penWidths (display=output parity)', html.includes("penWidths(P,SZ)")],
   // v1.6.14: pointer pressure input
   ['pen captures pointer pressure', html.includes("function _penPr") && html.includes("[wp.x,wp.y,_penPr(e)]")],
@@ -337,7 +342,7 @@ const checks = [
   ['pan repaints only exposed strips + damage', html.includes("clipRects.push({x:Ox1") && html.includes("if(dmg)clipRects.push(dmg)")],
   ['pan records effective viewport, subpixel pans skip scene', html.includes("_lastVp={x:ev.x,y:ev.y,zoom:v.zoom}") && html.includes("const _skipScene=panned&&")],
   // v1.7.87: ADR-0029 draft-pen incremental ink stamping
-  ['draft pen stamps committed segments to bitmap', html.includes("function drawPenDraft(") && html.includes("while(d.c<n-4){d.c++;_inkSegDraw(d.c2,p,d.w,d.c);}")],
+  ['draft pen stamps committed segments to bitmap', html.includes("function drawPenDraft(") && html.includes("while(d.c<n-9){d.c++;_inkSegDraw(d.c2,p,d.w,d.c);}")],
   ['draft pen blits committed bitmap 1:1 snapped to device grid', html.includes("ctx.drawImage(d.cv,Math.round((d.bx-state.viewport.x)*_z)")],
   ['draft pen rebuilds stamp on pressure-mode flip/extrema growth', html.includes("usePr!==d.usePr||(usePr&&extGrew)") && html.includes("_inkRebuild(s,d)")],
   // v1.7.88: ADR-0030 pinch-zoom scaled preview
@@ -1206,6 +1211,7 @@ try {
              draw, drawOverlay, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; }, _setOCtx: (c) => { const p = octx; octx = c; return p; },
              _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg,
              _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText,
+             _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER,
              _getLang: () => LANG, _getT: () => T };
   `);
   const api = fn(
@@ -1230,7 +1236,8 @@ try {
           _getPasteCount, _resetPasteClipboard,
           endRectLike, endLineLike, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
           _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg,
-          _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgMMul, _svgMPt, svgToShapes, excToShapes } = api;
+          _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgMMul, _svgMPt, svgToShapes, excToShapes,
+          _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER } = api;
 
   console.log('\n-- behavioural --');
 
@@ -1927,13 +1934,15 @@ try {
     // degenerate inputs don't throw
     assert.strictEqual(penWidths([[0,0]], size).length, 1, 'single-point penWidths ok');
     console.log('  ✓ variable-width pen: slow ink thicker than fast, widths bounded [LO*base, base]');
-    // SVG export emits variable-width segments and tolerates non-finite coords
+    // SVG export emits the primitive union (<g fill> + quad path + per-vertex
+    // circles) and tolerates non-finite coords
     const penShape = { id:'pn', type:'pen', z:0, stroke:'#111', size:6,
       pts:[[0,0],[1,0],[2,0],[200,0],[400,0]] };
     const penSvg = buildSVG([penShape], '#FFFFFF') || '';
-    const widths = [...penSvg.matchAll(/stroke-width="([\d.]+)"/g)].map(m => +m[1]);
-    assert.ok(widths.length >= 2, 'pen SVG emits multiple segments');
-    assert.ok(Math.max(...widths) > Math.min(...widths), 'pen SVG segments have varying width');
+    assert.ok(/<g fill="#111"><path d="/.test(penSvg), 'pen SVG emits union group');
+    const radii = [...penSvg.matchAll(/<circle[^>]* r="([\d.]+)"/g)].map(m => +m[1]);
+    assert.strictEqual(radii.length, 5, 'pen SVG emits one disc per vertex');
+    assert.ok(Math.max(...radii) > Math.min(...radii), 'pen SVG discs have varying radius');
     const badPen = { id:'pb', type:'pen', z:0, stroke:'#111', size:6, pts:[[0,0],[Infinity,NaN],[5,5]] };
     const badSvg = buildSVG([badPen], '#FFFFFF') || '';
     const badPaths = [...badSvg.matchAll(/<path[^>]*\/>/g)].map(m => m[0]);
@@ -1979,7 +1988,7 @@ try {
     assert.strictEqual(_penCached(pen), null, 'pen cache: pts ref replacement invalidates');
     // drawPenMaybeCached: a non-main ctx (export) always takes the vector path
     const rec = { n:0, img:0, globalAlpha:1, strokeStyle:'', lineCap:'', lineJoin:'', lineWidth:1, fillStyle:'',
-      beginPath(){}, moveTo(){}, lineTo(){}, quadraticCurveTo(){}, arc(){}, fill(){},
+      beginPath(){}, moveTo(){}, lineTo(){}, quadraticCurveTo(){}, arc(){}, fill(){ this.n++ },
       stroke(){ this.n++ }, drawImage(){ this.img++ }, save(){}, restore(){},
       scale(){}, translate(){}, setTransform(){} };
     const pen2 = { id:'pc2', type:'pen', z:0, stroke:'#123', size:6, pts:[[0,0],[9,4],[18,0]] };

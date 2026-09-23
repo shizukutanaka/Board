@@ -2,6 +2,18 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.104] - 2026-09-23
+
+**ADR-0046: ペンのアウトライン塗り** — 可変線幅を「セグメント台形 + 頂点円盤の
+和集合」として 1 回の fill で描画。従来のセグメントごと stroke 描画が抱えた
+区間境界の僅かなギャップを構造的に解消し、両端 `PEN_TAPER=8` サンプルの
+ランプで自然に細る筆跡に (perfect-freehand 式)。全プリミティブは凸かつ同一
+巻き方向なので急カーブでの自己交差は原理的に発生しない。ドラフトの増分
+スタンプ (ADR-0029) は append-only プリミティブ設計によりそのまま継続 —
+末端テーパー区間のみ生 tail に残し、コミット済み/ドラフト/SVG エクスポート
+の3経路が同一幾何を共有 (display=output パリティ維持)。実ブラウザで内部
+網羅性 (holes 0) と先端テーパーを検証。
+
 ## [1.7.103] - 2026-09-23
 
 **ADR-0045: 招待リンク** — WebRTC 手動シグナリングの受け手側手順を一段削減。
