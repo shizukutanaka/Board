@@ -399,7 +399,10 @@ const checks = [
   ['help i18n keys in ja and en', html.includes("present:'プレゼン'") && html.includes("present:'Present'")],
   // v1.6.19: sync + PWA fixes
   ['snapshot ops get distinct, stable clock keys (id-based)', html.includes("seq:'snap:'+s.id")],
-  ['snapshot merge accepts only add ops (non-add ops rejected at merge path)', html.includes("op.op!=='add'||!op.shape")&&html.includes("byId(op.shape.id))continue")],
+  ['snapshot merge accepts only add ops (non-add ops rejected at merge path)', html.includes("if(!op||op.op!=='add'||!op.shape)return 'skip'")&&html.includes("this._mergeSnapshotOp(op);")],
+  // v1.7.116: ADR-0058 snapshot LWW merge
+  ['snapshot ops carry per-shape wclock', html.includes("wc:clone(state.wclock[s.id]||{})")],
+  ['_mergeSnapshotOp: LWW per-property merge on known shapes', html.includes("function _mergeSnapshotOp(op)")===false&&html.includes("_mergeSnapshotOp(op){") && html.includes("clockNewer(rc,lc)") && html.includes("return 'merge';")],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
@@ -3105,6 +3108,35 @@ try {
     assert.strictEqual(state.shapes.length,2,'snapshot merge: the add is accepted (new shape added)');
     assert.ok(state.shapes.some(s=>s.id==='L1'),'snapshot merge: embedded clear did NOT wipe local shapes');
     console.log('  ✓ snapshot merge: non-add ops (e.g. clear) embedded in snapshot.ops are rejected');
+  }
+
+  // ADR-0058: snapshot merge converges per-property — a snapshot carrying the
+  // sender's wclock updates only the props the remote wrote more recently,
+  // leaves locally-newer props alone, and never touches undo history.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+    state.seq=0;state.seenOps=new Set();state.wclock={};state.peerId='B';
+    const r={id:'S',type:'rect',z:1,x:0,y:0,w:10,h:10,stroke:'#000',size:2,opacity:1};
+    Store.commit({op:'add',shape:r});
+    const hlen=state.history.length;
+    // local wrote x recently; remote has older x but NEWER label
+    state.wclock['S']={x:{peer:'B',seq:5,ts:1000}};
+    const snapShape={...JSON.parse(JSON.stringify(r)),x:99,label:'remote'};
+    const res=Net._mergeSnapshotOp({op:'add',shape:snapShape,wc:{
+      x:{peer:'A',seq:2,ts:500},          // older than local x → keep local
+      label:{peer:'A',seq:3,ts:2000},     // no local clock → adopt
+    }});
+    const ls=byId('S');
+    assert.strictEqual(res,'merge','merge result reported');
+    assert.strictEqual(ls.x,0,'local-newer prop wins (x untouched)');
+    assert.strictEqual(ls.label,'remote','remote-newer prop adopted (label)');
+    assert.strictEqual(state.wclock['S'].label.ts,2000,'merged clock recorded for future LWW');
+    assert.strictEqual(state.history.length,hlen,'merge writes no undo history');
+    // no wc → old-peer fallback keeps everything
+    assert.strictEqual(Net._mergeSnapshotOp({op:'add',shape:snapShape}),'skip','missing wc → keep (legacy)');
+    // unknown shape → add path
+    assert.strictEqual(Net._mergeSnapshotOp({op:'add',shape:{...snapShape,id:'NEW'},clock:{peer:'A',seq:'snap:NEW',ts:0}}),'add','unknown shape adopted');
+    console.log('  ✓ snapshot LWW merge: per-prop convergence, no history (6 asserts)');
   }
 
   // validPatch recurses: nested poison in a remote `upd` (gated by validPatch alone)

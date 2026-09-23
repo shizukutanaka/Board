@@ -2,6 +2,15 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.116]
+
+### 追加
+- **スナップショットマージを per-property LWW で収束** (ADR-0058)。hello/sync-req 応答の
+  snapshot op に `wc`(shape ごとの wclock) を同梱し、既存図形をプロパティ単位で
+  マージ — 従来は「未保有図形のみ取込」で、両ピアが同一図形を編集すると内容が
+  発散したままだった。旧版ピア (wc なし) は従来どおり keep。undo 履歴には積まない
+  (収束動作)。
+
 ## [1.7.115] - 2026-09-23
 
 **ADR-0057: 回転ノブの点ジオメトリ / 複数選択対応** — `getRotHandle` を

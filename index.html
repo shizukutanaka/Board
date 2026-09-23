@@ -766,7 +766,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.115';
+const V='1.7.116';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -5408,9 +5408,7 @@ const Net={
         // op types here would let a malicious peer embed clear/del/upd inside a
         // snapshot message and execute them under the snapshot code path.
         else if(Array.isArray(msg.ops))for(const op of msg.ops.slice(0,MAX_OP_SHAPES)){
-          if(op.op!=='add'||!op.shape)continue;   // snapshot ops are adds only
-          if(byId(op.shape.id))continue;           // already have this shape → skip
-          Store.applyRemote(op);
+          this._mergeSnapshotOp(op);   // ADR-0058: add unknown shapes, LWW-merge known ones
         }
         break;
       case 'ping':
@@ -5447,11 +5445,40 @@ const Net={
   // `ops` is REQUIRED: a non-empty receiver merges via `ops` (see _onRecv 'snapshot'),
   // so any transport that omits ops fails to sync two non-empty boards.
   _snapshotMsg(){
+    // ADR-0058: `wc` ships each shape's per-property last-write clocks so a
+    // non-empty receiver can LWW-merge properties, not just adopt new shapes.
     const ops=state.shapes.map(s=>({
-      op:'add',shape:clone(s),
+      op:'add',shape:clone(s),wc:clone(state.wclock[s.id]||{}),
       clock:{peer:state.peerId,seq:'snap:'+s.id,ts:0,_snap:true}
     }));
     return {k:'snapshot',shapes:clone(state.shapes),ops,peer:state.peerId};
+  },
+  // ADR-0058: merge one snapshot add-op. Unknown shape → adopt via applyRemote
+  // (unchanged); known shape → per-property LWW merge against wc so concurrent
+  // edits on both peers converge instead of staying diverged. `wc` absent (old
+  // peer) → 'skip', the previous keep-everything behaviour. No history entries —
+  // convergence, not a user action. Named for testability (precedent: _gresizeDrag).
+  _mergeSnapshotOp(op){
+    if(!op||op.op!=='add'||!op.shape)return 'skip';   // snapshot ops are adds only
+    const ex=byId(op.shape.id);
+    if(!ex){Store.applyRemote(op);return 'add';}
+    const rw=(op.wc&&typeof op.wc==='object')?op.wc:null;
+    if(!rw)return 'skip';
+    const lw=state.wclock[ex.id]||(state.wclock[ex.id]={});
+    let dirty=false;
+    for(const k in rw){
+      const rc=rw[k];
+      if(!validClock(rc))continue;
+      if(op.shape[k]===undefined)continue;
+      const lc=lw[k];
+      if(!lc||clockNewer(rc,lc)){ex[k]=op.shape[k];lw[k]=clone(rc);dirty=true;}
+    }
+    if(dirty){
+      state.dirty=true;_invalidateGrid();
+      invalidate();UI.refreshUndo();Persist.schedule();
+      return 'merge';
+    }
+    return 'keep';
   },
   // Throttled: hello/sync-req are attacker-controllable and each snapshot clones the whole
   // board twice — unthrottled, a hostile peer gets a cheap-request/expensive-response
