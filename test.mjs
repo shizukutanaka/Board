@@ -510,6 +510,15 @@ const checks = [
   ['mirror keyed on _gridVer', html.includes('if(_mirrorVer===_gridVer)return;')],
   ['mirror wired into frame()', html.includes('_mirrorSync();   // ADR-0041')],
   ['i18n has mirrorLabel/mirrorMore ja+en', html.includes("mirrorLabel:'ボード上の図形一覧'") && html.includes("mirrorLabel:'Shapes on the board'")],
+  // v1.7.100: ADR-0042 SVG import
+  ['svg import ceilings defined', html.includes('SVG_MAX_ELEMS') && html.includes('SVG_MAX_PTS')],
+  ['svgToShapes parses via DOMParser and rejects parsererror', html.includes("new DOMParser().parseFromString(txt,'image/svg+xml')") && html.includes("doc.querySelector('parsererror')")],
+  ['svg path flattener exists', html.includes('function _svgPathPts(d,m)')],
+  ['svg transform matrix accumulator', html.includes('function _svgMOf(t)') && html.includes('function _svgMMul(P,Q)')],
+  ['svg claimed before image branch on drop', html.includes("f.name.endsWith('.svg')||f.type==='image/svg+xml')")],
+  ['svg markup paste hook', html.includes("i.type==='text/plain'") && html.includes('importSvgText(s)')],
+  ['file picker accepts svg', html.includes('accept=".board,.svg,image/svg+xml"')],
+  ['i18n has svgImported ja+en', html.includes("svgImported:'SVG を取り込みました'") && html.includes("svgImported:'SVG imported'")],
   // v1.6.44: x,y decorative label is aria-hidden
   ['x,y status label is aria-hidden (decorative)', html.includes('<span class="lbl" aria-hidden="true">x,y</span>')],
   // v1.6.45: connection status is aria-live (announces online/offline to SR)
@@ -990,9 +999,9 @@ const checks = [
     html.includes("&&typeof op.dx==='number'&&Number.isFinite(op.dx)&&typeof op.dy==='number'&&Number.isFinite(op.dy)")],
   // v1.7.56 (ADR-0007, FT-07): export menu + .board file-picker DOM/wiring
   ['btnExportMenu button and hidden fileImport input present in the DOM',
-    html.includes('id="btnExportMenu"') && html.includes('id="fileImport"') && html.includes('accept=".board"')],
-  ['btnExportMenu wired to UI.openExportMenu, fileImport wired to importBoard',
-    html.includes("UI.openExportMenu(r.left,r.bottom+4)") && html.includes("if(f)importBoard(f);")],
+    html.includes('id="btnExportMenu"') && html.includes('id="fileImport"') && html.includes('accept=".board,.svg,image/svg+xml"')],
+  ['btnExportMenu wired to UI.openExportMenu, fileImport routes by type',
+    html.includes("UI.openExportMenu(r.left,r.bottom+4)") && html.includes("?importSvgFile(f):importBoard(f);")],
   ['openCtxMenu accepts an optional customItems override (backward-compatible default)',
     html.includes("openCtxMenu(x,y,customItems){") && html.includes("const items=customItems||[")],
   ['ctxExportPNG/SVG/PDF/Board + ctxImportBoard i18n keys present in ja and en',
@@ -1178,7 +1187,7 @@ try {
              endRectLike, endLineLike, I18N, applyTheme, editSelectedShapeKbd, Share,
              draw, drawOverlay, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; }, _setOCtx: (c) => { const p = octx; octx = c; return p; },
              _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg,
-             _mirrorSync, _mirrorGo, MIRROR_MAX,
+             _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgMMul, _svgMPt, svgToShapes, importSvgText,
              _getLang: () => LANG, _getT: () => T };
   `);
   const api = fn(
@@ -1203,7 +1212,7 @@ try {
           _getPasteCount, _resetPasteClipboard,
           endRectLike, endLineLike, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
           _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg,
-          _mirrorSync, _mirrorGo, MIRROR_MAX } = api;
+          _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgMMul, _svgMPt, svgToShapes } = api;
 
   console.log('\n-- behavioural --');
 
@@ -8213,6 +8222,41 @@ try {
     fakeDoc.getElementById=_origGet;fakeDoc.createElement=_origCE;
     state.shapes.length=0;state.selection.clear();_invalidateGrid();
     console.log('  ✓ DOM mirror: per-shape buttons, select+recentre, MIRROR_MAX cap + truncation, _gridVer gating');
+  }
+
+  // ---- ADR-0042: SVG import helpers (pure-math layer, no DOMParser needed) ----
+  {
+    const I=[1,0,0,1,0,0];
+    // _svgMOf parses transform lists
+    const m=_svgMOf('translate(10,20) scale(2)');
+    assert.ok(m[0]===2&&m[3]===2&&m[4]===10&&m[5]===20,'transform list order');
+    // rotate(90, cx,cy) pivots about the centre point
+    const mr=_svgMOf('rotate(90,10,10)');
+    const p=_svgMPt(mr,20,10);
+    assert.ok(Math.abs(p.x-10)<1e-9&&Math.abs(p.y-20)<1e-9,'rotate about cx,cy');
+    // matrix nesting multiplies parent*local
+    const nested=_svgMMul([2,0,0,2,0,0],[1,0,0,1,5,5]);
+    const q=_svgMPt(nested,10,10);
+    assert.ok(q.x===30&&q.y===30,'nested matrix');
+    // _svgPathPts: absolute M/L
+    let pts=_svgPathPts('M0 0 L10 0 L10 10',I);
+    assert.ok(pts.length===3&&pts[2][0]===10&&pts[2][1]===10,'M/L path');
+    // relative m/l
+    pts=_svgPathPts('m5 5 l5 0',I);
+    assert.ok(pts.length===2&&pts[0][0]===5&&pts[1][0]===10,'relative m/l');
+    // cubic samples 10 pts ending at the curve endpoint
+    pts=_svgPathPts('M0 0 C10 0 10 10 20 10',I);
+    assert.ok(pts.length===11&&Math.abs(pts[10][0]-20)<1e-9&&Math.abs(pts[10][1]-10)<1e-9,'cubic subdiv');
+    // Z closes to the start point
+    pts=_svgPathPts('M0 0 L10 0 L10 10 Z',I);
+    assert.ok(pts[3][0]===0&&pts[3][1]===0,'Z closes');
+    // garbage tail doesn't poison earlier points
+    pts=_svgPathPts('M0 0 L5 5 @#$%',I);
+    assert.ok(pts.length===2,'garbage-tolerant');
+    // svgToShapes returns null without DOMParser (Node) — the browser path is
+    // covered by presence checks + headless verification
+    assert.ok(svgToShapes('<svg><rect/></svg>')===null,'no DOMParser → null');
+    console.log('  ✓ svg import helpers (transform + path flattening)');
   }
 
   console.log('\n✓ All behavioural tests passed');

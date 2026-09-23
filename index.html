@@ -598,7 +598,7 @@ body{visibility:visible}
     <button class="btn icon" id="btnExportMenu" aria-label="More export &amp; import options" title="More export &amp; import options" data-t-aria="moreExport" data-t-title="moreExport">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
     </button>
-    <input type="file" id="fileImport" accept=".board" hidden>
+    <input type="file" id="fileImport" accept=".board,.svg,image/svg+xml" hidden>
     <button class="btn icon" id="btnInstall" aria-label="Install app" title="Install Board as an app" data-t-aria="install" data-t-title="install" hidden>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V3M8 12l4 4 4-4M4 20h16"/></svg>
     </button>
@@ -765,7 +765,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.99';
+const V='1.7.100';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -777,6 +777,7 @@ const MAX_OP_SHAPES=500; // max shapes in a single remote op (DoS guard)
 const SHARE_MAX_BYTES=128*1024*1024,SHARE_MAX_SHAPES=200000;
 const SHARE_URL_WARN=32768;   // ADR-0040: share links longer than this risk chat-app truncation
 const MIRROR_MAX=300;         // ADR-0041: cap the SR DOM-mirror list on huge boards
+const SVG_MAX_ELEMS=5000,SVG_MAX_PTS=2000;   // ADR-0042: SVG import ceilings (same anti-bomb spirit as ADR-0039)
 const LONG_PRESS_MS=500;        // ADR-0006: long-press duration before opening the context menu
 const LONG_PRESS_MOVE_TOL=10;   // px; movement beyond this before firing = a drag, not a hold
 const MIN_ZOOM=0.1, MAX_ZOOM=16;
@@ -892,7 +893,7 @@ const I18N={
     sharePaste:'招待された側 手順1: 相手の招待コードを貼り付け',
     connected:'接続しました',disconnected:'切断しました',connectFailed:'接続に失敗しました',
     importConfirm:'共有された内容で現在のボードを置き換えますか？',
-    imported:'読み込みました',
+    imported:'読み込みました',svgImported:'SVG を取り込みました',
     backupAvailable:'前回、上書きされる前のボードが保存されています。復元しますか？',
     backupRestored:'前回のボードを復元しました',
     backupRestoreFailed:'バックアップの復元に失敗しました',
@@ -964,7 +965,7 @@ const I18N={
     sharePaste:'Joining side, step 1: Paste the invite code from your peer',
     connected:'Connected',disconnected:'Disconnected',connectFailed:'Connection failed',
     importConfirm:'Replace current board with shared content?',
-    imported:'Imported',
+    imported:'Imported',svgImported:'SVG imported',
     backupAvailable:'A board from before it was overwritten was saved. Restore it?',
     backupRestored:'Restored the previous board',
     backupRestoreFailed:'Failed to restore backup',
@@ -3112,6 +3113,10 @@ canvas.addEventListener('drop',e=>{
   e.preventDefault();
   const bf=[...e.dataTransfer.files].find(f=>f.name.endsWith('.board'));
   if(bf){importBoard(bf);return}
+  // ADR-0042: .svg must be claimed BEFORE the generic image/* branch —
+  // image/svg+xml also matches startsWith('image/') but <img> can't raster it.
+  const sf=[...e.dataTransfer.files].find(f=>f.name.endsWith('.svg')||f.type==='image/svg+xml');
+  if(sf){importSvgFile(sf,G.s2w({x:e.offsetX,y:e.offsetY}));return}
   const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith('image/'));
   if(!files.length)return;
   const wp=G.s2w({x:e.offsetX,y:e.offsetY});
@@ -3136,7 +3141,16 @@ canvas.addEventListener('drop',e=>{
 window.addEventListener('paste',e=>{
   if(e.target.matches('input,textarea'))return;
   const items=[...e.clipboardData.items].filter(i=>i.type.startsWith('image/'));
-  if(!items.length)return;
+  if(!items.length){
+    // ADR-0042: raw SVG markup copied to the clipboard imports as vector shapes.
+    const ti=[...e.clipboardData.items].find(i=>i.type==='text/plain');
+    if(!ti)return;
+    ti.getAsString(tx=>{
+      const s=String(tx||'');
+      if(/^\s*(<\?xml[^?]*\?>\s*)?<svg[\s>]/i.test(s)){e.preventDefault();importSvgText(s)}
+    });
+    return;
+  }
   e.preventDefault();
   for(const item of items){
     const f=item.getAsFile();if(!f)continue;
@@ -4508,6 +4522,175 @@ function exportBoard(){
   a.click();setTimeout(()=>URL.revokeObjectURL(_bu),1e4);
   UI.toast(t('exportedBoard'),'ok');
 }
+// ---- ADR-0042: SVG import --------------------------------------------------
+// DOMParser-walk → Board shapes. Unmapped elements (use/defs/filter/gradient/
+// mask/clipPath/animation/CSS classes) are skipped, never imported raw — the
+// mapping itself is the sanitizer. Ceilings SVG_MAX_ELEMS/SVG_MAX_PTS bound a
+// hostile or enormous artwork file the same way ADR-0039 bounds share links.
+// 2D affine as [a,b,c,d,e,f]: pt → (a·x+c·y+e, b·x+d·y+f)
+function _svgMMul(P,Q){return[P[0]*Q[0]+P[2]*Q[1],P[1]*Q[0]+P[3]*Q[1],P[0]*Q[2]+P[2]*Q[3],P[1]*Q[2]+P[3]*Q[3],P[0]*Q[4]+P[2]*Q[5]+P[4],P[1]*Q[4]+P[3]*Q[5]+P[5]]}
+function _svgMPt(m,x,y){return{x:m[0]*x+m[2]*y+m[4],y:m[1]*x+m[3]*y+m[5]}}
+function _svgMOf(t){
+  if(!t)return[1,0,0,1,0,0];
+  let m=[1,0,0,1,0,0];const re=/([a-zA-Z]+)\s*\(([^)]*)\)/g;let mm;
+  while((mm=re.exec(t))){
+    const n=mm[2].trim().split(/[\s,]+/).filter(Boolean).map(Number);let M=null;
+    switch(mm[1]){
+      case'matrix':if(n.length===6&&n.every(Number.isFinite))M=n.slice(0,6);break;
+      case'translate':M=[1,0,0,1,n[0]||0,n[1]||0];break;
+      case'scale':{const sx=Number.isFinite(n[0])?n[0]:1;M=[sx,0,0,n.length>1?n[1]:sx,0,0];break}
+      case'rotate':{const r=(n[0]||0)*Math.PI/180,c=Math.cos(r),s=Math.sin(r);M=[c,s,-s,c,0,0];
+        if(n.length>2)M=_svgMMul([1,0,0,1,n[1],n[2]],_svgMMul(M,[1,0,0,1,-n[1],-n[2]]));break}
+      case'skewX':M=[1,0,Math.tan((n[0]||0)*Math.PI/180),1,0,0];break;
+      case'skewY':M=[1,Math.tan((n[0]||0)*Math.PI/180),0,1,0,0];break;
+    }
+    if(M)m=_svgMMul(m,M);
+  }
+  return m;
+}
+function _svgColor(v){
+  if(v==null)return null;
+  v=String(v).trim();
+  if(!v||v==='none'||/^url\s*\(/i.test(v))return null;   // url() = gradient/pattern/symbol ref — not a flat color
+  return v;
+}
+function _svgStyle(el){
+  const css=el.getAttribute('style')||'';
+  const get=n=>{const v=el.getAttribute(n);if(v!=null&&v!=='')return v;
+    const m=css.match(new RegExp('(?:^|;)\\s*'+n+'\\s*:\\s*([^;]+)'));return m?m[1].trim():null};
+  const st={};
+  const stroke=_svgColor(get('stroke'));if(stroke)st.stroke=stroke;
+  const fill=_svgColor(get('fill'));if(fill)st.fill=fill;
+  const sw=parseFloat(get('stroke-width'));if(Number.isFinite(sw)&&sw>0)st.size=sw;
+  // Board has a single opacity channel — fold CSS opacity + the more specific of
+  // stroke/fill opacity into it.
+  let alpha=1;
+  const op=parseFloat(get('opacity'));if(Number.isFinite(op))alpha*=op;
+  const so=parseFloat(get('stroke-opacity')),fo=parseFloat(get('fill-opacity'));
+  if(Number.isFinite(so))alpha*=so;else if(Number.isFinite(fo))alpha*=fo;
+  if(alpha<1)st.opacity=Math.max(0.05,Math.min(1,alpha));
+  const fs=parseFloat(get('font-size'));if(Number.isFinite(fs))st.fontSize=fs;
+  return st;
+}
+// path d → flattened point list. Curves are subdivided at fixed resolution —
+// Board has no bezier shape type, and 8-10 samples per segment is visually
+// close enough for icons/diagrams (the ADR documents the trade-off).
+function _svgPathPts(d,m){
+  const pts=[];
+  const toks=String(d||'').match(/[a-zA-Z]|-?\d*\.?\d+(?:[eE][+-]?\d+)?/g);
+  if(!toks)return pts;
+  let i=0,cmd='',x=0,y=0,x0=0,y0=0;
+  const num=()=>{if(i<toks.length&&!/[a-zA-Z]/.test(toks[i]))return+toks[i++];return NaN};
+  const push=(px,py)=>{if(pts.length<SVG_MAX_PTS&&Number.isFinite(px)&&Number.isFinite(py))pts.push([px,py]);};
+  const cubic=(x1,y1,x2,y2,ex,ey)=>{const sx=x,sy=y;
+    for(let s=1;s<=10;s++){const t=s/10,u=1-t;
+      push(u*u*u*sx+3*u*u*t*x1+3*u*t*t*x2+t*t*t*ex,u*u*u*sy+3*u*u*t*y1+3*u*t*t*y2+t*t*t*ey)}
+    x=ex;y=ey};
+  const quad=(x1,y1,ex,ey)=>{const sx=x,sy=y;
+    for(let s=1;s<=10;s++){const t=s/10,u=1-t;
+      push(u*u*sx+2*u*t*x1+t*t*ex,u*u*sy+2*u*t*y1+t*t*ey)}
+    x=ex;y=ey};
+  while(i<toks.length){
+    if(/[a-zA-Z]/.test(toks[i]))cmd=toks[i++];
+    if(!cmd)break;
+    const rel=cmd===cmd.toLowerCase(),C=cmd.toUpperCase();
+    const ax=rel?x:0,ay=rel?y:0;
+    if(C==='M'){x=ax+num();y=ay+num();x0=x;y0=y;push(x,y);cmd=rel?'l':'L';}
+    else if(C==='L'){x=ax+num();y=ay+num();push(x,y);}
+    else if(C==='H'){x=ax+num();push(x,y);}
+    else if(C==='V'){y=ay+num();push(x,y);}
+    else if(C==='Z'){x=x0;y=y0;push(x,y);}
+    else if(C==='C'){const x1=ax+num(),y1=ay+num(),x2=ax+num(),y2=ay+num(),ex=ax+num(),ey=ay+num();cubic(x1,y1,x2,y2,ex,ey);}
+    else if(C==='S'){const x2=ax+num(),y2=ay+num(),ex=ax+num(),ey=ay+num();cubic(x,y,x2,y2,ex,ey);}   // S's reflected ctrl point is approximated by the current point
+    else if(C==='Q'){const x1=ax+num(),y1=ay+num(),ex=ax+num(),ey=ay+num();quad(x1,y1,ex,ey);}
+    else if(C==='T'){const ex=ax+num(),ey=ay+num();quad(x,y,ex,ey);}   // T's reflected ctrl point likewise
+    else if(C==='A'){num();num();num();num();num();x=ax+num();y=ay+num();push(x,y);}   // arc → endpoint chord approximation
+    else break;   // unknown command → end this path here
+  }
+  // transform all points once at the end — cheaper than multiplying inside every push
+  for(let k=0;k<pts.length;k++)pts[k]=[pts[k][0]*m[0]+pts[k][1]*m[2]+m[4],pts[k][0]*m[1]+pts[k][1]*m[3]+m[5]];
+  return pts;
+}
+function svgToShapes(txt){
+  if(typeof DOMParser==='undefined'||typeof txt!=='string')return null;
+  const doc=new DOMParser().parseFromString(txt,'image/svg+xml');
+  if(doc.querySelector('parsererror'))return null;
+  const root=doc.documentElement;
+  if(!root||root.localName!=='svg')return null;
+  // viewBox → output: origin to (0,0), cap the width at 800px so giant
+  // artboards paste at a sensible size.
+  const vb=(root.getAttribute('viewBox')||'').trim().split(/[\s,]+/).map(Number);
+  const vbOn=vb.length===4&&vb.every(Number.isFinite)&&vb[2]>0;
+  const w0=vbOn?vb[2]:parseFloat(root.getAttribute('width'))||800;
+  const sc=Math.min(1,800/w0);
+  const base=_svgMMul([sc,0,0,sc,0,0],[1,0,0,1,vbOn?-vb[0]:0,vbOn?-vb[1]:0]);
+  const shapes=[];
+  const visit=(el,m)=>{
+    if(shapes.length>=SVG_MAX_ELEMS)return;
+    const m2=_svgMMul(m,_svgMOf(el.getAttribute('transform')));
+    const tag=el.localName;
+    let s=null;
+    if(tag==='rect'){
+      const x=+el.getAttribute('x')||0,y=+el.getAttribute('y')||0,w=+el.getAttribute('width'),h=+el.getAttribute('height');
+      if(w>0&&h>0){const a=_svgMPt(m2,x,y),b=_svgMPt(m2,x+w,y+h);
+        s=Shape.make('rect',{x:Math.min(a.x,b.x),y:Math.min(a.y,b.y),w:Math.abs(b.x-a.x),h:Math.abs(b.y-a.y)})}
+    }else if(tag==='circle'||tag==='ellipse'){
+      const cx=+el.getAttribute('cx')||0,cy=+el.getAttribute('cy')||0;
+      const rx=tag==='circle'?+el.getAttribute('r')||0:+el.getAttribute('rx')||0;
+      const ry=tag==='circle'?rx:+el.getAttribute('ry')||0;
+      if(rx>0&&ry>0){const a=_svgMPt(m2,cx-rx,cy-ry),b=_svgMPt(m2,cx+rx,cy+ry);
+        s=Shape.make('ellipse',{x:Math.min(a.x,b.x),y:Math.min(a.y,b.y),w:Math.abs(b.x-a.x),h:Math.abs(b.y-a.y)})}
+    }else if(tag==='line'){
+      const a=_svgMPt(m2,+el.getAttribute('x1')||0,+el.getAttribute('y1')||0);
+      const b=_svgMPt(m2,+el.getAttribute('x2')||0,+el.getAttribute('y2')||0);
+      if(Math.hypot(b.x-a.x,b.y-a.y)>0.5)s=Shape.make('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y});
+    }else if(tag==='polyline'||tag==='polygon'){
+      const nums=(el.getAttribute('points')||'').trim().split(/[\s,]+/).map(Number);
+      const pts=[];
+      for(let i=0;i+1<nums.length&&pts.length<SVG_MAX_PTS;i+=2)
+        if(Number.isFinite(nums[i])&&Number.isFinite(nums[i+1]))pts.push(_svgMPt(m2,nums[i],nums[i+1]));
+      if(tag==='polygon'&&pts.length>1)pts.push(pts[0]);
+      if(pts.length>1)s=Shape.make('pen',{pts:pts.map(p=>[p.x,p.y])});
+    }else if(tag==='path'){
+      const pts=_svgPathPts(el.getAttribute('d'),m2);
+      if(pts.length>1)s=Shape.make('pen',{pts});
+    }else if(tag==='text'){
+      const content=(el.textContent||'').replace(/\s+/g,' ').trim();
+      if(content){
+        const p=_svgMPt(m2,+el.getAttribute('x')||0,+el.getAttribute('y')||0);
+        const fs=_svgStyle(el).fontSize||16;
+        s=Shape.make('text',{x:p.x,y:p.y-fs,w:Math.min(600,Math.max(60,content.length*fs*0.55)),h:fs*1.4,text:content.slice(0,200),fontSize:fs});
+      }
+    }
+    if(s){const st=_svgStyle(el);if(s.type!=='text')delete st.fontSize;Object.assign(s,st);shapes.push(s)}
+    for(const c of el.children)visit(c,m2);
+  };
+  visit(root,base);
+  return shapes;
+}
+function importSvgText(txt,wp){
+  let shapes=null;
+  try{shapes=svgToShapes(txt)}catch(_){shapes=null}
+  if(!shapes||!shapes.length){UI.toast(t('invalidBoard'),'warn');return false}
+  if(!wp){const r=canvas.getBoundingClientRect();wp=G.s2w({x:r.width/2,y:r.height/2})}
+  // centre the imported group at wp (drop point / viewport centre)
+  const bb=G.bboxAll(shapes);
+  if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);
+    for(const s of shapes)Shape.translate(s,dx,dy)}
+  const origSel=[...state.selection];
+  Store.commit({op:'addMany',shapes});
+  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  state.selection.clear();for(const s of shapes)state.selection.add(s.id);
+  invalidate();UI.toast(t('svgImported'),'ok');
+  return true;
+}
+function importSvgFile(file,wp){
+  const r=new FileReader();
+  r.onload=()=>importSvgText(String(r.result),wp);
+  r.onerror=()=>UI.toast(t('invalidBoard'),'warn');
+  r.readAsText(file);
+}
+
 function importBoard(file){
   const r=new FileReader();
   r.onload=()=>{
@@ -5691,7 +5874,7 @@ function wire(){
   };
   document.getElementById('fileImport').onchange=e=>{
     const f=e.target.files[0];
-    if(f)importBoard(f);
+    if(f)(f.name.endsWith('.svg')||f.type==='image/svg+xml')?importSvgFile(f):importBoard(f);
     e.target.value='';   // allow re-selecting the same filename to re-trigger change
   };
   document.getElementById('btnPresent').onclick=()=>Presentation.enter();
