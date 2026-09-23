@@ -758,7 +758,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.85';
+const V='1.7.86';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1859,6 +1859,7 @@ function resize(){
   canvas.width=Math.round(r.width*DPR);
   canvas.height=Math.round(r.height*DPR);
   ocanvas.width=canvas.width;ocanvas.height=canvas.height;
+  _lastVp=null;   // backing-store reallocation drops all retained pixels (ADR-0028)
   invalidate();
 }
 // devicePixelRatio can change with NO resize event — dragging the window between monitors
@@ -1916,26 +1917,53 @@ function describeShape(s){
   if(s.rotate)d+=` ${s.rotate}°`;
   return d;
 }
+let _lastVp=null;   // ADR-0028: the effective viewport the scene canvas currently represents
 function draw(){
   const W=canvas.width,H=canvas.height;
   const bg=getCSS('--paper');
   const v=state.viewport;
   const dmg=_damage;
-  if(dmg){
+  const z=v.zoom*DPR;
+  const pv=_lastVp;
+  const panned=pv&&pv.zoom===v.zoom&&(pv.x!==v.x||pv.y!==v.y);
+  let ev=v,clipRects=null;
+  if(panned){
+    // ADR-0028: shift the retained scene by the pan delta via self drawImage
+    // (rounded to whole device px — a fractional blit resamples and smears),
+    // then repaint only the newly exposed edge strips. ev is the effective
+    // viewport the canvas represents this frame (v ± ≤0.5px residual); any
+    // pending damage is world-space so it maps correctly onto the new view.
+    const sx=Math.round((pv.x-v.x)*z),sy=Math.round((pv.y-v.y)*z);
+    ev={x:pv.x-sx/z,y:pv.y-sy/z,zoom:v.zoom};
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.drawImage(canvas,0,0,W,H,sx,sy,W,H);
+    const Ww=W/z,Hh=H/z,Nx1=ev.x+Ww,Ny1=ev.y+Hh,Ox1=pv.x+Ww,Oy1=pv.y+Hh;
+    clipRects=[];
+    if(Nx1>Ox1)clipRects.push({x:Ox1,y:ev.y,w:Nx1-Ox1,h:Hh});          // right
+    else if(ev.x<pv.x)clipRects.push({x:ev.x,y:ev.y,w:pv.x-ev.x,h:Hh});// left
+    if(Ny1>Oy1)clipRects.push({x:ev.x,y:Oy1,w:Ww,h:Ny1-Oy1});          // bottom
+    else if(ev.y<pv.y)clipRects.push({x:ev.x,y:ev.y,w:Ww,h:pv.y-ev.y});// top
+    if(dmg)clipRects.push(dmg);
+    if(clipRects.length){
+      ctx.setTransform(z,0,0,z,-ev.x*z,-ev.y*z);
+      ctx.save();
+      ctx.beginPath();for(const r of clipRects)ctx.rect(r.x,r.y,r.w,r.h);ctx.clip();
+      ctx.fillStyle=bg;ctx.fillRect(ev.x,ev.y,Ww,Hh);
+    }
+  }else if(dmg){
     // ADR-0026: clip to the accumulated damage rect and repaint just it — the
     // rest of the scene canvas is retained from the previous frame.
-    ctx.setTransform(v.zoom*DPR,0,0,v.zoom*DPR,-v.x*v.zoom*DPR,-v.y*v.zoom*DPR);
+    ctx.setTransform(z,0,0,z,-v.x*z,-v.y*z);
     ctx.save();
     ctx.beginPath();ctx.rect(dmg.x,dmg.y,dmg.w,dmg.h);ctx.clip();
     ctx.fillStyle=bg;ctx.fillRect(dmg.x,dmg.y,dmg.w,dmg.h);
+    clipRects=[dmg];
   }else{
     ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
-    ctx.setTransform(v.zoom*DPR,0,0,v.zoom*DPR,-v.x*v.zoom*DPR,-v.y*v.zoom*DPR);
+    ctx.setTransform(z,0,0,z,-v.x*z,-v.y*z);
   }
 
-  if(state.showGrid)drawGrid(W,H);
-
-  const _view=dmg?{x:dmg.x-16,y:dmg.y-16,w:dmg.w+32,h:dmg.h+32}:visibleWorldRect();
+  const _view=panned?{x:ev.x,y:ev.y,w:W/z,h:H/z}:(dmg?{x:dmg.x-16,y:dmg.y-16,w:dmg.w+32,h:dmg.h+32}:visibleWorldRect());
   // ADR-0016: prefilter by grid rect query on large boards — O(cells in view)
   // instead of O(n) per frame. inView() still makes the final per-shape call,
   // so the rendered result is identical.
@@ -1955,22 +1983,30 @@ function draw(){
     if(ptr.rotOrig){const s=byId(ptr.rotOrig.id);if(s)need.add(s);}
     if(need.size){const vs=new Set(_vis);_drawIter=state.shapes.filter(s=>vs.has(s)||need.has(s));}
   }
-  for(const s of _drawIter){if(s.type==='frame'&&inView(s,_view))drawShape(s)}
-  for(const s of _drawIter){if(s.type!=='frame'&&inView(s,_view))drawShape(s)}
-  if(state.draft)drawShape(state.draft);
-  // Predicted ink tail (ADR-0023) — a single segment past the last committed
-  // point, discarded when the next real sample lands. Render-only: never
-  // touches draft.pts, so it can't leak into Store/persist/share payloads.
-  if(_penPred&&state.draft&&state.draft.type==='pen'){
-    const _pp=state.draft.pts,_pn=_pp.length;
-    if(_pn>1){
-      const _pw=penWidths(_pp,state.draft.size);
-      const _oc=ctx.lineCap,_ow=ctx.lineWidth;
-      ctx.strokeStyle=state.draft.stroke;ctx.lineCap='round';ctx.lineWidth=_pw[_pn-1];
-      ctx.beginPath();ctx.moveTo(_pp[_pn-1][0],_pp[_pn-1][1]);ctx.lineTo(_penPred.x,_penPred.y);ctx.stroke();
-      ctx.lineCap=_oc;ctx.lineWidth=_ow;
+  // ADR-0028: a pan whose rounded shift exposed no strip (sub-pixel step) needs
+  // no scene pass at all — the blit already carries every pixel.
+  const _skipScene=panned&&!(clipRects&&clipRects.length);
+  if(!_skipScene){
+    if(state.showGrid)drawGrid(W,H);
+    for(const s of _drawIter){if(s.type==='frame'&&inView(s,_view))drawShape(s)}
+    for(const s of _drawIter){if(s.type!=='frame'&&inView(s,_view))drawShape(s)}
+    if(state.draft)drawShape(state.draft);
+    // Predicted ink tail (ADR-0023) — a single segment past the last committed
+    // point, discarded when the next real sample lands. Render-only: never
+    // touches draft.pts, so it can't leak into Store/persist/share payloads.
+    if(_penPred&&state.draft&&state.draft.type==='pen'){
+      const _pp=state.draft.pts,_pn=_pp.length;
+      if(_pn>1){
+        const _pw=penWidths(_pp,state.draft.size);
+        const _oc=ctx.lineCap,_ow=ctx.lineWidth;
+        ctx.strokeStyle=state.draft.stroke;ctx.lineCap='round';ctx.lineWidth=_pw[_pn-1];
+        ctx.beginPath();ctx.moveTo(_pp[_pn-1][0],_pp[_pn-1][1]);ctx.lineTo(_penPred.x,_penPred.y);ctx.stroke();
+        ctx.lineCap=_oc;ctx.lineWidth=_ow;
+      }
     }
   }
+  if(clipRects&&clipRects.length)ctx.restore();
+  _lastVp={x:ev.x,y:ev.y,zoom:v.zoom};
 }
 // ====================== OVERLAY LAYER (ADR-0024) ======================
 // Second stacked canvas (#ov): all ephemeral chrome — selection outlines,

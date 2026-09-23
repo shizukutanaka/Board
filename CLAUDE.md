@@ -76,7 +76,8 @@ Board/
 │   ├── ADR-0024-layered-overlay-canvas.md  # シーン/オーバーレイの 2 層キャンバス分離
 │   ├── ADR-0025-minimap-content-cache.md  # ミニマップの _gridVer 連動ビットマップキャッシュ
 │   ├── ADR-0026-drag-damage-rect.md  # ドラッグ系ジェスチャの局所再描画 (accumulated world damage rect)
-│   └── ADR-0027-op-level-damage.md  # _apply/applyRemote の op 単位ダメージ伝播
+│   ├── ADR-0027-op-level-damage.md  # _apply/applyRemote の op 単位ダメージ伝播
+│   └── ADR-0028-pan-pixel-blit.md  # パンの自己 drawImage blit + 露出帯のみ再描画
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

@@ -2,6 +2,21 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.86] - 2026-09-23
+
+**ADR-0028: パンのピクセル blit (露出帯のみ再描画)** — 世界座標系が一様に
+シフトするパンは ADR-0026/0027 の局所 damage では表現できず、各 pointermove に
+全面再描画が必要だった最後の大きな操作。`_lastVp` (前フレームの effective
+viewport) を記録し、zoom 不変の x/y 変化を検出したら `canvas` 自己 drawImage で
+保持ピクセルを device px 単位に丸めてシフトし、新たに露出する端の帯
+(最大2矩形) + 保留 damage のみ clip 再描画。
+
+実機検証 (400 rect + 10 pen, 15px/回 × 8 連続パン): blit+帯描画 ~0.1–0.2ms/
+フレーム (同盤面の全面再走査 ~2–6ms)。全面再描画との差分 0.31% は全て丸めに
+よる ≤0.5px のサブピクセル AA 縁差で、欠落・ゴースト・シームはなし (effective
+viewport が設計上 ≤0.5px ずれ、次の全面再描画で自然に精緻化される)。
+リサイズ時は `_lastVp=null` — バッキングストア再割当で保持ピクセルが消えるため。
+
 ## [1.7.85] - 2026-09-23
 
 **ADR-0027: op 単位のダメージ伝播 (Store._apply / applyRemote の局所再描画)** —
