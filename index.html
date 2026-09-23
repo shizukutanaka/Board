@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.79 — Design Tokens
+   Board v1.7.80 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -751,7 +751,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.79';
+const V='1.7.80';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1688,18 +1688,23 @@ const Shape={
   }};
 
 // ====================== IMAGE CACHE ======================
-// Cache loaded Image objects by dataUrl to avoid re-decoding. Bounded LRU
-// (Map keeps insertion order): on access we re-insert to mark recent, and evict
-// the oldest past the cap so a board with many pasted images can't leak memory.
+// Cache loaded Image objects to avoid re-decoding. Bounded LRU (Map keeps
+// insertion order): on access we re-insert to mark recent, and evict the oldest
+// past the cap so a board with many pasted images can't leak memory.
 const _imgCache=new Map(),IMG_CACHE_MAX=60;
+// O(1) lookup key — a dataUrl can be ~4MB, so using it AS the Map key makes
+// every per-frame getImg() hash megabytes. mime head + byte length + base64
+// tail are collision-safe within a board and cost a fixed ~100 chars.
+function _imgKey(u){return u.slice(5,32)+':'+u.length+':'+u.slice(-64)}
 function getImg(dataUrl){
-  let img=_imgCache.get(dataUrl);
-  if(img){_imgCache.delete(dataUrl);_imgCache.set(dataUrl,img);return img}
+  const k=_imgKey(dataUrl);
+  let img=_imgCache.get(k);
+  if(img){_imgCache.delete(k);_imgCache.set(k,img);return img}
   img=new Image();
   img.onload=()=>invalidate();
   img.src=dataUrl;
   if(_imgCache.size>=IMG_CACHE_MAX)_imgCache.delete(_imgCache.keys().next().value);
-  _imgCache.set(dataUrl,img);
+  _imgCache.set(k,img);
   return img;
 }
 const STICKY_COLORS=['#FEF08A','#FBCFE8','#BBF7D0','#BFDBFE','#DDD6FE','#FED7AA'];
@@ -2689,6 +2694,39 @@ function openLabelEditor(hit,leftPx,topPx,bold){
 }
 
 // ---- Image import: drag-drop ----
+// Shared image ingest for drop + paste (ADR-0022): FileReader → guard → decode →
+// optional downscale → cb(dataUrl,naturalW,naturalH). A photo pasted straight from
+// a phone is several MB of base64 that then sits in IndexedDB, op history clones
+// and share links while the shape only ever displays ~400wu — re-encode past
+// IMG_IMPORT_MAX_DIM as WebP (alpha-capable, universal since Safari 14). Falls
+// back to the original bytes when WebP is unavailable or wouldn't be smaller.
+const IMG_IMPORT_MAX_DIM=2048;
+function _imgImportFile(f,cb){
+  const reader=new FileReader();
+  reader.onload=()=>{
+    if(reader.result.length > 4*1024*1024){
+      UI.toast(t('imgBig')+' ('+Math.round(reader.result.length/1024)+'KB)','warn');return;
+    }
+    const img=new Image();
+    img.onload=()=>{
+      let dataUrl=reader.result;
+      const nw=img.width,nh=img.height;
+      if(nw>IMG_IMPORT_MAX_DIM||nh>IMG_IMPORT_MAX_DIM){
+        const r=Math.min(IMG_IMPORT_MAX_DIM/nw,IMG_IMPORT_MAX_DIM/nh);
+        const cv=document.createElement('canvas');
+        cv.width=Math.max(1,Math.round(nw*r));cv.height=Math.max(1,Math.round(nh*r));
+        cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+        const wu=cv.toDataURL('image/webp',0.85);
+        if(/^data:image\/webp/.test(wu)&&wu.length<dataUrl.length)dataUrl=wu;
+      }
+      cb(dataUrl,nw,nh);
+    };
+    img.onerror=()=>UI.toast(t('imgErr'),'warn');
+    img.src=reader.result;
+  };
+  reader.onerror=()=>UI.toast(t('imgErr'),'warn');
+  reader.readAsDataURL(f);
+}
 canvas.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='copy'});
 canvas.addEventListener('drop',e=>{
   e.preventDefault();
@@ -2702,26 +2740,15 @@ canvas.addEventListener('drop',e=>{
   // reader.onload is async, so a shared counter would have reached its final value
   // (20×N) by the time ANY onload fires, stacking every image at the same spot.
   files.forEach((f,i)=>{
-    const reader=new FileReader();
-    reader.onload=()=>{
-      if(reader.result.length > 4*1024*1024){
-        UI.toast(t('imgBig')+' ('+Math.round(reader.result.length/1024)+'KB)','warn');return;
-      }
-      const img=new Image();
-      img.onload=()=>{
-        const maxDim=400;
-        let w=img.width,h=img.height;
-        if(w>maxDim||h>maxDim){const r=Math.min(maxDim/w,maxDim/h);w*=r;h*=r}
-        const sh=Shape.make('image',{x:wp.x+i*20,y:wp.y,w,h,dataUrl:reader.result});
-        Store.commit({op:'add',shape:sh});
-        state.selection.clear();state.selection.add(sh.id);
-        invalidate();UI.toast(t('imagePasted'),'ok');
-      };
-      img.onerror=()=>UI.toast(t('imgErr'),'warn');
-      img.src=reader.result;
-    };
-    reader.onerror=()=>UI.toast(t('imgErr'),'warn');
-    reader.readAsDataURL(f);
+    _imgImportFile(f,(dataUrl,nw,nh)=>{
+      const maxDim=400;
+      let w=nw,h=nh;
+      if(w>maxDim||h>maxDim){const r=Math.min(maxDim/w,maxDim/h);w*=r;h*=r}
+      const sh=Shape.make('image',{x:wp.x+i*20,y:wp.y,w,h,dataUrl});
+      Store.commit({op:'add',shape:sh});
+      state.selection.clear();state.selection.add(sh.id);
+      invalidate();UI.toast(t('imagePasted'),'ok');
+    });
   });
 });
 
@@ -2733,29 +2760,18 @@ window.addEventListener('paste',e=>{
   e.preventDefault();
   for(const item of items){
     const f=item.getAsFile();if(!f)continue;
-    const reader=new FileReader();
-    reader.onload=()=>{
-      if(reader.result.length > 4*1024*1024){
-        UI.toast(t('imgBig')+' ('+Math.round(reader.result.length/1024)+'KB)','warn');return;
-      }
-      const img=new Image();
-      img.onload=()=>{
-        const r=canvas.getBoundingClientRect();
-        const wp=G.s2w({x:r.width/2,y:r.height/2});
-        const maxDim=400;
-        let w=img.width,h=img.height;
-        if(w>maxDim||h>maxDim){const sc=Math.min(maxDim/w,maxDim/h);w*=sc;h*=sc}
-        const sh=Shape.make('image',{x:wp.x-w/2,y:wp.y-h/2,w,h,dataUrl:reader.result});
-        Store.commit({op:'add',shape:sh});
-        state.selection.clear();state.selection.add(sh.id);
-        invalidate();
-        UI.toast(t('imagePasted'),'ok');
-      };
-      img.onerror=()=>UI.toast(t('imgErr'),'warn');
-      img.src=reader.result;
-    };
-    reader.onerror=()=>UI.toast(t('imgErr'),'warn');
-    reader.readAsDataURL(f);
+    _imgImportFile(f,(dataUrl,nw,nh)=>{
+      const r=canvas.getBoundingClientRect();
+      const wp=G.s2w({x:r.width/2,y:r.height/2});
+      const maxDim=400;
+      let w=nw,h=nh;
+      if(w>maxDim||h>maxDim){const sc=Math.min(maxDim/w,maxDim/h);w*=sc;h*=sc}
+      const sh=Shape.make('image',{x:wp.x-w/2,y:wp.y-h/2,w,h,dataUrl});
+      Store.commit({op:'add',shape:sh});
+      state.selection.clear();state.selection.add(sh.id);
+      invalidate();
+      UI.toast(t('imagePasted'),'ok');
+    });
   }
 });
 

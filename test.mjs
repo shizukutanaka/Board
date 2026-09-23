@@ -304,6 +304,9 @@ const checks = [
   ['Escape closes open modal', html.includes("if(hp.dataset.open==='true')UI.toggleHelp()")],
   ['dashbtn covered by forced-colors', html.includes(".btn,.tool,.swatch,.dashbtn{border:1px solid ButtonText}")],
   ['image cache is bounded LRU', html.includes("IMG_CACHE_MAX") && html.includes("_imgCache.keys().next().value")],
+  // v1.7.80: ADR-0021 + ADR-0022
+  ['img cache keyed by O(1) fingerprint not full dataUrl', html.includes("function _imgKey(") && html.includes("const k=_imgKey(dataUrl)") && !html.includes("_imgCache.get(dataUrl)")],
+  ['image ingest shared + oversized import downscales via webp', html.includes("function _imgImportFile(") && html.includes("IMG_IMPORT_MAX_DIM") && html.includes("toDataURL('image/webp'")],
   ['load validates viewport finiteness', html.includes("Number.isFinite(+d.viewport.zoom)&&d.viewport.zoom>0")],
   ['load clamps viewport zoom to [MIN_ZOOM,MAX_ZOOM]', html.includes("state.viewport.zoom=clampZoom(+d.viewport.zoom)")],
   ['clampZoom is the single zoom-invariant source', html.includes("const clampZoom=z=>Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,z))") && html.includes("const nz=clampZoom(") && html.includes("const z=clampZoom(")],
@@ -618,7 +621,7 @@ const checks = [
   // v1.6.71: image import error handling
   ['imgErr i18n key in both locales', html.includes("imgErr:'画像を読み込めませんでした'") && html.includes("imgErr:'Image failed to load'")],
   ['drag-drop image import has img.onerror toast', html.includes("img.onerror=()=>UI.toast(t('imgErr'),'warn');") ],
-  ['drag-drop image import has reader.onerror toast', html.includes("reader.onerror=()=>UI.toast(t('imgErr'),'warn');\n    reader.readAsDataURL(f);")],
+  ['image import (shared _imgImportFile) has reader.onerror toast', html.includes("function _imgImportFile(") && html.includes("reader.onerror=()=>UI.toast(t('imgErr'),'warn');")],
   ['context menu deduplicates consecutive separators', html.includes(".filter((it,i,a)=>!(it==='sep'&&(i===0||i===a.length-1||a[i-1]==='sep')))")],
   ['doDuplicate does not clobber clipboard (uses _placeCopies, not state.clipboard=)', html.includes("const added=_placeCopies(sel);   // independent of state.clipboard") && html.includes("function _placeCopies(srcShapes")],
   // v1.6.71: import sites clear stale selection + wclock (mirror replace op's _apply)
@@ -1079,7 +1082,7 @@ try {
              getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
-             _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, _snapBoxIdx, dashArr, validShape,
+             _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, _snapBoxIdx, dashArr, validShape, _imgKey,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
@@ -1103,7 +1106,7 @@ try {
           getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
-          _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, _snapBoxIdx, dashArr, validShape,
+          _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, _snapBoxIdx, dashArr, validShape, _imgKey,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
@@ -2009,6 +2012,18 @@ try {
     assert.notStrictEqual(idx4, idx2, 'snap index: exclusion key change rebuilds');
     state.shapes = prevShapes; _invalidateGrid();
     console.log('  ✓ snap index: brute-force parity, _gridVer+key invalidation');
+  }
+
+  // v1.7.80 / ADR-0021: _imgKey fingerprint is O(1), injective for board-realistic inputs
+  {
+    const u1 = 'data:image/png;base64,' + 'A'.repeat(100) + 'TAILUNIQUE1';
+    const u2 = 'data:image/png;base64,' + 'A'.repeat(100) + 'TAILUNIQUE2';
+    const u3 = 'data:image/jpeg;base64,' + 'B'.repeat(50) + 'TAILUNIQUE1';
+    assert.strictEqual(_imgKey(u1), _imgKey(u1), '_imgKey deterministic');
+    assert.notStrictEqual(_imgKey(u1), _imgKey(u2), '_imgKey differs on tail');
+    assert.notStrictEqual(_imgKey(u1), _imgKey(u3), '_imgKey differs on mime/length');
+    assert.ok(_imgKey(u1).length < 200, '_imgKey output is small regardless of input');
+    console.log('  ✓ _imgKey: deterministic, injective on head/len/tail, small');
   }
 
   // v1.6.16: dashed/dotted line styles
