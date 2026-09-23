@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.89 — Design Tokens
+   Board v1.7.90 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -758,7 +758,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.89';
+const V='1.7.90';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3216,9 +3216,12 @@ function _queryGrid(grid,pt){
 function pickTop(wp){
   if(state.shapes.length>40){
     if(!_grid)_grid=_buildGrid(state.shapes);
-    const cands=_queryGrid(_grid,wp);
-    for(let i=state.shapes.length-1;i>=0;i--){const s=state.shapes[i];if(s.type!=='frame'&&cands.has(s)&&G.hit(s,wp))return s;}
-    for(let i=state.shapes.length-1;i>=0;i--){const s=state.shapes[i];if(s.type==='frame'&&cands.has(s)&&G.hit(s,wp))return s;}
+    // ADR-0032: iterate candidates in reverse z-order (grid.idx) instead of
+    // filtering all shapes twice — O(cells neighbourhood), not O(board).
+    const cands=[..._queryGrid(_grid,wp)];
+    cands.sort((a,b)=>(_grid.idx.get(b)|0)-(_grid.idx.get(a)|0));
+    for(const s of cands)if(s.type!=='frame'&&G.hit(s,wp))return s;
+    for(const s of cands)if(s.type==='frame'&&G.hit(s,wp))return s;
     return null;
   }
   for(let i=state.shapes.length-1;i>=0;i--){
@@ -3378,7 +3381,13 @@ function endSelect(wp){
       w:Math.abs(m.x2-m.x1),h:Math.abs(m.y2-m.y1)};
     if(r.w>2||r.h>2){
       state.selection.clear();
-      for(const s of state.shapes)if(G.marqueeHit(s,r))state.selection.add(s.id);
+      // ADR-0032: a fully-contained shape's cells are a subset of the marquee's
+      // cells, so grid candidates are a superset of every possible hit — the
+      // O(n) per-pointermove scan shrinks to the rect's neighbourhood.
+      const cands=state.shapes.length>40
+        ?_gridRectCandidates(_grid||(_grid=_buildGrid(state.shapes)),r)
+        :state.shapes;
+      for(const s of cands)if(G.marqueeHit(s,r))state.selection.add(s.id);
     }
   }
 }
