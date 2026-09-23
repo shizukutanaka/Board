@@ -116,6 +116,7 @@ Board/
 - [ADR-0064](docs/ADR-0064-gesture-readout.md) 変換中ライブ寸法ピル (state.readout、applyResize/moveDelta/rotate で設定、ptr.down でゲート)
 - [ADR-0065](docs/ADR-0065-connector-rebind.md) 端点の再結合/解除 (p1/p2 常時ハンドル、bindPreview、_endPointBind)
 - [ADR-0066](docs/ADR-0066-shift-axis-move.md) Shift+drag 軸拘束移動 (moveDelta 支配軸ゼロ化、objectSnap スキップ)
+- [ADR-0067](docs/ADR-0067-shape-edge-projection.md) 結合点の輪郭投影 (diamond/ellipse コンター式、_edgePt)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

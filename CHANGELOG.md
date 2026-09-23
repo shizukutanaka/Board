@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.125]
+
+### 修正
+- **コネクタ結合点が真の輪郭に着地** (ADR-0067)。`_edgePt` が従来 bbox
+  辺に投影していたため diamond では輪郭の無い bbox 角に矢が刺さって
+  いた。diamond は `|dx|/rx+|dy|/ry=1`、ellipse は `hypot(dx/rx,dy/ry)=1`
+  のコンター式で解決 — 直線・elbow 両方の `connEnds` 経路すべてに反映。
+
 ## [1.7.124]
 
 ### 追加

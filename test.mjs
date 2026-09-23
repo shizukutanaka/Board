@@ -428,6 +428,8 @@ const checks = [
   // v1.7.124: ADR-0066 Shift+drag axis-constrained move
   ['shift axis constraint in moveDelta + objectSnap skipped', html.includes("if(Math.abs(dx)>=Math.abs(dy))dy=0;else dx=0;")&&html.includes('moveDelta(wp,shift)')&&html.includes('doMove(wp,e.shiftKey)')&&html.includes('endSelect(wp,e.shiftKey)')],
   ['moveAxis i18n ja+en + help row', html.includes("moveAxis:'軸拘束移動'")&&html.includes("moveAxis:'Constrain move axis'")&&html.includes("['⇧ + drag',k.moveAxis]")],
+  // v1.7.125: ADR-0067 per-type edge projection
+  ['edge projection: diamond/ellipse contour formula', html.includes("sh.type==='diamond'?1/((Math.abs(dx)/(_rx||1e-6))")&&html.includes("sh.type==='ellipse'?1/(Math.hypot(dx/(_rx||1e-6),dy/(_ry||1e-6))||1e-6)")],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
@@ -3336,6 +3338,24 @@ try {
     Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(live))]});
     ptr.dragStartShapes=null;
     console.log('  ✓ shift axis move: dominant-axis zero + free fallback (4 asserts)');
+  }
+
+  // ADR-0067: bound connector endpoint lands on the true contour
+  {
+    const d=Shape.make('diamond',{x:0,y:0,w:100,h:100,stroke:'#000',fill:'#fff'});
+    const e=Shape.make('ellipse',{x:300,y:0,w:100,h:100,stroke:'#000',fill:'#fff'});
+    const a1=Shape.make('arrow',{x1:0,y1:0,x2:200,y2:50,a:d.id});
+    const a2=Shape.make('arrow',{x1:0,y1:0,x2:200,y2:50,a:e.id});
+    Store.commit({op:'addMany',shapes:[d,e,a1,a2]});
+    // endpoint toward (200,50) from centre (50,50): direction (150,0) → diamond hits (50,50)+(1,0)*50=(100,50)
+    const p1=connEnds(byId(a1.id));
+    const u=Math.abs(p1.x1-50)/50,v=Math.abs(p1.y1-50)/50;
+    assert.ok(Math.abs(u+v-1)<0.01,'arrow lands on diamond contour |dx|/rx+|dy|/ry≈1');
+    const p2=connEnds(byId(a2.id));
+    const m=Math.hypot((p2.x1-350)/50,(p2.y1-50)/50);
+    assert.ok(Math.abs(m-1)<0.01,'arrow lands on ellipse contour');
+    Store.commit({op:'del',shapes:[d,e,a1,a2].map(s=>JSON.parse(JSON.stringify(s)))});
+    console.log('  ✓ edge projection: diamond/ellipse true contour (2 asserts)');
   }
 
   // validPatch recurses: nested poison in a remote `upd` (gated by validPatch alone)

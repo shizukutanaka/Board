@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.124';
+const V='1.7.125';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1668,7 +1668,11 @@ function _edgePt(sh,fx,fy){
   if(rot){const a=-rot*Math.PI/180,c=Math.cos(a),sn=Math.sin(a),dx=fx-cx,dy=fy-cy;px=cx+dx*c-dy*sn;py=cy+dx*sn+dy*c;}
   const dx=px-cx,dy=py-cy;
   if(!dx&&!dy)return{x:cx,y:cy};
-  const k=Math.min(Math.abs(dx)>1e-6?(ub.w/2)/Math.abs(dx):1e9,Math.abs(dy)>1e-6?(ub.h/2)/Math.abs(dy):1e9);
+  const _rx=ub.w/2,_ry=ub.h/2;
+  // ADR-0067: diamond/ellipse land on their true contour, not the bbox edge.
+  const k=sh.type==='diamond'?1/((Math.abs(dx)/(_rx||1e-6))+(Math.abs(dy)/(_ry||1e-6))||1e-6)
+       :sh.type==='ellipse'?1/(Math.hypot(dx/(_rx||1e-6),dy/(_ry||1e-6))||1e-6)
+       :Math.min(Math.abs(dx)>1e-6?_rx/Math.abs(dx):1e9,Math.abs(dy)>1e-6?_ry/Math.abs(dy):1e9);
   let ex=cx+dx*k,ey=cy+dy*k;
   if(rot){const a=rot*Math.PI/180,c=Math.cos(a),sn=Math.sin(a),dX=ex-cx,dY=ey-cy;ex=cx+dX*c-dY*sn;ey=cy+dX*sn+dY*c;}
   return{x:ex,y:ey};
