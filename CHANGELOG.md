@@ -2,6 +2,15 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.128]
+
+### 追加
+- **quick-connect** (ADR-0070)。選択ツールで図形にホバーすると4辺中点に
+  接続ドットを表示 (draw.io parity) — ドットからドラッグで始点結合済み
+  矢印を一発作成。locked/connector/pen 除外、hover 変化時は overlay のみ
+  再描画 (ADR-0024 層分離でシーンコストゼロ)。commit は `add` op で
+  undo・同期は既存経路。
+
 ## [1.7.127]
 
 ### 変更

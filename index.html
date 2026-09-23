@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.127';
+const V='1.7.128';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2328,6 +2328,17 @@ function drawOverlay(){
     c.fillStyle='#fff';c.fillText(r.label,px,py+ph/2);
     c.restore();
   }
+  const _qs=_qconnShape();                                             // ADR-0070
+  if(_qs){
+    c.save();
+    c.fillStyle=getCSS('--accent-contrast');
+    c.strokeStyle='#fff';c.lineWidth=1.5;
+    for(const d of _qdots(_qs)){
+      const sp=G.w2s(d);
+      c.beginPath();c.arc(sp.x,sp.y,5,0,Math.PI*2);c.fill();c.stroke();
+    }
+    c.restore();
+  }
   if(ptr.down&&state.bindPreview){                                     // ADR-0065
     const t=byId(state.bindPreview);
     if(t){
@@ -2636,6 +2647,25 @@ function _curveSegs(s){
 function _curveLabelXY(s){
   const e=connEnds(s),cc=_curveCtrl(e);
   return{x:0.25*e.x1+0.5*cc.x+0.25*e.x2,y:0.25*e.y1+0.5*cc.y+0.25*e.y2};
+}
+// ADR-0070: quick-connect dots on the hovered shape's 4 edge midpoints.
+function _qconnShape(){
+  if(state.tool!=='select'||ptr.down||!state.hover)return null;
+  const s=byId(state.hover);
+  if(!s||s.locked||s.type==='line'||s.type==='arrow'||s.type==='pen')return null;
+  return s;
+}
+function _qdots(s){
+  const b=G.bbox(s);
+  return[{x:b.x+b.w/2,y:b.y},{x:b.x+b.w,y:b.y+b.h/2},{x:b.x+b.w/2,y:b.y+b.h},{x:b.x,y:b.y+b.h/2}];
+}
+function _qdotAt(wp){
+  const s=_qconnShape();if(!s)return null;
+  const z=state.viewport.zoom||1;
+  for(const d of _qdots(s)){
+    if(Math.hypot((wp.x-d.x)*z,(wp.y-d.y)*z)<=10)return{id:s.id,x:d.x,y:d.y};
+  }
+  return null;
 }
 // Variable stroke width from spacing (velocity proxy); render-only, no model change.
 function penWidths(pts,size){
@@ -3180,6 +3210,13 @@ canvas.addEventListener('pointerdown',e=>{
           }
         }
       }
+      const qd=_qdotAt(wp);                                   // ADR-0070
+      if(qd){
+        state.draft=Shape.make('arrow',{x1:qd.x,y1:qd.y,x2:qd.x,y2:qd.y});
+        state.draft.a=qd.id;
+        ptr.dragKind='qline';
+        break;
+      }
       pickOrMarquee(wp,e);break;
     case 'pen':beginPen(wp,e);break;
     case 'rect':case 'ellipse':case 'diamond':case 'sticky':case 'frame':beginRectLike(wp);break;
@@ -3225,7 +3262,7 @@ canvas.addEventListener('pointermove',e=>{
       canvas.style.cursor=top?(top.locked?'not-allowed':'move'):'default';
       // state.hover feeds nothing visual (cursor is set above) — no invalidate:
       // on a heavy board this used to repaint the whole scene per shape boundary crossed.
-      if(top?.id!==state.hover)state.hover=top?.id||null;
+      if(top?.id!==state.hover){state.hover=top?.id||null;invalidateOverlay()}   // ADR-0070: qconn dots track hover
     }
     return;
   }
@@ -3262,6 +3299,7 @@ canvas.addEventListener('pointermove',e=>{
         }else invalidate();
       }else if(ptr.dragKind==='move')doMove(wp,e.shiftKey);
       else if(ptr.dragKind==='marquee'){state.marquee={x1:ptr.wx0,y1:ptr.wy0,x2:wp.x,y2:wp.y};invalidateOverlay()}
+      else if(ptr.dragKind==='qline')contLineLike(wp,e.shiftKey);   // ADR-0070
       break;
     case 'pen':{
       for(const ce of coalescedSamples(e))contPen(G.s2w({x:ce.offsetX,y:ce.offsetY}),ce);
@@ -3317,6 +3355,8 @@ canvas.addEventListener('pointerup',e=>{
           }
         }
         ptr.rotOrig=null;
+      }else if(ptr.dragKind==='qline'){
+        endLineLike();                                             // ADR-0070
       }else{
         endSelect(wp,e.shiftKey);
       }
