@@ -758,7 +758,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.86';
+const V='1.7.87';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1814,9 +1814,142 @@ function _penCached(s){
 // Pen on the MAIN canvas → drawImage the cached bitmap; exports/minimap and
 // drafts keep the vector path.
 function drawPenMaybeCached(s,c){
-  if(c!==ctx||s===state.draft||state.viewport.zoom*DPR>4){drawPen(s,c);return}
+  if(s===state.draft){if(c===ctx&&state.viewport.zoom*DPR<=4)drawPenDraft(s);else drawPen(s,c);return}
+  if(c!==ctx||state.viewport.zoom*DPR>4){drawPen(s,c);return}
   const e=_penCached(s);
   if(e&&e.cv)c.drawImage(e.cv,e.bx,e.by,e.bw,e.bh);else drawPen(s,c);
+}
+
+// ====================== DRAFT INK STAMP (ADR-0029) ======================
+// The live pen draft used to re-stroke all n points every frame — O(n) per
+// pointermove on long strokes. Since each new sample only affects the last few
+// segments (width smoothing is a 3-tap filter; the quad at segment i uses
+// w[i],w[i+1] — both stable once pts[i+3] exists), we stamp committed segments
+// onto an offscreen bitmap and draw only the ~3-segment live tail vectorially.
+// Pressure mode: raw widths use GLOBAL pressure extrema, so a new mn/mx
+// invalidates every committed width -> full rebuild (rare). Velocity-fallback
+// raw[i] needs pts i±1, so segment i commits once pts[i+3] exists (i<=n-4).
+let _inkD=null;
+function _inkSegDraw(cc,p,w,i){
+  cc.lineWidth=(w[i]+w[i+1])/2;
+  const mx=(p[i][0]+p[i+1][0])/2,my=(p[i][1]+p[i+1][1])/2;
+  cc.beginPath();
+  cc.moveTo(i>1?(p[i-1][0]+p[i][0])/2:p[0][0],i>1?(p[i-1][1]+p[i][1])/2:p[0][1]);
+  cc.quadraticCurveTo(p[i][0],p[i][1],mx,my);
+  cc.stroke();
+}
+// Rebuild the stamp bitmap + full width arrays (fresh stroke, extrema flip,
+// zoom-bucket crossing, or a shrink). Commits segments 1..n-4.
+function _inkRebuild(s,d){
+  const p=s.pts,n=p.length,R=_penRes();
+  let mnx=Infinity,mny=Infinity,mxx=-Infinity,mxy=-Infinity;
+  for(const q of p){if(q[0]<mnx)mnx=q[0];if(q[1]<mny)mny=q[1];if(q[0]>mxx)mxx=q[0];if(q[1]>mxy)mxy=q[1];}
+  const pad=(s.size||2)*2+64;   // stroke reach + headroom before the next grow
+  d.bx=mnx-pad;d.by=mny-pad;d.bw=(mxx-mnx)+pad*2;d.bh=(mxy-mny)+pad*2;
+  // Snap the raster origin to the current device grid so the 1:1 blit lands on
+  // whole pixels — a fractional dest offset resamples AA edges on every frame.
+  const zr=state.viewport.zoom*DPR;
+  if(Math.abs(R-zr)<1e-9){
+    d.bx=Math.round((d.bx-state.viewport.x)*zr)/zr+state.viewport.x;
+    d.by=Math.round((d.by-state.viewport.y)*zr)/zr+state.viewport.y;
+  }
+  d.cv=document.createElement('canvas');
+  d.cv.width=Math.max(2,Math.ceil(d.bw*R));d.cv.height=Math.max(2,Math.ceil(d.bh*R));
+  d.c2=d.cv.getContext('2d');
+  d.c2.setTransform(R,0,0,R,-d.bx*R,-d.by*R);
+  d.c2.strokeStyle=s.stroke;d.c2.lineCap='round';d.c2.lineJoin='round';
+  d.R=R;
+  d.w=penWidths(p,s.size);
+  const stop=Math.max(0,n-4);   // stampable segments: 1..n-4 (see drawPenDraft)
+  for(let i=1;i<=stop;i++)_inkSegDraw(d.c2,p,d.w,i);
+  d.c=stop;
+}
+// Grow the stamp canvas when the stroke exits the allocated world rect.
+function _inkGrow(d,pad){
+  const p=d.pts;
+  let mnx=d.bx,mny=d.by,mxx=d.bx+d.bw,mxy=d.by+d.bh;
+  for(let i=Math.max(0,p.length-4);i<p.length;i++){const q=p[i];if(q[0]<mnx)mnx=q[0];if(q[1]<mny)mny=q[1];if(q[0]>mxx)mxx=q[0];if(q[1]>mxy)mxy=q[1];}
+  mnx-=pad;mny-=pad;mxx+=pad;mxy+=pad;
+  const zr=state.viewport.zoom*DPR;
+  if(Math.abs(d.R-zr)<1e-9){
+    mnx=Math.round((mnx-state.viewport.x)*zr)/zr+state.viewport.x;
+    mny=Math.round((mny-state.viewport.y)*zr)/zr+state.viewport.y;
+  }
+  const ncv=document.createElement('canvas');
+  ncv.width=Math.max(2,Math.ceil((mxx-mnx)*d.R));ncv.height=Math.max(2,Math.ceil((mxy-mny)*d.R));
+  const n2=ncv.getContext('2d');
+  n2.drawImage(d.cv,(d.bx-mnx)*d.R,(d.by-mny)*d.R);
+  n2.setTransform(d.R,0,0,d.R,-mnx*d.R,-mny*d.R);
+  n2.strokeStyle=d.stroke;n2.lineCap='round';n2.lineJoin='round';
+  d.cv=ncv;d.c2=n2;d.bx=mnx;d.by=mny;d.bw=mxx-mnx;d.bh=mxy-mny;
+}
+function drawPenDraft(s){
+  const p=s.pts,n=p.length;
+  if(n<2){drawPen(s);return}
+  const R=_penRes();
+  let d=_inkD;
+  if(!d||d.pts!==p||d.stroke!==s.stroke||d.size!==s.size||!d.R||R>d.R*1.5||R<d.R/1.5||n<d.n){
+    d=_inkD={pts:p,stroke:s.stroke,size:s.size,c:0,n:0,badPr:false,mn:Infinity,mx:-Infinity,w:[],raw:[],cv:null,R:0,usePr:false};
+  }
+  // Ingest new points: track pressure extrema to detect mode flip / invalidation.
+  let extGrew=false;
+  for(let i=d.n;i<n;i++){
+    const pr=p[i][2];
+    if(!Number.isFinite(pr))d.badPr=true;
+    else{if(pr<d.mn){d.mn=pr;extGrew=true}if(pr>d.mx){d.mx=pr;extGrew=true}}
+  }
+  d.n=n;
+  const usePr=!d.badPr&&(d.mx-d.mn)>0.05;
+  const base=Math.max(0.5,s.size||2),REF=base*3+8,LO=0.45,PLO=0.35;
+  // Pressure-mode raw[] uses global extrema — any new mn/mx (or a mode flip)
+  // invalidates every width, so rebuild rather than partial-update.
+  if(!d.cv||usePr!==d.usePr||(usePr&&extGrew)){d.usePr=usePr;_inkRebuild(s,d);}
+  else{
+    // Velocity-mode tail updates: raw[i] needs neighbours i±1, w[i] needs raw
+    // i±1 — refresh the tail entries that just gained their last neighbour.
+    if(!usePr){
+      for(let i=Math.max(0,n-4);i<n;i++){
+        let dd=0,cn=0;
+        if(i>0){dd+=Math.hypot(p[i][0]-p[i-1][0],p[i][1]-p[i-1][1]);cn++}
+        if(i<n-1){dd+=Math.hypot(p[i+1][0]-p[i][0],p[i+1][1]-p[i][1]);cn++}
+        const sp=cn?dd/cn:0,t=Math.min(1,sp/REF);
+        d.raw[i]=base*(1-(1-LO)*t);
+      }
+    }else{
+      for(let i=Math.max(0,n-4);i<n;i++)d.raw[i]=base*Math.max(LO,Math.min(1,PLO+(1-PLO)*p[i][2]));
+    }
+    for(let i=Math.max(0,n-4);i<n;i++)d.w[i]=(d.raw[Math.max(0,i-1)]+d.raw[i]+d.raw[Math.min(n-1,i+1)])/3;
+    // Grow the bitmap if the stroke exited the allocated rect.
+    const pad=(s.size||2)*2+8;
+    const q=p[n-1];
+    if(q[0]<d.bx||q[0]>d.bx+d.bw||q[1]<d.by||q[1]>d.by+d.bh)_inkGrow(d,pad);
+    // Commit newly-stable segments: segment i bakes w[i],w[i+1]; w[i+1] needs
+    // raw[i+2]; velocity-mode raw[i+2] needs pts[i+3] → stable only when i<=n-4.
+    while(d.c<n-4){d.c++;_inkSegDraw(d.c2,p,d.w,d.c);}
+  }
+  // Frame: blit committed bitmap + live tail (segments d.c+1..n-2 + final line).
+  const _z=state.viewport.zoom*DPR;
+  if(d.R===_z){
+    // 1:1 device-space blit snapped to whole pixels — composites without
+    // resampling, AA-identical to drawing the same segments on the main ctx.
+    ctx.save();ctx.setTransform(1,0,0,1,0,0);
+    ctx.drawImage(d.cv,Math.round((d.bx-state.viewport.x)*_z),Math.round((d.by-state.viewport.y)*_z));
+    ctx.restore();
+  }
+  else ctx.drawImage(d.cv,d.bx,d.by,d.bw,d.bh);
+  const w=d.w;
+  ctx.strokeStyle=s.stroke;ctx.lineCap='round';ctx.lineJoin='round';
+  const i0=Math.max(1,d.c+1);
+  let px,py;
+  if(i0>1){px=(p[i0-1][0]+p[i0][0])/2;py=(p[i0-1][1]+p[i0][1])/2}else{px=p[0][0];py=p[0][1];}
+  for(let i=i0;i<n-1;i++){
+    const mx=(p[i][0]+p[i+1][0])/2,my=(p[i][1]+p[i+1][1])/2;
+    ctx.lineWidth=(w[i]+w[i+1])/2;
+    ctx.beginPath();ctx.moveTo(px,py);ctx.quadraticCurveTo(p[i][0],p[i][1],mx,my);ctx.stroke();
+    px=mx;py=my;
+  }
+  ctx.lineWidth=(w[n-2]+w[n-1])/2;
+  ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(p[n-1][0],p[n-1][1]);ctx.stroke();
 }
 
 // ====================== RENDER ======================
