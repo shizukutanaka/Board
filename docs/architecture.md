@@ -91,23 +91,36 @@ op 型 (全て可逆; `_apply(op, false)` で完全に戻る):
 }
 ```
 
-### 5. Render
-RAF ループ。`needsRender` フラグで再描画をゲート。毎フレーム `draw()` を呼ぶわけではない — `invalidate()` が立ってる時だけ。
+### 5. Render (v1.7.x — ADR-0024〜0033 で再構築)
 
-描画順:
-1. 背景クリア
+RAF ループ。`needsRender`/`needsOverlay` フラグで再描画をゲート。**2 層キャンバス**:
+`draw()` (シーン, `#c`) と `drawOverlay()` (選択枠・ガイド・マーキー・ピアカーソル等の
+エフェメラル chrome, `#ov`) を分離し、オーバーレイのみの変化でシーン全面再描画を
+回避する (ADR-0024)。
+
+`draw()` の経路は優先順でフォールバック:
+1. **ズームプレビュー** (ADR-0030/0033): ピンチ/ctrl+wheel 中は `_pinchVp` の
+   スナップショット bitmap をスケール blit。シーン再走査なし。
+2. **パン blit** (ADR-0028): パン中は前フレームの自己 drawImage でピクセルを
+   ずらし、露出した帯だけ `_dmgPair` clip で再描画。
+3. **ダメージ矩形** (ADR-0026/0027): ドラッグ系ジェスチャや `_apply`/`applyRemote`
+   由来の world 空間汚れ矩形を clip して局所再描画。交差判定は `_queryGrid`。
+4. **全量**: 上記いずれでもない通常フレーム。
+
+シーン側の描画順:
+1. 背景クリア (ダメージ経路では clip 内のみ)
 2. world→screen transform 設定
 3. グリッド (zoom が十分なら)
-4. フレーム (最初に描画して他の shape が上に乗る)
-5. 全 shape (z順、viewport culling で範囲外スキップ)
-6. draft (if any)
-7. スマート整列ガイド (drag 中のみ)
-8. screen space で選択枠 + 8 handle (line/arrow は端点 2 つ)
-9. marquee (if any)
-10. ミニマップ (独立 canvas)
+4. `_grid` 空間索引で可視 shape を列挙 (ADR-0016) → z順にソート → `drawShape`
+   - ペンは `_penCache` ビットマップ (ADR-0018)、bbox は O(1) シグネチャメモ化 (ADR-0019)
+   - 下書きペンは `_inkCv` に確定セグメントを増分スタンプ + 生きた末尾だけベクトル (ADR-0029)
+   - 画像は `_imgCache` — O(1) フィンガープリントキー (ADR-0021/0035)
+5. オーバーレイ canvas (`#ov`) 側に: 選択枠 + 8 handle、整列ガイド、マーキー、
+   レーザー、ピアカーソル/選択 (ADR-0024)
+6. ミニマップ (独立 canvas) — 中身は `_gridVer` 連動ビットマップキャッシュ (ADR-0025)
 
 ### 6. Persist
-IndexedDB (`board` / `docs` / `main`)。500ms デバウンス。`beforeunload` で最終セーブ。`Ctrl+S` で即時保存。読み込み時に `validShape` で全 shape を検証。
+IndexedDB (`board` / stores `docs` + `imgs`, DB_VER=2)。500ms デバウンス。`visibilitychange`→hidden で最終セーブ (`beforeunload` はモバイルで不可靠)。`Ctrl+S` で即時保存。読み込み時に `validShape` で全 shape を検証。ADR-0031 で画像バイトは `dataUrl` から content-hash キーの `imgs` blob ストアへ分離 — doc レコードは `img` 参照のみ保持し、`DOC_KEY`/`DOC_KEY+':prev'` が blob を共有 (重複書き込みなし、孤児は save 時 GC)。save 失敗は `_saveErrMsg` で `QuotaExceededError` を識別してトースト。
 
 ## 座標系
 
@@ -130,21 +143,29 @@ bbox 先置き (quick reject) → shape 型別詳細。`tol = 6/zoom` でズー�
 未回転で描画されるので当たり判定も未回転にしないと `s.x/s.w=undefined` で中心が NaN になり
 永久に当たらなくなる(表示=当たり判定パリティ)。
 
-ペンは line segments の距離チェック。エンドポイント: Ramer-Douglas-Peucker (ε=0.5px) で commit 時に decimation。
+ペンは line segments の距離チェック。エンドポイント: Ramer-Douglas-Peucker で commit 時に decimation — ε は `0.5/zoom` のズーム適応 (ADR-0034: ズームイン時の精密筆跡を保持)。実装はスタック駆動の反復形 (再帰でないので長ストロークでスタック溢れしない)。
 
-**Spatial index** (`v1.6.11`): board に 40+ shape 以上ある場合、`pickTop` は `_buildGrid` でグリッドセルインデックスを構築し `_queryGrid` で候補を絞る。`_apply` ごとに `_invalidateGrid()` で無効化、次の `pickTop` で再構築。
+**Spatial index** (`v1.6.11` 導入、v1.7.x で拡張): board に 40+ shape 以上ある場合、`pickTop`・マーキー選択 (ADR-0032)・draw() の可視列挙 (ADR-0016)・ダメージ矩形の交差判定が `_buildGrid` で構築したグリッドセル索引を `_queryGrid` で使う。`_apply` ごとに `_invalidateGrid()` で無効化 (`_gridVer` 加算)、次のクエリで再構築。`_gridVer` はミニマップキャッシュ (ADR-0025) やスナップ索引 (ADR-0020) の無効化キーとしても共有される。
 
 ## フレームレート
 
 DPR キャップ 3 (Retina 2x が実効上限)。
 requestAnimationFrame 1 本。ユーザー操作中も常に 60fps を目標。
 
-重い場合の緩和:
-- `needsRender` でスキップ
+重い場合の緩和 (累積する施策の上位層):
+- `needsRender`/`needsOverlay` でスキップ — アイドル時の描画コストはゼロ
+- **2 層キャンバス** (ADR-0024): overlay-only 変化はシーンを触らない
+- **プレビュービットマップ** (ADR-0028/0030/0033): パン/ズーム中はシーン再走査せず
+  スナップショットを合成
+- **ダメージ矩形** (ADR-0026/0027): ドラッグ/外部 op は汚れ矩形のみ再描画
+- **空間索引** (ADR-0016): 可視列挙が `_grid` ベース (線形走査ではない)
+- **ビットマップキャッシュ** (ADR-0018/0025): ペンストロークとミニマップ中身は
+  rasterize 済みを再利用
 - グリッドは `gsZ<6` で描画スキップ + `opacity` で fade
 - 選択枠は screen space で描画 (transform 切替 1 回のみ)
-- Viewport culling: `inView(s, visibleWorldRect())` で範囲外 shape をスキップ
 - getCSS: `_cssCache` でテーマカラーを memoize (テーマ変更時に `clearCSSCache`)
+- `_penCache` ペン bbox メモ化 (ADR-0019)、`_imgKey` O(1) 画像キー (ADR-0021)、
+  `_snapIndex` ソート済みスナップ索引 (ADR-0020) でイベント駆動の線形走査を解消
 
 ## DPR
 
