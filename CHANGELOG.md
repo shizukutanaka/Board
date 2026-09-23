@@ -2,6 +2,26 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.100] - 2026-09-23
+
+**ADR-0042: SVG インポート** — DOMParser で SVG を走査し対応要素
+(rect/circle/ellipse/line/polyline/polygon/path/text) を Board 図形に写像。
+`<svg` で始まるテキストのペースト、`.svg`/`image/svg+xml` のドロップと
+ファイルピッカーの3入口。transform 累積行列で座標に焼き込み、viewBox は
+最大幅 800px に正規化、path 曲線は固定分割の polyline 近似。
+非対応要素 (use/defs/filter/gradient/外部参照) はスキップ、
+`SVG_MAX_ELEMS=5000`/`SVG_MAX_PTS=2000` の天井で巨大 SVG も安全。
+`addMany` 単一 op で挿入 (undo 一発)。
+
+## [1.7.99] - 2026-09-23
+
+**ADR-0041: 図形の DOM ミラー (spec P1 ギャップ解消)** — スクリーンリーダーが
+盤面の図形を「一覧」として走査できるよう、視覚的に隠した `#shapeMirror`
+region に `<ul>` を生成 (各 `<li><button>` = `インデックス. describeShape`)。
+Enter でその図形を選択+中央寄せ+アナウンス。再構築は `_gridVer` 連動のみ
+(フレーム毎の DOM 更新なし)、`MIRROR_MAX=300` で上限、超過時は末尾に
+「N 個は一覧に未掲載」を明示。innerHTML は使わない。
+
 ## [1.7.98] - 2026-09-23
 
 **ADR-0040: 共有リンクの長さ警告と生成失敗フィードバック** — `exportToUrl` の
