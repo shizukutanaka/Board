@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.119';
+const V='1.7.120';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -860,7 +860,7 @@ const I18N={
     undone:'元に戻した',redone:'やり直した',created:'作成',editLabel:'選択中の図形を編集',
     confirmClear:'すべて削除しますか？',
     ctxCopy:'コピー',ctxPaste:'貼り付け',ctxDuplicate:'複製',
-    ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',
+    ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',
     ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
     ctxSendBackward:'背面へ',ctxSendBack:'最背面へ',
     ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxLock:'ロック',ctxUnlock:'ロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
@@ -936,7 +936,7 @@ const I18N={
     undone:'Undone',redone:'Redone',created:'Created',editLabel:'Edit selected shape',
     confirmClear:'Delete everything?',
     ctxCopy:'Copy',ctxPaste:'Paste',ctxDuplicate:'Duplicate',
-    ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',
+    ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',
     ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
     ctxSendBackward:'Send backward',ctxSendBack:'Send to back',
     ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxLock:'Lock',ctxUnlock:'Unlock',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
@@ -1129,6 +1129,10 @@ const G={
         if(s.fill)return d<=1;
         return Math.abs(d-1)<0.15;}
       case 'line':case 'arrow':{
+        if(s.elbow){
+          const pts=_elbowPts(s);
+          for(let i=1;i<pts.length;i++)if(distToSeg(p,pts[i-1],pts[i])<=tol+3)return true;
+          return false;}
         const e=connEnds(s);
         return distToSeg(p,{x:e.x1,y:e.y1},{x:e.x2,y:e.y2})<=tol+3;}
       case 'pen':{
@@ -2404,7 +2408,7 @@ function _drawBoxLabel(s,c){
 // SVG export. World-space → scales with zoom like every other label.
 function _drawConnLabel(s,c){
   if(!s.label)return;
-  const e=connEnds(s),mx=(e.x1+e.x2)/2,my=(e.y1+e.y2)/2;
+  const m=s.elbow?_elbowLabelXY(s):connEnds(s),mx=s.elbow?m.x:(m.x1+m.x2)/2,my=s.elbow?m.y:(m.y1+m.y2)/2;
   c.save();
   c.font='12px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';
   const w=c.measureText(s.label).width,pad=4;
@@ -2445,6 +2449,7 @@ function drawShape(s,c){
       if(s.stroke)c.stroke();
       _drawBoxLabel(s,c);break;}
     case 'line':{
+      if(s.elbow){_polyline(c,_elbowPts(s));c.stroke();_drawConnLabel(s,c);break}
       const e=connEnds(s);c.beginPath();c.moveTo(e.x1,e.y1);c.lineTo(e.x2,e.y2);c.stroke();_drawConnLabel(s,c);break;}
     case 'arrow':
       drawArrow(s,c);_drawConnLabel(s,c);break;
@@ -2518,15 +2523,58 @@ function roundRect(c,x,y,w,h,r){
 function drawArrow(s,c){
   c=c||ctx;
   const e=connEnds(s);
-  c.beginPath();c.moveTo(e.x1,e.y1);c.lineTo(e.x2,e.y2);c.stroke();
   const ah=Math.max(6,(s.size||2)*3);
+  if(s.elbow){
+    const pts=_elbowPts(s);_polyline(c,pts);c.stroke();
+    const L=pts[pts.length-1],P=pts[pts.length-2];
+    const ang=Math.atan2(L.y-P.y,L.x-P.x)||Math.atan2(e.y2-e.y1,e.x2-e.x1);
+    _arrowHeadShape(c,L.x,L.y,ang,ah,s.stroke);
+    return;
+  }
+  c.beginPath();c.moveTo(e.x1,e.y1);c.lineTo(e.x2,e.y2);c.stroke();
   const ang=Math.atan2(e.y2-e.y1,e.x2-e.x1);
+  _arrowHeadShape(c,e.x2,e.y2,ang,ah,s.stroke);
+}
+// ADR-0062: orthogonal (Manhattan) route for elbow connectors.
+// Bound ends exit along the edge's outward normal (stub); free ends take the
+// dominant axis toward the other end. Stub tips are joined by one bend —
+// degenerate cases collapse to an L or a straight line.
+function _elbowPts(s){
+  const e=connEnds(s);
+  const a=s.a&&byId(s.a),b=s.b&&byId(s.b);
+  const dom=Math.abs(e.x2-e.x1)>=Math.abs(e.y2-e.y1);
+  const _dir=(sh,px,py,fb)=>{
+    if(!sh)return fb;
+    const bb=G.bbox(sh),cx=bb.x+bb.w/2,cy=bb.y+bb.h/2;
+    const dx=px-cx,dy=py-cy;
+    return Math.abs(dx/(bb.w||1))>=Math.abs(dy/(bb.h||1))?{x:Math.sign(dx)||1,y:0}:{x:0,y:Math.sign(dy)||1};
+  };
+  const d1=_dir(a,e.x1,e.y1,dom?{x:Math.sign(e.x2-e.x1)||1,y:0}:{x:0,y:Math.sign(e.y2-e.y1)||1});
+  const d2=_dir(b,e.x2,e.y2,{x:-d1.x,y:-d1.y});
+  const STUB=Math.max(16,(s.size||2)*8);
+  const q1={x:e.x1+d1.x*STUB,y:e.y1+d1.y*STUB},q2={x:e.x2+d2.x*STUB,y:e.y2+d2.y*STUB};
+  const pts=[{x:e.x1,y:e.y1},q1];
+  const mid=d1.x!==0?{x:q2.x,y:q1.y}:{x:q1.x,y:q2.y};
+  if((mid.x!==q1.x||mid.y!==q1.y)&&(mid.x!==q2.x||mid.y!==q2.y))pts.push(mid);
+  pts.push(q2,{x:e.x2,y:e.y2});
+  return pts;
+}
+// Label anchor: midpoint between the two stub tips (inner segment region).
+function _elbowLabelXY(s){
+  const pts=_elbowPts(s);
+  return{x:(pts[1].x+pts[pts.length-2].x)/2,y:(pts[1].y+pts[pts.length-2].y)/2};
+}
+function _polyline(c,pts){
+  c.beginPath();c.moveTo(pts[0].x,pts[0].y);
+  for(let i=1;i<pts.length;i++)c.lineTo(pts[i].x,pts[i].y);
+}
+function _arrowHeadShape(c,x,y,ang,ah,stroke){
   const a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5;
   c.beginPath();
-  c.moveTo(e.x2,e.y2);
-  c.lineTo(e.x2+Math.cos(a1)*ah,e.y2+Math.sin(a1)*ah);
-  c.lineTo(e.x2+Math.cos(a2)*ah,e.y2+Math.sin(a2)*ah);
-  c.closePath();c.fillStyle=s.stroke||'#0F172A';c.fill();
+  c.moveTo(x,y);
+  c.lineTo(x+Math.cos(a1)*ah,y+Math.sin(a1)*ah);
+  c.lineTo(x+Math.cos(a2)*ah,y+Math.sin(a2)*ah);
+  c.closePath();c.fillStyle=stroke||'#0F172A';c.fill();
 }
 // Variable stroke width from spacing (velocity proxy); render-only, no model change.
 function penWidths(pts,size){
@@ -5191,18 +5239,37 @@ function buildSVG(shapes,paper){
         els.push(`<polygon points="${X+W/2+ox},${Y+oy} ${X+W+ox},${Y+H/2+oy} ${X+W/2+ox},${Y+H+oy} ${X+ox},${Y+H/2+oy}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}/>`);
         if(s.label)els.push(`<text x="${X+W/2+ox}" y="${Y+H/2+oy+7}" font-family="system-ui,sans-serif" font-size="14" text-anchor="middle" fill="${stroke}"${a}${rT}>${_esc(s.label)}</text>`);
         break;}
-      case 'line':
-        els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}/>`);
-        els.push(_connLabelSVG(s,X1,Y1,X2,Y2,ox,oy,stroke,paper));
-        break;
+      case 'line':{
+        if(s.elbow){
+          const pts=_elbowPts(s),spts=pts.map(p=>`${_num(p.x+ox)},${_num(p.y+oy)}`).join(' ');
+          els.push(`<polyline points="${spts}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}/>`);
+          const lm=_elbowLabelXY(s);
+          els.push(_connLabelSVG(s,lm.x,lm.y,lm.x,lm.y,ox,oy,stroke,paper));
+        }else{
+          els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}/>`);
+          els.push(_connLabelSVG(s,X1,Y1,X2,Y2,ox,oy,stroke,paper));
+        }
+        break;}
       case 'arrow':{
-        els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}/>`);
         const ah=Math.max(6,(SZ||2)*3);
-        const ang=Math.atan2(Y2-Y1,X2-X1);
-        const a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5;
-        const tx=X2+ox,ty=Y2+oy;
-        els.push(`<polygon points="${tx},${ty} ${tx+Math.cos(a1)*ah},${ty+Math.sin(a1)*ah} ${tx+Math.cos(a2)*ah},${ty+Math.sin(a2)*ah}" fill="${stroke}"${a}/>`);
-        els.push(_connLabelSVG(s,X1,Y1,X2,Y2,ox,oy,stroke,paper));
+        if(s.elbow){
+          const pts=_elbowPts(s),spts=pts.map(p=>`${_num(p.x+ox)},${_num(p.y+oy)}`).join(' ');
+          els.push(`<polyline points="${spts}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}/>`);
+          const Lp=pts[pts.length-1],Pp=pts[pts.length-2];
+          const ang=Math.atan2(Lp.y-Pp.y,Lp.x-Pp.x)||Math.atan2(Y2-Y1,X2-X1);
+          const a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5;
+          const tx=Lp.x+ox,ty=Lp.y+oy;
+          els.push(`<polygon points="${tx},${ty} ${tx+Math.cos(a1)*ah},${ty+Math.sin(a1)*ah} ${tx+Math.cos(a2)*ah},${ty+Math.sin(a2)*ah}" fill="${stroke}"${a}/>`);
+          const lm=_elbowLabelXY(s);
+          els.push(_connLabelSVG(s,lm.x,lm.y,lm.x,lm.y,ox,oy,stroke,paper));
+        }else{
+          els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}/>`);
+          const ang=Math.atan2(Y2-Y1,X2-X1);
+          const a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5;
+          const tx=X2+ox,ty=Y2+oy;
+          els.push(`<polygon points="${tx},${ty} ${tx+Math.cos(a1)*ah},${ty+Math.sin(a1)*ah} ${tx+Math.cos(a2)*ah},${ty+Math.sin(a2)*ah}" fill="${stroke}"${a}/>`);
+          els.push(_connLabelSVG(s,X1,Y1,X2,Y2,ox,oy,stroke,paper));
+        }
         break;}
       case 'pen':{
         if(!Array.isArray(s.pts)||!s.pts.length)break;
@@ -6123,6 +6190,7 @@ const UI={
       has&&['ctxDuplicate','⌘D',doDuplicate],
       has&&['ctxCopyStyle','⌥C',copyStyle],
       state.styleClipboard&&has&&['ctxPasteStyle','⌥V',pasteStyle],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked})&&['ctxElbow','',toggleElbow],
       has&&['ctxDelete','⌫',doDelete],
       has&&'sep',
       has&&state.selection.size>1&&['ctxGroup','⌘G',doGroup],
@@ -6578,6 +6646,17 @@ const _sbf={};
 function _sfbCapture(p){for(const id of state.selection){const s=byId(id);if(s&&!s.locked&&!(id+p in _sbf))_sbf[id+p]=s[p]}}
 function _sfbFlush(p,v){const b=[],a=[];for(const id of state.selection){const k=id+p;if(k in _sbf){const s=byId(id);if(s&&!s.locked){b.push({id,[p]:_sbf[k]});a.push({id,[p]:v});}delete _sbf[k];}}if(b.length&&b.some(x=>x[p]!==v)){const origSel=[...state.selection];Store._recordCommitted({op:'style',before:b,after:a});if(origSel.length)state.history[state.histIdx].origSel=origSel;}}
 
+// ADR-0062: per-connector elbow toggle via style op — undo + wclock sync free.
+function toggleElbow(){
+  const before=[],after=[];
+  for(const id of state.selection){
+    const s=byId(id);if(!s||(s.type!=='line'&&s.type!=='arrow')||s.locked)continue;
+    before.push({id,elbow:s.elbow||0});
+    after.push({id,elbow:s.elbow?0:1});
+    s.elbow=s.elbow?0:1;
+  }
+  if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
+}
 function copyStyle(){
   // Copy style from the first selected shape
   const ids=[...state.selection];
@@ -6757,7 +6836,7 @@ const Minimap=(()=>{
         case 'rect':{const rx=s.x*sc+ox,ry=s.y*sc+oy,rw=s.w*sc,rh=s.h*sc;if(s.fill)sx.fillRect(rx,ry,rw,rh);sx.strokeRect(rx,ry,rw,rh);break}
         case 'ellipse':sx.beginPath();sx.ellipse(s.x*sc+ox+s.w*sc/2,s.y*sc+oy+s.h*sc/2,Math.abs(s.w*sc/2),Math.abs(s.h*sc/2),0,0,Math.PI*2);if(s.fill)sx.fill();sx.stroke();break;
         case 'diamond':{const dcx=s.x*sc+ox+s.w*sc/2,dcy=s.y*sc+oy+s.h*sc/2;sx.beginPath();sx.moveTo(dcx,s.y*sc+oy);sx.lineTo(s.x*sc+ox+s.w*sc,dcy);sx.lineTo(dcx,s.y*sc+oy+s.h*sc);sx.lineTo(s.x*sc+ox,dcy);sx.closePath();if(s.fill)sx.fill();sx.stroke();break;}
-        case 'line':case 'arrow':{const me=connEnds(s);sx.beginPath();sx.moveTo(me.x1*sc+ox,me.y1*sc+oy);sx.lineTo(me.x2*sc+ox,me.y2*sc+oy);sx.stroke();break}
+        case 'line':case 'arrow':{if(s.elbow){const pts=_elbowPts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<pts.length;i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}const me=connEnds(s);sx.beginPath();sx.moveTo(me.x1*sc+ox,me.y1*sc+oy);sx.lineTo(me.x2*sc+ox,me.y2*sc+oy);sx.stroke();break}
         case 'pen':if(s.pts.length<2)break;sx.beginPath();sx.moveTo(s.pts[0][0]*sc+ox,s.pts[0][1]*sc+oy);for(let i=1;i<s.pts.length;i++)sx.lineTo(s.pts[i][0]*sc+ox,s.pts[i][1]*sc+oy);sx.stroke();break;
         case 'text':case 'sticky':{const rx2=s.x*sc+ox,ry2=s.y*sc+oy,rw2=Math.max(2,s.w*sc),rh2=Math.max(2,s.h*sc);sx.fillStyle=s.type==='sticky'?(s.color||'#FEF08A'):(s.fill||getCSS('--brand'));sx.fillRect(rx2,ry2,rw2,rh2);break}
         case 'image':{const rx3=s.x*sc+ox,ry3=s.y*sc+oy,rw3=Math.max(2,s.w*sc),rh3=Math.max(2,s.h*sc);const img=s.dataUrl?_imgCache.get(_imgKey(s.dataUrl)):null;if(img&&img.complete&&img.naturalWidth)sx.drawImage(img,rx3,ry3,rw3,rh3);else{sx.fillStyle='#CBD5E1';sx.fillRect(rx3,ry3,rw3,rh3)}break}

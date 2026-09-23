@@ -412,6 +412,10 @@ const checks = [
   ['diamond tool in KEYMAP + toolbar + help', html.includes("e:'eraser',d:'diamond'")&&html.includes('data-tool="diamond"')&&html.includes("['D',k.diamond]")],
   ['diamond draw/hit/svg/minimap paths', html.includes("case 'diamond':{")&&html.includes("case'diamond':s=Shape.make('diamond'")&&html.includes('Math.abs(d-1)<0.15')],
   ['diamond i18n ja+en', html.includes("diamond:'ダイヤ'")&&html.includes("diamond:'Diamond'")],
+  // v1.7.120: ADR-0062 elbow connectors
+  ['elbow route helper + toggle in ctx menu', html.includes('function _elbowPts(s)')&&html.includes('function toggleElbow()')&&html.includes("['ctxElbow','',toggleElbow]")],
+  ['elbow draw/hit/svg/minimap paths', html.includes('if(s.elbow){_polyline(c,_elbowPts(s))')&&html.includes('s.elbow){\n          const pts=_elbowPts')&&html.includes('<polyline points=')&&html.includes('stroke-linejoin="round"')],
+  ['elbow i18n ja+en', html.includes("ctxElbow:'エルボー (直角)'")&&html.includes("ctxElbow:'Elbow (right-angle)'")],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
@@ -628,7 +632,7 @@ const checks = [
   ['connEnds helper derives bound endpoints', html.includes("function connEnds") && html.includes("function _edgePt")],
   ['G.bbox line uses connEnds', html.includes("const e=connEnds(s);\n      const x=Math.min(e.x1,e.x2)")],
   ['G.hit line uses connEnds', html.includes("const e=connEnds(s);\n        return distToSeg")],
-  ['drawArrow uses connEnds', html.includes("const e=connEnds(s);\n  c.beginPath();c.moveTo(e.x1,e.y1)")],
+  ['drawArrow uses connEnds', html.includes("function drawArrow(s,c){\n  c=c||ctx;\n  const e=connEnds(s);")],
   ['endLineLike binds endpoints dropped on a shape', html.includes("const ba=_bindAt(d.x1,d.y1),bb=_bindAt(d.x2,d.y2)") && html.includes("function _bindAt")],
   ['bound endpoints expose no resize handle', html.includes("if(!s.a)h.push({id:'p1'") && html.includes("if(!s.b)h.push({id:'p2'")],
   ['SVG export derives bound endpoints', html.includes("const _e=connEnds(s);\n    const X1=_num(_e.x1)")],
@@ -1244,7 +1248,7 @@ try {
              doAlign, doFlip, snapV, snapPt,
              getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
-             copyStyle, pasteStyle, applyStyleToSelection,
+             copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, _elbowPts,
              _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa: () => _teTa, zoomAt,
@@ -1271,7 +1275,7 @@ try {
           doAlign, doFlip, snapV, snapPt,
           getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
-          copyStyle, pasteStyle, applyStyleToSelection,
+          copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, _elbowPts,
           _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa, zoomAt,
@@ -3208,6 +3212,37 @@ try {
     assert.ok(svg.includes('<polygon'),'svg polygon emitted');
     Store.undo();assert.strictEqual(state.shapes.length,0,'undo removes diamond');
     console.log('  ✓ diamond shape: draw/hit/svg/undo (8 asserts)');
+  }
+
+  // ADR-0062: elbow connectors — Manhattan route, hit segments, svg polyline, style-op toggle.
+  {
+    state.shapes=[];_invalidateGrid();state.selection=new Set();state.history=[];state.histIdx=-1;
+    const A=Shape.make('rect',{x:0,y:0,w:40,h:40,z:1});
+    const B=Shape.make('rect',{x:200,y:100,w:40,h:40,z:2});
+    Store.commit({op:'add',shape:A});Store.commit({op:'add',shape:B});
+    const Ar={id:'Ar',type:'arrow',x1:0,y1:0,x2:0,y2:0,z:3,stroke:'#000',size:2,opacity:1,dash:0,a:A.id,b:B.id};
+    Store.commit({op:'add',shape:Ar});
+    const ar=byId('Ar');
+    // straight by default; toggle via selection
+    state.selection=new Set([ar.id]);toggleElbow();
+    assert.ok(ar.elbow===1,'toggle on');
+    const pts=_elbowPts(ar);
+    assert.ok(pts.length>=4&&pts.length<=5,'manhattan points count');
+    // every segment axis-aligned
+    for(let i=1;i<pts.length;i++){const p=pts[i-1],q=pts[i];assert.ok(p.x===q.x||p.y===q.y,'axis-aligned segment '+i)}
+    // stubs exit along edge normals: first seg shares an axis with endpoint
+    assert.ok(pts[0].x===pts[1].x||pts[0].y===pts[1].y,'stub1 axis-aligned');
+    // hit on a middle segment, miss in the diagonal void
+    const midSeg={x:(pts[2].x+pts[3].x)/2,y:(pts[2].y+pts[3].y)/2};
+    assert.ok(G.hit(ar,midSeg),'elbow mid-seg hit');
+    assert.ok(!G.hit(ar,{x:(pts[0].x+pts[4].x)/2,y:(pts[0].y+pts[4].y)/2-3}),'diagonal void miss');
+    const svg=buildSVG([ar],'#fff');
+    assert.ok(svg.includes('<polyline'),'svg elbow polyline');
+    assert.ok(svg.includes('<polygon'),'svg arrowhead present');
+    toggleElbow();
+    assert.ok(!ar.elbow,'toggle off → straight');
+    assert.ok(G.hit(ar,{x:(connEnds(ar).x1+connEnds(ar).x2)/2,y:(connEnds(ar).y1+connEnds(ar).y2)/2}),'straight mid hit');
+    console.log('  ✓ elbow connector: manhattan route/hit/svg/toggle (9 asserts)');
   }
 
   // validPatch recurses: nested poison in a remote `upd` (gated by validPatch alone)

@@ -2,6 +2,16 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.120]
+
+### 追加
+- **エルボー (直角) コネクタ** (ADR-0062)。選択した line/arrow をコンテキスト
+  メニュー「エルボー (直角)」で折れ線化 — 結合端はエッジ法線方向のスタブを
+  出し、中間点で直交結合 (Manhattan 経路)。arrow のヘッドは最終セグメント
+  方向、ヒット判定は折れ線全セグメント、ラベルはスタブ先端の中点、SVG は
+  `<polyline>` 出力。`style` op 記録で undo/同期/property-LWW が既存経路で
+  動作。diamond (ADR-0061) と合わせてフローチャートが Board 内で完結。
+
 ## [1.7.119]
 
 ### 追加
