@@ -2,6 +2,29 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.77] - 2026-09-23
+
+**ADR-0018: ペンストロークのビットマップキャッシュ** — `drawPen` は可変幅インクのため
+毎フレーム全ポイントを再ラスタライズしていた (penWidths + セグメント毎 stroke)。
+コミット済みストロークは op 間で不変なので、オフスクリーン canvas に一度描き
+`drawImage` で使い回す。
+
+### Performance
+- `drawPenMaybeCached`: メイン canvas のペン描画をビットマップ経路に
+  (Excalidraw/Konva の shape レベルラスタライズ先例)。実測 draw() p50:
+  4000 ペン全可視で **175ms → 15ms (11.5×)**
+- 有効性は O(1) シグネチャ (pts 参照 + 長さ + 先頭/中央/末尾の絶対座標 +
+  stroke + size) で判定 — `Shape.translate`/`flipShape` の in-place 変異も検知。
+  ミス時はそのフレームはベクトル描画にフォールバックし、シグネチャが安定した
+  次フレームで一度だけ再ラスタライズ (ドラッグ中の canvas churn を回避)
+- ラスタライズ解像度は zoom 連動 (`zoom*DPR` を 0.25..2 にクランプ) —
+  縮小表示で余分なピクセルを食わない。連続ズームでは 1.5× バケット単位でのみ
+  再レンダー
+- LRU + ピクセル予算 12M px (≈48MB RGBA)。エクスポート・ミニマップ・
+  高倍率 (zoom*DPR>4)・draft は従来のベクトル経路で忠実性維持
+- 同一盤面のスクリーンショット差分 (zoom 0.8): 差分画素 66/737,280 = **0.009%**
+  (ストローク縁 AA リサンプルのみ)
+
 ## [1.7.76] - 2026-09-23
 
 **FT-20 (ADR-0017): WebRTC 接続失敗のユーザーフィードバック** — 手動シグナリングで

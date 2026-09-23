@@ -82,6 +82,12 @@ Board/
     付箋テキストの毎フレーム再計算 (measureText) を避けるための純粋なメモ化キャッシュで、
     `state` は変更しない。shape オブジェクト参照は Store が in-place で mutate するため
     キー (text/maxWidth/fontSize) が変わらない限りキャッシュは有効なまま安全。
+  - 例外: `drawPenMaybeCached()` / `_penCached()` は `_penCache` (id → オフスクリーン
+    canvas + シグネチャ, LRU, ピクセル予算 12M px) を書き換える。コミット済みペン
+    ストロークの毎フレーム再ラスタライズ (ADR-0018) を避けるためのキャッシュで、
+    `state` は変更しない。有効性は O(1) シグネチャ (pts 参照 + 長さ + 先頭/中央/
+    末尾の絶対座標 + stroke + size) で判定し、in-place 変異 (translate / flip) も
+    検知される。ミス時はそのフレームはベクトル描画にフォールバックする。
   - `drawShape()` に新たな副作用を追加する前に、この例外リストを更新すること。
 
 ## RULES — やっていいこと / ダメなこと
