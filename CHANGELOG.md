@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.90] - 2026-09-23
+
+**ADR-0032: ヒットテスト/マーキーのグリッド索引流用** — ADR-0016 の空間索引を
+pointer イベント駆動の2経路へ適用。マーキー選択は `pointermove` 毎の全走査を
+矩形近傍候補へ縮退 (完全包含シェイプのセルは必ず矩形内 → 結果は全走査と一致、
+3061シェイプ盤面で 200 ステップ **14.6ms→2.0ms、7.3×**)。`pickTop` は候補を
+`_grid.idx` 降順反復に置き換え、全シェイプ2回のフィルタ走査を解消。
+
 ## [1.7.89] - 2026-09-23
 
 **ADR-0031: 画像バイト列の永続化層分離 (FT-15 ステージ1)** — `dataUrl.length>128`
