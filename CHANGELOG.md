@@ -2,6 +2,17 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.88] - 2026-09-23
+
+**ADR-0030: ピンチズームのスケールプレビュー** — 連続ピンチ中に残っていた最後の
+全面再描画発生源を解消。2 本指での最初の `zoomAt` が canvas を一度だけ
+スナップショット(`_pinchSnap` + 開始 viewport)し、以降のピンチフレームは
+シーン走査なしにジェスチャ蓄積変換でのスケール blit のみで即応答
+(地図/写真アプリの blurry-preview→crisp-settle 定石)。開始時のプリスティン
+バッファから毎回 blit するためブラーは累積しない。終了時
+(`_resetPinch` で指が 2 本未満)に破棄+全面再描画 — 終了フレームは直接描画と
+ピクセル完全一致(実測 diff=0)。
+
 ## [1.7.87] - 2026-09-23
 
 **ADR-0029: 下書きペンの増分インクスタンプ** — ペン入力中の下書きがポインタ

@@ -758,7 +758,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.87';
+const V='1.7.88';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1961,6 +1961,7 @@ function drawPenDraft(s){
 // frame() clears the id on entry so that a mid-frame invalidate() reschedules once.
 let needsRender=true,needOverlay=true,_rafId=0;
 let _damage=null;   // ADR-0026: accumulated world-space dirty rect during drag gestures; null = full repaint
+let _pinchSnap=null,_pinchVp=null;   // ADR-0030: pinch-start canvas copy + viewport for scaled preview
 function invalidate(){_damage=null;needsRender=true;needOverlay=true;if(!_rafId)_rafId=requestAnimationFrame(frame);Minimap.schedule()}
 // ADR-0026: gesture-local repaint — producers report the world-space rect they
 // dirtied and frame() clips the scene pass to its accumulated union (never
@@ -1993,6 +1994,7 @@ function resize(){
   canvas.height=Math.round(r.height*DPR);
   ocanvas.width=canvas.width;ocanvas.height=canvas.height;
   _lastVp=null;   // backing-store reallocation drops all retained pixels (ADR-0028)
+  _pinchSnap=null;_pinchVp=null;   // ADR-0030: stale-sized snapshot must not blit
   invalidate();
 }
 // devicePixelRatio can change with NO resize event — dragging the window between monitors
@@ -2057,6 +2059,18 @@ function draw(){
   const v=state.viewport;
   const dmg=_damage;
   const z=v.zoom*DPR;
+  if(_pinchSnap&&_pinchVp){
+    // ADR-0030: map the pinch-start frame through the gesture transform —
+    // device px p carried world w=p/z0+vp0, which now lands at p*z1/z0+
+    // (vp0-v)*z1. One scaled blit replaces the whole scene pass while
+    // pinching; _lastVp=null so the post-gesture frame repaints for real.
+    const z0=_pinchVp.zoom*DPR;
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+    ctx.drawImage(_pinchSnap,0,0,W,H,(_pinchVp.x-v.x)*z,(_pinchVp.y-v.y)*z,W*z/z0,H*z/z0);
+    _lastVp=null;
+    return;
+  }
   const pv=_lastVp;
   const panned=pv&&pv.zoom===v.zoom&&(pv.x!==v.x||pv.y!==v.y);
   let ev=v,clipRects=null;
@@ -3111,12 +3125,22 @@ canvas.addEventListener('pointermove',e=>{
 },{capture:true,passive:true});
 let _pinchPrev=0;
 // Reset pinch state when fewer than 2 pointers
-const _resetPinch=()=>{if(_pointers.size<2)_pinchPrev=0};
+const _resetPinch=()=>{if(_pointers.size<2){_pinchPrev=0;if(_pinchSnap){_pinchSnap=null;_pinchVp=null;invalidate();}}};
 canvas.addEventListener('pointerup',_resetPinch);
 canvas.addEventListener('pointercancel',_resetPinch);
 
 function zoomAt(sp,delta){
   const v=state.viewport;
+  // ADR-0030: the first zoom of a multi-touch pinch snapshots the canvas once;
+  // every pinch frame then blits this pristine buffer under the gesture's
+  // accumulated transform instead of rescanning the scene. Continuous pinch
+  // moves are a blurry-but-instant preview; the gesture-end frame repaints crisp.
+  if(_pointers.size>=2&&!_pinchSnap){
+    _pinchSnap=document.createElement('canvas');
+    _pinchSnap.width=canvas.width;_pinchSnap.height=canvas.height;
+    _pinchSnap.getContext('2d').drawImage(canvas,0,0);
+    _pinchVp={x:v.x,y:v.y,zoom:v.zoom};
+  }
   const wp=G.s2w(sp);
   const nz=clampZoom(v.zoom*Math.exp(delta));
   v.x=wp.x-sp.x/nz;
