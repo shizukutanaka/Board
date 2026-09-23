@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.94] - 2026-09-23
+
+**ADR-0036: ミニマップのドラッグスクローブ** — クリック単発ナビゲートを
+`pointerdown`/`pointermove`/`pointerup` へ移行。ボタンを押したまま動かすと
+viewport が連続追従 (Figma/tldraw 標準)。`setPointerCapture` でポインタが
+ミニマップ外にはみ出てもドラッグ継続。単発クリックは従来どおり1回移動。
+
 ## [1.7.93] - 2026-09-23
 
 **ADR-0035: 画像参照の輸出入ハイジーン** — ADR-0031 の後始末3件。

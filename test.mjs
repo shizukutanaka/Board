@@ -478,6 +478,9 @@ const checks = [
   // v1.6.44: minimap canvas has role=img and descriptive aria-label
   ['minimap canvas has role=img', html.includes('id="minimap"') && html.includes('role="img"')],
   ['minimap canvas has descriptive aria-label', html.includes('aria-label="Board minimap — click to navigate"')],
+  // v1.7.94: ADR-0036 minimap drag-scrub
+  ['minimap scrubs on held pointermove', html.includes("mc.addEventListener('pointermove'") && html.includes('if(_mmNav)_mmGo(e)')],
+  ['minimap scrub captures pointer + releases on up', html.includes('mc.setPointerCapture(e.pointerId)') && html.includes('mc.releasePointerCapture(e.pointerId)')],
   // v1.6.44: x,y decorative label is aria-hidden
   ['x,y status label is aria-hidden (decorative)', html.includes('<span class="lbl" aria-hidden="true">x,y</span>')],
   // v1.6.45: connection status is aria-live (announces online/offline to SR)
