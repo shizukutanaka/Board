@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.95 — Design Tokens
+   Board v1.7.96 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -758,7 +758,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.95';
+const V='1.7.96';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -5004,11 +5004,14 @@ const Share={
     const enc=decodeURIComponent(h.slice(3));
     const parts=enc.split('&'),opt={};
     for(const p of parts.slice(1)){const i=p.indexOf('=');if(i>0)opt[p.slice(0,i)]=p.slice(i+1)}
+    // ADR-0038: every reject path toasts and clears the hash — a corrupt/tampered
+    // link must not leave the user staring at an untouched board with the bad URL
+    // still pinned in the address bar.
+    const clearHash=()=>{try{history.replaceState(null,'',location.pathname)}catch(_){}};
     let kind=parts[0].slice(0,2),body=parts[0].slice(2);
     let json;
     try{
       if(kind==='e:'){
-        const clearHash=()=>{try{history.replaceState(null,'',location.pathname)}catch(_){}};
         if(!opt.k){UI.toast(t('shareNoKey'),'err');clearHash();return false}
         if(!Share.canEncrypt()){UI.toast(t('shareNoCrypto'),'err');clearHash();return false}
         const bin=Share._b64uDec(body),iv=bin.slice(0,12),ct=bin.slice(12);
@@ -5029,12 +5032,12 @@ const Share={
         json=await new Response(stream).text();
       }else if(kind==='j:'){
         json=decodeURIComponent(escape(atob(body)));
-      }else{return false}
+      }else{UI.toast(t('invalidBoard'),'err');clearHash();return false}
       const data=JSON.parse(json);
-      if(!Array.isArray(data.shapes))return false;
+      if(!Array.isArray(data.shapes)){UI.toast(t('invalidBoard'),'err');clearHash();return false}
       // validate each shape — reject anything without id/type/z
       const valid=data.shapes.filter(validShape);
-      if(!valid.length)return false;
+      if(!valid.length){UI.toast(t('invalidBoard'),'err');clearHash();return false}
       if(state.shapes.length&&!confirm(t('importConfirm')))return false;
       // Reversible whole-board swap: a mistaken import is undoable (Ctrl+Z), so the
       // shared link can't silently destroy the board it replaced (§3.9 self-overwrite).
@@ -5055,7 +5058,7 @@ const Share={
       UI.toast(t('imported'),'ok');
       Persist.schedule();
       return true;
-    }catch{UI.toast(t('invalidBoard'),'err');return false}
+    }catch{UI.toast(t('invalidBoard'),'err');clearHash();return false}   // ADR-0038: corrupt link — don't pin it in the URL either
   }};
 // v1.6.89: sync browser-tab title whenever the board name changes.
 // Without this, the tab always shows "index.html" regardless of what the user named their
