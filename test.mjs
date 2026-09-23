@@ -933,7 +933,7 @@ const checks = [
     html.includes("Inviting side, step 1") && html.includes("Joining side, step 1")],
   // v1.7.58 (ADR-0009): byId() O(1) id index
   ['byId is a lazy Map index invalidated via the shared _invalidateGrid choke point',
-    html.includes("function _invalidateGrid(){_grid=null;_idIndex=null;}") &&
+    html.includes("function _invalidateGrid(){_grid=null;_idIndex=null;_gridVer++;}") &&
     html.includes("if(!_idIndex||_idIndex.size!==state.shapes.length){_idIndex=new Map();for(const s of state.shapes)_idIndex.set(s.id,s);}")],
   ['exportPDF convertToBlob rejection routes to the same exportFailed toast as the toBlob(null) path',
     html.includes("off.convertToBlob({type:'image/png'}).then(fin,()=>fin(null));")],
@@ -1079,7 +1079,7 @@ try {
              getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
-             _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
+             _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, _snapBoxIdx, dashArr, validShape,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
@@ -1103,7 +1103,7 @@ try {
           getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
-          _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
+          _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, _snapBoxIdx, dashArr, validShape,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
@@ -1967,6 +1967,48 @@ try {
     assert.strictEqual(r.dx, -3); assert.strictEqual(r.dy, -3);
     assert.strictEqual(r.guides.length, 2, 'x and y snap emit two guides');
     console.log('  ✓ alignment guides: edge/centre snap, nearest wins, dual-axis, out-of-range no-op');
+  }
+
+  // v1.7.79 / ADR-0020: snap-target edge index — move/resize object-snap rebuilt
+  // the all-shapes edge list per pointermove; now built once per _gridVer+key and
+  // queried by binary search. Results must equal the old brute-force scan.
+  {
+    const shapes = [];
+    for (let i = 0; i < 40; i++) shapes.push({ id:'s'+i, type:'rect', z:i,
+      x:(i%8)*130, y:((i/8)|0)*90, w:60, h:40, stroke:'#123', size:2 });
+    // brute-force reference: same rule as the original snapBox scan
+    const bf = (mov, skip, tol) => {
+      const mX=[mov.x,mov.x+mov.w/2,mov.x+mov.w],mY=[mov.y,mov.y+mov.h/2,mov.y+mov.h];
+      let bx=null,by=null;
+      for (const s of shapes){ if(skip.has(s.id))continue; const b=G.bbox(s); if(!b)continue;
+        for(const m of mX)for(const t of[b.x,b.x+b.w/2,b.x+b.w]){const d=t-m;if(Math.abs(d)<=tol&&(!bx||Math.abs(d)<Math.abs(bx.d)))bx={d};}
+        for(const m of mY)for(const t of[b.y,b.y+b.h/2,b.y+b.h]){const d=t-m;if(Math.abs(d)<=tol&&(!by||Math.abs(d)<Math.abs(by.d)))by={d};} }
+      return {dx:bx?bx.d:0, dy:by?by.d:0};
+    };
+    const prevShapes = state.shapes;
+    state.shapes = shapes; _invalidateGrid();
+    const skip = new Set(['s0','s1']);
+    let ok = 0, tot = 0;
+    for (let i = 0; i < 60; i++) {
+      const mov = {x:i*17.3%900, y:i*29.7%500, w:40+i%3*10, h:20+i%5*8};
+      const idx = _snapIndex('move', 'test', s=>skip.has(s.id));
+      const got = _snapBoxIdx(mov, idx, 8);
+      const exp = bf(mov, skip, 8);
+      tot++; if (Math.abs(got.dx-exp.dx)<1e-9 && Math.abs(got.dy-exp.dy)<1e-9) ok++;
+    }
+    assert.strictEqual(ok, tot, 'snap index: binary-search results identical to brute-force scan');
+    // index invalidates when _gridVer bumps (any mutation path)
+    const idx1 = _snapIndex('move', 'test', s=>skip.has(s.id));
+    _invalidateGrid();
+    const idx2 = _snapIndex('move', 'test', s=>skip.has(s.id));
+    assert.notStrictEqual(idx2, idx1, 'snap index: rebuilds after _invalidateGrid');
+    const idx3 = _snapIndex('move', 'test', s=>skip.has(s.id));
+    assert.strictEqual(idx3, idx2, 'snap index: stable between mutations');
+    // different exclusion key → rebuild
+    const idx4 = _snapIndex('move', 'other-key', s=>false);
+    assert.notStrictEqual(idx4, idx2, 'snap index: exclusion key change rebuilds');
+    state.shapes = prevShapes; _invalidateGrid();
+    console.log('  ✓ snap index: brute-force parity, _gridVer+key invalidation');
   }
 
   // v1.6.16: dashed/dotted line styles

@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.78 — Design Tokens
+   Board v1.7.79 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -751,7 +751,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.78';
+const V='1.7.79';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2232,11 +2232,11 @@ function resizeSnap(orig,handle,wp){
   if(state.snap||orig.rotate||handle==='p1'||handle==='p2')return{x:wp.x,y:wp.y,guides:[]};
   const tol=SNAP_OBJ/state.viewport.zoom;
   const movesX=/[ew]/.test(handle),movesY=/[ns]/.test(handle);
-  let x=wp.x,y=wp.y;const guides=[],targets=[];
-  for(const s of state.shapes){if(s.id===orig.id)continue;const b=G.bbox(s);if(b)targets.push(b)}
-  if(movesX){let best=null;for(const b of targets)for(const t of[b.x,b.x+b.w/2,b.x+b.w]){const d=t-wp.x;if(Math.abs(d)<=tol&&(!best||Math.abs(d)<Math.abs(best.d)))best={d,at:t,b};}
+  let x=wp.x,y=wp.y;const guides=[];
+  const idx=_snapIndex('resize',orig.id,s=>s.id===orig.id);
+  if(movesX){let best=null;for(const e of _snapNear(idx.xs,wp.x,tol)){const d=e.v-wp.x;if(!best||Math.abs(d)<Math.abs(best.d))best={d,at:e.v,b:e.b};}
     if(best){x=best.at;const ys=[orig.y,orig.y+orig.h,best.b.y,best.b.y+best.b.h];guides.push({x1:best.at,y1:Math.min(...ys),x2:best.at,y2:Math.max(...ys)});}}
-  if(movesY){let best=null;for(const b of targets)for(const t of[b.y,b.y+b.h/2,b.y+b.h]){const d=t-wp.y;if(Math.abs(d)<=tol&&(!best||Math.abs(d)<Math.abs(best.d)))best={d,at:t,b};}
+  if(movesY){let best=null;for(const e of _snapNear(idx.ys,wp.y,tol)){const d=e.v-wp.y;if(!best||Math.abs(d)<Math.abs(best.d))best={d,at:e.v,b:e.b};}
     if(best){y=best.at;const xs=[orig.x,orig.x+orig.w,best.b.x,best.b.x+best.b.w];guides.push({x1:Math.min(...xs),y1:best.at,x2:Math.max(...xs),y2:best.at});}}
   return{x,y,guides};
 }
@@ -2847,8 +2847,8 @@ function fitToContent(){
 
 // ---- spatial index: uniform 200wu grid, lazy rebuild on _apply; big shapes in
 // a `big` list always returned; query covers the 3×3 cell neighbourhood (tol<200wu).
-const _GCELL=200;let _grid=null;
-function _invalidateGrid(){_grid=null;_idIndex=null;}   // ADR-0009: id index shares this choke point
+const _GCELL=200;let _grid=null,_gridVer=0;
+function _invalidateGrid(){_grid=null;_idIndex=null;_gridVer++;}   // ADR-0009: id index shares this choke point; _gridVer drives the snap index (ADR-0020)
 function _buildGrid(shapes){
   const cells=new Map(),big=[],idx=new Map();
   for(let i=0;i<shapes.length;i++){
@@ -2929,28 +2929,59 @@ function pickOrMarquee(wp,e){
     ptr.dragKind='marquee';
   }
 }
-// Snap moving bbox to target edges/centres; returns {dx,dy,guides}. Pure.
-function snapBox(mov,targets,tol){
+// ---- snap-target edge index (ADR-0020) ----
+// objectSnap/resizeSnap rebuilt the "all other shapes' edges" list on EVERY
+// pointermove — O(shapes) per event (plus a G.bbox walk per shape before
+// ADR-0019). The board can't change under the snap path without going through
+// _invalidateGrid, so key the index on _gridVer + the caller's exclusion key:
+// one rebuild per gesture/mutation instead of per pointermove.
+const _snapIdx={move:{ver:-1,key:'',idx:null},resize:{ver:-1,key:'',idx:null}};
+function _mkSnapIdx(targets){
+  const xs=[],ys=[];
+  for(const b of targets){
+    xs.push({v:b.x,b},{v:b.x+b.w/2,b},{v:b.x+b.w,b});
+    ys.push({v:b.y,b},{v:b.y+b.h/2,b},{v:b.y+b.h,b});
+  }
+  xs.sort((a,c)=>a.v-c.v);ys.sort((a,c)=>a.v-c.v);
+  return{xs,ys};
+}
+function _snapIndex(kind,key,exclFn){
+  const slot=_snapIdx[kind];
+  if(slot.ver!==_gridVer||slot.key!==key){
+    const targets=[];
+    for(const s of state.shapes){if(exclFn(s))continue;const b=G.bbox(s);if(b)targets.push(b)}
+    slot.ver=_gridVer;slot.key=key;slot.idx=_mkSnapIdx(targets);
+  }
+  return slot.idx;
+}
+// Edges within tol of v, via binary search on the sorted edge list.
+function _snapNear(arr,v,tol){
+  let lo=0,hi=arr.length;
+  while(lo<hi){const m=(lo+hi)>>1;if(arr[m].v<v-tol)lo=m+1;else hi=m}
+  const out=[];
+  for(let i=lo;i<arr.length&&arr[i].v<=v+tol;i++)out.push(arr[i]);
+  return out;
+}
+function _snapBoxIdx(mov,idx,tol){
   const mX=[mov.x,mov.x+mov.w/2,mov.x+mov.w],mY=[mov.y,mov.y+mov.h/2,mov.y+mov.h];
   let bx=null,by=null;
-  for(const b of targets){
-    const tX=[b.x,b.x+b.w/2,b.x+b.w],tY=[b.y,b.y+b.h/2,b.y+b.h];
-    for(const m of mX)for(const t of tX){const d=t-m;if(Math.abs(d)<=tol&&(!bx||Math.abs(d)<Math.abs(bx.d)))bx={d,at:t,b};}
-    for(const m of mY)for(const t of tY){const d=t-m;if(Math.abs(d)<=tol&&(!by||Math.abs(d)<Math.abs(by.d)))by={d,at:t,b};}
-  }
+  for(const m of mX)for(const e of _snapNear(idx.xs,m,tol)){const d=e.v-m;if(!bx||Math.abs(d)<Math.abs(bx.d))bx={d,at:e.v,b:e.b};}
+  for(const m of mY)for(const e of _snapNear(idx.ys,m,tol)){const d=e.v-m;if(!by||Math.abs(d)<Math.abs(by.d))by={d,at:e.v,b:e.b};}
   const guides=[];let dx=0,dy=0;
   if(bx){dx=bx.d;const ys=[mov.y,mov.y+mov.h,bx.b.y,bx.b.y+bx.b.h];guides.push({x1:bx.at,y1:Math.min(...ys),x2:bx.at,y2:Math.max(...ys)});}
   if(by){dy=by.d;const xs=[mov.x,mov.x+mov.w,by.b.x,by.b.x+by.b.w];guides.push({x1:Math.min(...xs),y1:by.at,x2:Math.max(...xs),y2:by.at});}
   return{dx,dy,guides};
 }
+// Snap moving bbox to target edges/centres; returns {dx,dy,guides}. Pure.
+function snapBox(mov,targets,tol){return _snapBoxIdx(mov,_mkSnapIdx(targets),tol)}
 function objectSnap(dx,dy){
   if(!ptr.dragStartShapes)return{dx:0,dy:0,guides:[]};
-  const ids=new Set(ptr.dragStartShapes.keys());
   const bb=G.bboxAll([...ptr.dragStartShapes.values()]);
   if(!bb)return{dx:0,dy:0,guides:[]};
-  const mov={x:bb.x+dx,y:bb.y+dy,w:bb.w,h:bb.h},targets=[];
-  for(const s of state.shapes){if(ids.has(s.id))continue;const b=G.bbox(s);if(b)targets.push(b)}
-  return snapBox(mov,targets,SNAP_OBJ/state.viewport.zoom);
+  const mov={x:bb.x+dx,y:bb.y+dy,w:bb.w,h:bb.h};
+  const key=[...ptr.dragStartShapes.keys()].join(',');
+  const idx=_snapIndex('move',key,s=>ptr.dragStartShapes.has(s.id));
+  return _snapBoxIdx(mov,idx,SNAP_OBJ/state.viewport.zoom);
 }
 // Expand a set of selected ids to include shapes fully contained in any selected
 // frame, so moving a frame moves its contents. Other frames are never captured as

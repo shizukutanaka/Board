@@ -2,6 +2,22 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.79] - 2026-09-23
+
+**ADR-0020: オブジェクトスナップのエッジ索引** — `objectSnap` (move) と
+`resizeSnap` (resize) が毎 pointermove に `state.shapes` を全走査してスナップ
+対象エッジ (左/中央/右 × 上/中央/下) を構築していた。
+
+### Performance
+- `_snapIndex`: エッジ座標を x/y 軸それぞれソートした索引を `_gridVer`
+  (新設の変異カウンタ — 全変異が通る `_invalidateGrid` でインクリメント) +
+  除外キーで有効性判定し、ジェスチャ/変異ごとに1回だけ構築。照会は二分探索
+  `_snapNear` で O(log n)
+- `snapBox` の公開インターフェースは維持 (内部で索引化)。move/resize 両
+  ドラッグ経路が索引経路に
+- 実測 (pen 4000 + rect 1000): resizeSnap **1.08ms → 0.002ms** (≈540×)、
+  総当たり結果と 40/40 一致
+
 ## [1.7.78] - 2026-09-23
 
 **ADR-0019: ペン bbox のメモ化** — `G.bbox` がペンシェイプの包絡矩形を毎回全点
