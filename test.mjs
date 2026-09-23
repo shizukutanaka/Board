@@ -267,7 +267,7 @@ const checks = [
   ['canvas aria-label is updated dynamically in pickTool', html.includes("Drawing canvas. Tab/Shift+Tab cycles shapes,")],
   // v1.6.11: spatial index for pickTop
   ['spatial grid helpers present', html.includes("function _buildGrid") && html.includes("function _queryGrid")],
-  ['ADR-0016: draw() prefilters via grid rect query on large boards', html.includes("function _gridRectCandidates") && html.includes("_vis=_gridRectCandidates(_grid,_view)") && html.includes("const _drawIter=_vis||state.shapes") && html.includes("for(const s of _drawIter)")],
+  ['ADR-0016: draw() prefilters via grid rect query on large boards', html.includes("function _gridRectCandidates") && html.includes("_vis=_gridRectCandidates(_grid,_view)") && html.includes("let _drawIter=_vis||state.shapes") && html.includes("for(const s of _drawIter)")],
   ['ADR-0016: candidates return z-ordered via grid.idx', html.includes("idx=new Map") && html.includes("out.sort((a,b)=>(grid.idx.get(a)|0)-(grid.idx.get(b)|0))")],
   ['ADR-0016: no-bbox shapes stay always-candidate via big', html.includes("if(!b){big.push(s);continue;}")],
   ['pickTop uses grid for large boards', html.includes("state.shapes.length>40") && html.includes("_buildGrid(state.shapes)")],
@@ -317,6 +317,12 @@ const checks = [
   // v1.7.83: ADR-0025 minimap content cache
   ['minimap caches scene bitmap keyed on _gridVer', html.includes("_sceneVer!==_gridVer") && html.includes("mx.drawImage(_scene,0,0)")],
   ['minimap cache cleared on theme + image load', html.includes("Minimap.invalidateCache();") && html.includes("function invalidateCache(){_sceneVer=-1")],
+  // v1.7.84: ADR-0026 drag damage rect
+  ['invalidateDamage accumulates world damage', html.includes("function invalidateDamage(r){_damage=_dmgU(_damage,r)") && html.includes("function invalidate(){_damage=null")],
+  ['draw() clips scene pass to damage rect', html.includes("ctx.rect(dmg.x,dmg.y,dmg.w,dmg.h);ctx.clip()") && html.includes("ctx.fillRect(dmg.x,dmg.y,dmg.w,dmg.h)")],
+  ['move/resize/rotate drag report damage', html.includes("invalidateDamage(_dmgPair(_b0,G.bbox(rsh)") && html.includes("if(dmg)invalidateDamage(dmg);else invalidate()")],
+  ['draft draw + erase report damage', html.includes("invalidateDamage(_dmgPair(_b0,G.bbox(d)") && html.includes("_eraseBatch.push(clone(hit))")],
+  ['damage path force-includes gesture targets vs stale grid', html.includes("ptr.dragStartShapes.keys()") && html.includes("ptr.resizeOrig.id") && html.includes("ptr.rotOrig.id")],
   ['load validates viewport finiteness', html.includes("Number.isFinite(+d.viewport.zoom)&&d.viewport.zoom>0")],
   ['load clamps viewport zoom to [MIN_ZOOM,MAX_ZOOM]', html.includes("state.viewport.zoom=clampZoom(+d.viewport.zoom)")],
   ['clampZoom is the single zoom-invariant source', html.includes("const clampZoom=z=>Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,z))") && html.includes("const nz=clampZoom(") && html.includes("const z=clampZoom(")],

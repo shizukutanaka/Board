@@ -758,7 +758,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.83';
+const V='1.7.84';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1799,7 +1799,15 @@ function drawPenMaybeCached(s,c){
 // RAF id (_rafId); invalidate() restarts the loop only when it is not already running;
 // frame() clears the id on entry so that a mid-frame invalidate() reschedules once.
 let needsRender=true,needOverlay=true,_rafId=0;
-function invalidate(){needsRender=true;needOverlay=true;if(!_rafId)_rafId=requestAnimationFrame(frame);Minimap.schedule()}
+let _damage=null;   // ADR-0026: accumulated world-space dirty rect during drag gestures; null = full repaint
+function invalidate(){_damage=null;needsRender=true;needOverlay=true;if(!_rafId)_rafId=requestAnimationFrame(frame);Minimap.schedule()}
+// ADR-0026: gesture-local repaint — producers report the world-space rect they
+// dirtied and frame() clips the scene pass to its accumulated union (never
+// shrinks mid-gesture, so a fast teleport still covers the old position).
+// Everything else must keep calling invalidate(), which resets _damage to full.
+function _dmgU(a,b){return a?{x:Math.min(a.x,b.x),y:Math.min(a.y,b.y),w:Math.max(a.x+a.w,b.x+b.w)-Math.min(a.x,b.x),h:Math.max(a.y+a.h,b.y+b.h)-Math.min(a.y,b.y)}:{x:b.x,y:b.y,w:b.w,h:b.h}}
+function _dmgPair(a,b,m){if(!a)return b?{x:b.x-m,y:b.y-m,w:b.w+2*m,h:b.h+2*m}:a;if(!b)return{x:a.x-m,y:a.y-m,w:a.w+2*m,h:a.h+2*m};const x0=Math.min(a.x,b.x)-m,y0=Math.min(a.y,b.y)-m;return{x:x0,y:y0,w:Math.max(a.x+a.w,b.x+b.w)-x0+m,h:Math.max(a.y+a.h,b.y+b.h)-y0+m}}
+function invalidateDamage(r){_damage=_dmgU(_damage,r);needsRender=true;needOverlay=true;if(!_rafId)_rafId=requestAnimationFrame(frame);Minimap.schedule()}
 // Overlay-only repaint (ADR-0024): marquee / guides / peer cursors / laser /
 // search-highlight changes touch no scene pixels — skip the expensive scene
 // pass entirely. Never call this after mutating shapes, draft, or viewport.
@@ -1883,14 +1891,23 @@ function describeShape(s){
 function draw(){
   const W=canvas.width,H=canvas.height;
   const bg=getCSS('--paper');
-  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
-
   const v=state.viewport;
-  ctx.setTransform(v.zoom*DPR,0,0,v.zoom*DPR,-v.x*v.zoom*DPR,-v.y*v.zoom*DPR);
+  const dmg=_damage;
+  if(dmg){
+    // ADR-0026: clip to the accumulated damage rect and repaint just it — the
+    // rest of the scene canvas is retained from the previous frame.
+    ctx.setTransform(v.zoom*DPR,0,0,v.zoom*DPR,-v.x*v.zoom*DPR,-v.y*v.zoom*DPR);
+    ctx.save();
+    ctx.beginPath();ctx.rect(dmg.x,dmg.y,dmg.w,dmg.h);ctx.clip();
+    ctx.fillStyle=bg;ctx.fillRect(dmg.x,dmg.y,dmg.w,dmg.h);
+  }else{
+    ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+    ctx.setTransform(v.zoom*DPR,0,0,v.zoom*DPR,-v.x*v.zoom*DPR,-v.y*v.zoom*DPR);
+  }
 
   if(state.showGrid)drawGrid(W,H);
 
-  const _view=visibleWorldRect();
+  const _view=dmg?{x:dmg.x-16,y:dmg.y-16,w:dmg.w+32,h:dmg.h+32}:visibleWorldRect();
   // ADR-0016: prefilter by grid rect query on large boards — O(cells in view)
   // instead of O(n) per frame. inView() still makes the final per-shape call,
   // so the rendered result is identical.
@@ -1899,7 +1916,17 @@ function draw(){
     if(!_grid)_grid=_buildGrid(state.shapes);
     _vis=_gridRectCandidates(_grid,_view);
   }
-  const _drawIter=_vis||state.shapes;
+  let _drawIter=_vis||state.shapes;
+  // ADR-0026: gesture handlers mutate shapes in place WITHOUT _invalidateGrid(),
+  // so a stale grid can drop a dragged shape that left its cell — force-include
+  // gesture targets while preserving z-order via the shapes array itself.
+  if(dmg&&_vis){
+    const need=new Set();
+    if(ptr.dragStartShapes)for(const id of ptr.dragStartShapes.keys()){const s=byId(id);if(s)need.add(s);}
+    if(ptr.resizeOrig){const s=byId(ptr.resizeOrig.id);if(s)need.add(s);}
+    if(ptr.rotOrig){const s=byId(ptr.rotOrig.id);if(s)need.add(s);}
+    if(need.size){const vs=new Set(_vis);_drawIter=state.shapes.filter(s=>vs.has(s)||need.has(s));}
+  }
   for(const s of _drawIter){if(s.type==='frame'&&inView(s,_view))drawShape(s)}
   for(const s of _drawIter){if(s.type!=='frame'&&inView(s,_view))drawShape(s)}
   if(state.draft)drawShape(state.draft);
@@ -2575,18 +2602,20 @@ canvas.addEventListener('pointermove',e=>{
       if(ptr.dragKind==='resize'){
         const rsh=byId([...state.selection][0]);
         if(rsh){
+          const _b0=G.bbox(ptr.resizeOrig);
           Object.assign(rsh,clone(ptr.resizeOrig));
           applyResize(rsh,ptr.resizeHandle,ptr.resizeOrig,wp,e.shiftKey,e.altKey);
-        }
-        invalidate();
+          invalidateDamage(_dmgPair(_b0,G.bbox(rsh),(rsh.size||2)+16));   // ADR-0026
+        }else invalidate();
       }else if(ptr.dragKind==='rotate'){
         const rsh=byId([...state.selection][0]);
         if(rsh){
+          const _b0=G.bbox(rsh);
           let deg=Math.atan2(wp.y-ptr.rotCy,wp.x-ptr.rotCx)*180/Math.PI+90; // knob-up = 0°
           if(e.shiftKey)deg=Math.round(deg/15)*15;                          // Shift snaps to 15°
           rsh.rotate=((Math.round(deg)%360)+360)%360;
-        }
-        invalidate();
+          invalidateDamage(_dmgPair(_b0,G.bbox(rsh),(rsh.size||2)+16));   // ADR-0026
+        }else invalidate();
       }else if(ptr.dragKind==='move')doMove(wp);
       else if(ptr.dragKind==='marquee'){state.marquee={x1:ptr.wx0,y1:ptr.wy0,x2:wp.x,y2:wp.y};invalidateOverlay()}
       break;
@@ -3101,13 +3130,16 @@ function moveDelta(wp){
   return{dx,dy};
 }
 function doMove(wp){
-  const{dx,dy}=moveDelta(wp);
+  const{dx,dy}=moveDelta(wp);let dmg=null;
   for(const [id,orig] of ptr.dragStartShapes){
     const sh=byId(id);if(!sh||sh.locked)continue;
+    const b0=G.bbox(orig),m=(sh.size||2)+16;   // orig-bbox + same bbox shifted by (dx,dy) covers every position of the gesture
     Object.assign(sh,clone(orig));
     Shape.translate(sh,dx,dy);
+    const x0=Math.min(b0.x,b0.x+dx)-m,y0=Math.min(b0.y,b0.y+dy)-m;
+    dmg=_dmgU(dmg,{x:x0,y:y0,w:Math.max(b0.x+b0.w,b0.x+b0.w+dx)-x0+m,h:Math.max(b0.y+b0.h,b0.y+b0.h+dy)-y0+m});
   }
-  invalidate();
+  if(dmg)invalidateDamage(dmg);else invalidate();
 }
 function endSelect(wp){
   if(ptr.dragKind==='move'&&ptr.dragStartShapes){
@@ -3168,7 +3200,8 @@ function contPen(wp,e){
   // decimate by min distance for smoothness
   const d=Math.hypot(wp.x-last[0],wp.y-last[1]);
   if(d>1/state.viewport.zoom)pts.push([wp.x,wp.y,_penPr(e)]);
-  invalidate();
+  const _m=(state.draft.size||2)+16;   // ADR-0026: ink corridor — accumulated union covers the whole stroke
+  invalidateDamage({x:Math.min(wp.x,last[0])-_m,y:Math.min(wp.y,last[1])-_m,w:Math.abs(wp.x-last[0])+2*_m,h:Math.abs(wp.y-last[1])+2*_m});
 }
 // RDP decimation for pen pts [[x,y,p?],…]; keeps pressure, eps in world units.
 function _rdp(pts,eps){
@@ -3276,9 +3309,10 @@ function contRectLike(wp,uniform){
   let w=sp.x-sx0,h=sp.y-sy0;
   if(uniform){const s=Math.max(Math.abs(w),Math.abs(h));w=Math.sign(w||1)*s;h=Math.sign(h||1)*s}
   const d=state.draft;
+  const _b0=G.bbox(d);
   if(w<0){d.x=sx0+w;d.w=-w}else{d.x=sx0;d.w=w}
   if(h<0){d.y=sy0+h;d.h=-h}else{d.y=sy0;d.h=h}
-  invalidate();
+  invalidateDamage(_dmgPair(_b0,G.bbox(d),(d.size||2)+16));   // ADR-0026
 }
 function endRectLike(){
   if(!state.draft)return;
@@ -3313,8 +3347,9 @@ function contLineLike(wp,uniform){
     const d=Math.hypot(dx,dy);
     x2=sx0+Math.cos(q)*d;y2=sy0+Math.sin(q)*d;
   }
+  const _b0=G.bbox(state.draft);
   state.draft.x2=x2;state.draft.y2=y2;
-  invalidate();
+  invalidateDamage(_dmgPair(_b0,G.bbox(state.draft),(state.draft.size||2)+16));   // ADR-0026
 }
 function endLineLike(){
   if(!state.draft)return;
@@ -3510,9 +3545,12 @@ function eraseAt(wp){
   if(hit&&!hit.locked&&!_eraseBatch.some(s=>s.id===hit.id)){
     // Remove from rendering immediately for feedback
     const i=state.shapes.findIndex(s=>s.id===hit.id);
-    if(i>=0){state.shapes.splice(i,1);_invalidateGrid()}   // ADR-0009
+    if(i>=0){
+      const _eb=G.bbox(hit);
+      state.shapes.splice(i,1);_invalidateGrid();   // ADR-0009
+      invalidateDamage(_dmgPair(_eb,null,(hit.size||2)+16));   // ADR-0026: reveal under-shapes inside the erased bbox only
+    }
     _eraseBatch.push(clone(hit));
-    invalidate();
   }
 }
 function flushErase(){
