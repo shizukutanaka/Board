@@ -438,6 +438,8 @@ const checks = [
   ['img inbound: chunk reassembly + pending drain + attach paths', html.includes("this._imgChunks.get(msg.key)")&&html.includes("delete sh.img;sh.dataUrl=data")&&html.includes('op=this._attachOp(op)')&&html.includes('const op=this._attachOp(msg.op)')],
   // v1.7.128: ADR-0070 quick-connect
   ['qconn: hover dots + _qdotAt + qline→endLineLike', html.includes('function _qconnShape()')&&html.includes("ptr.dragKind='qline';")&&html.includes("else if(ptr.dragKind==='qline')")&&html.includes('invalidateOverlay()}   // ADR-0070')],
+  // v1.7.129: ADR-0071 equal-gap snap
+  ['eqGap snap: same-row gaps → candidate slots + edge-snap priority', html.includes('function _eqGapSnap(mov,excl,tol)')&&html.includes('for(const cand of[a[L]-g-mov[D], b[L]+b[D]+g, a[L]+a[D]+g, b[L]-g-mov[D]])')&&html.includes('const eq=_eqGapSnap(mov,excl')],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
@@ -1270,7 +1272,7 @@ try {
              doAlign, doFlip, snapV, snapPt,
              getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
-             copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, toggleCurve, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots,
+             copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, toggleCurve, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
              _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa: () => _teTa, zoomAt,
@@ -1297,7 +1299,7 @@ try {
           doAlign, doFlip, snapV, snapPt,
           getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
-          copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, toggleCurve, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots,
+          copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, toggleCurve, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
           _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa, zoomAt,
@@ -3432,6 +3434,27 @@ try {
     state.tool='select';
     Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(r))]});
     console.log('  ✓ quick-connect: eligibility + dots + hit/miss + tool gate (6 asserts)');
+  }
+
+  // ADR-0071: equal-gap snap — dragged box snaps to same-gap slots
+  {
+    // row: A[0..100] gap50 B[150..250] — dragging mov(100w) to x≈300 gives gap50 to B
+    const A=Shape.make('rect',{x:0,y:0,w:100,h:50});
+    const B=Shape.make('rect',{x:150,y:0,w:100,h:50});
+    const M=Shape.make('rect',{x:400,y:0,w:100,h:50});
+    Store.commit({op:'addMany',shapes:[A,B,M]});
+    const ids=new Set([M.id]);
+    // y-band of mov overlaps A/B rows (all h=50 at y0); slot: right of B at g=50 → x=300
+    const mov={x:300,y:0,w:100,h:50};
+    const excl=s=>ids.has(s.id);
+    const r=_eqGapSnap(mov,excl,8);
+    assert.ok(r.dx===0,'x=300 already the row-end equal-gap slot');
+    const m2={x:295,y:0,w:100,h:50};
+    const r2=_eqGapSnap(m2,excl,8);
+    assert.ok(r2.dx===5,'snap +5 to row-end slot');
+    assert.ok(r2.guides.length===2,'two equal-interval guides');
+    Store.commit({op:'del',shapes:[A,B,M].map(s=>JSON.parse(JSON.stringify(s)))});
+    console.log('  ✓ equal-gap snap: slot match + nearby snap + guides (3 asserts)');
   }
 
   // validPatch recurses: nested poison in a remote `upd` (gated by validPatch alone)

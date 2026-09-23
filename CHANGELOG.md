@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.129]
+
+### 追加
+- **等間隔スナップ** (ADR-0071)。移動ドラッグでエッジ吸着が無い位置でも、
+  同一行/列の連続図形ペアの既存間隔と同じ隙間を作る位置に吸着し
+  等しい2区間をガイド表示 (draw.io スマートガイド parity)。
+  行末端・行内挿入とも対応。エッジ吸着優先、未成立軸のみ評価。
+
 ## [1.7.128]
 
 ### 追加

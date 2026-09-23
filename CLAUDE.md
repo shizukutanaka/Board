@@ -120,6 +120,7 @@ Board/
 - [ADR-0068](docs/ADR-0068-curved-connector.md) 曲線コネクタ (s.curve 排他フラグ、二次ベジエ、_curveCtrl/Segs)
 - [ADR-0069](docs/ADR-0069-wire-image-refs.md) ワイヤー画像参照 (_imgSlim を op/snapshot に適用、k:'img' 64KB チャンク)
 - [ADR-0070](docs/ADR-0070-quick-connect.md) quick-connect (hover 図形の4辺中点ドット、qline→endLineLike)
+- [ADR-0071](docs/ADR-0071-equal-gap-snap.md) 等間隔スナップ (同一行連続ペアの間隔 g へ吸着、エッジ優先)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.128';
+const V='1.7.129';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3876,6 +3876,39 @@ function _snapBoxIdx(mov,idx,tol){
 }
 // Snap moving bbox to target edges/centres; returns {dx,dy,guides}. Pure.
 function snapBox(mov,targets,tol){return _snapBoxIdx(mov,_mkSnapIdx(targets),tol)}
+// ADR-0071: equal-gap snap. On an axis where edge snapping found nothing,
+// look at same-row (y-band-overlapping for X, x-band for Y) shapes sorted along
+// the axis: consecutive pairs (a,b) form gap g=b.l−a.r; candidate positions put
+// mov at the same g from a or b — the classic "evenly spaced row" drop slot.
+// Guides show the two equal intervals.
+function _eqGapSnap(mov,excl,tol){
+  const out={dx:0,dy:0,guides:[]};
+  for(const ax of['x','y']){
+    const L=ax==='x'?'x':'y',D=ax==='x'?'w':'h',O=ax==='x'?'y':'x',OD=ax==='x'?'h':'w';
+    const row=[];
+    for(const s of state.shapes){
+      if(excl(s))continue;
+      const b=G.bbox(s);if(!b)continue;
+      if(b[O]<mov[O]+mov[OD]&&b[O]+b[OD]>mov[O])row.push(b);
+    }
+    row.sort((a,b)=>a[L]-b[L]);
+    let best=null;
+    for(let i=1;i<row.length;i++){
+      const a=row[i-1],b=row[i],g=b[L]-(a[L]+a[D]);
+      if(g<=0)continue;
+      for(const cand of[a[L]-g-mov[D], b[L]+b[D]+g, a[L]+a[D]+g, b[L]-g-mov[D]]){
+        const d=cand-mov[L];
+        if(Math.abs(d)<=tol&&(!best||Math.abs(d)<Math.abs(best.d))){
+          const mid=mov[O]+mov[OD]/2;
+          const seg=(p,q)=>ax==='x'?{x1:p,y1:mid,x2:q,y2:mid}:{x1:mid,y1:p,x2:mid,y2:q};
+          best={d,guides:[seg(a[L]+a[D],b[L]), cand<b[L]?seg(cand+mov[D],b[L]):seg(a[L]+a[D],cand)]};
+        }
+      }
+    }
+    if(best){if(ax==='x')out.dx=best.d;else out.dy=best.d;out.guides.push(...best.guides)}
+  }
+  return out;
+}
 function objectSnap(dx,dy){
   if(!ptr.dragStartShapes)return{dx:0,dy:0,guides:[]};
   const bb=G.bboxAll([...ptr.dragStartShapes.values()]);
@@ -3883,7 +3916,13 @@ function objectSnap(dx,dy){
   const mov={x:bb.x+dx,y:bb.y+dy,w:bb.w,h:bb.h};
   const key=[...ptr.dragStartShapes.keys()].join(',');
   const idx=_snapIndex('move',key,s=>ptr.dragStartShapes.has(s.id));
-  return _snapBoxIdx(mov,idx,SNAP_OBJ/state.viewport.zoom);
+  const base=_snapBoxIdx(mov,idx,SNAP_OBJ/state.viewport.zoom);
+  if(base.dx!==0&&base.dy!==0)return base;
+  const excl=s=>ptr.dragStartShapes.has(s.id);
+  const eq=_eqGapSnap(mov,excl,SNAP_OBJ/state.viewport.zoom);
+  if(base.dx===0&&eq.dx!==0){base.dx=eq.dx;base.guides.push(...eq.guides)}
+  if(base.dy===0&&eq.dy!==0){base.dy=eq.dy;base.guides.push(...eq.guides)}
+  return base;
 }
 // Expand a set of selected ids to include shapes fully contained in any selected
 // frame, so moving a frame moves its contents. Other frames are never captured as
