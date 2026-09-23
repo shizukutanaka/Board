@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.126';
+const V='1.7.127';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -5550,11 +5550,56 @@ const Net={
       },NET_PRESENCE_INTERVAL);
     }catch{}
   },
+  // ADR-0069: wire-level image refs. add/addMany shapes go out slimmed (`img`
+  // key); the blob bytes ride as {k:'img'} messages chunked at 64KB and sent
+  // BEFORE the referencing op on both ordered channels. _imgSent dedups op
+  // payloads per session; snapshots pass a fresh map so every referenced blob
+  // is always re-emitted (late joiners). Inbound resolves via _imgIn; refs
+  // whose blob hasn't landed park in _imgPending until an 'img' msg completes.
+  _imgSent:new Map(), _imgIn:new Map(), _imgPending:new Map(),
+  _imgOuts:[], _imgChunks:new Map(),
+  _slimShapes(shapes,sent){
+    const{slim,puts}=_imgSlim(shapes,sent||this._imgSent);
+    for(const[k,d]of puts)this._imgOuts.push([k,d]);
+    return slim;
+  },
+  _slimOp(op){
+    if(op.op==='add'&&op.shape)return{...op,shape:this._slimShapes([op.shape])[0]};
+    if(op.op==='addMany'&&Array.isArray(op.shapes))return{...op,shapes:this._slimShapes(op.shapes)};
+    return op;
+  },
+  _flushImgOuts(){
+    const outs=this._imgOuts;this._imgOuts=[];
+    const CH=65536;
+    for(const[key,d]of outs){
+      const n=Math.max(1,Math.ceil(d.length/CH));
+      for(let i=0;i<n;i++){
+        const m={k:'img',key,seq:i,n,data:d.slice(i*CH,(i+1)*CH)};
+        this._send(m);
+        if(this.dc&&this.dc.readyState==='open'){try{this.dc.send(JSON.stringify(m))}catch(_){}}
+      }
+    }
+  },
+  _attachShape(s){
+    if(s&&typeof s.img==='string'&&!s.dataUrl){
+      const d=this._imgIn.get(s.img);
+      if(d){const{img:_x,...rest}=s;return{...rest,dataUrl:d}}
+      if(typeof s.id==='string')this._imgPending.set(s.id,s.img);
+    }
+    return s;
+  },
+  _attachOp(op){
+    if(!op||typeof op!=='object')return op;
+    if(op.op==='add'&&op.shape)return{...op,shape:this._attachShape(op.shape)};
+    if(op.op==='addMany'&&Array.isArray(op.shapes))return{...op,shapes:op.shapes.map(s=>this._attachShape(s))};
+    return op;
+  },
   // Outbound: from local Store.commit
   broadcast(op){
-    this._send({k:'op',op});
+    const s=this._slimOp(op);this._flushImgOuts();
+    this._send({k:'op',op:s});
     if(this.dc&&this.dc.readyState==='open'){
-      try{this.dc.send(JSON.stringify({k:'op',op}))}catch(_){}
+      try{this.dc.send(JSON.stringify({k:'op',op:s}))}catch(_){}
     }
   },
   // ADR-0010: ephemeral peer cursor presence — never touches Store/history/Persist.
@@ -5600,9 +5645,27 @@ const Net={
     // unfiltered — "hello/ping never ride the DataChannel" only holds for honest peers.
     if(msg.peer!==undefined&&(typeof msg.peer!=='string'||msg.peer.length>MAX_PEER_ID_LEN))return;
     switch(msg.k){
+      case 'img':{
+        // ADR-0069: blob chunks → _imgIn, then drain parked shape refs.
+        if(typeof msg.key!=='string'||msg.key.length>64||typeof msg.data!=='string')break;
+        const n=typeof msg.n==='number'&&msg.n>=1&&msg.n<=4096?Math.floor(msg.n):1;
+        const seq=typeof msg.seq==='number'&&msg.seq>=0?Math.floor(msg.seq):0;
+        if(seq>=n)break;
+        let st=this._imgChunks.get(msg.key);
+        if(!st){st={parts:new Array(n),got:0,n};this._imgChunks.set(msg.key,st)}
+        if(st.n===n&&!st.parts[seq]){st.parts[seq]=msg.data;st.got++}
+        if(st.got<st.n)break;
+        this._imgChunks.delete(msg.key);
+        const data=st.parts.join('');
+        if(data.length>12_000_000)break;
+        this._imgIn.set(msg.key,data);
+        for(const[id,k]of this._imgPending){
+          if(k===msg.key){const sh=byId(id);if(sh){delete sh.img;sh.dataUrl=data}this._imgPending.delete(id)}
+        }
+        invalidate();break;}
       case 'op':{
         // Validate op shape before applying — reject garbage from bad peers
-        const op=msg.op;
+        const op=this._attachOp(msg.op);
         if(!op||typeof op!=='object'||typeof op.op!=='string')break;
         if(!op.clock||typeof op.clock.peer!=='string'||typeof op.clock.seq!=='number')break;
         Store.applyRemote(op);break;}
@@ -5665,7 +5728,12 @@ const Net={
       op:'add',shape:clone(s),wc:clone(state.wclock[s.id]||{}),
       clock:{peer:state.peerId,seq:'snap:'+s.id,ts:0,_snap:true}
     }));
-    return {k:'snapshot',shapes:clone(state.shapes),ops,peer:state.peerId};
+    // ADR-0069: slim every shape in one pass against a FRESH sent-map — blob
+    // puts always re-emit (late joiners need them), flushed before this msg.
+    const slim=this._slimShapes(ops.map(o=>o.shape),new Map());
+    ops.forEach((o,i)=>o.shape=slim[i]);
+    this._flushImgOuts();
+    return {k:'snapshot',shapes:slim,ops,peer:state.peerId};
   },
   // ADR-0058: merge one snapshot add-op. Unknown shape → adopt via applyRemote
   // (unchanged); known shape → per-property LWW merge against wc so concurrent
@@ -5673,6 +5741,7 @@ const Net={
   // peer) → 'skip', the previous keep-everything behaviour. No history entries —
   // convergence, not a user action. Named for testability (precedent: _gresizeDrag).
   _mergeSnapshotOp(op){
+    op=this._attachOp(op);                            // ADR-0069
     if(!op||op.op!=='add'||!op.shape)return 'skip';   // snapshot ops are adds only
     const ex=byId(op.shape.id);
     if(!ex){Store.applyRemote(op);return 'add';}
@@ -5708,7 +5777,7 @@ const Net={
     // Validate snapshot shapes before adopting
     const shapes=msg.shapes;
     if(!Array.isArray(shapes))return;
-    const valid=shapes.slice(0,MAX_OP_SHAPES).filter(validShape);
+    const valid=shapes.slice(0,MAX_OP_SHAPES).map(s=>this._attachShape(s)).filter(validShape);
     state.shapes=clone(valid);_invalidateGrid();   // ADR-0009
     sortZ();
     invalidate();UI.refreshUndo();Persist.schedule();

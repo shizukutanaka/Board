@@ -2,6 +2,17 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.127]
+
+### 変更
+- **ワイヤーレベル画像参照** (ADR-0069)。`add`/`addMany` op と snapshot
+  の画像バイトを `img` 参照 + 別メッセージ `{k:'img'}` (64KB チャンク、
+  op 先行送信) に分離 — ピア間で画像を含む op のワイヤーサイズが大幅減、
+  RTCDataChannel ~256KB/メッセージ上限による静的失敗も解消。受信側は
+  `_imgChunks` 再構成→`_imgIn` 格納、未着参照は `_imgPending` に保留して
+  blob 到着時に補完。共有リンクは URL 自体が輸送路のため対象外。
+  実ブラウザ loopback で 200KB 画像の chunked 復元を実測。
+
 ## [1.7.126]
 
 ### 追加

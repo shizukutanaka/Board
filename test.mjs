@@ -433,6 +433,9 @@ const checks = [
   // v1.7.126: ADR-0068 curved connector
   ['curve route: quadratic draw + sampled hit + svg path', html.includes('c.quadraticCurveTo(cc.x,cc.y,e.x2,e.y2)')&&html.includes('const pts=_curveSegs(s);')&&html.includes('Q ${_num(cc.x+ox)}')],
   ['curve ctx menu + i18n + exclusive toggle', html.includes("['ctxCurve','',toggleCurve]")&&html.includes("ctxCurve:'曲線'")&&html.includes("ctxCurve:'Curved'")&&html.includes('elbow:s.elbow?0:1,curve:0')],
+  // v1.7.127: ADR-0069 wire-level image refs
+  ['img wire refs: slim op + 64KB chunk msgs + snapshot re-emit', html.includes("this._slimOp(op);this._flushImgOuts()")&&html.includes('k:\'img\',key,seq:i,n,data:d.slice')&&html.includes('this._slimShapes(ops.map(o=>o.shape),new Map())')],
+  ['img inbound: chunk reassembly + pending drain + attach paths', html.includes("this._imgChunks.get(msg.key)")&&html.includes("delete sh.img;sh.dataUrl=data")&&html.includes('op=this._attachOp(op)')&&html.includes('const op=this._attachOp(msg.op)')],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
@@ -1077,7 +1080,7 @@ const checks = [
     html.includes("REMOTE_OPS:new Set(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize'])")],
   // v1.7.48: _applySnapshot caps shape count at MAX_OP_SHAPES
   ['_applySnapshot: MAX_OP_SHAPES cap on snapshot shapes (DoS guard)',
-    html.includes("const valid=shapes.slice(0,MAX_OP_SHAPES).filter(validShape);")],
+    html.includes("const valid=shapes.slice(0,MAX_OP_SHAPES).map(s=>this._attachShape(s)).filter(validShape);")],
   // v1.7.48: sticky shadow set before fill (renders correctly)
   ['sticky note shadow set before fill (not after)',
     html.includes("c.shadowColor='rgba(0,0,0,.08)';c.shadowBlur=8;c.shadowOffsetY=2;\n      c.beginPath();roundRect(")],
@@ -3381,6 +3384,30 @@ try {
     Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(byId(a.id)))]});
     state.selection.clear();
     console.log('  ✓ curved connector: ctrl math + sampling + exclusive toggle + undo (6 asserts)');
+  }
+
+  // ADR-0069: wire image refs — slim → chunks → attach/pending round-trip
+  {
+    const big='data:image/png;base64,'+'A'.repeat(200);
+    const sh=Shape.make('image',{x:0,y:0,w:50,h:50,dataUrl:big});
+    const op={op:'add',shape:sh,clock:{peer:'p1',seq:1}};
+    const slim=Net._slimOp(op);
+    assert.ok(slim.shape.img&&!slim.shape.dataUrl&&Net._imgOuts.length===1,'op slimmed + blob queued');
+    Net._slimShapes([sh]);
+    assert.ok(Net._imgOuts.length===1,'cumulative _imgSent dedups');
+    Net._slimShapes([sh],new Map());
+    assert.ok(Net._imgOuts.length===2,'fresh map re-emits (snapshot path)');
+    Net._imgOuts=[];
+    Net._imgIn.set(slim.shape.img,big);
+    const att=Net._attachOp(slim);
+    assert.ok(att.shape.dataUrl===big&&!att.shape.img,'attach resolves dataUrl');
+    const miss={op:'add',shape:{id:'zz',type:'image',img:'kX',x:0,y:0,w:1,h:1}};
+    Net._attachOp(miss);
+    assert.ok(Net._imgPending.get('zz')==='kX','missing blob parks');
+    Net._onRecv({k:'img',key:'kX',seq:0,n:1,data:'DATA'},false);
+    assert.ok(Net._imgIn.get('kX')==='DATA','chunk reassembles into _imgIn');
+    assert.ok(!Net._imgPending.has('zz'),'pending drained on blob arrival');
+    console.log('  ✓ wire image refs: slim/dedup/re-emit/attach/pending (7 asserts)');
   }
 
   // validPatch recurses: nested poison in a remote `upd` (gated by validPatch alone)
