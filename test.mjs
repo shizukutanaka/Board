@@ -304,6 +304,8 @@ const checks = [
   // v1.7.111: ADR-0053 text overlay follows pan/zoom
   ['text overlay tracked for viewport follow', html.includes("_teTa=ta;_teVp=''") && html.includes("_teTa=null;ta.remove();")],
   ['_teFollow per-frame, viewport-signature gated', html.includes("_teFollow();     // ADR-0053") && html.includes("positionTextEditor(_teTa,s)") && html.includes("sig=v.x+','+v.y+','+v.zoom")],
+  // v1.7.112: ADR-0054 no micro-pan at zoom bounds
+  ['zoomAt pure no-op at zoom bounds', html.includes("if(nz===v.zoom)return;") && html.includes("const nz=clampZoom(v.zoom*Math.exp(delta));")],
   ['copyPNG guards ClipboardItem + write', html.includes("typeof ClipboardItem==='undefined'") && html.includes("copyUnsupported")],
   ['copyPNG in export menu', html.includes("['ctxCopyPNG','',copyPNG]")],
   ['ctxCopyPNG i18n ja+en', html.includes("ctxCopyPNG:'PNGをクリップボードにコピー'") && html.includes("ctxCopyPNG:'Copy PNG to clipboard'")],
@@ -1224,7 +1226,7 @@ try {
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
-             _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa: () => _teTa,
+             _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa: () => _teTa, zoomAt,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
              exportPNG, copyPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
              _onBtnInstall, _getInstallPrompt: () => _installPrompt, _setInstallPrompt: (v) => { _installPrompt = v; },
@@ -1251,7 +1253,7 @@ try {
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
-          _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa,
+          _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa, zoomAt,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
           exportPNG, copyPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
           _onBtnInstall, _getInstallPrompt, _setInstallPrompt,
@@ -5420,6 +5422,26 @@ try {
     state.editing=null;state.viewport.zoom=3;_teFollow();
     assert.strictEqual(ta.style.left,'999px','editor closed → no follow');
     console.log('  ✓ _teFollow: zoom+pan follow, signature no-op, closed-editor guard (4 asserts)');
+  }
+
+  // ADR-0054: a clamped zoom must be a pure no-op — before the fix, a wheel
+  // tick at the bound still re-anchored the viewport to the moved cursor,
+  // producing a small drift pan (the audit-2026-06 "micro-pan" remainder).
+  {
+    state.viewport={x:11,y:22,zoom:MIN_ZOOM};
+    zoomAt({x:500,y:400},-0.5);
+    assert.ok(state.viewport.zoom===MIN_ZOOM&&state.viewport.x===11&&state.viewport.y===22,
+      'zoomAt at MIN_ZOOM: viewport untouched (no micro-pan)');
+    state.viewport={x:11,y:22,zoom:MAX_ZOOM};
+    zoomAt({x:50,y:60},0.5);
+    assert.ok(state.viewport.zoom===MAX_ZOOM&&state.viewport.x===11&&state.viewport.y===22,
+      'zoomAt at MAX_ZOOM: viewport untouched (no micro-pan)');
+    // interior zoom still anchors the cursor: world point under the cursor is fixed
+    state.viewport={x:400,y:300,zoom:1};
+    zoomAt({x:400,y:300},Math.log(2));           // world anchor (800,600)
+    assert.ok(Math.abs(state.viewport.zoom-2)<1e-9&&Math.abs(state.viewport.x-600)<1e-9&&Math.abs(state.viewport.y-450)<1e-9,
+      'zoomAt interior: cursor-anchored 2x zoom');
+    console.log('  ✓ zoomAt: bound no-op (x2), interior anchor (3 asserts)');
   }
 
   // search navigation a11y: SR users search BY content, so the announcement must name
