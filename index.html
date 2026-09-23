@@ -766,7 +766,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.108';
+const V='1.7.109';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2575,7 +2575,19 @@ function getHandles(s){
     if(!s.b)h.push({id:'p2',x:e.x2,y:e.y2});
     return h;
   }
-  if(s.type==='pen'||s.w==null)return []; // pen geometry lives in pts; box-resize would NaN it
+  // ADR-0051: pens resize for real — emit the same 8 handles around the pts bbox
+  // (writing x/y/w/h on a pen would NaN it; the scale happens in applyResize).
+  if(s.type==='pen'){
+    if(s.pts.length<2)return [];                 // a dot can't scale (ADR-0051)
+    const b=G.bbox(s);if(!b||!b.w||!b.h)return [];
+    const x=b.x,y=b.y,w=b.w,h=b.h;
+    return [
+      {id:'nw',x,y},{id:'n',x:x+w/2,y},{id:'ne',x:x+w,y},
+      {id:'w',x,y:y+h/2},{id:'e',x:x+w,y:y+h/2},
+      {id:'sw',x,y:y+h},{id:'s',x:x+w/2,y:y+h},{id:'se',x:x+w,y:y+h}
+    ];
+  }
+  if(s.w==null)return [];
   // v1.6.96: text size is purely content-driven (resizeAfterTextEdit overwrites w/h on edit);
   // resize handles conflict with auto-fit, so omit them. Rotation still works via getRotHandle.
   if(s.type==='text')return [];
@@ -2637,6 +2649,19 @@ function applyResize(sh,handle,orig,wp,shift,alt){
   const ox=orig.x,oy=orig.y,ow=orig.w,oh=orig.h;
   const cx0=ox+ow/2,cy0=oy+oh/2;                  // original centre (Alt pivot)
   const clamp=4; // min size
+  // ADR-0051: pen — run the identical handle math on a virtual box around the
+  // pts bbox, then map orig.pts into the resulting box. Mapping from orig (not
+  // live pts) keeps the drag from accumulating float error. p[2] pressure kept.
+  if(orig.type==='pen'){
+    if(orig.pts.length<2)return;                 // a dot can't scale — move-only
+    const ob=G.bbox(orig);if(!ob||!ob.w||!ob.h)return;
+    const vbox={x:ob.x,y:ob.y,w:ob.w,h:ob.h};
+    const vorig={x:ob.x,y:ob.y,w:ob.w,h:ob.h,id:orig.id};
+    applyResize(vbox,handle,vorig,wp,shift,alt);
+    const sx=vbox.w/ob.w,sy=vbox.h/ob.h;
+    sh.pts=orig.pts.map(p=>[vbox.x+(p[0]-ob.x)*sx,vbox.y+(p[1]-ob.y)*sy,p[2]]);
+    return;
+  }
   let sp;
   if(orig.rotate){
     // Rotated box: work in the shape's unrotated (local) frame. Bring the pointer in,

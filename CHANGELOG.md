@@ -2,6 +2,15 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.109] - 2026-09-23
+
+**ADR-0051: ペンストロークの真のリサイズ** — ペンが従来「リサイズ不可」
+だったものを、pts を orig bbox→リサイズ後 bbox へアフィン写像する方式で
+実現 (Excalidraw parity)。`getHandles` のペン分岐は 8 ハンドルを発行、
+`applyResize` は仮想ボックスに既存ハンドル数式 (Shift 縦横比・Alt 対称・
+スナップ) を丸ごと適用してから `sx/sy` で pts を写像 — 圧力値 `p[2]` は保持、
+1点ドットは不可 (スケール不能)。undo は既存 `upd` op で完結。
+
 ## [1.7.108] - 2026-09-23
 
 **ADR-0050: クリップボードへの PNG コピー** — Export メニューに
