@@ -308,6 +308,10 @@ const checks = [
   ['zoomAt pure no-op at zoom bounds', html.includes("if(nz===v.zoom)return;") && html.includes("const nz=clampZoom(v.zoom*Math.exp(delta));")],
   // v1.7.113: ADR-0055 rotate point-geometry shapes
   ['doRotate covers pen/line/arrow geometry', html.includes("const _rotatable=s=>s.w!=null||s.pts||s.x1!=null") && html.includes("_rotPtsAbout(s,gx,gy,cs,sn)") && html.includes("if(s.w==null){_rotPtsAbout")],
+  // v1.7.114: ADR-0056 multi-selection resize
+  ['gresize dragKind wires group handles', html.includes("ptr.dragKind='gresize';") && html.includes("ptr.gOrig=new Map(sel.filter(s=>!s.locked).map(s=>[s.id,clone(s)]))") && html.includes("if(sel.some(s=>s.rotate))return;")],
+  ['gresize reuses applyResize on a virtual box + commits one align op', html.includes("function _gresizeDrag(wp,shift,alt){") && html.includes("applyResize(vbox,ptr.resizeHandle,vorig,wp,shift,alt)") && html.includes("_mapToBox(sh,orig,ob,vbox)") && html.includes("op:'align',dir:'gresize'") && html.includes("'gresize'")],
+  ['gresize cancelled in abortGesture + pointercancel', html.includes("ptr.dragKind==='gresize'&&ptr.gOrig") && html.includes("ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;")],
   ['copyPNG guards ClipboardItem + write', html.includes("typeof ClipboardItem==='undefined'") && html.includes("copyUnsupported")],
   ['copyPNG in export menu', html.includes("['ctxCopyPNG','',copyPNG]")],
   ['ctxCopyPNG i18n ja+en', html.includes("ctxCopyPNG:'PNGをクリップボードにコピー'") && html.includes("ctxCopyPNG:'Copy PNG to clipboard'")],
@@ -1020,7 +1024,7 @@ const checks = [
     html.includes("if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)Object.assign(sh,p.before);}}")],
   // v1.7.47: validRemotePayload align must validate dir against a whitelist
   ['validRemotePayload align: dir whitelist (DIRS Set) prevents unknown dir values',
-    html.includes("const DIRS=new Set(['left','right','cx','top','bottom','cy','hspace','vspace','flip','rotate','lock']);")],
+    html.includes("const DIRS=new Set(['left','right','cx','top','bottom','cy','hspace','vspace','flip','rotate','lock','gresize']);")],
   // v1.7.47: doPaste uses canvas.getBoundingClientRect() for viewport center (not window.innerWidth)
   ['doPaste: canvas.getBoundingClientRect() used for viewport center (not window.innerWidth)',
     html.includes("const _r=canvas.getBoundingClientRect();\n  const vCx=v.x+_r.width/(v.zoom*2);")],
@@ -1227,7 +1231,7 @@ try {
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa: () => _teTa, zoomAt,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
              exportPNG, copyPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
@@ -1254,7 +1258,7 @@ try {
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa, zoomAt,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
           exportPNG, copyPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
@@ -5488,6 +5492,51 @@ try {
     assert.ok(Math.abs(lp2.pts[0][0]-10.5)<1e-6&&Math.abs(lp2.pts[0][1]-20)<1e-6,'mixed: pen pts rotate about group centre');
     assert.strictEqual(lp2.rotate||0,0,'mixed: pen has no rotate field');
     console.log('  ✓ doRotate point-geom: pen 90°, line, mixed selection, undo (7 asserts)');
+  }
+
+  // ADR-0056: multi-selection resize — _gresizeDrag maps the whole group through
+  // one virtual-box applyResize (snap/Shift/Alt semantics reuse), _gresizeCommit
+  // batches one 'align' op so a single undo restores every member.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+    state.seq=0;state.seenOps=new Set();state.selection=new Set();state.snap=false;
+    const a=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    const b=Shape.make('rect',{x:20,y:20,w:20,h:10});
+    const p=Shape.make('pen',{pts:[[25,25],[30,28]],size:0});   // padded bbox stays inside {0,0,40,30}
+    Store.commit({op:'add',shape:a});Store.commit({op:'add',shape:b});Store.commit({op:'add',shape:p});
+    state.selection=new Set([a.id,b.id,p.id]);
+    const grab=()=>{
+      const sel=[...state.selection].map(byId).filter(Boolean);
+      ptr.dragKind='gresize';ptr.resizeHandle='se';
+      ptr.gBox=G.bboxAll(sel);
+      ptr.gOrig=new Map(sel.map(s=>[s.id,JSON.parse(JSON.stringify(s))]));
+      ptr.gPad=Math.max(...sel.map(s=>s.size||2))+16;
+    };
+    grab();
+    assert.strictEqual(ptr.gBox.w,40,'gresize grab: group bbox spans the union');
+    _gresizeDrag({x:60,y:45},false,false);          // se → vbox {0,0,60,45}: sx=sy=1.5
+    const la=byId(a.id),lb=byId(b.id),lp=byId(p.id);
+    assert.ok(la.x===0&&la.y===0&&la.w===15&&la.h===15,'gresize: box a maps ×1.5 about group origin');
+    assert.ok(Math.abs(lb.x-30)<1e-6&&Math.abs(lb.y-30)<1e-6&&Math.abs(lb.w-30)<1e-6&&Math.abs(lb.h-15)<1e-6,'gresize: box b maps ×1.5');
+    assert.ok(Math.abs(lp.pts[0][0]-37.5)<1e-6&&Math.abs(lp.pts[0][1]-37.5)<1e-6,'gresize: pen pts affine-map (pressure kept)');
+    const hlen=state.history.length;
+    _gresizeCommit();
+    assert.strictEqual(state.history.length,hlen+1,'gresize commit records one op');
+    const op=state.history[state.histIdx];
+    assert.strictEqual(op.op,'align','gresize commits via the batch align op');
+    assert.strictEqual(op.dir,'gresize','align op tagged dir=gresize');
+    assert.strictEqual(op.after.length,3,'align op covers every unlocked member');
+    Store.undo();
+    const ua=byId(a.id),up=byId(p.id);
+    assert.ok(ua.x===0&&ua.w===10&&Math.abs(up.pts[0][0]-25)<1e-9,'single undo restores the whole group');
+    // Shift = group aspect lock — corner drag drives off the dominant axis
+    Store.redo();grab();
+    _gresizeDrag({x:80,y:45},true,false);           // w×2 dominates → h locked to 60
+    assert.ok(Math.abs(byId(a.id).w-20)<1e-6&&Math.abs(byId(a.id).h-20)<1e-6,'Shift: group aspect preserved');
+    _gresizeCommit();
+    Store.undo();Store.undo();
+    ptr.dragKind=null;ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;
+    console.log('  ✓ gresize: group map, Shift aspect, single-op undo (9 asserts)');
   }
 
   // search navigation a11y: SR users search BY content, so the announcement must name
