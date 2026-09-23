@@ -758,7 +758,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.82';
+const V='1.7.83';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -815,6 +815,7 @@ function applyTheme(mode){   // mode: 'light'|'dark'|null (auto = follow prefers
   if(mode)document.documentElement.dataset.theme=mode;
   else delete document.documentElement.dataset.theme;
   clearCSSCache();
+  Minimap.invalidateCache();   // minimap scene bitmap embeds --ink/--brand colors (ADR-0025)
 }
 
 // ====================== I18N ======================
@@ -1713,7 +1714,7 @@ function getImg(dataUrl){
   let img=_imgCache.get(k);
   if(img){_imgCache.delete(k);_imgCache.set(k,img);return img}
   img=new Image();
-  img.onload=()=>invalidate();
+  img.onload=()=>{invalidate();Minimap.invalidateCache();};   // minimap scene bitmap keys on _gridVer — an image finishing load changes pixels without touching it (ADR-0025)
   img.src=dataUrl;
   if(_imgCache.size>=IMG_CACHE_MAX)_imgCache.delete(_imgCache.keys().next().value);
   _imgCache.set(k,img);
@@ -5553,43 +5554,57 @@ const Minimap=(()=>{
   const W=160,H=100;
   let _raf=0;
 
-  function draw(){
-    _raf=0;
+  // ADR-0025: the minimap splits into (a) shape content — depends only on shape
+  // data, cached to an offscreen bitmap keyed on _gridVer — and (b) the viewport
+  // rect, redrawn every call for one strokeRect. Pan/zoom updates (the common
+  // invalidate() cause) no longer re-walk every shape.
+  let _scene=null,_sceneVer=-1,_sc=0,_ox=0,_oy=0;
+  function _renderScene(){
+    _sceneVer=_gridVer;
+    if(!_scene){_scene=document.createElement('canvas');_scene.width=W;_scene.height=H;}
+    const sx=_scene.getContext('2d');
+    sx.clearRect(0,0,W,H);
     const shapes=state.shapes;
-    mx.clearRect(0,0,W,H);
-    if(!shapes.length)return;
     const bb=G.bboxAll(shapes);
-    if(!bb)return;
+    if(!bb){_sc=0;return;}
     const pad=20;
-    const scX=W/(bb.w+pad*2),scY=H/(bb.h+pad*2);
-    const sc=Math.min(scX,scY,1);
-    const ox=-bb.x*sc+(W-bb.w*sc)/2;
-    const oy=-bb.y*sc+(H-bb.h*sc)/2;
+    const sc=Math.min(W/(bb.w+pad*2),H/(bb.h+pad*2),1);
+    const ox=-bb.x*sc+(W-bb.w*sc)/2,oy=-bb.y*sc+(H-bb.h*sc)/2;
+    _sc=sc;_ox=ox;_oy=oy;
     for(const s of shapes){
       if(!s||s.opacity===0)continue;
-      mx.globalAlpha=(s.opacity??1)*0.8;
-      mx.fillStyle=s.fill||'transparent';
-      mx.strokeStyle=s.stroke||getCSS('--ink');
-      mx.lineWidth=Math.max(0.5,(s.size||1)*sc);
+      sx.globalAlpha=(s.opacity??1)*0.8;
+      sx.fillStyle=s.fill||'transparent';
+      sx.strokeStyle=s.stroke||getCSS('--ink');
+      sx.lineWidth=Math.max(0.5,(s.size||1)*sc);
       const _mr=s.rotate&&s.w!=null;
-      if(_mr){const ccx=(s.x+s.w/2)*sc+ox,ccy=(s.y+s.h/2)*sc+oy;mx.save();mx.translate(ccx,ccy);mx.rotate(s.rotate*Math.PI/180);mx.translate(-ccx,-ccy);}
+      if(_mr){const ccx=(s.x+s.w/2)*sc+ox,ccy=(s.y+s.h/2)*sc+oy;sx.save();sx.translate(ccx,ccy);sx.rotate(s.rotate*Math.PI/180);sx.translate(-ccx,-ccy);}
       switch(s.type){
         case 'frame':
-        case 'rect':{const rx=s.x*sc+ox,ry=s.y*sc+oy,rw=s.w*sc,rh=s.h*sc;if(s.fill)mx.fillRect(rx,ry,rw,rh);mx.strokeRect(rx,ry,rw,rh);break}
-        case 'ellipse':mx.beginPath();mx.ellipse(s.x*sc+ox+s.w*sc/2,s.y*sc+oy+s.h*sc/2,Math.abs(s.w*sc/2),Math.abs(s.h*sc/2),0,0,Math.PI*2);if(s.fill)mx.fill();mx.stroke();break;
-        case 'line':case 'arrow':{const me=connEnds(s);mx.beginPath();mx.moveTo(me.x1*sc+ox,me.y1*sc+oy);mx.lineTo(me.x2*sc+ox,me.y2*sc+oy);mx.stroke();break}
-        case 'pen':if(s.pts.length<2)break;mx.beginPath();mx.moveTo(s.pts[0][0]*sc+ox,s.pts[0][1]*sc+oy);for(let i=1;i<s.pts.length;i++)mx.lineTo(s.pts[i][0]*sc+ox,s.pts[i][1]*sc+oy);mx.stroke();break;
-        case 'text':case 'sticky':{const rx2=s.x*sc+ox,ry2=s.y*sc+oy,rw2=Math.max(2,s.w*sc),rh2=Math.max(2,s.h*sc);mx.fillStyle=s.type==='sticky'?(s.color||'#FEF08A'):(s.fill||getCSS('--brand'));mx.fillRect(rx2,ry2,rw2,rh2);break}
-        case 'image':{const rx3=s.x*sc+ox,ry3=s.y*sc+oy,rw3=Math.max(2,s.w*sc),rh3=Math.max(2,s.h*sc);const img=_imgCache.get(s.dataUrl);if(img&&img.complete&&img.naturalWidth)mx.drawImage(img,rx3,ry3,rw3,rh3);else{mx.fillStyle='#CBD5E1';mx.fillRect(rx3,ry3,rw3,rh3)}break}
+        case 'rect':{const rx=s.x*sc+ox,ry=s.y*sc+oy,rw=s.w*sc,rh=s.h*sc;if(s.fill)sx.fillRect(rx,ry,rw,rh);sx.strokeRect(rx,ry,rw,rh);break}
+        case 'ellipse':sx.beginPath();sx.ellipse(s.x*sc+ox+s.w*sc/2,s.y*sc+oy+s.h*sc/2,Math.abs(s.w*sc/2),Math.abs(s.h*sc/2),0,0,Math.PI*2);if(s.fill)sx.fill();sx.stroke();break;
+        case 'line':case 'arrow':{const me=connEnds(s);sx.beginPath();sx.moveTo(me.x1*sc+ox,me.y1*sc+oy);sx.lineTo(me.x2*sc+ox,me.y2*sc+oy);sx.stroke();break}
+        case 'pen':if(s.pts.length<2)break;sx.beginPath();sx.moveTo(s.pts[0][0]*sc+ox,s.pts[0][1]*sc+oy);for(let i=1;i<s.pts.length;i++)sx.lineTo(s.pts[i][0]*sc+ox,s.pts[i][1]*sc+oy);sx.stroke();break;
+        case 'text':case 'sticky':{const rx2=s.x*sc+ox,ry2=s.y*sc+oy,rw2=Math.max(2,s.w*sc),rh2=Math.max(2,s.h*sc);sx.fillStyle=s.type==='sticky'?(s.color||'#FEF08A'):(s.fill||getCSS('--brand'));sx.fillRect(rx2,ry2,rw2,rh2);break}
+        case 'image':{const rx3=s.x*sc+ox,ry3=s.y*sc+oy,rw3=Math.max(2,s.w*sc),rh3=Math.max(2,s.h*sc);const img=_imgCache.get(_imgKey(s.dataUrl));if(img&&img.complete&&img.naturalWidth)sx.drawImage(img,rx3,ry3,rw3,rh3);else{sx.fillStyle='#CBD5E1';sx.fillRect(rx3,ry3,rw3,rh3)}break}
       }
-      if(_mr)mx.restore();
+      if(_mr)sx.restore();
     }
-    mx.globalAlpha=1;
+    sx.globalAlpha=1;
+  }
+  function draw(){
+    _raf=0;
+    mx.clearRect(0,0,W,H);
+    if(!state.shapes.length){_sceneVer=-1;_sc=0;return;}
+    if(_sceneVer!==_gridVer||!_scene)_renderScene();
+    if(!_sc)return;
+    mx.drawImage(_scene,0,0);
     const vp=state.viewport,_r=canvas.getBoundingClientRect(),cW=_r.width,cH=_r.height;
-    const vx=vp.x*sc+ox,vy=vp.y*sc+oy,vw=(cW/vp.zoom)*sc,vh=(cH/vp.zoom)*sc;
+    const vx=vp.x*_sc+_ox,vy=vp.y*_sc+_oy,vw=(cW/vp.zoom)*_sc,vh=(cH/vp.zoom)*_sc;
     mx.strokeStyle=getCSS('--accent-contrast');mx.lineWidth=1.5;mx.setLineDash([3,2]);   // a11y-audit-2026-07
     mx.strokeRect(vx,vy,vw,vh);mx.setLineDash([]);
   }
+  function invalidateCache(){_sceneVer=-1;schedule();}
 
   function schedule(){if(!state.showMinimap||_raf)return;_raf=requestAnimationFrame(draw)}
 
@@ -5606,7 +5621,7 @@ const Minimap=(()=>{
     invalidate();
   });
 
-  return{draw,schedule};
+  return{draw,schedule,invalidateCache};
 })();
 
 // ====================== MAIN ======================

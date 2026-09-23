@@ -2,6 +2,19 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.83] - 2026-09-23
+
+**ADR-0025: ミニマップのコンテンツビットマップキャッシュ** — `Minimap.draw()` が
+呼ばれるたびに全シェイプを縮小レンダリングし直していた (重い盤面では
+パン/ズーム毎に全ペン点再走査)。シェイプ描画部分は `_gridVer` でメモ化された
+160×100 オフスクリーンビットマップへ、ビューポート矩形のみ毎回描画へ分離。
+パン/ズーム・ホバー等 `_gridVer` 不変のフレームでは全シェイプ走査が消え、
+`drawImage + strokeRect` のみになる。無効化経路は `_gridVer` (シェイプ変更)、
+`applyTheme` (配色)、`img.onload` (非同期ロード完了) の3系統を網羅。
+
+### Changed
+- ミニマップ描画を `_renderScene()` (キャッシュ) + ビューポート矩形に分割
+
 ## [1.7.82] - 2026-09-23
 
 **ADR-0024: レイヤードキャンバス — オーバーレイ層の分離** — シーン (#c) と
