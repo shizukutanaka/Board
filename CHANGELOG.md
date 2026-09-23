@@ -2,6 +2,15 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.108] - 2026-09-23
+
+**ADR-0050: クリップボードへの PNG コピー** — Export メニューに
+「PNGをクリップボードにコピー」を追加 (Excalidraw parity)。
+`exportPNG` の描画パスを `_renderPngBlob()` に切り出して共有 —
+download と clipboard が同一の PNG 生成を経る。API 非対応環境は
+`copyUnsupported`、write 拒否は `copyFailed` トースト (ショートカット
+なし — ⌘⇧C は DevTools と衝突)。
+
 ## [1.7.107] - 2026-09-23
 
 **ADR-0049: 選択にズーム (`⇧2`)** — Excalidraw パリティ。選択 bbox を
