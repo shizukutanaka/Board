@@ -2,6 +2,16 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.91] - 2026-09-23
+
+**ADR-0033: ctrl+wheel ズームのスナップショットプレビュー** — トラックパッドの
+2本指ピンチはデスクトップブラウザで `ctrl+wheel` として届く経路であり、
+ADR-0030 でタッチピンチに入れたスナップショット・スケールプレビューが
+未適用だった。バースト先頭で `_pinchSnapNow()` (0030 と同一機構を共有)、
+最後のイベントから 180ms のクワイエットタイマーで破棄→高精細へ settle。
+通常ホイール(パン)は非干渉。settle 後フレームは直接描画とピクセル一致
+(実測 diff=0)。
+
 ## [1.7.90] - 2026-09-23
 
 **ADR-0032: ヒットテスト/マーキーのグリッド索引流用** — ADR-0016 の空間索引を

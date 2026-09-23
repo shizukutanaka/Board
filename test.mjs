@@ -336,9 +336,14 @@ const checks = [
   ['draft pen blits committed bitmap 1:1 snapped to device grid', html.includes("ctx.drawImage(d.cv,Math.round((d.bx-state.viewport.x)*_z)")],
   ['draft pen rebuilds stamp on pressure-mode flip/extrema growth', html.includes("usePr!==d.usePr||(usePr&&extGrew)") && html.includes("_inkRebuild(s,d)")],
   // v1.7.88: ADR-0030 pinch-zoom scaled preview
-  ['pinch snapshots canvas once at gesture start', html.includes("if(_pointers.size>=2&&!_pinchSnap)") && html.includes(".getContext('2d').drawImage(canvas,0,0)")],
+  ['pinch snapshots canvas once at gesture start', html.includes("if(_pointers.size>=2)_pinchSnapNow()") && html.includes("function _pinchSnapNow()") && html.includes(".getContext('2d').drawImage(canvas,0,0)")],
   ['pinch preview blits snapshot under accumulated transform', html.includes("if(_pinchSnap&&_pinchVp)") && html.includes("ctx.drawImage(_pinchSnap,0,0,W,H,(_pinchVp.x-v.x)*z")],
   ['pinch end clears snapshot and repaints crisp', html.includes("if(_pinchSnap){_pinchSnap=null;_pinchVp=null;invalidate();}")],
+  // v1.7.91: ADR-0033 ctrl+wheel (trackpad pinch) zoom preview shares the
+  // same snapshot mechanism, settles via a quiet-window timer.
+  ['wheel zoom burst snapshots before first zoom', html.includes("_pinchSnapNow();\n    clearTimeout(_wheelZoomEnd);")],
+  ['wheel zoom settle timer discards snapshot + repaints', html.includes("_wheelZoomEnd=setTimeout(()=>{_pinchSnap=null;_pinchVp=null;invalidate()},180)")],
+  ['ADR-0032/0033: marquee + pickTop use the spatial grid', html.includes("_gridRectCandidates(_grid||(_grid=_buildGrid(state.shapes)),r)") && html.includes("cands.sort((a,b)=>(_grid.idx.get(b)|0)-(_grid.idx.get(a)|0))")],
   ['load validates viewport finiteness', html.includes("Number.isFinite(+d.viewport.zoom)&&d.viewport.zoom>0")],
   ['load clamps viewport zoom to [MIN_ZOOM,MAX_ZOOM]', html.includes("state.viewport.zoom=clampZoom(+d.viewport.zoom)")],
   ['clampZoom is the single zoom-invariant source', html.includes("const clampZoom=z=>Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,z))") && html.includes("const nz=clampZoom(") && html.includes("const z=clampZoom(")],
