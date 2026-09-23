@@ -2,6 +2,16 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.113] - 2026-09-23
+
+**ADR-0055: 点ジオメトリの回転 (`ペン・線・矢印`)** — `doRotate` が
+`s.w!=null` の箱形のみ対象だったのを、`_rotatable` (w OR pts OR x1) に
+拡張。点ジオメトリは `rotate` フィールドを持たないため、`_rotPtsAbout`
+で全点を選択群 bbox 中心に剛体回転 — 単一ペンは自身の中心でその場で
+回る。doFlip (flipShape 全型対応) と対の設計。`,`/`.` キー経路のみ
+(回転ノブの逐次ドラッグは別 ADR)。コネクタ端点の binding は connEnds
+再計算で自動追従。undo は既存 `align` op で完結。
+
 ## [1.7.112] - 2026-09-23
 
 **ADR-0054: ズーム境界での純粋 no-op** — min/max ズームに達した状態でも

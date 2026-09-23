@@ -306,6 +306,8 @@ const checks = [
   ['_teFollow per-frame, viewport-signature gated', html.includes("_teFollow();     // ADR-0053") && html.includes("positionTextEditor(_teTa,s)") && html.includes("sig=v.x+','+v.y+','+v.zoom")],
   // v1.7.112: ADR-0054 no micro-pan at zoom bounds
   ['zoomAt pure no-op at zoom bounds', html.includes("if(nz===v.zoom)return;") && html.includes("const nz=clampZoom(v.zoom*Math.exp(delta));")],
+  // v1.7.113: ADR-0055 rotate point-geometry shapes
+  ['doRotate covers pen/line/arrow geometry', html.includes("const _rotatable=s=>s.w!=null||s.pts||s.x1!=null") && html.includes("_rotPtsAbout(s,gx,gy,cs,sn)") && html.includes("if(s.w==null){_rotPtsAbout")],
   ['copyPNG guards ClipboardItem + write', html.includes("typeof ClipboardItem==='undefined'") && html.includes("copyUnsupported")],
   ['copyPNG in export menu', html.includes("['ctxCopyPNG','',copyPNG]")],
   ['ctxCopyPNG i18n ja+en', html.includes("ctxCopyPNG:'PNGをクリップボードにコピー'") && html.includes("ctxCopyPNG:'Copy PNG to clipboard'")],
@@ -3516,16 +3518,20 @@ try {
     console.log('  ✓ doRotate: multi-selection orbits group centre, single shape spins in place, undo restores');
   }
   {
-    // v1.6.64: rotation only applies to rect/ellipse; pen/line/arrow are skipped (NaN-safe)
+    // v1.7.113 (ADR-0055): rotation now covers point geometry — line endpoints
+    // rotate about the shape bbox centre; no rotate field is ever written.
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
     const ln={id:'rln',type:'line',z:1,x1:0,y1:0,x2:100,y2:0,stroke:'#000',size:2,opacity:1};
     Store.commit({op:'add',shape:ln});
     state.selection=new Set([ln.id]);
     const hlen=state.history.length;
-    doRotate(15);
-    assert.strictEqual(state.history.length,hlen,'doRotate is a no-op on a line (point geometry)');
-    assert.ok(state.shapes.find(s=>s.id===ln.id).rotate==null,'line never gets a rotate field');
-    console.log('  ✓ doRotate scope: pen/line/arrow excluded (no NaN rotation)');
+    doRotate(90);   // bbox {−1,−1,102,2} → centre (50,0): (x,y)→(50−y, x−50)
+    assert.strictEqual(state.history.length,hlen+1,'doRotate commits an align op for a line');
+    const rl=state.shapes.find(s=>s.id===ln.id);
+    assert.ok(Math.abs(rl.x1-50)<1e-6&&Math.abs(rl.y1-(-50))<1e-6&&Math.abs(rl.x2-50)<1e-6&&Math.abs(rl.y2-50)<1e-6,
+      'line endpoints rotate to vertical about the centre');
+    assert.ok(rl.rotate==null,'line never gets a rotate field');
+    console.log('  ✓ doRotate scope: point geometry rotates about centre (no rotate field)');
   }
   {
     // v1.6.64: lock protects against deletion, not just movement
@@ -5442,6 +5448,46 @@ try {
     assert.ok(Math.abs(state.viewport.zoom-2)<1e-9&&Math.abs(state.viewport.x-600)<1e-9&&Math.abs(state.viewport.y-450)<1e-9,
       'zoomAt interior: cursor-anchored 2x zoom');
     console.log('  ✓ zoomAt: bound no-op (x2), interior anchor (3 asserts)');
+  }
+
+  // ADR-0055: rotate now covers point geometry — pen pts and line/arrow
+  // endpoints rotate rigidly about the group bbox centre; box shapes keep the
+  // orbit+s.rotate path; undo restores through the existing align op.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+    state.seq=0;state.seenOps=new Set();state.selection=new Set();
+    // single pen rotates about its own (stroke-padded) bbox centre
+    const pen=Shape.make('pen',{pts:[[100,100],[150,150]],size:0});
+    Store.commit({op:'add',shape:pen});
+    state.selection=new Set([pen.id]);
+    doRotate(90);                                   // centre (125,125): p→(125-(y-125),125+(x-125))
+    const lp=state.shapes.find(s=>s.id===pen.id);   // commit clones — read live copy
+    assert.ok(Math.abs(lp.pts[0][0]-150)<1e-6&&Math.abs(lp.pts[0][1]-100)<1e-6,'pen 90°: p0 → (150,100)');
+    assert.ok(Math.abs(lp.pts[1][0]-100)<1e-6&&Math.abs(lp.pts[1][1]-150)<1e-6,'pen 90°: p1 → (100,150)');
+    Store.undo();
+    const rp=state.shapes.find(s=>s.id===pen.id);
+    assert.ok(Math.abs(rp.pts[0][0]-100)<1e-9&&Math.abs(rp.pts[0][1]-100)<1e-9,'pen rotate undo restores pts (align op)');
+    // line endpoints rotate about own bbox centre (pad extends to (5,0))
+    const ln=Shape.make('line',{x1:0,y1:0,x2:10,y2:0});
+    Store.commit({op:'add',shape:ln});
+    state.selection=new Set([ln.id]);
+    doRotate(90);
+    const ll=state.shapes.find(s=>s.id===ln.id);
+    assert.ok(Math.abs(ll.x1-5)<1e-6&&Math.abs(ll.y1-(-5))<1e-6&&Math.abs(ll.x2-5)<1e-6&&Math.abs(ll.y2-5)<1e-6,
+      'line 90°: endpoints → vertical segment');
+    Store.undo();
+    // mixed selection: box orbits+spins, pen rotates — same centre
+    const rc=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    const p2=Shape.make('pen',{pts:[[20,20],[30,30]],size:0});
+    Store.commit({op:'add',shape:rc});Store.commit({op:'add',shape:p2});
+    state.selection=new Set([rc.id,p2.id]);
+    doRotate(90);                                   // group bb {0,0,30.5,30.5} → c=(15.25,15.25)
+    const lrc=state.shapes.find(s=>s.id===rc.id),lp2=state.shapes.find(s=>s.id===p2.id);
+    assert.strictEqual(lrc.rotate,90,'mixed: box gets rotate field');
+    assert.ok(Math.abs(lrc.x-20.5)<1e-6&&Math.abs(lrc.y-0)<1e-6,'mixed: box centre orbits to (25.5,5)');
+    assert.ok(Math.abs(lp2.pts[0][0]-10.5)<1e-6&&Math.abs(lp2.pts[0][1]-20)<1e-6,'mixed: pen pts rotate about group centre');
+    assert.strictEqual(lp2.rotate||0,0,'mixed: pen has no rotate field');
+    console.log('  ✓ doRotate point-geom: pen 90°, line, mixed selection, undo (7 asserts)');
   }
 
   // search navigation a11y: SR users search BY content, so the announcement must name

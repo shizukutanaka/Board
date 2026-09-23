@@ -766,7 +766,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.112';
+const V='1.7.113';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4532,9 +4532,16 @@ function doBeautify(){
   invalidate();Persist.schedule();
   UI.toast(`${t('beautified')} (${after.length})`,'ok');
 }
+// ADR-0055: rotate applies to box shapes (orbit + s.rotate spin) AND point
+// geometry (pen pts / line-arrow endpoints rotate rigidly about the group centre).
+const _rotatable=s=>s.w!=null||s.pts||s.x1!=null;
+function _rotPtsAbout(s,gx,gy,cs,sn){
+  const rot=(px,py)=>({x:gx+(px-gx)*cs-(py-gy)*sn,y:gy+(px-gx)*sn+(py-gy)*cs});
+  if(s.pts)for(const p of s.pts){const q=rot(p[0],p[1]);p[0]=q.x;p[1]=q.y}
+  else if(s.x1!=null){const a=rot(s.x1,s.y1),b=rot(s.x2,s.y2);s.x1=a.x;s.y1=a.y;s.x2=b.x;s.y2=b.y}
+}
 function doRotate(d){
-  // Box shapes only (s.w defined): pen/line/arrow are point geometry with no box centre.
-  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked&&s.w!=null);
+  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked&&_rotatable(s));
   if(!sel.length)return;
   const bb=G.bboxAll(sel),gx=bb.x+bb.w/2,gy=bb.y+bb.h/2; // orbit about group centre, like doFlip
   // Frame-aware: box-shape children inside selected frames orbit and rotate with the frame (parity with doAlign)
@@ -4543,7 +4550,7 @@ function doRotate(d){
     if(f.type!=='frame')continue;
     const fb=G.bbox(f);
     for(const s of state.shapes){
-      if(s.id===f.id||s.type==='frame'||s.locked||s.w==null||frameOf.has(s.id))continue;
+      if(s.id===f.id||s.type==='frame'||s.locked||!_rotatable(s)||frameOf.has(s.id))continue;
       const b=G.bbox(s);
       if(b.x>=fb.x&&b.y>=fb.y&&b.x+b.w<=fb.x+fb.w&&b.y+b.h<=fb.y+fb.h)frameOf.set(s.id,f.id);
     }
@@ -4552,6 +4559,7 @@ function doRotate(d){
   const r=d*Math.PI/180,cs=Math.cos(r),sn=Math.sin(r);
   const before=sel.map(s=>clone({...s,rotate:s.rotate||0}));
   for(const s of sel){
+    if(s.w==null){_rotPtsAbout(s,gx,gy,cs,sn);continue}   // ADR-0055: point geometry
     const b=G.bbox(s),cx=b.x+b.w/2,cy=b.y+b.h/2;
     const nx=gx+(cx-gx)*cs-(cy-gy)*sn,ny=gy+(cx-gx)*sn+(cy-gy)*cs;
     Shape.translate(s,nx-cx,ny-cy);
@@ -4562,7 +4570,7 @@ function doRotate(d){
   Store._recordCommitted({op:'align',dir:'rotate',before,after});
   if(origSel.length)state.history[state.histIdx].origSel=origSel;
   invalidate();Persist.schedule();
-  UI.announce(sel.length===1?describeShape(sel[0]):sel[0].rotate+'°');   // ,/. keyboard rotate was SR-silent (knob drag announces)
+  UI.announce(sel.length===1?describeShape(sel[0]):d+'°');   // ,/. keyboard rotate was SR-silent (knob drag announces); point-geom selections have no .rotate (ADR-0055)
 }
 // ====================== EXPORT ======================
 // Browsers cap a canvas's single dimension (~16384px on most) and its total area.
