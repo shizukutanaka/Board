@@ -1205,7 +1205,7 @@ try {
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
-             _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
+             _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
              exportPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
              _onBtnInstall, _getInstallPrompt: () => _installPrompt, _setInstallPrompt: (v) => { _installPrompt = v; },
@@ -1232,7 +1232,7 @@ try {
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
-          _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
+          _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
           exportPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
           _onBtnInstall, _getInstallPrompt, _setInstallPrompt,
@@ -5250,6 +5250,56 @@ try {
     const rReset=_sqAdvance(1);
     assert.ok(rReset&&rReset.label==='needle A','search nav: new query resets idx, first advance restarts at 0');
     console.log('  ✓ search navigation: _sqAdvance steps, wraps, reverses, resets on new query (9 asserts)');
+  }
+
+  // ADR-0048: _sqMatches caches on {_gridVer,_sq} — stale results must not be served
+  // after a commit or a query change, and _sqAdvance must see the same list.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+    state.seq=0;state.seenOps=new Set();
+    const a=Shape.make('rect',{x:0,y:0,w:10,h:10,label:'find-me'});
+    Store.commit({op:'add',shape:a});
+    _setSq('find');
+    const m1=_sqMatches();
+    assert.strictEqual(m1.length,1,'_sqMatches: initial query matches one shape');
+    assert.strictEqual(_sqMatches(),m1,'_sqMatches: repeat call returns cached array');
+    // commit a matching shape → _gridVer bumps → list grows
+    const b=Shape.make('rect',{x:50,y:0,w:10,h:10,text:'find-me too'});
+    Store.commit({op:'add',shape:b});
+    const m2=_sqMatches();
+    assert.strictEqual(m2.length,2,'_sqMatches: _gridVer bump rebuilds the list');
+    assert.ok(m2[0].id===a.id&&m2[1].id===b.id,'_sqMatches: board order preserved');
+    // query change rebuilds without any commit
+    _setSq('find-me too');
+    const m3=_sqMatches();
+    assert.ok(m3.length===1&&m3[0].id===b.id,'_sqMatches: new query re-keys the cache');
+    // _sqAdvance shares the list: it navigates the same ordering
+    _setSq('find');_sqAdvance(1);
+    const adv=_sqAdvance(1);
+    assert.ok(adv&&adv.id===b.id,'_sqAdvance: second advance reaches the second cached match');
+    _setSq('');
+    console.log('  ✓ _sqMatches: {_gridVer,_sq} cache rebuilds on commit and on query change (6 asserts)');
+  }
+
+  // ADR-0047: _grpMapGet caches on _gridVer — group/ungroup via direct mutation plus
+  // _invalidateGrid must be reflected; membership is by live shape reference.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+    state.seq=0;state.seenOps=new Set();
+    const a=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    const b=Shape.make('rect',{x:50,y:0,w:10,h:10});
+    Store.commit({op:'add',shape:a});Store.commit({op:'add',shape:b});
+    // commit clones the op payload — mutate the live copies in state.shapes
+    const la=state.shapes.find(s=>s.id===a.id),lb=state.shapes.find(s=>s.id===b.id);
+    la.groupId='g1';lb.groupId='g1';_invalidateGrid();
+    const g1=_grpMapGet();
+    const g1m=g1.get('g1');
+    assert.ok(g1.size===1&&g1m.length===2&&g1m[0].id===a.id&&g1m[1].id===b.id,'_grpMapGet: one group of two members');
+    assert.strictEqual(_grpMapGet(),g1,'_grpMapGet: repeat call returns cached map');
+    // ungroup → invalidate → map empties
+    delete la.groupId;delete lb.groupId;_invalidateGrid();
+    assert.strictEqual(_grpMapGet().size,0,'_grpMapGet: _invalidateGrid drops stale groups');
+    console.log('  ✓ _grpMapGet: _gridVer-keyed cache, invalidates on group change (3 asserts)');
   }
 
   // search navigation a11y: SR users search BY content, so the announcement must name
