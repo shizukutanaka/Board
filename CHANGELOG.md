@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.107] - 2026-09-23
+
+**ADR-0049: 選択にズーム (`⇧2`)** — Excalidraw パリティ。選択 bbox を
+pad 60/cap 4 でフィット (fit-all の cap 2 より深く寄るので小さい選択が
+実際に大きく見える)。選択空 → `noSelection` トースト。合わせて 3 箇所目の
+複製になった viewport-fit 数式を `_fitViewport(b,pad,cap)` に集約 —
+`fitToContent`/`_mirrorGo`/`zoomToSelection` が同一路径を共有。
+
 ## [1.7.106] - 2026-09-23
 
 **ADR-0048: 検索ハイライトのマッチリストキャッシュ** — 検索ボックスに文字が
