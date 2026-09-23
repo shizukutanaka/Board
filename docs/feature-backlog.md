@@ -148,8 +148,13 @@ Opus/Sonnet が文脈なしで着手できる形式に変換していなかっ�
 - Effort: -(人間側のアクションのみ)
 - Depends on: none
 
-## FT-10 — axe-core による本格自動 a11y 監査(npm install の許可待ち)
-- Verdict: `FIX`
+## FT-10 — axe-core による本格自動 a11y 監査(npm install の許可待ち) — ✅ 実施済み (v1.7.74)
+- Verdict: `DONE`(2026-09-23)。Playwright(システム Chrome, headless)+ `axe.run()` を
+  6 状態(初期/ヘルプ/Share/ctx/エクスポート/ダーク)で実行 → 4 ルールの違反を検出、
+  すべて修正して再実行で **violations = 0**。詳細は
+  `docs/a11y-audit-2026-07.md`「axe-core 追監査」。残る incomplete は kbd 字形類の
+  `color-contrast`(axe がテキスト判定不能、親 aria-label あり = 実害なし)のみ。
+- Verdict(当初): `FIX`
 - Evidence: `docs/a11y-audit-2026-07.md`「残作業」。依存ゼロの静的検証(コントラスト比の
   直接計算)は実施済みで実害のあるバグ(フォーカスリング・canvas UI指標のコントラスト
   未達)を発見・修正済みだが、ARIA ロール整合性・DOM構造・実レンダリング後の計算済み
@@ -251,7 +256,7 @@ Opus/Sonnet が文脈なしで着手できる形式に変換していなかっ�
 
 依存関係の無い FT-09〜FT-16 のうち、コードで前に進められるのは **FT-12(選択ハイライト)**
 と **FT-14(空間索引の描画パスへの拡張)** の2つのみ — どちらも ADR を書いてから着手。
-**FT-10(axe-core)** はユーザーの明示的な npm install 許可を待つ。**FT-09・FT-11** は
+**FT-10(axe-core)** は v1.7.74 で実施済み(6 状態 violations = 0)。**FT-09・FT-11** は
 そもそも人間側のアクション(コミット権限・実機確認)でありコードでは解決しない。
 **FT-13(dirty-rect)・FT-15(画像参照分離)** は影響範囲が大きく高リスクなため、
 着手前にユーザーとスコープ・検証手段を確認すること — 特に FT-13 はこのセッションに
