@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.96] - 2026-09-23
+
+**ADR-0038: 共有リンク拒否経路のフィードバック統一** — 未知の kind・非ボード JSON・
+全形状無効の 3 経路が無言 `return false` でハッシュも残留だった問題を、
+鍵経路と同じく `invalidBoard` toast + ハッシュクリアに統一。decode/parse 失敗の
+catch でもハッシュをクリア。ユーザー自身が confirm でキャンセルした場合のみ
+従来どおりハッシュを残す。
+
 ## [1.7.95] - 2026-09-23
 
 **ADR-0037: ポインタ選択のスクリーンリーダーアナウンス** — クリック/グループ選択、
