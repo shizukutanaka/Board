@@ -766,7 +766,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.106';
+const V='1.7.107';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -909,7 +909,7 @@ const I18N={
       undo:'元に戻す',redo:'やり直し',del:'削除',dup:'複製',
       selAll:'全選択',copy:'コピー',paste:'貼付',cut:'切取',
       zoomIn:'拡大',zoomOut:'縮小',zoom100:'100%にリセット',
-      fit:'画面にフィット',pan:'パン',help:'ヘルプ',exp:'PNG書き出し',
+      fit:'画面にフィット',selFit:'選択にフィット',pan:'パン',help:'ヘルプ',exp:'PNG書き出し',
       grid:'グリッド',minimap:'ミニマップ切替',beautify:'選択したペン描画を整形',esc:'選択解除/キャンセル',
       cycle:'図形を巡回',create:'中央に作成',
       present:'プレゼン',nudge:'移動 (⇧: 10px)',zorder:'前面/背面',zorderEnds:'最前面/最背面',
@@ -986,7 +986,7 @@ const I18N={
       undo:'Undo',redo:'Redo',del:'Delete',dup:'Duplicate',
       selAll:'Select all',copy:'Copy',paste:'Paste',cut:'Cut',
       zoomIn:'Zoom in',zoomOut:'Zoom out',zoom100:'Reset zoom',
-      fit:'Fit to content',pan:'Pan',help:'Help',exp:'Export PNG',
+      fit:'Fit to content',selFit:'Zoom to selection',pan:'Pan',help:'Help',exp:'Export PNG',
       grid:'Toggle grid',minimap:'Toggle minimap',beautify:'Beautify selected pen strokes',esc:'Deselect / cancel',
       cycle:'Cycle shapes',create:'Create at centre',
       present:'Present',nudge:'Move (⇧: 10px)',zorder:'Front / back',zorderEnds:'To front / to back',
@@ -2151,17 +2151,10 @@ function _mirrorSync(){
 function _mirrorGo(id){
   const s=byId(id);if(!s)return;
   state.selection=new Set([id]);
-  // Centre the view on the shape, zooming out only when it doesn't fit —
-  // same pad/cap as fitToContent but single-bbox.
+  // Centre the view on the shape, zooming out only when it doesn't fit (ADR-0049)
   const b=G.bbox(s);
-  if(b&&b.w>0&&b.h>0){
-    const r=canvas.getBoundingClientRect(),pad=40;
-    const z=clampZoom(Math.min((r.width-pad*2)/b.w,(r.height-pad*2)/b.h,2));
-    state.viewport.zoom=z;
-    state.viewport.x=b.x+b.w/2-r.width/(2*z);
-    state.viewport.y=b.y+b.h/2-r.height/(2*z);
-  }
-  UI.refreshZoom();invalidate();UI.announce(describeShape(s));
+  if(b&&b.w>0&&b.h>0)_fitViewport(b,40,2);else invalidate();
+  UI.announce(describeShape(s));
 }
 let _lastVp=null;   // ADR-0028: the effective viewport the scene canvas currently represents
 function draw(){
@@ -3318,16 +3311,29 @@ function zoomReset(){
   UI.refreshZoom();invalidate();
   UI.announce('100%');
 }
-function fitToContent(){
-  const b=G.bboxAll(state.shapes);if(!b){zoomReset();return}
-  const pad=40;
+// ADR-0049: shared viewport-fit math — was duplicated in fitToContent/_mirrorGo.
+// Callers announce their own message (zoom % vs shape name).
+function _fitViewport(b,pad,cap){
   const r=canvas.getBoundingClientRect();
-  const zx=(r.width-pad*2)/b.w,zy=(r.height-pad*2)/b.h;
-  const z=clampZoom(Math.min(zx,zy,2));
+  const z=clampZoom(Math.min((r.width-pad*2)/b.w,(r.height-pad*2)/b.h,cap));
   state.viewport.zoom=z;
   state.viewport.x=b.x+b.w/2-r.width/(2*z);
   state.viewport.y=b.y+b.h/2-r.height/(2*z);
   UI.refreshZoom();invalidate();
+  return z;
+}
+function fitToContent(){
+  const b=G.bboxAll(state.shapes);if(!b){zoomReset();return}
+  const z=_fitViewport(b,40,2);
+  UI.announce(Math.round(z*100)+'%');
+}
+// ⇧2: zoom to the selection's bbox (Excalidraw parity). Cap 4 — tighter than
+// fit-all's 2 so a small selection actually enlarges, short of the 16x extreme.
+function zoomToSelection(){
+  if(!state.selection.size){UI.toast(t('noSelection'),'warn');return}
+  const b=G.bboxAll(state.shapes.filter(s=>state.selection.has(s.id)));
+  if(!b){UI.toast(t('noSelection'),'warn');return}
+  const z=_fitViewport(b,60,4);
   UI.announce(Math.round(z*100)+'%');
 }
 
@@ -4121,6 +4127,7 @@ window.addEventListener('keydown',e=>{
   else if(k==='g'&&!meta){state.showGrid=!state.showGrid;invalidate();UI.toast(`${t('grid')} ${state.showGrid?t('on'):t('off')}`)}
   else if(k==='m'&&!meta){UI.toggleMinimap()}
   else if(e.shiftKey&&(k==='1'||k==='!')){e.preventDefault();fitToContent()}
+  else if(e.shiftKey&&(k==='2'||k==='@')){e.preventDefault();zoomToSelection()}
   else if(e.shiftKey&&!meta&&!e.altKey&&(k==='h'||k==='v')&&state.selection.size){e.preventDefault();doFlip(k)}
   else if(k===','&&!meta&&state.selection.size){e.preventDefault();doRotate(-15)}
   else if(k==='.'&&!meta&&state.selection.size){e.preventDefault();doRotate(15)}
@@ -5885,7 +5892,7 @@ const UI={
       ['⌘Z',k.undo],['⌘⇧Z',k.redo],['⌘A',k.selAll],
       ['⌘C/V/X',k.copy+'/'+k.paste+'/'+k.cut],['⌘D',k.dup],['⌫',k.del],
       ['⌘+/−/0',k.zoomIn+'/'+k.zoomOut+'/'+k.zoom100],
-      ['⇧1',k.fit],['⌘E',k.exp],['⌘⇧E','SVG'],['⌘P','PDF'],['⌘⇧S','.board'],
+      ['⇧1',k.fit],['⇧2',t('selFit')],['⌘E',k.exp],['⌘⇧E','SVG'],['⌘P','PDF'],['⌘⇧S','.board'],
       ['G',k.grid],['⇧G',t('snap')],['M',k.minimap],['Esc',k.esc],['?',k.help],
       ['↑↓←→',k.nudge],['⌥ ↑↓←→',k.kbdResize],
       [']/[',k.zorder],['⇧]/⇧[',k.zorderEnds],

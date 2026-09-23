@@ -291,6 +291,10 @@ const checks = [
   ['group halo map cached on _gridVer', html.includes("function _grpMapGet(") && html.includes("_grpMapVer===_gridVer") && html.includes("_grpMapGet()")],
   // v1.7.106: ADR-0048 search-match list keyed on {_gridVer, _sq}
   ['search match list cached on _gridVer+query', html.includes("function _sqMatches(") && html.includes("_sqVer===_gridVer&&_sqQ===q") && html.includes("_sqMatches()")],
+  // v1.7.107: ADR-0049 ⇧2 zoom-to-selection + shared _fitViewport
+  ['zoomToSelection defined + ⇧2 bound', html.includes("function zoomToSelection(") && html.includes("k==='2'||k==='@'")],
+  ['shared _fitViewport used by all three fit paths', html.includes("function _fitViewport(") && html.includes("_fitViewport(b,40,2)") && html.includes("_fitViewport(b,60,4)")],
+  ['selFit i18n ja+en', html.includes("selFit:'選択にフィット'") && html.includes("selFit:'Zoom to selection'")],
   ['SVG pen exports same primitive union', html.includes('_penTaperE(n-1-i)') && html.includes("<circle cx=") && html.includes("<g fill=")],
   ['SVG pen export uses penWidths (display=output parity)', html.includes("penWidths(P,SZ)")],
   // v1.6.14: pointer pressure input
@@ -1205,7 +1209,7 @@ try {
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
-             _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
+             _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
              exportPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
              _onBtnInstall, _getInstallPrompt: () => _installPrompt, _setInstallPrompt: (v) => { _installPrompt = v; },
@@ -1232,7 +1236,7 @@ try {
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
-          _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
+          _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
           exportPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
           _onBtnInstall, _getInstallPrompt, _setInstallPrompt,
@@ -5300,6 +5304,30 @@ try {
     delete la.groupId;delete lb.groupId;_invalidateGrid();
     assert.strictEqual(_grpMapGet().size,0,'_grpMapGet: _invalidateGrid drops stale groups');
     console.log('  ✓ _grpMapGet: _gridVer-keyed cache, invalidates on group change (3 asserts)');
+  }
+
+  // ADR-0049: ⇧2 zoomToSelection fits the selection bbox (pad 60, cap 4) on the
+  // 800×600 canvas stub; empty selection toasts and leaves the viewport alone.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+    state.seq=0;state.seenOps=new Set();state.viewport={x:0,y:0,zoom:1};
+    const big=Shape.make('rect',{x:0,y:0,w:400,h:300});
+    const small=Shape.make('rect',{x:1000,y:1000,w:10,h:10});
+    Store.commit({op:'add',shape:big});Store.commit({op:'add',shape:small});
+    state.selection=new Set([small.id]);
+    zoomToSelection();
+    assert.strictEqual(state.viewport.zoom,4,'zoomToSelection: small selection hits cap 4 (48→4)');
+    assert.strictEqual(state.viewport.x,1005-800/8,'zoomToSelection: centres selection bbox x');
+    assert.strictEqual(state.viewport.y,1005-600/8,'zoomToSelection: centres selection bbox y');
+    // larger selection fits below the cap
+    state.selection=new Set([big.id]);
+    zoomToSelection();
+    assert.strictEqual(state.viewport.zoom,1.6,'zoomToSelection: 400×300 in 800×600 pad60 → z=min(1.7,1.6)=1.6');
+    // empty selection: no viewport change
+    state.selection=new Set();state.viewport={x:11,y:22,zoom:0.5};
+    zoomToSelection();
+    assert.ok(state.viewport.zoom===0.5&&state.viewport.x===11,'zoomToSelection: empty selection is a no-op');
+    console.log('  ✓ zoomToSelection: cap, centre, fit-below-cap, empty-selection no-op (5 asserts)');
   }
 
   // search navigation a11y: SR users search BY content, so the announcement must name

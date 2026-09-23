@@ -97,7 +97,8 @@ Board/
 │   ├── ADR-0045-invite-link.md  # 招待コードを #s=<offer> URL 化 (受け手の貼り付けを省略)
 │   ├── ADR-0046-pen-outline-fill.md  # ペンの union-of-primitives アウトライン塗り (テーパー端)
 │   ├── ADR-0047-group-halo-index.md  # グループハロー Map の _gridVer キャッシュ (overlay 全走査解消)
-│   └── ADR-0048-search-match-index.md  # 検索マッチリストの {_gridVer, _sq} キャッシュ
+│   ├── ADR-0048-search-match-index.md  # 検索マッチリストの {_gridVer, _sq} キャッシュ
+│   └── ADR-0049-zoom-to-selection.md  # ⇧2 選択ズーム + _fitViewport 共通化
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
