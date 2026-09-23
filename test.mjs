@@ -679,6 +679,13 @@ const checks = [
   ['_reapPeers exempts rtc: peers from timeout reaping', html.includes("if(id.startsWith('rtc:'))continue;   // WebRTC peers are lifecycle-managed")],
   ['dc.onclose removes the rtc peer', html.includes("if(this._rtcPeerId){state.peers.delete(this._rtcPeerId);this._rtcPeerId=null;}")],
   ['dc.onopen stores _rtcPeerId for lifecycle management', html.includes("this._rtcPeerId='rtc:'+uid().slice(0,4);")],
+  // v1.7.76 / ADR-0017 (FT-20): ICE failure without an open channel showed nothing —
+  // connectionState failed toasts once and suppresses the trailing dc.onclose toast
+  ['rtc.onconnectionstatechange wired in _wrtcInit', html.includes("this.rtc.onconnectionstatechange=()=>{")],
+  ['connection failure toasts and stamps _rtcConnFailed', html.includes("connectionState!=='failed'") && html.includes("this._rtcConnFailed=true;") && html.includes("t('connectFailed')")],
+  ['dc.onclose suppresses disconnect toast after a failure', html.includes("if(!this._rtcConnFailed)UI.toast(t('disconnected'),'warn');")],
+  ['_wrtcInit resets the failure flag for reconnects', html.includes("this._rtcConnFailed=false;")],
+  ['connectFailed i18n key (ja + en)', html.includes("connectFailed:'接続に失敗しました'") && html.includes("connectFailed:'Connection failed'")],
   // v1.6.86: multi-image drop cascades by index (async closure capture fix)
   ['drop image cascade uses per-iteration index (not shared ox)', html.includes("files.forEach((f,i)=>{") && html.includes("x:wp.x+i*20,y:wp.y")],
   ['drop image no longer uses a shared incremented ox counter', !html.includes("const sh=Shape.make('image',{x:wp.x+ox,y:wp.y")],
