@@ -2,6 +2,20 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.78] - 2026-09-23
+
+**ADR-0019: ペン bbox のメモ化** — `G.bbox` がペンシェイプの包絡矩形を毎回全点
+走査 (O(pts)) していた。`inView()` の可視判定とミニマップで ~9,700 コール/
+フレームに達し、ADR-0018 適用後の draw() で支配コストになっていた。
+
+### Performance
+- `_penBboxCache`: ADR-0018 と同じ O(1) シグネチャ (pts 参照 + 長さ +
+  先頭/中央/末尾の絶対座標 + size) で包絡をメモ化。in-place 変異
+  (translate/flip) も検知、観測上純粋で `state` 不変
+- 実測 (pen 4000 + rect 1000、全可視ズーム): draw() p50 **15.6ms → 6.9ms**。
+  ADR-0018 適用前から累計 **175ms → 6.9ms (≈25×)**
+- ミニマップ描画 (全シェイプの bbox 走査) も同じ恩恵を受ける
+
 ## [1.7.77] - 2026-09-23
 
 **ADR-0018: ペンストロークのビットマップキャッシュ** — `drawPen` は可変幅インクのため

@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.77 — Design Tokens
+   Board v1.7.78 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -751,7 +751,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.77';
+const V='1.7.78';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1002,15 +1002,31 @@ let DPR=Math.max(1,Math.min(3,window.devicePixelRatio||1));
 
 // ====================== GEOM ======================
 // Pure functions. Deterministic. No state mutation.
+// (_penBboxCache is the sole exception — an observational memoization keyed by
+// an O(1) point signature; it never changes what bbox returns, only how fast.)
+const _penBboxCache=new Map();
 const G={
   w2s(p){const v=state.viewport;return{x:(p.x-v.x)*v.zoom,y:(p.y-v.y)*v.zoom}},
   s2w(p){const v=state.viewport;return{x:p.x/v.zoom+v.x,y:p.y/v.zoom+v.y}},
   bbox(s){
     if(s.type==='pen'){
+      // Memoize the O(pts) envelope walk: per frame it runs once per visible pen
+      // in inView() and once per pen in the minimap — the dominant residual cost
+      // after the bitmap cache (ADR-0019). Same O(1) signature as _penCached:
+      // every in-place point mutation moves p0/mid/pN absolutes, every other op
+      // swaps the array — observationally pure, `state` untouched.
+      const p=s.pts,n=p.length,e=n&&_penBboxCache.get(s.id);
+      if(e&&e.pts===p&&e.n===n&&e.size===s.size
+        &&e.p0x===p[0][0]&&e.p0y===p[0][1]&&e.pMx===p[n>>1][0]&&e.pMy===p[n>>1][1]
+        &&e.pNx===p[n-1][0]&&e.pNy===p[n-1][1])return e.b;
       let mnx=Infinity,mny=Infinity,mxx=-Infinity,mxy=-Infinity;
-      for(const [x,y] of s.pts){if(x<mnx)mnx=x;if(y<mny)mny=y;if(x>mxx)mxx=x;if(y>mxy)mxy=y}
-      const p=(s.size||1)/2;
-      return{x:mnx-p,y:mny-p,w:mxx-mnx+2*p,h:mxy-mny+2*p};
+      for(const [x,y] of p){if(x<mnx)mnx=x;if(y<mny)mny=y;if(x>mxx)mxx=x;if(y>mxy)mxy=y}
+      const pad=(s.size||1)/2,b={x:mnx-pad,y:mny-pad,w:mxx-mnx+2*pad,h:mxy-mny+2*pad};
+      if(n){
+        if(_penBboxCache.size>=8192)_penBboxCache.delete(_penBboxCache.keys().next().value);
+        _penBboxCache.set(s.id,{pts:p,n,size:s.size,p0x:p[0][0],p0y:p[0][1],pMx:p[n>>1][0],pMy:p[n>>1][1],pNx:p[n-1][0],pNy:p[n-1][1],b});
+      }
+      return b;
     }
     if(s.type==='line'||s.type==='arrow'){
       const e=connEnds(s);

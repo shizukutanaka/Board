@@ -1881,6 +1881,44 @@ try {
     console.log('  ✓ pen bitmap cache: miss/settle/hit, translate+flip+style invalidation, vector fallbacks');
   }
 
+  // v1.7.78 / ADR-0019: pen bbox memoization — G.bbox's O(pts) envelope walk was the
+  // dominant residual cost (inView + minimap call it every frame). Same O(1)
+  // signature as the bitmap cache; the memo must never change what bbox returns.
+  {
+    const pen = { id:'pb1', type:'pen', z:0, stroke:'#123', size:6,
+      pts:[[0,0],[10,4],[20,0],[30,6],[40,2]] };
+    const b1 = G.bbox(pen), b2 = G.bbox(pen);
+    assert.strictEqual(b2, b1, 'pen bbox: memoized hit returns the same envelope object');
+    assert.strictEqual(b1.x, -3, 'pen bbox: size pad applied (0 - size/2)');
+    assert.strictEqual(b1.w, 46, 'pen bbox: width spans all points + pad');
+    // In-place uniform translate invalidates (endpoints move)
+    Shape.translate(pen, 100, 0);
+    const b3 = G.bbox(pen);
+    assert.strictEqual(b3.x, b1.x + 100, 'pen bbox: translate invalidates the memo');
+    assert.strictEqual(b3.w, b1.w, 'pen bbox: width unchanged by translate');
+    // In-place interior mutation that moves endpoints invalidates
+    pen.pts[pen.pts.length - 1][0] = 999;
+    const b4 = G.bbox(pen);
+    assert.strictEqual(b4.x + b4.w, 999 + 3, 'pen bbox: endpoint edit invalidates');
+    // Midpoint edit invalidates too
+    pen.pts[pen.pts.length >> 1][1] = -500;
+    const b5 = G.bbox(pen);
+    assert.strictEqual(b5.y, -500 - 3, 'pen bbox: midpoint edit invalidates');
+    // pts array replacement invalidates
+    pen.pts = pen.pts.map(p => p.slice());
+    assert.notStrictEqual(G.bbox(pen), b5, 'pen bbox: pts replacement invalidates');
+    // Memo correctness is still the real envelope — brute-force compare
+    const mm = { x: Infinity, y: Infinity, xx: -Infinity, yy: -Infinity };
+    for (const [x, y] of pen.pts) {
+      if (x < mm.x) mm.x = x; if (y < mm.y) mm.y = y;
+      if (x > mm.xx) mm.xx = x; if (y > mm.yy) mm.yy = y;
+    }
+    const bb = G.bbox(pen);
+    assert.strictEqual(bb.x, mm.x - 3, 'pen bbox: memo equals brute-force min x');
+    assert.strictEqual(bb.x + bb.w, mm.xx + 3, 'pen bbox: memo equals brute-force max x');
+    console.log('  ✓ pen bbox memo: hit/translate/flip/endpoint/midpoint/replacement invalidation, brute-force parity');
+  }
+
   // v1.6.14: pointer pressure - a varying pressure signal drives width; constant/none falls back to velocity
   {
     const size = 8, base = size, LO = 0.45;
