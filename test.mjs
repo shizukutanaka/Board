@@ -443,6 +443,7 @@ const checks = [
   ['elbow bend: s.bend two-corner route + trunk hit + ebend dragKind', html.includes('if(s.bend){')&&html.includes('function _elbowTrunk(s)')&&html.includes("ptr.dragKind='ebend'")&&html.includes('ptr.ebendOrig=clone(onlySel)')],
   ['text align: align prop cycles + canvas/SVG/editor respect it', html.includes('function cycleTextAlign()')&&html.includes("['ctxTextAlign','',cycleTextAlign]")&&html.includes('c.textAlign=s.align')&&html.includes('text-anchor')],
   ['box label wrap: canvas wraps to w-8 + SVG multi-tspan centred', html.includes('wrapTextCached(s,s.label,Math.max(10,s.w-8)')&&html.includes('function _svgBoxLabel(els,s,X,Y,W,H')&&html.includes('wrapText(s.label')],
+  ['font size keys: ⌘⇧,/. steps fontSize ±2 clamped 8..64', html.includes('function fontSizeStep(d)')&&html.includes("k===','||k==='<'")&&html.includes('Math.min(64,Math.max(8')],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
@@ -1275,7 +1276,7 @@ try {
              doAlign, doFlip, snapV, snapPt,
              getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
-             copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, toggleCurve, cycleTextAlign, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
+             copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, toggleCurve, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
              _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa: () => _teTa, zoomAt,
@@ -1302,7 +1303,7 @@ try {
           doAlign, doFlip, snapV, snapPt,
           getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
-          copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, toggleCurve, cycleTextAlign, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
+          copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, toggleCurve, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
           _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa, zoomAt,
@@ -3491,6 +3492,24 @@ try {
     state.selection=new Set();
     Store.commit({op:'del',shapes:[T,S].map(s=>JSON.parse(JSON.stringify(s)))});
     console.log('  ✓ text align: cycle through left→center→right→left (2 asserts)');
+  }
+
+  // ADR-0075: fontSizeStep nudges fontSize ±2, clamps, skips non-text
+  {
+    const T=Shape.make('text',{x:0,y:0,w:200,h:30,text:'x',fontSize:14});
+    const R=Shape.make('rect',{x:0,y:50,w:100,h:50});
+    Store.commit({op:'addMany',shapes:[T,R]});
+    state.selection=new Set([T.id,R.id]);
+    fontSizeStep(1);
+    assert.ok(byId(T.id).fontSize===16,'+1 step → 16');
+    assert.ok(byId(R.id).fontSize===undefined,'rect untouched');
+    fontSizeStep(-1);fontSizeStep(-1);
+    assert.ok(byId(T.id).fontSize===12,'-2 steps → 12');
+    byId(T.id).fontSize=8;fontSizeStep(-1);
+    assert.ok(byId(T.id).fontSize===8,'clamped at 8');
+    state.selection=new Set();
+    Store.commit({op:'del',shapes:[T,R].map(s=>JSON.parse(JSON.stringify(s)))});
+    console.log('  ✓ font size keys: step/clamp/type-gate (4 asserts)');
   }
 
   // validPatch recurses: nested poison in a remote `upd` (gated by validPatch alone)

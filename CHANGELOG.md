@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.133]
+
+### 追加
+- **フォントサイズのキーボード増減** (ADR-0075)。⌘⇧, / ⌘⇧. で選択中の
+  text/sticky の fontSize を ±2 (8–64 clamp)、Figma/draw.io parity。
+  `style` op で undo・同期は既存経路。help grid 追記。
+
 ## [1.7.132]
 
 ### 修正

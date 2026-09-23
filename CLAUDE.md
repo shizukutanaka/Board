@@ -124,6 +124,7 @@ Board/
 - [ADR-0072](docs/ADR-0072-elbow-bend-drag.md) elbow trunk ドラッグ (s.bend 絶対座標、ebend→style op)
 - [ADR-0073](docs/ADR-0073-text-align.md) テキスト揃え (s.align、ctx メニュー巡回、canvas/SVG/editor 一致)
 - [ADR-0074](docs/ADR-0074-box-label-wrap.md) ボックスラベル折返し (wrapTextCached、SVG tspan 複数行)
+- [ADR-0075](docs/ADR-0075-font-size-keys.md) フォントサイズキー (⌘⇧,/.、fontSizeStep ±2 clamp)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

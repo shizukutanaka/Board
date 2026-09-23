@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.132';
+const V='1.7.133';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -911,7 +911,7 @@ const I18N={
     peers:'人',you:'自分',
     k:{select:'選択',hand:'手のひら',pen:'ペン',rect:'矩形',ellipse:'楕円',
       arrow:'矢印',line:'線',text:'文字',sticky:'付箋',frame:'フレーム',eraser:'消しゴム',diamond:'ダイヤ',
-      undo:'元に戻す',redo:'やり直し',del:'削除',dup:'複製',
+      undo:'元に戻す',redo:'やり直し',del:'削除',dup:'複製',fontSize:'フォントサイズ',
       selAll:'全選択',copy:'コピー',paste:'貼付',cut:'切取',
       zoomIn:'拡大',zoomOut:'縮小',zoom100:'100%にリセット',
       fit:'画面にフィット',selFit:'選択にフィット',pan:'パン',help:'ヘルプ',exp:'PNG書き出し',
@@ -989,7 +989,7 @@ const I18N={
     mirrorLabel:'Shapes on the board',mirrorMore:' more not listed',
     k:{select:'Select',hand:'Pan',pen:'Pen',rect:'Rectangle',ellipse:'Ellipse',
       arrow:'Arrow',line:'Line',text:'Text',sticky:'Sticky',frame:'Frame',eraser:'Eraser',diamond:'Diamond',
-      undo:'Undo',redo:'Redo',del:'Delete',dup:'Duplicate',
+      undo:'Undo',redo:'Redo',del:'Delete',dup:'Duplicate',fontSize:'Font size',
       selAll:'Select all',copy:'Copy',paste:'Paste',cut:'Cut',
       zoomIn:'Zoom in',zoomOut:'Zoom out',zoom100:'Reset zoom',
       fit:'Fit to content',selFit:'Zoom to selection',pan:'Pan',help:'Help',exp:'Export PNG',
@@ -4568,6 +4568,8 @@ window.addEventListener('keydown',e=>{
   else if(meta&&k==='p'){e.preventDefault();exportPDF()}
   else if(meta&&(k==='='||k==='+')){e.preventDefault();zoomBy(1.2)}
   else if(meta&&k==='-'){e.preventDefault();zoomBy(1/1.2)}
+  else if(meta&&e.shiftKey&&(k===','||k==='<')){e.preventDefault();fontSizeStep(-1)}   // ADR-0075
+  else if(meta&&e.shiftKey&&(k==='.'||k==='>')){e.preventDefault();fontSizeStep(1)}    // ADR-0075
   else if(meta&&k==='0'){e.preventDefault();zoomReset()}
   else if(k==='delete'||k==='backspace'){e.preventDefault();doDelete()}
   else if(k==='tab'){
@@ -6614,7 +6616,7 @@ const UI={
       ['Enter / ⇧Enter',k.searchNav],
       ['⇧H / ⇧V',t('ctxFlipH')+' / '+t('ctxFlipV')],
       ['⌥C / ⌥V',t('ctxCopyStyle')+' / '+t('ctxPasteStyle')],
-      ['⇧ + drag',k.moveAxis],['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],
+      ['⇧ + drag',k.moveAxis],['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],['⌘⇧ , / .',k.fontSize],
       ['Tab / ⇧Tab',k.cycle],['Enter',k.create+' / '+t('editLabel')]
     ];
     while(g.firstChild)g.removeChild(g.firstChild);
@@ -6998,6 +7000,17 @@ function toggleCurve(){
     before.push({id,elbow:s.elbow||0,curve:s.curve||0});
     after.push({id,elbow:0,curve:s.curve?0:1});
     s.elbow=0;s.curve=s.curve?0:1;
+  }
+  if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
+}
+// ADR-0075: ⌘⇧,/. nudges fontSize ±2 on selected text/sticky via style op.
+function fontSizeStep(d){
+  const before=[],after=[];
+  for(const id of state.selection){
+    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky')||s.locked)continue;
+    const cur=s.fontSize||14,nxt=Math.min(64,Math.max(8,cur+d*2));
+    if(nxt===cur)continue;
+    before.push({id,fontSize:cur});after.push({id,fontSize:nxt});s.fontSize=nxt;
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
 }
