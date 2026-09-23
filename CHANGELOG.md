@@ -2,6 +2,23 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.84] - 2026-09-23
+
+**ADR-0026: ドラッグ系ジェスチャの局所再描画 (drag-local damage rect)** —
+移動/リサイズ/回転/下書き(矩形系・線系・ペン)/消去ジェスチャの各 pointermove が
+全面再走査付き再描画を発行していた。Canvas2D はピクセルを保持するため、
+「変わった領域」を clip+局所再描画すればジェスチャ中は小矩形のみを更新すればよい。
+新 `invalidateDamage(worldRect)` が `_damage` へ累積 union (ジェスチャ中は縮小しない
+= 高速テレポートでも旧位置のゴーストなし) し、`draw()` はその矩形に clip して
+背景fill+シーンを局部再描画。damage は世界座標のため vp/zoom/DPR 変化は無関係
+(これらは全て `invalidate()` 経由で全面再描画+リセット)。
+
+実機検証 (400 rect + 15 pen の盤面, headless Chrome, `frame()` 同期駆動):
+move-drag 20 回の damage 描画が ~0.1ms/frame、ジェスチャ末尾の damage フレームと
+直後の全面再描画のピクセル差分 **0**。グリッドがドラッグ中 stale (ADR-0009) の
+ため、damage パスではドラッグ対象シェイプを `_drawIter` に強制 include
+(z 順は `state.shapes` 走査で保持)。FT-13 (dirty-rect) の主流派生導。
+
 ## [1.7.83] - 2026-09-23
 
 **ADR-0025: ミニマップのコンテンツビットマップキャッシュ** — `Minimap.draw()` が

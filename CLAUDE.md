@@ -29,7 +29,7 @@ Board/
 │       ├── GEOM           # pure geometry, hit test
 │       ├── Store          # op-log, undo/redo (Command)
 │       ├── Shape          # shape factories, translate
-│       ├── RENDER         # RAF loop, drawShape, draw (シーン) / drawOverlay (クローム、ADR-0024)
+│       ├── RENDER         # RAF loop, drawShape, draw (シーン) / drawOverlay (クローム、ADR-0024), 局所再描画 (ADR-0026)
 │       ├── INPUT          # pointer + keyboard + wheel
 │       ├── tool handlers  # beginPen / beginRectLike / ...
 │       ├── Persist        # IndexedDB
@@ -74,7 +74,8 @@ Board/
 │   ├── ADR-0022-image-import-downscale.md  # 2048px 超過画像の WebP 縮退 (ドロップ/ペースト統合)
 │   ├── ADR-0023-predicted-ink-tail.md  # ペン入力の getPredictedEvents 先行インク
 │   ├── ADR-0024-layered-overlay-canvas.md  # シーン/オーバーレイの 2 層キャンバス分離
-│   └── ADR-0025-minimap-content-cache.md  # ミニマップの _gridVer 連動ビットマップキャッシュ
+│   ├── ADR-0025-minimap-content-cache.md  # ミニマップの _gridVer 連動ビットマップキャッシュ
+│   └── ADR-0026-drag-damage-rect.md  # ドラッグ系ジェスチャの局所再描画 (accumulated world damage rect)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
@@ -106,6 +107,11 @@ Board/
   - ADR-0024: 描画は draw() (シーン, #c) / drawOverlay() (chrome, #ov) の 2 層。
     `invalidate()` は両層、`invalidateOverlay()` は上層のみ再描画 — シーン変更に
     後者を使うと選択枠等がズレる。プレゼン時は #ov も #c と一緒に fixed 昇格する。
+  - ADR-0026: `_damage` はドラッグ系ジェスチャの world 空間の汚れ矩形 (累積union)。
+    ジェスチャ系ハンドラのみ `invalidateDamage(r)` を呼び、draw() はその union に
+    clip+局部再描画。それ以外の全経路は `invalidate()` (=_damage リセット+全面再描画)
+    を必ず使うこと — `invalidateDamage` 化の判断は「ジンペル・ナン・ピクセルが
+    変わる範囲を厳密に列挙できるか」のみに依存する。
 
 ## RULES — やっていいこと / ダメなこと
 
