@@ -766,7 +766,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.107';
+const V='1.7.108';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -873,7 +873,7 @@ const I18N={
     ctxAlignTop:'上揃え',ctxAlignCY:'上下中央',ctxAlignBottom:'下揃え',
     ctxHSpace:'水平均等配置',ctxVSpace:'垂直均等配置',
     ctxSelectAll:'すべて選択',ctxClear:'全消去',
-    ctxExportPNG:'PNG書き出し',ctxExportSVG:'SVG書き出し',ctxExportPDF:'PDF書き出し',ctxExportBoard:'.boardファイル書き出し',ctxImportBoard:'.boardファイル読み込み...',
+    ctxExportPNG:'PNG書き出し',ctxCopyPNG:'PNGをクリップボードにコピー',ctxExportSVG:'SVG書き出し',ctxExportPDF:'PDF書き出し',ctxExportBoard:'.boardファイル書き出し',ctxImportBoard:'.boardファイル読み込み...',
     share:'共有',shareTitle:'共有',
     shareUrlHint:'このURLをコピーして送ると、相手に内容が共有されます',
     shareEncLabel:'🔒 暗号化リンク (推奨)',
@@ -882,7 +882,7 @@ const I18N={
     shareExportFailed:'共有リンクの生成に失敗しました',
     shareUrlNoteEnc:'🔒 盤面は暗号化されてURLに埋め込まれます。鍵はリンク内に含まれ、リンクを知る人だけが開けます。',
     shareNoKey:'このリンクには復号鍵がありません',shareBadKey:'復号できませんでした — リンクが壊れているか、鍵が一致しません',shareNoCrypto:'この環境では暗号化リンクを開けません(セキュアコンテキストが必要です)',
-    shareCopyUrl:'URLをコピー',shareUrlCopied:'URLをコピーしました',copyFailed:'コピーできませんでした',
+    shareCopyUrl:'URLをコピー',shareUrlCopied:'URLをコピーしました',copyFailed:'コピーできませんでした',copyUnsupported:'このブラウザは画像のコピーに対応していません',
     shareCopyCode:'コピー',shareCodeCopied:'コードをコピーしました',
     appUpdated:'アプリが更新されました — 再読み込みで最新版に',
     sharePeer:'相手と直接つなぐ (実験的)',
@@ -948,7 +948,7 @@ const I18N={
     ctxAlignTop:'Align top',ctxAlignCY:'Center vertical',ctxAlignBottom:'Align bottom',
     ctxHSpace:'Distribute horizontal',ctxVSpace:'Distribute vertical',
     ctxSelectAll:'Select all',ctxClear:'Clear all',
-    ctxExportPNG:'Export PNG',ctxExportSVG:'Export SVG',ctxExportPDF:'Export PDF',ctxExportBoard:'Export .board file',ctxImportBoard:'Import .board file...',
+    ctxExportPNG:'Export PNG',ctxCopyPNG:'Copy PNG to clipboard',ctxExportSVG:'Export SVG',ctxExportPDF:'Export PDF',ctxExportBoard:'Export .board file',ctxImportBoard:'Import .board file...',
     share:'Share',shareTitle:'Share',
     shareUrlHint:'Copy this URL and send it — the recipient gets your board.',
     shareEncLabel:'🔒 Encrypted link (recommended)',
@@ -957,7 +957,7 @@ const I18N={
     shareExportFailed:'Failed to build the share link',
     shareUrlNoteEnc:'🔒 Your board is encrypted inside the URL — the key travels in the link, so only people with the link can open it.',
     shareNoKey:'This link is missing its decryption key',shareBadKey:'Could not decrypt — the link is corrupt or the key does not match',shareNoCrypto:'Encrypted links cannot be opened in this context (a secure context is required)',
-    shareCopyUrl:'Copy URL',shareUrlCopied:'URL copied',copyFailed:'Copy failed',
+    shareCopyUrl:'Copy URL',shareUrlCopied:'URL copied',copyFailed:'Copy failed',copyUnsupported:'This browser cannot copy images to the clipboard',
     shareCopyCode:'Copy',shareCodeCopied:'Code copied',
     appUpdated:'App updated — reload for latest version',
     sharePeer:'Direct peer connection (experimental)',
@@ -4528,7 +4528,9 @@ function exportScale(w,h,desired){
   if(!(w>0&&h>0))return desired;
   return Math.min(desired, EXPORT_MAX_DIM/w, EXPORT_MAX_DIM/h, Math.sqrt(EXPORT_MAX_AREA/(w*h)));
 }
-function exportPNG(){
+// ADR-0050: the render-to-blob path shared by exportPNG (download) and copyPNG
+// (clipboard). cb receives the PNG blob or null on failure.
+function _renderPngBlob(cb){
   const b=G.bboxAll(state.shapes);
   if(!b){UI.toast(t('empty'),'warn');return}
   const pad=32;
@@ -4541,14 +4543,28 @@ function exportPNG(){
   oc.fillRect(0,0,off.width,off.height);
   oc.setTransform(scale,0,0,scale,-b.x*scale+pad*scale,-b.y*scale+pad*scale);
   for(const s of state.shapes)drawShape(s,oc);
-  off.toBlob(bl=>{
+  off.toBlob(cb,'image/png');
+}
+function exportPNG(){
+  _renderPngBlob(bl=>{
     if(!bl){UI.toast(t('exportFailed'),'err');return}
     const url=URL.createObjectURL(bl);
     const a=document.createElement('a');
     a.href=url;a.download=`${state.docName||'board'}.png`;
     a.click();setTimeout(()=>URL.revokeObjectURL(url),1e4);
     UI.toast(t('exported'),'ok');
-  },'image/png');
+  });
+}
+// Copy the board PNG to the OS clipboard (Excalidraw parity). No shortcut —
+// ⌘⇧C collides with the browser DevTools inspector; menu-only.
+function copyPNG(){
+  if(!navigator.clipboard||!navigator.clipboard.write||typeof ClipboardItem==='undefined'){UI.toast(t('copyUnsupported'),'warn');return}
+  _renderPngBlob(bl=>{
+    if(!bl){UI.toast(t('exportFailed'),'err');return}
+    navigator.clipboard.write([new ClipboardItem({'image/png':bl})]).then(
+      ()=>UI.toast(t('copied'),'ok'),
+      ()=>UI.toast(t('copyFailed'),'warn'));
+  });
 }
 
 function exportPDF(){
@@ -5874,6 +5890,7 @@ const UI={
   openExportMenu(x,y){
     this.openCtxMenu(x,y,[
       ['ctxExportPNG','⌘E',exportPNG],
+      ['ctxCopyPNG','',copyPNG],
       ['ctxExportSVG','⌘⇧E',exportSVG],
       ['ctxExportPDF','⌘P',exportPDF],
       ['ctxExportBoard','⌘⇧S',exportBoard],
