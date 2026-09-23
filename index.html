@@ -345,9 +345,13 @@ canvas#c[data-tool=eraser]{cursor:crosshair}
 }
 .help-card h2{font-size:20px;font-weight:600;margin-bottom:4px;color:var(--ink)}
 .help-card .sub{font-size:13px;color:var(--ink-3);margin-bottom:20px}
-/* Share link is compressed, NOT encrypted — say so where the link is created. --warn is
-   the established caution token; --ink-3 alone would read as ordinary help text. */
+/* Share links can be encrypted (ADR-0015); the plaintext opt-out still warns at the
+   point of creation. --warn is the established caution token; --ink-3 alone would
+   read as ordinary help text. */
 .help-card .share-warn{color:var(--warn);margin-top:10px;margin-bottom:0}
+.help-card .share-enc{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink);margin-top:10px;cursor:pointer}
+.help-card .share-enc input{accent-color:var(--brand);cursor:pointer}
+.help-card .share-enc input:disabled{cursor:default}
 .help-grid{
   display:grid;grid-template-columns:1fr 1fr;
   gap:4px 20px;
@@ -703,7 +707,9 @@ body{visibility:visible}
       <input id="shareUrl" type="text" class="share-input" readonly aria-label="Share URL" data-t-aria="shareUrlLabel">
       <button class="btn primary" id="shareCopyBtn" data-t="shareCopyUrl">URLをコピー</button>
     </div>
-    <p class="sub share-warn" data-t="shareUrlWarn">⚠ 盤面の内容はURLに埋め込まれます(圧縮のみ・暗号化なし)。リンクを知る人は誰でも閲覧できます。</p>
+    <label class="share-enc"><input type="checkbox" id="shareEnc"> <span data-t="shareEncLabel">🔒 暗号化リンク (推奨)</span></label>
+    <p class="sub share-warn" id="shareWarnPlain" data-t="shareUrlWarn">⚠ 盤面の内容はURLに埋め込まれます(圧縮のみ・暗号化なし)。リンクを知る人は誰でも閲覧できます。</p>
+    <p class="sub" id="shareWarnEnc" hidden data-t="shareUrlNoteEnc">🔒 盤面は暗号化されてURLに埋め込まれます。鍵はリンク内に含まれ、リンクを知る人だけが開けます。</p>
 
     <details class="share-details">
       <summary data-t="sharePeer">相手と直接つなぐ (実験的)</summary>
@@ -746,7 +752,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.72';
+const V='1.7.73';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -845,7 +851,10 @@ const I18N={
     ctxExportPNG:'PNG書き出し',ctxExportSVG:'SVG書き出し',ctxExportPDF:'PDF書き出し',ctxExportBoard:'.boardファイル書き出し',ctxImportBoard:'.boardファイル読み込み...',
     share:'共有',shareTitle:'共有',
     shareUrlHint:'このURLをコピーして送ると、相手に内容が共有されます',
+    shareEncLabel:'🔒 暗号化リンク (推奨)',
     shareUrlWarn:'⚠ 盤面の内容はURLに埋め込まれます(圧縮のみ・暗号化なし)。リンクを知る人は誰でも閲覧できます。',
+    shareUrlNoteEnc:'🔒 盤面は暗号化されてURLに埋め込まれます。鍵はリンク内に含まれ、リンクを知る人だけが開けます。',
+    shareNoKey:'このリンクには復号鍵がありません',shareBadKey:'復号できませんでした — リンクが壊れているか、鍵が一致しません',shareNoCrypto:'この環境では暗号化リンクを開けません(セキュアコンテキストが必要です)',
     shareCopyUrl:'URLをコピー',shareUrlCopied:'URLをコピーしました',copyFailed:'コピーできませんでした',
     shareCopyCode:'コピー',shareCodeCopied:'コードをコピーしました',
     appUpdated:'アプリが更新されました — 再読み込みで最新版に',
@@ -912,7 +921,10 @@ const I18N={
     ctxExportPNG:'Export PNG',ctxExportSVG:'Export SVG',ctxExportPDF:'Export PDF',ctxExportBoard:'Export .board file',ctxImportBoard:'Import .board file...',
     share:'Share',shareTitle:'Share',
     shareUrlHint:'Copy this URL and send it — the recipient gets your board.',
+    shareEncLabel:'🔒 Encrypted link (recommended)',
     shareUrlWarn:'⚠ Your board is embedded in the URL (compressed, NOT encrypted). Anyone with the link can read it.',
+    shareUrlNoteEnc:'🔒 Your board is encrypted inside the URL — the key travels in the link, so only people with the link can open it.',
+    shareNoKey:'This link is missing its decryption key',shareBadKey:'Could not decrypt — the link is corrupt or the key does not match',shareNoCrypto:'Encrypted links cannot be opened in this context (a secure context is required)',
     shareCopyUrl:'Copy URL',shareUrlCopied:'URL copied',copyFailed:'Copy failed',
     shareCopyCode:'Copy',shareCodeCopied:'Code copied',
     appUpdated:'App updated — reload for latest version',
@@ -4390,7 +4402,25 @@ function roundShapesForExport(shapes,dp=2){
 }
 // Compact, dependency-free encoding. Works for any size up to ~2MB URL-safe.
 const Share={
-  async exportToUrl(){
+  // ADR-0015: AES-256-GCM. crypto.subtle exists only in secure contexts — file:// counts
+  // (potentially trustworthy in Chrome/Firefox), plain http:// hosts do not.
+  canEncrypt(){return typeof crypto!=='undefined'&&!!crypto.subtle},
+  // chunked base64url — String.fromCharCode(...u8) overflows on large payloads
+  _b64uEnc(u8){let s='';for(let i=0;i<u8.length;i+=0x8000)s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000));
+    return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')},
+  _b64uDec(s){const b=atob(s.replace(/-/g,'+').replace(/_/g,'/'));const u=new Uint8Array(b.length);
+    for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u},
+  // e: wraps the WHOLE inner payload (z:/j:) so compression stays first (ciphertext won't
+  // compress) and inner format changes ride along untouched.
+  async _encrypt(inner){
+    const key=await crypto.subtle.generateKey({name:'AES-GCM',length:256},true,['encrypt','decrypt']);
+    const iv=crypto.getRandomValues(new Uint8Array(12));
+    const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:new TextEncoder().encode('board:e1')},key,new TextEncoder().encode(inner)));
+    const raw=new Uint8Array(await crypto.subtle.exportKey('raw',key));
+    const all=new Uint8Array(12+ct.length);all.set(iv);all.set(ct,12);
+    return{ct:Share._b64uEnc(all),k:Share._b64uEnc(raw)};
+  },
+  async exportToUrl(enc){
     const data={v:V,shapes:roundShapesForExport(state.shapes),name:state.docName};
     const json=JSON.stringify(data);
     // CompressionStream if available, else base64
@@ -4409,16 +4439,36 @@ const Share={
     }else{
       payload='j:'+btoa(unescape(encodeURIComponent(json)));
     }
-    const url=location.origin+location.pathname+'#b='+encodeURIComponent(payload);
-    return url;
+    const base=location.origin+location.pathname;
+    if(enc&&Share.canEncrypt()){
+      // key travels inside the fragment — fragments are never sent in HTTP requests
+      const e=await Share._encrypt(payload);
+      return base+'#b='+encodeURIComponent('e:'+e.ct)+'&k='+e.k;
+    }
+    return base+'#b='+encodeURIComponent(payload);
   },
   async importFromHash(){
     const h=location.hash;
     if(!h.startsWith('#b='))return false;
     const enc=decodeURIComponent(h.slice(3));
-    const kind=enc.slice(0,2),body=enc.slice(2);
+    const parts=enc.split('&'),opt={};
+    for(const p of parts.slice(1)){const i=p.indexOf('=');if(i>0)opt[p.slice(0,i)]=p.slice(i+1)}
+    let kind=parts[0].slice(0,2),body=parts[0].slice(2);
     let json;
     try{
+      if(kind==='e:'){
+        const clearHash=()=>{try{history.replaceState(null,'',location.pathname)}catch(_){}};
+        if(!opt.k){UI.toast(t('shareNoKey'),'err');clearHash();return false}
+        if(!Share.canEncrypt()){UI.toast(t('shareNoCrypto'),'err');clearHash();return false}
+        const bin=Share._b64uDec(body),iv=bin.slice(0,12),ct=bin.slice(12);
+        const key=await crypto.subtle.importKey('raw',Share._b64uDec(opt.k),{name:'AES-GCM'},false,['decrypt']);
+        let pt;
+        try{pt=await crypto.subtle.decrypt({name:'AES-GCM',iv,additionalData:new TextEncoder().encode('board:e1')},key,ct)}
+        catch{UI.toast(t('shareBadKey'),'err');clearHash();return false}
+        const inner=new TextDecoder().decode(pt);
+        kind=inner.slice(0,2);body=inner.slice(2);
+        if(kind!=='z:'&&kind!=='j:'){UI.toast(t('shareBadKey'),'err');clearHash();return false}
+      }
       if(kind==='z:'&&typeof DecompressionStream!=='undefined'){
         const bin=atob(body);
         const bytes=new Uint8Array(bin.length);
@@ -4854,10 +4904,23 @@ const UI={
   openShare(){
     const m=document.getElementById('share');
     m.dataset.open='true';
-    // generate share URL eagerly
-    Share.exportToUrl().then(url=>{
-      document.getElementById('shareUrl').value=url;
-    }).catch(()=>{});
+    // ADR-0015: encrypted by default where crypto.subtle exists (secure contexts —
+    // file:// counts, http:// non-localhost does not); the checkbox is the opt-out.
+    const chk=document.getElementById('shareEnc');
+    const can=Share.canEncrypt();
+    chk.disabled=!can;
+    chk.checked=can;
+    chk.title=can?'':t('shareNoCrypto');
+    const refresh=()=>{
+      const enc=!chk.disabled&&chk.checked;
+      document.getElementById('shareWarnPlain').hidden=enc;
+      document.getElementById('shareWarnEnc').hidden=!enc;
+      Share.exportToUrl(enc).then(url=>{
+        document.getElementById('shareUrl').value=url;
+      }).catch(()=>{});
+    };
+    chk.onchange=refresh;
+    refresh();
     document.getElementById('shareClose').focus();
   },
   closeShare(){

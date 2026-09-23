@@ -112,15 +112,23 @@ const checks = [
   ['BroadcastChannel sync code present', html.includes("NET_CHANNEL_PREFIX='board:'")],
   ['PEER_ID persistence', html.includes("localStorage.getItem('board.peer')")],
   ['Share export/import', html.includes('exportToUrl') && html.includes('importFromHash')],
-  // v1.7.71 (First-Principles audit): the share link is deflate+base64 — COMPRESSED, NOT
-  // ENCRYPTED — so anyone holding the link can read the whole board. The product's privacy
-  // pillar (CLAUDE.md WHY) must not be overstated. These lock the honest framing in place.
-  ['share link: exportToUrl still emits the plaintext #b= payload (no crypto claimed or used)',
-    html.includes("'#b='+encodeURIComponent(payload)") && !/crypto\.subtle|AES-GCM/.test(html)],
-  ['share modal warns the link is not encrypted (ja+en)',
-    html.includes('data-t="shareUrlWarn"')
+  // v1.7.71 (First-Principles audit): the share link was deflate+base64 — COMPRESSED, NOT
+  // ENCRYPTED. v1.7.73 / ADR-0015 closes the gap: real AES-256-GCM with the key inside the
+  // URL fragment (Excalidraw's #json=<id>,<key> precedent — fragments never hit the wire).
+  // The plaintext z:/j: path stays as an explicit opt-out + backward-compat import.
+  ['share link: E2E encryption emits #b=e: payload with key inside the fragment (AES-256-GCM)',
+    html.includes("encodeURIComponent('e:'+e.ct)+'&k='+e.k")
+    && /crypto\.subtle\.generateKey\(\{name:'AES-GCM',length:256\}/.test(html)
+    && /crypto\.subtle\.(encrypt|decrypt)/.test(html)],
+  ['share link: plaintext z:/j: path retained for opt-out + backward compat',
+    html.includes("'#b='+encodeURIComponent(payload)") && html.includes('canEncrypt()')],
+  ['share modal: encrypt checkbox + encrypted-mode note + plaintext warn (ja+en)',
+    html.includes('id="shareEnc"') && html.includes('data-t="shareEncLabel"')
+    && html.includes('id="shareWarnEnc"') && html.includes('data-t="shareUrlNoteEnc"')
+    && html.includes('data-t="shareUrlWarn"')
     && html.includes('shareUrlWarn:\'⚠ 盤面の内容はURLに埋め込まれます')
-    && html.includes("shareUrlWarn:'⚠ Your board is embedded in the URL (compressed, NOT encrypted)")],
+    && html.includes("shareUrlWarn:'⚠ Your board is embedded in the URL (compressed, NOT encrypted)")
+    && html.includes('shareNoKey') && html.includes('shareBadKey') && html.includes('shareNoCrypto')],
   ['WebRTC manual signaling', html.includes('wrtcCreateOffer') && html.includes('wrtcAcceptOffer')],
   ['Share button wired in wire()', html.includes("btnShare") && html.includes("UI.openShare")],
   ['Net.init called in main()', html.includes('Net.init()')],
@@ -1011,6 +1019,7 @@ const fakeWin = {
   Blob, confirm: () => false, alert(){}, prompt: () => null,
   getComputedStyle: () => ({ getPropertyValue: () => '#fff' }),
   BroadcastChannel: class { onmessage=null; postMessage(){} close(){} },
+  screen: { orientation: { addEventListener(){} } },
   RTCPeerConnection: undefined,
   RTCSessionDescription: undefined,
   btoa: globalThis.btoa || (s => Buffer.from(s).toString('base64')),
@@ -1048,7 +1057,8 @@ function makeFakeIdb(){
 try {
   const fn = new Function('window','document','navigator','requestAnimationFrame',
     'indexedDB','URL','setTimeout','clearTimeout','setInterval','clearInterval',
-    'getComputedStyle','confirm','alert','Blob','globalThis','self','localStorage',`
+    'getComputedStyle','confirm','alert','Blob','globalThis','self','localStorage',
+    'location','history','screen','BroadcastChannel',`
     ${js}
     return { state, Store, G, Shape, distToSeg,
              doBringFront, doSendBack, doBringForward, doSendBackward,
@@ -1064,14 +1074,15 @@ try {
              _onBtnInstall, _getInstallPrompt: () => _installPrompt, _setInstallPrompt: (v) => { _installPrompt = v; },
              _onSwUpdate, _ctxMenuKeyNav,
              _getPasteCount: () => _pasteCount, _resetPasteClipboard: () => { _lastClipboard = null; },
-             endRectLike, endLineLike, I18N, applyTheme, editSelectedShapeKbd,
+             endRectLike, endLineLike, I18N, applyTheme, editSelectedShapeKbd, Share,
              draw, _setCtx: (c) => { const p = ctx; ctx = c; return p; },
              _getLang: () => LANG, _getT: () => T };
   `);
   const api = fn(
     fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
     fakeWin.indexedDB, fakeWin.URL, setTimeout, clearTimeout, setInterval, clearInterval,
-    fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage
+    fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage,
+    fakeWin.location, fakeWin.history, fakeWin.screen, fakeWin.BroadcastChannel
   );
   const { state, Store, G, Shape, distToSeg,
           doBringFront, doSendBack, doBringForward, doSendBackward,
@@ -3477,7 +3488,8 @@ try {
     const B = fn(
       fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
       fakeWin.indexedDB, fakeWin.URL, setTimeout, clearTimeout, setInterval, clearInterval,
-      fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage
+      fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage,
+      fakeWin.location, fakeWin.history, fakeWin.screen, fakeWin.BroadcastChannel
     );
     const cp = o => JSON.parse(JSON.stringify(o));
     A.state.peerId='peerA'; B.state.peerId='peerB';
@@ -3727,7 +3739,7 @@ try {
         ls._d['board.theme']='dark';
         const E=fn(fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
           fakeWin.indexedDB,fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
-          fakeWin.getComputedStyle,fakeWin.confirm,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage);
+          fakeWin.getComputedStyle,fakeWin.confirm,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel);
         assert.strictEqual(E.UI._themeMode(),'dark','boot restore: a persisted board.theme=dark is honoured at module load');
         delete ls._d['board.theme'];
 
@@ -3737,7 +3749,7 @@ try {
         fakeWin.localStorage={getItem(){throw new Error('blocked')},setItem(){throw new Error('blocked')},removeItem(){throw new Error('blocked')}};
         const F=fn(fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
           fakeWin.indexedDB,fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
-          fakeWin.getComputedStyle,fakeWin.confirm,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage);
+          fakeWin.getComputedStyle,fakeWin.confirm,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel);
         F.UI.toggleTheme();
         assert.strictEqual(F.UI._themeMode(),'light','storage-throws: first toggle still advances to light in memory');
         assert.strictEqual(de.dataset.theme,'light','storage-throws: DOM actually reflects light');
@@ -3886,7 +3898,7 @@ try {
       try{
         D=fn(fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
           fakeWin.indexedDB,fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
-          fakeWin.getComputedStyle,fakeWin.confirm,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage);
+          fakeWin.getComputedStyle,fakeWin.confirm,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel);
         assert.strictEqual(D._getLang(),'ja','boot restore: a persisted board.lang=ja is honoured at module load, before any toggle');
         assert.strictEqual(D._getT().k.select,D.I18N.ja.k.select,'boot restore: T is I18N.ja from the start, not just LANG');
       }finally{
@@ -4227,6 +4239,65 @@ try {
     A._syncTextFinalize(tA2, '', true);   // dismissed empty → removal broadcast
     assert.ok(!B.state.shapes.some(s=>s.id===tA2.id), 'text sync: B drops the blank shape after empty-dismiss (no lingering hitbox)');
     console.log('  ✓ two-peer: new text/sticky finalize syncs typed content + empty-dismiss removal (§collab)');
+
+    // ---- ADR-0015: share-link E2E encryption (FT-21) --------------------------------
+    // location/history are Function params (fakeWin.location/history) — previously they
+    // were bare identifiers resolving to Node's undefined globals, so this path could
+    // never run in the sandbox. crypto.subtle is Node's real WebCrypto.
+    {
+      // world C: importFromHash's confirm() gate must accept (fakeWin.confirm is ()=>false)
+      const C = fn(
+        fakeWin, fakeDoc, fakeWin.navigator, fakeWin.requestAnimationFrame,
+        makeFakeIdb(), fakeWin.URL, setTimeout, clearTimeout, setInterval, clearInterval,
+        fakeWin.getComputedStyle, ()=>true, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage,
+        fakeWin.location, fakeWin.history, fakeWin.screen, fakeWin.BroadcastChannel
+      );
+      reset(A); reset(C);
+      const shared=A.Shape.make('rect',{x:3,y:4,w:7,h:8});
+      A.Store.commit({op:'add',shape:shared});
+      A.state.docName='Secret Board';
+
+      // (a) encrypted export: e: payload + key inside the fragment, no plaintext kind
+      const url=await A.Share.exportToUrl(true);
+      const frag=url.slice(url.indexOf('#'));
+      assert.ok(frag.startsWith('#b=e%3A'),'ADR-0015a: encrypted export uses the e: kind');
+      assert.ok(frag.includes('&k='),'ADR-0015a: decryption key travels inside the fragment');
+      assert.ok(!frag.includes('z%3A')&&!frag.includes('j%3A'),'ADR-0015a: no plaintext payload leaks into the URL');
+
+      // (b) every export gets a fresh key+IV — the same board never encrypts to the same link
+      const url2=await A.Share.exportToUrl(true);
+      assert.notStrictEqual(url2,url,'ADR-0015b: each link gets a fresh key+IV');
+
+      // (c) full round-trip: a fresh world decrypts + imports the shared board
+      fakeWin.location.hash=frag;
+      assert.strictEqual(await C.Share.importFromHash(),true,'ADR-0015c: e: link imports cleanly');
+      assert.ok(C.state.shapes.some(s=>s.id===shared.id),'ADR-0015c: imported board contains the shared shape');
+      assert.strictEqual(C.state.docName,'Secret Board','ADR-0015c: docName rides inside the encrypted payload');
+      C.Store.undo();
+      assert.strictEqual(C.state.shapes.length,0,'ADR-0015c: the imported board is undoable (reversible replace op)');
+      fakeWin.location.hash='';
+
+      // (d) wrong-but-valid key → GCM auth tag mismatch → decrypt fails, returns false
+      const ctPart=frag.slice(3).split('&')[0];
+      fakeWin.location.hash='#b='+ctPart+'&k='+url2.slice(url2.indexOf('&k=')+3);
+      assert.strictEqual(await C.Share.importFromHash(),false,'ADR-0015d: mismatched key fails decryption');
+      fakeWin.location.hash='';
+
+      // (e) missing key → shareNoKey path, returns false
+      fakeWin.location.hash='#b='+ctPart;
+      assert.strictEqual(await C.Share.importFromHash(),false,'ADR-0015e: e: without k is rejected');
+      fakeWin.location.hash='';
+
+      // (f) plaintext opt-out + legacy import still work (backward compat)
+      const urlP=await A.Share.exportToUrl(false);
+      assert.ok(urlP.includes('#b=z%3A')||urlP.includes('#b=j%3A'),'ADR-0015f: opt-out emits the legacy plaintext kind');
+      reset(C);
+      fakeWin.location.hash=urlP.slice(urlP.indexOf('#'));
+      assert.strictEqual(await C.Share.importFromHash(),true,'ADR-0015f: legacy plaintext link still imports');
+      fakeWin.location.hash='';
+
+      console.log('  ✓ ADR-0015 share E2E: e: format, fragment key, fresh IV per link, decrypt round-trip, wrong-key/no-key rejection, plaintext opt-out');
+    }
   }
 
   // v1.6.71: context menu separator deduplication
@@ -7365,9 +7436,14 @@ try {
     const C=fn(
       fakeWin, fakeDoc, fakeWin.navigator, spyRaf,
       fakeWin.indexedDB, fakeWin.URL, setTimeout, clearTimeout, setInterval, clearInterval,
-      fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage
+      fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage,fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel
     );
     C.state.showMinimap=false;
+    // main() now completes its boot path (screen/BroadcastChannel params let wire() run
+    // to Net.init + the RAF kick) → boot queued a Minimap.draw + a frame callback. Fire
+    // them once so Minimap's internal _raf id clears, then drain for the assertions.
+    for(const cb of rafCalls.splice(0))try{cb()}catch(_){}
+    rafCalls.length=0;
     C.Minimap.schedule();
     assert.strictEqual(rafCalls.length,0,'v1.7.53b: Minimap.schedule() hidden — no RAF scheduled');
     C.state.showMinimap=true;

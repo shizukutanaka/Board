@@ -4,7 +4,7 @@
 単一HTMLファイル。ダブルクリックで動く。アカウント不要。広告なし。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-00C4CC.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.7.72-00C4CC.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.7.73-00C4CC.svg)](CHANGELOG.md)
 [![Size](https://img.shields.io/badge/size-~85KB%20gzip-00C4CC.svg)](index.html)
 [![Offline](https://img.shields.io/badge/offline-first-00C4CC.svg)](#offline)
 [![A11y](https://img.shields.io/badge/WCAG-AAA-00C4CC.svg)](#accessibility)
@@ -19,7 +19,7 @@
 |---|---|---|---|---|
 | 登録不要 | ✗ | ✓ | ✓ | **✓** |
 | 単一ファイル配布 | ✗ | ✗ | ✗ | **✓** |
-| E2E 暗号化 | ✗ | 部分 | ✗ | **✗ (未実装 — 計画中)** |
+| E2E 暗号化 | ✗ | 部分 | ✗ | **✓ AES-256-GCM (ADR-0015)** |
 | 完全オフライン | 部分 | ✓ | ✓ | **✓ PWA** |
 | サイズ | 数MB | ~1MB | ~2MB | **単一HTML 268KB (gzip 85KB)** |
 | 広告・トラッキング | あり | なし | なし | **ゼロ** |
@@ -107,7 +107,7 @@ start index.html      # Windows
 ### コラボレーション / Sync
 - 同一ブラウザのタブ間: BroadcastChannel で即時同期
 - 端末間: WebRTC DataChannel (手動シグナリング、サーバー不要)
-- URL ハッシュにスナップショットを載せて共有 (`#...`)
+- URL ハッシュにスナップショットを載せて共有 (`#...`)。既定で AES-256-GCM E2E 暗号化 — 鍵はリンクのフラグメント内 (ADR-0015)。平文リンクはオプトアウト可能
 - CRDT clock 付き op-log、受信 op は型 allow-list で検証。画像の `dataUrl` は
   `data:image/` のインライン URL のみ許可 — 外部 URL は拒否され、悪意あるピアが
   トラッキングピクセル/IP 露出を仕込むことはできない (v1.7.69)
@@ -247,12 +247,13 @@ start index.html      # Windows
 - XSS 耐性: SVG / PDF エクスポートの属性値も全て `_esc` でエスケープ、画像は `data:image/` のみ許可
 - 受信 op は型 allow-list + shape 検証で防御 (不正な peer からの破損を防ぐ)
 - ローカル保存のみ。同期は手動シグナリングの WebRTC / 同一オリジンの BroadcastChannel
-- **共有リンクは暗号化されていない**: `#b=` の中身は盤面の deflate 圧縮 + base64 で、
-  URL fragment のためサーバーには送信されないが、**リンクを知る人は誰でも内容を復元できる**。
-  機微な内容を共有リンクで配らないこと。E2E 暗号化は未実装(`docs/feature-backlog.md` FT-21)
+- **共有リンクは既定で E2E 暗号化** (ADR-0015): `#b=e:` の中身は AES-256-GCM 暗号化済みで、
+  復号鍵はリンクのフラグメント内 (`&k=`)。URL fragment はサーバーに送信されないため、
+  中間者・ホスティング先は内容を読めない。**リンク自体が資格情報**になる点は変わらない —
+  リンクを知る人は全員内容を開けるため、リンクの取り扱いには注意すること。
+  チェックボックスを外すと従来の平文リンク (`z:`/`j:`) でも発行できる
 
 将来 (P2P sync 強化時):
-- URL fragment (`#roomId:key`) = サーバー非通過
 - WebRTC DataChannel + AES-GCM E2E 暗号化 (DTLS トランスポート)
 - 署名付き op-log (各 peer の公開鍵で検証)
 
