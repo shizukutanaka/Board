@@ -2,6 +2,22 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.82] - 2026-09-23
+
+**ADR-0024: レイヤードキャンバス — オーバーレイ層の分離** — シーン (#c) と
+エフェメラルな UI クローム (選択枠・ハンドル・マーキー・ガイド・ピアカーソル/
+選択・レーザー・検索ハイライト・空盤面ヒント) を別キャンバス #ov に分離
+(Excalidraw の static/interactive 2 層と同型)。クロームだけの更新で全シーン
+再ラスタライズが走っていた無駄を解消: マーキードラッグ・ピアカーソル・
+レーザーは `invalidateOverlay()` でオーバーレイのみ再描画。実測: 重い盤面での
+マーキードラッグ 30 move でシーン描画 30→0 回。プレゼン時は #ov も #c と共に
+fixed 昇格しレーザーが背面に隠れない。描画に影響しない `state.hover` 変更の
+再描画要求も除去。
+
+### Changed
+- 描画を `draw()` (シーン) / `drawOverlay()` (クローム) に分割、フレームは
+  2 フラグ (`needsRender`/`needOverlay`) で駆動
+
 ## [1.7.81] - 2026-09-23
 
 **ADR-0023: ペン入力の predicted-events 先行インク** — 下書きストロークの末尾に

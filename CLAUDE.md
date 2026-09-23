@@ -29,7 +29,7 @@ Board/
 │       ├── GEOM           # pure geometry, hit test
 │       ├── Store          # op-log, undo/redo (Command)
 │       ├── Shape          # shape factories, translate
-│       ├── RENDER         # RAF loop, drawShape, drawSelection
+│       ├── RENDER         # RAF loop, drawShape, draw (シーン) / drawOverlay (クローム、ADR-0024)
 │       ├── INPUT          # pointer + keyboard + wheel
 │       ├── tool handlers  # beginPen / beginRectLike / ...
 │       ├── Persist        # IndexedDB
@@ -71,7 +71,9 @@ Board/
 │   ├── ADR-0019-pen-bbox-memoization.md  # G.bbox ペン包絡の O(1) シグネチャメモ化
 │   ├── ADR-0020-snap-edge-index.md  # オブジェクトスナップのソート済みエッジ索引
 │   ├── ADR-0021-image-cache-key.md  # 画像キャッシュの O(1) フィンガープリントキー
-│   └── ADR-0022-image-import-downscale.md  # 2048px 超過画像の WebP 縮退 (ドロップ/ペースト統合)
+│   ├── ADR-0022-image-import-downscale.md  # 2048px 超過画像の WebP 縮退 (ドロップ/ペースト統合)
+│   ├── ADR-0023-predicted-ink-tail.md  # ペン入力の getPredictedEvents 先行インク
+│   └── ADR-0024-layered-overlay-canvas.md  # シーン/オーバーレイの 2 層キャンバス分離
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
@@ -100,6 +102,9 @@ Board/
     FIFO 8,192) を書き換える (ADR-0019)。O(pts) 包絡走査の毎フレーム再計算を避ける
     観測上純粋なメモ化で、`state` は変更しない。シグネチャ構成は ADR-0018 と同一。
   - `drawShape()` に新たな副作用を追加する前に、この例外リストを更新すること。
+  - ADR-0024: 描画は draw() (シーン, #c) / drawOverlay() (chrome, #ov) の 2 層。
+    `invalidate()` は両層、`invalidateOverlay()` は上層のみ再描画 — シーン変更に
+    後者を使うと選択枠等がズレる。プレゼン時は #ov も #c と一緒に fixed 昇格する。
 
 ## RULES — やっていいこと / ダメなこと
 
