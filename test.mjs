@@ -1086,17 +1086,26 @@ fakeWin.window = fakeWin; fakeWin.document = fakeDoc; fakeWin.self = fakeWin;
 // right after transaction()/get() return, so firing them via queueMicrotask is safe — it
 // runs after that synchronous attachment, in the same tick chain as the awaiting caller.
 function makeFakeIdb(){
-  const store=new Map();
-  return {_store:store,transaction(){
+  const stores=new Map();
+  const storeFor=n=>{if(!stores.has(n))stores.set(n,new Map());return stores.get(n);};
+  return {_stores:stores,transaction(names){
     const tx={oncomplete:null,onerror:null,onabort:null,
-      objectStore(){return{
+      objectStore(name){const store=storeFor(name);return{
         get(key){const rq={onsuccess:null,onerror:null};
           queueMicrotask(()=>{rq.result=store.get(key);rq.onsuccess&&rq.onsuccess();});
+          return rq;},
+        getAll(){const rq={onsuccess:null,onerror:null};
+          queueMicrotask(()=>{rq.result=[...store.values()];rq.onsuccess&&rq.onsuccess();});
+          return rq;},
+        getAllKeys(){const rq={onsuccess:null,onerror:null};
+          queueMicrotask(()=>{rq.result=[...store.keys()];rq.onsuccess&&rq.onsuccess();});
           return rq;},
         put(val,key){store.set(key,val);},
         delete(key){store.delete(key);},
       };}};
-    queueMicrotask(()=>tx.oncomplete&&tx.oncomplete());
+    // Complete on a macrotask: a real IDB transaction stays alive while requests are
+    // pending; callers may issue several awaited requests before awaiting txDone.
+    setTimeout(()=>tx.oncomplete&&tx.oncomplete(),0);
     return tx;
   }};
 }
@@ -1124,6 +1133,7 @@ try {
              _getPasteCount: () => _pasteCount, _resetPasteClipboard: () => { _lastClipboard = null; },
              endRectLike, endLineLike, I18N, applyTheme, editSelectedShapeKbd, Share,
              draw, drawOverlay, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; }, _setOCtx: (c) => { const p = octx; octx = c; return p; },
+             _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY,
              _getLang: () => LANG, _getT: () => T };
   `);
   const api = fn(
@@ -1146,7 +1156,8 @@ try {
           _onBtnInstall, _getInstallPrompt, _setInstallPrompt,
           _onSwUpdate, _ctxMenuKeyNav,
           _getPasteCount, _resetPasteClipboard,
-          endRectLike, endLineLike, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx } = api;
+          endRectLike, endLineLike, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
+          _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY } = api;
 
   console.log('\n-- behavioural --');
 
@@ -7613,7 +7624,7 @@ try {
     Persist.db=fakeDb;
     try{
       await Persist.saveBackup([],{x:0,y:0,zoom:1},'Nothing');
-      assert.strictEqual(fakeDb._store.size,0,
+      assert.strictEqual([...fakeDb._stores.values()].reduce((n,s)=>n+s.size,0),0,
         'v1.7.52b: saveBackup([]) writes nothing to the backup slot');
       const has=await Persist.checkBackup();
       assert.strictEqual(has,false,'v1.7.52b: checkBackup stays false after an empty saveBackup call');
@@ -7646,6 +7657,79 @@ try {
         'v1.7.52c: restoreBackup brings back exactly the shapes that existed before doClearAll');
     }finally{Persist.db=origDb;}
     console.log('  ✓ doClearAll pattern: pre-clear board backed up and recoverable after reload (v1.7.52c, ADR-0004)');
+  }
+
+  // v1.7.89 (ADR-0031): persistence-layer image blob separation. dataUrls >128B move
+  // into the `imgs` store keyed by content hash; the doc record carries an `img` ref,
+  // doc + :prev share one blob copy, and live shapes keep the wire-format dataUrl.
+  // Verified end-to-end through the fake IDB (save → inspect raw records → GC) and
+  // at the _imgSlim/_imgAttach unit level (round-trip + collision chaining).
+  {
+    const fakeDb=makeFakeIdb();
+    const origDb=Persist.db;
+    Persist.db=fakeDb;
+    try{
+      const big='data:image/png;base64,'+'A'.repeat(300);
+      const img=Shape.make('image',{x:0,y:0,w:10,h:10,dataUrl:big});
+      const rect=Shape.make('rect',{x:0,y:0,w:5,h:5});
+      state.shapes=[rect,img];_invalidateGrid();
+
+      await Persist.save();
+      const docs=fakeDb._stores.get('docs'),imgs=fakeDb._stores.get('imgs');
+      const rec=docs.get(DOC_KEY);
+      assert.ok(rec.shapes[1].img&&!rec.shapes[1].dataUrl,
+        'v1.7.89: big dataUrl replaced by img ref in the persisted doc record');
+      assert.strictEqual(imgs.get(rec.shapes[1].img),big,
+        'v1.7.89: blob stored under the img ref key');
+      assert.strictEqual(imgs.size,1,'v1.7.89: exactly one blob persisted');
+      assert.strictEqual(state.shapes[1].dataUrl,big,
+        'v1.7.89: live shape keeps its dataUrl (wire format untouched)');
+
+      // doc + :prev share one blob — a backup of the same board adds no copy.
+      await Persist.saveBackup(JSON.parse(JSON.stringify(state.shapes)),{...state.viewport},state.docName);
+      assert.strictEqual(imgs.size,1,'v1.7.89: saveBackup dedups against the doc blob (one copy)');
+      const prevRec=docs.get(DOC_KEY+':prev');
+      assert.ok(prevRec.shapes[1].img&&!prevRec.shapes[1].dataUrl,
+        'v1.7.89: backup record also carries the img ref');
+
+      // GC keeps blobs referenced by :prev even after the live doc drops the image.
+      state.shapes=[rect];_invalidateGrid();
+      await Persist.save();
+      assert.strictEqual(imgs.size,1,'v1.7.89: GC preserves a blob still referenced by :prev');
+      await Persist.discardBackup();
+      await Persist.save();
+      assert.strictEqual(imgs.size,0,'v1.7.89: GC removes the blob once no record references it');
+
+      // attach round-trip: a slim record + the blob map rebuilds the live shape.
+      const {slim:s2}=_imgSlim([rect,img],new Map());
+      assert.ok(!s2[0].img&&s2[0].dataUrl===undefined,
+        'v1.7.89: non-image shapes pass through _imgSlim untouched');
+      const attached=_imgAttach(s2,new Map([[s2[1].img,big]]));
+      assert.strictEqual(attached[1].dataUrl,big,
+        'v1.7.89: _imgAttach restores the dataUrl from the blob store');
+      assert.ok(!attached[1].img,'v1.7.89: _imgAttach drops the img ref (live = wire format)');
+      // A ref with no matching blob stays slim rather than fabricating data.
+      const orphan=_imgAttach(s2,new Map());
+      assert.ok(orphan[1].img&&!orphan[1].dataUrl,
+        'v1.7.89: missing blob leaves the ref in place (no fabricated dataUrl)');
+
+      // Collision chain: a different blob already at the hash key takes ':1'.
+      const other='data:image/png;base64,'+'B'.repeat(300);
+      const seed=new Map([[_imgHash(big),other]]);
+      const {slim:s3,puts:p3}=_imgSlim([img],seed);
+      assert.strictEqual(s3[0].img,_imgHash(big)+':1','v1.7.89: hash collision chains to :1');
+      assert.strictEqual(p3[0][0],_imgHash(big)+':1','v1.7.89: the chained key is the one stored');
+      const att3=_imgAttach(s3,new Map([[s3[0].img,big],[_imgHash(big),other]]));
+      assert.strictEqual(att3[0].dataUrl,big,'v1.7.89: chained refs resolve to their own blob');
+
+      // Threshold: small dataUrls stay inline (no blob, no ref).
+      const small='data:image/gif;base64,'+'A'.repeat(64);
+      const img2=Shape.make('image',{x:0,y:0,w:1,h:1,dataUrl:small});
+      const {slim:s4,puts:p4}=_imgSlim([img2],new Map());
+      assert.ok(!s4[0].img&&s4[0].dataUrl===small&&p4.length===0,
+        'v1.7.89: dataUrl <=128B stays inline (no blob overhead)');
+    }finally{Persist.db=origDb;}
+    console.log('  ✓ Persist ADR-0031: img ref separation, doc/:prev dedup, GC, attach round-trip, collision chain, inline threshold (v1.7.89)');
   }
 
   // v1.7.53a (§3.18): UI.toggleMinimap flips state.showMinimap and is idempotent-reversible

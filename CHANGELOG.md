@@ -2,6 +2,18 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.89] - 2026-09-23
+
+**ADR-0031: 画像バイト列の永続化層分離 (FT-15 ステージ1)** — `dataUrl.length>128`
+の画像を IDB レコードから切り離し、content-hash キーの `imgs` ストアへ
+(content-addressable, Git blob/tree と同型)。doc + `:prev` バックアップは
+同一 blob を共有し重複コピーを解消、doc レコード自体も画像分だけ縮小。
+衝突は `:1`,`:2` … の決定論チェーンで上書き不可能、孤立 blob は save 毎に GC。
+**ワイヤ形式 (ops/共有リンク/.board/history) は不変** — live shape は常に
+`dataUrl` を保持し、load/restoreBackup 時に再装着してから validShape を通す。
+注意: DB_VER 1→2 — 旧ビルドで開くと VersionError で空ボードに見える
+(データは残り、新ビルドで復元)。
+
 ## [1.7.88] - 2026-09-23
 
 **ADR-0030: ピンチズームのスケールプレビュー** — 連続ピンチ中に残っていた最後の
