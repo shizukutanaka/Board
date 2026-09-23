@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.95] - 2026-09-23
+
+**ADR-0037: ポインタ選択のスクリーンリーダーアナウンス** — クリック/グループ選択、
+マーキー結果、⌘A、Escape 解除がスクリーンリーダーに無音だった非対称を解消。
+`_announceSel()` が `UI.toast` (aria-live) 経由で `選択を解除` / 1件は
+`describeShape` / N件は `N個を選択` を通知 (ja/en 対応、WCAG 4.1.3)。
+
 ## [1.7.94] - 2026-09-23
 
 **ADR-0036: ミニマップのドラッグスクローブ** — クリック単発ナビゲートを
