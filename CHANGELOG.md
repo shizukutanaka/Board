@@ -2,6 +2,15 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.99] - 2026-09-23
+
+**ADR-0041: 図形の DOM ミラー (spec P1 ギャップ解消)** — スクリーンリーダーが
+盤面の図形を「一覧」として走査できるよう、視覚的に隠した `#shapeMirror`
+region に `<ul>` を生成 (各 `<li><button>` = `インデックス. describeShape`)。
+Enter でその図形を選択+中央寄せ+アナウンス。再構築は `_gridVer` 連動のみ
+(フレーム毎の DOM 更新なし)、`MIRROR_MAX=300` で上限、超過時は末尾に
+「N 個は一覧に未掲載」を明示。innerHTML は使わない。
+
 ## [1.7.98] - 2026-09-23
 
 **ADR-0040: 共有リンクの長さ警告と生成失敗フィードバック** — `exportToUrl` の

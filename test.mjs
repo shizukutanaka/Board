@@ -504,6 +504,12 @@ const checks = [
   ['overlong URL shows the warn', html.includes('url.length<=SHARE_URL_WARN')],
   ['export failure clears field + toasts', html.includes("shareUrl').value=''") && html.includes("UI.toast(t('shareExportFailed'),'err')")],
   ['i18n has shareUrlTooLong/shareExportFailed ja+en', html.includes("shareUrlTooLong:'⚠ URL が非常に長い") && html.includes("shareUrlTooLong:'⚠ This URL is very long") && html.includes("shareExportFailed:'共有リンクの生成に失敗しました'") && html.includes("shareExportFailed:'Failed to build the share link'")],
+  // v1.7.99: ADR-0041 DOM mirror a11y
+  ['mirror region + list exist', html.includes('id="shapeMirror"') && html.includes('id="shapeMirrorList"')],
+  ['mirror capped by MIRROR_MAX', html.includes('MIRROR_MAX') && html.includes('Math.min(state.shapes.length,MIRROR_MAX)')],
+  ['mirror keyed on _gridVer', html.includes('if(_mirrorVer===_gridVer)return;')],
+  ['mirror wired into frame()', html.includes('_mirrorSync();   // ADR-0041')],
+  ['i18n has mirrorLabel/mirrorMore ja+en', html.includes("mirrorLabel:'ボード上の図形一覧'") && html.includes("mirrorLabel:'Shapes on the board'")],
   // v1.6.44: x,y decorative label is aria-hidden
   ['x,y status label is aria-hidden (decorative)', html.includes('<span class="lbl" aria-hidden="true">x,y</span>')],
   // v1.6.45: connection status is aria-live (announces online/offline to SR)
@@ -1172,6 +1178,7 @@ try {
              endRectLike, endLineLike, I18N, applyTheme, editSelectedShapeKbd, Share,
              draw, drawOverlay, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; }, _setOCtx: (c) => { const p = octx; octx = c; return p; },
              _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg,
+             _mirrorSync, _mirrorGo, MIRROR_MAX,
              _getLang: () => LANG, _getT: () => T };
   `);
   const api = fn(
@@ -1195,7 +1202,8 @@ try {
           _onSwUpdate, _ctxMenuKeyNav,
           _getPasteCount, _resetPasteClipboard,
           endRectLike, endLineLike, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
-          _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg } = api;
+          _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg,
+          _mirrorSync, _mirrorGo, MIRROR_MAX } = api;
 
   console.log('\n-- behavioural --');
 
@@ -8171,6 +8179,40 @@ try {
     const oldRatio=contrastOf(brand,lightPaper);
     assert.ok(oldRatio<3,`a11y: sanity — the pre-fix pairing (raw brand on light paper) is genuinely below 3:1 (got ${oldRatio.toFixed(2)}:1), confirming this test would have caught the original bug`);
     console.log(`  ✓ a11y: focus ring contrast — light ${lightRatio.toFixed(2)}:1, dark ${darkRatio.toFixed(2)}:1, both clear the 3:1 floor (a11y-audit-2026-07)`);
+  }
+
+  { // v1.7.99: ADR-0041 DOM mirror — SR-navigable shape list
+    const fakeUl={children:[],firstChild:null,
+      appendChild(c){this.children.push(c);this.firstChild=this.children[0];},
+      removeChild(c){const i=this.children.indexOf(c);if(i>=0)this.children.splice(i,1);this.firstChild=this.children[0]||null;}};
+    const mk=tag=>({tagName:tag.toUpperCase(),children:[],textContent:'',onclick:null,type:'',
+      appendChild(c){this.children.push(c);}});
+    const _origGet=fakeDoc.getElementById,_origCE=fakeDoc.createElement;
+    fakeDoc.getElementById=id=>id==='shapeMirrorList'?fakeUl:_origGet(id);
+    fakeDoc.createElement=mk;
+    state.shapes.length=0;state.selection.clear();
+    for(let i=0;i<3;i++)state.shapes.push(Shape.make('rect',{x:i*100,y:0,w:50,h:40}));
+    _invalidateGrid();
+    _mirrorSync();
+    assert.ok(fakeUl.children.length===3,'mirror lists one button per shape');
+    assert.ok(/^1\. /.test(fakeUl.children[0].children[0].textContent),'mirror button label prefixes index + describeShape');
+    // _mirrorGo via the rendered button: selects the shape + recentres
+    fakeUl.children[1].children[0].onclick();
+    assert.ok(state.selection.size===1&&state.selection.has(state.shapes[1].id),'mirror button selects its shape');
+    // cap: >MIRROR_MAX shapes → MIRROR_MAX buttons + one truncation li
+    state.shapes.length=0;
+    for(let i=0;i<MIRROR_MAX+5;i++)state.shapes.push(Shape.make('rect',{x:i,y:0,w:10,h:10}));
+    _invalidateGrid();
+    _mirrorSync();
+    assert.ok(fakeUl.children.length===MIRROR_MAX+1,'mirror caps at MIRROR_MAX + truncation notice');
+    assert.ok(/5/.test(fakeUl.children[MIRROR_MAX].textContent),'truncation item carries the remaining count');
+    // no rebuild while _gridVer is unchanged (per-frame calls must be free)
+    const before=fakeUl.children.length;
+    _mirrorSync();
+    assert.ok(fakeUl.children.length===before,'mirror skips rebuild when _gridVer unchanged');
+    fakeDoc.getElementById=_origGet;fakeDoc.createElement=_origCE;
+    state.shapes.length=0;state.selection.clear();_invalidateGrid();
+    console.log('  ✓ DOM mirror: per-shape buttons, select+recentre, MIRROR_MAX cap + truncation, _gridVer gating');
   }
 
   console.log('\n✓ All behavioural tests passed');
