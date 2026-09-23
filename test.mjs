@@ -144,7 +144,7 @@ const checks = [
   ['pointercancel restores eraser batch + clears guides', html.includes("_cancelPointerGesture") && html.includes("state.guides=null") && /if\(_eraseBatch\.length\)[\s\S]{0,180}state\.guides=null/.test(html)],
   ['document.title synced on docName change (WCAG 2.4.2)', html.includes('_syncDocTitle')&&html.includes("document.title=")&&html.includes("_syncDocTitle();")],
   ['Screen Wake Lock in presentation mode', html.includes('navigator.wakeLock')&&html.includes('_acquireWakeLock')&&html.includes('_releaseWakeLock')],
-  ['RAF idle-stop: invalidate guards with _rafId (no 60fps busy-loop on idle board)', html.includes('let needsRender=true,_rafId=0')&&html.includes('if(!_rafId)_rafId=requestAnimationFrame(frame)')&&html.includes('_rafId=0;')],
+  ['RAF idle-stop: invalidate guards with _rafId (no 60fps busy-loop on idle board)', html.includes('let needsRender=true,needOverlay=true,_rafId=0')&&html.includes('if(!_rafId)_rafId=requestAnimationFrame(frame)')&&html.includes('_rafId=0;')],
   ['drawShape accepts ctx param', html.includes("function drawShape(s,c)")],
   // round 4 improvements (current session)
   ['Double-click re-edit text', html.includes("dblclick") && html.includes("openTextEditor")],
@@ -309,6 +309,11 @@ const checks = [
   ['image ingest shared + oversized import downscales via webp', html.includes("function _imgImportFile(") && html.includes("IMG_IMPORT_MAX_DIM") && html.includes("toDataURL('image/webp'")],
   // v1.7.81: ADR-0023
   ['pen predicted-events ink tail', html.includes("getPredictedEvents") && html.includes("_penPred") && html.includes("function _predTail(")],
+  // v1.7.82: ADR-0024 layered overlay canvas
+  ['overlay canvas element + separate ctx', html.includes('id="ov"') && html.includes("octx=ocanvas.getContext")],
+  ['invalidateOverlay skips scene pass', html.includes("function invalidateOverlay(){needOverlay=true") && html.includes("if(needsRender)draw();") && html.includes("if(needOverlay)drawOverlay();")],
+  ['marquee drag repaints overlay only', html.includes("dragKind==='marquee'){state.marquee=") && html.includes("invalidateOverlay()")],
+  ['hover no longer repaints scene', !html.includes("state.hover=top?.id||null;invalidate()")],
   ['load validates viewport finiteness', html.includes("Number.isFinite(+d.viewport.zoom)&&d.viewport.zoom>0")],
   ['load clamps viewport zoom to [MIN_ZOOM,MAX_ZOOM]', html.includes("state.viewport.zoom=clampZoom(+d.viewport.zoom)")],
   ['clampZoom is the single zoom-invariant source', html.includes("const clampZoom=z=>Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,z))") && html.includes("const nz=clampZoom(") && html.includes("const z=clampZoom(")],
@@ -495,7 +500,7 @@ const checks = [
   // v1.6.61: shape search - Ctrl+F highlights matching shapes
   ['_sq search state variable', html.includes("let _sq='';")],
   ['search input DOM element created in wire()', html.includes("sq.id='sqinput'") && html.includes("sq.addEventListener('input'")],
-  ['search highlight drawn in world space', html.includes("if(_sq){const q=_sq.toLowerCase()") && html.includes("'#F97316'") && html.includes("'#EA580C'")],
+  ['search highlight drawn in world space', html.includes("if(_sq){") && html.includes("const q=_sq.toLowerCase()") && html.includes("'#F97316'") && html.includes("'#EA580C'")],
   ['Ctrl+F toggles search input', html.includes("meta&&k==='f'") && html.includes("sq.style.display")],
   // v1.6.62: Socratic feature-interaction fixes
   ['flip negates rotation angle (reflection reverses sense)', html.includes("if(s.rotate)s.rotate=(360-s.rotate)%360;")],
@@ -512,7 +517,7 @@ const checks = [
   ['doFlip skips locked shapes (consistent with doRotate)', html.includes("function doFlip(axis){\n  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);")],
   ['doRotate orbits selection about group centre', html.includes("orbit about group centre, like doFlip") && html.includes("Shape.translate(s,nx-cx,ny-cy)")],
   ['search input has localized aria-label', html.includes("sq.setAttribute('aria-label',T.k.search)")],
-  ['search Escape returns focus to canvas', html.includes("invalidate();canvas.focus();}") && html.includes("_sqAdvance(ev.shiftKey?-1:1)")],
+  ['search Escape returns focus to canvas', html.includes("invalidateOverlay();canvas.focus();}") && html.includes("_sqAdvance(ev.shiftKey?-1:1)")],
   // v1.6.64: Socratic round 4 - rotation scope + lock completeness
   ['doRotate restricted to box shapes (s.w!=null, NaN-safe)', html.includes("filter(s=>s&&!s.locked&&s.w!=null)")],
   ['doDelete skips locked shapes', html.includes("function doDelete(){\n  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);")],
@@ -534,17 +539,17 @@ const checks = [
   ['pointerdown enters rotate dragKind on knob hit', html.includes("const rh=hitRotHandle(wp,onlySel);") && html.includes("ptr.dragKind='rotate';")],
   ['rotate drag maps angle (knob-up=0°), Shift snaps 15°', html.includes("Math.atan2(wp.y-ptr.rotCy,wp.x-ptr.rotCx)*180/Math.PI+90") && html.includes("deg=Math.round(deg/15)*15;")],
   ['rotate commit records upd + announces angle', html.includes("ptr.dragKind==='rotate'") && html.includes("UI.toast(describeShape(rsh)); // SR announce new angle")],
-  ['rotation knob drawn in drawSelection', html.includes("const rh=getRotHandle(sh);") && html.includes("ctx.arc(kp.x,kp.y,hs/2,0,PI2)")],
+  ['rotation knob drawn in drawSelection', html.includes("const rh=getRotHandle(sh);") && html.includes("c.arc(kp.x,kp.y,hs/2,0,PI2)")],
   // v1.7.62: the overlay pass (selection/guides/marquee/laser/peer cursors) draws in CSS px
   // under a DPR transform — multiplying w2s output by DPR double-applied it on HiDPI.
   ['overlay pass draws in CSS px, no double DPR (HiDPI fix)',
-    html.includes('// Overlay pass: CSS-px space, the transform supplies DPR')
+    html.includes('function drawOverlay()') && html.includes('c.setTransform(DPR,0,0,DPR,0,0)')
     && !html.includes('sp.x*DPR') && !html.includes('kp.x*DPR') && !html.includes('lp.x*DPR')
     && html.includes('const x=p1.x,y=p1.y,w=p2.x-p1.x,h=p2.y-p1.y;')],
   // v1.7.62 / ADR-0011: peer selection presence
   ['ADR-0011 selection presence: send + receive + draw wired',
     html.includes("case 'selection':") && html.includes('sendSelectionIfChanged(){')
-    && html.includes('function drawPeerSelections()') && html.includes('Net.sendSelectionIfChanged();')],
+    && html.includes('function drawPeerSelections(c)') && html.includes('Net.sendSelectionIfChanged();')],
   ['ADR-0011 latecomer resend: _touchPeer resets _lastSelSent',
     html.includes('this._lastSelSent=null;invalidate();')],
   // v1.7.63 robustness audit
@@ -576,8 +581,8 @@ const checks = [
     html.includes("canvas.setAttribute('aria-label',(T.k[tool]||tool)+' — '+t('canvasHint'))")],
   // v1.7.64 (FT-17)
   ['empty-board hint: draws only when blank, reads emptyHint i18n key',
-    html.includes('function drawEmptyHint(') && html.includes("if(state.shapes.length===0&&!state.draft)drawEmptyHint(W,H);")
-    && html.includes("ctx.fillText(t('emptyHint'),")],
+    html.includes('function drawEmptyHint(') && html.includes("if(state.shapes.length===0&&!state.draft)drawEmptyHint(c,W,H);")
+    && html.includes("c.fillText(t('emptyHint'),")],
   // v1.7.65 (ADR-0012)
   ['theme toggle: applyTheme/toggleTheme/refreshThemeBtn wired, boot restores persisted mode',
     html.includes("function applyTheme(mode){") && html.includes("toggleTheme(){")
@@ -682,7 +687,7 @@ const checks = [
   ['Net.init clears prior presence timer', html.includes("clearInterval(this._presenceTimer);   // re-init (room switch) must not leak the old heartbeat")],
   // v1.6.85: WebRTC peers lifecycle-managed (not heartbeat-reaped after 15s)
   ['_reapPeers exempts rtc: peers from timeout reaping', html.includes("if(id.startsWith('rtc:'))continue;   // WebRTC peers are lifecycle-managed")],
-  ['dc.onclose removes the rtc peer', html.includes("if(this._rtcPeerId){state.peers.delete(this._rtcPeerId);this._rtcPeerId=null;}")],
+  ['dc.onclose removes the rtc peer', html.includes("if(this._rtcPeerId){state.peers.delete(this._rtcPeerId);this._rtcPeerId=null;invalidateOverlay();}")],
   ['dc.onopen stores _rtcPeerId for lifecycle management', html.includes("this._rtcPeerId='rtc:'+uid().slice(0,4);")],
   // v1.7.76 / ADR-0017 (FT-20): ICE failure without an open channel showed nothing —
   // connectionState failed toasts once and suppresses the trailing dc.onclose toast
@@ -1093,7 +1098,7 @@ try {
              _onSwUpdate, _ctxMenuKeyNav,
              _getPasteCount: () => _pasteCount, _resetPasteClipboard: () => { _lastClipboard = null; },
              endRectLike, endLineLike, I18N, applyTheme, editSelectedShapeKbd, Share,
-             draw, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; },
+             draw, drawOverlay, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; }, _setOCtx: (c) => { const p = octx; octx = c; return p; },
              _getLang: () => LANG, _getT: () => T };
   `);
   const api = fn(
@@ -3845,8 +3850,8 @@ try {
       const bigBox = rec => rec._rects.filter(r=>Math.abs(r.w)>50);
       const runAt = dpr => {
         fakeWin.devicePixelRatio=dpr; A2.resize();
-        const rec=mkRec(); const prev=A2._setCtx(rec);
-        A2.draw(); A2._setCtx(prev);
+        const rec=mkRec(); const prev=A2._setOCtx(rec);
+        A2.drawOverlay(); A2._setOCtx(prev);
         return bigBox(rec);
       };
       const at1=runAt(1), at2=runAt(2);
@@ -3865,15 +3870,15 @@ try {
 
       // ---- FT-17: empty-board onboarding hint (draw-only, disappears once populated) ----
       A2.state.shapes.length=0; A2._invalidateGrid(); A2.state.draft=null;
-      let rec=mkRec(); let prev=A2._setCtx(rec);
-      A2.draw(); A2._setCtx(prev);
+      let rec=mkRec(); let prev=A2._setOCtx(rec);
+      A2.drawOverlay(); A2._setOCtx(prev);
       assert.strictEqual(rec._texts.length,1,'empty hint: exactly one fillText on a blank board');
       assert.strictEqual(rec._texts[0].s,A2.I18N.en.emptyHint,'empty hint: text is the localized emptyHint string');
       assert.ok(Math.abs(rec._texts[0].x-400)<1&&Math.abs(rec._texts[0].y-300)<1,'empty hint: centered in the 800x600 canvas');
       const sh2=A2.Shape.make('rect',{x:0,y:0,w:10,h:10});
       A2.state.shapes.push(sh2); A2._invalidateGrid();
-      rec=mkRec(); prev=A2._setCtx(rec);
-      A2.draw(); A2._setCtx(prev);
+      rec=mkRec(); prev=A2._setOCtx(rec);
+      A2.drawOverlay(); A2._setOCtx(prev);
       assert.strictEqual(rec._texts.length,0,'empty hint: disappears the instant a shape exists');
       A2.state.shapes.length=0; A2._invalidateGrid();
       console.log('  ✓ FT-17 empty-board hint: shows centered when blank, gone once populated (v1.7.64)');

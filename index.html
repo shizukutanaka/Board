@@ -190,6 +190,12 @@ canvas#c{
   cursor:crosshair;
   touch-action:none;
 }
+canvas#ov{
+  position:absolute;inset:0;
+  width:100%;height:100%;
+  display:block;
+  pointer-events:none;   // visual layer only — input stays on #c (ADR-0024)
+}
 canvas#c[data-tool=select]{cursor:default}
 canvas#c[data-tool=hand]{cursor:grab}
 canvas#c[data-panning=true]{cursor:grabbing}
@@ -610,6 +616,7 @@ body{visibility:visible}
   <!-- ==== Canvas ==== -->
   <main class="canvas-wrap">
     <canvas id="c" data-tool="select" role="application" aria-label="Drawing canvas" data-t-aria="canvasHint" tabindex="0"></canvas>
+    <canvas id="ov" aria-hidden="true"></canvas>
 
     <!-- Style panel -->
     <aside class="style-panel" id="stylePanel" aria-label="Style" data-t-aria="style">
@@ -751,7 +758,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.81';
+const V='1.7.82';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -998,6 +1005,11 @@ const state={
 
 const canvas=document.getElementById('c');
 let ctx=canvas.getContext('2d',{alpha:false,desynchronized:true});
+// ADR-0024: second stacked canvas for ephemeral chrome (selection outlines,
+// marquee, snap guides, peer cursors/selections, laser, search highlights).
+// Scene redraws stay expensive; overlay-only changes repaint this layer alone.
+const ocanvas=document.getElementById('ov');
+let octx=ocanvas.getContext('2d',{desynchronized:true});
 let DPR=Math.max(1,Math.min(3,window.devicePixelRatio||1));
 
 // ====================== GEOM ======================
@@ -1785,24 +1797,31 @@ function drawPenMaybeCached(s,c){
 // ~60 draw calls/second even on a completely idle board. Idle-stop: hold a pending
 // RAF id (_rafId); invalidate() restarts the loop only when it is not already running;
 // frame() clears the id on entry so that a mid-frame invalidate() reschedules once.
-let needsRender=true,_rafId=0;
-function invalidate(){needsRender=true;if(!_rafId)_rafId=requestAnimationFrame(frame);Minimap.schedule()}
+let needsRender=true,needOverlay=true,_rafId=0;
+function invalidate(){needsRender=true;needOverlay=true;if(!_rafId)_rafId=requestAnimationFrame(frame);Minimap.schedule()}
+// Overlay-only repaint (ADR-0024): marquee / guides / peer cursors / laser /
+// search-highlight changes touch no scene pixels — skip the expensive scene
+// pass entirely. Never call this after mutating shapes, draft, or viewport.
+function invalidateOverlay(){needOverlay=true;if(!_rafId)_rafId=requestAnimationFrame(frame)}
 function frame(){
   _rafId=0;
-  if(needsRender){
-    draw();needsRender=false;
+  if(needsRender||needOverlay){
+    if(needsRender)draw();
+    if(needOverlay)drawOverlay();
+    needsRender=false;needOverlay=false;
     // ADR-0011: selection presence rides the frame boundary — state.selection is mutated
     // in 40+ places, but every change invalidates (selection is drawn), so this one hook
     // catches them all. Change-detection inside keeps it a no-op on unrelated frames.
     Net.sendSelectionIfChanged();
   }
-  if(needsRender)_rafId=requestAnimationFrame(frame);  // draw() called invalidate() (rare re-entry)
+  if(needsRender||needOverlay)_rafId=requestAnimationFrame(frame);  // draw() called invalidate() (rare re-entry)
 }
 function resize(){
   DPR=Math.max(1,Math.min(3,window.devicePixelRatio||1));
   const r=canvas.getBoundingClientRect();
   canvas.width=Math.round(r.width*DPR);
   canvas.height=Math.round(r.height*DPR);
+  ocanvas.width=canvas.width;ocanvas.height=canvas.height;
   invalidate();
 }
 // devicePixelRatio can change with NO resize event — dragging the window between monitors
@@ -1896,77 +1915,95 @@ function draw(){
       ctx.lineCap=_oc;ctx.lineWidth=_ow;
     }
   }
-  if(_sq){const q=_sq.toLowerCase();ctx.setLineDash([]);let _mi=0;for(const s of state.shapes){if(!(s.label||s.text||s.type||'').toLowerCase().includes(q))continue;const b=G.bbox(s),isCur=_sqNav.lastQ===q&&_mi===_sqNav.idx;ctx.strokeStyle=isCur?'#EA580C':'#F97316';ctx.lineWidth=(isCur?5:3)/state.viewport.zoom;ctx.strokeRect(b.x,b.y,b.w,b.h);_mi++;}}
-
-  // Overlay pass: CSS-px space, the transform supplies DPR. Everything below must use
-  // G.w2s output directly — multiplying by DPR here double-applies it and puts overlays
-  // at DPR× their true position on HiDPI screens (bug present v1.6.5–v1.7.61).
-  ctx.setTransform(DPR,0,0,DPR,0,0);
-  if(state.shapes.length===0&&!state.draft)drawEmptyHint(W,H);   // FT-17: onboarding for a blank board
+}
+// ====================== OVERLAY LAYER (ADR-0024) ======================
+// Second stacked canvas (#ov): all ephemeral chrome — selection outlines,
+// snap guides, marquee, peer cursors/selections, laser, search highlights —
+// repaints here without touching the scene pass. invalidateOverlay() drives
+// it; invalidate() marks both. Everything converts through G.w2s (CSS-px
+// space, the transform supplies DPR — multiplying by DPR double-applies it,
+// the v1.6.5–v1.7.61 HiDPI bug).
+function drawOverlay(){
+  const c=octx,W=ocanvas.width,H=ocanvas.height;
+  c.setTransform(1,0,0,1,0,0);
+  c.clearRect(0,0,W,H);
+  // Search highlights live in world space (they hug world bboxes).
+  if(_sq){
+    const v=state.viewport;
+    c.setTransform(v.zoom*DPR,0,0,v.zoom*DPR,-v.x*v.zoom*DPR,-v.y*v.zoom*DPR);
+    const q=_sq.toLowerCase();c.setLineDash([]);let _mi=0;
+    for(const s of state.shapes){
+      if(!(s.label||s.text||s.type||'').toLowerCase().includes(q))continue;
+      const b=G.bbox(s),isCur=_sqNav.lastQ===q&&_mi===_sqNav.idx;
+      c.strokeStyle=isCur?'#EA580C':'#F97316';c.lineWidth=(isCur?5:3)/v.zoom;c.strokeRect(b.x,b.y,b.w,b.h);_mi++;
+    }
+  }
+  c.setTransform(DPR,0,0,DPR,0,0);
+  if(state.shapes.length===0&&!state.draft)drawEmptyHint(c,W,H);   // FT-17: onboarding for a blank board
   const _gmap=new Map();
   for(const s of state.shapes){if(s.groupId){if(!_gmap.has(s.groupId))_gmap.set(s.groupId,[]);_gmap.get(s.groupId).push(s)}}
   for(const[,members] of _gmap){
     const b=G.bboxAll(members);if(!b)continue;
     const p1=G.w2s({x:b.x-4,y:b.y-4}),p2=G.w2s({x:b.x+b.w+4,y:b.y+b.h+4});
-    ctx.strokeStyle='rgba(0,196,204,.3)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
-    ctx.strokeRect(p1.x,p1.y,p2.x-p1.x,p2.y-p1.y);ctx.setLineDash([]);
+    c.strokeStyle='rgba(0,196,204,.3)';c.lineWidth=1;c.setLineDash([4,4]);
+    c.strokeRect(p1.x,p1.y,p2.x-p1.x,p2.y-p1.y);c.setLineDash([]);
   }
-  drawSelection();
-  drawGuides();
-  if(state.marquee)drawMarquee();
-  if(_laser&&Presentation.isActive()){const lp=G.w2s(_laser);ctx.beginPath();ctx.arc(lp.x,lp.y,8,0,PI2);ctx.fillStyle='rgba(255,50,50,.75)';ctx.fill();}
-  drawPeerSelections();   // ADR-0011 (before cursors: pointer renders on top of frames)
-  drawPeerCursors();   // ADR-0010
+  drawSelection(c);
+  drawGuides(c);
+  if(state.marquee)drawMarquee(c);
+  if(_laser&&Presentation.isActive()){const lp=G.w2s(_laser);c.beginPath();c.arc(lp.x,lp.y,8,0,PI2);c.fillStyle='rgba(255,50,50,.75)';c.fill();}
+  drawPeerSelections(c);   // ADR-0011 (before cursors: pointer renders on top of frames)
+  drawPeerCursors(c);   // ADR-0010
 }
 // FT-17: a blank board previously gave zero on-canvas guidance — the only discovery
 // path was the '?' help modal. Draw-only (reads state, no mutation); disappears the
 // instant a shape is added (state.shapes.length check at the call site).
-function drawEmptyHint(W,H){
-  ctx.fillStyle=getCSS('--ink-3');   // tertiary text token: 4.7:1 AA, deliberately muted
-  ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.font='14px '+(getCSS('--ui-font')||'system-ui,sans-serif');
-  ctx.fillText(t('emptyHint'),W/(2*DPR),H/(2*DPR));
+function drawEmptyHint(c,W,H){
+  c.fillStyle=getCSS('--ink-3');   // tertiary text token: 4.7:1 AA, deliberately muted
+  c.textAlign='center';c.textBaseline='middle';
+  c.font='14px '+(getCSS('--ui-font')||'system-ui,sans-serif');
+  c.fillText(t('emptyHint'),W/(2*DPR),H/(2*DPR));
 }
 // ADR-0011: ephemeral peer selection outlines — bbox frame only, in the peer's color,
 // thin [3,3] dashes. Deliberately distinct from the user's own selection on all three
 // axes (color / --accent-contrast, dash / solid, no handles) and from the locked-
 // selection dash pattern [5,4]. state.peers[].sel is set only by Net's 'selection'
 // handler and vanishes with the peer entry on reap/disconnect.
-function drawPeerSelections(){
+function drawPeerSelections(c){
   if(Presentation.isActive())return;   // same rationale as drawPeerCursors
   for(const p of state.peers.values()){
     if(!p.sel||!p.sel.length)continue;
-    ctx.strokeStyle=p.color;ctx.lineWidth=1;ctx.setLineDash([3,3]);
+    c.strokeStyle=p.color;c.lineWidth=1;c.setLineDash([3,3]);
     for(const id of p.sel){
       const s=byId(id);if(!s)continue;      // peer may reference a shape we since deleted
       const b=G.bbox(s);if(!b)continue;
       const p1=G.w2s({x:Math.min(b.x,b.x+b.w),y:Math.min(b.y,b.y+b.h)});
       const p2=G.w2s({x:Math.max(b.x,b.x+b.w),y:Math.max(b.y,b.y+b.h)});
-      ctx.strokeRect(p1.x-3,p1.y-3,p2.x-p1.x+6,p2.y-p1.y+6);
+      c.strokeRect(p1.x-3,p1.y-3,p2.x-p1.x+6,p2.y-p1.y+6);
     }
-    ctx.setLineDash([]);
+    c.setLineDash([]);
   }
 }
 // ADR-0010: ephemeral, never persisted — state.peers.cursor is set only by Net's 'cursor'
 // message handler and cleared implicitly when a peer is reaped/disconnected.
-function drawPeerCursors(){
+function drawPeerCursors(c){
   if(Presentation.isActive())return;   // presence is for co-editing, not solo frame review
   for(const p of state.peers.values()){
     if(!p.cursor)continue;
     const sp=G.w2s(p.cursor);
-    ctx.beginPath();ctx.arc(sp.x,sp.y,5,0,PI2);
-    ctx.fillStyle=p.color;ctx.fill();
-    ctx.lineWidth=1.5;ctx.strokeStyle=getCSS('--paper');ctx.stroke();
+    c.beginPath();c.arc(sp.x,sp.y,5,0,PI2);
+    c.fillStyle=p.color;c.fill();
+    c.lineWidth=1.5;c.strokeStyle=getCSS('--paper');c.stroke();
   }
 }
-function drawGuides(){
+function drawGuides(c){
   if(!state.guides||!state.guides.length)return;
-  ctx.strokeStyle=getCSS('--accent-contrast');ctx.lineWidth=1;ctx.setLineDash([4,4]);   // a11y-audit-2026-07
+  c.strokeStyle=getCSS('--accent-contrast');c.lineWidth=1;c.setLineDash([4,4]);   // a11y-audit-2026-07
   for(const g of state.guides){
     const p1=G.w2s({x:g.x1,y:g.y1}),p2=G.w2s({x:g.x2,y:g.y2});
-    ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);ctx.stroke();
+    c.beginPath();c.moveTo(p1.x,p1.y);c.lineTo(p2.x,p2.y);c.stroke();
   }
-  ctx.setLineDash([]);
+  c.setLineDash([]);
 }
 // Design-token lookups run every frame; memoise and drop on theme flip (see wire()).
 let _cssCache=Object.create(null);
@@ -2327,7 +2364,7 @@ function handleCursor(id){
   return'crosshair';
 }
 
-function drawSelection(){
+function drawSelection(c){
   if(state.selection.size===0)return;
   const sel=[...state.selection].map(byId).filter(Boolean);
   if(!sel.length)return;
@@ -2337,61 +2374,61 @@ function drawSelection(){
   const x=p1.x,y=p1.y,w=p2.x-p1.x,h=p2.y-p1.y;
   const lockedSel=sel.every(s=>s.locked);
   const single=state.selection.size===1?sel[0]:null;
-  ctx.strokeStyle=getCSS('--accent-contrast');   // a11y-audit-2026-07
-  ctx.lineWidth=1.5;ctx.setLineDash(lockedSel?[5,4]:[]);
+  c.strokeStyle=getCSS('--accent-contrast');   // a11y-audit-2026-07
+  c.lineWidth=1.5;c.setLineDash(lockedSel?[5,4]:[]);
   if(single&&single.rotate&&single.w!=null){
     // rotated box: trace the rotated rectangle so the outline hugs the shape
     const cx=single.x+single.w/2,cy=single.y+single.h/2,rot=single.rotate;
     const cs=[[single.x,single.y],[single.x+single.w,single.y],[single.x+single.w,single.y+single.h],[single.x,single.y+single.h]]
       .map(([px,py])=>{const r=_rotPt(px,py,cx,cy,rot);return G.w2s(r);});
-    ctx.beginPath();ctx.moveTo(cs[0].x,cs[0].y);for(let i=1;i<4;i++)ctx.lineTo(cs[i].x,cs[i].y);ctx.closePath();ctx.stroke();
+    c.beginPath();c.moveTo(cs[0].x,cs[0].y);for(let i=1;i<4;i++)c.lineTo(cs[i].x,cs[i].y);c.closePath();c.stroke();
   }else{
-    ctx.strokeRect(x-1,y-1,w+2,h+2);
+    c.strokeRect(x-1,y-1,w+2,h+2);
   }
-  ctx.setLineDash([]);
+  c.setLineDash([]);
   if(lockedSel)return;
   if(state.selection.size===1){
     const sh=sel[0];
     const hs=HANDLE_SIZE;
-    ctx.fillStyle=getCSS('--paper');
-    ctx.strokeStyle=getCSS('--brand-ink');  // dark ring: AAA non-text contrast vs cyan
-    ctx.lineWidth=1.5;
+    c.fillStyle=getCSS('--paper');
+    c.strokeStyle=getCSS('--brand-ink');  // dark ring: AAA non-text contrast vs cyan
+    c.lineWidth=1.5;
     for(const h of getHandles(sh)){
       const sp=G.w2s({x:h.x,y:h.y});
-      ctx.fillRect(sp.x-hs/2,sp.y-hs/2,hs,hs);
-      ctx.strokeRect(sp.x-hs/2,sp.y-hs/2,hs,hs);
+      c.fillRect(sp.x-hs/2,sp.y-hs/2,hs,hs);
+      c.strokeRect(sp.x-hs/2,sp.y-hs/2,hs,hs);
     }
     // Rotation knob: a circle above the (rotated) top edge, tethered to the shape.
     const rh=getRotHandle(sh);
     if(rh){
       const kp=G.w2s({x:rh.x,y:rh.y}),ap=G.w2s({x:rh.ax,y:rh.ay});
-      ctx.strokeStyle=getCSS('--accent-contrast');ctx.lineWidth=1.5;   // a11y-audit-2026-07
-      ctx.beginPath();ctx.moveTo(ap.x,ap.y);ctx.lineTo(kp.x,kp.y);ctx.stroke();
-      ctx.fillStyle=getCSS('--paper');ctx.strokeStyle=getCSS('--brand-ink');
-      ctx.beginPath();ctx.arc(kp.x,kp.y,hs/2,0,PI2);ctx.fill();ctx.stroke();
+      c.strokeStyle=getCSS('--accent-contrast');c.lineWidth=1.5;   // a11y-audit-2026-07
+      c.beginPath();c.moveTo(ap.x,ap.y);c.lineTo(kp.x,kp.y);c.stroke();
+      c.fillStyle=getCSS('--paper');c.strokeStyle=getCSS('--brand-ink');
+      c.beginPath();c.arc(kp.x,kp.y,hs/2,0,PI2);c.fill();c.stroke();
     }
   }else{
     // Multi-selection: corner handles only
     const hs=HANDLE_SIZE;
-    ctx.fillStyle=getCSS('--paper');ctx.strokeStyle=getCSS('--brand-ink');ctx.lineWidth=1.5;
+    c.fillStyle=getCSS('--paper');c.strokeStyle=getCSS('--brand-ink');c.lineWidth=1.5;
     for(const[hx,hy] of [[x,y],[x+w,y],[x,y+h],[x+w,y+h]]){
-      ctx.fillRect(hx-hs/2,hy-hs/2,hs,hs);
-      ctx.strokeRect(hx-hs/2,hy-hs/2,hs,hs);
+      c.fillRect(hx-hs/2,hy-hs/2,hs,hs);
+      c.strokeRect(hx-hs/2,hy-hs/2,hs,hs);
     }
   }
 }
-function drawMarquee(){
+function drawMarquee(c){
   const m=state.marquee;
   const p1=G.w2s({x:m.x1,y:m.y1}),p2=G.w2s({x:m.x2,y:m.y2});
   const x=Math.min(p1.x,p2.x),y=Math.min(p1.y,p2.y);
   const w=Math.abs(p2.x-p1.x),h=Math.abs(p2.y-p1.y);
-  ctx.fillStyle='rgba(0,196,204,.08)';
-  ctx.fillRect(x,y,w,h);
-  ctx.strokeStyle=getCSS('--accent-contrast');   // a11y-audit-2026-07
-  ctx.lineWidth=1;
-  ctx.setLineDash([4,4]);
-  ctx.strokeRect(x,y,w,h);
-  ctx.setLineDash([]);
+  c.fillStyle='rgba(0,196,204,.08)';
+  c.fillRect(x,y,w,h);
+  c.strokeStyle=getCSS('--accent-contrast');   // a11y-audit-2026-07
+  c.lineWidth=1;
+  c.setLineDash([4,4]);
+  c.strokeRect(x,y,w,h);
+  c.setLineDash([]);
 }
 
 // ====================== INPUT / TOOLS ======================
@@ -2502,7 +2539,7 @@ canvas.addEventListener('pointerdown',e=>{
 canvas.addEventListener('pointermove',e=>{
   const sp={x:e.offsetX,y:e.offsetY};
   const wp=G.s2w(sp);
-  if(Presentation.isActive()){_laser=wp;invalidate();return;}
+  if(Presentation.isActive()){_laser=wp;invalidateOverlay();return;}
   if(_pointers.size>=2)return;   // pinch in progress — the pinch handler owns the gesture
   Net.sendCursor(wp);   // ADR-0010
   UI.setStatusXY(Math.round(wp.x),Math.round(wp.y));
@@ -2520,7 +2557,9 @@ canvas.addEventListener('pointermove',e=>{
       }
       const top=pickTop(wp);
       canvas.style.cursor=top?(top.locked?'not-allowed':'move'):'default';
-      if(top?.id!==state.hover){state.hover=top?.id||null;invalidate()}
+      // state.hover feeds nothing visual (cursor is set above) — no invalidate:
+      // on a heavy board this used to repaint the whole scene per shape boundary crossed.
+      if(top?.id!==state.hover)state.hover=top?.id||null;
     }
     return;
   }
@@ -2548,7 +2587,7 @@ canvas.addEventListener('pointermove',e=>{
         }
         invalidate();
       }else if(ptr.dragKind==='move')doMove(wp);
-      else if(ptr.dragKind==='marquee'){state.marquee={x1:ptr.wx0,y1:ptr.wy0,x2:wp.x,y2:wp.y};invalidate()}
+      else if(ptr.dragKind==='marquee'){state.marquee={x1:ptr.wx0,y1:ptr.wy0,x2:wp.x,y2:wp.y};invalidateOverlay()}
       break;
     case 'pen':{
       for(const ce of coalescedSamples(e))contPen(G.s2w({x:ce.offsetX,y:ce.offsetY}),ce);
@@ -2608,7 +2647,7 @@ canvas.addEventListener('pointerup',e=>{
   }
   ptr.down=false;ptr.dragKind=null;ptr.dragStartShapes=null;
   ptr.resizeHandle=null;ptr.resizeOrig=null;
-  state.marquee=null;canvas.style.cursor='default';invalidate();
+  state.marquee=null;canvas.style.cursor='default';invalidateOverlay();
 });
 // v1.6.88: extracted as named function so tests can call it directly.
 // Fixes: (1) state.guides not cleared → stale snap-guide lines after stylus OOR / Android
@@ -2649,7 +2688,7 @@ function _clearLongPress(){
 }
 canvas.addEventListener('pointercancel',_cancelPointerGesture);
 canvas.addEventListener('contextmenu',e=>{e.preventDefault();UI.openCtxMenu(e.clientX,e.clientY)});
-canvas.addEventListener('pointerleave',()=>{if(_laser){_laser=null;invalidate()}});
+canvas.addEventListener('pointerleave',()=>{if(_laser){_laser=null;invalidateOverlay()}});
 
 // Double-click: re-edit text shapes / label boxes & connectors
 canvas.addEventListener('dblclick',e=>{
@@ -3636,7 +3675,7 @@ window.addEventListener('keydown',e=>{
   else if(e.shiftKey&&!meta&&!e.altKey&&(k==='h'||k==='v')&&state.selection.size){e.preventDefault();doFlip(k)}
   else if(k===','&&!meta&&state.selection.size){e.preventDefault();doRotate(-15)}
   else if(k==='.'&&!meta&&state.selection.size){e.preventDefault();doRotate(15)}
-  else if(meta&&k==='f'){e.preventDefault();const sq=document.getElementById('sqinput');if(sq){sq.style.display=sq.style.display==='none'?'block':'none';if(sq.style.display!=='none'){sq.focus();sq.select();}else{_sq='';invalidate();}}}
+  else if(meta&&k==='f'){e.preventDefault();const sq=document.getElementById('sqinput');if(sq){sq.style.display=sq.style.display==='none'?'block':'none';if(sq.style.display!=='none'){sq.focus();sq.select();}else{_sq='';invalidateOverlay();}}}
   else if(!meta&&KEYMAP[k]){pickTool(KEYMAP[k])}
   else if(k===' '&&!meta){e.preventDefault();pickTool('hand',true)}
 });
@@ -4430,7 +4469,7 @@ const Net={
         if(typeof msg.x!=='number'||!Number.isFinite(msg.x)||typeof msg.y!=='number'||!Number.isFinite(msg.y))break;
         const peerKey=viaRtc?this._rtcPeerId:msg.peer;
         const p=peerKey&&state.peers.get(peerKey);
-        if(p){p.cursor={x:msg.x,y:msg.y};invalidate();}
+        if(p){p.cursor={x:msg.x,y:msg.y};invalidateOverlay();}
         break;}
       case 'selection':{
         // ADR-0011: same _rtcPeerId routing as 'cursor' (hello/ping never ride WebRTC,
@@ -4440,7 +4479,7 @@ const Net={
         const ids=msg.ids.slice(0,MAX_OP_SHAPES).filter(id=>typeof id==='string');
         const peerKey=viaRtc?this._rtcPeerId:msg.peer;
         const p=peerKey&&state.peers.get(peerKey);
-        if(p){p.sel=ids;invalidate();}
+        if(p){p.sel=ids;invalidateOverlay();}
         break;}
     }
   },
@@ -4497,7 +4536,7 @@ const Net={
       if(id.startsWith('rtc:'))continue;   // WebRTC peers are lifecycle-managed (onclose), not heartbeat-reaped
       if(now-p.lastSeen>NET_PRESENCE_TIMEOUT){state.peers.delete(id);changed=true}
     }
-    if(changed&&this._onConnChange)this._onConnChange();
+    if(changed){invalidateOverlay();if(this._onConnChange)this._onConnChange()}
   },
   peerCount(){return state.peers.size},
 
@@ -4540,7 +4579,7 @@ const Net={
       if(this.rtc.connectionState!=='failed')return;
       this._rtcConnFailed=true;
       UI.toast(t('connectFailed'),'warn');
-      if(this._rtcPeerId){state.peers.delete(this._rtcPeerId);this._rtcPeerId=null;}
+      if(this._rtcPeerId){state.peers.delete(this._rtcPeerId);this._rtcPeerId=null;invalidateOverlay();}
       if(this._onConnChange)this._onConnChange();
     };
   },
@@ -4570,7 +4609,7 @@ const Net={
     };
     this.dc.onclose=()=>{
       if(!this._rtcConnFailed)UI.toast(t('disconnected'),'warn');
-      if(this._rtcPeerId){state.peers.delete(this._rtcPeerId);this._rtcPeerId=null;}
+      if(this._rtcPeerId){state.peers.delete(this._rtcPeerId);this._rtcPeerId=null;invalidateOverlay();}
       if(this._onConnChange)this._onConnChange();
     };
   },
@@ -5177,7 +5216,7 @@ async function _onBtnInstall(){
   if(btn)btn.hidden=true;
 }
 function wire(){
-  {const sq=document.createElement('input');sq.id='sqinput';sq.type='text';sq.placeholder=T.k.search;sq.setAttribute('aria-label',T.k.search);sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--accent-contrast);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';document.body.appendChild(sq);sq.addEventListener('input',()=>{_sq=sq.value;_sqNav.idx=-1;_sqNav.lastQ='';invalidate()});sq.addEventListener('keydown',ev=>{if(ev.key==='Escape'){_sq='';_sqNav.idx=-1;_sqNav.lastQ='';sq.style.display='none';sq.value='';invalidate();canvas.focus();}else if(ev.key==='Enter'&&!ev.isComposing){ev.preventDefault();_sqAdvance(ev.shiftKey?-1:1);}});}
+  {const sq=document.createElement('input');sq.id='sqinput';sq.type='text';sq.placeholder=T.k.search;sq.setAttribute('aria-label',T.k.search);sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--accent-contrast);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';document.body.appendChild(sq);sq.addEventListener('input',()=>{_sq=sq.value;_sqNav.idx=-1;_sqNav.lastQ='';invalidateOverlay()});sq.addEventListener('keydown',ev=>{if(ev.key==='Escape'){_sq='';_sqNav.idx=-1;_sqNav.lastQ='';sq.style.display='none';sq.value='';invalidateOverlay();canvas.focus();}else if(ev.key==='Enter'&&!ev.isComposing){ev.preventDefault();_sqAdvance(ev.shiftKey?-1:1);}});}
   // tool buttons
   for(const b of document.querySelectorAll('.tool'))
     b.addEventListener('click',()=>pickTool(b.dataset.tool));
@@ -5463,6 +5502,7 @@ const Presentation=(()=>{
     document.querySelector('.statusbar').style.display='none';
     document.querySelector('.minimap-wrap')?.style.setProperty('display','none');
     canvas.style.position='fixed';canvas.style.inset='0';canvas.style.zIndex='8999';
+    ocanvas.style.position='fixed';ocanvas.style.inset='0';ocanvas.style.zIndex='8999';   // ADR-0024: lift overlay too; same z as #c, DOM order keeps it above scene, below presOverlay(9000)
     // The CSS box just changed to fullscreen but no native window 'resize' event fires
     // (only the canvas element's own layout moved) — the backing pixel buffer stays at
     // its old, smaller size and gets stretched, blurring the canvas and desyncing the
@@ -5479,6 +5519,7 @@ const Presentation=(()=>{
     _releaseWakeLock();
     _overlay?.remove();_overlay=null;
     canvas.style.position='';canvas.style.inset='';canvas.style.zIndex='';
+    ocanvas.style.position='';ocanvas.style.inset='';ocanvas.style.zIndex='';
     document.querySelector('.toolbar').style.display='';
     document.querySelector('.topbar').style.display='';
     document.querySelector('.statusbar').style.display='';
