@@ -2,6 +2,22 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.76] - 2026-09-23
+
+**FT-20 (ADR-0017): WebRTC 接続失敗のユーザーフィードバック** — 手動シグナリングで
+トークン交換後に ICE が失敗しても、DataChannel が一度も `open` しない場合は
+`onclose` も発火しないためユーザーは無反応で待ち続けていた。
+
+### Fixed
+- `_wrtcInit` で `rtc.onconnectionstatechange` を配線し、`connectionState==='failed'`
+  で `connectFailed` トースト(ja/en)を表示 + ピアを掃除
+- open 後の failed → `dc.onclose` が続く経路では `_rtcConnFailed` フラグで
+  `disconnected` の二重トーストを抑制。`disconnected` 状態(一過性 ICE 再試行)は
+  トースト対象外
+- 実ブラウザ検証(playwright, 同機2ページ loopback DataChannel): 接続→
+  `Connected`、failed 注入→`Connection failed` 単発、通常 close→`Disconnected`
+  の3ケースを確認
+
 ## [1.7.75] - 2026-09-23
 
 **FT-14 (ADR-0016): 空間索引を描画パスに拡張** — `draw()` が毎フレーム全シェイプを

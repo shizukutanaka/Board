@@ -317,8 +317,14 @@ Opus/Sonnet が文脈なしで着手できる形式に変換していなかっ�
   `_openLabelEditorFor` として抽出・共有し、キーボード経路と目視経路が構造的に
   同期するようにした。
 
-## FT-20 — WebRTC 接続失敗時のユーザーフィードバック欠如(第4弾, v1.7.68 後の未監査領域レビューで発見)
-- Verdict: `FIX`(ただし実ブラウザ検証が前提 — このセッションでは実装しない)
+## FT-20 — WebRTC 接続失敗時のユーザーフィードバック欠如(第4弾, v1.7.68 後の未監査領域レビューで発見) — ✅ 実装済み (v1.7.76, ADR-0017)
+- Verdict: `DONE`(2026-09-23)。`rtc.onconnectionstatechange` を `_wrtcInit` で配線し
+  `connectionState==='failed'` で `connectFailed` トースト + ピア掃除。`_rtcConnFailed`
+  フラグで open 後失敗経路の `disconnected` 二重トーストを抑制。実ブラウザ検証は
+  playwright + `--disable-features=WebRtcHideLocalIpsWithMdns`(headless では mDNS
+  難読化候補 `.local` が解決できず ICE checking が停止するため実IP候補に切替)の
+  同機2ページ loopback DataChannel で3ケース(connected/failed 単発/通常 close)を確認。
+- Verdict(当初): `FIX`(ただし実ブラウザ検証が前提 — このセッションでは実装しない)
 - Evidence: `Net._wireDC` の `dc.onclose` は接続の切断を `t('disconnected')` でトースト
   するが、これは**一度 open した DataChannel が閉じたとき**しか発火しない。手動
   シグナリングの WebRTC は NAT/ファイアウォール越えの失敗で**そもそも open しない**
