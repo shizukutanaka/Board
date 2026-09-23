@@ -2,6 +2,31 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.116]
+
+### 追加
+- **スナップショットマージを per-property LWW で収束** (ADR-0058)。hello/sync-req 応答の
+  snapshot op に `wc`(shape ごとの wclock) を同梱し、既存図形をプロパティ単位で
+  マージ — 従来は「未保有図形のみ取込」で、両ピアが同一図形を編集すると内容が
+  発散したままだった。旧版ピア (wc なし) は従来どおり keep。undo 履歴には積まない
+  (収束動作)。
+
+## [1.7.115] - 2026-09-23
+
+**ADR-0057: 回転ノブの点ジオメトリ / 複数選択対応** — `getRotHandle` を
+`G.bbox` 経由に一般化し、pen/line/arrow 単一選択でもノブが出るように。
+複数選択では `_grpRotHandle(gb)` が選択群 bbox にノブを出す (回転は合成
+できるため ADR-0056 と違い回転メンバ混在でも可)。新 `dragKind='grot'`
+は掴み時の atan2 を基点とする**デルタ角**で `_rotShape` が orig→live を
+毎フレーム再計算: 箱形は中心 orbit + `rotate+=deg`、pts/端点は剛体回転、
+Shift=15°スナップ。コミットは `align` op (`dir:'grot'`) で undo 一括復元。
+箱形単一は従来の絶対角 `dragKind='rotate'` パスを維持 (upd op)。
+
+併せて修正: 回転を持たないシェイプのキャンセル復元で `rotate` が残存する
+既存バグ (Object.assign は orig に無いキーを消せない) — rotOrig/gOrig の
+restore で `delete sh.rotate` / orig 正規化を追加。`getRotHandle` の
+bbox ガードを `w>0&&h>0` に堅牢化 (空 pts の NaN bbox を排除)。
+
 ## [1.7.114] - 2026-09-23
 
 **ADR-0056: 複数選択リサイズ** — 複数選択時に選択群 bbox に8ハンドルを

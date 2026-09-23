@@ -766,7 +766,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.114';
+const V='1.7.116';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1226,7 +1226,7 @@ function validRemotePayload(op){
     case 'resize':{const noLock=p=>!('locked' in p);
       return patches(op.after)&&op.after.every(noLock)
           &&patches(op.before)&&op.before.every(noLock);}
-    case 'align':{const DIRS=new Set(['left','right','cx','top','bottom','cy','hspace','vspace','flip','rotate','lock','gresize']);
+    case 'align':{const DIRS=new Set(['left','right','cx','top','bottom','cy','hspace','vspace','flip','rotate','lock','gresize','grot']);
       if(typeof op.dir!=='string'||!DIRS.has(op.dir))return false;
       const noLock=p=>op.dir==='lock'||!('locked' in p);
       return patches(op.after)&&op.after.every(noLock)
@@ -2611,16 +2611,60 @@ function hitHandle(wp,s){
   }
   return null;
 }
-// Rotation handle: a knob above the (possibly rotated) top-centre of a box shape.
+// Rotation handle: a knob above the (possibly rotated) top-centre.
 // Returns world {x,y} of the knob, {ax,ay} of its anchor on the shape, and {cx,cy}
-// the rotation pivot. null for locked shapes and point geometry (pen/line/arrow).
+// the rotation pivot. null for locked shapes. ADR-0057: generalised to point
+// geometry — pen/line/arrow anchor over their (unrotated) bbox top edge.
 function getRotHandle(s){
-  if(!s||s.locked||s.w==null)return null;
-  const cx=s.x+s.w/2,cy=s.y+s.h/2,d=ROT_OFFSET/state.viewport.zoom;
-  const r=s.rotate?s.rotate*Math.PI/180:0,c=Math.cos(r),sn=Math.sin(r);
+  if(!s||s.locked)return null;
+  let cx,cy,ty;
+  if(s.w!=null){cx=s.x+s.w/2;cy=s.y+s.h/2;ty=s.y}
+  else{const b=G.bbox(s);if(!b||!(b.w>0)||!(b.h>0))return null;cx=b.x+b.w/2;cy=b.y+b.h/2;ty=b.y}
+  const d=ROT_OFFSET/state.viewport.zoom;
+  const r=(s.w!=null&&s.rotate)?s.rotate*Math.PI/180:0,c=Math.cos(r),sn=Math.sin(r);
   const R=(px,py)=>({x:cx+(px-cx)*c-(py-cy)*sn,y:cy+(px-cx)*sn+(py-cy)*c});
-  const k=R(cx,s.y-d),an=R(cx,s.y);
+  const k=R(cx,ty-d),an=R(cx,ty);
   return{x:k.x,y:k.y,ax:an.x,ay:an.y,cx,cy};
+}
+// ADR-0057: same knob geometry on a multi-selection's group bbox. Rotation
+// composes (no skew), so unlike gresize there's no rotated-member exclusion.
+function _grpRotHandle(b){
+  const cx=b.x+b.w/2,cy=b.y+b.h/2,d=ROT_OFFSET/state.viewport.zoom;
+  return{x:cx,y:b.y-d,ax:cx,ay:b.y,cx,cy};
+}
+// Rigidly rotate orig's geometry by deg about (cx,cy) and write it to live `sh`.
+// Box members orbit their centre AND accumulate `rotate`; point geometry maps
+// every point. Orig→live each frame: no float error accumulates over the drag.
+function _rotShape(sh,orig,cx,cy,deg){
+  const r=deg*Math.PI/180,c=Math.cos(r),sn=Math.sin(r);
+  const R=(px,py)=>({x:cx+(px-cx)*c-(py-cy)*sn,y:cy+(px-cx)*sn+(py-cy)*c});
+  if(orig.pts)sh.pts=orig.pts.map(p=>{const q=R(p[0],p[1]);return[q.x,q.y,p[2]]});
+  else if(orig.x1!=null){const a=R(orig.x1,orig.y1),b=R(orig.x2,orig.y2);sh.x1=a.x;sh.y1=a.y;sh.x2=b.x;sh.y2=b.y}
+  else if(orig.x!=null){
+    const q=R(orig.x+orig.w/2,orig.y+orig.h/2);
+    sh.x=q.x-orig.w/2;sh.y=q.y-orig.h/2;sh.w=orig.w;sh.h=orig.h;
+    sh.rotate=(((orig.rotate||0)+Math.round(deg))%360+360)%360;
+  }
+}
+// Group-rotation drag step / commit (precedent: _gresizeDrag/_gresizeCommit).
+function _grotDrag(wp,shift){
+  const live=[...ptr.gOrig.keys()].map(byId).filter(Boolean);
+  const _b0=G.bboxAll(live);
+  let deg=Math.atan2(wp.y-ptr.rotCy,wp.x-ptr.rotCx)*180/Math.PI-ptr.rotA0;
+  if(shift)deg=Math.round(deg/15)*15;
+  for(const [id,orig] of ptr.gOrig){const sh=byId(id);if(sh)_rotShape(sh,orig,ptr.rotCx,ptr.rotCy,deg);}
+  invalidateDamage(_dmgPair(_b0,G.bboxAll(live),ptr.gPad||40));     // ADR-0026
+}
+function _grotCommit(){
+  const after=[...ptr.gOrig.keys()].map(id=>byId(id)).filter(Boolean).map(clone);
+  if(after.length){
+    const before=after.map(a=>ptr.gOrig.get(a.id));
+    if(before.some((b,i)=>JSON.stringify(b)!==JSON.stringify(after[i]))){
+      const origSel=[...state.selection];
+      Store._recordCommitted({op:'align',dir:'grot',before,after});
+      if(origSel.length)state.history[state.histIdx].origSel=origSel;
+    }
+  }
 }
 function hitRotHandle(wp,s){
   const rh=getRotHandle(s);if(!rh)return null;
@@ -2810,14 +2854,24 @@ function drawSelection(c){
     // decorative corners that were never hit-testable). Hidden when a member is
     // rotated: axis scaling a rotated box would skew, which x/y/w/h+rotate can't
     // express.
-    if(sel.some(s=>s.rotate))return;
-    const hs=HANDLE_SIZE;
-    c.fillStyle=getCSS('--paper');c.strokeStyle=getCSS('--brand-ink');c.lineWidth=1.5;
-    for(const h of getHandles({x:b.x,y:b.y,w:b.w,h:b.h})){
-      const sp=G.w2s({x:h.x,y:h.y});
-      c.fillRect(sp.x-hs/2,sp.y-hs/2,hs,hs);
-      c.strokeRect(sp.x-hs/2,sp.y-hs/2,hs,hs);
+    if(!sel.some(s=>s.rotate)){
+      const hs=HANDLE_SIZE;
+      c.fillStyle=getCSS('--paper');c.strokeStyle=getCSS('--brand-ink');c.lineWidth=1.5;
+      for(const h of getHandles({x:b.x,y:b.y,w:b.w,h:b.h})){
+        const sp=G.w2s({x:h.x,y:h.y});
+        c.fillRect(sp.x-hs/2,sp.y-hs/2,hs,hs);
+        c.strokeRect(sp.x-hs/2,sp.y-hs/2,hs,hs);
+      }
     }
+    // ADR-0057: rotation knob on the group bbox — always offered (rotation
+    // composes, unlike axis-resize which would skew rotated members).
+    const gr=_grpRotHandle(b);
+    const gkp=G.w2s({x:gr.x,y:gr.y}),gap=G.w2s({x:gr.ax,y:gr.ay});
+    const hs2=HANDLE_SIZE;
+    c.strokeStyle=getCSS('--accent-contrast');c.lineWidth=1.5;
+    c.beginPath();c.moveTo(gap.x,gap.y);c.lineTo(gkp.x,gkp.y);c.stroke();
+    c.fillStyle=getCSS('--paper');c.strokeStyle=getCSS('--brand-ink');
+    c.beginPath();c.arc(gkp.x,gkp.y,hs2/2,0,PI2);c.fill();c.stroke();
   }
 }
 function drawMarquee(c){
@@ -2876,7 +2930,7 @@ function _sqAdvance(dir){
 }
 let ptr={down:false,x:0,y:0,x0:0,y0:0,wx:0,wy:0,wx0:0,wy0:0,
   panning:false,dragKind:null,dragStartShapes:null,
-  gOrig:null,gBox:null,gPad:null};   // ADR-0056: group-resize gesture state
+  gOrig:null,gBox:null,gPad:null,rotA0:null};   // ADR-0056/0057: group gesture state
 let _longPressTimer=null;   // ADR-0006
 
 // Revert any in-progress single-pointer gesture without committing — used when a
@@ -2890,16 +2944,16 @@ function abortGesture(){
     for(const [id,orig] of ptr.dragStartShapes){const sh=byId(id);if(sh)Object.assign(sh,clone(orig))}
   }else if(ptr.dragKind==='resize'&&ptr.resizeOrig){
     const sh=byId(ptr.resizeOrig.id);if(sh)Object.assign(sh,clone(ptr.resizeOrig));
-  }else if(ptr.dragKind==='gresize'&&ptr.gOrig){
+  }else if((ptr.dragKind==='gresize'||ptr.dragKind==='grot')&&ptr.gOrig){
     for(const [id,orig] of ptr.gOrig){const sh=byId(id);if(sh)Object.assign(sh,clone(orig))}
   }else if(ptr.dragKind==='rotate'&&ptr.rotOrig){
-    const sh=byId(ptr.rotOrig.id);if(sh)Object.assign(sh,clone(ptr.rotOrig));
+    const sh=byId(ptr.rotOrig.id);if(sh){if(ptr.rotOrig.rotate==null)delete sh.rotate;Object.assign(sh,clone(ptr.rotOrig));}
   }
   if(_eraseBatch.length){for(const s of _eraseBatch)state.shapes.push(s);_eraseBatch=[];sortZ();_invalidateGrid();}   // ADR-0009
   _penPred=null;
   state.draft=null;state.marquee=null;state.guides=null;
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.dragStartShapes=null;
-  ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;
+  ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;
   invalidate();
 }
 
@@ -2932,9 +2986,17 @@ canvas.addEventListener('pointerdown',e=>{
         if(onlySel){
           const rh=hitRotHandle(wp,onlySel);
           if(rh){
-            ptr.dragKind='rotate';
-            ptr.rotOrig=clone(onlySel);
-            ptr.rotCx=rh.cx;ptr.rotCy=rh.cy;
+            if(onlySel.w!=null){            // box: legacy absolute-angle path
+              ptr.dragKind='rotate';
+              ptr.rotOrig=clone(onlySel);
+              ptr.rotCx=rh.cx;ptr.rotCy=rh.cy;
+            }else{                          // ADR-0057: point geometry → delta path
+              ptr.dragKind='grot';
+              ptr.gOrig=new Map([[onlySel.id,clone(onlySel)]]);
+              ptr.rotCx=rh.cx;ptr.rotCy=rh.cy;
+              ptr.rotA0=Math.atan2(wp.y-rh.cy,wp.x-rh.cx)*180/Math.PI;
+              ptr.gPad=(onlySel.size||2)+16;
+            }
             return;
           }
           const hid=hitHandle(wp,onlySel);
@@ -2946,19 +3008,35 @@ canvas.addEventListener('pointerdown',e=>{
           }
         }
       }else if(state.selection.size>1){
-        // ADR-0056: group-resize — 8 handles on the selection bbox. Skipped when a
-        // member is rotated (skew can't be expressed) or every member is locked.
         const sel=[...state.selection].map(byId).filter(Boolean);
-        if(sel.length>1&&!sel.every(s=>s.locked)&&!sel.some(s=>s.rotate)){
+        if(sel.length>1&&!sel.every(s=>s.locked)){
           const gb=G.bboxAll(sel);
-          const hid=gb&&hitHandle(wp,{x:gb.x,y:gb.y,w:gb.w,h:gb.h});
-          if(hid){
-            ptr.dragKind='gresize';
-            ptr.resizeHandle=hid;
-            ptr.gBox=gb;
-            ptr.gOrig=new Map(sel.filter(s=>!s.locked).map(s=>[s.id,clone(s)]));
-            ptr.gPad=Math.max(...sel.map(s=>s.size||2))+16;   // damage pad
+          // ADR-0057: rotation knob first — it sits above the bbox, off the handles.
+          const gr=gb&&_grpRotHandle(gb);
+          const tol=HANDLE_SIZE/state.viewport.zoom;
+          if(gr&&Math.abs(wp.x-gr.x)<=tol&&Math.abs(wp.y-gr.y)<=tol){
+            ptr.dragKind='grot';
+            // Normalise rotate→0 in the origs: _rotShape always writes sh.rotate
+            // on boxes, and Object.assign restore can only overwrite keys that
+            // exist — an absent rotate would stay stale after cancel/undo.
+            ptr.gOrig=new Map(sel.filter(s=>!s.locked).map(s=>{const o=clone(s);if(o.w!=null&&o.rotate==null)o.rotate=0;return[s.id,o]}));
+            ptr.rotCx=gr.cx;ptr.rotCy=gr.cy;
+            ptr.rotA0=Math.atan2(wp.y-gr.cy,wp.x-gr.cx)*180/Math.PI;
+            ptr.gPad=Math.max(...sel.map(s=>s.size||2))+16;
             return;
+          }
+          // ADR-0056: group-resize — 8 handles on the selection bbox. Skipped when a
+          // member is rotated (skew can't be expressed).
+          if(!sel.some(s=>s.rotate)){
+            const hid=gb&&hitHandle(wp,{x:gb.x,y:gb.y,w:gb.w,h:gb.h});
+            if(hid){
+              ptr.dragKind='gresize';
+              ptr.resizeHandle=hid;
+              ptr.gBox=gb;
+              ptr.gOrig=new Map(sel.filter(s=>!s.locked).map(s=>[s.id,clone(s)]));
+              ptr.gPad=Math.max(...sel.map(s=>s.size||2))+16;   // damage pad
+              return;
+            }
           }
         }
       }
@@ -2990,12 +3068,17 @@ canvas.addEventListener('pointermove',e=>{
           if(hid){canvas.style.cursor=handleCursor(hid);return}
         }
       }else if(state.selection.size>1){
-        // ADR-0056: same hover affordance on the group handles
         const sel=[...state.selection].map(byId).filter(Boolean);
-        if(sel.length>1&&!sel.every(s=>s.locked)&&!sel.some(s=>s.rotate)){
+        if(sel.length>1&&!sel.every(s=>s.locked)){
           const gb=G.bboxAll(sel);
-          const hid=gb&&hitHandle(wp,{x:gb.x,y:gb.y,w:gb.w,h:gb.h});
-          if(hid){canvas.style.cursor=handleCursor(hid);return}
+          const gr=gb&&_grpRotHandle(gb);
+          const tol=HANDLE_SIZE/state.viewport.zoom;
+          if(gr&&Math.abs(wp.x-gr.x)<=tol&&Math.abs(wp.y-gr.y)<=tol){canvas.style.cursor='grab';return}   // ADR-0057
+          // ADR-0056: same hover affordance on the group handles
+          if(!sel.some(s=>s.rotate)){
+            const hid=gb&&hitHandle(wp,{x:gb.x,y:gb.y,w:gb.w,h:gb.h});
+            if(hid){canvas.style.cursor=handleCursor(hid);return}
+          }
         }
       }
       const top=pickTop(wp);
@@ -3024,6 +3107,8 @@ canvas.addEventListener('pointermove',e=>{
         }else invalidate();
       }else if(ptr.dragKind==='gresize'){
         _gresizeDrag(wp,e.shiftKey,e.altKey);                          // ADR-0056
+      }else if(ptr.dragKind==='grot'){
+        _grotDrag(wp,e.shiftKey);                                      // ADR-0057
       }else if(ptr.dragKind==='rotate'){
         const rsh=byId([...state.selection][0]);
         if(rsh){
@@ -3073,6 +3158,10 @@ canvas.addEventListener('pointerup',e=>{
       }else if(ptr.dragKind==='gresize'){
         _gresizeCommit();                                              // ADR-0056
         ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.resizeHandle=null;state.guides=null;
+      }else if(ptr.dragKind==='grot'){
+        _grotCommit();                                                 // ADR-0057
+        if(state.selection.size===1){const s=byId([...state.selection][0]);if(s)UI.toast(describeShape(s));}
+        ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;state.guides=null;
       }else if(ptr.dragKind==='rotate'){
         const rsh=byId([...state.selection][0]);
         if(rsh){
@@ -3108,11 +3197,11 @@ function _cancelPointerGesture(){
   if(ptr.dragKind==='resize'&&ptr.resizeOrig){
     const rsh=byId([...state.selection][0]);
     if(rsh)Object.assign(rsh,clone(ptr.resizeOrig));
-  }else if(ptr.dragKind==='gresize'&&ptr.gOrig){
+  }else if((ptr.dragKind==='gresize'||ptr.dragKind==='grot')&&ptr.gOrig){
     for(const [id,orig] of ptr.gOrig){const sh=byId(id);if(sh)Object.assign(sh,clone(orig));}
   }else if(ptr.dragKind==='rotate'&&ptr.rotOrig){
     const rsh=byId([...state.selection][0]);
-    if(rsh)Object.assign(rsh,clone(ptr.rotOrig));
+    if(rsh){if(ptr.rotOrig.rotate==null)delete rsh.rotate;Object.assign(rsh,clone(ptr.rotOrig));}
   }else if(ptr.dragKind==='move'&&ptr.dragStartShapes){
     for(const[id,orig] of ptr.dragStartShapes){const sh=byId(id);if(sh)Object.assign(sh,clone(orig));}
   }
@@ -3128,7 +3217,7 @@ function _cancelPointerGesture(){
 // this well before the timer fires, so no separate pointermove cancellation is needed).
 function _longPressFire(cx,cy){
   _longPressTimer=null;
-  if(!ptr.down||ptr.dragKind==='resize'||ptr.dragKind==='gresize'||ptr.dragKind==='rotate')return;
+  if(!ptr.down||ptr.dragKind==='resize'||ptr.dragKind==='gresize'||ptr.dragKind==='grot'||ptr.dragKind==='rotate')return;
   if(Math.hypot(ptr.x-ptr.x0,ptr.y-ptr.y0)>LONG_PRESS_MOVE_TOL)return;
   _cancelPointerGesture();
   UI.openCtxMenu(cx,cy);
@@ -5319,9 +5408,7 @@ const Net={
         // op types here would let a malicious peer embed clear/del/upd inside a
         // snapshot message and execute them under the snapshot code path.
         else if(Array.isArray(msg.ops))for(const op of msg.ops.slice(0,MAX_OP_SHAPES)){
-          if(op.op!=='add'||!op.shape)continue;   // snapshot ops are adds only
-          if(byId(op.shape.id))continue;           // already have this shape → skip
-          Store.applyRemote(op);
+          this._mergeSnapshotOp(op);   // ADR-0058: add unknown shapes, LWW-merge known ones
         }
         break;
       case 'ping':
@@ -5358,11 +5445,40 @@ const Net={
   // `ops` is REQUIRED: a non-empty receiver merges via `ops` (see _onRecv 'snapshot'),
   // so any transport that omits ops fails to sync two non-empty boards.
   _snapshotMsg(){
+    // ADR-0058: `wc` ships each shape's per-property last-write clocks so a
+    // non-empty receiver can LWW-merge properties, not just adopt new shapes.
     const ops=state.shapes.map(s=>({
-      op:'add',shape:clone(s),
+      op:'add',shape:clone(s),wc:clone(state.wclock[s.id]||{}),
       clock:{peer:state.peerId,seq:'snap:'+s.id,ts:0,_snap:true}
     }));
     return {k:'snapshot',shapes:clone(state.shapes),ops,peer:state.peerId};
+  },
+  // ADR-0058: merge one snapshot add-op. Unknown shape → adopt via applyRemote
+  // (unchanged); known shape → per-property LWW merge against wc so concurrent
+  // edits on both peers converge instead of staying diverged. `wc` absent (old
+  // peer) → 'skip', the previous keep-everything behaviour. No history entries —
+  // convergence, not a user action. Named for testability (precedent: _gresizeDrag).
+  _mergeSnapshotOp(op){
+    if(!op||op.op!=='add'||!op.shape)return 'skip';   // snapshot ops are adds only
+    const ex=byId(op.shape.id);
+    if(!ex){Store.applyRemote(op);return 'add';}
+    const rw=(op.wc&&typeof op.wc==='object')?op.wc:null;
+    if(!rw)return 'skip';
+    const lw=state.wclock[ex.id]||(state.wclock[ex.id]={});
+    let dirty=false;
+    for(const k in rw){
+      const rc=rw[k];
+      if(!validClock(rc))continue;
+      if(op.shape[k]===undefined)continue;
+      const lc=lw[k];
+      if(!lc||clockNewer(rc,lc)){ex[k]=op.shape[k];lw[k]=clone(rc);dirty=true;}
+    }
+    if(dirty){
+      state.dirty=true;_invalidateGrid();
+      invalidate();UI.refreshUndo();Persist.schedule();
+      return 'merge';
+    }
+    return 'keep';
   },
   // Throttled: hello/sync-req are attacker-controllable and each snapshot clones the whole
   // board twice — unthrottled, a hostile peer gets a cheap-request/expensive-response
