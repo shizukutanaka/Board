@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.131]
+
+### 追加
+- **テキスト揃え** (ADR-0073)。ctx メニュー「テキスト揃え」で text/sticky
+  本文の揃えを左→中央→右に巡回 (`s.align`、Excalidraw parity)。
+  canvas・SVG export (`text-anchor`)・インライン editor の全経路で一貫。
+  `style` op で undo・同期は既存経路。既存図形は left で見た目同一。
+
 ## [1.7.130]
 
 ### 追加

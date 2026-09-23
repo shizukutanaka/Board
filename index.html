@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.130';
+const V='1.7.131';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -860,7 +860,7 @@ const I18N={
     undone:'元に戻した',redone:'やり直した',created:'作成',editLabel:'選択中の図形を編集',
     confirmClear:'すべて削除しますか？',
     ctxCopy:'コピー',ctxPaste:'貼り付け',ctxDuplicate:'複製',
-    ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxCurve:'曲線',ctxBothEnds:'両端ヘッド',
+    ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxCurve:'曲線',ctxBothEnds:'両端ヘッド',ctxTextAlign:'テキスト揃え (左→中央→右)',
     ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
     ctxSendBackward:'背面へ',ctxSendBack:'最背面へ',
     ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxLock:'ロック',ctxUnlock:'ロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
@@ -936,7 +936,7 @@ const I18N={
     undone:'Undone',redone:'Redone',created:'Created',editLabel:'Edit selected shape',
     confirmClear:'Delete everything?',
     ctxCopy:'Copy',ctxPaste:'Paste',ctxDuplicate:'Duplicate',
-    ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxCurve:'Curved',ctxBothEnds:'Arrowheads both ends',
+    ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxCurve:'Curved',ctxBothEnds:'Arrowheads both ends',ctxTextAlign:'Text align (left→center→right)',
     ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
     ctxSendBackward:'Send backward',ctxSendBack:'Send to back',
     ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxLock:'Lock',ctxUnlock:'Unlock',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
@@ -2541,7 +2541,9 @@ function drawShape(s,c){
         const lh=fs*1.3, pad=8;
         const lines=wrapTextCached(s,s.text,Math.abs(s.w)-pad*2,fs,t=>c.measureText(t).width);
         c.save();c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,r);c.clip();
-        for(let i=0;i<lines.length;i++)c.fillText(lines[i],s.x+pad,s.y+pad+i*lh);
+        c.textAlign=s.align==='center'?'center':s.align==='right'?'right':'left';   // ADR-0073
+        const tax=s.align==='center'?s.x+s.w/2:s.align==='right'?s.x+s.w-pad:s.x+pad;
+        for(let i=0;i<lines.length;i++)c.fillText(lines[i],tax,s.y+pad+i*lh);
         c.restore();
       }
       break;}
@@ -2732,7 +2734,9 @@ function drawText(s,c){
   c.textBaseline='top';
   const lines=(s.text||'').split('\n');
   const lh=fs*1.25;
-  for(let i=0;i<lines.length;i++)c.fillText(lines[i],s.x,s.y+i*lh);
+  c.textAlign=s.align==='center'?'center':s.align==='right'?'right':'left';   // ADR-0073
+  const ax=s.align==='center'?s.x+s.w/2:s.align==='right'?s.x+s.w:s.x;
+  for(let i=0;i<lines.length;i++)c.fillText(lines[i],ax,s.y+i*lh);
 }
 
 // Rotate point (px,py) about centre (cx,cy) by `deg` degrees. Shared by handles,
@@ -4459,6 +4463,7 @@ function positionTextEditor(ta,s){
   ta.style.top=(r.top+sp.y)+'px';
   ta.style.fontSize=(s.fontSize*state.viewport.zoom)+'px';
   ta.style.color=s.stroke||'#0F172A';
+  ta.style.textAlign=s.align==='center'?'center':s.align==='right'?'right':'left';   // ADR-0073
   ta.style.minWidth='20px';
 }
 
@@ -5538,8 +5543,10 @@ function buildSVG(shapes,paper){
       case 'text':{
         const fs=_num(s.fontSize)||16;
         const svgLines=String(s.text==null?'':s.text).split('\n');
-        els.push(`<text x="${X+ox}" y="${Y+oy}" dominant-baseline="hanging" font-family="Hiragino Sans,Helvetica Neue,system-ui,sans-serif" font-size="${fs}" fill="${stroke}"${a}${rT}>`);
-        for(let i=0;i<svgLines.length;i++)els.push(`<tspan x="${X+ox}" dy="${i?fs*1.25:0}">${_esc(svgLines[i])}</tspan>`);
+        const tax=s.align==='center'?X+ox+W/2:s.align==='right'?X+ox+W:X+ox;   // ADR-0073
+        const anch=s.align==='center'?' text-anchor="middle"':s.align==='right'?' text-anchor="end"':'';
+        els.push(`<text x="${tax}" y="${Y+oy}" dominant-baseline="hanging" font-family="Hiragino Sans,Helvetica Neue,system-ui,sans-serif" font-size="${fs}" fill="${stroke}"${anch}${a}${rT}>`);
+        for(let i=0;i<svgLines.length;i++)els.push(`<tspan x="${tax}" dy="${i?fs*1.25:0}">${_esc(svgLines[i])}</tspan>`);
         els.push('</text>');break;}
       case 'image':
         if(typeof s.dataUrl==='string'&&/^data:image\//.test(s.dataUrl))els.push(`<image x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" href="${_esc(s.dataUrl)}"${a}${rT}/>`);
@@ -5562,8 +5569,10 @@ function buildSVG(shapes,paper){
           const fs=_num(s.fontSize)||14;const pad2=8;
           // estimate measure (no canvas here); wraps to the same box as the app
           const lines2=wrapText(s.text,Math.abs(W)-pad2*2,t=>t.length*fs*0.6);
-          els.push(`<text x="${X+ox+pad2}" y="${Y+oy+pad2}" dominant-baseline="hanging" font-family="Hiragino Sans,Helvetica Neue,system-ui,sans-serif" font-size="${fs}" fill="#1E293B"${rT}>`);
-          for(let i=0;i<lines2.length;i++)els.push(`<tspan x="${X+ox+pad2}" dy="${i?fs*1.3:0}">${_esc(lines2[i])}</tspan>`);
+          const tax2=s.align==='center'?X+ox+W/2:s.align==='right'?X+ox+W-pad2:X+ox+pad2;   // ADR-0073
+          const anch2=s.align==='center'?' text-anchor="middle"':s.align==='right'?' text-anchor="end"':'';
+          els.push(`<text x="${tax2}" y="${Y+oy+pad2}" dominant-baseline="hanging" font-family="Hiragino Sans,Helvetica Neue,system-ui,sans-serif" font-size="${fs}" fill="#1E293B"${anch2}${rT}>`);
+          for(let i=0;i<lines2.length;i++)els.push(`<tspan x="${tax2}" dy="${i?fs*1.3:0}">${_esc(lines2[i])}</tspan>`);
           els.push('</text>');
         }break;}
     }
@@ -6499,6 +6508,7 @@ const UI={
       state.styleClipboard&&has&&['ctxPasteStyle','⌥V',pasteStyle],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked})&&['ctxElbow','',toggleElbow],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked})&&['ctxCurve','',toggleCurve],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky')&&!s.locked})&&['ctxTextAlign','',cycleTextAlign],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='arrow'&&!s.locked})&&['ctxBothEnds','',toggleBothEnds],
       has&&['ctxDelete','⌫',doDelete],
       has&&'sep',
@@ -6974,6 +6984,16 @@ function toggleCurve(){
     before.push({id,elbow:s.elbow||0,curve:s.curve||0});
     after.push({id,elbow:0,curve:s.curve?0:1});
     s.elbow=0;s.curve=s.curve?0:1;
+  }
+  if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
+}
+// ADR-0073: cycle text align left→center→right for text/sticky via style op.
+function cycleTextAlign(){
+  const before=[],after=[];
+  for(const id of state.selection){
+    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky')||s.locked)continue;
+    const cur=s.align||'left',nxt=cur==='left'?'center':cur==='center'?'right':'left';
+    before.push({id,align:cur});after.push({id,align:nxt});s.align=nxt;
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
 }
