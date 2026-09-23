@@ -933,7 +933,7 @@ const checks = [
     html.includes("Inviting side, step 1") && html.includes("Joining side, step 1")],
   // v1.7.58 (ADR-0009): byId() O(1) id index
   ['byId is a lazy Map index invalidated via the shared _invalidateGrid choke point',
-    html.includes("function _invalidateGrid(){_grid=null;_idIndex=null;}") &&
+    html.includes("function _invalidateGrid(){_grid=null;_idIndex=null;_gridVer++;}") &&
     html.includes("if(!_idIndex||_idIndex.size!==state.shapes.length){_idIndex=new Map();for(const s of state.shapes)_idIndex.set(s.id,s);}")],
   ['exportPDF convertToBlob rejection routes to the same exportFailed toast as the toBlob(null) path',
     html.includes("off.convertToBlob({type:'image/png'}).then(fin,()=>fin(null));")],
@@ -1079,7 +1079,7 @@ try {
              getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
-             _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
+             _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, _snapBoxIdx, dashArr, validShape,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
@@ -1103,7 +1103,7 @@ try {
           getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
-          _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
+          _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, _snapBoxIdx, dashArr, validShape,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
@@ -1881,6 +1881,44 @@ try {
     console.log('  ✓ pen bitmap cache: miss/settle/hit, translate+flip+style invalidation, vector fallbacks');
   }
 
+  // v1.7.78 / ADR-0019: pen bbox memoization — G.bbox's O(pts) envelope walk was the
+  // dominant residual cost (inView + minimap call it every frame). Same O(1)
+  // signature as the bitmap cache; the memo must never change what bbox returns.
+  {
+    const pen = { id:'pb1', type:'pen', z:0, stroke:'#123', size:6,
+      pts:[[0,0],[10,4],[20,0],[30,6],[40,2]] };
+    const b1 = G.bbox(pen), b2 = G.bbox(pen);
+    assert.strictEqual(b2, b1, 'pen bbox: memoized hit returns the same envelope object');
+    assert.strictEqual(b1.x, -3, 'pen bbox: size pad applied (0 - size/2)');
+    assert.strictEqual(b1.w, 46, 'pen bbox: width spans all points + pad');
+    // In-place uniform translate invalidates (endpoints move)
+    Shape.translate(pen, 100, 0);
+    const b3 = G.bbox(pen);
+    assert.strictEqual(b3.x, b1.x + 100, 'pen bbox: translate invalidates the memo');
+    assert.strictEqual(b3.w, b1.w, 'pen bbox: width unchanged by translate');
+    // In-place interior mutation that moves endpoints invalidates
+    pen.pts[pen.pts.length - 1][0] = 999;
+    const b4 = G.bbox(pen);
+    assert.strictEqual(b4.x + b4.w, 999 + 3, 'pen bbox: endpoint edit invalidates');
+    // Midpoint edit invalidates too
+    pen.pts[pen.pts.length >> 1][1] = -500;
+    const b5 = G.bbox(pen);
+    assert.strictEqual(b5.y, -500 - 3, 'pen bbox: midpoint edit invalidates');
+    // pts array replacement invalidates
+    pen.pts = pen.pts.map(p => p.slice());
+    assert.notStrictEqual(G.bbox(pen), b5, 'pen bbox: pts replacement invalidates');
+    // Memo correctness is still the real envelope — brute-force compare
+    const mm = { x: Infinity, y: Infinity, xx: -Infinity, yy: -Infinity };
+    for (const [x, y] of pen.pts) {
+      if (x < mm.x) mm.x = x; if (y < mm.y) mm.y = y;
+      if (x > mm.xx) mm.xx = x; if (y > mm.yy) mm.yy = y;
+    }
+    const bb = G.bbox(pen);
+    assert.strictEqual(bb.x, mm.x - 3, 'pen bbox: memo equals brute-force min x');
+    assert.strictEqual(bb.x + bb.w, mm.xx + 3, 'pen bbox: memo equals brute-force max x');
+    console.log('  ✓ pen bbox memo: hit/translate/flip/endpoint/midpoint/replacement invalidation, brute-force parity');
+  }
+
   // v1.6.14: pointer pressure - a varying pressure signal drives width; constant/none falls back to velocity
   {
     const size = 8, base = size, LO = 0.45;
@@ -1929,6 +1967,48 @@ try {
     assert.strictEqual(r.dx, -3); assert.strictEqual(r.dy, -3);
     assert.strictEqual(r.guides.length, 2, 'x and y snap emit two guides');
     console.log('  ✓ alignment guides: edge/centre snap, nearest wins, dual-axis, out-of-range no-op');
+  }
+
+  // v1.7.79 / ADR-0020: snap-target edge index — move/resize object-snap rebuilt
+  // the all-shapes edge list per pointermove; now built once per _gridVer+key and
+  // queried by binary search. Results must equal the old brute-force scan.
+  {
+    const shapes = [];
+    for (let i = 0; i < 40; i++) shapes.push({ id:'s'+i, type:'rect', z:i,
+      x:(i%8)*130, y:((i/8)|0)*90, w:60, h:40, stroke:'#123', size:2 });
+    // brute-force reference: same rule as the original snapBox scan
+    const bf = (mov, skip, tol) => {
+      const mX=[mov.x,mov.x+mov.w/2,mov.x+mov.w],mY=[mov.y,mov.y+mov.h/2,mov.y+mov.h];
+      let bx=null,by=null;
+      for (const s of shapes){ if(skip.has(s.id))continue; const b=G.bbox(s); if(!b)continue;
+        for(const m of mX)for(const t of[b.x,b.x+b.w/2,b.x+b.w]){const d=t-m;if(Math.abs(d)<=tol&&(!bx||Math.abs(d)<Math.abs(bx.d)))bx={d};}
+        for(const m of mY)for(const t of[b.y,b.y+b.h/2,b.y+b.h]){const d=t-m;if(Math.abs(d)<=tol&&(!by||Math.abs(d)<Math.abs(by.d)))by={d};} }
+      return {dx:bx?bx.d:0, dy:by?by.d:0};
+    };
+    const prevShapes = state.shapes;
+    state.shapes = shapes; _invalidateGrid();
+    const skip = new Set(['s0','s1']);
+    let ok = 0, tot = 0;
+    for (let i = 0; i < 60; i++) {
+      const mov = {x:i*17.3%900, y:i*29.7%500, w:40+i%3*10, h:20+i%5*8};
+      const idx = _snapIndex('move', 'test', s=>skip.has(s.id));
+      const got = _snapBoxIdx(mov, idx, 8);
+      const exp = bf(mov, skip, 8);
+      tot++; if (Math.abs(got.dx-exp.dx)<1e-9 && Math.abs(got.dy-exp.dy)<1e-9) ok++;
+    }
+    assert.strictEqual(ok, tot, 'snap index: binary-search results identical to brute-force scan');
+    // index invalidates when _gridVer bumps (any mutation path)
+    const idx1 = _snapIndex('move', 'test', s=>skip.has(s.id));
+    _invalidateGrid();
+    const idx2 = _snapIndex('move', 'test', s=>skip.has(s.id));
+    assert.notStrictEqual(idx2, idx1, 'snap index: rebuilds after _invalidateGrid');
+    const idx3 = _snapIndex('move', 'test', s=>skip.has(s.id));
+    assert.strictEqual(idx3, idx2, 'snap index: stable between mutations');
+    // different exclusion key → rebuild
+    const idx4 = _snapIndex('move', 'other-key', s=>false);
+    assert.notStrictEqual(idx4, idx2, 'snap index: exclusion key change rebuilds');
+    state.shapes = prevShapes; _invalidateGrid();
+    console.log('  ✓ snap index: brute-force parity, _gridVer+key invalidation');
   }
 
   // v1.6.16: dashed/dotted line styles
