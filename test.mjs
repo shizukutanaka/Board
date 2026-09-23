@@ -323,6 +323,10 @@ const checks = [
   ['move/resize/rotate drag report damage', html.includes("invalidateDamage(_dmgPair(_b0,G.bbox(rsh)") && html.includes("if(dmg)invalidateDamage(dmg);else invalidate()")],
   ['draft draw + erase report damage', html.includes("invalidateDamage(_dmgPair(_b0,G.bbox(d)") && html.includes("_eraseBatch.push(clone(hit))")],
   ['damage path force-includes gesture targets vs stale grid', html.includes("ptr.dragStartShapes.keys()") && html.includes("ptr.resizeOrig.id") && html.includes("ptr.rotOrig.id")],
+  // v1.7.85: ADR-0027 op-level damage propagation
+  ['_apply harvests ids + pre/post bboxes for damage', html.includes("const _ids=new Set()") && html.includes("for(const id of _ids)_u(byId(id))") && html.includes("invalidateDamage(_dmg)")],
+  ['_apply falls back to full invalidate on empty/huge damage', html.includes("if(!_dmg){invalidate();}") && html.includes("_v.w*_v.h*0.6")],
+  ['applyRemote uses op damage (no blanket invalidate)', !html.includes("this._stampWrites(op);\n    state.dirty=true;\n    UI.refreshUndo();\n    Persist.schedule();\n    invalidate();") && html.includes("invalidateDamage(_dmgPair(_cb,G.bbox(sh)")],
   ['load validates viewport finiteness', html.includes("Number.isFinite(+d.viewport.zoom)&&d.viewport.zoom>0")],
   ['load clamps viewport zoom to [MIN_ZOOM,MAX_ZOOM]', html.includes("state.viewport.zoom=clampZoom(+d.viewport.zoom)")],
   ['clampZoom is the single zoom-invariant source', html.includes("const clampZoom=z=>Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,z))") && html.includes("const nz=clampZoom(") && html.includes("const z=clampZoom(")],

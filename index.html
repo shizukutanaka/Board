@@ -758,7 +758,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.84';
+const V='1.7.85';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1296,12 +1296,16 @@ const Store={
     if(!this._lwwDrop(op))return;
     const _connFix=this._remoteDelConnFix(op);
     this._apply(op,true);
-    if(_connFix)for(const f of _connFix){const sh=byId(f.id);if(sh)Object.assign(sh,f.patch);}
+    if(_connFix)for(const f of _connFix){
+      const sh=byId(f.id);
+      // ADR-0027: endpoint re-dock mutates a connector outside _apply — report its
+      // own damage (old endpoint sat inside the deleted shape's damage union).
+      if(sh){const _cb=G.bbox(sh);Object.assign(sh,f.patch);invalidateDamage(_dmgPair(_cb,G.bbox(sh),(sh.size||2)+16));}
+    }
     this._stampWrites(op);
     state.dirty=true;
     UI.refreshUndo();
     Persist.schedule();
-    invalidate();
   },
   // Per-property write clocks live in state.wclock (shapeId -> {prop: clock}), NOT on
   // the shape — so they never pollute clones, snapshots, persistence or validation.
@@ -1402,6 +1406,25 @@ const Store={
   },
   _apply(op,forward){
     _invalidateGrid();
+    // ADR-0027: harvest the ids and pre-mutation bboxes this op can touch so the
+    // repaint clips to their union instead of repainting the whole canvas.
+    // Partial patch payloads ({id,c:'#f00'}) yield NaN bboxes -> filtered to
+    // finite rects only; over-covering is always safe, missing is not.
+    const _ids=new Set();
+    const _addId=v=>{if(v&&v.id!=null)_ids.add(v.id)};
+    if(op.id!=null)_ids.add(op.id);
+    if(Array.isArray(op.ids))for(const id of op.ids)_ids.add(id);
+    for(const k of ['shape','shapes','before','after','changes','connClears']){
+      const v=op[k];
+      if(Array.isArray(v))for(const x of v)_addId(x);
+      else _addId(v);
+    }
+    let _dmg=null;
+    const _u=s=>{if(!s)return;const b=G.bbox(s);if(!b||![b.x,b.y,b.w,b.h].every(Number.isFinite))return;const m=(s.size||2)/2+10;_dmg=_dmgU(_dmg,{x:b.x-m,y:b.y-m,w:b.w+2*m,h:b.h+2*m});};
+    for(const id of _ids)_u(byId(id));                          // pre-mutation (del/move/upd)
+    for(const v of [op.shape,op.shapes,op.before,op.after]){
+      if(Array.isArray(v))for(const x of v)_u(x);else _u(v);   // payload side (add/del/clear/replace)
+    }
     switch(op.op){
       case 'add':{
         // Idempotent on shape id: a remote add for a shape we already hold (e.g. a
@@ -1532,6 +1555,11 @@ const Store={
         if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));
         break;}
     }
+    // ADR-0027: post-mutation bboxes of the same ids cover add/upd/move targets;
+    // a union covering most of the viewport isn't worth clipping for.
+    for(const id of _ids)_u(byId(id));
+    if(!_dmg){invalidate();}
+    else{const _v=visibleWorldRect();if(_dmg.w*_dmg.h>_v.w*_v.h*0.6)invalidate();else invalidateDamage(_dmg);}
   }};
 // ADR-0009: lazy-rebuilt id→shape index. Invalidated by _invalidateGrid() (the same
 // choke point the spatial hit-test grid already uses) whenever shapes are added/removed
