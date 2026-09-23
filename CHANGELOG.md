@@ -2,6 +2,22 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.85] - 2026-09-23
+
+**ADR-0027: op 単位のダメージ伝播 (Store._apply / applyRemote の局所再描画)** —
+コラボレーション中の受信 op 一つ一つが `invalidate()` (= 全面再走査+全面再描画)
+を発行し、重い盤面ではピアの連続操作が受信側フレームを律速していた。
+`_apply` の冒頭で op が触り得る全 id/ペイロード図形の変異前 bbox、switch 後に
+変異後 bbox を収穫し、union を `invalidateDamage` へ (ADR-0026 の機構をそのまま
+利用)。`applyRemote` 末尾の `invalidate()` を除去 — リモート op が矩形 clip で
+局所再描画される。
+
+実機検証 (400 rect 盤面): `applyRemote(upd 移動)` → 542×432wu clip,
+`applyRemote(del)` → 142×132wu clip, いずれも全面再描画とのピクセル差分 **0**。
+union が viewport の 60% を超える op は全面再描画にフォールバック、収穫が空なら
+`invalidate()` — 「取りこぼしが絶対にない」側に倒した設計。undo/redo・ローカル
+commit も `_apply` 経由で damage を得る (呼び出し側の `invalidate()` は保守的に残置)。
+
 ## [1.7.84] - 2026-09-23
 
 **ADR-0026: ドラッグ系ジェスチャの局所再描画 (drag-local damage rect)** —
