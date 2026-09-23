@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.76 — Design Tokens
+   Board v1.7.77 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -751,7 +751,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.76';
+const V='1.7.77';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1688,6 +1688,75 @@ function getImg(dataUrl){
 }
 const STICKY_COLORS=['#FEF08A','#FBCFE8','#BBF7D0','#BFDBFE','#DDD6FE','#FED7AA'];
 
+// ====================== PEN BITMAP CACHE (ADR-0018) ======================
+// Committed pen strokes are immutable between ops, but drawPen re-walks every
+// point (penWidths + one stroke per segment) on EVERY frame. Rasterize each
+// stroke once into an offscreen canvas (bbox-relative, fixed supersample R)
+// and drawImage() it instead. The bitmap is translation-invariant, so a moved
+// pen just draws at its new bbox origin without re-rasterizing.
+// Validity is an O(1) signature — no per-frame G.bbox scan: array ref + length +
+// first/middle/last absolute points + stroke + size. In-place point mutation is
+// limited to Shape.translate (uniform — moves p0/pN) and flipShape (moves p0/pN);
+// every other op replaces the pts array, so the signature catches them all.
+// On a miss we draw vector that frame and stash the new signature — a dragged
+// stroke therefore never re-rasterizes per pointermove; it re-renders once on
+// the first settled frame after the drag ends.
+const _penCache=new Map(),PEN_CACHE_MAX_PX=12e6,PEN_CACHE_MAX_DIM=4096;
+let _penCachePx=0;
+// Effective raster resolution: zoom-adaptive (supersampled at low zoom is just
+// wasted pixels), clamped 0.25..2 so extreme zoom-outs still rasterize tiny.
+function _penRes(){return Math.min(2,Math.max(0.25,state.viewport.zoom*DPR))}
+// Render (or re-render) a cache entry's canvas from the stroke at resolution R.
+// Returns the canvas, or null when the stroke is too big to be worth
+// rasterizing — the caller records null as `false` so we never retry per frame.
+function _penRender(s,e,R){
+  const w=Math.max(2,Math.ceil(e.bw*R)),h=Math.max(2,Math.ceil(e.bh*R));
+  if(w>PEN_CACHE_MAX_DIM||h>PEN_CACHE_MAX_DIM||w*h>PEN_CACHE_MAX_PX)return null;
+  _penCachePx-=e.px||0;
+  const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+  const cc=cv.getContext('2d');
+  cc.scale(R,R);cc.translate(-e.bx,-e.by);
+  drawPen(s,cc);
+  e.px=w*h;e.R=R;_penCachePx+=e.px;
+  while(_penCachePx>PEN_CACHE_MAX_PX){              // evict oldest except this one
+    let done=true;
+    for(const k of _penCache.keys()){
+      if(k===s.id)continue;
+      const old=_penCache.get(k);_penCache.delete(k);_penCachePx-=old.px||0;done=false;break;
+    }
+    if(done)break;
+  }
+  return cv;
+}
+function _penCached(s){
+  const p=s.pts,n=p.length,e=_penCache.get(s.id);
+  const sigOk=e&&e.pts===p&&e.n===n&&e.stroke===s.stroke&&e.size===s.size
+    &&e.p0x===p[0][0]&&e.p0y===p[0][1]&&e.pMx===p[n>>1][0]&&e.pMy===p[n>>1][1]
+    &&e.pNx===p[n-1][0]&&e.pNy===p[n-1][1];
+  if(sigOk){
+    _penCache.delete(s.id);_penCache.set(s.id,e);   // LRU touch
+    const R=_penRes();
+    // re-rasterize only when zoom crossed a 1.5x bucket — continuous pinch-zoom
+    // re-renders ~log(Δzoom)/log(1.5) times per gesture, not per frame
+    if(e.cv===null||!e.R||R>e.R*1.5||R<e.R/1.5)e.cv=_penRender(s,e,R)||false;
+    return e.cv?e:null;
+  }
+  const b=G.bbox(s);if(!b)return null;
+  const x0=Math.min(b.x,b.x+b.w),y0=Math.min(b.y,b.y+b.h);
+  if(e)_penCachePx-=e.px||0;
+  _penCache.set(s.id,{pts:p,n,stroke:s.stroke,size:s.size,
+    p0x:p[0][0],p0y:p[0][1],pMx:p[n>>1][0],pMy:p[n>>1][1],pNx:p[n-1][0],pNy:p[n-1][1],
+    bx:x0,by:y0,bw:Math.max(1,Math.abs(b.w)),bh:Math.max(1,Math.abs(b.h)),px:0,R:0,cv:null});
+  return null;                                     // miss → vector this frame
+}
+// Pen on the MAIN canvas → drawImage the cached bitmap; exports/minimap and
+// drafts keep the vector path.
+function drawPenMaybeCached(s,c){
+  if(c!==ctx||s===state.draft||state.viewport.zoom*DPR>4){drawPen(s,c);return}
+  const e=_penCached(s);
+  if(e&&e.cv)c.drawImage(e.cv,e.bx,e.by,e.bw,e.bh);else drawPen(s,c);
+}
+
 // ====================== RENDER ======================
 // On-demand RAF: only schedule a frame when there is work to do.
 // Qiita/Zenn: "requestAnimationFrame で常にループするとバッテリーが消耗する"
@@ -1948,7 +2017,7 @@ function drawShape(s,c){
     case 'arrow':
       drawArrow(s,c);_drawConnLabel(s,c);break;
     case 'pen':
-      drawPen(s,c);break;
+      drawPenMaybeCached(s,c);break;
     case 'text':
       drawText(s,c);break;
     case 'image':{

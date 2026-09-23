@@ -981,7 +981,7 @@ const fakeDoc = {
       fillRect(){}, strokeRect(){}, beginPath(){}, moveTo(){}, lineTo(){},
       arc(){}, arcTo(){}, quadraticCurveTo(){}, ellipse(){}, closePath(){},
       fill(){}, stroke(){}, clip(){}, save(){}, restore(){}, clearRect(){},
-      setTransform(){}, translate(){}, scale(){}, rotate(){},
+      setTransform(){}, translate(){}, scale(){}, rotate(){}, drawImage(){},
       measureText: () => ({ width: 50 }),
       fillText(){}, setLineDash(){},
       get canvas(){return{width:800,height:600}},
@@ -1088,7 +1088,7 @@ try {
              _onSwUpdate, _ctxMenuKeyNav,
              _getPasteCount: () => _pasteCount, _resetPasteClipboard: () => { _lastClipboard = null; },
              endRectLike, endLineLike, I18N, applyTheme, editSelectedShapeKbd, Share,
-             draw, _setCtx: (c) => { const p = ctx; ctx = c; return p; },
+             draw, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; },
              _getLang: () => LANG, _getT: () => T };
   `);
   const api = fn(
@@ -1111,7 +1111,7 @@ try {
           _onBtnInstall, _getInstallPrompt, _setInstallPrompt,
           _onSwUpdate, _ctxMenuKeyNav,
           _getPasteCount, _resetPasteClipboard,
-          endRectLike, endLineLike } = api;
+          endRectLike, endLineLike, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx } = api;
 
   console.log('\n-- behavioural --');
 
@@ -1830,6 +1830,55 @@ try {
     const dotSvg = buildSVG([dotNoSize], '#FFFFFF') || '';
     const dotR = +((dotSvg.match(/<circle[^>]*r="([\d.]+)"/)||[])[1]);
     assert.strictEqual(dotR, 1, 'pen SVG single-point radius matches canvas fallback (was 0.5, half of 1)');
+  }
+
+  // v1.7.77 / ADR-0018: pen bitmap cache — O(1) signature validity, settle-deferred
+  // rasterization, vector fallback for exports / drafts / high zoom
+  {
+    const pen = { id:'pc1', type:'pen', z:0, stroke:'#123', size:6,
+      pts:[[0,0],[10,4],[20,0],[30,6],[40,2]] };
+    // first sight is a miss: signature recorded, no bitmap yet
+    assert.strictEqual(_penCached(pen), null, 'pen cache: first call is a miss');
+    // settled: the next identical call rasterizes once
+    const e1 = _penCached(pen);
+    assert.ok(e1 && e1.cv, 'pen cache: second call renders the bitmap');
+    assert.strictEqual(_penCached(pen).cv, e1.cv, 'pen cache: sig-stable hit reuses canvas');
+    // in-place uniform translate mutates pts — the signature still catches it
+    Shape.translate(pen, 50, 30);
+    assert.strictEqual(_penCached(pen), null, 'pen cache: translate invalidates');
+    const e3 = _penCached(pen);
+    assert.ok(e3.cv && e3.cv !== e1.cv, 'pen cache: re-rasterized after translate');
+    assert.strictEqual(e3.bx, e1.bx + 50, 'pen cache: bbox origin tracks translate');
+    // in-place flip moves first/last absolutes — also caught
+    const bb = G.bbox(pen), cxm = bb.x + bb.w / 2;
+    for (const p of pen.pts) p[0] = 2 * cxm - p[0];
+    assert.strictEqual(_penCached(pen), null, 'pen cache: flip invalidates');
+    // style + geometry replacements invalidate
+    _penCached(pen); pen.stroke = '#f00';
+    assert.strictEqual(_penCached(pen), null, 'pen cache: stroke change invalidates');
+    _penCached(pen); pen.pts = pen.pts.map(p => p.slice());
+    assert.strictEqual(_penCached(pen), null, 'pen cache: pts ref replacement invalidates');
+    // drawPenMaybeCached: a non-main ctx (export) always takes the vector path
+    const rec = { n:0, img:0, globalAlpha:1, strokeStyle:'', lineCap:'', lineJoin:'', lineWidth:1, fillStyle:'',
+      beginPath(){}, moveTo(){}, lineTo(){}, quadraticCurveTo(){}, arc(){}, fill(){},
+      stroke(){ this.n++ }, drawImage(){ this.img++ }, save(){}, restore(){},
+      scale(){}, translate(){}, setTransform(){} };
+    const pen2 = { id:'pc2', type:'pen', z:0, stroke:'#123', size:6, pts:[[0,0],[9,4],[18,0]] };
+    const cacheSize = _penCache.size;
+    drawPenMaybeCached(pen2, rec);
+    assert.strictEqual(rec.img, 0, 'pen cache: non-main ctx draws vector');
+    assert.ok(rec.n > 0, 'pen cache: vector path strokes segments');
+    assert.strictEqual(_penCache.size, cacheSize, 'pen cache: export path creates no entry');
+    // high zoom (zoom*DPR > 4) and drafts also stay vector even on the main ctx
+    const prevCtx = _setCtx(rec);
+    state.viewport.zoom = 5; rec.img = 0; rec.n = 0;
+    drawPenMaybeCached(pen2, rec);
+    assert.strictEqual(rec.img, 0, 'pen cache: high zoom stays vector');
+    state.viewport.zoom = 1; state.draft = pen2; rec.img = 0;
+    drawPenMaybeCached(pen2, rec);
+    assert.strictEqual(rec.img, 0, 'pen cache: draft draws vector');
+    state.draft = null; _setCtx(prevCtx);
+    console.log('  ✓ pen bitmap cache: miss/settle/hit, translate+flip+style invalidation, vector fallbacks');
   }
 
   // v1.6.14: pointer pressure - a varying pressure signal drives width; constant/none falls back to velocity
