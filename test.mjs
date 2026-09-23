@@ -306,6 +306,11 @@ const checks = [
   ['image cache is bounded LRU', html.includes("IMG_CACHE_MAX") && html.includes("_imgCache.keys().next().value")],
   // v1.7.80: ADR-0021 + ADR-0022
   ['img cache keyed by O(1) fingerprint not full dataUrl', html.includes("function _imgKey(") && html.includes("const k=_imgKey(dataUrl)") && !html.includes("_imgCache.get(dataUrl)")],
+  // v1.7.93: ADR-0035 image import/export hygiene
+  ['_imgKey uses three-segment fingerprint', html.includes("u.slice(0,48)+':'+u.slice(m-24,m+24)+':'+u.slice(-48)")],
+  ['export strips internal img blob ref', html.includes("delete o.img;        // ADR-0035")],
+  ['drawShape guards dataUrl-less image', html.includes("const img=s.dataUrl?getImg(s.dataUrl):null;")],
+  ['getImg rejects non-dataUrl input', html.includes("!dataUrl.startsWith('data:'))return null;")],
   ['image ingest shared + oversized import downscales via webp', html.includes("function _imgImportFile(") && html.includes("IMG_IMPORT_MAX_DIM") && html.includes("toDataURL('image/webp'")],
   // v1.7.81: ADR-0023
   ['pen predicted-events ink tail', html.includes("getPredictedEvents") && html.includes("_penPred") && html.includes("function _predTail(")],
@@ -374,7 +379,9 @@ const checks = [
   ['frame label keydown guards ev.isComposing (IME safe)', html.includes('inp.addEventListener') && html.includes('if(ev.isComposing)return')],
   ['text editor keydown guards ev.isComposing (IME safe)', (html.match(/if\(ev\.isComposing\)return/g)||[]).length >= 2],
   ['pen RDP decimation function _rdp present', html.includes('function _rdp(pts,eps)')],
-  ['endPen applies RDP on commit', html.includes('d.pts.length>3')&&html.includes('_rdp(d.pts,0.5)')],
+  ['endPen applies RDP on commit', html.includes('d.pts.length>3')&&html.includes('_rdp(d.pts,0.5/state.viewport.zoom)')],
+  // v1.7.92: ADR-0034 iterative index-range RDP + zoom-adaptive eps
+  ['RDP is iterative index-range (no slice recursion)', html.includes('const keep=new Uint8Array(pts.length)')&&html.includes('stack.push([lo,idx],[idx,hi])')],
   ['size is reported (no hard cap since 2026-06-13)', readFileSync('./test.mjs','utf8').includes("Size is no longer hard-capped")],
   // v1.6.25: style op for single-undo multi-select style
   ['style op in _apply (single undo for multi-select style)', html.includes("case 'style':")],
@@ -1138,7 +1145,7 @@ try {
              _getPasteCount: () => _pasteCount, _resetPasteClipboard: () => { _lastClipboard = null; },
              endRectLike, endLineLike, I18N, applyTheme, editSelectedShapeKbd, Share,
              draw, drawOverlay, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; }, _setOCtx: (c) => { const p = octx; octx = c; return p; },
-             _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY,
+             _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg,
              _getLang: () => LANG, _getT: () => T };
   `);
   const api = fn(
@@ -1162,7 +1169,7 @@ try {
           _onSwUpdate, _ctxMenuKeyNav,
           _getPasteCount, _resetPasteClipboard,
           endRectLike, endLineLike, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
-          _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY } = api;
+          _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg } = api;
 
   console.log('\n-- behavioural --');
 
@@ -2094,7 +2101,24 @@ try {
     assert.strictEqual(_imgKey(u1), _imgKey(u1), '_imgKey deterministic');
     assert.notStrictEqual(_imgKey(u1), _imgKey(u2), '_imgKey differs on tail');
     assert.notStrictEqual(_imgKey(u1), _imgKey(u3), '_imgKey differs on mime/length');
+    // v1.7.93 / ADR-0035: same length + same tail-64 but different head/mid must
+    // produce different keys — the single-tail fingerprint could render the wrong
+    // cached image when two distinct files shared those bytes.
+    const mk=u=>{const head='data:image/png;base64,';let mid='M'.repeat(200);const tail='T'.repeat(64);
+      return head+u+mid+tail;};
+    assert.notStrictEqual(_imgKey(mk('AAAA')), _imgKey(mk('BBBB')), '_imgKey differs on payload head (same len+tail)');
+    assert.notStrictEqual(_imgKey('data:image/png;base64,AAAA'+'X'.repeat(100)+'ZZZZ'), _imgKey('data:image/png;base64,AAAA'+'Y'.repeat(100)+'ZZZZ'), '_imgKey differs on payload middle');
+    assert.strictEqual(_imgKey(undefined), '', '_imgKey(non-string) returns empty');
+    assert.strictEqual(_imgKey(null), '', '_imgKey(null) returns empty');
     assert.ok(_imgKey(u1).length < 200, '_imgKey output is small regardless of input');
+    // v1.7.93 / ADR-0035: export must not leak the internal img blob ref
+    const slim={id:'im1',type:'image',x:0,y:0,w:10,h:10,z:1,img:'i1x',dataUrl:u1,stroke:'#000',strokeStyle:'#000',lineWidth:1,size:2,opacity:1,fill:'#fff',text:'',color:'#000',label:''};
+    const ex=roundShapesForExport([slim])[0];
+    assert.ok(!('img' in ex), 'roundShapesForExport strips img');
+    assert.strictEqual(ex.dataUrl, u1, 'roundShapesForExport keeps dataUrl');
+    // getImg must not attempt decode on non-dataUrl input (dangling img ref)
+    assert.strictEqual(getImg(undefined), null, 'getImg(undefined) -> null');
+    assert.strictEqual(getImg('i1x'), null, 'getImg(blob-key) -> null');
     console.log('  ✓ _imgKey: deterministic, injective on head/len/tail, small');
   }
 
@@ -7735,6 +7759,46 @@ try {
         'v1.7.89: dataUrl <=128B stays inline (no blob overhead)');
     }finally{Persist.db=origDb;}
     console.log('  ✓ Persist ADR-0031: img ref separation, doc/:prev dedup, GC, attach round-trip, collision chain, inline threshold (v1.7.89)');
+  }
+
+  // v1.7.92 (ADR-0034): iterative index-range _rdp must return identical output to
+  // the classic recursive RDP it replaced — same points kept, same order.
+  {
+    const rdpRec=(pts,eps)=>{
+      if(pts.length<=2)return pts;
+      const [ax,ay]=pts[0],[bx,by]=pts[pts.length-1];
+      const dx=bx-ax,dy=by-ay,len=Math.hypot(dx,dy)||1;
+      let mx=0,idx=1;
+      for(let i=1;i<pts.length-1;i++){
+        const d=Math.abs(dy*pts[i][0]-dx*pts[i][1]+bx*ay-by*ax)/len;
+        if(d>mx){mx=d;idx=i}
+      }
+      if(mx>eps){
+        const L=rdpRec(pts.slice(0,idx+1),eps),R=rdpRec(pts.slice(idx),eps);
+        return L.slice(0,-1).concat(R);
+      }
+      return [pts[0],pts[pts.length-1]];
+    };
+    let ok=true;
+    // deterministic pseudo-random strokes + a straight line + a single bend
+    const strokes=[[[0,0],[10,0],[20,0]]];
+    for(let s=0;s<20;s++){
+      const pts=[];let x=0,y=0;
+      for(let i=0;i<200;i++){x+=((i*31+s*7)%17)-8;y+=((i*13+s*11)%13)-6;pts.push([x,y,i%3?0.5:0.9]);}
+      strokes.push(pts);
+    }
+    for(const eps of [0.1,0.5,2,10]){
+      for(const pts of strokes){
+        const a=rdpRec(pts,eps),b=_rdp(pts,eps);
+        if(a.length!==b.length||a.some((p,i)=>p[0]!==b[i][0]||p[1]!==b[i][1]||p[2]!==b[i][2]))ok=false;
+      }
+    }
+    assert.ok(ok,'v1.7.92: iterative _rdp matches recursive RDP exactly on 21 strokes x 4 eps');
+    // zoom-adaptive eps at commit: finer eps keeps more points at high zoom
+    const dense=[];for(let i=0;i<60;i++)dense.push([i*0.3,Math.sin(i*0.5)*0.4,0.5]);
+    const coarse=_rdp(dense,0.5/1),fine=_rdp(dense,0.5/4);
+    assert.ok(fine.length>=coarse.length,'v1.7.92: smaller eps (higher zoom) keeps >= points');
+    console.log('  ✓ _rdp: iterative == recursive on deterministic strokes; zoom-adaptive eps monotonic (v1.7.92, ADR-0034)');
   }
 
   // v1.7.53a (§3.18): UI.toggleMinimap flips state.showMinimap and is idempotent-reversible

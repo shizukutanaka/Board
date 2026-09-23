@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.91 — Design Tokens
+   Board v1.7.93 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -758,7 +758,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.91';
+const V='1.7.93';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1735,9 +1735,15 @@ const Shape={
 const _imgCache=new Map(),IMG_CACHE_MAX=60;
 // O(1) lookup key — a dataUrl can be ~4MB, so using it AS the Map key makes
 // every per-frame getImg() hash megabytes. mime head + byte length + base64
-// tail are collision-safe within a board and cost a fixed ~100 chars.
-function _imgKey(u){return u.slice(5,32)+':'+u.length+':'+u.slice(-64)}
+// segments are collision-safe within a board and cost a fixed ~150 chars.
+// ADR-0035: three-segment fingerprint — mime head + length + 48 chars each from
+// the payload's head/middle/tail. Still O(1), but a colliding image must now
+// match byte ranges at three distant offsets (previously a same-length file
+// sharing the last 64 bytes rendered the WRONG image from cache).
+function _imgKey(u){if(typeof u!=='string')return'';
+  const m=u.length>>1;return u.slice(5,32)+':'+u.length+':'+u.slice(0,48)+':'+u.slice(m-24,m+24)+':'+u.slice(-48)}
 function getImg(dataUrl){
+  if(typeof dataUrl!=='string'||!dataUrl.startsWith('data:'))return null;   // ADR-0035: never decode a non-dataUrl (e.g. dangling img ref)
   const k=_imgKey(dataUrl);
   let img=_imgCache.get(k);
   if(img){_imgCache.delete(k);_imgCache.set(k,img);return img}
@@ -2331,8 +2337,8 @@ function drawShape(s,c){
     case 'text':
       drawText(s,c);break;
     case 'image':{
-      const img=getImg(s.dataUrl);
-      if(img.complete&&img.naturalWidth)c.drawImage(img,s.x,s.y,s.w,s.h);
+      const img=s.dataUrl?getImg(s.dataUrl):null;   // ADR-0035: dataUrl-less image renders placeholder, never throws (getImg guards non-data:)
+      if(img&&img.complete&&img.naturalWidth)c.drawImage(img,s.x,s.y,s.w,s.h);
       else{c.strokeStyle=s.stroke||'#CBD5E1';c.lineWidth=1;c.strokeRect(s.x,s.y,s.w,s.h)}
       break;}
     case 'frame':{
@@ -3449,21 +3455,27 @@ function contPen(wp,e){
   invalidateDamage({x:Math.min(wp.x,last[0])-_m,y:Math.min(wp.y,last[1])-_m,w:Math.abs(wp.x-last[0])+2*_m,h:Math.abs(wp.y-last[1])+2*_m});
 }
 // RDP decimation for pen pts [[x,y,p?],…]; keeps pressure, eps in world units.
+// ADR-0034: iterative index-range version — the recursive pts.slice() form made
+// O(n log n) array copies on long strokes; this walks [lo,hi) ranges on a stack
+// and emits kept points in order.
 function _rdp(pts,eps){
   if(pts.length<=2)return pts;
-  const [ax,ay]=pts[0],[bx,by]=pts[pts.length-1];
-  const dx=bx-ax,dy=by-ay,len=Math.hypot(dx,dy)||1;
-  let mx=0,idx=1;
-  for(let i=1;i<pts.length-1;i++){
-    const d=Math.abs(dy*pts[i][0]-dx*pts[i][1]+bx*ay-by*ax)/len;
-    if(d>mx){mx=d;idx=i}
+  const keep=new Uint8Array(pts.length);keep[0]=keep[pts.length-1]=1;
+  const stack=[[0,pts.length-1]];
+  while(stack.length){
+    const [lo,hi]=stack.pop();
+    if(hi-lo<2)continue;
+    const ax=pts[lo][0],ay=pts[lo][1],bx=pts[hi][0],by=pts[hi][1];
+    const dx=bx-ax,dy=by-ay,len=Math.hypot(dx,dy)||1;
+    let mx=0,idx=-1;
+    for(let i=lo+1;i<hi;i++){
+      const d=Math.abs(dy*pts[i][0]-dx*pts[i][1]+bx*ay-by*ax)/len;
+      if(d>mx){mx=d;idx=i}
+    }
+    if(mx>eps){keep[idx]=1;stack.push([lo,idx],[idx,hi]);}
   }
-  if(mx>eps){
-    const L=_rdp(pts.slice(0,idx+1),eps);
-    const R=_rdp(pts.slice(idx),eps);
-    return L.slice(0,-1).concat(R);
-  }
-  return [pts[0],pts[pts.length-1]];
+  const out=[];for(let i=0;i<pts.length;i++)if(keep[i])out.push(pts[i]);
+  return out;
 }
 // ADR-0005: geometric-heuristic shape recognition for the "beautify" feature (Alt+B).
 // Pure, deterministic, dependency-free — classifies a rough pen stroke as line/rect/ellipse
@@ -3528,7 +3540,10 @@ function endPen(){
   if(!state.draft)return;
   const d=state.draft;state.draft=null;
   if(d.pts.length>=1){
-    if(d.pts.length>3)d.pts=_rdp(d.pts,0.5);
+    // ADR-0034: eps scales with the capture resolution (contPen keeps ~1/zoom
+    // spacing), so zoomed-in strokes keep the detail they were drawn with —
+    // 0.5 world units at zoom 1, finer when zoomed in, coarser when zoomed out.
+    if(d.pts.length>3)d.pts=_rdp(d.pts,0.5/state.viewport.zoom);
     Store.commit({op:'add',shape:d});
   }
 }
@@ -4918,7 +4933,9 @@ function _round(n,dp){return typeof n==='number'&&Number.isFinite(n)?Math.round(
 function roundShapesForExport(shapes,dp=2){
   return shapes.map(s=>{
     const o={...s};
+    delete o.img;        // ADR-0035: internal IDB blob ref — meaningless outside this document's store
     for(const k of ['x','y','w','h','x1','y1','x2','y2','rotate'])if(typeof o[k]==='number')o[k]=_round(o[k],dp);
+    if(Array.isArray(o.pts))o.pts=o.pts.map(p=>Array.isArray(p)?p.map((v,i)=>_round(v,i<2?dp:3)):p);
     if(Array.isArray(o.pts))o.pts=o.pts.map(p=>Array.isArray(p)?p.map((v,i)=>_round(v,i<2?dp:3)):p);
     return o;
   });
@@ -5938,7 +5955,7 @@ const Minimap=(()=>{
         case 'line':case 'arrow':{const me=connEnds(s);sx.beginPath();sx.moveTo(me.x1*sc+ox,me.y1*sc+oy);sx.lineTo(me.x2*sc+ox,me.y2*sc+oy);sx.stroke();break}
         case 'pen':if(s.pts.length<2)break;sx.beginPath();sx.moveTo(s.pts[0][0]*sc+ox,s.pts[0][1]*sc+oy);for(let i=1;i<s.pts.length;i++)sx.lineTo(s.pts[i][0]*sc+ox,s.pts[i][1]*sc+oy);sx.stroke();break;
         case 'text':case 'sticky':{const rx2=s.x*sc+ox,ry2=s.y*sc+oy,rw2=Math.max(2,s.w*sc),rh2=Math.max(2,s.h*sc);sx.fillStyle=s.type==='sticky'?(s.color||'#FEF08A'):(s.fill||getCSS('--brand'));sx.fillRect(rx2,ry2,rw2,rh2);break}
-        case 'image':{const rx3=s.x*sc+ox,ry3=s.y*sc+oy,rw3=Math.max(2,s.w*sc),rh3=Math.max(2,s.h*sc);const img=_imgCache.get(_imgKey(s.dataUrl));if(img&&img.complete&&img.naturalWidth)sx.drawImage(img,rx3,ry3,rw3,rh3);else{sx.fillStyle='#CBD5E1';sx.fillRect(rx3,ry3,rw3,rh3)}break}
+        case 'image':{const rx3=s.x*sc+ox,ry3=s.y*sc+oy,rw3=Math.max(2,s.w*sc),rh3=Math.max(2,s.h*sc);const img=s.dataUrl?_imgCache.get(_imgKey(s.dataUrl)):null;if(img&&img.complete&&img.naturalWidth)sx.drawImage(img,rx3,ry3,rw3,rh3);else{sx.fillStyle='#CBD5E1';sx.fillRect(rx3,ry3,rw3,rh3)}break}
       }
       if(_mr)sx.restore();
     }
