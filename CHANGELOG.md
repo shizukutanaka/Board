@@ -2,6 +2,15 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.119]
+
+### 追加
+- **diamond (ひし形) ツール** (ADR-0061)。Excalidraw 標準パレットで唯一欠けていた
+  図形種別 — ツールバーまたは 'D' キーでドラッグ描画。ボックス型なので
+  fill/dash/label/リサイズ/回転/複製/整列/接続点/undo/同期/SVG/ミニマップが
+  すべて既存経路で動作。`.excalidraw` インポートの diamond も pen 近似から
+  真の型に変更 (round-trip 忠実性向上)。
+
 ## [1.7.118]
 
 ### 追加
@@ -9,11 +18,6 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
   Alt を押しながらドラッグするとコピーが作られ、そのままドラッグで移動できる —
   Figma/Excalidraw/draw.io と同じ慣例。複製は `_placeCopies` (addMany 単一 op) で
   atomic undo、ロック図形は対象外、フレームは中身ごと複製。
-- **diamond (ひし形) ツール** (ADR-0061)。Excalidraw 標準パレットで唯一欠けていた
-  図形種別 — ツールバーまたは 'D' キーでドラッグ描画。ボックス型なので
-  fill/dash/label/リサイズ/回転/複製/整列/接続点/undo/同期/SVG/ミニマップが
-  すべて既存経路で動作。`.excalidraw` インポートの diamond も pen 近似から
-  真の型に変更 (round-trip 忠実性向上)。
 
 ## [1.7.117]
 
