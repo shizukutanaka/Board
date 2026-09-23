@@ -85,7 +85,8 @@ Board/
 │   ├── ADR-0033-wheel-zoom-preview.md  # ctrl+wheel (トラックパッドピンチ) ズームのスナップショットプレビュー
 │   ├── ADR-0034-pen-rdp-zoom.md  # ペン RDP 反復化 + ズーム適応 eps (精密筆跡の保持)
 │   ├── ADR-0035-img-ref-hygiene.md  # 画像参照ハイジーン (_imgKey 3点指紋, img 輸出遮断, 欠落画像クラッシュ防止)
-│   └── ADR-0036-minimap-drag-scrub.md  # ミニマップ押下ドラッグで連続ナビゲート
+│   ├── ADR-0036-minimap-drag-scrub.md  # ミニマップ押下ドラッグで連続ナビゲート
+│   └── ADR-0037-sr-selection-announce.md  # ポインタ選択の SR アナウンス (クリック/マーキー/⌘A/Esc)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

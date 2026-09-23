@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.94 — Design Tokens
+   Board v1.7.95 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -758,7 +758,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.94';
+const V='1.7.95';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -833,6 +833,7 @@ const I18N={
     themeAuto:'テーマ: 自動(OS 追従)',themeLight:'テーマ: ライト',themeDark:'テーマ: ダーク',
     popupBlocked:'ポップアップをブロックしてください',invalidBoard:'ボードファイルが無効です',exportFailed:'書き出し失敗',saveFailed:'保存失敗',quotaExceeded:'保存容量が逼迫しています — ⌘E/⌘⇧E で書き出しを推奨',
     snap:'スナップ',grid:'グリッド',minimap:'ミニマップ',on:'オン',off:'オフ',online:'オンライン',offline:'オフライン',shapes:'図形',
+    selCount:'個を選択',selNone:'選択を解除',
     copied:'コピー',pasted:'貼り付け',deleted:'削除',cleared:'クリア',
     beautified:'整形しました',beautifyNone:'整形できる図形がありません(矩形・楕円・直線に近いペン描画を選択してください)',
     undone:'元に戻した',redone:'やり直した',created:'作成',editLabel:'選択中の図形を編集',
@@ -951,6 +952,7 @@ const I18N={
     backupRestored:'Restored the previous board',
     backupRestoreFailed:'Failed to restore backup',
     peers:'peers',you:'You',shapes:'Shapes',on:'On',off:'Off',online:'Online',offline:'Offline',grid:'Grid',minimap:'Minimap',
+    selCount:' selected',selNone:'Selection cleared',
     k:{select:'Select',hand:'Pan',pen:'Pen',rect:'Rectangle',ellipse:'Ellipse',
       arrow:'Arrow',line:'Line',text:'Text',sticky:'Sticky',frame:'Frame',eraser:'Eraser',
       undo:'Undo',redo:'Redo',del:'Delete',dup:'Duplicate',
@@ -2057,6 +2059,13 @@ function describeShape(s){
   if(s.locked)d+=` ${t('ctxLock')}`;
   if(s.rotate)d+=` ${s.rotate}°`;
   return d;
+}
+// ADR-0037: announce pointer-path selection changes — marquee, click/group select,
+// ⌘A and Escape were SR-silent while keyboard cycleSel already announced each shape.
+// Announcement goes through UI.toast (aria-live) like the other status messages.
+function _announceSel(){
+  const n=state.selection.size;
+  UI.toast(n===0?t('selNone'):n===1?describeShape(byId([...state.selection][0])):n+t('selCount'));
 }
 let _lastVp=null;   // ADR-0028: the effective viewport the scene canvas currently represents
 function draw(){
@@ -3268,6 +3277,7 @@ function pickOrMarquee(wp,e){
     if(!alreadySel){
       if(!e.shiftKey)state.selection.clear();
       for(const id of toSelect)state.selection.add(id);
+      _announceSel();   // ADR-0037: click/group select was SR-silent
     }
     ptr.dragKind='move';
     // When moving a frame, also move shapes fully contained within it
@@ -3409,6 +3419,7 @@ function endSelect(wp){
         ?_gridRectCandidates(_grid||(_grid=_buildGrid(state.shapes)),r)
         :state.shapes;
       for(const s of cands)if(G.marqueeHit(s,r))state.selection.add(s.id);
+      _announceSel();   // ADR-0037: announce the marquee result (incl. cleared)
     }
   }
 }
@@ -3880,7 +3891,7 @@ window.addEventListener('keydown',e=>{
   }
   if(meta&&k==='z'&&!e.shiftKey){e.preventDefault();if(Store.undo())UI.toast(t('undone'))}
   else if(meta&&(k==='y'||(k==='z'&&e.shiftKey))){e.preventDefault();if(Store.redo())UI.toast(t('redone'))}
-  else if(meta&&k==='a'){e.preventDefault();state.selection=new Set(state.shapes.map(s=>s.id));invalidate()}
+  else if(meta&&k==='a'){e.preventDefault();state.selection=new Set(state.shapes.map(s=>s.id));if(state.selection.size)_announceSel();invalidate()}   // ADR-0037
   if(k==='p'&&e.shiftKey&&!meta&&!e.altKey){e.preventDefault();Presentation.enter();return}
   else if(meta&&k==='enter'){e.preventDefault();Presentation.enter()}
   else if(meta&&k==='c'){e.preventDefault();doCopy()}
@@ -3957,7 +3968,7 @@ window.addEventListener('keydown',e=>{
     const hp=document.getElementById('help'),sp2=document.getElementById('share');
     if(hp.dataset.open==='true')UI.toggleHelp();
     else if(sp2.dataset.open==='true')UI.closeShare();
-    else{state.selection.clear();state.marquee=null;state.draft=null;state.guides=null;_penPred=null;invalidate()}
+    else{if(state.selection.size)UI.toast(t('selNone'));state.selection.clear();state.marquee=null;state.draft=null;state.guides=null;_penPred=null;invalidate()}   // ADR-0037
   }
   else if(k==='?'||(e.shiftKey&&e.key==='/')){e.preventDefault();UI.toggleHelp()}
   else if(k===']'&&!meta&&e.shiftKey){e.preventDefault();doBringFront()}
@@ -5409,7 +5420,7 @@ const UI={
       has&&state.selection.size>1&&['ctxHSpace','',()=>doAlign('hspace')],
       has&&state.selection.size>1&&['ctxVSpace','',()=>doAlign('vspace')],
       has&&'sep',
-      ['ctxSelectAll','⌘A',()=>{state.selection=new Set(state.shapes.map(s=>s.id));invalidate()}],
+      ['ctxSelectAll','⌘A',()=>{state.selection=new Set(state.shapes.map(s=>s.id));if(state.selection.size)_announceSel();invalidate()}],
       state.shapes.length&&['ctxClear','',doClearAll]
     ].filter(Boolean).filter((it,i,a)=>!(it==='sep'&&(i===0||i===a.length-1||a[i-1]==='sep')));
     for(const it of items){
