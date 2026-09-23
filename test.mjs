@@ -300,6 +300,9 @@ const checks = [
   ['copyPNG guards ClipboardItem + write', html.includes("typeof ClipboardItem==='undefined'") && html.includes("copyUnsupported")],
   ['copyPNG in export menu', html.includes("['ctxCopyPNG','',copyPNG]")],
   ['ctxCopyPNG i18n ja+en', html.includes("ctxCopyPNG:'PNGをクリップボードにコピー'") && html.includes("ctxCopyPNG:'Copy PNG to clipboard'")],
+  // v1.7.109: ADR-0051 real pen resize via pts scale
+  ['pen gets bbox handles', html.includes("if(s.type==='pen'){") && html.includes("const b=G.bbox(s);if(!b||!b.w||!b.h)return [];")],
+  ['applyResize scales pen pts from orig', html.includes("orig.type==='pen'") && html.includes("sh.pts=orig.pts.map")],
   ['SVG pen exports same primitive union', html.includes('_penTaperE(n-1-i)') && html.includes("<circle cx=") && html.includes("<g fill=")],
   ['SVG pen export uses penWidths (display=output parity)', html.includes("penWidths(P,SZ)")],
   // v1.6.14: pointer pressure input
@@ -372,7 +375,7 @@ const checks = [
   ['clampZoom is the single zoom-invariant source', html.includes("const clampZoom=z=>Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,z))") && html.includes("const nz=clampZoom(") && html.includes("const z=clampZoom(")],
   // v1.6.18: deeper audit fixes
   ['P selects pen, Shift+P presents', html.includes("k==='p'&&e.shiftKey&&!meta&&!e.altKey")],
-  ['pen has no resize handles', html.includes("if(s.type==='pen'||s.w==null)return [];")],
+  ['pen resize handles emit from pts bbox (ADR-0051)', html.includes("if(s.type==='pen'){") && html.includes("id:'se'") && html.includes("G.bbox(s);if(!b||!b.w||!b.h)return [];")],
   ['presentation saves+restores viewport', html.includes("_savedVp={x:state.viewport.x") && html.includes("Object.assign(state.viewport,_savedVp)")],
   ['help grid present row uses i18n', html.includes("['⇧P',k.present]") && html.includes("['↑↓←→',k.nudge]")],
   ['help i18n keys in ja and en', html.includes("present:'プレゼン'") && html.includes("present:'Present'")],
@@ -1705,6 +1708,36 @@ try {
   assert.strictEqual(rsz.w, 200+100-120); // orig.x+orig.w - new.x
   console.log('  ✓ applyResize nw moves origin and adjusts size');
 
+  // ADR-0051: pen resize — handles come from the pts bbox; applyResize maps
+  // orig.pts into the resized virtual box (se: independent x/y scale).
+  {
+    state.shapes.length=0;_invalidateGrid();state.history.length=0;state.histIdx=-1;
+    state.seq=0;state.seenOps=new Set();state.snap=false;state.guides=null;
+    const pen=Shape.make('pen',{pts:[[100,100],[150,100],[150,150,0.7]],size:0});
+    state.shapes.push(pen);
+    const hs=getHandles(pen);
+    assert.strictEqual(hs.length,8,'pen: 8 bbox handles');
+    const ob=G.bbox(pen);                        // stroke-padded envelope
+    const se=hs.find(h=>h.id==='se');
+    assert.ok(se&&se.x===ob.x+ob.w&&se.y===ob.y+ob.h,'pen: se handle at padded-bbox corner');
+    const porig=JSON.parse(JSON.stringify(pen));
+    applyResize(pen,'se',porig,{x:250,y:450});   // virtual box: ob → {ob.x,ob.y,250-ob.x,450-ob.y}
+    const sx=(250-ob.x)/ob.w,sy=(450-ob.y)/ob.h;
+    const ex=px=>ob.x+(px-ob.x)*sx,ey=py=>ob.y+(py-ob.y)*sy;
+    assert.ok(Math.abs(pen.pts[2][0]-ex(150))<1e-9&&Math.abs(pen.pts[2][1]-ey(150))<1e-9,'pen se: far vertex maps to dragged corner');
+    assert.ok(Math.abs(pen.pts[0][0]-ex(100))<1e-9&&Math.abs(pen.pts[0][1]-ey(100))<1e-9,'pen se: near vertex maps from orig');
+    assert.strictEqual(pen.pts[2][2],0.7,'pen se: pressure value preserved');
+    // mapping from orig → no drift: a second apply from the same porig re-derives
+    applyResize(pen,'se',porig,{x:300,y:600});
+    const sx2=(300-ob.x)/ob.w;
+    assert.ok(Math.abs(pen.pts[2][0]-(ob.x+50.5*sx2))<1e-9,'pen se: second apply maps from orig, not live pts');
+    // degenerate pen (single point, zero-area bbox) is a no-op
+    const dot=Shape.make('pen',{pts:[[5,5]],size:4});
+    applyResize(dot,'se',JSON.parse(JSON.stringify(dot)),{x:50,y:50});
+    assert.strictEqual(dot.pts[0][0],5,'pen: zero-area bbox no-op');
+    console.log('  ✓ pen resize: bbox handles + se affine pts mapping + degenerate guard (6 asserts)');
+  }
+
   // groups
   console.log('\n-- groups --');
   state.shapes.length=0;_invalidateGrid(); state.history.length=0; state.histIdx=-1; state.seq=0; state.seenOps=new Set();
@@ -2287,10 +2320,10 @@ try {
 
   // v1.6.18: getHandles - pen exposes no box handles (box-resize would NaN its x/y/w/h)
   {
-    assert.strictEqual(getHandles({type:'pen',pts:[[0,0],[10,10]],z:0}).length, 0, 'pen: no resize handles');
+    assert.strictEqual(getHandles({type:'pen',pts:[[0,0]],z:0}).length, 0, 'pen dot: no resize handles (ADR-0051)');
     assert.strictEqual(getHandles({type:'line',x1:0,y1:0,x2:5,y2:5,z:0}).length, 2, 'line: 2 endpoint handles');
     assert.strictEqual(getHandles({type:'rect',x:0,y:0,w:10,h:10,z:0}).length, 8, 'rect: 8 box handles');
-    console.log('  ✓ getHandles: pen move-only (0 handles), line=2 endpoints, rect=8 box');
+    console.log('  ✓ getHandles: pen dot move-only (0 handles), line=2 endpoints, rect=8 box');
   }
 
   // v1.6.19: snapshot merge dedup - distinct clock seqs must all apply (the seq:0 bug)
