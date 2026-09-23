@@ -766,7 +766,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.111';
+const V='1.7.112';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3320,9 +3320,14 @@ function zoomAt(sp,delta){
   // every pinch frame then blits this pristine buffer under the gesture's
   // accumulated transform instead of rescanning the scene. Continuous pinch
   // moves are a blurry-but-instant preview; the gesture-end frame repaints crisp.
+  const nz=clampZoom(v.zoom*Math.exp(delta));
+  // ADR-0054: at the zoom bound a wheel tick used to still recompute the
+  // anchor, sliding the viewport by the distance the cursor moved between
+  // ticks (the "micro-pan" audit remainder). A clamped zoom is a pure no-op —
+  // return before the pinch snapshot, nothing will move.
+  if(nz===v.zoom)return;
   if(_pointers.size>=2)_pinchSnapNow();
   const wp=G.s2w(sp);
-  const nz=clampZoom(v.zoom*Math.exp(delta));
   v.x=wp.x-sp.x/nz;
   v.y=wp.y-sp.y/nz;
   v.zoom=nz;
