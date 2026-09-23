@@ -2,6 +2,15 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.123]
+
+### 追加
+- **コネクタ端点の再結合 / 解除** (ADR-0065)。選択中の line/arrow の
+  p1/p2 ハンドルを結合済みでも常時表示 — 結合端を掴むと即座にフリー化し
+  プレビューがポインタに追従、図形上にドロップで再結合 (破線ハイライト)、
+  空白ドロップで解除。自分自身・他端の結合先には結合しない。1 `upd` op
+  で undo・同期は既存経路のまま。
+
 ## [1.7.122]
 
 ### 追加

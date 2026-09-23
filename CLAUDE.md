@@ -114,6 +114,7 @@ Board/
 - [ADR-0062](docs/ADR-0062-elbow-connector.md) エルボー (直角) コネクタ (スタブ+中間点の Manhattan 経路、ctx トグル=style op)
 - [ADR-0063](docs/ADR-0063-bidirectional-arrow.md) 双方向矢印 (`start` prop、ctx トグル=style op、elbow 合成可)
 - [ADR-0064](docs/ADR-0064-gesture-readout.md) 変換中ライブ寸法ピル (state.readout、applyResize/moveDelta/rotate で設定、ptr.down でゲート)
+- [ADR-0065](docs/ADR-0065-connector-rebind.md) 端点の再結合/解除 (p1/p2 常時ハンドル、bindPreview、_endPointBind)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

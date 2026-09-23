@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.122';
+const V='1.7.123';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1025,6 +1025,7 @@ const state={
   marquee:null,             // {x1,y1,x2,y2} in world coords
   guides:null,              // object-snap alignment guide lines (during drag)
   readout:null,             // ADR-0064: live dims pill during transform gestures {x,y,label}
+  bindPreview:null,         // ADR-0065: shape under a dragged connector endpoint
   showGrid:true,
   showMinimap:MINIMAP_ON,
   snap:true,        // snap-to-grid when dragging shapes
@@ -2319,6 +2320,16 @@ function drawOverlay(){
     c.fillStyle='#fff';c.fillText(r.label,px,py+ph/2);
     c.restore();
   }
+  if(ptr.down&&state.bindPreview){                                     // ADR-0065
+    const t=byId(state.bindPreview);
+    if(t){
+      const b=G.bbox(t),p1=G.w2s({x:b.x,y:b.y}),p2=G.w2s({x:b.x+b.w,y:b.y+b.h});
+      c.save();
+      c.strokeStyle=getCSS('--accent-contrast');c.lineWidth=2;c.setLineDash([6,4]);
+      c.strokeRect(p1.x-3,p1.y-3,p2.x-p1.x+6,p2.y-p1.y+6);
+      c.restore();
+    }
+  }
   if(state.marquee)drawMarquee(c);
   if(_laser&&Presentation.isActive()){const lp=G.w2s(_laser);c.beginPath();c.arc(lp.x,lp.y,8,0,PI2);c.fillStyle='rgba(255,50,50,.75)';c.fill();}
   drawPeerSelections(c);   // ADR-0011 (before cursors: pointer renders on top of frames)
@@ -2656,8 +2667,8 @@ function getHandles(s){
   if(s.locked)return [];
   if(s.type==='line'||s.type==='arrow'){
     const e=connEnds(s),h=[];   // bound endpoints follow their shape, so no drag handle
-    if(!s.a)h.push({id:'p1',x:e.x1,y:e.y1});
-    if(!s.b)h.push({id:'p2',x:e.x2,y:e.y2});
+    h.push({id:'p1',x:e.x1,y:e.y1});       // ADR-0065: bound ends are draggable too (rebind)
+    h.push({id:'p2',x:e.x2,y:e.y2});
     return h;
   }
   // ADR-0051: pens resize for real — emit the same 8 handles around the pts bbox
@@ -2817,7 +2828,11 @@ function applyResize(sh,handle,orig,wp,shift,alt){
     sp=snapPt({x:os.x,y:os.y});                    // grid-snap (grid on); identity otherwise
   }
   if(handle==='p1'||handle==='p2'){
+    const bk=handle==='p1'?'a':'b';
+    if(sh[bk])sh[bk]=null;                                    // ADR-0065: grabbed a bound end — free while dragging
     if(handle==='p1'){sh.x1=sp.x;sh.y1=sp.y}else{sh.x2=sp.x;sh.y2=sp.y}
+    const _bv=_bindAt(handle==='p1'?sh.x1:sh.x2,handle==='p1'?sh.y1:sh.y2);
+    state.bindPreview=(_bv&&_bv!==sh.id&&_bv!==sh[bk==='a'?'b':'a'])?_bv:null;
     state.readout={x:(sh.x1+sh.x2)/2,y:Math.max(sh.y1,sh.y2),label:`↔ ${Math.round(Math.hypot(sh.x2-sh.x1,sh.y2-sh.y1))}`};
     return;
   }
@@ -3042,7 +3057,7 @@ function abortGesture(){
   }
   if(_eraseBatch.length){for(const s of _eraseBatch)state.shapes.push(s);_eraseBatch=[];sortZ();_invalidateGrid();}   // ADR-0009
   _penPred=null;
-  state.draft=null;state.marquee=null;state.guides=null;state.readout=null;
+  state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.dragStartShapes=null;
   ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;
   invalidate();
@@ -3239,6 +3254,7 @@ canvas.addEventListener('pointerup',e=>{
       if(ptr.dragKind==='resize'){
         const rsh=byId([...state.selection][0]);
         if(rsh){
+          _endPointBind(rsh,ptr.resizeHandle);                 // ADR-0065
           const after=clone(rsh);
           const before=ptr.resizeOrig;
           if(JSON.stringify(before)!==JSON.stringify(after)){
@@ -3247,14 +3263,14 @@ canvas.addEventListener('pointerup',e=>{
             if(origSel.length)state.history[state.histIdx].origSel=origSel;
           }
         }
-        ptr.resizeHandle=null;ptr.resizeOrig=null;state.guides=null;state.readout=null;
+        ptr.resizeHandle=null;ptr.resizeOrig=null;state.guides=null;state.readout=null;state.bindPreview=null;
       }else if(ptr.dragKind==='gresize'){
         _gresizeCommit();                                              // ADR-0056
-        ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.resizeHandle=null;state.guides=null;state.readout=null;
+        ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.resizeHandle=null;state.guides=null;state.readout=null;state.bindPreview=null;
       }else if(ptr.dragKind==='grot'){
         _grotCommit();                                                 // ADR-0057
         if(state.selection.size===1){const s=byId([...state.selection][0]);if(s)UI.toast(describeShape(s));}
-        ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;state.guides=null;state.readout=null;
+        ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;state.guides=null;state.readout=null;state.bindPreview=null;
       }else if(ptr.dragKind==='rotate'){
         const rsh=byId([...state.selection][0]);
         if(rsh){
@@ -3302,7 +3318,7 @@ function _cancelPointerGesture(){
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;
   ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.rotOrig=null;ptr.dragStartShapes=null;
   ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;
-  canvas.dataset.panning='false';state.draft=null;state.marquee=null;state.guides=null;state.readout=null;_penPred=null;invalidate();
+  canvas.dataset.panning='false';state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;_penPred=null;invalidate();
 }
 // ADR-0006: fires after LONG_PRESS_MS. Guards: gesture still active, handle-drag not in
 // progress (resize/rotate — a deliberate precision drag we shouldn't interrupt), and the
@@ -4088,6 +4104,15 @@ function endLineLike(){
   if(origSel.length)state.history[state.histIdx].origSel=origSel;
   pickTool('select');state.selection.clear();state.selection.add(d.id);
 }
+// ADR-0065: settle an endpoint drag — bind if dropped on a shape (not self /
+// not the other end's shape), else unbind. Called before the commit snapshot so
+// a/b lands inside the same `upd` op.
+function _endPointBind(sh,handle){
+  if(handle!=='p1'&&handle!=='p2')return;
+  const k=handle==='p1'?'a':'b',other=k==='a'?'b':'a';
+  const hit=_bindAt(handle==='p1'?sh.x1:sh.x2,handle==='p1'?sh.y1:sh.y2);
+  sh[k]=(hit&&hit!==sh.id&&hit!==sh[other])?hit:null;
+}
 // Topmost non-connector shape whose bbox contains (x,y), for connector binding.
 function _bindAt(x,y){
   for(let i=state.shapes.length-1;i>=0;i--){
@@ -4434,7 +4459,7 @@ window.addEventListener('keydown',e=>{
     const hp=document.getElementById('help'),sp2=document.getElementById('share');
     if(hp.dataset.open==='true')UI.toggleHelp();
     else if(sp2.dataset.open==='true')UI.closeShare();
-    else{if(state.selection.size)UI.toast(t('selNone'));state.selection.clear();state.marquee=null;state.draft=null;state.guides=null;state.readout=null;_penPred=null;invalidate()}   // ADR-0037
+    else{if(state.selection.size)UI.toast(t('selNone'));state.selection.clear();state.marquee=null;state.draft=null;state.guides=null;state.readout=null;state.bindPreview=null;_penPred=null;invalidate()}   // ADR-0037
   }
   else if(k==='?'||(e.shiftKey&&e.key==='/')){e.preventDefault();UI.toggleHelp()}
   else if(k===']'&&!meta&&e.shiftKey){e.preventDefault();doBringFront()}
