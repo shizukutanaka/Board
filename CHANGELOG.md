@@ -2,6 +2,15 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.117]
+
+### 追加
+- **スタイルパネルが選択図形の値を反映** (ADR-0059)。図形を選ぶとストローク/フィル/
+  破線/サイズ/不透明度のコントロールがその値を表示 — 従来は常にグローバル既定を
+  表示し続けていた (audit §8 の残課題)。選択内で値が混在するプロパティは据置、
+  空選択は現状維持。`state.style` も同期するため次の新規図形は選択図形の
+  スタイルを継承する (Excalidraw と同じ挙動)。
+
 ## [1.7.116]
 
 ### 追加
