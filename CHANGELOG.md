@@ -2,6 +2,31 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.74] - 2026-09-23
+
+**FT-10: axe-core による本格自動 a11y 監査を実施し、検出された全違反を修正** —
+依存ゼロの静的検証では届かなかった ARIA ロール整合性・計算済みスタイルの領域を
+カバー。初期 / ヘルプ / Share / コンテキストメニュー / エクスポートメニュー /
+ダークテーマの 6 状態で Playwright(システム Chrome, headless) + `axe.run()`
+を実行。検出 4 ルールをすべて修正し再実行で **violations = 0**。
+
+### Fixed (a11y, axe-core 検出)
+- `<nav class="toolbar">` の `role="toolbar"` を除去 — nav に許可されないロールで、
+  ランドマーク性も失わせていた(`aria-allowed-role` + `region` 双方の原因)
+- ステータスバー `.lbl` の `opacity:.7` を除去 — 実効コントラストが 2.71:1 に
+  低下していた(本来の `--ink-3` = 4.7:1 AA に復帰)
+- `meta viewport` から `user-scalable=no` を削除 + body の `touch-action:none` を
+  除去 — ピンチズーム禁止の解除。canvas#c 側の `touch-action:none` は保持し、
+  盤面ジェスチャは従来通りアプリ内ズームが担う
+- ランドマーク漏れを解消: `#minimapWrap` に `role="navigation"`、`#ctx` を
+  `<main>` 内へ移動(`region` ルール対応)
+- `.brand` の冗長 `aria-label` を除去(可視テキストあり)、`#peerStack` に
+  `role="group"` を付与(`aria-prohibited-attr` incomplete の解消)
+
+### Docs
+- `docs/a11y-audit-2026-07.md` に「axe-core 追監査」節を追記(検出・修正・再実行
+  結果、残る incomplete = kbd 字形類のレビュー判断)。FT-10 を DONE 化。
+
 ## [1.7.73] - 2026-09-23
 
 **FT-21 (ADR-0015): 共有リンクの E2E 暗号化** — 製品の第4柱「プライバシー」の構造的
