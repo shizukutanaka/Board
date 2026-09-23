@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.118]
+
+### 追加
+- **Alt(⌥)+ドラッグで複製** (ADR-0060)。選択図形 (または未選択ヒット図形/グループ) を
+  Alt を押しながらドラッグするとコピーが作られ、そのままドラッグで移動できる —
+  Figma/Excalidraw/draw.io と同じ慣例。複製は `_placeCopies` (addMany 単一 op) で
+  atomic undo、ロック図形は対象外、フレームは中身ごと複製。
+
 ## [1.7.117]
 
 ### 追加

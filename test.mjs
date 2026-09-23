@@ -406,6 +406,8 @@ const checks = [
   // v1.7.117: ADR-0059 style panel ← selection sync
   ['style panel syncs on selection signature change', html.includes("_syncStylePanelIfChanged();   // ADR-0059")&&html.includes("[...state.selection].sort().join(',')")],
   ['_syncStylePanel adopts only uniform props (mixed skipped)', html.includes("sel.every(s=>(s[k]??null)===v)")&&html.includes("if(v!==undefined){state.style.fill")],
+  // v1.7.118: ADR-0060 Alt+drag duplicate
+  ['alt+drag duplicates picked shape then drags copies', html.includes("if(e.altKey&&!hit.locked){")&&html.includes("_placeCopies(srcShapes,0,0)")&&html.includes("dupSet=alreadySel")],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
@@ -1240,7 +1242,7 @@ try {
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa: () => _teTa, zoomAt,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
              exportPNG, copyPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
@@ -1267,7 +1269,7 @@ try {
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa, zoomAt,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
           exportPNG, copyPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
@@ -3140,6 +3142,26 @@ try {
     // unknown shape → add path
     assert.strictEqual(Net._mergeSnapshotOp({op:'add',shape:{...snapShape,id:'NEW'},clock:{peer:'A',seq:'snap:NEW',ts:0}}),'add','unknown shape adopted');
     console.log('  ✓ snapshot LWW merge: per-prop convergence, no history (6 asserts)');
+  }
+
+  // ADR-0060: Alt+drag on a shape duplicates it (addMany commit, selection→copies,
+  // move-drag starts on the copies). Unselected hit duplicates just that shape;
+  // already-selected hit duplicates the whole selection.
+  {
+    state.shapes=[];_invalidateGrid();state.selection=new Set();state.history=[];state.histIdx=-1;
+    const R={id:'R',type:'rect',x:0,y:0,w:10,h:10,z:1,stroke:'#000',size:2,opacity:1};
+    Store.commit({op:'add',shape:R});
+    pickOrMarquee({x:5,y:5},{altKey:true,shiftKey:false});
+    assert.strictEqual(state.shapes.length,2,'alt-drag: copy added');
+    const ids=state.shapes.map(s=>s.id);
+    assert.strictEqual(ids[0],'R','original untouched');
+    const copyId=ids[1];
+    assert.strictEqual(state.selection.size===1&&state.selection.has(copyId),true,'selection moved to copy');
+    assert.strictEqual(ptr.dragKind,'move','move-drag armed on the copy');
+    assert.ok(ptr.dragStartShapes.has(copyId),'drag tracks the copy');
+    Store.undo();
+    assert.strictEqual(state.shapes.length,1,'single undo removes the duplicate');
+    console.log('  ✓ alt+drag duplicate: copy selected, move armed, atomic undo (5 asserts)');
   }
 
   // ADR-0059: selecting a styled shape reflects its values in the panel —
