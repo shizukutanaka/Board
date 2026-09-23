@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.126]
+
+### 追加
+- **曲線コネクタ** (ADR-0068)。ctx メニュー「曲線」で line/arrow を二次
+  ベジエ化 (制御点 = 中点 + 法線 × min(0.25·len,80))。elbow と排他トグル
+  (style op 1エントリで両 prop)、両端ヘッド・結合・ラベル (ベジエ中点)
+  ・SVG/ミニマップ全経路対応。
+
 ## [1.7.125]
 
 ### 修正
