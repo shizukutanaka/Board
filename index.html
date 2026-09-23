@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.129';
+const V='1.7.130';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2608,6 +2608,12 @@ function _elbowPts(s){
   const STUB=Math.max(16,(s.size||2)*8);
   const q1={x:e.x1+d1.x*STUB,y:e.y1+d1.y*STUB},q2={x:e.x2+d2.x*STUB,y:e.y2+d2.y*STUB};
   const pts=[{x:e.x1,y:e.y1},q1];
+  if(s.bend){                              // ADR-0072: user-set trunk position
+    const c1=d1.x!==0?{x:s.bend,y:q1.y}:{x:q1.x,y:s.bend};
+    const c2=d1.x!==0?{x:s.bend,y:q2.y}:{x:q2.x,y:s.bend};
+    pts.push(c1,c2,q2,{x:e.x2,y:e.y2});
+    return pts;
+  }
   const mid=d1.x!==0?{x:q2.x,y:q1.y}:{x:q1.x,y:q2.y};
   if((mid.x!==q1.x||mid.y!==q1.y)&&(mid.x!==q2.x||mid.y!==q2.y))pts.push(mid);
   pts.push(q2,{x:e.x2,y:e.y2});
@@ -2617,6 +2623,17 @@ function _elbowPts(s){
 function _elbowLabelXY(s){
   const pts=_elbowPts(s);
   return{x:(pts[1].x+pts[pts.length-2].x)/2,y:(pts[1].y+pts[pts.length-2].y)/2};
+}
+// ADR-0072: the route segment perpendicular to both stubs — the draggable one.
+function _elbowTrunk(s){
+  const pts=_elbowPts(s);
+  if(pts.length<4)return null;
+  const horizStub=Math.abs(pts[1].x-pts[0].x)>=Math.abs(pts[1].y-pts[0].y);
+  for(let i=1;i<pts.length-2;i++){
+    const a=pts[i],b=pts[i+1],vert=Math.abs(b.x-a.x)<Math.abs(b.y-a.y);
+    if(vert===horizStub&&(a.x!==b.x||a.y!==b.y))return[a,b];
+  }
+  return null;
 }
 function _polyline(c,pts){
   c.beginPath();c.moveTo(pts[0].x,pts[0].y);
@@ -3019,6 +3036,13 @@ function drawSelection(c){
       c.fillStyle=getCSS('--paper');c.strokeStyle=getCSS('--brand-ink');
       c.beginPath();c.arc(kp.x,kp.y,hs/2,0,PI2);c.fill();c.stroke();
     }
+    if(sh.elbow){                        // ADR-0072: trunk-position handle
+      const tr=_elbowTrunk(sh);
+      if(tr){
+        const tp=G.w2s({x:(tr[0].x+tr[1].x)/2,y:(tr[0].y+tr[1].y)/2});
+        c.beginPath();c.arc(tp.x,tp.y,hs*0.45,0,PI2);c.fill();c.stroke();
+      }
+    }
   }else{
     // ADR-0056: multi-selection — full 8-handle set on the group bbox (was: 4
     // decorative corners that were never hit-testable). Hidden when a member is
@@ -3118,12 +3142,14 @@ function abortGesture(){
     for(const [id,orig] of ptr.gOrig){const sh=byId(id);if(sh)Object.assign(sh,clone(orig))}
   }else if(ptr.dragKind==='rotate'&&ptr.rotOrig){
     const sh=byId(ptr.rotOrig.id);if(sh){if(ptr.rotOrig.rotate==null)delete sh.rotate;Object.assign(sh,clone(ptr.rotOrig));}
+  }else if(ptr.dragKind==='ebend'&&ptr.ebendOrig){                // ADR-0072
+    const sh=byId(ptr.ebendOrig.id);if(sh){if(ptr.ebendOrig.bend==null)delete sh.bend;Object.assign(sh,clone(ptr.ebendOrig));}
   }
   if(_eraseBatch.length){for(const s of _eraseBatch)state.shapes.push(s);_eraseBatch=[];sortZ();_invalidateGrid();}   // ADR-0009
   _penPred=null;
   state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.dragStartShapes=null;
-  ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;
+  ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;ptr.ebendOrig=null;
   invalidate();
 }
 
@@ -3175,6 +3201,13 @@ canvas.addEventListener('pointerdown',e=>{
             ptr.resizeHandle=hid;
             ptr.resizeOrig=clone(onlySel);
             return;
+          }
+          if(onlySel.elbow&&!onlySel.locked){          // ADR-0072: trunk drag
+            const tr=_elbowTrunk(onlySel);
+            if(tr&&distToSeg(wp,tr[0],tr[1])<=HANDLE_SIZE/state.viewport.zoom){
+              ptr.dragKind='ebend';ptr.ebendOrig=clone(onlySel);
+              return;
+            }
           }
         }
       }else if(state.selection.size>1){
@@ -3300,6 +3333,10 @@ canvas.addEventListener('pointermove',e=>{
       }else if(ptr.dragKind==='move')doMove(wp,e.shiftKey);
       else if(ptr.dragKind==='marquee'){state.marquee={x1:ptr.wx0,y1:ptr.wy0,x2:wp.x,y2:wp.y};invalidateOverlay()}
       else if(ptr.dragKind==='qline')contLineLike(wp,e.shiftKey);   // ADR-0070
+      else if(ptr.dragKind==='ebend'&&ptr.ebendOrig){               // ADR-0072
+        const sh=byId(ptr.ebendOrig.id),tr=sh&&_elbowTrunk(sh);
+        if(tr){const vert=Math.abs(tr[1].x-tr[0].x)<Math.abs(tr[1].y-tr[0].y);sh.bend=vert?wp.x:wp.y;invalidate()}
+      }
       break;
     case 'pen':{
       for(const ce of coalescedSamples(e))contPen(G.s2w({x:ce.offsetX,y:ce.offsetY}),ce);
@@ -3357,6 +3394,13 @@ canvas.addEventListener('pointerup',e=>{
         ptr.rotOrig=null;
       }else if(ptr.dragKind==='qline'){
         endLineLike();                                             // ADR-0070
+      }else if(ptr.dragKind==='ebend'&&ptr.ebendOrig){            // ADR-0072
+        const sh=byId(ptr.ebendOrig.id);
+        if(sh&&(sh.bend||0)!==(ptr.ebendOrig.bend||0)){
+          const origSel=[...state.selection];
+          Store._recordCommitted({op:'style',before:[{id:sh.id,bend:ptr.ebendOrig.bend||0}],after:[{id:sh.id,bend:sh.bend||0}]});
+          if(origSel.length)state.history[state.histIdx].origSel=origSel;
+        }
       }else{
         endSelect(wp,e.shiftKey);
       }
@@ -3368,7 +3412,7 @@ canvas.addEventListener('pointerup',e=>{
     }
   }
   ptr.down=false;ptr.dragKind=null;ptr.dragStartShapes=null;
-  ptr.resizeHandle=null;ptr.resizeOrig=null;
+  ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.ebendOrig=null;
   state.marquee=null;canvas.style.cursor='default';invalidateOverlay();
 });
 // v1.6.88: extracted as named function so tests can call it directly.
@@ -3385,13 +3429,15 @@ function _cancelPointerGesture(){
   }else if(ptr.dragKind==='rotate'&&ptr.rotOrig){
     const rsh=byId([...state.selection][0]);
     if(rsh){if(ptr.rotOrig.rotate==null)delete rsh.rotate;Object.assign(rsh,clone(ptr.rotOrig));}
+  }else if(ptr.dragKind==='ebend'&&ptr.ebendOrig){                // ADR-0072
+    const sh=byId(ptr.ebendOrig.id);if(sh){if(ptr.ebendOrig.bend==null)delete sh.bend;Object.assign(sh,clone(ptr.ebendOrig));}
   }else if(ptr.dragKind==='move'&&ptr.dragStartShapes){
     for(const[id,orig] of ptr.dragStartShapes){const sh=byId(id);if(sh)Object.assign(sh,clone(orig));}
   }
   if(_eraseBatch.length){for(const s of _eraseBatch)state.shapes.push(s);_eraseBatch=[];sortZ();_invalidateGrid();}   // ADR-0009
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;
   ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.rotOrig=null;ptr.dragStartShapes=null;
-  ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;
+  ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.ebendOrig=null;
   canvas.dataset.panning='false';state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;_penPred=null;invalidate();
 }
 // ADR-0006: fires after LONG_PRESS_MS. Guards: gesture still active, handle-drag not in

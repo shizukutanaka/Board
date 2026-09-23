@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.130]
+
+### 追加
+- **elbow trunk ドラッグ** (ADR-0072)。選択中のエルボーコネクタで中間
+  trunk セグメント (ハンドル表示あり) をドラッグして経路位置を調整 —
+  `s.bend` に絶対座標で永続化、`style` op で undo・同期は既存経路。
+  未設定時は従来の自動経路で視覚退行なし。
+
 ## [1.7.129]
 
 ### 追加
