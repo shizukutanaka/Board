@@ -2,6 +2,15 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.122]
+
+### 追加
+- **ジェスチャー中のライブ寸法表示** (ADR-0064)。リサイズ中は `W × H`、
+  移動中はスナップ適用後の `±dx, ±dy`、回転中は角度 (`N°` / `±N°`) が
+  対象の直下にピル表示 — draw.io/Figma と同じ。複数選択のグループ
+  リサイズ・回転、pen pts・接続長 (`↔ N`) も同一経路。render-only で
+  undo/同期に無関与。
+
 ## [1.7.121]
 
 ### 追加

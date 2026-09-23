@@ -419,6 +419,9 @@ const checks = [
   // v1.7.121: ADR-0063 bidirectional arrowheads
   ['start arrowhead: draw + svg + ctx toggle', html.includes('if(s.start)_arrowHeadShape(c,e.x1,e.y1')&&html.includes('function toggleBothEnds()')&&html.includes("['ctxBothEnds','',toggleBothEnds]")],
   ['both-ends i18n ja+en', html.includes("ctxBothEnds:'両端ヘッド'")&&html.includes("ctxBothEnds:'Arrowheads both ends'")],
+  // v1.7.122: ADR-0064 gesture readout pill
+  ['readout state + drawOverlay pill + ptr.down gate', html.includes('readout:null,             // ADR-0064')&&html.includes('if(ptr.down&&state.readout)')&&html.includes("roundRect(c,px-tw/2,py,tw,ph,4)")],
+  ['readout set in applyResize/moveDelta/rotate paths + cleared with guides', html.includes('state.readout={x:_rb.x+_rb.w/2,y:_rb.y+_rb.h')&&html.includes('state.readout=bb&&(dx||dy)')&&html.includes('state.guides=null;state.readout=null;')],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
@@ -1252,7 +1255,7 @@ try {
              getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts,
-             _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
+             _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa: () => _teTa, zoomAt,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
@@ -1279,7 +1282,7 @@ try {
           getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts,
-          _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
+          _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa, zoomAt,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
@@ -3267,6 +3270,27 @@ try {
     const svg2=buildSVG([a2],'#fff');
     assert.ok(svg2.includes('<polyline')&&(svg2.match(/<polygon/g)||[]).length===2,'elbow both-ends svg');
     console.log('  ✓ bidirectional arrow: style-op toggle + svg heads (5 asserts)');
+  }
+
+  // ADR-0064: live readout — resize shows W×H, move shows snapped offset, cleared on gesture end.
+  {
+    state.shapes=[];_invalidateGrid();state.selection=new Set();state.history=[];state.histIdx=-1;state.readout=null;
+    const R={id:'R',type:'rect',x:0,y:0,w:50,h:30,z:1,stroke:'#000',size:2,opacity:1};
+    Store.commit({op:'add',shape:R});
+    const r=byId('R');
+    applyResize(r,'se',JSON.parse(JSON.stringify(r)),{x:80,y:60},false,false);
+    assert.ok(state.readout&&state.readout.label==='80 × 60','resize readout W×H');
+    assert.ok(state.readout.x===40&&state.readout.y===60,'anchor = bottom-centre');
+    // move: ptr.down path — dragStartShapes + moveDelta → offset label
+    ptr.wx0=0;ptr.wy0=0;ptr.dragStartShapes=new Map([[r.id,JSON.parse(JSON.stringify(r))]]);
+    state.snap=true;   // grid snap active → snapV rounds; use exact grid step
+    const d=moveDelta({x:40,y:20});   // GRID_SIZE=20 — already grid-aligned
+    assert.ok(d.dx===40&&d.dy===20,'moveDelta snapped');
+    assert.ok(state.readout&&state.readout.label==='+40, +20','move offset label');
+    moveDelta({x:0,y:0});
+    assert.ok(state.readout===null,'zero delta hides readout');
+    state.readout=null;ptr.dragStartShapes=null;
+    console.log('  ✓ gesture readout: resize W×H / move +dx,+dy / zero-hide (5 asserts)');
   }
 
   // validPatch recurses: nested poison in a remote `upd` (gated by validPatch alone)
