@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.90 — Design Tokens
+   Board v1.7.91 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -758,7 +758,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.90';
+const V='1.7.91';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3091,6 +3091,12 @@ canvas.addEventListener('wheel',e=>{
   e.preventDefault();
   const d=wheelPx(e);
   if(e.ctrlKey||e.metaKey){
+    // ADR-0033: ctrl+wheel (trackpad pinch on desktop) bursts get the same
+    // snapshot-preview as touch pinch — zoom the pristine buffer while events
+    // stream in, settle to a crisp repaint ~180ms after the last one.
+    _pinchSnapNow();
+    clearTimeout(_wheelZoomEnd);
+    _wheelZoomEnd=setTimeout(()=>{_pinchSnap=null;_pinchVp=null;invalidate()},180);
     zoomAt({x:e.offsetX,y:e.offsetY},-d.y*0.005);
   }else{
     state.viewport.x+=d.x/state.viewport.zoom;
@@ -3129,18 +3135,27 @@ const _resetPinch=()=>{if(_pointers.size<2){_pinchPrev=0;if(_pinchSnap){_pinchSn
 canvas.addEventListener('pointerup',_resetPinch);
 canvas.addEventListener('pointercancel',_resetPinch);
 
+let _wheelZoomEnd=0;
+// ADR-0030/0033 shared: capture the pristine canvas + viewport for the
+// scaled-preview path. Called before the first zoom of a gesture (touch pinch
+// via _pointers.size>=2, or a ctrl+wheel burst) so every subsequent frame can
+// blit under the accumulated transform without rescanning the scene.
+function _pinchSnapNow(){
+  if(!_pinchSnap){
+    const v=state.viewport;
+    _pinchSnap=document.createElement('canvas');
+    _pinchSnap.width=canvas.width;_pinchSnap.height=canvas.height;
+    _pinchSnap.getContext('2d').drawImage(canvas,0,0);
+    _pinchVp={x:v.x,y:v.y,zoom:v.zoom};
+  }
+}
 function zoomAt(sp,delta){
   const v=state.viewport;
   // ADR-0030: the first zoom of a multi-touch pinch snapshots the canvas once;
   // every pinch frame then blits this pristine buffer under the gesture's
   // accumulated transform instead of rescanning the scene. Continuous pinch
   // moves are a blurry-but-instant preview; the gesture-end frame repaints crisp.
-  if(_pointers.size>=2&&!_pinchSnap){
-    _pinchSnap=document.createElement('canvas');
-    _pinchSnap.width=canvas.width;_pinchSnap.height=canvas.height;
-    _pinchSnap.getContext('2d').drawImage(canvas,0,0);
-    _pinchVp={x:v.x,y:v.y,zoom:v.zoom};
-  }
+  if(_pointers.size>=2)_pinchSnapNow();
   const wp=G.s2w(sp);
   const nz=clampZoom(v.zoom*Math.exp(delta));
   v.x=wp.x-sp.x/nz;
