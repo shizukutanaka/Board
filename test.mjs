@@ -425,6 +425,9 @@ const checks = [
   // v1.7.123: ADR-0065 connector endpoint rebind/unbind
   ['endpoint rebind: always-handle + unbind-on-grab + bindPreview', html.includes("h.push({id:'p1',x:e.x1,y:e.y1});       // ADR-0065")&&html.includes('if(sh[bk])sh[bk]=null;')&&html.includes('state.bindPreview=')],
   ['_endPointBind in pointerup + not-self/not-other-end guard', html.includes('_endPointBind(rsh,ptr.resizeHandle)')&&html.includes('hit!==sh[other]')],
+  // v1.7.124: ADR-0066 Shift+drag axis-constrained move
+  ['shift axis constraint in moveDelta + objectSnap skipped', html.includes("if(Math.abs(dx)>=Math.abs(dy))dy=0;else dx=0;")&&html.includes('moveDelta(wp,shift)')&&html.includes('doMove(wp,e.shiftKey)')&&html.includes('endSelect(wp,e.shiftKey)')],
+  ['moveAxis i18n ja+en + help row', html.includes("moveAxis:'軸拘束移動'")&&html.includes("moveAxis:'Constrain move axis'")&&html.includes("['⇧ + drag',k.moveAxis]")],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
@@ -3314,6 +3317,25 @@ try {
     assert.ok(live.a===null,'same-shape-as-other-end rejected');
     Store.commit({op:'del',shapes:[byId(r.id),byId(r2.id),byId(a.id)].map(s=>JSON.parse(JSON.stringify(s)))});
     console.log('  ✓ endpoint rebind: unbind-on-grab + rebind/unbind (5 asserts)');
+  }
+
+  // ADR-0066: Shift+drag constrains move to the dominant axis
+  {
+    const r=Shape.make('rect',{x:0,y:0,w:100,h:100,stroke:'#000',fill:'#fff'});
+    Store.commit({op:'add',shape:r});
+    const live=byId(r.id);
+    ptr.wx0=0;ptr.wy0=0;ptr.dragStartShapes=new Map([[r.id,JSON.parse(JSON.stringify(live))]]);
+    state.snap=true;
+    const h=moveDelta({x:40,y:20},true);   // dominant X
+    assert.ok(h.dx===40&&h.dy===0,'shift keeps dominant X');
+    const v=moveDelta({x:20,y:40},true);   // dominant Y
+    assert.ok(v.dx===0&&v.dy===40,'shift keeps dominant Y');
+    assert.ok(state.guides===null,'no object-snap guides while constrained');
+    const f=moveDelta({x:20,y:40},false);  // unconstrained sanity
+    assert.ok(f.dx===20&&f.dy===40,'no shift → free move');
+    Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(live))]});
+    ptr.dragStartShapes=null;
+    console.log('  ✓ shift axis move: dominant-axis zero + free fallback (4 asserts)');
   }
 
   // validPatch recurses: nested poison in a remote `upd` (gated by validPatch alone)

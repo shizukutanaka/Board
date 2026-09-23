@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.124]
+
+### 追加
+- **Shift+ドラッグの軸拘束移動** (ADR-0066)。移動ドラッグ中に Shift を
+  押すと支配軸 (水平 or 垂直) に拘束 — draw.io/Figma と同じ。拘束中は
+  objectSnap をスキップ、readout が `+N, 0` で拘束を可視化。
+
 ## [1.7.123]
 
 ### 追加

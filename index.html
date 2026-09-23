@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.123';
+const V='1.7.124';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -918,7 +918,7 @@ const I18N={
       grid:'グリッド',minimap:'ミニマップ切替',beautify:'選択したペン描画を整形',esc:'選択解除/キャンセル',
       cycle:'図形を巡回',create:'中央に作成',
       present:'プレゼン',nudge:'移動 (⇧: 10px)',zorder:'前面/背面',zorderEnds:'最前面/最背面',
-      rotate:'回転 (15° / ノブdrag)',search:'検索',searchNav:'次/前のマッチへ移動',resizeRatio:'比率保持リサイズ',resizeCenter:'中心固定リサイズ',kbdResize:'リサイズ (⇧:×10)'}},
+      rotate:'回転 (15° / ノブdrag)',search:'検索',searchNav:'次/前のマッチへ移動',moveAxis:'軸拘束移動',resizeRatio:'比率保持リサイズ',resizeCenter:'中心固定リサイズ',kbdResize:'リサイズ (⇧:×10)'}},
   en:{export:'Export',present:'Present',snap:'Snap',size:'Size',lineStyle:'Line',helpTitle:'Shortcuts',
     helpSub:'No need to memorise. You\'ll pick it up.',
     saved:'saved',savedNow:'just now',savedAgo:'s ago',
@@ -996,7 +996,7 @@ const I18N={
       grid:'Toggle grid',minimap:'Toggle minimap',beautify:'Beautify selected pen strokes',esc:'Deselect / cancel',
       cycle:'Cycle shapes',create:'Create at centre',
       present:'Present',nudge:'Move (⇧: 10px)',zorder:'Front / back',zorderEnds:'To front / to back',
-      rotate:'Rotate (15° / knob drag)',search:'Search',searchNav:'Next / prev match',resizeRatio:'Keep ratio (resize)',resizeCenter:'Resize from centre',kbdResize:'Resize (⇧:×10)'}}};
+      rotate:'Rotate (15° / knob drag)',search:'Search',searchNav:'Next / prev match',moveAxis:'Constrain move axis',resizeRatio:'Keep ratio (resize)',resizeCenter:'Resize from centre',kbdResize:'Resize (⇧:×10)'}}};
 // ADR-0014: LANG/T are `let`, not `const`, so UI.toggleLang() can reassign them — t()
 // closes over T by reference, so every t()/T.k call made AFTER a reassignment picks up
 // the new language automatically. Only elements that cache a translated string once at
@@ -3226,7 +3226,7 @@ canvas.addEventListener('pointermove',e=>{
           state.readout={x:_nb.x+_nb.w/2,y:_nb.y+_nb.h,label:`${rsh.rotate}°`};
           invalidateDamage(_dmgPair(_b0,_nb,(rsh.size||2)+16));           // ADR-0026
         }else invalidate();
-      }else if(ptr.dragKind==='move')doMove(wp);
+      }else if(ptr.dragKind==='move')doMove(wp,e.shiftKey);
       else if(ptr.dragKind==='marquee'){state.marquee={x1:ptr.wx0,y1:ptr.wy0,x2:wp.x,y2:wp.y};invalidateOverlay()}
       break;
     case 'pen':{
@@ -3284,7 +3284,7 @@ canvas.addEventListener('pointerup',e=>{
         }
         ptr.rotOrig=null;
       }else{
-        endSelect(wp);
+        endSelect(wp,e.shiftKey);
       }
       break;
       case 'pen':endPen();break;
@@ -3844,17 +3844,20 @@ function nudgeSelection(dx,dy){
 }
 // Shared by live drag (doMove) and commit (endSelect) so they agree exactly.
 // Grid snap (⇧G) takes precedence; otherwise snap to nearby objects.
-function moveDelta(wp){
+function moveDelta(wp,shift){
   const sp=snapPt(wp),sx0=snapV(ptr.wx0),sy0=snapV(ptr.wy0);
   let dx=sp.x-sx0,dy=sp.y-sy0;
-  if(!state.snap){const a=objectSnap(dx,dy);dx+=a.dx;dy+=a.dy;state.guides=a.guides.length?a.guides:null;}
+  if(shift){                            // ADR-0066: Shift+drag constrains to the dominant axis
+    if(Math.abs(dx)>=Math.abs(dy))dy=0;else dx=0;
+    state.guides=null;
+  }else if(!state.snap){const a=objectSnap(dx,dy);dx+=a.dx;dy+=a.dy;state.guides=a.guides.length?a.guides:null;}
   else state.guides=null;
   const bb=ptr.dragStartShapes&&G.bboxAll([...ptr.dragStartShapes.values()]);
   state.readout=bb&&(dx||dy)?{x:bb.x+dx+bb.w/2,y:bb.y+dy+bb.h,label:`${dx>=0?'+':''}${Math.round(dx)}, ${dy>=0?'+':''}${Math.round(dy)}`}:null;
   return{dx,dy};
 }
-function doMove(wp){
-  const{dx,dy}=moveDelta(wp);let dmg=null;
+function doMove(wp,shift){
+  const{dx,dy}=moveDelta(wp,shift);let dmg=null;
   for(const [id,orig] of ptr.dragStartShapes){
     const sh=byId(id);if(!sh||sh.locked)continue;
     const b0=G.bbox(orig),m=(sh.size||2)+16;   // orig-bbox + same bbox shifted by (dx,dy) covers every position of the gesture
@@ -3865,9 +3868,9 @@ function doMove(wp){
   }
   if(dmg)invalidateDamage(dmg);else invalidate();
 }
-function endSelect(wp){
+function endSelect(wp,shift){
   if(ptr.dragKind==='move'&&ptr.dragStartShapes){
-    const{dx,dy}=moveDelta(wp);
+    const{dx,dy}=moveDelta(wp,shift);
     state.guides=null;
     const mids=[...ptr.dragStartShapes.keys()].filter(id=>!byId(id)?.locked);
     if(Math.hypot(dx,dy)>0.5&&mids.length){
@@ -6342,7 +6345,7 @@ const UI={
       ['Enter / ⇧Enter',k.searchNav],
       ['⇧H / ⇧V',t('ctxFlipH')+' / '+t('ctxFlipV')],
       ['⌥C / ⌥V',t('ctxCopyStyle')+' / '+t('ctxPasteStyle')],
-      ['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],
+      ['⇧ + drag',k.moveAxis],['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],
       ['Tab / ⇧Tab',k.cycle],['Enter',k.create+' / '+t('editLabel')]
     ];
     while(g.firstChild)g.removeChild(g.firstChild);
