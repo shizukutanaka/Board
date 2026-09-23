@@ -2,6 +2,15 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.105] - 2026-09-23
+
+**ADR-0047: グループハローのキャッシュ** — `drawOverlay` が毎フレーム全形状を
+走査して構築していた `Map<groupId, shapes[]>` を `_gridVer` 連動の
+`_grpMapGet()` 化。グルーピングは group/ungroup op 経由でしか変わらないため
+全コミットの dirty key と一致 — overlay-only リペイント (マーキードラッグ、
+ピアカーソル、選択更新) が O(n) 走査なしで済む。bbox は従来どおり毎回
+`G.bboxAll` で再評価 (translate の in-place 変異に追従)。
+
 ## [1.7.104] - 2026-09-23
 
 **ADR-0046: ペンのアウトライン塗り** — 可変線幅を「セグメント台形 + 頂点円盤の

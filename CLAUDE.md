@@ -95,7 +95,8 @@ Board/
 │   ├── ADR-0043-excalidraw-import.md  # .excalidraw → Board 図形 (拡張子+内容検出、spec P2)
 │   ├── ADR-0044-text-paste.md  # OS テキストペースト → text shape (Markdown 平文取込)
 │   ├── ADR-0045-invite-link.md  # 招待コードを #s=<offer> URL 化 (受け手の貼り付けを省略)
-│   └── ADR-0046-pen-outline-fill.md  # ペンの union-of-primitives アウトライン塗り (テーパー端)
+│   ├── ADR-0046-pen-outline-fill.md  # ペンの union-of-primitives アウトライン塗り (テーパー端)
+│   └── ADR-0047-group-halo-index.md  # グループハロー Map の _gridVer キャッシュ (overlay 全走査解消)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

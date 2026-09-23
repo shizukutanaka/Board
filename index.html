@@ -766,7 +766,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.104';
+const V='1.7.105';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2290,9 +2290,7 @@ function drawOverlay(){
   }
   c.setTransform(DPR,0,0,DPR,0,0);
   if(state.shapes.length===0&&!state.draft)drawEmptyHint(c,W,H);   // FT-17: onboarding for a blank board
-  const _gmap=new Map();
-  for(const s of state.shapes){if(s.groupId){if(!_gmap.has(s.groupId))_gmap.set(s.groupId,[]);_gmap.get(s.groupId).push(s)}}
-  for(const[,members] of _gmap){
+  for(const[,members] of _grpMapGet()){
     const b=G.bboxAll(members);if(!b)continue;
     const p1=G.w2s({x:b.x-4,y:b.y-4}),p2=G.w2s({x:b.x+b.w+4,y:b.y+b.h+4});
     c.strokeStyle='rgba(0,196,204,.3)';c.lineWidth=1;c.setLineDash([4,4]);
@@ -3326,6 +3324,16 @@ function fitToContent(){
 // a `big` list always returned; query covers the 3×3 cell neighbourhood (tol<200wu).
 const _GCELL=200;let _grid=null,_gridVer=0;
 function _invalidateGrid(){_grid=null;_idIndex=null;_gridVer++;}   // ADR-0009: id index shares this choke point; _gridVer drives the snap index (ADR-0020)
+// ADR-0047: group-halo membership map — grouping only changes via group/ungroup
+// ops (every commit bumps _gridVer), so drawOverlay doesn't rebuild it per frame.
+let _grpMapVer=-1,_grpMap=null;
+function _grpMapGet(){
+  if(_grpMapVer===_gridVer)return _grpMap;
+  _grpMap=new Map();
+  for(const s of state.shapes){if(s.groupId){if(!_grpMap.has(s.groupId))_grpMap.set(s.groupId,[]);_grpMap.get(s.groupId).push(s)}}
+  _grpMapVer=_gridVer;
+  return _grpMap;
+}
 function _buildGrid(shapes){
   const cells=new Map(),big=[],idx=new Map();
   for(let i=0;i<shapes.length;i++){
