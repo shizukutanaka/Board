@@ -766,7 +766,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.116';
+const V='1.7.118';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3619,6 +3619,19 @@ function pickOrMarquee(wp,e){
       ? state.shapes.filter(s=>s.groupId===gid).map(s=>s.id)
       : [hit.id];
     const alreadySel=toSelect.every(id=>state.selection.has(id));
+    // ADR-0060: Alt+drag duplicates first — copies become the selection and the
+    // move gesture drags them (Figma/Excalidraw/draw.io parity). Locked hits and
+    // locked members are excluded; frames bring their children.
+    if(e.altKey&&!hit.locked){
+      const dupSet=alreadySel?new Set(state.selection):new Set(toSelect);
+      const srcShapes=[...withFrameChildren(dupSet)].map(byId).filter(s=>s&&!s.locked);
+      if(srcShapes.length){
+        const added=_placeCopies(srcShapes,0,0);   // addMany commit + selection→copies
+        ptr.dragKind='move';
+        ptr.dragStartShapes=new Map(added.map(id=>{const s=byId(id);return[id,clone(s)]}));
+        return;
+      }
+    }
     if(!alreadySel){
       if(!e.shiftKey)state.selection.clear();
       for(const id of toSelect)state.selection.add(id);
