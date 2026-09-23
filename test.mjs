@@ -416,6 +416,9 @@ const checks = [
   ['elbow route helper + toggle in ctx menu', html.includes('function _elbowPts(s)')&&html.includes('function toggleElbow()')&&html.includes("['ctxElbow','',toggleElbow]")],
   ['elbow draw/hit/svg/minimap paths', html.includes('if(s.elbow){_polyline(c,_elbowPts(s))')&&html.includes('s.elbow){\n          const pts=_elbowPts')&&html.includes('<polyline points=')&&html.includes('stroke-linejoin="round"')],
   ['elbow i18n ja+en', html.includes("ctxElbow:'エルボー (直角)'")&&html.includes("ctxElbow:'Elbow (right-angle)'")],
+  // v1.7.121: ADR-0063 bidirectional arrowheads
+  ['start arrowhead: draw + svg + ctx toggle', html.includes('if(s.start)_arrowHeadShape(c,e.x1,e.y1')&&html.includes('function toggleBothEnds()')&&html.includes("['ctxBothEnds','',toggleBothEnds]")],
+  ['both-ends i18n ja+en', html.includes("ctxBothEnds:'両端ヘッド'")&&html.includes("ctxBothEnds:'Arrowheads both ends'")],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
@@ -1248,7 +1251,7 @@ try {
              doAlign, doFlip, snapV, snapPt,
              getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
-             copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, _elbowPts,
+             copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts,
              _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa: () => _teTa, zoomAt,
@@ -1275,7 +1278,7 @@ try {
           doAlign, doFlip, snapV, snapPt,
           getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
-          copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, _elbowPts,
+          copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts,
           _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa, zoomAt,
@@ -3243,6 +3246,27 @@ try {
     assert.ok(!ar.elbow,'toggle off → straight');
     assert.ok(G.hit(ar,{x:(connEnds(ar).x1+connEnds(ar).x2)/2,y:(connEnds(ar).y1+connEnds(ar).y2)/2}),'straight mid hit');
     console.log('  ✓ elbow connector: manhattan route/hit/svg/toggle (9 asserts)');
+  }
+
+  // ADR-0063: start arrowhead — toggle draws head at both ends, straight + elbow.
+  {
+    state.shapes=[];_invalidateGrid();state.selection=new Set();state.history=[];state.histIdx=-1;
+    const A2={id:'A2',type:'arrow',x1:0,y1:0,x2:100,y2:0,z:1,stroke:'#000',size:2,opacity:1,dash:0};
+    Store.commit({op:'add',shape:A2});
+    const a2=byId('A2');
+    state.selection=new Set([a2.id]);toggleBothEnds();
+    assert.ok(a2.start===1,'start toggled on');
+    const svg=buildSVG([a2],'#fff');
+    assert.ok((svg.match(/<polygon/g)||[]).length===2,'two head polygons in svg');
+    Store.undo();
+    assert.ok(!a2.start,'undo removes start flag');
+    Store.redo();
+    assert.ok(a2.start===1,'redo restores start flag');
+    // elbow + start compose
+    a2.elbow=1;
+    const svg2=buildSVG([a2],'#fff');
+    assert.ok(svg2.includes('<polyline')&&(svg2.match(/<polygon/g)||[]).length===2,'elbow both-ends svg');
+    console.log('  ✓ bidirectional arrow: style-op toggle + svg heads (5 asserts)');
   }
 
   // validPatch recurses: nested poison in a remote `upd` (gated by validPatch alone)

@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.120';
+const V='1.7.121';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -860,7 +860,7 @@ const I18N={
     undone:'元に戻した',redone:'やり直した',created:'作成',editLabel:'選択中の図形を編集',
     confirmClear:'すべて削除しますか？',
     ctxCopy:'コピー',ctxPaste:'貼り付け',ctxDuplicate:'複製',
-    ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',
+    ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxBothEnds:'両端ヘッド',
     ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
     ctxSendBackward:'背面へ',ctxSendBack:'最背面へ',
     ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxLock:'ロック',ctxUnlock:'ロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
@@ -936,7 +936,7 @@ const I18N={
     undone:'Undone',redone:'Redone',created:'Created',editLabel:'Edit selected shape',
     confirmClear:'Delete everything?',
     ctxCopy:'Copy',ctxPaste:'Paste',ctxDuplicate:'Duplicate',
-    ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',
+    ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxBothEnds:'Arrowheads both ends',
     ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
     ctxSendBackward:'Send backward',ctxSendBack:'Send to back',
     ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxLock:'Lock',ctxUnlock:'Unlock',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
@@ -2529,11 +2529,16 @@ function drawArrow(s,c){
     const L=pts[pts.length-1],P=pts[pts.length-2];
     const ang=Math.atan2(L.y-P.y,L.x-P.x)||Math.atan2(e.y2-e.y1,e.x2-e.x1);
     _arrowHeadShape(c,L.x,L.y,ang,ah,s.stroke);
+    if(s.start){
+      const sAng=Math.atan2(pts[0].y-pts[1].y,pts[0].x-pts[1].x)||ang+Math.PI;
+      _arrowHeadShape(c,pts[0].x,pts[0].y,sAng,ah,s.stroke);
+    }
     return;
   }
   c.beginPath();c.moveTo(e.x1,e.y1);c.lineTo(e.x2,e.y2);c.stroke();
   const ang=Math.atan2(e.y2-e.y1,e.x2-e.x1);
   _arrowHeadShape(c,e.x2,e.y2,ang,ah,s.stroke);
+  if(s.start)_arrowHeadShape(c,e.x1,e.y1,ang+Math.PI,ah,s.stroke);
 }
 // ADR-0062: orthogonal (Manhattan) route for elbow connectors.
 // Bound ends exit along the edge's outward normal (stub); free ends take the
@@ -5260,6 +5265,10 @@ function buildSVG(shapes,paper){
           const a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5;
           const tx=Lp.x+ox,ty=Lp.y+oy;
           els.push(`<polygon points="${tx},${ty} ${tx+Math.cos(a1)*ah},${ty+Math.sin(a1)*ah} ${tx+Math.cos(a2)*ah},${ty+Math.sin(a2)*ah}" fill="${stroke}"${a}/>`);
+          if(s.start){
+            const sAng=Math.atan2(pts[0].y-pts[1].y,pts[0].x-pts[1].x)||ang+Math.PI;
+            const s1=sAng+Math.PI-0.5,s2=sAng+Math.PI+0.5,sx2=pts[0].x+ox,sy2=pts[0].y+oy;
+            els.push(`<polygon points="${sx2},${sy2} ${sx2+Math.cos(s1)*ah},${sy2+Math.sin(s1)*ah} ${sx2+Math.cos(s2)*ah},${sy2+Math.sin(s2)*ah}" fill="${stroke}"${a}/>`)}
           const lm=_elbowLabelXY(s);
           els.push(_connLabelSVG(s,lm.x,lm.y,lm.x,lm.y,ox,oy,stroke,paper));
         }else{
@@ -5268,6 +5277,8 @@ function buildSVG(shapes,paper){
           const a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5;
           const tx=X2+ox,ty=Y2+oy;
           els.push(`<polygon points="${tx},${ty} ${tx+Math.cos(a1)*ah},${ty+Math.sin(a1)*ah} ${tx+Math.cos(a2)*ah},${ty+Math.sin(a2)*ah}" fill="${stroke}"${a}/>`);
+          if(s.start){const s1=ang-0.5,s2=ang+0.5,sx2=X1+ox,sy2=Y1+oy;
+            els.push(`<polygon points="${sx2},${sy2} ${sx2+Math.cos(s1)*ah},${sy2+Math.sin(s1)*ah} ${sx2+Math.cos(s2)*ah},${sy2+Math.sin(s2)*ah}" fill="${stroke}"${a}/>`)}
           els.push(_connLabelSVG(s,X1,Y1,X2,Y2,ox,oy,stroke,paper));
         }
         break;}
@@ -6191,6 +6202,7 @@ const UI={
       has&&['ctxCopyStyle','⌥C',copyStyle],
       state.styleClipboard&&has&&['ctxPasteStyle','⌥V',pasteStyle],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked})&&['ctxElbow','',toggleElbow],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='arrow'&&!s.locked})&&['ctxBothEnds','',toggleBothEnds],
       has&&['ctxDelete','⌫',doDelete],
       has&&'sep',
       has&&state.selection.size>1&&['ctxGroup','⌘G',doGroup],
@@ -6654,6 +6666,17 @@ function toggleElbow(){
     before.push({id,elbow:s.elbow||0});
     after.push({id,elbow:s.elbow?0:1});
     s.elbow=s.elbow?0:1;
+  }
+  if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
+}
+// ADR-0063: start-side arrowhead toggle via style op — undo + wclock sync free.
+function toggleBothEnds(){
+  const before=[],after=[];
+  for(const id of state.selection){
+    const s=byId(id);if(!s||s.type!=='arrow'||s.locked)continue;
+    before.push({id,start:s.start||0});
+    after.push({id,start:s.start?0:1});
+    s.start=s.start?0:1;
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
 }

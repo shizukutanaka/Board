@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.121]
+
+### 追加
+- **双方向矢印 (始点側ヘッド)** (ADR-0063)。選択した arrow をコンテキスト
+  メニュー「両端ヘッド」で始点側にもヘッドを描画 — 相関・対称関係・寸法線を
+  1本で表現 (Excalidraw startArrowhead 相当)。肘経路との合成も動作
+  (始端ヘッドは stub 法線に沿う)。`style` op で undo/同期が既存経路。
+
 ## [1.7.120]
 
 ### 追加
