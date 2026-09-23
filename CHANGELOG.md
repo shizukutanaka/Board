@@ -2,6 +2,22 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.87] - 2026-09-23
+
+**ADR-0029: 下書きペンの増分インクスタンプ** — ペン入力中の下書きがポインタ
+イベント毎に全点をベクトル再ストロークしていたのを、確定済みセグメントのみを
+オフスクリーン bitmap に焼き付けて blit + 末尾の生きている数セグメントのみ
+ベクトル描画に分割 (Excalidraw freedraw / Perfect Freehand 系の定石)。幅が
+安定したセグメントのみコミット (i ≤ n-4) するため見た目は不変、n=2000
+ストロークの追記フレームが ~0ms に。
+
+- `drawPenMaybeCached` が draft を `drawPenDraft` へ振り分け
+- `_inkSegDraw`/`_inkRebuild`/`_inkGrow`: 確定セグメントの単発スタンプ、
+  圧力極値更新・モードフリップ時のみ全体再構築、矩形拡張時は旧 bitmap を
+  `drawImage` 移植
+- ラスタ原点をデバイスグリッドへスナップ + 1:1 blit で AA レベル一致
+  (実測 diff=2px / 600点ストローク)
+
 ## [1.7.86] - 2026-09-23
 
 **ADR-0028: パンのピクセル blit (露出帯のみ再描画)** — 世界座標系が一様に

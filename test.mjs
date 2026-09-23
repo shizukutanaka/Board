@@ -331,6 +331,10 @@ const checks = [
   ['pan blits retained pixels via self drawImage', html.includes("ctx.drawImage(canvas,0,0,W,H,sx,sy,W,H)") && html.includes("const panned=pv&&pv.zoom===v.zoom")],
   ['pan repaints only exposed strips + damage', html.includes("clipRects.push({x:Ox1") && html.includes("if(dmg)clipRects.push(dmg)")],
   ['pan records effective viewport, subpixel pans skip scene', html.includes("_lastVp={x:ev.x,y:ev.y,zoom:v.zoom}") && html.includes("const _skipScene=panned&&")],
+  // v1.7.87: ADR-0029 draft-pen incremental ink stamping
+  ['draft pen stamps committed segments to bitmap', html.includes("function drawPenDraft(") && html.includes("while(d.c<n-4){d.c++;_inkSegDraw(d.c2,p,d.w,d.c);}")],
+  ['draft pen blits committed bitmap 1:1 snapped to device grid', html.includes("ctx.drawImage(d.cv,Math.round((d.bx-state.viewport.x)*_z)")],
+  ['draft pen rebuilds stamp on pressure-mode flip/extrema growth', html.includes("usePr!==d.usePr||(usePr&&extGrew)") && html.includes("_inkRebuild(s,d)")],
   ['load validates viewport finiteness', html.includes("Number.isFinite(+d.viewport.zoom)&&d.viewport.zoom>0")],
   ['load clamps viewport zoom to [MIN_ZOOM,MAX_ZOOM]', html.includes("state.viewport.zoom=clampZoom(+d.viewport.zoom)")],
   ['clampZoom is the single zoom-invariant source', html.includes("const clampZoom=z=>Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,z))") && html.includes("const nz=clampZoom(") && html.includes("const z=clampZoom(")],
@@ -1903,7 +1907,21 @@ try {
     assert.strictEqual(rec.img, 0, 'pen cache: high zoom stays vector');
     state.viewport.zoom = 1; state.draft = pen2; rec.img = 0;
     drawPenMaybeCached(pen2, rec);
-    assert.strictEqual(rec.img, 0, 'pen cache: draft draws vector');
+    // ADR-0029: drafts take the incremental-stamp path (bitmap blit + live tail),
+    // still never creating _penCache entries.
+    assert.strictEqual(_penCache.size, cacheSize, 'pen cache: draft stays out of _penCache');
+    // v1.7.86 / ADR-0029: incremental draft stamp — committed segments go to the
+    // offscreen bitmap once, live tail stays vectorial; a committed bitmap means
+    // later frames re-blit instead of re-stroking all points.
+    const pen3 = { id:'pd3', type:'pen', z:0, stroke:'#123', size:6, pts:[] };
+    for (let i = 0; i < 30; i++) pen3.pts.push([i * 10, (i % 3) * 10, 0.5]);
+    state.draft = pen3; rec.img = 0; rec.n = 0;
+    drawPenMaybeCached(pen3, rec);
+    assert.strictEqual(rec.img, 1, 'draft ink: committed bitmap blits once');
+    pen3.pts.push([300, 20, 0.5], [310, 0, 0.5]);
+    drawPenMaybeCached(pen3, rec);
+    assert.strictEqual(rec.img, 2, 'draft ink: reuses stamp bitmap on append');
+    assert.ok(rec.n < 8, 'draft ink: live tail is O(1) segments, not O(n)');
     state.draft = null; _setCtx(prevCtx);
     console.log('  ✓ pen bitmap cache: miss/settle/hit, translate+flip+style invalidation, vector fallbacks');
   }
