@@ -309,9 +309,12 @@ const checks = [
   // v1.7.113: ADR-0055 rotate point-geometry shapes
   ['doRotate covers pen/line/arrow geometry', html.includes("const _rotatable=s=>s.w!=null||s.pts||s.x1!=null") && html.includes("_rotPtsAbout(s,gx,gy,cs,sn)") && html.includes("if(s.w==null){_rotPtsAbout")],
   // v1.7.114: ADR-0056 multi-selection resize
-  ['gresize dragKind wires group handles', html.includes("ptr.dragKind='gresize';") && html.includes("ptr.gOrig=new Map(sel.filter(s=>!s.locked).map(s=>[s.id,clone(s)]))") && html.includes("if(sel.some(s=>s.rotate))return;")],
+  ['gresize dragKind wires group handles', html.includes("ptr.dragKind='gresize';") && html.includes("ptr.gOrig=new Map(sel.filter(s=>!s.locked).map(s=>[s.id,clone(s)]))") && html.includes("if(!sel.some(s=>s.rotate)){")],
   ['gresize reuses applyResize on a virtual box + commits one align op', html.includes("function _gresizeDrag(wp,shift,alt){") && html.includes("applyResize(vbox,ptr.resizeHandle,vorig,wp,shift,alt)") && html.includes("_mapToBox(sh,orig,ob,vbox)") && html.includes("op:'align',dir:'gresize'") && html.includes("'gresize'")],
-  ['gresize cancelled in abortGesture + pointercancel', html.includes("ptr.dragKind==='gresize'&&ptr.gOrig") && html.includes("ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;")],
+  ['gresize cancelled in abortGesture + pointercancel', html.includes("ptr.dragKind==='gresize'||ptr.dragKind==='grot'") && html.includes("ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;")],
+  // v1.7.115: ADR-0057 rotation knob for point geometry + multi-selection
+  ['getRotHandle generalised to point-geom bbox', html.includes("else{const b=G.bbox(s);if(!b||!(b.w>0)||!(b.h>0))return null;cx=b.x+b.w/2;") && html.includes("function _grpRotHandle(b){")],
+  ['grot dragKind + delta-angle _rotShape + align commit', html.includes("ptr.dragKind='grot';") && html.includes("function _grotDrag(wp,shift){") && html.includes("_rotShape(sh,orig,ptr.rotCx,ptr.rotCy,deg)") && html.includes("op:'align',dir:'grot'") && html.includes("'grot'")],
   ['copyPNG guards ClipboardItem + write', html.includes("typeof ClipboardItem==='undefined'") && html.includes("copyUnsupported")],
   ['copyPNG in export menu', html.includes("['ctxCopyPNG','',copyPNG]")],
   ['ctxCopyPNG i18n ja+en', html.includes("ctxCopyPNG:'PNGをクリップボードにコピー'") && html.includes("ctxCopyPNG:'Copy PNG to clipboard'")],
@@ -1024,7 +1027,7 @@ const checks = [
     html.includes("if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)Object.assign(sh,p.before);}}")],
   // v1.7.47: validRemotePayload align must validate dir against a whitelist
   ['validRemotePayload align: dir whitelist (DIRS Set) prevents unknown dir values',
-    html.includes("const DIRS=new Set(['left','right','cx','top','bottom','cy','hspace','vspace','flip','rotate','lock','gresize']);")],
+    html.includes("const DIRS=new Set(['left','right','cx','top','bottom','cy','hspace','vspace','flip','rotate','lock','gresize','grot']);")],
   // v1.7.47: doPaste uses canvas.getBoundingClientRect() for viewport center (not window.innerWidth)
   ['doPaste: canvas.getBoundingClientRect() used for viewport center (not window.innerWidth)',
     html.includes("const _r=canvas.getBoundingClientRect();\n  const vCx=v.x+_r.width/(v.zoom*2);")],
@@ -1091,7 +1094,7 @@ const checks = [
   // Shape-drawing DEFAULT colors (new frame/sticky stroke fallbacks) are deliberately left
   // on raw --brand: that's a style choice, not an accessibility-critical indicator.
   ["canvas UI-indicator strokes (selection/guides/marquee/rotation-tether/minimap-viewport) use --accent-contrast",
-    (html.match(/getCSS\('--accent-contrast'\)/g)||[]).length===5 &&
+    (html.match(/getCSS\('--accent-contrast'\)/g)||[]).length===6 &&
     (html.match(/getCSS\('--brand'\)/g)||[]).length===5],
   ['frame label editor text color uses --accent-contrast (real text, needs the 4.5:1 floor too)',
     html.includes("getCSS(bold?'--accent-contrast':'--ink')")],
@@ -1231,7 +1234,7 @@ try {
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
              _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa: () => _teTa, zoomAt,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
              exportPNG, copyPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
@@ -1258,7 +1261,7 @@ try {
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
           _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa, zoomAt,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
           exportPNG, copyPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
@@ -3671,7 +3674,8 @@ try {
     // locked / point geometry → no handle
     box.rotate=0;box.locked=true;
     assert.strictEqual(getRotHandle(box),null,'locked shape has no rotation handle');
-    assert.strictEqual(getRotHandle({type:'pen',pts:[[0,0]]}),null,'pen has no rotation handle (no box centre)');
+    assert.strictEqual(getRotHandle({type:'pen',pts:[]}),null,'degenerate pen (empty pts) has no rotation handle');
+    assert.ok(getRotHandle({type:'pen',pts:[[0,0],[10,10]],size:2}),'ADR-0057: pen gets a knob over its bbox');
     // angle math the drag uses: knob dragged due-east of pivot → 90°
     const deg=((Math.round(Math.atan2(0,100)*180/Math.PI+90)%360)+360)%360;
     assert.strictEqual(deg,90,'knob east of pivot maps to 90°');
@@ -5537,6 +5541,55 @@ try {
     Store.undo();Store.undo();
     ptr.dragKind=null;ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;
     console.log('  ✓ gresize: group map, Shift aspect, single-op undo (9 asserts)');
+  }
+
+  // ADR-0057: rotation knob for point geometry + multi-selection — getRotHandle
+  // now anchors over any bbox; _grotDrag applies a DELTA angle from the grab
+  // direction through _rotShape (orig→live each frame); _grotCommit batches
+  // one 'align' op. Single box shapes stay on the legacy absolute-angle path.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+    state.seq=0;state.seenOps=new Set();state.selection=new Set();
+    // getRotHandle generalisation: pen gets a knob over its padded bbox
+    const hp=Shape.make('pen',{pts:[[100,100],[150,150]],size:0});
+    Store.commit({op:'add',shape:hp});
+    state.viewport={x:0,y:0,zoom:1};
+    const rh=getRotHandle(hp);
+    assert.ok(rh&&rh.cx===125&&rh.cy===125,'getRotHandle: pen knob pivots on bbox centre');
+    // single pen: grab at the knob (−90°), drag right (+90°) → same math as doRotate
+    ptr.dragKind='grot';ptr.gOrig=new Map([[hp.id,JSON.parse(JSON.stringify(hp))]]);
+    ptr.rotCx=125;ptr.rotCy=125;
+    ptr.rotA0=Math.atan2((124)-125,125-125)*180/Math.PI;   // knob-top grab = −90°
+    ptr.gPad=18;
+    _grotDrag({x:126,y:125},false);                       // atan2=0 → deg=90
+    const lp=byId(hp.id);
+    assert.ok(Math.abs(lp.pts[0][0]-150)<1e-6&&Math.abs(lp.pts[0][1]-100)<1e-6,'grot pen: p0 → (150,100) at +90°');
+    assert.strictEqual(lp.rotate||0,0,'grot pen: no rotate field written');
+    _grotCommit();
+    assert.strictEqual(state.history[state.histIdx].dir,'grot','grot commits via align op');
+    Store.undo();
+    assert.ok(Math.abs(byId(hp.id).pts[0][0]-100)<1e-9,'grot undo restores pen pts');
+    // multi-selection: box orbits + spins, pen maps — same pivot (group centre)
+    const rc=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    const p2=Shape.make('pen',{pts:[[20,20],[30,30]],size:0});
+    Store.commit({op:'add',shape:rc});Store.commit({op:'add',shape:p2});
+    state.selection=new Set([rc.id,p2.id]);
+    const gb=G.bboxAll([byId(rc.id),byId(p2.id)]);
+    ptr.gOrig=new Map([rc.id,p2.id].map(id=>[id,JSON.parse(JSON.stringify(byId(id)))]));
+    ptr.rotCx=gb.x+gb.w/2;ptr.rotCy=gb.y+gb.h/2;            // (15.25,15.25)
+    ptr.rotA0=-90;                                         // knob-top grab
+    _grotDrag({x:16.25,y:15.25},false);                    // +90°
+    const lrc=byId(rc.id),lp2=byId(p2.id);
+    assert.ok(Math.abs(lrc.x-20.5)<1e-6&&lrc.rotate===90,'grot group: box orbits + spins');
+    assert.ok(Math.abs(lp2.pts[0][0]-10.5)<1e-6&&Math.abs(lp2.pts[0][1]-20)<1e-6,'grot group: pen rigid-rotates about group centre');
+    // Shift snaps the delta to 15° — restore origs, re-basis, drag to deg≈+100
+    for(const [id,orig] of ptr.gOrig){const sh=byId(id);if(sh){delete sh.rotate;Object.assign(sh,JSON.parse(JSON.stringify(orig)));}}
+    ptr.gOrig=new Map([rc.id,p2.id].map(id=>[id,JSON.parse(JSON.stringify(byId(id)))]));
+    ptr.rotA0=-100;                                        // atan2 at wp = 0 → deg=100
+    _grotDrag({x:16.25,y:15.25},true);
+    assert.strictEqual(byId(rc.id).rotate,105,'Shift snaps grot delta to 15°');
+    ptr.dragKind=null;ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;
+    console.log('  ✓ grot: pen knob, group pivot, Shift snap, single-op undo (8 asserts)');
   }
 
   // search navigation a11y: SR users search BY content, so the announcement must name

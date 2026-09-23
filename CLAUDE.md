@@ -105,7 +105,8 @@ Board/
 │   ├── ADR-0053-text-editor-follows-viewport.md  # テキスト編集中の pan/zoom 追従 (frame 境界 _teFollow)
 │   ├── ADR-0054-zoom-bound-noop.md  # ズーム境界での純粋 no-op (micro-pan 解消)
 │   ├── ADR-0055-rotate-point-geometry.md  # pen/line/arrow の回転 (点剛体回転、群中心)
-│   └── ADR-0056-multi-selection-resize.md  # 複数選択の8ハンドル群リサイズ (align op)
+│   ├── ADR-0056-multi-selection-resize.md  # 複数選択の8ハンドル群リサイズ (align op)
+│   └── ADR-0057-rotation-knob-point-geometry.md  # 回転ノブを pen/群選択にも (デルタ角 grot)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
