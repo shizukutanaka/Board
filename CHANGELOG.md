@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.98] - 2026-09-23
+
+**ADR-0040: 共有リンクの長さ警告と生成失敗フィードバック** — `exportToUrl` の
+reject を `.catch(()=>{})` で握り潰して古い URL がフィールドに残っていた問題を
+修正 (失敗時はフィールドクリア + `shareExportFailed` toast)。また 32KB 超の
+共有リンクに「チャットで切り詰められる恐れ、.board エクスポート推奨」の
+警告を追加。
+
 ## [1.7.97] - 2026-09-23
 
 **ADR-0039: 共有リンクペイロードのリソース上限** — `z:` リンクの展開+parse は
