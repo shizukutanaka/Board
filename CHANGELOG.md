@@ -2,6 +2,17 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.81] - 2026-09-23
+
+**ADR-0023: ペン入力の predicted-events 先行インク** — 下書きストロークの末尾に
+`getPredictedEvents()` の最後の予測点への1セグメントを描画し、スタイラスの
+見た目ラグを ~1フレーム短縮。予測点は `_penPred` (render-only のモジュール
+変数) に保持し `draft.pts` を汚染しない — Store/IDB/共有ペイロードに混入
+しない。非対応ブラウザでは完全な no-op。
+
+### Added
+- `getPredictedEvents` による予測インクテール (Chrome; 他ブラウザは無視)
+
 ## [1.7.80] - 2026-09-23
 
 **ADR-0021: 画像キャッシュの O(1) フィンガープリントキー** — `_imgCache` が
