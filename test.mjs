@@ -532,6 +532,11 @@ const checks = [
   ['plain text pastes as text shape', html.includes("Shape.make('text'") && html.includes('text:body')],
   ['svg markup still wins over plain text', html.includes("importSvgText(s);return}")],
   ['i18n has textPasted ja+en', html.includes("textPasted:'テキストを貼り付けました'") && html.includes("textPasted:'Text pasted'")],
+  // v1.7.103: ADR-0045 invite link — offer rides the URL hash
+  ['invite link button wired', html.includes('id="rtcInviteLinkBtn"') && html.includes("'#s='")],
+  ['inviteFromHash consumes #s=', html.includes('inviteFromHash()') && html.includes("h.startsWith('#s=')")],
+  ['invite hash cleared on consume', html.includes("inviteFromHash()") && html.includes("h.startsWith('#s=')") && html.includes("decodeURIComponent(h.slice(3))")],
+  ['i18n has invite-link keys ja+en', html.includes("shareCopyInviteLink:'招待リンクをコピー'") && html.includes("shareCopyInviteLink:'Copy invite link'") && html.includes("inviteLinkOpened:") && html.includes("inviteLinkNoCode:")],
   // v1.6.44: x,y decorative label is aria-hidden
   ['x,y status label is aria-hidden (decorative)', html.includes('<span class="lbl" aria-hidden="true">x,y</span>')],
   // v1.6.45: connection status is aria-live (announces online/offline to SR)
