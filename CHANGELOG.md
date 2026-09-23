@@ -2,6 +2,22 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.114] - 2026-09-23
+
+**ADR-0056: 複数選択リサイズ** — 複数選択時に選択群 bbox に8ハンドルを
+出して一括スケール (Excalidraw / Figma parity)。ADR-0051 の仮想ボックス
+再帰を拡張: `ptr.dragKind='gresize'`、開始 bbox を `vorig` として共有の
+`applyResize` に通すため Shift=縦横比・Alt=中心対称・オブジェクトスナップが
+そのまま効き、`_mapToBox` が各メンバの幾何 (box/pen pts/line 端点) を
+アフィン写像。`resizeSnap` の除外を `state.selection` 化して自己スナップを
+排除。undo は `align` op (`dir:'gresize'`) で一括復元、キャンセルは
+abortGesture/_cancelPointerGesture 両経路で復元。回転メンバ混在時は
+skew を生まないようハンドル非表示。
+
+併せて修正: 複数選択の4隅に描画されていたハンドル表示は初期版から
+ヒット判定未配線の死んだ UI だった — 実際に動く8ハンドルに置き換え。
+README サイズバッジを実測値に同期 (raw ~349KB / gzip ~113KB)。
+
 ## [1.7.113] - 2026-09-23
 
 **ADR-0055: 点ジオメトリの回転 (`ペン・線・矢印`)** — `doRotate` が
