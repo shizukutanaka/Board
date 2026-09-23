@@ -9,7 +9,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
 /* ================================================================
-   Board v1.7.74 — Design Tokens
+   Board v1.7.75 — Design Tokens
    Palette: #00C4CC base, WCAG AAA contrast.
    Typography: OS-native high-quality stack, no AI-cliché fonts.
    ================================================================ */
@@ -751,7 +751,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.74';
+const V='1.7.75';
 const DB_NAME='board', DB_STORE='docs', DB_VER=1;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1781,8 +1781,17 @@ function draw(){
   if(state.showGrid)drawGrid(W,H);
 
   const _view=visibleWorldRect();
-  for(const s of state.shapes){if(s.type==='frame'&&inView(s,_view))drawShape(s)}
-  for(const s of state.shapes){if(s.type!=='frame'&&inView(s,_view))drawShape(s)}
+  // ADR-0016: prefilter by grid rect query on large boards — O(cells in view)
+  // instead of O(n) per frame. inView() still makes the final per-shape call,
+  // so the rendered result is identical.
+  let _vis=null;
+  if(state.shapes.length>40){
+    if(!_grid)_grid=_buildGrid(state.shapes);
+    _vis=_gridRectCandidates(_grid,_view);
+  }
+  const _drawIter=_vis||state.shapes;
+  for(const s of _drawIter){if(s.type==='frame'&&inView(s,_view))drawShape(s)}
+  for(const s of _drawIter){if(s.type!=='frame'&&inView(s,_view))drawShape(s)}
   if(state.draft)drawShape(state.draft);
   if(_sq){const q=_sq.toLowerCase();ctx.setLineDash([]);let _mi=0;for(const s of state.shapes){if(!(s.label||s.text||s.type||'').toLowerCase().includes(q))continue;const b=G.bbox(s),isCur=_sqNav.lastQ===q&&_mi===_sqNav.idx;ctx.strokeStyle=isCur?'#EA580C':'#F97316';ctx.lineWidth=(isCur?5:3)/state.viewport.zoom;ctx.strokeRect(b.x,b.y,b.w,b.h);_mi++;}}
 
@@ -2756,9 +2765,10 @@ function fitToContent(){
 const _GCELL=200;let _grid=null;
 function _invalidateGrid(){_grid=null;_idIndex=null;}   // ADR-0009: id index shares this choke point
 function _buildGrid(shapes){
-  const cells=new Map(),big=[];
-  for(const s of shapes){
-    const b=G.bbox(s);if(!b)continue;
+  const cells=new Map(),big=[],idx=new Map();
+  for(let i=0;i<shapes.length;i++){
+    const s=shapes[i];idx.set(s,i);
+    const b=G.bbox(s);if(!b){big.push(s);continue;}
     const x0=Math.floor(Math.min(b.x,b.x+b.w)/_GCELL),x1=Math.floor(Math.max(b.x,b.x+b.w)/_GCELL);
     const y0=Math.floor(Math.min(b.y,b.y+b.h)/_GCELL),y1=Math.floor(Math.max(b.y,b.y+b.h)/_GCELL);
     if(x1-x0>8||y1-y0>8){big.push(s);continue;}
@@ -2766,7 +2776,22 @@ function _buildGrid(shapes){
       const k=cx+'|'+cy;let bk=cells.get(k);if(!bk){bk=[];cells.set(k,bk);}bk.push(s);
     }
   }
-  return{cells,big};
+  return{cells,big,idx};
+}
+// ADR-0016: rect query — every shape whose cells overlap the view rect (plus one
+// cell of margin for stroke overshoot) is a draw() candidate; inView still decides.
+// Returns a z-ORDERED array so draw() iterates candidates directly — the full
+// state.shapes scan is skipped entirely.
+function _gridRectCandidates(grid,r){
+  const cands=new Set(grid.big);
+  const x0=Math.floor((r.x-_GCELL)/_GCELL),x1=Math.floor((r.x+r.w+_GCELL)/_GCELL);
+  const y0=Math.floor((r.y-_GCELL)/_GCELL),y1=Math.floor((r.y+r.h+_GCELL)/_GCELL);
+  for(let cx=x0;cx<=x1;cx++)for(let cy=y0;cy<=y1;cy++){
+    const bk=grid.cells.get(cx+'|'+cy);if(bk)for(const s of bk)cands.add(s);
+  }
+  const out=[...cands];
+  out.sort((a,b)=>(grid.idx.get(a)|0)-(grid.idx.get(b)|0));
+  return out;
 }
 function _queryGrid(grid,pt){
   const cx=Math.floor(pt.x/_GCELL),cy=Math.floor(pt.y/_GCELL),cands=new Set(grid.big);
@@ -3442,7 +3467,7 @@ window.addEventListener('keydown',e=>{
   else if(k==='g'&&!meta&&e.shiftKey){state.snap=!state.snap;UI.toast(`${t('snap')} ${state.snap?t('on'):t('off')}`)}
   else if(k==='g'&&!meta){state.showGrid=!state.showGrid;invalidate();UI.toast(`${t('grid')} ${state.showGrid?t('on'):t('off')}`)}
   else if(k==='m'&&!meta){UI.toggleMinimap()}
-  else if(e.shiftKey&&k==='1'){e.preventDefault();fitToContent()}
+  else if(e.shiftKey&&(k==='1'||k==='!')){e.preventDefault();fitToContent()}
   else if(e.shiftKey&&!meta&&!e.altKey&&(k==='h'||k==='v')&&state.selection.size){e.preventDefault();doFlip(k)}
   else if(k===','&&!meta&&state.selection.size){e.preventDefault();doRotate(-15)}
   else if(k==='.'&&!meta&&state.selection.size){e.preventDefault();doRotate(15)}

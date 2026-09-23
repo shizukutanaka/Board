@@ -2,6 +2,29 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.75] - 2026-09-23
+
+**FT-14 (ADR-0016): 空間索引を描画パスに拡張** — `draw()` が毎フレーム全シェイプを
+走査していた O(n) 処理を、`pickTop` と同じ均一グリッドのビューポート矩形クエリで
+粗選する2段構成に変更。2000 図形超で顕在化する走査コストを解消。
+
+### Changed
+- `_buildGrid` が `idx`(shape→z位置)を併せて構築し、`_gridRectCandidates` が
+  z順ソート済みの候補配列を返す。`draw()` は候補のみを走査(`_drawIter`)し、
+  `inView()` が最終判定 — 描画結果は従来と完全に同一
+- `G.bbox` を持たないシェイプ・8セル超の巨大シェイプは `big` で常時候補に
+- 小盤面(`state.shapes.length<=40`)は従来通り線形走査(`pickTop` と同閾値)
+
+### Fixed
+- ⇧1 (fitToContent) が US/JIS 配列で一度も発火していなかった — Shift 押下時の
+  `e.key` は `'1'` ではなく `'!'` を返すため。`k==='1'||k==='!'` で両対応
+
+### Performance
+- 走査コスト: 5000 図形(rect+pen 混在)で 2.90ms → 0.004ms / frame
+  (マイクロベンチ ~727×)。`_buildGrid` は変異時に1回のみ(9.75ms)。
+- 実ブラウザ計測(file:// headless Chrome, rAF 計時): 可視描画なし領域で
+  frame() 平均 4.90 → 3.75ms
+
 ## [1.7.74] - 2026-09-23
 
 **FT-10: axe-core による本格自動 a11y 監査を実施し、検出された全違反を修正** —

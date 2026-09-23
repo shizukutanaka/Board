@@ -267,6 +267,9 @@ const checks = [
   ['canvas aria-label is updated dynamically in pickTool', html.includes("Drawing canvas. Tab/Shift+Tab cycles shapes,")],
   // v1.6.11: spatial index for pickTop
   ['spatial grid helpers present', html.includes("function _buildGrid") && html.includes("function _queryGrid")],
+  ['ADR-0016: draw() prefilters via grid rect query on large boards', html.includes("function _gridRectCandidates") && html.includes("_vis=_gridRectCandidates(_grid,_view)") && html.includes("const _drawIter=_vis||state.shapes") && html.includes("for(const s of _drawIter)")],
+  ['ADR-0016: candidates return z-ordered via grid.idx', html.includes("idx=new Map") && html.includes("out.sort((a,b)=>(grid.idx.get(a)|0)-(grid.idx.get(b)|0))")],
+  ['ADR-0016: no-bbox shapes stay always-candidate via big', html.includes("if(!b){big.push(s);continue;}")],
   ['pickTop uses grid for large boards', html.includes("state.shapes.length>40") && html.includes("_buildGrid(state.shapes)")],
   ['grid invalidated on every _apply', html.includes("_apply(op,forward){") && html.includes("_invalidateGrid()")],
   // v1.6.12: keyboard shape creation (a11y)
@@ -274,6 +277,9 @@ const checks = [
   ['Enter creates shape at viewport centre', html.includes("k==='enter'&&!meta&&!e.shiftKey") && html.includes("createShapeKbd()")],
   ['canvas aria-label includes Enter creates hint', html.includes("Enter creates, arrows move, Alt+arrows resize.")],
   ['help grid lists Tab cycle and Enter create/edit', html.includes("['Tab / ⇧Tab',k.cycle]") && html.includes("['Enter',k.create+' / '+t('editLabel')]")],
+  // v1.7.75: ⇧1 must match e.key too — under Shift the digit row reports '!' (US/JIS),
+  // not '1', so a bare k==='1' never fires
+  ['Shift+1 fit shortcut also matches !', html.includes("e.shiftKey&&(k==='1'||k==='!')")],
   // v1.6.13: variable-width pen (velocity-based)
   ['penWidths helper present', html.includes("function penWidths")],
   ['drawPen uses variable width', html.includes("penWidths(p,s.size)") && html.includes("c.lineWidth=(w[i]+w[i+1])/2")],
@@ -1066,7 +1072,7 @@ try {
              getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection,
-             _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
+             _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
@@ -1090,7 +1096,7 @@ try {
           getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection,
-          _buildGrid, _queryGrid, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
+          _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, dashArr, validShape,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
@@ -1443,6 +1449,27 @@ try {
   assert.ok(inView({type:'rect',x:-30,y:-30,w:50,h:50}, cv), 'partially-overlapping shape drawn');
   assert.ok(inView({type:'line',x1:-1000,y1:300,x2:1000,y2:300,size:2}, cv), 'line crossing view drawn');
   console.log('  ✓ inView culls off-screen shapes, keeps overlapping ones');
+
+  // ADR-0016 (FT-14): grid rect query prefilters draw candidates — the set must
+  // contain every in-view shape (+ margin cells) and exclude far-away shapes.
+  {
+    const near = { type:'rect', x:10, y:10, w:50, h:50 };
+    const edge = { type:'rect', x:850, y:620, w:40, h:40 };      // just outside view
+    const far  = { type:'rect', x:9000, y:9000, w:50, h:50 };
+    const hugew = { type:'rect', x:50000, y:50000, w:5000, h:5000 }; // lands in `big`
+    const grid = _buildGrid([near, edge, far, hugew]);
+    const cands = _gridRectCandidates(grid, cv);
+    assert.ok(Array.isArray(cands), 'candidates are a z-ordered array');
+    assert.ok(cands.includes(near), 'grid keeps on-screen shape as candidate');
+    assert.ok(cands.includes(edge), 'grid keeps just-outside shape (margin cell)');
+    assert.ok(!cands.includes(far), 'grid drops far shape');
+    assert.ok(cands.includes(hugew), 'grid keeps oversized shape via big');
+    // z-order is preserved (candidates sorted by index in shapes array)
+    const sA = { type:'rect', x:100, y:100, w:10, h:10 }, sB = { type:'rect', x:120, y:100, w:10, h:10 };
+    const zc = _gridRectCandidates(_buildGrid([sB, sA]), cv);   // inserted B first
+    assert.ok(zc.indexOf(sB) < zc.indexOf(sA), 'candidate order follows shapes array (z)');
+    console.log('  ✓ ADR-0016 _gridRectCandidates: near/edge/big kept, far dropped, z-ordered');
+  }
 
   // text wrapping (sticky notes): pure helper with an injected measure (10px/char)
   const m10 = (t) => t.length * 10;
