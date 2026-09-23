@@ -472,7 +472,7 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
 | 優先 | 項目 | 概要 | 形態 |
 |---|---|---|---|
 | P1 | DOM ミラー a11y | 図形ごとの off-screen DOM ノードで SR ネイティブ対応 | 大型 ADR |
-| P2 | 多ページ | `docs` を複数キー化 + ページ切替 UI + サムネ | ADR + リリース |
+| P2 | ~~多ページ~~ | **対象外** — 2026-07-01 製品判断で scratchpad 選択により除外 (CLAUDE.md「100点への距離」、§3.9)。復活には同判断の明示的な覆しが必要 | 対象外 |
 | P2 | インポート拡張 | `.excalidraw` / SVG / Markdown 取込 | 段階実装 |
 | P2 | コードパス・パリティ監査の継続 | drag/keyboard/remote の機能差を埋める(本リリースで nudge を解消) | 継続監査 |
 | P3 | ~~空間索引(quadtree)~~ | 実装済み — `_grid`/`_queryGrid` が描画・ヒット・ダメージ判定をカバー (ADR-0016/0032) | DONE |
