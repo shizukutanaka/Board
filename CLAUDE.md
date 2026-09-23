@@ -92,7 +92,8 @@ Board/
 │   ├── ADR-0040-share-url-length-feedback.md  # 長い共有リンクの警告 + 生成失敗の可視化
 │   ├── ADR-0041-dom-mirror-a11y.md  # 図形の DOM ミラー (SR ナビゲーション、spec P1)
 │   ├── ADR-0042-svg-import.md  # SVG → Board 図形 (貼付/ドロップ/ピッカー、spec P2)
-│   └── ADR-0043-excalidraw-import.md  # .excalidraw → Board 図形 (拡張子+内容検出、spec P2)
+│   ├── ADR-0043-excalidraw-import.md  # .excalidraw → Board 図形 (拡張子+内容検出、spec P2)
+│   └── ADR-0044-text-paste.md  # OS テキストペースト → text shape (Markdown 平文取込)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

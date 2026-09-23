@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.102] - 2026-09-23
+
+**ADR-0044: テキストのペースト** — OS クリップボードの `text/plain` が
+何も起きなかったギャップを解消。トリム後非空のテキストを viewport 中央に
+`text` shape として貼付 (改行保持、幅は最長行で決定、`PASTE_MAX_CHARS=4000`
+で切り詰め)。優先順位は `image/*` > `<svg` markup > `text/plain`。
+Markdown は構文解釈せず平文として置く (リッチ表現の受け皿がないため)。
+
 ## [1.7.101] - 2026-09-23
 
 **ADR-0043: .excalidraw インポート** — `JSON.parse` で scene を走査し
