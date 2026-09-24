@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.248]
+
+### 修正
+- **付箋チェーンの全タイポグラフィ継承** (ADR-0190)。⌘Enter 連鎖の
+  新付箋が font/lineH/bold/italic/under/strike/valign も引き継ぐ —
+  連続メモの見た目がばらけない。
+
 ## [1.7.247]
 
 ### 追加

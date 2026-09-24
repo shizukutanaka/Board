@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.247';
+const V='1.7.248';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4925,7 +4925,10 @@ function beginText(wp){
 // editor opens (rapid note-taking like Post-it®/FigJam).
 function _stickyChain(s){
   if(s.type!=='sticky'||s.locked)return;
-  const n=Shape.make('sticky',{x:s.x+s.w+16,y:s.y,w:s.w,h:s.h,color:s.color,fontSize:s.fontSize,align:s.align});
+  // ADR-0190: the chain inherits ALL typography — ⌘Enter duplication must
+  // reproduce the note's look, not just size/colour.
+  const n=Shape.make('sticky',{x:s.x+s.w+16,y:s.y,w:s.w,h:s.h,color:s.color,fontSize:s.fontSize,align:s.align,
+    font:s.font,lineH:s.lineH,bold:s.bold,italic:s.italic,under:s.under,strike:s.strike,valign:s.valign});
   const origSel=[...state.selection];
   Store.commit({op:'add',shape:n});
   if(origSel.length)state.history[state.histIdx].origSel=origSel;
