@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.365] - 2026-09-24
+
+### Added
+- リンク付き図形を ⌘+click (Windows/Linux は Ctrl+click) で直接開く
+  (Figma parity、ADR-0314)
+
 ## [1.7.364] - 2026-09-24
 
 ### Added

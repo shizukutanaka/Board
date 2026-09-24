@@ -363,6 +363,7 @@ Board/
 │   ├── ADR-0311-dio-multipage.md  # drawio 複数ページ横並び輸入 (実装済)
 │   ├── ADR-0312-keepsel-helper.md  # origSel 書き戻し `_keepSel` 集約 (実装済)
 │   ├── ADR-0313-dio-link-attr.md  # drawio link 属性往復 (実装済)
+│   ├── ADR-0314-modclick-link.md  # ⌘/Ctrl+click でリンク直接オープン (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

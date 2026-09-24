@@ -721,6 +721,7 @@ const checks = [
   ['svg conn path/label emitters deduped (ADR-0270)', html.includes('const _sp=(d,j)')&&html.includes('_cL();')],
   ['drawio multi-page side-by-side import (ADR-0311)', html.includes("for(const dg of doc.querySelectorAll('diagram'))")],
   ['link badge 🔗 on linked shapes (ADR-0310)', html.includes("c.fillText('🔗',s.x+Math.abs(s.w)-3,s.y+3)")],
+  ['mod+click opens shape link (ADR-0314)', html.includes("navigator.platform)?e.metaKey:e.ctrlKey")],
   ['drawio link attr round-trip (ADR-0313)', html.includes("c.getAttribute('link');if(_lk&&/^https?:\\/\\/")&&html.includes('` link="${esc(s.link)}"`')],
   ['_keepSel() origSel write-back (ADR-0312)', html.includes("const _keepSel=arr=>")],
   ['_selR() origSel restore helper (ADR-0309)', html.includes("const _selR=op=>")],
