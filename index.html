@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.179';
+const V='1.7.180';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -845,7 +845,7 @@ const I18N={
     saved:'保存済み',savedNow:'たった今',savedAgo:'秒前',
     exported:'PNGを書き出しました',exportedSVG:'SVGを書き出しました',exportedBoard:'.boardファイルを保存しました',exportedExc:'.excalidrawファイルを保存しました',loadedBoard:'ボードを読み込みました',
     imagePasted:'画像を貼り付けました',empty:'キャンバスが空',
-    noSelection:'選択なし',alreadySnapped:'既にグリッド上です',styleCopied:'スタイルコピー',stylePasted:'スタイル適用',
+    noSelection:'選択なし',alreadySnapped:'既にグリッド上です',nothingLocked:'ロックされた図形はありません',styleCopied:'スタイルコピー',stylePasted:'スタイル適用',
     selectTwo:'2つ以上選択してください',framed:'フレームで包みました',grouped:'グループ化',noGroup:'グループなし',
     ungrouped:'グループ解除',noFrames:'フレームがありません (F キーで作成)',
     imgBig:'画像が大きすぎます。縮小してください',imgErr:'画像を読み込めませんでした',
@@ -863,7 +863,7 @@ const I18N={
     ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxCurve:'曲線',ctxRouteReset:'ルートをリセット (直線に戻す)',ctxSelContents:'内容を選択',ctxFrameFit:'コンテンツに合わせる',ctxArrowHead:'矢印ヘッド (矢印→丸→シェブロン)',ctxToArrow:'矢印に変換',ctxToLine:'直線に変換',ctxBothEnds:'両端ヘッド',ctxRrect:'角スタイル (角丸→直角)',ctxStickyColor:'付箋の色 (順送り)',ctxToText:'テキストに変換',ctxToSticky:'付箋に変換',ctxTextAlign:'テキスト揃え (左→中央→右)',ctxFillStyle:'塗りスタイル (塗り→ハッチ→斜格子)',
     ctxSelectSameType:'同じ種類を選択',ctxSelectSame:'同色を選択',ctxWrapFrame:'フレームで包む',ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
     ctxSendBackward:'背面へ',ctxSendBack:'最背面へ',
-    ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxLock:'ロック',ctxUnlock:'ロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
+    ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxLock:'ロック',ctxUnlock:'ロック解除',ctxUnlockAll:'全てロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
     canvasHint:'描画キャンバス。Tab/⇧Tab で図形巡回、Enter で作成、矢印で移動、⌥+矢印でリサイズ',
     tools:'ツール',docNameLabel:'ドキュメント名',activePeers:'接続中のピア',expPng:'PNG 書き出し',
     moreExport:'その他の書き出し・読み込み',install:'アプリとしてインストール',style:'スタイル',
@@ -924,7 +924,7 @@ const I18N={
     saved:'saved',savedNow:'just now',savedAgo:'s ago',
     exported:'PNG exported',exportedSVG:'SVG exported',exportedBoard:'Board file saved',exportedExc:'Excalidraw file saved',loadedBoard:'Board loaded',
     imagePasted:'Image pasted',empty:'Canvas is empty',
-    noSelection:'No selection',alreadySnapped:'Already on grid',styleCopied:'Style copied',stylePasted:'Style applied',
+    noSelection:'No selection',alreadySnapped:'Already on grid',nothingLocked:'No locked shapes',styleCopied:'Style copied',stylePasted:'Style applied',
     selectTwo:'Select 2 or more',framed:'Wrapped in frame',grouped:'Grouped',noGroup:'No group',
     ungrouped:'Ungrouped',noFrames:'No frames (press F to create)',
     imgBig:'Image too large — please resize',imgErr:'Image failed to load',
@@ -939,7 +939,7 @@ const I18N={
     ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxCurve:'Curved',ctxRouteReset:'Reset route (straighten)',ctxSelContents:'Select contents',ctxFrameFit:'Fit to contents',ctxArrowHead:'Arrowhead (arrow→dot→open)',ctxToArrow:'Convert to arrow',ctxToLine:'Convert to line',ctxBothEnds:'Arrowheads both ends',ctxRrect:'Corners (round→sharp)',ctxStickyColor:'Sticky colour (cycle)',ctxToText:'Convert to text',ctxToSticky:'Convert to sticky',ctxTextAlign:'Text align (left→center→right)',ctxFillStyle:'Fill style (solid→hatch→cross)',
     ctxSelectSameType:'Select same type',ctxSelectSame:'Select same colour',ctxWrapFrame:'Frame selection',ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
     ctxSendBackward:'Send backward',ctxSendBack:'Send to back',
-    ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxLock:'Lock',ctxUnlock:'Unlock',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
+    ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxLock:'Lock',ctxUnlock:'Unlock',ctxUnlockAll:'Unlock all',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
     canvasHint:'Drawing canvas. Tab/Shift+Tab cycles shapes, Enter creates, arrows move, Alt+arrows resize.',
     tools:'Tools',docNameLabel:'Document name',activePeers:'Active peers',expPng:'Export PNG',
     moreExport:'More export & import options',install:'Install Board as an app',style:'Style',
@@ -5413,6 +5413,19 @@ function doLock(){
   invalidate();Persist.schedule();
   UI.announce(t(lk?'ctxLock':'ctxUnlock'));
 }
+// ADR-0123: unlock every locked shape on the board in one op — boards can
+// accumulate locked shapes across sessions/imports with no bulk way back.
+// Same 'align' lock-dir before/after contract as doLock (single undo + sync).
+function unlockAll(){
+  const locked=state.shapes.filter(s=>s.locked);
+  if(!locked.length){UI.toast(t('nothingLocked'),'warn');return}
+  const before=locked.map(s=>({id:s.id,locked:s.locked??null}));
+  for(const s of locked)s.locked=null;
+  const after=locked.map(s=>({id:s.id,locked:null}));
+  Store._recordCommitted({op:'align',dir:'lock',before,after});
+  invalidate();Persist.schedule();
+  UI.announce(t('ctxUnlockAll'));
+}
 // ADR-0005: replace confidently-recognized pen strokes in the selection with clean shapes
 // (Alt+B). Local-only (not in REMOTE_OPS, like replace/clear) — converting a collaborator's
 // pen stroke to a rectangle behind their back would be confusing, not helpful.
@@ -7182,6 +7195,7 @@ const UI={
       // (the exact "keyboard-only feature" trap FT-06 warned about).
       has&&[...state.selection].some(id=>byId(id)?.type==='pen')&&['ctxBeautify','⌥B',doBeautify],
       has&&[byId([...state.selection][0])?.locked?'ctxUnlock':'ctxLock','',doLock],
+      state.shapes.some(s=>s.locked)&&['ctxUnlockAll','',unlockAll],
       has&&state.selection.size>1&&'sep',
       has&&state.selection.size>1&&['ctxAlignLeft','',()=>doAlign('left')],
       has&&state.selection.size>1&&['ctxAlignCX','',()=>doAlign('cx')],

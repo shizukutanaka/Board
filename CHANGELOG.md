@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.180]
+
+### 追加
+- **全てロック解除** (ADR-0123)。ctx「全てロック解除」でボード上の
+  全ロック形状を一括解除 (`align` op dir:'lock' で単一 undo・同期、
+  選択と独立に動作)。
+
 ## [1.7.179]
 
 ### 追加
