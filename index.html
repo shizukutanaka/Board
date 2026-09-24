@@ -818,7 +818,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.420';
+const V='1.7.421';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -5358,6 +5358,18 @@ function openTextEditor(s,isNew){
     // the global keydown skips input/textarea targets, so these bind locally.
     const mk=ev.key.toLowerCase(),fl={b:'bold',i:'italic',u:'under'}[mk]||(mk==='x'&&ev.shiftKey?'strike':null);
     if((ev.metaKey||ev.ctrlKey)&&fl){_pd(ev);toggleTextFlag(fl)}
+    // ADR-0375: Tab/⇧Tab commits and jumps to the next text/sticky — parity with
+    // the label editor's chain (ADR-0196) and Figma's Tab→next-cell flow.
+    if(ev.key==='Tab'){_pd(ev);
+      const cur=_sh().indexOf(s),dir=ev.shiftKey?-1:1;
+      for(let k=1;k<=_sh().length;k++){
+        const nx=_sh()[(cur+dir*k+_sh().length)%_sh().length];
+        if(nx&&(nx.type==='text'||nx.type==='sticky')&&!nx.locked&&nx.visible!==0){
+          ta.blur();state.selection=new Set([nx.id]);_aS();openTextEditor(nx,false);return;
+        }
+      }
+      ta.blur();
+    }
   });
   auto();
   _teTa=ta;_teVp='';   // ADR-0053: track the live overlay for viewport follow
