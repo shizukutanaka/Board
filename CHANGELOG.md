@@ -2,6 +2,16 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.409] - 2026-09-24
+
+### Added
+- .drawio で curve コネクタの制御点を `<Array>` waypoint として emit、
+  import は単一 waypoint から `s.cbend` を法線逆算で復元 (ADR-0360)
+
+### Fixed
+- drawio import の `s.way` がタプル形式で書き込まれレンダラが
+  NaN 化していた実バグを `{x,y}` オブジェクト形式に修正 (ADR-0361)
+
 ## [1.7.408] - 2026-09-24
 
 ### Added

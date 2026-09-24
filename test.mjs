@@ -9672,6 +9672,17 @@ try {
      assert.ok(/edge="1" parent="g_g1"/.test(xml5),'grouped conn parents the group cell (ADR-0347)');
      assert.ok(/sourcePoint"\/><mxGeometry|x="10" y="10" as="sourcePoint"/.test(xml5),'conn sourcePoint is group-relative (ADR-0347)');
      assert.ok(/x="60" y="60" as="targetPoint"/.test(xml5),'conn targetPoint is group-relative (ADR-0347)');}
+
+    // ADR-0358/0360: elbow corner + curve control points emit as <Array> waypoints
+    {const xml6=boardToDrawio([{id:'c1',type:'arrow',x1:0,y1:0,x2:100,y2:100,elbow:1,stroke:'#000',size:2,opacity:1},
+                               {id:'c2',type:'arrow',x1:0,y1:0,x2:100,y2:0,curve:1,cbend:40,stroke:'#000',size:2,opacity:1}]);
+     assert.ok(/edge="1"[^>]*><mxGeometry[^>]*><mxPoint[^>]*\/><mxPoint[^>]*\/><Array as="points"><mxPoint /.test(xml6.replace(/\n/g,'')),'elbow emits corner waypoints (ADR-0358)');
+     assert.ok(xml6.includes('curved=1'),'curved flag emitted (ADR-0360)');}
+    // ADR-0359: mxGraphModel carries dx/dy/zoom viewport + gridSize
+    {const xml7=boardToDrawio([{id:'r',type:'rect',x:0,y:0,w:10,h:10,stroke:'#000',fill:null,size:2,opacity:1}]);
+     assert.ok(/<mxGraphModel dx="-?\d+" dy="-?\d+"/.test(xml7),'viewport dx/dy emitted (ADR-0359)');
+     assert.ok(/zoom="[\d.]+"/.test(xml7),'viewport zoom emitted (ADR-0359)');
+     assert.ok(xml7.includes('gridSize="20"'),'gridSize matches GRID_SIZE (ADR-0359)');}
      assert.ok(boardToDrawio([{id:'y',type:'rect',x:0,y:0,w:1,h:1,stroke:'#000',fill:null,size:2,opacity:1}]).indexOf('visible="0"')<0,'visible shape carries no visible attr');}
     console.log('  ✓ excalidraw import (element mapping, styles, tombstones, reject paths)');
   }
