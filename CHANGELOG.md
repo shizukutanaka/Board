@@ -2,6 +2,21 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.342] - 2026-09-24
+
+### Fixed
+- drawio `strokeColor=none` (罫線なし) を透明色として輸入し、export 側で
+  `strokeColor=none`/`fillColor=none` を正しく emit — 枠・塗りの透過が
+  往復 (ADR-0290)
+- excalidraw `strokeColor/backgroundColor='transparent'` も同様に
+  不可視化して輸入 (ADR-0290 追補)
+
+## [1.7.341] - 2026-09-24
+
+### Changed
+- `document.getElementById` を `_g()` ヘルパに集約 (raw -1.7KB、
+  ADR-0289)
+
 ## [1.7.340] - 2026-09-24
 
 ### Fixed

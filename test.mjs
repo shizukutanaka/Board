@@ -719,6 +719,9 @@ const checks = [
   ['clipboard image/svg+xml → vector import (ADR-0272)', html.includes("i.type==='image/svg+xml'")],
   ['drawio strokeOpacity/fillOpacity → s.opacity (ADR-0271)', html.includes('+sty.strokeOpacity')],
   ['svg conn path/label emitters deduped (ADR-0270)', html.includes('const _sp=(d,j)')&&html.includes('_cL();')],
+  ['exc transparent stroke/bg import (ADR-0290 追補)', html.includes("o.stroke='transparent'")&&html.includes("o.fill='none'")],
+  ['drawio strokeColor=none → transparent (ADR-0290)', html.includes("'transparent':sty.strokeColor")||html.includes("sty.strokeColor==='none'?'transparent'")],
+  ['_g() getElementById shorthand (ADR-0289)', html.includes("const _g=id=>document.getElementById(id)")],
   ['drawio fillColor=none → transparent fill (ADR-0288)', html.includes("s.fill=sty.fillColor==='none'")&&html.includes("s.fill!=='none'")],
   ['drawio endFill=0 → open head (ADR-0287)', html.includes("endFill==='0'&&sty.endArrow")],
   ['startHead separate vocab round-trip (ADR-0286)', html.includes("s.startHead||s.head")&&html.includes("startArrow='+(s.startHead")],
@@ -798,8 +801,8 @@ const checks = [
   // v1.6.45: zoom badge has role=group for semantic grouping
   ['zoom-badge has role=group and aria-label', html.includes('class="zoom-badge" role="group" aria-label="Zoom controls"')],
   // v1.6.52: dialog focus management (WCAG 2.4.3)
-  ['toggleHelp moves focus to helpClose on open', html.includes("this._captureFocus();document.getElementById('helpClose').focus()")],
-  ['openShare moves focus to shareClose', html.includes("document.getElementById('shareClose').focus()")],
+  ['toggleHelp moves focus to helpClose on open', html.includes("this._captureFocus();_g('helpClose').focus()")],
+  ['openShare moves focus to shareClose', html.includes("_g('shareClose').focus()")],
   ['closeShare restores focus to the invoker', html.includes("this._restoreFocus()")],
   // v1.6.56: custom color pickers (native <input type=color>) for stroke and fill
   ['custom stroke color picker present', html.includes('class="swatch cp" data-cp="stroke"')],
@@ -976,7 +979,7 @@ const checks = [
   ['theme toggle: applyTheme/toggleTheme/refreshThemeBtn wired, boot restores persisted mode',
     html.includes("function applyTheme(mode){") && html.includes("toggleTheme(){")
     && html.includes("refreshThemeBtn(){") && html.includes("applyTheme(UI._themeMode());UI.refreshThemeBtn();")
-    && html.includes("document.getElementById('btnTheme').onclick=()=>UI.toggleTheme();")],
+    && html.includes("_g('btnTheme').onclick=()=>UI.toggleTheme();")],
   ['theme toggle: existing data-theme=light/dark CSS selectors are finally reachable from JS',
     html.includes("document.documentElement.dataset.theme=mode") && html.includes(':root[data-theme=light]') && html.includes(':root[data-theme=dark]')],
   // v1.7.66 (ADR-0013, FT-19)
@@ -991,7 +994,7 @@ const checks = [
     && html.includes("if(_savedLang==='ja'||_savedLang==='en')LANG=_savedLang;")],
   ['language toggle: toggleLang resyncs applyI18n/fillHelp/updateOnline/search-box/canvas, wired to btnLang',
     html.includes('toggleLang(){') && html.includes('UI.applyI18n();') && html.includes('UI.fillHelp();')
-    && html.includes("document.getElementById('btnLang').onclick=()=>UI.toggleLang();")],
+    && html.includes("_g('btnLang').onclick=()=>UI.toggleLang();")],
   // v1.7.68 (deep-audit fix): ADR-0002's per-property LWW guard against undo clobbering
   // a newer remote write was implemented only in the 'upd' case; style/resize/align and
   // group/ungroup shared the forward stamping (_stampWrites) but not the reverse guard.
