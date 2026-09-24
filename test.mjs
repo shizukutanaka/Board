@@ -555,7 +555,7 @@ const checks = [
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
   ['service worker purges stale caches', html.includes("caches.keys()") && html.includes("k!==C")],
   // v1.6.20: fourth audit pass
-  ['drawShape opacity uses nullish coalescing (opacity=0 invisible, not opaque)', html.includes('c.globalAlpha=s.opacity??1')],
+  ['drawShape opacity uses nullish coalescing (opacity=0 invisible, not opaque)', html.includes('c.globalAlpha=_oP(s)??1')],
   ['pointercancel restores in-progress resize/move shapes', html.includes("ptr.dragKind==='resize'&&ptr.resizeOrig")],
   ['frame label Escape removes blur listener before cancelling', html.includes("inp.removeEventListener('blur',commit)")],
   ['context menu items have role=menuitem (WCAG 4.1.2)', html.includes("_sa(b,'role','menuitem')")],
@@ -802,7 +802,7 @@ const checks = [
   ['excalidraw conn label ↔ s.label (ADR-0266)', html.includes("_conn(p.type)")&&html.includes('boundElements=')],
   ['excalidraw elbowed ↔ s.elbow (ADR-0265)', html.includes('if(e.elbowed)s.elbow=1')&&html.includes('elbowed:true')],
   ['drawio edge mxGeometry@x ↔ s.labelPos (ADR-0264)', html.includes("s.labelPos*2-1")&&html.includes("_ga(g,'x')")],
-  ['drawio edge opacity export (ADR-0262)', html.includes('_rnd(s.opacity*100)')],
+  ['drawio edge opacity export (ADR-0262)', html.includes('_rnd(_oP(s)*100)')],
   ['drawio rotation= ↔ s.rotate on vertices (ADR-0261)', html.includes("rotation='+_rnd(_rt(s))")&&html.includes("+sty.rotation)s.rotate")],
   ['drawio flipH/flipV ↔ s.flip bitmask (ADR-0260)', html.includes("r+='flipH=1;'")&&html.includes("sty.flipH==='1'")],
   ['drawio shape=image round-trips s.dataUrl (ADR-0259)', html.includes("sty+='shape=image;'")&&html.includes("sty+='image='+_du(s)")&&html.includes("_im[1].slice(0,25_000_000)")],

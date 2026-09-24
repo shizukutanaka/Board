@@ -816,7 +816,7 @@ const _frameOf=(sel,ok)=>{const m=_mP();
 const _scl=()=>_sl().clear(),_sad=id=>_sl().add(id),_sdl=id=>_sl().delete(id);   // ADR-0419: selection Set-mutation shorthands
 const _selN=()=>_sl().size;   // ADR-0334
 const _nS=()=>_sh().length;   // ADR-0425
-const _sv=s=>s.visible!==0,_lk=s=>s.locked,_hd=s=>s.visible===0,_fS=s=>s.fontSize,_wh=(e,w,ht)=>{e.width=w;e.height=ht},_sk=s=>s.stroke,_fi=s=>s.fill,_lb=s=>s.label,_rt=s=>s.rotate,_du=s=>s.dataUrl,_gi=s=>s.groupId;   // ADR-0425/0432/0433
+const _sv=s=>s.visible!==0,_lk=s=>s.locked,_hd=s=>s.visible===0,_fS=s=>s.fontSize,_wh=(e,w,ht)=>{e.width=w;e.height=ht},_sk=s=>s.stroke,_fi=s=>s.fill,_lb=s=>s.label,_rt=s=>s.rotate,_du=s=>s.dataUrl,_gi=s=>s.groupId,_oP=s=>s.opacity,_cv=()=>_ce('canvas');   // ADR-0425/0432/0433
 const _fin=Number.isFinite;   // ADR-0334
 const _min=Math.min,_max=Math.max,_abs=Math.abs;   // ADR-0337
 const _ga=(e,n)=>e.getAttribute(n),_sa=(e,n,v)=>e.setAttribute(n,v),_ap=(p,c)=>p.appendChild(c),_AL='aria-label',_AP='aria-pressed';   // ADR-0340/0392/0394/0399
@@ -851,7 +851,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.473';
+const V='1.7.474';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2028,7 +2028,7 @@ function _penRender(s,e,R){
     return null;
   }
   _penCachePx-=e.px||0;
-  const cv=_ce('canvas');_wh(cv,w,h);
+  const cv=_cv();_wh(cv,w,h);
   const cc=cv.getContext('2d');
   cc.scale(R,R);cc.translate(-e.bx,-e.by);
   drawPen(s,cc);
@@ -2138,7 +2138,7 @@ function _inkRebuild(s,d){
     d.bx=_rnd((d.bx-_vp().x)*zr)/zr+_vp().x;
     d.by=_rnd((d.by-_vp().y)*zr)/zr+_vp().y;
   }
-  d.cv=_ce('canvas');
+  d.cv=_cv();
   d.cv.width=_max(2,_ceil(d.bw*R));d.cv.height=_max(2,_ceil(d.bh*R));
   d.c2=d.cv.getContext('2d');
   d.c2.setTransform(R,0,0,R,-d.bx*R,-d.by*R);
@@ -2160,7 +2160,7 @@ function _inkGrow(d,pad){
     mnx=_rnd((mnx-_vp().x)*zr)/zr+_vp().x;
     mny=_rnd((mny-_vp().y)*zr)/zr+_vp().y;
   }
-  const ncv=_ce('canvas');
+  const ncv=_cv();
   _wh(ncv,_max(2,_ceil((mxx-mnx)*d.R)),_max(2,_ceil((mxy-mny)*d.R)));
   const n2=ncv.getContext('2d');
   n2.drawImage(d.cv,(d.bx-mnx)*d.R,(d.by-mny)*d.R);
@@ -2835,7 +2835,7 @@ function _drawConnLabel(s,c){
 function drawShape(s,c){
   if(_hd(s))return;                                   // ADR-0137
   c=c||ctx;
-  c.globalAlpha=s.opacity??1;c.letterSpacing=(s.spacing||0)+'px';   // ADR-0205
+  c.globalAlpha=_oP(s)??1;c.letterSpacing=(s.spacing||0)+'px';   // ADR-0205
   c.lineCap='round';c.lineJoin='round';
   c.strokeStyle=_sk(s)||_IK;
   c.lineWidth=s.size||1;
@@ -2903,7 +2903,7 @@ function drawShape(s,c){
       // Frame: thin labeled border, transparent so content shows through
       const r=4;
       c.save();
-      c.globalAlpha=(s.opacity??1)*0.9;
+      c.globalAlpha=(_oP(s)??1)*0.9;
       // ADR-0175: _fi(s) tints the frame (was hard-coded translucent);
       // frames draw in the first pass so contents still render on top.
       c.fillStyle=_fi(s)&&_fi(s)!=='none'?_fi(s):'rgba(248,250,252,0.6)';   // ADR-0288
@@ -4389,7 +4389,7 @@ function _imgImportFile(f,cb){
       const nw=img.width,nh=img.height;
       if(nw>IMG_IMPORT_MAX_DIM||nh>IMG_IMPORT_MAX_DIM){
         const r=_min(IMG_IMPORT_MAX_DIM/nw,IMG_IMPORT_MAX_DIM/nh);
-        const cv=_ce('canvas');
+        const cv=_cv();
         _wh(cv,_max(1,_rnd(nw*r)),_max(1,_rnd(nh*r)));
         cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
         const wu=cv.toDataURL('image/webp',0.85);
@@ -4593,7 +4593,7 @@ let _wheelZoomEnd=0;
 function _pinchSnapNow(){
   if(!_pinchSnap){
     const v=_vp();
-    _pinchSnap=_ce('canvas');
+    _pinchSnap=_cv();
     _wh(_pinchSnap,canvas.width,canvas.height);
     _pinchSnap.getContext('2d').drawImage(canvas,0,0);
     _pinchVp={x:v.x,y:v.y,zoom:v.zoom};
@@ -6255,7 +6255,7 @@ function _renderPngBlob(shapes,cb,desired){
   if(!b){_w(t(_EM));return}
   const pad=32;
   const w=_ceil(b.w+pad*2),h=_ceil(b.h+pad*2);
-  const off=_ce('canvas');
+  const off=_cv();
   const scale=exportScale(w,h,desired||2);
   _wh(off,w*scale,h*scale);
   const oc=off.getContext('2d');
@@ -6287,7 +6287,7 @@ function exportViewportPNG(scale){
   const view={x:v.x,y:v.y,w:r.width/v.zoom,h:r.height/v.zoom};
   const shapes=_sh().filter(s=>inView(s,view));
   if(!shapes.length){_w(t(_EM));return}
-  const off=_ce('canvas');
+  const off=_cv();
   const sc=exportScale(view.w,view.h,scale||2);
   _wh(off,_ceil(view.w*sc),_ceil(view.h*sc));
   const oc=off.getContext('2d');
@@ -6357,7 +6357,7 @@ function exportPDF(){
   if(!_nS()){_w(t(_EM));return}
   const b=_bA(_sh());if(!b)return;
   const pad=32,W=_ceil(b.w+pad*2),H=_ceil(b.h+pad*2),dpr=exportScale(W,H,_dpr()||1);
-  let off;try{off=new OffscreenCanvas(W*dpr,H*dpr)}catch(_){off=_ce('canvas');_wh(off,W*dpr,H*dpr)}
+  let off;try{off=new OffscreenCanvas(W*dpr,H*dpr)}catch(_){off=_cv();_wh(off,W*dpr,H*dpr)}
   const oc=off.getContext('2d');
   oc.fillStyle=_p()||'#fff';oc.fillRect(0,0,W*dpr,H*dpr);
   oc.setTransform(dpr,0,0,dpr,(-b.x+pad)*dpr,(-b.y+pad)*dpr);
@@ -6402,7 +6402,7 @@ function excScene(shapes){
     backgroundColor:!_fi(s)||s.fill==='none'?_TR:_fi(s),   // ADR-0290
     fillStyle:!_fi(s)?_TR:s.fstyle==='hatch'?'hachure':s.fstyle==='cross'?'cross-hatch':'solid',   // ADR-0231
     strokeWidth:s.size||2,strokeStyle:s.dash===1?'dashed':s.dash===2?'dotted':'solid',
-    roughness:0,opacity:_rnd((s.opacity==null?1:s.opacity)*100),
+    roughness:0,opacity:_rnd((_oP(s)==null?1:_oP(s))*100),
     angle:(_rt(s)||0)*_PI/180,seed:0,version:1,versionNonce:0,
     scale:[s.flip&1?-1:1,s.flip&2?-1:1],                                            // ADR-0276
     isDeleted:false,boundElements:null,updated:0,link:s.link||null,locked:!!_lk(s)},over);   // ADR-0241
@@ -6520,7 +6520,7 @@ function _dioStyEmit(s,edge){
   let r='';
   if(s.size)r+='strokeWidth='+s.size+';';
   if(s.dash)r+='dashed=1;'+(s.dash===2?'dashPattern=1 1;':'');   // ADR-0255
-  if(s.opacity!=null&&s.opacity<1)r+='opacity='+_rnd(s.opacity*100)+';';
+  if(_oP(s)!=null&&_oP(s)<1)r+='opacity='+_rnd(_oP(s)*100)+';';
   if(s.shadow)r+='shadow=1;';                                    // ADR-0246
   if(s.flip&1)r+='flipH=1;';if(s.flip&2)r+='flipV=1;';          // ADR-0260
   if(s.spacing)r+='letterSpacing='+s.spacing+';';                // ADR-0284
@@ -7299,8 +7299,8 @@ function buildSVG(shapes,paper){
     const X=_num(s.x),Y=_num(s.y),W=_num(s.w),H=_num(s.h);
     const _e=_cE(s);
     const X1=_num(_e.x1),Y1=_num(_e.y1),X2=_num(_e.x2),Y2=_num(_e.y2);
-    const SZ=_num(s.size),opv=_num(s.opacity);
-    const a=(s.opacity!=null&&opv<1)?` opacity="${opv}"`:'';
+    const SZ=_num(s.size),opv=_num(_oP(s));
+    const a=(_oP(s)!=null&&opv<1)?` opacity="${opv}"`:'';
     const stroke=_esc(_sk(s)||'#000');
     const _dsh=dashArr(s.dash,SZ);
     const dA=_dsh.length?` stroke-dasharray="${_dsh.map(n=>_rnd(n*10)/10).join(' ')}"`:'';
@@ -7476,11 +7476,11 @@ function buildSVG(shapes,paper){
       case 'frame':{
         const fr=_min(4,W/10,H/10);
         const clr=_esc(_sk(s)||'#00C4CC');
-        // drawShape always renders frames at (s.opacity??1)*0.9 and falls back to the
+        // drawShape always renders frames at (_oP(s)??1)*0.9 and falls back to the
         // literal label 'Frame' when unlabeled — both were missing here, so an unlabeled
         // or default-opacity frame rendered wrong (fully opaque, unlabeled) only in SVG
         // export, not canvas/PNG/PDF (deep-audit fix).
-        const fa=` opacity="${(s.opacity==null?1:_num(s.opacity))*0.9}"`;
+        const fa=` opacity="${(_oP(s)==null?1:_num(_oP(s)))*0.9}"`;
         els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${fr}" fill="${_fi(s)||'rgba(248,250,252,0.6)'}" stroke="${clr}" stroke-width="${SZ||1.5}"${dA}${fa}${rT}/>`);   // ADR-0178
         const alF2=s.align||'left',txF=alF2==='right'?X+ox+W-6:alF2==='center'?X+ox+W/2:X+ox+6;   // ADR-0197
         const ancF=alF2==='right'?' text-anchor="end"':alF2==='center'?' text-anchor="middle"':'';
@@ -9674,7 +9674,7 @@ const Minimap=(()=>{
   let _scene=null,_sceneVer=-1,_sc=0,_ox=0,_oy=0;
   function _renderScene(){
     _sceneVer=_gridVer;
-    if(!_scene){_scene=_ce('canvas');_wh(_scene,W,H);}
+    if(!_scene){_scene=_cv();_wh(_scene,W,H);}
     const sx=_scene.getContext('2d');
     sx.clearRect(0,0,W,H);
     const shapes=_sh();
@@ -9686,7 +9686,7 @@ const Minimap=(()=>{
     _sc=sc;_ox=ox;_oy=oy;
     for(const s of shapes){
       if(!s||s.opacity===0)continue;
-      sx.globalAlpha=(s.opacity??1)*0.8;
+      sx.globalAlpha=(_oP(s)??1)*0.8;
       sx.fillStyle=_fi(s)&&_fi(s)!=='none'?_fi(s):_TR;   // ADR-0288
       sx.strokeStyle=_sk(s)||_gC('--ink');
       sx.lineWidth=_max(0.5,(s.size||1)*sc);
