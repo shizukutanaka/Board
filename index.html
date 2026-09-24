@@ -781,7 +781,7 @@ const _c01=v=>_min(1,_max(0,v));   // ADR-0295
 const _conn=t=>t==='line'||t==='arrow';   // ADR-0297
 const _selAny=f=>_selIds().some(id=>{const s=byId(id);return s&&f(s)});   // ADR-0302
 const _selConnL=()=>_selAny(s=>(_conn(s.type))&&!_lk(s));                    // ADR-0415: 6 ctx-menu sites
-const _selTxtL=()=>_selAny(s=>(s.type==='text'||s.type==='sticky'||s.type==='frame'||_lb(s))&&!_lk(s));   // ADR-0415: text-capable unlocked
+const _selTxtL=()=>_selAny(s=>(_TS.has(s.type)||s.type==='frame'||_lb(s))&&!_lk(s));   // ADR-0415: text-capable unlocked
 const _selArrowL=()=>_selAny(s=>s.type==='arrow'&&!_lk(s));                  // ADR-0415
 const _forSel=f=>{for(const id of _sl()){const s=byId(id);if(s)f(s,id)}};   // ADR-0303
 const _csh=(s,c)=>{if(_sh2(s)){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=10;c.shadowOffsetY=3}};   // ADR-0306
@@ -816,7 +816,7 @@ const _frameOf=(sel,ok)=>{const m=_mP();
 const _scl=()=>_sl().clear(),_sad=id=>_sl().add(id),_sdl=id=>_sl().delete(id);   // ADR-0419: selection Set-mutation shorthands
 const _selN=()=>_sl().size;   // ADR-0334
 const _nS=()=>_sh().length;   // ADR-0425
-const _sv=s=>s.visible!==0,_lk=s=>s.locked,_hd=s=>s.visible===0,_fS=s=>s.fontSize,_wh=(e,w,ht)=>{e.width=w;e.height=ht},_sk=s=>s.stroke,_fi=s=>s.fill,_lb=s=>s.label,_rt=s=>s.rotate,_du=s=>s.dataUrl,_gi=s=>s.groupId,_oP=s=>s.opacity,_lP=s=>s.labelPos,_sp=s=>s.spacing,_el=s=>s.elbow,_va=s=>s.valign,_cv=()=>_ce('canvas'),_g2=c=>c.getContext('2d'),_ln=x=>x.length;   // ADR-0425/../0447/0432/0433
+const _sv=s=>s.visible!==0,_lk=s=>s.locked,_hd=s=>s.visible===0,_fS=s=>s.fontSize,_wh=(e,w,ht)=>{e.width=w;e.height=ht},_sk=s=>s.stroke,_fi=s=>s.fill,_lb=s=>s.label,_rt=s=>s.rotate,_du=s=>s.dataUrl,_gi=s=>s.groupId,_oP=s=>s.opacity,_lP=s=>s.labelPos,_sp=s=>s.spacing,_el=s=>s.elbow,_va=s=>s.valign,_cv=()=>_ce('canvas'),_g2=c=>c.getContext('2d'),_ln=x=>x.length;   // ADR-0425/../0447
 const _fin=Number.isFinite;   // ADR-0334
 const _min=Math.min,_max=Math.max,_abs=Math.abs;   // ADR-0337
 const _ga=(e,n)=>e.getAttribute(n),_sa=(e,n,v)=>e.setAttribute(n,v),_ap=(p,c)=>p.appendChild(c),_AL='aria-label',_AP='aria-pressed';   // ADR-0340/0392/0394/0399
@@ -828,7 +828,7 @@ const _on=(e,t,f,o)=>e.addEventListener(t,f,o);                          // ADR-
 const _vp=()=>state.viewport,_vpS=()=>({x:+_vp().x.toFixed(2),y:+_vp().y.toFixed(2),zoom:+_vp().zoom.toFixed(4)});                                              // ADR-0362: live-read (tests reassign the object)
 const _pi=()=>state.peerId,_ro=()=>state.readout,_gd=()=>state.guides,_cl=()=>state.clipboard,_bb=s=>G.bbox(s),_bA=s=>G.bboxAll(s),_oa=Object.assign;   // ADR-0378
 const _sO=()=>state.seenOps,_la=()=>state.lasso,_mq=()=>state.marquee,_dd=()=>state.dupDelta,_w2=p=>G.w2s(p),_s2=p=>G.s2w(p),_cE=connEnds;   // ADR-0382
-const _dpr=()=>window.devicePixelRatio,_iA=Array.isArray,_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log,_rAF=requestAnimationFrame,_pF=parseFloat,_db=document.body,_de=document.documentElement,_wO=window.open,_lg=k=>localStorage.getItem(k),_ls=(k,v)=>localStorage.setItem(k,v),_mP=a=>new Map(a),_sT=a=>new Set(a),_eU=encodeURIComponent,_dU=decodeURIComponent,_un='undefined',_AU='arrowup',_AD='arrowdown',_AL2='arrowleft',_AR2='arrowright',_ES='escape',_EN='enter',_TB='tab',_IK='#0F172A',_YW='#FEF08A';   // ADR-0384/0386/0391/0395/0397
+const _dpr=()=>window.devicePixelRatio,_iA=Array.isArray,_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log,_rAF=requestAnimationFrame,_pF=parseFloat,_db=document.body,_de=document.documentElement,_wO=window.open,_lg=k=>localStorage.getItem(k),_ls=(k,v)=>localStorage.setItem(k,v),_mP=a=>new Map(a),_sT=a=>new Set(a),_eU=encodeURIComponent,_dU=decodeURIComponent,_un='undefined',_AU='arrowup',_AD='arrowdown',_AL2='arrowleft',_AR2='arrowright',_ES='escape',_EN='enter',_TB='tab',_IK='#0F172A',_YW='#FEF08A',_BOX=_sT(['rect','ellipse','diamond']),_BX4=_sT([..._BOX,'sticky']),_BOXF=_sT([..._BOX,'frame','sticky']),_HF4=_sT([..._BOX,'frame']),_RD=_sT(['rect','diamond']),_RDI=_sT([..._RD,'image']),_D6=_sT([..._BOX,'frame','image']),_SH5=_sT([..._BOX,'image','text']),_TS=_sT(['text','sticky']),_TSF=_sT([..._TS,'frame']);   // ADR-0384/../0397/0453
 const _sh=()=>state.shapes;                                                // ADR-0364
 const _sl=()=>state.selection;
 const _ss=ids=>{state.selection=_sT(ids)};   // ADR-0415: selection-set writes (18 sites)
@@ -851,7 +851,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.487';
+const V='1.7.488';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1941,7 +1941,7 @@ const Shape={
       size:_st().size,opacity:_st().opacity,dash:_st().dash||0};
     // ADR-0181: last-used per-type props persist to the next shape of that
     // type (same rule as _st()'s stroke/fill/size — ADR-0180 pattern).
-    if((type==='text'||type==='sticky'||type==='frame')&&_st().font!=null)base.font=_st().font;   // ADR-0188
+    if((_TSF.has(type))&&_st().font!=null)base.font=_st().font;   // ADR-0188
     if(type==='arrow'&&_st().head!=null)base.head=_st().head;
     if(type==='arrow'&&_st().start!=null)base.start=_st().start;   // ADR-0185
     if(type==='arrow'&&_st().startHead!=null)base.startHead=_st().startHead;   // ADR-0293
@@ -1949,11 +1949,11 @@ const Shape={
       if(_st().elbow)base.elbow=_st().elbow;
       if(_st().curve)base.curve=_st().curve;}
     // ADR-0184: same last-used rule for corner radius / hatch / text align.
-    if((type==='rect'||type==='diamond'||type==='image')&&_st().r!=null)base.r=_st().r;
-    if((type==='rect'||type==='diamond'||type==='image')&&_st().shadow!=null)base.shadow=_st().shadow;   // ADR-0194
-    if((type==='rect'||type==='diamond')&&_st().fstyle)base.fstyle=_st().fstyle;
+    if((_RDI.has(type))&&_st().r!=null)base.r=_st().r;
+    if((_RDI.has(type))&&_st().shadow!=null)base.shadow=_st().shadow;   // ADR-0194
+    if((_RD.has(type))&&_st().fstyle)base.fstyle=_st().fstyle;
     if((type==='text'||type==='sticky')&&_st().align!=null)base.align=_st().align;
-    if((type==='rect'||type==='ellipse'||type==='diamond'||type==='sticky')&&_st().valign!=null)base.valign=_st().valign;   // ADR-0417
+    if((_BX4.has(type))&&_st().valign!=null)base.valign=_st().valign;   // ADR-0417
     if((type==='text'||type==='sticky')&&_st().lineH!=null)base.lineH=_st().lineH;   // ADR-0189
     if((type==='text'||type==='sticky')&&_st().spacing!=null)base.spacing=_st().spacing;   // ADR-0205
     return _oa(base,extras);
@@ -2834,7 +2834,7 @@ function drawShape(s,c){
   c.lineCap='round';c.lineJoin='round';
   c.strokeStyle=_sk(s)||_IK;
   c.lineWidth=s.size||1;
-  c.setLineDash((s.dash&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond'||_conn(s.type)||s.type==='frame'||s.type==='image'))?dashArr(s.dash,s.size):[]);   // ADR-0178
+  c.setLineDash((s.dash&&(_D6.has(s.type)||_conn(s.type)))?dashArr(s.dash,s.size):[]);   // ADR-0178
   if(_fi(s)&&_fi(s)!=='none'){c.fillStyle=_fi(s)}   // ADR-0288
   const _rot=shapeRot(s);
   if(_rot){const _cx=s.x+s.w/2,_cy=s.y+s.h/2;c.save();c.translate(_cx,_cy);c.rotate(_rot*_PI/180);c.translate(-_cx,-_cy);}
@@ -4276,7 +4276,7 @@ _on(canvas,'dblclick',e=>{
 // recomputable on every viewport change so the input rides the shape.
 function _lblAnchor(hit){
   const r=_cbr();
-  if(hit.type==='frame'||hit.type==='rect'||hit.type==='ellipse'||hit.type==='diamond'){   // ADR-0081
+  if(_HF4.has(hit.type)){   // ADR-0081
     const isFrame=hit.type==='frame';
     const sp=_w2(isFrame?{x:hit.x,y:hit.y}:{x:hit.x+hit.w/2,y:hit.y+hit.h/2});
     return {left:r.left+sp.x+(isFrame?6:-40),top:r.top+sp.y+(isFrame?-24:-12),bold:isFrame};
@@ -6604,7 +6604,7 @@ function drawioToShapes(txt){
     if(sty.rounded==='1'&&s.w!=null)s.r=8;
     if(sty.fillColor)s.fill=sty.fillColor==='none'?'none':sty.fillColor;   // ADR-0288
     _dioStyApply(s,sty,_hid);                                            // ADR-0258
-    if(sty.fontColor&&sty.fontColor!=='none'&&(s.type==='text'||s.type==='sticky'||_lb(s)))s.stroke=sty.fontColor;   // ADR-0247/0281
+    if(sty.fontColor&&sty.fontColor!=='none'&&(_TS.has(s.type)||_lb(s)))s.stroke=sty.fontColor;   // ADR-0247/0281
     if(sty.fontFamily&&s.type!=='image'){const ff=_lc(sty.fontFamily);
       if(/mono|courier|consol|cascadia|menlo|jetbrains/.test(ff))s.font='mono';
       else if(/serif|times|georgia|garamond|palatino|book/.test(ff))s.font='serif'}   // ADR-0253
@@ -8429,6 +8429,9 @@ _on(window,'beforeunload',e=>{
 });
 // Mobile-reliable durability flush — see Persist.flushIfHidden for context.
 _on(document,'visibilitychange',()=>Persist.flushIfHidden(document.visibilityState));
+// pagehide is iOS Safari's last reliable signal (visibilitychange can be skipped on
+// swipe-away / frozen-tab eviction); route it through the same tested flush.
+_on(window,'pagehide',()=>Persist.flushIfHidden('hidden'));   // ADR-0453
 
 // ====================== UI ======================
 const UI={
@@ -8563,13 +8566,13 @@ const UI={
       has&&_selTxtL()&&['ctxTextAlign','',cycleTextAlign],
       has&&_selTxtL()&&['ctxFont','',cycleFont],
       has&&_selAny(s=>!_lk(s))&&['ctxOpacity','0-9',cycleOpacity],   // ADR-0174
-      has&&_selAny(s=>(s.type==='rect'||s.type==='ellipse'||s.type==='diamond'||s.type==='sticky'||(s.type==='image'&&!!_lb(s)))&&!_lk(s))&&['ctxVAlign','',cycleVAlign],   // ADR-0179   // ADR-0159
-      has&&_selAny(s=>(s.type==='text'||s.type==='sticky'||_lb(s))&&!_lk(s))&&['ctxLineH','',cycleLineH],
+      has&&_selAny(s=>(_BX4.has(s.type)||(s.type==='image'&&!!_lb(s)))&&!_lk(s))&&['ctxVAlign','',cycleVAlign],   // ADR-0179   // ADR-0159
+      has&&_selAny(s=>(_TS.has(s.type)||_lb(s))&&!_lk(s))&&['ctxLineH','',cycleLineH],
       has&&_selTxtL()&&['ctxSpacing','',cycleSpacing],
       has&&_selAny(s=>s.type==='text'&&!_lk(s))&&['ctxWrap','',toggleWrap],
-      has&&_selAny(s=>(s.type==='text'||s.type==='sticky')&&!_lk(s))&&[_selAny(s=>s.type==='sticky'&&!_lk(s))?'ctxToText':'ctxToSticky','',toggleStickyText],
+      has&&_selAny(s=>(_TS.has(s.type))&&!_lk(s))&&[_selAny(s=>s.type==='sticky'&&!_lk(s))?'ctxToText':'ctxToSticky','',toggleStickyText],
       has&&_selAny(s=>s.type==='sticky'&&!_lk(s))&&['ctxStickyColor','',cycleStickyColor],
-      has&&_selAny(s=>(s.type==='rect'||s.type==='ellipse'||s.type==='diamond')&&!_lk(s))&&['ctxFillStyle','',cycleFillStyle],
+      has&&_selAny(s=>(_BOX.has(s.type))&&!_lk(s))&&['ctxFillStyle','',cycleFillStyle],
       has&&_selArrowL()&&['ctxBothEnds','',toggleBothEnds],
       has&&_selConnL()&&[_selAny(s=>s.type==='line'&&!_lk(s))?'ctxToArrow':'ctxToLine','',toggleLineArrow],
       has&&_selArrowL()&&['ctxArrowHead','',cycleArrowHead],
@@ -8596,8 +8599,8 @@ const UI={
       has&&['ctxFlipH','⇧H',()=>doFlip('h')],
       has&&['ctxFlipV','⇧V',()=>doFlip('v')],
       has&&['ctxRotate90','⇧R',()=>doRotate(90)],
-      has&&_selAny(s=>((s.type==='rect'||s.type==='diamond'||s.type==='image')||((_conn(s.type))&&_el(s)))&&!_lk(s))&&['ctxCorner','',cycleCorner],
-      has&&_selAny(s=>(s.type==='rect'||s.type==='ellipse'||s.type==='diamond'||s.type==='image'||s.type==='text'||_conn(s.type))&&!_lk(s))&&['ctxShadow','',toggleShadow],
+      has&&_selAny(s=>((_RDI.has(s.type))||((_conn(s.type))&&_el(s)))&&!_lk(s))&&['ctxCorner','',cycleCorner],
+      has&&_selAny(s=>(_SH5.has(s.type)||_conn(s.type))&&!_lk(s))&&['ctxShadow','',toggleShadow],
       has&&['ctxHide','⌘⇧H',hideSelection],
       has&&_selAny(s=>(_conn(s.type))&&!_lk(s)&&(s.a||s.b))&&['ctxPinAnchor','',pinAnchor],   // ADR-0213
       has&&_selAny(s=>(_conn(s.type))&&!_lk(s)&&(s.a||s.b))&&['ctxUnbind','',unbindSelection],   // ADR-0157
@@ -9442,7 +9445,7 @@ function swapFillStroke(){
   const before=[],after=[];
   _forSel((s,id)=>{if(_lk(s))return;
     const fk=s.type==='sticky'?'color':'fill';
-    if(!(s.type==='rect'||s.type==='ellipse'||s.type==='diamond'||s.type==='frame'||s.type==='sticky'))return;
+    if(!(_BOXF.has(s.type)))return;
     before.push({id,stroke:_sk(s)??null,[fk]:s[fk]??null});
     after.push({id,stroke:s[fk]??null,[fk]:_sk(s)??null});
     const t2=s[fk];s[fk]=_sk(s);s.stroke=t2;
@@ -9488,7 +9491,7 @@ function cycleTextAlign(){
 function cycleCorner(){
   const before=[],after=[];
   _forSel((s,id)=>{if(_lk(s))return;
-    const boxOk=s.type==='rect'||s.type==='diamond'||s.type==='image';
+    const boxOk=_RDI.has(s.type);
     const connOk=(_conn(s.type))&&_el(s);   // ADR-0207
     if(!boxOk&&!connOk)return;
     const cur=s.r==null?8:s.r,nxt=cur<4?8:cur<12?16:cur<20?24:0;

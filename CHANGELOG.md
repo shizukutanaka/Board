@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.488] - 2026-09-23
+
+### 変更
+
+- **図形型メンバーシップの Set 化** — 17 箇所の `type==='x'||...` 列挙チェーンを共有定数 `_BOX`/`_BX4`/`_BOXF`/`_HF4`/`_RD`/`_RDI`/`_D6`/`_SH5`/`_TS`/`_TSF` の `.has` に畳み込み (~300B 回収、部分列マッチしていた test.mjs 脆弱性も解消) (ADR-0453)
+- **`pagehide` flush** — iOS Safari のスワイプ離脱・frozen-tab 退避で `visibilitychange`/`beforeunload` が発火しない経路を `_on(window,'pagehide')` → `Persist.flushIfHidden('hidden')` で網羅 (web.dev 推奨の両イベント併用) (ADR-0453)
+
 ## [1.7.487] - 2026-09-23
 
 ### Fixed
