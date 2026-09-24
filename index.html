@@ -788,7 +788,7 @@ const _selR=op=>{if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byI
 const _keepSel=arr=>{if(arr.length)state.history[state.histIdx].origSel=arr};   // ADR-0312
 
 // ====================== CONSTANTS ======================
-const V='1.7.367';
+const V='1.7.368';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6347,7 +6347,7 @@ function excScene(shapes){
           endBinding:s.b?{elementId:s.b,focus:s.bF?+(s.bF.fx*2-1).toFixed(2):0,gap:1}:null,
           lastCommittedPoint:null,
           startArrowhead:s.start?(s.startHead||'arrow'):null,                                       // ADR-0231
-          endArrowhead:s.type==='arrow'?(s.head&&s.head!=='arrow'?s.head:'arrow'):null,...(s.elbow?{elbowed:true}:{})}));   // ADR-0265
+          endArrowhead:s.type==='arrow'?(s.head&&s.head!=='arrow'?s.head:'arrow'):null,...(s.elbow?{elbowed:true}:{}),...(s.curve?{roundness:{type:2}}:{})}));   // ADR-0265/0317
         if(s.label){const _lp=_connLabelXY(s),_tid=uid();els.push(_ct(s,_tid,s.label,true,null,{x:_lp.x-40,y:_lp.y-10,w:80,h:20}));els[els.length-2].boundElements=[{id:_tid,type:'text'}]}   // ADR-0266/0280
         break;}
       case'image':{
@@ -6911,6 +6911,7 @@ function excToShapes(txt){
       if(r&&_conn(s.type)){const _rm=r*Math.PI/180,_cx=(s.x1+s.x2)/2,_cy=(s.y1+s.y2)/2;   // ADR-0300: conn angle → rotate endpoints+way about midpoint
         for(const p of[[s,'x1','y1'],[s,'x2','y2'],...(s.way||[]).map(w=>[w,'x','y'])]){const dx=p[0][p[1]]-_cx,dy=p[0][p[2]]-_cy;p[0][p[1]]=+(_cx+dx*Math.cos(_rm)-dy*Math.sin(_rm)).toFixed(1);p[0][p[2]]=+(_cy+dx*Math.sin(_rm)+dy*Math.cos(_rm)).toFixed(1)}}
       if(typeof e.link==='string'&&/^https?:\/\//.test(e.link))s.link=e.link.slice(0,500);   // ADR-0301
+      if(_conn(s.type)&&e.roundness){s.curve=1;delete s.r}   // ADR-0317: excalidraw's round arrow routes are curved — r only styles elbow corners
       if(Array.isArray(e.scale)&&(e.scale[0]<0||e.scale[1]<0))s.flip=((e.scale[0]<0)?1:0)|((e.scale[1]<0)?2:0);   // ADR-0276
       Object.assign(s,S);shapes.push(s);   // ADR-0241
       // ADR-0223: line/arrow keep a back-ref to their exc element so

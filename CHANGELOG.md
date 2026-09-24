@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.368] - 2026-09-24
+
+### Added
+- excalidraw コネクタの `roundness` を `s.curve` にマップし、
+  丸み矢印が曲線のまま往復 (輸入 curve=1 / 書出 roundness type 2、ADR-0317)
+
 ## [1.7.367] - 2026-09-24
 
 ### Added
