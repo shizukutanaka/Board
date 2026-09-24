@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.534';
+const V='1.7.535';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1362,7 +1362,7 @@ function validRemotePayload(op){
       // pen pts must be array-of-[x,y] — flat arrays crash drawPen which expects [[x,y],...]
       if(op.after.pts!=null&&!_ptsOK(op.after.pts))return false;
       return true;}
-    case 'move':   return _iA(op.ids)&&_ln(op.ids)>0&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(id=>_iS(id)&&_ln(id)<=64)&&_iN(op.dx)&&_fin(op.dx)&&_iN(op.dy)&&_fin(op.dy)&&(op.dx!==0||op.dy!==0);
+    case 'move':   return _iA(op.ids)&&_ln(op.ids)>0&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(id=>_idOK(id))&&_iN(op.dx)&&_fin(op.dx)&&_iN(op.dy)&&_fin(op.dy)&&(op.dx!==0||op.dy!==0);
     case 'zorder':  // Step2 minimal-delta {changes:[{id,before,after}]} or legacy {after:[…]}
       return (_iA(op.changes)&&_ln(op.changes)<=MAX_OP_SHAPES&&op.changes.every(c=>c&&_iS(c.id)&&_ln(c.id)<=64
                 &&(c.after==null||_iS(c.after)&&_ln(c.after)<=600)&&(c.before==null||_iS(c.before)&&_ln(c.before)<=600)))   // ADR-0473/0485
@@ -1381,10 +1381,10 @@ function validRemotePayload(op){
       const noLock=p=>op.dir==='lock'||!('locked' in p);
       return patches(op.after)&&op.after.every(noLock)
           &&patches(op.before)&&op.before.every(noLock);}
-    case 'group':  return _iA(op.ids)&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(id=>_iS(id)&&_ln(id)<=64)
+    case 'group':  return _iA(op.ids)&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(id=>_idOK(id))
                           &&_iS(op.gid)&&_ln(op.gid)>0&&_ln(op.gid)<=64   // ADR-0473
                           &&_iA(op.before)&&_ln(op.before)<=MAX_OP_SHAPES&&op.before.every(b=>b&&_iS(b.id)&&_ln(b.id)<=64);
-    case 'ungroup':return _iA(op.ids)&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(id=>_iS(id)&&_ln(id)<=64)
+    case 'ungroup':return _iA(op.ids)&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(id=>_idOK(id))
                           &&_iA(op.gids)&&_ln(op.gids)<=MAX_OP_SHAPES&&op.gids.every(g=>_iS(g)&&_ln(g)>0&&_ln(g)<=64);   // ADR-0473
     default:       return false;
   }
@@ -2013,7 +2013,8 @@ const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPe
 const _rs=arr=>{state.shapes=arr;_iG();_pcC()}   // ADR-0493: wholesale board replace (5 sites)
 const _shV=()=>_sh().filter(s=>_sv(s));   // ADR-0494: visible-shape subset (6 sites)
 const _ulv=s=>!_lk(s)&&_sv(s);   // ADR-0496
-const _hb=s=>s.w!=null;   // ADR-0501: unlocked+visible predicate (4 sites)
+const _hb=s=>s.w!=null;   // ADR-0501
+const _idOK=id=>_iS(id)&&_ln(id)<=64;   // ADR-0502: wire id cap (ADR-0485): unlocked+visible predicate (4 sites)
 const _idIdx=id=>_sh().findIndex(s=>s.id===id);   // ADR-0497: shape index by id (4 sites)
 const _psc=id=>{_penBboxCache.delete(id);Net._imgPending.delete(id);const e=_penCache.get(id);if(e){_penCache.delete(id);_penCachePx-=e.px||0;}}   // ADR-0427/0435
 // Effective raster resolution: zoom-adaptive (supersampled at low zoom is just
@@ -7840,7 +7841,7 @@ const Net={
         // so an RTC peer lives under a synthetic id, not msg.peer). Defensive intake:
         // string ids only, capped — a bad peer can't flood us with a giant array.
         if(!_iA(msg.ids))break;
-        const ids=_s0(msg.ids,MAX_OP_SHAPES).filter(id=>_iS(id)&&_ln(id)<=64);   // ADR-0485: same ≤64 cap as every other wire id field
+        const ids=_s0(msg.ids,MAX_OP_SHAPES).filter(id=>_idOK(id));   // ADR-0485: same ≤64 cap as every other wire id field
         const peerKey=this._pk(msg,viaRtc);
         const p=peerKey&&_pr().get(peerKey);
         if(p){p.sel=ids;_ivO();}

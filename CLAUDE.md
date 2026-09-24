@@ -551,6 +551,7 @@ Board/
 │   ├── ADR-0499-mk-fold.md            # _mk wire メッセージ組立て集約 (実装済)
 │   ├── ADR-0500-mk-op-envelope.md     # op メッセージを _mk envelope へ統一 (実装済)
 │   ├── ADR-0501-hb-fold.md            # _hb box-shape 判定 shorthand (実装済)
+│   ├── ADR-0502-idok-fold.md          # _idOK wire id キャップ shorthand (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
