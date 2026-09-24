@@ -2,6 +2,15 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.443] - 2026-09-23
+
+### Added
+- .drawio 選択範囲書き出し (ctx メニュー「選択を.drawio書き出し」、exportSelection に drawio 経路)
+- drawio `strikeThrough=1` 往復 — `s.strike` が export/import で消失していたのを修正
+
+### Changed
+- トースト種別 shorthand `_w/_o/_e` + `_trimSeen` 集約 (~1.3KB 回収)
+
 ## [1.7.442] - 2026-09-23
 ### 変更
 - ADR-0406: `_ES`/`_EN`/`_TB` キー名 + `_IK`/`_YW` 色 + `!==_un` 否定形統一 (~330B 回収) + drawio docName 往復テスト
