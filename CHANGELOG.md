@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.172]
+
+### 追加
+- **クリップボード経由の .board 転送** (ADR-0115)。export メニュー
+  「ボードJSONをコピー」で `.board` JSON をクリップボードへ。
+  ペースト側は `"shapes":[` を検出して `_placeCopies` (id 再割当)
+  でビューポート中央に追加 — ファイル往復なしにボード間転送。
+
 ## [1.7.171]
 
 ### 追加

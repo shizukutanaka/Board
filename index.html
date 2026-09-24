@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.171';
+const V='1.7.172';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -878,7 +878,7 @@ const I18N={
     ctxHSpace:'水平均等配置',ctxVSpace:'垂直均等配置',
     ctxSelectAll:'すべて選択',ctxClear:'全消去',
     ctxExportPNG:'PNG書き出し',ctxCopyPNG:'PNGをクリップボードにコピー',ctxExportSVG:'SVG書き出し',ctxExportPDF:'PDF書き出し',ctxExportExc:'Excalidraw (.excalidraw) 書き出し',ctxExportBoard:'.boardファイル書き出し',ctxImportBoard:'.boardファイル読み込み...',
-    ctxExportSelPNG:'選択をPNG書き出し',ctxCopySelPNG:'選択のPNGをコピー',ctxExportSelSVG:'選択をSVG書き出し',ctxCopySelSVG:'選択のSVGをコピー',ctxExportSelBoard:'選択を.board書き出し',ctxReplaceImg:'画像を差替え',
+    ctxExportSelPNG:'選択をPNG書き出し',ctxCopySelPNG:'選択のPNGをコピー',ctxExportSelSVG:'選択をSVG書き出し',ctxCopySelSVG:'選択のSVGをコピー',ctxCopyBoard:'ボードJSONをコピー',ctxExportSelBoard:'選択を.board書き出し',ctxReplaceImg:'画像を差替え',
     share:'共有',shareTitle:'共有',
     shareUrlHint:'このURLをコピーして送ると、相手に内容が共有されます',
     shareEncLabel:'🔒 暗号化リンク (推奨)',
@@ -954,7 +954,7 @@ const I18N={
     ctxHSpace:'Distribute horizontal',ctxVSpace:'Distribute vertical',
     ctxSelectAll:'Select all',ctxClear:'Clear all',
     ctxExportPNG:'Export PNG',ctxCopyPNG:'Copy PNG to clipboard',ctxExportSVG:'Export SVG',ctxExportPDF:'Export PDF',ctxExportExc:'Export .excalidraw',ctxExportBoard:'Export .board file',ctxImportBoard:'Import .board file...',
-    ctxExportSelPNG:'Export selection to PNG',ctxCopySelPNG:'Copy selection PNG',ctxExportSelSVG:'Export selection to SVG',ctxCopySelSVG:'Copy selection SVG',ctxExportSelBoard:'Export selection to .board',ctxReplaceImg:'Replace image',
+    ctxExportSelPNG:'Export selection to PNG',ctxCopySelPNG:'Copy selection PNG',ctxExportSelSVG:'Export selection to SVG',ctxCopySelSVG:'Copy selection SVG',ctxCopyBoard:'Copy board JSON',ctxExportSelBoard:'Export selection to .board',ctxReplaceImg:'Replace image',
     share:'Share',shareTitle:'Share',
     shareUrlHint:'Copy this URL and send it — the recipient gets your board.',
     shareEncLabel:'🔒 Encrypted link (recommended)',
@@ -3772,6 +3772,12 @@ window.addEventListener('paste',e=>{
     ti.getAsString(tx=>{
       const s=String(tx||'');
       if(/^\s*(<\?xml[^?]*\?>\s*)?<svg[\s>]/i.test(s)){e.preventDefault();importSvgText(s);return}
+      // ADR-0115: clipboard .board JSON adds the shapes (inbound half of
+      // copyBoardJSON). Falls through to excalidraw/text on parse failure.
+      if(/^\s*\{/.test(s)&&/"(shapes|v)"\s*:/.test(s.slice(0,8192))&&/"shapes"\s*:\s*\[/.test(s)){
+        e.preventDefault();
+        if(importBoardText(s)!==false)return;
+      }
       // ADR-0099: clipboard .excalidraw JSON imports as a scene (parity with the
       // file path); on parse failure it degrades to the plain-text path below.
       if(/^\s*\{/.test(s)&&/"type"\s*:\s*"excalidraw"/.test(s.slice(0,4096))){
@@ -4909,7 +4915,7 @@ function doPaste(){
   if(origSel.length)state.history[state.histIdx].origSel=origSel;
   UI.toast(t('pasted')+' '+added.length);
 }
-// ADR-0113: paste in place — ⌘⇧V restores shapes at their original coordinates
+// ADR-0115: paste in place — ⌘⇧V restores shapes at their original coordinates
 // (Figma's Paste-in-place). No offset at all: dx=dy=0 keeps source coords.
 // Used to paste across boards/views or to drop a copy exactly atop the source.
 function doPasteInPlace(){
@@ -5784,6 +5790,32 @@ function importExcText(txt,wp){
   state.selection.clear();for(const s of shapes)state.selection.add(s.id);
   invalidate();UI.toast(t('excImported'),'ok');
   return true;
+}
+// ADR-0115: paste .board JSON → shapes added at the view centre (inbound half
+// of copyBoardJSON). _placeCopies remaps ids/groupIds/bindings so the same
+// JSON can paste repeatedly onto the same board without id collisions.
+function importBoardText(txt,wp){
+  let data=null;
+  try{data=JSON.parse(txt)}catch(_){return false}
+  if(!data||!Array.isArray(data.shapes))return false;
+  const shapes=data.shapes.filter(validShape);
+  if(!shapes.length)return false;
+  if(!wp){const r=canvas.getBoundingClientRect();wp=G.s2w({x:r.width/2,y:r.height/2})}
+  const bb=G.bboxAll(shapes);
+  const dx=bb?wp.x-(bb.x+bb.w/2):0,dy=bb?wp.y-(bb.y+bb.h/2):0;
+  const origSel=[...state.selection];
+  const added=_placeCopies(shapes,dx,dy);
+  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  UI.toast(t('imported')+' '+added.length,'ok');
+  return true;
+}
+// ADR-0115 (outbound half): whole board (or selection via exportSelection)
+// as .board JSON on the clipboard — moves content between boards/tabs without
+// a file round-trip.
+function copyBoardJSON(shapes=state.shapes){
+  if(!shapes.length){UI.toast(t('empty'),'warn');return}
+  copyText(JSON.stringify({v:V,docName:state.docName,shapes:roundShapesForExport(shapes)}))
+    .then(ok=>UI.toast(t(ok?'copied':'copyFailed'),ok?'ok':'warn'));
 }
 function importExcFile(file,wp){
   const r=new FileReader();
@@ -7055,6 +7087,7 @@ const UI={
       ['ctxExportSVG','⌘⇧E',exportSVG],
       ['ctxExportPDF','⌘P',exportPDF],
       ['ctxExportBoard','⌘⇧S',exportBoard],
+      ['ctxCopyBoard','',copyBoardJSON],
       ['ctxExportExc','',exportExc],
       'sep',
       ['ctxImportBoard','',()=>document.getElementById('fileImport').click()]
