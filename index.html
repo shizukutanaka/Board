@@ -801,7 +801,7 @@ const _on=(e,t,f,o)=>e.addEventListener(t,f,o);                          // ADR-
 const _vp=()=>state.viewport,_vpS=()=>({x:+_vp().x.toFixed(2),y:+_vp().y.toFixed(2),zoom:+_vp().zoom.toFixed(4)});                                              // ADR-0362: live-read (tests reassign the object)
 const _pi=()=>state.peerId,_ro=()=>state.readout,_gd=()=>state.guides,_cl=()=>state.clipboard,_bb=s=>G.bbox(s),_oa=Object.assign;   // ADR-0378
 const _sO=()=>state.seenOps,_la=()=>state.lasso,_mq=()=>state.marquee,_dd=()=>state.dupDelta,_w2=p=>G.w2s(p),_s2=p=>G.s2w(p),_cE=connEnds;   // ADR-0382
-const _dpr=()=>window.devicePixelRatio,_iA=Array.isArray,_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase();   // ADR-0384/0386/0391/0395/0397
+const _dpr=()=>window.devicePixelRatio,_iA=Array.isArray,_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log;   // ADR-0384/0386/0391/0395/0397
 const _sh=()=>state.shapes;                                                // ADR-0364
 const _sl=()=>state.selection;
 const _st=()=>state.style;
@@ -822,7 +822,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.438';
+const V='1.7.439';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -858,7 +858,7 @@ const MAX_PEER_ID_LEN=64;               // real ids are 32-char uids; anything l
 const PEER_COLORS=['#00C4CC','#7C3AED','#DC2626','#F59E0B','#16A34A','#2563EB','#DB2777','#EA580C'];
 const uid=()=>typeof crypto!=='undefined'&&crypto.randomUUID
   ?crypto.randomUUID().replace(/-/g,'')  // 122-bit UUID v4; no collision concern
-  :Math.random().toString(36).slice(2,10)+_now().toString(36).slice(-4); // fallback
+  :_rN().toString(36).slice(2,10)+_now().toString(36).slice(-4); // fallback
 // peerId: persistent per browser, used to dedup CRDT ops
 const PEER_ID=(()=>{try{
   let id=localStorage.getItem('board.peer');
@@ -900,7 +900,7 @@ const I18N={
     noSelection:'選択なし',alreadySnapped:'既にグリッド上です',nothingLocked:'ロックされた図形はありません',styleCopied:'スタイルコピー',stylePasted:'スタイル適用',
     selectTwo:'2つ以上選択してください',framed:'フレームで包みました',grouped:'グループ化',noGroup:'グループなし',
     ungrouped:'グループ解除',noFrames:'フレームがありません (F キーで作成)',
-    imgBig:'画像が大きすぎます。縮小してください',imgErr:'画像を読み込めませんでした',
+    imgBig:'画像が大きすぎます。縮小してください',snapBig:'ボードが大きすぎて共有できません',imgErr:'画像を読み込めませんでした',
     emptyHint:'クリックまたはツールバーから描き始める · ? でショートカット一覧',
     themeAuto:'テーマ: 自動(OS 追従)',themeLight:'テーマ: ライト',themeDark:'テーマ: ダーク',
     popupBlocked:'ポップアップをブロックしてください',invalidBoard:'ボードファイルが無効です',lockedNoop:'ロック済み — ⌘⇧L で解除',exportFailed:'書き出し失敗',saveFailed:'保存失敗',quotaExceeded:'保存容量が逼迫しています — ⌘E/⌘⇧E で書き出しを推奨',
@@ -980,7 +980,7 @@ const I18N={
     noSelection:'No selection',alreadySnapped:'Already on grid',nothingLocked:'No locked shapes',styleCopied:'Style copied',stylePasted:'Style applied',
     selectTwo:'Select 2 or more',framed:'Wrapped in frame',grouped:'Grouped',noGroup:'No group',
     ungrouped:'Ungrouped',noFrames:'No frames (press F to create)',
-    imgBig:'Image too large — please resize',imgErr:'Image failed to load',
+    imgBig:'Image too large — please resize',snapBig:'Board too large to share',imgErr:'Image failed to load',
     emptyHint:'Click or pick a tool to start drawing · Press ? for shortcuts',
     themeAuto:'Theme: Auto (follows OS)',themeLight:'Theme: Light',themeDark:'Theme: Dark',
     popupBlocked:'Pop-up blocked — please allow pop-ups for PDF export',invalidBoard:'Invalid .board file',lockedNoop:'Locked — ⌘⇧L to unlock',exportFailed:'Export failed',saveFailed:'Save failed',quotaExceeded:'Storage quota exceeded — export locally with ⌘E/⌘⇧E',
@@ -1152,7 +1152,7 @@ const G={
       return{x:x-p,y:y-p,w:x2-x+2*p,h:y2-y+2*p};
     }
     const _rb={x:s.x,y:s.y,w:s.w,h:s.h};
-    if(s.rotate){const _cx=_rb.x+_rb.w/2,_cy=_rb.y+_rb.h/2,_r=s.rotate*_PI/180,_c=_abs(Math.cos(_r)),_si=_abs(Math.sin(_r)),_hw=_rb.w/2,_hh=_rb.h/2,_nw=_hw*_c+_hh*_si,_nh=_hw*_si+_hh*_c;return{x:_cx-_nw,y:_cy-_nh,w:2*_nw,h:2*_nh};}
+    if(s.rotate){const _cx=_rb.x+_rb.w/2,_cy=_rb.y+_rb.h/2,_r=s.rotate*_PI/180,_c=_abs(_cos(_r)),_si=_abs(_sin(_r)),_hw=_rb.w/2,_hh=_rb.h/2,_nw=_hw*_c+_hh*_si,_nh=_hw*_si+_hh*_c;return{x:_cx-_nw,y:_cy-_nh,w:2*_nw,h:2*_nh};}
     return _rb;
   },
   bboxAll(shapes){
@@ -1178,7 +1178,7 @@ const G={
     // (crafted import or a remote op — validPatch permits `rotate` on any shape) renders
     // UNrotated; without the `s.w!=null` guard its center would be s.x+(undefined||0)/2 =
     // NaN, un-rotating p to {NaN,NaN} and making the shape permanently unhittable.
-    if(s.rotate&&s.w!=null){const _cx=s.x+s.w/2,_cy=s.y+(s.h||0)/2,_r=-s.rotate*_PI/180,_c=Math.cos(_r),_si=Math.sin(_r),_dx=p.x-_cx,_dy=p.y-_cy;p={x:_cx+_dx*_c-_dy*_si,y:_cy+_dx*_si+_dy*_c};}
+    if(s.rotate&&s.w!=null){const _cx=s.x+s.w/2,_cy=s.y+(s.h||0)/2,_r=-s.rotate*_PI/180,_c=_cos(_r),_si=_sin(_r),_dx=p.x-_cx,_dy=p.y-_cy;p={x:_cx+_dx*_c-_dy*_si,y:_cy+_dx*_si+_dy*_c};}
     switch(s.type){
       case 'rect':
         if(s.fill)return true;
@@ -1765,7 +1765,7 @@ function _edgePt(sh,fx,fy){
   const ub=sh.w!=null?{x:sh.x,y:sh.y,w:sh.w,h:sh.h}:_bb(sh); // unrotated box
   const cx=ub.x+ub.w/2,cy=ub.y+ub.h/2,rot=sh.rotate;
   let px=fx,py=fy;
-  if(rot){const a=-rot*_PI/180,c=Math.cos(a),sn=Math.sin(a),dx=fx-cx,dy=fy-cy;px=cx+dx*c-dy*sn;py=cy+dx*sn+dy*c;}
+  if(rot){const a=-rot*_PI/180,c=_cos(a),sn=_sin(a),dx=fx-cx,dy=fy-cy;px=cx+dx*c-dy*sn;py=cy+dx*sn+dy*c;}
   const dx=px-cx,dy=py-cy;
   if(!dx&&!dy)return{x:cx,y:cy};
   const _rx=ub.w/2,_ry=ub.h/2;
@@ -1774,7 +1774,7 @@ function _edgePt(sh,fx,fy){
        :sh.type==='ellipse'?1/(_hp(dx/(_rx||1e-6),dy/(_ry||1e-6))||1e-6)
        :_min(_abs(dx)>1e-6?_rx/_abs(dx):1e9,_abs(dy)>1e-6?_ry/_abs(dy):1e9);
   let ex=cx+dx*k,ey=cy+dy*k;
-  if(rot){const a=rot*_PI/180,c=Math.cos(a),sn=Math.sin(a),dX=ex-cx,dY=ey-cy;ex=cx+dX*c-dY*sn;ey=cy+dX*sn+dY*c;}
+  if(rot){const a=rot*_PI/180,c=_cos(a),sn=_sin(a),dX=ex-cx,dY=ey-cy;ex=cx+dX*c-dY*sn;ey=cy+dX*sn+dY*c;}
   return{x:ex,y:ey};
 }
 function connEnds(s){
@@ -3153,15 +3153,15 @@ function _arrowHeadShape(c,x,y,ang,ah,stroke,style){
   }
   if(style==='open'||style==='bar'){                              // ADR-0294
     c.beginPath();
-    c.moveTo(x+Math.cos(a1)*ah,y+Math.sin(a1)*ah);
+    c.moveTo(x+_cos(a1)*ah,y+_sin(a1)*ah);
     if(style==='open')c.lineTo(x,y);
-    c.lineTo(x+Math.cos(a2)*ah,y+Math.sin(a2)*ah);
+    c.lineTo(x+_cos(a2)*ah,y+_sin(a2)*ah);
     c.strokeStyle=col;c.stroke();return;
   }
   c.beginPath();
   c.moveTo(x,y);
-  c.lineTo(x+Math.cos(a1)*ah,y+Math.sin(a1)*ah);
-  c.lineTo(x+Math.cos(a2)*ah,y+Math.sin(a2)*ah);
+  c.lineTo(x+_cos(a1)*ah,y+_sin(a1)*ah);
+  c.lineTo(x+_cos(a2)*ah,y+_sin(a2)*ah);
   c.closePath();c.fillStyle=col;c.fill();
 }
 // ADR-0068: quadratic-bezier route for curved connectors. Control point is the
@@ -3290,7 +3290,7 @@ function drawText(s,c){
 // rotated resize, and selection chrome.
 function _rotPt(px,py,cx,cy,deg){
   if(!deg)return{x:px,y:py};
-  const a=deg*_PI/180,c=Math.cos(a),s=Math.sin(a),dx=px-cx,dy=py-cy;
+  const a=deg*_PI/180,c=_cos(a),s=_sin(a),dx=px-cx,dy=py-cy;
   return{x:cx+dx*c-dy*s,y:cy+dx*s+dy*c};
 }
 // World-space resize handles: nw/n/ne/e/se/s/sw/w for boxes; p1/p2 for lines.
@@ -3346,7 +3346,7 @@ function getRotHandle(s){
   if(s.w!=null){cx=s.x+s.w/2;cy=s.y+s.h/2;ty=s.y}
   else{const b=_bb(s);if(!b||!(b.w>0)||!(b.h>0))return null;cx=b.x+b.w/2;cy=b.y+b.h/2;ty=b.y}
   const d=ROT_OFFSET/_vp().zoom;
-  const r=(s.w!=null&&s.rotate)?s.rotate*_PI/180:0,c=Math.cos(r),sn=Math.sin(r);
+  const r=(s.w!=null&&s.rotate)?s.rotate*_PI/180:0,c=_cos(r),sn=_sin(r);
   const R=(px,py)=>({x:cx+(px-cx)*c-(py-cy)*sn,y:cy+(px-cx)*sn+(py-cy)*c});
   const k=R(cx,ty-d),an=R(cx,ty);
   return{x:k.x,y:k.y,ax:an.x,ay:an.y,cx,cy};
@@ -3361,7 +3361,7 @@ function _grpRotHandle(b){
 // Box members orbit their centre AND accumulate `rotate`; point geometry maps
 // every point. Orig→live each frame: no float error accumulates over the drag.
 function _rotShape(sh,orig,cx,cy,deg){
-  const r=deg*_PI/180,c=Math.cos(r),sn=Math.sin(r);
+  const r=deg*_PI/180,c=_cos(r),sn=_sin(r);
   const R=(px,py)=>({x:cx+(px-cx)*c-(py-cy)*sn,y:cy+(px-cx)*sn+(py-cy)*c});
   if(orig.pts)sh.pts=orig.pts.map(p=>{const q=R(p[0],p[1]);return[q.x,q.y,p[2]]});
   else if(orig.x1!=null){const tr=orig.bend!=null?_elbowTrunk(orig):null;const a=R(orig.x1,orig.y1),b=R(orig.x2,orig.y2);sh.x1=a.x;sh.y1=a.y;sh.x2=b.x;sh.y2=b.y;if(orig.way)sh.way=_wayArr(orig).map(p=>R(p.x,p.y));   // ADR-0090
@@ -3486,7 +3486,7 @@ function applyResize(sh,handle,orig,wp,shift,alt){
     if(shift){                                               // ADR-0206: constrain the free end to 45° increments
       const fx=handle==='p1'?orig.x2:orig.x1,fy=handle==='p1'?orig.y2:orig.y1;
       const dx=sp.x-fx,dy=sp.y-fy,dd=_hp(dx,dy);
-      if(dd){const q=_rnd(_at2(dy,dx)/(_PI/4))*(_PI/4);sp={x:fx+Math.cos(q)*dd,y:fy+Math.sin(q)*dd}}
+      if(dd){const q=_rnd(_at2(dy,dx)/(_PI/4))*(_PI/4);sp={x:fx+_cos(q)*dd,y:fy+_sin(q)*dd}}
     }
     if(handle==='p1'){sh.x1=sp.x;sh.y1=sp.y}else{sh.x2=sp.x;sh.y2=sp.y}
     const _bv=_bindAt(handle==='p1'?sh.x1:sh.x2,handle==='p1'?sh.y1:sh.y2);
@@ -4529,7 +4529,7 @@ _on(canvas,_PM,e=>{
   if(_abs(ratio-1)>0.005){
     const cx=(pts[0].x+pts[1].x)/2,cy=(pts[0].y+pts[1].y)/2;
     const r=_cbr();
-    zoomAt({x:cx-r.left,y:cy-r.top},Math.log(ratio));
+    zoomAt({x:cx-r.left,y:cy-r.top},_log(ratio));
     _pinchPrev=curDist;
   }
 },{capture:true,passive:true});
@@ -4575,7 +4575,7 @@ function zoomAt(sp,delta){
 }
 function zoomBy(f){
   const r=_cbr();
-  zoomAt({x:r.width/2,y:r.height/2},Math.log(f));
+  zoomAt({x:r.width/2,y:r.height/2},_log(f));
   UI.announce(_rnd(_vp().zoom*100)+'%');   // discrete zoom is SR-silent otherwise (wheel zoom stays quiet on purpose)
 }
 function zoomReset(){
@@ -5109,7 +5109,7 @@ function beginRectLike(wp){
   const sp=snapPt(wp);
   const extras={x:sp.x,y:sp.y,w:0,h:0};
   if(_tl()==='sticky'){
-    extras.color=STICKY_COLORS[_fl(Math.random()*STICKY_COLORS.length)];
+    extras.color=STICKY_COLORS[_fl(_rN()*STICKY_COLORS.length)];
     extras.text='';extras.fontSize=_st().fontSize||14;          // ADR-0180
   }else if(_tl()==='frame'){
     const n=_sh().filter(s=>s.type==='frame').length+1;
@@ -5165,7 +5165,7 @@ function contLineLike(wp,uniform){
     const a=_at2(dy,dx);
     const q=_rnd(a/(_PI/4))*(_PI/4);
     const d=_hp(dx,dy);
-    x2=sx0+Math.cos(q)*d;y2=sy0+Math.sin(q)*d;
+    x2=sx0+_cos(q)*d;y2=sy0+_sin(q)*d;
   }
   const _b0=_bb(_df());
   _df().x2=x2;_df().y2=y2;
@@ -5256,7 +5256,7 @@ function createShapeKbd(){
     s=Shape.make(tool,{x1:cx-80,y1:cy,x2:cx+80,y2:cy});
   }else if(tool==='sticky'){
     s=Shape.make('sticky',{x:cx-80,y:cy-80,w:160,h:160,
-      color:STICKY_COLORS[_fl(Math.random()*STICKY_COLORS.length)],text:'',fontSize:_st().fontSize||14});   // ADR-0180
+      color:STICKY_COLORS[_fl(_rN()*STICKY_COLORS.length)],text:'',fontSize:_st().fontSize||14});   // ADR-0180
   }else if(tool==='frame'){
     const n=_sh().filter(x=>x.type==='frame').length+1;
     s=Shape.make('frame',{x:cx-400,y:cy-250,w:800,h:500,
@@ -6214,7 +6214,7 @@ function doRotate(d){
     }
   }
   for(const [cid] of frameOf){if(!sel.find(s=>s.id===cid)){const ch=byId(cid);if(ch&&!ch.locked)sel.push(ch);}}
-  const r=d*_PI/180,cs=Math.cos(r),sn=Math.sin(r);
+  const r=d*_PI/180,cs=_cos(r),sn=_sin(r);
   const before=sel.map(s=>clone({...s,rotate:s.rotate||0}));
   for(const s of sel){
     if(s.w==null){_rotPtsAbout(s,gx,gy,cs,sn);continue}   // ADR-0055: point geometry
@@ -6849,7 +6849,7 @@ function _svgMOf(t){
       case'matrix':if(n.length===6&&n.every(Number.isFinite))M=n.slice(0,6);break;
       case'translate':M=[1,0,0,1,n[0]||0,n[1]||0];break;
       case'scale':{const sx=_fin(n[0])?n[0]:1;M=[sx,0,0,n.length>1?n[1]:sx,0,0];break}
-      case'rotate':{const r=(n[0]||0)*_PI/180,c=Math.cos(r),s=Math.sin(r);M=[c,s,-s,c,0,0];
+      case'rotate':{const r=(n[0]||0)*_PI/180,c=_cos(r),s=_sin(r);M=[c,s,-s,c,0,0];
         if(n.length>2)M=_svgMMul([1,0,0,1,n[1],n[2]],_svgMMul(M,[1,0,0,1,-n[1],-n[2]]));break}
       case'skewX':M=[1,0,Math.tan((n[0]||0)*_PI/180),1,0,0];break;
       case'skewY':M=[1,Math.tan((n[0]||0)*_PI/180),0,1,0,0];break;
@@ -7093,7 +7093,7 @@ function excToShapes(txt){
     }
     if(s){if(r&&s.w!=null)s.rotate=r;if(e.locked)s.locked=1;
       if(r&&_conn(s.type)){const _rm=r*_PI/180,_cx=(s.x1+s.x2)/2,_cy=(s.y1+s.y2)/2;   // ADR-0300: conn angle → rotate endpoints+way about midpoint
-        for(const p of[[s,'x1','y1'],[s,'x2','y2'],...(s.way||[]).map(w=>[w,'x','y'])]){const dx=p[0][p[1]]-_cx,dy=p[0][p[2]]-_cy;p[0][p[1]]=+(_cx+dx*Math.cos(_rm)-dy*Math.sin(_rm)).toFixed(1);p[0][p[2]]=+(_cy+dx*Math.sin(_rm)+dy*Math.cos(_rm)).toFixed(1)}}
+        for(const p of[[s,'x1','y1'],[s,'x2','y2'],...(s.way||[]).map(w=>[w,'x','y'])]){const dx=p[0][p[1]]-_cx,dy=p[0][p[2]]-_cy;p[0][p[1]]=+(_cx+dx*_cos(_rm)-dy*_sin(_rm)).toFixed(1);p[0][p[2]]=+(_cy+dx*_sin(_rm)+dy*_cos(_rm)).toFixed(1)}}
       if(typeof e.link==='string'&&/^https?:\/\//.test(e.link))s.link=e.link.slice(0,500);   // ADR-0301
       if(_conn(s.type)&&e.roundness&&!e.elbowed){s.curve=1;delete s.r}   // ADR-0317: excalidraw's round arrow routes are curved — r only styles elbow corners
       if(_iA(e.scale)&&(e.scale[0]<0||e.scale[1]<0))s.flip=((e.scale[0]<0)?1:0)|((e.scale[1]<0)?2:0);   // ADR-0276
@@ -7243,9 +7243,9 @@ function _svgArrowHead(els,tx,ty,a1,a2,ah,stroke,a,sz,style){
     els.push(`<circle cx="${tx}" cy="${ty}" r="${ah*0.35}" fill="${stroke}"${a}/>`);return;
   }
   if(style==='open'||style==='bar'){                               // ADR-0294
-    els.push(`<polyline points="${tx+Math.cos(a1)*ah},${ty+Math.sin(a1)*ah}${style==='open'?` ${tx},${ty}`:''} ${tx+Math.cos(a2)*ah},${ty+Math.sin(a2)*ah}" fill="none" stroke="${stroke}" stroke-width="${sz||1}" stroke-linecap="round"${a}/>`);return;
+    els.push(`<polyline points="${tx+_cos(a1)*ah},${ty+_sin(a1)*ah}${style==='open'?` ${tx},${ty}`:''} ${tx+_cos(a2)*ah},${ty+_sin(a2)*ah}" fill="none" stroke="${stroke}" stroke-width="${sz||1}" stroke-linecap="round"${a}/>`);return;
   }
-  els.push(`<polygon points="${tx},${ty} ${tx+Math.cos(a1)*ah},${ty+Math.sin(a1)*ah} ${tx+Math.cos(a2)*ah},${ty+Math.sin(a2)*ah}" fill="${stroke}"${a}/>`);
+  els.push(`<polygon points="${tx},${ty} ${tx+_cos(a1)*ah},${ty+_sin(a1)*ah} ${tx+_cos(a2)*ah},${ty+_sin(a2)*ah}" fill="${stroke}"${a}/>`);
 }
 function _svgFont(s,fs){return`font-family="${_fontFam(s)}" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''}${_svgLs(s)}`}   // shared SVG text-attribute bundle (ADR-0235)
 function _svgLs(s){return s.spacing?` letter-spacing="${s.spacing}px"`:''}   // ADR-0205
@@ -7968,7 +7968,9 @@ const Net={
       this._rtcPeerId='rtc:'+uid().slice(0,4);
       this._touchPeer(this._rtcPeerId);
       // send snapshot to new peer (must include ops so a non-empty peer can merge). ADR-0383: >256KB snapshots die on the SCTP ceiling — send uniform 64KB 'snap' chunks.
-      try{const _sm=_JS(this._snapshotMsg()),_n=_ceil(_sm.length/65536);
+      try{const _sm=_JS(this._snapshotMsg());
+        if(_sm.length>24e6){_tst(t('snapBig'),'warn');return} // ADR-0403
+        const _n=_ceil(_sm.length/65536);
         for(let _i=0;_i<_n;_i++)this.dc.send(_JS({k:'snap',seq:_i,n:_n,data:_sm.slice(_i*65536,(_i+1)*65536)}))
       }catch(_){}
     };
