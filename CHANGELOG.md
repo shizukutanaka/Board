@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.424] - 2026-09-23
+
+### 修正
+- 画像ワイヤチャンクに per-chunk 96KB 上限 (ADR-0379) — 結合後12MB上限は全パーツ着信後にしか走らず、巨大チャンクのバッファ洪水を防止
+- `dataUrl` に16M文字上限 (ADR-0379) — add/upd/snapshot 経由の巨大画像文字列が `img.src` に直行する経路を閉塞
+
 ## [1.7.423] - 2026-09-23
 
 ### 変更
