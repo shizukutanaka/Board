@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.159';
+const V='1.7.160';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -846,7 +846,7 @@ const I18N={
     exported:'PNGを書き出しました',exportedSVG:'SVGを書き出しました',exportedBoard:'.boardファイルを保存しました',exportedExc:'.excalidrawファイルを保存しました',loadedBoard:'ボードを読み込みました',
     imagePasted:'画像を貼り付けました',empty:'キャンバスが空',
     noSelection:'選択なし',styleCopied:'スタイルコピー',stylePasted:'スタイル適用',
-    selectTwo:'2つ以上選択してください',grouped:'グループ化',noGroup:'グループなし',
+    selectTwo:'2つ以上選択してください',framed:'フレームで包みました',grouped:'グループ化',noGroup:'グループなし',
     ungrouped:'グループ解除',noFrames:'フレームがありません (F キーで作成)',
     imgBig:'画像が大きすぎます。縮小してください',imgErr:'画像を読み込めませんでした',
     emptyHint:'クリックまたはツールバーから描き始める · ? でショートカット一覧',
@@ -861,7 +861,7 @@ const I18N={
     confirmClear:'すべて削除しますか？',
     ctxCopy:'コピー',ctxPaste:'貼り付け',ctxDuplicate:'複製',
     ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxCurve:'曲線',ctxRouteReset:'ルートをリセット (直線に戻す)',ctxFrameFit:'コンテンツに合わせる',ctxBothEnds:'両端ヘッド',ctxRrect:'角スタイル (角丸→直角)',ctxStickyColor:'付箋の色 (順送り)',ctxTextAlign:'テキスト揃え (左→中央→右)',ctxFillStyle:'塗りスタイル (塗り→ハッチ→斜格子)',
-    ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
+    ctxWrapFrame:'フレームで包む',ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
     ctxSendBackward:'背面へ',ctxSendBack:'最背面へ',
     ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxLock:'ロック',ctxUnlock:'ロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
     canvasHint:'描画キャンバス。Tab/⇧Tab で図形巡回、Enter で作成、矢印で移動、⌥+矢印でリサイズ',
@@ -925,7 +925,7 @@ const I18N={
     exported:'PNG exported',exportedSVG:'SVG exported',exportedBoard:'Board file saved',exportedExc:'Excalidraw file saved',loadedBoard:'Board loaded',
     imagePasted:'Image pasted',empty:'Canvas is empty',
     noSelection:'No selection',styleCopied:'Style copied',stylePasted:'Style applied',
-    selectTwo:'Select 2 or more',grouped:'Grouped',noGroup:'No group',
+    selectTwo:'Select 2 or more',framed:'Wrapped in frame',grouped:'Grouped',noGroup:'No group',
     ungrouped:'Ungrouped',noFrames:'No frames (press F to create)',
     imgBig:'Image too large — please resize',imgErr:'Image failed to load',
     emptyHint:'Click or pick a tool to start drawing · Press ? for shortcuts',
@@ -937,7 +937,7 @@ const I18N={
     confirmClear:'Delete everything?',
     ctxCopy:'Copy',ctxPaste:'Paste',ctxDuplicate:'Duplicate',
     ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxCurve:'Curved',ctxRouteReset:'Reset route (straighten)',ctxFrameFit:'Fit to contents',ctxBothEnds:'Arrowheads both ends',ctxRrect:'Corners (round→sharp)',ctxStickyColor:'Sticky colour (cycle)',ctxTextAlign:'Text align (left→center→right)',ctxFillStyle:'Fill style (solid→hatch→cross)',
-    ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
+    ctxWrapFrame:'Frame selection',ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
     ctxSendBackward:'Send backward',ctxSendBack:'Send to back',
     ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxLock:'Lock',ctxUnlock:'Unlock',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
     canvasHint:'Drawing canvas. Tab/Shift+Tab cycles shapes, Enter creates, arrows move, Alt+arrows resize.',
@@ -4823,6 +4823,7 @@ window.addEventListener('keydown',e=>{
   else if(k==='['&&!meta&&e.shiftKey){e.preventDefault();doSendBack()}
   else if(k===']'&&!meta){e.preventDefault();doBringForward()}
   else if(k==='['&&!meta){e.preventDefault();doSendBackward()}
+  else if(meta&&e.altKey&&e.code==='KeyG'){e.preventDefault();wrapInFrame()}   // ADR-0102: e.code — ⌥ alters e.key on macOS
   else if(meta&&k==='g'&&e.shiftKey){e.preventDefault();doUngroup()}
   else if(meta&&k==='g'&&!e.shiftKey){e.preventDefault();doGroup()}
   else if(meta&&k==='l'&&e.shiftKey&&state.selection.size){e.preventDefault();doLock()}
@@ -5028,6 +5029,22 @@ function doSendBackward(){
     arr[i]=below;arr[i-1]=s;
   }
   _zCommit(changes);
+}
+// ADR-0102: wrap the selection in a frame (Figma ⌘⌥G). Spatial membership is
+// automatic — the frame simply covers the union bbox + padding; z is tucked
+// just below the lowest member so contents stay on top.
+function wrapInFrame(){
+  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);
+  if(!sel.length){UI.toast(t('selectTwo'),'warn');return}
+  const b=G.bboxAll(sel);if(!b)return;
+  const PAD=16;
+  const f=Shape.make('frame',{x:b.x-PAD,y:b.y-PAD,w:b.w+PAD*2,h:b.h+PAD*2,label:'Frame'});
+  f.z=Math.min(...sel.map(s=>s.z||0))-0.5;      // ADR-0001: fractional z keeps order stable
+  const origSel=[...state.selection];
+  Store.commit({op:'add',shape:f});
+  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  state.selection.clear();state.selection.add(f.id);
+  invalidate();UI.toast(t('framed'),'ok');
 }
 function doGroup(){
   const ids=[...state.selection].filter(id=>{const s=byId(id);return s&&!s.locked;});
@@ -6864,6 +6881,7 @@ const UI={
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='rect'&&!s.locked})&&['ctxRrect','',toggleRound],
       has&&['ctxDelete','⌫',doDelete],
       has&&'sep',
+      has&&['ctxWrapFrame','⌘⌥G',wrapInFrame],
       has&&state.selection.size>1&&['ctxGroup','⌘G',doGroup],
       has&&[...state.selection].some(id=>byId(id)?.groupId)&&['ctxUngroup','⌘⇧G',doUngroup],
       has&&'sep',
@@ -6947,7 +6965,7 @@ const UI={
       ['R',k.rect],['O',k.ellipse],['A',k.arrow],
       ['L',k.line],['T',k.text],['N',k.sticky],['F',k.frame],['E',k.eraser],['D',k.diamond],
       ['⇧P',k.present],
-      ['⌘Z',k.undo],['⌘⇧Z',k.redo],['⌘A',k.selAll],
+      ['⌘Z',k.undo],['⌘⇧Z',k.redo],['⌘A',k.selAll],['⌘G / ⌘⌥G',k.group+'/'+t('ctxWrapFrame')],
       ['⌘C/V/X',k.copy+'/'+k.paste+'/'+k.cut],['⌘D',k.dup],['⌫',k.del],
       ['⌘+/−/0',k.zoomIn+'/'+k.zoomOut+'/'+k.zoom100],
       ['⇧1',k.fit],['⇧2',t('selFit')],['⌘E',k.exp],['⌘⇧E','SVG'],['⌘P','PDF'],['⌘⇧S','.board'],

@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.160]
+
+### 追加
+- **選択をフレームで包む ⌘⌥G** (ADR-0102)。選択群の union bbox
+  +16px を覆うフレームを生成 (Figma parity、ctx メニューにも)。
+  z を最下位メンバ直下へ分数配置し中身を覆わない。`e.code` 経由で
+  macOS の ⌥ 修飾キー化けを回避。
+
 ## [1.7.159]
 
 ### 追加
