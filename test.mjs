@@ -455,6 +455,7 @@ const checks = [
   ['route reset: resetRoute clears way/bend/elbow/curve via one style op', html.includes('function resetRoute()')&&html.includes('ctxRouteReset')&&html.includes('way:null,bend:null,elbow:0,curve:0')],
   ['frame fit: bbox of fully-inside shapes + padding via align op', html.includes('function fitFrames()')&&html.includes('ctxFrameFit')&&html.includes('framefit')],
   ['click stamp: click places a default 120x80 box', html.includes('d.w=120;d.h=80;d.x-=60;d.y-=40')&&html.includes("ADR-0086")],
+  ['copySVG: selection SVG via copyText in ctx menu', html.includes('function copySVG(shapes=state.shapes)')&&html.includes("exportSelection('svgcopy')")&&html.includes('ctxCopySelSVG')],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],

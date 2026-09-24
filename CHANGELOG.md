@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.145]
+
+### 追加
+- **選択 SVG をクリップボードへコピー** (ADR-0087)。選択 ctx に
+  「選択のSVGをコピー」— `buildSVG` 出力を `copyText` で送る
+  (ClipboardItem の SVG MIME はブラウザ差が大きいため text コピー)。
+
 ## [1.7.144]
 
 ### 追加

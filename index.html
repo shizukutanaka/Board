@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.144';
+const V='1.7.145';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -878,7 +878,7 @@ const I18N={
     ctxHSpace:'水平均等配置',ctxVSpace:'垂直均等配置',
     ctxSelectAll:'すべて選択',ctxClear:'全消去',
     ctxExportPNG:'PNG書き出し',ctxCopyPNG:'PNGをクリップボードにコピー',ctxExportSVG:'SVG書き出し',ctxExportPDF:'PDF書き出し',ctxExportBoard:'.boardファイル書き出し',ctxImportBoard:'.boardファイル読み込み...',
-    ctxExportSelPNG:'選択をPNG書き出し',ctxCopySelPNG:'選択のPNGをコピー',ctxExportSelSVG:'選択をSVG書き出し',
+    ctxExportSelPNG:'選択をPNG書き出し',ctxCopySelPNG:'選択のPNGをコピー',ctxExportSelSVG:'選択をSVG書き出し',ctxCopySelSVG:'選択のSVGをコピー',
     share:'共有',shareTitle:'共有',
     shareUrlHint:'このURLをコピーして送ると、相手に内容が共有されます',
     shareEncLabel:'🔒 暗号化リンク (推奨)',
@@ -954,7 +954,7 @@ const I18N={
     ctxHSpace:'Distribute horizontal',ctxVSpace:'Distribute vertical',
     ctxSelectAll:'Select all',ctxClear:'Clear all',
     ctxExportPNG:'Export PNG',ctxCopyPNG:'Copy PNG to clipboard',ctxExportSVG:'Export SVG',ctxExportPDF:'Export PDF',ctxExportBoard:'Export .board file',ctxImportBoard:'Import .board file...',
-    ctxExportSelPNG:'Export selection to PNG',ctxCopySelPNG:'Copy selection PNG',ctxExportSelSVG:'Export selection to SVG',
+    ctxExportSelPNG:'Export selection to PNG',ctxCopySelPNG:'Copy selection PNG',ctxExportSelSVG:'Export selection to SVG',ctxCopySelSVG:'Copy selection SVG',
     share:'Share',shareTitle:'Share',
     shareUrlHint:'Copy this URL and send it — the recipient gets your board.',
     shareEncLabel:'🔒 Encrypted link (recommended)',
@@ -5208,6 +5208,7 @@ function exportSelection(fmt){
   if(!sel.length){UI.toast(t('noSelection'),'warn');return}
   if(fmt==='svg')exportSVG(sel);
   else if(fmt==='copy')copyPNG(sel);
+  else if(fmt==='svgcopy')copySVG(sel);   // ADR-0087
   else exportPNG(sel);
 }
 function exportPNG(shapes=state.shapes){
@@ -5232,6 +5233,13 @@ function copyPNG(shapes=state.shapes){
   });
 }
 
+// ADR-0087: selection/board SVG as clipboard text — the ClipboardItem SVG
+// MIME is browser-inconsistent, but plain-text SVG pastes everywhere useful.
+function copySVG(shapes=state.shapes){
+  const svg=buildSVG(shapes,getCSS('--paper'));
+  if(svg===null){UI.toast(t('empty'),'warn');return}
+  copyText(svg).then(ok=>UI.toast(t(ok?'copied':'copyFailed'),ok?'ok':'warn'));
+}
 function exportPDF(){
   if(!state.shapes.length){UI.toast(t('empty'),'warn');return}
   const b=G.bboxAll(state.shapes);if(!b)return;
@@ -6715,6 +6723,7 @@ const UI={
       has&&['ctxExportSelPNG','',()=>exportSelection('png')],
       has&&['ctxCopySelPNG','',()=>exportSelection('copy')],
       has&&['ctxExportSelSVG','',()=>exportSelection('svg')],
+      has&&['ctxCopySelSVG','',()=>exportSelection('svgcopy')],        // ADR-0087
       has&&'sep',
       ['ctxSelectAll','⌘A',()=>{state.selection=new Set(state.shapes.map(s=>s.id));if(state.selection.size)_announceSel();invalidate()}],
       state.shapes.length&&['ctxClear','',doClearAll]
