@@ -757,6 +757,14 @@ const checks = [
   ['new text/sticky inherit last-used fontSize', html.includes("fontSize:state.style.fontSize||16")&&html.includes("state.style.fontSize=nxt")],
   ['last-used head/font persist via Shape.make', html.includes("state.style.head=next")&&html.includes("state.style.head!=null")&&html.includes("state.style.font!=null")],
   ['label editor follows the viewport (ADR-0182)', html.includes('function _lblFollow()')&&html.includes('_lblAnchor(hit)')&&html.includes('_lblTa={inp,hit}')],
+  ['route style persists via state.style.elbow/curve into Shape.make', html.includes("state.style.elbow=s.elbow;state.style.curve=0")&&html.includes('if(state.style.elbow)base.elbow=state.style.elbow;')],
+  ['corner/hatch/align persist via state.style into Shape.make', html.includes("state.style.r!=null")&&html.includes("state.style.align=nxt")&&html.includes("state.style.fstyle=nxt||null")],
+  ['eyedropper absorbs persisted look-props + start persists', html.includes("'elbow','curve','r','fstyle','align','valign','fontSize','lineH','cbend'")&&html.includes("state.style.start=s.start")],
+  ['frame label honors s.font family', html.includes('${_fontFam(s)}" font-size="12"')&&html.includes('${_fontFam(hit)};color')],
+  ['sticky body valign via s.valign (ctxVAlign gate + canvas/SVG)', html.includes("seqS=[null,'middle','bottom']")&&html.includes("const sty=s.valign==='middle'")&&html.includes("const sy2v=s.valign==='middle'")],
+  ['frame font via cycleFont gate + make() inheritance', html.includes("s.type!=='frame'&&!s.label")&&html.includes("type==='frame'||s.label")&&html.includes("type==='sticky'||type==='frame'")],
+  ['line-height cycle — canvas/SVG/resize + style-copy/eyedropper', html.includes("function cycleLineH()")&&html.includes("fs*(s.lineH||1.3)")&&html.includes("'fontSize','lineH','cbend'")],
+  ['sticky chain inherits full typography', html.includes("font:s.font,lineH:s.lineH,bold:s.bold,italic:s.italic")],
   // v1.7.05: Tab cycling excludes locked shapes (parity with doMove/doDelete/doRotate/doFlip)
   ['statusbar selection dims readout', html.includes('id="sSel"')&&html.includes('_statusSel()')&&html.includes('Math.round(b.w)')],
   ['empty-selection arrows pan viewport', html.includes("state.viewport.x+=k==='arrowleft'?-step:k==='arrowright'?step:0")],
@@ -3731,6 +3739,7 @@ try {
     const A=Shape.make('rect',{x:0,y:0,w:100,h:100});
     const B=Shape.make('rect',{x:300,y:0,w:100,h:100});
     Store.commit({op:'addMany',shapes:[A,B]});
+    state.style.elbow=0;state.style.curve=0;   // route-style persistence (ADR-0183) — don't inherit leftovers from toggle tests
     const L=Shape.make('line',{x1:0,y1:0,x2:200,y2:0});
     Store.commit({op:'add',shape:L});
     const l=byId(L.id);

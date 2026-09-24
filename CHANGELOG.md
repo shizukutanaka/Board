@@ -2,6 +2,65 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.248]
+
+### 修正
+- **付箋チェーンの全タイポグラフィ継承** (ADR-0190)。⌘Enter 連鎖の
+  新付箋が font/lineH/bold/italic/under/strike/valign も引き継ぐ —
+  連続メモの見た目がばらけない。
+
+## [1.7.247]
+
+### 追加
+- **行間 (line-height) 巡回** (ADR-0189)。ctx メニュー「行間」で
+  標準→狭い (1.0)→広い (1.5) を巡回 — text/sticky/全ラベルの
+  canvas+SVG、テキスト編集後の自動高さ、スタイルコピー/スポイト/
+  last-used 継承まで一貫。
+
+## [1.7.246]
+
+### 追加
+- **フレームラベルの書体巡回** (ADR-0188)。cycleFont/ctxFont が
+  フレームに効き、`Shape.make` も font を継承 — フレーム名を
+  mono/serif に切替可能。
+
+## [1.7.245]
+
+### 追加
+- **付箋本文の縦揃え** (ADR-0187)。ctx メニュー「縦揃え」が付箋にも
+  効き、上→中央→下を巡回。canvas と SVG export の両方に実装
+  (下線/取消線も追従)。ctxVAlign の名称を「縦揃え」に汎用化。
+
+## [1.7.244]
+
+### 修正
+- **フレームラベル/ラベルエディタが s.font を反映** (ADR-0186)。
+  フレーム名とラベル編集入力が `_fontFam` に対応 — 600 ウェイト
+  規約は維持しファミリのみ継承。ラベル付きフレームで cycleFont が
+  完結する。
+
+## [1.7.243]
+
+### 追加
+- **スポイトの全ルックプロパティ吸収** (ADR-0185)。スポイトが
+  font/head/elbow/curve/r/fstyle/align/fontSize など `state.style`
+  に永続化される全キーを吸収 — 拾った見た目が次の図形に継承
+  (Figma parity)。両端ヘッド `start` も継承対象に追加。
+
+## [1.7.242]
+
+### 追加
+- **r/fstyle/align の last-used 継承** (ADR-0184)。角丸・ハッチ・
+  文字揃えの最終適用値が `state.style` に残り、次に作る同種図形に
+  継承 (ADR-0180/0181/0183 と同一規則)。
+
+## [1.7.241]
+
+### 追加
+- **コネクタルートの last-used 継承** (ADR-0183)。ctx エルボー/曲線
+  トグルの結果が `state.style` に残り、次に引くコネクタに継承 —
+  フローチャートで毎回切替不要に。「ルートをリセット」で継承も解除。
+
 ## [1.7.240]
 
 ### 追加
