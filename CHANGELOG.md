@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.355] - 2026-09-24
+
+### Added
+- ctx「リンクを設定…/リンクを開く」— `s.link` を prompt で設定
+  (https? 検証、空で解除) し別タブで開ける (ADR-0304)
+
 ## [1.7.354] - 2026-09-24
 
 ### Changed
