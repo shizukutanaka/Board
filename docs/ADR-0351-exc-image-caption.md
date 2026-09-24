@@ -17,3 +17,7 @@
 
 ## 影響
 +~330B (522,824B)。2044 全緑。
+
+> **訂正 (ADR-0353)**: `s.cap` は実在しない prop だった — caption
+> 帯は `s.label` が `_drawImgLabel` で描画される。本 ADR の bCap
+> 経路は撤去され、s.label + bLabel 経路に置き換えられた。

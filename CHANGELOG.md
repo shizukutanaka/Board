@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.403] - 2026-09-24
+
+### Fixed
+- 画像キャプション往復を実 prop `s.label` で完結 — ADR-0351/0352
+  が仮定した `s.cap`/`s.frameLabel` は setter/render の無いファントム
+  prop だったため撤去、exc emit は `bLabel` bound text、drawio は
+  `value`+`verticalAlign=bottom` (ADR-0353)
+
 ## [1.7.402] - 2026-09-24
 
 ### Fixed
