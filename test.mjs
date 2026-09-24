@@ -719,6 +719,8 @@ const checks = [
   ['clipboard image/svg+xml → vector import (ADR-0272)', html.includes("i.type==='image/svg+xml'")],
   ['drawio strokeOpacity/fillOpacity → s.opacity (ADR-0271)', html.includes('+sty.strokeOpacity')],
   ['svg conn path/label emitters deduped (ADR-0270)', html.includes('const _sp=(d,j)')&&html.includes('_cL();')],
+  ['exc conn angle rotates endpoints (ADR-0300)', html.includes('conn angle → rotate endpoints')],
+  ['exc link round-trips (ADR-0301)', html.includes("s.link=e.link.slice(0,500)")&&html.includes("link:s.link||null")],
   ['exc autoResize emitted on text (ADR-0299)', (html.match(/autoResize:true/g)||[]).length===2],
   ['frame label fontSize via s.fontSize (ADR-0298)', html.includes("const fs=s.fontSize||12")],
   ['_conn() type shorthand (ADR-0297)', html.includes("_conn=t=>t==='line'||t==='arrow'")],

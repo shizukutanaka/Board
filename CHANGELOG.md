@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.352] - 2026-09-24
+
+### Added
+- excalidraw line/arrow の `angle` を端点+waypoints の中点中心回転
+  として輸入 (従来は w!=null の矩形のみ、ADR-0300)
+- excalidraw `link` を `s.link` に往復 (ADR-0301)
+
 ## [1.7.351] - 2026-09-24
 
 ### Added
