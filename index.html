@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.325';
+const V='1.7.326';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6427,7 +6427,7 @@ function drawioToShapes(txt){
     const x=_o.x+(+g.getAttribute('x')||0),y=_o.y+(+g.getAttribute('y')||0),w=+g.getAttribute('width')||0,ht=+g.getAttribute('height')||0;
     const lbl=_dioLabel(c.getAttribute('value'));
     let s;
-    if('ellipse' in sty)s=Shape.make('ellipse',{x,y,w:w||120,h:ht||80,label:lbl.slice(0,240)});
+    if('ellipse' in sty||sty.shape==='cylinder'||sty.shape==='cloud')s=Shape.make('ellipse',{x,y,w:w||120,h:ht||80,label:lbl.slice(0,240)});   // ADR-0274
     else if(sty.shape==='rhombus'||'rhombus' in sty)s=Shape.make('diamond',{x,y,w:w||120,h:ht||80,label:lbl.slice(0,240)});
     else if('swimlane' in sty||sty.shape==='swimlane')s=Shape.make('frame',{x,y,w:w||800,h:ht||500,label:lbl.slice(0,120)});   // ADR-0226
     else if(sty.shape==='note'){s=Shape.make('sticky',{x,y,w:w||160,h:ht||160,color:'#FEF08A',text:lbl.slice(0,2000)});   // ADR-0226

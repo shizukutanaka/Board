@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.326] - 2026-09-24
+
+### Added
+- .drawio: shape=cylinder/cloud を ellipse に近似マップ (ADR-0274)
+
 ## [1.7.325] - 2026-09-24
 
 ### Added
