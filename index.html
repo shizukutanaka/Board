@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.224';
+const V='1.7.232';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -869,7 +869,7 @@ const I18N={
     ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxCurve:'曲線',ctxRouteReset:'ルートをリセット (直線に戻す)',ctxSelContents:'内容を選択',ctxFrameFit:'コンテンツに合わせる',ctxArrowHead:'矢印ヘッド (矢印→丸→シェブロン)',ctxToArrow:'矢印に変換',ctxToLine:'直線に変換',ctxBothEnds:'両端ヘッド',ctxRrect:'角スタイル (角丸→直角)',ctxStickyColor:'付箋の色 (順送り)',ctxToText:'テキストに変換',ctxToSticky:'付箋に変換',ctxTextAlign:'テキスト揃え (左→中央→右)',ctxFillStyle:'塗りスタイル (塗り→ハッチ→斜格子)',
     ctxSelectSameType:'同じ種類を選択',ctxSelectSame:'同色を選択',ctxSearch:'検索',ctxFit:'全体を表示',ctxZoomReset:'ズーム100%',ctxGrid:'グリッド',ctxSnap:'吸着',ctxMinimap:'ミニマップ',ctxWrapFrame:'フレームで包む',ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
     ctxSendBackward:'背面へ',ctxSendBack:'最背面へ',
-    ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxRotate90:'90°回転',ctxCorner:'角丸を切替',ctxHide:'非表示',ctxShowAll:'すべて表示',ctxSelectInverse:'選択を反転',ctxConnect:'2図形をコネクタで接続',hiddenCount:'件を非表示',shownAll:'すべて表示しました',ctxUnbind:'結合を解除',ctxVAlign:'ラベル縦揃え',ctxLock:'ロック',ctxUnlock:'ロック解除',ctxUnlockAll:'全てロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
+    ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxRotate90:'90°回転',ctxCorner:'角丸を切替',ctxHide:'非表示',ctxShowAll:'すべて表示',ctxSelectInverse:'選択を反転',ctxConnect:'2図形をコネクタで接続',hiddenCount:'件を非表示',shownAll:'すべて表示しました',ctxUnbind:'結合を解除',ctxVAlign:'ラベル縦揃え',ctxFont:'書体',ctxOpacity:'不透明度 (巡回)',ctxLock:'ロック',ctxUnlock:'ロック解除',ctxUnlockAll:'全てロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
     canvasHint:'描画キャンバス。Tab/⇧Tab で図形巡回、Enter で作成、矢印で移動、⌥+矢印でリサイズ',
     tools:'ツール',docNameLabel:'ドキュメント名',activePeers:'接続中のピア',expPng:'PNG 書き出し',
     moreExport:'その他の書き出し・読み込み',install:'アプリとしてインストール',style:'スタイル',
@@ -924,7 +924,7 @@ const I18N={
       grid:'グリッド',minimap:'ミニマップ切替',beautify:'選択したペン描画を整形',esc:'選択解除/キャンセル',
       cycle:'図形を巡回',create:'中央に作成',
       present:'プレゼン',nudge:'移動 (⇧: 10px)',zorder:'前面/背面',zorderEnds:'最前面/最背面',
-      rotate:'回転 (15° / ノブdrag)',selAllMatches:'件のマッチを選択',search:'検索',searchNav:'次/前のマッチへ移動',moveAxis:'軸拘束移動',resizeRatio:'比率保持リサイズ',resizeCenter:'中心固定リサイズ',kbdResize:'リサイズ (⇧:×10)',lasso:'ラッソ選択',swapFill:'塗り↔線を交換',eyedropDone:'スタイルを取得',swapDone:'塗り↔線を交換'}},
+      rotate:'回転 (15° / ノブdrag)',selAllMatches:'件のマッチを選択',search:'検索',searchNav:'次/前のマッチへ移動',moveAxis:'軸拘束移動',resizeRatio:'比率保持リサイズ',resizeCenter:'中心固定リサイズ',kbdResize:'リサイズ (⇧:×10)',lasso:'ラッソ選択',swapFill:'塗り↔線を交換',digitOpacity:'不透明度 0-9',eyedropDone:'スタイルを取得',swapDone:'塗り↔線を交換'}},
   en:{export:'Export',present:'Present',snap:'Snap',size:'Size',lineStyle:'Line',helpTitle:'Shortcuts',
     helpSub:'No need to memorise. You\'ll pick it up.',
     saved:'saved',savedNow:'just now',savedAgo:'s ago',
@@ -945,7 +945,7 @@ const I18N={
     ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxCurve:'Curved',ctxRouteReset:'Reset route (straighten)',ctxSelContents:'Select contents',ctxFrameFit:'Fit to contents',ctxArrowHead:'Arrowhead (arrow→dot→open)',ctxToArrow:'Convert to arrow',ctxToLine:'Convert to line',ctxBothEnds:'Arrowheads both ends',ctxRrect:'Corners (round→sharp)',ctxStickyColor:'Sticky colour (cycle)',ctxToText:'Convert to text',ctxToSticky:'Convert to sticky',ctxTextAlign:'Text align (left→center→right)',ctxFillStyle:'Fill style (solid→hatch→cross)',
     ctxSelectSameType:'Select same type',ctxSelectSame:'Select same colour',ctxSearch:'Search',ctxFit:'Fit board',ctxZoomReset:'Zoom 100%',ctxGrid:'Grid',ctxSnap:'Snap',ctxMinimap:'Minimap',ctxWrapFrame:'Frame selection',ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
     ctxSendBackward:'Send backward',ctxSendBack:'Send to back',
-    ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxRotate90:'Rotate 90°',ctxCorner:'Round corner',ctxHide:'Hide',ctxShowAll:'Show all',ctxSelectInverse:'Invert selection',ctxConnect:'Connect 2 shapes',hiddenCount:'hidden',shownAll:'All shapes shown',ctxUnbind:'Unbind endpoints',ctxVAlign:'Label vertical align',ctxLock:'Lock',ctxUnlock:'Unlock',ctxUnlockAll:'Unlock all',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
+    ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxRotate90:'Rotate 90°',ctxCorner:'Round corner',ctxHide:'Hide',ctxShowAll:'Show all',ctxSelectInverse:'Invert selection',ctxConnect:'Connect 2 shapes',hiddenCount:'hidden',shownAll:'All shapes shown',ctxUnbind:'Unbind endpoints',ctxVAlign:'Label vertical align',ctxFont:'Font family',ctxOpacity:'Opacity (cycle)',ctxLock:'Lock',ctxUnlock:'Unlock',ctxUnlockAll:'Unlock all',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
     canvasHint:'Drawing canvas. Tab/Shift+Tab cycles shapes, Enter creates, arrows move, Alt+arrows resize.',
     tools:'Tools',docNameLabel:'Document name',activePeers:'Active peers',expPng:'Export PNG',
     moreExport:'More export & import options',install:'Install Board as an app',style:'Style',
@@ -1002,7 +1002,7 @@ const I18N={
       grid:'Toggle grid',minimap:'Toggle minimap',beautify:'Beautify selected pen strokes',esc:'Deselect / cancel',
       cycle:'Cycle shapes',create:'Create at centre',
       present:'Present',nudge:'Move (⇧: 10px)',zorder:'Front / back',zorderEnds:'To front / to back',
-      rotate:'Rotate (15° / knob drag)',selAllMatches:'matches selected',search:'Search',searchNav:'Next / prev match',moveAxis:'Constrain move axis',resizeRatio:'Keep ratio (resize)',resizeCenter:'Resize from centre',kbdResize:'Resize (⇧:×10)',lasso:'Lasso select',swapFill:'Swap fill↔stroke',eyedropDone:'Style picked',swapDone:'Fill↔stroke swapped'}}};
+      rotate:'Rotate (15° / knob drag)',selAllMatches:'matches selected',search:'Search',searchNav:'Next / prev match',moveAxis:'Constrain move axis',resizeRatio:'Keep ratio (resize)',resizeCenter:'Resize from centre',kbdResize:'Resize (⇧:×10)',lasso:'Lasso select',swapFill:'Swap fill↔stroke',digitOpacity:'Opacity 0-9',eyedropDone:'Style picked',swapDone:'Fill↔stroke swapped'}}};
 // ADR-0014: LANG/T are `let`, not `const`, so UI.toggleLang() can reassign them — t()
 // closes over T by reference, so every t()/T.k call made AFTER a reassignment picks up
 // the new language automatically. Only elements that cache a translated string once at
@@ -2539,14 +2539,21 @@ function _drawBoxLabel(s,c){
   if(!s.label)return;
   c.save();
   c.fillStyle=s.stroke||'#0F172A';
-  const fs=14;
-  c.font=fs+'px system-ui,sans-serif';
-  c.textAlign='center';c.textBaseline='middle';
+  const fs=s.fontSize||14;   // ADR-0169
+  c.font=_fontStr(s,fs);   // ADR-0170
+  const al=s.align||'center';   // ADR-0171: label honours horizontal align
+  c.textAlign=al==='left'?'left':al==='right'?'right':'center';c.textBaseline='middle';
+  const tx=al==='left'?s.x+6:al==='right'?s.x+s.w-6:s.x+s.w/2;
   const lines=wrapTextCached(s,s.label,Math.max(10,s.w-8),fs,t=>c.measureText(t).width);   // ADR-0074
   const lh=fs*1.25;
   // ADR-0159: s.valign 'top'|'bottom' (absent = centred) — draw.io parity.
   const top0=s.valign==='top'?s.y+6:s.valign==='bottom'?s.y+s.h-6-lines.length*lh:s.y+s.h/2-(lines.length*lh)/2;
-  for(let i=0;i<lines.length;i++)c.fillText(lines[i],s.x+s.w/2,top0+lh/2+i*lh);
+  for(let i=0;i<lines.length;i++)c.fillText(lines[i],tx,top0+lh/2+i*lh);
+  if(s.under||s.strike){c.strokeStyle=c.fillStyle;c.lineWidth=Math.max(1,fs*0.06);   // ADR-0170
+    for(let i=0;i<lines.length;i++){const lw=c.measureText(lines[i]).width;
+      const ux=al==='left'?tx:al==='right'?tx-lw:tx-lw/2;      // ADR-0171
+      if(s.under){const uy=top0+lh/2+i*lh+fs*0.55;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}
+      if(s.strike){const uy=top0+lh/2+i*lh;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}}}
   c.restore();
 }
 // ADR-0083: image caption — paper-backed strip along the inside bottom edge,
@@ -2554,8 +2561,8 @@ function _drawBoxLabel(s,c){
 function _drawImgLabel(s,c){
   if(!s.label)return;
   c.save();
-  const fs=14;
-  c.font=fs+'px system-ui,sans-serif';
+  const fs=s.fontSize||14;   // ADR-0169
+  c.font=_fontStr(s,fs);   // ADR-0170
   let lines=wrapTextCached(s,s.label,Math.max(10,s.w-8),fs,t=>c.measureText(t).width);
   const lh=fs*1.25,maxL=Math.max(1,Math.floor((s.h-4)/lh));
   if(lines.length>maxL){lines=lines.slice(0,maxL);lines[maxL-1]+='…'}
@@ -2563,8 +2570,10 @@ function _drawImgLabel(s,c){
   c.fillStyle=getCSS('--paper')||'#fff';c.globalAlpha=0.85;
   c.fillRect(s.x,sy,s.w,sh_);
   c.globalAlpha=1;c.fillStyle=s.stroke||'#0F172A';
-  c.textAlign='center';c.textBaseline='middle';
-  for(let i=0;i<lines.length;i++)c.fillText(lines[i],s.x+s.w/2,sy+2+lh/2+i*lh);
+  const al2=s.align||'center';   // ADR-0171
+  c.textAlign=al2==='left'?'left':al2==='right'?'right':'center';c.textBaseline='middle';
+  const tx2=al2==='left'?s.x+6:al2==='right'?s.x+s.w-6:s.x+s.w/2;
+  for(let i=0;i<lines.length;i++)c.fillText(lines[i],tx2,sy+2+lh/2+i*lh);
   c.restore();
 }
 // Connector (edge) label at the midpoint of the bound endpoints (ADR-0003). A paper-
@@ -2636,12 +2645,16 @@ function _drawConnLabel(s,c){
   if(!s.label)return;
   const lp=_connLabelXY(s),mx=lp.x,my=lp.y;                       // ADR-0081
   c.save();
-  c.font='12px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';
+  const fs=s.fontSize||12;   // ADR-0169
+  c.font=_fontStr(s,fs);c.textAlign='center';c.textBaseline='middle';   // ADR-0170
   const w=c.measureText(s.label).width,pad=4;
   c.fillStyle=getCSS('--paper')||'#fff';
-  c.fillRect(mx-w/2-pad,my-9,w+pad*2,18);
+  c.fillRect(mx-w/2-pad,my-fs*0.75,w+pad*2,fs*1.5);
   c.fillStyle=s.stroke||'#0F172A';
   c.fillText(s.label,mx,my);
+  if(s.under||s.strike){c.strokeStyle=c.fillStyle;c.lineWidth=Math.max(1,fs*0.06);   // ADR-0170
+    if(s.under){c.beginPath();c.moveTo(mx-w/2,my+fs*0.55);c.lineTo(mx+w/2,my+fs*0.55);c.stroke()}
+    if(s.strike){c.beginPath();c.moveTo(mx-w/2,my);c.lineTo(mx+w/2,my);c.stroke()}}
   c.restore();
 }
 function drawShape(s,c){
@@ -2689,8 +2702,11 @@ function drawShape(s,c){
     case 'image':{
       const img=s.dataUrl?getImg(s.dataUrl):null;   // ADR-0035: dataUrl-less image renders placeholder, never throws (getImg guards non-data:)
       if(img&&img.complete&&img.naturalWidth){
+        const _cr=Math.min(s.r||0,Math.abs(s.w)/2,Math.abs(s.h)/2);   // ADR-0168
+        if(_cr>0){c.save();c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,_cr);c.clip()}
         if(s.flip){const fx=s.x+s.w/2,fy=s.y+s.h/2;c.save();c.translate(fx,fy);c.scale(s.flip&1?-1:1,s.flip&2?-1:1);c.translate(-fx,-fy);c.drawImage(img,s.x,s.y,s.w,s.h);c.restore()}
-        else c.drawImage(img,s.x,s.y,s.w,s.h);}   // ADR-0149
+        else c.drawImage(img,s.x,s.y,s.w,s.h);
+        if(_cr>0)c.restore();}   // ADR-0149
       else{c.strokeStyle=s.stroke||'#CBD5E1';c.lineWidth=1;c.strokeRect(s.x,s.y,s.w,s.h)}
       _drawImgLabel(s,c);                                         // ADR-0083
       break;}
@@ -2961,8 +2977,15 @@ function drawPen(s,c){
   c.fillStyle=oldFill;
 }
 // ADR-0078: shared font declaration — bold/italic flags prepend weight/posture.
+// ADR-0173: s.font selects the family stack — 'mono'|'serif'|absent(system).
+// Offline-safe stacks only (no web fonts; Board must never fetch a font).
+function _fontFam(s){
+  return s.font==='mono'?'ui-monospace,SFMono-Regular,Menlo,monospace':
+         s.font==='serif'?"Georgia,'Times New Roman',serif":
+         'Hiragino Sans,Helvetica Neue,system-ui,sans-serif';
+}
 function _fontStr(s,fs){
-  return `${s.italic?'italic ':''}${s.bold?'600 ':''}${fs}px Hiragino Sans,Helvetica Neue,system-ui,sans-serif`;
+  return `${s.italic?'italic ':''}${s.bold?'600 ':''}${fs}px ${_fontFam(s)}`;
 }
 function drawText(s,c){
   c=c||ctx;
@@ -3289,7 +3312,17 @@ function drawSelection(c){
     c.strokeRect(x-1,y-1,w+2,h+2);
   }
   c.setLineDash([]);
-  if(lockedSel)return;
+  if(lockedSel){
+    // ADR-0172: padlock badge (draw.io parity) — the dashed outline alone
+    // doesn't clearly read as "this is locked". Top-left, inside the bbox.
+    const lx=x+3,ly=y+3;
+    c.fillStyle=getCSS('--paper');c.strokeStyle=getCSS('--brand-ink');c.lineWidth=1.5;
+    c.beginPath();roundRect(c,lx,ly,16,12,2);c.fill();c.stroke();
+    c.beginPath();c.arc(lx+8,ly,4,Math.PI,0);c.stroke();               // shackle
+    c.fillStyle=getCSS('--ink');
+    c.beginPath();c.arc(lx+8,ly+6,1.4,0,PI2);c.fill();                 // keyhole
+    return;
+  }
   if(state.selection.size===1){
     const sh=sel[0];
     const hs=HANDLE_SIZE;
@@ -5008,6 +5041,7 @@ function positionTextEditor(ta,s){
   ta.style.color=s.stroke||'#0F172A';
   ta.style.textAlign=s.align==='center'?'center':s.align==='right'?'right':'left';   // ADR-0073
   ta.style.fontWeight=s.bold?'600':'';ta.style.fontStyle=s.italic?'italic':'';ta.style.textDecoration=[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ');   // ADR-0078/0095/0100
+  ta.style.fontFamily=_fontFam(s);                                          // ADR-0173
   ta.style.minWidth='20px';
 }
 
@@ -5212,6 +5246,7 @@ window.addEventListener('keydown',e=>{
   else if(k==='r'&&e.shiftKey&&!meta&&!e.altKey&&state.selection.size){e.preventDefault();doRotate(90)}
   else if(k==='h'&&e.shiftKey&&meta&&!e.altKey){e.preventDefault();hideSelection()}   // ADR-0137: ⌘⇧H
   else if(k==='i'&&e.shiftKey&&meta&&!e.altKey){e.preventDefault();selectInverse()}   // ADR-0139: ⌘⇧I
+  else if(!meta&&!e.shiftKey&&/^[0-9]$/.test(k)&&state.selection.size){e.preventDefault();applyStyleToSelection({opacity:k==='0'?1:+k/10})}   // ADR-0167: Figma digit-opacity
   else if(!meta&&KEYMAP[k]){pickTool(KEYMAP[k],k==='i')}
   else if(k===' '&&!meta){e.preventDefault();pickTool('hand',true)}
 });
@@ -6378,9 +6413,9 @@ function _svgArrowHead(els,tx,ty,a1,a2,ah,stroke,a,sz,style){
 function _connLabelSVG(s,x1,y1,x2,y2,ox,oy,stroke,paper){
   if(!s.label)return '';
   const mx=(x1+x2)/2+ox,my=(y1+y2)/2+oy;
-  const lw=String(s.label).length*7+8;
-  return `<rect x="${mx-lw/2}" y="${my-9}" width="${lw}" height="18" fill="${_esc(paper||'#FFFFFF')}" opacity="0.9"/>`+
-    `<text x="${mx}" y="${my}" font-family="system-ui,sans-serif" font-size="12" text-anchor="middle" dominant-baseline="central" fill="${stroke}">${_esc(s.label)}</text>`;
+  const fs=s.fontSize||12,lw=String(s.label).length*fs*0.6+8;   // ADR-0169
+  return `<rect x="${mx-lw/2}" y="${my-fs*0.75}" width="${lw}" height="${fs*1.5}" fill="${_esc(paper||'#FFFFFF')}" opacity="0.9"/>`+
+    `<text x="${mx}" y="${my}" font-family="${_fontFam(s)}" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''} text-anchor="middle" dominant-baseline="central" fill="${stroke}">${_esc(s.label)}</text>`;   // ADR-0170
 }
 // Pure SVG assembly; returns string or null. All attr values through _esc.
 function buildSVG(shapes,paper){
@@ -6537,7 +6572,7 @@ function buildSVG(shapes,paper){
         const svgLines=String(s.text==null?'':s.text).split('\n');
         const tax=s.align==='center'?X+ox+W/2:s.align==='right'?X+ox+W:X+ox;   // ADR-0073
         const anch=s.align==='center'?' text-anchor="middle"':s.align==='right'?' text-anchor="end"':'';
-        els.push(`<text x="${tax}" y="${Y+oy}" dominant-baseline="hanging" font-family="Hiragino Sans,Helvetica Neue,system-ui,sans-serif" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''} fill="${stroke}"${anch}${a}${rT}>`);   // ADR-0078/0095/0100
+        els.push(`<text x="${tax}" y="${Y+oy}" dominant-baseline="hanging" font-family="${_fontFam(s)}" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''} fill="${stroke}"${anch}${a}${rT}>`);   // ADR-0078/0095/0100
         for(let i=0;i<svgLines.length;i++)els.push(`<tspan x="${tax}" dy="${i?fs*1.25:0}">${_esc(svgLines[i])}</tspan>`);
         els.push('</text>');break;}
       case 'image':
@@ -6545,7 +6580,9 @@ function buildSVG(shapes,paper){
           // ADR-0149: flip composes INSIDE the image transform (after rotation)
           // so it mirrors along the shape's local axes — same as the canvas path.
           const fT=s.flip?` translate(${_num(X+W/2+ox)} ${_num(Y+H/2+oy)}) scale(${s.flip&1?-1:1} ${s.flip&2?-1:1}) translate(${_num(-(X+W/2+ox))} ${_num(-(Y+H/2+oy))})`:'';
-          els.push(`<image x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" href="${_esc(s.dataUrl)}"${a}${rT}${fT}/>`);}
+          const _cr2=Math.min(s.r||0,Math.abs(W)/2,Math.abs(H)/2);   // ADR-0168
+          if(_cr2>0)els.push(`<clipPath id="irc${_esc(s.id)}"><rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${_cr2}"/></clipPath>`);
+          els.push(`<image x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" href="${_esc(s.dataUrl)}"${_cr2>0?` clip-path="url(#irc${_esc(s.id)})"`:''}${a}${rT}${fT}/>`);}
         if(s.label)_svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT);  // ADR-0083
         break;
       case 'frame':{
@@ -6568,7 +6605,7 @@ function buildSVG(shapes,paper){
           const lines2=wrapText(s.text,Math.abs(W)-pad2*2,t=>t.length*fs*0.6);
           const tax2=s.align==='center'?X+ox+W/2:s.align==='right'?X+ox+W-pad2:X+ox+pad2;   // ADR-0073
           const anch2=s.align==='center'?' text-anchor="middle"':s.align==='right'?' text-anchor="end"':'';
-          els.push(`<text x="${tax2}" y="${Y+oy+pad2}" dominant-baseline="hanging" font-family="Hiragino Sans,Helvetica Neue,system-ui,sans-serif" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''} fill="#1E293B"${anch2}${rT}>`);   // ADR-0078/0095/0100
+          els.push(`<text x="${tax2}" y="${Y+oy+pad2}" dominant-baseline="hanging" font-family="${_fontFam(s)}" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''} fill="#1E293B"${anch2}${rT}>`);   // ADR-0078/0095/0100
           for(let i=0;i<lines2.length;i++)els.push(`<tspan x="${tax2}" dy="${i?fs*1.3:0}">${_esc(lines2[i])}</tspan>`);
           els.push('</text>');
         }break;}
@@ -6583,23 +6620,27 @@ function buildSVG(shapes,paper){
 // ADR-0083: image caption strip — mirrors _drawImgLabel (paper band + clipped
 // wrapped text anchored to the inside bottom edge).
 function _svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT){
-  const fs=14,pad=4;
+  const fs=s.fontSize||14,pad=4;   // ADR-0169
   let lines=wrapText(s.label,Math.max(10,W-8),t=>t.length*fs*0.6);
   const lh=fs*1.25,maxL=Math.max(1,Math.floor((H-4)/lh));
   if(lines.length>maxL){lines=lines.slice(0,maxL);lines[maxL-1]+='…'}
   const sh_=lines.length*lh+4,sy=Y+H-sh_;
   els.push(`<g${rT}><rect x="${X+ox}" y="${sy+oy}" width="${W}" height="${sh_}" fill="${_esc(paper||'#FFFFFF')}" opacity="0.85"/>`);
-  els.push(`<text x="${X+W/2+ox}" y="${sy+oy+2}" dominant-baseline="hanging" font-family="system-ui,sans-serif" font-size="${fs}" text-anchor="middle" fill="${stroke}">`);
-  for(let i=0;i<lines.length;i++)els.push(`<tspan x="${X+W/2+ox}" dy="${i?lh:0}">${_esc(lines[i])}</tspan>`);
+  const al4=s.align||'center',tx4=al4==='left'?X+ox+6:al4==='right'?X+ox+W-6:X+W/2+ox;   // ADR-0171
+  const anc4=al4==='left'?'start':al4==='right'?'end':'middle';
+  els.push(`<text x="${tx4}" y="${sy+oy+2}" dominant-baseline="hanging" font-family="${_fontFam(s)}" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''} text-anchor="${anc4}" fill="${stroke}">`);   // ADR-0170
+  for(let i=0;i<lines.length;i++)els.push(`<tspan x="${tx4}" dy="${i?lh:0}">${_esc(lines[i])}</tspan>`);
   els.push('</text></g>');
 }
 function _svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT){
-  const fs=14,pad=4;
+  const fs=s.fontSize||14,pad=4;   // ADR-0169
   const lines=wrapText(s.label,Math.max(10,W-pad*2),t=>t.length*fs*0.6);
   const lh=fs*1.25;
   const cy=s.valign==='top'?Y+6+oy:s.valign==='bottom'?Y+H-6+oy-lines.length*lh:Y+H/2+oy-(lines.length*lh)/2;   // ADR-0159
-  els.push(`<text x="${X+W/2+ox}" y="${cy}" dominant-baseline="hanging" font-family="system-ui,sans-serif" font-size="${fs}" text-anchor="middle" fill="${stroke}"${a}${rT}>`);
-  for(let i=0;i<lines.length;i++)els.push(`<tspan x="${X+W/2+ox}" dy="${i?lh:0}">${_esc(lines[i])}</tspan>`);
+  const al3=s.align||'center',tx3=al3==='left'?X+ox+6:al3==='right'?X+ox+W-6:X+W/2+ox;   // ADR-0171
+  const anc3=al3==='left'?'start':al3==='right'?'end':'middle';
+  els.push(`<text x="${tx3}" y="${cy}" dominant-baseline="hanging" font-family="${_fontFam(s)}" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''} text-anchor="${anc3}" fill="${stroke}"${a}${rT}>`);   // ADR-0170
+  for(let i=0;i<lines.length;i++)els.push(`<tspan x="${tx3}" dy="${i?lh:0}">${_esc(lines[i])}</tspan>`);
   els.push('</text>');
 }
 function _esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
@@ -6638,7 +6679,7 @@ const KINSOKU_END=new Set([...'（[｛「『〔〈《【〖〘〝“‘｟«([{'
 // stable across undo/redo of a live shape — only true content/size changes invalidate.
 const _wrapCache=new WeakMap();
 function wrapTextCached(s,text,maxWidth,fontSize,measure){
-  const key=text+' '+maxWidth+' '+fontSize+' '+(s.bold?1:0)+''+(s.italic?1:0);   // ADR-0078
+  const key=text+' '+maxWidth+' '+fontSize+' '+(s.bold?1:0)+''+(s.italic?1:0)+' '+(s.font||'');   // ADR-0078/0173
   const hit=_wrapCache.get(s);
   if(hit&&hit.key===key)return hit.lines;
   const lines=wrapText(text,maxWidth,measure);
@@ -7549,7 +7590,9 @@ const UI={
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked&&(_wayArr(s).length||s.bend||s.elbow||s.curve)})&&['ctxRouteReset','',resetRoute],   // ADR-0090
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='frame'&&!s.locked})&&['ctxFrameFit','',fitFrames],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='frame'&&!s.locked})&&['ctxSelContents','',selectFrameContents],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky')&&!s.locked})&&['ctxTextAlign','',cycleTextAlign],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky'||s.label)&&!s.locked})&&['ctxTextAlign','',cycleTextAlign],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky'||s.label)&&!s.locked})&&['ctxFont','',cycleFont],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&!s.locked})&&['ctxOpacity','0-9',cycleOpacity],   // ADR-0174
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond')&&!s.locked})&&['ctxVAlign','',cycleVAlign],   // ADR-0159
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky')&&!s.locked})&&[[...state.selection].some(id=>byId(id)?.type==='sticky'&&!byId(id)?.locked)?'ctxToText':'ctxToSticky','',toggleStickyText],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='sticky'&&!s.locked})&&['ctxStickyColor','',cycleStickyColor],
@@ -7579,7 +7622,7 @@ const UI={
       has&&['ctxFlipH','⇧H',()=>doFlip('h')],
       has&&['ctxFlipV','⇧V',()=>doFlip('v')],
       has&&['ctxRotate90','⇧R',()=>doRotate(90)],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='rect'||s.type==='diamond')&&!s.locked})&&['ctxCorner','',cycleCorner],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='rect'||s.type==='diamond'||s.type==='image')&&!s.locked})&&['ctxCorner','',cycleCorner],
       has&&['ctxHide','⌘⇧H',hideSelection],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked&&(s.a||s.b)})&&['ctxUnbind','',unbindSelection],   // ADR-0157
       has&&[...state.selection].map(byId).filter(s=>s&&!s.locked&&s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen').length===2&&['ctxConnect','',connectSelection],
@@ -7680,7 +7723,7 @@ const UI={
       ['Enter / ⇧Enter',k.searchNav],
       ['⇧H / ⇧V',t('ctxFlipH')+' / '+t('ctxFlipV')],
       ['⌥C / ⌥V',t('ctxCopyStyle')+' / '+t('ctxPasteStyle')],
-      ['⇧ + drag',k.moveAxis],['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],['⌥ + drag',k.lasso],['I',k.eyedropper],['⇧X',k.swapFill],['⌘⇧ , / .',k.fontSize],['⌘B / ⌘I / ⌘U / ⌘⇧X',k.boldItalic],
+      ['⇧ + drag',k.moveAxis],['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],['⌥ + drag',k.lasso],['I',k.eyedropper],['⇧X',k.swapFill],['0-9',k.digitOpacity],['⌘⇧ , / .',k.fontSize],['⌘B / ⌘I / ⌘U / ⌘⇧X',k.boldItalic],
       ['Tab / ⇧Tab',k.cycle],['Enter',k.create+' / '+t('editLabel')]
     ];
     while(g.firstChild)g.removeChild(g.firstChild);
@@ -8229,7 +8272,7 @@ function cycleVAlign(){
 function fontSizeStep(d){
   const before=[],after=[];
   for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky')||s.locked)continue;
+    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky'&&!s.label)||s.locked)continue;   // ADR-0169: labels honour fontSize
     const cur=s.fontSize||14,nxt=Math.min(64,Math.max(8,cur+d*2));
     if(nxt===cur)continue;
     before.push({id,fontSize:cur});after.push({id,fontSize:nxt});s.fontSize=nxt;
@@ -8240,7 +8283,7 @@ function fontSizeStep(d){
 function toggleTextFlag(k){
   const before=[],after=[];
   for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky')||s.locked)continue;
+    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky'&&!s.label)||s.locked)continue;   // ADR-0170
     const nxt=!s[k];
     before.push({id,[k]:s[k]||null});after.push({id,[k]:nxt?true:null});
     if(nxt)s[k]=true;else delete s[k];
@@ -8282,11 +8325,33 @@ function swapFillStroke(){
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate();UI.toast(t('swapDone'),'ok')}
 }
+// ADR-0173: cycle font family system→mono→serif→system for text-bearing
+// shapes via style op (Excalidraw font-switch parity).
+function cycleFont(){
+  const before=[],after=[];
+  for(const id of state.selection){
+    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky'&&!s.label)||s.locked)continue;
+    const cur=s.font||'',nxt=cur===''?'mono':cur==='mono'?'serif':'';
+    before.push({id,font:cur||null});after.push({id,font:nxt||null});
+    if(nxt)s.font=nxt;else delete s.font;
+  }
+  if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
+}
+// ADR-0174: ctx opacity cycle — same style op as the digit keys (ADR-0167),
+// reachable from touch/ctx. Levels mirror Figma's decimal steps.
+function cycleOpacity(){
+  const first=[...state.selection].map(byId).find(s=>s&&!s.locked);
+  if(!first)return;
+  const lv=[1,0.7,0.4,0.1],cur=first.opacity??1;
+  const idx=lv.findIndex(v=>Math.abs(v-cur)<0.051);
+  const nxt=idx>=0?lv[(idx+1)%lv.length]:(lv.find(v=>v<cur)??lv[0]);
+  applyStyleToSelection({opacity:nxt});
+}
 // ADR-0073: cycle text align left→center→right for text/sticky via style op.
 function cycleTextAlign(){
   const before=[],after=[];
   for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky')||s.locked)continue;
+    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky'&&!s.label)||s.locked)continue;   // ADR-0171
     const cur=s.align||'left',nxt=cur==='left'?'center':cur==='center'?'right':'left';
     before.push({id,align:cur});after.push({id,align:nxt});s.align=nxt;
   }
@@ -8298,7 +8363,7 @@ function cycleTextAlign(){
 function cycleCorner(){
   const before=[],after=[];
   for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='rect'&&s.type!=='diamond')||s.locked)continue;   // ADR-0156
+    const s=byId(id);if(!s||(s.type!=='rect'&&s.type!=='diamond'&&s.type!=='image')||s.locked)continue;   // ADR-0156/0168
     const cur=s.r==null?8:s.r,nxt=cur<4?8:cur<12?16:cur<20?24:0;
     before.push({id,r:s.r??null});after.push({id,r:nxt});
     s.r=nxt;
@@ -8326,7 +8391,7 @@ function _styleOf(sh){return{
   size:sh.size,opacity:sh.opacity,dash:sh.dash||0,fstyle:sh.fstyle,     // ADR-0077
   bold:sh.bold,italic:sh.italic,under:sh.under,strike:sh.strike,        // ADR-0078/0095/0100
   align:sh.align,valign:sh.valign,fontSize:sh.fontSize,                 // ADR-0159
-  r:sh.r,head:sh.head,start:sh.start,elbow:sh.elbow,curve:sh.curve,cbend:sh.cbend
+  r:sh.r,head:sh.head,start:sh.start,elbow:sh.elbow,curve:sh.curve,cbend:sh.cbend,font:sh.font
 };}
 function copyStyle(){
   // Copy style from the first selected shape

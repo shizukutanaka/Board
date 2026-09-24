@@ -216,6 +216,14 @@ Board/
 - [ADR-0164](docs/ADR-0164-statusbar-sel-dims.md) 選択寸法の常時表示
 - [ADR-0165](docs/ADR-0165-arrow-pan-empty.md) 非選択時の矢印パン
 - [ADR-0166](docs/ADR-0166-swap-fill-stroke.md) ⇧X 塗り↔線スワップ
+- [ADR-0167](docs/ADR-0167-digit-opacity.md) 数字キー不透明度
+- [ADR-0168](docs/ADR-0168-image-corner-radius.md) 画像の角丸
+- [ADR-0169](docs/ADR-0169-label-fontsize.md) ラベル fontSize
+- [ADR-0170](docs/ADR-0170-label-typography.md) ラベル太字斜体下線取消線
+- [ADR-0171](docs/ADR-0171-label-align.md) ラベル水平揃え
+- [ADR-0172](docs/ADR-0172-lock-badge.md) ロック選択の鍵バッジ
+- [ADR-0173](docs/ADR-0173-font-family.md) 書体ファミリ巡回
+- [ADR-0174](docs/ADR-0174-ctx-opacity.md) ctx 不透明度巡回
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
