@@ -2,6 +2,10 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.436] - 2026-09-23
+### 修正
+- ADR-0398: ファイル取込4経路 (.board/.excalidraw/.svg/.drawio) に 32MB 上限 — 巨大ファイルで JSON/XML parse がメインスレッドをハングさせる経路を遮断 (dataUrl 16M / snap 24M の既存 cap と同系統)
+
 ## [1.7.435] - 2026-09-23
 ### 変更
 - ADR-0397: `_St`(String)/`_PD`(pointerdown) + 残りトーストキー5件 (`_NS/_ST/_PA/_EF/_SM`) の定数化 — 計 ~220B 回収

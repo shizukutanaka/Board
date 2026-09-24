@@ -821,7 +821,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.435';
+const V='1.7.436';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6705,7 +6705,9 @@ function importDrawioText(txt,wp){
   _iv();_tst(t('dioImported'),'ok');
   return true;
 }
+const _bigFile=f=>f.size>33554432;   // ADR-0398
 function importDrawioFile(file,wp){
+  if(_bigFile(file)){_tst(t(_IB),'warn');return}
   const r=new FileReader();
   r.onload=()=>importDrawioText(_St(r.result),wp);
   r.onerror=()=>_tst(t(_IB),'warn');
@@ -7006,6 +7008,7 @@ function importSvgText(txt,wp){
   return true;
 }
 function importSvgFile(file,wp){
+  if(_bigFile(file)){_tst(t(_IB),'warn');return}
   const r=new FileReader();
   r.onload=()=>importSvgText(_St(r.result),wp);
   r.onerror=()=>_tst(t(_IB),'warn');
@@ -7185,6 +7188,7 @@ function copyBoardJSON(shapes=_sh()){
     .then(ok=>_tst(t(ok?'copied':'copyFailed'),ok?'ok':'warn'));
 }
 function importExcFile(file,wp){
+  if(_bigFile(file)){_tst(t(_IB),'warn');return}
   const r=new FileReader();
   r.onload=()=>importExcText(_St(r.result),wp);
   r.onerror=()=>_tst(t(_IB),'warn');
@@ -7192,6 +7196,7 @@ function importExcFile(file,wp){
 }
 
 function importBoard(file){
+  if(_bigFile(file)){_tst(t(_IB),'warn');return}
   const r=new FileReader();
   r.onload=()=>{
     try{

@@ -581,6 +581,7 @@ const checks = [
   ['exportBoard function exists', html.includes('function exportBoard(shapes')],
   ['exportBoard revokes Blob URL to prevent memory leak', html.includes("revokeObjectURL(_bu),1e4")],
   ['.board file round-trips viewport (ADR-0393)', html.includes("viewport:{x:+_vp().x.toFixed(2),y:+_vp().y.toFixed(2),zoom:+_vp().zoom.toFixed(4)}")&&html.includes("_vp().zoom=clampZoom(+d.viewport.zoom)")],
+  ['file importers reject >32MB payloads (ADR-0398)', html.includes("_bigFile=f=>f.size>33554432")&&(html.match(/_bigFile\(file\)/g)||[]).length>=4],
   ['importBoard uses atomic replace op (not clear+adds)', html.includes('function importBoard') && html.includes('.filter(validShape)') && html.includes("op:'replace',before,after")],
   ['Ctrl+Shift+S triggers exportBoard', html.includes("e.shiftKey){_pd(e);exportBoard()}")],
   ['doDelete warns on all-locked selection (ADR-0396)', html.includes("if(!sel.length){if(_selAny())_tst(t('lockedNoop'),'warn');return}")],
