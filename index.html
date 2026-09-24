@@ -774,7 +774,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.197';
+const V='1.7.198';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3426,6 +3426,14 @@ canvas.addEventListener('pointerdown',e=>{
             const pts=_linePts(onlySel),R_=HANDLE_SIZE/state.viewport.zoom;
             for(let i=1;i<pts.length-1;i++){             // existing vertex → move it
               if(Math.hypot(wp.x-pts[i].x,wp.y-pts[i].y)<=R_){
+                if(e.altKey){                              // ADR-0141: ⌥click deletes the waypoint
+                  const wa=_wayArr(onlySel),bw=clone(wa.length?wa:null);
+                  wa.splice(i-1,1);onlySel.way=wa.length?wa:null;
+                  const origSel=[...state.selection];
+                  Store._recordCommitted({op:'style',before:[{id:onlySel.id,way:bw}],after:[{id:onlySel.id,way:wa.length?clone(wa):null}]});
+                  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+                  invalidate();return;
+                }
                 ptr.dragKind='way';ptr.wayIdx=i-1;ptr.wayNew=false;ptr.wayOrig=clone(onlySel);return;
               }
             }

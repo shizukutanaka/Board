@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.198]
+
+### 追加
+- **Alt+click でウェイポイント削除** (ADR-0141)。選択中の直線/
+  矢印の既存中間頂点を ⌥クリックで個別削除 (Figma 式)。ルート
+  リセットせずに1点だけ消せる。
+
 ## [1.7.197]
 
 ### 追加
