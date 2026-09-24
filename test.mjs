@@ -268,8 +268,8 @@ const checks = [
   ['Persist.load validates shapes', html.includes("d.shapes.filter(validShape)")],
   // v1.6.9: sticky text auto-wrap
   ['wrapText helper present', html.includes("function wrapText")],
-  ['sticky render wraps text', html.includes("wrapTextCached(s,s.text,Math.abs(s.w)-pad*2")],
-  ['SVG sticky export wraps text', html.includes("wrapText(s.text,Math.abs(W)-pad2*2")],
+  ['sticky render wraps text', html.includes("wrapTextCached(s,s.text,_abs(s.w)-pad*2")],
+  ['SVG sticky export wraps text', html.includes("wrapText(s.text,_abs(W)-pad2*2")],
   // v1.6.10: keyboard shape navigation (a11y)
   ['cycleSel/describeShape helpers present', html.includes("function cycleSel") && html.includes("function describeShape")],
   ['Tab cycles shape selection', html.includes("else if(k==='tab')") && html.includes("cycleSel(ids,")],
@@ -400,7 +400,7 @@ const checks = [
   ['ADR-0032/0033: marquee + pickTop use the spatial grid', html.includes("_gridRectCandidates(_grid||(_grid=_buildGrid(state.shapes)),r)") && html.includes("cands.sort((a,b)=>(_grid.idx.get(b)|0)-(_grid.idx.get(a)|0))")],
   ['load validates viewport finiteness', html.includes("_fin(+d.viewport.zoom)&&d.viewport.zoom>0")],
   ['load clamps viewport zoom to [MIN_ZOOM,MAX_ZOOM]', html.includes("state.viewport.zoom=clampZoom(+d.viewport.zoom)")],
-  ['clampZoom is the single zoom-invariant source', html.includes("const clampZoom=z=>Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,z))") && html.includes("const nz=clampZoom(") && html.includes("const z=clampZoom(")],
+  ['clampZoom is the single zoom-invariant source', html.includes("const clampZoom=z=>_max(MIN_ZOOM,_min(MAX_ZOOM,z))") && html.includes("const nz=clampZoom(") && html.includes("const z=clampZoom(")],
   // v1.6.18: deeper audit fixes
   ['P selects pen, Shift+P presents', html.includes("k==='p'&&e.shiftKey&&!meta&&!e.altKey")],
   ['pen resize handles emit from pts bbox (ADR-0051)', html.includes("if(s.type==='pen'){") && html.includes("id:'se'") && html.includes("G.bbox(s);if(!b||!b.w||!b.h)return [];")],
@@ -420,7 +420,7 @@ const checks = [
   ['alt+drag duplicates picked shape then drags copies', html.includes("if(e.altKey&&!hit.locked){")&&html.includes("_placeCopies(srcShapes,0,0)")&&html.includes("dupSet=alreadySel")],
   // v1.7.118: ADR-0061 diamond shape
   ['diamond tool in KEYMAP + toolbar + help', html.includes("e:'eraser',d:'diamond'")&&html.includes('data-tool="diamond"')&&html.includes("['D',k.diamond]")],
-  ['diamond draw/hit/svg/minimap paths', html.includes("case 'diamond':{")&&html.includes("case'diamond':s=Shape.make('diamond'")&&html.includes('Math.abs(d-1)<0.15')],
+  ['diamond draw/hit/svg/minimap paths', html.includes("case 'diamond':{")&&html.includes("case'diamond':s=Shape.make('diamond'")&&html.includes('_abs(d-1)<0.15')],
   ['diamond i18n ja+en', html.includes("diamond:'ダイヤ'")&&html.includes("diamond:'Diamond'")],
   // v1.7.120: ADR-0062 elbow connectors
   ['elbow route helper + toggle in ctx menu', html.includes('function _elbowPts(s)')&&html.includes('function toggleElbow()')&&html.includes("['ctxElbow','',toggleElbow]")],
@@ -436,10 +436,10 @@ const checks = [
   ['endpoint rebind: always-handle + unbind-on-grab + bindPreview', html.includes("h.push({id:'p1',x:e.x1,y:e.y1});       // ADR-0065")&&html.includes("if(sh[bk]){sh[bk]=null;sh[bk+'F']=null}")&&html.includes('state.bindPreview=')],
   ['_endPointBind in pointerup + not-self/not-other-end guard', html.includes('_endPointBind(rsh,ptr.resizeHandle,e.altKey)')&&html.includes('hit!==sh[other]')],
   // v1.7.124: ADR-0066 Shift+drag axis-constrained move
-  ['shift axis constraint in moveDelta + objectSnap skipped', html.includes("if(Math.abs(dx)>=Math.abs(dy))dy=0;else dx=0;")&&html.includes('moveDelta(wp,shift,alt)')&&html.includes('doMove(wp,e.shiftKey,e.altKey)')&&html.includes('endSelect(wp,e.shiftKey,e.altKey)')],
+  ['shift axis constraint in moveDelta + objectSnap skipped', html.includes("if(_abs(dx)>=_abs(dy))dy=0;else dx=0;")&&html.includes('moveDelta(wp,shift,alt)')&&html.includes('doMove(wp,e.shiftKey,e.altKey)')&&html.includes('endSelect(wp,e.shiftKey,e.altKey)')],
   ['moveAxis i18n ja+en + help row', html.includes("moveAxis:'軸拘束移動'")&&html.includes("moveAxis:'Constrain move axis'")&&html.includes("['⇧ + drag',k.moveAxis]")],
   // v1.7.125: ADR-0067 per-type edge projection
-  ['edge projection: diamond/ellipse contour formula', html.includes("sh.type==='diamond'?1/((Math.abs(dx)/(_rx||1e-6))")&&html.includes("sh.type==='ellipse'?1/(Math.hypot(dx/(_rx||1e-6),dy/(_ry||1e-6))||1e-6)")],
+  ['edge projection: diamond/ellipse contour formula', html.includes("sh.type==='diamond'?1/((_abs(dx)/(_rx||1e-6))")&&html.includes("sh.type==='ellipse'?1/(Math.hypot(dx/(_rx||1e-6),dy/(_ry||1e-6))||1e-6)")],
   // v1.7.126: ADR-0068 curved connector
   ['curve route: quadratic draw + sampled hit + svg path', html.includes('c.quadraticCurveTo(cc.x,cc.y,e.x2,e.y2)')&&html.includes('const pts=_curveSegs(s);')&&html.includes('Q ${_num(cc.x+ox)}')],
   ['curve ctx menu + i18n + exclusive toggle', html.includes("['ctxCurve','',toggleCurve]")&&html.includes("ctxCurve:'曲線'")&&html.includes("ctxCurve:'Curved'")&&html.includes('elbow:s.elbow?0:1,curve:0')],
@@ -452,8 +452,8 @@ const checks = [
   ['eqGap snap: same-row gaps → candidate slots + edge-snap priority', html.includes('function _eqGapSnap(mov,excl,tol)')&&html.includes('for(const cand of[a[L]-g-mov[D], b[L]+b[D]+g, a[L]+a[D]+g, b[L]-g-mov[D]])')&&html.includes('const eq=_eqGapSnap(mov,excl')],
   ['elbow bend: s.bend two-corner route + trunk hit + ebend dragKind', html.includes('if(s.bend){')&&html.includes('function _elbowTrunk(s)')&&html.includes("ptr.dragKind='ebend'")&&html.includes('ptr.ebendOrig=clone(onlySel)')],
   ['text align: align prop cycles + canvas/SVG/editor respect it', html.includes('function cycleTextAlign()')&&html.includes("['ctxTextAlign','',cycleTextAlign]")&&html.includes('c.textAlign=s.align')&&html.includes('text-anchor')],
-  ['box label wrap: canvas wraps to w-8 + SVG multi-tspan centred', html.includes('wrapTextCached(s,s.label,Math.max(10,s.w-8)')&&html.includes('function _svgBoxLabel(els,s,X,Y,W,H')&&html.includes('wrapText(s.label')],
-  ['font size keys: ⌘⇧,/. steps fontSize ±2 clamped 8..64', html.includes('function fontSizeStep(d)')&&html.includes("k===','||k==='<'")&&html.includes('Math.min(64,Math.max(8')],
+  ['box label wrap: canvas wraps to w-8 + SVG multi-tspan centred', html.includes('wrapTextCached(s,s.label,_max(10,s.w-8)')&&html.includes('function _svgBoxLabel(els,s,X,Y,W,H')&&html.includes('wrapText(s.label')],
+  ['font size keys: ⌘⇧,/. steps fontSize ±2 clamped 8..64', html.includes('function fontSizeStep(d)')&&html.includes("k===','||k==='<'")&&html.includes('_min(64,_max(8')],
   ['waypoint: _linePts + way drag + transforms + SVG polyline', html.includes('function _linePts(s)')&&html.includes("ptr.dragKind='way'")&&html.includes('_wayArr(s)')&&html.includes('if(orig.way)sh.way=')],
   ['hatch: _hatchSegs/ctx/svg + cycleFillStyle + ctx item', html.includes('function _hatchSegs(')&&html.includes('function cycleFillStyle()')&&html.includes("['ctxFillStyle'")&&html.includes('clip-path="url(#')],
   ['bold/italic: _fontStr + toggleTextFlag + ⌘B/⌘I + SVG attrs', html.includes('function _fontStr(s,fs)')&&html.includes('function toggleTextFlag(k)')&&html.includes("k==='b'&&!e.shiftKey")&&html.includes('font-weight="600"')],
@@ -474,7 +474,7 @@ const checks = [
   ['shift+wheel → horizontal pan', html.includes('const dx=e.shiftKey&&!d.x?d.y:d.x')],
   ['escape cancels in-flight pointer gesture', html.includes('else if(ptr.down&&ptr.dragKind)_cancelPointerGesture()')],
   ['underline: ⌘U toggle + canvas line + SVG text-decoration', html.includes("toggleTextFlag('under')")&&html.includes('s.under')&&html.includes("'underline'")&&html.includes('text-decoration=')],
-  ['equal-size snap: resize matches another shape\'s w/h', html.includes('equal-size snap')&&html.includes('nw=eH?x-orig.x')&&html.includes('Math.abs(nw-b.w)')],
+  ['equal-size snap: resize matches another shape\'s w/h', html.includes('equal-size snap')&&html.includes('nw=eH?x-orig.x')&&html.includes('_abs(nw-b.w)')],
   ['excalidraw multi-segment arrow → real connector + way[]', html.includes('pts.slice(1,-1).map(p=>({x:p[0],y:p[1]}))')],
   ['excalidraw export: excScene maps types/bindings/files', html.includes('function excScene')&&html.includes('endArrowhead')&&html.includes('ctxExportExc')],
   ['clipboard .excalidraw JSON routes to importExcText', html.includes('importExcText(s)!==false')],
@@ -521,7 +521,7 @@ const checks = [
   ['Alt+click label dot resets labelPos', html.includes('ADR-0145')&&html.includes('labelPos:onlySel.labelPos')&&html.includes('delete onlySel.labelPos')],
   ['rotate keeps elbow bend glued to trunk', html.includes('function _rotBend')&&html.includes('_rotBend(s,tr,rot)')&&html.includes('_rotBend(sh,tr,R)')],
   ['translate moves elbow bend (trunk follows connector)', html.includes('s.bend+=vert?dx:dy')&&html.includes('ADR-0147')],
-  ['group resize scales elbow bend on trunk axis', html.includes('ADR-0148')&&html.includes('sh.bend=Math.abs(tr[1].x-tr[0].x)')],
+  ['group resize scales elbow bend on trunk axis', html.includes('ADR-0148')&&html.includes('sh.bend=_abs(tr[1].x-tr[0].x)')],
   ['image flip mirrors pixels via s.flip bitmask', html.includes("s.flip=(s.flip||0)^(axis==='h'?1:2)")&&html.includes('ADR-0149')&&html.includes('scale(${s.flip&1?-1:1}')],
   ['hidden shapes leave search + bindAt', html.includes('s.visible!==0&&(s.label||s.text||s.type')&&html.includes("t!=='pen'&&s.visible!==0")],
   ['SVG export excludes hidden shapes', html.includes('const _vis=shapes.filter(s=>s.visible!==0)')&&html.includes('_vis.filter(s=>s.type==="frame")')],
@@ -532,7 +532,7 @@ const checks = [
   ['DOM mirror marks hidden shapes', html.includes("tagHidden:'(非表示)'")&&html.includes("s.visible===0?' '+t('tagHidden')")],
   ['fit ignores hidden unless all hidden', html.includes('const vis=state.shapes.filter(s=>s.visible!==0)')&&html.includes('_vis.length?_vis:state.shapes')],
   ['rounded diamond path + cycle + ctx', html.includes('function _diamondPath(c,s)')&&html.includes("const boxOk=s.type==='rect'||s.type==='diamond'||s.type==='image'")&&html.includes("s.type==='rect'||s.type==='diamond'")],
-  ['SVG diamond emits rounded path when r>0', html.includes('const _dPts=[[X+W/2,Y],[X+W,Y+H/2]')&&html.includes("Math.min(_dr,e1/2,e2/2)")],
+  ['SVG diamond emits rounded path when r>0', html.includes('const _dPts=[[X+W/2,Y],[X+W,Y+H/2]')&&html.includes("_min(_dr,e1/2,e2/2)")],
   ['unbind-selection ctx item + fn', html.includes("ctxUnbind:'結合を解除'")&&html.includes('function unbindSelection()')&&html.includes("['ctxUnbind','',unbindSelection]")],
   ['valign cycle: box-label vertical align', html.includes('function cycleVAlign()')&&html.includes("s.valign==='top'?s.y+6")&&html.includes("['ctxVAlign','',cycleVAlign]")],
   ['valign in styleClipboard + SVG label', html.includes('valign:sh.valign')&&html.includes("s.valign==='bottom'?Y+H-6+oy")],
@@ -692,7 +692,7 @@ const checks = [
   ['i18n has shareUrlTooLong/shareExportFailed ja+en', html.includes("shareUrlTooLong:'⚠ URL が非常に長い") && html.includes("shareUrlTooLong:'⚠ This URL is very long") && html.includes("shareExportFailed:'共有リンクの生成に失敗しました'") && html.includes("shareExportFailed:'Failed to build the share link'")],
   // v1.7.99: ADR-0041 DOM mirror a11y
   ['mirror region + list exist', html.includes('id="shapeMirror"') && html.includes('id="shapeMirrorList"')],
-  ['mirror capped by MIRROR_MAX', html.includes('MIRROR_MAX') && html.includes('Math.min(state.shapes.length,MIRROR_MAX)')],
+  ['mirror capped by MIRROR_MAX', html.includes('MIRROR_MAX') && html.includes('_min(state.shapes.length,MIRROR_MAX)')],
   ['mirror keyed on _gridVer', html.includes('if(_mirrorVer===_gridVer)return;')],
   ['mirror wired into frame()', html.includes('_mirrorSync();   // ADR-0041')],
   ['i18n has mirrorLabel/mirrorMore ja+en', html.includes("mirrorLabel:'ボード上の図形一覧'") && html.includes("mirrorLabel:'Shapes on the board'")],
@@ -713,7 +713,7 @@ const checks = [
   ['content beats extension routing', html.includes("d.type==='excalidraw'){importExcText(r.result);return}")],
   ['.excalidraw file entry points', html.includes("f.name.endsWith('.excalidraw')") && html.includes('.excalidraw,.drawio')],
   ['.drawio file entry points + parser (ADR-0203)', html.includes("f=>/\\.(drawio|dio)$/i.test(f.name)")&&html.includes('function drawioToShapes')],
-  ['excalidraw lineHeight/fontFamily/verticalAlign round-trip (ADR-0242..0244)', html.includes("lineHeight:s.lineH||1.25")&&html.includes("o.lineH=Math.min(4,Math.max(0.5,e.lineHeight))")&&html.includes("fontFamily:s.font==='mono'?3:2")&&html.includes("verticalAlign:s.valign||'middle'")],
+  ['excalidraw lineHeight/fontFamily/verticalAlign round-trip (ADR-0242..0244)', html.includes("lineHeight:s.lineH||1.25")&&html.includes("o.lineH=_min(4,_max(0.5,e.lineHeight))")&&html.includes("fontFamily:s.font==='mono'?3:2")&&html.includes("verticalAlign:s.valign||'middle'")],
   ['excalidraw locked round-trips s.locked (ADR-0241)', html.includes("locked:!!s.locked},over)")&&html.includes("if(e.locked)s.locked=1")],
   ['drawio visible=0 attr round-trips s.visible===0 (ADR-0245)', html.includes("s.visible===0?' visible=\"0\"':'")&&html.includes("getAttribute('visible')==='0'")],
   ['drawio shadow=1 round-trips s.shadow (ADR-0246)', html.includes("r+='shadow=1;'")&&html.includes("sty.shadow==='1'")],
@@ -730,7 +730,7 @@ const checks = [
   ['drawio strokeOpacity/fillOpacity → s.opacity (ADR-0271)', html.includes('+sty.strokeOpacity')],
   ['svg conn path/label emitters deduped (ADR-0270)', html.includes('const _sp=(d,j)')&&html.includes('_cL();')],
   ['drawio multi-page side-by-side import (ADR-0311)', html.includes("for(const dg of doc.querySelectorAll('diagram'))")],
-  ['link badge 🔗 on linked shapes (ADR-0310)', html.includes("c.fillText('🔗',s.x+Math.abs(s.w)-3,s.y+3)")],
+  ['link badge 🔗 on linked shapes (ADR-0310)', html.includes("c.fillText('🔗',s.x+_abs(s.w)-3,s.y+3)")],
   ['_selN/_fin shorthands (ADR-0334)', html.includes("const _selN=()=>state.selection.size")&&html.includes("const _fin=Number.isFinite")],
   ['conn link badge canvas+SVG (ADR-0333)', html.includes("if(s.link&&_conn(s.type)){const lp=_connLabelXY(s)")&&html.includes('if(s.link)els.push(`<text x="${lp.x+10+ox}"')&&html.includes('if(s.link)els.push(`<text x="${P[0][0]+4}"')],
   ['drawio rounded emit on diamond/image (ADR-0332)', html.includes("if(s.r>0&&(t==='diamond'||t==='image'))sty+='rounded=1;'")],
@@ -768,7 +768,7 @@ const checks = [
   ['frame label fontSize via s.fontSize (ADR-0298)', html.includes("const fs=s.fontSize||12")],
   ['_conn() type shorthand (ADR-0297)', html.includes("_conn=t=>t==='line'||t==='arrow'")],
   ['exc binding.focus → aF/bF (ADR-0296)', html.includes('sb.focus+1)/2')],
-  ['_c01() clamp01 helper (ADR-0295)', html.includes('const _c01=v=>Math.min(1,Math.max(0,v))')],
+  ['_c01() clamp01 helper (ADR-0295)', html.includes('const _c01=v=>_min(1,_max(0,v))')],
   ['bar (T字) head style (ADR-0294)', html.includes("style==='bar'")&&html.includes("endArrow=dash")],
   ['startHead style persistence (ADR-0293)', html.includes("state.style.startHead=next")&&html.includes("base.startHead=state.style.startHead")],
   ['_p()/_ac() css token shorthands (ADR-0292)', html.includes("const _p=()=>getCSS('--paper')")],
@@ -827,7 +827,7 @@ const checks = [
   ['drawio import maps align + fontStyle bitmask (ADR-0228)', html.includes("sty.align==='center'||sty.align==='right'")&&html.includes('_fs&4)s.under=1')&&html.includes("'align='+s.align")&&html.includes("fontStyle='+_fs")],
   ['excalidraw import restores groupIds → groupId (ADR-0229)', html.includes("e.groupIds[0]")&&html.includes('s.groupId=e.groupIds')],
   ['excalidraw import maps fillStyle/roundness/align/arrowheads (ADR-0230)', html.includes("e.fillStyle==='hachure'")&&html.includes("e.strokeSharpness==='round')o.r=8")&&html.includes("e.endArrowhead===null)s.head='none'")&&html.includes("style==='none')return")],
-  ['excalidraw export emits fstyle/arrowheads/image-flip (ADR-0231)', html.includes("'cross'?'cross-hatch':'solid'")&&html.includes("startArrowhead:s.start?(s.startHead||'arrow'):null")&&html.includes("scale:[s.flip&1?-1:1")&&html.includes("d.files[e.fileId]")],
+  ['excalidraw export emits fstyle/arrowheads/image-flip (ADR-0231)', html.includes("'cross'?'cross-hatch':'solid'")&&html.includes("startArrowhead:s.start?_excHead(s.startHead||'arrow'):null")&&html.includes("scale:[s.flip&1?-1:1")&&html.includes("d.files[e.fileId]")],
   ['clipboard mxfile XML routes to drawio import (ADR-0232)', html.includes('<mxfile[')&&html.includes('importDrawioText(s,wp)')],
   ['arrowhead cycle includes none (ADR-0233)', html.includes("['arrow','dot','bar','open','none']")],
   ['excalidraw label → bLabel container text round-trip (ADR-0234)', html.includes('{bLabel:1}')&&html.includes('e.bLabel){p.label=')],
@@ -925,9 +925,9 @@ const checks = [
   ['Tab cycling excludes locked+hidden shapes (filter before cycleSel)', html.includes("const ids=state.shapes.filter(s=>!s.locked&&s.visible!==0).map(s=>s.id)")],
   // v1.6.60: bound connectors - arrow/line endpoints follow bound shapes
   ['connEnds helper derives bound endpoints', html.includes("function connEnds") && html.includes("function _edgePt")],
-  ['G.bbox line uses connEnds', html.includes("const e=connEnds(s);\n      let x=Math.min(e.x1,e.x2)")&&html.includes('for(const w of _wayArr(s))')],
+  ['G.bbox line uses connEnds', html.includes("const e=connEnds(s);\n      let x=_min(e.x1,e.x2)")&&html.includes('for(const w of _wayArr(s))')],
   ['G.hit line uses connEnds', html.includes("const pts=_linePts(s);")],
-  ['drawArrow uses connEnds', html.includes("const e=connEnds(s);\n  const ah=Math.max(6,(s.size||2)*3)")],
+  ['drawArrow uses connEnds', html.includes("const e=connEnds(s);\n  const ah=_max(6,(s.size||2)*3)")],
   ['endLineLike binds endpoints dropped on a shape', html.includes("const ba=_bindAt(d.x1,d.y1),bb=_bindAt(d.x2,d.y2)") && html.includes("function _bindAt")],
   ['connector endpoints always expose resize handles (ADR-0065 rebind)', html.includes("h.push({id:'p1',x:e.x1,y:e.y1});       // ADR-0065") && html.includes("h.push({id:'p2',x:e.x2,y:e.y2});")],
   ['SVG export derives bound endpoints', html.includes("const _e=connEnds(s);\n    const X1=_num(_e.x1)")],
@@ -1070,7 +1070,7 @@ const checks = [
   ['selection outline traces rotated box', html.includes("if(single&&single.rotate&&single.w!=null){")],
   // v1.6.70: keyboard resize (Alt+arrow)
   ['resize op registered (apply, validate, remote)', html.includes("case 'resize':\n      case 'align':\n      case 'beautify':{") && html.includes("case 'resize':{const noLock=") && html.includes("'align','style','resize'])")],
-  ['Alt+arrow keyboard-resizes box shapes', html.includes("_rcOp({op:'resize',before,after});") && html.includes("sh.w=Math.max(4,sh.w+dw);sh.h=Math.max(4,sh.h+dh);")],
+  ['Alt+arrow keyboard-resizes box shapes', html.includes("_rcOp({op:'resize',before,after});") && html.includes("sh.w=_max(4,sh.w+dw);sh.h=_max(4,sh.h+dh);")],
   // v1.6.71: image import error handling
   ['imgErr i18n key in both locales', html.includes("imgErr:'画像を読み込めませんでした'") && html.includes("imgErr:'Image failed to load'")],
   ['drag-drop image import has img.onerror toast', html.includes("img.onerror=()=>UI.toast(t('imgErr'),'warn');") ],
@@ -1087,7 +1087,7 @@ const checks = [
   ['exportPDF uses exportScale clamp for dpr', html.includes("dpr=exportScale(W,H,window.devicePixelRatio||1)")],
   // v1.6.72: sticky note resize preserves user's chosen width
   ['resizeAfterTextEdit helper present', html.includes("function resizeAfterTextEdit(s,text,c)")],
-  ['sticky branch preserves s.w (no text-width overwrite)', html.includes("if(s.type==='sticky'){") && html.includes("wl=wrapText(s.text||'',Math.abs(s.w)-pad*2")],
+  ['sticky branch preserves s.w (no text-width overwrite)', html.includes("if(s.type==='sticky'){") && html.includes("wl=wrapText(s.text||'',_abs(s.w)-pad*2")],
   ['text branch still auto-sizes width', html.includes("}else{\n    const lines=(s.text||'').split('\\n');")],
   // v1.6.73: doAlign skips locked shapes (parity with doDelete/doRotate/doFlip)
   ['doAlign filters locked shapes', html.includes("const sel=_selL(s=>s&&!s.locked);\n  if(sel.length<2)return;")],
@@ -1305,7 +1305,7 @@ const checks = [
     html.includes("const MAX_OP_SHAPES=500;")],
   // v1.7.44: nextZ uses reduce to avoid spread RangeError on large boards
   ['nextZ uses reduce (safe for >65K shapes, no spread RangeError)',
-    html.includes("function nextZ(){return state.shapes.length?state.shapes.reduce((m,s)=>Math.max(m,s.z||0),0)+1:1}")],
+    html.includes("function nextZ(){return state.shapes.length?state.shapes.reduce((m,s)=>_max(m,s.z||0),0)+1:1}")],
   // v1.7.44: _apply replace forward restores afterWc on redo
   ['_apply replace forward: if(forward&&op.afterWc) restores wclock on redo',
     html.includes("if(forward&&op.afterWc)state.wclock=clone(op.afterWc);")],
@@ -9615,6 +9615,14 @@ try {
      assert.ok(!rt.some(s=>s.type==='text'&&s.text==='hi'),'round-trip: no orphan container text remains (ADR-0225)');
      assert.ok(rtb.label==='cap','round-trip: labelled box restores s.label via bLabel container text (ADR-0234)');
      assert.ok(!rt.some(s=>s.type==='text'&&s.text==='cap'),'round-trip: no orphan label text remains (ADR-0234)');}
+
+    // ADR-0338: excalidraw head enum mapping (open↔crowfoot etc.)
+    {const a2=excToShapes(scene)[3];a2.head='open';a2.start=1;a2.startHead='bar';
+     const el2=excScene([a2]).elements.find(e=>e.type==='arrow');
+     assert.ok(el2.endArrowhead==='crowfoot'&&el2.startArrowhead==='bar','export: open→crowfoot, bar→bar (ADR-0338)');
+     const rt2=excToShapes(JSON.stringify({type:'excalidraw',elements:[{...el2,endArrowhead:'crowfoot',startArrowhead:'crowfoot_one',startBinding:null,endBinding:null}]}));
+     const ra2=rt2.find(s=>s.type==='arrow');
+     assert.ok(ra2.head==='open'&&ra2.startHead==='open','import: crowfoot/crowfoot_one → open (ADR-0338)');}
 
     // ADR-0240: group children carry parent-relative coords in real drawio files.
     // ADR-0250: _dioInflate — real deflate-raw+base64 <diagram> payload round-trips
