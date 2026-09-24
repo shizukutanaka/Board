@@ -9,6 +9,9 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
   コピー元と同じ座標に複製 (Figma Paste-in-place parity)。
   ctx メニューにも「同じ位置に貼り付け」。⌘⇧V が従来の ⌘V
   バインドに吸収されないよう shift 判定を分割。
+- **選択を .board 書き出し** (ADR-0114)。`exportBoard(shapes)` に
+  shapes 引数を追加し、ctx メニューに「選択を.board書き出し」を
+  追加 (選択PNG/SVGの .board 版、形式は全面書き出しと同一)。
 
 ## [1.7.170]
 

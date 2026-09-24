@@ -163,6 +163,7 @@ Board/
 - [ADR-0111](docs/ADR-0111-select-frame-contents.md) フレームの内容を選択
 - [ADR-0112](docs/ADR-0112-share-viewport.md) 共有リンクのビューポート同梱
 - [ADR-0113](docs/ADR-0113-paste-in-place.md) 同じ位置に貼り付け (⌘⇧V)
+- [ADR-0114](docs/ADR-0114-selection-board-export.md) 選択を .board 書き出し
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
