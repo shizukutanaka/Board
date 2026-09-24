@@ -201,6 +201,7 @@ canvas#c[data-tool=hand]{cursor:grab}
 canvas#c[data-panning=true]{cursor:grabbing}
 canvas#c[data-tool=text]{cursor:text}
 canvas#c[data-tool=eraser]{cursor:crosshair}
+canvas#c[data-tool=eyedropper]{cursor:crosshair}
 
 /* Floating style panel */
 .style-panel{
@@ -774,7 +775,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.218';
+const V='1.7.219';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -914,7 +915,7 @@ const I18N={
     backupRestoreFailed:'バックアップの復元に失敗しました',
     peers:'人',you:'自分',
     k:{select:'選択',hand:'手のひら',pen:'ペン',rect:'矩形',ellipse:'楕円',
-      arrow:'矢印',line:'線',text:'文字',sticky:'付箋',frame:'フレーム',eraser:'消しゴム',diamond:'ダイヤ',marker:'マーカー',
+      arrow:'矢印',line:'線',text:'文字',sticky:'付箋',frame:'フレーム',eraser:'消しゴム',diamond:'ダイヤ',marker:'マーカー',eyedropper:'スポイト',
       undo:'元に戻す',redo:'やり直し',del:'削除',dup:'複製',fontSize:'フォントサイズ',boldItalic:'太字/斜体/下線/取消線',
       selAll:'全選択',copy:'コピー',paste:'貼付',cut:'切取',
       zoomIn:'拡大',zoomOut:'縮小',zoom100:'100%にリセット',
@@ -922,7 +923,7 @@ const I18N={
       grid:'グリッド',minimap:'ミニマップ切替',beautify:'選択したペン描画を整形',esc:'選択解除/キャンセル',
       cycle:'図形を巡回',create:'中央に作成',
       present:'プレゼン',nudge:'移動 (⇧: 10px)',zorder:'前面/背面',zorderEnds:'最前面/最背面',
-      rotate:'回転 (15° / ノブdrag)',selAllMatches:'件のマッチを選択',search:'検索',searchNav:'次/前のマッチへ移動',moveAxis:'軸拘束移動',resizeRatio:'比率保持リサイズ',resizeCenter:'中心固定リサイズ',kbdResize:'リサイズ (⇧:×10)',lasso:'ラッソ選択'}},
+      rotate:'回転 (15° / ノブdrag)',selAllMatches:'件のマッチを選択',search:'検索',searchNav:'次/前のマッチへ移動',moveAxis:'軸拘束移動',resizeRatio:'比率保持リサイズ',resizeCenter:'中心固定リサイズ',kbdResize:'リサイズ (⇧:×10)',lasso:'ラッソ選択',eyedropDone:'スタイルを取得'}},
   en:{export:'Export',present:'Present',snap:'Snap',size:'Size',lineStyle:'Line',helpTitle:'Shortcuts',
     helpSub:'No need to memorise. You\'ll pick it up.',
     saved:'saved',savedNow:'just now',savedAgo:'s ago',
@@ -992,7 +993,7 @@ const I18N={
     selCount:' selected',selNone:'Selection cleared',
     mirrorLabel:'Shapes on the board',mirrorMore:' more not listed',tagHidden:'(hidden)',
     k:{select:'Select',hand:'Pan',pen:'Pen',rect:'Rectangle',ellipse:'Ellipse',
-      arrow:'Arrow',line:'Line',text:'Text',sticky:'Sticky',frame:'Frame',eraser:'Eraser',diamond:'Diamond',marker:'Marker',
+      arrow:'Arrow',line:'Line',text:'Text',sticky:'Sticky',frame:'Frame',eraser:'Eraser',diamond:'Diamond',marker:'Marker',eyedropper:'Eyedropper',
       undo:'Undo',redo:'Redo',del:'Delete',dup:'Duplicate',fontSize:'Font size',boldItalic:'Bold/Italic/Underline/Strike',
       selAll:'Select all',copy:'Copy',paste:'Paste',cut:'Cut',
       zoomIn:'Zoom in',zoomOut:'Zoom out',zoom100:'Reset zoom',
@@ -1000,7 +1001,7 @@ const I18N={
       grid:'Toggle grid',minimap:'Toggle minimap',beautify:'Beautify selected pen strokes',esc:'Deselect / cancel',
       cycle:'Cycle shapes',create:'Create at centre',
       present:'Present',nudge:'Move (⇧: 10px)',zorder:'Front / back',zorderEnds:'To front / to back',
-      rotate:'Rotate (15° / knob drag)',selAllMatches:'matches selected',search:'Search',searchNav:'Next / prev match',moveAxis:'Constrain move axis',resizeRatio:'Keep ratio (resize)',resizeCenter:'Resize from centre',kbdResize:'Resize (⇧:×10)',lasso:'Lasso select'}}};
+      rotate:'Rotate (15° / knob drag)',selAllMatches:'matches selected',search:'Search',searchNav:'Next / prev match',moveAxis:'Constrain move axis',resizeRatio:'Keep ratio (resize)',resizeCenter:'Resize from centre',kbdResize:'Resize (⇧:×10)',lasso:'Lasso select',eyedropDone:'Style picked'}}};
 // ADR-0014: LANG/T are `let`, not `const`, so UI.toggleLang() can reassign them — t()
 // closes over T by reference, so every t()/T.k call made AFTER a reassignment picks up
 // the new language automatically. Only elements that cache a translated string once at
@@ -3599,6 +3600,16 @@ canvas.addEventListener('pointerdown',e=>{
     }
     case 'text':beginText(wp);break;
     case 'eraser':_eraseBatch=[];eraseAt(wp);break;
+    case 'eyedropper':{                            // ADR-0161: I = one-shot pick
+      const hit=pickTop(wp);                        // locked shapes are valid style sources
+      if(hit){
+        const ext=_styleOf(hit);
+        for(const k of['stroke','fill','size','opacity','dash'])state.style[k]=ext[k];
+        state.styleClipboard=ext;                   // ⌥V applies it to the selection too
+        UI.toast(t('eyedropDone'),'ok');UI.announce(t('eyedropDone'));
+      }
+      pickTool(window._prevTool||'select');window._prevTool=null;
+      break;}
   }
   invalidate();
 });
@@ -5006,7 +5017,7 @@ function flushErase(){
 }
 
 // ====================== KEYBOARD ======================
-const KEYMAP={v:'select',h:'hand',p:'pen',r:'rect',o:'ellipse',
+const KEYMAP={v:'select',h:'hand',p:'pen',r:'rect',o:'ellipse',i:'eyedropper',
   a:'arrow',l:'line',t:'text',n:'sticky',f:'frame',e:'eraser',d:'diamond',k:'marker'};
 // Focus trap for open dialogs (WCAG 2.4.3 Focus Order / 2.1.2 No Keyboard Trap-escape).
 // _focusables lists the tabbable controls inside a root; _trapStep is the pure wrap step:
@@ -5167,7 +5178,7 @@ window.addEventListener('keydown',e=>{
   else if(k==='r'&&e.shiftKey&&!meta&&!e.altKey&&state.selection.size){e.preventDefault();doRotate(90)}
   else if(k==='h'&&e.shiftKey&&meta&&!e.altKey){e.preventDefault();hideSelection()}   // ADR-0137: ⌘⇧H
   else if(k==='i'&&e.shiftKey&&meta&&!e.altKey){e.preventDefault();selectInverse()}   // ADR-0139: ⌘⇧I
-  else if(!meta&&KEYMAP[k]){pickTool(KEYMAP[k])}
+  else if(!meta&&KEYMAP[k]){pickTool(KEYMAP[k],k==='i')}
   else if(k===' '&&!meta){e.preventDefault();pickTool('hand',true)}
 });
 window.addEventListener('keyup',e=>{
@@ -5197,7 +5208,7 @@ function pickTool(tool,temporary){
   for(const b of document.querySelectorAll('.tool'))b.setAttribute('aria-pressed',b.dataset.tool===tool);
   // hide style panel for select/hand
   const sp=document.getElementById('stylePanel');
-  sp.hidden=tool==='select'||tool==='hand'||tool==='eraser';
+  sp.hidden=tool==='select'||tool==='hand'||tool==='eraser'||tool==='eyedropper';
 }
 
 // ====================== CLIPBOARD-LIKE ops ======================
@@ -7635,7 +7646,7 @@ const UI={
       ['Enter / ⇧Enter',k.searchNav],
       ['⇧H / ⇧V',t('ctxFlipH')+' / '+t('ctxFlipV')],
       ['⌥C / ⌥V',t('ctxCopyStyle')+' / '+t('ctxPasteStyle')],
-      ['⇧ + drag',k.moveAxis],['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],['⌥ + drag',k.lasso],['⌘⇧ , / .',k.fontSize],['⌘B / ⌘I / ⌘U / ⌘⇧X',k.boldItalic],
+      ['⇧ + drag',k.moveAxis],['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],['⌥ + drag',k.lasso],['I',k.eyedropper],['⌘⇧ , / .',k.fontSize],['⌘B / ⌘I / ⌘U / ⌘⇧X',k.boldItalic],
       ['Tab / ⇧Tab',k.cycle],['Enter',k.create+' / '+t('editLabel')]
     ];
     while(g.firstChild)g.removeChild(g.firstChild);
@@ -8254,22 +8265,24 @@ function toggleBothEnds(){
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
 }
+// ADR-0161: the look-props extractor shared by ⌥C copy-style and the
+// eyedropper tool — geometry (x/y/w/h/pts/way/bend/rotate/flip/z) stays out:
+// format-painter copies look, not placement. Sticky's paint reads as `fill`
+// here so it pastes onto box shapes; applyStyleToSelection maps it back to
+// `color`.
+function _styleOf(sh){return{
+  stroke:sh.stroke,fill:sh.type==='sticky'?sh.color:sh.fill,
+  size:sh.size,opacity:sh.opacity,dash:sh.dash||0,fstyle:sh.fstyle,     // ADR-0077
+  bold:sh.bold,italic:sh.italic,under:sh.under,strike:sh.strike,        // ADR-0078/0095/0100
+  align:sh.align,valign:sh.valign,fontSize:sh.fontSize,                 // ADR-0159
+  r:sh.r,head:sh.head,start:sh.start,elbow:sh.elbow,curve:sh.curve,cbend:sh.cbend
+};}
 function copyStyle(){
   // Copy style from the first selected shape
   const ids=[...state.selection];
   const sh=ids.length?byId(ids[0]):null;
   if(!sh){UI.toast(t('noSelection'),'warn');return}
-  // ADR-0138: widened key set — paint + text + route style. Geometry
-  // (x/y/w/h/pts/way/bend/rotate/flip/z) stays out: format-painter copies
-  // look, not placement. Sticky's paint reads as `fill` here so it pastes
-  // onto box shapes; applyStyleToSelection maps it back to `color`.
-  state.styleClipboard={
-    stroke:sh.stroke,fill:sh.type==='sticky'?sh.color:sh.fill,
-    size:sh.size,opacity:sh.opacity,dash:sh.dash||0,fstyle:sh.fstyle,   // ADR-0077
-    bold:sh.bold,italic:sh.italic,under:sh.under,strike:sh.strike,      // ADR-0078/0095/0100
-    align:sh.align,valign:sh.valign,fontSize:sh.fontSize,   // ADR-0159
-    r:sh.r,head:sh.head,start:sh.start,elbow:sh.elbow,curve:sh.curve,cbend:sh.cbend
-  };
+  state.styleClipboard=_styleOf(sh);
   UI.toast(t('styleCopied'),'ok');
 }
 function pasteStyle(){

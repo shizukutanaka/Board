@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.219]
+
+### 追加
+- **スポイトツール (I)** (ADR-0161)。クリックした図形の見た目属性を
+  既定スタイル + スタイルクリップボードへ取得し前ツールへ自動復帰
+  (Figma parity)。⌥V で選択にも適用可能。
+
 ## [1.7.218]
 
 ### 修正
