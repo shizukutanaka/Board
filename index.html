@@ -801,7 +801,7 @@ const _on=(e,t,f,o)=>e.addEventListener(t,f,o);                          // ADR-
 const _vp=()=>state.viewport,_vpS=()=>({x:+_vp().x.toFixed(2),y:+_vp().y.toFixed(2),zoom:+_vp().zoom.toFixed(4)});                                              // ADR-0362: live-read (tests reassign the object)
 const _pi=()=>state.peerId,_ro=()=>state.readout,_gd=()=>state.guides,_cl=()=>state.clipboard,_bb=s=>G.bbox(s),_oa=Object.assign;   // ADR-0378
 const _sO=()=>state.seenOps,_la=()=>state.lasso,_mq=()=>state.marquee,_dd=()=>state.dupDelta,_w2=p=>G.w2s(p),_s2=p=>G.s2w(p),_cE=connEnds;   // ADR-0382
-const _dpr=()=>window.devicePixelRatio,_iA=Array.isArray,_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log;   // ADR-0384/0386/0391/0395/0397
+const _dpr=()=>window.devicePixelRatio,_iA=Array.isArray,_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log,_mP=()=>new Map(),_sT=()=>new Set(),_eU=encodeURIComponent,_dU=decodeURIComponent;   // ADR-0384/0386/0391/0395/0397
 const _sh=()=>state.shapes;                                                // ADR-0364
 const _sl=()=>state.selection;
 const _st=()=>state.style;
@@ -822,7 +822,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.439';
+const V='1.7.440';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1065,7 +1065,7 @@ const t=k=>T[k]||I18N.en[k]||k;
 // Single source of truth. Render reads this. Nothing else is canonical.
 const state={
   shapes:[],                // array of Shape {id,type,...,z}
-  selection:new Set(),      // shape ids
+  selection:_sT(),      // shape ids
   viewport:{x:0,y:0,zoom:1},// world-to-screen transform
 
   tool:'select',
@@ -1078,7 +1078,7 @@ const state={
   draft:null,               // shape being created (not yet committed)
   editing:null,             // id of shape being text-edited
   marquee:null,             // {x1,y1,x2,y2} in world coords
-  dupIds:new Set(),         // ADR-0080: ids from the latest _placeCopies (repeat chain)
+  dupIds:_sT(),         // ADR-0080: ids from the latest _placeCopies (repeat chain)
   dupDelta:null,            // ADR-0080: cumulative vector to repeat on next ⌘D
   guides:null,              // object-snap alignment guide lines (during drag)
   readout:null,             // ADR-0064: live dims pill during transform gestures {x,y,label}
@@ -1095,9 +1095,9 @@ const state={
   peerId:PEER_ID,           // self peer id (persistent)
   seq:0,                    // monotonic op counter for CRDT clock
   _lastTs:0,                // monotonic-clock floor: local clocks never regress (HLC-lite)
-  seenOps:new Set(),        // "peer:seq" set for dedup
+  seenOps:_sT(),        // "peer:seq" set for dedup
   wclock:{},                // shapeId → {prop: clock} for per-property LWW (ADR-0002)
-  peers:new Map(),          // peerId → {color, lastSeen, name, cursor?:{x,y}} (ADR-0010)
+  peers:_mP(),          // peerId → {color, lastSeen, name, cursor?:{x,y}} (ADR-0010)
   roomId:null               // doc room id (BroadcastChannel name suffix)
 };
 
@@ -1114,7 +1114,7 @@ let DPR=_max(1,_min(3,_dpr()||1));
 // Pure functions. Deterministic. No state mutation.
 // (_penBboxCache is the sole exception — an observational memoization keyed by
 // an O(1) point signature; it never changes what bbox returns, only how fast.)
-const _penBboxCache=new Map();
+const _penBboxCache=_mP();
 const G={
   w2s(p){const v=_vp();return{x:(p.x-v.x)*v.zoom,y:(p.y-v.y)*v.zoom}},
   s2w(p){const v=_vp();return{x:p.x/v.zoom+v.x,y:p.y/v.zoom+v.y}},
@@ -1557,7 +1557,7 @@ const Store={
     // repaint clips to their union instead of repainting the whole canvas.
     // Partial patch payloads ({id,c:'#f00'}) yield NaN bboxes -> filtered to
     // finite rects only; over-covering is always safe, missing is not.
-    const _ids=new Set();
+    const _ids=_sT();
     const _addId=v=>{if(v&&v.id!=null)_ids.add(v.id)};
     if(op.id!=null)_ids.add(op.id);
     if(_iA(op.ids))for(const id of op.ids)_ids.add(id);
@@ -1720,7 +1720,7 @@ const Store={
 // interior call site.
 let _idIndex=null;
 function byId(id){
-  if(!_idIndex||_idIndex.size!==_sh().length){_idIndex=new Map();for(const s of _sh())_idIndex.set(s.id,s);}
+  if(!_idIndex||_idIndex.size!==_sh().length){_idIndex=_mP();for(const s of _sh())_idIndex.set(s.id,s);}
   return _idIndex.get(id);
 }
 function clone(o){return _JP(_JS(o))}
@@ -1938,7 +1938,7 @@ const Shape={
 // Cache loaded Image objects to avoid re-decoding. Bounded LRU (Map keeps
 // insertion order): on access we re-insert to mark recent, and evict the oldest
 // past the cap so a board with many pasted images can't leak memory.
-const _imgCache=new Map(),IMG_CACHE_MAX=60;
+const _imgCache=_mP(),IMG_CACHE_MAX=60;
 // O(1) lookup key — a dataUrl can be ~4MB, so using it AS the Map key makes
 // every per-frame getImg() hash megabytes. mime head + byte length + base64
 // segments are collision-safe within a board and cost a fixed ~150 chars.
@@ -1975,7 +1975,7 @@ const STICKY_COLORS=['#FEF08A','#FBCFE8','#BBF7D0','#BFDBFE','#DDD6FE','#FED7AA'
 // On a miss we draw vector that frame and stash the new signature — a dragged
 // stroke therefore never re-rasterizes per pointermove; it re-renders once on
 // the first settled frame after the drag ends.
-const _penCache=new Map(),PEN_CACHE_MAX_PX=12e6,PEN_CACHE_MAX_DIM=4096;
+const _penCache=_mP(),PEN_CACHE_MAX_PX=12e6,PEN_CACHE_MAX_DIM=4096;
 let _penCachePx=0;
 // Effective raster resolution: zoom-adaptive (supersampled at low zoom is just
 // wasted pixels), clamped 0.25..2 so extreme zoom-outs still rasterize tiny.
@@ -2430,7 +2430,7 @@ function draw(){
   // so a stale grid can drop a dragged shape that left its cell — force-include
   // gesture targets while preserving z-order via the shapes array itself.
   if(dmg&&_vis){
-    const need=new Set();
+    const need=_sT();
     if(ptr.dragStartShapes)for(const id of ptr.dragStartShapes.keys()){const s=byId(id);if(s)need.add(s);}
     if(ptr.resizeOrig){const s=byId(ptr.resizeOrig.id);if(s)need.add(s);}
     if(ptr.rotOrig){const s=byId(ptr.rotOrig.id);if(s)need.add(s);}
@@ -3414,7 +3414,7 @@ function resizeSnap(orig,handle,wp){
   // ADR-0096: equal-size snap — match an existing shape's w/h (draw.io smart
   // dims). Runs after edge snap so a dim hit can override the dragged coord;
   // targets come from the same index (selection already excluded).
-  {const dims=new Set();for(const e of idx.xs)if(e.b)dims.add(e.b);for(const e of idx.ys)if(e.b)dims.add(e.b);
+  {const dims=_sT();for(const e of idx.xs)if(e.b)dims.add(e.b);for(const e of idx.ys)if(e.b)dims.add(e.b);
    if(movesX){const eH=/e/.test(handle),nw=eH?x-orig.x:orig.x+orig.w-x;
      let bd=null;for(const b of dims){const d=_abs(nw-b.w);if(d<tol&&(!bd||d<bd.d))bd={d,w:b.w,b}}
      if(bd){x=eH?orig.x+bd.w:orig.x+orig.w-bd.w;
@@ -4510,7 +4510,7 @@ _on(canvas,'wheel',e=>{
 },{passive:false});
 
 // Pinch zoom (multi-touch via pointer events)
-const _pointers=new Map();  // pointerId → {x,y}
+const _pointers=_mP();  // pointerId → {x,y}
 _on(canvas,_PD,e=>{
   _pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
 },{capture:true});
@@ -4632,13 +4632,13 @@ function _invalidateGrid(){_grid=null;_idIndex=null;_gridVer++;}   // ADR-0009: 
 let _grpMapVer=-1,_grpMap=null;
 function _grpMapGet(){
   if(_grpMapVer===_gridVer)return _grpMap;
-  _grpMap=new Map();
+  _grpMap=_mP();
   for(const s of _sh()){if(s.groupId){if(!_grpMap.has(s.groupId))_grpMap.set(s.groupId,[]);_grpMap.get(s.groupId).push(s)}}
   _grpMapVer=_gridVer;
   return _grpMap;
 }
 function _buildGrid(shapes){
-  const cells=new Map(),big=[],idx=new Map();
+  const cells=_mP(),big=[],idx=_mP();
   for(let i=0;i<shapes.length;i++){
     const s=shapes[i];idx.set(s,i);
     const b=_bb(s);if(!b){big.push(s);continue;}
@@ -5716,10 +5716,10 @@ function _placeCopies(srcShapes,dx,dy){
   if(dx===_ud){const o=20/_vp().zoom;dx=o;dy=o;}
   const added=[];
   const built=[];
-  const gidMap=new Map();
+  const gidMap=_mP();
   // Pre-generate new ids so connector bindings (sh.a/sh.b) can be remapped
   // when both endpoints are in the pasted set (two-pass required).
-  const idMap=new Map();
+  const idMap=_mP();
   for(const orig of srcShapes)idMap.set(orig.id,uid());
   // Deferred single commit (atomic undo): build every copy first, then commit ONE
   // addMany op. nextZ() reads _sh(), which we don't mutate until commit, so
@@ -5760,7 +5760,7 @@ function doDelete(){
   if(!sel.length){if(_selAny())_tst(t('lockedNoop'),'warn');return}   // ADR-0396
   const origSel=_selIds();
   // Frame-aware: shapes fully inside a selected frame are deleted with the frame (parity with doDuplicate)
-  const frameOf=new Map();
+  const frameOf=_mP();
   for(const f of sel){
     if(f.type!=='frame')continue;
     const fb=_bb(f);
@@ -5895,7 +5895,7 @@ function connectSelection(){
 // ADR-0139: invert selection (draw.io ⌘⇧I / Photoshop parity) — the
 // complement over unlocked, visible shapes (marquee/select-all rules).
 function selectInverse(){
-  const inv=new Set();
+  const inv=_sT();
   for(const s of _sh())if(!s.locked&&s.visible!==0&&!_sl().has(s.id))inv.add(s.id);
   state.selection=inv;
   _aS();_iv();
@@ -5978,7 +5978,7 @@ function doAlign(dir){
   if(sel.length<2)return;
   // Frame-aware: shapes fully inside a selected frame move with the frame as one unit
   // (parity with drag/nudge; mirrors withFrameChildren logic used in doMove/nudgeSelection)
-  const frameOf=new Map(); // childId → frameId (unit key for unitMap)
+  const frameOf=_mP(); // childId → frameId (unit key for unitMap)
   for(const f of sel){
     if(f.type!=='frame')continue;
     const fb=_bb(f);
@@ -5990,7 +5990,7 @@ function doAlign(dir){
   }
   for(const [cid] of frameOf){if(!sel.find(s=>s.id===cid)){const c=byId(cid);if(c&&!c.locked)sel.push(c);}}
   // Group-aware + frame-aware: shapes sharing groupId or inside a selected frame move as one unit
-  const unitMap=new Map();
+  const unitMap=_mP();
   for(const s of sel){const k=frameOf.get(s.id)||s.groupId||s.id;if(!unitMap.has(k))unitMap.set(k,{shapes:[],b:null});unitMap.get(k).shapes.push(s);}
   for(const u of unitMap.values())u.b=G.bboxAll(u.shapes);
   const units=[...unitMap.values()].filter(u=>u.b);
@@ -6115,7 +6115,7 @@ function doFlip(axis){
   const bb=G.bboxAll(sel);if(!bb)return;
   const c=axis==='h'?bb.x+bb.w/2:bb.y+bb.h/2;
   // Frame-aware: shapes fully inside a selected frame flip with the frame (parity with doAlign)
-  const frameOf=new Map();
+  const frameOf=_mP();
   for(const f of sel){
     if(f.type!=='frame')continue;
     const fb=_bb(f);
@@ -6203,7 +6203,7 @@ function doRotate(d){
   if(!sel.length)return;
   const bb=G.bboxAll(sel),gx=bb.x+bb.w/2,gy=bb.y+bb.h/2; // orbit about group centre, like doFlip
   // Frame-aware: box-shape children inside selected frames orbit and rotate with the frame (parity with doAlign)
-  const frameOf=new Map();
+  const frameOf=_mP();
   for(const f of sel){
     if(f.type!=='frame')continue;
     const fb=_bb(f);
@@ -6396,7 +6396,7 @@ function excScene(shapes){
     scale:[s.flip&1?-1:1,s.flip&2?-1:1],                                            // ADR-0276
     isDeleted:false,boundElements:null,updated:0,link:s.link||null,locked:!!s.locked},over);   // ADR-0241
   const gids={};for(const s of shapes)if(s.groupId)(gids[s.id]=gids[s.id]||[]).push(s.groupId);
-  const _excTid=new Map();   // ADR-0225: sticky rect id → its container text id
+  const _excTid=_mP();   // ADR-0225: sticky rect id → its container text id
   const _ct=(s,tid,txt,bL,fs,ov)=>{   // shared container-text element (sticky body / box label)
     _excTid.set(s.id,tid);
     return{id:tid,type:'text',x:ov?ov.x:s.x+4,y:ov?ov.y:s.y+4,
@@ -6452,7 +6452,7 @@ function excScene(shapes){
       default:break;
     }
   }
-  const _bnd=new Map();
+  const _bnd=_mP();
   for(const s of shapes){
     if((_conn(s.type))&&(s.a||s.b)){
       if(s.a)_bnd.set(s.a,(_bnd.get(s.a)||[]).concat(s.id));
@@ -6544,18 +6544,18 @@ function drawioToShapes(txt){
   if(!_qs(doc,'mxGraphModel'))return null;
   const cells=[..._qsa(doc,'mxCell')];
   if(cells.length>DIO_MAX)return null;
-  const idOf=new Map(),shapes=[];
+  const idOf=_mP(),shapes=[];
   // ADR-0240: children of a group/container store parent-relative coords —
   // resolve each vertex's world offset by walking its parent chain.
-  const _geo=new Map(),_par=new Map();
-  const _grpIds=new Set();                                                     // ADR-0336
+  const _geo=_mP(),_par=_mP();
+  const _grpIds=_sT();                                                     // ADR-0336
   for(const c of cells){const id=_ga(c,'id');if(!id)continue;
     const g=_qs(c,'mxGeometry');if(g)_geo.set(id,g);
     const p=_ga(c,'parent');if(p)_par.set(id,p);
     if(/(^|;)group;/.test(_ga(c,'style')||''))_grpIds.add(id);}
   // ADR-0311: multiple <diagram> pages flatten side-by-side — each page's
   // cells offset by cumulative pageWidth+200 so pages don't overlap.
-  const _doff=new Map();{let _dx=0;
+  const _doff=_mP();{let _dx=0;
     for(const dg of _qsa(doc,'diagram')){
       const m=_qs(dg,'mxGraphModel'),pw=+(m&&_ga(m,'pageWidth'))||850;
       if(!_dioVp&&m){const ddx=+_ga(m,'dx'),ddy=+_ga(m,'dy'),dz=+_ga(m,'zoom');
@@ -6563,7 +6563,7 @@ function drawioToShapes(txt){
       for(const c2 of _qsa(dg,'mxCell'))_doff.set(c2,_dx);
       _dx+=pw+200;
     }}
-  const _off=new Map();
+  const _off=_mP();
   const off=id=>{if(_off.has(id))return _off.get(id);
     _off.set(id,{x:0,y:0});                                            // ADR-0357: provisional — breaks parent cycles
     const p=_par.get(id);let o={x:0,y:0};
@@ -6676,7 +6676,7 @@ async function _dioInflate(b64){
     let txt='';
     for(;;){const{done,value}=await rd.read();if(done)break;txt+=dec.decode(value,{stream:true});if(txt.length>8e6)return null}
     txt+=dec.decode();
-    return decodeURIComponent(txt);
+    return _dU(txt);
   }catch(_){return null}
 }
 function importDrawioText(txt,wp){
@@ -6732,7 +6732,7 @@ function exportExc(){
 function boardToDrawio(shapes){
   const esc=v=>_St(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const nl=v=>esc(v).replace(/\n/g,'&lt;br&gt;');
-  const cells=[],idOf=new Map();
+  const cells=[],idOf=_mP();
   let i=0;
   // ADR-0336: Board groupId → drawio group cell (wrapper vertex + parent refs,
   // child geometry stored relative to the group origin).
@@ -6929,7 +6929,7 @@ function svgToShapes(txt){
   if(_qs(doc,'parsererror'))return null;
   const root=doc.documentElement;
   if(!root||root.localName!=='svg')return null;
-  const _grad=new Map();                                                     // ADR-0283
+  const _grad=_mP();                                                     // ADR-0283
   for(const ge of _qsa(doc,'linearGradient,radialGradient')){
     const st=_qs(ge,'stop');
     if(ge.id&&st){const _sc=_ga(st,'stop-color')||(((_ga(st,'style')||'').match(/stop-color:\s*([^;]+)/)||[])[1]);_grad.set(ge.id,(_sc||'#000').trim())}}
@@ -7024,9 +7024,9 @@ function excToShapes(txt){
   let d;
   try{d=_JP(txt)}catch(_){return null}
   if(!d||d.type!=='excalidraw'||!_iA(d.elements))return null;
-  const shapes=[],_excBnd=[],idOf=new Map();   // ADR-0223: bindings resolve post-walk
-  const _excTxt=new Map();                     // ADR-0225: container text → parent
-  const _excTxtE=new Map();                    // ADR-0234: sid → source element (bLabel marker)
+  const shapes=[],_excBnd=[],idOf=_mP();   // ADR-0223: bindings resolve post-walk
+  const _excTxt=_mP();                     // ADR-0225: container text → parent
+  const _excTxtE=_mP();                    // ADR-0234: sid → source element (bLabel marker)
   const st=e=>{
     const o={};
     const sc=typeof e.strokeColor==='string'&&e.strokeColor!==_TR?e.strokeColor:null;
@@ -7626,8 +7626,8 @@ const Net={
   // payloads per session; snapshots pass a fresh map so every referenced blob
   // is always re-emitted (late joiners). Inbound resolves via _imgIn; refs
   // whose blob hasn't landed park in _imgPending until an 'img' msg completes.
-  _imgSent:new Map(), _imgIn:new Map(), _imgPending:new Map(),
-  _imgOuts:[], _imgChunks:new Map(),
+  _imgSent:_mP(), _imgIn:_mP(), _imgPending:_mP(),
+  _imgOuts:[], _imgChunks:_mP(),
   _slimShapes(shapes,sent){
     const{slim,puts}=_imgSlim(shapes,sent||this._imgSent);
     for(const[k,d]of puts)this._imgOuts.push([k,d]);
@@ -7823,7 +7823,7 @@ const Net={
     }));
     // ADR-0069: slim every shape in one pass against a FRESH sent-map — blob
     // puts always re-emit (late joiners need them), flushed before this msg.
-    const slim=this._slimShapes(ops.map(o=>o.shape),new Map());
+    const slim=this._slimShapes(ops.map(o=>o.shape),_mP());
     ops.forEach((o,i)=>o.shape=slim[i]);
     this._flushImgOuts();
     return {k:'snapshot',shapes:slim,ops,peer:_pi(),name:_dn()};
@@ -7992,7 +7992,7 @@ const Net={
   _decodeToken(s){
     s=s.trim();let j;
     try{j=_JP(new TextDecoder().decode(this._b64uDec(s)))}
-    catch(_){j=_JP(decodeURIComponent(escape(atob(s))))}   // legacy escape() token
+    catch(_){j=_JP(_dU(escape(atob(s))))}   // legacy escape() token
     return new RTCSessionDescription(j);
   }};
 
@@ -8052,17 +8052,17 @@ const Share={
         const bytes=new Uint8Array(buf);
         let bin='';for(const b of bytes)bin+=String.fromCharCode(b);
         payload='z:'+btoa(bin);
-      }catch(_){payload='j:'+btoa(unescape(encodeURIComponent(json)))}
+      }catch(_){payload='j:'+btoa(unescape(_eU(json)))}
     }else{
-      payload='j:'+btoa(unescape(encodeURIComponent(json)));
+      payload='j:'+btoa(unescape(_eU(json)));
     }
     const base=location.origin+location.pathname;
     if(enc&&Share.canEncrypt()){
       // key travels inside the fragment — fragments are never sent in HTTP requests
       const e=await Share._encrypt(payload);
-      return base+'#b='+encodeURIComponent('e:'+e.ct)+'&k='+e.k;
+      return base+'#b='+_eU('e:'+e.ct)+'&k='+e.k;
     }
-    return base+'#b='+encodeURIComponent(payload);
+    return base+'#b='+_eU(payload);
   },
   // ADR-0045: a '#s=<offer>' hash is a peer invite — prefill the join-side
   // invite field and open the Share modal so step 1 is already done. The
@@ -8071,7 +8071,7 @@ const Share={
     const h=location.hash;
     if(!h.startsWith('#s='))return false;
     try{history.replaceState(null,'',location.pathname)}catch(_){}
-    const code=decodeURIComponent(h.slice(3));
+    const code=_dU(h.slice(3));
     if(!code)return false;
     UI.openShare();
     _g('rtcOfferIn').value=code;
@@ -8081,7 +8081,7 @@ const Share={
   async importFromHash(){
     const h=location.hash;
     if(!h.startsWith('#b='))return false;
-    const enc=decodeURIComponent(h.slice(3));
+    const enc=_dU(h.slice(3));
     const parts=enc.split('&'),opt={};
     for(const p of parts.slice(1)){const i=p.indexOf('=');if(i>0)opt[p.slice(0,i)]=p.slice(i+1)}
     // ADR-0038: every reject path toasts and clears the hash — a corrupt/tampered
@@ -8111,7 +8111,7 @@ const Share={
         const stream=new Blob([bytes]).stream().pipeThrough(ds);
         json=await new Response(stream).text();
       }else if(kind==='j:'){
-        json=decodeURIComponent(escape(atob(body)));
+        json=_dU(escape(atob(body)));
       }else{_tst(t(_IB),'err');clearHash();return false}
       // ADR-0039: resource-bomb guard — a crafted z: link decodes BEFORE the
       // confirm prompt, so bound the decompressed payload and the shape count;
@@ -8973,7 +8973,7 @@ function wire(){
   _g('rtcInviteLinkBtn').onclick=async()=>{
     const v=_g('rtcOffer').value;
     if(!v){_tst(t('inviteLinkNoCode'),'warn');return}
-    const ok=await copyText(location.origin+location.pathname+'#s='+encodeURIComponent(v));
+    const ok=await copyText(location.origin+location.pathname+'#s='+_eU(v));
     _tst(ok?t('shareCodeCopied'):t(_CF),ok?'ok':'warn')
   };
   }
