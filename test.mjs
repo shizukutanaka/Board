@@ -222,7 +222,7 @@ const checks = [
   ['group toasts use i18n', html.includes("t('grouped')") && html.includes("t('selectTwo')")],
   ['copyStyle captures stroke/fill/size/opacity', html.includes("stroke:sh.stroke,fill:sh.type==='sticky'?sh.color:sh.fill") && html.includes("size:sh.size,opacity:sh.opacity")],
   ['pasteStyle filters undefined keys', html.includes("filter(([,v])=>v!==undefined)")],
-  ['applyStyleToSelection records undo', html.includes("Store._recordCommitted({op:'upd'")],
+  ['applyStyleToSelection records undo', html.includes("_styleOp(before,after)")],
   // v1.6.6: reversibility + security hardening
   ['zorder op is minimal-delta changes (ADR-0001 Step2)', html.includes("op:'zorder',changes")],
   ['zorder _apply handles changes-delta + legacy snapshot', html.includes("sh.frac=forward?c.after:c.before") && html.includes("const snap=forward?op.after:op.before")],
@@ -977,7 +977,7 @@ const checks = [
   ['selection outline traces rotated box', html.includes("if(single&&single.rotate&&single.w!=null){")],
   // v1.6.70: keyboard resize (Alt+arrow)
   ['resize op registered (apply, validate, remote)', html.includes("case 'resize':\n      case 'align':\n      case 'beautify':{") && html.includes("case 'resize':{const noLock=") && html.includes("'align','style','resize'])")],
-  ['Alt+arrow keyboard-resizes box shapes', html.includes("Store._recordCommitted({op:'resize',before,after});") && html.includes("sh.w=Math.max(4,sh.w+dw);sh.h=Math.max(4,sh.h+dh);")],
+  ['Alt+arrow keyboard-resizes box shapes', html.includes("_rcOp({op:'resize',before,after});") && html.includes("sh.w=Math.max(4,sh.w+dw);sh.h=Math.max(4,sh.h+dh);")],
   // v1.6.71: image import error handling
   ['imgErr i18n key in both locales', html.includes("imgErr:'画像を読み込めませんでした'") && html.includes("imgErr:'Image failed to load'")],
   ['drag-drop image import has img.onerror toast', html.includes("img.onerror=()=>UI.toast(t('imgErr'),'warn');") ],
@@ -1144,7 +1144,7 @@ const checks = [
   // v1.7.30: _apply add backward restores origSel; createShapeKbd attaches origSel
   ['_apply add backward restores origSel; createShapeKbd attaches origSel',
     html.includes("if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));") &&
-    html.includes("const origSel=[...state.selection];\n  Store.commit({op:'add',shape:s});\n  if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
+    html.includes("_cOp({op:'add',shape:s});")],
   // v1.7.33: validRemotePayload group must require before (string-id array)
   ['validRemotePayload group: requires before array with string ids',
     html.includes("&&Array.isArray(op.before)&&op.before.length<=MAX_OP_SHAPES&&op.before.every(b=>b&&typeof b.id==='string');")],
@@ -1202,11 +1202,11 @@ const checks = [
     html.includes("if(op.before)for(const b of op.before){\n            const sh=byId(b.id);if(!sh)continue;\n            if(_lwwSkip(b.id,'groupId',op))continue;")],
   // v1.7.31: endRectLike/endLineLike/beginText attach origSel (parity with createShapeKbd)
   ['endRectLike/endLineLike/beginText attach origSel before shape add commit',
-    (html.match(/const origSel=\[\.\.\.state\.selection\];\n  Store\.commit\(\{op:'add',shape:d\}\);\n  if\(origSel\.length\)state\.history\[state\.histIdx\]\.origSel=origSel;/g)||[]).length >= 2 &&
-    html.includes("const origSel=[...state.selection];\n  Store.commit({op:'add',shape:s});\n  if(origSel.length)state.history[state.histIdx].origSel=origSel;\n  openTextEditor")],
+    (html.match(/_cOp\(\{op:'add',shape:d\}\)/g)||[]).length >= 2 &&
+    html.includes("_cOp({op:'add',shape:s});\n  openTextEditor")],
   // v1.7.43: _zCommit captures origSel before zorder _recordCommitted
   ['_zCommit: origSel captured before zorder commit and patched onto history entry',
-    html.includes("Store._recordCommitted({op:'zorder',changes});\n  if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
+    html.includes("_rcOp({op:'zorder',changes});")],
   // v1.7.44: MAX_OP_SHAPES constant defined (DoS guard for remote ops)
   ['MAX_OP_SHAPES constant defined (remote array size cap)',
     html.includes("const MAX_OP_SHAPES=500;")],
@@ -1221,19 +1221,19 @@ const checks = [
     html.includes("if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));\n        break;}\n      case 'style':")],
   // v1.7.43: keyboard resize (Alt+Arrow) captures origSel around resize _recordCommitted
   ['keyboard resize (Alt+Arrow): origSel captured before resize commit',
-    html.includes("const origSel=[...state.selection];\n      Store._recordCommitted({op:'resize',before,after});\n      if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
+    html.includes("_rcOp({op:'resize',before,after});")],
   // v1.7.43: drag-resize upd captures origSel (mirrors endSelect/nudgeSelection pattern)
   ['drag-resize: origSel captured before upd _recordCommitted (ptr.resizeOrig path)',
-    html.includes("const origSel=[...state.selection];\n            Store._recordCommitted({op:'upd',id:rsh.id,before,after});\n            if(origSel.length)state.history[state.histIdx].origSel=origSel;\n          }\n        }\n        ptr.resizeHandle=null")],
+    html.includes("_rcOp({op:'upd',id:rsh.id,before,after});")],
   // v1.7.43: _apply upd backward restores origSel (drag-resize/rotate undo)
   ['_apply upd backward: if(!forward&&op.origSel) restores selection',
     html.includes("Object.assign(sh,p);\n        if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));\n        break;}\n      case 'move':{")],
   // v1.7.45: openLabelEditor commit closure must capture origSel (label-edit undo restores selection)
   ['openLabelEditor commit: origSel captured before upd _recordCommitted',
-    html.includes("hit.label=lbl||null;const origSel=[...state.selection];Store._recordCommitted({op:'upd',id:hit.id,before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()")],
+    html.includes("hit.label=lbl||null;_rcOp({op:'upd',id:hit.id,before,after});invalidate()")],
   // v1.7.45: openTextEditor existing-text changed path must capture origSel (text-edit undo restores selection)
   ['openTextEditor existing-text: origSel captured before upd _recordCommitted',
-    html.includes("Store._recordCommitted({op:'upd',id:s.id,before,after});\n        if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
+    html.includes("_rcOp({op:'upd',id:s.id,before,after});")],
   // v1.7.46: validRemotePayload del connClears must have MAX_OP_SHAPES length cap
   ['validRemotePayload del connClears: length<=MAX_OP_SHAPES cap added',
     html.includes("&&op.connClears.length<=MAX_OP_SHAPES&&op.connClears.every(")],

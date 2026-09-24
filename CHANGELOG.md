@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.300] - 2026-09-24
+
+### Changed
+- commit+origSel の3行イディオムを `_rcOp`/`_cOp` ヘルパーに集約 (39サイト、
+  ~3.5KB 回収、ADR-0248)
+
 ## [1.7.299] - 2026-09-24
 
 ### Added
