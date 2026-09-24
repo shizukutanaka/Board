@@ -2,6 +2,79 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.486] - 2026-09-23
+
+### Changed
+- `_mP`/`_sT` を引数取り形に再定義し `new Map(a)`/`new Set(a)` 37 箇所を
+  fold (~150B 回収) (ADR-0451)
+
+## [1.7.485] - 2026-09-23
+
+### Changed
+- member-expr レシーバの `.length` も `_ln()` fold — `a.b.length`→`_ln(a.b)`
+  46 箇所、~92B 追加回収 (ADR-0450)
+
+## [1.7.484] - 2026-09-23
+
+### Fixed
+- `_imgIn` 受信 blob ストアを 256 件上限化 — 受信 blob が無制限に滞留していた
+  メモリリーク (ADR-0449)
+- `_imgChunks` cap 到達時は最古 stalled key を eviction — 64 個の未完 key で
+  画像転送が永続ブロックされる DoS 面を緩和 (ADR-0449)
+
+## [1.7.483] - 2026-09-23
+
+### Fixed
+- `_fragIn` が n-mismatch で assembly を再起動 — stale partial が異なる
+  チャンク数の新ストリームを永久ブロックするデッドロックを解消 (ADR-0448)
+- `dc.onclose` で `_snapIn`/`_opcIn` もリセット — 半受信 assembly の残存 (ADR-0448)
+
+## [1.7.482] - 2026-09-23
+
+### Changed
+- `X.length` 読み取り 364 箇所を `_ln(X)` へ一括 fold — 精密な書込み除外
+  lookahead で比較・算術読み取りを残したまま ~700B 回収 (ADR-0447)
+
+## [1.7.481] - 2026-09-23
+
+### Fixed
+- `dc.onclose` で `_dcQ` をリセット — チャネル単体 close でキューが残り
+  再接続後の送信が全て滞留するバグ (ADR-0446)
+
+## [1.7.480] - 2026-09-23
+
+### Fixed
+- `_slimOp` を del/clear にも拡張 — 画像を含む削除 op の dataUrl が
+  `img:` 参照にスリム化され wire バイト数が大幅縮小 (ADR-0445)
+- `_pcC` が `_imgPending` もパージ — clear/replace 後の駐車参照リーク (ADR-0445)
+
+### Changed
+- `_docN`/`_fs2`/`_sh2`/`_usI`/`_oa` 集約 (~350B 回収)
+
+## [1.7.479] - 2026-09-23
+
+### Fixed
+- `_undoWire` に group/ungroup/zorder の逆写像を追加 — group/ungroup は
+  per-shape `upd{groupId}` パッチ列、zorder は changes スワップで wire 伝搬。
+  残る非伝搬は replace/beautify のみ (ADR-0444)
+
+### Changed
+- `_lP`/`_sp`/`_el`/`_va` prop fold + `_rdb`/`_fck` 集約 (~360B 回収)
+
+## [1.7.478] - 2026-09-23
+
+### Fixed
+- undo/redo をピアへ伝搬 — `_undoWire` が可逆 op を wire 安全な逆 op に写像し
+  新しい peer 時計で broadcast (group/replace 等の非写像 op はローカルのみ) (ADR-0443)
+
+### Changed
+- `_forConn`/`_forTxt`/`_noSh`/`_rO`/`_midV` 集約 (~830B 回収)
+
+## [1.7.477] - 2026-09-23
+
+### Changed
+- `_pp` before/after patch push 集約 — 15サイトを単一プロパティペア push ヘルパに (~340B 回収) (ADR-0442)
+
 ## [1.7.476] - 2026-09-23
 
 ### Changed

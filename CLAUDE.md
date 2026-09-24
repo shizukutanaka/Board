@@ -491,6 +491,16 @@ Board/
 │   ├── ADR-0439-op-cv-folds.md          # _oP/_cv フォールド (実装済)
 │   ├── ADR-0440-g2-fold-opacity-announce.md # _g2 fold + 透明シェイプの SR announce (実装済)
 │   ├── ADR-0441-wire-guard-tests.md     # wire ガード行動テスト + architecture.md 同期 (実装済)
+│   ├── ADR-0442-pp-fold.md              # _pp before/after push 集約 (実装済)
+│   ├── ADR-0443-undo-wire.md            # undo/redo 逆 op wire 伝搬 (実装済)
+│   ├── ADR-0444-undo-wire-group-zorder.md  # group/ungroup/zorder 逆写像追加 (実装済)
+│   ├── ADR-0445-slim-del-pending-purge.md  # del/clear スリム化 + _imgPending パージ (実装済)
+│   ├── ADR-0446-dcq-onclose.md             # dc.onclose の _dcQ リセット (実装済)
+│   ├── ADR-0447-ln-fold.md                 # X.length → _ln(X) 一括 fold (実装済)
+│   ├── ADR-0448-fragin-restart.md          # _fragIn n-mismatch 再起動 + onclose リセット (実装済)
+│   ├── ADR-0449-img-intake-bounds.md       # _imgIn/_imgChunks 上限化 (実装済)
+│   ├── ADR-0450-ln-fold-memberexpr.md      # X.Y.length も _ln fold (実装済)
+│   ├── ADR-0451-mp-st-argfold.md           # _mP/_sT 引数取り化 + new Map/Set(a) fold (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
