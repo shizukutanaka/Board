@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.335] - 2026-09-24
+
+### Added
+- SVG import: fill/stroke の url(#id) グラデーション参照を先頭
+  stop-color に近似解決 (ADR-0283)
+
 ## [1.7.334] - 2026-09-24
 
 ### Changed

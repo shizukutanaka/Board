@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.334';
+const V='1.7.335';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6636,19 +6636,21 @@ function _svgMOf(t){
   }
   return m;
 }
-function _svgColor(v){
+function _svgColor(v,g){
   if(v==null)return null;
   v=String(v).trim();
-  if(!v||v==='none'||/^url\s*\(/i.test(v))return null;   // url() = gradient/pattern/symbol ref — not a flat color
+  if(!v||v==='none')return null;
+  const um=v.match(/^url\s*\(\s*#([^)]*)/i);                    // ADR-0283
+  if(um){const c=g&&g.get(um[1]);return c||null}
   return v;
 }
-function _svgStyle(el){
+function _svgStyle(el,g){
   const css=el.getAttribute('style')||'';
   const get=n=>{const v=el.getAttribute(n);if(v!=null&&v!=='')return v;
     const m=css.match(new RegExp('(?:^|;)\\s*'+n+'\\s*:\\s*([^;]+)'));return m?m[1].trim():null};
   const st={};
-  const stroke=_svgColor(get('stroke'));if(stroke)st.stroke=stroke;
-  const fill=_svgColor(get('fill'));if(fill)st.fill=fill;
+  const stroke=_svgColor(get('stroke'),g);if(stroke)st.stroke=stroke;
+  const fill=_svgColor(get('fill'),g);if(fill)st.fill=fill;
   const sw=parseFloat(get('stroke-width'));if(Number.isFinite(sw)&&sw>0)st.size=sw;
   // Board has a single opacity channel — fold CSS opacity + the more specific of
   // stroke/fill opacity into it.
@@ -6705,6 +6707,10 @@ function svgToShapes(txt){
   if(doc.querySelector('parsererror'))return null;
   const root=doc.documentElement;
   if(!root||root.localName!=='svg')return null;
+  const _grad=new Map();                                                     // ADR-0283
+  for(const ge of doc.querySelectorAll('linearGradient,radialGradient')){
+    const st=ge.querySelector('stop');
+    if(ge.id&&st)_grad.set(ge.id,st.getAttribute('stop-color')||'#000')}
   // viewBox → output: origin to (0,0), cap the width at 800px so giant
   // artboards paste at a sensible size.
   const vb=(root.getAttribute('viewBox')||'').trim().split(/[\s,]+/).map(Number);
@@ -6756,11 +6762,11 @@ function svgToShapes(txt){
       const content=(el.textContent||'').replace(/\s+/g,' ').trim();
       if(content){
         const p=_svgMPt(m2,+el.getAttribute('x')||0,+el.getAttribute('y')||0);
-        const fs=_svgStyle(el).fontSize||16;
+        const fs=_svgStyle(el,_grad).fontSize||16;
         s=Shape.make('text',{x:p.x,y:p.y-fs,w:Math.min(600,Math.max(60,content.length*fs*0.55)),h:fs*1.4,text:content.slice(0,200),fontSize:fs});
       }
     }
-    if(s){const st=_svgStyle(el);if(s.type!=='text')delete st.fontSize;Object.assign(s,st);shapes.push(s)}
+    if(s){const st=_svgStyle(el,_grad);if(s.type!=='text')delete st.fontSize;Object.assign(s,st);shapes.push(s)}
     for(const c of el.children)visit(c,m2);
   };
   visit(root,base);
