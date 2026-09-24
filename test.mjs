@@ -749,6 +749,7 @@ const checks = [
   ['locked selection drawn with dashed outline, padlock badge', html.includes("const lockedSel=sel.every(s=>s.locked)") && html.includes("if(lockedSel){")],
   ['font family cycle via ctx on text/sticky/labels', html.includes("s.font==='mono'")&&html.includes("font:sh.font")&&html.includes('ctxFont')&&html.includes("font-family=\"${_fontFam(s)}\"")],
   ['ctx opacity cycle reaches any unlocked selection', html.includes('function cycleOpacity(){')&&html.includes('ctxOpacity')&&html.includes('applyStyleToSelection({opacity:nxt})')],
+  ['frame honours s.fill tint in canvas+SVG', html.includes("c.fillStyle=s.fill||'rgba(248,250,252,0.6)'")&&html.includes("fill=\"${s.fill||'rgba(248,250,252,0.6)'}\"")],
   // v1.7.05: Tab cycling excludes locked shapes (parity with doMove/doDelete/doRotate/doFlip)
   ['statusbar selection dims readout', html.includes('id="sSel"')&&html.includes('_statusSel()')&&html.includes('Math.round(b.w)')],
   ['empty-selection arrows pan viewport', html.includes("state.viewport.x+=k==='arrowleft'?-step:k==='arrowright'?step:0")],

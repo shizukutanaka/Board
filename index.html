@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.232';
+const V='1.7.233';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2715,8 +2715,9 @@ function drawShape(s,c){
       const r=4;
       c.save();
       c.globalAlpha=(s.opacity??1)*0.9;
-      // subtle fill
-      c.fillStyle='rgba(248,250,252,0.6)';
+      // ADR-0175: s.fill tints the frame (was hard-coded translucent);
+      // frames draw in the first pass so contents still render on top.
+      c.fillStyle=s.fill||'rgba(248,250,252,0.6)';
       c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,r);c.fill();
       // border
       c.strokeStyle=s.stroke||getCSS('--brand')||'#00C4CC';
@@ -6593,7 +6594,7 @@ function buildSVG(shapes,paper){
         // or default-opacity frame rendered wrong (fully opaque, unlabeled) only in SVG
         // export, not canvas/PNG/PDF (deep-audit fix).
         const fa=` opacity="${(s.opacity==null?1:_num(s.opacity))*0.9}"`;
-        els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${fr}" fill="rgba(248,250,252,0.6)" stroke="${clr}" stroke-width="${SZ||1.5}"${fa}${rT}/>`);
+        els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${fr}" fill="${s.fill||'rgba(248,250,252,0.6)'}" stroke="${clr}" stroke-width="${SZ||1.5}"${fa}${rT}/>`);
         els.push(`<text x="${X+ox+6}" y="${Y+oy-4}" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="${clr}"${fa}${rT}>${_esc(s.label||'Frame')}</text>`);
         break;}
       case 'sticky':{

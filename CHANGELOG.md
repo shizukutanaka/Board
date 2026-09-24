@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.233]
+
+### 追加
+- **フレームの塗り色** (ADR-0175)。`s.fill` が canvas/SVG 両経路で
+  描画される — 塗りボタン/スタイルコピーで設定できていた値が
+  視覚化。未設定フレームは従来の半透明のまま。
+
 ## [1.7.232]
 
 ### 追加
