@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.174]
+
+### 追加
+- **コネクタラベル位置ドラッグ** (ADR-0117)。ラベル付き単一コネクタ
+  選択で中点ドットをドラッグ→弧長 `s.labelPos` (0..1) に配置
+  (way/elbow/curve 全経路・中点磁吸)。`style` op で undo/同期、
+  ルートリセットで初期化、SVG export も一致。
+
 ## [1.7.173]
 
 ### 追加
