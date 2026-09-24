@@ -818,7 +818,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.417';
+const V='1.7.418';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1250,7 +1250,7 @@ function validPatch(p){
   // ADR-0369: string props — type + length. A hostile upd could inject a 1MB
   // text that every frame's wrapText then rescans, or a non-string that the
   // renderers coerce weirdly.
-  for(const k of ['text','label','docName','link','groupId','img','color','stroke','fill','font','head','startHead','align','valign','type','dataUrl','fstyle','a','b']){
+  for(const k of ['text','label','docName','link','groupId','img','color','stroke','fill','font','head','startHead','align','valign','type','dataUrl','fstyle','a','b','frac']){
     if(k in p&&p[k]!=null&&typeof p[k]!=='string')return false;
     if(k in p&&typeof p[k]==='string'&&k!=='dataUrl'&&p[k].length>(k==='text'?5000:600))return false;
   }
@@ -7761,9 +7761,14 @@ const Net={
     for(const k in rw){
       const rc=rw[k];
       if(!validClock(rc))continue;
-      if(op.shape[k]===undefined)continue;
+      // ADR-0372: gate the merged VALUE too — before, a hostile snapshot op could
+      // LWW-merge {x:NaN, pts:'bad', id:'x', __proto__:{…}} straight into the live
+      // shape (render NaN / drawPen crash / id-index corruption). Structural keys
+      // id/type are never mergeable; pollution keys and invalid values are skipped.
+      const v=op.shape[k];
+      if(v===undefined||k==='id'||k==='type'||k[0]==='_'||k==='__proto__'||k==='constructor'||k==='prototype'||!validPatch({[k]:v}))continue;
       const lc=lw[k];
-      if(!lc||clockNewer(rc,lc)){ex[k]=op.shape[k];lw[k]=clone(rc);dirty=true;}
+      if(!lc||clockNewer(rc,lc)){ex[k]=v;lw[k]=clone(rc);dirty=true;}
     }
     if(dirty){
       state.dirty=true;_iG();
