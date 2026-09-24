@@ -390,7 +390,7 @@ const checks = [
   ['draft pen blits committed bitmap 1:1 snapped to device grid', html.includes("ctx.drawImage(d.cv,_rnd((d.bx-_vp().x)*_z)")],
   ['draft pen rebuilds stamp on pressure-mode flip/extrema growth', html.includes("usePr!==d.usePr||(usePr&&extGrew)") && html.includes("_inkRebuild(s,d)")],
   // v1.7.88: ADR-0030 pinch-zoom scaled preview
-  ['pinch snapshots canvas once at gesture start', html.includes("if(_pointers.size>=2)_pinchSnapNow()") && html.includes("function _pinchSnapNow()") && html.includes(".getContext('2d').drawImage(canvas,0,0)")],
+  ['pinch snapshots canvas once at gesture start', html.includes("if(_pointers.size>=2)_pinchSnapNow()") && html.includes("function _pinchSnapNow()") && html.includes("_g2(_pinchSnap).drawImage(canvas,0,0)")],
   ['pinch preview blits snapshot under accumulated transform', html.includes("if(_pinchSnap&&_pinchVp)") && html.includes("ctx.drawImage(_pinchSnap,0,0,W,H,(_pinchVp.x-v.x)*z")],
   ['pinch end clears snapshot and repaints crisp', html.includes("if(_pinchSnap){_pinchSnap=null;_pinchVp=null;_iv();}")],
   // v1.7.91: ADR-0033 ctrl+wheel (trackpad pinch) zoom preview shares the
@@ -529,7 +529,7 @@ const checks = [
   ['measure cleared on reset/down/Alt', html.includes('state.measure=null;ptr.x=ptr.x0')&&html.includes("e.key==='Alt'&&state.measure")],
   ['gresize scales curve cbend affinely', html.includes('sh.cbend=orig.cbend*sx*sy*ol/nl')],
   ['snap index skips hidden shapes', html.includes('exclFn(s)||_hd(s)')],
-  ['DOM mirror marks hidden shapes', html.includes("tagHidden:'(非表示)'")&&html.includes("_hd(s)?' '+t('tagHidden')")],
+  ['DOM mirror marks hidden shapes', html.includes("tagHidden:'(非表示)'")&&html.includes("_hd(s)||_oP(s)===0?' '+t('tagHidden')")],
   ['fit ignores hidden unless all hidden', html.includes('const vis=_sh().filter(s=>_sv(s))')&&html.includes('_vis.length?_vis:_sh()')],
   ['rounded diamond path + cycle + ctx', html.includes('function _diamondPath(c,s)')&&html.includes("const boxOk=s.type==='rect'||s.type==='diamond'||s.type==='image'")&&html.includes("s.type==='rect'||s.type==='diamond'")],
   ['SVG diamond emits rounded path when r>0', html.includes('const _dPts=[[X+W/2,Y],[X+W,Y+H/2]')&&html.includes("_min(_dr,e1/2,e2/2)")],
