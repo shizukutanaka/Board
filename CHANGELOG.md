@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.137]
+
+### 追加
+- **幅 / 高さ揃え (match size)** (ADR-0079)。ctx メニューに
+  「幅を揃える」「高さを揃える」「幅と高さを揃える」— 最初に選択した
+  シェイプを基準に box 型の寸法を揃える (draw.io parity)。`align` op
+  で一括 undo、位置は不変 (top-left アンカー相当)。
+
 ## [1.7.136]
 
 ### 追加
