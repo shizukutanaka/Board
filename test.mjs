@@ -1888,6 +1888,25 @@ try {
     console.log('  ✓ applyRemote rejects NaN/Infinity/__proto__ in upd/style payloads');
   }
 
+  // ADR-0373: structural/internal keys in a remote patch are stripped at apply —
+  // {type:'pen'} would send a rect into drawPen (pts missing → per-frame crash,
+  // persisted), {id:'X'} breaks the byId index, {_foo:…} clobbers cache fields.
+  {
+    const sid='ST0373';
+    Store.commit({op:'add',shape:{id:sid,type:'rect',z:1,x:0,y:0,w:10,h:10,stroke:'#0F172A',size:2,opacity:1}});
+    Store.applyRemote({op:'upd', id:sid, after:{type:'pen',id:'EVIL',_penSig:1,x:7}, clock:{peer:'attacker', seq:30, ts:5}});
+    const ls=byId(sid);
+    assert.ok(ls,'shape still indexed under its real id');
+    assert.strictEqual(ls.type,'rect','type rebind stripped');
+    assert.strictEqual(ls.id,sid,'id rebind stripped');
+    assert.strictEqual(ls._penSig,undefined,'_penSig stripped');
+    assert.strictEqual(ls.x,7,'legit prop in the same patch still applied');
+    Store.applyRemote({op:'style', after:[{id:sid,type:'image',stroke:'#123456'}], before:[{id:sid,stroke:'#0F172A'}], clock:{peer:'attacker', seq:31, ts:6}});
+    assert.strictEqual(ls.type,'rect','batch-patch type rebind stripped');
+    assert.strictEqual(ls.stroke,'#123456','batch-patch legit prop applied');
+    console.log('  ✓ ADR-0373: remote patches cannot rebind id/type or write _-keys (7 asserts)');
+  }
+
   // §3.17 follow-up: group/ungroup payload validation. A non-string gid would
   // corrupt _gmap Map keys, selection equality and the clone-remap, and now also
   // flows through the LWW _chg comparison - so reject it at the validator.
