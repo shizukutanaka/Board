@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.280]
+
+### 修正
+- **excalidraw 結合修復** (ADR-0222)。エクスポートが
+  存在しない `bind1/bind2` を読み常に unbound だった
+  バグを `s.a/s.b` に修正 + `boundElements` 出力と
+  aF/bF → focus 近似。
+
 ## [1.7.279]
 
 ### 追加

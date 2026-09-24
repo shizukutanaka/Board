@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.279';
+const V='1.7.280';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6325,8 +6325,8 @@ function excScene(shapes){
         const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]),x0=Math.min(...xs),y0=Math.min(...ys);
         els.push(E(s,{type:s.type,x:s.x1+x0,y:s.y1+y0,width:Math.max(...xs)-x0,height:Math.max(...ys)-y0,
           points:pts.map(p=>[p[0]-x0,p[1]-y0]),
-          startBinding:s.bind1?{elementId:s.bind1,focus:0,gap:1}:null,
-          endBinding:s.bind2?{elementId:s.bind2,focus:0,gap:1}:null,
+          startBinding:s.a?{elementId:s.a,focus:s.aF?+(s.aF.fx*2-1).toFixed(2):0,gap:1}:null,   // ADR-0222: was s.bind1 (never set)
+          endBinding:s.b?{elementId:s.b,focus:s.bF?+(s.bF.fx*2-1).toFixed(2):0,gap:1}:null,
           lastCommittedPoint:null,startArrowhead:null,endArrowhead:s.type==='arrow'?'arrow':null}));break;}
       case'image':{
         const fid='f'+s.id;files[fid]={id:fid,mimeType:(s.dataUrl.match(/^data:([^;]+)/)||[])[1]||'image/png',dataURL:s.dataUrl,created:0,lastRetrieved:0};
@@ -6334,7 +6334,18 @@ function excScene(shapes){
       default:break;
     }
   }
-  for(const e of els)if(gids[e.id])e.groupIds=gids[e.id];
+  const _bnd=new Map();
+  for(const s of shapes){
+    if((s.type==='line'||s.type==='arrow')&&(s.a||s.b)){
+      if(s.a)_bnd.set(s.a,(_bnd.get(s.a)||[]).concat(s.id));
+      if(s.b)_bnd.set(s.b,(_bnd.get(s.b)||[]).concat(s.id));
+    }
+  }
+  for(const e of els){
+    if(gids[e.id])e.groupIds=gids[e.id];
+    const be=_bnd.get(e.id);
+    if(be)e.boundElements=be.map(cid=>({id:cid,type:'arrow'}));   // ADR-0222
+  }
   return{type:'excalidraw',version:2,source:'Board',elements:els,files,appState:{gridSize:null}};
 // ---- ADR-0203: .drawio import ------------------------------------------------
 // Uncompressed mxGraphModel XML via DOMParser (no deps). drawio's default save

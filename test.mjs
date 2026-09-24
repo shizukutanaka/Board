@@ -720,6 +720,7 @@ const checks = [
   ['Alt draws box shapes from center (ADR-0219)', html.includes('contRectLike(wp,e.shiftKey,e.altKey)')&&html.includes('// ADR-0219: ⌥ = draw from center')],
   ['.drawio export mxGraphModel round-trip (ADR-0220)', html.includes('function boardToDrawio(shapes)')&&html.includes('edgeStyle=orthogonalEdgeStyle')&&html.includes("jumpStyle=arc")],
   ['drawio exitX/entryX fixed ports round-trip aF/bF (ADR-0221)', html.includes('s.aF={fx:Math.min(1,Math.max(0,fx)),fy')&&html.includes('exitX=${s.aF.fx};exitY=${s.aF.fy}')],
+  ['excalidraw export keeps bindings via s.a/s.b + boundElements (ADR-0222)', html.includes('startBinding:s.a?{elementId:s.a')&&html.includes('e.boundElements=be.map')],
   ['endpoint drag Shift constrains to 45 deg + label editor fontSize (ADR-0206)', html.includes("constrain the free end to 45")&&html.includes("${hit.fontSize||12}px")],
   ['i18n has excImported ja+en', html.includes("excImported:'Excalidraw を取り込みました'") && html.includes("excImported:'Excalidraw imported'")],
   // v1.7.102: ADR-0044 text paste → text shape
@@ -9478,7 +9479,7 @@ try {
 
     // ADR-0098: excScene round-trip — export then re-import keeps connectors real
     {const a1=excToShapes(scene)[3];                       // arrow
-     a1.bind2='boxA';a1.way=[{x:15,y:30}];
+     a1.b='boxA';a1.way=[{x:15,y:30}];   // ADR-0222: real bind field is s.b (was bind2 — fixture mirrored the bug)
      const sc=excScene([a1,{id:'boxA',type:'rect',x:0,y:0,w:40,h:40,stroke:'#000',fill:null,size:2,opacity:1},
        {id:'st1',type:'sticky',x:0,y:0,w:100,h:100,color:'#FEF08A',text:'hi',stroke:'#000',size:1,opacity:1,align:'center'},
        {id:'im1',type:'image',x:0,y:0,w:10,h:10,dataUrl:'data:image/png;base64,xx',stroke:'#000',size:1,opacity:1}]);
