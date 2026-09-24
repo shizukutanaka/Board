@@ -91,7 +91,7 @@ const checks = [
   // v1.1: exportPNG passes ctx as parameter (no global swap)
   ['exportPNG passes ctx as parameter', html.includes('drawShape(s,oc)')],
   // v1.1: toBlob null guard
-  ['toBlob has null guard', html.includes("if(!bl){_tst(t('exportFailed')")],
+  ['toBlob has null guard', html.includes("if(!bl){_tst(t(_EF)")],
   // v1.1: op validation in _onRecv
   ['_onRecv validates op.clock', html.includes("typeof op.clock.peer!=='string'")],
   // v1.1: import validates shapes
@@ -228,8 +228,8 @@ const checks = [
   // round 9: presentation pointer guard + frame move + i18n
   ['pointerdown guarded during presentation', html.includes("if(Presentation.isActive())return")],
   ['frame move drags contained shapes', html.includes("dragIds") && html.includes("type==='frame'")],
-  ['copyStyle uses i18n', html.includes("t('noSelection')") && html.includes("t('styleCopied')")],
-  ['group toasts use i18n', html.includes("t('grouped')") && html.includes("t('selectTwo')")],
+  ['copyStyle uses i18n', html.includes("t(_NS)") && html.includes("t('styleCopied')")],
+  ['group toasts use i18n', html.includes("t('grouped')") && html.includes("t(_ST)")],
   ['copyStyle captures stroke/fill/size/opacity', html.includes("stroke:sh.stroke,fill:sh.type==='sticky'?sh.color:sh.fill") && html.includes("size:sh.size,opacity:sh.opacity")],
   ['pasteStyle filters undefined keys', html.includes("filter(([,v])=>v!==_ud)")],
   ['applyStyleToSelection records undo', html.includes("_styleOp(before,after)")],
@@ -638,7 +638,7 @@ const checks = [
   // v1.6.36: exportFailed/saveFailed i18n, shapes status label, describeShape locale
   ['exportFailed key in ja and en', html.includes("exportFailed:'書き出し失敗'") && html.includes("exportFailed:'Export failed'")],
   ['saveFailed key in ja and en', html.includes("saveFailed:'保存失敗'") && html.includes("saveFailed:'Save failed'")],
-  ['toBlob null guard uses t(exportFailed)', html.includes("t('exportFailed')")],
+  ['toBlob null guard uses t(exportFailed)', html.includes("t(_EF)")],
   ['Persist.save error uses t(saveFailed)', html.includes("t('saveFailed')")],
   ['shapes key in ja and en', html.includes("shapes:'図形'") && html.includes("shapes:'Shapes'")],
   ['status bar saved label has data-t', html.includes('class="lbl" data-t="saved"')],
@@ -809,9 +809,9 @@ const checks = [
   ['frame label italic/under/strike (ADR-0204)', html.includes("600 ${fs}px")&&html.includes("s.type!=='frame'&&!s.label)||s.locked)return;   // ADR-0170/0204")],
   ['letter-spacing cycle — canvas ctx+SVG+style-copy (ADR-0205)', html.includes("function cycleSpacing()")&&html.includes("c.letterSpacing=(s.spacing||0)+'px'")&&html.includes('_svgLs(s)')&&html.includes('spacing:sh.spacing')],
   ['elbow corner rounding canvas+SVG + cycleCorner gate (ADR-0207)', html.includes('function _polylineR')&&html.includes('_polylineRd(pts,ox,oy,s.r)')&&html.includes("connOk=(_conn(s.type))&&s.elbow")],
-  ['text word-wrap toggle + canvas/SVG wrap (ADR-0208)', html.includes('s.wrap?wrapTextCached')&&html.includes('s.wrap?wrapText(String')&&html.includes("['ctxWrap','',toggleWrap]")],
+  ['text word-wrap toggle + canvas/SVG wrap (ADR-0208)', html.includes('s.wrap?wrapTextCached')&&html.includes('s.wrap?wrapText(_St')&&html.includes("['ctxWrap','',toggleWrap]")],
   ['fixed edge anchors via Alt-drop + connEnds/reverse/unbind wiring (ADR-0209)', html.includes("sh[fk]={fx:fx<0.5?0:1,fy}")&&html.includes('s.aF?{x:ba.x+ba.w*s.aF.fx')&&html.includes('tbF=s.aF;s.aF=s.bF')],
-  ['multi-line conn label canvas+SVG (ADR-0210)', html.includes("String(s.label).split('\\n'),llh=fs*(s.lineH||1.25)")&&html.includes("lns.map((l,i)=>`<tspan")],
+  ['multi-line conn label canvas+SVG (ADR-0210)', html.includes("_St(s.label).split('\\n'),llh=fs*(s.lineH||1.25)")&&html.includes("lns.map((l,i)=>`<tspan")],
   ['shadow on text/conns canvas+SVG + gate (ADR-0211)', html.includes("s.type!=='text'&&s.type!=='line'&&s.type!=='arrow'")&&html.includes('label never shadows')&&html.includes('${dA}${a}${_sh}/>`);')],
   ['conn label honours lineH canvas+SVG (ADR-0212)', html.includes('llh=fs*(s.lineH||1.25)')&&html.includes('lh2=fs*(s.lineH||1.25)')],
   ['pin/unpin anchor via ctx for touch/keyboard (ADR-0213)', html.includes('function pinAnchor()')&&html.includes("['ctxPinAnchor','',pinAnchor]")&&html.includes('px=k===\'a\'?e.x1:e.x2')],
@@ -980,7 +980,7 @@ const checks = [
   ['minimap applies rotation transform', html.includes("const _mr=s.rotate&&s.w!=null;") && html.includes("if(_mr)sx.restore();")],
   ['minimap renders frame shapes (case frame fallthrough to rect)', html.includes("case 'frame':\n        case 'rect':")],
   ['describeShape announces locked and rotated state', html.includes("if(s.locked)d+=` ${t('ctxLock')}`;") && html.includes("if(s.rotate)d+=` ${s.rotate}°`;")],
-  ['describeShape announces text/label content for SR', html.includes("const txt=String(s.text||s.label||'').replace(/\\s+/g,' ').trim();") && html.includes("txt.length>30?txt.slice(0,30)+'…':txt")],
+  ['describeShape announces text/label content for SR', html.includes("const txt=_St(s.text||s.label||'').replace(/\\s+/g,' ').trim();") && html.includes("txt.length>30?txt.slice(0,30)+'…':txt")],
   // v1.6.66: resize object-snap
   ['resizeSnap exists and applyResize uses it', html.includes("function resizeSnap(orig,handle,wp)") && html.includes(":resizeSnap(orig,handle,wp); // lock/alt override obj-snap")],
   ['resize commit clears alignment guides', html.includes("ptr.resizeHandle=null;ptr.resizeOrig=null;state.guides=null;")],
@@ -1159,7 +1159,7 @@ const checks = [
   ['rect case renders label', html.includes("if(s.fstyle)_hatchCtx(c,s);")&&html.includes("_drawBoxLabel(s,c);break;\n    case 'ellipse':")],
   ['ellipse case renders label', /case 'ellipse':[\s\S]{0,500}_drawBoxLabel\(s,c\);break;/.test(html)],
   // v1.6.89: colour picker coalesces (one undo/sync op per pick, like the sliders)
-  ['colour picker captures on focus/pointerdown', html.includes("_on(cp,'focus',()=>_sfbCapture(k));") && html.includes("_on(cp,'pointerdown',()=>_sfbCapture(k));")],
+  ['colour picker captures on focus/pointerdown', html.includes("_on(cp,'focus',()=>_sfbCapture(k));") && html.includes("_on(cp,_PD,()=>_sfbCapture(k));")],
   ['colour picker input is live-only (no per-input commit)', html.includes("for(const id of _sl()){const s=byId(id);if(s&&!s.locked)s[k]=cp.value}") && !html.includes("applyStyleToSelection({[k]:cp.value})")],
   ['colour picker flushes one op on change', html.includes("_on(cp,'change',()=>{_sfbFlush(k,cp.value);_sfbCapture(k);});")],
   // v1.6.76: ⌘⇧L keyboard shortcut for lock/unlock — README claims "全機能キーボード操作可能"
