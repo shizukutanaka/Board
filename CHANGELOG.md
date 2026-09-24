@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.538] - 2026-09-23
+
+### リファクタ
+
+- `filter`/`some`/`find`/`every`/`map` の単一述語 arrow 包みを一括 point-free 化 (18 サイト、~130B 回収) (ADR-0505)
+
 ## [1.7.537] - 2026-09-23
 
 ### リファクタ
