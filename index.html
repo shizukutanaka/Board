@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.305';
+const V='1.7.306';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6396,6 +6396,7 @@ function drawioToShapes(txt){
     if(sty.fontFamily&&s.type!=='image'){const ff=sty.fontFamily.toLowerCase();
       if(/mono|courier|consol|cascadia|menlo|jetbrains/.test(ff))s.font='mono';
       else if(/serif|times|georgia|garamond|palatino|book/.test(ff))s.font='serif'}   // ADR-0253
+    if(sty.editable==='0'||sty.deletable==='0'||sty.movable==='0')s.locked=1;   // ADR-0254
     if(+sty.opacity>0)s.opacity=Math.max(0.05,+sty.opacity/100);
     // ADR-0228: label typography — drawio align + fontStyle bitmask
     // (1=bold, 2=italic, 4=underline; mxGraph BOLD/ITALIC/UNDERLINE_FONT)
@@ -6444,6 +6445,7 @@ function drawioToShapes(txt){
     if(sty.labelBackgroundColor&&sty.labelBackgroundColor!=='none')s.fill=sty.labelBackgroundColor;   // ADR-0249
     if(+sty.fontSize>0)s.fontSize=Math.min(200,+sty.fontSize);
     {const _efs=+sty.fontStyle;if(_efs&1)s.bold=1;if(_efs&2)s.italic=1;if(_efs&4)s.under=1}
+    if(sty.editable==='0'||sty.deletable==='0'||sty.movable==='0')s.locked=1;   // ADR-0254
     if(_hid)s.visible=0;                                       // ADR-0245
     shapes.push(s);
   }
@@ -6526,6 +6528,7 @@ function boardToDrawio(shapes){
     if(s.align==='center'||s.align==='right')sty+='align='+s.align+';';   // ADR-0228
     if(s.valign)sty+='verticalAlign='+s.valign+';';                          // ADR-0238
     if(s.font)sty+='fontFamily='+(s.font==='mono'?'Courier New':'Georgia')+';';   // ADR-0253
+    if(s.locked)sty+='editable=0;deletable=0;movable=0;resizable=0;';   // ADR-0254
     if(s.shadow)sty+='shadow=1;';                                            // ADR-0246
     const _dfs=(s.bold?1:0)|(s.italic?2:0)|(s.under?4:0);                  // ADR-0228: mxGraph bitmask
     if(_dfs)sty+='fontStyle='+_dfs+';';
@@ -6548,6 +6551,7 @@ function boardToDrawio(shapes){
     if(s.fill)sty+='labelBackgroundColor='+s.fill+';';                       // ADR-0249
     if(s.label&&(s.bold||s.italic||s.under)){const _ef=(s.bold?1:0)|(s.italic?2:0)|(s.under?4:0);sty+='fontStyle='+_ef+';';}
     if(s.label&&s.fontSize)sty+='fontSize='+s.fontSize+';';
+    if(s.locked)sty+='editable=0;deletable=0;movable=0;';   // ADR-0254
 
     const src=s.a&&idOf.get(s.a)?` source="${idOf.get(s.a)}"`:'';
     const tgt=s.b&&idOf.get(s.b)?` target="${idOf.get(s.b)}"`:'';
