@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.544] - 2026-09-23
+
+### リファクタ
+
+- `c.moveTo(x,y)`/`c.lineTo(x,y)` を `_mT`/`_lT` shorthand に集約 (69 サイト、~140B 回収) (ADR-0511)
+
 ## [1.7.543] - 2026-09-23
 
 ### リファクタ
