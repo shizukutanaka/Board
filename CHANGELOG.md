@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.521] - 2026-09-23
+
+### リファクタ
+
+- `_snapBest` — snap edge の「|e.v−v| 最小を選ぶ」for-of ループ (resizeSnap 縦/横、_snapBoxIdx mX/mY 4 サイト) を集約、−64B (ADR-0488)
+
 ## [1.7.520] - 2026-09-23
 
 ### リファクタ

@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.520';
+const V='1.7.521';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3452,9 +3452,9 @@ function resizeSnap(orig,handle,wp){
   const movesX=/[ew]/.test(handle),movesY=/[ns]/.test(handle);
   let x=wp.x,y=wp.y;const guides=[];
   const idx=_snapIndex('resize',_selIds().sort().join(','),s=>_hasS(s.id));   // ADR-0056: exclude the whole dragged set
-  if(movesX){let best=null;for(const e of _snapNear(idx.xs,wp.x,tol)){const d=e.v-wp.x;if(!best||_abs(d)<_abs(best.d))best={d,at:e.v,b:e.b};}
+  if(movesX){const best=_snapBest(idx.xs,wp.x,tol);
     if(best){x=best.at;guides.push(_gV(best.at,orig,best.b));}}
-  if(movesY){let best=null;for(const e of _snapNear(idx.ys,wp.y,tol)){const d=e.v-wp.y;if(!best||_abs(d)<_abs(best.d))best={d,at:e.v,b:e.b};}
+  if(movesY){const best=_snapBest(idx.ys,wp.y,tol);
     if(best){y=best.at;guides.push(_gH(best.at,orig,best.b));}}
   // ADR-0096: equal-size snap — match an existing shape's w/h (draw.io smart
   // dims). Runs after edge snap so a dim hit can override the dragged coord;
@@ -4823,13 +4823,14 @@ function _snapNear(arr,v,tol){
   for(let i=lo;i<_ln(arr)&&arr[i].v<=v+tol;i++)out.push(arr[i]);
   return out;
 }
+const _snapBest=(arr,v,tol)=>{let best=null;for(const e of _snapNear(arr,v,tol)){const d=e.v-v;if(!best||_abs(d)<_abs(best.d))best={d,at:e.v,b:e.b}}return best};   // ADR-0488
 const _gV=(x,m,b)=>{const ys=[m.y,m.y+m.h,b.y,b.y+b.h];return{x1:x,y1:_min(...ys),x2:x,y2:_max(...ys)}};   // ADR-0487
 const _gH=(y,m,b)=>{const xs=[m.x,m.x+m.w,b.x,b.x+b.w];return{x1:_min(...xs),y1:y,x2:_max(...xs),y2:y}};   // ADR-0487
 function _snapBoxIdx(mov,idx,tol){
   const mX=[mov.x,mov.x+mov.w/2,mov.x+mov.w],mY=[mov.y,mov.y+mov.h/2,mov.y+mov.h];
   let bx=null,by=null;
-  for(const m of mX)for(const e of _snapNear(idx.xs,m,tol)){const d=e.v-m;if(!bx||_abs(d)<_abs(bx.d))bx={d,at:e.v,b:e.b};}
-  for(const m of mY)for(const e of _snapNear(idx.ys,m,tol)){const d=e.v-m;if(!by||_abs(d)<_abs(by.d))by={d,at:e.v,b:e.b};}
+  for(const m of mX){const e=_snapBest(idx.xs,m,tol);if(e&&(!bx||_abs(e.d)<_abs(bx.d)))bx=e}
+  for(const m of mY){const e=_snapBest(idx.ys,m,tol);if(e&&(!by||_abs(e.d)<_abs(by.d)))by=e}
   const guides=[];let dx=0,dy=0;
   if(bx){dx=bx.d;guides.push(_gV(bx.at,mov,bx.b));}
   if(by){dy=by.d;guides.push(_gH(by.at,mov,by.b));}
