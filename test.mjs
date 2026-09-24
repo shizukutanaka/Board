@@ -596,9 +596,9 @@ const checks = [
   ['ADR-0004: doClearAll backs up pre-clear board before the destructive commit',
     html.includes("Persist.saveBackup(clone(_sh()),{..._vp()},_dn());   // ADR-0004\n  Store.commit({op:'clear'")],
   ['ADR-0004: importBoard backs up pre-import board before the whole-board swap',
-    html.includes("if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());   // ADR-0004\n      state.shapes=shapes.map(clone);")],
+    html.includes("if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());   // ADR-0004\n      _rs(shapes.map(clone));")],
   ['ADR-0004: importFromHash backs up pre-import board before the whole-board swap',
-    html.includes("if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());\n      state.shapes=valid.map(clone);")],
+    html.includes("if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());\n      _rs(valid.map(clone));")],
   ['ADR-0004: main() offers a one-time restore prompt when a backup exists at boot',
     html.includes("if(await Persist.checkBackup()){") && html.includes("if(confirm(t('backupAvailable')))await Persist.restoreBackup();") && html.includes("else await Persist.discardBackup();")],
   ['drag-drop accepts .board files', html.includes(".endsWith('.board')")],
@@ -1096,8 +1096,8 @@ const checks = [
   ['doDuplicate does not clobber clipboard (uses _placeCopies, not state.clipboard=)', html.includes("_placeCopies(sel,_dd().x,_dd().y):_placeCopies(sel);   // independent of _cl()") && html.includes("function _placeCopies(srcShapes")],
   // v1.6.71: import sites clear stale selection + wclock (mirror replace op's _apply)
   ['dc.onclose drops _dcQ backlog so reconnect sends (ADR-0446)', /this\.dc\.onclose=\(\)=>\{[^}]*this\._dcQ=null/.test(html)],
-  ['importBoard clears selection+wclock on whole-board swap', html.includes("state.shapes=shapes.map(clone);_iG();_pcC();   // ADR-0009\n      // Match the replace op's _apply") && html.includes("_scl();state.wclock={};\n      _docN(d);")],
-  ['importFromHash clears selection+wclock on whole-board swap', html.includes("state.shapes=valid.map(clone);_iG();_pcC();_setDocName(") && /state\.shapes=valid\.map\(clone\)[\s\S]{0,900}_scl\(\);state\.wclock=\{\};/.test(html)],
+  ['importBoard clears selection+wclock on whole-board swap', html.includes("_rs(shapes.map(clone));   // ADR-0009\n      // Match the replace op's _apply") && html.includes("_scl();state.wclock={};\n      _docN(d);")],
+  ['importFromHash clears selection+wclock on whole-board swap', html.includes("_rs(valid.map(clone));_setDocName(") && /_rs\(valid\.map\(clone\)\)[\s\S]{0,900}_scl\(\);state\.wclock=\{\};/.test(html)],
   // v1.6.71: presentation-mode guard precedes editing shortcuts (no undo mid-slideshow)
   ['presentation guard runs before undo/redo/select-all shortcuts', /if\(Presentation\.isActive\(\)\)\{[\s\S]{0,260}return;\n  \}[\s\S]{0,700}if\(meta&&k==='z'&&!e\.shiftKey\)/.test(html)],
   // v1.6.71: export canvas clamped to browser limits
