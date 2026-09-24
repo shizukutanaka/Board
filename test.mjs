@@ -151,7 +151,7 @@ const checks = [
   // round 4 improvements
   ['data-t i18n auto-apply', html.includes("UI.applyI18n") && html.includes("el.textContent=t(key)")],
   ['Eraser batches into single undo', html.includes("_eraseBatch") && html.includes("flushErase")],
-  ['pointercancel restores eraser batch + clears guides', html.includes("_cancelPointerGesture") && html.includes("state.guides=null") && /if\(_ln\(_eraseBatch\)\)[\s\S]{0,280}state\.guides=null/.test(html)],
+  ['pointercancel restores eraser batch + clears guides', html.includes("_cancelPointerGesture") && html.includes("_zR()") && /if\(_ln\(_eraseBatch\)\)[\s\S]{0,280}_zR\(\)/.test(html)],
   ['document.title synced on docName change (WCAG 2.4.2)', html.includes('_syncDocTitle')&&html.includes("document.title=")&&html.includes("_syncDocTitle();")],
   ['Screen Wake Lock in presentation mode', html.includes('navigator.wakeLock')&&html.includes('_acquireWakeLock')&&html.includes('_releaseWakeLock')],
   ['RAF idle-stop: invalidate guards with _rafId (no 60fps busy-loop on idle board)', html.includes('let needsRender=true,needOverlay=true,_rafId=0')&&html.includes('if(!_rafId)_rafId=_rAF(frame)')&&html.includes('_rafId=0;')],
@@ -431,7 +431,7 @@ const checks = [
   ['both-ends i18n ja+en', html.includes("ctxBothEnds:'両端ヘッド'")&&html.includes("ctxBothEnds:'Arrowheads both ends'")],
   // v1.7.122: ADR-0064 gesture readout pill
   ['readout state + drawOverlay pill + ptr.down gate', html.includes('readout:null,             // ADR-0064')&&html.includes('if(ptr.down&&_ro())')&&html.includes("roundRect(c,px-tw/2,py,tw,ph,4)")],
-  ['readout set in applyResize/moveDelta/rotate paths + cleared with guides', html.includes('state.readout={x:_rb.x+_rb.w/2,y:_rb.y+_rb.h')&&html.includes('state.readout=bb&&(dx||dy)')&&html.includes('state.guides=null;state.readout=null;')],
+  ['readout set in applyResize/moveDelta/rotate paths + cleared with guides', html.includes('state.readout={x:_rb.x+_rb.w/2,y:_rb.y+_rb.h')&&html.includes('state.readout=bb&&(dx||dy)')&&html.includes('state.guides=state.readout=state.bindPreview=null')],
   // v1.7.123: ADR-0065 connector endpoint rebind/unbind
   ['endpoint rebind: always-handle + unbind-on-grab + bindPreview', html.includes("h.push({id:'p1',x:e.x1,y:e.y1});       // ADR-0065")&&html.includes("if(sh[bk]){sh[bk]=null;sh[bk+'F']=null}")&&html.includes('state.bindPreview=')],
   ['_endPointBind in pointerup + not-self/not-other-end guard', html.includes('_endPointBind(rsh,ptr.resizeHandle,e.altKey)')&&html.includes('hit!==sh[other]')],
@@ -995,7 +995,7 @@ const checks = [
   ['describeShape announces text/label content for SR', html.includes("const txt=_trm(_St(_txx(s)||_lb(s)||'').replace(/\\s+/g,' '));") && html.includes("_ln(txt)>30?_s0(txt,30)+'…':txt")],
   // v1.6.66: resize object-snap
   ['resizeSnap exists and applyResize uses it', html.includes("function resizeSnap(orig,handle,wp)") && html.includes(":resizeSnap(orig,handle,wp); // lock/alt override obj-snap")],
-  ['resize commit clears alignment guides', html.includes("ptr.resizeHandle=null;ptr.resizeOrig=null;state.guides=null;")],
+  ['resize commit clears alignment guides', html.includes("ptr.resizeHandle=null;ptr.resizeOrig=null;_zG();")],
   ['resize Shift locks aspect ratio on corners', html.includes("const lock=shift&&corner&&orig.w>0&&orig.h>0;")],
   // v1.6.67: drag-to-rotate handle
   ['rotation handle helper + hit-test present', html.includes("function getRotHandle(s)") && html.includes("function hitRotHandle(wp,s)")],
