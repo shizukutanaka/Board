@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.168]
+
+### 追加
+- **付箋↔テキスト変換** (ADR-0110)。ctx メニューで `s.type` を
+  sticky↔text に反転 (text/align/fontSize/装飾全保持、色属性も
+  残るため往復変換はロスレス、style op で undo・同期対応)。
+
 ## [1.7.167]
 
 ### 追加
