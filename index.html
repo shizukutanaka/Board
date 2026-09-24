@@ -788,6 +788,7 @@ const _csh=(s,c)=>{if(_sh2(s)){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=1
 const _so=(b,a)=>{if(_ln(b)){_styleOp(b,a);_iv()}};   // ADR-0307
 const _selL=f=>_sb().filter(f);   // ADR-0308
 const _selUL=()=>_sb().filter(s=>!_lk(s));
+const _ctrAt=(ss,wp)=>{wp=wp||_midV();const bb=_bA(ss);if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);for(const s of ss)Shape.translate(s,dx,dy)}};
 const _selR=op=>{if(op.origSel)_ss(op.origSel.filter(id=>byId(id)))};   // ADR-0309
 const _keepSel=arr=>{if(_ln(arr))_hi()[_hx()].origSel=arr};   // ADR-0312
 const _pd=e=>e.preventDefault();   // ADR-0326
@@ -853,7 +854,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.514';
+const V='1.7.515';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6696,10 +6697,7 @@ function importDrawioText(txt,wp){
   try{shapes=drawioToShapes(txt)}catch(_){shapes=null}
   if(!shapes||!_ln(shapes)){_wT(_IB);return false}
   const _vpNull=wp==null;
-  wp=wp||_midV()
-  const bb=_bA(shapes);
-  if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);
-    for(const s of shapes)Shape.translate(s,dx,dy)}
+  _ctrAt(shapes,wp)
   _cOp({op:'addMany',shapes});
   _scl();for(const s of shapes)_sad(s.id);
   if(_vpNull&&_dioVp){_vp().x=_dioVp.x;_vp().y=_dioVp.y;_vp().zoom=_dioVp.z;if(_dioVp.g!=null)state.showGrid=_dioVp.g}   // ADR-0359/0409: viewport+grid restore
@@ -7156,10 +7154,7 @@ function importExcText(txt,wp){
   try{shapes=excToShapes(txt)}catch(_){shapes=null}
   if(!shapes||!_ln(shapes)){_wT(_IB);return false}
   const _vpNull=wp==null;   // ADR-0409: adopt the file's viewport only on a point-less open
-  wp=wp||_midV()
-  const bb=_bA(shapes);
-  if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);
-    for(const s of shapes)Shape.translate(s,dx,dy)}
+  _ctrAt(shapes,wp)
   _cOp({op:'addMany',shapes});
   _scl();for(const s of shapes)_sad(s.id);
   if(_vpNull){try{const ap=_JP(txt).appState;   // ADR-0409: scrollX/Y/zoom → viewport

@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.515] - 2026-09-23
+
+### リファクタ
+
+- インポート3経路の「wp 中央配置」ブロックを `_ctrAt(ss,wp)` に集約 (−108B、ADR-0482)
+
 ## [1.7.514] - 2026-09-23
 
 ### リファクタ
