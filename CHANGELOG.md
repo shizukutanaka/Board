@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.545] - 2026-09-23
+
+### リファクタ
+
+- `c.save()`/`c.restore()`/`c.closePath()`/`c.quadraticCurveTo(...)` を `_sv2`/`_rs2`/`_cP`/`_qC` shorthand に集約 (43 サイト、~200B 回収) (ADR-0512)
+
 ## [1.7.544] - 2026-09-23
 
 ### リファクタ

@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.544';
+const V='1.7.545';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1834,10 +1834,10 @@ function _hatchSegs(x,y,w,h,gap,cross){
 // Canvas hatch: clip() reuses the still-current shape path (stroke doesn't consume it).
 function _hatchCtx(c,s){
   const segs=_hatchSegs(s.x,s.y,s.w,s.h,_max(6,(_szz(s)||1)*4),_fs2(s)==='cross');
-  c.save();c.clip();c.globalAlpha=0.55;
+  _sv2(c);c.clip();c.globalAlpha=0.55;
   c.strokeStyle=_sk(s)||_IK;c.lineWidth=_max(0.5,(_szz(s)||1)*0.6);c.setLineDash([]);
   _bp(c);for(const g of segs){_mT(c,g[0],g[1]);_lT(c,g[2],g[3])}_st2(c);
-  c.restore();
+  _rs2(c);
 }
 // SVG hatch: clipPath mirroring the shape + <g clip-path> of the same segments.
 function _svgHatch(els,s,ox,oy,stroke,shapeTag,rT){
@@ -2018,6 +2018,7 @@ const _cpT=p=>p.then(ok=>_tst(t(ok?'copied':'copyFailed'),ok?'ok':'warn'));   //
 const _zG=()=>{state.guides=state.readout=state.bindPreview=null},_zR=()=>{state.draft=state.marquee=state.guides=state.readout=state.bindPreview=state.measure=state.lasso=null};   // ADR-0509: gesture-state reset
 const _bp=c=>c.beginPath(),_st2=c=>c.stroke(),_fil=c=>c.fill();   // ADR-0510: canvas path shorthand
 const _mT=(c,x,y)=>c.moveTo(x,y),_lT=(c,x,y)=>c.lineTo(x,y);   // ADR-0511
+const _sv2=c=>c.save(),_rs2=c=>c.restore(),_cP=c=>c.closePath(),_qC=(c,x,y,cx,cy)=>c.quadraticCurveTo(x,y,cx,cy);   // ADR-0512
 const _hb=s=>s.w!=null;   // ADR-0501
 const _idOK=id=>_iS(id)&&_ln(id)<=64;   // ADR-0502: wire id cap (ADR-0485): unlocked+visible predicate (4 sites)
 const _idIdx=id=>_sh().findIndex(s=>s.id===id);   // ADR-0497: shape index by id (4 sites)
@@ -2558,41 +2559,41 @@ function drawOverlay(){
   _drawMeasure(c);                                                     // ADR-0151
   if(ptr.down&&_ro()){                                        // ADR-0064: only while a gesture is live
     const r=_ro(),sp=_w2({x:r.x,y:r.y});
-    c.save();
+    _sv2(c);
     c.font='11px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';
     const tw=c.measureText(r.label).width+14,ph=18,px=sp.x,py=sp.y+14;
     c.fillStyle='rgba(15,23,42,.85)';
     _bp(c);roundRect(c,px-tw/2,py,tw,ph,4);_fil(c);
     c.fillStyle='#fff';c.fillText(r.label,px,py+ph/2);
-    c.restore();
+    _rs2(c);
   }
   const _qs=_qconnShape();                                             // ADR-0070
   if(_qs){
-    c.save();
+    _sv2(c);
     c.fillStyle=_ac();
     c.strokeStyle='#fff';c.lineWidth=1.5;
     for(const d of _qdots(_qs)){
       const sp=_w2(d);
       _bp(c);c.arc(sp.x,sp.y,5,0,_PI*2);_fil(c);_st2(c);
     }
-    c.restore();
+    _rs2(c);
   }
   if(ptr.down&&state.bindPreview){                                     // ADR-0065
     const t=byId(state.bindPreview);
     if(t){
       const b=_bb(t),p1=_w2({x:b.x,y:b.y}),p2=_w2({x:b.x+b.w,y:b.y+b.h});
-      c.save();
+      _sv2(c);
       c.strokeStyle=_ac();c.lineWidth=2;c.setLineDash([6,4]);
       c.strokeRect(p1.x-3,p1.y-3,p2.x-p1.x+6,p2.y-p1.y+6);
-      c.restore();
+      _rs2(c);
     }
   }
   if(_mq())drawMarquee(c);
   if(_la()&&_la().length>1){                            // ADR-0158
-    c.save();c.fillStyle='rgba(0,196,204,.08)';c.strokeStyle=_ac();c.lineWidth=1;c.setLineDash([4,4]);
+    _sv2(c);c.fillStyle='rgba(0,196,204,.08)';c.strokeStyle=_ac();c.lineWidth=1;c.setLineDash([4,4]);
     _bp(c);const _p0=_w2(_la()[0]);_mT(c,_p0.x,_p0.y);
     for(let i=1;i<_la().length;i++){const p=_w2(_la()[i]);_lT(c,p.x,p.y)}
-    c.closePath();_fil(c);_st2(c);c.restore();
+    _cP(c);_fil(c);_st2(c);_rs2(c);
   }
   if(_laser&&Presentation.isActive()){const lp=_w2(_laser);_bp(c);c.arc(lp.x,lp.y,8,0,PI2);c.fillStyle='rgba(255,50,50,.75)';_fil(c);}
   drawPeerSelections(c);   // ADR-0011 (before cursors: pointer renders on top of frames)
@@ -2661,7 +2662,7 @@ function _drawMeasure(c){
   else if(b.x+b.w<a.x)segs.push({x1:b.x+b.w,y1:ymid,x2:a.x,y2:ymid});
   if(a.y+a.h<b.y)segs.push({x1:xmid,y1:a.y+a.h,x2:xmid,y2:b.y});
   else if(b.y+b.h<a.y)segs.push({x1:xmid,y1:b.y+b.h,x2:xmid,y2:a.y});
-  c.save();c.strokeStyle=_ac();c.lineWidth=1;
+  _sv2(c);c.strokeStyle=_ac();c.lineWidth=1;
   c.font='11px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';
   for(const s of segs){
     const p1=_w2({x:s.x1,y:s.y1}),p2=_w2({x:s.x2,y:s.y2});
@@ -2673,7 +2674,7 @@ function _drawMeasure(c){
     c.fillStyle='rgba(15,23,42,.85)';_bp(c);roundRect(c,mx-tw/2,my-9,tw,18,4);_fil(c);
     c.fillStyle='#fff';c.fillText(label,mx,my);
   }
-  c.restore();
+  _rs2(c);
 }
 // Design-token lookups run every frame; memoise and drop on theme flip (see wire()).
 let _cssCache=Object.create(null);
@@ -2708,7 +2709,7 @@ function shapeRot(s){return _rt(s)&&_hb(s)?_rt(s):0;}
 // otherwise it's stored/exported but invisible while editing (表示=出力パリティ).
 function _drawBoxLabel(s,c){
   if(!_lb(s))return;
-  c.save();
+  _sv2(c);
   c.fillStyle=_sk(s)||_IK;
   const fs=_fS(s)||14;   // ADR-0169
   c.font=_fontStr(s,fs);   // ADR-0170
@@ -2726,13 +2727,13 @@ function _drawBoxLabel(s,c){
       const ux=al==='left'?tx:al==='right'?tx-lw:tx-lw/2;      // ADR-0171
       if(s.under){const uy=top0+lh/2+i*lh+fs*0.55;_bp(c);_mT(c,ux,uy);_lT(c,ux+lw,uy);_st2(c)}
       if(s.strike){const uy=top0+lh/2+i*lh;_bp(c);_mT(c,ux,uy);_lT(c,ux+lw,uy);_st2(c)}}}
-  c.restore();
+  _rs2(c);
 }
 // ADR-0083: image caption — paper-backed strip along the inside bottom edge,
 // clipped to the image height so the band never overflows the bitmap.
 function _drawImgLabel(s,c){
   if(!_lb(s))return;
-  c.save();
+  _sv2(c);
   const fs=_fS(s)||14;   // ADR-0169
   c.font=_fontStr(s,fs);   // ADR-0170
   let lines=wrapTextCached(s,_lb(s),_max(10,s.w-8),fs,t=>c.measureText(t).width);
@@ -2746,7 +2747,7 @@ function _drawImgLabel(s,c){
   c.textAlign=al2==='left'?'left':al2==='right'?'right':'center';c.textBaseline='middle';
   const tx2=al2==='left'?s.x+6:al2==='right'?s.x+s.w-6:s.x+s.w/2;
   for(let i=0;i<_ln(lines);i++)c.fillText(lines[i],tx2,sy+2+lh/2+i*lh);
-  c.restore();
+  _rs2(c);
 }
 // Connector (edge) label at the midpoint of the bound endpoints (ADR-0003). A paper-
 // coloured background pill keeps the line from striking through the text. Mirrors the
@@ -2826,7 +2827,7 @@ function _connLabelXY(s){
 function _drawConnLabel(s,c){
   if(!_lb(s))return;
   const lp=_connLabelXY(s),mx=lp.x,my=lp.y;                       // ADR-0081
-  c.save();_noSh(c);   // ADR-0211: label never shadows
+  _sv2(c);_noSh(c);   // ADR-0211: label never shadows
   const fs=_fS(s)||12;   // ADR-0169
   c.font=_fontStr(s,fs);c.textAlign='center';c.textBaseline='middle';   // ADR-0170
   const lns=_St(_lb(s)).split('\n'),llh=fs*(s.lineH||1.25),pad=4;   // ADR-0210/0212
@@ -2840,7 +2841,7 @@ function _drawConnLabel(s,c){
     for(let i=0;i<_ln(lns);i++){const lw=_lm.ws[i],ly=my+(i-(_ln(lns)-1)/2)*llh;
       if(s.under){_bp(c);_mT(c,mx-lw/2,ly+fs*0.55);_lT(c,mx+lw/2,ly+fs*0.55);_st2(c)}
       if(s.strike){_bp(c);_mT(c,mx-lw/2,ly);_lT(c,mx+lw/2,ly);_st2(c)}}}
-  c.restore();
+  _rs2(c);
 }
 function drawShape(s,c){
   if(_hd(s))return;                                   // ADR-0137
@@ -2852,7 +2853,7 @@ function drawShape(s,c){
   c.setLineDash((s.dash&&(_D6.has(s.type)||_conn(s.type)))?dashArr(s.dash,_szz(s)):[]);   // ADR-0178
   if(_fi(s)&&_fi(s)!=='none'){c.fillStyle=_fi(s)}   // ADR-0288
   const _rot=shapeRot(s);
-  if(_rot){const _cx=s.x+s.w/2,_cy=s.y+s.h/2;c.save();c.translate(_cx,_cy);c.rotate(_rot*_PI/180);c.translate(-_cx,-_cy);}
+  if(_rot){const _cx=s.x+s.w/2,_cy=s.y+s.h/2;_sv2(c);c.translate(_cx,_cy);c.rotate(_rot*_PI/180);c.translate(-_cx,-_cy);}
   switch(s.type){
     case 'rect':
       _bp(c);
@@ -2883,7 +2884,7 @@ function drawShape(s,c){
     case 'line':{
       _csh(s,c)   // ADR-0211
       if(_el(s)){const _ep=_elbowPts(s);(s.r>0)?_polylineR(c,_ep,s.r):_polyline(c,_ep);_st2(c);_drawConnLabel(s,c);break}   // ADR-0207
-      if(s.curve){const e=_cE(s),cc=_curveCtrl(e,s.cbend);_bp(c);_mT(c,e.x1,e.y1);c.quadraticCurveTo(cc.x,cc.y,e.x2,e.y2);_st2(c);_drawConnLabel(s,c);break}
+      if(s.curve){const e=_cE(s),cc=_curveCtrl(e,s.cbend);_bp(c);_mT(c,e.x1,e.y1);_qC(c,cc.x,cc.y,e.x2,e.y2);_st2(c);_drawConnLabel(s,c);break}
       _polyline(c,_linePts(s));_st2(c);_drawConnLabel(s,c);break;}   // ADR-0076
     case 'arrow':
       drawArrow(s,c);_drawConnLabel(s,c);break;
@@ -2896,11 +2897,11 @@ function drawShape(s,c){
       if(img&&img.complete&&img.naturalWidth){
         const _cr=_min(s.r||0,_abs(s.w)/2,_abs(s.h)/2);   // ADR-0168
         _csh(s,c)   // ADR-0194
-        if(_cr>0){c.save();_bp(c);roundRect(c,s.x,s.y,s.w,s.h,_cr);c.clip()}
-        if(s.flip){const fx=s.x+s.w/2,fy=s.y+s.h/2;c.save();c.translate(fx,fy);c.scale(s.flip&1?-1:1,s.flip&2?-1:1);c.translate(-fx,-fy);c.drawImage(img,s.x,s.y,s.w,s.h);c.restore()}
+        if(_cr>0){_sv2(c);_bp(c);roundRect(c,s.x,s.y,s.w,s.h,_cr);c.clip()}
+        if(s.flip){const fx=s.x+s.w/2,fy=s.y+s.h/2;_sv2(c);c.translate(fx,fy);c.scale(s.flip&1?-1:1,s.flip&2?-1:1);c.translate(-fx,-fy);c.drawImage(img,s.x,s.y,s.w,s.h);_rs2(c)}
         else c.drawImage(img,s.x,s.y,s.w,s.h);
         _noSh(c);
-        if(_cr>0)c.restore();
+        if(_cr>0)_rs2(c);
         // ADR-0176: _sk(s)+_szz(s) draws a border (stroke swatch already
         // reaches images through applyStyleToSelection but was never painted).
         if(_sk(s)&&_szz(s)){c.strokeStyle=_sk(s);c.lineWidth=_szz(s);
@@ -2912,7 +2913,7 @@ function drawShape(s,c){
     case 'frame':{
       // Frame: thin labeled border, transparent so content shows through
       const r=4;
-      c.save();
+      _sv2(c);
       c.globalAlpha=(_oP(s)??1)*0.9;
       // ADR-0175: _fi(s) tints the frame (was hard-coded translucent);
       // frames draw in the first pass so contents still render on top.
@@ -2939,7 +2940,7 @@ function drawShape(s,c){
         if(s.under){const uy=s.y-2+fs*0.12;_bp(c);_mT(c,ux,uy);_lT(c,ux+lw,uy);_st2(c)}
         if(s.strike){const uy=s.y-2-fs*0.45;_bp(c);_mT(c,ux,uy);_lT(c,ux+lw,uy);_st2(c)}}
       c.textAlign='left';
-      c.restore();
+      _rs2(c);
       break;}
     case 'sticky':{
       const r=_min(6,_abs(s.w)/6,_abs(s.h)/6);
@@ -2955,7 +2956,7 @@ function drawShape(s,c){
         c.textBaseline='top';
         const lh=fs*(s.lineH||1.3), pad=8;
         const lines=wrapTextCached(s,_txx(s),_abs(s.w)-pad*2,fs,t=>c.measureText(t).width);
-        c.save();_bp(c);roundRect(c,s.x,s.y,s.w,s.h,r);c.clip();
+        _sv2(c);_bp(c);roundRect(c,s.x,s.y,s.w,s.h,r);c.clip();
         c.textAlign=s.align==='center'?'center':s.align==='right'?'right':'left';   // ADR-0073
         const tax=s.align==='center'?s.x+s.w/2:s.align==='right'?s.x+s.w-pad:s.x+pad;
         // ADR-0187: _va(s) on sticky positions the text block (top default).
@@ -2968,14 +2969,14 @@ function drawShape(s,c){
             const ux=s.align==='center'?tax-lw/2:s.align==='right'?tax-lw:tax;
             if(s.under){const uy=sty+i*lh+fs*1.08;_bp(c);_mT(c,ux,uy);_lT(c,ux+lw,uy);_st2(c)}
             if(s.strike){const uy=sty+i*lh+fs*0.55;_bp(c);_mT(c,ux,uy);_lT(c,ux+lw,uy);_st2(c)}}}
-        c.restore();
+        _rs2(c);
       }
       break;}
   }
   c.globalAlpha=1;c.letterSpacing='0px';
   _noSh(c);   // ADR-0211
   c.setLineDash([]);
-  if(_rot)c.restore();
+  if(_rot)_rs2(c);
 }
 // Dash pattern (world units, scaled by stroke size). dash: 1=dashed, 2=dotted.
 function dashArr(dash,size){const s=_max(1,size||1);return dash===2?[s*0.5,s*2]:dash===1?[s*3,s*2.5]:[]}
@@ -2987,7 +2988,7 @@ function roundRect(c,x,y,w,h,r){
   _lT(c,x+w,y+h-r);c.arcTo(x+w,y+h,x+w-r,y+h,r);
   _lT(c,x+r,y+h);c.arcTo(x,y+h,x,y+h-r,r);
   _lT(c,x,y+r);c.arcTo(x,y,x+r,y,r);
-  c.closePath();
+  _cP(c);
 }
 function drawArrow(s,c){
   c=c||ctx;
@@ -2996,7 +2997,7 @@ function drawArrow(s,c){
   const ah=_max(6,(_szz(s)||2)*3);
   if(s.curve){
     const cc=_curveCtrl(e,s.cbend);
-    _bp(c);_mT(c,e.x1,e.y1);c.quadraticCurveTo(cc.x,cc.y,e.x2,e.y2);_st2(c);
+    _bp(c);_mT(c,e.x1,e.y1);_qC(c,cc.x,cc.y,e.x2,e.y2);_st2(c);
     _arrowHeadShape(c,e.x2,e.y2,_at2(e.y2-cc.y,e.x2-cc.x),ah,_sk(s),s.head);
     if(s.start)_arrowHeadShape(c,e.x1,e.y1,_at2(e.y1-cc.y,e.x1-cc.x),ah,_sk(s),s.startHead||s.head);
     return;
@@ -3081,11 +3082,11 @@ function _diamondPath(c,s){
       const t1={x:p1.x+(p0.x-p1.x)/e1*rr,y:p1.y+(p0.y-p1.y)/e1*rr};
       const t2={x:p1.x+(p2.x-p1.x)/e2*rr,y:p1.y+(p2.y-p1.y)/e2*rr};
       if(i===0)_mT(c,t1.x,t1.y);else _lT(c,t1.x,t1.y);
-      c.quadraticCurveTo(p1.x,p1.y,t2.x,t2.y);
+      _qC(c,p1.x,p1.y,t2.x,t2.y);
     }
-    c.closePath();
+    _cP(c);
   }else{
-    _mT(c,cx,s.y);_lT(c,s.x+s.w,cy);_lT(c,cx,s.y+s.h);_lT(c,s.x,cy);c.closePath();
+    _mT(c,cx,s.y);_lT(c,s.x+s.w,cy);_lT(c,cx,s.y+s.h);_lT(c,s.x,cy);_cP(c);
   }
 }
 function _polyline(c,pts){
@@ -3103,7 +3104,7 @@ function _polylineR(c,pts,r){
     const rr=_min(r,e1/2,e2/2);
     if(rr<=0){_lT(c,p1.x,p1.y);continue}
     _lT(c,p1.x+(p0.x-p1.x)/e1*rr,p1.y+(p0.y-p1.y)/e1*rr);
-    c.quadraticCurveTo(p1.x,p1.y,p1.x+(p2.x-p1.x)/e2*rr,p1.y+(p2.y-p1.y)/e2*rr);
+    _qC(c,p1.x,p1.y,p1.x+(p2.x-p1.x)/e2*rr,p1.y+(p2.y-p1.y)/e2*rr);
   }
   _lT(c,_pL(pts).x,_pL(pts).y);
 }
@@ -3153,7 +3154,7 @@ function _polylineHop(c,s,pts,R){
       if(tb-ta<0.01)continue;
       _lT(c,a.x+(b.x-a.x)*ta,a.y+(b.y-a.y)*ta);
       const midt=(ta+tb)/2;
-      c.quadraticCurveTo(a.x+(b.x-a.x)*midt+nx*R*2,a.y+(b.y-a.y)*midt+ny*R*2,
+      _qC(c,a.x+(b.x-a.x)*midt+nx*R*2,a.y+(b.y-a.y)*midt+ny*R*2,
         a.x+(b.x-a.x)*tb,a.y+(b.y-a.y)*tb);
       prev=tb;
     }
@@ -3218,7 +3219,7 @@ function _arrowHeadShape(c,x,y,ang,ah,stroke,style){
   _mT(c,x,y);
   _lT(c,x+_cos(a1)*ah,y+_sin(a1)*ah);
   _lT(c,x+_cos(a2)*ah,y+_sin(a2)*ah);
-  c.closePath();c.fillStyle=col;_fil(c);
+  _cP(c);c.fillStyle=col;_fil(c);
 }
 // ADR-0068: quadratic-bezier route for curved connectors. Control point is the
 // midpoint pushed along the left normal by bend=min(0.25*len,80).
@@ -3326,17 +3327,17 @@ function drawText(s,c){
   const _tm=_fi(s)||s.under||s.strike?_connLabelMeasure(s,c,lines,fs):null;   // ADR-0252
   if(_fi(s)){const mw=_tm.w;
     const bx=s.align==='center'?ax-mw/2:s.align==='right'?ax-mw:ax;
-    if(_fi(s)!=='none'){c.save();c.fillStyle=_fi(s);c.fillRect(bx-3,s.y-3,mw+6,_ln(lines)*lh+6);c.restore()}   // ADR-0288
+    if(_fi(s)!=='none'){_sv2(c);c.fillStyle=_fi(s);c.fillRect(bx-3,s.y-3,mw+6,_ln(lines)*lh+6);_rs2(c)}   // ADR-0288
     c.fillStyle=_sk(s)||_IK;}
   for(let i=0;i<_ln(lines);i++)c.fillText(lines[i],ax,s.y+i*lh);
   // ADR-0095: canvas has no text-decoration — stroke a line under each row
   // (per-line measureText honours all three align modes).
-  if(s.under||s.strike){c.save();c.strokeStyle=_sk(s)||_IK;c.lineWidth=_max(1,fs*0.06);
+  if(s.under||s.strike){_sv2(c);c.strokeStyle=_sk(s)||_IK;c.lineWidth=_max(1,fs*0.06);
     for(let i=0;i<_ln(lines);i++){const lw=_tm.ws[i];
       const ux=s.align==='center'?ax-lw/2:s.align==='right'?ax-lw:ax;
       if(s.under){const uy=s.y+i*lh+fs*1.08;_bp(c);_mT(c,ux,uy);_lT(c,ux+lw,uy);_st2(c)}
       if(s.strike){const uy=s.y+i*lh+fs*0.55;_bp(c);_mT(c,ux,uy);_lT(c,ux+lw,uy);_st2(c)}}   // ADR-0100
-    c.restore()}
+    _rs2(c)}
   if(s.link&&_hb(s)){c.font='10px sans-serif';c.textAlign='right';c.textBaseline='top';c.fillText('🔗',s.x+_abs(s.w)-3,s.y+3)}   // ADR-0310: link badge top-right
   if(s.link&&_conn(s.type)){const lp=_connLabelXY(s);c.font='10px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText('🔗',lp.x+10,lp.y-10)}   // ADR-0333: badge at label anchor (offset so it doesn't sit on the line)
   if(s.link&&_pn(s)&&s.pts[0]){c.font='10px sans-serif';c.textAlign='left';c.textBaseline='bottom';c.fillText('🔗',s.pts[0][0]+4,s.pts[0][1]-2)}   // ADR-0333
@@ -3640,7 +3641,7 @@ function drawSelection(c){
     const cx=single.x+single.w/2,cy=single.y+single.h/2,rot=single.rotate;
     const cs=[[single.x,single.y],[single.x+single.w,single.y],[single.x+single.w,single.y+single.h],[single.x,single.y+single.h]]
       .map(([px,py])=>{const r=_rotPt(px,py,cx,cy,rot);return _w2(r);});
-    _bp(c);_mT(c,cs[0].x,cs[0].y);for(let i=1;i<4;i++)_lT(c,cs[i].x,cs[i].y);c.closePath();_st2(c);
+    _bp(c);_mT(c,cs[0].x,cs[0].y);for(let i=1;i<4;i++)_lT(c,cs[i].x,cs[i].y);_cP(c);_st2(c);
   }else{
     c.strokeRect(x-1,y-1,w+2,h+2);
   }

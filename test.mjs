@@ -441,7 +441,7 @@ const checks = [
   // v1.7.125: ADR-0067 per-type edge projection
   ['edge projection: diamond/ellipse contour formula', html.includes("sh.type==='diamond'?1/((_abs(dx)/(_rx||1e-6))")&&html.includes("sh.type==='ellipse'?1/(_hp(dx/(_rx||1e-6),dy/(_ry||1e-6))||1e-6)")],
   // v1.7.126: ADR-0068 curved connector
-  ['curve route: quadratic draw + sampled hit + svg path', html.includes('c.quadraticCurveTo(cc.x,cc.y,e.x2,e.y2)')&&html.includes('const pts=_curveSegs(s);')&&html.includes('Q ${_num(cc.x+ox)}')],
+  ['curve route: quadratic draw + sampled hit + svg path', html.includes('_qC(c,cc.x,cc.y,e.x2,e.y2)')&&html.includes('const pts=_curveSegs(s);')&&html.includes('Q ${_num(cc.x+ox)}')],
   ['curve ctx menu + i18n + exclusive toggle', html.includes("['ctxCurve','',toggleCurve]")&&html.includes("ctxCurve:'曲線'")&&html.includes("ctxCurve:'Curved'")&&html.includes('elbow:_el(s)?0:1,curve:0')],
   // v1.7.127: ADR-0069 wire-level image refs
   ['img wire refs: slim op + 64KB chunk msgs + snapshot re-emit', html.includes("this._slimOp(op);this._flushImgOuts()")&&html.includes('k:\'img\',key,seq:i,n,data:d.slice')&&html.includes('this._slimShapes(ops.map(o=>o.shape),_mP())')],
@@ -949,7 +949,7 @@ const checks = [
   ['SVG export derives bound endpoints', html.includes("const _ce=_cE(s);\n    const X1=_num(_ce.x1)")],
   // v1.6.61: rotation - shapes rotate on canvas, undo/redo, keyboard ,/.
   ['doRotate function exists', html.includes("function doRotate") && html.includes("op:'align',dir:'rotate'")],
-  ['rotation applied in drawShape (save/restore)', html.includes("const _rot=shapeRot(s);") && html.includes("if(_rot)c.restore()")],
+  ['rotation applied in drawShape (save/restore)', html.includes("const _rot=shapeRot(s);") && html.includes("if(_rot)_rs2(c)")],
   ['G.hit applies inverse rotation (box-only, matching shapeRot)', html.includes("if(_rt(s)&&_hb(s)){const _cx=s.x+s.w/2") && html.includes("_r=-_rt(s)*_PI/180")],
   // v1.7.70: the G.bbox quick-reject must run BEFORE the un-rotation branch — reversing
   // them compares a local-frame point against the rotated world envelope and makes large
