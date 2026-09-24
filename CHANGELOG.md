@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.446] - 2026-09-23
+
+### Fixed
+- `s.wrap` OFF を `null`→`0` に正規化 — トグルで折返し OFF にした text が .drawio で折返し復活する不整合を修正
+- validPatch に `wrap` (数値) + `bold/italic/under/strike/locked` (boolean|number) を追加
+
 ## [1.7.445] - 2026-09-23
 
 ### Changed
