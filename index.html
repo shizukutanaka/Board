@@ -784,7 +784,7 @@ const _selConnL=()=>_selAny(s=>(_conn(s.type))&&!_lk(s));                    // 
 const _selTxtL=()=>_selAny(s=>(s.type==='text'||s.type==='sticky'||s.type==='frame'||_lb(s))&&!_lk(s));   // ADR-0415: text-capable unlocked
 const _selArrowL=()=>_selAny(s=>s.type==='arrow'&&!_lk(s));                  // ADR-0415
 const _forSel=f=>{for(const id of _sl()){const s=byId(id);if(s)f(s,id)}};   // ADR-0303
-const _csh=(s,c)=>{if(s.shadow){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=10;c.shadowOffsetY=3}};   // ADR-0306
+const _csh=(s,c)=>{if(_sh2(s)){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=10;c.shadowOffsetY=3}};   // ADR-0306
 const _so=(b,a)=>{if(b.length){_styleOp(b,a);_iv()}};   // ADR-0307
 const _selL=f=>_sb().filter(f);   // ADR-0308
 const _selR=op=>{if(op.origSel)_ss(op.origSel.filter(id=>byId(id)))};   // ADR-0309
@@ -851,7 +851,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.479';
+const V='1.7.480';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1829,7 +1829,7 @@ function _hatchSegs(x,y,w,h,gap,cross){
 }
 // Canvas hatch: clip() reuses the still-current shape path (stroke doesn't consume it).
 function _hatchCtx(c,s){
-  const segs=_hatchSegs(s.x,s.y,s.w,s.h,_max(6,(s.size||1)*4),s.fstyle==='cross');
+  const segs=_hatchSegs(s.x,s.y,s.w,s.h,_max(6,(s.size||1)*4),_fs2(s)==='cross');
   c.save();c.clip();c.globalAlpha=0.55;
   c.strokeStyle=_sk(s)||_IK;c.lineWidth=_max(0.5,(s.size||1)*0.6);c.setLineDash([]);
   c.beginPath();for(const g of segs){c.moveTo(g[0],g[1]);c.lineTo(g[2],g[3])}c.stroke();
@@ -1838,7 +1838,7 @@ function _hatchCtx(c,s){
 // SVG hatch: clipPath mirroring the shape + <g clip-path> of the same segments.
 function _svgHatch(els,s,ox,oy,stroke,shapeTag,rT){
   const hid='hc'+els.length;
-  const segs=_hatchSegs(s.x+ox,s.y+oy,s.w,s.h,_max(6,(s.size||1)*4),s.fstyle==='cross');
+  const segs=_hatchSegs(s.x+ox,s.y+oy,s.w,s.h,_max(6,(s.size||1)*4),_fs2(s)==='cross');
   const lw=_max(0.5,(s.size||1)*0.6);
   const lns=segs.map(g=>`<line x1="${_num(g[0])}" y1="${_num(g[1])}" x2="${_num(g[2])}" y2="${_num(g[3])}" stroke="${stroke}" stroke-width="${_num(lw)}"/>`).join('');
   els.push(`<defs><clipPath id="${hid}">${shapeTag}</clipPath></defs><g clip-path="url(#${hid})" opacity="0.55"${rT}>${lns}</g>`);
@@ -2005,7 +2005,7 @@ let _penCachePx=0;
 // ADR-0424: per-shape caches keyed by shape id die with the shape — purge on
 // wholesale `state.shapes=` replacement (clones miss the pts-identity signature
 // anyway, so old entries would sit until the global caps evict them).
-const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear()}
+const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPending.clear()}   // ADR-0445: wholesale swap also drops parked img refs
 const _psc=id=>{_penBboxCache.delete(id);Net._imgPending.delete(id);const e=_penCache.get(id);if(e){_penCache.delete(id);_penCachePx-=e.px||0;}}   // ADR-0427/0435
 // Effective raster resolution: zoom-adaptive (supersampled at low zoom is just
 // wasted pixels), clamped 0.25..2 so extreme zoom-outs still rasterize tiny.
@@ -2347,9 +2347,9 @@ function describeShape(s){
   }
   if(_rt(s))d+=` ${_rt(s)}°`;
   if(s.flip)d+=' '+[s.flip&1&&t('ctxFlipH'),s.flip&2&&t('ctxFlipV')].filter(Boolean).join('+');   // ADR-0414
-  if(s.shadow)d+=` ${t('ctxShadow')}`;   // ADR-0414
+  if(_sh2(s))d+=` ${t('ctxShadow')}`;   // ADR-0414
   if(_conn(s.type)&&(_el(s)||s.curve))d+=' '+(_el(s)?t('ctxElbow'):t('ctxCurve'));   // ADR-0414: routes are exclusive
-  if(s.fstyle==='hatch'||s.fstyle==='cross')d+=` ${t('ctxFillStyle')}`;   // ADR-0414: funded by the _ss/_sel* fold headroom
+  if(_fs2(s)==='hatch'||_fs2(s)==='cross')d+=` ${t('ctxFillStyle')}`;   // ADR-0414: funded by the _ss/_sel* fold headroom
   if(s.hop)d+=` ${t('ctxHop')}`;   // ADR-0414
   if(s.link)d+=' 🔗';   // ADR-0315: mirror the visual badge for SR users
   return d;
@@ -2846,7 +2846,7 @@ function drawShape(s,c){
       if(_fi(s)){c.fill()}
       if(_sk(s)){c.stroke()}
       _noSh(c);
-      if(s.fstyle)_hatchCtx(c,s);                              // ADR-0077
+      if(_fs2(s))_hatchCtx(c,s);                              // ADR-0077
       _drawBoxLabel(s,c);break;
     case 'ellipse':
       c.beginPath();
@@ -2855,7 +2855,7 @@ function drawShape(s,c){
       if(_fi(s)){c.fill()}
       if(_sk(s)){c.stroke()}
       _noSh(c);
-      if(s.fstyle)_hatchCtx(c,s);                              // ADR-0077
+      if(_fs2(s))_hatchCtx(c,s);                              // ADR-0077
       _drawBoxLabel(s,c);break;
     case 'diamond':{
       _diamondPath(c,s);                                       // ADR-0156
@@ -2863,7 +2863,7 @@ function drawShape(s,c){
       if(_fi(s))c.fill();
       if(_sk(s))c.stroke();
       _noSh(c);
-      if(s.fstyle)_hatchCtx(c,s);                              // ADR-0077
+      if(_fs2(s))_hatchCtx(c,s);                              // ADR-0077
       _drawBoxLabel(s,c);break;}
     case 'line':{
       _csh(s,c)   // ADR-0211
@@ -5828,7 +5828,7 @@ function _zCommit(changes){
 // take part in a z-order op (parity with doDelete/doGroup excluding locked shapes).
 function unlockedSelectionIds(){return _selIds().filter(id=>!byId(id)?.locked);}
 function doBringFront(){
-  const ids=unlockedSelectionIds();if(!ids.length)return;
+  const ids=_usI();if(!ids.length)return;
   _sz();
   const sel=new Set(ids), selShapes=_sh().filter(s=>sel.has(s.id));
   if(!selShapes.length)return;
@@ -5843,7 +5843,7 @@ function doBringFront(){
   _zCommit(changes);
 }
 function doSendBack(){
-  const ids=unlockedSelectionIds();if(!ids.length)return;
+  const ids=_usI();if(!ids.length)return;
   _sz();
   const sel=new Set(ids), selShapes=_sh().filter(s=>sel.has(s.id));
   if(!selShapes.length)return;
@@ -5857,7 +5857,7 @@ function doSendBack(){
   _zCommit(changes);
 }
 function doBringForward(){
-  const ids=unlockedSelectionIds();if(!ids.length)return;
+  const ids=_usI();if(!ids.length)return;
   _sz();
   const sel=new Set(ids), arr=_sh(), changes=[];
   // move up = toward higher frac; process top→down so selected don't collide.
@@ -5871,7 +5871,7 @@ function doBringForward(){
   _zCommit(changes);
 }
 function doSendBackward(){
-  const ids=unlockedSelectionIds();if(!ids.length)return;
+  const ids=_usI();if(!ids.length)return;
   _sz();
   const sel=new Set(ids), arr=_sh(), changes=[];
   for(let i=1;i<arr.length;i++){
@@ -5967,7 +5967,7 @@ function wrapInFrame(){
   _iv();_o(t('framed'));
 }
 function doGroup(){
-  const ids=unlockedSelectionIds();
+  const ids=_usI();
   if(ids.length<2){_w(t(_ST));return}
   const gid=uid();
   const origSel=_selIds();
@@ -6395,7 +6395,7 @@ function excScene(shapes){
   const els=[],files={};
   const E=(s,over)=>_oa({id:s.id,strokeColor:_sk(s)||'#1e1e1e',
     backgroundColor:!_fi(s)||s.fill==='none'?_TR:_fi(s),   // ADR-0290
-    fillStyle:!_fi(s)?_TR:s.fstyle==='hatch'?'hachure':s.fstyle==='cross'?'cross-hatch':'solid',   // ADR-0231
+    fillStyle:!_fi(s)?_TR:_fs2(s)==='hatch'?'hachure':_fs2(s)==='cross'?'cross-hatch':'solid',   // ADR-0231
     strokeWidth:s.size||2,strokeStyle:s.dash===1?'dashed':s.dash===2?'dotted':'solid',
     roughness:0,opacity:_rnd((_oP(s)==null?1:_oP(s))*100),
     angle:(_rt(s)||0)*_PI/180,seed:0,version:1,versionNonce:0,
@@ -6516,11 +6516,11 @@ function _dioStyEmit(s,edge){
   if(s.size)r+='strokeWidth='+s.size+';';
   if(s.dash)r+='dashed=1;'+(s.dash===2?'dashPattern=1 1;':'');   // ADR-0255
   if(_oP(s)!=null&&_oP(s)<1)r+='opacity='+_rnd(_oP(s)*100)+';';
-  if(s.shadow)r+='shadow=1;';                                    // ADR-0246
+  if(_sh2(s))r+='shadow=1;';                                    // ADR-0246
   if(s.flip&1)r+='flipH=1;';if(s.flip&2)r+='flipV=1;';          // ADR-0260
   if(_sp(s))r+='letterSpacing='+s.spacing+';';                // ADR-0284
   if(s.lineH&&s.lineH!==1.25)r+='lineHeight='+s.lineH+';';       // ADR-0343
-  if(!edge&&s.fstyle)r+='fillStyle='+(s.fstyle==='cross'?'cross-hatch':'hachure')+';';   // ADR-0331
+  if(!edge&&_fs2(s))r+='fillStyle='+(_fs2(s)==='cross'?'cross-hatch':'hachure')+';';   // ADR-0331
   {const _fs=(s.bold?1:0)|(s.italic?2:0)|(s.under?4:0);          // ADR-0282
    if(_fs&&(!edge||_lb(s)))r+='fontStyle='+_fs+';'}
   if(s.strike)r+='strikeThrough=1;';   // ADR-0407
@@ -7234,7 +7234,7 @@ function importBoard(file){
       // clocks from the board we just swapped out. Skipping this leaks wclock entries and
       // can let a re-imported shape (same id) inherit a stale LWW clock.
       _scl();state.wclock={};
-      if(typeof d.docName==='string'&&d.docName)_setDocName(d.docName.slice(0,80));   // clamp: the input enforces maxlength=80, intake paths must too
+      _docN(d);
       if(d.viewport&&_fin(+d.viewport.x)&&_fin(+d.viewport.y)&&_fin(+d.viewport.zoom)&&d.viewport.zoom>0){   // ADR-0393
         _vp().x=+d.viewport.x;_vp().y=+d.viewport.y;_vp().zoom=clampZoom(+d.viewport.zoom);
       }
@@ -7310,12 +7310,12 @@ function buildSVG(shapes,paper){
       case 'rect':{
         const r=_min(s.r!=null?s.r:8,_abs(W)/4,_abs(H)/4);
         els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}"${_fi(s)?` fill="${_esc(_fi(s))}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}${_sh}/>`);   // ADR-0278
-        if(s.fstyle)_svgHatch(els,s,ox,oy,stroke,`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}"/>`,rT);   // ADR-0077
+        if(_fs2(s))_svgHatch(els,s,ox,oy,stroke,`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}"/>`,rT);   // ADR-0077
         if(_lb(s))_svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT);
         break;}
       case 'ellipse':
         els.push(`<ellipse cx="${X+W/2+ox}" cy="${Y+H/2+oy}" rx="${_abs(W/2)}" ry="${_abs(H/2)}"${_fi(s)?` fill="${_esc(_fi(s))}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}${_sh}/>`);   // ADR-0278
-        if(s.fstyle)_svgHatch(els,s,ox,oy,stroke,`<ellipse cx="${X+W/2+ox}" cy="${Y+H/2+oy}" rx="${_abs(W/2)}" ry="${_abs(H/2)}"/>`,rT);   // ADR-0077
+        if(_fs2(s))_svgHatch(els,s,ox,oy,stroke,`<ellipse cx="${X+W/2+ox}" cy="${Y+H/2+oy}" rx="${_abs(W/2)}" ry="${_abs(H/2)}"/>`,rT);   // ADR-0077
         if(_lb(s))_svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT);
         break;
       case 'diamond':{
@@ -7333,11 +7333,11 @@ function buildSVG(shapes,paper){
           }
           _dEl=`<path d="${d.trim()} Z"${_fi(s)?` fill="${_esc(_fi(s))}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}${_sh}/>`;
           els.push(_dEl);
-          if(s.fstyle)_svgHatch(els,s,ox,oy,stroke,`<path d="${d.trim()} Z"/>`,rT);
+          if(_fs2(s))_svgHatch(els,s,ox,oy,stroke,`<path d="${d.trim()} Z"/>`,rT);
         }else{
           _dEl=`<polygon points="${X+W/2+ox},${Y+oy} ${X+W+ox},${Y+H/2+oy} ${X+W/2+ox},${Y+H+oy} ${X+ox},${Y+H/2+oy}"${_fi(s)?` fill="${_esc(_fi(s))}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}${_sh}/>`;
           els.push(_dEl);
-          if(s.fstyle)_svgHatch(els,s,ox,oy,stroke,`<polygon points="${X+W/2+ox},${Y+oy} ${X+W+ox},${Y+H/2+oy} ${X+W/2+ox},${Y+H+oy} ${X+ox},${Y+H/2+oy}"/>`,rT);   // ADR-0077
+          if(_fs2(s))_svgHatch(els,s,ox,oy,stroke,`<polygon points="${X+W/2+ox},${Y+oy} ${X+W+ox},${Y+H/2+oy} ${X+W/2+ox},${Y+H+oy} ${X+ox},${Y+H/2+oy}"/>`,rT);   // ADR-0077
         }
         if(_lb(s))_svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT);
         break;}
@@ -7650,7 +7650,7 @@ const Net={
   },
   _slimOp(op){
     if(op.op==='add'&&op.shape)return{...op,shape:this._slimShapes([op.shape])[0]};
-    if(op.op==='addMany'&&_iA(op.shapes))return{...op,shapes:this._slimShapes(op.shapes)};
+    if(_iA(op.shapes)&&(op.op==='addMany'||op.op==='del'||op.op==='clear'))return{...op,shapes:this._slimShapes(op.shapes)};   // ADR-0445: del/clear slim too — remote only needs id/locked, and undo's del-emitting addMany benefits either way
     return op;
   },
   _fragSend(buf,k){   // ADR-0431: 64KB fragment sender for the dc-direct sites (snap, oversized ops)
@@ -8309,7 +8309,7 @@ const Persist={
         _vp().x=+d.viewport.x; _vp().y=+d.viewport.y;
         _vp().zoom=clampZoom(+d.viewport.zoom);
       }
-      if(typeof d.docName==='string'&&d.docName)_setDocName(d.docName.slice(0,80));   // clamp: the input enforces maxlength=80, intake paths must too
+      _docN(d);
       state.lastSaveAt=d.savedAt||0;
       _sz();
     }
@@ -8372,7 +8372,7 @@ const Persist={
       const origSel=_selIds();
       state.shapes=shapes.map(clone);_iG();_pcC();   // ADR-0009
       _scl();state.wclock={};
-      if(typeof d.docName==='string'&&d.docName)_setDocName(d.docName.slice(0,80));   // clamp: the input enforces maxlength=80, intake paths must too
+      _docN(d);
       if(d.viewport&&_fin(+d.viewport.x)&&_fin(+d.viewport.y)&&_fin(+d.viewport.zoom)&&d.viewport.zoom>0){
         _vp().x=+d.viewport.x;_vp().y=+d.viewport.y;_vp().zoom=clampZoom(+d.viewport.zoom);
       }
@@ -9372,6 +9372,8 @@ function fontSizeStep(d){
 // ADR-0078: ⌘B/⌘I toggles bold/italic on selected text/sticky via style op.
 const _rdb=()=>{_md(!0);_ru();_ps()},
       _fck=o=>{o.clock={peer:_pi(),seq:++state.seq,ts:nowTs()}},
+      _docN=d=>{if(typeof d.docName==='string'&&d.docName)_setDocName(d.docName.slice(0,80))},
+      _fs2=s=>s.fstyle,_sh2=s=>s.shadow,_usI=unlockedSelectionIds,
       _noSh=c=>{c.shadowColor=_TR;c.shadowBlur=0;c.shadowOffsetY=0},
       _rO=u=>_stO(()=>URL.revokeObjectURL(u),1e4),
       _midV=()=>{const r=_cbr();return _s2({x:r.width/2,y:r.height/2})},
@@ -9496,7 +9498,7 @@ function toggleShadow(){
   const before=[],after=[];
   _forSel((s,id)=>{if((s.type!=='rect'&&s.type!=='ellipse'&&s.type!=='diamond'&&s.type!=='image'&&s.type!=='text'&&s.type!=='line'&&s.type!=='arrow')||_lk(s))return;   // ADR-0211
     _pp(before,after,id,'shadow',s.shadow||null,s.shadow?null:true);
-    if(s.shadow)delete s.shadow;else s.shadow=true;
+    if(_sh2(s))delete s.shadow;else s.shadow=true;
     _st().shadow=s.shadow||null;
   })
   _so(before,after)

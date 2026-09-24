@@ -742,7 +742,7 @@ const checks = [
   ['_selN/_fin shorthands (ADR-0334)', html.includes("const _selN=()=>_sl().size")&&html.includes("const _fin=Number.isFinite")],
   ['conn link badge canvas+SVG (ADR-0333)', html.includes("if(s.link&&_conn(s.type)){const lp=_connLabelXY(s)")&&html.includes('if(s.link)els.push(`<a href="${esc(s.link)}"')&&html.split('`<a href="${esc(s.link)}"').length===4],
   ['drawio rounded emit on diamond/image (ADR-0332)', html.includes("if(s.r>0&&(t==='diamond'||t==='image'))sty+='rounded=1;'")],
-  ['drawio fillStyle hachure round-trip (ADR-0331)', html.includes("sty.fillStyle||'')")&&html.includes("fillStyle='+(s.fstyle==='cross'?'cross-hatch':'hachure')")],
+  ['drawio fillStyle hachure round-trip (ADR-0331)', html.includes("sty.fillStyle||'')")&&html.includes("fillStyle='+(_fs2(s)==='cross'?'cross-hatch':'hachure')")],
   ['_selIds() selection-ids shorthand (ADR-0330)', html.includes("const _selIds=()=>[..._sl()]")],
   ['_ce() createElement shorthand (ADR-0329)', html.includes("const _ce=t=>document.createElement(t)")],
   ['UserObject label/link fallback (ADR-0328)', html.includes("tagName==='UserObject'?c.parentElement:null")&&html.includes("_ga(_uo,'label')")],
@@ -991,7 +991,7 @@ const checks = [
   ['minimap applies rotation transform', html.includes("const _mr=_rt(s)&&s.w!=null;") && html.includes("if(_mr)sx.restore();")],
   ['minimap renders frame shapes (case frame fallthrough to rect)', html.includes("case 'frame':\n        case 'rect':")],
   ['describeShape announces locked and rotated state', html.includes("if(_lk(s))d+=` ${t('ctxLock')}`;") && html.includes("if(_rt(s))d+=` ${_rt(s)}°`;")],
-  ['describeShape announces flip/shadow/route (ADR-0414)', html.includes("s.flip&1&&t('ctxFlipH')")&&html.includes("if(s.shadow)d+=` ${t('ctxShadow')}`")&&html.includes("_el(s)?t('ctxElbow'):t('ctxCurve')")&&html.includes("s.fstyle==='hatch'||s.fstyle==='cross'")&&html.includes("if(s.hop)d+=` ${t('ctxHop')}`")],
+  ['describeShape announces flip/shadow/route (ADR-0414)', html.includes("s.flip&1&&t('ctxFlipH')")&&html.includes("if(_sh2(s))d+=` ${t('ctxShadow')}`")&&html.includes("_el(s)?t('ctxElbow'):t('ctxCurve')")&&html.includes("_fs2(s)==='hatch'||_fs2(s)==='cross'")&&html.includes("if(s.hop)d+=` ${t('ctxHop')}`")],
   ['describeShape announces text/label content for SR', html.includes("const txt=_St(s.text||_lb(s)||'').replace(/\\s+/g,' ').trim();") && html.includes("txt.length>30?txt.slice(0,30)+'…':txt")],
   // v1.6.66: resize object-snap
   ['resizeSnap exists and applyResize uses it', html.includes("function resizeSnap(orig,handle,wp)") && html.includes(":resizeSnap(orig,handle,wp); // lock/alt override obj-snap")],
@@ -1095,7 +1095,7 @@ const checks = [
   ['context menu deduplicates consecutive separators', html.includes(".filter((it,i,a)=>!(it==='sep'&&(i===0||i===a.length-1||a[i-1]==='sep')))")],
   ['doDuplicate does not clobber clipboard (uses _placeCopies, not state.clipboard=)', html.includes("_placeCopies(sel,_dd().x,_dd().y):_placeCopies(sel);   // independent of _cl()") && html.includes("function _placeCopies(srcShapes")],
   // v1.6.71: import sites clear stale selection + wclock (mirror replace op's _apply)
-  ['importBoard clears selection+wclock on whole-board swap', html.includes("state.shapes=shapes.map(clone);_iG();_pcC();   // ADR-0009\n      // Match the replace op's _apply") && html.includes("_scl();state.wclock={};\n      if(typeof d.docName")],
+  ['importBoard clears selection+wclock on whole-board swap', html.includes("state.shapes=shapes.map(clone);_iG();_pcC();   // ADR-0009\n      // Match the replace op's _apply") && html.includes("_scl();state.wclock={};\n      _docN(d);")],
   ['importFromHash clears selection+wclock on whole-board swap', html.includes("state.shapes=valid.map(clone);_iG();_pcC();_setDocName(") && /state\.shapes=valid\.map\(clone\)[\s\S]{0,900}_scl\(\);state\.wclock=\{\};/.test(html)],
   // v1.6.71: presentation-mode guard precedes editing shortcuts (no undo mid-slideshow)
   ['presentation guard runs before undo/redo/select-all shortcuts', /if\(Presentation\.isActive\(\)\)\{[\s\S]{0,260}return;\n  \}[\s\S]{0,700}if\(meta&&k==='z'&&!e\.shiftKey\)/.test(html)],
@@ -1168,7 +1168,7 @@ const checks = [
   ['text editor finalize syncs removal (empty isNew)', html.includes("_syncTextFinalize(s,origText,true);")],
   // v1.6.88: rect/ellipse labels render on canvas (parity with SVG export + dblclick feature)
   ['_drawBoxLabel helper present', html.includes("function _drawBoxLabel(s,c)") && html.includes("wrapTextCached(s,_lb(s)")],
-  ['rect case renders label', html.includes("if(s.fstyle)_hatchCtx(c,s);")&&html.includes("_drawBoxLabel(s,c);break;\n    case 'ellipse':")],
+  ['rect case renders label', html.includes("if(_fs2(s))_hatchCtx(c,s);")&&html.includes("_drawBoxLabel(s,c);break;\n    case 'ellipse':")],
   ['ellipse case renders label', /case 'ellipse':[\s\S]{0,500}_drawBoxLabel\(s,c\);break;/.test(html)],
   // v1.6.89: colour picker coalesces (one undo/sync op per pick, like the sliders)
   ['colour picker captures on focus/pointerdown', html.includes("_on(cp,'focus',()=>_sfbCapture(k));") && html.includes("_on(cp,_PD,()=>_sfbCapture(k));")],
@@ -1571,7 +1571,7 @@ try {
              _getPasteCount: () => _pasteCount, _resetPasteClipboard: () => { _lastClipboard = null; },
              endRectLike, endLineLike, I18N, applyTheme, editSelectedShapeKbd, Share,
              draw, drawOverlay, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; }, _setOCtx: (c) => { const p = octx; octx = c; return p; },
-             _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _ptsOK, _undoWire, 
+             _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, 
              _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
              _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER,
              _getLang: () => LANG, _getT: () => T };
@@ -1597,7 +1597,7 @@ try {
           _onSwUpdate, _ctxMenuKeyNav,
           _getPasteCount, _resetPasteClipboard,
           endRectLike, endLineLike, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
-          _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _ptsOK, _undoWire, 
+          _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, 
           _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER } = api;
 
@@ -3907,7 +3907,14 @@ try {
       const z=uw({op:'zorder',changes:[{id:'a',before:'f1',after:'f2'}]});
       assert.strictEqual(z[0].changes[0].after,'f1','zorder changes swapped');
       assert.strictEqual(uw({op:'replace'}),null,'replace stays local-only');
-      console.log('  ✓ ADR-0443/0444: undo-wire inverse-op mapping (13 asserts)');
+      // ADR-0445: del/clear ops slim image payloads (undo emits del for add);
+      // _pcC drops parked _imgPending refs on wholesale shape swaps.
+      const big='data:image/png;base64,'+'x'.repeat(60000);
+      const slim=Net._slimOp({op:'del',shapes:[{id:'i1',type:'image',z:1,x:0,y:0,w:10,h:10,dataUrl:big}]});
+      assert.ok(slim.shapes[0].dataUrl===undefined&&typeof slim.shapes[0].img==='string','del shapes slim to img refs');
+      Net._imgPending.set('zz','k');_pcC();
+      assert.strictEqual(Net._imgPending.size,0,'_pcC clears _imgPending');
+      console.log('  ✓ ADR-0443/0444/0445: undo-wire mapping + del slim + pending purge (15 asserts)');
     }
   }
 
