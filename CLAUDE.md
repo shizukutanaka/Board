@@ -384,6 +384,8 @@ Board/
 │   ├── ADR-0332-dio-diamond-image-rounded-emit.md  # diamond/image rounded emit (実装済)
 │   ├── ADR-0333-conn-link-badge.md  # conn リンクバッジ (実装済)
 │   ├── ADR-0334-seln-fin-shorthand.md  # _selN/_fin 短縮 (実装済)
+│   ├── ADR-0335-i18n-key-coverage.md  # t() キー網羅ガード (実装済)
+│   ├── ADR-0336-drawio-group-roundtrip.md  # drawio グループ往復 (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

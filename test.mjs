@@ -38,8 +38,18 @@ console.log(`  ℹ index.html: ${_rawSize} raw, ${_gzSize} gzip, ${_brSize} brot
 const _badgeKB = parseInt((readme.match(/size-~(\d+)KB%20gzip/) || [])[1], 10);
 const _gzKB = _gzSize / 1024;
 
+// ADR-0335 guard: every t('key') call site must resolve in BOTH ja and en —
+// a missing key reaches the UI as the raw key string (styleApplied bug).
+const _i18nJa=(html.match(/\n  ja:\{([\s\S]*?)\n  en:/)||[])[1]||'';
+const _i18nEn=(html.match(/\n  en:\{([\s\S]*?)\n\};/)||[])[1]||'';
+const _i18nKeys=s=>new Set([...s.matchAll(/(?<![A-Za-z0-9_])([A-Za-z0-9_]+)\s*:/g)].map(m=>m[1]));
+const _jaK=_i18nKeys(_i18nJa),_enK=_i18nKeys(_i18nEn);
+const _usedK=[...html.matchAll(/(?<![A-Za-z0-9_$])t\('([A-Za-z0-9_]+)'\)/g)].map(m=>m[1]);
+const _missingI18n=[...new Set(_usedK)].filter(k=>!_jaK.has(k)||!_enK.has(k));
 // ---- presence checks ----
 const checks = [
+  ['every t() key defined in ja+en (ADR-0335)', _missingI18n.length===0],
+
   ['Single-file (no external script)', !/<script[^>]+src=["']https?:/.test(html)],
   ['Single-file (no external link)', !/<link[^>]+(href)=["']https?:/.test(html)],
   // Socratic perspective (2026-06-14): the product is defined by NEGATIONS (no
@@ -9628,6 +9638,15 @@ try {
     // ADR-0245: hidden shapes export as visible="0" cells (previously dropped)
     {const xml2=boardToDrawio([{id:'x',type:'rect',x:1,y:2,w:3,h:4,visible:0,stroke:'#000',fill:null,size:2,opacity:1}]);
      assert.ok(xml2.includes('visible="0"'),'hidden shape exports with visible="0" (ADR-0245)');
+
+    // ADR-0336: groupId → drawio group cell round-trip
+    {const xml3=boardToDrawio([{id:'a',type:'rect',x:100,y:50,w:80,h:60,groupId:'g1',stroke:'#000',fill:null,size:2,opacity:1},
+                               {id:'b',type:'rect',x:200,y:150,w:80,h:60,groupId:'g1',stroke:'#000',fill:null,size:2,opacity:1}]);
+     assert.ok(xml3.includes('id="g_g1"'),'grouped shapes emit a group wrapper cell (ADR-0336)');
+     assert.ok(xml3.includes('style="group;"'),'wrapper carries style="group;" (ADR-0336)');
+     assert.strictEqual((xml3.match(/parent="g_g1"/g)||[]).length,2,'both members parent the group cell (ADR-0336)');
+     assert.ok(xml3.includes('x="0"'),'child geometry is group-relative — member a at group origin (ADR-0336)');
+     assert.ok(xml3.includes('x="100"'),'member b offset by +100 from group origin (ADR-0336)');}
      assert.ok(boardToDrawio([{id:'y',type:'rect',x:0,y:0,w:1,h:1,stroke:'#000',fill:null,size:2,opacity:1}]).indexOf('visible="0"')<0,'visible shape carries no visible attr');}
     console.log('  ✓ excalidraw import (element mapping, styles, tombstones, reject paths)');
   }

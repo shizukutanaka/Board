@@ -2,6 +2,19 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.387] - 2026-09-24
+
+### Added
+- .drawio グループ往復 — Board groupId ↔ `style="group;"` ラッパー
+  cell + parent 参照 (メンバー座標はグループ相対)。import は group
+  wrapper をスキップして s.groupId を復元 (ADR-0336)
+
+## [1.7.386] - 2026-09-24
+
+### Fixed
+- `t('styleApplied')` 未定義キーのトーストを既存 `stylePasted` に修正
+- test.mjs に `t()` キーの ja/en 網羅ガードを追加 (ADR-0335)
+
 ## [1.7.385] - 2026-09-24
 
 ### Changed
