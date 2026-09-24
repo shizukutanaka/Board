@@ -246,7 +246,7 @@ const checks = [
   // v1.7.69: the SAME guard now also gates the canvas/render + all remote/import intake
   // via validPatch, so an image dataUrl can never be an external URL (getImg→img.src).
   ['image dataUrl restricted to data:image/ at the validPatch intake gate (no external img.src)',
-    html.includes("if('dataUrl' in p&&p.dataUrl!=null&&!(typeof p.dataUrl==='string'&&p.dataUrl.length<=16_000_000&&/^data:image\\//.test(p.dataUrl)))return false;")],
+    html.includes("if('dataUrl' in p&&p.dataUrl!=null&&!(typeof p.dataUrl==='string'&&_ln(p.dataUrl)<=16_000_000&&/^data:image\\//.test(p.dataUrl)))return false;")],
   ['PDF export escapes docName', html.includes("_esc(_dn()||'board')")],
   ['getCSS is memoised', html.includes("_cssCache") && html.includes("function clearCSSCache")],
   ['resize handles use AAA brand-ink ring', html.includes("_gC('--brand-ink')")],
@@ -568,7 +568,7 @@ const checks = [
   ['frame label keydown guards ev.isComposing (IME safe)', html.includes('_on(inp') && html.includes('if(ev.isComposing)return')],
   ['text editor keydown guards ev.isComposing (IME safe)', (html.match(/if\(ev\.isComposing\)return/g)||[]).length >= 2],
   ['pen RDP decimation function _rdp present', html.includes('function _rdp(pts,eps)')],
-  ['endPen applies RDP on commit', html.includes('d.pts.length>3')&&html.includes('_rdp(d.pts,0.5/_vp().zoom)')],
+  ['endPen applies RDP on commit', html.includes('_ln(d.pts)>3')&&html.includes('_rdp(d.pts,0.5/_vp().zoom)')],
   // v1.7.92: ADR-0034 iterative index-range RDP + zoom-adaptive eps
   ['RDP is iterative index-range (no slice recursion)', html.includes('const keep=new Uint8Array(_ln(pts))')&&html.includes('stack.push([lo,idx],[idx,hi])')],
   ['size is reported (no hard cap since 2026-06-13)', readFileSync('./test.mjs','utf8').includes("Size is no longer hard-capped")],
@@ -603,7 +603,7 @@ const checks = [
     html.includes("if(await Persist.checkBackup()){") && html.includes("if(confirm(t('backupAvailable')))await Persist.restoreBackup();") && html.includes("else await Persist.discardBackup();")],
   ['drag-drop accepts .board files', html.includes(".endsWith('.board')")],
   // v1.6.27: SVG export renders single-point pen as circle dot
-  ['SVG export handles single-point pen shape', html.includes('s.pts.length===1')],
+  ['SVG export handles single-point pen shape', html.includes('_ln(s.pts)===1')],
   ['SVG export emits circle for single-point pen', html.includes('<circle cx=')],
   // v1.6.28: ungroup undo preserves per-shape groupId across multi-group ungroup
   ['doUngroup captures before snapshot', html.includes('before.push({id:s.id,groupId:_gi(s)})')],
@@ -685,13 +685,13 @@ const checks = [
   // v1.7.96: ADR-0038 share-link reject paths all toast + clear hash
   ['importFromHash hoists clearHash helper', html.includes("const clearHash=()=>{try{history.replaceState(null,'',location.pathname)}catch(_){}};")],
   ['unknown kind toasts + clears', html.includes("}else{_e(t(_IB));clearHash();return false}")],
-  ['non-array shapes toasts + clears', html.includes("if(!_iA(data.shapes)||data.shapes.length>SHARE_MAX_SHAPES){_e(t(_IB));clearHash();return false}")],
+  ['non-array shapes toasts + clears', html.includes("if(!_iA(data.shapes)||_ln(data.shapes)>SHARE_MAX_SHAPES){_e(t(_IB));clearHash();return false}")],
   ['all-invalid shapes toasts + clears', html.includes("if(!_ln(valid)){_e(t(_IB));clearHash();return false}")],
   ['decode-throw catch also clears hash', html.includes("}catch{_e(t(_IB));clearHash();return false}")],
   // v1.7.97: ADR-0039 share-link resource-bomb guard
   ['share payload ceilings defined', html.includes('SHARE_MAX_BYTES') && html.includes('SHARE_MAX_SHAPES')],
   ['decompressed payload byte cap before parse', html.includes('_ln(json)>SHARE_MAX_BYTES')],
-  ['shape count cap on imported payload', html.includes('data.shapes.length>SHARE_MAX_SHAPES')],
+  ['shape count cap on imported payload', html.includes('_ln(data.shapes)>SHARE_MAX_SHAPES')],
   // v1.7.98: ADR-0040 share URL length warning + export-failure feedback
   ['share URL length warn threshold defined', html.includes('SHARE_URL_WARN')],
   ['long-URL warning element exists', html.includes('id="shareWarnLong"')],
@@ -1022,7 +1022,7 @@ const checks = [
   ['peer flood: MAX_PEERS cap + peer-id type/length intake guard',
     html.includes('const MAX_PEERS=32')
     && html.includes('if(_pr().size>=MAX_PEERS)return;')
-    && html.includes("typeof msg.peer!=='string'||msg.peer.length>MAX_PEER_ID_LEN")],
+    && html.includes("typeof msg.peer!=='string'||_ln(msg.peer)>MAX_PEER_ID_LEN")],
   ['snapshot amplification: _sendSnapshot throttled',
     html.includes('_lastSnapAt:0') && html.includes('if(now-this._lastSnapAt<1000)return;')],
   ['importBoard: FileReader onerror toasts instead of failing silently',
@@ -1186,7 +1186,7 @@ const checks = [
   ['_placeCopies commits one addMany (not per-shape add)', html.includes("if(_ln(built))Store.commit({op:'addMany',shapes:built})")],
   ['addMany op has an _apply case', /case 'addMany':/.test(html)],
   ['addMany in REMOTE_OPS allow-list', /REMOTE_OPS[\s\S]{0,160}'addMany'/.test(html)],
-  ['addMany validated in validRemotePayload (with MAX_OP_SHAPES cap)', /case 'addMany':/.test(html)&&html.includes("case 'addMany':    return _iA(op.shapes)&&op.shapes.length<=MAX_OP_SHAPES&&op.shapes.every(validShape)")],
+  ['addMany validated in validRemotePayload (with MAX_OP_SHAPES cap)', /case 'addMany':/.test(html)&&html.includes("case 'addMany':    return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape)")],
   // v1.6.85: modal dialog isolation — global canvas shortcuts must not fire behind an
   // open help/share dialog, and Tab is trapped inside it (WCAG 2.4.3 / 2.1.2).
   ['modal focus-trap helpers present', html.includes('function _trapStep')&&html.includes('function _openDialog')],
@@ -1258,10 +1258,10 @@ const checks = [
     html.includes("_cOp({op:'add',shape:s});")],
   // v1.7.33: validRemotePayload group must require before (string-id array)
   ['validRemotePayload group: requires before array with string ids',
-    html.includes("&&_iA(op.before)&&op.before.length<=MAX_OP_SHAPES&&op.before.every(b=>b&&typeof b.id==='string');")],
+    html.includes("&&_iA(op.before)&&_ln(op.before)<=MAX_OP_SHAPES&&op.before.every(b=>b&&typeof b.id==='string');")],
   // v1.7.34: validRemotePayload ungroup must require gids array
   ['validRemotePayload ungroup: requires gids array with string elements',
-    html.includes("&&_iA(op.gids)&&op.gids.length<=MAX_OP_SHAPES&&op.gids.every(g=>typeof g==='string'&&_ln(g)>0);")],
+    html.includes("&&_iA(op.gids)&&_ln(op.gids)<=MAX_OP_SHAPES&&op.gids.every(g=>typeof g==='string'&&_ln(g)>0);")],
   // v1.7.34: _apply ungroup backward must use optional chaining on op.gids
   ['_apply ungroup backward: op.gids?.[0] optional chaining null guard',
     html.includes("const gid=op.gids?.[0];")],
@@ -1270,7 +1270,7 @@ const checks = [
     !html.includes("(op.before==null||(patches(op.before)&&op.before.every(noLock)))")],
   // v1.7.35: text-blur del origSel pattern must exist at the existing-text-empty path
   ['text-blur del: origSel captured and patched before and after Store.commit del',
-    html.includes("const origSel=_selIds();\n        const connClears=computeConnClears(new Set([orig.id]));")&&
+    html.includes("const origSel=_selIds();\n        const connClears=computeConnClears(_sT([orig.id]));")&&
     html.includes("Store.commit(delOp);\n        _keepSel(origSel);")],
   // v1.7.36: flushErase must capture origSel before del commit and patch after
   ['flushErase del: origSel captured before commit and patched after (parity with doDelete)',
@@ -1347,7 +1347,7 @@ const checks = [
     html.includes("_rcOp({op:'upd',id:s.id,before,after});")],
   // v1.7.46: validRemotePayload del connClears must have MAX_OP_SHAPES length cap
   ['validRemotePayload del connClears: length<=MAX_OP_SHAPES cap added',
-    html.includes("&&op.connClears.length<=MAX_OP_SHAPES&&op.connClears.every(")],
+    html.includes("&&_ln(op.connClears)<=MAX_OP_SHAPES&&op.connClears.every(")],
   // v1.7.46: drawShape duplicate rect/ellipse label block removed
   ['drawShape: duplicate inline label block after switch removed (label drawn once via _drawBoxLabel)',
     !html.includes("if((s.type==='rect'||s.type==='ellipse')&&_lb(s)){\n    const cx=s.x+s.w/2")],
@@ -1356,7 +1356,7 @@ const checks = [
     html.includes("if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_oa(sh,p.before);}}")],
   // v1.7.47: validRemotePayload align must validate dir against a whitelist
   ['validRemotePayload align: dir whitelist (DIRS Set) prevents unknown dir values',
-    html.includes("const DIRS=new Set(['left','right','cx','top','bottom','cy','hspace','vspace','tidy','swap','gsnap','flip'")],
+    html.includes("const DIRS=_sT(['left','right','cx','top','bottom','cy','hspace','vspace','tidy','swap','gsnap','flip'")],
   // v1.7.47: doPaste uses canvas.getBoundingClientRect() for viewport center (not window.innerWidth)
   ['doPaste: canvas.getBoundingClientRect() used for viewport center (not window.innerWidth)',
     html.includes("const _r=_cbr();\n  const vCx=v.x+_r.width/(v.zoom*2);")],
@@ -1370,7 +1370,7 @@ const checks = [
     html.includes("op.wc={};for(const sh of op.shapes)if(_wc()[sh.id])op.wc[sh.id]=clone(_wc()[sh.id]);")],
   // v1.7.48: 'clear' removed from REMOTE_OPS (remote peer cannot wipe board)
   ["REMOTE_OPS excludes 'clear' (board-wipe is local-only like 'replace')",
-    html.includes("REMOTE_OPS:new Set(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize'])")],
+    html.includes("REMOTE_OPS:_sT(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize'])")],
   // v1.7.48: _applySnapshot caps shape count at MAX_OP_SHAPES
   ['_applySnapshot: MAX_OP_SHAPES cap on snapshot shapes (DoS guard)',
     html.includes("const valid=shapes.slice(0,MAX_OP_SHAPES).map(s=>this._attachShape(s)).filter(validShape);")],
@@ -1379,7 +1379,7 @@ const checks = [
     html.includes("c.shadowColor='rgba(0,0,0,.08)';c.shadowBlur=8;c.shadowOffsetY=2;\n      c.beginPath();roundRect(")],
   // v1.7.48: group gid must be non-empty string
   ['validRemotePayload group: gid must be non-empty string (op.gid.length>0)',
-    html.includes("&&typeof op.gid==='string'&&op.gid.length>0")],
+    html.includes("&&typeof op.gid==='string'&&_ln(op.gid)>0")],
   // v1.7.48: move dx/dy must be actual numbers not coercible strings
   ['validRemotePayload move: typeof op.dx/dy === number (no string coercion)',
     html.includes("&&typeof op.dx==='number'&&_fin(op.dx)&&typeof op.dy==='number'&&_fin(op.dy)")],
@@ -3915,7 +3915,26 @@ try {
       assert.ok(slim.shapes[0].dataUrl===undefined&&typeof slim.shapes[0].img==='string','del shapes slim to img refs');
       Net._imgPending.set('zz','k');_pcC();
       assert.strictEqual(Net._imgPending.size,0,'_pcC clears _imgPending');
-      console.log('  ✓ ADR-0443/0444/0445: undo-wire mapping + del slim + pending purge (15 asserts)');
+      // ADR-0448: a stale partial with a different chunk count must not block new streams
+      Net._fragIn({data:'aa',n:2,seq:0},'_snapIn');
+      assert.strictEqual(Net._fragIn({data:'x',n:1,seq:0},'_snapIn'),'x','_fragIn n-mismatch restarts the assembly');
+      Net._fragIn({data:'aa',n:2,seq:0},'_snapIn');
+      Net._fragIn({data:'zz',n:2,seq:1},'_snapIn');   // finish cleanly so no stale state leaks
+      assert.strictEqual(Net._snapIn,null,'_fragIn clears a finished assembly');
+      // ADR-0449: img intake bounds — stalled keys evict oldest, not new keys;
+      // the received-blob store is capped (refs re-resolve on the next snapshot).
+      Net._imgChunks.clear();
+      for(let i=0;i<64;i++)Net._onRecv({k:'img',peer:'P1',key:'k'+i,seq:0,n:2,data:'a'},true);
+      Net._onRecv({k:'img',peer:'P1',key:'zz',seq:0,n:1,data:'z'},true);
+      assert.ok(!Net._imgChunks.has('k0')&&Net._imgChunks.has('k63'),'oldest stalled img key evicted');
+      assert.strictEqual(Net._imgIn.get('zz'),'z','completed img blob stored');
+      Net._imgIn.clear();
+      for(let i=0;i<258;i++)Net._imgIn.set('b'+i,'d');
+      assert.ok(Net._imgIn.size>=256,'pre-cap store setup');
+      Net._onRecv({k:'img',peer:'P1',key:'new1',seq:0,n:1,data:'q'},true);
+      assert.strictEqual(Net._imgIn.get('new1'),'q','imgIn accepts new blob under cap');
+      assert.ok(Net._imgIn.size<=258,'imgIn stays bounded');
+      console.log('  ✓ ADR-0443..0449: undo-wire + del slim + purge + frag restart + img bounds (24 asserts)');
     }
   }
 
