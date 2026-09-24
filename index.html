@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.527';
+const V='1.7.528';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4662,7 +4662,7 @@ function _fitIfEmptyView(){
 // fit-all's 2 so a small selection actually enlarges, short of the 16x extreme.
 function zoomToSelection(){
   if(!_selN()){_wT(_NS);return}
-  const b=_bA(_sh().filter(s=>_hasS(s.id)));
+  const b=_bA(_selShapes());
   if(!b){_wT(_NS);return}
   const z=_fitViewport(b,60,4);
   UI.announce(_rnd(z*100)+'%');

@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.528] - 2026-09-23
+
+### リファクタ
+
+- zoomToSelection — 既存 `_selShapes()` を再利用 (素の filter を置換)、−16B (ADR-0495)
+
 ## [1.7.527] - 2026-09-23
 
 ### リファクタ
