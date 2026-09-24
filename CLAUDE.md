@@ -343,6 +343,7 @@ Board/
 │   ├── ADR-0291-start-head-ui.md  # 開始ヘッド ctx 巡回 (実装済)
 │   ├── ADR-0292-css-token-shorthand.md  # getCSS トークン短縮 (実装済)
 │   ├── ADR-0293-starthead-persistence.md  # startHead スタイル永続化 (実装済)
+│   ├── ADR-0294-bar-head.md  # 'bar' (T字) ヘッド (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
