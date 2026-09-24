@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.234';
+const V='1.7.235';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2382,6 +2382,13 @@ function drawOverlay(){
     c.strokeStyle='rgba(0,196,204,.3)';c.lineWidth=1;c.setLineDash([4,4]);
     c.strokeRect(p1.x,p1.y,p2.x-p1.x,p2.y-p1.y);c.setLineDash([]);
   }
+  // ADR-0177: eraser hover target (red dashed bbox, locked excluded upstream).
+  if(state._ehov&&state.tool==='eraser'){
+    const es=byId(state._ehov);
+    if(es){const eb=G.bbox(es),ep1=G.w2s({x:eb.x-3,y:eb.y-3}),ep2=G.w2s({x:eb.x+eb.w+3,y:eb.y+eb.h+3});
+      c.strokeStyle='#EF4444';c.lineWidth=1.5;c.setLineDash([5,4]);
+      c.strokeRect(ep1.x,ep1.y,ep2.x-ep1.x,ep2.y-ep1.y);c.setLineDash([]);}
+  }
   drawSelection(c);
   drawGuides(c);
   _drawMeasure(c);                                                     // ADR-0151
@@ -3715,6 +3722,14 @@ canvas.addEventListener('pointermove',e=>{
         ?{a:G.bboxAll([...state.selection].map(byId).filter(Boolean)),b:G.bbox(top)}:null;
       const _sig=m=>m?`${m.a.x}|${m.a.y}|${m.a.w}|${m.a.h}|${m.b.x}|${m.b.y}|${m.b.w}|${m.b.h}`:'';
       if(_sig(_m)!==_sig(state.measure)){state.measure=_m;invalidateOverlay()}
+    }
+    else if(state.tool==='eraser'){
+      // ADR-0177: eraser hover preview — Excalidraw-style red target outline
+      // so a mis-click doesn't vaporize the wrong shape. pickTop is
+      // grid-accelerated (ADR-0032), so per-move cost is tiny.
+      const top=pickTop(wp),id=top&&!top.locked?top.id:null;
+      if(id!==state._ehov){state._ehov=id;invalidateOverlay()}
+      canvas.style.cursor='crosshair';
     }
     return;
   }
@@ -5275,6 +5290,7 @@ function toggleSq(){
 }
 function pickTool(tool,temporary){
   if(temporary&&!window._prevTool)window._prevTool=state.tool;
+  state._ehov=null;                                                     // ADR-0177
   if(ptr.lineClick&&tool!=='line'&&tool!=='arrow'){ptr.lineClick=false;state.draft=null;invalidate()}   // ADR-0126
   state.tool=tool;canvas.dataset.tool=tool;
   canvas.setAttribute('aria-label',(T.k[tool]||tool)+' — '+t('canvasHint'));   // localized (was hardcoded English)

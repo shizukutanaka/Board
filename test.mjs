@@ -751,6 +751,7 @@ const checks = [
   ['ctx opacity cycle reaches any unlocked selection', html.includes('function cycleOpacity(){')&&html.includes('ctxOpacity')&&html.includes('applyStyleToSelection({opacity:nxt})')],
   ['frame honours s.fill tint in canvas+SVG', html.includes("c.fillStyle=s.fill||'rgba(248,250,252,0.6)'")&&html.includes("fill=\"${s.fill||'rgba(248,250,252,0.6)'}\"")],
   ['image border via s.stroke+s.size in canvas+SVG', html.includes("if(s.stroke&&s.size){c.strokeStyle=s.stroke;c.lineWidth=s.size;")&&html.includes('fill="none" stroke="${_esc(s.stroke)}"')],
+  ['eraser hover shows a red dashed target', html.includes("state._ehov=id;invalidateOverlay()")&&html.includes("c.strokeStyle='#EF4444'")],
   // v1.7.05: Tab cycling excludes locked shapes (parity with doMove/doDelete/doRotate/doFlip)
   ['statusbar selection dims readout', html.includes('id="sSel"')&&html.includes('_statusSel()')&&html.includes('Math.round(b.w)')],
   ['empty-selection arrows pan viewport', html.includes("state.viewport.x+=k==='arrowleft'?-step:k==='arrowright'?step:0")],

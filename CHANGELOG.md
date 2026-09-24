@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.235]
+
+### 追加
+- **消しゴムホバーハイライト** (ADR-0177)。消しゴムで図形をホバー
+  すると赤破線枠で消去対象を予告 (Excalidraw parity) — 誤削除を防ぐ。
+
 ## [1.7.234]
 
 ### 追加
