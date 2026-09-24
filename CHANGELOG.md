@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.197]
+
+### 追加
+- **選択2図形のコネクタ接続** (ADR-0140)。未選択中の2図形に対し
+  ctx「2図形をコネクタで接続」が両端バインド矢印を一発生成。
+
 ## [1.7.196]
 
 ### 追加
