@@ -1136,6 +1136,7 @@ const checks = [
   ['room switch sends bye + clears BC peers (ADR-0458)', html.includes("this._send({k:'bye',peer:_pi()});this.bc.close()") && html.includes("if(!id.startsWith('rtc:'))_pr().delete(id)")],
   ['peer id carries a per-boot incarnation nonce (ADR-0459)', html.includes("peerId:PEER_ID+'.'+uid().slice(0,6)") && html.includes("_sO().clear();_cT(this._snapT)")],
   ['wclock ships inside the IDB doc record (ADR-0460)', html.includes('wc:_wc()') && html.includes("validClock(m[p]))(state.wclock[k]")],
+  ['peer join/leave is SR-announced via _pCt delta (ADR-0463)', html.includes('Net._pCt') && html.includes("'peerJoined'") && html.includes("'peerLeft'")],
   // v1.6.80: multi-touch pinch cancels the single-pointer gesture (no stray edits)
   ['pointerdown aborts single-pointer gesture when a 2nd finger lands', html.includes("if(_pointers.size>=2){abortGesture();return;}")],
   ['pointermove bails while pinch is active', html.includes("if(_pointers.size>=2)return;   // pinch in progress")],

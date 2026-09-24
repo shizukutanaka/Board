@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.496] - 2026-09-23
+
+### 追加
+
+- ピア参加/退出をスクリーンリーダーへアナウンス — `Net._onConnChange` で `_pr().size` の増減を追跡し `UI.announce` (polite)。hello/cursor/RTC onopen から bye/reap/dc.onclose まで全経路を1フックで網羅 (ADR-0463)
+
 ## [1.7.495] - 2026-09-23
 
 ### 変更
