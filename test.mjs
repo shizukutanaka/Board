@@ -242,7 +242,7 @@ const checks = [
   ['applyRemote validates remote add shape', html.includes("case 'add':    return validShape(op.shape)")],
   ['SVG export uses testable buildSVG', html.includes("function buildSVG") && html.includes("buildSVG(shapes")],
   ['SVG attrs escaped via _esc', html.includes("stroke=\"${stroke}\"") && html.includes("_esc(_fi(s))")],
-  ['SVG image dataUrl validated', html.includes("/^data:image\\//.test(s.dataUrl)")],
+  ['SVG image dataUrl validated', html.includes("/^data:image\\//.test(_du(s))")],
   // v1.7.69: the SAME guard now also gates the canvas/render + all remote/import intake
   // via validPatch, so an image dataUrl can never be an external URL (getImg→img.src).
   ['image dataUrl restricted to data:image/ at the validPatch intake gate (no external img.src)',
@@ -319,7 +319,7 @@ const checks = [
   // v1.7.113: ADR-0055 rotate point-geometry shapes
   ['doRotate covers pen/line/arrow geometry', html.includes("const _rotatable=s=>s.w!=null||s.pts||s.x1!=null") && html.includes("_rotPtsAbout(s,gx,gy,cs,sn)") && html.includes("if(s.w==null){_rotPtsAbout")],
   // v1.7.114: ADR-0056 multi-selection resize
-  ['gresize dragKind wires group handles', html.includes("ptr.dragKind='gresize';") && html.includes("ptr.gOrig=new Map(sel.filter(s=>!_lk(s)).map(s=>[s.id,clone(s)]))") && html.includes("if(!sel.some(s=>s.rotate)){")],
+  ['gresize dragKind wires group handles', html.includes("ptr.dragKind='gresize';") && html.includes("ptr.gOrig=new Map(sel.filter(s=>!_lk(s)).map(s=>[s.id,clone(s)]))") && html.includes("if(!sel.some(s=>_rt(s))){")],
   ['gresize reuses applyResize on a virtual box + commits one align op', html.includes("function _gresizeDrag(wp,shift,alt){") && html.includes("applyResize(vbox,ptr.resizeHandle,vorig,wp,shift,alt)") && html.includes("_mapToBox(sh,orig,ob,vbox)") && html.includes("op:'align',dir:'gresize'") && html.includes("'gresize'")],
   ['gresize cancelled in abortGesture + pointercancel', html.includes("ptr.dragKind==='gresize'||ptr.dragKind==='grot'") && html.includes("ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;")],
   // v1.7.115: ADR-0057 rotation knob for point geometry + multi-selection
@@ -358,7 +358,7 @@ const checks = [
   // v1.7.93: ADR-0035 image import/export hygiene
   ['_imgKey uses three-segment fingerprint', html.includes("u.slice(0,48)+':'+u.slice(m-24,m+24)+':'+u.slice(-48)")],
   ['export strips internal img blob ref', html.includes("delete o.img;        // ADR-0035")],
-  ['drawShape guards dataUrl-less image', html.includes("const img=s.dataUrl?getImg(s.dataUrl):null;")],
+  ['drawShape guards dataUrl-less image', html.includes("const img=_du(s)?getImg(_du(s)):null;")],
   ['getImg rejects non-dataUrl input', html.includes("!dataUrl.startsWith('data:'))return null;")],
   ['image ingest shared + oversized import downscales via webp', html.includes("function _imgImportFile(") && html.includes("IMG_IMPORT_MAX_DIM") && html.includes("toDataURL('image/webp'")],
   // v1.7.81: ADR-0023
@@ -606,7 +606,7 @@ const checks = [
   ['SVG export handles single-point pen shape', html.includes('s.pts.length===1')],
   ['SVG export emits circle for single-point pen', html.includes('<circle cx=')],
   // v1.6.28: ungroup undo preserves per-shape groupId across multi-group ungroup
-  ['doUngroup captures before snapshot', html.includes('before.push({id:s.id,groupId:s.groupId})')],
+  ['doUngroup captures before snapshot', html.includes('before.push({id:s.id,groupId:_gi(s)})')],
   ['ungroup backward uses before snapshot when available', html.includes('if(op.before){for(const b of op.before)')],
   // v1.6.29: slider undo coalescing - single op per drag, not per input event
   ['slider before-capture helper _sfbCapture defined', html.includes('function _sfbCapture(p)')],
@@ -803,9 +803,9 @@ const checks = [
   ['excalidraw elbowed ↔ s.elbow (ADR-0265)', html.includes('if(e.elbowed)s.elbow=1')&&html.includes('elbowed:true')],
   ['drawio edge mxGeometry@x ↔ s.labelPos (ADR-0264)', html.includes("s.labelPos*2-1")&&html.includes("_ga(g,'x')")],
   ['drawio edge opacity export (ADR-0262)', html.includes('_rnd(s.opacity*100)')],
-  ['drawio rotation= ↔ s.rotate on vertices (ADR-0261)', html.includes("rotation='+_rnd(s.rotate")&&html.includes("+sty.rotation)s.rotate")],
+  ['drawio rotation= ↔ s.rotate on vertices (ADR-0261)', html.includes("rotation='+_rnd(_rt(s))")&&html.includes("+sty.rotation)s.rotate")],
   ['drawio flipH/flipV ↔ s.flip bitmask (ADR-0260)', html.includes("r+='flipH=1;'")&&html.includes("sty.flipH==='1'")],
-  ['drawio shape=image round-trips s.dataUrl (ADR-0259)', html.includes("sty+='shape=image;'")&&html.includes("sty+='image='+s.dataUrl")&&html.includes("_im[1].slice(0,25_000_000)")],
+  ['drawio shape=image round-trips s.dataUrl (ADR-0259)', html.includes("sty+='shape=image;'")&&html.includes("sty+='image='+_du(s)")&&html.includes("_im[1].slice(0,25_000_000)")],
   ['excalidraw export embeds viewport in appState (ADR-0257)', html.includes("scrollX:-_vp().x,scrollY:-_vp().y,zoom:{value:_vp().zoom}")],
   ['excalidraw import adopts appState viewport+grid (ADR-0409)', html.includes("if(_vpNull){try{const ap=_JP(txt).appState;")&&html.includes("if('gridSize' in ap)state.showGrid=ap.gridSize!=null")],
   ['drawio import restores grid flag (ADR-0409)', html.includes("g:+_ga(m,'grid')===1")&&html.includes("if(_dioVp.g!=null)state.showGrid=_dioVp.g")],
@@ -950,23 +950,23 @@ const checks = [
   // v1.6.61: rotation - shapes rotate on canvas, undo/redo, keyboard ,/.
   ['doRotate function exists', html.includes("function doRotate") && html.includes("op:'align',dir:'rotate'")],
   ['rotation applied in drawShape (save/restore)', html.includes("const _rot=shapeRot(s);") && html.includes("if(_rot)c.restore()")],
-  ['G.hit applies inverse rotation (box-only, matching shapeRot)', html.includes("if(s.rotate&&s.w!=null){const _cx=s.x+s.w/2") && html.includes("_r=-s.rotate*_PI/180")],
+  ['G.hit applies inverse rotation (box-only, matching shapeRot)', html.includes("if(_rt(s)&&s.w!=null){const _cx=s.x+s.w/2") && html.includes("_r=-_rt(s)*_PI/180")],
   // v1.7.70: the G.bbox quick-reject must run BEFORE the un-rotation branch — reversing
   // them compares a local-frame point against the rotated world envelope and makes large
   // parts of any rotated non-square box unclickable. Lock the ordering.
   ['G.hit quick-rejects with G.bbox before un-rotating the pointer',
-    html.indexOf('const b=G.bbox(s);\n    const tol=Math.max(6/state.viewport.zoom') < html.indexOf('if(s.rotate&&s.w!=null){const _cx=s.x+s.w/2')],
-  ['G.bbox returns rotation envelope', html.includes("if(s.rotate){const _cx=_rb.x+_rb.w/2")],
+    html.indexOf('const b=G.bbox(s);\n    const tol=Math.max(6/state.viewport.zoom') < html.indexOf('if(_rt(s)&&s.w!=null){const _cx=s.x+s.w/2')],
+  ['G.bbox returns rotation envelope', html.includes("if(_rt(s)){const _cx=_rb.x+_rb.w/2")],
   ['rotation keyboard shortcuts , and .', html.includes("k===','&&!meta&&_selN()") && html.includes("k==='.'&&!meta&&_selN()")],
-  ['SVG export rotation transform', html.includes("rT=shapeRot(s)?` transform=") && html.includes("rotate(${_num(s.rotate)}")],
+  ['SVG export rotation transform', html.includes("rT=shapeRot(s)?` transform=") && html.includes("rotate(${_num(_rt(s))}")],
   // v1.6.61: shape search - Ctrl+F highlights matching shapes
   ['_sq search state variable', html.includes("let _sq='';")],
   ['search input DOM element created in wire()', html.includes("sq.id='sqinput'") && html.includes("_on(sq,'input'")],
   ['search highlight drawn in world space', html.includes("if(_sq){") && html.includes("const q=_lc(_sq)") && html.includes("'#F97316'") && html.includes("'#EA580C'")],
   ['Ctrl+F toggles search input', html.includes("meta&&k==='f'") && html.includes("sq.style.display")],
   // v1.6.62: Socratic feature-interaction fixes
-  ['flip negates rotation angle (reflection reverses sense)', html.includes("if(s.rotate)s.rotate=((axis==='h'?180:360)-s.rotate+360)%360;")],
-  ['rotated box shapes expose handles at rotated positions', html.includes("return hs.map(p=>{const r=_rotPt(p.x,p.y,cx,cy,s.rotate);return{id:p.id,x:r.x,y:r.y}});")],
+  ['flip negates rotation angle (reflection reverses sense)', html.includes("if(_rt(s))s.rotate=((axis==='h'?180:360)-_rt(s)+360)%360;")],
+  ['rotated box shapes expose handles at rotated positions', html.includes("return hs.map(p=>{const r=_rotPt(p.x,p.y,cx,cy,_rt(s));return{id:p.id,x:r.x,y:r.y}});")],
   ['search placeholder uses localized key (T.k.search — t(search) resolved to the raw key, v1.7.63)', html.includes('sq.placeholder=T.k.search')],
   ['rotate + search i18n keys in ja and en', html.includes("selAllMatches:'件のマッチを選択',search:'検索'") && html.includes("selAllMatches:'matches selected',search:'Search'")],
   ['help grid lists rotate and search shortcuts', html.includes("[', / .',k.rotate]") && html.includes("['⌘F',k.search]") && html.includes("['Enter / ⇧Enter',k.searchNav]")],
@@ -987,10 +987,10 @@ const checks = [
   // v1.6.65: budget removed - deferred fixes implemented
   ['_edgePt is rotation-aware (projects to true rotated edge)', html.includes("const ub=sh.w!=null?{x:sh.x,y:sh.y,w:sh.w,h:sh.h}:_bb(sh)") && html.includes("const cx=ub.x+ub.w/2,cy=ub.y+ub.h/2,rot=sh.rotate")],
   ['rotation extends to all box types (text bbox uses envelope)', !html.includes("if(s.type==='text'){\n      return{x:s.x,y:s.y,w:s.w,h:s.h};")],
-  ['SVG rotation applies to text/image/sticky/frame', html.includes("font-size=\"${fs}\"${s.bold?' font-weight=\"600\"':''}") && html.includes("href=\"${_esc(s.dataUrl)}\"${_cr2>0?` clip-path=\"url(#irc${_esc(s.id)})\"`:''}${a}${rT}${fT}${_sh}/>")],
-  ['minimap applies rotation transform', html.includes("const _mr=s.rotate&&s.w!=null;") && html.includes("if(_mr)sx.restore();")],
+  ['SVG rotation applies to text/image/sticky/frame', html.includes("font-size=\"${fs}\"${s.bold?' font-weight=\"600\"':''}") && html.includes("href=\"${_esc(_du(s))}\"${_cr2>0?` clip-path=\"url(#irc${_esc(s.id)})\"`:''}${a}${rT}${fT}${_sh}/>")],
+  ['minimap applies rotation transform', html.includes("const _mr=_rt(s)&&s.w!=null;") && html.includes("if(_mr)sx.restore();")],
   ['minimap renders frame shapes (case frame fallthrough to rect)', html.includes("case 'frame':\n        case 'rect':")],
-  ['describeShape announces locked and rotated state', html.includes("if(_lk(s))d+=` ${t('ctxLock')}`;") && html.includes("if(s.rotate)d+=` ${s.rotate}°`;")],
+  ['describeShape announces locked and rotated state', html.includes("if(_lk(s))d+=` ${t('ctxLock')}`;") && html.includes("if(_rt(s))d+=` ${_rt(s)}°`;")],
   ['describeShape announces flip/shadow/route (ADR-0414)', html.includes("s.flip&1&&t('ctxFlipH')")&&html.includes("if(s.shadow)d+=` ${t('ctxShadow')}`")&&html.includes("s.elbow?t('ctxElbow'):t('ctxCurve')")&&html.includes("s.fstyle==='hatch'||s.fstyle==='cross'")&&html.includes("if(s.hop)d+=` ${t('ctxHop')}`")],
   ['describeShape announces text/label content for SR', html.includes("const txt=_St(s.text||_lb(s)||'').replace(/\\s+/g,' ').trim();") && html.includes("txt.length>30?txt.slice(0,30)+'…':txt")],
   // v1.6.66: resize object-snap
@@ -1116,7 +1116,7 @@ const checks = [
   ['nudgeSelection mirrors drag: frame children + skip locked', html.includes("function nudgeSelection(dx,dy)") && html.includes("[...withFrameChildren(_sl())].filter(id=>!byId(id)?.locked)")],
   ['arrow-key handler delegates to nudgeSelection', html.includes("nudgeSelection(dx,dy);")],
   // v1.6.76: render rotation gated to box shapes (canvas/SVG parity, no NaN centre)
-  ['shapeRot helper gates rotation to box shapes', html.includes("function shapeRot(s){return s.rotate&&s.w!=null?s.rotate:0;}")],
+  ['shapeRot helper gates rotation to box shapes', html.includes("function shapeRot(s){return _rt(s)&&s.w!=null?_rt(s):0;}")],
   ['canvas drawShape uses shapeRot (not raw s.rotate)', html.includes("const _rot=shapeRot(s);")],
   ['SVG export rT uses shapeRot', html.includes("const rT=shapeRot(s)?")],
   // v1.6.77: Persist._saveErrMsg distinguishes QuotaExceededError (Zenn/PWA best practice)
