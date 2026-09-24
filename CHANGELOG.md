@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.212]
+
+### 修正
+- **DOM ミラー (SR 図形一覧) で非表示図形に `(非表示)` タグ**
+  (ADR-0154)。除外すると発見経路が消えるため、状態表示で対応。
+
 ## [1.7.211]
 
 ### 修正

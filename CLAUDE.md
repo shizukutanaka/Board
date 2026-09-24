@@ -203,6 +203,7 @@ Board/
 - [ADR-0151](docs/ADR-0151-alt-hover-measure.md) Alt+hover 距離ガイド
 - [ADR-0152](docs/ADR-0152-cbend-gresize.md) gresize で cbend をアフィン再計算
 - [ADR-0153](docs/ADR-0153-snap-hidden.md) スナップ索引から非表示を除外
+- [ADR-0154](docs/ADR-0154-mirror-hidden-tag.md) DOM ミラーの非表示タグ
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
