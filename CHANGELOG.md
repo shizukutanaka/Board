@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.448] - 2026-09-23
+
+### Fixed
+- `s.shadow` を validPatch 数値リストからフラグ検証へ移動 — `shadow:true` の style/add op・`.board`/共有 import が棄却・沈黙 drop されていた同期バグを修正
+
+### Internal
+- `_db`/`_de`/`_wO` shorthand 追加 (~105B 回収)
+
 ## [1.7.447] - 2026-09-23
 
 ### Fixed
