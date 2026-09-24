@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.174';
+const V='1.7.175';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -878,7 +878,7 @@ const I18N={
     ctxHSpace:'水平均等配置',ctxVSpace:'垂直均等配置',
     ctxSelectAll:'すべて選択',ctxClear:'全消去',
     ctxExportPNG:'PNG書き出し',ctxCopyPNG:'PNGをクリップボードにコピー',ctxExportSVG:'SVG書き出し',ctxExportPDF:'PDF書き出し',ctxExportExc:'Excalidraw (.excalidraw) 書き出し',ctxExportBoard:'.boardファイル書き出し',ctxImportBoard:'.boardファイル読み込み...',
-    ctxExportSelPNG:'選択をPNG書き出し',ctxCopySelPNG:'選択のPNGをコピー',ctxExportSelSVG:'選択をSVG書き出し',ctxCopySelSVG:'選択のSVGをコピー',ctxCopyBoard:'ボードJSONをコピー',ctxExportSelBoard:'選択を.board書き出し',ctxReplaceImg:'画像を差替え',
+    ctxExportSelPNG:'選択をPNG書き出し',ctxCopySelPNG:'選択のPNGをコピー',ctxExportSelSVG:'選択をSVG書き出し',ctxCopySelSVG:'選択のSVGをコピー',ctxCopyBoard:'ボードJSONをコピー',ctxExportPNG1x:'PNG @1x 書き出し',ctxExportPNG4x:'PNG @4x 書き出し (高解像度)',ctxExportSelBoard:'選択を.board書き出し',ctxReplaceImg:'画像を差替え',
     share:'共有',shareTitle:'共有',
     shareUrlHint:'このURLをコピーして送ると、相手に内容が共有されます',
     shareEncLabel:'🔒 暗号化リンク (推奨)',
@@ -954,7 +954,7 @@ const I18N={
     ctxHSpace:'Distribute horizontal',ctxVSpace:'Distribute vertical',
     ctxSelectAll:'Select all',ctxClear:'Clear all',
     ctxExportPNG:'Export PNG',ctxCopyPNG:'Copy PNG to clipboard',ctxExportSVG:'Export SVG',ctxExportPDF:'Export PDF',ctxExportExc:'Export .excalidraw',ctxExportBoard:'Export .board file',ctxImportBoard:'Import .board file...',
-    ctxExportSelPNG:'Export selection to PNG',ctxCopySelPNG:'Copy selection PNG',ctxExportSelSVG:'Export selection to SVG',ctxCopySelSVG:'Copy selection SVG',ctxCopyBoard:'Copy board JSON',ctxExportSelBoard:'Export selection to .board',ctxReplaceImg:'Replace image',
+    ctxExportSelPNG:'Export selection to PNG',ctxCopySelPNG:'Copy selection PNG',ctxExportSelSVG:'Export selection to SVG',ctxCopySelSVG:'Copy selection SVG',ctxCopyBoard:'Copy board JSON',ctxExportPNG1x:'Export PNG @1x',ctxExportPNG4x:'Export PNG @4x (hi-res)',ctxExportSelBoard:'Export selection to .board',ctxReplaceImg:'Replace image',
     share:'Share',shareTitle:'Share',
     shareUrlHint:'Copy this URL and send it — the recipient gets your board.',
     shareEncLabel:'🔒 Encrypted link (recommended)',
@@ -5457,13 +5457,13 @@ function exportScale(w,h,desired){
 }
 // ADR-0050: the render-to-blob path shared by exportPNG (download) and copyPNG
 // (clipboard). cb receives the PNG blob or null on failure.
-function _renderPngBlob(shapes,cb){
+function _renderPngBlob(shapes,cb,desired){
   const b=G.bboxAll(shapes);
   if(!b){UI.toast(t('empty'),'warn');return}
   const pad=32;
   const w=Math.ceil(b.w+pad*2),h=Math.ceil(b.h+pad*2);
   const off=document.createElement('canvas');
-  const scale=exportScale(w,h,2);
+  const scale=exportScale(w,h,desired||2);
   off.width=w*scale;off.height=h*scale;
   const oc=off.getContext('2d');
   oc.fillStyle=getCSS('--paper');
@@ -5484,15 +5484,15 @@ function exportSelection(fmt){
   else if(fmt==='svgcopy')copySVG(sel);   // ADR-0087
   else exportPNG(sel);
 }
-function exportPNG(shapes=state.shapes){
+function exportPNG(shapes=state.shapes,scale){
   _renderPngBlob(shapes,bl=>{
     if(!bl){UI.toast(t('exportFailed'),'err');return}
     const url=URL.createObjectURL(bl);
     const a=document.createElement('a');
-    a.href=url;a.download=`${state.docName||'board'}.png`;
+    a.href=url;a.download=`${state.docName||'board'}${scale&&scale!==2?'@'+scale+'x':''}.png`;
     a.click();setTimeout(()=>URL.revokeObjectURL(url),1e4);
     UI.toast(t('exported'),'ok');
-  });
+  },scale);
 }
 // Copy the board PNG to the OS clipboard (Excalidraw parity). No shortcut —
 // ⌘⇧C collides with the browser DevTools inspector; menu-only.
@@ -7174,6 +7174,8 @@ const UI={
   openExportMenu(x,y){
     this.openCtxMenu(x,y,[
       ['ctxExportPNG','⌘E',exportPNG],
+      ['ctxExportPNG1x','',()=>exportPNG(state.shapes,1)],
+      ['ctxExportPNG4x','',()=>exportPNG(state.shapes,4)],
       ['ctxCopyPNG','',copyPNG],
       ['ctxExportSVG','⌘⇧E',exportSVG],
       ['ctxExportPDF','⌘P',exportPDF],

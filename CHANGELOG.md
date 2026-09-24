@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.175]
+
+### 追加
+- **PNG 書き出しスケール選択** (ADR-0118)。export メニューに
+  @1x/@4x を追加 (既定は従来通り 2x、exportScale の寸法/面積
+  キャップは全スケールで有効)。非2x はファイル名に @Nx 付与。
+
 ## [1.7.174]
 
 ### 追加

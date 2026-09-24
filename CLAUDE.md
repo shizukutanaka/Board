@@ -167,6 +167,7 @@ Board/
 - [ADR-0115](docs/ADR-0115-clipboard-board-transfer.md) クリップボード .board 転送
 - [ADR-0116](docs/ADR-0116-snap-to-grid.md) 選択をグリッドに吸着
 - [ADR-0117](docs/ADR-0117-label-position.md) コネクタラベル位置ドラッグ
+- [ADR-0118](docs/ADR-0118-png-export-scale.md) PNG 書き出しスケール選択
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

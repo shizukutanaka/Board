@@ -296,9 +296,9 @@ const checks = [
   ['shared _fitViewport used by all three fit paths', html.includes("function _fitViewport(") && html.includes("_fitViewport(b,40,2)") && html.includes("_fitViewport(b,60,4)")],
   ['selFit i18n ja+en', html.includes("selFit:'選択にフィット'") && html.includes("selFit:'Zoom to selection'")],
   // v1.7.108: ADR-0050 copy PNG to clipboard via shared _renderPngBlob
-  ['shared _renderPngBlob drives export + copy', html.includes("function _renderPngBlob(shapes,cb)") && html.includes("exportPNG(shapes=state.shapes){\n  _renderPngBlob(shapes," ) && html.includes("function copyPNG(")],
+  ['shared _renderPngBlob drives export + copy', html.includes("function _renderPngBlob(shapes,cb,desired)") && html.includes("exportPNG(shapes=state.shapes,scale){\n  _renderPngBlob(shapes," ) && html.includes("function copyPNG(")],
   // v1.7.110: ADR-0052 selection-scoped export (PNG / copy / SVG)
-  ['exports take a shapes arg (default whole board)', html.includes("exportPNG(shapes=state.shapes)") && html.includes("copyPNG(shapes=state.shapes)") && html.includes("exportSVG(shapes=state.shapes)")],
+  ['exports take a shapes arg (default whole board)', html.includes("exportPNG(shapes=state.shapes,scale)") && html.includes("copyPNG(shapes=state.shapes)") && html.includes("exportSVG(shapes=state.shapes)")],
   ['selection export items in ctx menu', html.includes("['ctxExportSelPNG','',()=>exportSelection('png')]") && html.includes("['ctxCopySelPNG','',()=>exportSelection('copy')]") && html.includes("['ctxExportSelSVG','',()=>exportSelection('svg')]")],
   ['selection export i18n ja+en', html.includes("ctxExportSelPNG:'選択をPNG書き出し'") && html.includes("ctxExportSelSVG:'Export selection to SVG'")],
   // v1.7.111: ADR-0053 text overlay follows pan/zoom
@@ -480,6 +480,7 @@ const checks = [
   ['swap positions (ctx, 2 selections)', html.includes("doAlign('swap')")&&html.includes('ctxSwap')&&html.includes('units.length!==2')],
   ['snap selection to grid (ctx, align op)', html.includes('snapSelToGrid')&&html.includes('ctxSnapGrid')&&html.includes("dir:'gsnap'")&&html.includes('Math.round(b.x/GRID_SIZE)')],
   ['connector label position (labelPos, drag anchor)', html.includes('s.labelPos!=null&&Number.isFinite(s.labelPos)')&&html.includes("ptr.dragKind='lblpos'")&&html.includes('_pathNearestT')],
+  ['PNG export scale options (1x/4x via _renderPngBlob desired)', html.includes('_renderPngBlob(shapes,cb,desired)')&&html.includes('ctxExportPNG4x')&&html.includes('exportScale(w,h,desired||2)')],
   ['line↔arrow conversion via style op (ctx)', html.includes('toggleLineArrow')&&html.includes('ctxToArrow')&&html.includes("s.type==='line'?'arrow':'line'")],
   ['sticky↔text conversion via style op (ctx)', html.includes('toggleStickyText')&&html.includes('ctxToSticky')&&html.includes("s.type==='sticky'?'text':'sticky'")],
   ['frame select-contents (ctx)', html.includes('selectFrameContents')&&html.includes('ctxSelContents')&&html.includes('withFrameChildren(')],
@@ -858,7 +859,7 @@ const checks = [
   // v1.6.71: presentation-mode guard precedes editing shortcuts (no undo mid-slideshow)
   ['presentation guard runs before undo/redo/select-all shortcuts', /if\(Presentation\.isActive\(\)\)\{[\s\S]{0,260}return;\n  \}[\s\S]{0,700}if\(meta&&k==='z'&&!e\.shiftKey\)/.test(html)],
   // v1.6.71: export canvas clamped to browser limits
-  ['exportPNG uses exportScale clamp', html.includes("const scale=exportScale(w,h,2);")],
+  ['exportPNG uses exportScale clamp', html.includes("const scale=exportScale(w,h,desired||2);")],
   ['exportPDF uses exportScale clamp for dpr', html.includes("dpr=exportScale(W,H,window.devicePixelRatio||1)")],
   // v1.6.72: sticky note resize preserves user's chosen width
   ['resizeAfterTextEdit helper present', html.includes("function resizeAfterTextEdit(s,text,c)")],
@@ -9145,7 +9146,7 @@ try {
       const items=captured[2];
       assert.ok(Array.isArray(items),'v1.7.56a: openExportMenu passes an items array, not the default (undefined)');
       const keys=items.map(it=>it==='sep'?'sep':it[0]);
-      assert.deepStrictEqual(keys,['ctxExportPNG','ctxCopyPNG','ctxExportSVG','ctxExportPDF','ctxExportBoard','ctxCopyBoard','ctxExportExc','sep','ctxImportBoard'],
+      assert.deepStrictEqual(keys,['ctxExportPNG','ctxExportPNG1x','ctxExportPNG4x','ctxCopyPNG','ctxExportSVG','ctxExportPDF','ctxExportBoard','ctxCopyBoard','ctxExportExc','sep','ctxImportBoard'],
         'v1.7.56a: openExportMenu offers PNG/copy-PNG/SVG/PDF/.board/.excalidraw export + a separator + .board import, in that order');
       const fnByKey=Object.fromEntries(items.filter(it=>it!=='sep').map(it=>[it[0],it[2]]));
       assert.strictEqual(fnByKey.ctxExportPNG,exportPNG,'v1.7.56a: PNG item wired to the real exportPNG');
