@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.276';
+const V='1.7.277';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3969,7 +3969,7 @@ canvas.addEventListener('pointermove',e=>{
       _penPred=pr?G.s2w(pr):null;
       break;
     }
-    case 'rect':case 'ellipse':case 'diamond':case 'sticky':case 'frame':contRectLike(wp,e.shiftKey);break;
+    case 'rect':case 'ellipse':case 'diamond':case 'sticky':case 'frame':contRectLike(wp,e.shiftKey,e.altKey);break;
     case 'line':case 'arrow':contLineLike(wp,e.shiftKey);break;
     case 'eraser':eraseAt(wp);break;
   }
@@ -5000,15 +5000,20 @@ function beginRectLike(wp){
   }
   state.draft=Shape.make(state.tool,extras);
 }
-function contRectLike(wp,uniform){
+function contRectLike(wp,uniform,center){
   if(!state.draft)return;
   const sp=snapPt(wp);const sx0=snapV(ptr.wx0),sy0=snapV(ptr.wy0);
   let w=sp.x-sx0,h=sp.y-sy0;
   if(uniform){const s=Math.max(Math.abs(w),Math.abs(h));w=Math.sign(w||1)*s;h=Math.sign(h||1)*s}
   const d=state.draft;
   const _b0=G.bbox(d);
-  if(w<0){d.x=sx0+w;d.w=-w}else{d.x=sx0;d.w=w}
-  if(h<0){d.y=sy0+h;d.h=-h}else{d.y=sy0;d.h=h}
+  if(center){                                      // ADR-0219: ⌥ = draw from center
+    d.x=sx0-Math.abs(w);d.w=2*Math.abs(w);
+    d.y=sy0-Math.abs(h);d.h=2*Math.abs(h);
+  }else{
+    if(w<0){d.x=sx0+w;d.w=-w}else{d.x=sx0;d.w=w}
+    if(h<0){d.y=sy0+h;d.h=-h}else{d.y=sy0;d.h=h}
+  }
   state.readout={x:d.x+d.w/2,y:d.y+d.h,label:`${Math.round(d.w)} × ${Math.round(d.h)}`};   // ADR-0202
   invalidateDamage(_dmgPair(_b0,G.bbox(d),(d.size||2)+16));   // ADR-0026
 }

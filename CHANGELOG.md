@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.277]
+
+### 追加
+- **⌥ 中心基点描画** (ADR-0219)。rect/ellipse/diamond/
+  sticky/frame のドラッグ中に ⌥ でアンカーを中心に拡大
+  (Figma/draw.io 慣例)。⇧ 併用で中心+正方形/真円。
+
 ## [1.7.276]
 
 ### 追加

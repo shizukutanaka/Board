@@ -717,6 +717,7 @@ const checks = [
   ['labelPos drag snaps to 0/.25/.5/.75/1 slots (ADR-0216)', html.includes('for(const slot of[0,0.25,0.5,0.75,1])')],
   ['ctx route-reset reachable when only labelPos/cbend set (ADR-0217)', html.includes('s.labelPos==null&&s.cbend==null)continue')&&html.includes('s.labelPos!=null||s.cbend!=null')],
   ['connector jump arcs canvas+SVG + ctx toggle (ADR-0218)', html.includes('function _polylineHop(c,s,pts,R)')&&html.includes('function _hopPathD(s,pts,ox,oy,R)')&&html.includes('function toggleHop()')&&html.includes("['ctxHop','',toggleHop]")],
+  ['Alt draws box shapes from center (ADR-0219)', html.includes('contRectLike(wp,e.shiftKey,e.altKey)')&&html.includes('// ADR-0219: ⌥ = draw from center')],
   ['endpoint drag Shift constrains to 45 deg + label editor fontSize (ADR-0206)', html.includes("constrain the free end to 45")&&html.includes("${hit.fontSize||12}px")],
   ['i18n has excImported ja+en', html.includes("excImported:'Excalidraw を取り込みました'") && html.includes("excImported:'Excalidraw imported'")],
   // v1.7.102: ADR-0044 text paste → text shape
