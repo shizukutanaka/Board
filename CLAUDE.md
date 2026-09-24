@@ -374,6 +374,7 @@ Board/
 │   ├── ADR-0322-dio-html-flag.md  # drawio 書出 html=1 修正 (実装済)
 │   ├── ADR-0323-exc-conn-label-lineheight.md  # exc conn ラベル行間復元 (実装済)
 │   ├── ADR-0324-dio-compressed-multipage.md  # 圧縮 drawio 全ページ展開 (実装済)
+│   ├── ADR-0325-dio-inflate-cap.md  # drawio 展開 8MB ガード (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
