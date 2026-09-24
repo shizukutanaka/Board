@@ -851,7 +851,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.477';
+const V='1.7.478';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1564,6 +1564,8 @@ const Store={
     const op=_hi()[_hx()];
     this._apply(op,false);
     state.histIdx--;
+    for(const w of _undoWire(op)||[]){w.clock={peer:_pi(),seq:++state.seq,ts:nowTs()};
+      this._stampWrites(w);Net.broadcast(w)}
     _md(!0);
     _ru();
     _ps();
@@ -1574,6 +1576,7 @@ const Store={
     state.histIdx++;
     const op=_hi()[_hx()];
     this._apply(op,true);
+    op.clock={peer:_pi(),seq:++state.seq,ts:nowTs()};this._stampWrites(op);Net.broadcast(op);
     _md(!0);
     _ru();
     _ps();
@@ -2816,7 +2819,7 @@ function _connLabelXY(s){
 function _drawConnLabel(s,c){
   if(!_lb(s))return;
   const lp=_connLabelXY(s),mx=lp.x,my=lp.y;                       // ADR-0081
-  c.save();c.shadowColor=_TR;c.shadowBlur=0;c.shadowOffsetY=0;   // ADR-0211: label never shadows
+  c.save();_noSh(c);   // ADR-0211: label never shadows
   const fs=_fS(s)||12;   // ADR-0169
   c.font=_fontStr(s,fs);c.textAlign='center';c.textBaseline='middle';   // ADR-0170
   const lns=_St(_lb(s)).split('\n'),llh=fs*(s.lineH||1.25),pad=4;   // ADR-0210/0212
@@ -2850,7 +2853,7 @@ function drawShape(s,c){
       _csh(s,c)   // ADR-0194
       if(_fi(s)){c.fill()}
       if(_sk(s)){c.stroke()}
-      c.shadowColor=_TR;c.shadowBlur=0;c.shadowOffsetY=0;
+      _noSh(c);
       if(s.fstyle)_hatchCtx(c,s);                              // ADR-0077
       _drawBoxLabel(s,c);break;
     case 'ellipse':
@@ -2859,7 +2862,7 @@ function drawShape(s,c){
       _csh(s,c)   // ADR-0194
       if(_fi(s)){c.fill()}
       if(_sk(s)){c.stroke()}
-      c.shadowColor=_TR;c.shadowBlur=0;c.shadowOffsetY=0;
+      _noSh(c);
       if(s.fstyle)_hatchCtx(c,s);                              // ADR-0077
       _drawBoxLabel(s,c);break;
     case 'diamond':{
@@ -2867,7 +2870,7 @@ function drawShape(s,c){
       _csh(s,c)   // ADR-0194
       if(_fi(s))c.fill();
       if(_sk(s))c.stroke();
-      c.shadowColor=_TR;c.shadowBlur=0;c.shadowOffsetY=0;
+      _noSh(c);
       if(s.fstyle)_hatchCtx(c,s);                              // ADR-0077
       _drawBoxLabel(s,c);break;}
     case 'line':{
@@ -2889,7 +2892,7 @@ function drawShape(s,c){
         if(_cr>0){c.save();c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,_cr);c.clip()}
         if(s.flip){const fx=s.x+s.w/2,fy=s.y+s.h/2;c.save();c.translate(fx,fy);c.scale(s.flip&1?-1:1,s.flip&2?-1:1);c.translate(-fx,-fy);c.drawImage(img,s.x,s.y,s.w,s.h);c.restore()}
         else c.drawImage(img,s.x,s.y,s.w,s.h);
-        c.shadowColor=_TR;c.shadowBlur=0;c.shadowOffsetY=0;
+        _noSh(c);
         if(_cr>0)c.restore();
         // ADR-0176: _sk(s)+s.size draws a border (stroke swatch already
         // reaches images through applyStyleToSelection but was never painted).
@@ -2936,7 +2939,7 @@ function drawShape(s,c){
       c.fillStyle=s.color||_YW;
       c.shadowColor='rgba(0,0,0,.08)';c.shadowBlur=8;c.shadowOffsetY=2;
       c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,r);c.fill();
-      c.shadowColor=_TR;c.shadowBlur=0;c.shadowOffsetY=0;
+      _noSh(c);
       c.strokeStyle='rgba(0,0,0,.06)';c.lineWidth=1;c.stroke();
       // text
       if(s.text){
@@ -2963,7 +2966,7 @@ function drawShape(s,c){
       break;}
   }
   c.globalAlpha=1;c.letterSpacing='0px';
-  c.shadowColor=_TR;c.shadowBlur=0;c.shadowOffsetY=0;   // ADR-0211
+  _noSh(c);   // ADR-0211
   c.setLineDash([]);
   if(_rot)c.restore();
 }
@@ -6299,7 +6302,7 @@ function exportViewportPNG(scale){
     const url=URL.createObjectURL(bl);
     const a=_ce('a');
     a.href=url;a.download=`${_dn()||'board'}-view${sc&&sc!==2?'@'+sc+'x':''}.png`;
-    a.click();_stO(()=>URL.revokeObjectURL(url),1e4);
+    a.click();_rO(url);
     _o(t('exported'));
   },'image/png');
 }
@@ -6309,7 +6312,7 @@ function exportPNG(shapes=_sh(),scale){
     const url=URL.createObjectURL(bl);
     const a=_ce('a');
     a.href=url;a.download=`${_dn()||'board'}${scale&&scale!==2?'@'+scale+'x':''}.png`;
-    a.click();_stO(()=>URL.revokeObjectURL(url),1e4);
+    a.click();_rO(url);
     _o(t('exported'));
   },scale);
 }
@@ -6381,7 +6384,7 @@ function exportSVG(shapes=_sh()){
   const url=URL.createObjectURL(blob);
   const a=_ce('a');
   a.href=url;a.download=`${_dn()||'board'}.svg`;
-  a.click();_stO(()=>URL.revokeObjectURL(url),1e4);
+  a.click();_rO(url);
   _o(t('exportedSVG'));
 }
 function exportBoard(shapes=_sh()){                       // ADR-0114: optional selection subset
@@ -6389,7 +6392,7 @@ function exportBoard(shapes=_sh()){                       // ADR-0114: optional 
   const a=_ce('a');
   const _bu=URL.createObjectURL(new Blob([_JS({v:V,docName:_dn(),viewport:_vpS(),shapes:roundShapesForExport(shapes)})],{type:'application/json'}));   // ADR-0393
   a.href=_bu;a.download=(_dn()||'board')+'.board';
-  a.click();_stO(()=>URL.revokeObjectURL(_bu),1e4);
+  a.click();_rO(_bu);
   _o(t('exportedBoard'));
 }
 // ---- ADR-0098: .excalidraw export ------------------------------------------
@@ -6709,7 +6712,7 @@ function importDrawioText(txt,wp){
   try{shapes=drawioToShapes(txt)}catch(_){shapes=null}
   if(!shapes||!shapes.length){_w(t(_IB));return false}
   const _vpNull=wp==null;
-  if(!wp){const r=_cbr();wp=_s2({x:r.width/2,y:r.height/2})}
+  wp=wp||_midV()
   const bb=_bA(shapes);
   if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);
     for(const s of shapes)Shape.translate(s,dx,dy)}
@@ -6733,7 +6736,7 @@ function exportExc(){
   const a=_ce('a');
   const _bu=URL.createObjectURL(new Blob([_JS(excScene(_sh()))],{type:'application/json'}));
   a.href=_bu;a.download=(_dn()||'board')+'.excalidraw';
-  a.click();_stO(()=>URL.revokeObjectURL(_bu),1e4);
+  a.click();_rO(_bu);
   _o(t('exportedExc'));
 }
 
@@ -6843,7 +6846,7 @@ function exportDrawio(shapes=_sh()){
   const a=_ce('a');
   const _bu=URL.createObjectURL(new Blob([boardToDrawio(shapes)],{type:'application/xml'}));
   a.href=_bu;a.download=(_dn()||'board')+'.drawio';
-  a.click();_stO(()=>URL.revokeObjectURL(_bu),1e4);
+  a.click();_rO(_bu);
   _o(t('dioExported'));
 }
 // ---- ADR-0042: SVG import --------------------------------------------------
@@ -7012,7 +7015,7 @@ function importSvgText(txt,wp){
   let shapes=null;
   try{shapes=svgToShapes(txt)}catch(_){shapes=null}
   if(!shapes||!shapes.length){_w(t(_IB));return false}
-  if(!wp){const r=_cbr();wp=_s2({x:r.width/2,y:r.height/2})}
+  wp=wp||_midV()
   // centre the imported group at wp (drop point / viewport centre)
   const bb=_bA(shapes);
   if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);
@@ -7169,7 +7172,7 @@ function importExcText(txt,wp){
   try{shapes=excToShapes(txt)}catch(_){shapes=null}
   if(!shapes||!shapes.length){_w(t(_IB));return false}
   const _vpNull=wp==null;   // ADR-0409: adopt the file's viewport only on a point-less open
-  if(!wp){const r=_cbr();wp=_s2({x:r.width/2,y:r.height/2})}
+  wp=wp||_midV()
   const bb=_bA(shapes);
   if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);
     for(const s of shapes)Shape.translate(s,dx,dy)}
@@ -7191,7 +7194,7 @@ function importBoardText(txt,wp){
   if(!data||!_iA(data.shapes))return false;
   const shapes=data.shapes.filter(validShape);
   if(!shapes.length)return false;
-  if(!wp){const r=_cbr();wp=_s2({x:r.width/2,y:r.height/2})}
+  wp=wp||_midV()
   const bb=_bA(shapes);
   const dx=bb?wp.x-(bb.x+bb.w/2):0,dy=bb?wp.y-(bb.y+bb.h/2):0;
   const origSel=_selIds();
@@ -9082,7 +9085,7 @@ function _sfbFlush(p,v){const b=[],a=[];for(const id of _sl()){const k=id+p;if(k
 // ADR-0062: per-connector elbow toggle via style op — undo + wclock sync free.
 function toggleElbow(){
   const before=[],after=[];
-  _forSel((s,id)=>{if((s.type!=='line'&&s.type!=='arrow')||_lk(s))return;
+  _forConn((s,id)=>{
     before.push({id,elbow:s.elbow||0,curve:s.curve||0});
     after.push({id,elbow:s.elbow?0:1,curve:0});
     s.elbow=s.elbow?0:1;s.curve=0;               // ADR-0068: routes are exclusive
@@ -9148,7 +9151,7 @@ function cycleStartHead(){
 // LWW + remote sync need no new plumbing.
 function toggleLineArrow(){
   const before=[],after=[];
-  _forSel((s,id)=>{if((s.type!=='line'&&s.type!=='arrow')||_lk(s))return;
+  _forConn((s,id)=>{
     _pp(before,after,id,'type',s.type,s.type==='line'?'arrow':'line');
     s.type=s.type==='line'?'arrow':'line';
   })
@@ -9157,7 +9160,7 @@ function toggleLineArrow(){
 // ADR-0068: curved (quadratic) route toggle — exclusive with elbow.
 function toggleCurve(){
   const before=[],after=[];
-  _forSel((s,id)=>{if((s.type!=='line'&&s.type!=='arrow')||_lk(s))return;
+  _forConn((s,id)=>{
     before.push({id,elbow:s.elbow||0,curve:s.curve||0});
     after.push({id,elbow:0,curve:s.curve?0:1});
     s.elbow=0;s.curve=s.curve?0:1;
@@ -9168,7 +9171,7 @@ function toggleCurve(){
 // ADR-0218: toggle jump arcs at crossings (draw.io "jump" edgeStyle).
 function toggleHop(){
   const before=[],after=[];
-  _forSel((s,id)=>{if((s.type!=='line'&&s.type!=='arrow')||_lk(s))return;
+  _forConn((s,id)=>{
     before.push({id,hop:s.hop||0});
     after.push({id,hop:s.hop?0:1});
     s.hop=s.hop?0:1;
@@ -9233,7 +9236,7 @@ function fitFrames(){
 // elbow/curve keep the existing numeric-flag convention (0).
 function resetRoute(){
   const before=[],after=[];
-  _forSel((s,id)=>{if((s.type!=='line'&&s.type!=='arrow')||_lk(s))return;
+  _forConn((s,id)=>{
     if(!_wayArr(s).length&&!s.bend&&!s.elbow&&!s.curve&&s.labelPos==null&&s.cbend==null)return;   // ADR-0090/0217
     before.push({id,way:s.way??null,bend:s.bend??null,elbow:s.elbow||0,curve:s.curve||0,labelPos:s.labelPos??null,cbend:s.cbend??null});
     after.push({id,way:null,bend:null,elbow:0,curve:0});
@@ -9248,7 +9251,7 @@ function resetRoute(){
 // new start (old end always had a head, so the flag survives the swap).
 function reverseConn(){
   const before=[],after=[];
-  _forSel((s,id)=>{if((s.type!=='line'&&s.type!=='arrow')||_lk(s))return;
+  _forConn((s,id)=>{
     before.push({id,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2,a:s.a??null,b:s.b??null,aF:s.aF??null,bF:s.bF??null,way:s.way??null,labelPos:s.labelPos??null});
     const t1=s.x1,t2=s.y1;s.x1=s.x2;s.y1=s.y2;s.x2=t1;s.y2=t2;
     const tb=s.a;s.a=s.b??null;s.b=tb??null;
@@ -9345,7 +9348,7 @@ function toggleWrap(){
 function cycleSpacing(){
   const seq=[null,1,2];
   const before=[],after=[];
-  _forSel((s,id)=>{if((s.type!=='text'&&s.type!=='sticky'&&s.type!=='frame'&&!_lb(s))||_lk(s))return;
+  _forTxt((s,id)=>{
     const i=seq.indexOf(s.spacing??null),nxt=seq[(i+1)%seq.length];
     _pp(before,after,id,'spacing',s.spacing??null,nxt);
     if(nxt==null)delete s.spacing;else s.spacing=nxt;
@@ -9366,7 +9369,7 @@ function cycleLineH(){
 // ADR-0075: ⌘⇧,/. nudges fontSize ±2 on selected text/sticky via style op.
 function fontSizeStep(d){
   const before=[],after=[];
-  _forSel((s,id)=>{if((s.type!=='text'&&s.type!=='sticky'&&s.type!=='frame'&&!_lb(s))||_lk(s))return;   // ADR-0169/0298: labels+frames honour fontSize
+  _forTxt((s,id)=>{   // ADR-0169/0298: labels+frames honour fontSize
     const cur=_fS(s)||14,nxt=_min(64,_max(8,cur+d*2));
     if(nxt===cur)return;
     _pp(before,after,id,'fontSize',cur,nxt);s.fontSize=nxt;
@@ -9375,13 +9378,34 @@ function fontSizeStep(d){
   _so(before,after)
 }
 // ADR-0078: ⌘B/⌘I toggles bold/italic on selected text/sticky via style op.
-const _pp=(b,a,id,k,c,n)=>{b.push({id,[k]:c});a.push({id,[k]:n})};
+const _noSh=c=>{c.shadowColor=_TR;c.shadowBlur=0;c.shadowOffsetY=0},
+      _rO=u=>_stO(()=>URL.revokeObjectURL(u),1e4),
+      _midV=()=>{const r=_cbr();return _s2({x:r.width/2,y:r.height/2})},
+      _forConn=f=>_forSel((s,id)=>{if((s.type!=='line'&&s.type!=='arrow')||_lk(s))return;f(s,id)}),
+      _forTxt=f=>_forSel((s,id)=>{if((s.type!=='text'&&s.type!=='sticky'&&s.type!=='frame'&&!_lb(s))||_lk(s))return;f(s,id)}),
+      _pp=(b,a,id,k,c,n)=>{b.push({id,[k]:c});a.push({id,[k]:n})};
+// ADR-0443: undo/redo propagate as fresh-clock wire ops — a revert becomes a new
+// write that restores old values (fresh peer clock wins every stale wclock, LWW-
+// consistent). group/ungroup/replace/beautify have no remote-safe inverse: their
+// per-shape befores aren't carried on the op — they stay local-only.
+function _undoWire(op){
+  switch(op.op){
+    case 'add':    return[{op:'del',shapes:[op.shape]}];
+    case 'addMany':return[{op:'del',shapes:op.shapes}];
+    case 'del':case 'clear':{const o=[{op:'addMany',shapes:op.shapes}];
+      for(const c of op.connClears||[])if(c.before)o.push({op:'upd',id:c.id,after:c.before});
+      return o;}
+    case 'move':   return[{op:'move',ids:op.ids,dx:-op.dx,dy:-op.dy}];
+    case 'upd':case 'style':case 'resize':case 'align':
+                   return[{op:op.op,id:op.id,dir:op.dir,after:op.before}];
+    default:       return null;
+  }}
 function _rcOp(op){const o=_selIds();Store._recordCommitted(op);_keepSel(o)}
 function _cOp(op){const o=_selIds();Store.commit(op);_keepSel(o)}
 function _styleOp(before,after){_rcOp({op:'style',before,after})}   // ADR-0239/0248
 function toggleTextFlag(k){
   const before=[],after=[];
-  _forSel((s,id)=>{if((s.type!=='text'&&s.type!=='sticky'&&s.type!=='frame'&&!_lb(s))||_lk(s))return;   // ADR-0170/0204
+  _forTxt((s,id)=>{   // ADR-0170/0204
     const nxt=!s[k];
     before.push({id,[k]:s[k]||null});after.push({id,[k]:nxt?true:null});
     if(nxt)s[k]=true;else delete s[k];
@@ -9424,7 +9448,7 @@ function swapFillStroke(){
 // shapes via style op (Excalidraw font-switch parity).
 function cycleFont(){
   const before=[],after=[];
-  _forSel((s,id)=>{if((s.type!=='text'&&s.type!=='sticky'&&s.type!=='frame'&&!_lb(s))||_lk(s))return;   // ADR-0188: frame's always-on label
+  _forTxt((s,id)=>{   // ADR-0188: frame's always-on label
     const cur=s.font||'',nxt=cur===''?'mono':cur==='mono'?'serif':'';
     _pp(before,after,id,'font',cur||null,nxt||null);
     if(nxt)s.font=nxt;else delete s.font;
@@ -9445,7 +9469,7 @@ function cycleOpacity(){
 // ADR-0073: cycle text align left→center→right for text/sticky via style op.
 function cycleTextAlign(){
   const before=[],after=[];
-  _forSel((s,id)=>{if((s.type!=='text'&&s.type!=='sticky'&&s.type!=='frame'&&!_lb(s))||_lk(s))return;   // ADR-0171/0197
+  _forTxt((s,id)=>{   // ADR-0171/0197
     const cur=s.align||'left',nxt=cur==='left'?'center':cur==='center'?'right':'left';
     _pp(before,after,id,'align',cur,nxt);s.align=nxt;
     _st().align=nxt;                                      // ADR-0184

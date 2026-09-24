@@ -582,7 +582,7 @@ const checks = [
   ['existing text edit branch is else-if (no double op)', html.includes("}else if(newText!==origText){")],
   // v1.6.23: .board file export/import
   ['exportBoard function exists', html.includes('function exportBoard(shapes')],
-  ['exportBoard revokes Blob URL to prevent memory leak', html.includes("revokeObjectURL(_bu),1e4")],
+  ['exportBoard revokes Blob URL to prevent memory leak', html.includes("_rO=u=>_stO(()=>URL.revokeObjectURL(u),1e4)")],
   ['.board file round-trips viewport (ADR-0393)', html.includes("viewport:_vpS()")&&html.includes("_vp().zoom=clampZoom(+d.viewport.zoom)")],
   ['file importers reject >32MB payloads (ADR-0398)', html.includes("_bigFile=f=>f.size>33554432")&&(html.match(/_bigFile\(file\)/g)||[]).length>=4],
   ['importBoard uses atomic replace op (not clear+adds)', html.includes('function importBoard') && html.includes('.filter(validShape)') && html.includes("op:'replace',before,after")],
@@ -816,7 +816,7 @@ const checks = [
   ['conn/box label widths memoized on WeakMap (ADR-0252)', html.includes('_connLabelMeasure')&&html.includes('_clCache')],
   ['drawio edge label styling: labelBackgroundColor/fontSize/fontStyle (ADR-0249)', html.includes("labelBackgroundColor='+_fi(s)")&&html.includes("sty.labelBackgroundColor&&sty.labelBackgroundColor!=='none'")],
   ['drawio parent-relative offsets resolved (ADR-0240)', html.includes("const _geo=_mP(),_par=_mP();")&&html.includes("const _o=off(_ga(c,'id'));")&&html.includes("x=_o.x+(_doff.get(c)||0)+(+_ga(g,'x')||0)")],
-  ['frame label italic/under/strike (ADR-0204)', html.includes("600 ${fs}px")&&html.includes("s.type!=='frame'&&!_lb(s))||_lk(s))return;   // ADR-0170/0204")],
+  ['frame label italic/under/strike (ADR-0204)', html.includes("600 ${fs}px")&&html.includes("_forTxt=f=>_forSel((s,id)=>{if((s.type!=='text'&&s.type!=='sticky'&&s.type!=='frame'&&!_lb(s))||_lk(s))return;f(s,id)})")],
   ['letter-spacing cycle — canvas ctx+SVG+style-copy (ADR-0205)', html.includes("function cycleSpacing()")&&html.includes("c.letterSpacing=(s.spacing||0)+'px'")&&html.includes('_svgLs(s)')&&html.includes('spacing:sh.spacing')],
   ['elbow corner rounding canvas+SVG + cycleCorner gate (ADR-0207)', html.includes('function _polylineR')&&html.includes('_polylineRd(pts,ox,oy,s.r)')&&html.includes("connOk=(_conn(s.type))&&s.elbow")],
   ['text word-wrap toggle + canvas/SVG wrap (ADR-0208)', html.includes('s.wrap?wrapTextCached')&&html.includes('s.wrap?wrapText(_St')&&html.includes("['ctxWrap','',toggleWrap]")],
@@ -936,7 +936,7 @@ const checks = [
   ['image corner radius via cycleCorner + clips', html.includes("if(!boxOk&&!connOk)return;")&&html.includes('clip-path="url(#irc')&&html.includes('roundRect(c,s.x,s.y,s.w,s.h,_cr);c.clip()')],
   ['label fontSize honored across renderers', html.includes('const fs=_fS(s)||12;')&&html.includes('const fs=_fS(s)||14')&&html.includes("s.type!=='sticky'&&!_lb(s))||_lk(s)")],
     ['labels honor bold/italic/under/strike (ADR-0170)', html.includes('c.font=_fontStr(s,fs)')&&html.includes('font-weight="600"')&&html.includes('text-decoration=')],
-  ['box/image labels honour s.align (ADR-0171)', html.includes("const al=s.align||'center';")&&html.includes('anc3=')&&html.includes("s.type!=='sticky'&&s.type!=='frame'&&!_lb(s))||_lk(s))return;   // ADR-0171/0197")],
+  ['box/image labels honour s.align (ADR-0171)', html.includes("const al=s.align||'center';")&&html.includes('anc3=')&&html.includes("_forTxt((s,id)=>{")],
   ['locked selection shows a padlock badge', html.includes('c.arc(lx+8,ly,4,_PI,0)')&&html.includes("if(lockedSel){")],
   ['Tab cycling excludes locked+hidden shapes (filter before cycleSel)', html.includes("const ids=_sh().filter(s=>!_lk(s)&&_sv(s)).map(s=>s.id)")],
   // v1.6.60: bound connectors - arrow/line endpoints follow bound shapes
@@ -1571,7 +1571,7 @@ try {
              _getPasteCount: () => _pasteCount, _resetPasteClipboard: () => { _lastClipboard = null; },
              endRectLike, endLineLike, I18N, applyTheme, editSelectedShapeKbd, Share,
              draw, drawOverlay, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; }, _setOCtx: (c) => { const p = octx; octx = c; return p; },
-             _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _ptsOK,
+             _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _ptsOK, _undoWire, 
              _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
              _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER,
              _getLang: () => LANG, _getT: () => T };
@@ -1597,7 +1597,7 @@ try {
           _onSwUpdate, _ctxMenuKeyNav,
           _getPasteCount, _resetPasteClipboard,
           endRectLike, endLineLike, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
-          _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _ptsOK,
+          _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _ptsOK, _undoWire, 
           _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER } = api;
 
@@ -3886,6 +3886,22 @@ try {
     const l2=wrapTextCached(ws,ws.text,40,10,t=>t.length*10);
     assert.ok(l1!==l2,'ADR-0437: spacing change invalidates wrap cache');
     console.log('  ✓ ADR-0435/0436/0437/0438 wire+validation guards (6 asserts)');
+    // ADR-0443: _undoWire maps each reversible op to fresh wire ops — add/del swap
+    // direction, upd-family swaps before/after, move negates, exotics stay local.
+    {
+      const uw=_undoWire;
+      assert.strictEqual(uw({op:'add',shape:{id:'a'}})[0].op,'del','add undoes to del');
+      assert.strictEqual(uw({op:'addMany',shapes:[{id:'a'},{id:'b'}]})[0].op,'del','addMany undoes to del');
+      const d=uw({op:'del',shapes:[{id:'a'}],connClears:[{id:'c',before:{a:'a'},after:{a:null}}]});
+      assert.strictEqual(d.length,2,'del undo emits addMany + conn restore');
+      assert.strictEqual(d[0].op,'addMany','del undoes to addMany');
+      assert.strictEqual(d[1].after.a,'a','connClears restores binding');
+      assert.strictEqual(uw({op:'move',ids:['a'],dx:5,dy:-3})[0].dx,-5,'move negates');
+      assert.strictEqual(uw({op:'upd',id:'a',before:{x:1},after:{x:2}})[0].after.x,1,'upd swaps before/after');
+      assert.strictEqual(uw({op:'group',ids:['a'],gid:'g'}),null,'group stays local-only');
+      assert.strictEqual(uw({op:'replace'}),null,'replace stays local-only');
+      console.log('  ✓ ADR-0443: undo-wire inverse-op mapping (9 asserts)');
+    }
   }
 
   // ADR-0070: quick-connect — edge-mid dots start a bound arrow draft
