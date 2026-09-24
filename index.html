@@ -788,7 +788,7 @@ const _selR=op=>{if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byI
 const _keepSel=arr=>{if(arr.length)state.history[state.histIdx].origSel=arr};   // ADR-0312
 
 // ====================== CONSTANTS ======================
-const V='1.7.365';
+const V='1.7.366';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2234,6 +2234,7 @@ function describeShape(s){
   d+=` @ ${Math.round(b.x)},${Math.round(b.y)}`;
   if(s.locked)d+=` ${t('ctxLock')}`;
   if(s.rotate)d+=` ${s.rotate}°`;
+  if(s.link)d+=' 🔗';   // ADR-0315: mirror the visual badge for SR users
   return d;
 }
 // ADR-0037: announce pointer-path selection changes — marquee, click/group select,

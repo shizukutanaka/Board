@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.366] - 2026-09-24
+
+### Added
+- `describeShape` の選択通知に 🔗 を付加し、リンクバッジを
+  スクリーンリーダーにも通知 (ADR-0315)
+
 ## [1.7.365] - 2026-09-24
 
 ### Added
