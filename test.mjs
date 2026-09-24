@@ -827,7 +827,7 @@ const checks = [
   ['drawio import maps align + fontStyle bitmask (ADR-0228)', html.includes("sty.align==='center'||sty.align==='right'")&&html.includes('_fs&4)s.under=1')&&html.includes("'align='+s.align")&&html.includes("fontStyle='+_fs")],
   ['excalidraw import restores groupIds → groupId (ADR-0229)', html.includes("e.groupIds[0]")&&html.includes('s.groupId=e.groupIds')],
   ['excalidraw import maps fillStyle/roundness/align/arrowheads (ADR-0230)', html.includes("e.fillStyle==='hachure'")&&html.includes("e.strokeSharpness==='round')o.r=8")&&html.includes("e.endArrowhead===null)s.head='none'")&&html.includes("style==='none')return")],
-  ['excalidraw export emits fstyle/arrowheads/image-flip (ADR-0231)', html.includes("'cross'?'cross-hatch':'solid'")&&html.includes("startArrowhead:s.start?(s.startHead||'arrow'):null")&&html.includes("scale:[s.flip&1?-1:1")&&html.includes("d.files[e.fileId]")],
+  ['excalidraw export emits fstyle/arrowheads/image-flip (ADR-0231)', html.includes("'cross'?'cross-hatch':'solid'")&&html.includes("startArrowhead:s.start?_excHead(s.startHead||'arrow'):null")&&html.includes("scale:[s.flip&1?-1:1")&&html.includes("d.files[e.fileId]")],
   ['clipboard mxfile XML routes to drawio import (ADR-0232)', html.includes('<mxfile[')&&html.includes('importDrawioText(s,wp)')],
   ['arrowhead cycle includes none (ADR-0233)', html.includes("['arrow','dot','bar','open','none']")],
   ['excalidraw label → bLabel container text round-trip (ADR-0234)', html.includes('{bLabel:1}')&&html.includes('e.bLabel){p.label=')],
@@ -9615,6 +9615,14 @@ try {
      assert.ok(!rt.some(s=>s.type==='text'&&s.text==='hi'),'round-trip: no orphan container text remains (ADR-0225)');
      assert.ok(rtb.label==='cap','round-trip: labelled box restores s.label via bLabel container text (ADR-0234)');
      assert.ok(!rt.some(s=>s.type==='text'&&s.text==='cap'),'round-trip: no orphan label text remains (ADR-0234)');}
+
+    // ADR-0338: excalidraw head enum mapping (open↔crowfoot etc.)
+    {const a2=excToShapes(scene)[3];a2.head='open';a2.start=1;a2.startHead='bar';
+     const el2=excScene([a2]).elements.find(e=>e.type==='arrow');
+     assert.ok(el2.endArrowhead==='crowfoot'&&el2.startArrowhead==='bar','export: open→crowfoot, bar→bar (ADR-0338)');
+     const rt2=excToShapes(JSON.stringify({type:'excalidraw',elements:[{...el2,endArrowhead:'crowfoot',startArrowhead:'crowfoot_one',startBinding:null,endBinding:null}]}));
+     const ra2=rt2.find(s=>s.type==='arrow');
+     assert.ok(ra2.head==='open'&&ra2.startHead==='open','import: crowfoot/crowfoot_one → open (ADR-0338)');}
 
     // ADR-0240: group children carry parent-relative coords in real drawio files.
     // ADR-0250: _dioInflate — real deflate-raw+base64 <diagram> payload round-trips

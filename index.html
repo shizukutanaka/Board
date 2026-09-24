@@ -794,7 +794,7 @@ const _fin=Number.isFinite;   // ADR-0334
 const _min=Math.min,_max=Math.max,_abs=Math.abs;   // ADR-0337
 
 // ====================== CONSTANTS ======================
-const V='1.7.388';
+const V='1.7.389';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6357,8 +6357,8 @@ function excScene(shapes){
           startBinding:s.a?{elementId:s.a,focus:s.aF?+(s.aF.fx*2-1).toFixed(2):0,gap:1}:null,   // ADR-0222: was s.bind1 (never set)
           endBinding:s.b?{elementId:s.b,focus:s.bF?+(s.bF.fx*2-1).toFixed(2):0,gap:1}:null,
           lastCommittedPoint:null,
-          startArrowhead:s.start?(s.startHead||'arrow'):null,                                       // ADR-0231
-          endArrowhead:s.type==='arrow'?(s.head&&s.head!=='arrow'?s.head:'arrow'):null,...(s.elbow?{elbowed:true}:{}),...(s.curve?{roundness:{type:2}}:{})}));   // ADR-0265/0317
+          startArrowhead:s.start?_excHead(s.startHead||'arrow'):null,                               // ADR-0231/0338
+          endArrowhead:s.type==='arrow'?_excHead(s.head&&s.head!=='arrow'?s.head:'arrow'):null,...(s.elbow?{elbowed:true}:{}),...(s.curve?{roundness:{type:2}}:{})}));   // ADR-0265/0317/0338
         if(s.label){const _lp=_connLabelXY(s),_tid=uid();els.push(_ct(s,_tid,s.label,true,null,{x:_lp.x-40,y:_lp.y-10,w:80,h:20}));els[els.length-2].boundElements=[{id:_tid,type:'text'}]}   // ADR-0266/0280
         break;}
       case'image':{
@@ -6424,6 +6424,10 @@ function _dioStyEmit(s,edge){
   if(s.locked)r+='editable=0;deletable=0;movable=0;'+(edge?'':'resizable=0;');   // ADR-0254/0282
   return r;
 }
+const _EXC_HEAD={open:'crowfoot',bar:'bar',dot:'dot',arrow:'arrow'};            // ADR-0338
+const _excHead=v=>_EXC_HEAD[v]||'arrow';
+const _UNEXC_HEAD={crowfoot:'open',crowfoot_one:'open',triangle:'arrow',triangle_outline:'open',diamond:'dot',diamond_outline:'dot'};
+const _unExcHead=v=>_UNEXC_HEAD[v]||v;   // bar/dot/arrow pass through
 function _dioSty(st){
   const o={};for(const kv of String(st||'').split(';')){const i=kv.indexOf('=');if(i>=0)o[kv.slice(0,i)]=kv.slice(i+1);else if(kv)o[kv]=1}
   return o;
@@ -6940,8 +6944,8 @@ function excToShapes(txt){
         if(e.elbowed)s.elbow=1;                                              // ADR-0265
         // ADR-0230: excalidraw arrowhead styles → head/start
         if(e.type==='arrow'){
-          if(e.endArrowhead===null)s.head='none';else if(e.endArrowhead&&e.endArrowhead!=='arrow')s.head=e.endArrowhead;
-          if(e.startArrowhead){s.start=1;if(e.startArrowhead!=='arrow')s.startHead=e.startArrowhead}   // ADR-0286/0294
+          if(e.endArrowhead===null)s.head='none';else if(e.endArrowhead&&e.endArrowhead!=='arrow')s.head=_unExcHead(e.endArrowhead);   // ADR-0338
+          if(e.startArrowhead){s.start=1;if(e.startArrowhead!=='arrow')s.startHead=_unExcHead(e.startArrowhead)}   // ADR-0286/0294/0338
         }
         break;
       }
