@@ -2,6 +2,15 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.478] - 2026-09-23
+
+### Fixed
+- undo/redo をピアへ伝搬 — `_undoWire` が可逆 op を wire 安全な逆 op に写像し
+  新しい peer 時計で broadcast (group/replace 等の非写像 op はローカルのみ) (ADR-0443)
+
+### Changed
+- `_forConn`/`_forTxt`/`_noSh`/`_rO`/`_midV` 集約 (~830B 回収)
+
 ## [1.7.477] - 2026-09-23
 
 ### Changed
