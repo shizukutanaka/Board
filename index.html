@@ -783,7 +783,7 @@ const _selAny=f=>[...state.selection].some(id=>{const s=byId(id);return s&&f(s)}
 const _forSel=f=>{for(const id of state.selection){const s=byId(id);if(s)f(s,id)}};   // ADR-0303
 
 // ====================== CONSTANTS ======================
-const V='1.7.355';
+const V='1.7.356';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -7245,7 +7245,7 @@ function buildSVG(shapes,paper){
         els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${fr}" fill="${s.fill||'rgba(248,250,252,0.6)'}" stroke="${clr}" stroke-width="${SZ||1.5}"${dA}${fa}${rT}/>`);   // ADR-0178
         const alF2=s.align||'left',txF=alF2==='right'?X+ox+W-6:alF2==='center'?X+ox+W/2:X+ox+6;   // ADR-0197
         const ancF=alF2==='right'?' text-anchor="end"':alF2==='center'?' text-anchor="middle"':'';
-        els.push(`<text x="${txF}" y="${Y+oy-4}" ${_svgFont(s,s.fontSize||12)} fill="${clr}"${ancF}${fa}${rT}>${_esc(s.label||'Frame')}</text>`);
+        els.push(`<text x="${txF}" y="${Y+oy-4}" ${_svgFont(s.bold?s:{...s,bold:true},s.fontSize||12)} fill="${clr}"${ancF}${fa}${rT}>${_esc(s.label||'Frame')}</text>`);
         break;}
       case 'sticky':{
         const r=Math.min(6,Math.abs(W)/6,Math.abs(H)/6);
