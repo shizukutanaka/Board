@@ -2,6 +2,15 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.287]
+
+### 修正
+- **excalidraw 装飾fidelity** (ADR-0230)。インポートで
+  hachure/cross-hatch→fstyle、roundness→r、textAlign→
+  align、endArrowhead→head、startArrowhead→start に
+  復元。ヘッドなし矢印 (`endArrowhead:null`) は新値
+  `head:'none'` で表現し両レンダラが描画を省略。
+
 ## [1.7.286]
 
 ### 修正
