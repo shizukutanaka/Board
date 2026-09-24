@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.539';
+const V='1.7.540';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2014,6 +2014,7 @@ const _rs=arr=>{state.shapes=arr;_iG();_pcC()}   // ADR-0493: wholesale board re
 const _shV=()=>_sh().filter(_sv);   // ADR-0494: visible-shape subset (6 sites)
 const _ulv=s=>!_lk(s)&&_sv(s);   // ADR-0496
 const _ul=s=>!_lk(s);   // ADR-0506
+const _cpT=p=>p.then(ok=>_tst(t(ok?'copied':'copyFailed'),ok?'ok':'warn'));   // ADR-0507
 const _hb=s=>s.w!=null;   // ADR-0501
 const _idOK=id=>_iS(id)&&_ln(id)<=64;   // ADR-0502: wire id cap (ADR-0485): unlocked+visible predicate (4 sites)
 const _idIdx=id=>_sh().findIndex(s=>s.id===id);   // ADR-0497: shape index by id (4 sites)
@@ -6327,7 +6328,7 @@ function copyPNG(shapes=_sh()){
 function copySVG(shapes=_sh()){
   const svg=buildSVG(shapes,_p());
   if(svg===null){_wT(_EM);return}
-  copyText(svg).then(ok=>_tst(t(ok?'copied':'copyFailed'),ok?'ok':'warn'));
+  _cpT(copyText(svg));
 }
 // ADR-0089: replace image bytes in place — same frame position/width, height
 // follows the new aspect. One style op so undo restores bytes AND geometry.
@@ -7196,8 +7197,7 @@ function importBoardText(txt,wp){
 // a file round-trip.
 function copyBoardJSON(shapes=_sh()){
   if(!_ln(shapes)){_wT(_EM);return}
-  copyText(_JS({v:V,docName:_dn(),shapes:roundShapesForExport(shapes)}))
-    .then(ok=>_tst(t(ok?'copied':'copyFailed'),ok?'ok':'warn'));
+  _cpT(copyText(_JS({v:V,docName:_dn(),shapes:roundShapesForExport(shapes)})));
 }
 function importExcFile(file,wp){
   if(_bigFile(file)){_wT(_IB);return}
@@ -8568,7 +8568,7 @@ const UI={
       has&&['ctxCopyStyle','⌥C',copyStyle],
       has&&_selAny(_ul)&&['ctxSetLink','',setSelLink],   // ADR-0304
       has&&_selAny(s=>s.link)&&['ctxOpenLink','',openSelLink],    // ADR-0304
-      has&&_selAny(s=>s.link)&&['ctxCopyLink','',()=>{const s=_selL(x=>x.link)[0];if(s)copyText(s.link).then(ok=>_tst(t(ok?'copied':'copyFailed'),ok?'ok':'warn'))}],   // ADR-0318
+      has&&_selAny(s=>s.link)&&['ctxCopyLink','',()=>{const s=_selL(x=>x.link)[0];if(s)_cpT(copyText(s.link))}],   // ADR-0318
       state.styleClipboard&&has&&['ctxPasteStyle','⌥V',pasteStyle],
       has&&_selConnL()&&['ctxElbow','',toggleElbow],
       has&&_selConnL()&&['ctxCurve','',toggleCurve],
