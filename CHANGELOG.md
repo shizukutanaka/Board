@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.402] - 2026-09-24
+
+### Fixed
+- .drawio 画像ラベル往復 — emit で `s.cap` を `value`+
+  `verticalAlign=bottom`、import で `shape=image` の label を
+  `s.cap` へ (従来は未描画の `s.label` に入り不可視化) (ADR-0352)
+
 ## [1.7.401] - 2026-09-24
 
 ### Added
