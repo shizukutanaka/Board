@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.176]
+
+### 追加
+- **矢印ヘッドスタイル** (ADR-0119)。ctx「矢印ヘッド」で矢印→丸→
+  シェブロンを巡回 (`s.head`、両端に適用)。canvas・SVG export 共通
+  ヘルパーで描画、`style` op で undo/同期。
+
 ## [1.7.175]
 
 ### 追加
