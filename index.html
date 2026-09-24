@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.161';
+const V='1.7.162';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -861,7 +861,7 @@ const I18N={
     confirmClear:'すべて削除しますか？',
     ctxCopy:'コピー',ctxPasteAt:'ここに貼り付け',ctxPaste:'貼り付け',ctxDuplicate:'複製',
     ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxCurve:'曲線',ctxRouteReset:'ルートをリセット (直線に戻す)',ctxFrameFit:'コンテンツに合わせる',ctxBothEnds:'両端ヘッド',ctxRrect:'角スタイル (角丸→直角)',ctxStickyColor:'付箋の色 (順送り)',ctxTextAlign:'テキスト揃え (左→中央→右)',ctxFillStyle:'塗りスタイル (塗り→ハッチ→斜格子)',
-    ctxWrapFrame:'フレームで包む',ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
+    ctxSelectSame:'同色を選択',ctxWrapFrame:'フレームで包む',ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
     ctxSendBackward:'背面へ',ctxSendBack:'最背面へ',
     ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxLock:'ロック',ctxUnlock:'ロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
     canvasHint:'描画キャンバス。Tab/⇧Tab で図形巡回、Enter で作成、矢印で移動、⌥+矢印でリサイズ',
@@ -937,7 +937,7 @@ const I18N={
     confirmClear:'Delete everything?',
     ctxCopy:'Copy',ctxPasteAt:'Paste here',ctxPaste:'Paste',ctxDuplicate:'Duplicate',
     ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxCurve:'Curved',ctxRouteReset:'Reset route (straighten)',ctxFrameFit:'Fit to contents',ctxBothEnds:'Arrowheads both ends',ctxRrect:'Corners (round→sharp)',ctxStickyColor:'Sticky colour (cycle)',ctxTextAlign:'Text align (left→center→right)',ctxFillStyle:'Fill style (solid→hatch→cross)',
-    ctxWrapFrame:'Frame selection',ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
+    ctxSelectSame:'Select same colour',ctxWrapFrame:'Frame selection',ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
     ctxSendBackward:'Send backward',ctxSendBack:'Send to back',
     ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxLock:'Lock',ctxUnlock:'Unlock',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
     canvasHint:'Drawing canvas. Tab/Shift+Tab cycles shapes, Enter creates, arrows move, Alt+arrows resize.',
@@ -5041,6 +5041,19 @@ function doSendBackward(){
   }
   _zCommit(changes);
 }
+// ADR-0104: select every shape sharing the picked shape's paint (Figma
+// "Select Same → Fill"). Sticky's paint lives in `color`; everything else in
+// `fill`. Locked shapes are included — ops already skip them.
+function selectSamePaint(){
+  const sel=[...state.selection].map(byId).filter(Boolean);
+  if(sel.length!==1)return;
+  const s0=sel[0],key=s0.type==='sticky'?s0.color:s0.fill;
+  const same=state.shapes.filter(s=>(s.type==='sticky'?s.color:s.fill)===key);
+  if(same.length<2)return;
+  state.selection=new Set(same.map(s=>s.id));
+  _announceSel();UI.toast(same.length+' '+t('selAllMatches'),'ok');
+  invalidate();
+}
 // ADR-0102: wrap the selection in a frame (Figma ⌘⌥G). Spatial membership is
 // automatic — the frame simply covers the union bbox + padding; z is tucked
 // just below the lowest member so contents stay on top.
@@ -6896,6 +6909,7 @@ const UI={
       has&&['ctxDelete','⌫',doDelete],
       has&&'sep',
       has&&['ctxWrapFrame','⌘⌥G',wrapInFrame],
+      has&&state.selection.size===1&&['ctxSelectSame','',selectSamePaint],
       has&&state.selection.size>1&&['ctxGroup','⌘G',doGroup],
       has&&[...state.selection].some(id=>byId(id)?.groupId)&&['ctxUngroup','⌘⇧G',doUngroup],
       has&&'sep',

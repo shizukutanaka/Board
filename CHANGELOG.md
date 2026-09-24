@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.162]
+
+### 追加
+- **同色を選択** (ADR-0104)。単一選択時の ctx メニュー「同色を選択」で
+  同じ paint (sticky=color、その他=fill) を持つ全形状を選択
+  (Figma Select Same parity、ロック含む、件数トースト)。
+
 ## [1.7.161]
 
 ### 追加
