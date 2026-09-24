@@ -852,7 +852,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.503';
+const V='1.7.504';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -5821,6 +5821,7 @@ function doDelete(){
 function _zCommit(changes){
   changes=changes.filter(c=>c.before!==c.after);   // keep only real key moves
   if(!_ln(changes)){_iv();return}
+  if(changes.some(c=>_ln(c.after)>48)){const o=_sh().map(s=>s.frac);reindexFrac();changes=_sh().map((s,i)=>({id:s.id,before:o[i],after:s.frac}))}   // ADR-0471
   _sz();
   _rcOp({op:'zorder',changes});
   _ivp();
@@ -5828,10 +5829,11 @@ function _zCommit(changes){
 // Shared by doBringFront/doSendBack/doBringForward/doSendBackward: locked shapes never
 // take part in a z-order op (parity with doDelete/doGroup excluding locked shapes).
 function unlockedSelectionIds(){return _selIds().filter(id=>!byId(id)?.locked);}
+function _zSelShapes(){const ids=_usI(),sel=_sT(ids);return[sel,_ln(ids)?_sh().filter(s=>sel.has(s.id)):[]]}
 function doBringFront(){
   const ids=_usI();if(!_ln(ids))return;
   _sz();
-  const sel=_sT(ids), selShapes=_sh().filter(s=>sel.has(s.id));
+  const[sel,selShapes]=_zSelShapes();
   if(!_ln(selShapes))return;
   const n=_nS(), k=_ln(selShapes);
   if(_sh().slice(n-k).every(s=>sel.has(s.id))){_iv();return}  // already at front: no churn
@@ -5846,7 +5848,7 @@ function doBringFront(){
 function doSendBack(){
   const ids=_usI();if(!_ln(ids))return;
   _sz();
-  const sel=_sT(ids), selShapes=_sh().filter(s=>sel.has(s.id));
+  const[sel,selShapes]=_zSelShapes();
   if(!_ln(selShapes))return;
   if(_sh().slice(0,_ln(selShapes)).every(s=>sel.has(s.id))){_iv();return}  // already at back
   const others=_sh().filter(s=>!sel.has(s.id));
@@ -7620,11 +7622,11 @@ const Net={
   _onConnChange:null,         // UI callback
   _rtcPeerId:null,            // synthetic peer id for the WebRTC link (lifecycle-managed)
   init(roomId){
-    if(this.bc){try{this._send({k:'bye',peer:_pi()});this.bc.close()}catch(_){}}   // ADR-0458: bye on the old channel before it's gone
+    if(this.bc){try{this._send({k:'bye',peer:_pi()});this.bc.close()}catch(_){}}   // ADR-0458
     // ADR-0458: drop old-room presence (RTC entries survive — no channel close)
-    _sO().clear();_cT(this._snapT);this._snapT=0;this._lastSnapAt=0;   // ADR-0459: dedup table + deferred resend must not bleed across rooms
-    this._imgSent.clear();this._imgChunks.clear();this._imgOuts.length=0;this._snapIn=null;this._opcIn=null;   // ADR-0464/0466: img blobs + inbound assemblies are per-room — stale partials could splice old-room chunks into the new stream
-    for(const id of _pr().keys())if(!id.startsWith('rtc:'))_pr().delete(id);this._pCt=_pr().size;_ivO();   // ADR-0467: re-baseline SR delta tracker
+    _sO().clear();_cT(this._snapT);this._snapT=0;this._lastSnapAt=0;   // ADR-0459
+    this._imgSent.clear();this._imgChunks.clear();this._imgOuts.length=0;this._snapIn=null;this._opcIn=null;   // ADR-0464/0466
+    for(const id of _pr().keys())if(!id.startsWith('rtc:'))_pr().delete(id);this._pCt=_pr().size;_ivO();   // ADR-0467
     clearInterval(this._presenceTimer);   // re-init (room switch) must not leak the old heartbeat
     state.roomId=roomId||DOC_KEY;
     if(typeof BroadcastChannel===_un)return;     // not supported
@@ -7915,7 +7917,7 @@ const Net={
     this._lastSnapAt=now;
     this._send(this._snapshotMsg());
   },
-  _loResp(pk){   // ADR-0465: lowest-id BC peer excluding the asker
+  _loResp(pk){   // ADR-0465
     return ![..._pr().keys()].some(k=>k!==this._rtcPeerId&&k!==pk&&k<_pi())
   },
   _applySnapshot(msg){

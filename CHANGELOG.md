@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.504] - 2026-09-23
+
+### 修正
+
+- `_zCommit` で frac キー >48 文字で canonical 再採番 (`reindexFrac`) — 深い挿入によるキー増大がリモートの 600 文字 validPatch キャップで静かに棄却され発散する経路を閉塞 (ADR-0471)。doBringFront/doSendBack の共有プリアンブルも `_zSelShapes` に集約
+
 ## [1.7.503] - 2026-09-23
 
 ### 変更
