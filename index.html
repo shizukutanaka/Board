@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.280';
+const V='1.7.281';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6297,7 +6297,7 @@ function excScene(shapes){
   for(const s of shapes){
     switch(s.type){
       case'rect':case'ellipse':case'diamond':
-        els.push(E(s,{type:s.type,x:s.x,y:s.y,width:s.w||0,height:s.h||0,
+        els.push(E(s,{type:s.type==='rect'?'rectangle':s.type,x:s.x,y:s.y,width:s.w||0,height:s.h||0,   // ADR-0223: excalidraw type is 'rectangle' not 'rect'
           roundness:s.r?{type:3}:null}));break;
       case'frame':
         els.push(E(s,{type:'frame',x:s.x,y:s.y,width:s.w||0,height:s.h||0,name:s.label||'Frame'}));break;
@@ -6407,6 +6407,12 @@ function drawioToShapes(txt){
     if(sa){const bs=shapes.find(s2=>s2.id===sa),bb=bs&&G.bbox(bs);if(bb){x1=bb.x+bb.w/2;y1=bb.y+bb.h/2}}
     if(sb){const bs=shapes.find(s2=>s2.id===sb),bb=bs&&G.bbox(bs);if(bb){x2=bb.x+bb.w/2;y2=bb.y+bb.h/2}}
     const s=Shape.make('arrow',{x1,y1,x2,y2,a:sa,b:sb});
+    // ADR-0224: fidelity — a drawn line (endArrow=none) stays a line, a head
+    // at the source end maps to s.start, curved/jump keep their route flags
+    if(sty.endArrow==='none')s.type='line';
+    else if(sty.startArrow&&sty.startArrow!=='none')s.start=1;
+    if(sty.curved==='1')s.curve=1;
+    if(sty.jumpStyle&&sty.jumpStyle!=='none')s.hop=1;
     const pts=g?[...g.querySelectorAll('Array mxPoint')]:[];
     if(pts.length)s.way=pts.slice(0,200).map(p=>[+p.getAttribute('x')||0,+p.getAttribute('y')||0]);
     if(/orthogonal|elbow/i.test(String(sty.edgeStyle||'')))s.elbow=1;
@@ -6700,7 +6706,7 @@ function excToShapes(txt){
   let d;
   try{d=JSON.parse(txt)}catch(_){return null}
   if(!d||d.type!=='excalidraw'||!Array.isArray(d.elements))return null;
-  const shapes=[];
+  const shapes=[],_excBnd=[],idOf=new Map();   // ADR-0223: bindings resolve post-walk
   const st=e=>{
     const o={};
     const sc=typeof e.strokeColor==='string'&&e.strokeColor!=='transparent'?e.strokeColor:null;
@@ -6746,7 +6752,17 @@ function excToShapes(txt){
       }
       default:break;   // image (needs files ref), unknown — skip
     }
-    if(s){if(r&&s.w!=null)s.rotate=r;Object.assign(s,S);shapes.push(s)}
+    if(s){if(r&&s.w!=null)s.rotate=r;Object.assign(s,S);shapes.push(s);
+      // ADR-0223: line/arrow keep a back-ref to their exc element so
+      // start/endBinding (element ids) can resolve after every vertex exists
+      if(s.type==='line'||s.type==='arrow')_excBnd.push([s,e]);
+      if(e.id)idOf.set(e.id,s.id)}
+  }
+  for(const [s,e] of _excBnd){
+    const sb=e.startBinding,eb=e.endBinding;
+    const a=sb&&sb.elementId?idOf.get(sb.elementId):null;
+    const b=eb&&eb.elementId?idOf.get(eb.elementId):null;
+    if(a)s.a=a;if(b)s.b=b;
   }
   return shapes;
 }

@@ -2,6 +2,16 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.281]
+
+### 修正
+- **excalidraw 往復** (ADR-0223)。import が `start/endBinding`
+  を `s.a/s.b` に復元 + export が rect を正しい型名
+  `rectangle` で出力 (従来は往復で矩形が消失)。
+- **drawio import fidelity** (ADR-0224)。`endArrow=none`→
+  直線、`startArrow`→始点ヘッド、`curved`/`jumpStyle` を
+  フラグにマップ — エッジが往復保存される。
+
 ## [1.7.280]
 
 ### 修正

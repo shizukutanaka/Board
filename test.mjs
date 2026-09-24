@@ -721,6 +721,8 @@ const checks = [
   ['.drawio export mxGraphModel round-trip (ADR-0220)', html.includes('function boardToDrawio(shapes)')&&html.includes('edgeStyle=orthogonalEdgeStyle')&&html.includes("jumpStyle=arc")],
   ['drawio exitX/entryX fixed ports round-trip aF/bF (ADR-0221)', html.includes('s.aF={fx:Math.min(1,Math.max(0,fx)),fy')&&html.includes('exitX=${s.aF.fx};exitY=${s.aF.fy}')],
   ['excalidraw export keeps bindings via s.a/s.b + boundElements (ADR-0222)', html.includes('startBinding:s.a?{elementId:s.a')&&html.includes('e.boundElements=be.map')],
+  ['excalidraw import restores bindings to s.a/s.b (ADR-0223)', html.includes('_excBnd.push([s,e])')&&html.includes('idOf.get(sb.elementId)')],
+  ['drawio import keeps line-vs-arrow/curved/jump/start-head (ADR-0224)', html.includes("sty.endArrow==='none'")&&html.includes('s.hop=1')],
   ['endpoint drag Shift constrains to 45 deg + label editor fontSize (ADR-0206)', html.includes("constrain the free end to 45")&&html.includes("${hit.fontSize||12}px")],
   ['i18n has excImported ja+en', html.includes("excImported:'Excalidraw を取り込みました'") && html.includes("excImported:'Excalidraw imported'")],
   // v1.7.102: ADR-0044 text paste → text shape
@@ -9489,7 +9491,9 @@ try {
      assert.ok(sc.files['fim1'].dataURL.startsWith('data:image'),'export: image file entry');
      const rt=excToShapes(JSON.stringify(sc));
      const rta=rt.find(s=>s.type==='arrow');
-     assert.ok(rta&&rta.way&&rta.way.length===1,'round-trip: way survives import (ADR-0097)');}
+     assert.ok(rta&&rta.way&&rta.way.length===1,'round-trip: way survives import (ADR-0097)');
+     const rtb=rt.find(s=>s.type==='rect');
+     assert.ok(rta.b&&rtb&&rta.b===rtb.id,'round-trip: endBinding restored to s.b pointing at the imported box (ADR-0222/0223)');}
     console.log('  ✓ excalidraw import (element mapping, styles, tombstones, reject paths)');
   }
 
