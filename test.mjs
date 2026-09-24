@@ -461,6 +461,7 @@ const checks = [
   ['multi-waypoint: way is an array; insert/move/delete via wayIdx+wayNew', html.includes('function _wayArr(s)')&&html.includes('ptr.wayIdx')&&html.includes('wa.splice(i,0,snapPt(wp))')],
   ['search select-all: ⌘Enter selects every match', html.includes('ev.metaKey||ev.ctrlKey')&&html.includes('state.selection=new Set(ms.map')&&html.includes('selAllMatches')],
   ['rect corners: s.r override + ctx menu + SVG rx', html.includes('s.r!=null?s.r:8')&&html.includes('toggleRound')&&html.includes('ctxRrect')&&html.includes('rx="${r}"')],
+  ['shift+wheel → horizontal pan', html.includes('const dx=e.shiftKey&&!d.x?d.y:d.x')],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
