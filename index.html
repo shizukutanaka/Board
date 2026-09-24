@@ -3835,7 +3835,7 @@ canvas.addEventListener('pointerdown',e=>{
         const ext=_styleOf(hit);
         // ADR-0185: eyedropper also absorbs every persisted look-prop so the
         // next shape carries the picked style (Figma eyedropper parity).
-        for(const k of['stroke','fill','size','opacity','dash','font','head','start','elbow','curve','hop','r','fstyle','align','valign','fontSize','lineH','cbend','spacing','shadow'])state.style[k]=ext[k];
+        for(const k of['stroke','fill','size','opacity','dash','font','head','start','startHead','elbow','curve','hop','r','fstyle','align','valign','fontSize','lineH','cbend','spacing','shadow'])state.style[k]=ext[k];
         state.styleClipboard=ext;                   // ⌥V applies it to the selection too
         UI.toast(t('eyedropDone'),'ok');UI.announce(t('eyedropDone'));
       }
