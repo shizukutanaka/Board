@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.288';
+const V='1.7.289';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4319,6 +4319,13 @@ window.addEventListener('paste',e=>{
       if(/^\s*\{/.test(s)&&/"type"\s*:\s*"excalidraw"/.test(s.slice(0,4096))){
         e.preventDefault();
         if(importExcText(s)!==false)return;
+      }
+      // ADR-0232: drawio's copy puts uncompressed <mxfile> XML on the clipboard —
+      // route it to the drawio importer instead of the text-shape fallback.
+      if(/<mxfile[\s>]/.test(s.slice(0,4096))){
+        e.preventDefault();
+        const wp=G.s2w({x:canvas.getBoundingClientRect().width/2,y:canvas.getBoundingClientRect().height/2});
+        if(importDrawioText(s,wp)!==false)return;
       }
       // ADR-0044: any other non-empty text pastes in as a text shape — editors,
       // browsers, chat logs, markdown-as-plain-text all land on the board.

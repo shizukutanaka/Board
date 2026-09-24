@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.289]
+
+### 追加
+- **クリップボード mxfile 受付** (ADR-0232)。drawio で
+  ⌘C した図形 (非圧縮 `<mxfile>` XML) をペーストで
+  drawio インポートへルーティング — 従来はテキスト
+  図形に落ちていた。
+
 ## [1.7.288]
 
 ### 修正
