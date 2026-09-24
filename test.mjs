@@ -530,7 +530,7 @@ const checks = [
   ['gresize scales curve cbend affinely', html.includes('sh.cbend=orig.cbend*sx*sy*ol/nl')],
   ['snap index skips hidden shapes', html.includes('exclFn(s)||_hd(s)')],
   ['DOM mirror marks hidden shapes', html.includes("tagHidden:'(非表示)'")&&html.includes("_hd(s)||_oP(s)===0?' '+t('tagHidden')")],
-  ['fit ignores hidden unless all hidden', html.includes('const vis=_sh().filter(s=>_sv(s))')&&html.includes('_ln(_vis)?_vis:_sh()')],
+  ['fit ignores hidden unless all hidden', html.includes('const vis=_shV()')&&html.includes('_ln(_vis)?_vis:_sh()')],
   ['rounded diamond path + cycle + ctx', html.includes('function _diamondPath(c,s)')&&html.includes("const boxOk=_RDI.has(s.type)")&&html.includes("((_RDI.has(s.type))||((_conn(s.type))&&_el(s)))")],
   ['SVG diamond emits rounded path when r>0', html.includes('const _dPts=[[X+W/2,Y],[X+W,Y+H/2]')&&html.includes("_min(_dr,e1/2,e2/2)")],
   ['unbind-selection ctx item + fn', html.includes("ctxUnbind:'結合を解除'")&&html.includes('function unbindSelection()')&&html.includes("['ctxUnbind','',unbindSelection]")],
