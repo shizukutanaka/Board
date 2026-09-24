@@ -2,6 +2,15 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.286]
+
+### 修正
+- **excalidraw groupIds 往復** (ADR-0229)。インポートで
+  `groupIds[0]` を `groupId` に復元 (ネストは最外へ
+  平坦化) — エクスポートしたグループが取込時に保持。
+- container text の `angle` を親 rect の回転に揃えた
+  (回転した付箋が本物の excalidraw で正しく表示)。
+
 ## [1.7.285]
 
 ### 修正

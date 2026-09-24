@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.285';
+const V='1.7.286';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6313,7 +6313,7 @@ function excScene(shapes){
           width:Math.abs(s.w)-8,height:Math.abs(s.h)-8,text:s.text,originalText:s.text,
           fontSize:s.fontSize||14,textAlign:s.align||'center',verticalAlign:'middle',lineHeight:1.25,baseline:0,
           strokeColor:'#1e1e1e',backgroundColor:'transparent',fillStyle:'solid',strokeWidth:1,strokeStyle:'solid',
-          roughness:0,opacity:100,angle:0,seed:0,version:1,versionNonce:0,isDeleted:false,
+          roughness:0,opacity:100,angle:(s.rotate||0)*Math.PI/180,seed:0,version:1,versionNonce:0,isDeleted:false,
           containerId:s.id,boundElements:null,updated:0,link:null,locked:false,groupIds:gids[s.id]||[]});}
         break;}
       case'text':
@@ -6776,7 +6776,10 @@ function excToShapes(txt){
       // start/endBinding (element ids) can resolve after every vertex exists
       if(s.type==='line'||s.type==='arrow')_excBnd.push([s,e]);
       if(e.id)idOf.set(e.id,s.id);
-      if(s.type==='text'&&e.containerId)_excTxt.set(s.id,e.containerId)}
+      if(s.type==='text'&&e.containerId)_excTxt.set(s.id,e.containerId);
+      // ADR-0229: excalidraw groupIds → Board groupId (nested groups flatten
+      // to the outermost — Board models one group level)
+      if(Array.isArray(e.groupIds)&&e.groupIds.length)s.groupId=e.groupIds[0]}
   }
   // ADR-0225: container text folds back into its rect → the sticky it was
   // exported from. Parent kept when it carries a label of its own.
