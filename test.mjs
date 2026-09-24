@@ -430,6 +430,21 @@ const checks = [
   ['moveAxis i18n ja+en + help row', html.includes("moveAxis:'軸拘束移動'")&&html.includes("moveAxis:'Constrain move axis'")&&html.includes("['⇧ + drag',k.moveAxis]")],
   // v1.7.125: ADR-0067 per-type edge projection
   ['edge projection: diamond/ellipse contour formula', html.includes("sh.type==='diamond'?1/((Math.abs(dx)/(_rx||1e-6))")&&html.includes("sh.type==='ellipse'?1/(Math.hypot(dx/(_rx||1e-6),dy/(_ry||1e-6))||1e-6)")],
+  // v1.7.126: ADR-0068 curved connector
+  ['curve route: quadratic draw + sampled hit + svg path', html.includes('c.quadraticCurveTo(cc.x,cc.y,e.x2,e.y2)')&&html.includes('const pts=_curveSegs(s);')&&html.includes('Q ${_num(cc.x+ox)}')],
+  ['curve ctx menu + i18n + exclusive toggle', html.includes("['ctxCurve','',toggleCurve]")&&html.includes("ctxCurve:'曲線'")&&html.includes("ctxCurve:'Curved'")&&html.includes('elbow:s.elbow?0:1,curve:0')],
+  // v1.7.127: ADR-0069 wire-level image refs
+  ['img wire refs: slim op + 64KB chunk msgs + snapshot re-emit', html.includes("this._slimOp(op);this._flushImgOuts()")&&html.includes('k:\'img\',key,seq:i,n,data:d.slice')&&html.includes('this._slimShapes(ops.map(o=>o.shape),new Map())')],
+  ['img inbound: chunk reassembly + pending drain + attach paths', html.includes("this._imgChunks.get(msg.key)")&&html.includes("delete sh.img;sh.dataUrl=data")&&html.includes('op=this._attachOp(op)')&&html.includes('const op=this._attachOp(msg.op)')],
+  // v1.7.128: ADR-0070 quick-connect
+  ['qconn: hover dots + _qdotAt + qline→endLineLike', html.includes('function _qconnShape()')&&html.includes("ptr.dragKind='qline';")&&html.includes("else if(ptr.dragKind==='qline')")&&html.includes('invalidateOverlay()}   // ADR-0070')],
+  // v1.7.129: ADR-0071 equal-gap snap
+  ['eqGap snap: same-row gaps → candidate slots + edge-snap priority', html.includes('function _eqGapSnap(mov,excl,tol)')&&html.includes('for(const cand of[a[L]-g-mov[D], b[L]+b[D]+g, a[L]+a[D]+g, b[L]-g-mov[D]])')&&html.includes('const eq=_eqGapSnap(mov,excl')],
+  ['elbow bend: s.bend two-corner route + trunk hit + ebend dragKind', html.includes('if(s.bend){')&&html.includes('function _elbowTrunk(s)')&&html.includes("ptr.dragKind='ebend'")&&html.includes('ptr.ebendOrig=clone(onlySel)')],
+  ['text align: align prop cycles + canvas/SVG/editor respect it', html.includes('function cycleTextAlign()')&&html.includes("['ctxTextAlign','',cycleTextAlign]")&&html.includes('c.textAlign=s.align')&&html.includes('text-anchor')],
+  ['box label wrap: canvas wraps to w-8 + SVG multi-tspan centred', html.includes('wrapTextCached(s,s.label,Math.max(10,s.w-8)')&&html.includes('function _svgBoxLabel(els,s,X,Y,W,H')&&html.includes('wrapText(s.label')],
+  ['font size keys: ⌘⇧,/. steps fontSize ±2 clamped 8..64', html.includes('function fontSizeStep(d)')&&html.includes("k===','||k==='<'")&&html.includes('Math.min(64,Math.max(8')],
+  ['waypoint: _linePts + way drag + transforms + SVG polyline', html.includes('function _linePts(s)')&&html.includes("ptr.dragKind='way'")&&html.includes('s.way?')&&html.includes('if(orig.way)sh.way=')],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
@@ -627,7 +642,7 @@ const checks = [
   // v1.6.58: rect/ellipse centre labels - dblclick to set, rendered centred, SVG export
   ['rect/ellipse label rendered centred in canvas', html.includes("_drawBoxLabel(s,c);break;") && html.includes("c.textAlign='center'")],
   ['dblclick label editor handles rect and ellipse', html.includes("hit.type==='frame'||hit.type==='rect'||hit.type==='ellipse'") && html.includes("getCSS(bold?'--accent-contrast':'--ink')")],
-  ['SVG export emits label for rect', html.includes("if(s.label)els.push") && html.includes("text-anchor=\"middle\"")],
+  ['SVG export emits label for rect', html.includes("if(s.label)_svgBoxLabel(") && html.includes("text-anchor=\"middle\"")],
   // v1.6.59: laser pointer (presentation) + shape lock
   ['laser pointer state + presentation intercept', html.includes("let _laser=null") && html.includes("if(Presentation.isActive()){_laser=wp")],
   ['laser dot drawn during presentation', html.includes("_laser&&Presentation.isActive()") && html.includes("rgba(255,50,50,.75)")],
@@ -644,8 +659,8 @@ const checks = [
   ['Tab cycling excludes locked shapes (filter before cycleSel)', html.includes("const ids=state.shapes.filter(s=>!s.locked).map(s=>s.id)")],
   // v1.6.60: bound connectors - arrow/line endpoints follow bound shapes
   ['connEnds helper derives bound endpoints', html.includes("function connEnds") && html.includes("function _edgePt")],
-  ['G.bbox line uses connEnds', html.includes("const e=connEnds(s);\n      const x=Math.min(e.x1,e.x2)")],
-  ['G.hit line uses connEnds', html.includes("const e=connEnds(s);\n        return distToSeg")],
+  ['G.bbox line uses connEnds', html.includes("const e=connEnds(s);\n      const x=Math.min(e.x1,e.x2,s.way")],
+  ['G.hit line uses connEnds', html.includes("const pts=_linePts(s);")],
   ['drawArrow uses connEnds', html.includes("function drawArrow(s,c){\n  c=c||ctx;\n  const e=connEnds(s);")],
   ['endLineLike binds endpoints dropped on a shape', html.includes("const ba=_bindAt(d.x1,d.y1),bb=_bindAt(d.x2,d.y2)") && html.includes("function _bindAt")],
   ['connector endpoints always expose resize handles (ADR-0065 rebind)', html.includes("h.push({id:'p1',x:e.x1,y:e.y1});       // ADR-0065") && html.includes("h.push({id:'p2',x:e.x2,y:e.y2});")],
@@ -690,7 +705,7 @@ const checks = [
   // v1.6.65: budget removed - deferred fixes implemented
   ['_edgePt is rotation-aware (projects to true rotated edge)', html.includes("const ub=sh.w!=null?{x:sh.x,y:sh.y,w:sh.w,h:sh.h}:G.bbox(sh)") && html.includes("const cx=ub.x+ub.w/2,cy=ub.y+ub.h/2,rot=sh.rotate")],
   ['rotation extends to all box types (text bbox uses envelope)', !html.includes("if(s.type==='text'){\n      return{x:s.x,y:s.y,w:s.w,h:s.h};")],
-  ['SVG rotation applies to text/image/sticky/frame', html.includes("font-size=\"${fs}\" fill=\"${stroke}\"${a}${rT}>") && html.includes("href=\"${_esc(s.dataUrl)}\"${a}${rT}/>")],
+  ['SVG rotation applies to text/image/sticky/frame', html.includes("font-size=\"${fs}\" fill=\"${stroke}\"${anch}${a}${rT}>") && html.includes("href=\"${_esc(s.dataUrl)}\"${a}${rT}/>")],
   ['minimap applies rotation transform', html.includes("const _mr=s.rotate&&s.w!=null;") && html.includes("if(_mr)sx.restore();")],
   ['minimap renders frame shapes (case frame fallthrough to rect)', html.includes("case 'frame':\n        case 'rect':")],
   ['describeShape announces locked and rotated state', html.includes("if(s.locked)d+=` ${t('ctxLock')}`;") && html.includes("if(s.rotate)d+=` ${s.rotate}°`;")],
@@ -869,7 +884,7 @@ const checks = [
   ['text editor finalize syncs typed content (non-empty isNew)', html.includes("_syncTextFinalize(s,origText,false);")],
   ['text editor finalize syncs removal (empty isNew)', html.includes("_syncTextFinalize(s,origText,true);")],
   // v1.6.88: rect/ellipse labels render on canvas (parity with SVG export + dblclick feature)
-  ['_drawBoxLabel helper present', html.includes("function _drawBoxLabel(s,c)") && html.includes("c.fillText(s.label,s.x+s.w/2,s.y+s.h/2)")],
+  ['_drawBoxLabel helper present', html.includes("function _drawBoxLabel(s,c)") && html.includes("wrapTextCached(s,s.label")],
   ['rect case renders label', html.includes("if(s.stroke){c.stroke()}\n      _drawBoxLabel(s,c);break;\n    case 'ellipse':")],
   ['ellipse case renders label', /case 'ellipse':[\s\S]{0,200}_drawBoxLabel\(s,c\);break;/.test(html)],
   // v1.6.89: colour picker coalesces (one undo/sync op per pick, like the sliders)
@@ -1074,7 +1089,7 @@ const checks = [
     html.includes("REMOTE_OPS:new Set(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize'])")],
   // v1.7.48: _applySnapshot caps shape count at MAX_OP_SHAPES
   ['_applySnapshot: MAX_OP_SHAPES cap on snapshot shapes (DoS guard)',
-    html.includes("const valid=shapes.slice(0,MAX_OP_SHAPES).filter(validShape);")],
+    html.includes("const valid=shapes.slice(0,MAX_OP_SHAPES).map(s=>this._attachShape(s)).filter(validShape);")],
   // v1.7.48: sticky shadow set before fill (renders correctly)
   ['sticky note shadow set before fill (not after)',
     html.includes("c.shadowColor='rgba(0,0,0,.08)';c.shadowBlur=8;c.shadowOffsetY=2;\n      c.beginPath();roundRect(")],
@@ -1124,7 +1139,7 @@ const checks = [
   // Shape-drawing DEFAULT colors (new frame/sticky stroke fallbacks) are deliberately left
   // on raw --brand: that's a style choice, not an accessibility-critical indicator.
   ["canvas UI-indicator strokes (selection/guides/marquee/rotation-tether/minimap-viewport) use --accent-contrast",
-    (html.match(/getCSS\('--accent-contrast'\)/g)||[]).length===7 &&
+    (html.match(/getCSS\('--accent-contrast'\)/g)||[]).length===8 &&
     (html.match(/getCSS\('--brand'\)/g)||[]).length===5],
   ['frame label editor text color uses --accent-contrast (real text, needs the 4.5:1 floor too)',
     html.includes("getCSS(bold?'--accent-contrast':'--ink')")],
@@ -1262,7 +1277,7 @@ try {
              doAlign, doFlip, snapV, snapPt,
              getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
-             copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts,
+             copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, toggleCurve, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
              _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa: () => _teTa, zoomAt,
@@ -1274,7 +1289,7 @@ try {
              endRectLike, endLineLike, I18N, applyTheme, editSelectedShapeKbd, Share,
              draw, drawOverlay, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; }, _setOCtx: (c) => { const p = octx; octx = c; return p; },
              _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg,
-             _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText,
+             _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText,
              _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER,
              _getLang: () => LANG, _getT: () => T };
   `);
@@ -1289,7 +1304,7 @@ try {
           doAlign, doFlip, snapV, snapPt,
           getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
-          copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts,
+          copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, toggleCurve, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
           _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa, zoomAt,
@@ -1300,7 +1315,7 @@ try {
           _getPasteCount, _resetPasteClipboard,
           endRectLike, endLineLike, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
           _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg,
-          _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgMMul, _svgMPt, svgToShapes, excToShapes,
+          _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes,
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER } = api;
 
   console.log('\n-- behavioural --');
@@ -3356,6 +3371,163 @@ try {
     assert.ok(Math.abs(m-1)<0.01,'arrow lands on ellipse contour');
     Store.commit({op:'del',shapes:[d,e,a1,a2].map(s=>JSON.parse(JSON.stringify(s)))});
     console.log('  ✓ edge projection: diamond/ellipse true contour (2 asserts)');
+  }
+
+  // ADR-0068: curved connector — quadratic route, exclusive toggle, undo
+  {
+    const a=Shape.make('arrow',{x1:0,y1:0,x2:100,y2:0});
+    Store.commit({op:'add',shape:a});
+    state.selection.clear();state.selection.add(a.id);
+    const live=byId(a.id);
+    toggleCurve();
+    assert.ok(live.curve===1&&live.elbow===0,'curve on');
+    const cc=_curveCtrl({x1:0,y1:0,x2:100,y2:0});
+    assert.ok(Math.abs(cc.x-50)<1e-9&&Math.abs(cc.y-25)<1e-9,'ctrl = midpoint + normal*bend');
+    const segs=_curveSegs(live);
+    assert.ok(segs.length===17&&Math.abs(segs[0].x)<1e-9&&Math.abs(segs[16].x-100)<1e-9,'16-seg sampling endpoints');
+    toggleElbow();
+    assert.ok(live.elbow===1&&live.curve===0,'elbow clears curve (exclusive)');
+    toggleCurve();
+    Store.undo();assert.ok(byId(a.id).curve===0,'undo clears curve');
+    Store.redo();assert.ok(byId(a.id).curve===1,'redo restores curve');
+    Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(byId(a.id)))]});
+    state.selection.clear();
+    console.log('  ✓ curved connector: ctrl math + sampling + exclusive toggle + undo (6 asserts)');
+  }
+
+  // ADR-0069: wire image refs — slim → chunks → attach/pending round-trip
+  {
+    const big='data:image/png;base64,'+'A'.repeat(200);
+    const sh=Shape.make('image',{x:0,y:0,w:50,h:50,dataUrl:big});
+    const op={op:'add',shape:sh,clock:{peer:'p1',seq:1}};
+    const slim=Net._slimOp(op);
+    assert.ok(slim.shape.img&&!slim.shape.dataUrl&&Net._imgOuts.length===1,'op slimmed + blob queued');
+    Net._slimShapes([sh]);
+    assert.ok(Net._imgOuts.length===1,'cumulative _imgSent dedups');
+    Net._slimShapes([sh],new Map());
+    assert.ok(Net._imgOuts.length===2,'fresh map re-emits (snapshot path)');
+    Net._imgOuts=[];
+    Net._imgIn.set(slim.shape.img,big);
+    const att=Net._attachOp(slim);
+    assert.ok(att.shape.dataUrl===big&&!att.shape.img,'attach resolves dataUrl');
+    const miss={op:'add',shape:{id:'zz',type:'image',img:'kX',x:0,y:0,w:1,h:1}};
+    Net._attachOp(miss);
+    assert.ok(Net._imgPending.get('zz')==='kX','missing blob parks');
+    Net._onRecv({k:'img',key:'kX',seq:0,n:1,data:'DATA'},false);
+    assert.ok(Net._imgIn.get('kX')==='DATA','chunk reassembles into _imgIn');
+    assert.ok(!Net._imgPending.has('zz'),'pending drained on blob arrival');
+    console.log('  ✓ wire image refs: slim/dedup/re-emit/attach/pending (7 asserts)');
+  }
+
+  // ADR-0070: quick-connect — edge-mid dots start a bound arrow draft
+  {
+    const r=Shape.make('rect',{x:0,y:0,w:100,h:100,stroke:'#000',fill:'#fff'});
+    Store.commit({op:'add',shape:r});
+    state.tool='select';ptr.down=false;state.hover=r.id;
+    const q=_qconnShape();
+    assert.ok(q===byId(r.id),'hovered rect eligible');
+    const dots=_qdots(r);
+    assert.ok(dots.length===4&&dots[0].x===50&&dots[0].y===0,'4 edge midpoints');
+    const hit=_qdotAt({x:50,y:2});               // near top-mid dot
+    assert.ok(hit&&hit.id===r.id&&hit.x===50&&hit.y===0,'dot hit');
+    const miss=_qdotAt({x:200,y:200});
+    assert.ok(miss===null,'no dot far away');
+    state.hover=null;
+    assert.ok(_qdotAt({x:50,y:2})===null,'no hover → no dots');
+    state.tool='pen';state.hover=r.id;
+    assert.ok(_qdotAt({x:50,y:2})===null,'non-select tool → no dots');
+    state.tool='select';
+    Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(r))]});
+    console.log('  ✓ quick-connect: eligibility + dots + hit/miss + tool gate (6 asserts)');
+  }
+
+  // ADR-0071: equal-gap snap — dragged box snaps to same-gap slots
+  {
+    // row: A[0..100] gap50 B[150..250] — dragging mov(100w) to x≈300 gives gap50 to B
+    const A=Shape.make('rect',{x:0,y:0,w:100,h:50});
+    const B=Shape.make('rect',{x:150,y:0,w:100,h:50});
+    const M=Shape.make('rect',{x:400,y:0,w:100,h:50});
+    Store.commit({op:'addMany',shapes:[A,B,M]});
+    const ids=new Set([M.id]);
+    // y-band of mov overlaps A/B rows (all h=50 at y0); slot: right of B at g=50 → x=300
+    const mov={x:300,y:0,w:100,h:50};
+    const excl=s=>ids.has(s.id);
+    const r=_eqGapSnap(mov,excl,8);
+    assert.ok(r.dx===0,'x=300 already the row-end equal-gap slot');
+    const m2={x:295,y:0,w:100,h:50};
+    const r2=_eqGapSnap(m2,excl,8);
+    assert.ok(r2.dx===5,'snap +5 to row-end slot');
+    assert.ok(r2.guides.length===2,'two equal-interval guides');
+    Store.commit({op:'del',shapes:[A,B,M].map(s=>JSON.parse(JSON.stringify(s)))});
+    console.log('  ✓ equal-gap snap: slot match + nearby snap + guides (3 asserts)');
+  }
+
+  // ADR-0072: elbow trunk locate + bend-override two-corner route
+  {
+    // free arrow (unbound) — d1 falls back to dominant axis; make a horizontal route
+    const A=Shape.make('arrow',{x1:0,y1:0,x2:200,y2:100});
+    A.elbow=1;
+    Store.commit({op:'add',shape:A});
+    const sh=byId(A.id);
+    const tr=_elbowTrunk(sh);
+    assert.ok(tr,'trunk segment found on auto route');
+    const vert=Math.abs(tr[1].x-tr[0].x)<Math.abs(tr[1].y-tr[0].y);
+    sh.bend=80;   // vertical trunk → x=80
+    const pts=_elbowPts(sh);
+    assert.ok(pts.length===6,'bend gives two-corner (6-pt) route');
+    assert.ok(vert===true?pts[2].x===80&&pts[3].x===80:pts[2].y===80&&pts[3].y===80,'trunk at bend coord');
+    Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(sh))]});
+    console.log('  ✓ elbow bend: trunk locate + bend route (3 asserts)');
+  }
+
+  // ADR-0073: cycleTextAlign rotates align prop through left→center→right
+  {
+    const T=Shape.make('text',{x:10,y:10,w:200,h:30,text:'hello',fontSize:16});
+    const S=Shape.make('sticky',{x:300,y:10,w:100,h:100,text:'note',fontSize:14});
+    Store.commit({op:'addMany',shapes:[T,S]});
+    state.selection=new Set([T.id,S.id]);
+    cycleTextAlign();
+    assert.ok(byId(T.id).align==='center'&&byId(S.id).align==='center','left→center');
+    cycleTextAlign();cycleTextAlign();
+    assert.ok(byId(T.id).align==='left'&&byId(S.id).align==='left','right→left wrap');
+    state.selection=new Set();
+    Store.commit({op:'del',shapes:[T,S].map(s=>JSON.parse(JSON.stringify(s)))});
+    console.log('  ✓ text align: cycle through left→center→right→left (2 asserts)');
+  }
+
+  // ADR-0075: fontSizeStep nudges fontSize ±2, clamps, skips non-text
+  {
+    const T=Shape.make('text',{x:0,y:0,w:200,h:30,text:'x',fontSize:14});
+    const R=Shape.make('rect',{x:0,y:50,w:100,h:50});
+    Store.commit({op:'addMany',shapes:[T,R]});
+    state.selection=new Set([T.id,R.id]);
+    fontSizeStep(1);
+    assert.ok(byId(T.id).fontSize===16,'+1 step → 16');
+    assert.ok(byId(R.id).fontSize===undefined,'rect untouched');
+    fontSizeStep(-1);fontSizeStep(-1);
+    assert.ok(byId(T.id).fontSize===12,'-2 steps → 12');
+    byId(T.id).fontSize=8;fontSizeStep(-1);
+    assert.ok(byId(T.id).fontSize===8,'clamped at 8');
+    state.selection=new Set();
+    Store.commit({op:'del',shapes:[T,R].map(s=>JSON.parse(JSON.stringify(s)))});
+    console.log('  ✓ font size keys: step/clamp/type-gate (4 asserts)');
+  }
+
+  // ADR-0076: waypoint — _linePts expands, bbox covers vertex, translate moves it
+  {
+    const A=Shape.make('arrow',{x1:0,y1:0,x2:200,y2:0});
+    Store.commit({op:'add',shape:A});
+    const sh=byId(A.id);
+    assert.ok(_linePts(sh).length===2,'no way → 2 pts');
+    sh.way={x:100,y:80};
+    const pts=_linePts(sh);
+    assert.ok(pts.length===3&&pts[1].x===100&&pts[1].y===80,'way → 3-pt polyline');
+    const bb=G.bbox(sh);
+    assert.ok(bb.y+bb.h>=80,'bbox includes waypoint');
+    Shape.translate(sh,10,5);
+    assert.ok(sh.way.x===110&&sh.way.y===85,'translate moves way');
+    Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(sh))]});
+    console.log('  ✓ waypoint: polyline + bbox + translate (4 asserts)');
   }
 
   // validPatch recurses: nested poison in a remote `upd` (gated by validPatch alone)

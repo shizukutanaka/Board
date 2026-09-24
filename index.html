@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.125';
+const V='1.7.134';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -860,7 +860,7 @@ const I18N={
     undone:'元に戻した',redone:'やり直した',created:'作成',editLabel:'選択中の図形を編集',
     confirmClear:'すべて削除しますか？',
     ctxCopy:'コピー',ctxPaste:'貼り付け',ctxDuplicate:'複製',
-    ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxBothEnds:'両端ヘッド',
+    ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxCurve:'曲線',ctxBothEnds:'両端ヘッド',ctxTextAlign:'テキスト揃え (左→中央→右)',
     ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
     ctxSendBackward:'背面へ',ctxSendBack:'最背面へ',
     ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxLock:'ロック',ctxUnlock:'ロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
@@ -911,7 +911,7 @@ const I18N={
     peers:'人',you:'自分',
     k:{select:'選択',hand:'手のひら',pen:'ペン',rect:'矩形',ellipse:'楕円',
       arrow:'矢印',line:'線',text:'文字',sticky:'付箋',frame:'フレーム',eraser:'消しゴム',diamond:'ダイヤ',
-      undo:'元に戻す',redo:'やり直し',del:'削除',dup:'複製',
+      undo:'元に戻す',redo:'やり直し',del:'削除',dup:'複製',fontSize:'フォントサイズ',
       selAll:'全選択',copy:'コピー',paste:'貼付',cut:'切取',
       zoomIn:'拡大',zoomOut:'縮小',zoom100:'100%にリセット',
       fit:'画面にフィット',selFit:'選択にフィット',pan:'パン',help:'ヘルプ',exp:'PNG書き出し',
@@ -936,7 +936,7 @@ const I18N={
     undone:'Undone',redone:'Redone',created:'Created',editLabel:'Edit selected shape',
     confirmClear:'Delete everything?',
     ctxCopy:'Copy',ctxPaste:'Paste',ctxDuplicate:'Duplicate',
-    ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxBothEnds:'Arrowheads both ends',
+    ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxCurve:'Curved',ctxBothEnds:'Arrowheads both ends',ctxTextAlign:'Text align (left→center→right)',
     ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
     ctxSendBackward:'Send backward',ctxSendBack:'Send to back',
     ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxLock:'Lock',ctxUnlock:'Unlock',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
@@ -989,7 +989,7 @@ const I18N={
     mirrorLabel:'Shapes on the board',mirrorMore:' more not listed',
     k:{select:'Select',hand:'Pan',pen:'Pen',rect:'Rectangle',ellipse:'Ellipse',
       arrow:'Arrow',line:'Line',text:'Text',sticky:'Sticky',frame:'Frame',eraser:'Eraser',diamond:'Diamond',
-      undo:'Undo',redo:'Redo',del:'Delete',dup:'Duplicate',
+      undo:'Undo',redo:'Redo',del:'Delete',dup:'Duplicate',fontSize:'Font size',
       selAll:'Select all',copy:'Copy',paste:'Paste',cut:'Cut',
       zoomIn:'Zoom in',zoomOut:'Zoom out',zoom100:'Reset zoom',
       fit:'Fit to content',selFit:'Zoom to selection',pan:'Pan',help:'Help',exp:'Export PNG',
@@ -1081,9 +1081,10 @@ const G={
     }
     if(s.type==='line'||s.type==='arrow'){
       const e=connEnds(s);
-      const x=Math.min(e.x1,e.x2),y=Math.min(e.y1,e.y2);
+      const x=Math.min(e.x1,e.x2,s.way?s.way.x:1e18),y=Math.min(e.y1,e.y2,s.way?s.way.y:1e18);   // ADR-0076
+      const x2=Math.max(e.x1,e.x2,s.way?s.way.x:-1e18),y2=Math.max(e.y1,e.y2,s.way?s.way.y:-1e18);
       const p=(s.size||1)/2+(s.type==='arrow'?s.size*3:0);
-      return{x:x-p,y:y-p,w:Math.abs(e.x2-e.x1)+2*p,h:Math.abs(e.y2-e.y1)+2*p};
+      return{x:x-p,y:y-p,w:x2-x+2*p,h:y2-y+2*p};
     }
     const _rb={x:s.x,y:s.y,w:s.w,h:s.h};
     if(s.rotate){const _cx=_rb.x+_rb.w/2,_cy=_rb.y+_rb.h/2,_r=s.rotate*Math.PI/180,_c=Math.abs(Math.cos(_r)),_si=Math.abs(Math.sin(_r)),_hw=_rb.w/2,_hh=_rb.h/2,_nw=_hw*_c+_hh*_si,_nh=_hw*_si+_hh*_c;return{x:_cx-_nw,y:_cy-_nh,w:2*_nw,h:2*_nh};}
@@ -1135,8 +1136,13 @@ const G={
           const pts=_elbowPts(s);
           for(let i=1;i<pts.length;i++)if(distToSeg(p,pts[i-1],pts[i])<=tol+3)return true;
           return false;}
-        const e=connEnds(s);
-        return distToSeg(p,{x:e.x1,y:e.y1},{x:e.x2,y:e.y2})<=tol+3;}
+        if(s.curve){
+          const pts=_curveSegs(s);
+          for(let i=1;i<pts.length;i++)if(distToSeg(p,pts[i-1],pts[i])<=tol+3)return true;
+          return false;}
+        const pts=_linePts(s);                                      // ADR-0076
+        for(let i=1;i<pts.length;i++)if(distToSeg(p,pts[i-1],pts[i])<=tol+3)return true;
+        return false;}
       case 'pen':{
         const pts=s.pts;
         if(pts.length===1)return Math.hypot(p.x-pts[0][0],p.y-pts[0][1])<=tol+3;
@@ -1687,6 +1693,11 @@ function connEnds(s){
   const p2=b?_edgePt(b,ac.x,ac.y):{x:s.x2,y:s.y2};
   return{x1:p1.x,y1:p1.y,x2:p2.x,y2:p2.y};
 }
+// ADR-0076: straight connector polyline — inserts the optional s.way vertex.
+function _linePts(s){
+  const e=connEnds(s);
+  return s.way?[{x:e.x1,y:e.y1},{x:s.way.x,y:s.way.y},{x:e.x2,y:e.y2}]:[{x:e.x1,y:e.y1},{x:e.x2,y:e.y2}];
+}
 // Shared by doDelete/flushErase/openTextEditor/_syncTextFinalize: resolve live endpoint
 // coords BEFORE the referenced shapes are gone, so undo can restore exact bindings.
 // delIds = ids about to be removed; returns [{id,before:{a|b,x1,y1|x2,y2},after:{...null}}].
@@ -1770,7 +1781,7 @@ function nextZ(){return state.shapes.length?state.shapes.reduce((m,s)=>Math.max(
 const Shape={
   translate(s,dx,dy){
     if(s.type==='pen'){for(const p of s.pts){p[0]+=dx;p[1]+=dy}}
-    else if(s.type==='line'||s.type==='arrow'){s.x1+=dx;s.y1+=dy;s.x2+=dx;s.y2+=dy}
+    else if(s.type==='line'||s.type==='arrow'){s.x1+=dx;s.y1+=dy;s.x2+=dx;s.y2+=dy;if(s.way){s.way.x+=dx;s.way.y+=dy}}   // ADR-0076
     else{s.x+=dx;s.y+=dy}  // rect, ellipse, text, image, sticky — all have x/y
   },
   make(type,extras){
@@ -2324,6 +2335,17 @@ function drawOverlay(){
     c.fillStyle='#fff';c.fillText(r.label,px,py+ph/2);
     c.restore();
   }
+  const _qs=_qconnShape();                                             // ADR-0070
+  if(_qs){
+    c.save();
+    c.fillStyle=getCSS('--accent-contrast');
+    c.strokeStyle='#fff';c.lineWidth=1.5;
+    for(const d of _qdots(_qs)){
+      const sp=G.w2s(d);
+      c.beginPath();c.arc(sp.x,sp.y,5,0,Math.PI*2);c.fill();c.stroke();
+    }
+    c.restore();
+  }
   if(ptr.down&&state.bindPreview){                                     // ADR-0065
     const t=byId(state.bindPreview);
     if(t){
@@ -2424,9 +2446,12 @@ function _drawBoxLabel(s,c){
   if(!s.label)return;
   c.save();
   c.fillStyle=s.stroke||'#0F172A';
-  c.font='14px system-ui,sans-serif';
+  const fs=14;
+  c.font=fs+'px system-ui,sans-serif';
   c.textAlign='center';c.textBaseline='middle';
-  c.fillText(s.label,s.x+s.w/2,s.y+s.h/2);
+  const lines=wrapTextCached(s,s.label,Math.max(10,s.w-8),fs,t=>c.measureText(t).width);   // ADR-0074
+  const lh=fs*1.25,cy=s.y+s.h/2-(lines.length*lh)/2+lh/2;
+  for(let i=0;i<lines.length;i++)c.fillText(lines[i],s.x+s.w/2,cy+i*lh);
   c.restore();
 }
 // Connector (edge) label at the midpoint of the bound endpoints (ADR-0003). A paper-
@@ -2434,7 +2459,7 @@ function _drawBoxLabel(s,c){
 // SVG export. World-space → scales with zoom like every other label.
 function _drawConnLabel(s,c){
   if(!s.label)return;
-  const m=s.elbow?_elbowLabelXY(s):connEnds(s),mx=s.elbow?m.x:(m.x1+m.x2)/2,my=s.elbow?m.y:(m.y1+m.y2)/2;
+  const m=s.elbow?_elbowLabelXY(s):s.curve?_curveLabelXY(s):connEnds(s),mx=(s.elbow||s.curve)?m.x:s.way?s.way.x:(m.x1+m.x2)/2,my=(s.elbow||s.curve)?m.y:s.way?s.way.y:(m.y1+m.y2)/2;   // ADR-0076
   c.save();
   c.font='12px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';
   const w=c.measureText(s.label).width,pad=4;
@@ -2476,7 +2501,8 @@ function drawShape(s,c){
       _drawBoxLabel(s,c);break;}
     case 'line':{
       if(s.elbow){_polyline(c,_elbowPts(s));c.stroke();_drawConnLabel(s,c);break}
-      const e=connEnds(s);c.beginPath();c.moveTo(e.x1,e.y1);c.lineTo(e.x2,e.y2);c.stroke();_drawConnLabel(s,c);break;}
+      if(s.curve){const e=connEnds(s),cc=_curveCtrl(e);c.beginPath();c.moveTo(e.x1,e.y1);c.quadraticCurveTo(cc.x,cc.y,e.x2,e.y2);c.stroke();_drawConnLabel(s,c);break}
+      _polyline(c,_linePts(s));c.stroke();_drawConnLabel(s,c);break;}   // ADR-0076
     case 'arrow':
       drawArrow(s,c);_drawConnLabel(s,c);break;
     case 'pen':
@@ -2525,7 +2551,9 @@ function drawShape(s,c){
         const lh=fs*1.3, pad=8;
         const lines=wrapTextCached(s,s.text,Math.abs(s.w)-pad*2,fs,t=>c.measureText(t).width);
         c.save();c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,r);c.clip();
-        for(let i=0;i<lines.length;i++)c.fillText(lines[i],s.x+pad,s.y+pad+i*lh);
+        c.textAlign=s.align==='center'?'center':s.align==='right'?'right':'left';   // ADR-0073
+        const tax=s.align==='center'?s.x+s.w/2:s.align==='right'?s.x+s.w-pad:s.x+pad;
+        for(let i=0;i<lines.length;i++)c.fillText(lines[i],tax,s.y+pad+i*lh);
         c.restore();
       }
       break;}
@@ -2550,6 +2578,13 @@ function drawArrow(s,c){
   c=c||ctx;
   const e=connEnds(s);
   const ah=Math.max(6,(s.size||2)*3);
+  if(s.curve){
+    const cc=_curveCtrl(e);
+    c.beginPath();c.moveTo(e.x1,e.y1);c.quadraticCurveTo(cc.x,cc.y,e.x2,e.y2);c.stroke();
+    _arrowHeadShape(c,e.x2,e.y2,Math.atan2(e.y2-cc.y,e.x2-cc.x),ah,s.stroke);
+    if(s.start)_arrowHeadShape(c,e.x1,e.y1,Math.atan2(e.y1-cc.y,e.x1-cc.x),ah,s.stroke);
+    return;
+  }
   if(s.elbow){
     const pts=_elbowPts(s);_polyline(c,pts);c.stroke();
     const L=pts[pts.length-1],P=pts[pts.length-2];
@@ -2561,10 +2596,12 @@ function drawArrow(s,c){
     }
     return;
   }
-  c.beginPath();c.moveTo(e.x1,e.y1);c.lineTo(e.x2,e.y2);c.stroke();
-  const ang=Math.atan2(e.y2-e.y1,e.x2-e.x1);
-  _arrowHeadShape(c,e.x2,e.y2,ang,ah,s.stroke);
-  if(s.start)_arrowHeadShape(c,e.x1,e.y1,ang+Math.PI,ah,s.stroke);
+  const pts=_linePts(s);                                            // ADR-0076
+  _polyline(c,pts);c.stroke();
+  const L=pts[pts.length-1],P=pts[pts.length-2],F=pts[1];
+  const ang=Math.atan2(L.y-P.y,L.x-P.x);
+  _arrowHeadShape(c,L.x,L.y,ang,ah,s.stroke);
+  if(s.start)_arrowHeadShape(c,pts[0].x,pts[0].y,Math.atan2(pts[0].y-F.y,pts[0].x-F.x),ah,s.stroke);
 }
 // ADR-0062: orthogonal (Manhattan) route for elbow connectors.
 // Bound ends exit along the edge's outward normal (stub); free ends take the
@@ -2585,6 +2622,12 @@ function _elbowPts(s){
   const STUB=Math.max(16,(s.size||2)*8);
   const q1={x:e.x1+d1.x*STUB,y:e.y1+d1.y*STUB},q2={x:e.x2+d2.x*STUB,y:e.y2+d2.y*STUB};
   const pts=[{x:e.x1,y:e.y1},q1];
+  if(s.bend){                              // ADR-0072: user-set trunk position
+    const c1=d1.x!==0?{x:s.bend,y:q1.y}:{x:q1.x,y:s.bend};
+    const c2=d1.x!==0?{x:s.bend,y:q2.y}:{x:q2.x,y:s.bend};
+    pts.push(c1,c2,q2,{x:e.x2,y:e.y2});
+    return pts;
+  }
   const mid=d1.x!==0?{x:q2.x,y:q1.y}:{x:q1.x,y:q2.y};
   if((mid.x!==q1.x||mid.y!==q1.y)&&(mid.x!==q2.x||mid.y!==q2.y))pts.push(mid);
   pts.push(q2,{x:e.x2,y:e.y2});
@@ -2594,6 +2637,17 @@ function _elbowPts(s){
 function _elbowLabelXY(s){
   const pts=_elbowPts(s);
   return{x:(pts[1].x+pts[pts.length-2].x)/2,y:(pts[1].y+pts[pts.length-2].y)/2};
+}
+// ADR-0072: the route segment perpendicular to both stubs — the draggable one.
+function _elbowTrunk(s){
+  const pts=_elbowPts(s);
+  if(pts.length<4)return null;
+  const horizStub=Math.abs(pts[1].x-pts[0].x)>=Math.abs(pts[1].y-pts[0].y);
+  for(let i=1;i<pts.length-2;i++){
+    const a=pts[i],b=pts[i+1],vert=Math.abs(b.x-a.x)<Math.abs(b.y-a.y);
+    if(vert===horizStub&&(a.x!==b.x||a.y!==b.y))return[a,b];
+  }
+  return null;
 }
 function _polyline(c,pts){
   c.beginPath();c.moveTo(pts[0].x,pts[0].y);
@@ -2606,6 +2660,43 @@ function _arrowHeadShape(c,x,y,ang,ah,stroke){
   c.lineTo(x+Math.cos(a1)*ah,y+Math.sin(a1)*ah);
   c.lineTo(x+Math.cos(a2)*ah,y+Math.sin(a2)*ah);
   c.closePath();c.fillStyle=stroke||'#0F172A';c.fill();
+}
+// ADR-0068: quadratic-bezier route for curved connectors. Control point is the
+// midpoint pushed along the left normal by bend=min(0.25*len,80).
+function _curveCtrl(e){
+  const mx=(e.x1+e.x2)/2,my=(e.y1+e.y2)/2;
+  const dx=e.x2-e.x1,dy=e.y2-e.y1,len=Math.hypot(dx,dy)||1;
+  const bend=Math.min(0.25*len,80);
+  return{x:mx-dy/len*bend,y:my+dx/len*bend};
+}
+function _curveSegs(s){
+  const e=connEnds(s),cc=_curveCtrl(e),pts=[];
+  for(let i=0;i<=16;i++){const t=i/16,u=1-t;
+    pts.push({x:u*u*e.x1+2*u*t*cc.x+t*t*e.x2,y:u*u*e.y1+2*u*t*cc.y+t*t*e.y2});}
+  return pts;
+}
+function _curveLabelXY(s){
+  const e=connEnds(s),cc=_curveCtrl(e);
+  return{x:0.25*e.x1+0.5*cc.x+0.25*e.x2,y:0.25*e.y1+0.5*cc.y+0.25*e.y2};
+}
+// ADR-0070: quick-connect dots on the hovered shape's 4 edge midpoints.
+function _qconnShape(){
+  if(state.tool!=='select'||ptr.down||!state.hover)return null;
+  const s=byId(state.hover);
+  if(!s||s.locked||s.type==='line'||s.type==='arrow'||s.type==='pen')return null;
+  return s;
+}
+function _qdots(s){
+  const b=G.bbox(s);
+  return[{x:b.x+b.w/2,y:b.y},{x:b.x+b.w,y:b.y+b.h/2},{x:b.x+b.w/2,y:b.y+b.h},{x:b.x,y:b.y+b.h/2}];
+}
+function _qdotAt(wp){
+  const s=_qconnShape();if(!s)return null;
+  const z=state.viewport.zoom||1;
+  for(const d of _qdots(s)){
+    if(Math.hypot((wp.x-d.x)*z,(wp.y-d.y)*z)<=10)return{id:s.id,x:d.x,y:d.y};
+  }
+  return null;
 }
 // Variable stroke width from spacing (velocity proxy); render-only, no model change.
 function penWidths(pts,size){
@@ -2655,7 +2746,9 @@ function drawText(s,c){
   c.textBaseline='top';
   const lines=(s.text||'').split('\n');
   const lh=fs*1.25;
-  for(let i=0;i<lines.length;i++)c.fillText(lines[i],s.x,s.y+i*lh);
+  c.textAlign=s.align==='center'?'center':s.align==='right'?'right':'left';   // ADR-0073
+  const ax=s.align==='center'?s.x+s.w/2:s.align==='right'?s.x+s.w:s.x;
+  for(let i=0;i<lines.length;i++)c.fillText(lines[i],ax,s.y+i*lh);
 }
 
 // Rotate point (px,py) about centre (cx,cy) by `deg` degrees. Shared by handles,
@@ -2736,7 +2829,7 @@ function _rotShape(sh,orig,cx,cy,deg){
   const r=deg*Math.PI/180,c=Math.cos(r),sn=Math.sin(r);
   const R=(px,py)=>({x:cx+(px-cx)*c-(py-cy)*sn,y:cy+(px-cx)*sn+(py-cy)*c});
   if(orig.pts)sh.pts=orig.pts.map(p=>{const q=R(p[0],p[1]);return[q.x,q.y,p[2]]});
-  else if(orig.x1!=null){const a=R(orig.x1,orig.y1),b=R(orig.x2,orig.y2);sh.x1=a.x;sh.y1=a.y;sh.x2=b.x;sh.y2=b.y}
+  else if(orig.x1!=null){const a=R(orig.x1,orig.y1),b=R(orig.x2,orig.y2);sh.x1=a.x;sh.y1=a.y;sh.x2=b.x;sh.y2=b.y;if(orig.way)sh.way=R(orig.way.x,orig.way.y)}   // ADR-0076
   else if(orig.x!=null){
     const q=R(orig.x+orig.w/2,orig.y+orig.h/2);
     sh.x=q.x-orig.w/2;sh.y=q.y-orig.h/2;sh.w=orig.w;sh.h=orig.h;
@@ -2794,7 +2887,7 @@ function _mapToBox(sh,orig,ob,vb){
   const sx=vb.w/ob.w,sy=vb.h/ob.h;
   const M=(px,py)=>({x:vb.x+(px-ob.x)*sx,y:vb.y+(py-ob.y)*sy});
   if(orig.pts)sh.pts=orig.pts.map(p=>{const q=M(p[0],p[1]);return[q.x,q.y,p[2]]});
-  else if(orig.x1!=null){const a=M(orig.x1,orig.y1),b=M(orig.x2,orig.y2);sh.x1=a.x;sh.y1=a.y;sh.x2=b.x;sh.y2=b.y}
+  else if(orig.x1!=null){const a=M(orig.x1,orig.y1),b=M(orig.x2,orig.y2);sh.x1=a.x;sh.y1=a.y;sh.x2=b.x;sh.y2=b.y;if(orig.way)sh.way=M(orig.way.x,orig.way.y)}   // ADR-0076
   else if(orig.x!=null){const a=M(orig.x,orig.y),b=M(orig.x+orig.w,orig.y+orig.h);sh.x=a.x;sh.y=a.y;sh.w=b.x-a.x;sh.h=b.y-a.y}
 }
 // Apply resize given handle id, original shape, new world point, Shift and Alt state.
@@ -2959,6 +3052,18 @@ function drawSelection(c){
       c.fillStyle=getCSS('--paper');c.strokeStyle=getCSS('--brand-ink');
       c.beginPath();c.arc(kp.x,kp.y,hs/2,0,PI2);c.fill();c.stroke();
     }
+    if(sh.elbow){                        // ADR-0072: trunk-position handle
+      const tr=_elbowTrunk(sh);
+      if(tr){
+        const tp=G.w2s({x:(tr[0].x+tr[1].x)/2,y:(tr[0].y+tr[1].y)/2});
+        c.beginPath();c.arc(tp.x,tp.y,hs*0.45,0,PI2);c.fill();c.stroke();
+      }
+    }
+    if((sh.type==='line'||sh.type==='arrow')&&!sh.elbow&&!sh.curve){   // ADR-0076
+      const e=connEnds(sh),wp=sh.way||{x:(e.x1+e.x2)/2,y:(e.y1+e.y2)/2};
+      const tp=G.w2s(wp);
+      c.beginPath();c.arc(tp.x,tp.y,hs*0.45,0,PI2);c.fill();c.stroke();
+    }
   }else{
     // ADR-0056: multi-selection — full 8-handle set on the group bbox (was: 4
     // decorative corners that were never hit-testable). Hidden when a member is
@@ -3058,12 +3163,16 @@ function abortGesture(){
     for(const [id,orig] of ptr.gOrig){const sh=byId(id);if(sh)Object.assign(sh,clone(orig))}
   }else if(ptr.dragKind==='rotate'&&ptr.rotOrig){
     const sh=byId(ptr.rotOrig.id);if(sh){if(ptr.rotOrig.rotate==null)delete sh.rotate;Object.assign(sh,clone(ptr.rotOrig));}
+  }else if(ptr.dragKind==='ebend'&&ptr.ebendOrig){                // ADR-0072
+    const sh=byId(ptr.ebendOrig.id);if(sh){if(ptr.ebendOrig.bend==null)delete sh.bend;Object.assign(sh,clone(ptr.ebendOrig));}
+  }else if(ptr.dragKind==='way'&&ptr.wayOrig){                     // ADR-0076
+    const sh=byId(ptr.wayOrig.id);if(sh){delete sh.way;Object.assign(sh,clone(ptr.wayOrig));}
   }
   if(_eraseBatch.length){for(const s of _eraseBatch)state.shapes.push(s);_eraseBatch=[];sortZ();_invalidateGrid();}   // ADR-0009
   _penPred=null;
   state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.dragStartShapes=null;
-  ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;
+  ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;ptr.ebendOrig=null;ptr.wayOrig=null;
   invalidate();
 }
 
@@ -3116,6 +3225,19 @@ canvas.addEventListener('pointerdown',e=>{
             ptr.resizeOrig=clone(onlySel);
             return;
           }
+          if(onlySel.elbow&&!onlySel.locked){          // ADR-0072: trunk drag
+            const tr=_elbowTrunk(onlySel);
+            if(tr&&distToSeg(wp,tr[0],tr[1])<=HANDLE_SIZE/state.viewport.zoom){
+              ptr.dragKind='ebend';ptr.ebendOrig=clone(onlySel);
+              return;
+            }
+          }
+          if(!onlySel.elbow&&!onlySel.curve&&!onlySel.locked&&(onlySel.type==='line'||onlySel.type==='arrow')){   // ADR-0076
+            const e=connEnds(onlySel),mid=onlySel.way||{x:(e.x1+e.x2)/2,y:(e.y1+e.y2)/2};
+            if(Math.hypot(wp.x-mid.x,wp.y-mid.y)<=HANDLE_SIZE/state.viewport.zoom){
+              ptr.dragKind='way';ptr.wayOrig=clone(onlySel);return;
+            }
+          }
         }
       }else if(state.selection.size>1){
         const sel=[...state.selection].map(byId).filter(Boolean);
@@ -3149,6 +3271,13 @@ canvas.addEventListener('pointerdown',e=>{
             }
           }
         }
+      }
+      const qd=_qdotAt(wp);                                   // ADR-0070
+      if(qd){
+        state.draft=Shape.make('arrow',{x1:qd.x,y1:qd.y,x2:qd.x,y2:qd.y});
+        state.draft.a=qd.id;
+        ptr.dragKind='qline';
+        break;
       }
       pickOrMarquee(wp,e);break;
     case 'pen':beginPen(wp,e);break;
@@ -3195,7 +3324,7 @@ canvas.addEventListener('pointermove',e=>{
       canvas.style.cursor=top?(top.locked?'not-allowed':'move'):'default';
       // state.hover feeds nothing visual (cursor is set above) — no invalidate:
       // on a heavy board this used to repaint the whole scene per shape boundary crossed.
-      if(top?.id!==state.hover)state.hover=top?.id||null;
+      if(top?.id!==state.hover){state.hover=top?.id||null;invalidateOverlay()}   // ADR-0070: qconn dots track hover
     }
     return;
   }
@@ -3232,6 +3361,20 @@ canvas.addEventListener('pointermove',e=>{
         }else invalidate();
       }else if(ptr.dragKind==='move')doMove(wp,e.shiftKey);
       else if(ptr.dragKind==='marquee'){state.marquee={x1:ptr.wx0,y1:ptr.wy0,x2:wp.x,y2:wp.y};invalidateOverlay()}
+      else if(ptr.dragKind==='qline')contLineLike(wp,e.shiftKey);   // ADR-0070
+      else if(ptr.dragKind==='ebend'&&ptr.ebendOrig){               // ADR-0072
+        const sh=byId(ptr.ebendOrig.id),tr=sh&&_elbowTrunk(sh);
+        if(tr){const vert=Math.abs(tr[1].x-tr[0].x)<Math.abs(tr[1].y-tr[0].y);sh.bend=vert?wp.x:wp.y;invalidate()}
+      }
+      else if(ptr.dragKind==='way'&&ptr.wayOrig){                   // ADR-0076
+        const sh=byId(ptr.wayOrig.id);
+        if(sh){
+          const e=connEnds(sh),mx=(e.x1+e.x2)/2,my=(e.y1+e.y2)/2;
+          if(Math.hypot(wp.x-mx,wp.y-my)<6/state.viewport.zoom)delete sh.way;
+          else sh.way={x:wp.x,y:wp.y};
+          invalidate();
+        }
+      }
       break;
     case 'pen':{
       for(const ce of coalescedSamples(e))contPen(G.s2w({x:ce.offsetX,y:ce.offsetY}),ce);
@@ -3287,6 +3430,22 @@ canvas.addEventListener('pointerup',e=>{
           }
         }
         ptr.rotOrig=null;
+      }else if(ptr.dragKind==='qline'){
+        endLineLike();                                             // ADR-0070
+      }else if(ptr.dragKind==='ebend'&&ptr.ebendOrig){            // ADR-0072
+        const sh=byId(ptr.ebendOrig.id);
+        if(sh&&(sh.bend||0)!==(ptr.ebendOrig.bend||0)){
+          const origSel=[...state.selection];
+          Store._recordCommitted({op:'style',before:[{id:sh.id,bend:ptr.ebendOrig.bend||0}],after:[{id:sh.id,bend:sh.bend||0}]});
+          if(origSel.length)state.history[state.histIdx].origSel=origSel;
+        }
+      }else if(ptr.dragKind==='way'&&ptr.wayOrig){                 // ADR-0076
+        const sh=byId(ptr.wayOrig.id),ow=ptr.wayOrig.way||null,nw=sh&&sh.way||null;
+        if(sh&&JSON.stringify(ow)!==JSON.stringify(nw)){
+          const origSel=[...state.selection];
+          Store._recordCommitted({op:'style',before:[{id:sh.id,way:ow?{x:ow.x,y:ow.y}:null}],after:[{id:sh.id,way:nw?{x:nw.x,y:nw.y}:null}]});
+          if(origSel.length)state.history[state.histIdx].origSel=origSel;
+        }
       }else{
         endSelect(wp,e.shiftKey);
       }
@@ -3298,7 +3457,7 @@ canvas.addEventListener('pointerup',e=>{
     }
   }
   ptr.down=false;ptr.dragKind=null;ptr.dragStartShapes=null;
-  ptr.resizeHandle=null;ptr.resizeOrig=null;
+  ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.ebendOrig=null;ptr.wayOrig=null;
   state.marquee=null;canvas.style.cursor='default';invalidateOverlay();
 });
 // v1.6.88: extracted as named function so tests can call it directly.
@@ -3315,13 +3474,17 @@ function _cancelPointerGesture(){
   }else if(ptr.dragKind==='rotate'&&ptr.rotOrig){
     const rsh=byId([...state.selection][0]);
     if(rsh){if(ptr.rotOrig.rotate==null)delete rsh.rotate;Object.assign(rsh,clone(ptr.rotOrig));}
+  }else if(ptr.dragKind==='ebend'&&ptr.ebendOrig){                // ADR-0072
+    const sh=byId(ptr.ebendOrig.id);if(sh){if(ptr.ebendOrig.bend==null)delete sh.bend;Object.assign(sh,clone(ptr.ebendOrig));}
+  }else if(ptr.dragKind==='way'&&ptr.wayOrig){                     // ADR-0076
+    const sh=byId(ptr.wayOrig.id);if(sh){delete sh.way;Object.assign(sh,clone(ptr.wayOrig));}
   }else if(ptr.dragKind==='move'&&ptr.dragStartShapes){
     for(const[id,orig] of ptr.dragStartShapes){const sh=byId(id);if(sh)Object.assign(sh,clone(orig));}
   }
   if(_eraseBatch.length){for(const s of _eraseBatch)state.shapes.push(s);_eraseBatch=[];sortZ();_invalidateGrid();}   // ADR-0009
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;
   ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.rotOrig=null;ptr.dragStartShapes=null;
-  ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;
+  ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.ebendOrig=null;ptr.wayOrig=null;
   canvas.dataset.panning='false';state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;_penPred=null;invalidate();
 }
 // ADR-0006: fires after LONG_PRESS_MS. Guards: gesture still active, handle-drag not in
@@ -3806,6 +3969,39 @@ function _snapBoxIdx(mov,idx,tol){
 }
 // Snap moving bbox to target edges/centres; returns {dx,dy,guides}. Pure.
 function snapBox(mov,targets,tol){return _snapBoxIdx(mov,_mkSnapIdx(targets),tol)}
+// ADR-0071: equal-gap snap. On an axis where edge snapping found nothing,
+// look at same-row (y-band-overlapping for X, x-band for Y) shapes sorted along
+// the axis: consecutive pairs (a,b) form gap g=b.l−a.r; candidate positions put
+// mov at the same g from a or b — the classic "evenly spaced row" drop slot.
+// Guides show the two equal intervals.
+function _eqGapSnap(mov,excl,tol){
+  const out={dx:0,dy:0,guides:[]};
+  for(const ax of['x','y']){
+    const L=ax==='x'?'x':'y',D=ax==='x'?'w':'h',O=ax==='x'?'y':'x',OD=ax==='x'?'h':'w';
+    const row=[];
+    for(const s of state.shapes){
+      if(excl(s))continue;
+      const b=G.bbox(s);if(!b)continue;
+      if(b[O]<mov[O]+mov[OD]&&b[O]+b[OD]>mov[O])row.push(b);
+    }
+    row.sort((a,b)=>a[L]-b[L]);
+    let best=null;
+    for(let i=1;i<row.length;i++){
+      const a=row[i-1],b=row[i],g=b[L]-(a[L]+a[D]);
+      if(g<=0)continue;
+      for(const cand of[a[L]-g-mov[D], b[L]+b[D]+g, a[L]+a[D]+g, b[L]-g-mov[D]]){
+        const d=cand-mov[L];
+        if(Math.abs(d)<=tol&&(!best||Math.abs(d)<Math.abs(best.d))){
+          const mid=mov[O]+mov[OD]/2;
+          const seg=(p,q)=>ax==='x'?{x1:p,y1:mid,x2:q,y2:mid}:{x1:mid,y1:p,x2:mid,y2:q};
+          best={d,guides:[seg(a[L]+a[D],b[L]), cand<b[L]?seg(cand+mov[D],b[L]):seg(a[L]+a[D],cand)]};
+        }
+      }
+    }
+    if(best){if(ax==='x')out.dx=best.d;else out.dy=best.d;out.guides.push(...best.guides)}
+  }
+  return out;
+}
 function objectSnap(dx,dy){
   if(!ptr.dragStartShapes)return{dx:0,dy:0,guides:[]};
   const bb=G.bboxAll([...ptr.dragStartShapes.values()]);
@@ -3813,7 +4009,13 @@ function objectSnap(dx,dy){
   const mov={x:bb.x+dx,y:bb.y+dy,w:bb.w,h:bb.h};
   const key=[...ptr.dragStartShapes.keys()].join(',');
   const idx=_snapIndex('move',key,s=>ptr.dragStartShapes.has(s.id));
-  return _snapBoxIdx(mov,idx,SNAP_OBJ/state.viewport.zoom);
+  const base=_snapBoxIdx(mov,idx,SNAP_OBJ/state.viewport.zoom);
+  if(base.dx!==0&&base.dy!==0)return base;
+  const excl=s=>ptr.dragStartShapes.has(s.id);
+  const eq=_eqGapSnap(mov,excl,SNAP_OBJ/state.viewport.zoom);
+  if(base.dx===0&&eq.dx!==0){base.dx=eq.dx;base.guides.push(...eq.guides)}
+  if(base.dy===0&&eq.dy!==0){base.dy=eq.dy;base.guides.push(...eq.guides)}
+  return base;
 }
 // Expand a set of selected ids to include shapes fully contained in any selected
 // frame, so moving a frame moves its contents. Other frames are never captured as
@@ -4304,6 +4506,7 @@ function positionTextEditor(ta,s){
   ta.style.top=(r.top+sp.y)+'px';
   ta.style.fontSize=(s.fontSize*state.viewport.zoom)+'px';
   ta.style.color=s.stroke||'#0F172A';
+  ta.style.textAlign=s.align==='center'?'center':s.align==='right'?'right':'left';   // ADR-0073
   ta.style.minWidth='20px';
 }
 
@@ -4405,6 +4608,8 @@ window.addEventListener('keydown',e=>{
   else if(meta&&k==='p'){e.preventDefault();exportPDF()}
   else if(meta&&(k==='='||k==='+')){e.preventDefault();zoomBy(1.2)}
   else if(meta&&k==='-'){e.preventDefault();zoomBy(1/1.2)}
+  else if(meta&&e.shiftKey&&(k===','||k==='<')){e.preventDefault();fontSizeStep(-1)}   // ADR-0075
+  else if(meta&&e.shiftKey&&(k==='.'||k==='>')){e.preventDefault();fontSizeStep(1)}    // ADR-0075
   else if(meta&&k==='0'){e.preventDefault();zoomReset()}
   else if(k==='delete'||k==='backspace'){e.preventDefault();doDelete()}
   else if(k==='tab'){
@@ -4770,11 +4975,11 @@ function flipShape(s,axis,c){
   const m=v=>2*c-v;
   if(axis==='h'){
     if(s.pts)for(const p of s.pts)p[0]=m(p[0]);
-    else if(s.x1!=null){s.x1=m(s.x1);s.x2=m(s.x2)}
+    else if(s.x1!=null){s.x1=m(s.x1);s.x2=m(s.x2);if(s.way)s.way.x=m(s.way.x)}   // ADR-0076
     else s.x=m(s.x+s.w);
   }else{
     if(s.pts)for(const p of s.pts)p[1]=m(p[1]);
-    else if(s.y1!=null){s.y1=m(s.y1);s.y2=m(s.y2)}
+    else if(s.y1!=null){s.y1=m(s.y1);s.y2=m(s.y2);if(s.way)s.way.y=m(s.way.y)}   // ADR-0076
     else s.y=m(s.y+s.h);
   }
   if(s.rotate)s.rotate=(360-s.rotate)%360;
@@ -4845,7 +5050,7 @@ const _rotatable=s=>s.w!=null||s.pts||s.x1!=null;
 function _rotPtsAbout(s,gx,gy,cs,sn){
   const rot=(px,py)=>({x:gx+(px-gx)*cs-(py-gy)*sn,y:gy+(px-gx)*sn+(py-gy)*cs});
   if(s.pts)for(const p of s.pts){const q=rot(p[0],p[1]);p[0]=q.x;p[1]=q.y}
-  else if(s.x1!=null){const a=rot(s.x1,s.y1),b=rot(s.x2,s.y2);s.x1=a.x;s.y1=a.y;s.x2=b.x;s.y2=b.y}
+  else if(s.x1!=null){const a=rot(s.x1,s.y1),b=rot(s.x2,s.y2);s.x1=a.x;s.y1=a.y;s.x2=b.x;s.y2=b.y;if(s.way){const w=rot(s.way.x,s.way.y);s.way=w}}   // ADR-0076
 }
 function doRotate(d){
   const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked&&_rotatable(s));
@@ -5290,30 +5495,47 @@ function buildSVG(shapes,paper){
       case 'rect':{
         const r=Math.min(8,Math.abs(W)/4,Math.abs(H)/4);
         els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}/>`);
-        if(s.label)els.push(`<text x="${X+W/2+ox}" y="${Y+H/2+oy+7}" font-family="system-ui,sans-serif" font-size="14" text-anchor="middle" fill="${stroke}"${a}${rT}>${_esc(s.label)}</text>`);
+        if(s.label)_svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT);
         break;}
       case 'ellipse':
         els.push(`<ellipse cx="${X+W/2+ox}" cy="${Y+H/2+oy}" rx="${Math.abs(W/2)}" ry="${Math.abs(H/2)}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}/>`);
-        if(s.label)els.push(`<text x="${X+W/2+ox}" y="${Y+H/2+oy+7}" font-family="system-ui,sans-serif" font-size="14" text-anchor="middle" fill="${stroke}"${a}${rT}>${_esc(s.label)}</text>`);
+        if(s.label)_svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT);
         break;
       case 'diamond':{
         els.push(`<polygon points="${X+W/2+ox},${Y+oy} ${X+W+ox},${Y+H/2+oy} ${X+W/2+ox},${Y+H+oy} ${X+ox},${Y+H/2+oy}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}/>`);
-        if(s.label)els.push(`<text x="${X+W/2+ox}" y="${Y+H/2+oy+7}" font-family="system-ui,sans-serif" font-size="14" text-anchor="middle" fill="${stroke}"${a}${rT}>${_esc(s.label)}</text>`);
+        if(s.label)_svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT);
         break;}
       case 'line':{
-        if(s.elbow){
+        if(s.curve){
+          const _ce=connEnds(s),cc=_curveCtrl(_ce);
+          els.push(`<path d="M ${_num(_ce.x1+ox)} ${_num(_ce.y1+oy)} Q ${_num(cc.x+ox)} ${_num(cc.y+oy)} ${_num(_ce.x2+ox)} ${_num(_ce.y2+oy)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}/>`);
+          const lm=_curveLabelXY(s);
+          els.push(_connLabelSVG(s,lm.x,lm.y,lm.x,lm.y,ox,oy,stroke,paper));
+        }else if(s.elbow){
           const pts=_elbowPts(s),spts=pts.map(p=>`${_num(p.x+ox)},${_num(p.y+oy)}`).join(' ');
           els.push(`<polyline points="${spts}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}/>`);
           const lm=_elbowLabelXY(s);
           els.push(_connLabelSVG(s,lm.x,lm.y,lm.x,lm.y,ox,oy,stroke,paper));
         }else{
-          els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}/>`);
-          els.push(_connLabelSVG(s,X1,Y1,X2,Y2,ox,oy,stroke,paper));
+          if(s.way){const w=s.way;els.push(`<polyline points="${X1+ox},${Y1+oy} ${_num(w.x+ox)},${_num(w.y+oy)} ${X2+ox},${Y2+oy}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}/>`)}   // ADR-0076
+          else els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}/>`);
+          els.push(_connLabelSVG(s,s.way?s.way.x:X1,s.way?s.way.y:Y1,s.way?s.way.x:X2,s.way?s.way.y:Y2,ox,oy,stroke,paper));
         }
         break;}
       case 'arrow':{
         const ah=Math.max(6,(SZ||2)*3);
-        if(s.elbow){
+        if(s.curve){
+          const _ce=connEnds(s),cc=_curveCtrl(_ce);
+          els.push(`<path d="M ${_num(_ce.x1+ox)} ${_num(_ce.y1+oy)} Q ${_num(cc.x+ox)} ${_num(cc.y+oy)} ${_num(_ce.x2+ox)} ${_num(_ce.y2+oy)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}/>`);
+          const ang=Math.atan2(_ce.y2-cc.y,_ce.x2-cc.x);
+          const a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5,tx=_ce.x2+ox,ty=_ce.y2+oy;
+          els.push(`<polygon points="${tx},${ty} ${tx+Math.cos(a1)*ah},${ty+Math.sin(a1)*ah} ${tx+Math.cos(a2)*ah},${ty+Math.sin(a2)*ah}" fill="${stroke}"${a}/>`);
+          if(s.start){
+            const sAng=Math.atan2(_ce.y1-cc.y,_ce.x1-cc.x),s1=sAng+Math.PI-0.5,s2=sAng+Math.PI+0.5,sx2=_ce.x1+ox,sy2=_ce.y1+oy;
+            els.push(`<polygon points="${sx2},${sy2} ${sx2+Math.cos(s1)*ah},${sy2+Math.sin(s1)*ah} ${sx2+Math.cos(s2)*ah},${sy2+Math.sin(s2)*ah}" fill="${stroke}"${a}/>`)}
+          const lm=_curveLabelXY(s);
+          els.push(_connLabelSVG(s,lm.x,lm.y,lm.x,lm.y,ox,oy,stroke,paper));
+        }else if(s.elbow){
           const pts=_elbowPts(s),spts=pts.map(p=>`${_num(p.x+ox)},${_num(p.y+oy)}`).join(' ');
           els.push(`<polyline points="${spts}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}/>`);
           const Lp=pts[pts.length-1],Pp=pts[pts.length-2];
@@ -5327,6 +5549,14 @@ function buildSVG(shapes,paper){
             els.push(`<polygon points="${sx2},${sy2} ${sx2+Math.cos(s1)*ah},${sy2+Math.sin(s1)*ah} ${sx2+Math.cos(s2)*ah},${sy2+Math.sin(s2)*ah}" fill="${stroke}"${a}/>`)}
           const lm=_elbowLabelXY(s);
           els.push(_connLabelSVG(s,lm.x,lm.y,lm.x,lm.y,ox,oy,stroke,paper));
+        }else if(s.way){                                            // ADR-0076
+          const w=s.way,wpts=`${X1+ox},${Y1+oy} ${_num(w.x+ox)},${_num(w.y+oy)} ${X2+ox},${Y2+oy}`;
+          els.push(`<polyline points="${wpts}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}/>`);
+          const ang=Math.atan2(Y2-w.y,X2-w.x),a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5,tx=X2+ox,ty=Y2+oy;
+          els.push(`<polygon points="${tx},${ty} ${tx+Math.cos(a1)*ah},${ty+Math.sin(a1)*ah} ${tx+Math.cos(a2)*ah},${ty+Math.sin(a2)*ah}" fill="${stroke}"${a}/>`);
+          if(s.start){const sAng=Math.atan2(Y1-w.y,X1-w.x),s1=sAng+Math.PI-0.5,s2=sAng+Math.PI+0.5,sx2=X1+ox,sy2=Y1+oy;
+            els.push(`<polygon points="${sx2},${sy2} ${sx2+Math.cos(s1)*ah},${sy2+Math.sin(s1)*ah} ${sx2+Math.cos(s2)*ah},${sy2+Math.sin(s2)*ah}" fill="${stroke}"${a}/>`)}
+          els.push(_connLabelSVG(s,w.x,w.y,w.x,w.y,ox,oy,stroke,paper));
         }else{
           els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}/>`);
           const ang=Math.atan2(Y2-Y1,X2-X1);
@@ -5367,8 +5597,10 @@ function buildSVG(shapes,paper){
       case 'text':{
         const fs=_num(s.fontSize)||16;
         const svgLines=String(s.text==null?'':s.text).split('\n');
-        els.push(`<text x="${X+ox}" y="${Y+oy}" dominant-baseline="hanging" font-family="Hiragino Sans,Helvetica Neue,system-ui,sans-serif" font-size="${fs}" fill="${stroke}"${a}${rT}>`);
-        for(let i=0;i<svgLines.length;i++)els.push(`<tspan x="${X+ox}" dy="${i?fs*1.25:0}">${_esc(svgLines[i])}</tspan>`);
+        const tax=s.align==='center'?X+ox+W/2:s.align==='right'?X+ox+W:X+ox;   // ADR-0073
+        const anch=s.align==='center'?' text-anchor="middle"':s.align==='right'?' text-anchor="end"':'';
+        els.push(`<text x="${tax}" y="${Y+oy}" dominant-baseline="hanging" font-family="Hiragino Sans,Helvetica Neue,system-ui,sans-serif" font-size="${fs}" fill="${stroke}"${anch}${a}${rT}>`);
+        for(let i=0;i<svgLines.length;i++)els.push(`<tspan x="${tax}" dy="${i?fs*1.25:0}">${_esc(svgLines[i])}</tspan>`);
         els.push('</text>');break;}
       case 'image':
         if(typeof s.dataUrl==='string'&&/^data:image\//.test(s.dataUrl))els.push(`<image x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" href="${_esc(s.dataUrl)}"${a}${rT}/>`);
@@ -5391,14 +5623,27 @@ function buildSVG(shapes,paper){
           const fs=_num(s.fontSize)||14;const pad2=8;
           // estimate measure (no canvas here); wraps to the same box as the app
           const lines2=wrapText(s.text,Math.abs(W)-pad2*2,t=>t.length*fs*0.6);
-          els.push(`<text x="${X+ox+pad2}" y="${Y+oy+pad2}" dominant-baseline="hanging" font-family="Hiragino Sans,Helvetica Neue,system-ui,sans-serif" font-size="${fs}" fill="#1E293B"${rT}>`);
-          for(let i=0;i<lines2.length;i++)els.push(`<tspan x="${X+ox+pad2}" dy="${i?fs*1.3:0}">${_esc(lines2[i])}</tspan>`);
+          const tax2=s.align==='center'?X+ox+W/2:s.align==='right'?X+ox+W-pad2:X+ox+pad2;   // ADR-0073
+          const anch2=s.align==='center'?' text-anchor="middle"':s.align==='right'?' text-anchor="end"':'';
+          els.push(`<text x="${tax2}" y="${Y+oy+pad2}" dominant-baseline="hanging" font-family="Hiragino Sans,Helvetica Neue,system-ui,sans-serif" font-size="${fs}" fill="#1E293B"${anch2}${rT}>`);
+          for(let i=0;i<lines2.length;i++)els.push(`<tspan x="${tax2}" dy="${i?fs*1.3:0}">${_esc(lines2[i])}</tspan>`);
           els.push('</text>');
         }break;}
     }
   }
   els.push('</svg>');
   return els.join('\n');
+}
+// ADR-0074: box-shape label wrapped to the shape width, vertically centred —
+// mirrors _drawBoxLabel so canvas and SVG agree (wrap uses the same char-est
+// heuristic as sticky's export path).
+function _svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT){
+  const fs=14,pad=4;
+  const lines=wrapText(s.label,Math.max(10,W-pad*2),t=>t.length*fs*0.6);
+  const lh=fs*1.25,cy=Y+H/2+oy-(lines.length*lh)/2;
+  els.push(`<text x="${X+W/2+ox}" y="${cy}" dominant-baseline="hanging" font-family="system-ui,sans-serif" font-size="${fs}" text-anchor="middle" fill="${stroke}"${a}${rT}>`);
+  for(let i=0;i<lines.length;i++)els.push(`<tspan x="${X+W/2+ox}" dy="${i?lh:0}">${_esc(lines[i])}</tspan>`);
+  els.push('</text>');
 }
 function _esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
 // Coerce to finite number; prevents string geometry breaking SVG numeric attributes.
@@ -5504,11 +5749,56 @@ const Net={
       },NET_PRESENCE_INTERVAL);
     }catch{}
   },
+  // ADR-0069: wire-level image refs. add/addMany shapes go out slimmed (`img`
+  // key); the blob bytes ride as {k:'img'} messages chunked at 64KB and sent
+  // BEFORE the referencing op on both ordered channels. _imgSent dedups op
+  // payloads per session; snapshots pass a fresh map so every referenced blob
+  // is always re-emitted (late joiners). Inbound resolves via _imgIn; refs
+  // whose blob hasn't landed park in _imgPending until an 'img' msg completes.
+  _imgSent:new Map(), _imgIn:new Map(), _imgPending:new Map(),
+  _imgOuts:[], _imgChunks:new Map(),
+  _slimShapes(shapes,sent){
+    const{slim,puts}=_imgSlim(shapes,sent||this._imgSent);
+    for(const[k,d]of puts)this._imgOuts.push([k,d]);
+    return slim;
+  },
+  _slimOp(op){
+    if(op.op==='add'&&op.shape)return{...op,shape:this._slimShapes([op.shape])[0]};
+    if(op.op==='addMany'&&Array.isArray(op.shapes))return{...op,shapes:this._slimShapes(op.shapes)};
+    return op;
+  },
+  _flushImgOuts(){
+    const outs=this._imgOuts;this._imgOuts=[];
+    const CH=65536;
+    for(const[key,d]of outs){
+      const n=Math.max(1,Math.ceil(d.length/CH));
+      for(let i=0;i<n;i++){
+        const m={k:'img',key,seq:i,n,data:d.slice(i*CH,(i+1)*CH)};
+        this._send(m);
+        if(this.dc&&this.dc.readyState==='open'){try{this.dc.send(JSON.stringify(m))}catch(_){}}
+      }
+    }
+  },
+  _attachShape(s){
+    if(s&&typeof s.img==='string'&&!s.dataUrl){
+      const d=this._imgIn.get(s.img);
+      if(d){const{img:_x,...rest}=s;return{...rest,dataUrl:d}}
+      if(typeof s.id==='string')this._imgPending.set(s.id,s.img);
+    }
+    return s;
+  },
+  _attachOp(op){
+    if(!op||typeof op!=='object')return op;
+    if(op.op==='add'&&op.shape)return{...op,shape:this._attachShape(op.shape)};
+    if(op.op==='addMany'&&Array.isArray(op.shapes))return{...op,shapes:op.shapes.map(s=>this._attachShape(s))};
+    return op;
+  },
   // Outbound: from local Store.commit
   broadcast(op){
-    this._send({k:'op',op});
+    const s=this._slimOp(op);this._flushImgOuts();
+    this._send({k:'op',op:s});
     if(this.dc&&this.dc.readyState==='open'){
-      try{this.dc.send(JSON.stringify({k:'op',op}))}catch(_){}
+      try{this.dc.send(JSON.stringify({k:'op',op:s}))}catch(_){}
     }
   },
   // ADR-0010: ephemeral peer cursor presence — never touches Store/history/Persist.
@@ -5554,9 +5844,27 @@ const Net={
     // unfiltered — "hello/ping never ride the DataChannel" only holds for honest peers.
     if(msg.peer!==undefined&&(typeof msg.peer!=='string'||msg.peer.length>MAX_PEER_ID_LEN))return;
     switch(msg.k){
+      case 'img':{
+        // ADR-0069: blob chunks → _imgIn, then drain parked shape refs.
+        if(typeof msg.key!=='string'||msg.key.length>64||typeof msg.data!=='string')break;
+        const n=typeof msg.n==='number'&&msg.n>=1&&msg.n<=4096?Math.floor(msg.n):1;
+        const seq=typeof msg.seq==='number'&&msg.seq>=0?Math.floor(msg.seq):0;
+        if(seq>=n)break;
+        let st=this._imgChunks.get(msg.key);
+        if(!st){st={parts:new Array(n),got:0,n};this._imgChunks.set(msg.key,st)}
+        if(st.n===n&&!st.parts[seq]){st.parts[seq]=msg.data;st.got++}
+        if(st.got<st.n)break;
+        this._imgChunks.delete(msg.key);
+        const data=st.parts.join('');
+        if(data.length>12_000_000)break;
+        this._imgIn.set(msg.key,data);
+        for(const[id,k]of this._imgPending){
+          if(k===msg.key){const sh=byId(id);if(sh){delete sh.img;sh.dataUrl=data}this._imgPending.delete(id)}
+        }
+        invalidate();break;}
       case 'op':{
         // Validate op shape before applying — reject garbage from bad peers
-        const op=msg.op;
+        const op=this._attachOp(msg.op);
         if(!op||typeof op!=='object'||typeof op.op!=='string')break;
         if(!op.clock||typeof op.clock.peer!=='string'||typeof op.clock.seq!=='number')break;
         Store.applyRemote(op);break;}
@@ -5619,7 +5927,12 @@ const Net={
       op:'add',shape:clone(s),wc:clone(state.wclock[s.id]||{}),
       clock:{peer:state.peerId,seq:'snap:'+s.id,ts:0,_snap:true}
     }));
-    return {k:'snapshot',shapes:clone(state.shapes),ops,peer:state.peerId};
+    // ADR-0069: slim every shape in one pass against a FRESH sent-map — blob
+    // puts always re-emit (late joiners need them), flushed before this msg.
+    const slim=this._slimShapes(ops.map(o=>o.shape),new Map());
+    ops.forEach((o,i)=>o.shape=slim[i]);
+    this._flushImgOuts();
+    return {k:'snapshot',shapes:slim,ops,peer:state.peerId};
   },
   // ADR-0058: merge one snapshot add-op. Unknown shape → adopt via applyRemote
   // (unchanged); known shape → per-property LWW merge against wc so concurrent
@@ -5627,6 +5940,7 @@ const Net={
   // peer) → 'skip', the previous keep-everything behaviour. No history entries —
   // convergence, not a user action. Named for testability (precedent: _gresizeDrag).
   _mergeSnapshotOp(op){
+    op=this._attachOp(op);                            // ADR-0069
     if(!op||op.op!=='add'||!op.shape)return 'skip';   // snapshot ops are adds only
     const ex=byId(op.shape.id);
     if(!ex){Store.applyRemote(op);return 'add';}
@@ -5662,7 +5976,7 @@ const Net={
     // Validate snapshot shapes before adopting
     const shapes=msg.shapes;
     if(!Array.isArray(shapes))return;
-    const valid=shapes.slice(0,MAX_OP_SHAPES).filter(validShape);
+    const valid=shapes.slice(0,MAX_OP_SHAPES).map(s=>this._attachShape(s)).filter(validShape);
     state.shapes=clone(valid);_invalidateGrid();   // ADR-0009
     sortZ();
     invalidate();UI.refreshUndo();Persist.schedule();
@@ -6258,6 +6572,8 @@ const UI={
       has&&['ctxCopyStyle','⌥C',copyStyle],
       state.styleClipboard&&has&&['ctxPasteStyle','⌥V',pasteStyle],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked})&&['ctxElbow','',toggleElbow],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked})&&['ctxCurve','',toggleCurve],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky')&&!s.locked})&&['ctxTextAlign','',cycleTextAlign],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='arrow'&&!s.locked})&&['ctxBothEnds','',toggleBothEnds],
       has&&['ctxDelete','⌫',doDelete],
       has&&'sep',
@@ -6349,7 +6665,7 @@ const UI={
       ['Enter / ⇧Enter',k.searchNav],
       ['⇧H / ⇧V',t('ctxFlipH')+' / '+t('ctxFlipV')],
       ['⌥C / ⌥V',t('ctxCopyStyle')+' / '+t('ctxPasteStyle')],
-      ['⇧ + drag',k.moveAxis],['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],
+      ['⇧ + drag',k.moveAxis],['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],['⌘⇧ , / .',k.fontSize],
       ['Tab / ⇧Tab',k.cycle],['Enter',k.create+' / '+t('editLabel')]
     ];
     while(g.firstChild)g.removeChild(g.firstChild);
@@ -6719,9 +7035,41 @@ function toggleElbow(){
   const before=[],after=[];
   for(const id of state.selection){
     const s=byId(id);if(!s||(s.type!=='line'&&s.type!=='arrow')||s.locked)continue;
-    before.push({id,elbow:s.elbow||0});
-    after.push({id,elbow:s.elbow?0:1});
-    s.elbow=s.elbow?0:1;
+    before.push({id,elbow:s.elbow||0,curve:s.curve||0});
+    after.push({id,elbow:s.elbow?0:1,curve:0});
+    s.elbow=s.elbow?0:1;s.curve=0;               // ADR-0068: routes are exclusive
+  }
+  if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
+}
+// ADR-0068: curved (quadratic) route toggle — exclusive with elbow.
+function toggleCurve(){
+  const before=[],after=[];
+  for(const id of state.selection){
+    const s=byId(id);if(!s||(s.type!=='line'&&s.type!=='arrow')||s.locked)continue;
+    before.push({id,elbow:s.elbow||0,curve:s.curve||0});
+    after.push({id,elbow:0,curve:s.curve?0:1});
+    s.elbow=0;s.curve=s.curve?0:1;
+  }
+  if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
+}
+// ADR-0075: ⌘⇧,/. nudges fontSize ±2 on selected text/sticky via style op.
+function fontSizeStep(d){
+  const before=[],after=[];
+  for(const id of state.selection){
+    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky')||s.locked)continue;
+    const cur=s.fontSize||14,nxt=Math.min(64,Math.max(8,cur+d*2));
+    if(nxt===cur)continue;
+    before.push({id,fontSize:cur});after.push({id,fontSize:nxt});s.fontSize=nxt;
+  }
+  if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
+}
+// ADR-0073: cycle text align left→center→right for text/sticky via style op.
+function cycleTextAlign(){
+  const before=[],after=[];
+  for(const id of state.selection){
+    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky')||s.locked)continue;
+    const cur=s.align||'left',nxt=cur==='left'?'center':cur==='center'?'right':'left';
+    before.push({id,align:cur});after.push({id,align:nxt});s.align=nxt;
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
 }
@@ -6915,7 +7263,7 @@ const Minimap=(()=>{
         case 'rect':{const rx=s.x*sc+ox,ry=s.y*sc+oy,rw=s.w*sc,rh=s.h*sc;if(s.fill)sx.fillRect(rx,ry,rw,rh);sx.strokeRect(rx,ry,rw,rh);break}
         case 'ellipse':sx.beginPath();sx.ellipse(s.x*sc+ox+s.w*sc/2,s.y*sc+oy+s.h*sc/2,Math.abs(s.w*sc/2),Math.abs(s.h*sc/2),0,0,Math.PI*2);if(s.fill)sx.fill();sx.stroke();break;
         case 'diamond':{const dcx=s.x*sc+ox+s.w*sc/2,dcy=s.y*sc+oy+s.h*sc/2;sx.beginPath();sx.moveTo(dcx,s.y*sc+oy);sx.lineTo(s.x*sc+ox+s.w*sc,dcy);sx.lineTo(dcx,s.y*sc+oy+s.h*sc);sx.lineTo(s.x*sc+ox,dcy);sx.closePath();if(s.fill)sx.fill();sx.stroke();break;}
-        case 'line':case 'arrow':{if(s.elbow){const pts=_elbowPts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<pts.length;i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}const me=connEnds(s);sx.beginPath();sx.moveTo(me.x1*sc+ox,me.y1*sc+oy);sx.lineTo(me.x2*sc+ox,me.y2*sc+oy);sx.stroke();break}
+        case 'line':case 'arrow':{if(s.elbow){const pts=_elbowPts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<pts.length;i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}if(s.curve){const me=connEnds(s),cc=_curveCtrl(me);sx.beginPath();sx.moveTo(me.x1*sc+ox,me.y1*sc+oy);sx.quadraticCurveTo(cc.x*sc+ox,cc.y*sc+oy,me.x2*sc+ox,me.y2*sc+oy);sx.stroke();break}const pts=_linePts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<pts.length;i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}
         case 'pen':if(s.pts.length<2)break;sx.beginPath();sx.moveTo(s.pts[0][0]*sc+ox,s.pts[0][1]*sc+oy);for(let i=1;i<s.pts.length;i++)sx.lineTo(s.pts[i][0]*sc+ox,s.pts[i][1]*sc+oy);sx.stroke();break;
         case 'text':case 'sticky':{const rx2=s.x*sc+ox,ry2=s.y*sc+oy,rw2=Math.max(2,s.w*sc),rh2=Math.max(2,s.h*sc);sx.fillStyle=s.type==='sticky'?(s.color||'#FEF08A'):(s.fill||getCSS('--brand'));sx.fillRect(rx2,ry2,rw2,rh2);break}
         case 'image':{const rx3=s.x*sc+ox,ry3=s.y*sc+oy,rw3=Math.max(2,s.w*sc),rh3=Math.max(2,s.h*sc);const img=s.dataUrl?_imgCache.get(_imgKey(s.dataUrl)):null;if(img&&img.complete&&img.naturalWidth)sx.drawImage(img,rx3,ry3,rw3,rh3);else{sx.fillStyle='#CBD5E1';sx.fillRect(rx3,ry3,rw3,rh3)}break}

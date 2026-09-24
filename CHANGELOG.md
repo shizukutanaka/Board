@@ -2,6 +2,83 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.134]
+
+### 追加
+- **直線コネクタの中間ウェイポイント** (ADR-0076)。選択中の直線 line/arrow
+  の中点ハンドルをドラッグで `s.way` を作成・移動 (draw.io parity) —
+  直線中点 ±6px に戻すと自動削除。`_linePts` が draw/hit/bbox/SVG/
+  minimap/label の共通経路源で、translate/flip/rotate/gresize/grot の
+  全変換経路で追従。`style` op で undo・同期は既存経路。
+
+## [1.7.133]
+
+### 追加
+- **フォントサイズのキーボード増減** (ADR-0075)。⌘⇧, / ⌘⇧. で選択中の
+  text/sticky の fontSize を ±2 (8–64 clamp)、Figma/draw.io parity。
+  `style` op で undo・同期は既存経路。help grid 追記。
+
+## [1.7.132]
+
+### 修正
+- **ボックスラベルの折返し** (ADR-0074)。rect/ellipse/diamond のラベルが
+  図形幅からはみ出していた問題を解消 — `wrapTextCached` (禁則処理付き) で
+  `w-8` に wrap し中央揃えで複数行描画。SVG export も同幅で wrap し
+  `<tspan>` 複数行化 (表示=出力パリティ)。長いラベルがフロー図で
+  読めるようになる。
+
+## [1.7.131]
+
+### 追加
+- **テキスト揃え** (ADR-0073)。ctx メニュー「テキスト揃え」で text/sticky
+  本文の揃えを左→中央→右に巡回 (`s.align`、Excalidraw parity)。
+  canvas・SVG export (`text-anchor`)・インライン editor の全経路で一貫。
+  `style` op で undo・同期は既存経路。既存図形は left で見た目同一。
+
+## [1.7.130]
+
+### 追加
+- **elbow trunk ドラッグ** (ADR-0072)。選択中のエルボーコネクタで中間
+  trunk セグメント (ハンドル表示あり) をドラッグして経路位置を調整 —
+  `s.bend` に絶対座標で永続化、`style` op で undo・同期は既存経路。
+  未設定時は従来の自動経路で視覚退行なし。
+
+## [1.7.129]
+
+### 追加
+- **等間隔スナップ** (ADR-0071)。移動ドラッグでエッジ吸着が無い位置でも、
+  同一行/列の連続図形ペアの既存間隔と同じ隙間を作る位置に吸着し
+  等しい2区間をガイド表示 (draw.io スマートガイド parity)。
+  行末端・行内挿入とも対応。エッジ吸着優先、未成立軸のみ評価。
+
+## [1.7.128]
+
+### 追加
+- **quick-connect** (ADR-0070)。選択ツールで図形にホバーすると4辺中点に
+  接続ドットを表示 (draw.io parity) — ドットからドラッグで始点結合済み
+  矢印を一発作成。locked/connector/pen 除外、hover 変化時は overlay のみ
+  再描画 (ADR-0024 層分離でシーンコストゼロ)。commit は `add` op で
+  undo・同期は既存経路。
+
+## [1.7.127]
+
+### 変更
+- **ワイヤーレベル画像参照** (ADR-0069)。`add`/`addMany` op と snapshot
+  の画像バイトを `img` 参照 + 別メッセージ `{k:'img'}` (64KB チャンク、
+  op 先行送信) に分離 — ピア間で画像を含む op のワイヤーサイズが大幅減、
+  RTCDataChannel ~256KB/メッセージ上限による静的失敗も解消。受信側は
+  `_imgChunks` 再構成→`_imgIn` 格納、未着参照は `_imgPending` に保留して
+  blob 到着時に補完。共有リンクは URL 自体が輸送路のため対象外。
+  実ブラウザ loopback で 200KB 画像の chunked 復元を実測。
+
+## [1.7.126]
+
+### 追加
+- **曲線コネクタ** (ADR-0068)。ctx メニュー「曲線」で line/arrow を二次
+  ベジエ化 (制御点 = 中点 + 法線 × min(0.25·len,80))。elbow と排他トグル
+  (style op 1エントリで両 prop)、両端ヘッド・結合・ラベル (ベジエ中点)
+  ・SVG/ミニマップ全経路対応。
+
 ## [1.7.125]
 
 ### 修正
