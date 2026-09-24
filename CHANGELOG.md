@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.163]
+
+### 追加
+- **付箋 ⌘Enter 連鎖** (ADR-0105)。付箋の編集中に ⌘Enter で確定後、
+  同スタイルの付箋を右隣に生成して即編集継続 (FigJam 式の連続
+  ノート入力。text 形状は従来通り確定のみ)。
+
 ## [1.7.162]
 
 ### 追加

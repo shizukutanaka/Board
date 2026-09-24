@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.162';
+const V='1.7.163';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4479,6 +4479,19 @@ function beginText(wp){
   openTextEditor(s,true);
   pickTool('select');
 }
+// ADR-0105: ⌘Enter inside a sticky's editor chains the next note — commit
+// happens on blur, then a same-styled sticky spawns to the right and its
+// editor opens (rapid note-taking like Post-it®/FigJam).
+function _stickyChain(s){
+  if(s.type!=='sticky'||s.locked)return;
+  const n=Shape.make('sticky',{x:s.x+s.w+16,y:s.y,w:s.w,h:s.h,color:s.color,fontSize:s.fontSize,align:s.align});
+  const origSel=[...state.selection];
+  Store.commit({op:'add',shape:n});
+  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  state.selection=new Set([n.id]);
+  openTextEditor(n,true);
+  invalidate();
+}
 // ---- keyboard shape creation (a11y) ----
 // Create a default-sized shape of the active tool, centred in the viewport, so the
 // whole create→select→edit loop is reachable without a pointer (complements the
@@ -4618,7 +4631,7 @@ function openTextEditor(s,isNew){
   ta.addEventListener('keydown',ev=>{
     if(ev.isComposing)return;
     if(ev.key==='Escape'){ev.preventDefault();ta.blur()}
-    if(ev.key==='Enter'&&(ev.metaKey||ev.ctrlKey)){ev.preventDefault();ta.blur()}
+    if(ev.key==='Enter'&&(ev.metaKey||ev.ctrlKey)){ev.preventDefault();ta.blur();_stickyChain(s)}   // ADR-0105
   });
   auto();
   _teTa=ta;_teVp='';   // ADR-0053: track the live overlay for viewport follow
