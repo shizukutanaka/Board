@@ -1055,8 +1055,8 @@ const checks = [
   // a newer remote write was implemented only in the 'upd' case; style/resize/align and
   // group/ungroup shared the forward stamping (_stampWrites) but not the reverse guard.
   ['ADR-0002 gap fix: shared _lwwSkip helper exists and is used by upd, the batch ops, and group/ungroup',
-    html.includes('function _lwwSkip(id,key,op){') && html.includes('if(!forward)for(const k of Object.keys(p)){if(_lwwSkip(op.id,k,op))delete p[k];}')
-    && html.includes("if(!forward)for(const k of Object.keys(p)){if(k!=='id'&&_lwwSkip(raw.id,k,op))delete p[k];}")
+    html.includes('function _lwwSkip(id,key,op){') && html.includes('if(!forward)for(const k of _ok(p)){if(_lwwSkip(op.id,k,op))delete p[k];}')
+    && html.includes("if(!forward)for(const k of _ok(p)){if(k!=='id'&&_lwwSkip(raw.id,k,op))delete p[k];}")
     && (html.match(/if\(_lwwSkip\(b\.id,'groupId',op\)\)continue;/g)||[]).length>=2],
   ['self-avatar title localized via t(you), resynced by toggleLang (deep-audit fix, was hardcoded)',
     html.includes("self.title=t('you');") && html.includes('UI.refreshPeers();   // self-avatar title')
@@ -1208,7 +1208,7 @@ const checks = [
   ['_ctxMenuKeyNav handles ArrowDown/Up/Home/End (ARIA APG menu pattern)',
     html.includes('function _ctxMenuKeyNav')&&html.includes("'ArrowDown'")&&html.includes("'ArrowUp'")&&html.includes("'Home'")&&html.includes("'End'")],
   ['ctx menu keydown wired in wire() to _ctxMenuKeyNav',
-    html.includes('addEventListener(\'keydown\',e=>_ctxMenuKeyNav(')],
+    html.includes("'keydown',e=>_ctxMenuKeyNav(")],
   // v1.6.96: Tab closes ctx menu + text shapes have no resize handles
   ['_ctxMenuKeyNav closes menu on Tab (ARIA APG: Tab moves to next tab stop = close)',
     html.includes("'Tab'")&&html.includes("UI.closeCtxMenu()")],

@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.429] - 2026-09-23
+
+### 変更
+- `Object.keys` → `_ok`、`X.addEventListener` → `_on` の shorthand 適用サイト拡大 (ADR-0386) — ~130B 回収
+
 ## [1.7.428] - 2026-09-23
 
 ### 修正
