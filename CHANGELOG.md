@@ -2,6 +2,30 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.352] - 2026-09-24
+
+### Added
+- excalidraw line/arrow の `angle` を端点+waypoints の中点中心回転
+  として輸入 (従来は w!=null の矩形のみ、ADR-0300)
+- excalidraw `link` を `s.link` に往復 (ADR-0301)
+
+## [1.7.351] - 2026-09-24
+
+### Added
+- excalidraw export の text / container-text に `autoResize:true` を
+  emit (Board text の auto-fit 挙動と一致する spec 値、ADR-0299)
+
+## [1.7.350] - 2026-09-24
+
+### Added
+- フレームラベルの fontSize を `s.fontSize` に従わせ、⌘⇧,/. で
+  変更可能に (canvas+SVG 一致、ADR-0298)
+
+## [1.7.349] - 2026-09-24
+
+### Changed
+- conn 型判定を `_conn(t)` ヘルパーに集約 (24 箇所、raw -442B、ADR-0297)
+
 ## [1.7.348] - 2026-09-24
 
 ### Added
