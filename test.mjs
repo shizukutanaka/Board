@@ -753,7 +753,7 @@ const checks = [
   ['exc conn-label lineHeight restore (ADR-0323)', html.includes("e.lineHeight!==1.25)p.lineH=")],
   ['drawio export emits html=1 (ADR-0322)', html.includes("let sty='html=1;';")&&html.includes("'html=1;'+(s.start")],
   ['drawio whiteSpace nowrap|wrap ↔ s.wrap (ADR-0321/0412)', html.includes("s.type==='text'&&sty.whiteSpace==='nowrap')s.wrap=0")&&html.includes("s.wrap?'whiteSpace=wrap;':'whiteSpace=nowrap;'")&&html.includes("sty.whiteSpace==='wrap')s.wrap=1")],
-  ['validPatch: wrap numeric + flag props boolean|number (ADR-0411/0413)', html.includes("'visible','start','wrap']")&&html.includes("['bold','italic','under','strike','locked','shadow']")],
+  ['validPatch: wrap numeric + flag props boolean|number (ADR-0411/0413)', html.includes("'visible','start','wrap']")&&html.includes("['bold','italic','under','strike','locked','shadow','hl']")],
   ['drawio labelPosition/verticalLabelPosition (ADR-0320)', html.includes("labelPosition='+s.align")&&html.includes("verticalLabelPosition='+s.valign")&&html.includes("sty.labelPosition))s.align")],
   ['popup-blocked feedback on link open (ADR-0319)', html.includes("if(s&&!_wO(s.link,'_blank','noopener'))_w(t('popupBlocked'))")&&html.includes("if(!_wO(_h0.link,'_blank','noopener'))_w(t('popupBlocked'))")],
   ['ctx copy link item (ADR-0318)', html.includes("['ctxCopyLink',''")&&html.includes("ctxCopyLink:'リンクをコピー'")&&html.includes("ctxCopyLink:'Copy link'")],
