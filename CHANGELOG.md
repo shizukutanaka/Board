@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.360] - 2026-09-24
+
+### Changed
+- `_apply` 内の origSel 復元 11 箇所を `_selR(op)` に集約
+  (raw ~550B、ADR-0309)
+
 ## [1.7.359] - 2026-09-24
 
 ### Changed

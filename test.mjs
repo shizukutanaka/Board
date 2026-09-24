@@ -719,6 +719,7 @@ const checks = [
   ['clipboard image/svg+xml → vector import (ADR-0272)', html.includes("i.type==='image/svg+xml'")],
   ['drawio strokeOpacity/fillOpacity → s.opacity (ADR-0271)', html.includes('+sty.strokeOpacity')],
   ['svg conn path/label emitters deduped (ADR-0270)', html.includes('const _sp=(d,j)')&&html.includes('_cL();')],
+  ['_selR() origSel restore helper (ADR-0309)', html.includes("const _selR=op=>")],
   ['_selL() selection-list shorthand (ADR-0308)', html.includes("const _selL=f=>")],
   ['_so() style-op commit tail (ADR-0307)', html.includes("const _so=(b,a)=>")],
   ['_csh() canvas shadow helper (ADR-0306)', html.includes("const _csh=(s,c)=>")],
@@ -1186,21 +1187,21 @@ const checks = [
     html.includes("const noLock=p=>op.dir==='lock'||!('locked' in p);")],
   // v1.7.24a: _apply clear backward must restore pre-clear selection
   ['_apply clear backward restores origSel (mirror of del undo)',
-    html.includes("if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));") &&
+    html.includes("_selR(op);") &&
     html.includes("if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
   // v1.7.24b: validRemotePayload must block locked key in remote style/resize ops
   ['remote style/resize ops cannot set locked (noLock guard extended)',
     html.includes("case 'resize':{const noLock=p=>!('locked' in p);")],
   // v1.7.26: _apply replace backward restores origSel; importBoard/importFromHash attach it
   ['_apply replace backward restores origSel; import callers attach origSel + afterWc to op',
-    html.includes("if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));") &&
+    html.includes("if(!forward)_selR(op);") &&
     html.includes("Store._recordCommitted({op:'replace',before,after:clone(state.shapes),wc:beforeWc,afterWc:clone(state.wclock),origSel});")],
   // v1.7.28: validRemotePayload for upd must block locked key (parity with style/resize/align)
   ['remote upd op cannot set locked (noLock guard extended to upd)',
     html.includes("case 'upd':{const noLock=p=>!('locked' in p);\n      if(typeof op.id!=='string'||!validPatch(op.after)||!noLock(op.after)")],
   // v1.7.30: _apply add backward restores origSel; createShapeKbd attaches origSel
   ['_apply add backward restores origSel; createShapeKbd attaches origSel',
-    html.includes("if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));") &&
+    html.includes("_selR(op);") &&
     html.includes("_cOp({op:'add',shape:s});")],
   // v1.7.33: validRemotePayload group must require before (string-id array)
   ['validRemotePayload group: requires before array with string ids',
@@ -1246,12 +1247,12 @@ const checks = [
   ['doGroup: origSel patched onto history entry after _recordCommitted',
     html.includes("Store._recordCommitted({op:'group',ids,gid,before});\n  if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
   ['_apply group backward: if(op.origSel) restores selection',
-    html.includes("if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));}\n        break;}\n      case 'ungroup':")],
+    html.includes("_selR(op);}\n        break;}\n      case 'ungroup':")],
   // v1.7.37: doUngroup/_apply ungroup backward must carry and restore origSel
   ['doUngroup: origSel captured before selection expansion and patched after _recordCommitted',
     html.includes("const origSel=[...ids];\n  // find all groupIds")],
   ['_apply ungroup backward: if(op.origSel) restores selection',
-    html.includes("if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));}\n        break;}\n      case 'zorder':")],
+    html.includes("_selR(op);}\n        break;}\n      case 'zorder':")],
   // v1.7.32: _apply group backward must guard op.before (parity with ungroup backward)
   // v1.7.68/ADR-0002-gap-fix: the loop body gained the same _lwwSkip guard group/ungroup
   // now share (below); the op.before/origSel structure itself is unchanged.
@@ -1275,7 +1276,7 @@ const checks = [
     html.includes("if(forward&&op.afterWc)state.wclock=clone(op.afterWc);")],
   // v1.7.43: _apply zorder backward restores origSel (mirrors move/align/group/ungroup)
   ['_apply zorder backward: if(!forward&&op.origSel) restores selection',
-    html.includes("if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));\n        break;}\n      case 'style':")],
+    html.includes("if(!forward)_selR(op);\n        break;}\n      case 'style':")],
   // v1.7.43: keyboard resize (Alt+Arrow) captures origSel around resize _recordCommitted
   ['keyboard resize (Alt+Arrow): origSel captured before resize commit',
     html.includes("_rcOp({op:'resize',before,after});")],
@@ -1284,7 +1285,7 @@ const checks = [
     html.includes("_rcOp({op:'upd',id:rsh.id,before,after});")],
   // v1.7.43: _apply upd backward restores origSel (drag-resize/rotate undo)
   ['_apply upd backward: if(!forward&&op.origSel) restores selection',
-    html.includes("Object.assign(sh,p);\n        if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));\n        break;}\n      case 'move':{")],
+    html.includes("Object.assign(sh,p);\n        if(!forward)_selR(op);\n        break;}\n      case 'move':{")],
   // v1.7.45: openLabelEditor commit closure must capture origSel (label-edit undo restores selection)
   ['openLabelEditor commit: origSel captured before upd _recordCommitted',
     html.includes("hit.label=lbl||null;_rcOp({op:'upd',id:hit.id,before,after});invalidate()")],

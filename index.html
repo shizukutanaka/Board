@@ -784,9 +784,10 @@ const _forSel=f=>{for(const id of state.selection){const s=byId(id);if(s)f(s,id)
 const _csh=(s,c)=>{if(s.shadow){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=10;c.shadowOffsetY=3}};   // ADR-0306
 const _so=(b,a)=>{if(b.length){_styleOp(b,a);invalidate()}};   // ADR-0307
 const _selL=f=>[...state.selection].map(byId).filter(f);   // ADR-0308
+const _selR=op=>{if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)))};   // ADR-0309
 
 // ====================== CONSTANTS ======================
-const V='1.7.359';
+const V='1.7.360';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1509,13 +1510,13 @@ const Store={
         // a duplicate. Local commits use fresh uids so this never blocks them; redo
         // re-pushes because undo removed the shape first.
         if(forward){if(!byId(op.shape.id)){state.shapes.push(clone(op.shape));sortZ();}}
-        else{const i=state.shapes.findIndex(s=>s.id===op.shape.id);if(i>=0)state.shapes.splice(i,1);state.selection.delete(op.shape.id);delete state.wclock[op.shape.id];if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));}
+        else{const i=state.shapes.findIndex(s=>s.id===op.shape.id);if(i>=0)state.shapes.splice(i,1);state.selection.delete(op.shape.id);delete state.wclock[op.shape.id];_selR(op);}
         break;}
       case 'addMany':{
         // Atomic multi-add (paste/duplicate): N copies as ONE undo step. Forward mirrors
         // 'add' (idempotent on id); reverse mirrors 'del' (remove all, drop selection).
         if(forward){for(const sh of op.shapes){if(!byId(sh.id))state.shapes.push(clone(sh));}sortZ();}
-        else{for(const sh of op.shapes){const i=state.shapes.findIndex(s=>s.id===sh.id);if(i>=0)state.shapes.splice(i,1);state.selection.delete(sh.id);delete state.wclock[sh.id];}if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));}
+        else{for(const sh of op.shapes){const i=state.shapes.findIndex(s=>s.id===sh.id);if(i>=0)state.shapes.splice(i,1);state.selection.delete(sh.id);delete state.wclock[sh.id];}_selR(op);}
         break;}
       case 'del':{
         if(forward){
@@ -1536,7 +1537,7 @@ const Store={
           // Restore connector bindings after shapes are back so references are valid
           if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)Object.assign(sh,p.before);}}
           if(op.wc)for(const [id,w] of Object.entries(op.wc))state.wclock[id]=clone(w);
-          if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));
+          _selR(op);
         }
         break;}
       case 'upd':{
@@ -1549,17 +1550,17 @@ const Store={
         // Local-peer writes (same peerId) are also being undone and must not block.
         if(!forward)for(const k of Object.keys(p)){if(_lwwSkip(op.id,k,op))delete p[k];}
         Object.assign(sh,p);
-        if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));
+        if(!forward)_selR(op);
         break;}
       case 'move':{
         const d=forward?1:-1;
         for(const id of op.ids){const sh=byId(id);if(!sh)continue;if(forward&&sh.locked)continue;
           Shape.translate(sh,op.dx*d,op.dy*d);}
-        if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));
+        if(!forward)_selR(op);
         break;}
       case 'clear':{
         if(forward){state.shapes.length=0;state.selection.clear();state.wclock={};}
-        else{for(const s of op.shapes)state.shapes.push(clone(s));sortZ();if(op.wc)state.wclock=clone(op.wc);if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));}
+        else{for(const s of op.shapes)state.shapes.push(clone(s));sortZ();if(op.wc)state.wclock=clone(op.wc);_selR(op);}
         break;}
       case 'replace':{
         // Whole-board swap (shared-link import). Reversible: before/after are full
@@ -1571,7 +1572,7 @@ const Store={
         sortZ();
         if(forward&&op.afterWc)state.wclock=clone(op.afterWc);
         if(!forward&&op.wc)state.wclock=clone(op.wc);
-        if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));
+        if(!forward)_selR(op);
         break;}
       case 'group':{
         if(forward){
@@ -1581,7 +1582,7 @@ const Store={
             const sh=byId(b.id);if(!sh)continue;
             if(_lwwSkip(b.id,'groupId',op))continue;   // a remote peer's newer groupId write wins over this undo
             if(b.groupId)sh.groupId=b.groupId;else delete sh.groupId;}
-          if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));}
+          _selR(op);}
         break;}
       case 'ungroup':{
         if(forward){
@@ -1592,7 +1593,7 @@ const Store={
             if(_lwwSkip(b.id,'groupId',op))continue;
             if(b.groupId)sh.groupId=b.groupId;else delete sh.groupId;}}
           else{const gid=op.gids?.[0];for(const id of op.ids){const sh=byId(id);if(sh&&gid)sh.groupId=gid}}
-          if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));}
+          _selR(op);}
         break;}
       case 'zorder':{
         if(op.changes){
@@ -1610,7 +1611,7 @@ const Store={
             state.shapes.length=0;Array.prototype.push.apply(state.shapes,next);
           }
         }
-        if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));
+        if(!forward)_selR(op);
         break;}
       case 'style':
       case 'resize':
@@ -1628,7 +1629,7 @@ const Store={
           if(!forward)for(const k of Object.keys(p)){if(k!=='id'&&_lwwSkip(raw.id,k,op))delete p[k];}
           Object.assign(sh,p);
         }
-        if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));
+        if(!forward)_selR(op);
         break;}
     }
     // ADR-0027: post-mutation bboxes of the same ids cover add/upd/move targets;
