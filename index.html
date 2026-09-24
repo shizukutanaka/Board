@@ -791,7 +791,7 @@ const _ce=t=>document.createElement(t);   // ADR-0329
 const _selIds=()=>[...state.selection];   // ADR-0330
 
 // ====================== CONSTANTS ======================
-const V='1.7.381';
+const V='1.7.382';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6396,6 +6396,7 @@ function _dioStyApply(s,sty,hid){
   if(sty.editable==='0'||sty.deletable==='0'||sty.movable==='0')s.locked=1;   // ADR-0254
   {const _op=[+sty.opacity,+sty.strokeOpacity,+sty.fillOpacity].filter(v=>v>0);if(_op.length)s.opacity=Math.max(0.05,Math.min(..._op)/100)}   // ADR-0271
   if(+sty.letterSpacing)s.spacing=Math.min(40,+sty.letterSpacing);   // ADR-0284
+  if(/hachure|zigzag/.test(sty.fillStyle||''))s.fstyle='hatch';else if(sty.fillStyle==='cross-hatch')s.fstyle='cross';   // ADR-0331
   if(sty.flipH==='1')s.flip=(s.flip||0)|1;                  // ADR-0260
   if(sty.flipV==='1')s.flip=(s.flip||0)|2;
   if(/^(left|center|right)$/.test(sty.labelPosition))s.align=sty.labelPosition;   // ADR-0320
@@ -6412,6 +6413,7 @@ function _dioStyEmit(s,edge){
   if(s.shadow)r+='shadow=1;';                                    // ADR-0246
   if(s.flip&1)r+='flipH=1;';if(s.flip&2)r+='flipV=1;';          // ADR-0260
   if(s.spacing)r+='letterSpacing='+s.spacing+';';                // ADR-0284
+  if(!edge&&s.fstyle)r+='fillStyle='+(s.fstyle==='cross'?'cross-hatch':'hachure')+';';   // ADR-0331
   {const _fs=(s.bold?1:0)|(s.italic?2:0)|(s.under?4:0);          // ADR-0282
    if(_fs&&(!edge||s.label))r+='fontStyle='+_fs+';'}
   if(s.locked)r+='editable=0;deletable=0;movable=0;'+(edge?'':'resizable=0;');   // ADR-0254/0282

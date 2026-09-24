@@ -380,6 +380,7 @@ Board/
 │   ├── ADR-0328-userobject-label-link.md  # UserObject label/link 復元 (実装済)
 │   ├── ADR-0329-ce-shorthand.md  # createElement 短縮 (実装済)
 │   ├── ADR-0330-selids-shorthand.md  # selection ids 短縮 (実装済)
+│   ├── ADR-0331-dio-hatch-fillstyle.md  # drawio ハッチ往復 (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.382] - 2026-09-24
+
+### Added
+- drawio `fillStyle` ハッチ往復 (hachure/cross-hatch ↔ fstyle、
+  ADR-0331)
+
 ## [1.7.381] - 2026-09-24
 
 ### Changed
