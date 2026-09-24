@@ -417,6 +417,7 @@ Board/
 │   ├── ADR-0365-state-field-shorthands.md    # state.X 全フィールド shorthand 一括化 (実装済)
 │   ├── ADR-0366-fn-shorthands.md             # 関数 shorthand 一括化 (実装済)
 │   ├── ADR-0367-validpatch-numeric-whitelist.md  # validPatch 数値網羅+aF/bF構造 (実装済)
+│   ├── ADR-0368-validpatch-array-props.md    # validPatch pts/way 配列構造 (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
