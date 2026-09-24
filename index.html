@@ -774,7 +774,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.202';
+const V='1.7.203';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2979,7 +2979,8 @@ function _rotShape(sh,orig,cx,cy,deg){
   const r=deg*Math.PI/180,c=Math.cos(r),sn=Math.sin(r);
   const R=(px,py)=>({x:cx+(px-cx)*c-(py-cy)*sn,y:cy+(px-cx)*sn+(py-cy)*c});
   if(orig.pts)sh.pts=orig.pts.map(p=>{const q=R(p[0],p[1]);return[q.x,q.y,p[2]]});
-  else if(orig.x1!=null){const a=R(orig.x1,orig.y1),b=R(orig.x2,orig.y2);sh.x1=a.x;sh.y1=a.y;sh.x2=b.x;sh.y2=b.y;if(orig.way)sh.way=_wayArr(orig).map(p=>R(p.x,p.y))}   // ADR-0090
+  else if(orig.x1!=null){const tr=orig.bend!=null?_elbowTrunk(orig):null;const a=R(orig.x1,orig.y1),b=R(orig.x2,orig.y2);sh.x1=a.x;sh.y1=a.y;sh.x2=b.x;sh.y2=b.y;if(orig.way)sh.way=_wayArr(orig).map(p=>R(p.x,p.y));   // ADR-0090
+    if(tr)_rotBend(sh,tr,R)}
   else if(orig.x!=null){
     const q=R(orig.x+orig.w/2,orig.y+orig.h/2);
     sh.x=q.x-orig.w/2;sh.y=q.y-orig.h/2;sh.w=orig.w;sh.h=orig.h;
@@ -5620,10 +5621,22 @@ function doBeautify(){
 // ADR-0055: rotate applies to box shapes (orbit + s.rotate spin) AND point
 // geometry (pen pts / line-arrow endpoints rotate rigidly about the group centre).
 const _rotatable=s=>s.w!=null||s.pts||s.x1!=null;
+// ADR-0146: s.bend is a world coordinate of the elbow trunk, so a rotate
+// that moves the endpoints leaves the trunk stranded at its old spot.
+// Rotate the trunk segment rigidly with the connector: if the rotated
+// trunk stays axis-aligned the scalar is re-derived, otherwise it can't
+// be represented and falls back to auto (null).
+function _rotBend(s,tr,rot){
+  const a=rot(tr[0].x,tr[0].y),b=rot(tr[1].x,tr[1].y);
+  if(Math.abs(a.x-b.x)<0.01)s.bend=a.x;
+  else if(Math.abs(a.y-b.y)<0.01)s.bend=a.y;
+  else s.bend=null;
+}
 function _rotPtsAbout(s,gx,gy,cs,sn){
   const rot=(px,py)=>({x:gx+(px-gx)*cs-(py-gy)*sn,y:gy+(px-gx)*sn+(py-gy)*cs});
   if(s.pts)for(const p of s.pts){const q=rot(p[0],p[1]);p[0]=q.x;p[1]=q.y}
-  else if(s.x1!=null){const a=rot(s.x1,s.y1),b=rot(s.x2,s.y2);s.x1=a.x;s.y1=a.y;s.x2=b.x;s.y2=b.y;if(s.way){s.way=_wayArr(s).map(p=>rot(p.x,p.y))}}   // ADR-0090
+  else if(s.x1!=null){const tr=s.bend!=null?_elbowTrunk(s):null;const a=rot(s.x1,s.y1),b=rot(s.x2,s.y2);s.x1=a.x;s.y1=a.y;s.x2=b.x;s.y2=b.y;if(s.way){s.way=_wayArr(s).map(p=>rot(p.x,p.y))}   // ADR-0090
+    if(tr)_rotBend(s,tr,rot);}
 }
 function doRotate(d){
   const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked&&_rotatable(s));

@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.203]
+
+### 修正
+- **エルボー回転で trunk が旧位置に残るバグ** (ADR-0146)。
+  キーボード回転・回転ノブ両経路で `s.bend` を trunk 線分の
+  剛体回転で追従させるよう修正 — 軸平行を維持する場合は新座標
+  を導出、斜めなら自動中央に復帰。
+
 ## [1.7.202]
 
 ### 追加
