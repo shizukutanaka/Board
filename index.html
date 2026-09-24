@@ -801,7 +801,7 @@ const _on=(e,t,f,o)=>e.addEventListener(t,f,o);                          // ADR-
 const _vp=()=>state.viewport,_vpS=()=>({x:+_vp().x.toFixed(2),y:+_vp().y.toFixed(2),zoom:+_vp().zoom.toFixed(4)});                                              // ADR-0362: live-read (tests reassign the object)
 const _pi=()=>state.peerId,_ro=()=>state.readout,_gd=()=>state.guides,_cl=()=>state.clipboard,_bb=s=>G.bbox(s),_bA=s=>G.bboxAll(s),_oa=Object.assign;   // ADR-0378
 const _sO=()=>state.seenOps,_la=()=>state.lasso,_mq=()=>state.marquee,_dd=()=>state.dupDelta,_w2=p=>G.w2s(p),_s2=p=>G.s2w(p),_cE=connEnds;   // ADR-0382
-const _dpr=()=>window.devicePixelRatio,_iA=Array.isArray,_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log,_mP=()=>new Map(),_sT=()=>new Set(),_eU=encodeURIComponent,_dU=decodeURIComponent,_un='undefined',_AU='arrowup',_AD='arrowdown',_AL2='arrowleft',_AR2='arrowright',_ES='escape',_EN='enter',_TB='tab',_IK='#0F172A',_YW='#FEF08A';   // ADR-0384/0386/0391/0395/0397
+const _dpr=()=>window.devicePixelRatio,_iA=Array.isArray,_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log,_rAF=requestAnimationFrame,_pF=parseFloat,_lg=k=>localStorage.getItem(k),_ls=(k,v)=>localStorage.setItem(k,v),_mP=()=>new Map(),_sT=()=>new Set(),_eU=encodeURIComponent,_dU=decodeURIComponent,_un='undefined',_AU='arrowup',_AD='arrowdown',_AL2='arrowleft',_AR2='arrowright',_ES='escape',_EN='enter',_TB='tab',_IK='#0F172A',_YW='#FEF08A';   // ADR-0384/0386/0391/0395/0397
 const _sh=()=>state.shapes;                                                // ADR-0364
 const _sl=()=>state.selection;
 const _st=()=>state.style;
@@ -822,7 +822,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.446';
+const V='1.7.447';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -862,14 +862,14 @@ const uid=()=>typeof crypto!==_un&&crypto.randomUUID
   :_rN().toString(36).slice(2,10)+_now().toString(36).slice(-4); // fallback
 // peerId: persistent per browser, used to dedup CRDT ops
 const PEER_ID=(()=>{try{
-  let id=localStorage.getItem('board.peer');
-  if(!id){id=uid();localStorage.setItem('board.peer',id)}
+  let id=_lg('board.peer');
+  if(!id){id=uid();_ls('board.peer',id)}
   return id;
 }catch(_){return uid()}})();
 // minimap visibility: persisted across reloads (§3.18 — small boards get zero value from
 // an always-on minimap with no way to dismiss it; a session-only toggle would just nag again
 // on every reload).
-const MINIMAP_ON=(()=>{try{return localStorage.getItem('board.minimap')!=='off'}catch(_){return true}})();
+const MINIMAP_ON=(()=>{try{return _lg('board.minimap')!=='off'}catch(_){return true}})();
 // ADR-0012: theme is a DOM attribute + localStorage setting, not board state — it's
 // purely visual and doesn't affect board content, unlike showMinimap (a render toggle
 // for something drawn on the board itself). Not undo-tracked.
@@ -883,7 +883,7 @@ const THEME_KEY='board.theme';
 // button permanently displayed/announced 'auto'. Mirrors ADR-0014's LANG/T fix: keep the
 // current mode in memory (read from storage once at load); persistence becomes best-effort
 // rather than the source of truth for what's currently applied.
-let _themeCache=(()=>{try{return localStorage.getItem(THEME_KEY)}catch(_){return null}})();
+let _themeCache=(()=>{try{return _lg(THEME_KEY)}catch(_){return null}})();
 function applyTheme(mode){   // mode: 'light'|'dark'|null (auto = follow prefers-color-scheme)
   if(mode)document.documentElement.dataset.theme=mode;
   else delete document.documentElement.dataset.theme;
@@ -1058,7 +1058,7 @@ const I18N={
 // creation time need explicit resync (done in toggleLang(), not here).
 let LANG=(navigator.language||'en').startsWith('ja')?'ja':'en';
 const LANG_KEY='board.lang';
-try{const _savedLang=localStorage.getItem(LANG_KEY);if(_savedLang==='ja'||_savedLang==='en')LANG=_savedLang;}catch(_){}
+try{const _savedLang=_lg(LANG_KEY);if(_savedLang==='ja'||_savedLang==='en')LANG=_savedLang;}catch(_){}
 let T=I18N[LANG];
 const t=k=>T[k]||I18N.en[k]||k;
 
@@ -2188,25 +2188,25 @@ function drawPenDraft(s){
 // ====================== RENDER ======================
 // On-demand RAF: only schedule a frame when there is work to do.
 // Qiita/Zenn: "requestAnimationFrame で常にループするとバッテリーが消耗する"
-// The always-running loop (requestAnimationFrame(frame) unconditionally) burns
+// The always-running loop (_rAF(frame) unconditionally) burns
 // ~60 draw calls/second even on a completely idle board. Idle-stop: hold a pending
 // RAF id (_rafId); _iv() restarts the loop only when it is not already running;
 // frame() clears the id on entry so that a mid-frame _iv() reschedules once.
 let needsRender=true,needOverlay=true,_rafId=0;
 let _damage=null;   // ADR-0026: accumulated world-space dirty rect during drag gestures; null = full repaint
 let _pinchSnap=null,_pinchVp=null;   // ADR-0030: pinch-start canvas copy + viewport for scaled preview
-function invalidate(){_damage=null;needsRender=true;needOverlay=true;if(!_rafId)_rafId=requestAnimationFrame(frame);_ms()}
+function invalidate(){_damage=null;needsRender=true;needOverlay=true;if(!_rafId)_rafId=_rAF(frame);_ms()}
 // ADR-0026: gesture-local repaint — producers report the world-space rect they
 // dirtied and frame() clips the scene pass to its accumulated union (never
 // shrinks mid-gesture, so a fast teleport still covers the old position).
 // Everything else must keep calling _iv(), which resets _damage to full.
 function _dmgU(a,b){return a?{x:_min(a.x,b.x),y:_min(a.y,b.y),w:_max(a.x+a.w,b.x+b.w)-_min(a.x,b.x),h:_max(a.y+a.h,b.y+b.h)-_min(a.y,b.y)}:{x:b.x,y:b.y,w:b.w,h:b.h}}
 function _dmgPair(a,b,m){if(!a)return b?{x:b.x-m,y:b.y-m,w:b.w+2*m,h:b.h+2*m}:a;if(!b)return{x:a.x-m,y:a.y-m,w:a.w+2*m,h:a.h+2*m};const x0=_min(a.x,b.x)-m,y0=_min(a.y,b.y)-m;return{x:x0,y:y0,w:_max(a.x+a.w,b.x+b.w)-x0+m,h:_max(a.y+a.h,b.y+b.h)-y0+m}}
-function invalidateDamage(r){_damage=_dmgU(_damage,r);needsRender=true;needOverlay=true;if(!_rafId)_rafId=requestAnimationFrame(frame);_ms()}
+function invalidateDamage(r){_damage=_dmgU(_damage,r);needsRender=true;needOverlay=true;if(!_rafId)_rafId=_rAF(frame);_ms()}
 // Overlay-only repaint (ADR-0024): marquee / guides / peer cursors / laser /
 // search-highlight changes touch no scene pixels — skip the expensive scene
 // pass entirely. Never call this after mutating shapes, draft, or viewport.
-function invalidateOverlay(){needOverlay=true;if(!_rafId)_rafId=requestAnimationFrame(frame)}
+function invalidateOverlay(){needOverlay=true;if(!_rafId)_rafId=_rAF(frame)}
 function frame(){
   _rafId=0;
   if(needsRender||needOverlay){
@@ -2223,7 +2223,7 @@ function frame(){
     _syncStylePanelIfChanged();   // ADR-0059
     _statusSel();    // ADR-0164: selection dims readout, signature-gated
   }
-  if(needsRender||needOverlay)_rafId=requestAnimationFrame(frame);  // draw() called _iv() (rare re-entry)
+  if(needsRender||needOverlay)_rafId=_rAF(frame);  // draw() called _iv() (rare re-entry)
 }
 // ADR-0164: live W×H readout of the selection bbox in the statusbar (Figma's
 // dimensions field). Signature-gated: the DOM write happens only when the
@@ -6400,7 +6400,7 @@ function excScene(shapes){
   const _ct=(s,tid,txt,bL,fs,ov)=>{   // shared container-text element (sticky body / box label)
     _excTid.set(s.id,tid);
     return{id:tid,type:'text',x:ov?ov.x:s.x+4,y:ov?ov.y:s.y+4,
-    width:ov?ov.w:_abs(s.w||120)-8,height:ov?ov.h:_abs(s.h||80)-8,text:txt,originalText:txt,autoResize:true,
+    width:ov?ov.w:_abs(s.w||120)-8,height:ov?ov.h:_abs(s.h||80)-8,text:txt,originalText:txt,autoResize:false,   // ADR-0412: bound text wraps to the container
     fontSize:fs||s.fontSize||16,textAlign:s.align||'center',verticalAlign:s.valign||'middle',lineHeight:s.lineH||1.25,baseline:0,fontFamily:s.font==='mono'?3:2,...(bL?{bLabel:1}:{}),   // ADR-0242/0243/0244
     strokeColor:'#1e1e1e',backgroundColor:_TR,fillStyle:'solid',strokeWidth:1,strokeStyle:'solid',
     roughness:0,opacity:100,angle:(s.rotate||0)*_PI/180,seed:0,version:1,versionNonce:0,isDeleted:false,
@@ -6423,7 +6423,7 @@ function excScene(shapes){
         break;}
       case'text':
         els.push(E(s,{type:'text',x:s.x,y:s.y,width:s.w||0,height:s.h||0,
-          text:s.text||'',originalText:s.text||'',autoResize:true,fontSize:s.fontSize||16,
+          text:s.text||'',originalText:s.text||'',autoResize:!s.wrap,fontSize:s.fontSize||16,
           textAlign:s.align||'left',lineHeight:s.lineH||1.25,baseline:0,fontFamily:s.font==='mono'?3:2}));break;   // ADR-0242/0243
       case'pen':{
         const xs=s.pts.map(p=>p[0]),ys=s.pts.map(p=>p[1]);
@@ -6500,7 +6500,7 @@ function _dioStyApply(s,sty,hid){
   if(sty.flipV==='1')s.flip=(s.flip||0)|2;
   if(/^(left|center|right)$/.test(sty.labelPosition))s.align=sty.labelPosition;   // ADR-0320
   if(/^(top|middle|bottom)$/.test(sty.verticalLabelPosition))s.valign=sty.verticalLabelPosition;   // ADR-0320
-  if(sty.whiteSpace==='nowrap'&&s.type==='text')s.wrap=0;              // ADR-0321
+  if(s.type==='text'&&sty.whiteSpace==='nowrap')s.wrap=0;else if(s.type==='text'&&sty.whiteSpace==='wrap')s.wrap=1;   // ADR-0321/0412
   if(+sty.lineHeight>0&&+sty.lineHeight!==1.2)s.lineH=_min(4,_max(0.5,+sty.lineHeight));   // ADR-0343
   if(hid)s.visible=0;                                       // ADR-0245
 }
@@ -6771,7 +6771,7 @@ function boardToDrawio(shapes){
     if(s.align==='center'||s.align==='right')sty+='align='+s.align+';';   // ADR-0228
     if(s.align)sty+='labelPosition='+s.align+';';                          // ADR-0320
     if(s.valign)sty+='verticalLabelPosition='+s.valign+';';                // ADR-0320
-    if(t==='text'&&s.wrap===0)sty+='whiteSpace=nowrap;';                     // ADR-0321
+    if(t==='text')sty+=s.wrap?'whiteSpace=wrap;':'whiteSpace=nowrap;';          // ADR-0412: emit both states — drawio wraps by default, Board doesn't
     if(s.valign)sty+='verticalAlign='+s.valign+';';                          // ADR-0238
     if(s.font)sty+='fontFamily='+(s.font==='mono'?'Courier New':'Georgia')+';';   // ADR-0253
     if(s.rotate)sty+='rotation='+_rnd(s.rotate)+';';              // ADR-0261
@@ -6876,15 +6876,15 @@ function _svgStyle(el,g){
   const st={};
   const stroke=_svgColor(get('stroke'),g);if(stroke)st.stroke=stroke;
   const fill=_svgColor(get('fill'),g);if(fill)st.fill=fill;
-  const sw=parseFloat(get('stroke-width'));if(_fin(sw)&&sw>0)st.size=sw;
+  const sw=_pF(get('stroke-width'));if(_fin(sw)&&sw>0)st.size=sw;
   // Board has a single opacity channel — fold CSS opacity + the more specific of
   // stroke/fill opacity into it.
   let alpha=1;
-  const op=parseFloat(get('opacity'));if(_fin(op))alpha*=op;
-  const so=parseFloat(get('stroke-opacity')),fo=parseFloat(get('fill-opacity'));
+  const op=_pF(get('opacity'));if(_fin(op))alpha*=op;
+  const so=_pF(get('stroke-opacity')),fo=_pF(get('fill-opacity'));
   if(_fin(so))alpha*=so;else if(_fin(fo))alpha*=fo;
   if(alpha<1)st.opacity=_max(0.05,_min(1,alpha));
-  const fs=parseFloat(get('font-size'));if(_fin(fs))st.fontSize=fs;
+  const fs=_pF(get('font-size'));if(_fin(fs))st.fontSize=fs;
   return st;
 }
 // path d → flattened point list. Curves are subdivided at fixed resolution —
@@ -6940,7 +6940,7 @@ function svgToShapes(txt){
   // artboards paste at a sensible size.
   const vb=(_ga(root,'viewBox')||'').trim().split(/[\s,]+/).map(Number);
   const vbOn=vb.length===4&&vb.every(Number.isFinite)&&vb[2]>0;
-  const w0=vbOn?vb[2]:parseFloat(_ga(root,'width'))||800;
+  const w0=vbOn?vb[2]:_pF(_ga(root,'width'))||800;
   const sc=_min(1,800/w0);
   const base=_svgMMul([sc,0,0,sc,0,0],[1,0,0,1,vbOn?-vb[0]:0,vbOn?-vb[1]:0]);
   const shapes=[];
@@ -7062,6 +7062,7 @@ function excToShapes(txt){
         if(!content)break;
         s=Shape.make('text',{x:e.x,y:e.y,w:W||_min(600,_max(60,content.length*fs*0.55)),h:H||fs*1.4,text:content.slice(0,2000),fontSize:fs});
         if(e.textAlign==='left'||e.textAlign==='right')s.align=e.textAlign;   // ADR-0230
+        if(e.autoResize===false)s.wrap=1;                                     // ADR-0412: excalidraw manual-width text wraps to w
         if(e.fontFamily===3)s.font='mono';else if(e.fontFamily===1||e.fontFamily===5)s.font='serif';   // ADR-0243
         break;
       }
@@ -8421,7 +8422,7 @@ const UI={
   },
   toggleMinimap(){
     state.showMinimap=!state.showMinimap;
-    try{localStorage.setItem('board.minimap',state.showMinimap?'on':'off')}catch(_){}
+    try{_ls('board.minimap',state.showMinimap?'on':'off')}catch(_){}
     UI.refreshMinimapVis();
     if(state.showMinimap)_ms();
     _tst(`${t('minimap')} ${state.showMinimap?t('on'):t('off')}`);
@@ -8435,7 +8436,7 @@ const UI={
     const cur=_themeCache;
     const next=cur===null?'light':cur==='light'?'dark':null;
     _themeCache=next;
-    try{next?localStorage.setItem(THEME_KEY,next):localStorage.removeItem(THEME_KEY);}catch(_){}
+    try{next?_ls(THEME_KEY,next):localStorage.removeItem(THEME_KEY);}catch(_){}
     applyTheme(next);
     UI.refreshThemeBtn();
     UI.announce(t(next===null?'themeAuto':next==='light'?'themeLight':'themeDark'));
@@ -8453,7 +8454,7 @@ const UI={
   // t()/T on its next call and needs no help here.
   toggleLang(){
     LANG=LANG==='ja'?'en':'ja';T=I18N[LANG];
-    try{localStorage.setItem(LANG_KEY,LANG)}catch(_){}
+    try{_ls(LANG_KEY,LANG)}catch(_){}
     UI.applyI18n();
     UI.fillHelp();       // built once in main(); the modal doesn't rebuild it on open/close
     UI.updateOnline();   // only re-runs on connectivity change otherwise
@@ -9692,7 +9693,7 @@ const Minimap=(()=>{
   }
   function invalidateCache(){_sceneVer=-1;schedule();}
 
-  function schedule(){if(!state.showMinimap||_raf)return;_raf=requestAnimationFrame(draw)}
+  function schedule(){if(!state.showMinimap||_raf)return;_raf=_rAF(draw)}
 
   // ADR-0036: click navigates once; holding the button scrubs continuously while
   // the pointer moves (Figma/tldraw convention). pointerdown starts a scrub —
@@ -9745,7 +9746,7 @@ const Minimap=(()=>{
   // v1.1: start BroadcastChannel sync for same-browser tab sync
   Net.init();
   _fitIfEmptyView();   // ADR-0106: restored view shows nothing → fit content
-  _rafId=requestAnimationFrame(frame);
+  _rafId=_rAF(frame);
 })();
 
 // ====================== SERVICE WORKER (inline) ======================
