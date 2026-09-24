@@ -571,7 +571,7 @@ const checks = [
   ['exportBoard function exists', html.includes('function exportBoard(shapes')],
   ['exportBoard revokes Blob URL to prevent memory leak', html.includes("revokeObjectURL(_bu),1e4")],
   ['importBoard uses atomic replace op (not clear+adds)', html.includes('function importBoard') && html.includes('.filter(validShape)') && html.includes("op:'replace',before,after")],
-  ['Ctrl+Shift+S triggers exportBoard', html.includes("e.shiftKey){e.preventDefault();exportBoard()}")],
+  ['Ctrl+Shift+S triggers exportBoard', html.includes("e.shiftKey){_pd(e);exportBoard()}")],
   // ADR-0004: doClearAll/importBoard/importFromHash back up the pre-replace board to a
   // second IndexedDB slot before the destructive swap, so it survives past the session-only
   // undo window (reload / closed tab). importBoard can't be exercised directly in this
@@ -721,6 +721,8 @@ const checks = [
   ['svg conn path/label emitters deduped (ADR-0270)', html.includes('const _sp=(d,j)')&&html.includes('_cL();')],
   ['drawio multi-page side-by-side import (ADR-0311)', html.includes("for(const dg of doc.querySelectorAll('diagram'))")],
   ['link badge 🔗 on linked shapes (ADR-0310)', html.includes("c.fillText('🔗',s.x+Math.abs(s.w)-3,s.y+3)")],
+  ['s.link scheme gate in validPatch (ADR-0327)', html.includes("'link' in p&&p.link!=null")&&html.includes('ADR-0327')],
+  ['_pd() preventDefault shorthand (ADR-0326)', html.includes("const _pd=e=>e.preventDefault()")],
   ['deflate bomb guard in _dioInflate (ADR-0325)', html.includes("getReader(),dec=new TextDecoder")&&html.includes("txt.length>8e6")],
   ['compressed drawio inflates every page (ADR-0324)', html.includes("Promise.all(_dms.map(m=>_dioInflate(m[1])))")&&html.includes("matchAll(/<diagram[^>]*>([^<]+)<\\/diagram>/g)")],
   ['exc conn-label lineHeight restore (ADR-0323)', html.includes("e.lineHeight!==1.25)p.lineH=")],
@@ -846,7 +848,7 @@ const checks = [
   // v1.6.57: flip H/V - reuses the align op, context menu + ⇧H/⇧V shortcut
   ['flip ctx labels in ja and en', html.includes("ctxFlipH:'左右反転'") && html.includes("ctxFlipH:'Flip horizontal'")],
   ['flip context-menu entries present', html.includes("['ctxFlipH','⇧H',()=>doFlip('h')]") && html.includes("['ctxFlipV','⇧V',()=>doFlip('v')]")],
-  ['flip keyboard shortcut (⇧H/⇧V) guarded by selection', html.includes("(k==='h'||k==='v')&&state.selection.size){e.preventDefault();doFlip(k)}")],
+  ['flip keyboard shortcut (⇧H/⇧V) guarded by selection', html.includes("(k==='h'||k==='v')&&state.selection.size){_pd(e);doFlip(k)}")],
   // v1.6.58: rect/ellipse centre labels - dblclick to set, rendered centred, SVG export
   ['rect/ellipse label rendered centred in canvas', html.includes("_drawBoxLabel(s,c);break;") && html.includes("c.textAlign='center'")],
   ['dblclick label editor handles rect and ellipse', html.includes("hit.type==='frame'||hit.type==='rect'||hit.type==='ellipse'") && html.includes("getCSS(bold?'--accent-contrast':'--ink')")],
@@ -886,7 +888,7 @@ const checks = [
   ['conn label pill honours s.fill (canvas+SVG)', html.includes("s.fill||_p()")&&html.includes("_esc(s.fill||paper")],
   ['drop shadow — canvas props + SVG filter + toggle + persistence', html.includes("shadowColor='rgba(15,23,42,.22)'")&&html.includes("id=\"bsh\"")&&html.includes("function toggleShadow()")&&html.includes("state.style.shadow=s.shadow||null")],
   ['image caption band honours s.fill (canvas+SVG)', html.includes("c.fillStyle=s.fill&&s.fill!=='none'?s.fill:_p()||'#fff';c.globalAlpha=0.85")&&html.includes("_esc(s.fill||paper||'#FFFFFF')")],
-  ['Tab in label editor chains to next label-able shape', html.includes("if(ev.key==='Tab'){ev.preventDefault();")&&html.includes("_openLabelEditorFor(nx)")],
+  ['Tab in label editor chains to next label-able shape', html.includes("if(ev.key==='Tab'){_pd(ev);")&&html.includes("_openLabelEditorFor(nx)")],
   ['frame label honours s.align + cycleTextAlign gate', html.includes("const alF=s.align||'left'")&&html.includes("_selAny(s=>(s.type==='text'||s.type==='sticky'||s.type==='frame'||s.label)&&!s.locked)&&['ctxTextAlign'")],
   ['ctxReverse reverses connector direction (ADR-0198)', html.includes('function reverseConn()')&&html.includes("['ctxReverse','',reverseConn]")],
   ['ctxFitText sizes sticky to wrapped text (ADR-0199)', html.includes('function fitSticky()')&&html.includes("['ctxFitText','',fitSticky]")],
@@ -1020,7 +1022,7 @@ const checks = [
   // v1.7.66 (ADR-0013, FT-19)
   ['keyboard label/text edit: editSelectedShapeKbd + shared _openLabelEditorFor wired',
     html.includes('function editSelectedShapeKbd(){') && html.includes('function _openLabelEditorFor(hit){')
-    && html.includes("if(state.tool==='select'&&editSelectedShapeKbd()){e.preventDefault();}")],
+    && html.includes("if(state.tool==='select'&&editSelectedShapeKbd()){_pd(e);}")],
   ['help grid documents Enter\'s dual meaning (create / edit label)', html.includes("k.create+' / '+t('editLabel')")],
   // v1.7.67 (ADR-0014, FT-18b)
   ['language toggle: LANG/T are reassignable lets, boot restore reads board.lang before deriving T',
@@ -1166,7 +1168,7 @@ const checks = [
   ['copyFailed i18n key in ja and en', (html.match(/copyFailed:/g)||[]).length>=2],
   // v1.6.92: PWA install button (beforeinstallprompt)
   ['beforeinstallprompt handler stores deferred prompt and shows button',
-    html.includes('beforeinstallprompt')&&html.includes('e.preventDefault()')&&html.includes('_installPrompt=e')&&html.includes("btn.hidden=false")],
+    html.includes('beforeinstallprompt')&&html.includes('_pd(e)')&&html.includes('_installPrompt=e')&&html.includes("btn.hidden=false")],
   ['appinstalled handler clears prompt and hides button',
     html.includes('appinstalled')&&html.includes('_installPrompt=null')&&html.includes("btn.hidden=true")],
   ['btnInstall hidden by default (no unsolicited install prompt)',
@@ -5155,8 +5157,8 @@ try {
       }
       // (g) keydown wiring: the select-tool gate must be present verbatim, so a non-select
       // tool still falls through to createShapeKbd() exactly as before this ADR.
-      assert.ok(html.includes("if(state.tool==='select'&&editSelectedShapeKbd()){e.preventDefault();}") &&
-                html.includes('else if(createShapeKbd())e.preventDefault();'),
+      assert.ok(html.includes("if(state.tool==='select'&&editSelectedShapeKbd()){_pd(e);}") &&
+                html.includes('else if(createShapeKbd())_pd(e);'),
         'kbd-edit: Enter only re-edits when the select tool is active; other tools keep createShapeKbd (no clash)');
       console.log('  ✓ ADR-0013 keyboard label/text edit: selection/lock guards, per-type dispatch, right-shape targeting, tool gate (v1.7.66)');
     }
