@@ -2,6 +2,64 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.256]
+
+### 追加
+- **コネクタ方向の反転** (ADR-0198)。ctx メニュー「方向を反転」で
+  line/arrow の端点・結合先・ウェイポイント順を一括入替
+  (draw.io "Reverse" 相当、labelPos も鏡像化)。
+
+## [1.7.255]
+
+### 追加
+- **フレームラベルの文字揃え** (ADR-0197)。フレーム名が
+  cycleTextAlign/ctxTextAlign で左→中央→右に揃え可能
+  (canvas+SVG、ラベル未設定フレームにも到達)。
+
+## [1.7.254]
+
+### 追加
+- **ラベル編集の Tab 巡回** (ADR-0196)。ラベルエディタで Tab /
+  Shift+Tab がコミットして次/前のラベル対応図形に移動 — 連続
+  ラベリングが一発化。
+
+## [1.7.253]
+
+### 追加
+- **画像キャプション帯に s.fill** (ADR-0195)。キャプションの帯
+  背景が fill スウォッチに追随 (canvas+SVG、透過0.85規約維持)
+  — fill 系到達経路が全種で整合。
+
+## [1.7.252]
+
+### 追加
+- **ドロップシャドウ** (ADR-0194)。ctx メニュー「影」で rect/
+  ellipse/diamond/image にシャドウをトグル — canvas の
+  shadow* プロパティ + SVG 共有 `feDropShadow` フィルタ。
+  last-used 継承・スタイルコピー・スポイトも一貫。
+
+## [1.7.251]
+
+### 追加
+- **コネクタラベル背景に s.fill** (ADR-0193)。エッジラベルの pill
+  背景が fill スウォッチに追随 (canvas+SVG、透過0.9規約維持) —
+  「設定可能だが描画されない」監査完結。
+
+## [1.7.250]
+
+### 追加
+- **付箋の文字色** (ADR-0192)。`s.stroke` が付箋本文・下線/取消線
+  の色に反映 (canvas+SVG) — stroke スウォッチ/スタイルコピーが
+  付箋でも有効に。
+
+## [1.7.249]
+
+### 追加
+- **テキストの背景塗り** (ADR-0191)。fill スウォッチ等で設定した
+  `s.fill` がテキスト背面のハイライトプレートとして描画 (align
+  各モード対応、canvas+SVG)。従来は設定のみ可能で描画されない
+  隙間だった。
+
 ## [1.7.248]
 
 ### 修正

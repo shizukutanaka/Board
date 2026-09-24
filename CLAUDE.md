@@ -240,6 +240,14 @@ Board/
 - [ADR-0188](docs/ADR-0188-frame-font.md) フレーム書体巡回
 - [ADR-0189](docs/ADR-0189-line-height.md) 行間巡回
 - [ADR-0190](docs/ADR-0190-sticky-chain-typography.md) チェーン書式継承
+- [ADR-0191](docs/ADR-0191-text-bg-fill.md) テキスト背景塗り
+- [ADR-0192](docs/ADR-0192-sticky-text-color.md) 付箋文字色
+- [ADR-0193](docs/ADR-0193-conn-label-fill.md) ラベルpill背景
+- [ADR-0194](docs/ADR-0194-drop-shadow.md) ドロップシャドウ
+- [ADR-0195](docs/ADR-0195-img-label-fill.md) キャプション帯色
+- [ADR-0196](docs/ADR-0196-label-tab-chain.md) ラベルTab巡回
+- [ADR-0197](docs/ADR-0197-frame-label-align.md) フレームラベル揃え
+- [ADR-0198](docs/ADR-0198-conn-reverse.md) コネクタ方向反転
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
