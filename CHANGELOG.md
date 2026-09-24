@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.328] - 2026-09-24
+
+### Added
+- .excalidraw: scale 反転を全要素へ一般化 (import 共通 tail + E() 常設
+  scale、ADR-0276)
+
 ## [1.7.327] - 2026-09-24
 
 ### Fixed
