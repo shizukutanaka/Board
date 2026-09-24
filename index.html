@@ -6824,11 +6824,14 @@ function excToShapes(txt){
   // exported from. Parent kept when it carries a label of its own.
   for(const [sid,cid] of _excTxt){
     const s=shapes.find(x=>x.id===sid),p=shapes.find(x=>x.id===idOf.get(cid));
-    if(!s||!p||p.type!=='rect'||p.label)continue;
+    if(!s||!p||p.label)continue;
     const e=_excTxtE.get(sid);                               // ADR-0234
+    // bLabel parents restore the label on any box type (rect/ellipse/diamond);
+    // the sticky fold below stays rect-only since stickies export as rectangles
     if(e&&e.bLabel){p.label=s.text.slice(0,240);
       if(s.fontSize)p.fontSize=s.fontSize;
       shapes.splice(shapes.indexOf(s),1);continue;}
+    if(p.type!=='rect')continue;
     p.type='sticky';p.text=s.text;
     if(s.fontSize)p.fontSize=s.fontSize;
     if(p.fill!=null){p.color=p.fill;delete p.fill}
