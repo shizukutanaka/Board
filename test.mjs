@@ -709,6 +709,7 @@ const checks = [
   ['text word-wrap toggle + canvas/SVG wrap (ADR-0208)', html.includes('s.wrap?wrapTextCached')&&html.includes('s.wrap?wrapText(String')&&html.includes("['ctxWrap','',toggleWrap]")],
   ['fixed edge anchors via Alt-drop + connEnds/reverse/unbind wiring (ADR-0209)', html.includes("sh[fk]={fx:fx<0.5?0:1,fy}")&&html.includes('s.aF?{x:ba.x+ba.w*s.aF.fx')&&html.includes('tbF=s.aF;s.aF=s.bF')],
   ['multi-line conn label canvas+SVG (ADR-0210)', html.includes("String(s.label).split('\\n'),llh=fs*1.25")&&html.includes("lns.map((l,i)=>`<tspan")],
+  ['shadow on text/conns canvas+SVG + gate (ADR-0211)', html.includes("s.type!=='text'&&s.type!=='line'&&s.type!=='arrow'")&&html.includes('label never shadows')&&html.includes('${dA}${a}${_sh}/>`);')],
   ['endpoint drag Shift constrains to 45 deg + label editor fontSize (ADR-0206)', html.includes("constrain the free end to 45")&&html.includes("${hit.fontSize||12}px")],
   ['i18n has excImported ja+en', html.includes("excImported:'Excalidraw を取り込みました'") && html.includes("excImported:'Excalidraw imported'")],
   // v1.7.102: ADR-0044 text paste → text shape
@@ -800,7 +801,7 @@ const checks = [
   ['connEnds helper derives bound endpoints', html.includes("function connEnds") && html.includes("function _edgePt")],
   ['G.bbox line uses connEnds', html.includes("const e=connEnds(s);\n      let x=Math.min(e.x1,e.x2)")&&html.includes('for(const w of _wayArr(s))')],
   ['G.hit line uses connEnds', html.includes("const pts=_linePts(s);")],
-  ['drawArrow uses connEnds', html.includes("function drawArrow(s,c){\n  c=c||ctx;\n  const e=connEnds(s);")],
+  ['drawArrow uses connEnds', html.includes("const e=connEnds(s);\n  const ah=Math.max(6,(s.size||2)*3)")],
   ['endLineLike binds endpoints dropped on a shape', html.includes("const ba=_bindAt(d.x1,d.y1),bb=_bindAt(d.x2,d.y2)") && html.includes("function _bindAt")],
   ['connector endpoints always expose resize handles (ADR-0065 rebind)', html.includes("h.push({id:'p1',x:e.x1,y:e.y1});       // ADR-0065") && html.includes("h.push({id:'p2',x:e.x2,y:e.y2});")],
   ['SVG export derives bound endpoints', html.includes("const _e=connEnds(s);\n    const X1=_num(_e.x1)")],

@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.269]
+
+### 追加
+- **テキスト・コネクタのドロップシャドウ** (ADR-0211)。ctx「影」が
+  text/line/arrow でも有効化 (canvas+SVG 同一、ラベル pill は
+  二重影を回避、epilogue に防御クリア追加)。
+
 ## [1.7.268]
 
 ### 修正
