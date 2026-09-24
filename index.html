@@ -3213,6 +3213,7 @@ function drawText(s,c){
     c.restore()}
   if(s.link&&s.w!=null){c.font='10px sans-serif';c.textAlign='right';c.textBaseline='top';c.fillText('🔗',s.x+Math.abs(s.w)-3,s.y+3)}   // ADR-0310: link badge top-right
   if(s.link&&_conn(s.type)){const lp=_connLabelXY(s);c.font='10px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText('🔗',lp.x+10,lp.y-10)}   // ADR-0333: badge at label anchor (offset so it doesn't sit on the line)
+  if(s.link&&s.type==='pen'&&s.pts[0]){c.font='10px sans-serif';c.textAlign='left';c.textBaseline='bottom';c.fillText('🔗',s.pts[0][0]+4,s.pts[0][1]-2)}   // ADR-0333
 }
 
 // Rotate point (px,py) about centre (cx,cy) by `deg` degrees. Shared by handles,
@@ -7265,6 +7266,7 @@ function buildSVG(shapes,paper){
         }
         for(let i=0;i<n;i++)circles+=`<circle cx="${r(P[i][0])}" cy="${r(P[i][1])}" r="${r(Rr(i))}"/>`;
         els.push(`<g fill="${stroke}"${a}${_sh}><path d="${d}"/>${circles}</g>`);   // ADR-0278
+        if(s.link)els.push(`<text x="${P[0][0]+4}" y="${P[0][1]-2}" font-size="10" font-family="sans-serif"${a}>🔗</text>`);   // ADR-0333
         break;}
       case 'text':{
         const fs=_num(s.fontSize)||16;
