@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.519] - 2026-09-23
+
+### 修正
+
+- presence `selection` メッセージの `ids` に ≤64 キャップを追加 (ADR-0486)。`_s0(ids,MAX_OP_SHAPES)` は配列長を抑止していたが、各 id 文字列長は未検証 — wire 層の全 id フィールドに同一規約を適用し ADR-0485 の網羅を完結
+
 ## [1.7.518] - 2026-09-23
 
 ### 修正

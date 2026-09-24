@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.518';
+const V='1.7.519';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -7831,7 +7831,7 @@ const Net={
         // so an RTC peer lives under a synthetic id, not msg.peer). Defensive intake:
         // string ids only, capped — a bad peer can't flood us with a giant array.
         if(!_iA(msg.ids))break;
-        const ids=_s0(msg.ids,MAX_OP_SHAPES).filter(id=>_iS(id));
+        const ids=_s0(msg.ids,MAX_OP_SHAPES).filter(id=>_iS(id)&&_ln(id)<=64);   // ADR-0485: same ≤64 cap as every other wire id field
         const peerKey=viaRtc?this._rtcPeerId:msg.peer;
         const p=peerKey&&_pr().get(peerKey);
         if(p){p.sel=ids;_ivO();}
