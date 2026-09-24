@@ -474,6 +474,7 @@ Board/
 │   ├── ADR-0422-framezoom-clamp.md   # _zoomToFrame zoom clamp + 退化 frame ガード (実装済)
 │   ├── ADR-0423-frameexpansion-dedupe.md   # _frameOf/_xFS/_grpOf fold + map(clone) (実装済)
 │   ├── ADR-0424-cache-purge-on-delete.md   # per-shape キャッシュの削除時パージ (実装済)
+│   ├── ADR-0425-locked-visible-len-folds.md   # _nS/_sv/_lk shorthand fold (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
