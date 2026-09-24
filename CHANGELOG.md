@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.221]
+
+### 修正
+- **Tab サイクルから非表示図形を除外** (ADR-0163)。ポインタで触れ
+  ない図形がキーボードで選択できる不整合を解消 — 全経路の
+  `visible!==0` 監査を完結。
+
 ## [1.7.220]
 
 ### 追加
