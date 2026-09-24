@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.187]
+
+### 追加
+- **⇧マーキーで加算選択** (ADR-0130)。⇧+領域ドラッグが既存選択を
+  保持してヒットを追加 (Figma parity)。方向付きマーキーと組合わせ可。
+
 ## [1.7.186]
 
 ### 追加

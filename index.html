@@ -774,7 +774,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.186';
+const V='1.7.187';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4351,7 +4351,9 @@ function endSelect(wp,shift,alt){
     const r={x:Math.min(m.x1,m.x2),y:Math.min(m.y1,m.y2),
       w:Math.abs(m.x2-m.x1),h:Math.abs(m.y2-m.y1)};
     if(r.w>2||r.h>2){
-      state.selection.clear();
+      // ADR-0130: ⇧marquee adds to the current selection (Figma parity);
+      // plain marquee replaces it as before.
+      if(!shift)state.selection.clear();
       // ADR-0032: a fully-contained shape's cells are a subset of the marquee's
       // cells, so grid candidates are a superset of every possible hit — the
       // O(n) per-pointermove scan shrinks to the rect's neighbourhood.

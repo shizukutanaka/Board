@@ -492,6 +492,7 @@ const checks = [
   ['marquee skips locked shapes (Figma/draw.io parity)', html.includes('if(hit&&!s.locked)state.selection.add(s.id)')],
   ['Alt during move suppresses all snapping (draw.io parity)', html.includes('moveDelta(wp,shift,alt)')&&html.includes('!alt&&!state.snap')],
   ['shift-click on selected shape removes it (toggle-off)', html.includes('alreadySel&&e.shiftKey')&&html.includes('state.selection.delete(id)')],
+  ['shift-marquee adds to selection (Figma parity)', html.includes('if(!shift)state.selection.clear()')],
   ['line↔arrow conversion via style op (ctx)', html.includes('toggleLineArrow')&&html.includes('ctxToArrow')&&html.includes("s.type==='line'?'arrow':'line'")],
   ['sticky↔text conversion via style op (ctx)', html.includes('toggleStickyText')&&html.includes('ctxToSticky')&&html.includes("s.type==='sticky'?'text':'sticky'")],
   ['frame select-contents (ctx)', html.includes('selectFrameContents')&&html.includes('ctxSelContents')&&html.includes('withFrameChildren(')],
