@@ -146,6 +146,7 @@ Board/
 - [ADR-0094](docs/ADR-0094-escape-cancel-gesture.md) Esc でジェスチャキャンセル
 - [ADR-0095](docs/ADR-0095-text-underline.md) テキスト/付箋下線 (⌘U)
 - [ADR-0096](docs/ADR-0096-equal-size-snap.md) リサイズ等サイズスナップ
+- [ADR-0097](docs/ADR-0097-excalidraw-multi-segment.md) excalidraw 多点コネクタ→way
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.154';
+const V='1.7.155';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -5581,8 +5581,12 @@ function excToShapes(txt){
           if(Array.isArray(p)&&Number.isFinite(p[0])&&Number.isFinite(p[1]))pts.push([e.x+p[0],e.y+p[1]]);
         }
         if(pts.length<2)break;
-        if(pts.length===2&&e.type!=='freedraw')s=Shape.make(e.type==='arrow'?'arrow':'line',{x1:pts[0][0],y1:pts[0][1],x2:pts[1][0],y2:pts[1][1]});
-        else s=Shape.make('pen',{pts});
+        if(e.type==='freedraw'){s=Shape.make('pen',{pts});break}
+        // ADR-0097: multi-segment line/arrow stays a real connector — the
+        // interior points map onto the way[] array (ADR-0090), not a
+        // dead-end pen stroke. Elbowed excalidraw arrows land naturally.
+        s=Shape.make(e.type==='arrow'?'arrow':'line',{x1:pts[0][0],y1:pts[0][1],x2:pts[pts.length-1][0],y2:pts[pts.length-1][1]});
+        if(pts.length>2)s.way=pts.slice(1,-1).map(p=>({x:p[0],y:p[1]}));
         break;
       }
       default:break;   // image (needs files ref), unknown — skip

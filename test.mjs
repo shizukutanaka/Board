@@ -465,6 +465,7 @@ const checks = [
   ['escape cancels in-flight pointer gesture', html.includes('else if(ptr.down&&ptr.dragKind)_cancelPointerGesture()')],
   ['underline: ⌘U toggle + canvas line + SVG text-decoration', html.includes("toggleTextFlag('under')")&&html.includes('s.under')&&html.includes('text-decoration="underline"')],
   ['equal-size snap: resize matches another shape\'s w/h', html.includes('equal-size snap')&&html.includes('nw=eH?x-orig.x')&&html.includes('Math.abs(nw-b.w)')],
+  ['excalidraw multi-segment arrow → real connector + way[]', html.includes('pts.slice(1,-1).map(p=>({x:p[0],y:p[1]}))')],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
@@ -9302,7 +9303,7 @@ try {
       {type:'ellipse',x:0,y:0,width:40,height:40,angle:Math.PI/4},
       {type:'diamond',x:0,y:0,width:20,height:20},
       {type:'arrow',x:5,y:5,points:[[0,0],[30,40]],strokeColor:'#00f'},
-      {type:'line',x:0,y:0,points:[[0,0],[10,10],[20,0]]},   // 3+ points → pen
+      {type:'line',x:0,y:0,points:[[0,0],[10,10],[20,0]]},   // ADR-0097: 3+ points → connector + way[]
       {type:'freedraw',x:100,y:100,points:[[0,0],[5,5],[10,0]]},
       {type:'text',x:7,y:8,width:60,height:20,text:'hello world',fontSize:24},
       {type:'frame',x:0,y:0,width:200,height:200,name:'My frame'},
@@ -9316,7 +9317,7 @@ try {
     assert.ok(sh[1].type==='ellipse'&&Math.abs(sh[1].rotate-45)<0.11,'angle → rotate');
     assert.ok(sh[2].type==='diamond'&&sh[2].w===20&&sh[2].h===20,'diamond → real type (ADR-0061)');
     assert.ok(sh[3].type==='arrow'&&sh[3].x2===35&&sh[3].y2===45,'relative points absolutised');
-    assert.ok(sh[4].type==='pen'&&sh[4].pts.length===3,'3-point line → pen');
+    assert.ok(sh[4].type==='line'&&sh[4].way.length===1&&sh[4].way[0].x===10&&sh[4].way[0].y===10,'3-point line → connector + way (ADR-0097)');
     assert.ok(sh[5].type==='pen','freedraw → pen');
     assert.ok(sh[6].type==='text'&&sh[6].fontSize===24&&sh[6].text==='hello world','text + fontSize');
     assert.ok(sh[7].type==='frame'&&sh[7].label==='My frame','frame + name');

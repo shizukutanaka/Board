@@ -2,6 +2,15 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.155]
+
+### 変更
+- **.excalidraw 多点コネクタの実インポート** (ADR-0097)。3点以上の
+  line/arrow が `pen` 化していたのを、真のコネクタ + `s.way`
+  中間点へマッピング — elbowed 矢印が矢印のまま編集可能に復元
+  (矢印ヘッド・バインド・ルート編集すべて有効)。`freedraw` は
+  従来通り `pen`。
+
 ## [1.7.154]
 
 ### 追加
