@@ -851,7 +851,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.470';
+const V='1.7.471';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1327,11 +1327,11 @@ function _cleanVal(v,depth){
   return true;
 }
 const _TYPES=new Set(['rect','ellipse','diamond','pen','line','arrow','text','sticky','image','frame']);   // ADR-0387
+const _ptsOK=a=>_iA(a)&&a.every(p=>_iA(p)&&p.length>=2&&p.every(n=>typeof n==='number'&&_fin(n)));   // ADR-0436: shared pen-pts tuple check
 function validShape(s){
   if(!s||typeof s!=='object'||typeof s.id!=='string'||s.id.length>64||!_TYPES.has(s.type)||typeof s.z!=='number')return false;   // ADR-0387/0388: non-string/huge id — byId lookups by string silently miss, Map keys diverge
   if(!validPatch(s))return false;                  // no NaN/Inf coords, no pollution keys
-  if(s.type==='pen')return _iA(s.pts)&&s.pts.length>0&&
-    s.pts.every(p=>_iA(p)&&_fin(p[0])&&_fin(p[1]));
+  if(s.type==='pen')return _ptsOK(s.pts)&&s.pts.length>0;
   return true;
 }
 // Validate a REMOTE op's payload before _apply. See docs/architecture.md.
@@ -1356,7 +1356,7 @@ function validRemotePayload(op){
     case 'upd':{const noLock=p=>!('locked' in p);
       if(typeof op.id!=='string'||!validPatch(op.after)||!noLock(op.after)||(op.before!=null&&!validPatch(op.before)))return false;
       // pen pts must be array-of-[x,y] — flat arrays crash drawPen which expects [[x,y],...]
-      if(op.after.pts!=null&&!(_iA(op.after.pts)&&op.after.pts.every(p=>_iA(p)&&p.length>=2&&p.every(n=>typeof n==='number'&&_fin(n)))))return false;
+      if(op.after.pts!=null&&!_ptsOK(op.after.pts))return false;
       return true;}
     case 'move':   return _iA(op.ids)&&op.ids.length>0&&op.ids.length<=MAX_OP_SHAPES&&op.ids.every(id=>typeof id==='string')&&typeof op.dx==='number'&&_fin(op.dx)&&typeof op.dy==='number'&&_fin(op.dy)&&(op.dx!==0||op.dy!==0);
     case 'zorder':  // Step2 minimal-delta {changes:[{id,before,after}]} or legacy {after:[…]}
