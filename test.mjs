@@ -127,11 +127,11 @@ const checks = [
   // URL fragment (Excalidraw's #json=<id>,<key> precedent — fragments never hit the wire).
   // The plaintext z:/j: path stays as an explicit opt-out + backward-compat import.
   ['share link: E2E encryption emits #b=e: payload with key inside the fragment (AES-256-GCM)',
-    html.includes("encodeURIComponent('e:'+e.ct)+'&k='+e.k")
+    html.includes("_eU('e:'+e.ct)+'&k='+e.k")
     && /crypto\.subtle\.generateKey\(\{name:'AES-GCM',length:256\}/.test(html)
     && /crypto\.subtle\.(encrypt|decrypt)/.test(html)],
   ['share link: plaintext z:/j: path retained for opt-out + backward compat',
-    html.includes("'#b='+encodeURIComponent(payload)") && html.includes('canEncrypt()')],
+    html.includes("'#b='+_eU(payload)") && html.includes('canEncrypt()')],
   ['share modal: encrypt checkbox + encrypted-mode note + plaintext warn (ja+en)',
     html.includes('id="shareEnc"') && html.includes('data-t="shareEncLabel"')
     && html.includes('id="shareWarnEnc"') && html.includes('data-t="shareUrlNoteEnc"')
@@ -278,7 +278,7 @@ const checks = [
   // v1.6.11: spatial index for pickTop
   ['spatial grid helpers present', html.includes("function _buildGrid") && html.includes("function _queryGrid")],
   ['ADR-0016: draw() prefilters via grid rect query on large boards', html.includes("function _gridRectCandidates") && html.includes("_vis=_gridRectCandidates(_grid,_view)") && html.includes("let _drawIter=_vis||_sh()") && html.includes("for(const s of _drawIter)")],
-  ['ADR-0016: candidates return z-ordered via grid.idx', html.includes("idx=new Map") && html.includes("out.sort((a,b)=>(grid.idx.get(a)|0)-(grid.idx.get(b)|0))")],
+  ['ADR-0016: candidates return z-ordered via grid.idx', html.includes("idx=_mP()") && html.includes("out.sort((a,b)=>(grid.idx.get(a)|0)-(grid.idx.get(b)|0))")],
   ['ADR-0016: no-bbox shapes stay always-candidate via big', html.includes("if(!b){big.push(s);continue;}")],
   ['pickTop uses grid for large boards', html.includes("_sh().length>40") && html.includes("_buildGrid(_sh())")],
   ['grid invalidated on every _apply', html.includes("_apply(op,forward){") && html.includes("_iG()")],
@@ -378,7 +378,7 @@ const checks = [
   ['draft draw + erase report damage', html.includes("_iD(_dmgPair(_b0,_bb(d)") && html.includes("_eraseBatch.push(clone(hit))")],
   ['damage path force-includes gesture targets vs stale grid', html.includes("ptr.dragStartShapes.keys()") && html.includes("ptr.resizeOrig.id") && html.includes("ptr.rotOrig.id")],
   // v1.7.85: ADR-0027 op-level damage propagation
-  ['_apply harvests ids + pre/post bboxes for damage', html.includes("const _ids=new Set()") && html.includes("for(const id of _ids)_u(byId(id))") && html.includes("_iD(_dmg)")],
+  ['_apply harvests ids + pre/post bboxes for damage', html.includes("const _ids=_sT()") && html.includes("for(const id of _ids)_u(byId(id))") && html.includes("_iD(_dmg)")],
   ['_apply falls back to full invalidate on empty/huge damage', html.includes("if(!_dmg){_iv();}") && html.includes("_v.w*_v.h*0.6")],
   ['applyRemote uses op damage (no blanket invalidate)', !html.includes("this._stampWrites(op);\n    state.dirty=true;\n    UI.refreshUndo();\n    Persist.schedule();\n    _iv();") && html.includes("_iD(_dmgPair(_cb,_bb(sh)")],
   // v1.7.86: ADR-0028 pan pixel blit
@@ -444,7 +444,7 @@ const checks = [
   ['curve route: quadratic draw + sampled hit + svg path', html.includes('c.quadraticCurveTo(cc.x,cc.y,e.x2,e.y2)')&&html.includes('const pts=_curveSegs(s);')&&html.includes('Q ${_num(cc.x+ox)}')],
   ['curve ctx menu + i18n + exclusive toggle', html.includes("['ctxCurve','',toggleCurve]")&&html.includes("ctxCurve:'曲線'")&&html.includes("ctxCurve:'Curved'")&&html.includes('elbow:s.elbow?0:1,curve:0')],
   // v1.7.127: ADR-0069 wire-level image refs
-  ['img wire refs: slim op + 64KB chunk msgs + snapshot re-emit', html.includes("this._slimOp(op);this._flushImgOuts()")&&html.includes('k:\'img\',key,seq:i,n,data:d.slice')&&html.includes('this._slimShapes(ops.map(o=>o.shape),new Map())')],
+  ['img wire refs: slim op + 64KB chunk msgs + snapshot re-emit', html.includes("this._slimOp(op);this._flushImgOuts()")&&html.includes('k:\'img\',key,seq:i,n,data:d.slice')&&html.includes('this._slimShapes(ops.map(o=>o.shape),_mP())')],
   ['img inbound: chunk reassembly + pending drain + attach paths', html.includes("this._imgChunks.get(msg.key)")&&html.includes("delete sh.img;sh.dataUrl=data")&&html.includes('op=this._attachOp(op)')&&html.includes('const op=this._attachOp(msg.op)')],
   // v1.7.128: ADR-0070 quick-connect
   ['qconn: hover dots + _qdotAt + qline→endLineLike', html.includes('function _qconnShape()')&&html.includes("ptr.dragKind='qline';")&&html.includes("else if(ptr.dragKind==='qline')")&&html.includes('_ivO()}   // ADR-0070')],
@@ -458,7 +458,7 @@ const checks = [
   ['hatch: _hatchSegs/ctx/svg + cycleFillStyle + ctx item', html.includes('function _hatchSegs(')&&html.includes('function cycleFillStyle()')&&html.includes("['ctxFillStyle'")&&html.includes('clip-path="url(#')],
   ['bold/italic: _fontStr + toggleTextFlag + ⌘B/⌘I + SVG attrs', html.includes('function _fontStr(s,fs)')&&html.includes('function toggleTextFlag(k)')&&html.includes("k==='b'&&!e.shiftKey")&&html.includes('font-weight="600"')],
   ['match size: doMatchSize + DIRS + ctx items', html.includes('function doMatchSize(dim)')&&html.includes("'matchw','matchh','matchwh'")&&html.includes("['ctxMatchWH'")],
-  ['smart duplicate: dupIds/dupDelta chain', html.includes('dupIds:new Set()')&&html.includes('_dd().x+=dx')||html.includes('dupIds:new Set()')&&html.includes('dupDelta.x+=dx')],
+  ['smart duplicate: dupIds/dupDelta chain', html.includes('dupIds:_sT()')&&html.includes('_dd().x+=dx')||html.includes('dupIds:_sT()')&&html.includes('dupDelta.x+=dx')],
   ['label editor: _connLabelXY + diamond gate', html.includes('function _connLabelXY(s)')&&html.includes("hit.type==='diamond'")&&html.includes('lp=_connLabelXY')],
   ['sticky recolor: fill patch maps to s.color', html.includes("sh.type==='sticky'&&k==='fill'?'color':k")],
   ['image caption: bottom paper strip + editor gate', html.includes('function _drawImgLabel(s,c)')&&html.includes('_drawImgLabel(s,c);')&&html.includes('function _svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT)')&&html.includes("hit.type==='image'")],
@@ -538,7 +538,7 @@ const checks = [
   ['valign in styleClipboard + SVG label', html.includes('valign:sh.valign')&&html.includes("s.valign==='bottom'?Y+H-6+oy")],
   ['lasso: Alt+drag freehand select', html.includes("ptr.dragKind='lasso';ptr.lasso=[wp]")&&html.includes('function _ptInPoly')&&html.includes('_la()&&_la().length>1')],
   ['lasso commit: centre-in-poly + marquee parity', html.includes('_ptInPoly(b.x+b.w/2,b.y+b.h/2,pts)')&&html.includes('state.lasso=null;_ivO()')],
-  ['RTC token: modern b64url + legacy fallback', html.includes('_b64uEnc(new TextEncoder().encode(_JS({type:sdp.type')&&html.includes('_JP(decodeURIComponent(escape(atob(s))))')],
+  ['RTC token: modern b64url + legacy fallback', html.includes('_b64uEnc(new TextEncoder().encode(_JS({type:sdp.type')&&html.includes('_JP(_dU(escape(atob(s))))')],
   ['eyedropper tool: i key + pick + _styleOf shared', html.includes("i:'eyedropper'")&&html.includes("case 'eyedropper'")&&html.includes('state.styleClipboard=_styleOf(sh)')&&html.includes('eyedropDone')&&html.includes('eyedropper')],
   ['dblclick group descent', html.includes('grp.every(id=>_sl().has(id))')&&html.includes('state.selection=new Set([hit.id])')],
     ['line↔arrow conversion via style op (ctx)', html.includes('toggleLineArrow')&&html.includes('ctxToArrow')&&html.includes("s.type==='line'?'arrow':'line'")],
@@ -785,7 +785,7 @@ const checks = [
   ['startHead separate vocab round-trip (ADR-0286)', html.includes("s.startHead||s.head")&&html.includes("startArrow='+(s.startHead")],
   ['drawio letterSpacing ↔ s.spacing (ADR-0284)', html.includes('letterSpacing=')&&html.includes('sty.letterSpacing')],
   ['drawio lineHeight ↔ s.lineH (ADR-0343)', html.includes("r+='lineHeight='+s.lineH")&&html.includes('sty.lineHeight')],
-  ['svg import gradient → first stop colour (ADR-0283)', html.includes('_grad=new Map()')],
+  ['svg import gradient → first stop colour (ADR-0283)', html.includes('_grad=_mP()')],
   ['_dioStyEmit folds fontStyle+locked (ADR-0282)', html.includes('resizable=0;')],
   ['drawio edge rounded=1 → s.r (ADR-0269)', (html.match(/sty\.rounded==='1'/g)||[]).length>=2],
   ['excalidraw pressures + zigzag → p[2]/hatch (ADR-0268)', html.includes('e.pressures[i]')&&html.includes("e.fillStyle==='zigzag'")],
@@ -806,7 +806,7 @@ const checks = [
   ['drawio fontFamily ↔ s.font category map (ADR-0253)', html.includes("sty.fontFamily&&s.type!=='image'")&&html.includes("fontFamily='+(s.font==='mono'?'Courier New':'Georgia')")],
   ['conn/box label widths memoized on WeakMap (ADR-0252)', html.includes('_connLabelMeasure')&&html.includes('_clCache')],
   ['drawio edge label styling: labelBackgroundColor/fontSize/fontStyle (ADR-0249)', html.includes("labelBackgroundColor='+s.fill")&&html.includes("sty.labelBackgroundColor&&sty.labelBackgroundColor!=='none'")],
-  ['drawio parent-relative offsets resolved (ADR-0240)', html.includes("const _geo=new Map(),_par=new Map();")&&html.includes("const _o=off(_ga(c,'id'));")&&html.includes("x=_o.x+(_doff.get(c)||0)+(+_ga(g,'x')||0)")],
+  ['drawio parent-relative offsets resolved (ADR-0240)', html.includes("const _geo=_mP(),_par=_mP();")&&html.includes("const _o=off(_ga(c,'id'));")&&html.includes("x=_o.x+(_doff.get(c)||0)+(+_ga(g,'x')||0)")],
   ['frame label italic/under/strike (ADR-0204)', html.includes("600 ${fs}px")&&html.includes("s.type!=='frame'&&!s.label)||s.locked)return;   // ADR-0170/0204")],
   ['letter-spacing cycle — canvas ctx+SVG+style-copy (ADR-0205)', html.includes("function cycleSpacing()")&&html.includes("c.letterSpacing=(s.spacing||0)+'px'")&&html.includes('_svgLs(s)')&&html.includes('spacing:sh.spacing')],
   ['elbow corner rounding canvas+SVG + cycleCorner gate (ADR-0207)', html.includes('function _polylineR')&&html.includes('_polylineRd(pts,ox,oy,s.r)')&&html.includes("connOk=(_conn(s.type))&&s.elbow")],
@@ -851,7 +851,7 @@ const checks = [
   // v1.7.103: ADR-0045 invite link — offer rides the URL hash
   ['invite link button wired', html.includes('id="rtcInviteLinkBtn"') && html.includes("'#s='")],
   ['inviteFromHash consumes #s=', html.includes('inviteFromHash()') && html.includes("h.startsWith('#s=')")],
-  ['invite hash cleared on consume', html.includes("inviteFromHash()") && html.includes("h.startsWith('#s=')") && html.includes("decodeURIComponent(h.slice(3))")],
+  ['invite hash cleared on consume', html.includes("inviteFromHash()") && html.includes("h.startsWith('#s=')") && html.includes("_dU(h.slice(3))")],
   ['i18n has invite-link keys ja+en', html.includes("shareCopyInviteLink:'招待リンクをコピー'") && html.includes("shareCopyInviteLink:'Copy invite link'") && html.includes("inviteLinkOpened:") && html.includes("inviteLinkNoCode:")],
   // v1.6.44: x,y decorative label is aria-hidden
   ['x,y status label is aria-hidden (decorative)', html.includes('<span class="lbl" aria-hidden="true">x,y</span>')],
@@ -1098,7 +1098,7 @@ const checks = [
   // v1.6.73: doAlign skips locked shapes (parity with doDelete/doRotate/doFlip)
   ['doAlign filters locked shapes', html.includes("const sel=_selL(s=>s&&!s.locked);\n  if(sel.length<2)return;")],
   // v1.6.74: _placeCopies remaps connector bindings (sh.a/sh.b) within pasted set
-  ['_placeCopies pre-generates idMap for two-pass connector remapping', html.includes("const idMap=new Map();") && html.includes("for(const orig of srcShapes)idMap.set(orig.id,uid());")],
+  ['_placeCopies pre-generates idMap for two-pass connector remapping', html.includes("const idMap=_mP();") && html.includes("for(const orig of srcShapes)idMap.set(orig.id,uid());")],
   ['_placeCopies remaps sh.a and sh.b to new ids', html.includes("if(sh.a&&idMap.has(sh.a))sh.a=idMap.get(sh.a);") && html.includes("if(sh.b&&idMap.has(sh.b))sh.b=idMap.get(sh.b);")],
   // v1.6.75: keyboard nudge parity with pointer-drag (frame children follow + skip locked)
   ['withFrameChildren helper shared by drag + nudge', html.includes("function withFrameChildren(ids)") && html.includes("const dragIds=withFrameChildren(_sl());")],
@@ -1396,7 +1396,7 @@ const checks = [
   // v1.7.58 (ADR-0009): byId() O(1) id index
   ['byId is a lazy Map index invalidated via the shared _invalidateGrid choke point',
     html.includes("function _invalidateGrid(){_grid=null;_idIndex=null;_gridVer++;}") &&
-    html.includes("if(!_idIndex||_idIndex.size!==_sh().length){_idIndex=new Map();for(const s of _sh())_idIndex.set(s.id,s);}")],
+    html.includes("if(!_idIndex||_idIndex.size!==_sh().length){_idIndex=_mP();for(const s of _sh())_idIndex.set(s.id,s);}")],
   ['exportPDF convertToBlob rejection routes to the same exportFailed toast as the toBlob(null) path',
     html.includes("off.convertToBlob({type:'image/png'}).then(fin,()=>fin(null));")],
   // v1.7.59 (a11y-audit-2026-07): theme-aware accent-contrast token, no raw --brand outlines left
@@ -3429,6 +3429,29 @@ try {
     assert.strictEqual(msg.ops[0].clock.seq,'snap:'+sa.id,'clock seq keyed by shape id');
     console.log('  ✓ Net._snapshotMsg includes ops with id-keyed distinct clocks (fixes WebRTC merge)');
   }
+
+  // ADR-0402: doc name rides the wire — 'name' broadcast on rename + name inside snapshots
+  {
+    state.docName='WireName';
+    const msg=Net._snapshotMsg();
+    assert.strictEqual(msg.name,'WireName','snapshot carries docName for late joiners');
+    assert.ok(html.includes("case 'name'"),"receiver has a 'name' case");
+    assert.ok(html.includes("Net._bcast({k:'name',peer:_pi(),name:state.docName})"),'rename broadcasts k:name');
+    assert.ok(html.includes("typeof msg.name==='string'"),'receiver type-guards name');
+    state.docName='';
+    console.log('  ✓ doc name propagates via k:name broadcast + snapshot.name (ADR-0402)');
+  }
+
+  // ADR-0403: sender refuses oversized snapshots before chunking
+  {
+    assert.ok(html.includes("if(_sm.length>24e6){_tst(t('snapBig'),'warn');return}"),'send-side snapshot cap');
+    assert.strictEqual(api.I18N.ja.snapBig.length>0&&api.I18N.en.snapBig.length>0,true,'snapBig i18n both langs');
+    console.log('  ✓ snapshot send-side 24MB fail-fast (ADR-0403)');
+  }
+
+  // ADR-0401: _bcast folds the BC+RTC dual-send
+  assert.ok(html.includes('_bcast(msg){'),'Net._bcast helper exists');
+  console.log('  ✓ Net._bcast dual-transport helper (ADR-0401)');
 
   // Re-snapshot after the sender's shape set changed must still merge new shapes.
   // Builds the snapshots via the real _snapshotMsg (as sender 'A'), then replays them

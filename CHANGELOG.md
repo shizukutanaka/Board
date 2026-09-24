@@ -2,6 +2,10 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.440] - 2026-09-23
+### 変更
+- ADR-0404: `_mP`/`_sT`/`_eU`/`_dU` shorthand (~230B 回収) + round116-117 の wire メタ (`k:'name'`/snapshot.name/`snapBig`) に存在ガードと実動作テストを追加
+
 ## [1.7.439] - 2026-09-23
 ### 修正
 - ADR-0403: RTC スナップショットが受信側上限 (24MiB) を超える場合、送信前に `snapBig` トーストで fail-fast — 全チャンク送出後に棄却される浪費を解消
