@@ -2,6 +2,29 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.366] - 2026-09-24
+
+### Added
+- `describeShape` の選択通知に 🔗 を付加し、リンクバッジを
+  スクリーンリーダーにも通知 (ADR-0315)
+
+## [1.7.365] - 2026-09-24
+
+### Added
+- リンク付き図形を ⌘+click (Windows/Linux は Ctrl+click) で直接開く
+  (Figma parity、ADR-0314)
+
+## [1.7.364] - 2026-09-24
+
+### Added
+- drawio `link` 属性 (Edit Link) の輸入+書出で `s.link` と往復 (ADR-0313)
+
+## [1.7.363] - 2026-09-24
+
+### Changed
+- origSel 書き戻し `if(origSel.length)…origSel=origSel` 15 箇所を
+  `_keepSel(arr)` に集約 (raw ~525B、ADR-0312)
+
 ## [1.7.362] - 2026-09-24
 
 ### Added
