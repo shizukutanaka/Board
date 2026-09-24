@@ -319,7 +319,7 @@ const checks = [
   // v1.7.113: ADR-0055 rotate point-geometry shapes
   ['doRotate covers pen/line/arrow geometry', html.includes("const _rotatable=s=>_hb(s)||s.pts||s.x1!=null") && html.includes("_rotPtsAbout(s,gx,gy,cs,sn)") && html.includes("if(!_hb(s)){_rotPtsAbout")],
   // v1.7.114: ADR-0056 multi-selection resize
-  ['gresize dragKind wires group handles', html.includes("ptr.dragKind='gresize';") && html.includes("ptr.gOrig=new Map(sel.filter(s=>!_lk(s)).map(s=>[s.id,clone(s)]))") && html.includes("if(!sel.some(_rt)){")],
+  ['gresize dragKind wires group handles', html.includes("ptr.dragKind='gresize';") && html.includes("ptr.gOrig=new Map(sel.filter(_ul).map(s=>[s.id,clone(s)]))") && html.includes("if(!sel.some(_rt)){")],
   ['gresize reuses applyResize on a virtual box + commits one align op', html.includes("function _gresizeDrag(wp,shift,alt){") && html.includes("applyResize(vbox,ptr.resizeHandle,vorig,wp,shift,alt)") && html.includes("_mapToBox(sh,orig,ob,vbox)") && html.includes("op:'align',dir:'gresize'") && html.includes("'gresize'")],
   ['gresize cancelled in abortGesture + pointercancel', html.includes("_dk('gresize')||_dk('grot')") && html.includes("ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;")],
   // v1.7.115: ADR-0057 rotation knob for point geometry + multi-selection
