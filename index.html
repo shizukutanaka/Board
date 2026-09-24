@@ -801,7 +801,7 @@ const _on=(e,t,f,o)=>e.addEventListener(t,f,o);                          // ADR-
 const _vp=()=>state.viewport,_vpS=()=>({x:+_vp().x.toFixed(2),y:+_vp().y.toFixed(2),zoom:+_vp().zoom.toFixed(4)});                                              // ADR-0362: live-read (tests reassign the object)
 const _pi=()=>state.peerId,_ro=()=>state.readout,_gd=()=>state.guides,_cl=()=>state.clipboard,_bb=s=>G.bbox(s),_bA=s=>G.bboxAll(s),_oa=Object.assign;   // ADR-0378
 const _sO=()=>state.seenOps,_la=()=>state.lasso,_mq=()=>state.marquee,_dd=()=>state.dupDelta,_w2=p=>G.w2s(p),_s2=p=>G.s2w(p),_cE=connEnds;   // ADR-0382
-const _dpr=()=>window.devicePixelRatio,_iA=Array.isArray,_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log,_rAF=requestAnimationFrame,_pF=parseFloat,_lg=k=>localStorage.getItem(k),_ls=(k,v)=>localStorage.setItem(k,v),_mP=()=>new Map(),_sT=()=>new Set(),_eU=encodeURIComponent,_dU=decodeURIComponent,_un='undefined',_AU='arrowup',_AD='arrowdown',_AL2='arrowleft',_AR2='arrowright',_ES='escape',_EN='enter',_TB='tab',_IK='#0F172A',_YW='#FEF08A';   // ADR-0384/0386/0391/0395/0397
+const _dpr=()=>window.devicePixelRatio,_iA=Array.isArray,_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log,_rAF=requestAnimationFrame,_pF=parseFloat,_db=document.body,_de=document.documentElement,_wO=window.open,_lg=k=>localStorage.getItem(k),_ls=(k,v)=>localStorage.setItem(k,v),_mP=()=>new Map(),_sT=()=>new Set(),_eU=encodeURIComponent,_dU=decodeURIComponent,_un='undefined',_AU='arrowup',_AD='arrowdown',_AL2='arrowleft',_AR2='arrowright',_ES='escape',_EN='enter',_TB='tab',_IK='#0F172A',_YW='#FEF08A';   // ADR-0384/0386/0391/0395/0397
 const _sh=()=>state.shapes;                                                // ADR-0364
 const _sl=()=>state.selection;
 const _st=()=>state.style;
@@ -822,7 +822,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.447';
+const V='1.7.448';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -885,8 +885,8 @@ const THEME_KEY='board.theme';
 // rather than the source of truth for what's currently applied.
 let _themeCache=(()=>{try{return _lg(THEME_KEY)}catch(_){return null}})();
 function applyTheme(mode){   // mode: 'light'|'dark'|null (auto = follow prefers-color-scheme)
-  if(mode)document.documentElement.dataset.theme=mode;
-  else delete document.documentElement.dataset.theme;
+  if(mode)_de.dataset.theme=mode;
+  else delete _de.dataset.theme;
   clearCSSCache();
   Minimap.invalidateCache();   // minimap scene bitmap embeds --ink/--brand colors (ADR-0025)
 }
@@ -1249,10 +1249,10 @@ function validPatch(p){
   if(!p||typeof p!=='object')return false;   // a patch/shape must be an object
   if(!_cleanVal(p,0))return false;
   // Numeric geometry fields must be actual numbers, not strings that slip past _cleanVal
-  for(const k of ['x','y','w','h','x1','y1','x2','y2','z','rotate','size','opacity','dash','labelPos','cbend','bend','spacing','lineH','fontSize','elbow','curve','hop','flip','shadow','r','visible','start','wrap']){   // ADR-0367/0369
+  for(const k of ['x','y','w','h','x1','y1','x2','y2','z','rotate','size','opacity','dash','labelPos','cbend','bend','spacing','lineH','fontSize','elbow','curve','hop','flip','r','visible','start','wrap']){   // ADR-0367/0369
     if(k in p&&p[k]!=null&&typeof p[k]!=='number')return false;
   }
-  for(const k of ['bold','italic','under','strike','locked'])if(k in p&&p[k]!=null&&typeof p[k]!=='boolean'&&typeof p[k]!=='number')return false;   // ADR-0411: flags are true|1 (drawio writes 1)
+  for(const k of ['bold','italic','under','strike','locked','shadow'])if(k in p&&p[k]!=null&&typeof p[k]!=='boolean'&&typeof p[k]!=='number')return false;   // ADR-0411/0413: flags are true|1 (drawio writes 1; shadow writes true)
   if(p.aF!=null&&(typeof p.aF!=='object'||!_fin(p.aF.fx)||!_fin(p.aF.fy)))return false;   // ADR-0367: {fx,fy} object — structural check
   if(p.bF!=null&&(typeof p.bF!=='object'||!_fin(p.bF.fx)||!_fin(p.bF.fy)))return false;   // ADR-0367
   // ADR-0368: array-prop shape checks — upd patches bypass validShape's pen check,
@@ -2620,7 +2620,7 @@ function _drawMeasure(c){
 }
 // Design-token lookups run every frame; memoise and drop on theme flip (see wire()).
 let _cssCache=Object.create(null);
-function _gC(v){let x=_cssCache[v];if(x===_ud){x=getComputedStyle(document.documentElement).getPropertyValue(v).trim();_cssCache[v]=x}return x}
+function _gC(v){let x=_cssCache[v];if(x===_ud){x=getComputedStyle(_de).getPropertyValue(v).trim();_cssCache[v]=x}return x}
 function clearCSSCache(){_cssCache=Object.create(null);_iv()}
 function drawGrid(W,H){
   const v=_vp();
@@ -3914,7 +3914,7 @@ _on(canvas,_PD,e=>{
       }
       // ADR-0314: ⌘ on macOS / Ctrl elsewhere (Figma parity) — ctrl+click on
       // macOS is the context-menu chord, so the modifier is platform-specific.
-      if((/Mac|iPhone|iPad/.test(navigator.platform)?e.metaKey:e.ctrlKey)){const _h0=pickTop(wp);if(_h0&&_h0.link){if(!window.open(_h0.link,'_blank','noopener'))_w(t('popupBlocked'));break}}
+      if((/Mac|iPhone|iPad/.test(navigator.platform)?e.metaKey:e.ctrlKey)){const _h0=pickTop(wp);if(_h0&&_h0.link){if(!_wO(_h0.link,'_blank','noopener'))_w(t('popupBlocked'));break}}
       pickOrMarquee(wp,e);break;
     case 'pen':case 'marker':beginPen(wp,e);break;
     case 'rect':case 'ellipse':case 'diamond':case 'sticky':case 'frame':beginRectLike(wp);break;
@@ -4278,7 +4278,7 @@ function openLabelEditor(hit,leftPx,topPx,bold){
     `font:${hit.italic?'italic ':''}${bold?'600 ':''}${hit.fontSize||12}px ${_fontFam(hit)};color:${col};`+   // ADR-0186/0206
     `background:${_p()};border:1px solid ${col};`+
     `padding:2px 6px;outline:none;z-index:9500;min-width:80px;`;
-  _ap(document.body,inp);inp.select();
+  _ap(_db,inp);inp.select();
   _lblTa={inp,hit};_lblVp='';   // ADR-0182: follow the viewport while editing
   const commit=()=>{
     const lbl=inp.value.trim();
@@ -5322,7 +5322,7 @@ function openTextEditor(s,isNew){
   ta.value=origText;
   ta.spellcheck=false;
   positionTextEditor(ta,s);
-  _ap(document.body,ta);
+  _ap(_db,ta);
   ta.focus();
   const auto=()=>{
     ta.style.height='auto';
@@ -6354,7 +6354,7 @@ function exportPDF(){
   const fin=bl=>{
     if(!bl){_e(t(_EF));return}
     const url=URL.createObjectURL(bl);
-    const w2=window.open('');
+    const w2=_wO('');
     if(!w2){_w(t('popupBlocked'));return}
     w2.document.write(`<!DOCTYPE html><html><head><title>${_esc(_dn()||'board')}</title><style>*{margin:0;padding:0}img{max-width:100%;display:block}</style></head><body><img src="${url}" onload="window.print();window.close()"></body></html>`);
     w2.document.close();_stO(()=>URL.revokeObjectURL(url),30e3);
@@ -7540,10 +7540,10 @@ async function copyText(text){
     const ta=_ce('textarea');
     ta.value=text;_sa(ta,'readonly','');
     ta.style.cssText='position:fixed;top:-9999px;left:-9999px;opacity:0';
-    _ap(document.body,ta);
+    _ap(_db,ta);
     ta.select();ta.setSelectionRange(0,_St(text).length);
     const ok=document.execCommand&&document.execCommand('copy');
-    document.body.removeChild(ta);
+    _db.removeChild(ta);
     return !!ok;
   }catch(_){return false}
 }
@@ -8697,7 +8697,7 @@ const UI={
     // <html lang> is authored "ja" (primary audience) but an en-browser user gets the
     // English UI — leaving lang="ja" makes a screen reader read English with a Japanese
     // speech engine, and risks CJK han-unification picking the wrong glyph variants.
-    document.documentElement.lang=LANG;
+    _de.lang=LANG;
     // Walk all elements with data-t and replace textContent with the
     // translated string. This makes the Share modal (and any future
     // translatable element) honour the detected language.
@@ -8802,7 +8802,7 @@ async function _onBtnInstall(){
   if(btn)btn.hidden=true;
 }
 function wire(){
-  {const sq=_ce('input');sq.id='sqinput';sq.type='text';sq.placeholder=T.k.search;_sa(sq,_AL,T.k.search);sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--accent-contrast);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';_ap(document.body,sq);_on(sq,'input',()=>{_sq=sq.value;_sqNav.idx=-1;_sqNav.lastQ='';_ivO()});_on(sq,_KD,ev=>{if(ev.key==='Escape'){_sq='';_sqNav.idx=-1;_sqNav.lastQ='';sq.style.display='none';sq.value='';_ivO();canvas.focus();}else if(ev.key==='Enter'&&!ev.isComposing){_pd(ev);
+  {const sq=_ce('input');sq.id='sqinput';sq.type='text';sq.placeholder=T.k.search;_sa(sq,_AL,T.k.search);sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--accent-contrast);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';_ap(_db,sq);_on(sq,'input',()=>{_sq=sq.value;_sqNav.idx=-1;_sqNav.lastQ='';_ivO()});_on(sq,_KD,ev=>{if(ev.key==='Escape'){_sq='';_sqNav.idx=-1;_sqNav.lastQ='';sq.style.display='none';sq.value='';_ivO();canvas.focus();}else if(ev.key==='Enter'&&!ev.isComposing){_pd(ev);
     // ⌘Enter: commit the whole match list as the selection, then fold the
     // box away — selecting is terminal, so stale search highlights only
     // distract from the follow-up (move/style the found group).
@@ -9491,7 +9491,7 @@ function setSelLink(){
 }
 function openSelLink(){
   const s=_selIds().map(byId).find(s=>s&&s.link);
-  if(s&&!window.open(s.link,'_blank','noopener'))_w(t('popupBlocked'));   // ADR-0319
+  if(s&&!_wO(s.link,'_blank','noopener'))_w(t('popupBlocked'));   // ADR-0319
 }
 
 function copyStyle(){
@@ -9582,7 +9582,7 @@ const Presentation=(()=>{
     // Canvas passthrough: hide the overlay visually and let canvas show
     _overlay.style.pointerEvents='none';  // clicks pass through to canvas
     exit.style.pointerEvents='auto';
-    _ap(document.body,_overlay);
+    _ap(_db,_overlay);
     // Hide UI chrome
     _qs(document,'.toolbar').style.display='none';
     _qs(document,'.topbar').style.display='none';

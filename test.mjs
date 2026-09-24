@@ -752,9 +752,9 @@ const checks = [
   ['exc conn-label lineHeight restore (ADR-0323)', html.includes("e.lineHeight!==1.25)p.lineH=")],
   ['drawio export emits html=1 (ADR-0322)', html.includes("let sty='html=1;';")&&html.includes("'html=1;'+(s.start")],
   ['drawio whiteSpace nowrap|wrap ↔ s.wrap (ADR-0321/0412)', html.includes("s.type==='text'&&sty.whiteSpace==='nowrap')s.wrap=0")&&html.includes("s.wrap?'whiteSpace=wrap;':'whiteSpace=nowrap;'")&&html.includes("sty.whiteSpace==='wrap')s.wrap=1")],
-  ['validPatch: wrap numeric + flag props boolean|number (ADR-0411)', html.includes("'visible','start','wrap']")&&html.includes("['bold','italic','under','strike','locked']")],
+  ['validPatch: wrap numeric + flag props boolean|number (ADR-0411/0413)', html.includes("'visible','start','wrap']")&&html.includes("['bold','italic','under','strike','locked','shadow']")],
   ['drawio labelPosition/verticalLabelPosition (ADR-0320)', html.includes("labelPosition='+s.align")&&html.includes("verticalLabelPosition='+s.valign")&&html.includes("sty.labelPosition))s.align")],
-  ['popup-blocked feedback on link open (ADR-0319)', html.includes("if(s&&!window.open(s.link,'_blank','noopener'))_w(t('popupBlocked'))")&&html.includes("if(!window.open(_h0.link,'_blank','noopener'))_w(t('popupBlocked'))")],
+  ['popup-blocked feedback on link open (ADR-0319)', html.includes("if(s&&!_wO(s.link,'_blank','noopener'))_w(t('popupBlocked'))")&&html.includes("if(!_wO(_h0.link,'_blank','noopener'))_w(t('popupBlocked'))")],
   ['ctx copy link item (ADR-0318)', html.includes("['ctxCopyLink',''")&&html.includes("ctxCopyLink:'リンクをコピー'")&&html.includes("ctxCopyLink:'Copy link'")],
   ['exc conn roundness→curve round-trip (ADR-0317)', html.includes("s.curve=1;delete s.r")&&html.includes("s.curve?{roundness:{type:2}}")],
   ['SVG export link badge (ADR-0316)', html.includes('>🔗</text></a>`)')],
@@ -1048,7 +1048,7 @@ const checks = [
     && html.includes("refreshThemeBtn(){") && html.includes("applyTheme(UI._themeMode());UI.refreshThemeBtn();")
     && html.includes("_g('btnTheme').onclick=()=>UI.toggleTheme();")],
   ['theme toggle: existing data-theme=light/dark CSS selectors are finally reachable from JS',
-    html.includes("document.documentElement.dataset.theme=mode") && html.includes(':root[data-theme=light]') && html.includes(':root[data-theme=dark]')],
+    html.includes("_de.dataset.theme=mode") && html.includes(':root[data-theme=light]') && html.includes(':root[data-theme=dark]')],
   // v1.7.66 (ADR-0013, FT-19)
   ['keyboard label/text edit: editSelectedShapeKbd + shared _openLabelEditorFor wired',
     html.includes('function editSelectedShapeKbd(){') && html.includes('function _openLabelEditorFor(hit){')
@@ -7998,6 +7998,25 @@ try {
     assert.ok(validRemotePayload({op:'resize',after:[{id:'x',x:10,y:0,w:10,h:10}],before:[{id:'x',x:0,y:0,w:10,h:10}]}),
       'validPatch: legitimate numeric coords still accepted after fix');
     console.log('  ✓ validPatch: string values in numeric geometry fields rejected (v1.7.17b)');
+  }
+
+
+  // v1.7.447a (ADR-0413): flag props accept true|1|null — {shadow:true} in a style op
+  // (toggleShadow writes true) was rejected by the numeric whitelist, silently dropping
+  // the toggle from remote peers; validShape→validPatch also dropped shadowed shapes on
+  // .board/share intake. Flags now validate boolean|number, reject strings.
+  {
+    assert.ok(validRemotePayload({op:'style',after:[{id:'x',shadow:true}],before:[{id:'x',shadow:null}]}),
+      'validPatch: boolean shadow flag accepted');
+    assert.ok(validRemotePayload({op:'style',after:[{id:'x',shadow:1}],before:[{id:'x'}]}),
+      'validPatch: numeric shadow flag accepted');
+    assert.ok(!validRemotePayload({op:'style',after:[{id:'x',shadow:'yes'}],before:[{id:'x'}]}),
+      'validPatch: string shadow flag rejected');
+    assert.ok(validRemotePayload({op:'style',after:[{id:'x',bold:true}],before:[{id:'x',bold:null}]}),
+      'validPatch: boolean text flag accepted');
+    assert.ok(validRemotePayload({op:'add',shape:{id:'s1',type:'rect',x:0,y:0,w:10,h:10,z:1,shadow:true}}),
+      'validShape: shadowed shape accepted on add op');
+    console.log('  ✓ ADR-0413: flag props accept true|1, reject strings (shadow ops+imports unblocked)');
   }
 
   // v1.7.16a: flushErase must not clear connector bindings on locked connectors
