@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.401] - 2026-09-24
+
+### Added
+- .excalidraw 画像キャプション往復 — `s.cap` を画像下端帯の bound
+  text + `bCap:1` で emit、import で `s.cap` 復元 (ADR-0351)
+
 ## [1.7.400] - 2026-09-24
 
 ### Changed
