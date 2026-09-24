@@ -155,6 +155,7 @@ Board/
 - [ADR-0103](docs/ADR-0103-paste-at-cursor.md) カーソル位置に貼り付け
 - [ADR-0104](docs/ADR-0104-select-same-paint.md) 同色を選択
 - [ADR-0105](docs/ADR-0105-sticky-chain.md) 付箋 ⌘Enter 連鎖
+- [ADR-0106](docs/ADR-0106-boot-empty-view-fit.md) 起動時の空ビュー自動フィット
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

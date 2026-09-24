@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.164]
+
+### 追加
+- **起動時の空ビュー自動フィット** (ADR-0106)。復元された viewport
+  に形状が1つも見えていない (= 空白ボード＝消失誤認) 場合のみ
+  `fitToContent()` で案内。永続ビューの復元は従来通り優先。
+
 ## [1.7.163]
 
 ### 追加

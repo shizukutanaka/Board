@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.163';
+const V='1.7.164';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3936,6 +3936,17 @@ function fitToContent(){
   const b=G.bboxAll(state.shapes);if(!b){zoomReset();return}
   const z=_fitViewport(b,40,2);
   UI.announce(Math.round(z*100)+'%');
+}
+// ADR-0106: boot guard against "lost content" — a persisted/imported viewport
+// that contains zero shapes looks like an empty board and reads as data loss.
+// Only fires when shapes exist AND none are visible; an intentionally panned
+// empty view is left alone.
+function _fitIfEmptyView(){
+  if(!state.shapes.length)return;
+  const v=state.viewport,r=canvas.getBoundingClientRect();
+  const b=G.bboxAll(state.shapes);if(!b)return;
+  const vw=r.width/v.zoom,vh=r.height/v.zoom;
+  if(b.x+b.w<v.x||b.y+b.h<v.y||b.x>v.x+vw||b.y>v.y+vh)fitToContent();
 }
 // ⇧2: zoom to the selection's bbox (Excalidraw parity). Cap 4 — tighter than
 // fit-all's 2 so a small selection actually enlarges, short of the 16x extreme.
@@ -7798,7 +7809,7 @@ const Minimap=(()=>{
   try{Share.inviteFromHash()}catch(_){}   // ADR-0045
   // v1.1: start BroadcastChannel sync for same-browser tab sync
   Net.init();
-  UI.refreshPeers();
+  _fitIfEmptyView();   // ADR-0106: restored view shows nothing → fit content
   _rafId=requestAnimationFrame(frame);
 })();
 
