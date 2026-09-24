@@ -6381,6 +6381,30 @@ try {
     console.log('  ✓ Net.init: re-init closes channel + clears prior heartbeat (no timer leak)');
   }
 
+  // ADR-0464/0466/0467: Net.init must reset ALL room-scoped transfer/presence state —
+  // _imgSent dedup, inbound chunk/assembly slots, pending sends, and the SR delta tracker.
+  // A missed field leaks across rooms (img refs arrive whose blobs never re-send;
+  // stale partial assemblies splice into the new room's stream).
+  {
+    Net.bc={close(){},postMessage(){},onmessage:null};
+    Net._imgSent.set('k1',1);Net._imgChunks.set('k2',{p:['x'],g:1,n:2});Net._imgOuts.push(['k3','d']);
+    Net._snapIn={p:['a'],g:1,n:2};Net._opcIn={p:['b'],g:1,n:2};Net._pCt=7;
+    state.seenOps.add('old:1');state.peers.set('ghost',{color:0,lastSeen:0});
+    Net._presenceTimer=setInterval(()=>{},1e6);
+    Net.init('roomB');
+    assert.strictEqual(Net._imgSent.size,0,'imgSent reset on room switch');
+    assert.strictEqual(Net._imgChunks.size,0,'imgChunks reset');
+    assert.strictEqual(Net._imgOuts.length,0,'imgOuts drained');
+    assert.strictEqual(Net._snapIn,null,'snapIn reset');
+    assert.strictEqual(Net._opcIn,null,'opcIn reset');
+    assert.strictEqual(Net._pCt,state.peers.size,'pCt rebaselined to live peers');
+    assert.strictEqual(state.seenOps.size,0,'seenOps cleared');
+    assert.strictEqual(state.peers.has('ghost'),false,'BC ghost peers purged');
+    clearInterval(Net._presenceTimer);
+    if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}
+    console.log('  ✓ Net.init: all room-scoped transfer/presence state resets (ADR-0464..0467)');
+  }
+
   // v1.6.85: _reapPeers must NOT drop WebRTC peers by timeout — they don't ride the
   // BroadcastChannel heartbeat, so a live idle link would lose its avatar after 15s.
   // BroadcastChannel peers ARE still reaped on timeout (existing behaviour preserved).
