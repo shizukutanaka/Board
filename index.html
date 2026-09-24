@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.222';
+const V='1.7.223';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -5168,6 +5168,13 @@ window.addEventListener('keydown',e=>{
       const dx=k==='arrowleft'?-step:k==='arrowright'?step:0;
       const dy=k==='arrowup'?-step:k==='arrowdown'?step:0;
       nudgeSelection(dx,dy);
+    }
+    else{                                   // ADR-0165: no selection → arrows pan the view
+      e.preventDefault();                    // (Excalidraw scroll parity; keyboard-only nav)
+      const step=(e.shiftKey?200:40)/state.viewport.zoom;
+      state.viewport.x+=k==='arrowleft'?-step:k==='arrowright'?step:0;
+      state.viewport.y+=k==='arrowup'?-step:k==='arrowdown'?step:0;
+      invalidate();
     }
   }
   else if(k==='escape'){

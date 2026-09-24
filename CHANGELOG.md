@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.223]
+
+### 追加
+- **非選択時の矢印キーでビューポートをパン** (ADR-0165)。40px 相当
+  (⇧で200px) のスクロール (Excalidraw parity) — 選択がある場合は
+  従来の nudge を維持。
+
 ## [1.7.222]
 
 ### 追加
