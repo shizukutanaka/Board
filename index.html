@@ -828,10 +828,10 @@ const _on=(e,t,f,o)=>e.addEventListener(t,f,o);                          // ADR-
 const _vp=()=>state.viewport,_vpS=()=>({x:+_vp().x.toFixed(2),y:+_vp().y.toFixed(2),zoom:+_vp().zoom.toFixed(4)});                                              // ADR-0362: live-read (tests reassign the object)
 const _pi=()=>state.peerId,_ro=()=>state.readout,_gd=()=>state.guides,_cl=()=>state.clipboard,_bb=s=>G.bbox(s),_bA=s=>G.bboxAll(s),_oa=Object.assign;   // ADR-0378
 const _sO=()=>state.seenOps,_la=()=>state.lasso,_mq=()=>state.marquee,_dd=()=>state.dupDelta,_w2=p=>G.w2s(p),_s2=p=>G.s2w(p),_cE=connEnds;   // ADR-0382
-const _dpr=()=>window.devicePixelRatio,_iA=Array.isArray,_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log,_rAF=requestAnimationFrame,_pF=parseFloat,_db=document.body,_de=document.documentElement,_wO=window.open,_lg=k=>localStorage.getItem(k),_ls=(k,v)=>localStorage.setItem(k,v),_mP=()=>new Map(),_sT=()=>new Set(),_eU=encodeURIComponent,_dU=decodeURIComponent,_un='undefined',_AU='arrowup',_AD='arrowdown',_AL2='arrowleft',_AR2='arrowright',_ES='escape',_EN='enter',_TB='tab',_IK='#0F172A',_YW='#FEF08A';   // ADR-0384/0386/0391/0395/0397
+const _dpr=()=>window.devicePixelRatio,_iA=Array.isArray,_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log,_rAF=requestAnimationFrame,_pF=parseFloat,_db=document.body,_de=document.documentElement,_wO=window.open,_lg=k=>localStorage.getItem(k),_ls=(k,v)=>localStorage.setItem(k,v),_mP=a=>new Map(a),_sT=a=>new Set(a),_eU=encodeURIComponent,_dU=decodeURIComponent,_un='undefined',_AU='arrowup',_AD='arrowdown',_AL2='arrowleft',_AR2='arrowright',_ES='escape',_EN='enter',_TB='tab',_IK='#0F172A',_YW='#FEF08A';   // ADR-0384/0386/0391/0395/0397
 const _sh=()=>state.shapes;                                                // ADR-0364
 const _sl=()=>state.selection;
-const _ss=ids=>{state.selection=new Set(ids)};   // ADR-0415: selection-set writes (18 sites)
+const _ss=ids=>{state.selection=_sT(ids)};   // ADR-0415: selection-set writes (18 sites)
 const _st=()=>state.style;
 const _df=()=>state.draft;
 const _wc=()=>state.wclock;
@@ -851,7 +851,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.485';
+const V='1.7.486';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1326,7 +1326,7 @@ function _cleanVal(v,depth){
   }
   return true;
 }
-const _TYPES=new Set(['rect','ellipse','diamond','pen','line','arrow','text','sticky','image','frame']);   // ADR-0387
+const _TYPES=_sT(['rect','ellipse','diamond','pen','line','arrow','text','sticky','image','frame']);   // ADR-0387
 const _ptsOK=a=>_iA(a)&&a.every(p=>_iA(p)&&_ln(p)>=2&&p.every(n=>typeof n==='number'&&_fin(n)));   // ADR-0436: shared pen-pts tuple check
 function validShape(s){
   if(!s||typeof s!=='object'||typeof s.id!=='string'||_ln(s.id)>64||!_TYPES.has(s.type)||typeof s.z!=='number')return false;   // ADR-0387/0388: non-string/huge id — byId lookups by string silently miss, Map keys diverge
@@ -1335,7 +1335,7 @@ function validShape(s){
   return true;
 }
 // Validate a REMOTE op's payload before _apply. See docs/architecture.md.
-const _CC_KEYS=new Set(['a','aF','b','bF','x1','y1','x2','y2']);   // ADR-0377
+const _CC_KEYS=_sT(['a','aF','b','bF','x1','y1','x2','y2']);   // ADR-0377
 const _ccOk=q=>q&&typeof q==='object'&&!_iA(q)&&_ok(q).every(k=>_CC_KEYS.has(k))&&validPatch(q);
 function validRemotePayload(op){
   const patches=a=>_iA(a)&&_ln(a)<=MAX_OP_SHAPES&&a.every(p=>p&&typeof p.id==='string'&&validPatch(p));
@@ -1372,7 +1372,7 @@ function validRemotePayload(op){
     case 'resize':{const noLock=p=>!('locked' in p);
       return patches(op.after)&&op.after.every(noLock)
           &&patches(op.before)&&op.before.every(noLock);}
-    case 'align':{const DIRS=new Set(['left','right','cx','top','bottom','cy','hspace','vspace','tidy','swap','gsnap','flip','rotate','lock','gresize','grot','matchw','matchh','matchwh','framefit']);
+    case 'align':{const DIRS=_sT(['left','right','cx','top','bottom','cy','hspace','vspace','tidy','swap','gsnap','flip','rotate','lock','gresize','grot','matchw','matchh','matchwh','framefit']);
       if(typeof op.dir!=='string'||!DIRS.has(op.dir))return false;
       const noLock=p=>op.dir==='lock'||!('locked' in p);
       return patches(op.after)&&op.after.every(noLock)
@@ -1434,8 +1434,8 @@ const Store={
   // a double-clobber). Remote-only view fix: not recorded in local undo history.
   _remoteDelConnFix(op){
     if(op.op!=='del'||!_iA(op.shapes))return null;
-    const goneIds=new Set(op.shapes.map(s=>s.id));
-    const handled=new Set((op.connClears||[]).map(p=>p.id));
+    const goneIds=_sT(op.shapes.map(s=>s.id));
+    const handled=_sT((op.connClears||[]).map(p=>p.id));
     const fixes=[];
     for(const sh of _sh()){
       if(sh.type!=='line'&&sh.type!=='arrow')continue;
@@ -1451,7 +1451,7 @@ const Store={
     return _ln(fixes)?fixes:null;
   },
   // Apply remote op: dedup by clock; REMOTE_OPS allow-list + validRemotePayload guard.
-  REMOTE_OPS:new Set(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize']),
+  REMOTE_OPS:_sT(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize']),
   applyRemote(op){
     if(!op||!op.clock||!this.REMOTE_OPS.has(op.op))return;
     if(!validClock(op.clock))return;        // reject malformed clocks (wclock poisoning)
@@ -1699,7 +1699,7 @@ const Store={
           // legacy full-snapshot format (pre-Step2 history / mixed-version peer).
           const snap=forward?op.after:op.before;
           if(snap){
-            const map=new Map(_sh().map(s=>[s.id,s]));
+            const map=_mP(_sh().map(s=>[s.id,s]));
             const next=[];
             for(const p of snap){const sh=map.get(p.id);if(sh){if(!(forward&&sh.locked)){sh.z=p.z;if(p.frac!=null)sh.frac=p.frac;}next.push(sh);map.delete(p.id)}}
             for(const sh of map.values())next.push(sh);   // keep any extras (defensive)
@@ -2475,7 +2475,7 @@ function draw(){
     if(ptr.dragStartShapes)for(const id of ptr.dragStartShapes.keys()){const s=byId(id);if(s)need.add(s);}
     if(ptr.resizeOrig){const s=byId(ptr.resizeOrig.id);if(s)need.add(s);}
     if(ptr.rotOrig){const s=byId(ptr.rotOrig.id);if(s)need.add(s);}
-    if(need.size){const vs=new Set(_vis);_drawIter=_sh().filter(s=>vs.has(s)||need.has(s));}
+    if(need.size){const vs=_sT(_vis);_drawIter=_sh().filter(s=>vs.has(s)||need.has(s));}
   }
   // ADR-0028: a pan whose rounded shift exposed no strip (sub-pixel step) needs
   // no scene pass at all — the blit already carries every pixel.
@@ -3848,7 +3848,7 @@ _on(canvas,_PD,e=>{
               ptr.rotCx=rh.cx;ptr.rotCy=rh.cy;
             }else{                          // ADR-0057: point geometry → delta path
               ptr.dragKind='grot';
-              ptr.gOrig=new Map([[onlySel.id,clone(onlySel)]]);
+              ptr.gOrig=_mP([[onlySel.id,clone(onlySel)]]);
               ptr.rotCx=rh.cx;ptr.rotCy=rh.cy;
               ptr.rotA0=_at2(wp.y-rh.cy,wp.x-rh.cx)*180/_PI;
               ptr.gPad=(onlySel.size||2)+16;
@@ -4697,7 +4697,7 @@ function _buildGrid(shapes){
 // Returns a z-ORDERED array so draw() iterates candidates directly — the full
 // _sh() scan is skipped entirely.
 function _gridRectCandidates(grid,r){
-  const cands=new Set(grid.big);
+  const cands=_sT(grid.big);
   const x0=_fl((r.x-_GCELL)/_GCELL),x1=_fl((r.x+r.w+_GCELL)/_GCELL);
   const y0=_fl((r.y-_GCELL)/_GCELL),y1=_fl((r.y+r.h+_GCELL)/_GCELL);
   for(let cx=x0;cx<=x1;cx++)for(let cy=y0;cy<=y1;cy++){
@@ -4708,7 +4708,7 @@ function _gridRectCandidates(grid,r){
   return out;
 }
 function _queryGrid(grid,pt){
-  const cx=_fl(pt.x/_GCELL),cy=_fl(pt.y/_GCELL),cands=new Set(grid.big);
+  const cx=_fl(pt.x/_GCELL),cy=_fl(pt.y/_GCELL),cands=_sT(grid.big);
   for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){
     const bk=grid.cells.get((cx+dx)+'|'+(cy+dy));if(bk)for(const s of bk)cands.add(s);
   }
@@ -4750,7 +4750,7 @@ function pickOrMarquee(wp,e){
     // move gesture drags them (Figma/Excalidraw/draw.io parity). Locked hits and
     // locked members are excluded; frames bring their children.
     if(e.altKey&&!hit.locked){
-      const dupSet=alreadySel?new Set(_sl()):new Set(toSelect);
+      const dupSet=alreadySel?_sT(_sl()):_sT(toSelect);
       const srcShapes=[...withFrameChildren(dupSet)].map(byId).filter(s=>s&&!_lk(s));
       if(_ln(srcShapes)){
         const added=_placeCopies(srcShapes,0,0);   // addMany commit + selection→copies
@@ -4884,7 +4884,7 @@ function objectSnap(dx,dy){
 // children. Shared by pointer-drag (pickOrMarquee) and keyboard nudge (nudgeSelection)
 // so both move paths agree. Pure read of _sh(); returns a fresh Set.
 function withFrameChildren(ids){
-  const out=new Set(ids);
+  const out=_sT(ids);
   for(const selId of ids){
     const sel=byId(selId);
     if(sel&&sel.type==='frame'){
@@ -5348,7 +5348,7 @@ function _syncTextFinalize(s,before,deleted){
     // Rare race: a peer's connector bound to this shape while it was still being
     // typed (Store.undo() already removed it locally without touching bindings).
     // Fix any local dangling binding AND include connClears so remote peers do too.
-    const cc=computeConnClears(new Set([s.id]));
+    const cc=computeConnClears(_sT([s.id]));
     if(_ln(cc)){op.connClears=cc;for(const p of cc){const sh=byId(p.id);if(sh)_oa(sh,p.after);}}
   }
   _fck(op);
@@ -5402,7 +5402,7 @@ function openTextEditor(s,isNew){
       // Existing text: emptied → delete original (single undo); else changed → upd
       if(!newText.trim()){
         const origSel=_selIds();
-        const connClears=computeConnClears(new Set([orig.id]));
+        const connClears=computeConnClears(_sT([orig.id]));
         const delOp={op:'del',shapes:[orig]};
         if(_ln(connClears))delOp.connClears=connClears;
         Store.commit(delOp);
@@ -5485,7 +5485,7 @@ function flushErase(){
   for(const s of _eraseBatch)_sh().push(s);
   _sz();_iG();   // ADR-0009: connEnds below calls byId, must see the restored shapes
   // Resolve connector bindings now that erased shapes are back in state (connEnds works)
-  const delIds=new Set(_eraseBatch.map(s=>s.id));
+  const delIds=_sT(_eraseBatch.map(s=>s.id));
   const connClears=computeConnClears(delIds);
   const origSel=_selIds();
   const op={op:'del',shapes:clone(_eraseBatch)};
@@ -5781,7 +5781,7 @@ function _placeCopies(srcShapes,dx,dy){
   }
   if(_ln(built))Store.commit({op:'addMany',shapes:built});
   _ss(added);
-  state.dupIds=new Set(added);state.dupDelta={x:dx,y:dy};     // ADR-0080: reseed chain
+  state.dupIds=_sT(added);state.dupDelta={x:dx,y:dy};     // ADR-0080: reseed chain
   _iv();
   return added;
 }
@@ -5803,7 +5803,7 @@ function doDelete(){
   // Frame-aware: shapes fully inside a selected frame are deleted with the frame (parity with doDuplicate)
   const frameOf=_frameOf(sel);
   _xFS(sel,frameOf)
-  const delIds=new Set(sel.map(s=>s.id));
+  const delIds=_sT(sel.map(s=>s.id));
   // Resolve connector bindings BEFORE splicing so connEnds can see the live shapes.
   const connClears=computeConnClears(delIds);
   const op={op:'del',shapes:clone(sel)};
@@ -5830,7 +5830,7 @@ function unlockedSelectionIds(){return _selIds().filter(id=>!byId(id)?.locked);}
 function doBringFront(){
   const ids=_usI();if(!_ln(ids))return;
   _sz();
-  const sel=new Set(ids), selShapes=_sh().filter(s=>sel.has(s.id));
+  const sel=_sT(ids), selShapes=_sh().filter(s=>sel.has(s.id));
   if(!_ln(selShapes))return;
   const n=_nS(), k=_ln(selShapes);
   if(_sh().slice(n-k).every(s=>sel.has(s.id))){_iv();return}  // already at front: no churn
@@ -5845,7 +5845,7 @@ function doBringFront(){
 function doSendBack(){
   const ids=_usI();if(!_ln(ids))return;
   _sz();
-  const sel=new Set(ids), selShapes=_sh().filter(s=>sel.has(s.id));
+  const sel=_sT(ids), selShapes=_sh().filter(s=>sel.has(s.id));
   if(!_ln(selShapes))return;
   if(_sh().slice(0,_ln(selShapes)).every(s=>sel.has(s.id))){_iv();return}  // already at back
   const others=_sh().filter(s=>!sel.has(s.id));
@@ -5859,7 +5859,7 @@ function doSendBack(){
 function doBringForward(){
   const ids=_usI();if(!_ln(ids))return;
   _sz();
-  const sel=new Set(ids), arr=_sh(), changes=[];
+  const sel=_sT(ids), arr=_sh(), changes=[];
   // move up = toward higher frac; process top→down so selected don't collide.
   for(let i=_ln(arr)-2;i>=0;i--){
     const s=arr[i];if(!sel.has(s.id))continue;
@@ -5873,7 +5873,7 @@ function doBringForward(){
 function doSendBackward(){
   const ids=_usI();if(!_ln(ids))return;
   _sz();
-  const sel=new Set(ids), arr=_sh(), changes=[];
+  const sel=_sT(ids), arr=_sh(), changes=[];
   for(let i=1;i<_ln(arr);i++){
     const s=arr[i];if(!sel.has(s.id))continue;
     const below=arr[i-1];if(sel.has(below.id))continue;
@@ -6089,7 +6089,7 @@ function snapSelToGrid(){
 }
 // ADR-0079: match width/height of selected box shapes to the first-selected
 // (draw.io Arrange → Match Size). Position untouched; align op for undo parity.
-const _MSZ=new Set(['rect','ellipse','diamond','sticky','image','frame']);
+const _MSZ=_sT(['rect','ellipse','diamond','sticky','image','frame']);
 function doMatchSize(dim){
   const sel=_selL(s=>s&&!_lk(s)&&_MSZ.has(s.type));
   if(_ln(sel)<2)return;
@@ -7557,7 +7557,7 @@ async function copyText(text){
 // no spaces, so wrapText char-breaks runs of CJK — a naive break could start a line with
 // closing punctuation/brackets/small-kana/prolonged-mark (行頭禁則) or end one with an
 // opening bracket (行末禁則). Both read as broken typography to a Japanese reader.
-const KINSOKU_START=new Set([...'、。，．・：；！？‼⁇⁈⁉）]｝」』〕〉》】〗〙〟”’｠»ヽヾゝゞ々ーぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮ〜～…‥,.!?:;)]}']);
+const KINSOKU_START=_sT([...'、。，．・：；！？‼⁇⁈⁉）]｝」』〕〉》】〗〙〟”’｠»ヽヾゝゞ々ーぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮ〜～…‥,.!?:;)]}']);
 const KINSOKU_END=new Set([...'（[｛「『〔〈《【〖〘〝“‘｟«([{']);
 // Perf: drawShape() re-wraps sticky-note text (measureText per char-token) on EVERY
 // frame it's visible, even when nothing about the shape changed since the last frame.
@@ -8265,7 +8265,7 @@ const Persist={
       for(const[k,d]of puts)imgs.put(d,k);
       // GC: drop blobs neither the live doc nor the :prev backup references.
       const prev=await reqDone(tx.objectStore(DB_STORE).get(DOC_KEY+':prev'));
-      const live=new Set(slim.filter(s=>s.img).map(s=>s.img));
+      const live=_sT(slim.filter(s=>s.img).map(s=>s.img));
       if(prev&&_iA(prev.shapes))for(const s of prev.shapes)if(s.img)live.add(s.img);
       for(const k of stored.keys())if(!live.has(k))imgs.delete(k);
       tx.objectStore(DB_STORE).put({
@@ -9094,7 +9094,7 @@ function toggleElbow(){
 function selectFrameContents(){
   const frames=_sb().filter(s=>s&&s.type==='frame');
   if(!_ln(frames))return;
-  const inner=withFrameChildren(new Set(frames.map(f=>f.id)));
+  const inner=withFrameChildren(_sT(frames.map(f=>f.id)));
   for(const f of frames)inner.delete(f.id);
   if(!inner.size){_w(t(_ST));return}
   _ss(inner);
