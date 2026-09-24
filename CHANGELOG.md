@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.541] - 2026-09-23
+
+### リファクタ
+
+- `X.trim()` を `_trm(X)` shorthand に拡大 fold (14 サイト、~60B 回収) (ADR-0508)
+
 ## [1.7.540] - 2026-09-23
 
 ### リファクタ

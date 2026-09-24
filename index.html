@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.540';
+const V='1.7.541';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2346,7 +2346,7 @@ function describeShape(s){
   // Announce the shape's content (text or label) first — for a screen-reader user
   // cycling shapes, "Arrow yes" / "Sticky buy milk" is the meaningful part, not the
   // coordinates. Truncated so a long note doesn't flood the live region.
-  const txt=_St(_txx(s)||_lb(s)||'').replace(/\s+/g,' ').trim();
+  const txt=_trm(_St(_txx(s)||_lb(s)||'').replace(/\s+/g,' '));
   let d=nm;
   if(txt)d+=` “${_ln(txt)>30?_s0(txt,30)+'…':txt}”`;
   d+=` @ ${_rnd(b.x)},${_rnd(b.y)}`;
@@ -2674,7 +2674,7 @@ function _drawMeasure(c){
 }
 // Design-token lookups run every frame; memoise and drop on theme flip (see wire()).
 let _cssCache=Object.create(null);
-function _gC(v){let x=_cssCache[v];if(x===_ud){x=getComputedStyle(_de).getPropertyValue(v).trim();_cssCache[v]=x}return x}
+function _gC(v){let x=_cssCache[v];if(x===_ud){x=_trm(getComputedStyle(_de).getPropertyValue(v));_cssCache[v]=x}return x}
 function clearCSSCache(){_cssCache=Object.create(null);_iv()}
 function drawGrid(W,H){
   const v=_vp();
@@ -4491,7 +4491,7 @@ _on(window,'paste',e=>{
         const x0=wp.x-(C*sw+(C-1)*gx)/2,y0=wp.y-(R*sh+(R-1)*gy)/2;
         const built=[];
         rows.forEach((row,ri)=>_s0(row,C).forEach((cell,ci)=>{
-          const v=_St(cell||'').trim();
+          const v=_trm(_St(cell||''));
           if(v)built.push(Shape.make('sticky',{x:x0+ci*(sw+gx),y:y0+ri*(sh+gy),w:sw,h:sh,color:_YW,text:_s0(v,2000)}));
         }));
         if(_ln(built)){Store.commit({op:'addMany',shapes:built});_ss(built.map(x=>x.id));_iv();_oT('textPasted')}
@@ -6543,7 +6543,7 @@ function _dioLabel(v){
   // silently, so pre-substitute newlines, then strip remaining markup.
   const pre=_St(v||'').replace(/<br\s*\/?>/gi,'\n');
   try{const d2=new DOMParser().parseFromString('<x>'+pre+'</x>','text/xml');
-    return (d2.documentElement.textContent||'').replace(/\s+$/gm,'').trim()}catch(_){return pre.replace(/<[^>]*>/g,'').trim()}
+    return _trm((d2.documentElement.textContent||'').replace(/\s+$/gm,''))}catch(_){return _trm(pre.replace(/<[^>]*>/g,''))}
 }
 let _dioVp=null,_dioNm=null;   // ADR-0359/0405: viewport + doc-name hand-offs
 function drawioToShapes(txt){
@@ -6679,7 +6679,7 @@ function drawioToShapes(txt){
 // keep the re-save warning.
 async function _dioInflate(b64){
   try{
-    const bin=Uint8Array.from(atob(_St(b64).trim()),c=>c.charCodeAt(0));
+    const bin=Uint8Array.from(atob(_trm(_St(b64))),c=>c.charCodeAt(0));
     const ds=new DecompressionStream('deflate-raw');
     // ADR-0325: deflate bomb guard — abort the stream past 8MB of decoded
     // text instead of buffering an unbounded payload into memory.
@@ -6853,7 +6853,7 @@ function _svgMOf(t){
   if(!t)return[1,0,0,1,0,0];
   let m=[1,0,0,1,0,0];const re=/([a-zA-Z]+)\s*\(([^)]*)\)/g;let mm;
   while((mm=re.exec(t))){
-    const n=mm[2].trim().split(/[\s,]+/).filter(Boolean).map(Number);let M=null;
+    const n=_trm(mm[2]).split(/[\s,]+/).filter(Boolean).map(Number);let M=null;
     switch(mm[1]){
       case'matrix':if(_ln(n)===6&&n.every(Number.isFinite))M=_s0(n,6);break;
       case'translate':M=[1,0,0,1,n[0]||0,n[1]||0];break;
@@ -6869,7 +6869,7 @@ function _svgMOf(t){
 }
 function _svgColor(v,g){
   if(v==null)return null;
-  v=_St(v).trim();
+  v=_trm(_St(v));
   if(!v||v==='none')return null;
   const um=v.match(/^url\s*\(\s*#([^)]*)/i);                    // ADR-0283
   if(um){const c=g&&g.get(um[1]);return c||null}
@@ -6878,7 +6878,7 @@ function _svgColor(v,g){
 function _svgStyle(el,g){
   const css=_ga(el,'style')||'';
   const get=n=>{const v=_ga(el,n);if(v!=null&&v!=='')return v;
-    const m=css.match(new RegExp('(?:^|;)\\s*'+n+'\\s*:\\s*([^;]+)'));return m?m[1].trim():null};
+    const m=css.match(new RegExp('(?:^|;)\\s*'+n+'\\s*:\\s*([^;]+)'));return m?_trm(m[1]):null};
   const st={};
   const stroke=_svgColor(get('stroke'),g);if(stroke)st.stroke=stroke;
   const fill=_svgColor(get('fill'),g);if(fill)st.fill=fill;
@@ -6941,10 +6941,10 @@ function svgToShapes(txt){
   const _grad=_mP();                                                     // ADR-0283
   for(const ge of _qsa(doc,'linearGradient,radialGradient')){
     const st=_qs(ge,'stop');
-    if(ge.id&&st){const _sc=_ga(st,'stop-color')||(((_ga(st,'style')||'').match(/stop-color:\s*([^;]+)/)||[])[1]);_grad.set(ge.id,(_sc||'#000').trim())}}
+    if(ge.id&&st){const _sc=_ga(st,'stop-color')||(((_ga(st,'style')||'').match(/stop-color:\s*([^;]+)/)||[])[1]);_grad.set(ge.id,_trm(_sc||'#000'))}}
   // viewBox → output: origin to (0,0), cap the width at 800px so giant
   // artboards paste at a sensible size.
-  const vb=(_ga(root,'viewBox')||'').trim().split(/[\s,]+/).map(Number);
+  const vb=_trm(_ga(root,'viewBox')||'').split(/[\s,]+/).map(Number);
   const vbOn=_ln(vb)===4&&vb.every(Number.isFinite)&&vb[2]>0;
   const w0=vbOn?vb[2]:_pF(_ga(root,'width'))||800;
   const sc=_min(1,800/w0);
@@ -6970,7 +6970,7 @@ function svgToShapes(txt){
       const b=_svgMPt(m2,+_ga(el,'x2')||0,+_ga(el,'y2')||0);
       if(_hp(b.x-a.x,b.y-a.y)>0.5)s=Shape.make('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y});
     }else if(tag==='polyline'||tag==='polygon'){
-      const nums=(_ga(el,'points')||'').trim().split(/[\s,]+/).map(Number);
+      const nums=_trm(_ga(el,'points')||'').split(/[\s,]+/).map(Number);
       const pts=[];
       for(let i=0;i+1<_ln(nums)&&_ln(pts)<SVG_MAX_PTS;i+=2)
         if(_fin(nums[i])&&_fin(nums[i+1]))pts.push(_svgMPt(m2,nums[i],nums[i+1]));
@@ -6990,7 +6990,7 @@ function svgToShapes(txt){
         s=Shape.make('image',{x:a.x,y:a.y,w:w,h:ht,dataUrl:_s0(href,25_000_000)});
       }
     }else if(tag==='text'){
-      const content=(el.textContent||'').replace(/\s+/g,' ').trim();
+      const content=_trm((el.textContent||'').replace(/\s+/g,' '));
       if(content){
         const p=_svgMPt(m2,+_ga(el,'x')||0,+_ga(el,'y')||0);
         const fs=_svgStyle(el,_grad).fontSize||16;
@@ -7064,7 +7064,7 @@ function excToShapes(txt){
       case'frame':s=Shape.make('frame',{x:e.x,y:e.y,w:W,h:H,label:_iS(e.name)?_s0(e.name,120):''});break;
       case'text':{
         const fs=_fin(e.fontSize)?e.fontSize:16;
-        const content=_St(e.text||'').replace(/\s+/g,' ').trim();
+        const content=_trm(_St(e.text||'').replace(/\s+/g,' '));
         if(!content)break;
         s=Shape.make('text',{x:e.x,y:e.y,w:W||_min(600,_max(60,_ln(content)*fs*0.55)),h:H||fs*1.4,text:_s0(content,2000),fontSize:fs});
         if(e.textAlign==='left'||e.textAlign==='right')s.align=e.textAlign;   // ADR-0230
