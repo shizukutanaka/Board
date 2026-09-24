@@ -780,9 +780,10 @@ const _p=()=>getCSS('--paper'),_ac=()=>getCSS('--accent-contrast');   // ADR-029
 const _c01=v=>Math.min(1,Math.max(0,v));   // ADR-0295
 const _conn=t=>t==='line'||t==='arrow';   // ADR-0297
 const _selAny=f=>[...state.selection].some(id=>{const s=byId(id);return s&&f(s)});   // ADR-0302
+const _forSel=f=>{for(const id of state.selection){const s=byId(id);if(s)f(s,id)}};   // ADR-0303
 
 // ====================== CONSTANTS ======================
-const V='1.7.353';
+const V='1.7.354';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -5768,11 +5769,10 @@ function selectSamePaint(){
 // hidden shapes can't be re-selected — same convention as Figma's layers.
 function hideSelection(){
   const before=[],after=[];
-  for(const id of state.selection){
-    const s=byId(id);if(!s||s.locked||s.visible===0)continue;
+  _forSel((s,id)=>{if(s.locked||s.visible===0)return;
     before.push({id,visible:s.visible??null});after.push({id,visible:0});
     s.visible=0;state.selection.delete(id);
-  }
+  })
   if(before.length){_styleOp(before,after);invalidate();UI.toast(before.length+' '+t('hiddenCount'),'ok')}
 }
 // ADR-0140: connect two selected shapes (draw.io "Connect" / Miro
@@ -8787,13 +8787,12 @@ function _sfbFlush(p,v){const b=[],a=[];for(const id of state.selection){const k
 // ADR-0062: per-connector elbow toggle via style op — undo + wclock sync free.
 function toggleElbow(){
   const before=[],after=[];
-  for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='line'&&s.type!=='arrow')||s.locked)continue;
+  _forSel((s,id)=>{if((s.type!=='line'&&s.type!=='arrow')||s.locked)return;
     before.push({id,elbow:s.elbow||0,curve:s.curve||0});
     after.push({id,elbow:s.elbow?0:1,curve:0});
     s.elbow=s.elbow?0:1;s.curve=0;               // ADR-0068: routes are exclusive
     state.style.elbow=s.elbow;state.style.curve=0;              // ADR-0183
-  }
+  })
   if(before.length){_styleOp(before,after);invalidate()}
 }
 // ADR-0111: select a frame's contents (ctx). Reuses withFrameChildren's
@@ -8816,11 +8815,10 @@ function selectFrameContents(){
 // sticky (border is fixed). Undo restores the original type wholesale.
 function toggleStickyText(){
   const before=[],after=[];
-  for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='sticky'&&s.type!=='text')||s.locked)continue;
+  _forSel((s,id)=>{if((s.type!=='sticky'&&s.type!=='text')||s.locked)return;
     before.push({id,type:s.type});after.push({id,type:s.type==='sticky'?'text':'sticky'});
     s.type=s.type==='sticky'?'text':'sticky';
-  }
+  })
   if(before.length){_styleOp(before,after);invalidate()}
 }
 // ADR-0119: arrowhead style cycle (ctx) — arrow → dot → open. One s.head
@@ -8855,35 +8853,32 @@ function cycleStartHead(){
 // LWW + remote sync need no new plumbing.
 function toggleLineArrow(){
   const before=[],after=[];
-  for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='line'&&s.type!=='arrow')||s.locked)continue;
+  _forSel((s,id)=>{if((s.type!=='line'&&s.type!=='arrow')||s.locked)return;
     before.push({id,type:s.type});after.push({id,type:s.type==='line'?'arrow':'line'});
     s.type=s.type==='line'?'arrow':'line';
-  }
+  })
   if(before.length){_styleOp(before,after);invalidate()}
 }
 // ADR-0068: curved (quadratic) route toggle — exclusive with elbow.
 function toggleCurve(){
   const before=[],after=[];
-  for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='line'&&s.type!=='arrow')||s.locked)continue;
+  _forSel((s,id)=>{if((s.type!=='line'&&s.type!=='arrow')||s.locked)return;
     before.push({id,elbow:s.elbow||0,curve:s.curve||0});
     after.push({id,elbow:0,curve:s.curve?0:1});
     s.elbow=0;s.curve=s.curve?0:1;
     state.style.elbow=0;state.style.curve=s.curve;              // ADR-0183
-  }
+  })
   if(before.length){_styleOp(before,after);invalidate()}
 }
 // ADR-0218: toggle jump arcs at crossings (draw.io "jump" edgeStyle).
 function toggleHop(){
   const before=[],after=[];
-  for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='line'&&s.type!=='arrow')||s.locked)continue;
+  _forSel((s,id)=>{if((s.type!=='line'&&s.type!=='arrow')||s.locked)return;
     before.push({id,hop:s.hop||0});
     after.push({id,hop:s.hop?0:1});
     s.hop=s.hop?0:1;
     state.style.hop=s.hop;                        // ADR-0183
-  }
+  })
   if(before.length){_styleOp(before,after);invalidate()}
 }
 
@@ -8893,12 +8888,11 @@ function toggleHop(){
 // via the ??null convention, leaving r falsy → 8px at draw).
 function toggleRound(){
   const before=[],after=[];
-  for(const id of state.selection){
-    const s=byId(id);if(!s||s.type!=='rect'||s.locked)continue;
+  _forSel((s,id)=>{if(s.type!=='rect'||s.locked)return;
     before.push({id,r:s.r??null});
     after.push({id,r:s.r===0?null:0});
     s.r=s.r===0?null:0;state.style.r=s.r;                       // ADR-0184
-  }
+  })
   if(before.length){_styleOp(before,after);invalidate()}
 }
 // ADR-0101: sticky colour quick-cycle through the palette (style op).
@@ -8906,11 +8900,10 @@ function toggleRound(){
 // canonical 6-colour set in one click — no picker round-trip.
 function cycleStickyColor(){
   const before=[],after=[];
-  for(const id of state.selection){
-    const s=byId(id);if(!s||s.type!=='sticky'||s.locked)continue;
+  _forSel((s,id)=>{if(s.type!=='sticky'||s.locked)return;
     const i=STICKY_COLORS.indexOf(s.color),nxt=STICKY_COLORS[(i+1)%STICKY_COLORS.length];
     before.push({id,color:s.color||'#FEF08A'});after.push({id,color:nxt});s.color=nxt;
-  }
+  })
   if(before.length){_styleOp(before,after);invalidate()}
 }
 // ADR-0085: fit frame to contents — union bbox of shapes fully inside each
@@ -8945,14 +8938,13 @@ function fitFrames(){
 // elbow/curve keep the existing numeric-flag convention (0).
 function resetRoute(){
   const before=[],after=[];
-  for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='line'&&s.type!=='arrow')||s.locked)continue;
-    if(!_wayArr(s).length&&!s.bend&&!s.elbow&&!s.curve&&s.labelPos==null&&s.cbend==null)continue;   // ADR-0090/0217
+  _forSel((s,id)=>{if((s.type!=='line'&&s.type!=='arrow')||s.locked)return;
+    if(!_wayArr(s).length&&!s.bend&&!s.elbow&&!s.curve&&s.labelPos==null&&s.cbend==null)return;   // ADR-0090/0217
     before.push({id,way:s.way??null,bend:s.bend??null,elbow:s.elbow||0,curve:s.curve||0,labelPos:s.labelPos??null,cbend:s.cbend??null});
     after.push({id,way:null,bend:null,elbow:0,curve:0});
     s.way=null;s.bend=null;s.elbow=0;s.curve=0;s.labelPos=null;s.cbend=null;
     state.style.elbow=0;state.style.curve=0;                    // ADR-0183: reset clears the remembered route too
-  }
+  })
   if(before.length){_styleOp(before,after);invalidate()}
 }
 // ADR-0198: reverse a connector's direction — draw.io "Reverse". Swaps
@@ -8961,8 +8953,7 @@ function resetRoute(){
 // new start (old end always had a head, so the flag survives the swap).
 function reverseConn(){
   const before=[],after=[];
-  for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='line'&&s.type!=='arrow')||s.locked)continue;
+  _forSel((s,id)=>{if((s.type!=='line'&&s.type!=='arrow')||s.locked)return;
     before.push({id,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2,a:s.a??null,b:s.b??null,aF:s.aF??null,bF:s.bF??null,way:s.way??null,labelPos:s.labelPos??null});
     const t1=s.x1,t2=s.y1;s.x1=s.x2;s.y1=s.y2;s.x2=t1;s.y2=t2;
     const tb=s.a;s.a=s.b??null;s.b=tb??null;
@@ -8970,7 +8961,7 @@ function reverseConn(){
     if(s.way)s.way=_wayArr(s).slice().reverse();
     if(s.labelPos!=null)s.labelPos=1-s.labelPos;
     after.push({id,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2,a:s.a??null,b:s.b??null,aF:s.aF??null,bF:s.bF??null,way:s.way??null,labelPos:s.labelPos??null});
-  }
+  })
   if(before.length){_styleOp(before,after);invalidate()}
 }
 // ADR-0199: fit sticky to text — draw.io "Autosize". Shrinks width to the
@@ -8979,8 +8970,7 @@ function reverseConn(){
 // the clipped card. One undoable style op over the selection.
 function fitSticky(){
   const before=[],after=[];
-  for(const id of state.selection){
-    const s=byId(id);if(!s||s.type!=='sticky'||s.locked)continue;
+  _forSel((s,id)=>{if(s.type!=='sticky'||s.locked)return;
     const fs=s.fontSize||14,pad=8,lh=fs*(s.lineH||1.3);
     ctx.save();ctx.font=_fontStr(s,fs);
     let nw=64;for(const l of String(s.text||'').split('\n'))nw=Math.max(nw,ctx.measureText(l).width+pad*2);
@@ -8988,9 +8978,9 @@ function fitSticky(){
     const lines=wrapTextCached(s,String(s.text||''),Math.max(10,nw-pad*2),fs,t=>ctx.measureText(t).width);
     ctx.restore();
     const nh=Math.max(40,lines.length*lh+pad*2);
-    if(nw===s.w&&nh===s.h)continue;
+    if(nw===s.w&&nh===s.h)return;
     before.push({id,w:s.w,h:s.h});after.push({id,w:nw,h:nh});s.w=nw;s.h=nh;
-  }
+  })
   if(before.length){_styleOp(before,after);invalidate()}
 }
 // ADR-0157: detach all bound endpoints of the selected connectors (ctx).
@@ -9003,12 +8993,11 @@ function fitSticky(){
 // the visible geometry doesn't change when pinning.
 function pinAnchor(){
   const before=[],after=[];
-  for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='line'&&s.type!=='arrow')||s.locked||(!s.a&&!s.b))continue;
+  _forSel((s,id)=>{if((s.type!=='line'&&s.type!=='arrow')||s.locked||(!s.a&&!s.b))return;
     before.push({id,aF:s.aF??null,bF:s.bF??null});
     const e=connEnds(s);
     for(const k of['a','b']){
-      const tgt=s[k]&&byId(s[k]);if(!tgt)continue;
+      const tgt=s[k]&&byId(s[k]);if(!tgt)return;
       const fk=k+'F';
       if(s[fk])s[fk]=null;
       else{
@@ -9017,30 +9006,28 @@ function pinAnchor(){
       }
     }
     after.push({id,aF:s.aF??null,bF:s.bF??null});
-  }
+  })
   if(before.length){_styleOp(before,after);invalidate()}
 }
 function unbindSelection(){
   const before=[],after=[];
-  for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='line'&&s.type!=='arrow')||s.locked||(!s.a&&!s.b))continue;
+  _forSel((s,id)=>{if((s.type!=='line'&&s.type!=='arrow')||s.locked||(!s.a&&!s.b))return;
     before.push({id,a:s.a??null,b:s.b??null,aF:s.aF??null,bF:s.bF??null,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2});
     s.a=null;s.b=null;s.aF=null;s.bF=null;                     // ADR-0209
     after.push({id,a:null,b:null,aF:null,bF:null,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2});
-  }
+  })
   if(before.length){_styleOp(before,after);invalidate()}
 }
 // ADR-0159: vertical label alignment cycle (ctx) — ''(middle)→'top'→'bottom'→''.
 // draw.io/mermaid parity for tall boxes in org charts & flow diagrams.
 function cycleVAlign(){
   const before=[],after=[],seq=[null,'top','bottom'],seqS=[null,'middle','bottom'];
-  for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='rect'&&s.type!=='ellipse'&&s.type!=='diamond'&&s.type!=='sticky'&&!(s.type==='image'&&s.label))||s.locked)continue;   // ADR-0179/0187
+  _forSel((s,id)=>{if((s.type!=='rect'&&s.type!=='ellipse'&&s.type!=='diamond'&&s.type!=='sticky'&&!(s.type==='image'&&s.label))||s.locked)return;   // ADR-0179/0187
     const sq=s.type==='sticky'?seqS:seq;
     const cur=s.valign||null,nxt=sq[(sq.indexOf(cur)+1)%3];
     before.push({id,valign:cur});after.push({id,valign:nxt});
     if(nxt==null)delete s.valign;else s.valign=nxt;
-  }
+  })
   if(before.length){_styleOp(before,after);invalidate()}
 }
 // ADR-0189: line-height cycle for every text carrier (labels too) —
@@ -9053,46 +9040,42 @@ function cycleVAlign(){
 // existing boards are unchanged.
 function toggleWrap(){
   const before=[],after=[];
-  for(const id of state.selection){
-    const s=byId(id);if(!s||s.type!=='text'||s.locked)continue;
+  _forSel((s,id)=>{if(s.type!=='text'||s.locked)return;
     before.push({id,wrap:s.wrap??null});after.push({id,wrap:s.wrap?null:1});
     s.wrap=s.wrap?null:1;
-  }
+  })
   if(before.length){_styleOp(before,after);invalidate()}
 }
 function cycleSpacing(){
   const seq=[null,1,2];
   const before=[],after=[];
-  for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky'&&s.type!=='frame'&&!s.label)||s.locked)continue;
+  _forSel((s,id)=>{if((s.type!=='text'&&s.type!=='sticky'&&s.type!=='frame'&&!s.label)||s.locked)return;
     const i=seq.indexOf(s.spacing??null),nxt=seq[(i+1)%seq.length];
     before.push({id,spacing:s.spacing??null});after.push({id,spacing:nxt});
     if(nxt==null)delete s.spacing;else s.spacing=nxt;
     state.style.spacing=nxt;
-  }
+  })
   if(before.length){_styleOp(before,after);invalidate()}
 }
 function cycleLineH(){
   const before=[],after=[],seq=[null,1,1.5];
-  for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky'&&!s.label)||s.locked)continue;
+  _forSel((s,id)=>{if((s.type!=='text'&&s.type!=='sticky'&&!s.label)||s.locked)return;
     const cur=s.lineH??null,nxt=seq[(seq.indexOf(cur)+1)%3];
     before.push({id,lineH:cur});after.push({id,lineH:nxt});
     if(nxt==null)delete s.lineH;else s.lineH=nxt;
     state.style.lineH=nxt;
-  }
+  })
   if(before.length){_styleOp(before,after);invalidate()}
 }
 // ADR-0075: ⌘⇧,/. nudges fontSize ±2 on selected text/sticky via style op.
 function fontSizeStep(d){
   const before=[],after=[];
-  for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky'&&s.type!=='frame'&&!s.label)||s.locked)continue;   // ADR-0169/0298: labels+frames honour fontSize
+  _forSel((s,id)=>{if((s.type!=='text'&&s.type!=='sticky'&&s.type!=='frame'&&!s.label)||s.locked)return;   // ADR-0169/0298: labels+frames honour fontSize
     const cur=s.fontSize||14,nxt=Math.min(64,Math.max(8,cur+d*2));
-    if(nxt===cur)continue;
+    if(nxt===cur)return;
     before.push({id,fontSize:cur});after.push({id,fontSize:nxt});s.fontSize=nxt;
     state.style.fontSize=nxt;                                 // ADR-0180: last-used persists to the next shape
-  }
+  })
   if(before.length){_styleOp(before,after);invalidate()}
 }
 // ADR-0078: ⌘B/⌘I toggles bold/italic on selected text/sticky via style op.
@@ -9101,12 +9084,11 @@ function _cOp(op){const o=[...state.selection];Store.commit(op);if(o.length)stat
 function _styleOp(before,after){_rcOp({op:'style',before,after})}   // ADR-0239/0248
 function toggleTextFlag(k){
   const before=[],after=[];
-  for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky'&&s.type!=='frame'&&!s.label)||s.locked)continue;   // ADR-0170/0204
+  _forSel((s,id)=>{if((s.type!=='text'&&s.type!=='sticky'&&s.type!=='frame'&&!s.label)||s.locked)return;   // ADR-0170/0204
     const nxt=!s[k];
     before.push({id,[k]:s[k]||null});after.push({id,[k]:nxt?true:null});
     if(nxt)s[k]=true;else delete s[k];
-  }
+  })
   if(before.length){
     _rcOp({op:'style',before,after});
     const ta=document.querySelector('.text-overlay');
@@ -9117,13 +9099,12 @@ function toggleTextFlag(k){
 // ADR-0077: cycle fill style solid→hatch→cross→solid for box shapes via style op.
 function cycleFillStyle(){
   const before=[],after=[];
-  for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='rect'&&s.type!=='ellipse'&&s.type!=='diamond')||s.locked)continue;
+  _forSel((s,id)=>{if((s.type!=='rect'&&s.type!=='ellipse'&&s.type!=='diamond')||s.locked)return;
     const cur=s.fstyle||'',nxt=cur===''?'hatch':cur==='hatch'?'cross':'';
     before.push({id,fstyle:cur||null});after.push({id,fstyle:nxt||null});
     if(nxt)s.fstyle=nxt;else delete s.fstyle;
     state.style.fstyle=nxt||null;                               // ADR-0184
-  }
+  })
   if(before.length){_styleOp(before,after);invalidate()}
 }
 // ADR-0166: swap stroke↔fill on painted shapes via one style op (Illustrator
@@ -9132,28 +9113,26 @@ function cycleFillStyle(){
 // (border tint vs body). Pen/line/arrow/text/image are stroke-only → skipped.
 function swapFillStroke(){
   const before=[],after=[];
-  for(const id of state.selection){
-    const s=byId(id);if(!s||s.locked)continue;
+  _forSel((s,id)=>{if(s.locked)return;
     const fk=s.type==='sticky'?'color':'fill';
-    if(!(s.type==='rect'||s.type==='ellipse'||s.type==='diamond'||s.type==='frame'||s.type==='sticky'))continue;
+    if(!(s.type==='rect'||s.type==='ellipse'||s.type==='diamond'||s.type==='frame'||s.type==='sticky'))return;
     before.push({id,stroke:s.stroke??null,[fk]:s[fk]??null});
     after.push({id,stroke:s[fk]??null,[fk]:s.stroke??null});
     const t2=s[fk];s[fk]=s.stroke;s.stroke=t2;
     if(s[fk]==null)delete s[fk];if(s.stroke==null)delete s.stroke;
-  }
+  })
   if(before.length){_styleOp(before,after);invalidate();UI.toast(t('swapDone'),'ok')}
 }
 // ADR-0173: cycle font family system→mono→serif→system for text-bearing
 // shapes via style op (Excalidraw font-switch parity).
 function cycleFont(){
   const before=[],after=[];
-  for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky'&&s.type!=='frame'&&!s.label)||s.locked)continue;   // ADR-0188: frame's always-on label
+  _forSel((s,id)=>{if((s.type!=='text'&&s.type!=='sticky'&&s.type!=='frame'&&!s.label)||s.locked)return;   // ADR-0188: frame's always-on label
     const cur=s.font||'',nxt=cur===''?'mono':cur==='mono'?'serif':'';
     before.push({id,font:cur||null});after.push({id,font:nxt||null});
     if(nxt)s.font=nxt;else delete s.font;
     state.style.font=nxt||null;                     // ADR-0181
-  }
+  })
   if(before.length){_styleOp(before,after);invalidate()}
 }
 // ADR-0174: ctx opacity cycle — same style op as the digit keys (ADR-0167),
@@ -9169,12 +9148,11 @@ function cycleOpacity(){
 // ADR-0073: cycle text align left→center→right for text/sticky via style op.
 function cycleTextAlign(){
   const before=[],after=[];
-  for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky'&&s.type!=='frame'&&!s.label)||s.locked)continue;   // ADR-0171/0197
+  _forSel((s,id)=>{if((s.type!=='text'&&s.type!=='sticky'&&s.type!=='frame'&&!s.label)||s.locked)return;   // ADR-0171/0197
     const cur=s.align||'left',nxt=cur==='left'?'center':cur==='center'?'right':'left';
     before.push({id,align:cur});after.push({id,align:nxt});s.align=nxt;
     state.style.align=nxt;                                      // ADR-0184
-  }
+  })
   if(before.length){_styleOp(before,after);invalidate()}
 }
 // ADR-0136: corner-radius cycle for rects — s.r existed in every render
@@ -9182,38 +9160,35 @@ function cycleTextAlign(){
 // Steps 0→8→16→24→0 via style op (undo + sync free, same as other toggles).
 function cycleCorner(){
   const before=[],after=[];
-  for(const id of state.selection){
-    const s=byId(id);if(!s||s.locked)continue;
+  _forSel((s,id)=>{if(s.locked)return;
     const boxOk=s.type==='rect'||s.type==='diamond'||s.type==='image';
     const connOk=(_conn(s.type))&&s.elbow;   // ADR-0207
-    if(!boxOk&&!connOk)continue;
+    if(!boxOk&&!connOk)return;
     const cur=s.r==null?8:s.r,nxt=cur<4?8:cur<12?16:cur<20?24:0;
     before.push({id,r:s.r??null});after.push({id,r:nxt});
     s.r=nxt;state.style.r=nxt;                                  // ADR-0184
-  }
+  })
   if(before.length){_styleOp(before,after);invalidate()}
 }
 // ADR-0194: drop shadow for box shapes — style op, canvas shadow props +
 // a single shared SVG feDropShadow filter.
 function toggleShadow(){
   const before=[],after=[];
-  for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='rect'&&s.type!=='ellipse'&&s.type!=='diamond'&&s.type!=='image'&&s.type!=='text'&&s.type!=='line'&&s.type!=='arrow')||s.locked)continue;   // ADR-0211
+  _forSel((s,id)=>{if((s.type!=='rect'&&s.type!=='ellipse'&&s.type!=='diamond'&&s.type!=='image'&&s.type!=='text'&&s.type!=='line'&&s.type!=='arrow')||s.locked)return;   // ADR-0211
     before.push({id,shadow:s.shadow||null});after.push({id,shadow:s.shadow?null:true});
     if(s.shadow)delete s.shadow;else s.shadow=true;
     state.style.shadow=s.shadow||null;
-  }
+  })
   if(before.length){_styleOp(before,after);invalidate()}
 }
 // ADR-0063: start-side arrowhead toggle via style op — undo + wclock sync free.
 function toggleBothEnds(){
   const before=[],after=[];
-  for(const id of state.selection){
-    const s=byId(id);if(!s||s.type!=='arrow'||s.locked)continue;
+  _forSel((s,id)=>{if(s.type!=='arrow'||s.locked)return;
     before.push({id,start:s.start||0});
     after.push({id,start:s.start?0:1});
     s.start=s.start?0:1;state.style.start=s.start;              // ADR-0185
-  }
+  })
   if(before.length){_styleOp(before,after);invalidate()}
 }
 // ADR-0161: the look-props extractor shared by ⌥C copy-style and the

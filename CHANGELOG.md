@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.354] - 2026-09-24
+
+### Changed
+- 選択ループ `for(const id of state.selection){byId…}` 26 箇所を
+  `_forSel((s,id)=>…)` に集約 (raw ~1KB、ADR-0303)
+
 ## [1.7.353] - 2026-09-24
 
 ### Changed
