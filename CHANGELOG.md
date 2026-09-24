@@ -2,6 +2,16 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.479] - 2026-09-23
+
+### Fixed
+- `_undoWire` に group/ungroup/zorder の逆写像を追加 — group/ungroup は
+  per-shape `upd{groupId}` パッチ列、zorder は changes スワップで wire 伝搬。
+  残る非伝搬は replace/beautify のみ (ADR-0444)
+
+### Changed
+- `_lP`/`_sp`/`_el`/`_va` prop fold + `_rdb`/`_fck` 集約 (~360B 回収)
+
 ## [1.7.478] - 2026-09-23
 
 ### Fixed
