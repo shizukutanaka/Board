@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.147';
+const V='1.7.148';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1083,8 +1083,8 @@ const G={
     }
     if(s.type==='line'||s.type==='arrow'){
       const e=connEnds(s);
-      const x=Math.min(e.x1,e.x2,s.way?s.way.x:1e18),y=Math.min(e.y1,e.y2,s.way?s.way.y:1e18);   // ADR-0076
-      const x2=Math.max(e.x1,e.x2,s.way?s.way.x:-1e18),y2=Math.max(e.y1,e.y2,s.way?s.way.y:-1e18);
+      let x=Math.min(e.x1,e.x2),y=Math.min(e.y1,e.y2),x2=Math.max(e.x1,e.x2),y2=Math.max(e.y1,e.y2);   // ADR-0090
+      for(const w of _wayArr(s)){x=Math.min(x,w.x);y=Math.min(y,w.y);x2=Math.max(x2,w.x);y2=Math.max(y2,w.y)}
       const p=(s.size||1)/2+(s.type==='arrow'?s.size*3:0);
       return{x:x-p,y:y-p,w:x2-x+2*p,h:y2-y+2*p};
     }
@@ -1695,10 +1695,14 @@ function connEnds(s){
   const p2=b?_edgePt(b,ac.x,ac.y):{x:s.x2,y:s.y2};
   return{x1:p1.x,y1:p1.y,x2:p2.x,y2:p2.y};
 }
-// ADR-0076: straight connector polyline — inserts the optional s.way vertex.
+// ADR-0090: s.way is an ARRAY of interior vertices [{x,y},…] (was: single
+// point in ADR-0076). _wayArr normalizes reads so legacy object-form boards
+// and ops still load — writers re-store the normalized array on mutation.
+function _wayArr(s){const w=s.way;return Array.isArray(w)?w:(w?[w]:[])}
+// ADR-0076: straight connector polyline — inserts the s.way vertices.
 function _linePts(s){
   const e=connEnds(s);
-  return s.way?[{x:e.x1,y:e.y1},{x:s.way.x,y:s.way.y},{x:e.x2,y:e.y2}]:[{x:e.x1,y:e.y1},{x:e.x2,y:e.y2}];
+  return [{x:e.x1,y:e.y1},..._wayArr(s),{x:e.x2,y:e.y2}];
 }
 // ADR-0077: hatch segments over a bbox — 45° family, plus 135° when cross.
 function _hatchSegs(x,y,w,h,gap,cross){
@@ -1806,7 +1810,7 @@ function nextZ(){return state.shapes.length?state.shapes.reduce((m,s)=>Math.max(
 const Shape={
   translate(s,dx,dy){
     if(s.type==='pen'){for(const p of s.pts){p[0]+=dx;p[1]+=dy}}
-    else if(s.type==='line'||s.type==='arrow'){s.x1+=dx;s.y1+=dy;s.x2+=dx;s.y2+=dy;if(s.way){s.way.x+=dx;s.way.y+=dy}}   // ADR-0076
+    else if(s.type==='line'||s.type==='arrow'){s.x1+=dx;s.y1+=dy;s.x2+=dx;s.y2+=dy;const wa=_wayArr(s);if(wa.length){for(const w of wa){w.x+=dx;w.y+=dy}s.way=wa}}   // ADR-0090
     else{s.x+=dx;s.y+=dy}  // rect, ellipse, text, image, sticky — all have x/y
   },
   make(type,extras){
@@ -2505,7 +2509,17 @@ function _drawImgLabel(s,c){
 function _connLabelXY(s){
   if(s.elbow)return _elbowLabelXY(s);
   if(s.curve)return _curveLabelXY(s);
-  if(s.way)return{x:s.way.x,y:s.way.y};
+  if(_wayArr(s).length){   // ADR-0090: label rides the path's length-midpoint
+    const pts=_linePts(s);let tot=0;
+    for(let i=1;i<pts.length;i++)tot+=Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y);
+    let acc=0;
+    for(let i=1;i<pts.length;i++){
+      const d=Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y);
+      if(acc+d>=tot/2&&d>0){const f=(tot/2-acc)/d;return{x:pts[i-1].x+(pts[i].x-pts[i-1].x)*f,y:pts[i-1].y+(pts[i].y-pts[i-1].y)*f}}
+      acc+=d;
+    }
+    return{x:pts[Math.floor(pts.length/2)].x,y:pts[Math.floor(pts.length/2)].y};
+  }
   const m=connEnds(s);
   return{x:(m.x1+m.x2)/2,y:(m.y1+m.y2)/2};
 }
@@ -2889,7 +2903,7 @@ function _rotShape(sh,orig,cx,cy,deg){
   const r=deg*Math.PI/180,c=Math.cos(r),sn=Math.sin(r);
   const R=(px,py)=>({x:cx+(px-cx)*c-(py-cy)*sn,y:cy+(px-cx)*sn+(py-cy)*c});
   if(orig.pts)sh.pts=orig.pts.map(p=>{const q=R(p[0],p[1]);return[q.x,q.y,p[2]]});
-  else if(orig.x1!=null){const a=R(orig.x1,orig.y1),b=R(orig.x2,orig.y2);sh.x1=a.x;sh.y1=a.y;sh.x2=b.x;sh.y2=b.y;if(orig.way)sh.way=R(orig.way.x,orig.way.y)}   // ADR-0076
+  else if(orig.x1!=null){const a=R(orig.x1,orig.y1),b=R(orig.x2,orig.y2);sh.x1=a.x;sh.y1=a.y;sh.x2=b.x;sh.y2=b.y;if(orig.way)sh.way=_wayArr(orig).map(p=>R(p.x,p.y))}   // ADR-0090
   else if(orig.x!=null){
     const q=R(orig.x+orig.w/2,orig.y+orig.h/2);
     sh.x=q.x-orig.w/2;sh.y=q.y-orig.h/2;sh.w=orig.w;sh.h=orig.h;
@@ -2947,7 +2961,7 @@ function _mapToBox(sh,orig,ob,vb){
   const sx=vb.w/ob.w,sy=vb.h/ob.h;
   const M=(px,py)=>({x:vb.x+(px-ob.x)*sx,y:vb.y+(py-ob.y)*sy});
   if(orig.pts)sh.pts=orig.pts.map(p=>{const q=M(p[0],p[1]);return[q.x,q.y,p[2]]});
-  else if(orig.x1!=null){const a=M(orig.x1,orig.y1),b=M(orig.x2,orig.y2);sh.x1=a.x;sh.y1=a.y;sh.x2=b.x;sh.y2=b.y;if(orig.way)sh.way=M(orig.way.x,orig.way.y)}   // ADR-0076
+  else if(orig.x1!=null){const a=M(orig.x1,orig.y1),b=M(orig.x2,orig.y2);sh.x1=a.x;sh.y1=a.y;sh.x2=b.x;sh.y2=b.y;if(orig.way)sh.way=_wayArr(orig).map(p=>M(p.x,p.y))}   // ADR-0090
   else if(orig.x!=null){const a=M(orig.x,orig.y),b=M(orig.x+orig.w,orig.y+orig.h);sh.x=a.x;sh.y=a.y;sh.w=b.x-a.x;sh.h=b.y-a.y}
 }
 // Apply resize given handle id, original shape, new world point, Shift and Alt state.
@@ -3119,10 +3133,18 @@ function drawSelection(c){
         c.beginPath();c.arc(tp.x,tp.y,hs*0.45,0,PI2);c.fill();c.stroke();
       }
     }
-    if((sh.type==='line'||sh.type==='arrow')&&!sh.elbow&&!sh.curve){   // ADR-0076
-      const e=connEnds(sh),wp=sh.way||{x:(e.x1+e.x2)/2,y:(e.y1+e.y2)/2};
-      const tp=G.w2s(wp);
-      c.beginPath();c.arc(tp.x,tp.y,hs*0.45,0,PI2);c.fill();c.stroke();
+    if((sh.type==='line'||sh.type==='arrow')&&!sh.elbow&&!sh.curve){   // ADR-0090: every vertex + every segment midpoint gets a handle dot
+      const pts=_linePts(sh);
+      for(let i=0;i<pts.length;i++){
+        if(i&&i<pts.length-1){                           // interior vertex
+          const tp=G.w2s(pts[i]);
+          c.beginPath();c.arc(tp.x,tp.y,hs*0.45,0,PI2);c.fill();c.stroke();
+        }
+        if(i<pts.length-1){                              // segment midpoint (insert handle)
+          const mp=G.w2s({x:(pts[i].x+pts[i+1].x)/2,y:(pts[i].y+pts[i+1].y)/2});
+          c.beginPath();c.arc(mp.x,mp.y,hs*0.35,0,PI2);c.fill();c.stroke();
+        }
+      }
     }
   }else{
     // ADR-0056: multi-selection — full 8-handle set on the group bbox (was: 4
@@ -3232,7 +3254,7 @@ function abortGesture(){
   _penPred=null;
   state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.dragStartShapes=null;
-  ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;ptr.ebendOrig=null;ptr.wayOrig=null;
+  ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;ptr.ebendOrig=null;ptr.wayOrig=null;ptr.wayIdx=null;ptr.wayNew=false;
   invalidate();
 }
 
@@ -3292,10 +3314,18 @@ canvas.addEventListener('pointerdown',e=>{
               return;
             }
           }
-          if(!onlySel.elbow&&!onlySel.curve&&!onlySel.locked&&(onlySel.type==='line'||onlySel.type==='arrow')){   // ADR-0076
-            const e=connEnds(onlySel),mid=onlySel.way||{x:(e.x1+e.x2)/2,y:(e.y1+e.y2)/2};
-            if(Math.hypot(wp.x-mid.x,wp.y-mid.y)<=HANDLE_SIZE/state.viewport.zoom){
-              ptr.dragKind='way';ptr.wayOrig=clone(onlySel);return;
+          if(!onlySel.elbow&&!onlySel.curve&&!onlySel.locked&&(onlySel.type==='line'||onlySel.type==='arrow')){   // ADR-0090
+            const pts=_linePts(onlySel),R_=HANDLE_SIZE/state.viewport.zoom;
+            for(let i=1;i<pts.length-1;i++){             // existing vertex → move it
+              if(Math.hypot(wp.x-pts[i].x,wp.y-pts[i].y)<=R_){
+                ptr.dragKind='way';ptr.wayIdx=i-1;ptr.wayNew=false;ptr.wayOrig=clone(onlySel);return;
+              }
+            }
+            for(let i=0;i<pts.length-1;i++){             // segment midpoint → insert vertex
+              const mx=(pts[i].x+pts[i+1].x)/2,my=(pts[i].y+pts[i+1].y)/2;
+              if(Math.hypot(wp.x-mx,wp.y-my)<=R_){
+                ptr.dragKind='way';ptr.wayIdx=i;ptr.wayNew=true;ptr.wayOrig=clone(onlySel);return;
+              }
             }
           }
         }
@@ -3426,12 +3456,16 @@ canvas.addEventListener('pointermove',e=>{
         const sh=byId(ptr.ebendOrig.id),tr=sh&&_elbowTrunk(sh);
         if(tr){const vert=Math.abs(tr[1].x-tr[0].x)<Math.abs(tr[1].y-tr[0].y);sh.bend=vert?snapV(wp.x):snapV(wp.y);invalidate()}   // ADR-0088: trunk drag honours grid snap
       }
-      else if(ptr.dragKind==='way'&&ptr.wayOrig){                   // ADR-0076
+      else if(ptr.dragKind==='way'&&ptr.wayOrig){                   // ADR-0090
         const sh=byId(ptr.wayOrig.id);
         if(sh){
-          const e=connEnds(sh),mx=(e.x1+e.x2)/2,my=(e.y1+e.y2)/2;
-          if(Math.hypot(wp.x-mx,wp.y-my)<6/state.viewport.zoom)delete sh.way;   // ADR-0088: clear test stays on the RAW point so grid pull can't block it
-          else sh.way=snapPt(wp);
+          const wa=_wayArr(sh),i=ptr.wayIdx|0;
+          if(ptr.wayNew){wa.splice(i,0,snapPt(wp));sh.way=wa;ptr.wayNew=false;}   // first move inserts the vertex
+          else{
+            const pts=_linePts(sh),mx=(pts[i].x+pts[i+1].x)/2,my=(pts[i].y+pts[i+1].y)/2;
+            if(Math.hypot(wp.x-mx,wp.y-my)<6/state.viewport.zoom){wa.splice(i,1);if(wa.length)sh.way=wa;else delete sh.way}   // ADR-0088: RAW point keeps the clear gesture reachable
+            else{wa[i]=snapPt(wp);sh.way=wa}
+          }
           invalidate();
         }
       }
@@ -3503,9 +3537,10 @@ canvas.addEventListener('pointerup',e=>{
         const sh=byId(ptr.wayOrig.id),ow=ptr.wayOrig.way||null,nw=sh&&sh.way||null;
         if(sh&&JSON.stringify(ow)!==JSON.stringify(nw)){
           const origSel=[...state.selection];
-          Store._recordCommitted({op:'style',before:[{id:sh.id,way:ow?{x:ow.x,y:ow.y}:null}],after:[{id:sh.id,way:nw?{x:nw.x,y:nw.y}:null}]});
+          Store._recordCommitted({op:'style',before:[{id:sh.id,way:clone(ow)}],after:[{id:sh.id,way:clone(nw)}]});   // ADR-0090: arrays clone whole
           if(origSel.length)state.history[state.histIdx].origSel=origSel;
         }
+        ptr.wayIdx=null;ptr.wayNew=false;
       }else{
         endSelect(wp,e.shiftKey);
       }
@@ -5064,11 +5099,11 @@ function flipShape(s,axis,c){
   const m=v=>2*c-v;
   if(axis==='h'){
     if(s.pts)for(const p of s.pts)p[0]=m(p[0]);
-    else if(s.x1!=null){s.x1=m(s.x1);s.x2=m(s.x2);if(s.way)s.way.x=m(s.way.x)}   // ADR-0076
+    else if(s.x1!=null){s.x1=m(s.x1);s.x2=m(s.x2);if(s.way){s.way=_wayArr(s);for(const w of s.way)w.x=m(w.x)}}   // ADR-0090
     else s.x=m(s.x+s.w);
   }else{
     if(s.pts)for(const p of s.pts)p[1]=m(p[1]);
-    else if(s.y1!=null){s.y1=m(s.y1);s.y2=m(s.y2);if(s.way)s.way.y=m(s.way.y)}   // ADR-0076
+    else if(s.y1!=null){s.y1=m(s.y1);s.y2=m(s.y2);if(s.way){s.way=_wayArr(s);for(const w of s.way)w.y=m(w.y)}}   // ADR-0090
     else s.y=m(s.y+s.h);
   }
   if(s.rotate)s.rotate=(360-s.rotate)%360;
@@ -5139,7 +5174,7 @@ const _rotatable=s=>s.w!=null||s.pts||s.x1!=null;
 function _rotPtsAbout(s,gx,gy,cs,sn){
   const rot=(px,py)=>({x:gx+(px-gx)*cs-(py-gy)*sn,y:gy+(px-gx)*sn+(py-gy)*cs});
   if(s.pts)for(const p of s.pts){const q=rot(p[0],p[1]);p[0]=q.x;p[1]=q.y}
-  else if(s.x1!=null){const a=rot(s.x1,s.y1),b=rot(s.x2,s.y2);s.x1=a.x;s.y1=a.y;s.x2=b.x;s.y2=b.y;if(s.way){const w=rot(s.way.x,s.way.y);s.way=w}}   // ADR-0076
+  else if(s.x1!=null){const a=rot(s.x1,s.y1),b=rot(s.x2,s.y2);s.x1=a.x;s.y1=a.y;s.x2=b.x;s.y2=b.y;if(s.way){s.way=_wayArr(s).map(p=>rot(p.x,p.y))}}   // ADR-0090
 }
 function doRotate(d){
   const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked&&_rotatable(s));
@@ -5672,14 +5707,16 @@ function buildSVG(shapes,paper){
             els.push(`<polygon points="${sx2},${sy2} ${sx2+Math.cos(s1)*ah},${sy2+Math.sin(s1)*ah} ${sx2+Math.cos(s2)*ah},${sy2+Math.sin(s2)*ah}" fill="${stroke}"${a}/>`)}
           const lm=_elbowLabelXY(s);
           els.push(_connLabelSVG(s,lm.x,lm.y,lm.x,lm.y,ox,oy,stroke,paper));
-        }else if(s.way){                                            // ADR-0076
-          const w=s.way,wpts=`${X1+ox},${Y1+oy} ${_num(w.x+ox)},${_num(w.y+oy)} ${X2+ox},${Y2+oy}`;
+        }else if(s.way){                                            // ADR-0090: full vertex list
+          const pts=_linePts(s),wpts=pts.map(p=>_num(p.x+ox)+','+_num(p.y+oy)).join(' ');
           els.push(`<polyline points="${wpts}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}/>`);
-          const ang=Math.atan2(Y2-w.y,X2-w.x),a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5,tx=X2+ox,ty=Y2+oy;
+          const L=pts[pts.length-1],P=pts[pts.length-2],F=pts[1];
+          const ang=Math.atan2(L.y-P.y,L.x-P.x),a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5,tx=L.x+ox,ty=L.y+oy;
           els.push(`<polygon points="${tx},${ty} ${tx+Math.cos(a1)*ah},${ty+Math.sin(a1)*ah} ${tx+Math.cos(a2)*ah},${ty+Math.sin(a2)*ah}" fill="${stroke}"${a}/>`);
-          if(s.start){const sAng=Math.atan2(Y1-w.y,X1-w.x),s1=sAng+Math.PI-0.5,s2=sAng+Math.PI+0.5,sx2=X1+ox,sy2=Y1+oy;
+          if(s.start){const sAng=Math.atan2(pts[0].y-F.y,pts[0].x-F.x),s1=sAng+Math.PI-0.5,s2=sAng+Math.PI+0.5,sx2=pts[0].x+ox,sy2=pts[0].y+oy;
             els.push(`<polygon points="${sx2},${sy2} ${sx2+Math.cos(s1)*ah},${sy2+Math.sin(s1)*ah} ${sx2+Math.cos(s2)*ah},${sy2+Math.sin(s2)*ah}" fill="${stroke}"${a}/>`)}
-          els.push(_connLabelSVG(s,w.x,w.y,w.x,w.y,ox,oy,stroke,paper));
+          const lm=_connLabelXY(s);
+          els.push(_connLabelSVG(s,lm.x,lm.y,lm.x,lm.y,ox,oy,stroke,paper));
         }else{
           els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}/>`);
           const ang=Math.atan2(Y2-Y1,X2-X1);
@@ -6710,7 +6747,7 @@ const UI={
       state.styleClipboard&&has&&['ctxPasteStyle','⌥V',pasteStyle],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked})&&['ctxElbow','',toggleElbow],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked})&&['ctxCurve','',toggleCurve],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked&&(s.way||s.bend||s.elbow||s.curve)})&&['ctxRouteReset','',resetRoute],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked&&(_wayArr(s).length||s.bend||s.elbow||s.curve)})&&['ctxRouteReset','',resetRoute],   // ADR-0090
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='frame'&&!s.locked})&&['ctxFrameFit','',fitFrames],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky')&&!s.locked})&&['ctxTextAlign','',cycleTextAlign],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond')&&!s.locked})&&['ctxFillStyle','',cycleFillStyle],
@@ -7234,7 +7271,7 @@ function resetRoute(){
   const before=[],after=[];
   for(const id of state.selection){
     const s=byId(id);if(!s||(s.type!=='line'&&s.type!=='arrow')||s.locked)continue;
-    if(!s.way&&!s.bend&&!s.elbow&&!s.curve)continue;
+    if(!_wayArr(s).length&&!s.bend&&!s.elbow&&!s.curve)continue;   // ADR-0090
     before.push({id,way:s.way??null,bend:s.bend??null,elbow:s.elbow||0,curve:s.curve||0});
     after.push({id,way:null,bend:null,elbow:0,curve:0});
     s.way=null;s.bend=null;s.elbow=0;s.curve=0;

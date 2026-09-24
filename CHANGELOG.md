@@ -2,6 +2,15 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.148]
+
+### 追加
+- **複数ウェイポイント** (ADR-0090)。直線コネクタの `s.way` を
+  `{x,y}` 単体から `[{x,y},…]` 配列へ格上げ — 各セグメント中点
+  ドラッグで頂点挿入、頂点ドラッグで移動、中点6pxで削除、
+  全変換・SVG・ミニマップ・ヒット・bbox・ラベル(総延長の中点)が追従。
+  `_wayArr` が旧 object 形式を後方互換で正規化。
+
 ## [1.7.147]
 
 ### 追加

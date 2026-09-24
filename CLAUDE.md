@@ -139,6 +139,7 @@ Board/
 - [ADR-0087](docs/ADR-0087-copy-svg-clipboard.md) 選択 SVG のクリップボードコピー (copyText 経由)
 - [ADR-0088](docs/ADR-0088-snap-waypoint-bend.md) waypoint/ebend ドラッグのグリッドスナップ統一
 - [ADR-0089](docs/ADR-0089-replace-image.md) 画像差替え (位置/幅保持、style op)
+- [ADR-0090](docs/ADR-0090-multi-waypoints.md) 複数ウェイポイント (s.way 配列化、_wayArr 後方互換)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
