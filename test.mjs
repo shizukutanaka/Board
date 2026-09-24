@@ -3050,6 +3050,21 @@ try {
     assert.ok(both.includes('hello world')&&!both.includes('\n'),'describeShape: text wins over label, whitespace collapsed');
     // long content truncated with ellipsis so the aria-live region isn't flooded
     const long=describeShape({type:'text',x:0,y:0,w:10,h:10,text:'x'.repeat(50)});
+    assert.ok(long.length<50,'describeShape truncates long content');
+    // ADR-0380: group membership + bound-connector endpoints are announced —
+    // the visual halo / bound-dot affordances previously had no SR channel.
+    {
+      const grouped=describeShape({type:'rect',x:0,y:0,w:10,h:10,groupId:'g1'});
+      assert.ok(grouped.includes(api.I18N.ja.tagGroup)||grouped.includes(api.I18N.en.tagGroup),'describeShape announces group membership');
+      const tgt={type:'rect',id:'ta',x:0,y:0,w:10,h:10};
+      state.shapes=[tgt];
+      const bound=describeShape({type:'arrow',x1:0,y1:0,x2:100,y2:0,a:'ta'});
+      assert.ok((bound.includes(api.I18N.ja.srBound)||bound.includes(api.I18N.en.srBound))&&bound.includes('→'),'describeShape announces bound endpoint');
+      state.shapes=[];
+      const free=describeShape({type:'arrow',x1:0,y1:0,x2:100,y2:0});
+      assert.ok(!free.includes(api.I18N.ja.srBound)&&!free.includes(api.I18N.en.srBound),'unbound connector has no bound tag');
+      console.log('  ✓ ADR-0380: describeShape group + bound-endpoint announce (3 asserts)');
+    }
     assert.ok(long.includes('…')&&!long.includes('x'.repeat(40)),'describeShape: long content truncated to ~30 chars + …');
     // unlabeled shapes are unchanged (backward compatible — no quotes added)
     assert.ok(!describeShape({type:'rect',x:10,y:20,w:100,h:50}).includes('“'),'describeShape: unlabeled shape adds no content quote');
