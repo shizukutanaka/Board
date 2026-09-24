@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.441] - 2026-09-23
+### 追加
+- ADR-0405: .drawio `<diagram name>` ↔ docName 往復 (emit で `_esc` 済み名、import で `_dioNm` ハンドオフ採用) — 全フォーマットで名前任せた往復が完結
+### 変更
+- `_un`/`_AU`/`_AD`/`_AL2`/`_AR2` 定数化 (~170B 回収)
+
 ## [1.7.440] - 2026-09-23
 ### 変更
 - ADR-0404: `_mP`/`_sT`/`_eU`/`_dU` shorthand (~230B 回収) + round116-117 の wire メタ (`k:'name'`/snapshot.name/`snapBig`) に存在ガードと実動作テストを追加

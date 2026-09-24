@@ -801,7 +801,7 @@ const _on=(e,t,f,o)=>e.addEventListener(t,f,o);                          // ADR-
 const _vp=()=>state.viewport,_vpS=()=>({x:+_vp().x.toFixed(2),y:+_vp().y.toFixed(2),zoom:+_vp().zoom.toFixed(4)});                                              // ADR-0362: live-read (tests reassign the object)
 const _pi=()=>state.peerId,_ro=()=>state.readout,_gd=()=>state.guides,_cl=()=>state.clipboard,_bb=s=>G.bbox(s),_oa=Object.assign;   // ADR-0378
 const _sO=()=>state.seenOps,_la=()=>state.lasso,_mq=()=>state.marquee,_dd=()=>state.dupDelta,_w2=p=>G.w2s(p),_s2=p=>G.s2w(p),_cE=connEnds;   // ADR-0382
-const _dpr=()=>window.devicePixelRatio,_iA=Array.isArray,_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log,_mP=()=>new Map(),_sT=()=>new Set(),_eU=encodeURIComponent,_dU=decodeURIComponent;   // ADR-0384/0386/0391/0395/0397
+const _dpr=()=>window.devicePixelRatio,_iA=Array.isArray,_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log,_mP=()=>new Map(),_sT=()=>new Set(),_eU=encodeURIComponent,_dU=decodeURIComponent,_un='undefined',_AU='arrowup',_AD='arrowdown',_AL2='arrowleft',_AR2='arrowright';   // ADR-0384/0386/0391/0395/0397
 const _sh=()=>state.shapes;                                                // ADR-0364
 const _sl=()=>state.selection;
 const _st=()=>state.style;
@@ -822,7 +822,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.440';
+const V='1.7.441';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -5299,7 +5299,7 @@ function resizeAfterTextEdit(s,text,c){
 // for the finalize delta: stamped for LWW correctness, but kept OUT of local history so
 // single-user undo stays one step (the local add already carries the final text).
 function _syncTextFinalize(s,before,deleted){
-  if(typeof Net==='undefined'||typeof Net.broadcast!=='function')return;
+  if(typeof Net===_un||typeof Net.broadcast!=='function')return;
   const op=deleted
     ? {op:'del',shapes:[clone(s)]}
     : {op:'upd',id:s.id,before:{text:before},after:{text:s.text,w:s.w,h:s.h}};
@@ -5490,8 +5490,8 @@ _on(window,_KD,e=>{
   // This guard must precede the editing shortcuts below, or they'd mutate the board
   // mid-slideshow before the early return.
   if(Presentation.isActive()){
-    if(k==='arrowright'||k==='arrowdown'||k===' '){_pd(e);Presentation.next()}
-    else if(k==='arrowleft'||k==='arrowup'){_pd(e);Presentation.prev()}
+    if(k===_AR2||k===_AD||k===' '){_pd(e);Presentation.next()}
+    else if(k===_AL2||k===_AU){_pd(e);Presentation.prev()}
     else if(k==='escape'){Presentation.leave()}
     return;
   }
@@ -5551,15 +5551,15 @@ _on(window,_KD,e=>{
     if(_tl()==='select'&&editSelectedShapeKbd()){_pd(e);}
     else if(createShapeKbd())_pd(e);
   }
-  else if((k==='arrowup'||k==='arrowdown'||k==='arrowleft'||k==='arrowright')&&e.altKey){
+  else if((k===_AU||k===_AD||k===_AL2||k===_AR2)&&e.altKey){
     // Alt+arrow = keyboard resize (a11y: pointer-free). L/R = width, U/D = height,
     // top-left anchored; ⇧ = ×10 step. Box shapes only. Single reversible `resize` op.
     const sel=_selL(s=>s&&!s.locked&&s.w!=null);
     if(sel.length){
       _pd(e);
       const step=e.shiftKey?10:1;
-      const dw=k==='arrowright'?step:k==='arrowleft'?-step:0;
-      const dh=k==='arrowdown'?step:k==='arrowup'?-step:0;
+      const dw=k===_AR2?step:k===_AL2?-step:0;
+      const dh=k===_AD?step:k===_AU?-step:0;
       const before=[],after=[];
       for(const sh of sel){
         before.push({id:sh.id,w:sh.w,h:sh.h});
@@ -5571,19 +5571,19 @@ _on(window,_KD,e=>{
       _iv();
     }
   }
-  else if(k==='arrowup'||k==='arrowdown'||k==='arrowleft'||k==='arrowright'){
+  else if(k===_AU||k===_AD||k===_AL2||k===_AR2){
     if(_selN()){
       _pd(e);
       const step=e.shiftKey?10:1;
-      const dx=k==='arrowleft'?-step:k==='arrowright'?step:0;
-      const dy=k==='arrowup'?-step:k==='arrowdown'?step:0;
+      const dx=k===_AL2?-step:k===_AR2?step:0;
+      const dy=k===_AU?-step:k===_AD?step:0;
       nudgeSelection(dx,dy);
     }
     else{                                   // ADR-0165: no selection → arrows pan the view
       _pd(e);                    // (Excalidraw scroll parity; keyboard-only nav)
       const step=(e.shiftKey?200:40)/_vp().zoom;
-      _vp().x+=k==='arrowleft'?-step:k==='arrowright'?step:0;
-      _vp().y+=k==='arrowup'?-step:k==='arrowdown'?step:0;
+      _vp().x+=k===_AL2?-step:k===_AR2?step:0;
+      _vp().y+=k===_AU?-step:k===_AD?step:0;
       _iv();
     }
   }
@@ -6305,7 +6305,7 @@ function exportPNG(shapes=_sh(),scale){
 // Copy the board PNG to the OS clipboard (Excalidraw parity). No shortcut —
 // ⌘⇧C collides with the browser DevTools inspector; menu-only.
 function copyPNG(shapes=_sh()){
-  if(!navigator.clipboard||!navigator.clipboard.write||typeof ClipboardItem==='undefined'){_tst(t('copyUnsupported'),'warn');return}
+  if(!navigator.clipboard||!navigator.clipboard.write||typeof ClipboardItem===_un){_tst(t('copyUnsupported'),'warn');return}
   _renderPngBlob(shapes,bl=>{
     if(!bl){_tst(t(_EF),'err');return}
     navigator.clipboard.write([new ClipboardItem({'image/png':bl})]).then(
@@ -6535,9 +6535,9 @@ function _dioLabel(v){
   try{const d2=new DOMParser().parseFromString('<x>'+pre+'</x>','text/xml');
     return (d2.documentElement.textContent||'').replace(/\s+$/gm,'').trim()}catch(_){return pre.replace(/<[^>]*>/g,'').trim()}
 }
-let _dioVp=null;   // ADR-0359: viewport hand-off from drawioToShapes to its caller
+let _dioVp=null,_dioNm=null;   // ADR-0359/0405: viewport + doc-name hand-offs
 function drawioToShapes(txt){
-  _dioVp=null;
+  _dioVp=null;_dioNm=null;
   let doc;
   try{doc=new DOMParser().parseFromString(_St(txt||''),'text/xml')}catch(_){return null}
   if(!doc||_qs(doc,'parsererror'))return null;
@@ -6558,6 +6558,7 @@ function drawioToShapes(txt){
   const _doff=_mP();{let _dx=0;
     for(const dg of _qsa(doc,'diagram')){
       const m=_qs(dg,'mxGraphModel'),pw=+(m&&_ga(m,'pageWidth'))||850;
+      if(!_dioNm)_dioNm=_ga(dg,'name');   // ADR-0405: first page's name → docName
       if(!_dioVp&&m){const ddx=+_ga(m,'dx'),ddy=+_ga(m,'dy'),dz=+_ga(m,'zoom');
         if(_fin(ddx)&&_fin(ddy))_dioVp={x:-ddx,y:-ddy,z:_fin(dz)?clampZoom(dz):1}}   // ADR-0359: viewport restore
       for(const c2 of _qsa(dg,'mxCell'))_doff.set(c2,_dx);
@@ -6685,7 +6686,7 @@ function importDrawioText(txt,wp){
   // multi-page path (ADR-0311) flattens every page, not just page 1.
   const _dms=[..._St(txt||'').matchAll(/<diagram[^>]*>([^<]+)<\/diagram>/g)];
   if(_dms.length&&!txt.includes('<mxGraphModel')){
-    if(typeof DecompressionStream==='undefined'){_tst(t('dioCompressed'),'warn');return false}
+    if(typeof DecompressionStream===_un){_tst(t('dioCompressed'),'warn');return false}
     Promise.all(_dms.map(m=>_dioInflate(m[1]))).then(xs=>{
       const ok=xs.filter(Boolean);
       if(!ok.length){_tst(t('dioCompressed'),'warn');return}
@@ -6703,6 +6704,7 @@ function importDrawioText(txt,wp){
   _cOp({op:'addMany',shapes});
   _sl().clear();for(const s of shapes)_sl().add(s.id);
   if(_vpNull&&_dioVp){_vp().x=_dioVp.x;_vp().y=_dioVp.y;_vp().zoom=_dioVp.z}   // ADR-0359: viewport restore
+  if(_dioNm)_setDocName(_dioNm.slice(0,80));   // ADR-0405
   _iv();_tst(t('dioImported'),'ok');
   return true;
 }
@@ -6822,7 +6824,7 @@ function boardToDrawio(shapes){
     cells.push(`<mxCell id="${id}" value="${nl(s.label||'')}" style="${esc(sty)}" edge="1" parent="${_gc2?`g_${s.groupId}`:'1'}"${src}${tgt}${s.link?` link="${esc(s.link)}"`:''}${s.visible===0?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0245/0347
   }
   const vx=_vp().x,vy=_vp().y,vz=_vp().zoom;
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile compressed="false"><diagram name="Page-1"><mxGraphModel dx="${_rnd(-vx)}" dy="${_rnd(-vy)}" grid="${state.showGrid?1:0}" gridSize="${GRID_SIZE}" guides="1" tooltips="0" connect="0" arrows="0" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0" zoom="${vz}"><root><mxCell id="0"/><mxCell id="1" parent="0"/>${cells.join('')}</root></mxGraphModel></diagram></mxfile>`;   // ADR-0359: dx/dy/zoom viewport round-trip
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile compressed="false"><diagram name="${_esc(_dn()||'Page-1')}"><mxGraphModel dx="${_rnd(-vx)}" dy="${_rnd(-vy)}" grid="${state.showGrid?1:0}" gridSize="${GRID_SIZE}" guides="1" tooltips="0" connect="0" arrows="0" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0" zoom="${vz}"><root><mxCell id="0"/><mxCell id="1" parent="0"/>${cells.join('')}</root></mxGraphModel></diagram></mxfile>`;   // ADR-0359: dx/dy/zoom viewport round-trip
 }
 function exportDrawio(){
   if(!_sh().length){_tst(t(_EM),'warn');return}
@@ -6924,7 +6926,7 @@ function _svgPathPts(d,m){
   return pts;
 }
 function svgToShapes(txt){
-  if(typeof DOMParser==='undefined'||typeof txt!=='string')return null;
+  if(typeof DOMParser===_un||typeof txt!=='string')return null;
   const doc=new DOMParser().parseFromString(txt,'image/svg+xml');
   if(_qs(doc,'parsererror'))return null;
   const root=doc.documentElement;
@@ -7607,7 +7609,7 @@ const Net={
     if(this.bc){try{this.bc.close()}catch(_){}}
     clearInterval(this._presenceTimer);   // re-init (room switch) must not leak the old heartbeat
     state.roomId=roomId||DOC_KEY;
-    if(typeof BroadcastChannel==='undefined')return;     // not supported
+    if(typeof BroadcastChannel===_un)return;     // not supported
     try{
       this.bc=new BroadcastChannel(NET_CHANNEL_PREFIX+state.roomId);
       this.bc.onmessage=e=>this._onRecv(e.data);
@@ -7931,7 +7933,7 @@ const Net={
   },
   _wrtcInit(){
     if(this.rtc){try{this.rtc.close()}catch(_){}}
-    if(typeof RTCPeerConnection==='undefined')throw new Error('WebRTC not supported');
+    if(typeof RTCPeerConnection===_un)throw new Error('WebRTC not supported');
     this._rtcConnFailed=false;
     this.rtc=new RTCPeerConnection({iceServers:[
       {urls:'stun:stun.l.google.com:19302'},
