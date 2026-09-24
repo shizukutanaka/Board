@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.380] - 2026-09-24
+
+### Changed
+- `createElement` を `_ce()` に集約 (~0.65KB 削減、ADR-0329)
+
 ## [1.7.379] - 2026-09-24
 
 ### Fixed

@@ -787,9 +787,10 @@ const _selL=f=>[...state.selection].map(byId).filter(f);   // ADR-0308
 const _selR=op=>{if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)))};   // ADR-0309
 const _keepSel=arr=>{if(arr.length)state.history[state.histIdx].origSel=arr};   // ADR-0312
 const _pd=e=>e.preventDefault();   // ADR-0326
+const _ce=t=>document.createElement(t);   // ADR-0329
 
 // ====================== CONSTANTS ======================
-const V='1.7.379';
+const V='1.7.380';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1921,7 +1922,7 @@ function _penRender(s,e,R){
   const w=Math.max(2,Math.ceil(e.bw*R)),h=Math.max(2,Math.ceil(e.bh*R));
   if(w>PEN_CACHE_MAX_DIM||h>PEN_CACHE_MAX_DIM||w*h>PEN_CACHE_MAX_PX)return null;
   _penCachePx-=e.px||0;
-  const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+  const cv=_ce('canvas');cv.width=w;cv.height=h;
   const cc=cv.getContext('2d');
   cc.scale(R,R);cc.translate(-e.bx,-e.by);
   drawPen(s,cc);
@@ -2031,7 +2032,7 @@ function _inkRebuild(s,d){
     d.bx=Math.round((d.bx-state.viewport.x)*zr)/zr+state.viewport.x;
     d.by=Math.round((d.by-state.viewport.y)*zr)/zr+state.viewport.y;
   }
-  d.cv=document.createElement('canvas');
+  d.cv=_ce('canvas');
   d.cv.width=Math.max(2,Math.ceil(d.bw*R));d.cv.height=Math.max(2,Math.ceil(d.bh*R));
   d.c2=d.cv.getContext('2d');
   d.c2.setTransform(R,0,0,R,-d.bx*R,-d.by*R);
@@ -2053,7 +2054,7 @@ function _inkGrow(d,pad){
     mnx=Math.round((mnx-state.viewport.x)*zr)/zr+state.viewport.x;
     mny=Math.round((mny-state.viewport.y)*zr)/zr+state.viewport.y;
   }
-  const ncv=document.createElement('canvas');
+  const ncv=_ce('canvas');
   ncv.width=Math.max(2,Math.ceil((mxx-mnx)*d.R));ncv.height=Math.max(2,Math.ceil((mxy-mny)*d.R));
   const n2=ncv.getContext('2d');
   n2.drawImage(d.cv,(d.bx-mnx)*d.R,(d.by-mny)*d.R);
@@ -2265,15 +2266,15 @@ function _mirrorSync(){
   const n=Math.min(state.shapes.length,MIRROR_MAX);
   for(let i=0;i<n;i++){
     const s=state.shapes[i];
-    const li=document.createElement('li');
-    const b=document.createElement('button');
+    const li=_ce('li');
+    const b=_ce('button');
     b.type='button';
     b.textContent=(i+1)+'. '+describeShape(s)+(s.visible===0?' '+t('tagHidden'):'');   // ADR-0154
     b.onclick=()=>_mirrorGo(s.id);
     li.appendChild(b);ul.appendChild(li);
   }
   if(state.shapes.length>MIRROR_MAX){
-    const li=document.createElement('li');
+    const li=_ce('li');
     li.textContent=(state.shapes.length-MIRROR_MAX)+t('mirrorMore');
     ul.appendChild(li);
   }
@@ -4196,7 +4197,7 @@ function editSelectedShapeKbd(){
 // the generic `upd` op (reversible + synced). bold = frame styling. IME-safe; Enter
 // commits, Escape discards (detaching blur so remove() doesn't re-commit).
 function openLabelEditor(hit,leftPx,topPx,bold){
-  const inp=document.createElement('input');
+  const inp=_ce('input');
   inp.value=hit.label||'';inp.maxLength=80;
   const col=hit.stroke||getCSS(bold?'--accent-contrast':'--ink');   // a11y-audit-2026-07: this is real text (label editor), needs the 4.5:1 text floor too — --accent-contrast clears both themes
   inp.style.cssText=`position:fixed;left:${leftPx}px;top:${topPx}px;`+
@@ -4267,7 +4268,7 @@ function _imgImportFile(f,cb){
       const nw=img.width,nh=img.height;
       if(nw>IMG_IMPORT_MAX_DIM||nh>IMG_IMPORT_MAX_DIM){
         const r=Math.min(IMG_IMPORT_MAX_DIM/nw,IMG_IMPORT_MAX_DIM/nh);
-        const cv=document.createElement('canvas');
+        const cv=_ce('canvas');
         cv.width=Math.max(1,Math.round(nw*r));cv.height=Math.max(1,Math.round(nh*r));
         cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
         const wu=cv.toDataURL('image/webp',0.85);
@@ -4471,7 +4472,7 @@ let _wheelZoomEnd=0;
 function _pinchSnapNow(){
   if(!_pinchSnap){
     const v=state.viewport;
-    _pinchSnap=document.createElement('canvas');
+    _pinchSnap=_ce('canvas');
     _pinchSnap.width=canvas.width;_pinchSnap.height=canvas.height;
     _pinchSnap.getContext('2d').drawImage(canvas,0,0);
     _pinchVp={x:v.x,y:v.y,zoom:v.zoom};
@@ -5240,7 +5241,7 @@ function _syncTextFinalize(s,before,deleted){
 }
 function openTextEditor(s,isNew){
   state.editing=s.id;invalidate();
-  const ta=document.createElement('textarea');
+  const ta=_ce('textarea');
   ta.className='text-overlay';
   const origText=s.text||'';
   const orig=clone(s);
@@ -6157,7 +6158,7 @@ function _renderPngBlob(shapes,cb,desired){
   if(!b){UI.toast(t('empty'),'warn');return}
   const pad=32;
   const w=Math.ceil(b.w+pad*2),h=Math.ceil(b.h+pad*2);
-  const off=document.createElement('canvas');
+  const off=_ce('canvas');
   const scale=exportScale(w,h,desired||2);
   off.width=w*scale;off.height=h*scale;
   const oc=off.getContext('2d');
@@ -6188,7 +6189,7 @@ function exportViewportPNG(scale){
   const view={x:v.x,y:v.y,w:r.width/v.zoom,h:r.height/v.zoom};
   const shapes=state.shapes.filter(s=>inView(s,view));
   if(!shapes.length){UI.toast(t('empty'),'warn');return}
-  const off=document.createElement('canvas');
+  const off=_ce('canvas');
   const sc=exportScale(view.w,view.h,scale||2);
   off.width=Math.ceil(view.w*sc);off.height=Math.ceil(view.h*sc);
   const oc=off.getContext('2d');
@@ -6198,7 +6199,7 @@ function exportViewportPNG(scale){
   off.toBlob(bl=>{
     if(!bl){UI.toast(t('exportFailed'),'err');return}
     const url=URL.createObjectURL(bl);
-    const a=document.createElement('a');
+    const a=_ce('a');
     a.href=url;a.download=`${state.docName||'board'}-view${sc&&sc!==2?'@'+sc+'x':''}.png`;
     a.click();setTimeout(()=>URL.revokeObjectURL(url),1e4);
     UI.toast(t('exported'),'ok');
@@ -6208,7 +6209,7 @@ function exportPNG(shapes=state.shapes,scale){
   _renderPngBlob(shapes,bl=>{
     if(!bl){UI.toast(t('exportFailed'),'err');return}
     const url=URL.createObjectURL(bl);
-    const a=document.createElement('a');
+    const a=_ce('a');
     a.href=url;a.download=`${state.docName||'board'}${scale&&scale!==2?'@'+scale+'x':''}.png`;
     a.click();setTimeout(()=>URL.revokeObjectURL(url),1e4);
     UI.toast(t('exported'),'ok');
@@ -6238,7 +6239,7 @@ function copySVG(shapes=state.shapes){
 function replaceImage(){
   const s=[...state.selection].map(byId).find(x=>x&&x.type==='image'&&!x.locked);
   if(!s)return;
-  const inp=document.createElement('input');
+  const inp=_ce('input');
   inp.type='file';inp.accept='image/*';
   inp.onchange=()=>{
     const f=inp.files&&inp.files[0];if(!f)return;
@@ -6258,7 +6259,7 @@ function exportPDF(){
   if(!state.shapes.length){UI.toast(t('empty'),'warn');return}
   const b=G.bboxAll(state.shapes);if(!b)return;
   const pad=32,W=Math.ceil(b.w+pad*2),H=Math.ceil(b.h+pad*2),dpr=exportScale(W,H,window.devicePixelRatio||1);
-  let off;try{off=new OffscreenCanvas(W*dpr,H*dpr)}catch(_){off=document.createElement('canvas');off.width=W*dpr;off.height=H*dpr}
+  let off;try{off=new OffscreenCanvas(W*dpr,H*dpr)}catch(_){off=_ce('canvas');off.width=W*dpr;off.height=H*dpr}
   const oc=off.getContext('2d');
   oc.fillStyle=_p()||'#fff';oc.fillRect(0,0,W*dpr,H*dpr);
   oc.setTransform(dpr,0,0,dpr,(-b.x+pad)*dpr,(-b.y+pad)*dpr);
@@ -6280,14 +6281,14 @@ function exportSVG(shapes=state.shapes){
   if(svg===null){UI.toast(t('empty'),'warn');return}
   const blob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'});
   const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
+  const a=_ce('a');
   a.href=url;a.download=`${state.docName||'board'}.svg`;
   a.click();setTimeout(()=>URL.revokeObjectURL(url),1e4);
   UI.toast(t('exportedSVG'),'ok');
 }
 function exportBoard(shapes=state.shapes){                       // ADR-0114: optional selection subset
   if(!shapes.length){UI.toast(t('empty'),'warn');return}
-  const a=document.createElement('a');
+  const a=_ce('a');
   const _bu=URL.createObjectURL(new Blob([JSON.stringify({v:V,docName:state.docName,shapes:roundShapesForExport(shapes)})],{type:'application/json'}));
   a.href=_bu;a.download=(state.docName||'board')+'.board';
   a.click();setTimeout(()=>URL.revokeObjectURL(_bu),1e4);
@@ -6587,7 +6588,7 @@ function importDrawioFile(file,wp){
 }
 function exportExc(){
   if(!state.shapes.length){UI.toast(t('empty'),'warn');return}
-  const a=document.createElement('a');
+  const a=_ce('a');
   const _bu=URL.createObjectURL(new Blob([JSON.stringify(excScene(state.shapes))],{type:'application/json'}));
   a.href=_bu;a.download=(state.docName||'board')+'.excalidraw';
   a.click();setTimeout(()=>URL.revokeObjectURL(_bu),1e4);
@@ -6666,7 +6667,7 @@ function boardToDrawio(shapes){
 }
 function exportDrawio(){
   if(!state.shapes.length){UI.toast(t('empty'),'warn');return}
-  const a=document.createElement('a');
+  const a=_ce('a');
   const _bu=URL.createObjectURL(new Blob([boardToDrawio(state.shapes)],{type:'application/xml'}));
   a.href=_bu;a.download=(state.docName||'board')+'.drawio';
   a.click();setTimeout(()=>URL.revokeObjectURL(_bu),1e4);
@@ -7357,7 +7358,7 @@ async function copyText(text){
     try{await navigator.clipboard.writeText(text);return true}catch(_){}
   }
   try{
-    const ta=document.createElement('textarea');
+    const ta=_ce('textarea');
     ta.value=text;ta.setAttribute('readonly','');
     ta.style.cssText='position:fixed;top:-9999px;left:-9999px;opacity:0';
     document.body.appendChild(ta);
@@ -8265,7 +8266,7 @@ const UI={
     el.textContent=d<3?t('savedNow'):d+t('savedAgo');
   },
   toast(msg,kind){
-    const div=document.createElement('div');
+    const div=_ce('div');
     div.className='toast'+(kind?' '+kind:'');
     div.setAttribute('role',kind==='err'||kind==='warn'?'alert':'status');
     div.textContent=msg;
@@ -8395,16 +8396,16 @@ const UI={
     ].filter(Boolean).filter((it,i,a)=>!(it==='sep'&&(i===0||i===a.length-1||a[i-1]==='sep')));
     for(const it of items){
       if(it==='sep'){
-        const s=document.createElement('div');s.className='ctx-sep';
+        const s=_ce('div');s.className='ctx-sep';
         s.setAttribute('role','separator');m.appendChild(s);continue;
       }
       const [k,shortcut,fn]=it;
-      const b=document.createElement('button');
+      const b=_ce('button');
       b.className='ctx-item';b.setAttribute('role','menuitem');
-      const lbl=document.createElement('span');lbl.textContent=t(k);
+      const lbl=_ce('span');lbl.textContent=t(k);
       b.appendChild(lbl);
       if(shortcut){
-        const sc=document.createElement('span');sc.className='k';sc.textContent=shortcut;
+        const sc=_ce('span');sc.className='k';sc.textContent=shortcut;
         b.appendChild(sc);
       }
       b.onclick=()=>{fn();this.closeCtxMenu()};
@@ -8463,9 +8464,9 @@ const UI={
     ];
     while(g.firstChild)g.removeChild(g.firstChild);
     for(const [key,val] of rows){
-      const row=document.createElement('div');row.className='help-row';
-      const kSpan=document.createElement('span');kSpan.className='k';kSpan.textContent=key;
-      const vSpan=document.createElement('span');vSpan.className='v';vSpan.textContent=val;
+      const row=_ce('div');row.className='help-row';
+      const kSpan=_ce('span');kSpan.className='k';kSpan.textContent=key;
+      const vSpan=_ce('span');vSpan.className='v';vSpan.textContent=val;
       row.appendChild(kSpan);row.appendChild(vSpan);
       g.appendChild(row);
     }
@@ -8539,14 +8540,14 @@ const UI={
     const stack=_g('peerStack');
     while(stack.firstChild)stack.removeChild(stack.firstChild);
     // self avatar
-    const self=document.createElement('div');
+    const self=_ce('div');
     self.className='peer-avatar self';
     self.textContent=state.peerId.slice(0,2).toUpperCase();
     self.title=t('you');
     stack.appendChild(self);
     // remote peers
     for(const [id,p] of state.peers){
-      const el=document.createElement('div');
+      const el=_ce('div');
       el.className='peer-avatar';
       el.style.background=p.color;
       el.textContent=id.slice(0,2).toUpperCase();
@@ -8585,7 +8586,7 @@ async function _onBtnInstall(){
   if(btn)btn.hidden=true;
 }
 function wire(){
-  {const sq=document.createElement('input');sq.id='sqinput';sq.type='text';sq.placeholder=T.k.search;sq.setAttribute('aria-label',T.k.search);sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--accent-contrast);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';document.body.appendChild(sq);sq.addEventListener('input',()=>{_sq=sq.value;_sqNav.idx=-1;_sqNav.lastQ='';invalidateOverlay()});sq.addEventListener('keydown',ev=>{if(ev.key==='Escape'){_sq='';_sqNav.idx=-1;_sqNav.lastQ='';sq.style.display='none';sq.value='';invalidateOverlay();canvas.focus();}else if(ev.key==='Enter'&&!ev.isComposing){_pd(ev);
+  {const sq=_ce('input');sq.id='sqinput';sq.type='text';sq.placeholder=T.k.search;sq.setAttribute('aria-label',T.k.search);sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--accent-contrast);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';document.body.appendChild(sq);sq.addEventListener('input',()=>{_sq=sq.value;_sqNav.idx=-1;_sqNav.lastQ='';invalidateOverlay()});sq.addEventListener('keydown',ev=>{if(ev.key==='Escape'){_sq='';_sqNav.idx=-1;_sqNav.lastQ='';sq.style.display='none';sq.value='';invalidateOverlay();canvas.focus();}else if(ev.key==='Enter'&&!ev.isComposing){_pd(ev);
     // ⌘Enter: commit the whole match list as the selection, then fold the
     // box away — selecting is terminal, so stale search highlights only
     // distract from the follow-up (move/style the found group).
@@ -9348,16 +9349,16 @@ const Presentation=(()=>{
     _active=true;_idx=0;
     _savedVp={x:state.viewport.x,y:state.viewport.y,zoom:state.viewport.zoom};
     // Build overlay
-    _overlay=document.createElement('div');
+    _overlay=_ce('div');
     _overlay.id='presOverlay';
     _overlay.style.cssText='position:fixed;inset:0;z-index:9000;background:#000;display:flex;flex-direction:column;';
     // Counter
-    const counter=document.createElement('div');
+    const counter=_ce('div');
     counter.id='presCounter';
     counter.style.cssText='position:absolute;bottom:16px;left:50%;transform:translateX(-50%);color:#fff;font-size:13px;font-family:system-ui;opacity:.7;pointer-events:none;';
     _overlay.appendChild(counter);
     // Exit button
-    const exit=document.createElement('button');
+    const exit=_ce('button');
     exit.textContent='✕ Esc';
     exit.style.cssText='position:absolute;top:12px;right:16px;background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:13px;';
     exit.onclick=leave;
@@ -9430,7 +9431,7 @@ const Minimap=(()=>{
   let _scene=null,_sceneVer=-1,_sc=0,_ox=0,_oy=0;
   function _renderScene(){
     _sceneVer=_gridVer;
-    if(!_scene){_scene=document.createElement('canvas');_scene.width=W;_scene.height=H;}
+    if(!_scene){_scene=_ce('canvas');_scene.width=W;_scene.height=H;}
     const sx=_scene.getContext('2d');
     sx.clearRect(0,0,W,H);
     const shapes=state.shapes;

@@ -721,6 +721,7 @@ const checks = [
   ['svg conn path/label emitters deduped (ADR-0270)', html.includes('const _sp=(d,j)')&&html.includes('_cL();')],
   ['drawio multi-page side-by-side import (ADR-0311)', html.includes("for(const dg of doc.querySelectorAll('diagram'))")],
   ['link badge 🔗 on linked shapes (ADR-0310)', html.includes("c.fillText('🔗',s.x+Math.abs(s.w)-3,s.y+3)")],
+  ['_ce() createElement shorthand (ADR-0329)', html.includes("const _ce=t=>document.createElement(t)")],
   ['UserObject label/link fallback (ADR-0328)', html.includes("tagName==='UserObject'?c.parentElement:null")&&html.includes("_uo.getAttribute('label')")],
   ['s.link scheme gate in validPatch (ADR-0327)', html.includes("'link' in p&&p.link!=null")&&html.includes('ADR-0327')],
   ['_pd() preventDefault shorthand (ADR-0326)', html.includes("const _pd=e=>e.preventDefault()")],
