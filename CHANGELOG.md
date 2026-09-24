@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.526] - 2026-09-23
+
+### リファクタ
+
+- `_rs(arr)` — 盤面総取替えイディオム (`state.shapes=X;_iG();_pcC();`) を import/restore/snapshot 5 サイトに集約、−41B (ADR-0493)
+
 ## [1.7.525] - 2026-09-23
 
 ### リファクタ

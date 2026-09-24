@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.525';
+const V='1.7.526';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2010,6 +2010,7 @@ let _penCachePx=0;
 // wholesale `state.shapes=` replacement (clones miss the pts-identity signature
 // anyway, so old entries would sit until the global caps evict them).
 const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPending.clear()}   // ADR-0445: wholesale swap also drops parked img refs
+const _rs=arr=>{state.shapes=arr;_iG();_pcC()}   // ADR-0494: wholesale board replace (5 sites)
 const _psc=id=>{_penBboxCache.delete(id);Net._imgPending.delete(id);const e=_penCache.get(id);if(e){_penCache.delete(id);_penCachePx-=e.px||0;}}   // ADR-0427/0435
 // Effective raster resolution: zoom-adaptive (supersampled at low zoom is just
 // wasted pixels), clamped 0.25..2 so extreme zoom-outs still rasterize tiny.
@@ -7218,7 +7219,7 @@ function importBoard(file){
       const beforeWc=clone(_wc());
       const origSel=_selIds();
       if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());   // ADR-0004
-      state.shapes=shapes.map(clone);_iG();_pcC();   // ADR-0009
+      _rs(shapes.map(clone));   // ADR-0009
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out. Skipping this leaks wclock entries and
       // can let a re-imported shape (same id) inherit a stale LWW clock.
@@ -7914,7 +7915,7 @@ const Net={
     const shapes=msg.shapes;
     if(!_iA(shapes))return;
     const valid=_s0(shapes,SHARE_MAX_SHAPES).map(s=>this._attachShape(s)).filter(validShape);   // ADR-0474
-    state.shapes=clone(valid);_iG();_pcC();   // ADR-0009
+    _rs(clone(valid));   // ADR-0009
     _sz();
     if(_iS(msg.name))_setDocName(_s0(msg.name,80));   // ADR-0402
     _iv();_ru();_ps();
@@ -8168,7 +8169,7 @@ const Share={
       const origSel=_selIds();
       // ADR-0004: also survives past the undo window (reload/closed-tab), not just this session.
       if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());
-      state.shapes=valid.map(clone);_iG();_pcC();_setDocName(_s0((_iS(data.name)&&data.name)||'Shared',80));   // ADR-0009
+      _rs(valid.map(clone));_setDocName(_s0((_iS(data.name)&&data.name)||'Shared',80));   // ADR-0009
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out (see importBoard for rationale).
       if(data.viewport&&_fin(+data.viewport.x)&&_fin(+data.viewport.y)&&_fin(+data.viewport.zoom)&&data.viewport.zoom>0){
@@ -8309,7 +8310,7 @@ const Persist={
       }
       // Validate like the other intake paths (importFromHash / snapshot): never
       // adopt malformed shapes from IDB (corruption / forward-incompat schema).
-      state.shapes=shapes.filter(validShape);_iG();_pcC();   // ADR-0009
+      _rs(shapes.filter(validShape));   // ADR-0009
       if(d.viewport&&_fin(+d.viewport.x)&&_fin(+d.viewport.y)&&_fin(+d.viewport.zoom)&&d.viewport.zoom>0){
         // Clamp zoom to the app invariant [MIN_ZOOM,MAX_ZOOM] that every compute path
         // (wheel/fit) maintains — a corrupt or forward-incompat IDB record with an
@@ -8380,7 +8381,7 @@ const Persist={
       const before=clone(_sh());
       const beforeWc=clone(_wc());
       const origSel=_selIds();
-      state.shapes=shapes.map(clone);_iG();_pcC();   // ADR-0009
+      _rs(shapes.map(clone));   // ADR-0009
       _scl();state.wclock={};
       _docN(d);
       if(d.viewport&&_fin(+d.viewport.x)&&_fin(+d.viewport.y)&&_fin(+d.viewport.zoom)&&d.viewport.zoom>0){
