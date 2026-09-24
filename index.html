@@ -801,7 +801,7 @@ const _on=(e,t,f,o)=>e.addEventListener(t,f,o);                          // ADR-
 const _vp=()=>state.viewport;                                              // ADR-0362: live-read (tests reassign the object)
 const _pi=()=>state.peerId,_ro=()=>state.readout,_gd=()=>state.guides,_cl=()=>state.clipboard,_bb=s=>G.bbox(s),_oa=Object.assign;   // ADR-0378
 const _sO=()=>state.seenOps,_la=()=>state.lasso,_mq=()=>state.marquee,_dd=()=>state.dupDelta,_w2=p=>G.w2s(p),_s2=p=>G.s2w(p),_cE=connEnds;   // ADR-0382
-const _iA=Array.isArray;   // ADR-0384
+const _iA=Array.isArray,_ok=Object.keys;   // ADR-0384/0386
 const _sh=()=>state.shapes;                                                // ADR-0364
 const _sl=()=>state.selection;
 const _st=()=>state.style;
@@ -821,7 +821,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.428';
+const V='1.7.429';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1281,14 +1281,14 @@ function validPatch(p){
 // case it doesn't satisfy (e.g. {type:'pen'} without pts → drawPen crash every
 // frame, persisted), `_`-prefixed writes clobber cache fields (_penSig/_bmp).
 // Batch patches keep `id` only for the byId lookup; it's stripped pre-assign.
-function _stripStruct(p,idToo){delete p.type;if(idToo)delete p.id;for(const k of Object.keys(p))if(k[0]==='_')delete p[k];return p}
+function _stripStruct(p,idToo){delete p.type;if(idToo)delete p.id;for(const k of _ok(p))if(k[0]==='_')delete p[k];return p}
 function _cleanVal(v,depth){
   if(depth>8)return false;
   if(typeof v==='function')return false;
   if(typeof v==='number')return _fin(v);
   if(v==null||typeof v!=='object')return true;   // string/boolean/null are fine
   if(_iA(v))return v.every(x=>_cleanVal(x,depth+1));
-  for(const k of Object.keys(v)){
+  for(const k of _ok(v)){
     if(k==='__proto__'||k==='constructor'||k==='prototype')return false;
     if(!_cleanVal(v[k],depth+1))return false;
   }
@@ -1303,7 +1303,7 @@ function validShape(s){
 }
 // Validate a REMOTE op's payload before _apply. See docs/architecture.md.
 const _CC_KEYS=new Set(['a','aF','b','bF','x1','y1','x2','y2']);   // ADR-0377
-const _ccOk=q=>q&&typeof q==='object'&&!_iA(q)&&Object.keys(q).every(k=>_CC_KEYS.has(k))&&validPatch(q);
+const _ccOk=q=>q&&typeof q==='object'&&!_iA(q)&&_ok(q).every(k=>_CC_KEYS.has(k))&&validPatch(q);
 function validRemotePayload(op){
   const patches=a=>_iA(a)&&a.length<=MAX_OP_SHAPES&&a.every(p=>p&&typeof p.id==='string'&&validPatch(p));
   switch(op.op){
@@ -1469,7 +1469,7 @@ const Store={
     if(!this._lwwOp(op))return true;
     const C=op.clock;
     const filt=(id,after,before)=>{const w=_wc()[id];let kept=0;
-      for(const key of Object.keys(after)){if(key==='id')continue;
+      for(const key of _ok(after)){if(key==='id')continue;
         if(this._chg(before,after,key)&&clockNewer(C,w&&w[key]))kept++;else delete after[key];}
       return kept;};
     if(op.op==='upd'){if(!byId(op.id))return true;return filt(op.id,op.after,op.before)>0;}
@@ -1501,7 +1501,7 @@ const Store={
     // ever cleans (del/clear/replace only clean live ids), leaking unbounded over a sync
     // session. Array/group paths are pre-filtered by _lwwDrop, but guard here too.
     const stamp=(id,after,before)=>{if(!after||!byId(id))return;const w=_wc()[id]||(_wc()[id]={});
-      for(const key of Object.keys(after)){if(key==='id')continue;if(this._chg(before,after,key))w[key]=C;}};
+      for(const key of _ok(after)){if(key==='id')continue;if(this._chg(before,after,key))w[key]=C;}};
     if(op.op==='upd')stamp(op.id,op.after,op.before);
     else if(op.op==='group'||op.op==='ungroup'){
       const bmap={};for(const b of (op.before||[]))bmap[b.id]=b;
@@ -1617,7 +1617,7 @@ const Store={
         const p=_stripStruct(clone(raw),1);   // ADR-0373
         // Only skip restoring if a *remote* peer wrote this key after our op (_lwwSkip).
         // Local-peer writes (same peerId) are also being undone and must not block.
-        if(!forward)for(const k of Object.keys(p)){if(_lwwSkip(op.id,k,op))delete p[k];}
+        if(!forward)for(const k of _ok(p)){if(_lwwSkip(op.id,k,op))delete p[k];}
         _oa(sh,p);
         if(!forward)_selR(op);
         break;}
@@ -1695,7 +1695,7 @@ const Store={
           // Same LWW guard as 'upd' (_lwwSkip) — these are batch absolute-patch ops but
           // _stampWrites records per-property write clocks for them identically, so undo
           // must not clobber a newer remote write here either (this was the actual gap).
-          if(!forward)for(const k of Object.keys(p)){if(k!=='id'&&_lwwSkip(raw.id,k,op))delete p[k];}
+          if(!forward)for(const k of _ok(p)){if(k!=='id'&&_lwwSkip(raw.id,k,op))delete p[k];}
           _oa(sh,p);
         }
         if(!forward)_selR(op);
@@ -8812,7 +8812,7 @@ function wire(){
   _g('btnTheme').onclick=()=>UI.toggleTheme();
   _g('btnHelp').onclick=()=>UI.toggleHelp();
   _g('helpClose').onclick=()=>UI.toggleHelp();
-  _g('help').addEventListener('click',e=>{
+  _on(_g('help'),'click',e=>{
     if(e.target.id==='help')UI.toggleHelp();
   });
   // swatches
@@ -8905,17 +8905,17 @@ function wire(){
   // devicePixelRatio change (window dragged to a different-density monitor) fires no resize
   _watchDPR();
   // some Android devices fire orientationchange separately from resize
-  if('orientation' in screen)screen.orientation.addEventListener('change',resize);
+  if('orientation' in screen)_on(screen.orientation,'change',resize);
   // theme / high-contrast switches change design-token values → drop getCSS cache
   if(window.matchMedia)for(const q of ['(prefers-color-scheme:dark)','(forced-colors:active)','(prefers-contrast:more)']){
-    try{matchMedia(q).addEventListener('change',clearCSSCache)}catch(_){}
+    try{_on(matchMedia(q),'change',clearCSSCache)}catch(_){}
   }
   // close ctx on click outside
   _on(document,'mousedown',e=>{
     if(!e.target.closest('.ctx-menu'))UI.closeCtxMenu();
   });
   // v1.6.95: Arrow-key navigation inside the context menu (ARIA APG menu pattern)
-  _g('ctx').addEventListener('keydown',e=>_ctxMenuKeyNav(_g('ctx'),e));
+  _on(_g('ctx'),'keydown',e=>_ctxMenuKeyNav(_g('ctx'),e));
   // Initial tool styling
   pickTool('select');
   // periodic saved-ago refresh
@@ -8924,7 +8924,7 @@ function wire(){
   // ---- Share / Net (v1.1) ----
   _g('btnShare').onclick=()=>UI.openShare();
   _g('shareClose').onclick=()=>UI.closeShare();
-  _g('share').addEventListener('click',e=>{
+  _on(_g('share'),'click',e=>{
     if(e.target.id==='share')UI.closeShare();
   });
   _g('shareCopyBtn').onclick=async()=>{
@@ -9002,7 +9002,7 @@ function applyStyleToSelection(patch){
   for(const id of _sl()){
     const sh=byId(id);if(!sh||sh.locked)continue;
     const b={id},a={id},eff={};
-    for(const k of Object.keys(patch)){
+    for(const k of _ok(patch)){
       const ek=sh.type==='sticky'&&k==='fill'?'color':k;   // ADR-0082: sticky recolors via color
       b[ek]=sh[ek]??null;a[ek]=patch[k]??null;eff[ek]=patch[k];   // ADR-0082: ??null keeps before JSON-safe (clone drops undefined → undo couldn't unset)
     }
@@ -9747,7 +9747,7 @@ if('serviceWorker' in navigator){
   // new version activates immediately, but the page gets no feedback. Listen for
   // controllerchange (fires when a new SW takes over) and prompt a reload.
   // Pattern: web.dev/service-worker-lifecycle / Zenn「SW更新時にリロードを促す」.
-  navigator.serviceWorker.addEventListener('controllerchange',_onSwUpdate);
+  _on(navigator.serviceWorker,'controllerchange',_onSwUpdate);
 }
 
 </script>
