@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.301';
+const V='1.7.302';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6433,9 +6433,23 @@ function drawioToShapes(txt){
   }
   return shapes;
 }
+// ADR-0250: real .drawio files are deflate-raw + base64 inside <diagram>.
+// Native DecompressionStream inflates them with no dependency; older engines
+// keep the re-save warning.
+async function _dioInflate(b64){
+  try{
+    const bin=Uint8Array.from(atob(String(b64).trim()),c=>c.charCodeAt(0));
+    const ds=new DecompressionStream('deflate-raw');
+    const txt=await new Response(new Blob([bin]).stream().pipeThrough(ds)).text();
+    return decodeURIComponent(txt);
+  }catch(_){return null}
+}
 function importDrawioText(txt,wp){
-  if(/<diagram[^>]*>[^<]+<\/diagram>/.test(String(txt||''))&&!txt.includes('<mxGraphModel')){
-    UI.toast(t('dioCompressed'),'warn');return false;   // deflate payload — can't inflate offline
+  const _dm=String(txt||'').match(/<diagram[^>]*>([^<]+)<\/diagram>/);
+  if(_dm&&!txt.includes('<mxGraphModel')){
+    if(typeof DecompressionStream==='undefined'){UI.toast(t('dioCompressed'),'warn');return false}
+    _dioInflate(_dm[1]).then(x=>{if(x)importDrawioText(x,wp);else UI.toast(t('dioCompressed'),'warn')});
+    return true;
   }
   let shapes=null;
   try{shapes=drawioToShapes(txt)}catch(_){shapes=null}

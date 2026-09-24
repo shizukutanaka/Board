@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.302] - 2026-09-24
+
+### Added
+- .drawio: 圧縮 (deflate-raw+base64) ファイルを DecompressionStream で
+  インポート — 既定保存の .drawio がそのまま開ける (ADR-0250)
+
 ## [1.7.301] - 2026-09-24
 
 ### Added
