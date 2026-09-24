@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.376] - 2026-09-24
+
+### Fixed
+- `.drawio` 展開を 8MB で打ち切る deflate bomb ガードを追加
+  (`getReader` 逐次デコード、ADR-0325)
+
 ## [1.7.375] - 2026-09-24
 
 ### Fixed
