@@ -6406,6 +6406,25 @@ try {
     console.log('  ✓ Net.init: all room-scoped transfer/presence state resets (ADR-0464..0467)');
   }
 
+  // ADR-0469: _fragIn assemblies are sender-tagged — two peers' streams never splice.
+  // (Before: a single global slot meant seq spaces collided and the joined JSON was
+  // garbage from two different messages.)
+  {
+    const A={k:'snap',seq:0,n:2,data:'{"k":"x",'}, B={k:'snap',seq:0,n:2,data:'{"k":"y",'};
+    const A2={k:'snap',seq:1,n:2,data:'"a":1}'}, B2={k:'snap',seq:1,n:2,data:'"b":2}'};
+    Net._snapIn=null;
+    assert.strictEqual(Net._fragIn(A,'_snapIn','peerA'),undefined,'A stream incomplete');
+    assert.strictEqual(Net._fragIn(B,'_snapIn','peerB'),undefined,'B stream restarts the slot');
+    // B's stream now owns the slot; A's next chunk restarts it back (fresh-stream-wins)
+    assert.strictEqual(Net._fragIn(A2,'_snapIn','peerA'),undefined,'A2 foreign-to-slot restarts');
+    assert.strictEqual(Net._fragIn(B2,'_snapIn','peerB'),undefined,'B2 also foreign after restart');
+    // a clean single-sender stream completes and joins
+    assert.strictEqual(Net._fragIn(A,'_snapIn','peerA'),undefined,'A restart');
+    const joined=Net._fragIn(A2,'_snapIn','peerA');
+    assert.strictEqual(joined,'{"k":"x","a":1}','same-sender stream joins intact');
+    console.log('  ✓ _fragIn sender-tagging: concurrent streams never splice (ADR-0469)');
+  }
+
   // v1.6.85: _reapPeers must NOT drop WebRTC peers by timeout — they don't ride the
   // BroadcastChannel heartbeat, so a live idle link would lose its avatar after 15s.
   // BroadcastChannel peers ARE still reaped on timeout (existing behaviour preserved).
