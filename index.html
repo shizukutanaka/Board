@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.528';
+const V='1.7.529';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2012,6 +2012,7 @@ let _penCachePx=0;
 const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPending.clear()}   // ADR-0445: wholesale swap also drops parked img refs
 const _rs=arr=>{state.shapes=arr;_iG();_pcC()}   // ADR-0493: wholesale board replace (5 sites)
 const _shV=()=>_sh().filter(s=>_sv(s));   // ADR-0494: visible-shape subset (6 sites)
+const _ulv=s=>!_lk(s)&&_sv(s);   // ADR-0496: unlocked+visible predicate (4 sites)
 const _psc=id=>{_penBboxCache.delete(id);Net._imgPending.delete(id);const e=_penCache.get(id);if(e){_penCache.delete(id);_penCachePx-=e.px||0;}}   // ADR-0427/0435
 // Effective raster resolution: zoom-adaptive (supersampled at low zoom is just
 // wasted pixels), clamped 0.25..2 so extreme zoom-outs still rasterize tiny.
@@ -4992,7 +4993,7 @@ function endSelect(wp,shift,alt){
         // be edited anyway, and a region-drag shouldn't pick them up
         // (Figma/draw.io parity). Single-click selection still reaches them
         // for the ctx Unlock path.
-        if(hit&&!_lk(s)&&_sv(s))_sad(s.id);
+        if(hit&&_ulv(s))_sad(s.id);
       }
       _aS();   // ADR-0037: announce the marquee result (incl. cleared)
     }
@@ -5583,7 +5584,7 @@ _on(window,_KD,e=>{
   else if(k===_TB){
     // Cycle selection (z-order) for keyboard/SR users; wraps, recentres, announces.
     _pd(e);
-    const ids=_sh().filter(s=>!_lk(s)&&_sv(s)).map(s=>s.id);   // ADR-0163: hidden shapes are unreachable by pointer — Tab parity
+    const ids=_sh().filter(_ulv).map(s=>s.id);   // ADR-0163: hidden shapes are unreachable by pointer — Tab parity
     if(!_ln(ids))return;
     const id=cycleSel(ids,_selIds()[0],e.shiftKey?-1:1);
     _ss([id]);
@@ -5913,7 +5914,7 @@ function hideSelection(){
 // edge-projects), committed as one add op.
 function connectSelection(){
   const sel=_sb()
-    .filter(s=>s&&!_lk(s)&&_sv(s)&&s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen');
+    .filter(s=>s&&_ulv(s)&&s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen');
   if(_ln(sel)!==2){_wT(_ST);return}
   const a=sel[0],b=sel[1],ab=_bb(a),bb=_bb(b);
   const s=Shape.make('arrow',{
@@ -5927,7 +5928,7 @@ function connectSelection(){
 // complement over unlocked, visible shapes (marquee/select-all rules).
 function selectInverse(){
   const inv=_sT();
-  for(const s of _sh())if(!_lk(s)&&_sv(s)&&!_hasS(s.id))inv.add(s.id);
+  for(const s of _sh())if(_ulv(s)&&!_hasS(s.id))inv.add(s.id);
   _ss(inv);
   _aS();_iv();
 }
