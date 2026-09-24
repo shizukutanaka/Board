@@ -9638,6 +9638,15 @@ try {
     // ADR-0245: hidden shapes export as visible="0" cells (previously dropped)
     {const xml2=boardToDrawio([{id:'x',type:'rect',x:1,y:2,w:3,h:4,visible:0,stroke:'#000',fill:null,size:2,opacity:1}]);
      assert.ok(xml2.includes('visible="0"'),'hidden shape exports with visible="0" (ADR-0245)');
+
+    // ADR-0336: groupId → drawio group cell round-trip
+    {const xml3=boardToDrawio([{id:'a',type:'rect',x:100,y:50,w:80,h:60,groupId:'g1',stroke:'#000',fill:null,size:2,opacity:1},
+                               {id:'b',type:'rect',x:200,y:150,w:80,h:60,groupId:'g1',stroke:'#000',fill:null,size:2,opacity:1}]);
+     assert.ok(xml3.includes('id="g_g1"'),'grouped shapes emit a group wrapper cell (ADR-0336)');
+     assert.ok(xml3.includes('style="group;"'),'wrapper carries style="group;" (ADR-0336)');
+     assert.strictEqual((xml3.match(/parent="g_g1"/g)||[]).length,2,'both members parent the group cell (ADR-0336)');
+     assert.ok(xml3.includes('x="0"'),'child geometry is group-relative — member a at group origin (ADR-0336)');
+     assert.ok(xml3.includes('x="100"'),'member b offset by +100 from group origin (ADR-0336)');}
      assert.ok(boardToDrawio([{id:'y',type:'rect',x:0,y:0,w:1,h:1,stroke:'#000',fill:null,size:2,opacity:1}]).indexOf('visible="0"')<0,'visible shape carries no visible attr');}
     console.log('  ✓ excalidraw import (element mapping, styles, tombstones, reject paths)');
   }

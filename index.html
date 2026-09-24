@@ -793,7 +793,7 @@ const _selN=()=>state.selection.size;   // ADR-0334
 const _fin=Number.isFinite;   // ADR-0334
 
 // ====================== CONSTANTS ======================
-const V='1.7.386';
+const V='1.7.387';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6445,9 +6445,11 @@ function drawioToShapes(txt){
   // ADR-0240: children of a group/container store parent-relative coords —
   // resolve each vertex's world offset by walking its parent chain.
   const _geo=new Map(),_par=new Map();
+  const _grpIds=new Set();                                                     // ADR-0336
   for(const c of cells){const id=c.getAttribute('id');if(!id)continue;
     const g=c.querySelector('mxGeometry');if(g)_geo.set(id,g);
-    const p=c.getAttribute('parent');if(p)_par.set(id,p);}
+    const p=c.getAttribute('parent');if(p)_par.set(id,p);
+    if(/(^|;)group;/.test(c.getAttribute('style')||''))_grpIds.add(id);}
   // ADR-0311: multiple <diagram> pages flatten side-by-side — each page's
   // cells offset by cumulative pageWidth+200 so pages don't overlap.
   const _doff=new Map();{let _dx=0;
@@ -6469,6 +6471,7 @@ function drawioToShapes(txt){
     const g=c.querySelector('mxGeometry');if(!g)continue;
     const sty=_dioSty(c.getAttribute('style'));
     const _hid=c.getAttribute('visible')==='0';                  // ADR-0245
+    if(_grpIds.has(c.getAttribute('id')))continue;               // ADR-0336: group wrapper cell — not a shape
     const _uo=c.parentElement&&c.parentElement.tagName==='UserObject'?c.parentElement:null;   // ADR-0328: drawio wraps linked cells in UserObject — label+link live on it
     const _o=off(c.getAttribute('id'));
     const x=_o.x+(_doff.get(c)||0)+(+g.getAttribute('x')||0),y=_o.y+(+g.getAttribute('y')||0),w=+g.getAttribute('width')||0,ht=+g.getAttribute('height')||0;
@@ -6490,6 +6493,7 @@ function drawioToShapes(txt){
     if(sty.fontFamily&&s.type!=='image'){const ff=sty.fontFamily.toLowerCase();
       if(/mono|courier|consol|cascadia|menlo|jetbrains/.test(ff))s.font='mono';
       else if(/serif|times|georgia|garamond|palatino|book/.test(ff))s.font='serif'}   // ADR-0253
+    {const _pid=c.getAttribute('parent');if(_pid&&_grpIds.has(_pid))s.groupId=_pid}   // ADR-0336
     if(sty.align==='center'||sty.align==='right')s.align=sty.align;
     if(/^(top|middle|bottom)$/.test(sty.verticalAlign))s.valign=sty.verticalAlign;   // ADR-0238
     if(+sty.rotation)s.rotate=Math.min(360,Math.max(-360,+sty.rotation));   // ADR-0261
@@ -6542,6 +6546,7 @@ function drawioToShapes(txt){
     _dioStyApply(s,sty,_hid);                                            // ADR-0258 (edges gain opacity)
     if(sty.labelBackgroundColor&&sty.labelBackgroundColor!=='none')s.fill=sty.labelBackgroundColor;   // ADR-0249
     {const _lk=c.getAttribute('link')||(_uo&&_uo.getAttribute('link'));if(_lk&&/^https?:\/\//.test(_lk))s.link=_lk.slice(0,500)}   // ADR-0313
+    {const _pid=c.getAttribute('parent');if(_pid&&_grpIds.has(_pid))s.groupId=_pid}   // ADR-0336
     shapes.push(s);
   }
   return shapes;
@@ -6613,6 +6618,12 @@ function boardToDrawio(shapes){
   const nl=v=>esc(v).replace(/\n/g,'&lt;br&gt;');
   const cells=[],idOf=new Map();
   let i=0;
+  // ADR-0336: Board groupId → drawio group cell (wrapper vertex + parent refs,
+  // child geometry stored relative to the group origin).
+  const _gbx={};for(const s of shapes)if(s.groupId&&s.w!=null){const g=_gbx[s.groupId]||(_gbx[s.groupId]={x:1/0,y:1/0,x2:-1/0,y2:-1/0});
+    g.x=Math.min(g.x,s.x);g.y=Math.min(g.y,s.y);g.x2=Math.max(g.x2,s.x+s.w);g.y2=Math.max(g.y2,s.y+(s.h||0))}
+  for(const gid in _gbx){const g=_gbx[gid];
+    cells.push(`<mxCell id="g_${gid}" value="" style="group;" vertex="1" parent="1"><mxGeometry x="${g.x}" y="${g.y}" width="${g.x2-g.x}" height="${g.y2-g.y}" as="geometry"/></mxCell>`)}
   for(const s of shapes){
     const t=s.type;
     if(t==='line'||t==='arrow'||t==='pen')continue;
@@ -6642,7 +6653,8 @@ function boardToDrawio(shapes){
     if(s.rotate)sty+='rotation='+Math.round(s.rotate)+';';              // ADR-0261
     if(t==='image'&&s.dataUrl)sty+='image='+s.dataUrl+';';                 // ADR-0259: last — ';base64,' inside
     const lbl=s.label!=null?s.label:s.text;
-    cells.push(`<mxCell id="${id}" value="${nl(lbl||'')}" style="${esc(sty)}" vertex="1" parent="1"${s.link?` link="${esc(s.link)}"`:''}${s.visible===0?' visible="0"':''}><mxGeometry x="${s.x||0}" y="${s.y||0}" width="${s.w||120}" height="${s.h||80}" as="geometry"/></mxCell>`);   // ADR-0245
+    const _gc=_gbx[s.groupId];                                          // ADR-0336
+    cells.push(`<mxCell id="${id}" value="${nl(lbl||'')}" style="${esc(sty)}" vertex="1" parent="${_gc?`g_${s.groupId}`:'1'}"${s.link?` link="${esc(s.link)}"`:''}${s.visible===0?' visible="0"':''}><mxGeometry x="${(s.x||0)-(_gc?_gc.x:0)}" y="${(s.y||0)-(_gc?_gc.y:0)}" width="${s.w||120}" height="${s.h||80}" as="geometry"/></mxCell>`);   // ADR-0245/0336
   }
   for(const s of shapes){
     const t=s.type;
