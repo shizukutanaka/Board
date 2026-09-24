@@ -3921,7 +3921,20 @@ try {
       Net._fragIn({data:'aa',n:2,seq:0},'_snapIn');
       Net._fragIn({data:'zz',n:2,seq:1},'_snapIn');   // finish cleanly so no stale state leaks
       assert.strictEqual(Net._snapIn,null,'_fragIn clears a finished assembly');
-      console.log('  ✓ ADR-0443/0444/0445/0448: undo-wire + del slim + purge + frag restart (18 asserts)');
+      // ADR-0449: img intake bounds — stalled keys evict oldest, not new keys;
+      // the received-blob store is capped (refs re-resolve on the next snapshot).
+      Net._imgChunks.clear();
+      for(let i=0;i<64;i++)Net._onRecv({k:'img',peer:'P1',key:'k'+i,seq:0,n:2,data:'a'},true);
+      Net._onRecv({k:'img',peer:'P1',key:'zz',seq:0,n:1,data:'z'},true);
+      assert.ok(!Net._imgChunks.has('k0')&&Net._imgChunks.has('k63'),'oldest stalled img key evicted');
+      assert.strictEqual(Net._imgIn.get('zz'),'z','completed img blob stored');
+      Net._imgIn.clear();
+      for(let i=0;i<258;i++)Net._imgIn.set('b'+i,'d');
+      assert.ok(Net._imgIn.size>=256,'pre-cap store setup');
+      Net._onRecv({k:'img',peer:'P1',key:'new1',seq:0,n:1,data:'q'},true);
+      assert.strictEqual(Net._imgIn.get('new1'),'q','imgIn accepts new blob under cap');
+      assert.ok(Net._imgIn.size<=258,'imgIn stays bounded');
+      console.log('  ✓ ADR-0443..0449: undo-wire + del slim + purge + frag restart + img bounds (24 asserts)');
     }
   }
 

@@ -851,7 +851,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.483';
+const V='1.7.484';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -7766,12 +7766,13 @@ const Net={
         let st=this._imgChunks.get(msg.key);
         // ADR-0374: bound in-flight reassemblies — a peer opening thousands of
         // keys mid-transfer and never finishing would grow the map unboundedly.
-        if(!st){if(this._imgChunks.size>=64)break;st={p:new Array(n),g:0,n};this._imgChunks.set(msg.key,st)}
+        if(!st){if(this._imgChunks.size>=64)this._imgChunks.delete(this._imgChunks.keys().next().value);st={p:new Array(n),g:0,n};this._imgChunks.set(msg.key,st)}   // ADR-0449: evict the oldest stalled key — refusing new keys lets 64 half-open sends block img transfer forever
         if(st.n===n&&!st.p[seq]){st.p[seq]=msg.data;st.g++}
         if(st.g<st.n)break;
         this._imgChunks.delete(msg.key);
         const data=st.p.join('');
         if(_ln(data)>12_000_000)break;
+        if(this._imgIn.size>=256&&!this._imgIn.has(msg.key))this._imgIn.delete(this._imgIn.keys().next().value);   // ADR-0449: bound received-blob store — every blob used to live forever
         this._imgIn.set(msg.key,data);
         for(const[id,k]of this._imgPending){
           if(k===msg.key){const sh=byId(id);if(sh){delete sh.img;sh.dataUrl=data}this._imgPending.delete(id)}
