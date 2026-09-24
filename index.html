@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.137';
+const V='1.7.138';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1023,6 +1023,8 @@ const state={
   draft:null,               // shape being created (not yet committed)
   editing:null,             // id of shape being text-edited
   marquee:null,             // {x1,y1,x2,y2} in world coords
+  dupIds:new Set(),         // ADR-0080: ids from the latest _placeCopies (repeat chain)
+  dupDelta:null,            // ADR-0080: cumulative vector to repeat on next ⌘D
   guides:null,              // object-snap alignment guide lines (during drag)
   readout:null,             // ADR-0064: live dims pill during transform gestures {x,y,label}
   bindPreview:null,         // ADR-0065: shape under a dragged connector endpoint
@@ -4076,6 +4078,7 @@ function nudgeSelection(dx,dy){
   const origSel=[...state.selection];
   Store._recordCommitted({op:'move',ids,dx,dy});
   if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  if(state.dupDelta&&ids.every(id=>state.dupIds.has(id))){state.dupDelta.x+=dx;state.dupDelta.y+=dy}     // ADR-0080
   invalidate();
 }
 // Shared by live drag (doMove) and commit (endSelect) so they agree exactly.
@@ -4113,6 +4116,7 @@ function endSelect(wp,shift){
       const origSel=[...state.selection];
       Store._recordCommitted({op:'move',ids:mids,dx,dy});
       if(origSel.length)state.history[state.histIdx].origSel=origSel;
+      if(state.dupDelta&&mids.every(id=>state.dupIds.has(id))){state.dupDelta.x+=dx;state.dupDelta.y+=dy}   // ADR-0080
     }
   }else if(ptr.dragKind==='marquee'&&state.marquee){
     const m=state.marquee;
@@ -4804,6 +4808,7 @@ function _placeCopies(srcShapes,dx,dy){
   }
   if(built.length)Store.commit({op:'addMany',shapes:built});
   state.selection=new Set(added);
+  state.dupIds=new Set(added);state.dupDelta={x:dx,y:dy};     // ADR-0080: reseed chain
   invalidate();
   return added;
 }
@@ -4812,7 +4817,9 @@ function doDuplicate(){
   const origSel=[...state.selection];
   const sel=[...withFrameChildren(state.selection)].map(byId).filter(s=>s&&!s.locked);
   if(!sel.length)return;
-  const added=_placeCopies(sel);   // independent of state.clipboard (see _placeCopies)
+  // ADR-0080: whole selection is the last duplicate chain → repeat its delta.
+  const smart=state.dupIds.size&&state.dupDelta&&sel.every(s=>state.dupIds.has(s.id));
+  const added=smart?_placeCopies(sel,state.dupDelta.x,state.dupDelta.y):_placeCopies(sel);   // independent of state.clipboard
   if(origSel.length)state.history[state.histIdx].origSel=origSel;
   UI.toast(t('pasted')+' '+added.length);
 }

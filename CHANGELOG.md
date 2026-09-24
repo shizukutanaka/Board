@@ -2,6 +2,15 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.138]
+
+### 追加
+- **スマート複製 (反復変換)** (ADR-0080)。複製したシェイプを移動して
+  もう一度 ⌘D で**同じベクトルが反復**され、等間隔の行/列/グリッドが
+  一発で並ぶ (Figma/draw.io parity)。`dupIds`/`dupDelta` で複製
+  チェーンを追跡し、move/nudge コミットでネット変位を累積。
+  既存 op で undo・同期は無料。
+
 ## [1.7.137]
 
 ### 追加
