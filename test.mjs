@@ -731,6 +731,7 @@ const checks = [
   ['excalidraw export emits fstyle/arrowheads/image-flip (ADR-0231)', html.includes("'cross'?'cross-hatch':'solid'")&&html.includes("startArrowhead:s.start?'arrow':null")&&html.includes("scale:s.flip?")&&html.includes("d.files[e.fileId]")],
   ['clipboard mxfile XML routes to drawio import (ADR-0232)', html.includes('<mxfile[')&&html.includes('importDrawioText(s,wp)')],
   ['arrowhead cycle includes none (ADR-0233)', html.includes("['arrow','dot','open','none']")],
+  ['excalidraw label → bLabel container text round-trip (ADR-0234)', html.includes('bLabel:1,')&&html.includes('e.bLabel){p.label=')],
   ['endpoint drag Shift constrains to 45 deg + label editor fontSize (ADR-0206)', html.includes("constrain the free end to 45")&&html.includes("${hit.fontSize||12}px")],
   ['i18n has excImported ja+en', html.includes("excImported:'Excalidraw を取り込みました'") && html.includes("excImported:'Excalidraw imported'")],
   // v1.7.102: ADR-0044 text paste → text shape
@@ -9490,7 +9491,7 @@ try {
     // ADR-0098: excScene round-trip — export then re-import keeps connectors real
     {const a1=excToShapes(scene)[3];                       // arrow
      a1.b='boxA';a1.way=[{x:15,y:30}];   // ADR-0222: real bind field is s.b (was bind2 — fixture mirrored the bug)
-     const sc=excScene([a1,{id:'boxA',type:'rect',x:0,y:0,w:40,h:40,stroke:'#000',fill:null,size:2,opacity:1},
+     const sc=excScene([a1,{id:'boxA',type:'rect',x:0,y:0,w:40,h:40,stroke:'#000',fill:null,size:2,opacity:1,label:'cap'},
        {id:'st1',type:'sticky',x:0,y:0,w:100,h:100,color:'#FEF08A',text:'hi',stroke:'#000',size:1,opacity:1,align:'center'},
        {id:'im1',type:'image',x:0,y:0,w:10,h:10,dataUrl:'data:image/png;base64,xx',stroke:'#000',size:1,opacity:1}]);
      const el=sc.elements.find(e=>e.type==='arrow');
@@ -9504,7 +9505,9 @@ try {
      assert.ok(rta.b&&rtb&&rta.b===rtb.id,'round-trip: endBinding restored to s.b pointing at the imported box (ADR-0222/0223)');
      const rts=rt.find(s=>s.type==='sticky');
      assert.ok(rts&&rts.text==='hi'&&rts.color==='#FEF08A','round-trip: container text folds back into a sticky (ADR-0225)');
-     assert.ok(!rt.some(s=>s.type==='text'&&s.text==='hi'),'round-trip: no orphan container text remains (ADR-0225)');}
+     assert.ok(!rt.some(s=>s.type==='text'&&s.text==='hi'),'round-trip: no orphan container text remains (ADR-0225)');
+     assert.ok(rtb.label==='cap','round-trip: labelled box restores s.label via bLabel container text (ADR-0234)');
+     assert.ok(!rt.some(s=>s.type==='text'&&s.text==='cap'),'round-trip: no orphan label text remains (ADR-0234)');}
     console.log('  ✓ excalidraw import (element mapping, styles, tombstones, reject paths)');
   }
 

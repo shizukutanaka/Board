@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.291]
+
+### 修正
+- **excalidraw ラベル往復** (ADR-0234)。ラベル付き
+  図形がコンテナtext (`bLabel` マーカー) として出力
+  され、取込時に `label` へ復元 — sticky fold と
+  判別できるため型も正しく往復する。
+
 ## [1.7.290]
 
 ### 追加

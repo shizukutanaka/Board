@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.290';
+const V='1.7.291';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6308,9 +6308,19 @@ function excScene(shapes){
   const _excTid=new Map();   // ADR-0225: sticky rect id → its container text id
   for(const s of shapes){
     switch(s.type){
-      case'rect':case'ellipse':case'diamond':
+      case'rect':case'ellipse':case'diamond':{
         els.push(E(s,{type:s.type==='rect'?'rectangle':s.type,x:s.x,y:s.y,width:s.w||0,height:s.h||0,   // ADR-0223: excalidraw type is 'rectangle' not 'rect'
-          roundness:s.r?{type:3}:null}));break;
+          roundness:s.r?{type:3}:null}));
+        // ADR-0234: label → container text marked bLabel (Board-only marker;
+        // excalidraw ignores unknown fields, ours reads it back to s.label)
+        if(s.label){const tid=uid();_excTid.set(s.id,tid);
+          els.push({id:tid,type:'text',x:s.x+4,y:s.y+4,
+          width:Math.abs(s.w||120)-8,height:Math.abs(s.h||80)-8,text:s.label,originalText:s.label,
+          fontSize:s.fontSize||16,textAlign:s.align||'center',verticalAlign:'middle',lineHeight:1.25,baseline:0,bLabel:1,
+          strokeColor:'#1e1e1e',backgroundColor:'transparent',fillStyle:'solid',strokeWidth:1,strokeStyle:'solid',
+          roughness:0,opacity:100,angle:(s.rotate||0)*Math.PI/180,seed:0,version:1,versionNonce:0,isDeleted:false,
+          containerId:s.id,boundElements:null,updated:0,link:null,locked:false,groupIds:[]});}
+        break;}
       case'frame':
         els.push(E(s,{type:'frame',x:s.x,y:s.y,width:s.w||0,height:s.h||0,name:s.label||'Frame'}));break;
       case'sticky':{
@@ -6738,6 +6748,7 @@ function excToShapes(txt){
   if(!d||d.type!=='excalidraw'||!Array.isArray(d.elements))return null;
   const shapes=[],_excBnd=[],idOf=new Map();   // ADR-0223: bindings resolve post-walk
   const _excTxt=new Map();                     // ADR-0225: container text → parent
+  const _excTxtE=new Map();                    // ADR-0234: sid → source element (bLabel marker)
   const st=e=>{
     const o={};
     const sc=typeof e.strokeColor==='string'&&e.strokeColor!=='transparent'?e.strokeColor:null;
@@ -6804,7 +6815,7 @@ function excToShapes(txt){
       // start/endBinding (element ids) can resolve after every vertex exists
       if(s.type==='line'||s.type==='arrow')_excBnd.push([s,e]);
       if(e.id)idOf.set(e.id,s.id);
-      if(s.type==='text'&&e.containerId)_excTxt.set(s.id,e.containerId);
+      if(s.type==='text'&&e.containerId){_excTxt.set(s.id,e.containerId);_excTxtE.set(s.id,e)}
       // ADR-0229: excalidraw groupIds → Board groupId (nested groups flatten
       // to the outermost — Board models one group level)
       if(Array.isArray(e.groupIds)&&e.groupIds.length)s.groupId=e.groupIds[0]}
@@ -6814,6 +6825,10 @@ function excToShapes(txt){
   for(const [sid,cid] of _excTxt){
     const s=shapes.find(x=>x.id===sid),p=shapes.find(x=>x.id===idOf.get(cid));
     if(!s||!p||p.type!=='rect'||p.label)continue;
+    const e=_excTxtE.get(sid);                               // ADR-0234
+    if(e&&e.bLabel){p.label=s.text.slice(0,240);
+      if(s.fontSize)p.fontSize=s.fontSize;
+      shapes.splice(shapes.indexOf(s),1);continue;}
     p.type='sticky';p.text=s.text;
     if(s.fontSize)p.fontSize=s.fontSize;
     if(p.fill!=null){p.color=p.fill;delete p.fill}
