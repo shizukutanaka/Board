@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.412] - 2026-09-24
+
+### Changed
+- `state.*` の全フィールドを `_sl()/_st()/_df()/…` live-read shorthand に
+  一括集約 (~1.7KB) — 再代入サイトは literal のまま保持 (ADR-0365)
+
 ## [1.7.411] - 2026-09-24
 
 ### Fixed

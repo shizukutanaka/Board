@@ -247,7 +247,7 @@ const checks = [
   // via validPatch, so an image dataUrl can never be an external URL (getImg→img.src).
   ['image dataUrl restricted to data:image/ at the validPatch intake gate (no external img.src)',
     html.includes("if('dataUrl' in p&&p.dataUrl!=null&&!(typeof p.dataUrl==='string'&&/^data:image\\//.test(p.dataUrl)))return false;")],
-  ['PDF export escapes docName', html.includes("_esc(state.docName||'board')")],
+  ['PDF export escapes docName', html.includes("_esc(_dn()||'board')")],
   ['getCSS is memoised', html.includes("_cssCache") && html.includes("function clearCSSCache")],
   ['resize handles use AAA brand-ink ring', html.includes("getCSS('--brand-ink')")],
   // spec-gap fixes
@@ -346,7 +346,7 @@ const checks = [
   ['drawShape applies line dash', html.includes("c.setLineDash((s.dash&&")],
   ['SVG export emits stroke-dasharray', html.includes("stroke-dasharray=") && html.includes("dashArr(s.dash,SZ)")],
   ['line-style buttons in style panel', html.includes('data-dash="1"') && html.includes('data-dash="2"')],
-  ['dash wired to selection', html.includes("applyStyleToSelection({dash:state.style.dash})")],
+  ['dash wired to selection', html.includes("applyStyleToSelection({dash:_st().dash})")],
   // v1.6.17: audit fixes
   ['shared validShape used at intake', html.includes("function validShape") && html.includes("filter(validShape)")],
   ['en context menu has ctxDelete + ctxBringFront', html.includes("ctxDelete:'Delete'") && html.includes("ctxBringFront:'Bring to front'")],
@@ -411,11 +411,11 @@ const checks = [
   ['snapshot ops get distinct, stable clock keys (id-based)', html.includes("seq:'snap:'+s.id")],
   ['snapshot merge accepts only add ops (non-add ops rejected at merge path)', html.includes("if(!op||op.op!=='add'||!op.shape)return 'skip'")&&html.includes("this._mergeSnapshotOp(op);")],
   // v1.7.116: ADR-0058 snapshot LWW merge
-  ['snapshot ops carry per-shape wclock', html.includes("wc:clone(state.wclock[s.id]||{})")],
+  ['snapshot ops carry per-shape wclock', html.includes("wc:clone(_wc()[s.id]||{})")],
   ['_mergeSnapshotOp: LWW per-property merge on known shapes', html.includes("function _mergeSnapshotOp(op)")===false&&html.includes("_mergeSnapshotOp(op){") && html.includes("clockNewer(rc,lc)") && html.includes("return 'merge';")],
   // v1.7.117: ADR-0059 style panel ← selection sync
   ['style panel syncs on selection signature change', html.includes("_syncStylePanelIfChanged();   // ADR-0059")&&html.includes("_selIds().sort().join(',')")],
-  ['_syncStylePanel adopts only uniform props (mixed skipped)', html.includes("sel.every(s=>(s[k]??null)===v)")&&html.includes("if(v!==undefined){state.style.fill")],
+  ['_syncStylePanel adopts only uniform props (mixed skipped)', html.includes("sel.every(s=>(s[k]??null)===v)")&&html.includes("if(v!==undefined){_st().fill")],
   // v1.7.118: ADR-0060 Alt+drag duplicate
   ['alt+drag duplicates picked shape then drags copies', html.includes("if(e.altKey&&!hit.locked){")&&html.includes("_placeCopies(srcShapes,0,0)")&&html.includes("dupSet=alreadySel")],
   // v1.7.118: ADR-0061 diamond shape
@@ -499,10 +499,10 @@ const checks = [
   ['directional marquee (right-to-left = intersect)', html.includes('const cross=m.x2<m.x1')&&html.includes('G.marqueeHit(s,r)')],
   ['marker tool — pen variant with hl flag + flat pressure', html.includes("k:'marker'")&&html.includes('d.hl=1;d.size=8;d.opacity=0.4')&&html.includes("data-tool=\"marker\"")],
   ['click-click line/arrow — second click commits (lineClick mode)', html.includes('ptr.lineClick=true;break')&&html.includes('ptr.lineClick){ptr.lineClick=false;endLineLike()')],
-  ['marquee skips locked shapes (Figma/draw.io parity)', html.includes('if(hit&&!s.locked&&s.visible!==0)state.selection.add(s.id)')],
+  ['marquee skips locked shapes (Figma/draw.io parity)', html.includes('if(hit&&!s.locked&&s.visible!==0)_sl().add(s.id)')],
   ['Alt during move suppresses all snapping (draw.io parity)', html.includes('moveDelta(wp,shift,alt)')&&html.includes('!alt&&!state.snap')],
-  ['shift-click on selected shape removes it (toggle-off)', html.includes('alreadySel&&e.shiftKey')&&html.includes('state.selection.delete(id)')],
-  ['shift-marquee adds to selection (Figma parity)', html.includes('if(!shift)state.selection.clear()')],
+  ['shift-click on selected shape removes it (toggle-off)', html.includes('alreadySel&&e.shiftKey')&&html.includes('_sl().delete(id)')],
+  ['shift-marquee adds to selection (Figma parity)', html.includes('if(!shift)_sl().clear()')],
   ['ctx + ⇧R rotate-90 (draw.io parity)', html.includes("['ctxRotate90','⇧R',()=>doRotate(90)]")&&html.includes("k==='r'&&e.shiftKey")&&html.includes('ctxRotate90:')],
   ['curve-bend drag — s.cbend offsets the control point', html.includes("dragKind='cbend'")&&html.includes('_curveCtrl(e,s.cbend)')&&html.includes('sh.cbend=snapV')],
   ['flip mirrors elbow s.bend on the matching axis', html.includes('_elbowTrunk(s):null')&&html.includes("(axis==='h')===!!trVert")],
@@ -540,7 +540,7 @@ const checks = [
   ['lasso commit: centre-in-poly + marquee parity', html.includes('_ptInPoly(b.x+b.w/2,b.y+b.h/2,pts)')&&html.includes('state.lasso=null;invalidateOverlay()')],
   ['RTC token: modern b64url + legacy fallback', html.includes('_b64uEnc(new TextEncoder().encode(_JS({type:sdp.type')&&html.includes('_JP(decodeURIComponent(escape(atob(s))))')],
   ['eyedropper tool: i key + pick + _styleOf shared', html.includes("i:'eyedropper'")&&html.includes("case 'eyedropper'")&&html.includes('state.styleClipboard=_styleOf(sh)')&&html.includes('eyedropDone')&&html.includes('eyedropper')],
-  ['dblclick group descent', html.includes('grp.every(id=>state.selection.has(id))')&&html.includes('state.selection=new Set([hit.id])')],
+  ['dblclick group descent', html.includes('grp.every(id=>_sl().has(id))')&&html.includes('state.selection=new Set([hit.id])')],
     ['line↔arrow conversion via style op (ctx)', html.includes('toggleLineArrow')&&html.includes('ctxToArrow')&&html.includes("s.type==='line'?'arrow':'line'")],
   ['sticky↔text conversion via style op (ctx)', html.includes('toggleStickyText')&&html.includes('ctxToSticky')&&html.includes("s.type==='sticky'?'text':'sticky'")],
   ['frame select-contents (ctx)', html.includes('selectFrameContents')&&html.includes('ctxSelContents')&&html.includes('withFrameChildren(')],
@@ -588,11 +588,11 @@ const checks = [
   // harness (FileReader has no fake), so its trigger wiring is presence-checked; the backup
   // mechanism itself (Persist.saveBackup/checkBackup/restoreBackup) is behaviourally tested.
   ['ADR-0004: doClearAll backs up pre-clear board before the destructive commit',
-    html.includes("Persist.saveBackup(clone(_sh()),{..._vp()},state.docName);   // ADR-0004\n  Store.commit({op:'clear'")],
+    html.includes("Persist.saveBackup(clone(_sh()),{..._vp()},_dn());   // ADR-0004\n  Store.commit({op:'clear'")],
   ['ADR-0004: importBoard backs up pre-import board before the whole-board swap',
-    html.includes("if(before.length)Persist.saveBackup(before,{..._vp()},state.docName);   // ADR-0004\n      state.shapes=shapes.map(clone);")],
+    html.includes("if(before.length)Persist.saveBackup(before,{..._vp()},_dn());   // ADR-0004\n      state.shapes=shapes.map(clone);")],
   ['ADR-0004: importFromHash backs up pre-import board before the whole-board swap',
-    html.includes("if(before.length)Persist.saveBackup(before,{..._vp()},state.docName);\n      state.shapes=valid.map(clone);")],
+    html.includes("if(before.length)Persist.saveBackup(before,{..._vp()},_dn());\n      state.shapes=valid.map(clone);")],
   ['ADR-0004: main() offers a one-time restore prompt when a backup exists at boot',
     html.includes("if(await Persist.checkBackup()){") && html.includes("if(confirm(t('backupAvailable')))await Persist.restoreBackup();") && html.includes("else await Persist.discardBackup();")],
   ['drag-drop accepts .board files', html.includes(".endsWith('.board')")],
@@ -609,8 +609,8 @@ const checks = [
   ['opacity slider uses pointerdown/change for undo', html.includes("_sfbCapture('opacity')") && html.includes("_sfbFlush('opacity'")],
   ['size slider captures on focus (keyboard undo)', html.includes("focus',()=>_sfbCapture('size')")],
   ['opacity slider captures on focus (keyboard undo)', html.includes("focus',()=>_sfbCapture('opacity')")],
-  ['size slider re-arms after flush for sequential keyboard presses', html.includes("_sfbFlush('size',state.style.size);_sfbCapture('size')")],
-  ['opacity slider re-arms after flush for sequential keyboard presses', html.includes("_sfbFlush('opacity',state.style.opacity);_sfbCapture('opacity')")],
+  ['size slider re-arms after flush for sequential keyboard presses', html.includes("_sfbFlush('size',_st().size);_sfbCapture('size')")],
+  ['opacity slider re-arms after flush for sequential keyboard presses', html.includes("_sfbFlush('opacity',_st().opacity);_sfbCapture('opacity')")],
   // v1.6.29: dead op:'z' code removed; i18n for image-too-large
   ['dead op-z case removed from _apply', !html.includes('// Array reorder')],
   ['imgBig i18n key present in ja and en', html.includes("imgBig:'画像が大きすぎます") && html.includes("imgBig:'Image too large")],
@@ -672,7 +672,7 @@ const checks = [
   ['click/group select announces', html.includes('_announceSel();   // ADR-0037: click/group select was SR-silent')],
   ['marquee result announces', html.includes('_announceSel();   // ADR-0037: announce the marquee result')],
   ['cmd+A announces selection', html.includes("if(_selN())_announceSel();invalidate()}")],
-  ['Escape announces deselect when selection existed', html.includes("if(_selN())UI.toast(t('selNone'));state.selection.clear()")],
+  ['Escape announces deselect when selection existed', html.includes("if(_selN())UI.toast(t('selNone'));_sl().clear()")],
   ['i18n has selCount/selNone ja+en', html.includes("selCount:'個を選択'") && html.includes("selCount:' selected'")],
   // v1.7.96: ADR-0038 share-link reject paths all toast + clear hash
   ['importFromHash hoists clearHash helper', html.includes("const clearHash=()=>{try{history.replaceState(null,'',location.pathname)}catch(_){}};")],
@@ -731,11 +731,11 @@ const checks = [
   ['svg conn path/label emitters deduped (ADR-0270)', html.includes('const _sp=(d,j)')&&html.includes('_cL();')],
   ['drawio multi-page side-by-side import (ADR-0311)', html.includes("for(const dg of _qsa(doc,'diagram'))")],
   ['link badge 🔗 on linked shapes (ADR-0310)', html.includes("c.fillText('🔗',s.x+_abs(s.w)-3,s.y+3)")],
-  ['_selN/_fin shorthands (ADR-0334)', html.includes("const _selN=()=>state.selection.size")&&html.includes("const _fin=Number.isFinite")],
+  ['_selN/_fin shorthands (ADR-0334)', html.includes("const _selN=()=>_sl().size")&&html.includes("const _fin=Number.isFinite")],
   ['conn link badge canvas+SVG (ADR-0333)', html.includes("if(s.link&&_conn(s.type)){const lp=_connLabelXY(s)")&&html.includes('if(s.link)els.push(`<a href="${esc(s.link)}"')&&html.split('`<a href="${esc(s.link)}"').length===4],
   ['drawio rounded emit on diamond/image (ADR-0332)', html.includes("if(s.r>0&&(t==='diamond'||t==='image'))sty+='rounded=1;'")],
   ['drawio fillStyle hachure round-trip (ADR-0331)', html.includes("sty.fillStyle||'')")&&html.includes("fillStyle='+(s.fstyle==='cross'?'cross-hatch':'hachure')")],
-  ['_selIds() selection-ids shorthand (ADR-0330)', html.includes("const _selIds=()=>[...state.selection]")],
+  ['_selIds() selection-ids shorthand (ADR-0330)', html.includes("const _selIds=()=>[..._sl()]")],
   ['_ce() createElement shorthand (ADR-0329)', html.includes("const _ce=t=>document.createElement(t)")],
   ['UserObject label/link fallback (ADR-0328)', html.includes("tagName==='UserObject'?c.parentElement:null")&&html.includes("_ga(_uo,'label')")],
   ['s.link scheme gate in validPatch (ADR-0327)', html.includes("'link' in p&&p.link!=null")&&html.includes('ADR-0327')],
@@ -770,7 +770,7 @@ const checks = [
   ['exc binding.focus → aF/bF (ADR-0296)', html.includes('sb.focus+1)/2')],
   ['_c01() clamp01 helper (ADR-0295)', html.includes('const _c01=v=>_min(1,_max(0,v))')],
   ['bar (T字) head style (ADR-0294)', html.includes("style==='bar'")&&html.includes("endArrow=dash")],
-  ['startHead style persistence (ADR-0293)', html.includes("state.style.startHead=next")&&html.includes("base.startHead=state.style.startHead")],
+  ['startHead style persistence (ADR-0293)', html.includes("_st().startHead=next")&&html.includes("base.startHead=_st().startHead")],
   ['_p()/_ac() css token shorthands (ADR-0292)', html.includes("const _p=()=>getCSS('--paper')")],
   ['ctx start-head cycle (ADR-0291)', html.includes('cycleStartHead')&&html.includes('ctxStartHead')],
   ['exc transparent stroke/bg import (ADR-0290 追補)', html.includes("o.stroke='transparent'")&&html.includes("o.fill='none'")],
@@ -890,12 +890,12 @@ const checks = [
   ['eraser hover shows a red dashed target', html.includes("state._ehov=id;invalidateOverlay()")&&html.includes("c.strokeStyle='#EF4444'")],
   ['dash applies to frame+image borders in canvas+SVG', html.includes("s.type==='frame'||s.type==='image'")&&html.includes('fill="none" stroke="${_esc(s.stroke)}" stroke-width="${_num(s.size)}"${dA}')],
   ['image caption honors valign top via cycleVAlign', html.includes("sy=s.valign==='top'?s.y:s.y+s.h-sh_")&&html.includes("sy=s.valign==='top'?Y:Y+H-sh_")&&html.includes("s.type==='image'&&s.label")],
-  ['new text/sticky inherit last-used fontSize', html.includes("fontSize:state.style.fontSize||16")&&html.includes("state.style.fontSize=nxt")],
-  ['last-used head/font persist via Shape.make', html.includes("state.style.head=next")&&html.includes("state.style.head!=null")&&html.includes("state.style.font!=null")],
+  ['new text/sticky inherit last-used fontSize', html.includes("fontSize:_st().fontSize||16")&&html.includes("_st().fontSize=nxt")],
+  ['last-used head/font persist via Shape.make', html.includes("_st().head=next")&&html.includes("_st().head!=null")&&html.includes("_st().font!=null")],
   ['label editor follows the viewport (ADR-0182)', html.includes('function _lblFollow()')&&html.includes('_lblAnchor(hit)')&&html.includes('_lblTa={inp,hit}')],
-  ['route style persists via state.style.elbow/curve into Shape.make', html.includes("state.style.elbow=s.elbow;state.style.curve=0")&&html.includes('if(state.style.elbow)base.elbow=state.style.elbow;')],
-  ['corner/hatch/align persist via state.style into Shape.make', html.includes("state.style.r!=null")&&html.includes("state.style.align=nxt")&&html.includes("state.style.fstyle=nxt||null")],
-  ['eyedropper absorbs persisted look-props + start persists', html.includes("'elbow','curve','hop','r','fstyle','align','valign','fontSize','lineH','cbend'")&&html.includes("state.style.start=s.start")],
+  ['route style persists via _st().elbow/curve into Shape.make', html.includes("_st().elbow=s.elbow;_st().curve=0")&&html.includes('if(_st().elbow)base.elbow=_st().elbow;')],
+  ['corner/hatch/align persist via _st() into Shape.make', html.includes("_st().r!=null")&&html.includes("_st().align=nxt")&&html.includes("_st().fstyle=nxt||null")],
+  ['eyedropper absorbs persisted look-props + start persists', html.includes("'elbow','curve','hop','r','fstyle','align','valign','fontSize','lineH','cbend'")&&html.includes("_st().start=s.start")],
   ['frame label honors s.font family', html.includes('${_svgFont(s.bold?s:{...s,bold:true},s.fontSize||12)}')&&html.includes('${_fontFam(hit)};color')],
   ['sticky body valign via s.valign (ctxVAlign gate + canvas/SVG)', html.includes("seqS=[null,'middle','bottom']")&&html.includes("const sty=s.valign==='middle'")&&html.includes("const sy2v=s.valign==='middle'")],
   ['frame font via cycleFont gate + make() inheritance', html.includes("s.type!=='frame'&&!s.label")&&html.includes("type==='frame'||s.label")&&html.includes("type==='sticky'||type==='frame'")],
@@ -904,7 +904,7 @@ const checks = [
   ['text s.fill paints bg plate (canvas+SVG)', html.includes("if(s.fill){const mw=_tm.w;")&&html.includes('height="${svgLines.length*fs*(s.lineH||1.25)+6}"')],
   ['sticky text colour via s.stroke (canvas+SVG)', html.includes("c.fillStyle=s.stroke||'#1E293B'")&&html.includes('fill="${_esc(s.stroke||')],
   ['conn label pill honours s.fill (canvas+SVG)', html.includes("s.fill||_p()")&&html.includes("_esc(s.fill||paper")],
-  ['drop shadow — canvas props + SVG filter + toggle + persistence', html.includes("shadowColor='rgba(15,23,42,.22)'")&&html.includes("id=\"bsh\"")&&html.includes("function toggleShadow()")&&html.includes("state.style.shadow=s.shadow||null")],
+  ['drop shadow — canvas props + SVG filter + toggle + persistence', html.includes("shadowColor='rgba(15,23,42,.22)'")&&html.includes("id=\"bsh\"")&&html.includes("function toggleShadow()")&&html.includes("_st().shadow=s.shadow||null")],
   ['image caption band honours s.fill (canvas+SVG)', html.includes("c.fillStyle=s.fill&&s.fill!=='none'?s.fill:_p()||'#fff';c.globalAlpha=0.85")&&html.includes("_esc(s.fill||paper||'#FFFFFF')")],
   ['Tab in label editor chains to next label-able shape', html.includes("if(ev.key==='Tab'){_pd(ev);")&&html.includes("_openLabelEditorFor(nx)")],
   ['frame label honours s.align + cycleTextAlign gate', html.includes("const alF=s.align||'left'")&&html.includes("_selAny(s=>(s.type==='text'||s.type==='sticky'||s.type==='frame'||s.label)&&!s.locked)&&['ctxTextAlign'")],
@@ -1005,7 +1005,7 @@ const checks = [
     && html.includes("catch(_){const r=await c.match(e.request);if(r)return r;return new Response('offline',{status:503})}")],
   ['peer flood: MAX_PEERS cap + peer-id type/length intake guard',
     html.includes('const MAX_PEERS=32')
-    && html.includes('if(state.peers.size>=MAX_PEERS)return;')
+    && html.includes('if(_pr().size>=MAX_PEERS)return;')
     && html.includes("typeof msg.peer!=='string'||msg.peer.length>MAX_PEER_ID_LEN")],
   ['snapshot amplification: _sendSnapshot throttled',
     html.includes('_lastSnapAt:0') && html.includes('if(now-this._lastSnapAt<1000)return;')],
@@ -1028,7 +1028,7 @@ const checks = [
     html.includes("canvas.setAttribute('aria-label',(T.k[tool]||tool)+' — '+t('canvasHint'))")],
   // v1.7.64 (FT-17)
   ['empty-board hint: draws only when blank, reads emptyHint i18n key',
-    html.includes('function drawEmptyHint(') && html.includes("if(_sh().length===0&&!state.draft)drawEmptyHint(c,W,H);")
+    html.includes('function drawEmptyHint(') && html.includes("if(_sh().length===0&&!_df())drawEmptyHint(c,W,H);")
     && html.includes("c.fillText(t('emptyHint'),")],
   // v1.7.65 (ADR-0012)
   ['theme toggle: applyTheme/toggleTheme/refreshThemeBtn wired, boot restores persisted mode',
@@ -1040,7 +1040,7 @@ const checks = [
   // v1.7.66 (ADR-0013, FT-19)
   ['keyboard label/text edit: editSelectedShapeKbd + shared _openLabelEditorFor wired',
     html.includes('function editSelectedShapeKbd(){') && html.includes('function _openLabelEditorFor(hit){')
-    && html.includes("if(state.tool==='select'&&editSelectedShapeKbd()){_pd(e);}")],
+    && html.includes("if(_tl()==='select'&&editSelectedShapeKbd()){_pd(e);}")],
   ['help grid documents Enter\'s dual meaning (create / edit label)', html.includes("k.create+' / '+t('editLabel')")],
   // v1.7.67 (ADR-0014, FT-18b)
   ['language toggle: LANG/T are reassignable lets, boot restore reads board.lang before deriving T',
@@ -1079,8 +1079,8 @@ const checks = [
   ['context menu deduplicates consecutive separators', html.includes(".filter((it,i,a)=>!(it==='sep'&&(i===0||i===a.length-1||a[i-1]==='sep')))")],
   ['doDuplicate does not clobber clipboard (uses _placeCopies, not state.clipboard=)', html.includes("_placeCopies(sel,state.dupDelta.x,state.dupDelta.y):_placeCopies(sel);   // independent of state.clipboard") && html.includes("function _placeCopies(srcShapes")],
   // v1.6.71: import sites clear stale selection + wclock (mirror replace op's _apply)
-  ['importBoard clears selection+wclock on whole-board swap', html.includes("state.shapes=shapes.map(clone);_invalidateGrid();   // ADR-0009\n      // Match the replace op's _apply") && html.includes("state.selection.clear();state.wclock={};\n      if(typeof d.docName")],
-  ['importFromHash clears selection+wclock on whole-board swap', html.includes("state.shapes=valid.map(clone);_invalidateGrid();state.docName=") && /state\.shapes=valid\.map\(clone\)[\s\S]{0,900}state\.selection\.clear\(\);state\.wclock=\{\};/.test(html)],
+  ['importBoard clears selection+wclock on whole-board swap', html.includes("state.shapes=shapes.map(clone);_invalidateGrid();   // ADR-0009\n      // Match the replace op's _apply") && html.includes("_sl().clear();state.wclock={};\n      if(typeof d.docName")],
+  ['importFromHash clears selection+wclock on whole-board swap', html.includes("state.shapes=valid.map(clone);_invalidateGrid();state.docName=") && /state\.shapes=valid\.map\(clone\)[\s\S]{0,900}_sl\(\)\.clear\(\);state\.wclock=\{\};/.test(html)],
   // v1.6.71: presentation-mode guard precedes editing shortcuts (no undo mid-slideshow)
   ['presentation guard runs before undo/redo/select-all shortcuts', /if\(Presentation\.isActive\(\)\)\{[\s\S]{0,260}return;\n  \}[\s\S]{0,700}if\(meta&&k==='z'&&!e\.shiftKey\)/.test(html)],
   // v1.6.71: export canvas clamped to browser limits
@@ -1096,8 +1096,8 @@ const checks = [
   ['_placeCopies pre-generates idMap for two-pass connector remapping', html.includes("const idMap=new Map();") && html.includes("for(const orig of srcShapes)idMap.set(orig.id,uid());")],
   ['_placeCopies remaps sh.a and sh.b to new ids', html.includes("if(sh.a&&idMap.has(sh.a))sh.a=idMap.get(sh.a);") && html.includes("if(sh.b&&idMap.has(sh.b))sh.b=idMap.get(sh.b);")],
   // v1.6.75: keyboard nudge parity with pointer-drag (frame children follow + skip locked)
-  ['withFrameChildren helper shared by drag + nudge', html.includes("function withFrameChildren(ids)") && html.includes("const dragIds=withFrameChildren(state.selection);")],
-  ['nudgeSelection mirrors drag: frame children + skip locked', html.includes("function nudgeSelection(dx,dy)") && html.includes("[...withFrameChildren(state.selection)].filter(id=>!byId(id)?.locked)")],
+  ['withFrameChildren helper shared by drag + nudge', html.includes("function withFrameChildren(ids)") && html.includes("const dragIds=withFrameChildren(_sl());")],
+  ['nudgeSelection mirrors drag: frame children + skip locked', html.includes("function nudgeSelection(dx,dy)") && html.includes("[...withFrameChildren(_sl())].filter(id=>!byId(id)?.locked)")],
   ['arrow-key handler delegates to nudgeSelection', html.includes("nudgeSelection(dx,dy);")],
   // v1.6.76: render rotation gated to box shapes (canvas/SVG parity, no NaN centre)
   ['shapeRot helper gates rotation to box shapes', html.includes("function shapeRot(s){return s.rotate&&s.w!=null?s.rotate:0;}")],
@@ -1111,7 +1111,7 @@ const checks = [
   ['coalescedSamples helper present with fallback', html.includes("function coalescedSamples(e)") && html.includes("return cs&&cs.length?cs:[e];")],
   ['pen pointermove iterates coalesced samples', html.includes("case 'pen':{") && html.includes("for(const ce of coalescedSamples(e))contPen(G.s2w({x:ce.offsetX,y:ce.offsetY}),ce);")],
   // v1.6.79: Persist.flushIfHidden — visibilitychange→hidden as mobile-reliable durability signal
-  ['Persist.flushIfHidden gates on vis===hidden && state.dirty', html.includes("flushIfHidden(vis){") && html.includes("if(vis==='hidden'&&state.dirty){")],
+  ['Persist.flushIfHidden gates on vis===hidden && _dt()', html.includes("flushIfHidden(vis){") && html.includes("if(vis==='hidden'&&_dt()){")],
   ['Persist.flushIfHidden cancels pending debounce + calls save', html.includes("clearTimeout(this._saveT);\n      this.save();")],
   ['visibilitychange listener wires document.visibilityState to flushIfHidden', html.includes("_on(document,'visibilitychange',()=>Persist.flushIfHidden(document.visibilityState));")],
   // v1.6.80: multi-touch pinch cancels the single-pointer gesture (no stray edits)
@@ -1128,13 +1128,13 @@ const checks = [
   // v1.6.83: coordinate rounding at serialization boundaries (Zenn float-precision bloat)
   ['_round helper sheds float noise', html.includes("function _round(n,dp){return typeof n==='number'&&_fin(n)?_rnd(n*10**dp)/10**dp:n;}")],
   ['roundShapesForExport rounds coord/dim fields', html.includes("function roundShapesForExport(shapes,dp=2)") && html.includes("['x','y','w','h','x1','y1','x2','y2','rotate']")],
-  ['share export rounds shapes', html.includes("shapes:roundShapesForExport(_sh()),name:state.docName")],
+  ['share export rounds shapes', html.includes("shapes:roundShapesForExport(_sh()),name:_dn()")],
   ['.board export rounds shapes', html.includes("shapes:roundShapesForExport(shapes)})],{type:'application/json'})")],
   // v1.6.84: Net.init clears prior presence timer on re-init (no leaked heartbeat)
   ['Net.init clears prior presence timer', html.includes("clearInterval(this._presenceTimer);   // re-init (room switch) must not leak the old heartbeat")],
   // v1.6.85: WebRTC peers lifecycle-managed (not heartbeat-reaped after 15s)
   ['_reapPeers exempts rtc: peers from timeout reaping', html.includes("if(id.startsWith('rtc:'))continue;   // WebRTC peers are lifecycle-managed")],
-  ['dc.onclose removes the rtc peer', html.includes("if(this._rtcPeerId){state.peers.delete(this._rtcPeerId);this._rtcPeerId=null;invalidateOverlay();}")],
+  ['dc.onclose removes the rtc peer', html.includes("if(this._rtcPeerId){_pr().delete(this._rtcPeerId);this._rtcPeerId=null;invalidateOverlay();}")],
   ['dc.onopen stores _rtcPeerId for lifecycle management', html.includes("this._rtcPeerId='rtc:'+uid().slice(0,4);")],
   // v1.7.76 / ADR-0017 (FT-20): ICE failure without an open channel showed nothing —
   // connectionState failed toasts once and suppresses the trailing dc.onclose toast
@@ -1156,7 +1156,7 @@ const checks = [
   ['ellipse case renders label', /case 'ellipse':[\s\S]{0,500}_drawBoxLabel\(s,c\);break;/.test(html)],
   // v1.6.89: colour picker coalesces (one undo/sync op per pick, like the sliders)
   ['colour picker captures on focus/pointerdown', html.includes("_on(cp,'focus',()=>_sfbCapture(k));") && html.includes("_on(cp,'pointerdown',()=>_sfbCapture(k));")],
-  ['colour picker input is live-only (no per-input commit)', html.includes("for(const id of state.selection){const s=byId(id);if(s&&!s.locked)s[k]=cp.value}") && !html.includes("applyStyleToSelection({[k]:cp.value})")],
+  ['colour picker input is live-only (no per-input commit)', html.includes("for(const id of _sl()){const s=byId(id);if(s&&!s.locked)s[k]=cp.value}") && !html.includes("applyStyleToSelection({[k]:cp.value})")],
   ['colour picker flushes one op on change', html.includes("_on(cp,'change',()=>{_sfbFlush(k,cp.value);_sfbCapture(k);});")],
   // v1.6.76: ⌘⇧L keyboard shortcut for lock/unlock — README claims "全機能キーボード操作可能"
   // but doLock was right-click-only. Fix adds Ctrl+Shift+L → doLock().
@@ -1164,7 +1164,7 @@ const checks = [
   ['lockToggle i18n key present in ja and en', (html.match(/lockToggle:/g)||[]).length>=2],
   ['lockToggle in help grid', html.includes("t('lockToggle')")],
   // v1.7.06: doCopy excludes locked shapes (parity with doDelete/doMove/doAlign)
-  ['doCopy expands frame children and excludes locked shapes', html.includes("const sel=[...withFrameChildren(state.selection)].map(byId).filter(s=>s&&!s.locked);\n  if(!sel.length)return;\n  state.clipboard")],
+  ['doCopy expands frame children and excludes locked shapes', html.includes("const sel=[...withFrameChildren(_sl())].map(byId).filter(s=>s&&!s.locked);\n  if(!sel.length)return;\n  state.clipboard")],
   // v1.6.77: paste/duplicate is one atomic undo — _placeCopies commits a single addMany op
   ['_placeCopies commits one addMany (not per-shape add)', html.includes("if(built.length)Store.commit({op:'addMany',shapes:built})")],
   ['addMany op has an _apply case', /case 'addMany':/.test(html)],
@@ -1231,7 +1231,7 @@ const checks = [
   // v1.7.26: _apply replace backward restores origSel; importBoard/importFromHash attach it
   ['_apply replace backward restores origSel; import callers attach origSel + afterWc to op',
     html.includes("if(!forward)_selR(op);") &&
-    html.includes("Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(state.wclock),origSel});")],
+    html.includes("Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(_wc()),origSel});")],
   // v1.7.28: validRemotePayload for upd must block locked key (parity with style/resize/align)
   ['remote upd op cannot set locked (noLock guard extended to upd)',
     html.includes("case 'upd':{const noLock=p=>!('locked' in p);\n      if(typeof op.id!=='string'||!validPatch(op.after)||!noLock(op.after)")],
@@ -1350,7 +1350,7 @@ const checks = [
   // v1.7.47: del op.wc refreshed on every forward apply (not lazy)
   ['_apply del: op.wc refreshed on every forward apply (if(!op.wc) guard removed)',
     !html.includes("if(!op.wc){op.wc={};for")&&
-    html.includes("op.wc={};for(const sh of op.shapes)if(state.wclock[sh.id])op.wc[sh.id]=clone(state.wclock[sh.id]);")],
+    html.includes("op.wc={};for(const sh of op.shapes)if(_wc()[sh.id])op.wc[sh.id]=clone(_wc()[sh.id]);")],
   // v1.7.48: 'clear' removed from REMOTE_OPS (remote peer cannot wipe board)
   ["REMOTE_OPS excludes 'clear' (board-wipe is local-only like 'replace')",
     html.includes("REMOTE_OPS:new Set(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize'])")],
@@ -5175,7 +5175,7 @@ try {
       }
       // (g) keydown wiring: the select-tool gate must be present verbatim, so a non-select
       // tool still falls through to createShapeKbd() exactly as before this ADR.
-      assert.ok(html.includes("if(state.tool==='select'&&editSelectedShapeKbd()){_pd(e);}") &&
+      assert.ok(html.includes("if(_tl()==='select'&&editSelectedShapeKbd()){_pd(e);}") &&
                 html.includes('else if(createShapeKbd())_pd(e);'),
         'kbd-edit: Enter only re-edits when the select tool is active; other tools keep createShapeKbd (no clash)');
       console.log('  ✓ ADR-0013 keyboard label/text edit: selection/lock guards, per-type dispatch, right-shape targeting, tool gate (v1.7.66)');
