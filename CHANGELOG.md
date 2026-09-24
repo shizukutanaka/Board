@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.332] - 2026-09-24
+
+### Added
+- .excalidraw export: 親要素へ boundElements 逆リンクを付与
+  (containerId と双方向一致、ADR-0280)
+
 ## [1.7.331] - 2026-09-24
 
 ### Fixed
