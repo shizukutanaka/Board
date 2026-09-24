@@ -851,7 +851,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.472';
+const V='1.7.473';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -7738,6 +7738,7 @@ const Net={
     this._bcast({k:'selection',peer:_pi(),ids});
   },
   _sendDC(m){   // ADR-0432: single dc funnel — a full SCTP buffer throws; requeue on bufferedAmountLow instead of dropping
+    if(m.length>262144)return;   // ADR-0438: >SCTP max can never send — drop instead of poison-queuing a retry loop
     const q=this._dcQ,d=this.dc;
     if(q){q.length<4096&&q.push(m);return}
     if(!d||d.readyState!=='open')return;
