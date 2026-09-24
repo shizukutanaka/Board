@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.272]
+
+### 改善
+- **端点結合先探索のグリッド索引化** (ADR-0214)。`_bindAt` の
+  全図形走査を pickTop と同じ `_queryGrid` 3×3 近傍+逆 z に
+  (>40 図形時)。端点ドラッグごとの O(n) を解消。
+
 ## [1.7.271]
 
 ### 追加

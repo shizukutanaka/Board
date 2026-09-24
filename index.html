@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.271';
+const V='1.7.272';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -5004,12 +5004,22 @@ function _endPointBind(sh,handle,alt){
   }else sh[fk]=null;
 }
 // Topmost non-connector shape whose bbox contains (x,y), for connector binding.
+// ADR-0214: same _queryGrid acceleration as pickTop — endpoint drags call this
+// per pointermove, so the full-board scan was the dominant cost on big boards.
 function _bindAt(x,y){
+  const ok=s=>{const t=s.type;return t!=='line'&&t!=='arrow'&&t!=='pen'&&s.visible!==0};   // ADR-0150
+  const has=s=>{const b=G.bbox(s);return b&&x>=b.x&&y>=b.y&&x<=b.x+b.w&&y<=b.y+b.h};
+  if(state.shapes.length>40){
+    if(!_grid)_grid=_buildGrid(state.shapes);
+    const cands=[..._queryGrid(_grid,{x,y})];
+    cands.sort((a,b)=>(_grid.idx.get(b)|0)-(_grid.idx.get(a)|0));
+    for(const s of cands)if(ok(s)&&has(s))return s.id;
+    return null;
+  }
   for(let i=state.shapes.length-1;i>=0;i--){
-    const s=state.shapes[i],t=s.type;
-    if(t==='line'||t==='arrow'||t==='pen'||s.visible===0)continue;   // ADR-0150
-    const b=G.bbox(s);
-    if(x>=b.x&&y>=b.y&&x<=b.x+b.w&&y<=b.y+b.h)return s.id;
+    const s=state.shapes[i];
+    if(!ok(s))continue;
+    if(has(s))return s.id;
   }
   return null;
 }

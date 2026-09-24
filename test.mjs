@@ -513,7 +513,7 @@ const checks = [
   ['translate moves elbow bend (trunk follows connector)', html.includes('s.bend+=vert?dx:dy')&&html.includes('ADR-0147')],
   ['group resize scales elbow bend on trunk axis', html.includes('ADR-0148')&&html.includes('sh.bend=Math.abs(tr[1].x-tr[0].x)')],
   ['image flip mirrors pixels via s.flip bitmask', html.includes("s.flip=(s.flip||0)^(axis==='h'?1:2)")&&html.includes('ADR-0149')&&html.includes('scale(${s.flip&1?-1:1}')],
-  ['hidden shapes leave search + bindAt', html.includes('s.visible!==0&&(s.label||s.text||s.type')&&html.includes("t==='pen'||s.visible===0")],
+  ['hidden shapes leave search + bindAt', html.includes('s.visible!==0&&(s.label||s.text||s.type')&&html.includes("t!=='pen'&&s.visible!==0")],
   ['SVG export excludes hidden shapes', html.includes('const _vis=shapes.filter(s=>s.visible!==0)')&&html.includes('_vis.filter(s=>s.type==="frame")')],
   ['Alt+hover measure guides', html.includes('measure:null')&&html.includes('function _drawMeasure(c)')&&html.includes("e.altKey&&state.selection.size&&top&&!top.locked")],
   ['measure cleared on reset/down/Alt', html.includes('state.measure=null;ptr.x=ptr.x0')&&html.includes("e.key==='Alt'&&state.measure")],
@@ -712,6 +712,7 @@ const checks = [
   ['shadow on text/conns canvas+SVG + gate (ADR-0211)', html.includes("s.type!=='text'&&s.type!=='line'&&s.type!=='arrow'")&&html.includes('label never shadows')&&html.includes('${dA}${a}${_sh}/>`);')],
   ['conn label honours lineH canvas+SVG (ADR-0212)', html.includes('llh=fs*(s.lineH||1.25)')&&html.includes('lh2=fs*(s.lineH||1.25)')],
   ['pin/unpin anchor via ctx for touch/keyboard (ADR-0213)', html.includes('function pinAnchor()')&&html.includes("['ctxPinAnchor','',pinAnchor]")&&html.includes('px=k===\'a\'?e.x1:e.x2')],
+  ['_bindAt grid-accelerated candidate scan (ADR-0214)', html.includes('const cands=[..._queryGrid(_grid,{x,y})]')&&html.includes('const ok=s=>{const t=s.type;return t!==\'line\'&&t!==\'arrow\'&&t!==\'pen\'&&s.visible!==0}')],
   ['endpoint drag Shift constrains to 45 deg + label editor fontSize (ADR-0206)', html.includes("constrain the free end to 45")&&html.includes("${hit.fontSize||12}px")],
   ['i18n has excImported ja+en', html.includes("excImported:'Excalidraw を取り込みました'") && html.includes("excImported:'Excalidraw imported'")],
   // v1.7.102: ADR-0044 text paste → text shape
