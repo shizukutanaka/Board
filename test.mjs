@@ -2656,6 +2656,7 @@ try {
     assert.ok(!validShape(null), 'null rejected');
     assert.ok(!validShape({type:'rect',z:0}), 'missing id rejected');
     assert.ok(!validShape({id:'x',type:'rect'}), 'missing z rejected');
+    assert.ok(!validShape({id:'y',type:'triangle',z:0,x:0,y:0,w:5,h:5}), 'ADR-0387: unknown type rejected');
     assert.ok(!validShape({id:'x',z:'no',type:'rect'}), 'non-number z rejected');
     // The crash-causing cases: pen with bad pts
     assert.ok(!validShape({id:'p',type:'pen',z:0,pts:null}), 'pen with null pts rejected');
