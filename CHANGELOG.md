@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.439] - 2026-09-23
+### 修正
+- ADR-0403: RTC スナップショットが受信側上限 (24MiB) を超える場合、送信前に `snapBig` トーストで fail-fast — 全チャンク送出後に棄却される浪費を解消
+### 変更
+- `_cos`/`_sin`/`_rN`/`_log` Math shorthand (~180B 回収)
+
 ## [1.7.438] - 2026-09-23
 ### 追加
 - ADR-0402: ドキュメント名をピア同期 — リネームが `k:'name'` ブロードキャストで即時伝播し、snapshot に `name` を同梱して遅れて参加するピアも引き継ぐ (空ボード参加時のみ採用・既存ボードはローカル名維持)
