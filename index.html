@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.245';
+const V='1.7.246';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1833,7 +1833,7 @@ const Shape={
       size:state.style.size,opacity:state.style.opacity,dash:state.style.dash||0};
     // ADR-0181: last-used per-type props persist to the next shape of that
     // type (same rule as state.style's stroke/fill/size — ADR-0180 pattern).
-    if((type==='text'||type==='sticky')&&state.style.font!=null)base.font=state.style.font;
+    if((type==='text'||type==='sticky'||type==='frame')&&state.style.font!=null)base.font=state.style.font;   // ADR-0188
     if(type==='arrow'&&state.style.head!=null)base.head=state.style.head;
     if(type==='arrow'&&state.style.start!=null)base.start=state.style.start;   // ADR-0185
     if(type==='line'||type==='arrow'){                          // ADR-0183
@@ -7652,7 +7652,7 @@ const UI={
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='frame'&&!s.locked})&&['ctxFrameFit','',fitFrames],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='frame'&&!s.locked})&&['ctxSelContents','',selectFrameContents],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky'||s.label)&&!s.locked})&&['ctxTextAlign','',cycleTextAlign],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky'||s.label)&&!s.locked})&&['ctxFont','',cycleFont],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky'||s.type==='frame'||s.label)&&!s.locked})&&['ctxFont','',cycleFont],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&!s.locked})&&['ctxOpacity','0-9',cycleOpacity],   // ADR-0174
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond'||s.type==='sticky'||(s.type==='image'&&!!s.label))&&!s.locked})&&['ctxVAlign','',cycleVAlign],   // ADR-0179   // ADR-0159
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky')&&!s.locked})&&[[...state.selection].some(id=>byId(id)?.type==='sticky'&&!byId(id)?.locked)?'ctxToText':'ctxToSticky','',toggleStickyText],
@@ -8398,7 +8398,7 @@ function swapFillStroke(){
 function cycleFont(){
   const before=[],after=[];
   for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky'&&!s.label)||s.locked)continue;
+    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky'&&s.type!=='frame'&&!s.label)||s.locked)continue;   // ADR-0188: frame's always-on label
     const cur=s.font||'',nxt=cur===''?'mono':cur==='mono'?'serif':'';
     before.push({id,font:cur||null});after.push({id,font:nxt||null});
     if(nxt)s.font=nxt;else delete s.font;

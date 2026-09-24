@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.246]
+
+### 追加
+- **フレームラベルの書体巡回** (ADR-0188)。cycleFont/ctxFont が
+  フレームに効き、`Shape.make` も font を継承 — フレーム名を
+  mono/serif に切替可能。
+
 ## [1.7.245]
 
 ### 追加
