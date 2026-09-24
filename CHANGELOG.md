@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.467] - 2026-09-23
+
+### Fixed
+- `dc.send` バックプレッシャ再キュー `_sendDC` — SCTP バッファ満杯時のメッセージ静寂消失を解消 (ADR-0432)
+
+### Refactored
+- `_hd`/`_fS`/`_wh` shorthand fold
+
 ## [1.7.466] - 2026-09-23
 
 ### Fixed

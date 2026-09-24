@@ -816,7 +816,7 @@ const _frameOf=(sel,ok)=>{const m=_mP();
 const _scl=()=>_sl().clear(),_sad=id=>_sl().add(id),_sdl=id=>_sl().delete(id);   // ADR-0419: selection Set-mutation shorthands
 const _selN=()=>_sl().size;   // ADR-0334
 const _nS=()=>_sh().length;   // ADR-0425
-const _sv=s=>s.visible!==0,_lk=s=>s.locked;   // ADR-0425
+const _sv=s=>s.visible!==0,_lk=s=>s.locked,_hd=s=>s.visible===0,_fS=s=>s.fontSize,_wh=(e,w,ht)=>{e.width=w;e.height=ht};   // ADR-0425/0432
 const _fin=Number.isFinite;   // ADR-0334
 const _min=Math.min,_max=Math.max,_abs=Math.abs;   // ADR-0337
 const _ga=(e,n)=>e.getAttribute(n),_sa=(e,n,v)=>e.setAttribute(n,v),_ap=(p,c)=>p.appendChild(c),_AL='aria-label',_AP='aria-pressed';   // ADR-0340/0392/0394/0399
@@ -851,7 +851,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.466';
+const V='1.7.467';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2028,7 +2028,7 @@ function _penRender(s,e,R){
     return null;
   }
   _penCachePx-=e.px||0;
-  const cv=_ce('canvas');cv.width=w;cv.height=h;
+  const cv=_ce('canvas');_wh(cv,w,h);
   const cc=cv.getContext('2d');
   cc.scale(R,R);cc.translate(-e.bx,-e.by);
   drawPen(s,cc);
@@ -2161,7 +2161,7 @@ function _inkGrow(d,pad){
     mny=_rnd((mny-_vp().y)*zr)/zr+_vp().y;
   }
   const ncv=_ce('canvas');
-  ncv.width=_max(2,_ceil((mxx-mnx)*d.R));ncv.height=_max(2,_ceil((mxy-mny)*d.R));
+  _wh(ncv,_max(2,_ceil((mxx-mnx)*d.R)),_max(2,_ceil((mxy-mny)*d.R)));
   const n2=ncv.getContext('2d');
   n2.drawImage(d.cv,(d.bx-mnx)*d.R,(d.by-mny)*d.R);
   n2.setTransform(d.R,0,0,d.R,-mnx*d.R,-mny*d.R);
@@ -2287,7 +2287,7 @@ function resize(){
   const r=_cbr();
   canvas.width=_rnd(r.width*DPR);
   canvas.height=_rnd(r.height*DPR);
-  ocanvas.width=canvas.width;ocanvas.height=canvas.height;
+  _wh(ocanvas,canvas.width,canvas.height);
   _lastVp=null;   // backing-store reallocation drops all retained pixels (ADR-0028)
   _pinchSnap=null;_pinchVp=null;   // ADR-0030: stale-sized snapshot must not blit
   _iv();
@@ -2344,7 +2344,7 @@ function describeShape(s){
   if(txt)d+=` “${txt.length>30?txt.slice(0,30)+'…':txt}”`;
   d+=` @ ${_rnd(b.x)},${_rnd(b.y)}`;
   if(_lk(s))d+=` ${t('ctxLock')}`;
-  if(s.visible===0)d+=` ${t('tagHidden')}`;   // ADR-0371: selection-restore / RTC can select a hidden shape
+  if(_hd(s))d+=` ${t('tagHidden')}`;   // ADR-0371: selection-restore / RTC can select a hidden shape
   if(s.groupId)d+=` ${t('tagGroup')}`;   // ADR-0380: visual group halo has no SR channel
   if(_conn(s.type)&&(s.a||s.b)){   // ADR-0380: bound endpoints are the conn's identity
     const A=s.a&&byId(s.a),B=s.b&&byId(s.b);
@@ -2386,7 +2386,7 @@ function _mirrorSync(){
     const li=_ce('li');
     const b=_ce('button');
     b.type='button';
-    b.textContent=(i+1)+'. '+describeShape(s)+(s.visible===0?' '+t('tagHidden'):'');   // ADR-0154
+    b.textContent=(i+1)+'. '+describeShape(s)+(_hd(s)?' '+t('tagHidden'):'');   // ADR-0154
     b.onclick=()=>_mirrorGo(s.id);
     _ap(li,b);_ap(ul,li);
   }
@@ -2700,7 +2700,7 @@ function _drawBoxLabel(s,c){
   if(!s.label)return;
   c.save();
   c.fillStyle=s.stroke||_IK;
-  const fs=s.fontSize||14;   // ADR-0169
+  const fs=_fS(s)||14;   // ADR-0169
   c.font=_fontStr(s,fs);   // ADR-0170
   const al=s.align||'center';   // ADR-0171: label honours horizontal align
   c.textAlign=al==='left'?'left':al==='right'?'right':'center';c.textBaseline='middle';
@@ -2723,7 +2723,7 @@ function _drawBoxLabel(s,c){
 function _drawImgLabel(s,c){
   if(!s.label)return;
   c.save();
-  const fs=s.fontSize||14;   // ADR-0169
+  const fs=_fS(s)||14;   // ADR-0169
   c.font=_fontStr(s,fs);   // ADR-0170
   let lines=wrapTextCached(s,s.label,_max(10,s.w-8),fs,t=>c.measureText(t).width);
   const lh=fs*(s.lineH||1.25),maxL=_max(1,_fl((s.h-4)/lh));
@@ -2817,7 +2817,7 @@ function _drawConnLabel(s,c){
   if(!s.label)return;
   const lp=_connLabelXY(s),mx=lp.x,my=lp.y;                       // ADR-0081
   c.save();c.shadowColor=_TR;c.shadowBlur=0;c.shadowOffsetY=0;   // ADR-0211: label never shadows
-  const fs=s.fontSize||12;   // ADR-0169
+  const fs=_fS(s)||12;   // ADR-0169
   c.font=_fontStr(s,fs);c.textAlign='center';c.textBaseline='middle';   // ADR-0170
   const lns=_St(s.label).split('\n'),llh=fs*(s.lineH||1.25),pad=4;   // ADR-0210/0212
   const _lm=_connLabelMeasure(s,c,lns,fs),w=_lm.w;             // ADR-0252: measureText was per-frame per-line
@@ -2833,7 +2833,7 @@ function _drawConnLabel(s,c){
   c.restore();
 }
 function drawShape(s,c){
-  if(s.visible===0)return;                                   // ADR-0137
+  if(_hd(s))return;                                   // ADR-0137
   c=c||ctx;
   c.globalAlpha=s.opacity??1;c.letterSpacing=(s.spacing||0)+'px';   // ADR-0205
   c.lineCap='round';c.lineJoin='round';
@@ -2915,7 +2915,7 @@ function drawShape(s,c){
       c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,r);c.stroke();
       // label
       const lbl=s.label||'Frame';
-      const fs=s.fontSize||12;   // ADR-0298
+      const fs=_fS(s)||12;   // ADR-0298
       c.fillStyle=s.stroke||_gC('--brand')||'#00C4CC';
       c.font=`${s.italic?'italic ':''}600 ${fs}px ${_fontFam(s)}`;  // ADR-0186/0204
       c.textBaseline='bottom';
@@ -2940,7 +2940,7 @@ function drawShape(s,c){
       c.strokeStyle='rgba(0,0,0,.06)';c.lineWidth=1;c.stroke();
       // text
       if(s.text){
-        const fs=s.fontSize||14;
+        const fs=_fS(s)||14;
         c.fillStyle=s.stroke||'#1E293B';c.font=_fontStr(s,fs);  // ADR-0192
         c.textBaseline='top';
         const lh=fs*(s.lineH||1.3), pad=8;
@@ -3304,7 +3304,7 @@ function drawText(s,c){
   if(s.id===_ed())return;
   _csh(s,c)   // ADR-0211
   c.fillStyle=s.stroke||_IK;
-  const fs=s.fontSize||16;
+  const fs=_fS(s)||16;
   c.font=_fontStr(s,fs);                                    // ADR-0078
   c.textBaseline='top';
   const lines=s.wrap?wrapTextCached(s,s.text||'',_abs(s.w),fs,t=>c.measureText(t).width):(s.text||'').split('\n');   // ADR-0208
@@ -4390,7 +4390,7 @@ function _imgImportFile(f,cb){
       if(nw>IMG_IMPORT_MAX_DIM||nh>IMG_IMPORT_MAX_DIM){
         const r=_min(IMG_IMPORT_MAX_DIM/nw,IMG_IMPORT_MAX_DIM/nh);
         const cv=_ce('canvas');
-        cv.width=_max(1,_rnd(nw*r));cv.height=_max(1,_rnd(nh*r));
+        _wh(cv,_max(1,_rnd(nw*r)),_max(1,_rnd(nh*r)));
         cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
         const wu=cv.toDataURL('image/webp',0.85);
         if(/^data:image\/webp/.test(wu)&&wu.length<dataUrl.length)dataUrl=wu;
@@ -4594,7 +4594,7 @@ function _pinchSnapNow(){
   if(!_pinchSnap){
     const v=_vp();
     _pinchSnap=_ce('canvas');
-    _pinchSnap.width=canvas.width;_pinchSnap.height=canvas.height;
+    _wh(_pinchSnap,canvas.width,canvas.height);
     _pinchSnap.getContext('2d').drawImage(canvas,0,0);
     _pinchVp={x:v.x,y:v.y,zoom:v.zoom};
   }
@@ -4733,7 +4733,7 @@ function pickTop(wp){
   }
   for(let i=_nS()-1;i>=0;i--){
     const s=_sh()[i];
-    if(s.type==='frame'||s.visible===0)continue;
+    if(s.type==='frame'||_hd(s))continue;
     if(G.hit(s,wp))return s;
   }
   for(let i=_nS()-1;i>=0;i--){
@@ -4811,7 +4811,7 @@ function _snapIndex(kind,key,exclFn){
   const slot=_snapIdx[kind];
   if(slot.ver!==_gridVer||slot.key!==key){
     const targets=[];
-    for(const s of _sh()){if(exclFn(s)||s.visible===0)continue;const b=_bb(s);if(b)targets.push(b)}   // ADR-0153: hidden shapes attract no snap
+    for(const s of _sh()){if(exclFn(s)||_hd(s))continue;const b=_bb(s);if(b)targets.push(b)}   // ADR-0153: hidden shapes attract no snap
     slot.ver=_gridVer;slot.key=key;slot.idx=_mkSnapIdx(targets);
   }
   return slot.idx;
@@ -4997,7 +4997,7 @@ function endSelect(wp,shift,alt){
     if(pts.length>2){
       if(!shift)_scl();                          // ⇧lasso adds, plain replaces (marquee parity)
       for(const s of _sh()){
-        if(_lk(s)||s.visible===0)continue;
+        if(_lk(s)||_hd(s))continue;
         const b=_bb(s);if(!b)continue;
         if(_ptInPoly(b.x+b.w/2,b.y+b.h/2,pts))_sad(s.id);   // centre-in-polygon (draw.io lasso rule)
       }
@@ -5281,7 +5281,7 @@ function _stickyChain(s){
   if(s.type!=='sticky'||_lk(s))return;
   // ADR-0190: the chain inherits ALL typography — ⌘Enter duplication must
   // reproduce the note's look, not just size/colour.
-  const n=Shape.make('sticky',{x:s.x+s.w+16,y:s.y,w:s.w,h:s.h,color:s.color,fontSize:s.fontSize,align:s.align,
+  const n=Shape.make('sticky',{x:s.x+s.w+16,y:s.y,w:s.w,h:s.h,color:s.color,fontSize:_fS(s),align:s.align,
     font:s.font,lineH:s.lineH,spacing:s.spacing,bold:s.bold,italic:s.italic,under:s.under,strike:s.strike,valign:s.valign,stroke:s.stroke});   // ADR-0192 follow-up
   _cOp({op:'add',shape:n});
   _ss([n.id]);
@@ -5326,7 +5326,7 @@ function createShapeKbd(){
 // text:   auto-sizes both width and height to the unwrapped content.
 function resizeAfterTextEdit(s,text,c){
   s.text=text;
-  const fs=s.fontSize||14;
+  const fs=_fS(s)||14;
   c.font=`${fs}px Hiragino Sans,Helvetica Neue,system-ui,sans-serif`;
   if(s.type==='sticky'){
     const pad=8;
@@ -5461,7 +5461,7 @@ function positionTextEditor(ta,s){
   const r=_cbr();
   ta.style.left=(r.left+sp.x)+'px';
   ta.style.top=(r.top+sp.y)+'px';
-  ta.style.fontSize=(s.fontSize*_vp().zoom)+'px';
+  ta.style.fontSize=(_fS(s)*_vp().zoom)+'px';
   ta.style.color=s.stroke||_IK;
   ta.style.textAlign=s.align==='center'?'center':s.align==='right'?'right':'left';   // ADR-0073
   ta.style.fontWeight=s.bold?'600':'';ta.style.fontStyle=s.italic?'italic':'';ta.style.textDecoration=[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ');   // ADR-0078/0095/0100
@@ -5901,14 +5901,14 @@ function selectSamePaint(){
   _aS();_o(same.length+' '+t(_SM));
   _iv();
 }
-// ADR-0137: hide/show shapes (Figma ⌘⇧H / eye). `s.visible===0` removes the
+// ADR-0137: hide/show shapes (Figma ⌘⇧H / eye). `_hd(s)` removes the
 // shape from drawShape (which covers minimap, export renderers and the PNG
 // cache path) and from every pointer path (pickTop/eraser/marquee), so a
 // hidden shape is completely non-interactive. Restore via "show all" since
 // hidden shapes can't be re-selected — same convention as Figma's layers.
 function hideSelection(){
   const before=[],after=[];
-  _forSel((s,id)=>{if(_lk(s)||s.visible===0)return;
+  _forSel((s,id)=>{if(_lk(s)||_hd(s))return;
     before.push({id,visible:s.visible??null});after.push({id,visible:0});
     s.visible=0;_sdl(id);
   })
@@ -6257,7 +6257,7 @@ function _renderPngBlob(shapes,cb,desired){
   const w=_ceil(b.w+pad*2),h=_ceil(b.h+pad*2);
   const off=_ce('canvas');
   const scale=exportScale(w,h,desired||2);
-  off.width=w*scale;off.height=h*scale;
+  _wh(off,w*scale,h*scale);
   const oc=off.getContext('2d');
   oc.fillStyle=_p();
   oc.fillRect(0,0,off.width,off.height);
@@ -6289,7 +6289,7 @@ function exportViewportPNG(scale){
   if(!shapes.length){_w(t(_EM));return}
   const off=_ce('canvas');
   const sc=exportScale(view.w,view.h,scale||2);
-  off.width=_ceil(view.w*sc);off.height=_ceil(view.h*sc);
+  _wh(off,_ceil(view.w*sc),_ceil(view.h*sc));
   const oc=off.getContext('2d');
   oc.fillStyle=_p();oc.fillRect(0,0,off.width,off.height);
   oc.setTransform(sc,0,0,sc,-view.x*sc,-view.y*sc);
@@ -6357,7 +6357,7 @@ function exportPDF(){
   if(!_nS()){_w(t(_EM));return}
   const b=_bA(_sh());if(!b)return;
   const pad=32,W=_ceil(b.w+pad*2),H=_ceil(b.h+pad*2),dpr=exportScale(W,H,_dpr()||1);
-  let off;try{off=new OffscreenCanvas(W*dpr,H*dpr)}catch(_){off=_ce('canvas');off.width=W*dpr;off.height=H*dpr}
+  let off;try{off=new OffscreenCanvas(W*dpr,H*dpr)}catch(_){off=_ce('canvas');_wh(off,W*dpr,H*dpr)}
   const oc=off.getContext('2d');
   oc.fillStyle=_p()||'#fff';oc.fillRect(0,0,W*dpr,H*dpr);
   oc.setTransform(dpr,0,0,dpr,(-b.x+pad)*dpr,(-b.y+pad)*dpr);
@@ -6412,7 +6412,7 @@ function excScene(shapes){
     _excTid.set(s.id,tid);
     return{id:tid,type:'text',x:ov?ov.x:s.x+4,y:ov?ov.y:s.y+4,
     width:ov?ov.w:_abs(s.w||120)-8,height:ov?ov.h:_abs(s.h||80)-8,text:txt,originalText:txt,autoResize:false,   // ADR-0412: bound text wraps to the container
-    fontSize:fs||s.fontSize||16,textAlign:s.align||'center',verticalAlign:s.valign||'middle',lineHeight:s.lineH||1.25,baseline:0,fontFamily:s.font==='mono'?3:2,...(bL?{bLabel:1}:{}),   // ADR-0242/0243/0244
+    fontSize:fs||_fS(s)||16,textAlign:s.align||'center',verticalAlign:s.valign||'middle',lineHeight:s.lineH||1.25,baseline:0,fontFamily:s.font==='mono'?3:2,...(bL?{bLabel:1}:{}),   // ADR-0242/0243/0244
     strokeColor:'#1e1e1e',backgroundColor:_TR,fillStyle:'solid',strokeWidth:1,strokeStyle:'solid',
     roughness:0,opacity:100,angle:(s.rotate||0)*_PI/180,seed:0,version:1,versionNonce:0,isDeleted:false,
     containerId:s.id,boundElements:null,updated:0,link:null,locked:false,groupIds:gids[s.id]||[]};};
@@ -6434,7 +6434,7 @@ function excScene(shapes){
         break;}
       case'text':
         els.push(E(s,{type:'text',x:s.x,y:s.y,width:s.w||0,height:s.h||0,
-          text:s.text||'',originalText:s.text||'',autoResize:!s.wrap,fontSize:s.fontSize||16,
+          text:s.text||'',originalText:s.text||'',autoResize:!s.wrap,fontSize:_fS(s)||16,
           textAlign:s.align||'left',lineHeight:s.lineH||1.25,baseline:0,fontFamily:s.font==='mono'?3:2}));break;   // ADR-0242/0243
       case'pen':{
         const xs=s.pts.map(p=>p[0]),ys=s.pts.map(p=>p[1]);
@@ -6778,7 +6778,7 @@ function boardToDrawio(shapes){
     if(s.stroke&&t!=='text'&&t!=='sticky')sty+='strokeColor='+(s.stroke===_TR?'none':s.stroke)+';';   // ADR-0290
     if(s.stroke&&(t==='text'||t==='sticky'||s.label))sty+='fontColor='+s.stroke+';';   // ADR-0247/0281
     sty+=_dioStyEmit(s);                                                   // ADR-0263
-    if(s.fontSize)sty+='fontSize='+s.fontSize+';';
+    if(_fS(s))sty+='fontSize='+_fS(s)+';';
     if(s.align==='center'||s.align==='right')sty+='align='+s.align+';';   // ADR-0228
     if(s.align)sty+='labelPosition='+s.align+';';                          // ADR-0320
     if(s.valign)sty+='verticalLabelPosition='+s.valign+';';                // ADR-0320
@@ -6791,7 +6791,7 @@ function boardToDrawio(shapes){
     if(t==='image'&&s.label)sty+='verticalAlign=bottom;';                 // ADR-0353
     const _gc=_gbx[s.groupId];                                          // ADR-0336
     const _pf=_gc?null:_fOf(s);                                         // ADR-0345: frame containment (group wins)
-    cells.push(`<mxCell id="${id}" value="${nl(lbl||'')}" style="${esc(sty)}" vertex="1" parent="${_gc?`g_${s.groupId}`:_pf?idOf.get(_pf.id):'1'}"${s.link?` link="${esc(s.link)}"`:''}${s.visible===0?' visible="0"':''}><mxGeometry x="${(s.x||0)-(_gc?_gc.x:_pf?_pf.x:0)}" y="${(s.y||0)-(_gc?_gc.y:_pf?_pf.y:0)}" width="${s.w||120}" height="${s.h||80}" as="geometry"/></mxCell>`);   // ADR-0245/0336/0345
+    cells.push(`<mxCell id="${id}" value="${nl(lbl||'')}" style="${esc(sty)}" vertex="1" parent="${_gc?`g_${s.groupId}`:_pf?idOf.get(_pf.id):'1'}"${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}><mxGeometry x="${(s.x||0)-(_gc?_gc.x:_pf?_pf.x:0)}" y="${(s.y||0)-(_gc?_gc.y:_pf?_pf.y:0)}" width="${s.w||120}" height="${s.h||80}" as="geometry"/></mxCell>`);   // ADR-0245/0336/0345
   }
   // ADR-0354: pen strokes export as polyline edges — endArrow=none + one
   // mxPoint per stroke point keeps the ink visible in draw.io.
@@ -6805,7 +6805,7 @@ function boardToDrawio(shapes){
     let geo=`<mxGeometry relative="1" as="geometry"><mxPoint x="${s.pts[0][0]-(_gp?_gp.x:0)}" y="${s.pts[0][1]-(_gp?_gp.y:0)}" as="sourcePoint"/><mxPoint x="${s.pts[s.pts.length-1][0]-(_gp?_gp.x:0)}" y="${s.pts[s.pts.length-1][1]-(_gp?_gp.y:0)}" as="targetPoint"/>`;
     if(s.pts.length>2)geo+='<Array as="points">'+s.pts.slice(1,-1).map(p=>`<mxPoint x="${p[0]-(_gp?_gp.x:0)}" y="${p[1]-(_gp?_gp.y:0)}"/>`).join('')+'</Array>';
     geo+='</mxGeometry>';
-    cells.push(`<mxCell id="${id}" value="" style="${esc(sty)}" edge="1" parent="${_gp?`g_${s.groupId}`:'1'}"${s.link?` link="${esc(s.link)}"`:''}${s.visible===0?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0354
+    cells.push(`<mxCell id="${id}" value="" style="${esc(sty)}" edge="1" parent="${_gp?`g_${s.groupId}`:'1'}"${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0354
   }
   for(const s of shapes){
     const t=s.type;
@@ -6820,7 +6820,7 @@ function boardToDrawio(shapes){
     if(s.r)sty+='rounded=1;';
     sty+=_dioStyEmit(s,1);                                                 // ADR-0263/0282
     if(s.fill)sty+='labelBackgroundColor='+s.fill+';';                       // ADR-0249
-    if(s.label&&s.fontSize)sty+='fontSize='+s.fontSize+';';
+    if(s.label&&_fS(s))sty+='fontSize='+_fS(s)+';';
 
     const src=s.a&&idOf.get(s.a)?` source="${idOf.get(s.a)}"`:'';
     const tgt=s.b&&idOf.get(s.b)?` target="${idOf.get(s.b)}"`:'';
@@ -6833,7 +6833,7 @@ function boardToDrawio(shapes){
     const wa=s.elbow?_elbowPts(s).slice(1,-1):s.curve?[_curveCtrl(_cE(s),s.cbend)]:_wayArr(s);   // ADR-0358/0360
     if(wa.length)geo+='<Array as="points">'+wa.map(p=>`<mxPoint x="${p.x-(_gc2?_gc2.x:0)}" y="${p.y-(_gc2?_gc2.y:0)}"/>`).join('')+'</Array>';
     geo+='</mxGeometry>';
-    cells.push(`<mxCell id="${id}" value="${nl(s.label||'')}" style="${esc(sty)}" edge="1" parent="${_gc2?`g_${s.groupId}`:'1'}"${src}${tgt}${s.link?` link="${esc(s.link)}"`:''}${s.visible===0?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0245/0347
+    cells.push(`<mxCell id="${id}" value="${nl(s.label||'')}" style="${esc(sty)}" edge="1" parent="${_gc2?`g_${s.groupId}`:'1'}"${src}${tgt}${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0245/0347
   }
   const vx=_vp().x,vy=_vp().y,vz=_vp().zoom;
   return `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile compressed="false"><diagram name="${_esc(_dn()||'Page-1')}"><mxGraphModel dx="${_rnd(-vx)}" dy="${_rnd(-vy)}" grid="${state.showGrid?1:0}" gridSize="${GRID_SIZE}" guides="1" tooltips="0" connect="0" arrows="0" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0" zoom="${vz}"><root><mxCell id="0"/><mxCell id="1" parent="0"/>${cells.join('')}</root></mxGraphModel></diagram></mxfile>`;   // ADR-0359: dx/dy/zoom viewport round-trip
@@ -7132,14 +7132,14 @@ function excToShapes(txt){
     // carry labels the same way). Board's own re-imports mark them bLabel;
     // real excalidraw files don't, so match on the parent type instead.
     if(_conn(p.type)){p.label=s.text.slice(0,240);
-      if(s.fontSize)p.fontSize=s.fontSize;
+      if(_fS(s))p.fontSize=_fS(s);
       if(e&&e.textAlign&&e.textAlign!=='center')p.align=e.textAlign;   // ADR-0363
       if(e&&_fin(e.lineHeight)&&e.lineHeight!==1.25)p.lineH=_min(4,_max(0.5,e.lineHeight));   // ADR-0323
       shapes.splice(shapes.indexOf(s),1);continue;}
     // bLabel parents restore the label on any box type (rect/ellipse/diamond);
     // the sticky fold below stays rect-only since stickies export as rectangles
     if(e&&e.bLabel){p.label=s.text.slice(0,240);
-      if(s.fontSize)p.fontSize=s.fontSize;
+      if(_fS(s))p.fontSize=_fS(s);
       if(e.textAlign&&e.textAlign!=='center')p.align=e.textAlign;   // ADR-0363
       if(_fin(e.lineHeight)&&e.lineHeight!==1.25)p.lineH=_min(4,_max(0.5,e.lineHeight));   // ADR-0323
       if(/^(top|middle|bottom)$/.test(e.verticalAlign))p.valign=e.verticalAlign;   // ADR-0244
@@ -7147,7 +7147,7 @@ function excToShapes(txt){
       shapes.splice(shapes.indexOf(s),1);continue;}
     if(p.type!=='rect')continue;
     p.type='sticky';p.text=s.text;
-    if(s.fontSize)p.fontSize=s.fontSize;
+    if(_fS(s))p.fontSize=_fS(s);
     if(e&&/^(top|middle|bottom)$/.test(e.verticalAlign))p.valign=e.verticalAlign;   // ADR-0244
     if(e&&e.fontFamily===3)p.font='mono';else if(e&&(e.fontFamily===1||e.fontFamily===5))p.font='serif';   // ADR-0243
     if(e&&e.textAlign&&e.textAlign!=='center')p.align=e.textAlign;   // ADR-0363
@@ -7272,7 +7272,7 @@ function _svgLs(s){return s.spacing?` letter-spacing="${s.spacing}px"`:''}   // 
 function _connLabelSVG(s,x1,y1,x2,y2,ox,oy,stroke,paper){
   if(!s.label)return '';
   const mx=(x1+x2)/2+ox,my=(y1+y2)/2+oy;
-  const fs=s.fontSize||12;
+  const fs=_fS(s)||12;
   const lns=_St(s.label).split('\n'),lh2=fs*(s.lineH||1.25);          // ADR-0210/0212
   const lw=_max(...lns.map(l=>l.length),0)*fs*0.6+8,th=lns.length*lh2;
   const tsp=lns.map((l,i)=>`<tspan x="${mx}" dy="${i?lh2:0}">${_esc(l)}</tspan>`).join('');
@@ -7451,7 +7451,7 @@ function buildSVG(shapes,paper){
         if(s.link)els.push(`<a href="${esc(s.link)}" target="_blank" rel="noopener"><text x="${P[0][0]+4}" y="${P[0][1]-2}" font-size="10" font-family="sans-serif"${a}>🔗</text></a>`);   // ADR-0333/0339
         break;}
       case 'text':{
-        const fs=_num(s.fontSize)||16;
+        const fs=_num(_fS(s))||16;
         const svgLines=s.wrap?wrapText(_St(s.text==null?'':s.text),_abs(W),t=>t.length*fs*0.6):_St(s.text==null?'':s.text).split('\n');   // ADR-0208
         const tax=s.align==='center'?X+ox+W/2:s.align==='right'?X+ox+W:X+ox;   // ADR-0073
         const anch=s.align==='center'?' text-anchor="middle"':s.align==='right'?' text-anchor="end"':'';
@@ -7484,13 +7484,13 @@ function buildSVG(shapes,paper){
         els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${fr}" fill="${s.fill||'rgba(248,250,252,0.6)'}" stroke="${clr}" stroke-width="${SZ||1.5}"${dA}${fa}${rT}/>`);   // ADR-0178
         const alF2=s.align||'left',txF=alF2==='right'?X+ox+W-6:alF2==='center'?X+ox+W/2:X+ox+6;   // ADR-0197
         const ancF=alF2==='right'?' text-anchor="end"':alF2==='center'?' text-anchor="middle"':'';
-        els.push(`<text x="${txF}" y="${Y+oy-4}" ${_svgFont(s.bold?s:{...s,bold:true},s.fontSize||12)} fill="${clr}"${ancF}${fa}${rT}>${_esc(s.label||'Frame')}</text>`);
+        els.push(`<text x="${txF}" y="${Y+oy-4}" ${_svgFont(s.bold?s:{...s,bold:true},_fS(s)||12)} fill="${clr}"${ancF}${fa}${rT}>${_esc(s.label||'Frame')}</text>`);
         break;}
       case 'sticky':{
         const r=_min(6,_abs(W)/6,_abs(H)/6);
         els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}" fill="${_esc(s.color||_YW)}" stroke="rgba(0,0,0,.06)"${rT} filter="url(#bsh)"/>`);   // ADR-0278
         if(s.text){
-          const fs=_num(s.fontSize)||14;const pad2=8;
+          const fs=_num(_fS(s))||14;const pad2=8;
           // estimate measure (no canvas here); wraps to the same box as the app
           const lines2=wrapText(s.text,_abs(W)-pad2*2,t=>t.length*fs*0.6);
           const tax2=s.align==='center'?X+ox+W/2:s.align==='right'?X+ox+W-pad2:X+ox+pad2;   // ADR-0073
@@ -7513,7 +7513,7 @@ function buildSVG(shapes,paper){
 // ADR-0083: image caption strip — mirrors _drawImgLabel (paper band + clipped
 // wrapped text anchored to the inside bottom edge).
 function _svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT){
-  const fs=s.fontSize||14,pad=4;   // ADR-0169
+  const fs=_fS(s)||14,pad=4;   // ADR-0169
   let lines=wrapText(s.label,_max(10,W-8),t=>t.length*fs*0.6);
   const lh=fs*(s.lineH||1.25),maxL=_max(1,_fl((H-4)/lh));
   if(lines.length>maxL){lines=lines.slice(0,maxL);lines[maxL-1]+='…'}
@@ -7526,7 +7526,7 @@ function _svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT){
   els.push('</text></g>');
 }
 function _svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT){
-  const fs=s.fontSize||14,pad=4;   // ADR-0169
+  const fs=_fS(s)||14,pad=4;   // ADR-0169
   const lines=wrapText(s.label,_max(10,W-pad*2),t=>t.length*fs*0.6);
   const lh=fs*(s.lineH||1.25);
   const cy=s.valign==='top'?Y+6+oy:s.valign==='bottom'?Y+H-6+oy-lines.length*lh:Y+H/2+oy-(lines.length*lh)/2;   // ADR-0159
@@ -7659,7 +7659,7 @@ const Net={
     return op;
   },
   _fragSend(buf,k){   // ADR-0431: 64KB fragment sender for the dc-direct sites (snap, oversized ops)
-    const n=_ceil(buf.length/65536);for(let i=0;i<n;i++)this.dc.send(_JS({k,seq:i,n,data:buf.slice(i*65536,(i+1)*65536)}))
+    const n=_ceil(buf.length/65536);for(let i=0;i<n;i++)this._sendDC(_JS({k,seq:i,n,data:buf.slice(i*65536,(i+1)*65536)}))
   },
   _fragIn(msg,key){   // shared single-assembly intake for 'snap'/'opc' — returns joined payload or undefined
     if(typeof msg.data!=='string'||msg.data.length>96*1024)return;
@@ -7667,10 +7667,10 @@ const Net={
     const seq=typeof msg.seq==='number'&&msg.seq>=0?_fl(msg.seq):0;
     if(seq>=n)return;
     let sn=this[key];
-    if(!sn){sn={parts:new Array(n),got:0,n};this[key]=sn}
-    if(sn.n===n&&!sn.parts[seq]){sn.parts[seq]=msg.data;sn.got++}
-    if(sn.got<sn.n)return;
-    this[key]=null;return sn.parts.join('');
+    if(!sn){sn={p:new Array(n),g:0,n};this[key]=sn}
+    if(sn.n===n&&!sn.p[seq]){sn.p[seq]=msg.data;sn.g++}
+    if(sn.g<sn.n)return;
+    this[key]=null;return sn.p.join('');
   },
   _flushImgOuts(){
     const outs=this._imgOuts;this._imgOuts=[];
@@ -7708,7 +7708,7 @@ const Net={
     this._send({k:'op',op:s});
     if(this.dc&&this.dc.readyState==='open'){
       try{const _mo=_JS({k:'op',op:s});   // ADR-0431: ops over the ~256KB SCTP ceiling die silently — fragment like 'snap'
-        if(_mo.length>200000)this._fragSend(_mo,'opc');else this.dc.send(_mo)
+        if(_mo.length>200000)this._fragSend(_mo,'opc');else this._sendDC(_mo)
       }catch(_){}
     }
   },
@@ -7737,12 +7737,19 @@ const Net={
     this._lastSelSent=key;
     this._bcast({k:'selection',peer:_pi(),ids});
   },
+  _sendDC(m){   // ADR-0432: single dc funnel — a full SCTP buffer throws; requeue on bufferedAmountLow instead of dropping
+    const q=this._dcQ,d=this.dc;
+    if(q){q.length<4096&&q.push(m);return}
+    if(!d||d.readyState!=='open')return;
+    try{d.send(m)}catch(_){this._dcQ=[m];d.bufferedAmountLowThreshold=65536;
+      d.onbufferedamountlow=()=>{const b=this._dcQ;this._dcQ=null;for(const x of b)this._sendDC(x)}}
+  },
   _send(msg){
     if(this.bc){try{this.bc.postMessage(msg)}catch(_){}}
   },
   _bcast(msg){   // ADR-0401: dual-transport fold — BroadcastChannel + RTC DataChannel
     this._send(msg);
-    if(this.dc&&this.dc.readyState==='open'){try{this.dc.send(_JS(msg))}catch(_){}}
+    this._sendDC(_JS(msg))
   },
   _onRecv(msg,viaRtc){
     if(!msg||typeof msg!=='object'||msg.peer===_pi())return;
@@ -7763,11 +7770,11 @@ const Net={
         let st=this._imgChunks.get(msg.key);
         // ADR-0374: bound in-flight reassemblies — a peer opening thousands of
         // keys mid-transfer and never finishing would grow the map unboundedly.
-        if(!st){if(this._imgChunks.size>=64)break;st={parts:new Array(n),got:0,n};this._imgChunks.set(msg.key,st)}
-        if(st.n===n&&!st.parts[seq]){st.parts[seq]=msg.data;st.got++}
-        if(st.got<st.n)break;
+        if(!st){if(this._imgChunks.size>=64)break;st={p:new Array(n),g:0,n};this._imgChunks.set(msg.key,st)}
+        if(st.n===n&&!st.p[seq]){st.p[seq]=msg.data;st.g++}
+        if(st.g<st.n)break;
         this._imgChunks.delete(msg.key);
-        const data=st.parts.join('');
+        const data=st.p.join('');
         if(data.length>12_000_000)break;
         this._imgIn.set(msg.key,data);
         for(const[id,k]of this._imgPending){
@@ -7973,7 +7980,7 @@ const Net={
       this._rtcConnFailed=true;
       _w(t('connectFailed'));
       if(this._rtcPeerId){_pr().delete(this._rtcPeerId);this._rtcPeerId=null;_ivO();}
-      this._snapIn=null;this._opcIn=null;   // ADR-0385/0431: drop half-received assemblies on disconnect
+      this._snapIn=null;this._opcIn=null;this._dcQ=null;   // ADR-0385/0431/0432: drop half-received assemblies + pending sends on disconnect
       if(this._onConnChange)this._onConnChange();
     };
   },
@@ -8594,7 +8601,7 @@ const UI={
       has&&_selAny(s=>(_conn(s.type))&&!_lk(s)&&(s.a||s.b))&&['ctxPinAnchor','',pinAnchor],   // ADR-0213
       has&&_selAny(s=>(_conn(s.type))&&!_lk(s)&&(s.a||s.b))&&['ctxUnbind','',unbindSelection],   // ADR-0157
       has&&_sb().filter(s=>s&&!_lk(s)&&s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen').length===2&&['ctxConnect','',connectSelection],
-      _sh().some(s=>s.visible===0)&&['ctxShowAll','',showAllShapes],
+      _sh().some(s=>_hd(s))&&['ctxShowAll','',showAllShapes],
       _nS()&&['ctxSelectInverse','⌘⇧I',selectInverse],
       // ADR-0005's flagship feature was ⌥B-only — invisible to touch/mouse users
       // (the exact "keyboard-only feature" trap FT-06 warned about).
@@ -9258,7 +9265,7 @@ function reverseConn(){
 function fitSticky(){
   const before=[],after=[];
   _forSel((s,id)=>{if(s.type!=='sticky'||_lk(s))return;
-    const fs=s.fontSize||14,pad=8,lh=fs*(s.lineH||1.3);
+    const fs=_fS(s)||14,pad=8,lh=fs*(s.lineH||1.3);
     ctx.save();ctx.font=_fontStr(s,fs);
     let nw=64;for(const l of _St(s.text||'').split('\n'))nw=_max(nw,ctx.measureText(l).width+pad*2);
     nw=_min(_max(64,nw),_max(64,s.w));   // never grow width past current
@@ -9359,7 +9366,7 @@ function cycleLineH(){
 function fontSizeStep(d){
   const before=[],after=[];
   _forSel((s,id)=>{if((s.type!=='text'&&s.type!=='sticky'&&s.type!=='frame'&&!s.label)||_lk(s))return;   // ADR-0169/0298: labels+frames honour fontSize
-    const cur=s.fontSize||14,nxt=_min(64,_max(8,cur+d*2));
+    const cur=_fS(s)||14,nxt=_min(64,_max(8,cur+d*2));
     if(nxt===cur)return;
     before.push({id,fontSize:cur});after.push({id,fontSize:nxt});s.fontSize=nxt;
     _st().fontSize=nxt;                                 // ADR-0180: last-used persists to the next shape
@@ -9666,7 +9673,7 @@ const Minimap=(()=>{
   let _scene=null,_sceneVer=-1,_sc=0,_ox=0,_oy=0;
   function _renderScene(){
     _sceneVer=_gridVer;
-    if(!_scene){_scene=_ce('canvas');_scene.width=W;_scene.height=H;}
+    if(!_scene){_scene=_ce('canvas');_wh(_scene,W,H);}
     const sx=_scene.getContext('2d');
     sx.clearRect(0,0,W,H);
     const shapes=_sh();

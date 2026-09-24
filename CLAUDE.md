@@ -481,6 +481,7 @@ Board/
 │   ├── ADR-0429-marker-sr-announce.md   # marker ストロークの SR announce (実装済)
 │   ├── ADR-0430-hl-flag-validation.md   # hl フラグの validPatch 網羅 (実装済)
 │   ├── ADR-0431-chunked-ops.md          # 上限超過 op のチャンク送信 (実装済)
+│   ├── ADR-0432-senddc-backpressure.md  # dc.send バックプレッシャ再キュー (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
