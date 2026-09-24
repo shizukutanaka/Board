@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.217]
+
+### 追加
+- **ボックスラベルの縦揃え** (ADR-0159)。ctx「ラベル縦揃え」で
+  中央→上→下を巡回 — rect/ellipse/diamond のラベルを `s.valign`
+  で上揃え/下揃えに (canvas+SVG+styleClipboard)。
+
 ## [1.7.216]
 
 ### 追加
