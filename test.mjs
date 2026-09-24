@@ -728,7 +728,7 @@ const checks = [
   ['drawio import maps align + fontStyle bitmask (ADR-0228)', html.includes("sty.align==='center'||sty.align==='right'")&&html.includes('_fs&4)s.under=1')&&html.includes("'align='+s.align")&&html.includes("fontStyle='+_dfs")],
   ['excalidraw import restores groupIds → groupId (ADR-0229)', html.includes("e.groupIds[0]")&&html.includes('s.groupId=e.groupIds')],
   ['excalidraw import maps fillStyle/roundness/align/arrowheads (ADR-0230)', html.includes("e.fillStyle==='hachure'")&&html.includes('e.roundness)o.r=8')&&html.includes("e.endArrowhead===null)s.head='none'")&&html.includes("style==='none')return")],
-  ['excalidraw export emits fstyle/arrowheads/image-flip (ADR-0231)', html.includes("'cross'?'cross-hatch':'solid'")&&html.includes("startArrowhead:s.start?'arrow':null")&&html.includes("scale:s.flip?")]&&html.includes("d.files[e.fileId]")],
+  ['excalidraw export emits fstyle/arrowheads/image-flip (ADR-0231)', html.includes("'cross'?'cross-hatch':'solid'")&&html.includes("startArrowhead:s.start?'arrow':null")&&html.includes("scale:s.flip?")&&html.includes("d.files[e.fileId]")],
   ['endpoint drag Shift constrains to 45 deg + label editor fontSize (ADR-0206)', html.includes("constrain the free end to 45")&&html.includes("${hit.fontSize||12}px")],
   ['i18n has excImported ja+en', html.includes("excImported:'Excalidraw を取り込みました'") && html.includes("excImported:'Excalidraw imported'")],
   // v1.7.102: ADR-0044 text paste → text shape
