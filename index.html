@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.281';
+const V='1.7.282';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6294,6 +6294,7 @@ function excScene(shapes){
     angle:(s.rotate||0)*Math.PI/180,seed:0,version:1,versionNonce:0,
     isDeleted:false,boundElements:null,updated:0,link:null,locked:false},over);
   const gids={};for(const s of shapes)if(s.groupId)(gids[s.id]=gids[s.id]||[]).push(s.groupId);
+  const _excTid=new Map();   // ADR-0225: sticky rect id → its container text id
   for(const s of shapes){
     switch(s.type){
       case'rect':case'ellipse':case'diamond':
@@ -6304,12 +6305,14 @@ function excScene(shapes){
       case'sticky':{
         els.push(E(s,{type:'rectangle',x:s.x,y:s.y,width:s.w,height:s.h,
           backgroundColor:s.color||'#FEF08A',fillStyle:'solid',roundness:{type:3}}));
-        if(s.text){const tid=uid();els.push({id:tid,type:'text',x:s.x+4,y:s.y+4,
+        if(s.text){const tid=uid();
+          _excTid.set(s.id,tid);                              // ADR-0225: container link for round-trip
+          els.push({id:tid,type:'text',x:s.x+4,y:s.y+4,
           width:Math.abs(s.w)-8,height:Math.abs(s.h)-8,text:s.text,originalText:s.text,
           fontSize:s.fontSize||14,textAlign:s.align||'center',verticalAlign:'middle',lineHeight:1.25,baseline:0,
           strokeColor:'#1e1e1e',backgroundColor:'transparent',fillStyle:'solid',strokeWidth:1,strokeStyle:'solid',
           roughness:0,opacity:100,angle:0,seed:0,version:1,versionNonce:0,isDeleted:false,
-          boundElements:null,updated:0,link:null,locked:false,groupIds:gids[s.id]||[]});}
+          containerId:s.id,boundElements:null,updated:0,link:null,locked:false,groupIds:gids[s.id]||[]});}
         break;}
       case'text':
         els.push(E(s,{type:'text',x:s.x,y:s.y,width:s.w||0,height:s.h||0,
@@ -6344,7 +6347,9 @@ function excScene(shapes){
   for(const e of els){
     if(gids[e.id])e.groupIds=gids[e.id];
     const be=_bnd.get(e.id);
-    if(be)e.boundElements=be.map(cid=>({id:cid,type:'arrow'}));   // ADR-0222
+    const tid=_excTid.get(e.id);                                 // ADR-0225
+    const out=[...(be?be.map(cid=>({id:cid,type:'arrow'})):[]),...(tid?[{id:tid,type:'text'}]:[])];
+    if(out.length)e.boundElements=out;
   }
   return{type:'excalidraw',version:2,source:'Board',elements:els,files,appState:{gridSize:null}};
 // ---- ADR-0203: .drawio import ------------------------------------------------
@@ -6707,6 +6712,7 @@ function excToShapes(txt){
   try{d=JSON.parse(txt)}catch(_){return null}
   if(!d||d.type!=='excalidraw'||!Array.isArray(d.elements))return null;
   const shapes=[],_excBnd=[],idOf=new Map();   // ADR-0223: bindings resolve post-walk
+  const _excTxt=new Map();                     // ADR-0225: container text → parent
   const st=e=>{
     const o={};
     const sc=typeof e.strokeColor==='string'&&e.strokeColor!=='transparent'?e.strokeColor:null;
@@ -6756,7 +6762,18 @@ function excToShapes(txt){
       // ADR-0223: line/arrow keep a back-ref to their exc element so
       // start/endBinding (element ids) can resolve after every vertex exists
       if(s.type==='line'||s.type==='arrow')_excBnd.push([s,e]);
-      if(e.id)idOf.set(e.id,s.id)}
+      if(e.id)idOf.set(e.id,s.id);
+      if(s.type==='text'&&e.containerId)_excTxt.set(s.id,e.containerId)}
+  }
+  // ADR-0225: container text folds back into its rect → the sticky it was
+  // exported from. Parent kept when it carries a label of its own.
+  for(const [sid,cid] of _excTxt){
+    const s=shapes.find(x=>x.id===sid),p=shapes.find(x=>x.id===idOf.get(cid));
+    if(!s||!p||p.type!=='rect'||p.label)continue;
+    p.type='sticky';p.text=s.text;
+    if(s.fontSize)p.fontSize=s.fontSize;
+    if(p.fill!=null){p.color=p.fill;delete p.fill}
+    shapes.splice(shapes.indexOf(s),1);
   }
   for(const [s,e] of _excBnd){
     const sb=e.startBinding,eb=e.endBinding;

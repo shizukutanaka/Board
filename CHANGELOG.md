@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.282]
+
+### 修正
+- **excalidraw sticky 往復** (ADR-0225)。export が text に
+  `containerId` を出力し rect の `boundElements` に登録 —
+  import は container text を親に fold して sticky を復元
+  (従来は rect+text に分解したまま)。
+
 ## [1.7.281]
 
 ### 修正

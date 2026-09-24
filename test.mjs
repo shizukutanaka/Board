@@ -720,7 +720,7 @@ const checks = [
   ['Alt draws box shapes from center (ADR-0219)', html.includes('contRectLike(wp,e.shiftKey,e.altKey)')&&html.includes('// ADR-0219: ⌥ = draw from center')],
   ['.drawio export mxGraphModel round-trip (ADR-0220)', html.includes('function boardToDrawio(shapes)')&&html.includes('edgeStyle=orthogonalEdgeStyle')&&html.includes("jumpStyle=arc")],
   ['drawio exitX/entryX fixed ports round-trip aF/bF (ADR-0221)', html.includes('s.aF={fx:Math.min(1,Math.max(0,fx)),fy')&&html.includes('exitX=${s.aF.fx};exitY=${s.aF.fy}')],
-  ['excalidraw export keeps bindings via s.a/s.b + boundElements (ADR-0222)', html.includes('startBinding:s.a?{elementId:s.a')&&html.includes('e.boundElements=be.map')],
+  ['excalidraw export keeps bindings via s.a/s.b + boundElements (ADR-0222)', html.includes('startBinding:s.a?{elementId:s.a')&&html.includes('if(out.length)e.boundElements=out')],
   ['excalidraw import restores bindings to s.a/s.b (ADR-0223)', html.includes('_excBnd.push([s,e])')&&html.includes('idOf.get(sb.elementId)')],
   ['drawio import keeps line-vs-arrow/curved/jump/start-head (ADR-0224)', html.includes("sty.endArrow==='none'")&&html.includes('s.hop=1')],
   ['endpoint drag Shift constrains to 45 deg + label editor fontSize (ADR-0206)', html.includes("constrain the free end to 45")&&html.includes("${hit.fontSize||12}px")],
@@ -9493,7 +9493,10 @@ try {
      const rta=rt.find(s=>s.type==='arrow');
      assert.ok(rta&&rta.way&&rta.way.length===1,'round-trip: way survives import (ADR-0097)');
      const rtb=rt.find(s=>s.type==='rect');
-     assert.ok(rta.b&&rtb&&rta.b===rtb.id,'round-trip: endBinding restored to s.b pointing at the imported box (ADR-0222/0223)');}
+     assert.ok(rta.b&&rtb&&rta.b===rtb.id,'round-trip: endBinding restored to s.b pointing at the imported box (ADR-0222/0223)');
+     const rts=rt.find(s=>s.type==='sticky');
+     assert.ok(rts&&rts.text==='hi'&&rts.color==='#FEF08A','round-trip: container text folds back into a sticky (ADR-0225)');
+     assert.ok(!rt.some(s=>s.type==='text'&&s.text==='hi'),'round-trip: no orphan container text remains (ADR-0225)');}
     console.log('  ✓ excalidraw import (element mapping, styles, tombstones, reject paths)');
   }
 
