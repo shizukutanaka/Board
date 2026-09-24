@@ -496,6 +496,7 @@ Board/
 │   ├── ADR-0444-undo-wire-group-zorder.md  # group/ungroup/zorder 逆写像追加 (実装済)
 │   ├── ADR-0445-slim-del-pending-purge.md  # del/clear スリム化 + _imgPending パージ (実装済)
 │   ├── ADR-0446-dcq-onclose.md             # dc.onclose の _dcQ リセット (実装済)
+│   ├── ADR-0447-ln-fold.md                 # X.length → _ln(X) 一括 fold (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

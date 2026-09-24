@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.482] - 2026-09-23
+
+### Changed
+- `X.length` 読み取り 364 箇所を `_ln(X)` へ一括 fold — 精密な書込み除外
+  lookahead で比較・算術読み取りを残したまま ~700B 回収 (ADR-0447)
+
 ## [1.7.481] - 2026-09-23
 
 ### Fixed
