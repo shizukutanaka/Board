@@ -6400,6 +6400,23 @@ try {
     assert.ok(adv&&adv.id===b.id,'_sqAdvance: second advance reaches the second cached match');
     _setSq('');
     console.log('  ✓ _sqMatches: {_gridVer,_sq} cache rebuilds on commit and on query change (6 asserts)');
+    // ADR-0381: connectors match by bound-endpoint names — "arrow into Login"
+    // found by "login", not only by the conn's own text.
+    {
+      state.shapes=[];_invalidateGrid();
+      const btn=Shape.make('rect',{x:0,y:0,w:10,h:10,label:'Login'});
+      const conn=Shape.make('arrow',{x1:0,y1:0,x2:50,y2:50,b:btn.id});
+      Store.commit({op:'addMany',shapes:[btn,conn]});
+      _setSq('login');
+      const ms=_sqMatches();
+      assert.ok(ms.some(s=>s.id===conn.id),'ADR-0381: conn found by bound-endpoint label');
+      _setSq('rect');
+      assert.ok(_sqMatches().some(s=>s.id===conn.id),'ADR-0381: conn found by bound-endpoint type');
+      _setSq('nomatchxyz');
+      assert.ok(!_sqMatches().some(s=>s.id===conn.id),'ADR-0381: unrelated query does not match conn');
+      _setSq('');
+      console.log('  ✓ ADR-0381: _sqMatches bound-endpoint search (3 asserts)');
+    }
   }
 
   // ADR-0047: _grpMapGet caches on _gridVer — group/ungroup via direct mutation plus
