@@ -1249,7 +1249,7 @@ function validPatch(p){
   // ADR-0369: string props — type + length. A hostile upd could inject a 1MB
   // text that every frame's wrapText then rescans, or a non-string that the
   // renderers coerce weirdly.
-  for(const k of ['text','label','docName','link','groupId','img','color','stroke','fill','font','head','startHead','align','valign','type','dataUrl','fstyle']){
+  for(const k of ['text','label','docName','link','groupId','img','color','stroke','fill','font','head','startHead','align','valign','type','dataUrl','fstyle','a','b']){
     if(k in p&&p[k]!=null&&typeof p[k]!=='string')return false;
     if(k in p&&typeof p[k]==='string'&&k!=='dataUrl'&&p[k].length>(k==='text'?5000:600))return false;
   }

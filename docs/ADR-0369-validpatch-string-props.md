@@ -12,7 +12,8 @@ ADR-0367/0368 の続き。文字列 prop は `_cleanVal` で「string は OK」�
 ## 決定
 - 文字列リスト (typeof==='string'): `text/label/docName/link/groupId/
   img/color/stroke/fill/font/head/startHead/align/valign/type/dataUrl/
-  fstyle` — `dataUrl` は形式チェック (下段) があるため型のみ。
+  fstyle/a/b` — `a/b` はコネクタ結合先シェイプ id。`dataUrl` は形式
+  チェック (下段) があるため型のみ。
 - 長さ上限: `text` ≤5000、その他 ≤600 (生成時の slice 上限 240/500 に
   余裕を持たせた値 — 正規 Board 出力は全て内側に収まる)。
 - 数値フラグ追加: `elbow/curve/hop/flip/shadow/r/visible/start`。
