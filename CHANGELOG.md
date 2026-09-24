@@ -2,6 +2,66 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.264]
+
+### 追加
+- **コネクタ端点ドラッグの 45° 拘束** (ADR-0206)。端点掴み中に
+  Shift で固定端から 45° 刻み (新規描画の Shift 拘束と同一規約)。
+
+### 修正
+- ラベルエディタの入力フォントを `s.fontSize`/`s.italic` に一致
+  (従来は常に 12px 通常体)。
+
+## [1.7.263]
+
+### 追加
+- **字間 (letter-spacing)** (ADR-0205)。ctx メニュー「字間」で
+  text/sticky/フレーム/ラベル系の字送りを 標準→1px→2px に巡回
+  (canvas `ctx.letterSpacing` + SVG `letter-spacing`、継承・
+  eyedropper・style-copy・付箋連鎖 対応)。
+
+## [1.7.262]
+
+### 追加
+- **フレームラベルの装飾** (ADR-0204)。フレーム名に italic・下線・
+  取消線を適用 (⌘I/⌘U/⌘⇧X、canvas+SVG、600 ウェイト維持)。
+
+## [1.7.261]
+
+### 追加
+- **.drawio インポート** (ADR-0203)。draw.io (非圧縮 mxGraphModel)
+  のドロップ/ファイルピッカー対応 — vertex→図形、edge→結合矢印
+  (orthogonal→elbow、waypoints、ラベル)、色/線幅/破線/opacity/角丸
+  を対応プロップへ。圧縮ペイロードは警告表示。
+
+## [1.7.260]
+
+### 追加
+- **描画中の寸法/線長ピル** (ADR-0202)。rect/ellipse/diamond/
+  sticky/frame のドラッグ描画で W×H、line/arrow で ↔長さ をライブ
+  表示 — 既存図形のリサイズ表示と同一形式。
+
+## [1.7.259]
+
+### 追加
+- **移動中の X,Y リードアウト** (ADR-0201)。選択ドラッグ中に選択群
+  bbox の左上座標をライブピル表示 (回転角/寸法/線長の既存表示と
+  揃い、Figma の X/Y パネル相当)。
+
+## [1.7.258]
+
+### 追加
+- **Shift でペン直線モード** (ADR-0200)。ストローク中に Shift を
+  押すと始点からの直線に拘束 (Excalidraw parity)、離すとその点から
+  フリーハンド継続。marker も同様。
+
+## [1.7.257]
+
+### 追加
+- **付箋をテキストに合わせる** (ADR-0199)。ctx メニューで付箋の
+  幅を最長行に縮め、高さを折返し行数へ自動調整 (draw.io Autosize
+  相当、長文のクリップ溢れを解消)。
+
 ## [1.7.256]
 
 ### 追加
