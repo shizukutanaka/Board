@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.240]
+
+### 追加
+- **ラベルエディタの viewport 追従** (ADR-0182)。ラベル編集 input が
+  pan/zoom で図形に追従 (テキストエディタと同一規則、ADR-0053)。
+
 ## [1.7.239]
 
 ### 追加

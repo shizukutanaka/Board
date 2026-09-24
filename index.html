@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.239';
+const V='1.7.240';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2124,6 +2124,7 @@ function frame(){
     Net.sendSelectionIfChanged();
     _mirrorSync();   // ADR-0041: DOM mirror rebuilds only on _gridVer change
     _teFollow();     // ADR-0053: open text overlay tracks pan/zoom
+    _lblFollow();    // ADR-0182: open label overlay tracks pan/zoom
     _syncStylePanelIfChanged();   // ADR-0059
     _statusSel();    // ADR-0164: selection dims readout, signature-gated
   }
@@ -3981,26 +3982,31 @@ canvas.addEventListener('dblclick',e=>{
 // Positions and opens the shared label editor for box labels (frame/rect/ellipse, at
 // their centre/corner) and connector labels (line/arrow, at the segment midpoint).
 // Shared by dblclick and ADR-0013's keyboard path so both stay in sync by construction.
-function _openLabelEditorFor(hit){
+// ADR-0182: anchor geometry shared by openLabelEditor and the follow pass —
+// recomputable on every viewport change so the input rides the shape.
+function _lblAnchor(hit){
   const r=canvas.getBoundingClientRect();
   if(hit.type==='frame'||hit.type==='rect'||hit.type==='ellipse'||hit.type==='diamond'){   // ADR-0081
     const isFrame=hit.type==='frame';
     const sp=G.w2s(isFrame?{x:hit.x,y:hit.y}:{x:hit.x+hit.w/2,y:hit.y+hit.h/2});
-    openLabelEditor(hit,r.left+sp.x+(isFrame?6:-40),r.top+sp.y+(isFrame?-24:-12),isFrame);
-    return true;
+    return {left:r.left+sp.x+(isFrame?6:-40),top:r.top+sp.y+(isFrame?-24:-12),bold:isFrame};
   }
   if(hit.type==='line'||hit.type==='arrow'){
     // Edge label at the connector's label anchor (ADR-0003/0081) — routed routes included.
     const lp=_connLabelXY(hit),sp=G.w2s({x:lp.x,y:lp.y});
-    openLabelEditor(hit,r.left+sp.x-40,r.top+sp.y-12,false);
-    return true;
+    return {left:r.left+sp.x-40,top:r.top+sp.y-12,bold:false};
   }
   if(hit.type==='image'){                                            // ADR-0083
     const sp=G.w2s({x:hit.x+hit.w/2,y:hit.y+hit.h});
-    openLabelEditor(hit,r.left+sp.x-40,r.top+sp.y-28,false);
-    return true;
+    return {left:r.left+sp.x-40,top:r.top+sp.y-28,bold:false};
   }
-  return false;   // pen: no label to edit
+  return null;   // pen: no label to edit
+}
+function _openLabelEditorFor(hit){
+  const a=_lblAnchor(hit);
+  if(!a)return false;
+  openLabelEditor(hit,a.left,a.top,a.bold);
+  return true;
 }
 // ADR-0013 (FT-19): the only entry point above was dblclick, so keyboard/SR users could
 // never edit a connector or frame label. Enter is otherwise unused with the select tool
@@ -4025,17 +4031,29 @@ function openLabelEditor(hit,leftPx,topPx,bold){
     `background:${getCSS('--paper')};border:1px solid ${col};`+
     `padding:2px 6px;outline:none;z-index:9500;min-width:80px;`;
   document.body.appendChild(inp);inp.select();
+  _lblTa={inp,hit};_lblVp='';   // ADR-0182: follow the viewport while editing
   const commit=()=>{
     const lbl=inp.value.trim();
     if(lbl!==hit.label){const before={label:hit.label??null};const after={label:lbl||null};hit.label=lbl||null;const origSel=[...state.selection];Store._recordCommitted({op:'upd',id:hit.id,before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
-    inp.remove();
+    _lblTa=null;inp.remove();
   };
   inp.addEventListener('blur',commit);
   inp.addEventListener('keydown',ev=>{
     if(ev.isComposing)return;
     if(ev.key==='Enter'){ev.preventDefault();commit()}
-    if(ev.key==='Escape'){inp.removeEventListener('blur',commit);inp.remove()}
+    if(ev.key==='Escape'){inp.removeEventListener('blur',commit);_lblTa=null;inp.remove()}
   });
+}
+// ADR-0182: same viewport-signature follow as _teFollow (ADR-0053), for the
+// label input — it used to stay glued to the glass while the board panned.
+let _lblTa=null,_lblVp='';
+function _lblFollow(){
+  if(!_lblTa)return;
+  const v=state.viewport,sig=v.x+'|'+v.y+'|'+v.z;
+  if(sig===_lblVp)return;
+  _lblVp=sig;
+  const a=_lblAnchor(_lblTa.hit);
+  if(a){_lblTa.inp.style.left=a.left+'px';_lblTa.inp.style.top=a.top+'px'}
 }
 
 // ---- Image import: drag-drop ----
