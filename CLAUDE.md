@@ -224,6 +224,14 @@ Board/
 - [ADR-0172](docs/ADR-0172-lock-badge.md) ロック選択の鍵バッジ
 - [ADR-0173](docs/ADR-0173-font-family.md) 書体ファミリ巡回
 - [ADR-0174](docs/ADR-0174-ctx-opacity.md) ctx 不透明度巡回
+- [ADR-0175](docs/ADR-0175-frame-fill.md) フレームの塗り色
+- [ADR-0176](docs/ADR-0176-image-border.md) 画像のボーダー
+- [ADR-0177](docs/ADR-0177-eraser-hover.md) 消しゴムホバー
+- [ADR-0178](docs/ADR-0178-frame-image-dash.md) フレーム/画像ボーダー破線
+- [ADR-0179](docs/ADR-0179-img-caption-valign.md) 画像キャプション上下
+- [ADR-0180](docs/ADR-0180-fontsize-persistence.md) fontSize 継承
+- [ADR-0181](docs/ADR-0181-style-persistence-2.md) head/font 継承
+- [ADR-0182](docs/ADR-0182-label-editor-follow.md) ラベルエディタ追従
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

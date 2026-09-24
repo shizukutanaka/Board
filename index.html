@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.232';
+const V='1.7.240';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1831,6 +1831,10 @@ const Shape={
     const base={id:uid(),type,z:nextZ(),
       stroke:state.style.stroke,fill:state.style.fill,
       size:state.style.size,opacity:state.style.opacity,dash:state.style.dash||0};
+    // ADR-0181: last-used per-type props persist to the next shape of that
+    // type (same rule as state.style's stroke/fill/size — ADR-0180 pattern).
+    if((type==='text'||type==='sticky')&&state.style.font!=null)base.font=state.style.font;
+    if(type==='arrow'&&state.style.head!=null)base.head=state.style.head;
     return Object.assign(base,extras);
   }};
 
@@ -2120,6 +2124,7 @@ function frame(){
     Net.sendSelectionIfChanged();
     _mirrorSync();   // ADR-0041: DOM mirror rebuilds only on _gridVer change
     _teFollow();     // ADR-0053: open text overlay tracks pan/zoom
+    _lblFollow();    // ADR-0182: open label overlay tracks pan/zoom
     _syncStylePanelIfChanged();   // ADR-0059
     _statusSel();    // ADR-0164: selection dims readout, signature-gated
   }
@@ -2382,6 +2387,13 @@ function drawOverlay(){
     c.strokeStyle='rgba(0,196,204,.3)';c.lineWidth=1;c.setLineDash([4,4]);
     c.strokeRect(p1.x,p1.y,p2.x-p1.x,p2.y-p1.y);c.setLineDash([]);
   }
+  // ADR-0177: eraser hover target (red dashed bbox, locked excluded upstream).
+  if(state._ehov&&state.tool==='eraser'){
+    const es=byId(state._ehov);
+    if(es){const eb=G.bbox(es),ep1=G.w2s({x:eb.x-3,y:eb.y-3}),ep2=G.w2s({x:eb.x+eb.w+3,y:eb.y+eb.h+3});
+      c.strokeStyle='#EF4444';c.lineWidth=1.5;c.setLineDash([5,4]);
+      c.strokeRect(ep1.x,ep1.y,ep2.x-ep1.x,ep2.y-ep1.y);c.setLineDash([]);}
+  }
   drawSelection(c);
   drawGuides(c);
   _drawMeasure(c);                                                     // ADR-0151
@@ -2566,7 +2578,7 @@ function _drawImgLabel(s,c){
   let lines=wrapTextCached(s,s.label,Math.max(10,s.w-8),fs,t=>c.measureText(t).width);
   const lh=fs*1.25,maxL=Math.max(1,Math.floor((s.h-4)/lh));
   if(lines.length>maxL){lines=lines.slice(0,maxL);lines[maxL-1]+='…'}
-  const sh_=lines.length*lh+4,sy=s.y+s.h-sh_;
+  const sh_=lines.length*lh+4,sy=s.valign==='top'?s.y:s.y+s.h-sh_;   // ADR-0179
   c.fillStyle=getCSS('--paper')||'#fff';c.globalAlpha=0.85;
   c.fillRect(s.x,sy,s.w,sh_);
   c.globalAlpha=1;c.fillStyle=s.stroke||'#0F172A';
@@ -2664,7 +2676,7 @@ function drawShape(s,c){
   c.lineCap='round';c.lineJoin='round';
   c.strokeStyle=s.stroke||'#0F172A';
   c.lineWidth=s.size||1;
-  c.setLineDash((s.dash&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond'||s.type==='line'||s.type==='arrow'))?dashArr(s.dash,s.size):[]);
+  c.setLineDash((s.dash&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond'||s.type==='line'||s.type==='arrow'||s.type==='frame'||s.type==='image'))?dashArr(s.dash,s.size):[]);   // ADR-0178
   if(s.fill){c.fillStyle=s.fill}
   const _rot=shapeRot(s);
   if(_rot){const _cx=s.x+s.w/2,_cy=s.y+s.h/2;c.save();c.translate(_cx,_cy);c.rotate(_rot*Math.PI/180);c.translate(-_cx,-_cy);}
@@ -2706,7 +2718,12 @@ function drawShape(s,c){
         if(_cr>0){c.save();c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,_cr);c.clip()}
         if(s.flip){const fx=s.x+s.w/2,fy=s.y+s.h/2;c.save();c.translate(fx,fy);c.scale(s.flip&1?-1:1,s.flip&2?-1:1);c.translate(-fx,-fy);c.drawImage(img,s.x,s.y,s.w,s.h);c.restore()}
         else c.drawImage(img,s.x,s.y,s.w,s.h);
-        if(_cr>0)c.restore();}   // ADR-0149
+        if(_cr>0)c.restore();
+        // ADR-0176: s.stroke+s.size draws a border (stroke swatch already
+        // reaches images through applyStyleToSelection but was never painted).
+        if(s.stroke&&s.size){c.strokeStyle=s.stroke;c.lineWidth=s.size;
+          c.setLineDash(dashArr(s.dash||0,s.size));                     // ADR-0178
+          c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,_cr);c.stroke();c.setLineDash([])}}   // ADR-0149
       else{c.strokeStyle=s.stroke||'#CBD5E1';c.lineWidth=1;c.strokeRect(s.x,s.y,s.w,s.h)}
       _drawImgLabel(s,c);                                         // ADR-0083
       break;}
@@ -2715,13 +2732,14 @@ function drawShape(s,c){
       const r=4;
       c.save();
       c.globalAlpha=(s.opacity??1)*0.9;
-      // subtle fill
-      c.fillStyle='rgba(248,250,252,0.6)';
+      // ADR-0175: s.fill tints the frame (was hard-coded translucent);
+      // frames draw in the first pass so contents still render on top.
+      c.fillStyle=s.fill||'rgba(248,250,252,0.6)';
       c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,r);c.fill();
       // border
       c.strokeStyle=s.stroke||getCSS('--brand')||'#00C4CC';
       c.lineWidth=s.size||1.5;
-      c.setLineDash([]);
+      c.setLineDash(dashArr(s.dash||0,s.size||1.5));                    // ADR-0178
       c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,r);c.stroke();
       // label
       const lbl=s.label||'Frame';
@@ -3711,6 +3729,14 @@ canvas.addEventListener('pointermove',e=>{
       const _sig=m=>m?`${m.a.x}|${m.a.y}|${m.a.w}|${m.a.h}|${m.b.x}|${m.b.y}|${m.b.w}|${m.b.h}`:'';
       if(_sig(_m)!==_sig(state.measure)){state.measure=_m;invalidateOverlay()}
     }
+    else if(state.tool==='eraser'){
+      // ADR-0177: eraser hover preview — Excalidraw-style red target outline
+      // so a mis-click doesn't vaporize the wrong shape. pickTop is
+      // grid-accelerated (ADR-0032), so per-move cost is tiny.
+      const top=pickTop(wp),id=top&&!top.locked?top.id:null;
+      if(id!==state._ehov){state._ehov=id;invalidateOverlay()}
+      canvas.style.cursor='crosshair';
+    }
     return;
   }
   const dx=sp.x-ptr.x0,dy=sp.y-ptr.y0;
@@ -3956,26 +3982,31 @@ canvas.addEventListener('dblclick',e=>{
 // Positions and opens the shared label editor for box labels (frame/rect/ellipse, at
 // their centre/corner) and connector labels (line/arrow, at the segment midpoint).
 // Shared by dblclick and ADR-0013's keyboard path so both stay in sync by construction.
-function _openLabelEditorFor(hit){
+// ADR-0182: anchor geometry shared by openLabelEditor and the follow pass —
+// recomputable on every viewport change so the input rides the shape.
+function _lblAnchor(hit){
   const r=canvas.getBoundingClientRect();
   if(hit.type==='frame'||hit.type==='rect'||hit.type==='ellipse'||hit.type==='diamond'){   // ADR-0081
     const isFrame=hit.type==='frame';
     const sp=G.w2s(isFrame?{x:hit.x,y:hit.y}:{x:hit.x+hit.w/2,y:hit.y+hit.h/2});
-    openLabelEditor(hit,r.left+sp.x+(isFrame?6:-40),r.top+sp.y+(isFrame?-24:-12),isFrame);
-    return true;
+    return {left:r.left+sp.x+(isFrame?6:-40),top:r.top+sp.y+(isFrame?-24:-12),bold:isFrame};
   }
   if(hit.type==='line'||hit.type==='arrow'){
     // Edge label at the connector's label anchor (ADR-0003/0081) — routed routes included.
     const lp=_connLabelXY(hit),sp=G.w2s({x:lp.x,y:lp.y});
-    openLabelEditor(hit,r.left+sp.x-40,r.top+sp.y-12,false);
-    return true;
+    return {left:r.left+sp.x-40,top:r.top+sp.y-12,bold:false};
   }
   if(hit.type==='image'){                                            // ADR-0083
     const sp=G.w2s({x:hit.x+hit.w/2,y:hit.y+hit.h});
-    openLabelEditor(hit,r.left+sp.x-40,r.top+sp.y-28,false);
-    return true;
+    return {left:r.left+sp.x-40,top:r.top+sp.y-28,bold:false};
   }
-  return false;   // pen: no label to edit
+  return null;   // pen: no label to edit
+}
+function _openLabelEditorFor(hit){
+  const a=_lblAnchor(hit);
+  if(!a)return false;
+  openLabelEditor(hit,a.left,a.top,a.bold);
+  return true;
 }
 // ADR-0013 (FT-19): the only entry point above was dblclick, so keyboard/SR users could
 // never edit a connector or frame label. Enter is otherwise unused with the select tool
@@ -4000,17 +4031,29 @@ function openLabelEditor(hit,leftPx,topPx,bold){
     `background:${getCSS('--paper')};border:1px solid ${col};`+
     `padding:2px 6px;outline:none;z-index:9500;min-width:80px;`;
   document.body.appendChild(inp);inp.select();
+  _lblTa={inp,hit};_lblVp='';   // ADR-0182: follow the viewport while editing
   const commit=()=>{
     const lbl=inp.value.trim();
     if(lbl!==hit.label){const before={label:hit.label??null};const after={label:lbl||null};hit.label=lbl||null;const origSel=[...state.selection];Store._recordCommitted({op:'upd',id:hit.id,before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
-    inp.remove();
+    _lblTa=null;inp.remove();
   };
   inp.addEventListener('blur',commit);
   inp.addEventListener('keydown',ev=>{
     if(ev.isComposing)return;
     if(ev.key==='Enter'){ev.preventDefault();commit()}
-    if(ev.key==='Escape'){inp.removeEventListener('blur',commit);inp.remove()}
+    if(ev.key==='Escape'){inp.removeEventListener('blur',commit);_lblTa=null;inp.remove()}
   });
+}
+// ADR-0182: same viewport-signature follow as _teFollow (ADR-0053), for the
+// label input — it used to stay glued to the glass while the board panned.
+let _lblTa=null,_lblVp='';
+function _lblFollow(){
+  if(!_lblTa)return;
+  const v=state.viewport,sig=v.x+'|'+v.y+'|'+v.z;
+  if(sig===_lblVp)return;
+  _lblVp=sig;
+  const a=_lblAnchor(_lblTa.hit);
+  if(a){_lblTa.inp.style.left=a.left+'px';_lblTa.inp.style.top=a.top+'px'}
 }
 
 // ---- Image import: drag-drop ----
@@ -4763,7 +4806,7 @@ function beginRectLike(wp){
   const extras={x:sp.x,y:sp.y,w:0,h:0};
   if(state.tool==='sticky'){
     extras.color=STICKY_COLORS[Math.floor(Math.random()*STICKY_COLORS.length)];
-    extras.text='';extras.fontSize=14;
+    extras.text='';extras.fontSize=state.style.fontSize||14;          // ADR-0180
   }else if(state.tool==='frame'){
     const n=state.shapes.filter(s=>s.type==='frame').length+1;
     extras.label=`Frame ${n}`;
@@ -4856,7 +4899,7 @@ function _bindAt(x,y){
 // ---- text ----
 function beginText(wp){
   const sp=snapPt(wp);
-  const s=Shape.make('text',{x:sp.x,y:sp.y,w:120,h:24,text:'',fontSize:16});
+  const s=Shape.make('text',{x:sp.x,y:sp.y,w:120,h:24,text:'',fontSize:state.style.fontSize||16});   // ADR-0180
   const origSel=[...state.selection];
   Store.commit({op:'add',shape:s});
   if(origSel.length)state.history[state.histIdx].origSel=origSel;
@@ -4890,7 +4933,7 @@ function createShapeKbd(){
     s=Shape.make(tool,{x1:cx-80,y1:cy,x2:cx+80,y2:cy});
   }else if(tool==='sticky'){
     s=Shape.make('sticky',{x:cx-80,y:cy-80,w:160,h:160,
-      color:STICKY_COLORS[Math.floor(Math.random()*STICKY_COLORS.length)],text:'',fontSize:14});
+      color:STICKY_COLORS[Math.floor(Math.random()*STICKY_COLORS.length)],text:'',fontSize:state.style.fontSize||14});   // ADR-0180
   }else if(tool==='frame'){
     const n=state.shapes.filter(x=>x.type==='frame').length+1;
     s=Shape.make('frame',{x:cx-400,y:cy-250,w:800,h:500,
@@ -5270,6 +5313,7 @@ function toggleSq(){
 }
 function pickTool(tool,temporary){
   if(temporary&&!window._prevTool)window._prevTool=state.tool;
+  state._ehov=null;                                                     // ADR-0177
   if(ptr.lineClick&&tool!=='line'&&tool!=='arrow'){ptr.lineClick=false;state.draft=null;invalidate()}   // ADR-0126
   state.tool=tool;canvas.dataset.tool=tool;
   canvas.setAttribute('aria-label',(T.k[tool]||tool)+' — '+t('canvasHint'));   // localized (was hardcoded English)
@@ -6582,7 +6626,9 @@ function buildSVG(shapes,paper){
           const fT=s.flip?` translate(${_num(X+W/2+ox)} ${_num(Y+H/2+oy)}) scale(${s.flip&1?-1:1} ${s.flip&2?-1:1}) translate(${_num(-(X+W/2+ox))} ${_num(-(Y+H/2+oy))})`:'';
           const _cr2=Math.min(s.r||0,Math.abs(W)/2,Math.abs(H)/2);   // ADR-0168
           if(_cr2>0)els.push(`<clipPath id="irc${_esc(s.id)}"><rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${_cr2}"/></clipPath>`);
-          els.push(`<image x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" href="${_esc(s.dataUrl)}"${_cr2>0?` clip-path="url(#irc${_esc(s.id)})"`:''}${a}${rT}${fT}/>`);}
+          els.push(`<image x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" href="${_esc(s.dataUrl)}"${_cr2>0?` clip-path="url(#irc${_esc(s.id)})"`:''}${a}${rT}${fT}/>`);
+          if(s.stroke&&s.size)els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${_cr2}" fill="none" stroke="${_esc(s.stroke)}" stroke-width="${_num(s.size)}"${dA}${a}${rT}/>`);   // ADR-0176/0178
+        }
         if(s.label)_svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT);  // ADR-0083
         break;
       case 'frame':{
@@ -6593,7 +6639,7 @@ function buildSVG(shapes,paper){
         // or default-opacity frame rendered wrong (fully opaque, unlabeled) only in SVG
         // export, not canvas/PNG/PDF (deep-audit fix).
         const fa=` opacity="${(s.opacity==null?1:_num(s.opacity))*0.9}"`;
-        els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${fr}" fill="rgba(248,250,252,0.6)" stroke="${clr}" stroke-width="${SZ||1.5}"${fa}${rT}/>`);
+        els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${fr}" fill="${s.fill||'rgba(248,250,252,0.6)'}" stroke="${clr}" stroke-width="${SZ||1.5}"${dA}${fa}${rT}/>`);   // ADR-0178
         els.push(`<text x="${X+ox+6}" y="${Y+oy-4}" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="${clr}"${fa}${rT}>${_esc(s.label||'Frame')}</text>`);
         break;}
       case 'sticky':{
@@ -6624,7 +6670,7 @@ function _svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT){
   let lines=wrapText(s.label,Math.max(10,W-8),t=>t.length*fs*0.6);
   const lh=fs*1.25,maxL=Math.max(1,Math.floor((H-4)/lh));
   if(lines.length>maxL){lines=lines.slice(0,maxL);lines[maxL-1]+='…'}
-  const sh_=lines.length*lh+4,sy=Y+H-sh_;
+  const sh_=lines.length*lh+4,sy=s.valign==='top'?Y:Y+H-sh_;   // ADR-0179
   els.push(`<g${rT}><rect x="${X+ox}" y="${sy+oy}" width="${W}" height="${sh_}" fill="${_esc(paper||'#FFFFFF')}" opacity="0.85"/>`);
   const al4=s.align||'center',tx4=al4==='left'?X+ox+6:al4==='right'?X+ox+W-6:X+W/2+ox;   // ADR-0171
   const anc4=al4==='left'?'start':al4==='right'?'end':'middle';
@@ -7593,7 +7639,7 @@ const UI={
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky'||s.label)&&!s.locked})&&['ctxTextAlign','',cycleTextAlign],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky'||s.label)&&!s.locked})&&['ctxFont','',cycleFont],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&!s.locked})&&['ctxOpacity','0-9',cycleOpacity],   // ADR-0174
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond')&&!s.locked})&&['ctxVAlign','',cycleVAlign],   // ADR-0159
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond'||(s.type==='image'&&!!s.label))&&!s.locked})&&['ctxVAlign','',cycleVAlign],   // ADR-0179   // ADR-0159
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky')&&!s.locked})&&[[...state.selection].some(id=>byId(id)?.type==='sticky'&&!byId(id)?.locked)?'ctxToText':'ctxToSticky','',toggleStickyText],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='sticky'&&!s.locked})&&['ctxStickyColor','',cycleStickyColor],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond')&&!s.locked})&&['ctxFillStyle','',cycleFillStyle],
@@ -8146,6 +8192,7 @@ function cycleArrowHead(){
   if(!sel.length)return;
   const cur=sel[0].head||'arrow';
   const next=HEAD_STYLES[(HEAD_STYLES.indexOf(cur)+1)%HEAD_STYLES.length];
+  state.style.head=next;                            // ADR-0181
   const origSel=[...state.selection];
   Store.commit({op:'style',before:sel.map(s=>({id:s.id,head:s.head??null})),after:sel.map(s=>({id:s.id,head:next}))});
   if(origSel.length)state.history[state.histIdx].origSel=origSel;
@@ -8261,7 +8308,7 @@ function unbindSelection(){
 function cycleVAlign(){
   const before=[],after=[],seq=[null,'top','bottom'];
   for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='rect'&&s.type!=='ellipse'&&s.type!=='diamond')||s.locked)continue;
+    const s=byId(id);if(!s||(s.type!=='rect'&&s.type!=='ellipse'&&s.type!=='diamond'&&!(s.type==='image'&&s.label))||s.locked)continue;   // ADR-0179
     const cur=s.valign||null,nxt=seq[(seq.indexOf(cur)+1)%3];
     before.push({id,valign:cur});after.push({id,valign:nxt});
     if(nxt==null)delete s.valign;else s.valign=nxt;
@@ -8276,6 +8323,7 @@ function fontSizeStep(d){
     const cur=s.fontSize||14,nxt=Math.min(64,Math.max(8,cur+d*2));
     if(nxt===cur)continue;
     before.push({id,fontSize:cur});after.push({id,fontSize:nxt});s.fontSize=nxt;
+    state.style.fontSize=nxt;                                 // ADR-0180: last-used persists to the next shape
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
 }
@@ -8334,6 +8382,7 @@ function cycleFont(){
     const cur=s.font||'',nxt=cur===''?'mono':cur==='mono'?'serif':'';
     before.push({id,font:cur||null});after.push({id,font:nxt||null});
     if(nxt)s.font=nxt;else delete s.font;
+    state.style.font=nxt||null;                     // ADR-0181
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
 }

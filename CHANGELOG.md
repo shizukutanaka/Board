@@ -2,6 +2,57 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.240]
+
+### 追加
+- **ラベルエディタの viewport 追従** (ADR-0182)。ラベル編集 input が
+  pan/zoom で図形に追従 (テキストエディタと同一規則、ADR-0053)。
+
+## [1.7.239]
+
+### 追加
+- **head/font の last-used 継承** (ADR-0181)。矢印ヘッドスタイルと
+  書体の最終使用値が `state.style` に残り、次に作る同種図形に継承。
+
+## [1.7.238]
+
+### 追加
+- **fontSize の last-used 継承** (ADR-0180)。⌘⇧,/. で設定した
+  fontSize が `state.style` に残り、次に作る text/sticky に継承
+  (stroke/fill/size と同じ規則)。
+
+## [1.7.237]
+
+### 追加
+- **画像キャプションの上下位置** (ADR-0179)。`s.valign` がラベル所持
+  の画像にも適用 — キャプション帯を画像上部へ (draw.io parity)。
+
+## [1.7.236]
+
+### 追加
+- **フレーム/画像ボーダーの破線** (ADR-0178)。dash スタイルが
+  フレーム枠と画像ボーダーにも適用 (canvas/SVG 一致)。
+
+## [1.7.235]
+
+### 追加
+- **消しゴムホバーハイライト** (ADR-0177)。消しゴムで図形をホバー
+  すると赤破線枠で消去対象を予告 (Excalidraw parity) — 誤削除を防ぐ。
+
+## [1.7.234]
+
+### 追加
+- **画像のボーダー** (ADR-0176)。`s.stroke`+`s.size` で画像に角丸
+  ボーダーを描画 (canvas/SVG) — 設定可能だったが描画されていなかった
+  スタイルを視覚化。
+
+## [1.7.233]
+
+### 追加
+- **フレームの塗り色** (ADR-0175)。`s.fill` が canvas/SVG 両経路で
+  描画される — 塗りボタン/スタイルコピーで設定できていた値が
+  視覚化。未設定フレームは従来の半透明のまま。
+
 ## [1.7.232]
 
 ### 追加
