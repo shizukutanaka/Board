@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.170';
+const V='1.7.171';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -859,7 +859,7 @@ const I18N={
     beautified:'整形しました',beautifyNone:'整形できる図形がありません(矩形・楕円・直線に近いペン描画を選択してください)',
     undone:'元に戻した',redone:'やり直した',created:'作成',editLabel:'選択中の図形を編集',
     confirmClear:'すべて削除しますか？',
-    ctxCopy:'コピー',ctxPasteAt:'ここに貼り付け',ctxPaste:'貼り付け',ctxDuplicate:'複製',
+    ctxCopy:'コピー',ctxPasteInPlace:'同じ位置に貼り付け',ctxPasteAt:'ここに貼り付け',ctxPaste:'貼り付け',ctxDuplicate:'複製',
     ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxCurve:'曲線',ctxRouteReset:'ルートをリセット (直線に戻す)',ctxSelContents:'内容を選択',ctxFrameFit:'コンテンツに合わせる',ctxToArrow:'矢印に変換',ctxToLine:'直線に変換',ctxBothEnds:'両端ヘッド',ctxRrect:'角スタイル (角丸→直角)',ctxStickyColor:'付箋の色 (順送り)',ctxToText:'テキストに変換',ctxToSticky:'付箋に変換',ctxTextAlign:'テキスト揃え (左→中央→右)',ctxFillStyle:'塗りスタイル (塗り→ハッチ→斜格子)',
     ctxSelectSame:'同色を選択',ctxWrapFrame:'フレームで包む',ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
     ctxSendBackward:'背面へ',ctxSendBack:'最背面へ',
@@ -935,7 +935,7 @@ const I18N={
     beautified:'Beautified',beautifyNone:'Nothing to beautify (select a pen stroke close to a rectangle, ellipse, or line)',
     undone:'Undone',redone:'Redone',created:'Created',editLabel:'Edit selected shape',
     confirmClear:'Delete everything?',
-    ctxCopy:'Copy',ctxPasteAt:'Paste here',ctxPaste:'Paste',ctxDuplicate:'Duplicate',
+    ctxCopy:'Copy',ctxPasteInPlace:'Paste in place',ctxPasteAt:'Paste here',ctxPaste:'Paste',ctxDuplicate:'Duplicate',
     ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxCurve:'Curved',ctxRouteReset:'Reset route (straighten)',ctxSelContents:'Select contents',ctxFrameFit:'Fit to contents',ctxToArrow:'Convert to arrow',ctxToLine:'Convert to line',ctxBothEnds:'Arrowheads both ends',ctxRrect:'Corners (round→sharp)',ctxStickyColor:'Sticky colour (cycle)',ctxToText:'Convert to text',ctxToSticky:'Convert to sticky',ctxTextAlign:'Text align (left→center→right)',ctxFillStyle:'Fill style (solid→hatch→cross)',
     ctxSelectSame:'Select same colour',ctxWrapFrame:'Frame selection',ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
     ctxSendBackward:'Send backward',ctxSendBack:'Send to back',
@@ -4757,6 +4757,7 @@ window.addEventListener('keydown',e=>{
   if(k==='p'&&e.shiftKey&&!meta&&!e.altKey){e.preventDefault();Presentation.enter();return}
   else if(meta&&k==='enter'){e.preventDefault();Presentation.enter()}
   else if(meta&&k==='c'){e.preventDefault();doCopy()}
+  else if(meta&&k==='v'&&e.shiftKey){e.preventDefault();doPasteInPlace()}   // ADR-0113
   else if(meta&&k==='v'){e.preventDefault();doPaste()}
   else if(meta&&k==='x'&&e.shiftKey){e.preventDefault();toggleTextFlag('strike')}   // ADR-0100
   else if(meta&&k==='x'){e.preventDefault();doCopy();doDelete()}
@@ -4905,6 +4906,16 @@ function doPaste(){
   _pasteCount++;
   const origSel=[...state.selection];
   const added=_placeCopies(state.clipboard.shapes,vCx-srcCx+co,vCy-srcCy+co);
+  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  UI.toast(t('pasted')+' '+added.length);
+}
+// ADR-0113: paste in place — ⌘⇧V restores shapes at their original coordinates
+// (Figma's Paste-in-place). No offset at all: dx=dy=0 keeps source coords.
+// Used to paste across boards/views or to drop a copy exactly atop the source.
+function doPasteInPlace(){
+  if(!state.clipboard)return;
+  const origSel=[...state.selection];
+  const added=_placeCopies(state.clipboard.shapes,0,0);
   if(origSel.length)state.history[state.histIdx].origSel=origSel;
   UI.toast(t('pasted')+' '+added.length);
 }
@@ -6950,6 +6961,7 @@ const UI={
       has&&['ctxCopy','⌘C',doCopy],
       state.clipboard&&['ctxPaste','⌘V',doPaste],
       state.clipboard&&['ctxPasteAt','',()=>doPasteAt(m._wx,m._wy)],
+      state.clipboard&&['ctxPasteInPlace','⌘⇧V',doPasteInPlace],
       has&&['ctxDuplicate','⌘D',doDuplicate],
       has&&['ctxCopyStyle','⌥C',copyStyle],
       state.styleClipboard&&has&&['ctxPasteStyle','⌥V',pasteStyle],
@@ -7055,7 +7067,7 @@ const UI={
       ['L',k.line],['T',k.text],['N',k.sticky],['F',k.frame],['E',k.eraser],['D',k.diamond],
       ['⇧P',k.present],
       ['⌘Z',k.undo],['⌘⇧Z',k.redo],['⌘A',k.selAll],['⌘G / ⌘⌥G',k.group+'/'+t('ctxWrapFrame')],
-      ['⌘C/V/X',k.copy+'/'+k.paste+'/'+k.cut],['⌘D',k.dup],['⌫',k.del],
+      ['⌘C/V/X',k.copy+'/'+k.paste+'/'+k.cut],['⌘⇧V',t('ctxPasteInPlace')],['⌘D',k.dup],['⌫',k.del],
       ['⌘+/−/0',k.zoomIn+'/'+k.zoomOut+'/'+k.zoom100],
       ['⇧1',k.fit],['⇧2',t('selFit')],['⌘E',k.exp],['⌘⇧E','SVG'],['⌘P','PDF'],['⌘⇧S','.board'],
       ['G',k.grid],['⇧G',t('snap')],['M',k.minimap],['Esc',k.esc],['?',k.help],

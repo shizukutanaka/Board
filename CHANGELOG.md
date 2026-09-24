@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.171]
+
+### 追加
+- **同じ位置に貼り付け ⌘⇧V** (ADR-0113)。クリップボードの図形を
+  コピー元と同じ座標に複製 (Figma Paste-in-place parity)。
+  ctx メニューにも「同じ位置に貼り付け」。⌘⇧V が従来の ⌘V
+  バインドに吸収されないよう shift 判定を分割。
+
 ## [1.7.170]
 
 ### 追加
