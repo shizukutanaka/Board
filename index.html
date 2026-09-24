@@ -831,7 +831,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.456';
+const V='1.7.457';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -9563,7 +9563,7 @@ const Presentation=(()=>{
     const pad=40;
     const scaleX=(vW-pad*2)/frame.w;
     const scaleY=(vH-pad*2)/frame.h;
-    const zoom=_min(scaleX,scaleY,4);
+    const zoom=_fin(scaleX)&&_fin(scaleY)?clampZoom(_min(scaleX,scaleY,4)):1;   // ADR-0422: degenerate frame dims → NaN zoom would blank the viewport
     const cx=frame.x+frame.w/2;
     const cy=frame.y+frame.h/2;
     _vp().zoom=zoom;
