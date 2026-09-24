@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.200]
+
+### 追加
+- **Alt+click でエルボー trunk を中央へ** (ADR-0143)。選択中
+  elbow の中間セグメントを ⌥クリックで `s.bend` を解除し自動
+  中央位置に復帰 (ルートリセットせずに trunk だけ戻せる)。
+
 ## [1.7.199]
 
 ### 修正
