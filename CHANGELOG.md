@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.310] - 2026-09-24
+
+### Changed
+- drawio import の共通 style キー適用を `_dioStyApply` に集約 (ADR-0258)。
+  edge の opacity 適用漏れも解消
+
 ## [1.7.309] - 2026-09-24
 
 ### Added

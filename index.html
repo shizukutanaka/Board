@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.309';
+const V='1.7.310';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6337,6 +6337,18 @@ function excScene(shapes){
 // instead of silently dropping. style="k=v;k=v;flag;" cells map onto the closest
 // Board type; unknown vertex shapes fall back to rect, unknown edges to arrow.
 const DIO_MAX=20000;
+// ADR-0258: style keys shared verbatim by vertex and edge cells — one site.
+function _dioStyApply(s,sty,hid){
+  if(sty.strokeColor&&sty.strokeColor!=='none')s.stroke=sty.strokeColor;
+  if(+sty.strokeWidth>0)s.size=Math.min(40,+sty.strokeWidth);
+  if(sty.dashed==='1')s.dash=/^1\s+\d/.test(String(sty.dashPattern||''))?2:1;   // ADR-0255
+  if(+sty.fontSize>0)s.fontSize=Math.min(200,+sty.fontSize);
+  {const _fs=+sty.fontStyle;if(_fs&1)s.bold=1;if(_fs&2)s.italic=1;if(_fs&4)s.under=1}
+  if(sty.shadow==='1')s.shadow=1;                                          // ADR-0246
+  if(sty.editable==='0'||sty.deletable==='0'||sty.movable==='0')s.locked=1;   // ADR-0254
+  if(+sty.opacity>0)s.opacity=Math.max(0.05,+sty.opacity/100);
+  if(hid)s.visible=0;                                       // ADR-0245
+}
 function _dioSty(st){
   const o={};for(const kv of String(st||'').split(';')){const i=kv.indexOf('=');if(i>=0)o[kv.slice(0,i)]=kv.slice(i+1);else if(kv)o[kv]=1}
   return o;
@@ -6388,24 +6400,13 @@ function drawioToShapes(txt){
     else s=Shape.make('rect',{x,y,w:w||120,h:ht||80,label:lbl.slice(0,240)});
     if(sty.rounded==='1'&&s.w!=null)s.r=8;
     if(sty.fillColor&&sty.fillColor!=='none')s.fill=sty.fillColor;
-    if(sty.strokeColor&&sty.strokeColor!=='none')s.stroke=sty.strokeColor;
-    if(+sty.strokeWidth>0)s.size=Math.min(40,+sty.strokeWidth);
-    if(sty.dashed==='1')s.dash=/^1\s+\d/.test(String(sty.dashPattern||''))?2:1;   // ADR-0255
-    if(+sty.fontSize>0)s.fontSize=Math.min(200,+sty.fontSize);
+    _dioStyApply(s,sty,_hid);                                            // ADR-0258
     if(sty.fontColor&&sty.fontColor!=='none'&&(s.type==='text'||s.type==='sticky'))s.stroke=sty.fontColor;   // ADR-0247
     if(sty.fontFamily&&s.type!=='image'){const ff=sty.fontFamily.toLowerCase();
       if(/mono|courier|consol|cascadia|menlo|jetbrains/.test(ff))s.font='mono';
       else if(/serif|times|georgia|garamond|palatino|book/.test(ff))s.font='serif'}   // ADR-0253
-    if(sty.editable==='0'||sty.deletable==='0'||sty.movable==='0')s.locked=1;   // ADR-0254
-    if(+sty.opacity>0)s.opacity=Math.max(0.05,+sty.opacity/100);
-    // ADR-0228: label typography — drawio align + fontStyle bitmask
-    // (1=bold, 2=italic, 4=underline; mxGraph BOLD/ITALIC/UNDERLINE_FONT)
     if(sty.align==='center'||sty.align==='right')s.align=sty.align;
     if(/^(top|middle|bottom)$/.test(sty.verticalAlign))s.valign=sty.verticalAlign;   // ADR-0238
-    const _fs=+sty.fontStyle;
-    if(_fs&1)s.bold=1;if(_fs&2)s.italic=1;if(_fs&4)s.under=1;
-    if(sty.shadow==='1')s.shadow=1;                                          // ADR-0246
-    if(_hid)s.visible=0;
     idOf.set(c.getAttribute('id'),s.id);shapes.push(s);
   }
   for(const c of cells){
@@ -6440,15 +6441,8 @@ function drawioToShapes(txt){
     if(sb&&sty.entryX!=null){const fx=+sty.entryX,fy=+sty.entryY;
       if(Number.isFinite(fx)&&Number.isFinite(fy))s.bF={fx:Math.min(1,Math.max(0,fx)),fy:Math.min(1,Math.max(0,fy))}}
     const lbl=_dioLabel(c.getAttribute('value'));if(lbl)s.label=lbl.slice(0,240);
-    if(sty.strokeColor&&sty.strokeColor!=='none')s.stroke=sty.strokeColor;
-    if(+sty.strokeWidth>0)s.size=Math.min(40,+sty.strokeWidth);
-    if(sty.dashed==='1')s.dash=/^1\s+\d/.test(String(sty.dashPattern||''))?2:1;   // ADR-0255
-    if(sty.shadow==='1')s.shadow=1;                                          // ADR-0246
+    _dioStyApply(s,sty,_hid);                                            // ADR-0258 (edges gain opacity)
     if(sty.labelBackgroundColor&&sty.labelBackgroundColor!=='none')s.fill=sty.labelBackgroundColor;   // ADR-0249
-    if(+sty.fontSize>0)s.fontSize=Math.min(200,+sty.fontSize);
-    {const _efs=+sty.fontStyle;if(_efs&1)s.bold=1;if(_efs&2)s.italic=1;if(_efs&4)s.under=1}
-    if(sty.editable==='0'||sty.deletable==='0'||sty.movable==='0')s.locked=1;   // ADR-0254
-    if(_hid)s.visible=0;                                       // ADR-0245
     shapes.push(s);
   }
   return shapes;
