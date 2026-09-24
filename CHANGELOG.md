@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.475] - 2026-09-23
+
+### Fixed
+- 完全透明 (opacity=0) シェイプも SR で「非表示」と announce — `_hd` の flag 意味論は不変 (ADR-0440)
+
+### Changed
+- `_g2` getContext('2d') shorthand、10サイト fold (ADR-0440)
+
 ## [1.7.474] - 2026-09-23
 
 ### Changed

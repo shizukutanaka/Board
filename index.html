@@ -816,7 +816,7 @@ const _frameOf=(sel,ok)=>{const m=_mP();
 const _scl=()=>_sl().clear(),_sad=id=>_sl().add(id),_sdl=id=>_sl().delete(id);   // ADR-0419: selection Set-mutation shorthands
 const _selN=()=>_sl().size;   // ADR-0334
 const _nS=()=>_sh().length;   // ADR-0425
-const _sv=s=>s.visible!==0,_lk=s=>s.locked,_hd=s=>s.visible===0,_fS=s=>s.fontSize,_wh=(e,w,ht)=>{e.width=w;e.height=ht},_sk=s=>s.stroke,_fi=s=>s.fill,_lb=s=>s.label,_rt=s=>s.rotate,_du=s=>s.dataUrl,_gi=s=>s.groupId,_oP=s=>s.opacity,_cv=()=>_ce('canvas');   // ADR-0425/0432/0433
+const _sv=s=>s.visible!==0,_lk=s=>s.locked,_hd=s=>s.visible===0,_fS=s=>s.fontSize,_wh=(e,w,ht)=>{e.width=w;e.height=ht},_sk=s=>s.stroke,_fi=s=>s.fill,_lb=s=>s.label,_rt=s=>s.rotate,_du=s=>s.dataUrl,_gi=s=>s.groupId,_oP=s=>s.opacity,_cv=()=>_ce('canvas'),_g2=c=>c.getContext('2d');   // ADR-0425/0432/0433
 const _fin=Number.isFinite;   // ADR-0334
 const _min=Math.min,_max=Math.max,_abs=Math.abs;   // ADR-0337
 const _ga=(e,n)=>e.getAttribute(n),_sa=(e,n,v)=>e.setAttribute(n,v),_ap=(p,c)=>p.appendChild(c),_AL='aria-label',_AP='aria-pressed';   // ADR-0340/0392/0394/0399
@@ -851,7 +851,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.474';
+const V='1.7.475';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2029,7 +2029,7 @@ function _penRender(s,e,R){
   }
   _penCachePx-=e.px||0;
   const cv=_cv();_wh(cv,w,h);
-  const cc=cv.getContext('2d');
+  const cc=_g2(cv);
   cc.scale(R,R);cc.translate(-e.bx,-e.by);
   drawPen(s,cc);
   e.px=w*h;e.R=R;_penCachePx+=e.px;
@@ -2140,7 +2140,7 @@ function _inkRebuild(s,d){
   }
   d.cv=_cv();
   d.cv.width=_max(2,_ceil(d.bw*R));d.cv.height=_max(2,_ceil(d.bh*R));
-  d.c2=d.cv.getContext('2d');
+  d.c2=_g2(d.cv);
   d.c2.setTransform(R,0,0,R,-d.bx*R,-d.by*R);
   d.c2.fillStyle=_sk(s);
   d.R=R;
@@ -2162,7 +2162,7 @@ function _inkGrow(d,pad){
   }
   const ncv=_cv();
   _wh(ncv,_max(2,_ceil((mxx-mnx)*d.R)),_max(2,_ceil((mxy-mny)*d.R)));
-  const n2=ncv.getContext('2d');
+  const n2=_g2(ncv);
   n2.drawImage(d.cv,(d.bx-mnx)*d.R,(d.by-mny)*d.R);
   n2.setTransform(d.R,0,0,d.R,-mnx*d.R,-mny*d.R);
   n2.fillStyle=d.stroke;
@@ -2344,7 +2344,7 @@ function describeShape(s){
   if(txt)d+=` “${txt.length>30?txt.slice(0,30)+'…':txt}”`;
   d+=` @ ${_rnd(b.x)},${_rnd(b.y)}`;
   if(_lk(s))d+=` ${t('ctxLock')}`;
-  if(_hd(s))d+=` ${t('tagHidden')}`;   // ADR-0371: selection-restore / RTC can select a hidden shape
+  if(_hd(s)||_oP(s)===0)d+=` ${t('tagHidden')}`;   // ADR-0440: fully-transparent is invisible to sighted users too   // ADR-0371: selection-restore / RTC can select a hidden shape
   if(_gi(s))d+=` ${t('tagGroup')}`;   // ADR-0380: visual group halo has no SR channel
   if(_conn(s.type)&&(s.a||s.b)){   // ADR-0380: bound endpoints are the conn's identity
     const A=s.a&&byId(s.a),B=s.b&&byId(s.b);
@@ -2386,7 +2386,7 @@ function _mirrorSync(){
     const li=_ce('li');
     const b=_ce('button');
     b.type='button';
-    b.textContent=(i+1)+'. '+describeShape(s)+(_hd(s)?' '+t('tagHidden'):'');   // ADR-0154
+    b.textContent=(i+1)+'. '+describeShape(s)+(_hd(s)||_oP(s)===0?' '+t('tagHidden'):'');   // ADR-0154
     b.onclick=()=>_mirrorGo(s.id);
     _ap(li,b);_ap(ul,li);
   }
@@ -4391,7 +4391,7 @@ function _imgImportFile(f,cb){
         const r=_min(IMG_IMPORT_MAX_DIM/nw,IMG_IMPORT_MAX_DIM/nh);
         const cv=_cv();
         _wh(cv,_max(1,_rnd(nw*r)),_max(1,_rnd(nh*r)));
-        cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+        _g2(cv).drawImage(img,0,0,cv.width,cv.height);
         const wu=cv.toDataURL('image/webp',0.85);
         if(/^data:image\/webp/.test(wu)&&wu.length<dataUrl.length)dataUrl=wu;
       }
@@ -4595,7 +4595,7 @@ function _pinchSnapNow(){
     const v=_vp();
     _pinchSnap=_cv();
     _wh(_pinchSnap,canvas.width,canvas.height);
-    _pinchSnap.getContext('2d').drawImage(canvas,0,0);
+    _g2(_pinchSnap).drawImage(canvas,0,0);
     _pinchVp={x:v.x,y:v.y,zoom:v.zoom};
   }
 }
@@ -6258,7 +6258,7 @@ function _renderPngBlob(shapes,cb,desired){
   const off=_cv();
   const scale=exportScale(w,h,desired||2);
   _wh(off,w*scale,h*scale);
-  const oc=off.getContext('2d');
+  const oc=_g2(off);
   oc.fillStyle=_p();
   oc.fillRect(0,0,off.width,off.height);
   oc.setTransform(scale,0,0,scale,-b.x*scale+pad*scale,-b.y*scale+pad*scale);
@@ -6290,7 +6290,7 @@ function exportViewportPNG(scale){
   const off=_cv();
   const sc=exportScale(view.w,view.h,scale||2);
   _wh(off,_ceil(view.w*sc),_ceil(view.h*sc));
-  const oc=off.getContext('2d');
+  const oc=_g2(off);
   oc.fillStyle=_p();oc.fillRect(0,0,off.width,off.height);
   oc.setTransform(sc,0,0,sc,-view.x*sc,-view.y*sc);
   for(const s of shapes)drawShape(s,oc);
@@ -6358,7 +6358,7 @@ function exportPDF(){
   const b=_bA(_sh());if(!b)return;
   const pad=32,W=_ceil(b.w+pad*2),H=_ceil(b.h+pad*2),dpr=exportScale(W,H,_dpr()||1);
   let off;try{off=new OffscreenCanvas(W*dpr,H*dpr)}catch(_){off=_cv();_wh(off,W*dpr,H*dpr)}
-  const oc=off.getContext('2d');
+  const oc=_g2(off);
   oc.fillStyle=_p()||'#fff';oc.fillRect(0,0,W*dpr,H*dpr);
   oc.setTransform(dpr,0,0,dpr,(-b.x+pad)*dpr,(-b.y+pad)*dpr);
   for(const s of _sh())drawShape(s,oc);
@@ -9663,7 +9663,7 @@ const Presentation=(()=>{
 const Minimap=(()=>{
   const mc=_g('minimap');
   if(!mc)return{draw(){}};
-  const mx=mc.getContext('2d');
+  const mx=_g2(mc);
   const W=160,H=100;
   let _raf=0;
 
@@ -9675,7 +9675,7 @@ const Minimap=(()=>{
   function _renderScene(){
     _sceneVer=_gridVer;
     if(!_scene){_scene=_cv();_wh(_scene,W,H);}
-    const sx=_scene.getContext('2d');
+    const sx=_g2(_scene);
     sx.clearRect(0,0,W,H);
     const shapes=_sh();
     const bb=_bA(shapes);
