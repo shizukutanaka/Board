@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.343] - 2026-09-24
+
+### Added
+- ctx メニュー「開始ヘッド」— 矢印の始端ヘッドを なし→矢印→丸→
+  シェブロン で巡回 (`s.startHead` の UI 化、ADR-0291)
+
 ## [1.7.342] - 2026-09-24
 
 ### Fixed
