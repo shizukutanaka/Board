@@ -244,6 +244,7 @@ Board/
 - [ADR-0192](docs/ADR-0192-sticky-text-color.md) 付箋文字色
 - [ADR-0193](docs/ADR-0193-conn-label-fill.md) ラベルpill背景
 - [ADR-0194](docs/ADR-0194-drop-shadow.md) ドロップシャドウ
+- [ADR-0195](docs/ADR-0195-img-label-fill.md) キャプション帯色
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

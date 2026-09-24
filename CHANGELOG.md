@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.253]
+
+### 追加
+- **画像キャプション帯に s.fill** (ADR-0195)。キャプションの帯
+  背景が fill スウォッチに追随 (canvas+SVG、透過0.85規約維持)
+  — fill 系到達経路が全種で整合。
+
 ## [1.7.252]
 
 ### 追加
