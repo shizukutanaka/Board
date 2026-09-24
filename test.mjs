@@ -709,6 +709,7 @@ const checks = [
   ['drawio shadow=1 round-trips s.shadow (ADR-0246)', html.includes("sty+='shadow=1;'")&&html.includes("sty.shadow==='1'")],
   ['drawio fontColor ↔ text/sticky s.stroke (ADR-0247)', html.includes("sty+='fontColor='+s.stroke")&&html.includes("sty.fontColor!=='none'")],
   ['visualViewport.resize re-runs canvas resize for iOS chrome (ADR-0251)', html.includes("visualViewport.addEventListener('resize',resize)")],
+  ['conn/box label widths memoized on WeakMap (ADR-0252)', html.includes('_connLabelMeasure')&&html.includes('_clCache')],
   ['drawio edge label styling: labelBackgroundColor/fontSize/fontStyle (ADR-0249)', html.includes("labelBackgroundColor='+s.fill")&&html.includes("sty.labelBackgroundColor&&sty.labelBackgroundColor!=='none'")],
   ['drawio parent-relative offsets resolved (ADR-0240)', html.includes("const _geo=new Map(),_par=new Map();")&&html.includes("const _o=off(c.getAttribute('id'));")&&html.includes("x=_o.x+(+g.getAttribute('x')||0)")],
   ['frame label italic/under/strike (ADR-0204)', html.includes("600 ${fs}px")&&html.includes("s.type!=='frame'&&!s.label)||s.locked)continue;   // ADR-0170/0204")],

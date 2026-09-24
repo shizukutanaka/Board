@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.304] - 2026-09-24
+
+### Performance
+- コネクタ/ボックスラベルの行幅 measureText を WeakMap でメモ化 — 定常
+  フレームの計測コストを解消 (ADR-0252)
+
 ## [1.7.303] - 2026-09-24
 
 ### Fixed

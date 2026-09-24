@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.303';
+const V='1.7.304';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2575,7 +2575,8 @@ function _drawBoxLabel(s,c){
   const top0=s.valign==='top'?s.y+6:s.valign==='bottom'?s.y+s.h-6-lines.length*lh:s.y+s.h/2-(lines.length*lh)/2;
   for(let i=0;i<lines.length;i++)c.fillText(lines[i],tx,top0+lh/2+i*lh);
   if(s.under||s.strike){c.strokeStyle=c.fillStyle;c.lineWidth=Math.max(1,fs*0.06);   // ADR-0170
-    for(let i=0;i<lines.length;i++){const lw=c.measureText(lines[i]).width;
+    const _lw2=_connLabelMeasure(s,c,lines,fs).ws;             // ADR-0252
+    for(let i=0;i<lines.length;i++){const lw=_lw2[i];
       const ux=al==='left'?tx:al==='right'?tx-lw:tx-lw/2;      // ADR-0171
       if(s.under){const uy=top0+lh/2+i*lh+fs*0.55;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}
       if(s.strike){const uy=top0+lh/2+i*lh;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}}}
@@ -2646,6 +2647,16 @@ function _pathNearestT(pts,p){
   }
   return bt;
 }
+// ADR-0252: connector label widths are pure functions of (label,font,flags) —
+// memoize per shape so every frame doesn't pay lns.length measureText calls.
+const _clCache=new WeakMap();
+function _connLabelMeasure(s,c,lns,fs){
+  const key=lns.join('\n')+'|'+fs+'|'+(s.bold?1:0)+(s.italic?1:0)+(s.font||'');
+  let m=_clCache.get(s);
+  if(m&&m.key===key)return m;
+  let w=0;const ws=lns.map(l=>{const lw=c.measureText(l).width;if(lw>w)w=lw;return lw});
+  m={key,ws,w};_clCache.set(s,m);return m;
+}
 function _connLabelXY(s){
   if(s.labelPos!=null&&Number.isFinite(s.labelPos)){   // ADR-0117
     const lp=_pathAt(_connPathPts(s),s.labelPos);if(lp)return lp;
@@ -2673,14 +2684,14 @@ function _drawConnLabel(s,c){
   const fs=s.fontSize||12;   // ADR-0169
   c.font=_fontStr(s,fs);c.textAlign='center';c.textBaseline='middle';   // ADR-0170
   const lns=String(s.label).split('\n'),llh=fs*(s.lineH||1.25),pad=4;   // ADR-0210/0212
-  let w=0;for(const l of lns)w=Math.max(w,c.measureText(l).width);
+  const _lm=_connLabelMeasure(s,c,lns,fs),w=_lm.w;             // ADR-0252: measureText was per-frame per-line
   const th=lns.length*llh;
   c.fillStyle=s.fill||getCSS('--paper')||'#fff';              // ADR-0193
   c.fillRect(mx-w/2-pad,my-th/2,w+pad*2,th);
   c.fillStyle=s.stroke||'#0F172A';
   for(let i=0;i<lns.length;i++)c.fillText(lns[i],mx,my+(i-(lns.length-1)/2)*llh);
   if(s.under||s.strike){c.strokeStyle=c.fillStyle;c.lineWidth=Math.max(1,fs*0.06);   // ADR-0170
-    for(let i=0;i<lns.length;i++){const lw=c.measureText(lns[i]).width,ly=my+(i-(lns.length-1)/2)*llh;
+    for(let i=0;i<lns.length;i++){const lw=_lm.ws[i],ly=my+(i-(lns.length-1)/2)*llh;
       if(s.under){c.beginPath();c.moveTo(mx-lw/2,ly+fs*0.55);c.lineTo(mx+lw/2,ly+fs*0.55);c.stroke()}
       if(s.strike){c.beginPath();c.moveTo(mx-lw/2,ly);c.lineTo(mx+lw/2,ly);c.stroke()}}}
   c.restore();
