@@ -1341,11 +1341,11 @@ const checks = [
     html.includes("const DIRS=new Set(['left','right','cx','top','bottom','cy','hspace','vspace','tidy','swap','gsnap','flip'")],
   // v1.7.47: doPaste uses canvas.getBoundingClientRect() for viewport center (not window.innerWidth)
   ['doPaste: canvas.getBoundingClientRect() used for viewport center (not window.innerWidth)',
-    html.includes("const _r=canvas.getBoundingClientRect();\n  const vCx=v.x+_r.width/(v.zoom*2);")],
+    html.includes("const _r=_cbr();\n  const vCx=v.x+_r.width/(v.zoom*2);")],
   // v1.7.47: minimap draw and click use canvas.getBoundingClientRect() (not window.innerWidth)
   ['minimap: canvas.getBoundingClientRect() used for viewport rect and click-navigate',
-    html.includes("_r=canvas.getBoundingClientRect(),cW=_r.width,cH=_r.height;")&&
-    html.includes("const _r=canvas.getBoundingClientRect();\n    state.viewport.x=wx-_r.width/")],
+    html.includes("_r=_cbr(),cW=_r.width,cH=_r.height;")&&
+    html.includes("const _r=_cbr();\n    state.viewport.x=wx-_r.width/")],
   // v1.7.47: del op.wc refreshed on every forward apply (not lazy)
   ['_apply del: op.wc refreshed on every forward apply (if(!op.wc) guard removed)',
     !html.includes("if(!op.wc){op.wc={};for")&&
