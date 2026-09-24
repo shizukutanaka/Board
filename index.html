@@ -780,9 +780,9 @@ const _p=()=>_gC('--paper'),_ac=()=>_gC('--accent-contrast');   // ADR-0292
 const _c01=v=>_min(1,_max(0,v));   // ADR-0295
 const _conn=t=>t==='line'||t==='arrow';   // ADR-0297
 const _selAny=f=>_selIds().some(id=>{const s=byId(id);return s&&f(s)});   // ADR-0302
-const _selConnL=()=>_selAny(s=>(_conn(s.type))&&!_lk(s));                    // ADR-0415: 6 ctx-menu sites
-const _selTxtL=()=>_selAny(s=>(_TS.has(s.type)||s.type==='frame'||_lb(s))&&!_lk(s));   // ADR-0415: text-capable unlocked
-const _selArrowL=()=>_selAny(s=>s.type==='arrow'&&!_lk(s));                  // ADR-0415
+const _selConnL=()=>_selUnl(s=>(_conn(s.type)));                    // ADR-0415: 6 ctx-menu sites
+const _selTxtL=()=>_selUnl(s=>(_TS.has(s.type)||s.type==='frame'||_lb(s)));   // ADR-0415: text-capable unlocked
+const _selArrowL=()=>_selUnl(s=>s.type==='arrow');                  // ADR-0415
 const _forSel=f=>{for(const id of _sl()){const s=byId(id);if(s)f(s,id)}};   // ADR-0303
 const _csh=(s,c)=>{if(_sh2(s)){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=10;c.shadowOffsetY=3}};   // ADR-0306
 const _so=(b,a)=>{if(_ln(b)){_styleOp(b,a);_iv()}};   // ADR-0307
@@ -815,6 +815,7 @@ const _frameOf=(sel,ok)=>{const m=_mP();
 };
 const _scl=()=>_sl().clear(),_sad=id=>_sl().add(id),_sdl=id=>_sl().delete(id);   // ADR-0419: selection Set-mutation shorthands
 const _selN=()=>_sl().size;   // ADR-0334
+const _selUnl=f=>_selAny(s=>f(s)&&!_lk(s));   // ADR-0454: unlocked-selection predicate
 const _nS=()=>_sh().length;   // ADR-0425
 const _sv=s=>s.visible!==0,_lk=s=>s.locked,_hd=s=>s.visible===0,_fS=s=>s.fontSize,_wh=(e,w,ht)=>{e.width=w;e.height=ht},_sk=s=>s.stroke,_fi=s=>s.fill,_lb=s=>s.label,_rt=s=>s.rotate,_du=s=>s.dataUrl,_gi=s=>s.groupId,_oP=s=>s.opacity,_lP=s=>s.labelPos,_sp=s=>s.spacing,_el=s=>s.elbow,_va=s=>s.valign,_cv=()=>_ce('canvas'),_g2=c=>c.getContext('2d'),_ln=x=>x.length;   // ADR-0425/../0447
 const _fin=Number.isFinite;   // ADR-0334
@@ -851,7 +852,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.488';
+const V='1.7.489';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -7766,8 +7767,8 @@ const Net={
         let st=this._imgChunks.get(msg.key);
         // ADR-0374: bound in-flight reassemblies — a peer opening thousands of
         // keys mid-transfer and never finishing would grow the map unboundedly.
-        if(!st){if(this._imgChunks.size>=64)this._imgChunks.delete(this._imgChunks.keys().next().value);st={p:new Array(n),g:0,n};this._imgChunks.set(msg.key,st)}   // ADR-0449: evict the oldest stalled key — refusing new keys lets 64 half-open sends block img transfer forever
-        if(st.n===n&&!st.p[seq]){st.p[seq]=msg.data;st.g++}
+        if(!st||st.n!==n){if(!st&&this._imgChunks.size>=64)this._imgChunks.delete(this._imgChunks.keys().next().value);st={p:new Array(n),g:0,n};this._imgChunks.set(msg.key,st)}   // ADR-0449/0454: evict oldest stalled key; n-mismatch restarts the assembly like _fragIn — a stale partial used to block the fresh stream forever
+        if(!st.p[seq]){st.p[seq]=msg.data;st.g++}
         if(st.g<st.n)break;
         this._imgChunks.delete(msg.key);
         const data=st.p.join('');
@@ -8560,24 +8561,24 @@ const UI={
       has&&_selAny(s=>(_conn(s.type))&&!_lk(s)&&!s.curve)&&['ctxHop','',toggleHop],
       has&&_selAny(s=>(_conn(s.type))&&!_lk(s)&&(_wayArr(s).length||s.bend||_el(s)||s.curve||_lP(s)!=null||s.cbend!=null))&&['ctxRouteReset','',resetRoute],   // ADR-0090/0217
       has&&_selConnL()&&['ctxReverse','',reverseConn],
-      has&&_selAny(s=>s.type==='sticky'&&!_lk(s))&&['ctxFitText','',fitSticky],
-      has&&_selAny(s=>s.type==='frame'&&!_lk(s))&&['ctxFrameFit','',fitFrames],
-      has&&_selAny(s=>s.type==='frame'&&!_lk(s))&&['ctxSelContents','',selectFrameContents],
+      has&&_selUnl(s=>s.type==='sticky')&&['ctxFitText','',fitSticky],
+      has&&_selUnl(s=>s.type==='frame')&&['ctxFrameFit','',fitFrames],
+      has&&_selUnl(s=>s.type==='frame')&&['ctxSelContents','',selectFrameContents],
       has&&_selTxtL()&&['ctxTextAlign','',cycleTextAlign],
       has&&_selTxtL()&&['ctxFont','',cycleFont],
       has&&_selAny(s=>!_lk(s))&&['ctxOpacity','0-9',cycleOpacity],   // ADR-0174
-      has&&_selAny(s=>(_BX4.has(s.type)||(s.type==='image'&&!!_lb(s)))&&!_lk(s))&&['ctxVAlign','',cycleVAlign],   // ADR-0179   // ADR-0159
-      has&&_selAny(s=>(_TS.has(s.type)||_lb(s))&&!_lk(s))&&['ctxLineH','',cycleLineH],
+      has&&_selUnl(s=>(_BX4.has(s.type)||(s.type==='image'&&!!_lb(s))))&&['ctxVAlign','',cycleVAlign],   // ADR-0179   // ADR-0159
+      has&&_selUnl(s=>(_TS.has(s.type)||_lb(s)))&&['ctxLineH','',cycleLineH],
       has&&_selTxtL()&&['ctxSpacing','',cycleSpacing],
-      has&&_selAny(s=>s.type==='text'&&!_lk(s))&&['ctxWrap','',toggleWrap],
-      has&&_selAny(s=>(_TS.has(s.type))&&!_lk(s))&&[_selAny(s=>s.type==='sticky'&&!_lk(s))?'ctxToText':'ctxToSticky','',toggleStickyText],
-      has&&_selAny(s=>s.type==='sticky'&&!_lk(s))&&['ctxStickyColor','',cycleStickyColor],
-      has&&_selAny(s=>(_BOX.has(s.type))&&!_lk(s))&&['ctxFillStyle','',cycleFillStyle],
+      has&&_selUnl(s=>s.type==='text')&&['ctxWrap','',toggleWrap],
+      has&&_selUnl(s=>(_TS.has(s.type)))&&[_selUnl(s=>s.type==='sticky')?'ctxToText':'ctxToSticky','',toggleStickyText],
+      has&&_selUnl(s=>s.type==='sticky')&&['ctxStickyColor','',cycleStickyColor],
+      has&&_selUnl(s=>(_BOX.has(s.type)))&&['ctxFillStyle','',cycleFillStyle],
       has&&_selArrowL()&&['ctxBothEnds','',toggleBothEnds],
-      has&&_selConnL()&&[_selAny(s=>s.type==='line'&&!_lk(s))?'ctxToArrow':'ctxToLine','',toggleLineArrow],
+      has&&_selConnL()&&[_selUnl(s=>s.type==='line')?'ctxToArrow':'ctxToLine','',toggleLineArrow],
       has&&_selArrowL()&&['ctxArrowHead','',cycleArrowHead],
       has&&_selArrowL()&&['ctxStartHead','',cycleStartHead],
-      has&&_selAny(s=>s.type==='rect'&&!_lk(s))&&['ctxRrect','',toggleRound],
+      has&&_selUnl(s=>s.type==='rect')&&['ctxRrect','',toggleRound],
       has&&['ctxDelete','⌫',doDelete],
       has&&'sep',
       has&&['ctxWrapFrame','⌘⌥G',wrapInFrame],
@@ -8599,8 +8600,8 @@ const UI={
       has&&['ctxFlipH','⇧H',()=>doFlip('h')],
       has&&['ctxFlipV','⇧V',()=>doFlip('v')],
       has&&['ctxRotate90','⇧R',()=>doRotate(90)],
-      has&&_selAny(s=>((_RDI.has(s.type))||((_conn(s.type))&&_el(s)))&&!_lk(s))&&['ctxCorner','',cycleCorner],
-      has&&_selAny(s=>(_SH5.has(s.type)||_conn(s.type))&&!_lk(s))&&['ctxShadow','',toggleShadow],
+      has&&_selUnl(s=>((_RDI.has(s.type))||((_conn(s.type))&&_el(s))))&&['ctxCorner','',cycleCorner],
+      has&&_selUnl(s=>(_SH5.has(s.type)||_conn(s.type)))&&['ctxShadow','',toggleShadow],
       has&&['ctxHide','⌘⇧H',hideSelection],
       has&&_selAny(s=>(_conn(s.type))&&!_lk(s)&&(s.a||s.b))&&['ctxPinAnchor','',pinAnchor],   // ADR-0213
       has&&_selAny(s=>(_conn(s.type))&&!_lk(s)&&(s.a||s.b))&&['ctxUnbind','',unbindSelection],   // ADR-0157
@@ -8634,7 +8635,7 @@ const UI={
       has&&['ctxCopySelSVG','',()=>exportSelection('svgcopy')],        // ADR-0087
       has&&['ctxExportSelBoard','',()=>exportSelection('board')],          // ADR-0114
       has&&['ctxExportSelDrawio','',()=>exportSelection('drawio')],       // ADR-0407
-      has&&_selN()===1&&_selAny(s=>s.type==='image'&&!_lk(s))&&['ctxReplaceImg','',replaceImage],   // ADR-0089
+      has&&_selN()===1&&_selUnl(s=>s.type==='image')&&['ctxReplaceImg','',replaceImage],   // ADR-0089
       has&&'sep',
       ['ctxSelectAll','⌘A',()=>{_ss(_sh().filter(s=>_sv(s)).map(s=>s.id));if(_selN())_aS();_iv()}],
       _nS()&&['ctxClear','',doClearAll]

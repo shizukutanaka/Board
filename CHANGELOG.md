@@ -2,6 +2,16 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.489] - 2026-09-23
+
+### 修正
+
+- **`_imgChunks` n-mismatch 再スタート** — 同 key で異なるチャンク総数 `n` のメッセージを棄却していたため stale partial が新ストリームを永遠にブロックし得た (`_fragIn` の ADR-0448 と同種)。fresh stream wins に統一 (ADR-0454)
+
+### 変更
+
+- `_selUnl` 述語畳み込み (17 箇所の `_selAny(s=>X&&!_lk(s))` → `_selUnl(s=>X)`、~74B 回収) (ADR-0454)
+
 ## [1.7.488] - 2026-09-23
 
 ### 変更
