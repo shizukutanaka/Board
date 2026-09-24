@@ -4081,6 +4081,19 @@ try {
     console.log('  ✓ ADR-0368: pts/way array-prop structure checks');
   }
 
+  // ADR-0369: string-prop type + length, numeric style fields
+  {
+    assert.ok(validRemotePayload({op:'upd',id:'a',after:{text:'hi',label:'l',stroke:'#fff',font:'mono',head:'dot',align:'left',fstyle:'hatch'}}),'string props accepted');
+    assert.ok(!validRemotePayload({op:'upd',id:'a',after:{text:123}}),'numeric text rejected');
+    assert.ok(!validRemotePayload({op:'upd',id:'a',after:{label:{x:1}}}),'object label rejected');
+    assert.ok(!validRemotePayload({op:'upd',id:'a',after:{text:'x'.repeat(5001)}}),'text over 5000 rejected');
+    assert.ok(!validRemotePayload({op:'upd',id:'a',after:{label:'x'.repeat(601)}}),'label over 600 rejected');
+    assert.ok(validRemotePayload({op:'upd',id:'a',after:{elbow:1,curve:0,hop:1,flip:3,shadow:1,r:8,visible:0,start:1}}),'numeric style flags accepted');
+    assert.ok(!validRemotePayload({op:'upd',id:'a',after:{elbow:'yes'}}),'string elbow rejected');
+    assert.ok(!validRemotePayload({op:'upd',id:'a',after:{shadow:{on:1}}}),'object shadow rejected');
+    console.log('  ✓ ADR-0369: string-prop type/length + numeric style flags');
+  }
+
   // legacy boards (integer z, no frac) migrate to keys on first sortZ, order intact
   {
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;

@@ -817,7 +817,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.415';
+const V='1.7.416';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1237,7 +1237,7 @@ function validPatch(p){
   if(!p||typeof p!=='object')return false;   // a patch/shape must be an object
   if(!_cleanVal(p,0))return false;
   // Numeric geometry fields must be actual numbers, not strings that slip past _cleanVal
-  for(const k of ['x','y','w','h','x1','y1','x2','y2','z','rotate','size','opacity','dash','labelPos','cbend','bend','spacing','lineH','fontSize']){   // ADR-0367
+  for(const k of ['x','y','w','h','x1','y1','x2','y2','z','rotate','size','opacity','dash','labelPos','cbend','bend','spacing','lineH','fontSize','elbow','curve','hop','flip','shadow','r','visible','start']){   // ADR-0367/0369
     if(k in p&&p[k]!=null&&typeof p[k]!=='number')return false;
   }
   if(p.aF!=null&&(typeof p.aF!=='object'||!_fin(p.aF.fx)||!_fin(p.aF.fy)))return false;   // ADR-0367: {fx,fy} object — structural check
@@ -1246,6 +1246,13 @@ function validPatch(p){
   // so a crafted {pts:[["x"]]} or {way:[{x:'a'}]} reaches the renderers as NaN.
   if(p.pts!=null&&!(Array.isArray(p.pts)&&p.pts.length<=50000&&p.pts.every(q=>Array.isArray(q)&&_fin(q[0])&&_fin(q[1])&&(q[2]==null||_fin(q[2])))))return false;
   if(p.way!=null&&!(Array.isArray(p.way)&&p.way.length<=200&&p.way.every(w=>w&&typeof w==='object'&&_fin(w.x)&&_fin(w.y))))return false;
+  // ADR-0369: string props — type + length. A hostile upd could inject a 1MB
+  // text that every frame's wrapText then rescans, or a non-string that the
+  // renderers coerce weirdly.
+  for(const k of ['text','label','docName','link','groupId','img','color','stroke','fill','font','head','startHead','align','valign','type','dataUrl','fstyle']){
+    if(k in p&&p[k]!=null&&typeof p[k]!=='string')return false;
+    if(k in p&&typeof p[k]==='string'&&k!=='dataUrl'&&p[k].length>(k==='text'?5000:600))return false;
+  }
   // Security/privacy: an image shape's dataUrl flows into img.src (getImg). If it isn't
   // an inline data:image/ URL, a crafted .board/share-link/IDB record — or a hostile sync
   // peer's add/upd op — could point it at an external host, turning every peer's render

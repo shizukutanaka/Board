@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.416] - 2026-09-24
+
+### Fixed
+- `validPatch` に文字列 prop の型 + 長さチェックを追加 (text≤5000、その他≤600)
+  + 数値フラグ `elbow/curve/hop/flip/shadow/r/visible/start` を網羅 — 巨大
+  text 注入によるフレーム毎 wrapText 暴走や非文字列 prop の破損を遮断
+  (ADR-0369)
+
 ## [1.7.415] - 2026-09-24
 
 ### Fixed
