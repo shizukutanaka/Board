@@ -4053,6 +4053,20 @@ try {
     console.log('  ✓ validPatch recurses: nested NaN/Infinity/__proto__/function/over-deep rejected');
   }
 
+  // ADR-0367: numeric-geometry whitelist extended (labelPos/cbend/bend/spacing/lineH/fontSize)
+  // + aF/bF {fx,fy} structural check — closes NaN injection via crafted op/import
+  {
+    assert.ok(validRemotePayload({op:'upd',id:'a',after:{labelPos:0.5,cbend:-40,bend:120,spacing:1.5,lineH:1.4,fontSize:20}}),'numeric style fields accepted');
+    assert.ok(!validRemotePayload({op:'upd',id:'a',after:{cbend:'abc'}}),'string cbend rejected');
+    assert.ok(!validRemotePayload({op:'upd',id:'a',after:{labelPos:{}}}),'object labelPos rejected');
+    assert.ok(!validRemotePayload({op:'upd',id:'a',after:{fontSize:'14'}}),'string fontSize rejected');
+    assert.ok(validRemotePayload({op:'upd',id:'a',after:{aF:{fx:0.5,fy:0.5},bF:{fx:0,fy:1}}}),'aF/bF {fx,fy} objects accepted');
+    assert.ok(!validRemotePayload({op:'upd',id:'a',after:{aF:{fx:'x',fy:0.5}}}),'poison aF.fx rejected');
+    assert.ok(!validRemotePayload({op:'upd',id:'a',after:{aF:{fx:0.5}}}),'incomplete aF rejected');
+    assert.ok(!validRemotePayload({op:'upd',id:'a',after:{aF:'left'}}),'scalar aF rejected');
+    console.log('  ✓ ADR-0367: validPatch numeric whitelist + aF/bF structural check');
+  }
+
   // legacy boards (integer z, no frac) migrate to keys on first sortZ, order intact
   {
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
