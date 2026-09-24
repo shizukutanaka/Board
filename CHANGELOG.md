@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.334] - 2026-09-24
+
+### Changed
+- drawio: fontStyle/locked 出力を `_dioStyEmit(s,edge)` に畳み込み
+  (edge 判定フラグで resizable/ラベル条件を維持、ADR-0282)
+
 ## [1.7.333] - 2026-09-24
 
 ### Fixed
