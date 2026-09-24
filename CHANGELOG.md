@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.495] - 2026-09-23
+
+### 変更
+
+- 図形型判定 shorthand `_stk`/`_frm`/`_pn`/`_txt`/`_im`/`_arw` — `X.type==='T'` を 73 箇所畳み込み (~520B 回収) (ADR-0462)
+
 ## [1.7.494] - 2026-09-23
 
 ### 修正

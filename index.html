@@ -781,8 +781,8 @@ const _c01=v=>_min(1,_max(0,v));   // ADR-0295
 const _conn=t=>t==='line'||t==='arrow';   // ADR-0297
 const _selAny=f=>_selIds().some(id=>{const s=byId(id);return s&&f(s)});   // ADR-0302
 const _selConnL=()=>_selUnl(s=>(_conn(s.type)));                    // ADR-0415: 6 ctx-menu sites
-const _selTxtL=()=>_selUnl(s=>(_TS.has(s.type)||s.type==='frame'||_lb(s)));   // ADR-0415: text-capable unlocked
-const _selArrowL=()=>_selUnl(s=>s.type==='arrow');                  // ADR-0415
+const _selTxtL=()=>_selUnl(s=>(_TS.has(s.type)||_frm(s)||_lb(s)));   // ADR-0415: text-capable unlocked
+const _selArrowL=()=>_selUnl(s=>_arw(s));                  // ADR-0415
 const _forSel=f=>{for(const id of _sl()){const s=byId(id);if(s)f(s,id)}};   // ADR-0303
 const _csh=(s,c)=>{if(_sh2(s)){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=10;c.shadowOffsetY=3}};   // ADR-0306
 const _so=(b,a)=>{if(_ln(b)){_styleOp(b,a);_iv()}};   // ADR-0307
@@ -806,7 +806,7 @@ const _frameOf=(sel,ok)=>{const m=_mP();
     if(f.type!=='frame')continue;
     const fb=_bb(f);
     for(const s of _sh()){
-      if(s.id===f.id||s.type==='frame'||_lk(s)||(ok&&!ok(s))||m.has(s.id))continue;
+      if(s.id===f.id||_frm(s)||_lk(s)||(ok&&!ok(s))||m.has(s.id))continue;
       const b=_bb(s);
       if(b.x>=fb.x&&b.y>=fb.y&&b.x+b.w<=fb.x+fb.w&&b.y+b.h<=fb.y+fb.h)m.set(s.id,f.id);
     }
@@ -829,7 +829,7 @@ const _on=(e,t,f,o)=>e.addEventListener(t,f,o);                          // ADR-
 const _vp=()=>state.viewport,_vpS=()=>({x:+_vp().x.toFixed(2),y:+_vp().y.toFixed(2),zoom:+_vp().zoom.toFixed(4)});                                              // ADR-0362: live-read (tests reassign the object)
 const _pi=()=>state.peerId,_ro=()=>state.readout,_gd=()=>state.guides,_cl=()=>state.clipboard,_bb=s=>G.bbox(s),_bA=s=>G.bboxAll(s),_oa=Object.assign;   // ADR-0378
 const _sO=()=>state.seenOps,_la=()=>state.lasso,_mq=()=>state.marquee,_dd=()=>state.dupDelta,_w2=p=>G.w2s(p),_s2=p=>G.s2w(p),_cE=connEnds;   // ADR-0382
-const _dpr=()=>window.devicePixelRatio,_cT=clearTimeout,_iA=Array.isArray,_iS=v=>typeof v==='string',_iN=v=>typeof v==='number',_iO=v=>typeof v==='object',_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log,_rAF=requestAnimationFrame,_pF=parseFloat,_db=document.body,_de=document.documentElement,_wO=window.open,_lg=k=>localStorage.getItem(k),_ls=(k,v)=>localStorage.setItem(k,v),_mP=a=>new Map(a),_sT=a=>new Set(a),_eU=encodeURIComponent,_dU=decodeURIComponent,_un='undefined',_AU='arrowup',_AD='arrowdown',_AL2='arrowleft',_AR2='arrowright',_ES='escape',_RO='readonly',_RW='readwrite',_UT='Untitled',_REC='rectangle',_EN='enter',_TB='tab',_IK='#0F172A',_YW='#FEF08A',_BOX=_sT(['rect','ellipse','diamond']),_BX4=_sT([..._BOX,'sticky']),_BOXF=_sT([..._BOX,'frame','sticky']),_HF4=_sT([..._BOX,'frame']),_RD=_sT(['rect','diamond']),_RDI=_sT([..._RD,'image']),_D6=_sT([..._BOX,'frame','image']),_SH5=_sT([..._BOX,'image','text']),_TS=_sT(['text','sticky']),_TSF=_sT([..._TS,'frame']);   // ADR-0384/../0397/0453
+const _dpr=()=>window.devicePixelRatio,_cT=clearTimeout,_iA=Array.isArray,_iS=v=>typeof v==='string',_iN=v=>typeof v==='number',_iO=v=>typeof v==='object',_stk=v=>v.type==='sticky',_frm=v=>v.type==='frame',_pn=v=>v.type==='pen',_txt=v=>v.type==='text',_im=v=>v.type==='image',_arw=v=>v.type==='arrow',_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log,_rAF=requestAnimationFrame,_pF=parseFloat,_db=document.body,_de=document.documentElement,_wO=window.open,_lg=k=>localStorage.getItem(k),_ls=(k,v)=>localStorage.setItem(k,v),_mP=a=>new Map(a),_sT=a=>new Set(a),_eU=encodeURIComponent,_dU=decodeURIComponent,_un='undefined',_AU='arrowup',_AD='arrowdown',_AL2='arrowleft',_AR2='arrowright',_ES='escape',_RO='readonly',_RW='readwrite',_UT='Untitled',_REC='rectangle',_EN='enter',_TB='tab',_IK='#0F172A',_YW='#FEF08A',_BOX=_sT(['rect','ellipse','diamond']),_BX4=_sT([..._BOX,'sticky']),_BOXF=_sT([..._BOX,'frame','sticky']),_HF4=_sT([..._BOX,'frame']),_RD=_sT(['rect','diamond']),_RDI=_sT([..._RD,'image']),_D6=_sT([..._BOX,'frame','image']),_SH5=_sT([..._BOX,'image','text']),_TS=_sT(['text','sticky']),_TSF=_sT([..._TS,'frame']);   // ADR-0384/../0397/0453
 const _sh=()=>state.shapes;                                                // ADR-0364
 const _sl=()=>state.selection;
 const _ss=ids=>{state.selection=_sT(ids)};   // ADR-0415: selection-set writes (18 sites)
@@ -852,7 +852,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.494';
+const V='1.7.495';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1150,7 +1150,7 @@ const G={
   w2s(p){const v=_vp();return{x:(p.x-v.x)*v.zoom,y:(p.y-v.y)*v.zoom}},
   s2w(p){const v=_vp();return{x:p.x/v.zoom+v.x,y:p.y/v.zoom+v.y}},
   bbox(s){
-    if(s.type==='pen'){
+    if(_pn(s)){
       // Memoize the O(pts) envelope walk: per frame it runs once per visible pen
       // in inView() and once per pen in the minimap — the dominant residual cost
       // after the bitmap cache (ADR-0019). Same O(1) signature as _penCached:
@@ -1179,7 +1179,7 @@ const G={
       // inView cull a curve still inside the viewport.
       if(s.curve){const cc=_curveCtrl(e,s.cbend);x=_min(x,cc.x);y=_min(y,cc.y);x2=_max(x2,cc.x);y2=_max(y2,cc.y)}
       else if(_el(s))for(const q of _elbowPts(s)){x=_min(x,q.x);y=_min(y,q.y);x2=_max(x2,q.x);y2=_max(y2,q.y)}
-      const p=(_szz(s)||1)/2+(s.type==='arrow'?_szz(s)*3:0);
+      const p=(_szz(s)||1)/2+(_arw(s)?_szz(s)*3:0);
       return{x:x-p,y:y-p,w:x2-x+2*p,h:y2-y+2*p};
     }
     const _rb={x:s.x,y:s.y,w:s.w,h:s.h};
@@ -1332,7 +1332,7 @@ const _ptsOK=a=>_iA(a)&&a.every(p=>_iA(p)&&_ln(p)>=2&&p.every(n=>_iN(n)&&_fin(n)
 function validShape(s){
   if(!s||!_iO(s)||!_iS(s.id)||_ln(s.id)>64||!_TYPES.has(s.type)||!_iN(s.z))return false;   // ADR-0387/0388: non-string/huge id — byId lookups by string silently miss, Map keys diverge
   if(!validPatch(s))return false;                  // no NaN/Inf coords, no pollution keys
-  if(s.type==='pen')return _ptsOK(s.pts)&&_ln(s.pts)>0;
+  if(_pn(s))return _ptsOK(s.pts)&&_ln(s.pts)>0;
   return true;
 }
 // Validate a REMOTE op's payload before _apply. See docs/architecture.md.
@@ -1926,7 +1926,7 @@ function nextZ(){return _nS()?_sh().reduce((m,s)=>_max(m,s.z||0),0)+1:1}
 // ====================== SHAPE helpers ======================
 const Shape={
   translate(s,dx,dy){
-    if(s.type==='pen'){for(const p of s.pts){p[0]+=dx;p[1]+=dy}}
+    if(_pn(s)){for(const p of s.pts){p[0]+=dx;p[1]+=dy}}
     else if(_conn(s.type)){
       // ADR-0147: s.bend is a world coordinate — translate it with the
       // connector or the trunk stays behind (same class as ADR-0146).
@@ -2331,7 +2331,7 @@ function centerOn(sh){
 }
 function describeShape(s){
   const b=_bb(s);
-  const nm=s.hl&&s.type==='pen'?(T.k?.marker??'marker'):T.k?.[s.type]??s.type;   // ADR-0429: highlighter strokes are markers, not pens
+  const nm=s.hl&&_pn(s)?(T.k?.marker??'marker'):T.k?.[s.type]??s.type;   // ADR-0429: highlighter strokes are markers, not pens
   // Announce the shape's content (text or label) first — for a screen-reader user
   // cycling shapes, "Arrow yes" / "Sticky buy milk" is the meaningful part, not the
   // coordinates. Truncated so a long note doesn't flood the live region.
@@ -2483,19 +2483,19 @@ function draw(){
   const _skipScene=panned&&!(clipRects&&_ln(clipRects));
   if(!_skipScene){
     if(state.showGrid)drawGrid(W,H);
-    for(const s of _drawIter){if(s.type==='frame'&&inView(s,_view))drawShape(s)}
+    for(const s of _drawIter){if(_frm(s)&&inView(s,_view))drawShape(s)}
     for(const s of _drawIter){if(s.type!=='frame'&&inView(s,_view))drawShape(s)}
     if(_df())drawShape(_df());
     // Predicted ink tail (ADR-0023) — a single segment past the last committed
     // point, discarded when the next real sample lands. Render-only: never
     // touches draft.pts, so it can't leak into Store/persist/share payloads.
-    if(_penPred&&_df()&&_df().type==='pen'){
-      const _pp=_df().pts,_pn=_ln(_pp);
-      if(_pn>1){
+    if(_penPred&&_df()&&_pn(_df())){
+      const _pp=_df().pts,_pl=_ln(_pp);
+      if(_pl>1){
         const _pw=penWidths(_pp,_df().size);
         const _oc=ctx.lineCap,_ow=ctx.lineWidth;
-        ctx.strokeStyle=_df().stroke;ctx.lineCap='round';ctx.lineWidth=_pw[_pn-1];
-        ctx.beginPath();ctx.moveTo(_pp[_pn-1][0],_pp[_pn-1][1]);ctx.lineTo(_penPred.x,_penPred.y);ctx.stroke();
+        ctx.strokeStyle=_df().stroke;ctx.lineCap='round';ctx.lineWidth=_pw[_pl-1];
+        ctx.beginPath();ctx.moveTo(_pp[_pl-1][0],_pp[_pl-1][1]);ctx.lineTo(_penPred.x,_penPred.y);ctx.stroke();
         ctx.lineCap=_oc;ctx.lineWidth=_ow;
       }
     }
@@ -3230,7 +3230,7 @@ function _curveLabelXY(s){
 function _qconnShape(){
   if(_tl()!=='select'||ptr.down||!state.hover)return null;
   const s=byId(state.hover);
-  if(!s||_lk(s)||_conn(s.type)||s.type==='pen')return null;
+  if(!s||_lk(s)||_conn(s.type)||_pn(s))return null;
   return s;
 }
 function _qdots(s){
@@ -3325,7 +3325,7 @@ function drawText(s,c){
     c.restore()}
   if(s.link&&s.w!=null){c.font='10px sans-serif';c.textAlign='right';c.textBaseline='top';c.fillText('🔗',s.x+_abs(s.w)-3,s.y+3)}   // ADR-0310: link badge top-right
   if(s.link&&_conn(s.type)){const lp=_connLabelXY(s);c.font='10px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText('🔗',lp.x+10,lp.y-10)}   // ADR-0333: badge at label anchor (offset so it doesn't sit on the line)
-  if(s.link&&s.type==='pen'&&s.pts[0]){c.font='10px sans-serif';c.textAlign='left';c.textBaseline='bottom';c.fillText('🔗',s.pts[0][0]+4,s.pts[0][1]-2)}   // ADR-0333
+  if(s.link&&_pn(s)&&s.pts[0]){c.font='10px sans-serif';c.textAlign='left';c.textBaseline='bottom';c.fillText('🔗',s.pts[0][0]+4,s.pts[0][1]-2)}   // ADR-0333
 }
 
 // Rotate point (px,py) about centre (cx,cy) by `deg` degrees. Shared by handles,
@@ -3347,7 +3347,7 @@ function getHandles(s){
   }
   // ADR-0051: pens resize for real — emit the same 8 handles around the pts bbox
   // (writing x/y/w/h on a pen would NaN it; the scale happens in applyResize).
-  if(s.type==='pen'){
+  if(_pn(s)){
     if(_ln(s.pts)<2)return [];                 // a dot can't scale (ADR-0051)
     const b=_bb(s);if(!b||!b.w||!b.h)return [];
     const x=b.x,y=b.y,w=b.w,h=b.h;
@@ -3360,7 +3360,7 @@ function getHandles(s){
   if(s.w==null)return [];
   // v1.6.96: text size is purely content-driven (resizeAfterTextEdit overwrites w/h on edit);
   // resize handles conflict with auto-fit, so omit them. Rotation still works via getRotHandle.
-  if(s.type==='text')return [];
+  if(_txt(s))return [];
   const x=s.x,y=s.y,w=s.w,h=s.h;
   const hs=[
     {id:'nw',x,y},{id:'n',x:x+w/2,y},{id:'ne',x:x+w,y},
@@ -3500,7 +3500,7 @@ function applyResize(sh,handle,orig,wp,shift,alt){
   // ADR-0051: pen — run the identical handle math on a virtual box around the
   // pts bbox, then map orig.pts into the resulting box. Mapping from orig (not
   // live pts) keeps the drag from accumulating float error. p[2] pressure kept.
-  if(orig.type==='pen'){
+  if(_pn(orig)){
     if(_ln(orig.pts)<2)return;                 // a dot can't scale — move-only
     const ob=_bb(orig);if(!ob||!ob.w||!ob.h)return;
     const vbox={x:ob.x,y:ob.y,w:ob.w,h:ob.h};
@@ -4267,7 +4267,7 @@ _on(canvas,'dblclick',e=>{
     }
   }
   if(hit.locked)return;
-  if(hit.type==='text'||hit.type==='sticky'){openTextEditor(hit,false);return}
+  if(_txt(hit)||_stk(hit)){openTextEditor(hit,false);return}
   _openLabelEditorFor(hit);
 });
 // Positions and opens the shared label editor for box labels (frame/rect/ellipse, at
@@ -4278,7 +4278,7 @@ _on(canvas,'dblclick',e=>{
 function _lblAnchor(hit){
   const r=_cbr();
   if(_HF4.has(hit.type)){   // ADR-0081
-    const isFrame=hit.type==='frame';
+    const isFrame=_frm(hit);
     const sp=_w2(isFrame?{x:hit.x,y:hit.y}:{x:hit.x+hit.w/2,y:hit.y+hit.h/2});
     return {left:r.left+sp.x+(isFrame?6:-40),top:r.top+sp.y+(isFrame?-24:-12),bold:isFrame};
   }
@@ -4287,7 +4287,7 @@ function _lblAnchor(hit){
     const lp=_connLabelXY(hit),sp=_w2({x:lp.x,y:lp.y});
     return {left:r.left+sp.x-40,top:r.top+sp.y-12,bold:false};
   }
-  if(hit.type==='image'){                                            // ADR-0083
+  if(_im(hit)){                                            // ADR-0083
     const sp=_w2({x:hit.x+hit.w/2,y:hit.y+hit.h});
     return {left:r.left+sp.x-40,top:r.top+sp.y-28,bold:false};
   }
@@ -4307,7 +4307,7 @@ function editSelectedShapeKbd(){
   if(_selN()!==1)return false;
   const sh=_sel0();
   if(!sh||sh.locked)return false;
-  if(sh.type==='text'||sh.type==='sticky'){openTextEditor(sh,false);return true}
+  if(_txt(sh)||_stk(sh)){openTextEditor(sh,false);return true}
   return _openLabelEditorFor(sh);
 }
 // Shared inline label editor for boxes (rect/ellipse/frame) and connectors. Commits via
@@ -4724,17 +4724,17 @@ function pickTop(wp){
     const cands=[..._queryGrid(_grid,wp)];
     cands.sort((a,b)=>(_grid.idx.get(b)|0)-(_grid.idx.get(a)|0));
     for(const s of cands)if(s.type!=='frame'&&_sv(s)&&G.hit(s,wp))return s;
-    for(const s of cands)if(s.type==='frame'&&_sv(s)&&G.hit(s,wp))return s;
+    for(const s of cands)if(_frm(s)&&_sv(s)&&G.hit(s,wp))return s;
     return null;
   }
   for(let i=_nS()-1;i>=0;i--){
     const s=_sh()[i];
-    if(s.type==='frame'||_hd(s))continue;
+    if(_frm(s)||_hd(s))continue;
     if(G.hit(s,wp))return s;
   }
   for(let i=_nS()-1;i>=0;i--){
     const s=_sh()[i];
-    if(s.type==='frame'&&_sv(s)&&G.hit(s,wp))return s;
+    if(_frm(s)&&_sv(s)&&G.hit(s,wp))return s;
   }
   return null;
 }
@@ -4888,10 +4888,10 @@ function withFrameChildren(ids){
   const out=_sT(ids);
   for(const selId of ids){
     const sel=byId(selId);
-    if(sel&&sel.type==='frame'){
+    if(sel&&_frm(sel)){
       const fb=_bb(sel);
       for(const s of _sh()){
-        if(s.id===selId||s.type==='frame')continue;
+        if(s.id===selId||_frm(s))continue;
         const b=_bb(s);
         if(b.x>=fb.x&&b.y>=fb.y&&b.x+b.w<=fb.x+fb.w&&b.y+b.h<=fb.y+fb.h)out.add(s.id);
       }
@@ -5154,7 +5154,7 @@ function beginRectLike(wp){
     extras.color=STICKY_COLORS[_fl(_rN()*_ln(STICKY_COLORS))];
     extras.text='';extras.fontSize=_st().fontSize||14;          // ADR-0180
   }else if(_tl()==='frame'){
-    const n=_sh().filter(s=>s.type==='frame').length+1;
+    const n=_sh().filter(s=>_frm(s)).length+1;
     extras.label=`Frame ${n}`;
     extras.stroke=_gC('--brand')||'#00C4CC';
     extras.fill=null;extras.size=1.5;
@@ -5182,14 +5182,14 @@ function endRectLike(){
   if(!_df())return;
   const d=_df();state.draft=null;
   if(d.w<2||d.h<2){
-    if(d.type==='sticky'){const sp=snapPt({x:d.x,y:d.y});d.w=160;d.h=160;d.x=sp.x-80;d.y=sp.y-80}
-    else if(d.type==='frame'){d.w=800;d.h=500;d.x-=400;d.y-=250}
+    if(_stk(d)){const sp=snapPt({x:d.x,y:d.y});d.w=160;d.h=160;d.x=sp.x-80;d.y=sp.y-80}
+    else if(_frm(d)){d.w=800;d.h=500;d.x-=400;d.y-=250}
     else{d.w=120;d.h=80;d.x-=60;d.y-=40}   // ADR-0086: click stamps a default box (matches center-stamp size)
   }
   _cOp({op:'add',shape:d});
   pickTool('select');
   _scl();_sad(d.id);
-  if(d.type==='sticky')openTextEditor(d,true);
+  if(_stk(d))openTextEditor(d,true);
 }
 
 // ---- line / arrow ----
@@ -5300,7 +5300,7 @@ function createShapeKbd(){
     s=Shape.make('sticky',{x:cx-80,y:cy-80,w:160,h:160,
       color:STICKY_COLORS[_fl(_rN()*_ln(STICKY_COLORS))],text:'',fontSize:_st().fontSize||14});   // ADR-0180
   }else if(tool==='frame'){
-    const n=_sh().filter(x=>x.type==='frame').length+1;
+    const n=_sh().filter(x=>_frm(x)).length+1;
     s=Shape.make('frame',{x:cx-400,y:cy-250,w:800,h:500,
       label:`Frame ${n}`,stroke:_gC('--brand')||'#00C4CC',fill:null,size:1.5});
   }else if(tool==='text'){
@@ -5313,7 +5313,7 @@ function createShapeKbd(){
   pickTool('select');
   _ss([s.id]);
   _tst(`${t('created')}: ${describeShape(s)}`);
-  if(s.type==='sticky')openTextEditor(s,true);
+  if(_stk(s))openTextEditor(s,true);
   _iv();
   return true;
 }
@@ -5324,7 +5324,7 @@ function resizeAfterTextEdit(s,text,c){
   s.text=text;
   const fs=_fS(s)||14;
   c.font=`${fs}px Hiragino Sans,Helvetica Neue,system-ui,sans-serif`;
-  if(s.type==='sticky'){
+  if(_stk(s)){
     const pad=8;
     const wl=wrapText(_txx(s)||'',_abs(s.w)-pad*2,t=>c.measureText(t).width);
     s.h=_max(fs*(s.lineH||1.3)+pad*2,_ln(wl)*fs*(s.lineH||1.3)+pad*2);
@@ -5430,7 +5430,7 @@ function openTextEditor(s,isNew){
       const cur=_sh().indexOf(s),dir=ev.shiftKey?-1:1;
       for(let k=1;k<=_nS();k++){
         const nx=_sh()[(cur+dir*k+_nS())%_nS()];
-        if(nx&&(nx.type==='text'||nx.type==='sticky')&&!nx.locked&&nx.visible!==0){
+        if(nx&&(_txt(nx)||_stk(nx))&&!nx.locked&&nx.visible!==0){
           ta.blur();_ss([nx.id]);_aS();openTextEditor(nx,false);return;
         }
       }
@@ -5890,8 +5890,8 @@ function doSendBackward(){
 function selectSamePaint(){
   const sel=_selL(Boolean);
   if(_ln(sel)!==1)return;
-  const s0=sel[0],key=s0.type==='sticky'?s0.color:s0.fill;
-  const same=_sh().filter(s=>_sv(s)&&(s.type==='sticky'?_coo(s):_fi(s))===key);
+  const s0=sel[0],key=_stk(s0)?s0.color:s0.fill;
+  const same=_sh().filter(s=>_sv(s)&&(_stk(s)?_coo(s):_fi(s))===key);
   if(_ln(same)<2)return;
   _ss(same.map(s=>s.id));
   _aS();_o(_ln(same)+' '+t(_SM));
@@ -6124,7 +6124,7 @@ function flipShape(s,axis,c){
   // box flip alone was a dead op (same bitmap drawn back into the same rect).
   // s.flip bitmask: 1=horizontal, 2=vertical. Position still mirrors so group
   // flips place the image correctly within the mirrored envelope.
-  if(s.type==='image')s.flip=(s.flip||0)^(axis==='h'?1:2);
+  if(_im(s))s.flip=(s.flip||0)^(axis==='h'?1:2);
   if(tr&&(axis==='h')===!!trVert)s.bend=m(s.bend);
   if(s.cbend!=null)s.cbend=-s.cbend;   // ADR-0132: any mirror flips the curve's chirality
   // ADR-0142: mirror maps angle θ → 180−θ across the vertical axis
@@ -6177,7 +6177,7 @@ function unlockAll(){
 // (Alt+B). Local-only (not in REMOTE_OPS, like replace/clear) — converting a collaborator's
 // pen stroke to a rectangle behind their back would be confusing, not helpful.
 function doBeautify(){
-  const sel=_selL(s=>s&&!_lk(s)&&s.type==='pen');
+  const sel=_selL(s=>s&&!_lk(s)&&_pn(s));
   if(!_ln(sel)){_wT('beautifyNone');return}
   const before=[],after=[];
   for(const s of sel){
@@ -6331,7 +6331,7 @@ function copySVG(shapes=_sh()){
 // ADR-0089: replace image bytes in place — same frame position/width, height
 // follows the new aspect. One style op so undo restores bytes AND geometry.
 function replaceImage(){
-  const s=_sb().find(x=>x&&x.type==='image'&&!x.locked);
+  const s=_sb().find(x=>x&&_im(x)&&!x.locked);
   if(!s)return;
   const inp=_ce('input');
   inp.type='file';inp.accept='image/*';
@@ -6447,7 +6447,7 @@ function excScene(shapes){
           endBinding:s.b?{elementId:s.b,focus:s.bF?+(s.bF.fx*2-1).toFixed(2):0,gap:1}:null,
           lastCommittedPoint:null,
           startArrowhead:s.start?_excHead(s.startHead||'arrow'):null,                               // ADR-0231/0338
-          endArrowhead:s.type==='arrow'?_excHead(s.head&&s.head!=='arrow'?s.head:'arrow'):null,...(_el(s)?{elbowed:true}:{}),...(s.curve?{roundness:{type:2}}:{})}));   // ADR-0265/0317/0338
+          endArrowhead:_arw(s)?_excHead(s.head&&s.head!=='arrow'?s.head:'arrow'):null,...(_el(s)?{elbowed:true}:{}),...(s.curve?{roundness:{type:2}}:{})}));   // ADR-0265/0317/0338
         if(_lb(s)){const _lp=_connLabelXY(s),_tid=uid();els.push(_ct(s,_tid,_lb(s),true,null,{x:_lp.x-40,y:_lp.y-10,w:80,h:20}));els[_ln(els)-2].boundElements=[{id:_tid,type:'text'}]}   // ADR-0266/0280
         break;}
       case'image':{
@@ -6474,10 +6474,10 @@ function excScene(shapes){
     if(_ln(out))e.boundElements=out;
   }
   // ADR-0390: emit exc frameId for shapes contained in a frame (withFrameChildren rule); label texts inherit via containerId.
-  for(const f of shapes)if(f.type==='frame'){
+  for(const f of shapes)if(_frm(f)){
     const fb=_bb(f);
     for(const s of shapes){
-      if(s.id===f.id||s.type==='frame')continue;
+      if(s.id===f.id||_frm(s))continue;
       const b=_bb(s);
       if(b.x>=fb.x&&b.y>=fb.y&&b.x+b.w<=fb.x+fb.w&&b.y+b.h<=fb.y+fb.h)
         for(const el of els)if(el.id===s.id||el.containerId===s.id)el.frameId=f.id;
@@ -6507,7 +6507,7 @@ function _dioStyApply(s,sty,hid){
   if(sty.flipV==='1')s.flip=(s.flip||0)|2;
   if(/^(left|center|right)$/.test(sty.labelPosition))s.align=sty.labelPosition;   // ADR-0320
   if(/^(top|middle|bottom)$/.test(sty.verticalLabelPosition))s.valign=sty.verticalLabelPosition;   // ADR-0320
-  if(s.type==='text'&&sty.whiteSpace==='nowrap')s.wrap=0;else if(s.type==='text'&&sty.whiteSpace==='wrap')s.wrap=1;   // ADR-0321/0412
+  if(_txt(s)&&sty.whiteSpace==='nowrap')s.wrap=0;else if(_txt(s)&&sty.whiteSpace==='wrap')s.wrap=1;   // ADR-0321/0412
   if(+sty.lineHeight>0&&+sty.lineHeight!==1.2)s.lineH=_min(4,_max(0.5,+sty.lineHeight));   // ADR-0343
   if(hid)s.visible=0;                                       // ADR-0245
 }
@@ -6753,7 +6753,7 @@ function boardToDrawio(shapes){
   // ADR-0345: pre-assign vertex ids up-front so a member can reference
   // its containing frame's swimlane cell id regardless of z-order.
   for(const s of shapes)if(s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen')idOf.set(s.id,'b'+(i++));
-  const _frs=shapes.filter(f=>f.type==='frame');
+  const _frs=shapes.filter(f=>_frm(f));
   const _fOf=s=>{let b=null;for(const f of _frs){if(f!==s&&s.x>=f.x&&s.y>=f.y&&s.x+(s.w||0)<=f.x+f.w&&s.y+(s.h||0)<=f.y+f.h&&(!b||f.w*f.h<b.w*b.h))b=f}return b};
   for(const s of shapes){
     const t=s.type;
@@ -7085,11 +7085,11 @@ function excToShapes(txt){
         // ADR-0097: multi-segment line/arrow stays a real connector — the
         // interior points map onto the way[] array (ADR-0090), not a
         // dead-end pen stroke. Elbowed excalidraw arrows land naturally.
-        s=Shape.make(e.type==='arrow'?'arrow':'line',{x1:pts[0][0],y1:pts[0][1],x2:pts[_ln(pts)-1][0],y2:pts[_ln(pts)-1][1]});
+        s=Shape.make(_arw(e)?'arrow':'line',{x1:pts[0][0],y1:pts[0][1],x2:pts[_ln(pts)-1][0],y2:pts[_ln(pts)-1][1]});
         if(_ln(pts)>2)s.way=pts.slice(1,-1).map(p=>({x:p[0],y:p[1]}));
         if(e.elbowed)s.elbow=1;                                              // ADR-0265
         // ADR-0230: excalidraw arrowhead styles → head/start
-        if(e.type==='arrow'){
+        if(_arw(e)){
           if(e.endArrowhead===null)s.head='none';else if(e.endArrowhead&&e.endArrowhead!=='arrow')s.head=_unExcHead(e.endArrowhead);   // ADR-0338
           if(e.startArrowhead){s.start=1;if(e.startArrowhead!=='arrow')s.startHead=_unExcHead(e.startArrowhead)}   // ADR-0286/0294/0338
         }
@@ -7113,7 +7113,7 @@ function excToShapes(txt){
       // start/endBinding (element ids) can resolve after every vertex exists
       if(_conn(s.type))_excBnd.push([s,e]);
       if(e.id)idOf.set(e.id,s.id);
-      if(s.type==='text'&&e.containerId){_excTxt.set(s.id,e.containerId);_excTxtE.set(s.id,e)}
+      if(_txt(s)&&e.containerId){_excTxt.set(s.id,e.containerId);_excTxtE.set(s.id,e)}
       // ADR-0229: excalidraw groupIds → Board groupId (nested groups flatten
       // to the outermost — Board models one group level)
       if(_iA(e.groupIds)&&_ln(e.groupIds))s.groupId=e.groupIds[0]}
@@ -7286,7 +7286,7 @@ function buildSVG(shapes,paper){
   els.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`);
   els.push(`<rect width="100%" height="100%" fill="${_esc(paper||'#FFFFFF')}"/>`);
   // ADR-0194: one shared drop-shadow filter; shapes opt in via filter="url(#bsh)".
-  if(shapes.some(s=>_sv(s)&&(s.shadow||s.type==='sticky')))els.push('<defs><filter id="bsh" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#0F172A" flood-opacity="0.22"/></filter></defs>');   // ADR-0278
+  if(shapes.some(s=>_sv(s)&&(s.shadow||_stk(s))))els.push('<defs><filter id="bsh" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#0F172A" flood-opacity="0.22"/></filter></defs>');   // ADR-0278
   // ADR-0150 follow-up: SVG builds its own element list (bypasses drawShape's
   // visible guard) — hidden shapes must be excluded here too, like canvas.
   const _vis=shapes.filter(s=>_sv(s));
@@ -8416,7 +8416,7 @@ function _imgNextKey(k){const m=/^(.*):(\d+)$/.exec(k);return m?m[1]+':'+(+m[2]+
 function _imgSlim(shapes,stored){
   const slim=[],puts=[];
   for(const s of shapes){
-    if(s&&s.type==='image'&&_iS(s.dataUrl)&&_du(s).length>128){
+    if(s&&_im(s)&&_iS(s.dataUrl)&&_du(s).length>128){
       let k=_imgHash(_du(s));
       while(stored.get(k)!==_ud&&stored.get(k)!==_du(s))k=_imgNextKey(k);
       if(stored.get(k)===_ud){stored.set(k,_du(s));puts.push([k,_du(s)])}
@@ -8574,18 +8574,18 @@ const UI={
       has&&_selAny(s=>(_conn(s.type))&&!_lk(s)&&!s.curve)&&['ctxHop','',toggleHop],
       has&&_selAny(s=>(_conn(s.type))&&!_lk(s)&&(_wayArr(s).length||s.bend||_el(s)||s.curve||_lP(s)!=null||s.cbend!=null))&&['ctxRouteReset','',resetRoute],   // ADR-0090/0217
       has&&_selConnL()&&['ctxReverse','',reverseConn],
-      has&&_selUnl(s=>s.type==='sticky')&&['ctxFitText','',fitSticky],
-      has&&_selUnl(s=>s.type==='frame')&&['ctxFrameFit','',fitFrames],
-      has&&_selUnl(s=>s.type==='frame')&&['ctxSelContents','',selectFrameContents],
+      has&&_selUnl(s=>_stk(s))&&['ctxFitText','',fitSticky],
+      has&&_selUnl(s=>_frm(s))&&['ctxFrameFit','',fitFrames],
+      has&&_selUnl(s=>_frm(s))&&['ctxSelContents','',selectFrameContents],
       has&&_selTxtL()&&['ctxTextAlign','',cycleTextAlign],
       has&&_selTxtL()&&['ctxFont','',cycleFont],
       has&&_selAny(s=>!_lk(s))&&['ctxOpacity','0-9',cycleOpacity],   // ADR-0174
-      has&&_selUnl(s=>(_BX4.has(s.type)||(s.type==='image'&&!!_lb(s))))&&['ctxVAlign','',cycleVAlign],   // ADR-0179   // ADR-0159
+      has&&_selUnl(s=>(_BX4.has(s.type)||(_im(s)&&!!_lb(s))))&&['ctxVAlign','',cycleVAlign],   // ADR-0179   // ADR-0159
       has&&_selUnl(s=>(_TS.has(s.type)||_lb(s)))&&['ctxLineH','',cycleLineH],
       has&&_selTxtL()&&['ctxSpacing','',cycleSpacing],
-      has&&_selUnl(s=>s.type==='text')&&['ctxWrap','',toggleWrap],
-      has&&_selUnl(s=>(_TS.has(s.type)))&&[_selUnl(s=>s.type==='sticky')?'ctxToText':'ctxToSticky','',toggleStickyText],
-      has&&_selUnl(s=>s.type==='sticky')&&['ctxStickyColor','',cycleStickyColor],
+      has&&_selUnl(s=>_txt(s))&&['ctxWrap','',toggleWrap],
+      has&&_selUnl(s=>(_TS.has(s.type)))&&[_selUnl(s=>_stk(s))?'ctxToText':'ctxToSticky','',toggleStickyText],
+      has&&_selUnl(s=>_stk(s))&&['ctxStickyColor','',cycleStickyColor],
       has&&_selUnl(s=>(_BOX.has(s.type)))&&['ctxFillStyle','',cycleFillStyle],
       has&&_selArrowL()&&['ctxBothEnds','',toggleBothEnds],
       has&&_selConnL()&&[_selUnl(s=>s.type==='line')?'ctxToArrow':'ctxToLine','',toggleLineArrow],
@@ -8623,7 +8623,7 @@ const UI={
       _nS()&&['ctxSelectInverse','⌘⇧I',selectInverse],
       // ADR-0005's flagship feature was ⌥B-only — invisible to touch/mouse users
       // (the exact "keyboard-only feature" trap FT-06 warned about).
-      has&&_selAny(s=>s.type==='pen')&&['ctxBeautify','⌥B',doBeautify],
+      has&&_selAny(s=>_pn(s))&&['ctxBeautify','⌥B',doBeautify],
       has&&[_sel0()?.locked?'ctxUnlock':'ctxLock','',doLock],
       _sh().some(s=>_lk(s))&&['ctxUnlockAll','',unlockAll],
       has&&_selN()>1&&'sep',
@@ -8648,7 +8648,7 @@ const UI={
       has&&['ctxCopySelSVG','',()=>exportSelection('svgcopy')],        // ADR-0087
       has&&['ctxExportSelBoard','',()=>exportSelection('board')],          // ADR-0114
       has&&['ctxExportSelDrawio','',()=>exportSelection('drawio')],       // ADR-0407
-      has&&_selN()===1&&_selUnl(s=>s.type==='image')&&['ctxReplaceImg','',replaceImage],   // ADR-0089
+      has&&_selN()===1&&_selUnl(s=>_im(s))&&['ctxReplaceImg','',replaceImage],   // ADR-0089
       has&&'sep',
       ['ctxSelectAll','⌘A',()=>{_ss(_sh().filter(s=>_sv(s)).map(s=>s.id));if(_selN())_aS();_iv()}],
       _nS()&&['ctxClear','',doClearAll]
@@ -9081,7 +9081,7 @@ function applyStyleToSelection(patch){
     const sh=byId(id);if(!sh||sh.locked)continue;
     const b={id},a={id},eff={};
     for(const k of _ok(patch)){
-      const ek=sh.type==='sticky'&&k==='fill'?'color':k;   // ADR-0082: sticky recolors via color
+      const ek=_stk(sh)&&k==='fill'?'color':k;   // ADR-0082: sticky recolors via color
       b[ek]=sh[ek]??null;a[ek]=patch[k]??null;eff[ek]=patch[k];   // ADR-0082: ??null keeps before JSON-safe (clone drops undefined → undo couldn't unset)
     }
     _oa(sh,eff);
@@ -9112,7 +9112,7 @@ function toggleElbow(){
 // "what moves with the frame" is exactly what gets selected. Frame itself
 // drops out of the selection so follow-up ops act on the contents.
 function selectFrameContents(){
-  const frames=_sb().filter(s=>s&&s.type==='frame');
+  const frames=_sb().filter(s=>s&&_frm(s));
   if(!_ln(frames))return;
   const inner=withFrameChildren(_sT(frames.map(f=>f.id)));
   for(const f of frames)inner.delete(f.id);
@@ -9128,8 +9128,8 @@ function selectFrameContents(){
 function toggleStickyText(){
   const before=[],after=[];
   _forSel((s,id)=>{if((s.type!=='sticky'&&s.type!=='text')||_lk(s))return;
-    _pp(before,after,id,'type',s.type,s.type==='sticky'?'text':'sticky');
-    s.type=s.type==='sticky'?'text':'sticky';
+    _pp(before,after,id,'type',s.type,_stk(s)?'text':'sticky');
+    s.type=_stk(s)?'text':'sticky';
   })
   _so(before,after)
 }
@@ -9138,7 +9138,7 @@ function toggleStickyText(){
 // converted (a line never draws heads).
 const HEAD_STYLES=['arrow','dot','bar','open','none'];   // ADR-0233/0294
 function cycleArrowHead(){
-  const sel=_selL(s=>s&&s.type==='arrow'&&!_lk(s));
+  const sel=_selL(s=>s&&_arw(s)&&!_lk(s));
   if(!_ln(sel))return;
   const cur=sel[0].head||'arrow';
   const next=HEAD_STYLES[(HEAD_STYLES.indexOf(cur)+1)%_ln(HEAD_STYLES)];
@@ -9149,7 +9149,7 @@ function cycleArrowHead(){
 // ADR-0291: start-end head cycle (ctx) — none → arrow → dot → open.
 // s.start toggles presence, s.startHead carries the style (null = inherit s.head).
 function cycleStartHead(){
-  const sel=_selL(s=>s&&s.type==='arrow'&&!_lk(s));
+  const sel=_selL(s=>s&&_arw(s)&&!_lk(s));
   if(!_ln(sel))return;
   const seq=['none','arrow','dot','bar','open'],cur=!sel[0].start?'none':(sel[0].startHead||'arrow');
   const next=seq[(seq.indexOf(cur)+1)%4];
@@ -9223,7 +9223,7 @@ function cycleStickyColor(){
 // "Fully inside" matches the membership rule used by move/delete/duplicate.
 function fitFrames(){
   const PAD=12;
-  const frames=_sb().filter(s=>s&&s.type==='frame'&&!_lk(s));
+  const frames=_sb().filter(s=>s&&_frm(s)&&!_lk(s));
   if(!_ln(frames))return;
   const before=[],after=[];
   for(const f of frames){
@@ -9334,8 +9334,8 @@ function unbindSelection(){
 // draw.io/mermaid parity for tall boxes in org charts & flow diagrams.
 function cycleVAlign(){
   const before=[],after=[],seq=[null,'top','bottom'],seqS=[null,'middle','bottom'];
-  _forSel((s,id)=>{if((s.type!=='rect'&&s.type!=='ellipse'&&s.type!=='diamond'&&s.type!=='sticky'&&!(s.type==='image'&&_lb(s)))||_lk(s))return;   // ADR-0179/0187
-    const sq=s.type==='sticky'?seqS:seq;
+  _forSel((s,id)=>{if((s.type!=='rect'&&s.type!=='ellipse'&&s.type!=='diamond'&&s.type!=='sticky'&&!(_im(s)&&_lb(s)))||_lk(s))return;   // ADR-0179/0187
+    const sq=_stk(s)?seqS:seq;
     const cur=_va(s)||null,nxt=sq[(sq.indexOf(cur)+1)%3];
     _pp(before,after,id,'valign',cur,nxt);
     if(nxt==null)delete s.valign;else s.valign=nxt;
@@ -9458,7 +9458,7 @@ function cycleFillStyle(){
 function swapFillStroke(){
   const before=[],after=[];
   _forSel((s,id)=>{if(_lk(s))return;
-    const fk=s.type==='sticky'?'color':'fill';
+    const fk=_stk(s)?'color':'fill';
     if(!(_BOXF.has(s.type)))return;
     before.push({id,stroke:_sk(s)??null,[fk]:s[fk]??null});
     after.push({id,stroke:s[fk]??null,[fk]:_sk(s)??null});
@@ -9541,7 +9541,7 @@ function toggleBothEnds(){
 // here so it pastes onto box shapes; applyStyleToSelection maps it back to
 // `color`.
 function _styleOf(sh){return{
-  stroke:sh.stroke,fill:sh.type==='sticky'?sh.color:sh.fill,
+  stroke:sh.stroke,fill:_stk(sh)?sh.color:sh.fill,
   size:sh.size,opacity:sh.opacity,dash:sh.dash||0,fstyle:sh.fstyle,     // ADR-0077
   bold:sh.bold,italic:sh.italic,under:sh.under,strike:sh.strike,        // ADR-0078/0095/0100
   align:sh.align,valign:sh.valign,fontSize:sh.fontSize,lineH:sh.lineH,spacing:sh.spacing,   // ADR-0159/0189/0205
@@ -9614,7 +9614,7 @@ const Presentation=(()=>{
 
   function _getFrames(){
     return [..._sh()]
-      .filter(s=>s.type==='frame')
+      .filter(s=>_frm(s))
       .sort((a,b)=>a.x-b.x||(a.y-b.y));  // left→right, then top→bottom
   }
 
@@ -9747,7 +9747,7 @@ const Minimap=(()=>{
         case 'diamond':{const dcx=s.x*sc+ox+s.w*sc/2,dcy=s.y*sc+oy+s.h*sc/2;sx.beginPath();sx.moveTo(dcx,s.y*sc+oy);sx.lineTo(s.x*sc+ox+s.w*sc,dcy);sx.lineTo(dcx,s.y*sc+oy+s.h*sc);sx.lineTo(s.x*sc+ox,dcy);sx.closePath();if(_fi(s))sx.fill();sx.stroke();break;}
         case 'line':case 'arrow':{if(_el(s)){const pts=_elbowPts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<_ln(pts);i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}if(s.curve){const me=_cE(s),cc=_curveCtrl(me,s.cbend);sx.beginPath();sx.moveTo(me.x1*sc+ox,me.y1*sc+oy);sx.quadraticCurveTo(cc.x*sc+ox,cc.y*sc+oy,me.x2*sc+ox,me.y2*sc+oy);sx.stroke();break}const pts=_linePts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<_ln(pts);i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}
         case 'pen':if(_ln(s.pts)<2)break;sx.beginPath();sx.moveTo(s.pts[0][0]*sc+ox,s.pts[0][1]*sc+oy);for(let i=1;i<_ln(s.pts);i++)sx.lineTo(s.pts[i][0]*sc+ox,s.pts[i][1]*sc+oy);sx.stroke();break;
-        case 'text':case 'sticky':{const rx2=s.x*sc+ox,ry2=s.y*sc+oy,rw2=_max(2,s.w*sc),rh2=_max(2,s.h*sc);sx.fillStyle=s.type==='sticky'?(_coo(s)||_YW):(_fi(s)||_gC('--brand'));sx.fillRect(rx2,ry2,rw2,rh2);break}
+        case 'text':case 'sticky':{const rx2=s.x*sc+ox,ry2=s.y*sc+oy,rw2=_max(2,s.w*sc),rh2=_max(2,s.h*sc);sx.fillStyle=_stk(s)?(_coo(s)||_YW):(_fi(s)||_gC('--brand'));sx.fillRect(rx2,ry2,rw2,rh2);break}
         case 'image':{const rx3=s.x*sc+ox,ry3=s.y*sc+oy,rw3=_max(2,s.w*sc),rh3=_max(2,s.h*sc);const img=_du(s)?_imgCache.get(_imgKey(_du(s))):null;if(img&&img.complete&&img.naturalWidth){if(s.flip){const fx3=rx3+rw3/2,fy3=ry3+rh3/2;sx.save();sx.translate(fx3,fy3);sx.scale(s.flip&1?-1:1,s.flip&2?-1:1);sx.translate(-fx3,-fy3);sx.drawImage(img,rx3,ry3,rw3,rh3);sx.restore()}else sx.drawImage(img,rx3,ry3,rw3,rh3)}else{sx.fillStyle='#CBD5E1';sx.fillRect(rx3,ry3,rw3,rh3)}break}
       }
       if(_mr)sx.restore();
