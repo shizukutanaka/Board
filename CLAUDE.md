@@ -433,6 +433,8 @@ Board/
 │   ├── ADR-0381-search-bound-endpoints.md   # ⌘F で結合先名検索 (実装済)
 │   ├── ADR-0382-more-state-fn-shorthands.md  # seenOps/lasso/marquee/dupDelta/w2s/s2w/connEnds shorthand (実装済)
 │   ├── ADR-0383-chunked-snapshot.md   # RTC snapshot 64KB チャンク化 (実装済)
+│   ├── ADR-0384-isarray-shorthand.md   # Array.isArray→_iA (~500B 回収、実装済)
+│   ├── ADR-0385-snapin-reset.md   # 切断時 _snapIn 破棄 (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

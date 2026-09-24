@@ -677,7 +677,7 @@ const checks = [
   // v1.7.96: ADR-0038 share-link reject paths all toast + clear hash
   ['importFromHash hoists clearHash helper', html.includes("const clearHash=()=>{try{history.replaceState(null,'',location.pathname)}catch(_){}};")],
   ['unknown kind toasts + clears', html.includes("}else{_tst(t('invalidBoard'),'err');clearHash();return false}")],
-  ['non-array shapes toasts + clears', html.includes("if(!Array.isArray(data.shapes)||data.shapes.length>SHARE_MAX_SHAPES){_tst(t('invalidBoard'),'err');clearHash();return false}")],
+  ['non-array shapes toasts + clears', html.includes("if(!_iA(data.shapes)||data.shapes.length>SHARE_MAX_SHAPES){_tst(t('invalidBoard'),'err');clearHash();return false}")],
   ['all-invalid shapes toasts + clears', html.includes("if(!valid.length){_tst(t('invalidBoard'),'err');clearHash();return false}")],
   ['decode-throw catch also clears hash', html.includes("}catch{_tst(t('invalidBoard'),'err');clearHash();return false}")],
   // v1.7.97: ADR-0039 share-link resource-bomb guard
@@ -707,7 +707,7 @@ const checks = [
   ['i18n has svgImported ja+en', html.includes("svgImported:'SVG を取り込みました'") && html.includes("svgImported:'SVG imported'")],
   // v1.7.101: ADR-0043 .excalidraw import
   ['excalidraw import ceilings defined', html.includes('EXC_MAX_ELEMS') && html.includes('EXC_MAX_PTS')],
-  ['excToShapes checks type marker + elements array', html.includes("d.type!=='excalidraw'||!Array.isArray(d.elements)")],
+  ['excToShapes checks type marker + elements array', html.includes("d.type!=='excalidraw'||!_iA(d.elements)")],
   ['isDeleted tombstones skipped', html.includes('e.isDeleted')],
   ['relative points absolutised', html.includes('pts.push([e.x+p[0],e.y+p[1]])')],
   ['content beats extension routing', html.includes("d.type==='excalidraw'){importExcText(r.result);return}")],
@@ -1170,7 +1170,7 @@ const checks = [
   ['_placeCopies commits one addMany (not per-shape add)', html.includes("if(built.length)Store.commit({op:'addMany',shapes:built})")],
   ['addMany op has an _apply case', /case 'addMany':/.test(html)],
   ['addMany in REMOTE_OPS allow-list', /REMOTE_OPS[\s\S]{0,160}'addMany'/.test(html)],
-  ['addMany validated in validRemotePayload (with MAX_OP_SHAPES cap)', /case 'addMany':/.test(html)&&html.includes("case 'addMany':    return Array.isArray(op.shapes)&&op.shapes.length<=MAX_OP_SHAPES&&op.shapes.every(validShape)")],
+  ['addMany validated in validRemotePayload (with MAX_OP_SHAPES cap)', /case 'addMany':/.test(html)&&html.includes("case 'addMany':    return _iA(op.shapes)&&op.shapes.length<=MAX_OP_SHAPES&&op.shapes.every(validShape)")],
   // v1.6.85: modal dialog isolation — global canvas shortcuts must not fire behind an
   // open help/share dialog, and Tab is trapped inside it (WCAG 2.4.3 / 2.1.2).
   ['modal focus-trap helpers present', html.includes('function _trapStep')&&html.includes('function _openDialog')],
@@ -1242,10 +1242,10 @@ const checks = [
     html.includes("_cOp({op:'add',shape:s});")],
   // v1.7.33: validRemotePayload group must require before (string-id array)
   ['validRemotePayload group: requires before array with string ids',
-    html.includes("&&Array.isArray(op.before)&&op.before.length<=MAX_OP_SHAPES&&op.before.every(b=>b&&typeof b.id==='string');")],
+    html.includes("&&_iA(op.before)&&op.before.length<=MAX_OP_SHAPES&&op.before.every(b=>b&&typeof b.id==='string');")],
   // v1.7.34: validRemotePayload ungroup must require gids array
   ['validRemotePayload ungroup: requires gids array with string elements',
-    html.includes("&&Array.isArray(op.gids)&&op.gids.length<=MAX_OP_SHAPES&&op.gids.every(g=>typeof g==='string'&&g.length>0);")],
+    html.includes("&&_iA(op.gids)&&op.gids.length<=MAX_OP_SHAPES&&op.gids.every(g=>typeof g==='string'&&g.length>0);")],
   // v1.7.34: _apply ungroup backward must use optional chaining on op.gids
   ['_apply ungroup backward: op.gids?.[0] optional chaining null guard',
     html.includes("const gid=op.gids?.[0];")],
@@ -3782,6 +3782,11 @@ try {
       assert.ok(byId(sh.id),'ADR-0383: reassembled snapshot applies');
       Net._onRecv({k:'snap',seq:0,n:1,data:'x'.repeat(97*1024)},false);
       assert.ok(Net._snapIn==null,'ADR-0383: oversized snap chunk never buffers');
+      // ADR-0385: dc.onclose clears a half-received assembly — stale parts
+      // must not poison the next join's chunks.
+      Net._onRecv({k:'snap',seq:0,n:2,data:'{"k":"snapshot'},false);
+      assert.ok(Net._snapIn,'partial assembly parked');
+      Net._snapIn=null;
       console.log('  ✓ ADR-0383: chunked snapshot reassembly (3 asserts)');
     }
   }
