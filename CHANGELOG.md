@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.540] - 2026-09-23
+
+### リファクタ
+
+- `copyText(...).then(ok=>_tst(...))` を `_cpT` shorthand に集約 (3 サイト、~90B 回収) (ADR-0507)
+
 ## [1.7.539] - 2026-09-23
 
 ### リファクタ
