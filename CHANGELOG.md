@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.433] - 2026-09-23
+### 修正
+- ADR-0393: .board ファイルが `viewport` を往復 — 保存時の視点位置/ズームを再読込で復元 (ADR-0112 共有リンクと同一の意味論・同じ有限値+clampZoom 検証)
+### 変更
+- ADR-0392/0394: `_sa()`/`_AL`/`_AP` shorthand (~340B 回収)
+
 ## [1.7.432] - 2026-09-23
 ### 追加
 - ADR-0390: .excalidraw 書き出しで `frameId` を空間内包から付与 — Board の frame メンバーシップを Excalidraw 側で再現。bound ラベル text も containerId 経由で継承
