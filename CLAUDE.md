@@ -504,6 +504,7 @@ Board/
 │   ├── ADR-0452-snapshot-throttle-resend.md # _sendSnapshot throttle 超過の deferred resend (実装済)
 │   ├── ADR-0453-type-sets-pagehide-flush.md # 図形型メンバーシップSet化 + pagehide flush (実装済)
 │   ├── ADR-0454-imgchunk-restart-selunl.md # _imgChunks n-mismatch 再スタート + _selUnl 畳み込み (実装済)
+│   ├── ADR-0455-lowest-peer-snapshot.md # snapshot応答を最小idピアのみへ + prop畳み込み (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

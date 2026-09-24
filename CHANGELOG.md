@@ -2,6 +2,16 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.490] - 2026-09-23
+
+### 修正
+
+- **snapshot 応答の最小 id ピア限定** — `hello`/`sync-req` で `_pi()<msg.peer` が joiner より小さい全ピアの応答を許していたため 3+ ピア部屋で N-1 重複 snapshot が飛んでいた。`_pr()` の既知ピアで最小 id のピアのみ応答 (`_rtcPeerId` 合成 id は BC 経路ではないため除外) (ADR-0455)
+
+### 変更
+
+- `_selUnl` を mid-predicate `!_lk(s)&&EXPR` 形へ拡大 + prop shorthand `_szz`/`_txx`/`_ftt`/`_coo` (~230B 回収) (ADR-0455)
+
 ## [1.7.489] - 2026-09-23
 
 ### 修正
