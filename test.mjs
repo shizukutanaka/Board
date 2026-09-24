@@ -1310,7 +1310,7 @@ const checks = [
     html.includes("if(sh&&!(forward&&sh.locked))delete sh.groupId}")],
   // v1.7.37: doGroup/_apply group backward must carry and restore origSel
   ['doGroup: origSel patched onto history entry after _recordCommitted',
-    html.includes("Store._recordCommitted({op:'group',ids,gid,before});\n  _keepSel(origSel);")],
+    html.includes("_rcOp({op:'group',ids,gid,before});")],
   ['_apply group backward: if(op.origSel) restores selection',
     html.includes("_selR(op);}\n        break;}\n      case 'ungroup':")],
   // v1.7.37: doUngroup/_apply ungroup backward must carry and restore origSel

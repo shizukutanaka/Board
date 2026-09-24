@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.521';
+const V='1.7.522';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4173,9 +4173,7 @@ _on(canvas,_PU,e=>{
       }else if(_dk('way')&&ptr.wayOrig){                 // ADR-0076
         const sh=byId(ptr.wayOrig.id),ow=ptr.wayOrig.way||null,nw=sh&&sh.way||null;
         if(sh&&_JS(ow)!==_JS(nw)){
-          const origSel=_selIds();
-          Store._recordCommitted({op:'style',before:[{id:sh.id,way:clone(ow)}],after:[{id:sh.id,way:clone(nw)}]});   // ADR-0090: arrays clone whole
-          _keepSel(origSel);
+          _rcOp({op:'style',before:[{id:sh.id,way:clone(ow)}],after:[{id:sh.id,way:clone(nw)}]});   // ADR-0090: arrays clone whole
         }
         ptr.wayIdx=null;ptr.wayNew=false;
       }else if(_dk('lblpos')&&ptr.lblOrig){               // ADR-0117
@@ -5967,11 +5965,9 @@ function doGroup(){
   const ids=_usI();
   if(_ln(ids)<2){_wT(_ST);return}
   const gid=uid();
-  const origSel=_selIds();
   const before=ids.map(id=>({id,groupId:byId(id)?.groupId}));
   for(const id of ids){const sh=byId(id);if(sh)sh.groupId=gid}
-  Store._recordCommitted({op:'group',ids,gid,before});
-  _keepSel(origSel);
+  _rcOp({op:'group',ids,gid,before});
   _oT('grouped');
   _iv();
 }
@@ -9236,7 +9232,7 @@ function fitFrames(){
     after.push({id:f.id,x:nx,y:ny,w:nw,h:nh});
     f.x=nx;f.y=ny;f.w=nw;f.h=nh;
   }
-  if(_ln(before)){const origSel=_selIds();Store._recordCommitted({op:'align',dir:'framefit',before,after});_keepSel(origSel);_iv()}
+  if(_ln(before)){_rcOp({op:'align',dir:'framefit',before,after});_iv()}
 }
 // ADR-0084: route reset — one style op clears way/bend/elbow/curve back to a
 // straight edge (draw.io "Clear Waypoints"). way/bend are objects → ??null;
