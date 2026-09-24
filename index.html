@@ -795,7 +795,7 @@ const _min=Math.min,_max=Math.max,_abs=Math.abs;   // ADR-0337
 const _ga=(e,n)=>e.getAttribute(n);   // ADR-0340
 
 // ====================== CONSTANTS ======================
-const V='1.7.391';
+const V='1.7.392';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3494,12 +3494,11 @@ function _gresizeCommit(){
   }
 }
 // Cursor CSS for a handle id
-function handleCursor(id){
-  if(id==='nw'||id==='se')return'nwse-resize';
-  if(id==='ne'||id==='sw')return'nesw-resize';
-  if(id==='n'||id==='s')return'ns-resize';
-  if(id==='e'||id==='w')return'ew-resize';
-  return'crosshair';
+function handleCursor(id,rot){          // ADR-0341: rotate-aware cursor
+  const base=id==='nw'||id==='se'?135:id==='ne'||id==='sw'?45:id==='n'||id==='s'?90:id==='e'||id==='w'?0:-1;
+  if(base<0)return'crosshair';
+  const q=Math.round((((base+(rot||0))%180)+180)%180/45)%4;   // axis is bidirectional → mod 180
+  return['ew-resize','nesw-resize','ns-resize','nwse-resize'][q];
 }
 
 function drawSelection(c){
@@ -3891,7 +3890,7 @@ canvas.addEventListener('pointermove',e=>{
         if(onlySel){
           if(hitRotHandle(wp,onlySel)){canvas.style.cursor='grab';return}
           const hid=hitHandle(wp,onlySel);
-          if(hid){canvas.style.cursor=handleCursor(hid);return}
+          if(hid){canvas.style.cursor=handleCursor(hid,onlySel.rotate);return}
         }
       }else if(_selN()>1){
         const sel=_selL(Boolean);

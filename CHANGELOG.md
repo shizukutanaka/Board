@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.392] - 2026-09-24
+
+### Fixed
+- 回転シェイプのリサイズカーソルが `s.rotate` に追従 (8方位量子化)
+  (ADR-0341)
+
 ## [1.7.391] - 2026-09-24
 
 ### Changed
