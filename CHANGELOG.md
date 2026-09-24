@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.185]
+
+### 追加
+- **Alt 押下で全スナップ抑制** (ADR-0128)。移動ドラッグ中に Alt を
+  押すとグリッド/オブジェクト両方の吸着が素通しになる
+  (draw.io parity)。離すとコミット時にスナップが再び効く。
+
 ## [1.7.184]
 
 ### 変更

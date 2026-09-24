@@ -329,7 +329,7 @@ const checks = [
   ['SVG pen carries pressure for parity', html.includes("_num(p&&p[1])+oy,p&&p[2]")],
   // v1.6.15: smart alignment guides (snap to objects)
   ['snapBox helper present', html.includes("function snapBox")],
-  ['move uses object snap when grid off', html.includes("function objectSnap") && html.includes("if(!state.snap)")],
+  ['move uses object snap when grid off', html.includes("function objectSnap") && html.includes("!state.snap")],
   ['guides rendered during drag', html.includes("function drawGuides") && html.includes("state.guides")],
   // v1.6.16: dashed/dotted line styles
   ['dashArr helper present', html.includes("function dashArr")],
@@ -426,7 +426,7 @@ const checks = [
   ['endpoint rebind: always-handle + unbind-on-grab + bindPreview', html.includes("h.push({id:'p1',x:e.x1,y:e.y1});       // ADR-0065")&&html.includes('if(sh[bk])sh[bk]=null;')&&html.includes('state.bindPreview=')],
   ['_endPointBind in pointerup + not-self/not-other-end guard', html.includes('_endPointBind(rsh,ptr.resizeHandle)')&&html.includes('hit!==sh[other]')],
   // v1.7.124: ADR-0066 Shift+drag axis-constrained move
-  ['shift axis constraint in moveDelta + objectSnap skipped', html.includes("if(Math.abs(dx)>=Math.abs(dy))dy=0;else dx=0;")&&html.includes('moveDelta(wp,shift)')&&html.includes('doMove(wp,e.shiftKey)')&&html.includes('endSelect(wp,e.shiftKey)')],
+  ['shift axis constraint in moveDelta + objectSnap skipped', html.includes("if(Math.abs(dx)>=Math.abs(dy))dy=0;else dx=0;")&&html.includes('moveDelta(wp,shift,alt)')&&html.includes('doMove(wp,e.shiftKey,e.altKey)')&&html.includes('endSelect(wp,e.shiftKey,e.altKey)')],
   ['moveAxis i18n ja+en + help row', html.includes("moveAxis:'軸拘束移動'")&&html.includes("moveAxis:'Constrain move axis'")&&html.includes("['⇧ + drag',k.moveAxis]")],
   // v1.7.125: ADR-0067 per-type edge projection
   ['edge projection: diamond/ellipse contour formula', html.includes("sh.type==='diamond'?1/((Math.abs(dx)/(_rx||1e-6))")&&html.includes("sh.type==='ellipse'?1/(Math.hypot(dx/(_rx||1e-6),dy/(_ry||1e-6))||1e-6)")],
@@ -490,6 +490,7 @@ const checks = [
   ['marker tool — pen variant with hl flag + flat pressure', html.includes("k:'marker'")&&html.includes('d.hl=1;d.size=8;d.opacity=0.4')&&html.includes("data-tool=\"marker\"")],
   ['click-click line/arrow — second click commits (lineClick mode)', html.includes('ptr.lineClick=true;break')&&html.includes('ptr.lineClick){ptr.lineClick=false;endLineLike()')],
   ['marquee skips locked shapes (Figma/draw.io parity)', html.includes('if(hit&&!s.locked)state.selection.add(s.id)')],
+  ['Alt during move suppresses all snapping (draw.io parity)', html.includes('moveDelta(wp,shift,alt)')&&html.includes('!alt&&!state.snap')],
   ['line↔arrow conversion via style op (ctx)', html.includes('toggleLineArrow')&&html.includes('ctxToArrow')&&html.includes("s.type==='line'?'arrow':'line'")],
   ['sticky↔text conversion via style op (ctx)', html.includes('toggleStickyText')&&html.includes('ctxToSticky')&&html.includes("s.type==='sticky'?'text':'sticky'")],
   ['frame select-contents (ctx)', html.includes('selectFrameContents')&&html.includes('ctxSelContents')&&html.includes('withFrameChildren(')],

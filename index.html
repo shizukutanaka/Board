@@ -774,7 +774,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.184';
+const V='1.7.185';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3552,7 +3552,7 @@ canvas.addEventListener('pointermove',e=>{
           state.readout={x:_nb.x+_nb.w/2,y:_nb.y+_nb.h,label:`${rsh.rotate}°`};
           invalidateDamage(_dmgPair(_b0,_nb,(rsh.size||2)+16));           // ADR-0026
         }else invalidate();
-      }else if(ptr.dragKind==='move')doMove(wp,e.shiftKey);
+      }else if(ptr.dragKind==='move')doMove(wp,e.shiftKey,e.altKey);
       else if(ptr.dragKind==='marquee'){state.marquee={x1:ptr.wx0,y1:ptr.wy0,x2:wp.x,y2:wp.y};invalidateOverlay()}
       else if(ptr.dragKind==='qline')contLineLike(wp,e.shiftKey);   // ADR-0070
       else if(ptr.dragKind==='ebend'&&ptr.ebendOrig){               // ADR-0072
@@ -3659,7 +3659,7 @@ canvas.addEventListener('pointerup',e=>{
         }
         ptr.lblOrig=null;
       }else{
-        endSelect(wp,e.shiftKey);
+        endSelect(wp,e.shiftKey,e.altKey);
       }
       break;
       case 'pen':case 'marker':endPen();break;
@@ -4302,20 +4302,23 @@ function nudgeSelection(dx,dy){
 }
 // Shared by live drag (doMove) and commit (endSelect) so they agree exactly.
 // Grid snap (⇧G) takes precedence; otherwise snap to nearby objects.
-function moveDelta(wp,shift){
-  const sp=snapPt(wp),sx0=snapV(ptr.wx0),sy0=snapV(ptr.wy0);
+function moveDelta(wp,shift,alt){
+  // ADR-0128: held Alt suppresses every snap source for this delta — grid
+  // (snapPt/snapV) and object snap alike (draw.io parity: "hold Alt while
+  // dragging to disable all snap functions").
+  const sp=alt?wp:snapPt(wp),sx0=alt?ptr.wx0:snapV(ptr.wx0),sy0=alt?ptr.wy0:snapV(ptr.wy0);
   let dx=sp.x-sx0,dy=sp.y-sy0;
   if(shift){                            // ADR-0066: Shift+drag constrains to the dominant axis
     if(Math.abs(dx)>=Math.abs(dy))dy=0;else dx=0;
     state.guides=null;
-  }else if(!state.snap){const a=objectSnap(dx,dy);dx+=a.dx;dy+=a.dy;state.guides=a.guides.length?a.guides:null;}
+  }else if(!alt&&!state.snap){const a=objectSnap(dx,dy);dx+=a.dx;dy+=a.dy;state.guides=a.guides.length?a.guides:null;}
   else state.guides=null;
   const bb=ptr.dragStartShapes&&G.bboxAll([...ptr.dragStartShapes.values()]);
   state.readout=bb&&(dx||dy)?{x:bb.x+dx+bb.w/2,y:bb.y+dy+bb.h,label:`${dx>=0?'+':''}${Math.round(dx)}, ${dy>=0?'+':''}${Math.round(dy)}`}:null;
   return{dx,dy};
 }
-function doMove(wp,shift){
-  const{dx,dy}=moveDelta(wp,shift);let dmg=null;
+function doMove(wp,shift,alt){
+  const{dx,dy}=moveDelta(wp,shift,alt);let dmg=null;
   for(const [id,orig] of ptr.dragStartShapes){
     const sh=byId(id);if(!sh||sh.locked)continue;
     const b0=G.bbox(orig),m=(sh.size||2)+16;   // orig-bbox + same bbox shifted by (dx,dy) covers every position of the gesture
@@ -4326,9 +4329,9 @@ function doMove(wp,shift){
   }
   if(dmg)invalidateDamage(dmg);else invalidate();
 }
-function endSelect(wp,shift){
+function endSelect(wp,shift,alt){
   if(ptr.dragKind==='move'&&ptr.dragStartShapes){
-    const{dx,dy}=moveDelta(wp,shift);
+    const{dx,dy}=moveDelta(wp,shift,alt);
     state.guides=null;
     const mids=[...ptr.dragStartShapes.keys()].filter(id=>!byId(id)?.locked);
     if(Math.hypot(dx,dy)>0.5&&mids.length){
