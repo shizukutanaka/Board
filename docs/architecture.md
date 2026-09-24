@@ -240,6 +240,29 @@ DOM 要素は `data-t` 属性 + `UI.applyI18n()` で翻訳 (起動時に 1 回�
   経路のみ (RTC ピアは `_rtcPeerId` 合成 id で追跡、ADR-0010/0011)。
   snapshot 要求は 1 秒 throttle (安価要求×高価応答の増幅防止)。
 
+### ライフサイクル (v1.7.49x)
+- **incarnation**: peer id は `peerId+'.'+nonce` で起動毎に一意 — `seenOps`
+  の `peer:seq` キーとリロード毎の seq リセットの衝突を解消 (ADR-0459)。
+- **応答選出**: snapshot/sync-req の応答者は `_loResp` (最小 id ピア) で
+  N→1 応答を抑止 (ADR-0455)。asker は選出から除外 — 最小 id の joiner が
+  応答者 0 人になる飢餓を防止 (ADR-0465)。
+- **throttle 再送**: `_sendSnapshot` が throttle で棄却した要求は 1.1s で
+  遅延再送 (`_snapT`) — joiner が応答を得られない窓を解消 (ADR-0452)。
+- **離脱**: `pagehide` で flush+bye、bye 受信でピア即時除去 (ADR-0457)。
+- **ルーム切替 hygiene** (ADR-0458/0464/0466/0467): `Net.init` は
+  旧チャンネルへ bye → `seenOps`・`_snapT`・非RTC `state.peers`・
+  `_imgSent/_imgChunks/_imgOuts`・`_snapIn/_opcIn`・`_pCt` をリセット。
+  room-scoped 状態の持ち越しによる ghost カーソル・blob 未到達・
+  ストリーム継ぎ接ぎ・phantom announce を全て防ぐ。
+- **undo×sync**: undo/redo は逆 op (del→add、add→del、upd→逆patch) を
+  ワイヤに乗せピア側も復元 (ADR-0443/0444)。del/clear の送信は
+  `_slimOp` で画像バイトを痩身化 (ADR-0445)。
+- **frag 再起動**: `snap`/`opc`/`img` の `n` 不一致・key 衝突で旧断片を
+  捨てて新ストリームを再起動、`_imgIn`/`_imgChunks` は 96KB/256-entry
+  で上限化 (ADR-0448/0449/0454)。
+- **切断**: `dc.onclose` で `_dcQ` 破棄 + 再組立スロット掃除
+  (ADR-0446/0448)。
+
 ### CRDT clock
 各 op は `{peer, seq}` clock を持ち、`seenOps` (Set) で重複排除。スナップショット
 sync は `seq:'snap:<shapeId>'` で shape 単位の clock を割当 (配列 index ではなく

@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.501] - 2026-09-23
+
+### 変更
+
+- `docs/architecture.md` に wire ライフサイクル節を追加 — incarnation id / 応答選出 / throttle 再送 / bye 配送 / ルーム切替 hygiene / undo×sync / frag 再起動を ADR 参照付きで体系化 (ADR-0468)
+
 ## [1.7.500] - 2026-09-23
 
 ### 修正
