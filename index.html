@@ -6374,11 +6374,10 @@ function buildSVG(shapes,paper){
         els.push('</text>');break;}
       case 'image':
         if(typeof s.dataUrl==='string'&&/^data:image\//.test(s.dataUrl)){
-          const im=`<image x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" href="${_esc(s.dataUrl)}"${a}${rT}/>`;
-          if(s.flip){   // ADR-0149: world-space mirror about the image's own centre
-            const fcx=X+W/2+ox,fcy=Y+H/2+oy;
-            els.push(`<g transform="translate(${_num(fcx)} ${_num(fcy)}) scale(${s.flip&1?-1:1} ${s.flip&2?-1:1}) translate(${_num(-fcx)} ${_num(-fcy)})">${im}</g>`);
-          }else els.push(im);}
+          // ADR-0149: flip composes INSIDE the image transform (after rotation)
+          // so it mirrors along the shape's local axes — same as the canvas path.
+          const fT=s.flip?` translate(${_num(X+W/2+ox)} ${_num(Y+H/2+oy)}) scale(${s.flip&1?-1:1} ${s.flip&2?-1:1}) translate(${_num(-(X+W/2+ox))} ${_num(-(Y+H/2+oy))})`:'';
+          els.push(`<image x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" href="${_esc(s.dataUrl)}"${a}${rT}${fT}/>`);}
         if(s.label)_svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT);  // ADR-0083
         break;
       case 'frame':{
