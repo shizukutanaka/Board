@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.226]
+
+### 追加
+- **画像の角丸** (ADR-0168)。ctx「角丸」巡回が画像にも適用 —
+  canvas は roundRect クリップ、SVG は clipPath、フリップ/回転と
+  独立に合成。
+
 ## [1.7.225]
 
 ### 追加

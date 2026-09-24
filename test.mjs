@@ -752,6 +752,7 @@ const checks = [
   ['empty-selection arrows pan viewport', html.includes("state.viewport.x+=k==='arrowleft'?-step:k==='arrowright'?step:0")],
   ['swapFillStroke: ⇧X swaps stroke↔fill via style op', html.includes('function swapFillStroke')&&html.includes("k==='x'&&e.shiftKey&&!meta")&&html.includes("const fk=s.type==='sticky'?'color':'fill'")],
   ['digit keys set opacity (Figma)', html.includes("/^[0-9]$/.test(k)&&state.selection.size")&&html.includes("opacity:k==='0'?1:+k/10")],
+  ['image corner radius via cycleCorner + clips', html.includes("s.type!=='image')||s.locked)continue;   // ADR-0156/0168")&&html.includes('clip-path="url(#irc')&&html.includes('roundRect(c,s.x,s.y,s.w,s.h,_cr);c.clip()')],
   ['Tab cycling excludes locked+hidden shapes (filter before cycleSel)', html.includes("const ids=state.shapes.filter(s=>!s.locked&&s.visible!==0).map(s=>s.id)")],
   // v1.6.60: bound connectors - arrow/line endpoints follow bound shapes
   ['connEnds helper derives bound endpoints', html.includes("function connEnds") && html.includes("function _edgePt")],
@@ -801,7 +802,7 @@ const checks = [
   // v1.6.65: budget removed - deferred fixes implemented
   ['_edgePt is rotation-aware (projects to true rotated edge)', html.includes("const ub=sh.w!=null?{x:sh.x,y:sh.y,w:sh.w,h:sh.h}:G.bbox(sh)") && html.includes("const cx=ub.x+ub.w/2,cy=ub.y+ub.h/2,rot=sh.rotate")],
   ['rotation extends to all box types (text bbox uses envelope)', !html.includes("if(s.type==='text'){\n      return{x:s.x,y:s.y,w:s.w,h:s.h};")],
-  ['SVG rotation applies to text/image/sticky/frame', html.includes("font-size=\"${fs}\"${s.bold?' font-weight=\"600\"':''}") && html.includes("href=\"${_esc(s.dataUrl)}\"${a}${rT}${fT}/>")],
+  ['SVG rotation applies to text/image/sticky/frame', html.includes("font-size=\"${fs}\"${s.bold?' font-weight=\"600\"':''}") && html.includes("href=\"${_esc(s.dataUrl)}\"${_cr2>0?` clip-path=\"url(#irc${_esc(s.id)})\"`:''}${a}${rT}${fT}/>")],
   ['minimap applies rotation transform', html.includes("const _mr=s.rotate&&s.w!=null;") && html.includes("if(_mr)sx.restore();")],
   ['minimap renders frame shapes (case frame fallthrough to rect)', html.includes("case 'frame':\n        case 'rect':")],
   ['describeShape announces locked and rotated state', html.includes("if(s.locked)d+=` ${t('ctxLock')}`;") && html.includes("if(s.rotate)d+=` ${s.rotate}°`;")],

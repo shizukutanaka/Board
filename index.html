@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.225';
+const V='1.7.226';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2689,8 +2689,11 @@ function drawShape(s,c){
     case 'image':{
       const img=s.dataUrl?getImg(s.dataUrl):null;   // ADR-0035: dataUrl-less image renders placeholder, never throws (getImg guards non-data:)
       if(img&&img.complete&&img.naturalWidth){
+        const _cr=Math.min(s.r||0,Math.abs(s.w)/2,Math.abs(s.h)/2);   // ADR-0168
+        if(_cr>0){c.save();c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,_cr);c.clip()}
         if(s.flip){const fx=s.x+s.w/2,fy=s.y+s.h/2;c.save();c.translate(fx,fy);c.scale(s.flip&1?-1:1,s.flip&2?-1:1);c.translate(-fx,-fy);c.drawImage(img,s.x,s.y,s.w,s.h);c.restore()}
-        else c.drawImage(img,s.x,s.y,s.w,s.h);}   // ADR-0149
+        else c.drawImage(img,s.x,s.y,s.w,s.h);
+        if(_cr>0)c.restore();}   // ADR-0149
       else{c.strokeStyle=s.stroke||'#CBD5E1';c.lineWidth=1;c.strokeRect(s.x,s.y,s.w,s.h)}
       _drawImgLabel(s,c);                                         // ADR-0083
       break;}
@@ -6546,7 +6549,9 @@ function buildSVG(shapes,paper){
           // ADR-0149: flip composes INSIDE the image transform (after rotation)
           // so it mirrors along the shape's local axes — same as the canvas path.
           const fT=s.flip?` translate(${_num(X+W/2+ox)} ${_num(Y+H/2+oy)}) scale(${s.flip&1?-1:1} ${s.flip&2?-1:1}) translate(${_num(-(X+W/2+ox))} ${_num(-(Y+H/2+oy))})`:'';
-          els.push(`<image x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" href="${_esc(s.dataUrl)}"${a}${rT}${fT}/>`);}
+          const _cr2=Math.min(s.r||0,Math.abs(W)/2,Math.abs(H)/2);   // ADR-0168
+          if(_cr2>0)els.push(`<clipPath id="irc${_esc(s.id)}"><rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${_cr2}"/></clipPath>`);
+          els.push(`<image x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" href="${_esc(s.dataUrl)}"${_cr2>0?` clip-path="url(#irc${_esc(s.id)})"`:''}${a}${rT}${fT}/>`);}
         if(s.label)_svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT);  // ADR-0083
         break;
       case 'frame':{
@@ -7580,7 +7585,7 @@ const UI={
       has&&['ctxFlipH','⇧H',()=>doFlip('h')],
       has&&['ctxFlipV','⇧V',()=>doFlip('v')],
       has&&['ctxRotate90','⇧R',()=>doRotate(90)],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='rect'||s.type==='diamond')&&!s.locked})&&['ctxCorner','',cycleCorner],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='rect'||s.type==='diamond'||s.type==='image')&&!s.locked})&&['ctxCorner','',cycleCorner],
       has&&['ctxHide','⌘⇧H',hideSelection],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked&&(s.a||s.b)})&&['ctxUnbind','',unbindSelection],   // ADR-0157
       has&&[...state.selection].map(byId).filter(s=>s&&!s.locked&&s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen').length===2&&['ctxConnect','',connectSelection],
@@ -8299,7 +8304,7 @@ function cycleTextAlign(){
 function cycleCorner(){
   const before=[],after=[];
   for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='rect'&&s.type!=='diamond')||s.locked)continue;   // ADR-0156
+    const s=byId(id);if(!s||(s.type!=='rect'&&s.type!=='diamond'&&s.type!=='image')||s.locked)continue;   // ADR-0156/0168
     const cur=s.r==null?8:s.r,nxt=cur<4?8:cur<12?16:cur<20?24:0;
     before.push({id,r:s.r??null});after.push({id,r:nxt});
     s.r=nxt;
