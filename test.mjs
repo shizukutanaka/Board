@@ -770,6 +770,7 @@ const checks = [
   ['ctx link set/open on s.link (ADR-0304)', html.includes('function setSelLink')&&html.includes('ctxOpenLink')&&html.includes('ctxSetLink')],
   ['_forSel() apply-loop shorthand (ADR-0303)', html.includes("_forSel((s,id)=>")],
   ['_selAny() ctx-gate shorthand (ADR-0302)', html.includes("_selAny=f=>_selIds().some")],
+  ['valign persists via _st() + last-used on creation (ADR-0417)', html.includes("_st().valign=nxt")&&html.includes("_st().valign!=null)base.valign=_st().valign")],
   ['exc conn angle rotates endpoints (ADR-0300)', html.includes('conn angle → rotate endpoints')],
   ['exc link round-trips (ADR-0301)', html.includes("s.link=e.link.slice(0,500)")&&html.includes("link:s.link||null")],
   ['exc autoResize emitted on text (ADR-0299/0412)', html.includes('autoResize:false')&&html.includes('autoResize:!s.wrap')&&html.includes('e.autoResize===false')],

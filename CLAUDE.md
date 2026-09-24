@@ -466,6 +466,7 @@ Board/
 │   ├── ADR-0414-describe-visual-props.md   # describeShape flip/shadow/route announce (実装済)
 │   ├── ADR-0415-sel-write-shorthands.md   # _sel*/_ss/_md fold + fstyle/hop 完結 (実装済)
 │   ├── ADR-0416-dead-code-sweep.md   # SNAP_THRESHOLD 除去 + _setSq/_ss 活性化 (実装済)
+│   ├── ADR-0417-valign-persistence.md   # _st().valign last-used 永続化 (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

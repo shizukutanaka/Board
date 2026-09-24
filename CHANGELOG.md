@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.452] - 2026-09-23
+
+### Fixed
+- `cycleVAlign` が `_st().valign` を persist しない抜けを修正 — 新規 box/sticky に最後使用の縦揃えが適用される (style cycle parity 完結)
+
 ## [1.7.451] - 2026-09-23
 
 ### Internal
