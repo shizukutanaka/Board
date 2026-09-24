@@ -817,7 +817,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.413';
+const V='1.7.414';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1237,9 +1237,11 @@ function validPatch(p){
   if(!p||typeof p!=='object')return false;   // a patch/shape must be an object
   if(!_cleanVal(p,0))return false;
   // Numeric geometry fields must be actual numbers, not strings that slip past _cleanVal
-  for(const k of ['x','y','w','h','x1','y1','x2','y2','z','rotate','size','opacity','dash']){
+  for(const k of ['x','y','w','h','x1','y1','x2','y2','z','rotate','size','opacity','dash','labelPos','cbend','bend','spacing','lineH','fontSize']){   // ADR-0367
     if(k in p&&p[k]!=null&&typeof p[k]!=='number')return false;
   }
+  if(p.aF!=null&&(typeof p.aF!=='object'||!_fin(p.aF.fx)||!_fin(p.aF.fy)))return false;   // ADR-0367: {fx,fy} object — structural check
+  if(p.bF!=null&&(typeof p.bF!=='object'||!_fin(p.bF.fx)||!_fin(p.bF.fy)))return false;   // ADR-0367
   // Security/privacy: an image shape's dataUrl flows into img.src (getImg). If it isn't
   // an inline data:image/ URL, a crafted .board/share-link/IDB record — or a hostile sync
   // peer's add/upd op — could point it at an external host, turning every peer's render

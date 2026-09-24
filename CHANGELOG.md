@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.414] - 2026-09-24
+
+### Fixed
+- `validPatch` の数値フィールド一覧に `labelPos/cbend/bend/spacing/lineH/
+  fontSize` を追加 + `aF/bF` を {fx,fy} 構造チェック — crafted op/インポート
+  経由の NaN 注入を遮断 (ADR-0367)
+
 ## [1.7.413] - 2026-09-24
 
 ### Changed
