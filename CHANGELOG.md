@@ -2,6 +2,32 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.337] - 2026-09-24
+
+### Changed
+- ツールバー icon を `<symbol>`+`<use>` sprite に集約 (raw -710B、
+  ADR-0285)
+- README サイズ表記を現状値へ修正 (gzip 160KB / brotli 131KB)
+
+## [1.7.336] - 2026-09-24
+
+### Added
+- .drawio: letterSpacing ↔ s.spacing 往復 (drawio ネイティブ属性、
+  ADR-0284)
+- SVG gradient の stop-color を style 属性内からも解決 (ADR-0283 追補)
+
+## [1.7.335] - 2026-09-24
+
+### Added
+- SVG import: fill/stroke の url(#id) グラデーション参照を先頭
+  stop-color に近似解決 (ADR-0283)
+
+## [1.7.334] - 2026-09-24
+
+### Changed
+- drawio: fontStyle/locked 出力を `_dioStyEmit(s,edge)` に畳み込み
+  (edge 判定フラグで resizable/ラベル条件を維持、ADR-0282)
+
 ## [1.7.333] - 2026-09-24
 
 ### Fixed

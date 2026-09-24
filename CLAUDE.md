@@ -331,6 +331,10 @@ Board/
 │   ├── ADR-0279-drawio-sticky-fillcolor.md  # drawio sticky fillColor ↔ s.color (実装済)
 │   ├── ADR-0280-exc-boundelements.md  # excalidraw boundElements 逆リンク export (実装済)
 │   ├── ADR-0281-drawio-label-fontcolor.md  # drawio labeled box fontColor ↔ s.stroke (実装済)
+│   ├── ADR-0282-dio-emit-fold.md  # _dioStyEmit に fontStyle/locked 畳み込み (実装済)
+│   ├── ADR-0283-svg-gradient-stop.md  # SVG gradient → 先頭 stop-color 近似 (実装済)
+│   ├── ADR-0284-drawio-letterspacing.md  # drawio letterSpacing ↔ s.spacing (実装済)
+│   ├── ADR-0285-icon-sprite.md  # toolbar icon を SVG sprite 化 (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
