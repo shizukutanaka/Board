@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.294]
+
+### 追加
+- **ラベル入力中の装飾キー** (ADR-0237)。ラベル input
+  でも ⌘B/I/U/⇧X が図形ラベルの装飾をトグル —
+  Tab 巡回による連続ラベリングの手を止めない。
+
 ## [1.7.293]
 
 ### 追加

@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.293';
+const V='1.7.294';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4201,6 +4201,10 @@ function openLabelEditor(hit,leftPx,topPx,bold){
   inp.addEventListener('keydown',ev=>{
     if(ev.isComposing)return;
     if(ev.key==='Enter'){ev.preventDefault();commit()}
+    // ADR-0237: ⌘B/I/U/⇧X while labeling — box labels render bold/italic/
+    // under/strike (ADR-0204) but the keys died on the input target.
+    const mk2=ev.key.toLowerCase(),fl2={b:'bold',i:'italic',u:'under'}[mk2]||(mk2==='x'&&ev.shiftKey?'strike':null);
+    if((ev.metaKey||ev.ctrlKey)&&fl2){ev.preventDefault();toggleTextFlag(fl2)}
     // ADR-0196: Tab commits and jumps to the next label-able shape (rapid
     // labeling like Figma's table/cell flow); Shift+Tab walks backwards.
     if(ev.key==='Tab'){ev.preventDefault();
