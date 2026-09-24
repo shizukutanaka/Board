@@ -3929,13 +3929,20 @@ try {
       Net._onRecv({k:'img',peer:'P1',key:'zz',seq:0,n:1,data:'z'},true);
       assert.ok(!Net._imgChunks.has('k0')&&Net._imgChunks.has('k63'),'oldest stalled img key evicted');
       assert.strictEqual(Net._imgIn.get('zz'),'z','completed img blob stored');
+      // ADR-0454: same restart rule as _fragIn — a stale partial under a different
+      // chunk count must not block the fresh stream for that key.
+      Net._imgChunks.clear();
+      Net._onRecv({k:'img',peer:'P1',key:'kk',seq:0,n:3,data:'a'},true);
+      assert.ok(Net._imgChunks.get('kk').g===1,'partial img assembly parked');
+      Net._onRecv({k:'img',peer:'P1',key:'kk',seq:0,n:1,data:'q'},true);
+      assert.strictEqual(Net._imgIn.get('kk'),'q','img n-mismatch restarts and completes');
       Net._imgIn.clear();
       for(let i=0;i<258;i++)Net._imgIn.set('b'+i,'d');
       assert.ok(Net._imgIn.size>=256,'pre-cap store setup');
       Net._onRecv({k:'img',peer:'P1',key:'new1',seq:0,n:1,data:'q'},true);
       assert.strictEqual(Net._imgIn.get('new1'),'q','imgIn accepts new blob under cap');
       assert.ok(Net._imgIn.size<=258,'imgIn stays bounded');
-      console.log('  ✓ ADR-0443..0449: undo-wire + del slim + purge + frag restart + img bounds (24 asserts)');
+      console.log('  ✓ ADR-0443..0449: undo-wire + del slim + purge + frag restart + img bounds (27 asserts)');
     }
   }
 
