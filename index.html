@@ -851,7 +851,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.465';
+const V='1.7.466';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -7658,6 +7658,20 @@ const Net={
     if(op.op==='addMany'&&_iA(op.shapes))return{...op,shapes:this._slimShapes(op.shapes)};
     return op;
   },
+  _fragSend(buf,k){   // ADR-0431: 64KB fragment sender for the dc-direct sites (snap, oversized ops)
+    const n=_ceil(buf.length/65536);for(let i=0;i<n;i++)this.dc.send(_JS({k,seq:i,n,data:buf.slice(i*65536,(i+1)*65536)}))
+  },
+  _fragIn(msg,key){   // shared single-assembly intake for 'snap'/'opc' — returns joined payload or undefined
+    if(typeof msg.data!=='string'||msg.data.length>96*1024)return;
+    const n=typeof msg.n==='number'&&msg.n>=1&&msg.n<=384?_fl(msg.n):1;
+    const seq=typeof msg.seq==='number'&&msg.seq>=0?_fl(msg.seq):0;
+    if(seq>=n)return;
+    let sn=this[key];
+    if(!sn){sn={parts:new Array(n),got:0,n};this[key]=sn}
+    if(sn.n===n&&!sn.parts[seq]){sn.parts[seq]=msg.data;sn.got++}
+    if(sn.got<sn.n)return;
+    this[key]=null;return sn.parts.join('');
+  },
   _flushImgOuts(){
     const outs=this._imgOuts;this._imgOuts=[];
     const CH=65536;
@@ -7693,7 +7707,9 @@ const Net={
     const s=this._slimOp(op);this._flushImgOuts();
     this._send({k:'op',op:s});
     if(this.dc&&this.dc.readyState==='open'){
-      try{this.dc.send(_JS({k:'op',op:s}))}catch(_){}
+      try{const _mo=_JS({k:'op',op:s});   // ADR-0431: ops over the ~256KB SCTP ceiling die silently — fragment like 'snap'
+        if(_mo.length>200000)this._fragSend(_mo,'opc');else this.dc.send(_mo)
+      }catch(_){}
     }
   },
   // ADR-0010: ephemeral peer cursor presence — never touches Store/history/Persist.
@@ -7758,19 +7774,11 @@ const Net={
           if(k===msg.key){const sh=byId(id);if(sh){delete sh.img;sh.dataUrl=data}this._imgPending.delete(id)}
         }
         _iv();break;}
-      case 'snap':{
-        // ADR-0383: chunked snapshot intake — mirror of 'img' but a single
-        // in-flight assembly (snapshots only come over RTC, once per join).
-        if(typeof msg.data!=='string'||msg.data.length>96*1024)break;
-        const n=typeof msg.n==='number'&&msg.n>=1&&msg.n<=384?_fl(msg.n):1;
-        const seq=typeof msg.seq==='number'&&msg.seq>=0?_fl(msg.seq):0;
-        if(seq>=n)break;
-        let sn=this._snapIn;
-        if(!sn){sn={parts:new Array(n),got:0,n};this._snapIn=sn}
-        if(sn.n===n&&!sn.parts[seq]){sn.parts[seq]=msg.data;sn.got++}
-        if(sn.got<sn.n)break;
-        const joined=sn.parts.join('');this._snapIn=null;
-        if(joined.length>24_000_000)break;
+      case 'snap':case 'opc':{
+        // ADR-0383/0431: chunked intake — snapshots and oversized ops share the
+        // same reassembly (ops fragment only past the ~256KB SCTP ceiling).
+        const joined=this._fragIn(msg,msg.k==='snap'?'_snapIn':'_opcIn');
+        if(!joined||joined.length>24_000_000)break;
         try{this._onRecv(_JP(joined),viaRtc)}catch(_){}
         break;}
       case 'op':{
@@ -7965,7 +7973,7 @@ const Net={
       this._rtcConnFailed=true;
       _w(t('connectFailed'));
       if(this._rtcPeerId){_pr().delete(this._rtcPeerId);this._rtcPeerId=null;_ivO();}
-      this._snapIn=null;   // ADR-0385: drop a half-received snapshot on disconnect
+      this._snapIn=null;this._opcIn=null;   // ADR-0385/0431: drop half-received assemblies on disconnect
       if(this._onConnChange)this._onConnChange();
     };
   },
@@ -7990,8 +7998,7 @@ const Net={
       // send snapshot to new peer (must include ops so a non-empty peer can merge). ADR-0383: >256KB snapshots die on the SCTP ceiling — send uniform 64KB 'snap' chunks.
       try{const _sm=_JS(this._snapshotMsg());
         if(_sm.length>24e6){_w(t('snapBig'));return} // ADR-0403
-        const _n=_ceil(_sm.length/65536);
-        for(let _i=0;_i<_n;_i++)this.dc.send(_JS({k:'snap',seq:_i,n:_n,data:_sm.slice(_i*65536,(_i+1)*65536)}))
+        this._fragSend(_sm,'snap')
       }catch(_){}
     };
     this.dc.onmessage=e=>{
