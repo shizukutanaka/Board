@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.252]
+
+### 追加
+- **ドロップシャドウ** (ADR-0194)。ctx メニュー「影」で rect/
+  ellipse/diamond/image にシャドウをトグル — canvas の
+  shadow* プロパティ + SVG 共有 `feDropShadow` フィルタ。
+  last-used 継承・スタイルコピー・スポイトも一貫。
+
 ## [1.7.251]
 
 ### 追加

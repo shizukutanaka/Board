@@ -768,6 +768,7 @@ const checks = [
   ['text s.fill paints bg plate (canvas+SVG)', html.includes("s.fill){let mw=0")&&html.includes('height="${svgLines.length*fs*(s.lineH||1.25)+6}"')],
   ['sticky text colour via s.stroke (canvas+SVG)', html.includes("c.fillStyle=s.stroke||'#1E293B'")&&html.includes('fill="${_esc(s.stroke||')],
   ['conn label pill honours s.fill (canvas+SVG)', html.includes("s.fill||getCSS('--paper')")&&html.includes("_esc(s.fill||paper")],
+  ['drop shadow — canvas props + SVG filter + toggle + persistence', html.includes("shadowColor='rgba(15,23,42,.22)'")&&html.includes("id=\"bsh\"")&&html.includes("function toggleShadow()")&&html.includes("state.style.shadow=s.shadow||null")],
   // v1.7.05: Tab cycling excludes locked shapes (parity with doMove/doDelete/doRotate/doFlip)
   ['statusbar selection dims readout', html.includes('id="sSel"')&&html.includes('_statusSel()')&&html.includes('Math.round(b.w)')],
   ['empty-selection arrows pan viewport', html.includes("state.viewport.x+=k==='arrowleft'?-step:k==='arrowright'?step:0")],
@@ -827,7 +828,7 @@ const checks = [
   // v1.6.65: budget removed - deferred fixes implemented
   ['_edgePt is rotation-aware (projects to true rotated edge)', html.includes("const ub=sh.w!=null?{x:sh.x,y:sh.y,w:sh.w,h:sh.h}:G.bbox(sh)") && html.includes("const cx=ub.x+ub.w/2,cy=ub.y+ub.h/2,rot=sh.rotate")],
   ['rotation extends to all box types (text bbox uses envelope)', !html.includes("if(s.type==='text'){\n      return{x:s.x,y:s.y,w:s.w,h:s.h};")],
-  ['SVG rotation applies to text/image/sticky/frame', html.includes("font-size=\"${fs}\"${s.bold?' font-weight=\"600\"':''}") && html.includes("href=\"${_esc(s.dataUrl)}\"${_cr2>0?` clip-path=\"url(#irc${_esc(s.id)})\"`:''}${a}${rT}${fT}/>")],
+  ['SVG rotation applies to text/image/sticky/frame', html.includes("font-size=\"${fs}\"${s.bold?' font-weight=\"600\"':''}") && html.includes("href=\"${_esc(s.dataUrl)}\"${_cr2>0?` clip-path=\"url(#irc${_esc(s.id)})\"`:''}${a}${rT}${fT}${_sh}/>")],
   ['minimap applies rotation transform', html.includes("const _mr=s.rotate&&s.w!=null;") && html.includes("if(_mr)sx.restore();")],
   ['minimap renders frame shapes (case frame fallthrough to rect)', html.includes("case 'frame':\n        case 'rect':")],
   ['describeShape announces locked and rotated state', html.includes("if(s.locked)d+=` ${t('ctxLock')}`;") && html.includes("if(s.rotate)d+=` ${s.rotate}°`;")],
@@ -1008,7 +1009,7 @@ const checks = [
   // v1.6.88: rect/ellipse labels render on canvas (parity with SVG export + dblclick feature)
   ['_drawBoxLabel helper present', html.includes("function _drawBoxLabel(s,c)") && html.includes("wrapTextCached(s,s.label")],
   ['rect case renders label', html.includes("if(s.fstyle)_hatchCtx(c,s);")&&html.includes("_drawBoxLabel(s,c);break;\n    case 'ellipse':")],
-  ['ellipse case renders label', /case 'ellipse':[\s\S]{0,300}_drawBoxLabel\(s,c\);break;/.test(html)],
+  ['ellipse case renders label', /case 'ellipse':[\s\S]{0,500}_drawBoxLabel\(s,c\);break;/.test(html)],
   // v1.6.89: colour picker coalesces (one undo/sync op per pick, like the sliders)
   ['colour picker captures on focus/pointerdown', html.includes("cp.addEventListener('focus',()=>_sfbCapture(k));") && html.includes("cp.addEventListener('pointerdown',()=>_sfbCapture(k));")],
   ['colour picker input is live-only (no per-input commit)', html.includes("for(const id of state.selection){const s=byId(id);if(s&&!s.locked)s[k]=cp.value}") && !html.includes("applyStyleToSelection({[k]:cp.value})")],
