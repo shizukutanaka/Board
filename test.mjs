@@ -91,7 +91,7 @@ const checks = [
   // v1.1: exportPNG passes ctx as parameter (no global swap)
   ['exportPNG passes ctx as parameter', html.includes('drawShape(s,oc)')],
   // v1.1: toBlob null guard
-  ['toBlob has null guard', html.includes("if(!bl){UI.toast(t('exportFailed')")],
+  ['toBlob has null guard', html.includes("if(!bl){_tst(t('exportFailed')")],
   // v1.1: op validation in _onRecv
   ['_onRecv validates op.clock', html.includes("typeof op.clock.peer!=='string'")],
   // v1.1: import validates shapes
@@ -281,7 +281,7 @@ const checks = [
   ['ADR-0016: candidates return z-ordered via grid.idx', html.includes("idx=new Map") && html.includes("out.sort((a,b)=>(grid.idx.get(a)|0)-(grid.idx.get(b)|0))")],
   ['ADR-0016: no-bbox shapes stay always-candidate via big', html.includes("if(!b){big.push(s);continue;}")],
   ['pickTop uses grid for large boards', html.includes("_sh().length>40") && html.includes("_buildGrid(_sh())")],
-  ['grid invalidated on every _apply', html.includes("_apply(op,forward){") && html.includes("_invalidateGrid()")],
+  ['grid invalidated on every _apply', html.includes("_apply(op,forward){") && html.includes("_iG()")],
   // v1.6.12: keyboard shape creation (a11y)
   ['createShapeKbd helper present', html.includes("function createShapeKbd")],
   ['Enter creates shape at viewport centre', html.includes("k==='enter'&&!meta&&!e.shiftKey") && html.includes("createShapeKbd()")],
@@ -366,21 +366,21 @@ const checks = [
   // v1.7.82: ADR-0024 layered overlay canvas
   ['overlay canvas element + separate ctx', html.includes('id="ov"') && html.includes("octx=ocanvas.getContext")],
   ['invalidateOverlay skips scene pass', html.includes("function invalidateOverlay(){needOverlay=true") && html.includes("if(needsRender)draw();") && html.includes("if(needOverlay)drawOverlay();")],
-  ['marquee drag repaints overlay only', html.includes("dragKind==='marquee'){state.marquee=") && html.includes("invalidateOverlay()")],
-  ['hover no longer repaints scene', !html.includes("state.hover=top?.id||null;invalidate()")],
+  ['marquee drag repaints overlay only', html.includes("dragKind==='marquee'){state.marquee=") && html.includes("_ivO()")],
+  ['hover no longer repaints scene', !html.includes("state.hover=top?.id||null;_iv()")],
   // v1.7.83: ADR-0025 minimap content cache
   ['minimap caches scene bitmap keyed on _gridVer', html.includes("_sceneVer!==_gridVer") && html.includes("mx.drawImage(_scene,0,0)")],
   ['minimap cache cleared on theme + image load', html.includes("Minimap.invalidateCache();") && html.includes("function invalidateCache(){_sceneVer=-1")],
   // v1.7.84: ADR-0026 drag damage rect
   ['invalidateDamage accumulates world damage', html.includes("function invalidateDamage(r){_damage=_dmgU(_damage,r)") && html.includes("function invalidate(){_damage=null")],
   ['draw() clips scene pass to damage rect', html.includes("ctx.rect(dmg.x,dmg.y,dmg.w,dmg.h);ctx.clip()") && html.includes("ctx.fillRect(dmg.x,dmg.y,dmg.w,dmg.h)")],
-  ['move/resize/rotate drag report damage', html.includes("invalidateDamage(_dmgPair(_b0,G.bbox(rsh)") && html.includes("if(dmg)invalidateDamage(dmg);else invalidate()")],
-  ['draft draw + erase report damage', html.includes("invalidateDamage(_dmgPair(_b0,G.bbox(d)") && html.includes("_eraseBatch.push(clone(hit))")],
+  ['move/resize/rotate drag report damage', html.includes("_iD(_dmgPair(_b0,G.bbox(rsh)") && html.includes("if(dmg)_iD(dmg);else _iv()")],
+  ['draft draw + erase report damage', html.includes("_iD(_dmgPair(_b0,G.bbox(d)") && html.includes("_eraseBatch.push(clone(hit))")],
   ['damage path force-includes gesture targets vs stale grid', html.includes("ptr.dragStartShapes.keys()") && html.includes("ptr.resizeOrig.id") && html.includes("ptr.rotOrig.id")],
   // v1.7.85: ADR-0027 op-level damage propagation
-  ['_apply harvests ids + pre/post bboxes for damage', html.includes("const _ids=new Set()") && html.includes("for(const id of _ids)_u(byId(id))") && html.includes("invalidateDamage(_dmg)")],
-  ['_apply falls back to full invalidate on empty/huge damage', html.includes("if(!_dmg){invalidate();}") && html.includes("_v.w*_v.h*0.6")],
-  ['applyRemote uses op damage (no blanket invalidate)', !html.includes("this._stampWrites(op);\n    state.dirty=true;\n    UI.refreshUndo();\n    Persist.schedule();\n    invalidate();") && html.includes("invalidateDamage(_dmgPair(_cb,G.bbox(sh)")],
+  ['_apply harvests ids + pre/post bboxes for damage', html.includes("const _ids=new Set()") && html.includes("for(const id of _ids)_u(byId(id))") && html.includes("_iD(_dmg)")],
+  ['_apply falls back to full invalidate on empty/huge damage', html.includes("if(!_dmg){_iv();}") && html.includes("_v.w*_v.h*0.6")],
+  ['applyRemote uses op damage (no blanket invalidate)', !html.includes("this._stampWrites(op);\n    state.dirty=true;\n    UI.refreshUndo();\n    Persist.schedule();\n    _iv();") && html.includes("_iD(_dmgPair(_cb,G.bbox(sh)")],
   // v1.7.86: ADR-0028 pan pixel blit
   ['pan blits retained pixels via self drawImage', html.includes("ctx.drawImage(canvas,0,0,W,H,sx,sy,W,H)") && html.includes("const panned=pv&&pv.zoom===v.zoom")],
   ['pan repaints only exposed strips + damage', html.includes("clipRects.push({x:Ox1") && html.includes("if(dmg)clipRects.push(dmg)")],
@@ -392,11 +392,11 @@ const checks = [
   // v1.7.88: ADR-0030 pinch-zoom scaled preview
   ['pinch snapshots canvas once at gesture start', html.includes("if(_pointers.size>=2)_pinchSnapNow()") && html.includes("function _pinchSnapNow()") && html.includes(".getContext('2d').drawImage(canvas,0,0)")],
   ['pinch preview blits snapshot under accumulated transform', html.includes("if(_pinchSnap&&_pinchVp)") && html.includes("ctx.drawImage(_pinchSnap,0,0,W,H,(_pinchVp.x-v.x)*z")],
-  ['pinch end clears snapshot and repaints crisp', html.includes("if(_pinchSnap){_pinchSnap=null;_pinchVp=null;invalidate();}")],
+  ['pinch end clears snapshot and repaints crisp', html.includes("if(_pinchSnap){_pinchSnap=null;_pinchVp=null;_iv();}")],
   // v1.7.91: ADR-0033 ctrl+wheel (trackpad pinch) zoom preview shares the
   // same snapshot mechanism, settles via a quiet-window timer.
   ['wheel zoom burst snapshots before first zoom', html.includes("_pinchSnapNow();\n    clearTimeout(_wheelZoomEnd);")],
-  ['wheel zoom settle timer discards snapshot + repaints', html.includes("_wheelZoomEnd=setTimeout(()=>{_pinchSnap=null;_pinchVp=null;invalidate()},180)")],
+  ['wheel zoom settle timer discards snapshot + repaints', html.includes("_wheelZoomEnd=setTimeout(()=>{_pinchSnap=null;_pinchVp=null;_iv()},180)")],
   ['ADR-0032/0033: marquee + pickTop use the spatial grid', html.includes("_gridRectCandidates(_grid||(_grid=_buildGrid(_sh())),r)") && html.includes("cands.sort((a,b)=>(_grid.idx.get(b)|0)-(_grid.idx.get(a)|0))")],
   ['load validates viewport finiteness', html.includes("_fin(+d.viewport.zoom)&&d.viewport.zoom>0")],
   ['load clamps viewport zoom to [MIN_ZOOM,MAX_ZOOM]', html.includes("_vp().zoom=clampZoom(+d.viewport.zoom)")],
@@ -447,7 +447,7 @@ const checks = [
   ['img wire refs: slim op + 64KB chunk msgs + snapshot re-emit', html.includes("this._slimOp(op);this._flushImgOuts()")&&html.includes('k:\'img\',key,seq:i,n,data:d.slice')&&html.includes('this._slimShapes(ops.map(o=>o.shape),new Map())')],
   ['img inbound: chunk reassembly + pending drain + attach paths', html.includes("this._imgChunks.get(msg.key)")&&html.includes("delete sh.img;sh.dataUrl=data")&&html.includes('op=this._attachOp(op)')&&html.includes('const op=this._attachOp(msg.op)')],
   // v1.7.128: ADR-0070 quick-connect
-  ['qconn: hover dots + _qdotAt + qline→endLineLike', html.includes('function _qconnShape()')&&html.includes("ptr.dragKind='qline';")&&html.includes("else if(ptr.dragKind==='qline')")&&html.includes('invalidateOverlay()}   // ADR-0070')],
+  ['qconn: hover dots + _qdotAt + qline→endLineLike', html.includes('function _qconnShape()')&&html.includes("ptr.dragKind='qline';")&&html.includes("else if(ptr.dragKind==='qline')")&&html.includes('_ivO()}   // ADR-0070')],
   // v1.7.129: ADR-0071 equal-gap snap
   ['eqGap snap: same-row gaps → candidate slots + edge-snap priority', html.includes('function _eqGapSnap(mov,excl,tol)')&&html.includes('for(const cand of[a[L]-g-mov[D], b[L]+b[D]+g, a[L]+a[D]+g, b[L]-g-mov[D]])')&&html.includes('const eq=_eqGapSnap(mov,excl')],
   ['elbow bend: s.bend two-corner route + trunk hit + ebend dragKind', html.includes('if(s.bend){')&&html.includes('function _elbowTrunk(s)')&&html.includes("ptr.dragKind='ebend'")&&html.includes('ptr.ebendOrig=clone(onlySel)')],
@@ -537,7 +537,7 @@ const checks = [
   ['valign cycle: box-label vertical align', html.includes('function cycleVAlign()')&&html.includes("s.valign==='top'?s.y+6")&&html.includes("['ctxVAlign','',cycleVAlign]")],
   ['valign in styleClipboard + SVG label', html.includes('valign:sh.valign')&&html.includes("s.valign==='bottom'?Y+H-6+oy")],
   ['lasso: Alt+drag freehand select', html.includes("ptr.dragKind='lasso';ptr.lasso=[wp]")&&html.includes('function _ptInPoly')&&html.includes('state.lasso&&state.lasso.length>1')],
-  ['lasso commit: centre-in-poly + marquee parity', html.includes('_ptInPoly(b.x+b.w/2,b.y+b.h/2,pts)')&&html.includes('state.lasso=null;invalidateOverlay()')],
+  ['lasso commit: centre-in-poly + marquee parity', html.includes('_ptInPoly(b.x+b.w/2,b.y+b.h/2,pts)')&&html.includes('state.lasso=null;_ivO()')],
   ['RTC token: modern b64url + legacy fallback', html.includes('_b64uEnc(new TextEncoder().encode(_JS({type:sdp.type')&&html.includes('_JP(decodeURIComponent(escape(atob(s))))')],
   ['eyedropper tool: i key + pick + _styleOf shared', html.includes("i:'eyedropper'")&&html.includes("case 'eyedropper'")&&html.includes('state.styleClipboard=_styleOf(sh)')&&html.includes('eyedropDone')&&html.includes('eyedropper')],
   ['dblclick group descent', html.includes('grp.every(id=>_sl().has(id))')&&html.includes('state.selection=new Set([hit.id])')],
@@ -618,7 +618,7 @@ const checks = [
   // v1.6.32: i18n for popup-blocked and invalid-board; drop-image toast
   ['popupBlocked i18n key in both locales', html.includes("popupBlocked:'ポップアップ") && html.includes("popupBlocked:'Pop-up blocked")],
   ['invalidBoard i18n key in both locales', html.includes("invalidBoard:'ボードファイル") && html.includes("invalidBoard:'Invalid .board")],
-  ['drop-image handler shows toast', html.includes("invalidate();UI.toast(t('imagePasted')")],
+  ['drop-image handler shows toast', html.includes("_iv();_tst(t('imagePasted')")],
   ['popupBlocked used via t()', html.includes("t('popupBlocked')")],
   ['invalidBoard used via t()', html.includes("t('invalidBoard')")],
   // v1.6.33: Present button data-t, snap/grid i18n, comment fix
@@ -651,7 +651,7 @@ const checks = [
   // v1.6.39: console cleanup - no redundant console.warn/error in production paths
   ['no console.warn in BroadcastChannel catch', !html.includes("console.warn('BroadcastChannel init failed'")],
   ['no console.error in save catch (user gets toast)', !html.includes("console.error('save failed'")],
-  ['import parse failure shows invalidBoard toast (not silent)', html.includes("UI.toast(t('invalidBoard'),'err')")],
+  ['import parse failure shows invalidBoard toast (not silent)', html.includes("_tst(t('invalidBoard'),'err')")],
   // v1.6.40: style panel a11y - decorative labels hidden, panel groups have role/aria-label
   ['style panel S/F labels are aria-hidden (decorative)', html.includes('<span class="sp-label" aria-hidden="true">S</span>') && html.includes('<span class="sp-label" aria-hidden="true">F</span>')],
   ['size and opacity groups have role=group', html.includes('role="group" aria-label="Size"') && html.includes('role="group" aria-label="Opacity"')],
@@ -669,17 +669,17 @@ const checks = [
   ['minimap scrub captures pointer + releases on up', html.includes('mc.setPointerCapture(e.pointerId)') && html.includes('mc.releasePointerCapture(e.pointerId)')],
   // v1.7.95: ADR-0037 screen-reader selection announcements
   ['_announceSel announces 0/1/N via toast', html.includes('function _announceSel()') && html.includes("t('selNone')") && html.includes("t('selCount')")],
-  ['click/group select announces', html.includes('_announceSel();   // ADR-0037: click/group select was SR-silent')],
-  ['marquee result announces', html.includes('_announceSel();   // ADR-0037: announce the marquee result')],
-  ['cmd+A announces selection', html.includes("if(_selN())_announceSel();invalidate()}")],
-  ['Escape announces deselect when selection existed', html.includes("if(_selN())UI.toast(t('selNone'));_sl().clear()")],
+  ['click/group select announces', html.includes('_aS();   // ADR-0037: click/group select was SR-silent')],
+  ['marquee result announces', html.includes('_aS();   // ADR-0037: announce the marquee result')],
+  ['cmd+A announces selection', html.includes("if(_selN())_aS();_iv()}")],
+  ['Escape announces deselect when selection existed', html.includes("if(_selN())_tst(t('selNone'));_sl().clear()")],
   ['i18n has selCount/selNone ja+en', html.includes("selCount:'個を選択'") && html.includes("selCount:' selected'")],
   // v1.7.96: ADR-0038 share-link reject paths all toast + clear hash
   ['importFromHash hoists clearHash helper', html.includes("const clearHash=()=>{try{history.replaceState(null,'',location.pathname)}catch(_){}};")],
-  ['unknown kind toasts + clears', html.includes("}else{UI.toast(t('invalidBoard'),'err');clearHash();return false}")],
-  ['non-array shapes toasts + clears', html.includes("if(!Array.isArray(data.shapes)||data.shapes.length>SHARE_MAX_SHAPES){UI.toast(t('invalidBoard'),'err');clearHash();return false}")],
-  ['all-invalid shapes toasts + clears', html.includes("if(!valid.length){UI.toast(t('invalidBoard'),'err');clearHash();return false}")],
-  ['decode-throw catch also clears hash', html.includes("}catch{UI.toast(t('invalidBoard'),'err');clearHash();return false}")],
+  ['unknown kind toasts + clears', html.includes("}else{_tst(t('invalidBoard'),'err');clearHash();return false}")],
+  ['non-array shapes toasts + clears', html.includes("if(!Array.isArray(data.shapes)||data.shapes.length>SHARE_MAX_SHAPES){_tst(t('invalidBoard'),'err');clearHash();return false}")],
+  ['all-invalid shapes toasts + clears', html.includes("if(!valid.length){_tst(t('invalidBoard'),'err');clearHash();return false}")],
+  ['decode-throw catch also clears hash', html.includes("}catch{_tst(t('invalidBoard'),'err');clearHash();return false}")],
   // v1.7.97: ADR-0039 share-link resource-bomb guard
   ['share payload ceilings defined', html.includes('SHARE_MAX_BYTES') && html.includes('SHARE_MAX_SHAPES')],
   ['decompressed payload byte cap before parse', html.includes('json.length>SHARE_MAX_BYTES')],
@@ -688,7 +688,7 @@ const checks = [
   ['share URL length warn threshold defined', html.includes('SHARE_URL_WARN')],
   ['long-URL warning element exists', html.includes('id="shareWarnLong"')],
   ['overlong URL shows the warn', html.includes('url.length<=SHARE_URL_WARN')],
-  ['export failure clears field + toasts', html.includes("shareUrl').value=''") && html.includes("UI.toast(t('shareExportFailed'),'err')")],
+  ['export failure clears field + toasts', html.includes("shareUrl').value=''") && html.includes("_tst(t('shareExportFailed'),'err')")],
   ['i18n has shareUrlTooLong/shareExportFailed ja+en', html.includes("shareUrlTooLong:'⚠ URL が非常に長い") && html.includes("shareUrlTooLong:'⚠ This URL is very long") && html.includes("shareExportFailed:'共有リンクの生成に失敗しました'") && html.includes("shareExportFailed:'Failed to build the share link'")],
   // v1.7.99: ADR-0041 DOM mirror a11y
   ['mirror region + list exist', html.includes('id="shapeMirror"') && html.includes('id="shapeMirrorList"')],
@@ -746,7 +746,7 @@ const checks = [
   ['drawio export emits html=1 (ADR-0322)', html.includes("let sty='html=1;';")&&html.includes("'html=1;'+(s.start")],
   ['drawio whiteSpace=nowrap ↔ s.wrap (ADR-0321)', html.includes("sty.whiteSpace==='nowrap'&&s.type==='text')s.wrap=0")&&html.includes("s.wrap===0)sty+='whiteSpace=nowrap;'")],
   ['drawio labelPosition/verticalLabelPosition (ADR-0320)', html.includes("labelPosition='+s.align")&&html.includes("verticalLabelPosition='+s.valign")&&html.includes("sty.labelPosition))s.align")],
-  ['popup-blocked feedback on link open (ADR-0319)', html.includes("if(s&&!window.open(s.link,'_blank','noopener'))UI.toast(t('popupBlocked'),'warn')")&&html.includes("if(!window.open(_h0.link,'_blank','noopener'))UI.toast(t('popupBlocked'),'warn')")],
+  ['popup-blocked feedback on link open (ADR-0319)', html.includes("if(s&&!window.open(s.link,'_blank','noopener'))_tst(t('popupBlocked'),'warn')")&&html.includes("if(!window.open(_h0.link,'_blank','noopener'))_tst(t('popupBlocked'),'warn')")],
   ['ctx copy link item (ADR-0318)', html.includes("['ctxCopyLink',''")&&html.includes("ctxCopyLink:'リンクをコピー'")&&html.includes("ctxCopyLink:'Copy link'")],
   ['exc conn roundness→curve round-trip (ADR-0317)', html.includes("s.curve=1;delete s.r")&&html.includes("s.curve?{roundness:{type:2}}")],
   ['SVG export link badge (ADR-0316)', html.includes('>🔗</text></a>`)')],
@@ -887,7 +887,7 @@ const checks = [
   ['ctx opacity cycle reaches any unlocked selection', html.includes('function cycleOpacity(){')&&html.includes('ctxOpacity')&&html.includes('applyStyleToSelection({opacity:nxt})')],
   ['frame honours s.fill tint in canvas+SVG', html.includes("c.fillStyle=s.fill&&s.fill!=='none'?s.fill:'rgba(248,250,252,0.6)'")&&html.includes("fill=\"${s.fill||'rgba(248,250,252,0.6)'}\"")],
   ['image border via s.stroke+s.size in canvas+SVG', html.includes("if(s.stroke&&s.size){c.strokeStyle=s.stroke;c.lineWidth=s.size;")&&html.includes('fill="none" stroke="${_esc(s.stroke)}"')],
-  ['eraser hover shows a red dashed target', html.includes("state._ehov=id;invalidateOverlay()")&&html.includes("c.strokeStyle='#EF4444'")],
+  ['eraser hover shows a red dashed target', html.includes("state._ehov=id;_ivO()")&&html.includes("c.strokeStyle='#EF4444'")],
   ['dash applies to frame+image borders in canvas+SVG', html.includes("s.type==='frame'||s.type==='image'")&&html.includes('fill="none" stroke="${_esc(s.stroke)}" stroke-width="${_num(s.size)}"${dA}')],
   ['image caption honors valign top via cycleVAlign', html.includes("sy=s.valign==='top'?s.y:s.y+s.h-sh_")&&html.includes("sy=s.valign==='top'?Y:Y+H-sh_")&&html.includes("s.type==='image'&&s.label")],
   ['new text/sticky inherit last-used fontSize', html.includes("fontSize:_st().fontSize||16")&&html.includes("_st().fontSize=nxt")],
@@ -964,7 +964,7 @@ const checks = [
   ['doFlip skips locked shapes (consistent with doRotate)', html.includes("const sel=_selL(s=>s&&!s.locked);")],
   ['doRotate orbits selection about group centre', html.includes("orbit about group centre, like doFlip") && html.includes("Shape.translate(s,nx-cx,ny-cy)")],
   ['search input has localized aria-label', html.includes("sq.setAttribute('aria-label',T.k.search)")],
-  ['search Escape returns focus to canvas', html.includes("invalidateOverlay();canvas.focus();}") && html.includes("_sqAdvance(ev.shiftKey?-1:1)")],
+  ['search Escape returns focus to canvas', html.includes("_ivO();canvas.focus();}") && html.includes("_sqAdvance(ev.shiftKey?-1:1)")],
   // v1.6.64: Socratic round 4 - rotation scope + lock completeness
   ['doRotate restricted to box shapes (s.w!=null, NaN-safe)', html.includes("_selL(s=>s&&!s.locked&&s.w!=null)")],
   ['doDelete skips locked shapes', html.includes("function doDelete(){\n  const sel=_selL(s=>s&&!s.locked);")],
@@ -985,7 +985,7 @@ const checks = [
   ['rotation handle helper + hit-test present', html.includes("function getRotHandle(s)") && html.includes("function hitRotHandle(wp,s)")],
   ['pointerdown enters rotate dragKind on knob hit', html.includes("const rh=hitRotHandle(wp,onlySel);") && html.includes("ptr.dragKind='rotate';")],
   ['rotate drag maps angle (knob-up=0°), Shift snaps 15°', html.includes("_at2(wp.y-ptr.rotCy,wp.x-ptr.rotCx)*180/_PI+90") && html.includes("deg=_rnd(deg/15)*15;")],
-  ['rotate commit records upd + announces angle', html.includes("ptr.dragKind==='rotate'") && html.includes("UI.toast(describeShape(rsh)); // SR announce new angle")],
+  ['rotate commit records upd + announces angle', html.includes("ptr.dragKind==='rotate'") && html.includes("_tst(describeShape(rsh)); // SR announce new angle")],
   ['rotation knob drawn in drawSelection', html.includes("const rh=getRotHandle(sh);") && html.includes("c.arc(kp.x,kp.y,hs/2,0,PI2)")],
   // v1.7.62: the overlay pass (selection/guides/marquee/laser/peer cursors) draws in CSS px
   // under a DPR transform — multiplying w2s output by DPR double-applied it on HiDPI.
@@ -998,7 +998,7 @@ const checks = [
     html.includes("case 'selection':") && html.includes('sendSelectionIfChanged(){')
     && html.includes('function drawPeerSelections(c)') && html.includes('Net.sendSelectionIfChanged();')],
   ['ADR-0011 latecomer resend: _touchPeer resets _lastSelSent',
-    html.includes('this._lastSelSent=null;invalidate();')],
+    html.includes('this._lastSelSent=null;_iv();')],
   // v1.7.63 robustness audit
   ['SW: navigations are network-first (cache-first pinned users to the first cached version forever)',
     html.includes("if(e.request.mode==='navigate')")
@@ -1010,7 +1010,7 @@ const checks = [
   ['snapshot amplification: _sendSnapshot throttled',
     html.includes('_lastSnapAt:0') && html.includes('if(now-this._lastSnapAt<1000)return;')],
   ['importBoard: FileReader onerror toasts instead of failing silently',
-    html.includes("r.onerror=()=>UI.toast(t('invalidBoard'),'err');")],
+    html.includes("r.onerror=()=>_tst(t('invalidBoard'),'err');")],
   ['docName clamped to 80 chars on all four intake paths (import/IDB/backup/hash)',
     (html.match(/\.slice\(0,80\)/g)||[]).length>=4],
   // v1.7.63 UX/i18n audit
@@ -1074,13 +1074,13 @@ const checks = [
   ['Alt+arrow keyboard-resizes box shapes', html.includes("_rcOp({op:'resize',before,after});") && html.includes("sh.w=_max(4,sh.w+dw);sh.h=_max(4,sh.h+dh);")],
   // v1.6.71: image import error handling
   ['imgErr i18n key in both locales', html.includes("imgErr:'画像を読み込めませんでした'") && html.includes("imgErr:'Image failed to load'")],
-  ['drag-drop image import has img.onerror toast', html.includes("img.onerror=()=>UI.toast(t('imgErr'),'warn');") ],
-  ['image import (shared _imgImportFile) has reader.onerror toast', html.includes("function _imgImportFile(") && html.includes("reader.onerror=()=>UI.toast(t('imgErr'),'warn');")],
+  ['drag-drop image import has img.onerror toast', html.includes("img.onerror=()=>_tst(t('imgErr'),'warn');") ],
+  ['image import (shared _imgImportFile) has reader.onerror toast', html.includes("function _imgImportFile(") && html.includes("reader.onerror=()=>_tst(t('imgErr'),'warn');")],
   ['context menu deduplicates consecutive separators', html.includes(".filter((it,i,a)=>!(it==='sep'&&(i===0||i===a.length-1||a[i-1]==='sep')))")],
   ['doDuplicate does not clobber clipboard (uses _placeCopies, not state.clipboard=)', html.includes("_placeCopies(sel,state.dupDelta.x,state.dupDelta.y):_placeCopies(sel);   // independent of state.clipboard") && html.includes("function _placeCopies(srcShapes")],
   // v1.6.71: import sites clear stale selection + wclock (mirror replace op's _apply)
-  ['importBoard clears selection+wclock on whole-board swap', html.includes("state.shapes=shapes.map(clone);_invalidateGrid();   // ADR-0009\n      // Match the replace op's _apply") && html.includes("_sl().clear();state.wclock={};\n      if(typeof d.docName")],
-  ['importFromHash clears selection+wclock on whole-board swap', html.includes("state.shapes=valid.map(clone);_invalidateGrid();state.docName=") && /state\.shapes=valid\.map\(clone\)[\s\S]{0,900}_sl\(\)\.clear\(\);state\.wclock=\{\};/.test(html)],
+  ['importBoard clears selection+wclock on whole-board swap', html.includes("state.shapes=shapes.map(clone);_iG();   // ADR-0009\n      // Match the replace op's _apply") && html.includes("_sl().clear();state.wclock={};\n      if(typeof d.docName")],
+  ['importFromHash clears selection+wclock on whole-board swap', html.includes("state.shapes=valid.map(clone);_iG();state.docName=") && /state\.shapes=valid\.map\(clone\)[\s\S]{0,900}_sl\(\)\.clear\(\);state\.wclock=\{\};/.test(html)],
   // v1.6.71: presentation-mode guard precedes editing shortcuts (no undo mid-slideshow)
   ['presentation guard runs before undo/redo/select-all shortcuts', /if\(Presentation\.isActive\(\)\)\{[\s\S]{0,260}return;\n  \}[\s\S]{0,700}if\(meta&&k==='z'&&!e\.shiftKey\)/.test(html)],
   // v1.6.71: export canvas clamped to browser limits
@@ -1105,7 +1105,7 @@ const checks = [
   ['SVG export rT uses shapeRot', html.includes("const rT=shapeRot(s)?")],
   // v1.6.77: Persist._saveErrMsg distinguishes QuotaExceededError (Zenn/PWA best practice)
   ['Persist._saveErrMsg branches on QuotaExceededError', html.includes("_saveErrMsg(err){") && html.includes("err.name==='QuotaExceededError'")],
-  ['Persist.save catch delegates to _saveErrMsg', html.includes("UI.toast(this._saveErrMsg(err),'err');")],
+  ['Persist.save catch delegates to _saveErrMsg', html.includes("_tst(this._saveErrMsg(err),'err');")],
   ['quotaExceeded i18n key in ja and en', html.includes("quotaExceeded:'保存容量が逼迫しています") && html.includes("quotaExceeded:'Storage quota exceeded")],
   // v1.6.78: pen captures all coalesced sub-samples (high-rate stylus smoothness)
   ['coalescedSamples helper present with fallback', html.includes("function coalescedSamples(e)") && html.includes("return cs&&cs.length?cs:[e];")],
@@ -1134,13 +1134,13 @@ const checks = [
   ['Net.init clears prior presence timer', html.includes("clearInterval(this._presenceTimer);   // re-init (room switch) must not leak the old heartbeat")],
   // v1.6.85: WebRTC peers lifecycle-managed (not heartbeat-reaped after 15s)
   ['_reapPeers exempts rtc: peers from timeout reaping', html.includes("if(id.startsWith('rtc:'))continue;   // WebRTC peers are lifecycle-managed")],
-  ['dc.onclose removes the rtc peer', html.includes("if(this._rtcPeerId){_pr().delete(this._rtcPeerId);this._rtcPeerId=null;invalidateOverlay();}")],
+  ['dc.onclose removes the rtc peer', html.includes("if(this._rtcPeerId){_pr().delete(this._rtcPeerId);this._rtcPeerId=null;_ivO();}")],
   ['dc.onopen stores _rtcPeerId for lifecycle management', html.includes("this._rtcPeerId='rtc:'+uid().slice(0,4);")],
   // v1.7.76 / ADR-0017 (FT-20): ICE failure without an open channel showed nothing —
   // connectionState failed toasts once and suppresses the trailing dc.onclose toast
   ['rtc.onconnectionstatechange wired in _wrtcInit', html.includes("this.rtc.onconnectionstatechange=()=>{")],
   ['connection failure toasts and stamps _rtcConnFailed', html.includes("connectionState!=='failed'") && html.includes("this._rtcConnFailed=true;") && html.includes("t('connectFailed')")],
-  ['dc.onclose suppresses disconnect toast after a failure', html.includes("if(!this._rtcConnFailed)UI.toast(t('disconnected'),'warn');")],
+  ['dc.onclose suppresses disconnect toast after a failure', html.includes("if(!this._rtcConnFailed)_tst(t('disconnected'),'warn');")],
   ['_wrtcInit resets the failure flag for reconnects', html.includes("this._rtcConnFailed=false;")],
   ['connectFailed i18n key (ja + en)', html.includes("connectFailed:'接続に失敗しました'") && html.includes("connectFailed:'Connection failed'")],
   // v1.6.86: multi-image drop cascades by index (async closure capture fix)
@@ -1195,7 +1195,7 @@ const checks = [
     html.includes('async function _onBtnInstall()')&&html.includes('_installPrompt.prompt()')&&html.includes('_installPrompt.userChoice')],
   // v1.6.93: SW update notification
   ['controllerchange listener shows update toast',
-    html.includes("'controllerchange'")&&html.includes('function _onSwUpdate()')&&html.includes("UI.toast(t('appUpdated'),'ok')")],
+    html.includes("'controllerchange'")&&html.includes('function _onSwUpdate()')&&html.includes("_tst(t('appUpdated'),'ok')")],
   ['appUpdated i18n key in ja and en',
     html.includes("appUpdated:'アプリが更新されました")&&html.includes("appUpdated:'App updated")],
   // v1.6.94: _esc single-quote + IME composition guard
@@ -1324,7 +1324,7 @@ const checks = [
     html.includes("Object.assign(sh,p);\n        if(!forward)_selR(op);\n        break;}\n      case 'move':{")],
   // v1.7.45: openLabelEditor commit closure must capture origSel (label-edit undo restores selection)
   ['openLabelEditor commit: origSel captured before upd _recordCommitted',
-    html.includes("hit.label=lbl||null;_rcOp({op:'upd',id:hit.id,before,after});invalidate()")],
+    html.includes("hit.label=lbl||null;_rcOp({op:'upd',id:hit.id,before,after});_iv()")],
   // v1.7.45: openTextEditor existing-text changed path must capture origSel (text-edit undo restores selection)
   ['openTextEditor existing-text: origSel captured before upd _recordCommitted',
     html.includes("_rcOp({op:'upd',id:s.id,before,after});")],
