@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.327] - 2026-09-24
+
+### Fixed
+- .drawio export: `<mxfile>` に `compressed="false"` を明記 (非圧縮XML、
+  ADR-0275)
+
 ## [1.7.326] - 2026-09-24
 
 ### Added
