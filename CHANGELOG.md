@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.256]
+
+### 追加
+- **コネクタ方向の反転** (ADR-0198)。ctx メニュー「方向を反転」で
+  line/arrow の端点・結合先・ウェイポイント順を一括入替
+  (draw.io "Reverse" 相当、labelPos も鏡像化)。
+
 ## [1.7.255]
 
 ### 追加

@@ -772,6 +772,7 @@ const checks = [
   ['image caption band honours s.fill (canvas+SVG)', html.includes("c.fillStyle=s.fill||getCSS('--paper')||'#fff';c.globalAlpha=0.85")&&html.includes("_esc(s.fill||paper||'#FFFFFF')")],
   ['Tab in label editor chains to next label-able shape', html.includes("if(ev.key==='Tab'){ev.preventDefault();")&&html.includes("_openLabelEditorFor(nx)")],
   ['frame label honours s.align + cycleTextAlign gate', html.includes("const alF=s.align||'left'")&&html.includes("type==='frame'||s.label)&&!s.locked})&&['ctxTextAlign'")],
+  ['ctxReverse reverses connector direction (ADR-0198)', html.includes('function reverseConn()')&&html.includes("['ctxReverse','',reverseConn]")],
   // v1.7.05: Tab cycling excludes locked shapes (parity with doMove/doDelete/doRotate/doFlip)
   ['statusbar selection dims readout', html.includes('id="sSel"')&&html.includes('_statusSel()')&&html.includes('Math.round(b.w)')],
   ['empty-selection arrows pan viewport', html.includes("state.viewport.x+=k==='arrowleft'?-step:k==='arrowright'?step:0")],
