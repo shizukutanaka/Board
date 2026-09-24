@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.523';
+const V='1.7.524';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4822,6 +4822,7 @@ function _snapNear(arr,v,tol){
   return out;
 }
 const _snapBest=(arr,v,tol)=>{let best=null;for(const e of _snapNear(arr,v,tol)){const d=e.v-v;if(!best||_abs(d)<_abs(best.d))best={d,at:e.v,b:e.b}}return best};   // ADR-0488
+const _mid=(pts)=>pts.slice(1,-1);   // ADR-0491: middle waypoints (drawio emit+import, 3 sites)
 const _gV=(x,m,b)=>{const ys=[m.y,m.y+m.h,b.y,b.y+b.h];return{x1:x,y1:_min(...ys),x2:x,y2:_max(...ys)}};   // ADR-0487
 const _gH=(y,m,b)=>{const xs=[m.x,m.x+m.w,b.x,b.x+b.w];return{x1:_min(...xs),y1:y,x2:_max(...xs),y2:y}};   // ADR-0487
 function _snapBoxIdx(mov,idx,tol){
@@ -6788,7 +6789,7 @@ function boardToDrawio(shapes){
     sty+=_dioStyEmit(s,1);
     const _gp=_gbx[_gi(s)];
     let geo=`<mxGeometry relative="1" as="geometry"><mxPoint x="${s.pts[0][0]-(_gp?_gp.x:0)}" y="${s.pts[0][1]-(_gp?_gp.y:0)}" as="sourcePoint"/><mxPoint x="${s.pts[_ln(s.pts)-1][0]-(_gp?_gp.x:0)}" y="${s.pts[_ln(s.pts)-1][1]-(_gp?_gp.y:0)}" as="targetPoint"/>`;
-    if(_ln(s.pts)>2)geo+='<Array as="points">'+s.pts.slice(1,-1).map(p=>`<mxPoint x="${p[0]-(_gp?_gp.x:0)}" y="${p[1]-(_gp?_gp.y:0)}"/>`).join('')+'</Array>';
+    if(_ln(s.pts)>2)geo+='<Array as="points">'+_mid(s.pts).map(p=>`<mxPoint x="${p[0]-(_gp?_gp.x:0)}" y="${p[1]-(_gp?_gp.y:0)}"/>`).join('')+'</Array>';
     geo+='</mxGeometry>';
     cells.push(`<mxCell id="${id}" value="" style="${esc(sty)}" edge="1" parent="${_gp?`g_${_gi(s)}`:'1'}"${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0354
   }
@@ -6815,7 +6816,7 @@ function boardToDrawio(shapes){
     const _gc2=_gbx[_gi(s)];                                         // ADR-0347
     if(!src)geo+=`<mxPoint x="${s.x1-(_gc2?_gc2.x:0)}" y="${s.y1-(_gc2?_gc2.y:0)}" as="sourcePoint"/>`;
     if(!tgt)geo+=`<mxPoint x="${s.x2-(_gc2?_gc2.x:0)}" y="${s.y2-(_gc2?_gc2.y:0)}" as="targetPoint"/>`;
-    const wa=_el(s)?_elbowPts(s).slice(1,-1):s.curve?[_curveCtrl(_cE(s),s.cbend)]:_wayArr(s);   // ADR-0358/0360
+    const wa=_el(s)?_mid(_elbowPts(s)):s.curve?[_curveCtrl(_cE(s),s.cbend)]:_wayArr(s);   // ADR-0358/0360
     if(_ln(wa))geo+='<Array as="points">'+wa.map(p=>`<mxPoint x="${p.x-(_gc2?_gc2.x:0)}" y="${p.y-(_gc2?_gc2.y:0)}"/>`).join('')+'</Array>';
     geo+='</mxGeometry>';
     cells.push(`<mxCell id="${id}" value="${nl(_lb(s)||'')}" style="${esc(sty)}" edge="1" parent="${_gc2?`g_${_gi(s)}`:'1'}"${src}${tgt}${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0245/0347
@@ -7075,7 +7076,7 @@ function excToShapes(txt){
         // interior points map onto the way[] array (ADR-0090), not a
         // dead-end pen stroke. Elbowed excalidraw arrows land naturally.
         s=Shape.make(_arw(e)?'arrow':'line',{x1:pts[0][0],y1:pts[0][1],x2:pts[_ln(pts)-1][0],y2:pts[_ln(pts)-1][1]});
-        if(_ln(pts)>2)s.way=pts.slice(1,-1).map(p=>({x:p[0],y:p[1]}));
+        if(_ln(pts)>2)s.way=_mid(pts).map(p=>({x:p[0],y:p[1]}));
         if(e.elbowed)s.elbow=1;                                              // ADR-0265
         // ADR-0230: excalidraw arrowhead styles → head/start
         if(_arw(e)){

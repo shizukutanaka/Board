@@ -475,7 +475,7 @@ const checks = [
   ['escape cancels in-flight pointer gesture', html.includes('else if(ptr.down&&ptr.dragKind)_cancelPointerGesture()')],
   ['underline: ⌘U toggle + canvas line + SVG text-decoration', html.includes("toggleTextFlag('under')")&&html.includes('s.under')&&html.includes("'underline'")&&html.includes('text-decoration=')],
   ['equal-size snap: resize matches another shape\'s w/h', html.includes('equal-size snap')&&html.includes('nw=eH?x-orig.x')&&html.includes('_abs(nw-b.w)')],
-  ['excalidraw multi-segment arrow → real connector + way[]', html.includes('pts.slice(1,-1).map(p=>({x:p[0],y:p[1]}))')],
+  ['excalidraw multi-segment arrow → real connector + way[]', html.includes('_mid(pts).map(p=>({x:p[0],y:p[1]}))')],
   ['excalidraw export: excScene maps types/bindings/files', html.includes('function excScene')&&html.includes('endArrowhead')&&html.includes('ctxExportExc')],
   ['clipboard .excalidraw JSON routes to importExcText', html.includes('importExcText(s)!==false')],
   ['strikethrough: ⌘⇧X + canvas midline + SVG line-through', html.includes("toggleTextFlag('strike')")&&html.includes('s.strike')&&html.includes('line-through')],
