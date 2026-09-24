@@ -439,6 +439,19 @@ Board/
 │   ├── ADR-0387-shape-type-whitelist.md   # validShape 型ホワイトリスト (実装済)
 │   ├── ADR-0388-shape-id-type.md   # shape id string/長さ検査 (実装済)
 │   ├── ADR-0389-toast-dedupe.md   # 同一トースト再付け替え (実装済)
+│   ├── ADR-0390-exc-frameid-emit.md   # exc frameId 空間内包 emit (実装済)
+│   ├── ADR-0391-more-literal-shorthands.md   # _TR/_ud/_now (実装済)
+│   ├── ADR-0392-sa-al-ap-shorthands.md   # _sa/_AL/_AP (実装済)
+│   ├── ADR-0393-board-viewport-roundtrip.md   # .board viewport 往復 (実装済)
+│   ├── ADR-0394-more-dom-shorthands.md   # DOM shorthand 追加 (実装済)
+│   ├── ADR-0395-toast-key-consts.md   # トーストキー定数化 (実装済)
+│   ├── ADR-0396-locked-delete-toast.md   # ロック済削除トースト (実装済)
+│   ├── ADR-0397-st-pd-consts.md   # _St/_PD + 残トーストキー (実装済)
+│   ├── ADR-0398-file-import-32mb-guard.md   # 全取込 32MB ガード (実装済)
+│   ├── ADR-0399-ap-sto-kd-ch-ck-shorthands.md   # _ap/_stO/_KD/_CH/_CK/_vpS (実装済)
+│   ├── ADR-0400-snap-sender-chunks.md   # RTC snapshot 送信側チャンク化 (実装済)
+│   ├── ADR-0401-dual-send-bcast-helper.md   # _bcast/_setDocName/_dpr/_PM/_PU/_PC/_lc (実装済)
+│   ├── ADR-0402-docname-sync.md   # ドキュメント名ピア同期 (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
