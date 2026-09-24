@@ -851,7 +851,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.476';
+const V='1.7.477';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -5909,7 +5909,7 @@ function selectSamePaint(){
 function hideSelection(){
   const before=[],after=[];
   _forSel((s,id)=>{if(_lk(s)||_hd(s))return;
-    before.push({id,visible:s.visible??null});after.push({id,visible:0});
+    _pp(before,after,id,'visible',s.visible??null,0);
     s.visible=0;_sdl(id);
   })
   if(before.length){_styleOp(before,after);_iv();_o(before.length+' '+t('hiddenCount'))}
@@ -9111,7 +9111,7 @@ function selectFrameContents(){
 function toggleStickyText(){
   const before=[],after=[];
   _forSel((s,id)=>{if((s.type!=='sticky'&&s.type!=='text')||_lk(s))return;
-    before.push({id,type:s.type});after.push({id,type:s.type==='sticky'?'text':'sticky'});
+    _pp(before,after,id,'type',s.type,s.type==='sticky'?'text':'sticky');
     s.type=s.type==='sticky'?'text':'sticky';
   })
   _so(before,after)
@@ -9149,7 +9149,7 @@ function cycleStartHead(){
 function toggleLineArrow(){
   const before=[],after=[];
   _forSel((s,id)=>{if((s.type!=='line'&&s.type!=='arrow')||_lk(s))return;
-    before.push({id,type:s.type});after.push({id,type:s.type==='line'?'arrow':'line'});
+    _pp(before,after,id,'type',s.type,s.type==='line'?'arrow':'line');
     s.type=s.type==='line'?'arrow':'line';
   })
   _so(before,after)
@@ -9197,7 +9197,7 @@ function cycleStickyColor(){
   const before=[],after=[];
   _forSel((s,id)=>{if(s.type!=='sticky'||_lk(s))return;
     const i=STICKY_COLORS.indexOf(s.color),nxt=STICKY_COLORS[(i+1)%STICKY_COLORS.length];
-    before.push({id,color:s.color||_YW});after.push({id,color:nxt});s.color=nxt;
+    _pp(before,after,id,'color',s.color||_YW,nxt);s.color=nxt;
   })
   _so(before,after)
 }
@@ -9320,7 +9320,7 @@ function cycleVAlign(){
   _forSel((s,id)=>{if((s.type!=='rect'&&s.type!=='ellipse'&&s.type!=='diamond'&&s.type!=='sticky'&&!(s.type==='image'&&_lb(s)))||_lk(s))return;   // ADR-0179/0187
     const sq=s.type==='sticky'?seqS:seq;
     const cur=s.valign||null,nxt=sq[(sq.indexOf(cur)+1)%3];
-    before.push({id,valign:cur});after.push({id,valign:nxt});
+    _pp(before,after,id,'valign',cur,nxt);
     if(nxt==null)delete s.valign;else s.valign=nxt;
     _st().valign=nxt;                                     // ADR-0417: parity with every sibling style cycle
   })
@@ -9337,7 +9337,7 @@ function cycleVAlign(){
 function toggleWrap(){
   const before=[],after=[];
   _forSel((s,id)=>{if(s.type!=='text'||_lk(s))return;
-    before.push({id,wrap:s.wrap??null});after.push({id,wrap:s.wrap?0:1});
+    _pp(before,after,id,'wrap',s.wrap??null,s.wrap?0:1);
     s.wrap=s.wrap?0:1;   // ADR-0411: write 0 (not null) — drawio emit and import both read ===0
   })
   _so(before,after)
@@ -9347,7 +9347,7 @@ function cycleSpacing(){
   const before=[],after=[];
   _forSel((s,id)=>{if((s.type!=='text'&&s.type!=='sticky'&&s.type!=='frame'&&!_lb(s))||_lk(s))return;
     const i=seq.indexOf(s.spacing??null),nxt=seq[(i+1)%seq.length];
-    before.push({id,spacing:s.spacing??null});after.push({id,spacing:nxt});
+    _pp(before,after,id,'spacing',s.spacing??null,nxt);
     if(nxt==null)delete s.spacing;else s.spacing=nxt;
     _st().spacing=nxt;
   })
@@ -9357,7 +9357,7 @@ function cycleLineH(){
   const before=[],after=[],seq=[null,1,1.5];
   _forSel((s,id)=>{if((s.type!=='text'&&s.type!=='sticky'&&!_lb(s))||_lk(s))return;
     const cur=s.lineH??null,nxt=seq[(seq.indexOf(cur)+1)%3];
-    before.push({id,lineH:cur});after.push({id,lineH:nxt});
+    _pp(before,after,id,'lineH',cur,nxt);
     if(nxt==null)delete s.lineH;else s.lineH=nxt;
     _st().lineH=nxt;
   })
@@ -9369,12 +9369,13 @@ function fontSizeStep(d){
   _forSel((s,id)=>{if((s.type!=='text'&&s.type!=='sticky'&&s.type!=='frame'&&!_lb(s))||_lk(s))return;   // ADR-0169/0298: labels+frames honour fontSize
     const cur=_fS(s)||14,nxt=_min(64,_max(8,cur+d*2));
     if(nxt===cur)return;
-    before.push({id,fontSize:cur});after.push({id,fontSize:nxt});s.fontSize=nxt;
+    _pp(before,after,id,'fontSize',cur,nxt);s.fontSize=nxt;
     _st().fontSize=nxt;                                 // ADR-0180: last-used persists to the next shape
   })
   _so(before,after)
 }
 // ADR-0078: ⌘B/⌘I toggles bold/italic on selected text/sticky via style op.
+const _pp=(b,a,id,k,c,n)=>{b.push({id,[k]:c});a.push({id,[k]:n})};
 function _rcOp(op){const o=_selIds();Store._recordCommitted(op);_keepSel(o)}
 function _cOp(op){const o=_selIds();Store.commit(op);_keepSel(o)}
 function _styleOp(before,after){_rcOp({op:'style',before,after})}   // ADR-0239/0248
@@ -9397,7 +9398,7 @@ function cycleFillStyle(){
   const before=[],after=[];
   _forSel((s,id)=>{if((s.type!=='rect'&&s.type!=='ellipse'&&s.type!=='diamond')||_lk(s))return;
     const cur=s.fstyle||'',nxt=cur===''?'hatch':cur==='hatch'?'cross':'';
-    before.push({id,fstyle:cur||null});after.push({id,fstyle:nxt||null});
+    _pp(before,after,id,'fstyle',cur||null,nxt||null);
     if(nxt)s.fstyle=nxt;else delete s.fstyle;
     _st().fstyle=nxt||null;                               // ADR-0184
   })
@@ -9425,7 +9426,7 @@ function cycleFont(){
   const before=[],after=[];
   _forSel((s,id)=>{if((s.type!=='text'&&s.type!=='sticky'&&s.type!=='frame'&&!_lb(s))||_lk(s))return;   // ADR-0188: frame's always-on label
     const cur=s.font||'',nxt=cur===''?'mono':cur==='mono'?'serif':'';
-    before.push({id,font:cur||null});after.push({id,font:nxt||null});
+    _pp(before,after,id,'font',cur||null,nxt||null);
     if(nxt)s.font=nxt;else delete s.font;
     _st().font=nxt||null;                     // ADR-0181
   })
@@ -9446,7 +9447,7 @@ function cycleTextAlign(){
   const before=[],after=[];
   _forSel((s,id)=>{if((s.type!=='text'&&s.type!=='sticky'&&s.type!=='frame'&&!_lb(s))||_lk(s))return;   // ADR-0171/0197
     const cur=s.align||'left',nxt=cur==='left'?'center':cur==='center'?'right':'left';
-    before.push({id,align:cur});after.push({id,align:nxt});s.align=nxt;
+    _pp(before,after,id,'align',cur,nxt);s.align=nxt;
     _st().align=nxt;                                      // ADR-0184
   })
   _so(before,after)
@@ -9461,7 +9462,7 @@ function cycleCorner(){
     const connOk=(_conn(s.type))&&s.elbow;   // ADR-0207
     if(!boxOk&&!connOk)return;
     const cur=s.r==null?8:s.r,nxt=cur<4?8:cur<12?16:cur<20?24:0;
-    before.push({id,r:s.r??null});after.push({id,r:nxt});
+    _pp(before,after,id,'r',s.r??null,nxt);
     s.r=nxt;_st().r=nxt;                                  // ADR-0184
   })
   _so(before,after)
@@ -9471,7 +9472,7 @@ function cycleCorner(){
 function toggleShadow(){
   const before=[],after=[];
   _forSel((s,id)=>{if((s.type!=='rect'&&s.type!=='ellipse'&&s.type!=='diamond'&&s.type!=='image'&&s.type!=='text'&&s.type!=='line'&&s.type!=='arrow')||_lk(s))return;   // ADR-0211
-    before.push({id,shadow:s.shadow||null});after.push({id,shadow:s.shadow?null:true});
+    _pp(before,after,id,'shadow',s.shadow||null,s.shadow?null:true);
     if(s.shadow)delete s.shadow;else s.shadow=true;
     _st().shadow=s.shadow||null;
   })
@@ -9511,7 +9512,7 @@ function setSelLink(){
   const before=[],after=[];
   _forSel((s,id)=>{if(_lk(s))return;
     if(v?s.link===v:!s.link)return;
-    before.push({id,link:s.link??null});after.push({id,link:v||null});
+    _pp(before,after,id,'link',s.link??null,v||null);
     if(v)s.link=v;else delete s.link;
   });
   _so(before,after)

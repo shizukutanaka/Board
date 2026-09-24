@@ -491,6 +491,7 @@ Board/
 │   ├── ADR-0439-op-cv-folds.md          # _oP/_cv フォールド (実装済)
 │   ├── ADR-0440-g2-fold-opacity-announce.md # _g2 fold + 透明シェイプの SR announce (実装済)
 │   ├── ADR-0441-wire-guard-tests.md     # wire ガード行動テスト + architecture.md 同期 (実装済)
+│   ├── ADR-0442-pp-fold.md              # _pp before/after push 集約 (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

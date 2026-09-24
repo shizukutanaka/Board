@@ -820,7 +820,7 @@ const checks = [
   ['letter-spacing cycle — canvas ctx+SVG+style-copy (ADR-0205)', html.includes("function cycleSpacing()")&&html.includes("c.letterSpacing=(s.spacing||0)+'px'")&&html.includes('_svgLs(s)')&&html.includes('spacing:sh.spacing')],
   ['elbow corner rounding canvas+SVG + cycleCorner gate (ADR-0207)', html.includes('function _polylineR')&&html.includes('_polylineRd(pts,ox,oy,s.r)')&&html.includes("connOk=(_conn(s.type))&&s.elbow")],
   ['text word-wrap toggle + canvas/SVG wrap (ADR-0208)', html.includes('s.wrap?wrapTextCached')&&html.includes('s.wrap?wrapText(_St')&&html.includes("['ctxWrap','',toggleWrap]")],
-  ['wrap toggle writes 0 so drawio emit sees it (ADR-0411)', html.includes('s.wrap=s.wrap?0:1')&&html.includes('wrap:s.wrap?0:1')],
+  ['wrap toggle writes 0 so drawio emit sees it (ADR-0411)', html.includes('s.wrap=s.wrap?0:1')&&html.includes("_pp(before,after,id,'wrap',s.wrap??null,s.wrap?0:1)")],
   ['fixed edge anchors via Alt-drop + connEnds/reverse/unbind wiring (ADR-0209)', html.includes("sh[fk]={fx:fx<0.5?0:1,fy}")&&html.includes('s.aF?{x:ba.x+ba.w*s.aF.fx')&&html.includes('tbF=s.aF;s.aF=s.bF')],
   ['multi-line conn label canvas+SVG (ADR-0210)', html.includes("_St(_lb(s)).split('\\n'),llh=fs*(s.lineH||1.25)")&&html.includes("lns.map((l,i)=>`<tspan")],
   ['shadow on text/conns canvas+SVG + gate (ADR-0211)', html.includes("s.type!=='text'&&s.type!=='line'&&s.type!=='arrow'")&&html.includes('label never shadows')&&html.includes('${dA}${a}${_sh}/>`);')],

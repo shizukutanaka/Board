@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.477] - 2026-09-23
+
+### Changed
+- `_pp` before/after patch push 集約 — 15サイトを単一プロパティペア push ヘルパに (~340B 回収) (ADR-0442)
+
 ## [1.7.476] - 2026-09-23
 
 ### Changed
