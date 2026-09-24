@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.466] - 2026-09-23
+
+### Fixed
+- 256KB SCTP 上限超過の op を 'opc' 64KB フラグメントで送信 — 巨大ペン/ペースト op の静寂消失 (ピア間発散) を解消、`_fragSend`/`_fragIn` で snapshot と共有化
+
 ## [1.7.465] - 2026-09-23
 
 ### Fixed
