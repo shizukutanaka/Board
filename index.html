@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.257';
+const V='1.7.258';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4745,6 +4745,10 @@ function beginPen(wp,e){
 function contPen(wp,e){
   if(!state.draft)return;
   const pts=state.draft.pts;
+  // ADR-0200: Shift held = straight-line mode (Excalidraw). The stroke
+  // collapses to [start, current] while held; releasing resumes freehand
+  // from that point. Full invalidate — the shrink breaks the damage corridor.
+  if(e.shiftKey&&pts.length){pts.length=1;pts.push([wp.x,wp.y,state.draft.hl?0.5:_penPr(e)]);invalidate();return}
   const last=pts[pts.length-1];
   // decimate by min distance for smoothness
   const d=Math.hypot(wp.x-last[0],wp.y-last[1]);
