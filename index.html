@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.302';
+const V='1.7.303';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -8574,6 +8574,7 @@ function wire(){
   });
   // resize
   window.addEventListener('resize',resize);
+  if(window.visualViewport)visualViewport.addEventListener('resize',resize);   // ADR-0251: iOS url-bar/keyboard shrink doesn't fire window resize
   // devicePixelRatio change (window dragged to a different-density monitor) fires no resize
   _watchDPR();
   // some Android devices fire orientationchange separately from resize

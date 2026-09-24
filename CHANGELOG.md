@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.303] - 2026-09-24
+
+### Fixed
+- iOS Safari の URL バー収縮/ソフトキーボードでキャンバスが再サイズ
+  されない問題を visualViewport.resize で修正 (ADR-0251)
+
 ## [1.7.302] - 2026-09-24
 
 ### Added
