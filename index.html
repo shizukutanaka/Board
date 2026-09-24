@@ -818,7 +818,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.419';
+const V='1.7.420';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -7600,7 +7600,12 @@ const Net={
     if(s&&typeof s.img==='string'&&!s.dataUrl){
       const d=this._imgIn.get(s.img);
       if(d){const{img:_x,...rest}=s;return{...rest,dataUrl:d}}
-      if(typeof s.id==='string')this._imgPending.set(s.id,s.img);
+      // ADR-0374: cap the parked-ref waitlist — a peer that sends slim refs then
+      // leaves without chunks would otherwise grow _imgPending unboundedly.
+      if(typeof s.id==='string'){
+        if(this._imgPending.size>=256&&!this._imgPending.has(s.id))this._imgPending.delete(this._imgPending.keys().next().value);
+        this._imgPending.set(s.id,s.img);
+      }
     }
     return s;
   },
@@ -7668,7 +7673,9 @@ const Net={
         const seq=typeof msg.seq==='number'&&msg.seq>=0?_fl(msg.seq):0;
         if(seq>=n)break;
         let st=this._imgChunks.get(msg.key);
-        if(!st){st={parts:new Array(n),got:0,n};this._imgChunks.set(msg.key,st)}
+        // ADR-0374: bound in-flight reassemblies — a peer opening thousands of
+        // keys mid-transfer and never finishing would grow the map unboundedly.
+        if(!st){if(this._imgChunks.size>=64)break;st={parts:new Array(n),got:0,n};this._imgChunks.set(msg.key,st)}
         if(st.n===n&&!st.parts[seq]){st.parts[seq]=msg.data;st.got++}
         if(st.got<st.n)break;
         this._imgChunks.delete(msg.key);

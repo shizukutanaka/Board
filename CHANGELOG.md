@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.420] - 2026-09-24
+
+### Fixed
+- 画像チャンク経路に容量上限: `_imgPending` ≤256 (最古 evict)、`_imgChunks`
+  ≤64 keys — slim ref 送信後に chunk を送らない敵対ピアで待ち列/再組立て
+  Map が無限成長していた (ADR-0374)
+
 ## [1.7.419] - 2026-09-24
 
 ### Fixed
