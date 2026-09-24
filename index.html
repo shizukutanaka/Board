@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.237';
+const V='1.7.238';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4784,7 +4784,7 @@ function beginRectLike(wp){
   const extras={x:sp.x,y:sp.y,w:0,h:0};
   if(state.tool==='sticky'){
     extras.color=STICKY_COLORS[Math.floor(Math.random()*STICKY_COLORS.length)];
-    extras.text='';extras.fontSize=14;
+    extras.text='';extras.fontSize=state.style.fontSize||14;          // ADR-0180
   }else if(state.tool==='frame'){
     const n=state.shapes.filter(s=>s.type==='frame').length+1;
     extras.label=`Frame ${n}`;
@@ -4877,7 +4877,7 @@ function _bindAt(x,y){
 // ---- text ----
 function beginText(wp){
   const sp=snapPt(wp);
-  const s=Shape.make('text',{x:sp.x,y:sp.y,w:120,h:24,text:'',fontSize:16});
+  const s=Shape.make('text',{x:sp.x,y:sp.y,w:120,h:24,text:'',fontSize:state.style.fontSize||16});   // ADR-0180
   const origSel=[...state.selection];
   Store.commit({op:'add',shape:s});
   if(origSel.length)state.history[state.histIdx].origSel=origSel;
@@ -4911,7 +4911,7 @@ function createShapeKbd(){
     s=Shape.make(tool,{x1:cx-80,y1:cy,x2:cx+80,y2:cy});
   }else if(tool==='sticky'){
     s=Shape.make('sticky',{x:cx-80,y:cy-80,w:160,h:160,
-      color:STICKY_COLORS[Math.floor(Math.random()*STICKY_COLORS.length)],text:'',fontSize:14});
+      color:STICKY_COLORS[Math.floor(Math.random()*STICKY_COLORS.length)],text:'',fontSize:state.style.fontSize||14});   // ADR-0180
   }else if(tool==='frame'){
     const n=state.shapes.filter(x=>x.type==='frame').length+1;
     s=Shape.make('frame',{x:cx-400,y:cy-250,w:800,h:500,
@@ -8300,6 +8300,7 @@ function fontSizeStep(d){
     const cur=s.fontSize||14,nxt=Math.min(64,Math.max(8,cur+d*2));
     if(nxt===cur)continue;
     before.push({id,fontSize:cur});after.push({id,fontSize:nxt});s.fontSize=nxt;
+    state.style.fontSize=nxt;                                 // ADR-0180: last-used persists to the next shape
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
 }

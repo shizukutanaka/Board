@@ -754,6 +754,7 @@ const checks = [
   ['eraser hover shows a red dashed target', html.includes("state._ehov=id;invalidateOverlay()")&&html.includes("c.strokeStyle='#EF4444'")],
   ['dash applies to frame+image borders in canvas+SVG', html.includes("s.type==='frame'||s.type==='image'")&&html.includes('fill="none" stroke="${_esc(s.stroke)}" stroke-width="${_num(s.size)}"${dA}')],
   ['image caption honors valign top via cycleVAlign', html.includes("sy=s.valign==='top'?s.y:s.y+s.h-sh_")&&html.includes("sy=s.valign==='top'?Y:Y+H-sh_")&&html.includes("s.type==='image'&&s.label")],
+  ['new text/sticky inherit last-used fontSize', html.includes("fontSize:state.style.fontSize||16")&&html.includes("state.style.fontSize=nxt")],
   // v1.7.05: Tab cycling excludes locked shapes (parity with doMove/doDelete/doRotate/doFlip)
   ['statusbar selection dims readout', html.includes('id="sSel"')&&html.includes('_statusSel()')&&html.includes('Math.round(b.w)')],
   ['empty-selection arrows pan viewport', html.includes("state.viewport.x+=k==='arrowleft'?-step:k==='arrowright'?step:0")],

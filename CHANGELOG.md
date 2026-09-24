@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.238]
+
+### 追加
+- **fontSize の last-used 継承** (ADR-0180)。⌘⇧,/. で設定した
+  fontSize が `state.style` に残り、次に作る text/sticky に継承
+  (stroke/fill/size と同じ規則)。
+
 ## [1.7.237]
 
 ### 追加
