@@ -395,7 +395,7 @@ const checks = [
   ['pinch end clears snapshot and repaints crisp', html.includes("if(_pinchSnap){_pinchSnap=null;_pinchVp=null;_iv();}")],
   // v1.7.91: ADR-0033 ctrl+wheel (trackpad pinch) zoom preview shares the
   // same snapshot mechanism, settles via a quiet-window timer.
-  ['wheel zoom burst snapshots before first zoom', html.includes("_pinchSnapNow();\n    clearTimeout(_wheelZoomEnd);")],
+  ['wheel zoom burst snapshots before first zoom', html.includes("_pinchSnapNow();\n    _cT(_wheelZoomEnd);")],
   ['wheel zoom settle timer discards snapshot + repaints', html.includes("_wheelZoomEnd=_stO(()=>{_pinchSnap=null;_pinchVp=null;_iv()},180)")],
   ['ADR-0032/0033: marquee + pickTop use the spatial grid', html.includes("_gridRectCandidates(_grid||(_grid=_buildGrid(_sh())),r)") && html.includes("cands.sort((a,b)=>(_grid.idx.get(b)|0)-(_grid.idx.get(a)|0))")],
   ['load validates viewport finiteness', html.includes("_fin(+d.viewport.zoom)&&d.viewport.zoom>0")],
@@ -1129,11 +1129,12 @@ const checks = [
   ['pen pointermove iterates coalesced samples', html.includes("case 'pen':{") && html.includes("for(const ce of coalescedSamples(e))contPen(_s2({x:ce.offsetX,y:ce.offsetY}),ce);")],
   // v1.6.79: Persist.flushIfHidden — visibilitychange→hidden as mobile-reliable durability signal
   ['Persist.flushIfHidden gates on vis===hidden && _dt()', html.includes("flushIfHidden(vis){") && html.includes("if(vis==='hidden'&&_dt()){")],
-  ['Persist.flushIfHidden cancels pending debounce + calls save', html.includes("clearTimeout(this._saveT);\n      this.save();")],
+  ['Persist.flushIfHidden cancels pending debounce + calls save', html.includes("_cT(this._saveT);\n      this.save();")],
   ['visibilitychange listener wires document.visibilityState to flushIfHidden', html.includes("_on(document,'visibilitychange',()=>Persist.flushIfHidden(document.visibilityState));")],
   ['pagehide routes through flushIfHidden — iOS swipe-away durable (ADR-0453)', html.includes("_on(window,'pagehide',()=>{Persist.flushIfHidden('hidden');Net._bcast({k:'bye',peer:_pi()})})")],
   ['peer bye drops presence immediately — no 15s ghost (ADR-0457)', html.includes("case 'bye':{") && html.includes("if(pk&&_pr().delete(pk)){_ivO()")],
   ['room switch sends bye + clears BC peers (ADR-0458)', html.includes("this._send({k:'bye',peer:_pi()});this.bc.close()") && html.includes("if(!id.startsWith('rtc:'))_pr().delete(id)")],
+  ['peer id carries a per-boot incarnation nonce (ADR-0459)', html.includes("peerId:PEER_ID+'.'+uid().slice(0,6)") && html.includes("_sO().clear();_cT(this._snapT)")],
   // v1.6.80: multi-touch pinch cancels the single-pointer gesture (no stray edits)
   ['pointerdown aborts single-pointer gesture when a 2nd finger lands', html.includes("if(_pointers.size>=2){abortGesture();return;}")],
   ['pointermove bails while pinch is active', html.includes("if(_pointers.size>=2)return;   // pinch in progress")],

@@ -829,7 +829,7 @@ const _on=(e,t,f,o)=>e.addEventListener(t,f,o);                          // ADR-
 const _vp=()=>state.viewport,_vpS=()=>({x:+_vp().x.toFixed(2),y:+_vp().y.toFixed(2),zoom:+_vp().zoom.toFixed(4)});                                              // ADR-0362: live-read (tests reassign the object)
 const _pi=()=>state.peerId,_ro=()=>state.readout,_gd=()=>state.guides,_cl=()=>state.clipboard,_bb=s=>G.bbox(s),_bA=s=>G.bboxAll(s),_oa=Object.assign;   // ADR-0378
 const _sO=()=>state.seenOps,_la=()=>state.lasso,_mq=()=>state.marquee,_dd=()=>state.dupDelta,_w2=p=>G.w2s(p),_s2=p=>G.s2w(p),_cE=connEnds;   // ADR-0382
-const _dpr=()=>window.devicePixelRatio,_iA=Array.isArray,_iS=v=>typeof v==='string',_iN=v=>typeof v==='number',_iO=v=>typeof v==='object',_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log,_rAF=requestAnimationFrame,_pF=parseFloat,_db=document.body,_de=document.documentElement,_wO=window.open,_lg=k=>localStorage.getItem(k),_ls=(k,v)=>localStorage.setItem(k,v),_mP=a=>new Map(a),_sT=a=>new Set(a),_eU=encodeURIComponent,_dU=decodeURIComponent,_un='undefined',_AU='arrowup',_AD='arrowdown',_AL2='arrowleft',_AR2='arrowright',_ES='escape',_EN='enter',_TB='tab',_IK='#0F172A',_YW='#FEF08A',_BOX=_sT(['rect','ellipse','diamond']),_BX4=_sT([..._BOX,'sticky']),_BOXF=_sT([..._BOX,'frame','sticky']),_HF4=_sT([..._BOX,'frame']),_RD=_sT(['rect','diamond']),_RDI=_sT([..._RD,'image']),_D6=_sT([..._BOX,'frame','image']),_SH5=_sT([..._BOX,'image','text']),_TS=_sT(['text','sticky']),_TSF=_sT([..._TS,'frame']);   // ADR-0384/../0397/0453
+const _dpr=()=>window.devicePixelRatio,_cT=clearTimeout,_iA=Array.isArray,_iS=v=>typeof v==='string',_iN=v=>typeof v==='number',_iO=v=>typeof v==='object',_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log,_rAF=requestAnimationFrame,_pF=parseFloat,_db=document.body,_de=document.documentElement,_wO=window.open,_lg=k=>localStorage.getItem(k),_ls=(k,v)=>localStorage.setItem(k,v),_mP=a=>new Map(a),_sT=a=>new Set(a),_eU=encodeURIComponent,_dU=decodeURIComponent,_un='undefined',_AU='arrowup',_AD='arrowdown',_AL2='arrowleft',_AR2='arrowright',_ES='escape',_EN='enter',_TB='tab',_IK='#0F172A',_YW='#FEF08A',_BOX=_sT(['rect','ellipse','diamond']),_BX4=_sT([..._BOX,'sticky']),_BOXF=_sT([..._BOX,'frame','sticky']),_HF4=_sT([..._BOX,'frame']),_RD=_sT(['rect','diamond']),_RDI=_sT([..._RD,'image']),_D6=_sT([..._BOX,'frame','image']),_SH5=_sT([..._BOX,'image','text']),_TS=_sT(['text','sticky']),_TSF=_sT([..._TS,'frame']);   // ADR-0384/../0397/0453
 const _sh=()=>state.shapes;                                                // ADR-0364
 const _sl=()=>state.selection;
 const _ss=ids=>{state.selection=_sT(ids)};   // ADR-0415: selection-set writes (18 sites)
@@ -852,7 +852,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.492';
+const V='1.7.493';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1123,7 +1123,7 @@ const state={
   dirty:false,
   lastSaveAt:0,
   // ---- v1.1 sync ----
-  peerId:PEER_ID,           // self peer id (persistent)
+  peerId:PEER_ID+'.'+uid().slice(0,6),   // ADR-0459: per-boot incarnation — seq restarts can't collide with peers' seenOps
   seq:0,                    // monotonic op counter for CRDT clock
   _lastTs:0,                // monotonic-clock floor: local clocks never regress (HLC-lite)
   seenOps:_sT(),        // "peer:seq" set for dedup
@@ -4243,7 +4243,7 @@ function _armLongPress(cx,cy){
   _longPressTimer=_stO(()=>_longPressFire(cx,cy),LONG_PRESS_MS);
 }
 function _clearLongPress(){
-  if(_longPressTimer){clearTimeout(_longPressTimer);_longPressTimer=null}
+  if(_longPressTimer){_cT(_longPressTimer);_longPressTimer=null}
 }
 _on(canvas,_PC,_cancelPointerGesture);
 _on(canvas,'contextmenu',e=>{_pd(e);UI.openCtxMenu(e.clientX,e.clientY)});
@@ -4538,7 +4538,7 @@ _on(canvas,'wheel',e=>{
     // snapshot-preview as touch pinch — zoom the pristine buffer while events
     // stream in, settle to a crisp repaint ~180ms after the last one.
     _pinchSnapNow();
-    clearTimeout(_wheelZoomEnd);
+    _cT(_wheelZoomEnd);
     _wheelZoomEnd=_stO(()=>{_pinchSnap=null;_pinchVp=null;_iv()},180);
     zoomAt({x:e.offsetX,y:e.offsetY},-d.y*0.005);
   }else{
@@ -7623,6 +7623,7 @@ const Net={
     if(this.bc){try{this._send({k:'bye',peer:_pi()});this.bc.close()}catch(_){}}   // ADR-0458: bye on the old channel before it's gone
     // ADR-0458: drop the old room's presence — a switch would otherwise carry 15s
     // ghosts into the new room. RTC entries survive: their DataChannel doesn't.
+    _sO().clear();_cT(this._snapT);this._snapT=0;this._lastSnapAt=0;   // ADR-0459: dedup table + deferred resend must not bleed across rooms
     for(const id of _pr().keys())if(!id.startsWith('rtc:'))_pr().delete(id);_ivO();
     clearInterval(this._presenceTimer);   // re-init (room switch) must not leak the old heartbeat
     state.roomId=roomId||DOC_KEY;
@@ -8230,7 +8231,7 @@ const Persist={
     });
   },
   schedule(){
-    clearTimeout(this._saveT);
+    _cT(this._saveT);
     this._saveT=_stO(()=>this.save(),SAVE_DEBOUNCE);
   },
   // PWA durability: beforeunload is unreliable on mobile (Safari iOS skips it
@@ -8241,7 +8242,7 @@ const Persist={
   // testable without dispatching real events through the fake DOM.
   flushIfHidden(vis){
     if(vis==='hidden'&&_dt()){
-      clearTimeout(this._saveT);
+      _cT(this._saveT);
       this.save();
     }
   },

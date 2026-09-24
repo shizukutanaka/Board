@@ -2,6 +2,17 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.493] - 2026-09-23
+
+### 修正
+
+- **ピア incarnation id** — `peerId` を `PEER_ID+'.'+nonce` (起動毎) に変更。`seq` がリロード毎に 0 リセットされるため、従来はリロード後の op がピアの `seenOps` 残留キーと衝突して静かに棄却されていた。同一ブラウザ複数タブが PEER_ID を共有し自己エコー判定で互いのメッセージを捨てていた問題も解消 (ADR-0459)
+- **ルーム切替の掃除拡充** — `seenOps` クリア + deferred snapshot resend (`_snapT`) の部屋横断発火を停止 (ADR-0459)
+
+### 変更
+
+- `_cT` (clearTimeout) shorthand (ADR-0459)
+
 ## [1.7.492] - 2026-09-23
 
 ### 修正
