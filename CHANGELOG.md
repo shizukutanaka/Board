@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.245]
+
+### 追加
+- **付箋本文の縦揃え** (ADR-0187)。ctx メニュー「縦揃え」が付箋にも
+  効き、上→中央→下を巡回。canvas と SVG export の両方に実装
+  (下線/取消線も追従)。ctxVAlign の名称を「縦揃え」に汎用化。
+
 ## [1.7.244]
 
 ### 修正
