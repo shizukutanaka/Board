@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.191]
+
+### 追加
+- **z-order の ctx メニュー項目** (ADR-0134)。最前面/前面/背面/最背面を
+  コンテキストメニューから — タッチ (長押し) 経路が唯一の到達方法で
+  あった z順操作がタッチ端末でも可能に。
+
 ## [1.7.190]
 
 ### 修正

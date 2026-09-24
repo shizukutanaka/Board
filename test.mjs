@@ -496,6 +496,7 @@ const checks = [
   ['ctx + ⇧R rotate-90 (draw.io parity)', html.includes("['ctxRotate90','⇧R',()=>doRotate(90)]")&&html.includes("k==='r'&&e.shiftKey")&&html.includes('ctxRotate90:')],
   ['curve-bend drag — s.cbend offsets the control point', html.includes("dragKind='cbend'")&&html.includes('_curveCtrl(e,s.cbend)')&&html.includes('sh.cbend=snapV')],
   ['flip mirrors elbow s.bend on the matching axis', html.includes('_elbowTrunk(s):null')&&html.includes("(axis==='h')===!!trVert")],
+  ['z-order ctx items — touch path for ]/[ keys', html.includes("['ctxToFront','⇧]',doBringFront]")&&html.includes('ctxToBack')&&html.includes('ctxToFront:')],
   ['line↔arrow conversion via style op (ctx)', html.includes('toggleLineArrow')&&html.includes('ctxToArrow')&&html.includes("s.type==='line'?'arrow':'line'")],
   ['sticky↔text conversion via style op (ctx)', html.includes('toggleStickyText')&&html.includes('ctxToSticky')&&html.includes("s.type==='sticky'?'text':'sticky'")],
   ['frame select-contents (ctx)', html.includes('selectFrameContents')&&html.includes('ctxSelContents')&&html.includes('withFrameChildren(')],

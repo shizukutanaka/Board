@@ -183,6 +183,7 @@ Board/
 - [ADR-0131](docs/ADR-0131-rotate-90.md) 90°回転
 - [ADR-0132](docs/ADR-0132-curve-bend-drag.md) 曲線ベンドドラッグ
 - [ADR-0133](docs/ADR-0133-elbow-bend-flip.md) elbow bend のフリップ鏡像化
+- [ADR-0134](docs/ADR-0134-zorder-ctx-items.md) z-order ctx 項目
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
