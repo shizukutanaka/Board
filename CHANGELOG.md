@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.460] - 2026-09-23
+
+### Internal
+- `_nS`/`_sv`/`_lk` shorthand (~460B 回収) — `_sh().length`/`s.visible`/`s.locked` 読みサイトの predicate 化
+
 ## [1.7.459] - 2026-09-23
 
 ### Fixed

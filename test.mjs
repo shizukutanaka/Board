@@ -280,7 +280,7 @@ const checks = [
   ['ADR-0016: draw() prefilters via grid rect query on large boards', html.includes("function _gridRectCandidates") && html.includes("_vis=_gridRectCandidates(_grid,_view)") && html.includes("let _drawIter=_vis||_sh()") && html.includes("for(const s of _drawIter)")],
   ['ADR-0016: candidates return z-ordered via grid.idx', html.includes("idx=_mP()") && html.includes("out.sort((a,b)=>(grid.idx.get(a)|0)-(grid.idx.get(b)|0))")],
   ['ADR-0016: no-bbox shapes stay always-candidate via big', html.includes("if(!b){big.push(s);continue;}")],
-  ['pickTop uses grid for large boards', html.includes("_sh().length>40") && html.includes("_buildGrid(_sh())")],
+  ['pickTop uses grid for large boards', html.includes("_nS()>40") && html.includes("_buildGrid(_sh())")],
   ['grid invalidated on every _apply', html.includes("_apply(op,forward){") && html.includes("_iG()")],
   // v1.6.12: keyboard shape creation (a11y)
   ['createShapeKbd helper present', html.includes("function createShapeKbd")],
@@ -319,7 +319,7 @@ const checks = [
   // v1.7.113: ADR-0055 rotate point-geometry shapes
   ['doRotate covers pen/line/arrow geometry', html.includes("const _rotatable=s=>s.w!=null||s.pts||s.x1!=null") && html.includes("_rotPtsAbout(s,gx,gy,cs,sn)") && html.includes("if(s.w==null){_rotPtsAbout")],
   // v1.7.114: ADR-0056 multi-selection resize
-  ['gresize dragKind wires group handles', html.includes("ptr.dragKind='gresize';") && html.includes("ptr.gOrig=new Map(sel.filter(s=>!s.locked).map(s=>[s.id,clone(s)]))") && html.includes("if(!sel.some(s=>s.rotate)){")],
+  ['gresize dragKind wires group handles', html.includes("ptr.dragKind='gresize';") && html.includes("ptr.gOrig=new Map(sel.filter(s=>!_lk(s)).map(s=>[s.id,clone(s)]))") && html.includes("if(!sel.some(s=>s.rotate)){")],
   ['gresize reuses applyResize on a virtual box + commits one align op', html.includes("function _gresizeDrag(wp,shift,alt){") && html.includes("applyResize(vbox,ptr.resizeHandle,vorig,wp,shift,alt)") && html.includes("_mapToBox(sh,orig,ob,vbox)") && html.includes("op:'align',dir:'gresize'") && html.includes("'gresize'")],
   ['gresize cancelled in abortGesture + pointercancel', html.includes("ptr.dragKind==='gresize'||ptr.dragKind==='grot'") && html.includes("ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;")],
   // v1.7.115: ADR-0057 rotation knob for point geometry + multi-selection
@@ -499,7 +499,7 @@ const checks = [
   ['directional marquee (right-to-left = intersect)', html.includes('const cross=m.x2<m.x1')&&html.includes('G.marqueeHit(s,r)')],
   ['marker tool — pen variant with hl flag + flat pressure', html.includes("k:'marker'")&&html.includes('d.hl=1;d.size=8;d.opacity=0.4')&&html.includes("data-tool=\"marker\"")],
   ['click-click line/arrow — second click commits (lineClick mode)', html.includes('ptr.lineClick=true;break')&&html.includes('ptr.lineClick){ptr.lineClick=false;endLineLike()')],
-  ['marquee skips locked shapes (Figma/draw.io parity)', html.includes('if(hit&&!s.locked&&s.visible!==0)_sad(s.id)')],
+  ['marquee skips locked shapes (Figma/draw.io parity)', html.includes('if(hit&&!_lk(s)&&_sv(s))_sad(s.id)')],
   ['Alt during move suppresses all snapping (draw.io parity)', html.includes('moveDelta(wp,shift,alt)')&&html.includes('!alt&&!state.snap')],
   ['shift-click on selected shape removes it (toggle-off)', html.includes('alreadySel&&e.shiftKey')&&html.includes('_sdl(id)')],
   ['shift-marquee adds to selection (Figma parity)', html.includes('if(!shift)_scl()')],
@@ -523,14 +523,14 @@ const checks = [
   ['translate moves elbow bend (trunk follows connector)', html.includes('s.bend+=vert?dx:dy')&&html.includes('ADR-0147')],
   ['group resize scales elbow bend on trunk axis', html.includes('ADR-0148')&&html.includes('sh.bend=_abs(tr[1].x-tr[0].x)')],
   ['image flip mirrors pixels via s.flip bitmask', html.includes("s.flip=(s.flip||0)^(axis==='h'?1:2)")&&html.includes('ADR-0149')&&html.includes('scale(${s.flip&1?-1:1}')],
-  ['hidden shapes leave search + bindAt', html.includes("s.visible!==0&&_lc((s.label||'')+(s.text||'')+(s.type||'')")&&html.includes("t!=='pen'&&s.visible!==0")],
-  ['SVG export excludes hidden shapes', html.includes('const _vis=shapes.filter(s=>s.visible!==0)')&&html.includes('_vis.filter(s=>s.type==="frame")')],
+  ['hidden shapes leave search + bindAt', html.includes("_sv(s)&&_lc((s.label||'')+(s.text||'')+(s.type||'')")&&html.includes("t!=='pen'&&_sv(s)")],
+  ['SVG export excludes hidden shapes', html.includes('const _vis=shapes.filter(s=>_sv(s))')&&html.includes('_vis.filter(s=>s.type==="frame")')],
   ['Alt+hover measure guides', html.includes('measure:null')&&html.includes('function _drawMeasure(c)')&&html.includes("e.altKey&&_selN()&&top&&!top.locked")],
   ['measure cleared on reset/down/Alt', html.includes('state.measure=null;ptr.x=ptr.x0')&&html.includes("e.key==='Alt'&&state.measure")],
   ['gresize scales curve cbend affinely', html.includes('sh.cbend=orig.cbend*sx*sy*ol/nl')],
   ['snap index skips hidden shapes', html.includes('exclFn(s)||s.visible===0')],
   ['DOM mirror marks hidden shapes', html.includes("tagHidden:'(非表示)'")&&html.includes("s.visible===0?' '+t('tagHidden')")],
-  ['fit ignores hidden unless all hidden', html.includes('const vis=_sh().filter(s=>s.visible!==0)')&&html.includes('_vis.length?_vis:_sh()')],
+  ['fit ignores hidden unless all hidden', html.includes('const vis=_sh().filter(s=>_sv(s))')&&html.includes('_vis.length?_vis:_sh()')],
   ['rounded diamond path + cycle + ctx', html.includes('function _diamondPath(c,s)')&&html.includes("const boxOk=s.type==='rect'||s.type==='diamond'||s.type==='image'")&&html.includes("s.type==='rect'||s.type==='diamond'")],
   ['SVG diamond emits rounded path when r>0', html.includes('const _dPts=[[X+W/2,Y],[X+W,Y+H/2]')&&html.includes("_min(_dr,e1/2,e2/2)")],
   ['unbind-selection ctx item + fn', html.includes("ctxUnbind:'結合を解除'")&&html.includes('function unbindSelection()')&&html.includes("['ctxUnbind','',unbindSelection]")],
@@ -700,7 +700,7 @@ const checks = [
   ['i18n has shareUrlTooLong/shareExportFailed ja+en', html.includes("shareUrlTooLong:'⚠ URL が非常に長い") && html.includes("shareUrlTooLong:'⚠ This URL is very long") && html.includes("shareExportFailed:'共有リンクの生成に失敗しました'") && html.includes("shareExportFailed:'Failed to build the share link'")],
   // v1.7.99: ADR-0041 DOM mirror a11y
   ['mirror region + list exist', html.includes('id="shapeMirror"') && html.includes('id="shapeMirrorList"')],
-  ['mirror capped by MIRROR_MAX', html.includes('MIRROR_MAX') && html.includes('_min(_sh().length,MIRROR_MAX)')],
+  ['mirror capped by MIRROR_MAX', html.includes('MIRROR_MAX') && html.includes('_min(_nS(),MIRROR_MAX)')],
   ['mirror keyed on _gridVer', html.includes('if(_mirrorVer===_gridVer)return;')],
   ['mirror wired into frame()', html.includes('_mirrorSync();   // ADR-0041')],
   ['i18n has mirrorLabel/mirrorMore ja+en', html.includes("mirrorLabel:'ボード上の図形一覧'") && html.includes("mirrorLabel:'Shapes on the board'")],
@@ -722,7 +722,7 @@ const checks = [
   ['.excalidraw file entry points', html.includes("f.name.endsWith('.excalidraw')") && html.includes('.excalidraw,.drawio')],
   ['.drawio file entry points + parser (ADR-0203)', html.includes("f=>/\\.(drawio|dio)$/i.test(f.name)")&&html.includes('function drawioToShapes')],
   ['excalidraw lineHeight/fontFamily/verticalAlign round-trip (ADR-0242..0244)', html.includes("lineHeight:s.lineH||1.25")&&html.includes("o.lineH=_min(4,_max(0.5,e.lineHeight))")&&html.includes("fontFamily:s.font==='mono'?3:2")&&html.includes("verticalAlign:s.valign||'middle'")],
-  ['excalidraw locked round-trips s.locked (ADR-0241)', html.includes("locked:!!s.locked},over)")&&html.includes("if(e.locked)s.locked=1")],
+  ['excalidraw locked round-trips s.locked (ADR-0241)', html.includes("locked:!!_lk(s)},over)")&&html.includes("if(e.locked)s.locked=1")],
   ['drawio visible=0 attr round-trips s.visible===0 (ADR-0245)', html.includes("s.visible===0?' visible=\"0\"':'")&&html.includes("_ga(c,'visible')==='0'")],
   ['drawio shadow=1 round-trips s.shadow (ADR-0246)', html.includes("r+='shadow=1;'")&&html.includes("sty.shadow==='1'")],
   ['drawio fontColor ↔ text/sticky s.stroke (ADR-0247)', html.includes("sty+='fontColor='+s.stroke")&&html.includes("sty.fontColor!=='none'")],
@@ -816,7 +816,7 @@ const checks = [
   ['conn/box label widths memoized on WeakMap (ADR-0252)', html.includes('_connLabelMeasure')&&html.includes('_clCache')],
   ['drawio edge label styling: labelBackgroundColor/fontSize/fontStyle (ADR-0249)', html.includes("labelBackgroundColor='+s.fill")&&html.includes("sty.labelBackgroundColor&&sty.labelBackgroundColor!=='none'")],
   ['drawio parent-relative offsets resolved (ADR-0240)', html.includes("const _geo=_mP(),_par=_mP();")&&html.includes("const _o=off(_ga(c,'id'));")&&html.includes("x=_o.x+(_doff.get(c)||0)+(+_ga(g,'x')||0)")],
-  ['frame label italic/under/strike (ADR-0204)', html.includes("600 ${fs}px")&&html.includes("s.type!=='frame'&&!s.label)||s.locked)return;   // ADR-0170/0204")],
+  ['frame label italic/under/strike (ADR-0204)', html.includes("600 ${fs}px")&&html.includes("s.type!=='frame'&&!s.label)||_lk(s))return;   // ADR-0170/0204")],
   ['letter-spacing cycle — canvas ctx+SVG+style-copy (ADR-0205)', html.includes("function cycleSpacing()")&&html.includes("c.letterSpacing=(s.spacing||0)+'px'")&&html.includes('_svgLs(s)')&&html.includes('spacing:sh.spacing')],
   ['elbow corner rounding canvas+SVG + cycleCorner gate (ADR-0207)', html.includes('function _polylineR')&&html.includes('_polylineRd(pts,ox,oy,s.r)')&&html.includes("connOk=(_conn(s.type))&&s.elbow")],
   ['text word-wrap toggle + canvas/SVG wrap (ADR-0208)', html.includes('s.wrap?wrapTextCached')&&html.includes('s.wrap?wrapText(_St')&&html.includes("['ctxWrap','',toggleWrap]")],
@@ -826,7 +826,7 @@ const checks = [
   ['shadow on text/conns canvas+SVG + gate (ADR-0211)', html.includes("s.type!=='text'&&s.type!=='line'&&s.type!=='arrow'")&&html.includes('label never shadows')&&html.includes('${dA}${a}${_sh}/>`);')],
   ['conn label honours lineH canvas+SVG (ADR-0212)', html.includes('llh=fs*(s.lineH||1.25)')&&html.includes('lh2=fs*(s.lineH||1.25)')],
   ['pin/unpin anchor via ctx for touch/keyboard (ADR-0213)', html.includes('function pinAnchor()')&&html.includes("['ctxPinAnchor','',pinAnchor]")&&html.includes('px=k===\'a\'?e.x1:e.x2')],
-  ['_bindAt grid-accelerated candidate scan (ADR-0214)', html.includes('const cands=[..._queryGrid(_grid,{x,y})]')&&html.includes('const ok=s=>{const t=s.type;return t!==\'line\'&&t!==\'arrow\'&&t!==\'pen\'&&s.visible!==0}')],
+  ['_bindAt grid-accelerated candidate scan (ADR-0214)', html.includes('const cands=[..._queryGrid(_grid,{x,y})]')&&html.includes('const ok=s=>{const t=s.type;return t!==\'line\'&&t!==\'arrow\'&&t!==\'pen\'&&_sv(s)}')],
   ['modal focus capture/restore + summary tabbable (ADR-0215)', html.includes('_captureFocus()')&&html.includes('this._restoreFocus()')&&html.includes('select,textarea,summary,[tabindex')],
   ['labelPos drag snaps to 0/.25/.5/.75/1 slots (ADR-0216)', html.includes('for(const slot of[0,0.25,0.5,0.75,1])')],
   ['ctx route-reset reachable when only labelPos/cbend set (ADR-0217)', html.includes('s.labelPos==null&&s.cbend==null)return')&&html.includes('s.labelPos!=null||s.cbend!=null')],
@@ -890,13 +890,13 @@ const checks = [
   ['laser dot drawn during presentation', html.includes("_laser&&Presentation.isActive()") && html.includes("rgba(255,50,50,.75)")],
   ['laser cleared on presentation leave and pointerleave', html.includes("_laser=null;_active=false") && html.includes("pointerleave")],
   ['doLock toggles locked via align op', html.includes("function doLock") && html.includes("op:'align',dir:'lock'")],
-  ['locked shapes have no resize handles', html.includes("function getHandles(s){\n  if(s.locked)return [];")],
+  ['locked shapes have no resize handles', html.includes("function getHandles(s){\n  if(_lk(s))return [];")],
   ['doMove skips locked shapes', html.includes("if(!sh||sh.locked)continue")],
   ['endSelect move op filters out locked shapes', html.includes("filter(id=>!byId(id)?.locked)")],
   ['locked hover shows not-allowed cursor', html.includes("top.locked?'not-allowed':'move'")],
   ['lock/unlock ctx labels in ja and en', html.includes("ctxLock:'ロック'") && html.includes("ctxLock:'Lock'")],
   ['lock context-menu entry toggles label by locked state', html.includes("?'ctxUnlock':'ctxLock','',doLock")],
-  ['locked selection drawn with dashed outline, padlock badge', html.includes("const lockedSel=sel.every(s=>s.locked)") && html.includes("if(lockedSel){")],
+  ['locked selection drawn with dashed outline, padlock badge', html.includes("const lockedSel=sel.every(s=>_lk(s))") && html.includes("if(lockedSel){")],
   ['font family cycle via ctx on text/sticky/labels', html.includes("s.font==='mono'")&&html.includes("font:sh.font")&&html.includes('ctxFont')&&html.includes("font-family=\"${_fontFam(s)}\"")],
   ['ctx opacity cycle reaches any unlocked selection', html.includes('function cycleOpacity(){')&&html.includes('ctxOpacity')&&html.includes('applyStyleToSelection({opacity:nxt})')],
   ['frame honours s.fill tint in canvas+SVG', html.includes("c.fillStyle=s.fill&&s.fill!=='none'?s.fill:'rgba(248,250,252,0.6)'")&&html.includes("fill=\"${s.fill||'rgba(248,250,252,0.6)'}\"")],
@@ -934,11 +934,11 @@ const checks = [
   ['swapFillStroke: ⇧X swaps stroke↔fill via style op', html.includes('function swapFillStroke')&&html.includes("k==='x'&&e.shiftKey&&!meta")&&html.includes("const fk=s.type==='sticky'?'color':'fill'")],
   ['digit keys set opacity (Figma)', html.includes("/^[0-9]$/.test(k)&&_selN()")&&html.includes("opacity:k==='0'?1:+k/10")],
   ['image corner radius via cycleCorner + clips', html.includes("if(!boxOk&&!connOk)return;")&&html.includes('clip-path="url(#irc')&&html.includes('roundRect(c,s.x,s.y,s.w,s.h,_cr);c.clip()')],
-  ['label fontSize honored across renderers', html.includes('const fs=s.fontSize||12;')&&html.includes('const fs=s.fontSize||14')&&html.includes("s.type!=='sticky'&&!s.label)||s.locked")],
+  ['label fontSize honored across renderers', html.includes('const fs=s.fontSize||12;')&&html.includes('const fs=s.fontSize||14')&&html.includes("s.type!=='sticky'&&!s.label)||_lk(s)")],
     ['labels honor bold/italic/under/strike (ADR-0170)', html.includes('c.font=_fontStr(s,fs)')&&html.includes('font-weight="600"')&&html.includes('text-decoration=')],
-  ['box/image labels honour s.align (ADR-0171)', html.includes("const al=s.align||'center';")&&html.includes('anc3=')&&html.includes("s.type!=='sticky'&&s.type!=='frame'&&!s.label)||s.locked)return;   // ADR-0171/0197")],
+  ['box/image labels honour s.align (ADR-0171)', html.includes("const al=s.align||'center';")&&html.includes('anc3=')&&html.includes("s.type!=='sticky'&&s.type!=='frame'&&!s.label)||_lk(s))return;   // ADR-0171/0197")],
   ['locked selection shows a padlock badge', html.includes('c.arc(lx+8,ly,4,_PI,0)')&&html.includes("if(lockedSel){")],
-  ['Tab cycling excludes locked+hidden shapes (filter before cycleSel)', html.includes("const ids=_sh().filter(s=>!s.locked&&s.visible!==0).map(s=>s.id)")],
+  ['Tab cycling excludes locked+hidden shapes (filter before cycleSel)', html.includes("const ids=_sh().filter(s=>!_lk(s)&&_sv(s)).map(s=>s.id)")],
   // v1.6.60: bound connectors - arrow/line endpoints follow bound shapes
   ['connEnds helper derives bound endpoints', html.includes("function connEnds") && html.includes("function _edgePt")],
   ['G.bbox line uses connEnds', html.includes("const e=_cE(s);\n      let x=_min(e.x1,e.x2)")&&html.includes('for(const w of _wayArr(s))')],
@@ -976,13 +976,13 @@ const checks = [
   ['⌥C / ⌥V style copy/paste shortcuts', html.includes("k==='c'&&e.altKey") && html.includes("copyStyle") && html.includes("k==='v'&&e.altKey")],
   ['⌘⇧E SVG export shortcut', html.includes("meta&&k==='e'&&e.shiftKey") && html.includes("exportSVG")],
   // v1.6.63: Socratic round 3 - internal consistency + a11y
-  ['doFlip skips locked shapes (consistent with doRotate)', html.includes("const sel=_selL(s=>s&&!s.locked);")],
+  ['doFlip skips locked shapes (consistent with doRotate)', html.includes("const sel=_selL(s=>s&&!_lk(s));")],
   ['doRotate orbits selection about group centre', html.includes("orbit about group centre, like doFlip") && html.includes("Shape.translate(s,nx-cx,ny-cy)")],
   ['search input has localized aria-label', html.includes("_sa(sq,_AL,T.k.search)")],
   ['search Escape returns focus to canvas', html.includes("_ivO();canvas.focus();}") && html.includes("_sqAdvance(ev.shiftKey?-1:1)")],
   // v1.6.64: Socratic round 4 - rotation scope + lock completeness
-  ['doRotate restricted to box shapes (s.w!=null, NaN-safe)', html.includes("_selL(s=>s&&!s.locked&&s.w!=null)")],
-  ['doDelete skips locked shapes', html.includes("function doDelete(){\n  const sel=_selL(s=>s&&!s.locked);")],
+  ['doRotate restricted to box shapes (s.w!=null, NaN-safe)', html.includes("_selL(s=>s&&!_lk(s)&&s.w!=null)")],
+  ['doDelete skips locked shapes', html.includes("function doDelete(){\n  const sel=_selL(s=>s&&!_lk(s));")],
   ['eraser skips locked shapes', html.includes("if(hit&&!hit.locked&&!_eraseBatch.some")],
   // v1.6.65: budget removed - deferred fixes implemented
   ['_edgePt is rotation-aware (projects to true rotated edge)', html.includes("const ub=sh.w!=null?{x:sh.x,y:sh.y,w:sh.w,h:sh.h}:_bb(sh)") && html.includes("const cx=ub.x+ub.w/2,cy=ub.y+ub.h/2,rot=sh.rotate")],
@@ -990,7 +990,7 @@ const checks = [
   ['SVG rotation applies to text/image/sticky/frame', html.includes("font-size=\"${fs}\"${s.bold?' font-weight=\"600\"':''}") && html.includes("href=\"${_esc(s.dataUrl)}\"${_cr2>0?` clip-path=\"url(#irc${_esc(s.id)})\"`:''}${a}${rT}${fT}${_sh}/>")],
   ['minimap applies rotation transform', html.includes("const _mr=s.rotate&&s.w!=null;") && html.includes("if(_mr)sx.restore();")],
   ['minimap renders frame shapes (case frame fallthrough to rect)', html.includes("case 'frame':\n        case 'rect':")],
-  ['describeShape announces locked and rotated state', html.includes("if(s.locked)d+=` ${t('ctxLock')}`;") && html.includes("if(s.rotate)d+=` ${s.rotate}°`;")],
+  ['describeShape announces locked and rotated state', html.includes("if(_lk(s))d+=` ${t('ctxLock')}`;") && html.includes("if(s.rotate)d+=` ${s.rotate}°`;")],
   ['describeShape announces flip/shadow/route (ADR-0414)', html.includes("s.flip&1&&t('ctxFlipH')")&&html.includes("if(s.shadow)d+=` ${t('ctxShadow')}`")&&html.includes("s.elbow?t('ctxElbow'):t('ctxCurve')")&&html.includes("s.fstyle==='hatch'||s.fstyle==='cross'")&&html.includes("if(s.hop)d+=` ${t('ctxHop')}`")],
   ['describeShape announces text/label content for SR', html.includes("const txt=_St(s.text||s.label||'').replace(/\\s+/g,' ').trim();") && html.includes("txt.length>30?txt.slice(0,30)+'…':txt")],
   // v1.6.66: resize object-snap
@@ -1044,7 +1044,7 @@ const checks = [
     html.includes("_sa(canvas,_AL,(T.k[tool]||tool)+' — '+t('canvasHint'))")],
   // v1.7.64 (FT-17)
   ['empty-board hint: draws only when blank, reads emptyHint i18n key',
-    html.includes('function drawEmptyHint(') && html.includes("if(_sh().length===0&&!_df())drawEmptyHint(c,W,H);")
+    html.includes('function drawEmptyHint(') && html.includes("if(_nS()===0&&!_df())drawEmptyHint(c,W,H);")
     && html.includes("c.fillText(t('emptyHint'),")],
   // v1.7.65 (ADR-0012)
   ['theme toggle: applyTheme/toggleTheme/refreshThemeBtn wired, boot restores persisted mode',
@@ -1107,7 +1107,7 @@ const checks = [
   ['sticky branch preserves s.w (no text-width overwrite)', html.includes("if(s.type==='sticky'){") && html.includes("wl=wrapText(s.text||'',_abs(s.w)-pad*2")],
   ['text branch still auto-sizes width', html.includes("}else{\n    const lines=(s.text||'').split('\\n');")],
   // v1.6.73: doAlign skips locked shapes (parity with doDelete/doRotate/doFlip)
-  ['doAlign filters locked shapes', html.includes("const sel=_selL(s=>s&&!s.locked);\n  if(sel.length<2)return;")],
+  ['doAlign filters locked shapes', html.includes("const sel=_selL(s=>s&&!_lk(s));\n  if(sel.length<2)return;")],
   // v1.6.74: _placeCopies remaps connector bindings (sh.a/sh.b) within pasted set
   ['_placeCopies pre-generates idMap for two-pass connector remapping', html.includes("const idMap=_mP();") && html.includes("for(const orig of srcShapes)idMap.set(orig.id,uid());")],
   ['_placeCopies remaps sh.a and sh.b to new ids', html.includes("if(sh.a&&idMap.has(sh.a))sh.a=idMap.get(sh.a);") && html.includes("if(sh.b&&idMap.has(sh.b))sh.b=idMap.get(sh.b);")],
@@ -1172,7 +1172,7 @@ const checks = [
   ['ellipse case renders label', /case 'ellipse':[\s\S]{0,500}_drawBoxLabel\(s,c\);break;/.test(html)],
   // v1.6.89: colour picker coalesces (one undo/sync op per pick, like the sliders)
   ['colour picker captures on focus/pointerdown', html.includes("_on(cp,'focus',()=>_sfbCapture(k));") && html.includes("_on(cp,_PD,()=>_sfbCapture(k));")],
-  ['colour picker input is live-only (no per-input commit)', html.includes("for(const id of _sl()){const s=byId(id);if(s&&!s.locked)s[k]=cp.value}") && !html.includes("applyStyleToSelection({[k]:cp.value})")],
+  ['colour picker input is live-only (no per-input commit)', html.includes("for(const id of _sl()){const s=byId(id);if(s&&!_lk(s))s[k]=cp.value}") && !html.includes("applyStyleToSelection({[k]:cp.value})")],
   ['colour picker flushes one op on change', html.includes("_on(cp,_CH,()=>{_sfbFlush(k,cp.value);_sfbCapture(k);});")],
   // v1.6.76: ⌘⇧L keyboard shortcut for lock/unlock — README claims "全機能キーボード操作可能"
   // but doLock was right-click-only. Fix adds Ctrl+Shift+L → doLock().
@@ -1180,7 +1180,7 @@ const checks = [
   ['lockToggle i18n key present in ja and en', (html.match(/lockToggle:/g)||[]).length>=2],
   ['lockToggle in help grid', html.includes("t('lockToggle')")],
   // v1.7.06: doCopy excludes locked shapes (parity with doDelete/doMove/doAlign)
-  ['doCopy expands frame children and excludes locked shapes', html.includes("const sel=[...withFrameChildren(_sl())].map(byId).filter(s=>s&&!s.locked);\n  if(!sel.length)return;\n  state.clipboard={shapes:clone(sel)}")],
+  ['doCopy expands frame children and excludes locked shapes', html.includes("const sel=[...withFrameChildren(_sl())].map(byId).filter(s=>s&&!_lk(s));\n  if(!sel.length)return;\n  state.clipboard={shapes:clone(sel)}")],
   // v1.6.77: paste/duplicate is one atomic undo — _placeCopies commits a single addMany op
   ['_placeCopies commits one addMany (not per-shape add)', html.includes("if(built.length)Store.commit({op:'addMany',shapes:built})")],
   ['addMany op has an _apply case', /case 'addMany':/.test(html)],
@@ -1322,7 +1322,7 @@ const checks = [
     html.includes("const MAX_OP_SHAPES=500;")],
   // v1.7.44: nextZ uses reduce to avoid spread RangeError on large boards
   ['nextZ uses reduce (safe for >65K shapes, no spread RangeError)',
-    html.includes("function nextZ(){return _sh().length?_sh().reduce((m,s)=>_max(m,s.z||0),0)+1:1}")],
+    html.includes("function nextZ(){return _nS()?_sh().reduce((m,s)=>_max(m,s.z||0),0)+1:1}")],
   // v1.7.44: _apply replace forward restores afterWc on redo
   ['_apply replace forward: if(forward&&op.afterWc) restores wclock on redo',
     html.includes("if(forward&&op.afterWc)state.wclock=clone(op.afterWc);")],
@@ -1407,7 +1407,7 @@ const checks = [
   // v1.7.58 (ADR-0009): byId() O(1) id index
   ['byId is a lazy Map index invalidated via the shared _invalidateGrid choke point',
     html.includes("function _invalidateGrid(){_grid=null;_idIndex=null;_gridVer++;}") &&
-    html.includes("if(!_idIndex||_idIndex.size!==_sh().length){_idIndex=_mP();for(const s of _sh())_idIndex.set(s.id,s);}")],
+    html.includes("if(!_idIndex||_idIndex.size!==_nS()){_idIndex=_mP();for(const s of _sh())_idIndex.set(s.id,s);}")],
   ['exportPDF convertToBlob rejection routes to the same exportFailed toast as the toBlob(null) path',
     html.includes("off.convertToBlob({type:'image/png'}).then(fin,()=>fin(null));")],
   // v1.7.59 (a11y-audit-2026-07): theme-aware accent-contrast token, no raw --brand outlines left
@@ -7496,7 +7496,7 @@ try {
   // v1.7.06: doCopy must exclude locked shapes (parity with doDelete/doMove/doAlign/doRotate).
   // Before fix: doCopy used .filter(Boolean) — clipboard included locked shapes. Ctrl+X then
   // kept locked shapes on board AND in clipboard, causing duplicate on paste.
-  // After fix: .filter(s=>s&&!s.locked) — locked shapes excluded from clipboard.
+  // After fix: .filter(s=>s&&!_lk(s)) — locked shapes excluded from clipboard.
   {
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const A=Shape.make('rect',{x:0,y:0,w:100,h:100});   // unlocked
@@ -7514,7 +7514,7 @@ try {
 
   // v1.7.05: Tab cycling (cycleSel) must skip locked shapes.
   // The Tab key handler builds ids from state.shapes. Before fix, it used .map(s=>s.id) (no lock
-  // filter), so cycleSel could land on a locked shape. After fix, .filter(s=>!s.locked) is applied.
+  // filter), so cycleSel could land on a locked shape. After fix, .filter(s=>!_lk(s)) is applied.
   // Non-vacuous: assert unfiltered ids include locked B AND cycleSel lands on B (bug reproduced);
   // assert filtered ids exclude B AND cycleSel skips from A straight to C (fix verified).
   {
@@ -7604,7 +7604,7 @@ try {
   // Bug: doGroup builds ids from all of state.selection without a locked filter. A locked
   // shape's groupId gets set by the group op, which also means doUngroup can remove its groupId
   // — changing locked shape state contrary to the lock's intent.
-  // Fix: filter with `!s.locked` in doGroup's ids computation.
+  // Fix: filter with `!_lk(s)` in doGroup's ids computation.
   {
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const GA=Shape.make('rect',{x:0,y:0,w:50,h:50});
@@ -7647,7 +7647,7 @@ try {
   // Bug: size/opacity/color input events directly mutate sh[prop] without a locked check,
   // so dragging a slider with a locked shape selected permanently changes its property.
   // _sfbCapture also lacked a locked filter, so _sfbFlush would commit a style op for it.
-  // Fix: add `&&!s.locked` to all three direct-mutation loops; add `&&!s.locked` to _sfbCapture.
+  // Fix: add `&&!_lk(s)` to all three direct-mutation loops; add `&&!_lk(s)` to _sfbCapture.
   {
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const SLA=Shape.make('rect',{x:0,y:0,w:50,h:50});SLA.size=4;SLA.locked=true;
@@ -7661,7 +7661,7 @@ try {
     // Simulate input-event mutation: only unlocked shape should mutate
     const slaLive=state.shapes.find(s=>s.id===SLA.id);
     const slbLive=state.shapes.find(s=>s.id===SLB.id);
-    // (Direct mutation in real code: `if(s&&!s.locked)s.size=value` — skips SLA)
+    // (Direct mutation in real code: `if(s&&!_lk(s))s.size=value` — skips SLA)
     if(slaLive&&!slaLive.locked)slaLive.size=12; // locked — skipped
     if(slbLive&&!slbLive.locked)slbLive.size=12; // unlocked — changed
     _sfbFlush('size',12);
@@ -7783,7 +7783,7 @@ try {
   // v1.7.13a: doUngroup must skip locked shapes (parity with doGroup/doAlign/doDelete).
   // Bug: doUngroup iterates ALL state.shapes and strips groupId from any shape in a selected
   // group, without a locked check. A locked shape's groupId gets cleared against the lock's intent.
-  // Fix: add `&&!s.locked` to the condition in doUngroup's for-loop.
+  // Fix: add `&&!_lk(s)` to the condition in doUngroup's for-loop.
   // Setup: group 3 unlocked shapes, then lock one, then ungroup — the locked one must keep groupId.
   {
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
@@ -7817,7 +7817,7 @@ try {
   // Bug: withFrameChildren expands the frame selection to include all contained children
   // (locked or not), but doDuplicate's .filter(Boolean) does not filter locked shapes out.
   // A locked child inside a frame gets duplicated when the frame is duplicated, bypassing lock.
-  // Fix: change .filter(Boolean) to .filter(s=>s&&!s.locked) in doDuplicate.
+  // Fix: change .filter(Boolean) to .filter(s=>s&&!_lk(s)) in doDuplicate.
   {
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const DFR=Shape.make('frame',{x:0,y:0,w:300,h:300});
