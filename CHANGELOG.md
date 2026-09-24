@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.487] - 2026-09-23
+
+### Fixed
+- `_sendSnapshot` throttle 超過時に deferred resend を1件予約 — join 直後の
+  hello/sync-req が throttle window に被ると 2ピア room で盤面が届かない
+  飢餓バグを解消 (ADR-0452)
+
 ## [1.7.486] - 2026-09-23
 
 ### Changed

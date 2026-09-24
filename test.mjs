@@ -1024,7 +1024,7 @@ const checks = [
     && html.includes('if(_pr().size>=MAX_PEERS)return;')
     && html.includes("typeof msg.peer!=='string'||_ln(msg.peer)>MAX_PEER_ID_LEN")],
   ['snapshot amplification: _sendSnapshot throttled',
-    html.includes('_lastSnapAt:0') && html.includes('if(now-this._lastSnapAt<1000)return;')],
+    html.includes('_lastSnapAt:0,_snapT:0') && html.includes('if(w>0){if(!this._snapT)this._snapT=_stO(()=>{this._snapT=0;this._sendSnapshot()},w);return}')],
   ['importBoard: FileReader onerror toasts instead of failing silently',
     html.includes("r.onerror=()=>_e(t(_IB));")],
   ['docName clamped to 80 chars on all four intake paths (import/IDB/backup/hash)',

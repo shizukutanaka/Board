@@ -851,7 +851,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.486';
+const V='1.7.487';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -7896,10 +7896,13 @@ const Net={
   // Throttled: hello/sync-req are attacker-controllable and each snapshot clones the whole
   // board twice — unthrottled, a hostile peer gets a cheap-request/expensive-response
   // amplifier. Honest peers only need one snapshot at join time.
-  _lastSnapAt:0,
+  _lastSnapAt:0,_snapT:0,
   _sendSnapshot(){
-    const now=_now();
-    if(now-this._lastSnapAt<1000)return;
+    const now=_now(),w=1000-(now-this._lastSnapAt);
+    // ADR-0452: a throttled hello/sync-req used to be dropped — the joiner only
+    // sent them once, so in a 2-peer room the board could never arrive. Queue a
+    // single deferred resend at the window edge instead.
+    if(w>0){if(!this._snapT)this._snapT=_stO(()=>{this._snapT=0;this._sendSnapshot()},w);return}
     this._lastSnapAt=now;
     this._send(this._snapshotMsg());
   },
