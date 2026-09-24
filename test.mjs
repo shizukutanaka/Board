@@ -499,10 +499,10 @@ const checks = [
   ['directional marquee (right-to-left = intersect)', html.includes('const cross=m.x2<m.x1')&&html.includes('G.marqueeHit(s,r)')],
   ['marker tool — pen variant with hl flag + flat pressure', html.includes("k:'marker'")&&html.includes('d.hl=1;d.size=8;d.opacity=0.4')&&html.includes("data-tool=\"marker\"")],
   ['click-click line/arrow — second click commits (lineClick mode)', html.includes('ptr.lineClick=true;break')&&html.includes('ptr.lineClick){ptr.lineClick=false;endLineLike()')],
-  ['marquee skips locked shapes (Figma/draw.io parity)', html.includes('if(hit&&!s.locked&&s.visible!==0)_sl().add(s.id)')],
+  ['marquee skips locked shapes (Figma/draw.io parity)', html.includes('if(hit&&!s.locked&&s.visible!==0)_sad(s.id)')],
   ['Alt during move suppresses all snapping (draw.io parity)', html.includes('moveDelta(wp,shift,alt)')&&html.includes('!alt&&!state.snap')],
-  ['shift-click on selected shape removes it (toggle-off)', html.includes('alreadySel&&e.shiftKey')&&html.includes('_sl().delete(id)')],
-  ['shift-marquee adds to selection (Figma parity)', html.includes('if(!shift)_sl().clear()')],
+  ['shift-click on selected shape removes it (toggle-off)', html.includes('alreadySel&&e.shiftKey')&&html.includes('_sdl(id)')],
+  ['shift-marquee adds to selection (Figma parity)', html.includes('if(!shift)_scl()')],
   ['ctx + ⇧R rotate-90 (draw.io parity)', html.includes("['ctxRotate90','⇧R',()=>doRotate(90)]")&&html.includes("k==='r'&&e.shiftKey")&&html.includes('ctxRotate90:')],
   ['curve-bend drag — s.cbend offsets the control point', html.includes("dragKind='cbend'")&&html.includes('_curveCtrl(e,s.cbend)')&&html.includes('sh.cbend=snapV')],
   ['flip mirrors elbow s.bend on the matching axis', html.includes('_elbowTrunk(s):null')&&html.includes("(axis==='h')===!!trVert")],
@@ -679,7 +679,7 @@ const checks = [
   ['click/group select announces', html.includes('_aS();   // ADR-0037: click/group select was SR-silent')],
   ['marquee result announces', html.includes('_aS();   // ADR-0037: announce the marquee result')],
   ['cmd+A announces selection', html.includes("if(_selN())_aS();_iv()}")],
-  ['Escape announces deselect when selection existed', html.includes("if(_selN())_tst(t('selNone'));_sl().clear()")],
+  ['Escape announces deselect when selection existed', html.includes("if(_selN())_tst(t('selNone'));_scl()")],
   ['i18n has selCount/selNone ja+en', html.includes("selCount:'個を選択'") && html.includes("selCount:' selected'")],
   // v1.7.96: ADR-0038 share-link reject paths all toast + clear hash
   ['importFromHash hoists clearHash helper', html.includes("const clearHash=()=>{try{history.replaceState(null,'',location.pathname)}catch(_){}};")],
@@ -1093,8 +1093,8 @@ const checks = [
   ['context menu deduplicates consecutive separators', html.includes(".filter((it,i,a)=>!(it==='sep'&&(i===0||i===a.length-1||a[i-1]==='sep')))")],
   ['doDuplicate does not clobber clipboard (uses _placeCopies, not state.clipboard=)', html.includes("_placeCopies(sel,_dd().x,_dd().y):_placeCopies(sel);   // independent of _cl()") && html.includes("function _placeCopies(srcShapes")],
   // v1.6.71: import sites clear stale selection + wclock (mirror replace op's _apply)
-  ['importBoard clears selection+wclock on whole-board swap', html.includes("state.shapes=shapes.map(clone);_iG();   // ADR-0009\n      // Match the replace op's _apply") && html.includes("_sl().clear();state.wclock={};\n      if(typeof d.docName")],
-  ['importFromHash clears selection+wclock on whole-board swap', html.includes("state.shapes=valid.map(clone);_iG();_setDocName(") && /state\.shapes=valid\.map\(clone\)[\s\S]{0,900}_sl\(\)\.clear\(\);state\.wclock=\{\};/.test(html)],
+  ['importBoard clears selection+wclock on whole-board swap', html.includes("state.shapes=shapes.map(clone);_iG();   // ADR-0009\n      // Match the replace op's _apply") && html.includes("_scl();state.wclock={};\n      if(typeof d.docName")],
+  ['importFromHash clears selection+wclock on whole-board swap', html.includes("state.shapes=valid.map(clone);_iG();_setDocName(") && /state\.shapes=valid\.map\(clone\)[\s\S]{0,900}_scl\(\);state\.wclock=\{\};/.test(html)],
   // v1.6.71: presentation-mode guard precedes editing shortcuts (no undo mid-slideshow)
   ['presentation guard runs before undo/redo/select-all shortcuts', /if\(Presentation\.isActive\(\)\)\{[\s\S]{0,260}return;\n  \}[\s\S]{0,700}if\(meta&&k==='z'&&!e\.shiftKey\)/.test(html)],
   // v1.6.71: export canvas clamped to browser limits

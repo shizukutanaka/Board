@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.454] - 2026-09-23
+
+### Internal
+- `_scl`/`_sad`/`_sdl` shorthand 追加 (~120B 回収) — selection 書込み経路を _ss とあわせて完全集約
+
 ## [1.7.453] - 2026-09-23
 
 ### Internal
