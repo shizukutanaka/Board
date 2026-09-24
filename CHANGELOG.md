@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.377] - 2026-09-24
+
+### Changed
+- `preventDefault` を `_pd()` に集約 (~0.9KB 削減、ADR-0326)
+
 ## [1.7.376] - 2026-09-24
 
 ### Fixed
