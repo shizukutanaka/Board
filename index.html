@@ -852,7 +852,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.506';
+const V='1.7.507';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -7800,7 +7800,7 @@ const Net={
         // Restrict to 'add' ops: _snapshotMsg() only emits adds; accepting other
         // op types here would let a malicious peer embed clear/del/upd inside a
         // snapshot message and execute them under the snapshot code path.
-        else if(_iA(msg.ops))for(const op of msg.ops.slice(0,MAX_OP_SHAPES)){
+        else if(_iA(msg.ops))for(const op of msg.ops.slice(0,SHARE_MAX_SHAPES)){   // ADR-0474
           this._mergeSnapshotOp(op);   // ADR-0058: add unknown shapes, LWW-merge known ones
         }
         break;
@@ -7912,7 +7912,7 @@ const Net={
     // Validate snapshot shapes before adopting
     const shapes=msg.shapes;
     if(!_iA(shapes))return;
-    const valid=shapes.slice(0,MAX_OP_SHAPES).map(s=>this._attachShape(s)).filter(validShape);
+    const valid=shapes.slice(0,SHARE_MAX_SHAPES).map(s=>this._attachShape(s)).filter(validShape);   // ADR-0474
     state.shapes=clone(valid);_iG();_pcC();   // ADR-0009
     _sz();
     if(_iS(msg.name))_setDocName(msg.name.slice(0,80));   // ADR-0402
