@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.207]
+
+### 修正
+- **非表示図形が検索ヒット・バインド対象になる残存経路**
+  (ADR-0150)。検索リスト構築と `_bindAt` の候補走査が
+  `s.visible===0` をスキップするよう統一。
+
 ## [1.7.206]
 
 ### 修正

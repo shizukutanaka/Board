@@ -199,6 +199,7 @@ Board/
 - [ADR-0147](docs/ADR-0147-translate-elbow-bend.md) 移動時のエルボー trunk 追従
 - [ADR-0148](docs/ADR-0148-gresize-elbow-bend.md) グループリサイズ時の trunk 追従
 - [ADR-0149](docs/ADR-0149-image-flip-pixels.md) 画像フリップのピクセル反転
+- [ADR-0150](docs/ADR-0150-hidden-consistency.md) 非表示図形の検索/バインド除外
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

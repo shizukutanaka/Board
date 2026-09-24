@@ -774,7 +774,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.206';
+const V='1.7.207';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3311,7 +3311,7 @@ function _sqMatches(){
   const q=_sq.toLowerCase();
   if(_sqVer===_gridVer&&_sqQ===q)return _sqList;
   _sqList=[];
-  for(const s of state.shapes){if((s.label||s.text||s.type||'').toLowerCase().includes(q))_sqList.push(s)}
+  for(const s of state.shapes){if(s.visible!==0&&(s.label||s.text||s.type||'').toLowerCase().includes(q))_sqList.push(s)}
   _sqVer=_gridVer;_sqQ=q;
   return _sqList;
 }
@@ -4675,7 +4675,7 @@ function _endPointBind(sh,handle){
 function _bindAt(x,y){
   for(let i=state.shapes.length-1;i>=0;i--){
     const s=state.shapes[i],t=s.type;
-    if(t==='line'||t==='arrow'||t==='pen')continue;
+    if(t==='line'||t==='arrow'||t==='pen'||s.visible===0)continue;   // ADR-0150
     const b=G.bbox(s);
     if(x>=b.x&&y>=b.y&&x<=b.x+b.w&&y<=b.y+b.h)return s.id;
   }
