@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.298] - 2026-09-24
+
+### Added
+- .excalidraw 書き出し/読み込み: locked・lineHeight・fontFamily・
+  verticalAlign を往復 (ADR-0241..0244)
+
 ## [1.7.297] - 2026-09-24
 
 ### Fixed

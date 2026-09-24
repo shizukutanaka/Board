@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.297';
+const V='1.7.298';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6311,14 +6311,14 @@ function excScene(shapes){
     strokeWidth:s.size||2,strokeStyle:s.dash===1?'dashed':s.dash===2?'dotted':'solid',
     roughness:0,opacity:Math.round((s.opacity==null?1:s.opacity)*100),
     angle:(s.rotate||0)*Math.PI/180,seed:0,version:1,versionNonce:0,
-    isDeleted:false,boundElements:null,updated:0,link:null,locked:false},over);
+    isDeleted:false,boundElements:null,updated:0,link:null,locked:!!s.locked},over);   // ADR-0241
   const gids={};for(const s of shapes)if(s.groupId)(gids[s.id]=gids[s.id]||[]).push(s.groupId);
   const _excTid=new Map();   // ADR-0225: sticky rect id → its container text id
   const _ct=(s,tid,txt,bL,fs)=>{   // shared container-text element (sticky body / box label)
     _excTid.set(s.id,tid);
     return{id:tid,type:'text',x:s.x+4,y:s.y+4,
     width:Math.abs(s.w||120)-8,height:Math.abs(s.h||80)-8,text:txt,originalText:txt,
-    fontSize:fs||s.fontSize||16,textAlign:s.align||'center',verticalAlign:'middle',lineHeight:1.25,baseline:0,...(bL?{bLabel:1}:{}),
+    fontSize:fs||s.fontSize||16,textAlign:s.align||'center',verticalAlign:s.valign||'middle',lineHeight:s.lineH||1.25,baseline:0,fontFamily:s.font==='mono'?3:2,...(bL?{bLabel:1}:{}),   // ADR-0242/0243/0244
     strokeColor:'#1e1e1e',backgroundColor:'transparent',fillStyle:'solid',strokeWidth:1,strokeStyle:'solid',
     roughness:0,opacity:100,angle:(s.rotate||0)*Math.PI/180,seed:0,version:1,versionNonce:0,isDeleted:false,
     containerId:s.id,boundElements:null,updated:0,link:null,locked:false,groupIds:gids[s.id]||[]};};
@@ -6341,7 +6341,7 @@ function excScene(shapes){
       case'text':
         els.push(E(s,{type:'text',x:s.x,y:s.y,width:s.w||0,height:s.h||0,
           text:s.text||'',originalText:s.text||'',fontSize:s.fontSize||16,
-          textAlign:s.align||'left',lineHeight:1.25,baseline:0}));break;
+          textAlign:s.align||'left',lineHeight:s.lineH||1.25,baseline:0,fontFamily:s.font==='mono'?3:2}));break;   // ADR-0242/0243
       case'pen':{
         const xs=s.pts.map(p=>p[0]),ys=s.pts.map(p=>p[1]);
         const x0=Math.min(...xs),y0=Math.min(...ys);
@@ -6785,6 +6785,7 @@ function excToShapes(txt){
     if(Number.isFinite(e.strokeWidth)&&e.strokeWidth>0)o.size=e.strokeWidth;
     if(Number.isFinite(e.opacity)&&e.opacity<100)o.opacity=Math.max(0.05,e.opacity/100);
     if(e.strokeStyle==='dashed')o.dash=1;else if(e.strokeStyle==='dotted')o.dash=2;
+    if(Number.isFinite(e.lineHeight)&&e.lineHeight!==1.25)o.lineH=Math.min(4,Math.max(0.5,e.lineHeight));   // ADR-0242
     // ADR-0230: excalidraw fidelity — hatch fills, roundness, align, arrowheads
     if(e.fillStyle==='hachure')o.fstyle='hatch';else if(e.fillStyle==='cross-hatch')o.fstyle='cross';
     if(e.roundness)o.r=8;
@@ -6807,6 +6808,7 @@ function excToShapes(txt){
         if(!content)break;
         s=Shape.make('text',{x:e.x,y:e.y,w:W||Math.min(600,Math.max(60,content.length*fs*0.55)),h:H||fs*1.4,text:content.slice(0,2000),fontSize:fs});
         if(e.textAlign==='left'||e.textAlign==='right')s.align=e.textAlign;   // ADR-0230
+        if(e.fontFamily===3)s.font='mono';else if(e.fontFamily===1||e.fontFamily===5)s.font='serif';   // ADR-0243
         break;
       }
       case'freedraw':case'line':case'arrow':{
@@ -6838,7 +6840,7 @@ function excToShapes(txt){
         break;}
       default:break;   // unknown — skip
     }
-    if(s){if(r&&s.w!=null)s.rotate=r;Object.assign(s,S);shapes.push(s);
+    if(s){if(r&&s.w!=null)s.rotate=r;if(e.locked)s.locked=1;Object.assign(s,S);shapes.push(s);   // ADR-0241
       // ADR-0223: line/arrow keep a back-ref to their exc element so
       // start/endBinding (element ids) can resolve after every vertex exists
       if(s.type==='line'||s.type==='arrow')_excBnd.push([s,e]);
@@ -6858,10 +6860,14 @@ function excToShapes(txt){
     // the sticky fold below stays rect-only since stickies export as rectangles
     if(e&&e.bLabel){p.label=s.text.slice(0,240);
       if(s.fontSize)p.fontSize=s.fontSize;
+      if(/^(top|middle|bottom)$/.test(e.verticalAlign))p.valign=e.verticalAlign;   // ADR-0244
+      if(e.fontFamily===3)p.font='mono';else if(e.fontFamily===1||e.fontFamily===5)p.font='serif';   // ADR-0243
       shapes.splice(shapes.indexOf(s),1);continue;}
     if(p.type!=='rect')continue;
     p.type='sticky';p.text=s.text;
     if(s.fontSize)p.fontSize=s.fontSize;
+    if(e&&/^(top|middle|bottom)$/.test(e.verticalAlign))p.valign=e.verticalAlign;   // ADR-0244
+    if(e&&e.fontFamily===3)p.font='mono';else if(e&&(e.fontFamily===1||e.fontFamily===5))p.font='serif';   // ADR-0243
     if(p.fill!=null){p.color=p.fill;delete p.fill}
     shapes.splice(shapes.indexOf(s),1);
   }
