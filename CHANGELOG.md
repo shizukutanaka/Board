@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.344] - 2026-09-24
+
+### Changed
+- `getCSS('--paper'/'--accent-contrast')` を `_p()`/`_ac()` に集約
+  (raw -355B、ADR-0292)
+
 ## [1.7.343] - 2026-09-24
 
 ### Added

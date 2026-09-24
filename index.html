@@ -776,9 +776,10 @@ body{visibility:visible}
 // Board — MIT License. See LICENSE file.
 'use strict';
 const _g=id=>document.getElementById(id);   // ADR-0289
+const _p=()=>getCSS('--paper'),_ac=()=>getCSS('--accent-contrast');   // ADR-0292
 
 // ====================== CONSTANTS ======================
-const V='1.7.343';
+const V='1.7.344';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2273,7 +2274,7 @@ function _mirrorGo(id){
 let _lastVp=null;   // ADR-0028: the effective viewport the scene canvas currently represents
 function draw(){
   const W=canvas.width,H=canvas.height;
-  const bg=getCSS('--paper');
+  const bg=_p();
   const v=state.viewport;
   const dmg=_damage;
   const z=v.zoom*DPR;
@@ -2425,7 +2426,7 @@ function drawOverlay(){
   const _qs=_qconnShape();                                             // ADR-0070
   if(_qs){
     c.save();
-    c.fillStyle=getCSS('--accent-contrast');
+    c.fillStyle=_ac();
     c.strokeStyle='#fff';c.lineWidth=1.5;
     for(const d of _qdots(_qs)){
       const sp=G.w2s(d);
@@ -2438,14 +2439,14 @@ function drawOverlay(){
     if(t){
       const b=G.bbox(t),p1=G.w2s({x:b.x,y:b.y}),p2=G.w2s({x:b.x+b.w,y:b.y+b.h});
       c.save();
-      c.strokeStyle=getCSS('--accent-contrast');c.lineWidth=2;c.setLineDash([6,4]);
+      c.strokeStyle=_ac();c.lineWidth=2;c.setLineDash([6,4]);
       c.strokeRect(p1.x-3,p1.y-3,p2.x-p1.x+6,p2.y-p1.y+6);
       c.restore();
     }
   }
   if(state.marquee)drawMarquee(c);
   if(state.lasso&&state.lasso.length>1){                            // ADR-0158
-    c.save();c.fillStyle='rgba(0,196,204,.08)';c.strokeStyle=getCSS('--accent-contrast');c.lineWidth=1;c.setLineDash([4,4]);
+    c.save();c.fillStyle='rgba(0,196,204,.08)';c.strokeStyle=_ac();c.lineWidth=1;c.setLineDash([4,4]);
     c.beginPath();const _p0=G.w2s(state.lasso[0]);c.moveTo(_p0.x,_p0.y);
     for(let i=1;i<state.lasso.length;i++){const p=G.w2s(state.lasso[i]);c.lineTo(p.x,p.y)}
     c.closePath();c.fill();c.stroke();c.restore();
@@ -2492,12 +2493,12 @@ function drawPeerCursors(c){
     const sp=G.w2s(p.cursor);
     c.beginPath();c.arc(sp.x,sp.y,5,0,PI2);
     c.fillStyle=p.color;c.fill();
-    c.lineWidth=1.5;c.strokeStyle=getCSS('--paper');c.stroke();
+    c.lineWidth=1.5;c.strokeStyle=_p();c.stroke();
   }
 }
 function drawGuides(c){
   if(!state.guides||!state.guides.length)return;
-  c.strokeStyle=getCSS('--accent-contrast');c.lineWidth=1;c.setLineDash([4,4]);   // a11y-audit-2026-07
+  c.strokeStyle=_ac();c.lineWidth=1;c.setLineDash([4,4]);   // a11y-audit-2026-07
   for(const g of state.guides){
     const p1=G.w2s({x:g.x1,y:g.y1}),p2=G.w2s({x:g.x2,y:g.y2});
     c.beginPath();c.moveTo(p1.x,p1.y);c.lineTo(p2.x,p2.y);c.stroke();
@@ -2517,7 +2518,7 @@ function _drawMeasure(c){
   else if(b.x+b.w<a.x)segs.push({x1:b.x+b.w,y1:ymid,x2:a.x,y2:ymid});
   if(a.y+a.h<b.y)segs.push({x1:xmid,y1:a.y+a.h,x2:xmid,y2:b.y});
   else if(b.y+b.h<a.y)segs.push({x1:xmid,y1:b.y+b.h,x2:xmid,y2:a.y});
-  c.save();c.strokeStyle=getCSS('--accent-contrast');c.lineWidth=1;
+  c.save();c.strokeStyle=_ac();c.lineWidth=1;
   c.font='11px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';
   for(const s of segs){
     const p1=G.w2s({x:s.x1,y:s.y1}),p2=G.w2s({x:s.x2,y:s.y2});
@@ -2595,7 +2596,7 @@ function _drawImgLabel(s,c){
   const lh=fs*(s.lineH||1.25),maxL=Math.max(1,Math.floor((s.h-4)/lh));
   if(lines.length>maxL){lines=lines.slice(0,maxL);lines[maxL-1]+='…'}
   const sh_=lines.length*lh+4,sy=s.valign==='top'?s.y:s.y+s.h-sh_;   // ADR-0179
-  c.fillStyle=s.fill&&s.fill!=='none'?s.fill:getCSS('--paper')||'#fff';c.globalAlpha=0.85;   // ADR-0288
+  c.fillStyle=s.fill&&s.fill!=='none'?s.fill:_p()||'#fff';c.globalAlpha=0.85;   // ADR-0288
   c.fillRect(s.x,sy,s.w,sh_);
   c.globalAlpha=1;c.fillStyle=s.stroke||'#0F172A';
   const al2=s.align||'center';   // ADR-0171
@@ -2688,7 +2689,7 @@ function _drawConnLabel(s,c){
   const lns=String(s.label).split('\n'),llh=fs*(s.lineH||1.25),pad=4;   // ADR-0210/0212
   const _lm=_connLabelMeasure(s,c,lns,fs),w=_lm.w;             // ADR-0252: measureText was per-frame per-line
   const th=lns.length*llh;
-  if(s.fill!=='none'){c.fillStyle=s.fill||getCSS('--paper')||'#fff';   // ADR-0288
+  if(s.fill!=='none'){c.fillStyle=s.fill||_p()||'#fff';   // ADR-0288
   c.fillRect(mx-w/2-pad,my-th/2,w+pad*2,th)}
   c.fillStyle=s.stroke||'#0F172A';
   for(let i=0;i<lns.length;i++)c.fillText(lns[i],mx,my+(i-(lns.length-1)/2)*llh);
@@ -3487,7 +3488,7 @@ function drawSelection(c){
   const x=p1.x,y=p1.y,w=p2.x-p1.x,h=p2.y-p1.y;
   const lockedSel=sel.every(s=>s.locked);
   const single=state.selection.size===1?sel[0]:null;
-  c.strokeStyle=getCSS('--accent-contrast');   // a11y-audit-2026-07
+  c.strokeStyle=_ac();   // a11y-audit-2026-07
   c.lineWidth=1.5;c.setLineDash(lockedSel?[5,4]:[]);
   if(single&&single.rotate&&single.w!=null){
     // rotated box: trace the rotated rectangle so the outline hugs the shape
@@ -3503,7 +3504,7 @@ function drawSelection(c){
     // ADR-0172: padlock badge (draw.io parity) — the dashed outline alone
     // doesn't clearly read as "this is locked". Top-left, inside the bbox.
     const lx=x+3,ly=y+3;
-    c.fillStyle=getCSS('--paper');c.strokeStyle=getCSS('--brand-ink');c.lineWidth=1.5;
+    c.fillStyle=_p();c.strokeStyle=getCSS('--brand-ink');c.lineWidth=1.5;
     c.beginPath();roundRect(c,lx,ly,16,12,2);c.fill();c.stroke();
     c.beginPath();c.arc(lx+8,ly,4,Math.PI,0);c.stroke();               // shackle
     c.fillStyle=getCSS('--ink');
@@ -3513,7 +3514,7 @@ function drawSelection(c){
   if(state.selection.size===1){
     const sh=sel[0];
     const hs=HANDLE_SIZE;
-    c.fillStyle=getCSS('--paper');
+    c.fillStyle=_p();
     c.strokeStyle=getCSS('--brand-ink');  // dark ring: AAA non-text contrast vs cyan
     c.lineWidth=1.5;
     for(const h of getHandles(sh)){
@@ -3525,9 +3526,9 @@ function drawSelection(c){
     const rh=getRotHandle(sh);
     if(rh){
       const kp=G.w2s({x:rh.x,y:rh.y}),ap=G.w2s({x:rh.ax,y:rh.ay});
-      c.strokeStyle=getCSS('--accent-contrast');c.lineWidth=1.5;   // a11y-audit-2026-07
+      c.strokeStyle=_ac();c.lineWidth=1.5;   // a11y-audit-2026-07
       c.beginPath();c.moveTo(ap.x,ap.y);c.lineTo(kp.x,kp.y);c.stroke();
-      c.fillStyle=getCSS('--paper');c.strokeStyle=getCSS('--brand-ink');
+      c.fillStyle=_p();c.strokeStyle=getCSS('--brand-ink');
       c.beginPath();c.arc(kp.x,kp.y,hs/2,0,PI2);c.fill();c.stroke();
     }
     if(sh.elbow){                        // ADR-0072: trunk-position handle
@@ -3540,7 +3541,7 @@ function drawSelection(c){
     if(sh.label&&(sh.type==='line'||sh.type==='arrow')){            // ADR-0117: draggable label anchor
       const lp=_connLabelXY(sh);
       if(lp){const tp=G.w2s(lp);
-        c.fillStyle=getCSS('--accent-contrast');
+        c.fillStyle=_ac();
         c.beginPath();c.arc(tp.x,tp.y,hs*0.5,0,PI2);c.fill();c.stroke()}
     }
     if((sh.type==='line'||sh.type==='arrow')&&!sh.elbow&&!sh.curve){   // ADR-0090: every vertex + every segment midpoint gets a handle dot
@@ -3563,7 +3564,7 @@ function drawSelection(c){
     // express.
     if(!sel.some(s=>s.rotate)){
       const hs=HANDLE_SIZE;
-      c.fillStyle=getCSS('--paper');c.strokeStyle=getCSS('--brand-ink');c.lineWidth=1.5;
+      c.fillStyle=_p();c.strokeStyle=getCSS('--brand-ink');c.lineWidth=1.5;
       for(const h of getHandles({x:b.x,y:b.y,w:b.w,h:b.h})){
         const sp=G.w2s({x:h.x,y:h.y});
         c.fillRect(sp.x-hs/2,sp.y-hs/2,hs,hs);
@@ -3575,9 +3576,9 @@ function drawSelection(c){
     const gr=_grpRotHandle(b);
     const gkp=G.w2s({x:gr.x,y:gr.y}),gap=G.w2s({x:gr.ax,y:gr.ay});
     const hs2=HANDLE_SIZE;
-    c.strokeStyle=getCSS('--accent-contrast');c.lineWidth=1.5;
+    c.strokeStyle=_ac();c.lineWidth=1.5;
     c.beginPath();c.moveTo(gap.x,gap.y);c.lineTo(gkp.x,gkp.y);c.stroke();
-    c.fillStyle=getCSS('--paper');c.strokeStyle=getCSS('--brand-ink');
+    c.fillStyle=_p();c.strokeStyle=getCSS('--brand-ink');
     c.beginPath();c.arc(gkp.x,gkp.y,hs2/2,0,PI2);c.fill();c.stroke();
   }
 }
@@ -3597,7 +3598,7 @@ function drawMarquee(c){
   const w=Math.abs(p2.x-p1.x),h=Math.abs(p2.y-p1.y);
   c.fillStyle='rgba(0,196,204,.08)';
   c.fillRect(x,y,w,h);
-  c.strokeStyle=getCSS('--accent-contrast');   // a11y-audit-2026-07
+  c.strokeStyle=_ac();   // a11y-audit-2026-07
   c.lineWidth=1;
   c.setLineDash([4,4]);
   c.strokeRect(x,y,w,h);
@@ -4181,7 +4182,7 @@ function openLabelEditor(hit,leftPx,topPx,bold){
   const col=hit.stroke||getCSS(bold?'--accent-contrast':'--ink');   // a11y-audit-2026-07: this is real text (label editor), needs the 4.5:1 text floor too — --accent-contrast clears both themes
   inp.style.cssText=`position:fixed;left:${leftPx}px;top:${topPx}px;`+
     `font:${hit.italic?'italic ':''}${bold?'600 ':''}${hit.fontSize||12}px ${_fontFam(hit)};color:${col};`+   // ADR-0186/0206
-    `background:${getCSS('--paper')};border:1px solid ${col};`+
+    `background:${_p()};border:1px solid ${col};`+
     `padding:2px 6px;outline:none;z-index:9500;min-width:80px;`;
   document.body.appendChild(inp);inp.select();
   _lblTa={inp,hit};_lblVp='';   // ADR-0182: follow the viewport while editing
@@ -6142,7 +6143,7 @@ function _renderPngBlob(shapes,cb,desired){
   const scale=exportScale(w,h,desired||2);
   off.width=w*scale;off.height=h*scale;
   const oc=off.getContext('2d');
-  oc.fillStyle=getCSS('--paper');
+  oc.fillStyle=_p();
   oc.fillRect(0,0,off.width,off.height);
   oc.setTransform(scale,0,0,scale,-b.x*scale+pad*scale,-b.y*scale+pad*scale);
   for(const s of shapes)drawShape(s,oc);
@@ -6173,7 +6174,7 @@ function exportViewportPNG(scale){
   const sc=exportScale(view.w,view.h,scale||2);
   off.width=Math.ceil(view.w*sc);off.height=Math.ceil(view.h*sc);
   const oc=off.getContext('2d');
-  oc.fillStyle=getCSS('--paper');oc.fillRect(0,0,off.width,off.height);
+  oc.fillStyle=_p();oc.fillRect(0,0,off.width,off.height);
   oc.setTransform(sc,0,0,sc,-view.x*sc,-view.y*sc);
   for(const s of shapes)drawShape(s,oc);
   off.toBlob(bl=>{
@@ -6210,7 +6211,7 @@ function copyPNG(shapes=state.shapes){
 // ADR-0087: selection/board SVG as clipboard text — the ClipboardItem SVG
 // MIME is browser-inconsistent, but plain-text SVG pastes everywhere useful.
 function copySVG(shapes=state.shapes){
-  const svg=buildSVG(shapes,getCSS('--paper'));
+  const svg=buildSVG(shapes,_p());
   if(svg===null){UI.toast(t('empty'),'warn');return}
   copyText(svg).then(ok=>UI.toast(t(ok?'copied':'copyFailed'),ok?'ok':'warn'));
 }
@@ -6241,7 +6242,7 @@ function exportPDF(){
   const pad=32,W=Math.ceil(b.w+pad*2),H=Math.ceil(b.h+pad*2),dpr=exportScale(W,H,window.devicePixelRatio||1);
   let off;try{off=new OffscreenCanvas(W*dpr,H*dpr)}catch(_){off=document.createElement('canvas');off.width=W*dpr;off.height=H*dpr}
   const oc=off.getContext('2d');
-  oc.fillStyle=getCSS('--paper')||'#fff';oc.fillRect(0,0,W*dpr,H*dpr);
+  oc.fillStyle=_p()||'#fff';oc.fillRect(0,0,W*dpr,H*dpr);
   oc.setTransform(dpr,0,0,dpr,(-b.x+pad)*dpr,(-b.y+pad)*dpr);
   for(const s of state.shapes)drawShape(s,oc);
   const fin=bl=>{
@@ -6257,7 +6258,7 @@ function exportPDF(){
 }
 
 function exportSVG(shapes=state.shapes){
-  const svg=buildSVG(shapes,getCSS('--paper'));
+  const svg=buildSVG(shapes,_p());
   if(svg===null){UI.toast(t('empty'),'warn');return}
   const blob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'});
   const url=URL.createObjectURL(blob);
@@ -9408,7 +9409,7 @@ const Minimap=(()=>{
     mx.drawImage(_scene,0,0);
     const vp=state.viewport,_r=canvas.getBoundingClientRect(),cW=_r.width,cH=_r.height;
     const vx=vp.x*_sc+_ox,vy=vp.y*_sc+_oy,vw=(cW/vp.zoom)*_sc,vh=(cH/vp.zoom)*_sc;
-    mx.strokeStyle=getCSS('--accent-contrast');mx.lineWidth=1.5;mx.setLineDash([3,2]);   // a11y-audit-2026-07
+    mx.strokeStyle=_ac();mx.lineWidth=1.5;mx.setLineDash([3,2]);   // a11y-audit-2026-07
     mx.strokeRect(vx,vy,vw,vh);mx.setLineDash([]);
   }
   function invalidateCache(){_sceneVer=-1;schedule();}

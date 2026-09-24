@@ -719,6 +719,7 @@ const checks = [
   ['clipboard image/svg+xml → vector import (ADR-0272)', html.includes("i.type==='image/svg+xml'")],
   ['drawio strokeOpacity/fillOpacity → s.opacity (ADR-0271)', html.includes('+sty.strokeOpacity')],
   ['svg conn path/label emitters deduped (ADR-0270)', html.includes('const _sp=(d,j)')&&html.includes('_cL();')],
+  ['_p()/_ac() css token shorthands (ADR-0292)', html.includes("const _p=()=>getCSS('--paper')")],
   ['ctx start-head cycle (ADR-0291)', html.includes('cycleStartHead')&&html.includes('ctxStartHead')],
   ['exc transparent stroke/bg import (ADR-0290 追補)', html.includes("o.stroke='transparent'")&&html.includes("o.fill='none'")],
   ['drawio strokeColor=none → transparent (ADR-0290)', html.includes("'transparent':sty.strokeColor")||html.includes("sty.strokeColor==='none'?'transparent'")],
@@ -849,9 +850,9 @@ const checks = [
   ['sticky chain inherits full typography', html.includes("font:s.font,lineH:s.lineH,spacing:s.spacing,bold:s.bold,italic:s.italic")],
   ['text s.fill paints bg plate (canvas+SVG)', html.includes("if(s.fill){const mw=_tm.w;")&&html.includes('height="${svgLines.length*fs*(s.lineH||1.25)+6}"')],
   ['sticky text colour via s.stroke (canvas+SVG)', html.includes("c.fillStyle=s.stroke||'#1E293B'")&&html.includes('fill="${_esc(s.stroke||')],
-  ['conn label pill honours s.fill (canvas+SVG)', html.includes("s.fill||getCSS('--paper')")&&html.includes("_esc(s.fill||paper")],
+  ['conn label pill honours s.fill (canvas+SVG)', html.includes("s.fill||_p()")&&html.includes("_esc(s.fill||paper")],
   ['drop shadow — canvas props + SVG filter + toggle + persistence', html.includes("shadowColor='rgba(15,23,42,.22)'")&&html.includes("id=\"bsh\"")&&html.includes("function toggleShadow()")&&html.includes("state.style.shadow=s.shadow||null")],
-  ['image caption band honours s.fill (canvas+SVG)', html.includes("c.fillStyle=s.fill&&s.fill!=='none'?s.fill:getCSS('--paper')||'#fff';c.globalAlpha=0.85")&&html.includes("_esc(s.fill||paper||'#FFFFFF')")],
+  ['image caption band honours s.fill (canvas+SVG)', html.includes("c.fillStyle=s.fill&&s.fill!=='none'?s.fill:_p()||'#fff';c.globalAlpha=0.85")&&html.includes("_esc(s.fill||paper||'#FFFFFF')")],
   ['Tab in label editor chains to next label-able shape', html.includes("if(ev.key==='Tab'){ev.preventDefault();")&&html.includes("_openLabelEditorFor(nx)")],
   ['frame label honours s.align + cycleTextAlign gate', html.includes("const alF=s.align||'left'")&&html.includes("type==='frame'||s.label)&&!s.locked})&&['ctxTextAlign'")],
   ['ctxReverse reverses connector direction (ADR-0198)', html.includes('function reverseConn()')&&html.includes("['ctxReverse','',reverseConn]")],
@@ -1352,7 +1353,7 @@ const checks = [
   // Shape-drawing DEFAULT colors (new frame/sticky stroke fallbacks) are deliberately left
   // on raw --brand: that's a style choice, not an accessibility-critical indicator.
   ["canvas UI-indicator strokes (selection/guides/marquee/rotation-tether/minimap-viewport) use --accent-contrast",
-    (html.match(/getCSS\('--accent-contrast'\)/g)||[]).length===11 &&
+    (html.match(/_ac\(\)/g)||[]).length===11 &&
     (html.match(/getCSS\('--brand'\)/g)||[]).length===5],
   ['frame label editor text color uses --accent-contrast (real text, needs the 4.5:1 floor too)',
     html.includes("getCSS(bold?'--accent-contrast':'--ink')")],
