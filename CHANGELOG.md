@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.305] - 2026-09-24
+
+### Added
+- .drawio: vertex の fontFamily を mono/serif カテゴリへマップし往復
+  (ADR-0253)
+
 ## [1.7.304] - 2026-09-24
 
 ### Performance

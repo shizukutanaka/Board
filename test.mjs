@@ -709,6 +709,7 @@ const checks = [
   ['drawio shadow=1 round-trips s.shadow (ADR-0246)', html.includes("sty+='shadow=1;'")&&html.includes("sty.shadow==='1'")],
   ['drawio fontColor ↔ text/sticky s.stroke (ADR-0247)', html.includes("sty+='fontColor='+s.stroke")&&html.includes("sty.fontColor!=='none'")],
   ['visualViewport.resize re-runs canvas resize for iOS chrome (ADR-0251)', html.includes("visualViewport.addEventListener('resize',resize)")],
+  ['drawio fontFamily ↔ s.font category map (ADR-0253)', html.includes("sty.fontFamily&&s.type!=='image'")&&html.includes("fontFamily='+(s.font==='mono'?'Courier New':'Georgia')")],
   ['conn/box label widths memoized on WeakMap (ADR-0252)', html.includes('_connLabelMeasure')&&html.includes('_clCache')],
   ['drawio edge label styling: labelBackgroundColor/fontSize/fontStyle (ADR-0249)', html.includes("labelBackgroundColor='+s.fill")&&html.includes("sty.labelBackgroundColor&&sty.labelBackgroundColor!=='none'")],
   ['drawio parent-relative offsets resolved (ADR-0240)', html.includes("const _geo=new Map(),_par=new Map();")&&html.includes("const _o=off(c.getAttribute('id'));")&&html.includes("x=_o.x+(+g.getAttribute('x')||0)")],
