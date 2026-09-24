@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.241';
+const V='1.7.242';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1838,6 +1838,10 @@ const Shape={
     if(type==='line'||type==='arrow'){                          // ADR-0183
       if(state.style.elbow)base.elbow=state.style.elbow;
       if(state.style.curve)base.curve=state.style.curve;}
+    // ADR-0184: same last-used rule for corner radius / hatch / text align.
+    if((type==='rect'||type==='diamond'||type==='image')&&state.style.r!=null)base.r=state.style.r;
+    if((type==='rect'||type==='diamond')&&state.style.fstyle)base.fstyle=state.style.fstyle;
+    if((type==='text'||type==='sticky')&&state.style.align!=null)base.align=state.style.align;
     return Object.assign(base,extras);
   }};
 
@@ -8237,7 +8241,7 @@ function toggleRound(){
     const s=byId(id);if(!s||s.type!=='rect'||s.locked)continue;
     before.push({id,r:s.r??null});
     after.push({id,r:s.r===0?null:0});
-    s.r=s.r===0?null:0;
+    s.r=s.r===0?null:0;state.style.r=s.r;                       // ADR-0184
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
 }
@@ -8359,6 +8363,7 @@ function cycleFillStyle(){
     const cur=s.fstyle||'',nxt=cur===''?'hatch':cur==='hatch'?'cross':'';
     before.push({id,fstyle:cur||null});after.push({id,fstyle:nxt||null});
     if(nxt)s.fstyle=nxt;else delete s.fstyle;
+    state.style.fstyle=nxt||null;                               // ADR-0184
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
 }
@@ -8409,6 +8414,7 @@ function cycleTextAlign(){
     const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky'&&!s.label)||s.locked)continue;   // ADR-0171
     const cur=s.align||'left',nxt=cur==='left'?'center':cur==='center'?'right':'left';
     before.push({id,align:cur});after.push({id,align:nxt});s.align=nxt;
+    state.style.align=nxt;                                      // ADR-0184
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
 }
@@ -8421,7 +8427,7 @@ function cycleCorner(){
     const s=byId(id);if(!s||(s.type!=='rect'&&s.type!=='diamond'&&s.type!=='image')||s.locked)continue;   // ADR-0156/0168
     const cur=s.r==null?8:s.r,nxt=cur<4?8:cur<12?16:cur<20?24:0;
     before.push({id,r:s.r??null});after.push({id,r:nxt});
-    s.r=nxt;
+    s.r=nxt;state.style.r=nxt;                                  // ADR-0184
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
 }

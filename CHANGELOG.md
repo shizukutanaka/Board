@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.242]
+
+### 追加
+- **r/fstyle/align の last-used 継承** (ADR-0184)。角丸・ハッチ・
+  文字揃えの最終適用値が `state.style` に残り、次に作る同種図形に
+  継承 (ADR-0180/0181/0183 と同一規則)。
+
 ## [1.7.241]
 
 ### 追加

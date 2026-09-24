@@ -758,6 +758,7 @@ const checks = [
   ['last-used head/font persist via Shape.make', html.includes("state.style.head=next")&&html.includes("state.style.head!=null")&&html.includes("state.style.font!=null")],
   ['label editor follows the viewport (ADR-0182)', html.includes('function _lblFollow()')&&html.includes('_lblAnchor(hit)')&&html.includes('_lblTa={inp,hit}')],
   ['route style persists via state.style.elbow/curve into Shape.make', html.includes("state.style.elbow=s.elbow;state.style.curve=0")&&html.includes('if(state.style.elbow)base.elbow=state.style.elbow;')],
+  ['corner/hatch/align persist via state.style into Shape.make', html.includes("state.style.r!=null")&&html.includes("state.style.align=nxt")&&html.includes("state.style.fstyle=nxt||null")],
   // v1.7.05: Tab cycling excludes locked shapes (parity with doMove/doDelete/doRotate/doFlip)
   ['statusbar selection dims readout', html.includes('id="sSel"')&&html.includes('_statusSel()')&&html.includes('Math.round(b.w)')],
   ['empty-selection arrows pan viewport', html.includes("state.viewport.x+=k==='arrowleft'?-step:k==='arrowright'?step:0")],
