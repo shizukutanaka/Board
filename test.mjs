@@ -721,6 +721,7 @@ const checks = [
   ['svg conn path/label emitters deduped (ADR-0270)', html.includes('const _sp=(d,j)')&&html.includes('_cL();')],
   ['drawio multi-page side-by-side import (ADR-0311)', html.includes("for(const dg of doc.querySelectorAll('diagram'))")],
   ['link badge 🔗 on linked shapes (ADR-0310)', html.includes("c.fillText('🔗',s.x+Math.abs(s.w)-3,s.y+3)")],
+  ['ctx copy link item (ADR-0318)', html.includes("['ctxCopyLink',''")&&html.includes("ctxCopyLink:'リンクをコピー'")&&html.includes("ctxCopyLink:'Copy link'")],
   ['exc conn roundness→curve round-trip (ADR-0317)', html.includes("s.curve=1;delete s.r")&&html.includes("s.curve?{roundness:{type:2}}")],
   ['SVG export link badge (ADR-0316)', html.includes('>🔗</text>`)')],
   ['describeShape announces link badge (ADR-0315)', html.includes("if(s.link)d+=' 🔗'")],
