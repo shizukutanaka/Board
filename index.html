@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.138';
+const V='1.7.139';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2482,9 +2482,18 @@ function _drawBoxLabel(s,c){
 // Connector (edge) label at the midpoint of the bound endpoints (ADR-0003). A paper-
 // coloured background pill keeps the line from striking through the text. Mirrors the
 // SVG export. World-space → scales with zoom like every other label.
+// ADR-0081: single source for the connector label's world position —
+// canvas draw and the inline editor both anchor to it.
+function _connLabelXY(s){
+  if(s.elbow)return _elbowLabelXY(s);
+  if(s.curve)return _curveLabelXY(s);
+  if(s.way)return{x:s.way.x,y:s.way.y};
+  const m=connEnds(s);
+  return{x:(m.x1+m.x2)/2,y:(m.y1+m.y2)/2};
+}
 function _drawConnLabel(s,c){
   if(!s.label)return;
-  const m=s.elbow?_elbowLabelXY(s):s.curve?_curveLabelXY(s):connEnds(s),mx=(s.elbow||s.curve)?m.x:s.way?s.way.x:(m.x1+m.x2)/2,my=(s.elbow||s.curve)?m.y:s.way?s.way.y:(m.y1+m.y2)/2;   // ADR-0076
+  const lp=_connLabelXY(s),mx=lp.x,my=lp.y;                       // ADR-0081
   c.save();
   c.font='12px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';
   const w=c.measureText(s.label).width,pad=4;
@@ -3553,15 +3562,15 @@ canvas.addEventListener('dblclick',e=>{
 // Shared by dblclick and ADR-0013's keyboard path so both stay in sync by construction.
 function _openLabelEditorFor(hit){
   const r=canvas.getBoundingClientRect();
-  if(hit.type==='frame'||hit.type==='rect'||hit.type==='ellipse'){
+  if(hit.type==='frame'||hit.type==='rect'||hit.type==='ellipse'||hit.type==='diamond'){   // ADR-0081
     const isFrame=hit.type==='frame';
     const sp=G.w2s(isFrame?{x:hit.x,y:hit.y}:{x:hit.x+hit.w/2,y:hit.y+hit.h/2});
     openLabelEditor(hit,r.left+sp.x+(isFrame?6:-40),r.top+sp.y+(isFrame?-24:-12),isFrame);
     return true;
   }
   if(hit.type==='line'||hit.type==='arrow'){
-    // Edge label at the connector midpoint (ADR-0003) — enables flowchart-style edges.
-    const en=connEnds(hit),sp=G.w2s({x:(en.x1+en.x2)/2,y:(en.y1+en.y2)/2});
+    // Edge label at the connector's label anchor (ADR-0003/0081) — routed routes included.
+    const lp=_connLabelXY(hit),sp=G.w2s({x:lp.x,y:lp.y});
     openLabelEditor(hit,r.left+sp.x-40,r.top+sp.y-12,false);
     return true;
   }

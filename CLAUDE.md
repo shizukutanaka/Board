@@ -130,6 +130,7 @@ Board/
 - [ADR-0078](docs/ADR-0078-text-bold-italic.md) 太字/斜体 (⌘B/⌘I、s.bold/italic、_fontStr)
 - [ADR-0079](docs/ADR-0079-match-size.md) 幅/高さ揃え (doMatchSize、align op、ctx3項目)
 - [ADR-0080](docs/ADR-0080-smart-duplicate.md) スマート複製 (dupIds/dupDelta、反復ベクトル)
+- [ADR-0081](docs/ADR-0081-label-editor-position.md) ラベル編集位置 (_connLabelXY、diamond/経路対応)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

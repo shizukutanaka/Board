@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.139]
+
+### 修正
+- **ラベル編集オーバレイの正位置化** (ADR-0081)。diamond でダブル
+  クリック/Enter のラベル編集が開かなかった抜けを解消し、
+  elbow/curve/waypoint コネクタではラベル描画位置と同じアンカー
+  (`_connLabelXY` で canvas/editor の位置計算を単一化) に開く。
+
 ## [1.7.138]
 
 ### 追加
