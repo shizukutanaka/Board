@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.517';
+const V='1.7.518';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1342,7 +1342,7 @@ function validShape(s){
 const _CC_KEYS=_sT(['a','aF','b','bF','x1','y1','x2','y2']);   // ADR-0377
 const _ccOk=q=>q&&_iO(q)&&!_iA(q)&&_ok(q).every(k=>_CC_KEYS.has(k))&&validPatch(q);
 function validRemotePayload(op){
-  const patches=a=>_iA(a)&&_ln(a)<=MAX_OP_SHAPES&&a.every(p=>p&&_iS(p.id)&&validPatch(p));
+  const patches=a=>_iA(a)&&_ln(a)<=MAX_OP_SHAPES&&a.every(p=>p&&_iS(p.id)&&_ln(p.id)<=64&&validPatch(p));
   switch(op.op){
     case 'add':    return validShape(op.shape);
     case 'addMany':    return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape);
@@ -1354,18 +1354,18 @@ function validRemotePayload(op){
       // `locked`/`type`/`id`/`_x` through (noLock exists for upd/style only, and
       // _stripStruct isn't applied at the connClears assign sites).
       if(op.connClears!=null&&!(_iA(op.connClears)&&_ln(op.connClears)<=MAX_OP_SHAPES&&op.connClears.every(p=>
-          p&&_iS(p.id)&&(p.before==null||_ccOk(p.before))&&(p.after==null||_ccOk(p.after)))))return false;
+          p&&_iS(p.id)&&_ln(p.id)<=64&&(p.before==null||_ccOk(p.before))&&(p.after==null||_ccOk(p.after)))))return false;
       return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape);
     case 'clear':  return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape);
     case 'upd':{const noLock=p=>!('locked' in p);
-      if(!_iS(op.id)||!validPatch(op.after)||!noLock(op.after)||(op.before!=null&&!validPatch(op.before)))return false;
+      if(!_iS(op.id)||_ln(op.id)>64||!validPatch(op.after)||!noLock(op.after)||(op.before!=null&&!validPatch(op.before)))return false;
       // pen pts must be array-of-[x,y] — flat arrays crash drawPen which expects [[x,y],...]
       if(op.after.pts!=null&&!_ptsOK(op.after.pts))return false;
       return true;}
-    case 'move':   return _iA(op.ids)&&_ln(op.ids)>0&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(id=>_iS(id))&&_iN(op.dx)&&_fin(op.dx)&&_iN(op.dy)&&_fin(op.dy)&&(op.dx!==0||op.dy!==0);
+    case 'move':   return _iA(op.ids)&&_ln(op.ids)>0&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(id=>_iS(id)&&_ln(id)<=64)&&_iN(op.dx)&&_fin(op.dx)&&_iN(op.dy)&&_fin(op.dy)&&(op.dx!==0||op.dy!==0);
     case 'zorder':  // Step2 minimal-delta {changes:[{id,before,after}]} or legacy {after:[…]}
-      return (_iA(op.changes)&&_ln(op.changes)<=MAX_OP_SHAPES&&op.changes.every(c=>c&&_iS(c.id)
-                &&(c.after==null||_iS(c.after)&&_ln(c.after)<=600)&&(c.before==null||_iS(c.before)&&_ln(c.before)<=600)))   // ADR-0473
+      return (_iA(op.changes)&&_ln(op.changes)<=MAX_OP_SHAPES&&op.changes.every(c=>c&&_iS(c.id)&&_ln(c.id)<=64
+                &&(c.after==null||_iS(c.after)&&_ln(c.after)<=600)&&(c.before==null||_iS(c.before)&&_ln(c.before)<=600)))   // ADR-0473/0485
              // legacy snapshot: each entry must carry a string id, finite z (if present),
              // and a string-or-null frac (if present) — otherwise sh.z=NaN or sh.frac=object
              // would silently corrupt the ADR-0001 sort invariant.
@@ -1381,10 +1381,10 @@ function validRemotePayload(op){
       const noLock=p=>op.dir==='lock'||!('locked' in p);
       return patches(op.after)&&op.after.every(noLock)
           &&patches(op.before)&&op.before.every(noLock);}
-    case 'group':  return _iA(op.ids)&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(id=>_iS(id))
+    case 'group':  return _iA(op.ids)&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(id=>_iS(id)&&_ln(id)<=64)
                           &&_iS(op.gid)&&_ln(op.gid)>0&&_ln(op.gid)<=64   // ADR-0473
-                          &&_iA(op.before)&&_ln(op.before)<=MAX_OP_SHAPES&&op.before.every(b=>b&&_iS(b.id));
-    case 'ungroup':return _iA(op.ids)&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(id=>_iS(id))
+                          &&_iA(op.before)&&_ln(op.before)<=MAX_OP_SHAPES&&op.before.every(b=>b&&_iS(b.id)&&_ln(b.id)<=64);
+    case 'ungroup':return _iA(op.ids)&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(id=>_iS(id)&&_ln(id)<=64)
                           &&_iA(op.gids)&&_ln(op.gids)<=MAX_OP_SHAPES&&op.gids.every(g=>_iS(g)&&_ln(g)>0&&_ln(g)<=64);   // ADR-0473
     default:       return false;
   }
