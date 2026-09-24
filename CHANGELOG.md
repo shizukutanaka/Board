@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.167]
+
+### 追加
+- **直線↔矢印の型変換** (ADR-0109)。ctx メニューで `s.type` を
+  line↔arrow に反転 (bindings/way/label/route 全保持、style op
+  で undo・共有同期対応、ラベル動的切替)。
+
 ## [1.7.166]
 
 ### 追加
