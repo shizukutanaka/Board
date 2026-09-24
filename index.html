@@ -791,7 +791,7 @@ const _ce=t=>document.createElement(t);   // ADR-0329
 const _selIds=()=>[...state.selection];   // ADR-0330
 
 // ====================== CONSTANTS ======================
-const V='1.7.383';
+const V='1.7.384';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3212,6 +3212,7 @@ function drawText(s,c){
       if(s.strike){const uy=s.y+i*lh+fs*0.55;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}}   // ADR-0100
     c.restore()}
   if(s.link&&s.w!=null){c.font='10px sans-serif';c.textAlign='right';c.textBaseline='top';c.fillText('🔗',s.x+Math.abs(s.w)-3,s.y+3)}   // ADR-0310: link badge top-right
+  if(s.link&&_conn(s.type)){const lp=_connLabelXY(s);c.font='10px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText('🔗',lp.x+10,lp.y-10)}   // ADR-0333: badge at label anchor (offset so it doesn't sit on the line)
 }
 
 // Rotate point (px,py) about centre (cx,cy) by `deg` degrees. Shared by handles,
@@ -7124,7 +7125,8 @@ function buildSVG(shapes,paper){
     // ADR-0270: shared conn-path element + conn-label emitters (was 8-10x duplicated)
     const _sp=(d,j)=>`<path d="${d}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${j?' stroke-linejoin="round"':''}${dA}${a}${_sh}/>`;
     const _po=pt=>`<polyline points="${pt}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`;
-    const _cL=()=>{const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper))};
+    const _cL=()=>{const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));
+      if(s.link)els.push(`<text x="${lp.x+10+ox}" y="${lp.y-10+oy}" text-anchor="middle" dominant-baseline="middle" font-size="10" font-family="sans-serif"${a}>🔗</text>`)};   // ADR-0333
     const rT=shapeRot(s)?` transform="rotate(${_num(s.rotate)},${X+W/2+ox},${Y+H/2+oy})"`:''
     switch(s.type){
       case 'rect':{

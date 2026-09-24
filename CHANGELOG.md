@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.384] - 2026-09-24
+
+### Added
+- コネクタ (line/arrow) にもリンクバッジを描画 — canvas + SVG
+  両経路 (ADR-0333)
+
 ## [1.7.383] - 2026-09-24
 
 ### Fixed
