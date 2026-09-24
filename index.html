@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.524';
+const V='1.7.525';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2765,7 +2765,7 @@ function _pathAt(pts,t){
       return{x:pts[i-1].x+(pts[i].x-pts[i-1].x)*f,y:pts[i-1].y+(pts[i].y-pts[i-1].y)*f}}
     acc+=d;
   }
-  return{x:pts[_ln(pts)-1].x,y:pts[_ln(pts)-1].y};
+  return{x:_pL(pts).x,y:_pL(pts).y};
 }
 function _pathNearestT(pts,p){
   if(!pts||_ln(pts)<2)return 0.5;
@@ -2992,7 +2992,7 @@ function drawArrow(s,c){
   }
   if(_el(s)){
     const pts=_elbowPts(s);s.hop?_polylineHop(c,s,pts,7):(s.r>0)?_polylineR(c,pts,s.r):_polyline(c,pts);c.stroke();   // ADR-0207/0218
-    const L=pts[_ln(pts)-1],P=pts[_ln(pts)-2];
+    const L=_pL(pts),P=pts[_ln(pts)-2];
     const ang=_at2(L.y-P.y,L.x-P.x)||_at2(e.y2-e.y1,e.x2-e.x1);
     _arrowHeadShape(c,L.x,L.y,ang,ah,_sk(s),s.head);
     if(s.start){
@@ -3003,7 +3003,7 @@ function drawArrow(s,c){
   }
   const pts=_linePts(s);                                            // ADR-0076
   s.hop?_polylineHop(c,s,pts,7):_polyline(c,pts);c.stroke();        // ADR-0218
-  const L=pts[_ln(pts)-1],P=pts[_ln(pts)-2],F=pts[1];
+  const L=_pL(pts),P=pts[_ln(pts)-2],F=pts[1];
   const ang=_at2(L.y-P.y,L.x-P.x);
   _arrowHeadShape(c,L.x,L.y,ang,ah,_sk(s),s.head);
   if(s.start)_arrowHeadShape(c,pts[0].x,pts[0].y,_at2(pts[0].y-F.y,pts[0].x-F.x),ah,_sk(s),s.startHead||s.head);
@@ -3094,7 +3094,7 @@ function _polylineR(c,pts,r){
     c.lineTo(p1.x+(p0.x-p1.x)/e1*rr,p1.y+(p0.y-p1.y)/e1*rr);
     c.quadraticCurveTo(p1.x,p1.y,p1.x+(p2.x-p1.x)/e2*rr,p1.y+(p2.y-p1.y)/e2*rr);
   }
-  c.lineTo(pts[_ln(pts)-1].x,pts[_ln(pts)-1].y);
+  c.lineTo(_pL(pts).x,_pL(pts).y);
 }
 // ADR-0218: connector "jump" arcs — where this conn's polyline crosses another
 // conn, the segment bulges over it in a semicircle (circuit-diagram / draw.io
@@ -3184,7 +3184,7 @@ function _polylineRd(pts,ox,oy,r){
     d+=` L ${n2(p1.x+(p0.x-p1.x)/e1*rr+ox)} ${n2(p1.y+(p0.y-p1.y)/e1*rr+oy)}`;
     d+=` Q ${n2(p1.x+ox)} ${n2(p1.y+oy)} ${n2(p1.x+(p2.x-p1.x)/e2*rr+ox)} ${n2(p1.y+(p2.y-p1.y)/e2*rr+oy)}`;
   }
-  d+=` L ${n2(pts[_ln(pts)-1].x+ox)} ${n2(pts[_ln(pts)-1].y+oy)}`;
+  d+=` L ${n2(_pL(pts).x+ox)} ${n2(_pL(pts).y+oy)}`;
   return d;
 }
 // ADR-0119: head style variants — 'arrow' (filled triangle, default),
@@ -4823,6 +4823,7 @@ function _snapNear(arr,v,tol){
 }
 const _snapBest=(arr,v,tol)=>{let best=null;for(const e of _snapNear(arr,v,tol)){const d=e.v-v;if(!best||_abs(d)<_abs(best.d))best={d,at:e.v,b:e.b}}return best};   // ADR-0488
 const _mid=(pts)=>pts.slice(1,-1);   // ADR-0491: middle waypoints (drawio emit+import, 3 sites)
+const _pL=(pts)=>pts[_ln(pts)-1];   // ADR-0492: last point accessor (16 sites)
 const _gV=(x,m,b)=>{const ys=[m.y,m.y+m.h,b.y,b.y+b.h];return{x1:x,y1:_min(...ys),x2:x,y2:_max(...ys)}};   // ADR-0487
 const _gH=(y,m,b)=>{const xs=[m.x,m.x+m.w,b.x,b.x+b.w];return{x1:_min(...xs),y1:y,x2:_max(...xs),y2:y}};   // ADR-0487
 function _snapBoxIdx(mov,idx,tol){
@@ -5050,7 +5051,7 @@ function contPen(wp,e){
   // collapses to [start, current] while held; releasing resumes freehand
   // from that point. Full invalidate — the shrink breaks the damage corridor.
   if(e.shiftKey&&_ln(pts)){pts.length=1;pts.push([wp.x,wp.y,_df().hl?0.5:_penPr(e)]);_iv();return}
-  const last=pts[_ln(pts)-1];
+  const last=_pL(pts);
   // decimate by min distance for smoothness
   const d=_hp(wp.x-last[0],wp.y-last[1]);
   if(d>1/_vp().zoom)pts.push([wp.x,wp.y,_df().hl?0.5:_penPr(e)]);
@@ -5096,7 +5097,7 @@ function recognizeStroke(pts){
   }
   const bw=mxx-mnx,bh=mxy-mny,diag=_hp(bw,bh);
   if(diag<8)return null;                         // too small to classify meaningfully
-  const fx=pts[0][0],fy=pts[0][1],lx=pts[_ln(pts)-1][0],ly=pts[_ln(pts)-1][1];
+  const fx=pts[0][0],fy=pts[0][1],lx=_pL(pts)[0],ly=_pL(pts)[1];
   const closed=_hp(lx-fx,ly-fy)<=_max(10,diag*0.15);
 
   // ---- line: low perpendicular deviation from the first→last chord ----
@@ -7075,7 +7076,7 @@ function excToShapes(txt){
         // ADR-0097: multi-segment line/arrow stays a real connector — the
         // interior points map onto the way[] array (ADR-0090), not a
         // dead-end pen stroke. Elbowed excalidraw arrows land naturally.
-        s=Shape.make(_arw(e)?'arrow':'line',{x1:pts[0][0],y1:pts[0][1],x2:pts[_ln(pts)-1][0],y2:pts[_ln(pts)-1][1]});
+        s=Shape.make(_arw(e)?'arrow':'line',{x1:pts[0][0],y1:pts[0][1],x2:_pL(pts)[0],y2:_pL(pts)[1]});
         if(_ln(pts)>2)s.way=_mid(pts).map(p=>({x:p[0],y:p[1]}));
         if(e.elbowed)s.elbow=1;                                              // ADR-0265
         // ADR-0230: excalidraw arrowhead styles → head/start
@@ -7366,7 +7367,7 @@ function buildSVG(shapes,paper){
           else if(s.r>0)els.push(_sp(_polylineRd(pts,ox,oy,s.r),1));   // ADR-0207
           else{const spts=pts.map(p=>`${_num(p.x+ox)},${_num(p.y+oy)}`).join(' ');
           els.push(_po(spts))}
-          const Lp=pts[_ln(pts)-1],Pp=pts[_ln(pts)-2];
+          const Lp=_pL(pts),Pp=pts[_ln(pts)-2];
           const ang=_at2(Lp.y-Pp.y,Lp.x-Pp.x)||_at2(Y2-Y1,X2-X1);
           const a1=ang+_PI-0.5,a2=ang+_PI+0.5;
           const tx=Lp.x+ox,ty=Lp.y+oy;
@@ -7379,7 +7380,7 @@ function buildSVG(shapes,paper){
         }else if(s.hop){
           const pts=_linePts(s);
           els.push(_sp(_hopPathD(s,pts,ox,oy,7)));   // ADR-0218
-          const L=pts[_ln(pts)-1],P=pts[_ln(pts)-2],F=pts[1];
+          const L=_pL(pts),P=pts[_ln(pts)-2],F=pts[1];
           const ang=_at2(L.y-P.y,L.x-P.x),a1=ang+_PI-0.5,a2=ang+_PI+0.5,tx=L.x+ox,ty=L.y+oy;
           _svgArrowHead(els,tx,ty,a1,a2,ah,stroke,a,SZ,s.head);
           if(s.start){const sAng=_at2(pts[0].y-F.y,pts[0].x-F.x),s1=sAng+_PI-0.5,s2=sAng+_PI+0.5,sx2=pts[0].x+ox,sy2=pts[0].y+oy;
@@ -7388,7 +7389,7 @@ function buildSVG(shapes,paper){
         }else if(s.way){                                            // ADR-0090: full vertex list
           const pts=_linePts(s),wpts=pts.map(p=>_num(p.x+ox)+','+_num(p.y+oy)).join(' ');
           els.push(_po(wpts));
-          const L=pts[_ln(pts)-1],P=pts[_ln(pts)-2],F=pts[1];
+          const L=_pL(pts),P=pts[_ln(pts)-2],F=pts[1];
           const ang=_at2(L.y-P.y,L.x-P.x),a1=ang+_PI-0.5,a2=ang+_PI+0.5,tx=L.x+ox,ty=L.y+oy;
           _svgArrowHead(els,tx,ty,a1,a2,ah,stroke,a,SZ,s.head);
           if(s.start){const sAng=_at2(pts[0].y-F.y,pts[0].x-F.x),s1=sAng+_PI-0.5,s2=sAng+_PI+0.5,sx2=pts[0].x+ox,sy2=pts[0].y+oy;
