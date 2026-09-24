@@ -523,6 +523,7 @@ Board/
 │   ├── ADR-0471-frac-key-compaction.md    # frac キー >48 で canonical 再採番 (キー増大・発散防止、実装済)
 │   ├── ADR-0472-zstep-fold-undo-correctness.md  # _zStep 統合 + compaction undo の before 正確性 (実装済)
 │   ├── ADR-0473-wire-cap-parity.md    # zorder frac/gid 長の wire キャップ整合 (実装済)
+│   ├── ADR-0474-snapshot-size-cap.md  # スナップショット全盤面キャップを SHARE_MAX_SHAPES へ (切捨て修正、実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

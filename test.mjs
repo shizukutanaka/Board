@@ -1383,9 +1383,9 @@ const checks = [
   // v1.7.48: 'clear' removed from REMOTE_OPS (remote peer cannot wipe board)
   ["REMOTE_OPS excludes 'clear' (board-wipe is local-only like 'replace')",
     html.includes("REMOTE_OPS:_sT(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize'])")],
-  // v1.7.48: _applySnapshot caps shape count at MAX_OP_SHAPES
-  ['_applySnapshot: MAX_OP_SHAPES cap on snapshot shapes (DoS guard)',
-    html.includes("const valid=shapes.slice(0,MAX_OP_SHAPES).map(s=>this._attachShape(s)).filter(validShape);")],
+  // v1.7.48/ADR-0474: _applySnapshot caps at SHARE_MAX_SHAPES — a 500-op cap truncated boards >500 shapes
+  ['_applySnapshot: SHARE_MAX_SHAPES cap on snapshot shapes (board-size bound, DoS-bounded by the 24MB join cap)',
+    html.includes("const valid=shapes.slice(0,SHARE_MAX_SHAPES).map(s=>this._attachShape(s)).filter(validShape);")],
   // v1.7.48: sticky shadow set before fill (renders correctly)
   ['sticky note shadow set before fill (not after)',
     html.includes("c.shadowColor='rgba(0,0,0,.08)';c.shadowBlur=8;c.shadowOffsetY=2;\n      c.beginPath();roundRect(")],
@@ -9258,20 +9258,27 @@ try {
     console.log('  ✓ doDelete on text shape: connector binding cleared and restored on undo (v1.7.49c)');
   }
 
-  // v1.7.49d: Net._onRecv snapshot merge loop capped at MAX_OP_SHAPES (DoS guard)
+  // v1.7.49d/ADR-0474: Net._onRecv snapshot merge loop bounded at SHARE_MAX_SHAPES —
+  // snapshots legitimately carry the whole board; MAX_OP_SHAPES=500 truncated them.
   {
-    // Before fix: msg.ops loop was unbounded — 600 ops applied, freezing UI and risking OOM.
-    // After fix: msg.ops.slice(0,MAX_OP_SHAPES) caps processing at 500.
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     state.peerId='testReceiver49d';
+    Store.commit({op:'add',shape:Shape.make('rect',{x:0,y:0,w:10,h:10})});   // non-empty board → merge path (empty board takes _applySnapshot instead)
     const bigOps49d=Array.from({length:600},(_,i)=>{
       const s=Shape.make('rect',{x:i*15,y:0,w:10,h:10});
       return {op:'add',shape:s,clock:{peer:'bigSender49d',seq:i+1,ts:i+1}};
     });
     Net._onRecv({k:'snapshot',peer:'bigSender49d',ops:bigOps49d});
-    assert.ok(state.shapes.length<=500,
-      `v1.7.49d: snapshot merge capped at MAX_OP_SHAPES=500 (got ${state.shapes.length})`);
-    console.log('  ✓ Net._onRecv snapshot merge: 600-op snapshot capped at 500 shapes (v1.7.49d)');
+    assert.strictEqual(state.shapes.length,601,
+      `ADR-0474: snapshot merge adopts all ops under SHARE_MAX_SHAPES (got ${state.shapes.length})`);
+    console.log('  ✓ Net._onRecv snapshot merge: 600-op snapshot fully adopted (ADR-0474)');
+
+    // ADR-0474: _applySnapshot on an EMPTY board used to truncate at MAX_OP_SHAPES=500 —
+    // a >500-shape board silently lost its tail for joiners.
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const bigSnap47=Array.from({length:600},(_,i)=>Shape.make('rect',{x:i*15,y:0,w:10,h:10}));
+    Net._onRecv({k:'snapshot',peer:'bigSender47',shapes:bigSnap47});
+    assert.strictEqual(state.shapes.length,600,'ADR-0474: _applySnapshot adopts >500 shapes (was truncated at 500)');
   }
 
   // v1.7.49e: validRemotePayload ungroup must reject empty-string gids (parity with group.gid)

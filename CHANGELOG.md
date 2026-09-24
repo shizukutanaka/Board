@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.507] - 2026-09-23
+
+### 修正
+
+- スナップショット取込のキャップを `MAX_OP_SHAPES=500` から `SHARE_MAX_SHAPES` (200k) へ — **500 図形超の盤面で join すると末尾の図形が静かに切捨てられていた実害を解消** (空盤面の `_applySnapshot` 置換パスと非空盤面の `msg.ops` merge パスの双方)。外縁は従来通り 24MB join キャップ (ADR-0474)
+
 ## [1.7.506] - 2026-09-23
 
 ### 修正
