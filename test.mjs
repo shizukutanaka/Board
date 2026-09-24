@@ -709,6 +709,7 @@ const checks = [
   ['drawio shadow=1 round-trips s.shadow (ADR-0246)', html.includes("sty+='shadow=1;'")&&html.includes("sty.shadow==='1'")],
   ['drawio fontColor ↔ text/sticky s.stroke (ADR-0247)', html.includes("sty+='fontColor='+s.stroke")&&html.includes("sty.fontColor!=='none'")],
   ['visualViewport.resize re-runs canvas resize for iOS chrome (ADR-0251)', html.includes("visualViewport.addEventListener('resize',resize)")],
+  ['excalidraw export embeds viewport in appState (ADR-0257)', html.includes("scrollX:-state.viewport.x,scrollY:-state.viewport.y,zoom:{value:state.viewport.zoom}")],
   ['drawio arrowhead types ↔ s.head (ADR-0256)', html.includes("endArrow=oval;':s.head==='open'")&&html.includes("sty.endArrow==='diamond'")],
   ['drawio dotted ↔ dashed=1+dashPattern (ADR-0255)', html.includes("s.dash===2?'dashPattern=1 1;'")&&html.includes("?2:1;   // ADR-0255")],
   ['drawio locked ↔ editable/deletable/movable=0 (ADR-0254)', (html.match(/editable=0/g)||[]).length>=2&&html.includes("sty.editable==='0'||sty.deletable==='0'||sty.movable==='0'")],

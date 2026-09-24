@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.308';
+const V='1.7.309';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6329,7 +6329,7 @@ function excScene(shapes){
     const out=[...(be?be.map(cid=>({id:cid,type:'arrow'})):[]),...(tid?[{id:tid,type:'text'}]:[])];
     if(out.length)e.boundElements=out;
   }
-  return{type:'excalidraw',version:2,source:'Board',elements:els,files,appState:{gridSize:null}};
+  return{type:'excalidraw',version:2,source:'Board',elements:els,files,appState:{gridSize:null,scrollX:-state.viewport.x,scrollY:-state.viewport.y,zoom:{value:state.viewport.zoom}}};   // ADR-0257
 }
 // ---- ADR-0203: .drawio import ------------------------------------------------
 // Uncompressed mxGraphModel XML via DOMParser (no deps). drawio's default save
