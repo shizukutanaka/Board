@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.188]
+
+### 追加
+- **90°回転** (ADR-0131)。ctx「90°回転」+ `⇧R` で選択を直行回転
+  (draw.io parity、選択が無い時は従来通り rect ツール)。
+
 ## [1.7.187]
 
 ### 追加
