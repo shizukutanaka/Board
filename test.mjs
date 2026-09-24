@@ -719,6 +719,7 @@ const checks = [
   ['clipboard image/svg+xml → vector import (ADR-0272)', html.includes("i.type==='image/svg+xml'")],
   ['drawio strokeOpacity/fillOpacity → s.opacity (ADR-0271)', html.includes('+sty.strokeOpacity')],
   ['svg conn path/label emitters deduped (ADR-0270)', html.includes('const _sp=(d,j)')&&html.includes('_cL();')],
+  ['exc transparent stroke/bg import (ADR-0290 追補)', html.includes("o.stroke='transparent'")&&html.includes("o.fill='none'")],
   ['drawio strokeColor=none → transparent (ADR-0290)', html.includes("'transparent':sty.strokeColor")||html.includes("sty.strokeColor==='none'?'transparent'")],
   ['_g() getElementById shorthand (ADR-0289)', html.includes("const _g=id=>document.getElementById(id)")],
   ['drawio fillColor=none → transparent fill (ADR-0288)', html.includes("s.fill=sty.fillColor==='none'")&&html.includes("s.fill!=='none'")],

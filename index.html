@@ -6818,7 +6818,8 @@ function excToShapes(txt){
     const o={};
     const sc=typeof e.strokeColor==='string'&&e.strokeColor!=='transparent'?e.strokeColor:null;
     const bg=typeof e.backgroundColor==='string'&&e.backgroundColor!=='transparent'?e.backgroundColor:null;
-    if(sc)o.stroke=sc;if(bg)o.fill=bg;
+    if(sc)o.stroke=sc;else if(e.strokeColor==='transparent')o.stroke='transparent';   // ADR-0290
+    if(bg)o.fill=bg;else if(e.backgroundColor==='transparent')o.fill='none';           // ADR-0290
     if(Number.isFinite(e.strokeWidth)&&e.strokeWidth>0)o.size=e.strokeWidth;
     if(Number.isFinite(e.opacity)&&e.opacity<100)o.opacity=Math.max(0.05,e.opacity/100);
     if(e.strokeStyle==='dashed')o.dash=1;else if(e.strokeStyle==='dotted')o.dash=2;
