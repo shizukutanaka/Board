@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.237]
+
+### 追加
+- **画像キャプションの上下位置** (ADR-0179)。`s.valign` がラベル所持
+  の画像にも適用 — キャプション帯を画像上部へ (draw.io parity)。
+
 ## [1.7.236]
 
 ### 追加
