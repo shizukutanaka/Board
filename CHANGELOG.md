@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.149]
+
+### 追加
+- **検索結果の全選択** (ADR-0091)。検索ボックス内で `⌘Enter` /
+  `Ctrl+Enter` — 全マッチを一括選択してボックスを閉じる
+  (一括移動/スタイル変更の前段)。SR 通知と件数トースト付き。
+
 ## [1.7.148]
 
 ### 追加
