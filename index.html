@@ -830,7 +830,7 @@ const _qs=(e,s)=>e.querySelector(s);                                  // ADR-034
 const _qsa=(e,s)=>e.querySelectorAll(s);                                // ADR-0350
 const _on=(e,t,f,o)=>e.addEventListener(t,f,o);                          // ADR-0356
 const _vp=()=>state.viewport,_vpS=()=>({x:+_vp().x.toFixed(2),y:+_vp().y.toFixed(2),zoom:+_vp().zoom.toFixed(4)});                                              // ADR-0362: live-read (tests reassign the object)
-const _pi=()=>state.peerId,_ro=()=>state.readout,_gd=()=>state.guides,_cl=()=>state.clipboard,_bb=s=>G.bbox(s),_bA=s=>G.bboxAll(s),_oa=Object.assign;   // ADR-0378
+const _mk=(k,x)=>({k,peer:_pi(),...x}),_pi=()=>state.peerId,_ro=()=>state.readout,_gd=()=>state.guides,_cl=()=>state.clipboard,_bb=s=>G.bbox(s),_bA=s=>G.bboxAll(s),_oa=Object.assign;   // ADR-0378
 const _sO=()=>state.seenOps,_la=()=>state.lasso,_mq=()=>state.marquee,_dd=()=>state.dupDelta,_w2=p=>G.w2s(p),_s2=p=>G.s2w(p),_cE=connEnds;   // ADR-0382
 const _dpr=()=>window.devicePixelRatio,_cT=clearTimeout,_iA=Array.isArray,_iS=v=>typeof v==='string',_iN=v=>typeof v==='number',_iO=v=>typeof v==='object',_stk=v=>v.type==='sticky',_frm=v=>v.type==='frame',_pn=v=>v.type==='pen',_txt=v=>v.type==='text',_im=v=>v.type==='image',_arw=v=>v.type==='arrow',_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log,_rAF=requestAnimationFrame,_pF=parseFloat,_db=document.body,_de=document.documentElement,_wO=window.open,_lg=k=>localStorage.getItem(k),_ls=(k,v)=>localStorage.setItem(k,v),_mP=a=>new Map(a),_sT=a=>new Set(a),_eU=encodeURIComponent,_dU=decodeURIComponent,_un='undefined',_AU='arrowup',_AD='arrowdown',_AL2='arrowleft',_AR2='arrowright',_ES='escape',_RO='readonly',_RW='readwrite',_UT='Untitled',_REC='rectangle',_EN='enter',_TB='tab',_IK='#0F172A',_YW='#FEF08A',_BOX=_sT(['rect','ellipse','diamond']),_BX4=_sT([..._BOX,'sticky']),_BOXF=_sT([..._BOX,'frame','sticky']),_HF4=_sT([..._BOX,'frame']),_RD=_sT(['rect','diamond']),_RDI=_sT([..._RD,'image']),_D6=_sT([..._BOX,'frame','image']),_SH5=_sT([..._BOX,'image','text']),_TS=_sT(['text','sticky']),_TSF=_sT([..._TS,'frame']);   // ADR-0384/../0397/0453
 const _sh=()=>state.shapes;                                                // ADR-0364
@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.531';
+const V='1.7.532';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -7612,7 +7612,7 @@ const Net={
   _onConnChange:null,         // UI callback
   _rtcPeerId:null,            // synthetic peer id for the WebRTC link (lifecycle-managed)
   init(roomId){
-    if(this.bc){try{this._send({k:'bye',peer:_pi()});this.bc.close()}catch(_){}}   // ADR-0458
+    if(this.bc){try{this._send(_mk('bye'));this.bc.close()}catch(_){}}   // ADR-0458
     // ADR-0458: drop old-room presence (RTC entries survive — no channel close)
     _sO().clear();_cT(this._snapT);this._snapT=0;this._lastSnapAt=0;this._snapRx=false;this._snapRetry=0;   // ADR-0459/0475
     this._imgSent.clear();this._imgChunks.clear();this._imgOuts.length=0;this._snapIn=null;this._opcIn=null;   // ADR-0464/0466
@@ -7624,13 +7624,13 @@ const Net={
       this.bc=new BroadcastChannel(NET_CHANNEL_PREFIX+state.roomId);
       this.bc.onmessage=e=>this._onRecv(e.data);
       // announce arrival + request snapshot
-      this._send({k:'hello',peer:_pi(),seq:state.seq});
-      this._send({k:'sync-req',peer:_pi()});
+      this._send(_mk('hello',{seq:state.seq}));
+      this._send(_mk('sync-req'));
       this._presenceTimer=setInterval(()=>{
-        this._send({k:'ping',peer:_pi(),seq:state.seq});
+        this._send(_mk('ping',{seq:state.seq}));
         this._reapPeers();
         // ADR-0475
-        if(!this._snapRx&&this._snapRetry++<3)this._send({k:'sync-req',peer:_pi()});
+        if(!this._snapRx&&this._snapRetry++<3)this._send(_mk('sync-req'));
       },NET_PRESENCE_INTERVAL);
     }catch{}
   },
@@ -7715,7 +7715,7 @@ const Net={
     const now=_now();
     if(now-this._lastCursorSend<CURSOR_THROTTLE_MS)return;
     this._lastCursorSend=now;
-    this._bcast({k:'cursor',peer:_pi(),x:wp.x,y:wp.y});
+    this._bcast(_mk('cursor',{x:wp.x,y:wp.y}));
   },
   // ADR-0011: ephemeral peer selection presence. Called from frame() (the rAF driver,
   // NOT draw() — render must stay side-effect-free) once per drawn frame; sends only
@@ -7729,7 +7729,7 @@ const Net={
     const key=ids.join(',');
     if(key===this._lastSelSent)return;
     this._lastSelSent=key;
-    this._bcast({k:'selection',peer:_pi(),ids});
+    this._bcast(_mk('selection',{ids}));
   },
   _sendDC(m){   // ADR-0432: single dc funnel — a full SCTP buffer throws; requeue on bufferedAmountLow instead of dropping
     if(_ln(m)>262144)return;   // ADR-0438: >SCTP max can never send — drop instead of poison-queuing a retry loop
@@ -8443,7 +8443,7 @@ _on(window,'beforeunload',e=>{
 _on(document,'visibilitychange',()=>Persist.flushIfHidden(document.visibilityState));
 // pagehide is iOS Safari's last reliable signal (visibilitychange can be skipped on
 // swipe-away / frozen-tab eviction); route it through the same tested flush.
-_on(window,'pagehide',()=>{Persist.flushIfHidden('hidden');Net._bcast({k:'bye',peer:_pi()})});   // ADR-0453+0456
+_on(window,'pagehide',()=>{Persist.flushIfHidden('hidden');Net._bcast(_mk('bye'))});   // ADR-0453+0456
 
 // ====================== UI ======================
 const UI={
@@ -8878,7 +8878,7 @@ function wire(){
     // (Qiita: Rapls / Zenn: spacemarket). imeShouldCommit() returns false for
     // mid-composition input events to keep partial conversions out of state/IDB/sync;
     // a parallel compositionend listener picks up the final value once IME confirms.
-    const _commitDocName=()=>{_setDocName(docNameEl.value);_md(!0);_ps();Net._bcast({k:'name',peer:_pi(),name:state.docName})};   // ADR-0402
+    const _commitDocName=()=>{_setDocName(docNameEl.value);_md(!0);_ps();Net._bcast(_mk('name',{name:state.docName}))};   // ADR-0402
     _on(docNameEl,'input',e=>{if(imeShouldCommit(e))_commitDocName()});
     _on(docNameEl,'compositionend',_commitDocName);
     _on(docNameEl,_CH,()=>{_setDocName(docNameEl.value||_UT);_ps()});

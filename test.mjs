@@ -1131,9 +1131,9 @@ const checks = [
   ['Persist.flushIfHidden gates on vis===hidden && _dt()', html.includes("flushIfHidden(vis){") && html.includes("if(vis==='hidden'&&_dt()){")],
   ['Persist.flushIfHidden cancels pending debounce + calls save', html.includes("_cT(this._saveT);\n      this.save();")],
   ['visibilitychange listener wires document.visibilityState to flushIfHidden', html.includes("_on(document,'visibilitychange',()=>Persist.flushIfHidden(document.visibilityState));")],
-  ['pagehide routes through flushIfHidden — iOS swipe-away durable (ADR-0453)', html.includes("_on(window,'pagehide',()=>{Persist.flushIfHidden('hidden');Net._bcast({k:'bye',peer:_pi()})})")],
+  ['pagehide routes through flushIfHidden — iOS swipe-away durable (ADR-0453)', html.includes("_on(window,'pagehide',()=>{Persist.flushIfHidden('hidden');Net._bcast(_mk('bye'))})")],
   ['peer bye drops presence immediately — no 15s ghost (ADR-0457)', html.includes("case 'bye':{") && html.includes("if(pk&&_pr().delete(pk)){_ivO()")],
-  ['room switch sends bye + clears BC peers (ADR-0458)', html.includes("this._send({k:'bye',peer:_pi()});this.bc.close()") && html.includes("if(!id.startsWith('rtc:'))_pr().delete(id)")],
+  ['room switch sends bye + clears BC peers (ADR-0458)', html.includes("this._send(_mk('bye'));this.bc.close()") && html.includes("if(!id.startsWith('rtc:'))_pr().delete(id)")],
   ['peer id carries a per-boot incarnation nonce (ADR-0459)', html.includes("peerId:PEER_ID+'.'+uid().slice(0,6)") && html.includes("_sO().clear();_cT(this._snapT)")],
   ['wclock ships inside the IDB doc record (ADR-0460)', html.includes('wc:_wc()') && html.includes("validClock(m[p]))(state.wclock[k]")],
   ['peer join/leave is SR-announced via _pCt delta (ADR-0463)', html.includes('Net._pCt') && html.includes("'peerJoined'") && html.includes("'peerLeft'")],
@@ -3484,7 +3484,7 @@ try {
     const msg=Net._snapshotMsg();
     assert.strictEqual(msg.name,'WireName','snapshot carries docName for late joiners');
     assert.ok(html.includes("case 'name'"),"receiver has a 'name' case");
-    assert.ok(html.includes("Net._bcast({k:'name',peer:_pi(),name:state.docName})"),'rename broadcasts k:name');
+    assert.ok(html.includes("Net._bcast(_mk('name',{name:state.docName}))"),'rename broadcasts k:name');
     assert.ok(html.includes("_iS(msg.name)"),'receiver type-guards name');
     state.docName='';
     console.log('  ✓ doc name propagates via k:name broadcast + snapshot.name (ADR-0402)');
