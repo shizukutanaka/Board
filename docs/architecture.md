@@ -166,6 +166,11 @@ requestAnimationFrame 1 本。ユーザー操作中も常に 60fps を目標。
 - getCSS: `_cssCache` でテーマカラーを memoize (テーマ変更時に `clearCSSCache`)
 - `_penCache` ペン bbox メモ化 (ADR-0019)、`_imgKey` O(1) 画像キー (ADR-0021)、
   `_snapIndex` ソート済みスナップ索引 (ADR-0020) でイベント駆動の線形走査を解消
+- **キャッシュ不変条件**: シェイプ削除系は全て `_psc(id)`/`_pcC()` 経由で
+  `_penBboxCache`/`_penCache`/`Net._imgPending` をパージ (ADR-0424/0427/0435) —
+  id keyed な per-shape キャッシュが増えたら `_psc` 側に追加すること。
+  `_wrapCache` のキーは (text, maxWidth, fontSize, bold, italic, font, spacing)
+  — measureText に影響する prop を新設したらキーにも含める (ADR-0437)。
 
 ## DPR
 
@@ -213,8 +218,35 @@ DOM 要素は `data-t` 属性 + `UI.applyI18n()` で翻訳 (起動時に 1 回�
 ### WebRTC DataChannel (端末間)
 手動シグナリング (offer/answer をコピーして交換)。DTLS 暗号化。
 
+**ワイヤプロトコル (v1.7.4xx)**: 全メッセージは JSON 文字列。SCTP 単一
+メッセージ上限 (~256KiB) に収まらないペイロードは断片化される:
+
+- `op` — 通常の op ブロードキャスト (`broadcast`)。>200KB は `opc` 断片化
+  (ADR-0431)。
+- `snap` / `opc` — 64KB 断片 `{k,seq,n,data}`、受信は `_fragIn` が
+  `{p,g,n}` 再構成。重複 `seq` は `!p[seq]` で棄却、n 不一致も棄却、
+  完了時に join して元メッセージとして `_onRecv` に流す (24MB 上限)。
+  切断時 `_snapIn/_opcIn` をリセット (ADR-0385)。
+- `img` — 画像 blob の `{k,key,seq,n,data}` 断片。op/snapshot 内の画像は
+  `_slimOp` で `img:<key>` 参照に痩身化され、バイト本体は別経路
+  (`_imgOuts` → 64KB chunks → `_imgChunks` 再構成 → `_imgIn`)。
+  参照先不明の shape は `_imgPending` に駐車し blob 到着で attach
+  (ADR-0069/0374/0379)。削除済み shape の駐車エントリは `_psc` が除去
+  (ADR-0435)。
+- 送信は `_sendDC` 単一漏斗 — SCTP バッファ満杯の throw を
+  `onbufferedamountlow` 再送キュー (`_dcQ`) に変換 (ADR-0432)。
+  >256KiB の単一メッセージは永久に送れないため即 drop (ADR-0438)。
+- `hello`/`sync-req`/`ping`/`cursor`/`selection`/`name` — BroadcastChannel
+  経路のみ (RTC ピアは `_rtcPeerId` 合成 id で追跡、ADR-0010/0011)。
+  snapshot 要求は 1 秒 throttle (安価要求×高価応答の増幅防止)。
+
 ### CRDT clock
-各 op は `{peer, seq}` clock を持ち、`seenOps` (Set) で重複排除。スナップショット sync は `seq:'snap'+i` で個別 clock を割当。
+各 op は `{peer, seq}` clock を持ち、`seenOps` (Set) で重複排除。スナップショット
+sync は `seq:'snap:<shapeId>'` で shape 単位の clock を割当 (配列 index ではなく
+グローバル一意な id キー — 再 snapshot での dedup 衝突を回避)。`wc` に
+per-shape プロパティ単位 LWW 時計を同梱し、受信側 `_mergeSnapshotOp` が
+既存図形を property merge (ADR-0058)。マージする値自体も `validPatch`
+でゲート (ADR-0372/0373)。
 
 ## 回転 (v1.6.62-65 — ソクラテス問答監査)
 

@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.476] - 2026-09-23
+
+### Changed
+- wire ガード系 (ADR-0435..0438) の行動テスト追加 + architecture.md の P2P/キャッシュ節を現況同期 (ADR-0441)
+
 ## [1.7.475] - 2026-09-23
 
 ### Fixed

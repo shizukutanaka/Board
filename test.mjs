@@ -1571,7 +1571,7 @@ try {
              _getPasteCount: () => _pasteCount, _resetPasteClipboard: () => { _lastClipboard = null; },
              endRectLike, endLineLike, I18N, applyTheme, editSelectedShapeKbd, Share,
              draw, drawOverlay, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; }, _setOCtx: (c) => { const p = octx; octx = c; return p; },
-             _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg,
+             _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _ptsOK,
              _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
              _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER,
              _getLang: () => LANG, _getT: () => T };
@@ -1597,7 +1597,7 @@ try {
           _onSwUpdate, _ctxMenuKeyNav,
           _getPasteCount, _resetPasteClipboard,
           endRectLike, endLineLike, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
-          _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg,
+          _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _ptsOK,
           _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER } = api;
 
@@ -3850,6 +3850,42 @@ try {
      assert.ok(Net._snapIn==null,'sender chunks reassemble cleanly (ADR-0383 sender)');
      Net.dc=null;
      console.log('  ✓ ADR-0383 sender: uniform snap chunking (2 asserts)');}
+  }
+
+  // ADR-0435..0438 wire hygiene + validation guards
+  {
+    // _psc purges _imgPending — a shape deleted while its blob chunks are in
+    // flight must not leave a parked entry behind.
+    Net._imgPending.set('zzp','kZ');
+    _psc('zzp');
+    assert.ok(!Net._imgPending.has('zzp'),'ADR-0435: _psc purges _imgPending');
+    // _sendDC drops a >256KiB message outright — it can never send, and the
+    // backpressure queue must not spin on it.
+    let sentN=0;Net.dc={readyState:'open',send:m=>sentN++};
+    Net._sendDC('x'.repeat(300000));
+    assert.ok(sentN===0&&Net._dcQ==null,'ADR-0438: oversized dc message dropped, no poison queue');
+    Net._sendDC('{"k":"ping"}');
+    assert.ok(sentN===1,'ADR-0438: normal dc message still sends');
+    Net.dc=null;Net._dcQ=null;
+    // _fragIn: a duplicate seq must not double-count g — replay seq 0 twice,
+    // then complete; a buggy g++ would join with an empty slot (JSON.parse
+    // throws → op silently lost).
+    Net._onRecv({k:'opc',seq:0,n:2,data:'{"k":'},false);
+    Net._onRecv({k:'opc',seq:0,n:2,data:'{"k":'},false);
+    assert.ok(Net._opcIn&&Net._opcIn.g===1,'ADR-0431: duplicate chunk not counted');
+    Net._opcIn=null;
+    // _ptsOK: pen pts tuples must be all-number — [x,y,'x'] pressure is rejected
+    // at add AND upd alike.
+    assert.ok(!validShape({id:'pb',type:'pen',z:1,pts:[[1,2,'x']]}),'ADR-0436: non-number p[2] rejected');
+    assert.ok(validShape({id:'pg',type:'pen',z:1,pts:[[1,2,0.5],[3,4,0.6]]}),'ADR-0436: numeric p[2] ok');
+    // _wrapCache: spacing belongs in the memo key — changing s.spacing alone
+    // must recompute (letterSpacing alters measureText widths).
+    const ws={text:'aaaa bbbb cccc',spacing:0};
+    const l1=wrapTextCached(ws,ws.text,40,10,t=>t.length*10);
+    ws.spacing=2;
+    const l2=wrapTextCached(ws,ws.text,40,10,t=>t.length*10);
+    assert.ok(l1!==l2,'ADR-0437: spacing change invalidates wrap cache');
+    console.log('  ✓ ADR-0435/0436/0437/0438 wire+validation guards (6 asserts)');
   }
 
   // ADR-0070: quick-connect — edge-mid dots start a bound arrow draft
