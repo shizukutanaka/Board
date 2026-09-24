@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.225]
+
+### 追加
+- **数字キーで不透明度設定** (ADR-0167)。選択中に `0-9` のベア
+  数字キーで不透明度を直接設定 (`5`→50%、`0`→100%、Figma
+  parity)。
+
 ## [1.7.224]
 
 ### 追加

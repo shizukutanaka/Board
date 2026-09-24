@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.224';
+const V='1.7.225';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -924,7 +924,7 @@ const I18N={
       grid:'グリッド',minimap:'ミニマップ切替',beautify:'選択したペン描画を整形',esc:'選択解除/キャンセル',
       cycle:'図形を巡回',create:'中央に作成',
       present:'プレゼン',nudge:'移動 (⇧: 10px)',zorder:'前面/背面',zorderEnds:'最前面/最背面',
-      rotate:'回転 (15° / ノブdrag)',selAllMatches:'件のマッチを選択',search:'検索',searchNav:'次/前のマッチへ移動',moveAxis:'軸拘束移動',resizeRatio:'比率保持リサイズ',resizeCenter:'中心固定リサイズ',kbdResize:'リサイズ (⇧:×10)',lasso:'ラッソ選択',swapFill:'塗り↔線を交換',eyedropDone:'スタイルを取得',swapDone:'塗り↔線を交換'}},
+      rotate:'回転 (15° / ノブdrag)',selAllMatches:'件のマッチを選択',search:'検索',searchNav:'次/前のマッチへ移動',moveAxis:'軸拘束移動',resizeRatio:'比率保持リサイズ',resizeCenter:'中心固定リサイズ',kbdResize:'リサイズ (⇧:×10)',lasso:'ラッソ選択',swapFill:'塗り↔線を交換',digitOpacity:'不透明度 0-9',eyedropDone:'スタイルを取得',swapDone:'塗り↔線を交換'}},
   en:{export:'Export',present:'Present',snap:'Snap',size:'Size',lineStyle:'Line',helpTitle:'Shortcuts',
     helpSub:'No need to memorise. You\'ll pick it up.',
     saved:'saved',savedNow:'just now',savedAgo:'s ago',
@@ -1002,7 +1002,7 @@ const I18N={
       grid:'Toggle grid',minimap:'Toggle minimap',beautify:'Beautify selected pen strokes',esc:'Deselect / cancel',
       cycle:'Cycle shapes',create:'Create at centre',
       present:'Present',nudge:'Move (⇧: 10px)',zorder:'Front / back',zorderEnds:'To front / to back',
-      rotate:'Rotate (15° / knob drag)',selAllMatches:'matches selected',search:'Search',searchNav:'Next / prev match',moveAxis:'Constrain move axis',resizeRatio:'Keep ratio (resize)',resizeCenter:'Resize from centre',kbdResize:'Resize (⇧:×10)',lasso:'Lasso select',swapFill:'Swap fill↔stroke',eyedropDone:'Style picked',swapDone:'Fill↔stroke swapped'}}};
+      rotate:'Rotate (15° / knob drag)',selAllMatches:'matches selected',search:'Search',searchNav:'Next / prev match',moveAxis:'Constrain move axis',resizeRatio:'Keep ratio (resize)',resizeCenter:'Resize from centre',kbdResize:'Resize (⇧:×10)',lasso:'Lasso select',swapFill:'Swap fill↔stroke',digitOpacity:'Opacity 0-9',eyedropDone:'Style picked',swapDone:'Fill↔stroke swapped'}}};
 // ADR-0014: LANG/T are `let`, not `const`, so UI.toggleLang() can reassign them — t()
 // closes over T by reference, so every t()/T.k call made AFTER a reassignment picks up
 // the new language automatically. Only elements that cache a translated string once at
@@ -5212,6 +5212,7 @@ window.addEventListener('keydown',e=>{
   else if(k==='r'&&e.shiftKey&&!meta&&!e.altKey&&state.selection.size){e.preventDefault();doRotate(90)}
   else if(k==='h'&&e.shiftKey&&meta&&!e.altKey){e.preventDefault();hideSelection()}   // ADR-0137: ⌘⇧H
   else if(k==='i'&&e.shiftKey&&meta&&!e.altKey){e.preventDefault();selectInverse()}   // ADR-0139: ⌘⇧I
+  else if(!meta&&!e.shiftKey&&/^[0-9]$/.test(k)&&state.selection.size){e.preventDefault();applyStyleToSelection({opacity:k==='0'?1:+k/10})}   // ADR-0167: Figma digit-opacity
   else if(!meta&&KEYMAP[k]){pickTool(KEYMAP[k],k==='i')}
   else if(k===' '&&!meta){e.preventDefault();pickTool('hand',true)}
 });
@@ -7680,7 +7681,7 @@ const UI={
       ['Enter / ⇧Enter',k.searchNav],
       ['⇧H / ⇧V',t('ctxFlipH')+' / '+t('ctxFlipV')],
       ['⌥C / ⌥V',t('ctxCopyStyle')+' / '+t('ctxPasteStyle')],
-      ['⇧ + drag',k.moveAxis],['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],['⌥ + drag',k.lasso],['I',k.eyedropper],['⇧X',k.swapFill],['⌘⇧ , / .',k.fontSize],['⌘B / ⌘I / ⌘U / ⌘⇧X',k.boldItalic],
+      ['⇧ + drag',k.moveAxis],['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],['⌥ + drag',k.lasso],['I',k.eyedropper],['⇧X',k.swapFill],['0-9',k.digitOpacity],['⌘⇧ , / .',k.fontSize],['⌘B / ⌘I / ⌘U / ⌘⇧X',k.boldItalic],
       ['Tab / ⇧Tab',k.cycle],['Enter',k.create+' / '+t('editLabel')]
     ];
     while(g.firstChild)g.removeChild(g.firstChild);

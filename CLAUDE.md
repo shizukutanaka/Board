@@ -216,6 +216,7 @@ Board/
 - [ADR-0164](docs/ADR-0164-statusbar-sel-dims.md) 選択寸法の常時表示
 - [ADR-0165](docs/ADR-0165-arrow-pan-empty.md) 非選択時の矢印パン
 - [ADR-0166](docs/ADR-0166-swap-fill-stroke.md) ⇧X 塗り↔線スワップ
+- [ADR-0167](docs/ADR-0167-digit-opacity.md) 数字キー不透明度
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
