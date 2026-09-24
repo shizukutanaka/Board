@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.262]
+
+### 追加
+- **フレームラベルの装飾** (ADR-0204)。フレーム名に italic・下線・
+  取消線を適用 (⌘I/⌘U/⌘⇧X、canvas+SVG、600 ウェイト維持)。
+
 ## [1.7.261]
 
 ### 追加

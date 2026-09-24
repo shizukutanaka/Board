@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.261';
+const V='1.7.262';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2763,11 +2763,17 @@ function drawShape(s,c){
       const lbl=s.label||'Frame';
       const fs=12;
       c.fillStyle=s.stroke||getCSS('--brand')||'#00C4CC';
-      c.font=`600 ${fs}px ${_fontFam(s)}`;                          // ADR-0186
+      c.font=`${s.italic?'italic ':''}600 ${fs}px ${_fontFam(s)}`;  // ADR-0186/0204
       c.textBaseline='bottom';
       const alF=s.align||'left';                                    // ADR-0197
       c.textAlign=alF==='right'?'right':alF==='center'?'center':'left';
-      c.fillText(lbl,alF==='right'?s.x+s.w-6:alF==='center'?s.x+s.w/2:s.x+6,s.y-2);
+      const txF2=alF==='right'?s.x+s.w-6:alF==='center'?s.x+s.w/2:s.x+6;
+      c.fillText(lbl,txF2,s.y-2);
+      if(s.under||s.strike){const lw=c.measureText(lbl).width;      // ADR-0204
+        c.strokeStyle=c.fillStyle;c.lineWidth=Math.max(1,fs*0.06);
+        const ux=alF==='left'?txF2:alF==='right'?txF2-lw:txF2-lw/2;
+        if(s.under){const uy=s.y-2+fs*0.12;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}
+        if(s.strike){const uy=s.y-2-fs*0.45;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}}
       c.textAlign='left';
       c.restore();
       break;}
@@ -6809,7 +6815,7 @@ function buildSVG(shapes,paper){
         els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${fr}" fill="${s.fill||'rgba(248,250,252,0.6)'}" stroke="${clr}" stroke-width="${SZ||1.5}"${dA}${fa}${rT}/>`);   // ADR-0178
         const alF2=s.align||'left',txF=alF2==='right'?X+ox+W-6:alF2==='center'?X+ox+W/2:X+ox+6;   // ADR-0197
         const ancF=alF2==='right'?' text-anchor="end"':alF2==='center'?' text-anchor="middle"':'';
-        els.push(`<text x="${txF}" y="${Y+oy-4}" font-family="${_fontFam(s)}" font-size="12" font-weight="600" fill="${clr}"${ancF}${fa}${rT}>${_esc(s.label||'Frame')}</text>`);
+        els.push(`<text x="${txF}" y="${Y+oy-4}" font-family="${_fontFam(s)}" font-size="12" font-weight="600"${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''} fill="${clr}"${ancF}${fa}${rT}>${_esc(s.label||'Frame')}</text>`);
         break;}
       case 'sticky':{
         const r=Math.min(6,Math.abs(W)/6,Math.abs(H)/6);
@@ -8560,7 +8566,7 @@ function fontSizeStep(d){
 function toggleTextFlag(k){
   const before=[],after=[];
   for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky'&&!s.label)||s.locked)continue;   // ADR-0170
+    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky'&&s.type!=='frame'&&!s.label)||s.locked)continue;   // ADR-0170/0204
     const nxt=!s[k];
     before.push({id,[k]:s[k]||null});after.push({id,[k]:nxt?true:null});
     if(nxt)s[k]=true;else delete s[k];
