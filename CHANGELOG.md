@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.337] - 2026-09-24
+
+### Changed
+- ツールバー icon を `<symbol>`+`<use>` sprite に集約 (raw -710B、
+  ADR-0285)
+- README サイズ表記を現状値へ修正 (gzip 160KB / brotli 131KB)
+
 ## [1.7.336] - 2026-09-24
 
 ### Added
