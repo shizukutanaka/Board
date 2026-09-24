@@ -787,7 +787,7 @@ const _selL=f=>[...state.selection].map(byId).filter(f);   // ADR-0308
 const _selR=op=>{if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)))};   // ADR-0309
 
 // ====================== CONSTANTS ======================
-const V='1.7.360';
+const V='1.7.361';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3203,6 +3203,7 @@ function drawText(s,c){
       if(s.under){const uy=s.y+i*lh+fs*1.08;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}
       if(s.strike){const uy=s.y+i*lh+fs*0.55;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}}   // ADR-0100
     c.restore()}
+  if(s.link&&s.w!=null){c.font='10px sans-serif';c.textAlign='right';c.textBaseline='top';c.fillText('🔗',s.x+Math.abs(s.w)-3,s.y+3)}   // ADR-0310: link badge top-right
 }
 
 // Rotate point (px,py) about centre (cx,cy) by `deg` degrees. Shared by handles,
