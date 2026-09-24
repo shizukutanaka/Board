@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.318';
+const V='1.7.319';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6277,7 +6277,7 @@ function excScene(shapes){
     switch(s.type){
       case'rect':case'ellipse':case'diamond':{
         els.push(E(s,{type:s.type==='rect'?'rectangle':s.type,x:s.x,y:s.y,width:s.w||0,height:s.h||0,   // ADR-0223: excalidraw type is 'rectangle' not 'rect'
-          roundness:s.r?{type:3}:null}));
+          roundness:s.r?{type:3}:null,strokeSharpness:s.r?'round':'sharp'}));   // ADR-0267
         // ADR-0234: label → container text marked bLabel (Board-only marker;
         // excalidraw ignores unknown fields, ours reads it back to s.label)
         if(s.label)els.push(_ct(s,uid(),s.label,true));
@@ -6786,7 +6786,7 @@ function excToShapes(txt){
     if(Number.isFinite(e.lineHeight)&&e.lineHeight!==1.25)o.lineH=Math.min(4,Math.max(0.5,e.lineHeight));   // ADR-0242
     // ADR-0230: excalidraw fidelity — hatch fills, roundness, align, arrowheads
     if(e.fillStyle==='hachure')o.fstyle='hatch';else if(e.fillStyle==='cross-hatch')o.fstyle='cross';
-    if(e.roundness)o.r=8;
+    if(e.roundness||e.strokeSharpness==='round')o.r=8;   // ADR-0267
     return o;
   };
   const rot=e=>Number.isFinite(e.angle)?Math.round(e.angle*180/Math.PI*10)/10:0;

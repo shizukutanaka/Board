@@ -316,6 +316,7 @@ Board/
 │   ├── ADR-0264-drawio-edge-labelpos.md  # drawio edge mxGeometry@x ↔ s.labelPos (実装済)
 │   ├── ADR-0265-exc-elbowed.md  # excalidraw elbowed ↔ s.elbow (実装済)
 │   ├── ADR-0266-exc-conn-label.md  # excalidraw conn ラベル ↔ s.label (実装済)
+│   ├── ADR-0267-exc-strokesharpness.md  # excalidraw strokeSharpness ↔ s.r (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
