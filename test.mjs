@@ -992,7 +992,7 @@ const checks = [
   ['minimap renders frame shapes (case frame fallthrough to rect)', html.includes("case 'frame':\n        case 'rect':")],
   ['describeShape announces locked and rotated state', html.includes("if(_lk(s))d+=` ${t('ctxLock')}`;") && html.includes("if(_rt(s))d+=` ${_rt(s)}°`;")],
   ['describeShape announces flip/shadow/route (ADR-0414)', html.includes("s.flip&1&&t('ctxFlipH')")&&html.includes("if(_sh2(s))d+=` ${t('ctxShadow')}`")&&html.includes("_el(s)?t('ctxElbow'):t('ctxCurve')")&&html.includes("_fs2(s)==='hatch'||_fs2(s)==='cross'")&&html.includes("if(s.hop)d+=` ${t('ctxHop')}`")],
-  ['describeShape announces text/label content for SR', html.includes("const txt=_St(_txx(s)||_lb(s)||'').replace(/\\s+/g,' ').trim();") && html.includes("_ln(txt)>30?_s0(txt,30)+'…':txt")],
+  ['describeShape announces text/label content for SR', html.includes("const txt=_trm(_St(_txx(s)||_lb(s)||'').replace(/\\s+/g,' '));") && html.includes("_ln(txt)>30?_s0(txt,30)+'…':txt")],
   // v1.6.66: resize object-snap
   ['resizeSnap exists and applyResize uses it', html.includes("function resizeSnap(orig,handle,wp)") && html.includes(":resizeSnap(orig,handle,wp); // lock/alt override obj-snap")],
   ['resize commit clears alignment guides', html.includes("ptr.resizeHandle=null;ptr.resizeOrig=null;state.guides=null;")],
