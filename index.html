@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.274';
+const V='1.7.275';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -7884,7 +7884,7 @@ const UI={
       state.styleClipboard&&has&&['ctxPasteStyle','⌥V',pasteStyle],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked})&&['ctxElbow','',toggleElbow],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked})&&['ctxCurve','',toggleCurve],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked&&(_wayArr(s).length||s.bend||s.elbow||s.curve)})&&['ctxRouteReset','',resetRoute],   // ADR-0090
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked&&(_wayArr(s).length||s.bend||s.elbow||s.curve||s.labelPos!=null||s.cbend!=null)})&&['ctxRouteReset','',resetRoute],   // ADR-0090/0217
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked})&&['ctxReverse','',reverseConn],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='sticky'&&!s.locked})&&['ctxFitText','',fitSticky],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='frame'&&!s.locked})&&['ctxFrameFit','',fitFrames],
@@ -8543,7 +8543,7 @@ function resetRoute(){
   const before=[],after=[];
   for(const id of state.selection){
     const s=byId(id);if(!s||(s.type!=='line'&&s.type!=='arrow')||s.locked)continue;
-    if(!_wayArr(s).length&&!s.bend&&!s.elbow&&!s.curve)continue;   // ADR-0090
+    if(!_wayArr(s).length&&!s.bend&&!s.elbow&&!s.curve&&s.labelPos==null&&s.cbend==null)continue;   // ADR-0090/0217
     before.push({id,way:s.way??null,bend:s.bend??null,elbow:s.elbow||0,curve:s.curve||0,labelPos:s.labelPos??null,cbend:s.cbend??null});
     after.push({id,way:null,bend:null,elbow:0,curve:0});
     s.way=null;s.bend=null;s.elbow=0;s.curve=0;s.labelPos=null;s.cbend=null;

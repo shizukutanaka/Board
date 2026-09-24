@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.275]
+
+### 修正
+- **ルートリセットの ctx 到達性** (ADR-0217)。`labelPos` /
+  `cbend` だけが残ったコネクタにも「ルートをリセット」が
+  出るようゲートを拡張 (⌥click の代替到達)。
+
 ## [1.7.274]
 
 ### 改善
