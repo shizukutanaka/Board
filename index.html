@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.269';
+const V='1.7.270';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2670,7 +2670,7 @@ function _drawConnLabel(s,c){
   c.save();c.shadowColor='transparent';c.shadowBlur=0;c.shadowOffsetY=0;   // ADR-0211: label never shadows
   const fs=s.fontSize||12;   // ADR-0169
   c.font=_fontStr(s,fs);c.textAlign='center';c.textBaseline='middle';   // ADR-0170
-  const lns=String(s.label).split('\n'),llh=fs*1.25,pad=4;   // ADR-0210: multi-line labels (imports)
+  const lns=String(s.label).split('\n'),llh=fs*(s.lineH||1.25),pad=4;   // ADR-0210/0212
   let w=0;for(const l of lns)w=Math.max(w,c.measureText(l).width);
   const th=lns.length*llh;
   c.fillStyle=s.fill||getCSS('--paper')||'#fff';              // ADR-0193
@@ -6675,7 +6675,7 @@ function _connLabelSVG(s,x1,y1,x2,y2,ox,oy,stroke,paper){
   if(!s.label)return '';
   const mx=(x1+x2)/2+ox,my=(y1+y2)/2+oy;
   const fs=s.fontSize||12;
-  const lns=String(s.label).split('\n'),lh2=fs*1.25;          // ADR-0210: multi-line labels
+  const lns=String(s.label).split('\n'),lh2=fs*(s.lineH||1.25);          // ADR-0210/0212
   const lw=Math.max(...lns.map(l=>l.length),0)*fs*0.6+8,th=lns.length*lh2;
   const tsp=lns.map((l,i)=>`<tspan x="${mx}" dy="${i?lh2:0}">${_esc(l)}</tspan>`).join('');
   return `<rect x="${mx-lw/2}" y="${my-th/2}" width="${lw}" height="${th}" fill="${_esc(s.fill||paper||'#FFFFFF')}" opacity="0.9"/>`+

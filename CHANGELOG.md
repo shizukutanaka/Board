@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.270]
+
+### 修正
+- **コネクタラベルの行間反映** (ADR-0212)。ctx「行間」で設定した
+  `s.lineH` が描画に反映 (canvas+SVG、`fs*1.25` ハードコードを
+  ボックスラベルと同じフォールバック式に)。
+
 ## [1.7.269]
 
 ### 追加

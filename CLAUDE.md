@@ -261,6 +261,7 @@ Board/
 - [ADR-0209](docs/ADR-0209-fixed-edge-anchors.md) 端点固定アンカー
 - [ADR-0210](docs/ADR-0210-multiline-conn-label.md) コネクタラベル複数行
 - [ADR-0211](docs/ADR-0211-shadow-text-conns.md) 影をtext/connへ
+- [ADR-0212](docs/ADR-0212-conn-label-lineheight.md) connラベル行間
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
