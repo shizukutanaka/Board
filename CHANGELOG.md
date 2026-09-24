@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.274]
+
+### 改善
+- **ラベル位置のスロット吸着** (ADR-0216)。コネクタラベルの
+  ドラッグ位置が 0/0.25/0.5/0.75/1 に磁石吸着
+  (draw.io の start/center/end 系)。
+
 ## [1.7.273]
 
 ### 改善
