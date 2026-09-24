@@ -819,7 +819,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.424';
+const V='1.7.425';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -904,7 +904,7 @@ const I18N={
     quotaWarn:'保存容量の 8 割超を使用中です — ⌘E/⌘⇧E で書き出しておくと安全です',
     snap:'スナップ',grid:'グリッド',minimap:'ミニマップ',on:'オン',off:'オフ',online:'オンライン',offline:'オフライン',shapes:'図形',selDims:'選択',
     selCount:'個を選択',selNone:'選択を解除',
-    mirrorLabel:'ボード上の図形一覧',mirrorMore:'個は一覧に未掲載',tagHidden:'(非表示)',
+    mirrorLabel:'ボード上の図形一覧',mirrorMore:'個は一覧に未掲載',tagHidden:'(非表示)',tagGroup:'(グループ)',srBound:'結合',
     copied:'コピー',pasted:'貼り付け',deleted:'削除',cleared:'クリア',
     beautified:'整形しました',beautifyNone:'整形できる図形がありません(矩形・楕円・直線に近いペン描画を選択してください)',
     undone:'元に戻した',redone:'やり直した',created:'作成',editLabel:'選択中の図形を編集',
@@ -1037,7 +1037,7 @@ const I18N={
     backupRestoreFailed:'Failed to restore backup',
     peers:'peers',you:'You',shapes:'Shapes',selDims:'Selection',on:'On',off:'Off',online:'Online',offline:'Offline',grid:'Grid',minimap:'Minimap',
     selCount:' selected',selNone:'Selection cleared',
-    mirrorLabel:'Shapes on the board',mirrorMore:' more not listed',tagHidden:'(hidden)',
+    mirrorLabel:'Shapes on the board',mirrorMore:' more not listed',tagHidden:'(hidden)',tagGroup:'(grouped)',srBound:'bound',
     k:{select:'Select',hand:'Pan',pen:'Pen',rect:'Rectangle',ellipse:'Ellipse',
       arrow:'Arrow',line:'Line',text:'Text',sticky:'Sticky',frame:'Frame',eraser:'Eraser',diamond:'Diamond',marker:'Marker',eyedropper:'Eyedropper',
       undo:'Undo',redo:'Redo',del:'Delete',dup:'Duplicate',fontSize:'Font size',boldItalic:'Bold/Italic/Underline/Strike',
@@ -2300,6 +2300,11 @@ function describeShape(s){
   d+=` @ ${_rnd(b.x)},${_rnd(b.y)}`;
   if(s.locked)d+=` ${t('ctxLock')}`;
   if(s.visible===0)d+=` ${t('tagHidden')}`;   // ADR-0371: selection-restore / RTC can select a hidden shape
+  if(s.groupId)d+=` ${t('tagGroup')}`;   // ADR-0380: visual group halo has no SR channel
+  if(_conn(s.type)&&(s.a||s.b)){   // ADR-0380: bound endpoints are the conn's identity
+    const A=s.a&&byId(s.a),B=s.b&&byId(s.b);
+    d+=` ${t('srBound')}: ${A?(T.k?.[A.type]??A.type):'?'}→${B?(T.k?.[B.type]??B.type):'?'}`;
+  }
   if(s.rotate)d+=` ${s.rotate}°`;
   if(s.link)d+=' 🔗';   // ADR-0315: mirror the visual badge for SR users
   return d;

@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.425] - 2026-09-23
+
+### 追加
+- スクリーンリーダーの図形説明にグループ所属とコネクタ結合先を追加 (ADR-0380) — `describeShape` が `(グループ)` と `結合: 矩形→付箋` 形式で視覚的ハロー/結合ドットの情報を音声化
+
 ## [1.7.424] - 2026-09-23
 
 ### 修正
