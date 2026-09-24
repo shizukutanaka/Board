@@ -185,6 +185,14 @@ Board/
 - [ADR-0133](docs/ADR-0133-elbow-bend-flip.md) elbow bend のフリップ鏡像化
 - [ADR-0134](docs/ADR-0134-search-ctx-item.md) 検索の ctx 項目
 - [ADR-0135](docs/ADR-0135-view-toggles-ctx.md) ビュー系トグルの ctx 項目
+- [ADR-0136](docs/ADR-0136-corner-radius-cycle.md) 矩形の角丸サイクル
+- [ADR-0137](docs/ADR-0137-hide-show-shapes.md) 図形の非表示/すべて表示
+- [ADR-0138](docs/ADR-0138-style-copy-widened.md) スタイルコピーの対象拡大
+- [ADR-0139](docs/ADR-0139-select-inverse.md) 選択の反転
+- [ADR-0140](docs/ADR-0140-connect-two-shapes.md) 選択2図形のコネクタ接続
+- [ADR-0141](docs/ADR-0141-waypoint-alt-delete.md) Alt+click でウェイポイント削除
+- [ADR-0142](docs/ADR-0142-flip-rotation-per-axis.md) フリップ回転角の軸別修正
+- [ADR-0143](docs/ADR-0143-elbow-bend-alt-reset.md) Alt+click でエルボー trunk リセット
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

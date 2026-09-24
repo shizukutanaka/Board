@@ -220,7 +220,7 @@ const checks = [
   ['frame move drags contained shapes', html.includes("dragIds") && html.includes("type==='frame'")],
   ['copyStyle uses i18n', html.includes("t('noSelection')") && html.includes("t('styleCopied')")],
   ['group toasts use i18n', html.includes("t('grouped')") && html.includes("t('selectTwo')")],
-  ['copyStyle captures stroke/fill/size/opacity', html.includes("stroke:sh.stroke,fill:sh.fill") && html.includes("size:sh.size,opacity:sh.opacity")],
+  ['copyStyle captures stroke/fill/size/opacity', html.includes("stroke:sh.stroke,fill:sh.type==='sticky'?sh.color:sh.fill") && html.includes("size:sh.size,opacity:sh.opacity")],
   ['pasteStyle filters undefined keys', html.includes("filter(([,v])=>v!==undefined)")],
   ['applyStyleToSelection records undo', html.includes("Store._recordCommitted({op:'upd'")],
   // v1.6.6: reversibility + security hardening
@@ -489,7 +489,7 @@ const checks = [
   ['directional marquee (right-to-left = intersect)', html.includes('const cross=m.x2<m.x1')&&html.includes('G.marqueeHit(s,r)')],
   ['marker tool — pen variant with hl flag + flat pressure', html.includes("k:'marker'")&&html.includes('d.hl=1;d.size=8;d.opacity=0.4')&&html.includes("data-tool=\"marker\"")],
   ['click-click line/arrow — second click commits (lineClick mode)', html.includes('ptr.lineClick=true;break')&&html.includes('ptr.lineClick){ptr.lineClick=false;endLineLike()')],
-  ['marquee skips locked shapes (Figma/draw.io parity)', html.includes('if(hit&&!s.locked)state.selection.add(s.id)')],
+  ['marquee skips locked shapes (Figma/draw.io parity)', html.includes('if(hit&&!s.locked&&s.visible!==0)state.selection.add(s.id)')],
   ['Alt during move suppresses all snapping (draw.io parity)', html.includes('moveDelta(wp,shift,alt)')&&html.includes('!alt&&!state.snap')],
   ['shift-click on selected shape removes it (toggle-off)', html.includes('alreadySel&&e.shiftKey')&&html.includes('state.selection.delete(id)')],
   ['shift-marquee adds to selection (Figma parity)', html.includes('if(!shift)state.selection.clear()')],
@@ -499,6 +499,14 @@ const checks = [
   ['z-order ctx items — touch path for ]/[ keys', html.includes("['ctxBringFront','⇧]',doBringFront]")&&html.includes('ctxSendBack')],
   ['search via ctx — ⌘F box is touch-reachable now', html.includes("['ctxSearch','⌘F',toggleSq]")&&html.includes('function toggleSq')],
   ['view toggles in ctx — grid/snap/minimap/fit/reset touch path', html.includes("['ctxGrid','G',toggleGridView]")&&html.includes('toggleSnapMode')&&html.includes('ctxMinimap')],
+  ['corner-radius cycle for rects via ctx', html.includes('function cycleCorner')&&html.includes("['ctxCorner'" )&&html.includes('ctxCorner:')],
+  ['hide/show shapes — visible:0 skips draw+hit', html.includes('s.visible===0)return')&&html.includes('function hideSelection')&&html.includes('function showAllShapes')&&html.includes('ctxShowAll')],
+  ['style copy widened — text/route props included', html.includes('align:sh.align,fontSize:sh.fontSize')&&html.includes('cbend:sh.cbend')],
+  ['invert selection ⌘⇧I + ctx', html.includes('function selectInverse')&&html.includes('ctxSelectInverse')&&html.includes('selectInverse()}')],
+  ['connect 2 selected shapes via ctx', html.includes('function connectSelection')&&html.includes('a:a.id,b:b.id')&&html.includes('ctxConnect')],
+  ['Alt+click deletes a waypoint', html.includes('wa.splice(i-1,1);onlySel.way=wa.length?wa:null')&&html.includes('ADR-0141')],
+  ['flip mirrors rotation per-axis (180−θ for h)', html.includes("axis==='h'?180:360")&&html.includes('ADR-0142')],
+  ['Alt+click recentres elbow trunk bend', html.includes('ADR-0143')&&html.includes("bend:onlySel.bend" )&&html.includes('delete onlySel.bend')],
   ['line↔arrow conversion via style op (ctx)', html.includes('toggleLineArrow')&&html.includes('ctxToArrow')&&html.includes("s.type==='line'?'arrow':'line'")],
   ['sticky↔text conversion via style op (ctx)', html.includes('toggleStickyText')&&html.includes('ctxToSticky')&&html.includes("s.type==='sticky'?'text':'sticky'")],
   ['frame select-contents (ctx)', html.includes('selectFrameContents')&&html.includes('ctxSelContents')&&html.includes('withFrameChildren(')],
@@ -743,7 +751,7 @@ const checks = [
   ['search highlight drawn in world space', html.includes("if(_sq){") && html.includes("const q=_sq.toLowerCase()") && html.includes("'#F97316'") && html.includes("'#EA580C'")],
   ['Ctrl+F toggles search input', html.includes("meta&&k==='f'") && html.includes("sq.style.display")],
   // v1.6.62: Socratic feature-interaction fixes
-  ['flip negates rotation angle (reflection reverses sense)', html.includes("if(s.rotate)s.rotate=(360-s.rotate)%360;")],
+  ['flip negates rotation angle (reflection reverses sense)', html.includes("if(s.rotate)s.rotate=((axis==='h'?180:360)-s.rotate+360)%360;")],
   ['rotated box shapes expose handles at rotated positions', html.includes("return hs.map(p=>{const r=_rotPt(p.x,p.y,cx,cy,s.rotate);return{id:p.id,x:r.x,y:r.y}});")],
   ['search placeholder uses localized key (T.k.search — t(search) resolved to the raw key, v1.7.63)', html.includes('sq.placeholder=T.k.search')],
   ['rotate + search i18n keys in ja and en', html.includes("selAllMatches:'件のマッチを選択',search:'検索'") && html.includes("selAllMatches:'matches selected',search:'Search'")],
@@ -4204,10 +4212,12 @@ try {
     Store.commit({op:'add',shape:r});
     state.selection=new Set([r.id]);
     doFlip('h');
-    assert.strictEqual(state.shapes.find(s=>s.id===r.id).rotate,330,'flipH negates rotate 30°→330°');
+    assert.strictEqual(state.shapes.find(s=>s.id===r.id).rotate,150,'flipH mirrors rotate 30°→150° (x-axis mirror: 180−θ)');
     Store.undo();
     assert.strictEqual(state.shapes.find(s=>s.id===r.id).rotate,30,'flip undo restores rotate=30');
-    console.log('  ✓ doFlip + rotation: reflection negates the rotation angle, undo restores');
+    doFlip('v');
+    assert.strictEqual(state.shapes.find(s=>s.id===r.id).rotate,330,'flipV mirrors rotate 30°→330° (y-axis mirror: 360−θ)');
+    console.log('  ✓ doFlip + rotation: reflection mirrors the angle per axis, undo restores');
   }
   {
     // v1.6.63: doFlip skips locked shapes (was: only doRotate did)

@@ -774,7 +774,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.192';
+const V='1.7.200';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -867,7 +867,7 @@ const I18N={
     ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxCurve:'曲線',ctxRouteReset:'ルートをリセット (直線に戻す)',ctxSelContents:'内容を選択',ctxFrameFit:'コンテンツに合わせる',ctxArrowHead:'矢印ヘッド (矢印→丸→シェブロン)',ctxToArrow:'矢印に変換',ctxToLine:'直線に変換',ctxBothEnds:'両端ヘッド',ctxRrect:'角スタイル (角丸→直角)',ctxStickyColor:'付箋の色 (順送り)',ctxToText:'テキストに変換',ctxToSticky:'付箋に変換',ctxTextAlign:'テキスト揃え (左→中央→右)',ctxFillStyle:'塗りスタイル (塗り→ハッチ→斜格子)',
     ctxSelectSameType:'同じ種類を選択',ctxSelectSame:'同色を選択',ctxSearch:'検索',ctxFit:'全体を表示',ctxZoomReset:'ズーム100%',ctxGrid:'グリッド',ctxSnap:'吸着',ctxMinimap:'ミニマップ',ctxWrapFrame:'フレームで包む',ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
     ctxSendBackward:'背面へ',ctxSendBack:'最背面へ',
-    ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxRotate90:'90°回転',ctxLock:'ロック',ctxUnlock:'ロック解除',ctxUnlockAll:'全てロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
+    ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxRotate90:'90°回転',ctxCorner:'角丸を切替',ctxHide:'非表示',ctxShowAll:'すべて表示',ctxSelectInverse:'選択を反転',ctxConnect:'2図形をコネクタで接続',hiddenCount:'件を非表示',shownAll:'すべて表示しました',ctxLock:'ロック',ctxUnlock:'ロック解除',ctxUnlockAll:'全てロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
     canvasHint:'描画キャンバス。Tab/⇧Tab で図形巡回、Enter で作成、矢印で移動、⌥+矢印でリサイズ',
     tools:'ツール',docNameLabel:'ドキュメント名',activePeers:'接続中のピア',expPng:'PNG 書き出し',
     moreExport:'その他の書き出し・読み込み',install:'アプリとしてインストール',style:'スタイル',
@@ -943,7 +943,7 @@ const I18N={
     ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxCurve:'Curved',ctxRouteReset:'Reset route (straighten)',ctxSelContents:'Select contents',ctxFrameFit:'Fit to contents',ctxArrowHead:'Arrowhead (arrow→dot→open)',ctxToArrow:'Convert to arrow',ctxToLine:'Convert to line',ctxBothEnds:'Arrowheads both ends',ctxRrect:'Corners (round→sharp)',ctxStickyColor:'Sticky colour (cycle)',ctxToText:'Convert to text',ctxToSticky:'Convert to sticky',ctxTextAlign:'Text align (left→center→right)',ctxFillStyle:'Fill style (solid→hatch→cross)',
     ctxSelectSameType:'Select same type',ctxSelectSame:'Select same colour',ctxSearch:'Search',ctxFit:'Fit board',ctxZoomReset:'Zoom 100%',ctxGrid:'Grid',ctxSnap:'Snap',ctxMinimap:'Minimap',ctxWrapFrame:'Frame selection',ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
     ctxSendBackward:'Send backward',ctxSendBack:'Send to back',
-    ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxRotate90:'Rotate 90°',ctxLock:'Lock',ctxUnlock:'Unlock',ctxUnlockAll:'Unlock all',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
+    ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxRotate90:'Rotate 90°',ctxCorner:'Round corner',ctxHide:'Hide',ctxShowAll:'Show all',ctxSelectInverse:'Invert selection',ctxConnect:'Connect 2 shapes',hiddenCount:'hidden',shownAll:'All shapes shown',ctxLock:'Lock',ctxUnlock:'Unlock',ctxUnlockAll:'Unlock all',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
     canvasHint:'Drawing canvas. Tab/Shift+Tab cycles shapes, Enter creates, arrows move, Alt+arrows resize.',
     tools:'Tools',docNameLabel:'Document name',activePeers:'Active peers',expPng:'Export PNG',
     moreExport:'More export & import options',install:'Install Board as an app',style:'Style',
@@ -2583,6 +2583,7 @@ function _drawConnLabel(s,c){
   c.restore();
 }
 function drawShape(s,c){
+  if(s.visible===0)return;                                   // ADR-0137
   c=c||ctx;
   c.globalAlpha=s.opacity??1;
   c.lineCap='round';c.lineJoin='round';
@@ -3411,6 +3412,12 @@ canvas.addEventListener('pointerdown',e=>{
           if(onlySel.elbow&&!onlySel.locked){          // ADR-0072: trunk drag
             const tr=_elbowTrunk(onlySel);
             if(tr&&distToSeg(wp,tr[0],tr[1])<=HANDLE_SIZE/state.viewport.zoom){
+              if(e.altKey&&onlySel.bend!=null){        // ADR-0143: ⌥click recentres the trunk
+                const origSel=[...state.selection];
+                Store._recordCommitted({op:'style',before:[{id:onlySel.id,bend:onlySel.bend}],after:[{id:onlySel.id,bend:null}]});
+                if(origSel.length)state.history[state.histIdx].origSel=origSel;
+                delete onlySel.bend;invalidate();return;
+              }
               ptr.dragKind='ebend';ptr.ebendOrig=clone(onlySel);
               return;
             }
@@ -3425,6 +3432,14 @@ canvas.addEventListener('pointerdown',e=>{
             const pts=_linePts(onlySel),R_=HANDLE_SIZE/state.viewport.zoom;
             for(let i=1;i<pts.length-1;i++){             // existing vertex → move it
               if(Math.hypot(wp.x-pts[i].x,wp.y-pts[i].y)<=R_){
+                if(e.altKey){                              // ADR-0141: ⌥click deletes the waypoint
+                  const wa=_wayArr(onlySel),bw=clone(wa.length?wa:null);
+                  wa.splice(i-1,1);onlySel.way=wa.length?wa:null;
+                  const origSel=[...state.selection];
+                  Store._recordCommitted({op:'style',before:[{id:onlySel.id,way:bw}],after:[{id:onlySel.id,way:wa.length?clone(wa):null}]});
+                  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+                  invalidate();return;
+                }
                 ptr.dragKind='way';ptr.wayIdx=i-1;ptr.wayNew=false;ptr.wayOrig=clone(onlySel);return;
               }
             }
@@ -4147,18 +4162,18 @@ function pickTop(wp){
     // filtering all shapes twice — O(cells neighbourhood), not O(board).
     const cands=[..._queryGrid(_grid,wp)];
     cands.sort((a,b)=>(_grid.idx.get(b)|0)-(_grid.idx.get(a)|0));
-    for(const s of cands)if(s.type!=='frame'&&G.hit(s,wp))return s;
-    for(const s of cands)if(s.type==='frame'&&G.hit(s,wp))return s;
+    for(const s of cands)if(s.type!=='frame'&&s.visible!==0&&G.hit(s,wp))return s;
+    for(const s of cands)if(s.type==='frame'&&s.visible!==0&&G.hit(s,wp))return s;
     return null;
   }
   for(let i=state.shapes.length-1;i>=0;i--){
     const s=state.shapes[i];
-    if(s.type==='frame')continue;
+    if(s.type==='frame'||s.visible===0)continue;
     if(G.hit(s,wp))return s;
   }
   for(let i=state.shapes.length-1;i>=0;i--){
     const s=state.shapes[i];
-    if(s.type==='frame'&&G.hit(s,wp))return s;
+    if(s.type==='frame'&&s.visible!==0&&G.hit(s,wp))return s;
   }
   return null;
 }
@@ -4399,7 +4414,7 @@ function endSelect(wp,shift,alt){
         // be edited anyway, and a region-drag shouldn't pick them up
         // (Figma/draw.io parity). Single-click selection still reaches them
         // for the ctx Unlock path.
-        if(hit&&!s.locked)state.selection.add(s.id);
+        if(hit&&!s.locked&&s.visible!==0)state.selection.add(s.id);
       }
       _announceSel();   // ADR-0037: announce the marquee result (incl. cleared)
     }
@@ -4914,7 +4929,7 @@ window.addEventListener('keydown',e=>{
   }
   if(meta&&k==='z'&&!e.shiftKey){e.preventDefault();if(Store.undo())UI.toast(t('undone'))}
   else if(meta&&(k==='y'||(k==='z'&&e.shiftKey))){e.preventDefault();if(Store.redo())UI.toast(t('redone'))}
-  else if(meta&&k==='a'){e.preventDefault();state.selection=new Set(state.shapes.map(s=>s.id));if(state.selection.size)_announceSel();invalidate()}   // ADR-0037
+  else if(meta&&k==='a'){e.preventDefault();state.selection=new Set(state.shapes.filter(s=>s.visible!==0).map(s=>s.id));if(state.selection.size)_announceSel();invalidate()}   // ADR-0037
   if(k==='p'&&e.shiftKey&&!meta&&!e.altKey){e.preventDefault();Presentation.enter();return}
   else if(meta&&k==='enter'){e.preventDefault();Presentation.enter()}
   else if(meta&&k==='c'){e.preventDefault();doCopy()}
@@ -5023,6 +5038,8 @@ window.addEventListener('keydown',e=>{
   else if(k==='.'&&!meta&&state.selection.size){e.preventDefault();doRotate(15)}
   else if(meta&&k==='f'){e.preventDefault();toggleSq()}
   else if(k==='r'&&e.shiftKey&&!meta&&!e.altKey&&state.selection.size){e.preventDefault();doRotate(90)}
+  else if(k==='h'&&e.shiftKey&&meta&&!e.altKey){e.preventDefault();hideSelection()}   // ADR-0137: ⌘⇧H
+  else if(k==='i'&&e.shiftKey&&meta&&!e.altKey){e.preventDefault();selectInverse()}   // ADR-0139: ⌘⇧I
   else if(!meta&&KEYMAP[k]){pickTool(KEYMAP[k])}
   else if(k===' '&&!meta){e.preventDefault();pickTool('hand',true)}
 });
@@ -5258,18 +5275,66 @@ function selectSamePaint(){
   const sel=[...state.selection].map(byId).filter(Boolean);
   if(sel.length!==1)return;
   const s0=sel[0],key=s0.type==='sticky'?s0.color:s0.fill;
-  const same=state.shapes.filter(s=>(s.type==='sticky'?s.color:s.fill)===key);
+  const same=state.shapes.filter(s=>s.visible!==0&&(s.type==='sticky'?s.color:s.fill)===key);
   if(same.length<2)return;
   state.selection=new Set(same.map(s=>s.id));
   _announceSel();UI.toast(same.length+' '+t('selAllMatches'),'ok');
   invalidate();
+}
+// ADR-0137: hide/show shapes (Figma ⌘⇧H / eye). `s.visible===0` removes the
+// shape from drawShape (which covers minimap, export renderers and the PNG
+// cache path) and from every pointer path (pickTop/eraser/marquee), so a
+// hidden shape is completely non-interactive. Restore via "show all" since
+// hidden shapes can't be re-selected — same convention as Figma's layers.
+function hideSelection(){
+  const before=[],after=[];
+  for(const id of state.selection){
+    const s=byId(id);if(!s||s.locked||s.visible===0)continue;
+    before.push({id,visible:s.visible??null});after.push({id,visible:0});
+    s.visible=0;state.selection.delete(id);
+  }
+  if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate();UI.toast(before.length+' '+t('hiddenCount'),'ok')}
+}
+// ADR-0140: connect two selected shapes (draw.io "Connect" / Miro
+// quick-link). Makes an arrow bound at BOTH ends (s.a/s.b → connEnds
+// edge-projects), committed as one add op.
+function connectSelection(){
+  const sel=[...state.selection].map(byId)
+    .filter(s=>s&&!s.locked&&s.visible!==0&&s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen');
+  if(sel.length!==2){UI.toast(t('selectTwo'),'warn');return}
+  const a=sel[0],b=sel[1],ab=G.bbox(a),bb=G.bbox(b);
+  const s=Shape.make('arrow',{
+    x1:ab.x+ab.w/2,y1:ab.y+ab.h/2,x2:bb.x+bb.w/2,y2:bb.y+bb.h/2,
+    a:a.id,b:b.id});
+  const origSel=[...state.selection];
+  Store.commit({op:'add',shape:s});
+  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  state.selection=new Set([s.id]);
+  invalidate();
+}
+// ADR-0139: invert selection (draw.io ⌘⇧I / Photoshop parity) — the
+// complement over unlocked, visible shapes (marquee/select-all rules).
+function selectInverse(){
+  const inv=new Set();
+  for(const s of state.shapes)if(!s.locked&&s.visible!==0&&!state.selection.has(s.id))inv.add(s.id);
+  state.selection=inv;
+  _announceSel();invalidate();
+}
+function showAllShapes(){
+  const before=[],after=[];
+  for(const s of state.shapes){
+    if(s.visible!==0)continue;
+    before.push({id:s.id,visible:0});after.push({id:s.id,visible:null});
+    delete s.visible;
+  }
+  if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate();UI.toast(t('shownAll'),'ok')}
 }
 // ADR-0120: select every shape of the same type as the single selection —
 // sibling of selectSamePaint (e.g. all connectors, all stickies).
 function selectSameType(){
   const sel=[...state.selection].map(byId).filter(Boolean);
   if(sel.length!==1)return;
-  const same=state.shapes.filter(s=>s.type===sel[0].type);
+  const same=state.shapes.filter(s=>s.visible!==0&&s.type===sel[0].type);
   if(same.length<2)return;
   state.selection=new Set(same.map(s=>s.id));
   _announceSel();UI.toast(same.length+' '+t('selAllMatches'),'ok');
@@ -5461,7 +5526,11 @@ function flipShape(s,axis,c){
   }
   if(tr&&(axis==='h')===!!trVert)s.bend=m(s.bend);
   if(s.cbend!=null)s.cbend=-s.cbend;   // ADR-0132: any mirror flips the curve's chirality
-  if(s.rotate)s.rotate=(360-s.rotate)%360;
+  // ADR-0142: mirror maps angle θ → 180−θ across the vertical axis
+  // ('h' flips x) and θ → 360−θ across the horizontal axis ('v' flips
+  // y). Previously both axes took 360−θ, so an 'h' flip left a rotated
+  // shape tilted the wrong way (30°→330° instead of 150°).
+  if(s.rotate)s.rotate=((axis==='h'?180:360)-s.rotate+360)%360;
 }
 function doFlip(axis){
   const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);
@@ -7288,6 +7357,11 @@ const UI={
       has&&['ctxFlipH','⇧H',()=>doFlip('h')],
       has&&['ctxFlipV','⇧V',()=>doFlip('v')],
       has&&['ctxRotate90','⇧R',()=>doRotate(90)],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='rect'&&!s.locked})&&['ctxCorner','',cycleCorner],
+      has&&['ctxHide','⌘⇧H',hideSelection],
+      has&&[...state.selection].map(byId).filter(s=>s&&!s.locked&&s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen').length===2&&['ctxConnect','',connectSelection],
+      state.shapes.some(s=>s.visible===0)&&['ctxShowAll','',showAllShapes],
+      state.shapes.length&&['ctxSelectInverse','⌘⇧I',selectInverse],
       // ADR-0005's flagship feature was ⌥B-only — invisible to touch/mouse users
       // (the exact "keyboard-only feature" trap FT-06 warned about).
       has&&[...state.selection].some(id=>byId(id)?.type==='pen')&&['ctxBeautify','⌥B',doBeautify],
@@ -7316,7 +7390,7 @@ const UI={
       has&&['ctxExportSelBoard','',()=>exportSelection('board')],          // ADR-0114
       has&&state.selection.size===1&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='image'&&!s.locked})&&['ctxReplaceImg','',replaceImage],   // ADR-0089
       has&&'sep',
-      ['ctxSelectAll','⌘A',()=>{state.selection=new Set(state.shapes.map(s=>s.id));if(state.selection.size)_announceSel();invalidate()}],
+      ['ctxSelectAll','⌘A',()=>{state.selection=new Set(state.shapes.filter(s=>s.visible!==0).map(s=>s.id));if(state.selection.size)_announceSel();invalidate()}],
       state.shapes.length&&['ctxClear','',doClearAll]
     ].filter(Boolean).filter((it,i,a)=>!(it==='sep'&&(i===0||i===a.length-1||a[i-1]==='sep')));
     for(const it of items){
@@ -7378,7 +7452,8 @@ const UI={
       ['G',k.grid],['⇧G',t('snap')],['M',k.minimap],['Esc',k.esc],['?',k.help],
       ['↑↓←→',k.nudge],['⌥ ↑↓←→',k.kbdResize],
       [']/[',k.zorder],['⇧]/⇧[',k.zorderEnds],
-      [', / .',k.rotate],['⇧R',t('ctxRotate90')],['⌘⇧L',t('lockToggle')],['⌘F',k.search],['⌥B',k.beautify],
+      [', / .',k.rotate],['⇧R',t('ctxRotate90')],
+      ['⌘⇧H',t('ctxHide')],['⌘⇧L',t('lockToggle')],['⌘F',k.search],['⌥B',k.beautify],
       ['Enter / ⇧Enter',k.searchNav],
       ['⇧H / ⇧V',t('ctxFlipH')+' / '+t('ctxFlipV')],
       ['⌥C / ⌥V',t('ctxCopyStyle')+' / '+t('ctxPasteStyle')],
@@ -7951,6 +8026,19 @@ function cycleTextAlign(){
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
 }
+// ADR-0136: corner-radius cycle for rects — s.r existed in every render
+// path (canvas/SVG/hatch) since the box renderer, but nothing set it.
+// Steps 0→8→16→24→0 via style op (undo + sync free, same as other toggles).
+function cycleCorner(){
+  const before=[],after=[];
+  for(const id of state.selection){
+    const s=byId(id);if(!s||s.type!=='rect'||s.locked)continue;
+    const cur=s.r==null?8:s.r,nxt=cur<4?8:cur<12?16:cur<20?24:0;
+    before.push({id,r:s.r??null});after.push({id,r:nxt});
+    s.r=nxt;
+  }
+  if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
+}
 // ADR-0063: start-side arrowhead toggle via style op — undo + wclock sync free.
 function toggleBothEnds(){
   const before=[],after=[];
@@ -7967,10 +8055,16 @@ function copyStyle(){
   const ids=[...state.selection];
   const sh=ids.length?byId(ids[0]):null;
   if(!sh){UI.toast(t('noSelection'),'warn');return}
+  // ADR-0138: widened key set — paint + text + route style. Geometry
+  // (x/y/w/h/pts/way/bend/rotate/flip/z) stays out: format-painter copies
+  // look, not placement. Sticky's paint reads as `fill` here so it pastes
+  // onto box shapes; applyStyleToSelection maps it back to `color`.
   state.styleClipboard={
-    stroke:sh.stroke,fill:sh.fill,
+    stroke:sh.stroke,fill:sh.type==='sticky'?sh.color:sh.fill,
     size:sh.size,opacity:sh.opacity,dash:sh.dash||0,fstyle:sh.fstyle,   // ADR-0077
-    bold:sh.bold,italic:sh.italic                                       // ADR-0078
+    bold:sh.bold,italic:sh.italic,under:sh.under,strike:sh.strike,      // ADR-0078/0095/0100
+    align:sh.align,fontSize:sh.fontSize,
+    r:sh.r,head:sh.head,start:sh.start,elbow:sh.elbow,curve:sh.curve,cbend:sh.cbend
   };
   UI.toast(t('styleCopied'),'ok');
 }
