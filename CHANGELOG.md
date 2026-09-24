@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.464] - 2026-09-23
+
+### Fixed
+- describeShape が marker ストロークを「ペン」ではなく「マーカー」と announce — ツール名称と SR 読み上げの一致
+
 ## [1.7.463] - 2026-09-23
 
 ### Internal
