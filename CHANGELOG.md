@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.161]
+
+### 追加
+- **ここに貼り付け** (ADR-0103)。ctx メニュー開放点へクリップ
+  ボード内容を中心配置する「ここに貼り付け」を追加 (カスケード
+  無しの確定位置。⌘V のビューポート中央ペーストと併存)。
+
 ## [1.7.160]
 
 ### 追加

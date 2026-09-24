@@ -152,6 +152,7 @@ Board/
 - [ADR-0100](docs/ADR-0100-strikethrough.md) 取り消し線 (⌘⇧X)
 - [ADR-0101](docs/ADR-0101-sticky-color-cycle.md) 付箋色クイックサイクル
 - [ADR-0102](docs/ADR-0102-wrap-in-frame.md) 選択をフレームで包む (⌘⌥G)
+- [ADR-0103](docs/ADR-0103-paste-at-cursor.md) カーソル位置に貼り付け
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
