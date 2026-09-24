@@ -4067,6 +4067,20 @@ try {
     console.log('  ✓ ADR-0367: validPatch numeric whitelist + aF/bF structural check');
   }
 
+  // ADR-0368: pts/way array-prop structure — upd patches bypass validShape's pen check
+  {
+    assert.ok(validRemotePayload({op:'upd',id:'a',after:{pts:[[0,0],[10,10,0.5]]}}),'pen pts tuples accepted');
+    assert.ok(!validRemotePayload({op:'upd',id:'a',after:{pts:[['x',0]]}}),'string pts.x rejected');
+    assert.ok(!validRemotePayload({op:'upd',id:'a',after:{pts:[[0,NaN]]}}),'NaN pts.y rejected');
+    assert.ok(validRemotePayload({op:'upd',id:'a',after:{pts:[]}}),'empty pts accepted (v1.7.49a)');
+    assert.ok(!validRemotePayload({op:'upd',id:'a',after:{pts:'abc'}}),'scalar pts rejected');
+    assert.ok(validRemotePayload({op:'upd',id:'a',after:{way:[{x:1,y:2},{x:3,y:4}]}}),'way {x,y} objects accepted');
+    assert.ok(!validRemotePayload({op:'upd',id:'a',after:{way:[{x:'a',y:2}]}}),'string way.x rejected');
+    assert.ok(!validRemotePayload({op:'upd',id:'a',after:{way:[[1,2]]}}),'tuple way rejected (object form required)');
+    assert.ok(!validRemotePayload({op:'upd',id:'a',after:{way:new Array(300).fill({x:0,y:0})}}),'way over 200 rejected');
+    console.log('  ✓ ADR-0368: pts/way array-prop structure checks');
+  }
+
   // legacy boards (integer z, no frac) migrate to keys on first sortZ, order intact
   {
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;

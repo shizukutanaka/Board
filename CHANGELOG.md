@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.415] - 2026-09-24
+
+### Fixed
+- `validPatch` に `pts`/`way` の配列構造チェックを追加 — `upd` パッチ経由の
+  NaN 注入を遮断 (`pts` は `[]` を許容、要素は `[x,y,p?]` finite、
+  `way` は `{x,y}` object 形式必須・≤200) (ADR-0368)
+
 ## [1.7.414] - 2026-09-24
 
 ### Fixed
