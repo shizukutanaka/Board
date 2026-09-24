@@ -7794,12 +7794,11 @@ const Net={
         Store.applyRemote(op);break;}
       case 'hello':
         this._touchPeer(msg.peer);
-        // send snapshot to newcomer (only one peer should — pick by id ordering)
-        if(_pi()<msg.peer)this._sendSnapshot();
+        if(_pi()<msg.peer&&this._loResp())this._sendSnapshot();   // ADR-0455: lowest-id peer only
         break;
       case 'sync-req':
         this._touchPeer(msg.peer);
-        if(_pi()<msg.peer)this._sendSnapshot();
+        if(_pi()<msg.peer&&this._loResp())this._sendSnapshot();
         break;
       case 'snapshot':
         if(_nS()===0)this._applySnapshot(msg);
@@ -7906,6 +7905,9 @@ const Net={
     if(w>0){if(!this._snapT)this._snapT=_stO(()=>{this._snapT=0;this._sendSnapshot()},w);return}
     this._lastSnapAt=now;
     this._send(this._snapshotMsg());
+  },
+  _loResp(){   // ADR-0455: am I the lowest-id BC peer? (synthetic _rtcPeerId excluded)
+    return ![..._pr().keys()].some(k=>k!==this._rtcPeerId&&k<_pi())
   },
   _applySnapshot(msg){
     // Validate snapshot shapes before adopting
