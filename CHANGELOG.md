@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.453] - 2026-09-23
+
+### Internal
+- `_sb()`/`_hasS()` shorthand 追加 (~90B 回収)
+
 ## [1.7.452] - 2026-09-23
 
 ### Fixed
