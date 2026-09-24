@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.254';
+const V='1.7.255';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2765,7 +2765,10 @@ function drawShape(s,c){
       c.fillStyle=s.stroke||getCSS('--brand')||'#00C4CC';
       c.font=`600 ${fs}px ${_fontFam(s)}`;                          // ADR-0186
       c.textBaseline='bottom';
-      c.fillText(lbl,s.x+6,s.y-2);
+      const alF=s.align||'left';                                    // ADR-0197
+      c.textAlign=alF==='right'?'right':alF==='center'?'center':'left';
+      c.fillText(lbl,alF==='right'?s.x+s.w-6:alF==='center'?s.x+s.w/2:s.x+6,s.y-2);
+      c.textAlign='left';
       c.restore();
       break;}
     case 'sticky':{
@@ -6692,7 +6695,9 @@ function buildSVG(shapes,paper){
         // export, not canvas/PNG/PDF (deep-audit fix).
         const fa=` opacity="${(s.opacity==null?1:_num(s.opacity))*0.9}"`;
         els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${fr}" fill="${s.fill||'rgba(248,250,252,0.6)'}" stroke="${clr}" stroke-width="${SZ||1.5}"${dA}${fa}${rT}/>`);   // ADR-0178
-        els.push(`<text x="${X+ox+6}" y="${Y+oy-4}" font-family="${_fontFam(s)}" font-size="12" font-weight="600" fill="${clr}"${fa}${rT}>${_esc(s.label||'Frame')}</text>`);
+        const alF2=s.align||'left',txF=alF2==='right'?X+ox+W-6:alF2==='center'?X+ox+W/2:X+ox+6;   // ADR-0197
+        const ancF=alF2==='right'?' text-anchor="end"':alF2==='center'?' text-anchor="middle"':'';
+        els.push(`<text x="${txF}" y="${Y+oy-4}" font-family="${_fontFam(s)}" font-size="12" font-weight="600" fill="${clr}"${ancF}${fa}${rT}>${_esc(s.label||'Frame')}</text>`);
         break;}
       case 'sticky':{
         const r=Math.min(6,Math.abs(W)/6,Math.abs(H)/6);
@@ -7690,7 +7695,7 @@ const UI={
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked&&(_wayArr(s).length||s.bend||s.elbow||s.curve)})&&['ctxRouteReset','',resetRoute],   // ADR-0090
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='frame'&&!s.locked})&&['ctxFrameFit','',fitFrames],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='frame'&&!s.locked})&&['ctxSelContents','',selectFrameContents],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky'||s.label)&&!s.locked})&&['ctxTextAlign','',cycleTextAlign],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky'||s.type==='frame'||s.label)&&!s.locked})&&['ctxTextAlign','',cycleTextAlign],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky'||s.type==='frame'||s.label)&&!s.locked})&&['ctxFont','',cycleFont],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&!s.locked})&&['ctxOpacity','0-9',cycleOpacity],   // ADR-0174
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond'||s.type==='sticky'||(s.type==='image'&&!!s.label))&&!s.locked})&&['ctxVAlign','',cycleVAlign],   // ADR-0179   // ADR-0159
@@ -8474,7 +8479,7 @@ function cycleOpacity(){
 function cycleTextAlign(){
   const before=[],after=[];
   for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky'&&!s.label)||s.locked)continue;   // ADR-0171
+    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky'&&s.type!=='frame'&&!s.label)||s.locked)continue;   // ADR-0171/0197
     const cur=s.align||'left',nxt=cur==='left'?'center':cur==='center'?'right':'left';
     before.push({id,align:cur});after.push({id,align:nxt});s.align=nxt;
     state.style.align=nxt;                                      // ADR-0184

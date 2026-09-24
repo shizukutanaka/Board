@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.255]
+
+### 追加
+- **フレームラベルの文字揃え** (ADR-0197)。フレーム名が
+  cycleTextAlign/ctxTextAlign で左→中央→右に揃え可能
+  (canvas+SVG、ラベル未設定フレームにも到達)。
+
 ## [1.7.254]
 
 ### 追加

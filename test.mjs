@@ -771,6 +771,7 @@ const checks = [
   ['drop shadow — canvas props + SVG filter + toggle + persistence', html.includes("shadowColor='rgba(15,23,42,.22)'")&&html.includes("id=\"bsh\"")&&html.includes("function toggleShadow()")&&html.includes("state.style.shadow=s.shadow||null")],
   ['image caption band honours s.fill (canvas+SVG)', html.includes("c.fillStyle=s.fill||getCSS('--paper')||'#fff';c.globalAlpha=0.85")&&html.includes("_esc(s.fill||paper||'#FFFFFF')")],
   ['Tab in label editor chains to next label-able shape', html.includes("if(ev.key==='Tab'){ev.preventDefault();")&&html.includes("_openLabelEditorFor(nx)")],
+  ['frame label honours s.align + cycleTextAlign gate', html.includes("const alF=s.align||'left'")&&html.includes("type==='frame'||s.label)&&!s.locked})&&['ctxTextAlign'")],
   // v1.7.05: Tab cycling excludes locked shapes (parity with doMove/doDelete/doRotate/doFlip)
   ['statusbar selection dims readout', html.includes('id="sSel"')&&html.includes('_statusSel()')&&html.includes('Math.round(b.w)')],
   ['empty-selection arrows pan viewport', html.includes("state.viewport.x+=k==='arrowleft'?-step:k==='arrowright'?step:0")],
@@ -779,7 +780,7 @@ const checks = [
   ['image corner radius via cycleCorner + clips', html.includes("s.type!=='image')||s.locked)continue;   // ADR-0156/0168")&&html.includes('clip-path="url(#irc')&&html.includes('roundRect(c,s.x,s.y,s.w,s.h,_cr);c.clip()')],
   ['label fontSize honored across renderers', html.includes('const fs=s.fontSize||12;')&&html.includes('const fs=s.fontSize||14')&&html.includes("s.type!=='sticky'&&!s.label)||s.locked")],
     ['labels honor bold/italic/under/strike (ADR-0170)', html.includes('c.font=_fontStr(s,fs)')&&html.includes('font-weight="600"')&&html.includes('text-decoration=')],
-  ['box/image labels honour s.align (ADR-0171)', html.includes("const al=s.align||'center';")&&html.includes('anc3=')&&html.includes("s.type!=='sticky'&&!s.label)||s.locked)continue;   // ADR-0171")],
+  ['box/image labels honour s.align (ADR-0171)', html.includes("const al=s.align||'center';")&&html.includes('anc3=')&&html.includes("s.type!=='sticky'&&s.type!=='frame'&&!s.label)||s.locked)continue;   // ADR-0171/0197")],
   ['locked selection shows a padlock badge', html.includes('c.arc(lx+8,ly,4,Math.PI,0)')&&html.includes("if(lockedSel){")],
   ['Tab cycling excludes locked+hidden shapes (filter before cycleSel)', html.includes("const ids=state.shapes.filter(s=>!s.locked&&s.visible!==0).map(s=>s.id)")],
   // v1.6.60: bound connectors - arrow/line endpoints follow bound shapes
