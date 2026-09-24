@@ -822,7 +822,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.448';
+const V='1.7.449';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2309,6 +2309,9 @@ function describeShape(s){
     d+=` ${t('srBound')}: ${A?(T.k?.[A.type]??A.type):'?'}→${B?(T.k?.[B.type]??B.type):'?'}`;
   }
   if(s.rotate)d+=` ${s.rotate}°`;
+  if(s.flip)d+=' '+[s.flip&1&&t('ctxFlipH'),s.flip&2&&t('ctxFlipV')].filter(Boolean).join('+');   // ADR-0414
+  if(s.shadow)d+=` ${t('ctxShadow')}`;   // ADR-0414
+  if(_conn(s.type)&&(s.elbow||s.curve))d+=' '+(s.elbow?t('ctxElbow'):t('ctxCurve'));   // ADR-0414: routes are exclusive
   if(s.link)d+=' 🔗';   // ADR-0315: mirror the visual badge for SR users
   return d;
 }
