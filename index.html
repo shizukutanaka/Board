@@ -792,9 +792,10 @@ const _selIds=()=>[...state.selection];   // ADR-0330
 const _selN=()=>state.selection.size;   // ADR-0334
 const _fin=Number.isFinite;   // ADR-0334
 const _min=Math.min,_max=Math.max,_abs=Math.abs;   // ADR-0337
+const _ga=(e,n)=>e.getAttribute(n);   // ADR-0340
 
 // ====================== CONSTANTS ======================
-const V='1.7.390';
+const V='1.7.391';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6451,15 +6452,15 @@ function drawioToShapes(txt){
   // resolve each vertex's world offset by walking its parent chain.
   const _geo=new Map(),_par=new Map();
   const _grpIds=new Set();                                                     // ADR-0336
-  for(const c of cells){const id=c.getAttribute('id');if(!id)continue;
+  for(const c of cells){const id=_ga(c,'id');if(!id)continue;
     const g=c.querySelector('mxGeometry');if(g)_geo.set(id,g);
-    const p=c.getAttribute('parent');if(p)_par.set(id,p);
-    if(/(^|;)group;/.test(c.getAttribute('style')||''))_grpIds.add(id);}
+    const p=_ga(c,'parent');if(p)_par.set(id,p);
+    if(/(^|;)group;/.test(_ga(c,'style')||''))_grpIds.add(id);}
   // ADR-0311: multiple <diagram> pages flatten side-by-side — each page's
   // cells offset by cumulative pageWidth+200 so pages don't overlap.
   const _doff=new Map();{let _dx=0;
     for(const dg of doc.querySelectorAll('diagram')){
-      const m=dg.querySelector('mxGraphModel'),pw=+(m&&m.getAttribute('pageWidth'))||850;
+      const m=dg.querySelector('mxGraphModel'),pw=+(m&&_ga(m,'pageWidth'))||850;
       for(const c2 of dg.querySelectorAll('mxCell'))_doff.set(c2,_dx);
       _dx+=pw+200;
     }}
@@ -6467,20 +6468,20 @@ function drawioToShapes(txt){
   const off=id=>{if(_off.has(id))return _off.get(id);
     const p=_par.get(id);let o={x:0,y:0};
     if(p&&p!=='0'){const po=off(p),pg=_geo.get(p);
-      o={x:po.x+(+((pg&&pg.getAttribute('x'))||0)),y:po.y+(+((pg&&pg.getAttribute('y'))||0))}}
+      o={x:po.x+(+((pg&&_ga(pg,'x'))||0)),y:po.y+(+((pg&&_ga(pg,'y'))||0))}}
     _off.set(id,o);return o};
   // Edges resolve bound endpoints by board id, so vertices must be built first.
   for(const c of cells){
     if(shapes.length>=DIO_MAX)break;
-    if(c.getAttribute('vertex')!=='1')continue;
+    if(_ga(c,'vertex')!=='1')continue;
     const g=c.querySelector('mxGeometry');if(!g)continue;
-    const sty=_dioSty(c.getAttribute('style'));
-    const _hid=c.getAttribute('visible')==='0';                  // ADR-0245
-    if(_grpIds.has(c.getAttribute('id')))continue;               // ADR-0336: group wrapper cell — not a shape
+    const sty=_dioSty(_ga(c,'style'));
+    const _hid=_ga(c,'visible')==='0';                  // ADR-0245
+    if(_grpIds.has(_ga(c,'id')))continue;               // ADR-0336: group wrapper cell — not a shape
     const _uo=c.parentElement&&c.parentElement.tagName==='UserObject'?c.parentElement:null;   // ADR-0328: drawio wraps linked cells in UserObject — label+link live on it
-    const _o=off(c.getAttribute('id'));
-    const x=_o.x+(_doff.get(c)||0)+(+g.getAttribute('x')||0),y=_o.y+(+g.getAttribute('y')||0),w=+g.getAttribute('width')||0,ht=+g.getAttribute('height')||0;
-    const lbl=_dioLabel(c.getAttribute('value')||(_uo&&_uo.getAttribute('label')));
+    const _o=off(_ga(c,'id'));
+    const x=_o.x+(_doff.get(c)||0)+(+_ga(g,'x')||0),y=_o.y+(+_ga(g,'y')||0),w=+_ga(g,'width')||0,ht=+_ga(g,'height')||0;
+    const lbl=_dioLabel(_ga(c,'value')||(_uo&&_ga(_uo,'label')));
     let s;
     if('ellipse' in sty||sty.shape==='cylinder'||sty.shape==='cloud')s=Shape.make('ellipse',{x,y,w:w||120,h:ht||80,label:lbl.slice(0,240)});   // ADR-0274
     else if(sty.shape==='rhombus'||'rhombus' in sty)s=Shape.make('diamond',{x,y,w:w||120,h:ht||80,label:lbl.slice(0,240)});
@@ -6489,7 +6490,7 @@ function drawioToShapes(txt){
       if(sty.fillColor&&sty.fillColor!=='none')s.color=sty.fillColor}
     else if(('text' in sty||sty.text===1)&&!w&&!ht)s=Shape.make('text',{x,y,w:120,h:24,text:lbl.slice(0,2000)});
     else s=Shape.make('rect',{x,y,w:w||120,h:ht||80,label:lbl.slice(0,240)});
-    {const _im=(sty.shape==='image')?(c.getAttribute('style')||'').match(/image=(data:[^;]*;base64,[^;]*|https?:[^;]*)/):null;   // ADR-0259
+    {const _im=(sty.shape==='image')?(_ga(c,'style')||'').match(/image=(data:[^;]*;base64,[^;]*|https?:[^;]*)/):null;   // ADR-0259
      if(_im)s=Shape.make('image',{x,y,w:w||120,h:ht||80,dataUrl:_im[1].slice(0,25_000_000),label:lbl.slice(0,240)})}
     if(sty.rounded==='1'&&s.w!=null)s.r=8;
     if(sty.fillColor)s.fill=sty.fillColor==='none'?'none':sty.fillColor;   // ADR-0288
@@ -6498,26 +6499,26 @@ function drawioToShapes(txt){
     if(sty.fontFamily&&s.type!=='image'){const ff=sty.fontFamily.toLowerCase();
       if(/mono|courier|consol|cascadia|menlo|jetbrains/.test(ff))s.font='mono';
       else if(/serif|times|georgia|garamond|palatino|book/.test(ff))s.font='serif'}   // ADR-0253
-    {const _pid=c.getAttribute('parent');if(_pid&&_grpIds.has(_pid))s.groupId=_pid}   // ADR-0336
+    {const _pid=_ga(c,'parent');if(_pid&&_grpIds.has(_pid))s.groupId=_pid}   // ADR-0336
     if(sty.align==='center'||sty.align==='right')s.align=sty.align;
     if(/^(top|middle|bottom)$/.test(sty.verticalAlign))s.valign=sty.verticalAlign;   // ADR-0238
     if(+sty.rotation)s.rotate=_min(360,_max(-360,+sty.rotation));   // ADR-0261
-    idOf.set(c.getAttribute('id'),s.id);
-    {const _lk=c.getAttribute('link')||(_uo&&_uo.getAttribute('link'));if(_lk&&/^https?:\/\//.test(_lk))s.link=_lk.slice(0,500)}   // ADR-0313
+    idOf.set(_ga(c,'id'),s.id);
+    {const _lk=_ga(c,'link')||(_uo&&_ga(_uo,'link'));if(_lk&&/^https?:\/\//.test(_lk))s.link=_lk.slice(0,500)}   // ADR-0313
     shapes.push(s);
   }
   for(const c of cells){
     if(shapes.length>=DIO_MAX)break;
-    if(c.getAttribute('edge')!=='1')continue;
-    const g=c.querySelector('mxGeometry'),sty=_dioSty(c.getAttribute('style'));
-    const _hid=c.getAttribute('visible')==='0';                  // ADR-0245
+    if(_ga(c,'edge')!=='1')continue;
+    const g=c.querySelector('mxGeometry'),sty=_dioSty(_ga(c,'style'));
+    const _hid=_ga(c,'visible')==='0';                  // ADR-0245
     const _uo=c.parentElement&&c.parentElement.tagName==='UserObject'?c.parentElement:null;   // ADR-0328
     let x1=0,y1=0,x2=0,y2=0;
     const sp=g?g.querySelector('mxPoint[as="sourcePoint"]'):null,tp=g?g.querySelector('mxPoint[as="targetPoint"]'):null;
     const _do=_doff.get(c)||0;
-    if(sp){x1=(+sp.getAttribute('x')||0)+_do;y1=+sp.getAttribute('y')||0}
-    if(tp){x2=(+tp.getAttribute('x')||0)+_do;y2=+tp.getAttribute('y')||0}
-    const a=c.getAttribute('source'),b=c.getAttribute('target');
+    if(sp){x1=(+_ga(sp,'x')||0)+_do;y1=+_ga(sp,'y')||0}
+    if(tp){x2=(+_ga(tp,'x')||0)+_do;y2=+_ga(tp,'y')||0}
+    const a=_ga(c,'source'),b=_ga(c,'target');
     const sa=a?idOf.get(a):null,sb=b?idOf.get(b):null;
     if(sa){const bs=shapes.find(s2=>s2.id===sa),bb=bs&&G.bbox(bs);if(bb){x1=bb.x+bb.w/2;y1=bb.y+bb.h/2}}
     if(sb){const bs=shapes.find(s2=>s2.id===sb),bb=bs&&G.bbox(bs);if(bb){x2=bb.x+bb.w/2;y2=bb.y+bb.h/2}}
@@ -6537,7 +6538,7 @@ function drawioToShapes(txt){
     if(sty.curved==='1')s.curve=1;
     if(sty.jumpStyle&&sty.jumpStyle!=='none')s.hop=1;
     const pts=g?[...g.querySelectorAll('Array mxPoint')]:[];
-    if(pts.length)s.way=pts.slice(0,200).map(p=>[(+p.getAttribute('x')||0)+_do,+p.getAttribute('y')||0]);
+    if(pts.length)s.way=pts.slice(0,200).map(p=>[(+_ga(p,'x')||0)+_do,+_ga(p,'y')||0]);
     if(/orthogonal|elbow/i.test(String(sty.edgeStyle||'')))s.elbow=1;
     // ADR-0221: drawio exitX/exitY/entryX/entryY fixed ports → aF/bF fractions
     // (same normalisation as ADR-0209's Alt-drop anchors). Exit = source end.
@@ -6545,13 +6546,13 @@ function drawioToShapes(txt){
       if(_fin(fx)&&_fin(fy))s.aF={fx:_c01(fx),fy:_c01(fy)}}
     if(sb&&sty.entryX!=null){const fx=+sty.entryX,fy=+sty.entryY;
       if(_fin(fx)&&_fin(fy))s.bF={fx:_c01(fx),fy:_c01(fy)}}
-    const lbl=_dioLabel(c.getAttribute('value')||(_uo&&_uo.getAttribute('label')));if(lbl)s.label=lbl.slice(0,240);
-    {const _lx=g?g.getAttribute('x'):null;if(_lx!=null&&_lx!==''){const _t=(+_lx+1)/2;if(_fin(_t))s.labelPos=_c01(+_t.toFixed(3))}}   // ADR-0264
+    const lbl=_dioLabel(_ga(c,'value')||(_uo&&_ga(_uo,'label')));if(lbl)s.label=lbl.slice(0,240);
+    {const _lx=g?_ga(g,'x'):null;if(_lx!=null&&_lx!==''){const _t=(+_lx+1)/2;if(_fin(_t))s.labelPos=_c01(+_t.toFixed(3))}}   // ADR-0264
     if(sty.rounded==='1')s.r=8;                                           // ADR-0269
     _dioStyApply(s,sty,_hid);                                            // ADR-0258 (edges gain opacity)
     if(sty.labelBackgroundColor&&sty.labelBackgroundColor!=='none')s.fill=sty.labelBackgroundColor;   // ADR-0249
-    {const _lk=c.getAttribute('link')||(_uo&&_uo.getAttribute('link'));if(_lk&&/^https?:\/\//.test(_lk))s.link=_lk.slice(0,500)}   // ADR-0313
-    {const _pid=c.getAttribute('parent');if(_pid&&_grpIds.has(_pid))s.groupId=_pid}   // ADR-0336
+    {const _lk=_ga(c,'link')||(_uo&&_ga(_uo,'link'));if(_lk&&/^https?:\/\//.test(_lk))s.link=_lk.slice(0,500)}   // ADR-0313
+    {const _pid=_ga(c,'parent');if(_pid&&_grpIds.has(_pid))s.groupId=_pid}   // ADR-0336
     shapes.push(s);
   }
   return shapes;
@@ -6733,8 +6734,8 @@ function _svgColor(v,g){
   return v;
 }
 function _svgStyle(el,g){
-  const css=el.getAttribute('style')||'';
-  const get=n=>{const v=el.getAttribute(n);if(v!=null&&v!=='')return v;
+  const css=_ga(el,'style')||'';
+  const get=n=>{const v=_ga(el,n);if(v!=null&&v!=='')return v;
     const m=css.match(new RegExp('(?:^|;)\\s*'+n+'\\s*:\\s*([^;]+)'));return m?m[1].trim():null};
   const st={};
   const stroke=_svgColor(get('stroke'),g);if(stroke)st.stroke=stroke;
@@ -6798,58 +6799,58 @@ function svgToShapes(txt){
   const _grad=new Map();                                                     // ADR-0283
   for(const ge of doc.querySelectorAll('linearGradient,radialGradient')){
     const st=ge.querySelector('stop');
-    if(ge.id&&st){const _sc=st.getAttribute('stop-color')||(((st.getAttribute('style')||'').match(/stop-color:\s*([^;]+)/)||[])[1]);_grad.set(ge.id,(_sc||'#000').trim())}}
+    if(ge.id&&st){const _sc=_ga(st,'stop-color')||(((_ga(st,'style')||'').match(/stop-color:\s*([^;]+)/)||[])[1]);_grad.set(ge.id,(_sc||'#000').trim())}}
   // viewBox → output: origin to (0,0), cap the width at 800px so giant
   // artboards paste at a sensible size.
-  const vb=(root.getAttribute('viewBox')||'').trim().split(/[\s,]+/).map(Number);
+  const vb=(_ga(root,'viewBox')||'').trim().split(/[\s,]+/).map(Number);
   const vbOn=vb.length===4&&vb.every(Number.isFinite)&&vb[2]>0;
-  const w0=vbOn?vb[2]:parseFloat(root.getAttribute('width'))||800;
+  const w0=vbOn?vb[2]:parseFloat(_ga(root,'width'))||800;
   const sc=_min(1,800/w0);
   const base=_svgMMul([sc,0,0,sc,0,0],[1,0,0,1,vbOn?-vb[0]:0,vbOn?-vb[1]:0]);
   const shapes=[];
   const visit=(el,m)=>{
     if(shapes.length>=SVG_MAX_ELEMS)return;
-    const m2=_svgMMul(m,_svgMOf(el.getAttribute('transform')));
+    const m2=_svgMMul(m,_svgMOf(_ga(el,'transform')));
     const tag=el.localName;
     let s=null;
     if(tag==='rect'){
-      const x=+el.getAttribute('x')||0,y=+el.getAttribute('y')||0,w=+el.getAttribute('width'),h=+el.getAttribute('height');
+      const x=+_ga(el,'x')||0,y=+_ga(el,'y')||0,w=+_ga(el,'width'),h=+_ga(el,'height');
       if(w>0&&h>0){const a=_svgMPt(m2,x,y),b=_svgMPt(m2,x+w,y+h);
         s=Shape.make('rect',{x:_min(a.x,b.x),y:_min(a.y,b.y),w:_abs(b.x-a.x),h:_abs(b.y-a.y)})}
     }else if(tag==='circle'||tag==='ellipse'){
-      const cx=+el.getAttribute('cx')||0,cy=+el.getAttribute('cy')||0;
-      const rx=tag==='circle'?+el.getAttribute('r')||0:+el.getAttribute('rx')||0;
-      const ry=tag==='circle'?rx:+el.getAttribute('ry')||0;
+      const cx=+_ga(el,'cx')||0,cy=+_ga(el,'cy')||0;
+      const rx=tag==='circle'?+_ga(el,'r')||0:+_ga(el,'rx')||0;
+      const ry=tag==='circle'?rx:+_ga(el,'ry')||0;
       if(rx>0&&ry>0){const a=_svgMPt(m2,cx-rx,cy-ry),b=_svgMPt(m2,cx+rx,cy+ry);
         s=Shape.make('ellipse',{x:_min(a.x,b.x),y:_min(a.y,b.y),w:_abs(b.x-a.x),h:_abs(b.y-a.y)})}
     }else if(tag==='line'){
-      const a=_svgMPt(m2,+el.getAttribute('x1')||0,+el.getAttribute('y1')||0);
-      const b=_svgMPt(m2,+el.getAttribute('x2')||0,+el.getAttribute('y2')||0);
+      const a=_svgMPt(m2,+_ga(el,'x1')||0,+_ga(el,'y1')||0);
+      const b=_svgMPt(m2,+_ga(el,'x2')||0,+_ga(el,'y2')||0);
       if(Math.hypot(b.x-a.x,b.y-a.y)>0.5)s=Shape.make('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y});
     }else if(tag==='polyline'||tag==='polygon'){
-      const nums=(el.getAttribute('points')||'').trim().split(/[\s,]+/).map(Number);
+      const nums=(_ga(el,'points')||'').trim().split(/[\s,]+/).map(Number);
       const pts=[];
       for(let i=0;i+1<nums.length&&pts.length<SVG_MAX_PTS;i+=2)
         if(_fin(nums[i])&&_fin(nums[i+1]))pts.push(_svgMPt(m2,nums[i],nums[i+1]));
       if(tag==='polygon'&&pts.length>1)pts.push(pts[0]);
       if(pts.length>1)s=Shape.make('pen',{pts:pts.map(p=>[p.x,p.y])});
     }else if(tag==='path'){
-      const pts=_svgPathPts(el.getAttribute('d'),m2);
+      const pts=_svgPathPts(_ga(el,'d'),m2);
       if(pts.length>1)s=Shape.make('pen',{pts});
     }else if(tag==='image'){
       // ADR-0235: <image href=data:...> — round-trips our own SVG exports.
       // Only inline data: URIs are accepted (the mapping is the sanitizer);
       // external hrefs would be a network fetch we can't honour offline.
-      const href=el.getAttribute('href')||el.getAttribute('xlink:href')||'';
-      const w=+el.getAttribute('width')||0,ht=+el.getAttribute('height')||0;
+      const href=_ga(el,'href')||_ga(el,'xlink:href')||'';
+      const w=+_ga(el,'width')||0,ht=+_ga(el,'height')||0;
       if(/^data:image\//.test(href)&&w>0&&ht>0){
-        const a=_svgMPt(m2,+el.getAttribute('x')||0,+el.getAttribute('y')||0);
+        const a=_svgMPt(m2,+_ga(el,'x')||0,+_ga(el,'y')||0);
         s=Shape.make('image',{x:a.x,y:a.y,w:w,h:ht,dataUrl:href.slice(0,25_000_000)});
       }
     }else if(tag==='text'){
       const content=(el.textContent||'').replace(/\s+/g,' ').trim();
       if(content){
-        const p=_svgMPt(m2,+el.getAttribute('x')||0,+el.getAttribute('y')||0);
+        const p=_svgMPt(m2,+_ga(el,'x')||0,+_ga(el,'y')||0);
         const fs=_svgStyle(el,_grad).fontSize||16;
         s=Shape.make('text',{x:p.x,y:p.y-fs,w:_min(600,_max(60,content.length*fs*0.55)),h:fs*1.4,text:content.slice(0,200),fontSize:fs});
       }
@@ -8513,7 +8514,7 @@ const UI={
     // translated string. This makes the Share modal (and any future
     // translatable element) honour the detected language.
     for(const el of document.querySelectorAll('[data-t]')){
-      const key=el.getAttribute('data-t');
+      const key=_ga(el,'data-t');
       if(key){el.textContent=t(key)}
     }
     // aria-label / title were hardcoded English on ~44 controls — a JA screen-reader
@@ -8521,10 +8522,10 @@ const UI={
     // i18n key ('k.xxx' reaches the nested shortcut-name table). Titles keep their
     // authored ' (V)' shortcut suffix.
     const tk=key=>key.startsWith('k.')?(T.k[key.slice(2)]||I18N.en.k[key.slice(2)]||key):t(key);
-    for(const el of document.querySelectorAll('[data-t-aria]'))el.setAttribute('aria-label',tk(el.getAttribute('data-t-aria')));
+    for(const el of document.querySelectorAll('[data-t-aria]'))el.setAttribute('aria-label',tk(_ga(el,'data-t-aria')));
     for(const el of document.querySelectorAll('[data-t-title]')){
-      const sfx=((el.getAttribute('title')||'').match(/\s(\([^)]*\))$/)||[])[1];
-      el.setAttribute('title',tk(el.getAttribute('data-t-title'))+(sfx?' '+sfx:''));
+      const sfx=((_ga(el,'title')||'').match(/\s(\([^)]*\))$/)||[])[1];
+      el.setAttribute('title',tk(_ga(el,'data-t-title'))+(sfx?' '+sfx:''));
     }
   },
   openShare(){
