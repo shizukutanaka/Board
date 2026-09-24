@@ -788,7 +788,7 @@ const _selR=op=>{if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byI
 const _keepSel=arr=>{if(arr.length)state.history[state.histIdx].origSel=arr};   // ADR-0312
 
 // ====================== CONSTANTS ======================
-const V='1.7.373';
+const V='1.7.374';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6940,6 +6940,7 @@ function excToShapes(txt){
     // real excalidraw files don't, so match on the parent type instead.
     if(_conn(p.type)){p.label=s.text.slice(0,240);
       if(s.fontSize)p.fontSize=s.fontSize;
+      if(e&&Number.isFinite(e.lineHeight)&&e.lineHeight!==1.25)p.lineH=Math.min(4,Math.max(0.5,e.lineHeight));   // ADR-0323
       shapes.splice(shapes.indexOf(s),1);continue;}
     // bLabel parents restore the label on any box type (rect/ellipse/diamond);
     // the sticky fold below stays rect-only since stickies export as rectangles
