@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.530] - 2026-09-23
+
+### リファクタ
+
+- `_idIdx` — id による図形 index 検索を undo/del/addMany/eraser 4 サイトに集約、語彙化 (ADR-0497)
+
 ## [1.7.529] - 2026-09-23
 
 ### リファクタ

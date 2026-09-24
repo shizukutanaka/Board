@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.529';
+const V='1.7.530';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1608,13 +1608,13 @@ const Store={
         // a duplicate. Local commits use fresh uids so this never blocks them; redo
         // re-pushes because undo removed the shape first.
         if(forward){if(!byId(op.shape.id)){_sh().push(clone(op.shape));_sz();}}
-        else{const i=_sh().findIndex(s=>s.id===op.shape.id);if(i>=0)_sh().splice(i,1);_sdl(op.shape.id);delete _wc()[op.shape.id];_psc(op.shape.id);_selR(op);}
+        else{const i=_idIdx(op.shape.id);if(i>=0)_sh().splice(i,1);_sdl(op.shape.id);delete _wc()[op.shape.id];_psc(op.shape.id);_selR(op);}
         break;}
       case 'addMany':{
         // Atomic multi-add (paste/duplicate): N copies as ONE undo step. Forward mirrors
         // 'add' (idempotent on id); reverse mirrors 'del' (remove all, drop selection).
         if(forward){for(const sh of op.shapes){if(!byId(sh.id))_sh().push(clone(sh));}_sz();}
-        else{for(const sh of op.shapes){const i=_sh().findIndex(s=>s.id===sh.id);if(i>=0)_sh().splice(i,1);_sdl(sh.id);delete _wc()[sh.id];_psc(sh.id);}_selR(op);}
+        else{for(const sh of op.shapes){const i=_idIdx(sh.id);if(i>=0)_sh().splice(i,1);_sdl(sh.id);delete _wc()[sh.id];_psc(sh.id);}_selR(op);}
         break;}
       case 'del':{
         if(forward){
@@ -1622,7 +1622,7 @@ const Store={
           op.wc={};for(const sh of op.shapes)if(_wc()[sh.id])op.wc[sh.id]=clone(_wc()[sh.id]);
           for(const sh of op.shapes){
             if(byId(sh.id)?.locked)continue;   // parity with every other remote op: a peer cannot delete a locally-locked shape
-            const i=_sh().findIndex(s=>s.id===sh.id);
+            const i=_idIdx(sh.id);
             if(i>=0)_sh().splice(i,1);
             _sdl(sh.id);
             delete _wc()[sh.id];        // drop per-property write clocks
@@ -2013,6 +2013,7 @@ const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPe
 const _rs=arr=>{state.shapes=arr;_iG();_pcC()}   // ADR-0493: wholesale board replace (5 sites)
 const _shV=()=>_sh().filter(s=>_sv(s));   // ADR-0494: visible-shape subset (6 sites)
 const _ulv=s=>!_lk(s)&&_sv(s);   // ADR-0496: unlocked+visible predicate (4 sites)
+const _idIdx=id=>_sh().findIndex(s=>s.id===id);   // ADR-0497: shape index by id (4 sites)
 const _psc=id=>{_penBboxCache.delete(id);Net._imgPending.delete(id);const e=_penCache.get(id);if(e){_penCache.delete(id);_penCachePx-=e.px||0;}}   // ADR-0427/0435
 // Effective raster resolution: zoom-adaptive (supersampled at low zoom is just
 // wasted pixels), clamped 0.25..2 so extreme zoom-outs still rasterize tiny.
@@ -5480,7 +5481,7 @@ function eraseAt(wp){
   const hit=pickTop(wp);
   if(hit&&!hit.locked&&!_eraseBatch.some(s=>s.id===hit.id)){
     // Remove from rendering immediately for feedback
-    const i=_sh().findIndex(s=>s.id===hit.id);
+    const i=_idIdx(hit.id);
     if(i>=0){
       const _eb=_bb(hit);
       _sh().splice(i,1);_iG();_psc(hit.id);   // ADR-0009/0427
