@@ -798,11 +798,12 @@ const _rnd=Math.round;                                                // ADR-034
 const _qs=(e,s)=>e.querySelector(s);                                  // ADR-0348
 const _qsa=(e,s)=>e.querySelectorAll(s);                                // ADR-0350
 const _on=(e,t,f,o)=>e.addEventListener(t,f,o);                          // ADR-0356
+const _vp=()=>state.viewport;                                              // ADR-0362: live-read (tests reassign the object)
 const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-0350
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.409';
+const V='1.7.410';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1047,6 +1048,7 @@ const state={
   shapes:[],                // array of Shape {id,type,...,z}
   selection:new Set(),      // shape ids
   viewport:{x:0,y:0,zoom:1},// world-to-screen transform
+
   tool:'select',
   style:{stroke:'#0F172A',fill:null,size:2,opacity:1,dash:0},
   history:[],               // op array
@@ -1095,8 +1097,8 @@ let DPR=_max(1,_min(3,window.devicePixelRatio||1));
 // an O(1) point signature; it never changes what bbox returns, only how fast.)
 const _penBboxCache=new Map();
 const G={
-  w2s(p){const v=state.viewport;return{x:(p.x-v.x)*v.zoom,y:(p.y-v.y)*v.zoom}},
-  s2w(p){const v=state.viewport;return{x:p.x/v.zoom+v.x,y:p.y/v.zoom+v.y}},
+  w2s(p){const v=_vp();return{x:(p.x-v.x)*v.zoom,y:(p.y-v.y)*v.zoom}},
+  s2w(p){const v=_vp();return{x:p.x/v.zoom+v.x,y:p.y/v.zoom+v.y}},
   bbox(s){
     if(s.type==='pen'){
       // Memoize the O(pts) envelope walk: per frame it runs once per visible pen
@@ -1143,7 +1145,7 @@ const G={
     // compares an un-rotated local point against the rotated world envelope and wrongly
     // rejects large parts of any rotated non-square box: it renders but can't be clicked.)
     const b=G.bbox(s);
-    const tol=_max(6/state.viewport.zoom,(s.size||0)/2);
+    const tol=_max(6/_vp().zoom,(s.size||0)/2);
     if(p.x<b.x-tol||p.y<b.y-tol||p.x>b.x+b.w+tol||p.y>b.y+b.h+tol)return false;
     // Rotation is box-only (x/y/w/h). shapeRot() gates rendering the same way, so gate
     // hit-testing identically: un-rotate the pointer into the box's local frame for the
@@ -1926,7 +1928,7 @@ const _penCache=new Map(),PEN_CACHE_MAX_PX=12e6,PEN_CACHE_MAX_DIM=4096;
 let _penCachePx=0;
 // Effective raster resolution: zoom-adaptive (supersampled at low zoom is just
 // wasted pixels), clamped 0.25..2 so extreme zoom-outs still rasterize tiny.
-function _penRes(){return _min(2,_max(0.25,state.viewport.zoom*DPR))}
+function _penRes(){return _min(2,_max(0.25,_vp().zoom*DPR))}
 // Render (or re-render) a cache entry's canvas from the stroke at resolution R.
 // Returns the canvas, or null when the stroke is too big to be worth
 // rasterizing — the caller records null as `false` so we never retry per frame.
@@ -1973,8 +1975,8 @@ function _penCached(s){
 // Pen on the MAIN canvas → drawImage the cached bitmap; exports/minimap and
 // drafts keep the vector path.
 function drawPenMaybeCached(s,c){
-  if(s===state.draft){if(c===ctx&&state.viewport.zoom*DPR<=4)drawPenDraft(s);else drawPen(s,c);return}
-  if(c!==ctx||state.viewport.zoom*DPR>4){drawPen(s,c);return}
+  if(s===state.draft){if(c===ctx&&_vp().zoom*DPR<=4)drawPenDraft(s);else drawPen(s,c);return}
+  if(c!==ctx||_vp().zoom*DPR>4){drawPen(s,c);return}
   const e=_penCached(s);
   if(e&&e.cv)c.drawImage(e.cv,e.bx,e.by,e.bw,e.bh);else drawPen(s,c);
 }
@@ -2039,10 +2041,10 @@ function _inkRebuild(s,d){
   d.bx=mnx-pad;d.by=mny-pad;d.bw=(mxx-mnx)+pad*2;d.bh=(mxy-mny)+pad*2;
   // Snap the raster origin to the current device grid so the 1:1 blit lands on
   // whole pixels — a fractional dest offset resamples AA edges on every frame.
-  const zr=state.viewport.zoom*DPR;
+  const zr=_vp().zoom*DPR;
   if(_abs(R-zr)<1e-9){
-    d.bx=_rnd((d.bx-state.viewport.x)*zr)/zr+state.viewport.x;
-    d.by=_rnd((d.by-state.viewport.y)*zr)/zr+state.viewport.y;
+    d.bx=_rnd((d.bx-_vp().x)*zr)/zr+_vp().x;
+    d.by=_rnd((d.by-_vp().y)*zr)/zr+_vp().y;
   }
   d.cv=_ce('canvas');
   d.cv.width=_max(2,_ceil(d.bw*R));d.cv.height=_max(2,_ceil(d.bh*R));
@@ -2061,10 +2063,10 @@ function _inkGrow(d,pad){
   let mnx=d.bx,mny=d.by,mxx=d.bx+d.bw,mxy=d.by+d.bh;
   for(let i=_max(0,p.length-4);i<p.length;i++){const q=p[i];if(q[0]<mnx)mnx=q[0];if(q[1]<mny)mny=q[1];if(q[0]>mxx)mxx=q[0];if(q[1]>mxy)mxy=q[1];}
   mnx-=pad;mny-=pad;mxx+=pad;mxy+=pad;
-  const zr=state.viewport.zoom*DPR;
+  const zr=_vp().zoom*DPR;
   if(_abs(d.R-zr)<1e-9){
-    mnx=_rnd((mnx-state.viewport.x)*zr)/zr+state.viewport.x;
-    mny=_rnd((mny-state.viewport.y)*zr)/zr+state.viewport.y;
+    mnx=_rnd((mnx-_vp().x)*zr)/zr+_vp().x;
+    mny=_rnd((mny-_vp().y)*zr)/zr+_vp().y;
   }
   const ncv=_ce('canvas');
   ncv.width=_max(2,_ceil((mxx-mnx)*d.R));ncv.height=_max(2,_ceil((mxy-mny)*d.R));
@@ -2119,12 +2121,12 @@ function drawPenDraft(s){
     while(d.c<n-9){d.c++;_inkSegDraw(d.c2,p,d.w,d.c);}
   }
   // Frame: blit committed bitmap + live tail (segments d.c+1..n-2 + final line).
-  const _z=state.viewport.zoom*DPR;
+  const _z=_vp().zoom*DPR;
   if(d.R===_z){
     // 1:1 device-space blit snapped to whole pixels — composites without
     // resampling, AA-identical to drawing the same segments on the main ctx.
     ctx.save();ctx.setTransform(1,0,0,1,0,0);
-    ctx.drawImage(d.cv,_rnd((d.bx-state.viewport.x)*_z),_rnd((d.by-state.viewport.y)*_z));
+    ctx.drawImage(d.cv,_rnd((d.bx-_vp().x)*_z),_rnd((d.by-_vp().y)*_z));
     ctx.restore();
   }
   else ctx.drawImage(d.cv,d.bx,d.by,d.bw,d.bh);
@@ -2213,7 +2215,7 @@ function _watchDPR(){
 // Visible world rectangle (for culling). screen = (world - vp) * zoom * DPR,
 // so the visible world span is the canvas size divided by zoom*DPR.
 function visibleWorldRect(){
-  const v=state.viewport;
+  const v=_vp();
   return {x:v.x,y:v.y,w:canvas.width/(v.zoom*DPR),h:canvas.height/(v.zoom*DPR)};
 }
 // True if a shape's bbox intersects the view (small margin for strokes).
@@ -2235,7 +2237,7 @@ function cycleSel(ids,cur,dir){
   return ids[(i+dir+ids.length)%ids.length];
 }
 function centerOn(sh){
-  const b=G.bbox(sh),v=state.viewport;
+  const b=G.bbox(sh),v=_vp();
   v.x=b.x+b.w/2-(canvas.width/(v.zoom*DPR))/2;
   v.y=b.y+b.h/2-(canvas.height/(v.zoom*DPR))/2;
 }
@@ -2303,7 +2305,7 @@ let _lastVp=null;   // ADR-0028: the effective viewport the scene canvas current
 function draw(){
   const W=canvas.width,H=canvas.height;
   const bg=_p();
-  const v=state.viewport;
+  const v=_vp();
   const dmg=_damage;
   const z=v.zoom*DPR;
   if(_pinchSnap&&_pinchVp){
@@ -2415,7 +2417,7 @@ function drawOverlay(){
   c.clearRect(0,0,W,H);
   // Search highlights live in world space (they hug world bboxes).
   if(_sq){
-    const v=state.viewport;
+    const v=_vp();
     c.setTransform(v.zoom*DPR,0,0,v.zoom*DPR,-v.x*v.zoom*DPR,-v.y*v.zoom*DPR);
     const q=_sq.toLowerCase();c.setLineDash([]);let _mi=0;
     for(const s of _sqMatches()){
@@ -2565,7 +2567,7 @@ let _cssCache=Object.create(null);
 function getCSS(v){let x=_cssCache[v];if(x===undefined){x=getComputedStyle(document.documentElement).getPropertyValue(v).trim();_cssCache[v]=x}return x}
 function clearCSSCache(){_cssCache=Object.create(null);invalidate()}
 function drawGrid(W,H){
-  const v=state.viewport;
+  const v=_vp();
   const gs=GRID_SIZE;
   const gsZ=gs*v.zoom*DPR;
   if(gsZ<6)return;
@@ -3138,7 +3140,7 @@ function _qdots(s){
 }
 function _qdotAt(wp){
   const s=_qconnShape();if(!s)return null;
-  const z=state.viewport.zoom||1;
+  const z=_vp().zoom||1;
   for(const d of _qdots(s)){
     if(_hp((wp.x-d.x)*z,(wp.y-d.y)*z)<=10)return{id:s.id,x:d.x,y:d.y};
   }
@@ -3271,7 +3273,7 @@ function getHandles(s){
   return hs.map(p=>{const r=_rotPt(p.x,p.y,cx,cy,s.rotate);return{id:p.id,x:r.x,y:r.y}});
 }
 function hitHandle(wp,s){
-  const tol=HANDLE_SIZE/state.viewport.zoom;
+  const tol=HANDLE_SIZE/_vp().zoom;
   for(const h of getHandles(s)){
     if(_abs(wp.x-h.x)<=tol&&_abs(wp.y-h.y)<=tol)return h.id;
   }
@@ -3286,7 +3288,7 @@ function getRotHandle(s){
   let cx,cy,ty;
   if(s.w!=null){cx=s.x+s.w/2;cy=s.y+s.h/2;ty=s.y}
   else{const b=G.bbox(s);if(!b||!(b.w>0)||!(b.h>0))return null;cx=b.x+b.w/2;cy=b.y+b.h/2;ty=b.y}
-  const d=ROT_OFFSET/state.viewport.zoom;
+  const d=ROT_OFFSET/_vp().zoom;
   const r=(s.w!=null&&s.rotate)?s.rotate*_PI/180:0,c=Math.cos(r),sn=Math.sin(r);
   const R=(px,py)=>({x:cx+(px-cx)*c-(py-cy)*sn,y:cy+(px-cx)*sn+(py-cy)*c});
   const k=R(cx,ty-d),an=R(cx,ty);
@@ -3295,7 +3297,7 @@ function getRotHandle(s){
 // ADR-0057: same knob geometry on a multi-selection's group bbox. Rotation
 // composes (no skew), so unlike gresize there's no rotated-member exclusion.
 function _grpRotHandle(b){
-  const cx=b.x+b.w/2,cy=b.y+b.h/2,d=ROT_OFFSET/state.viewport.zoom;
+  const cx=b.x+b.w/2,cy=b.y+b.h/2,d=ROT_OFFSET/_vp().zoom;
   return{x:cx,y:b.y-d,ax:cx,ay:b.y,cx,cy};
 }
 // Rigidly rotate orig's geometry by deg about (cx,cy) and write it to live `sh`.
@@ -3335,7 +3337,7 @@ function _grotCommit(){
 }
 function hitRotHandle(wp,s){
   const rh=getRotHandle(s);if(!rh)return null;
-  const tol=HANDLE_SIZE/state.viewport.zoom;
+  const tol=HANDLE_SIZE/_vp().zoom;
   return(_abs(wp.x-rh.x)<=tol&&_abs(wp.y-rh.y)<=tol)?rh:null;
 }
 // Object-snap for resize: snap the dragged handle's moving edge(s) to nearby shape
@@ -3344,7 +3346,7 @@ function hitRotHandle(wp,s){
 // is off. Rotated shapes are skipped (axis-aligned edge snap would be incoherent).
 function resizeSnap(orig,handle,wp){
   if(state.snap||orig.rotate||handle==='p1'||handle==='p2')return{x:wp.x,y:wp.y,guides:[]};
-  const tol=SNAP_OBJ/state.viewport.zoom;
+  const tol=SNAP_OBJ/_vp().zoom;
   const movesX=/[ew]/.test(handle),movesY=/[ns]/.test(handle);
   let x=wp.x,y=wp.y;const guides=[];
   const idx=_snapIndex('resize',_selIds().sort().join(','),s=>state.selection.has(s.id));   // ADR-0056: exclude the whole dragged set
@@ -3761,7 +3763,7 @@ _on(canvas,'pointerdown',e=>{
           }
           if(onlySel.label&&!onlySel.locked&&(_conn(onlySel.type))){   // ADR-0117
             const lp=_connLabelXY(onlySel);
-            if(lp&&_hp(wp.x-lp.x,wp.y-lp.y)<=HANDLE_SIZE/state.viewport.zoom){
+            if(lp&&_hp(wp.x-lp.x,wp.y-lp.y)<=HANDLE_SIZE/_vp().zoom){
               if(e.altKey&&onlySel.labelPos!=null){    // ADR-0145: ⌥click back to midpoint
                 _rcOp({op:'style',before:[{id:onlySel.id,labelPos:onlySel.labelPos}],after:[{id:onlySel.id,labelPos:null}]});
                 delete onlySel.labelPos;invalidate();return;
@@ -3771,7 +3773,7 @@ _on(canvas,'pointerdown',e=>{
           }
           if(onlySel.elbow&&!onlySel.locked){          // ADR-0072: trunk drag
             const tr=_elbowTrunk(onlySel);
-            if(tr&&distToSeg(wp,tr[0],tr[1])<=HANDLE_SIZE/state.viewport.zoom){
+            if(tr&&distToSeg(wp,tr[0],tr[1])<=HANDLE_SIZE/_vp().zoom){
               if(e.altKey&&onlySel.bend!=null){        // ADR-0143: ⌥click recentres the trunk
                 _rcOp({op:'style',before:[{id:onlySel.id,bend:onlySel.bend}],after:[{id:onlySel.id,bend:null}]});
                 delete onlySel.bend;invalidate();return;
@@ -3782,7 +3784,7 @@ _on(canvas,'pointerdown',e=>{
           }
           if(onlySel.curve&&!onlySel.locked){          // ADR-0132: curve-bend drag (apex grab)
             const apex=_curveLabelXY(onlySel);
-            if(apex&&_hp(wp.x-apex.x,wp.y-apex.y)<=HANDLE_SIZE/state.viewport.zoom){
+            if(apex&&_hp(wp.x-apex.x,wp.y-apex.y)<=HANDLE_SIZE/_vp().zoom){
               if(e.altKey&&onlySel.cbend!=null){       // ADR-0144: ⌥click restores auto-bow
                 _rcOp({op:'style',before:[{id:onlySel.id,cbend:onlySel.cbend}],after:[{id:onlySel.id,cbend:null}]});
                 delete onlySel.cbend;invalidate();return;
@@ -3791,7 +3793,7 @@ _on(canvas,'pointerdown',e=>{
             }
           }
           if(!onlySel.elbow&&!onlySel.curve&&!onlySel.locked&&(_conn(onlySel.type))){   // ADR-0090
-            const pts=_linePts(onlySel),R_=HANDLE_SIZE/state.viewport.zoom;
+            const pts=_linePts(onlySel),R_=HANDLE_SIZE/_vp().zoom;
             for(let i=1;i<pts.length-1;i++){             // existing vertex → move it
               if(_hp(wp.x-pts[i].x,wp.y-pts[i].y)<=R_){
                 if(e.altKey){                              // ADR-0141: ⌥click deletes the waypoint
@@ -3817,7 +3819,7 @@ _on(canvas,'pointerdown',e=>{
           const gb=G.bboxAll(sel);
           // ADR-0057: rotation knob first — it sits above the bbox, off the handles.
           const gr=gb&&_grpRotHandle(gb);
-          const tol=HANDLE_SIZE/state.viewport.zoom;
+          const tol=HANDLE_SIZE/_vp().zoom;
           if(gr&&_abs(wp.x-gr.x)<=tol&&_abs(wp.y-gr.y)<=tol){
             ptr.dragKind='grot';
             // Normalise rotate→0 in the origs: _rotShape always writes sh.rotate
@@ -3904,7 +3906,7 @@ _on(canvas,'pointermove',e=>{
         if(sel.length>1&&!sel.every(s=>s.locked)){
           const gb=G.bboxAll(sel);
           const gr=gb&&_grpRotHandle(gb);
-          const tol=HANDLE_SIZE/state.viewport.zoom;
+          const tol=HANDLE_SIZE/_vp().zoom;
           if(gr&&_abs(wp.x-gr.x)<=tol&&_abs(wp.y-gr.y)<=tol){canvas.style.cursor='grab';return}   // ADR-0057
           // ADR-0056: same hover affordance on the group handles
           if(!sel.some(s=>s.rotate)){
@@ -3938,8 +3940,8 @@ _on(canvas,'pointermove',e=>{
   }
   const dx=sp.x-ptr.x0,dy=sp.y-ptr.y0;
   if(ptr.panning){
-    state.viewport.x-=(sp.x-ptr.x)/state.viewport.zoom;
-    state.viewport.y-=(sp.y-ptr.y)/state.viewport.zoom;
+    _vp().x-=(sp.x-ptr.x)/_vp().zoom;
+    _vp().y-=(sp.y-ptr.y)/_vp().zoom;
     ptr.x=sp.x;ptr.y=sp.y;invalidate();return;
   }
   switch(state.tool){
@@ -3994,7 +3996,7 @@ _on(canvas,'pointermove',e=>{
           if(ptr.wayNew){wa.splice(i,0,snapPt(wp));sh.way=wa;ptr.wayNew=false;}   // first move inserts the vertex
           else{
             const pts=_linePts(sh),mx=(pts[i].x+pts[i+1].x)/2,my=(pts[i].y+pts[i+1].y)/2;
-            if(_hp(wp.x-mx,wp.y-my)<6/state.viewport.zoom){wa.splice(i,1);if(wa.length)sh.way=wa;else delete sh.way}   // ADR-0088: RAW point keeps the clear gesture reachable
+            if(_hp(wp.x-mx,wp.y-my)<6/_vp().zoom){wa.splice(i,1);if(wa.length)sh.way=wa;else delete sh.way}   // ADR-0088: RAW point keeps the clear gesture reachable
             else{wa[i]=snapPt(wp);sh.way=wa}
           }
           invalidate();
@@ -4254,7 +4256,7 @@ function openLabelEditor(hit,leftPx,topPx,bold){
 let _lblTa=null,_lblVp='';
 function _lblFollow(){
   if(!_lblTa)return;
-  const v=state.viewport,sig=v.x+'|'+v.y+'|'+v.z;
+  const v=_vp(),sig=v.x+'|'+v.y+'|'+v.z;
   if(sig===_lblVp)return;
   _lblVp=sig;
   const a=_lblAnchor(_lblTa.hit);
@@ -4441,8 +4443,8 @@ _on(canvas,'wheel',e=>{
     // ADR-0093: ⇧+wheel pans horizontally (mouse wheels have no deltaX) —
     // pass through real deltaX so trackpads keep two-axis pan under shift.
     const dx=e.shiftKey&&!d.x?d.y:d.x,dy=e.shiftKey&&!d.x?0:d.y;
-    state.viewport.x+=dx/state.viewport.zoom;
-    state.viewport.y+=dy/state.viewport.zoom;
+    _vp().x+=dx/_vp().zoom;
+    _vp().y+=dy/_vp().zoom;
     invalidate();
   }
 },{passive:false});
@@ -4484,7 +4486,7 @@ let _wheelZoomEnd=0;
 // blit under the accumulated transform without rescanning the scene.
 function _pinchSnapNow(){
   if(!_pinchSnap){
-    const v=state.viewport;
+    const v=_vp();
     _pinchSnap=_ce('canvas');
     _pinchSnap.width=canvas.width;_pinchSnap.height=canvas.height;
     _pinchSnap.getContext('2d').drawImage(canvas,0,0);
@@ -4492,7 +4494,7 @@ function _pinchSnapNow(){
   }
 }
 function zoomAt(sp,delta){
-  const v=state.viewport;
+  const v=_vp();
   // ADR-0030: the first zoom of a multi-touch pinch snapshots the canvas once;
   // every pinch frame then blits this pristine buffer under the gesture's
   // accumulated transform instead of rescanning the scene. Continuous pinch
@@ -4514,10 +4516,10 @@ function zoomAt(sp,delta){
 function zoomBy(f){
   const r=_cbr();
   zoomAt({x:r.width/2,y:r.height/2},Math.log(f));
-  UI.announce(_rnd(state.viewport.zoom*100)+'%');   // discrete zoom is SR-silent otherwise (wheel zoom stays quiet on purpose)
+  UI.announce(_rnd(_vp().zoom*100)+'%');   // discrete zoom is SR-silent otherwise (wheel zoom stays quiet on purpose)
 }
 function zoomReset(){
-  state.viewport.zoom=1;
+  _vp().zoom=1;
   UI.refreshZoom();invalidate();
   UI.announce('100%');
 }
@@ -4526,9 +4528,9 @@ function zoomReset(){
 function _fitViewport(b,pad,cap){
   const r=_cbr();
   const z=clampZoom(_min((r.width-pad*2)/b.w,(r.height-pad*2)/b.h,cap));
-  state.viewport.zoom=z;
-  state.viewport.x=b.x+b.w/2-r.width/(2*z);
-  state.viewport.y=b.y+b.h/2-r.height/(2*z);
+  _vp().zoom=z;
+  _vp().x=b.x+b.w/2-r.width/(2*z);
+  _vp().y=b.y+b.h/2-r.height/(2*z);
   UI.refreshZoom();invalidate();
   return z;
 }
@@ -4546,7 +4548,7 @@ function fitToContent(){
 // empty view is left alone.
 function _fitIfEmptyView(){
   if(!state.shapes.length)return;
-  const v=state.viewport,r=_cbr();
+  const v=_vp(),r=_cbr();
   const _vis=state.shapes.filter(s=>s.visible!==0);const b=G.bboxAll(_vis.length?_vis:state.shapes);if(!b)return;   // ADR-0155
   const vw=r.width/v.zoom,vh=r.height/v.zoom;
   if(b.x+b.w<v.x||b.y+b.h<v.y||b.x>v.x+vw||b.y>v.y+vh)fitToContent();
@@ -4768,10 +4770,10 @@ function objectSnap(dx,dy){
   const mov={x:bb.x+dx,y:bb.y+dy,w:bb.w,h:bb.h};
   const key=[...ptr.dragStartShapes.keys()].join(',');
   const idx=_snapIndex('move',key,s=>ptr.dragStartShapes.has(s.id));
-  const base=_snapBoxIdx(mov,idx,SNAP_OBJ/state.viewport.zoom);
+  const base=_snapBoxIdx(mov,idx,SNAP_OBJ/_vp().zoom);
   if(base.dx!==0&&base.dy!==0)return base;
   const excl=s=>ptr.dragStartShapes.has(s.id);
-  const eq=_eqGapSnap(mov,excl,SNAP_OBJ/state.viewport.zoom);
+  const eq=_eqGapSnap(mov,excl,SNAP_OBJ/_vp().zoom);
   if(base.dx===0&&eq.dx!==0){base.dx=eq.dx;base.guides.push(...eq.guides)}
   if(base.dy===0&&eq.dy!==0){base.dy=eq.dy;base.guides.push(...eq.guides)}
   return base;
@@ -4944,7 +4946,7 @@ function contPen(wp,e){
   const last=pts[pts.length-1];
   // decimate by min distance for smoothness
   const d=_hp(wp.x-last[0],wp.y-last[1]);
-  if(d>1/state.viewport.zoom)pts.push([wp.x,wp.y,state.draft.hl?0.5:_penPr(e)]);
+  if(d>1/_vp().zoom)pts.push([wp.x,wp.y,state.draft.hl?0.5:_penPr(e)]);
   const _m=(state.draft.size||2)+16;   // ADR-0026: ink corridor — accumulated union covers the whole stroke
   invalidateDamage({x:_min(wp.x,last[0])-_m,y:_min(wp.y,last[1])-_m,w:_abs(wp.x-last[0])+2*_m,h:_abs(wp.y-last[1])+2*_m});
 }
@@ -5037,7 +5039,7 @@ function endPen(){
     // ADR-0034: eps scales with the capture resolution (contPen keeps ~1/zoom
     // spacing), so zoomed-in strokes keep the detail they were drawn with —
     // 0.5 world units at zoom 1, finer when zoomed in, coarser when zoomed out.
-    if(d.pts.length>3)d.pts=_rdp(d.pts,0.5/state.viewport.zoom);
+    if(d.pts.length>3)d.pts=_rdp(d.pts,0.5/_vp().zoom);
     Store.commit({op:'add',shape:d});
   }
 }
@@ -5332,7 +5334,7 @@ let _teTa=null,_teVp='';
 function _teFollow(){
   if(!_teTa||!state.editing)return;
   const s=byId(state.editing);if(!s)return;
-  const v=state.viewport,sig=v.x+','+v.y+','+v.zoom;
+  const v=_vp(),sig=v.x+','+v.y+','+v.zoom;
   if(sig===_teVp)return;
   _teVp=sig;positionTextEditor(_teTa,s);
 }
@@ -5341,7 +5343,7 @@ function positionTextEditor(ta,s){
   const r=_cbr();
   ta.style.left=(r.left+sp.x)+'px';
   ta.style.top=(r.top+sp.y)+'px';
-  ta.style.fontSize=(s.fontSize*state.viewport.zoom)+'px';
+  ta.style.fontSize=(s.fontSize*_vp().zoom)+'px';
   ta.style.color=s.stroke||'#0F172A';
   ta.style.textAlign=s.align==='center'?'center':s.align==='right'?'right':'left';   // ADR-0073
   ta.style.fontWeight=s.bold?'600':'';ta.style.fontStyle=s.italic?'italic':'';ta.style.textDecoration=[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ');   // ADR-0078/0095/0100
@@ -5507,9 +5509,9 @@ _on(window,'keydown',e=>{
     }
     else{                                   // ADR-0165: no selection → arrows pan the view
       _pd(e);                    // (Excalidraw scroll parity; keyboard-only nav)
-      const step=(e.shiftKey?200:40)/state.viewport.zoom;
-      state.viewport.x+=k==='arrowleft'?-step:k==='arrowright'?step:0;
-      state.viewport.y+=k==='arrowup'?-step:k==='arrowdown'?step:0;
+      const step=(e.shiftKey?200:40)/_vp().zoom;
+      _vp().x+=k==='arrowleft'?-step:k==='arrowright'?step:0;
+      _vp().y+=k==='arrowup'?-step:k==='arrowdown'?step:0;
       invalidate();
     }
   }
@@ -5600,7 +5602,7 @@ function doPaste(){
   // Center pasted content at the current viewport center, then offset by cascade amount.
   // Pattern: Figma/Excalidraw — paste at viewport center so the result is always visible.
   const bb=G.bboxAll(state.clipboard.shapes);
-  const v=state.viewport;
+  const v=_vp();
   const _r=_cbr();
   const vCx=v.x+_r.width/(v.zoom*2);
   const vCy=v.y+_r.height/(v.zoom*2);
@@ -5639,7 +5641,7 @@ function doPasteAt(wx,wy){
 // the user's copy/paste buffer (Copy A, select B, Ctrl+D → Ctrl+V wrongly pastes B).
 // dx/dy default to 20/zoom for duplicate; paste supplies viewport-centering offsets.
 function _placeCopies(srcShapes,dx,dy){
-  if(dx===undefined){const o=20/state.viewport.zoom;dx=o;dy=o;}
+  if(dx===undefined){const o=20/_vp().zoom;dx=o;dy=o;}
   const added=[];
   const built=[];
   const gidMap=new Map();
@@ -5892,7 +5894,7 @@ function doClearAll(){
   if(!state.shapes.length)return;
   if(!confirm(t('confirmClear')))return;
   const origSel=_selIds();
-  Persist.saveBackup(clone(state.shapes),{...state.viewport},state.docName);   // ADR-0004
+  Persist.saveBackup(clone(state.shapes),{..._vp()},state.docName);   // ADR-0004
   Store.commit({op:'clear',shapes:clone(state.shapes),wc:clone(state.wclock)});
   _keepSel(origSel);
   UI.toast(t('cleared'));
@@ -6198,7 +6200,7 @@ function exportSelection(fmt){
 // offscreen transform mirrors _renderPngBlob with b=view and no pad.
 function exportViewportPNG(scale){
   const r=_cbr();
-  const v=state.viewport;
+  const v=_vp();
   const view={x:v.x,y:v.y,w:r.width/v.zoom,h:r.height/v.zoom};
   const shapes=state.shapes.filter(s=>inView(s,view));
   if(!shapes.length){UI.toast(t('empty'),'warn');return}
@@ -6392,7 +6394,7 @@ function excScene(shapes){
     const out=[...(be?be.map(cid=>({id:cid,type:'arrow'})):[]),...(tid?[{id:tid,type:'text'}]:[])];
     if(out.length)e.boundElements=out;
   }
-  return{type:'excalidraw',version:2,source:'Board',elements:els,files,appState:{gridSize:null,scrollX:-state.viewport.x,scrollY:-state.viewport.y,zoom:{value:state.viewport.zoom}}};   // ADR-0257
+  return{type:'excalidraw',version:2,source:'Board',elements:els,files,appState:{gridSize:null,scrollX:-_vp().x,scrollY:-_vp().y,zoom:{value:_vp().zoom}}};   // ADR-0257
 }
 // ---- ADR-0203: .drawio import ------------------------------------------------
 // Uncompressed mxGraphModel XML via DOMParser (no deps). drawio's default save
@@ -6618,7 +6620,7 @@ function importDrawioText(txt,wp){
     for(const s of shapes)Shape.translate(s,dx,dy)}
   _cOp({op:'addMany',shapes});
   state.selection.clear();for(const s of shapes)state.selection.add(s.id);
-  if(_vpNull&&_dioVp){state.viewport.x=_dioVp.x;state.viewport.y=_dioVp.y;state.viewport.zoom=_dioVp.z}   // ADR-0359: viewport restore
+  if(_vpNull&&_dioVp){_vp().x=_dioVp.x;_vp().y=_dioVp.y;_vp().zoom=_dioVp.z}   // ADR-0359: viewport restore
   invalidate();UI.toast(t('dioImported'),'ok');
   return true;
 }
@@ -6735,7 +6737,7 @@ function boardToDrawio(shapes){
     geo+='</mxGeometry>';
     cells.push(`<mxCell id="${id}" value="${nl(s.label||'')}" style="${esc(sty)}" edge="1" parent="${_gc2?`g_${s.groupId}`:'1'}"${src}${tgt}${s.link?` link="${esc(s.link)}"`:''}${s.visible===0?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0245/0347
   }
-  const vx=state.viewport.x,vy=state.viewport.y,vz=state.viewport.zoom;
+  const vx=_vp().x,vy=_vp().y,vz=_vp().zoom;
   return `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile compressed="false"><diagram name="Page-1"><mxGraphModel dx="${_rnd(-vx)}" dy="${_rnd(-vy)}" grid="${state.showGrid?1:0}" gridSize="${GRID_SIZE}" guides="1" tooltips="0" connect="0" arrows="0" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0" zoom="${vz}"><root><mxCell id="0"/><mxCell id="1" parent="0"/>${cells.join('')}</root></mxGraphModel></diagram></mxfile>`;   // ADR-0359: dx/dy/zoom viewport round-trip
 }
 function exportDrawio(){
@@ -7121,7 +7123,7 @@ function importBoard(file){
       const before=clone(state.shapes);
       const beforeWc=clone(state.wclock);
       const origSel=_selIds();
-      if(before.length)Persist.saveBackup(before,{...state.viewport},state.docName);   // ADR-0004
+      if(before.length)Persist.saveBackup(before,{..._vp()},state.docName);   // ADR-0004
       state.shapes=shapes.map(clone);_invalidateGrid();   // ADR-0009
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out. Skipping this leaks wclock entries and
@@ -7909,7 +7911,7 @@ const Share={
   },
   async exportToUrl(enc){
     const data={v:V,shapes:roundShapesForExport(state.shapes),name:state.docName,
-      viewport:{x:+state.viewport.x.toFixed(2),y:+state.viewport.y.toFixed(2),zoom:+state.viewport.zoom.toFixed(4)}};   // ADR-0112: receiver opens at the sharer's view
+      viewport:{x:+_vp().x.toFixed(2),y:+_vp().y.toFixed(2),zoom:+_vp().zoom.toFixed(4)}};   // ADR-0112: receiver opens at the sharer's view
     const json=_JS(data);
     // CompressionStream if available, else base64
     let payload=json;
@@ -8000,15 +8002,15 @@ const Share={
       const beforeWc=clone(state.wclock);
       const origSel=_selIds();
       // ADR-0004: also survives past the undo window (reload/closed-tab), not just this session.
-      if(before.length)Persist.saveBackup(before,{...state.viewport},state.docName);
+      if(before.length)Persist.saveBackup(before,{..._vp()},state.docName);
       state.shapes=valid.map(clone);_invalidateGrid();state.docName=((typeof data.name==='string'&&data.name)||'Shared').slice(0,80);   // ADR-0009
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out (see importBoard for rationale).
       if(data.viewport&&_fin(+data.viewport.x)&&_fin(+data.viewport.y)&&_fin(+data.viewport.zoom)&&data.viewport.zoom>0){
         // ADR-0112: adopt the sharer's viewport (same numeric validation as the
         // IDB restore path — corrupt/out-of-range zoom never reaches state).
-        state.viewport.x=+data.viewport.x;state.viewport.y=+data.viewport.y;
-        state.viewport.zoom=clampZoom(+data.viewport.zoom);
+        _vp().x=+data.viewport.x;_vp().y=+data.viewport.y;
+        _vp().zoom=clampZoom(+data.viewport.zoom);
       }
       state.selection.clear();state.wclock={};
       sortZ();invalidate();
@@ -8110,7 +8112,7 @@ const Persist={
       tx.objectStore(DB_STORE).put({
         v:V,
         shapes:slim,
-        viewport:state.viewport,
+        viewport:_vp(),
         docName:state.docName,
         savedAt:Date.now()
       },DOC_KEY);
@@ -8147,8 +8149,8 @@ const Persist={
         // (wheel/fit) maintains — a corrupt or forward-incompat IDB record with an
         // out-of-range zoom would otherwise load an unusable (microscopic/astronomical)
         // canvas with no recovery. Assign explicitly so junk props aren't adopted.
-        state.viewport.x=+d.viewport.x; state.viewport.y=+d.viewport.y;
-        state.viewport.zoom=clampZoom(+d.viewport.zoom);
+        _vp().x=+d.viewport.x; _vp().y=+d.viewport.y;
+        _vp().zoom=clampZoom(+d.viewport.zoom);
       }
       if(typeof d.docName==='string'&&d.docName){state.docName=d.docName.slice(0,80);_g('docName').value=state.docName;_syncDocTitle();}   // clamp: the input enforces maxlength=80, intake paths must too
       state.lastSaveAt=d.savedAt||0;
@@ -8215,7 +8217,7 @@ const Persist={
       state.selection.clear();state.wclock={};
       if(typeof d.docName==='string'&&d.docName){state.docName=d.docName.slice(0,80);_g('docName').value=state.docName;_syncDocTitle();}   // clamp: the input enforces maxlength=80, intake paths must too
       if(d.viewport&&_fin(+d.viewport.x)&&_fin(+d.viewport.y)&&_fin(+d.viewport.zoom)&&d.viewport.zoom>0){
-        state.viewport.x=+d.viewport.x;state.viewport.y=+d.viewport.y;state.viewport.zoom=clampZoom(+d.viewport.zoom);
+        _vp().x=+d.viewport.x;_vp().y=+d.viewport.y;_vp().zoom=clampZoom(+d.viewport.zoom);
       }
       sortZ();invalidate();
       Store._recordCommitted({op:'replace',before,after:clone(state.shapes),wc:beforeWc,afterWc:clone(state.wclock),origSel});
@@ -8274,7 +8276,7 @@ const UI={
     _g('sCount').textContent=state.shapes.length;
   },
   refreshZoom(){
-    _g('zoomVal').textContent=_rnd(state.viewport.zoom*100)+'%';
+    _g('zoomVal').textContent=_rnd(_vp().zoom*100)+'%';
   },
   // §3.18: minimap has no dismiss affordance — always-on is pure visual noise on a small
   // board. `M` toggles it; the preference persists (localStorage) so it doesn't reappear
@@ -9410,9 +9412,9 @@ const Presentation=(()=>{
     const zoom=_min(scaleX,scaleY,4);
     const cx=frame.x+frame.w/2;
     const cy=frame.y+frame.h/2;
-    state.viewport.zoom=zoom;
-    state.viewport.x=cx-vW/(2*zoom);
-    state.viewport.y=cy-vH/(2*zoom);
+    _vp().zoom=zoom;
+    _vp().x=cx-vW/(2*zoom);
+    _vp().y=cy-vH/(2*zoom);
     UI.refreshZoom();
     invalidate();
   }
@@ -9422,7 +9424,7 @@ const Presentation=(()=>{
     if(!_frames.length){UI.toast(t('noFrames'),'warn');return}
     _focusTrigger=document.activeElement;
     _active=true;_idx=0;
-    _savedVp={x:state.viewport.x,y:state.viewport.y,zoom:state.viewport.zoom};
+    _savedVp={x:_vp().x,y:_vp().y,zoom:_vp().zoom};
     // Build overlay
     _overlay=_ce('div');
     _overlay.id='presOverlay';
@@ -9473,7 +9475,7 @@ const Presentation=(()=>{
     // Mirror enter(): the canvas CSS box just shrank back to its in-flow size with no
     // native resize event — re-sync the backing buffer or it stays fullscreen-sized.
     resize();
-    if(_savedVp){Object.assign(state.viewport,_savedVp);_savedVp=null;UI.refreshZoom()}
+    if(_savedVp){Object.assign(_vp(),_savedVp);_savedVp=null;UI.refreshZoom()}
     invalidate();
     _focusTrigger?.focus();_focusTrigger=null;
   }
@@ -9545,7 +9547,7 @@ const Minimap=(()=>{
     if(_sceneVer!==_gridVer||!_scene)_renderScene();
     if(!_sc)return;
     mx.drawImage(_scene,0,0);
-    const vp=state.viewport,_r=_cbr(),cW=_r.width,cH=_r.height;
+    const vp=_vp(),_r=_cbr(),cW=_r.width,cH=_r.height;
     const vx=vp.x*_sc+_ox,vy=vp.y*_sc+_oy,vw=(cW/vp.zoom)*_sc,vh=(cH/vp.zoom)*_sc;
     mx.strokeStyle=_ac();mx.lineWidth=1.5;mx.setLineDash([3,2]);   // a11y-audit-2026-07
     mx.strokeRect(vx,vy,vw,vh);mx.setLineDash([]);
@@ -9566,8 +9568,8 @@ const Minimap=(()=>{
     const ox=-bb.x*sc+(W-bb.w*sc)/2,oy=-bb.y*sc+(H-bb.h*sc)/2;
     const wx=(mc.width*mx2-ox)/sc,wy=(mc.height*my2-oy)/sc;
     const _r=_cbr();
-    state.viewport.x=wx-_r.width/state.viewport.zoom/2;
-    state.viewport.y=wy-_r.height/state.viewport.zoom/2;
+    _vp().x=wx-_r.width/_vp().zoom/2;
+    _vp().y=wy-_r.height/_vp().zoom/2;
     invalidate();
   };
   _on(mc,'pointerdown',e=>{_mmNav=true;mc.setPointerCapture(e.pointerId);_mmGo(e)});
@@ -9643,6 +9645,7 @@ if('serviceWorker' in navigator){
   // Pattern: web.dev/service-worker-lifecycle / Zenn「SW更新時にリロードを促す」.
   navigator.serviceWorker.addEventListener('controllerchange',_onSwUpdate);
 }
+
 </script>
 </body>
 </html>

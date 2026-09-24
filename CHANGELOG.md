@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.410] - 2026-09-24
+
+### Changed
+- `state.viewport` の全参照を `_vp()` live-read shorthand に集約
+  (~810B) — オブジェクト差替え耐性を保持 (ADR-0362)
+
 ## [1.7.409] - 2026-09-24
 
 ### Added

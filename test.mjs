@@ -183,7 +183,7 @@ const checks = [
   ['dblclick calls openTextEditor with isNew=false', html.includes("openTextEditor(hit,false)")],
   // Phase 1.4: minimap + format painter + PDF
   ['Minimap canvas present', html.includes('id="minimap"') && html.includes("const Minimap")],
-  ['Minimap click-to-navigate', html.includes("state.viewport.x=wx-")],
+  ['Minimap click-to-navigate', html.includes("_vp().x=wx-")],
   // §3.18: minimap had no dismiss affordance — always-on is pure visual noise on a small
   // board with zero user control. M toggles visibility; preference persists (localStorage).
   ['M key routes to UI.toggleMinimap', html.includes("else if(k==='m'&&!meta){UI.toggleMinimap()}")],
@@ -387,7 +387,7 @@ const checks = [
   ['pan records effective viewport, subpixel pans skip scene', html.includes("_lastVp={x:ev.x,y:ev.y,zoom:v.zoom}") && html.includes("const _skipScene=panned&&")],
   // v1.7.87: ADR-0029 draft-pen incremental ink stamping
   ['draft pen stamps committed segments to bitmap', html.includes("function drawPenDraft(") && html.includes("while(d.c<n-9){d.c++;_inkSegDraw(d.c2,p,d.w,d.c);}")],
-  ['draft pen blits committed bitmap 1:1 snapped to device grid', html.includes("ctx.drawImage(d.cv,_rnd((d.bx-state.viewport.x)*_z)")],
+  ['draft pen blits committed bitmap 1:1 snapped to device grid', html.includes("ctx.drawImage(d.cv,_rnd((d.bx-_vp().x)*_z)")],
   ['draft pen rebuilds stamp on pressure-mode flip/extrema growth', html.includes("usePr!==d.usePr||(usePr&&extGrew)") && html.includes("_inkRebuild(s,d)")],
   // v1.7.88: ADR-0030 pinch-zoom scaled preview
   ['pinch snapshots canvas once at gesture start', html.includes("if(_pointers.size>=2)_pinchSnapNow()") && html.includes("function _pinchSnapNow()") && html.includes(".getContext('2d').drawImage(canvas,0,0)")],
@@ -399,12 +399,12 @@ const checks = [
   ['wheel zoom settle timer discards snapshot + repaints', html.includes("_wheelZoomEnd=setTimeout(()=>{_pinchSnap=null;_pinchVp=null;invalidate()},180)")],
   ['ADR-0032/0033: marquee + pickTop use the spatial grid', html.includes("_gridRectCandidates(_grid||(_grid=_buildGrid(state.shapes)),r)") && html.includes("cands.sort((a,b)=>(_grid.idx.get(b)|0)-(_grid.idx.get(a)|0))")],
   ['load validates viewport finiteness', html.includes("_fin(+d.viewport.zoom)&&d.viewport.zoom>0")],
-  ['load clamps viewport zoom to [MIN_ZOOM,MAX_ZOOM]', html.includes("state.viewport.zoom=clampZoom(+d.viewport.zoom)")],
+  ['load clamps viewport zoom to [MIN_ZOOM,MAX_ZOOM]', html.includes("_vp().zoom=clampZoom(+d.viewport.zoom)")],
   ['clampZoom is the single zoom-invariant source', html.includes("const clampZoom=z=>_max(MIN_ZOOM,_min(MAX_ZOOM,z))") && html.includes("const nz=clampZoom(") && html.includes("const z=clampZoom(")],
   // v1.6.18: deeper audit fixes
   ['P selects pen, Shift+P presents', html.includes("k==='p'&&e.shiftKey&&!meta&&!e.altKey")],
   ['pen resize handles emit from pts bbox (ADR-0051)', html.includes("if(s.type==='pen'){") && html.includes("id:'se'") && html.includes("G.bbox(s);if(!b||!b.w||!b.h)return [];")],
-  ['presentation saves+restores viewport', html.includes("_savedVp={x:state.viewport.x") && html.includes("Object.assign(state.viewport,_savedVp)")],
+  ['presentation saves+restores viewport', html.includes("_savedVp={x:_vp().x") && html.includes("Object.assign(_vp(),_savedVp)")],
   ['help grid present row uses i18n', html.includes("['⇧P',k.present]") && html.includes("['↑↓←→',k.nudge]")],
   ['help i18n keys in ja and en', html.includes("present:'プレゼン'") && html.includes("present:'Present'")],
   // v1.6.19: sync + PWA fixes
@@ -545,7 +545,7 @@ const checks = [
   ['sticky↔text conversion via style op (ctx)', html.includes('toggleStickyText')&&html.includes('ctxToSticky')&&html.includes("s.type==='sticky'?'text':'sticky'")],
   ['frame select-contents (ctx)', html.includes('selectFrameContents')&&html.includes('ctxSelContents')&&html.includes('withFrameChildren(')],
   ['selection .board export (ctx)', html.includes("exportBoard(sel)")&&html.includes('ctxExportSelBoard')&&html.includes("fmt==='board'")],
-  ['share link carries creator viewport', html.includes('viewport:{x:+state.viewport.x.toFixed(2)')&&html.includes('clampZoom(+data.viewport.zoom)')],
+  ['share link carries creator viewport', html.includes('viewport:{x:+_vp().x.toFixed(2)')&&html.includes('clampZoom(+data.viewport.zoom)')],
   ['clipboard .board JSON import (paste path)', html.includes('importBoardText(s)')&&html.includes('copyBoardJSON')&&html.includes('ctxCopyBoard')],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
@@ -565,7 +565,7 @@ const checks = [
   ['frame label keydown guards ev.isComposing (IME safe)', html.includes('_on(inp') && html.includes('if(ev.isComposing)return')],
   ['text editor keydown guards ev.isComposing (IME safe)', (html.match(/if\(ev\.isComposing\)return/g)||[]).length >= 2],
   ['pen RDP decimation function _rdp present', html.includes('function _rdp(pts,eps)')],
-  ['endPen applies RDP on commit', html.includes('d.pts.length>3')&&html.includes('_rdp(d.pts,0.5/state.viewport.zoom)')],
+  ['endPen applies RDP on commit', html.includes('d.pts.length>3')&&html.includes('_rdp(d.pts,0.5/_vp().zoom)')],
   // v1.7.92: ADR-0034 iterative index-range RDP + zoom-adaptive eps
   ['RDP is iterative index-range (no slice recursion)', html.includes('const keep=new Uint8Array(pts.length)')&&html.includes('stack.push([lo,idx],[idx,hi])')],
   ['size is reported (no hard cap since 2026-06-13)', readFileSync('./test.mjs','utf8').includes("Size is no longer hard-capped")],
@@ -588,11 +588,11 @@ const checks = [
   // harness (FileReader has no fake), so its trigger wiring is presence-checked; the backup
   // mechanism itself (Persist.saveBackup/checkBackup/restoreBackup) is behaviourally tested.
   ['ADR-0004: doClearAll backs up pre-clear board before the destructive commit',
-    html.includes("Persist.saveBackup(clone(state.shapes),{...state.viewport},state.docName);   // ADR-0004\n  Store.commit({op:'clear'")],
+    html.includes("Persist.saveBackup(clone(state.shapes),{..._vp()},state.docName);   // ADR-0004\n  Store.commit({op:'clear'")],
   ['ADR-0004: importBoard backs up pre-import board before the whole-board swap',
-    html.includes("if(before.length)Persist.saveBackup(before,{...state.viewport},state.docName);   // ADR-0004\n      state.shapes=shapes.map(clone);")],
+    html.includes("if(before.length)Persist.saveBackup(before,{..._vp()},state.docName);   // ADR-0004\n      state.shapes=shapes.map(clone);")],
   ['ADR-0004: importFromHash backs up pre-import board before the whole-board swap',
-    html.includes("if(before.length)Persist.saveBackup(before,{...state.viewport},state.docName);\n      state.shapes=valid.map(clone);")],
+    html.includes("if(before.length)Persist.saveBackup(before,{..._vp()},state.docName);\n      state.shapes=valid.map(clone);")],
   ['ADR-0004: main() offers a one-time restore prompt when a backup exists at boot',
     html.includes("if(await Persist.checkBackup()){") && html.includes("if(confirm(t('backupAvailable')))await Persist.restoreBackup();") && html.includes("else await Persist.discardBackup();")],
   ['drag-drop accepts .board files', html.includes(".endsWith('.board')")],
@@ -795,7 +795,7 @@ const checks = [
   ['drawio rotation= ↔ s.rotate on vertices (ADR-0261)', html.includes("rotation='+_rnd(s.rotate")&&html.includes("+sty.rotation)s.rotate")],
   ['drawio flipH/flipV ↔ s.flip bitmask (ADR-0260)', html.includes("r+='flipH=1;'")&&html.includes("sty.flipH==='1'")],
   ['drawio shape=image round-trips s.dataUrl (ADR-0259)', html.includes("sty+='shape=image;'")&&html.includes("sty+='image='+s.dataUrl")&&html.includes("_im[1].slice(0,25_000_000)")],
-  ['excalidraw export embeds viewport in appState (ADR-0257)', html.includes("scrollX:-state.viewport.x,scrollY:-state.viewport.y,zoom:{value:state.viewport.zoom}")],
+  ['excalidraw export embeds viewport in appState (ADR-0257)', html.includes("scrollX:-_vp().x,scrollY:-_vp().y,zoom:{value:_vp().zoom}")],
   ['drawio arrowhead types ↔ s.head (ADR-0256)', html.includes("endArrow=oval;':s.head==='open'")&&html.includes("sty.endArrow==='diamond'")],
   ['drawio dotted ↔ dashed=1+dashPattern (ADR-0255)', html.includes("s.dash===2?'dashPattern=1 1;'")&&html.includes("?2:1;   // ADR-0255")],
   ['drawio locked ↔ editable/deletable/movable=0 (ADR-0254)', (html.match(/editable=0/g)||[]).length>=1&&html.includes("sty.editable==='0'||sty.deletable==='0'||sty.movable==='0'")],
@@ -915,7 +915,7 @@ const checks = [
   ['draw drafts show dims/length readout (ADR-0202)', html.includes("_rnd(d.h)}`")&&html.includes("x2-ptr.wx0")],
   // v1.7.05: Tab cycling excludes locked shapes (parity with doMove/doDelete/doRotate/doFlip)
   ['statusbar selection dims readout', html.includes('id="sSel"')&&html.includes('_statusSel()')&&html.includes('_rnd(b.w)')],
-  ['empty-selection arrows pan viewport', html.includes("state.viewport.x+=k==='arrowleft'?-step:k==='arrowright'?step:0")],
+  ['empty-selection arrows pan viewport', html.includes("_vp().x+=k==='arrowleft'?-step:k==='arrowright'?step:0")],
   ['swapFillStroke: ⇧X swaps stroke↔fill via style op', html.includes('function swapFillStroke')&&html.includes("k==='x'&&e.shiftKey&&!meta")&&html.includes("const fk=s.type==='sticky'?'color':'fill'")],
   ['digit keys set opacity (Figma)', html.includes("/^[0-9]$/.test(k)&&_selN()")&&html.includes("opacity:k==='0'?1:+k/10")],
   ['image corner radius via cycleCorner + clips', html.includes("if(!boxOk&&!connOk)return;")&&html.includes('clip-path="url(#irc')&&html.includes('roundRect(c,s.x,s.y,s.w,s.h,_cr);c.clip()')],
@@ -1346,7 +1346,7 @@ const checks = [
   // v1.7.47: minimap draw and click use canvas.getBoundingClientRect() (not window.innerWidth)
   ['minimap: canvas.getBoundingClientRect() used for viewport rect and click-navigate',
     html.includes("_r=_cbr(),cW=_r.width,cH=_r.height;")&&
-    html.includes("const _r=_cbr();\n    state.viewport.x=wx-_r.width/")],
+    html.includes("const _r=_cbr();\n    _vp().x=wx-_r.width/")],
   // v1.7.47: del op.wc refreshed on every forward apply (not lazy)
   ['_apply del: op.wc refreshed on every forward apply (if(!op.wc) guard removed)',
     !html.includes("if(!op.wc){op.wc={};for")&&
