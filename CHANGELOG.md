@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.173]
+
+### 追加
+- **選択をグリッドに吸着** (ADR-0116)。ctx「グリッドに吸着」で選択
+  各形状の bbox 左上を最寄りグリッド点へ平行移動 (幾何は不変、
+  `align` op dir:'gsnap' で一括 undo・同期)。
+
 ## [1.7.172]
 
 ### 追加

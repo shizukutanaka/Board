@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.172';
+const V='1.7.173';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -845,7 +845,7 @@ const I18N={
     saved:'保存済み',savedNow:'たった今',savedAgo:'秒前',
     exported:'PNGを書き出しました',exportedSVG:'SVGを書き出しました',exportedBoard:'.boardファイルを保存しました',exportedExc:'.excalidrawファイルを保存しました',loadedBoard:'ボードを読み込みました',
     imagePasted:'画像を貼り付けました',empty:'キャンバスが空',
-    noSelection:'選択なし',styleCopied:'スタイルコピー',stylePasted:'スタイル適用',
+    noSelection:'選択なし',alreadySnapped:'既にグリッド上です',styleCopied:'スタイルコピー',stylePasted:'スタイル適用',
     selectTwo:'2つ以上選択してください',framed:'フレームで包みました',grouped:'グループ化',noGroup:'グループなし',
     ungrouped:'グループ解除',noFrames:'フレームがありません (F キーで作成)',
     imgBig:'画像が大きすぎます。縮小してください',imgErr:'画像を読み込めませんでした',
@@ -874,7 +874,7 @@ const I18N={
     zoomCtl:'ズーム操作',zoomLevel:'ズーム率(クリックでリセット)',zoomResetT:'ズームをリセット',
     close:'閉じる',shareUrlLabel:'共有URL',minimapNav:'ミニマップ — クリックで移動',
     ctxAlignLeft:'左揃え',ctxAlignCX:'左右中央',ctxAlignRight:'右揃え',ctxMatchW:'幅を揃える',ctxMatchH:'高さを揃える',ctxMatchWH:'幅と高さを揃える',
-    ctxAlignTop:'上揃え',ctxAlignCY:'上下中央',ctxAlignBottom:'下揃え',ctxSwap:'位置を入れ替え',ctxTidy:'グリッドに整列',
+    ctxSnapGrid:'グリッドに吸着',ctxAlignTop:'上揃え',ctxAlignCY:'上下中央',ctxAlignBottom:'下揃え',ctxSwap:'位置を入れ替え',ctxTidy:'グリッドに整列',
     ctxHSpace:'水平均等配置',ctxVSpace:'垂直均等配置',
     ctxSelectAll:'すべて選択',ctxClear:'全消去',
     ctxExportPNG:'PNG書き出し',ctxCopyPNG:'PNGをクリップボードにコピー',ctxExportSVG:'SVG書き出し',ctxExportPDF:'PDF書き出し',ctxExportExc:'Excalidraw (.excalidraw) 書き出し',ctxExportBoard:'.boardファイル書き出し',ctxImportBoard:'.boardファイル読み込み...',
@@ -924,7 +924,7 @@ const I18N={
     saved:'saved',savedNow:'just now',savedAgo:'s ago',
     exported:'PNG exported',exportedSVG:'SVG exported',exportedBoard:'Board file saved',exportedExc:'Excalidraw file saved',loadedBoard:'Board loaded',
     imagePasted:'Image pasted',empty:'Canvas is empty',
-    noSelection:'No selection',styleCopied:'Style copied',stylePasted:'Style applied',
+    noSelection:'No selection',alreadySnapped:'Already on grid',styleCopied:'Style copied',stylePasted:'Style applied',
     selectTwo:'Select 2 or more',framed:'Wrapped in frame',grouped:'Grouped',noGroup:'No group',
     ungrouped:'Ungrouped',noFrames:'No frames (press F to create)',
     imgBig:'Image too large — please resize',imgErr:'Image failed to load',
@@ -950,7 +950,7 @@ const I18N={
     zoomCtl:'Zoom controls',zoomLevel:'Zoom level, click to reset',zoomResetT:'Reset zoom',
     close:'Close',shareUrlLabel:'Share URL',minimapNav:'Minimap — click to navigate',
     ctxAlignLeft:'Align left',ctxAlignCX:'Center horizontal',ctxAlignRight:'Align right',ctxMatchW:'Match width',ctxMatchH:'Match height',ctxMatchWH:'Match size',
-    ctxAlignTop:'Align top',ctxAlignCY:'Center vertical',ctxAlignBottom:'Align bottom',ctxSwap:'Swap positions',ctxTidy:'Tidy up (grid)',
+    ctxSnapGrid:'Snap to grid',ctxAlignTop:'Align top',ctxAlignCY:'Center vertical',ctxAlignBottom:'Align bottom',ctxSwap:'Swap positions',ctxTidy:'Tidy up (grid)',
     ctxHSpace:'Distribute horizontal',ctxVSpace:'Distribute vertical',
     ctxSelectAll:'Select all',ctxClear:'Clear all',
     ctxExportPNG:'Export PNG',ctxCopyPNG:'Copy PNG to clipboard',ctxExportSVG:'Export SVG',ctxExportPDF:'Export PDF',ctxExportExc:'Export .excalidraw',ctxExportBoard:'Export .board file',ctxImportBoard:'Import .board file...',
@@ -1250,7 +1250,7 @@ function validRemotePayload(op){
     case 'resize':{const noLock=p=>!('locked' in p);
       return patches(op.after)&&op.after.every(noLock)
           &&patches(op.before)&&op.before.every(noLock);}
-    case 'align':{const DIRS=new Set(['left','right','cx','top','bottom','cy','hspace','vspace','tidy','swap','flip','rotate','lock','gresize','grot','matchw','matchh','matchwh','framefit']);
+    case 'align':{const DIRS=new Set(['left','right','cx','top','bottom','cy','hspace','vspace','tidy','swap','gsnap','flip','rotate','lock','gresize','grot','matchw','matchh','matchwh','framefit']);
       if(typeof op.dir!=='string'||!DIRS.has(op.dir))return false;
       const noLock=p=>op.dir==='lock'||!('locked' in p);
       return patches(op.after)&&op.after.every(noLock)
@@ -5224,6 +5224,27 @@ function doAlign(dir){
   if(origSel.length)state.history[state.histIdx].origSel=origSel;
   invalidate();Persist.schedule();
 }
+// ADR-0116: snap each selected shape's POSITION to the grid — translate so the
+// bbox top-left lands on the nearest GRID_SIZE multiple. Geometry is never
+// resized/distorted; connectors/pen/way-points move via Shape.translate.
+// Recorded as one 'align' op (before/after full clones) for single undo.
+function snapSelToGrid(){
+  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);
+  if(!sel.length)return;
+  const beforeSnap=sel.map(s=>clone(s));
+  let moved=0;
+  for(const s of sel){
+    const b=G.bbox(s);if(!b)continue;
+    const dx=Math.round(b.x/GRID_SIZE)*GRID_SIZE-b.x,dy=Math.round(b.y/GRID_SIZE)*GRID_SIZE-b.y;
+    if(dx||dy){Shape.translate(s,dx,dy);moved++}
+  }
+  if(!moved){UI.toast(t('alreadySnapped'),'warn');return}
+  const afterSnap=sel.map(s=>clone(s));
+  const origSel=[...state.selection];
+  Store._recordCommitted({op:'align',dir:'gsnap',before:beforeSnap,after:afterSnap});
+  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  invalidate();Persist.schedule();
+}
 // ADR-0079: match width/height of selected box shapes to the first-selected
 // (draw.io Arrange → Match Size). Position untouched; align op for undo parity.
 const _MSZ=new Set(['rect','ellipse','diamond','sticky','image','frame']);
@@ -7041,6 +7062,7 @@ const UI={
       has&&state.selection.size>1&&['ctxMatchW','',()=>doMatchSize('w')],       // ADR-0079
       has&&state.selection.size>1&&['ctxMatchH','',()=>doMatchSize('h')],
       has&&state.selection.size>1&&['ctxMatchWH','',()=>doMatchSize('wh')],
+      has&&['ctxSnapGrid','',snapSelToGrid],
       has&&'sep',
       has&&['ctxExportSelPNG','',()=>exportSelection('png')],
       has&&['ctxCopySelPNG','',()=>exportSelection('copy')],
