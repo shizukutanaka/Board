@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.312] - 2026-09-24
+
+### Added
+- .drawio: flipH/flipV ↔ s.flip ビットマスク往復 (vertex+edge、ADR-0260)
+
 ## [1.7.311] - 2026-09-24
 
 ### Added

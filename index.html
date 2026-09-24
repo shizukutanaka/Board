@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.311';
+const V='1.7.312';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6347,6 +6347,8 @@ function _dioStyApply(s,sty,hid){
   if(sty.shadow==='1')s.shadow=1;                                          // ADR-0246
   if(sty.editable==='0'||sty.deletable==='0'||sty.movable==='0')s.locked=1;   // ADR-0254
   if(+sty.opacity>0)s.opacity=Math.max(0.05,+sty.opacity/100);
+  if(sty.flipH==='1')s.flip=(s.flip||0)|1;                  // ADR-0260
+  if(sty.flipV==='1')s.flip=(s.flip||0)|2;
   if(hid)s.visible=0;                                       // ADR-0245
 }
 function _dioSty(st){
@@ -6528,6 +6530,7 @@ function boardToDrawio(shapes){
     if(s.valign)sty+='verticalAlign='+s.valign+';';                          // ADR-0238
     if(s.font)sty+='fontFamily='+(s.font==='mono'?'Courier New':'Georgia')+';';   // ADR-0253
     if(s.locked)sty+='editable=0;deletable=0;movable=0;resizable=0;';   // ADR-0254
+    if(s.flip&1)sty+='flipH=1;';if(s.flip&2)sty+='flipV=1;';            // ADR-0260
     if(s.shadow)sty+='shadow=1;';                                            // ADR-0246
     const _dfs=(s.bold?1:0)|(s.italic?2:0)|(s.under?4:0);                  // ADR-0228: mxGraph bitmask
     if(_dfs)sty+='fontStyle='+_dfs+';';
@@ -6552,6 +6555,7 @@ function boardToDrawio(shapes){
     if(s.label&&(s.bold||s.italic||s.under)){const _ef=(s.bold?1:0)|(s.italic?2:0)|(s.under?4:0);sty+='fontStyle='+_ef+';';}
     if(s.label&&s.fontSize)sty+='fontSize='+s.fontSize+';';
     if(s.locked)sty+='editable=0;deletable=0;movable=0;';   // ADR-0254
+    if(s.flip&1)sty+='flipH=1;';if(s.flip&2)sty+='flipV=1;';            // ADR-0260
 
     const src=s.a&&idOf.get(s.a)?` source="${idOf.get(s.a)}"`:'';
     const tgt=s.b&&idOf.get(s.b)?` target="${idOf.get(s.b)}"`:'';
