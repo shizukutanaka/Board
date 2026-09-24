@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.296]
+
+### 内部変更
+- **style op 共有化** (ADR-0239)。27箇所に重複した
+  `{op:'style'}` コミット定型文を `_styleOp()` へ —
+  約3.1KB削減 (挙動不変、512KB上限内に余裕回復)。
+
 ## [1.7.295]
 
 ### 修正
