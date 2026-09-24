@@ -1142,6 +1142,7 @@ const checks = [
   ['room switch also clears inbound assemblies (ADR-0466)', html.includes('this._snapIn=null;this._opcIn=null') && html.indexOf('this._snapIn=null;this._opcIn=null')<html.indexOf('new BroadcastChannel')],
   ['_pCt rebaselines after peer purge (ADR-0467)', html.includes('this._pCt=_pr().size')],
   ['_fragIn tags assembly by sender (ADR-0469)', html.includes('sn.src!==src') && html.includes("viaRtc?'rtc':msg.peer")],
+  ['_zCommit compacts grown frac keys (ADR-0471)', html.includes('reindexFrac()') && html.includes('before:o[i],after:s.frac')],
   // v1.6.80: multi-touch pinch cancels the single-pointer gesture (no stray edits)
   ['pointerdown aborts single-pointer gesture when a 2nd finger lands', html.includes("if(_pointers.size>=2){abortGesture();return;}")],
   ['pointermove bails while pinch is active', html.includes("if(_pointers.size>=2)return;   // pinch in progress")],
