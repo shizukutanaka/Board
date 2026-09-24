@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.279]
+
+### 追加
+- **drawio 固定アンカー往復** (ADR-0221)。`exitX/exitY` /
+  `entryX/entryY` を aF/bF 固定エッジアンカーと双方向
+  マップ — drawio↔Board で固定ポートが保存される。
+
 ## [1.7.278]
 
 ### 追加

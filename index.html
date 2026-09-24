@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.278';
+const V='1.7.279';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6399,6 +6399,12 @@ function drawioToShapes(txt){
     const pts=g?[...g.querySelectorAll('Array mxPoint')]:[];
     if(pts.length)s.way=pts.slice(0,200).map(p=>[+p.getAttribute('x')||0,+p.getAttribute('y')||0]);
     if(/orthogonal|elbow/i.test(String(sty.edgeStyle||'')))s.elbow=1;
+    // ADR-0221: drawio exitX/exitY/entryX/entryY fixed ports → aF/bF fractions
+    // (same normalisation as ADR-0209's Alt-drop anchors). Exit = source end.
+    if(sa&&sty.exitX!=null){const fx=+sty.exitX,fy=+sty.exitY;
+      if(Number.isFinite(fx)&&Number.isFinite(fy))s.aF={fx:Math.min(1,Math.max(0,fx)),fy:Math.min(1,Math.max(0,fy))}}
+    if(sb&&sty.entryX!=null){const fx=+sty.entryX,fy=+sty.entryY;
+      if(Number.isFinite(fx)&&Number.isFinite(fy))s.bF={fx:Math.min(1,Math.max(0,fx)),fy:Math.min(1,Math.max(0,fy))}}
     const lbl=_dioLabel(c.getAttribute('value'));if(lbl)s.label=lbl.slice(0,240);
     if(sty.strokeColor&&sty.strokeColor!=='none')s.stroke=sty.strokeColor;
     if(+sty.strokeWidth>0)s.size=Math.min(40,+sty.strokeWidth);
@@ -6486,6 +6492,8 @@ function boardToDrawio(shapes){
     if(s.r)sty+='rounded=1;';
     const src=s.a&&idOf.get(s.a)?` source="${idOf.get(s.a)}"`:'';
     const tgt=s.b&&idOf.get(s.b)?` target="${idOf.get(s.b)}"`:'';
+    if(src&&s.aF)sty+=`exitX=${s.aF.fx};exitY=${s.aF.fy};exitDx=0;exitDy=0;`;   // ADR-0221
+    if(tgt&&s.bF)sty+=`entryX=${s.bF.fx};entryY=${s.bF.fy};entryDx=0;entryDy=0;`;
     let geo=`<mxGeometry relative="1" as="geometry">`;
     if(!src)geo+=`<mxPoint x="${s.x1}" y="${s.y1}" as="sourcePoint"/>`;
     if(!tgt)geo+=`<mxPoint x="${s.x2}" y="${s.y2}" as="targetPoint"/>`;

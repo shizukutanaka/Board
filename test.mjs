@@ -719,6 +719,7 @@ const checks = [
   ['connector jump arcs canvas+SVG + ctx toggle (ADR-0218)', html.includes('function _polylineHop(c,s,pts,R)')&&html.includes('function _hopPathD(s,pts,ox,oy,R)')&&html.includes('function toggleHop()')&&html.includes("['ctxHop','',toggleHop]")],
   ['Alt draws box shapes from center (ADR-0219)', html.includes('contRectLike(wp,e.shiftKey,e.altKey)')&&html.includes('// ADR-0219: ⌥ = draw from center')],
   ['.drawio export mxGraphModel round-trip (ADR-0220)', html.includes('function boardToDrawio(shapes)')&&html.includes('edgeStyle=orthogonalEdgeStyle')&&html.includes("jumpStyle=arc")],
+  ['drawio exitX/entryX fixed ports round-trip aF/bF (ADR-0221)', html.includes('s.aF={fx:Math.min(1,Math.max(0,fx)),fy')&&html.includes('exitX=${s.aF.fx};exitY=${s.aF.fy}')],
   ['endpoint drag Shift constrains to 45 deg + label editor fontSize (ADR-0206)', html.includes("constrain the free end to 45")&&html.includes("${hit.fontSize||12}px")],
   ['i18n has excImported ja+en', html.includes("excImported:'Excalidraw を取り込みました'") && html.includes("excImported:'Excalidraw imported'")],
   // v1.7.102: ADR-0044 text paste → text shape
