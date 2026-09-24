@@ -794,6 +794,7 @@ const _ce=t=>document.createElement(t);   // ADR-0329
 const _selIds=()=>[..._sl()];   // ADR-0330
 const _sb=()=>_selIds().map(byId);   // ADR-0418: selected-shape objects (10 sites)
 const _hasS=id=>_sl().has(id);   // ADR-0418: selection-membership predicate
+const _sel0=()=>byId(_selIds()[0]);   // ADR-0421: single-selected shape (12 sites)
 const _scl=()=>_sl().clear(),_sad=id=>_sl().add(id),_sdl=id=>_sl().delete(id);   // ADR-0419: selection Set-mutation shorthands
 const _selN=()=>_sl().size;   // ADR-0334
 const _fin=Number.isFinite;   // ADR-0334
@@ -824,13 +825,13 @@ const _dt=()=>state.dirty;
 const _md=v=>{state.dirty=v};   // ADR-0415: dirty-flag writes
 const _ed=()=>state.editing;                                    // ADR-0365
 const _iv=invalidate,_ivO=invalidateOverlay;                    // ADR-0366
-const _tst=(m,k)=>UI.toast(m,k),_w=m=>_tst(m,'warn'),_o=m=>_tst(m,'ok'),_e=m=>_tst(m,'err'),_iG=_invalidateGrid,_aS=_announceSel,_iD=invalidateDamage,_sz=sortZ;   // ADR-0366
+const _ivp=()=>{_iv();_ps()},_tst=(m,k)=>UI.toast(m,k),_w=m=>_tst(m,'warn'),_o=m=>_tst(m,'ok'),_e=m=>_tst(m,'err'),_iG=_invalidateGrid,_aS=_announceSel,_iD=invalidateDamage,_sz=sortZ;   // ADR-0366
 const _ps=()=>Persist.schedule(),_ms=()=>Minimap.schedule(),_ru=()=>UI.refreshUndo();   // ADR-0370
 const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-0350
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.455';
+const V='1.7.456';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2330,7 +2331,7 @@ function describeShape(s){
 // Announcement goes through UI.toast (aria-live) like the other status messages.
 function _announceSel(){
   const n=_selN();
-  _tst(n===0?t('selNone'):n===1?describeShape(byId(_selIds()[0])):n+t('selCount'));
+  _tst(n===0?t('selNone'):n===1?describeShape(_sel0()):n+t('selCount'));
 }
 
 // ADR-0041: DOM mirror — a visually-hidden <ul> of every shape so screen
@@ -3809,7 +3810,7 @@ _on(canvas,_PD,e=>{
     case 'select':
       // Resize handles take priority over pick
       if(_selN()===1){
-        const onlySel=byId(_selIds()[0]);
+        const onlySel=_sel0();
         if(onlySel){
           const rh=hitRotHandle(wp,onlySel);
           if(rh){
@@ -3967,7 +3968,7 @@ _on(canvas,_PM,e=>{
     if(_tl()==='select'){
       // Check for resize handle hover first
       if(_selN()===1){
-        const onlySel=byId(_selIds()[0]);
+        const onlySel=_sel0();
         if(onlySel){
           if(hitRotHandle(wp,onlySel)){canvas.style.cursor='grab';return}
           const hid=hitHandle(wp,onlySel);
@@ -4019,7 +4020,7 @@ _on(canvas,_PM,e=>{
   switch(_tl()){
     case 'select':
       if(ptr.dragKind==='resize'){
-        const rsh=byId(_selIds()[0]);
+        const rsh=_sel0();
         if(rsh){
           const _b0=_bb(ptr.resizeOrig);
           _oa(rsh,clone(ptr.resizeOrig));
@@ -4031,7 +4032,7 @@ _on(canvas,_PM,e=>{
       }else if(ptr.dragKind==='grot'){
         _grotDrag(wp,e.shiftKey);                                      // ADR-0057
       }else if(ptr.dragKind==='rotate'){
-        const rsh=byId(_selIds()[0]);
+        const rsh=_sel0();
         if(rsh){
           const _b0=_bb(rsh);
           let deg=_at2(wp.y-ptr.rotCy,wp.x-ptr.rotCx)*180/_PI+90; // knob-up = 0°
@@ -4098,7 +4099,7 @@ _on(canvas,_PU,e=>{
     switch(_tl()){
     case 'select':
       if(ptr.dragKind==='resize'){
-        const rsh=byId(_selIds()[0]);
+        const rsh=_sel0();
         if(rsh){
           _endPointBind(rsh,ptr.resizeHandle,e.altKey);           // ADR-0065/0209
           const after=clone(rsh);
@@ -4113,10 +4114,10 @@ _on(canvas,_PU,e=>{
         ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.resizeHandle=null;state.guides=null;state.readout=null;state.bindPreview=null;
       }else if(ptr.dragKind==='grot'){
         _grotCommit();                                                 // ADR-0057
-        if(_selN()===1){const s=byId(_selIds()[0]);if(s)_tst(describeShape(s));}
+        if(_selN()===1){const s=_sel0();if(s)_tst(describeShape(s));}
         ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;state.guides=null;state.readout=null;state.bindPreview=null;
       }else if(ptr.dragKind==='rotate'){
-        const rsh=byId(_selIds()[0]);
+        const rsh=_sel0();
         if(rsh){
           const after=clone(rsh),before=ptr.rotOrig;
           if(_JS(before)!==_JS(after)){
@@ -4176,12 +4177,12 @@ function _cancelPointerGesture(){
   _clearLongPress();   // ADR-0006: covers both the native pointercancel path and our own
   // Restore partial resize/move/erase on cancel (Android touch-takeover, stylus OOR).
   if(ptr.dragKind==='resize'&&ptr.resizeOrig){
-    const rsh=byId(_selIds()[0]);
+    const rsh=_sel0();
     if(rsh)_oa(rsh,clone(ptr.resizeOrig));
   }else if((ptr.dragKind==='gresize'||ptr.dragKind==='grot')&&ptr.gOrig){
     for(const [id,orig] of ptr.gOrig){const sh=byId(id);if(sh)_oa(sh,clone(orig));}
   }else if(ptr.dragKind==='rotate'&&ptr.rotOrig){
-    const rsh=byId(_selIds()[0]);
+    const rsh=_sel0();
     if(rsh){if(ptr.rotOrig.rotate==null)delete rsh.rotate;_oa(rsh,clone(ptr.rotOrig));}
   }else if(ptr.dragKind==='ebend'&&ptr.ebendOrig){                // ADR-0072
     const sh=byId(ptr.ebendOrig.id);if(sh){if(ptr.ebendOrig.bend==null)delete sh.bend;_oa(sh,clone(ptr.ebendOrig));}
@@ -4275,7 +4276,7 @@ function _openLabelEditorFor(hit){
 // branch, which only calls this when _tl()==='select'.
 function editSelectedShapeKbd(){
   if(_selN()!==1)return false;
-  const sh=byId(_selIds()[0]);
+  const sh=_sel0();
   if(!sh||sh.locked)return false;
   if(sh.type==='text'||sh.type==='sticky'){openTextEditor(sh,false);return true}
   return _openLabelEditorFor(sh);
@@ -5802,7 +5803,7 @@ function _zCommit(changes){
   if(!changes.length){_iv();return}
   _sz();
   _rcOp({op:'zorder',changes});
-  _iv();_ps();
+  _ivp();
 }
 // Shared by doBringFront/doSendBack/doBringForward/doSendBackward: locked shapes never
 // take part in a z-order op (parity with doDelete/doGroup excluding locked shapes).
@@ -5947,7 +5948,7 @@ function wrapInFrame(){
   _iv();_o(t('framed'));
 }
 function doGroup(){
-  const ids=_selIds().filter(id=>{const s=byId(id);return s&&!s.locked;});
+  const ids=unlockedSelectionIds();
   if(ids.length<2){_w(t(_ST));return}
   const gid=uid();
   const origSel=_selIds();
@@ -6055,7 +6056,7 @@ function doAlign(dir){
   }
   const afterSnap=sel.map(s=>clone(s));
   _rcOp({op:'align',dir,before:beforeSnap,after:afterSnap});
-  _iv();_ps();
+  _ivp();
 }
 // ADR-0116: snap each selected shape's POSITION to the grid — translate so the
 // bbox top-left lands on the nearest GRID_SIZE multiple. Geometry is never
@@ -6074,7 +6075,7 @@ function snapSelToGrid(){
   if(!moved){_w(t('alreadySnapped'));return}
   const afterSnap=sel.map(s=>clone(s));
   _rcOp({op:'align',dir:'gsnap',before:beforeSnap,after:afterSnap});
-  _iv();_ps();
+  _ivp();
 }
 // ADR-0079: match width/height of selected box shapes to the first-selected
 // (draw.io Arrange → Match Size). Position untouched; align op for undo parity.
@@ -6088,7 +6089,7 @@ function doMatchSize(dim){
   const after=targets.map(s=>clone(s));
   if(before.every((b,i)=>b.w===after[i].w&&b.h===after[i].h))return;
   _rcOp({op:'align',dir:'match'+dim,before,after});
-  _iv();_ps();
+  _ivp();
 }
 
 // Flip: mirror across selection-bbox centre, recorded as an `align` op. See docs.
@@ -6142,7 +6143,7 @@ function doFlip(axis){
   for(const s of sel)flipShape(s,axis,c);
   const after=sel.map(s=>clone(s));
   _rcOp({op:'align',dir:'flip',before,after});
-  _iv();_ps();
+  _ivp();
   UI.announce(t(axis==='h'?'ctxFlipH':'ctxFlipV'));
 }
 
@@ -6154,7 +6155,7 @@ function doLock(){
   for(const s of sel)s.locked=lk||null;
   const after=sel.map(s=>({id:s.id,locked:s.locked??null}));
   _rcOp({op:'align',dir:'lock',before,after});
-  _iv();_ps();
+  _ivp();
   UI.announce(t(lk?'ctxLock':'ctxUnlock'));
 }
 // ADR-0123: unlock every locked shape on the board in one op — boards can
@@ -6167,7 +6168,7 @@ function unlockAll(){
   for(const s of locked)s.locked=null;
   const after=locked.map(s=>({id:s.id,locked:null}));
   Store._recordCommitted({op:'align',dir:'lock',before,after});
-  _iv();_ps();
+  _ivp();
   UI.announce(t('ctxUnlockAll'));
 }
 // ADR-0005: replace confidently-recognized pen strokes in the selection with clean shapes
@@ -6187,7 +6188,7 @@ function doBeautify(){
   const origSel=_selIds();
   for(const p of after){const sh=byId(p.id);if(sh)_oa(sh,clone(p))}
   Store._recordCommitted({op:'beautify',before,after,origSel});
-  _iv();_ps();
+  _ivp();
   _o(`${t('beautified')} (${after.length})`);
 }
 // ADR-0055: rotate applies to box shapes (orbit + s.rotate spin) AND point
@@ -6237,7 +6238,7 @@ function doRotate(d){
   }
   const after=sel.map(s=>clone(s));
   _rcOp({op:'align',dir:'rotate',before,after});
-  _iv();_ps();
+  _ivp();
   UI.announce(sel.length===1?describeShape(sel[0]):d+'°');   // ,/. keyboard rotate was SR-silent (knob drag announces); point-geom selections have no .rotate (ADR-0055)
 }
 // ====================== EXPORT ======================
@@ -8554,11 +8555,11 @@ const UI={
       has&&_selAny(s=>(s.type==='text'||s.type==='sticky'||s.label)&&!s.locked)&&['ctxLineH','',cycleLineH],
       has&&_selTxtL()&&['ctxSpacing','',cycleSpacing],
       has&&_selAny(s=>s.type==='text'&&!s.locked)&&['ctxWrap','',toggleWrap],
-      has&&_selAny(s=>(s.type==='text'||s.type==='sticky')&&!s.locked)&&[_selIds().some(id=>byId(id)?.type==='sticky'&&!byId(id)?.locked)?'ctxToText':'ctxToSticky','',toggleStickyText],
+      has&&_selAny(s=>(s.type==='text'||s.type==='sticky')&&!s.locked)&&[_selAny(s=>s.type==='sticky'&&!s.locked)?'ctxToText':'ctxToSticky','',toggleStickyText],
       has&&_selAny(s=>s.type==='sticky'&&!s.locked)&&['ctxStickyColor','',cycleStickyColor],
       has&&_selAny(s=>(s.type==='rect'||s.type==='ellipse'||s.type==='diamond')&&!s.locked)&&['ctxFillStyle','',cycleFillStyle],
       has&&_selArrowL()&&['ctxBothEnds','',toggleBothEnds],
-      has&&_selConnL()&&[_selIds().some(id=>byId(id)?.type==='line'&&!byId(id)?.locked)?'ctxToArrow':'ctxToLine','',toggleLineArrow],
+      has&&_selConnL()&&[_selAny(s=>s.type==='line'&&!s.locked)?'ctxToArrow':'ctxToLine','',toggleLineArrow],
       has&&_selArrowL()&&['ctxArrowHead','',cycleArrowHead],
       has&&_selArrowL()&&['ctxStartHead','',cycleStartHead],
       has&&_selAny(s=>s.type==='rect'&&!s.locked)&&['ctxRrect','',toggleRound],
@@ -8568,7 +8569,7 @@ const UI={
       has&&_selN()===1&&['ctxSelectSame','',selectSamePaint],
       has&&_selN()===1&&['ctxSelectSameType','',selectSameType],
       has&&_selN()>1&&['ctxGroup','⌘G',doGroup],
-      has&&_selIds().some(id=>byId(id)?.groupId)&&['ctxUngroup','⌘⇧G',doUngroup],
+      has&&_selAny(s=>s.groupId)&&['ctxUngroup','⌘⇧G',doUngroup],
       has&&'sep',
       ['ctxSearch','⌘F',toggleSq],
       ['ctxFit','⇧1',fitToContent],
@@ -8593,8 +8594,8 @@ const UI={
       _sh().length&&['ctxSelectInverse','⌘⇧I',selectInverse],
       // ADR-0005's flagship feature was ⌥B-only — invisible to touch/mouse users
       // (the exact "keyboard-only feature" trap FT-06 warned about).
-      has&&_selIds().some(id=>byId(id)?.type==='pen')&&['ctxBeautify','⌥B',doBeautify],
-      has&&[byId(_selIds()[0])?.locked?'ctxUnlock':'ctxLock','',doLock],
+      has&&_selAny(s=>s.type==='pen')&&['ctxBeautify','⌥B',doBeautify],
+      has&&[_sel0()?.locked?'ctxUnlock':'ctxLock','',doLock],
       _sh().some(s=>s.locked)&&['ctxUnlockAll','',unlockAll],
       has&&_selN()>1&&'sep',
       has&&_selN()>1&&['ctxAlignLeft','',()=>doAlign('left')],

@@ -470,6 +470,7 @@ Board/
 │   ├── ADR-0418-sb-hass-shorthands.md   # _sb/_hasS fold (実装済)
 │   ├── ADR-0419-selection-mutation-shorthands.md   # _scl/_sad/_sdl (実装済)
 │   ├── ADR-0420-image-i18n-key.md   # image を T.k に追加 (実装済)
+│   ├── ADR-0421-sel0-ivp-shorthands.md   # _sel0/_ivp fold + _selAny 重複解消 (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

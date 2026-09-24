@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.456] - 2026-09-23
+
+### Internal
+- `_sel0`/`_ivp` shorthand 追加 + `_selAny`/`unlockedSelectionIds` の素形複写解消 (~280B 回収)
+
 ## [1.7.455] - 2026-09-23
 
 ### Fixed
