@@ -2,6 +2,26 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.486] - 2026-09-23
+
+### Changed
+- `_mP`/`_sT` を引数取り形に再定義し `new Map(a)`/`new Set(a)` 37 箇所を
+  fold (~150B 回収) (ADR-0451)
+
+## [1.7.485] - 2026-09-23
+
+### Changed
+- member-expr レシーバの `.length` も `_ln()` fold — `a.b.length`→`_ln(a.b)`
+  46 箇所、~92B 追加回収 (ADR-0450)
+
+## [1.7.484] - 2026-09-23
+
+### Fixed
+- `_imgIn` 受信 blob ストアを 256 件上限化 — 受信 blob が無制限に滞留していた
+  メモリリーク (ADR-0449)
+- `_imgChunks` cap 到達時は最古 stalled key を eviction — 64 個の未完 key で
+  画像転送が永続ブロックされる DoS 面を緩和 (ADR-0449)
+
 ## [1.7.483] - 2026-09-23
 
 ### Fixed
