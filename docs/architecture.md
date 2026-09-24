@@ -259,9 +259,23 @@ pen/line/arrow は点ジオメトリで box 中心が無く回転中心が NaN �
 `_sq` にマッチするシェイプはワールド変換ブロック内で `strokeRect` され、
 `lineWidth=3/zoom` でズーム補正して一定の視覚太さを保つ (スクリーン空間描画の代替)。
 
+## 外部フォーマット相互運用 (v1.7.2xx–1.7.3xx)
+
+`.excalidraw` / `.drawio` の双方向変換は「往復で Board モデルが保存される」を設計目標にする。
+- `.drawio` import は非圧縮 + deflate-raw+base64 の両形式を `importDrawioText` /
+  `_dioInflate` (8MB 爆弾ガード ADR-0325) が処理。`<UserObject>` ラッパー (ADR-0328)、
+  複数 `<diagram>` ページの横並び平坦化 (ADR-0311/0324)、`parent` チェーンの
+  座標解決 (ADR-0240) と `style="group;"` ↔ `s.groupId` 往復 (ADR-0336) を含む。
+- `.drawio` export は `_dioStyEmit` にスタイル属性を集約 (ADR-0263)。
+- `.excalidraw` は `excScene`/`excToShapes` が containerId ラベル・boundElements・
+  arrowhead enum (ADR-0338) を往復。
+- セキュリティ: `validPatch` が全 intake パスの共有ゲート (dataUrl/link のスキーム
+  検証 ADR-0327)。
+
 ## 今後
 
-- マルチページ、スレッドコメント (v1.7+)
-- z 順序の fractional indexing 化 (ADR 予定 — P0 可逆性/sync に触れる)
 - Plugin API (iframe sandbox + postMessage)、Figma import (v2.0)
-- AES-GCM E2E 暗号化 (URL fragment key + WebRTC DataChannel)
+
+> 完了済み: z 順序の fractional indexing (ADR-0001)、AES-GCM E2E 暗号化
+> (ADR-0015)。マルチページ/スレッドコメントは scratchpad 製品判断で対象外
+> (CLAUDE.md「100点への距離」)。
