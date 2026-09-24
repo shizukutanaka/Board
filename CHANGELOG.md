@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.169]
+
+### 追加
+- **フレームの内容を選択** (ADR-0111)。frame 選択時の ctx
+  「内容を選択」で `withFrameChildren` の包含判定 (ドラッグ/
+  nudge と同一ルール) に一致する内包形状だけを選択に置換。
+  フレーム自身は外れるため後続 op が内容へ効く。
+
 ## [1.7.168]
 
 ### 追加
