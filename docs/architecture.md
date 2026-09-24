@@ -248,6 +248,9 @@ DOM 要素は `data-t` 属性 + `UI.applyI18n()` で翻訳 (起動時に 1 回�
   応答者 0 人になる飢餓を防止 (ADR-0465)。
 - **throttle 再送**: `_sendSnapshot` が throttle で棄却した要求は 1.1s で
   遅延再送 (`_snapT`) — joiner が応答を得られない窓を解消 (ADR-0452)。
+- **有界再送**: joiner は `_snapRx`/`_snapRetry` で応答未達を検出し、
+  presence tick で sync-req を 3 回まで再送 (ADR-0475) — 応答喪失時の
+  空盤面待機を解消。`Net.init` で両フラグをリセット。
 - **離脱**: `pagehide` で flush+bye、bye 受信でピア即時除去 (ADR-0457)。
 - **ルーム切替 hygiene** (ADR-0458/0464/0466/0467): `Net.init` は
   旧チャンネルへ bye → `seenOps`・`_snapT`・非RTC `state.peers`・
@@ -262,6 +265,11 @@ DOM 要素は `data-t` 属性 + `UI.applyI18n()` で翻訳 (起動時に 1 回�
   で上限化 (ADR-0448/0449/0454)。
 - **切断**: `dc.onclose` で `_dcQ` 破棄 + 再組立スロット掃除
   (ADR-0446/0448)。
+- **wire キャップ整合** (ADR-0473/0479): zorder `changes`/`after` の
+  frac ≤600・id ≤64、group/ungroup の gid ≤64 — 敵性ピアの巨大
+  文字列注入を `validRemotePayload` で遮断。スナップショット取込は
+  `SHARE_MAX_SHAPES` (200k) まで許容し >500 図形盤面の切捨てを解消
+  (ADR-0474)。
 
 ### CRDT clock
 各 op は `{peer, seq}` clock を持ち、`seenOps` (Set) で重複排除。スナップショット

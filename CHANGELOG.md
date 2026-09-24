@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.517] - 2026-09-23
+
+### ドキュメント
+
+- architecture.md の wire 節を ADR-0475 (有界 sync-req 再送)・0473/0479 (wire cap 整合)・0474 (SHARE_MAX_SHAPES) に同期 (ADR-0484)
+
 ## [1.7.516] - 2026-09-23
 
 ### リファクタ
