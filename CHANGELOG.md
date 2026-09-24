@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.374] - 2026-09-24
+
+### Added
+- excalidraw コネクタバインドテキストの `lineHeight` を `s.lineH`
+  に復元 (conn label 行間、ADR-0323)
+
 ## [1.7.373] - 2026-09-24
 
 ### Fixed
