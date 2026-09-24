@@ -788,7 +788,7 @@ const _selR=op=>{if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byI
 const _keepSel=arr=>{if(arr.length)state.history[state.histIdx].origSel=arr};   // ADR-0312
 
 // ====================== CONSTANTS ======================
-const V='1.7.363';
+const V='1.7.364';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6473,7 +6473,9 @@ function drawioToShapes(txt){
     if(sty.align==='center'||sty.align==='right')s.align=sty.align;
     if(/^(top|middle|bottom)$/.test(sty.verticalAlign))s.valign=sty.verticalAlign;   // ADR-0238
     if(+sty.rotation)s.rotate=Math.min(360,Math.max(-360,+sty.rotation));   // ADR-0261
-    idOf.set(c.getAttribute('id'),s.id);shapes.push(s);
+    idOf.set(c.getAttribute('id'),s.id);
+    {const _lk=c.getAttribute('link');if(_lk&&/^https?:\/\//.test(_lk))s.link=_lk.slice(0,500)}   // ADR-0313
+    shapes.push(s);
   }
   for(const c of cells){
     if(shapes.length>=DIO_MAX)break;
@@ -6518,6 +6520,7 @@ function drawioToShapes(txt){
     if(sty.rounded==='1')s.r=8;                                           // ADR-0269
     _dioStyApply(s,sty,_hid);                                            // ADR-0258 (edges gain opacity)
     if(sty.labelBackgroundColor&&sty.labelBackgroundColor!=='none')s.fill=sty.labelBackgroundColor;   // ADR-0249
+    {const _lk=c.getAttribute('link');if(_lk&&/^https?:\/\//.test(_lk))s.link=_lk.slice(0,500)}   // ADR-0313
     shapes.push(s);
   }
   return shapes;
@@ -6603,7 +6606,7 @@ function boardToDrawio(shapes){
     if(s.rotate)sty+='rotation='+Math.round(s.rotate)+';';              // ADR-0261
     if(t==='image'&&s.dataUrl)sty+='image='+s.dataUrl+';';                 // ADR-0259: last — ';base64,' inside
     const lbl=s.label!=null?s.label:s.text;
-    cells.push(`<mxCell id="${id}" value="${nl(lbl||'')}" style="${esc(sty)}" vertex="1" parent="1"${s.visible===0?' visible="0"':''}><mxGeometry x="${s.x||0}" y="${s.y||0}" width="${s.w||120}" height="${s.h||80}" as="geometry"/></mxCell>`);   // ADR-0245
+    cells.push(`<mxCell id="${id}" value="${nl(lbl||'')}" style="${esc(sty)}" vertex="1" parent="1"${s.link?` link="${esc(s.link)}"`:''}${s.visible===0?' visible="0"':''}><mxGeometry x="${s.x||0}" y="${s.y||0}" width="${s.w||120}" height="${s.h||80}" as="geometry"/></mxCell>`);   // ADR-0245
   }
   for(const s of shapes){
     const t=s.type;
@@ -6630,7 +6633,7 @@ function boardToDrawio(shapes){
     const wa=_wayArr(s);
     if(wa.length)geo+='<Array as="points">'+wa.map(p=>`<mxPoint x="${p.x}" y="${p.y}"/>`).join('')+'</Array>';
     geo+='</mxGeometry>';
-    cells.push(`<mxCell id="${id}" value="${nl(s.label||'')}" style="${esc(sty)}" edge="1" parent="1"${src}${tgt}${s.visible===0?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0245
+    cells.push(`<mxCell id="${id}" value="${nl(s.label||'')}" style="${esc(sty)}" edge="1" parent="1"${src}${tgt}${s.link?` link="${esc(s.link)}"`:''}${s.visible===0?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0245
   }
   return `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile compressed="false"><diagram name="Page-1"><mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/>${cells.join('')}</root></mxGraphModel></diagram></mxfile>`;
 }

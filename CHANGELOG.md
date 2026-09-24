@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.364] - 2026-09-24
+
+### Added
+- drawio `link` 属性 (Edit Link) の輸入+書出で `s.link` と往復 (ADR-0313)
+
 ## [1.7.363] - 2026-09-24
 
 ### Changed
