@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.177]
+
+### 追加
+- **同じ種類を選択** (ADR-0120)。ctx「同じ種類を選択」で単一選択の
+  shape.type と同じ全形状を一括選択 (全コネクタ・全付箋など、
+  selectSamePaint のタイプ版)。
+
 ## [1.7.176]
 
 ### 追加
