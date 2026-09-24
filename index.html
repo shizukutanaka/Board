@@ -774,7 +774,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.201';
+const V='1.7.202';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3406,6 +3406,12 @@ canvas.addEventListener('pointerdown',e=>{
           if(onlySel.label&&!onlySel.locked&&(onlySel.type==='line'||onlySel.type==='arrow')){   // ADR-0117
             const lp=_connLabelXY(onlySel);
             if(lp&&Math.hypot(wp.x-lp.x,wp.y-lp.y)<=HANDLE_SIZE/state.viewport.zoom){
+              if(e.altKey&&onlySel.labelPos!=null){    // ADR-0145: ⌥click back to midpoint
+                const origSel=[...state.selection];
+                Store._recordCommitted({op:'style',before:[{id:onlySel.id,labelPos:onlySel.labelPos}],after:[{id:onlySel.id,labelPos:null}]});
+                if(origSel.length)state.history[state.histIdx].origSel=origSel;
+                delete onlySel.labelPos;invalidate();return;
+              }
               ptr.dragKind='lblpos';ptr.lblOrig=clone(onlySel);return;
             }
           }

@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.202]
+
+### 追加
+- **Alt+click でコネクタラベルを中点へ** (ADR-0145)。選択中
+  コネクタのラベル位置を ⌥クリックで `labelPos` 解除し既定の
+  中点に復帰。
+
 ## [1.7.201]
 
 ### 追加
