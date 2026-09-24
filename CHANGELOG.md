@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.350] - 2026-09-24
+
+### Added
+- フレームラベルの fontSize を `s.fontSize` に従わせ、⌘⇧,/. で
+  変更可能に (canvas+SVG 一致、ADR-0298)
+
 ## [1.7.349] - 2026-09-24
 
 ### Changed

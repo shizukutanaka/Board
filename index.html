@@ -781,7 +781,7 @@ const _c01=v=>Math.min(1,Math.max(0,v));   // ADR-0295
 const _conn=t=>t==='line'||t==='arrow';   // ADR-0297
 
 // ====================== CONSTANTS ======================
-const V='1.7.349';
+const V='1.7.350';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2785,7 +2785,7 @@ function drawShape(s,c){
       c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,r);c.stroke();
       // label
       const lbl=s.label||'Frame';
-      const fs=12;
+      const fs=s.fontSize||12;   // ADR-0298
       c.fillStyle=s.stroke||getCSS('--brand')||'#00C4CC';
       c.font=`${s.italic?'italic ':''}600 ${fs}px ${_fontFam(s)}`;  // ADR-0186/0204
       c.textBaseline='bottom';
@@ -7241,7 +7241,7 @@ function buildSVG(shapes,paper){
         els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${fr}" fill="${s.fill||'rgba(248,250,252,0.6)'}" stroke="${clr}" stroke-width="${SZ||1.5}"${dA}${fa}${rT}/>`);   // ADR-0178
         const alF2=s.align||'left',txF=alF2==='right'?X+ox+W-6:alF2==='center'?X+ox+W/2:X+ox+6;   // ADR-0197
         const ancF=alF2==='right'?' text-anchor="end"':alF2==='center'?' text-anchor="middle"':'';
-        els.push(`<text x="${txF}" y="${Y+oy-4}" ${_svgFont(s,12)} fill="${clr}"${ancF}${fa}${rT}>${_esc(s.label||'Frame')}</text>`);
+        els.push(`<text x="${txF}" y="${Y+oy-4}" ${_svgFont(s,s.fontSize||12)} fill="${clr}"${ancF}${fa}${rT}>${_esc(s.label||'Frame')}</text>`);
         break;}
       case 'sticky':{
         const r=Math.min(6,Math.abs(W)/6,Math.abs(H)/6);
@@ -9083,7 +9083,7 @@ function cycleLineH(){
 function fontSizeStep(d){
   const before=[],after=[];
   for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky'&&!s.label)||s.locked)continue;   // ADR-0169: labels honour fontSize
+    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky'&&s.type!=='frame'&&!s.label)||s.locked)continue;   // ADR-0169/0298: labels+frames honour fontSize
     const cur=s.fontSize||14,nxt=Math.min(64,Math.max(8,cur+d*2));
     if(nxt===cur)continue;
     before.push({id,fontSize:cur});after.push({id,fontSize:nxt});s.fontSize=nxt;
