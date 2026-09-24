@@ -127,6 +127,7 @@ Board/
 - [ADR-0075](docs/ADR-0075-font-size-keys.md) フォントサイズキー (⌘⇧,/.、fontSizeStep ±2 clamp)
 - [ADR-0076](docs/ADR-0076-connector-waypoint.md) 直線ウェイポイント (s.way、_linePts、中点ドラッグ)
 - [ADR-0077](docs/ADR-0077-hatch-fill.md) ハッチ/斜格子フィル (s.fstyle、_hatchSegs、ctx巡回)
+- [ADR-0078](docs/ADR-0078-text-bold-italic.md) 太字/斜体 (⌘B/⌘I、s.bold/italic、_fontStr)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

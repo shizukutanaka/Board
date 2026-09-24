@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.136]
+
+### 追加
+- **テキストの太字 / 斜体** (ADR-0078)。⌘B/⌘I で選択中 text/sticky の
+  `s.bold`/`s.italic` を `style` op トグル (Figma/draw.io parity)。
+  `_fontStr` が canvas フォント宣言を単一化、編集オーバレイと
+  SVG 書き出し (`font-weight`/`font-style`) も一致。copyStyle で伝搬。
+
 ## [1.7.135]
 
 ### 追加

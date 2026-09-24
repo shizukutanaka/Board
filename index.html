@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.135';
+const V='1.7.136';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -911,7 +911,7 @@ const I18N={
     peers:'人',you:'自分',
     k:{select:'選択',hand:'手のひら',pen:'ペン',rect:'矩形',ellipse:'楕円',
       arrow:'矢印',line:'線',text:'文字',sticky:'付箋',frame:'フレーム',eraser:'消しゴム',diamond:'ダイヤ',
-      undo:'元に戻す',redo:'やり直し',del:'削除',dup:'複製',fontSize:'フォントサイズ',
+      undo:'元に戻す',redo:'やり直し',del:'削除',dup:'複製',fontSize:'フォントサイズ',boldItalic:'太字/斜体',
       selAll:'全選択',copy:'コピー',paste:'貼付',cut:'切取',
       zoomIn:'拡大',zoomOut:'縮小',zoom100:'100%にリセット',
       fit:'画面にフィット',selFit:'選択にフィット',pan:'パン',help:'ヘルプ',exp:'PNG書き出し',
@@ -989,7 +989,7 @@ const I18N={
     mirrorLabel:'Shapes on the board',mirrorMore:' more not listed',
     k:{select:'Select',hand:'Pan',pen:'Pen',rect:'Rectangle',ellipse:'Ellipse',
       arrow:'Arrow',line:'Line',text:'Text',sticky:'Sticky',frame:'Frame',eraser:'Eraser',diamond:'Diamond',
-      undo:'Undo',redo:'Redo',del:'Delete',dup:'Duplicate',fontSize:'Font size',
+      undo:'Undo',redo:'Redo',del:'Delete',dup:'Duplicate',fontSize:'Font size',boldItalic:'Bold/Italic',
       selAll:'Select all',copy:'Copy',paste:'Paste',cut:'Cut',
       zoomIn:'Zoom in',zoomOut:'Zoom out',zoom100:'Reset zoom',
       fit:'Fit to content',selFit:'Zoom to selection',pan:'Pan',help:'Help',exp:'Export PNG',
@@ -2572,7 +2572,7 @@ function drawShape(s,c){
       // text
       if(s.text){
         const fs=s.fontSize||14;
-        c.fillStyle='#1E293B';c.font=`${fs}px Hiragino Sans,Helvetica Neue,system-ui,sans-serif`;
+        c.fillStyle='#1E293B';c.font=_fontStr(s,fs);        // ADR-0078
         c.textBaseline='top';
         const lh=fs*1.3, pad=8;
         const lines=wrapTextCached(s,s.text,Math.abs(s.w)-pad*2,fs,t=>c.measureText(t).width);
@@ -2763,12 +2763,16 @@ function drawPen(s,c){
   _penFillRange(c,p,w,n,0,n-1);
   c.fillStyle=oldFill;
 }
+// ADR-0078: shared font declaration — bold/italic flags prepend weight/posture.
+function _fontStr(s,fs){
+  return `${s.italic?'italic ':''}${s.bold?'600 ':''}${fs}px Hiragino Sans,Helvetica Neue,system-ui,sans-serif`;
+}
 function drawText(s,c){
   c=c||ctx;
   if(s.id===state.editing)return;
   c.fillStyle=s.stroke||'#0F172A';
   const fs=s.fontSize||16;
-  c.font=`${fs}px ${'Hiragino Sans,Helvetica Neue,system-ui,sans-serif'}`;
+  c.font=_fontStr(s,fs);                                    // ADR-0078
   c.textBaseline='top';
   const lines=(s.text||'').split('\n');
   const lh=fs*1.25;
@@ -4533,6 +4537,7 @@ function positionTextEditor(ta,s){
   ta.style.fontSize=(s.fontSize*state.viewport.zoom)+'px';
   ta.style.color=s.stroke||'#0F172A';
   ta.style.textAlign=s.align==='center'?'center':s.align==='right'?'right':'left';   // ADR-0073
+  ta.style.fontWeight=s.bold?'600':'';ta.style.fontStyle=s.italic?'italic':'';   // ADR-0078
   ta.style.minWidth='20px';
 }
 
@@ -4636,6 +4641,8 @@ window.addEventListener('keydown',e=>{
   else if(meta&&k==='-'){e.preventDefault();zoomBy(1/1.2)}
   else if(meta&&e.shiftKey&&(k===','||k==='<')){e.preventDefault();fontSizeStep(-1)}   // ADR-0075
   else if(meta&&e.shiftKey&&(k==='.'||k==='>')){e.preventDefault();fontSizeStep(1)}    // ADR-0075
+  else if(meta&&k==='b'&&!e.shiftKey){e.preventDefault();toggleTextFlag('bold')}   // ADR-0078
+  else if(meta&&k==='i'&&!e.shiftKey){e.preventDefault();toggleTextFlag('italic')} // ADR-0078
   else if(meta&&k==='0'){e.preventDefault();zoomReset()}
   else if(k==='delete'||k==='backspace'){e.preventDefault();doDelete()}
   else if(k==='tab'){
@@ -5628,7 +5635,7 @@ function buildSVG(shapes,paper){
         const svgLines=String(s.text==null?'':s.text).split('\n');
         const tax=s.align==='center'?X+ox+W/2:s.align==='right'?X+ox+W:X+ox;   // ADR-0073
         const anch=s.align==='center'?' text-anchor="middle"':s.align==='right'?' text-anchor="end"':'';
-        els.push(`<text x="${tax}" y="${Y+oy}" dominant-baseline="hanging" font-family="Hiragino Sans,Helvetica Neue,system-ui,sans-serif" font-size="${fs}" fill="${stroke}"${anch}${a}${rT}>`);
+        els.push(`<text x="${tax}" y="${Y+oy}" dominant-baseline="hanging" font-family="Hiragino Sans,Helvetica Neue,system-ui,sans-serif" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''} fill="${stroke}"${anch}${a}${rT}>`);   // ADR-0078
         for(let i=0;i<svgLines.length;i++)els.push(`<tspan x="${tax}" dy="${i?fs*1.25:0}">${_esc(svgLines[i])}</tspan>`);
         els.push('</text>');break;}
       case 'image':
@@ -5654,7 +5661,7 @@ function buildSVG(shapes,paper){
           const lines2=wrapText(s.text,Math.abs(W)-pad2*2,t=>t.length*fs*0.6);
           const tax2=s.align==='center'?X+ox+W/2:s.align==='right'?X+ox+W-pad2:X+ox+pad2;   // ADR-0073
           const anch2=s.align==='center'?' text-anchor="middle"':s.align==='right'?' text-anchor="end"':'';
-          els.push(`<text x="${tax2}" y="${Y+oy+pad2}" dominant-baseline="hanging" font-family="Hiragino Sans,Helvetica Neue,system-ui,sans-serif" font-size="${fs}" fill="#1E293B"${anch2}${rT}>`);
+          els.push(`<text x="${tax2}" y="${Y+oy+pad2}" dominant-baseline="hanging" font-family="Hiragino Sans,Helvetica Neue,system-ui,sans-serif" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''} fill="#1E293B"${anch2}${rT}>`);   // ADR-0078
           for(let i=0;i<lines2.length;i++)els.push(`<tspan x="${tax2}" dy="${i?fs*1.3:0}">${_esc(lines2[i])}</tspan>`);
           els.push('</text>');
         }break;}
@@ -5710,7 +5717,7 @@ const KINSOKU_END=new Set([...'（[｛「『〔〈《【〖〘〝“‘｟«([{'
 // stable across undo/redo of a live shape — only true content/size changes invalidate.
 const _wrapCache=new WeakMap();
 function wrapTextCached(s,text,maxWidth,fontSize,measure){
-  const key=text+' '+maxWidth+' '+fontSize;
+  const key=text+' '+maxWidth+' '+fontSize+' '+(s.bold?1:0)+''+(s.italic?1:0);   // ADR-0078
   const hit=_wrapCache.get(s);
   if(hit&&hit.key===key)return hit.lines;
   const lines=wrapText(text,maxWidth,measure);
@@ -6695,7 +6702,7 @@ const UI={
       ['Enter / ⇧Enter',k.searchNav],
       ['⇧H / ⇧V',t('ctxFlipH')+' / '+t('ctxFlipV')],
       ['⌥C / ⌥V',t('ctxCopyStyle')+' / '+t('ctxPasteStyle')],
-      ['⇧ + drag',k.moveAxis],['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],['⌘⇧ , / .',k.fontSize],
+      ['⇧ + drag',k.moveAxis],['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],['⌘⇧ , / .',k.fontSize],['⌘B / ⌘I',k.boldItalic],
       ['Tab / ⇧Tab',k.cycle],['Enter',k.create+' / '+t('editLabel')]
     ];
     while(g.firstChild)g.removeChild(g.firstChild);
@@ -7093,6 +7100,24 @@ function fontSizeStep(d){
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
 }
+// ADR-0078: ⌘B/⌘I toggles bold/italic on selected text/sticky via style op.
+function toggleTextFlag(k){
+  const before=[],after=[];
+  for(const id of state.selection){
+    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky')||s.locked)continue;
+    const nxt=!s[k];
+    before.push({id,[k]:s[k]||null});after.push({id,[k]:nxt?true:null});
+    if(nxt)s[k]=true;else delete s[k];
+  }
+  if(before.length){
+    const origSel=[...state.selection];
+    Store._recordCommitted({op:'style',before,after});
+    if(origSel.length)state.history[state.histIdx].origSel=origSel;
+    const ta=document.querySelector('.text-overlay');
+    if(ta&&state.editing){const s2=byId(state.editing);if(s2){ta.style.fontWeight=s2.bold?'600':'';ta.style.fontStyle=s2.italic?'italic':''}}
+    invalidate();
+  }
+}
 // ADR-0077: cycle fill style solid→hatch→cross→solid for box shapes via style op.
 function cycleFillStyle(){
   const before=[],after=[];
@@ -7132,7 +7157,8 @@ function copyStyle(){
   if(!sh){UI.toast(t('noSelection'),'warn');return}
   state.styleClipboard={
     stroke:sh.stroke,fill:sh.fill,
-    size:sh.size,opacity:sh.opacity,dash:sh.dash||0,fstyle:sh.fstyle   // ADR-0077
+    size:sh.size,opacity:sh.opacity,dash:sh.dash||0,fstyle:sh.fstyle,   // ADR-0077
+    bold:sh.bold,italic:sh.italic                                       // ADR-0078
   };
   UI.toast(t('styleCopied'),'ok');
 }
