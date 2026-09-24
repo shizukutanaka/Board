@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.307] - 2026-09-24
+
+### Added
+- .drawio: dotted 線を dashed=1+dashPattern として往復 (vertex+edge、
+  ADR-0255)
+
 ## [1.7.306] - 2026-09-24
 
 ### Added

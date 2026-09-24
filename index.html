@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.306';
+const V='1.7.307';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6390,7 +6390,7 @@ function drawioToShapes(txt){
     if(sty.fillColor&&sty.fillColor!=='none')s.fill=sty.fillColor;
     if(sty.strokeColor&&sty.strokeColor!=='none')s.stroke=sty.strokeColor;
     if(+sty.strokeWidth>0)s.size=Math.min(40,+sty.strokeWidth);
-    if(sty.dashed==='1')s.dash=1;
+    if(sty.dashed==='1')s.dash=/^1\s+\d/.test(String(sty.dashPattern||''))?2:1;   // ADR-0255
     if(+sty.fontSize>0)s.fontSize=Math.min(200,+sty.fontSize);
     if(sty.fontColor&&sty.fontColor!=='none'&&(s.type==='text'||s.type==='sticky'))s.stroke=sty.fontColor;   // ADR-0247
     if(sty.fontFamily&&s.type!=='image'){const ff=sty.fontFamily.toLowerCase();
@@ -6440,7 +6440,7 @@ function drawioToShapes(txt){
     const lbl=_dioLabel(c.getAttribute('value'));if(lbl)s.label=lbl.slice(0,240);
     if(sty.strokeColor&&sty.strokeColor!=='none')s.stroke=sty.strokeColor;
     if(+sty.strokeWidth>0)s.size=Math.min(40,+sty.strokeWidth);
-    if(sty.dashed==='1')s.dash=1;
+    if(sty.dashed==='1')s.dash=/^1\s+\d/.test(String(sty.dashPattern||''))?2:1;   // ADR-0255
     if(sty.shadow==='1')s.shadow=1;                                          // ADR-0246
     if(sty.labelBackgroundColor&&sty.labelBackgroundColor!=='none')s.fill=sty.labelBackgroundColor;   // ADR-0249
     if(+sty.fontSize>0)s.fontSize=Math.min(200,+sty.fontSize);
@@ -6522,7 +6522,7 @@ function boardToDrawio(shapes){
     if(s.stroke&&t!=='text'&&t!=='sticky')sty+='strokeColor='+s.stroke+';';
     if(s.stroke&&(t==='text'||t==='sticky'))sty+='fontColor='+s.stroke+';';   // ADR-0247
     if(s.size)sty+='strokeWidth='+s.size+';';
-    if(s.dash)sty+='dashed=1;';
+    if(s.dash)sty+='dashed=1;'+(s.dash===2?'dashPattern=1 1;':'');   // ADR-0255
     if(s.opacity!=null&&s.opacity<1)sty+='opacity='+Math.round(s.opacity*100)+';';
     if(s.fontSize)sty+='fontSize='+s.fontSize+';';
     if(s.align==='center'||s.align==='right')sty+='align='+s.align+';';   // ADR-0228
@@ -6545,7 +6545,7 @@ function boardToDrawio(shapes){
     if(s.hop)sty+='jumpStyle=arc;';
     if(s.stroke)sty+='strokeColor='+s.stroke+';';
     if(s.size)sty+='strokeWidth='+s.size+';';
-    if(s.dash)sty+='dashed=1;';
+    if(s.dash)sty+='dashed=1;'+(s.dash===2?'dashPattern=1 1;':'');   // ADR-0255
     if(s.r)sty+='rounded=1;';
     if(s.shadow)sty+='shadow=1;';                                            // ADR-0246
     if(s.fill)sty+='labelBackgroundColor='+s.fill+';';                       // ADR-0249

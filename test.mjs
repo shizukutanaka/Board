@@ -709,6 +709,7 @@ const checks = [
   ['drawio shadow=1 round-trips s.shadow (ADR-0246)', html.includes("sty+='shadow=1;'")&&html.includes("sty.shadow==='1'")],
   ['drawio fontColor ↔ text/sticky s.stroke (ADR-0247)', html.includes("sty+='fontColor='+s.stroke")&&html.includes("sty.fontColor!=='none'")],
   ['visualViewport.resize re-runs canvas resize for iOS chrome (ADR-0251)', html.includes("visualViewport.addEventListener('resize',resize)")],
+  ['drawio dotted ↔ dashed=1+dashPattern (ADR-0255)', html.includes("s.dash===2?'dashPattern=1 1;'")&&html.includes("?2:1;   // ADR-0255")],
   ['drawio locked ↔ editable/deletable/movable=0 (ADR-0254)', (html.match(/editable=0/g)||[]).length>=2&&html.includes("sty.editable==='0'||sty.deletable==='0'||sty.movable==='0'")],
   ['drawio fontFamily ↔ s.font category map (ADR-0253)', html.includes("sty.fontFamily&&s.type!=='image'")&&html.includes("fontFamily='+(s.font==='mono'?'Courier New':'Georgia')")],
   ['conn/box label widths memoized on WeakMap (ADR-0252)', html.includes('_connLabelMeasure')&&html.includes('_clCache')],
