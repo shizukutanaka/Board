@@ -796,7 +796,7 @@ const _ga=(e,n)=>e.getAttribute(n);   // ADR-0340
 const _cbr=()=>canvas.getBoundingClientRect();   // ADR-0342
 
 // ====================== CONSTANTS ======================
-const V='1.7.395';
+const V='1.7.396';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6632,10 +6632,15 @@ function boardToDrawio(shapes){
     g.x=_min(g.x,s.x);g.y=_min(g.y,s.y);g.x2=_max(g.x2,s.x+s.w);g.y2=_max(g.y2,s.y+(s.h||0))}
   for(const gid in _gbx){const g=_gbx[gid];
     cells.push(`<mxCell id="g_${gid}" value="" style="group;" vertex="1" parent="1"><mxGeometry x="${g.x}" y="${g.y}" width="${g.x2-g.x}" height="${g.y2-g.y}" as="geometry"/></mxCell>`)}
+  // ADR-0345: pre-assign vertex ids up-front so a member can reference
+  // its containing frame's swimlane cell id regardless of z-order.
+  for(const s of shapes)if(s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen')idOf.set(s.id,'b'+(i++));
+  const _frs=shapes.filter(f=>f.type==='frame');
+  const _fOf=s=>{let b=null;for(const f of _frs){if(f!==s&&s.x>=f.x&&s.y>=f.y&&s.x+(s.w||0)<=f.x+f.w&&s.y+(s.h||0)<=f.y+f.h&&(!b||f.w*f.h<b.w*b.h))b=f}return b};
   for(const s of shapes){
     const t=s.type;
     if(t==='line'||t==='arrow'||t==='pen')continue;
-    const id='b'+(i++);idOf.set(s.id,id);
+    const id=idOf.get(s.id);
     let sty='html=1;';                                                   // ADR-0322
     if(t==='ellipse')sty+='ellipse;';
     else if(t==='diamond')sty+='rhombus;';
@@ -6662,7 +6667,8 @@ function boardToDrawio(shapes){
     if(t==='image'&&s.dataUrl)sty+='image='+s.dataUrl+';';                 // ADR-0259: last — ';base64,' inside
     const lbl=s.label!=null?s.label:s.text;
     const _gc=_gbx[s.groupId];                                          // ADR-0336
-    cells.push(`<mxCell id="${id}" value="${nl(lbl||'')}" style="${esc(sty)}" vertex="1" parent="${_gc?`g_${s.groupId}`:'1'}"${s.link?` link="${esc(s.link)}"`:''}${s.visible===0?' visible="0"':''}><mxGeometry x="${(s.x||0)-(_gc?_gc.x:0)}" y="${(s.y||0)-(_gc?_gc.y:0)}" width="${s.w||120}" height="${s.h||80}" as="geometry"/></mxCell>`);   // ADR-0245/0336
+    const _pf=_gc?null:_fOf(s);                                         // ADR-0345: frame containment (group wins)
+    cells.push(`<mxCell id="${id}" value="${nl(lbl||'')}" style="${esc(sty)}" vertex="1" parent="${_gc?`g_${s.groupId}`:_pf?idOf.get(_pf.id):'1'}"${s.link?` link="${esc(s.link)}"`:''}${s.visible===0?' visible="0"':''}><mxGeometry x="${(s.x||0)-(_gc?_gc.x:_pf?_pf.x:0)}" y="${(s.y||0)-(_gc?_gc.y:_pf?_pf.y:0)}" width="${s.w||120}" height="${s.h||80}" as="geometry"/></mxCell>`);   // ADR-0245/0336/0345
   }
   for(const s of shapes){
     const t=s.type;

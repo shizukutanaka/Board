@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.396] - 2026-09-24
+
+### Added
+- .drawio emit で frame 内包を `parent=<swimlane id>` + 相対座標で
+  出力 — draw.io 側の lane ドラッグに子が追従 (vertex id 事前割当、
+  group 優先) (ADR-0345)
+
 ## [1.7.395] - 2026-09-24
 
 ### Fixed
