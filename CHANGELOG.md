@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.543] - 2026-09-23
+
+### リファクタ
+
+- `c.beginPath()`/`c.stroke()`/`c.fill()` を `_bp`/`_st2`/`_fil` shorthand に集約 (118 サイト、~600B 回収) (ADR-0510)
+
 ## [1.7.542] - 2026-09-23
 
 ### リファクタ

@@ -263,7 +263,7 @@ const checks = [
   ['openLabelEditor shared by boxes + connectors', html.includes("function openLabelEditor(hit,leftPx,topPx,bold)")],
   ['dblclick opens label editor on line/arrow at midpoint', html.includes("_conn(hit.type)") && html.includes("_connLabelXY(hit)")],
   ['_drawConnLabel renders edge label on canvas', html.includes("function _drawConnLabel(s,c)") && html.includes("c.fillText(lns[i],mx,my+(i-(_ln(lns)-1)/2)*llh)")],
-  ['line/arrow drawShape calls _drawConnLabel', html.includes("c.stroke();_drawConnLabel(s,c);break;") && html.includes("drawArrow(s,c);_drawConnLabel(s,c);break;")],
+  ['line/arrow drawShape calls _drawConnLabel', html.includes("_st2(c);_drawConnLabel(s,c);break;") && html.includes("drawArrow(s,c);_drawConnLabel(s,c);break;")],
   ['_connLabelSVG emits edge label in SVG', html.includes("function _connLabelSVG(s,x1,y1,x2,y2,ox,oy,stroke,paper)")],
   ['Persist.load validates shapes', html.includes("d.shapes.filter(validShape)")],
   // v1.6.9: sticky text auto-wrap
@@ -1388,7 +1388,7 @@ const checks = [
     html.includes("const valid=_s0(shapes,SHARE_MAX_SHAPES).map(s=>this._attachShape(s)).filter(validShape);")],
   // v1.7.48: sticky shadow set before fill (renders correctly)
   ['sticky note shadow set before fill (not after)',
-    html.includes("c.shadowColor='rgba(0,0,0,.08)';c.shadowBlur=8;c.shadowOffsetY=2;\n      c.beginPath();roundRect(")],
+    html.includes("c.shadowColor='rgba(0,0,0,.08)';c.shadowBlur=8;c.shadowOffsetY=2;\n      _bp(c);roundRect(")],
   // v1.7.48: group gid must be non-empty string
   ['validRemotePayload group: gid must be non-empty string (op.gid.length>0)',
     html.includes("&&_iS(op.gid)&&_ln(op.gid)>0")],

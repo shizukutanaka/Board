@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.542';
+const V='1.7.543';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1836,7 +1836,7 @@ function _hatchCtx(c,s){
   const segs=_hatchSegs(s.x,s.y,s.w,s.h,_max(6,(_szz(s)||1)*4),_fs2(s)==='cross');
   c.save();c.clip();c.globalAlpha=0.55;
   c.strokeStyle=_sk(s)||_IK;c.lineWidth=_max(0.5,(_szz(s)||1)*0.6);c.setLineDash([]);
-  c.beginPath();for(const g of segs){c.moveTo(g[0],g[1]);c.lineTo(g[2],g[3])}c.stroke();
+  _bp(c);for(const g of segs){c.moveTo(g[0],g[1]);c.lineTo(g[2],g[3])}_st2(c);
   c.restore();
 }
 // SVG hatch: clipPath mirroring the shape + <g clip-path> of the same segments.
@@ -2016,6 +2016,7 @@ const _ulv=s=>!_lk(s)&&_sv(s);   // ADR-0496
 const _ul=s=>!_lk(s);   // ADR-0506
 const _cpT=p=>p.then(ok=>_tst(t(ok?'copied':'copyFailed'),ok?'ok':'warn'));   // ADR-0507
 const _zG=()=>{state.guides=state.readout=state.bindPreview=null},_zR=()=>{state.draft=state.marquee=state.guides=state.readout=state.bindPreview=state.measure=state.lasso=null};   // ADR-0509: gesture-state reset
+const _bp=c=>c.beginPath(),_st2=c=>c.stroke(),_fil=c=>c.fill();   // ADR-0510: canvas path shorthand
 const _hb=s=>s.w!=null;   // ADR-0501
 const _idOK=id=>_iS(id)&&_ln(id)<=64;   // ADR-0502: wire id cap (ADR-0485): unlocked+visible predicate (4 sites)
 const _idIdx=id=>_sh().findIndex(s=>s.id===id);   // ADR-0497: shape index by id (4 sites)
@@ -2107,10 +2108,10 @@ function _penDisc(c,x,y,r){c.moveTo(x+r,y);c.arc(x,y,r,0,PI2,true)}
 // stamped boundary — the partition is exact, so draft and committed render
 // identically.
 function _penFillRange(c,p,w,n,lo,hi){
-  c.beginPath();
+  _bp(c);
   for(let i=lo+1;i<=hi;i++)_penQuad(c,p,_penR(w,i-1,n),_penR(w,i,n),i);
   for(let i=lo;i<=hi;i++)_penDisc(c,p[i][0],p[i][1],_penR(w,i,n));
-  c.fill();
+  _fil(c);
 }
 // The live pen draft used to re-stroke all n points every frame — O(n) per
 // pointermove on long strokes. Since each new sample only affects the last few
@@ -2560,7 +2561,7 @@ function drawOverlay(){
     c.font='11px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';
     const tw=c.measureText(r.label).width+14,ph=18,px=sp.x,py=sp.y+14;
     c.fillStyle='rgba(15,23,42,.85)';
-    c.beginPath();roundRect(c,px-tw/2,py,tw,ph,4);c.fill();
+    _bp(c);roundRect(c,px-tw/2,py,tw,ph,4);_fil(c);
     c.fillStyle='#fff';c.fillText(r.label,px,py+ph/2);
     c.restore();
   }
@@ -2571,7 +2572,7 @@ function drawOverlay(){
     c.strokeStyle='#fff';c.lineWidth=1.5;
     for(const d of _qdots(_qs)){
       const sp=_w2(d);
-      c.beginPath();c.arc(sp.x,sp.y,5,0,_PI*2);c.fill();c.stroke();
+      _bp(c);c.arc(sp.x,sp.y,5,0,_PI*2);_fil(c);_st2(c);
     }
     c.restore();
   }
@@ -2588,11 +2589,11 @@ function drawOverlay(){
   if(_mq())drawMarquee(c);
   if(_la()&&_la().length>1){                            // ADR-0158
     c.save();c.fillStyle='rgba(0,196,204,.08)';c.strokeStyle=_ac();c.lineWidth=1;c.setLineDash([4,4]);
-    c.beginPath();const _p0=_w2(_la()[0]);c.moveTo(_p0.x,_p0.y);
+    _bp(c);const _p0=_w2(_la()[0]);c.moveTo(_p0.x,_p0.y);
     for(let i=1;i<_la().length;i++){const p=_w2(_la()[i]);c.lineTo(p.x,p.y)}
-    c.closePath();c.fill();c.stroke();c.restore();
+    c.closePath();_fil(c);_st2(c);c.restore();
   }
-  if(_laser&&Presentation.isActive()){const lp=_w2(_laser);c.beginPath();c.arc(lp.x,lp.y,8,0,PI2);c.fillStyle='rgba(255,50,50,.75)';c.fill();}
+  if(_laser&&Presentation.isActive()){const lp=_w2(_laser);_bp(c);c.arc(lp.x,lp.y,8,0,PI2);c.fillStyle='rgba(255,50,50,.75)';_fil(c);}
   drawPeerSelections(c);   // ADR-0011 (before cursors: pointer renders on top of frames)
   drawPeerCursors(c);   // ADR-0010
 }
@@ -2632,9 +2633,9 @@ function drawPeerCursors(c){
   for(const p of _pr().values()){
     if(!p.cursor)continue;
     const sp=_w2(p.cursor);
-    c.beginPath();c.arc(sp.x,sp.y,5,0,PI2);
-    c.fillStyle=p.color;c.fill();
-    c.lineWidth=1.5;c.strokeStyle=_p();c.stroke();
+    _bp(c);c.arc(sp.x,sp.y,5,0,PI2);
+    c.fillStyle=p.color;_fil(c);
+    c.lineWidth=1.5;c.strokeStyle=_p();_st2(c);
   }
 }
 function drawGuides(c){
@@ -2642,7 +2643,7 @@ function drawGuides(c){
   c.strokeStyle=_ac();c.lineWidth=1;c.setLineDash([4,4]);   // a11y-audit-2026-07
   for(const g of _gd()){
     const p1=_w2({x:g.x1,y:g.y1}),p2=_w2({x:g.x2,y:g.y2});
-    c.beginPath();c.moveTo(p1.x,p1.y);c.lineTo(p2.x,p2.y);c.stroke();
+    _bp(c);c.moveTo(p1.x,p1.y);c.lineTo(p2.x,p2.y);_st2(c);
   }
   c.setLineDash([]);
 }
@@ -2663,12 +2664,12 @@ function _drawMeasure(c){
   c.font='11px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';
   for(const s of segs){
     const p1=_w2({x:s.x1,y:s.y1}),p2=_w2({x:s.x2,y:s.y2});
-    c.beginPath();c.moveTo(p1.x,p1.y);c.lineTo(p2.x,p2.y);c.stroke();
+    _bp(c);c.moveTo(p1.x,p1.y);c.lineTo(p2.x,p2.y);_st2(c);
     const dx=p2.x-p1.x,dy=p2.y-p1.y,L=_hp(dx,dy)||1,ux=dx/L,uy=dy/L,ex=-uy,ey=ux;
-    for(const p of [p1,p2]){c.beginPath();c.moveTo(p.x-ex*4,p.y-ey*4);c.lineTo(p.x+ex*4,p.y+ey*4);c.stroke()}
+    for(const p of [p1,p2]){_bp(c);c.moveTo(p.x-ex*4,p.y-ey*4);c.lineTo(p.x+ex*4,p.y+ey*4);_st2(c)}
     const label=_St(_rnd(L)),tw=c.measureText(label).width+12;
     const mx=(p1.x+p2.x)/2,my=(p1.y+p2.y)/2;
-    c.fillStyle='rgba(15,23,42,.85)';c.beginPath();roundRect(c,mx-tw/2,my-9,tw,18,4);c.fill();
+    c.fillStyle='rgba(15,23,42,.85)';_bp(c);roundRect(c,mx-tw/2,my-9,tw,18,4);_fil(c);
     c.fillStyle='#fff';c.fillText(label,mx,my);
   }
   c.restore();
@@ -2722,8 +2723,8 @@ function _drawBoxLabel(s,c){
     const _lw2=_connLabelMeasure(s,c,lines,fs).ws;             // ADR-0252
     for(let i=0;i<_ln(lines);i++){const lw=_lw2[i];
       const ux=al==='left'?tx:al==='right'?tx-lw:tx-lw/2;      // ADR-0171
-      if(s.under){const uy=top0+lh/2+i*lh+fs*0.55;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}
-      if(s.strike){const uy=top0+lh/2+i*lh;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}}}
+      if(s.under){const uy=top0+lh/2+i*lh+fs*0.55;_bp(c);c.moveTo(ux,uy);c.lineTo(ux+lw,uy);_st2(c)}
+      if(s.strike){const uy=top0+lh/2+i*lh;_bp(c);c.moveTo(ux,uy);c.lineTo(ux+lw,uy);_st2(c)}}}
   c.restore();
 }
 // ADR-0083: image caption — paper-backed strip along the inside bottom edge,
@@ -2836,8 +2837,8 @@ function _drawConnLabel(s,c){
   for(let i=0;i<_ln(lns);i++)c.fillText(lns[i],mx,my+(i-(_ln(lns)-1)/2)*llh);
   if(s.under||s.strike){c.strokeStyle=c.fillStyle;c.lineWidth=_max(1,fs*0.06);   // ADR-0170
     for(let i=0;i<_ln(lns);i++){const lw=_lm.ws[i],ly=my+(i-(_ln(lns)-1)/2)*llh;
-      if(s.under){c.beginPath();c.moveTo(mx-lw/2,ly+fs*0.55);c.lineTo(mx+lw/2,ly+fs*0.55);c.stroke()}
-      if(s.strike){c.beginPath();c.moveTo(mx-lw/2,ly);c.lineTo(mx+lw/2,ly);c.stroke()}}}
+      if(s.under){_bp(c);c.moveTo(mx-lw/2,ly+fs*0.55);c.lineTo(mx+lw/2,ly+fs*0.55);_st2(c)}
+      if(s.strike){_bp(c);c.moveTo(mx-lw/2,ly);c.lineTo(mx+lw/2,ly);_st2(c)}}}
   c.restore();
 }
 function drawShape(s,c){
@@ -2853,36 +2854,36 @@ function drawShape(s,c){
   if(_rot){const _cx=s.x+s.w/2,_cy=s.y+s.h/2;c.save();c.translate(_cx,_cy);c.rotate(_rot*_PI/180);c.translate(-_cx,-_cy);}
   switch(s.type){
     case 'rect':
-      c.beginPath();
+      _bp(c);
       roundRect(c,s.x,s.y,s.w,s.h,_min(s.r!=null?s.r:8,_abs(s.w)/4,_abs(s.h)/4));
       _csh(s,c)   // ADR-0194
-      if(_fi(s)){c.fill()}
-      if(_sk(s)){c.stroke()}
+      if(_fi(s)){_fil(c)}
+      if(_sk(s)){_st2(c)}
       _noSh(c);
       if(_fs2(s))_hatchCtx(c,s);                              // ADR-0077
       _drawBoxLabel(s,c);break;
     case 'ellipse':
-      c.beginPath();
+      _bp(c);
       c.ellipse(s.x+s.w/2,s.y+s.h/2,_abs(s.w/2),_abs(s.h/2),0,0,PI2);
       _csh(s,c)   // ADR-0194
-      if(_fi(s)){c.fill()}
-      if(_sk(s)){c.stroke()}
+      if(_fi(s)){_fil(c)}
+      if(_sk(s)){_st2(c)}
       _noSh(c);
       if(_fs2(s))_hatchCtx(c,s);                              // ADR-0077
       _drawBoxLabel(s,c);break;
     case 'diamond':{
       _diamondPath(c,s);                                       // ADR-0156
       _csh(s,c)   // ADR-0194
-      if(_fi(s))c.fill();
-      if(_sk(s))c.stroke();
+      if(_fi(s))_fil(c);
+      if(_sk(s))_st2(c);
       _noSh(c);
       if(_fs2(s))_hatchCtx(c,s);                              // ADR-0077
       _drawBoxLabel(s,c);break;}
     case 'line':{
       _csh(s,c)   // ADR-0211
-      if(_el(s)){const _ep=_elbowPts(s);(s.r>0)?_polylineR(c,_ep,s.r):_polyline(c,_ep);c.stroke();_drawConnLabel(s,c);break}   // ADR-0207
-      if(s.curve){const e=_cE(s),cc=_curveCtrl(e,s.cbend);c.beginPath();c.moveTo(e.x1,e.y1);c.quadraticCurveTo(cc.x,cc.y,e.x2,e.y2);c.stroke();_drawConnLabel(s,c);break}
-      _polyline(c,_linePts(s));c.stroke();_drawConnLabel(s,c);break;}   // ADR-0076
+      if(_el(s)){const _ep=_elbowPts(s);(s.r>0)?_polylineR(c,_ep,s.r):_polyline(c,_ep);_st2(c);_drawConnLabel(s,c);break}   // ADR-0207
+      if(s.curve){const e=_cE(s),cc=_curveCtrl(e,s.cbend);_bp(c);c.moveTo(e.x1,e.y1);c.quadraticCurveTo(cc.x,cc.y,e.x2,e.y2);_st2(c);_drawConnLabel(s,c);break}
+      _polyline(c,_linePts(s));_st2(c);_drawConnLabel(s,c);break;}   // ADR-0076
     case 'arrow':
       drawArrow(s,c);_drawConnLabel(s,c);break;
     case 'pen':
@@ -2894,7 +2895,7 @@ function drawShape(s,c){
       if(img&&img.complete&&img.naturalWidth){
         const _cr=_min(s.r||0,_abs(s.w)/2,_abs(s.h)/2);   // ADR-0168
         _csh(s,c)   // ADR-0194
-        if(_cr>0){c.save();c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,_cr);c.clip()}
+        if(_cr>0){c.save();_bp(c);roundRect(c,s.x,s.y,s.w,s.h,_cr);c.clip()}
         if(s.flip){const fx=s.x+s.w/2,fy=s.y+s.h/2;c.save();c.translate(fx,fy);c.scale(s.flip&1?-1:1,s.flip&2?-1:1);c.translate(-fx,-fy);c.drawImage(img,s.x,s.y,s.w,s.h);c.restore()}
         else c.drawImage(img,s.x,s.y,s.w,s.h);
         _noSh(c);
@@ -2903,7 +2904,7 @@ function drawShape(s,c){
         // reaches images through applyStyleToSelection but was never painted).
         if(_sk(s)&&_szz(s)){c.strokeStyle=_sk(s);c.lineWidth=_szz(s);
           c.setLineDash(dashArr(s.dash||0,_szz(s)));                     // ADR-0178
-          c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,_cr);c.stroke();c.setLineDash([])}}   // ADR-0149
+          _bp(c);roundRect(c,s.x,s.y,s.w,s.h,_cr);_st2(c);c.setLineDash([])}}   // ADR-0149
       else{c.strokeStyle=_sk(s)||'#CBD5E1';c.lineWidth=1;c.strokeRect(s.x,s.y,s.w,s.h)}
       _drawImgLabel(s,c);                                         // ADR-0083
       break;}
@@ -2915,12 +2916,12 @@ function drawShape(s,c){
       // ADR-0175: _fi(s) tints the frame (was hard-coded translucent);
       // frames draw in the first pass so contents still render on top.
       c.fillStyle=_fi(s)&&_fi(s)!=='none'?_fi(s):'rgba(248,250,252,0.6)';   // ADR-0288
-      c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,r);c.fill();
+      _bp(c);roundRect(c,s.x,s.y,s.w,s.h,r);_fil(c);
       // border
       c.strokeStyle=_sk(s)||_gC('--brand')||'#00C4CC';
       c.lineWidth=_szz(s)||1.5;
       c.setLineDash(dashArr(s.dash||0,_szz(s)||1.5));                    // ADR-0178
-      c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,r);c.stroke();
+      _bp(c);roundRect(c,s.x,s.y,s.w,s.h,r);_st2(c);
       // label
       const lbl=_lb(s)||'Frame';
       const fs=_fS(s)||12;   // ADR-0298
@@ -2934,8 +2935,8 @@ function drawShape(s,c){
       if(s.under||s.strike){const lw=_connLabelMeasure(s,c,[lbl],fs).w;   // ADR-0252/0204
         c.strokeStyle=c.fillStyle;c.lineWidth=_max(1,fs*0.06);
         const ux=alF==='left'?txF2:alF==='right'?txF2-lw:txF2-lw/2;
-        if(s.under){const uy=s.y-2+fs*0.12;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}
-        if(s.strike){const uy=s.y-2-fs*0.45;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}}
+        if(s.under){const uy=s.y-2+fs*0.12;_bp(c);c.moveTo(ux,uy);c.lineTo(ux+lw,uy);_st2(c)}
+        if(s.strike){const uy=s.y-2-fs*0.45;_bp(c);c.moveTo(ux,uy);c.lineTo(ux+lw,uy);_st2(c)}}
       c.textAlign='left';
       c.restore();
       break;}
@@ -2943,9 +2944,9 @@ function drawShape(s,c){
       const r=_min(6,_abs(s.w)/6,_abs(s.h)/6);
       c.fillStyle=_coo(s)||_YW;
       c.shadowColor='rgba(0,0,0,.08)';c.shadowBlur=8;c.shadowOffsetY=2;
-      c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,r);c.fill();
+      _bp(c);roundRect(c,s.x,s.y,s.w,s.h,r);_fil(c);
       _noSh(c);
-      c.strokeStyle='rgba(0,0,0,.06)';c.lineWidth=1;c.stroke();
+      c.strokeStyle='rgba(0,0,0,.06)';c.lineWidth=1;_st2(c);
       // text
       if(_txx(s)){
         const fs=_fS(s)||14;
@@ -2953,7 +2954,7 @@ function drawShape(s,c){
         c.textBaseline='top';
         const lh=fs*(s.lineH||1.3), pad=8;
         const lines=wrapTextCached(s,_txx(s),_abs(s.w)-pad*2,fs,t=>c.measureText(t).width);
-        c.save();c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,r);c.clip();
+        c.save();_bp(c);roundRect(c,s.x,s.y,s.w,s.h,r);c.clip();
         c.textAlign=s.align==='center'?'center':s.align==='right'?'right':'left';   // ADR-0073
         const tax=s.align==='center'?s.x+s.w/2:s.align==='right'?s.x+s.w-pad:s.x+pad;
         // ADR-0187: _va(s) on sticky positions the text block (top default).
@@ -2964,8 +2965,8 @@ function drawShape(s,c){
           const _lwS=_connLabelMeasure(s,c,lines,fs).ws;         // ADR-0252
           for(let i=0;i<_ln(lines);i++){const lw=_lwS[i];
             const ux=s.align==='center'?tax-lw/2:s.align==='right'?tax-lw:tax;
-            if(s.under){const uy=sty+i*lh+fs*1.08;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}
-            if(s.strike){const uy=sty+i*lh+fs*0.55;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}}}
+            if(s.under){const uy=sty+i*lh+fs*1.08;_bp(c);c.moveTo(ux,uy);c.lineTo(ux+lw,uy);_st2(c)}
+            if(s.strike){const uy=sty+i*lh+fs*0.55;_bp(c);c.moveTo(ux,uy);c.lineTo(ux+lw,uy);_st2(c)}}}
         c.restore();
       }
       break;}
@@ -2994,13 +2995,13 @@ function drawArrow(s,c){
   const ah=_max(6,(_szz(s)||2)*3);
   if(s.curve){
     const cc=_curveCtrl(e,s.cbend);
-    c.beginPath();c.moveTo(e.x1,e.y1);c.quadraticCurveTo(cc.x,cc.y,e.x2,e.y2);c.stroke();
+    _bp(c);c.moveTo(e.x1,e.y1);c.quadraticCurveTo(cc.x,cc.y,e.x2,e.y2);_st2(c);
     _arrowHeadShape(c,e.x2,e.y2,_at2(e.y2-cc.y,e.x2-cc.x),ah,_sk(s),s.head);
     if(s.start)_arrowHeadShape(c,e.x1,e.y1,_at2(e.y1-cc.y,e.x1-cc.x),ah,_sk(s),s.startHead||s.head);
     return;
   }
   if(_el(s)){
-    const pts=_elbowPts(s);s.hop?_polylineHop(c,s,pts,7):(s.r>0)?_polylineR(c,pts,s.r):_polyline(c,pts);c.stroke();   // ADR-0207/0218
+    const pts=_elbowPts(s);s.hop?_polylineHop(c,s,pts,7):(s.r>0)?_polylineR(c,pts,s.r):_polyline(c,pts);_st2(c);   // ADR-0207/0218
     const L=_pL(pts),P=pts[_ln(pts)-2];
     const ang=_at2(L.y-P.y,L.x-P.x)||_at2(e.y2-e.y1,e.x2-e.x1);
     _arrowHeadShape(c,L.x,L.y,ang,ah,_sk(s),s.head);
@@ -3011,7 +3012,7 @@ function drawArrow(s,c){
     return;
   }
   const pts=_linePts(s);                                            // ADR-0076
-  s.hop?_polylineHop(c,s,pts,7):_polyline(c,pts);c.stroke();        // ADR-0218
+  s.hop?_polylineHop(c,s,pts,7):_polyline(c,pts);_st2(c);        // ADR-0218
   const L=_pL(pts),P=pts[_ln(pts)-2],F=pts[1];
   const ang=_at2(L.y-P.y,L.x-P.x);
   _arrowHeadShape(c,L.x,L.y,ang,ah,_sk(s),s.head);
@@ -3070,7 +3071,7 @@ function _diamondPath(c,s){
   const cx=s.x+s.w/2,cy=s.y+s.h/2;
   const P=[{x:cx,y:s.y},{x:s.x+s.w,y:cy},{x:cx,y:s.y+s.h},{x:s.x,y:cy}];
   const r=_min(s.r||0,_abs(s.w)/6,_abs(s.h)/6);
-  c.beginPath();
+  _bp(c);
   if(r>0){
     for(let i=0;i<4;i++){
       const p0=P[i],p1=P[(i+1)%4],p2=P[(i+2)%4];
@@ -3087,14 +3088,14 @@ function _diamondPath(c,s){
   }
 }
 function _polyline(c,pts){
-  c.beginPath();c.moveTo(pts[0].x,pts[0].y);
+  _bp(c);c.moveTo(pts[0].x,pts[0].y);
   for(let i=1;i<_ln(pts);i++)c.lineTo(pts[i].x,pts[i].y);
 }
 // ADR-0207: polyline with rounded interior joints (draw.io "rounded" edgeStyle).
 // Each interior vertex is trimmed by r along both segments and bridged with a
 // quadratic curve (vertex as control point) — same math as _diamondPath.
 function _polylineR(c,pts,r){
-  c.beginPath();c.moveTo(pts[0].x,pts[0].y);
+  _bp(c);c.moveTo(pts[0].x,pts[0].y);
   for(let i=1;i<_ln(pts)-1;i++){
     const p0=pts[i-1],p1=pts[i],p2=pts[i+1];
     const e1=_hp(p1.x-p0.x,p1.y-p0.y)||1,e2=_hp(p2.x-p1.x,p2.y-p1.y)||1;
@@ -3137,7 +3138,7 @@ function _hopsFor(s,pts){
 // chirality keeps parallel crossings readable, same as draw.io).
 function _polylineHop(c,s,pts,R){
   const hops=_hopsFor(s,pts);
-  c.beginPath();c.moveTo(pts[0].x,pts[0].y);
+  _bp(c);c.moveTo(pts[0].x,pts[0].y);
   for(let i=0;i<_ln(pts)-1;i++){
     const a=pts[i],b=pts[i+1];
     const L=_hp(b.x-a.x,b.y-a.y)||1,nx=-(b.y-a.y)/L,ny=(b.x-a.x)/L;
@@ -3203,20 +3204,20 @@ function _arrowHeadShape(c,x,y,ang,ah,stroke,style){
   const a1=ang+_PI-0.5,a2=ang+_PI+0.5;
   const col=stroke||_IK;
   if(style==='dot'){
-    c.beginPath();c.arc(x,y,ah*0.35,0,PI2);c.fillStyle=col;c.fill();return;
+    _bp(c);c.arc(x,y,ah*0.35,0,PI2);c.fillStyle=col;_fil(c);return;
   }
   if(style==='open'||style==='bar'){                              // ADR-0294
-    c.beginPath();
+    _bp(c);
     c.moveTo(x+_cos(a1)*ah,y+_sin(a1)*ah);
     if(style==='open')c.lineTo(x,y);
     c.lineTo(x+_cos(a2)*ah,y+_sin(a2)*ah);
-    c.strokeStyle=col;c.stroke();return;
+    c.strokeStyle=col;_st2(c);return;
   }
-  c.beginPath();
+  _bp(c);
   c.moveTo(x,y);
   c.lineTo(x+_cos(a1)*ah,y+_sin(a1)*ah);
   c.lineTo(x+_cos(a2)*ah,y+_sin(a2)*ah);
-  c.closePath();c.fillStyle=col;c.fill();
+  c.closePath();c.fillStyle=col;_fil(c);
 }
 // ADR-0068: quadratic-bezier route for curved connectors. Control point is the
 // midpoint pushed along the left normal by bend=min(0.25*len,80).
@@ -3286,7 +3287,7 @@ function drawPen(s,c){
   const p=s.pts,n=_ln(p);
   if(n<2){
     c.fillStyle=_sk(s);
-    c.beginPath();c.arc(p[0][0],p[0][1],(_szz(s)||2)/2,0,PI2);c.fill();
+    _bp(c);c.arc(p[0][0],p[0][1],(_szz(s)||2)/2,0,PI2);_fil(c);
     return;
   }
   // ADR-0046: union fill of trapezoid+disc primitives — gap-free joints and
@@ -3332,8 +3333,8 @@ function drawText(s,c){
   if(s.under||s.strike){c.save();c.strokeStyle=_sk(s)||_IK;c.lineWidth=_max(1,fs*0.06);
     for(let i=0;i<_ln(lines);i++){const lw=_tm.ws[i];
       const ux=s.align==='center'?ax-lw/2:s.align==='right'?ax-lw:ax;
-      if(s.under){const uy=s.y+i*lh+fs*1.08;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}
-      if(s.strike){const uy=s.y+i*lh+fs*0.55;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}}   // ADR-0100
+      if(s.under){const uy=s.y+i*lh+fs*1.08;_bp(c);c.moveTo(ux,uy);c.lineTo(ux+lw,uy);_st2(c)}
+      if(s.strike){const uy=s.y+i*lh+fs*0.55;_bp(c);c.moveTo(ux,uy);c.lineTo(ux+lw,uy);_st2(c)}}   // ADR-0100
     c.restore()}
   if(s.link&&_hb(s)){c.font='10px sans-serif';c.textAlign='right';c.textBaseline='top';c.fillText('🔗',s.x+_abs(s.w)-3,s.y+3)}   // ADR-0310: link badge top-right
   if(s.link&&_conn(s.type)){const lp=_connLabelXY(s);c.font='10px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText('🔗',lp.x+10,lp.y-10)}   // ADR-0333: badge at label anchor (offset so it doesn't sit on the line)
@@ -3638,7 +3639,7 @@ function drawSelection(c){
     const cx=single.x+single.w/2,cy=single.y+single.h/2,rot=single.rotate;
     const cs=[[single.x,single.y],[single.x+single.w,single.y],[single.x+single.w,single.y+single.h],[single.x,single.y+single.h]]
       .map(([px,py])=>{const r=_rotPt(px,py,cx,cy,rot);return _w2(r);});
-    c.beginPath();c.moveTo(cs[0].x,cs[0].y);for(let i=1;i<4;i++)c.lineTo(cs[i].x,cs[i].y);c.closePath();c.stroke();
+    _bp(c);c.moveTo(cs[0].x,cs[0].y);for(let i=1;i<4;i++)c.lineTo(cs[i].x,cs[i].y);c.closePath();_st2(c);
   }else{
     c.strokeRect(x-1,y-1,w+2,h+2);
   }
@@ -3648,10 +3649,10 @@ function drawSelection(c){
     // doesn't clearly read as "this is locked". Top-left, inside the bbox.
     const lx=x+3,ly=y+3;
     c.fillStyle=_p();c.strokeStyle=_gC('--brand-ink');c.lineWidth=1.5;
-    c.beginPath();roundRect(c,lx,ly,16,12,2);c.fill();c.stroke();
-    c.beginPath();c.arc(lx+8,ly,4,_PI,0);c.stroke();               // shackle
+    _bp(c);roundRect(c,lx,ly,16,12,2);_fil(c);_st2(c);
+    _bp(c);c.arc(lx+8,ly,4,_PI,0);_st2(c);               // shackle
     c.fillStyle=_gC('--ink');
-    c.beginPath();c.arc(lx+8,ly+6,1.4,0,PI2);c.fill();                 // keyhole
+    _bp(c);c.arc(lx+8,ly+6,1.4,0,PI2);_fil(c);                 // keyhole
     return;
   }
   if(_selN()===1){
@@ -3670,33 +3671,33 @@ function drawSelection(c){
     if(rh){
       const kp=_w2({x:rh.x,y:rh.y}),ap=_w2({x:rh.ax,y:rh.ay});
       c.strokeStyle=_ac();c.lineWidth=1.5;   // a11y-audit-2026-07
-      c.beginPath();c.moveTo(ap.x,ap.y);c.lineTo(kp.x,kp.y);c.stroke();
+      _bp(c);c.moveTo(ap.x,ap.y);c.lineTo(kp.x,kp.y);_st2(c);
       c.fillStyle=_p();c.strokeStyle=_gC('--brand-ink');
-      c.beginPath();c.arc(kp.x,kp.y,hs/2,0,PI2);c.fill();c.stroke();
+      _bp(c);c.arc(kp.x,kp.y,hs/2,0,PI2);_fil(c);_st2(c);
     }
     if(sh.elbow){                        // ADR-0072: trunk-position handle
       const tr=_elbowTrunk(sh);
       if(tr){
         const tp=_w2({x:(tr[0].x+tr[1].x)/2,y:(tr[0].y+tr[1].y)/2});
-        c.beginPath();c.arc(tp.x,tp.y,hs*0.45,0,PI2);c.fill();c.stroke();
+        _bp(c);c.arc(tp.x,tp.y,hs*0.45,0,PI2);_fil(c);_st2(c);
       }
     }
     if(sh.label&&(_conn(sh.type))){            // ADR-0117: draggable label anchor
       const lp=_connLabelXY(sh);
       if(lp){const tp=_w2(lp);
         c.fillStyle=_ac();
-        c.beginPath();c.arc(tp.x,tp.y,hs*0.5,0,PI2);c.fill();c.stroke()}
+        _bp(c);c.arc(tp.x,tp.y,hs*0.5,0,PI2);_fil(c);_st2(c)}
     }
     if((_conn(sh.type))&&!sh.elbow&&!sh.curve){   // ADR-0090: every vertex + every segment midpoint gets a handle dot
       const pts=_linePts(sh);
       for(let i=0;i<_ln(pts);i++){
         if(i&&i<_ln(pts)-1){                           // interior vertex
           const tp=_w2(pts[i]);
-          c.beginPath();c.arc(tp.x,tp.y,hs*0.45,0,PI2);c.fill();c.stroke();
+          _bp(c);c.arc(tp.x,tp.y,hs*0.45,0,PI2);_fil(c);_st2(c);
         }
         if(i<_ln(pts)-1){                              // segment midpoint (insert handle)
           const mp=_w2({x:(pts[i].x+pts[i+1].x)/2,y:(pts[i].y+pts[i+1].y)/2});
-          c.beginPath();c.arc(mp.x,mp.y,hs*0.35,0,PI2);c.fill();c.stroke();
+          _bp(c);c.arc(mp.x,mp.y,hs*0.35,0,PI2);_fil(c);_st2(c);
         }
       }
     }
@@ -3720,9 +3721,9 @@ function drawSelection(c){
     const gkp=_w2({x:gr.x,y:gr.y}),gap=_w2({x:gr.ax,y:gr.ay});
     const hs2=HANDLE_SIZE;
     c.strokeStyle=_ac();c.lineWidth=1.5;
-    c.beginPath();c.moveTo(gap.x,gap.y);c.lineTo(gkp.x,gkp.y);c.stroke();
+    _bp(c);c.moveTo(gap.x,gap.y);c.lineTo(gkp.x,gkp.y);_st2(c);
     c.fillStyle=_p();c.strokeStyle=_gC('--brand-ink');
-    c.beginPath();c.arc(gkp.x,gkp.y,hs2/2,0,PI2);c.fill();c.stroke();
+    _bp(c);c.arc(gkp.x,gkp.y,hs2/2,0,PI2);_fil(c);_st2(c);
   }
 }
 // ADR-0158: point-in-polygon (even-odd ray cast) for the lasso.
