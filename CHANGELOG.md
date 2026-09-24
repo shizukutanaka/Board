@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.290]
+
+### 追加
+- **矢印ヘッド巡回に 'none'** (ADR-0233)。ctx メニュー
+  のヘッド巡回が arrow→dot→open→none の4値に —
+  ヘッドを消すのに型変換が不要になった。
+
 ## [1.7.289]
 
 ### 追加
