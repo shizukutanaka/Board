@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.283]
+
+### 修正
+- **drawio note/swimlane 逆マップ** (ADR-0226)。インポート
+  で `shape=note`→sticky (`fillColor`→`color`)、
+  `swimlane`→frame に復元 — ADR-0220 エクスポートとの
+  往復で sticky/frame が保存される。
+
 ## [1.7.282]
 
 ### 修正
