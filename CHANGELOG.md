@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.178]
+
+### 追加
+- **表示範囲を PNG 書き出し** (ADR-0121)。export メニューに
+  「表示範囲を PNG 書き出し」— コンテンツ bbox ではなく現在の
+  ビューポート矩形を既定 2x でクロップ (余白・部分切りを含む
+  見たまま、exportScale 上限適用)。
+
 ## [1.7.177]
 
 ### 追加

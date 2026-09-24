@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.177';
+const V='1.7.178';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -878,7 +878,7 @@ const I18N={
     ctxHSpace:'水平均等配置',ctxVSpace:'垂直均等配置',
     ctxSelectAll:'すべて選択',ctxClear:'全消去',
     ctxExportPNG:'PNG書き出し',ctxCopyPNG:'PNGをクリップボードにコピー',ctxExportSVG:'SVG書き出し',ctxExportPDF:'PDF書き出し',ctxExportExc:'Excalidraw (.excalidraw) 書き出し',ctxExportBoard:'.boardファイル書き出し',ctxImportBoard:'.boardファイル読み込み...',
-    ctxExportSelPNG:'選択をPNG書き出し',ctxCopySelPNG:'選択のPNGをコピー',ctxExportSelSVG:'選択をSVG書き出し',ctxCopySelSVG:'選択のSVGをコピー',ctxCopyBoard:'ボードJSONをコピー',ctxExportPNG1x:'PNG @1x 書き出し',ctxExportPNG4x:'PNG @4x 書き出し (高解像度)',ctxExportSelBoard:'選択を.board書き出し',ctxReplaceImg:'画像を差替え',
+    ctxExportSelPNG:'選択をPNG書き出し',ctxCopySelPNG:'選択のPNGをコピー',ctxExportSelSVG:'選択をSVG書き出し',ctxCopySelSVG:'選択のSVGをコピー',ctxCopyBoard:'ボードJSONをコピー',ctxExportPNG1x:'PNG @1x 書き出し',ctxExportPNG4x:'PNG @4x 書き出し (高解像度)',ctxExportViewPNG:'表示範囲を PNG 書き出し',ctxExportSelBoard:'選択を.board書き出し',ctxReplaceImg:'画像を差替え',
     share:'共有',shareTitle:'共有',
     shareUrlHint:'このURLをコピーして送ると、相手に内容が共有されます',
     shareEncLabel:'🔒 暗号化リンク (推奨)',
@@ -954,7 +954,7 @@ const I18N={
     ctxHSpace:'Distribute horizontal',ctxVSpace:'Distribute vertical',
     ctxSelectAll:'Select all',ctxClear:'Clear all',
     ctxExportPNG:'Export PNG',ctxCopyPNG:'Copy PNG to clipboard',ctxExportSVG:'Export SVG',ctxExportPDF:'Export PDF',ctxExportExc:'Export .excalidraw',ctxExportBoard:'Export .board file',ctxImportBoard:'Import .board file...',
-    ctxExportSelPNG:'Export selection to PNG',ctxCopySelPNG:'Copy selection PNG',ctxExportSelSVG:'Export selection to SVG',ctxCopySelSVG:'Copy selection SVG',ctxCopyBoard:'Copy board JSON',ctxExportPNG1x:'Export PNG @1x',ctxExportPNG4x:'Export PNG @4x (hi-res)',ctxExportSelBoard:'Export selection to .board',ctxReplaceImg:'Replace image',
+    ctxExportSelPNG:'Export selection to PNG',ctxCopySelPNG:'Copy selection PNG',ctxExportSelSVG:'Export selection to SVG',ctxCopySelSVG:'Copy selection SVG',ctxCopyBoard:'Copy board JSON',ctxExportPNG1x:'Export PNG @1x',ctxExportPNG4x:'Export PNG @4x (hi-res)',ctxExportViewPNG:'Export visible region as PNG',ctxExportSelBoard:'Export selection to .board',ctxReplaceImg:'Replace image',
     share:'Share',shareTitle:'Share',
     shareUrlHint:'Copy this URL and send it — the recipient gets your board.',
     shareEncLabel:'🔒 Encrypted link (recommended)',
@@ -5508,6 +5508,31 @@ function exportSelection(fmt){
   else if(fmt==='svgcopy')copySVG(sel);   // ADR-0087
   else exportPNG(sel);
 }
+// ADR-0121: export the viewport crop — what you see, not the bbox fit.
+// World-space view rect = canvas CSS size / zoom at the current pan; the
+// offscreen transform mirrors _renderPngBlob with b=view and no pad.
+function exportViewportPNG(scale){
+  const r=canvas.getBoundingClientRect();
+  const v=state.viewport;
+  const view={x:v.x,y:v.y,w:r.width/v.zoom,h:r.height/v.zoom};
+  const shapes=state.shapes.filter(s=>inView(s,view));
+  if(!shapes.length){UI.toast(t('empty'),'warn');return}
+  const off=document.createElement('canvas');
+  const sc=exportScale(view.w,view.h,scale||2);
+  off.width=Math.ceil(view.w*sc);off.height=Math.ceil(view.h*sc);
+  const oc=off.getContext('2d');
+  oc.fillStyle=getCSS('--paper');oc.fillRect(0,0,off.width,off.height);
+  oc.setTransform(sc,0,0,sc,-view.x*sc,-view.y*sc);
+  for(const s of shapes)drawShape(s,oc);
+  off.toBlob(bl=>{
+    if(!bl){UI.toast(t('exportFailed'),'err');return}
+    const url=URL.createObjectURL(bl);
+    const a=document.createElement('a');
+    a.href=url;a.download=`${state.docName||'board'}-view${sc&&sc!==2?'@'+sc+'x':''}.png`;
+    a.click();setTimeout(()=>URL.revokeObjectURL(url),1e4);
+    UI.toast(t('exported'),'ok');
+  },'image/png');
+}
 function exportPNG(shapes=state.shapes,scale){
   _renderPngBlob(shapes,bl=>{
     if(!bl){UI.toast(t('exportFailed'),'err');return}
@@ -7212,6 +7237,7 @@ const UI={
       ['ctxExportPNG','⌘E',exportPNG],
       ['ctxExportPNG1x','',()=>exportPNG(state.shapes,1)],
       ['ctxExportPNG4x','',()=>exportPNG(state.shapes,4)],
+      ['ctxExportViewPNG','',()=>exportViewportPNG(2)],
       ['ctxCopyPNG','',copyPNG],
       ['ctxExportSVG','⌘⇧E',exportSVG],
       ['ctxExportPDF','⌘P',exportPDF],
