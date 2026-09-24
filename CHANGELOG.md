@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.314] - 2026-09-24
+
+### Fixed
+- .drawio export: edge の opacity= 出力漏れを修正 (往復の非対称、
+  ADR-0262)
+
 ## [1.7.313] - 2026-09-24
 
 ### Added

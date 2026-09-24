@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.313';
+const V='1.7.314';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6553,6 +6553,7 @@ function boardToDrawio(shapes){
     if(s.dash)sty+='dashed=1;'+(s.dash===2?'dashPattern=1 1;':'');   // ADR-0255
     if(s.r)sty+='rounded=1;';
     if(s.shadow)sty+='shadow=1;';                                            // ADR-0246
+    if(s.opacity!=null&&s.opacity<1)sty+='opacity='+Math.round(s.opacity*100)+';';   // ADR-0262
     if(s.fill)sty+='labelBackgroundColor='+s.fill+';';                       // ADR-0249
     if(s.label&&(s.bold||s.italic||s.under)){const _ef=(s.bold?1:0)|(s.italic?2:0)|(s.under?4:0);sty+='fontStyle='+_ef+';';}
     if(s.label&&s.fontSize)sty+='fontSize='+s.fontSize+';';

@@ -709,6 +709,7 @@ const checks = [
   ['drawio shadow=1 round-trips s.shadow (ADR-0246)', html.includes("sty+='shadow=1;'")&&html.includes("sty.shadow==='1'")],
   ['drawio fontColor ↔ text/sticky s.stroke (ADR-0247)', html.includes("sty+='fontColor='+s.stroke")&&html.includes("sty.fontColor!=='none'")],
   ['visualViewport.resize re-runs canvas resize for iOS chrome (ADR-0251)', html.includes("visualViewport.addEventListener('resize',resize)")],
+  ['drawio edge opacity export (ADR-0262)', (html.match(/Math.round\(s.opacity\*100\)/g)||[]).length>=2],
   ['drawio rotation= ↔ s.rotate on vertices (ADR-0261)', html.includes("rotation='+Math.round(s.rotate)")&&html.includes("+sty.rotation)s.rotate")],
   ['drawio flipH/flipV ↔ s.flip bitmask (ADR-0260)', (html.match(/flipH=1/g)||[]).length>=2&&html.includes("sty.flipH==='1'")],
   ['drawio shape=image round-trips s.dataUrl (ADR-0259)', html.includes("sty='shape=image;'")&&html.includes("sty+='image='+s.dataUrl")&&html.includes("_im[1].slice(0,25_000_000)")],
