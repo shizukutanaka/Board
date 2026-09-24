@@ -439,7 +439,7 @@ const checks = [
   ['shift axis constraint in moveDelta + objectSnap skipped', html.includes("if(_abs(dx)>=_abs(dy))dy=0;else dx=0;")&&html.includes('moveDelta(wp,shift,alt)')&&html.includes('doMove(wp,e.shiftKey,e.altKey)')&&html.includes('endSelect(wp,e.shiftKey,e.altKey)')],
   ['moveAxis i18n ja+en + help row', html.includes("moveAxis:'軸拘束移動'")&&html.includes("moveAxis:'Constrain move axis'")&&html.includes("['⇧ + drag',k.moveAxis]")],
   // v1.7.125: ADR-0067 per-type edge projection
-  ['edge projection: diamond/ellipse contour formula', html.includes("sh.type==='diamond'?1/((_abs(dx)/(_rx||1e-6))")&&html.includes("sh.type==='ellipse'?1/(Math.hypot(dx/(_rx||1e-6),dy/(_ry||1e-6))||1e-6)")],
+  ['edge projection: diamond/ellipse contour formula', html.includes("sh.type==='diamond'?1/((_abs(dx)/(_rx||1e-6))")&&html.includes("sh.type==='ellipse'?1/(_hp(dx/(_rx||1e-6),dy/(_ry||1e-6))||1e-6)")],
   // v1.7.126: ADR-0068 curved connector
   ['curve route: quadratic draw + sampled hit + svg path', html.includes('c.quadraticCurveTo(cc.x,cc.y,e.x2,e.y2)')&&html.includes('const pts=_curveSegs(s);')&&html.includes('Q ${_num(cc.x+ox)}')],
   ['curve ctx menu + i18n + exclusive toggle', html.includes("['ctxCurve','',toggleCurve]")&&html.includes("ctxCurve:'曲線'")&&html.includes("ctxCurve:'Curved'")&&html.includes('elbow:s.elbow?0:1,curve:0')],
@@ -486,7 +486,7 @@ const checks = [
   ['select same colour (ctx)', html.includes('selectSamePaint')&&html.includes('ctxSelectSame')&&html.includes("s0.type==='sticky'?s0.color:s0.fill")],
   ['sticky ⌘Enter chain: spawn next sticky + editor', html.includes('_stickyChain')&&html.includes('x+s.w+16')&&html.includes('openTextEditor(n,true)')],
   ['boot empty-view guard → fitToContent', html.includes('_fitIfEmptyView()')&&html.includes('b.x+b.w<v.x')],
-  ['tidy grid reflow (ctx, align op dir)', html.includes("doAlign('tidy')")&&html.includes('ctxTidy')&&html.includes('Math.ceil(Math.sqrt(units.length))')],
+  ['tidy grid reflow (ctx, align op dir)', html.includes("doAlign('tidy')")&&html.includes('ctxTidy')&&html.includes('_ceil(_sqr(units.length))')],
   ['swap positions (ctx, 2 selections)', html.includes("doAlign('swap')")&&html.includes('ctxSwap')&&html.includes('units.length!==2')],
   ['snap selection to grid (ctx, align op)', html.includes('snapSelToGrid')&&html.includes('ctxSnapGrid')&&html.includes("dir:'gsnap'")&&html.includes('_rnd(b.x/GRID_SIZE)')],
   ['select same type (ctx)', html.includes('selectSameType')&&html.includes('ctxSelectSameType')&&html.includes('s.type===sel[0].type')],
@@ -559,7 +559,7 @@ const checks = [
   ['context menu separators have role=separator', html.includes("setAttribute('role','separator')")],
   // v1.6.21: fifth audit pass
   ['exportPDF uses setTransform for correct world-coordinate mapping', html.includes('oc.setTransform(dpr,0,0,dpr,(-b.x+pad)*dpr,(-b.y+pad)*dpr)')],
-  ['G.hit handles single-point pen dot (length===1 early return)', html.includes('pts.length===1)return Math.hypot')],
+  ['G.hit handles single-point pen dot (length===1 early return)', html.includes('pts.length===1)return _hp')],
   ['doPaste remaps groupId via gidMap to avoid cross-group contamination', html.includes('gidMap') && html.includes('gidMap.has(sh.groupId)')],
   // v1.6.22: IME + pen RDP + docs
   ['frame label keydown guards ev.isComposing (IME safe)', html.includes('inp.addEventListener') && html.includes('if(ev.isComposing)return')],
@@ -922,7 +922,7 @@ const checks = [
   ['label fontSize honored across renderers', html.includes('const fs=s.fontSize||12;')&&html.includes('const fs=s.fontSize||14')&&html.includes("s.type!=='sticky'&&!s.label)||s.locked")],
     ['labels honor bold/italic/under/strike (ADR-0170)', html.includes('c.font=_fontStr(s,fs)')&&html.includes('font-weight="600"')&&html.includes('text-decoration=')],
   ['box/image labels honour s.align (ADR-0171)', html.includes("const al=s.align||'center';")&&html.includes('anc3=')&&html.includes("s.type!=='sticky'&&s.type!=='frame'&&!s.label)||s.locked)return;   // ADR-0171/0197")],
-  ['locked selection shows a padlock badge', html.includes('c.arc(lx+8,ly,4,Math.PI,0)')&&html.includes("if(lockedSel){")],
+  ['locked selection shows a padlock badge', html.includes('c.arc(lx+8,ly,4,_PI,0)')&&html.includes("if(lockedSel){")],
   ['Tab cycling excludes locked+hidden shapes (filter before cycleSel)', html.includes("const ids=state.shapes.filter(s=>!s.locked&&s.visible!==0).map(s=>s.id)")],
   // v1.6.60: bound connectors - arrow/line endpoints follow bound shapes
   ['connEnds helper derives bound endpoints', html.includes("function connEnds") && html.includes("function _edgePt")],
@@ -935,7 +935,7 @@ const checks = [
   // v1.6.61: rotation - shapes rotate on canvas, undo/redo, keyboard ,/.
   ['doRotate function exists', html.includes("function doRotate") && html.includes("op:'align',dir:'rotate'")],
   ['rotation applied in drawShape (save/restore)', html.includes("const _rot=shapeRot(s);") && html.includes("if(_rot)c.restore()")],
-  ['G.hit applies inverse rotation (box-only, matching shapeRot)', html.includes("if(s.rotate&&s.w!=null){const _cx=s.x+s.w/2") && html.includes("_r=-s.rotate*Math.PI/180")],
+  ['G.hit applies inverse rotation (box-only, matching shapeRot)', html.includes("if(s.rotate&&s.w!=null){const _cx=s.x+s.w/2") && html.includes("_r=-s.rotate*_PI/180")],
   // v1.7.70: the G.bbox quick-reject must run BEFORE the un-rotation branch — reversing
   // them compares a local-frame point against the rotated world envelope and makes large
   // parts of any rotated non-square box unclickable. Lock the ordering.
@@ -984,7 +984,7 @@ const checks = [
   // v1.6.67: drag-to-rotate handle
   ['rotation handle helper + hit-test present', html.includes("function getRotHandle(s)") && html.includes("function hitRotHandle(wp,s)")],
   ['pointerdown enters rotate dragKind on knob hit', html.includes("const rh=hitRotHandle(wp,onlySel);") && html.includes("ptr.dragKind='rotate';")],
-  ['rotate drag maps angle (knob-up=0°), Shift snaps 15°', html.includes("Math.atan2(wp.y-ptr.rotCy,wp.x-ptr.rotCx)*180/Math.PI+90") && html.includes("deg=_rnd(deg/15)*15;")],
+  ['rotate drag maps angle (knob-up=0°), Shift snaps 15°', html.includes("_at2(wp.y-ptr.rotCy,wp.x-ptr.rotCx)*180/_PI+90") && html.includes("deg=_rnd(deg/15)*15;")],
   ['rotate commit records upd + announces angle', html.includes("ptr.dragKind==='rotate'") && html.includes("UI.toast(describeShape(rsh)); // SR announce new angle")],
   ['rotation knob drawn in drawSelection', html.includes("const rh=getRotHandle(sh);") && html.includes("c.arc(kp.x,kp.y,hs/2,0,PI2)")],
   // v1.7.62: the overlay pass (selection/guides/marquee/laser/peer cursors) draws in CSS px

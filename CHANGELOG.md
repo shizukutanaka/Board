@@ -2,6 +2,16 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.404] - 2026-09-24
+
+### Fixed
+- .drawio emit でペンストロークが消失していた — polyline edge として
+  出力 (reimport は line+way、画素保存) (ADR-0354)
+
+### Changed
+- Math 系 shorthand `_hp/_PI/_fl/_at2/_ceil/_sgn/_sqr` で ~900B
+  回収 (180箇所) (ADR-0355)
+
 ## [1.7.403] - 2026-09-24
 
 ### Fixed
