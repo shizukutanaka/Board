@@ -801,7 +801,7 @@ const _on=(e,t,f,o)=>e.addEventListener(t,f,o);                          // ADR-
 const _vp=()=>state.viewport,_vpS=()=>({x:+_vp().x.toFixed(2),y:+_vp().y.toFixed(2),zoom:+_vp().zoom.toFixed(4)});                                              // ADR-0362: live-read (tests reassign the object)
 const _pi=()=>state.peerId,_ro=()=>state.readout,_gd=()=>state.guides,_cl=()=>state.clipboard,_bb=s=>G.bbox(s),_oa=Object.assign;   // ADR-0378
 const _sO=()=>state.seenOps,_la=()=>state.lasso,_mq=()=>state.marquee,_dd=()=>state.dupDelta,_w2=p=>G.w2s(p),_s2=p=>G.s2w(p),_cE=connEnds;   // ADR-0382
-const _dpr=()=>window.devicePixelRatio,_iA=Array.isArray,_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log,_mP=()=>new Map(),_sT=()=>new Set(),_eU=encodeURIComponent,_dU=decodeURIComponent,_un='undefined',_AU='arrowup',_AD='arrowdown',_AL2='arrowleft',_AR2='arrowright';   // ADR-0384/0386/0391/0395/0397
+const _dpr=()=>window.devicePixelRatio,_iA=Array.isArray,_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log,_mP=()=>new Map(),_sT=()=>new Set(),_eU=encodeURIComponent,_dU=decodeURIComponent,_un='undefined',_AU='arrowup',_AD='arrowdown',_AL2='arrowleft',_AR2='arrowright',_ES='escape',_EN='enter',_TB='tab',_IK='#0F172A',_YW='#FEF08A';   // ADR-0384/0386/0391/0395/0397
 const _sh=()=>state.shapes;                                                // ADR-0364
 const _sl=()=>state.selection;
 const _st=()=>state.style;
@@ -822,7 +822,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.441';
+const V='1.7.442';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -856,7 +856,7 @@ const CURSOR_THROTTLE_MS=60;            // ADR-0010: peer cursor broadcast rate 
 const MAX_PEERS=32;                     // presence-map cap: a flooding peer can't grow _pr()/DOM unboundedly
 const MAX_PEER_ID_LEN=64;               // real ids are 32-char uids; anything longer is garbage
 const PEER_COLORS=['#00C4CC','#7C3AED','#DC2626','#F59E0B','#16A34A','#2563EB','#DB2777','#EA580C'];
-const uid=()=>typeof crypto!=='undefined'&&crypto.randomUUID
+const uid=()=>typeof crypto!==_un&&crypto.randomUUID
   ?crypto.randomUUID().replace(/-/g,'')  // 122-bit UUID v4; no collision concern
   :_rN().toString(36).slice(2,10)+_now().toString(36).slice(-4); // fallback
 // peerId: persistent per browser, used to dedup CRDT ops
@@ -1069,7 +1069,7 @@ const state={
   viewport:{x:0,y:0,zoom:1},// world-to-screen transform
 
   tool:'select',
-  style:{stroke:'#0F172A',fill:null,size:2,opacity:1,dash:0},
+  style:{stroke:_IK,fill:null,size:2,opacity:1,dash:0},
   history:[],               // op array
   histIdx:-1,               // points to last applied op; -1 = none applied
   clipboard:null,
@@ -1807,7 +1807,7 @@ function _hatchSegs(x,y,w,h,gap,cross){
 function _hatchCtx(c,s){
   const segs=_hatchSegs(s.x,s.y,s.w,s.h,_max(6,(s.size||1)*4),s.fstyle==='cross');
   c.save();c.clip();c.globalAlpha=0.55;
-  c.strokeStyle=s.stroke||'#0F172A';c.lineWidth=_max(0.5,(s.size||1)*0.6);c.setLineDash([]);
+  c.strokeStyle=s.stroke||_IK;c.lineWidth=_max(0.5,(s.size||1)*0.6);c.setLineDash([]);
   c.beginPath();for(const g of segs){c.moveTo(g[0],g[1]);c.lineTo(g[2],g[3])}c.stroke();
   c.restore();
 }
@@ -1960,7 +1960,7 @@ function getImg(dataUrl){
   _imgCache.set(k,img);
   return img;
 }
-const STICKY_COLORS=['#FEF08A','#FBCFE8','#BBF7D0','#BFDBFE','#DDD6FE','#FED7AA'];
+const STICKY_COLORS=[_YW,'#FBCFE8','#BBF7D0','#BFDBFE','#DDD6FE','#FED7AA'];
 
 // ====================== PEN BITMAP CACHE (ADR-0018) ======================
 // Committed pen strokes are immutable between ops, but drawPen re-walks every
@@ -2653,7 +2653,7 @@ function shapeRot(s){return s.rotate&&s.w!=null?s.rotate:0;}
 function _drawBoxLabel(s,c){
   if(!s.label)return;
   c.save();
-  c.fillStyle=s.stroke||'#0F172A';
+  c.fillStyle=s.stroke||_IK;
   const fs=s.fontSize||14;   // ADR-0169
   c.font=_fontStr(s,fs);   // ADR-0170
   const al=s.align||'center';   // ADR-0171: label honours horizontal align
@@ -2685,7 +2685,7 @@ function _drawImgLabel(s,c){
   const sh_=lines.length*lh+4,sy=s.valign==='top'?s.y:s.y+s.h-sh_;   // ADR-0179
   c.fillStyle=s.fill&&s.fill!=='none'?s.fill:_p()||'#fff';c.globalAlpha=0.85;   // ADR-0288
   c.fillRect(s.x,sy,s.w,sh_);
-  c.globalAlpha=1;c.fillStyle=s.stroke||'#0F172A';
+  c.globalAlpha=1;c.fillStyle=s.stroke||_IK;
   const al2=s.align||'center';   // ADR-0171
   c.textAlign=al2==='left'?'left':al2==='right'?'right':'center';c.textBaseline='middle';
   const tx2=al2==='left'?s.x+6:al2==='right'?s.x+s.w-6:s.x+s.w/2;
@@ -2778,7 +2778,7 @@ function _drawConnLabel(s,c){
   const th=lns.length*llh;
   if(s.fill!=='none'){c.fillStyle=s.fill||_p()||'#fff';   // ADR-0288
   c.fillRect(mx-w/2-pad,my-th/2,w+pad*2,th)}
-  c.fillStyle=s.stroke||'#0F172A';
+  c.fillStyle=s.stroke||_IK;
   for(let i=0;i<lns.length;i++)c.fillText(lns[i],mx,my+(i-(lns.length-1)/2)*llh);
   if(s.under||s.strike){c.strokeStyle=c.fillStyle;c.lineWidth=_max(1,fs*0.06);   // ADR-0170
     for(let i=0;i<lns.length;i++){const lw=_lm.ws[i],ly=my+(i-(lns.length-1)/2)*llh;
@@ -2791,7 +2791,7 @@ function drawShape(s,c){
   c=c||ctx;
   c.globalAlpha=s.opacity??1;c.letterSpacing=(s.spacing||0)+'px';   // ADR-0205
   c.lineCap='round';c.lineJoin='round';
-  c.strokeStyle=s.stroke||'#0F172A';
+  c.strokeStyle=s.stroke||_IK;
   c.lineWidth=s.size||1;
   c.setLineDash((s.dash&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond'||_conn(s.type)||s.type==='frame'||s.type==='image'))?dashArr(s.dash,s.size):[]);   // ADR-0178
   if(s.fill&&s.fill!=='none'){c.fillStyle=s.fill}   // ADR-0288
@@ -2887,7 +2887,7 @@ function drawShape(s,c){
       break;}
     case 'sticky':{
       const r=_min(6,_abs(s.w)/6,_abs(s.h)/6);
-      c.fillStyle=s.color||'#FEF08A';
+      c.fillStyle=s.color||_YW;
       c.shadowColor='rgba(0,0,0,.08)';c.shadowBlur=8;c.shadowOffsetY=2;
       c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,r);c.fill();
       c.shadowColor=_TR;c.shadowBlur=0;c.shadowOffsetY=0;
@@ -3147,7 +3147,7 @@ function _polylineRd(pts,ox,oy,r){
 function _arrowHeadShape(c,x,y,ang,ah,stroke,style){
   if(style==='none')return;                                  // ADR-0230
   const a1=ang+_PI-0.5,a2=ang+_PI+0.5;
-  const col=stroke||'#0F172A';
+  const col=stroke||_IK;
   if(style==='dot'){
     c.beginPath();c.arc(x,y,ah*0.35,0,PI2);c.fillStyle=col;c.fill();return;
   }
@@ -3257,7 +3257,7 @@ function drawText(s,c){
   c=c||ctx;
   if(s.id===_ed())return;
   _csh(s,c)   // ADR-0211
-  c.fillStyle=s.stroke||'#0F172A';
+  c.fillStyle=s.stroke||_IK;
   const fs=s.fontSize||16;
   c.font=_fontStr(s,fs);                                    // ADR-0078
   c.textBaseline='top';
@@ -3271,11 +3271,11 @@ function drawText(s,c){
   if(s.fill){const mw=_tm.w;
     const bx=s.align==='center'?ax-mw/2:s.align==='right'?ax-mw:ax;
     if(s.fill!=='none'){c.save();c.fillStyle=s.fill;c.fillRect(bx-3,s.y-3,mw+6,lines.length*lh+6);c.restore()}   // ADR-0288
-    c.fillStyle=s.stroke||'#0F172A';}
+    c.fillStyle=s.stroke||_IK;}
   for(let i=0;i<lines.length;i++)c.fillText(lines[i],ax,s.y+i*lh);
   // ADR-0095: canvas has no text-decoration — stroke a line under each row
   // (per-line measureText honours all three align modes).
-  if(s.under||s.strike){c.save();c.strokeStyle=s.stroke||'#0F172A';c.lineWidth=_max(1,fs*0.06);
+  if(s.under||s.strike){c.save();c.strokeStyle=s.stroke||_IK;c.lineWidth=_max(1,fs*0.06);
     for(let i=0;i<lines.length;i++){const lw=_tm.ws[i];
       const ux=s.align==='center'?ax-lw/2:s.align==='right'?ax-lw:ax;
       if(s.under){const uy=s.y+i*lh+fs*1.08;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}
@@ -4441,7 +4441,7 @@ _on(window,'paste',e=>{
         const built=[];
         rows.forEach((row,ri)=>row.slice(0,C).forEach((cell,ci)=>{
           const v=_St(cell||'').trim();
-          if(v)built.push(Shape.make('sticky',{x:x0+ci*(sw+gx),y:y0+ri*(sh+gy),w:sw,h:sh,color:'#FEF08A',text:v.slice(0,2000)}));
+          if(v)built.push(Shape.make('sticky',{x:x0+ci*(sw+gx),y:y0+ri*(sh+gy),w:sw,h:sh,color:_YW,text:v.slice(0,2000)}));
         }));
         if(built.length){Store.commit({op:'addMany',shapes:built});state.selection=new Set(built.map(x=>x.id));_iv();_tst(t('textPasted'),'ok')}
         return;
@@ -5416,7 +5416,7 @@ function positionTextEditor(ta,s){
   ta.style.left=(r.left+sp.x)+'px';
   ta.style.top=(r.top+sp.y)+'px';
   ta.style.fontSize=(s.fontSize*_vp().zoom)+'px';
-  ta.style.color=s.stroke||'#0F172A';
+  ta.style.color=s.stroke||_IK;
   ta.style.textAlign=s.align==='center'?'center':s.align==='right'?'right':'left';   // ADR-0073
   ta.style.fontWeight=s.bold?'600':'';ta.style.fontStyle=s.italic?'italic':'';ta.style.textDecoration=[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ');   // ADR-0078/0095/0100
   ta.style.fontFamily=_fontFam(s);                                          // ADR-0173
@@ -5492,22 +5492,22 @@ _on(window,_KD,e=>{
   if(Presentation.isActive()){
     if(k===_AR2||k===_AD||k===' '){_pd(e);Presentation.next()}
     else if(k===_AL2||k===_AU){_pd(e);Presentation.prev()}
-    else if(k==='escape'){Presentation.leave()}
+    else if(k===_ES){Presentation.leave()}
     return;
   }
   // Dialog isolation + focus trap: while help/share is open, keep Tab inside the dialog and
   // stop canvas shortcuts (tool keys, Delete, undo…) from firing behind it. Escape falls
   // through to the close handler below.
   const _dlg=_openDialog();
-  if(_dlg&&k!=='escape'){
-    if(k==='tab'){const tgt=_trapStep(_focusables(_dlg),document.activeElement,e.shiftKey);if(tgt){_pd(e);tgt.focus()}}
+  if(_dlg&&k!==_ES){
+    if(k===_TB){const tgt=_trapStep(_focusables(_dlg),document.activeElement,e.shiftKey);if(tgt){_pd(e);tgt.focus()}}
     return;
   }
   if(meta&&k==='z'&&!e.shiftKey){_pd(e);if(Store.undo())_tst(t('undone'))}
   else if(meta&&(k==='y'||(k==='z'&&e.shiftKey))){_pd(e);if(Store.redo())_tst(t('redone'))}
   else if(meta&&k==='a'){_pd(e);state.selection=new Set(_sh().filter(s=>s.visible!==0).map(s=>s.id));if(_selN())_aS();_iv()}   // ADR-0037
   if(k==='p'&&e.shiftKey&&!meta&&!e.altKey){_pd(e);Presentation.enter();return}
-  else if(meta&&k==='enter'){_pd(e);Presentation.enter()}
+  else if(meta&&k===_EN){_pd(e);Presentation.enter()}
   else if(meta&&k==='c'){_pd(e);doCopy()}
   else if(meta&&k==='v'&&e.shiftKey){_pd(e);doPasteInPlace()}   // ADR-0113
   else if(meta&&k==='v'){_pd(e);doPaste()}
@@ -5530,7 +5530,7 @@ _on(window,_KD,e=>{
   else if(meta&&k==='u'&&!e.shiftKey){_pd(e);toggleTextFlag('under')}   // ADR-0095
   else if(meta&&k==='0'){_pd(e);zoomReset()}
   else if(k==='delete'||k==='backspace'){_pd(e);doDelete()}
-  else if(k==='tab'){
+  else if(k===_TB){
     // Cycle selection (z-order) for keyboard/SR users; wraps, recentres, announces.
     _pd(e);
     const ids=_sh().filter(s=>!s.locked&&s.visible!==0).map(s=>s.id);   // ADR-0163: hidden shapes are unreachable by pointer — Tab parity
@@ -5544,7 +5544,7 @@ _on(window,_KD,e=>{
     }
     _iv();
   }
-  else if(k==='enter'&&!meta&&!e.shiftKey){
+  else if(k===_EN&&!meta&&!e.shiftKey){
     // ADR-0013: with the select tool active, Enter re-edits the single selected shape's
     // label/text instead (createShapeKbd() would no-op for 'select' anyway, so no clash).
     // Any other tool keeps the original behaviour: place its default shape at viewport centre.
@@ -5587,7 +5587,7 @@ _on(window,_KD,e=>{
       _iv();
     }
   }
-  else if(k==='escape'){
+  else if(k===_ES){
     // WCAG: Escape dismisses an open modal first, else clears selection/draft.
     const ctx2=_g('ctx');
     if(ctx2.dataset.open==='true'){UI.closeCtxMenu();return}
@@ -6418,7 +6418,7 @@ function excScene(shapes){
         els.push(E(s,{type:'frame',x:s.x,y:s.y,width:s.w||0,height:s.h||0,name:s.label||'Frame'}));break;
       case'sticky':{
         els.push(E(s,{type:'rectangle',x:s.x,y:s.y,width:s.w,height:s.h,
-          backgroundColor:s.color||'#FEF08A',fillStyle:'solid',roundness:{type:3}}));
+          backgroundColor:s.color||_YW,fillStyle:'solid',roundness:{type:3}}));
         if(s.text){const _tid=uid();els.push(_ct(s,_tid,s.text,false,14));els[els.length-2].boundElements=[{id:_tid,type:'text'}]}   // ADR-0280
         break;}
       case'text':
@@ -6587,7 +6587,7 @@ function drawioToShapes(txt){
     if('ellipse' in sty||sty.shape==='cylinder'||sty.shape==='cloud')s=Shape.make('ellipse',{x,y,w:w||120,h:ht||80,label:lbl.slice(0,240)});   // ADR-0274
     else if(sty.shape==='rhombus'||'rhombus' in sty)s=Shape.make('diamond',{x,y,w:w||120,h:ht||80,label:lbl.slice(0,240)});
     else if('swimlane' in sty||sty.shape==='swimlane')s=Shape.make('frame',{x,y,w:w||800,h:ht||500,label:lbl.slice(0,120)});   // ADR-0226
-    else if(sty.shape==='note'){s=Shape.make('sticky',{x,y,w:w||160,h:ht||160,color:'#FEF08A',text:lbl.slice(0,2000)});   // ADR-0226
+    else if(sty.shape==='note'){s=Shape.make('sticky',{x,y,w:w||160,h:ht||160,color:_YW,text:lbl.slice(0,2000)});   // ADR-0226
       if(sty.fillColor&&sty.fillColor!=='none')s.color=sty.fillColor}
     else if(('text' in sty||sty.text===1)&&!w&&!ht)s=Shape.make('text',{x,y,w:120,h:24,text:lbl.slice(0,2000)});
     else s=Shape.make('rect',{x,y,w:w||120,h:ht||80,label:lbl.slice(0,240)});
@@ -6762,7 +6762,7 @@ function boardToDrawio(shapes){
     if(s.r>0&&(t==='diamond'||t==='image'))sty+='rounded=1;';          // ADR-0332
     if(s.fill==='none')sty+='fillColor=none;';                            // ADR-0290
     else if(s.fill)sty+='fillColor='+s.fill+';';
-    if(t==='sticky'&&!s.fill)sty+='fillColor='+(s.color||'#FEF08A')+';';                 // ADR-0279
+    if(t==='sticky'&&!s.fill)sty+='fillColor='+(s.color||_YW)+';';                 // ADR-0279
     if(s.stroke&&t!=='text'&&t!=='sticky')sty+='strokeColor='+(s.stroke===_TR?'none':s.stroke)+';';   // ADR-0290
     if(s.stroke&&(t==='text'||t==='sticky'||s.label))sty+='fontColor='+s.stroke+';';   // ADR-0247/0281
     sty+=_dioStyEmit(s);                                                   // ADR-0263
@@ -7470,7 +7470,7 @@ function buildSVG(shapes,paper){
         break;}
       case 'sticky':{
         const r=_min(6,_abs(W)/6,_abs(H)/6);
-        els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}" fill="${_esc(s.color||'#FEF08A')}" stroke="rgba(0,0,0,.06)"${rT} filter="url(#bsh)"/>`);   // ADR-0278
+        els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}" fill="${_esc(s.color||_YW)}" stroke="rgba(0,0,0,.06)"${rT} filter="url(#bsh)"/>`);   // ADR-0278
         if(s.text){
           const fs=_num(s.fontSize)||14;const pad2=8;
           // estimate measure (no canvas here); wraps to the same box as the app
@@ -8022,7 +8022,7 @@ function roundShapesForExport(shapes,dp=2){
 const Share={
   // ADR-0015: AES-256-GCM. crypto.subtle exists only in secure contexts — file:// counts
   // (potentially trustworthy in Chrome/Firefox), plain http:// hosts do not.
-  canEncrypt(){return typeof crypto!=='undefined'&&!!crypto.subtle},
+  canEncrypt(){return typeof crypto!==_un&&!!crypto.subtle},
   // chunked base64url — String.fromCharCode(...u8) overflows on large payloads
   _b64uEnc(u8){let s='';for(let i=0;i<u8.length;i+=0x8000)s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000));
     return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')},
@@ -8044,7 +8044,7 @@ const Share={
     const json=_JS(data);
     // CompressionStream if available, else base64
     let payload=json;
-    if(typeof CompressionStream!=='undefined'){
+    if(typeof CompressionStream!==_un){
       try{
         const cs=new CompressionStream('deflate-raw');
         const w=cs.writable.getWriter();
@@ -8105,7 +8105,7 @@ const Share={
         kind=inner.slice(0,2);body=inner.slice(2);
         if(kind!=='z:'&&kind!=='j:'){_tst(t('shareBadKey'),'err');clearHash();return false}
       }
-      if(kind==='z:'&&typeof DecompressionStream!=='undefined'){
+      if(kind==='z:'&&typeof DecompressionStream!==_un){
         const bin=atob(body);
         const bytes=new Uint8Array(bin.length);
         for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
@@ -8215,7 +8215,7 @@ const Persist={
   // saves start failing with QuotaExceededError. navigator.storage.estimate
   // is async + may not exist (old Safari) — errors are swallowed.
   _quotaWarn(){
-    const nav=(typeof navigator!=='undefined')?navigator:null;
+    const nav=(typeof navigator!==_un)?navigator:null;
     if(!nav||!nav.storage||!nav.storage.estimate)return;
     if(this._qWAt&&_now()-this._qWAt<300e3)return;
     nav.storage.estimate().then(({usage,quota})=>{
@@ -9163,7 +9163,7 @@ function cycleStickyColor(){
   const before=[],after=[];
   _forSel((s,id)=>{if(s.type!=='sticky'||s.locked)return;
     const i=STICKY_COLORS.indexOf(s.color),nxt=STICKY_COLORS[(i+1)%STICKY_COLORS.length];
-    before.push({id,color:s.color||'#FEF08A'});after.push({id,color:nxt});s.color=nxt;
+    before.push({id,color:s.color||_YW});after.push({id,color:nxt});s.color=nxt;
   })
   _so(before,after)
 }
@@ -9664,7 +9664,7 @@ const Minimap=(()=>{
         case 'diamond':{const dcx=s.x*sc+ox+s.w*sc/2,dcy=s.y*sc+oy+s.h*sc/2;sx.beginPath();sx.moveTo(dcx,s.y*sc+oy);sx.lineTo(s.x*sc+ox+s.w*sc,dcy);sx.lineTo(dcx,s.y*sc+oy+s.h*sc);sx.lineTo(s.x*sc+ox,dcy);sx.closePath();if(s.fill)sx.fill();sx.stroke();break;}
         case 'line':case 'arrow':{if(s.elbow){const pts=_elbowPts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<pts.length;i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}if(s.curve){const me=_cE(s),cc=_curveCtrl(me,s.cbend);sx.beginPath();sx.moveTo(me.x1*sc+ox,me.y1*sc+oy);sx.quadraticCurveTo(cc.x*sc+ox,cc.y*sc+oy,me.x2*sc+ox,me.y2*sc+oy);sx.stroke();break}const pts=_linePts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<pts.length;i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}
         case 'pen':if(s.pts.length<2)break;sx.beginPath();sx.moveTo(s.pts[0][0]*sc+ox,s.pts[0][1]*sc+oy);for(let i=1;i<s.pts.length;i++)sx.lineTo(s.pts[i][0]*sc+ox,s.pts[i][1]*sc+oy);sx.stroke();break;
-        case 'text':case 'sticky':{const rx2=s.x*sc+ox,ry2=s.y*sc+oy,rw2=_max(2,s.w*sc),rh2=_max(2,s.h*sc);sx.fillStyle=s.type==='sticky'?(s.color||'#FEF08A'):(s.fill||getCSS('--brand'));sx.fillRect(rx2,ry2,rw2,rh2);break}
+        case 'text':case 'sticky':{const rx2=s.x*sc+ox,ry2=s.y*sc+oy,rw2=_max(2,s.w*sc),rh2=_max(2,s.h*sc);sx.fillStyle=s.type==='sticky'?(s.color||_YW):(s.fill||getCSS('--brand'));sx.fillRect(rx2,ry2,rw2,rh2);break}
         case 'image':{const rx3=s.x*sc+ox,ry3=s.y*sc+oy,rw3=_max(2,s.w*sc),rh3=_max(2,s.h*sc);const img=s.dataUrl?_imgCache.get(_imgKey(s.dataUrl)):null;if(img&&img.complete&&img.naturalWidth){if(s.flip){const fx3=rx3+rw3/2,fy3=ry3+rh3/2;sx.save();sx.translate(fx3,fy3);sx.scale(s.flip&1?-1:1,s.flip&2?-1:1);sx.translate(-fx3,-fy3);sx.drawImage(img,rx3,ry3,rw3,rh3);sx.restore()}else sx.drawImage(img,rx3,ry3,rw3,rh3)}else{sx.fillStyle='#CBD5E1';sx.fillRect(rx3,ry3,rw3,rh3)}break}
       }
       if(_mr)sx.restore();
