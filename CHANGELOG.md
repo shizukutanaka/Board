@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.243]
+
+### 追加
+- **スポイトの全ルックプロパティ吸収** (ADR-0185)。スポイトが
+  font/head/elbow/curve/r/fstyle/align/fontSize など `state.style`
+  に永続化される全キーを吸収 — 拾った見た目が次の図形に継承
+  (Figma parity)。両端ヘッド `start` も継承対象に追加。
+
 ## [1.7.242]
 
 ### 追加

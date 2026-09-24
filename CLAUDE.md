@@ -234,6 +234,7 @@ Board/
 - [ADR-0182](docs/ADR-0182-label-editor-follow.md) ラベルエディタ追従
 - [ADR-0183](docs/ADR-0183-route-persistence.md) コネクタルート継承
 - [ADR-0184](docs/ADR-0184-style-persistence-3.md) 角丸/ハッチ/揃え継承
+- [ADR-0185](docs/ADR-0185-eyedropper-style.md) スポイト全吸収
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
