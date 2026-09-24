@@ -514,6 +514,7 @@ Board/
 │   ├── ADR-0462-type-check-shorthands.md # 図形型判定 shorthand (_stk/_frm/_pn/_txt/_im/_arw) (実装済)
 │   ├── ADR-0463-peer-announce.md          # ピア出入りの SR announce (実装済)
 │   ├── ADR-0464-img-state-room-switch.md   # ルーム切替で画像転送状態をリセット (実装済)
+│   ├── ADR-0465-snapshot-responder-election.md # snapshot 応答者=最小 non-asker (starvation 修正、実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

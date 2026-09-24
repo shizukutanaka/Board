@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.498] - 2026-09-23
+
+### 修正
+
+- **最小 id の joiner へ snapshot が届かない飢餓** — ADR-0455 の応答選出が `_pr()` 内の asker 自身を数え、joiner が最小 id を持つと応答者 0 人になっていた。`_loResp(pk)` で asker を除外し「asker 以外の最小 id ピア」が一意に応答 (ADR-0465)
+
 ## [1.7.497] - 2026-09-23
 
 ### 修正

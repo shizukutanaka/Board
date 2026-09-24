@@ -852,7 +852,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.497';
+const V='1.7.498';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -7799,11 +7799,11 @@ const Net={
         Store.applyRemote(op);break;}
       case 'hello':
         this._touchPeer(msg.peer);
-        if(_pi()<msg.peer&&this._loResp())this._sendSnapshot();   // ADR-0455: lowest-id peer only
+        if(this._loResp(msg.peer))this._sendSnapshot();   // ADR-0465
         break;
       case 'sync-req':
         this._touchPeer(msg.peer);
-        if(_pi()<msg.peer&&this._loResp())this._sendSnapshot();
+        if(this._loResp(msg.peer))this._sendSnapshot();
         break;
       case 'snapshot':
         if(_nS()===0)this._applySnapshot(msg);
@@ -7916,8 +7916,8 @@ const Net={
     this._lastSnapAt=now;
     this._send(this._snapshotMsg());
   },
-  _loResp(){   // ADR-0455: am I the lowest-id BC peer? (synthetic _rtcPeerId excluded)
-    return ![..._pr().keys()].some(k=>k!==this._rtcPeerId&&k<_pi())
+  _loResp(pk){   // ADR-0465: lowest-id BC peer excluding the asker
+    return ![..._pr().keys()].some(k=>k!==this._rtcPeerId&&k!==pk&&k<_pi())
   },
   _applySnapshot(msg){
     // Validate snapshot shapes before adopting
