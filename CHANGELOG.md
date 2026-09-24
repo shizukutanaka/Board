@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.211]
+
+### 修正
+- **非表示図形がスナップを引き寄せるバグ** (ADR-0153)。
+  `_snapIndex` のターゲット収集から `s.visible===0` を除外 — 
+  移動・リサイズ・等間隔スナップの全経路で不可視エッジへの
+  吸着を解消。
+
 ## [1.7.210]
 
 ### 修正
