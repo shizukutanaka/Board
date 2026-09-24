@@ -800,6 +800,7 @@ const _qsa=(e,s)=>e.querySelectorAll(s);                                // ADR-0
 const _on=(e,t,f,o)=>e.addEventListener(t,f,o);                          // ADR-0356
 const _vp=()=>state.viewport;                                              // ADR-0362: live-read (tests reassign the object)
 const _pi=()=>state.peerId,_ro=()=>state.readout,_gd=()=>state.guides,_cl=()=>state.clipboard,_bb=s=>G.bbox(s),_oa=Object.assign;   // ADR-0378
+const _sO=()=>state.seenOps,_la=()=>state.lasso,_mq=()=>state.marquee,_dd=()=>state.dupDelta,_w2=p=>G.w2s(p),_s2=p=>G.s2w(p),_cE=connEnds;   // ADR-0382
 const _sh=()=>state.shapes;                                                // ADR-0364
 const _sl=()=>state.selection;
 const _st=()=>state.style;
@@ -819,7 +820,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.426';
+const V='1.7.427';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1136,7 +1137,7 @@ const G={
       return b;
     }
     if(_conn(s.type)){
-      const e=connEnds(s);
+      const e=_cE(s);
       let x=_min(e.x1,e.x2),y=_min(e.y1,e.y2),x2=_max(e.x1,e.x2),y2=_max(e.y1,e.y2);   // ADR-0090
       for(const w of _wayArr(s)){x=_min(x,w.x);y=_min(y,w.y);x2=_max(x2,w.x);y2=_max(y2,w.y)}
       // ADR-0376: off-box route points — a curve's ctrl point sits cbend px off the
@@ -1371,11 +1372,11 @@ const Store={
     // Stamp CRDT clock; local-origin only, remote ops keep theirs. nowTs() is monotonic.
     if(!op.clock)op.clock={peer:_pi(),seq:++state.seq,ts:nowTs()};
     const k=op.clock.peer+':'+op.clock.seq;
-    if(state.seenOps.has(k))return;       // already applied (rare race)
-    state.seenOps.add(k);
-    if(state.seenOps.size>MAX_SEEN_OPS){  // trim oldest 20% to keep size bounded
-      const keys=[...state.seenOps];
-      for(let i=0;i<_fl(MAX_SEEN_OPS*0.2);i++)state.seenOps.delete(keys[i]);
+    if(_sO().has(k))return;       // already applied (rare race)
+    _sO().add(k);
+    if(_sO().size>MAX_SEEN_OPS){  // trim oldest 20% to keep size bounded
+      const keys=[..._sO()];
+      for(let i=0;i<_fl(MAX_SEEN_OPS*0.2);i++)_sO().delete(keys[i]);
     }
     this._apply(op,true);
     this._stampWrites(op);                 // record per-property write clock (LWW)
@@ -1413,7 +1414,7 @@ const Store={
       if(sh.locked)continue;
       const aGone=sh.a&&goneIds.has(sh.a),bGone=sh.b&&goneIds.has(sh.b);
       if(!aGone&&!bGone)continue;
-      const e=connEnds(sh),patch={};
+      const e=_cE(sh),patch={};
       if(aGone){patch.a=null;patch.aF=null;patch.x1=e.x1;patch.y1=e.y1;}   // ADR-0209
       if(bGone){patch.b=null;patch.bF=null;patch.x2=e.x2;patch.y2=e.y2;}
       fixes.push({id:sh.id,patch});
@@ -1430,9 +1431,9 @@ const Store={
     // causally-after this remote edit gets a ts >= it (HLC-lite; see nowTs).
     if(typeof op.clock.ts==='number')state._lastTs=_max(state._lastTs,op.clock.ts);
     const k=op.clock.peer+':'+op.clock.seq;
-    if(state.seenOps.has(k))return;
-    state.seenOps.add(k);
-    if(state.seenOps.size>MAX_SEEN_OPS){const keys=[...state.seenOps];for(let i=0;i<_fl(MAX_SEEN_OPS*0.2);i++)state.seenOps.delete(keys[i])}
+    if(_sO().has(k))return;
+    _sO().add(k);
+    if(_sO().size>MAX_SEEN_OPS){const keys=[..._sO()];for(let i=0;i<_fl(MAX_SEEN_OPS*0.2);i++)_sO().delete(keys[i])}
     // Per-property LWW (ADR-0002): drop any absolute-patch writes older than what the
     // target shape already recorded. If the whole op becomes a no-op, skip applying it
     // (it is already deduped). move/zorder are commutative and are not gated here.
@@ -1516,9 +1517,9 @@ const Store={
     _iG();
     if(!op.clock)op.clock={peer:_pi(),seq:++state.seq,ts:nowTs()};
     const k=op.clock.peer+':'+op.clock.seq;
-    if(state.seenOps.has(k))return;
-    state.seenOps.add(k);
-    if(state.seenOps.size>MAX_SEEN_OPS){const keys=[...state.seenOps];for(let i=0;i<_fl(MAX_SEEN_OPS*0.2);i++)state.seenOps.delete(keys[i])}
+    if(_sO().has(k))return;
+    _sO().add(k);
+    if(_sO().size>MAX_SEEN_OPS){const keys=[..._sO()];for(let i=0;i<_fl(MAX_SEEN_OPS*0.2);i++)_sO().delete(keys[i])}
     this._stampWrites(op);                 // change already applied by caller; record clock
     _hi().length=_hx()+1;
     _hi().push(op);
@@ -1789,7 +1790,7 @@ function connEnds(s){
 function _wayArr(s){const w=s.way;return Array.isArray(w)?w:(w?[w]:[])}
 // ADR-0076: straight connector polyline — inserts the s.way vertices.
 function _linePts(s){
-  const e=connEnds(s);
+  const e=_cE(s);
   return [{x:e.x1,y:e.y1},..._wayArr(s),{x:e.x2,y:e.y2}];
 }
 // ADR-0077: hatch segments over a bbox — 45° family, plus 135° when cross.
@@ -1827,7 +1828,7 @@ function computeConnClears(delIds){
     const aAffected=sh.a&&delIds.has(sh.a);
     const bAffected=sh.b&&delIds.has(sh.b);
     if(!aAffected&&!bAffected)continue;
-    const e=connEnds(sh);                   // resolve current endpoint before deletion
+    const e=_cE(sh);                   // resolve current endpoint before deletion
     const p={id:sh.id,before:{},after:{}};
     if(aAffected){p.before.a=sh.a;p.before.aF=sh.aF;p.before.x1=sh.x1;p.before.y1=sh.y1;p.after.a=null;p.after.aF=null;p.after.x1=e.x1;p.after.y1=e.y1;}
     if(bAffected){p.before.b=sh.b;p.before.bF=sh.bF;p.before.x2=sh.x2;p.before.y2=sh.y2;p.after.b=null;p.after.bF=null;p.after.x2=e.x2;p.after.y2=e.y2;}   // ADR-0209
@@ -2482,14 +2483,14 @@ function drawOverlay(){
   if(_sh().length===0&&!_df())drawEmptyHint(c,W,H);   // FT-17: onboarding for a blank board
   for(const[,members] of _grpMapGet()){
     const b=G.bboxAll(members);if(!b)continue;
-    const p1=G.w2s({x:b.x-4,y:b.y-4}),p2=G.w2s({x:b.x+b.w+4,y:b.y+b.h+4});
+    const p1=_w2({x:b.x-4,y:b.y-4}),p2=_w2({x:b.x+b.w+4,y:b.y+b.h+4});
     c.strokeStyle='rgba(0,196,204,.3)';c.lineWidth=1;c.setLineDash([4,4]);
     c.strokeRect(p1.x,p1.y,p2.x-p1.x,p2.y-p1.y);c.setLineDash([]);
   }
   // ADR-0177: eraser hover target (red dashed bbox, locked excluded upstream).
   if(state._ehov&&_tl()==='eraser'){
     const es=byId(state._ehov);
-    if(es){const eb=_bb(es),ep1=G.w2s({x:eb.x-3,y:eb.y-3}),ep2=G.w2s({x:eb.x+eb.w+3,y:eb.y+eb.h+3});
+    if(es){const eb=_bb(es),ep1=_w2({x:eb.x-3,y:eb.y-3}),ep2=_w2({x:eb.x+eb.w+3,y:eb.y+eb.h+3});
       c.strokeStyle='#EF4444';c.lineWidth=1.5;c.setLineDash([5,4]);
       c.strokeRect(ep1.x,ep1.y,ep2.x-ep1.x,ep2.y-ep1.y);c.setLineDash([]);}
   }
@@ -2497,7 +2498,7 @@ function drawOverlay(){
   drawGuides(c);
   _drawMeasure(c);                                                     // ADR-0151
   if(ptr.down&&_ro()){                                        // ADR-0064: only while a gesture is live
-    const r=_ro(),sp=G.w2s({x:r.x,y:r.y});
+    const r=_ro(),sp=_w2({x:r.x,y:r.y});
     c.save();
     c.font='11px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';
     const tw=c.measureText(r.label).width+14,ph=18,px=sp.x,py=sp.y+14;
@@ -2512,7 +2513,7 @@ function drawOverlay(){
     c.fillStyle=_ac();
     c.strokeStyle='#fff';c.lineWidth=1.5;
     for(const d of _qdots(_qs)){
-      const sp=G.w2s(d);
+      const sp=_w2(d);
       c.beginPath();c.arc(sp.x,sp.y,5,0,_PI*2);c.fill();c.stroke();
     }
     c.restore();
@@ -2520,21 +2521,21 @@ function drawOverlay(){
   if(ptr.down&&state.bindPreview){                                     // ADR-0065
     const t=byId(state.bindPreview);
     if(t){
-      const b=_bb(t),p1=G.w2s({x:b.x,y:b.y}),p2=G.w2s({x:b.x+b.w,y:b.y+b.h});
+      const b=_bb(t),p1=_w2({x:b.x,y:b.y}),p2=_w2({x:b.x+b.w,y:b.y+b.h});
       c.save();
       c.strokeStyle=_ac();c.lineWidth=2;c.setLineDash([6,4]);
       c.strokeRect(p1.x-3,p1.y-3,p2.x-p1.x+6,p2.y-p1.y+6);
       c.restore();
     }
   }
-  if(state.marquee)drawMarquee(c);
-  if(state.lasso&&state.lasso.length>1){                            // ADR-0158
+  if(_mq())drawMarquee(c);
+  if(_la()&&_la().length>1){                            // ADR-0158
     c.save();c.fillStyle='rgba(0,196,204,.08)';c.strokeStyle=_ac();c.lineWidth=1;c.setLineDash([4,4]);
-    c.beginPath();const _p0=G.w2s(state.lasso[0]);c.moveTo(_p0.x,_p0.y);
-    for(let i=1;i<state.lasso.length;i++){const p=G.w2s(state.lasso[i]);c.lineTo(p.x,p.y)}
+    c.beginPath();const _p0=_w2(_la()[0]);c.moveTo(_p0.x,_p0.y);
+    for(let i=1;i<_la().length;i++){const p=_w2(_la()[i]);c.lineTo(p.x,p.y)}
     c.closePath();c.fill();c.stroke();c.restore();
   }
-  if(_laser&&Presentation.isActive()){const lp=G.w2s(_laser);c.beginPath();c.arc(lp.x,lp.y,8,0,PI2);c.fillStyle='rgba(255,50,50,.75)';c.fill();}
+  if(_laser&&Presentation.isActive()){const lp=_w2(_laser);c.beginPath();c.arc(lp.x,lp.y,8,0,PI2);c.fillStyle='rgba(255,50,50,.75)';c.fill();}
   drawPeerSelections(c);   // ADR-0011 (before cursors: pointer renders on top of frames)
   drawPeerCursors(c);   // ADR-0010
 }
@@ -2560,8 +2561,8 @@ function drawPeerSelections(c){
     for(const id of p.sel){
       const s=byId(id);if(!s)continue;      // peer may reference a shape we since deleted
       const b=_bb(s);if(!b)continue;
-      const p1=G.w2s({x:_min(b.x,b.x+b.w),y:_min(b.y,b.y+b.h)});
-      const p2=G.w2s({x:_max(b.x,b.x+b.w),y:_max(b.y,b.y+b.h)});
+      const p1=_w2({x:_min(b.x,b.x+b.w),y:_min(b.y,b.y+b.h)});
+      const p2=_w2({x:_max(b.x,b.x+b.w),y:_max(b.y,b.y+b.h)});
       c.strokeRect(p1.x-3,p1.y-3,p2.x-p1.x+6,p2.y-p1.y+6);
     }
     c.setLineDash([]);
@@ -2573,7 +2574,7 @@ function drawPeerCursors(c){
   if(Presentation.isActive())return;   // presence is for co-editing, not solo frame review
   for(const p of _pr().values()){
     if(!p.cursor)continue;
-    const sp=G.w2s(p.cursor);
+    const sp=_w2(p.cursor);
     c.beginPath();c.arc(sp.x,sp.y,5,0,PI2);
     c.fillStyle=p.color;c.fill();
     c.lineWidth=1.5;c.strokeStyle=_p();c.stroke();
@@ -2583,7 +2584,7 @@ function drawGuides(c){
   if(!_gd()||!_gd().length)return;
   c.strokeStyle=_ac();c.lineWidth=1;c.setLineDash([4,4]);   // a11y-audit-2026-07
   for(const g of _gd()){
-    const p1=G.w2s({x:g.x1,y:g.y1}),p2=G.w2s({x:g.x2,y:g.y2});
+    const p1=_w2({x:g.x1,y:g.y1}),p2=_w2({x:g.x2,y:g.y2});
     c.beginPath();c.moveTo(p1.x,p1.y);c.lineTo(p2.x,p2.y);c.stroke();
   }
   c.setLineDash([]);
@@ -2604,7 +2605,7 @@ function _drawMeasure(c){
   c.save();c.strokeStyle=_ac();c.lineWidth=1;
   c.font='11px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';
   for(const s of segs){
-    const p1=G.w2s({x:s.x1,y:s.y1}),p2=G.w2s({x:s.x2,y:s.y2});
+    const p1=_w2({x:s.x1,y:s.y1}),p2=_w2({x:s.x2,y:s.y2});
     c.beginPath();c.moveTo(p1.x,p1.y);c.lineTo(p2.x,p2.y);c.stroke();
     const dx=p2.x-p1.x,dy=p2.y-p1.y,L=_hp(dx,dy)||1,ux=dx/L,uy=dy/L,ex=-uy,ey=ux;
     for(const p of [p1,p2]){c.beginPath();c.moveTo(p.x-ex*4,p.y-ey*4);c.lineTo(p.x+ex*4,p.y+ey*4);c.stroke()}
@@ -2697,7 +2698,7 @@ function _drawImgLabel(s,c){
 // Elbow → its polyline, curve → 16-sample bezier, else _linePts (way-aware).
 function _connPathPts(s){
   if(s.elbow)return _elbowPts(s);
-  if(s.curve){const e=connEnds(s),cc=_curveCtrl(e,s.cbend),pts=[];
+  if(s.curve){const e=_cE(s),cc=_curveCtrl(e,s.cbend),pts=[];
     for(let i=0;i<=16;i++){const u=i/16,v=1-u;
       pts.push({x:v*v*e.x1+2*v*u*cc.x+u*u*e.x2,y:v*v*e.y1+2*v*u*cc.y+u*u*e.y2})}
     return pts}
@@ -2760,7 +2761,7 @@ function _connLabelXY(s){
     }
     return{x:pts[_fl(pts.length/2)].x,y:pts[_fl(pts.length/2)].y};
   }
-  const m=connEnds(s);
+  const m=_cE(s);
   return{x:(m.x1+m.x2)/2,y:(m.y1+m.y2)/2};
 }
 function _drawConnLabel(s,c){
@@ -2823,7 +2824,7 @@ function drawShape(s,c){
     case 'line':{
       _csh(s,c)   // ADR-0211
       if(s.elbow){const _ep=_elbowPts(s);(s.r>0)?_polylineR(c,_ep,s.r):_polyline(c,_ep);c.stroke();_drawConnLabel(s,c);break}   // ADR-0207
-      if(s.curve){const e=connEnds(s),cc=_curveCtrl(e,s.cbend);c.beginPath();c.moveTo(e.x1,e.y1);c.quadraticCurveTo(cc.x,cc.y,e.x2,e.y2);c.stroke();_drawConnLabel(s,c);break}
+      if(s.curve){const e=_cE(s),cc=_curveCtrl(e,s.cbend);c.beginPath();c.moveTo(e.x1,e.y1);c.quadraticCurveTo(cc.x,cc.y,e.x2,e.y2);c.stroke();_drawConnLabel(s,c);break}
       _polyline(c,_linePts(s));c.stroke();_drawConnLabel(s,c);break;}   // ADR-0076
     case 'arrow':
       drawArrow(s,c);_drawConnLabel(s,c);break;
@@ -2932,7 +2933,7 @@ function roundRect(c,x,y,w,h,r){
 function drawArrow(s,c){
   c=c||ctx;
   _csh(s,c)   // ADR-0211
-  const e=connEnds(s);
+  const e=_cE(s);
   const ah=_max(6,(s.size||2)*3);
   if(s.curve){
     const cc=_curveCtrl(e,s.cbend);
@@ -2964,7 +2965,7 @@ function drawArrow(s,c){
 // dominant axis toward the other end. Stub tips are joined by one bend —
 // degenerate cases collapse to an L or a straight line.
 function _elbowPts(s){
-  const e=connEnds(s);
+  const e=_cE(s);
   const a=s.a&&byId(s.a),b=s.b&&byId(s.b);
   const dom=_abs(e.x2-e.x1)>=_abs(e.y2-e.y1);
   const _dir=(sh,px,py,fb)=>{
@@ -3171,13 +3172,13 @@ function _curveCtrl(e,bend){
   return{x:mx-dy/len*b,y:my+dx/len*b};
 }
 function _curveSegs(s){
-  const e=connEnds(s),cc=_curveCtrl(e,s.cbend),pts=[];
+  const e=_cE(s),cc=_curveCtrl(e,s.cbend),pts=[];
   for(let i=0;i<=16;i++){const t=i/16,u=1-t;
     pts.push({x:u*u*e.x1+2*u*t*cc.x+t*t*e.x2,y:u*u*e.y1+2*u*t*cc.y+t*t*e.y2});}
   return pts;
 }
 function _curveLabelXY(s){
-  const e=connEnds(s),cc=_curveCtrl(e,s.cbend);
+  const e=_cE(s),cc=_curveCtrl(e,s.cbend);
   return{x:0.25*e.x1+0.5*cc.x+0.25*e.x2,y:0.25*e.y1+0.5*cc.y+0.25*e.y2};
 }
 // ADR-0070: quick-connect dots on the hovered shape's 4 edge midpoints.
@@ -3294,7 +3295,7 @@ function _rotPt(px,py,cx,cy,deg){
 function getHandles(s){
   if(s.locked)return [];
   if(_conn(s.type)){
-    const e=connEnds(s),h=[];   // bound endpoints follow their shape, so no drag handle
+    const e=_cE(s),h=[];   // bound endpoints follow their shape, so no drag handle
     h.push({id:'p1',x:e.x1,y:e.y1});       // ADR-0065: bound ends are draggable too (rebind)
     h.push({id:'p2',x:e.x2,y:e.y2});
     return h;
@@ -3569,7 +3570,7 @@ function drawSelection(c){
   if(!sel.length)return;
   const b=G.bboxAll(sel);
   if(!b)return;
-  const p1=G.w2s({x:b.x,y:b.y}),p2=G.w2s({x:b.x+b.w,y:b.y+b.h});
+  const p1=_w2({x:b.x,y:b.y}),p2=_w2({x:b.x+b.w,y:b.y+b.h});
   const x=p1.x,y=p1.y,w=p2.x-p1.x,h=p2.y-p1.y;
   const lockedSel=sel.every(s=>s.locked);
   const single=_selN()===1?sel[0]:null;
@@ -3579,7 +3580,7 @@ function drawSelection(c){
     // rotated box: trace the rotated rectangle so the outline hugs the shape
     const cx=single.x+single.w/2,cy=single.y+single.h/2,rot=single.rotate;
     const cs=[[single.x,single.y],[single.x+single.w,single.y],[single.x+single.w,single.y+single.h],[single.x,single.y+single.h]]
-      .map(([px,py])=>{const r=_rotPt(px,py,cx,cy,rot);return G.w2s(r);});
+      .map(([px,py])=>{const r=_rotPt(px,py,cx,cy,rot);return _w2(r);});
     c.beginPath();c.moveTo(cs[0].x,cs[0].y);for(let i=1;i<4;i++)c.lineTo(cs[i].x,cs[i].y);c.closePath();c.stroke();
   }else{
     c.strokeRect(x-1,y-1,w+2,h+2);
@@ -3603,14 +3604,14 @@ function drawSelection(c){
     c.strokeStyle=getCSS('--brand-ink');  // dark ring: AAA non-text contrast vs cyan
     c.lineWidth=1.5;
     for(const h of getHandles(sh)){
-      const sp=G.w2s({x:h.x,y:h.y});
+      const sp=_w2({x:h.x,y:h.y});
       c.fillRect(sp.x-hs/2,sp.y-hs/2,hs,hs);
       c.strokeRect(sp.x-hs/2,sp.y-hs/2,hs,hs);
     }
     // Rotation knob: a circle above the (rotated) top edge, tethered to the shape.
     const rh=getRotHandle(sh);
     if(rh){
-      const kp=G.w2s({x:rh.x,y:rh.y}),ap=G.w2s({x:rh.ax,y:rh.ay});
+      const kp=_w2({x:rh.x,y:rh.y}),ap=_w2({x:rh.ax,y:rh.ay});
       c.strokeStyle=_ac();c.lineWidth=1.5;   // a11y-audit-2026-07
       c.beginPath();c.moveTo(ap.x,ap.y);c.lineTo(kp.x,kp.y);c.stroke();
       c.fillStyle=_p();c.strokeStyle=getCSS('--brand-ink');
@@ -3619,13 +3620,13 @@ function drawSelection(c){
     if(sh.elbow){                        // ADR-0072: trunk-position handle
       const tr=_elbowTrunk(sh);
       if(tr){
-        const tp=G.w2s({x:(tr[0].x+tr[1].x)/2,y:(tr[0].y+tr[1].y)/2});
+        const tp=_w2({x:(tr[0].x+tr[1].x)/2,y:(tr[0].y+tr[1].y)/2});
         c.beginPath();c.arc(tp.x,tp.y,hs*0.45,0,PI2);c.fill();c.stroke();
       }
     }
     if(sh.label&&(_conn(sh.type))){            // ADR-0117: draggable label anchor
       const lp=_connLabelXY(sh);
-      if(lp){const tp=G.w2s(lp);
+      if(lp){const tp=_w2(lp);
         c.fillStyle=_ac();
         c.beginPath();c.arc(tp.x,tp.y,hs*0.5,0,PI2);c.fill();c.stroke()}
     }
@@ -3633,11 +3634,11 @@ function drawSelection(c){
       const pts=_linePts(sh);
       for(let i=0;i<pts.length;i++){
         if(i&&i<pts.length-1){                           // interior vertex
-          const tp=G.w2s(pts[i]);
+          const tp=_w2(pts[i]);
           c.beginPath();c.arc(tp.x,tp.y,hs*0.45,0,PI2);c.fill();c.stroke();
         }
         if(i<pts.length-1){                              // segment midpoint (insert handle)
-          const mp=G.w2s({x:(pts[i].x+pts[i+1].x)/2,y:(pts[i].y+pts[i+1].y)/2});
+          const mp=_w2({x:(pts[i].x+pts[i+1].x)/2,y:(pts[i].y+pts[i+1].y)/2});
           c.beginPath();c.arc(mp.x,mp.y,hs*0.35,0,PI2);c.fill();c.stroke();
         }
       }
@@ -3651,7 +3652,7 @@ function drawSelection(c){
       const hs=HANDLE_SIZE;
       c.fillStyle=_p();c.strokeStyle=getCSS('--brand-ink');c.lineWidth=1.5;
       for(const h of getHandles({x:b.x,y:b.y,w:b.w,h:b.h})){
-        const sp=G.w2s({x:h.x,y:h.y});
+        const sp=_w2({x:h.x,y:h.y});
         c.fillRect(sp.x-hs/2,sp.y-hs/2,hs,hs);
         c.strokeRect(sp.x-hs/2,sp.y-hs/2,hs,hs);
       }
@@ -3659,7 +3660,7 @@ function drawSelection(c){
     // ADR-0057: rotation knob on the group bbox — always offered (rotation
     // composes, unlike axis-resize which would skew rotated members).
     const gr=_grpRotHandle(b);
-    const gkp=G.w2s({x:gr.x,y:gr.y}),gap=G.w2s({x:gr.ax,y:gr.ay});
+    const gkp=_w2({x:gr.x,y:gr.y}),gap=_w2({x:gr.ax,y:gr.ay});
     const hs2=HANDLE_SIZE;
     c.strokeStyle=_ac();c.lineWidth=1.5;
     c.beginPath();c.moveTo(gap.x,gap.y);c.lineTo(gkp.x,gkp.y);c.stroke();
@@ -3677,8 +3678,8 @@ function _ptInPoly(x,y,pts){
   return inside;
 }
 function drawMarquee(c){
-  const m=state.marquee;
-  const p1=G.w2s({x:m.x1,y:m.y1}),p2=G.w2s({x:m.x2,y:m.y2});
+  const m=_mq();
+  const p1=_w2({x:m.x1,y:m.y1}),p2=_w2({x:m.x2,y:m.y2});
   const x=_min(p1.x,p2.x),y=_min(p1.y,p2.y);
   const w=_abs(p2.x-p1.x),h=_abs(p2.y-p1.y);
   c.fillStyle='rgba(0,196,204,.08)';
@@ -3776,7 +3777,7 @@ _on(canvas,'pointerdown',e=>{
   if(_pointers.size>=2){abortGesture();return;}
   canvas.setPointerCapture(e.pointerId);
   const sp={x:e.offsetX,y:e.offsetY};
-  const wp=G.s2w(sp);
+  const wp=_s2(sp);
   ptr.down=true;state.measure=null;ptr.x=ptr.x0=sp.x;ptr.y=ptr.y0=sp.y;
   ptr.wx=ptr.wx0=wp.x;ptr.wy=ptr.wy0=wp.y;
   // space or middle click => pan
@@ -3938,7 +3939,7 @@ _on(canvas,'pointerdown',e=>{
 });
 _on(canvas,'pointermove',e=>{
   const sp={x:e.offsetX,y:e.offsetY};
-  const wp=G.s2w(sp);
+  const wp=_s2(sp);
   if(Presentation.isActive()){_laser=wp;_ivO();return;}
   if(_pointers.size>=2)return;   // pinch in progress — the pinch handler owns the gesture
   Net.sendCursor(wp);   // ADR-0010
@@ -4035,7 +4036,7 @@ _on(canvas,'pointermove',e=>{
       }
       else if(ptr.dragKind==='cbend'&&ptr.cbendOrig){               // ADR-0132
         const sh=byId(ptr.cbendOrig.id);
-        if(sh){const e=connEnds(sh),dx=e.x2-e.x1,dy=e.y2-e.y1,len=_hp(dx,dy)||1,
+        if(sh){const e=_cE(sh),dx=e.x2-e.x1,dy=e.y2-e.y1,len=_hp(dx,dy)||1,
           mx=(e.x1+e.x2)/2,my=(e.y1+e.y2)/2;
           sh.cbend=snapV((wp.x-mx)*(-dy/len)+(wp.y-my)*(dx/len));_iv()}
       }
@@ -4060,11 +4061,11 @@ _on(canvas,'pointermove',e=>{
       }
       break;
     case 'pen':case 'marker':{
-      for(const ce of coalescedSamples(e))contPen(G.s2w({x:ce.offsetX,y:ce.offsetY}),ce);
+      for(const ce of coalescedSamples(e))contPen(_s2({x:ce.offsetX,y:ce.offsetY}),ce);
       // Predicted tail (ADR-0023): one render-only segment ahead of the last
       // committed sample, shaves ~1 frame of perceived stylus latency.
       const pr=_predTail(e);
-      _penPred=pr?G.s2w(pr):null;
+      _penPred=pr?_s2(pr):null;
       break;
     }
     case 'rect':case 'ellipse':case 'diamond':case 'sticky':case 'frame':contRectLike(wp,e.shiftKey,e.altKey);break;
@@ -4076,7 +4077,7 @@ _on(canvas,'pointermove',e=>{
 _on(canvas,'pointerup',e=>{
   _clearLongPress();   // ADR-0006
   if(!ptr.down)return;
-  const wp=G.s2w({x:e.offsetX,y:e.offsetY});
+  const wp=_s2({x:e.offsetX,y:e.offsetY});
   if(ptr.panning){ptr.panning=false;canvas.dataset.panning='false'}
   else{
     switch(_tl()){
@@ -4205,7 +4206,7 @@ _on(canvas,'pointerleave',()=>{if(_laser){_laser=null;_ivO()}});
 
 // Double-click: re-edit text shapes / label boxes & connectors
 _on(canvas,'dblclick',e=>{
-  const wp=G.s2w({x:e.offsetX,y:e.offsetY});
+  const wp=_s2({x:e.offsetX,y:e.offsetY});
   const hit=pickTop(wp);
   // ADR-0122: double-click empty canvas → new text at the point, editor open
   // (Excalidraw parity). beginText commits the add + opens the editor; empty
@@ -4233,16 +4234,16 @@ function _lblAnchor(hit){
   const r=_cbr();
   if(hit.type==='frame'||hit.type==='rect'||hit.type==='ellipse'||hit.type==='diamond'){   // ADR-0081
     const isFrame=hit.type==='frame';
-    const sp=G.w2s(isFrame?{x:hit.x,y:hit.y}:{x:hit.x+hit.w/2,y:hit.y+hit.h/2});
+    const sp=_w2(isFrame?{x:hit.x,y:hit.y}:{x:hit.x+hit.w/2,y:hit.y+hit.h/2});
     return {left:r.left+sp.x+(isFrame?6:-40),top:r.top+sp.y+(isFrame?-24:-12),bold:isFrame};
   }
   if(_conn(hit.type)){
     // Edge label at the connector's label anchor (ADR-0003/0081) — routed routes included.
-    const lp=_connLabelXY(hit),sp=G.w2s({x:lp.x,y:lp.y});
+    const lp=_connLabelXY(hit),sp=_w2({x:lp.x,y:lp.y});
     return {left:r.left+sp.x-40,top:r.top+sp.y-12,bold:false};
   }
   if(hit.type==='image'){                                            // ADR-0083
-    const sp=G.w2s({x:hit.x+hit.w/2,y:hit.y+hit.h});
+    const sp=_w2({x:hit.x+hit.w/2,y:hit.y+hit.h});
     return {left:r.left+sp.x-40,top:r.top+sp.y-28,bold:false};
   }
   return null;   // pen: no label to edit
@@ -4359,16 +4360,16 @@ _on(canvas,'drop',e=>{
   const bf=[...e.dataTransfer.files].find(f=>f.name.endsWith('.board'));
   if(bf){importBoard(bf);return}
   const xf=[...e.dataTransfer.files].find(f=>f.name.endsWith('.excalidraw'));
-  if(xf){importExcFile(xf,G.s2w({x:e.offsetX,y:e.offsetY}));return}
+  if(xf){importExcFile(xf,_s2({x:e.offsetX,y:e.offsetY}));return}
   const df=[...e.dataTransfer.files].find(f=>/\.(drawio|dio)$/i.test(f.name));   // ADR-0203
-  if(df){importDrawioFile(df,G.s2w({x:e.offsetX,y:e.offsetY}));return}
+  if(df){importDrawioFile(df,_s2({x:e.offsetX,y:e.offsetY}));return}
   // ADR-0042: .svg must be claimed BEFORE the generic image/* branch —
   // image/svg+xml also matches startsWith('image/') but <img> can't raster it.
   const sf=[...e.dataTransfer.files].find(f=>f.name.endsWith('.svg')||f.type==='image/svg+xml');
-  if(sf){importSvgFile(sf,G.s2w({x:e.offsetX,y:e.offsetY}));return}
+  if(sf){importSvgFile(sf,_s2({x:e.offsetX,y:e.offsetY}));return}
   const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith('image/'));
   if(!files.length)return;
-  const wp=G.s2w({x:e.offsetX,y:e.offsetY});
+  const wp=_s2({x:e.offsetX,y:e.offsetY});
   // Cascade multiple dropped images by index. NOTE: the offset must be captured
   // per-iteration (forEach's `i`), not a shared `let ox` incremented in the loop —
   // reader.onload is async, so a shared counter would have reached its final value
@@ -4417,7 +4418,7 @@ _on(window,'paste',e=>{
       // route it to the drawio importer instead of the text-shape fallback.
       if(/<mxfile[\s>]/.test(s.slice(0,4096))){
         _pd(e);
-        const wp=G.s2w({x:_cbr().width/2,y:_cbr().height/2});
+        const wp=_s2({x:_cbr().width/2,y:_cbr().height/2});
         if(importDrawioText(s,wp)!==false)return;
       }
       // ADR-0044: any other non-empty text pastes in as a text shape — editors,
@@ -4432,7 +4433,7 @@ _on(window,'paste',e=>{
         const C=_max(...rows.map(r=>r.length)),R=rows.length;
         const sw=160,sh=96,gx=16,gy=16;
         const r2=_cbr();
-        const wp=G.s2w({x:r2.width/2,y:r2.height/2});
+        const wp=_s2({x:r2.width/2,y:r2.height/2});
         const x0=wp.x-(C*sw+(C-1)*gx)/2,y0=wp.y-(R*sh+(R-1)*gy)/2;
         const built=[];
         rows.forEach((row,ri)=>row.slice(0,C).forEach((cell,ci)=>{
@@ -4447,7 +4448,7 @@ _on(window,'paste',e=>{
       const lines=body.split('\n');
       const w=_min(600,_max(60,_max(...lines.map(l=>l.length))*fs*0.55));
       const r=_cbr();
-      const wp=G.s2w({x:r.width/2,y:r.height/2});
+      const wp=_s2({x:r.width/2,y:r.height/2});
       const sh=Shape.make('text',{x:wp.x-w/2,y:wp.y-(lines.length*fs*1.4)/2,w,h:lines.length*fs*1.4,text:body,fontSize:fs});
       _cOp({op:'add',shape:sh});
       _sl().clear();_sl().add(sh.id);
@@ -4460,7 +4461,7 @@ _on(window,'paste',e=>{
     const f=item.getAsFile();if(!f)continue;
     _imgImportFile(f,(dataUrl,nw,nh)=>{
       const r=_cbr();
-      const wp=G.s2w({x:r.width/2,y:r.height/2});
+      const wp=_s2({x:r.width/2,y:r.height/2});
       const maxDim=400;
       let w=nw,h=nh;
       if(w>maxDim||h>maxDim){const sc=_min(maxDim/w,maxDim/h);w*=sc;h*=sc}
@@ -4562,7 +4563,7 @@ function zoomAt(sp,delta){
   // return before the pinch snapshot, nothing will move.
   if(nz===v.zoom)return;
   if(_pointers.size>=2)_pinchSnapNow();
-  const wp=G.s2w(sp);
+  const wp=_s2(sp);
   v.x=wp.x-sp.x/nz;
   v.y=wp.y-sp.y/nz;
   v.zoom=nz;
@@ -4861,7 +4862,7 @@ function nudgeSelection(dx,dy){
   if(!ids.length)return;
   for(const id of ids){const sh=byId(id);if(sh)Shape.translate(sh,dx,dy)}
   _rcOp({op:'move',ids,dx,dy});
-  if(state.dupDelta&&ids.every(id=>state.dupIds.has(id))){state.dupDelta.x+=dx;state.dupDelta.y+=dy}     // ADR-0080
+  if(_dd()&&ids.every(id=>state.dupIds.has(id))){_dd().x+=dx;_dd().y+=dy}     // ADR-0080
   _iv();
 }
 // Shared by live drag (doMove) and commit (endSelect) so they agree exactly.
@@ -4908,10 +4909,10 @@ function endSelect(wp,shift,alt){
     const mids=[...ptr.dragStartShapes.keys()].filter(id=>!byId(id)?.locked);
     if(_hp(dx,dy)>0.5&&mids.length){
       _rcOp({op:'move',ids:mids,dx,dy});
-      if(state.dupDelta&&mids.every(id=>state.dupIds.has(id))){state.dupDelta.x+=dx;state.dupDelta.y+=dy}   // ADR-0080
+      if(_dd()&&mids.every(id=>state.dupIds.has(id))){_dd().x+=dx;_dd().y+=dy}   // ADR-0080
     }
-  }else if(ptr.dragKind==='marquee'&&state.marquee){
-    const m=state.marquee;
+  }else if(ptr.dragKind==='marquee'&&_mq()){
+    const m=_mq();
     const r={x:_min(m.x1,m.x2),y:_min(m.y1,m.y2),
       w:_abs(m.x2-m.x1),h:_abs(m.y2-m.y1)};
     if(r.w>2||r.h>2){
@@ -4942,8 +4943,8 @@ function endSelect(wp,shift,alt){
       }
       _aS();   // ADR-0037: announce the marquee result (incl. cleared)
     }
-  }else if(ptr.dragKind==='lasso'&&state.lasso){                    // ADR-0158
-    const pts=state.lasso;
+  }else if(ptr.dragKind==='lasso'&&_la()){                    // ADR-0158
+    const pts=_la();
     if(pts.length>2){
       if(!shift)_sl().clear();                          // ⇧lasso adds, plain replaces (marquee parity)
       for(const s of _sh()){
@@ -5407,7 +5408,7 @@ function _teFollow(){
   _teVp=sig;positionTextEditor(_teTa,s);
 }
 function positionTextEditor(ta,s){
-  const sp=G.w2s({x:s.x,y:s.y});
+  const sp=_w2({x:s.x,y:s.y});
   const r=_cbr();
   ta.style.left=(r.left+sp.x)+'px';
   ta.style.top=(r.top+sp.y)+'px';
@@ -5746,8 +5747,8 @@ function doDuplicate(){
   const sel=[...withFrameChildren(_sl())].map(byId).filter(s=>s&&!s.locked);
   if(!sel.length)return;
   // ADR-0080: whole selection is the last duplicate chain → repeat its delta.
-  const smart=state.dupIds.size&&state.dupDelta&&sel.every(s=>state.dupIds.has(s.id));
-  const added=smart?_placeCopies(sel,state.dupDelta.x,state.dupDelta.y):_placeCopies(sel);   // independent of _cl()
+  const smart=state.dupIds.size&&_dd()&&sel.every(s=>state.dupIds.has(s.id));
+  const added=smart?_placeCopies(sel,_dd().x,_dd().y):_placeCopies(sel);   // independent of _cl()
   _keepSel(origSel);
   _tst(t('pasted')+' '+added.length);
 }
@@ -6627,7 +6628,7 @@ function drawioToShapes(txt){
     const pts=g?[..._qsa(g,'Array mxPoint')]:[];
     if(pts.length)s.way=pts.slice(0,200).map(p=>({x:(+_ga(p,'x')||0)+_do+_eo.x,y:(+_ga(p,'y')||0)+_eo.y}));   // ADR-0347/0361: {x,y} objects — tuples broke every renderer
     if(s.curve&&s.way&&s.way.length===1){                              // ADR-0360: waypoint → cbend inverse
-      const _p=s.way[0],_e=connEnds(s),_mx=(_e.x1+_e.x2)/2,_my=(_e.y1+_e.y2)/2,
+      const _p=s.way[0],_e=_cE(s),_mx=(_e.x1+_e.x2)/2,_my=(_e.y1+_e.y2)/2,
             _dx=_e.x2-_e.x1,_dy=_e.y2-_e.y1,_L=_hp(_dx,_dy)||1;
       s.cbend=_max(-400,_min(400,((_p.x-_mx)*(-_dy/_L)+(_p.y-_my)*(_dx/_L))));
       s.way=null;}
@@ -6682,7 +6683,7 @@ function importDrawioText(txt,wp){
   try{shapes=drawioToShapes(txt)}catch(_){shapes=null}
   if(!shapes||!shapes.length){_tst(t('invalidBoard'),'warn');return false}
   const _vpNull=wp==null;
-  if(!wp){const r=_cbr();wp=G.s2w({x:r.width/2,y:r.height/2})}
+  if(!wp){const r=_cbr();wp=_s2({x:r.width/2,y:r.height/2})}
   const bb=G.bboxAll(shapes);
   if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);
     for(const s of shapes)Shape.translate(s,dx,dy)}
@@ -6800,7 +6801,7 @@ function boardToDrawio(shapes){
     const _gc2=_gbx[s.groupId];                                         // ADR-0347
     if(!src)geo+=`<mxPoint x="${s.x1-(_gc2?_gc2.x:0)}" y="${s.y1-(_gc2?_gc2.y:0)}" as="sourcePoint"/>`;
     if(!tgt)geo+=`<mxPoint x="${s.x2-(_gc2?_gc2.x:0)}" y="${s.y2-(_gc2?_gc2.y:0)}" as="targetPoint"/>`;
-    const wa=s.elbow?_elbowPts(s).slice(1,-1):s.curve?[_curveCtrl(connEnds(s),s.cbend)]:_wayArr(s);   // ADR-0358/0360
+    const wa=s.elbow?_elbowPts(s).slice(1,-1):s.curve?[_curveCtrl(_cE(s),s.cbend)]:_wayArr(s);   // ADR-0358/0360
     if(wa.length)geo+='<Array as="points">'+wa.map(p=>`<mxPoint x="${p.x-(_gc2?_gc2.x:0)}" y="${p.y-(_gc2?_gc2.y:0)}"/>`).join('')+'</Array>';
     geo+='</mxGeometry>';
     cells.push(`<mxCell id="${id}" value="${nl(s.label||'')}" style="${esc(sty)}" edge="1" parent="${_gc2?`g_${s.groupId}`:'1'}"${src}${tgt}${s.link?` link="${esc(s.link)}"`:''}${s.visible===0?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0245/0347
@@ -6982,7 +6983,7 @@ function importSvgText(txt,wp){
   let shapes=null;
   try{shapes=svgToShapes(txt)}catch(_){shapes=null}
   if(!shapes||!shapes.length){_tst(t('invalidBoard'),'warn');return false}
-  if(!wp){const r=_cbr();wp=G.s2w({x:r.width/2,y:r.height/2})}
+  if(!wp){const r=_cbr();wp=_s2({x:r.width/2,y:r.height/2})}
   // centre the imported group at wp (drop point / viewport centre)
   const bb=G.bboxAll(shapes);
   if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);
@@ -7136,7 +7137,7 @@ function importExcText(txt,wp){
   let shapes=null;
   try{shapes=excToShapes(txt)}catch(_){shapes=null}
   if(!shapes||!shapes.length){_tst(t('invalidBoard'),'warn');return false}
-  if(!wp){const r=_cbr();wp=G.s2w({x:r.width/2,y:r.height/2})}
+  if(!wp){const r=_cbr();wp=_s2({x:r.width/2,y:r.height/2})}
   const bb=G.bboxAll(shapes);
   if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);
     for(const s of shapes)Shape.translate(s,dx,dy)}
@@ -7154,7 +7155,7 @@ function importBoardText(txt,wp){
   if(!data||!Array.isArray(data.shapes))return false;
   const shapes=data.shapes.filter(validShape);
   if(!shapes.length)return false;
-  if(!wp){const r=_cbr();wp=G.s2w({x:r.width/2,y:r.height/2})}
+  if(!wp){const r=_cbr();wp=_s2({x:r.width/2,y:r.height/2})}
   const bb=G.bboxAll(shapes);
   const dx=bb?wp.x-(bb.x+bb.w/2):0,dy=bb?wp.y-(bb.y+bb.h/2):0;
   const origSel=_selIds();
@@ -7255,7 +7256,7 @@ function buildSVG(shapes,paper){
   const svgShapes=[..._vis.filter(s=>s.type==="frame"),..._vis.filter(s=>s.type!=="frame")];
   for(const s of svgShapes){
     const X=_num(s.x),Y=_num(s.y),W=_num(s.w),H=_num(s.h);
-    const _e=connEnds(s);
+    const _e=_cE(s);
     const X1=_num(_e.x1),Y1=_num(_e.y1),X2=_num(_e.x2),Y2=_num(_e.y2);
     const SZ=_num(s.size),opv=_num(s.opacity);
     const a=(s.opacity!=null&&opv<1)?` opacity="${opv}"`:'';
@@ -7306,7 +7307,7 @@ function buildSVG(shapes,paper){
         break;}
       case 'line':{
         if(s.curve){
-          const _ce=connEnds(s),cc=_curveCtrl(_ce,s.cbend);
+          const _ce=_cE(s),cc=_curveCtrl(_ce,s.cbend);
           els.push(_sp(`M ${_num(_ce.x1+ox)} ${_num(_ce.y1+oy)} Q ${_num(cc.x+ox)} ${_num(cc.y+oy)} ${_num(_ce.x2+ox)} ${_num(_ce.y2+oy)}`));
           _cL();
         }else if(s.elbow){
@@ -7326,7 +7327,7 @@ function buildSVG(shapes,paper){
       case 'arrow':{
         const ah=_max(6,(SZ||2)*3);
         if(s.curve){
-          const _ce=connEnds(s),cc=_curveCtrl(_ce,s.cbend);
+          const _ce=_cE(s),cc=_curveCtrl(_ce,s.cbend);
           els.push(_sp(`M ${_num(_ce.x1+ox)} ${_num(_ce.y1+oy)} Q ${_num(cc.x+ox)} ${_num(cc.y+oy)} ${_num(_ce.x2+ox)} ${_num(_ce.y2+oy)}`));
           const ang=_at2(_ce.y2-cc.y,_ce.x2-cc.x);
           const a1=ang+_PI-0.5,a2=ang+_PI+0.5,tx=_ce.x2+ox,ty=_ce.y2+oy;
@@ -7721,6 +7722,21 @@ const Net={
           if(k===msg.key){const sh=byId(id);if(sh){delete sh.img;sh.dataUrl=data}this._imgPending.delete(id)}
         }
         _iv();break;}
+      case 'snap':{
+        // ADR-0383: chunked snapshot intake — mirror of 'img' but a single
+        // in-flight assembly (snapshots only come over RTC, once per join).
+        if(typeof msg.data!=='string'||msg.data.length>96*1024)break;
+        const n=typeof msg.n==='number'&&msg.n>=1&&msg.n<=384?_fl(msg.n):1;
+        const seq=typeof msg.seq==='number'&&msg.seq>=0?_fl(msg.seq):0;
+        if(seq>=n)break;
+        let sn=this._snapIn;
+        if(!sn){sn={parts:new Array(n),got:0,n};this._snapIn=sn}
+        if(sn.n===n&&!sn.parts[seq]){sn.parts[seq]=msg.data;sn.got++}
+        if(sn.got<sn.n)break;
+        const joined=sn.parts.join('');this._snapIn=null;
+        if(joined.length>24_000_000)break;
+        try{this._onRecv(_JP(joined),viaRtc)}catch(_){}
+        break;}
       case 'op':{
         // Validate op shape before applying — reject garbage from bad peers
         const op=this._attachOp(msg.op);
@@ -8459,7 +8475,7 @@ const UI={
   },
   openCtxMenu(x,y,customItems){
     const m=_g('ctx');
-    const _cr=_cbr(),_wp=G.s2w({x:x-_cr.left,y:y-_cr.top});
+    const _cr=_cbr(),_wp=_s2({x:x-_cr.left,y:y-_cr.top});
     m._wx=_wp.x;m._wy=_wp.y;   // ADR-0103: paste-at-cursor anchor
     const has=_selN()>0;
     while(m.firstChild)m.removeChild(m.firstChild);
@@ -9211,7 +9227,7 @@ function pinAnchor(){
   const before=[],after=[];
   _forSel((s,id)=>{if((s.type!=='line'&&s.type!=='arrow')||s.locked||(!s.a&&!s.b))return;
     before.push({id,aF:s.aF??null,bF:s.bF??null});
-    const e=connEnds(s);
+    const e=_cE(s);
     for(const k of['a','b']){
       const tgt=s[k]&&byId(s[k]);if(!tgt)return;
       const fk=k+'F';
@@ -9617,7 +9633,7 @@ const Minimap=(()=>{
         case 'rect':{const rx=s.x*sc+ox,ry=s.y*sc+oy,rw=s.w*sc,rh=s.h*sc;if(s.fill)sx.fillRect(rx,ry,rw,rh);sx.strokeRect(rx,ry,rw,rh);break}
         case 'ellipse':sx.beginPath();sx.ellipse(s.x*sc+ox+s.w*sc/2,s.y*sc+oy+s.h*sc/2,_abs(s.w*sc/2),_abs(s.h*sc/2),0,0,_PI*2);if(s.fill)sx.fill();sx.stroke();break;
         case 'diamond':{const dcx=s.x*sc+ox+s.w*sc/2,dcy=s.y*sc+oy+s.h*sc/2;sx.beginPath();sx.moveTo(dcx,s.y*sc+oy);sx.lineTo(s.x*sc+ox+s.w*sc,dcy);sx.lineTo(dcx,s.y*sc+oy+s.h*sc);sx.lineTo(s.x*sc+ox,dcy);sx.closePath();if(s.fill)sx.fill();sx.stroke();break;}
-        case 'line':case 'arrow':{if(s.elbow){const pts=_elbowPts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<pts.length;i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}if(s.curve){const me=connEnds(s),cc=_curveCtrl(me,s.cbend);sx.beginPath();sx.moveTo(me.x1*sc+ox,me.y1*sc+oy);sx.quadraticCurveTo(cc.x*sc+ox,cc.y*sc+oy,me.x2*sc+ox,me.y2*sc+oy);sx.stroke();break}const pts=_linePts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<pts.length;i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}
+        case 'line':case 'arrow':{if(s.elbow){const pts=_elbowPts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<pts.length;i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}if(s.curve){const me=_cE(s),cc=_curveCtrl(me,s.cbend);sx.beginPath();sx.moveTo(me.x1*sc+ox,me.y1*sc+oy);sx.quadraticCurveTo(cc.x*sc+ox,cc.y*sc+oy,me.x2*sc+ox,me.y2*sc+oy);sx.stroke();break}const pts=_linePts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<pts.length;i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}
         case 'pen':if(s.pts.length<2)break;sx.beginPath();sx.moveTo(s.pts[0][0]*sc+ox,s.pts[0][1]*sc+oy);for(let i=1;i<s.pts.length;i++)sx.lineTo(s.pts[i][0]*sc+ox,s.pts[i][1]*sc+oy);sx.stroke();break;
         case 'text':case 'sticky':{const rx2=s.x*sc+ox,ry2=s.y*sc+oy,rw2=_max(2,s.w*sc),rh2=_max(2,s.h*sc);sx.fillStyle=s.type==='sticky'?(s.color||'#FEF08A'):(s.fill||getCSS('--brand'));sx.fillRect(rx2,ry2,rw2,rh2);break}
         case 'image':{const rx3=s.x*sc+ox,ry3=s.y*sc+oy,rw3=_max(2,s.w*sc),rh3=_max(2,s.h*sc);const img=s.dataUrl?_imgCache.get(_imgKey(s.dataUrl)):null;if(img&&img.complete&&img.naturalWidth){if(s.flip){const fx3=rx3+rw3/2,fy3=ry3+rh3/2;sx.save();sx.translate(fx3,fy3);sx.scale(s.flip&1?-1:1,s.flip&2?-1:1);sx.translate(-fx3,-fy3);sx.drawImage(img,rx3,ry3,rw3,rh3);sx.restore()}else sx.drawImage(img,rx3,ry3,rw3,rh3)}else{sx.fillStyle='#CBD5E1';sx.fillRect(rx3,ry3,rw3,rh3)}break}
