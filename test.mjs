@@ -721,6 +721,7 @@ const checks = [
   ['svg conn path/label emitters deduped (ADR-0270)', html.includes('const _sp=(d,j)')&&html.includes('_cL();')],
   ['drawio multi-page side-by-side import (ADR-0311)', html.includes("for(const dg of doc.querySelectorAll('diagram'))")],
   ['link badge 🔗 on linked shapes (ADR-0310)', html.includes("c.fillText('🔗',s.x+Math.abs(s.w)-3,s.y+3)")],
+  ['_keepSel() origSel write-back (ADR-0312)', html.includes("const _keepSel=arr=>")],
   ['_selR() origSel restore helper (ADR-0309)', html.includes("const _selR=op=>")],
   ['_selL() selection-list shorthand (ADR-0308)', html.includes("const _selL=f=>")],
   ['_so() style-op commit tail (ADR-0307)', html.includes("const _so=(b,a)=>")],
@@ -1190,7 +1191,7 @@ const checks = [
   // v1.7.24a: _apply clear backward must restore pre-clear selection
   ['_apply clear backward restores origSel (mirror of del undo)',
     html.includes("_selR(op);") &&
-    html.includes("if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
+    html.includes("_keepSel(origSel);")],
   // v1.7.24b: validRemotePayload must block locked key in remote style/resize ops
   ['remote style/resize ops cannot set locked (noLock guard extended)',
     html.includes("case 'resize':{const noLock=p=>!('locked' in p);")],
@@ -1220,7 +1221,7 @@ const checks = [
   // v1.7.35: text-blur del origSel pattern must exist at the existing-text-empty path
   ['text-blur del: origSel captured and patched before and after Store.commit del',
     html.includes("const origSel=[...state.selection];\n        const connClears=computeConnClears(new Set([orig.id]));")&&
-    html.includes("Store.commit(delOp);\n        if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
+    html.includes("Store.commit(delOp);\n        _keepSel(origSel);")],
   // v1.7.36: flushErase must capture origSel before del commit and patch after
   ['flushErase del: origSel captured before commit and patched after (parity with doDelete)',
     html.includes("const origSel=[...state.selection];\n  const op={op:'del',shapes:clone(_eraseBatch)};")],
@@ -1247,7 +1248,7 @@ const checks = [
     html.includes("if(sh&&!(forward&&sh.locked))delete sh.groupId}")],
   // v1.7.37: doGroup/_apply group backward must carry and restore origSel
   ['doGroup: origSel patched onto history entry after _recordCommitted',
-    html.includes("Store._recordCommitted({op:'group',ids,gid,before});\n  if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
+    html.includes("Store._recordCommitted({op:'group',ids,gid,before});\n  _keepSel(origSel);")],
   ['_apply group backward: if(op.origSel) restores selection',
     html.includes("_selR(op);}\n        break;}\n      case 'ungroup':")],
   // v1.7.37: doUngroup/_apply ungroup backward must carry and restore origSel

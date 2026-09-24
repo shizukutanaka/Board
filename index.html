@@ -785,9 +785,10 @@ const _csh=(s,c)=>{if(s.shadow){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=
 const _so=(b,a)=>{if(b.length){_styleOp(b,a);invalidate()}};   // ADR-0307
 const _selL=f=>[...state.selection].map(byId).filter(f);   // ADR-0308
 const _selR=op=>{if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)))};   // ADR-0309
+const _keepSel=arr=>{if(arr.length)state.history[state.histIdx].origSel=arr};   // ADR-0312
 
 // ====================== CONSTANTS ======================
-const V='1.7.362';
+const V='1.7.363';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4045,7 +4046,7 @@ canvas.addEventListener('pointerup',e=>{
         if(sh&&JSON.stringify(ow)!==JSON.stringify(nw)){
           const origSel=[...state.selection];
           Store._recordCommitted({op:'style',before:[{id:sh.id,way:clone(ow)}],after:[{id:sh.id,way:clone(nw)}]});   // ADR-0090: arrays clone whole
-          if(origSel.length)state.history[state.histIdx].origSel=origSel;
+          _keepSel(origSel);
         }
         ptr.wayIdx=null;ptr.wayNew=false;
       }else if(ptr.dragKind==='lblpos'&&ptr.lblOrig){               // ADR-0117
@@ -5280,7 +5281,7 @@ function openTextEditor(s,isNew){
         const delOp={op:'del',shapes:[orig]};
         if(connClears.length)delOp.connClears=connClears;
         Store.commit(delOp);
-        if(origSel.length)state.history[state.histIdx].origSel=origSel;
+        _keepSel(origSel);
       }else if(newText!==origText){
         const before={text:origText,w:orig.w,h:orig.h};
         const after={text:newText,w:s.w,h:s.h};
@@ -5353,7 +5354,7 @@ function flushErase(){
   const op={op:'del',shapes:clone(_eraseBatch)};
   if(connClears.length)op.connClears=connClears;
   Store.commit(op);
-  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  _keepSel(origSel);
   _eraseBatch=[];
 }
 
@@ -5586,7 +5587,7 @@ function doPaste(){
   _pasteCount++;
   const origSel=[...state.selection];
   const added=_placeCopies(state.clipboard.shapes,vCx-srcCx+co,vCy-srcCy+co);
-  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  _keepSel(origSel);
   UI.toast(t('pasted')+' '+added.length);
 }
 // ADR-0115: paste in place — ⌘⇧V restores shapes at their original coordinates
@@ -5596,7 +5597,7 @@ function doPasteInPlace(){
   if(!state.clipboard)return;
   const origSel=[...state.selection];
   const added=_placeCopies(state.clipboard.shapes,0,0);
-  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  _keepSel(origSel);
   UI.toast(t('pasted')+' '+added.length);
 }
 // ADR-0103: paste centred at the context-menu point (right-click «paste here»).
@@ -5607,7 +5608,7 @@ function doPasteAt(wx,wy){
   const srcCx=bb?bb.x+bb.w/2:wx,srcCy=bb?bb.y+bb.h/2:wy;
   const origSel=[...state.selection];
   const added=_placeCopies(state.clipboard.shapes,wx-srcCx,wy-srcCy);
-  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  _keepSel(origSel);
   UI.toast(t('pasted')+' '+added.length);
 }
 // Clone a set of shapes onto the board with fresh ids/group ids, offset by (dx,dy),
@@ -5655,7 +5656,7 @@ function doDuplicate(){
   // ADR-0080: whole selection is the last duplicate chain → repeat its delta.
   const smart=state.dupIds.size&&state.dupDelta&&sel.every(s=>state.dupIds.has(s.id));
   const added=smart?_placeCopies(sel,state.dupDelta.x,state.dupDelta.y):_placeCopies(sel);   // independent of state.clipboard
-  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  _keepSel(origSel);
   UI.toast(t('pasted')+' '+added.length);
 }
 function doDelete(){
@@ -5680,7 +5681,7 @@ function doDelete(){
   const op={op:'del',shapes:clone(sel)};
   if(connClears.length)op.connClears=connClears;
   Store.commit(op);
-  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  _keepSel(origSel);
   state.selection.clear();
   UI.toast(t('deleted')+' '+sel.length);
 }
@@ -5845,7 +5846,7 @@ function doGroup(){
   const before=ids.map(id=>({id,groupId:byId(id)?.groupId}));
   for(const id of ids){const sh=byId(id);if(sh)sh.groupId=gid}
   Store._recordCommitted({op:'group',ids,gid,before});
-  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  _keepSel(origSel);
   UI.toast(t('grouped'),'ok');
   invalidate();
 }
@@ -5861,7 +5862,7 @@ function doUngroup(){
   }
   state.selection=new Set([...ids.filter(id=>byId(id)),...ungrouped]);
   Store._recordCommitted({op:'ungroup',ids:ungrouped,gids:[...gids],before});
-  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  _keepSel(origSel);
   UI.toast(t('ungrouped'),'ok');
   invalidate();
 }
@@ -5871,7 +5872,7 @@ function doClearAll(){
   const origSel=[...state.selection];
   Persist.saveBackup(clone(state.shapes),{...state.viewport},state.docName);   // ADR-0004
   Store.commit({op:'clear',shapes:clone(state.shapes),wc:clone(state.wclock)});
-  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  _keepSel(origSel);
   UI.toast(t('cleared'));
 }
 
@@ -6978,7 +6979,7 @@ function importBoardText(txt,wp){
   const dx=bb?wp.x-(bb.x+bb.w/2):0,dy=bb?wp.y-(bb.y+bb.h/2):0;
   const origSel=[...state.selection];
   const added=_placeCopies(shapes,dx,dy);
-  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  _keepSel(origSel);
   UI.toast(t('imported')+' '+added.length,'ok');
   return true;
 }
@@ -8947,7 +8948,7 @@ function fitFrames(){
     after.push({id:f.id,x:nx,y:ny,w:nw,h:nh});
     f.x=nx;f.y=ny;f.w=nw;f.h=nh;
   }
-  if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'align',dir:'framefit',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
+  if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'align',dir:'framefit',before,after});_keepSel(origSel);invalidate()}
 }
 // ADR-0084: route reset — one style op clears way/bend/elbow/curve back to a
 // straight edge (draw.io "Clear Waypoints"). way/bend are objects → ??null;
@@ -9095,8 +9096,8 @@ function fontSizeStep(d){
   _so(before,after)
 }
 // ADR-0078: ⌘B/⌘I toggles bold/italic on selected text/sticky via style op.
-function _rcOp(op){const o=[...state.selection];Store._recordCommitted(op);if(o.length)state.history[state.histIdx].origSel=o}
-function _cOp(op){const o=[...state.selection];Store.commit(op);if(o.length)state.history[state.histIdx].origSel=o}
+function _rcOp(op){const o=[...state.selection];Store._recordCommitted(op);_keepSel(o)}
+function _cOp(op){const o=[...state.selection];Store.commit(op);_keepSel(o)}
 function _styleOp(before,after){_rcOp({op:'style',before,after})}   // ADR-0239/0248
 function toggleTextFlag(k){
   const before=[],after=[];
