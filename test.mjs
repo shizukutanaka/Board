@@ -463,11 +463,12 @@ const checks = [
   ['rect corners: s.r override + ctx menu + SVG rx', html.includes('s.r!=null?s.r:8')&&html.includes('toggleRound')&&html.includes('ctxRrect')&&html.includes('rx="${r}"')],
   ['shift+wheel → horizontal pan', html.includes('const dx=e.shiftKey&&!d.x?d.y:d.x')],
   ['escape cancels in-flight pointer gesture', html.includes('else if(ptr.down&&ptr.dragKind)_cancelPointerGesture()')],
-  ['underline: ⌘U toggle + canvas line + SVG text-decoration', html.includes("toggleTextFlag('under')")&&html.includes('s.under')&&html.includes('text-decoration="underline"')],
+  ['underline: ⌘U toggle + canvas line + SVG text-decoration', html.includes("toggleTextFlag('under')")&&html.includes('s.under')&&html.includes("'underline'")&&html.includes('text-decoration=')],
   ['equal-size snap: resize matches another shape\'s w/h', html.includes('equal-size snap')&&html.includes('nw=eH?x-orig.x')&&html.includes('Math.abs(nw-b.w)')],
   ['excalidraw multi-segment arrow → real connector + way[]', html.includes('pts.slice(1,-1).map(p=>({x:p[0],y:p[1]}))')],
   ['excalidraw export: excScene maps types/bindings/files', html.includes('function excScene')&&html.includes('endArrowhead')&&html.includes('ctxExportExc')],
   ['clipboard .excalidraw JSON routes to importExcText', html.includes('importExcText(s)!==false')],
+  ['strikethrough: ⌘⇧X + canvas midline + SVG line-through', html.includes("toggleTextFlag('strike')")&&html.includes('s.strike')&&html.includes('line-through')],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
@@ -3674,6 +3675,8 @@ try {
     state.selection=new Set(['tu1']);
     toggleTextFlag('under');assert.ok(tu.under===true,'⌘U → under set');
     toggleTextFlag('under');assert.ok(!('under' in tu),'⌘U again → cleared');
+    toggleTextFlag('strike');assert.ok(tu.strike===true,'⌘⇧X → strike set');
+    toggleTextFlag('strike');assert.ok(!('strike' in tu),'⌘⇧X again → cleared');
     Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(l)),JSON.parse(JSON.stringify(byId(A.id))),JSON.parse(JSON.stringify(byId(B.id)))]});
     console.log('  ✓ label anchor: straight/way/elbow/curve (4 asserts)');
   }

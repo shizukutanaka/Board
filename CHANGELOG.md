@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.158]
+
+### 追加
+- **取り消し線** (ADR-0100)。`⌘⇧X` で `s.strike` トグル (style op)。
+  canvas は各行中央に手動ライン、SVG は `text-decoration` を
+  `"underline line-through"` 連結に一般化、編集 overlay も同期。
+  4装飾 (太字/斜体/下線/取消線) が完結。
+
 ## [1.7.157]
 
 ### 追加
