@@ -2,6 +2,15 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.135]
+
+### 追加
+- **ハッチ / 斜格子フィル** (ADR-0077)。rect/ellipse/diamond に
+  `s.fstyle` ('hatch'|'cross') — ctx メニュー「塗りスタイル」で
+  塗り→ハッチ→斜格子を巡回 (Excalidraw parity)。fill 色と直交で
+  fill=null でも線のみ描画、canvas `clip()` と SVG `<clipPath>` が
+  `_hatchSegs` の線分列を共用。copyStyle/pasteStyle でも伝搬。
+
 ## [1.7.134]
 
 ### 追加

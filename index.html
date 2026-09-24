@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.134';
+const V='1.7.135';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -860,7 +860,7 @@ const I18N={
     undone:'元に戻した',redone:'やり直した',created:'作成',editLabel:'選択中の図形を編集',
     confirmClear:'すべて削除しますか？',
     ctxCopy:'コピー',ctxPaste:'貼り付け',ctxDuplicate:'複製',
-    ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxCurve:'曲線',ctxBothEnds:'両端ヘッド',ctxTextAlign:'テキスト揃え (左→中央→右)',
+    ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxCurve:'曲線',ctxBothEnds:'両端ヘッド',ctxTextAlign:'テキスト揃え (左→中央→右)',ctxFillStyle:'塗りスタイル (塗り→ハッチ→斜格子)',
     ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
     ctxSendBackward:'背面へ',ctxSendBack:'最背面へ',
     ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxLock:'ロック',ctxUnlock:'ロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
@@ -936,7 +936,7 @@ const I18N={
     undone:'Undone',redone:'Redone',created:'Created',editLabel:'Edit selected shape',
     confirmClear:'Delete everything?',
     ctxCopy:'Copy',ctxPaste:'Paste',ctxDuplicate:'Duplicate',
-    ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxCurve:'Curved',ctxBothEnds:'Arrowheads both ends',ctxTextAlign:'Text align (left→center→right)',
+    ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxCurve:'Curved',ctxBothEnds:'Arrowheads both ends',ctxTextAlign:'Text align (left→center→right)',ctxFillStyle:'Fill style (solid→hatch→cross)',
     ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
     ctxSendBackward:'Send backward',ctxSendBack:'Send to back',
     ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxLock:'Lock',ctxUnlock:'Unlock',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
@@ -1697,6 +1697,29 @@ function connEnds(s){
 function _linePts(s){
   const e=connEnds(s);
   return s.way?[{x:e.x1,y:e.y1},{x:s.way.x,y:s.way.y},{x:e.x2,y:e.y2}]:[{x:e.x1,y:e.y1},{x:e.x2,y:e.y2}];
+}
+// ADR-0077: hatch segments over a bbox — 45° family, plus 135° when cross.
+function _hatchSegs(x,y,w,h,gap,cross){
+  const out=[];
+  for(let d=-h;d<w;d+=gap)out.push([x+d,y,x+d+h,y+h]);
+  if(cross)for(let d=-h;d<w;d+=gap)out.push([x+d+h,y,x+d,y+h]);
+  return out;
+}
+// Canvas hatch: clip() reuses the still-current shape path (stroke doesn't consume it).
+function _hatchCtx(c,s){
+  const segs=_hatchSegs(s.x,s.y,s.w,s.h,Math.max(6,(s.size||1)*4),s.fstyle==='cross');
+  c.save();c.clip();c.globalAlpha=0.55;
+  c.strokeStyle=s.stroke||'#0F172A';c.lineWidth=Math.max(0.5,(s.size||1)*0.6);c.setLineDash([]);
+  c.beginPath();for(const g of segs){c.moveTo(g[0],g[1]);c.lineTo(g[2],g[3])}c.stroke();
+  c.restore();
+}
+// SVG hatch: clipPath mirroring the shape + <g clip-path> of the same segments.
+function _svgHatch(els,s,ox,oy,stroke,shapeTag,rT){
+  const hid='hc'+els.length;
+  const segs=_hatchSegs(s.x+ox,s.y+oy,s.w,s.h,Math.max(6,(s.size||1)*4),s.fstyle==='cross');
+  const lw=Math.max(0.5,(s.size||1)*0.6);
+  const lns=segs.map(g=>`<line x1="${_num(g[0])}" y1="${_num(g[1])}" x2="${_num(g[2])}" y2="${_num(g[3])}" stroke="${stroke}" stroke-width="${_num(lw)}"/>`).join('');
+  els.push(`<defs><clipPath id="${hid}">${shapeTag}</clipPath></defs><g clip-path="url(#${hid})" opacity="0.55"${rT}>${lns}</g>`);
 }
 // Shared by doDelete/flushErase/openTextEditor/_syncTextFinalize: resolve live endpoint
 // coords BEFORE the referenced shapes are gone, so undo can restore exact bindings.
@@ -2485,12 +2508,14 @@ function drawShape(s,c){
       roundRect(c,s.x,s.y,s.w,s.h,Math.min(8,Math.abs(s.w)/4,Math.abs(s.h)/4));
       if(s.fill){c.fill()}
       if(s.stroke){c.stroke()}
+      if(s.fstyle)_hatchCtx(c,s);                              // ADR-0077
       _drawBoxLabel(s,c);break;
     case 'ellipse':
       c.beginPath();
       c.ellipse(s.x+s.w/2,s.y+s.h/2,Math.abs(s.w/2),Math.abs(s.h/2),0,0,PI2);
       if(s.fill){c.fill()}
       if(s.stroke){c.stroke()}
+      if(s.fstyle)_hatchCtx(c,s);                              // ADR-0077
       _drawBoxLabel(s,c);break;
     case 'diamond':{
       const cx=s.x+s.w/2,cy=s.y+s.h/2;
@@ -2498,6 +2523,7 @@ function drawShape(s,c){
       c.moveTo(cx,s.y);c.lineTo(s.x+s.w,cy);c.lineTo(cx,s.y+s.h);c.lineTo(s.x,cy);c.closePath();
       if(s.fill)c.fill();
       if(s.stroke)c.stroke();
+      if(s.fstyle)_hatchCtx(c,s);                              // ADR-0077
       _drawBoxLabel(s,c);break;}
     case 'line':{
       if(s.elbow){_polyline(c,_elbowPts(s));c.stroke();_drawConnLabel(s,c);break}
@@ -5495,14 +5521,17 @@ function buildSVG(shapes,paper){
       case 'rect':{
         const r=Math.min(8,Math.abs(W)/4,Math.abs(H)/4);
         els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}/>`);
+        if(s.fstyle)_svgHatch(els,s,ox,oy,stroke,`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}"/>`,rT);   // ADR-0077
         if(s.label)_svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT);
         break;}
       case 'ellipse':
         els.push(`<ellipse cx="${X+W/2+ox}" cy="${Y+H/2+oy}" rx="${Math.abs(W/2)}" ry="${Math.abs(H/2)}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}/>`);
+        if(s.fstyle)_svgHatch(els,s,ox,oy,stroke,`<ellipse cx="${X+W/2+ox}" cy="${Y+H/2+oy}" rx="${Math.abs(W/2)}" ry="${Math.abs(H/2)}"/>`,rT);   // ADR-0077
         if(s.label)_svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT);
         break;
       case 'diamond':{
         els.push(`<polygon points="${X+W/2+ox},${Y+oy} ${X+W+ox},${Y+H/2+oy} ${X+W/2+ox},${Y+H+oy} ${X+ox},${Y+H/2+oy}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}/>`);
+        if(s.fstyle)_svgHatch(els,s,ox,oy,stroke,`<polygon points="${X+W/2+ox},${Y+oy} ${X+W+ox},${Y+H/2+oy} ${X+W/2+ox},${Y+H+oy} ${X+ox},${Y+H/2+oy}"/>`,rT);   // ADR-0077
         if(s.label)_svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT);
         break;}
       case 'line':{
@@ -6574,6 +6603,7 @@ const UI={
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked})&&['ctxElbow','',toggleElbow],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked})&&['ctxCurve','',toggleCurve],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky')&&!s.locked})&&['ctxTextAlign','',cycleTextAlign],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond')&&!s.locked})&&['ctxFillStyle','',cycleFillStyle],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='arrow'&&!s.locked})&&['ctxBothEnds','',toggleBothEnds],
       has&&['ctxDelete','⌫',doDelete],
       has&&'sep',
@@ -7063,6 +7093,17 @@ function fontSizeStep(d){
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
 }
+// ADR-0077: cycle fill style solid→hatch→cross→solid for box shapes via style op.
+function cycleFillStyle(){
+  const before=[],after=[];
+  for(const id of state.selection){
+    const s=byId(id);if(!s||(s.type!=='rect'&&s.type!=='ellipse'&&s.type!=='diamond')||s.locked)continue;
+    const cur=s.fstyle||'',nxt=cur===''?'hatch':cur==='hatch'?'cross':'';
+    before.push({id,fstyle:cur||null});after.push({id,fstyle:nxt||null});
+    if(nxt)s.fstyle=nxt;else delete s.fstyle;
+  }
+  if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
+}
 // ADR-0073: cycle text align left→center→right for text/sticky via style op.
 function cycleTextAlign(){
   const before=[],after=[];
@@ -7091,7 +7132,7 @@ function copyStyle(){
   if(!sh){UI.toast(t('noSelection'),'warn');return}
   state.styleClipboard={
     stroke:sh.stroke,fill:sh.fill,
-    size:sh.size,opacity:sh.opacity,dash:sh.dash||0
+    size:sh.size,opacity:sh.opacity,dash:sh.dash||0,fstyle:sh.fstyle   // ADR-0077
   };
   UI.toast(t('styleCopied'),'ok');
 }
