@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.227]
+
+### 追加
+- **ラベルのフォントサイズ** (ADR-0169)。コネクタ (既定12px)、
+  ボックス/画像キャプション (既定14px) のラベルが `s.fontSize` を
+  尊重 — ⌘⇧,/⌘⇧. がラベル所持図形にも適用。
+
 ## [1.7.226]
 
 ### 追加

@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.226';
+const V='1.7.227';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2539,7 +2539,7 @@ function _drawBoxLabel(s,c){
   if(!s.label)return;
   c.save();
   c.fillStyle=s.stroke||'#0F172A';
-  const fs=14;
+  const fs=s.fontSize||14;   // ADR-0169
   c.font=fs+'px system-ui,sans-serif';
   c.textAlign='center';c.textBaseline='middle';
   const lines=wrapTextCached(s,s.label,Math.max(10,s.w-8),fs,t=>c.measureText(t).width);   // ADR-0074
@@ -2554,7 +2554,7 @@ function _drawBoxLabel(s,c){
 function _drawImgLabel(s,c){
   if(!s.label)return;
   c.save();
-  const fs=14;
+  const fs=s.fontSize||14;   // ADR-0169
   c.font=fs+'px system-ui,sans-serif';
   let lines=wrapTextCached(s,s.label,Math.max(10,s.w-8),fs,t=>c.measureText(t).width);
   const lh=fs*1.25,maxL=Math.max(1,Math.floor((s.h-4)/lh));
@@ -2636,10 +2636,11 @@ function _drawConnLabel(s,c){
   if(!s.label)return;
   const lp=_connLabelXY(s),mx=lp.x,my=lp.y;                       // ADR-0081
   c.save();
-  c.font='12px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';
+  const fs=s.fontSize||12;   // ADR-0169
+  c.font=fs+'px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';
   const w=c.measureText(s.label).width,pad=4;
   c.fillStyle=getCSS('--paper')||'#fff';
-  c.fillRect(mx-w/2-pad,my-9,w+pad*2,18);
+  c.fillRect(mx-w/2-pad,my-fs*0.75,w+pad*2,fs*1.5);
   c.fillStyle=s.stroke||'#0F172A';
   c.fillText(s.label,mx,my);
   c.restore();
@@ -6382,9 +6383,9 @@ function _svgArrowHead(els,tx,ty,a1,a2,ah,stroke,a,sz,style){
 function _connLabelSVG(s,x1,y1,x2,y2,ox,oy,stroke,paper){
   if(!s.label)return '';
   const mx=(x1+x2)/2+ox,my=(y1+y2)/2+oy;
-  const lw=String(s.label).length*7+8;
-  return `<rect x="${mx-lw/2}" y="${my-9}" width="${lw}" height="18" fill="${_esc(paper||'#FFFFFF')}" opacity="0.9"/>`+
-    `<text x="${mx}" y="${my}" font-family="system-ui,sans-serif" font-size="12" text-anchor="middle" dominant-baseline="central" fill="${stroke}">${_esc(s.label)}</text>`;
+  const fs=s.fontSize||12,lw=String(s.label).length*fs*0.6+8;   // ADR-0169
+  return `<rect x="${mx-lw/2}" y="${my-fs*0.75}" width="${lw}" height="${fs*1.5}" fill="${_esc(paper||'#FFFFFF')}" opacity="0.9"/>`+
+    `<text x="${mx}" y="${my}" font-family="system-ui,sans-serif" font-size="${fs}" text-anchor="middle" dominant-baseline="central" fill="${stroke}">${_esc(s.label)}</text>`;
 }
 // Pure SVG assembly; returns string or null. All attr values through _esc.
 function buildSVG(shapes,paper){
@@ -6589,7 +6590,7 @@ function buildSVG(shapes,paper){
 // ADR-0083: image caption strip — mirrors _drawImgLabel (paper band + clipped
 // wrapped text anchored to the inside bottom edge).
 function _svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT){
-  const fs=14,pad=4;
+  const fs=s.fontSize||14,pad=4;   // ADR-0169
   let lines=wrapText(s.label,Math.max(10,W-8),t=>t.length*fs*0.6);
   const lh=fs*1.25,maxL=Math.max(1,Math.floor((H-4)/lh));
   if(lines.length>maxL){lines=lines.slice(0,maxL);lines[maxL-1]+='…'}
@@ -6600,7 +6601,7 @@ function _svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT){
   els.push('</text></g>');
 }
 function _svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT){
-  const fs=14,pad=4;
+  const fs=s.fontSize||14,pad=4;   // ADR-0169
   const lines=wrapText(s.label,Math.max(10,W-pad*2),t=>t.length*fs*0.6);
   const lh=fs*1.25;
   const cy=s.valign==='top'?Y+6+oy:s.valign==='bottom'?Y+H-6+oy-lines.length*lh:Y+H/2+oy-(lines.length*lh)/2;   // ADR-0159
@@ -8235,7 +8236,7 @@ function cycleVAlign(){
 function fontSizeStep(d){
   const before=[],after=[];
   for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky')||s.locked)continue;
+    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky'&&!s.label)||s.locked)continue;   // ADR-0169: labels honour fontSize
     const cur=s.fontSize||14,nxt=Math.min(64,Math.max(8,cur+d*2));
     if(nxt===cur)continue;
     before.push({id,fontSize:cur});after.push({id,fontSize:nxt});s.fontSize=nxt;
