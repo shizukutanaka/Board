@@ -422,6 +422,8 @@ Board/
 │   ├── ADR-0370-schedule-refreshundo-shorthands.md  # _ps/_ms/_ru shorthand (実装済)
 │   ├── ADR-0371-describeshape-hidden.md   # describeShape hidden アナウンス (実装済)
 │   ├── ADR-0372-snapshot-merge-value-gate.md   # snapshot merge 値ゲート (実装済)
+│   ├── ADR-0373-patch-structural-keys.md   # patch 構造キー剥がし+_u 防御 (実装済)
+│   ├── ADR-0374-img-channel-bounds.md   # img チャンク経路の容量上限 (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

@@ -2,6 +2,22 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.420] - 2026-09-24
+
+### Fixed
+- 画像チャンク経路に容量上限: `_imgPending` ≤256 (最古 evict)、`_imgChunks`
+  ≤64 keys — slim ref 送信後に chunk を送らない敵対ピアで待ち列/再組立て
+  Map が無限成長していた (ADR-0374)
+
+## [1.7.419] - 2026-09-24
+
+### Fixed
+- リモート patch の構造キー差替えを剥がす `_stripStruct` — `upd:{type:'pen'}`
+  で renderer クラッシュ、`{id:'X'}` で byId 索引破壊、`_` 接頭辞で内部
+  キャッシュ上書きが可能だった (beautify はローカル専用のため除外)
+  + `_u` payload bbox を try/catch — `{type:'pen'}` patch で `_apply` が
+  assign 前にクラッシュしていた (ADR-0373)
+
 ## [1.7.418] - 2026-09-24
 
 ### Fixed

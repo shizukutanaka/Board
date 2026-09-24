@@ -818,7 +818,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.418';
+const V='1.7.420';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1267,6 +1267,12 @@ function validPatch(p){
   if('link' in p&&p.link!=null&&!(typeof p.link==='string'&&/^https?:\/\//.test(p.link)))return false;
   return true;
 }
+// ADR-0373: patches may carry structural/internal keys a remote peer can abuse —
+// `id` rebinds break the byId index, `type` rebinds send a shape into a renderer
+// case it doesn't satisfy (e.g. {type:'pen'} without pts → drawPen crash every
+// frame, persisted), `_`-prefixed writes clobber cache fields (_penSig/_bmp).
+// Batch patches keep `id` only for the byId lookup; it's stripped pre-assign.
+function _stripStruct(p,idToo){delete p.type;if(idToo)delete p.id;for(const k of Object.keys(p))if(k[0]==='_')delete p[k];return p}
 function _cleanVal(v,depth){
   if(depth>8)return false;
   if(typeof v==='function')return false;
@@ -1545,7 +1551,8 @@ const Store={
       else _addId(v);
     }
     let _dmg=null;
-    const _u=s=>{if(!s)return;const b=G.bbox(s);if(!b||![b.x,b.y,b.w,b.h].every(Number.isFinite))return;const m=(s.size||2)/2+10;_dmg=_dmgU(_dmg,{x:b.x-m,y:b.y-m,w:b.w+2*m,h:b.h+2*m});};
+    const _u=s=>{if(!s)return;let b=null;try{b=G.bbox(s)}catch(_){return}   // ADR-0373: payload patches are pseudo-shapes — {type:'pen'} without pts must not crash the damage estimate
+    if(!b||![b.x,b.y,b.w,b.h].every(Number.isFinite))return;const m=(s.size||2)/2+10;_dmg=_dmgU(_dmg,{x:b.x-m,y:b.y-m,w:b.w+2*m,h:b.h+2*m});};
     for(const id of _ids)_u(byId(id));                          // pre-mutation (del/move/upd)
     for(const v of [op.shape,op.shapes,op.before,op.after]){
       if(Array.isArray(v))for(const x of v)_u(x);else _u(v);   // payload side (add/del/clear/replace)
@@ -1593,7 +1600,7 @@ const Store={
         if(forward&&sh.locked)break;
         const raw=forward?op.after:op.before;
         if(!raw)break;
-        const p=clone(raw);
+        const p=_stripStruct(clone(raw),1);   // ADR-0373
         // Only skip restoring if a *remote* peer wrote this key after our op (_lwwSkip).
         // Local-peer writes (same peerId) are also being undone and must not block.
         if(!forward)for(const k of Object.keys(p)){if(_lwwSkip(op.id,k,op))delete p[k];}
@@ -1670,7 +1677,7 @@ const Store={
         for(const raw of patches){
           const sh=byId(raw.id);
           if(!sh||(forward&&sh.locked&&!('locked' in raw)))continue;
-          const p=clone(raw);
+          const p=op.op==='beautify'?clone(raw):_stripStruct(clone(raw));   // ADR-0373: beautify legitimately retypes (local-only)
           // Same LWW guard as 'upd' (_lwwSkip) — these are batch absolute-patch ops but
           // _stampWrites records per-property write clocks for them identically, so undo
           // must not clobber a newer remote write here either (this was the actual gap).
@@ -7593,7 +7600,12 @@ const Net={
     if(s&&typeof s.img==='string'&&!s.dataUrl){
       const d=this._imgIn.get(s.img);
       if(d){const{img:_x,...rest}=s;return{...rest,dataUrl:d}}
-      if(typeof s.id==='string')this._imgPending.set(s.id,s.img);
+      // ADR-0374: cap the parked-ref waitlist — a peer that sends slim refs then
+      // leaves without chunks would otherwise grow _imgPending unboundedly.
+      if(typeof s.id==='string'){
+        if(this._imgPending.size>=256&&!this._imgPending.has(s.id))this._imgPending.delete(this._imgPending.keys().next().value);
+        this._imgPending.set(s.id,s.img);
+      }
     }
     return s;
   },
@@ -7661,7 +7673,9 @@ const Net={
         const seq=typeof msg.seq==='number'&&msg.seq>=0?_fl(msg.seq):0;
         if(seq>=n)break;
         let st=this._imgChunks.get(msg.key);
-        if(!st){st={parts:new Array(n),got:0,n};this._imgChunks.set(msg.key,st)}
+        // ADR-0374: bound in-flight reassemblies — a peer opening thousands of
+        // keys mid-transfer and never finishing would grow the map unboundedly.
+        if(!st){if(this._imgChunks.size>=64)break;st={parts:new Array(n),got:0,n};this._imgChunks.set(msg.key,st)}
         if(st.n===n&&!st.parts[seq]){st.parts[seq]=msg.data;st.got++}
         if(st.got<st.n)break;
         this._imgChunks.delete(msg.key);
