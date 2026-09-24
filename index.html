@@ -774,7 +774,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.208';
+const V='1.7.209';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1032,6 +1032,7 @@ const state={
   guides:null,              // object-snap alignment guide lines (during drag)
   readout:null,             // ADR-0064: live dims pill during transform gestures {x,y,label}
   bindPreview:null,         // ADR-0065: shape under a dragged connector endpoint
+  measure:null,             // ADR-0151: Alt+hover gap guides {a,b} world bboxes
   showGrid:true,
   showMinimap:MINIMAP_ON,
   snap:true,        // snap-to-grid when dragging shapes
@@ -2364,6 +2365,7 @@ function drawOverlay(){
   }
   drawSelection(c);
   drawGuides(c);
+  _drawMeasure(c);                                                     // ADR-0151
   if(ptr.down&&state.readout){                                        // ADR-0064: only while a gesture is live
     const r=state.readout,sp=G.w2s({x:r.x,y:r.y});
     c.save();
@@ -2449,6 +2451,33 @@ function drawGuides(c){
     c.beginPath();c.moveTo(p1.x,p1.y);c.lineTo(p2.x,p2.y);c.stroke();
   }
   c.setLineDash([]);
+}
+// ADR-0151: gap measurement guides (Figma measure mode). For each axis where the
+// two envelopes are separated, draws a solid guide across the gap at the midpoint
+// of the overlap/projection band plus end ticks and a px pill.
+function _drawMeasure(c){
+  const m=state.measure;if(!m)return;
+  const a=m.a,b=m.b;
+  const xmid=(Math.max(a.x,b.x)+Math.min(a.x+a.w,b.x+b.w))/2;
+  const ymid=(Math.max(a.y,b.y)+Math.min(a.y+a.h,b.y+b.h))/2;
+  const segs=[];
+  if(a.x+a.w<b.x)segs.push({x1:a.x+a.w,y1:ymid,x2:b.x,y2:ymid});
+  else if(b.x+b.w<a.x)segs.push({x1:b.x+b.w,y1:ymid,x2:a.x,y2:ymid});
+  if(a.y+a.h<b.y)segs.push({x1:xmid,y1:a.y+a.h,x2:xmid,y2:b.y});
+  else if(b.y+b.h<a.y)segs.push({x1:xmid,y1:b.y+b.h,x2:xmid,y2:a.y});
+  c.save();c.strokeStyle=getCSS('--accent-contrast');c.lineWidth=1;
+  c.font='11px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';
+  for(const s of segs){
+    const p1=G.w2s({x:s.x1,y:s.y1}),p2=G.w2s({x:s.x2,y:s.y2});
+    c.beginPath();c.moveTo(p1.x,p1.y);c.lineTo(p2.x,p2.y);c.stroke();
+    const dx=p2.x-p1.x,dy=p2.y-p1.y,L=Math.hypot(dx,dy)||1,ux=dx/L,uy=dy/L,ex=-uy,ey=ux;
+    for(const p of [p1,p2]){c.beginPath();c.moveTo(p.x-ex*4,p.y-ey*4);c.lineTo(p.x+ex*4,p.y+ey*4);c.stroke()}
+    const label=String(Math.round(L)),tw=c.measureText(label).width+12;
+    const mx=(p1.x+p2.x)/2,my=(p1.y+p2.y)/2;
+    c.fillStyle='rgba(15,23,42,.85)';c.beginPath();roundRect(c,mx-tw/2,my-9,tw,18,4);c.fill();
+    c.fillStyle='#fff';c.fillText(label,mx,my);
+  }
+  c.restore();
 }
 // Design-token lookups run every frame; memoise and drop on theme flip (see wire()).
 let _cssCache=Object.create(null);
@@ -3362,7 +3391,7 @@ function abortGesture(){
   }
   if(_eraseBatch.length){for(const s of _eraseBatch)state.shapes.push(s);_eraseBatch=[];sortZ();_invalidateGrid();}   // ADR-0009
   _penPred=null;ptr.lineClick=false;
-  state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;
+  state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;state.measure=null;
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.dragStartShapes=null;
   ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;ptr.wayIdx=null;ptr.wayNew=false;ptr.lblOrig=null;
   invalidate();
@@ -3377,7 +3406,7 @@ canvas.addEventListener('pointerdown',e=>{
   canvas.setPointerCapture(e.pointerId);
   const sp={x:e.offsetX,y:e.offsetY};
   const wp=G.s2w(sp);
-  ptr.down=true;ptr.x=ptr.x0=sp.x;ptr.y=ptr.y0=sp.y;
+  ptr.down=true;state.measure=null;ptr.x=ptr.x0=sp.x;ptr.y=ptr.y0=sp.y;
   ptr.wx=ptr.wx0=wp.x;ptr.wy=ptr.wy0=wp.y;
   // space or middle click => pan
   const isPan=e.button===1||state.tool==='hand'||e.shiftKey&&state.tool==='select'&&false;
@@ -3569,6 +3598,13 @@ canvas.addEventListener('pointermove',e=>{
       // state.hover feeds nothing visual (cursor is set above) — no invalidate:
       // on a heavy board this used to repaint the whole scene per shape boundary crossed.
       if(top?.id!==state.hover){state.hover=top?.id||null;invalidateOverlay()}   // ADR-0070: qconn dots track hover
+      // ADR-0151: Alt+hover (Figma measure mode) — gap guides between the
+      // selection envelope and the hovered shape. Signature-compare so a
+      // steady cursor repaints nothing.
+      const _m=(e.altKey&&state.selection.size&&top&&!top.locked&&top.visible!==0&&!state.selection.has(top.id))
+        ?{a:G.bboxAll([...state.selection].map(byId).filter(Boolean)),b:G.bbox(top)}:null;
+      const _sig=m=>m?`${m.a.x}|${m.a.y}|${m.a.w}|${m.a.h}|${m.b.x}|${m.b.y}|${m.b.w}|${m.b.h}`:'';
+      if(_sig(_m)!==_sig(state.measure)){state.measure=_m;invalidateOverlay()}
     }
     return;
   }
@@ -3767,7 +3803,7 @@ function _cancelPointerGesture(){
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;
   ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.rotOrig=null;ptr.dragStartShapes=null;
   ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;
-  canvas.dataset.panning='false';ptr.lineClick=false;state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;_penPred=null;invalidate();
+  canvas.dataset.panning='false';ptr.lineClick=false;state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;state.measure=null;_penPred=null;invalidate();
 }
 // ADR-0006: fires after LONG_PRESS_MS. Guards: gesture still active, handle-drag not in
 // progress (resize/rotate — a deliberate precision drag we shouldn't interrupt), and the
@@ -5043,7 +5079,7 @@ window.addEventListener('keydown',e=>{
     // mid-drag mutations are in-place, so without this Escape left shapes
     // displaced until pointerup committed them. Selection survives the cancel.
     else if(ptr.down&&ptr.dragKind)_cancelPointerGesture();
-    else{if(state.selection.size)UI.toast(t('selNone'));state.selection.clear();ptr.lineClick=false;state.marquee=null;state.draft=null;state.guides=null;state.readout=null;state.bindPreview=null;_penPred=null;invalidate()}   // ADR-0037
+    else{if(state.selection.size)UI.toast(t('selNone'));state.selection.clear();ptr.lineClick=false;state.marquee=null;state.draft=null;state.guides=null;state.readout=null;state.bindPreview=null;state.measure=null;_penPred=null;invalidate()}   // ADR-0037
   }
   else if(k==='?'||(e.shiftKey&&e.key==='/')){e.preventDefault();UI.toggleHelp()}
   else if(k===']'&&!meta&&e.shiftKey){e.preventDefault();doBringFront()}
@@ -5073,6 +5109,7 @@ window.addEventListener('keyup',e=>{
   if(e.key===' '&&state.tool==='hand'&&window._prevTool){
     pickTool(window._prevTool);window._prevTool=null;
   }
+  if(e.key==='Alt'&&state.measure){state.measure=null;invalidateOverlay()}   // ADR-0151
 });
 // ADR-0135: view toggles were keyboard-only (G/⇧G) — extracted so the
 // ctx menu's touch path can reach them too.

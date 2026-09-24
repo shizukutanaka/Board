@@ -515,6 +515,8 @@ const checks = [
   ['image flip mirrors pixels via s.flip bitmask', html.includes("s.flip=(s.flip||0)^(axis==='h'?1:2)")&&html.includes('ADR-0149')&&html.includes('scale(${s.flip&1?-1:1}')],
   ['hidden shapes leave search + bindAt', html.includes('s.visible!==0&&(s.label||s.text||s.type')&&html.includes("t==='pen'||s.visible===0")],
   ['SVG export excludes hidden shapes', html.includes('const _vis=shapes.filter(s=>s.visible!==0)')&&html.includes('_vis.filter(s=>s.type==="frame")')],
+  ['Alt+hover measure guides', html.includes('measure:null')&&html.includes('function _drawMeasure(c)')&&html.includes("e.altKey&&state.selection.size&&top&&!top.locked")],
+  ['measure cleared on reset/down/Alt', html.includes('state.measure=null;ptr.x=ptr.x0')&&html.includes("e.key==='Alt'&&state.measure")],
   ['line↔arrow conversion via style op (ctx)', html.includes('toggleLineArrow')&&html.includes('ctxToArrow')&&html.includes("s.type==='line'?'arrow':'line'")],
   ['sticky↔text conversion via style op (ctx)', html.includes('toggleStickyText')&&html.includes('ctxToSticky')&&html.includes("s.type==='sticky'?'text':'sticky'")],
   ['frame select-contents (ctx)', html.includes('selectFrameContents')&&html.includes('ctxSelContents')&&html.includes('withFrameChildren(')],
@@ -1215,7 +1217,7 @@ const checks = [
   // Shape-drawing DEFAULT colors (new frame/sticky stroke fallbacks) are deliberately left
   // on raw --brand: that's a style choice, not an accessibility-critical indicator.
   ["canvas UI-indicator strokes (selection/guides/marquee/rotation-tether/minimap-viewport) use --accent-contrast",
-    (html.match(/getCSS\('--accent-contrast'\)/g)||[]).length===9 &&
+    (html.match(/getCSS\('--accent-contrast'\)/g)||[]).length===10 &&
     (html.match(/getCSS\('--brand'\)/g)||[]).length===5],
   ['frame label editor text color uses --accent-contrast (real text, needs the 4.5:1 floor too)',
     html.includes("getCSS(bold?'--accent-contrast':'--ink')")],

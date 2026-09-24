@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.209]
+
+### 追加
+- **Alt+hover 距離ガイド** (ADR-0151)。図形選択中に Alt を押して
+  別図形にホバーすると、選択エンベロープとの軸ギャップを実線+
+  ティック+pxピルで表示 (Figma measure mode parity)。
+
 ## [1.7.208]
 
 ### 修正
