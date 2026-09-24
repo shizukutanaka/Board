@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.434] - 2026-09-23
+### 修正
+- ADR-0396: 全選択がロック済みのとき Delete/Backspace が無言だった — `lockedNoop` トーストで解除方法 (⌘⇧L) を案内
+### 変更
+- ADR-0395: `_IB`/`_EM`/`_CF` トーストキー定数化 (~190B 回収)
+
 ## [1.7.433] - 2026-09-23
 ### 修正
 - ADR-0393: .board ファイルが `viewport` を往復 — 保存時の視点位置/ズームを再読込で復元 (ADR-0112 共有リンクと同一の意味論・同じ有限値+clampZoom 検証)

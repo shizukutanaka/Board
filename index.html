@@ -801,7 +801,7 @@ const _on=(e,t,f,o)=>e.addEventListener(t,f,o);                          // ADR-
 const _vp=()=>state.viewport;                                              // ADR-0362: live-read (tests reassign the object)
 const _pi=()=>state.peerId,_ro=()=>state.readout,_gd=()=>state.guides,_cl=()=>state.clipboard,_bb=s=>G.bbox(s),_oa=Object.assign;   // ADR-0378
 const _sO=()=>state.seenOps,_la=()=>state.lasso,_mq=()=>state.marquee,_dd=()=>state.dupDelta,_w2=p=>G.w2s(p),_s2=p=>G.s2w(p),_cE=connEnds;   // ADR-0382
-const _iA=Array.isArray,_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now;   // ADR-0384/0386/0391
+const _iA=Array.isArray,_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed';   // ADR-0384/0386/0391/0395
 const _sh=()=>state.shapes;                                                // ADR-0364
 const _sl=()=>state.selection;
 const _st=()=>state.style;
@@ -821,7 +821,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.433';
+const V='1.7.434';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -902,7 +902,7 @@ const I18N={
     imgBig:'画像が大きすぎます。縮小してください',imgErr:'画像を読み込めませんでした',
     emptyHint:'クリックまたはツールバーから描き始める · ? でショートカット一覧',
     themeAuto:'テーマ: 自動(OS 追従)',themeLight:'テーマ: ライト',themeDark:'テーマ: ダーク',
-    popupBlocked:'ポップアップをブロックしてください',invalidBoard:'ボードファイルが無効です',exportFailed:'書き出し失敗',saveFailed:'保存失敗',quotaExceeded:'保存容量が逼迫しています — ⌘E/⌘⇧E で書き出しを推奨',
+    popupBlocked:'ポップアップをブロックしてください',invalidBoard:'ボードファイルが無効です',lockedNoop:'ロック済み — ⌘⇧L で解除',exportFailed:'書き出し失敗',saveFailed:'保存失敗',quotaExceeded:'保存容量が逼迫しています — ⌘E/⌘⇧E で書き出しを推奨',
     quotaWarn:'保存容量の 8 割超を使用中です — ⌘E/⌘⇧E で書き出しておくと安全です',
     snap:'スナップ',grid:'グリッド',minimap:'ミニマップ',on:'オン',off:'オフ',online:'オンライン',offline:'オフライン',shapes:'図形',selDims:'選択',
     selCount:'個を選択',selNone:'選択を解除',
@@ -982,7 +982,7 @@ const I18N={
     imgBig:'Image too large — please resize',imgErr:'Image failed to load',
     emptyHint:'Click or pick a tool to start drawing · Press ? for shortcuts',
     themeAuto:'Theme: Auto (follows OS)',themeLight:'Theme: Light',themeDark:'Theme: Dark',
-    popupBlocked:'Pop-up blocked — please allow pop-ups for PDF export',invalidBoard:'Invalid .board file',exportFailed:'Export failed',saveFailed:'Save failed',quotaExceeded:'Storage quota exceeded — export locally with ⌘E/⌘⇧E',
+    popupBlocked:'Pop-up blocked — please allow pop-ups for PDF export',invalidBoard:'Invalid .board file',lockedNoop:'Locked — ⌘⇧L to unlock',exportFailed:'Export failed',saveFailed:'Save failed',quotaExceeded:'Storage quota exceeded — export locally with ⌘E/⌘⇧E',
     quotaWarn:'Storage is over 80% full — exporting via ⌘E/⌘⇧E is recommended',
     copied:'Copied',pasted:'Pasted',deleted:'Deleted',cleared:'Cleared',
     beautified:'Beautified',beautifyNone:'Nothing to beautify (select a pen stroke close to a rectangle, ellipse, or line)',
@@ -5756,7 +5756,7 @@ function doDuplicate(){
 }
 function doDelete(){
   const sel=_selL(s=>s&&!s.locked);
-  if(!sel.length)return;
+  if(!sel.length){if(_selAny())_tst(t('lockedNoop'),'warn');return}   // ADR-0396
   const origSel=_selIds();
   // Frame-aware: shapes fully inside a selected frame are deleted with the frame (parity with doDuplicate)
   const frameOf=new Map();
@@ -6241,7 +6241,7 @@ function exportScale(w,h,desired){
 // (clipboard). cb receives the PNG blob or null on failure.
 function _renderPngBlob(shapes,cb,desired){
   const b=G.bboxAll(shapes);
-  if(!b){_tst(t('empty'),'warn');return}
+  if(!b){_tst(t(_EM),'warn');return}
   const pad=32;
   const w=_ceil(b.w+pad*2),h=_ceil(b.h+pad*2);
   const off=_ce('canvas');
@@ -6274,7 +6274,7 @@ function exportViewportPNG(scale){
   const v=_vp();
   const view={x:v.x,y:v.y,w:r.width/v.zoom,h:r.height/v.zoom};
   const shapes=_sh().filter(s=>inView(s,view));
-  if(!shapes.length){_tst(t('empty'),'warn');return}
+  if(!shapes.length){_tst(t(_EM),'warn');return}
   const off=_ce('canvas');
   const sc=exportScale(view.w,view.h,scale||2);
   off.width=_ceil(view.w*sc);off.height=_ceil(view.h*sc);
@@ -6309,7 +6309,7 @@ function copyPNG(shapes=_sh()){
     if(!bl){_tst(t('exportFailed'),'err');return}
     navigator.clipboard.write([new ClipboardItem({'image/png':bl})]).then(
       ()=>_tst(t('copied'),'ok'),
-      ()=>_tst(t('copyFailed'),'warn'));
+      ()=>_tst(t(_CF),'warn'));
   });
 }
 
@@ -6317,7 +6317,7 @@ function copyPNG(shapes=_sh()){
 // MIME is browser-inconsistent, but plain-text SVG pastes everywhere useful.
 function copySVG(shapes=_sh()){
   const svg=buildSVG(shapes,_p());
-  if(svg===null){_tst(t('empty'),'warn');return}
+  if(svg===null){_tst(t(_EM),'warn');return}
   copyText(svg).then(ok=>_tst(t(ok?'copied':'copyFailed'),ok?'ok':'warn'));
 }
 // ADR-0089: replace image bytes in place — same frame position/width, height
@@ -6342,7 +6342,7 @@ function replaceImage(){
   inp.click();
 }
 function exportPDF(){
-  if(!_sh().length){_tst(t('empty'),'warn');return}
+  if(!_sh().length){_tst(t(_EM),'warn');return}
   const b=G.bboxAll(_sh());if(!b)return;
   const pad=32,W=_ceil(b.w+pad*2),H=_ceil(b.h+pad*2),dpr=exportScale(W,H,window.devicePixelRatio||1);
   let off;try{off=new OffscreenCanvas(W*dpr,H*dpr)}catch(_){off=_ce('canvas');off.width=W*dpr;off.height=H*dpr}
@@ -6364,7 +6364,7 @@ function exportPDF(){
 
 function exportSVG(shapes=_sh()){
   const svg=buildSVG(shapes,_p());
-  if(svg===null){_tst(t('empty'),'warn');return}
+  if(svg===null){_tst(t(_EM),'warn');return}
   const blob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'});
   const url=URL.createObjectURL(blob);
   const a=_ce('a');
@@ -6373,7 +6373,7 @@ function exportSVG(shapes=_sh()){
   _tst(t('exportedSVG'),'ok');
 }
 function exportBoard(shapes=_sh()){                       // ADR-0114: optional selection subset
-  if(!shapes.length){_tst(t('empty'),'warn');return}
+  if(!shapes.length){_tst(t(_EM),'warn');return}
   const a=_ce('a');
   const _bu=URL.createObjectURL(new Blob([_JS({v:V,docName:_dn(),viewport:{x:+_vp().x.toFixed(2),y:+_vp().y.toFixed(2),zoom:+_vp().zoom.toFixed(4)},shapes:roundShapesForExport(shapes)})],{type:'application/json'}));   // ADR-0393
   a.href=_bu;a.download=(_dn()||'board')+'.board';
@@ -6693,7 +6693,7 @@ function importDrawioText(txt,wp){
   }
   let shapes=null;
   try{shapes=drawioToShapes(txt)}catch(_){shapes=null}
-  if(!shapes||!shapes.length){_tst(t('invalidBoard'),'warn');return false}
+  if(!shapes||!shapes.length){_tst(t(_IB),'warn');return false}
   const _vpNull=wp==null;
   if(!wp){const r=_cbr();wp=_s2({x:r.width/2,y:r.height/2})}
   const bb=G.bboxAll(shapes);
@@ -6708,11 +6708,11 @@ function importDrawioText(txt,wp){
 function importDrawioFile(file,wp){
   const r=new FileReader();
   r.onload=()=>importDrawioText(String(r.result),wp);
-  r.onerror=()=>_tst(t('invalidBoard'),'warn');
+  r.onerror=()=>_tst(t(_IB),'warn');
   r.readAsText(file);
 }
 function exportExc(){
-  if(!_sh().length){_tst(t('empty'),'warn');return}
+  if(!_sh().length){_tst(t(_EM),'warn');return}
   const a=_ce('a');
   const _bu=URL.createObjectURL(new Blob([_JS(excScene(_sh()))],{type:'application/json'}));
   a.href=_bu;a.download=(_dn()||'board')+'.excalidraw';
@@ -6822,7 +6822,7 @@ function boardToDrawio(shapes){
   return `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile compressed="false"><diagram name="Page-1"><mxGraphModel dx="${_rnd(-vx)}" dy="${_rnd(-vy)}" grid="${state.showGrid?1:0}" gridSize="${GRID_SIZE}" guides="1" tooltips="0" connect="0" arrows="0" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0" zoom="${vz}"><root><mxCell id="0"/><mxCell id="1" parent="0"/>${cells.join('')}</root></mxGraphModel></diagram></mxfile>`;   // ADR-0359: dx/dy/zoom viewport round-trip
 }
 function exportDrawio(){
-  if(!_sh().length){_tst(t('empty'),'warn');return}
+  if(!_sh().length){_tst(t(_EM),'warn');return}
   const a=_ce('a');
   const _bu=URL.createObjectURL(new Blob([boardToDrawio(_sh())],{type:'application/xml'}));
   a.href=_bu;a.download=(_dn()||'board')+'.drawio';
@@ -6994,7 +6994,7 @@ function svgToShapes(txt){
 function importSvgText(txt,wp){
   let shapes=null;
   try{shapes=svgToShapes(txt)}catch(_){shapes=null}
-  if(!shapes||!shapes.length){_tst(t('invalidBoard'),'warn');return false}
+  if(!shapes||!shapes.length){_tst(t(_IB),'warn');return false}
   if(!wp){const r=_cbr();wp=_s2({x:r.width/2,y:r.height/2})}
   // centre the imported group at wp (drop point / viewport centre)
   const bb=G.bboxAll(shapes);
@@ -7008,7 +7008,7 @@ function importSvgText(txt,wp){
 function importSvgFile(file,wp){
   const r=new FileReader();
   r.onload=()=>importSvgText(String(r.result),wp);
-  r.onerror=()=>_tst(t('invalidBoard'),'warn');
+  r.onerror=()=>_tst(t(_IB),'warn');
   r.readAsText(file);
 }
 
@@ -7148,7 +7148,7 @@ function excToShapes(txt){
 function importExcText(txt,wp){
   let shapes=null;
   try{shapes=excToShapes(txt)}catch(_){shapes=null}
-  if(!shapes||!shapes.length){_tst(t('invalidBoard'),'warn');return false}
+  if(!shapes||!shapes.length){_tst(t(_IB),'warn');return false}
   if(!wp){const r=_cbr();wp=_s2({x:r.width/2,y:r.height/2})}
   const bb=G.bboxAll(shapes);
   if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);
@@ -7180,14 +7180,14 @@ function importBoardText(txt,wp){
 // as .board JSON on the clipboard — moves content between boards/tabs without
 // a file round-trip.
 function copyBoardJSON(shapes=_sh()){
-  if(!shapes.length){_tst(t('empty'),'warn');return}
+  if(!shapes.length){_tst(t(_EM),'warn');return}
   copyText(_JS({v:V,docName:_dn(),shapes:roundShapesForExport(shapes)}))
     .then(ok=>_tst(t(ok?'copied':'copyFailed'),ok?'ok':'warn'));
 }
 function importExcFile(file,wp){
   const r=new FileReader();
   r.onload=()=>importExcText(String(r.result),wp);
-  r.onerror=()=>_tst(t('invalidBoard'),'warn');
+  r.onerror=()=>_tst(t(_IB),'warn');
   r.readAsText(file);
 }
 
@@ -7200,7 +7200,7 @@ function importBoard(file){
       // different suffix still routes to the excalidraw importer.
       if(d&&d.type==='excalidraw'){importExcText(r.result);return}
       const shapes=(d.shapes||[]).filter(validShape);
-      if(!shapes.length){_tst(t('empty'),'warn');return}
+      if(!shapes.length){_tst(t(_EM),'warn');return}
       // Atomic whole-board swap (mirrors importFromHash): a single replace op means
       // one Ctrl+Z fully restores the previous board regardless of import size.
       // clear+N-adds would overflow MAX_HISTORY for large boards and require N+1 undos.
@@ -7220,11 +7220,11 @@ function importBoard(file){
       _sz();_iv();
       Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(_wc()),origSel});
       _tst(t('loadedBoard')+' ('+shapes.length+')','ok');
-    }catch{_tst(t('invalidBoard'),'err')}
+    }catch{_tst(t(_IB),'err')}
   };
   // read failure (I/O, revoked permission) previously gave NO feedback at all — the
   // image-import readers and importFromHash both toast, so this path must too.
-  r.onerror=()=>_tst(t('invalidBoard'),'err');
+  r.onerror=()=>_tst(t(_IB),'err');
   r.readAsText(file);
 }
 // Connector edge label as SVG (ADR-0003): a paper background rect + centred text at the
@@ -8103,16 +8103,16 @@ const Share={
         json=await new Response(stream).text();
       }else if(kind==='j:'){
         json=decodeURIComponent(escape(atob(body)));
-      }else{_tst(t('invalidBoard'),'err');clearHash();return false}
+      }else{_tst(t(_IB),'err');clearHash();return false}
       // ADR-0039: resource-bomb guard — a crafted z: link decodes BEFORE the
       // confirm prompt, so bound the decompressed payload and the shape count;
       // otherwise a multi-hundred-MB deflate bomb pegs the tab on link open.
-      if(json.length>SHARE_MAX_BYTES){_tst(t('invalidBoard'),'err');clearHash();return false}
+      if(json.length>SHARE_MAX_BYTES){_tst(t(_IB),'err');clearHash();return false}
       const data=_JP(json);
-      if(!_iA(data.shapes)||data.shapes.length>SHARE_MAX_SHAPES){_tst(t('invalidBoard'),'err');clearHash();return false}
+      if(!_iA(data.shapes)||data.shapes.length>SHARE_MAX_SHAPES){_tst(t(_IB),'err');clearHash();return false}
       // validate each shape — reject anything without id/type/z
       const valid=data.shapes.filter(validShape);
-      if(!valid.length){_tst(t('invalidBoard'),'err');clearHash();return false}
+      if(!valid.length){_tst(t(_IB),'err');clearHash();return false}
       if(_sh().length&&!confirm(t('importConfirm')))return false;
       // Reversible whole-board swap: a mistaken import is undoable (Ctrl+Z), so the
       // shared link can't silently destroy the board it replaced (§3.9 self-overwrite).
@@ -8139,7 +8139,7 @@ const Share={
       _tst(t('imported'),'ok');
       _ps();
       return true;
-    }catch{_tst(t('invalidBoard'),'err');clearHash();return false}   // ADR-0038: corrupt link — don't pin it in the URL either
+    }catch{_tst(t(_IB),'err');clearHash();return false}   // ADR-0038: corrupt link — don't pin it in the URL either
   }};
 // v1.6.89: sync browser-tab title whenever the board name changes.
 // Without this, the tab always shows "index.html" regardless of what the user named their
@@ -8945,7 +8945,7 @@ function wire(){
   });
   _g('shareCopyBtn').onclick=async()=>{
     const url=_g('shareUrl').value;
-    if(url){const ok=await copyText(url);_tst(ok?t('shareUrlCopied'):t('copyFailed'),ok?'ok':'warn')}
+    if(url){const ok=await copyText(url);_tst(ok?t('shareUrlCopied'):t(_CF),ok?'ok':'warn')}
   };
   // WebRTC manual signaling
   {
@@ -8954,7 +8954,7 @@ function wire(){
   _g('rtcCreateAnswer').onclick=async()=>{const o=_g('rtcOfferIn').value.trim();if(!o)return;try{_g('rtcAnswer').value=await Net.wrtcAcceptOffer(o)}catch(e){_tst(String(e),'err')}};
   // ADR-0008 (FT-05): copy buttons for the signaling codes — mirrors shareCopyBtn's pattern,
   // avoids the earlier select-in-a-readonly-textarea friction (especially fiddly on touch).
-  const _copyCode=async(taId)=>{const v=_g(taId).value;if(!v)return;const ok=await copyText(v);_tst(ok?t('shareCodeCopied'):t('copyFailed'),ok?'ok':'warn')};
+  const _copyCode=async(taId)=>{const v=_g(taId).value;if(!v)return;const ok=await copyText(v);_tst(ok?t('shareCodeCopied'):t(_CF),ok?'ok':'warn')};
   _g('rtcOfferCopyBtn').onclick=()=>_copyCode('rtcOffer');
   _g('rtcAnswerCopyBtn').onclick=()=>_copyCode('rtcAnswer');
   // ADR-0045: invite link — the offer rides in the URL hash, so the joiner skips
@@ -8965,7 +8965,7 @@ function wire(){
     const v=_g('rtcOffer').value;
     if(!v){_tst(t('inviteLinkNoCode'),'warn');return}
     const ok=await copyText(location.origin+location.pathname+'#s='+encodeURIComponent(v));
-    _tst(ok?t('shareCodeCopied'):t('copyFailed'),ok?'ok':'warn')
+    _tst(ok?t('shareCodeCopied'):t(_CF),ok?'ok':'warn')
   };
   }
   // Net presence → UI
