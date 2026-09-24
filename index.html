@@ -787,7 +787,7 @@ const _forSel=f=>{for(const id of _sl()){const s=byId(id);if(s)f(s,id)}};   // A
 const _csh=(s,c)=>{if(_sh2(s)){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=10;c.shadowOffsetY=3}};   // ADR-0306
 const _so=(b,a)=>{if(_ln(b)){_styleOp(b,a);_iv()}};   // ADR-0307
 const _selL=f=>_sb().filter(f);   // ADR-0308
-const _selUL=()=>_sb().filter(s=>!_lk(s));
+const _selUL=()=>_sb().filter(_ul);
 const _repC=(before,beforeWc,origSel)=>Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(_wc()),origSel});
 const _ctrAt=(ss,wp)=>{wp=wp||_midV();const bb=_bA(ss);if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);for(const s of ss)Shape.translate(s,dx,dy)}};
 const _selR=op=>{if(op.origSel)_ss(op.origSel.filter(byId))};   // ADR-0309
@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.538';
+const V='1.7.539';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2013,6 +2013,7 @@ const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPe
 const _rs=arr=>{state.shapes=arr;_iG();_pcC()}   // ADR-0493: wholesale board replace (5 sites)
 const _shV=()=>_sh().filter(_sv);   // ADR-0494: visible-shape subset (6 sites)
 const _ulv=s=>!_lk(s)&&_sv(s);   // ADR-0496
+const _ul=s=>!_lk(s);   // ADR-0506
 const _hb=s=>s.w!=null;   // ADR-0501
 const _idOK=id=>_iS(id)&&_ln(id)<=64;   // ADR-0502: wire id cap (ADR-0485): unlocked+visible predicate (4 sites)
 const _idIdx=id=>_sh().findIndex(s=>s.id===id);   // ADR-0497: shape index by id (4 sites)
@@ -3936,7 +3937,7 @@ _on(canvas,_PD,e=>{
             // Normalise rotate→0 in the origs: _rotShape always writes sh.rotate
             // on boxes, and Object.assign restore can only overwrite keys that
             // exist — an absent rotate would stay stale after cancel/undo.
-            ptr.gOrig=new Map(sel.filter(s=>!_lk(s)).map(s=>{const o=clone(s);if(o.w!=null&&o.rotate==null)o.rotate=0;return[s.id,o]}));
+            ptr.gOrig=new Map(sel.filter(_ul).map(s=>{const o=clone(s);if(o.w!=null&&o.rotate==null)o.rotate=0;return[s.id,o]}));
             ptr.rotCx=gr.cx;ptr.rotCy=gr.cy;
             ptr.rotA0=_at2(wp.y-gr.cy,wp.x-gr.cx)*180/_PI;
             ptr.gPad=_max(...sel.map(s=>_szz(s)||2))+16;
@@ -3950,7 +3951,7 @@ _on(canvas,_PD,e=>{
               ptr.dragKind='gresize';
               ptr.resizeHandle=hid;
               ptr.gBox=gb;
-              ptr.gOrig=new Map(sel.filter(s=>!_lk(s)).map(s=>[s.id,clone(s)]));
+              ptr.gOrig=new Map(sel.filter(_ul).map(s=>[s.id,clone(s)]));
               ptr.gPad=_max(...sel.map(s=>_szz(s)||2))+16;   // damage pad
               return;
             }
@@ -8565,7 +8566,7 @@ const UI={
       _cl()&&['ctxPasteInPlace','⌘⇧V',doPasteInPlace],
       has&&['ctxDuplicate','⌘D',doDuplicate],
       has&&['ctxCopyStyle','⌥C',copyStyle],
-      has&&_selAny(s=>!_lk(s))&&['ctxSetLink','',setSelLink],   // ADR-0304
+      has&&_selAny(_ul)&&['ctxSetLink','',setSelLink],   // ADR-0304
       has&&_selAny(s=>s.link)&&['ctxOpenLink','',openSelLink],    // ADR-0304
       has&&_selAny(s=>s.link)&&['ctxCopyLink','',()=>{const s=_selL(x=>x.link)[0];if(s)copyText(s.link).then(ok=>_tst(t(ok?'copied':'copyFailed'),ok?'ok':'warn'))}],   // ADR-0318
       state.styleClipboard&&has&&['ctxPasteStyle','⌥V',pasteStyle],
@@ -8579,7 +8580,7 @@ const UI={
       has&&_selUnl(s=>_frm(s))&&['ctxSelContents','',selectFrameContents],
       has&&_selTxtL()&&['ctxTextAlign','',cycleTextAlign],
       has&&_selTxtL()&&['ctxFont','',cycleFont],
-      has&&_selAny(s=>!_lk(s))&&['ctxOpacity','0-9',cycleOpacity],   // ADR-0174
+      has&&_selAny(_ul)&&['ctxOpacity','0-9',cycleOpacity],   // ADR-0174
       has&&_selUnl(s=>(_BX4.has(s.type)||(_im(s)&&!!_lb(s))))&&['ctxVAlign','',cycleVAlign],   // ADR-0179   // ADR-0159
       has&&_selUnl(s=>(_TS.has(s.type)||_lb(s)))&&['ctxLineH','',cycleLineH],
       has&&_selTxtL()&&['ctxSpacing','',cycleSpacing],

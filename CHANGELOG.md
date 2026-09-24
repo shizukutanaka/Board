@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.539] - 2026-09-23
+
+### リファクタ
+
+- `s=>!_lk(s)` を `_ul` shorthand に集約 (6 サイト、~40B 回収) (ADR-0506)
+
 ## [1.7.538] - 2026-09-23
 
 ### リファクタ
