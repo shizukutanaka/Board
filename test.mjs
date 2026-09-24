@@ -645,6 +645,7 @@ const checks = [
   ['no dead t() fallbacks in toast/confirm calls', !html.includes("t('connected')||") && !html.includes("t('importConfirm')||")],
   // v1.6.37: toast role=alert/status, Escape closes context menu
   ['toast sets role=alert for err/warn, role=status otherwise', html.includes("setAttribute('role',kind==='err'||kind==='warn'?'alert':'status')")],
+  ['ADR-0389: identical consecutive toast re-append (no twin stacking)', html.includes("if(last&&last.textContent===msg)last.remove()")],
   ['Escape key closes context menu before modal dismiss', html.includes("ctx2.dataset.open==='true'){UI.closeCtxMenu();return}")],
   // v1.6.38: context menu auto-focuses first item on open (keyboard a11y)
   ['context menu focuses first item on open', html.includes("_qs(m,'.ctx-item')?.focus()")],

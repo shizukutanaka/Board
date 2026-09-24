@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.431] - 2026-09-23
+
+### 修正
+- 同一トーストを再付け替えに (ADR-0389) — 連発してもスタックが増殖せず、aria-live の再通知は維持
+
 ## [1.7.430] - 2026-09-23
 
 ### 修正
