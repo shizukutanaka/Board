@@ -272,6 +272,14 @@ Board/
 - [ADR-0220](docs/ADR-0220-drawio-export.md) .drawioエクスポート
 - [ADR-0221](docs/ADR-0221-drawio-anchor-roundtrip.md) drawioアンカー往復
 - [ADR-0222](docs/ADR-0222-exc-binding-fix.md) excalidraw結合修復
+- [ADR-0223](docs/ADR-0223-exc-roundtrip-fixes.md) exc往復修復
+- [ADR-0224](docs/ADR-0224-drawio-import-fidelity.md) drawioインポートfidelity
+- [ADR-0225](docs/ADR-0225-exc-sticky-roundtrip.md) exc sticky往復
+- [ADR-0226](docs/ADR-0226-drawio-note-swimlane.md) drawio note/swimlane逆マップ
+- [ADR-0227](docs/ADR-0227-storage-quota-warn.md) ストレージ残量警告
+- [ADR-0228](docs/ADR-0228-drawio-label-style.md) drawioラベル装飾往復
+- [ADR-0229](docs/ADR-0229-exc-groupids.md) exc groupIds往復
+- [ADR-0230](docs/ADR-0230-exc-style-fidelity.md) exc装飾fidelity
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

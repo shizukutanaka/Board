@@ -2,6 +2,66 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.287]
+
+### 修正
+- **excalidraw 装飾fidelity** (ADR-0230)。インポートで
+  hachure/cross-hatch→fstyle、roundness→r、textAlign→
+  align、endArrowhead→head、startArrowhead→start に
+  復元。ヘッドなし矢印 (`endArrowhead:null`) は新値
+  `head:'none'` で表現し両レンダラが描画を省略。
+
+## [1.7.286]
+
+### 修正
+- **excalidraw groupIds 往復** (ADR-0229)。インポートで
+  `groupIds[0]` を `groupId` に復元 (ネストは最外へ
+  平坦化) — エクスポートしたグループが取込時に保持。
+- container text の `angle` を親 rect の回転に揃えた
+  (回転した付箋が本物の excalidraw で正しく表示)。
+
+## [1.7.285]
+
+### 修正
+- **drawio ラベル装飾往復** (ADR-0228)。インポートで
+  `align`→`s.align`、`fontStyle` ビットマスク→
+  bold/italic/under に復元。エクスポートも対称出力し
+  中央揃え・太字・斜体・下線が drawio 往復で保存。
+
+## [1.7.284]
+
+### 追加
+- **ストレージ残量警告** (ADR-0227)。保存後に
+  `storage.estimate()` を参照し、使用量が 80% 超で
+  エクスポート誘導トーストを表示 — 保存失敗の前に
+  気づける (5分クールダウン、非対応環境は no-op)。
+
+## [1.7.283]
+
+### 修正
+- **drawio note/swimlane 逆マップ** (ADR-0226)。インポート
+  で `shape=note`→sticky (`fillColor`→`color`)、
+  `swimlane`→frame に復元 — ADR-0220 エクスポートとの
+  往復で sticky/frame が保存される。
+
+## [1.7.282]
+
+### 修正
+- **excalidraw sticky 往復** (ADR-0225)。export が text に
+  `containerId` を出力し rect の `boundElements` に登録 —
+  import は container text を親に fold して sticky を復元
+  (従来は rect+text に分解したまま)。
+
+## [1.7.281]
+
+### 修正
+- **excalidraw 往復** (ADR-0223)。import が `start/endBinding`
+  を `s.a/s.b` に復元 + export が rect を正しい型名
+  `rectangle` で出力 (従来は往復で矩形が消失)。
+- **drawio import fidelity** (ADR-0224)。`endArrow=none`→
+  直線、`startArrow`→始点ヘッド、`curved`/`jumpStyle` を
+  フラグにマップ — エッジが往復保存される。
+
 ## [1.7.280]
 
 ### 修正
