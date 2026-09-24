@@ -802,7 +802,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.407';
+const V='1.7.408';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6451,7 +6451,9 @@ function _dioLabel(v){
   try{const d2=new DOMParser().parseFromString('<x>'+pre+'</x>','text/xml');
     return (d2.documentElement.textContent||'').replace(/\s+$/gm,'').trim()}catch(_){return pre.replace(/<[^>]*>/g,'').trim()}
 }
+let _dioVp=null;   // ADR-0359: viewport hand-off from drawioToShapes to its caller
 function drawioToShapes(txt){
+  _dioVp=null;
   let doc;
   try{doc=new DOMParser().parseFromString(String(txt||''),'text/xml')}catch(_){return null}
   if(!doc||_qs(doc,'parsererror'))return null;
@@ -6472,6 +6474,8 @@ function drawioToShapes(txt){
   const _doff=new Map();{let _dx=0;
     for(const dg of _qsa(doc,'diagram')){
       const m=_qs(dg,'mxGraphModel'),pw=+(m&&_ga(m,'pageWidth'))||850;
+      if(!_dioVp&&m){const ddx=+_ga(m,'dx'),ddy=+_ga(m,'dy'),dz=+_ga(m,'zoom');
+        if(_fin(ddx)&&_fin(ddy))_dioVp={x:-ddx,y:-ddy,z:_fin(dz)?clampZoom(dz):1}}   // ADR-0359: viewport restore
       for(const c2 of _qsa(dg,'mxCell'))_doff.set(c2,_dx);
       _dx+=pw+200;
     }}
@@ -6602,12 +6606,14 @@ function importDrawioText(txt,wp){
   let shapes=null;
   try{shapes=drawioToShapes(txt)}catch(_){shapes=null}
   if(!shapes||!shapes.length){UI.toast(t('invalidBoard'),'warn');return false}
+  const _vpNull=wp==null;
   if(!wp){const r=_cbr();wp=G.s2w({x:r.width/2,y:r.height/2})}
   const bb=G.bboxAll(shapes);
   if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);
     for(const s of shapes)Shape.translate(s,dx,dy)}
   _cOp({op:'addMany',shapes});
   state.selection.clear();for(const s of shapes)state.selection.add(s.id);
+  if(_vpNull&&_dioVp){state.viewport.x=_dioVp.x;state.viewport.y=_dioVp.y;state.viewport.zoom=_dioVp.z}   // ADR-0359: viewport restore
   invalidate();UI.toast(t('dioImported'),'ok');
   return true;
 }
@@ -6724,7 +6730,8 @@ function boardToDrawio(shapes){
     geo+='</mxGeometry>';
     cells.push(`<mxCell id="${id}" value="${nl(s.label||'')}" style="${esc(sty)}" edge="1" parent="${_gc2?`g_${s.groupId}`:'1'}"${src}${tgt}${s.link?` link="${esc(s.link)}"`:''}${s.visible===0?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0245/0347
   }
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile compressed="false"><diagram name="Page-1"><mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/>${cells.join('')}</root></mxGraphModel></diagram></mxfile>`;
+  const vx=state.viewport.x,vy=state.viewport.y,vz=state.viewport.zoom;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile compressed="false"><diagram name="Page-1"><mxGraphModel dx="${_rnd(-vx)}" dy="${_rnd(-vy)}" grid="${state.showGrid?1:0}" gridSize="${GRID_SIZE}" guides="1" tooltips="0" connect="0" arrows="0" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0" zoom="${vz}"><root><mxCell id="0"/><mxCell id="1" parent="0"/>${cells.join('')}</root></mxGraphModel></diagram></mxfile>`;   // ADR-0359: dx/dy/zoom viewport round-trip
 }
 function exportDrawio(){
   if(!state.shapes.length){UI.toast(t('empty'),'warn');return}

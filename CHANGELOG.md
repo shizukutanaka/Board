@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.408] - 2026-09-24
+
+### Added
+- .drawio emit に `dx/dy/zoom` viewport + `grid`/`gridSize` を出力、
+  import はドキュメント取込時に視点を復元 (ADR-0359)
+
 ## [1.7.407] - 2026-09-24
 
 ### Added
