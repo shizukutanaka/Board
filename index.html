@@ -781,9 +781,13 @@ const _c01=v=>Math.min(1,Math.max(0,v));   // ADR-0295
 const _conn=t=>t==='line'||t==='arrow';   // ADR-0297
 const _selAny=f=>[...state.selection].some(id=>{const s=byId(id);return s&&f(s)});   // ADR-0302
 const _forSel=f=>{for(const id of state.selection){const s=byId(id);if(s)f(s,id)}};   // ADR-0303
+const _csh=(s,c)=>{if(s.shadow){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=10;c.shadowOffsetY=3}};   // ADR-0306
+const _so=(b,a)=>{if(b.length){_styleOp(b,a);invalidate()}};   // ADR-0307
+const _selL=f=>[...state.selection].map(byId).filter(f);   // ADR-0308
+const _selR=op=>{if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)))};   // ADR-0309
 
 // ====================== CONSTANTS ======================
-const V='1.7.356';
+const V='1.7.362';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1506,13 +1510,13 @@ const Store={
         // a duplicate. Local commits use fresh uids so this never blocks them; redo
         // re-pushes because undo removed the shape first.
         if(forward){if(!byId(op.shape.id)){state.shapes.push(clone(op.shape));sortZ();}}
-        else{const i=state.shapes.findIndex(s=>s.id===op.shape.id);if(i>=0)state.shapes.splice(i,1);state.selection.delete(op.shape.id);delete state.wclock[op.shape.id];if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));}
+        else{const i=state.shapes.findIndex(s=>s.id===op.shape.id);if(i>=0)state.shapes.splice(i,1);state.selection.delete(op.shape.id);delete state.wclock[op.shape.id];_selR(op);}
         break;}
       case 'addMany':{
         // Atomic multi-add (paste/duplicate): N copies as ONE undo step. Forward mirrors
         // 'add' (idempotent on id); reverse mirrors 'del' (remove all, drop selection).
         if(forward){for(const sh of op.shapes){if(!byId(sh.id))state.shapes.push(clone(sh));}sortZ();}
-        else{for(const sh of op.shapes){const i=state.shapes.findIndex(s=>s.id===sh.id);if(i>=0)state.shapes.splice(i,1);state.selection.delete(sh.id);delete state.wclock[sh.id];}if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));}
+        else{for(const sh of op.shapes){const i=state.shapes.findIndex(s=>s.id===sh.id);if(i>=0)state.shapes.splice(i,1);state.selection.delete(sh.id);delete state.wclock[sh.id];}_selR(op);}
         break;}
       case 'del':{
         if(forward){
@@ -1533,7 +1537,7 @@ const Store={
           // Restore connector bindings after shapes are back so references are valid
           if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)Object.assign(sh,p.before);}}
           if(op.wc)for(const [id,w] of Object.entries(op.wc))state.wclock[id]=clone(w);
-          if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));
+          _selR(op);
         }
         break;}
       case 'upd':{
@@ -1546,17 +1550,17 @@ const Store={
         // Local-peer writes (same peerId) are also being undone and must not block.
         if(!forward)for(const k of Object.keys(p)){if(_lwwSkip(op.id,k,op))delete p[k];}
         Object.assign(sh,p);
-        if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));
+        if(!forward)_selR(op);
         break;}
       case 'move':{
         const d=forward?1:-1;
         for(const id of op.ids){const sh=byId(id);if(!sh)continue;if(forward&&sh.locked)continue;
           Shape.translate(sh,op.dx*d,op.dy*d);}
-        if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));
+        if(!forward)_selR(op);
         break;}
       case 'clear':{
         if(forward){state.shapes.length=0;state.selection.clear();state.wclock={};}
-        else{for(const s of op.shapes)state.shapes.push(clone(s));sortZ();if(op.wc)state.wclock=clone(op.wc);if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));}
+        else{for(const s of op.shapes)state.shapes.push(clone(s));sortZ();if(op.wc)state.wclock=clone(op.wc);_selR(op);}
         break;}
       case 'replace':{
         // Whole-board swap (shared-link import). Reversible: before/after are full
@@ -1568,7 +1572,7 @@ const Store={
         sortZ();
         if(forward&&op.afterWc)state.wclock=clone(op.afterWc);
         if(!forward&&op.wc)state.wclock=clone(op.wc);
-        if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));
+        if(!forward)_selR(op);
         break;}
       case 'group':{
         if(forward){
@@ -1578,7 +1582,7 @@ const Store={
             const sh=byId(b.id);if(!sh)continue;
             if(_lwwSkip(b.id,'groupId',op))continue;   // a remote peer's newer groupId write wins over this undo
             if(b.groupId)sh.groupId=b.groupId;else delete sh.groupId;}
-          if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));}
+          _selR(op);}
         break;}
       case 'ungroup':{
         if(forward){
@@ -1589,7 +1593,7 @@ const Store={
             if(_lwwSkip(b.id,'groupId',op))continue;
             if(b.groupId)sh.groupId=b.groupId;else delete sh.groupId;}}
           else{const gid=op.gids?.[0];for(const id of op.ids){const sh=byId(id);if(sh&&gid)sh.groupId=gid}}
-          if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));}
+          _selR(op);}
         break;}
       case 'zorder':{
         if(op.changes){
@@ -1607,7 +1611,7 @@ const Store={
             state.shapes.length=0;Array.prototype.push.apply(state.shapes,next);
           }
         }
-        if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));
+        if(!forward)_selR(op);
         break;}
       case 'style':
       case 'resize':
@@ -1625,7 +1629,7 @@ const Store={
           if(!forward)for(const k of Object.keys(p)){if(k!=='id'&&_lwwSkip(raw.id,k,op))delete p[k];}
           Object.assign(sh,p);
         }
-        if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));
+        if(!forward)_selR(op);
         break;}
     }
     // ADR-0027: post-mutation bboxes of the same ids cover add/upd/move targets;
@@ -2160,7 +2164,7 @@ function _statusSel(){
   const el=_g('sSel');if(!el)return;
   let txt='';
   if(state.selection.size){
-    const sel=[...state.selection].map(byId).filter(Boolean);
+    const sel=_selL(Boolean);
     const b=sel.length&&G.bboxAll(sel);
     if(b)txt=Math.round(b.w)+'×'+Math.round(b.h);
   }
@@ -2719,7 +2723,7 @@ function drawShape(s,c){
     case 'rect':
       c.beginPath();
       roundRect(c,s.x,s.y,s.w,s.h,Math.min(s.r!=null?s.r:8,Math.abs(s.w)/4,Math.abs(s.h)/4));
-      if(s.shadow){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=10;c.shadowOffsetY=3}   // ADR-0194
+      _csh(s,c)   // ADR-0194
       if(s.fill){c.fill()}
       if(s.stroke){c.stroke()}
       c.shadowColor='transparent';c.shadowBlur=0;c.shadowOffsetY=0;
@@ -2728,7 +2732,7 @@ function drawShape(s,c){
     case 'ellipse':
       c.beginPath();
       c.ellipse(s.x+s.w/2,s.y+s.h/2,Math.abs(s.w/2),Math.abs(s.h/2),0,0,PI2);
-      if(s.shadow){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=10;c.shadowOffsetY=3}   // ADR-0194
+      _csh(s,c)   // ADR-0194
       if(s.fill){c.fill()}
       if(s.stroke){c.stroke()}
       c.shadowColor='transparent';c.shadowBlur=0;c.shadowOffsetY=0;
@@ -2736,14 +2740,14 @@ function drawShape(s,c){
       _drawBoxLabel(s,c);break;
     case 'diamond':{
       _diamondPath(c,s);                                       // ADR-0156
-      if(s.shadow){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=10;c.shadowOffsetY=3}   // ADR-0194
+      _csh(s,c)   // ADR-0194
       if(s.fill)c.fill();
       if(s.stroke)c.stroke();
       c.shadowColor='transparent';c.shadowBlur=0;c.shadowOffsetY=0;
       if(s.fstyle)_hatchCtx(c,s);                              // ADR-0077
       _drawBoxLabel(s,c);break;}
     case 'line':{
-      if(s.shadow){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=10;c.shadowOffsetY=3}   // ADR-0211
+      _csh(s,c)   // ADR-0211
       if(s.elbow){const _ep=_elbowPts(s);(s.r>0)?_polylineR(c,_ep,s.r):_polyline(c,_ep);c.stroke();_drawConnLabel(s,c);break}   // ADR-0207
       if(s.curve){const e=connEnds(s),cc=_curveCtrl(e,s.cbend);c.beginPath();c.moveTo(e.x1,e.y1);c.quadraticCurveTo(cc.x,cc.y,e.x2,e.y2);c.stroke();_drawConnLabel(s,c);break}
       _polyline(c,_linePts(s));c.stroke();_drawConnLabel(s,c);break;}   // ADR-0076
@@ -2757,7 +2761,7 @@ function drawShape(s,c){
       const img=s.dataUrl?getImg(s.dataUrl):null;   // ADR-0035: dataUrl-less image renders placeholder, never throws (getImg guards non-data:)
       if(img&&img.complete&&img.naturalWidth){
         const _cr=Math.min(s.r||0,Math.abs(s.w)/2,Math.abs(s.h)/2);   // ADR-0168
-        if(s.shadow){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=10;c.shadowOffsetY=3}   // ADR-0194
+        _csh(s,c)   // ADR-0194
         if(_cr>0){c.save();c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,_cr);c.clip()}
         if(s.flip){const fx=s.x+s.w/2,fy=s.y+s.h/2;c.save();c.translate(fx,fy);c.scale(s.flip&1?-1:1,s.flip&2?-1:1);c.translate(-fx,-fy);c.drawImage(img,s.x,s.y,s.w,s.h);c.restore()}
         else c.drawImage(img,s.x,s.y,s.w,s.h);
@@ -2853,7 +2857,7 @@ function roundRect(c,x,y,w,h,r){
 }
 function drawArrow(s,c){
   c=c||ctx;
-  if(s.shadow){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=10;c.shadowOffsetY=3}   // ADR-0211
+  _csh(s,c)   // ADR-0211
   const e=connEnds(s);
   const ah=Math.max(6,(s.size||2)*3);
   if(s.curve){
@@ -3174,7 +3178,7 @@ function _fontStr(s,fs){
 function drawText(s,c){
   c=c||ctx;
   if(s.id===state.editing)return;
-  if(s.shadow){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=10;c.shadowOffsetY=3}   // ADR-0211
+  _csh(s,c)   // ADR-0211
   c.fillStyle=s.stroke||'#0F172A';
   const fs=s.fontSize||16;
   c.font=_fontStr(s,fs);                                    // ADR-0078
@@ -3199,6 +3203,7 @@ function drawText(s,c){
       if(s.under){const uy=s.y+i*lh+fs*1.08;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}
       if(s.strike){const uy=s.y+i*lh+fs*0.55;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}}   // ADR-0100
     c.restore()}
+  if(s.link&&s.w!=null){c.font='10px sans-serif';c.textAlign='right';c.textBaseline='top';c.fillText('🔗',s.x+Math.abs(s.w)-3,s.y+3)}   // ADR-0310: link badge top-right
 }
 
 // Rotate point (px,py) about centre (cx,cy) by `deg` degrees. Shared by handles,
@@ -3485,7 +3490,7 @@ function handleCursor(id){
 
 function drawSelection(c){
   if(state.selection.size===0)return;
-  const sel=[...state.selection].map(byId).filter(Boolean);
+  const sel=_selL(Boolean);
   if(!sel.length)return;
   const b=G.bboxAll(sel);
   if(!b)return;
@@ -3787,7 +3792,7 @@ canvas.addEventListener('pointerdown',e=>{
           }
         }
       }else if(state.selection.size>1){
-        const sel=[...state.selection].map(byId).filter(Boolean);
+        const sel=_selL(Boolean);
         if(sel.length>1&&!sel.every(s=>s.locked)){
           const gb=G.bboxAll(sel);
           // ADR-0057: rotation knob first — it sits above the bbox, off the handles.
@@ -3872,7 +3877,7 @@ canvas.addEventListener('pointermove',e=>{
           if(hid){canvas.style.cursor=handleCursor(hid);return}
         }
       }else if(state.selection.size>1){
-        const sel=[...state.selection].map(byId).filter(Boolean);
+        const sel=_selL(Boolean);
         if(sel.length>1&&!sel.every(s=>s.locked)){
           const gb=G.bboxAll(sel);
           const gr=gb&&_grpRotHandle(gb);
@@ -5452,7 +5457,7 @@ window.addEventListener('keydown',e=>{
   else if((k==='arrowup'||k==='arrowdown'||k==='arrowleft'||k==='arrowright')&&e.altKey){
     // Alt+arrow = keyboard resize (a11y: pointer-free). L/R = width, U/D = height,
     // top-left anchored; ⇧ = ×10 step. Box shapes only. Single reversible `resize` op.
-    const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked&&s.w!=null);
+    const sel=_selL(s=>s&&!s.locked&&s.w!=null);
     if(sel.length){
       e.preventDefault();
       const step=e.shiftKey?10:1;
@@ -5654,7 +5659,7 @@ function doDuplicate(){
   UI.toast(t('pasted')+' '+added.length);
 }
 function doDelete(){
-  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);
+  const sel=_selL(s=>s&&!s.locked);
   if(!sel.length)return;
   const origSel=[...state.selection];
   // Frame-aware: shapes fully inside a selected frame are deleted with the frame (parity with doDuplicate)
@@ -5753,7 +5758,7 @@ function doSendBackward(){
 // "Select Same → Fill"). Sticky's paint lives in `color`; everything else in
 // `fill`. Locked shapes are included — ops already skip them.
 function selectSamePaint(){
-  const sel=[...state.selection].map(byId).filter(Boolean);
+  const sel=_selL(Boolean);
   if(sel.length!==1)return;
   const s0=sel[0],key=s0.type==='sticky'?s0.color:s0.fill;
   const same=state.shapes.filter(s=>s.visible!==0&&(s.type==='sticky'?s.color:s.fill)===key);
@@ -5810,7 +5815,7 @@ function showAllShapes(){
 // ADR-0120: select every shape of the same type as the single selection —
 // sibling of selectSamePaint (e.g. all connectors, all stickies).
 function selectSameType(){
-  const sel=[...state.selection].map(byId).filter(Boolean);
+  const sel=_selL(Boolean);
   if(sel.length!==1)return;
   const same=state.shapes.filter(s=>s.visible!==0&&s.type===sel[0].type);
   if(same.length<2)return;
@@ -5822,7 +5827,7 @@ function selectSameType(){
 // automatic — the frame simply covers the union bbox + padding; z is tucked
 // just below the lowest member so contents stay on top.
 function wrapInFrame(){
-  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);
+  const sel=_selL(s=>s&&!s.locked);
   if(!sel.length){UI.toast(t('selectTwo'),'warn');return}
   const b=G.bboxAll(sel);if(!b)return;
   const PAD=16;
@@ -5872,7 +5877,7 @@ function doClearAll(){
 
 // ---- alignment (multiple selection) ----
 function doAlign(dir){
-  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);
+  const sel=_selL(s=>s&&!s.locked);
   if(sel.length<2)return;
   // Frame-aware: shapes fully inside a selected frame move with the frame as one unit
   // (parity with drag/nudge; mirrors withFrameChildren logic used in doMove/nudgeSelection)
@@ -5948,7 +5953,7 @@ function doAlign(dir){
 // resized/distorted; connectors/pen/way-points move via Shape.translate.
 // Recorded as one 'align' op (before/after full clones) for single undo.
 function snapSelToGrid(){
-  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);
+  const sel=_selL(s=>s&&!s.locked);
   if(!sel.length)return;
   const beforeSnap=sel.map(s=>clone(s));
   let moved=0;
@@ -5966,7 +5971,7 @@ function snapSelToGrid(){
 // (draw.io Arrange → Match Size). Position untouched; align op for undo parity.
 const _MSZ=new Set(['rect','ellipse','diamond','sticky','image','frame']);
 function doMatchSize(dim){
-  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked&&_MSZ.has(s.type));
+  const sel=_selL(s=>s&&!s.locked&&_MSZ.has(s.type));
   if(sel.length<2)return;
   const ref=sel[0],targets=sel.slice(1);
   const before=targets.map(s=>clone(s));
@@ -6008,7 +6013,7 @@ function flipShape(s,axis,c){
   if(s.rotate)s.rotate=((axis==='h'?180:360)-s.rotate+360)%360;
 }
 function doFlip(axis){
-  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);
+  const sel=_selL(s=>s&&!s.locked);
   if(!sel.length)return;
   const bb=G.bboxAll(sel);if(!bb)return;
   const c=axis==='h'?bb.x+bb.w/2:bb.y+bb.h/2;
@@ -6033,7 +6038,7 @@ function doFlip(axis){
 }
 
 function doLock(){
-  const sel=[...state.selection].map(byId).filter(Boolean);
+  const sel=_selL(Boolean);
   if(!sel.length)return;
   const lk=!sel[0].locked;
   const before=sel.map(s=>({id:s.id,locked:s.locked??null}));
@@ -6060,7 +6065,7 @@ function unlockAll(){
 // (Alt+B). Local-only (not in REMOTE_OPS, like replace/clear) — converting a collaborator's
 // pen stroke to a rectangle behind their back would be confusing, not helpful.
 function doBeautify(){
-  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked&&s.type==='pen');
+  const sel=_selL(s=>s&&!s.locked&&s.type==='pen');
   if(!sel.length){UI.toast(t('beautifyNone'),'warn');return}
   const before=[],after=[];
   for(const s of sel){
@@ -6097,7 +6102,7 @@ function _rotPtsAbout(s,gx,gy,cs,sn){
     if(tr)_rotBend(s,tr,rot);}
 }
 function doRotate(d){
-  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked&&_rotatable(s));
+  const sel=_selL(s=>s&&!s.locked&&_rotatable(s));
   if(!sel.length)return;
   const bb=G.bboxAll(sel),gx=bb.x+bb.w/2,gy=bb.y+bb.h/2; // orbit about group centre, like doFlip
   // Frame-aware: box-shape children inside selected frames orbit and rotate with the frame (parity with doAlign)
@@ -6423,6 +6428,14 @@ function drawioToShapes(txt){
   for(const c of cells){const id=c.getAttribute('id');if(!id)continue;
     const g=c.querySelector('mxGeometry');if(g)_geo.set(id,g);
     const p=c.getAttribute('parent');if(p)_par.set(id,p);}
+  // ADR-0311: multiple <diagram> pages flatten side-by-side — each page's
+  // cells offset by cumulative pageWidth+200 so pages don't overlap.
+  const _doff=new Map();{let _dx=0;
+    for(const dg of doc.querySelectorAll('diagram')){
+      const m=dg.querySelector('mxGraphModel'),pw=+(m&&m.getAttribute('pageWidth'))||850;
+      for(const c2 of dg.querySelectorAll('mxCell'))_doff.set(c2,_dx);
+      _dx+=pw+200;
+    }}
   const _off=new Map();
   const off=id=>{if(_off.has(id))return _off.get(id);
     const p=_par.get(id);let o={x:0,y:0};
@@ -6437,7 +6450,7 @@ function drawioToShapes(txt){
     const sty=_dioSty(c.getAttribute('style'));
     const _hid=c.getAttribute('visible')==='0';                  // ADR-0245
     const _o=off(c.getAttribute('id'));
-    const x=_o.x+(+g.getAttribute('x')||0),y=_o.y+(+g.getAttribute('y')||0),w=+g.getAttribute('width')||0,ht=+g.getAttribute('height')||0;
+    const x=_o.x+(_doff.get(c)||0)+(+g.getAttribute('x')||0),y=_o.y+(+g.getAttribute('y')||0),w=+g.getAttribute('width')||0,ht=+g.getAttribute('height')||0;
     const lbl=_dioLabel(c.getAttribute('value'));
     let s;
     if('ellipse' in sty||sty.shape==='cylinder'||sty.shape==='cloud')s=Shape.make('ellipse',{x,y,w:w||120,h:ht||80,label:lbl.slice(0,240)});   // ADR-0274
@@ -6468,8 +6481,9 @@ function drawioToShapes(txt){
     const _hid=c.getAttribute('visible')==='0';                  // ADR-0245
     let x1=0,y1=0,x2=0,y2=0;
     const sp=g?g.querySelector('mxPoint[as="sourcePoint"]'):null,tp=g?g.querySelector('mxPoint[as="targetPoint"]'):null;
-    if(sp){x1=+sp.getAttribute('x')||0;y1=+sp.getAttribute('y')||0}
-    if(tp){x2=+tp.getAttribute('x')||0;y2=+tp.getAttribute('y')||0}
+    const _do=_doff.get(c)||0;
+    if(sp){x1=(+sp.getAttribute('x')||0)+_do;y1=+sp.getAttribute('y')||0}
+    if(tp){x2=(+tp.getAttribute('x')||0)+_do;y2=+tp.getAttribute('y')||0}
     const a=c.getAttribute('source'),b=c.getAttribute('target');
     const sa=a?idOf.get(a):null,sb=b?idOf.get(b):null;
     if(sa){const bs=shapes.find(s2=>s2.id===sa),bb=bs&&G.bbox(bs);if(bb){x1=bb.x+bb.w/2;y1=bb.y+bb.h/2}}
@@ -6490,7 +6504,7 @@ function drawioToShapes(txt){
     if(sty.curved==='1')s.curve=1;
     if(sty.jumpStyle&&sty.jumpStyle!=='none')s.hop=1;
     const pts=g?[...g.querySelectorAll('Array mxPoint')]:[];
-    if(pts.length)s.way=pts.slice(0,200).map(p=>[+p.getAttribute('x')||0,+p.getAttribute('y')||0]);
+    if(pts.length)s.way=pts.slice(0,200).map(p=>[(+p.getAttribute('x')||0)+_do,+p.getAttribute('y')||0]);
     if(/orthogonal|elbow/i.test(String(sty.edgeStyle||'')))s.elbow=1;
     // ADR-0221: drawio exitX/exitY/entryX/entryY fixed ports → aF/bF fractions
     // (same normalisation as ADR-0209's Alt-drop anchors). Exit = source end.
@@ -8795,7 +8809,7 @@ function toggleElbow(){
     s.elbow=s.elbow?0:1;s.curve=0;               // ADR-0068: routes are exclusive
     state.style.elbow=s.elbow;state.style.curve=0;              // ADR-0183
   })
-  if(before.length){_styleOp(before,after);invalidate()}
+  _so(before,after)
 }
 // ADR-0111: select a frame's contents (ctx). Reuses withFrameChildren's
 // spatial containment — the same rule drags/nudge/z-order already use, so
@@ -8821,14 +8835,14 @@ function toggleStickyText(){
     before.push({id,type:s.type});after.push({id,type:s.type==='sticky'?'text':'sticky'});
     s.type=s.type==='sticky'?'text':'sticky';
   })
-  if(before.length){_styleOp(before,after);invalidate()}
+  _so(before,after)
 }
 // ADR-0119: arrowhead style cycle (ctx) — arrow → dot → open. One s.head
 // drives both ends; 'line' shapes carry the property harmlessly until
 // converted (a line never draws heads).
 const HEAD_STYLES=['arrow','dot','bar','open','none'];   // ADR-0233/0294
 function cycleArrowHead(){
-  const sel=[...state.selection].map(byId).filter(s=>s&&s.type==='arrow'&&!s.locked);
+  const sel=_selL(s=>s&&s.type==='arrow'&&!s.locked);
   if(!sel.length)return;
   const cur=sel[0].head||'arrow';
   const next=HEAD_STYLES[(HEAD_STYLES.indexOf(cur)+1)%HEAD_STYLES.length];
@@ -8839,7 +8853,7 @@ function cycleArrowHead(){
 // ADR-0291: start-end head cycle (ctx) — none → arrow → dot → open.
 // s.start toggles presence, s.startHead carries the style (null = inherit s.head).
 function cycleStartHead(){
-  const sel=[...state.selection].map(byId).filter(s=>s&&s.type==='arrow'&&!s.locked);
+  const sel=_selL(s=>s&&s.type==='arrow'&&!s.locked);
   if(!sel.length)return;
   const seq=['none','arrow','dot','bar','open'],cur=!sel[0].start?'none':(sel[0].startHead||'arrow');
   const next=seq[(seq.indexOf(cur)+1)%4];
@@ -8859,7 +8873,7 @@ function toggleLineArrow(){
     before.push({id,type:s.type});after.push({id,type:s.type==='line'?'arrow':'line'});
     s.type=s.type==='line'?'arrow':'line';
   })
-  if(before.length){_styleOp(before,after);invalidate()}
+  _so(before,after)
 }
 // ADR-0068: curved (quadratic) route toggle — exclusive with elbow.
 function toggleCurve(){
@@ -8870,7 +8884,7 @@ function toggleCurve(){
     s.elbow=0;s.curve=s.curve?0:1;
     state.style.elbow=0;state.style.curve=s.curve;              // ADR-0183
   })
-  if(before.length){_styleOp(before,after);invalidate()}
+  _so(before,after)
 }
 // ADR-0218: toggle jump arcs at crossings (draw.io "jump" edgeStyle).
 function toggleHop(){
@@ -8881,7 +8895,7 @@ function toggleHop(){
     s.hop=s.hop?0:1;
     state.style.hop=s.hop;                        // ADR-0183
   })
-  if(before.length){_styleOp(before,after);invalidate()}
+  _so(before,after)
 }
 
 // ADR-0092: corner-radius toggle — rects default to adaptive rounding
@@ -8895,7 +8909,7 @@ function toggleRound(){
     after.push({id,r:s.r===0?null:0});
     s.r=s.r===0?null:0;state.style.r=s.r;                       // ADR-0184
   })
-  if(before.length){_styleOp(before,after);invalidate()}
+  _so(before,after)
 }
 // ADR-0101: sticky colour quick-cycle through the palette (style op).
 // The fill swatch already remaps for stickies (ADR-0082); this cycles the
@@ -8906,7 +8920,7 @@ function cycleStickyColor(){
     const i=STICKY_COLORS.indexOf(s.color),nxt=STICKY_COLORS[(i+1)%STICKY_COLORS.length];
     before.push({id,color:s.color||'#FEF08A'});after.push({id,color:nxt});s.color=nxt;
   })
-  if(before.length){_styleOp(before,after);invalidate()}
+  _so(before,after)
 }
 // ADR-0085: fit frame to contents — union bbox of shapes fully inside each
 // selected frame + 12px padding, via one align op (multi-frame atomic undo).
@@ -8947,7 +8961,7 @@ function resetRoute(){
     s.way=null;s.bend=null;s.elbow=0;s.curve=0;s.labelPos=null;s.cbend=null;
     state.style.elbow=0;state.style.curve=0;                    // ADR-0183: reset clears the remembered route too
   })
-  if(before.length){_styleOp(before,after);invalidate()}
+  _so(before,after)
 }
 // ADR-0198: reverse a connector's direction — draw.io "Reverse". Swaps
 // endpoints + bound shapes + waypoint order; labelPos mirrors along the route.
@@ -8964,7 +8978,7 @@ function reverseConn(){
     if(s.labelPos!=null)s.labelPos=1-s.labelPos;
     after.push({id,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2,a:s.a??null,b:s.b??null,aF:s.aF??null,bF:s.bF??null,way:s.way??null,labelPos:s.labelPos??null});
   })
-  if(before.length){_styleOp(before,after);invalidate()}
+  _so(before,after)
 }
 // ADR-0199: fit sticky to text — draw.io "Autosize". Shrinks width to the
 // longest unwrapped line (re-wrapping at the new width) and always sizes the
@@ -8983,7 +8997,7 @@ function fitSticky(){
     if(nw===s.w&&nh===s.h)return;
     before.push({id,w:s.w,h:s.h});after.push({id,w:nw,h:nh});s.w=nw;s.h=nh;
   })
-  if(before.length){_styleOp(before,after);invalidate()}
+  _so(before,after)
 }
 // ADR-0157: detach all bound endpoints of the selected connectors (ctx).
 // Dragging an endpoint to empty space detaches one end; this clears a/b on
@@ -9009,7 +9023,7 @@ function pinAnchor(){
     }
     after.push({id,aF:s.aF??null,bF:s.bF??null});
   })
-  if(before.length){_styleOp(before,after);invalidate()}
+  _so(before,after)
 }
 function unbindSelection(){
   const before=[],after=[];
@@ -9018,7 +9032,7 @@ function unbindSelection(){
     s.a=null;s.b=null;s.aF=null;s.bF=null;                     // ADR-0209
     after.push({id,a:null,b:null,aF:null,bF:null,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2});
   })
-  if(before.length){_styleOp(before,after);invalidate()}
+  _so(before,after)
 }
 // ADR-0159: vertical label alignment cycle (ctx) — ''(middle)→'top'→'bottom'→''.
 // draw.io/mermaid parity for tall boxes in org charts & flow diagrams.
@@ -9030,7 +9044,7 @@ function cycleVAlign(){
     before.push({id,valign:cur});after.push({id,valign:nxt});
     if(nxt==null)delete s.valign;else s.valign=nxt;
   })
-  if(before.length){_styleOp(before,after);invalidate()}
+  _so(before,after)
 }
 // ADR-0189: line-height cycle for every text carrier (labels too) —
 // null restores the per-type default (1.25 text/labels, 1.3 sticky).
@@ -9046,7 +9060,7 @@ function toggleWrap(){
     before.push({id,wrap:s.wrap??null});after.push({id,wrap:s.wrap?null:1});
     s.wrap=s.wrap?null:1;
   })
-  if(before.length){_styleOp(before,after);invalidate()}
+  _so(before,after)
 }
 function cycleSpacing(){
   const seq=[null,1,2];
@@ -9057,7 +9071,7 @@ function cycleSpacing(){
     if(nxt==null)delete s.spacing;else s.spacing=nxt;
     state.style.spacing=nxt;
   })
-  if(before.length){_styleOp(before,after);invalidate()}
+  _so(before,after)
 }
 function cycleLineH(){
   const before=[],after=[],seq=[null,1,1.5];
@@ -9067,7 +9081,7 @@ function cycleLineH(){
     if(nxt==null)delete s.lineH;else s.lineH=nxt;
     state.style.lineH=nxt;
   })
-  if(before.length){_styleOp(before,after);invalidate()}
+  _so(before,after)
 }
 // ADR-0075: ⌘⇧,/. nudges fontSize ±2 on selected text/sticky via style op.
 function fontSizeStep(d){
@@ -9078,7 +9092,7 @@ function fontSizeStep(d){
     before.push({id,fontSize:cur});after.push({id,fontSize:nxt});s.fontSize=nxt;
     state.style.fontSize=nxt;                                 // ADR-0180: last-used persists to the next shape
   })
-  if(before.length){_styleOp(before,after);invalidate()}
+  _so(before,after)
 }
 // ADR-0078: ⌘B/⌘I toggles bold/italic on selected text/sticky via style op.
 function _rcOp(op){const o=[...state.selection];Store._recordCommitted(op);if(o.length)state.history[state.histIdx].origSel=o}
@@ -9107,7 +9121,7 @@ function cycleFillStyle(){
     if(nxt)s.fstyle=nxt;else delete s.fstyle;
     state.style.fstyle=nxt||null;                               // ADR-0184
   })
-  if(before.length){_styleOp(before,after);invalidate()}
+  _so(before,after)
 }
 // ADR-0166: swap stroke↔fill on painted shapes via one style op (Illustrator
 // ⇧X parity). Sticky maps its body paint through `color` — the same convention
@@ -9135,7 +9149,7 @@ function cycleFont(){
     if(nxt)s.font=nxt;else delete s.font;
     state.style.font=nxt||null;                     // ADR-0181
   })
-  if(before.length){_styleOp(before,after);invalidate()}
+  _so(before,after)
 }
 // ADR-0174: ctx opacity cycle — same style op as the digit keys (ADR-0167),
 // reachable from touch/ctx. Levels mirror Figma's decimal steps.
@@ -9155,7 +9169,7 @@ function cycleTextAlign(){
     before.push({id,align:cur});after.push({id,align:nxt});s.align=nxt;
     state.style.align=nxt;                                      // ADR-0184
   })
-  if(before.length){_styleOp(before,after);invalidate()}
+  _so(before,after)
 }
 // ADR-0136: corner-radius cycle for rects — s.r existed in every render
 // path (canvas/SVG/hatch) since the box renderer, but nothing set it.
@@ -9170,7 +9184,7 @@ function cycleCorner(){
     before.push({id,r:s.r??null});after.push({id,r:nxt});
     s.r=nxt;state.style.r=nxt;                                  // ADR-0184
   })
-  if(before.length){_styleOp(before,after);invalidate()}
+  _so(before,after)
 }
 // ADR-0194: drop shadow for box shapes — style op, canvas shadow props +
 // a single shared SVG feDropShadow filter.
@@ -9181,7 +9195,7 @@ function toggleShadow(){
     if(s.shadow)delete s.shadow;else s.shadow=true;
     state.style.shadow=s.shadow||null;
   })
-  if(before.length){_styleOp(before,after);invalidate()}
+  _so(before,after)
 }
 // ADR-0063: start-side arrowhead toggle via style op — undo + wclock sync free.
 function toggleBothEnds(){
@@ -9191,7 +9205,7 @@ function toggleBothEnds(){
     after.push({id,start:s.start?0:1});
     s.start=s.start?0:1;state.style.start=s.start;              // ADR-0185
   })
-  if(before.length){_styleOp(before,after);invalidate()}
+  _so(before,after)
 }
 // ADR-0161: the look-props extractor shared by ⌥C copy-style and the
 // eyedropper tool — geometry (x/y/w/h/pts/way/bend/rotate/flip/z) stays out:
@@ -9220,7 +9234,7 @@ function setSelLink(){
     before.push({id,link:s.link??null});after.push({id,link:v||null});
     if(v)s.link=v;else delete s.link;
   });
-  if(before.length){_styleOp(before,after);invalidate()}
+  _so(before,after)
 }
 function openSelLink(){
   const s=[...state.selection].map(byId).find(s=>s&&s.link);

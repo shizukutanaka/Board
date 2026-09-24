@@ -2,6 +2,41 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.362] - 2026-09-24
+
+### Added
+- drawio 複数ページ (`<diagram>` 複数) を pageWidth+200 間隔で横並び
+  展開して取り込み (従来は全ページが同一座標に重畳、ADR-0311)
+
+## [1.7.361] - 2026-09-24
+
+### Added
+- `s.link` 保持図形の右上に 🔗 バッジを描画 (ADR-0310)
+
+## [1.7.360] - 2026-09-24
+
+### Changed
+- `_apply` 内の origSel 復元 11 箇所を `_selR(op)` に集約
+  (raw ~550B、ADR-0309)
+
+## [1.7.359] - 2026-09-24
+
+### Changed
+- `const sel=[...state.selection].map(byId).filter(f)` 18 箇所を
+  `_selL(f)` に集約 (raw ~500B、ADR-0308)
+
+## [1.7.358] - 2026-09-24
+
+### Changed
+- style op コミット末尾 `if(before.length){_styleOp…}` を `_so(b,a)`
+  に集約 (24 箇所、raw ~700B、ADR-0307)
+
+## [1.7.357] - 2026-09-24
+
+### Changed
+- canvas drop-shadow 3属性の適用を `_csh(s,c)` に集約 (8 箇所、
+  raw -393B、ADR-0306)
+
 ## [1.7.356] - 2026-09-24
 
 ### Fixed

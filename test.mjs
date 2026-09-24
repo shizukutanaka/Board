@@ -719,6 +719,12 @@ const checks = [
   ['clipboard image/svg+xml → vector import (ADR-0272)', html.includes("i.type==='image/svg+xml'")],
   ['drawio strokeOpacity/fillOpacity → s.opacity (ADR-0271)', html.includes('+sty.strokeOpacity')],
   ['svg conn path/label emitters deduped (ADR-0270)', html.includes('const _sp=(d,j)')&&html.includes('_cL();')],
+  ['drawio multi-page side-by-side import (ADR-0311)', html.includes("for(const dg of doc.querySelectorAll('diagram'))")],
+  ['link badge 🔗 on linked shapes (ADR-0310)', html.includes("c.fillText('🔗',s.x+Math.abs(s.w)-3,s.y+3)")],
+  ['_selR() origSel restore helper (ADR-0309)', html.includes("const _selR=op=>")],
+  ['_selL() selection-list shorthand (ADR-0308)', html.includes("const _selL=f=>")],
+  ['_so() style-op commit tail (ADR-0307)', html.includes("const _so=(b,a)=>")],
+  ['_csh() canvas shadow helper (ADR-0306)', html.includes("const _csh=(s,c)=>")],
   ['SVG frame label always 600 weight (ADR-0305)', html.includes('s.bold?s:{...s,bold:true},s.fontSize||12')],
   ['ctx link set/open on s.link (ADR-0304)', html.includes('function setSelLink')&&html.includes('ctxOpenLink')&&html.includes('ctxSetLink')],
   ['_forSel() apply-loop shorthand (ADR-0303)', html.includes("_forSel((s,id)=>")],
@@ -762,7 +768,7 @@ const checks = [
   ['drawio fontFamily ↔ s.font category map (ADR-0253)', html.includes("sty.fontFamily&&s.type!=='image'")&&html.includes("fontFamily='+(s.font==='mono'?'Courier New':'Georgia')")],
   ['conn/box label widths memoized on WeakMap (ADR-0252)', html.includes('_connLabelMeasure')&&html.includes('_clCache')],
   ['drawio edge label styling: labelBackgroundColor/fontSize/fontStyle (ADR-0249)', html.includes("labelBackgroundColor='+s.fill")&&html.includes("sty.labelBackgroundColor&&sty.labelBackgroundColor!=='none'")],
-  ['drawio parent-relative offsets resolved (ADR-0240)', html.includes("const _geo=new Map(),_par=new Map();")&&html.includes("const _o=off(c.getAttribute('id'));")&&html.includes("x=_o.x+(+g.getAttribute('x')||0)")],
+  ['drawio parent-relative offsets resolved (ADR-0240)', html.includes("const _geo=new Map(),_par=new Map();")&&html.includes("const _o=off(c.getAttribute('id'));")&&html.includes("x=_o.x+(_doff.get(c)||0)+(+g.getAttribute('x')||0)")],
   ['frame label italic/under/strike (ADR-0204)', html.includes("600 ${fs}px")&&html.includes("s.type!=='frame'&&!s.label)||s.locked)return;   // ADR-0170/0204")],
   ['letter-spacing cycle — canvas ctx+SVG+style-copy (ADR-0205)', html.includes("function cycleSpacing()")&&html.includes("c.letterSpacing=(s.spacing||0)+'px'")&&html.includes('_svgLs(s)')&&html.includes('spacing:sh.spacing')],
   ['elbow corner rounding canvas+SVG + cycleCorner gate (ADR-0207)', html.includes('function _polylineR')&&html.includes('_polylineRd(pts,ox,oy,s.r)')&&html.includes("connOk=(_conn(s.type))&&s.elbow")],
@@ -796,7 +802,7 @@ const checks = [
   ['editor textarea routes Cmd-B/I/U/X to toggleTextFlag (ADR-0236)', html.includes("fl={b:'bold',i:'italic',u:'under'}[mk]")&&html.includes('toggleTextFlag(fl)')],
   ['label input routes Cmd-B/I/U/X to toggleTextFlag (ADR-0237)', html.includes("fl2={b:'bold',i:'italic',u:'under'}[mk2]")],
   ['drawio verticalAlign round-trips s.valign (ADR-0238)', html.includes('sty.verticalAlign')&&html.includes("'verticalAlign='+s.valign")],
-  ['style-op commit shared via _styleOp (ADR-0239)', html.includes('function _styleOp(before,after)')&&(html.match(/_styleOp\(before,after\)/g)||[]).length>20],
+  ['style-op commit shared via _styleOp (ADR-0239)', html.includes('function _styleOp(before,after)')&&(html.match(/_so\(before,after\)/g)||[]).length>20],
   ['endpoint drag Shift constrains to 45 deg + label editor fontSize (ADR-0206)', html.includes("constrain the free end to 45")&&html.includes("${hit.fontSize||12}px")],
   ['i18n has excImported ja+en', html.includes("excImported:'Excalidraw を取り込みました'") && html.includes("excImported:'Excalidraw imported'")],
   // v1.7.102: ADR-0044 text paste → text shape
@@ -921,13 +927,13 @@ const checks = [
   ['⌥C / ⌥V style copy/paste shortcuts', html.includes("k==='c'&&e.altKey") && html.includes("copyStyle") && html.includes("k==='v'&&e.altKey")],
   ['⌘⇧E SVG export shortcut', html.includes("meta&&k==='e'&&e.shiftKey") && html.includes("exportSVG")],
   // v1.6.63: Socratic round 3 - internal consistency + a11y
-  ['doFlip skips locked shapes (consistent with doRotate)', html.includes("function doFlip(axis){\n  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);")],
+  ['doFlip skips locked shapes (consistent with doRotate)', html.includes("const sel=_selL(s=>s&&!s.locked);")],
   ['doRotate orbits selection about group centre', html.includes("orbit about group centre, like doFlip") && html.includes("Shape.translate(s,nx-cx,ny-cy)")],
   ['search input has localized aria-label', html.includes("sq.setAttribute('aria-label',T.k.search)")],
   ['search Escape returns focus to canvas', html.includes("invalidateOverlay();canvas.focus();}") && html.includes("_sqAdvance(ev.shiftKey?-1:1)")],
   // v1.6.64: Socratic round 4 - rotation scope + lock completeness
-  ['doRotate restricted to box shapes (s.w!=null, NaN-safe)', html.includes("filter(s=>s&&!s.locked&&s.w!=null)")],
-  ['doDelete skips locked shapes', html.includes("function doDelete(){\n  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);")],
+  ['doRotate restricted to box shapes (s.w!=null, NaN-safe)', html.includes("_selL(s=>s&&!s.locked&&s.w!=null)")],
+  ['doDelete skips locked shapes', html.includes("function doDelete(){\n  const sel=_selL(s=>s&&!s.locked);")],
   ['eraser skips locked shapes', html.includes("if(hit&&!hit.locked&&!_eraseBatch.some")],
   // v1.6.65: budget removed - deferred fixes implemented
   ['_edgePt is rotation-aware (projects to true rotated edge)', html.includes("const ub=sh.w!=null?{x:sh.x,y:sh.y,w:sh.w,h:sh.h}:G.bbox(sh)") && html.includes("const cx=ub.x+ub.w/2,cy=ub.y+ub.h/2,rot=sh.rotate")],
@@ -1051,7 +1057,7 @@ const checks = [
   ['sticky branch preserves s.w (no text-width overwrite)', html.includes("if(s.type==='sticky'){") && html.includes("wl=wrapText(s.text||'',Math.abs(s.w)-pad*2")],
   ['text branch still auto-sizes width', html.includes("}else{\n    const lines=(s.text||'').split('\\n');")],
   // v1.6.73: doAlign skips locked shapes (parity with doDelete/doRotate/doFlip)
-  ['doAlign filters locked shapes', html.includes("const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);\n  if(sel.length<2)return;")],
+  ['doAlign filters locked shapes', html.includes("const sel=_selL(s=>s&&!s.locked);\n  if(sel.length<2)return;")],
   // v1.6.74: _placeCopies remaps connector bindings (sh.a/sh.b) within pasted set
   ['_placeCopies pre-generates idMap for two-pass connector remapping', html.includes("const idMap=new Map();") && html.includes("for(const orig of srcShapes)idMap.set(orig.id,uid());")],
   ['_placeCopies remaps sh.a and sh.b to new ids', html.includes("if(sh.a&&idMap.has(sh.a))sh.a=idMap.get(sh.a);") && html.includes("if(sh.b&&idMap.has(sh.b))sh.b=idMap.get(sh.b);")],
@@ -1183,21 +1189,21 @@ const checks = [
     html.includes("const noLock=p=>op.dir==='lock'||!('locked' in p);")],
   // v1.7.24a: _apply clear backward must restore pre-clear selection
   ['_apply clear backward restores origSel (mirror of del undo)',
-    html.includes("if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));") &&
+    html.includes("_selR(op);") &&
     html.includes("if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
   // v1.7.24b: validRemotePayload must block locked key in remote style/resize ops
   ['remote style/resize ops cannot set locked (noLock guard extended)',
     html.includes("case 'resize':{const noLock=p=>!('locked' in p);")],
   // v1.7.26: _apply replace backward restores origSel; importBoard/importFromHash attach it
   ['_apply replace backward restores origSel; import callers attach origSel + afterWc to op',
-    html.includes("if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));") &&
+    html.includes("if(!forward)_selR(op);") &&
     html.includes("Store._recordCommitted({op:'replace',before,after:clone(state.shapes),wc:beforeWc,afterWc:clone(state.wclock),origSel});")],
   // v1.7.28: validRemotePayload for upd must block locked key (parity with style/resize/align)
   ['remote upd op cannot set locked (noLock guard extended to upd)',
     html.includes("case 'upd':{const noLock=p=>!('locked' in p);\n      if(typeof op.id!=='string'||!validPatch(op.after)||!noLock(op.after)")],
   // v1.7.30: _apply add backward restores origSel; createShapeKbd attaches origSel
   ['_apply add backward restores origSel; createShapeKbd attaches origSel',
-    html.includes("if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));") &&
+    html.includes("_selR(op);") &&
     html.includes("_cOp({op:'add',shape:s});")],
   // v1.7.33: validRemotePayload group must require before (string-id array)
   ['validRemotePayload group: requires before array with string ids',
@@ -1243,12 +1249,12 @@ const checks = [
   ['doGroup: origSel patched onto history entry after _recordCommitted',
     html.includes("Store._recordCommitted({op:'group',ids,gid,before});\n  if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
   ['_apply group backward: if(op.origSel) restores selection',
-    html.includes("if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));}\n        break;}\n      case 'ungroup':")],
+    html.includes("_selR(op);}\n        break;}\n      case 'ungroup':")],
   // v1.7.37: doUngroup/_apply ungroup backward must carry and restore origSel
   ['doUngroup: origSel captured before selection expansion and patched after _recordCommitted',
     html.includes("const origSel=[...ids];\n  // find all groupIds")],
   ['_apply ungroup backward: if(op.origSel) restores selection',
-    html.includes("if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));}\n        break;}\n      case 'zorder':")],
+    html.includes("_selR(op);}\n        break;}\n      case 'zorder':")],
   // v1.7.32: _apply group backward must guard op.before (parity with ungroup backward)
   // v1.7.68/ADR-0002-gap-fix: the loop body gained the same _lwwSkip guard group/ungroup
   // now share (below); the op.before/origSel structure itself is unchanged.
@@ -1272,7 +1278,7 @@ const checks = [
     html.includes("if(forward&&op.afterWc)state.wclock=clone(op.afterWc);")],
   // v1.7.43: _apply zorder backward restores origSel (mirrors move/align/group/ungroup)
   ['_apply zorder backward: if(!forward&&op.origSel) restores selection',
-    html.includes("if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));\n        break;}\n      case 'style':")],
+    html.includes("if(!forward)_selR(op);\n        break;}\n      case 'style':")],
   // v1.7.43: keyboard resize (Alt+Arrow) captures origSel around resize _recordCommitted
   ['keyboard resize (Alt+Arrow): origSel captured before resize commit',
     html.includes("_rcOp({op:'resize',before,after});")],
@@ -1281,7 +1287,7 @@ const checks = [
     html.includes("_rcOp({op:'upd',id:rsh.id,before,after});")],
   // v1.7.43: _apply upd backward restores origSel (drag-resize/rotate undo)
   ['_apply upd backward: if(!forward&&op.origSel) restores selection',
-    html.includes("Object.assign(sh,p);\n        if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));\n        break;}\n      case 'move':{")],
+    html.includes("Object.assign(sh,p);\n        if(!forward)_selR(op);\n        break;}\n      case 'move':{")],
   // v1.7.45: openLabelEditor commit closure must capture origSel (label-edit undo restores selection)
   ['openLabelEditor commit: origSel captured before upd _recordCommitted',
     html.includes("hit.label=lbl||null;_rcOp({op:'upd',id:hit.id,before,after});invalidate()")],
