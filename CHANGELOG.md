@@ -2,6 +2,62 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.176]
+
+### 追加
+- **矢印ヘッドスタイル** (ADR-0119)。ctx「矢印ヘッド」で矢印→丸→
+  シェブロンを巡回 (`s.head`、両端に適用)。canvas・SVG export 共通
+  ヘルパーで描画、`style` op で undo/同期。
+
+## [1.7.175]
+
+### 追加
+- **PNG 書き出しスケール選択** (ADR-0118)。export メニューに
+  @1x/@4x を追加 (既定は従来通り 2x、exportScale の寸法/面積
+  キャップは全スケールで有効)。非2x はファイル名に @Nx 付与。
+
+## [1.7.174]
+
+### 追加
+- **コネクタラベル位置ドラッグ** (ADR-0117)。ラベル付き単一コネクタ
+  選択で中点ドットをドラッグ→弧長 `s.labelPos` (0..1) に配置
+  (way/elbow/curve 全経路・中点磁吸)。`style` op で undo/同期、
+  ルートリセットで初期化、SVG export も一致。
+
+## [1.7.173]
+
+### 追加
+- **選択をグリッドに吸着** (ADR-0116)。ctx「グリッドに吸着」で選択
+  各形状の bbox 左上を最寄りグリッド点へ平行移動 (幾何は不変、
+  `align` op dir:'gsnap' で一括 undo・同期)。
+
+## [1.7.172]
+
+### 追加
+- **クリップボード経由の .board 転送** (ADR-0115)。export メニュー
+  「ボードJSONをコピー」で `.board` JSON をクリップボードへ。
+  ペースト側は `"shapes":[` を検出して `_placeCopies` (id 再割当)
+  でビューポート中央に追加 — ファイル往復なしにボード間転送。
+
+## [1.7.171]
+
+### 追加
+- **同じ位置に貼り付け ⌘⇧V** (ADR-0113)。クリップボードの図形を
+  コピー元と同じ座標に複製 (Figma Paste-in-place parity)。
+  ctx メニューにも「同じ位置に貼り付け」。⌘⇧V が従来の ⌘V
+  バインドに吸収されないよう shift 判定を分割。
+- **選択を .board 書き出し** (ADR-0114)。`exportBoard(shapes)` に
+  shapes 引数を追加し、ctx メニューに「選択を.board書き出し」を
+  追加 (選択PNG/SVGの .board 版、形式は全面書き出しと同一)。
+
+## [1.7.170]
+
+### 追加
+- **共有リンクにビューポート同梱** (ADR-0112)。`exportToUrl` が
+  `{x,y,zoom}` を含め、`importFromHash` が同じ数値ゲート
+  (`clampZoom` 込み) で採用 — 受け手は送り手の景色で開く
+  (旧リンクは従来通り)。
+
 ## [1.7.169]
 
 ### 追加

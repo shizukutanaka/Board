@@ -296,9 +296,9 @@ const checks = [
   ['shared _fitViewport used by all three fit paths', html.includes("function _fitViewport(") && html.includes("_fitViewport(b,40,2)") && html.includes("_fitViewport(b,60,4)")],
   ['selFit i18n ja+en', html.includes("selFit:'選択にフィット'") && html.includes("selFit:'Zoom to selection'")],
   // v1.7.108: ADR-0050 copy PNG to clipboard via shared _renderPngBlob
-  ['shared _renderPngBlob drives export + copy', html.includes("function _renderPngBlob(shapes,cb)") && html.includes("exportPNG(shapes=state.shapes){\n  _renderPngBlob(shapes," ) && html.includes("function copyPNG(")],
+  ['shared _renderPngBlob drives export + copy', html.includes("function _renderPngBlob(shapes,cb,desired)") && html.includes("exportPNG(shapes=state.shapes,scale){\n  _renderPngBlob(shapes," ) && html.includes("function copyPNG(")],
   // v1.7.110: ADR-0052 selection-scoped export (PNG / copy / SVG)
-  ['exports take a shapes arg (default whole board)', html.includes("exportPNG(shapes=state.shapes)") && html.includes("copyPNG(shapes=state.shapes)") && html.includes("exportSVG(shapes=state.shapes)")],
+  ['exports take a shapes arg (default whole board)', html.includes("exportPNG(shapes=state.shapes,scale)") && html.includes("copyPNG(shapes=state.shapes)") && html.includes("exportSVG(shapes=state.shapes)")],
   ['selection export items in ctx menu', html.includes("['ctxExportSelPNG','',()=>exportSelection('png')]") && html.includes("['ctxCopySelPNG','',()=>exportSelection('copy')]") && html.includes("['ctxExportSelSVG','',()=>exportSelection('svg')]")],
   ['selection export i18n ja+en', html.includes("ctxExportSelPNG:'選択をPNG書き出し'") && html.includes("ctxExportSelSVG:'Export selection to SVG'")],
   // v1.7.111: ADR-0053 text overlay follows pan/zoom
@@ -472,14 +472,22 @@ const checks = [
   ['sticky colour quick-cycle (ctx)', html.includes('cycleStickyColor')&&html.includes('STICKY_COLORS[(i+1)%')&&html.includes('ctxStickyColor')],
   ['wrap in frame: ⌘⌥G + ctx (frame bbox+pad, z below min)', html.includes('wrapInFrame')&&html.includes('ctxWrapFrame')&&html.includes('b.y-PAD,w:b.w+PAD*2')],
   ['paste at cursor (ctx): centred at menu world point', html.includes('doPasteAt')&&html.includes('ctxPasteAt')&&html.includes('wx-srcCx,wy-srcCy')],
+  ['paste in place: ⌘⇧V at original coords', html.includes('doPasteInPlace')&&html.includes('ctxPasteInPlace')&&html.includes('shapes,0,0')],
   ['select same colour (ctx)', html.includes('selectSamePaint')&&html.includes('ctxSelectSame')&&html.includes("s0.type==='sticky'?s0.color:s0.fill")],
   ['sticky ⌘Enter chain: spawn next sticky + editor', html.includes('_stickyChain')&&html.includes('x+s.w+16')&&html.includes('openTextEditor(n,true)')],
   ['boot empty-view guard → fitToContent', html.includes('_fitIfEmptyView()')&&html.includes('b.x+b.w<v.x')],
   ['tidy grid reflow (ctx, align op dir)', html.includes("doAlign('tidy')")&&html.includes('ctxTidy')&&html.includes('Math.ceil(Math.sqrt(units.length))')],
   ['swap positions (ctx, 2 selections)', html.includes("doAlign('swap')")&&html.includes('ctxSwap')&&html.includes('units.length!==2')],
+  ['snap selection to grid (ctx, align op)', html.includes('snapSelToGrid')&&html.includes('ctxSnapGrid')&&html.includes("dir:'gsnap'")&&html.includes('Math.round(b.x/GRID_SIZE)')],
+  ['connector label position (labelPos, drag anchor)', html.includes('s.labelPos!=null&&Number.isFinite(s.labelPos)')&&html.includes("ptr.dragKind='lblpos'")&&html.includes('_pathNearestT')],
+  ['PNG export scale options (1x/4x via _renderPngBlob desired)', html.includes('_renderPngBlob(shapes,cb,desired)')&&html.includes('ctxExportPNG4x')&&html.includes('exportScale(w,h,desired||2)')],
+  ['arrowhead style variants (dot/open, both renderers)', html.includes("style==='dot'")&&html.includes("style==='open'")&&html.includes('function _svgArrowHead')&&html.includes('cycleArrowHead')&&html.includes('ctxArrowHead')],
   ['line↔arrow conversion via style op (ctx)', html.includes('toggleLineArrow')&&html.includes('ctxToArrow')&&html.includes("s.type==='line'?'arrow':'line'")],
   ['sticky↔text conversion via style op (ctx)', html.includes('toggleStickyText')&&html.includes('ctxToSticky')&&html.includes("s.type==='sticky'?'text':'sticky'")],
   ['frame select-contents (ctx)', html.includes('selectFrameContents')&&html.includes('ctxSelContents')&&html.includes('withFrameChildren(')],
+  ['selection .board export (ctx)', html.includes("exportBoard(sel)")&&html.includes('ctxExportSelBoard')&&html.includes("fmt==='board'")],
+  ['share link carries creator viewport', html.includes('viewport:{x:+state.viewport.x.toFixed(2)')&&html.includes('clampZoom(+data.viewport.zoom)')],
+  ['clipboard .board JSON import (paste path)', html.includes('importBoardText(s)')&&html.includes('copyBoardJSON')&&html.includes('ctxCopyBoard')],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
@@ -511,7 +519,7 @@ const checks = [
   ['emptied existing text deletes original via single del op', html.includes("const delOp={op:'del',shapes:[orig]};")&&html.includes("Store.commit(delOp);")],
   ['existing text edit branch is else-if (no double op)', html.includes("}else if(newText!==origText){")],
   // v1.6.23: .board file export/import
-  ['exportBoard function exists', html.includes('function exportBoard()')],
+  ['exportBoard function exists', html.includes('function exportBoard(shapes')],
   ['exportBoard revokes Blob URL to prevent memory leak', html.includes("revokeObjectURL(_bu),1e4")],
   ['importBoard uses atomic replace op (not clear+adds)', html.includes('function importBoard') && html.includes('.filter(validShape)') && html.includes("op:'replace',before,after")],
   ['Ctrl+Shift+S triggers exportBoard', html.includes("e.shiftKey){e.preventDefault();exportBoard()}")],
@@ -848,11 +856,11 @@ const checks = [
   ['doDuplicate does not clobber clipboard (uses _placeCopies, not state.clipboard=)', html.includes("_placeCopies(sel,state.dupDelta.x,state.dupDelta.y):_placeCopies(sel);   // independent of state.clipboard") && html.includes("function _placeCopies(srcShapes")],
   // v1.6.71: import sites clear stale selection + wclock (mirror replace op's _apply)
   ['importBoard clears selection+wclock on whole-board swap', html.includes("state.shapes=shapes.map(clone);_invalidateGrid();   // ADR-0009\n      // Match the replace op's _apply") && html.includes("state.selection.clear();state.wclock={};\n      if(typeof d.docName")],
-  ['importFromHash clears selection+wclock on whole-board swap', html.includes("state.shapes=valid.map(clone);_invalidateGrid();state.docName=") && /state\.shapes=valid\.map\(clone\)[\s\S]{0,320}state\.selection\.clear\(\);state\.wclock=\{\};/.test(html)],
+  ['importFromHash clears selection+wclock on whole-board swap', html.includes("state.shapes=valid.map(clone);_invalidateGrid();state.docName=") && /state\.shapes=valid\.map\(clone\)[\s\S]{0,900}state\.selection\.clear\(\);state\.wclock=\{\};/.test(html)],
   // v1.6.71: presentation-mode guard precedes editing shortcuts (no undo mid-slideshow)
   ['presentation guard runs before undo/redo/select-all shortcuts', /if\(Presentation\.isActive\(\)\)\{[\s\S]{0,260}return;\n  \}[\s\S]{0,700}if\(meta&&k==='z'&&!e\.shiftKey\)/.test(html)],
   // v1.6.71: export canvas clamped to browser limits
-  ['exportPNG uses exportScale clamp', html.includes("const scale=exportScale(w,h,2);")],
+  ['exportPNG uses exportScale clamp', html.includes("const scale=exportScale(w,h,desired||2);")],
   ['exportPDF uses exportScale clamp for dpr', html.includes("dpr=exportScale(W,H,window.devicePixelRatio||1)")],
   // v1.6.72: sticky note resize preserves user's chosen width
   ['resizeAfterTextEdit helper present', html.includes("function resizeAfterTextEdit(s,text,c)")],
@@ -897,7 +905,7 @@ const checks = [
   ['_round helper sheds float noise', html.includes("function _round(n,dp){return typeof n==='number'&&Number.isFinite(n)?Math.round(n*10**dp)/10**dp:n;}")],
   ['roundShapesForExport rounds coord/dim fields', html.includes("function roundShapesForExport(shapes,dp=2)") && html.includes("['x','y','w','h','x1','y1','x2','y2','rotate']")],
   ['share export rounds shapes', html.includes("shapes:roundShapesForExport(state.shapes),name:state.docName")],
-  ['.board export rounds shapes', html.includes("shapes:roundShapesForExport(state.shapes)})],{type:'application/json'})")],
+  ['.board export rounds shapes', html.includes("shapes:roundShapesForExport(shapes)})],{type:'application/json'})")],
   // v1.6.84: Net.init clears prior presence timer on re-init (no leaked heartbeat)
   ['Net.init clears prior presence timer', html.includes("clearInterval(this._presenceTimer);   // re-init (room switch) must not leak the old heartbeat")],
   // v1.6.85: WebRTC peers lifecycle-managed (not heartbeat-reaped after 15s)
@@ -1107,7 +1115,7 @@ const checks = [
     html.includes("if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)Object.assign(sh,p.before);}}")],
   // v1.7.47: validRemotePayload align must validate dir against a whitelist
   ['validRemotePayload align: dir whitelist (DIRS Set) prevents unknown dir values',
-    html.includes("const DIRS=new Set(['left','right','cx','top','bottom','cy','hspace','vspace','tidy','swap','flip'")],
+    html.includes("const DIRS=new Set(['left','right','cx','top','bottom','cy','hspace','vspace','tidy','swap','gsnap','flip'")],
   // v1.7.47: doPaste uses canvas.getBoundingClientRect() for viewport center (not window.innerWidth)
   ['doPaste: canvas.getBoundingClientRect() used for viewport center (not window.innerWidth)',
     html.includes("const _r=canvas.getBoundingClientRect();\n  const vCx=v.x+_r.width/(v.zoom*2);")],
@@ -1174,7 +1182,7 @@ const checks = [
   // Shape-drawing DEFAULT colors (new frame/sticky stroke fallbacks) are deliberately left
   // on raw --brand: that's a style choice, not an accessibility-critical indicator.
   ["canvas UI-indicator strokes (selection/guides/marquee/rotation-tether/minimap-viewport) use --accent-contrast",
-    (html.match(/getCSS\('--accent-contrast'\)/g)||[]).length===8 &&
+    (html.match(/getCSS\('--accent-contrast'\)/g)||[]).length===9 &&
     (html.match(/getCSS\('--brand'\)/g)||[]).length===5],
   ['frame label editor text color uses --accent-contrast (real text, needs the 4.5:1 floor too)',
     html.includes("getCSS(bold?'--accent-contrast':'--ink')")],
@@ -1312,7 +1320,7 @@ try {
              doAlign, doFlip, snapV, snapPt,
              getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
-             copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, cycleStickyColor, wrapInFrame, doPasteAt, selectSamePaint, _stickyChain, _fitIfEmptyView, toggleCurve, toggleLineArrow, toggleStickyText, selectFrameContents, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
+             copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, cycleStickyColor, wrapInFrame, doPasteAt, doPasteInPlace, selectSamePaint, _stickyChain, _fitIfEmptyView, toggleCurve, toggleLineArrow, toggleStickyText, selectFrameContents, cycleArrowHead, _connPathPts, _pathAt, _pathNearestT, snapSelToGrid, importBoardText, copyBoardJSON, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
              _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa: () => _teTa, zoomAt,
@@ -1339,7 +1347,7 @@ try {
           doAlign, doFlip, snapV, snapPt,
           getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
-          copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, cycleStickyColor, wrapInFrame, doPasteAt, selectSamePaint, _stickyChain, _fitIfEmptyView, toggleCurve, toggleLineArrow, toggleStickyText, selectFrameContents, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
+          copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, cycleStickyColor, wrapInFrame, doPasteAt, doPasteInPlace, selectSamePaint, _stickyChain, _fitIfEmptyView, toggleCurve, toggleLineArrow, toggleStickyText, selectFrameContents, cycleArrowHead, _connPathPts, _pathAt, _pathNearestT, snapSelToGrid, importBoardText, copyBoardJSON, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
           _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa, zoomAt,
@@ -9139,7 +9147,7 @@ try {
       const items=captured[2];
       assert.ok(Array.isArray(items),'v1.7.56a: openExportMenu passes an items array, not the default (undefined)');
       const keys=items.map(it=>it==='sep'?'sep':it[0]);
-      assert.deepStrictEqual(keys,['ctxExportPNG','ctxCopyPNG','ctxExportSVG','ctxExportPDF','ctxExportBoard','ctxExportExc','sep','ctxImportBoard'],
+      assert.deepStrictEqual(keys,['ctxExportPNG','ctxExportPNG1x','ctxExportPNG4x','ctxCopyPNG','ctxExportSVG','ctxExportPDF','ctxExportBoard','ctxCopyBoard','ctxExportExc','sep','ctxImportBoard'],
         'v1.7.56a: openExportMenu offers PNG/copy-PNG/SVG/PDF/.board/.excalidraw export + a separator + .board import, in that order');
       const fnByKey=Object.fromEntries(items.filter(it=>it!=='sep').map(it=>[it[0],it[2]]));
       assert.strictEqual(fnByKey.ctxExportPNG,exportPNG,'v1.7.56a: PNG item wired to the real exportPNG');
@@ -9148,6 +9156,7 @@ try {
       assert.strictEqual(fnByKey.ctxExportPDF,exportPDF,'v1.7.56a: PDF item wired to the real exportPDF');
       assert.strictEqual(fnByKey.ctxExportBoard,exportBoard,'v1.7.56a: .board export item wired to the real exportBoard');
       assert.strictEqual(fnByKey.ctxExportExc,exportExc,'v1.7.56a: .excalidraw export item wired to the real exportExc (ADR-0098)');
+      assert.strictEqual(fnByKey.ctxCopyBoard,copyBoardJSON,'v1.7.170+: copy-board-JSON item wired to copyBoardJSON (ADR-0115)');
       assert.strictEqual(typeof fnByKey.ctxImportBoard,'function','v1.7.56a: import item is a callable (opens the file picker)');
     }finally{
       UI.openCtxMenu=origOpenCtxMenu;
@@ -9372,6 +9381,16 @@ try {
     console.log('  ✓ excalidraw import (element mapping, styles, tombstones, reject paths)');
   }
 
+  {
+    // ADR-0117: label position along the path — _pathAt/_pathNearestT invert.
+    const pts=[{x:0,y:0},{x:100,y:0},{x:100,y:100}];   // L-shaped polyline, length 200
+    const p=_pathAt(pts,0.75);                        // 150 along → midpoint of vertical seg
+    assert.ok(Math.abs(p.x-100)<1e-9&&Math.abs(p.y-50)<1e-9,'_pathAt arc-length position');
+    const t=_pathNearestT(pts,{x:100,y:80});
+    assert.ok(Math.abs(t-0.9)<1e-9,'_pathNearestT recovers the fraction');
+    const clamp=_pathAt(pts,1.4);
+    assert.strictEqual(clamp.x,100,'_pathAt clamps t>1 to the end');
+  }
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
   // asserts but actually contains 6 (recounted directly: at1.length, at2.length, and 4
