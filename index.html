@@ -790,7 +790,7 @@ const _selL=f=>_sb().filter(f);   // ADR-0308
 const _selUL=()=>_sb().filter(s=>!_lk(s));
 const _repC=(before,beforeWc,origSel)=>Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(_wc()),origSel});
 const _ctrAt=(ss,wp)=>{wp=wp||_midV();const bb=_bA(ss);if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);for(const s of ss)Shape.translate(s,dx,dy)}};
-const _selR=op=>{if(op.origSel)_ss(op.origSel.filter(id=>byId(id)))};   // ADR-0309
+const _selR=op=>{if(op.origSel)_ss(op.origSel.filter(byId))};   // ADR-0309
 const _keepSel=arr=>{if(_ln(arr))_hi()[_hx()].origSel=arr};   // ADR-0312
 const _pd=e=>e.preventDefault();   // ADR-0326
 const _ce=t=>document.createElement(t);   // ADR-0329
@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.537';
+const V='1.7.538';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2011,7 +2011,7 @@ let _penCachePx=0;
 // anyway, so old entries would sit until the global caps evict them).
 const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPending.clear()}   // ADR-0445: wholesale swap also drops parked img refs
 const _rs=arr=>{state.shapes=arr;_iG();_pcC()}   // ADR-0493: wholesale board replace (5 sites)
-const _shV=()=>_sh().filter(s=>_sv(s));   // ADR-0494: visible-shape subset (6 sites)
+const _shV=()=>_sh().filter(_sv);   // ADR-0494: visible-shape subset (6 sites)
 const _ulv=s=>!_lk(s)&&_sv(s);   // ADR-0496
 const _hb=s=>s.w!=null;   // ADR-0501
 const _idOK=id=>_iS(id)&&_ln(id)<=64;   // ADR-0502: wire id cap (ADR-0485): unlocked+visible predicate (4 sites)
@@ -3626,7 +3626,7 @@ function drawSelection(c){
   if(!b)return;
   const p1=_w2({x:b.x,y:b.y}),p2=_w2({x:b.x+b.w,y:b.y+b.h});
   const x=p1.x,y=p1.y,w=p2.x-p1.x,h=p2.y-p1.y;
-  const lockedSel=sel.every(s=>_lk(s));
+  const lockedSel=sel.every(_lk);
   const single=_selN()===1?sel[0]:null;
   c.strokeStyle=_ac();   // a11y-audit-2026-07
   c.lineWidth=1.5;c.setLineDash(lockedSel?[5,4]:[]);
@@ -3702,7 +3702,7 @@ function drawSelection(c){
     // decorative corners that were never hit-testable). Hidden when a member is
     // rotated: axis scaling a rotated box would skew, which x/y/w/h+rotate can't
     // express.
-    if(!sel.some(s=>_rt(s))){
+    if(!sel.some(_rt)){
       const hs=HANDLE_SIZE;
       c.fillStyle=_p();c.strokeStyle=_gC('--brand-ink');c.lineWidth=1.5;
       for(const h of getHandles({x:b.x,y:b.y,w:b.w,h:b.h})){
@@ -3926,7 +3926,7 @@ _on(canvas,_PD,e=>{
         }
       }else if(_selN()>1){
         const sel=_selL(Boolean);
-        if(_ln(sel)>1&&!sel.every(s=>_lk(s))){
+        if(_ln(sel)>1&&!sel.every(_lk)){
           const gb=_bA(sel);
           // ADR-0057: rotation knob first — it sits above the bbox, off the handles.
           const gr=gb&&_grpRotHandle(gb);
@@ -3944,7 +3944,7 @@ _on(canvas,_PD,e=>{
           }
           // ADR-0056: group-resize — 8 handles on the selection bbox. Skipped when a
           // member is rotated (skew can't be expressed).
-          if(!sel.some(s=>_rt(s))){
+          if(!sel.some(_rt)){
             const hid=gb&&hitHandle(wp,{x:gb.x,y:gb.y,w:gb.w,h:gb.h});
             if(hid){
               ptr.dragKind='gresize';
@@ -4014,13 +4014,13 @@ _on(canvas,_PM,e=>{
         }
       }else if(_selN()>1){
         const sel=_selL(Boolean);
-        if(_ln(sel)>1&&!sel.every(s=>_lk(s))){
+        if(_ln(sel)>1&&!sel.every(_lk)){
           const gb=_bA(sel);
           const gr=gb&&_grpRotHandle(gb);
           const tol=HANDLE_SIZE/_vp().zoom;
           if(gr&&_abs(wp.x-gr.x)<=tol&&_abs(wp.y-gr.y)<=tol){canvas.style.cursor='grab';return}   // ADR-0057
           // ADR-0056: same hover affordance on the group handles
-          if(!sel.some(s=>_rt(s))){
+          if(!sel.some(_rt)){
             const hid=gb&&hitHandle(wp,{x:gb.x,y:gb.y,w:gb.w,h:gb.h});
             if(hid){canvas.style.cursor=handleCursor(hid);return}
           }
@@ -5166,7 +5166,7 @@ function beginRectLike(wp){
     extras.color=STICKY_COLORS[_fl(_rN()*_ln(STICKY_COLORS))];
     extras.text='';extras.fontSize=_st().fontSize||14;          // ADR-0180
   }else if(_tl()==='frame'){
-    const n=_sh().filter(s=>_frm(s)).length+1;
+    const n=_sh().filter(_frm).length+1;
     extras.label=`Frame ${n}`;
     extras.stroke=_gC('--brand')||'#00C4CC';
     extras.fill=null;extras.size=1.5;
@@ -5312,7 +5312,7 @@ function createShapeKbd(){
     s=Shape.make('sticky',{x:cx-80,y:cy-80,w:160,h:160,
       color:STICKY_COLORS[_fl(_rN()*_ln(STICKY_COLORS))],text:'',fontSize:_st().fontSize||14});   // ADR-0180
   }else if(tool==='frame'){
-    const n=_sh().filter(x=>_frm(x)).length+1;
+    const n=_sh().filter(_frm).length+1;
     s=Shape.make('frame',{x:cx-400,y:cy-250,w:800,h:500,
       label:`Frame ${n}`,stroke:_gC('--brand')||'#00C4CC',fill:null,size:1.5});
   }else if(tool==='text'){
@@ -5989,7 +5989,7 @@ function doUngroup(){
   for(const s of _sh()){
     if(gids.has(_gi(s))&&!_lk(s)){before.push({id:s.id,groupId:_gi(s)});delete s.groupId;ungrouped.push(s.id)}
   }
-  _ss([...ids.filter(id=>byId(id)),...ungrouped]);
+  _ss([...ids.filter(byId),...ungrouped]);
   Store._recordCommitted({op:'ungroup',ids:ungrouped,gids:[...gids],before});
   _keepSel(origSel);
   _oT('ungrouped');
@@ -6164,7 +6164,7 @@ function doLock(){
 // accumulate locked shapes across sessions/imports with no bulk way back.
 // Same 'align' lock-dir before/after contract as doLock (single undo + sync).
 function unlockAll(){
-  const locked=_sh().filter(s=>_lk(s));
+  const locked=_sh().filter(_lk);
   if(!_ln(locked)){_wT('nothingLocked');return}
   const before=locked.map(s=>({id:s.id,locked:_lk(s)??null}));
   for(const s of locked)s.locked=null;
@@ -6750,7 +6750,7 @@ function boardToDrawio(shapes){
   // ADR-0345: pre-assign vertex ids up-front so a member can reference
   // its containing frame's swimlane cell id regardless of z-order.
   for(const s of shapes)if(s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen')idOf.set(s.id,'b'+(i++));
-  const _frs=shapes.filter(f=>_frm(f));
+  const _frs=shapes.filter(_frm);
   const _fOf=s=>{let b=null;for(const f of _frs){if(f!==s&&s.x>=f.x&&s.y>=f.y&&s.x+(s.w||0)<=f.x+f.w&&s.y+(s.h||0)<=f.y+f.h&&(!b||f.w*f.h<b.w*b.h))b=f}return b};
   for(const s of shapes){
     const t=s.type;
@@ -7283,7 +7283,7 @@ function buildSVG(shapes,paper){
   if(shapes.some(s=>_sv(s)&&(s.shadow||_stk(s))))els.push('<defs><filter id="bsh" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#0F172A" flood-opacity="0.22"/></filter></defs>');   // ADR-0278
   // ADR-0150 follow-up: SVG builds its own element list (bypasses drawShape's
   // visible guard) — hidden shapes must be excluded here too, like canvas.
-  const _vis=shapes.filter(s=>_sv(s));
+  const _vis=shapes.filter(_sv);
   const svgShapes=[..._vis.filter(s=>s.type==="frame"),..._vis.filter(s=>s.type!=="frame")];
   for(const s of svgShapes){
     const X=_num(s.x),Y=_num(s.y),W=_num(s.w),H=_num(s.h);
@@ -7841,7 +7841,7 @@ const Net={
         // so an RTC peer lives under a synthetic id, not msg.peer). Defensive intake:
         // string ids only, capped — a bad peer can't flood us with a giant array.
         if(!_iA(msg.ids))break;
-        const ids=_s0(msg.ids,MAX_OP_SHAPES).filter(id=>_idOK(id));   // ADR-0485: same ≤64 cap as every other wire id field
+        const ids=_s0(msg.ids,MAX_OP_SHAPES).filter(_idOK);   // ADR-0485: same ≤64 cap as every other wire id field
         const peerKey=this._pk(msg,viaRtc);
         const p=peerKey&&_pr().get(peerKey);
         if(p){p.sel=ids;_ivO();}
@@ -8619,13 +8619,13 @@ const UI={
       has&&_selAny(s=>(_conn(s.type))&&!_lk(s)&&(s.a||s.b))&&['ctxPinAnchor','',pinAnchor],   // ADR-0213
       has&&_selAny(s=>(_conn(s.type))&&!_lk(s)&&(s.a||s.b))&&['ctxUnbind','',unbindSelection],   // ADR-0157
       has&&_sb().filter(s=>s&&!_lk(s)&&s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen').length===2&&['ctxConnect','',connectSelection],
-      _sh().some(s=>_hd(s))&&['ctxShowAll','',showAllShapes],
+      _sh().some(_hd)&&['ctxShowAll','',showAllShapes],
       _nS()&&['ctxSelectInverse','⌘⇧I',selectInverse],
       // ADR-0005's flagship feature was ⌥B-only — invisible to touch/mouse users
       // (the exact "keyboard-only feature" trap FT-06 warned about).
       has&&_selAny(s=>_pn(s))&&['ctxBeautify','⌥B',doBeautify],
       has&&[_sel0()?.locked?'ctxUnlock':'ctxLock','',doLock],
-      _sh().some(s=>_lk(s))&&['ctxUnlockAll','',unlockAll],
+      _sh().some(_lk)&&['ctxUnlockAll','',unlockAll],
       has&&_selN()>1&&'sep',
       has&&_selN()>1&&['ctxAlignLeft','',()=>doAlign('left')],
       has&&_selN()>1&&['ctxAlignCX','',()=>doAlign('cx')],
@@ -9614,7 +9614,7 @@ const Presentation=(()=>{
 
   function _getFrames(){
     return [..._sh()]
-      .filter(s=>_frm(s))
+      .filter(_frm)
       .sort((a,b)=>a.x-b.x||(a.y-b.y));  // left→right, then top→bottom
   }
 
