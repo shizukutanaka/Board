@@ -802,7 +802,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.405';
+const V='1.7.406';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6477,6 +6477,7 @@ function drawioToShapes(txt){
     }}
   const _off=new Map();
   const off=id=>{if(_off.has(id))return _off.get(id);
+    _off.set(id,{x:0,y:0});                                            // ADR-0357: provisional — breaks parent cycles
     const p=_par.get(id);let o={x:0,y:0};
     if(p&&p!=='0'){const po=off(p),pg=_geo.get(p);
       o={x:po.x+(+((pg&&_ga(pg,'x'))||0)),y:po.y+(+((pg&&_ga(pg,'y'))||0))}}
