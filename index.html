@@ -785,10 +785,10 @@ const _selTxtL=()=>_selAny(s=>(s.type==='text'||s.type==='sticky'||s.type==='fra
 const _selArrowL=()=>_selAny(s=>s.type==='arrow'&&!_lk(s));                  // ADR-0415
 const _forSel=f=>{for(const id of _sl()){const s=byId(id);if(s)f(s,id)}};   // ADR-0303
 const _csh=(s,c)=>{if(_sh2(s)){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=10;c.shadowOffsetY=3}};   // ADR-0306
-const _so=(b,a)=>{if(b.length){_styleOp(b,a);_iv()}};   // ADR-0307
+const _so=(b,a)=>{if(_ln(b)){_styleOp(b,a);_iv()}};   // ADR-0307
 const _selL=f=>_sb().filter(f);   // ADR-0308
 const _selR=op=>{if(op.origSel)_ss(op.origSel.filter(id=>byId(id)))};   // ADR-0309
-const _keepSel=arr=>{if(arr.length)_hi()[_hx()].origSel=arr};   // ADR-0312
+const _keepSel=arr=>{if(_ln(arr))_hi()[_hx()].origSel=arr};   // ADR-0312
 const _pd=e=>e.preventDefault();   // ADR-0326
 const _ce=t=>document.createElement(t);   // ADR-0329
 const _selIds=()=>[..._sl()];   // ADR-0330
@@ -816,7 +816,7 @@ const _frameOf=(sel,ok)=>{const m=_mP();
 const _scl=()=>_sl().clear(),_sad=id=>_sl().add(id),_sdl=id=>_sl().delete(id);   // ADR-0419: selection Set-mutation shorthands
 const _selN=()=>_sl().size;   // ADR-0334
 const _nS=()=>_sh().length;   // ADR-0425
-const _sv=s=>s.visible!==0,_lk=s=>s.locked,_hd=s=>s.visible===0,_fS=s=>s.fontSize,_wh=(e,w,ht)=>{e.width=w;e.height=ht},_sk=s=>s.stroke,_fi=s=>s.fill,_lb=s=>s.label,_rt=s=>s.rotate,_du=s=>s.dataUrl,_gi=s=>s.groupId,_oP=s=>s.opacity,_lP=s=>s.labelPos,_sp=s=>s.spacing,_el=s=>s.elbow,_va=s=>s.valign,_cv=()=>_ce('canvas'),_g2=c=>c.getContext('2d');   // ADR-0425/0432/0433
+const _sv=s=>s.visible!==0,_lk=s=>s.locked,_hd=s=>s.visible===0,_fS=s=>s.fontSize,_wh=(e,w,ht)=>{e.width=w;e.height=ht},_sk=s=>s.stroke,_fi=s=>s.fill,_lb=s=>s.label,_rt=s=>s.rotate,_du=s=>s.dataUrl,_gi=s=>s.groupId,_oP=s=>s.opacity,_lP=s=>s.labelPos,_sp=s=>s.spacing,_el=s=>s.elbow,_va=s=>s.valign,_cv=()=>_ce('canvas'),_g2=c=>c.getContext('2d'),_ln=x=>x.length;   // ADR-0425/../0447/0432/0433
 const _fin=Number.isFinite;   // ADR-0334
 const _min=Math.min,_max=Math.max,_abs=Math.abs;   // ADR-0337
 const _ga=(e,n)=>e.getAttribute(n),_sa=(e,n,v)=>e.setAttribute(n,v),_ap=(p,c)=>p.appendChild(c),_AL='aria-label',_AP='aria-pressed';   // ADR-0340/0392/0394/0399
@@ -828,10 +828,10 @@ const _on=(e,t,f,o)=>e.addEventListener(t,f,o);                          // ADR-
 const _vp=()=>state.viewport,_vpS=()=>({x:+_vp().x.toFixed(2),y:+_vp().y.toFixed(2),zoom:+_vp().zoom.toFixed(4)});                                              // ADR-0362: live-read (tests reassign the object)
 const _pi=()=>state.peerId,_ro=()=>state.readout,_gd=()=>state.guides,_cl=()=>state.clipboard,_bb=s=>G.bbox(s),_bA=s=>G.bboxAll(s),_oa=Object.assign;   // ADR-0378
 const _sO=()=>state.seenOps,_la=()=>state.lasso,_mq=()=>state.marquee,_dd=()=>state.dupDelta,_w2=p=>G.w2s(p),_s2=p=>G.s2w(p),_cE=connEnds;   // ADR-0382
-const _dpr=()=>window.devicePixelRatio,_iA=Array.isArray,_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log,_rAF=requestAnimationFrame,_pF=parseFloat,_db=document.body,_de=document.documentElement,_wO=window.open,_lg=k=>localStorage.getItem(k),_ls=(k,v)=>localStorage.setItem(k,v),_mP=()=>new Map(),_sT=()=>new Set(),_eU=encodeURIComponent,_dU=decodeURIComponent,_un='undefined',_AU='arrowup',_AD='arrowdown',_AL2='arrowleft',_AR2='arrowright',_ES='escape',_EN='enter',_TB='tab',_IK='#0F172A',_YW='#FEF08A';   // ADR-0384/0386/0391/0395/0397
+const _dpr=()=>window.devicePixelRatio,_iA=Array.isArray,_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log,_rAF=requestAnimationFrame,_pF=parseFloat,_db=document.body,_de=document.documentElement,_wO=window.open,_lg=k=>localStorage.getItem(k),_ls=(k,v)=>localStorage.setItem(k,v),_mP=a=>new Map(a),_sT=a=>new Set(a),_eU=encodeURIComponent,_dU=decodeURIComponent,_un='undefined',_AU='arrowup',_AD='arrowdown',_AL2='arrowleft',_AR2='arrowright',_ES='escape',_EN='enter',_TB='tab',_IK='#0F172A',_YW='#FEF08A';   // ADR-0384/0386/0391/0395/0397
 const _sh=()=>state.shapes;                                                // ADR-0364
 const _sl=()=>state.selection;
-const _ss=ids=>{state.selection=new Set(ids)};   // ADR-0415: selection-set writes (18 sites)
+const _ss=ids=>{state.selection=_sT(ids)};   // ADR-0415: selection-set writes (18 sites)
 const _st=()=>state.style;
 const _df=()=>state.draft;
 const _wc=()=>state.wclock;
@@ -851,7 +851,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.481';
+const V='1.7.486';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1155,7 +1155,7 @@ const G={
       // after the bitmap cache (ADR-0019). Same O(1) signature as _penCached:
       // every in-place point mutation moves p0/mid/pN absolutes, every other op
       // swaps the array — observationally pure, `state` untouched.
-      const p=s.pts,n=p.length,e=n&&_penBboxCache.get(s.id);
+      const p=s.pts,n=_ln(p),e=n&&_penBboxCache.get(s.id);
       if(e&&e.pts===p&&e.n===n&&e.size===s.size
         &&e.p0x===p[0][0]&&e.p0y===p[0][1]&&e.pMx===p[n>>1][0]&&e.pMy===p[n>>1][1]
         &&e.pNx===p[n-1][0]&&e.pNy===p[n-1][1])return e.b;
@@ -1186,7 +1186,7 @@ const G={
     return _rb;
   },
   bboxAll(shapes){
-    if(!shapes.length)return null;
+    if(!_ln(shapes))return null;
     let mnx=Infinity,mny=Infinity,mxx=-Infinity,mxy=-Infinity;
     for(const s of shapes){const b=_bb(s);
       if(b.x<mnx)mnx=b.x;if(b.y<mny)mny=b.y;
@@ -1229,19 +1229,19 @@ const G={
       case 'line':case 'arrow':{
         if(_el(s)){
           const pts=_elbowPts(s);
-          for(let i=1;i<pts.length;i++)if(distToSeg(p,pts[i-1],pts[i])<=tol+3)return true;
+          for(let i=1;i<_ln(pts);i++)if(distToSeg(p,pts[i-1],pts[i])<=tol+3)return true;
           return false;}
         if(s.curve){
           const pts=_curveSegs(s);
-          for(let i=1;i<pts.length;i++)if(distToSeg(p,pts[i-1],pts[i])<=tol+3)return true;
+          for(let i=1;i<_ln(pts);i++)if(distToSeg(p,pts[i-1],pts[i])<=tol+3)return true;
           return false;}
         const pts=_linePts(s);                                      // ADR-0076
-        for(let i=1;i<pts.length;i++)if(distToSeg(p,pts[i-1],pts[i])<=tol+3)return true;
+        for(let i=1;i<_ln(pts);i++)if(distToSeg(p,pts[i-1],pts[i])<=tol+3)return true;
         return false;}
       case 'pen':{
         const pts=s.pts;
-        if(pts.length===1)return _hp(p.x-pts[0][0],p.y-pts[0][1])<=tol+3;
-        for(let i=1;i<pts.length;i++){
+        if(_ln(pts)===1)return _hp(p.x-pts[0][0],p.y-pts[0][1])<=tol+3;
+        for(let i=1;i<_ln(pts);i++){
           if(distToSeg(p,{x:pts[i-1][0],y:pts[i-1][1]},{x:pts[i][0],y:pts[i][1]})<=tol+3)return true;
         }return false;}
       case 'text':
@@ -1286,8 +1286,8 @@ function validPatch(p){
   if(p.bF!=null&&(typeof p.bF!=='object'||!_fin(p.bF.fx)||!_fin(p.bF.fy)))return false;   // ADR-0367
   // ADR-0368: array-prop shape checks — upd patches bypass validShape's pen check,
   // so a crafted {pts:[["x"]]} or {way:[{x:'a'}]} reaches the renderers as NaN.
-  if(p.pts!=null&&!(_iA(p.pts)&&p.pts.length<=50000&&p.pts.every(q=>_iA(q)&&_fin(q[0])&&_fin(q[1])&&(q[2]==null||_fin(q[2])))))return false;
-  if(p.way!=null&&!(_iA(p.way)&&p.way.length<=200&&p.way.every(w=>w&&typeof w==='object'&&_fin(w.x)&&_fin(w.y))))return false;
+  if(p.pts!=null&&!(_iA(p.pts)&&_ln(p.pts)<=50000&&p.pts.every(q=>_iA(q)&&_fin(q[0])&&_fin(q[1])&&(q[2]==null||_fin(q[2])))))return false;
+  if(p.way!=null&&!(_iA(p.way)&&_ln(p.way)<=200&&p.way.every(w=>w&&typeof w==='object'&&_fin(w.x)&&_fin(w.y))))return false;
   // ADR-0369: string props — type + length. A hostile upd could inject a 1MB
   // text that every frame's wrapText then rescans, or a non-string that the
   // renderers coerce weirdly.
@@ -1302,7 +1302,7 @@ function validPatch(p){
   // resources invariant. This is the shared intake gate (validShape + upd/patch paths),
   // so guarding here closes every vector at once. Mirrors buildSVG's /^data:image\// guard;
   // SVG loaded via <img> can't run scripts or fetch subresources, so data:image/svg+xml is safe.
-  if('dataUrl' in p&&p.dataUrl!=null&&!(typeof p.dataUrl==='string'&&p.dataUrl.length<=16_000_000&&/^data:image\//.test(p.dataUrl)))return false;   // ADR-0379: length cap — img.src buffers unbounded otherwise
+  if('dataUrl' in p&&p.dataUrl!=null&&!(typeof p.dataUrl==='string'&&_ln(p.dataUrl)<=16_000_000&&/^data:image\//.test(p.dataUrl)))return false;   // ADR-0379: length cap — img.src buffers unbounded otherwise
   // ADR-0327: s.link flows into window.open — a hostile .board/peer upd could carry
   // a javascript:/data: URL; only http(s) is openable.
   if('link' in p&&p.link!=null&&!(typeof p.link==='string'&&/^https?:\/\//.test(p.link)))return false;
@@ -1326,22 +1326,22 @@ function _cleanVal(v,depth){
   }
   return true;
 }
-const _TYPES=new Set(['rect','ellipse','diamond','pen','line','arrow','text','sticky','image','frame']);   // ADR-0387
-const _ptsOK=a=>_iA(a)&&a.every(p=>_iA(p)&&p.length>=2&&p.every(n=>typeof n==='number'&&_fin(n)));   // ADR-0436: shared pen-pts tuple check
+const _TYPES=_sT(['rect','ellipse','diamond','pen','line','arrow','text','sticky','image','frame']);   // ADR-0387
+const _ptsOK=a=>_iA(a)&&a.every(p=>_iA(p)&&_ln(p)>=2&&p.every(n=>typeof n==='number'&&_fin(n)));   // ADR-0436: shared pen-pts tuple check
 function validShape(s){
-  if(!s||typeof s!=='object'||typeof s.id!=='string'||s.id.length>64||!_TYPES.has(s.type)||typeof s.z!=='number')return false;   // ADR-0387/0388: non-string/huge id — byId lookups by string silently miss, Map keys diverge
+  if(!s||typeof s!=='object'||typeof s.id!=='string'||_ln(s.id)>64||!_TYPES.has(s.type)||typeof s.z!=='number')return false;   // ADR-0387/0388: non-string/huge id — byId lookups by string silently miss, Map keys diverge
   if(!validPatch(s))return false;                  // no NaN/Inf coords, no pollution keys
-  if(s.type==='pen')return _ptsOK(s.pts)&&s.pts.length>0;
+  if(s.type==='pen')return _ptsOK(s.pts)&&_ln(s.pts)>0;
   return true;
 }
 // Validate a REMOTE op's payload before _apply. See docs/architecture.md.
-const _CC_KEYS=new Set(['a','aF','b','bF','x1','y1','x2','y2']);   // ADR-0377
+const _CC_KEYS=_sT(['a','aF','b','bF','x1','y1','x2','y2']);   // ADR-0377
 const _ccOk=q=>q&&typeof q==='object'&&!_iA(q)&&_ok(q).every(k=>_CC_KEYS.has(k))&&validPatch(q);
 function validRemotePayload(op){
-  const patches=a=>_iA(a)&&a.length<=MAX_OP_SHAPES&&a.every(p=>p&&typeof p.id==='string'&&validPatch(p));
+  const patches=a=>_iA(a)&&_ln(a)<=MAX_OP_SHAPES&&a.every(p=>p&&typeof p.id==='string'&&validPatch(p));
   switch(op.op){
     case 'add':    return validShape(op.shape);
-    case 'addMany':    return _iA(op.shapes)&&op.shapes.length<=MAX_OP_SHAPES&&op.shapes.every(validShape);
+    case 'addMany':    return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape);
     case 'del':
       // connClears (binding-cleanup deltas, v1.6.78) are Object.assign'd into live
       // connectors by _apply — validate each before/after like any remote patch so a
@@ -1349,39 +1349,39 @@ function validRemotePayload(op){
       // ADR-0377: whitelist the 8 binding-cleanup props — validPatch alone lets
       // `locked`/`type`/`id`/`_x` through (noLock exists for upd/style only, and
       // _stripStruct isn't applied at the connClears assign sites).
-      if(op.connClears!=null&&!(_iA(op.connClears)&&op.connClears.length<=MAX_OP_SHAPES&&op.connClears.every(p=>
+      if(op.connClears!=null&&!(_iA(op.connClears)&&_ln(op.connClears)<=MAX_OP_SHAPES&&op.connClears.every(p=>
           p&&typeof p.id==='string'&&(p.before==null||_ccOk(p.before))&&(p.after==null||_ccOk(p.after)))))return false;
-      return _iA(op.shapes)&&op.shapes.length<=MAX_OP_SHAPES&&op.shapes.every(validShape);
-    case 'clear':  return _iA(op.shapes)&&op.shapes.length<=MAX_OP_SHAPES&&op.shapes.every(validShape);
+      return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape);
+    case 'clear':  return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape);
     case 'upd':{const noLock=p=>!('locked' in p);
       if(typeof op.id!=='string'||!validPatch(op.after)||!noLock(op.after)||(op.before!=null&&!validPatch(op.before)))return false;
       // pen pts must be array-of-[x,y] — flat arrays crash drawPen which expects [[x,y],...]
       if(op.after.pts!=null&&!_ptsOK(op.after.pts))return false;
       return true;}
-    case 'move':   return _iA(op.ids)&&op.ids.length>0&&op.ids.length<=MAX_OP_SHAPES&&op.ids.every(id=>typeof id==='string')&&typeof op.dx==='number'&&_fin(op.dx)&&typeof op.dy==='number'&&_fin(op.dy)&&(op.dx!==0||op.dy!==0);
+    case 'move':   return _iA(op.ids)&&_ln(op.ids)>0&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(id=>typeof id==='string')&&typeof op.dx==='number'&&_fin(op.dx)&&typeof op.dy==='number'&&_fin(op.dy)&&(op.dx!==0||op.dy!==0);
     case 'zorder':  // Step2 minimal-delta {changes:[{id,before,after}]} or legacy {after:[…]}
-      return (_iA(op.changes)&&op.changes.length<=MAX_OP_SHAPES&&op.changes.every(c=>c&&typeof c.id==='string'
+      return (_iA(op.changes)&&_ln(op.changes)<=MAX_OP_SHAPES&&op.changes.every(c=>c&&typeof c.id==='string'
                 &&(c.after==null||typeof c.after==='string')&&(c.before==null||typeof c.before==='string')))
              // legacy snapshot: each entry must carry a string id, finite z (if present),
              // and a string-or-null frac (if present) — otherwise sh.z=NaN or sh.frac=object
              // would silently corrupt the ADR-0001 sort invariant.
-             ||(_iA(op.after)&&op.after.length<=MAX_OP_SHAPES&&op.after.every(c=>c&&typeof c.id==='string'
+             ||(_iA(op.after)&&_ln(op.after)<=MAX_OP_SHAPES&&op.after.every(c=>c&&typeof c.id==='string'
                 &&(c.z==null||_fin(c.z))
                 &&(c.frac==null||typeof c.frac==='string')));
     case 'style':
     case 'resize':{const noLock=p=>!('locked' in p);
       return patches(op.after)&&op.after.every(noLock)
           &&patches(op.before)&&op.before.every(noLock);}
-    case 'align':{const DIRS=new Set(['left','right','cx','top','bottom','cy','hspace','vspace','tidy','swap','gsnap','flip','rotate','lock','gresize','grot','matchw','matchh','matchwh','framefit']);
+    case 'align':{const DIRS=_sT(['left','right','cx','top','bottom','cy','hspace','vspace','tidy','swap','gsnap','flip','rotate','lock','gresize','grot','matchw','matchh','matchwh','framefit']);
       if(typeof op.dir!=='string'||!DIRS.has(op.dir))return false;
       const noLock=p=>op.dir==='lock'||!('locked' in p);
       return patches(op.after)&&op.after.every(noLock)
           &&patches(op.before)&&op.before.every(noLock);}
-    case 'group':  return _iA(op.ids)&&op.ids.length<=MAX_OP_SHAPES&&op.ids.every(id=>typeof id==='string')
-                          &&typeof op.gid==='string'&&op.gid.length>0
-                          &&_iA(op.before)&&op.before.length<=MAX_OP_SHAPES&&op.before.every(b=>b&&typeof b.id==='string');
-    case 'ungroup':return _iA(op.ids)&&op.ids.length<=MAX_OP_SHAPES&&op.ids.every(id=>typeof id==='string')
-                          &&_iA(op.gids)&&op.gids.length<=MAX_OP_SHAPES&&op.gids.every(g=>typeof g==='string'&&g.length>0);
+    case 'group':  return _iA(op.ids)&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(id=>typeof id==='string')
+                          &&typeof op.gid==='string'&&_ln(op.gid)>0
+                          &&_iA(op.before)&&_ln(op.before)<=MAX_OP_SHAPES&&op.before.every(b=>b&&typeof b.id==='string');
+    case 'ungroup':return _iA(op.ids)&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(id=>typeof id==='string')
+                          &&_iA(op.gids)&&_ln(op.gids)<=MAX_OP_SHAPES&&op.gids.every(g=>typeof g==='string'&&_ln(g)>0);
     default:       return false;
   }
 }
@@ -1434,8 +1434,8 @@ const Store={
   // a double-clobber). Remote-only view fix: not recorded in local undo history.
   _remoteDelConnFix(op){
     if(op.op!=='del'||!_iA(op.shapes))return null;
-    const goneIds=new Set(op.shapes.map(s=>s.id));
-    const handled=new Set((op.connClears||[]).map(p=>p.id));
+    const goneIds=_sT(op.shapes.map(s=>s.id));
+    const handled=_sT((op.connClears||[]).map(p=>p.id));
     const fixes=[];
     for(const sh of _sh()){
       if(sh.type!=='line'&&sh.type!=='arrow')continue;
@@ -1448,10 +1448,10 @@ const Store={
       if(bGone){patch.b=null;patch.bF=null;patch.x2=e.x2;patch.y2=e.y2;}
       fixes.push({id:sh.id,patch});
     }
-    return fixes.length?fixes:null;
+    return _ln(fixes)?fixes:null;
   },
   // Apply remote op: dedup by clock; REMOTE_OPS allow-list + validRemotePayload guard.
-  REMOTE_OPS:new Set(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize']),
+  REMOTE_OPS:_sT(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize']),
   applyRemote(op){
     if(!op||!op.clock||!this.REMOTE_OPS.has(op.op))return;
     if(!validClock(op.clock))return;        // reject malformed clocks (wclock poisoning)
@@ -1509,12 +1509,12 @@ const Store={
           &&clockNewer(C,w&&w['groupId']);
       });
       if(op.before)op.before=op.before.filter(b=>op.ids.includes(b.id));
-      return op.ids.length>0;
+      return _ln(op.ids)>0;
     }
     if(!_iA(op.after))return true;
     const bb={};if(_iA(op.before))for(const b of op.before)bb[b.id]=b;
     op.after=op.after.filter(p=>byId(p.id)?filt(p.id,p,bb[p.id])>0:false);
-    return op.after.length>0;
+    return _ln(op.after)>0;
   },
   // Stamp the per-property write clock for the keys an op actually changed, so later
   // concurrent writes can be ordered against it. Local commits and accepted remote ops
@@ -1699,7 +1699,7 @@ const Store={
           // legacy full-snapshot format (pre-Step2 history / mixed-version peer).
           const snap=forward?op.after:op.before;
           if(snap){
-            const map=new Map(_sh().map(s=>[s.id,s]));
+            const map=_mP(_sh().map(s=>[s.id,s]));
             const next=[];
             for(const p of snap){const sh=map.get(p.id);if(sh){if(!(forward&&sh.locked)){sh.z=p.z;if(p.frac!=null)sh.frac=p.frac;}next.push(sh);map.delete(p.id)}}
             for(const sh of map.values())next.push(sh);   // keep any extras (defensive)
@@ -1837,7 +1837,7 @@ function _hatchCtx(c,s){
 }
 // SVG hatch: clipPath mirroring the shape + <g clip-path> of the same segments.
 function _svgHatch(els,s,ox,oy,stroke,shapeTag,rT){
-  const hid='hc'+els.length;
+  const hid='hc'+_ln(els);
   const segs=_hatchSegs(s.x+ox,s.y+oy,s.w,s.h,_max(6,(s.size||1)*4),_fs2(s)==='cross');
   const lw=_max(0.5,(s.size||1)*0.6);
   const lns=segs.map(g=>`<line x1="${_num(g[0])}" y1="${_num(g[1])}" x2="${_num(g[2])}" y2="${_num(g[3])}" stroke="${stroke}" stroke-width="${_num(lw)}"/>`).join('');
@@ -1870,24 +1870,24 @@ function computeConnClears(delIds){
 // from array order (see reindexFrac) and z is kept as a back-compat fallback.
 const FRAC_DIGITS='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 function keyBetween(a,b){
-  const N=FRAC_DIGITS.length, di=c=>{const k=FRAC_DIGITS.indexOf(c);return k<0?0:k};
+  const N=_ln(FRAC_DIGITS), di=c=>{const k=FRAC_DIGITS.indexOf(c);return k<0?0:k};
   const A=a==null?[]:[...a].map(di), B=b==null?null:[...b].map(di);
   const out=[]; let i=0;
   while(true){
-    const x=i<A.length?A[i]:0;
-    const y=B==null?N:(i<B.length?B[i]:0);
+    const x=i<_ln(A)?A[i]:0;
+    const y=B==null?N:(i<_ln(B)?B[i]:0);
     if(x===y){
       // Both sequences exhausted and still equal ⇒ a≈b (degenerate / malformed
       // input such as b="0"). No strict midpoint exists; emit a mid digit and stop
       // instead of looping forever (guards against a hostile peer's frac key).
-      if(i>=A.length&&(B==null||i>=B.length)){out.push(N>>1);break;}
+      if(i>=_ln(A)&&(B==null||i>=_ln(B))){out.push(N>>1);break;}
       out.push(x);i++;continue;                // shared prefix: copy and descend
     }
     const mid=(x+y)>>1;
     if(mid>x){out.push(mid);break;}          // gap between digits: take midpoint
     out.push(x);i++;                          // y===x+1: commit x, go above lower
     while(true){
-      const lx=i<A.length?A[i]:0;
+      const lx=i<_ln(A)?A[i]:0;
       if(lx<N-1){out.push((lx+N)>>1);break;}  // a digit strictly above the lower
       out.push(lx);i++;                        // lower saturated: keep descending
     }
@@ -1931,7 +1931,7 @@ const Shape={
       // connector or the trunk stays behind (same class as ADR-0146).
       // Trunk orientation survives translation, so shift the matching axis.
       const tr=s.bend!=null?_elbowTrunk(s):null;
-      s.x1+=dx;s.y1+=dy;s.x2+=dx;s.y2+=dy;const wa=_wayArr(s);if(wa.length){for(const w of wa){w.x+=dx;w.y+=dy}s.way=wa}   // ADR-0090
+      s.x1+=dx;s.y1+=dy;s.x2+=dx;s.y2+=dy;const wa=_wayArr(s);if(_ln(wa)){for(const w of wa){w.x+=dx;w.y+=dy}s.way=wa}   // ADR-0090
       if(tr){const vert=_abs(tr[1].x-tr[0].x)<_abs(tr[1].y-tr[0].y);s.bend+=vert?dx:dy}}
     else{s.x+=dx;s.y+=dy}  // rect, ellipse, text, image, sticky — all have x/y
   },
@@ -1972,7 +1972,7 @@ const _imgCache=_mP(),IMG_CACHE_MAX=60;
 // match byte ranges at three distant offsets (previously a same-length file
 // sharing the last 64 bytes rendered the WRONG image from cache).
 function _imgKey(u){if(typeof u!=='string')return'';
-  const m=u.length>>1;return u.slice(5,32)+':'+u.length+':'+u.slice(0,48)+':'+u.slice(m-24,m+24)+':'+u.slice(-48)}
+  const m=_ln(u)>>1;return u.slice(5,32)+':'+_ln(u)+':'+u.slice(0,48)+':'+u.slice(m-24,m+24)+':'+u.slice(-48)}
 function getImg(dataUrl){
   if(typeof dataUrl!=='string'||!dataUrl.startsWith('data:'))return null;   // ADR-0035: never decode a non-dataUrl (e.g. dangling img ref)
   const k=_imgKey(dataUrl);
@@ -2039,7 +2039,7 @@ function _penRender(s,e,R){
   return cv;
 }
 function _penCached(s){
-  const p=s.pts,n=p.length,e=_penCache.get(s.id);
+  const p=s.pts,n=_ln(p),e=_penCache.get(s.id);
   const sigOk=e&&e.pts===p&&e.n===n&&e.stroke===_sk(s)&&e.size===s.size
     &&e.p0x===p[0][0]&&e.p0y===p[0][1]&&e.pMx===p[n>>1][0]&&e.pMy===p[n>>1][1]
     &&e.pNx===p[n-1][0]&&e.pNy===p[n-1][1];
@@ -2111,7 +2111,7 @@ function _penFillRange(c,p,w,n,lo,hi){
 let _inkD=null;
 function _inkSegDraw(cc,p,w,i){
   // bake disc(i-1) + quad(i-1→i) — index i's own disc stays live in the tail
-  const n=p.length;
+  const n=_ln(p);
   cc.beginPath();
   _penDisc(cc,p[i-1][0],p[i-1][1],_penR(w,i-1,n));
   _penQuad(cc,p,_penR(w,i-1,n),_penR(w,i,n),i);
@@ -2121,7 +2121,7 @@ function _inkSegDraw(cc,p,w,i){
 // zoom-bucket crossing, or a shrink). Commits indices 1..n-9 (ADR-0046: index i
 // bakes disc(i-1)+quad(i-1→i); end-taper primitives never settle).
 function _inkRebuild(s,d){
-  const p=s.pts,n=p.length,R=_penRes();
+  const p=s.pts,n=_ln(p),R=_penRes();
   let mnx=Infinity,mny=Infinity,mxx=-Infinity,mxy=-Infinity;
   for(const q of p){if(q[0]<mnx)mnx=q[0];if(q[1]<mny)mny=q[1];if(q[0]>mxx)mxx=q[0];if(q[1]>mxy)mxy=q[1];}
   const pad=(s.size||2)*2+64;   // stroke reach + headroom before the next grow
@@ -2148,7 +2148,7 @@ function _inkRebuild(s,d){
 function _inkGrow(d,pad){
   const p=d.pts;
   let mnx=d.bx,mny=d.by,mxx=d.bx+d.bw,mxy=d.by+d.bh;
-  for(let i=_max(0,p.length-4);i<p.length;i++){const q=p[i];if(q[0]<mnx)mnx=q[0];if(q[1]<mny)mny=q[1];if(q[0]>mxx)mxx=q[0];if(q[1]>mxy)mxy=q[1];}
+  for(let i=_max(0,_ln(p)-4);i<_ln(p);i++){const q=p[i];if(q[0]<mnx)mnx=q[0];if(q[1]<mny)mny=q[1];if(q[0]>mxx)mxx=q[0];if(q[1]>mxy)mxy=q[1];}
   mnx-=pad;mny-=pad;mxx+=pad;mxy+=pad;
   const zr=_vp().zoom*DPR;
   if(_abs(d.R-zr)<1e-9){
@@ -2164,7 +2164,7 @@ function _inkGrow(d,pad){
   d.cv=ncv;d.c2=n2;d.bx=mnx;d.by=mny;d.bw=mxx-mnx;d.bh=mxy-mny;
 }
 function drawPenDraft(s){
-  const p=s.pts,n=p.length;
+  const p=s.pts,n=_ln(p);
   if(n<2){drawPen(s);return}
   const R=_penRes();
   let d=_inkD;
@@ -2272,7 +2272,7 @@ function _statusSel(){
   let txt='';
   if(_selN()){
     const sel=_selL(Boolean);
-    const b=sel.length&&_bA(sel);
+    const b=_ln(sel)&&_bA(sel);
     if(b)txt=_rnd(b.w)+'×'+_rnd(b.h);
   }
   if(txt!==_selDimSig){_selDimSig=txt;el.parentElement.hidden=!txt;el.textContent=txt;}
@@ -2318,10 +2318,10 @@ function inView(s,view){
 }
 // a11y: cycle selection in z-order, recentre viewport, describe shape for aria-live.
 function cycleSel(ids,cur,dir){
-  if(!ids.length)return null;
+  if(!_ln(ids))return null;
   const i=ids.indexOf(cur);
-  if(i<0)return dir>0?ids[0]:ids[ids.length-1];
-  return ids[(i+dir+ids.length)%ids.length];
+  if(i<0)return dir>0?ids[0]:ids[_ln(ids)-1];
+  return ids[(i+dir+_ln(ids))%_ln(ids)];
 }
 function centerOn(sh){
   const b=_bb(sh),v=_vp();
@@ -2336,7 +2336,7 @@ function describeShape(s){
   // coordinates. Truncated so a long note doesn't flood the live region.
   const txt=_St(s.text||_lb(s)||'').replace(/\s+/g,' ').trim();
   let d=nm;
-  if(txt)d+=` “${txt.length>30?txt.slice(0,30)+'…':txt}”`;
+  if(txt)d+=` “${_ln(txt)>30?txt.slice(0,30)+'…':txt}”`;
   d+=` @ ${_rnd(b.x)},${_rnd(b.y)}`;
   if(_lk(s))d+=` ${t('ctxLock')}`;
   if(_hd(s)||_oP(s)===0)d+=` ${t('tagHidden')}`;   // ADR-0440: fully-transparent is invisible to sighted users too   // ADR-0371: selection-restore / RTC can select a hidden shape
@@ -2438,7 +2438,7 @@ function draw(){
     if(Ny1>Oy1)clipRects.push({x:ev.x,y:Oy1,w:Ww,h:Ny1-Oy1});          // bottom
     else if(ev.y<pv.y)clipRects.push({x:ev.x,y:ev.y,w:Ww,h:pv.y-ev.y});// top
     if(dmg)clipRects.push(dmg);
-    if(clipRects.length){
+    if(_ln(clipRects)){
       ctx.setTransform(z,0,0,z,-ev.x*z,-ev.y*z);
       ctx.save();
       ctx.beginPath();for(const r of clipRects)ctx.rect(r.x,r.y,r.w,r.h);ctx.clip();
@@ -2475,11 +2475,11 @@ function draw(){
     if(ptr.dragStartShapes)for(const id of ptr.dragStartShapes.keys()){const s=byId(id);if(s)need.add(s);}
     if(ptr.resizeOrig){const s=byId(ptr.resizeOrig.id);if(s)need.add(s);}
     if(ptr.rotOrig){const s=byId(ptr.rotOrig.id);if(s)need.add(s);}
-    if(need.size){const vs=new Set(_vis);_drawIter=_sh().filter(s=>vs.has(s)||need.has(s));}
+    if(need.size){const vs=_sT(_vis);_drawIter=_sh().filter(s=>vs.has(s)||need.has(s));}
   }
   // ADR-0028: a pan whose rounded shift exposed no strip (sub-pixel step) needs
   // no scene pass at all — the blit already carries every pixel.
-  const _skipScene=panned&&!(clipRects&&clipRects.length);
+  const _skipScene=panned&&!(clipRects&&_ln(clipRects));
   if(!_skipScene){
     if(state.showGrid)drawGrid(W,H);
     for(const s of _drawIter){if(s.type==='frame'&&inView(s,_view))drawShape(s)}
@@ -2489,7 +2489,7 @@ function draw(){
     // point, discarded when the next real sample lands. Render-only: never
     // touches draft.pts, so it can't leak into Store/persist/share payloads.
     if(_penPred&&_df()&&_df().type==='pen'){
-      const _pp=_df().pts,_pn=_pp.length;
+      const _pp=_df().pts,_pn=_ln(_pp);
       if(_pn>1){
         const _pw=penWidths(_pp,_df().size);
         const _oc=ctx.lineCap,_ow=ctx.lineWidth;
@@ -2499,7 +2499,7 @@ function draw(){
       }
     }
   }
-  if(clipRects&&clipRects.length)ctx.restore();
+  if(clipRects&&_ln(clipRects))ctx.restore();
   _lastVp={x:ev.x,y:ev.y,zoom:v.zoom};
 }
 // ====================== OVERLAY LAYER (ADR-0024) ======================
@@ -2600,7 +2600,7 @@ function drawEmptyHint(c,W,H){
 function drawPeerSelections(c){
   if(Presentation.isActive())return;   // same rationale as drawPeerCursors
   for(const p of _pr().values()){
-    if(!p.sel||!p.sel.length)continue;
+    if(!p.sel||!_ln(p.sel))continue;
     c.strokeStyle=p.color;c.lineWidth=1;c.setLineDash([3,3]);
     for(const id of p.sel){
       const s=byId(id);if(!s)continue;      // peer may reference a shape we since deleted
@@ -2703,11 +2703,11 @@ function _drawBoxLabel(s,c){
   const lines=wrapTextCached(s,_lb(s),_max(10,s.w-8),fs,t=>c.measureText(t).width);   // ADR-0074
   const lh=fs*(s.lineH||1.25);
   // ADR-0159: _va(s) 'top'|'bottom' (absent = centred) — draw.io parity.
-  const top0=_va(s)==='top'?s.y+6:_va(s)==='bottom'?s.y+s.h-6-lines.length*lh:s.y+s.h/2-(lines.length*lh)/2;
-  for(let i=0;i<lines.length;i++)c.fillText(lines[i],tx,top0+lh/2+i*lh);
+  const top0=_va(s)==='top'?s.y+6:_va(s)==='bottom'?s.y+s.h-6-_ln(lines)*lh:s.y+s.h/2-(_ln(lines)*lh)/2;
+  for(let i=0;i<_ln(lines);i++)c.fillText(lines[i],tx,top0+lh/2+i*lh);
   if(s.under||s.strike){c.strokeStyle=c.fillStyle;c.lineWidth=_max(1,fs*0.06);   // ADR-0170
     const _lw2=_connLabelMeasure(s,c,lines,fs).ws;             // ADR-0252
-    for(let i=0;i<lines.length;i++){const lw=_lw2[i];
+    for(let i=0;i<_ln(lines);i++){const lw=_lw2[i];
       const ux=al==='left'?tx:al==='right'?tx-lw:tx-lw/2;      // ADR-0171
       if(s.under){const uy=top0+lh/2+i*lh+fs*0.55;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}
       if(s.strike){const uy=top0+lh/2+i*lh;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}}}
@@ -2722,15 +2722,15 @@ function _drawImgLabel(s,c){
   c.font=_fontStr(s,fs);   // ADR-0170
   let lines=wrapTextCached(s,_lb(s),_max(10,s.w-8),fs,t=>c.measureText(t).width);
   const lh=fs*(s.lineH||1.25),maxL=_max(1,_fl((s.h-4)/lh));
-  if(lines.length>maxL){lines=lines.slice(0,maxL);lines[maxL-1]+='…'}
-  const sh_=lines.length*lh+4,sy=_va(s)==='top'?s.y:s.y+s.h-sh_;   // ADR-0179
+  if(_ln(lines)>maxL){lines=lines.slice(0,maxL);lines[maxL-1]+='…'}
+  const sh_=_ln(lines)*lh+4,sy=_va(s)==='top'?s.y:s.y+s.h-sh_;   // ADR-0179
   c.fillStyle=_fi(s)&&_fi(s)!=='none'?_fi(s):_p()||'#fff';c.globalAlpha=0.85;   // ADR-0288
   c.fillRect(s.x,sy,s.w,sh_);
   c.globalAlpha=1;c.fillStyle=_sk(s)||_IK;
   const al2=s.align||'center';   // ADR-0171
   c.textAlign=al2==='left'?'left':al2==='right'?'right':'center';c.textBaseline='middle';
   const tx2=al2==='left'?s.x+6:al2==='right'?s.x+s.w-6:s.x+s.w/2;
-  for(let i=0;i<lines.length;i++)c.fillText(lines[i],tx2,sy+2+lh/2+i*lh);
+  for(let i=0;i<_ln(lines);i++)c.fillText(lines[i],tx2,sy+2+lh/2+i*lh);
   c.restore();
 }
 // Connector (edge) label at the midpoint of the bound endpoints (ADR-0003). A paper-
@@ -2749,26 +2749,26 @@ function _connPathPts(s){
   return _linePts(s);
 }
 function _pathAt(pts,t){
-  if(!pts||!pts.length)return null;
-  if(pts.length===1)return{x:pts[0].x,y:pts[0].y};
+  if(!pts||!_ln(pts))return null;
+  if(_ln(pts)===1)return{x:pts[0].x,y:pts[0].y};
   t=_c01(t);
-  let tot=0;for(let i=1;i<pts.length;i++)tot+=_hp(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y);
+  let tot=0;for(let i=1;i<_ln(pts);i++)tot+=_hp(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y);
   if(!tot)return{x:pts[0].x,y:pts[0].y};
   const target=t*tot;let acc=0;
-  for(let i=1;i<pts.length;i++){
+  for(let i=1;i<_ln(pts);i++){
     const d=_hp(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y);
     if(acc+d>=target&&d>0){const f=(target-acc)/d;
       return{x:pts[i-1].x+(pts[i].x-pts[i-1].x)*f,y:pts[i-1].y+(pts[i].y-pts[i-1].y)*f}}
     acc+=d;
   }
-  return{x:pts[pts.length-1].x,y:pts[pts.length-1].y};
+  return{x:pts[_ln(pts)-1].x,y:pts[_ln(pts)-1].y};
 }
 function _pathNearestT(pts,p){
-  if(!pts||pts.length<2)return 0.5;
-  let tot=0;for(let i=1;i<pts.length;i++)tot+=_hp(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y);
+  if(!pts||_ln(pts)<2)return 0.5;
+  let tot=0;for(let i=1;i<_ln(pts);i++)tot+=_hp(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y);
   if(!tot)return 0.5;
   let best=Infinity,bt=0.5,acc=0;
-  for(let i=1;i<pts.length;i++){
+  for(let i=1;i<_ln(pts);i++){
     const ax=pts[i-1].x,ay=pts[i-1].y,dx=pts[i].x-ax,dy=pts[i].y-ay;
     const L=_hp(dx,dy);if(!L)continue;
     let u=((p.x-ax)*dx+(p.y-ay)*dy)/(L*L);u=_c01(u);
@@ -2779,7 +2779,7 @@ function _pathNearestT(pts,p){
   return bt;
 }
 // ADR-0252: connector label widths are pure functions of (label,font,flags) —
-// memoize per shape so every frame doesn't pay lns.length measureText calls.
+// memoize per shape so every frame doesn't pay _ln(lns) measureText calls.
 const _clCache=new WeakMap();
 function _connLabelMeasure(s,c,lns,fs){
   const key=lns.join('\n')+'|'+fs+'|'+(s.bold?1:0)+(s.italic?1:0)+(s.font||'');
@@ -2796,14 +2796,14 @@ function _connLabelXY(s){
   if(s.curve)return _curveLabelXY(s);
   if(_wayArr(s).length){   // ADR-0090: label rides the path's length-midpoint
     const pts=_linePts(s);let tot=0;
-    for(let i=1;i<pts.length;i++)tot+=_hp(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y);
+    for(let i=1;i<_ln(pts);i++)tot+=_hp(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y);
     let acc=0;
-    for(let i=1;i<pts.length;i++){
+    for(let i=1;i<_ln(pts);i++){
       const d=_hp(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y);
       if(acc+d>=tot/2&&d>0){const f=(tot/2-acc)/d;return{x:pts[i-1].x+(pts[i].x-pts[i-1].x)*f,y:pts[i-1].y+(pts[i].y-pts[i-1].y)*f}}
       acc+=d;
     }
-    return{x:pts[_fl(pts.length/2)].x,y:pts[_fl(pts.length/2)].y};
+    return{x:pts[_fl(_ln(pts)/2)].x,y:pts[_fl(_ln(pts)/2)].y};
   }
   const m=_cE(s);
   return{x:(m.x1+m.x2)/2,y:(m.y1+m.y2)/2};
@@ -2816,13 +2816,13 @@ function _drawConnLabel(s,c){
   c.font=_fontStr(s,fs);c.textAlign='center';c.textBaseline='middle';   // ADR-0170
   const lns=_St(_lb(s)).split('\n'),llh=fs*(s.lineH||1.25),pad=4;   // ADR-0210/0212
   const _lm=_connLabelMeasure(s,c,lns,fs),w=_lm.w;             // ADR-0252: measureText was per-frame per-line
-  const th=lns.length*llh;
+  const th=_ln(lns)*llh;
   if(_fi(s)!=='none'){c.fillStyle=_fi(s)||_p()||'#fff';   // ADR-0288
   c.fillRect(mx-w/2-pad,my-th/2,w+pad*2,th)}
   c.fillStyle=_sk(s)||_IK;
-  for(let i=0;i<lns.length;i++)c.fillText(lns[i],mx,my+(i-(lns.length-1)/2)*llh);
+  for(let i=0;i<_ln(lns);i++)c.fillText(lns[i],mx,my+(i-(_ln(lns)-1)/2)*llh);
   if(s.under||s.strike){c.strokeStyle=c.fillStyle;c.lineWidth=_max(1,fs*0.06);   // ADR-0170
-    for(let i=0;i<lns.length;i++){const lw=_lm.ws[i],ly=my+(i-(lns.length-1)/2)*llh;
+    for(let i=0;i<_ln(lns);i++){const lw=_lm.ws[i],ly=my+(i-(_ln(lns)-1)/2)*llh;
       if(s.under){c.beginPath();c.moveTo(mx-lw/2,ly+fs*0.55);c.lineTo(mx+lw/2,ly+fs*0.55);c.stroke()}
       if(s.strike){c.beginPath();c.moveTo(mx-lw/2,ly);c.lineTo(mx+lw/2,ly);c.stroke()}}}
   c.restore();
@@ -2944,12 +2944,12 @@ function drawShape(s,c){
         c.textAlign=s.align==='center'?'center':s.align==='right'?'right':'left';   // ADR-0073
         const tax=s.align==='center'?s.x+s.w/2:s.align==='right'?s.x+s.w-pad:s.x+pad;
         // ADR-0187: _va(s) on sticky positions the text block (top default).
-        const sty=_va(s)==='middle'?s.y+(s.h-lines.length*lh)/2:
-                  _va(s)==='bottom'?s.y+s.h-pad-lines.length*lh:s.y+pad;
-        for(let i=0;i<lines.length;i++)c.fillText(lines[i],tax,sty+i*lh);
+        const sty=_va(s)==='middle'?s.y+(s.h-_ln(lines)*lh)/2:
+                  _va(s)==='bottom'?s.y+s.h-pad-_ln(lines)*lh:s.y+pad;
+        for(let i=0;i<_ln(lines);i++)c.fillText(lines[i],tax,sty+i*lh);
         if(s.under||s.strike){c.strokeStyle=_sk(s)||'#1E293B';c.lineWidth=_max(1,fs*0.06);   // ADR-0192
           const _lwS=_connLabelMeasure(s,c,lines,fs).ws;         // ADR-0252
-          for(let i=0;i<lines.length;i++){const lw=_lwS[i];
+          for(let i=0;i<_ln(lines);i++){const lw=_lwS[i];
             const ux=s.align==='center'?tax-lw/2:s.align==='right'?tax-lw:tax;
             if(s.under){const uy=sty+i*lh+fs*1.08;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}
             if(s.strike){const uy=sty+i*lh+fs*0.55;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}}}
@@ -2988,7 +2988,7 @@ function drawArrow(s,c){
   }
   if(_el(s)){
     const pts=_elbowPts(s);s.hop?_polylineHop(c,s,pts,7):(s.r>0)?_polylineR(c,pts,s.r):_polyline(c,pts);c.stroke();   // ADR-0207/0218
-    const L=pts[pts.length-1],P=pts[pts.length-2];
+    const L=pts[_ln(pts)-1],P=pts[_ln(pts)-2];
     const ang=_at2(L.y-P.y,L.x-P.x)||_at2(e.y2-e.y1,e.x2-e.x1);
     _arrowHeadShape(c,L.x,L.y,ang,ah,_sk(s),s.head);
     if(s.start){
@@ -2999,7 +2999,7 @@ function drawArrow(s,c){
   }
   const pts=_linePts(s);                                            // ADR-0076
   s.hop?_polylineHop(c,s,pts,7):_polyline(c,pts);c.stroke();        // ADR-0218
-  const L=pts[pts.length-1],P=pts[pts.length-2],F=pts[1];
+  const L=pts[_ln(pts)-1],P=pts[_ln(pts)-2],F=pts[1];
   const ang=_at2(L.y-P.y,L.x-P.x);
   _arrowHeadShape(c,L.x,L.y,ang,ah,_sk(s),s.head);
   if(s.start)_arrowHeadShape(c,pts[0].x,pts[0].y,_at2(pts[0].y-F.y,pts[0].x-F.x),ah,_sk(s),s.startHead||s.head);
@@ -3037,14 +3037,14 @@ function _elbowPts(s){
 // Label anchor: midpoint between the two stub tips (inner segment region).
 function _elbowLabelXY(s){
   const pts=_elbowPts(s);
-  return{x:(pts[1].x+pts[pts.length-2].x)/2,y:(pts[1].y+pts[pts.length-2].y)/2};
+  return{x:(pts[1].x+pts[_ln(pts)-2].x)/2,y:(pts[1].y+pts[_ln(pts)-2].y)/2};
 }
 // ADR-0072: the route segment perpendicular to both stubs — the draggable one.
 function _elbowTrunk(s){
   const pts=_elbowPts(s);
-  if(pts.length<4)return null;
+  if(_ln(pts)<4)return null;
   const horizStub=_abs(pts[1].x-pts[0].x)>=_abs(pts[1].y-pts[0].y);
-  for(let i=1;i<pts.length-2;i++){
+  for(let i=1;i<_ln(pts)-2;i++){
     const a=pts[i],b=pts[i+1],vert=_abs(b.x-a.x)<_abs(b.y-a.y);
     if(vert===horizStub&&(a.x!==b.x||a.y!==b.y))return[a,b];
   }
@@ -3075,14 +3075,14 @@ function _diamondPath(c,s){
 }
 function _polyline(c,pts){
   c.beginPath();c.moveTo(pts[0].x,pts[0].y);
-  for(let i=1;i<pts.length;i++)c.lineTo(pts[i].x,pts[i].y);
+  for(let i=1;i<_ln(pts);i++)c.lineTo(pts[i].x,pts[i].y);
 }
 // ADR-0207: polyline with rounded interior joints (draw.io "rounded" edgeStyle).
 // Each interior vertex is trimmed by r along both segments and bridged with a
 // quadratic curve (vertex as control point) — same math as _diamondPath.
 function _polylineR(c,pts,r){
   c.beginPath();c.moveTo(pts[0].x,pts[0].y);
-  for(let i=1;i<pts.length-1;i++){
+  for(let i=1;i<_ln(pts)-1;i++){
     const p0=pts[i-1],p1=pts[i],p2=pts[i+1];
     const e1=_hp(p1.x-p0.x,p1.y-p0.y)||1,e2=_hp(p2.x-p1.x,p2.y-p1.y)||1;
     const rr=_min(r,e1/2,e2/2);
@@ -3090,7 +3090,7 @@ function _polylineR(c,pts,r){
     c.lineTo(p1.x+(p0.x-p1.x)/e1*rr,p1.y+(p0.y-p1.y)/e1*rr);
     c.quadraticCurveTo(p1.x,p1.y,p1.x+(p2.x-p1.x)/e2*rr,p1.y+(p2.y-p1.y)/e2*rr);
   }
-  c.lineTo(pts[pts.length-1].x,pts[pts.length-1].y);
+  c.lineTo(pts[_ln(pts)-1].x,pts[_ln(pts)-1].y);
 }
 // ADR-0218: connector "jump" arcs — where this conn's polyline crosses another
 // conn, the segment bulges over it in a semicircle (circuit-diagram / draw.io
@@ -3108,10 +3108,10 @@ function _hopsFor(s,pts){
   for(const o of _sh()){
     if(o===s||o.visible===0)continue;
     const t=o.type;if(t!=='line'&&t!=='arrow')continue;
-    const op=_connPathPts(o);if(!op||op.length<2)continue;
-    for(let i=0;i<pts.length-1;i++){
+    const op=_connPathPts(o);if(!op||_ln(op)<2)continue;
+    for(let i=0;i<_ln(pts)-1;i++){
       const a=pts[i],b=pts[i+1];
-      for(let j=0;j<op.length-1;j++){
+      for(let j=0;j<_ln(op)-1;j++){
         const tt=_segIntT(a.x,a.y,b.x,b.y,op[j].x,op[j].y,op[j+1].x,op[j+1].y);
         if(tt!=null)hops.push(i*1e6+tt);
       }
@@ -3125,12 +3125,12 @@ function _hopsFor(s,pts){
 function _polylineHop(c,s,pts,R){
   const hops=_hopsFor(s,pts);
   c.beginPath();c.moveTo(pts[0].x,pts[0].y);
-  for(let i=0;i<pts.length-1;i++){
+  for(let i=0;i<_ln(pts)-1;i++){
     const a=pts[i],b=pts[i+1];
     const L=_hp(b.x-a.x,b.y-a.y)||1,nx=-(b.y-a.y)/L,ny=(b.x-a.x)/L;
     const rf=_min(R,L*0.35)/L;
     let prev=0;
-    while(hops.length){
+    while(_ln(hops)){
       const pk=hops[0],si=_fl(pk/1e6);
       if(si>i)break;
       const t=pk-si*1e6;hops.shift();
@@ -3149,12 +3149,12 @@ function _polylineHop(c,s,pts,R){
 function _hopPathD(s,pts,ox,oy,R){
   const hops=_hopsFor(s,pts);
   let d=`M ${_num(pts[0].x+ox)} ${_num(pts[0].y+oy)}`;
-  for(let i=0;i<pts.length-1;i++){
+  for(let i=0;i<_ln(pts)-1;i++){
     const a=pts[i],b=pts[i+1];
     const L=_hp(b.x-a.x,b.y-a.y)||1,nx=-(b.y-a.y)/L,ny=(b.x-a.x)/L;
     const rf=_min(R,L*0.35)/L;
     let prev=0;
-    while(hops.length){
+    while(_ln(hops)){
       const pk=hops[0],si=_fl(pk/1e6);
       if(si>i)break;
       const t=pk-si*1e6;hops.shift();
@@ -3172,7 +3172,7 @@ function _hopPathD(s,pts,ox,oy,R){
 function _polylineRd(pts,ox,oy,r){
   const n2=v=>_rnd(v*10)/10;
   let d=`M ${n2(pts[0].x+ox)} ${n2(pts[0].y+oy)}`;
-  for(let i=1;i<pts.length-1;i++){
+  for(let i=1;i<_ln(pts)-1;i++){
     const p0=pts[i-1],p1=pts[i],p2=pts[i+1];
     const e1=_hp(p1.x-p0.x,p1.y-p0.y)||1,e2=_hp(p2.x-p1.x,p2.y-p1.y)||1;
     const rr=_min(r,e1/2,e2/2);
@@ -3180,7 +3180,7 @@ function _polylineRd(pts,ox,oy,r){
     d+=` L ${n2(p1.x+(p0.x-p1.x)/e1*rr+ox)} ${n2(p1.y+(p0.y-p1.y)/e1*rr+oy)}`;
     d+=` Q ${n2(p1.x+ox)} ${n2(p1.y+oy)} ${n2(p1.x+(p2.x-p1.x)/e2*rr+ox)} ${n2(p1.y+(p2.y-p1.y)/e2*rr+oy)}`;
   }
-  d+=` L ${n2(pts[pts.length-1].x+ox)} ${n2(pts[pts.length-1].y+oy)}`;
+  d+=` L ${n2(pts[_ln(pts)-1].x+ox)} ${n2(pts[_ln(pts)-1].y+oy)}`;
   return d;
 }
 // ADR-0119: head style variants — 'arrow' (filled triangle, default),
@@ -3246,7 +3246,7 @@ function _qdotAt(wp){
 }
 // Variable stroke width from spacing (velocity proxy); render-only, no model change.
 function penWidths(pts,size){
-  const n=pts.length,base=_max(0.5,size||2),REF=base*3+8,LO=0.45;
+  const n=_ln(pts),base=_max(0.5,size||2),REF=base*3+8,LO=0.45;
   // Use varying pointer pressure if available; fall back to velocity proxy.
   let hasPr=true,mn=Infinity,mx=-Infinity;
   for(let i=0;i<n;i++){const pr=pts[i][2];if(!_fin(pr)){hasPr=false;break}if(pr<mn)mn=pr;if(pr>mx)mx=pr}
@@ -3270,7 +3270,7 @@ function penWidths(pts,size){
 }
 function drawPen(s,c){
   c=c||ctx;
-  const p=s.pts,n=p.length;
+  const p=s.pts,n=_ln(p);
   if(n<2){
     c.fillStyle=_sk(s);
     c.beginPath();c.arc(p[0][0],p[0][1],(s.size||2)/2,0,PI2);c.fill();
@@ -3311,13 +3311,13 @@ function drawText(s,c){
   const _tm=_fi(s)||s.under||s.strike?_connLabelMeasure(s,c,lines,fs):null;   // ADR-0252
   if(_fi(s)){const mw=_tm.w;
     const bx=s.align==='center'?ax-mw/2:s.align==='right'?ax-mw:ax;
-    if(_fi(s)!=='none'){c.save();c.fillStyle=_fi(s);c.fillRect(bx-3,s.y-3,mw+6,lines.length*lh+6);c.restore()}   // ADR-0288
+    if(_fi(s)!=='none'){c.save();c.fillStyle=_fi(s);c.fillRect(bx-3,s.y-3,mw+6,_ln(lines)*lh+6);c.restore()}   // ADR-0288
     c.fillStyle=_sk(s)||_IK;}
-  for(let i=0;i<lines.length;i++)c.fillText(lines[i],ax,s.y+i*lh);
+  for(let i=0;i<_ln(lines);i++)c.fillText(lines[i],ax,s.y+i*lh);
   // ADR-0095: canvas has no text-decoration — stroke a line under each row
   // (per-line measureText honours all three align modes).
   if(s.under||s.strike){c.save();c.strokeStyle=_sk(s)||_IK;c.lineWidth=_max(1,fs*0.06);
-    for(let i=0;i<lines.length;i++){const lw=_tm.ws[i];
+    for(let i=0;i<_ln(lines);i++){const lw=_tm.ws[i];
       const ux=s.align==='center'?ax-lw/2:s.align==='right'?ax-lw:ax;
       if(s.under){const uy=s.y+i*lh+fs*1.08;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}
       if(s.strike){const uy=s.y+i*lh+fs*0.55;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}}   // ADR-0100
@@ -3347,7 +3347,7 @@ function getHandles(s){
   // ADR-0051: pens resize for real — emit the same 8 handles around the pts bbox
   // (writing x/y/w/h on a pen would NaN it; the scale happens in applyResize).
   if(s.type==='pen'){
-    if(s.pts.length<2)return [];                 // a dot can't scale (ADR-0051)
+    if(_ln(s.pts)<2)return [];                 // a dot can't scale (ADR-0051)
     const b=_bb(s);if(!b||!b.w||!b.h)return [];
     const x=b.x,y=b.y,w=b.w,h=b.h;
     return [
@@ -3426,7 +3426,7 @@ function _grotDrag(wp,shift){
 }
 function _grotCommit(){
   const after=[...ptr.gOrig.keys()].map(id=>byId(id)).filter(Boolean).map(clone);
-  if(after.length){
+  if(_ln(after)){
     const before=after.map(a=>ptr.gOrig.get(a.id));
     if(before.some((b,i)=>_JS(b)!==_JS(after[i]))){
       _rcOp({op:'align',dir:'grot',before,after});
@@ -3491,7 +3491,7 @@ function _mapToBox(sh,orig,ob,vb){
 // Shift on a corner = lock the original aspect ratio. Alt = resize about the original
 // centre (opposite edge mirrors). Shift+Alt = symmetric AND proportional.
 function applyResize(sh,handle,orig,wp,shift,alt){
-  const corner=handle.length===2;                // nw/ne/se/sw
+  const corner=_ln(handle)===2;                // nw/ne/se/sw
   const lock=shift&&corner&&orig.w>0&&orig.h>0;   // aspect-ratio lock
   const ox=orig.x,oy=orig.y,ow=orig.w,oh=orig.h;
   const cx0=ox+ow/2,cy0=oy+oh/2;                  // original centre (Alt pivot)
@@ -3500,7 +3500,7 @@ function applyResize(sh,handle,orig,wp,shift,alt){
   // pts bbox, then map orig.pts into the resulting box. Mapping from orig (not
   // live pts) keeps the drag from accumulating float error. p[2] pressure kept.
   if(orig.type==='pen'){
-    if(orig.pts.length<2)return;                 // a dot can't scale — move-only
+    if(_ln(orig.pts)<2)return;                 // a dot can't scale — move-only
     const ob=_bb(orig);if(!ob||!ob.w||!ob.h)return;
     const vbox={x:ob.x,y:ob.y,w:ob.w,h:ob.h};
     const vorig={x:ob.x,y:ob.y,w:ob.w,h:ob.h,id:orig.id};
@@ -3518,7 +3518,7 @@ function applyResize(sh,handle,orig,wp,shift,alt){
     sp=_rotPt(wp.x,wp.y,cx0,cy0,-orig.rotate);
   }else{
     const os=(lock||alt)?{x:wp.x,y:wp.y,guides:[]}:resizeSnap(orig,handle,wp); // lock/alt override obj-snap
-    state.guides=os.guides.length?os.guides:null;  // alignment guides during drag
+    state.guides=_ln(os.guides)?os.guides:null;  // alignment guides during drag
     sp=snapPt({x:os.x,y:os.y});                    // grid-snap (grid on); identity otherwise
   }
   if(handle==='p1'||handle==='p2'){
@@ -3593,7 +3593,7 @@ function _gresizeDrag(wp,shift,alt){
 // restores the whole group (same mechanism flip/rotate/lock already use).
 function _gresizeCommit(){
   const after=[...ptr.gOrig.keys()].map(id=>byId(id)).filter(Boolean).map(clone);
-  if(after.length){
+  if(_ln(after)){
     const before=after.map(a=>ptr.gOrig.get(a.id));
     if(before.some((b,i)=>_JS(b)!==_JS(after[i]))){
       _rcOp({op:'align',dir:'gresize',before,after});
@@ -3611,7 +3611,7 @@ function handleCursor(id,rot){          // ADR-0341: rotate-aware cursor
 function drawSelection(c){
   if(_selN()===0)return;
   const sel=_selL(Boolean);
-  if(!sel.length)return;
+  if(!_ln(sel))return;
   const b=_bA(sel);
   if(!b)return;
   const p1=_w2({x:b.x,y:b.y}),p2=_w2({x:b.x+b.w,y:b.y+b.h});
@@ -3676,12 +3676,12 @@ function drawSelection(c){
     }
     if((_conn(sh.type))&&!sh.elbow&&!sh.curve){   // ADR-0090: every vertex + every segment midpoint gets a handle dot
       const pts=_linePts(sh);
-      for(let i=0;i<pts.length;i++){
-        if(i&&i<pts.length-1){                           // interior vertex
+      for(let i=0;i<_ln(pts);i++){
+        if(i&&i<_ln(pts)-1){                           // interior vertex
           const tp=_w2(pts[i]);
           c.beginPath();c.arc(tp.x,tp.y,hs*0.45,0,PI2);c.fill();c.stroke();
         }
-        if(i<pts.length-1){                              // segment midpoint (insert handle)
+        if(i<_ln(pts)-1){                              // segment midpoint (insert handle)
           const mp=_w2({x:(pts[i].x+pts[i+1].x)/2,y:(pts[i].y+pts[i+1].y)/2});
           c.beginPath();c.arc(mp.x,mp.y,hs*0.35,0,PI2);c.fill();c.stroke();
         }
@@ -3715,7 +3715,7 @@ function drawSelection(c){
 // ADR-0158: point-in-polygon (even-odd ray cast) for the lasso.
 function _ptInPoly(x,y,pts){
   let inside=false;
-  for(let i=0,j=pts.length-1;i<pts.length;j=i++){
+  for(let i=0,j=_ln(pts)-1;i<_ln(pts);j=i++){
     const xi=pts[i].x,yi=pts[i].y,xj=pts[j].x,yj=pts[j].y;
     if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi)inside=!inside;
   }
@@ -3769,13 +3769,13 @@ function _sqAdvance(dir){
   const q=_lc(_sq);
   if(q!==_sqNav.lastQ){_sqNav.idx=-1;_sqNav.lastQ=q;}
   const matches=_sqMatches();   // same ordered list the overlay highlights use (ADR-0048)
-  if(!matches.length)return;
-  _sqNav.idx=(_sqNav.idx+dir+matches.length)%matches.length;
+  if(!_ln(matches))return;
+  _sqNav.idx=(_sqNav.idx+dir+_ln(matches))%_ln(matches);
   const sh=matches[_sqNav.idx];
   _ss([sh.id]);
   centerOn(sh);
   _iv();
-  _tst(`${describeShape(sh)} (${_sqNav.idx+1}/${matches.length})`);
+  _tst(`${describeShape(sh)} (${_sqNav.idx+1}/${_ln(matches)})`);
   return sh;
 }
 let ptr={down:false,x:0,y:0,x0:0,y0:0,wx:0,wy:0,wx0:0,wy0:0,
@@ -3805,7 +3805,7 @@ function abortGesture(){
   }else if(ptr.dragKind==='way'&&ptr.wayOrig){                     // ADR-0076
     const sh=byId(ptr.wayOrig.id);if(sh){delete sh.way;_oa(sh,clone(ptr.wayOrig));}
   }
-  if(_eraseBatch.length){for(const s of _eraseBatch)_sh().push(s);_eraseBatch=[];_sz();_iG();}   // ADR-0009
+  if(_ln(_eraseBatch)){for(const s of _eraseBatch)_sh().push(s);_eraseBatch=[];_sz();_iG();}   // ADR-0009
   _penPred=null;ptr.lineClick=false;
   state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;state.measure=null;state.lasso=null;
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.dragStartShapes=null;
@@ -3848,7 +3848,7 @@ _on(canvas,_PD,e=>{
               ptr.rotCx=rh.cx;ptr.rotCy=rh.cy;
             }else{                          // ADR-0057: point geometry → delta path
               ptr.dragKind='grot';
-              ptr.gOrig=new Map([[onlySel.id,clone(onlySel)]]);
+              ptr.gOrig=_mP([[onlySel.id,clone(onlySel)]]);
               ptr.rotCx=rh.cx;ptr.rotCy=rh.cy;
               ptr.rotA0=_at2(wp.y-rh.cy,wp.x-rh.cx)*180/_PI;
               ptr.gPad=(onlySel.size||2)+16;
@@ -3895,18 +3895,18 @@ _on(canvas,_PD,e=>{
           }
           if(!onlySel.elbow&&!onlySel.curve&&!onlySel.locked&&(_conn(onlySel.type))){   // ADR-0090
             const pts=_linePts(onlySel),R_=HANDLE_SIZE/_vp().zoom;
-            for(let i=1;i<pts.length-1;i++){             // existing vertex → move it
+            for(let i=1;i<_ln(pts)-1;i++){             // existing vertex → move it
               if(_hp(wp.x-pts[i].x,wp.y-pts[i].y)<=R_){
                 if(e.altKey){                              // ADR-0141: ⌥click deletes the waypoint
-                  const wa=_wayArr(onlySel),bw=clone(wa.length?wa:null);
-                  wa.splice(i-1,1);onlySel.way=wa.length?wa:null;
-                  _rcOp({op:'style',before:[{id:onlySel.id,way:bw}],after:[{id:onlySel.id,way:wa.length?clone(wa):null}]});
+                  const wa=_wayArr(onlySel),bw=clone(_ln(wa)?wa:null);
+                  wa.splice(i-1,1);onlySel.way=_ln(wa)?wa:null;
+                  _rcOp({op:'style',before:[{id:onlySel.id,way:bw}],after:[{id:onlySel.id,way:_ln(wa)?clone(wa):null}]});
                   _iv();return;
                 }
                 ptr.dragKind='way';ptr.wayIdx=i-1;ptr.wayNew=false;ptr.wayOrig=clone(onlySel);return;
               }
             }
-            for(let i=0;i<pts.length-1;i++){             // segment midpoint → insert vertex
+            for(let i=0;i<_ln(pts)-1;i++){             // segment midpoint → insert vertex
               const mx=(pts[i].x+pts[i+1].x)/2,my=(pts[i].y+pts[i+1].y)/2;
               if(_hp(wp.x-mx,wp.y-my)<=R_){
                 ptr.dragKind='way';ptr.wayIdx=i;ptr.wayNew=true;ptr.wayOrig=clone(onlySel);return;
@@ -3916,7 +3916,7 @@ _on(canvas,_PD,e=>{
         }
       }else if(_selN()>1){
         const sel=_selL(Boolean);
-        if(sel.length>1&&!sel.every(s=>_lk(s))){
+        if(_ln(sel)>1&&!sel.every(s=>_lk(s))){
           const gb=_bA(sel);
           // ADR-0057: rotation knob first — it sits above the bbox, off the handles.
           const gr=gb&&_grpRotHandle(gb);
@@ -4004,7 +4004,7 @@ _on(canvas,_PM,e=>{
         }
       }else if(_selN()>1){
         const sel=_selL(Boolean);
-        if(sel.length>1&&!sel.every(s=>_lk(s))){
+        if(_ln(sel)>1&&!sel.every(s=>_lk(s))){
           const gb=_bA(sel);
           const gr=gb&&_grpRotHandle(gb);
           const tol=HANDLE_SIZE/_vp().zoom;
@@ -4097,7 +4097,7 @@ _on(canvas,_PM,e=>{
           if(ptr.wayNew){wa.splice(i,0,snapPt(wp));sh.way=wa;ptr.wayNew=false;}   // first move inserts the vertex
           else{
             const pts=_linePts(sh),mx=(pts[i].x+pts[i+1].x)/2,my=(pts[i].y+pts[i+1].y)/2;
-            if(_hp(wp.x-mx,wp.y-my)<6/_vp().zoom){wa.splice(i,1);if(wa.length)sh.way=wa;else delete sh.way}   // ADR-0088: RAW point keeps the clear gesture reachable
+            if(_hp(wp.x-mx,wp.y-my)<6/_vp().zoom){wa.splice(i,1);if(_ln(wa))sh.way=wa;else delete sh.way}   // ADR-0088: RAW point keeps the clear gesture reachable
             else{wa[i]=snapPt(wp);sh.way=wa}
           }
           _iv();
@@ -4221,7 +4221,7 @@ function _cancelPointerGesture(){
   }else if(ptr.dragKind==='move'&&ptr.dragStartShapes){
     for(const[id,orig] of ptr.dragStartShapes){const sh=byId(id);if(sh)_oa(sh,clone(orig));}
   }
-  if(_eraseBatch.length){for(const s of _eraseBatch)_sh().push(s);_eraseBatch=[];_sz();_iG();}   // ADR-0009
+  if(_ln(_eraseBatch)){for(const s of _eraseBatch)_sh().push(s);_eraseBatch=[];_sz();_iG();}   // ADR-0009
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;
   ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.rotOrig=null;ptr.dragStartShapes=null;
   ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;
@@ -4261,7 +4261,7 @@ _on(canvas,'dblclick',e=>{
   // dblclick on the solo-selected member reaches the label editor normally.
   if(hit.groupId){
     const grp=_grpOf(hit.groupId);
-    if(grp.length>1&&grp.every(id=>_hasS(id))){
+    if(_ln(grp)>1&&grp.every(id=>_hasS(id))){
       _ss([hit.id]);_aS();_iv();return;
     }
   }
@@ -4375,8 +4375,8 @@ const IMG_IMPORT_MAX_DIM=2048;
 function _imgImportFile(f,cb){
   const reader=new FileReader();
   reader.onload=()=>{
-    if(reader.result.length > 4*1024*1024){
-      _w(t('imgBig')+' ('+_rnd(reader.result.length/1024)+'KB)');return;
+    if(_ln(reader.result) > 4*1024*1024){
+      _w(t('imgBig')+' ('+_rnd(_ln(reader.result)/1024)+'KB)');return;
     }
     const img=new Image();
     img.onload=()=>{
@@ -4388,7 +4388,7 @@ function _imgImportFile(f,cb){
         _wh(cv,_max(1,_rnd(nw*r)),_max(1,_rnd(nh*r)));
         _g2(cv).drawImage(img,0,0,cv.width,cv.height);
         const wu=cv.toDataURL('image/webp',0.85);
-        if(/^data:image\/webp/.test(wu)&&wu.length<dataUrl.length)dataUrl=wu;
+        if(/^data:image\/webp/.test(wu)&&_ln(wu)<_ln(dataUrl))dataUrl=wu;
       }
       cb(dataUrl,nw,nh);
     };
@@ -4412,7 +4412,7 @@ _on(canvas,'drop',e=>{
   const sf=[...e.dataTransfer.files].find(f=>f.name.endsWith('.svg')||f.type==='image/svg+xml');
   if(sf){importSvgFile(sf,_s2({x:e.offsetX,y:e.offsetY}));return}
   const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith('image/'));
-  if(!files.length)return;
+  if(!_ln(files))return;
   const wp=_s2({x:e.offsetX,y:e.offsetY});
   // Cascade multiple dropped images by index. NOTE: the offset must be captured
   // per-iteration (forEach's `i`), not a shared `let ox` incremented in the loop —
@@ -4439,7 +4439,7 @@ _on(window,'paste',e=>{
   {const _svi=[...e.clipboardData.items].find(i=>i.type==='image/svg+xml');
    if(_svi){const f=_svi.getAsFile();if(f){_pd(e);f.text().then(s=>importSvgText(s));return}}}
   const items=[...e.clipboardData.items].filter(i=>i.type.startsWith('image/'));
-  if(!items.length){
+  if(!_ln(items)){
     // ADR-0042: raw SVG markup copied to the clipboard imports as vector shapes.
     const ti=[...e.clipboardData.items].find(i=>i.type==='text/plain');
     if(!ti)return;
@@ -4474,7 +4474,7 @@ _on(window,'paste',e=>{
       if(/	/.test(txt)&&txt.includes('\n')){
         _pd(e);
         const rows=txt.slice(0,PASTE_MAX_CHARS).split('\n').map(r=>r.split('\t'));
-        const C=_max(...rows.map(r=>r.length)),R=rows.length;
+        const C=_max(...rows.map(r=>_ln(r))),R=_ln(rows);
         const sw=160,sh=96,gx=16,gy=16;
         const r2=_cbr();
         const wp=_s2({x:r2.width/2,y:r2.height/2});
@@ -4484,16 +4484,16 @@ _on(window,'paste',e=>{
           const v=_St(cell||'').trim();
           if(v)built.push(Shape.make('sticky',{x:x0+ci*(sw+gx),y:y0+ri*(sh+gy),w:sw,h:sh,color:_YW,text:v.slice(0,2000)}));
         }));
-        if(built.length){Store.commit({op:'addMany',shapes:built});_ss(built.map(x=>x.id));_iv();_o(t('textPasted'))}
+        if(_ln(built)){Store.commit({op:'addMany',shapes:built});_ss(built.map(x=>x.id));_iv();_o(t('textPasted'))}
         return;
       }
       _pd(e);
       const fs=16,body=txt.slice(0,PASTE_MAX_CHARS);
       const lines=body.split('\n');
-      const w=_min(600,_max(60,_max(...lines.map(l=>l.length))*fs*0.55));
+      const w=_min(600,_max(60,_max(...lines.map(l=>_ln(l)))*fs*0.55));
       const r=_cbr();
       const wp=_s2({x:r.width/2,y:r.height/2});
-      const sh=Shape.make('text',{x:wp.x-w/2,y:wp.y-(lines.length*fs*1.4)/2,w,h:lines.length*fs*1.4,text:body,fontSize:fs});
+      const sh=Shape.make('text',{x:wp.x-w/2,y:wp.y-(_ln(lines)*fs*1.4)/2,w,h:_ln(lines)*fs*1.4,text:body,fontSize:fs});
       _cOp({op:'add',shape:sh});
       _scl();_sad(sh.id);
       _iv();_o(t('textPasted'));
@@ -4563,7 +4563,7 @@ _on(canvas,_PM,e=>{
   if(!prev)return;
   _pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
   const pts=[..._pointers.values()];
-  if(pts.length<2)return;
+  if(_ln(pts)<2)return;
   const curDist=_hp(pts[0].x-pts[1].x,pts[0].y-pts[1].y);
   if(!_pinchPrev){_pinchPrev=curDist;return}
   const ratio=curDist/_pinchPrev;
@@ -4639,7 +4639,7 @@ function fitToContent(){
   // ADR-0155: hidden shapes shouldn't drag the fit window to empty space —
   // fit what's VISIBLE; fall back to all only when everything is hidden.
   const vis=_sh().filter(s=>_sv(s));
-  const b=_bA(vis.length?vis:_sh());if(!b){zoomReset();return}
+  const b=_bA(_ln(vis)?vis:_sh());if(!b){zoomReset();return}
   const z=_fitViewport(b,40,2);
   UI.announce(_rnd(z*100)+'%');
 }
@@ -4650,7 +4650,7 @@ function fitToContent(){
 function _fitIfEmptyView(){
   if(!_nS())return;
   const v=_vp(),r=_cbr();
-  const _vis=_sh().filter(s=>_sv(s));const b=_bA(_vis.length?_vis:_sh());if(!b)return;   // ADR-0155
+  const _vis=_sh().filter(s=>_sv(s));const b=_bA(_ln(_vis)?_vis:_sh());if(!b)return;   // ADR-0155
   const vw=r.width/v.zoom,vh=r.height/v.zoom;
   if(b.x+b.w<v.x||b.y+b.h<v.y||b.x>v.x+vw||b.y>v.y+vh)fitToContent();
 }
@@ -4680,7 +4680,7 @@ function _grpMapGet(){
 }
 function _buildGrid(shapes){
   const cells=_mP(),big=[],idx=_mP();
-  for(let i=0;i<shapes.length;i++){
+  for(let i=0;i<_ln(shapes);i++){
     const s=shapes[i];idx.set(s,i);
     const b=_bb(s);if(!b){big.push(s);continue;}
     const x0=_fl(_min(b.x,b.x+b.w)/_GCELL),x1=_fl(_max(b.x,b.x+b.w)/_GCELL);
@@ -4697,7 +4697,7 @@ function _buildGrid(shapes){
 // Returns a z-ORDERED array so draw() iterates candidates directly — the full
 // _sh() scan is skipped entirely.
 function _gridRectCandidates(grid,r){
-  const cands=new Set(grid.big);
+  const cands=_sT(grid.big);
   const x0=_fl((r.x-_GCELL)/_GCELL),x1=_fl((r.x+r.w+_GCELL)/_GCELL);
   const y0=_fl((r.y-_GCELL)/_GCELL),y1=_fl((r.y+r.h+_GCELL)/_GCELL);
   for(let cx=x0;cx<=x1;cx++)for(let cy=y0;cy<=y1;cy++){
@@ -4708,7 +4708,7 @@ function _gridRectCandidates(grid,r){
   return out;
 }
 function _queryGrid(grid,pt){
-  const cx=_fl(pt.x/_GCELL),cy=_fl(pt.y/_GCELL),cands=new Set(grid.big);
+  const cx=_fl(pt.x/_GCELL),cy=_fl(pt.y/_GCELL),cands=_sT(grid.big);
   for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){
     const bk=grid.cells.get((cx+dx)+'|'+(cy+dy));if(bk)for(const s of bk)cands.add(s);
   }
@@ -4750,9 +4750,9 @@ function pickOrMarquee(wp,e){
     // move gesture drags them (Figma/Excalidraw/draw.io parity). Locked hits and
     // locked members are excluded; frames bring their children.
     if(e.altKey&&!hit.locked){
-      const dupSet=alreadySel?new Set(_sl()):new Set(toSelect);
+      const dupSet=alreadySel?_sT(_sl()):_sT(toSelect);
       const srcShapes=[...withFrameChildren(dupSet)].map(byId).filter(s=>s&&!_lk(s));
-      if(srcShapes.length){
+      if(_ln(srcShapes)){
         const added=_placeCopies(srcShapes,0,0);   // addMany commit + selection→copies
         ptr.dragKind='move';
         ptr.dragStartShapes=new Map(added.map(id=>{const s=byId(id);return[id,clone(s)]}));
@@ -4813,10 +4813,10 @@ function _snapIndex(kind,key,exclFn){
 }
 // Edges within tol of v, via binary search on the sorted edge list.
 function _snapNear(arr,v,tol){
-  let lo=0,hi=arr.length;
+  let lo=0,hi=_ln(arr);
   while(lo<hi){const m=(lo+hi)>>1;if(arr[m].v<v-tol)lo=m+1;else hi=m}
   const out=[];
-  for(let i=lo;i<arr.length&&arr[i].v<=v+tol;i++)out.push(arr[i]);
+  for(let i=lo;i<_ln(arr)&&arr[i].v<=v+tol;i++)out.push(arr[i]);
   return out;
 }
 function _snapBoxIdx(mov,idx,tol){
@@ -4848,7 +4848,7 @@ function _eqGapSnap(mov,excl,tol){
     }
     row.sort((a,b)=>a[L]-b[L]);
     let best=null;
-    for(let i=1;i<row.length;i++){
+    for(let i=1;i<_ln(row);i++){
       const a=row[i-1],b=row[i],g=b[L]-(a[L]+a[D]);
       if(g<=0)continue;
       for(const cand of[a[L]-g-mov[D], b[L]+b[D]+g, a[L]+a[D]+g, b[L]-g-mov[D]]){
@@ -4884,7 +4884,7 @@ function objectSnap(dx,dy){
 // children. Shared by pointer-drag (pickOrMarquee) and keyboard nudge (nudgeSelection)
 // so both move paths agree. Pure read of _sh(); returns a fresh Set.
 function withFrameChildren(ids){
-  const out=new Set(ids);
+  const out=_sT(ids);
   for(const selId of ids){
     const sel=byId(selId);
     if(sel&&sel.type==='frame'){
@@ -4903,7 +4903,7 @@ function withFrameChildren(ids){
 // which filter !_lk(s)). Records one reversible `move` op for the shapes that moved.
 function nudgeSelection(dx,dy){
   const ids=[...withFrameChildren(_sl())].filter(id=>!byId(id)?.locked);
-  if(!ids.length)return;
+  if(!_ln(ids))return;
   for(const id of ids){const sh=byId(id);if(sh)Shape.translate(sh,dx,dy)}
   _rcOp({op:'move',ids,dx,dy});
   if(_dd()&&ids.every(id=>state.dupIds.has(id))){_dd().x+=dx;_dd().y+=dy}     // ADR-0080
@@ -4920,7 +4920,7 @@ function moveDelta(wp,shift,alt){
   if(shift){                            // ADR-0066: Shift+drag constrains to the dominant axis
     if(_abs(dx)>=_abs(dy))dy=0;else dx=0;
     state.guides=null;
-  }else if(!alt&&!state.snap){const a=objectSnap(dx,dy);dx+=a.dx;dy+=a.dy;state.guides=a.guides.length?a.guides:null;}
+  }else if(!alt&&!state.snap){const a=objectSnap(dx,dy);dx+=a.dx;dy+=a.dy;state.guides=_ln(a.guides)?a.guides:null;}
   else state.guides=null;
   const bb=ptr.dragStartShapes&&_bA([...ptr.dragStartShapes.values()]);
   state.readout=bb&&(dx||dy)?{x:bb.x+dx+bb.w/2,y:bb.y+dy+bb.h,label:`${dx>=0?'+':''}${_rnd(dx)}, ${dy>=0?'+':''}${_rnd(dy)}`}:null;
@@ -4951,7 +4951,7 @@ function endSelect(wp,shift,alt){
     const{dx,dy}=moveDelta(wp,shift,alt);
     state.guides=null;
     const mids=[...ptr.dragStartShapes.keys()].filter(id=>!byId(id)?.locked);
-    if(_hp(dx,dy)>0.5&&mids.length){
+    if(_hp(dx,dy)>0.5&&_ln(mids)){
       _rcOp({op:'move',ids:mids,dx,dy});
       if(_dd()&&mids.every(id=>state.dupIds.has(id))){_dd().x+=dx;_dd().y+=dy}   // ADR-0080
     }
@@ -4989,7 +4989,7 @@ function endSelect(wp,shift,alt){
     }
   }else if(ptr.dragKind==='lasso'&&_la()){                    // ADR-0158
     const pts=_la();
-    if(pts.length>2){
+    if(_ln(pts)>2){
       if(!shift)_scl();                          // ⇧lasso adds, plain replaces (marquee parity)
       for(const s of _sh()){
         if(_lk(s)||_hd(s))continue;
@@ -5017,7 +5017,7 @@ function imeShouldCommit(e){return !(e&&e.isComposing);}
 // path. Falls back to [e] where unsupported / empty. (Qiita: sen-ltd, MDN)
 function coalescedSamples(e){
   const cs=e&&e.getCoalescedEvents&&e.getCoalescedEvents();
-  return cs&&cs.length?cs:[e];
+  return cs&&_ln(cs)?cs:[e];
 }
 // ADR-0023: read the last predicted pointer position for the render-only ink
 // tail. Predicted events exist on the pointermove event itself (not on the
@@ -5025,7 +5025,7 @@ function coalescedSamples(e){
 // pt or null; unsupported/empty → null (pure feature-detect, unit-testable).
 function _predTail(e){
   const ps=e&&e.getPredictedEvents&&e.getPredictedEvents();
-  const t=ps&&ps.length?ps[ps.length-1]:null;
+  const t=ps&&_ln(ps)?ps[_ln(ps)-1]:null;
   return t?{x:t.offsetX,y:t.offsetY}:null;
 }
 let _penPred=null;   // world pt of the last predicted sample — render-only
@@ -5043,8 +5043,8 @@ function contPen(wp,e){
   // ADR-0200: Shift held = straight-line mode (Excalidraw). The stroke
   // collapses to [start, current] while held; releasing resumes freehand
   // from that point. Full invalidate — the shrink breaks the damage corridor.
-  if(e.shiftKey&&pts.length){pts.length=1;pts.push([wp.x,wp.y,_df().hl?0.5:_penPr(e)]);_iv();return}
-  const last=pts[pts.length-1];
+  if(e.shiftKey&&_ln(pts)){pts.length=1;pts.push([wp.x,wp.y,_df().hl?0.5:_penPr(e)]);_iv();return}
+  const last=pts[_ln(pts)-1];
   // decimate by min distance for smoothness
   const d=_hp(wp.x-last[0],wp.y-last[1]);
   if(d>1/_vp().zoom)pts.push([wp.x,wp.y,_df().hl?0.5:_penPr(e)]);
@@ -5056,10 +5056,10 @@ function contPen(wp,e){
 // O(n log n) array copies on long strokes; this walks [lo,hi) ranges on a stack
 // and emits kept points in order.
 function _rdp(pts,eps){
-  if(pts.length<=2)return pts;
-  const keep=new Uint8Array(pts.length);keep[0]=keep[pts.length-1]=1;
-  const stack=[[0,pts.length-1]];
-  while(stack.length){
+  if(_ln(pts)<=2)return pts;
+  const keep=new Uint8Array(_ln(pts));keep[0]=keep[_ln(pts)-1]=1;
+  const stack=[[0,_ln(pts)-1]];
+  while(_ln(stack)){
     const [lo,hi]=stack.pop();
     if(hi-lo<2)continue;
     const ax=pts[lo][0],ay=pts[lo][1],bx=pts[hi][0],by=pts[hi][1];
@@ -5071,7 +5071,7 @@ function _rdp(pts,eps){
     }
     if(mx>eps){keep[idx]=1;stack.push([lo,idx],[idx,hi]);}
   }
-  const out=[];for(let i=0;i<pts.length;i++)if(keep[i])out.push(pts[i]);
+  const out=[];for(let i=0;i<_ln(pts);i++)if(keep[i])out.push(pts[i]);
   return out;
 }
 // ADR-0005: geometric-heuristic shape recognition for the "beautify" feature (Alt+B).
@@ -5081,16 +5081,16 @@ function _rdp(pts,eps){
 // bar), else returns null. Triangle/other shapes are intentionally unsupported: Board has no
 // drawing tool to convert them into.
 function recognizeStroke(pts){
-  if(!_iA(pts)||pts.length<3)return null;
+  if(!_iA(pts)||_ln(pts)<3)return null;
   let mnx=Infinity,mny=Infinity,mxx=-Infinity,mxy=-Infinity,pathLen=0;
-  for(let i=0;i<pts.length;i++){
+  for(let i=0;i<_ln(pts);i++){
     const x=pts[i][0],y=pts[i][1];
     if(x<mnx)mnx=x;if(x>mxx)mxx=x;if(y<mny)mny=y;if(y>mxy)mxy=y;
     if(i>0)pathLen+=_hp(x-pts[i-1][0],y-pts[i-1][1]);
   }
   const bw=mxx-mnx,bh=mxy-mny,diag=_hp(bw,bh);
   if(diag<8)return null;                         // too small to classify meaningfully
-  const fx=pts[0][0],fy=pts[0][1],lx=pts[pts.length-1][0],ly=pts[pts.length-1][1];
+  const fx=pts[0][0],fy=pts[0][1],lx=pts[_ln(pts)-1][0],ly=pts[_ln(pts)-1][1];
   const closed=_hp(lx-fx,ly-fy)<=_max(10,diag*0.15);
 
   // ---- line: low perpendicular deviation from the first→last chord ----
@@ -5121,12 +5121,12 @@ function recognizeStroke(pts){
 
   // ---- ellipse: radius from centroid, normalized by bbox half-extents, has low variance ----
   {
-    let cx=0,cy=0;for(const p of pts){cx+=p[0];cy+=p[1]}cx/=pts.length;cy/=pts.length;
+    let cx=0,cy=0;for(const p of pts){cx+=p[0];cy+=p[1]}cx/=_ln(pts);cy/=_ln(pts);
     const rx=bw/2||1,ry=bh/2||1;
     const rads=pts.map(p=>_hp((p[0]-cx)/rx,(p[1]-cy)/ry));
-    const mean=rads.reduce((a,b)=>a+b,0)/rads.length;
+    const mean=rads.reduce((a,b)=>a+b,0)/_ln(rads);
     if(mean>0){
-      const variance=rads.reduce((a,r)=>a+(r-mean)*(r-mean),0)/rads.length;
+      const variance=rads.reduce((a,r)=>a+(r-mean)*(r-mean),0)/_ln(rads);
       if(_sqr(variance)/mean<=0.22)return{type:'ellipse',x:mnx,y:mny,w:bw,h:bh};
     }
   }
@@ -5136,11 +5136,11 @@ function endPen(){
   _penPred=null;
   if(!_df())return;
   const d=_df();state.draft=null;
-  if(d.pts.length>=1){
+  if(_ln(d.pts)>=1){
     // ADR-0034: eps scales with the capture resolution (contPen keeps ~1/zoom
     // spacing), so zoomed-in strokes keep the detail they were drawn with —
     // 0.5 world units at zoom 1, finer when zoomed in, coarser when zoomed out.
-    if(d.pts.length>3)d.pts=_rdp(d.pts,0.5/_vp().zoom);
+    if(_ln(d.pts)>3)d.pts=_rdp(d.pts,0.5/_vp().zoom);
     Store.commit({op:'add',shape:d});
   }
 }
@@ -5150,7 +5150,7 @@ function beginRectLike(wp){
   const sp=snapPt(wp);
   const extras={x:sp.x,y:sp.y,w:0,h:0};
   if(_tl()==='sticky'){
-    extras.color=STICKY_COLORS[_fl(_rN()*STICKY_COLORS.length)];
+    extras.color=STICKY_COLORS[_fl(_rN()*_ln(STICKY_COLORS))];
     extras.text='';extras.fontSize=_st().fontSize||14;          // ADR-0180
   }else if(_tl()==='frame'){
     const n=_sh().filter(s=>s.type==='frame').length+1;
@@ -5297,7 +5297,7 @@ function createShapeKbd(){
     s=Shape.make(tool,{x1:cx-80,y1:cy,x2:cx+80,y2:cy});
   }else if(tool==='sticky'){
     s=Shape.make('sticky',{x:cx-80,y:cy-80,w:160,h:160,
-      color:STICKY_COLORS[_fl(_rN()*STICKY_COLORS.length)],text:'',fontSize:_st().fontSize||14});   // ADR-0180
+      color:STICKY_COLORS[_fl(_rN()*_ln(STICKY_COLORS))],text:'',fontSize:_st().fontSize||14});   // ADR-0180
   }else if(tool==='frame'){
     const n=_sh().filter(x=>x.type==='frame').length+1;
     s=Shape.make('frame',{x:cx-400,y:cy-250,w:800,h:500,
@@ -5326,11 +5326,11 @@ function resizeAfterTextEdit(s,text,c){
   if(s.type==='sticky'){
     const pad=8;
     const wl=wrapText(s.text||'',_abs(s.w)-pad*2,t=>c.measureText(t).width);
-    s.h=_max(fs*(s.lineH||1.3)+pad*2,wl.length*fs*(s.lineH||1.3)+pad*2);
+    s.h=_max(fs*(s.lineH||1.3)+pad*2,_ln(wl)*fs*(s.lineH||1.3)+pad*2);
   }else{
     const lines=(s.text||'').split('\n');
     let mw=0;for(const l of lines)mw=_max(mw,c.measureText(l).width);
-    s.w=_max(20,mw);s.h=_max(fs*(s.lineH||1.25),lines.length*fs*(s.lineH||1.25));
+    s.w=_max(20,mw);s.h=_max(fs*(s.lineH||1.25),_ln(lines)*fs*(s.lineH||1.25));
   }
 }
 // New text/sticky shapes are committed — and broadcast — with empty text up front,
@@ -5348,8 +5348,8 @@ function _syncTextFinalize(s,before,deleted){
     // Rare race: a peer's connector bound to this shape while it was still being
     // typed (Store.undo() already removed it locally without touching bindings).
     // Fix any local dangling binding AND include connClears so remote peers do too.
-    const cc=computeConnClears(new Set([s.id]));
-    if(cc.length){op.connClears=cc;for(const p of cc){const sh=byId(p.id);if(sh)_oa(sh,p.after);}}
+    const cc=computeConnClears(_sT([s.id]));
+    if(_ln(cc)){op.connClears=cc;for(const p of cc){const sh=byId(p.id);if(sh)_oa(sh,p.after);}}
   }
   _fck(op);
   if(!deleted)Store._stampWrites(op);
@@ -5402,9 +5402,9 @@ function openTextEditor(s,isNew){
       // Existing text: emptied → delete original (single undo); else changed → upd
       if(!newText.trim()){
         const origSel=_selIds();
-        const connClears=computeConnClears(new Set([orig.id]));
+        const connClears=computeConnClears(_sT([orig.id]));
         const delOp={op:'del',shapes:[orig]};
-        if(connClears.length)delOp.connClears=connClears;
+        if(_ln(connClears))delOp.connClears=connClears;
         Store.commit(delOp);
         _keepSel(origSel);
       }else if(newText!==origText){
@@ -5480,16 +5480,16 @@ function eraseAt(wp){
   }
 }
 function flushErase(){
-  if(!_eraseBatch.length)return;
+  if(!_ln(_eraseBatch))return;
   // Restore shapes so Store.commit's _apply can find & remove them
   for(const s of _eraseBatch)_sh().push(s);
   _sz();_iG();   // ADR-0009: connEnds below calls byId, must see the restored shapes
   // Resolve connector bindings now that erased shapes are back in state (connEnds works)
-  const delIds=new Set(_eraseBatch.map(s=>s.id));
+  const delIds=_sT(_eraseBatch.map(s=>s.id));
   const connClears=computeConnClears(delIds);
   const origSel=_selIds();
   const op={op:'del',shapes:clone(_eraseBatch)};
-  if(connClears.length)op.connClears=connClears;
+  if(_ln(connClears))op.connClears=connClears;
   Store.commit(op);
   _keepSel(origSel);
   _eraseBatch=[];
@@ -5507,10 +5507,10 @@ function _focusables(root){
     .filter(el=>!el.disabled&&!el.hidden);
 }
 function _trapStep(items,active,back){
-  if(!items.length)return null;
-  if(!items.includes(active))return back?items[items.length-1]:items[0];   // focus entered from outside → pull in
-  if(!back&&active===items[items.length-1])return items[0];                 // wrap forward off the last
-  if(back&&active===items[0])return items[items.length-1];                  // wrap backward off the first
+  if(!_ln(items))return null;
+  if(!items.includes(active))return back?items[_ln(items)-1]:items[0];   // focus entered from outside → pull in
+  if(!back&&active===items[_ln(items)-1])return items[0];                 // wrap forward off the last
+  if(back&&active===items[0])return items[_ln(items)-1];                  // wrap backward off the first
   return null;                                                              // middle → let native Tab move
 }
 // The currently-open modal dialog (help/share), or null. While one is open, global canvas
@@ -5575,13 +5575,13 @@ _on(window,_KD,e=>{
     // Cycle selection (z-order) for keyboard/SR users; wraps, recentres, announces.
     _pd(e);
     const ids=_sh().filter(s=>!_lk(s)&&_sv(s)).map(s=>s.id);   // ADR-0163: hidden shapes are unreachable by pointer — Tab parity
-    if(!ids.length)return;
+    if(!_ln(ids))return;
     const id=cycleSel(ids,_selIds()[0],e.shiftKey?-1:1);
     _ss([id]);
     const sh=byId(id);
     if(sh){
       if(!inView(sh,visibleWorldRect()))centerOn(sh);
-      _tst(`${describeShape(sh)} (${ids.indexOf(id)+1}/${ids.length})`);
+      _tst(`${describeShape(sh)} (${ids.indexOf(id)+1}/${_ln(ids)})`);
     }
     _iv();
   }
@@ -5596,7 +5596,7 @@ _on(window,_KD,e=>{
     // Alt+arrow = keyboard resize (a11y: pointer-free). L/R = width, U/D = height,
     // top-left anchored; ⇧ = ×10 step. Box shapes only. Single reversible `resize` op.
     const sel=_selL(s=>s&&!_lk(s)&&s.w!=null);
-    if(sel.length){
+    if(_ln(sel)){
       _pd(e);
       const step=e.shiftKey?10:1;
       const dw=k===_AR2?step:k===_AL2?-step:0;
@@ -5608,7 +5608,7 @@ _on(window,_KD,e=>{
         after.push({id:sh.id,w:sh.w,h:sh.h});
       }
       _rcOp({op:'resize',before,after});
-      if(sel.length===1)_tst(describeShape(sel[0]));
+      if(_ln(sel)===1)_tst(describeShape(sel[0]));
       _iv();
     }
   }
@@ -5701,9 +5701,9 @@ function pickTool(tool,temporary){
 // ====================== CLIPBOARD-LIKE ops ======================
 function doCopy(){
   const sel=[...withFrameChildren(_sl())].map(byId).filter(s=>s&&!_lk(s));
-  if(!sel.length)return;
+  if(!_ln(sel))return;
   state.clipboard={shapes:clone(sel)};
-  _tst(t('copied')+' '+sel.length);
+  _tst(t('copied')+' '+_ln(sel));
 }
 // v1.6.97: paste cascade counter — resets when a new clipboard is captured so that
 // Ctrl+V × N cascades from viewport center, not from the original copy position.
@@ -5725,7 +5725,7 @@ function doPaste(){
   const origSel=_selIds();
   const added=_placeCopies(_cl().shapes,vCx-srcCx+co,vCy-srcCy+co);
   _keepSel(origSel);
-  _tst(t(_PA)+' '+added.length);
+  _tst(t(_PA)+' '+_ln(added));
 }
 // ADR-0115: paste in place — ⌘⇧V restores shapes at their original coordinates
 // (Figma's Paste-in-place). No offset at all: dx=dy=0 keeps source coords.
@@ -5735,7 +5735,7 @@ function doPasteInPlace(){
   const origSel=_selIds();
   const added=_placeCopies(_cl().shapes,0,0);
   _keepSel(origSel);
-  _tst(t(_PA)+' '+added.length);
+  _tst(t(_PA)+' '+_ln(added));
 }
 // ADR-0103: paste centred at the context-menu point (right-click «paste here»).
 // No cascade — the user picked the spot, so _pasteCount is left alone.
@@ -5746,7 +5746,7 @@ function doPasteAt(wx,wy){
   const origSel=_selIds();
   const added=_placeCopies(_cl().shapes,wx-srcCx,wy-srcCy);
   _keepSel(origSel);
-  _tst(t(_PA)+' '+added.length);
+  _tst(t(_PA)+' '+_ln(added));
 }
 // Clone a set of shapes onto the board with fresh ids/group ids, offset by (dx,dy),
 // and select the copies. Shared by paste (clipboard source) and duplicate (selection
@@ -5779,9 +5779,9 @@ function _placeCopies(srcShapes,dx,dy){
     built.push(sh);
     added.push(sh.id);
   }
-  if(built.length)Store.commit({op:'addMany',shapes:built});
+  if(_ln(built))Store.commit({op:'addMany',shapes:built});
   _ss(added);
-  state.dupIds=new Set(added);state.dupDelta={x:dx,y:dy};     // ADR-0080: reseed chain
+  state.dupIds=_sT(added);state.dupDelta={x:dx,y:dy};     // ADR-0080: reseed chain
   _iv();
   return added;
 }
@@ -5789,29 +5789,29 @@ function doDuplicate(){
   if(!_selN())return;
   const origSel=_selIds();
   const sel=[...withFrameChildren(_sl())].map(byId).filter(s=>s&&!_lk(s));
-  if(!sel.length)return;
+  if(!_ln(sel))return;
   // ADR-0080: whole selection is the last duplicate chain → repeat its delta.
   const smart=state.dupIds.size&&_dd()&&sel.every(s=>state.dupIds.has(s.id));
   const added=smart?_placeCopies(sel,_dd().x,_dd().y):_placeCopies(sel);   // independent of _cl()
   _keepSel(origSel);
-  _tst(t(_PA)+' '+added.length);
+  _tst(t(_PA)+' '+_ln(added));
 }
 function doDelete(){
   const sel=_selL(s=>s&&!_lk(s));
-  if(!sel.length){if(_selAny())_w(t('lockedNoop'));return}   // ADR-0396
+  if(!_ln(sel)){if(_selAny())_w(t('lockedNoop'));return}   // ADR-0396
   const origSel=_selIds();
   // Frame-aware: shapes fully inside a selected frame are deleted with the frame (parity with doDuplicate)
   const frameOf=_frameOf(sel);
   _xFS(sel,frameOf)
-  const delIds=new Set(sel.map(s=>s.id));
+  const delIds=_sT(sel.map(s=>s.id));
   // Resolve connector bindings BEFORE splicing so connEnds can see the live shapes.
   const connClears=computeConnClears(delIds);
   const op={op:'del',shapes:clone(sel)};
-  if(connClears.length)op.connClears=connClears;
+  if(_ln(connClears))op.connClears=connClears;
   Store.commit(op);
   _keepSel(origSel);
   _scl();
-  _tst(t('deleted')+' '+sel.length);
+  _tst(t('deleted')+' '+_ln(sel));
 }
 // z-order ops (ADR-0001 Step 2): move only the selected shapes' fractional keys
 // and record a minimal `{op:'zorder',changes:[{id,before,after}]}` — only the
@@ -5819,7 +5819,7 @@ function doDelete(){
 // guarantees every shape has a key (migrates legacy/raw shapes) and a sorted array.
 function _zCommit(changes){
   changes=changes.filter(c=>c.before!==c.after);   // keep only real key moves
-  if(!changes.length){_iv();return}
+  if(!_ln(changes)){_iv();return}
   _sz();
   _rcOp({op:'zorder',changes});
   _ivp();
@@ -5828,14 +5828,14 @@ function _zCommit(changes){
 // take part in a z-order op (parity with doDelete/doGroup excluding locked shapes).
 function unlockedSelectionIds(){return _selIds().filter(id=>!byId(id)?.locked);}
 function doBringFront(){
-  const ids=_usI();if(!ids.length)return;
+  const ids=_usI();if(!_ln(ids))return;
   _sz();
-  const sel=new Set(ids), selShapes=_sh().filter(s=>sel.has(s.id));
-  if(!selShapes.length)return;
-  const n=_nS(), k=selShapes.length;
+  const sel=_sT(ids), selShapes=_sh().filter(s=>sel.has(s.id));
+  if(!_ln(selShapes))return;
+  const n=_nS(), k=_ln(selShapes);
   if(_sh().slice(n-k).every(s=>sel.has(s.id))){_iv();return}  // already at front: no churn
   const others=_sh().filter(s=>!sel.has(s.id));
-  let p=others.length?others[others.length-1].frac:null;
+  let p=_ln(others)?others[_ln(others)-1].frac:null;
   const changes=[];
   for(const s of selShapes){   // current (sorted) order
     const before=s.frac;p=keyBetween(p,null);s.frac=p;changes.push({id:s.id,before,after:p});
@@ -5843,13 +5843,13 @@ function doBringFront(){
   _zCommit(changes);
 }
 function doSendBack(){
-  const ids=_usI();if(!ids.length)return;
+  const ids=_usI();if(!_ln(ids))return;
   _sz();
-  const sel=new Set(ids), selShapes=_sh().filter(s=>sel.has(s.id));
-  if(!selShapes.length)return;
-  if(_sh().slice(0,selShapes.length).every(s=>sel.has(s.id))){_iv();return}  // already at back
+  const sel=_sT(ids), selShapes=_sh().filter(s=>sel.has(s.id));
+  if(!_ln(selShapes))return;
+  if(_sh().slice(0,_ln(selShapes)).every(s=>sel.has(s.id))){_iv();return}  // already at back
   const others=_sh().filter(s=>!sel.has(s.id));
-  const hi=others.length?others[0].frac:null;
+  const hi=_ln(others)?others[0].frac:null;
   const changes=[];let prev=null;
   for(const s of selShapes){
     const before=s.frac, k=keyBetween(prev,hi);s.frac=k;prev=k;changes.push({id:s.id,before,after:k});
@@ -5857,11 +5857,11 @@ function doSendBack(){
   _zCommit(changes);
 }
 function doBringForward(){
-  const ids=_usI();if(!ids.length)return;
+  const ids=_usI();if(!_ln(ids))return;
   _sz();
-  const sel=new Set(ids), arr=_sh(), changes=[];
+  const sel=_sT(ids), arr=_sh(), changes=[];
   // move up = toward higher frac; process top→down so selected don't collide.
-  for(let i=arr.length-2;i>=0;i--){
+  for(let i=_ln(arr)-2;i>=0;i--){
     const s=arr[i];if(!sel.has(s.id))continue;
     const above=arr[i+1];if(sel.has(above.id))continue;       // already at the top run
     const upper=arr[i+2]?arr[i+2].frac:null, before=s.frac;
@@ -5871,10 +5871,10 @@ function doBringForward(){
   _zCommit(changes);
 }
 function doSendBackward(){
-  const ids=_usI();if(!ids.length)return;
+  const ids=_usI();if(!_ln(ids))return;
   _sz();
-  const sel=new Set(ids), arr=_sh(), changes=[];
-  for(let i=1;i<arr.length;i++){
+  const sel=_sT(ids), arr=_sh(), changes=[];
+  for(let i=1;i<_ln(arr);i++){
     const s=arr[i];if(!sel.has(s.id))continue;
     const below=arr[i-1];if(sel.has(below.id))continue;
     const lower=arr[i-2]?arr[i-2].frac:null, before=s.frac;
@@ -5888,12 +5888,12 @@ function doSendBackward(){
 // `fill`. Locked shapes are included — ops already skip them.
 function selectSamePaint(){
   const sel=_selL(Boolean);
-  if(sel.length!==1)return;
+  if(_ln(sel)!==1)return;
   const s0=sel[0],key=s0.type==='sticky'?s0.color:s0.fill;
   const same=_sh().filter(s=>_sv(s)&&(s.type==='sticky'?s.color:_fi(s))===key);
-  if(same.length<2)return;
+  if(_ln(same)<2)return;
   _ss(same.map(s=>s.id));
-  _aS();_o(same.length+' '+t(_SM));
+  _aS();_o(_ln(same)+' '+t(_SM));
   _iv();
 }
 // ADR-0137: hide/show shapes (Figma ⌘⇧H / eye). `_hd(s)` removes the
@@ -5907,7 +5907,7 @@ function hideSelection(){
     _pp(before,after,id,'visible',s.visible??null,0);
     s.visible=0;_sdl(id);
   })
-  if(before.length){_styleOp(before,after);_iv();_o(before.length+' '+t('hiddenCount'))}
+  if(_ln(before)){_styleOp(before,after);_iv();_o(_ln(before)+' '+t('hiddenCount'))}
 }
 // ADR-0140: connect two selected shapes (draw.io "Connect" / Miro
 // quick-link). Makes an arrow bound at BOTH ends (s.a/s.b → connEnds
@@ -5915,7 +5915,7 @@ function hideSelection(){
 function connectSelection(){
   const sel=_sb()
     .filter(s=>s&&!_lk(s)&&_sv(s)&&s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen');
-  if(sel.length!==2){_w(t(_ST));return}
+  if(_ln(sel)!==2){_w(t(_ST));return}
   const a=sel[0],b=sel[1],ab=_bb(a),bb=_bb(b);
   const s=Shape.make('arrow',{
     x1:ab.x+ab.w/2,y1:ab.y+ab.h/2,x2:bb.x+bb.w/2,y2:bb.y+bb.h/2,
@@ -5939,17 +5939,17 @@ function showAllShapes(){
     before.push({id:s.id,visible:0});after.push({id:s.id,visible:null});
     delete s.visible;
   }
-  if(before.length){_styleOp(before,after);_iv();_o(t('shownAll'))}
+  if(_ln(before)){_styleOp(before,after);_iv();_o(t('shownAll'))}
 }
 // ADR-0120: select every shape of the same type as the single selection —
 // sibling of selectSamePaint (e.g. all connectors, all stickies).
 function selectSameType(){
   const sel=_selL(Boolean);
-  if(sel.length!==1)return;
+  if(_ln(sel)!==1)return;
   const same=_sh().filter(s=>_sv(s)&&s.type===sel[0].type);
-  if(same.length<2)return;
+  if(_ln(same)<2)return;
   _ss(same.map(s=>s.id));
-  _aS();_o(same.length+' '+t(_SM));
+  _aS();_o(_ln(same)+' '+t(_SM));
   _iv();
 }
 // ADR-0102: wrap the selection in a frame (Figma ⌘⌥G). Spatial membership is
@@ -5957,7 +5957,7 @@ function selectSameType(){
 // just below the lowest member so contents stay on top.
 function wrapInFrame(){
   const sel=_selL(s=>s&&!_lk(s));
-  if(!sel.length){_w(t(_ST));return}
+  if(!_ln(sel)){_w(t(_ST));return}
   const b=_bA(sel);if(!b)return;
   const PAD=16;
   const f=Shape.make('frame',{x:b.x-PAD,y:b.y-PAD,w:b.w+PAD*2,h:b.h+PAD*2,label:'Frame'});
@@ -5968,7 +5968,7 @@ function wrapInFrame(){
 }
 function doGroup(){
   const ids=_usI();
-  if(ids.length<2){_w(t(_ST));return}
+  if(_ln(ids)<2){_w(t(_ST));return}
   const gid=uid();
   const origSel=_selIds();
   const before=ids.map(id=>({id,groupId:byId(id)?.groupId}));
@@ -6007,7 +6007,7 @@ function doClearAll(){
 // ---- alignment (multiple selection) ----
 function doAlign(dir){
   const sel=_selL(s=>s&&!_lk(s));
-  if(sel.length<2)return;
+  if(_ln(sel)<2)return;
   // Frame-aware: shapes fully inside a selected frame move with the frame as one unit
   // (parity with drag/nudge; mirrors withFrameChildren logic used in doMove/nudgeSelection)
   const frameOf=_frameOf(sel); // childId → frameId (unit key for unitMap)
@@ -6017,7 +6017,7 @@ function doAlign(dir){
   for(const s of sel){const k=frameOf.get(s.id)||_gi(s)||s.id;if(!unitMap.has(k))unitMap.set(k,{shapes:[],b:null});unitMap.get(k).shapes.push(s);}
   for(const u of unitMap.values())u.b=_bA(u.shapes);
   const units=[...unitMap.values()].filter(u=>u.b);
-  if(units.length<2)return;
+  if(_ln(units)<2)return;
   // Capture before state (full shape clone)
   const beforeSnap=sel.map(clone);
   const mv=(u,dx,dy)=>{for(const s of u.shapes)Shape.translate(s,dx,dy)};
@@ -6031,26 +6031,26 @@ function doAlign(dir){
     case 'hspace':{
       units.sort((a,b)=>a.b.x-b.b.x);
       const totalW=units.reduce((s,{b})=>s+b.w,0);
-      const gap=(_max(...units.map(({b})=>b.x+b.w))-_min(...units.map(({b})=>b.x))-totalW)/(units.length-1);
+      const gap=(_max(...units.map(({b})=>b.x+b.w))-_min(...units.map(({b})=>b.x))-totalW)/(_ln(units)-1);
       let x0=units[0].b.x;for(const u of units){mv(u,x0-u.b.x,0);x0+=u.b.w+gap}break}
     case 'vspace':{
       units.sort((a,b)=>a.b.y-b.b.y);
       const totalH=units.reduce((s,{b})=>s+b.h,0);
-      const gap2=(_max(...units.map(({b})=>b.y+b.h))-_min(...units.map(({b})=>b.y))-totalH)/(units.length-1);
+      const gap2=(_max(...units.map(({b})=>b.y+b.h))-_min(...units.map(({b})=>b.y))-totalH)/(_ln(units)-1);
       let y0=units[0].b.y;for(const u of units){mv(u,0,y0-u.b.y);y0+=u.b.h+gap2}break}
     // ADR-0107: reflow units into a compact grid (Figma «Tidy up»).
     // Reading order (y then x), cols=ceil(sqrt(n)); each row's pitch is that
     // row's max height + 32 gap, each column's pitch is the widest member.
     case 'tidy':{
       units.sort((a,b)=>(a.b.y-b.b.y)||(a.b.x-b.b.x));
-      const GAP=32,cols=_ceil(_sqr(units.length));
-      const rows=[];for(let i=0;i<units.length;i+=cols)rows.push(units.slice(i,i+cols));
+      const GAP=32,cols=_ceil(_sqr(_ln(units)));
+      const rows=[];for(let i=0;i<_ln(units);i+=cols)rows.push(units.slice(i,i+cols));
       const colW=[],rowH=[];
-      for(const r of rows)for(let j=0;j<r.length;j++){colW[j]=_max(colW[j]||0,r[j].b.w)}
+      for(const r of rows)for(let j=0;j<_ln(r);j++){colW[j]=_max(colW[j]||0,r[j].b.w)}
       for(const r of rows)rowH.push(_max(...r.map(u=>u.b.h)));
       const x0=_min(...units.map(u=>u.b.x)),y0=_min(...units.map(u=>u.b.y));
       let yy=y0;
-      for(let ri=0;ri<rows.length;ri++){
+      for(let ri=0;ri<_ln(rows);ri++){
         let xx=x0;
         for(const u of rows[ri]){mv(u,xx-u.b.x,yy-u.b.y);xx+=colW[rows[ri].indexOf(u)]+GAP}
         yy+=rowH[ri]+GAP;
@@ -6058,7 +6058,7 @@ function doAlign(dir){
       break}
     // ADR-0108: two units swap positions (centre-aligned, sizes unchanged).
     case 'swap':{
-      if(units.length!==2)break;
+      if(_ln(units)!==2)break;
       const [a,b]=units;
       const ddx=(b.b.x+b.b.w/2)-(a.b.x+a.b.w/2),ddy=(b.b.y+b.b.h/2)-(a.b.y+a.b.h/2);
       mv(a,ddx,ddy);mv(b,-ddx,-ddy);
@@ -6074,7 +6074,7 @@ function doAlign(dir){
 // Recorded as one 'align' op (before/after full clones) for single undo.
 function snapSelToGrid(){
   const sel=_selL(s=>s&&!_lk(s));
-  if(!sel.length)return;
+  if(!_ln(sel))return;
   const beforeSnap=sel.map(clone);
   let moved=0;
   for(const s of sel){
@@ -6089,10 +6089,10 @@ function snapSelToGrid(){
 }
 // ADR-0079: match width/height of selected box shapes to the first-selected
 // (draw.io Arrange → Match Size). Position untouched; align op for undo parity.
-const _MSZ=new Set(['rect','ellipse','diamond','sticky','image','frame']);
+const _MSZ=_sT(['rect','ellipse','diamond','sticky','image','frame']);
 function doMatchSize(dim){
   const sel=_selL(s=>s&&!_lk(s)&&_MSZ.has(s.type));
-  if(sel.length<2)return;
+  if(_ln(sel)<2)return;
   const ref=sel[0],targets=sel.slice(1);
   const before=targets.map(clone);
   for(const s of targets){if(dim!=='h')s.w=ref.w;if(dim!=='w')s.h=ref.h}
@@ -6134,7 +6134,7 @@ function flipShape(s,axis,c){
 }
 function doFlip(axis){
   const sel=_selL(s=>s&&!_lk(s));
-  if(!sel.length)return;
+  if(!_ln(sel))return;
   const bb=_bA(sel);if(!bb)return;
   const c=axis==='h'?bb.x+bb.w/2:bb.y+bb.h/2;
   // Frame-aware: shapes fully inside a selected frame flip with the frame (parity with doAlign)
@@ -6150,7 +6150,7 @@ function doFlip(axis){
 
 function doLock(){
   const sel=_selL(Boolean);
-  if(!sel.length)return;
+  if(!_ln(sel))return;
   const lk=!sel[0].locked;
   const before=sel.map(s=>({id:s.id,locked:_lk(s)??null}));
   for(const s of sel)s.locked=lk||null;
@@ -6164,7 +6164,7 @@ function doLock(){
 // Same 'align' lock-dir before/after contract as doLock (single undo + sync).
 function unlockAll(){
   const locked=_sh().filter(s=>_lk(s));
-  if(!locked.length){_w(t('nothingLocked'));return}
+  if(!_ln(locked)){_w(t('nothingLocked'));return}
   const before=locked.map(s=>({id:s.id,locked:_lk(s)??null}));
   for(const s of locked)s.locked=null;
   const after=locked.map(s=>({id:s.id,locked:null}));
@@ -6177,7 +6177,7 @@ function unlockAll(){
 // pen stroke to a rectangle behind their back would be confusing, not helpful.
 function doBeautify(){
   const sel=_selL(s=>s&&!_lk(s)&&s.type==='pen');
-  if(!sel.length){_w(t('beautifyNone'));return}
+  if(!_ln(sel)){_w(t('beautifyNone'));return}
   const before=[],after=[];
   for(const s of sel){
     const rec=recognizeStroke(s.pts);
@@ -6185,12 +6185,12 @@ function doBeautify(){
     before.push({id:s.id,type:'pen',pts:clone(s.pts)});
     after.push({id:s.id,...rec});
   }
-  if(!after.length){_w(t('beautifyNone'));return}
+  if(!_ln(after)){_w(t('beautifyNone'));return}
   const origSel=_selIds();
   for(const p of after){const sh=byId(p.id);if(sh)_oa(sh,clone(p))}
   Store._recordCommitted({op:'beautify',before,after,origSel});
   _ivp();
-  _o(`${t('beautified')} (${after.length})`);
+  _o(`${t('beautified')} (${_ln(after)})`);
 }
 // ADR-0055: rotate applies to box shapes (orbit + _rt(s) spin) AND point
 // geometry (pen pts / line-arrow endpoints rotate rigidly about the group centre).
@@ -6214,7 +6214,7 @@ function _rotPtsAbout(s,gx,gy,cs,sn){
 }
 function doRotate(d){
   const sel=_selL(s=>s&&!_lk(s)&&_rotatable(s));
-  if(!sel.length)return;
+  if(!_ln(sel))return;
   const bb=_bA(sel),gx=bb.x+bb.w/2,gy=bb.y+bb.h/2; // orbit about group centre, like doFlip
   // Frame-aware: box-shape children inside selected frames orbit and rotate with the frame (parity with doAlign)
   const frameOf=_frameOf(sel,s=>_rotatable(s));
@@ -6231,7 +6231,7 @@ function doRotate(d){
   const after=sel.map(clone);
   _rcOp({op:'align',dir:'rotate',before,after});
   _ivp();
-  UI.announce(sel.length===1?describeShape(sel[0]):d+'°');   // ,/. keyboard rotate was SR-silent (knob drag announces); point-geom selections have no .rotate (ADR-0055)
+  UI.announce(_ln(sel)===1?describeShape(sel[0]):d+'°');   // ,/. keyboard rotate was SR-silent (knob drag announces); point-geom selections have no .rotate (ADR-0055)
 }
 // ====================== EXPORT ======================
 // Browsers cap a canvas's single dimension (~16384px on most) and its total area.
@@ -6265,7 +6265,7 @@ function _renderPngBlob(shapes,cb,desired){
 function _selShapes(){return _sh().filter(s=>_hasS(s.id))}
 function exportSelection(fmt){
   const sel=_selShapes();
-  if(!sel.length){_w(t(_NS));return}
+  if(!_ln(sel)){_w(t(_NS));return}
   if(fmt==='board')exportBoard(sel);   // ADR-0114
   else if(fmt==='drawio')exportDrawio(sel);   // ADR-0407
   else if(fmt==='svg')exportSVG(sel);
@@ -6281,7 +6281,7 @@ function exportViewportPNG(scale){
   const v=_vp();
   const view={x:v.x,y:v.y,w:r.width/v.zoom,h:r.height/v.zoom};
   const shapes=_sh().filter(s=>inView(s,view));
-  if(!shapes.length){_w(t(_EM));return}
+  if(!_ln(shapes)){_w(t(_EM));return}
   const off=_cv();
   const sc=exportScale(view.w,view.h,scale||2);
   _wh(off,_ceil(view.w*sc),_ceil(view.h*sc));
@@ -6380,7 +6380,7 @@ function exportSVG(shapes=_sh()){
   _o(t('exportedSVG'));
 }
 function exportBoard(shapes=_sh()){                       // ADR-0114: optional selection subset
-  if(!shapes.length){_w(t(_EM));return}
+  if(!_ln(shapes)){_w(t(_EM));return}
   const a=_ce('a');
   const _bu=URL.createObjectURL(new Blob([_JS({v:V,docName:_dn(),viewport:_vpS(),shapes:roundShapesForExport(shapes)})],{type:'application/json'}));   // ADR-0393
   a.href=_bu;a.download=(_dn()||'board')+'.board';
@@ -6418,14 +6418,14 @@ function excScene(shapes){
           roundness:s.r?{type:3}:null,strokeSharpness:s.r?'round':'sharp'}));   // ADR-0267
         // ADR-0234: label → container text marked bLabel (Board-only marker;
         // excalidraw ignores unknown fields, ours reads it back to _lb(s))
-        if(_lb(s)){const _tid=uid();els.push(_ct(s,_tid,_lb(s),true));els[els.length-2].boundElements=[{id:_tid,type:'text'}]}   // ADR-0280
+        if(_lb(s)){const _tid=uid();els.push(_ct(s,_tid,_lb(s),true));els[_ln(els)-2].boundElements=[{id:_tid,type:'text'}]}   // ADR-0280
         break;}
       case'frame':
         els.push(E(s,{type:'frame',x:s.x,y:s.y,width:s.w||0,height:s.h||0,name:_lb(s)||'Frame'}));break;
       case'sticky':{
         els.push(E(s,{type:'rectangle',x:s.x,y:s.y,width:s.w,height:s.h,
           backgroundColor:s.color||_YW,fillStyle:'solid',roundness:{type:3}}));
-        if(s.text){const _tid=uid();els.push(_ct(s,_tid,s.text,false,14));els[els.length-2].boundElements=[{id:_tid,type:'text'}]}   // ADR-0280
+        if(s.text){const _tid=uid();els.push(_ct(s,_tid,s.text,false,14));els[_ln(els)-2].boundElements=[{id:_tid,type:'text'}]}   // ADR-0280
         break;}
       case'text':
         els.push(E(s,{type:'text',x:s.x,y:s.y,width:s.w||0,height:s.h||0,
@@ -6447,13 +6447,13 @@ function excScene(shapes){
           lastCommittedPoint:null,
           startArrowhead:s.start?_excHead(s.startHead||'arrow'):null,                               // ADR-0231/0338
           endArrowhead:s.type==='arrow'?_excHead(s.head&&s.head!=='arrow'?s.head:'arrow'):null,...(_el(s)?{elbowed:true}:{}),...(s.curve?{roundness:{type:2}}:{})}));   // ADR-0265/0317/0338
-        if(_lb(s)){const _lp=_connLabelXY(s),_tid=uid();els.push(_ct(s,_tid,_lb(s),true,null,{x:_lp.x-40,y:_lp.y-10,w:80,h:20}));els[els.length-2].boundElements=[{id:_tid,type:'text'}]}   // ADR-0266/0280
+        if(_lb(s)){const _lp=_connLabelXY(s),_tid=uid();els.push(_ct(s,_tid,_lb(s),true,null,{x:_lp.x-40,y:_lp.y-10,w:80,h:20}));els[_ln(els)-2].boundElements=[{id:_tid,type:'text'}]}   // ADR-0266/0280
         break;}
       case'image':{
         const fid='f'+s.id;files[fid]={id:fid,mimeType:(_du(s).match(/^data:([^;]+)/)||[])[1]||'image/png',dataURL:_du(s),created:0,lastRetrieved:0};
         els.push(E(s,{type:'image',x:s.x,y:s.y,width:s.w||0,height:s.h||0,fileId:fid,status:'saved',
           roundness:s.r?{type:3}:null,strokeSharpness:s.r?'round':'sharp'}));   // ADR-0344
-        if(_lb(s)){const _tid=uid();els.push(_ct(s,_tid,_lb(s),true,null,{x:s.x,y:s.y+(s.h||0)-22,w:s.w||120,h:22}));els[els.length-2].boundElements=[{id:_tid,type:'text'}]}   // ADR-0353
+        if(_lb(s)){const _tid=uid();els.push(_ct(s,_tid,_lb(s),true,null,{x:s.x,y:s.y+(s.h||0)-22,w:s.w||120,h:22}));els[_ln(els)-2].boundElements=[{id:_tid,type:'text'}]}   // ADR-0353
         break;}
       default:break;
     }
@@ -6470,7 +6470,7 @@ function excScene(shapes){
     const be=_bnd.get(e.id);
     const tid=_excTid.get(e.id);                                 // ADR-0225
     const out=[...(be?be.map(cid=>({id:cid,type:'arrow'})):[]),...(tid?[{id:tid,type:'text'}]:[])];
-    if(out.length)e.boundElements=out;
+    if(_ln(out))e.boundElements=out;
   }
   // ADR-0390: emit exc frameId for shapes contained in a frame (withFrameChildren rule); label texts inherit via containerId.
   for(const f of shapes)if(f.type==='frame'){
@@ -6499,7 +6499,7 @@ function _dioStyApply(s,sty,hid){
   {const _fs=+sty.fontStyle;if(_fs&1)s.bold=1;if(_fs&2)s.italic=1;if(_fs&4)s.under=1;if(+sty.strikeThrough)s.strike=1}   // ADR-0407
   if(sty.shadow==='1')s.shadow=1;                                          // ADR-0246
   if(sty.editable==='0'||sty.deletable==='0'||sty.movable==='0')s.locked=1;   // ADR-0254
-  {const _op=[+sty.opacity,+sty.strokeOpacity,+sty.fillOpacity].filter(v=>v>0);if(_op.length)s.opacity=_max(0.05,_min(..._op)/100)}   // ADR-0271
+  {const _op=[+sty.opacity,+sty.strokeOpacity,+sty.fillOpacity].filter(v=>v>0);if(_ln(_op))s.opacity=_max(0.05,_min(..._op)/100)}   // ADR-0271
   if(+sty.letterSpacing)s.spacing=_min(40,+sty.letterSpacing);   // ADR-0284
   if(/hachure|zigzag/.test(sty.fillStyle||''))s.fstyle='hatch';else if(sty.fillStyle==='cross-hatch')s.fstyle='cross';   // ADR-0331
   if(sty.flipH==='1')s.flip=(s.flip||0)|1;                  // ADR-0260
@@ -6550,7 +6550,7 @@ function drawioToShapes(txt){
   if(!doc||_qs(doc,'parsererror'))return null;
   if(!_qs(doc,'mxGraphModel'))return null;
   const cells=[..._qsa(doc,'mxCell')];
-  if(cells.length>DIO_MAX)return null;
+  if(_ln(cells)>DIO_MAX)return null;
   const idOf=_mP(),shapes=[];
   // ADR-0240: children of a group/container store parent-relative coords —
   // resolve each vertex's world offset by walking its parent chain.
@@ -6580,7 +6580,7 @@ function drawioToShapes(txt){
     _off.set(id,o);return o};
   // Edges resolve bound endpoints by board id, so vertices must be built first.
   for(const c of cells){
-    if(shapes.length>=DIO_MAX)break;
+    if(_ln(shapes)>=DIO_MAX)break;
     if(_ga(c,'vertex')!=='1')continue;
     const g=_qs(c,'mxGeometry');if(!g)continue;
     const sty=_dioSty(_ga(c,'style'));
@@ -6617,7 +6617,7 @@ function drawioToShapes(txt){
     shapes.push(s);
   }
   for(const c of cells){
-    if(shapes.length>=DIO_MAX)break;
+    if(_ln(shapes)>=DIO_MAX)break;
     if(_ga(c,'edge')!=='1')continue;
     const g=_qs(c,'mxGeometry'),sty=_dioSty(_ga(c,'style'));
     const _hid=_ga(c,'visible')==='0';                  // ADR-0245
@@ -6647,8 +6647,8 @@ function drawioToShapes(txt){
     if(sty.curved==='1')s.curve=1;
     if(sty.jumpStyle&&sty.jumpStyle!=='none')s.hop=1;
     const pts=g?[..._qsa(g,'Array mxPoint')]:[];
-    if(pts.length)s.way=pts.slice(0,200).map(p=>({x:(+_ga(p,'x')||0)+_do+_eo.x,y:(+_ga(p,'y')||0)+_eo.y}));   // ADR-0347/0361: {x,y} objects — tuples broke every renderer
-    if(s.curve&&s.way&&s.way.length===1){                              // ADR-0360: waypoint → cbend inverse
+    if(_ln(pts))s.way=pts.slice(0,200).map(p=>({x:(+_ga(p,'x')||0)+_do+_eo.x,y:(+_ga(p,'y')||0)+_eo.y}));   // ADR-0347/0361: {x,y} objects — tuples broke every renderer
+    if(s.curve&&s.way&&_ln(s.way)===1){                              // ADR-0360: waypoint → cbend inverse
       const _p=s.way[0],_e=_cE(s),_mx=(_e.x1+_e.x2)/2,_my=(_e.y1+_e.y2)/2,
             _dx=_e.x2-_e.x1,_dy=_e.y2-_e.y1,_L=_hp(_dx,_dy)||1;
       s.cbend=_max(-400,_min(400,((_p.x-_mx)*(-_dy/_L)+(_p.y-_my)*(_dx/_L))));
@@ -6682,7 +6682,7 @@ async function _dioInflate(b64){
     // text instead of buffering an unbounded payload into memory.
     const rd=new Response(new Blob([bin]).stream().pipeThrough(ds)).body.getReader(),dec=new TextDecoder();
     let txt='';
-    for(;;){const{done,value}=await rd.read();if(done)break;txt+=dec.decode(value,{stream:true});if(txt.length>8e6)return null}
+    for(;;){const{done,value}=await rd.read();if(done)break;txt+=dec.decode(value,{stream:true});if(_ln(txt)>8e6)return null}
     txt+=dec.decode();
     return _dU(txt);
   }catch(_){return null}
@@ -6692,17 +6692,17 @@ function importDrawioText(txt,wp){
   // inflate ALL of them and re-wrap into one uncompressed mxfile so the
   // multi-page path (ADR-0311) flattens every page, not just page 1.
   const _dms=[..._St(txt||'').matchAll(/<diagram[^>]*>([^<]+)<\/diagram>/g)];
-  if(_dms.length&&!txt.includes('<mxGraphModel')){
+  if(_ln(_dms)&&!txt.includes('<mxGraphModel')){
     if(typeof DecompressionStream===_un){_w(t('dioCompressed'));return false}
     Promise.all(_dms.map(m=>_dioInflate(m[1]))).then(xs=>{
       const ok=xs.filter(Boolean);
-      if(!ok.length){_w(t('dioCompressed'));return}
+      if(!_ln(ok)){_w(t('dioCompressed'));return}
       importDrawioText('<mxfile>'+ok.map(x=>`<diagram>${x}</diagram>`).join('')+'</mxfile>',wp)});
     return true;
   }
   let shapes=null;
   try{shapes=drawioToShapes(txt)}catch(_){shapes=null}
-  if(!shapes||!shapes.length){_w(t(_IB));return false}
+  if(!shapes||!_ln(shapes)){_w(t(_IB));return false}
   const _vpNull=wp==null;
   wp=wp||_midV()
   const bb=_bA(shapes);
@@ -6791,14 +6791,14 @@ function boardToDrawio(shapes){
   // ADR-0354: pen strokes export as polyline edges — endArrow=none + one
   // mxPoint per stroke point keeps the ink visible in draw.io.
   for(const s of shapes){
-    if(s.type!=='pen'||!s.pts||s.pts.length<2)continue;
+    if(s.type!=='pen'||!s.pts||_ln(s.pts)<2)continue;
     const id='e'+(i++);
     let sty='html=1;endArrow=none;rounded=1;';
     if(_sk(s))sty+='strokeColor='+(s.stroke===_TR?'none':_sk(s))+';';   // ADR-0290
     sty+=_dioStyEmit(s,1);
     const _gp=_gbx[_gi(s)];
-    let geo=`<mxGeometry relative="1" as="geometry"><mxPoint x="${s.pts[0][0]-(_gp?_gp.x:0)}" y="${s.pts[0][1]-(_gp?_gp.y:0)}" as="sourcePoint"/><mxPoint x="${s.pts[s.pts.length-1][0]-(_gp?_gp.x:0)}" y="${s.pts[s.pts.length-1][1]-(_gp?_gp.y:0)}" as="targetPoint"/>`;
-    if(s.pts.length>2)geo+='<Array as="points">'+s.pts.slice(1,-1).map(p=>`<mxPoint x="${p[0]-(_gp?_gp.x:0)}" y="${p[1]-(_gp?_gp.y:0)}"/>`).join('')+'</Array>';
+    let geo=`<mxGeometry relative="1" as="geometry"><mxPoint x="${s.pts[0][0]-(_gp?_gp.x:0)}" y="${s.pts[0][1]-(_gp?_gp.y:0)}" as="sourcePoint"/><mxPoint x="${s.pts[_ln(s.pts)-1][0]-(_gp?_gp.x:0)}" y="${s.pts[_ln(s.pts)-1][1]-(_gp?_gp.y:0)}" as="targetPoint"/>`;
+    if(_ln(s.pts)>2)geo+='<Array as="points">'+s.pts.slice(1,-1).map(p=>`<mxPoint x="${p[0]-(_gp?_gp.x:0)}" y="${p[1]-(_gp?_gp.y:0)}"/>`).join('')+'</Array>';
     geo+='</mxGeometry>';
     cells.push(`<mxCell id="${id}" value="" style="${esc(sty)}" edge="1" parent="${_gp?`g_${_gi(s)}`:'1'}"${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0354
   }
@@ -6826,7 +6826,7 @@ function boardToDrawio(shapes){
     if(!src)geo+=`<mxPoint x="${s.x1-(_gc2?_gc2.x:0)}" y="${s.y1-(_gc2?_gc2.y:0)}" as="sourcePoint"/>`;
     if(!tgt)geo+=`<mxPoint x="${s.x2-(_gc2?_gc2.x:0)}" y="${s.y2-(_gc2?_gc2.y:0)}" as="targetPoint"/>`;
     const wa=_el(s)?_elbowPts(s).slice(1,-1):s.curve?[_curveCtrl(_cE(s),s.cbend)]:_wayArr(s);   // ADR-0358/0360
-    if(wa.length)geo+='<Array as="points">'+wa.map(p=>`<mxPoint x="${p.x-(_gc2?_gc2.x:0)}" y="${p.y-(_gc2?_gc2.y:0)}"/>`).join('')+'</Array>';
+    if(_ln(wa))geo+='<Array as="points">'+wa.map(p=>`<mxPoint x="${p.x-(_gc2?_gc2.x:0)}" y="${p.y-(_gc2?_gc2.y:0)}"/>`).join('')+'</Array>';
     geo+='</mxGeometry>';
     cells.push(`<mxCell id="${id}" value="${nl(_lb(s)||'')}" style="${esc(sty)}" edge="1" parent="${_gc2?`g_${_gi(s)}`:'1'}"${src}${tgt}${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0245/0347
   }
@@ -6834,7 +6834,7 @@ function boardToDrawio(shapes){
   return `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile compressed="false"><diagram name="${_esc(_dn()||'Page-1')}"><mxGraphModel dx="${_rnd(-vx)}" dy="${_rnd(-vy)}" grid="${state.showGrid?1:0}" gridSize="${GRID_SIZE}" guides="1" tooltips="0" connect="0" arrows="0" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0" zoom="${vz}"><root><mxCell id="0"/><mxCell id="1" parent="0"/>${cells.join('')}</root></mxGraphModel></diagram></mxfile>`;   // ADR-0359: dx/dy/zoom viewport round-trip
 }
 function exportDrawio(shapes=_sh()){
-  if(!shapes.length){_w(t(_EM));return}
+  if(!_ln(shapes)){_w(t(_EM));return}
   const a=_ce('a');
   const _bu=URL.createObjectURL(new Blob([boardToDrawio(shapes)],{type:'application/xml'}));
   a.href=_bu;a.download=(_dn()||'board')+'.drawio';
@@ -6855,11 +6855,11 @@ function _svgMOf(t){
   while((mm=re.exec(t))){
     const n=mm[2].trim().split(/[\s,]+/).filter(Boolean).map(Number);let M=null;
     switch(mm[1]){
-      case'matrix':if(n.length===6&&n.every(Number.isFinite))M=n.slice(0,6);break;
+      case'matrix':if(_ln(n)===6&&n.every(Number.isFinite))M=n.slice(0,6);break;
       case'translate':M=[1,0,0,1,n[0]||0,n[1]||0];break;
-      case'scale':{const sx=_fin(n[0])?n[0]:1;M=[sx,0,0,n.length>1?n[1]:sx,0,0];break}
+      case'scale':{const sx=_fin(n[0])?n[0]:1;M=[sx,0,0,_ln(n)>1?n[1]:sx,0,0];break}
       case'rotate':{const r=(n[0]||0)*_PI/180,c=_cos(r),s=_sin(r);M=[c,s,-s,c,0,0];
-        if(n.length>2)M=_svgMMul([1,0,0,1,n[1],n[2]],_svgMMul(M,[1,0,0,1,-n[1],-n[2]]));break}
+        if(_ln(n)>2)M=_svgMMul([1,0,0,1,n[1],n[2]],_svgMMul(M,[1,0,0,1,-n[1],-n[2]]));break}
       case'skewX':M=[1,0,Math.tan((n[0]||0)*_PI/180),1,0,0];break;
       case'skewY':M=[1,Math.tan((n[0]||0)*_PI/180),0,1,0,0];break;
     }
@@ -6901,8 +6901,8 @@ function _svgPathPts(d,m){
   const toks=_St(d||'').match(/[a-zA-Z]|-?\d*\.?\d+(?:[eE][+-]?\d+)?/g);
   if(!toks)return pts;
   let i=0,cmd='',x=0,y=0,x0=0,y0=0;
-  const num=()=>{if(i<toks.length&&!/[a-zA-Z]/.test(toks[i]))return+toks[i++];return NaN};
-  const push=(px,py)=>{if(pts.length<SVG_MAX_PTS&&_fin(px)&&_fin(py))pts.push([px,py]);};
+  const num=()=>{if(i<_ln(toks)&&!/[a-zA-Z]/.test(toks[i]))return+toks[i++];return NaN};
+  const push=(px,py)=>{if(_ln(pts)<SVG_MAX_PTS&&_fin(px)&&_fin(py))pts.push([px,py]);};
   const cubic=(x1,y1,x2,y2,ex,ey)=>{const sx=x,sy=y;
     for(let s=1;s<=10;s++){const t=s/10,u=1-t;
       push(u*u*u*sx+3*u*u*t*x1+3*u*t*t*x2+t*t*t*ex,u*u*u*sy+3*u*u*t*y1+3*u*t*t*y2+t*t*t*ey)}
@@ -6911,7 +6911,7 @@ function _svgPathPts(d,m){
     for(let s=1;s<=10;s++){const t=s/10,u=1-t;
       push(u*u*sx+2*u*t*x1+t*t*ex,u*u*sy+2*u*t*y1+t*t*ey)}
     x=ex;y=ey};
-  while(i<toks.length){
+  while(i<_ln(toks)){
     if(/[a-zA-Z]/.test(toks[i]))cmd=toks[i++];
     if(!cmd)break;
     const rel=cmd===_lc(cmd),C=cmd.toUpperCase();
@@ -6929,7 +6929,7 @@ function _svgPathPts(d,m){
     else break;   // unknown command → end this path here
   }
   // transform all points once at the end — cheaper than multiplying inside every push
-  for(let k=0;k<pts.length;k++)pts[k]=[pts[k][0]*m[0]+pts[k][1]*m[2]+m[4],pts[k][0]*m[1]+pts[k][1]*m[3]+m[5]];
+  for(let k=0;k<_ln(pts);k++)pts[k]=[pts[k][0]*m[0]+pts[k][1]*m[2]+m[4],pts[k][0]*m[1]+pts[k][1]*m[3]+m[5]];
   return pts;
 }
 function svgToShapes(txt){
@@ -6945,13 +6945,13 @@ function svgToShapes(txt){
   // viewBox → output: origin to (0,0), cap the width at 800px so giant
   // artboards paste at a sensible size.
   const vb=(_ga(root,'viewBox')||'').trim().split(/[\s,]+/).map(Number);
-  const vbOn=vb.length===4&&vb.every(Number.isFinite)&&vb[2]>0;
+  const vbOn=_ln(vb)===4&&vb.every(Number.isFinite)&&vb[2]>0;
   const w0=vbOn?vb[2]:_pF(_ga(root,'width'))||800;
   const sc=_min(1,800/w0);
   const base=_svgMMul([sc,0,0,sc,0,0],[1,0,0,1,vbOn?-vb[0]:0,vbOn?-vb[1]:0]);
   const shapes=[];
   const visit=(el,m)=>{
-    if(shapes.length>=SVG_MAX_ELEMS)return;
+    if(_ln(shapes)>=SVG_MAX_ELEMS)return;
     const m2=_svgMMul(m,_svgMOf(_ga(el,'transform')));
     const tag=el.localName;
     let s=null;
@@ -6972,13 +6972,13 @@ function svgToShapes(txt){
     }else if(tag==='polyline'||tag==='polygon'){
       const nums=(_ga(el,'points')||'').trim().split(/[\s,]+/).map(Number);
       const pts=[];
-      for(let i=0;i+1<nums.length&&pts.length<SVG_MAX_PTS;i+=2)
+      for(let i=0;i+1<_ln(nums)&&_ln(pts)<SVG_MAX_PTS;i+=2)
         if(_fin(nums[i])&&_fin(nums[i+1]))pts.push(_svgMPt(m2,nums[i],nums[i+1]));
-      if(tag==='polygon'&&pts.length>1)pts.push(pts[0]);
-      if(pts.length>1)s=Shape.make('pen',{pts:pts.map(p=>[p.x,p.y])});
+      if(tag==='polygon'&&_ln(pts)>1)pts.push(pts[0]);
+      if(_ln(pts)>1)s=Shape.make('pen',{pts:pts.map(p=>[p.x,p.y])});
     }else if(tag==='path'){
       const pts=_svgPathPts(_ga(el,'d'),m2);
-      if(pts.length>1)s=Shape.make('pen',{pts});
+      if(_ln(pts)>1)s=Shape.make('pen',{pts});
     }else if(tag==='image'){
       // ADR-0235: <image href=data:...> — round-trips our own SVG exports.
       // Only inline data: URIs are accepted (the mapping is the sanitizer);
@@ -6994,7 +6994,7 @@ function svgToShapes(txt){
       if(content){
         const p=_svgMPt(m2,+_ga(el,'x')||0,+_ga(el,'y')||0);
         const fs=_svgStyle(el,_grad).fontSize||16;
-        s=Shape.make('text',{x:p.x,y:p.y-fs,w:_min(600,_max(60,content.length*fs*0.55)),h:fs*1.4,text:content.slice(0,200),fontSize:fs});
+        s=Shape.make('text',{x:p.x,y:p.y-fs,w:_min(600,_max(60,_ln(content)*fs*0.55)),h:fs*1.4,text:content.slice(0,200),fontSize:fs});
       }
     }
     if(s){const st=_svgStyle(el,_grad);if(s.type!=='text')delete st.fontSize;_oa(s,st);shapes.push(s)}
@@ -7006,7 +7006,7 @@ function svgToShapes(txt){
 function importSvgText(txt,wp){
   let shapes=null;
   try{shapes=svgToShapes(txt)}catch(_){shapes=null}
-  if(!shapes||!shapes.length){_w(t(_IB));return false}
+  if(!shapes||!_ln(shapes)){_w(t(_IB));return false}
   wp=wp||_midV()
   // centre the imported group at wp (drop point / viewport centre)
   const bb=_bA(shapes);
@@ -7053,7 +7053,7 @@ function excToShapes(txt){
   };
   const rot=e=>_fin(e.angle)?_rnd(e.angle*180/_PI*10)/10:0;
   for(const e of d.elements){
-    if(shapes.length>=EXC_MAX_ELEMS)break;
+    if(_ln(shapes)>=EXC_MAX_ELEMS)break;
     if(!e||e.isDeleted||typeof e.x!=='number'||typeof e.y!=='number')continue;
     const W=+e.width||0,H=+e.height||0,S=st(e),r=rot(e);
     let s=null;
@@ -7066,7 +7066,7 @@ function excToShapes(txt){
         const fs=_fin(e.fontSize)?e.fontSize:16;
         const content=_St(e.text||'').replace(/\s+/g,' ').trim();
         if(!content)break;
-        s=Shape.make('text',{x:e.x,y:e.y,w:W||_min(600,_max(60,content.length*fs*0.55)),h:H||fs*1.4,text:content.slice(0,2000),fontSize:fs});
+        s=Shape.make('text',{x:e.x,y:e.y,w:W||_min(600,_max(60,_ln(content)*fs*0.55)),h:H||fs*1.4,text:content.slice(0,2000),fontSize:fs});
         if(e.textAlign==='left'||e.textAlign==='right')s.align=e.textAlign;   // ADR-0230
         if(e.autoResize===false)s.wrap=1;                                     // ADR-0412: excalidraw manual-width text wraps to w
         if(e.fontFamily===3)s.font='mono';else if(e.fontFamily===1||e.fontFamily===5)s.font='serif';   // ADR-0243
@@ -7076,16 +7076,16 @@ function excToShapes(txt){
         const raw=_iA(e.points)?e.points:[];
         const pts=[];
         for(const p of raw){
-          if(pts.length>=EXC_MAX_PTS)break;
+          if(_ln(pts)>=EXC_MAX_PTS)break;
           if(_iA(p)&&_fin(p[0])&&_fin(p[1]))pts.push([e.x+p[0],e.y+p[1]]);
         }
-        if(pts.length<2)break;
+        if(_ln(pts)<2)break;
         if(e.type==='freedraw'){if(_iA(e.pressures))pts.forEach((p,i)=>{if(_fin(e.pressures[i]))p[2]=+e.pressures[i].toFixed(3)});s=Shape.make('pen',{pts});break}   // ADR-0268
         // ADR-0097: multi-segment line/arrow stays a real connector — the
         // interior points map onto the way[] array (ADR-0090), not a
         // dead-end pen stroke. Elbowed excalidraw arrows land naturally.
-        s=Shape.make(e.type==='arrow'?'arrow':'line',{x1:pts[0][0],y1:pts[0][1],x2:pts[pts.length-1][0],y2:pts[pts.length-1][1]});
-        if(pts.length>2)s.way=pts.slice(1,-1).map(p=>({x:p[0],y:p[1]}));
+        s=Shape.make(e.type==='arrow'?'arrow':'line',{x1:pts[0][0],y1:pts[0][1],x2:pts[_ln(pts)-1][0],y2:pts[_ln(pts)-1][1]});
+        if(_ln(pts)>2)s.way=pts.slice(1,-1).map(p=>({x:p[0],y:p[1]}));
         if(e.elbowed)s.elbow=1;                                              // ADR-0265
         // ADR-0230: excalidraw arrowhead styles → head/start
         if(e.type==='arrow'){
@@ -7115,7 +7115,7 @@ function excToShapes(txt){
       if(s.type==='text'&&e.containerId){_excTxt.set(s.id,e.containerId);_excTxtE.set(s.id,e)}
       // ADR-0229: excalidraw groupIds → Board groupId (nested groups flatten
       // to the outermost — Board models one group level)
-      if(_iA(e.groupIds)&&e.groupIds.length)s.groupId=e.groupIds[0]}
+      if(_iA(e.groupIds)&&_ln(e.groupIds))s.groupId=e.groupIds[0]}
   }
   // ADR-0225: container text folds back into its rect → the sticky it was
   // exported from. Parent kept when it carries a label of its own.
@@ -7162,7 +7162,7 @@ function excToShapes(txt){
 function importExcText(txt,wp){
   let shapes=null;
   try{shapes=excToShapes(txt)}catch(_){shapes=null}
-  if(!shapes||!shapes.length){_w(t(_IB));return false}
+  if(!shapes||!_ln(shapes)){_w(t(_IB));return false}
   const _vpNull=wp==null;   // ADR-0409: adopt the file's viewport only on a point-less open
   wp=wp||_midV()
   const bb=_bA(shapes);
@@ -7185,21 +7185,21 @@ function importBoardText(txt,wp){
   try{data=_JP(txt)}catch(_){return false}
   if(!data||!_iA(data.shapes))return false;
   const shapes=data.shapes.filter(validShape);
-  if(!shapes.length)return false;
+  if(!_ln(shapes))return false;
   wp=wp||_midV()
   const bb=_bA(shapes);
   const dx=bb?wp.x-(bb.x+bb.w/2):0,dy=bb?wp.y-(bb.y+bb.h/2):0;
   const origSel=_selIds();
   const added=_placeCopies(shapes,dx,dy);
   _keepSel(origSel);
-  _o(t('imported')+' '+added.length);
+  _o(t('imported')+' '+_ln(added));
   return true;
 }
 // ADR-0115 (outbound half): whole board (or selection via exportSelection)
 // as .board JSON on the clipboard — moves content between boards/tabs without
 // a file round-trip.
 function copyBoardJSON(shapes=_sh()){
-  if(!shapes.length){_w(t(_EM));return}
+  if(!_ln(shapes)){_w(t(_EM));return}
   copyText(_JS({v:V,docName:_dn(),shapes:roundShapesForExport(shapes)}))
     .then(ok=>_tst(t(ok?'copied':'copyFailed'),ok?'ok':'warn'));
 }
@@ -7221,14 +7221,14 @@ function importBoard(file){
       // different suffix still routes to the excalidraw importer.
       if(d&&d.type==='excalidraw'){importExcText(r.result);return}
       const shapes=(d.shapes||[]).filter(validShape);
-      if(!shapes.length){_w(t(_EM));return}
+      if(!_ln(shapes)){_w(t(_EM));return}
       // Atomic whole-board swap (mirrors importFromHash): a single replace op means
       // one Ctrl+Z fully restores the previous board regardless of import size.
       // clear+N-adds would overflow MAX_HISTORY for large boards and require N+1 undos.
       const before=clone(_sh());
       const beforeWc=clone(_wc());
       const origSel=_selIds();
-      if(before.length)Persist.saveBackup(before,{..._vp()},_dn());   // ADR-0004
+      if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());   // ADR-0004
       state.shapes=shapes.map(clone);_iG();_pcC();   // ADR-0009
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out. Skipping this leaks wclock entries and
@@ -7240,7 +7240,7 @@ function importBoard(file){
       }
       _sz();_iv();
       Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(_wc()),origSel});
-      _o(t('loadedBoard')+' ('+shapes.length+')');
+      _o(t('loadedBoard')+' ('+_ln(shapes)+')');
     }catch{_e(t(_IB))}
   };
   // read failure (I/O, revoked permission) previously gave NO feedback at all — the
@@ -7269,10 +7269,10 @@ function _connLabelSVG(s,x1,y1,x2,y2,ox,oy,stroke,paper){
   const mx=(x1+x2)/2+ox,my=(y1+y2)/2+oy;
   const fs=_fS(s)||12;
   const lns=_St(_lb(s)).split('\n'),lh2=fs*(s.lineH||1.25);          // ADR-0210/0212
-  const lw=_max(...lns.map(l=>l.length),0)*fs*0.6+8,th=lns.length*lh2;
+  const lw=_max(...lns.map(l=>_ln(l)),0)*fs*0.6+8,th=_ln(lns)*lh2;
   const tsp=lns.map((l,i)=>`<tspan x="${mx}" dy="${i?lh2:0}">${_esc(l)}</tspan>`).join('');
   return `<rect x="${mx-lw/2}" y="${my-th/2}" width="${lw}" height="${th}" fill="${_esc(_fi(s)||paper||'#FFFFFF')}" opacity="0.9"/>`+
-    `<text x="${mx}" y="${my-(lns.length-1)*lh2/2}" ${_svgFont(s,fs)} text-anchor="middle" dominant-baseline="central" fill="${stroke}">${tsp}</text>`;   // ADR-0170/0210
+    `<text x="${mx}" y="${my-(_ln(lns)-1)*lh2/2}" ${_svgFont(s,fs)} text-anchor="middle" dominant-baseline="central" fill="${stroke}">${tsp}</text>`;   // ADR-0170/0210
 }
 // Pure SVG assembly; returns string or null. All attr values through _esc.
 function buildSVG(shapes,paper){
@@ -7298,7 +7298,7 @@ function buildSVG(shapes,paper){
     const a=(_oP(s)!=null&&opv<1)?` opacity="${opv}"`:'';
     const stroke=_esc(_sk(s)||'#000');
     const _dsh=dashArr(s.dash,SZ);
-    const dA=_dsh.length?` stroke-dasharray="${_dsh.map(n=>_rnd(n*10)/10).join(' ')}"`:'';
+    const dA=_ln(_dsh)?` stroke-dasharray="${_dsh.map(n=>_rnd(n*10)/10).join(' ')}"`:'';
     const _sh=s.shadow?' filter="url(#bsh)"':'';   // ADR-0194
     // ADR-0270: shared conn-path element + conn-label emitters (was 8-10x duplicated)
     const _sp=(d,j)=>`<path d="${d}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${j?' stroke-linejoin="round"':''}${dA}${a}${_sh}/>`;
@@ -7378,7 +7378,7 @@ function buildSVG(shapes,paper){
           else if(s.r>0)els.push(_sp(_polylineRd(pts,ox,oy,s.r),1));   // ADR-0207
           else{const spts=pts.map(p=>`${_num(p.x+ox)},${_num(p.y+oy)}`).join(' ');
           els.push(_po(spts))}
-          const Lp=pts[pts.length-1],Pp=pts[pts.length-2];
+          const Lp=pts[_ln(pts)-1],Pp=pts[_ln(pts)-2];
           const ang=_at2(Lp.y-Pp.y,Lp.x-Pp.x)||_at2(Y2-Y1,X2-X1);
           const a1=ang+_PI-0.5,a2=ang+_PI+0.5;
           const tx=Lp.x+ox,ty=Lp.y+oy;
@@ -7391,7 +7391,7 @@ function buildSVG(shapes,paper){
         }else if(s.hop){
           const pts=_linePts(s);
           els.push(_sp(_hopPathD(s,pts,ox,oy,7)));   // ADR-0218
-          const L=pts[pts.length-1],P=pts[pts.length-2],F=pts[1];
+          const L=pts[_ln(pts)-1],P=pts[_ln(pts)-2],F=pts[1];
           const ang=_at2(L.y-P.y,L.x-P.x),a1=ang+_PI-0.5,a2=ang+_PI+0.5,tx=L.x+ox,ty=L.y+oy;
           _svgArrowHead(els,tx,ty,a1,a2,ah,stroke,a,SZ,s.head);
           if(s.start){const sAng=_at2(pts[0].y-F.y,pts[0].x-F.x),s1=sAng+_PI-0.5,s2=sAng+_PI+0.5,sx2=pts[0].x+ox,sy2=pts[0].y+oy;
@@ -7400,7 +7400,7 @@ function buildSVG(shapes,paper){
         }else if(s.way){                                            // ADR-0090: full vertex list
           const pts=_linePts(s),wpts=pts.map(p=>_num(p.x+ox)+','+_num(p.y+oy)).join(' ');
           els.push(_po(wpts));
-          const L=pts[pts.length-1],P=pts[pts.length-2],F=pts[1];
+          const L=pts[_ln(pts)-1],P=pts[_ln(pts)-2],F=pts[1];
           const ang=_at2(L.y-P.y,L.x-P.x),a1=ang+_PI-0.5,a2=ang+_PI+0.5,tx=L.x+ox,ty=L.y+oy;
           _svgArrowHead(els,tx,ty,a1,a2,ah,stroke,a,SZ,s.head);
           if(s.start){const sAng=_at2(pts[0].y-F.y,pts[0].x-F.x),s1=sAng+_PI-0.5,s2=sAng+_PI+0.5,sx2=pts[0].x+ox,sy2=pts[0].y+oy;
@@ -7419,19 +7419,19 @@ function buildSVG(shapes,paper){
         }
         break;}
       case 'pen':{
-        if(!_iA(s.pts)||!s.pts.length)break;
-        if(s.pts.length===1){
+        if(!_iA(s.pts)||!_ln(s.pts))break;
+        if(_ln(s.pts)===1){
           const p=s.pts[0];
           // fallback must match drawPen's canvas radius (s.size||2)/2 for a foreign/legacy
           // shape missing `size` (deep-audit fix; was (SZ||1)/2, half the canvas radius).
           els.push(`<circle cx="${_num(p&&p[0])+ox}" cy="${_num(p&&p[1])+oy}" r="${(SZ||2)/2}" fill="${stroke}"${a}${_sh}/>`);
           break;
         }
-        if(s.pts.length<2)break;
+        if(_ln(s.pts)<2)break;
         // ADR-0046 display=output parity: same union of trapezoid+disc primitives
         // as canvas. Circles need no winding-direction care — a <g> composites
         // the primitives as a true union.
-        const P=s.pts.map(p=>[_num(p&&p[0])+ox,_num(p&&p[1])+oy,p&&p[2]]),n=P.length,W=penWidths(P,SZ);
+        const P=s.pts.map(p=>[_num(p&&p[0])+ox,_num(p&&p[1])+oy,p&&p[2]]),n=_ln(P),W=penWidths(P,SZ);
         const r=v=>_rnd(v*10)/10;
         const Rr=i=>W[i]*0.5*_penTaperI(i)*_penTaperE(n-1-i);
         let d='',circles='';
@@ -7447,14 +7447,14 @@ function buildSVG(shapes,paper){
         break;}
       case 'text':{
         const fs=_num(_fS(s))||16;
-        const svgLines=s.wrap?wrapText(_St(s.text==null?'':s.text),_abs(W),t=>t.length*fs*0.6):_St(s.text==null?'':s.text).split('\n');   // ADR-0208
+        const svgLines=s.wrap?wrapText(_St(s.text==null?'':s.text),_abs(W),t=>_ln(t)*fs*0.6):_St(s.text==null?'':s.text).split('\n');   // ADR-0208
         const tax=s.align==='center'?X+ox+W/2:s.align==='right'?X+ox+W:X+ox;   // ADR-0073
         const anch=s.align==='center'?' text-anchor="middle"':s.align==='right'?' text-anchor="end"':'';
-        if(_fi(s)){const mw2=_max(...svgLines.map(l=>l.length),0)*fs*0.6;              // ADR-0191
+        if(_fi(s)){const mw2=_max(...svgLines.map(l=>_ln(l)),0)*fs*0.6;              // ADR-0191
           const bx2=s.align==='center'?tax-mw2/2:s.align==='right'?tax-mw2:tax;
-          els.push(`<rect x="${bx2-3}" y="${Y+oy-3}" width="${mw2+6}" height="${svgLines.length*fs*(s.lineH||1.25)+6}" fill="${_esc(_fi(s))}"${a}${rT}/>`);}
+          els.push(`<rect x="${bx2-3}" y="${Y+oy-3}" width="${mw2+6}" height="${_ln(svgLines)*fs*(s.lineH||1.25)+6}" fill="${_esc(_fi(s))}"${a}${rT}/>`);}
         els.push(`<text x="${tax}" y="${Y+oy}" dominant-baseline="hanging" ${_svgFont(s,fs)} fill="${stroke}"${anch}${a}${rT}${_sh}>`);   // ADR-0078/0095/0100
-        for(let i=0;i<svgLines.length;i++)els.push(`<tspan x="${tax}" dy="${i?fs*(s.lineH||1.25):0}">${_esc(svgLines[i])}</tspan>`);
+        for(let i=0;i<_ln(svgLines);i++)els.push(`<tspan x="${tax}" dy="${i?fs*(s.lineH||1.25):0}">${_esc(svgLines[i])}</tspan>`);
         els.push('</text>');break;}
       case 'image':
         if(typeof s.dataUrl==='string'&&/^data:image\//.test(_du(s))){
@@ -7487,13 +7487,13 @@ function buildSVG(shapes,paper){
         if(s.text){
           const fs=_num(_fS(s))||14;const pad2=8;
           // estimate measure (no canvas here); wraps to the same box as the app
-          const lines2=wrapText(s.text,_abs(W)-pad2*2,t=>t.length*fs*0.6);
+          const lines2=wrapText(s.text,_abs(W)-pad2*2,t=>_ln(t)*fs*0.6);
           const tax2=s.align==='center'?X+ox+W/2:s.align==='right'?X+ox+W-pad2:X+ox+pad2;   // ADR-0073
           const anch2=s.align==='center'?' text-anchor="middle"':s.align==='right'?' text-anchor="end"':'';
-          const sy2v=_va(s)==='middle'?Y+oy+(H-lines2.length*fs*(s.lineH||1.3))/2:                  // ADR-0187
-                     _va(s)==='bottom'?Y+oy+H-pad2-lines2.length*fs*(s.lineH||1.3):Y+oy+pad2;
+          const sy2v=_va(s)==='middle'?Y+oy+(H-_ln(lines2)*fs*(s.lineH||1.3))/2:                  // ADR-0187
+                     _va(s)==='bottom'?Y+oy+H-pad2-_ln(lines2)*fs*(s.lineH||1.3):Y+oy+pad2;
           els.push(`<text x="${tax2}" y="${sy2v}" dominant-baseline="hanging" ${_svgFont(s,fs)} fill="${_esc(_sk(s)||'#1E293B')}"${anch2}${rT}>`);   // ADR-0192
-          for(let i=0;i<lines2.length;i++)els.push(`<tspan x="${tax2}" dy="${i?fs*(s.lineH||1.3):0}">${_esc(lines2[i])}</tspan>`);
+          for(let i=0;i<_ln(lines2);i++)els.push(`<tspan x="${tax2}" dy="${i?fs*(s.lineH||1.3):0}">${_esc(lines2[i])}</tspan>`);
           els.push('</text>');
         }break;}
     }
@@ -7509,26 +7509,26 @@ function buildSVG(shapes,paper){
 // wrapped text anchored to the inside bottom edge).
 function _svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT){
   const fs=_fS(s)||14,pad=4;   // ADR-0169
-  let lines=wrapText(_lb(s),_max(10,W-8),t=>t.length*fs*0.6);
+  let lines=wrapText(_lb(s),_max(10,W-8),t=>_ln(t)*fs*0.6);
   const lh=fs*(s.lineH||1.25),maxL=_max(1,_fl((H-4)/lh));
-  if(lines.length>maxL){lines=lines.slice(0,maxL);lines[maxL-1]+='…'}
-  const sh_=lines.length*lh+4,sy=_va(s)==='top'?Y:Y+H-sh_;   // ADR-0179
+  if(_ln(lines)>maxL){lines=lines.slice(0,maxL);lines[maxL-1]+='…'}
+  const sh_=_ln(lines)*lh+4,sy=_va(s)==='top'?Y:Y+H-sh_;   // ADR-0179
   els.push(`<g${rT}><rect x="${X+ox}" y="${sy+oy}" width="${W}" height="${sh_}" fill="${_esc(_fi(s)||paper||'#FFFFFF')}" opacity="0.85"/>`);
   const al4=s.align||'center',tx4=al4==='left'?X+ox+6:al4==='right'?X+ox+W-6:X+W/2+ox;   // ADR-0171
   const anc4=al4==='left'?'start':al4==='right'?'end':'middle';
   els.push(`<text x="${tx4}" y="${sy+oy+2}" dominant-baseline="hanging" ${_svgFont(s,fs)} text-anchor="${anc4}" fill="${stroke}">`);   // ADR-0170
-  for(let i=0;i<lines.length;i++)els.push(`<tspan x="${tx4}" dy="${i?lh:0}">${_esc(lines[i])}</tspan>`);
+  for(let i=0;i<_ln(lines);i++)els.push(`<tspan x="${tx4}" dy="${i?lh:0}">${_esc(lines[i])}</tspan>`);
   els.push('</text></g>');
 }
 function _svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT){
   const fs=_fS(s)||14,pad=4;   // ADR-0169
-  const lines=wrapText(_lb(s),_max(10,W-pad*2),t=>t.length*fs*0.6);
+  const lines=wrapText(_lb(s),_max(10,W-pad*2),t=>_ln(t)*fs*0.6);
   const lh=fs*(s.lineH||1.25);
-  const cy=_va(s)==='top'?Y+6+oy:_va(s)==='bottom'?Y+H-6+oy-lines.length*lh:Y+H/2+oy-(lines.length*lh)/2;   // ADR-0159
+  const cy=_va(s)==='top'?Y+6+oy:_va(s)==='bottom'?Y+H-6+oy-_ln(lines)*lh:Y+H/2+oy-(_ln(lines)*lh)/2;   // ADR-0159
   const al3=s.align||'center',tx3=al3==='left'?X+ox+6:al3==='right'?X+ox+W-6:X+W/2+ox;   // ADR-0171
   const anc3=al3==='left'?'start':al3==='right'?'end':'middle';
   els.push(`<text x="${tx3}" y="${cy}" dominant-baseline="hanging" ${_svgFont(s,fs)} text-anchor="${anc3}" fill="${stroke}"${a}${rT}>`);   // ADR-0170
-  for(let i=0;i<lines.length;i++)els.push(`<tspan x="${tx3}" dy="${i?lh:0}">${_esc(lines[i])}</tspan>`);
+  for(let i=0;i<_ln(lines);i++)els.push(`<tspan x="${tx3}" dy="${i?lh:0}">${_esc(lines[i])}</tspan>`);
   els.push('</text>');
 }
 function _esc(s){return _St(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
@@ -7557,7 +7557,7 @@ async function copyText(text){
 // no spaces, so wrapText char-breaks runs of CJK — a naive break could start a line with
 // closing punctuation/brackets/small-kana/prolonged-mark (行頭禁則) or end one with an
 // opening bracket (行末禁則). Both read as broken typography to a Japanese reader.
-const KINSOKU_START=new Set([...'、。，．・：；！？‼⁇⁈⁉）]｝」』〕〉》】〗〙〟”’｠»ヽヾゝゞ々ーぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮ〜～…‥,.!?:;)]}']);
+const KINSOKU_START=_sT([...'、。，．・：；！？‼⁇⁈⁉）]｝」』〕〉》】〗〙〟”’｠»ヽヾゝゞ々ーぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮ〜～…‥,.!?:;)]}']);
 const KINSOKU_END=new Set([...'（[｛「『〔〈《【〖〘〝“‘｟«([{']);
 // Perf: drawShape() re-wraps sticky-note text (measureText per char-token) on EVERY
 // frame it's visible, even when nothing about the shape changed since the last frame.
@@ -7598,7 +7598,7 @@ function wrapText(text,maxWidth,measure){
         if(KINSOKU_START.has(ch)){chunk+=ch;continue;}
         // 禁則: an opening bracket must not end the line — push trailing ones down with ch.
         let carry='';
-        while(chunk.length>1&&KINSOKU_END.has(chunk[chunk.length-1])){carry=chunk[chunk.length-1]+carry;chunk=chunk.slice(0,-1);}
+        while(_ln(chunk)>1&&KINSOKU_END.has(chunk[_ln(chunk)-1])){carry=chunk[_ln(chunk)-1]+carry;chunk=chunk.slice(0,-1);}
         out.push(chunk);chunk=carry+ch;
       }
       line=chunk;
@@ -7654,16 +7654,16 @@ const Net={
     return op;
   },
   _fragSend(buf,k){   // ADR-0431: 64KB fragment sender for the dc-direct sites (snap, oversized ops)
-    const n=_ceil(buf.length/65536);for(let i=0;i<n;i++)this._sendDC(_JS({k,seq:i,n,data:buf.slice(i*65536,(i+1)*65536)}))
+    const n=_ceil(_ln(buf)/65536);for(let i=0;i<n;i++)this._sendDC(_JS({k,seq:i,n,data:buf.slice(i*65536,(i+1)*65536)}))
   },
   _fragIn(msg,key){   // shared single-assembly intake for 'snap'/'opc' — returns joined payload or undefined
-    if(typeof msg.data!=='string'||msg.data.length>96*1024)return;
+    if(typeof msg.data!=='string'||_ln(msg.data)>96*1024)return;
     const n=typeof msg.n==='number'&&msg.n>=1&&msg.n<=384?_fl(msg.n):1;
     const seq=typeof msg.seq==='number'&&msg.seq>=0?_fl(msg.seq):0;
     if(seq>=n)return;
     let sn=this[key];
-    if(!sn){sn={p:new Array(n),g:0,n};this[key]=sn}
-    if(sn.n===n&&!sn.p[seq]){sn.p[seq]=msg.data;sn.g++}
+    if(!sn||sn.n!==n){sn={p:new Array(n),g:0,n};this[key]=sn}   // ADR-0448: a stale partial with a different chunk count would block every later stream — fresh stream wins
+    if(!sn.p[seq]){sn.p[seq]=msg.data;sn.g++}
     if(sn.g<sn.n)return;
     this[key]=null;return sn.p.join('');
   },
@@ -7671,7 +7671,7 @@ const Net={
     const outs=this._imgOuts;this._imgOuts=[];
     const CH=65536;
     for(const[key,d]of outs){
-      const n=_max(1,_ceil(d.length/CH));
+      const n=_max(1,_ceil(_ln(d)/CH));
       for(let i=0;i<n;i++){
         const m={k:'img',key,seq:i,n,data:d.slice(i*CH,(i+1)*CH)};
         this._bcast(m);
@@ -7703,7 +7703,7 @@ const Net={
     this._send({k:'op',op:s});
     if(this.dc&&this.dc.readyState==='open'){
       try{const _mo=_JS({k:'op',op:s});   // ADR-0431: ops over the ~256KB SCTP ceiling die silently — fragment like 'snap'
-        if(_mo.length>200000)this._fragSend(_mo,'opc');else this._sendDC(_mo)
+        if(_ln(_mo)>200000)this._fragSend(_mo,'opc');else this._sendDC(_mo)
       }catch(_){}
     }
   },
@@ -7733,9 +7733,9 @@ const Net={
     this._bcast({k:'selection',peer:_pi(),ids});
   },
   _sendDC(m){   // ADR-0432: single dc funnel — a full SCTP buffer throws; requeue on bufferedAmountLow instead of dropping
-    if(m.length>262144)return;   // ADR-0438: >SCTP max can never send — drop instead of poison-queuing a retry loop
+    if(_ln(m)>262144)return;   // ADR-0438: >SCTP max can never send — drop instead of poison-queuing a retry loop
     const q=this._dcQ,d=this.dc;
-    if(q){q.length<4096&&q.push(m);return}
+    if(q){_ln(q)<4096&&q.push(m);return}
     if(!d||d.readyState!=='open')return;
     try{d.send(m)}catch(_){this._dcQ=[m];d.bufferedAmountLowThreshold=65536;
       d.onbufferedamountlow=()=>{const b=this._dcQ;this._dcQ=null;for(const x of b)this._sendDC(x)}}
@@ -7752,26 +7752,27 @@ const Net={
     // Defensive intake for the peer id itself (payloads are validated per-case, but the
     // id feeds _touchPeer/_pr() directly). WebRTC delivers EVERY message kind here
     // unfiltered — "hello/ping never ride the DataChannel" only holds for honest peers.
-    if(msg.peer!==_ud&&(typeof msg.peer!=='string'||msg.peer.length>MAX_PEER_ID_LEN))return;
+    if(msg.peer!==_ud&&(typeof msg.peer!=='string'||_ln(msg.peer)>MAX_PEER_ID_LEN))return;
     switch(msg.k){
       case 'img':{
         // ADR-0069: blob chunks → _imgIn, then drain parked shape refs.
         // ADR-0379: cap each chunk too — the wire format sends ~64KB slices, but the
         // 12MB post-assembly check runs only after ALL parts land. An oversized
         // msg.data × up to 4096 slots per key × 64 keys could still buffer-hoard.
-        if(typeof msg.key!=='string'||msg.key.length>64||typeof msg.data!=='string'||msg.data.length>96*1024)break;
+        if(typeof msg.key!=='string'||_ln(msg.key)>64||typeof msg.data!=='string'||_ln(msg.data)>96*1024)break;
         const n=typeof msg.n==='number'&&msg.n>=1&&msg.n<=4096?_fl(msg.n):1;
         const seq=typeof msg.seq==='number'&&msg.seq>=0?_fl(msg.seq):0;
         if(seq>=n)break;
         let st=this._imgChunks.get(msg.key);
         // ADR-0374: bound in-flight reassemblies — a peer opening thousands of
         // keys mid-transfer and never finishing would grow the map unboundedly.
-        if(!st){if(this._imgChunks.size>=64)break;st={p:new Array(n),g:0,n};this._imgChunks.set(msg.key,st)}
+        if(!st){if(this._imgChunks.size>=64)this._imgChunks.delete(this._imgChunks.keys().next().value);st={p:new Array(n),g:0,n};this._imgChunks.set(msg.key,st)}   // ADR-0449: evict the oldest stalled key — refusing new keys lets 64 half-open sends block img transfer forever
         if(st.n===n&&!st.p[seq]){st.p[seq]=msg.data;st.g++}
         if(st.g<st.n)break;
         this._imgChunks.delete(msg.key);
         const data=st.p.join('');
-        if(data.length>12_000_000)break;
+        if(_ln(data)>12_000_000)break;
+        if(this._imgIn.size>=256&&!this._imgIn.has(msg.key))this._imgIn.delete(this._imgIn.keys().next().value);   // ADR-0449: bound received-blob store — every blob used to live forever
         this._imgIn.set(msg.key,data);
         for(const[id,k]of this._imgPending){
           if(k===msg.key){const sh=byId(id);if(sh){delete sh.img;sh.dataUrl=data}this._imgPending.delete(id)}
@@ -7781,7 +7782,7 @@ const Net={
         // ADR-0383/0431: chunked intake — snapshots and oversized ops share the
         // same reassembly (ops fragment only past the ~256KB SCTP ceiling).
         const joined=this._fragIn(msg,msg.k==='snap'?'_snapIn':'_opcIn');
-        if(!joined||joined.length>24_000_000)break;
+        if(!joined||_ln(joined)>24_000_000)break;
         try{this._onRecv(_JP(joined),viaRtc)}catch(_){}
         break;}
       case 'op':{
@@ -7810,7 +7811,7 @@ const Net={
         }
         break;
       case 'name':   // ADR-0402: doc-name rename propagates as a plain broadcast
-        if(typeof msg.name==='string'&&msg.name.length<=80){_setDocName(msg.name);_ps()}
+        if(typeof msg.name==='string'&&_ln(msg.name)<=80){_setDocName(msg.name);_ps()}
         break;
       case 'ping':
         this._touchPeer(msg.peer);
@@ -7918,7 +7919,7 @@ const Net={
     if(existing){existing.lastSeen=_now()}
     else{
       if(_pr().size>=MAX_PEERS)return;   // flood cap: known peers keep refreshing, new ones wait for a reap
-      const colorIdx=[..._pr().keys()].length%PEER_COLORS.length;
+      const colorIdx=[..._pr().keys()].length%_ln(PEER_COLORS);
       _pr().set(peerId,{color:PEER_COLORS[colorIdx],lastSeen:_now()});
       // ADR-0011: a latecomer would otherwise not see our selection until it next
       // changes — force one resend on the next frame.
@@ -8000,7 +8001,7 @@ const Net={
       this._touchPeer(this._rtcPeerId);
       // send snapshot to new peer (must include ops so a non-empty peer can merge). ADR-0383: >256KB snapshots die on the SCTP ceiling — send uniform 64KB 'snap' chunks.
       try{const _sm=_JS(this._snapshotMsg());
-        if(_sm.length>24e6){_w(t('snapBig'));return} // ADR-0403
+        if(_ln(_sm)>24e6){_w(t('snapBig'));return} // ADR-0403
         this._fragSend(_sm,'snap')
       }catch(_){}
     };
@@ -8008,7 +8009,7 @@ const Net={
       try{this._onRecv(_JP(e.data),true)}catch(_){}   // ADR-0010: viaRtc=true
     };
     this.dc.onclose=()=>{
-      this._dcQ=null;   // ADR-0446: a channel-level close never reaches the 'failed' reset — without this every later _sendDC enqueues to a dead queue forever
+      this._dcQ=null;this._snapIn=null;this._opcIn=null;   // ADR-0446/0448: dead-channel queue + half-received assemblies must not survive into the next connection
       if(!this._rtcConnFailed)_w(t('disconnected'));
       if(this._rtcPeerId){_pr().delete(this._rtcPeerId);this._rtcPeerId=null;_ivO();}
       if(this._onConnChange)this._onConnChange();
@@ -8053,10 +8054,10 @@ const Share={
   // (potentially trustworthy in Chrome/Firefox), plain http:// hosts do not.
   canEncrypt(){return typeof crypto!==_un&&!!crypto.subtle},
   // chunked base64url — String.fromCharCode(...u8) overflows on large payloads
-  _b64uEnc(u8){let s='';for(let i=0;i<u8.length;i+=0x8000)s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000));
+  _b64uEnc(u8){let s='';for(let i=0;i<_ln(u8);i+=0x8000)s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000));
     return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')},
-  _b64uDec(s){const b=atob(s.replace(/-/g,'+').replace(/_/g,'/'));const u=new Uint8Array(b.length);
-    for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u},
+  _b64uDec(s){const b=atob(s.replace(/-/g,'+').replace(/_/g,'/'));const u=new Uint8Array(_ln(b));
+    for(let i=0;i<_ln(b);i++)u[i]=b.charCodeAt(i);return u},
   // e: wraps the WHOLE inner payload (z:/j:) so compression stays first (ciphertext won't
   // compress) and inner format changes ride along untouched.
   async _encrypt(inner){
@@ -8064,7 +8065,7 @@ const Share={
     const iv=crypto.getRandomValues(new Uint8Array(12));
     const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:new TextEncoder().encode('board:e1')},key,new TextEncoder().encode(inner)));
     const raw=new Uint8Array(await crypto.subtle.exportKey('raw',key));
-    const all=new Uint8Array(12+ct.length);all.set(iv);all.set(ct,12);
+    const all=new Uint8Array(12+_ln(ct));all.set(iv);all.set(ct,12);
     return{ct:Share._b64uEnc(all),k:Share._b64uEnc(raw)};
   },
   async exportToUrl(enc){
@@ -8136,8 +8137,8 @@ const Share={
       }
       if(kind==='z:'&&typeof DecompressionStream!==_un){
         const bin=atob(body);
-        const bytes=new Uint8Array(bin.length);
-        for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+        const bytes=new Uint8Array(_ln(bin));
+        for(let i=0;i<_ln(bin);i++)bytes[i]=bin.charCodeAt(i);
         const ds=new DecompressionStream('deflate-raw');
         const stream=new Blob([bytes]).stream().pipeThrough(ds);
         json=await new Response(stream).text();
@@ -8147,12 +8148,12 @@ const Share={
       // ADR-0039: resource-bomb guard — a crafted z: link decodes BEFORE the
       // confirm prompt, so bound the decompressed payload and the shape count;
       // otherwise a multi-hundred-MB deflate bomb pegs the tab on link open.
-      if(json.length>SHARE_MAX_BYTES){_e(t(_IB));clearHash();return false}
+      if(_ln(json)>SHARE_MAX_BYTES){_e(t(_IB));clearHash();return false}
       const data=_JP(json);
-      if(!_iA(data.shapes)||data.shapes.length>SHARE_MAX_SHAPES){_e(t(_IB));clearHash();return false}
+      if(!_iA(data.shapes)||_ln(data.shapes)>SHARE_MAX_SHAPES){_e(t(_IB));clearHash();return false}
       // validate each shape — reject anything without id/type/z
       const valid=data.shapes.filter(validShape);
-      if(!valid.length){_e(t(_IB));clearHash();return false}
+      if(!_ln(valid)){_e(t(_IB));clearHash();return false}
       if(_nS()&&!confirm(t('importConfirm')))return false;
       // Reversible whole-board swap: a mistaken import is undoable (Ctrl+Z), so the
       // shared link can't silently destroy the board it replaced (§3.9 self-overwrite).
@@ -8160,7 +8161,7 @@ const Share={
       const beforeWc=clone(_wc());
       const origSel=_selIds();
       // ADR-0004: also survives past the undo window (reload/closed-tab), not just this session.
-      if(before.length)Persist.saveBackup(before,{..._vp()},_dn());
+      if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());
       state.shapes=valid.map(clone);_iG();_pcC();_setDocName(((typeof data.name==='string'&&data.name)||'Shared').slice(0,80));   // ADR-0009
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out (see importBoard for rationale).
@@ -8264,7 +8265,7 @@ const Persist={
       for(const[k,d]of puts)imgs.put(d,k);
       // GC: drop blobs neither the live doc nor the :prev backup references.
       const prev=await reqDone(tx.objectStore(DB_STORE).get(DOC_KEY+':prev'));
-      const live=new Set(slim.filter(s=>s.img).map(s=>s.img));
+      const live=_sT(slim.filter(s=>s.img).map(s=>s.img));
       if(prev&&_iA(prev.shapes))for(const s of prev.shapes)if(s.img)live.add(s.img);
       for(const k of stored.keys())if(!live.has(k))imgs.delete(k);
       tx.objectStore(DB_STORE).put({
@@ -8321,7 +8322,7 @@ const Persist={
   // closed tab the pre-replace board is gone for good. Stash it in a second key first.
   // Best-effort: a failed backup must never block the destructive op it's guarding.
   async saveBackup(shapes,viewport,docName){
-    if(!this.db||!shapes||!shapes.length)return;
+    if(!this.db||!shapes||!_ln(shapes))return;
     try{
       const tx=this.db.transaction([DB_STORE,DB_IMG_STORE],'readwrite');
       const imgs=tx.objectStore(DB_IMG_STORE);
@@ -8366,7 +8367,7 @@ const Persist={
         shapes=_imgAttach(shapes,new Map(ks.map((k,i)=>[k,kv[i]])));
       }
       shapes=shapes.filter(validShape);
-      if(!shapes.length){await this.discardBackup();return false}
+      if(!_ln(shapes)){await this.discardBackup();return false}
       // Reversible whole-board swap, same pattern as importBoard/importFromHash.
       const before=clone(_sh());
       const beforeWc=clone(_wc());
@@ -8390,7 +8391,7 @@ function txDone(tx){return new Promise((r,j)=>{tx.oncomplete=()=>r();tx.onerror=
 // — the key only names a blob in a same-origin private store, and the rare
 // collision resolves by chaining (':1', ':2', …) against the stored value, so
 // two different images can never overwrite each other.
-function _imgHash(d){let h=0x811c9dc5;for(let i=0;i<d.length;i++){h^=d.charCodeAt(i);h=Math.imul(h,0x01000193)>>>0}return 'i'+d.length.toString(36)+'x'+h.toString(36)}
+function _imgHash(d){let h=0x811c9dc5;for(let i=0;i<_ln(d);i++){h^=d.charCodeAt(i);h=Math.imul(h,0x01000193)>>>0}return 'i'+_ln(d).toString(36)+'x'+h.toString(36)}
 function _imgNextKey(k){const m=/^(.*):(\d+)$/.exec(k);return m?m[1]+':'+(+m[2]+1):k+':1'}
 // Split shapes into a slim array (image bytes → `img` ref) + the blob puts that
 // are not already stored. `stored` is the current key→dataUrl map; new puts are
@@ -8631,7 +8632,7 @@ const UI={
       has&&'sep',
       ['ctxSelectAll','⌘A',()=>{_ss(_sh().filter(s=>_sv(s)).map(s=>s.id));if(_selN())_aS();_iv()}],
       _nS()&&['ctxClear','',doClearAll]
-    ].filter(Boolean).filter((it,i,a)=>!(it==='sep'&&(i===0||i===a.length-1||a[i-1]==='sep')));
+    ].filter(Boolean).filter((it,i,a)=>!(it==='sep'&&(i===0||i===_ln(a)-1||a[i-1]==='sep')));
     for(const it of items){
       if(it==='sep'){
         const s=_ce('div');s.className='ctx-sep';
@@ -8756,7 +8757,7 @@ const UI={
         _g('shareUrl').value=url;
         // ADR-0040: links this long get mangled by chat apps — nudge toward
         // .board export instead of letting the user send a broken link.
-        _g('shareWarnLong').hidden=url.length<=SHARE_URL_WARN;
+        _g('shareWarnLong').hidden=_ln(url)<=SHARE_URL_WARN;
       }).catch(()=>{
         // ADR-0040: previously swallowed — an old/stale URL stayed in the
         // field and the user would copy a broken link.
@@ -8802,12 +8803,12 @@ function _ctxMenuKeyNav(m,e){
   // v1.6.96: Tab also closes the menu (ARIA APG: "Tab: closes the menu and moves to next tab stop")
   if(e.key==='Escape'||e.key==='Tab'){_pd(e);UI.closeCtxMenu();return;}
   const items=[..._qsa(m,'.ctx-item')];
-  if(!items.length)return;
+  if(!_ln(items))return;
   const cur=items.indexOf(document.activeElement);
-  if(e.key==='ArrowDown'){_pd(e);items[(cur+1)%items.length].focus();return;}
-  if(e.key==='ArrowUp'){_pd(e);items[(cur-1+items.length)%items.length].focus();return;}
+  if(e.key==='ArrowDown'){_pd(e);items[(cur+1)%_ln(items)].focus();return;}
+  if(e.key==='ArrowUp'){_pd(e);items[(cur-1+_ln(items))%_ln(items)].focus();return;}
   if(e.key==='Home'){_pd(e);items[0].focus();return;}
-  if(e.key==='End'){_pd(e);items[items.length-1].focus();return;}
+  if(e.key==='End'){_pd(e);items[_ln(items)-1].focus();return;}
 }
 
 // ====================== WIRE-UP ======================
@@ -8828,9 +8829,9 @@ function wire(){
     // ⌘Enter: commit the whole match list as the selection, then fold the
     // box away — selecting is terminal, so stale search highlights only
     // distract from the follow-up (move/style the found group).
-    if(ev.metaKey||ev.ctrlKey){const ms=_sqMatches();if(!ms.length)return;
+    if(ev.metaKey||ev.ctrlKey){const ms=_sqMatches();if(!_ln(ms))return;
       _ss(ms.map(s=>s.id));_aS();_iv();
-      _tst(`${ms.length} ${t(_SM)}`);
+      _tst(`${_ln(ms)} ${t(_SM)}`);
       _setSq('');sq.style.display='none';sq.value='';_ivO();canvas.focus();
     }else _sqAdvance(ev.shiftKey?-1:1);}});}
   // tool buttons
@@ -9029,7 +9030,7 @@ function _syncStylePanel(){
   if(!_selN())return;   // empty selection keeps the panel as-is
   const sel=[];
   for(const id of _sl()){const s=byId(id);if(s&&!_lk(s))sel.push(s)}
-  if(!sel.length)return;
+  if(!_ln(sel))return;
   // common value across the selection, undefined when mixed / absent
   const uni=k=>{const v=sel[0][k]??null;return sel.every(s=>(s[k]??null)===v)?v:undefined};
   const press=(attr,v)=>{for(const b of _qsa(document,'[data-'+attr+']'))_sa(b,_AP,_St(b.dataset[attr])===_St(v))};
@@ -9066,14 +9067,14 @@ function applyStyleToSelection(patch){
     _oa(sh,eff);
     before.push(b);after.push(a);
   }
-  if(before.length){_styleOp(before,after);}
+  if(_ln(before)){_styleOp(before,after);}
   _iv();
 }
 // Slider undo coalescing: capture shape prop values on pointerdown, flush a single
 // style op on change. Multiple input events during a drag never hit the undo stack.
 const _sbf={};
 function _sfbCapture(p){for(const id of _sl()){const s=byId(id);if(s&&!_lk(s)&&!(id+p in _sbf))_sbf[id+p]=s[p]}}
-function _sfbFlush(p,v){const b=[],a=[];for(const id of _sl()){const k=id+p;if(k in _sbf){const s=byId(id);if(s&&!_lk(s)){b.push({id,[p]:_sbf[k]});a.push({id,[p]:v});}delete _sbf[k];}}if(b.length&&b.some(x=>x[p]!==v)){_styleOp(b,a)}}
+function _sfbFlush(p,v){const b=[],a=[];for(const id of _sl()){const k=id+p;if(k in _sbf){const s=byId(id);if(s&&!_lk(s)){b.push({id,[p]:_sbf[k]});a.push({id,[p]:v});}delete _sbf[k];}}if(_ln(b)&&b.some(x=>x[p]!==v)){_styleOp(b,a)}}
 
 // ADR-0062: per-connector elbow toggle via style op — undo + wclock sync free.
 function toggleElbow(){
@@ -9092,8 +9093,8 @@ function toggleElbow(){
 // drops out of the selection so follow-up ops act on the contents.
 function selectFrameContents(){
   const frames=_sb().filter(s=>s&&s.type==='frame');
-  if(!frames.length)return;
-  const inner=withFrameChildren(new Set(frames.map(f=>f.id)));
+  if(!_ln(frames))return;
+  const inner=withFrameChildren(_sT(frames.map(f=>f.id)));
   for(const f of frames)inner.delete(f.id);
   if(!inner.size){_w(t(_ST));return}
   _ss(inner);
@@ -9118,9 +9119,9 @@ function toggleStickyText(){
 const HEAD_STYLES=['arrow','dot','bar','open','none'];   // ADR-0233/0294
 function cycleArrowHead(){
   const sel=_selL(s=>s&&s.type==='arrow'&&!_lk(s));
-  if(!sel.length)return;
+  if(!_ln(sel))return;
   const cur=sel[0].head||'arrow';
-  const next=HEAD_STYLES[(HEAD_STYLES.indexOf(cur)+1)%HEAD_STYLES.length];
+  const next=HEAD_STYLES[(HEAD_STYLES.indexOf(cur)+1)%_ln(HEAD_STYLES)];
   _st().head=next;                            // ADR-0181
   _cOp({op:'style',before:sel.map(s=>({id:s.id,head:s.head??null})),after:sel.map(s=>({id:s.id,head:next}))});
   _iv();_o(t('stylePasted'));
@@ -9129,7 +9130,7 @@ function cycleArrowHead(){
 // s.start toggles presence, s.startHead carries the style (null = inherit s.head).
 function cycleStartHead(){
   const sel=_selL(s=>s&&s.type==='arrow'&&!_lk(s));
-  if(!sel.length)return;
+  if(!_ln(sel))return;
   const seq=['none','arrow','dot','bar','open'],cur=!sel[0].start?'none':(sel[0].startHead||'arrow');
   const next=seq[(seq.indexOf(cur)+1)%4];
   _st().startHead=next==='none'?null:next;
@@ -9192,7 +9193,7 @@ function toggleRound(){
 function cycleStickyColor(){
   const before=[],after=[];
   _forSel((s,id)=>{if(s.type!=='sticky'||_lk(s))return;
-    const i=STICKY_COLORS.indexOf(s.color),nxt=STICKY_COLORS[(i+1)%STICKY_COLORS.length];
+    const i=STICKY_COLORS.indexOf(s.color),nxt=STICKY_COLORS[(i+1)%_ln(STICKY_COLORS)];
     _pp(before,after,id,'color',s.color||_YW,nxt);s.color=nxt;
   })
   _so(before,after)
@@ -9203,7 +9204,7 @@ function cycleStickyColor(){
 function fitFrames(){
   const PAD=12;
   const frames=_sb().filter(s=>s&&s.type==='frame'&&!_lk(s));
-  if(!frames.length)return;
+  if(!_ln(frames))return;
   const before=[],after=[];
   for(const f of frames){
     let m=null;
@@ -9222,7 +9223,7 @@ function fitFrames(){
     after.push({id:f.id,x:nx,y:ny,w:nw,h:nh});
     f.x=nx;f.y=ny;f.w=nw;f.h=nh;
   }
-  if(before.length){const origSel=_selIds();Store._recordCommitted({op:'align',dir:'framefit',before,after});_keepSel(origSel);_iv()}
+  if(_ln(before)){const origSel=_selIds();Store._recordCommitted({op:'align',dir:'framefit',before,after});_keepSel(origSel);_iv()}
 }
 // ADR-0084: route reset — one style op clears way/bend/elbow/curve back to a
 // straight edge (draw.io "Clear Waypoints"). way/bend are objects → ??null;
@@ -9268,7 +9269,7 @@ function fitSticky(){
     nw=_min(_max(64,nw),_max(64,s.w));   // never grow width past current
     const lines=wrapTextCached(s,_St(s.text||''),_max(10,nw-pad*2),fs,t=>ctx.measureText(t).width);
     ctx.restore();
-    const nh=_max(40,lines.length*lh+pad*2);
+    const nh=_max(40,_ln(lines)*lh+pad*2);
     if(nw===s.w&&nh===s.h)return;
     before.push({id,w:s.w,h:s.h});after.push({id,w:nw,h:nh});s.w=nw;s.h=nh;
   })
@@ -9342,7 +9343,7 @@ function cycleSpacing(){
   const seq=[null,1,2];
   const before=[],after=[];
   _forTxt((s,id)=>{
-    const i=seq.indexOf(_sp(s)??null),nxt=seq[(i+1)%seq.length];
+    const i=seq.indexOf(_sp(s)??null),nxt=seq[(i+1)%_ln(seq)];
     _pp(before,after,id,'spacing',_sp(s)??null,nxt);
     if(nxt==null)delete s.spacing;else s.spacing=nxt;
     _st().spacing=nxt;
@@ -9412,7 +9413,7 @@ function toggleTextFlag(k){
     before.push({id,[k]:s[k]||null});after.push({id,[k]:nxt?true:null});
     if(nxt)s[k]=true;else delete s[k];
   })
-  if(before.length){
+  if(_ln(before)){
     _rcOp({op:'style',before,after});
     const ta=_qs(document,'.text-overlay');
     if(ta&&_ed()){const s2=byId(_ed());if(s2){ta.style.fontWeight=s2.bold?'600':'';ta.style.fontStyle=s2.italic?'italic':'';ta.style.textDecoration=[s2.under?'underline':'',s2.strike?'line-through':''].filter(Boolean).join(' ')}}
@@ -9444,7 +9445,7 @@ function swapFillStroke(){
     const t2=s[fk];s[fk]=_sk(s);s.stroke=t2;
     if(s[fk]==null)delete s[fk];if(s.stroke==null)delete s.stroke;
   })
-  if(before.length){_styleOp(before,after);_iv();_o(t('swapDone'))}
+  if(_ln(before)){_styleOp(before,after);_iv();_o(t('swapDone'))}
 }
 // ADR-0173: cycle font family system→mono→serif→system for text-bearing
 // shapes via style op (Excalidraw font-switch parity).
@@ -9465,7 +9466,7 @@ function cycleOpacity(){
   if(!first)return;
   const lv=[1,0.7,0.4,0.1],cur=first.opacity??1;
   const idx=lv.findIndex(v=>_abs(v-cur)<0.051);
-  const nxt=idx>=0?lv[(idx+1)%lv.length]:(lv.find(v=>v<cur)??lv[0]);
+  const nxt=idx>=0?lv[(idx+1)%_ln(lv)]:(lv.find(v=>v<cur)??lv[0]);
   applyStyleToSelection({opacity:nxt});
 }
 // ADR-0073: cycle text align left→center→right for text/sticky via style op.
@@ -9551,7 +9552,7 @@ function openSelLink(){
 function copyStyle(){
   // Copy style from the first selected shape
   const ids=_selIds();
-  const sh=ids.length?byId(ids[0]):null;
+  const sh=_ln(ids)?byId(ids[0]):null;
   if(!sh){_w(t(_NS));return}
   state.styleClipboard=_styleOf(sh);
   _o(t('styleCopied'));
@@ -9614,7 +9615,7 @@ const Presentation=(()=>{
 
   function enter(){
     _frames=_getFrames();
-    if(!_frames.length){_w(t('noFrames'));return}
+    if(!_ln(_frames)){_w(t('noFrames'));return}
     _focusTrigger=document.activeElement;
     _active=true;_idx=0;
     _savedVp={x:_vp().x,y:_vp().y,zoom:_vp().zoom};
@@ -9674,13 +9675,13 @@ const Presentation=(()=>{
   }
 
   function _goto(i){
-    _idx=_max(0,_min(_frames.length-1,i));
+    _idx=_max(0,_min(_ln(_frames)-1,i));
     _zoomToFrame(_frames[_idx]);
     const c=_g('presCounter');
-    if(c)c.textContent=`${_idx+1} / ${_frames.length}`;
+    if(c)c.textContent=`${_idx+1} / ${_ln(_frames)}`;
   }
 
-  function next(){if(_active&&_idx<_frames.length-1)_goto(_idx+1)}
+  function next(){if(_active&&_idx<_ln(_frames)-1)_goto(_idx+1)}
   function prev(){if(_active&&_idx>0)_goto(_idx-1)}
   function isActive(){return _active}
 
@@ -9724,8 +9725,8 @@ const Minimap=(()=>{
         case 'rect':{const rx=s.x*sc+ox,ry=s.y*sc+oy,rw=s.w*sc,rh=s.h*sc;if(_fi(s))sx.fillRect(rx,ry,rw,rh);sx.strokeRect(rx,ry,rw,rh);break}
         case 'ellipse':sx.beginPath();sx.ellipse(s.x*sc+ox+s.w*sc/2,s.y*sc+oy+s.h*sc/2,_abs(s.w*sc/2),_abs(s.h*sc/2),0,0,_PI*2);if(_fi(s))sx.fill();sx.stroke();break;
         case 'diamond':{const dcx=s.x*sc+ox+s.w*sc/2,dcy=s.y*sc+oy+s.h*sc/2;sx.beginPath();sx.moveTo(dcx,s.y*sc+oy);sx.lineTo(s.x*sc+ox+s.w*sc,dcy);sx.lineTo(dcx,s.y*sc+oy+s.h*sc);sx.lineTo(s.x*sc+ox,dcy);sx.closePath();if(_fi(s))sx.fill();sx.stroke();break;}
-        case 'line':case 'arrow':{if(_el(s)){const pts=_elbowPts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<pts.length;i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}if(s.curve){const me=_cE(s),cc=_curveCtrl(me,s.cbend);sx.beginPath();sx.moveTo(me.x1*sc+ox,me.y1*sc+oy);sx.quadraticCurveTo(cc.x*sc+ox,cc.y*sc+oy,me.x2*sc+ox,me.y2*sc+oy);sx.stroke();break}const pts=_linePts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<pts.length;i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}
-        case 'pen':if(s.pts.length<2)break;sx.beginPath();sx.moveTo(s.pts[0][0]*sc+ox,s.pts[0][1]*sc+oy);for(let i=1;i<s.pts.length;i++)sx.lineTo(s.pts[i][0]*sc+ox,s.pts[i][1]*sc+oy);sx.stroke();break;
+        case 'line':case 'arrow':{if(_el(s)){const pts=_elbowPts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<_ln(pts);i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}if(s.curve){const me=_cE(s),cc=_curveCtrl(me,s.cbend);sx.beginPath();sx.moveTo(me.x1*sc+ox,me.y1*sc+oy);sx.quadraticCurveTo(cc.x*sc+ox,cc.y*sc+oy,me.x2*sc+ox,me.y2*sc+oy);sx.stroke();break}const pts=_linePts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<_ln(pts);i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}
+        case 'pen':if(_ln(s.pts)<2)break;sx.beginPath();sx.moveTo(s.pts[0][0]*sc+ox,s.pts[0][1]*sc+oy);for(let i=1;i<_ln(s.pts);i++)sx.lineTo(s.pts[i][0]*sc+ox,s.pts[i][1]*sc+oy);sx.stroke();break;
         case 'text':case 'sticky':{const rx2=s.x*sc+ox,ry2=s.y*sc+oy,rw2=_max(2,s.w*sc),rh2=_max(2,s.h*sc);sx.fillStyle=s.type==='sticky'?(s.color||_YW):(_fi(s)||_gC('--brand'));sx.fillRect(rx2,ry2,rw2,rh2);break}
         case 'image':{const rx3=s.x*sc+ox,ry3=s.y*sc+oy,rw3=_max(2,s.w*sc),rh3=_max(2,s.h*sc);const img=_du(s)?_imgCache.get(_imgKey(_du(s))):null;if(img&&img.complete&&img.naturalWidth){if(s.flip){const fx3=rx3+rw3/2,fy3=ry3+rh3/2;sx.save();sx.translate(fx3,fy3);sx.scale(s.flip&1?-1:1,s.flip&2?-1:1);sx.translate(-fx3,-fy3);sx.drawImage(img,rx3,ry3,rw3,rh3);sx.restore()}else sx.drawImage(img,rx3,ry3,rw3,rh3)}else{sx.fillStyle='#CBD5E1';sx.fillRect(rx3,ry3,rw3,rh3)}break}
       }

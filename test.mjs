@@ -151,7 +151,7 @@ const checks = [
   // round 4 improvements
   ['data-t i18n auto-apply', html.includes("UI.applyI18n") && html.includes("el.textContent=t(key)")],
   ['Eraser batches into single undo', html.includes("_eraseBatch") && html.includes("flushErase")],
-  ['pointercancel restores eraser batch + clears guides', html.includes("_cancelPointerGesture") && html.includes("state.guides=null") && /if\(_eraseBatch\.length\)[\s\S]{0,280}state\.guides=null/.test(html)],
+  ['pointercancel restores eraser batch + clears guides', html.includes("_cancelPointerGesture") && html.includes("state.guides=null") && /if\(_ln\(_eraseBatch\)\)[\s\S]{0,280}state\.guides=null/.test(html)],
   ['document.title synced on docName change (WCAG 2.4.2)', html.includes('_syncDocTitle')&&html.includes("document.title=")&&html.includes("_syncDocTitle();")],
   ['Screen Wake Lock in presentation mode', html.includes('navigator.wakeLock')&&html.includes('_acquireWakeLock')&&html.includes('_releaseWakeLock')],
   ['RAF idle-stop: invalidate guards with _rafId (no 60fps busy-loop on idle board)', html.includes('let needsRender=true,needOverlay=true,_rafId=0')&&html.includes('if(!_rafId)_rafId=_rAF(frame)')&&html.includes('_rafId=0;')],
@@ -246,7 +246,7 @@ const checks = [
   // v1.7.69: the SAME guard now also gates the canvas/render + all remote/import intake
   // via validPatch, so an image dataUrl can never be an external URL (getImg→img.src).
   ['image dataUrl restricted to data:image/ at the validPatch intake gate (no external img.src)',
-    html.includes("if('dataUrl' in p&&p.dataUrl!=null&&!(typeof p.dataUrl==='string'&&p.dataUrl.length<=16_000_000&&/^data:image\\//.test(p.dataUrl)))return false;")],
+    html.includes("if('dataUrl' in p&&p.dataUrl!=null&&!(typeof p.dataUrl==='string'&&_ln(p.dataUrl)<=16_000_000&&/^data:image\\//.test(p.dataUrl)))return false;")],
   ['PDF export escapes docName', html.includes("_esc(_dn()||'board')")],
   ['getCSS is memoised', html.includes("_cssCache") && html.includes("function clearCSSCache")],
   ['resize handles use AAA brand-ink ring', html.includes("_gC('--brand-ink')")],
@@ -262,7 +262,7 @@ const checks = [
   // v1.7.0: connector (edge) labels (ADR-0003)
   ['openLabelEditor shared by boxes + connectors', html.includes("function openLabelEditor(hit,leftPx,topPx,bold)")],
   ['dblclick opens label editor on line/arrow at midpoint', html.includes("_conn(hit.type)") && html.includes("_connLabelXY(hit)")],
-  ['_drawConnLabel renders edge label on canvas', html.includes("function _drawConnLabel(s,c)") && html.includes("c.fillText(lns[i],mx,my+(i-(lns.length-1)/2)*llh)")],
+  ['_drawConnLabel renders edge label on canvas', html.includes("function _drawConnLabel(s,c)") && html.includes("c.fillText(lns[i],mx,my+(i-(_ln(lns)-1)/2)*llh)")],
   ['line/arrow drawShape calls _drawConnLabel', html.includes("c.stroke();_drawConnLabel(s,c);break;") && html.includes("drawArrow(s,c);_drawConnLabel(s,c);break;")],
   ['_connLabelSVG emits edge label in SVG', html.includes("function _connLabelSVG(s,x1,y1,x2,y2,ox,oy,stroke,paper)")],
   ['Persist.load validates shapes', html.includes("d.shapes.filter(validShape)")],
@@ -486,8 +486,8 @@ const checks = [
   ['select same colour (ctx)', html.includes('selectSamePaint')&&html.includes('ctxSelectSame')&&html.includes("s0.type==='sticky'?s0.color:s0.fill")],
   ['sticky ⌘Enter chain: spawn next sticky + editor', html.includes('_stickyChain')&&html.includes('x+s.w+16')&&html.includes('openTextEditor(n,true)')],
   ['boot empty-view guard → fitToContent', html.includes('_fitIfEmptyView()')&&html.includes('b.x+b.w<v.x')],
-  ['tidy grid reflow (ctx, align op dir)', html.includes("doAlign('tidy')")&&html.includes('ctxTidy')&&html.includes('_ceil(_sqr(units.length))')],
-  ['swap positions (ctx, 2 selections)', html.includes("doAlign('swap')")&&html.includes('ctxSwap')&&html.includes('units.length!==2')],
+  ['tidy grid reflow (ctx, align op dir)', html.includes("doAlign('tidy')")&&html.includes('ctxTidy')&&html.includes('_ceil(_sqr(_ln(units)))')],
+  ['swap positions (ctx, 2 selections)', html.includes("doAlign('swap')")&&html.includes('ctxSwap')&&html.includes('_ln(units)!==2')],
   ['snap selection to grid (ctx, align op)', html.includes('snapSelToGrid')&&html.includes('ctxSnapGrid')&&html.includes("dir:'gsnap'")&&html.includes('_rnd(b.x/GRID_SIZE)')],
   ['select same type (ctx)', html.includes('selectSameType')&&html.includes('ctxSelectSameType')&&html.includes('s.type===sel[0].type')],
   ['connector label position (labelPos, drag anchor)', html.includes('_lP(s)!=null&&_fin(_lP(s))')&&html.includes("ptr.dragKind='lblpos'")&&html.includes('_pathNearestT')],
@@ -514,7 +514,7 @@ const checks = [
   ['style copy widened — text/route props included', html.includes('align:sh.align,valign:sh.valign,fontSize:sh.fontSize')&&html.includes('cbend:sh.cbend')],
   ['invert selection ⌘⇧I + ctx', html.includes('function selectInverse')&&html.includes('ctxSelectInverse')&&html.includes('selectInverse()}')],
   ['connect 2 selected shapes via ctx', html.includes('function connectSelection')&&html.includes('a:a.id,b:b.id')&&html.includes('ctxConnect')],
-  ['Alt+click deletes a waypoint', html.includes('wa.splice(i-1,1);onlySel.way=wa.length?wa:null')&&html.includes('ADR-0141')],
+  ['Alt+click deletes a waypoint', html.includes('wa.splice(i-1,1);onlySel.way=_ln(wa)?wa:null')&&html.includes('ADR-0141')],
   ['flip mirrors rotation per-axis (180−θ for h)', html.includes("axis==='h'?180:360")&&html.includes('ADR-0142')],
   ['Alt+click recentres elbow trunk bend', html.includes('ADR-0143')&&html.includes("bend:onlySel.bend" )&&html.includes('delete onlySel.bend')],
   ['Alt+click apex restores auto curve bow', html.includes('ADR-0144')&&html.includes('cbend:onlySel.cbend')&&html.includes('delete onlySel.cbend')],
@@ -530,7 +530,7 @@ const checks = [
   ['gresize scales curve cbend affinely', html.includes('sh.cbend=orig.cbend*sx*sy*ol/nl')],
   ['snap index skips hidden shapes', html.includes('exclFn(s)||_hd(s)')],
   ['DOM mirror marks hidden shapes', html.includes("tagHidden:'(非表示)'")&&html.includes("_hd(s)||_oP(s)===0?' '+t('tagHidden')")],
-  ['fit ignores hidden unless all hidden', html.includes('const vis=_sh().filter(s=>_sv(s))')&&html.includes('_vis.length?_vis:_sh()')],
+  ['fit ignores hidden unless all hidden', html.includes('const vis=_sh().filter(s=>_sv(s))')&&html.includes('_ln(_vis)?_vis:_sh()')],
   ['rounded diamond path + cycle + ctx', html.includes('function _diamondPath(c,s)')&&html.includes("const boxOk=s.type==='rect'||s.type==='diamond'||s.type==='image'")&&html.includes("s.type==='rect'||s.type==='diamond'")],
   ['SVG diamond emits rounded path when r>0', html.includes('const _dPts=[[X+W/2,Y],[X+W,Y+H/2]')&&html.includes("_min(_dr,e1/2,e2/2)")],
   ['unbind-selection ctx item + fn', html.includes("ctxUnbind:'結合を解除'")&&html.includes('function unbindSelection()')&&html.includes("['ctxUnbind','',unbindSelection]")],
@@ -562,15 +562,15 @@ const checks = [
   ['context menu separators have role=separator', html.includes("_sa(s,'role','separator')")],
   // v1.6.21: fifth audit pass
   ['exportPDF uses setTransform for correct world-coordinate mapping', html.includes('oc.setTransform(dpr,0,0,dpr,(-b.x+pad)*dpr,(-b.y+pad)*dpr)')],
-  ['G.hit handles single-point pen dot (length===1 early return)', html.includes('pts.length===1)return _hp')],
+  ['G.hit handles single-point pen dot (length===1 early return)', html.includes('_ln(pts)===1)return _hp')],
   ['doPaste remaps groupId via gidMap to avoid cross-group contamination', html.includes('gidMap') && html.includes('gidMap.has(sh.groupId)')],
   // v1.6.22: IME + pen RDP + docs
   ['frame label keydown guards ev.isComposing (IME safe)', html.includes('_on(inp') && html.includes('if(ev.isComposing)return')],
   ['text editor keydown guards ev.isComposing (IME safe)', (html.match(/if\(ev\.isComposing\)return/g)||[]).length >= 2],
   ['pen RDP decimation function _rdp present', html.includes('function _rdp(pts,eps)')],
-  ['endPen applies RDP on commit', html.includes('d.pts.length>3')&&html.includes('_rdp(d.pts,0.5/_vp().zoom)')],
+  ['endPen applies RDP on commit', html.includes('_ln(d.pts)>3')&&html.includes('_rdp(d.pts,0.5/_vp().zoom)')],
   // v1.7.92: ADR-0034 iterative index-range RDP + zoom-adaptive eps
-  ['RDP is iterative index-range (no slice recursion)', html.includes('const keep=new Uint8Array(pts.length)')&&html.includes('stack.push([lo,idx],[idx,hi])')],
+  ['RDP is iterative index-range (no slice recursion)', html.includes('const keep=new Uint8Array(_ln(pts))')&&html.includes('stack.push([lo,idx],[idx,hi])')],
   ['size is reported (no hard cap since 2026-06-13)', readFileSync('./test.mjs','utf8').includes("Size is no longer hard-capped")],
   // v1.6.25: style op for single-undo multi-select style
   ['style op in _apply (single undo for multi-select style)', html.includes("case 'style':")],
@@ -587,7 +587,7 @@ const checks = [
   ['file importers reject >32MB payloads (ADR-0398)', html.includes("_bigFile=f=>f.size>33554432")&&(html.match(/_bigFile\(file\)/g)||[]).length>=4],
   ['importBoard uses atomic replace op (not clear+adds)', html.includes('function importBoard') && html.includes('.filter(validShape)') && html.includes("op:'replace',before,after")],
   ['Ctrl+Shift+S triggers exportBoard', html.includes("e.shiftKey){_pd(e);exportBoard()}")],
-  ['doDelete warns on all-locked selection (ADR-0396)', html.includes("if(!sel.length){if(_selAny())_w(t('lockedNoop'));return}")],
+  ['doDelete warns on all-locked selection (ADR-0396)', html.includes("if(!_ln(sel)){if(_selAny())_w(t('lockedNoop'));return}")],
   // ADR-0004: doClearAll/importBoard/importFromHash back up the pre-replace board to a
   // second IndexedDB slot before the destructive swap, so it survives past the session-only
   // undo window (reload / closed tab). importBoard can't be exercised directly in this
@@ -596,14 +596,14 @@ const checks = [
   ['ADR-0004: doClearAll backs up pre-clear board before the destructive commit',
     html.includes("Persist.saveBackup(clone(_sh()),{..._vp()},_dn());   // ADR-0004\n  Store.commit({op:'clear'")],
   ['ADR-0004: importBoard backs up pre-import board before the whole-board swap',
-    html.includes("if(before.length)Persist.saveBackup(before,{..._vp()},_dn());   // ADR-0004\n      state.shapes=shapes.map(clone);")],
+    html.includes("if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());   // ADR-0004\n      state.shapes=shapes.map(clone);")],
   ['ADR-0004: importFromHash backs up pre-import board before the whole-board swap',
-    html.includes("if(before.length)Persist.saveBackup(before,{..._vp()},_dn());\n      state.shapes=valid.map(clone);")],
+    html.includes("if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());\n      state.shapes=valid.map(clone);")],
   ['ADR-0004: main() offers a one-time restore prompt when a backup exists at boot',
     html.includes("if(await Persist.checkBackup()){") && html.includes("if(confirm(t('backupAvailable')))await Persist.restoreBackup();") && html.includes("else await Persist.discardBackup();")],
   ['drag-drop accepts .board files', html.includes(".endsWith('.board')")],
   // v1.6.27: SVG export renders single-point pen as circle dot
-  ['SVG export handles single-point pen shape', html.includes('s.pts.length===1')],
+  ['SVG export handles single-point pen shape', html.includes('_ln(s.pts)===1')],
   ['SVG export emits circle for single-point pen', html.includes('<circle cx=')],
   // v1.6.28: ungroup undo preserves per-shape groupId across multi-group ungroup
   ['doUngroup captures before snapshot', html.includes('before.push({id:s.id,groupId:_gi(s)})')],
@@ -685,17 +685,17 @@ const checks = [
   // v1.7.96: ADR-0038 share-link reject paths all toast + clear hash
   ['importFromHash hoists clearHash helper', html.includes("const clearHash=()=>{try{history.replaceState(null,'',location.pathname)}catch(_){}};")],
   ['unknown kind toasts + clears', html.includes("}else{_e(t(_IB));clearHash();return false}")],
-  ['non-array shapes toasts + clears', html.includes("if(!_iA(data.shapes)||data.shapes.length>SHARE_MAX_SHAPES){_e(t(_IB));clearHash();return false}")],
-  ['all-invalid shapes toasts + clears', html.includes("if(!valid.length){_e(t(_IB));clearHash();return false}")],
+  ['non-array shapes toasts + clears', html.includes("if(!_iA(data.shapes)||_ln(data.shapes)>SHARE_MAX_SHAPES){_e(t(_IB));clearHash();return false}")],
+  ['all-invalid shapes toasts + clears', html.includes("if(!_ln(valid)){_e(t(_IB));clearHash();return false}")],
   ['decode-throw catch also clears hash', html.includes("}catch{_e(t(_IB));clearHash();return false}")],
   // v1.7.97: ADR-0039 share-link resource-bomb guard
   ['share payload ceilings defined', html.includes('SHARE_MAX_BYTES') && html.includes('SHARE_MAX_SHAPES')],
-  ['decompressed payload byte cap before parse', html.includes('json.length>SHARE_MAX_BYTES')],
-  ['shape count cap on imported payload', html.includes('data.shapes.length>SHARE_MAX_SHAPES')],
+  ['decompressed payload byte cap before parse', html.includes('_ln(json)>SHARE_MAX_BYTES')],
+  ['shape count cap on imported payload', html.includes('_ln(data.shapes)>SHARE_MAX_SHAPES')],
   // v1.7.98: ADR-0040 share URL length warning + export-failure feedback
   ['share URL length warn threshold defined', html.includes('SHARE_URL_WARN')],
   ['long-URL warning element exists', html.includes('id="shareWarnLong"')],
-  ['overlong URL shows the warn', html.includes('url.length<=SHARE_URL_WARN')],
+  ['overlong URL shows the warn', html.includes('_ln(url)<=SHARE_URL_WARN')],
   ['export failure clears field + toasts', html.includes("shareUrl').value=''") && html.includes("_e(t('shareExportFailed'))")],
   ['i18n has shareUrlTooLong/shareExportFailed ja+en', html.includes("shareUrlTooLong:'⚠ URL が非常に長い") && html.includes("shareUrlTooLong:'⚠ This URL is very long") && html.includes("shareExportFailed:'共有リンクの生成に失敗しました'") && html.includes("shareExportFailed:'Failed to build the share link'")],
   // v1.7.99: ADR-0041 DOM mirror a11y
@@ -748,7 +748,7 @@ const checks = [
   ['UserObject label/link fallback (ADR-0328)', html.includes("tagName==='UserObject'?c.parentElement:null")&&html.includes("_ga(_uo,'label')")],
   ['s.link scheme gate in validPatch (ADR-0327)', html.includes("'link' in p&&p.link!=null")&&html.includes('ADR-0327')],
   ['_pd() preventDefault shorthand (ADR-0326)', html.includes("const _pd=e=>e.preventDefault()")],
-  ['deflate bomb guard in _dioInflate (ADR-0325)', html.includes("getReader(),dec=new TextDecoder")&&html.includes("txt.length>8e6")],
+  ['deflate bomb guard in _dioInflate (ADR-0325)', html.includes("getReader(),dec=new TextDecoder")&&html.includes("_ln(txt)>8e6")],
   ['compressed drawio inflates every page (ADR-0324)', html.includes("Promise.all(_dms.map(m=>_dioInflate(m[1])))")&&html.includes("matchAll(/<diagram[^>]*>([^<]+)<\\/diagram>/g)")],
   ['exc conn-label lineHeight restore (ADR-0323)', html.includes("e.lineHeight!==1.25)p.lineH=")],
   ['drawio export emits html=1 (ADR-0322)', html.includes("let sty='html=1;';")&&html.includes("'html=1;'+(s.start")],
@@ -834,7 +834,7 @@ const checks = [
   ['Alt draws box shapes from center (ADR-0219)', html.includes('contRectLike(wp,e.shiftKey,e.altKey)')&&html.includes('// ADR-0219: ⌥ = draw from center')],
   ['.drawio export mxGraphModel round-trip (ADR-0220)', html.includes('function boardToDrawio(shapes)')&&html.includes('edgeStyle=orthogonalEdgeStyle')&&html.includes("jumpStyle=arc")],
   ['drawio exitX/entryX fixed ports round-trip aF/bF (ADR-0221)', html.includes('s.aF={fx:_c01(fx),fy')&&html.includes('exitX=${s.aF.fx};exitY=${s.aF.fy}')],
-  ['excalidraw export keeps bindings via s.a/s.b + boundElements (ADR-0222)', html.includes('startBinding:s.a?{elementId:s.a')&&html.includes('if(out.length)e.boundElements=out')],
+  ['excalidraw export keeps bindings via s.a/s.b + boundElements (ADR-0222)', html.includes('startBinding:s.a?{elementId:s.a')&&html.includes('if(_ln(out))e.boundElements=out')],
   ['excalidraw import restores bindings to s.a/s.b (ADR-0223)', html.includes('_excBnd.push([s,e])')&&html.includes('idOf.get(sb.elementId)')],
   ['drawio import keeps line-vs-arrow/curved/jump/start-head (ADR-0224)', html.includes("sty.endArrow==='none'")&&html.includes('s.hop=1')],
   ['drawio import note→sticky / swimlane→frame (ADR-0226)', html.includes("sty.shape==='note'){s=Shape.make('sticky'")&&html.includes("sty.shape==='swimlane')s=Shape.make('frame'")],
@@ -915,7 +915,7 @@ const checks = [
   ['frame font via cycleFont gate + make() inheritance', html.includes("s.type!=='frame'&&!_lb(s)")&&html.includes("type==='frame'||_lb(s)")&&html.includes("type==='sticky'||type==='frame'")],
   ['line-height cycle — canvas/SVG/resize + style-copy/eyedropper', html.includes("function cycleLineH()")&&html.includes("fs*(s.lineH||1.3)")&&html.includes("'fontSize','lineH','cbend'")],
   ['sticky chain inherits full typography', html.includes("font:s.font,lineH:s.lineH,spacing:_sp(s),bold:s.bold,italic:s.italic")],
-  ['text s.fill paints bg plate (canvas+SVG)', html.includes("if(_fi(s)){const mw=_tm.w;")&&html.includes('height="${svgLines.length*fs*(s.lineH||1.25)+6}"')],
+  ['text s.fill paints bg plate (canvas+SVG)', html.includes("if(_fi(s)){const mw=_tm.w;")&&html.includes('height="${_ln(svgLines)*fs*(s.lineH||1.25)+6}"')],
   ['sticky text colour via s.stroke (canvas+SVG)', html.includes("c.fillStyle=_sk(s)||'#1E293B'")&&html.includes('fill="${_esc(_sk(s)||')],
   ['conn label pill honours s.fill (canvas+SVG)', html.includes("_fi(s)||_p()")&&html.includes("_esc(_fi(s)||paper")],
   ['drop shadow — canvas props + SVG filter + toggle + persistence', html.includes("shadowColor='rgba(15,23,42,.22)'")&&html.includes("id=\"bsh\"")&&html.includes("function toggleShadow()")&&html.includes("_st().shadow=s.shadow||null")],
@@ -925,7 +925,7 @@ const checks = [
   ['frame label honours s.align + cycleTextAlign gate', html.includes("const alF=s.align||'left'")&&html.includes("_selTxtL()&&['ctxTextAlign'")],
   ['ctxReverse reverses connector direction (ADR-0198)', html.includes('function reverseConn()')&&html.includes("['ctxReverse','',reverseConn]")],
   ['ctxFitText sizes sticky to wrapped text (ADR-0199)', html.includes('function fitSticky()')&&html.includes("['ctxFitText','',fitSticky]")],
-  ['Shift constrains pen to straight line (ADR-0200)', html.includes("e.shiftKey&&pts.length){pts.length=1;pts.push")],
+  ['Shift constrains pen to straight line (ADR-0200)', html.includes("e.shiftKey&&_ln(pts)){pts.length=1;pts.push")],
   ['move gesture shows live X,Y readout (ADR-0201)', html.includes("label:`${_rnd(bx)}, ${_rnd(by)}`")],
   ['draw drafts show dims/length readout (ADR-0202)', html.includes("_rnd(d.h)}`")&&html.includes("x2-ptr.wx0")],
   // v1.7.05: Tab cycling excludes locked shapes (parity with doMove/doDelete/doRotate/doFlip)
@@ -992,7 +992,7 @@ const checks = [
   ['minimap renders frame shapes (case frame fallthrough to rect)', html.includes("case 'frame':\n        case 'rect':")],
   ['describeShape announces locked and rotated state', html.includes("if(_lk(s))d+=` ${t('ctxLock')}`;") && html.includes("if(_rt(s))d+=` ${_rt(s)}°`;")],
   ['describeShape announces flip/shadow/route (ADR-0414)', html.includes("s.flip&1&&t('ctxFlipH')")&&html.includes("if(_sh2(s))d+=` ${t('ctxShadow')}`")&&html.includes("_el(s)?t('ctxElbow'):t('ctxCurve')")&&html.includes("_fs2(s)==='hatch'||_fs2(s)==='cross'")&&html.includes("if(s.hop)d+=` ${t('ctxHop')}`")],
-  ['describeShape announces text/label content for SR', html.includes("const txt=_St(s.text||_lb(s)||'').replace(/\\s+/g,' ').trim();") && html.includes("txt.length>30?txt.slice(0,30)+'…':txt")],
+  ['describeShape announces text/label content for SR', html.includes("const txt=_St(s.text||_lb(s)||'').replace(/\\s+/g,' ').trim();") && html.includes("_ln(txt)>30?txt.slice(0,30)+'…':txt")],
   // v1.6.66: resize object-snap
   ['resizeSnap exists and applyResize uses it', html.includes("function resizeSnap(orig,handle,wp)") && html.includes(":resizeSnap(orig,handle,wp); // lock/alt override obj-snap")],
   ['resize commit clears alignment guides', html.includes("ptr.resizeHandle=null;ptr.resizeOrig=null;state.guides=null;")],
@@ -1022,7 +1022,7 @@ const checks = [
   ['peer flood: MAX_PEERS cap + peer-id type/length intake guard',
     html.includes('const MAX_PEERS=32')
     && html.includes('if(_pr().size>=MAX_PEERS)return;')
-    && html.includes("typeof msg.peer!=='string'||msg.peer.length>MAX_PEER_ID_LEN")],
+    && html.includes("typeof msg.peer!=='string'||_ln(msg.peer)>MAX_PEER_ID_LEN")],
   ['snapshot amplification: _sendSnapshot throttled',
     html.includes('_lastSnapAt:0') && html.includes('if(now-this._lastSnapAt<1000)return;')],
   ['importBoard: FileReader onerror toasts instead of failing silently',
@@ -1092,7 +1092,7 @@ const checks = [
   ['imgErr i18n key in both locales', html.includes("imgErr:'画像を読み込めませんでした'") && html.includes("imgErr:'Image failed to load'")],
   ['drag-drop image import has img.onerror toast', html.includes("img.onerror=()=>_w(t('imgErr'));") ],
   ['image import (shared _imgImportFile) has reader.onerror toast', html.includes("function _imgImportFile(") && html.includes("reader.onerror=()=>_w(t('imgErr'));")],
-  ['context menu deduplicates consecutive separators', html.includes(".filter((it,i,a)=>!(it==='sep'&&(i===0||i===a.length-1||a[i-1]==='sep')))")],
+  ['context menu deduplicates consecutive separators', html.includes(".filter((it,i,a)=>!(it==='sep'&&(i===0||i===_ln(a)-1||a[i-1]==='sep')))")],
   ['doDuplicate does not clobber clipboard (uses _placeCopies, not state.clipboard=)', html.includes("_placeCopies(sel,_dd().x,_dd().y):_placeCopies(sel);   // independent of _cl()") && html.includes("function _placeCopies(srcShapes")],
   // v1.6.71: import sites clear stale selection + wclock (mirror replace op's _apply)
   ['dc.onclose drops _dcQ backlog so reconnect sends (ADR-0446)', /this\.dc\.onclose=\(\)=>\{[^}]*this\._dcQ=null/.test(html)],
@@ -1108,7 +1108,7 @@ const checks = [
   ['sticky branch preserves s.w (no text-width overwrite)', html.includes("if(s.type==='sticky'){") && html.includes("wl=wrapText(s.text||'',_abs(s.w)-pad*2")],
   ['text branch still auto-sizes width', html.includes("}else{\n    const lines=(s.text||'').split('\\n');")],
   // v1.6.73: doAlign skips locked shapes (parity with doDelete/doRotate/doFlip)
-  ['doAlign filters locked shapes', html.includes("const sel=_selL(s=>s&&!_lk(s));\n  if(sel.length<2)return;")],
+  ['doAlign filters locked shapes', html.includes("const sel=_selL(s=>s&&!_lk(s));\n  if(_ln(sel)<2)return;")],
   // v1.6.74: _placeCopies remaps connector bindings (sh.a/sh.b) within pasted set
   ['_placeCopies pre-generates idMap for two-pass connector remapping', html.includes("const idMap=_mP();") && html.includes("for(const orig of srcShapes)idMap.set(orig.id,uid());")],
   ['_placeCopies remaps sh.a and sh.b to new ids', html.includes("if(sh.a&&idMap.has(sh.a))sh.a=idMap.get(sh.a);") && html.includes("if(sh.b&&idMap.has(sh.b))sh.b=idMap.get(sh.b);")],
@@ -1125,7 +1125,7 @@ const checks = [
   ['Persist.save catch delegates to _saveErrMsg', html.includes("_e(this._saveErrMsg(err));")],
   ['quotaExceeded i18n key in ja and en', html.includes("quotaExceeded:'保存容量が逼迫しています") && html.includes("quotaExceeded:'Storage quota exceeded")],
   // v1.6.78: pen captures all coalesced sub-samples (high-rate stylus smoothness)
-  ['coalescedSamples helper present with fallback', html.includes("function coalescedSamples(e)") && html.includes("return cs&&cs.length?cs:[e];")],
+  ['coalescedSamples helper present with fallback', html.includes("function coalescedSamples(e)") && html.includes("return cs&&_ln(cs)?cs:[e];")],
   ['pen pointermove iterates coalesced samples', html.includes("case 'pen':{") && html.includes("for(const ce of coalescedSamples(e))contPen(_s2({x:ce.offsetX,y:ce.offsetY}),ce);")],
   // v1.6.79: Persist.flushIfHidden — visibilitychange→hidden as mobile-reliable durability signal
   ['Persist.flushIfHidden gates on vis===hidden && _dt()', html.includes("flushIfHidden(vis){") && html.includes("if(vis==='hidden'&&_dt()){")],
@@ -1181,12 +1181,12 @@ const checks = [
   ['lockToggle i18n key present in ja and en', (html.match(/lockToggle:/g)||[]).length>=2],
   ['lockToggle in help grid', html.includes("t('lockToggle')")],
   // v1.7.06: doCopy excludes locked shapes (parity with doDelete/doMove/doAlign)
-  ['doCopy expands frame children and excludes locked shapes', html.includes("const sel=[...withFrameChildren(_sl())].map(byId).filter(s=>s&&!_lk(s));\n  if(!sel.length)return;\n  state.clipboard={shapes:clone(sel)}")],
+  ['doCopy expands frame children and excludes locked shapes', html.includes("const sel=[...withFrameChildren(_sl())].map(byId).filter(s=>s&&!_lk(s));\n  if(!_ln(sel))return;\n  state.clipboard={shapes:clone(sel)}")],
   // v1.6.77: paste/duplicate is one atomic undo — _placeCopies commits a single addMany op
-  ['_placeCopies commits one addMany (not per-shape add)', html.includes("if(built.length)Store.commit({op:'addMany',shapes:built})")],
+  ['_placeCopies commits one addMany (not per-shape add)', html.includes("if(_ln(built))Store.commit({op:'addMany',shapes:built})")],
   ['addMany op has an _apply case', /case 'addMany':/.test(html)],
   ['addMany in REMOTE_OPS allow-list', /REMOTE_OPS[\s\S]{0,160}'addMany'/.test(html)],
-  ['addMany validated in validRemotePayload (with MAX_OP_SHAPES cap)', /case 'addMany':/.test(html)&&html.includes("case 'addMany':    return _iA(op.shapes)&&op.shapes.length<=MAX_OP_SHAPES&&op.shapes.every(validShape)")],
+  ['addMany validated in validRemotePayload (with MAX_OP_SHAPES cap)', /case 'addMany':/.test(html)&&html.includes("case 'addMany':    return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape)")],
   // v1.6.85: modal dialog isolation — global canvas shortcuts must not fire behind an
   // open help/share dialog, and Tab is trapped inside it (WCAG 2.4.3 / 2.1.2).
   ['modal focus-trap helpers present', html.includes('function _trapStep')&&html.includes('function _openDialog')],
@@ -1258,10 +1258,10 @@ const checks = [
     html.includes("_cOp({op:'add',shape:s});")],
   // v1.7.33: validRemotePayload group must require before (string-id array)
   ['validRemotePayload group: requires before array with string ids',
-    html.includes("&&_iA(op.before)&&op.before.length<=MAX_OP_SHAPES&&op.before.every(b=>b&&typeof b.id==='string');")],
+    html.includes("&&_iA(op.before)&&_ln(op.before)<=MAX_OP_SHAPES&&op.before.every(b=>b&&typeof b.id==='string');")],
   // v1.7.34: validRemotePayload ungroup must require gids array
   ['validRemotePayload ungroup: requires gids array with string elements',
-    html.includes("&&_iA(op.gids)&&op.gids.length<=MAX_OP_SHAPES&&op.gids.every(g=>typeof g==='string'&&g.length>0);")],
+    html.includes("&&_iA(op.gids)&&_ln(op.gids)<=MAX_OP_SHAPES&&op.gids.every(g=>typeof g==='string'&&_ln(g)>0);")],
   // v1.7.34: _apply ungroup backward must use optional chaining on op.gids
   ['_apply ungroup backward: op.gids?.[0] optional chaining null guard',
     html.includes("const gid=op.gids?.[0];")],
@@ -1270,7 +1270,7 @@ const checks = [
     !html.includes("(op.before==null||(patches(op.before)&&op.before.every(noLock)))")],
   // v1.7.35: text-blur del origSel pattern must exist at the existing-text-empty path
   ['text-blur del: origSel captured and patched before and after Store.commit del',
-    html.includes("const origSel=_selIds();\n        const connClears=computeConnClears(new Set([orig.id]));")&&
+    html.includes("const origSel=_selIds();\n        const connClears=computeConnClears(_sT([orig.id]));")&&
     html.includes("Store.commit(delOp);\n        _keepSel(origSel);")],
   // v1.7.36: flushErase must capture origSel before del commit and patch after
   ['flushErase del: origSel captured before commit and patched after (parity with doDelete)',
@@ -1347,7 +1347,7 @@ const checks = [
     html.includes("_rcOp({op:'upd',id:s.id,before,after});")],
   // v1.7.46: validRemotePayload del connClears must have MAX_OP_SHAPES length cap
   ['validRemotePayload del connClears: length<=MAX_OP_SHAPES cap added',
-    html.includes("&&op.connClears.length<=MAX_OP_SHAPES&&op.connClears.every(")],
+    html.includes("&&_ln(op.connClears)<=MAX_OP_SHAPES&&op.connClears.every(")],
   // v1.7.46: drawShape duplicate rect/ellipse label block removed
   ['drawShape: duplicate inline label block after switch removed (label drawn once via _drawBoxLabel)',
     !html.includes("if((s.type==='rect'||s.type==='ellipse')&&_lb(s)){\n    const cx=s.x+s.w/2")],
@@ -1356,7 +1356,7 @@ const checks = [
     html.includes("if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_oa(sh,p.before);}}")],
   // v1.7.47: validRemotePayload align must validate dir against a whitelist
   ['validRemotePayload align: dir whitelist (DIRS Set) prevents unknown dir values',
-    html.includes("const DIRS=new Set(['left','right','cx','top','bottom','cy','hspace','vspace','tidy','swap','gsnap','flip'")],
+    html.includes("const DIRS=_sT(['left','right','cx','top','bottom','cy','hspace','vspace','tidy','swap','gsnap','flip'")],
   // v1.7.47: doPaste uses canvas.getBoundingClientRect() for viewport center (not window.innerWidth)
   ['doPaste: canvas.getBoundingClientRect() used for viewport center (not window.innerWidth)',
     html.includes("const _r=_cbr();\n  const vCx=v.x+_r.width/(v.zoom*2);")],
@@ -1370,7 +1370,7 @@ const checks = [
     html.includes("op.wc={};for(const sh of op.shapes)if(_wc()[sh.id])op.wc[sh.id]=clone(_wc()[sh.id]);")],
   // v1.7.48: 'clear' removed from REMOTE_OPS (remote peer cannot wipe board)
   ["REMOTE_OPS excludes 'clear' (board-wipe is local-only like 'replace')",
-    html.includes("REMOTE_OPS:new Set(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize'])")],
+    html.includes("REMOTE_OPS:_sT(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize'])")],
   // v1.7.48: _applySnapshot caps shape count at MAX_OP_SHAPES
   ['_applySnapshot: MAX_OP_SHAPES cap on snapshot shapes (DoS guard)',
     html.includes("const valid=shapes.slice(0,MAX_OP_SHAPES).map(s=>this._attachShape(s)).filter(validShape);")],
@@ -1379,7 +1379,7 @@ const checks = [
     html.includes("c.shadowColor='rgba(0,0,0,.08)';c.shadowBlur=8;c.shadowOffsetY=2;\n      c.beginPath();roundRect(")],
   // v1.7.48: group gid must be non-empty string
   ['validRemotePayload group: gid must be non-empty string (op.gid.length>0)',
-    html.includes("&&typeof op.gid==='string'&&op.gid.length>0")],
+    html.includes("&&typeof op.gid==='string'&&_ln(op.gid)>0")],
   // v1.7.48: move dx/dy must be actual numbers not coercible strings
   ['validRemotePayload move: typeof op.dx/dy === number (no string coercion)',
     html.includes("&&typeof op.dx==='number'&&_fin(op.dx)&&typeof op.dy==='number'&&_fin(op.dy)")],
@@ -3456,7 +3456,7 @@ try {
 
   // ADR-0403: sender refuses oversized snapshots before chunking
   {
-    assert.ok(html.includes("if(_sm.length>24e6){_w(t('snapBig'));return}"),'send-side snapshot cap');
+    assert.ok(html.includes("if(_ln(_sm)>24e6){_w(t('snapBig'));return}"),'send-side snapshot cap');
     assert.strictEqual(api.I18N.ja.snapBig.length>0&&api.I18N.en.snapBig.length>0,true,'snapBig i18n both langs');
     console.log('  ✓ snapshot send-side 24MB fail-fast (ADR-0403)');
   }
@@ -3915,7 +3915,26 @@ try {
       assert.ok(slim.shapes[0].dataUrl===undefined&&typeof slim.shapes[0].img==='string','del shapes slim to img refs');
       Net._imgPending.set('zz','k');_pcC();
       assert.strictEqual(Net._imgPending.size,0,'_pcC clears _imgPending');
-      console.log('  ✓ ADR-0443/0444/0445: undo-wire mapping + del slim + pending purge (15 asserts)');
+      // ADR-0448: a stale partial with a different chunk count must not block new streams
+      Net._fragIn({data:'aa',n:2,seq:0},'_snapIn');
+      assert.strictEqual(Net._fragIn({data:'x',n:1,seq:0},'_snapIn'),'x','_fragIn n-mismatch restarts the assembly');
+      Net._fragIn({data:'aa',n:2,seq:0},'_snapIn');
+      Net._fragIn({data:'zz',n:2,seq:1},'_snapIn');   // finish cleanly so no stale state leaks
+      assert.strictEqual(Net._snapIn,null,'_fragIn clears a finished assembly');
+      // ADR-0449: img intake bounds — stalled keys evict oldest, not new keys;
+      // the received-blob store is capped (refs re-resolve on the next snapshot).
+      Net._imgChunks.clear();
+      for(let i=0;i<64;i++)Net._onRecv({k:'img',peer:'P1',key:'k'+i,seq:0,n:2,data:'a'},true);
+      Net._onRecv({k:'img',peer:'P1',key:'zz',seq:0,n:1,data:'z'},true);
+      assert.ok(!Net._imgChunks.has('k0')&&Net._imgChunks.has('k63'),'oldest stalled img key evicted');
+      assert.strictEqual(Net._imgIn.get('zz'),'z','completed img blob stored');
+      Net._imgIn.clear();
+      for(let i=0;i<258;i++)Net._imgIn.set('b'+i,'d');
+      assert.ok(Net._imgIn.size>=256,'pre-cap store setup');
+      Net._onRecv({k:'img',peer:'P1',key:'new1',seq:0,n:1,data:'q'},true);
+      assert.strictEqual(Net._imgIn.get('new1'),'q','imgIn accepts new blob under cap');
+      assert.ok(Net._imgIn.size<=258,'imgIn stays bounded');
+      console.log('  ✓ ADR-0443..0449: undo-wire + del slim + purge + frag restart + img bounds (24 asserts)');
     }
   }
 
