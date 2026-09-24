@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.465] - 2026-09-23
+
+### Fixed
+- `hl` フラグを validPatch のフラグ型ホワイトリストに追加 — marker prop のリモート intake を他フラグと同一水準に
+
 ## [1.7.464] - 2026-09-23
 
 ### Fixed
