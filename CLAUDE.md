@@ -176,6 +176,7 @@ Board/
 - [ADR-0124](docs/ADR-0124-directional-marquee.md) 方向付きマーキー
 - [ADR-0125](docs/ADR-0125-marker-tool.md) マーカーツール
 - [ADR-0126](docs/ADR-0126-click-click-line.md) クリック-クリック式線/矢印
+- [ADR-0127](docs/ADR-0127-marquee-skips-locked.md) マーキーはロック形状を除外
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

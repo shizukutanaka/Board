@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.184]
+
+### 変更
+- **マーキー選択はロック形状を除外** (ADR-0127)。領域ドラッグで
+  ロック済み図形が選択に混ざらない (Figma/draw.io parity)。
+  ロック解除は従来通りクリック選択 + ctx、または「全てロック解除」。
+
 ## [1.7.183]
 
 ### 追加

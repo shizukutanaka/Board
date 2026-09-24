@@ -774,7 +774,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.183';
+const V='1.7.184';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4359,7 +4359,11 @@ function endSelect(wp,shift){
         const hit=cross
           ? !(b.x>r.x+r.w||b.x+b.w<r.x||b.y>r.y+r.h||b.y+b.h<r.y)
           : G.marqueeHit(s,r);
-        if(hit)state.selection.add(s.id);
+        // ADR-0127: locked shapes never join a marquee selection — they can't
+        // be edited anyway, and a region-drag shouldn't pick them up
+        // (Figma/draw.io parity). Single-click selection still reaches them
+        // for the ctx Unlock path.
+        if(hit&&!s.locked)state.selection.add(s.id);
       }
       _announceSel();   // ADR-0037: announce the marquee result (incl. cleared)
     }
