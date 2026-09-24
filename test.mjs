@@ -719,6 +719,7 @@ const checks = [
   ['clipboard image/svg+xml → vector import (ADR-0272)', html.includes("i.type==='image/svg+xml'")],
   ['drawio strokeOpacity/fillOpacity → s.opacity (ADR-0271)', html.includes('+sty.strokeOpacity')],
   ['svg conn path/label emitters deduped (ADR-0270)', html.includes('const _sp=(d,j)')&&html.includes('_cL();')],
+  ['exc binding.focus → aF/bF (ADR-0296)', html.includes('sb.focus+1)/2')],
   ['_c01() clamp01 helper (ADR-0295)', html.includes('const _c01=v=>Math.min(1,Math.max(0,v))')],
   ['bar (T字) head style (ADR-0294)', html.includes("style==='bar'")&&html.includes("endArrow=dash")],
   ['startHead style persistence (ADR-0293)', html.includes("state.style.startHead=next")&&html.includes("base.startHead=state.style.startHead")],

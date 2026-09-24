@@ -345,6 +345,7 @@ Board/
 │   ├── ADR-0293-starthead-persistence.md  # startHead スタイル永続化 (実装済)
 │   ├── ADR-0294-bar-head.md  # 'bar' (T字) ヘッド (実装済)
 │   ├── ADR-0295-clamp01-helper.md  # _c01 clamp01 helper (実装済)
+│   ├── ADR-0296-binding-focus.md  # exc binding.focus → aF/bF (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

@@ -780,7 +780,7 @@ const _p=()=>getCSS('--paper'),_ac=()=>getCSS('--accent-contrast');   // ADR-029
 const _c01=v=>Math.min(1,Math.max(0,v));   // ADR-0295
 
 // ====================== CONSTANTS ======================
-const V='1.7.347';
+const V='1.7.348';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6927,6 +6927,8 @@ function excToShapes(txt){
     const a=sb&&sb.elementId?idOf.get(sb.elementId):null;
     const b=eb&&eb.elementId?idOf.get(eb.elementId):null;
     if(a)s.a=a;if(b)s.b=b;
+    if(a&&sb&&Number.isFinite(sb.focus))s.aF={fx:_c01((sb.focus+1)/2),fy:0.5};   // ADR-0296
+    if(b&&eb&&Number.isFinite(eb.focus))s.bF={fx:_c01((eb.focus+1)/2),fy:0.5};   // ADR-0296
   }
   return shapes;
 }
