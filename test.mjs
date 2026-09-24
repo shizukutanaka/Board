@@ -976,13 +976,13 @@ const checks = [
   ['⌥C / ⌥V style copy/paste shortcuts', html.includes("k==='c'&&e.altKey") && html.includes("copyStyle") && html.includes("k==='v'&&e.altKey")],
   ['⌘⇧E SVG export shortcut', html.includes("meta&&k==='e'&&e.shiftKey") && html.includes("exportSVG")],
   // v1.6.63: Socratic round 3 - internal consistency + a11y
-  ['doFlip skips locked shapes (consistent with doRotate)', html.includes("const sel=_selL(s=>s&&!_lk(s));")],
+  ['doFlip skips locked shapes (consistent with doRotate)', html.includes("const sel=_selUL();")],
   ['doRotate orbits selection about group centre', html.includes("orbit about group centre, like doFlip") && html.includes("Shape.translate(s,nx-cx,ny-cy)")],
   ['search input has localized aria-label', html.includes("_sa(sq,_AL,T.k.search)")],
   ['search Escape returns focus to canvas', html.includes("_ivO();canvas.focus();}") && html.includes("_sqAdvance(ev.shiftKey?-1:1)")],
   // v1.6.64: Socratic round 4 - rotation scope + lock completeness
   ['doRotate restricted to box shapes (s.w!=null, NaN-safe)', html.includes("_selL(s=>s&&!_lk(s)&&s.w!=null)")],
-  ['doDelete skips locked shapes', html.includes("function doDelete(){\n  const sel=_selL(s=>s&&!_lk(s));")],
+  ['doDelete skips locked shapes', html.includes("function doDelete(){\n  const sel=_selUL();")],
   ['eraser skips locked shapes', html.includes("if(hit&&!hit.locked&&!_eraseBatch.some")],
   // v1.6.65: budget removed - deferred fixes implemented
   ['_edgePt is rotation-aware (projects to true rotated edge)', html.includes("const ub=sh.w!=null?{x:sh.x,y:sh.y,w:sh.w,h:sh.h}:_bb(sh)") && html.includes("const cx=ub.x+ub.w/2,cy=ub.y+ub.h/2,rot=sh.rotate")],
@@ -1108,7 +1108,7 @@ const checks = [
   ['sticky branch preserves s.w (no text-width overwrite)', html.includes("if(_stk(s)){") && html.includes("wl=wrapText(_txx(s)||'',_abs(s.w)-pad*2")],
   ['text branch still auto-sizes width', html.includes("}else{\n    const lines=(_txx(s)||'').split('\\n');")],
   // v1.6.73: doAlign skips locked shapes (parity with doDelete/doRotate/doFlip)
-  ['doAlign filters locked shapes', html.includes("const sel=_selL(s=>s&&!_lk(s));\n  if(_ln(sel)<2)return;")],
+  ['doAlign filters locked shapes', html.includes("const sel=_selUL();\n  if(_ln(sel)<2)return;")],
   // v1.6.74: _placeCopies remaps connector bindings (sh.a/sh.b) within pasted set
   ['_placeCopies pre-generates idMap for two-pass connector remapping', html.includes("const idMap=_mP();") && html.includes("for(const orig of srcShapes)idMap.set(orig.id,uid());")],
   ['_placeCopies remaps sh.a and sh.b to new ids', html.includes("if(sh.a&&idMap.has(sh.a))sh.a=idMap.get(sh.a);") && html.includes("if(sh.b&&idMap.has(sh.b))sh.b=idMap.get(sh.b);")],

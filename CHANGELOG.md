@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.514] - 2026-09-23
+
+### リファクタ
+
+- `const sel=_selL(s=>s&&!_lk(s))` を `_selUL()` shorthand に畳み込み (5 箇所、ADR-0481)
+
 ## [1.7.513] - 2026-09-23
 
 ### テスト

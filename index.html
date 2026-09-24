@@ -787,6 +787,7 @@ const _forSel=f=>{for(const id of _sl()){const s=byId(id);if(s)f(s,id)}};   // A
 const _csh=(s,c)=>{if(_sh2(s)){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=10;c.shadowOffsetY=3}};   // ADR-0306
 const _so=(b,a)=>{if(_ln(b)){_styleOp(b,a);_iv()}};   // ADR-0307
 const _selL=f=>_sb().filter(f);   // ADR-0308
+const _selUL=()=>_sb().filter(s=>!_lk(s));
 const _selR=op=>{if(op.origSel)_ss(op.origSel.filter(id=>byId(id)))};   // ADR-0309
 const _keepSel=arr=>{if(_ln(arr))_hi()[_hx()].origSel=arr};   // ADR-0312
 const _pd=e=>e.preventDefault();   // ADR-0326
@@ -852,7 +853,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.513';
+const V='1.7.514';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -5798,7 +5799,7 @@ function doDuplicate(){
   _tst(t(_PA)+' '+_ln(added));
 }
 function doDelete(){
-  const sel=_selL(s=>s&&!_lk(s));
+  const sel=_selUL();
   if(!_ln(sel)){if(_selAny())_wT('lockedNoop');return}   // ADR-0396
   const origSel=_selIds();
   // Frame-aware: shapes fully inside a selected frame are deleted with the frame (parity with doDuplicate)
@@ -5947,7 +5948,7 @@ function selectSameType(){
 // automatic — the frame simply covers the union bbox + padding; z is tucked
 // just below the lowest member so contents stay on top.
 function wrapInFrame(){
-  const sel=_selL(s=>s&&!_lk(s));
+  const sel=_selUL();
   if(!_ln(sel)){_wT(_ST);return}
   const b=_bA(sel);if(!b)return;
   const PAD=16;
@@ -5997,7 +5998,7 @@ function doClearAll(){
 
 // ---- alignment (multiple selection) ----
 function doAlign(dir){
-  const sel=_selL(s=>s&&!_lk(s));
+  const sel=_selUL();
   if(_ln(sel)<2)return;
   // Frame-aware: shapes fully inside a selected frame move with the frame as one unit
   // (parity with drag/nudge; mirrors withFrameChildren logic used in doMove/nudgeSelection)
@@ -6064,7 +6065,7 @@ function doAlign(dir){
 // resized/distorted; connectors/pen/way-points move via Shape.translate.
 // Recorded as one 'align' op (before/after full clones) for single undo.
 function snapSelToGrid(){
-  const sel=_selL(s=>s&&!_lk(s));
+  const sel=_selUL();
   if(!_ln(sel))return;
   const beforeSnap=sel.map(clone);
   let moved=0;
@@ -6124,7 +6125,7 @@ function flipShape(s,axis,c){
   if(_rt(s))s.rotate=((axis==='h'?180:360)-_rt(s)+360)%360;
 }
 function doFlip(axis){
-  const sel=_selL(s=>s&&!_lk(s));
+  const sel=_selUL();
   if(!_ln(sel))return;
   const bb=_bA(sel);if(!bb)return;
   const c=axis==='h'?bb.x+bb.w/2:bb.y+bb.h/2;
