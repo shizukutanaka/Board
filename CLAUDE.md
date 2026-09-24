@@ -133,6 +133,7 @@ Board/
 - [ADR-0081](docs/ADR-0081-label-editor-position.md) ラベル編集位置 (_connLabelXY、diamond/経路対応)
 - [ADR-0082](docs/ADR-0082-sticky-recolor.md) 付箋色変更 (fill→color マップ、undo 堅牢化)
 - [ADR-0083](docs/ADR-0083-image-caption.md) 画像キャプション (paper 帯+クリップ、SVG 対応)
+- [ADR-0084](docs/ADR-0084-route-reset.md) ルートリセット (Clear Waypoints、style op)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

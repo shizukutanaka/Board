@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.142]
+
+### 追加
+- **ルートリセット** (ADR-0084)。ctx メニュー「ルートをリセット」で
+  コネクタの way/bend/elbow/curve を一括クリアし直線に戻す
+  (draw.io Clear Waypoints)。1つの style op で原子化、undo 一発。
+
 ## [1.7.141]
 
 ### 追加
