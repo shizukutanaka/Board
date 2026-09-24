@@ -803,6 +803,8 @@ const checks = [
   ['drawio flipH/flipV ↔ s.flip bitmask (ADR-0260)', html.includes("r+='flipH=1;'")&&html.includes("sty.flipH==='1'")],
   ['drawio shape=image round-trips s.dataUrl (ADR-0259)', html.includes("sty+='shape=image;'")&&html.includes("sty+='image='+s.dataUrl")&&html.includes("_im[1].slice(0,25_000_000)")],
   ['excalidraw export embeds viewport in appState (ADR-0257)', html.includes("scrollX:-_vp().x,scrollY:-_vp().y,zoom:{value:_vp().zoom}")],
+  ['excalidraw import adopts appState viewport+grid (ADR-0409)', html.includes("if(_vpNull){try{const ap=_JP(txt).appState;")&&html.includes("if('gridSize' in ap)state.showGrid=ap.gridSize!=null")],
+  ['drawio import restores grid flag (ADR-0409)', html.includes("g:+_ga(m,'grid')===1")&&html.includes("if(_dioVp.g!=null)state.showGrid=_dioVp.g")],
   ['drawio arrowhead types ↔ s.head (ADR-0256)', html.includes("endArrow=oval;':s.head==='open'")&&html.includes("sty.endArrow==='diamond'")],
   ['drawio dotted ↔ dashed=1+dashPattern (ADR-0255)', html.includes("s.dash===2?'dashPattern=1 1;'")&&html.includes("?2:1;   // ADR-0255")],
   ['drawio locked ↔ editable/deletable/movable=0 (ADR-0254)', (html.match(/editable=0/g)||[]).length>=1&&html.includes("sty.editable==='0'||sty.deletable==='0'||sty.movable==='0'")],
@@ -1590,7 +1592,7 @@ try {
           _getPasteCount, _resetPasteClipboard,
           endRectLike, endLineLike, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
           _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg,
-          _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
+          _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER } = api;
 
   console.log('\n-- behavioural --');
@@ -9852,6 +9854,22 @@ try {
      const rt2=excToShapes(JSON.stringify({type:'excalidraw',elements:[{...el2,endArrowhead:'crowfoot',startArrowhead:'crowfoot_one',startBinding:null,endBinding:null}]}));
      const ra2=rt2.find(s=>s.type==='arrow');
      assert.ok(ra2.head==='open'&&ra2.startHead==='open','import: crowfoot/crowfoot_one → open (ADR-0338)');}
+
+    // ADR-0409: .excalidraw appState scrollX/Y/zoom + gridSize → viewport/showGrid
+    // (point-less open only — the same gate ADR-0359 uses for .drawio)
+    {state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+     state.seq=0;state.seenOps=new Set();state.selection=new Set();
+     state.viewport={x:0,y:0,zoom:1};state.showGrid=true;
+     const j={type:'excalidraw',version:2,elements:[{id:'r',type:'rectangle',x:0,y:0,width:50,height:50,angle:0,strokeColor:'#000',backgroundColor:'transparent',fillStyle:'solid',strokeWidth:1,strokeStyle:'solid',roughness:1,opacity:100,groupIds:[],frameId:null,seed:1,version:1,isDeleted:false,boundElements:null,updated:0,link:null,locked:false}],
+       appState:{scrollX:-200,scrollY:-100,zoom:{value:2},gridSize:null}};
+     assert.ok(importExcText(JSON.stringify(j))===true,'exc import ok');
+     assert.ok(state.viewport.x===200&&state.viewport.y===100&&state.viewport.zoom===2,'viewport adopted from appState (ADR-0409)');
+     assert.ok(state.showGrid===false,'gridSize:null → showGrid off (ADR-0409)');
+     // wp supplied (drop) → viewport untouched
+     state.viewport={x:0,y:0,zoom:1};state.showGrid=true;
+     assert.ok(importExcText(JSON.stringify(j),{x:9,y:9})===true,'exc import with wp ok');
+     assert.ok(state.viewport.x===0&&state.viewport.zoom===1,'wp present → viewport untouched (ADR-0409)');
+     state.showGrid=true;}
 
     // ADR-0390: excalidraw frameId emitted for shapes spatially contained in a frame
     {const fr={id:'f1',type:'frame',x:0,y:0,w:200,h:200,stroke:'#000',fill:null,size:2,opacity:1};
