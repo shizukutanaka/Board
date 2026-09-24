@@ -277,10 +277,10 @@ const checks = [
   ['canvas aria-label is updated dynamically in pickTool', html.includes("Drawing canvas. Tab/Shift+Tab cycles shapes,")],
   // v1.6.11: spatial index for pickTop
   ['spatial grid helpers present', html.includes("function _buildGrid") && html.includes("function _queryGrid")],
-  ['ADR-0016: draw() prefilters via grid rect query on large boards', html.includes("function _gridRectCandidates") && html.includes("_vis=_gridRectCandidates(_grid,_view)") && html.includes("let _drawIter=_vis||state.shapes") && html.includes("for(const s of _drawIter)")],
+  ['ADR-0016: draw() prefilters via grid rect query on large boards', html.includes("function _gridRectCandidates") && html.includes("_vis=_gridRectCandidates(_grid,_view)") && html.includes("let _drawIter=_vis||_sh()") && html.includes("for(const s of _drawIter)")],
   ['ADR-0016: candidates return z-ordered via grid.idx', html.includes("idx=new Map") && html.includes("out.sort((a,b)=>(grid.idx.get(a)|0)-(grid.idx.get(b)|0))")],
   ['ADR-0016: no-bbox shapes stay always-candidate via big', html.includes("if(!b){big.push(s);continue;}")],
-  ['pickTop uses grid for large boards', html.includes("state.shapes.length>40") && html.includes("_buildGrid(state.shapes)")],
+  ['pickTop uses grid for large boards', html.includes("_sh().length>40") && html.includes("_buildGrid(_sh())")],
   ['grid invalidated on every _apply', html.includes("_apply(op,forward){") && html.includes("_invalidateGrid()")],
   // v1.6.12: keyboard shape creation (a11y)
   ['createShapeKbd helper present', html.includes("function createShapeKbd")],
@@ -306,9 +306,9 @@ const checks = [
   ['shared _fitViewport used by all three fit paths', html.includes("function _fitViewport(") && html.includes("_fitViewport(b,40,2)") && html.includes("_fitViewport(b,60,4)")],
   ['selFit i18n ja+en', html.includes("selFit:'選択にフィット'") && html.includes("selFit:'Zoom to selection'")],
   // v1.7.108: ADR-0050 copy PNG to clipboard via shared _renderPngBlob
-  ['shared _renderPngBlob drives export + copy', html.includes("function _renderPngBlob(shapes,cb,desired)") && html.includes("exportPNG(shapes=state.shapes,scale){\n  _renderPngBlob(shapes," ) && html.includes("function copyPNG(")],
+  ['shared _renderPngBlob drives export + copy', html.includes("function _renderPngBlob(shapes,cb,desired)") && html.includes("exportPNG(shapes=_sh(),scale){\n  _renderPngBlob(shapes," ) && html.includes("function copyPNG(")],
   // v1.7.110: ADR-0052 selection-scoped export (PNG / copy / SVG)
-  ['exports take a shapes arg (default whole board)', html.includes("exportPNG(shapes=state.shapes,scale)") && html.includes("copyPNG(shapes=state.shapes)") && html.includes("exportSVG(shapes=state.shapes)")],
+  ['exports take a shapes arg (default whole board)', html.includes("exportPNG(shapes=_sh(),scale)") && html.includes("copyPNG(shapes=_sh())") && html.includes("exportSVG(shapes=_sh())")],
   ['selection export items in ctx menu', html.includes("['ctxExportSelPNG','',()=>exportSelection('png')]") && html.includes("['ctxCopySelPNG','',()=>exportSelection('copy')]") && html.includes("['ctxExportSelSVG','',()=>exportSelection('svg')]")],
   ['selection export i18n ja+en', html.includes("ctxExportSelPNG:'選択をPNG書き出し'") && html.includes("ctxExportSelSVG:'Export selection to SVG'")],
   // v1.7.111: ADR-0053 text overlay follows pan/zoom
@@ -397,7 +397,7 @@ const checks = [
   // same snapshot mechanism, settles via a quiet-window timer.
   ['wheel zoom burst snapshots before first zoom', html.includes("_pinchSnapNow();\n    clearTimeout(_wheelZoomEnd);")],
   ['wheel zoom settle timer discards snapshot + repaints', html.includes("_wheelZoomEnd=setTimeout(()=>{_pinchSnap=null;_pinchVp=null;invalidate()},180)")],
-  ['ADR-0032/0033: marquee + pickTop use the spatial grid', html.includes("_gridRectCandidates(_grid||(_grid=_buildGrid(state.shapes)),r)") && html.includes("cands.sort((a,b)=>(_grid.idx.get(b)|0)-(_grid.idx.get(a)|0))")],
+  ['ADR-0032/0033: marquee + pickTop use the spatial grid', html.includes("_gridRectCandidates(_grid||(_grid=_buildGrid(_sh())),r)") && html.includes("cands.sort((a,b)=>(_grid.idx.get(b)|0)-(_grid.idx.get(a)|0))")],
   ['load validates viewport finiteness', html.includes("_fin(+d.viewport.zoom)&&d.viewport.zoom>0")],
   ['load clamps viewport zoom to [MIN_ZOOM,MAX_ZOOM]', html.includes("_vp().zoom=clampZoom(+d.viewport.zoom)")],
   ['clampZoom is the single zoom-invariant source', html.includes("const clampZoom=z=>_max(MIN_ZOOM,_min(MAX_ZOOM,z))") && html.includes("const nz=clampZoom(") && html.includes("const z=clampZoom(")],
@@ -465,7 +465,7 @@ const checks = [
   ['route reset: resetRoute clears way/bend/elbow/curve via one style op', html.includes('function resetRoute()')&&html.includes('ctxRouteReset')&&html.includes('way:null,bend:null,elbow:0,curve:0')],
   ['frame fit: bbox of fully-inside shapes + padding via align op', html.includes('function fitFrames()')&&html.includes('ctxFrameFit')&&html.includes('framefit')],
   ['click stamp: click places a default 120x80 box', html.includes('d.w=120;d.h=80;d.x-=60;d.y-=40')&&html.includes("ADR-0086")],
-  ['copySVG: selection SVG via copyText in ctx menu', html.includes('function copySVG(shapes=state.shapes)')&&html.includes("exportSelection('svgcopy')")&&html.includes('ctxCopySelSVG')],
+  ['copySVG: selection SVG via copyText in ctx menu', html.includes('function copySVG(shapes=_sh())')&&html.includes("exportSelection('svgcopy')")&&html.includes('ctxCopySelSVG')],
   ['waypoint + elbow-trunk drags honour grid snap', html.includes('wa[i]=snapPt(wp)')&&html.includes('snapV(wp.x):snapV(wp.y)')&&html.includes('RAW point')],
   ['replace image: ctx item + aspect-follow via style op', html.includes('function replaceImage()')&&html.includes('ctxReplaceImg')&&html.includes('s.w*nh/nw')],
   ['multi-waypoint: way is an array; insert/move/delete via wayIdx+wayNew', html.includes('function _wayArr(s)')&&html.includes('ptr.wayIdx')&&html.includes('wa.splice(i,0,snapPt(wp))')],
@@ -530,7 +530,7 @@ const checks = [
   ['gresize scales curve cbend affinely', html.includes('sh.cbend=orig.cbend*sx*sy*ol/nl')],
   ['snap index skips hidden shapes', html.includes('exclFn(s)||s.visible===0')],
   ['DOM mirror marks hidden shapes', html.includes("tagHidden:'(非表示)'")&&html.includes("s.visible===0?' '+t('tagHidden')")],
-  ['fit ignores hidden unless all hidden', html.includes('const vis=state.shapes.filter(s=>s.visible!==0)')&&html.includes('_vis.length?_vis:state.shapes')],
+  ['fit ignores hidden unless all hidden', html.includes('const vis=_sh().filter(s=>s.visible!==0)')&&html.includes('_vis.length?_vis:_sh()')],
   ['rounded diamond path + cycle + ctx', html.includes('function _diamondPath(c,s)')&&html.includes("const boxOk=s.type==='rect'||s.type==='diamond'||s.type==='image'")&&html.includes("s.type==='rect'||s.type==='diamond'")],
   ['SVG diamond emits rounded path when r>0', html.includes('const _dPts=[[X+W/2,Y],[X+W,Y+H/2]')&&html.includes("_min(_dr,e1/2,e2/2)")],
   ['unbind-selection ctx item + fn', html.includes("ctxUnbind:'結合を解除'")&&html.includes('function unbindSelection()')&&html.includes("['ctxUnbind','',unbindSelection]")],
@@ -588,7 +588,7 @@ const checks = [
   // harness (FileReader has no fake), so its trigger wiring is presence-checked; the backup
   // mechanism itself (Persist.saveBackup/checkBackup/restoreBackup) is behaviourally tested.
   ['ADR-0004: doClearAll backs up pre-clear board before the destructive commit',
-    html.includes("Persist.saveBackup(clone(state.shapes),{..._vp()},state.docName);   // ADR-0004\n  Store.commit({op:'clear'")],
+    html.includes("Persist.saveBackup(clone(_sh()),{..._vp()},state.docName);   // ADR-0004\n  Store.commit({op:'clear'")],
   ['ADR-0004: importBoard backs up pre-import board before the whole-board swap',
     html.includes("if(before.length)Persist.saveBackup(before,{..._vp()},state.docName);   // ADR-0004\n      state.shapes=shapes.map(clone);")],
   ['ADR-0004: importFromHash backs up pre-import board before the whole-board swap',
@@ -692,7 +692,7 @@ const checks = [
   ['i18n has shareUrlTooLong/shareExportFailed ja+en', html.includes("shareUrlTooLong:'⚠ URL が非常に長い") && html.includes("shareUrlTooLong:'⚠ This URL is very long") && html.includes("shareExportFailed:'共有リンクの生成に失敗しました'") && html.includes("shareExportFailed:'Failed to build the share link'")],
   // v1.7.99: ADR-0041 DOM mirror a11y
   ['mirror region + list exist', html.includes('id="shapeMirror"') && html.includes('id="shapeMirrorList"')],
-  ['mirror capped by MIRROR_MAX', html.includes('MIRROR_MAX') && html.includes('_min(state.shapes.length,MIRROR_MAX)')],
+  ['mirror capped by MIRROR_MAX', html.includes('MIRROR_MAX') && html.includes('_min(_sh().length,MIRROR_MAX)')],
   ['mirror keyed on _gridVer', html.includes('if(_mirrorVer===_gridVer)return;')],
   ['mirror wired into frame()', html.includes('_mirrorSync();   // ADR-0041')],
   ['i18n has mirrorLabel/mirrorMore ja+en', html.includes("mirrorLabel:'ボード上の図形一覧'") && html.includes("mirrorLabel:'Shapes on the board'")],
@@ -923,7 +923,7 @@ const checks = [
     ['labels honor bold/italic/under/strike (ADR-0170)', html.includes('c.font=_fontStr(s,fs)')&&html.includes('font-weight="600"')&&html.includes('text-decoration=')],
   ['box/image labels honour s.align (ADR-0171)', html.includes("const al=s.align||'center';")&&html.includes('anc3=')&&html.includes("s.type!=='sticky'&&s.type!=='frame'&&!s.label)||s.locked)return;   // ADR-0171/0197")],
   ['locked selection shows a padlock badge', html.includes('c.arc(lx+8,ly,4,_PI,0)')&&html.includes("if(lockedSel){")],
-  ['Tab cycling excludes locked+hidden shapes (filter before cycleSel)', html.includes("const ids=state.shapes.filter(s=>!s.locked&&s.visible!==0).map(s=>s.id)")],
+  ['Tab cycling excludes locked+hidden shapes (filter before cycleSel)', html.includes("const ids=_sh().filter(s=>!s.locked&&s.visible!==0).map(s=>s.id)")],
   // v1.6.60: bound connectors - arrow/line endpoints follow bound shapes
   ['connEnds helper derives bound endpoints', html.includes("function connEnds") && html.includes("function _edgePt")],
   ['G.bbox line uses connEnds', html.includes("const e=connEnds(s);\n      let x=_min(e.x1,e.x2)")&&html.includes('for(const w of _wayArr(s))')],
@@ -1028,7 +1028,7 @@ const checks = [
     html.includes("canvas.setAttribute('aria-label',(T.k[tool]||tool)+' — '+t('canvasHint'))")],
   // v1.7.64 (FT-17)
   ['empty-board hint: draws only when blank, reads emptyHint i18n key',
-    html.includes('function drawEmptyHint(') && html.includes("if(state.shapes.length===0&&!state.draft)drawEmptyHint(c,W,H);")
+    html.includes('function drawEmptyHint(') && html.includes("if(_sh().length===0&&!state.draft)drawEmptyHint(c,W,H);")
     && html.includes("c.fillText(t('emptyHint'),")],
   // v1.7.65 (ADR-0012)
   ['theme toggle: applyTheme/toggleTheme/refreshThemeBtn wired, boot restores persisted mode',
@@ -1128,7 +1128,7 @@ const checks = [
   // v1.6.83: coordinate rounding at serialization boundaries (Zenn float-precision bloat)
   ['_round helper sheds float noise', html.includes("function _round(n,dp){return typeof n==='number'&&_fin(n)?_rnd(n*10**dp)/10**dp:n;}")],
   ['roundShapesForExport rounds coord/dim fields', html.includes("function roundShapesForExport(shapes,dp=2)") && html.includes("['x','y','w','h','x1','y1','x2','y2','rotate']")],
-  ['share export rounds shapes', html.includes("shapes:roundShapesForExport(state.shapes),name:state.docName")],
+  ['share export rounds shapes', html.includes("shapes:roundShapesForExport(_sh()),name:state.docName")],
   ['.board export rounds shapes', html.includes("shapes:roundShapesForExport(shapes)})],{type:'application/json'})")],
   // v1.6.84: Net.init clears prior presence timer on re-init (no leaked heartbeat)
   ['Net.init clears prior presence timer', html.includes("clearInterval(this._presenceTimer);   // re-init (room switch) must not leak the old heartbeat")],
@@ -1231,7 +1231,7 @@ const checks = [
   // v1.7.26: _apply replace backward restores origSel; importBoard/importFromHash attach it
   ['_apply replace backward restores origSel; import callers attach origSel + afterWc to op',
     html.includes("if(!forward)_selR(op);") &&
-    html.includes("Store._recordCommitted({op:'replace',before,after:clone(state.shapes),wc:beforeWc,afterWc:clone(state.wclock),origSel});")],
+    html.includes("Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(state.wclock),origSel});")],
   // v1.7.28: validRemotePayload for upd must block locked key (parity with style/resize/align)
   ['remote upd op cannot set locked (noLock guard extended to upd)',
     html.includes("case 'upd':{const noLock=p=>!('locked' in p);\n      if(typeof op.id!=='string'||!validPatch(op.after)||!noLock(op.after)")],
@@ -1306,7 +1306,7 @@ const checks = [
     html.includes("const MAX_OP_SHAPES=500;")],
   // v1.7.44: nextZ uses reduce to avoid spread RangeError on large boards
   ['nextZ uses reduce (safe for >65K shapes, no spread RangeError)',
-    html.includes("function nextZ(){return state.shapes.length?state.shapes.reduce((m,s)=>_max(m,s.z||0),0)+1:1}")],
+    html.includes("function nextZ(){return _sh().length?_sh().reduce((m,s)=>_max(m,s.z||0),0)+1:1}")],
   // v1.7.44: _apply replace forward restores afterWc on redo
   ['_apply replace forward: if(forward&&op.afterWc) restores wclock on redo',
     html.includes("if(forward&&op.afterWc)state.wclock=clone(op.afterWc);")],
@@ -1391,7 +1391,7 @@ const checks = [
   // v1.7.58 (ADR-0009): byId() O(1) id index
   ['byId is a lazy Map index invalidated via the shared _invalidateGrid choke point',
     html.includes("function _invalidateGrid(){_grid=null;_idIndex=null;_gridVer++;}") &&
-    html.includes("if(!_idIndex||_idIndex.size!==state.shapes.length){_idIndex=new Map();for(const s of state.shapes)_idIndex.set(s.id,s);}")],
+    html.includes("if(!_idIndex||_idIndex.size!==_sh().length){_idIndex=new Map();for(const s of _sh())_idIndex.set(s.id,s);}")],
   ['exportPDF convertToBlob rejection routes to the same exportFailed toast as the toBlob(null) path',
     html.includes("off.convertToBlob({type:'image/png'}).then(fin,()=>fin(null));")],
   // v1.7.59 (a11y-audit-2026-07): theme-aware accent-contrast token, no raw --brand outlines left

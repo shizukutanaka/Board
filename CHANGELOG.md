@@ -2,6 +2,16 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.411] - 2026-09-24
+
+### Fixed
+- .excalidraw 再インポートでラベル/付箋の横揃え (`textAlign`) を復元
+  — bound text の fold-back が `align` を読み戻していなかった (ADR-0363)
+
+### Changed
+- `state.shapes` の全参照を `_sh()` live-read shorthand に集約 (~1KB)
+  — 配列再代入サイトは literal のまま保持 (ADR-0364)
+
 ## [1.7.410] - 2026-09-24
 
 ### Changed
