@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.247]
+
+### 追加
+- **行間 (line-height) 巡回** (ADR-0189)。ctx メニュー「行間」で
+  標準→狭い (1.0)→広い (1.5) を巡回 — text/sticky/全ラベルの
+  canvas+SVG、テキスト編集後の自動高さ、スタイルコピー/スポイト/
+  last-used 継承まで一貫。
+
 ## [1.7.246]
 
 ### 追加

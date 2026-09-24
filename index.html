@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.246';
+const V='1.7.247';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -869,7 +869,7 @@ const I18N={
     ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxCurve:'曲線',ctxRouteReset:'ルートをリセット (直線に戻す)',ctxSelContents:'内容を選択',ctxFrameFit:'コンテンツに合わせる',ctxArrowHead:'矢印ヘッド (矢印→丸→シェブロン)',ctxToArrow:'矢印に変換',ctxToLine:'直線に変換',ctxBothEnds:'両端ヘッド',ctxRrect:'角スタイル (角丸→直角)',ctxStickyColor:'付箋の色 (順送り)',ctxToText:'テキストに変換',ctxToSticky:'付箋に変換',ctxTextAlign:'テキスト揃え (左→中央→右)',ctxFillStyle:'塗りスタイル (塗り→ハッチ→斜格子)',
     ctxSelectSameType:'同じ種類を選択',ctxSelectSame:'同色を選択',ctxSearch:'検索',ctxFit:'全体を表示',ctxZoomReset:'ズーム100%',ctxGrid:'グリッド',ctxSnap:'吸着',ctxMinimap:'ミニマップ',ctxWrapFrame:'フレームで包む',ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
     ctxSendBackward:'背面へ',ctxSendBack:'最背面へ',
-    ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxRotate90:'90°回転',ctxCorner:'角丸を切替',ctxHide:'非表示',ctxShowAll:'すべて表示',ctxSelectInverse:'選択を反転',ctxConnect:'2図形をコネクタで接続',hiddenCount:'件を非表示',shownAll:'すべて表示しました',ctxUnbind:'結合を解除',ctxVAlign:'縦揃え (上→中央→下)',ctxFont:'書体',ctxOpacity:'不透明度 (巡回)',ctxLock:'ロック',ctxUnlock:'ロック解除',ctxUnlockAll:'全てロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
+    ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxRotate90:'90°回転',ctxCorner:'角丸を切替',ctxHide:'非表示',ctxShowAll:'すべて表示',ctxSelectInverse:'選択を反転',ctxConnect:'2図形をコネクタで接続',hiddenCount:'件を非表示',shownAll:'すべて表示しました',ctxUnbind:'結合を解除',ctxVAlign:'縦揃え (上→中央→下)',ctxLineH:'行間 (標準→狭い→広い)',ctxFont:'書体',ctxOpacity:'不透明度 (巡回)',ctxLock:'ロック',ctxUnlock:'ロック解除',ctxUnlockAll:'全てロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
     canvasHint:'描画キャンバス。Tab/⇧Tab で図形巡回、Enter で作成、矢印で移動、⌥+矢印でリサイズ',
     tools:'ツール',docNameLabel:'ドキュメント名',activePeers:'接続中のピア',expPng:'PNG 書き出し',
     moreExport:'その他の書き出し・読み込み',install:'アプリとしてインストール',style:'スタイル',
@@ -945,7 +945,7 @@ const I18N={
     ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxCurve:'Curved',ctxRouteReset:'Reset route (straighten)',ctxSelContents:'Select contents',ctxFrameFit:'Fit to contents',ctxArrowHead:'Arrowhead (arrow→dot→open)',ctxToArrow:'Convert to arrow',ctxToLine:'Convert to line',ctxBothEnds:'Arrowheads both ends',ctxRrect:'Corners (round→sharp)',ctxStickyColor:'Sticky colour (cycle)',ctxToText:'Convert to text',ctxToSticky:'Convert to sticky',ctxTextAlign:'Text align (left→center→right)',ctxFillStyle:'Fill style (solid→hatch→cross)',
     ctxSelectSameType:'Select same type',ctxSelectSame:'Select same colour',ctxSearch:'Search',ctxFit:'Fit board',ctxZoomReset:'Zoom 100%',ctxGrid:'Grid',ctxSnap:'Snap',ctxMinimap:'Minimap',ctxWrapFrame:'Frame selection',ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
     ctxSendBackward:'Send backward',ctxSendBack:'Send to back',
-    ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxRotate90:'Rotate 90°',ctxCorner:'Round corner',ctxHide:'Hide',ctxShowAll:'Show all',ctxSelectInverse:'Invert selection',ctxConnect:'Connect 2 shapes',hiddenCount:'hidden',shownAll:'All shapes shown',ctxUnbind:'Unbind endpoints',ctxVAlign:'Vertical align (top→middle→bottom)',ctxFont:'Font family',ctxOpacity:'Opacity (cycle)',ctxLock:'Lock',ctxUnlock:'Unlock',ctxUnlockAll:'Unlock all',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
+    ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxRotate90:'Rotate 90°',ctxCorner:'Round corner',ctxHide:'Hide',ctxShowAll:'Show all',ctxSelectInverse:'Invert selection',ctxConnect:'Connect 2 shapes',hiddenCount:'hidden',shownAll:'All shapes shown',ctxUnbind:'Unbind endpoints',ctxVAlign:'Vertical align (top→middle→bottom)',ctxLineH:'Line spacing (normal→tight→wide)',ctxFont:'Font family',ctxOpacity:'Opacity (cycle)',ctxLock:'Lock',ctxUnlock:'Unlock',ctxUnlockAll:'Unlock all',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
     canvasHint:'Drawing canvas. Tab/Shift+Tab cycles shapes, Enter creates, arrows move, Alt+arrows resize.',
     tools:'Tools',docNameLabel:'Document name',activePeers:'Active peers',expPng:'Export PNG',
     moreExport:'More export & import options',install:'Install Board as an app',style:'Style',
@@ -1843,6 +1843,7 @@ const Shape={
     if((type==='rect'||type==='diamond'||type==='image')&&state.style.r!=null)base.r=state.style.r;
     if((type==='rect'||type==='diamond')&&state.style.fstyle)base.fstyle=state.style.fstyle;
     if((type==='text'||type==='sticky')&&state.style.align!=null)base.align=state.style.align;
+    if((type==='text'||type==='sticky')&&state.style.lineH!=null)base.lineH=state.style.lineH;   // ADR-0189
     return Object.assign(base,extras);
   }};
 
@@ -2565,7 +2566,7 @@ function _drawBoxLabel(s,c){
   c.textAlign=al==='left'?'left':al==='right'?'right':'center';c.textBaseline='middle';
   const tx=al==='left'?s.x+6:al==='right'?s.x+s.w-6:s.x+s.w/2;
   const lines=wrapTextCached(s,s.label,Math.max(10,s.w-8),fs,t=>c.measureText(t).width);   // ADR-0074
-  const lh=fs*1.25;
+  const lh=fs*(s.lineH||1.25);
   // ADR-0159: s.valign 'top'|'bottom' (absent = centred) — draw.io parity.
   const top0=s.valign==='top'?s.y+6:s.valign==='bottom'?s.y+s.h-6-lines.length*lh:s.y+s.h/2-(lines.length*lh)/2;
   for(let i=0;i<lines.length;i++)c.fillText(lines[i],tx,top0+lh/2+i*lh);
@@ -2584,7 +2585,7 @@ function _drawImgLabel(s,c){
   const fs=s.fontSize||14;   // ADR-0169
   c.font=_fontStr(s,fs);   // ADR-0170
   let lines=wrapTextCached(s,s.label,Math.max(10,s.w-8),fs,t=>c.measureText(t).width);
-  const lh=fs*1.25,maxL=Math.max(1,Math.floor((s.h-4)/lh));
+  const lh=fs*(s.lineH||1.25),maxL=Math.max(1,Math.floor((s.h-4)/lh));
   if(lines.length>maxL){lines=lines.slice(0,maxL);lines[maxL-1]+='…'}
   const sh_=lines.length*lh+4,sy=s.valign==='top'?s.y:s.y+s.h-sh_;   // ADR-0179
   c.fillStyle=getCSS('--paper')||'#fff';c.globalAlpha=0.85;
@@ -2770,7 +2771,7 @@ function drawShape(s,c){
         const fs=s.fontSize||14;
         c.fillStyle='#1E293B';c.font=_fontStr(s,fs);        // ADR-0078
         c.textBaseline='top';
-        const lh=fs*1.3, pad=8;
+        const lh=fs*(s.lineH||1.3), pad=8;
         const lines=wrapTextCached(s,s.text,Math.abs(s.w)-pad*2,fs,t=>c.measureText(t).width);
         c.save();c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,r);c.clip();
         c.textAlign=s.align==='center'?'center':s.align==='right'?'right':'left';   // ADR-0073
@@ -3024,7 +3025,7 @@ function drawText(s,c){
   c.font=_fontStr(s,fs);                                    // ADR-0078
   c.textBaseline='top';
   const lines=(s.text||'').split('\n');
-  const lh=fs*1.25;
+  const lh=fs*(s.lineH||1.25);
   c.textAlign=s.align==='center'?'center':s.align==='right'?'right':'left';   // ADR-0073
   const ax=s.align==='center'?s.x+s.w/2:s.align==='right'?s.x+s.w:s.x;
   for(let i=0;i<lines.length;i++)c.fillText(lines[i],ax,s.y+i*lh);
@@ -3685,7 +3686,7 @@ canvas.addEventListener('pointerdown',e=>{
         const ext=_styleOf(hit);
         // ADR-0185: eyedropper also absorbs every persisted look-prop so the
         // next shape carries the picked style (Figma eyedropper parity).
-        for(const k of['stroke','fill','size','opacity','dash','font','head','start','elbow','curve','r','fstyle','align','valign','fontSize','cbend'])state.style[k]=ext[k];
+        for(const k of['stroke','fill','size','opacity','dash','font','head','start','elbow','curve','r','fstyle','align','valign','fontSize','lineH','cbend'])state.style[k]=ext[k];
         state.styleClipboard=ext;                   // ⌥V applies it to the selection too
         UI.toast(t('eyedropDone'),'ok');UI.announce(t('eyedropDone'));
       }
@@ -4977,11 +4978,11 @@ function resizeAfterTextEdit(s,text,c){
   if(s.type==='sticky'){
     const pad=8;
     const wl=wrapText(s.text||'',Math.abs(s.w)-pad*2,t=>c.measureText(t).width);
-    s.h=Math.max(fs*1.3+pad*2,wl.length*fs*1.3+pad*2);
+    s.h=Math.max(fs*(s.lineH||1.3)+pad*2,wl.length*fs*(s.lineH||1.3)+pad*2);
   }else{
     const lines=(s.text||'').split('\n');
     let mw=0;for(const l of lines)mw=Math.max(mw,c.measureText(l).width);
-    s.w=Math.max(20,mw);s.h=Math.max(fs*1.25,lines.length*fs*1.25);
+    s.w=Math.max(20,mw);s.h=Math.max(fs*(s.lineH||1.25),lines.length*fs*(s.lineH||1.25));
   }
 }
 // New text/sticky shapes are committed — and broadcast — with empty text up front,
@@ -6630,7 +6631,7 @@ function buildSVG(shapes,paper){
         const tax=s.align==='center'?X+ox+W/2:s.align==='right'?X+ox+W:X+ox;   // ADR-0073
         const anch=s.align==='center'?' text-anchor="middle"':s.align==='right'?' text-anchor="end"':'';
         els.push(`<text x="${tax}" y="${Y+oy}" dominant-baseline="hanging" font-family="${_fontFam(s)}" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''} fill="${stroke}"${anch}${a}${rT}>`);   // ADR-0078/0095/0100
-        for(let i=0;i<svgLines.length;i++)els.push(`<tspan x="${tax}" dy="${i?fs*1.25:0}">${_esc(svgLines[i])}</tspan>`);
+        for(let i=0;i<svgLines.length;i++)els.push(`<tspan x="${tax}" dy="${i?fs*(s.lineH||1.25):0}">${_esc(svgLines[i])}</tspan>`);
         els.push('</text>');break;}
       case 'image':
         if(typeof s.dataUrl==='string'&&/^data:image\//.test(s.dataUrl)){
@@ -6664,10 +6665,10 @@ function buildSVG(shapes,paper){
           const lines2=wrapText(s.text,Math.abs(W)-pad2*2,t=>t.length*fs*0.6);
           const tax2=s.align==='center'?X+ox+W/2:s.align==='right'?X+ox+W-pad2:X+ox+pad2;   // ADR-0073
           const anch2=s.align==='center'?' text-anchor="middle"':s.align==='right'?' text-anchor="end"':'';
-          const sy2v=s.valign==='middle'?Y+oy+(H-lines2.length*fs*1.3)/2:                  // ADR-0187
-                     s.valign==='bottom'?Y+oy+H-pad2-lines2.length*fs*1.3:Y+oy+pad2;
+          const sy2v=s.valign==='middle'?Y+oy+(H-lines2.length*fs*(s.lineH||1.3))/2:                  // ADR-0187
+                     s.valign==='bottom'?Y+oy+H-pad2-lines2.length*fs*(s.lineH||1.3):Y+oy+pad2;
           els.push(`<text x="${tax2}" y="${sy2v}" dominant-baseline="hanging" font-family="${_fontFam(s)}" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''} fill="#1E293B"${anch2}${rT}>`);   // ADR-0078/0095/0100
-          for(let i=0;i<lines2.length;i++)els.push(`<tspan x="${tax2}" dy="${i?fs*1.3:0}">${_esc(lines2[i])}</tspan>`);
+          for(let i=0;i<lines2.length;i++)els.push(`<tspan x="${tax2}" dy="${i?fs*(s.lineH||1.3):0}">${_esc(lines2[i])}</tspan>`);
           els.push('</text>');
         }break;}
     }
@@ -6683,7 +6684,7 @@ function buildSVG(shapes,paper){
 function _svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT){
   const fs=s.fontSize||14,pad=4;   // ADR-0169
   let lines=wrapText(s.label,Math.max(10,W-8),t=>t.length*fs*0.6);
-  const lh=fs*1.25,maxL=Math.max(1,Math.floor((H-4)/lh));
+  const lh=fs*(s.lineH||1.25),maxL=Math.max(1,Math.floor((H-4)/lh));
   if(lines.length>maxL){lines=lines.slice(0,maxL);lines[maxL-1]+='…'}
   const sh_=lines.length*lh+4,sy=s.valign==='top'?Y:Y+H-sh_;   // ADR-0179
   els.push(`<g${rT}><rect x="${X+ox}" y="${sy+oy}" width="${W}" height="${sh_}" fill="${_esc(paper||'#FFFFFF')}" opacity="0.85"/>`);
@@ -6696,7 +6697,7 @@ function _svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT){
 function _svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT){
   const fs=s.fontSize||14,pad=4;   // ADR-0169
   const lines=wrapText(s.label,Math.max(10,W-pad*2),t=>t.length*fs*0.6);
-  const lh=fs*1.25;
+  const lh=fs*(s.lineH||1.25);
   const cy=s.valign==='top'?Y+6+oy:s.valign==='bottom'?Y+H-6+oy-lines.length*lh:Y+H/2+oy-(lines.length*lh)/2;   // ADR-0159
   const al3=s.align||'center',tx3=al3==='left'?X+ox+6:al3==='right'?X+ox+W-6:X+W/2+ox;   // ADR-0171
   const anc3=al3==='left'?'start':al3==='right'?'end':'middle';
@@ -7655,6 +7656,7 @@ const UI={
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky'||s.type==='frame'||s.label)&&!s.locked})&&['ctxFont','',cycleFont],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&!s.locked})&&['ctxOpacity','0-9',cycleOpacity],   // ADR-0174
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond'||s.type==='sticky'||(s.type==='image'&&!!s.label))&&!s.locked})&&['ctxVAlign','',cycleVAlign],   // ADR-0179   // ADR-0159
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky'||s.label)&&!s.locked})&&['ctxLineH','',cycleLineH],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky')&&!s.locked})&&[[...state.selection].some(id=>byId(id)?.type==='sticky'&&!byId(id)?.locked)?'ctxToText':'ctxToSticky','',toggleStickyText],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='sticky'&&!s.locked})&&['ctxStickyColor','',cycleStickyColor],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond')&&!s.locked})&&['ctxFillStyle','',cycleFillStyle],
@@ -8334,6 +8336,19 @@ function cycleVAlign(){
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
 }
+// ADR-0189: line-height cycle for every text carrier (labels too) —
+// null restores the per-type default (1.25 text/labels, 1.3 sticky).
+function cycleLineH(){
+  const before=[],after=[],seq=[null,1,1.5];
+  for(const id of state.selection){
+    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky'&&!s.label)||s.locked)continue;
+    const cur=s.lineH??null,nxt=seq[(seq.indexOf(cur)+1)%3];
+    before.push({id,lineH:cur});after.push({id,lineH:nxt});
+    if(nxt==null)delete s.lineH;else s.lineH=nxt;
+    state.style.lineH=nxt;
+  }
+  if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
+}
 // ADR-0075: ⌘⇧,/. nudges fontSize ±2 on selected text/sticky via style op.
 function fontSizeStep(d){
   const before=[],after=[];
@@ -8460,7 +8475,7 @@ function _styleOf(sh){return{
   stroke:sh.stroke,fill:sh.type==='sticky'?sh.color:sh.fill,
   size:sh.size,opacity:sh.opacity,dash:sh.dash||0,fstyle:sh.fstyle,     // ADR-0077
   bold:sh.bold,italic:sh.italic,under:sh.under,strike:sh.strike,        // ADR-0078/0095/0100
-  align:sh.align,valign:sh.valign,fontSize:sh.fontSize,                 // ADR-0159
+  align:sh.align,valign:sh.valign,fontSize:sh.fontSize,lineH:sh.lineH,   // ADR-0159/0189
   r:sh.r,head:sh.head,start:sh.start,elbow:sh.elbow,curve:sh.curve,cbend:sh.cbend,font:sh.font
 };}
 function copyStyle(){
