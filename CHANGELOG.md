@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.266]
+
+### 追加
+- **テキストの幅折返し** (ADR-0208)。ctx「テキスト折返し」で text
+  図形を `s.w` 幅で word-wrap (draw.io wordWrap=1 相当、付箋と同一
+  禁則処理、canvas+SVG 同一行生成、リサイズでリフロー)。
+
 ## [1.7.265]
 
 ### 追加

@@ -257,6 +257,7 @@ Board/
 - [ADR-0205](docs/ADR-0205-letter-spacing.md) 字間
 - [ADR-0206](docs/ADR-0206-endpoint-shift-constrain.md) 端点45°拘束+ラベルエディタ一致
 - [ADR-0207](docs/ADR-0207-elbow-rounded-corners.md) エルボー角丸
+- [ADR-0208](docs/ADR-0208-text-word-wrap.md) テキスト幅折返し
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
