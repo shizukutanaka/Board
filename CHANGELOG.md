@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.241]
+
+### 追加
+- **コネクタルートの last-used 継承** (ADR-0183)。ctx エルボー/曲線
+  トグルの結果が `state.style` に残り、次に引くコネクタに継承 —
+  フローチャートで毎回切替不要に。「ルートをリセット」で継承も解除。
+
 ## [1.7.240]
 
 ### 追加

@@ -757,6 +757,7 @@ const checks = [
   ['new text/sticky inherit last-used fontSize', html.includes("fontSize:state.style.fontSize||16")&&html.includes("state.style.fontSize=nxt")],
   ['last-used head/font persist via Shape.make', html.includes("state.style.head=next")&&html.includes("state.style.head!=null")&&html.includes("state.style.font!=null")],
   ['label editor follows the viewport (ADR-0182)', html.includes('function _lblFollow()')&&html.includes('_lblAnchor(hit)')&&html.includes('_lblTa={inp,hit}')],
+  ['route style persists via state.style.elbow/curve into Shape.make', html.includes("state.style.elbow=s.elbow;state.style.curve=0")&&html.includes('if(state.style.elbow)base.elbow=state.style.elbow;')],
   // v1.7.05: Tab cycling excludes locked shapes (parity with doMove/doDelete/doRotate/doFlip)
   ['statusbar selection dims readout', html.includes('id="sSel"')&&html.includes('_statusSel()')&&html.includes('Math.round(b.w)')],
   ['empty-selection arrows pan viewport', html.includes("state.viewport.x+=k==='arrowleft'?-step:k==='arrowright'?step:0")],
@@ -3731,6 +3732,7 @@ try {
     const A=Shape.make('rect',{x:0,y:0,w:100,h:100});
     const B=Shape.make('rect',{x:300,y:0,w:100,h:100});
     Store.commit({op:'addMany',shapes:[A,B]});
+    state.style.elbow=0;state.style.curve=0;   // route-style persistence (ADR-0183) — don't inherit leftovers from toggle tests
     const L=Shape.make('line',{x1:0,y1:0,x2:200,y2:0});
     Store.commit({op:'add',shape:L});
     const l=byId(L.id);

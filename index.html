@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.240';
+const V='1.7.241';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1835,6 +1835,9 @@ const Shape={
     // type (same rule as state.style's stroke/fill/size — ADR-0180 pattern).
     if((type==='text'||type==='sticky')&&state.style.font!=null)base.font=state.style.font;
     if(type==='arrow'&&state.style.head!=null)base.head=state.style.head;
+    if(type==='line'||type==='arrow'){                          // ADR-0183
+      if(state.style.elbow)base.elbow=state.style.elbow;
+      if(state.style.curve)base.curve=state.style.curve;}
     return Object.assign(base,extras);
   }};
 
@@ -8153,6 +8156,7 @@ function toggleElbow(){
     before.push({id,elbow:s.elbow||0,curve:s.curve||0});
     after.push({id,elbow:s.elbow?0:1,curve:0});
     s.elbow=s.elbow?0:1;s.curve=0;               // ADR-0068: routes are exclusive
+    state.style.elbow=s.elbow;state.style.curve=0;              // ADR-0183
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
 }
@@ -8219,6 +8223,7 @@ function toggleCurve(){
     before.push({id,elbow:s.elbow||0,curve:s.curve||0});
     after.push({id,elbow:0,curve:s.curve?0:1});
     s.elbow=0;s.curve=s.curve?0:1;
+    state.style.elbow=0;state.style.curve=s.curve;              // ADR-0183
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
 }
@@ -8286,6 +8291,7 @@ function resetRoute(){
     before.push({id,way:s.way??null,bend:s.bend??null,elbow:s.elbow||0,curve:s.curve||0,labelPos:s.labelPos??null,cbend:s.cbend??null});
     after.push({id,way:null,bend:null,elbow:0,curve:0});
     s.way=null;s.bend=null;s.elbow=0;s.curve=0;s.labelPos=null;s.cbend=null;
+    state.style.elbow=0;state.style.curve=0;                    // ADR-0183: reset clears the remembered route too
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
 }
