@@ -778,7 +778,7 @@ body{visibility:visible}
 const _g=id=>document.getElementById(id);   // ADR-0289
 
 // ====================== CONSTANTS ======================
-const V='1.7.341';
+const V='1.7.342';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6366,7 +6366,7 @@ function excScene(shapes){
 const DIO_MAX=20000;
 // ADR-0258: style keys shared verbatim by vertex and edge cells — one site.
 function _dioStyApply(s,sty,hid){
-  if(sty.strokeColor&&sty.strokeColor!=='none')s.stroke=sty.strokeColor;
+  if(sty.strokeColor)s.stroke=sty.strokeColor==='none'?'transparent':sty.strokeColor;   // ADR-0290
   if(+sty.strokeWidth>0)s.size=Math.min(40,+sty.strokeWidth);
   if(sty.dashed==='1')s.dash=/^1\s+\d/.test(String(sty.dashPattern||''))?2:1;   // ADR-0255
   if(+sty.fontSize>0)s.fontSize=Math.min(200,+sty.fontSize);
@@ -6568,9 +6568,10 @@ function boardToDrawio(shapes){
     else if(t==='frame')sty='swimlane;';
     else if(t==='image'&&s.dataUrl)sty='shape=image;';
     else sty='rounded='+(s.r>0?1:0)+';';
-    if(s.fill&&s.fill!=='none')sty+='fillColor='+s.fill+';';
+    if(s.fill==='none')sty+='fillColor=none;';                            // ADR-0290
+    else if(s.fill)sty+='fillColor='+s.fill+';';
     if(t==='sticky'&&!s.fill)sty+='fillColor='+(s.color||'#FEF08A')+';';                 // ADR-0279
-    if(s.stroke&&t!=='text'&&t!=='sticky')sty+='strokeColor='+s.stroke+';';
+    if(s.stroke&&t!=='text'&&t!=='sticky')sty+='strokeColor='+(s.stroke==='transparent'?'none':s.stroke)+';';   // ADR-0290
     if(s.stroke&&(t==='text'||t==='sticky'||s.label))sty+='fontColor='+s.stroke+';';   // ADR-0247/0281
     sty+=_dioStyEmit(s);                                                   // ADR-0263
     if(s.fontSize)sty+='fontSize='+s.fontSize+';';
@@ -6591,7 +6592,7 @@ function boardToDrawio(shapes){
     if(s.elbow)sty+='edgeStyle=orthogonalEdgeStyle;';
     if(s.curve)sty+='curved=1;';
     if(s.hop)sty+='jumpStyle=arc;';
-    if(s.stroke)sty+='strokeColor='+s.stroke+';';
+    if(s.stroke)sty+='strokeColor='+(s.stroke==='transparent'?'none':s.stroke)+';';   // ADR-0290
     if(s.r)sty+='rounded=1;';
     sty+=_dioStyEmit(s,1);                                                 // ADR-0263/0282
     if(s.fill)sty+='labelBackgroundColor='+s.fill+';';                       // ADR-0249
