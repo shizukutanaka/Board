@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.357] - 2026-09-24
+
+### Changed
+- canvas drop-shadow 3属性の適用を `_csh(s,c)` に集約 (8 箇所、
+  raw -393B、ADR-0306)
+
 ## [1.7.356] - 2026-09-24
 
 ### Fixed

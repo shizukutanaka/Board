@@ -719,6 +719,7 @@ const checks = [
   ['clipboard image/svg+xml → vector import (ADR-0272)', html.includes("i.type==='image/svg+xml'")],
   ['drawio strokeOpacity/fillOpacity → s.opacity (ADR-0271)', html.includes('+sty.strokeOpacity')],
   ['svg conn path/label emitters deduped (ADR-0270)', html.includes('const _sp=(d,j)')&&html.includes('_cL();')],
+  ['_csh() canvas shadow helper (ADR-0306)', html.includes("const _csh=(s,c)=>")],
   ['SVG frame label always 600 weight (ADR-0305)', html.includes('s.bold?s:{...s,bold:true},s.fontSize||12')],
   ['ctx link set/open on s.link (ADR-0304)', html.includes('function setSelLink')&&html.includes('ctxOpenLink')&&html.includes('ctxSetLink')],
   ['_forSel() apply-loop shorthand (ADR-0303)', html.includes("_forSel((s,id)=>")],
