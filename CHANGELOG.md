@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.370] - 2026-09-24
+
+### Fixed
+- ポップアップブロックでリンクが開けない時に警告トーストを表示
+  (ctx・⌘+click 両経路、ADR-0319)
+
 ## [1.7.369] - 2026-09-24
 
 ### Added
