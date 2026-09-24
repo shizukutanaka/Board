@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.428] - 2026-09-23
+
+### 修正
+- RTC 切断時に半受信スナップショット組立を破棄 (ADR-0385) — 再接続時の新旧チャンク混入を防止
+- `Array.isArray` → `_iA` shorthand で ~500B 回収 (ADR-0384)
+
 ## [1.7.426] - 2026-09-23
 
 ### 追加
