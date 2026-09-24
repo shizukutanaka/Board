@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.399] - 2026-09-24
+
+### Added
+- .excalidraw emit で elbow/curve のルートを points に焼き込み —
+  視覚経路が excalidraw に保存される (reimport は way 付き直線、受理)
+  (ADR-0349)
+
 ## [1.7.398] - 2026-09-24
 
 ### Changed
