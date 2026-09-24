@@ -523,7 +523,7 @@ const checks = [
   ['translate moves elbow bend (trunk follows connector)', html.includes('s.bend+=vert?dx:dy')&&html.includes('ADR-0147')],
   ['group resize scales elbow bend on trunk axis', html.includes('ADR-0148')&&html.includes('sh.bend=_abs(tr[1].x-tr[0].x)')],
   ['image flip mirrors pixels via s.flip bitmask', html.includes("s.flip=(s.flip||0)^(axis==='h'?1:2)")&&html.includes('ADR-0149')&&html.includes('scale(${s.flip&1?-1:1}')],
-  ['hidden shapes leave search + bindAt', html.includes('s.visible!==0&&(s.label||s.text||s.type')&&html.includes("t!=='pen'&&s.visible!==0")],
+  ['hidden shapes leave search + bindAt', html.includes("s.visible!==0&&((s.label||'')+(s.text||'')+(s.type||'')")&&html.includes("t!=='pen'&&s.visible!==0")],
   ['SVG export excludes hidden shapes', html.includes('const _vis=shapes.filter(s=>s.visible!==0)')&&html.includes('_vis.filter(s=>s.type==="frame")')],
   ['Alt+hover measure guides', html.includes('measure:null')&&html.includes('function _drawMeasure(c)')&&html.includes("e.altKey&&_selN()&&top&&!top.locked")],
   ['measure cleared on reset/down/Alt', html.includes('state.measure=null;ptr.x=ptr.x0')&&html.includes("e.key==='Alt'&&state.measure")],
@@ -9665,6 +9665,13 @@ try {
      assert.ok(_fid,'frame emits a swimlane cell (ADR-0345)');
      assert.ok(new RegExp('id="b\\d+"[^>]*parent="'+_fid+'"[^>]*>[\\s\\S]*?x="50"').test(xml4)||xml4.includes('parent="'+_fid+'"><mxGeometry x="50"'),'contained member parents the frame with relative x (ADR-0345)');
      assert.ok(!/parent="b\d+"/.test(xml4.match(/id="b\d+"[^>]*x="500"[^>]*/)?.[0]||''),'outside member stays parent=1 (ADR-0345)');}
+
+    // ADR-0347: conn in a group parents to the group cell, coords relative
+    {const xml5=boardToDrawio([{id:'a',type:'rect',x:100,y:50,w:80,h:60,groupId:'g1',stroke:'#000',fill:null,size:2,opacity:1},
+                               {id:'c',type:'arrow',x1:110,y1:60,x2:160,y2:110,groupId:'g1',stroke:'#000',size:2,opacity:1}]);
+     assert.ok(/edge="1" parent="g_g1"/.test(xml5),'grouped conn parents the group cell (ADR-0347)');
+     assert.ok(/sourcePoint"\/><mxGeometry|x="10" y="10" as="sourcePoint"/.test(xml5),'conn sourcePoint is group-relative (ADR-0347)');
+     assert.ok(/x="60" y="60" as="targetPoint"/.test(xml5),'conn targetPoint is group-relative (ADR-0347)');}
      assert.ok(boardToDrawio([{id:'y',type:'rect',x:0,y:0,w:1,h:1,stroke:'#000',fill:null,size:2,opacity:1}]).indexOf('visible="0"')<0,'visible shape carries no visible attr');}
     console.log('  ✓ excalidraw import (element mapping, styles, tombstones, reject paths)');
   }

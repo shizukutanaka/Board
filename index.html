@@ -796,7 +796,7 @@ const _ga=(e,n)=>e.getAttribute(n);   // ADR-0340
 const _cbr=()=>canvas.getBoundingClientRect();   // ADR-0342
 
 // ====================== CONSTANTS ======================
-const V='1.7.396';
+const V='1.7.397';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3647,7 +3647,7 @@ function _sqMatches(){
   const q=_sq.toLowerCase();
   if(_sqVer===_gridVer&&_sqQ===q)return _sqList;
   _sqList=[];
-  for(const s of state.shapes){if(s.visible!==0&&(s.label||s.text||s.type||'').toLowerCase().includes(q))_sqList.push(s)}
+  for(const s of state.shapes){if(s.visible!==0&&((s.label||'')+(s.text||'')+(s.type||'')+(s.link||'')+(s.frameLabel||'')+(s.cap||'')).toLowerCase().includes(q))_sqList.push(s)}   // ADR-0346
   _sqVer=_gridVer;_sqQ=q;
   return _sqList;
 }
@@ -6517,9 +6517,9 @@ function drawioToShapes(txt){
     const _uo=c.parentElement&&c.parentElement.tagName==='UserObject'?c.parentElement:null;   // ADR-0328
     let x1=0,y1=0,x2=0,y2=0;
     const sp=g?g.querySelector('mxPoint[as="sourcePoint"]'):null,tp=g?g.querySelector('mxPoint[as="targetPoint"]'):null;
-    const _do=_doff.get(c)||0;
-    if(sp){x1=(+_ga(sp,'x')||0)+_do;y1=+_ga(sp,'y')||0}
-    if(tp){x2=(+_ga(tp,'x')||0)+_do;y2=+_ga(tp,'y')||0}
+    const _do=_doff.get(c)||0,_eo=off(_ga(c,'parent')||'');              // ADR-0347: group-parent offset
+    if(sp){x1=(+_ga(sp,'x')||0)+_do+_eo.x;y1=(+_ga(sp,'y')||0)+_eo.y}
+    if(tp){x2=(+_ga(tp,'x')||0)+_do+_eo.x;y2=(+_ga(tp,'y')||0)+_eo.y}
     const a=_ga(c,'source'),b=_ga(c,'target');
     const sa=a?idOf.get(a):null,sb=b?idOf.get(b):null;
     if(sa){const bs=shapes.find(s2=>s2.id===sa),bb=bs&&G.bbox(bs);if(bb){x1=bb.x+bb.w/2;y1=bb.y+bb.h/2}}
@@ -6540,7 +6540,7 @@ function drawioToShapes(txt){
     if(sty.curved==='1')s.curve=1;
     if(sty.jumpStyle&&sty.jumpStyle!=='none')s.hop=1;
     const pts=g?[...g.querySelectorAll('Array mxPoint')]:[];
-    if(pts.length)s.way=pts.slice(0,200).map(p=>[(+_ga(p,'x')||0)+_do,+_ga(p,'y')||0]);
+    if(pts.length)s.way=pts.slice(0,200).map(p=>[(+_ga(p,'x')||0)+_do+_eo.x,(+_ga(p,'y')||0)+_eo.y]);   // ADR-0347
     if(/orthogonal|elbow/i.test(String(sty.edgeStyle||'')))s.elbow=1;
     // ADR-0221: drawio exitX/exitY/entryX/entryY fixed ports → aF/bF fractions
     // (same normalisation as ADR-0209's Alt-drop anchors). Exit = source end.
@@ -6690,12 +6690,13 @@ function boardToDrawio(shapes){
     if(src&&s.aF)sty+=`exitX=${s.aF.fx};exitY=${s.aF.fy};exitDx=0;exitDy=0;`;   // ADR-0221
     if(tgt&&s.bF)sty+=`entryX=${s.bF.fx};entryY=${s.bF.fy};entryDx=0;entryDy=0;`;
     let geo=`<mxGeometry relative="1"${s.labelPos!=null?` x="${(s.labelPos*2-1).toFixed(3)}"`:''} as="geometry">`;   // ADR-0264
-    if(!src)geo+=`<mxPoint x="${s.x1}" y="${s.y1}" as="sourcePoint"/>`;
-    if(!tgt)geo+=`<mxPoint x="${s.x2}" y="${s.y2}" as="targetPoint"/>`;
+    const _gc2=_gbx[s.groupId];                                         // ADR-0347
+    if(!src)geo+=`<mxPoint x="${s.x1-(_gc2?_gc2.x:0)}" y="${s.y1-(_gc2?_gc2.y:0)}" as="sourcePoint"/>`;
+    if(!tgt)geo+=`<mxPoint x="${s.x2-(_gc2?_gc2.x:0)}" y="${s.y2-(_gc2?_gc2.y:0)}" as="targetPoint"/>`;
     const wa=_wayArr(s);
-    if(wa.length)geo+='<Array as="points">'+wa.map(p=>`<mxPoint x="${p.x}" y="${p.y}"/>`).join('')+'</Array>';
+    if(wa.length)geo+='<Array as="points">'+wa.map(p=>`<mxPoint x="${p.x-(_gc2?_gc2.x:0)}" y="${p.y-(_gc2?_gc2.y:0)}"/>`).join('')+'</Array>';
     geo+='</mxGeometry>';
-    cells.push(`<mxCell id="${id}" value="${nl(s.label||'')}" style="${esc(sty)}" edge="1" parent="1"${src}${tgt}${s.link?` link="${esc(s.link)}"`:''}${s.visible===0?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0245
+    cells.push(`<mxCell id="${id}" value="${nl(s.label||'')}" style="${esc(sty)}" edge="1" parent="${_gc2?`g_${s.groupId}`:'1'}"${src}${tgt}${s.link?` link="${esc(s.link)}"`:''}${s.visible===0?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0245/0347
   }
   return `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile compressed="false"><diagram name="Page-1"><mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/>${cells.join('')}</root></mxGraphModel></diagram></mxfile>`;
 }
