@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.359] - 2026-09-24
+
+### Changed
+- `const sel=[...state.selection].map(byId).filter(f)` 18 箇所を
+  `_selL(f)` に集約 (raw ~500B、ADR-0308)
+
 ## [1.7.358] - 2026-09-24
 
 ### Changed

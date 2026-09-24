@@ -783,9 +783,10 @@ const _selAny=f=>[...state.selection].some(id=>{const s=byId(id);return s&&f(s)}
 const _forSel=f=>{for(const id of state.selection){const s=byId(id);if(s)f(s,id)}};   // ADR-0303
 const _csh=(s,c)=>{if(s.shadow){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=10;c.shadowOffsetY=3}};   // ADR-0306
 const _so=(b,a)=>{if(b.length){_styleOp(b,a);invalidate()}};   // ADR-0307
+const _selL=f=>[...state.selection].map(byId).filter(f);   // ADR-0308
 
 // ====================== CONSTANTS ======================
-const V='1.7.358';
+const V='1.7.359';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2162,7 +2163,7 @@ function _statusSel(){
   const el=_g('sSel');if(!el)return;
   let txt='';
   if(state.selection.size){
-    const sel=[...state.selection].map(byId).filter(Boolean);
+    const sel=_selL(Boolean);
     const b=sel.length&&G.bboxAll(sel);
     if(b)txt=Math.round(b.w)+'×'+Math.round(b.h);
   }
@@ -3487,7 +3488,7 @@ function handleCursor(id){
 
 function drawSelection(c){
   if(state.selection.size===0)return;
-  const sel=[...state.selection].map(byId).filter(Boolean);
+  const sel=_selL(Boolean);
   if(!sel.length)return;
   const b=G.bboxAll(sel);
   if(!b)return;
@@ -3789,7 +3790,7 @@ canvas.addEventListener('pointerdown',e=>{
           }
         }
       }else if(state.selection.size>1){
-        const sel=[...state.selection].map(byId).filter(Boolean);
+        const sel=_selL(Boolean);
         if(sel.length>1&&!sel.every(s=>s.locked)){
           const gb=G.bboxAll(sel);
           // ADR-0057: rotation knob first — it sits above the bbox, off the handles.
@@ -3874,7 +3875,7 @@ canvas.addEventListener('pointermove',e=>{
           if(hid){canvas.style.cursor=handleCursor(hid);return}
         }
       }else if(state.selection.size>1){
-        const sel=[...state.selection].map(byId).filter(Boolean);
+        const sel=_selL(Boolean);
         if(sel.length>1&&!sel.every(s=>s.locked)){
           const gb=G.bboxAll(sel);
           const gr=gb&&_grpRotHandle(gb);
@@ -5454,7 +5455,7 @@ window.addEventListener('keydown',e=>{
   else if((k==='arrowup'||k==='arrowdown'||k==='arrowleft'||k==='arrowright')&&e.altKey){
     // Alt+arrow = keyboard resize (a11y: pointer-free). L/R = width, U/D = height,
     // top-left anchored; ⇧ = ×10 step. Box shapes only. Single reversible `resize` op.
-    const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked&&s.w!=null);
+    const sel=_selL(s=>s&&!s.locked&&s.w!=null);
     if(sel.length){
       e.preventDefault();
       const step=e.shiftKey?10:1;
@@ -5656,7 +5657,7 @@ function doDuplicate(){
   UI.toast(t('pasted')+' '+added.length);
 }
 function doDelete(){
-  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);
+  const sel=_selL(s=>s&&!s.locked);
   if(!sel.length)return;
   const origSel=[...state.selection];
   // Frame-aware: shapes fully inside a selected frame are deleted with the frame (parity with doDuplicate)
@@ -5755,7 +5756,7 @@ function doSendBackward(){
 // "Select Same → Fill"). Sticky's paint lives in `color`; everything else in
 // `fill`. Locked shapes are included — ops already skip them.
 function selectSamePaint(){
-  const sel=[...state.selection].map(byId).filter(Boolean);
+  const sel=_selL(Boolean);
   if(sel.length!==1)return;
   const s0=sel[0],key=s0.type==='sticky'?s0.color:s0.fill;
   const same=state.shapes.filter(s=>s.visible!==0&&(s.type==='sticky'?s.color:s.fill)===key);
@@ -5812,7 +5813,7 @@ function showAllShapes(){
 // ADR-0120: select every shape of the same type as the single selection —
 // sibling of selectSamePaint (e.g. all connectors, all stickies).
 function selectSameType(){
-  const sel=[...state.selection].map(byId).filter(Boolean);
+  const sel=_selL(Boolean);
   if(sel.length!==1)return;
   const same=state.shapes.filter(s=>s.visible!==0&&s.type===sel[0].type);
   if(same.length<2)return;
@@ -5824,7 +5825,7 @@ function selectSameType(){
 // automatic — the frame simply covers the union bbox + padding; z is tucked
 // just below the lowest member so contents stay on top.
 function wrapInFrame(){
-  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);
+  const sel=_selL(s=>s&&!s.locked);
   if(!sel.length){UI.toast(t('selectTwo'),'warn');return}
   const b=G.bboxAll(sel);if(!b)return;
   const PAD=16;
@@ -5874,7 +5875,7 @@ function doClearAll(){
 
 // ---- alignment (multiple selection) ----
 function doAlign(dir){
-  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);
+  const sel=_selL(s=>s&&!s.locked);
   if(sel.length<2)return;
   // Frame-aware: shapes fully inside a selected frame move with the frame as one unit
   // (parity with drag/nudge; mirrors withFrameChildren logic used in doMove/nudgeSelection)
@@ -5950,7 +5951,7 @@ function doAlign(dir){
 // resized/distorted; connectors/pen/way-points move via Shape.translate.
 // Recorded as one 'align' op (before/after full clones) for single undo.
 function snapSelToGrid(){
-  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);
+  const sel=_selL(s=>s&&!s.locked);
   if(!sel.length)return;
   const beforeSnap=sel.map(s=>clone(s));
   let moved=0;
@@ -5968,7 +5969,7 @@ function snapSelToGrid(){
 // (draw.io Arrange → Match Size). Position untouched; align op for undo parity.
 const _MSZ=new Set(['rect','ellipse','diamond','sticky','image','frame']);
 function doMatchSize(dim){
-  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked&&_MSZ.has(s.type));
+  const sel=_selL(s=>s&&!s.locked&&_MSZ.has(s.type));
   if(sel.length<2)return;
   const ref=sel[0],targets=sel.slice(1);
   const before=targets.map(s=>clone(s));
@@ -6010,7 +6011,7 @@ function flipShape(s,axis,c){
   if(s.rotate)s.rotate=((axis==='h'?180:360)-s.rotate+360)%360;
 }
 function doFlip(axis){
-  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);
+  const sel=_selL(s=>s&&!s.locked);
   if(!sel.length)return;
   const bb=G.bboxAll(sel);if(!bb)return;
   const c=axis==='h'?bb.x+bb.w/2:bb.y+bb.h/2;
@@ -6035,7 +6036,7 @@ function doFlip(axis){
 }
 
 function doLock(){
-  const sel=[...state.selection].map(byId).filter(Boolean);
+  const sel=_selL(Boolean);
   if(!sel.length)return;
   const lk=!sel[0].locked;
   const before=sel.map(s=>({id:s.id,locked:s.locked??null}));
@@ -6062,7 +6063,7 @@ function unlockAll(){
 // (Alt+B). Local-only (not in REMOTE_OPS, like replace/clear) — converting a collaborator's
 // pen stroke to a rectangle behind their back would be confusing, not helpful.
 function doBeautify(){
-  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked&&s.type==='pen');
+  const sel=_selL(s=>s&&!s.locked&&s.type==='pen');
   if(!sel.length){UI.toast(t('beautifyNone'),'warn');return}
   const before=[],after=[];
   for(const s of sel){
@@ -6099,7 +6100,7 @@ function _rotPtsAbout(s,gx,gy,cs,sn){
     if(tr)_rotBend(s,tr,rot);}
 }
 function doRotate(d){
-  const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked&&_rotatable(s));
+  const sel=_selL(s=>s&&!s.locked&&_rotatable(s));
   if(!sel.length)return;
   const bb=G.bboxAll(sel),gx=bb.x+bb.w/2,gy=bb.y+bb.h/2; // orbit about group centre, like doFlip
   // Frame-aware: box-shape children inside selected frames orbit and rotate with the frame (parity with doAlign)
@@ -8830,7 +8831,7 @@ function toggleStickyText(){
 // converted (a line never draws heads).
 const HEAD_STYLES=['arrow','dot','bar','open','none'];   // ADR-0233/0294
 function cycleArrowHead(){
-  const sel=[...state.selection].map(byId).filter(s=>s&&s.type==='arrow'&&!s.locked);
+  const sel=_selL(s=>s&&s.type==='arrow'&&!s.locked);
   if(!sel.length)return;
   const cur=sel[0].head||'arrow';
   const next=HEAD_STYLES[(HEAD_STYLES.indexOf(cur)+1)%HEAD_STYLES.length];
@@ -8841,7 +8842,7 @@ function cycleArrowHead(){
 // ADR-0291: start-end head cycle (ctx) — none → arrow → dot → open.
 // s.start toggles presence, s.startHead carries the style (null = inherit s.head).
 function cycleStartHead(){
-  const sel=[...state.selection].map(byId).filter(s=>s&&s.type==='arrow'&&!s.locked);
+  const sel=_selL(s=>s&&s.type==='arrow'&&!s.locked);
   if(!sel.length)return;
   const seq=['none','arrow','dot','bar','open'],cur=!sel[0].start?'none':(sel[0].startHead||'arrow');
   const next=seq[(seq.indexOf(cur)+1)%4];
