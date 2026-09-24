@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.315] - 2026-09-24
+
+### Changed
+- drawio export の共通 style キー出力を `_dioStyEmit` に集約 (ADR-0263)
+
 ## [1.7.314] - 2026-09-24
 
 ### Fixed
