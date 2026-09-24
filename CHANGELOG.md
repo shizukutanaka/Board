@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.383] - 2026-09-24
+
+### Fixed
+- diamond/image の角丸を drawio emit で `rounded=1` 補完
+  (従来は rect のみ、ADR-0332)
+
 ## [1.7.382] - 2026-09-24
 
 ### Added
