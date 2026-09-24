@@ -93,7 +93,7 @@ const checks = [
   // v1.1: toBlob null guard
   ['toBlob has null guard', html.includes("if(!bl){_e(t(_EF)")],
   // v1.1: op validation in _onRecv
-  ['_onRecv validates op.clock', html.includes("typeof op.clock.peer!=='string'")],
+  ['_onRecv validates op.clock', html.includes("!_iS(op.clock.peer)")],
   // v1.1: import validates shapes
   ['importFromHash validates shape fields', html.includes("data.shapes.filter(validShape)")],
   ['All data-tool buttons have kbd hints',
@@ -246,7 +246,7 @@ const checks = [
   // v1.7.69: the SAME guard now also gates the canvas/render + all remote/import intake
   // via validPatch, so an image dataUrl can never be an external URL (getImg→img.src).
   ['image dataUrl restricted to data:image/ at the validPatch intake gate (no external img.src)',
-    html.includes("if('dataUrl' in p&&p.dataUrl!=null&&!(typeof p.dataUrl==='string'&&_ln(p.dataUrl)<=16_000_000&&/^data:image\\//.test(p.dataUrl)))return false;")],
+    html.includes("if('dataUrl' in p&&p.dataUrl!=null&&!(_iS(p.dataUrl)&&_ln(p.dataUrl)<=16_000_000&&/^data:image\\//.test(p.dataUrl)))return false;")],
   ['PDF export escapes docName', html.includes("_esc(_dn()||'board')")],
   ['getCSS is memoised', html.includes("_cssCache") && html.includes("function clearCSSCache")],
   ['resize handles use AAA brand-ink ring', html.includes("_gC('--brand-ink')")],
@@ -254,7 +254,7 @@ const checks = [
   ['_num coerces to finite number', html.includes("function _num") && html.includes("_fin(n)?n:0")],
   ['buildSVG coerces numeric coords via _num', html.includes("const X=_num(s.x)") && html.includes("_num(_szz(s))")],
   ['applyRemote validates op payloads', html.includes("function validRemotePayload") && html.includes("if(!validRemotePayload(op))return")],
-  ['remote move requires finite deltas', html.includes("_fin(op.dx)&&typeof op.dy==='number'&&_fin(op.dy)")],
+  ['remote move requires finite deltas', html.includes("_fin(op.dx)&&_iN(op.dy)&&_fin(op.dy)")],
   // v1.6.8: viewport culling + load validation
   ['viewport culling helpers present', html.includes("function visibleWorldRect") && html.includes("function inView")],
   ['draw() culls via inView', html.includes("inView(s,_view)")],
@@ -1022,7 +1022,7 @@ const checks = [
   ['peer flood: MAX_PEERS cap + peer-id type/length intake guard',
     html.includes('const MAX_PEERS=32')
     && html.includes('if(_pr().size>=MAX_PEERS)return;')
-    && html.includes("typeof msg.peer!=='string'||_ln(msg.peer)>MAX_PEER_ID_LEN")],
+    && html.includes("!_iS(msg.peer)||_ln(msg.peer)>MAX_PEER_ID_LEN")],
   ['snapshot amplification: _sendSnapshot throttled',
     html.includes('_lastSnapAt:0,_snapT:0') && html.includes('if(w>0){if(!this._snapT)this._snapT=_stO(()=>{this._snapT=0;this._sendSnapshot()},w);return}')],
   ['importBoard: FileReader onerror toasts instead of failing silently',
@@ -1131,7 +1131,8 @@ const checks = [
   ['Persist.flushIfHidden gates on vis===hidden && _dt()', html.includes("flushIfHidden(vis){") && html.includes("if(vis==='hidden'&&_dt()){")],
   ['Persist.flushIfHidden cancels pending debounce + calls save', html.includes("clearTimeout(this._saveT);\n      this.save();")],
   ['visibilitychange listener wires document.visibilityState to flushIfHidden', html.includes("_on(document,'visibilitychange',()=>Persist.flushIfHidden(document.visibilityState));")],
-  ['pagehide routes through flushIfHidden — iOS swipe-away durable (ADR-0453)', html.includes("_on(window,'pagehide',()=>Persist.flushIfHidden('hidden'));")],
+  ['pagehide routes through flushIfHidden — iOS swipe-away durable (ADR-0453)', html.includes("_on(window,'pagehide',()=>{Persist.flushIfHidden('hidden');Net._bcast({k:'bye',peer:_pi()})})")],
+  ['peer bye drops presence immediately — no 15s ghost (ADR-0457)', html.includes("case 'bye':{") && html.includes("if(pk&&_pr().delete(pk)){_ivO()")],
   // v1.6.80: multi-touch pinch cancels the single-pointer gesture (no stray edits)
   ['pointerdown aborts single-pointer gesture when a 2nd finger lands', html.includes("if(_pointers.size>=2){abortGesture();return;}")],
   ['pointermove bails while pinch is active', html.includes("if(_pointers.size>=2)return;   // pinch in progress")],
@@ -1144,7 +1145,7 @@ const checks = [
   ['docName input handler gates on imeShouldCommit', html.includes("_on(docNameEl,'input',e=>{if(imeShouldCommit(e))_commitDocName()})")],
   ['docName compositionend listener wires final commit', html.includes("_on(docNameEl,'compositionend',_commitDocName)")],
   // v1.6.83: coordinate rounding at serialization boundaries (Zenn float-precision bloat)
-  ['_round helper sheds float noise', html.includes("function _round(n,dp){return typeof n==='number'&&_fin(n)?_rnd(n*10**dp)/10**dp:n;}")],
+  ['_round helper sheds float noise', html.includes("function _round(n,dp){return _iN(n)&&_fin(n)?_rnd(n*10**dp)/10**dp:n;}")],
   ['roundShapesForExport rounds coord/dim fields', html.includes("function roundShapesForExport(shapes,dp=2)") && html.includes("['x','y','w','h','x1','y1','x2','y2','rotate']")],
   ['share export rounds shapes', html.includes("shapes:roundShapesForExport(_sh()),name:_dn()")],
   ['.board export rounds shapes', html.includes("shapes:roundShapesForExport(shapes)})],{type:'application/json'})")],
@@ -1252,17 +1253,17 @@ const checks = [
     html.includes("Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(_wc()),origSel});")],
   // v1.7.28: validRemotePayload for upd must block locked key (parity with style/resize/align)
   ['remote upd op cannot set locked (noLock guard extended to upd)',
-    html.includes("case 'upd':{const noLock=p=>!('locked' in p);\n      if(typeof op.id!=='string'||!validPatch(op.after)||!noLock(op.after)")],
+    html.includes("case 'upd':{const noLock=p=>!('locked' in p);\n      if(!_iS(op.id)||!validPatch(op.after)||!noLock(op.after)")],
   // v1.7.30: _apply add backward restores origSel; createShapeKbd attaches origSel
   ['_apply add backward restores origSel; createShapeKbd attaches origSel',
     html.includes("_selR(op);") &&
     html.includes("_cOp({op:'add',shape:s});")],
   // v1.7.33: validRemotePayload group must require before (string-id array)
   ['validRemotePayload group: requires before array with string ids',
-    html.includes("&&_iA(op.before)&&_ln(op.before)<=MAX_OP_SHAPES&&op.before.every(b=>b&&typeof b.id==='string');")],
+    html.includes("&&_iA(op.before)&&_ln(op.before)<=MAX_OP_SHAPES&&op.before.every(b=>b&&_iS(b.id));")],
   // v1.7.34: validRemotePayload ungroup must require gids array
   ['validRemotePayload ungroup: requires gids array with string elements',
-    html.includes("&&_iA(op.gids)&&_ln(op.gids)<=MAX_OP_SHAPES&&op.gids.every(g=>typeof g==='string'&&_ln(g)>0);")],
+    html.includes("&&_iA(op.gids)&&_ln(op.gids)<=MAX_OP_SHAPES&&op.gids.every(g=>_iS(g)&&_ln(g)>0);")],
   // v1.7.34: _apply ungroup backward must use optional chaining on op.gids
   ['_apply ungroup backward: op.gids?.[0] optional chaining null guard',
     html.includes("const gid=op.gids?.[0];")],
@@ -1380,10 +1381,10 @@ const checks = [
     html.includes("c.shadowColor='rgba(0,0,0,.08)';c.shadowBlur=8;c.shadowOffsetY=2;\n      c.beginPath();roundRect(")],
   // v1.7.48: group gid must be non-empty string
   ['validRemotePayload group: gid must be non-empty string (op.gid.length>0)',
-    html.includes("&&typeof op.gid==='string'&&_ln(op.gid)>0")],
+    html.includes("&&_iS(op.gid)&&_ln(op.gid)>0")],
   // v1.7.48: move dx/dy must be actual numbers not coercible strings
   ['validRemotePayload move: typeof op.dx/dy === number (no string coercion)',
-    html.includes("&&typeof op.dx==='number'&&_fin(op.dx)&&typeof op.dy==='number'&&_fin(op.dy)")],
+    html.includes("&&_iN(op.dx)&&_fin(op.dx)&&_iN(op.dy)&&_fin(op.dy)")],
   // v1.7.56 (ADR-0007, FT-07): export menu + .board file-picker DOM/wiring
   ['btnExportMenu button and hidden fileImport input present in the DOM',
     html.includes('id="btnExportMenu"') && html.includes('id="fileImport"') && html.includes('accept=".board,.svg,image/svg+xml,.excalidraw,.drawio,.dio"')],
@@ -3450,7 +3451,7 @@ try {
     assert.strictEqual(msg.name,'WireName','snapshot carries docName for late joiners');
     assert.ok(html.includes("case 'name'"),"receiver has a 'name' case");
     assert.ok(html.includes("Net._bcast({k:'name',peer:_pi(),name:state.docName})"),'rename broadcasts k:name');
-    assert.ok(html.includes("typeof msg.name==='string'"),'receiver type-guards name');
+    assert.ok(html.includes("_iS(msg.name)"),'receiver type-guards name');
     state.docName='';
     console.log('  ✓ doc name propagates via k:name broadcast + snapshot.name (ADR-0402)');
   }
