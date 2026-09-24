@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.307';
+const V='1.7.308';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6425,7 +6425,9 @@ function drawioToShapes(txt){
     // ADR-0224: fidelity — a drawn line (endArrow=none) stays a line, a head
     // at the source end maps to s.start, curved/jump keep their route flags
     if(sty.endArrow==='none')s.type='line';
-    else if(sty.startArrow&&sty.startArrow!=='none')s.start=1;
+    else if(sty.endArrow==='oval'||sty.endArrow==='diamond')s.head='dot';   // ADR-0256
+    else if(sty.endArrow==='open')s.head='open';
+    if(sty.startArrow&&sty.startArrow!=='none')s.start=1;
     if(sty.curved==='1')s.curve=1;
     if(sty.jumpStyle&&sty.jumpStyle!=='none')s.hop=1;
     const pts=g?[...g.querySelectorAll('Array mxPoint')]:[];
@@ -6539,7 +6541,7 @@ function boardToDrawio(shapes){
     const t=s.type;
     if((t!=='line'&&t!=='arrow'))continue;
     const id='e'+(i++);
-    let sty=t==='line'?'endArrow=none;':'';
+    let sty=t==='line'||s.head==='none'?'endArrow=none;':s.head==='dot'?'endArrow=oval;':s.head==='open'?'endArrow=open;':'';   // ADR-0256
     if(s.elbow)sty+='edgeStyle=orthogonalEdgeStyle;';
     if(s.curve)sty+='curved=1;';
     if(s.hop)sty+='jumpStyle=arc;';

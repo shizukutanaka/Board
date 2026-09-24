@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.308] - 2026-09-24
+
+### Added
+- .drawio: endArrow タイプ (oval|open|none) ↔ s.head 往復、startArrow の
+  独立判定で line+start-head を復元 (ADR-0256)
+
 ## [1.7.307] - 2026-09-24
 
 ### Added
