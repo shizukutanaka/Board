@@ -356,7 +356,7 @@ const checks = [
   // v1.7.80: ADR-0021 + ADR-0022
   ['img cache keyed by O(1) fingerprint not full dataUrl', html.includes("function _imgKey(") && html.includes("const k=_imgKey(dataUrl)") && !html.includes("_imgCache.get(dataUrl)")],
   // v1.7.93: ADR-0035 image import/export hygiene
-  ['_imgKey uses three-segment fingerprint', html.includes("u.slice(0,48)+':'+u.slice(m-24,m+24)+':'+u.slice(-48)")],
+  ['_imgKey uses three-segment fingerprint', html.includes("_s0(u,48)+':'+u.slice(m-24,m+24)+':'+u.slice(-48)")],
   ['export strips internal img blob ref', html.includes("delete o.img;        // ADR-0035")],
   ['drawShape guards dataUrl-less image', html.includes("const img=_du(s)?getImg(_du(s)):null;")],
   ['getImg rejects non-dataUrl input', html.includes("!dataUrl.startsWith('data:'))return null;")],
@@ -774,7 +774,7 @@ const checks = [
   ['valign persists via _st() + last-used on creation (ADR-0417)', html.includes("_st().valign=nxt")&&html.includes("_st().valign!=null)base.valign=_st().valign")],
   ['_zoomToFrame clamps zoom + survives degenerate frame (ADR-0422)', html.includes("clampZoom(_min(scaleX,scaleY,4))")&&html.includes("_fin(scaleX)&&_fin(scaleY)")],
   ['exc conn angle rotates endpoints (ADR-0300)', html.includes('conn angle → rotate endpoints')],
-  ['exc link round-trips (ADR-0301)', html.includes("s.link=e.link.slice(0,500)")&&html.includes("link:s.link||null")],
+  ['exc link round-trips (ADR-0301)', html.includes("s.link=_s0(e.link,500)")&&html.includes("link:s.link||null")],
   ['exc autoResize emitted on text (ADR-0299/0412)', html.includes('autoResize:false')&&html.includes('autoResize:!s.wrap')&&html.includes('e.autoResize===false')],
   ['frame label fontSize via s.fontSize (ADR-0298)', html.includes("const fs=_fS(s)||12")],
   ['_conn() type shorthand (ADR-0297)', html.includes("_conn=t=>t==='line'||t==='arrow'")],
@@ -846,7 +846,7 @@ const checks = [
   ['clipboard mxfile XML routes to drawio import (ADR-0232)', html.includes('<mxfile[')&&html.includes('importDrawioText(s,wp)')],
   ['arrowhead cycle includes none (ADR-0233)', html.includes("['arrow','dot','bar','open','none']")],
   ['excalidraw label → bLabel container text round-trip (ADR-0234)', html.includes('{bLabel:1}')&&html.includes('e.bLabel){p.label=')],
-  ['SVG import reads <image href=data:> (ADR-0235)', html.includes("tag==='image'")&&html.includes('dataUrl:href.slice')],
+  ['SVG import reads <image href=data:> (ADR-0235)', html.includes("tag==='image'")&&html.includes('dataUrl:_s0(href')],
   ['editor textarea routes Cmd-B/I/U/X to toggleTextFlag (ADR-0236)', html.includes("fl={b:'bold',i:'italic',u:'under'}[mk]")&&html.includes('toggleTextFlag(fl)')],
   ['label input routes Cmd-B/I/U/X to toggleTextFlag (ADR-0237)', html.includes("fl2={b:'bold',i:'italic',u:'under'}[mk2]")],
   ['drawio verticalAlign round-trips s.valign (ADR-0238)', html.includes('sty.verticalAlign')&&html.includes("'verticalAlign='+s.valign")],
@@ -992,7 +992,7 @@ const checks = [
   ['minimap renders frame shapes (case frame fallthrough to rect)', html.includes("case 'frame':\n        case 'rect':")],
   ['describeShape announces locked and rotated state', html.includes("if(_lk(s))d+=` ${t('ctxLock')}`;") && html.includes("if(_rt(s))d+=` ${_rt(s)}°`;")],
   ['describeShape announces flip/shadow/route (ADR-0414)', html.includes("s.flip&1&&t('ctxFlipH')")&&html.includes("if(_sh2(s))d+=` ${t('ctxShadow')}`")&&html.includes("_el(s)?t('ctxElbow'):t('ctxCurve')")&&html.includes("_fs2(s)==='hatch'||_fs2(s)==='cross'")&&html.includes("if(s.hop)d+=` ${t('ctxHop')}`")],
-  ['describeShape announces text/label content for SR', html.includes("const txt=_St(_txx(s)||_lb(s)||'').replace(/\\s+/g,' ').trim();") && html.includes("_ln(txt)>30?txt.slice(0,30)+'…':txt")],
+  ['describeShape announces text/label content for SR', html.includes("const txt=_St(_txx(s)||_lb(s)||'').replace(/\\s+/g,' ').trim();") && html.includes("_ln(txt)>30?_s0(txt,30)+'…':txt")],
   // v1.6.66: resize object-snap
   ['resizeSnap exists and applyResize uses it', html.includes("function resizeSnap(orig,handle,wp)") && html.includes(":resizeSnap(orig,handle,wp); // lock/alt override obj-snap")],
   ['resize commit clears alignment guides', html.includes("ptr.resizeHandle=null;ptr.resizeOrig=null;state.guides=null;")],
@@ -1028,7 +1028,7 @@ const checks = [
   ['importBoard: FileReader onerror toasts instead of failing silently',
     html.includes("r.onerror=()=>_eT(_IB);")],
   ['docName clamped to 80 chars on all four intake paths (import/IDB/backup/hash)',
-    (html.match(/\.slice\(0,80\)/g)||[]).length>=4],
+    (html.match(/_s0\([^,]+,80\)/g)||[]).length>=4],
   // v1.7.63 UX/i18n audit
   ['ctxBeautify: sketch beautification reachable from the context menu (was ⌥B-only)',
     html.includes("['ctxBeautify','⌥B',doBeautify]") && html.includes("ctxBeautify:'図形に整形'") && html.includes("ctxBeautify:'Beautify to shape'")],
@@ -1385,7 +1385,7 @@ const checks = [
     html.includes("REMOTE_OPS:_sT(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize'])")],
   // v1.7.48/ADR-0474: _applySnapshot caps at SHARE_MAX_SHAPES — a 500-op cap truncated boards >500 shapes
   ['_applySnapshot: SHARE_MAX_SHAPES cap on snapshot shapes (board-size bound, DoS-bounded by the 24MB join cap)',
-    html.includes("const valid=shapes.slice(0,SHARE_MAX_SHAPES).map(s=>this._attachShape(s)).filter(validShape);")],
+    html.includes("const valid=_s0(shapes,SHARE_MAX_SHAPES).map(s=>this._attachShape(s)).filter(validShape);")],
   // v1.7.48: sticky shadow set before fill (renders correctly)
   ['sticky note shadow set before fill (not after)',
     html.includes("c.shadowColor='rgba(0,0,0,.08)';c.shadowBlur=8;c.shadowOffsetY=2;\n      c.beginPath();roundRect(")],
@@ -3479,7 +3479,7 @@ try {
 
   // ADR-0405: drawio diagram name <-> docName round-trip
   assert.ok(html.includes("_dioNm=_ga(dg,'name')"),'first diagram name captured');
-  assert.ok(html.includes("_setDocName(_dioNm.slice(0,80))"),'name adopted on import');
+  assert.ok(html.includes("_setDocName(_s0(_dioNm,80))"),'name adopted on import');
   assert.ok(html.includes('name="${_esc(_dn()'),'emit escapes docName into diagram name');
   console.log('  ✓ drawio diagram name <-> docName round-trip (ADR-0405)');
 

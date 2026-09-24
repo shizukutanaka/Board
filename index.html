@@ -817,7 +817,7 @@ const _scl=()=>_sl().clear(),_sad=id=>_sl().add(id),_sdl=id=>_sl().delete(id);  
 const _selN=()=>_sl().size;   // ADR-0334
 const _selUnl=f=>_selAny(s=>f(s)&&!_lk(s));   // ADR-0454: unlocked-selection predicate
 const _nS=()=>_sh().length;   // ADR-0425
-const _sv=s=>s.visible!==0,_lk=s=>s.locked,_hd=s=>s.visible===0,_fS=s=>s.fontSize,_wh=(e,w,ht)=>{e.width=w;e.height=ht},_sk=s=>s.stroke,_fi=s=>s.fill,_lb=s=>s.label,_rt=s=>s.rotate,_du=s=>s.dataUrl,_gi=s=>s.groupId,_oP=s=>s.opacity,_lP=s=>s.labelPos,_sp=s=>s.spacing,_el=s=>s.elbow,_va=s=>s.valign,_szz=s=>s.size,_txx=s=>s.text,_ftt=s=>s.font,_coo=s=>s.color,_cv=()=>_ce('canvas'),_g2=c=>c.getContext('2d'),_ln=x=>x.length;   // ADR-0425/../0447
+const _sv=s=>s.visible!==0,_lk=s=>s.locked,_hd=s=>s.visible===0,_fS=s=>s.fontSize,_wh=(e,w,ht)=>{e.width=w;e.height=ht},_sk=s=>s.stroke,_fi=s=>s.fill,_lb=s=>s.label,_rt=s=>s.rotate,_du=s=>s.dataUrl,_gi=s=>s.groupId,_oP=s=>s.opacity,_lP=s=>s.labelPos,_sp=s=>s.spacing,_el=s=>s.elbow,_va=s=>s.valign,_szz=s=>s.size,_txx=s=>s.text,_ftt=s=>s.font,_coo=s=>s.color,_cv=()=>_ce('canvas'),_g2=c=>c.getContext('2d'),_ln=x=>x.length,_s0=(x,n)=>x.slice(0,n);   // ADR-0425/../0447
 const _fin=Number.isFinite;   // ADR-0334
 const _min=Math.min,_max=Math.max,_abs=Math.abs;   // ADR-0337
 const _ga=(e,n)=>e.getAttribute(n),_sa=(e,n,v)=>e.setAttribute(n,v),_ap=(p,c)=>p.appendChild(c),_AL='aria-label',_AP='aria-pressed';   // ADR-0340/0392/0394/0399
@@ -852,7 +852,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.508';
+const V='1.7.509';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1973,7 +1973,7 @@ const _imgCache=_mP(),IMG_CACHE_MAX=60;
 // match byte ranges at three distant offsets (previously a same-length file
 // sharing the last 64 bytes rendered the WRONG image from cache).
 function _imgKey(u){if(!_iS(u))return'';
-  const m=_ln(u)>>1;return u.slice(5,32)+':'+_ln(u)+':'+u.slice(0,48)+':'+u.slice(m-24,m+24)+':'+u.slice(-48)}
+  const m=_ln(u)>>1;return u.slice(5,32)+':'+_ln(u)+':'+_s0(u,48)+':'+u.slice(m-24,m+24)+':'+u.slice(-48)}
 function getImg(dataUrl){
   if(!_iS(dataUrl)||!dataUrl.startsWith('data:'))return null;   // ADR-0035: never decode a non-dataUrl (e.g. dangling img ref)
   const k=_imgKey(dataUrl);
@@ -2337,7 +2337,7 @@ function describeShape(s){
   // coordinates. Truncated so a long note doesn't flood the live region.
   const txt=_St(_txx(s)||_lb(s)||'').replace(/\s+/g,' ').trim();
   let d=nm;
-  if(txt)d+=` “${_ln(txt)>30?txt.slice(0,30)+'…':txt}”`;
+  if(txt)d+=` “${_ln(txt)>30?_s0(txt,30)+'…':txt}”`;
   d+=` @ ${_rnd(b.x)},${_rnd(b.y)}`;
   if(_lk(s))d+=` ${t('ctxLock')}`;
   if(_hd(s)||_oP(s)===0)d+=` ${t('tagHidden')}`;   // ADR-0440: fully-transparent is invisible to sighted users too   // ADR-0371: selection-restore / RTC can select a hidden shape
@@ -2723,7 +2723,7 @@ function _drawImgLabel(s,c){
   c.font=_fontStr(s,fs);   // ADR-0170
   let lines=wrapTextCached(s,_lb(s),_max(10,s.w-8),fs,t=>c.measureText(t).width);
   const lh=fs*(s.lineH||1.25),maxL=_max(1,_fl((s.h-4)/lh));
-  if(_ln(lines)>maxL){lines=lines.slice(0,maxL);lines[maxL-1]+='…'}
+  if(_ln(lines)>maxL){lines=_s0(lines,maxL);lines[maxL-1]+='…'}
   const sh_=_ln(lines)*lh+4,sy=_va(s)==='top'?s.y:s.y+s.h-sh_;   // ADR-0179
   c.fillStyle=_fi(s)&&_fi(s)!=='none'?_fi(s):_p()||'#fff';c.globalAlpha=0.85;   // ADR-0288
   c.fillRect(s.x,sy,s.w,sh_);
@@ -4449,19 +4449,19 @@ _on(window,'paste',e=>{
       if(/^\s*(<\?xml[^?]*\?>\s*)?<svg[\s>]/i.test(s)){_pd(e);importSvgText(s);return}
       // ADR-0115: clipboard .board JSON adds the shapes (inbound half of
       // copyBoardJSON). Falls through to excalidraw/text on parse failure.
-      if(/^\s*\{/.test(s)&&/"(shapes|v)"\s*:/.test(s.slice(0,8192))&&/"shapes"\s*:\s*\[/.test(s)){
+      if(/^\s*\{/.test(s)&&/"(shapes|v)"\s*:/.test(_s0(s,8192))&&/"shapes"\s*:\s*\[/.test(s)){
         _pd(e);
         if(importBoardText(s)!==false)return;
       }
       // ADR-0099: clipboard .excalidraw JSON imports as a scene (parity with the
       // file path); on parse failure it degrades to the plain-text path below.
-      if(/^\s*\{/.test(s)&&/"type"\s*:\s*"excalidraw"/.test(s.slice(0,4096))){
+      if(/^\s*\{/.test(s)&&/"type"\s*:\s*"excalidraw"/.test(_s0(s,4096))){
         _pd(e);
         if(importExcText(s)!==false)return;
       }
       // ADR-0232: drawio's copy puts uncompressed <mxfile> XML on the clipboard —
       // route it to the drawio importer instead of the text-shape fallback.
-      if(/<mxfile[\s>]/.test(s.slice(0,4096))){
+      if(/<mxfile[\s>]/.test(_s0(s,4096))){
         _pd(e);
         const wp=_s2({x:_cbr().width/2,y:_cbr().height/2});
         if(importDrawioText(s,wp)!==false)return;
@@ -4474,22 +4474,22 @@ _on(window,'paste',e=>{
       // sticky columns, rows → rows). Any cell may be empty.
       if(/	/.test(txt)&&txt.includes('\n')){
         _pd(e);
-        const rows=txt.slice(0,PASTE_MAX_CHARS).split('\n').map(r=>r.split('\t'));
+        const rows=_s0(txt,PASTE_MAX_CHARS).split('\n').map(r=>r.split('\t'));
         const C=_max(...rows.map(r=>_ln(r))),R=_ln(rows);
         const sw=160,sh=96,gx=16,gy=16;
         const r2=_cbr();
         const wp=_s2({x:r2.width/2,y:r2.height/2});
         const x0=wp.x-(C*sw+(C-1)*gx)/2,y0=wp.y-(R*sh+(R-1)*gy)/2;
         const built=[];
-        rows.forEach((row,ri)=>row.slice(0,C).forEach((cell,ci)=>{
+        rows.forEach((row,ri)=>_s0(row,C).forEach((cell,ci)=>{
           const v=_St(cell||'').trim();
-          if(v)built.push(Shape.make('sticky',{x:x0+ci*(sw+gx),y:y0+ri*(sh+gy),w:sw,h:sh,color:_YW,text:v.slice(0,2000)}));
+          if(v)built.push(Shape.make('sticky',{x:x0+ci*(sw+gx),y:y0+ri*(sh+gy),w:sw,h:sh,color:_YW,text:_s0(v,2000)}));
         }));
         if(_ln(built)){Store.commit({op:'addMany',shapes:built});_ss(built.map(x=>x.id));_iv();_oT('textPasted')}
         return;
       }
       _pd(e);
-      const fs=16,body=txt.slice(0,PASTE_MAX_CHARS);
+      const fs=16,body=_s0(txt,PASTE_MAX_CHARS);
       const lines=body.split('\n');
       const w=_min(600,_max(60,_max(...lines.map(l=>_ln(l)))*fs*0.55));
       const r=_cbr();
@@ -6523,7 +6523,7 @@ const _excHead=v=>_EXC_HEAD[v]||'arrow';
 const _UNEXC_HEAD={crowfoot:'open',crowfoot_one:'open',triangle:'arrow',triangle_outline:'open',diamond:'dot',diamond_outline:'dot'};
 const _unExcHead=v=>_UNEXC_HEAD[v]||v;   // bar/dot/arrow pass through
 function _dioSty(st){
-  const o={};for(const kv of _St(st||'').split(';')){const i=kv.indexOf('=');if(i>=0)o[kv.slice(0,i)]=kv.slice(i+1);else if(kv)o[kv]=1}
+  const o={};for(const kv of _St(st||'').split(';')){const i=kv.indexOf('=');if(i>=0)o[_s0(kv,i)]=kv.slice(i+1);else if(kv)o[kv]=1}
   return o;
 }
 function _dioLabel(v){
@@ -6582,15 +6582,15 @@ function drawioToShapes(txt){
     const x=_oo.x+(_doff.get(c)||0)+(+_ga(g,'x')||0),y=_oo.y+(+_ga(g,'y')||0),w=+_ga(g,'width')||0,ht=+_ga(g,'height')||0;
     const lbl=_dioLabel(_ga(c,'value')||(_uo&&_ga(_uo,'label')));
     let s;
-    if('ellipse' in sty||sty.shape==='cylinder'||sty.shape==='cloud')s=Shape.make('ellipse',{x,y,w:w||120,h:ht||80,label:lbl.slice(0,240)});   // ADR-0274
-    else if(sty.shape==='rhombus'||'rhombus' in sty)s=Shape.make('diamond',{x,y,w:w||120,h:ht||80,label:lbl.slice(0,240)});
-    else if('swimlane' in sty||sty.shape==='swimlane')s=Shape.make('frame',{x,y,w:w||800,h:ht||500,label:lbl.slice(0,120)});   // ADR-0226
-    else if(sty.shape==='note'){s=Shape.make('sticky',{x,y,w:w||160,h:ht||160,color:_YW,text:lbl.slice(0,2000)});   // ADR-0226
+    if('ellipse' in sty||sty.shape==='cylinder'||sty.shape==='cloud')s=Shape.make('ellipse',{x,y,w:w||120,h:ht||80,label:_s0(lbl,240)});   // ADR-0274
+    else if(sty.shape==='rhombus'||'rhombus' in sty)s=Shape.make('diamond',{x,y,w:w||120,h:ht||80,label:_s0(lbl,240)});
+    else if('swimlane' in sty||sty.shape==='swimlane')s=Shape.make('frame',{x,y,w:w||800,h:ht||500,label:_s0(lbl,120)});   // ADR-0226
+    else if(sty.shape==='note'){s=Shape.make('sticky',{x,y,w:w||160,h:ht||160,color:_YW,text:_s0(lbl,2000)});   // ADR-0226
       if(sty.fillColor&&sty.fillColor!=='none')s.color=sty.fillColor}
-    else if(('text' in sty||sty.text===1)&&!w&&!ht)s=Shape.make('text',{x,y,w:120,h:24,text:lbl.slice(0,2000)});
-    else s=Shape.make('rect',{x,y,w:w||120,h:ht||80,label:lbl.slice(0,240)});
+    else if(('text' in sty||sty.text===1)&&!w&&!ht)s=Shape.make('text',{x,y,w:120,h:24,text:_s0(lbl,2000)});
+    else s=Shape.make('rect',{x,y,w:w||120,h:ht||80,label:_s0(lbl,240)});
     {const _im=(sty.shape==='image')?(_ga(c,'style')||'').match(/image=(data:[^;]*;base64,[^;]*|https?:[^;]*)/):null;   // ADR-0259
-     if(_im)s=Shape.make('image',{x,y,w:w||120,h:ht||80,dataUrl:_im[1].slice(0,25_000_000),label:lbl.slice(0,240)})   // ADR-0353
+     if(_im)s=Shape.make('image',{x,y,w:w||120,h:ht||80,dataUrl:_im[1].slice(0,25_000_000),label:_s0(lbl,240)})   // ADR-0353
     }
     if(sty.rounded==='1'&&s.w!=null)s.r=8;
     if(sty.fillColor)s.fill=sty.fillColor==='none'?'none':sty.fillColor;   // ADR-0288
@@ -6604,7 +6604,7 @@ function drawioToShapes(txt){
     if(/^(top|middle|bottom)$/.test(sty.verticalAlign))s.valign=sty.verticalAlign;   // ADR-0238
     if(+sty.rotation)s.rotate=_min(360,_max(-360,+sty.rotation));   // ADR-0261
     idOf.set(_ga(c,'id'),s.id);
-    {const _lk=_ga(c,'link')||(_uo&&_ga(_uo,'link'));if(_lk&&/^https?:\/\//.test(_lk))s.link=_lk.slice(0,500)}   // ADR-0313
+    {const _lk=_ga(c,'link')||(_uo&&_ga(_uo,'link'));if(_lk&&/^https?:\/\//.test(_lk))s.link=_s0(_lk,500)}   // ADR-0313
     shapes.push(s);
   }
   for(const c of cells){
@@ -6638,7 +6638,7 @@ function drawioToShapes(txt){
     if(sty.curved==='1')s.curve=1;
     if(sty.jumpStyle&&sty.jumpStyle!=='none')s.hop=1;
     const pts=g?[..._qsa(g,'Array mxPoint')]:[];
-    if(_ln(pts))s.way=pts.slice(0,200).map(p=>({x:(+_ga(p,'x')||0)+_do+_eo.x,y:(+_ga(p,'y')||0)+_eo.y}));   // ADR-0347/0361: {x,y} objects — tuples broke every renderer
+    if(_ln(pts))s.way=_s0(pts,200).map(p=>({x:(+_ga(p,'x')||0)+_do+_eo.x,y:(+_ga(p,'y')||0)+_eo.y}));   // ADR-0347/0361: {x,y} objects — tuples broke every renderer
     if(s.curve&&s.way&&_ln(s.way)===1){                              // ADR-0360: waypoint → cbend inverse
       const _p=s.way[0],_e=_cE(s),_mx=(_e.x1+_e.x2)/2,_my=(_e.y1+_e.y2)/2,
             _dx=_e.x2-_e.x1,_dy=_e.y2-_e.y1,_L=_hp(_dx,_dy)||1;
@@ -6651,12 +6651,12 @@ function drawioToShapes(txt){
       if(_fin(fx)&&_fin(fy))s.aF={fx:_c01(fx),fy:_c01(fy)}}
     if(sb&&sty.entryX!=null){const fx=+sty.entryX,fy=+sty.entryY;
       if(_fin(fx)&&_fin(fy))s.bF={fx:_c01(fx),fy:_c01(fy)}}
-    const lbl=_dioLabel(_ga(c,'value')||(_uo&&_ga(_uo,'label')));if(lbl)s.label=lbl.slice(0,240);
+    const lbl=_dioLabel(_ga(c,'value')||(_uo&&_ga(_uo,'label')));if(lbl)s.label=_s0(lbl,240);
     {const _lx=g?_ga(g,'x'):null;if(_lx!=null&&_lx!==''){const _t=(+_lx+1)/2;if(_fin(_t))s.labelPos=_c01(+_t.toFixed(3))}}   // ADR-0264
     if(sty.rounded==='1')s.r=8;                                           // ADR-0269
     _dioStyApply(s,sty,_hid);                                            // ADR-0258 (edges gain opacity)
     if(sty.labelBackgroundColor&&sty.labelBackgroundColor!=='none')s.fill=sty.labelBackgroundColor;   // ADR-0249
-    {const _lk=_ga(c,'link')||(_uo&&_ga(_uo,'link'));if(_lk&&/^https?:\/\//.test(_lk))s.link=_lk.slice(0,500)}   // ADR-0313
+    {const _lk=_ga(c,'link')||(_uo&&_ga(_uo,'link'));if(_lk&&/^https?:\/\//.test(_lk))s.link=_s0(_lk,500)}   // ADR-0313
     {const _pid=_ga(c,'parent');if(_pid&&_grpIds.has(_pid))s.groupId=_pid}   // ADR-0336
     shapes.push(s);
   }
@@ -6702,7 +6702,7 @@ function importDrawioText(txt,wp){
   _cOp({op:'addMany',shapes});
   _scl();for(const s of shapes)_sad(s.id);
   if(_vpNull&&_dioVp){_vp().x=_dioVp.x;_vp().y=_dioVp.y;_vp().zoom=_dioVp.z;if(_dioVp.g!=null)state.showGrid=_dioVp.g}   // ADR-0359/0409: viewport+grid restore
-  if(_dioNm)_setDocName(_dioNm.slice(0,80));   // ADR-0405
+  if(_dioNm)_setDocName(_s0(_dioNm,80));   // ADR-0405
   _iv();_oT('dioImported');
   return true;
 }
@@ -6846,7 +6846,7 @@ function _svgMOf(t){
   while((mm=re.exec(t))){
     const n=mm[2].trim().split(/[\s,]+/).filter(Boolean).map(Number);let M=null;
     switch(mm[1]){
-      case'matrix':if(_ln(n)===6&&n.every(Number.isFinite))M=n.slice(0,6);break;
+      case'matrix':if(_ln(n)===6&&n.every(Number.isFinite))M=_s0(n,6);break;
       case'translate':M=[1,0,0,1,n[0]||0,n[1]||0];break;
       case'scale':{const sx=_fin(n[0])?n[0]:1;M=[sx,0,0,_ln(n)>1?n[1]:sx,0,0];break}
       case'rotate':{const r=(n[0]||0)*_PI/180,c=_cos(r),s=_sin(r);M=[c,s,-s,c,0,0];
@@ -6978,14 +6978,14 @@ function svgToShapes(txt){
       const w=+_ga(el,'width')||0,ht=+_ga(el,'height')||0;
       if(/^data:image\//.test(href)&&w>0&&ht>0){
         const a=_svgMPt(m2,+_ga(el,'x')||0,+_ga(el,'y')||0);
-        s=Shape.make('image',{x:a.x,y:a.y,w:w,h:ht,dataUrl:href.slice(0,25_000_000)});
+        s=Shape.make('image',{x:a.x,y:a.y,w:w,h:ht,dataUrl:_s0(href,25_000_000)});
       }
     }else if(tag==='text'){
       const content=(el.textContent||'').replace(/\s+/g,' ').trim();
       if(content){
         const p=_svgMPt(m2,+_ga(el,'x')||0,+_ga(el,'y')||0);
         const fs=_svgStyle(el,_grad).fontSize||16;
-        s=Shape.make('text',{x:p.x,y:p.y-fs,w:_min(600,_max(60,_ln(content)*fs*0.55)),h:fs*1.4,text:content.slice(0,200),fontSize:fs});
+        s=Shape.make('text',{x:p.x,y:p.y-fs,w:_min(600,_max(60,_ln(content)*fs*0.55)),h:fs*1.4,text:_s0(content,200),fontSize:fs});
       }
     }
     if(s){const st=_svgStyle(el,_grad);if(s.type!=='text')delete st.fontSize;_oa(s,st);shapes.push(s)}
@@ -7052,12 +7052,12 @@ function excToShapes(txt){
       case _REC:s=Shape.make('rect',{x:e.x,y:e.y,w:W,h:H});break;
       case'ellipse':s=Shape.make('ellipse',{x:e.x,y:e.y,w:W,h:H});break;
       case'diamond':s=Shape.make('diamond',{x:e.x,y:e.y,w:W,h:H});break;   // ADR-0061: real type
-      case'frame':s=Shape.make('frame',{x:e.x,y:e.y,w:W,h:H,label:_iS(e.name)?e.name.slice(0,120):''});break;
+      case'frame':s=Shape.make('frame',{x:e.x,y:e.y,w:W,h:H,label:_iS(e.name)?_s0(e.name,120):''});break;
       case'text':{
         const fs=_fin(e.fontSize)?e.fontSize:16;
         const content=_St(e.text||'').replace(/\s+/g,' ').trim();
         if(!content)break;
-        s=Shape.make('text',{x:e.x,y:e.y,w:W||_min(600,_max(60,_ln(content)*fs*0.55)),h:H||fs*1.4,text:content.slice(0,2000),fontSize:fs});
+        s=Shape.make('text',{x:e.x,y:e.y,w:W||_min(600,_max(60,_ln(content)*fs*0.55)),h:H||fs*1.4,text:_s0(content,2000),fontSize:fs});
         if(e.textAlign==='left'||e.textAlign==='right')s.align=e.textAlign;   // ADR-0230
         if(e.autoResize===false)s.wrap=1;                                     // ADR-0412: excalidraw manual-width text wraps to w
         if(e.fontFamily===3)s.font='mono';else if(e.fontFamily===1||e.fontFamily===5)s.font='serif';   // ADR-0243
@@ -7088,14 +7088,14 @@ function excToShapes(txt){
       case'image':{   // ADR-0231: files-map lookup restores image bytes + flip
         const f=d.files&&e.fileId?d.files[e.fileId]:null;
         if(!f||!_iS(f.dataURL)||!/^data:image\//.test(f.dataURL))break;
-        s=Shape.make('image',{x:e.x,y:e.y,w:W||80,h:H||80,dataUrl:f.dataURL.slice(0,25_000_000)});
+        s=Shape.make('image',{x:e.x,y:e.y,w:W||80,h:H||80,dataUrl:_s0(f.dataURL,25_000_000)});
         break;}
       default:break;   // unknown — skip
     }
     if(s){if(r&&s.w!=null)s.rotate=r;if(e.locked)s.locked=1;
       if(r&&_conn(s.type)){const _rm=r*_PI/180,_cx=(s.x1+s.x2)/2,_cy=(s.y1+s.y2)/2;   // ADR-0300: conn angle → rotate endpoints+way about midpoint
         for(const p of[[s,'x1','y1'],[s,'x2','y2'],...(s.way||[]).map(w=>[w,'x','y'])]){const dx=p[0][p[1]]-_cx,dy=p[0][p[2]]-_cy;p[0][p[1]]=+(_cx+dx*_cos(_rm)-dy*_sin(_rm)).toFixed(1);p[0][p[2]]=+(_cy+dx*_sin(_rm)+dy*_cos(_rm)).toFixed(1)}}
-      if(_iS(e.link)&&/^https?:\/\//.test(e.link))s.link=e.link.slice(0,500);   // ADR-0301
+      if(_iS(e.link)&&/^https?:\/\//.test(e.link))s.link=_s0(e.link,500);   // ADR-0301
       if(_conn(s.type)&&e.roundness&&!e.elbowed){s.curve=1;delete s.r}   // ADR-0317: excalidraw's round arrow routes are curved — r only styles elbow corners
       if(_iA(e.scale)&&(e.scale[0]<0||e.scale[1]<0))s.flip=((e.scale[0]<0)?1:0)|((e.scale[1]<0)?2:0);   // ADR-0276
       _oa(s,S);shapes.push(s);   // ADR-0241
@@ -7502,7 +7502,7 @@ function _svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT){
   const fs=_fS(s)||14,pad=4;   // ADR-0169
   let lines=wrapText(_lb(s),_max(10,W-8),t=>_ln(t)*fs*0.6);
   const lh=fs*(s.lineH||1.25),maxL=_max(1,_fl((H-4)/lh));
-  if(_ln(lines)>maxL){lines=lines.slice(0,maxL);lines[maxL-1]+='…'}
+  if(_ln(lines)>maxL){lines=_s0(lines,maxL);lines[maxL-1]+='…'}
   const sh_=_ln(lines)*lh+4,sy=_va(s)==='top'?Y:Y+H-sh_;   // ADR-0179
   els.push(`<g${rT}><rect x="${X+ox}" y="${sy+oy}" width="${W}" height="${sh_}" fill="${_esc(_fi(s)||paper||'#FFFFFF')}" opacity="0.85"/>`);
   const al4=s.align||'center',tx4=al4==='left'?X+ox+6:al4==='right'?X+ox+W-6:X+W/2+ox;   // ADR-0171
@@ -7589,7 +7589,7 @@ function wrapText(text,maxWidth,measure){
         if(KINSOKU_START.has(ch)){chunk+=ch;continue;}
         // 禁則: an opening bracket must not end the line — push trailing ones down with ch.
         let carry='';
-        while(_ln(chunk)>1&&KINSOKU_END.has(chunk[_ln(chunk)-1])){carry=chunk[_ln(chunk)-1]+carry;chunk=chunk.slice(0,-1);}
+        while(_ln(chunk)>1&&KINSOKU_END.has(chunk[_ln(chunk)-1])){carry=chunk[_ln(chunk)-1]+carry;chunk=_s0(chunk,-1);}
         out.push(chunk);chunk=carry+ch;
       }
       line=chunk;
@@ -7803,7 +7803,7 @@ const Net={
         // Restrict to 'add' ops: _snapshotMsg() only emits adds; accepting other
         // op types here would let a malicious peer embed clear/del/upd inside a
         // snapshot message and execute them under the snapshot code path.
-        else if(_iA(msg.ops))for(const op of msg.ops.slice(0,SHARE_MAX_SHAPES)){   // ADR-0474
+        else if(_iA(msg.ops))for(const op of _s0(msg.ops,SHARE_MAX_SHAPES)){   // ADR-0474
           this._mergeSnapshotOp(op);   // ADR-0058: add unknown shapes, LWW-merge known ones
         }
         break;
@@ -7834,7 +7834,7 @@ const Net={
         // so an RTC peer lives under a synthetic id, not msg.peer). Defensive intake:
         // string ids only, capped — a bad peer can't flood us with a giant array.
         if(!_iA(msg.ids))break;
-        const ids=msg.ids.slice(0,MAX_OP_SHAPES).filter(id=>_iS(id));
+        const ids=_s0(msg.ids,MAX_OP_SHAPES).filter(id=>_iS(id));
         const peerKey=viaRtc?this._rtcPeerId:msg.peer;
         const p=peerKey&&_pr().get(peerKey);
         if(p){p.sel=ids;_ivO();}
@@ -7915,10 +7915,10 @@ const Net={
     // Validate snapshot shapes before adopting
     const shapes=msg.shapes;
     if(!_iA(shapes))return;
-    const valid=shapes.slice(0,SHARE_MAX_SHAPES).map(s=>this._attachShape(s)).filter(validShape);   // ADR-0474
+    const valid=_s0(shapes,SHARE_MAX_SHAPES).map(s=>this._attachShape(s)).filter(validShape);   // ADR-0474
     state.shapes=clone(valid);_iG();_pcC();   // ADR-0009
     _sz();
-    if(_iS(msg.name))_setDocName(msg.name.slice(0,80));   // ADR-0402
+    if(_iS(msg.name))_setDocName(_s0(msg.name,80));   // ADR-0402
     _iv();_ru();_ps();
   },
   _touchPeer(peerId){
@@ -8123,7 +8123,7 @@ const Share={
     if(!h.startsWith('#b='))return false;
     const enc=_dU(h.slice(3));
     const parts=enc.split('&'),opt={};
-    for(const p of parts.slice(1)){const i=p.indexOf('=');if(i>0)opt[p.slice(0,i)]=p.slice(i+1)}
+    for(const p of parts.slice(1)){const i=p.indexOf('=');if(i>0)opt[_s0(p,i)]=p.slice(i+1)}
     // ADR-0038: every reject path toasts and clears the hash — a corrupt/tampered
     // link must not leave the user staring at an untouched board with the bad URL
     // still pinned in the address bar.
@@ -8134,13 +8134,13 @@ const Share={
       if(kind==='e:'){
         if(!opt.k){_eT('shareNoKey');clearHash();return false}
         if(!Share.canEncrypt()){_eT('shareNoCrypto');clearHash();return false}
-        const bin=Share._b64uDec(body),iv=bin.slice(0,12),ct=bin.slice(12);
+        const bin=Share._b64uDec(body),iv=_s0(bin,12),ct=bin.slice(12);
         const key=await crypto.subtle.importKey('raw',Share._b64uDec(opt.k),{name:'AES-GCM'},false,['decrypt']);
         let pt;
         try{pt=await crypto.subtle.decrypt({name:'AES-GCM',iv,additionalData:new TextEncoder().encode('board:e1')},key,ct)}
         catch{_eT('shareBadKey');clearHash();return false}
         const inner=new TextDecoder().decode(pt);
-        kind=inner.slice(0,2);body=inner.slice(2);
+        kind=_s0(inner,2);body=inner.slice(2);
         if(kind!=='z:'&&kind!=='j:'){_eT('shareBadKey');clearHash();return false}
       }
       if(kind==='z:'&&typeof DecompressionStream!==_un){
@@ -8170,7 +8170,7 @@ const Share={
       const origSel=_selIds();
       // ADR-0004: also survives past the undo window (reload/closed-tab), not just this session.
       if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());
-      state.shapes=valid.map(clone);_iG();_pcC();_setDocName(((_iS(data.name)&&data.name)||'Shared').slice(0,80));   // ADR-0009
+      state.shapes=valid.map(clone);_iG();_pcC();_setDocName(_s0((_iS(data.name)&&data.name)||'Shared',80));   // ADR-0009
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out (see importBoard for rationale).
       if(data.viewport&&_fin(+data.viewport.x)&&_fin(+data.viewport.y)&&_fin(+data.viewport.zoom)&&data.viewport.zoom>0){
@@ -8802,7 +8802,7 @@ const UI={
       const el=_ce('div');
       el.className='peer-avatar';
       el.style.background=p.color;
-      el.textContent=id.slice(0,2).toUpperCase();
+      el.textContent=_s0(id,2).toUpperCase();
       el.title=id;
       _ap(stack,el);
     }
@@ -9387,7 +9387,7 @@ function fontSizeStep(d){
 // ADR-0078: ⌘B/⌘I toggles bold/italic on selected text/sticky via style op.
 const _rdb=()=>{_md(!0);_ru();_ps()},
       _fck=o=>{o.clock={peer:_pi(),seq:++state.seq,ts:nowTs()}},
-      _docN=d=>{if(_iS(d.docName)&&d.docName)_setDocName(d.docName.slice(0,80))},
+      _docN=d=>{if(_iS(d.docName)&&d.docName)_setDocName(_s0(d.docName,80))},
       _fs2=s=>s.fstyle,_sh2=s=>s.shadow,_usI=unlockedSelectionIds,
       _noSh=c=>{c.shadowColor=_TR;c.shadowBlur=0;c.shadowOffsetY=0},
       _rO=u=>_stO(()=>URL.revokeObjectURL(u),1e4),
