@@ -793,9 +793,10 @@ const _selN=()=>state.selection.size;   // ADR-0334
 const _fin=Number.isFinite;   // ADR-0334
 const _min=Math.min,_max=Math.max,_abs=Math.abs;   // ADR-0337
 const _ga=(e,n)=>e.getAttribute(n);   // ADR-0340
+const _cbr=()=>canvas.getBoundingClientRect();   // ADR-0342
 
 // ====================== CONSTANTS ======================
-const V='1.7.392';
+const V='1.7.393';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2183,7 +2184,7 @@ function _statusSel(){
 }
 function resize(){
   DPR=_max(1,_min(3,window.devicePixelRatio||1));
-  const r=canvas.getBoundingClientRect();
+  const r=_cbr();
   canvas.width=Math.round(r.width*DPR);
   canvas.height=Math.round(r.height*DPR);
   ocanvas.width=canvas.width;ocanvas.height=canvas.height;
@@ -4165,7 +4166,7 @@ canvas.addEventListener('dblclick',e=>{
 // ADR-0182: anchor geometry shared by openLabelEditor and the follow pass —
 // recomputable on every viewport change so the input rides the shape.
 function _lblAnchor(hit){
-  const r=canvas.getBoundingClientRect();
+  const r=_cbr();
   if(hit.type==='frame'||hit.type==='rect'||hit.type==='ellipse'||hit.type==='diamond'){   // ADR-0081
     const isFrame=hit.type==='frame';
     const sp=G.w2s(isFrame?{x:hit.x,y:hit.y}:{x:hit.x+hit.w/2,y:hit.y+hit.h/2});
@@ -4352,7 +4353,7 @@ window.addEventListener('paste',e=>{
       // route it to the drawio importer instead of the text-shape fallback.
       if(/<mxfile[\s>]/.test(s.slice(0,4096))){
         _pd(e);
-        const wp=G.s2w({x:canvas.getBoundingClientRect().width/2,y:canvas.getBoundingClientRect().height/2});
+        const wp=G.s2w({x:_cbr().width/2,y:_cbr().height/2});
         if(importDrawioText(s,wp)!==false)return;
       }
       // ADR-0044: any other non-empty text pastes in as a text shape — editors,
@@ -4366,7 +4367,7 @@ window.addEventListener('paste',e=>{
         const rows=txt.slice(0,PASTE_MAX_CHARS).split('\n').map(r=>r.split('\t'));
         const C=_max(...rows.map(r=>r.length)),R=rows.length;
         const sw=160,sh=96,gx=16,gy=16;
-        const r2=canvas.getBoundingClientRect();
+        const r2=_cbr();
         const wp=G.s2w({x:r2.width/2,y:r2.height/2});
         const x0=wp.x-(C*sw+(C-1)*gx)/2,y0=wp.y-(R*sh+(R-1)*gy)/2;
         const built=[];
@@ -4381,7 +4382,7 @@ window.addEventListener('paste',e=>{
       const fs=16,body=txt.slice(0,PASTE_MAX_CHARS);
       const lines=body.split('\n');
       const w=_min(600,_max(60,_max(...lines.map(l=>l.length))*fs*0.55));
-      const r=canvas.getBoundingClientRect();
+      const r=_cbr();
       const wp=G.s2w({x:r.width/2,y:r.height/2});
       const sh=Shape.make('text',{x:wp.x-w/2,y:wp.y-(lines.length*fs*1.4)/2,w,h:lines.length*fs*1.4,text:body,fontSize:fs});
       _cOp({op:'add',shape:sh});
@@ -4394,7 +4395,7 @@ window.addEventListener('paste',e=>{
   for(const item of items){
     const f=item.getAsFile();if(!f)continue;
     _imgImportFile(f,(dataUrl,nw,nh)=>{
-      const r=canvas.getBoundingClientRect();
+      const r=_cbr();
       const wp=G.s2w({x:r.width/2,y:r.height/2});
       const maxDim=400;
       let w=nw,h=nh;
@@ -4459,7 +4460,7 @@ canvas.addEventListener('pointermove',e=>{
   const ratio=curDist/_pinchPrev;
   if(_abs(ratio-1)>0.005){
     const cx=(pts[0].x+pts[1].x)/2,cy=(pts[0].y+pts[1].y)/2;
-    const r=canvas.getBoundingClientRect();
+    const r=_cbr();
     zoomAt({x:cx-r.left,y:cy-r.top},Math.log(ratio));
     _pinchPrev=curDist;
   }
@@ -4505,7 +4506,7 @@ function zoomAt(sp,delta){
   invalidate();
 }
 function zoomBy(f){
-  const r=canvas.getBoundingClientRect();
+  const r=_cbr();
   zoomAt({x:r.width/2,y:r.height/2},Math.log(f));
   UI.announce(Math.round(state.viewport.zoom*100)+'%');   // discrete zoom is SR-silent otherwise (wheel zoom stays quiet on purpose)
 }
@@ -4517,7 +4518,7 @@ function zoomReset(){
 // ADR-0049: shared viewport-fit math — was duplicated in fitToContent/_mirrorGo.
 // Callers announce their own message (zoom % vs shape name).
 function _fitViewport(b,pad,cap){
-  const r=canvas.getBoundingClientRect();
+  const r=_cbr();
   const z=clampZoom(_min((r.width-pad*2)/b.w,(r.height-pad*2)/b.h,cap));
   state.viewport.zoom=z;
   state.viewport.x=b.x+b.w/2-r.width/(2*z);
@@ -4539,7 +4540,7 @@ function fitToContent(){
 // empty view is left alone.
 function _fitIfEmptyView(){
   if(!state.shapes.length)return;
-  const v=state.viewport,r=canvas.getBoundingClientRect();
+  const v=state.viewport,r=_cbr();
   const _vis=state.shapes.filter(s=>s.visible!==0);const b=G.bboxAll(_vis.length?_vis:state.shapes);if(!b)return;   // ADR-0155
   const vw=r.width/v.zoom,vh=r.height/v.zoom;
   if(b.x+b.w<v.x||b.y+b.h<v.y||b.x>v.x+vw||b.y>v.y+vh)fitToContent();
@@ -5331,7 +5332,7 @@ function _teFollow(){
 }
 function positionTextEditor(ta,s){
   const sp=G.w2s({x:s.x,y:s.y});
-  const r=canvas.getBoundingClientRect();
+  const r=_cbr();
   ta.style.left=(r.left+sp.x)+'px';
   ta.style.top=(r.top+sp.y)+'px';
   ta.style.fontSize=(s.fontSize*state.viewport.zoom)+'px';
@@ -5594,7 +5595,7 @@ function doPaste(){
   // Pattern: Figma/Excalidraw — paste at viewport center so the result is always visible.
   const bb=G.bboxAll(state.clipboard.shapes);
   const v=state.viewport;
-  const _r=canvas.getBoundingClientRect();
+  const _r=_cbr();
   const vCx=v.x+_r.width/(v.zoom*2);
   const vCy=v.y+_r.height/(v.zoom*2);
   const srcCx=bb?bb.x+bb.w/2:vCx,srcCy=bb?bb.y+bb.h/2:vCy;
@@ -6190,7 +6191,7 @@ function exportSelection(fmt){
 // World-space view rect = canvas CSS size / zoom at the current pan; the
 // offscreen transform mirrors _renderPngBlob with b=view and no pad.
 function exportViewportPNG(scale){
-  const r=canvas.getBoundingClientRect();
+  const r=_cbr();
   const v=state.viewport;
   const view={x:v.x,y:v.y,w:r.width/v.zoom,h:r.height/v.zoom};
   const shapes=state.shapes.filter(s=>inView(s,view));
@@ -6588,7 +6589,7 @@ function importDrawioText(txt,wp){
   let shapes=null;
   try{shapes=drawioToShapes(txt)}catch(_){shapes=null}
   if(!shapes||!shapes.length){UI.toast(t('invalidBoard'),'warn');return false}
-  if(!wp){const r=canvas.getBoundingClientRect();wp=G.s2w({x:r.width/2,y:r.height/2})}
+  if(!wp){const r=_cbr();wp=G.s2w({x:r.width/2,y:r.height/2})}
   const bb=G.bboxAll(shapes);
   if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);
     for(const s of shapes)Shape.translate(s,dx,dy)}
@@ -6864,7 +6865,7 @@ function importSvgText(txt,wp){
   let shapes=null;
   try{shapes=svgToShapes(txt)}catch(_){shapes=null}
   if(!shapes||!shapes.length){UI.toast(t('invalidBoard'),'warn');return false}
-  if(!wp){const r=canvas.getBoundingClientRect();wp=G.s2w({x:r.width/2,y:r.height/2})}
+  if(!wp){const r=_cbr();wp=G.s2w({x:r.width/2,y:r.height/2})}
   // centre the imported group at wp (drop point / viewport centre)
   const bb=G.bboxAll(shapes);
   if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);
@@ -7015,7 +7016,7 @@ function importExcText(txt,wp){
   let shapes=null;
   try{shapes=excToShapes(txt)}catch(_){shapes=null}
   if(!shapes||!shapes.length){UI.toast(t('invalidBoard'),'warn');return false}
-  if(!wp){const r=canvas.getBoundingClientRect();wp=G.s2w({x:r.width/2,y:r.height/2})}
+  if(!wp){const r=_cbr();wp=G.s2w({x:r.width/2,y:r.height/2})}
   const bb=G.bboxAll(shapes);
   if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);
     for(const s of shapes)Shape.translate(s,dx,dy)}
@@ -7033,7 +7034,7 @@ function importBoardText(txt,wp){
   if(!data||!Array.isArray(data.shapes))return false;
   const shapes=data.shapes.filter(validShape);
   if(!shapes.length)return false;
-  if(!wp){const r=canvas.getBoundingClientRect();wp=G.s2w({x:r.width/2,y:r.height/2})}
+  if(!wp){const r=_cbr();wp=G.s2w({x:r.width/2,y:r.height/2})}
   const bb=G.bboxAll(shapes);
   const dx=bb?wp.x-(bb.x+bb.w/2):0,dy=bb?wp.y-(bb.y+bb.h/2):0;
   const origSel=_selIds();
@@ -8323,7 +8324,7 @@ const UI={
   },
   openCtxMenu(x,y,customItems){
     const m=_g('ctx');
-    const _cr=canvas.getBoundingClientRect(),_wp=G.s2w({x:x-_cr.left,y:y-_cr.top});
+    const _cr=_cbr(),_wp=G.s2w({x:x-_cr.left,y:y-_cr.top});
     m._wx=_wp.x;m._wy=_wp.y;   // ADR-0103: paste-at-cursor anchor
     const has=_selN()>0;
     while(m.firstChild)m.removeChild(m.firstChild);
@@ -9497,7 +9498,7 @@ const Minimap=(()=>{
     if(_sceneVer!==_gridVer||!_scene)_renderScene();
     if(!_sc)return;
     mx.drawImage(_scene,0,0);
-    const vp=state.viewport,_r=canvas.getBoundingClientRect(),cW=_r.width,cH=_r.height;
+    const vp=state.viewport,_r=_cbr(),cW=_r.width,cH=_r.height;
     const vx=vp.x*_sc+_ox,vy=vp.y*_sc+_oy,vw=(cW/vp.zoom)*_sc,vh=(cH/vp.zoom)*_sc;
     mx.strokeStyle=_ac();mx.lineWidth=1.5;mx.setLineDash([3,2]);   // a11y-audit-2026-07
     mx.strokeRect(vx,vy,vw,vh);mx.setLineDash([]);
@@ -9517,7 +9518,7 @@ const Minimap=(()=>{
     const pad=20,sc=_min(W/(bb.w+pad*2),H/(bb.h+pad*2),1);
     const ox=-bb.x*sc+(W-bb.w*sc)/2,oy=-bb.y*sc+(H-bb.h*sc)/2;
     const wx=(mc.width*mx2-ox)/sc,wy=(mc.height*my2-oy)/sc;
-    const _r=canvas.getBoundingClientRect();
+    const _r=_cbr();
     state.viewport.x=wx-_r.width/state.viewport.zoom/2;
     state.viewport.y=wy-_r.height/state.viewport.zoom/2;
     invalidate();
