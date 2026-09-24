@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.543';
+const V='1.7.544';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1836,7 +1836,7 @@ function _hatchCtx(c,s){
   const segs=_hatchSegs(s.x,s.y,s.w,s.h,_max(6,(_szz(s)||1)*4),_fs2(s)==='cross');
   c.save();c.clip();c.globalAlpha=0.55;
   c.strokeStyle=_sk(s)||_IK;c.lineWidth=_max(0.5,(_szz(s)||1)*0.6);c.setLineDash([]);
-  _bp(c);for(const g of segs){c.moveTo(g[0],g[1]);c.lineTo(g[2],g[3])}_st2(c);
+  _bp(c);for(const g of segs){_mT(c,g[0],g[1]);_lT(c,g[2],g[3])}_st2(c);
   c.restore();
 }
 // SVG hatch: clipPath mirroring the shape + <g clip-path> of the same segments.
@@ -2017,6 +2017,7 @@ const _ul=s=>!_lk(s);   // ADR-0506
 const _cpT=p=>p.then(ok=>_tst(t(ok?'copied':'copyFailed'),ok?'ok':'warn'));   // ADR-0507
 const _zG=()=>{state.guides=state.readout=state.bindPreview=null},_zR=()=>{state.draft=state.marquee=state.guides=state.readout=state.bindPreview=state.measure=state.lasso=null};   // ADR-0509: gesture-state reset
 const _bp=c=>c.beginPath(),_st2=c=>c.stroke(),_fil=c=>c.fill();   // ADR-0510: canvas path shorthand
+const _mT=(c,x,y)=>c.moveTo(x,y),_lT=(c,x,y)=>c.lineTo(x,y);   // ADR-0511
 const _hb=s=>s.w!=null;   // ADR-0501
 const _idOK=id=>_iS(id)&&_ln(id)<=64;   // ADR-0502: wire id cap (ADR-0485): unlocked+visible predicate (4 sites)
 const _idIdx=id=>_sh().findIndex(s=>s.id===id);   // ADR-0497: shape index by id (4 sites)
@@ -2097,12 +2098,12 @@ function _penQuad(c,p,ra,rb,i){
   let dx=p[i][0]-p[i-1][0],dy=p[i][1]-p[i-1][1];
   const l=_hp(dx,dy)||1;dx/=l;dy/=l;
   const nx=-dy,ny=dx;
-  c.moveTo(p[i-1][0]+nx*ra,p[i-1][1]+ny*ra);
-  c.lineTo(p[i][0]+nx*rb,p[i][1]+ny*rb);
-  c.lineTo(p[i][0]-nx*rb,p[i][1]-ny*rb);
-  c.lineTo(p[i-1][0]-nx*ra,p[i-1][1]-ny*ra);
+  _mT(c,p[i-1][0]+nx*ra,p[i-1][1]+ny*ra);
+  _lT(c,p[i][0]+nx*rb,p[i][1]+ny*rb);
+  _lT(c,p[i][0]-nx*rb,p[i][1]-ny*rb);
+  _lT(c,p[i-1][0]-nx*ra,p[i-1][1]-ny*ra);
 }
-function _penDisc(c,x,y,r){c.moveTo(x+r,y);c.arc(x,y,r,0,PI2,true)}
+function _penDisc(c,x,y,r){_mT(c,x+r,y);c.arc(x,y,r,0,PI2,true)}
 // Fill the union covering vertices lo..hi: quads lo+1..hi, discs lo..hi.
 // Committed strokes call this on the whole range; the draft splits it at the
 // stamped boundary — the partition is exact, so draft and committed render
@@ -2589,8 +2590,8 @@ function drawOverlay(){
   if(_mq())drawMarquee(c);
   if(_la()&&_la().length>1){                            // ADR-0158
     c.save();c.fillStyle='rgba(0,196,204,.08)';c.strokeStyle=_ac();c.lineWidth=1;c.setLineDash([4,4]);
-    _bp(c);const _p0=_w2(_la()[0]);c.moveTo(_p0.x,_p0.y);
-    for(let i=1;i<_la().length;i++){const p=_w2(_la()[i]);c.lineTo(p.x,p.y)}
+    _bp(c);const _p0=_w2(_la()[0]);_mT(c,_p0.x,_p0.y);
+    for(let i=1;i<_la().length;i++){const p=_w2(_la()[i]);_lT(c,p.x,p.y)}
     c.closePath();_fil(c);_st2(c);c.restore();
   }
   if(_laser&&Presentation.isActive()){const lp=_w2(_laser);_bp(c);c.arc(lp.x,lp.y,8,0,PI2);c.fillStyle='rgba(255,50,50,.75)';_fil(c);}
@@ -2643,7 +2644,7 @@ function drawGuides(c){
   c.strokeStyle=_ac();c.lineWidth=1;c.setLineDash([4,4]);   // a11y-audit-2026-07
   for(const g of _gd()){
     const p1=_w2({x:g.x1,y:g.y1}),p2=_w2({x:g.x2,y:g.y2});
-    _bp(c);c.moveTo(p1.x,p1.y);c.lineTo(p2.x,p2.y);_st2(c);
+    _bp(c);_mT(c,p1.x,p1.y);_lT(c,p2.x,p2.y);_st2(c);
   }
   c.setLineDash([]);
 }
@@ -2664,9 +2665,9 @@ function _drawMeasure(c){
   c.font='11px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';
   for(const s of segs){
     const p1=_w2({x:s.x1,y:s.y1}),p2=_w2({x:s.x2,y:s.y2});
-    _bp(c);c.moveTo(p1.x,p1.y);c.lineTo(p2.x,p2.y);_st2(c);
+    _bp(c);_mT(c,p1.x,p1.y);_lT(c,p2.x,p2.y);_st2(c);
     const dx=p2.x-p1.x,dy=p2.y-p1.y,L=_hp(dx,dy)||1,ux=dx/L,uy=dy/L,ex=-uy,ey=ux;
-    for(const p of [p1,p2]){_bp(c);c.moveTo(p.x-ex*4,p.y-ey*4);c.lineTo(p.x+ex*4,p.y+ey*4);_st2(c)}
+    for(const p of [p1,p2]){_bp(c);_mT(c,p.x-ex*4,p.y-ey*4);_lT(c,p.x+ex*4,p.y+ey*4);_st2(c)}
     const label=_St(_rnd(L)),tw=c.measureText(label).width+12;
     const mx=(p1.x+p2.x)/2,my=(p1.y+p2.y)/2;
     c.fillStyle='rgba(15,23,42,.85)';_bp(c);roundRect(c,mx-tw/2,my-9,tw,18,4);_fil(c);
@@ -2723,8 +2724,8 @@ function _drawBoxLabel(s,c){
     const _lw2=_connLabelMeasure(s,c,lines,fs).ws;             // ADR-0252
     for(let i=0;i<_ln(lines);i++){const lw=_lw2[i];
       const ux=al==='left'?tx:al==='right'?tx-lw:tx-lw/2;      // ADR-0171
-      if(s.under){const uy=top0+lh/2+i*lh+fs*0.55;_bp(c);c.moveTo(ux,uy);c.lineTo(ux+lw,uy);_st2(c)}
-      if(s.strike){const uy=top0+lh/2+i*lh;_bp(c);c.moveTo(ux,uy);c.lineTo(ux+lw,uy);_st2(c)}}}
+      if(s.under){const uy=top0+lh/2+i*lh+fs*0.55;_bp(c);_mT(c,ux,uy);_lT(c,ux+lw,uy);_st2(c)}
+      if(s.strike){const uy=top0+lh/2+i*lh;_bp(c);_mT(c,ux,uy);_lT(c,ux+lw,uy);_st2(c)}}}
   c.restore();
 }
 // ADR-0083: image caption — paper-backed strip along the inside bottom edge,
@@ -2837,8 +2838,8 @@ function _drawConnLabel(s,c){
   for(let i=0;i<_ln(lns);i++)c.fillText(lns[i],mx,my+(i-(_ln(lns)-1)/2)*llh);
   if(s.under||s.strike){c.strokeStyle=c.fillStyle;c.lineWidth=_max(1,fs*0.06);   // ADR-0170
     for(let i=0;i<_ln(lns);i++){const lw=_lm.ws[i],ly=my+(i-(_ln(lns)-1)/2)*llh;
-      if(s.under){_bp(c);c.moveTo(mx-lw/2,ly+fs*0.55);c.lineTo(mx+lw/2,ly+fs*0.55);_st2(c)}
-      if(s.strike){_bp(c);c.moveTo(mx-lw/2,ly);c.lineTo(mx+lw/2,ly);_st2(c)}}}
+      if(s.under){_bp(c);_mT(c,mx-lw/2,ly+fs*0.55);_lT(c,mx+lw/2,ly+fs*0.55);_st2(c)}
+      if(s.strike){_bp(c);_mT(c,mx-lw/2,ly);_lT(c,mx+lw/2,ly);_st2(c)}}}
   c.restore();
 }
 function drawShape(s,c){
@@ -2882,7 +2883,7 @@ function drawShape(s,c){
     case 'line':{
       _csh(s,c)   // ADR-0211
       if(_el(s)){const _ep=_elbowPts(s);(s.r>0)?_polylineR(c,_ep,s.r):_polyline(c,_ep);_st2(c);_drawConnLabel(s,c);break}   // ADR-0207
-      if(s.curve){const e=_cE(s),cc=_curveCtrl(e,s.cbend);_bp(c);c.moveTo(e.x1,e.y1);c.quadraticCurveTo(cc.x,cc.y,e.x2,e.y2);_st2(c);_drawConnLabel(s,c);break}
+      if(s.curve){const e=_cE(s),cc=_curveCtrl(e,s.cbend);_bp(c);_mT(c,e.x1,e.y1);c.quadraticCurveTo(cc.x,cc.y,e.x2,e.y2);_st2(c);_drawConnLabel(s,c);break}
       _polyline(c,_linePts(s));_st2(c);_drawConnLabel(s,c);break;}   // ADR-0076
     case 'arrow':
       drawArrow(s,c);_drawConnLabel(s,c);break;
@@ -2935,8 +2936,8 @@ function drawShape(s,c){
       if(s.under||s.strike){const lw=_connLabelMeasure(s,c,[lbl],fs).w;   // ADR-0252/0204
         c.strokeStyle=c.fillStyle;c.lineWidth=_max(1,fs*0.06);
         const ux=alF==='left'?txF2:alF==='right'?txF2-lw:txF2-lw/2;
-        if(s.under){const uy=s.y-2+fs*0.12;_bp(c);c.moveTo(ux,uy);c.lineTo(ux+lw,uy);_st2(c)}
-        if(s.strike){const uy=s.y-2-fs*0.45;_bp(c);c.moveTo(ux,uy);c.lineTo(ux+lw,uy);_st2(c)}}
+        if(s.under){const uy=s.y-2+fs*0.12;_bp(c);_mT(c,ux,uy);_lT(c,ux+lw,uy);_st2(c)}
+        if(s.strike){const uy=s.y-2-fs*0.45;_bp(c);_mT(c,ux,uy);_lT(c,ux+lw,uy);_st2(c)}}
       c.textAlign='left';
       c.restore();
       break;}
@@ -2965,8 +2966,8 @@ function drawShape(s,c){
           const _lwS=_connLabelMeasure(s,c,lines,fs).ws;         // ADR-0252
           for(let i=0;i<_ln(lines);i++){const lw=_lwS[i];
             const ux=s.align==='center'?tax-lw/2:s.align==='right'?tax-lw:tax;
-            if(s.under){const uy=sty+i*lh+fs*1.08;_bp(c);c.moveTo(ux,uy);c.lineTo(ux+lw,uy);_st2(c)}
-            if(s.strike){const uy=sty+i*lh+fs*0.55;_bp(c);c.moveTo(ux,uy);c.lineTo(ux+lw,uy);_st2(c)}}}
+            if(s.under){const uy=sty+i*lh+fs*1.08;_bp(c);_mT(c,ux,uy);_lT(c,ux+lw,uy);_st2(c)}
+            if(s.strike){const uy=sty+i*lh+fs*0.55;_bp(c);_mT(c,ux,uy);_lT(c,ux+lw,uy);_st2(c)}}}
         c.restore();
       }
       break;}
@@ -2981,11 +2982,11 @@ function dashArr(dash,size){const s=_max(1,size||1);return dash===2?[s*0.5,s*2]:
 function roundRect(c,x,y,w,h,r){
   if(w<0){x+=w;w=-w}if(h<0){y+=h;h=-h}
   r=_max(0,_min(r,w/2,h/2));
-  c.moveTo(x+r,y);
-  c.lineTo(x+w-r,y);c.arcTo(x+w,y,x+w,y+r,r);
-  c.lineTo(x+w,y+h-r);c.arcTo(x+w,y+h,x+w-r,y+h,r);
-  c.lineTo(x+r,y+h);c.arcTo(x,y+h,x,y+h-r,r);
-  c.lineTo(x,y+r);c.arcTo(x,y,x+r,y,r);
+  _mT(c,x+r,y);
+  _lT(c,x+w-r,y);c.arcTo(x+w,y,x+w,y+r,r);
+  _lT(c,x+w,y+h-r);c.arcTo(x+w,y+h,x+w-r,y+h,r);
+  _lT(c,x+r,y+h);c.arcTo(x,y+h,x,y+h-r,r);
+  _lT(c,x,y+r);c.arcTo(x,y,x+r,y,r);
   c.closePath();
 }
 function drawArrow(s,c){
@@ -2995,7 +2996,7 @@ function drawArrow(s,c){
   const ah=_max(6,(_szz(s)||2)*3);
   if(s.curve){
     const cc=_curveCtrl(e,s.cbend);
-    _bp(c);c.moveTo(e.x1,e.y1);c.quadraticCurveTo(cc.x,cc.y,e.x2,e.y2);_st2(c);
+    _bp(c);_mT(c,e.x1,e.y1);c.quadraticCurveTo(cc.x,cc.y,e.x2,e.y2);_st2(c);
     _arrowHeadShape(c,e.x2,e.y2,_at2(e.y2-cc.y,e.x2-cc.x),ah,_sk(s),s.head);
     if(s.start)_arrowHeadShape(c,e.x1,e.y1,_at2(e.y1-cc.y,e.x1-cc.x),ah,_sk(s),s.startHead||s.head);
     return;
@@ -3079,32 +3080,32 @@ function _diamondPath(c,s){
       const rr=_min(r,e1/2,e2/2);
       const t1={x:p1.x+(p0.x-p1.x)/e1*rr,y:p1.y+(p0.y-p1.y)/e1*rr};
       const t2={x:p1.x+(p2.x-p1.x)/e2*rr,y:p1.y+(p2.y-p1.y)/e2*rr};
-      if(i===0)c.moveTo(t1.x,t1.y);else c.lineTo(t1.x,t1.y);
+      if(i===0)_mT(c,t1.x,t1.y);else _lT(c,t1.x,t1.y);
       c.quadraticCurveTo(p1.x,p1.y,t2.x,t2.y);
     }
     c.closePath();
   }else{
-    c.moveTo(cx,s.y);c.lineTo(s.x+s.w,cy);c.lineTo(cx,s.y+s.h);c.lineTo(s.x,cy);c.closePath();
+    _mT(c,cx,s.y);_lT(c,s.x+s.w,cy);_lT(c,cx,s.y+s.h);_lT(c,s.x,cy);c.closePath();
   }
 }
 function _polyline(c,pts){
-  _bp(c);c.moveTo(pts[0].x,pts[0].y);
-  for(let i=1;i<_ln(pts);i++)c.lineTo(pts[i].x,pts[i].y);
+  _bp(c);_mT(c,pts[0].x,pts[0].y);
+  for(let i=1;i<_ln(pts);i++)_lT(c,pts[i].x,pts[i].y);
 }
 // ADR-0207: polyline with rounded interior joints (draw.io "rounded" edgeStyle).
 // Each interior vertex is trimmed by r along both segments and bridged with a
 // quadratic curve (vertex as control point) — same math as _diamondPath.
 function _polylineR(c,pts,r){
-  _bp(c);c.moveTo(pts[0].x,pts[0].y);
+  _bp(c);_mT(c,pts[0].x,pts[0].y);
   for(let i=1;i<_ln(pts)-1;i++){
     const p0=pts[i-1],p1=pts[i],p2=pts[i+1];
     const e1=_hp(p1.x-p0.x,p1.y-p0.y)||1,e2=_hp(p2.x-p1.x,p2.y-p1.y)||1;
     const rr=_min(r,e1/2,e2/2);
-    if(rr<=0){c.lineTo(p1.x,p1.y);continue}
-    c.lineTo(p1.x+(p0.x-p1.x)/e1*rr,p1.y+(p0.y-p1.y)/e1*rr);
+    if(rr<=0){_lT(c,p1.x,p1.y);continue}
+    _lT(c,p1.x+(p0.x-p1.x)/e1*rr,p1.y+(p0.y-p1.y)/e1*rr);
     c.quadraticCurveTo(p1.x,p1.y,p1.x+(p2.x-p1.x)/e2*rr,p1.y+(p2.y-p1.y)/e2*rr);
   }
-  c.lineTo(_pL(pts).x,_pL(pts).y);
+  _lT(c,_pL(pts).x,_pL(pts).y);
 }
 // ADR-0218: connector "jump" arcs — where this conn's polyline crosses another
 // conn, the segment bulges over it in a semicircle (circuit-diagram / draw.io
@@ -3138,7 +3139,7 @@ function _hopsFor(s,pts){
 // chirality keeps parallel crossings readable, same as draw.io).
 function _polylineHop(c,s,pts,R){
   const hops=_hopsFor(s,pts);
-  _bp(c);c.moveTo(pts[0].x,pts[0].y);
+  _bp(c);_mT(c,pts[0].x,pts[0].y);
   for(let i=0;i<_ln(pts)-1;i++){
     const a=pts[i],b=pts[i+1];
     const L=_hp(b.x-a.x,b.y-a.y)||1,nx=-(b.y-a.y)/L,ny=(b.x-a.x)/L;
@@ -3150,13 +3151,13 @@ function _polylineHop(c,s,pts,R){
       const t=pk-si*1e6;hops.shift();
       const ta=_max(prev,t-rf),tb=_min(t+rf,1);
       if(tb-ta<0.01)continue;
-      c.lineTo(a.x+(b.x-a.x)*ta,a.y+(b.y-a.y)*ta);
+      _lT(c,a.x+(b.x-a.x)*ta,a.y+(b.y-a.y)*ta);
       const midt=(ta+tb)/2;
       c.quadraticCurveTo(a.x+(b.x-a.x)*midt+nx*R*2,a.y+(b.y-a.y)*midt+ny*R*2,
         a.x+(b.x-a.x)*tb,a.y+(b.y-a.y)*tb);
       prev=tb;
     }
-    c.lineTo(b.x,b.y);
+    _lT(c,b.x,b.y);
   }
 }
 // SVG: same geometry as a `d` string.
@@ -3208,15 +3209,15 @@ function _arrowHeadShape(c,x,y,ang,ah,stroke,style){
   }
   if(style==='open'||style==='bar'){                              // ADR-0294
     _bp(c);
-    c.moveTo(x+_cos(a1)*ah,y+_sin(a1)*ah);
-    if(style==='open')c.lineTo(x,y);
-    c.lineTo(x+_cos(a2)*ah,y+_sin(a2)*ah);
+    _mT(c,x+_cos(a1)*ah,y+_sin(a1)*ah);
+    if(style==='open')_lT(c,x,y);
+    _lT(c,x+_cos(a2)*ah,y+_sin(a2)*ah);
     c.strokeStyle=col;_st2(c);return;
   }
   _bp(c);
-  c.moveTo(x,y);
-  c.lineTo(x+_cos(a1)*ah,y+_sin(a1)*ah);
-  c.lineTo(x+_cos(a2)*ah,y+_sin(a2)*ah);
+  _mT(c,x,y);
+  _lT(c,x+_cos(a1)*ah,y+_sin(a1)*ah);
+  _lT(c,x+_cos(a2)*ah,y+_sin(a2)*ah);
   c.closePath();c.fillStyle=col;_fil(c);
 }
 // ADR-0068: quadratic-bezier route for curved connectors. Control point is the
@@ -3333,8 +3334,8 @@ function drawText(s,c){
   if(s.under||s.strike){c.save();c.strokeStyle=_sk(s)||_IK;c.lineWidth=_max(1,fs*0.06);
     for(let i=0;i<_ln(lines);i++){const lw=_tm.ws[i];
       const ux=s.align==='center'?ax-lw/2:s.align==='right'?ax-lw:ax;
-      if(s.under){const uy=s.y+i*lh+fs*1.08;_bp(c);c.moveTo(ux,uy);c.lineTo(ux+lw,uy);_st2(c)}
-      if(s.strike){const uy=s.y+i*lh+fs*0.55;_bp(c);c.moveTo(ux,uy);c.lineTo(ux+lw,uy);_st2(c)}}   // ADR-0100
+      if(s.under){const uy=s.y+i*lh+fs*1.08;_bp(c);_mT(c,ux,uy);_lT(c,ux+lw,uy);_st2(c)}
+      if(s.strike){const uy=s.y+i*lh+fs*0.55;_bp(c);_mT(c,ux,uy);_lT(c,ux+lw,uy);_st2(c)}}   // ADR-0100
     c.restore()}
   if(s.link&&_hb(s)){c.font='10px sans-serif';c.textAlign='right';c.textBaseline='top';c.fillText('🔗',s.x+_abs(s.w)-3,s.y+3)}   // ADR-0310: link badge top-right
   if(s.link&&_conn(s.type)){const lp=_connLabelXY(s);c.font='10px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText('🔗',lp.x+10,lp.y-10)}   // ADR-0333: badge at label anchor (offset so it doesn't sit on the line)
@@ -3639,7 +3640,7 @@ function drawSelection(c){
     const cx=single.x+single.w/2,cy=single.y+single.h/2,rot=single.rotate;
     const cs=[[single.x,single.y],[single.x+single.w,single.y],[single.x+single.w,single.y+single.h],[single.x,single.y+single.h]]
       .map(([px,py])=>{const r=_rotPt(px,py,cx,cy,rot);return _w2(r);});
-    _bp(c);c.moveTo(cs[0].x,cs[0].y);for(let i=1;i<4;i++)c.lineTo(cs[i].x,cs[i].y);c.closePath();_st2(c);
+    _bp(c);_mT(c,cs[0].x,cs[0].y);for(let i=1;i<4;i++)_lT(c,cs[i].x,cs[i].y);c.closePath();_st2(c);
   }else{
     c.strokeRect(x-1,y-1,w+2,h+2);
   }
@@ -3671,7 +3672,7 @@ function drawSelection(c){
     if(rh){
       const kp=_w2({x:rh.x,y:rh.y}),ap=_w2({x:rh.ax,y:rh.ay});
       c.strokeStyle=_ac();c.lineWidth=1.5;   // a11y-audit-2026-07
-      _bp(c);c.moveTo(ap.x,ap.y);c.lineTo(kp.x,kp.y);_st2(c);
+      _bp(c);_mT(c,ap.x,ap.y);_lT(c,kp.x,kp.y);_st2(c);
       c.fillStyle=_p();c.strokeStyle=_gC('--brand-ink');
       _bp(c);c.arc(kp.x,kp.y,hs/2,0,PI2);_fil(c);_st2(c);
     }
@@ -3721,7 +3722,7 @@ function drawSelection(c){
     const gkp=_w2({x:gr.x,y:gr.y}),gap=_w2({x:gr.ax,y:gr.ay});
     const hs2=HANDLE_SIZE;
     c.strokeStyle=_ac();c.lineWidth=1.5;
-    _bp(c);c.moveTo(gap.x,gap.y);c.lineTo(gkp.x,gkp.y);_st2(c);
+    _bp(c);_mT(c,gap.x,gap.y);_lT(c,gkp.x,gkp.y);_st2(c);
     c.fillStyle=_p();c.strokeStyle=_gC('--brand-ink');
     _bp(c);c.arc(gkp.x,gkp.y,hs2/2,0,PI2);_fil(c);_st2(c);
   }
