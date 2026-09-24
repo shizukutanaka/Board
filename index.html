@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.320';
+const V='1.7.321';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6459,6 +6459,7 @@ function drawioToShapes(txt){
       if(Number.isFinite(fx)&&Number.isFinite(fy))s.bF={fx:Math.min(1,Math.max(0,fx)),fy:Math.min(1,Math.max(0,fy))}}
     const lbl=_dioLabel(c.getAttribute('value'));if(lbl)s.label=lbl.slice(0,240);
     {const _lx=g?g.getAttribute('x'):null;if(_lx!=null&&_lx!==''){const _t=(+_lx+1)/2;if(Number.isFinite(_t))s.labelPos=Math.min(1,Math.max(0,+_t.toFixed(3)))}}   // ADR-0264
+    if(sty.rounded==='1')s.r=8;                                           // ADR-0269
     _dioStyApply(s,sty,_hid);                                            // ADR-0258 (edges gain opacity)
     if(sty.labelBackgroundColor&&sty.labelBackgroundColor!=='none')s.fill=sty.labelBackgroundColor;   // ADR-0249
     shapes.push(s);

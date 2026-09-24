@@ -709,6 +709,7 @@ const checks = [
   ['drawio shadow=1 round-trips s.shadow (ADR-0246)', html.includes("r+='shadow=1;'")&&html.includes("sty.shadow==='1'")],
   ['drawio fontColor ↔ text/sticky s.stroke (ADR-0247)', html.includes("sty+='fontColor='+s.stroke")&&html.includes("sty.fontColor!=='none'")],
   ['visualViewport.resize re-runs canvas resize for iOS chrome (ADR-0251)', html.includes("visualViewport.addEventListener('resize',resize)")],
+  ['drawio edge rounded=1 → s.r (ADR-0269)', (html.match(/sty\.rounded==='1'/g)||[]).length>=2],
   ['excalidraw pressures + zigzag → p[2]/hatch (ADR-0268)', html.includes('e.pressures[i]')&&html.includes("e.fillStyle==='zigzag'")],
   ['excalidraw strokeSharpness ↔ s.r (ADR-0267)', html.includes("strokeSharpness:s.r?'round':'sharp'")],
   ['excalidraw conn label ↔ s.label (ADR-0266)', html.includes("p.type==='line'||p.type==='arrow'")&&html.includes('_connLabelXY(s);els.push(_ct')],
