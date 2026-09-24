@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.321';
+const V='1.7.322';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -7016,6 +7016,10 @@ function buildSVG(shapes,paper){
     const _dsh=dashArr(s.dash,SZ);
     const dA=_dsh.length?` stroke-dasharray="${_dsh.map(n=>Math.round(n*10)/10).join(' ')}"`:'';
     const _sh=s.shadow?' filter="url(#bsh)"':'';   // ADR-0194
+    // ADR-0270: shared conn-path element + conn-label emitters (was 8-10x duplicated)
+    const _sp=(d,j)=>`<path d="${d}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${j?' stroke-linejoin="round"':''}${dA}${a}${_sh}/>`;
+    const _po=pt=>`<polyline points="${pt}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`;
+    const _cL=()=>{const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper))};
     const rT=shapeRot(s)?` transform="rotate(${_num(s.rotate)},${X+W/2+ox},${Y+H/2+oy})"`:''
     switch(s.type){
       case 'rect':{
@@ -7055,43 +7059,40 @@ function buildSVG(shapes,paper){
       case 'line':{
         if(s.curve){
           const _ce=connEnds(s),cc=_curveCtrl(_ce,s.cbend);
-          els.push(`<path d="M ${_num(_ce.x1+ox)} ${_num(_ce.y1+oy)} Q ${_num(cc.x+ox)} ${_num(cc.y+oy)} ${_num(_ce.x2+ox)} ${_num(_ce.y2+oy)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`);
-          const lm=_curveLabelXY(s);
-          {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
+          els.push(_sp(`M ${_num(_ce.x1+ox)} ${_num(_ce.y1+oy)} Q ${_num(cc.x+ox)} ${_num(cc.y+oy)} ${_num(_ce.x2+ox)} ${_num(_ce.y2+oy)}`));
+          _cL();
         }else if(s.elbow){
           const pts=_elbowPts(s);
-          if(s.hop)els.push(`<path d="${_hopPathD(s,pts,ox,oy,7)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`);   // ADR-0218
-          else if(s.r>0)els.push(`<path d="${_polylineRd(pts,ox,oy,s.r)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`);   // ADR-0207
+          if(s.hop)els.push(_sp(_hopPathD(s,pts,ox,oy,7)));   // ADR-0218
+          else if(s.r>0)els.push(_sp(_polylineRd(pts,ox,oy,s.r),1));   // ADR-0207
           else{const spts=pts.map(p=>`${_num(p.x+ox)},${_num(p.y+oy)}`).join(' ');
-          els.push(`<polyline points="${spts}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`)}
-          const lm=_elbowLabelXY(s);
-          {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
+          els.push(_po(spts))}
+          _cL();
         }else{
-          if(s.hop){const pts=_linePts(s);els.push(`<path d="${_hopPathD(s,pts,ox,oy,7)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`)}   // ADR-0218
-          else if(s.way){const w=s.way;els.push(`<polyline points="${X1+ox},${Y1+oy} ${_num(w.x+ox)},${_num(w.y+oy)} ${X2+ox},${Y2+oy}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`)}   // ADR-0076
+          if(s.hop){const pts=_linePts(s);els.push(_sp(_hopPathD(s,pts,ox,oy,7)))}   // ADR-0218
+          else if(s.way){const w=s.way;els.push(_po(`${X1+ox},${Y1+oy} ${_num(w.x+ox)},${_num(w.y+oy)} ${X2+ox},${Y2+oy}`))}   // ADR-0076
           else els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`);
-          {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
+          _cL();
         }
         break;}
       case 'arrow':{
         const ah=Math.max(6,(SZ||2)*3);
         if(s.curve){
           const _ce=connEnds(s),cc=_curveCtrl(_ce,s.cbend);
-          els.push(`<path d="M ${_num(_ce.x1+ox)} ${_num(_ce.y1+oy)} Q ${_num(cc.x+ox)} ${_num(cc.y+oy)} ${_num(_ce.x2+ox)} ${_num(_ce.y2+oy)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`);
+          els.push(_sp(`M ${_num(_ce.x1+ox)} ${_num(_ce.y1+oy)} Q ${_num(cc.x+ox)} ${_num(cc.y+oy)} ${_num(_ce.x2+ox)} ${_num(_ce.y2+oy)}`));
           const ang=Math.atan2(_ce.y2-cc.y,_ce.x2-cc.x);
           const a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5,tx=_ce.x2+ox,ty=_ce.y2+oy;
           _svgArrowHead(els,tx,ty,a1,a2,ah,stroke,a,SZ,s.head);
           if(s.start){
             const sAng=Math.atan2(_ce.y1-cc.y,_ce.x1-cc.x),s1=sAng+Math.PI-0.5,s2=sAng+Math.PI+0.5,sx2=_ce.x1+ox,sy2=_ce.y1+oy;
             _svgArrowHead(els,sx2,sy2,s1,s2,ah,stroke,a,SZ,s.head)}
-          const lm=_curveLabelXY(s);
-          {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
+          _cL();
         }else if(s.elbow){
           const pts=_elbowPts(s);
-          if(s.hop)els.push(`<path d="${_hopPathD(s,pts,ox,oy,7)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`);   // ADR-0218
-          else if(s.r>0)els.push(`<path d="${_polylineRd(pts,ox,oy,s.r)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`);   // ADR-0207
+          if(s.hop)els.push(_sp(_hopPathD(s,pts,ox,oy,7)));   // ADR-0218
+          else if(s.r>0)els.push(_sp(_polylineRd(pts,ox,oy,s.r),1));   // ADR-0207
           else{const spts=pts.map(p=>`${_num(p.x+ox)},${_num(p.y+oy)}`).join(' ');
-          els.push(`<polyline points="${spts}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`)}
+          els.push(_po(spts))}
           const Lp=pts[pts.length-1],Pp=pts[pts.length-2];
           const ang=Math.atan2(Lp.y-Pp.y,Lp.x-Pp.x)||Math.atan2(Y2-Y1,X2-X1);
           const a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5;
@@ -7101,30 +7102,27 @@ function buildSVG(shapes,paper){
             const sAng=Math.atan2(pts[0].y-pts[1].y,pts[0].x-pts[1].x)||ang+Math.PI;
             const s1=sAng+Math.PI-0.5,s2=sAng+Math.PI+0.5,sx2=pts[0].x+ox,sy2=pts[0].y+oy;
             _svgArrowHead(els,sx2,sy2,s1,s2,ah,stroke,a,SZ,s.head)}
-          const lm=_elbowLabelXY(s);
-          {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
+          _cL();
         }else if(s.hop){
           const pts=_linePts(s);
-          els.push(`<path d="${_hopPathD(s,pts,ox,oy,7)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`);   // ADR-0218
+          els.push(_sp(_hopPathD(s,pts,ox,oy,7)));   // ADR-0218
           const L=pts[pts.length-1],P=pts[pts.length-2],F=pts[1];
           const ang=Math.atan2(L.y-P.y,L.x-P.x),a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5,tx=L.x+ox,ty=L.y+oy;
           _svgArrowHead(els,tx,ty,a1,a2,ah,stroke,a,SZ,s.head);
           if(s.start){const sAng=Math.atan2(pts[0].y-F.y,pts[0].x-F.x),s1=sAng+Math.PI-0.5,s2=sAng+Math.PI+0.5,sx2=pts[0].x+ox,sy2=pts[0].y+oy;
             _svgArrowHead(els,sx2,sy2,s1,s2,ah,stroke,a,SZ,s.head)}
-          const lm=_connLabelXY(s);
-          {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
+          _cL();
         }else if(s.way){                                            // ADR-0090: full vertex list
           const pts=_linePts(s),wpts=pts.map(p=>_num(p.x+ox)+','+_num(p.y+oy)).join(' ');
-          els.push(`<polyline points="${wpts}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`);
+          els.push(_po(wpts));
           const L=pts[pts.length-1],P=pts[pts.length-2],F=pts[1];
           const ang=Math.atan2(L.y-P.y,L.x-P.x),a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5,tx=L.x+ox,ty=L.y+oy;
           _svgArrowHead(els,tx,ty,a1,a2,ah,stroke,a,SZ,s.head);
           if(s.start){const sAng=Math.atan2(pts[0].y-F.y,pts[0].x-F.x),s1=sAng+Math.PI-0.5,s2=sAng+Math.PI+0.5,sx2=pts[0].x+ox,sy2=pts[0].y+oy;
             _svgArrowHead(els,sx2,sy2,s1,s2,ah,stroke,a,SZ,s.head)}
-          const lm=_connLabelXY(s);
-          {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
+          _cL();
         }else{
-          if(s.hop){const pts=_linePts(s);els.push(`<path d="${_hopPathD(s,pts,ox,oy,7)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`)}   // ADR-0218
+          if(s.hop){const pts=_linePts(s);els.push(_sp(_hopPathD(s,pts,ox,oy,7)))}   // ADR-0218
           else els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`);
           const ang=Math.atan2(Y2-Y1,X2-X1);
           const a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5;
@@ -7132,7 +7130,7 @@ function buildSVG(shapes,paper){
           _svgArrowHead(els,tx,ty,a1,a2,ah,stroke,a,SZ,s.head);
           if(s.start){const s1=ang-0.5,s2=ang+0.5,sx2=X1+ox,sy2=Y1+oy;
             _svgArrowHead(els,sx2,sy2,s1,s2,ah,stroke,a,SZ,s.head)}
-          {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
+          _cL();
         }
         break;}
       case 'pen':{

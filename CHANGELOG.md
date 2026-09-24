@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.322] - 2026-09-24
+
+### Changed
+- SVG export: conn パス/ポリライン/ラベル出力を `_sp`/`_po`/`_cL` に
+  集約 + dead `lm` 変数6件削除 (~1.9KB 回収、ADR-0270)
+
 ## [1.7.321] - 2026-09-24
 
 ### Fixed
