@@ -822,7 +822,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.445';
+const V='1.7.446';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1249,9 +1249,10 @@ function validPatch(p){
   if(!p||typeof p!=='object')return false;   // a patch/shape must be an object
   if(!_cleanVal(p,0))return false;
   // Numeric geometry fields must be actual numbers, not strings that slip past _cleanVal
-  for(const k of ['x','y','w','h','x1','y1','x2','y2','z','rotate','size','opacity','dash','labelPos','cbend','bend','spacing','lineH','fontSize','elbow','curve','hop','flip','shadow','r','visible','start']){   // ADR-0367/0369
+  for(const k of ['x','y','w','h','x1','y1','x2','y2','z','rotate','size','opacity','dash','labelPos','cbend','bend','spacing','lineH','fontSize','elbow','curve','hop','flip','shadow','r','visible','start','wrap']){   // ADR-0367/0369
     if(k in p&&p[k]!=null&&typeof p[k]!=='number')return false;
   }
+  for(const k of ['bold','italic','under','strike','locked'])if(k in p&&p[k]!=null&&typeof p[k]!=='boolean'&&typeof p[k]!=='number')return false;   // ADR-0411: flags are true|1 (drawio writes 1)
   if(p.aF!=null&&(typeof p.aF!=='object'||!_fin(p.aF.fx)||!_fin(p.aF.fy)))return false;   // ADR-0367: {fx,fy} object — structural check
   if(p.bF!=null&&(typeof p.bF!=='object'||!_fin(p.bF.fx)||!_fin(p.bF.fy)))return false;   // ADR-0367
   // ADR-0368: array-prop shape checks — upd patches bypass validShape's pen check,
@@ -9308,8 +9309,8 @@ function cycleVAlign(){
 function toggleWrap(){
   const before=[],after=[];
   _forSel((s,id)=>{if(s.type!=='text'||s.locked)return;
-    before.push({id,wrap:s.wrap??null});after.push({id,wrap:s.wrap?null:1});
-    s.wrap=s.wrap?null:1;
+    before.push({id,wrap:s.wrap??null});after.push({id,wrap:s.wrap?0:1});
+    s.wrap=s.wrap?0:1;   // ADR-0411: write 0 (not null) — drawio emit and import both read ===0
   })
   _so(before,after)
 }
