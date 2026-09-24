@@ -294,6 +294,9 @@ Board/
 │   ├── ADR-0242-excalidraw-lineheight.md  # excalidraw lineHeight ↔ s.lineH (実装済)
 │   ├── ADR-0243-excalidraw-fontfamily.md  # excalidraw fontFamily ↔ s.font (実装済)
 │   └── ADR-0244-excalidraw-valign.md  # excalidraw verticalAlign ↔ s.valign (実装済)
+│   ├── ADR-0245-drawio-visible-attr.md  # drawio visible="0" ↔ s.visible===0 (実装済)
+│   ├── ADR-0246-drawio-shadow.md  # drawio shadow=1 ↔ s.shadow (実装済)
+│   └── ADR-0247-drawio-fontcolor.md  # drawio fontColor ↔ text/sticky s.stroke (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

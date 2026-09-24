@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.298';
+const V='1.7.299';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6423,6 +6423,7 @@ function drawioToShapes(txt){
     if(c.getAttribute('vertex')!=='1')continue;
     const g=c.querySelector('mxGeometry');if(!g)continue;
     const sty=_dioSty(c.getAttribute('style'));
+    const _hid=c.getAttribute('visible')==='0';                  // ADR-0245
     const _o=off(c.getAttribute('id'));
     const x=_o.x+(+g.getAttribute('x')||0),y=_o.y+(+g.getAttribute('y')||0),w=+g.getAttribute('width')||0,ht=+g.getAttribute('height')||0;
     const lbl=_dioLabel(c.getAttribute('value'));
@@ -6440,6 +6441,7 @@ function drawioToShapes(txt){
     if(+sty.strokeWidth>0)s.size=Math.min(40,+sty.strokeWidth);
     if(sty.dashed==='1')s.dash=1;
     if(+sty.fontSize>0)s.fontSize=Math.min(200,+sty.fontSize);
+    if(sty.fontColor&&sty.fontColor!=='none'&&(s.type==='text'||s.type==='sticky'))s.stroke=sty.fontColor;   // ADR-0247
     if(+sty.opacity>0)s.opacity=Math.max(0.05,+sty.opacity/100);
     // ADR-0228: label typography — drawio align + fontStyle bitmask
     // (1=bold, 2=italic, 4=underline; mxGraph BOLD/ITALIC/UNDERLINE_FONT)
@@ -6447,12 +6449,15 @@ function drawioToShapes(txt){
     if(/^(top|middle|bottom)$/.test(sty.verticalAlign))s.valign=sty.verticalAlign;   // ADR-0238
     const _fs=+sty.fontStyle;
     if(_fs&1)s.bold=1;if(_fs&2)s.italic=1;if(_fs&4)s.under=1;
+    if(sty.shadow==='1')s.shadow=1;                                          // ADR-0246
+    if(_hid)s.visible=0;
     idOf.set(c.getAttribute('id'),s.id);shapes.push(s);
   }
   for(const c of cells){
     if(shapes.length>=DIO_MAX)break;
     if(c.getAttribute('edge')!=='1')continue;
     const g=c.querySelector('mxGeometry'),sty=_dioSty(c.getAttribute('style'));
+    const _hid=c.getAttribute('visible')==='0';                  // ADR-0245
     let x1=0,y1=0,x2=0,y2=0;
     const sp=g?g.querySelector('mxPoint[as="sourcePoint"]'):null,tp=g?g.querySelector('mxPoint[as="targetPoint"]'):null;
     if(sp){x1=+sp.getAttribute('x')||0;y1=+sp.getAttribute('y')||0}
@@ -6481,6 +6486,8 @@ function drawioToShapes(txt){
     if(sty.strokeColor&&sty.strokeColor!=='none')s.stroke=sty.strokeColor;
     if(+sty.strokeWidth>0)s.size=Math.min(40,+sty.strokeWidth);
     if(sty.dashed==='1')s.dash=1;
+    if(sty.shadow==='1')s.shadow=1;                                          // ADR-0246
+    if(_hid)s.visible=0;                                       // ADR-0245
     shapes.push(s);
   }
   return shapes;
@@ -6531,7 +6538,7 @@ function boardToDrawio(shapes){
   let i=0;
   for(const s of shapes){
     const t=s.type;
-    if(s.visible===0||t==='line'||t==='arrow'||t==='pen')continue;
+    if(t==='line'||t==='arrow'||t==='pen')continue;
     const id='b'+(i++);idOf.set(s.id,id);
     let sty;
     if(t==='ellipse')sty='ellipse;';
@@ -6548,14 +6555,15 @@ function boardToDrawio(shapes){
     if(s.fontSize)sty+='fontSize='+s.fontSize+';';
     if(s.align==='center'||s.align==='right')sty+='align='+s.align+';';   // ADR-0228
     if(s.valign)sty+='verticalAlign='+s.valign+';';                          // ADR-0238
+    if(s.shadow)sty+='shadow=1;';                                            // ADR-0246
     const _dfs=(s.bold?1:0)|(s.italic?2:0)|(s.under?4:0);                  // ADR-0228: mxGraph bitmask
     if(_dfs)sty+='fontStyle='+_dfs+';';
     const lbl=s.label!=null?s.label:s.text;
-    cells.push(`<mxCell id="${id}" value="${nl(lbl||'')}" style="${esc(sty)}" vertex="1" parent="1"><mxGeometry x="${s.x||0}" y="${s.y||0}" width="${s.w||120}" height="${s.h||80}" as="geometry"/></mxCell>`);
+    cells.push(`<mxCell id="${id}" value="${nl(lbl||'')}" style="${esc(sty)}" vertex="1" parent="1"${s.visible===0?' visible="0"':''}><mxGeometry x="${s.x||0}" y="${s.y||0}" width="${s.w||120}" height="${s.h||80}" as="geometry"/></mxCell>`);   // ADR-0245
   }
   for(const s of shapes){
     const t=s.type;
-    if(s.visible===0||(t!=='line'&&t!=='arrow'))continue;
+    if((t!=='line'&&t!=='arrow'))continue;
     const id='e'+(i++);
     let sty=t==='line'?'endArrow=none;':'';
     if(s.elbow)sty+='edgeStyle=orthogonalEdgeStyle;';
@@ -6565,6 +6573,7 @@ function boardToDrawio(shapes){
     if(s.size)sty+='strokeWidth='+s.size+';';
     if(s.dash)sty+='dashed=1;';
     if(s.r)sty+='rounded=1;';
+    if(s.shadow)sty+='shadow=1;';                                            // ADR-0246
     const src=s.a&&idOf.get(s.a)?` source="${idOf.get(s.a)}"`:'';
     const tgt=s.b&&idOf.get(s.b)?` target="${idOf.get(s.b)}"`:'';
     if(src&&s.aF)sty+=`exitX=${s.aF.fx};exitY=${s.aF.fy};exitDx=0;exitDy=0;`;   // ADR-0221
@@ -6575,7 +6584,7 @@ function boardToDrawio(shapes){
     const wa=_wayArr(s);
     if(wa.length)geo+='<Array as="points">'+wa.map(p=>`<mxPoint x="${p.x}" y="${p.y}"/>`).join('')+'</Array>';
     geo+='</mxGeometry>';
-    cells.push(`<mxCell id="${id}" value="${nl(s.label||'')}" style="${esc(sty)}" edge="1" parent="1"${src}${tgt}>${geo}</mxCell>`);
+    cells.push(`<mxCell id="${id}" value="${nl(s.label||'')}" style="${esc(sty)}" edge="1" parent="1"${src}${tgt}${s.visible===0?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0245
   }
   return `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile><diagram name="Page-1"><mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/>${cells.join('')}</root></mxGraphModel></diagram></mxfile>`;
 }

@@ -705,6 +705,9 @@ const checks = [
   ['.drawio file entry points + parser (ADR-0203)', html.includes("f=>/\\.(drawio|dio)$/i.test(f.name)")&&html.includes('function drawioToShapes')],
   ['excalidraw lineHeight/fontFamily/verticalAlign round-trip (ADR-0242..0244)', html.includes("lineHeight:s.lineH||1.25")&&html.includes("o.lineH=Math.min(4,Math.max(0.5,e.lineHeight))")&&html.includes("fontFamily:s.font==='mono'?3:2")&&html.includes("verticalAlign:s.valign||'middle'")],
   ['excalidraw locked round-trips s.locked (ADR-0241)', html.includes("locked:!!s.locked},over)")&&html.includes("if(e.locked)s.locked=1")],
+  ['drawio visible=0 attr round-trips s.visible===0 (ADR-0245)'
+  ['drawio shadow=1 round-trips s.shadow (ADR-0246)', html.includes("sty+='shadow=1;'")&&html.includes("sty.shadow==='1'")],
+  ['drawio fontColor ↔ text/sticky s.stroke (ADR-0247)', html.includes("sty+='fontColor='+s.stroke")&&html.includes("sty.fontColor!=='none'")],, html.includes("s.visible===0?' visible=\"0\"':'")&&html.includes("getAttribute('visible')==='0'")],
   ['drawio parent-relative offsets resolved (ADR-0240)', html.includes("const _geo=new Map(),_par=new Map();")&&html.includes("const _o=off(c.getAttribute('id'));")&&html.includes("x=_o.x+(+g.getAttribute('x')||0)")],
   ['frame label italic/under/strike (ADR-0204)', html.includes("600 ${fs}px")&&html.includes("s.type!=='frame'&&!s.label)||s.locked)continue;   // ADR-0170/0204")],
   ['letter-spacing cycle — canvas ctx+SVG+style-copy (ADR-0205)', html.includes("function cycleSpacing()")&&html.includes("c.letterSpacing=(s.spacing||0)+'px'")&&html.includes('_svgLs(s)')&&html.includes('spacing:sh.spacing')],
@@ -9528,6 +9531,11 @@ try {
       '<mxCell id="c1" value="kid" style="rounded=0;" vertex="1" parent="g"><mxGeometry x="10" y="20" width="30" height="30" as="geometry"/></mxCell>'+
       '</root></mxGraphModel></diagram></mxfile>';
      assert.ok(drawioToShapes(xml)===null,'no DOMParser → drawioToShapes returns null (ADR-0240)');}
+
+    // ADR-0245: hidden shapes export as visible="0" cells (previously dropped)
+    {const xml2=boardToDrawio([{id:'x',type:'rect',x:1,y:2,w:3,h:4,visible:0,stroke:'#000',fill:null,size:2,opacity:1}]);
+     assert.ok(xml2.includes('visible="0"'),'hidden shape exports with visible="0" (ADR-0245)');
+     assert.ok(boardToDrawio([{id:'y',type:'rect',x:0,y:0,w:1,h:1,stroke:'#000',fill:null,size:2,opacity:1}]).indexOf('visible="0"')<0,'visible shape carries no visible attr');}
     console.log('  ✓ excalidraw import (element mapping, styles, tombstones, reject paths)');
   }
 
