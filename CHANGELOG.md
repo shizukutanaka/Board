@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.213]
+
+### 修正
+- **⇧1 / 起動時フィットが非表示図形を含むバグ** (ADR-0155)。
+  可視図形のみにフィット — 全件非表示時のみ全図形に
+  フォールバック。
+
 ## [1.7.212]
 
 ### 修正

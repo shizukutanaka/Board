@@ -774,7 +774,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.212';
+const V='1.7.213';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4146,7 +4146,10 @@ function _fitViewport(b,pad,cap){
   return z;
 }
 function fitToContent(){
-  const b=G.bboxAll(state.shapes);if(!b){zoomReset();return}
+  // ADR-0155: hidden shapes shouldn't drag the fit window to empty space —
+  // fit what's VISIBLE; fall back to all only when everything is hidden.
+  const vis=state.shapes.filter(s=>s.visible!==0);
+  const b=G.bboxAll(vis.length?vis:state.shapes);if(!b){zoomReset();return}
   const z=_fitViewport(b,40,2);
   UI.announce(Math.round(z*100)+'%');
 }
@@ -4157,7 +4160,7 @@ function fitToContent(){
 function _fitIfEmptyView(){
   if(!state.shapes.length)return;
   const v=state.viewport,r=canvas.getBoundingClientRect();
-  const b=G.bboxAll(state.shapes);if(!b)return;
+  const _vis=state.shapes.filter(s=>s.visible!==0);const b=G.bboxAll(_vis.length?_vis:state.shapes);if(!b)return;   // ADR-0155
   const vw=r.width/v.zoom,vh=r.height/v.zoom;
   if(b.x+b.w<v.x||b.y+b.h<v.y||b.x>v.x+vw||b.y>v.y+vh)fitToContent();
 }

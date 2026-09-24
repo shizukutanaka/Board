@@ -520,6 +520,7 @@ const checks = [
   ['gresize scales curve cbend affinely', html.includes('sh.cbend=orig.cbend*sx*sy*ol/nl')],
   ['snap index skips hidden shapes', html.includes('exclFn(s)||s.visible===0')],
   ['DOM mirror marks hidden shapes', html.includes("tagHidden:'(非表示)'")&&html.includes("s.visible===0?' '+t('tagHidden')")],
+  ['fit ignores hidden unless all hidden', html.includes('const vis=state.shapes.filter(s=>s.visible!==0)')&&html.includes('_vis.length?_vis:state.shapes')],
   ['line↔arrow conversion via style op (ctx)', html.includes('toggleLineArrow')&&html.includes('ctxToArrow')&&html.includes("s.type==='line'?'arrow':'line'")],
   ['sticky↔text conversion via style op (ctx)', html.includes('toggleStickyText')&&html.includes('ctxToSticky')&&html.includes("s.type==='sticky'?'text':'sticky'")],
   ['frame select-contents (ctx)', html.includes('selectFrameContents')&&html.includes('ctxSelContents')&&html.includes('withFrameChildren(')],
