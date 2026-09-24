@@ -907,6 +907,7 @@ const checks = [
   ['drop shadow — canvas props + SVG filter + toggle + persistence', html.includes("shadowColor='rgba(15,23,42,.22)'")&&html.includes("id=\"bsh\"")&&html.includes("function toggleShadow()")&&html.includes("_st().shadow=s.shadow||null")],
   ['image caption band honours s.fill (canvas+SVG)', html.includes("c.fillStyle=s.fill&&s.fill!=='none'?s.fill:_p()||'#fff';c.globalAlpha=0.85")&&html.includes("_esc(s.fill||paper||'#FFFFFF')")],
   ['Tab in label editor chains to next label-able shape', html.includes("if(ev.key==='Tab'){_pd(ev);")&&html.includes("_openLabelEditorFor(nx)")],
+  ['Tab in text editor chains to next text/sticky (ADR-0375)', html.includes("ta.blur();state.selection=new Set([nx.id]);_aS();openTextEditor(nx,false);return;")],
   ['frame label honours s.align + cycleTextAlign gate', html.includes("const alF=s.align||'left'")&&html.includes("_selAny(s=>(s.type==='text'||s.type==='sticky'||s.type==='frame'||s.label)&&!s.locked)&&['ctxTextAlign'")],
   ['ctxReverse reverses connector direction (ADR-0198)', html.includes('function reverseConn()')&&html.includes("['ctxReverse','',reverseConn]")],
   ['ctxFitText sizes sticky to wrapped text (ADR-0199)', html.includes('function fitSticky()')&&html.includes("['ctxFitText','',fitSticky]")],

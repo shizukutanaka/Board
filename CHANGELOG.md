@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.421] - 2026-09-24
+
+### Added
+- テキストエディタの Tab/⇧Tab 連鎖 — コミット後に次の text/sticky の
+  エディタへ遷移 (ラベルエディタ ADR-0196 と同等、Figma Tab→next cell
+  フロー) (ADR-0375)
+
 ## [1.7.420] - 2026-09-24
 
 ### Fixed
