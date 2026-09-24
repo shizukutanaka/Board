@@ -781,7 +781,7 @@ const _c01=v=>Math.min(1,Math.max(0,v));   // ADR-0295
 const _conn=t=>t==='line'||t==='arrow';   // ADR-0297
 
 // ====================== CONSTANTS ======================
-const V='1.7.350';
+const V='1.7.351';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6297,7 +6297,7 @@ function excScene(shapes){
   const _ct=(s,tid,txt,bL,fs,ov)=>{   // shared container-text element (sticky body / box label)
     _excTid.set(s.id,tid);
     return{id:tid,type:'text',x:ov?ov.x:s.x+4,y:ov?ov.y:s.y+4,
-    width:ov?ov.w:Math.abs(s.w||120)-8,height:ov?ov.h:Math.abs(s.h||80)-8,text:txt,originalText:txt,
+    width:ov?ov.w:Math.abs(s.w||120)-8,height:ov?ov.h:Math.abs(s.h||80)-8,text:txt,originalText:txt,autoResize:true,
     fontSize:fs||s.fontSize||16,textAlign:s.align||'center',verticalAlign:s.valign||'middle',lineHeight:s.lineH||1.25,baseline:0,fontFamily:s.font==='mono'?3:2,...(bL?{bLabel:1}:{}),   // ADR-0242/0243/0244
     strokeColor:'#1e1e1e',backgroundColor:'transparent',fillStyle:'solid',strokeWidth:1,strokeStyle:'solid',
     roughness:0,opacity:100,angle:(s.rotate||0)*Math.PI/180,seed:0,version:1,versionNonce:0,isDeleted:false,
@@ -6320,7 +6320,7 @@ function excScene(shapes){
         break;}
       case'text':
         els.push(E(s,{type:'text',x:s.x,y:s.y,width:s.w||0,height:s.h||0,
-          text:s.text||'',originalText:s.text||'',fontSize:s.fontSize||16,
+          text:s.text||'',originalText:s.text||'',autoResize:true,fontSize:s.fontSize||16,
           textAlign:s.align||'left',lineHeight:s.lineH||1.25,baseline:0,fontFamily:s.font==='mono'?3:2}));break;   // ADR-0242/0243
       case'pen':{
         const xs=s.pts.map(p=>p[0]),ys=s.pts.map(p=>p[1]);

@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.351] - 2026-09-24
+
+### Added
+- excalidraw export の text / container-text に `autoResize:true` を
+  emit (Board text の auto-fit 挙動と一致する spec 値、ADR-0299)
+
 ## [1.7.350] - 2026-09-24
 
 ### Added
