@@ -818,7 +818,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.416';
+const V='1.7.417';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2280,6 +2280,7 @@ function describeShape(s){
   if(txt)d+=` “${txt.length>30?txt.slice(0,30)+'…':txt}”`;
   d+=` @ ${_rnd(b.x)},${_rnd(b.y)}`;
   if(s.locked)d+=` ${t('ctxLock')}`;
+  if(s.visible===0)d+=` ${t('tagHidden')}`;   // ADR-0371: selection-restore / RTC can select a hidden shape
   if(s.rotate)d+=` ${s.rotate}°`;
   if(s.link)d+=' 🔗';   // ADR-0315: mirror the visual badge for SR users
   return d;
