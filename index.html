@@ -786,12 +786,14 @@ const _selArrowL=()=>_selAny(s=>s.type==='arrow'&&!s.locked);                  /
 const _forSel=f=>{for(const id of _sl()){const s=byId(id);if(s)f(s,id)}};   // ADR-0303
 const _csh=(s,c)=>{if(s.shadow){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=10;c.shadowOffsetY=3}};   // ADR-0306
 const _so=(b,a)=>{if(b.length){_styleOp(b,a);_iv()}};   // ADR-0307
-const _selL=f=>_selIds().map(byId).filter(f);   // ADR-0308
+const _selL=f=>_sb().filter(f);   // ADR-0308
 const _selR=op=>{if(op.origSel)_ss(op.origSel.filter(id=>byId(id)))};   // ADR-0309
 const _keepSel=arr=>{if(arr.length)_hi()[_hx()].origSel=arr};   // ADR-0312
 const _pd=e=>e.preventDefault();   // ADR-0326
 const _ce=t=>document.createElement(t);   // ADR-0329
 const _selIds=()=>[..._sl()];   // ADR-0330
+const _sb=()=>_selIds().map(byId);   // ADR-0418: selected-shape objects (10 sites)
+const _hasS=id=>_sl().has(id);   // ADR-0418: selection-membership predicate
 const _selN=()=>_sl().size;   // ADR-0334
 const _fin=Number.isFinite;   // ADR-0334
 const _min=Math.min,_max=Math.max,_abs=Math.abs;   // ADR-0337
@@ -827,7 +829,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.452';
+const V='1.7.453';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3415,7 +3417,7 @@ function resizeSnap(orig,handle,wp){
   const tol=SNAP_OBJ/_vp().zoom;
   const movesX=/[ew]/.test(handle),movesY=/[ns]/.test(handle);
   let x=wp.x,y=wp.y;const guides=[];
-  const idx=_snapIndex('resize',_selIds().sort().join(','),s=>_sl().has(s.id));   // ADR-0056: exclude the whole dragged set
+  const idx=_snapIndex('resize',_selIds().sort().join(','),s=>_hasS(s.id));   // ADR-0056: exclude the whole dragged set
   if(movesX){let best=null;for(const e of _snapNear(idx.xs,wp.x,tol)){const d=e.v-wp.x;if(!best||_abs(d)<_abs(best.d))best={d,at:e.v,b:e.b};}
     if(best){x=best.at;const ys=[orig.y,orig.y+orig.h,best.b.y,best.b.y+best.b.h];guides.push({x1:best.at,y1:_min(...ys),x2:best.at,y2:_max(...ys)});}}
   if(movesY){let best=null;for(const e of _snapNear(idx.ys,wp.y,tol)){const d=e.v-wp.y;if(!best||_abs(d)<_abs(best.d))best={d,at:e.v,b:e.b};}
@@ -3992,8 +3994,8 @@ _on(canvas,_PM,e=>{
       // ADR-0151: Alt+hover (Figma measure mode) — gap guides between the
       // selection envelope and the hovered shape. Signature-compare so a
       // steady cursor repaints nothing.
-      const _m=(e.altKey&&_selN()&&top&&!top.locked&&top.visible!==0&&!_sl().has(top.id))
-        ?{a:_bA(_selIds().map(byId).filter(Boolean)),b:_bb(top)}:null;
+      const _m=(e.altKey&&_selN()&&top&&!top.locked&&top.visible!==0&&!_hasS(top.id))
+        ?{a:_bA(_sb().filter(Boolean)),b:_bb(top)}:null;
       const _sig=m=>m?`${m.a.x}|${m.a.y}|${m.a.w}|${m.a.h}|${m.b.x}|${m.b.y}|${m.b.w}|${m.b.h}`:'';
       if(_sig(_m)!==_sig(state.measure)){state.measure=_m;_ivO()}
     }
@@ -4229,7 +4231,7 @@ _on(canvas,'dblclick',e=>{
   // dblclick on the solo-selected member reaches the label editor normally.
   if(hit.groupId){
     const grp=_sh().filter(s=>s.groupId===hit.groupId).map(s=>s.id);
-    if(grp.length>1&&grp.every(id=>_sl().has(id))){
+    if(grp.length>1&&grp.every(id=>_hasS(id))){
       _ss([hit.id]);_aS();_iv();return;
     }
   }
@@ -4626,7 +4628,7 @@ function _fitIfEmptyView(){
 // fit-all's 2 so a small selection actually enlarges, short of the 16x extreme.
 function zoomToSelection(){
   if(!_selN()){_w(t(_NS));return}
-  const b=_bA(_sh().filter(s=>_sl().has(s.id)));
+  const b=_bA(_sh().filter(s=>_hasS(s.id)));
   if(!b){_w(t(_NS));return}
   const z=_fitViewport(b,60,4);
   UI.announce(_rnd(z*100)+'%');
@@ -4713,7 +4715,7 @@ function pickOrMarquee(wp,e){
     const toSelect=gid
       ? _sh().filter(s=>s.groupId===gid).map(s=>s.id)
       : [hit.id];
-    const alreadySel=toSelect.every(id=>_sl().has(id));
+    const alreadySel=toSelect.every(id=>_hasS(id));
     // ADR-0060: Alt+drag duplicates first — copies become the selection and the
     // move gesture drags them (Figma/Excalidraw/draw.io parity). Locked hits and
     // locked members are excluded; frames bring their children.
@@ -5890,7 +5892,7 @@ function hideSelection(){
 // quick-link). Makes an arrow bound at BOTH ends (s.a/s.b → connEnds
 // edge-projects), committed as one add op.
 function connectSelection(){
-  const sel=_selIds().map(byId)
+  const sel=_sb()
     .filter(s=>s&&!s.locked&&s.visible!==0&&s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen');
   if(sel.length!==2){_w(t(_ST));return}
   const a=sel[0],b=sel[1],ab=_bb(a),bb=_bb(b);
@@ -5905,7 +5907,7 @@ function connectSelection(){
 // complement over unlocked, visible shapes (marquee/select-all rules).
 function selectInverse(){
   const inv=_sT();
-  for(const s of _sh())if(!s.locked&&s.visible!==0&&!_sl().has(s.id))inv.add(s.id);
+  for(const s of _sh())if(!s.locked&&s.visible!==0&&!_hasS(s.id))inv.add(s.id);
   _ss(inv);
   _aS();_iv();
 }
@@ -6266,7 +6268,7 @@ function _renderPngBlob(shapes,cb,desired){
 }
 // ADR-0052: selection-scoped exports share the whole-board renderers — the
 // exported region is exactly the selection's bbox (same pad/scale semantics).
-function _selShapes(){return _sh().filter(s=>_sl().has(s.id))}
+function _selShapes(){return _sh().filter(s=>_hasS(s.id))}
 function exportSelection(fmt){
   const sel=_selShapes();
   if(!sel.length){_w(t(_NS));return}
@@ -6334,7 +6336,7 @@ function copySVG(shapes=_sh()){
 // ADR-0089: replace image bytes in place — same frame position/width, height
 // follows the new aspect. One style op so undo restores bytes AND geometry.
 function replaceImage(){
-  const s=_selIds().map(byId).find(x=>x&&x.type==='image'&&!x.locked);
+  const s=_sb().find(x=>x&&x.type==='image'&&!x.locked);
   if(!s)return;
   const inp=_ce('input');
   inp.type='file';inp.accept='image/*';
@@ -8585,7 +8587,7 @@ const UI={
       has&&['ctxHide','⌘⇧H',hideSelection],
       has&&_selAny(s=>(_conn(s.type))&&!s.locked&&(s.a||s.b))&&['ctxPinAnchor','',pinAnchor],   // ADR-0213
       has&&_selAny(s=>(_conn(s.type))&&!s.locked&&(s.a||s.b))&&['ctxUnbind','',unbindSelection],   // ADR-0157
-      has&&_selIds().map(byId).filter(s=>s&&!s.locked&&s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen').length===2&&['ctxConnect','',connectSelection],
+      has&&_sb().filter(s=>s&&!s.locked&&s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen').length===2&&['ctxConnect','',connectSelection],
       _sh().some(s=>s.visible===0)&&['ctxShowAll','',showAllShapes],
       _sh().length&&['ctxSelectInverse','⌘⇧I',selectInverse],
       // ADR-0005's flagship feature was ⌥B-only — invisible to touch/mouse users
@@ -9079,7 +9081,7 @@ function toggleElbow(){
 // "what moves with the frame" is exactly what gets selected. Frame itself
 // drops out of the selection so follow-up ops act on the contents.
 function selectFrameContents(){
-  const frames=_selIds().map(byId).filter(s=>s&&s.type==='frame');
+  const frames=_sb().filter(s=>s&&s.type==='frame');
   if(!frames.length)return;
   const inner=withFrameChildren(new Set(frames.map(f=>f.id)));
   for(const f of frames)inner.delete(f.id);
@@ -9190,7 +9192,7 @@ function cycleStickyColor(){
 // "Fully inside" matches the membership rule used by move/delete/duplicate.
 function fitFrames(){
   const PAD=12;
-  const frames=_selIds().map(byId).filter(s=>s&&s.type==='frame'&&!s.locked);
+  const frames=_sb().filter(s=>s&&s.type==='frame'&&!s.locked);
   if(!frames.length)return;
   const before=[],after=[];
   for(const f of frames){
@@ -9418,7 +9420,7 @@ function cycleFont(){
 // ADR-0174: ctx opacity cycle — same style op as the digit keys (ADR-0167),
 // reachable from touch/ctx. Levels mirror Figma's decimal steps.
 function cycleOpacity(){
-  const first=_selIds().map(byId).find(s=>s&&!s.locked);
+  const first=_sb().find(s=>s&&!s.locked);
   if(!first)return;
   const lv=[1,0.7,0.4,0.1],cur=first.opacity??1;
   const idx=lv.findIndex(v=>_abs(v-cur)<0.051);
@@ -9486,7 +9488,7 @@ function _styleOf(sh){return{
 // ADR-0304: ctx link set/open — completes ADR-0301's s.link round-trip with
 // a user-facing setter (prompt → style op on every unlocked selection).
 function setSelLink(){
-  const first=_selIds().map(byId).find(s=>s&&!s.locked);
+  const first=_sb().find(s=>s&&!s.locked);
   if(!first)return;
   const u=prompt(t('linkPrompt'),first.link||'');
   if(u==null)return;
@@ -9501,7 +9503,7 @@ function setSelLink(){
   _so(before,after)
 }
 function openSelLink(){
-  const s=_selIds().map(byId).find(s=>s&&s.link);
+  const s=_sb().find(s=>s&&s.link);
   if(s&&!_wO(s.link,'_blank','noopener'))_w(t('popupBlocked'));   // ADR-0319
 }
 
