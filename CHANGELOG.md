@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.534] - 2026-09-23
+
+### リファクタ
+
+- `s.w!=null` を `_hb` shorthand に集約 (15 サイト、~30B 回収) (ADR-0501)
+
 ## [1.7.533] - 2026-09-23
 
 ### リファクタ
