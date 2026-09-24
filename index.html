@@ -775,7 +775,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.219';
+const V='1.7.220';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3890,6 +3890,15 @@ canvas.addEventListener('dblclick',e=>{
   // (Excalidraw parity). beginText commits the add + opens the editor; empty
   // text is dismissed on blur by the existing finalize path.
   if(!hit){beginText(wp);return}
+  // ADR-0162: dblclick on a grouped member whose group is already selected
+  // descends — narrows the selection to that member (Figma parity). A second
+  // dblclick on the solo-selected member reaches the label editor normally.
+  if(hit.groupId){
+    const grp=state.shapes.filter(s=>s.groupId===hit.groupId).map(s=>s.id);
+    if(grp.length>1&&grp.every(id=>state.selection.has(id))){
+      state.selection=new Set([hit.id]);_announceSel();invalidate();return;
+    }
+  }
   if(hit.locked)return;
   if(hit.type==='text'||hit.type==='sticky'){openTextEditor(hit,false);return}
   _openLabelEditorFor(hit);

@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.220]
+
+### 追加
+- **ダブルクリックでグループ潜り** (ADR-0162)。グループ選択状態での
+  dblclick がクリックしたメンバー単体に絞り込み (Figma parity)、
+  再度の dblclick でラベル編集に到達。
+
 ## [1.7.219]
 
 ### 追加
