@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.264';
+const V='1.7.265';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2719,7 +2719,7 @@ function drawShape(s,c){
       if(s.fstyle)_hatchCtx(c,s);                              // ADR-0077
       _drawBoxLabel(s,c);break;}
     case 'line':{
-      if(s.elbow){_polyline(c,_elbowPts(s));c.stroke();_drawConnLabel(s,c);break}
+      if(s.elbow){const _ep=_elbowPts(s);(s.r>0)?_polylineR(c,_ep,s.r):_polyline(c,_ep);c.stroke();_drawConnLabel(s,c);break}   // ADR-0207
       if(s.curve){const e=connEnds(s),cc=_curveCtrl(e,s.cbend);c.beginPath();c.moveTo(e.x1,e.y1);c.quadraticCurveTo(cc.x,cc.y,e.x2,e.y2);c.stroke();_drawConnLabel(s,c);break}
       _polyline(c,_linePts(s));c.stroke();_drawConnLabel(s,c);break;}   // ADR-0076
     case 'arrow':
@@ -2836,7 +2836,7 @@ function drawArrow(s,c){
     return;
   }
   if(s.elbow){
-    const pts=_elbowPts(s);_polyline(c,pts);c.stroke();
+    const pts=_elbowPts(s);(s.r>0)?_polylineR(c,pts,s.r):_polyline(c,pts);c.stroke();   // ADR-0207
     const L=pts[pts.length-1],P=pts[pts.length-2];
     const ang=Math.atan2(L.y-P.y,L.x-P.x)||Math.atan2(e.y2-e.y1,e.x2-e.x1);
     _arrowHeadShape(c,L.x,L.y,ang,ah,s.stroke,s.head);
@@ -2925,6 +2925,36 @@ function _diamondPath(c,s){
 function _polyline(c,pts){
   c.beginPath();c.moveTo(pts[0].x,pts[0].y);
   for(let i=1;i<pts.length;i++)c.lineTo(pts[i].x,pts[i].y);
+}
+// ADR-0207: polyline with rounded interior joints (draw.io "rounded" edgeStyle).
+// Each interior vertex is trimmed by r along both segments and bridged with a
+// quadratic curve (vertex as control point) — same math as _diamondPath.
+function _polylineR(c,pts,r){
+  c.beginPath();c.moveTo(pts[0].x,pts[0].y);
+  for(let i=1;i<pts.length-1;i++){
+    const p0=pts[i-1],p1=pts[i],p2=pts[i+1];
+    const e1=Math.hypot(p1.x-p0.x,p1.y-p0.y)||1,e2=Math.hypot(p2.x-p1.x,p2.y-p1.y)||1;
+    const rr=Math.min(r,e1/2,e2/2);
+    if(rr<=0){c.lineTo(p1.x,p1.y);continue}
+    c.lineTo(p1.x+(p0.x-p1.x)/e1*rr,p1.y+(p0.y-p1.y)/e1*rr);
+    c.quadraticCurveTo(p1.x,p1.y,p1.x+(p2.x-p1.x)/e2*rr,p1.y+(p2.y-p1.y)/e2*rr);
+  }
+  c.lineTo(pts[pts.length-1].x,pts[pts.length-1].y);
+}
+// Same rounded-joint walk as an SVG path `d` string (parity with _polylineR).
+function _polylineRd(pts,ox,oy,r){
+  const n2=v=>Math.round(v*10)/10;
+  let d=`M ${n2(pts[0].x+ox)} ${n2(pts[0].y+oy)}`;
+  for(let i=1;i<pts.length-1;i++){
+    const p0=pts[i-1],p1=pts[i],p2=pts[i+1];
+    const e1=Math.hypot(p1.x-p0.x,p1.y-p0.y)||1,e2=Math.hypot(p2.x-p1.x,p2.y-p1.y)||1;
+    const rr=Math.min(r,e1/2,e2/2);
+    if(rr<=0){d+=` L ${n2(p1.x+ox)} ${n2(p1.y+oy)}`;continue}
+    d+=` L ${n2(p1.x+(p0.x-p1.x)/e1*rr+ox)} ${n2(p1.y+(p0.y-p1.y)/e1*rr+oy)}`;
+    d+=` Q ${n2(p1.x+ox)} ${n2(p1.y+oy)} ${n2(p1.x+(p2.x-p1.x)/e2*rr+ox)} ${n2(p1.y+(p2.y-p1.y)/e2*rr+oy)}`;
+  }
+  d+=` L ${n2(pts[pts.length-1].x+ox)} ${n2(pts[pts.length-1].y+oy)}`;
+  return d;
 }
 // ADR-0119: head style variants — 'arrow' (filled triangle, default),
 // 'dot' (filled circle), 'open' (stroked chevron). Applies to both ends.
@@ -6704,8 +6734,10 @@ function buildSVG(shapes,paper){
           const lm=_curveLabelXY(s);
           {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
         }else if(s.elbow){
-          const pts=_elbowPts(s),spts=pts.map(p=>`${_num(p.x+ox)},${_num(p.y+oy)}`).join(' ');
-          els.push(`<polyline points="${spts}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}/>`);
+          const pts=_elbowPts(s);
+          if(s.r>0)els.push(`<path d="${_polylineRd(pts,ox,oy,s.r)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}/>`);   // ADR-0207
+          else{const spts=pts.map(p=>`${_num(p.x+ox)},${_num(p.y+oy)}`).join(' ');
+          els.push(`<polyline points="${spts}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}/>`)}
           const lm=_elbowLabelXY(s);
           {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
         }else{
@@ -6728,8 +6760,10 @@ function buildSVG(shapes,paper){
           const lm=_curveLabelXY(s);
           {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
         }else if(s.elbow){
-          const pts=_elbowPts(s),spts=pts.map(p=>`${_num(p.x+ox)},${_num(p.y+oy)}`).join(' ');
-          els.push(`<polyline points="${spts}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}/>`);
+          const pts=_elbowPts(s);
+          if(s.r>0)els.push(`<path d="${_polylineRd(pts,ox,oy,s.r)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}/>`);   // ADR-0207
+          else{const spts=pts.map(p=>`${_num(p.x+ox)},${_num(p.y+oy)}`).join(' ');
+          els.push(`<polyline points="${spts}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}/>`)}
           const Lp=pts[pts.length-1],Pp=pts[pts.length-2];
           const ang=Math.atan2(Lp.y-Pp.y,Lp.x-Pp.x)||Math.atan2(Y2-Y1,X2-X1);
           const a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5;
@@ -7856,7 +7890,7 @@ const UI={
       has&&['ctxFlipH','⇧H',()=>doFlip('h')],
       has&&['ctxFlipV','⇧V',()=>doFlip('v')],
       has&&['ctxRotate90','⇧R',()=>doRotate(90)],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='rect'||s.type==='diamond'||s.type==='image')&&!s.locked})&&['ctxCorner','',cycleCorner],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&((s.type==='rect'||s.type==='diamond'||s.type==='image')||((s.type==='line'||s.type==='arrow')&&s.elbow))&&!s.locked})&&['ctxCorner','',cycleCorner],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond'||s.type==='image')&&!s.locked})&&['ctxShadow','',toggleShadow],
       has&&['ctxHide','⌘⇧H',hideSelection],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked&&(s.a||s.b)})&&['ctxUnbind','',unbindSelection],   // ADR-0157
@@ -8672,7 +8706,10 @@ function cycleTextAlign(){
 function cycleCorner(){
   const before=[],after=[];
   for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='rect'&&s.type!=='diamond'&&s.type!=='image')||s.locked)continue;   // ADR-0156/0168
+    const s=byId(id);if(!s||s.locked)continue;
+    const boxOk=s.type==='rect'||s.type==='diamond'||s.type==='image';
+    const connOk=(s.type==='line'||s.type==='arrow')&&s.elbow;   // ADR-0207
+    if(!boxOk&&!connOk)continue;
     const cur=s.r==null?8:s.r,nxt=cur<4?8:cur<12?16:cur<20?24:0;
     before.push({id,r:s.r??null});after.push({id,r:nxt});
     s.r=nxt;state.style.r=nxt;                                  // ADR-0184

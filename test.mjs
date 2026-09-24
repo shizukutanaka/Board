@@ -414,7 +414,7 @@ const checks = [
   ['diamond i18n ja+en', html.includes("diamond:'ダイヤ'")&&html.includes("diamond:'Diamond'")],
   // v1.7.120: ADR-0062 elbow connectors
   ['elbow route helper + toggle in ctx menu', html.includes('function _elbowPts(s)')&&html.includes('function toggleElbow()')&&html.includes("['ctxElbow','',toggleElbow]")],
-  ['elbow draw/hit/svg/minimap paths', html.includes('if(s.elbow){_polyline(c,_elbowPts(s))')&&html.includes('s.elbow){\n          const pts=_elbowPts')&&html.includes('<polyline points=')&&html.includes('stroke-linejoin="round"')],
+  ['elbow draw/hit/svg/minimap paths', html.includes('(s.r>0)?_polylineR(c,_ep,s.r):_polyline(c,_ep)')&&html.includes('s.elbow){\n          const pts=_elbowPts')&&html.includes('<polyline points=')&&html.includes('stroke-linejoin="round"')],
   ['elbow i18n ja+en', html.includes("ctxElbow:'エルボー (直角)'")&&html.includes("ctxElbow:'Elbow (right-angle)'")],
   // v1.7.121: ADR-0063 bidirectional arrowheads
   ['start arrowhead: draw + svg + ctx toggle', html.includes('if(s.start)_arrowHeadShape(c,e.x1,e.y1')&&html.includes('function toggleBothEnds()')&&html.includes("['ctxBothEnds','',toggleBothEnds]")],
@@ -521,7 +521,7 @@ const checks = [
   ['snap index skips hidden shapes', html.includes('exclFn(s)||s.visible===0')],
   ['DOM mirror marks hidden shapes', html.includes("tagHidden:'(非表示)'")&&html.includes("s.visible===0?' '+t('tagHidden')")],
   ['fit ignores hidden unless all hidden', html.includes('const vis=state.shapes.filter(s=>s.visible!==0)')&&html.includes('_vis.length?_vis:state.shapes')],
-  ['rounded diamond path + cycle + ctx', html.includes('function _diamondPath(c,s)')&&html.includes("s.type!=='rect'&&s.type!=='diamond'")&&html.includes("s.type==='rect'||s.type==='diamond'")],
+  ['rounded diamond path + cycle + ctx', html.includes('function _diamondPath(c,s)')&&html.includes("const boxOk=s.type==='rect'||s.type==='diamond'||s.type==='image'")&&html.includes("s.type==='rect'||s.type==='diamond'")],
   ['SVG diamond emits rounded path when r>0', html.includes('const _dPts=[[X+W/2,Y],[X+W,Y+H/2]')&&html.includes("Math.min(_dr,e1/2,e2/2)")],
   ['unbind-selection ctx item + fn', html.includes("ctxUnbind:'結合を解除'")&&html.includes('function unbindSelection()')&&html.includes("['ctxUnbind','',unbindSelection]")],
   ['valign cycle: box-label vertical align', html.includes('function cycleVAlign()')&&html.includes("s.valign==='top'?s.y+6")&&html.includes("['ctxVAlign','',cycleVAlign]")],
@@ -705,6 +705,7 @@ const checks = [
   ['.drawio file entry points + parser (ADR-0203)', html.includes("f=>/\\.(drawio|dio)$/i.test(f.name)")&&html.includes('function drawioToShapes')],
   ['frame label italic/under/strike (ADR-0204)', html.includes("600 ${fs}px")&&html.includes("s.type!=='frame'&&!s.label)||s.locked)continue;   // ADR-0170/0204")],
   ['letter-spacing cycle — canvas ctx+SVG+style-copy (ADR-0205)', html.includes("function cycleSpacing()")&&html.includes("c.letterSpacing=(s.spacing||0)+'px'")&&html.includes('_svgLs(s)')&&html.includes('spacing:sh.spacing')],
+  ['elbow corner rounding canvas+SVG + cycleCorner gate (ADR-0207)', html.includes('function _polylineR')&&html.includes('_polylineRd(pts,ox,oy,s.r)')&&html.includes("connOk=(s.type==='line'||s.type==='arrow')&&s.elbow")],
   ['endpoint drag Shift constrains to 45 deg + label editor fontSize (ADR-0206)', html.includes("constrain the free end to 45")&&html.includes("${hit.fontSize||12}px")],
   ['i18n has excImported ja+en', html.includes("excImported:'Excalidraw を取り込みました'") && html.includes("excImported:'Excalidraw imported'")],
   // v1.7.102: ADR-0044 text paste → text shape
@@ -786,7 +787,7 @@ const checks = [
   ['empty-selection arrows pan viewport', html.includes("state.viewport.x+=k==='arrowleft'?-step:k==='arrowright'?step:0")],
   ['swapFillStroke: ⇧X swaps stroke↔fill via style op', html.includes('function swapFillStroke')&&html.includes("k==='x'&&e.shiftKey&&!meta")&&html.includes("const fk=s.type==='sticky'?'color':'fill'")],
   ['digit keys set opacity (Figma)', html.includes("/^[0-9]$/.test(k)&&state.selection.size")&&html.includes("opacity:k==='0'?1:+k/10")],
-  ['image corner radius via cycleCorner + clips', html.includes("s.type!=='image')||s.locked)continue;   // ADR-0156/0168")&&html.includes('clip-path="url(#irc')&&html.includes('roundRect(c,s.x,s.y,s.w,s.h,_cr);c.clip()')],
+  ['image corner radius via cycleCorner + clips', html.includes("if(!boxOk&&!connOk)continue;")&&html.includes('clip-path="url(#irc')&&html.includes('roundRect(c,s.x,s.y,s.w,s.h,_cr);c.clip()')],
   ['label fontSize honored across renderers', html.includes('const fs=s.fontSize||12;')&&html.includes('const fs=s.fontSize||14')&&html.includes("s.type!=='sticky'&&!s.label)||s.locked")],
     ['labels honor bold/italic/under/strike (ADR-0170)', html.includes('c.font=_fontStr(s,fs)')&&html.includes('font-weight="600"')&&html.includes('text-decoration=')],
   ['box/image labels honour s.align (ADR-0171)', html.includes("const al=s.align||'center';")&&html.includes('anc3=')&&html.includes("s.type!=='sticky'&&s.type!=='frame'&&!s.label)||s.locked)continue;   // ADR-0171/0197")],

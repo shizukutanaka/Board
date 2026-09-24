@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.265]
+
+### 追加
+- **エルボーコネクタの角丸** (ADR-0207)。ctx「角丸を切替」で
+  elbow 経路のジョイントを 8/16/24px 半径で角丸化 (draw.io
+  rounded edgeStyle 相当、canvas+SVG 同一数学、矢印ヘッド方向保持)。
+
 ## [1.7.264]
 
 ### 追加
