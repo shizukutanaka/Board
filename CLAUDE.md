@@ -526,6 +526,7 @@ Board/
 │   ├── ADR-0474-snapshot-size-cap.md  # スナップショット全盤面キャップを SHARE_MAX_SHAPES へ (切捨て修正、実装済)
 │   ├── ADR-0475-sync-req-retry.md     # join 時 sync-req の有界再送 (応答喪失時の空盤面待機解消、実装済)
 │   ├── ADR-0476-slice0-fold.md        # _s0 slice(0,n) shorthand 化 (実装済)
+│   ├── ADR-0477-indexof-trim-fold.md  # _ix/_trm shorthand 化 (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
