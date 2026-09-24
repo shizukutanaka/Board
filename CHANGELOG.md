@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.201]
+
+### 追加
+- **Alt+click でカーブを自動ボウへ** (ADR-0144)。選択中カーブの
+  apex を ⌥クリックで手動 `cbend` を解除し自動計算に復帰。
+  waypoint/elbow/curve の全ルート修整が ⌥click で統一。
+
 ## [1.7.200]
 
 ### 追加

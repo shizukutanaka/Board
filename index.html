@@ -774,7 +774,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.200';
+const V='1.7.201';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3425,6 +3425,12 @@ canvas.addEventListener('pointerdown',e=>{
           if(onlySel.curve&&!onlySel.locked){          // ADR-0132: curve-bend drag (apex grab)
             const apex=_curveLabelXY(onlySel);
             if(apex&&Math.hypot(wp.x-apex.x,wp.y-apex.y)<=HANDLE_SIZE/state.viewport.zoom){
+              if(e.altKey&&onlySel.cbend!=null){       // ADR-0144: ⌥click restores auto-bow
+                const origSel=[...state.selection];
+                Store._recordCommitted({op:'style',before:[{id:onlySel.id,cbend:onlySel.cbend}],after:[{id:onlySel.id,cbend:null}]});
+                if(origSel.length)state.history[state.histIdx].origSel=origSel;
+                delete onlySel.cbend;invalidate();return;
+              }
               ptr.dragKind='cbend';ptr.cbendOrig=clone(onlySel);return;
             }
           }

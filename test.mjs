@@ -507,6 +507,7 @@ const checks = [
   ['Alt+click deletes a waypoint', html.includes('wa.splice(i-1,1);onlySel.way=wa.length?wa:null')&&html.includes('ADR-0141')],
   ['flip mirrors rotation per-axis (180−θ for h)', html.includes("axis==='h'?180:360")&&html.includes('ADR-0142')],
   ['Alt+click recentres elbow trunk bend', html.includes('ADR-0143')&&html.includes("bend:onlySel.bend" )&&html.includes('delete onlySel.bend')],
+  ['Alt+click apex restores auto curve bow', html.includes('ADR-0144')&&html.includes('cbend:onlySel.cbend')&&html.includes('delete onlySel.cbend')],
   ['line↔arrow conversion via style op (ctx)', html.includes('toggleLineArrow')&&html.includes('ctxToArrow')&&html.includes("s.type==='line'?'arrow':'line'")],
   ['sticky↔text conversion via style op (ctx)', html.includes('toggleStickyText')&&html.includes('ctxToSticky')&&html.includes("s.type==='sticky'?'text':'sticky'")],
   ['frame select-contents (ctx)', html.includes('selectFrameContents')&&html.includes('ctxSelContents')&&html.includes('withFrameChildren(')],
