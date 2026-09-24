@@ -827,7 +827,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.450';
+const V='1.7.451';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -850,7 +850,6 @@ const clampZoom=z=>_max(MIN_ZOOM,_min(MAX_ZOOM,z)); // single source for the zoo
 const GRID_SIZE=20;
 function snapV(v){return state.snap?_rnd(v/GRID_SIZE)*GRID_SIZE:v}
 function snapPt(p){return{x:snapV(p.x),y:snapV(p.y)}}
-const SNAP_THRESHOLD=6;                 // pixels
 const SNAP_OBJ=8;                        // object-snap distance (screen px)
 const HANDLE_SIZE=8;
 const ROT_OFFSET=24;                     // rotation handle distance above top edge (screen px)
@@ -5651,7 +5650,7 @@ function toggleSq(){
   const sq=_g('sqinput');if(!sq)return;
   sq.style.display=sq.style.display==='none'?'block':'none';
   if(sq.style.display!=='none'){sq.focus();sq.select();}
-  else{_sq='';_ivO();}
+  else{_setSq('');_ivO();}
 }
 function pickTool(tool,temporary){
   if(temporary&&!window._prevTool)window._prevTool=_tl();
@@ -5906,7 +5905,7 @@ function connectSelection(){
 function selectInverse(){
   const inv=_sT();
   for(const s of _sh())if(!s.locked&&s.visible!==0&&!_sl().has(s.id))inv.add(s.id);
-  state.selection=inv;
+  _ss(inv);
   _aS();_iv();
 }
 function showAllShapes(){
@@ -8812,14 +8811,14 @@ async function _onBtnInstall(){
   if(btn)btn.hidden=true;
 }
 function wire(){
-  {const sq=_ce('input');sq.id='sqinput';sq.type='text';sq.placeholder=T.k.search;_sa(sq,_AL,T.k.search);sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--accent-contrast);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';_ap(_db,sq);_on(sq,'input',()=>{_sq=sq.value;_sqNav.idx=-1;_sqNav.lastQ='';_ivO()});_on(sq,_KD,ev=>{if(ev.key==='Escape'){_sq='';_sqNav.idx=-1;_sqNav.lastQ='';sq.style.display='none';sq.value='';_ivO();canvas.focus();}else if(ev.key==='Enter'&&!ev.isComposing){_pd(ev);
+  {const sq=_ce('input');sq.id='sqinput';sq.type='text';sq.placeholder=T.k.search;_sa(sq,_AL,T.k.search);sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--accent-contrast);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';_ap(_db,sq);_on(sq,'input',()=>{_setSq(sq.value);_ivO()});_on(sq,_KD,ev=>{if(ev.key==='Escape'){_setSq('');sq.style.display='none';sq.value='';_ivO();canvas.focus();}else if(ev.key==='Enter'&&!ev.isComposing){_pd(ev);
     // ⌘Enter: commit the whole match list as the selection, then fold the
     // box away — selecting is terminal, so stale search highlights only
     // distract from the follow-up (move/style the found group).
     if(ev.metaKey||ev.ctrlKey){const ms=_sqMatches();if(!ms.length)return;
       _ss(ms.map(s=>s.id));_aS();_iv();
       _tst(`${ms.length} ${t(_SM)}`);
-      _sq='';_sqNav.idx=-1;_sqNav.lastQ='';sq.style.display='none';sq.value='';_ivO();canvas.focus();
+      _setSq('');sq.style.display='none';sq.value='';_ivO();canvas.focus();
     }else _sqAdvance(ev.shiftKey?-1:1);}});}
   // tool buttons
   for(const b of _qsa(document,'.tool'))
@@ -9084,7 +9083,7 @@ function selectFrameContents(){
   const inner=withFrameChildren(new Set(frames.map(f=>f.id)));
   for(const f of frames)inner.delete(f.id);
   if(!inner.size){_w(t(_ST));return}
-  state.selection=inner;
+  _ss(inner);
   _aS();_o(inner.size+' '+t(_SM));
   _iv();
 }
