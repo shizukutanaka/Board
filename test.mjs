@@ -709,6 +709,7 @@ const checks = [
   ['drawio shadow=1 round-trips s.shadow (ADR-0246)', html.includes("r+='shadow=1;'")&&html.includes("sty.shadow==='1'")],
   ['drawio fontColor ↔ text/sticky s.stroke (ADR-0247)', html.includes("sty+='fontColor='+s.stroke")&&html.includes("sty.fontColor!=='none'")],
   ['visualViewport.resize re-runs canvas resize for iOS chrome (ADR-0251)', html.includes("visualViewport.addEventListener('resize',resize)")],
+  ['excalidraw fillStyle dots → hatch (ADR-0277)', html.includes("e.fillStyle==='dots'")],
   ['excalidraw e.scale flip all types (ADR-0276)', html.includes("e.scale[0]<0")],
   ['drawio export marks compressed=false (ADR-0275)', html.includes('<mxfile compressed="false">')],
   ['drawio shape=cylinder/cloud → ellipse (ADR-0274)', html.includes("sty.shape==='cylinder'")],

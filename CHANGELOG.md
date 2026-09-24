@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.329] - 2026-09-24
+
+### Added
+- .excalidraw: fillStyle dots → hatch 近似 (ADR-0277)
+
 ## [1.7.328] - 2026-09-24
 
 ### Added

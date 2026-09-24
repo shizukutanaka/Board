@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.328';
+const V='1.7.329';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6809,7 +6809,7 @@ function excToShapes(txt){
     if(e.strokeStyle==='dashed')o.dash=1;else if(e.strokeStyle==='dotted')o.dash=2;
     if(Number.isFinite(e.lineHeight)&&e.lineHeight!==1.25)o.lineH=Math.min(4,Math.max(0.5,e.lineHeight));   // ADR-0242
     // ADR-0230: excalidraw fidelity — hatch fills, roundness, align, arrowheads
-    if(e.fillStyle==='hachure'||e.fillStyle==='zigzag'||e.fillStyle==='zigzag-line')o.fstyle='hatch';else if(e.fillStyle==='cross-hatch')o.fstyle='cross';   // ADR-0268
+    if(e.fillStyle==='hachure'||e.fillStyle==='zigzag'||e.fillStyle==='zigzag-line'||e.fillStyle==='dots')o.fstyle='hatch';else if(e.fillStyle==='cross-hatch')o.fstyle='cross';   // ADR-0268
     if(e.roundness||e.strokeSharpness==='round')o.r=8;   // ADR-0267
     return o;
   };

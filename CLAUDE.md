@@ -326,6 +326,7 @@ Board/
 │   ├── ADR-0274-drawio-shape-approx.md  # drawio cylinder/cloud → ellipse 近似 (実装済)
 │   ├── ADR-0275-drawio-compressed-flag.md  # drawio export compressed=false 明記 (実装済)
 │   ├── ADR-0276-exc-scale-flip.md  # excalidraw scale 反転を全要素へ (実装済)
+│   ├── ADR-0277-exc-fillstyle-dots.md  # excalidraw fillStyle dots → hatch (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
