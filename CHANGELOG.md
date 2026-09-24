@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.141]
+
+### 追加
+- **画像キャプション** (ADR-0083)。image にも dblclick/Enter でラベル
+  編集が開き、内側下端に paper 帯 + 折返しテキストで描画 (draw.io式)。
+  画像高でクリップし溢れは '…'。SVG 書き出しにも同様に emit。
+
 ## [1.7.140]
 
 ### 修正

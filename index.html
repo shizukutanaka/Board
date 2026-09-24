@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.140';
+const V='1.7.141';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2479,6 +2479,24 @@ function _drawBoxLabel(s,c){
   for(let i=0;i<lines.length;i++)c.fillText(lines[i],s.x+s.w/2,cy+i*lh);
   c.restore();
 }
+// ADR-0083: image caption — paper-backed strip along the inside bottom edge,
+// clipped to the image height so the band never overflows the bitmap.
+function _drawImgLabel(s,c){
+  if(!s.label)return;
+  c.save();
+  const fs=14;
+  c.font=fs+'px system-ui,sans-serif';
+  let lines=wrapTextCached(s,s.label,Math.max(10,s.w-8),fs,t=>c.measureText(t).width);
+  const lh=fs*1.25,maxL=Math.max(1,Math.floor((s.h-4)/lh));
+  if(lines.length>maxL){lines=lines.slice(0,maxL);lines[maxL-1]+='…'}
+  const sh_=lines.length*lh+4,sy=s.y+s.h-sh_;
+  c.fillStyle=getCSS('--paper')||'#fff';c.globalAlpha=0.85;
+  c.fillRect(s.x,sy,s.w,sh_);
+  c.globalAlpha=1;c.fillStyle=s.stroke||'#0F172A';
+  c.textAlign='center';c.textBaseline='middle';
+  for(let i=0;i<lines.length;i++)c.fillText(lines[i],s.x+s.w/2,sy+2+lh/2+i*lh);
+  c.restore();
+}
 // Connector (edge) label at the midpoint of the bound endpoints (ADR-0003). A paper-
 // coloured background pill keeps the line from striking through the text. Mirrors the
 // SVG export. World-space → scales with zoom like every other label.
@@ -2550,6 +2568,7 @@ function drawShape(s,c){
       const img=s.dataUrl?getImg(s.dataUrl):null;   // ADR-0035: dataUrl-less image renders placeholder, never throws (getImg guards non-data:)
       if(img&&img.complete&&img.naturalWidth)c.drawImage(img,s.x,s.y,s.w,s.h);
       else{c.strokeStyle=s.stroke||'#CBD5E1';c.lineWidth=1;c.strokeRect(s.x,s.y,s.w,s.h)}
+      _drawImgLabel(s,c);                                         // ADR-0083
       break;}
     case 'frame':{
       // Frame: thin labeled border, transparent so content shows through
@@ -3574,7 +3593,12 @@ function _openLabelEditorFor(hit){
     openLabelEditor(hit,r.left+sp.x-40,r.top+sp.y-12,false);
     return true;
   }
-  return false;   // pen/image: no label to edit
+  if(hit.type==='image'){                                            // ADR-0083
+    const sp=G.w2s({x:hit.x+hit.w/2,y:hit.y+hit.h});
+    openLabelEditor(hit,r.left+sp.x-40,r.top+sp.y-28,false);
+    return true;
+  }
+  return false;   // pen: no label to edit
 }
 // ADR-0013 (FT-19): the only entry point above was dblclick, so keyboard/SR users could
 // never edit a connector or frame label. Enter is otherwise unused with the select tool
@@ -5672,6 +5696,7 @@ function buildSVG(shapes,paper){
         els.push('</text>');break;}
       case 'image':
         if(typeof s.dataUrl==='string'&&/^data:image\//.test(s.dataUrl))els.push(`<image x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" href="${_esc(s.dataUrl)}"${a}${rT}/>`);
+        if(s.label)_svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT);  // ADR-0083
         break;
       case 'frame':{
         const fr=Math.min(4,W/10,H/10);
@@ -5705,6 +5730,19 @@ function buildSVG(shapes,paper){
 // ADR-0074: box-shape label wrapped to the shape width, vertically centred —
 // mirrors _drawBoxLabel so canvas and SVG agree (wrap uses the same char-est
 // heuristic as sticky's export path).
+// ADR-0083: image caption strip — mirrors _drawImgLabel (paper band + clipped
+// wrapped text anchored to the inside bottom edge).
+function _svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT){
+  const fs=14,pad=4;
+  let lines=wrapText(s.label,Math.max(10,W-8),t=>t.length*fs*0.6);
+  const lh=fs*1.25,maxL=Math.max(1,Math.floor((H-4)/lh));
+  if(lines.length>maxL){lines=lines.slice(0,maxL);lines[maxL-1]+='…'}
+  const sh_=lines.length*lh+4,sy=Y+H-sh_;
+  els.push(`<g${rT}><rect x="${X+ox}" y="${sy+oy}" width="${W}" height="${sh_}" fill="${_esc(paper||'#FFFFFF')}" opacity="0.85"/>`);
+  els.push(`<text x="${X+W/2+ox}" y="${sy+oy+2}" dominant-baseline="hanging" font-family="system-ui,sans-serif" font-size="${fs}" text-anchor="middle" fill="${stroke}">`);
+  for(let i=0;i<lines.length;i++)els.push(`<tspan x="${X+W/2+ox}" dy="${i?lh:0}">${_esc(lines[i])}</tspan>`);
+  els.push('</text></g>');
+}
 function _svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT){
   const fs=14,pad=4;
   const lines=wrapText(s.label,Math.max(10,W-pad*2),t=>t.length*fs*0.6);
