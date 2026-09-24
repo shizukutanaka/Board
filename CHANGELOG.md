@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.215]
+
+### 追加
+- **ctx「結合を解除」** (ADR-0157)。選択したコネクタの端点結合
+  (a/b) を一括クリア — フローチャート部分複製時の解除作業を
+  1操作に集約。undo 完全対応。
+- README サイズバッジを実測に更新 (~144KB gzip)。
+
 ## [1.7.214]
 
 ### 追加
