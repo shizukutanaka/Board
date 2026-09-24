@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.400] - 2026-09-24
+
+### Changed
+- `_qsa`/`_JS`/`_JP` shorthand で ~400B 回収 (querySelectorAll 21 +
+  JSON.stringify 23 + JSON.parse 8) (ADR-0350)
+
 ## [1.7.399] - 2026-09-24
 
 ### Added
