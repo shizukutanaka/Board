@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.513] - 2026-09-23
+
+### テスト
+
+- ADR-0479 の非空虚テスト追加: zorder legacy `after` の frac ≤600 / id ≤64 境界を harness で実拒否検証 (ADR-0480)
+
 ## [1.7.512] - 2026-09-23
 
 ### 修正

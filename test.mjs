@@ -3429,6 +3429,12 @@ try {
     assert.ok(!validRemotePayload({op:'zorder',after:[{id:'a',z:NaN}]}),'legacy with NaN z rejected (would corrupt sortZ)');
     assert.ok(!validRemotePayload({op:'zorder',after:[{id:'a',frac:{x:1}}]}),'legacy with object frac rejected (breaks ADR-0001 sort)');
     assert.ok(!validRemotePayload({op:'zorder',after:[{z:1}]}),'legacy entry missing id rejected');
+    // ADR-0479: legacy frac/id length caps — the changes branch got caps at ADR-0473,
+    // the legacy path was missed; a 1MB frac/id string would be adopted verbatim.
+    assert.ok(!validRemotePayload({op:'zorder',after:[{id:'a',frac:'a'.repeat(601)}]}),'legacy frac >600 rejected');
+    assert.ok(validRemotePayload({op:'zorder',after:[{id:'a',frac:'a'.repeat(600)}]}),'legacy frac =600 accepted');
+    assert.ok(!validRemotePayload({op:'zorder',after:[{id:'a'.repeat(65)}]}),'legacy id >64 rejected');
+    assert.ok(validRemotePayload({op:'zorder',after:[{id:'a'.repeat(64)}]}),'legacy id =64 accepted');
     // move: ids must be strings (consistent with group/ungroup fix)
     assert.ok(validRemotePayload({op:'move',ids:['s1','s2'],dx:5,dy:3}),'move with string ids accepted');
     assert.ok(!validRemotePayload({op:'move',ids:[{id:'s1'}],dx:5,dy:3}),'move with object ids rejected');
