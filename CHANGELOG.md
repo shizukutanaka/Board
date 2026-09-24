@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.372] - 2026-09-24
+
+### Added
+- drawio `whiteSpace=nowrap` を `s.wrap` と往復 (テキスト折返し抑止、ADR-0321)
+
 ## [1.7.371] - 2026-09-24
 
 ### Added
