@@ -2,6 +2,15 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.288]
+
+### 修正
+- **excalidraw エクスポートfidelity** (ADR-0231)。
+  `fstyle`→hachure/cross-hatch、head/start→arrowhead
+  スタイル、flip→scale を出力。インポートは
+  `type:'image'` を `files` マップから復元 (`scale`
+  →flip) — 画像が往復で保存される。
+
 ## [1.7.287]
 
 ### 修正

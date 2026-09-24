@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.287';
+const V='1.7.288';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6291,7 +6291,8 @@ function exportBoard(shapes=state.shapes){                       // ADR-0114: op
 function excScene(shapes){
   const els=[],files={};
   const E=(s,over)=>Object.assign({id:s.id,strokeColor:s.stroke||'#1e1e1e',
-    backgroundColor:s.fill||'transparent',fillStyle:s.fill?'solid':'transparent',
+    backgroundColor:s.fill||'transparent',
+    fillStyle:!s.fill?'transparent':s.fstyle==='hatch'?'hachure':s.fstyle==='cross'?'cross-hatch':'solid',   // ADR-0231
     strokeWidth:s.size||2,strokeStyle:s.dash===1?'dashed':s.dash===2?'dotted':'solid',
     roughness:0,opacity:Math.round((s.opacity==null?1:s.opacity)*100),
     angle:(s.rotate||0)*Math.PI/180,seed:0,version:1,versionNonce:0,
@@ -6333,10 +6334,13 @@ function excScene(shapes){
           points:pts.map(p=>[p[0]-x0,p[1]-y0]),
           startBinding:s.a?{elementId:s.a,focus:s.aF?+(s.aF.fx*2-1).toFixed(2):0,gap:1}:null,   // ADR-0222: was s.bind1 (never set)
           endBinding:s.b?{elementId:s.b,focus:s.bF?+(s.bF.fx*2-1).toFixed(2):0,gap:1}:null,
-          lastCommittedPoint:null,startArrowhead:null,endArrowhead:s.type==='arrow'?'arrow':null}));break;}
+          lastCommittedPoint:null,
+          startArrowhead:s.start?'arrow':null,                                       // ADR-0231
+          endArrowhead:s.type==='arrow'?(s.head&&s.head!=='arrow'?s.head:'arrow'):null}));break;}
       case'image':{
         const fid='f'+s.id;files[fid]={id:fid,mimeType:(s.dataUrl.match(/^data:([^;]+)/)||[])[1]||'image/png',dataURL:s.dataUrl,created:0,lastRetrieved:0};
-        els.push(E(s,{type:'image',x:s.x,y:s.y,width:s.w||0,height:s.h||0,fileId:fid,status:'saved',scale:[1,1]}));break;}
+        els.push(E(s,{type:'image',x:s.x,y:s.y,width:s.w||0,height:s.h||0,fileId:fid,status:'saved',
+          scale:s.flip?[s.flip&1?-1:1,s.flip&2?-1:1]:[1,1]}));break;}                  // ADR-0231
       default:break;
     }
   }
@@ -6780,7 +6784,13 @@ function excToShapes(txt){
         }
         break;
       }
-      default:break;   // image (needs files ref), unknown — skip
+      case'image':{   // ADR-0231: files-map lookup restores image bytes + flip
+        const f=d.files&&e.fileId?d.files[e.fileId]:null;
+        if(!f||typeof f.dataURL!=='string'||!/^data:image\//.test(f.dataURL))break;
+        s=Shape.make('image',{x:e.x,y:e.y,w:W||80,h:H||80,dataUrl:f.dataURL.slice(0,25_000_000)});
+        if(Array.isArray(e.scale))s.flip=((e.scale[0]<0)?1:0)|((e.scale[1]<0)?2:0);
+        break;}
+      default:break;   // unknown — skip
     }
     if(s){if(r&&s.w!=null)s.rotate=r;Object.assign(s,S);shapes.push(s);
       // ADR-0223: line/arrow keep a back-ref to their exc element so
