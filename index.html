@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.143';
+const V='1.7.144';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4336,7 +4336,7 @@ function endRectLike(){
   if(d.w<2||d.h<2){
     if(d.type==='sticky'){const sp=snapPt({x:d.x,y:d.y});d.w=160;d.h=160;d.x=sp.x-80;d.y=sp.y-80}
     else if(d.type==='frame'){d.w=800;d.h=500;d.x-=400;d.y-=250}
-    else return;
+    else{d.w=120;d.h=80;d.x-=60;d.y-=40}   // ADR-0086: click stamps a default box (matches center-stamp size)
   }
   const origSel=[...state.selection];
   Store.commit({op:'add',shape:d});

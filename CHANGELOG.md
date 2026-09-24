@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.144]
+
+### 追加
+- **クリック単発で box 図形をスタンプ** (ADR-0086)。rect/ellipse/
+  diamond ツールの非ドラッグクリックで既定 120×80 (center-stamp
+  と同寸) を配置。従来は sticky/frame のみ既定サイズ化だった。
+
 ## [1.7.143]
 
 ### 追加

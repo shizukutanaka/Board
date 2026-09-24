@@ -454,6 +454,7 @@ const checks = [
   ['image caption: bottom paper strip + editor gate', html.includes('function _drawImgLabel(s,c)')&&html.includes('_drawImgLabel(s,c);')&&html.includes('function _svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT)')&&html.includes("hit.type==='image'")],
   ['route reset: resetRoute clears way/bend/elbow/curve via one style op', html.includes('function resetRoute()')&&html.includes('ctxRouteReset')&&html.includes('way:null,bend:null,elbow:0,curve:0')],
   ['frame fit: bbox of fully-inside shapes + padding via align op', html.includes('function fitFrames()')&&html.includes('ctxFrameFit')&&html.includes('framefit')],
+  ['click stamp: click places a default 120x80 box', html.includes('d.w=120;d.h=80;d.x-=60;d.y-=40')&&html.includes("ADR-0086")],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
@@ -3720,6 +3721,24 @@ try {
     state.selection=new Set();
     Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(byId(F.id))),JSON.parse(JSON.stringify(byId(K.id))),JSON.parse(JSON.stringify(byId(K2.id))),JSON.parse(JSON.stringify(byId(O.id)))]});
     console.log('  ✓ frame fit: bbox + pad + undo (3 asserts)');
+  }
+
+  // ADR-0086: click-only box tools stamp a default-size shape
+  {
+    state.draft=Shape.make('rect',{x:300,y:300,w:1,h:1});
+    endRectLike();
+    const b=state.shapes[state.shapes.length-1];
+    assert.ok(b.type==='rect'&&b.w===120&&b.h===80,'click stamps default 120x80');
+    assert.ok(b.x===240&&b.y===260,'click-stamp centers on the click point');
+    assert.ok(state.tool==='select','auto-return to select after stamping');
+    state.selection=new Set();
+    Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(b))]});
+    state.draft=Shape.make('ellipse',{x:400,y:400,w:1,h:1});
+    endRectLike();
+    const e2=state.shapes[state.shapes.length-1];
+    assert.ok(e2.type==='ellipse'&&e2.w===120,'ellipse also stamps');
+    Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(e2))]});
+    console.log('  ✓ click stamp: default size + center + select (4 asserts)');
   }
 
   // validPatch recurses: nested poison in a remote `upd` (gated by validPatch alone)
