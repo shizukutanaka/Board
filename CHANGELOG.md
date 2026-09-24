@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.229]
+
+### 追加
+- **ボックス/画像ラベルの水平揃え** (ADR-0171)。ctx「文字揃え」が
+  ラベル保持図形にも適用 — canvas/SVG ともに `s.align` で左/中央/右
+  (コネクタラベルは中点ピルのため対象外)。
+
 ## [1.7.228]
 
 ### 追加
