@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.367] - 2026-09-24
+
+### Added
+- SVG 書き出しでも 🔗 リンクバッジを描画 (canvas parity、ADR-0316)
+
 ## [1.7.366] - 2026-09-24
 
 ### Added
