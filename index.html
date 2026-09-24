@@ -787,7 +787,7 @@ const _selL=f=>[...state.selection].map(byId).filter(f);   // ADR-0308
 const _selR=op=>{if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)))};   // ADR-0309
 
 // ====================== CONSTANTS ======================
-const V='1.7.361';
+const V='1.7.362';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6428,6 +6428,14 @@ function drawioToShapes(txt){
   for(const c of cells){const id=c.getAttribute('id');if(!id)continue;
     const g=c.querySelector('mxGeometry');if(g)_geo.set(id,g);
     const p=c.getAttribute('parent');if(p)_par.set(id,p);}
+  // ADR-0311: multiple <diagram> pages flatten side-by-side — each page's
+  // cells offset by cumulative pageWidth+200 so pages don't overlap.
+  const _doff=new Map();{let _dx=0;
+    for(const dg of doc.querySelectorAll('diagram')){
+      const m=dg.querySelector('mxGraphModel'),pw=+(m&&m.getAttribute('pageWidth'))||850;
+      for(const c2 of dg.querySelectorAll('mxCell'))_doff.set(c2,_dx);
+      _dx+=pw+200;
+    }}
   const _off=new Map();
   const off=id=>{if(_off.has(id))return _off.get(id);
     const p=_par.get(id);let o={x:0,y:0};
@@ -6442,7 +6450,7 @@ function drawioToShapes(txt){
     const sty=_dioSty(c.getAttribute('style'));
     const _hid=c.getAttribute('visible')==='0';                  // ADR-0245
     const _o=off(c.getAttribute('id'));
-    const x=_o.x+(+g.getAttribute('x')||0),y=_o.y+(+g.getAttribute('y')||0),w=+g.getAttribute('width')||0,ht=+g.getAttribute('height')||0;
+    const x=_o.x+(_doff.get(c)||0)+(+g.getAttribute('x')||0),y=_o.y+(+g.getAttribute('y')||0),w=+g.getAttribute('width')||0,ht=+g.getAttribute('height')||0;
     const lbl=_dioLabel(c.getAttribute('value'));
     let s;
     if('ellipse' in sty||sty.shape==='cylinder'||sty.shape==='cloud')s=Shape.make('ellipse',{x,y,w:w||120,h:ht||80,label:lbl.slice(0,240)});   // ADR-0274
@@ -6473,8 +6481,9 @@ function drawioToShapes(txt){
     const _hid=c.getAttribute('visible')==='0';                  // ADR-0245
     let x1=0,y1=0,x2=0,y2=0;
     const sp=g?g.querySelector('mxPoint[as="sourcePoint"]'):null,tp=g?g.querySelector('mxPoint[as="targetPoint"]'):null;
-    if(sp){x1=+sp.getAttribute('x')||0;y1=+sp.getAttribute('y')||0}
-    if(tp){x2=+tp.getAttribute('x')||0;y2=+tp.getAttribute('y')||0}
+    const _do=_doff.get(c)||0;
+    if(sp){x1=(+sp.getAttribute('x')||0)+_do;y1=+sp.getAttribute('y')||0}
+    if(tp){x2=(+tp.getAttribute('x')||0)+_do;y2=+tp.getAttribute('y')||0}
     const a=c.getAttribute('source'),b=c.getAttribute('target');
     const sa=a?idOf.get(a):null,sb=b?idOf.get(b):null;
     if(sa){const bs=shapes.find(s2=>s2.id===sa),bb=bs&&G.bbox(bs);if(bb){x1=bb.x+bb.w/2;y1=bb.y+bb.h/2}}
@@ -6495,7 +6504,7 @@ function drawioToShapes(txt){
     if(sty.curved==='1')s.curve=1;
     if(sty.jumpStyle&&sty.jumpStyle!=='none')s.hop=1;
     const pts=g?[...g.querySelectorAll('Array mxPoint')]:[];
-    if(pts.length)s.way=pts.slice(0,200).map(p=>[+p.getAttribute('x')||0,+p.getAttribute('y')||0]);
+    if(pts.length)s.way=pts.slice(0,200).map(p=>[(+p.getAttribute('x')||0)+_do,+p.getAttribute('y')||0]);
     if(/orthogonal|elbow/i.test(String(sty.edgeStyle||'')))s.elbow=1;
     // ADR-0221: drawio exitX/exitY/entryX/entryY fixed ports → aF/bF fractions
     // (same normalisation as ADR-0209's Alt-drop anchors). Exit = source end.

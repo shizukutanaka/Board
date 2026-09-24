@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.362] - 2026-09-24
+
+### Added
+- drawio 複数ページ (`<diagram>` 複数) を pageWidth+200 間隔で横並び
+  展開して取り込み (従来は全ページが同一座標に重畳、ADR-0311)
+
 ## [1.7.361] - 2026-09-24
 
 ### Added
