@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.216]
+
+### 追加
+- **⌥+ドラッグのラッソ選択** (ADR-0158)。空キャンバス上の
+  Alt ドラッグでフリーハンド選択 — bbox 中心の点包含判定、
+  ⇧で加算、ロック/非表示は除外。
+
 ## [1.7.215]
 
 ### 追加

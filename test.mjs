@@ -524,6 +524,8 @@ const checks = [
   ['rounded diamond path + cycle + ctx', html.includes('function _diamondPath(c,s)')&&html.includes("s.type!=='rect'&&s.type!=='diamond'")&&html.includes("s.type==='rect'||s.type==='diamond'")],
   ['SVG diamond emits rounded path when r>0', html.includes('const _dPts=[[X+W/2,Y],[X+W,Y+H/2]')&&html.includes("Math.min(_dr,e1/2,e2/2)")],
   ['unbind-selection ctx item + fn', html.includes("ctxUnbind:'結合を解除'")&&html.includes('function unbindSelection()')&&html.includes("['ctxUnbind','',unbindSelection]")],
+  ['lasso: Alt+drag freehand select', html.includes("ptr.dragKind='lasso';ptr.lasso=[wp]")&&html.includes('function _ptInPoly')&&html.includes('state.lasso&&state.lasso.length>1')],
+  ['lasso commit: centre-in-poly + marquee parity', html.includes('_ptInPoly(b.x+b.w/2,b.y+b.h/2,pts)')&&html.includes('state.lasso=null;invalidateOverlay()')],
   ['line↔arrow conversion via style op (ctx)', html.includes('toggleLineArrow')&&html.includes('ctxToArrow')&&html.includes("s.type==='line'?'arrow':'line'")],
   ['sticky↔text conversion via style op (ctx)', html.includes('toggleStickyText')&&html.includes('ctxToSticky')&&html.includes("s.type==='sticky'?'text':'sticky'")],
   ['frame select-contents (ctx)', html.includes('selectFrameContents')&&html.includes('ctxSelContents')&&html.includes('withFrameChildren(')],
@@ -1224,7 +1226,7 @@ const checks = [
   // Shape-drawing DEFAULT colors (new frame/sticky stroke fallbacks) are deliberately left
   // on raw --brand: that's a style choice, not an accessibility-critical indicator.
   ["canvas UI-indicator strokes (selection/guides/marquee/rotation-tether/minimap-viewport) use --accent-contrast",
-    (html.match(/getCSS\('--accent-contrast'\)/g)||[]).length===10 &&
+    (html.match(/getCSS\('--accent-contrast'\)/g)||[]).length===11 &&
     (html.match(/getCSS\('--brand'\)/g)||[]).length===5],
   ['frame label editor text color uses --accent-contrast (real text, needs the 4.5:1 floor too)',
     html.includes("getCSS(bold?'--accent-contrast':'--ink')")],
