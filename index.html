@@ -852,7 +852,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.507';
+const V='1.7.508';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -7612,7 +7612,7 @@ const Net={
   init(roomId){
     if(this.bc){try{this._send({k:'bye',peer:_pi()});this.bc.close()}catch(_){}}   // ADR-0458
     // ADR-0458: drop old-room presence (RTC entries survive — no channel close)
-    _sO().clear();_cT(this._snapT);this._snapT=0;this._lastSnapAt=0;   // ADR-0459
+    _sO().clear();_cT(this._snapT);this._snapT=0;this._lastSnapAt=0;this._snapRx=false;this._snapRetry=0;   // ADR-0459/0475
     this._imgSent.clear();this._imgChunks.clear();this._imgOuts.length=0;this._snapIn=null;this._opcIn=null;   // ADR-0464/0466
     for(const id of _pr().keys())if(!id.startsWith('rtc:'))_pr().delete(id);this._pCt=_pr().size;_ivO();   // ADR-0467
     clearInterval(this._presenceTimer);   // re-init (room switch) must not leak the old heartbeat
@@ -7627,6 +7627,8 @@ const Net={
       this._presenceTimer=setInterval(()=>{
         this._send({k:'ping',peer:_pi(),seq:state.seq});
         this._reapPeers();
+        // ADR-0475
+        if(!this._snapRx&&this._snapRetry++<3)this._send({k:'sync-req',peer:_pi()});
       },NET_PRESENCE_INTERVAL);
     }catch{}
   },
@@ -7795,6 +7797,7 @@ const Net={
         if(this._loResp(msg.peer))this._sendSnapshot();
         break;
       case 'snapshot':
+        this._snapRx=true;   // ADR-0475
         if(_nS()===0)this._applySnapshot(msg);
         // Already have shapes: merge — adopt only shapes we don't have yet.
         // Restrict to 'add' ops: _snapshotMsg() only emits adds; accepting other
