@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.450] - 2026-09-23
+
+### Fixed
+- describeShape に fstyle (hatch/cross) / hop を追加 — ADR-0414 の見送り分を完結
+
+### Internal
+- `_selConnL`/`_selTxtL`/`_selArrowL`/`_ss`/`_md` shorthand 追加 (~340B 回収)
+
 ## [1.7.449] - 2026-09-23
 
 ### Fixed

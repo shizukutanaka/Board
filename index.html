@@ -780,11 +780,14 @@ const _p=()=>_gC('--paper'),_ac=()=>_gC('--accent-contrast');   // ADR-0292
 const _c01=v=>_min(1,_max(0,v));   // ADR-0295
 const _conn=t=>t==='line'||t==='arrow';   // ADR-0297
 const _selAny=f=>_selIds().some(id=>{const s=byId(id);return s&&f(s)});   // ADR-0302
+const _selConnL=()=>_selAny(s=>(_conn(s.type))&&!s.locked);                    // ADR-0415: 6 ctx-menu sites
+const _selTxtL=()=>_selAny(s=>(s.type==='text'||s.type==='sticky'||s.type==='frame'||s.label)&&!s.locked);   // ADR-0415: text-capable unlocked
+const _selArrowL=()=>_selAny(s=>s.type==='arrow'&&!s.locked);                  // ADR-0415
 const _forSel=f=>{for(const id of _sl()){const s=byId(id);if(s)f(s,id)}};   // ADR-0303
 const _csh=(s,c)=>{if(s.shadow){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=10;c.shadowOffsetY=3}};   // ADR-0306
 const _so=(b,a)=>{if(b.length){_styleOp(b,a);_iv()}};   // ADR-0307
 const _selL=f=>_selIds().map(byId).filter(f);   // ADR-0308
-const _selR=op=>{if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)))};   // ADR-0309
+const _selR=op=>{if(op.origSel)_ss(op.origSel.filter(id=>byId(id)))};   // ADR-0309
 const _keepSel=arr=>{if(arr.length)_hi()[_hx()].origSel=arr};   // ADR-0312
 const _pd=e=>e.preventDefault();   // ADR-0326
 const _ce=t=>document.createElement(t);   // ADR-0329
@@ -804,6 +807,7 @@ const _sO=()=>state.seenOps,_la=()=>state.lasso,_mq=()=>state.marquee,_dd=()=>st
 const _dpr=()=>window.devicePixelRatio,_iA=Array.isArray,_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log,_rAF=requestAnimationFrame,_pF=parseFloat,_db=document.body,_de=document.documentElement,_wO=window.open,_lg=k=>localStorage.getItem(k),_ls=(k,v)=>localStorage.setItem(k,v),_mP=()=>new Map(),_sT=()=>new Set(),_eU=encodeURIComponent,_dU=decodeURIComponent,_un='undefined',_AU='arrowup',_AD='arrowdown',_AL2='arrowleft',_AR2='arrowright',_ES='escape',_EN='enter',_TB='tab',_IK='#0F172A',_YW='#FEF08A';   // ADR-0384/0386/0391/0395/0397
 const _sh=()=>state.shapes;                                                // ADR-0364
 const _sl=()=>state.selection;
+const _ss=ids=>{state.selection=new Set(ids)};   // ADR-0415: selection-set writes (18 sites)
 const _st=()=>state.style;
 const _df=()=>state.draft;
 const _wc=()=>state.wclock;
@@ -814,6 +818,7 @@ const _pr=()=>state.peers;
 const _hi=()=>state.history;
 const _hx=()=>state.histIdx;
 const _dt=()=>state.dirty;
+const _md=v=>{state.dirty=v};   // ADR-0415: dirty-flag writes
 const _ed=()=>state.editing;                                    // ADR-0365
 const _iv=invalidate,_ivO=invalidateOverlay;                    // ADR-0366
 const _tst=(m,k)=>UI.toast(m,k),_w=m=>_tst(m,'warn'),_o=m=>_tst(m,'ok'),_e=m=>_tst(m,'err'),_iG=_invalidateGrid,_aS=_announceSel,_iD=invalidateDamage,_sz=sortZ;   // ADR-0366
@@ -822,7 +827,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.449';
+const V='1.7.450';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1392,7 +1397,7 @@ const Store={
     }else{
       state.histIdx++;
     }
-    state.dirty=true;
+    _md(!0);
     _ru();
     _ps();
     if(op.clock.peer===_pi())Net.broadcast(op);   // outbound only
@@ -1449,7 +1454,7 @@ const Store={
       if(sh){const _cb=_bb(sh);_oa(sh,f.patch);_iD(_dmgPair(_cb,_bb(sh),(sh.size||2)+16));}
     }
     this._stampWrites(op);
-    state.dirty=true;
+    _md(!0);
     _ru();
     _ps();
   },
@@ -1527,7 +1532,7 @@ const Store={
     _hi().push(op);
     if(_hi().length>MAX_HISTORY)_hi().shift();
     else state.histIdx++;
-    state.dirty=true;_ru();_ps();
+    _md(!0);_ru();_ps();
     if(op.clock.peer===_pi())Net.broadcast(op);
   },
   undo(){
@@ -1535,7 +1540,7 @@ const Store={
     const op=_hi()[_hx()];
     this._apply(op,false);
     state.histIdx--;
-    state.dirty=true;
+    _md(!0);
     _ru();
     _ps();
     return true;
@@ -1545,7 +1550,7 @@ const Store={
     state.histIdx++;
     const op=_hi()[_hx()];
     this._apply(op,true);
-    state.dirty=true;
+    _md(!0);
     _ru();
     _ps();
     return true;
@@ -2312,6 +2317,8 @@ function describeShape(s){
   if(s.flip)d+=' '+[s.flip&1&&t('ctxFlipH'),s.flip&2&&t('ctxFlipV')].filter(Boolean).join('+');   // ADR-0414
   if(s.shadow)d+=` ${t('ctxShadow')}`;   // ADR-0414
   if(_conn(s.type)&&(s.elbow||s.curve))d+=' '+(s.elbow?t('ctxElbow'):t('ctxCurve'));   // ADR-0414: routes are exclusive
+  if(s.fstyle==='hatch'||s.fstyle==='cross')d+=` ${t('ctxFillStyle')}`;   // ADR-0414: funded by the _ss/_sel* fold headroom
+  if(s.hop)d+=` ${t('ctxHop')}`;   // ADR-0414
   if(s.link)d+=' 🔗';   // ADR-0315: mirror the visual badge for SR users
   return d;
 }
@@ -2354,7 +2361,7 @@ function _mirrorSync(){
 }
 function _mirrorGo(id){
   const s=byId(id);if(!s)return;
-  state.selection=new Set([id]);
+  _ss([id]);
   // Centre the view on the shape, zooming out only when it doesn't fit (ADR-0049)
   const b=_bb(s);
   if(b&&b.w>0&&b.h>0)_fitViewport(b,40,2);else _iv();
@@ -3733,7 +3740,7 @@ function _sqAdvance(dir){
   if(!matches.length)return;
   _sqNav.idx=(_sqNav.idx+dir+matches.length)%matches.length;
   const sh=matches[_sqNav.idx];
-  state.selection=new Set([sh.id]);
+  _ss([sh.id]);
   centerOn(sh);
   _iv();
   _tst(`${describeShape(sh)} (${_sqNav.idx+1}/${matches.length})`);
@@ -4223,7 +4230,7 @@ _on(canvas,'dblclick',e=>{
   if(hit.groupId){
     const grp=_sh().filter(s=>s.groupId===hit.groupId).map(s=>s.id);
     if(grp.length>1&&grp.every(id=>_sl().has(id))){
-      state.selection=new Set([hit.id]);_aS();_iv();return;
+      _ss([hit.id]);_aS();_iv();return;
     }
   }
   if(hit.locked)return;
@@ -4303,7 +4310,7 @@ function openLabelEditor(hit,leftPx,topPx,bold){
       for(let k=1;k<=_sh().length;k++){
         const nx=_sh()[(cur+dir*k+_sh().length)%_sh().length];
         if(nx&&!nx.locked&&nx.visible!==0&&_lblAnchor(nx)){
-          state.selection=new Set([nx.id]);_aS();
+          _ss([nx.id]);_aS();
           inp.removeEventListener('blur',commit);commit();
           if(_openLabelEditorFor(nx))return;
         }
@@ -4445,7 +4452,7 @@ _on(window,'paste',e=>{
           const v=_St(cell||'').trim();
           if(v)built.push(Shape.make('sticky',{x:x0+ci*(sw+gx),y:y0+ri*(sh+gy),w:sw,h:sh,color:_YW,text:v.slice(0,2000)}));
         }));
-        if(built.length){Store.commit({op:'addMany',shapes:built});state.selection=new Set(built.map(x=>x.id));_iv();_o(t('textPasted'))}
+        if(built.length){Store.commit({op:'addMany',shapes:built});_ss(built.map(x=>x.id));_iv();_o(t('textPasted'))}
         return;
       }
       _pd(e);
@@ -5240,7 +5247,7 @@ function _stickyChain(s){
   const n=Shape.make('sticky',{x:s.x+s.w+16,y:s.y,w:s.w,h:s.h,color:s.color,fontSize:s.fontSize,align:s.align,
     font:s.font,lineH:s.lineH,spacing:s.spacing,bold:s.bold,italic:s.italic,under:s.under,strike:s.strike,valign:s.valign,stroke:s.stroke});   // ADR-0192 follow-up
   _cOp({op:'add',shape:n});
-  state.selection=new Set([n.id]);
+  _ss([n.id]);
   openTextEditor(n,true);
   _iv();
 }
@@ -5271,7 +5278,7 @@ function createShapeKbd(){
   }
   _cOp({op:'add',shape:s});
   pickTool('select');
-  state.selection=new Set([s.id]);
+  _ss([s.id]);
   _tst(`${t('created')}: ${describeShape(s)}`);
   if(s.type==='sticky')openTextEditor(s,true);
   _iv();
@@ -5356,7 +5363,7 @@ function openTextEditor(s,isNew){
         _syncTextFinalize(s,origText,true);    // peers got the blank add → sync its removal
       }else{
         _hi()[_hx()].shape=clone(s);
-        state.dirty=true;_ps();
+        _md(!0);_ps();
         _syncTextFinalize(s,origText,false);   // peers got the blank add → sync typed content
       }
     }else{
@@ -5391,7 +5398,7 @@ function openTextEditor(s,isNew){
       for(let k=1;k<=_sh().length;k++){
         const nx=_sh()[(cur+dir*k+_sh().length)%_sh().length];
         if(nx&&(nx.type==='text'||nx.type==='sticky')&&!nx.locked&&nx.visible!==0){
-          ta.blur();state.selection=new Set([nx.id]);_aS();openTextEditor(nx,false);return;
+          ta.blur();_ss([nx.id]);_aS();openTextEditor(nx,false);return;
         }
       }
       ta.blur();
@@ -5507,7 +5514,7 @@ _on(window,_KD,e=>{
   }
   if(meta&&k==='z'&&!e.shiftKey){_pd(e);if(Store.undo())_tst(t('undone'))}
   else if(meta&&(k==='y'||(k==='z'&&e.shiftKey))){_pd(e);if(Store.redo())_tst(t('redone'))}
-  else if(meta&&k==='a'){_pd(e);state.selection=new Set(_sh().filter(s=>s.visible!==0).map(s=>s.id));if(_selN())_aS();_iv()}   // ADR-0037
+  else if(meta&&k==='a'){_pd(e);_ss(_sh().filter(s=>s.visible!==0).map(s=>s.id));if(_selN())_aS();_iv()}   // ADR-0037
   if(k==='p'&&e.shiftKey&&!meta&&!e.altKey){_pd(e);Presentation.enter();return}
   else if(meta&&k===_EN){_pd(e);Presentation.enter()}
   else if(meta&&k==='c'){_pd(e);doCopy()}
@@ -5538,7 +5545,7 @@ _on(window,_KD,e=>{
     const ids=_sh().filter(s=>!s.locked&&s.visible!==0).map(s=>s.id);   // ADR-0163: hidden shapes are unreachable by pointer — Tab parity
     if(!ids.length)return;
     const id=cycleSel(ids,_selIds()[0],e.shiftKey?-1:1);
-    state.selection=new Set([id]);
+    _ss([id]);
     const sh=byId(id);
     if(sh){
       if(!inView(sh,visibleWorldRect()))centerOn(sh);
@@ -5741,7 +5748,7 @@ function _placeCopies(srcShapes,dx,dy){
     added.push(sh.id);
   }
   if(built.length)Store.commit({op:'addMany',shapes:built});
-  state.selection=new Set(added);
+  _ss(added);
   state.dupIds=new Set(added);state.dupDelta={x:dx,y:dy};     // ADR-0080: reseed chain
   _iv();
   return added;
@@ -5862,7 +5869,7 @@ function selectSamePaint(){
   const s0=sel[0],key=s0.type==='sticky'?s0.color:s0.fill;
   const same=_sh().filter(s=>s.visible!==0&&(s.type==='sticky'?s.color:s.fill)===key);
   if(same.length<2)return;
-  state.selection=new Set(same.map(s=>s.id));
+  _ss(same.map(s=>s.id));
   _aS();_o(same.length+' '+t(_SM));
   _iv();
 }
@@ -5891,7 +5898,7 @@ function connectSelection(){
     x1:ab.x+ab.w/2,y1:ab.y+ab.h/2,x2:bb.x+bb.w/2,y2:bb.y+bb.h/2,
     a:a.id,b:b.id});
   _cOp({op:'add',shape:s});
-  state.selection=new Set([s.id]);
+  _ss([s.id]);
   _iv();
 }
 // ADR-0139: invert selection (draw.io ⌘⇧I / Photoshop parity) — the
@@ -5918,7 +5925,7 @@ function selectSameType(){
   if(sel.length!==1)return;
   const same=_sh().filter(s=>s.visible!==0&&s.type===sel[0].type);
   if(same.length<2)return;
-  state.selection=new Set(same.map(s=>s.id));
+  _ss(same.map(s=>s.id));
   _aS();_o(same.length+' '+t(_SM));
   _iv();
 }
@@ -5958,7 +5965,7 @@ function doUngroup(){
   for(const s of _sh()){
     if(gids.has(s.groupId)&&!s.locked){before.push({id:s.id,groupId:s.groupId});delete s.groupId;ungrouped.push(s.id)}
   }
-  state.selection=new Set([...ids.filter(id=>byId(id)),...ungrouped]);
+  _ss([...ids.filter(id=>byId(id)),...ungrouped]);
   Store._recordCommitted({op:'ungroup',ids:ungrouped,gids:[...gids],before});
   _keepSel(origSel);
   _o(t('ungrouped'));
@@ -7867,7 +7874,7 @@ const Net={
       if(!lc||clockNewer(rc,lc)){ex[k]=v;lw[k]=clone(rc);dirty=true;}
     }
     if(dirty){
-      state.dirty=true;_iG();
+      _md(!0);_iG();
       _iv();_ru();_ps();
       return 'merge';
     }
@@ -8256,7 +8263,7 @@ const Persist={
         savedAt:_now()
       },DOC_KEY);
       await txDone(tx);
-      state.dirty=false;
+      _md(!1);
       state.lastSaveAt=_now();
       UI.refreshSaved();
       if(_sh().length)this.requestDurable();   // user has content worth keeping
@@ -8529,28 +8536,28 @@ const UI={
       has&&_selAny(s=>s.link)&&['ctxOpenLink','',openSelLink],    // ADR-0304
       has&&_selAny(s=>s.link)&&['ctxCopyLink','',()=>{const s=_selL(x=>x.link)[0];if(s)copyText(s.link).then(ok=>_tst(t(ok?'copied':'copyFailed'),ok?'ok':'warn'))}],   // ADR-0318
       state.styleClipboard&&has&&['ctxPasteStyle','⌥V',pasteStyle],
-      has&&_selAny(s=>(_conn(s.type))&&!s.locked)&&['ctxElbow','',toggleElbow],
-      has&&_selAny(s=>(_conn(s.type))&&!s.locked)&&['ctxCurve','',toggleCurve],
+      has&&_selConnL()&&['ctxElbow','',toggleElbow],
+      has&&_selConnL()&&['ctxCurve','',toggleCurve],
       has&&_selAny(s=>(_conn(s.type))&&!s.locked&&!s.curve)&&['ctxHop','',toggleHop],
       has&&_selAny(s=>(_conn(s.type))&&!s.locked&&(_wayArr(s).length||s.bend||s.elbow||s.curve||s.labelPos!=null||s.cbend!=null))&&['ctxRouteReset','',resetRoute],   // ADR-0090/0217
-      has&&_selAny(s=>(_conn(s.type))&&!s.locked)&&['ctxReverse','',reverseConn],
+      has&&_selConnL()&&['ctxReverse','',reverseConn],
       has&&_selAny(s=>s.type==='sticky'&&!s.locked)&&['ctxFitText','',fitSticky],
       has&&_selAny(s=>s.type==='frame'&&!s.locked)&&['ctxFrameFit','',fitFrames],
       has&&_selAny(s=>s.type==='frame'&&!s.locked)&&['ctxSelContents','',selectFrameContents],
-      has&&_selAny(s=>(s.type==='text'||s.type==='sticky'||s.type==='frame'||s.label)&&!s.locked)&&['ctxTextAlign','',cycleTextAlign],
-      has&&_selAny(s=>(s.type==='text'||s.type==='sticky'||s.type==='frame'||s.label)&&!s.locked)&&['ctxFont','',cycleFont],
+      has&&_selTxtL()&&['ctxTextAlign','',cycleTextAlign],
+      has&&_selTxtL()&&['ctxFont','',cycleFont],
       has&&_selAny(s=>!s.locked)&&['ctxOpacity','0-9',cycleOpacity],   // ADR-0174
       has&&_selAny(s=>(s.type==='rect'||s.type==='ellipse'||s.type==='diamond'||s.type==='sticky'||(s.type==='image'&&!!s.label))&&!s.locked)&&['ctxVAlign','',cycleVAlign],   // ADR-0179   // ADR-0159
       has&&_selAny(s=>(s.type==='text'||s.type==='sticky'||s.label)&&!s.locked)&&['ctxLineH','',cycleLineH],
-      has&&_selAny(s=>(s.type==='text'||s.type==='sticky'||s.type==='frame'||s.label)&&!s.locked)&&['ctxSpacing','',cycleSpacing],
+      has&&_selTxtL()&&['ctxSpacing','',cycleSpacing],
       has&&_selAny(s=>s.type==='text'&&!s.locked)&&['ctxWrap','',toggleWrap],
       has&&_selAny(s=>(s.type==='text'||s.type==='sticky')&&!s.locked)&&[_selIds().some(id=>byId(id)?.type==='sticky'&&!byId(id)?.locked)?'ctxToText':'ctxToSticky','',toggleStickyText],
       has&&_selAny(s=>s.type==='sticky'&&!s.locked)&&['ctxStickyColor','',cycleStickyColor],
       has&&_selAny(s=>(s.type==='rect'||s.type==='ellipse'||s.type==='diamond')&&!s.locked)&&['ctxFillStyle','',cycleFillStyle],
-      has&&_selAny(s=>s.type==='arrow'&&!s.locked)&&['ctxBothEnds','',toggleBothEnds],
-      has&&_selAny(s=>(_conn(s.type))&&!s.locked)&&[_selIds().some(id=>byId(id)?.type==='line'&&!byId(id)?.locked)?'ctxToArrow':'ctxToLine','',toggleLineArrow],
-      has&&_selAny(s=>s.type==='arrow'&&!s.locked)&&['ctxArrowHead','',cycleArrowHead],
-      has&&_selAny(s=>s.type==='arrow'&&!s.locked)&&['ctxStartHead','',cycleStartHead],
+      has&&_selArrowL()&&['ctxBothEnds','',toggleBothEnds],
+      has&&_selConnL()&&[_selIds().some(id=>byId(id)?.type==='line'&&!byId(id)?.locked)?'ctxToArrow':'ctxToLine','',toggleLineArrow],
+      has&&_selArrowL()&&['ctxArrowHead','',cycleArrowHead],
+      has&&_selArrowL()&&['ctxStartHead','',cycleStartHead],
       has&&_selAny(s=>s.type==='rect'&&!s.locked)&&['ctxRrect','',toggleRound],
       has&&['ctxDelete','⌫',doDelete],
       has&&'sep',
@@ -8610,7 +8617,7 @@ const UI={
       has&&['ctxExportSelDrawio','',()=>exportSelection('drawio')],       // ADR-0407
       has&&_selN()===1&&_selAny(s=>s.type==='image'&&!s.locked)&&['ctxReplaceImg','',replaceImage],   // ADR-0089
       has&&'sep',
-      ['ctxSelectAll','⌘A',()=>{state.selection=new Set(_sh().filter(s=>s.visible!==0).map(s=>s.id));if(_selN())_aS();_iv()}],
+      ['ctxSelectAll','⌘A',()=>{_ss(_sh().filter(s=>s.visible!==0).map(s=>s.id));if(_selN())_aS();_iv()}],
       _sh().length&&['ctxClear','',doClearAll]
     ].filter(Boolean).filter((it,i,a)=>!(it==='sep'&&(i===0||i===a.length-1||a[i-1]==='sep')));
     for(const it of items){
@@ -8810,7 +8817,7 @@ function wire(){
     // box away — selecting is terminal, so stale search highlights only
     // distract from the follow-up (move/style the found group).
     if(ev.metaKey||ev.ctrlKey){const ms=_sqMatches();if(!ms.length)return;
-      state.selection=new Set(ms.map(s=>s.id));_aS();_iv();
+      _ss(ms.map(s=>s.id));_aS();_iv();
       _tst(`${ms.length} ${t(_SM)}`);
       _sq='';_sqNav.idx=-1;_sqNav.lastQ='';sq.style.display='none';sq.value='';_ivO();canvas.focus();
     }else _sqAdvance(ev.shiftKey?-1:1);}});}
@@ -8840,7 +8847,7 @@ function wire(){
     // (Qiita: Rapls / Zenn: spacemarket). imeShouldCommit() returns false for
     // mid-composition input events to keep partial conversions out of state/IDB/sync;
     // a parallel compositionend listener picks up the final value once IME confirms.
-    const _commitDocName=()=>{_setDocName(docNameEl.value);state.dirty=true;_ps();Net._bcast({k:'name',peer:_pi(),name:state.docName})};   // ADR-0402
+    const _commitDocName=()=>{_setDocName(docNameEl.value);_md(!0);_ps();Net._bcast({k:'name',peer:_pi(),name:state.docName})};   // ADR-0402
     _on(docNameEl,'input',e=>{if(imeShouldCommit(e))_commitDocName()});
     _on(docNameEl,'compositionend',_commitDocName);
     _on(docNameEl,_CH,()=>{_setDocName(docNameEl.value||'Untitled');_ps()});
