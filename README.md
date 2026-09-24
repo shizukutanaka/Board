@@ -103,6 +103,9 @@ start index.html      # Windows
 - Undo/Redo 最大 500 段 — **全 op が完全可逆** (z 順序・グループ・整列も含む)
 - コピー / ペースト / 切り取り / 複製 (Ctrl+C/V/X/D)
 - 削除 (Del/Backspace)、全選択 (Ctrl+A)、右クリックコンテキストメニュー
+- 図形リンク (`s.link`): ctx「リンクを設定…」で https?:// URL を付与 — 🔗 バッジ表示、
+  ⌘+click (Win/Linux は Ctrl+click) または ctx「リンクを開く」で別タブ表示。
+  リンクのコピーも ctx から。drawio の Edit Link・excalidraw `link` と往復
 
 ### コラボレーション / Sync
 - 同一ブラウザのタブ間: BroadcastChannel で即時同期
