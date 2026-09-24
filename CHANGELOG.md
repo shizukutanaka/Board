@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.249]
+
+### 追加
+- **テキストの背景塗り** (ADR-0191)。fill スウォッチ等で設定した
+  `s.fill` がテキスト背面のハイライトプレートとして描画 (align
+  各モード対応、canvas+SVG)。従来は設定のみ可能で描画されない
+  隙間だった。
+
 ## [1.7.248]
 
 ### 修正

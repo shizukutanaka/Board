@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.248';
+const V='1.7.249';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3028,6 +3028,12 @@ function drawText(s,c){
   const lh=fs*(s.lineH||1.25);
   c.textAlign=s.align==='center'?'center':s.align==='right'?'right':'left';   // ADR-0073
   const ax=s.align==='center'?s.x+s.w/2:s.align==='right'?s.x+s.w:s.x;
+  // ADR-0191: s.fill paints a highlight plate behind the text (draw.io parity —
+  // previously settable via swatches/style-copy but rendered nowhere).
+  if(s.fill){let mw=0;for(const l of lines)mw=Math.max(mw,c.measureText(l).width);
+    const bx=s.align==='center'?ax-mw/2:s.align==='right'?ax-mw:ax;
+    c.save();c.fillStyle=s.fill;c.fillRect(bx-3,s.y-3,mw+6,lines.length*lh+6);c.restore();
+    c.fillStyle=s.stroke||'#0F172A';}
   for(let i=0;i<lines.length;i++)c.fillText(lines[i],ax,s.y+i*lh);
   // ADR-0095: canvas has no text-decoration — stroke a line under each row
   // (per-line measureText honours all three align modes).
@@ -6633,6 +6639,9 @@ function buildSVG(shapes,paper){
         const svgLines=String(s.text==null?'':s.text).split('\n');
         const tax=s.align==='center'?X+ox+W/2:s.align==='right'?X+ox+W:X+ox;   // ADR-0073
         const anch=s.align==='center'?' text-anchor="middle"':s.align==='right'?' text-anchor="end"':'';
+        if(s.fill){const mw2=Math.max(...svgLines.map(l=>l.length),0)*fs*0.6;              // ADR-0191
+          const bx2=s.align==='center'?tax-mw2/2:s.align==='right'?tax-mw2:tax;
+          els.push(`<rect x="${bx2-3}" y="${Y+oy-3}" width="${mw2+6}" height="${svgLines.length*fs*(s.lineH||1.25)+6}" fill="${_esc(s.fill)}"${a}${rT}/>`);}
         els.push(`<text x="${tax}" y="${Y+oy}" dominant-baseline="hanging" font-family="${_fontFam(s)}" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''} fill="${stroke}"${anch}${a}${rT}>`);   // ADR-0078/0095/0100
         for(let i=0;i<svgLines.length;i++)els.push(`<tspan x="${tax}" dy="${i?fs*(s.lineH||1.25):0}">${_esc(svgLines[i])}</tspan>`);
         els.push('</text>');break;}
