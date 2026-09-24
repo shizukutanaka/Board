@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.536';
+const V='1.7.537';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3435,7 +3435,7 @@ function _grotDrag(wp,shift){
   _iD(_dmgPair(_b0,_nb,ptr.gPad||40));                 // ADR-0026
 }
 function _grotCommit(){
-  const after=[...ptr.gOrig.keys()].map(id=>byId(id)).filter(Boolean).map(clone);
+  const after=[...ptr.gOrig.keys()].map(byId).filter(Boolean).map(clone);
   if(_ln(after)){
     const before=after.map(a=>ptr.gOrig.get(a.id));
     if(before.some((b,i)=>_JS(b)!==_JS(after[i]))){
@@ -3602,7 +3602,7 @@ function _gresizeDrag(wp,shift,alt){
 // Commit: one 'align' op batches all member before/after — a single undo
 // restores the whole group (same mechanism flip/rotate/lock already use).
 function _gresizeCommit(){
-  const after=[...ptr.gOrig.keys()].map(id=>byId(id)).filter(Boolean).map(clone);
+  const after=[...ptr.gOrig.keys()].map(byId).filter(Boolean).map(clone);
   if(_ln(after)){
     const before=after.map(a=>ptr.gOrig.get(a.id));
     if(before.some((b,i)=>_JS(b)!==_JS(after[i]))){
@@ -4482,7 +4482,7 @@ _on(window,'paste',e=>{
       if(/	/.test(txt)&&txt.includes('\n')){
         _pd(e);
         const rows=_s0(txt,PASTE_MAX_CHARS).split('\n').map(r=>r.split('\t'));
-        const C=_max(...rows.map(r=>_ln(r))),R=_ln(rows);
+        const C=_max(...rows.map(_ln)),R=_ln(rows);
         const sw=160,sh=96,gx=16,gy=16;
         const r2=_cbr();
         const wp=_s2({x:r2.width/2,y:r2.height/2});
@@ -4498,7 +4498,7 @@ _on(window,'paste',e=>{
       _pd(e);
       const fs=16,body=_s0(txt,PASTE_MAX_CHARS);
       const lines=body.split('\n');
-      const w=_min(600,_max(60,_max(...lines.map(l=>_ln(l)))*fs*0.55));
+      const w=_min(600,_max(60,_max(...lines.map(_ln))*fs*0.55));
       const r=_cbr();
       const wp=_s2({x:r.width/2,y:r.height/2});
       const sh=Shape.make('text',{x:wp.x-w/2,y:wp.y-(_ln(lines)*fs*1.4)/2,w,h:_ln(lines)*fs*1.4,text:body,fontSize:fs});
@@ -7264,7 +7264,7 @@ function _connLabelSVG(s,x1,y1,x2,y2,ox,oy,stroke,paper){
   const mx=(x1+x2)/2+ox,my=(y1+y2)/2+oy;
   const fs=_fS(s)||12;
   const lns=_St(_lb(s)).split('\n'),lh2=fs*(s.lineH||1.25);          // ADR-0210/0212
-  const lw=_max(...lns.map(l=>_ln(l)),0)*fs*0.6+8,th=_ln(lns)*lh2;
+  const lw=_max(...lns.map(_ln),0)*fs*0.6+8,th=_ln(lns)*lh2;
   const tsp=lns.map((l,i)=>`<tspan x="${mx}" dy="${i?lh2:0}">${_esc(l)}</tspan>`).join('');
   return `<rect x="${mx-lw/2}" y="${my-th/2}" width="${lw}" height="${th}" fill="${_esc(_fi(s)||paper||'#FFFFFF')}" opacity="0.9"/>`+
     `<text x="${mx}" y="${my-(_ln(lns)-1)*lh2/2}" ${_svgFont(s,fs)} text-anchor="middle" dominant-baseline="central" fill="${stroke}">${tsp}</text>`;   // ADR-0170/0210
@@ -7445,7 +7445,7 @@ function buildSVG(shapes,paper){
         const svgLines=s.wrap?wrapText(_St(_txx(s)==null?'':_txx(s)),_abs(W),t=>_ln(t)*fs*0.6):_St(_txx(s)==null?'':_txx(s)).split('\n');   // ADR-0208
         const tax=s.align==='center'?X+ox+W/2:s.align==='right'?X+ox+W:X+ox;   // ADR-0073
         const anch=s.align==='center'?' text-anchor="middle"':s.align==='right'?' text-anchor="end"':'';
-        if(_fi(s)){const mw2=_max(...svgLines.map(l=>_ln(l)),0)*fs*0.6;              // ADR-0191
+        if(_fi(s)){const mw2=_max(...svgLines.map(_ln),0)*fs*0.6;              // ADR-0191
           const bx2=s.align==='center'?tax-mw2/2:s.align==='right'?tax-mw2:tax;
           els.push(`<rect x="${bx2-3}" y="${Y+oy-3}" width="${mw2+6}" height="${_ln(svgLines)*fs*(s.lineH||1.25)+6}" fill="${_esc(_fi(s))}"${a}${rT}/>`);}
         els.push(`<text x="${tax}" y="${Y+oy}" dominant-baseline="hanging" ${_svgFont(s,fs)} fill="${stroke}"${anch}${a}${rT}${_sh}>`);   // ADR-0078/0095/0100

@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.537] - 2026-09-23
+
+### リファクタ
+
+- `.map(x=>X(x))` を point-free `.map(X)` 化 (6 サイト、~50B 回収) (ADR-0504)
+
 ## [1.7.536] - 2026-09-23
 
 ### リファクタ
