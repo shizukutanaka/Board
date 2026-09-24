@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.518] - 2026-09-23
+
+### 修正
+
+- validRemotePayload の全 op レベル id フィールドに ≤64 キャップ — upd.id / move.ids[] / zorder changes[].id / connClears[].id / patches() 共通 id / group・ungroup の ids+before (ADR-0485)。従来は `_iS()` の型チェックのみで validShape の ≤64 規約が op 側に及んでおらず、敵性ピアが長大 id を byId 探索・Map キー・`_stampWrites` 連結に供給できた
+
 ## [1.7.517] - 2026-09-23
 
 ### ドキュメント

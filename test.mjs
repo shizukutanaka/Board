@@ -1263,14 +1263,14 @@ const checks = [
     html.includes("Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(_wc()),origSel});")],
   // v1.7.28: validRemotePayload for upd must block locked key (parity with style/resize/align)
   ['remote upd op cannot set locked (noLock guard extended to upd)',
-    html.includes("case 'upd':{const noLock=p=>!('locked' in p);\n      if(!_iS(op.id)||!validPatch(op.after)||!noLock(op.after)")],
+    html.includes("case 'upd':{const noLock=p=>!('locked' in p);\n      if(!_iS(op.id)||_ln(op.id)>64||!validPatch(op.after)||!noLock(op.after)")],
   // v1.7.30: _apply add backward restores origSel; createShapeKbd attaches origSel
   ['_apply add backward restores origSel; createShapeKbd attaches origSel',
     html.includes("_selR(op);") &&
     html.includes("_cOp({op:'add',shape:s});")],
   // v1.7.33: validRemotePayload group must require before (string-id array)
   ['validRemotePayload group: requires before array with string ids',
-    html.includes("&&_iA(op.before)&&_ln(op.before)<=MAX_OP_SHAPES&&op.before.every(b=>b&&_iS(b.id));")],
+    html.includes("&&_iA(op.before)&&_ln(op.before)<=MAX_OP_SHAPES&&op.before.every(b=>b&&_iS(b.id)&&_ln(b.id)<=64);")],
   // v1.7.34: validRemotePayload ungroup must require gids array
   ['validRemotePayload ungroup: requires gids array with string elements',
     html.includes("&&_iA(op.gids)&&_ln(op.gids)<=MAX_OP_SHAPES&&op.gids.every(g=>_iS(g)&&_ln(g)>0&&_ln(g)<=64)")],
@@ -3439,6 +3439,24 @@ try {
     assert.ok(validRemotePayload({op:'move',ids:['s1','s2'],dx:5,dy:3}),'move with string ids accepted');
     assert.ok(!validRemotePayload({op:'move',ids:[{id:'s1'}],dx:5,dy:3}),'move with object ids rejected');
     console.log('  ✓ Step3 validRemotePayload: zorder legacy validates z/frac; move validates string ids');
+  }
+
+  // ADR-0485: every _iS(id) id field in validRemotePayload must also enforce the <=64
+  // length cap that validShape applies to shape ids — a peer could ship an arbitrarily
+  // long id through upd.id / move.ids / zorder changes[].id / connClears[].id /
+  // group ids+before / ungroup ids, which validShape's cap never saw.
+  {
+    const longId='x'.repeat(65);
+    assert.ok(validRemotePayload({op:'upd',id:'s',after:{x:1}}),'upd normal id accepted');
+    assert.ok(!validRemotePayload({op:'upd',id:longId,after:{x:1}}),'upd id >64 rejected');
+    assert.ok(!validRemotePayload({op:'move',ids:[longId],dx:1,dy:1}),'move id >64 rejected');
+    assert.ok(!validRemotePayload({op:'zorder',changes:[{id:longId,after:'k'}]}),'zorder changes id >64 rejected');
+    assert.ok(!validRemotePayload({op:'style',after:[{id:longId,x:1}],before:[{id:longId}]}),'style patch id >64 rejected');
+    assert.ok(!validRemotePayload({op:'group',ids:[longId],gid:'g',before:[{id:longId}]}),'group ids entry >64 rejected');
+    assert.ok(!validRemotePayload({op:'group',ids:['s'],gid:'g',before:[{id:longId}]}),'group before id >64 rejected');
+    assert.ok(!validRemotePayload({op:'ungroup',ids:[longId],gids:['g']}),'ungroup ids entry >64 rejected');
+    assert.ok(!validRemotePayload({op:'del',shapes:[{id:'s',type:'rect',x:0,y:0,w:1,h:1,z:0}],connClears:[{id:longId,before:{a:'x'}}]}),'connClears id >64 rejected');
+    console.log('  ✓ ADR-0485: validRemotePayload enforces the <=64 id cap on every id field');
   }
 
   // Net._snapshotMsg carries `ops` so a non-empty peer can merge (WebRTC + BC both)
