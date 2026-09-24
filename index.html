@@ -527,6 +527,10 @@ body{visibility:visible}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3zM18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5zM2 2l7.586 7.586M11 11a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
       <kbd>P</kbd>
     </button>
+    <button class="tool" data-tool="marker" aria-label="Marker" title="Marker (K)" data-t-aria="k.marker" data-t-title="k.marker">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4l8 8Z"/></svg>
+      <kbd>K</kbd>
+    </button>
     <button class="tool" data-tool="rect" aria-label="Rectangle" title="Rectangle (R)" data-t-aria="k.rect" data-t-title="k.rect">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/></svg>
       <kbd>R</kbd>
@@ -770,7 +774,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.176';
+const V='1.7.184';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -845,7 +849,7 @@ const I18N={
     saved:'保存済み',savedNow:'たった今',savedAgo:'秒前',
     exported:'PNGを書き出しました',exportedSVG:'SVGを書き出しました',exportedBoard:'.boardファイルを保存しました',exportedExc:'.excalidrawファイルを保存しました',loadedBoard:'ボードを読み込みました',
     imagePasted:'画像を貼り付けました',empty:'キャンバスが空',
-    noSelection:'選択なし',alreadySnapped:'既にグリッド上です',styleCopied:'スタイルコピー',stylePasted:'スタイル適用',
+    noSelection:'選択なし',alreadySnapped:'既にグリッド上です',nothingLocked:'ロックされた図形はありません',styleCopied:'スタイルコピー',stylePasted:'スタイル適用',
     selectTwo:'2つ以上選択してください',framed:'フレームで包みました',grouped:'グループ化',noGroup:'グループなし',
     ungrouped:'グループ解除',noFrames:'フレームがありません (F キーで作成)',
     imgBig:'画像が大きすぎます。縮小してください',imgErr:'画像を読み込めませんでした',
@@ -861,9 +865,9 @@ const I18N={
     confirmClear:'すべて削除しますか？',
     ctxCopy:'コピー',ctxPasteInPlace:'同じ位置に貼り付け',ctxPasteAt:'ここに貼り付け',ctxPaste:'貼り付け',ctxDuplicate:'複製',
     ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxCurve:'曲線',ctxRouteReset:'ルートをリセット (直線に戻す)',ctxSelContents:'内容を選択',ctxFrameFit:'コンテンツに合わせる',ctxArrowHead:'矢印ヘッド (矢印→丸→シェブロン)',ctxToArrow:'矢印に変換',ctxToLine:'直線に変換',ctxBothEnds:'両端ヘッド',ctxRrect:'角スタイル (角丸→直角)',ctxStickyColor:'付箋の色 (順送り)',ctxToText:'テキストに変換',ctxToSticky:'付箋に変換',ctxTextAlign:'テキスト揃え (左→中央→右)',ctxFillStyle:'塗りスタイル (塗り→ハッチ→斜格子)',
-    ctxSelectSame:'同色を選択',ctxWrapFrame:'フレームで包む',ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
+    ctxSelectSameType:'同じ種類を選択',ctxSelectSame:'同色を選択',ctxWrapFrame:'フレームで包む',ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
     ctxSendBackward:'背面へ',ctxSendBack:'最背面へ',
-    ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxLock:'ロック',ctxUnlock:'ロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
+    ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxLock:'ロック',ctxUnlock:'ロック解除',ctxUnlockAll:'全てロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
     canvasHint:'描画キャンバス。Tab/⇧Tab で図形巡回、Enter で作成、矢印で移動、⌥+矢印でリサイズ',
     tools:'ツール',docNameLabel:'ドキュメント名',activePeers:'接続中のピア',expPng:'PNG 書き出し',
     moreExport:'その他の書き出し・読み込み',install:'アプリとしてインストール',style:'スタイル',
@@ -878,7 +882,7 @@ const I18N={
     ctxHSpace:'水平均等配置',ctxVSpace:'垂直均等配置',
     ctxSelectAll:'すべて選択',ctxClear:'全消去',
     ctxExportPNG:'PNG書き出し',ctxCopyPNG:'PNGをクリップボードにコピー',ctxExportSVG:'SVG書き出し',ctxExportPDF:'PDF書き出し',ctxExportExc:'Excalidraw (.excalidraw) 書き出し',ctxExportBoard:'.boardファイル書き出し',ctxImportBoard:'.boardファイル読み込み...',
-    ctxExportSelPNG:'選択をPNG書き出し',ctxCopySelPNG:'選択のPNGをコピー',ctxExportSelSVG:'選択をSVG書き出し',ctxCopySelSVG:'選択のSVGをコピー',ctxCopyBoard:'ボードJSONをコピー',ctxExportPNG1x:'PNG @1x 書き出し',ctxExportPNG4x:'PNG @4x 書き出し (高解像度)',ctxExportSelBoard:'選択を.board書き出し',ctxReplaceImg:'画像を差替え',
+    ctxExportSelPNG:'選択をPNG書き出し',ctxCopySelPNG:'選択のPNGをコピー',ctxExportSelSVG:'選択をSVG書き出し',ctxCopySelSVG:'選択のSVGをコピー',ctxCopyBoard:'ボードJSONをコピー',ctxExportPNG1x:'PNG @1x 書き出し',ctxExportPNG4x:'PNG @4x 書き出し (高解像度)',ctxExportViewPNG:'表示範囲を PNG 書き出し',ctxExportSelBoard:'選択を.board書き出し',ctxReplaceImg:'画像を差替え',
     share:'共有',shareTitle:'共有',
     shareUrlHint:'このURLをコピーして送ると、相手に内容が共有されます',
     shareEncLabel:'🔒 暗号化リンク (推奨)',
@@ -910,7 +914,7 @@ const I18N={
     backupRestoreFailed:'バックアップの復元に失敗しました',
     peers:'人',you:'自分',
     k:{select:'選択',hand:'手のひら',pen:'ペン',rect:'矩形',ellipse:'楕円',
-      arrow:'矢印',line:'線',text:'文字',sticky:'付箋',frame:'フレーム',eraser:'消しゴム',diamond:'ダイヤ',
+      arrow:'矢印',line:'線',text:'文字',sticky:'付箋',frame:'フレーム',eraser:'消しゴム',diamond:'ダイヤ',marker:'マーカー',
       undo:'元に戻す',redo:'やり直し',del:'削除',dup:'複製',fontSize:'フォントサイズ',boldItalic:'太字/斜体/下線/取消線',
       selAll:'全選択',copy:'コピー',paste:'貼付',cut:'切取',
       zoomIn:'拡大',zoomOut:'縮小',zoom100:'100%にリセット',
@@ -924,7 +928,7 @@ const I18N={
     saved:'saved',savedNow:'just now',savedAgo:'s ago',
     exported:'PNG exported',exportedSVG:'SVG exported',exportedBoard:'Board file saved',exportedExc:'Excalidraw file saved',loadedBoard:'Board loaded',
     imagePasted:'Image pasted',empty:'Canvas is empty',
-    noSelection:'No selection',alreadySnapped:'Already on grid',styleCopied:'Style copied',stylePasted:'Style applied',
+    noSelection:'No selection',alreadySnapped:'Already on grid',nothingLocked:'No locked shapes',styleCopied:'Style copied',stylePasted:'Style applied',
     selectTwo:'Select 2 or more',framed:'Wrapped in frame',grouped:'Grouped',noGroup:'No group',
     ungrouped:'Ungrouped',noFrames:'No frames (press F to create)',
     imgBig:'Image too large — please resize',imgErr:'Image failed to load',
@@ -937,9 +941,9 @@ const I18N={
     confirmClear:'Delete everything?',
     ctxCopy:'Copy',ctxPasteInPlace:'Paste in place',ctxPasteAt:'Paste here',ctxPaste:'Paste',ctxDuplicate:'Duplicate',
     ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxCurve:'Curved',ctxRouteReset:'Reset route (straighten)',ctxSelContents:'Select contents',ctxFrameFit:'Fit to contents',ctxArrowHead:'Arrowhead (arrow→dot→open)',ctxToArrow:'Convert to arrow',ctxToLine:'Convert to line',ctxBothEnds:'Arrowheads both ends',ctxRrect:'Corners (round→sharp)',ctxStickyColor:'Sticky colour (cycle)',ctxToText:'Convert to text',ctxToSticky:'Convert to sticky',ctxTextAlign:'Text align (left→center→right)',ctxFillStyle:'Fill style (solid→hatch→cross)',
-    ctxSelectSame:'Select same colour',ctxWrapFrame:'Frame selection',ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
+    ctxSelectSameType:'Select same type',ctxSelectSame:'Select same colour',ctxWrapFrame:'Frame selection',ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
     ctxSendBackward:'Send backward',ctxSendBack:'Send to back',
-    ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxLock:'Lock',ctxUnlock:'Unlock',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
+    ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxLock:'Lock',ctxUnlock:'Unlock',ctxUnlockAll:'Unlock all',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
     canvasHint:'Drawing canvas. Tab/Shift+Tab cycles shapes, Enter creates, arrows move, Alt+arrows resize.',
     tools:'Tools',docNameLabel:'Document name',activePeers:'Active peers',expPng:'Export PNG',
     moreExport:'More export & import options',install:'Install Board as an app',style:'Style',
@@ -954,7 +958,7 @@ const I18N={
     ctxHSpace:'Distribute horizontal',ctxVSpace:'Distribute vertical',
     ctxSelectAll:'Select all',ctxClear:'Clear all',
     ctxExportPNG:'Export PNG',ctxCopyPNG:'Copy PNG to clipboard',ctxExportSVG:'Export SVG',ctxExportPDF:'Export PDF',ctxExportExc:'Export .excalidraw',ctxExportBoard:'Export .board file',ctxImportBoard:'Import .board file...',
-    ctxExportSelPNG:'Export selection to PNG',ctxCopySelPNG:'Copy selection PNG',ctxExportSelSVG:'Export selection to SVG',ctxCopySelSVG:'Copy selection SVG',ctxCopyBoard:'Copy board JSON',ctxExportPNG1x:'Export PNG @1x',ctxExportPNG4x:'Export PNG @4x (hi-res)',ctxExportSelBoard:'Export selection to .board',ctxReplaceImg:'Replace image',
+    ctxExportSelPNG:'Export selection to PNG',ctxCopySelPNG:'Copy selection PNG',ctxExportSelSVG:'Export selection to SVG',ctxCopySelSVG:'Copy selection SVG',ctxCopyBoard:'Copy board JSON',ctxExportPNG1x:'Export PNG @1x',ctxExportPNG4x:'Export PNG @4x (hi-res)',ctxExportViewPNG:'Export visible region as PNG',ctxExportSelBoard:'Export selection to .board',ctxReplaceImg:'Replace image',
     share:'Share',shareTitle:'Share',
     shareUrlHint:'Copy this URL and send it — the recipient gets your board.',
     shareEncLabel:'🔒 Encrypted link (recommended)',
@@ -988,7 +992,7 @@ const I18N={
     selCount:' selected',selNone:'Selection cleared',
     mirrorLabel:'Shapes on the board',mirrorMore:' more not listed',
     k:{select:'Select',hand:'Pan',pen:'Pen',rect:'Rectangle',ellipse:'Ellipse',
-      arrow:'Arrow',line:'Line',text:'Text',sticky:'Sticky',frame:'Frame',eraser:'Eraser',diamond:'Diamond',
+      arrow:'Arrow',line:'Line',text:'Text',sticky:'Sticky',frame:'Frame',eraser:'Eraser',diamond:'Diamond',marker:'Marker',
       undo:'Undo',redo:'Redo',del:'Delete',dup:'Duplicate',fontSize:'Font size',boldItalic:'Bold/Italic/Underline/Strike',
       selAll:'Select all',copy:'Copy',paste:'Paste',cut:'Cut',
       zoomIn:'Zoom in',zoomOut:'Zoom out',zoom100:'Reset zoom',
@@ -3338,7 +3342,7 @@ function abortGesture(){
     const sh=byId(ptr.wayOrig.id);if(sh){delete sh.way;Object.assign(sh,clone(ptr.wayOrig));}
   }
   if(_eraseBatch.length){for(const s of _eraseBatch)state.shapes.push(s);_eraseBatch=[];sortZ();_invalidateGrid();}   // ADR-0009
-  _penPred=null;
+  _penPred=null;ptr.lineClick=false;
   state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.dragStartShapes=null;
   ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;ptr.ebendOrig=null;ptr.wayOrig=null;ptr.wayIdx=null;ptr.wayNew=false;ptr.lblOrig=null;
@@ -3463,9 +3467,12 @@ canvas.addEventListener('pointerdown',e=>{
         break;
       }
       pickOrMarquee(wp,e);break;
-    case 'pen':beginPen(wp,e);break;
+    case 'pen':case 'marker':beginPen(wp,e);break;
     case 'rect':case 'ellipse':case 'diamond':case 'sticky':case 'frame':beginRectLike(wp);break;
-    case 'line':case 'arrow':beginLineLike(wp);break;
+    case 'line':case 'arrow':{
+      if(ptr.lineClick){ptr.lineClick=false;endLineLike();break}   // ADR-0126: second click commits
+      beginLineLike(wp);break;
+    }
     case 'text':beginText(wp);break;
     case 'eraser':_eraseBatch=[];eraseAt(wp);break;
   }
@@ -3479,6 +3486,9 @@ canvas.addEventListener('pointermove',e=>{
   Net.sendCursor(wp);   // ADR-0010
   UI.setStatusXY(Math.round(wp.x),Math.round(wp.y));
   if(!ptr.down){
+    // ADR-0126: click-click line mode — after a click, the draft previews
+    // to the cursor until the second click commits it (Excalidraw parity).
+    if(ptr.lineClick&&(state.tool==='line'||state.tool==='arrow')){contLineLike(wp,e.shiftKey);return}
     // hover feedback
     if(state.tool==='select'){
       // Check for resize handle hover first
@@ -3569,7 +3579,7 @@ canvas.addEventListener('pointermove',e=>{
         }
       }
       break;
-    case 'pen':{
+    case 'pen':case 'marker':{
       for(const ce of coalescedSamples(e))contPen(G.s2w({x:ce.offsetX,y:ce.offsetY}),ce);
       // Predicted tail (ADR-0023): one render-only segment ahead of the last
       // committed sample, shaves ~1 frame of perceived stylus latency.
@@ -3652,9 +3662,13 @@ canvas.addEventListener('pointerup',e=>{
         endSelect(wp,e.shiftKey);
       }
       break;
-      case 'pen':endPen();break;
+      case 'pen':case 'marker':endPen();break;
       case 'rect':case 'ellipse':case 'diamond':case 'sticky':case 'frame':endRectLike();break;
-      case 'line':case 'arrow':endLineLike();break;
+      case 'line':case 'arrow':{
+        const _d=state.draft;
+        if(_d&&Math.hypot(_d.x2-_d.x1,_d.y2-_d.y1)<2){ptr.lineClick=true;break}   // ADR-0126: click → pick-point mode
+        ptr.lineClick=false;endLineLike();break;
+      }
       case 'eraser':flushErase();break;
     }
   }
@@ -3687,7 +3701,7 @@ function _cancelPointerGesture(){
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;
   ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.rotOrig=null;ptr.dragStartShapes=null;
   ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.ebendOrig=null;ptr.wayOrig=null;
-  canvas.dataset.panning='false';state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;_penPred=null;invalidate();
+  canvas.dataset.panning='false';ptr.lineClick=false;state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;_penPred=null;invalidate();
 }
 // ADR-0006: fires after LONG_PRESS_MS. Guards: gesture still active, handle-drag not in
 // progress (resize/rotate — a deliberate precision drag we shouldn't interrupt), and the
@@ -3714,7 +3728,11 @@ canvas.addEventListener('pointerleave',()=>{if(_laser){_laser=null;invalidateOve
 canvas.addEventListener('dblclick',e=>{
   const wp=G.s2w({x:e.offsetX,y:e.offsetY});
   const hit=pickTop(wp);
-  if(!hit||hit.locked)return;
+  // ADR-0122: double-click empty canvas → new text at the point, editor open
+  // (Excalidraw parity). beginText commits the add + opens the editor; empty
+  // text is dismissed on blur by the existing finalize path.
+  if(!hit){beginText(wp);return}
+  if(hit.locked)return;
   if(hit.type==='text'||hit.type==='sticky'){openTextEditor(hit,false);return}
   _openLabelEditorFor(hit);
 });
@@ -4331,7 +4349,22 @@ function endSelect(wp,shift){
       const cands=state.shapes.length>40
         ?_gridRectCandidates(_grid||(_grid=_buildGrid(state.shapes)),r)
         :state.shapes;
-      for(const s of cands)if(G.marqueeHit(s,r))state.selection.add(s.id);
+      // ADR-0124: directional marquee (CAD/draw.io convention) — left→right
+      // selects only fully-contained shapes; right→left selects anything the
+      // rect touches (bbox intersect). Useful on dense boards where strict
+      // containment can't reach overlapping shapes.
+      const cross=m.x2<m.x1;
+      for(const s of cands){
+        const b=G.bbox(s);
+        const hit=cross
+          ? !(b.x>r.x+r.w||b.x+b.w<r.x||b.y>r.y+r.h||b.y+b.h<r.y)
+          : G.marqueeHit(s,r);
+        // ADR-0127: locked shapes never join a marquee selection — they can't
+        // be edited anyway, and a region-drag shouldn't pick them up
+        // (Figma/draw.io parity). Single-click selection still reaches them
+        // for the ctx Unlock path.
+        if(hit&&!s.locked)state.selection.add(s.id);
+      }
       _announceSel();   // ADR-0037: announce the marquee result (incl. cleared)
     }
   }
@@ -4367,6 +4400,10 @@ let _penPred=null;   // world pt of the last predicted sample — render-only
 function beginPen(wp,e){
   _penPred=null;
   state.draft=Shape.make('pen',{pts:[[wp.x,wp.y,_penPr(e)]]});
+  // ADR-0125: marker is the pen gesture with highlighter defaults — flat
+  // (pressure-free) wide translucent stroke; same 'pen' shape type, so every
+  // renderer/exporter/sync path is unchanged.
+  if(state.tool==='marker'){const d=state.draft;d.hl=1;d.size=8;d.opacity=0.4}
 }
 function contPen(wp,e){
   if(!state.draft)return;
@@ -4374,7 +4411,7 @@ function contPen(wp,e){
   const last=pts[pts.length-1];
   // decimate by min distance for smoothness
   const d=Math.hypot(wp.x-last[0],wp.y-last[1]);
-  if(d>1/state.viewport.zoom)pts.push([wp.x,wp.y,_penPr(e)]);
+  if(d>1/state.viewport.zoom)pts.push([wp.x,wp.y,state.draft.hl?0.5:_penPr(e)]);
   const _m=(state.draft.size||2)+16;   // ADR-0026: ink corridor — accumulated union covers the whole stroke
   invalidateDamage({x:Math.min(wp.x,last[0])-_m,y:Math.min(wp.y,last[1])-_m,w:Math.abs(wp.x-last[0])+2*_m,h:Math.abs(wp.y-last[1])+2*_m});
 }
@@ -4792,7 +4829,7 @@ function flushErase(){
 
 // ====================== KEYBOARD ======================
 const KEYMAP={v:'select',h:'hand',p:'pen',r:'rect',o:'ellipse',
-  a:'arrow',l:'line',t:'text',n:'sticky',f:'frame',e:'eraser',d:'diamond'};
+  a:'arrow',l:'line',t:'text',n:'sticky',f:'frame',e:'eraser',d:'diamond',k:'marker'};
 // Focus trap for open dialogs (WCAG 2.4.3 Focus Order / 2.1.2 No Keyboard Trap-escape).
 // _focusables lists the tabbable controls inside a root; _trapStep is the pure wrap step:
 // given those controls, the active element and direction, it returns which element to
@@ -4929,7 +4966,7 @@ window.addEventListener('keydown',e=>{
     // mid-drag mutations are in-place, so without this Escape left shapes
     // displaced until pointerup committed them. Selection survives the cancel.
     else if(ptr.down&&ptr.dragKind)_cancelPointerGesture();
-    else{if(state.selection.size)UI.toast(t('selNone'));state.selection.clear();state.marquee=null;state.draft=null;state.guides=null;state.readout=null;state.bindPreview=null;_penPred=null;invalidate()}   // ADR-0037
+    else{if(state.selection.size)UI.toast(t('selNone'));state.selection.clear();ptr.lineClick=false;state.marquee=null;state.draft=null;state.guides=null;state.readout=null;state.bindPreview=null;_penPred=null;invalidate()}   // ADR-0037
   }
   else if(k==='?'||(e.shiftKey&&e.key==='/')){e.preventDefault();UI.toggleHelp()}
   else if(k===']'&&!meta&&e.shiftKey){e.preventDefault();doBringFront()}
@@ -4959,6 +4996,7 @@ window.addEventListener('keyup',e=>{
 });
 function pickTool(tool,temporary){
   if(temporary&&!window._prevTool)window._prevTool=state.tool;
+  if(ptr.lineClick&&tool!=='line'&&tool!=='arrow'){ptr.lineClick=false;state.draft=null;invalidate()}   // ADR-0126
   state.tool=tool;canvas.dataset.tool=tool;
   canvas.setAttribute('aria-label',(T.k[tool]||tool)+' — '+t('canvasHint'));   // localized (was hardcoded English)
   UI.announce(T.k[tool]||tool);   // tool switches were SR-silent (undo/group等 toast, this didn't)
@@ -5172,6 +5210,17 @@ function selectSamePaint(){
   if(sel.length!==1)return;
   const s0=sel[0],key=s0.type==='sticky'?s0.color:s0.fill;
   const same=state.shapes.filter(s=>(s.type==='sticky'?s.color:s.fill)===key);
+  if(same.length<2)return;
+  state.selection=new Set(same.map(s=>s.id));
+  _announceSel();UI.toast(same.length+' '+t('selAllMatches'),'ok');
+  invalidate();
+}
+// ADR-0120: select every shape of the same type as the single selection —
+// sibling of selectSamePaint (e.g. all connectors, all stickies).
+function selectSameType(){
+  const sel=[...state.selection].map(byId).filter(Boolean);
+  if(sel.length!==1)return;
+  const same=state.shapes.filter(s=>s.type===sel[0].type);
   if(same.length<2)return;
   state.selection=new Set(same.map(s=>s.id));
   _announceSel();UI.toast(same.length+' '+t('selAllMatches'),'ok');
@@ -5398,6 +5447,19 @@ function doLock(){
   invalidate();Persist.schedule();
   UI.announce(t(lk?'ctxLock':'ctxUnlock'));
 }
+// ADR-0123: unlock every locked shape on the board in one op — boards can
+// accumulate locked shapes across sessions/imports with no bulk way back.
+// Same 'align' lock-dir before/after contract as doLock (single undo + sync).
+function unlockAll(){
+  const locked=state.shapes.filter(s=>s.locked);
+  if(!locked.length){UI.toast(t('nothingLocked'),'warn');return}
+  const before=locked.map(s=>({id:s.id,locked:s.locked??null}));
+  for(const s of locked)s.locked=null;
+  const after=locked.map(s=>({id:s.id,locked:null}));
+  Store._recordCommitted({op:'align',dir:'lock',before,after});
+  invalidate();Persist.schedule();
+  UI.announce(t('ctxUnlockAll'));
+}
 // ADR-0005: replace confidently-recognized pen strokes in the selection with clean shapes
 // (Alt+B). Local-only (not in REMOTE_OPS, like replace/clear) — converting a collaborator's
 // pen stroke to a rectangle behind their back would be confusing, not helpful.
@@ -5496,6 +5558,31 @@ function exportSelection(fmt){
   else if(fmt==='copy')copyPNG(sel);
   else if(fmt==='svgcopy')copySVG(sel);   // ADR-0087
   else exportPNG(sel);
+}
+// ADR-0121: export the viewport crop — what you see, not the bbox fit.
+// World-space view rect = canvas CSS size / zoom at the current pan; the
+// offscreen transform mirrors _renderPngBlob with b=view and no pad.
+function exportViewportPNG(scale){
+  const r=canvas.getBoundingClientRect();
+  const v=state.viewport;
+  const view={x:v.x,y:v.y,w:r.width/v.zoom,h:r.height/v.zoom};
+  const shapes=state.shapes.filter(s=>inView(s,view));
+  if(!shapes.length){UI.toast(t('empty'),'warn');return}
+  const off=document.createElement('canvas');
+  const sc=exportScale(view.w,view.h,scale||2);
+  off.width=Math.ceil(view.w*sc);off.height=Math.ceil(view.h*sc);
+  const oc=off.getContext('2d');
+  oc.fillStyle=getCSS('--paper');oc.fillRect(0,0,off.width,off.height);
+  oc.setTransform(sc,0,0,sc,-view.x*sc,-view.y*sc);
+  for(const s of shapes)drawShape(s,oc);
+  off.toBlob(bl=>{
+    if(!bl){UI.toast(t('exportFailed'),'err');return}
+    const url=URL.createObjectURL(bl);
+    const a=document.createElement('a');
+    a.href=url;a.download=`${state.docName||'board'}-view${sc&&sc!==2?'@'+sc+'x':''}.png`;
+    a.click();setTimeout(()=>URL.revokeObjectURL(url),1e4);
+    UI.toast(t('exported'),'ok');
+  },'image/png');
 }
 function exportPNG(shapes=state.shapes,scale){
   _renderPngBlob(shapes,bl=>{
@@ -7128,6 +7215,7 @@ const UI={
       has&&'sep',
       has&&['ctxWrapFrame','⌘⌥G',wrapInFrame],
       has&&state.selection.size===1&&['ctxSelectSame','',selectSamePaint],
+      has&&state.selection.size===1&&['ctxSelectSameType','',selectSameType],
       has&&state.selection.size>1&&['ctxGroup','⌘G',doGroup],
       has&&[...state.selection].some(id=>byId(id)?.groupId)&&['ctxUngroup','⌘⇧G',doUngroup],
       has&&'sep',
@@ -7141,6 +7229,7 @@ const UI={
       // (the exact "keyboard-only feature" trap FT-06 warned about).
       has&&[...state.selection].some(id=>byId(id)?.type==='pen')&&['ctxBeautify','⌥B',doBeautify],
       has&&[byId([...state.selection][0])?.locked?'ctxUnlock':'ctxLock','',doLock],
+      state.shapes.some(s=>s.locked)&&['ctxUnlockAll','',unlockAll],
       has&&state.selection.size>1&&'sep',
       has&&state.selection.size>1&&['ctxAlignLeft','',()=>doAlign('left')],
       has&&state.selection.size>1&&['ctxAlignCX','',()=>doAlign('cx')],
@@ -7200,6 +7289,7 @@ const UI={
       ['ctxExportPNG','⌘E',exportPNG],
       ['ctxExportPNG1x','',()=>exportPNG(state.shapes,1)],
       ['ctxExportPNG4x','',()=>exportPNG(state.shapes,4)],
+      ['ctxExportViewPNG','',()=>exportViewportPNG(2)],
       ['ctxCopyPNG','',copyPNG],
       ['ctxExportSVG','⌘⇧E',exportSVG],
       ['ctxExportPDF','⌘P',exportPDF],
@@ -7215,7 +7305,7 @@ const UI={
     const k=T.k;
     const rows=[
       ['V',k.select],['H / Space',k.pan],['P',k.pen],
-      ['R',k.rect],['O',k.ellipse],['A',k.arrow],
+      ['K',k.marker],['R',k.rect],['O',k.ellipse],['A',k.arrow],
       ['L',k.line],['T',k.text],['N',k.sticky],['F',k.frame],['E',k.eraser],['D',k.diamond],
       ['⇧P',k.present],
       ['⌘Z',k.undo],['⌘⇧Z',k.redo],['⌘A',k.selAll],['⌘G / ⌘⌥G',k.group+'/'+t('ctxWrapFrame')],

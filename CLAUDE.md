@@ -169,6 +169,14 @@ Board/
 - [ADR-0117](docs/ADR-0117-label-position.md) コネクタラベル位置ドラッグ
 - [ADR-0118](docs/ADR-0118-png-export-scale.md) PNG 書き出しスケール選択
 - [ADR-0119](docs/ADR-0119-arrowhead-styles.md) 矢印ヘッドスタイル
+- [ADR-0120](docs/ADR-0120-select-same-type.md) 同じ種類を選択
+- [ADR-0121](docs/ADR-0121-export-viewport-png.md) 表示範囲を PNG 書き出し
+- [ADR-0122](docs/ADR-0122-dblclick-create-text.md) 空キャンバス dblclick でテキスト作成
+- [ADR-0123](docs/ADR-0123-unlock-all.md) 全てロック解除
+- [ADR-0124](docs/ADR-0124-directional-marquee.md) 方向付きマーキー
+- [ADR-0125](docs/ADR-0125-marker-tool.md) マーカーツール
+- [ADR-0126](docs/ADR-0126-click-click-line.md) クリック-クリック式線/矢印
+- [ADR-0127](docs/ADR-0127-marquee-skips-locked.md) マーキーはロック形状を除外
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
