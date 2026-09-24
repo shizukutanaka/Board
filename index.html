@@ -6946,6 +6946,7 @@ function excToShapes(txt){
     // the sticky fold below stays rect-only since stickies export as rectangles
     if(e&&e.bLabel){p.label=s.text.slice(0,240);
       if(s.fontSize)p.fontSize=s.fontSize;
+      if(Number.isFinite(e.lineHeight)&&e.lineHeight!==1.25)p.lineH=Math.min(4,Math.max(0.5,e.lineHeight));   // ADR-0323
       if(/^(top|middle|bottom)$/.test(e.verticalAlign))p.valign=e.verticalAlign;   // ADR-0244
       if(e.fontFamily===3)p.font='mono';else if(e.fontFamily===1||e.fontFamily===5)p.font='serif';   // ADR-0243
       shapes.splice(shapes.indexOf(s),1);continue;}
