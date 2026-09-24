@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.375] - 2026-09-24
+
+### Fixed
+- 圧縮 .drawio も全 `<diagram>` ページを展開して横並び取込
+  (従来は先頭ページのみ、ADR-0324)
+
 ## [1.7.374] - 2026-09-24
 
 ### Added
