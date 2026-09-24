@@ -776,7 +776,7 @@ body{visibility:visible}
 // Board — MIT License. See LICENSE file.
 'use strict';
 const _g=id=>document.getElementById(id);   // ADR-0289
-const _p=()=>getCSS('--paper'),_ac=()=>getCSS('--accent-contrast');   // ADR-0292
+const _p=()=>_gC('--paper'),_ac=()=>_gC('--accent-contrast');   // ADR-0292
 const _c01=v=>_min(1,_max(0,v));   // ADR-0295
 const _conn=t=>t==='line'||t==='arrow';   // ADR-0297
 const _selAny=f=>_selIds().some(id=>{const s=byId(id);return s&&f(s)});   // ADR-0302
@@ -799,7 +799,7 @@ const _qs=(e,s)=>e.querySelector(s);                                  // ADR-034
 const _qsa=(e,s)=>e.querySelectorAll(s);                                // ADR-0350
 const _on=(e,t,f,o)=>e.addEventListener(t,f,o);                          // ADR-0356
 const _vp=()=>state.viewport,_vpS=()=>({x:+_vp().x.toFixed(2),y:+_vp().y.toFixed(2),zoom:+_vp().zoom.toFixed(4)});                                              // ADR-0362: live-read (tests reassign the object)
-const _pi=()=>state.peerId,_ro=()=>state.readout,_gd=()=>state.guides,_cl=()=>state.clipboard,_bb=s=>G.bbox(s),_oa=Object.assign;   // ADR-0378
+const _pi=()=>state.peerId,_ro=()=>state.readout,_gd=()=>state.guides,_cl=()=>state.clipboard,_bb=s=>G.bbox(s),_bA=s=>G.bboxAll(s),_oa=Object.assign;   // ADR-0378
 const _sO=()=>state.seenOps,_la=()=>state.lasso,_mq=()=>state.marquee,_dd=()=>state.dupDelta,_w2=p=>G.w2s(p),_s2=p=>G.s2w(p),_cE=connEnds;   // ADR-0382
 const _dpr=()=>window.devicePixelRatio,_iA=Array.isArray,_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log,_mP=()=>new Map(),_sT=()=>new Set(),_eU=encodeURIComponent,_dU=decodeURIComponent,_un='undefined',_AU='arrowup',_AD='arrowdown',_AL2='arrowleft',_AR2='arrowright',_ES='escape',_EN='enter',_TB='tab',_IK='#0F172A',_YW='#FEF08A';   // ADR-0384/0386/0391/0395/0397
 const _sh=()=>state.shapes;                                                // ADR-0364
@@ -822,7 +822,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.444';
+const V='1.7.445';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2234,7 +2234,7 @@ function _statusSel(){
   let txt='';
   if(_selN()){
     const sel=_selL(Boolean);
-    const b=sel.length&&G.bboxAll(sel);
+    const b=sel.length&&_bA(sel);
     if(b)txt=_rnd(b.w)+'×'+_rnd(b.h);
   }
   if(txt!==_selDimSig){_selDimSig=txt;el.parentElement.hidden=!txt;el.textContent=txt;}
@@ -2483,7 +2483,7 @@ function drawOverlay(){
   c.setTransform(DPR,0,0,DPR,0,0);
   if(_sh().length===0&&!_df())drawEmptyHint(c,W,H);   // FT-17: onboarding for a blank board
   for(const[,members] of _grpMapGet()){
-    const b=G.bboxAll(members);if(!b)continue;
+    const b=_bA(members);if(!b)continue;
     const p1=_w2({x:b.x-4,y:b.y-4}),p2=_w2({x:b.x+b.w+4,y:b.y+b.h+4});
     c.strokeStyle='rgba(0,196,204,.3)';c.lineWidth=1;c.setLineDash([4,4]);
     c.strokeRect(p1.x,p1.y,p2.x-p1.x,p2.y-p1.y);c.setLineDash([]);
@@ -2544,9 +2544,9 @@ function drawOverlay(){
 // path was the '?' help modal. Draw-only (reads state, no mutation); disappears the
 // instant a shape is added (_sh().length check at the call site).
 function drawEmptyHint(c,W,H){
-  c.fillStyle=getCSS('--ink-3');   // tertiary text token: 4.7:1 AA, deliberately muted
+  c.fillStyle=_gC('--ink-3');   // tertiary text token: 4.7:1 AA, deliberately muted
   c.textAlign='center';c.textBaseline='middle';
-  c.font='14px '+(getCSS('--ui-font')||'system-ui,sans-serif');
+  c.font='14px '+(_gC('--ui-font')||'system-ui,sans-serif');
   c.fillText(t('emptyHint'),W/(2*DPR),H/(2*DPR));
 }
 // ADR-0011: ephemeral peer selection outlines — bbox frame only, in the peer's color,
@@ -2619,7 +2619,7 @@ function _drawMeasure(c){
 }
 // Design-token lookups run every frame; memoise and drop on theme flip (see wire()).
 let _cssCache=Object.create(null);
-function getCSS(v){let x=_cssCache[v];if(x===_ud){x=getComputedStyle(document.documentElement).getPropertyValue(v).trim();_cssCache[v]=x}return x}
+function _gC(v){let x=_cssCache[v];if(x===_ud){x=getComputedStyle(document.documentElement).getPropertyValue(v).trim();_cssCache[v]=x}return x}
 function clearCSSCache(){_cssCache=Object.create(null);_iv()}
 function drawGrid(W,H){
   const v=_vp();
@@ -2630,7 +2630,7 @@ function drawGrid(W,H){
   const wr=wl+W/(v.zoom*DPR), wb=wt+H/(v.zoom*DPR);
   const x0=_fl(wl/gs)*gs, y0=_fl(wt/gs)*gs;
 
-  const color=getCSS('--line');
+  const color=_gC('--line');
   ctx.strokeStyle=color;
   ctx.lineWidth=1/(v.zoom*DPR);
   ctx.globalAlpha=_min(1,(gsZ-6)/10);
@@ -2861,14 +2861,14 @@ function drawShape(s,c){
       c.fillStyle=s.fill&&s.fill!=='none'?s.fill:'rgba(248,250,252,0.6)';   // ADR-0288
       c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,r);c.fill();
       // border
-      c.strokeStyle=s.stroke||getCSS('--brand')||'#00C4CC';
+      c.strokeStyle=s.stroke||_gC('--brand')||'#00C4CC';
       c.lineWidth=s.size||1.5;
       c.setLineDash(dashArr(s.dash||0,s.size||1.5));                    // ADR-0178
       c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,r);c.stroke();
       // label
       const lbl=s.label||'Frame';
       const fs=s.fontSize||12;   // ADR-0298
-      c.fillStyle=s.stroke||getCSS('--brand')||'#00C4CC';
+      c.fillStyle=s.stroke||_gC('--brand')||'#00C4CC';
       c.font=`${s.italic?'italic ':''}600 ${fs}px ${_fontFam(s)}`;  // ADR-0186/0204
       c.textBaseline='bottom';
       const alF=s.align||'left';                                    // ADR-0197
@@ -3373,11 +3373,11 @@ function _rotShape(sh,orig,cx,cy,deg){
 // Group-rotation drag step / commit (precedent: _gresizeDrag/_gresizeCommit).
 function _grotDrag(wp,shift){
   const live=[...ptr.gOrig.keys()].map(byId).filter(Boolean);
-  const _b0=G.bboxAll(live);
+  const _b0=_bA(live);
   let deg=_at2(wp.y-ptr.rotCy,wp.x-ptr.rotCx)*180/_PI-ptr.rotA0;
   if(shift)deg=_rnd(deg/15)*15;
   for(const [id,orig] of ptr.gOrig){const sh=byId(id);if(sh)_rotShape(sh,orig,ptr.rotCx,ptr.rotCy,deg);}
-  const _nb=G.bboxAll(live);
+  const _nb=_bA(live);
   if(_nb&&deg)state.readout={x:_nb.x+_nb.w/2,y:_nb.y+_nb.h,label:`${deg>0?'+':''}${_rnd(deg)}°`};
   _iD(_dmgPair(_b0,_nb,ptr.gPad||40));                 // ADR-0026
 }
@@ -3539,12 +3539,12 @@ function applyResize(sh,handle,orig,wp,shift,alt){
 // then _mapToBox affine-maps every member's geometry orig→result each frame.
 function _gresizeDrag(wp,shift,alt){
   const ob=ptr.gBox,live=[...ptr.gOrig.keys()].map(byId).filter(Boolean);
-  const _b0=G.bboxAll(live);
+  const _b0=_bA(live);
   const vbox={x:ob.x,y:ob.y,w:ob.w,h:ob.h};
   const vorig={x:ob.x,y:ob.y,w:ob.w,h:ob.h,id:'__gresize__'};
   applyResize(vbox,ptr.resizeHandle,vorig,wp,shift,alt);
   for(const [id,orig] of ptr.gOrig){const sh=byId(id);if(sh)_mapToBox(sh,orig,ob,vbox);}
-  _iD(_dmgPair(_b0,G.bboxAll(live),ptr.gPad||40));     // ADR-0026
+  _iD(_dmgPair(_b0,_bA(live),ptr.gPad||40));     // ADR-0026
 }
 // Commit: one 'align' op batches all member before/after — a single undo
 // restores the whole group (same mechanism flip/rotate/lock already use).
@@ -3569,7 +3569,7 @@ function drawSelection(c){
   if(_selN()===0)return;
   const sel=_selL(Boolean);
   if(!sel.length)return;
-  const b=G.bboxAll(sel);
+  const b=_bA(sel);
   if(!b)return;
   const p1=_w2({x:b.x,y:b.y}),p2=_w2({x:b.x+b.w,y:b.y+b.h});
   const x=p1.x,y=p1.y,w=p2.x-p1.x,h=p2.y-p1.y;
@@ -3591,10 +3591,10 @@ function drawSelection(c){
     // ADR-0172: padlock badge (draw.io parity) — the dashed outline alone
     // doesn't clearly read as "this is locked". Top-left, inside the bbox.
     const lx=x+3,ly=y+3;
-    c.fillStyle=_p();c.strokeStyle=getCSS('--brand-ink');c.lineWidth=1.5;
+    c.fillStyle=_p();c.strokeStyle=_gC('--brand-ink');c.lineWidth=1.5;
     c.beginPath();roundRect(c,lx,ly,16,12,2);c.fill();c.stroke();
     c.beginPath();c.arc(lx+8,ly,4,_PI,0);c.stroke();               // shackle
-    c.fillStyle=getCSS('--ink');
+    c.fillStyle=_gC('--ink');
     c.beginPath();c.arc(lx+8,ly+6,1.4,0,PI2);c.fill();                 // keyhole
     return;
   }
@@ -3602,7 +3602,7 @@ function drawSelection(c){
     const sh=sel[0];
     const hs=HANDLE_SIZE;
     c.fillStyle=_p();
-    c.strokeStyle=getCSS('--brand-ink');  // dark ring: AAA non-text contrast vs cyan
+    c.strokeStyle=_gC('--brand-ink');  // dark ring: AAA non-text contrast vs cyan
     c.lineWidth=1.5;
     for(const h of getHandles(sh)){
       const sp=_w2({x:h.x,y:h.y});
@@ -3615,7 +3615,7 @@ function drawSelection(c){
       const kp=_w2({x:rh.x,y:rh.y}),ap=_w2({x:rh.ax,y:rh.ay});
       c.strokeStyle=_ac();c.lineWidth=1.5;   // a11y-audit-2026-07
       c.beginPath();c.moveTo(ap.x,ap.y);c.lineTo(kp.x,kp.y);c.stroke();
-      c.fillStyle=_p();c.strokeStyle=getCSS('--brand-ink');
+      c.fillStyle=_p();c.strokeStyle=_gC('--brand-ink');
       c.beginPath();c.arc(kp.x,kp.y,hs/2,0,PI2);c.fill();c.stroke();
     }
     if(sh.elbow){                        // ADR-0072: trunk-position handle
@@ -3651,7 +3651,7 @@ function drawSelection(c){
     // express.
     if(!sel.some(s=>s.rotate)){
       const hs=HANDLE_SIZE;
-      c.fillStyle=_p();c.strokeStyle=getCSS('--brand-ink');c.lineWidth=1.5;
+      c.fillStyle=_p();c.strokeStyle=_gC('--brand-ink');c.lineWidth=1.5;
       for(const h of getHandles({x:b.x,y:b.y,w:b.w,h:b.h})){
         const sp=_w2({x:h.x,y:h.y});
         c.fillRect(sp.x-hs/2,sp.y-hs/2,hs,hs);
@@ -3665,7 +3665,7 @@ function drawSelection(c){
     const hs2=HANDLE_SIZE;
     c.strokeStyle=_ac();c.lineWidth=1.5;
     c.beginPath();c.moveTo(gap.x,gap.y);c.lineTo(gkp.x,gkp.y);c.stroke();
-    c.fillStyle=_p();c.strokeStyle=getCSS('--brand-ink');
+    c.fillStyle=_p();c.strokeStyle=_gC('--brand-ink');
     c.beginPath();c.arc(gkp.x,gkp.y,hs2/2,0,PI2);c.fill();c.stroke();
   }
 }
@@ -3874,7 +3874,7 @@ _on(canvas,_PD,e=>{
       }else if(_selN()>1){
         const sel=_selL(Boolean);
         if(sel.length>1&&!sel.every(s=>s.locked)){
-          const gb=G.bboxAll(sel);
+          const gb=_bA(sel);
           // ADR-0057: rotation knob first — it sits above the bbox, off the handles.
           const gr=gb&&_grpRotHandle(gb);
           const tol=HANDLE_SIZE/_vp().zoom;
@@ -3962,7 +3962,7 @@ _on(canvas,_PM,e=>{
       }else if(_selN()>1){
         const sel=_selL(Boolean);
         if(sel.length>1&&!sel.every(s=>s.locked)){
-          const gb=G.bboxAll(sel);
+          const gb=_bA(sel);
           const gr=gb&&_grpRotHandle(gb);
           const tol=HANDLE_SIZE/_vp().zoom;
           if(gr&&_abs(wp.x-gr.x)<=tol&&_abs(wp.y-gr.y)<=tol){canvas.style.cursor='grab';return}   // ADR-0057
@@ -3982,7 +3982,7 @@ _on(canvas,_PM,e=>{
       // selection envelope and the hovered shape. Signature-compare so a
       // steady cursor repaints nothing.
       const _m=(e.altKey&&_selN()&&top&&!top.locked&&top.visible!==0&&!_sl().has(top.id))
-        ?{a:G.bboxAll(_selIds().map(byId).filter(Boolean)),b:_bb(top)}:null;
+        ?{a:_bA(_selIds().map(byId).filter(Boolean)),b:_bb(top)}:null;
       const _sig=m=>m?`${m.a.x}|${m.a.y}|${m.a.w}|${m.a.h}|${m.b.x}|${m.b.y}|${m.b.w}|${m.b.h}`:'';
       if(_sig(_m)!==_sig(state.measure)){state.measure=_m;_ivO()}
     }
@@ -4272,7 +4272,7 @@ function editSelectedShapeKbd(){
 function openLabelEditor(hit,leftPx,topPx,bold){
   const inp=_ce('input');
   inp.value=hit.label||'';inp.maxLength=80;
-  const col=hit.stroke||getCSS(bold?'--accent-contrast':'--ink');   // a11y-audit-2026-07: this is real text (label editor), needs the 4.5:1 text floor too — --accent-contrast clears both themes
+  const col=hit.stroke||_gC(bold?'--accent-contrast':'--ink');   // a11y-audit-2026-07: this is real text (label editor), needs the 4.5:1 text floor too — --accent-contrast clears both themes
   inp.style.cssText=`position:fixed;left:${leftPx}px;top:${topPx}px;`+
     `font:${hit.italic?'italic ':''}${bold?'600 ':''}${hit.fontSize||12}px ${_fontFam(hit)};color:${col};`+   // ADR-0186/0206
     `background:${_p()};border:1px solid ${col};`+
@@ -4596,7 +4596,7 @@ function fitToContent(){
   // ADR-0155: hidden shapes shouldn't drag the fit window to empty space —
   // fit what's VISIBLE; fall back to all only when everything is hidden.
   const vis=_sh().filter(s=>s.visible!==0);
-  const b=G.bboxAll(vis.length?vis:_sh());if(!b){zoomReset();return}
+  const b=_bA(vis.length?vis:_sh());if(!b){zoomReset();return}
   const z=_fitViewport(b,40,2);
   UI.announce(_rnd(z*100)+'%');
 }
@@ -4607,7 +4607,7 @@ function fitToContent(){
 function _fitIfEmptyView(){
   if(!_sh().length)return;
   const v=_vp(),r=_cbr();
-  const _vis=_sh().filter(s=>s.visible!==0);const b=G.bboxAll(_vis.length?_vis:_sh());if(!b)return;   // ADR-0155
+  const _vis=_sh().filter(s=>s.visible!==0);const b=_bA(_vis.length?_vis:_sh());if(!b)return;   // ADR-0155
   const vw=r.width/v.zoom,vh=r.height/v.zoom;
   if(b.x+b.w<v.x||b.y+b.h<v.y||b.x>v.x+vw||b.y>v.y+vh)fitToContent();
 }
@@ -4615,7 +4615,7 @@ function _fitIfEmptyView(){
 // fit-all's 2 so a small selection actually enlarges, short of the 16x extreme.
 function zoomToSelection(){
   if(!_selN()){_w(t(_NS));return}
-  const b=G.bboxAll(_sh().filter(s=>_sl().has(s.id)));
+  const b=_bA(_sh().filter(s=>_sl().has(s.id)));
   if(!b){_w(t(_NS));return}
   const z=_fitViewport(b,60,4);
   UI.announce(_rnd(z*100)+'%');
@@ -4823,7 +4823,7 @@ function _eqGapSnap(mov,excl,tol){
 }
 function objectSnap(dx,dy){
   if(!ptr.dragStartShapes)return{dx:0,dy:0,guides:[]};
-  const bb=G.bboxAll([...ptr.dragStartShapes.values()]);
+  const bb=_bA([...ptr.dragStartShapes.values()]);
   if(!bb)return{dx:0,dy:0,guides:[]};
   const mov={x:bb.x+dx,y:bb.y+dy,w:bb.w,h:bb.h};
   const key=[...ptr.dragStartShapes.keys()].join(',');
@@ -4879,7 +4879,7 @@ function moveDelta(wp,shift,alt){
     state.guides=null;
   }else if(!alt&&!state.snap){const a=objectSnap(dx,dy);dx+=a.dx;dy+=a.dy;state.guides=a.guides.length?a.guides:null;}
   else state.guides=null;
-  const bb=ptr.dragStartShapes&&G.bboxAll([...ptr.dragStartShapes.values()]);
+  const bb=ptr.dragStartShapes&&_bA([...ptr.dragStartShapes.values()]);
   state.readout=bb&&(dx||dy)?{x:bb.x+dx+bb.w/2,y:bb.y+dy+bb.h,label:`${dx>=0?'+':''}${_rnd(dx)}, ${dy>=0?'+':''}${_rnd(dy)}`}:null;
   return{dx,dy};
 }
@@ -5112,7 +5112,7 @@ function beginRectLike(wp){
   }else if(_tl()==='frame'){
     const n=_sh().filter(s=>s.type==='frame').length+1;
     extras.label=`Frame ${n}`;
-    extras.stroke=getCSS('--brand')||'#00C4CC';
+    extras.stroke=_gC('--brand')||'#00C4CC';
     extras.fill=null;extras.size=1.5;
   }
   state.draft=Shape.make(_tl(),extras);
@@ -5258,7 +5258,7 @@ function createShapeKbd(){
   }else if(tool==='frame'){
     const n=_sh().filter(x=>x.type==='frame').length+1;
     s=Shape.make('frame',{x:cx-400,y:cy-250,w:800,h:500,
-      label:`Frame ${n}`,stroke:getCSS('--brand')||'#00C4CC',fill:null,size:1.5});
+      label:`Frame ${n}`,stroke:_gC('--brand')||'#00C4CC',fill:null,size:1.5});
   }else if(tool==='text'){
     beginText({x:cx-60,y:cy-12});   // opens editor + switches to select
     return true;
@@ -5671,7 +5671,7 @@ function doPaste(){
   if(_cl()!==_lastClipboard){_pasteCount=0;_lastClipboard=_cl();}
   // Center pasted content at the current viewport center, then offset by cascade amount.
   // Pattern: Figma/Excalidraw — paste at viewport center so the result is always visible.
-  const bb=G.bboxAll(_cl().shapes);
+  const bb=_bA(_cl().shapes);
   const v=_vp();
   const _r=_cbr();
   const vCx=v.x+_r.width/(v.zoom*2);
@@ -5698,7 +5698,7 @@ function doPasteInPlace(){
 // No cascade — the user picked the spot, so _pasteCount is left alone.
 function doPasteAt(wx,wy){
   if(!_cl())return;
-  const bb=G.bboxAll(_cl().shapes);
+  const bb=_bA(_cl().shapes);
   const srcCx=bb?bb.x+bb.w/2:wx,srcCy=bb?bb.y+bb.h/2:wy;
   const origSel=_selIds();
   const added=_placeCopies(_cl().shapes,wx-srcCx,wy-srcCy);
@@ -5924,7 +5924,7 @@ function selectSameType(){
 function wrapInFrame(){
   const sel=_selL(s=>s&&!s.locked);
   if(!sel.length){_w(t(_ST));return}
-  const b=G.bboxAll(sel);if(!b)return;
+  const b=_bA(sel);if(!b)return;
   const PAD=16;
   const f=Shape.make('frame',{x:b.x-PAD,y:b.y-PAD,w:b.w+PAD*2,h:b.h+PAD*2,label:'Frame'});
   f.z=_min(...sel.map(s=>s.z||0))-0.5;      // ADR-0001: fractional z keeps order stable
@@ -5990,7 +5990,7 @@ function doAlign(dir){
   // Group-aware + frame-aware: shapes sharing groupId or inside a selected frame move as one unit
   const unitMap=_mP();
   for(const s of sel){const k=frameOf.get(s.id)||s.groupId||s.id;if(!unitMap.has(k))unitMap.set(k,{shapes:[],b:null});unitMap.get(k).shapes.push(s);}
-  for(const u of unitMap.values())u.b=G.bboxAll(u.shapes);
+  for(const u of unitMap.values())u.b=_bA(u.shapes);
   const units=[...unitMap.values()].filter(u=>u.b);
   if(units.length<2)return;
   // Capture before state (full shape clone)
@@ -6110,7 +6110,7 @@ function flipShape(s,axis,c){
 function doFlip(axis){
   const sel=_selL(s=>s&&!s.locked);
   if(!sel.length)return;
-  const bb=G.bboxAll(sel);if(!bb)return;
+  const bb=_bA(sel);if(!bb)return;
   const c=axis==='h'?bb.x+bb.w/2:bb.y+bb.h/2;
   // Frame-aware: shapes fully inside a selected frame flip with the frame (parity with doAlign)
   const frameOf=_mP();
@@ -6199,7 +6199,7 @@ function _rotPtsAbout(s,gx,gy,cs,sn){
 function doRotate(d){
   const sel=_selL(s=>s&&!s.locked&&_rotatable(s));
   if(!sel.length)return;
-  const bb=G.bboxAll(sel),gx=bb.x+bb.w/2,gy=bb.y+bb.h/2; // orbit about group centre, like doFlip
+  const bb=_bA(sel),gx=bb.x+bb.w/2,gy=bb.y+bb.h/2; // orbit about group centre, like doFlip
   // Frame-aware: box-shape children inside selected frames orbit and rotate with the frame (parity with doAlign)
   const frameOf=_mP();
   for(const f of sel){
@@ -6239,7 +6239,7 @@ function exportScale(w,h,desired){
 // ADR-0050: the render-to-blob path shared by exportPNG (download) and copyPNG
 // (clipboard). cb receives the PNG blob or null on failure.
 function _renderPngBlob(shapes,cb,desired){
-  const b=G.bboxAll(shapes);
+  const b=_bA(shapes);
   if(!b){_w(t(_EM));return}
   const pad=32;
   const w=_ceil(b.w+pad*2),h=_ceil(b.h+pad*2);
@@ -6343,7 +6343,7 @@ function replaceImage(){
 }
 function exportPDF(){
   if(!_sh().length){_w(t(_EM));return}
-  const b=G.bboxAll(_sh());if(!b)return;
+  const b=_bA(_sh());if(!b)return;
   const pad=32,W=_ceil(b.w+pad*2),H=_ceil(b.h+pad*2),dpr=exportScale(W,H,_dpr()||1);
   let off;try{off=new OffscreenCanvas(W*dpr,H*dpr)}catch(_){off=_ce('canvas');off.width=W*dpr;off.height=H*dpr}
   const oc=off.getContext('2d');
@@ -6698,7 +6698,7 @@ function importDrawioText(txt,wp){
   if(!shapes||!shapes.length){_w(t(_IB));return false}
   const _vpNull=wp==null;
   if(!wp){const r=_cbr();wp=_s2({x:r.width/2,y:r.height/2})}
-  const bb=G.bboxAll(shapes);
+  const bb=_bA(shapes);
   if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);
     for(const s of shapes)Shape.translate(s,dx,dy)}
   _cOp({op:'addMany',shapes});
@@ -7002,7 +7002,7 @@ function importSvgText(txt,wp){
   if(!shapes||!shapes.length){_w(t(_IB));return false}
   if(!wp){const r=_cbr();wp=_s2({x:r.width/2,y:r.height/2})}
   // centre the imported group at wp (drop point / viewport centre)
-  const bb=G.bboxAll(shapes);
+  const bb=_bA(shapes);
   if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);
     for(const s of shapes)Shape.translate(s,dx,dy)}
   _cOp({op:'addMany',shapes});
@@ -7157,7 +7157,7 @@ function importExcText(txt,wp){
   if(!shapes||!shapes.length){_w(t(_IB));return false}
   const _vpNull=wp==null;   // ADR-0409: adopt the file's viewport only on a point-less open
   if(!wp){const r=_cbr();wp=_s2({x:r.width/2,y:r.height/2})}
-  const bb=G.bboxAll(shapes);
+  const bb=_bA(shapes);
   if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);
     for(const s of shapes)Shape.translate(s,dx,dy)}
   _cOp({op:'addMany',shapes});
@@ -7179,7 +7179,7 @@ function importBoardText(txt,wp){
   const shapes=data.shapes.filter(validShape);
   if(!shapes.length)return false;
   if(!wp){const r=_cbr();wp=_s2({x:r.width/2,y:r.height/2})}
-  const bb=G.bboxAll(shapes);
+  const bb=_bA(shapes);
   const dx=bb?wp.x-(bb.x+bb.w/2):0,dy=bb?wp.y-(bb.y+bb.h/2):0;
   const origSel=_selIds();
   const added=_placeCopies(shapes,dx,dy);
@@ -7268,7 +7268,7 @@ function _connLabelSVG(s,x1,y1,x2,y2,ox,oy,stroke,paper){
 }
 // Pure SVG assembly; returns string or null. All attr values through _esc.
 function buildSVG(shapes,paper){
-  const b=G.bboxAll(shapes);
+  const b=_bA(shapes);
   if(!b)return null;
   const pad=32;
   const w=_ceil(b.w+pad*2),h=_ceil(b.h+pad*2);
@@ -9649,7 +9649,7 @@ const Minimap=(()=>{
     const sx=_scene.getContext('2d');
     sx.clearRect(0,0,W,H);
     const shapes=_sh();
-    const bb=G.bboxAll(shapes);
+    const bb=_bA(shapes);
     if(!bb){_sc=0;return;}
     const pad=20;
     const sc=_min(W/(bb.w+pad*2),H/(bb.h+pad*2),1);
@@ -9659,7 +9659,7 @@ const Minimap=(()=>{
       if(!s||s.opacity===0)continue;
       sx.globalAlpha=(s.opacity??1)*0.8;
       sx.fillStyle=s.fill&&s.fill!=='none'?s.fill:_TR;   // ADR-0288
-      sx.strokeStyle=s.stroke||getCSS('--ink');
+      sx.strokeStyle=s.stroke||_gC('--ink');
       sx.lineWidth=_max(0.5,(s.size||1)*sc);
       const _mr=s.rotate&&s.w!=null;
       if(_mr){const ccx=(s.x+s.w/2)*sc+ox,ccy=(s.y+s.h/2)*sc+oy;sx.save();sx.translate(ccx,ccy);sx.rotate(s.rotate*_PI/180);sx.translate(-ccx,-ccy);}
@@ -9670,7 +9670,7 @@ const Minimap=(()=>{
         case 'diamond':{const dcx=s.x*sc+ox+s.w*sc/2,dcy=s.y*sc+oy+s.h*sc/2;sx.beginPath();sx.moveTo(dcx,s.y*sc+oy);sx.lineTo(s.x*sc+ox+s.w*sc,dcy);sx.lineTo(dcx,s.y*sc+oy+s.h*sc);sx.lineTo(s.x*sc+ox,dcy);sx.closePath();if(s.fill)sx.fill();sx.stroke();break;}
         case 'line':case 'arrow':{if(s.elbow){const pts=_elbowPts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<pts.length;i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}if(s.curve){const me=_cE(s),cc=_curveCtrl(me,s.cbend);sx.beginPath();sx.moveTo(me.x1*sc+ox,me.y1*sc+oy);sx.quadraticCurveTo(cc.x*sc+ox,cc.y*sc+oy,me.x2*sc+ox,me.y2*sc+oy);sx.stroke();break}const pts=_linePts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<pts.length;i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}
         case 'pen':if(s.pts.length<2)break;sx.beginPath();sx.moveTo(s.pts[0][0]*sc+ox,s.pts[0][1]*sc+oy);for(let i=1;i<s.pts.length;i++)sx.lineTo(s.pts[i][0]*sc+ox,s.pts[i][1]*sc+oy);sx.stroke();break;
-        case 'text':case 'sticky':{const rx2=s.x*sc+ox,ry2=s.y*sc+oy,rw2=_max(2,s.w*sc),rh2=_max(2,s.h*sc);sx.fillStyle=s.type==='sticky'?(s.color||_YW):(s.fill||getCSS('--brand'));sx.fillRect(rx2,ry2,rw2,rh2);break}
+        case 'text':case 'sticky':{const rx2=s.x*sc+ox,ry2=s.y*sc+oy,rw2=_max(2,s.w*sc),rh2=_max(2,s.h*sc);sx.fillStyle=s.type==='sticky'?(s.color||_YW):(s.fill||_gC('--brand'));sx.fillRect(rx2,ry2,rw2,rh2);break}
         case 'image':{const rx3=s.x*sc+ox,ry3=s.y*sc+oy,rw3=_max(2,s.w*sc),rh3=_max(2,s.h*sc);const img=s.dataUrl?_imgCache.get(_imgKey(s.dataUrl)):null;if(img&&img.complete&&img.naturalWidth){if(s.flip){const fx3=rx3+rw3/2,fy3=ry3+rh3/2;sx.save();sx.translate(fx3,fy3);sx.scale(s.flip&1?-1:1,s.flip&2?-1:1);sx.translate(-fx3,-fy3);sx.drawImage(img,rx3,ry3,rw3,rh3);sx.restore()}else sx.drawImage(img,rx3,ry3,rw3,rh3)}else{sx.fillStyle='#CBD5E1';sx.fillRect(rx3,ry3,rw3,rh3)}break}
       }
       if(_mr)sx.restore();
@@ -9700,7 +9700,7 @@ const Minimap=(()=>{
   const _mmGo=e=>{
     const r=mc.getBoundingClientRect();
     const mx2=(e.clientX-r.left)/r.width,my2=(e.clientY-r.top)/r.height;
-    const shapes=_sh();const bb=G.bboxAll(shapes);if(!bb)return;
+    const shapes=_sh();const bb=_bA(shapes);if(!bb)return;
     const pad=20,sc=_min(W/(bb.w+pad*2),H/(bb.h+pad*2),1);
     const ox=-bb.x*sc+(W-bb.w*sc)/2,oy=-bb.y*sc+(H-bb.h*sc)/2;
     const wx=(mc.width*mx2-ox)/sc,wy=(mc.height*my2-oy)/sc;

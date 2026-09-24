@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.445] - 2026-09-23
+
+### Changed
+- `_bA` (G.bboxAll, 30箇所) + `_gC` (getCSS, 19箇所) shorthand 化 (~320B 回収)
+
 ## [1.7.444] - 2026-09-23
 
 ### Fixed
