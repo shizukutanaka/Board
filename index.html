@@ -775,9 +775,10 @@ body{visibility:visible}
 <script>
 // Board — MIT License. See LICENSE file.
 'use strict';
+const _g=id=>document.getElementById(id);   // ADR-0289
 
 // ====================== CONSTANTS ======================
-const V='1.7.340';
+const V='1.7.341';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1055,12 +1056,12 @@ const state={
   roomId:null               // doc room id (BroadcastChannel name suffix)
 };
 
-const canvas=document.getElementById('c');
+const canvas=_g('c');
 let ctx=canvas.getContext('2d',{alpha:false,desynchronized:true});
 // ADR-0024: second stacked canvas for ephemeral chrome (selection outlines,
 // marquee, snap guides, peer cursors/selections, laser, search highlights).
 // Scene redraws stay expensive; overlay-only changes repaint this layer alone.
-const ocanvas=document.getElementById('ov');
+const ocanvas=_g('ov');
 let octx=ocanvas.getContext('2d',{desynchronized:true});
 let DPR=Math.max(1,Math.min(3,window.devicePixelRatio||1));
 
@@ -2150,7 +2151,7 @@ function frame(){
 // string compare. Hidden entirely when nothing is selected.
 let _selDimSig='';
 function _statusSel(){
-  const el=document.getElementById('sSel');if(!el)return;
+  const el=_g('sSel');if(!el)return;
   let txt='';
   if(state.selection.size){
     const sel=[...state.selection].map(byId).filter(Boolean);
@@ -2242,7 +2243,7 @@ let _mirrorVer=-1;
 function _mirrorSync(){
   if(_mirrorVer===_gridVer)return;
   _mirrorVer=_gridVer;
-  const ul=document.getElementById('shapeMirrorList');
+  const ul=_g('shapeMirrorList');
   if(!ul)return;
   while(ul.firstChild)ul.removeChild(ul.firstChild);
   const n=Math.min(state.shapes.length,MIRROR_MAX);
@@ -5366,7 +5367,7 @@ function _trapStep(items,active,back){
 // The currently-open modal dialog (help/share), or null. While one is open, global canvas
 // shortcuts must not fire behind it.
 function _openDialog(){
-  for(const id of ['help','share']){const m=document.getElementById(id);if(m&&m.dataset.open==='true')return m;}
+  for(const id of ['help','share']){const m=_g(id);if(m&&m.dataset.open==='true')return m;}
   return null;
 }
 window.addEventListener('keydown',e=>{
@@ -5480,9 +5481,9 @@ window.addEventListener('keydown',e=>{
   }
   else if(k==='escape'){
     // WCAG: Escape dismisses an open modal first, else clears selection/draft.
-    const ctx2=document.getElementById('ctx');
+    const ctx2=_g('ctx');
     if(ctx2.dataset.open==='true'){UI.closeCtxMenu();return}
-    const hp=document.getElementById('help'),sp2=document.getElementById('share');
+    const hp=_g('help'),sp2=_g('share');
     if(hp.dataset.open==='true')UI.toggleHelp();
     else if(sp2.dataset.open==='true')UI.closeShare();
     // ADR-0094: an in-flight pointer gesture cancels before the generic clear —
@@ -5530,7 +5531,7 @@ function toggleSnapMode(){state.snap=!state.snap;UI.toast(`${t('snap')} ${state.
 // ADR-0134: the shape search box was ⌘F-only — invisible to touch users
 // (the exact keyboard-only trap FT-06 warned about). Shared by ⌘F and ctx.
 function toggleSq(){
-  const sq=document.getElementById('sqinput');if(!sq)return;
+  const sq=_g('sqinput');if(!sq)return;
   sq.style.display=sq.style.display==='none'?'block':'none';
   if(sq.style.display!=='none'){sq.focus();sq.select();}
   else{_sq='';invalidateOverlay();}
@@ -5544,7 +5545,7 @@ function pickTool(tool,temporary){
   UI.announce(T.k[tool]||tool);   // tool switches were SR-silent (undo/group等 toast, this didn't)
   for(const b of document.querySelectorAll('.tool'))b.setAttribute('aria-pressed',b.dataset.tool===tool);
   // hide style panel for select/hand
-  const sp=document.getElementById('stylePanel');
+  const sp=_g('stylePanel');
   sp.hidden=tool==='select'||tool==='hand'||tool==='eraser'||tool==='eyedropper';
 }
 
@@ -6990,7 +6991,7 @@ function importBoard(file){
       // clocks from the board we just swapped out. Skipping this leaks wclock entries and
       // can let a re-imported shape (same id) inherit a stale LWW clock.
       state.selection.clear();state.wclock={};
-      if(typeof d.docName==='string'&&d.docName){state.docName=d.docName.slice(0,80);document.getElementById('docName').value=state.docName;_syncDocTitle();}   // clamp: the input enforces maxlength=80, intake paths must too
+      if(typeof d.docName==='string'&&d.docName){state.docName=d.docName.slice(0,80);_g('docName').value=state.docName;_syncDocTitle();}   // clamp: the input enforces maxlength=80, intake paths must too
       sortZ();invalidate();
       Store._recordCommitted({op:'replace',before,after:clone(state.shapes),wc:beforeWc,afterWc:clone(state.wclock),origSel});
       UI.toast(t('loadedBoard')+' ('+shapes.length+')','ok');
@@ -7805,7 +7806,7 @@ const Share={
     const code=decodeURIComponent(h.slice(3));
     if(!code)return false;
     UI.openShare();
-    document.getElementById('rtcOfferIn').value=code;
+    _g('rtcOfferIn').value=code;
     UI.toast(t('inviteLinkOpened'),'ok');
     return true;
   },
@@ -7873,7 +7874,7 @@ const Share={
       state.selection.clear();state.wclock={};
       sortZ();invalidate();
       Store._recordCommitted({op:'replace',before,after:clone(state.shapes),wc:beforeWc,afterWc:clone(state.wclock),origSel});
-      document.getElementById('docName').value=state.docName;_syncDocTitle();
+      _g('docName').value=state.docName;_syncDocTitle();
       // clean URL
       history.replaceState(null,'',location.pathname);
       UI.toast(t('imported'),'ok');
@@ -8010,7 +8011,7 @@ const Persist={
         state.viewport.x=+d.viewport.x; state.viewport.y=+d.viewport.y;
         state.viewport.zoom=clampZoom(+d.viewport.zoom);
       }
-      if(typeof d.docName==='string'&&d.docName){state.docName=d.docName.slice(0,80);document.getElementById('docName').value=state.docName;_syncDocTitle();}   // clamp: the input enforces maxlength=80, intake paths must too
+      if(typeof d.docName==='string'&&d.docName){state.docName=d.docName.slice(0,80);_g('docName').value=state.docName;_syncDocTitle();}   // clamp: the input enforces maxlength=80, intake paths must too
       state.lastSaveAt=d.savedAt||0;
       sortZ();
     }
@@ -8073,7 +8074,7 @@ const Persist={
       const origSel=[...state.selection];
       state.shapes=shapes.map(clone);_invalidateGrid();   // ADR-0009
       state.selection.clear();state.wclock={};
-      if(typeof d.docName==='string'&&d.docName){state.docName=d.docName.slice(0,80);document.getElementById('docName').value=state.docName;_syncDocTitle();}   // clamp: the input enforces maxlength=80, intake paths must too
+      if(typeof d.docName==='string'&&d.docName){state.docName=d.docName.slice(0,80);_g('docName').value=state.docName;_syncDocTitle();}   // clamp: the input enforces maxlength=80, intake paths must too
       if(d.viewport&&Number.isFinite(+d.viewport.x)&&Number.isFinite(+d.viewport.y)&&Number.isFinite(+d.viewport.zoom)&&d.viewport.zoom>0){
         state.viewport.x=+d.viewport.x;state.viewport.y=+d.viewport.y;state.viewport.zoom=clampZoom(+d.viewport.zoom);
       }
@@ -8129,12 +8130,12 @@ document.addEventListener('visibilitychange',()=>Persist.flushIfHidden(document.
 // ====================== UI ======================
 const UI={
   refreshUndo(){
-    document.getElementById('btnUndo').disabled=state.histIdx<0;
-    document.getElementById('btnRedo').disabled=state.histIdx>=state.history.length-1;
-    document.getElementById('sCount').textContent=state.shapes.length;
+    _g('btnUndo').disabled=state.histIdx<0;
+    _g('btnRedo').disabled=state.histIdx>=state.history.length-1;
+    _g('sCount').textContent=state.shapes.length;
   },
   refreshZoom(){
-    document.getElementById('zoomVal').textContent=Math.round(state.viewport.zoom*100)+'%';
+    _g('zoomVal').textContent=Math.round(state.viewport.zoom*100)+'%';
   },
   // §3.18: minimap has no dismiss affordance — always-on is pure visual noise on a small
   // board. `M` toggles it; the preference persists (localStorage) so it doesn't reappear
@@ -8164,7 +8165,7 @@ const UI={
     UI.announce(t(next===null?'themeAuto':next==='light'?'themeLight':'themeDark'));
   },
   refreshThemeBtn(){
-    const b=document.getElementById('btnTheme');if(!b)return;
+    const b=_g('btnTheme');if(!b)return;
     const mode=UI._themeMode();
     const key=mode===null?'themeAuto':mode==='light'?'themeLight':'themeDark';
     b.setAttribute('aria-label',t(key));b.setAttribute('title',t(key));
@@ -8181,21 +8182,21 @@ const UI={
     UI.fillHelp();       // built once in main(); the modal doesn't rebuild it on open/close
     UI.updateOnline();   // only re-runs on connectivity change otherwise
     UI.refreshPeers();   // self-avatar title ('You'/'自分') was hardcoded English until this fix
-    const sq=document.getElementById('sqinput');
+    const sq=_g('sqinput');
     if(sq){sq.placeholder=T.k.search;sq.setAttribute('aria-label',T.k.search);}
     if(canvas.dataset.tool)canvas.setAttribute('aria-label',(T.k[canvas.dataset.tool]||canvas.dataset.tool)+' — '+t('canvasHint'));
     UI.refreshLangBtn();
     UI.announce(LANG==='ja'?'日本語':'English');   // language names are invariant proper nouns, not i18n keys
   },
   refreshLangBtn(){
-    const b=document.getElementById('btnLang');if(!b)return;
+    const b=_g('btnLang');if(!b)return;
     const name=LANG==='ja'?'日本語':'English';
     b.setAttribute('aria-label',name);b.setAttribute('title',name);
     b.dataset.lang=LANG;
   },
-  setStatusXY(x,y){document.getElementById('sXY').textContent=x+', '+y},
+  setStatusXY(x,y){_g('sXY').textContent=x+', '+y},
   refreshSaved(){
-    const el=document.getElementById('sSaved');if(!el)return;
+    const el=_g('sSaved');if(!el)return;
     if(!state.lastSaveAt){el.textContent='—';return}
     const d=Math.round((Date.now()-state.lastSaveAt)/1000);
     el.textContent=d<3?t('savedNow'):d+t('savedAgo');
@@ -8205,7 +8206,7 @@ const UI={
     div.className='toast'+(kind?' '+kind:'');
     div.setAttribute('role',kind==='err'||kind==='warn'?'alert':'status');
     div.textContent=msg;
-    document.getElementById('toasts').appendChild(div);
+    _g('toasts').appendChild(div);
     setTimeout(()=>{div.style.opacity='0';div.style.transform='translateY(4px)';
       setTimeout(()=>div.remove(),240)},1600);
   },
@@ -8214,7 +8215,7 @@ const UI={
   // but silence is an a11y asymmetry — undo/group/etc. all announce via toasts.
   // Same-text repeats (V pressed twice) need a nudge for the live region to re-fire.
   announce(msg){
-    const el=document.getElementById('sr');if(!el)return;
+    const el=_g('sr');if(!el)return;
     el.textContent=el.textContent===msg?msg+' ':msg;
   },
   // ADR-0215: focus capture/restore around dialogs — _trapStep/_focusables
@@ -8224,13 +8225,13 @@ const UI={
   _captureFocus(){this._prevFocus=document.activeElement},
   _restoreFocus(){const p=this._prevFocus;this._prevFocus=null;if(p&&p.focus)p.focus()},
   toggleHelp(){
-    const h=document.getElementById('help'),open=h.dataset.open!=='true';
+    const h=_g('help'),open=h.dataset.open!=='true';
     h.dataset.open=open;
-    if(open){this._captureFocus();document.getElementById('helpClose').focus()}
+    if(open){this._captureFocus();_g('helpClose').focus()}
     else this._restoreFocus();
   },
   openCtxMenu(x,y,customItems){
-    const m=document.getElementById('ctx');
+    const m=_g('ctx');
     const _cr=canvas.getBoundingClientRect(),_wp=G.s2w({x:x-_cr.left,y:y-_cr.top});
     m._wx=_wp.x;m._wy=_wp.y;   // ADR-0103: paste-at-cursor anchor
     const has=state.selection.size>0;
@@ -8349,7 +8350,7 @@ const UI={
     m.style.top=Math.min(y,innerHeight-m.offsetHeight-20)+'px';
     m.querySelector('.ctx-item')?.focus();
   },
-  closeCtxMenu(){document.getElementById('ctx').dataset.open='false'},
+  closeCtxMenu(){_g('ctx').dataset.open='false'},
   // FT-07: reuses openCtxMenu's rendering/positioning/keyboard-nav/focus-trap wholesale
   // (all of it operates on the #ctx element generically, not on any hard-coded item set) —
   // touch users get every export format + import via one tap, not just the PNG default.
@@ -8367,11 +8368,11 @@ const UI={
       ['ctxExportExc','',exportExc],
       ['ctxExportDrawio','',exportDrawio],
       'sep',
-      ['ctxImportBoard','',()=>document.getElementById('fileImport').click()]
+      ['ctxImportBoard','',()=>_g('fileImport').click()]
     ]);
   },
   fillHelp(){
-    const g=document.getElementById('helpGrid');
+    const g=_g('helpGrid');
     const k=T.k;
     const rows=[
       ['V',k.select],['H / Space',k.pan],['P',k.pen],
@@ -8403,7 +8404,7 @@ const UI={
     }
   },
   updateOnline(){
-    const dot=document.getElementById('sDot'),lbl=document.getElementById('sConn');
+    const dot=_g('sDot'),lbl=_g('sConn');
     if(navigator.onLine){dot.classList.remove('offline');lbl.textContent=t('online')}
     else{dot.classList.add('offline');lbl.textContent=t('offline')}
   },
@@ -8432,43 +8433,43 @@ const UI={
     }
   },
   openShare(){
-    const m=document.getElementById('share');
+    const m=_g('share');
     m.dataset.open='true';
     // ADR-0015: encrypted by default where crypto.subtle exists (secure contexts —
     // file:// counts, http:// non-localhost does not); the checkbox is the opt-out.
-    const chk=document.getElementById('shareEnc');
+    const chk=_g('shareEnc');
     const can=Share.canEncrypt();
     chk.disabled=!can;
     chk.checked=can;
     chk.title=can?'':t('shareNoCrypto');
     const refresh=()=>{
       const enc=!chk.disabled&&chk.checked;
-      document.getElementById('shareWarnPlain').hidden=enc;
-      document.getElementById('shareWarnEnc').hidden=!enc;
+      _g('shareWarnPlain').hidden=enc;
+      _g('shareWarnEnc').hidden=!enc;
       Share.exportToUrl(enc).then(url=>{
-        document.getElementById('shareUrl').value=url;
+        _g('shareUrl').value=url;
         // ADR-0040: links this long get mangled by chat apps — nudge toward
         // .board export instead of letting the user send a broken link.
-        document.getElementById('shareWarnLong').hidden=url.length<=SHARE_URL_WARN;
+        _g('shareWarnLong').hidden=url.length<=SHARE_URL_WARN;
       }).catch(()=>{
         // ADR-0040: previously swallowed — an old/stale URL stayed in the
         // field and the user would copy a broken link.
-        document.getElementById('shareUrl').value='';
-        document.getElementById('shareWarnLong').hidden=true;
+        _g('shareUrl').value='';
+        _g('shareWarnLong').hidden=true;
         UI.toast(t('shareExportFailed'),'err');
       });
     };
     chk.onchange=refresh;
     refresh();
     this._captureFocus();
-    document.getElementById('shareClose').focus();
+    _g('shareClose').focus();
   },
   closeShare(){
-    document.getElementById('share').dataset.open='false';
+    _g('share').dataset.open='false';
     this._restoreFocus();
   },
   refreshPeers(){
-    const stack=document.getElementById('peerStack');
+    const stack=_g('peerStack');
     while(stack.firstChild)stack.removeChild(stack.firstChild);
     // self avatar
     const self=document.createElement('div');
@@ -8513,7 +8514,7 @@ async function _onBtnInstall(){
   _installPrompt.prompt();
   await _installPrompt.userChoice;
   _installPrompt=null;
-  const btn=document.getElementById('btnInstall');
+  const btn=_g('btnInstall');
   if(btn)btn.hidden=true;
 }
 function wire(){
@@ -8530,21 +8531,21 @@ function wire(){
   for(const b of document.querySelectorAll('.tool'))
     b.addEventListener('click',()=>pickTool(b.dataset.tool));
   // topbar
-  document.getElementById('btnUndo').onclick=()=>Store.undo()&&UI.toast(t('undone'));
-  document.getElementById('btnRedo').onclick=()=>Store.redo()&&UI.toast(t('redone'));
-  document.getElementById('btnExport').onclick=exportPNG;
-  document.getElementById('btnExportMenu').onclick=e=>{
+  _g('btnUndo').onclick=()=>Store.undo()&&UI.toast(t('undone'));
+  _g('btnRedo').onclick=()=>Store.redo()&&UI.toast(t('redone'));
+  _g('btnExport').onclick=exportPNG;
+  _g('btnExportMenu').onclick=e=>{
     const r=e.currentTarget.getBoundingClientRect();
     UI.openExportMenu(r.left,r.bottom+4);
   };
-  document.getElementById('fileImport').onchange=e=>{
+  _g('fileImport').onchange=e=>{
     const f=e.target.files[0];
     if(f)/\.(drawio|dio)$/i.test(f.name)?importDrawioFile(f):f.name.endsWith('.excalidraw')?importExcFile(f):(f.name.endsWith('.svg')||f.type==='image/svg+xml')?importSvgFile(f):importBoard(f);   // ADR-0203
     e.target.value='';   // allow re-selecting the same filename to re-trigger change
   };
-  document.getElementById('btnPresent').onclick=()=>Presentation.enter();
+  _g('btnPresent').onclick=()=>Presentation.enter();
   // doc name
-  const docNameEl=document.getElementById('docName');
+  const docNameEl=_g('docName');
   if(docNameEl){
     docNameEl.value=state.docName||'Untitled';
     // IME-safe live update. During Japanese (etc.) composition, `input` fires for
@@ -8557,12 +8558,12 @@ function wire(){
     docNameEl.addEventListener('compositionend',_commitDocName);
     docNameEl.addEventListener('change',()=>{state.docName=docNameEl.value||'Untitled';_syncDocTitle();Persist.schedule()});
   }
-  document.getElementById('btnInstall').onclick=_onBtnInstall;
-  document.getElementById('btnLang').onclick=()=>UI.toggleLang();
-  document.getElementById('btnTheme').onclick=()=>UI.toggleTheme();
-  document.getElementById('btnHelp').onclick=()=>UI.toggleHelp();
-  document.getElementById('helpClose').onclick=()=>UI.toggleHelp();
-  document.getElementById('help').addEventListener('click',e=>{
+  _g('btnInstall').onclick=_onBtnInstall;
+  _g('btnLang').onclick=()=>UI.toggleLang();
+  _g('btnTheme').onclick=()=>UI.toggleTheme();
+  _g('btnHelp').onclick=()=>UI.toggleHelp();
+  _g('helpClose').onclick=()=>UI.toggleHelp();
+  _g('help').addEventListener('click',e=>{
     if(e.target.id==='help')UI.toggleHelp();
   });
   // swatches
@@ -8601,14 +8602,14 @@ function wire(){
     });
     cp.addEventListener('change',()=>{_sfbFlush(k,cp.value);_sfbCapture(k);});
   }
-  const rng=document.getElementById('rngSize');
-  const opacRng=document.getElementById('rngOpacity');
-  const opacVal=document.getElementById('opacVal');
+  const rng=_g('rngSize');
+  const opacRng=_g('rngOpacity');
+  const opacVal=_g('opacVal');
   rng.addEventListener('focus',()=>_sfbCapture('size'));
   rng.addEventListener('pointerdown',()=>_sfbCapture('size'));
   rng.addEventListener('input',()=>{
     state.style.size=+rng.value;
-    document.getElementById('sizeVal').textContent=rng.value;
+    _g('sizeVal').textContent=rng.value;
     for(const id of state.selection){const s=byId(id);if(s&&!s.locked)s.size=state.style.size}
     if(state.selection.size)invalidate();
   });
@@ -8626,10 +8627,10 @@ function wire(){
     opacRng.addEventListener('change',()=>{_sfbFlush('opacity',state.style.opacity);_sfbCapture('opacity');});
   }
   // zoom
-  document.getElementById('btnZoomIn').onclick=()=>zoomBy(1.2);
-  document.getElementById('btnZoomOut').onclick=()=>zoomBy(1/1.2);
-  document.getElementById('btnFit').onclick=fitToContent;
-  document.getElementById('zoomVal').onclick=zoomReset;
+  _g('btnZoomIn').onclick=()=>zoomBy(1.2);
+  _g('btnZoomOut').onclick=()=>zoomBy(1/1.2);
+  _g('btnFit').onclick=fitToContent;
+  _g('zoomVal').onclick=zoomReset;
   // online
   window.addEventListener('online',UI.updateOnline);
   window.addEventListener('offline',UI.updateOnline);
@@ -8641,12 +8642,12 @@ function wire(){
   window.addEventListener('beforeinstallprompt',e=>{
     e.preventDefault();
     _installPrompt=e;
-    const btn=document.getElementById('btnInstall');
+    const btn=_g('btnInstall');
     if(btn)btn.hidden=false;
   });
   window.addEventListener('appinstalled',()=>{
     _installPrompt=null;
-    const btn=document.getElementById('btnInstall');
+    const btn=_g('btnInstall');
     if(btn)btn.hidden=true;
   });
   // resize
@@ -8665,24 +8666,24 @@ function wire(){
     if(!e.target.closest('.ctx-menu'))UI.closeCtxMenu();
   });
   // v1.6.95: Arrow-key navigation inside the context menu (ARIA APG menu pattern)
-  document.getElementById('ctx').addEventListener('keydown',e=>_ctxMenuKeyNav(document.getElementById('ctx'),e));
+  _g('ctx').addEventListener('keydown',e=>_ctxMenuKeyNav(_g('ctx'),e));
   // Initial tool styling
   pickTool('select');
   // periodic saved-ago refresh
   setInterval(UI.refreshSaved,5000);
 
   // ---- Share / Net (v1.1) ----
-  document.getElementById('btnShare').onclick=()=>UI.openShare();
-  document.getElementById('shareClose').onclick=()=>UI.closeShare();
-  document.getElementById('share').addEventListener('click',e=>{
+  _g('btnShare').onclick=()=>UI.openShare();
+  _g('shareClose').onclick=()=>UI.closeShare();
+  _g('share').addEventListener('click',e=>{
     if(e.target.id==='share')UI.closeShare();
   });
-  document.getElementById('shareCopyBtn').onclick=async()=>{
-    const url=document.getElementById('shareUrl').value;
+  _g('shareCopyBtn').onclick=async()=>{
+    const url=_g('shareUrl').value;
     if(url){const ok=await copyText(url);UI.toast(ok?t('shareUrlCopied'):t('copyFailed'),ok?'ok':'warn')}
   };
   // WebRTC manual signaling
-  {const _g=id=>document.getElementById(id);
+  {
   _g('rtcCreateOffer').onclick=async()=>{try{_g('rtcOffer').value=await Net.wrtcCreateOffer()}catch(e){UI.toast(String(e),'err')}};
   _g('rtcConnect').onclick=async()=>{const a=_g('rtcAnswerIn').value.trim();if(!a)return;try{await Net.wrtcConsumeAnswer(a);UI.toast(t('connected'),'ok')}catch(e){UI.toast(String(e),'err')}};
   _g('rtcCreateAnswer').onclick=async()=>{const o=_g('rtcOfferIn').value.trim();if(!o)return;try{_g('rtcAnswer').value=await Net.wrtcAcceptOffer(o)}catch(e){UI.toast(String(e),'err')}};
@@ -8739,11 +8740,11 @@ function _syncStylePanel(){
   if(v!=null){state.style.dash=v;press('dash',v)}
   v=uni('size');
   if(v!=null){state.style.size=v;
-    const r=document.getElementById('rngSize'),sv=document.getElementById('sizeVal');
+    const r=_g('rngSize'),sv=_g('sizeVal');
     if(r)r.value=v;if(sv)sv.textContent=v;}
   v=uni('opacity');
   if(v!=null){state.style.opacity=v;
-    const r=document.getElementById('rngOpacity'),ov=document.getElementById('opacVal'),p=Math.round(v*100);
+    const r=_g('rngOpacity'),ov=_g('opacVal'),p=Math.round(v*100);
     if(r)r.value=p;if(ov)ov.textContent=p;}
 }
 function applyStyleToSelection(patch){
@@ -9327,7 +9328,7 @@ const Presentation=(()=>{
   function _goto(i){
     _idx=Math.max(0,Math.min(_frames.length-1,i));
     _zoomToFrame(_frames[_idx]);
-    const c=document.getElementById('presCounter');
+    const c=_g('presCounter');
     if(c)c.textContent=`${_idx+1} / ${_frames.length}`;
   }
 
@@ -9339,7 +9340,7 @@ const Presentation=(()=>{
     _setTestState:(active,trigger)=>{_active=active;_focusTrigger=trigger;}};
 })();
 const Minimap=(()=>{
-  const mc=document.getElementById('minimap');
+  const mc=_g('minimap');
   if(!mc)return{draw(){}};
   const mx=mc.getContext('2d');
   const W=160,H=100;
@@ -9444,7 +9445,7 @@ const Minimap=(()=>{
   }catch(_){}
   UI.refreshUndo();UI.refreshZoom();UI.refreshSaved();UI.refreshMinimapVis();
   // version display
-  document.getElementById('sVer').textContent='v'+V;
+  _g('sVer').textContent='v'+V;
   // v1.1: import shared board from URL hash (if any)
   try{await Share.importFromHash()}catch(_){}
   try{Share.inviteFromHash()}catch(_){}   // ADR-0045
