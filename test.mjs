@@ -317,7 +317,7 @@ const checks = [
   // v1.7.112: ADR-0054 no micro-pan at zoom bounds
   ['zoomAt pure no-op at zoom bounds', html.includes("if(nz===v.zoom)return;") && html.includes("const nz=clampZoom(v.zoom*Math.exp(delta));")],
   // v1.7.113: ADR-0055 rotate point-geometry shapes
-  ['doRotate covers pen/line/arrow geometry', html.includes("const _rotatable=s=>s.w!=null||s.pts||s.x1!=null") && html.includes("_rotPtsAbout(s,gx,gy,cs,sn)") && html.includes("if(s.w==null){_rotPtsAbout")],
+  ['doRotate covers pen/line/arrow geometry', html.includes("const _rotatable=s=>_hb(s)||s.pts||s.x1!=null") && html.includes("_rotPtsAbout(s,gx,gy,cs,sn)") && html.includes("if(!_hb(s)){_rotPtsAbout")],
   // v1.7.114: ADR-0056 multi-selection resize
   ['gresize dragKind wires group handles', html.includes("ptr.dragKind='gresize';") && html.includes("ptr.gOrig=new Map(sel.filter(s=>!_lk(s)).map(s=>[s.id,clone(s)]))") && html.includes("if(!sel.some(s=>_rt(s))){")],
   ['gresize reuses applyResize on a virtual box + commits one align op', html.includes("function _gresizeDrag(wp,shift,alt){") && html.includes("applyResize(vbox,ptr.resizeHandle,vorig,wp,shift,alt)") && html.includes("_mapToBox(sh,orig,ob,vbox)") && html.includes("op:'align',dir:'gresize'") && html.includes("'gresize'")],
@@ -950,12 +950,12 @@ const checks = [
   // v1.6.61: rotation - shapes rotate on canvas, undo/redo, keyboard ,/.
   ['doRotate function exists', html.includes("function doRotate") && html.includes("op:'align',dir:'rotate'")],
   ['rotation applied in drawShape (save/restore)', html.includes("const _rot=shapeRot(s);") && html.includes("if(_rot)c.restore()")],
-  ['G.hit applies inverse rotation (box-only, matching shapeRot)', html.includes("if(_rt(s)&&s.w!=null){const _cx=s.x+s.w/2") && html.includes("_r=-_rt(s)*_PI/180")],
+  ['G.hit applies inverse rotation (box-only, matching shapeRot)', html.includes("if(_rt(s)&&_hb(s)){const _cx=s.x+s.w/2") && html.includes("_r=-_rt(s)*_PI/180")],
   // v1.7.70: the G.bbox quick-reject must run BEFORE the un-rotation branch — reversing
   // them compares a local-frame point against the rotated world envelope and makes large
   // parts of any rotated non-square box unclickable. Lock the ordering.
   ['G.hit quick-rejects with G.bbox before un-rotating the pointer',
-    html.indexOf('const b=G.bbox(s);\n    const tol=Math.max(6/state.viewport.zoom') < html.indexOf('if(_rt(s)&&s.w!=null){const _cx=s.x+s.w/2')],
+    html.indexOf('const b=G.bbox(s);\n    const tol=Math.max(6/state.viewport.zoom') < html.indexOf('if(_rt(s)&&_hb(s)){const _cx=s.x+s.w/2')],
   ['G.bbox returns rotation envelope', html.includes("if(_rt(s)){const _cx=_rb.x+_rb.w/2")],
   ['rotation keyboard shortcuts , and .', html.includes("k===','&&!meta&&_selN()") && html.includes("k==='.'&&!meta&&_selN()")],
   ['SVG export rotation transform', html.includes("rT=shapeRot(s)?` transform=") && html.includes("rotate(${_num(_rt(s))}")],
@@ -981,14 +981,14 @@ const checks = [
   ['search input has localized aria-label', html.includes("_sa(sq,_AL,T.k.search)")],
   ['search Escape returns focus to canvas', html.includes("_ivO();canvas.focus();}") && html.includes("_sqAdvance(ev.shiftKey?-1:1)")],
   // v1.6.64: Socratic round 4 - rotation scope + lock completeness
-  ['doRotate restricted to box shapes (s.w!=null, NaN-safe)', html.includes("_selL(s=>s&&!_lk(s)&&s.w!=null)")],
+  ['doRotate restricted to box shapes (s.w!=null, NaN-safe)', html.includes("_selL(s=>s&&!_lk(s)&&_hb(s))")],
   ['doDelete skips locked shapes', html.includes("function doDelete(){\n  const sel=_selUL();")],
   ['eraser skips locked shapes', html.includes("if(hit&&!hit.locked&&!_eraseBatch.some")],
   // v1.6.65: budget removed - deferred fixes implemented
   ['_edgePt is rotation-aware (projects to true rotated edge)', html.includes("const ub=sh.w!=null?{x:sh.x,y:sh.y,w:sh.w,h:sh.h}:_bb(sh)") && html.includes("const cx=ub.x+ub.w/2,cy=ub.y+ub.h/2,rot=sh.rotate")],
   ['rotation extends to all box types (text bbox uses envelope)', !html.includes("if(_txt(s)){\n      return{x:s.x,y:s.y,w:s.w,h:s.h};")],
   ['SVG rotation applies to text/image/sticky/frame', html.includes("font-size=\"${fs}\"${s.bold?' font-weight=\"600\"':''}") && html.includes("href=\"${_esc(_du(s))}\"${_cr2>0?` clip-path=\"url(#irc${_esc(s.id)})\"`:''}${a}${rT}${fT}${_sh}/>")],
-  ['minimap applies rotation transform', html.includes("const _mr=_rt(s)&&s.w!=null;") && html.includes("if(_mr)sx.restore();")],
+  ['minimap applies rotation transform', html.includes("const _mr=_rt(s)&&_hb(s);") && html.includes("if(_mr)sx.restore();")],
   ['minimap renders frame shapes (case frame fallthrough to rect)', html.includes("case 'frame':\n        case 'rect':")],
   ['describeShape announces locked and rotated state', html.includes("if(_lk(s))d+=` ${t('ctxLock')}`;") && html.includes("if(_rt(s))d+=` ${_rt(s)}°`;")],
   ['describeShape announces flip/shadow/route (ADR-0414)', html.includes("s.flip&1&&t('ctxFlipH')")&&html.includes("if(_sh2(s))d+=` ${t('ctxShadow')}`")&&html.includes("_el(s)?t('ctxElbow'):t('ctxCurve')")&&html.includes("_fs2(s)==='hatch'||_fs2(s)==='cross'")&&html.includes("if(s.hop)d+=` ${t('ctxHop')}`")],
@@ -1117,7 +1117,7 @@ const checks = [
   ['nudgeSelection mirrors drag: frame children + skip locked', html.includes("function nudgeSelection(dx,dy)") && html.includes("[...withFrameChildren(_sl())].filter(id=>!byId(id)?.locked)")],
   ['arrow-key handler delegates to nudgeSelection', html.includes("nudgeSelection(dx,dy);")],
   // v1.6.76: render rotation gated to box shapes (canvas/SVG parity, no NaN centre)
-  ['shapeRot helper gates rotation to box shapes', html.includes("function shapeRot(s){return _rt(s)&&s.w!=null?_rt(s):0;}")],
+  ['shapeRot helper gates rotation to box shapes', html.includes("function shapeRot(s){return _rt(s)&&_hb(s)?_rt(s):0;}")],
   ['canvas drawShape uses shapeRot (not raw s.rotate)', html.includes("const _rot=shapeRot(s);")],
   ['SVG export rT uses shapeRot', html.includes("const rT=shapeRot(s)?")],
   // v1.6.77: Persist._saveErrMsg distinguishes QuotaExceededError (Zenn/PWA best practice)

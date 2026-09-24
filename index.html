@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.533';
+const V='1.7.534';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1210,9 +1210,9 @@ const G={
     // hit-testing identically: un-rotate the pointer into the box's local frame for the
     // per-type check below (which uses s.x/s.w). A line/arrow/pen carrying a stray `rotate`
     // (crafted import or a remote op — validPatch permits `rotate` on any shape) renders
-    // UNrotated; without the `s.w!=null` guard its center would be s.x+(undefined||0)/2 =
+    // UNrotated; without the `_hb(s)` guard its center would be s.x+(undefined||0)/2 =
     // NaN, un-rotating p to {NaN,NaN} and making the shape permanently unhittable.
-    if(_rt(s)&&s.w!=null){const _cx=s.x+s.w/2,_cy=s.y+(s.h||0)/2,_r=-_rt(s)*_PI/180,_c=_cos(_r),_si=_sin(_r),_dx=p.x-_cx,_dy=p.y-_cy;p={x:_cx+_dx*_c-_dy*_si,y:_cy+_dx*_si+_dy*_c};}
+    if(_rt(s)&&_hb(s)){const _cx=s.x+s.w/2,_cy=s.y+(s.h||0)/2,_r=-_rt(s)*_PI/180,_c=_cos(_r),_si=_sin(_r),_dx=p.x-_cx,_dy=p.y-_cy;p={x:_cx+_dx*_c-_dy*_si,y:_cy+_dx*_si+_dy*_c};}
     switch(s.type){
       case 'rect':
         if(_fi(s))return true;
@@ -2012,7 +2012,8 @@ let _penCachePx=0;
 const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPending.clear()}   // ADR-0445: wholesale swap also drops parked img refs
 const _rs=arr=>{state.shapes=arr;_iG();_pcC()}   // ADR-0493: wholesale board replace (5 sites)
 const _shV=()=>_sh().filter(s=>_sv(s));   // ADR-0494: visible-shape subset (6 sites)
-const _ulv=s=>!_lk(s)&&_sv(s);   // ADR-0496: unlocked+visible predicate (4 sites)
+const _ulv=s=>!_lk(s)&&_sv(s);   // ADR-0496
+const _hb=s=>s.w!=null;   // ADR-0501: unlocked+visible predicate (4 sites)
 const _idIdx=id=>_sh().findIndex(s=>s.id===id);   // ADR-0497: shape index by id (4 sites)
 const _psc=id=>{_penBboxCache.delete(id);Net._imgPending.delete(id);const e=_penCache.get(id);if(e){_penCache.delete(id);_penCachePx-=e.px||0;}}   // ADR-0427/0435
 // Effective raster resolution: zoom-adaptive (supersampled at low zoom is just
@@ -2695,7 +2696,7 @@ function drawGrid(W,H){
 // rotation centre; line/arrow/pen are point geometry, so a stray `rotate` (only
 // reachable via a remote `upd` — doRotate is box-only) is ignored. Keeps canvas and
 // SVG export in agreement (表示=出力パリティ) and avoids a NaN rotation centre.
-function shapeRot(s){return _rt(s)&&s.w!=null?_rt(s):0;}
+function shapeRot(s){return _rt(s)&&_hb(s)?_rt(s):0;}
 // Centred label for rect/ellipse (frames draw their own corner label). Mirrors the
 // SVG export's <text> so a label added via double-click is visible on canvas too —
 // otherwise it's stored/exported but invisible while editing (表示=出力パリティ).
@@ -3330,7 +3331,7 @@ function drawText(s,c){
       if(s.under){const uy=s.y+i*lh+fs*1.08;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}
       if(s.strike){const uy=s.y+i*lh+fs*0.55;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}}   // ADR-0100
     c.restore()}
-  if(s.link&&s.w!=null){c.font='10px sans-serif';c.textAlign='right';c.textBaseline='top';c.fillText('🔗',s.x+_abs(s.w)-3,s.y+3)}   // ADR-0310: link badge top-right
+  if(s.link&&_hb(s)){c.font='10px sans-serif';c.textAlign='right';c.textBaseline='top';c.fillText('🔗',s.x+_abs(s.w)-3,s.y+3)}   // ADR-0310: link badge top-right
   if(s.link&&_conn(s.type)){const lp=_connLabelXY(s);c.font='10px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText('🔗',lp.x+10,lp.y-10)}   // ADR-0333: badge at label anchor (offset so it doesn't sit on the line)
   if(s.link&&_pn(s)&&s.pts[0]){c.font='10px sans-serif';c.textAlign='left';c.textBaseline='bottom';c.fillText('🔗',s.pts[0][0]+4,s.pts[0][1]-2)}   // ADR-0333
 }
@@ -3392,10 +3393,10 @@ function hitHandle(wp,s){
 function getRotHandle(s){
   if(!s||_lk(s))return null;
   let cx,cy,ty;
-  if(s.w!=null){cx=s.x+s.w/2;cy=s.y+s.h/2;ty=s.y}
+  if(_hb(s)){cx=s.x+s.w/2;cy=s.y+s.h/2;ty=s.y}
   else{const b=_bb(s);if(!b||!(b.w>0)||!(b.h>0))return null;cx=b.x+b.w/2;cy=b.y+b.h/2;ty=b.y}
   const d=ROT_OFFSET/_vp().zoom;
-  const r=(s.w!=null&&_rt(s))?_rt(s)*_PI/180:0,c=_cos(r),sn=_sin(r);
+  const r=(_hb(s)&&_rt(s))?_rt(s)*_PI/180:0,c=_cos(r),sn=_sin(r);
   const R=(px,py)=>({x:cx+(px-cx)*c-(py-cy)*sn,y:cy+(px-cx)*sn+(py-cy)*c});
   const k=R(cx,ty-d),an=R(cx,ty);
   return{x:k.x,y:k.y,ax:an.x,ay:an.y,cx,cy};
@@ -5606,7 +5607,7 @@ _on(window,_KD,e=>{
   else if((k===_AU||k===_AD||k===_AL2||k===_AR2)&&e.altKey){
     // Alt+arrow = keyboard resize (a11y: pointer-free). L/R = width, U/D = height,
     // top-left anchored; ⇧ = ×10 step. Box shapes only. Single reversible `resize` op.
-    const sel=_selL(s=>s&&!_lk(s)&&s.w!=null);
+    const sel=_selL(s=>s&&!_lk(s)&&_hb(s));
     if(_ln(sel)){
       _pd(e);
       const step=e.shiftKey?10:1;
@@ -6193,7 +6194,7 @@ function doBeautify(){
 }
 // ADR-0055: rotate applies to box shapes (orbit + _rt(s) spin) AND point
 // geometry (pen pts / line-arrow endpoints rotate rigidly about the group centre).
-const _rotatable=s=>s.w!=null||s.pts||s.x1!=null;
+const _rotatable=s=>_hb(s)||s.pts||s.x1!=null;
 // ADR-0146: s.bend is a world coordinate of the elbow trunk, so a rotate
 // that moves the endpoints leaves the trunk stranded at its old spot.
 // Rotate the trunk segment rigidly with the connector: if the rotated
@@ -6221,7 +6222,7 @@ function doRotate(d){
   const r=d*_PI/180,cs=_cos(r),sn=_sin(r);
   const before=sel.map(s=>clone({...s,rotate:_rt(s)||0}));
   for(const s of sel){
-    if(s.w==null){_rotPtsAbout(s,gx,gy,cs,sn);continue}   // ADR-0055: point geometry
+    if(!_hb(s)){_rotPtsAbout(s,gx,gy,cs,sn);continue}   // ADR-0055: point geometry
     const b=_bb(s),cx=b.x+b.w/2,cy=b.y+b.h/2;
     const nx=gx+(cx-gx)*cs-(cy-gy)*sn,ny=gy+(cx-gx)*sn+(cy-gy)*cs;
     Shape.translate(s,nx-cx,ny-cy);
@@ -6600,7 +6601,7 @@ function drawioToShapes(txt){
     {const _im=(sty.shape==='image')?(_ga(c,'style')||'').match(/image=(data:[^;]*;base64,[^;]*|https?:[^;]*)/):null;   // ADR-0259
      if(_im)s=Shape.make('image',{x,y,w:w||120,h:ht||80,dataUrl:_im[1].slice(0,25_000_000),label:_s0(lbl,240)})   // ADR-0353
     }
-    if(sty.rounded==='1'&&s.w!=null)s.r=8;
+    if(sty.rounded==='1'&&_hb(s))s.r=8;
     if(sty.fillColor)s.fill=sty.fillColor==='none'?'none':sty.fillColor;   // ADR-0288
     _dioStyApply(s,sty,_hid);                                            // ADR-0258
     if(sty.fontColor&&sty.fontColor!=='none'&&(_TS.has(s.type)||_lb(s)))s.stroke=sty.fontColor;   // ADR-0247/0281
@@ -6741,7 +6742,7 @@ function boardToDrawio(shapes){
   let i=0;
   // ADR-0336: Board groupId → drawio group cell (wrapper vertex + parent refs,
   // child geometry stored relative to the group origin).
-  const _gbx={};for(const s of shapes)if(_gi(s)&&s.w!=null){const g=_gbx[_gi(s)]||(_gbx[_gi(s)]={x:1/0,y:1/0,x2:-1/0,y2:-1/0});
+  const _gbx={};for(const s of shapes)if(_gi(s)&&_hb(s)){const g=_gbx[_gi(s)]||(_gbx[_gi(s)]={x:1/0,y:1/0,x2:-1/0,y2:-1/0});
     g.x=_min(g.x,s.x);g.y=_min(g.y,s.y);g.x2=_max(g.x2,s.x+s.w);g.y2=_max(g.y2,s.y+(s.h||0))}
   for(const gid in _gbx){const g=_gbx[gid];
     cells.push(`<mxCell id="g_${gid}" value="" style="group;" vertex="1" parent="1"><mxGeometry x="${g.x}" y="${g.y}" width="${g.x2-g.x}" height="${g.y2-g.y}" as="geometry"/></mxCell>`)}
@@ -7097,7 +7098,7 @@ function excToShapes(txt){
         break;}
       default:break;   // unknown — skip
     }
-    if(s){if(r&&s.w!=null)s.rotate=r;if(e.locked)s.locked=1;
+    if(s){if(r&&_hb(s))s.rotate=r;if(e.locked)s.locked=1;
       if(r&&_conn(s.type)){const _rm=r*_PI/180,_cx=(s.x1+s.x2)/2,_cy=(s.y1+s.y2)/2;   // ADR-0300: conn angle → rotate endpoints+way about midpoint
         for(const p of[[s,'x1','y1'],[s,'x2','y2'],...(s.way||[]).map(w=>[w,'x','y'])]){const dx=p[0][p[1]]-_cx,dy=p[0][p[2]]-_cy;p[0][p[1]]=+(_cx+dx*_cos(_rm)-dy*_sin(_rm)).toFixed(1);p[0][p[2]]=+(_cy+dx*_sin(_rm)+dy*_cos(_rm)).toFixed(1)}}
       if(_iS(e.link)&&/^https?:\/\//.test(e.link))s.link=_s0(e.link,500);   // ADR-0301
@@ -7490,7 +7491,7 @@ function buildSVG(shapes,paper){
           els.push('</text>');
         }break;}
     }
-    if(s.link&&s.w!=null)els.push(`<a href="${esc(s.link)}" target="_blank" rel="noopener"><text x="${X+_abs(W)+ox-3}" y="${Y+oy+3}" text-anchor="end" dominant-baseline="hanging" font-size="10" font-family="sans-serif"${a}>🔗</text></a>`);   // ADR-0316/0339
+    if(s.link&&_hb(s))els.push(`<a href="${esc(s.link)}" target="_blank" rel="noopener"><text x="${X+_abs(W)+ox-3}" y="${Y+oy+3}" text-anchor="end" dominant-baseline="hanging" font-size="10" font-family="sans-serif"${a}>🔗</text></a>`);   // ADR-0316/0339
   }
   els.push('</svg>');
   return els.join('\n');
@@ -9736,7 +9737,7 @@ const Minimap=(()=>{
       sx.fillStyle=_fi(s)&&_fi(s)!=='none'?_fi(s):_TR;   // ADR-0288
       sx.strokeStyle=_sk(s)||_gC('--ink');
       sx.lineWidth=_max(0.5,(_szz(s)||1)*sc);
-      const _mr=_rt(s)&&s.w!=null;
+      const _mr=_rt(s)&&_hb(s);
       if(_mr){const ccx=(s.x+s.w/2)*sc+ox,ccy=(s.y+s.h/2)*sc+oy;sx.save();sx.translate(ccx,ccy);sx.rotate(_rt(s)*_PI/180);sx.translate(-ccx,-ccy);}
       switch(s.type){
         case 'frame':
