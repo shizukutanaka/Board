@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.532] - 2026-09-23
+
+### リファクタ
+
+- `_mk` — wire メッセージ envelope (`{k,peer:_pi(),...}`) を 9 サイトに集約、−47B (ADR-0499)
+
 ## [1.7.531] - 2026-09-23
 
 ### リファクタ
