@@ -22,10 +22,10 @@
   既存の `_slimOp`(画像 ref 化)・`opc` チャンク分割・`_sendDC` 漏斗をそのまま通る。
 
 ## 断念した代替案
-- **`group`/`ungroup`/`zorder`/`replace`/`beautify` の伝搬**: `group` の逆は
-  「各図形の元 groupId 復元」が必要で wire の `ungroup` は一括クリアのため
-  局所とピアで発散しうる。`replace`/`beautify` は validRemotePayload 非対応。
-  これらは `_undoWire` が `null` を返しローカルのみに留める (documented gap)。
+- **`replace`/`beautify` の伝搬**: validRemotePayload 非対応のため
+  `_undoWire` が `null` を返しローカルのみに留める (documented gap)。
+- `group`/`ungroup`/`zorder` も当初 gap としたが、ADR-0444 で upd/zorder
+  changes 経由の逆写像が wire 安全と判明し追加済み。
 
 ## 影響
 - undo/redo が `commit` と同じ収束経路に乗る。ロック図形スキップ等の既存
