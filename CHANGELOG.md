@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.271]
+
+### 追加
+- **ctx「アンカー固定/解除」** (ADR-0213)。結合済みコネクタの
+  固定アンカーをタッチ/キーボードからも操作可能
+  (現在の接触点を保存して固定、再実行で解除)。
+
 ## [1.7.270]
 
 ### 修正
