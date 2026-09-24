@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.317';
+const V='1.7.318';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6265,10 +6265,10 @@ function excScene(shapes){
     isDeleted:false,boundElements:null,updated:0,link:null,locked:!!s.locked},over);   // ADR-0241
   const gids={};for(const s of shapes)if(s.groupId)(gids[s.id]=gids[s.id]||[]).push(s.groupId);
   const _excTid=new Map();   // ADR-0225: sticky rect id → its container text id
-  const _ct=(s,tid,txt,bL,fs)=>{   // shared container-text element (sticky body / box label)
+  const _ct=(s,tid,txt,bL,fs,ov)=>{   // shared container-text element (sticky body / box label)
     _excTid.set(s.id,tid);
-    return{id:tid,type:'text',x:s.x+4,y:s.y+4,
-    width:Math.abs(s.w||120)-8,height:Math.abs(s.h||80)-8,text:txt,originalText:txt,
+    return{id:tid,type:'text',x:ov?ov.x:s.x+4,y:ov?ov.y:s.y+4,
+    width:ov?ov.w:Math.abs(s.w||120)-8,height:ov?ov.h:Math.abs(s.h||80)-8,text:txt,originalText:txt,
     fontSize:fs||s.fontSize||16,textAlign:s.align||'center',verticalAlign:s.valign||'middle',lineHeight:s.lineH||1.25,baseline:0,fontFamily:s.font==='mono'?3:2,...(bL?{bLabel:1}:{}),   // ADR-0242/0243/0244
     strokeColor:'#1e1e1e',backgroundColor:'transparent',fillStyle:'solid',strokeWidth:1,strokeStyle:'solid',
     roughness:0,opacity:100,angle:(s.rotate||0)*Math.PI/180,seed:0,version:1,versionNonce:0,isDeleted:false,
@@ -6307,7 +6307,9 @@ function excScene(shapes){
           endBinding:s.b?{elementId:s.b,focus:s.bF?+(s.bF.fx*2-1).toFixed(2):0,gap:1}:null,
           lastCommittedPoint:null,
           startArrowhead:s.start?'arrow':null,                                       // ADR-0231
-          endArrowhead:s.type==='arrow'?(s.head&&s.head!=='arrow'?s.head:'arrow'):null,...(s.elbow?{elbowed:true}:{})}));break;}   // ADR-0265
+          endArrowhead:s.type==='arrow'?(s.head&&s.head!=='arrow'?s.head:'arrow'):null,...(s.elbow?{elbowed:true}:{})}));   // ADR-0265
+        if(s.label){const _lp=_connLabelXY(s);els.push(_ct(s,uid(),s.label,true,null,{x:_lp.x-40,y:_lp.y-10,w:80,h:20}))}   // ADR-0266
+        break;}
       case'image':{
         const fid='f'+s.id;files[fid]={id:fid,mimeType:(s.dataUrl.match(/^data:([^;]+)/)||[])[1]||'image/png',dataURL:s.dataUrl,created:0,lastRetrieved:0};
         els.push(E(s,{type:'image',x:s.x,y:s.y,width:s.w||0,height:s.h||0,fileId:fid,status:'saved',
@@ -6853,6 +6855,12 @@ function excToShapes(txt){
     const s=shapes.find(x=>x.id===sid),p=shapes.find(x=>x.id===idOf.get(cid));
     if(!s||!p||p.label)continue;
     const e=_excTxtE.get(sid);                               // ADR-0234
+    // ADR-0266: text bound to a connector → its label (excalidraw arrows
+    // carry labels the same way). Board's own re-imports mark them bLabel;
+    // real excalidraw files don't, so match on the parent type instead.
+    if(p.type==='line'||p.type==='arrow'){p.label=s.text.slice(0,240);
+      if(s.fontSize)p.fontSize=s.fontSize;
+      shapes.splice(shapes.indexOf(s),1);continue;}
     // bLabel parents restore the label on any box type (rect/ellipse/diamond);
     // the sticky fold below stays rect-only since stickies export as rectangles
     if(e&&e.bLabel){p.label=s.text.slice(0,240);

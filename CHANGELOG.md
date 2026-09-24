@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.318] - 2026-09-24
+
+### Added
+- .excalidraw: コネクタラベル ↔ s.label 往復 (矢印/線の bound text、
+  `_ct` に ov オーバーライド追加、ADR-0266)
+
 ## [1.7.317] - 2026-09-24
 
 ### Added
