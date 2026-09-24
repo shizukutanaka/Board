@@ -705,9 +705,9 @@ const checks = [
   ['.drawio file entry points + parser (ADR-0203)', html.includes("f=>/\\.(drawio|dio)$/i.test(f.name)")&&html.includes('function drawioToShapes')],
   ['excalidraw lineHeight/fontFamily/verticalAlign round-trip (ADR-0242..0244)', html.includes("lineHeight:s.lineH||1.25")&&html.includes("o.lineH=Math.min(4,Math.max(0.5,e.lineHeight))")&&html.includes("fontFamily:s.font==='mono'?3:2")&&html.includes("verticalAlign:s.valign||'middle'")],
   ['excalidraw locked round-trips s.locked (ADR-0241)', html.includes("locked:!!s.locked},over)")&&html.includes("if(e.locked)s.locked=1")],
-  ['drawio visible=0 attr round-trips s.visible===0 (ADR-0245)'
+  ['drawio visible=0 attr round-trips s.visible===0 (ADR-0245)', html.includes("s.visible===0?' visible=\"0\"':'")&&html.includes("getAttribute('visible')==='0'")],
   ['drawio shadow=1 round-trips s.shadow (ADR-0246)', html.includes("sty+='shadow=1;'")&&html.includes("sty.shadow==='1'")],
-  ['drawio fontColor ↔ text/sticky s.stroke (ADR-0247)', html.includes("sty+='fontColor='+s.stroke")&&html.includes("sty.fontColor!=='none'")],, html.includes("s.visible===0?' visible=\"0\"':'")&&html.includes("getAttribute('visible')==='0'")],
+  ['drawio fontColor ↔ text/sticky s.stroke (ADR-0247)', html.includes("sty+='fontColor='+s.stroke")&&html.includes("sty.fontColor!=='none'")],
   ['drawio parent-relative offsets resolved (ADR-0240)', html.includes("const _geo=new Map(),_par=new Map();")&&html.includes("const _o=off(c.getAttribute('id'));")&&html.includes("x=_o.x+(+g.getAttribute('x')||0)")],
   ['frame label italic/under/strike (ADR-0204)', html.includes("600 ${fs}px")&&html.includes("s.type!=='frame'&&!s.label)||s.locked)continue;   // ADR-0170/0204")],
   ['letter-spacing cycle — canvas ctx+SVG+style-copy (ADR-0205)', html.includes("function cycleSpacing()")&&html.includes("c.letterSpacing=(s.spacing||0)+'px'")&&html.includes('_svgLs(s)')&&html.includes('spacing:sh.spacing')],

@@ -6548,7 +6548,8 @@ function boardToDrawio(shapes){
     else if(t==='frame')sty='swimlane;';
     else sty='rounded='+(s.r>0?1:0)+';';
     if(s.fill&&s.fill!=='none')sty+='fillColor='+s.fill+';';
-    if(s.stroke)sty+='strokeColor='+s.stroke+';';
+    if(s.stroke&&t!=='text'&&t!=='sticky')sty+='strokeColor='+s.stroke+';';
+    if(s.stroke&&(t==='text'||t==='sticky'))sty+='fontColor='+s.stroke+';';   // ADR-0247
     if(s.size)sty+='strokeWidth='+s.size+';';
     if(s.dash)sty+='dashed=1;';
     if(s.opacity!=null&&s.opacity<1)sty+='opacity='+Math.round(s.opacity*100)+';';
