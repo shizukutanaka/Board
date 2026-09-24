@@ -241,10 +241,10 @@ const checks = [
   ['getCSS is memoised', html.includes("_cssCache") && html.includes("function clearCSSCache")],
   ['resize handles use AAA brand-ink ring', html.includes("getCSS('--brand-ink')")],
   // spec-gap fixes
-  ['_num coerces to finite number', html.includes("function _num") && html.includes("Number.isFinite(n)?n:0")],
+  ['_num coerces to finite number', html.includes("function _num") && html.includes("_fin(n)?n:0")],
   ['buildSVG coerces numeric coords via _num', html.includes("const X=_num(s.x)") && html.includes("_num(s.size)")],
   ['applyRemote validates op payloads', html.includes("function validRemotePayload") && html.includes("if(!validRemotePayload(op))return")],
-  ['remote move requires finite deltas', html.includes("Number.isFinite(op.dx)&&typeof op.dy==='number'&&Number.isFinite(op.dy)")],
+  ['remote move requires finite deltas', html.includes("_fin(op.dx)&&typeof op.dy==='number'&&_fin(op.dy)")],
   // v1.6.8: viewport culling + load validation
   ['viewport culling helpers present', html.includes("function visibleWorldRect") && html.includes("function inView")],
   ['draw() culls via inView', html.includes("inView(s,_view)")],
@@ -388,7 +388,7 @@ const checks = [
   ['wheel zoom burst snapshots before first zoom', html.includes("_pinchSnapNow();\n    clearTimeout(_wheelZoomEnd);")],
   ['wheel zoom settle timer discards snapshot + repaints', html.includes("_wheelZoomEnd=setTimeout(()=>{_pinchSnap=null;_pinchVp=null;invalidate()},180)")],
   ['ADR-0032/0033: marquee + pickTop use the spatial grid', html.includes("_gridRectCandidates(_grid||(_grid=_buildGrid(state.shapes)),r)") && html.includes("cands.sort((a,b)=>(_grid.idx.get(b)|0)-(_grid.idx.get(a)|0))")],
-  ['load validates viewport finiteness', html.includes("Number.isFinite(+d.viewport.zoom)&&d.viewport.zoom>0")],
+  ['load validates viewport finiteness', html.includes("_fin(+d.viewport.zoom)&&d.viewport.zoom>0")],
   ['load clamps viewport zoom to [MIN_ZOOM,MAX_ZOOM]', html.includes("state.viewport.zoom=clampZoom(+d.viewport.zoom)")],
   ['clampZoom is the single zoom-invariant source', html.includes("const clampZoom=z=>Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,z))") && html.includes("const nz=clampZoom(") && html.includes("const z=clampZoom(")],
   // v1.6.18: deeper audit fixes
@@ -480,7 +480,7 @@ const checks = [
   ['swap positions (ctx, 2 selections)', html.includes("doAlign('swap')")&&html.includes('ctxSwap')&&html.includes('units.length!==2')],
   ['snap selection to grid (ctx, align op)', html.includes('snapSelToGrid')&&html.includes('ctxSnapGrid')&&html.includes("dir:'gsnap'")&&html.includes('Math.round(b.x/GRID_SIZE)')],
   ['select same type (ctx)', html.includes('selectSameType')&&html.includes('ctxSelectSameType')&&html.includes('s.type===sel[0].type')],
-  ['connector label position (labelPos, drag anchor)', html.includes('s.labelPos!=null&&Number.isFinite(s.labelPos)')&&html.includes("ptr.dragKind='lblpos'")&&html.includes('_pathNearestT')],
+  ['connector label position (labelPos, drag anchor)', html.includes('s.labelPos!=null&&_fin(s.labelPos)')&&html.includes("ptr.dragKind='lblpos'")&&html.includes('_pathNearestT')],
   ['PNG export scale options (1x/4x via _renderPngBlob desired)', html.includes('_renderPngBlob(shapes,cb,desired)')&&html.includes('ctxExportPNG4x')&&html.includes('exportScale(w,h,desired||2)')],
   ['arrowhead style variants (dot/open, both renderers)', html.includes("style==='dot'")&&html.includes("style==='open'")&&html.includes('function _svgArrowHead')&&html.includes('cycleArrowHead')&&html.includes('ctxArrowHead')],
   ['export viewport PNG (view-crop)', html.includes('exportViewportPNG')&&html.includes('ctxExportViewPNG')&&html.includes('inView(s,view)')],
@@ -515,7 +515,7 @@ const checks = [
   ['image flip mirrors pixels via s.flip bitmask', html.includes("s.flip=(s.flip||0)^(axis==='h'?1:2)")&&html.includes('ADR-0149')&&html.includes('scale(${s.flip&1?-1:1}')],
   ['hidden shapes leave search + bindAt', html.includes('s.visible!==0&&(s.label||s.text||s.type')&&html.includes("t!=='pen'&&s.visible!==0")],
   ['SVG export excludes hidden shapes', html.includes('const _vis=shapes.filter(s=>s.visible!==0)')&&html.includes('_vis.filter(s=>s.type==="frame")')],
-  ['Alt+hover measure guides', html.includes('measure:null')&&html.includes('function _drawMeasure(c)')&&html.includes("e.altKey&&state.selection.size&&top&&!top.locked")],
+  ['Alt+hover measure guides', html.includes('measure:null')&&html.includes('function _drawMeasure(c)')&&html.includes("e.altKey&&_selN()&&top&&!top.locked")],
   ['measure cleared on reset/down/Alt', html.includes('state.measure=null;ptr.x=ptr.x0')&&html.includes("e.key==='Alt'&&state.measure")],
   ['gresize scales curve cbend affinely', html.includes('sh.cbend=orig.cbend*sx*sy*ol/nl')],
   ['snap index skips hidden shapes', html.includes('exclFn(s)||s.visible===0')],
@@ -661,8 +661,8 @@ const checks = [
   ['_announceSel announces 0/1/N via toast', html.includes('function _announceSel()') && html.includes("t('selNone')") && html.includes("t('selCount')")],
   ['click/group select announces', html.includes('_announceSel();   // ADR-0037: click/group select was SR-silent')],
   ['marquee result announces', html.includes('_announceSel();   // ADR-0037: announce the marquee result')],
-  ['cmd+A announces selection', html.includes("if(state.selection.size)_announceSel();invalidate()}")],
-  ['Escape announces deselect when selection existed', html.includes("if(state.selection.size)UI.toast(t('selNone'));state.selection.clear()")],
+  ['cmd+A announces selection', html.includes("if(_selN())_announceSel();invalidate()}")],
+  ['Escape announces deselect when selection existed', html.includes("if(_selN())UI.toast(t('selNone'));state.selection.clear()")],
   ['i18n has selCount/selNone ja+en', html.includes("selCount:'個を選択'") && html.includes("selCount:' selected'")],
   // v1.7.96: ADR-0038 share-link reject paths all toast + clear hash
   ['importFromHash hoists clearHash helper', html.includes("const clearHash=()=>{try{history.replaceState(null,'',location.pathname)}catch(_){}};")],
@@ -721,6 +721,7 @@ const checks = [
   ['svg conn path/label emitters deduped (ADR-0270)', html.includes('const _sp=(d,j)')&&html.includes('_cL();')],
   ['drawio multi-page side-by-side import (ADR-0311)', html.includes("for(const dg of doc.querySelectorAll('diagram'))")],
   ['link badge 🔗 on linked shapes (ADR-0310)', html.includes("c.fillText('🔗',s.x+Math.abs(s.w)-3,s.y+3)")],
+  ['_selN/_fin shorthands (ADR-0334)', html.includes("const _selN=()=>state.selection.size")&&html.includes("const _fin=Number.isFinite")],
   ['conn link badge canvas+SVG (ADR-0333)', html.includes("if(s.link&&_conn(s.type)){const lp=_connLabelXY(s)")&&html.includes('if(s.link)els.push(`<text x="${lp.x+10+ox}"')&&html.includes('if(s.link)els.push(`<text x="${P[0][0]+4}"')],
   ['drawio rounded emit on diamond/image (ADR-0332)', html.includes("if(s.r>0&&(t==='diamond'||t==='image'))sty+='rounded=1;'")],
   ['drawio fillStyle hachure round-trip (ADR-0331)', html.includes("sty.fillStyle||'')")&&html.includes("fillStyle='+(s.fstyle==='cross'?'cross-hatch':'hachure')")],
@@ -854,7 +855,7 @@ const checks = [
   // v1.6.57: flip H/V - reuses the align op, context menu + ⇧H/⇧V shortcut
   ['flip ctx labels in ja and en', html.includes("ctxFlipH:'左右反転'") && html.includes("ctxFlipH:'Flip horizontal'")],
   ['flip context-menu entries present', html.includes("['ctxFlipH','⇧H',()=>doFlip('h')]") && html.includes("['ctxFlipV','⇧V',()=>doFlip('v')]")],
-  ['flip keyboard shortcut (⇧H/⇧V) guarded by selection', html.includes("(k==='h'||k==='v')&&state.selection.size){_pd(e);doFlip(k)}")],
+  ['flip keyboard shortcut (⇧H/⇧V) guarded by selection', html.includes("(k==='h'||k==='v')&&_selN()){_pd(e);doFlip(k)}")],
   // v1.6.58: rect/ellipse centre labels - dblclick to set, rendered centred, SVG export
   ['rect/ellipse label rendered centred in canvas', html.includes("_drawBoxLabel(s,c);break;") && html.includes("c.textAlign='center'")],
   ['dblclick label editor handles rect and ellipse', html.includes("hit.type==='frame'||hit.type==='rect'||hit.type==='ellipse'") && html.includes("getCSS(bold?'--accent-contrast':'--ink')")],
@@ -905,7 +906,7 @@ const checks = [
   ['statusbar selection dims readout', html.includes('id="sSel"')&&html.includes('_statusSel()')&&html.includes('Math.round(b.w)')],
   ['empty-selection arrows pan viewport', html.includes("state.viewport.x+=k==='arrowleft'?-step:k==='arrowright'?step:0")],
   ['swapFillStroke: ⇧X swaps stroke↔fill via style op', html.includes('function swapFillStroke')&&html.includes("k==='x'&&e.shiftKey&&!meta")&&html.includes("const fk=s.type==='sticky'?'color':'fill'")],
-  ['digit keys set opacity (Figma)', html.includes("/^[0-9]$/.test(k)&&state.selection.size")&&html.includes("opacity:k==='0'?1:+k/10")],
+  ['digit keys set opacity (Figma)', html.includes("/^[0-9]$/.test(k)&&_selN()")&&html.includes("opacity:k==='0'?1:+k/10")],
   ['image corner radius via cycleCorner + clips', html.includes("if(!boxOk&&!connOk)return;")&&html.includes('clip-path="url(#irc')&&html.includes('roundRect(c,s.x,s.y,s.w,s.h,_cr);c.clip()')],
   ['label fontSize honored across renderers', html.includes('const fs=s.fontSize||12;')&&html.includes('const fs=s.fontSize||14')&&html.includes("s.type!=='sticky'&&!s.label)||s.locked")],
     ['labels honor bold/italic/under/strike (ADR-0170)', html.includes('c.font=_fontStr(s,fs)')&&html.includes('font-weight="600"')&&html.includes('text-decoration=')],
@@ -930,7 +931,7 @@ const checks = [
   ['G.hit quick-rejects with G.bbox before un-rotating the pointer',
     html.indexOf('const b=G.bbox(s);\n    const tol=Math.max(6/state.viewport.zoom') < html.indexOf('if(s.rotate&&s.w!=null){const _cx=s.x+s.w/2')],
   ['G.bbox returns rotation envelope', html.includes("if(s.rotate){const _cx=_rb.x+_rb.w/2")],
-  ['rotation keyboard shortcuts , and .', html.includes("k===','&&!meta&&state.selection.size") && html.includes("k==='.'&&!meta&&state.selection.size")],
+  ['rotation keyboard shortcuts , and .', html.includes("k===','&&!meta&&_selN()") && html.includes("k==='.'&&!meta&&_selN()")],
   ['SVG export rotation transform', html.includes("rT=shapeRot(s)?` transform=") && html.includes("rotate(${_num(s.rotate)}")],
   // v1.6.61: shape search - Ctrl+F highlights matching shapes
   ['_sq search state variable', html.includes("let _sq='';")],
@@ -1114,7 +1115,7 @@ const checks = [
   ['docName input handler gates on imeShouldCommit', html.includes("docNameEl.addEventListener('input',e=>{if(imeShouldCommit(e))_commitDocName()})")],
   ['docName compositionend listener wires final commit', html.includes("docNameEl.addEventListener('compositionend',_commitDocName)")],
   // v1.6.83: coordinate rounding at serialization boundaries (Zenn float-precision bloat)
-  ['_round helper sheds float noise', html.includes("function _round(n,dp){return typeof n==='number'&&Number.isFinite(n)?Math.round(n*10**dp)/10**dp:n;}")],
+  ['_round helper sheds float noise', html.includes("function _round(n,dp){return typeof n==='number'&&_fin(n)?Math.round(n*10**dp)/10**dp:n;}")],
   ['roundShapesForExport rounds coord/dim fields', html.includes("function roundShapesForExport(shapes,dp=2)") && html.includes("['x','y','w','h','x1','y1','x2','y2','rotate']")],
   ['share export rounds shapes', html.includes("shapes:roundShapesForExport(state.shapes),name:state.docName")],
   ['.board export rounds shapes', html.includes("shapes:roundShapesForExport(shapes)})],{type:'application/json'})")],
@@ -1353,7 +1354,7 @@ const checks = [
     html.includes("&&typeof op.gid==='string'&&op.gid.length>0")],
   // v1.7.48: move dx/dy must be actual numbers not coercible strings
   ['validRemotePayload move: typeof op.dx/dy === number (no string coercion)',
-    html.includes("&&typeof op.dx==='number'&&Number.isFinite(op.dx)&&typeof op.dy==='number'&&Number.isFinite(op.dy)")],
+    html.includes("&&typeof op.dx==='number'&&_fin(op.dx)&&typeof op.dy==='number'&&_fin(op.dy)")],
   // v1.7.56 (ADR-0007, FT-07): export menu + .board file-picker DOM/wiring
   ['btnExportMenu button and hidden fileImport input present in the DOM',
     html.includes('id="btnExportMenu"') && html.includes('id="fileImport"') && html.includes('accept=".board,.svg,image/svg+xml,.excalidraw,.drawio,.dio"')],

@@ -789,9 +789,11 @@ const _keepSel=arr=>{if(arr.length)state.history[state.histIdx].origSel=arr};   
 const _pd=e=>e.preventDefault();   // ADR-0326
 const _ce=t=>document.createElement(t);   // ADR-0329
 const _selIds=()=>[...state.selection];   // ADR-0330
+const _selN=()=>state.selection.size;   // ADR-0334
+const _fin=Number.isFinite;   // ADR-0334
 
 // ====================== CONSTANTS ======================
-const V='1.7.384';
+const V='1.7.385';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1229,7 +1231,7 @@ function validPatch(p){
 function _cleanVal(v,depth){
   if(depth>8)return false;
   if(typeof v==='function')return false;
-  if(typeof v==='number')return Number.isFinite(v);
+  if(typeof v==='number')return _fin(v);
   if(v==null||typeof v!=='object')return true;   // string/boolean/null are fine
   if(Array.isArray(v))return v.every(x=>_cleanVal(x,depth+1));
   for(const k of Object.keys(v)){
@@ -1242,7 +1244,7 @@ function validShape(s){
   if(!s||typeof s!=='object'||!s.id||!s.type||typeof s.z!=='number')return false;
   if(!validPatch(s))return false;                  // no NaN/Inf coords, no pollution keys
   if(s.type==='pen')return Array.isArray(s.pts)&&s.pts.length>0&&
-    s.pts.every(p=>Array.isArray(p)&&Number.isFinite(p[0])&&Number.isFinite(p[1]));
+    s.pts.every(p=>Array.isArray(p)&&_fin(p[0])&&_fin(p[1]));
   return true;
 }
 // Validate a REMOTE op's payload before _apply. See docs/architecture.md.
@@ -1262,9 +1264,9 @@ function validRemotePayload(op){
     case 'upd':{const noLock=p=>!('locked' in p);
       if(typeof op.id!=='string'||!validPatch(op.after)||!noLock(op.after)||(op.before!=null&&!validPatch(op.before)))return false;
       // pen pts must be array-of-[x,y] — flat arrays crash drawPen which expects [[x,y],...]
-      if(op.after.pts!=null&&!(Array.isArray(op.after.pts)&&op.after.pts.every(p=>Array.isArray(p)&&p.length>=2&&p.every(n=>typeof n==='number'&&Number.isFinite(n)))))return false;
+      if(op.after.pts!=null&&!(Array.isArray(op.after.pts)&&op.after.pts.every(p=>Array.isArray(p)&&p.length>=2&&p.every(n=>typeof n==='number'&&_fin(n)))))return false;
       return true;}
-    case 'move':   return Array.isArray(op.ids)&&op.ids.length>0&&op.ids.length<=MAX_OP_SHAPES&&op.ids.every(id=>typeof id==='string')&&typeof op.dx==='number'&&Number.isFinite(op.dx)&&typeof op.dy==='number'&&Number.isFinite(op.dy)&&(op.dx!==0||op.dy!==0);
+    case 'move':   return Array.isArray(op.ids)&&op.ids.length>0&&op.ids.length<=MAX_OP_SHAPES&&op.ids.every(id=>typeof id==='string')&&typeof op.dx==='number'&&_fin(op.dx)&&typeof op.dy==='number'&&_fin(op.dy)&&(op.dx!==0||op.dy!==0);
     case 'zorder':  // Step2 minimal-delta {changes:[{id,before,after}]} or legacy {after:[…]}
       return (Array.isArray(op.changes)&&op.changes.length<=MAX_OP_SHAPES&&op.changes.every(c=>c&&typeof c.id==='string'
                 &&(c.after==null||typeof c.after==='string')&&(c.before==null||typeof c.before==='string')))
@@ -1272,7 +1274,7 @@ function validRemotePayload(op){
              // and a string-or-null frac (if present) — otherwise sh.z=NaN or sh.frac=object
              // would silently corrupt the ADR-0001 sort invariant.
              ||(Array.isArray(op.after)&&op.after.length<=MAX_OP_SHAPES&&op.after.every(c=>c&&typeof c.id==='string'
-                &&(c.z==null||Number.isFinite(c.z))
+                &&(c.z==null||_fin(c.z))
                 &&(c.frac==null||typeof c.frac==='string')));
     case 'style':
     case 'resize':{const noLock=p=>!('locked' in p);
@@ -1302,8 +1304,8 @@ function validRemotePayload(op){
 function validClock(c){
   if(!c||typeof c!=='object')return false;
   if(typeof c.peer!=='string'||!c.peer)return false;
-  if(!((typeof c.seq==='number'&&Number.isFinite(c.seq))||(typeof c.seq==='string'&&c.seq)))return false;
-  if(c.ts!=null&&!(typeof c.ts==='number'&&Number.isFinite(c.ts)))return false;
+  if(!((typeof c.seq==='number'&&_fin(c.seq))||(typeof c.seq==='string'&&c.seq)))return false;
+  if(c.ts!=null&&!(typeof c.ts==='number'&&_fin(c.ts)))return false;
   return true;
 }
 const Store={
@@ -2075,7 +2077,7 @@ function drawPenDraft(s){
   let extGrew=false;
   for(let i=d.n;i<n;i++){
     const pr=p[i][2];
-    if(!Number.isFinite(pr))d.badPr=true;
+    if(!_fin(pr))d.badPr=true;
     else{if(pr<d.mn){d.mn=pr;extGrew=true}if(pr>d.mx){d.mx=pr;extGrew=true}}
   }
   d.n=n;
@@ -2170,7 +2172,7 @@ let _selDimSig='';
 function _statusSel(){
   const el=_g('sSel');if(!el)return;
   let txt='';
-  if(state.selection.size){
+  if(_selN()){
     const sel=_selL(Boolean);
     const b=sel.length&&G.bboxAll(sel);
     if(b)txt=Math.round(b.w)+'×'+Math.round(b.h);
@@ -2247,7 +2249,7 @@ function describeShape(s){
 // ⌘A and Escape were SR-silent while keyboard cycleSel already announced each shape.
 // Announcement goes through UI.toast (aria-live) like the other status messages.
 function _announceSel(){
-  const n=state.selection.size;
+  const n=_selN();
   UI.toast(n===0?t('selNone'):n===1?describeShape(byId(_selIds()[0])):n+t('selCount'));
 }
 
@@ -2678,7 +2680,7 @@ function _connLabelMeasure(s,c,lns,fs){
   m={key,ws,w};_clCache.set(s,m);return m;
 }
 function _connLabelXY(s){
-  if(s.labelPos!=null&&Number.isFinite(s.labelPos)){   // ADR-0117
+  if(s.labelPos!=null&&_fin(s.labelPos)){   // ADR-0117
     const lp=_pathAt(_connPathPts(s),s.labelPos);if(lp)return lp;
   }
   if(s.elbow)return _elbowLabelXY(s);
@@ -3101,7 +3103,7 @@ function _curveCtrl(e,bend){
   const dx=e.x2-e.x1,dy=e.y2-e.y1,len=Math.hypot(dx,dy)||1;
   // ADR-0132: `s.cbend` overrides the auto bow — a signed perpendicular
   // offset from the chord, clamped like the auto 80px cap but wider.
-  const b=(bend==null||!Number.isFinite(bend))?Math.min(0.25*len,80):Math.max(-400,Math.min(400,bend));
+  const b=(bend==null||!_fin(bend))?Math.min(0.25*len,80):Math.max(-400,Math.min(400,bend));
   return{x:mx-dy/len*b,y:my+dx/len*b};
 }
 function _curveSegs(s){
@@ -3138,7 +3140,7 @@ function penWidths(pts,size){
   const n=pts.length,base=Math.max(0.5,size||2),REF=base*3+8,LO=0.45;
   // Use varying pointer pressure if available; fall back to velocity proxy.
   let hasPr=true,mn=Infinity,mx=-Infinity;
-  for(let i=0;i<n;i++){const pr=pts[i][2];if(!Number.isFinite(pr)){hasPr=false;break}if(pr<mn)mn=pr;if(pr>mx)mx=pr}
+  for(let i=0;i<n;i++){const pr=pts[i][2];if(!_fin(pr)){hasPr=false;break}if(pr<mn)mn=pr;if(pr>mx)mx=pr}
   const usePr=hasPr&&(mx-mn)>0.05,PLO=0.35;
   const raw=new Array(n);
   for(let i=0;i<n;i++){
@@ -3499,7 +3501,7 @@ function handleCursor(id){
 }
 
 function drawSelection(c){
-  if(state.selection.size===0)return;
+  if(_selN()===0)return;
   const sel=_selL(Boolean);
   if(!sel.length)return;
   const b=G.bboxAll(sel);
@@ -3507,7 +3509,7 @@ function drawSelection(c){
   const p1=G.w2s({x:b.x,y:b.y}),p2=G.w2s({x:b.x+b.w,y:b.y+b.h});
   const x=p1.x,y=p1.y,w=p2.x-p1.x,h=p2.y-p1.y;
   const lockedSel=sel.every(s=>s.locked);
-  const single=state.selection.size===1?sel[0]:null;
+  const single=_selN()===1?sel[0]:null;
   c.strokeStyle=_ac();   // a11y-audit-2026-07
   c.lineWidth=1.5;c.setLineDash(lockedSel?[5,4]:[]);
   if(single&&single.rotate&&single.w!=null){
@@ -3531,7 +3533,7 @@ function drawSelection(c){
     c.beginPath();c.arc(lx+8,ly+6,1.4,0,PI2);c.fill();                 // keyhole
     return;
   }
-  if(state.selection.size===1){
+  if(_selN()===1){
     const sh=sel[0];
     const hs=HANDLE_SIZE;
     c.fillStyle=_p();
@@ -3724,7 +3726,7 @@ canvas.addEventListener('pointerdown',e=>{
   switch(state.tool){
     case 'select':
       // Resize handles take priority over pick
-      if(state.selection.size===1){
+      if(_selN()===1){
         const onlySel=byId(_selIds()[0]);
         if(onlySel){
           const rh=hitRotHandle(wp,onlySel);
@@ -3801,7 +3803,7 @@ canvas.addEventListener('pointerdown',e=>{
             }
           }
         }
-      }else if(state.selection.size>1){
+      }else if(_selN()>1){
         const sel=_selL(Boolean);
         if(sel.length>1&&!sel.every(s=>s.locked)){
           const gb=G.bboxAll(sel);
@@ -3882,14 +3884,14 @@ canvas.addEventListener('pointermove',e=>{
     // hover feedback
     if(state.tool==='select'){
       // Check for resize handle hover first
-      if(state.selection.size===1){
+      if(_selN()===1){
         const onlySel=byId(_selIds()[0]);
         if(onlySel){
           if(hitRotHandle(wp,onlySel)){canvas.style.cursor='grab';return}
           const hid=hitHandle(wp,onlySel);
           if(hid){canvas.style.cursor=handleCursor(hid);return}
         }
-      }else if(state.selection.size>1){
+      }else if(_selN()>1){
         const sel=_selL(Boolean);
         if(sel.length>1&&!sel.every(s=>s.locked)){
           const gb=G.bboxAll(sel);
@@ -3911,7 +3913,7 @@ canvas.addEventListener('pointermove',e=>{
       // ADR-0151: Alt+hover (Figma measure mode) — gap guides between the
       // selection envelope and the hovered shape. Signature-compare so a
       // steady cursor repaints nothing.
-      const _m=(e.altKey&&state.selection.size&&top&&!top.locked&&top.visible!==0&&!state.selection.has(top.id))
+      const _m=(e.altKey&&_selN()&&top&&!top.locked&&top.visible!==0&&!state.selection.has(top.id))
         ?{a:G.bboxAll(_selIds().map(byId).filter(Boolean)),b:G.bbox(top)}:null;
       const _sig=m=>m?`${m.a.x}|${m.a.y}|${m.a.w}|${m.a.h}|${m.b.x}|${m.b.y}|${m.b.w}|${m.b.h}`:'';
       if(_sig(_m)!==_sig(state.measure)){state.measure=_m;invalidateOverlay()}
@@ -4029,7 +4031,7 @@ canvas.addEventListener('pointerup',e=>{
         ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.resizeHandle=null;state.guides=null;state.readout=null;state.bindPreview=null;
       }else if(ptr.dragKind==='grot'){
         _grotCommit();                                                 // ADR-0057
-        if(state.selection.size===1){const s=byId(_selIds()[0]);if(s)UI.toast(describeShape(s));}
+        if(_selN()===1){const s=byId(_selIds()[0]);if(s)UI.toast(describeShape(s));}
         ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;state.guides=null;state.readout=null;state.bindPreview=null;
       }else if(ptr.dragKind==='rotate'){
         const rsh=byId(_selIds()[0]);
@@ -4190,7 +4192,7 @@ function _openLabelEditorFor(hit){
 // active (createShapeKbd() no-ops for select/hand/eraser/pen) — see the keydown Enter
 // branch, which only calls this when state.tool==='select'.
 function editSelectedShapeKbd(){
-  if(state.selection.size!==1)return false;
+  if(_selN()!==1)return false;
   const sh=byId(_selIds()[0]);
   if(!sh||sh.locked)return false;
   if(sh.type==='text'||sh.type==='sticky'){openTextEditor(sh,false);return true}
@@ -4544,7 +4546,7 @@ function _fitIfEmptyView(){
 // ⇧2: zoom to the selection's bbox (Excalidraw parity). Cap 4 — tighter than
 // fit-all's 2 so a small selection actually enlarges, short of the 16x extreme.
 function zoomToSelection(){
-  if(!state.selection.size){UI.toast(t('noSelection'),'warn');return}
+  if(!_selN()){UI.toast(t('noSelection'),'warn');return}
   const b=G.bboxAll(state.shapes.filter(s=>state.selection.has(s.id)));
   if(!b){UI.toast(t('noSelection'),'warn');return}
   const z=_fitViewport(b,60,4);
@@ -4891,7 +4893,7 @@ function endSelect(wp,shift,alt){
 
 // ---- pen ----
 // Coerce pen pressure: mouse=const 0.5, stylus=0..1; finite-safe.
-function _penPr(e){const p=e&&e.pressure;return Number.isFinite(p)&&p>0?Math.min(1,p):0.5}
+function _penPr(e){const p=e&&e.pressure;return _fin(p)&&p>0?Math.min(1,p):0.5}
 // IME composition gate. Returns true when an `input`-class event is the final commit
 // (no IME in progress), false during composition. Used for live-update inputs (docName)
 // to keep mid-composition characters out of state/IDB/sync. Pure → unit-tested.
@@ -5421,7 +5423,7 @@ window.addEventListener('keydown',e=>{
   }
   if(meta&&k==='z'&&!e.shiftKey){_pd(e);if(Store.undo())UI.toast(t('undone'))}
   else if(meta&&(k==='y'||(k==='z'&&e.shiftKey))){_pd(e);if(Store.redo())UI.toast(t('redone'))}
-  else if(meta&&k==='a'){_pd(e);state.selection=new Set(state.shapes.filter(s=>s.visible!==0).map(s=>s.id));if(state.selection.size)_announceSel();invalidate()}   // ADR-0037
+  else if(meta&&k==='a'){_pd(e);state.selection=new Set(state.shapes.filter(s=>s.visible!==0).map(s=>s.id));if(_selN())_announceSel();invalidate()}   // ADR-0037
   if(k==='p'&&e.shiftKey&&!meta&&!e.altKey){_pd(e);Presentation.enter();return}
   else if(meta&&k==='enter'){_pd(e);Presentation.enter()}
   else if(meta&&k==='c'){_pd(e);doCopy()}
@@ -5434,7 +5436,7 @@ window.addEventListener('keydown',e=>{
   else if(meta&&k==='e'&&!e.shiftKey){_pd(e);exportPNG()}
   else if(k==='c'&&e.altKey&&!meta){_pd(e);copyStyle()}
   else if(k==='v'&&e.altKey&&!meta){_pd(e);pasteStyle()}
-  else if(k==='b'&&e.altKey&&!meta&&state.selection.size){_pd(e);doBeautify()}
+  else if(k==='b'&&e.altKey&&!meta&&_selN()){_pd(e);doBeautify()}
   else if(meta&&k==='s'&&e.shiftKey){_pd(e);exportBoard()}
   else if(meta&&k==='p'){_pd(e);exportPDF()}
   else if(meta&&(k==='='||k==='+')){_pd(e);zoomBy(1.2)}
@@ -5488,7 +5490,7 @@ window.addEventListener('keydown',e=>{
     }
   }
   else if(k==='arrowup'||k==='arrowdown'||k==='arrowleft'||k==='arrowright'){
-    if(state.selection.size){
+    if(_selN()){
       _pd(e);
       const step=e.shiftKey?10:1;
       const dx=k==='arrowleft'?-step:k==='arrowright'?step:0;
@@ -5514,7 +5516,7 @@ window.addEventListener('keydown',e=>{
     // mid-drag mutations are in-place, so without this Escape left shapes
     // displaced until pointerup committed them. Selection survives the cancel.
     else if(ptr.down&&ptr.dragKind)_cancelPointerGesture();
-    else{if(state.selection.size)UI.toast(t('selNone'));state.selection.clear();ptr.lineClick=false;state.marquee=null;state.draft=null;state.guides=null;state.readout=null;state.bindPreview=null;state.measure=null;state.lasso=null;_penPred=null;invalidate()}   // ADR-0037
+    else{if(_selN())UI.toast(t('selNone'));state.selection.clear();ptr.lineClick=false;state.marquee=null;state.draft=null;state.guides=null;state.readout=null;state.bindPreview=null;state.measure=null;state.lasso=null;_penPred=null;invalidate()}   // ADR-0037
   }
   else if(k==='?'||(e.shiftKey&&e.key==='/')){_pd(e);UI.toggleHelp()}
   else if(k===']'&&!meta&&e.shiftKey){_pd(e);doBringFront()}
@@ -5524,21 +5526,21 @@ window.addEventListener('keydown',e=>{
   else if(meta&&e.altKey&&e.code==='KeyG'){_pd(e);wrapInFrame()}   // ADR-0102: e.code — ⌥ alters e.key on macOS
   else if(meta&&k==='g'&&e.shiftKey){_pd(e);doUngroup()}
   else if(meta&&k==='g'&&!e.shiftKey){_pd(e);doGroup()}
-  else if(meta&&k==='l'&&e.shiftKey&&state.selection.size){_pd(e);doLock()}
+  else if(meta&&k==='l'&&e.shiftKey&&_selN()){_pd(e);doLock()}
   else if(k==='g'&&!meta&&e.shiftKey){toggleSnapMode()}
   else if(k==='g'&&!meta){toggleGridView()}
   else if(k==='m'&&!meta){UI.toggleMinimap()}
   else if(e.shiftKey&&(k==='1'||k==='!')){_pd(e);fitToContent()}
   else if(e.shiftKey&&(k==='2'||k==='@')){_pd(e);zoomToSelection()}
-  else if(e.shiftKey&&!meta&&!e.altKey&&(k==='h'||k==='v')&&state.selection.size){_pd(e);doFlip(k)}
-  else if(k==='x'&&e.shiftKey&&!meta&&state.selection.size){_pd(e);swapFillStroke()}   // ADR-0166
-  else if(k===','&&!meta&&state.selection.size){_pd(e);doRotate(-15)}
-  else if(k==='.'&&!meta&&state.selection.size){_pd(e);doRotate(15)}
+  else if(e.shiftKey&&!meta&&!e.altKey&&(k==='h'||k==='v')&&_selN()){_pd(e);doFlip(k)}
+  else if(k==='x'&&e.shiftKey&&!meta&&_selN()){_pd(e);swapFillStroke()}   // ADR-0166
+  else if(k===','&&!meta&&_selN()){_pd(e);doRotate(-15)}
+  else if(k==='.'&&!meta&&_selN()){_pd(e);doRotate(15)}
   else if(meta&&k==='f'){_pd(e);toggleSq()}
-  else if(k==='r'&&e.shiftKey&&!meta&&!e.altKey&&state.selection.size){_pd(e);doRotate(90)}
+  else if(k==='r'&&e.shiftKey&&!meta&&!e.altKey&&_selN()){_pd(e);doRotate(90)}
   else if(k==='h'&&e.shiftKey&&meta&&!e.altKey){_pd(e);hideSelection()}   // ADR-0137: ⌘⇧H
   else if(k==='i'&&e.shiftKey&&meta&&!e.altKey){_pd(e);selectInverse()}   // ADR-0139: ⌘⇧I
-  else if(!meta&&!e.shiftKey&&/^[0-9]$/.test(k)&&state.selection.size){_pd(e);applyStyleToSelection({opacity:k==='0'?1:+k/10})}   // ADR-0167: Figma digit-opacity
+  else if(!meta&&!e.shiftKey&&/^[0-9]$/.test(k)&&_selN()){_pd(e);applyStyleToSelection({opacity:k==='0'?1:+k/10})}   // ADR-0167: Figma digit-opacity
   else if(!meta&&KEYMAP[k]){pickTool(KEYMAP[k],k==='i')}
   else if(k===' '&&!meta){_pd(e);pickTool('hand',true)}
 });
@@ -5661,7 +5663,7 @@ function _placeCopies(srcShapes,dx,dy){
   return added;
 }
 function doDuplicate(){
-  if(!state.selection.size)return;
+  if(!_selN())return;
   const origSel=_selIds();
   const sel=[...withFrameChildren(state.selection)].map(byId).filter(s=>s&&!s.locked);
   if(!sel.length)return;
@@ -6531,11 +6533,11 @@ function drawioToShapes(txt){
     // ADR-0221: drawio exitX/exitY/entryX/entryY fixed ports → aF/bF fractions
     // (same normalisation as ADR-0209's Alt-drop anchors). Exit = source end.
     if(sa&&sty.exitX!=null){const fx=+sty.exitX,fy=+sty.exitY;
-      if(Number.isFinite(fx)&&Number.isFinite(fy))s.aF={fx:_c01(fx),fy:_c01(fy)}}
+      if(_fin(fx)&&_fin(fy))s.aF={fx:_c01(fx),fy:_c01(fy)}}
     if(sb&&sty.entryX!=null){const fx=+sty.entryX,fy=+sty.entryY;
-      if(Number.isFinite(fx)&&Number.isFinite(fy))s.bF={fx:_c01(fx),fy:_c01(fy)}}
+      if(_fin(fx)&&_fin(fy))s.bF={fx:_c01(fx),fy:_c01(fy)}}
     const lbl=_dioLabel(c.getAttribute('value')||(_uo&&_uo.getAttribute('label')));if(lbl)s.label=lbl.slice(0,240);
-    {const _lx=g?g.getAttribute('x'):null;if(_lx!=null&&_lx!==''){const _t=(+_lx+1)/2;if(Number.isFinite(_t))s.labelPos=_c01(+_t.toFixed(3))}}   // ADR-0264
+    {const _lx=g?g.getAttribute('x'):null;if(_lx!=null&&_lx!==''){const _t=(+_lx+1)/2;if(_fin(_t))s.labelPos=_c01(+_t.toFixed(3))}}   // ADR-0264
     if(sty.rounded==='1')s.r=8;                                           // ADR-0269
     _dioStyApply(s,sty,_hid);                                            // ADR-0258 (edges gain opacity)
     if(sty.labelBackgroundColor&&sty.labelBackgroundColor!=='none')s.fill=sty.labelBackgroundColor;   // ADR-0249
@@ -6695,7 +6697,7 @@ function _svgMOf(t){
     switch(mm[1]){
       case'matrix':if(n.length===6&&n.every(Number.isFinite))M=n.slice(0,6);break;
       case'translate':M=[1,0,0,1,n[0]||0,n[1]||0];break;
-      case'scale':{const sx=Number.isFinite(n[0])?n[0]:1;M=[sx,0,0,n.length>1?n[1]:sx,0,0];break}
+      case'scale':{const sx=_fin(n[0])?n[0]:1;M=[sx,0,0,n.length>1?n[1]:sx,0,0];break}
       case'rotate':{const r=(n[0]||0)*Math.PI/180,c=Math.cos(r),s=Math.sin(r);M=[c,s,-s,c,0,0];
         if(n.length>2)M=_svgMMul([1,0,0,1,n[1],n[2]],_svgMMul(M,[1,0,0,1,-n[1],-n[2]]));break}
       case'skewX':M=[1,0,Math.tan((n[0]||0)*Math.PI/180),1,0,0];break;
@@ -6720,15 +6722,15 @@ function _svgStyle(el,g){
   const st={};
   const stroke=_svgColor(get('stroke'),g);if(stroke)st.stroke=stroke;
   const fill=_svgColor(get('fill'),g);if(fill)st.fill=fill;
-  const sw=parseFloat(get('stroke-width'));if(Number.isFinite(sw)&&sw>0)st.size=sw;
+  const sw=parseFloat(get('stroke-width'));if(_fin(sw)&&sw>0)st.size=sw;
   // Board has a single opacity channel — fold CSS opacity + the more specific of
   // stroke/fill opacity into it.
   let alpha=1;
-  const op=parseFloat(get('opacity'));if(Number.isFinite(op))alpha*=op;
+  const op=parseFloat(get('opacity'));if(_fin(op))alpha*=op;
   const so=parseFloat(get('stroke-opacity')),fo=parseFloat(get('fill-opacity'));
-  if(Number.isFinite(so))alpha*=so;else if(Number.isFinite(fo))alpha*=fo;
+  if(_fin(so))alpha*=so;else if(_fin(fo))alpha*=fo;
   if(alpha<1)st.opacity=Math.max(0.05,Math.min(1,alpha));
-  const fs=parseFloat(get('font-size'));if(Number.isFinite(fs))st.fontSize=fs;
+  const fs=parseFloat(get('font-size'));if(_fin(fs))st.fontSize=fs;
   return st;
 }
 // path d → flattened point list. Curves are subdivided at fixed resolution —
@@ -6740,7 +6742,7 @@ function _svgPathPts(d,m){
   if(!toks)return pts;
   let i=0,cmd='',x=0,y=0,x0=0,y0=0;
   const num=()=>{if(i<toks.length&&!/[a-zA-Z]/.test(toks[i]))return+toks[i++];return NaN};
-  const push=(px,py)=>{if(pts.length<SVG_MAX_PTS&&Number.isFinite(px)&&Number.isFinite(py))pts.push([px,py]);};
+  const push=(px,py)=>{if(pts.length<SVG_MAX_PTS&&_fin(px)&&_fin(py))pts.push([px,py]);};
   const cubic=(x1,y1,x2,y2,ex,ey)=>{const sx=x,sy=y;
     for(let s=1;s<=10;s++){const t=s/10,u=1-t;
       push(u*u*u*sx+3*u*u*t*x1+3*u*t*t*x2+t*t*t*ex,u*u*u*sy+3*u*u*t*y1+3*u*t*t*y2+t*t*t*ey)}
@@ -6811,7 +6813,7 @@ function svgToShapes(txt){
       const nums=(el.getAttribute('points')||'').trim().split(/[\s,]+/).map(Number);
       const pts=[];
       for(let i=0;i+1<nums.length&&pts.length<SVG_MAX_PTS;i+=2)
-        if(Number.isFinite(nums[i])&&Number.isFinite(nums[i+1]))pts.push(_svgMPt(m2,nums[i],nums[i+1]));
+        if(_fin(nums[i])&&_fin(nums[i+1]))pts.push(_svgMPt(m2,nums[i],nums[i+1]));
       if(tag==='polygon'&&pts.length>1)pts.push(pts[0]);
       if(pts.length>1)s=Shape.make('pen',{pts:pts.map(p=>[p.x,p.y])});
     }else if(tag==='path'){
@@ -6879,16 +6881,16 @@ function excToShapes(txt){
     const bg=typeof e.backgroundColor==='string'&&e.backgroundColor!=='transparent'?e.backgroundColor:null;
     if(sc)o.stroke=sc;else if(e.strokeColor==='transparent')o.stroke='transparent';   // ADR-0290
     if(bg)o.fill=bg;else if(e.backgroundColor==='transparent')o.fill='none';           // ADR-0290
-    if(Number.isFinite(e.strokeWidth)&&e.strokeWidth>0)o.size=e.strokeWidth;
-    if(Number.isFinite(e.opacity)&&e.opacity<100)o.opacity=Math.max(0.05,e.opacity/100);
+    if(_fin(e.strokeWidth)&&e.strokeWidth>0)o.size=e.strokeWidth;
+    if(_fin(e.opacity)&&e.opacity<100)o.opacity=Math.max(0.05,e.opacity/100);
     if(e.strokeStyle==='dashed')o.dash=1;else if(e.strokeStyle==='dotted')o.dash=2;
-    if(Number.isFinite(e.lineHeight)&&e.lineHeight!==1.25)o.lineH=Math.min(4,Math.max(0.5,e.lineHeight));   // ADR-0242
+    if(_fin(e.lineHeight)&&e.lineHeight!==1.25)o.lineH=Math.min(4,Math.max(0.5,e.lineHeight));   // ADR-0242
     // ADR-0230: excalidraw fidelity — hatch fills, roundness, align, arrowheads
     if(e.fillStyle==='hachure'||e.fillStyle==='zigzag'||e.fillStyle==='zigzag-line'||e.fillStyle==='dots')o.fstyle='hatch';else if(e.fillStyle==='cross-hatch')o.fstyle='cross';   // ADR-0268
     if(e.roundness||e.strokeSharpness==='round')o.r=8;   // ADR-0267
     return o;
   };
-  const rot=e=>Number.isFinite(e.angle)?Math.round(e.angle*180/Math.PI*10)/10:0;
+  const rot=e=>_fin(e.angle)?Math.round(e.angle*180/Math.PI*10)/10:0;
   for(const e of d.elements){
     if(shapes.length>=EXC_MAX_ELEMS)break;
     if(!e||e.isDeleted||typeof e.x!=='number'||typeof e.y!=='number')continue;
@@ -6900,7 +6902,7 @@ function excToShapes(txt){
       case'diamond':s=Shape.make('diamond',{x:e.x,y:e.y,w:W,h:H});break;   // ADR-0061: real type
       case'frame':s=Shape.make('frame',{x:e.x,y:e.y,w:W,h:H,label:typeof e.name==='string'?e.name.slice(0,120):''});break;
       case'text':{
-        const fs=Number.isFinite(e.fontSize)?e.fontSize:16;
+        const fs=_fin(e.fontSize)?e.fontSize:16;
         const content=String(e.text||'').replace(/\s+/g,' ').trim();
         if(!content)break;
         s=Shape.make('text',{x:e.x,y:e.y,w:W||Math.min(600,Math.max(60,content.length*fs*0.55)),h:H||fs*1.4,text:content.slice(0,2000),fontSize:fs});
@@ -6913,10 +6915,10 @@ function excToShapes(txt){
         const pts=[];
         for(const p of raw){
           if(pts.length>=EXC_MAX_PTS)break;
-          if(Array.isArray(p)&&Number.isFinite(p[0])&&Number.isFinite(p[1]))pts.push([e.x+p[0],e.y+p[1]]);
+          if(Array.isArray(p)&&_fin(p[0])&&_fin(p[1]))pts.push([e.x+p[0],e.y+p[1]]);
         }
         if(pts.length<2)break;
-        if(e.type==='freedraw'){if(Array.isArray(e.pressures))pts.forEach((p,i)=>{if(Number.isFinite(e.pressures[i]))p[2]=+e.pressures[i].toFixed(3)});s=Shape.make('pen',{pts});break}   // ADR-0268
+        if(e.type==='freedraw'){if(Array.isArray(e.pressures))pts.forEach((p,i)=>{if(_fin(e.pressures[i]))p[2]=+e.pressures[i].toFixed(3)});s=Shape.make('pen',{pts});break}   // ADR-0268
         // ADR-0097: multi-segment line/arrow stays a real connector — the
         // interior points map onto the way[] array (ADR-0090), not a
         // dead-end pen stroke. Elbowed excalidraw arrows land naturally.
@@ -6964,13 +6966,13 @@ function excToShapes(txt){
     // real excalidraw files don't, so match on the parent type instead.
     if(_conn(p.type)){p.label=s.text.slice(0,240);
       if(s.fontSize)p.fontSize=s.fontSize;
-      if(e&&Number.isFinite(e.lineHeight)&&e.lineHeight!==1.25)p.lineH=Math.min(4,Math.max(0.5,e.lineHeight));   // ADR-0323
+      if(e&&_fin(e.lineHeight)&&e.lineHeight!==1.25)p.lineH=Math.min(4,Math.max(0.5,e.lineHeight));   // ADR-0323
       shapes.splice(shapes.indexOf(s),1);continue;}
     // bLabel parents restore the label on any box type (rect/ellipse/diamond);
     // the sticky fold below stays rect-only since stickies export as rectangles
     if(e&&e.bLabel){p.label=s.text.slice(0,240);
       if(s.fontSize)p.fontSize=s.fontSize;
-      if(Number.isFinite(e.lineHeight)&&e.lineHeight!==1.25)p.lineH=Math.min(4,Math.max(0.5,e.lineHeight));   // ADR-0323
+      if(_fin(e.lineHeight)&&e.lineHeight!==1.25)p.lineH=Math.min(4,Math.max(0.5,e.lineHeight));   // ADR-0323
       if(/^(top|middle|bottom)$/.test(e.verticalAlign))p.valign=e.verticalAlign;   // ADR-0244
       if(e.fontFamily===3)p.font='mono';else if(e.fontFamily===1||e.fontFamily===5)p.font='serif';   // ADR-0243
       shapes.splice(shapes.indexOf(s),1);continue;}
@@ -6987,8 +6989,8 @@ function excToShapes(txt){
     const a=sb&&sb.elementId?idOf.get(sb.elementId):null;
     const b=eb&&eb.elementId?idOf.get(eb.elementId):null;
     if(a)s.a=a;if(b)s.b=b;
-    if(a&&sb&&Number.isFinite(sb.focus))s.aF={fx:_c01((sb.focus+1)/2),fy:0.5};   // ADR-0296
-    if(b&&eb&&Number.isFinite(eb.focus))s.bF={fx:_c01((eb.focus+1)/2),fy:0.5};   // ADR-0296
+    if(a&&sb&&_fin(sb.focus))s.aF={fx:_c01((sb.focus+1)/2),fy:0.5};   // ADR-0296
+    if(b&&eb&&_fin(eb.focus))s.bF={fx:_c01((eb.focus+1)/2),fy:0.5};   // ADR-0296
   }
   return shapes;
 }
@@ -7356,7 +7358,7 @@ function _svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT){
 }
 function _esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
 // Coerce to finite number; prevents string geometry breaking SVG numeric attributes.
-function _num(v){const n=+v;return Number.isFinite(n)?n:0}
+function _num(v){const n=+v;return _fin(n)?n:0}
 // Copy text to the clipboard with a non-secure-context fallback. navigator.clipboard is
 // undefined on file:// and plain http:// — Board's primary "just open index.html" use case —
 // so prefer it only in a secure context and otherwise fall back to a temporary textarea +
@@ -7605,7 +7607,7 @@ const Net={
         // locally-generated synthetic id (_rtcPeerId), not msg.peer. Route accordingly —
         // looking this up by msg.peer over that transport would silently miss (or worse,
         // create a duplicate/phantom peer entry).
-        if(typeof msg.x!=='number'||!Number.isFinite(msg.x)||typeof msg.y!=='number'||!Number.isFinite(msg.y))break;
+        if(typeof msg.x!=='number'||!_fin(msg.x)||typeof msg.y!=='number'||!_fin(msg.y))break;
         const peerKey=viaRtc?this._rtcPeerId:msg.peer;
         const p=peerKey&&state.peers.get(peerKey);
         if(p){p.cursor={x:msg.x,y:msg.y};invalidateOverlay();}
@@ -7804,7 +7806,7 @@ const Net={
 // Round a number to `dp` decimals, shedding IEEE-754 noise (100.00000000000001) and
 // trailing precision that bloats serialized output. NaN/Inf pass through unchanged so
 // downstream validation still rejects them. Pure.
-function _round(n,dp){return typeof n==='number'&&Number.isFinite(n)?Math.round(n*10**dp)/10**dp:n;}
+function _round(n,dp){return typeof n==='number'&&_fin(n)?Math.round(n*10**dp)/10**dp:n;}
 // Deep copy of shapes with coordinate/dimension fields rounded, for SERIALIZATION
 // boundaries only (share URL, .board export) — never the in-memory model, so undo
 // fidelity and live rendering are untouched. Sub-pixel rounding is imperceptible on a
@@ -7937,7 +7939,7 @@ const Share={
       state.shapes=valid.map(clone);_invalidateGrid();state.docName=((typeof data.name==='string'&&data.name)||'Shared').slice(0,80);   // ADR-0009
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out (see importBoard for rationale).
-      if(data.viewport&&Number.isFinite(+data.viewport.x)&&Number.isFinite(+data.viewport.y)&&Number.isFinite(+data.viewport.zoom)&&data.viewport.zoom>0){
+      if(data.viewport&&_fin(+data.viewport.x)&&_fin(+data.viewport.y)&&_fin(+data.viewport.zoom)&&data.viewport.zoom>0){
         // ADR-0112: adopt the sharer's viewport (same numeric validation as the
         // IDB restore path — corrupt/out-of-range zoom never reaches state).
         state.viewport.x=+data.viewport.x;state.viewport.y=+data.viewport.y;
@@ -8075,7 +8077,7 @@ const Persist={
       // Validate like the other intake paths (importFromHash / snapshot): never
       // adopt malformed shapes from IDB (corruption / forward-incompat schema).
       state.shapes=shapes.filter(validShape);_invalidateGrid();   // ADR-0009
-      if(d.viewport&&Number.isFinite(+d.viewport.x)&&Number.isFinite(+d.viewport.y)&&Number.isFinite(+d.viewport.zoom)&&d.viewport.zoom>0){
+      if(d.viewport&&_fin(+d.viewport.x)&&_fin(+d.viewport.y)&&_fin(+d.viewport.zoom)&&d.viewport.zoom>0){
         // Clamp zoom to the app invariant [MIN_ZOOM,MAX_ZOOM] that every compute path
         // (wheel/fit) maintains — a corrupt or forward-incompat IDB record with an
         // out-of-range zoom would otherwise load an unusable (microscopic/astronomical)
@@ -8147,7 +8149,7 @@ const Persist={
       state.shapes=shapes.map(clone);_invalidateGrid();   // ADR-0009
       state.selection.clear();state.wclock={};
       if(typeof d.docName==='string'&&d.docName){state.docName=d.docName.slice(0,80);_g('docName').value=state.docName;_syncDocTitle();}   // clamp: the input enforces maxlength=80, intake paths must too
-      if(d.viewport&&Number.isFinite(+d.viewport.x)&&Number.isFinite(+d.viewport.y)&&Number.isFinite(+d.viewport.zoom)&&d.viewport.zoom>0){
+      if(d.viewport&&_fin(+d.viewport.x)&&_fin(+d.viewport.y)&&_fin(+d.viewport.zoom)&&d.viewport.zoom>0){
         state.viewport.x=+d.viewport.x;state.viewport.y=+d.viewport.y;state.viewport.zoom=clampZoom(+d.viewport.zoom);
       }
       sortZ();invalidate();
@@ -8306,7 +8308,7 @@ const UI={
     const m=_g('ctx');
     const _cr=canvas.getBoundingClientRect(),_wp=G.s2w({x:x-_cr.left,y:y-_cr.top});
     m._wx=_wp.x;m._wy=_wp.y;   // ADR-0103: paste-at-cursor anchor
-    const has=state.selection.size>0;
+    const has=_selN()>0;
     while(m.firstChild)m.removeChild(m.firstChild);
     const items=customItems||[
       has&&['ctxCopy','⌘C',doCopy],
@@ -8345,9 +8347,9 @@ const UI={
       has&&['ctxDelete','⌫',doDelete],
       has&&'sep',
       has&&['ctxWrapFrame','⌘⌥G',wrapInFrame],
-      has&&state.selection.size===1&&['ctxSelectSame','',selectSamePaint],
-      has&&state.selection.size===1&&['ctxSelectSameType','',selectSameType],
-      has&&state.selection.size>1&&['ctxGroup','⌘G',doGroup],
+      has&&_selN()===1&&['ctxSelectSame','',selectSamePaint],
+      has&&_selN()===1&&['ctxSelectSameType','',selectSameType],
+      has&&_selN()>1&&['ctxGroup','⌘G',doGroup],
       has&&_selIds().some(id=>byId(id)?.groupId)&&['ctxUngroup','⌘⇧G',doUngroup],
       has&&'sep',
       ['ctxSearch','⌘F',toggleSq],
@@ -8376,20 +8378,20 @@ const UI={
       has&&_selIds().some(id=>byId(id)?.type==='pen')&&['ctxBeautify','⌥B',doBeautify],
       has&&[byId(_selIds()[0])?.locked?'ctxUnlock':'ctxLock','',doLock],
       state.shapes.some(s=>s.locked)&&['ctxUnlockAll','',unlockAll],
-      has&&state.selection.size>1&&'sep',
-      has&&state.selection.size>1&&['ctxAlignLeft','',()=>doAlign('left')],
-      has&&state.selection.size>1&&['ctxAlignCX','',()=>doAlign('cx')],
-      has&&state.selection.size>1&&['ctxAlignRight','',()=>doAlign('right')],
-      has&&state.selection.size>1&&['ctxAlignTop','',()=>doAlign('top')],
-      has&&state.selection.size>1&&['ctxAlignCY','',()=>doAlign('cy')],
-      has&&state.selection.size>1&&['ctxAlignBottom','',()=>doAlign('bottom')],
-      has&&state.selection.size>1&&['ctxHSpace','',()=>doAlign('hspace')],
-      has&&state.selection.size>1&&['ctxVSpace','',()=>doAlign('vspace')],
-      has&&state.selection.size>2&&['ctxTidy','',()=>doAlign('tidy')],
-      has&&state.selection.size===2&&['ctxSwap','',()=>doAlign('swap')],
-      has&&state.selection.size>1&&['ctxMatchW','',()=>doMatchSize('w')],       // ADR-0079
-      has&&state.selection.size>1&&['ctxMatchH','',()=>doMatchSize('h')],
-      has&&state.selection.size>1&&['ctxMatchWH','',()=>doMatchSize('wh')],
+      has&&_selN()>1&&'sep',
+      has&&_selN()>1&&['ctxAlignLeft','',()=>doAlign('left')],
+      has&&_selN()>1&&['ctxAlignCX','',()=>doAlign('cx')],
+      has&&_selN()>1&&['ctxAlignRight','',()=>doAlign('right')],
+      has&&_selN()>1&&['ctxAlignTop','',()=>doAlign('top')],
+      has&&_selN()>1&&['ctxAlignCY','',()=>doAlign('cy')],
+      has&&_selN()>1&&['ctxAlignBottom','',()=>doAlign('bottom')],
+      has&&_selN()>1&&['ctxHSpace','',()=>doAlign('hspace')],
+      has&&_selN()>1&&['ctxVSpace','',()=>doAlign('vspace')],
+      has&&_selN()>2&&['ctxTidy','',()=>doAlign('tidy')],
+      has&&_selN()===2&&['ctxSwap','',()=>doAlign('swap')],
+      has&&_selN()>1&&['ctxMatchW','',()=>doMatchSize('w')],       // ADR-0079
+      has&&_selN()>1&&['ctxMatchH','',()=>doMatchSize('h')],
+      has&&_selN()>1&&['ctxMatchWH','',()=>doMatchSize('wh')],
       has&&['ctxSnapGrid','',snapSelToGrid],
       has&&'sep',
       has&&['ctxExportSelPNG','',()=>exportSelection('png')],
@@ -8397,9 +8399,9 @@ const UI={
       has&&['ctxExportSelSVG','',()=>exportSelection('svg')],
       has&&['ctxCopySelSVG','',()=>exportSelection('svgcopy')],        // ADR-0087
       has&&['ctxExportSelBoard','',()=>exportSelection('board')],          // ADR-0114
-      has&&state.selection.size===1&&_selAny(s=>s.type==='image'&&!s.locked)&&['ctxReplaceImg','',replaceImage],   // ADR-0089
+      has&&_selN()===1&&_selAny(s=>s.type==='image'&&!s.locked)&&['ctxReplaceImg','',replaceImage],   // ADR-0089
       has&&'sep',
-      ['ctxSelectAll','⌘A',()=>{state.selection=new Set(state.shapes.filter(s=>s.visible!==0).map(s=>s.id));if(state.selection.size)_announceSel();invalidate()}],
+      ['ctxSelectAll','⌘A',()=>{state.selection=new Set(state.shapes.filter(s=>s.visible!==0).map(s=>s.id));if(_selN())_announceSel();invalidate()}],
       state.shapes.length&&['ctxClear','',doClearAll]
     ].filter(Boolean).filter((it,i,a)=>!(it==='sep'&&(i===0||i===a.length-1||a[i-1]==='sep')));
     for(const it of items){
@@ -8648,19 +8650,19 @@ function wire(){
       state.style.stroke=b.dataset.stroke;
       for(const x of document.querySelectorAll('[data-stroke]'))x.setAttribute('aria-pressed',x===b);
       // apply to selection
-      if(state.selection.size)applyStyleToSelection({stroke:state.style.stroke});
+      if(_selN())applyStyleToSelection({stroke:state.style.stroke});
     });
   for(const b of document.querySelectorAll('[data-fill]'))
     b.addEventListener('click',()=>{
       state.style.fill=b.dataset.fill==='null'?null:b.dataset.fill;
       for(const x of document.querySelectorAll('[data-fill]'))x.setAttribute('aria-pressed',x===b);
-      if(state.selection.size)applyStyleToSelection({fill:state.style.fill});
+      if(_selN())applyStyleToSelection({fill:state.style.fill});
     });
   for(const b of document.querySelectorAll('[data-dash]'))
     b.addEventListener('click',()=>{
       state.style.dash=+b.dataset.dash;
       for(const x of document.querySelectorAll('[data-dash]'))x.setAttribute('aria-pressed',x===b);
-      if(state.selection.size)applyStyleToSelection({dash:state.style.dash});
+      if(_selN())applyStyleToSelection({dash:state.style.dash});
     });
   // Native <input type=color> fires `input` continuously while the picker is open, so
   // committing per-input would stack dozens of undo steps and sync broadcasts for one
@@ -8674,7 +8676,7 @@ function wire(){
       state.style[k]=cp.value;
       for(const x of document.querySelectorAll('[data-'+k+']'))x.setAttribute('aria-pressed',x===cp);
       for(const id of state.selection){const s=byId(id);if(s&&!s.locked)s[k]=cp.value}
-      if(state.selection.size)invalidate();
+      if(_selN())invalidate();
     });
     cp.addEventListener('change',()=>{_sfbFlush(k,cp.value);_sfbCapture(k);});
   }
@@ -8687,7 +8689,7 @@ function wire(){
     state.style.size=+rng.value;
     _g('sizeVal').textContent=rng.value;
     for(const id of state.selection){const s=byId(id);if(s&&!s.locked)s.size=state.style.size}
-    if(state.selection.size)invalidate();
+    if(_selN())invalidate();
   });
   rng.addEventListener('change',()=>{_sfbFlush('size',state.style.size);_sfbCapture('size');});
   if(opacRng){
@@ -8698,7 +8700,7 @@ function wire(){
       state.style.opacity=v;
       if(opacVal)opacVal.textContent=opacRng.value;
       for(const id of state.selection){const s=byId(id);if(s&&!s.locked)s.opacity=v}
-      if(state.selection.size)invalidate();
+      if(_selN())invalidate();
     });
     opacRng.addEventListener('change',()=>{_sfbFlush('opacity',state.style.opacity);_sfbCapture('opacity');});
   }
@@ -8790,13 +8792,13 @@ function wire(){
 // mutated in 39 places, so a frame-boundary diff is the only universal hook).
 let _selSig=null;
 function _syncStylePanelIfChanged(){
-  const sig=state.selection.size+'|'+_selIds().sort().join(',');
+  const sig=_selN()+'|'+_selIds().sort().join(',');
   if(sig===_selSig)return;
   _selSig=sig;
   _syncStylePanel();
 }
 function _syncStylePanel(){
-  if(!state.selection.size)return;   // empty selection keeps the panel as-is
+  if(!_selN())return;   // empty selection keeps the panel as-is
   const sel=[];
   for(const id of state.selection){const s=byId(id);if(s&&!s.locked)sel.push(s)}
   if(!sel.length)return;
@@ -8824,7 +8826,7 @@ function _syncStylePanel(){
     if(r)r.value=p;if(ov)ov.textContent=p;}
 }
 function applyStyleToSelection(patch){
-  if(!state.selection.size)return;
+  if(!_selN())return;
   const before=[],after=[];
   for(const id of state.selection){
     const sh=byId(id);if(!sh||sh.locked)continue;
@@ -9295,7 +9297,7 @@ function copyStyle(){
   UI.toast(t('styleCopied'),'ok');
 }
 function pasteStyle(){
-  if(!state.styleClipboard||!state.selection.size){return}
+  if(!state.styleClipboard||!_selN()){return}
   // Remove undefined keys
   const patch=Object.fromEntries(
     Object.entries(state.styleClipboard).filter(([,v])=>v!==undefined)
