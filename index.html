@@ -774,7 +774,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.184';
+const V='1.7.200';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -865,9 +865,9 @@ const I18N={
     confirmClear:'すべて削除しますか？',
     ctxCopy:'コピー',ctxPasteInPlace:'同じ位置に貼り付け',ctxPasteAt:'ここに貼り付け',ctxPaste:'貼り付け',ctxDuplicate:'複製',
     ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxCurve:'曲線',ctxRouteReset:'ルートをリセット (直線に戻す)',ctxSelContents:'内容を選択',ctxFrameFit:'コンテンツに合わせる',ctxArrowHead:'矢印ヘッド (矢印→丸→シェブロン)',ctxToArrow:'矢印に変換',ctxToLine:'直線に変換',ctxBothEnds:'両端ヘッド',ctxRrect:'角スタイル (角丸→直角)',ctxStickyColor:'付箋の色 (順送り)',ctxToText:'テキストに変換',ctxToSticky:'付箋に変換',ctxTextAlign:'テキスト揃え (左→中央→右)',ctxFillStyle:'塗りスタイル (塗り→ハッチ→斜格子)',
-    ctxSelectSameType:'同じ種類を選択',ctxSelectSame:'同色を選択',ctxWrapFrame:'フレームで包む',ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
+    ctxSelectSameType:'同じ種類を選択',ctxSelectSame:'同色を選択',ctxSearch:'検索',ctxFit:'全体を表示',ctxZoomReset:'ズーム100%',ctxGrid:'グリッド',ctxSnap:'吸着',ctxMinimap:'ミニマップ',ctxWrapFrame:'フレームで包む',ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
     ctxSendBackward:'背面へ',ctxSendBack:'最背面へ',
-    ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxLock:'ロック',ctxUnlock:'ロック解除',ctxUnlockAll:'全てロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
+    ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxRotate90:'90°回転',ctxCorner:'角丸を切替',ctxHide:'非表示',ctxShowAll:'すべて表示',ctxSelectInverse:'選択を反転',ctxConnect:'2図形をコネクタで接続',hiddenCount:'件を非表示',shownAll:'すべて表示しました',ctxLock:'ロック',ctxUnlock:'ロック解除',ctxUnlockAll:'全てロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
     canvasHint:'描画キャンバス。Tab/⇧Tab で図形巡回、Enter で作成、矢印で移動、⌥+矢印でリサイズ',
     tools:'ツール',docNameLabel:'ドキュメント名',activePeers:'接続中のピア',expPng:'PNG 書き出し',
     moreExport:'その他の書き出し・読み込み',install:'アプリとしてインストール',style:'スタイル',
@@ -941,9 +941,9 @@ const I18N={
     confirmClear:'Delete everything?',
     ctxCopy:'Copy',ctxPasteInPlace:'Paste in place',ctxPasteAt:'Paste here',ctxPaste:'Paste',ctxDuplicate:'Duplicate',
     ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxCurve:'Curved',ctxRouteReset:'Reset route (straighten)',ctxSelContents:'Select contents',ctxFrameFit:'Fit to contents',ctxArrowHead:'Arrowhead (arrow→dot→open)',ctxToArrow:'Convert to arrow',ctxToLine:'Convert to line',ctxBothEnds:'Arrowheads both ends',ctxRrect:'Corners (round→sharp)',ctxStickyColor:'Sticky colour (cycle)',ctxToText:'Convert to text',ctxToSticky:'Convert to sticky',ctxTextAlign:'Text align (left→center→right)',ctxFillStyle:'Fill style (solid→hatch→cross)',
-    ctxSelectSameType:'Select same type',ctxSelectSame:'Select same colour',ctxWrapFrame:'Frame selection',ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
+    ctxSelectSameType:'Select same type',ctxSelectSame:'Select same colour',ctxSearch:'Search',ctxFit:'Fit board',ctxZoomReset:'Zoom 100%',ctxGrid:'Grid',ctxSnap:'Snap',ctxMinimap:'Minimap',ctxWrapFrame:'Frame selection',ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
     ctxSendBackward:'Send backward',ctxSendBack:'Send to back',
-    ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxLock:'Lock',ctxUnlock:'Unlock',ctxUnlockAll:'Unlock all',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
+    ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxRotate90:'Rotate 90°',ctxCorner:'Round corner',ctxHide:'Hide',ctxShowAll:'Show all',ctxSelectInverse:'Invert selection',ctxConnect:'Connect 2 shapes',hiddenCount:'hidden',shownAll:'All shapes shown',ctxLock:'Lock',ctxUnlock:'Unlock',ctxUnlockAll:'Unlock all',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
     canvasHint:'Drawing canvas. Tab/Shift+Tab cycles shapes, Enter creates, arrows move, Alt+arrows resize.',
     tools:'Tools',docNameLabel:'Document name',activePeers:'Active peers',expPng:'Export PNG',
     moreExport:'More export & import options',install:'Install Board as an app',style:'Style',
@@ -2514,7 +2514,7 @@ function _drawImgLabel(s,c){
 // Elbow → its polyline, curve → 16-sample bezier, else _linePts (way-aware).
 function _connPathPts(s){
   if(s.elbow)return _elbowPts(s);
-  if(s.curve){const e=connEnds(s),cc=_curveCtrl(e),pts=[];
+  if(s.curve){const e=connEnds(s),cc=_curveCtrl(e,s.cbend),pts=[];
     for(let i=0;i<=16;i++){const u=i/16,v=1-u;
       pts.push({x:v*v*e.x1+2*v*u*cc.x+u*u*e.x2,y:v*v*e.y1+2*v*u*cc.y+u*u*e.y2})}
     return pts}
@@ -2583,6 +2583,7 @@ function _drawConnLabel(s,c){
   c.restore();
 }
 function drawShape(s,c){
+  if(s.visible===0)return;                                   // ADR-0137
   c=c||ctx;
   c.globalAlpha=s.opacity??1;
   c.lineCap='round';c.lineJoin='round';
@@ -2617,7 +2618,7 @@ function drawShape(s,c){
       _drawBoxLabel(s,c);break;}
     case 'line':{
       if(s.elbow){_polyline(c,_elbowPts(s));c.stroke();_drawConnLabel(s,c);break}
-      if(s.curve){const e=connEnds(s),cc=_curveCtrl(e);c.beginPath();c.moveTo(e.x1,e.y1);c.quadraticCurveTo(cc.x,cc.y,e.x2,e.y2);c.stroke();_drawConnLabel(s,c);break}
+      if(s.curve){const e=connEnds(s),cc=_curveCtrl(e,s.cbend);c.beginPath();c.moveTo(e.x1,e.y1);c.quadraticCurveTo(cc.x,cc.y,e.x2,e.y2);c.stroke();_drawConnLabel(s,c);break}
       _polyline(c,_linePts(s));c.stroke();_drawConnLabel(s,c);break;}   // ADR-0076
     case 'arrow':
       drawArrow(s,c);_drawConnLabel(s,c);break;
@@ -2701,7 +2702,7 @@ function drawArrow(s,c){
   const e=connEnds(s);
   const ah=Math.max(6,(s.size||2)*3);
   if(s.curve){
-    const cc=_curveCtrl(e);
+    const cc=_curveCtrl(e,s.cbend);
     c.beginPath();c.moveTo(e.x1,e.y1);c.quadraticCurveTo(cc.x,cc.y,e.x2,e.y2);c.stroke();
     _arrowHeadShape(c,e.x2,e.y2,Math.atan2(e.y2-cc.y,e.x2-cc.x),ah,s.stroke,s.head);
     if(s.start)_arrowHeadShape(c,e.x1,e.y1,Math.atan2(e.y1-cc.y,e.x1-cc.x),ah,s.stroke,s.head);
@@ -2798,20 +2799,22 @@ function _arrowHeadShape(c,x,y,ang,ah,stroke,style){
 }
 // ADR-0068: quadratic-bezier route for curved connectors. Control point is the
 // midpoint pushed along the left normal by bend=min(0.25*len,80).
-function _curveCtrl(e){
+function _curveCtrl(e,bend){
   const mx=(e.x1+e.x2)/2,my=(e.y1+e.y2)/2;
   const dx=e.x2-e.x1,dy=e.y2-e.y1,len=Math.hypot(dx,dy)||1;
-  const bend=Math.min(0.25*len,80);
-  return{x:mx-dy/len*bend,y:my+dx/len*bend};
+  // ADR-0132: `s.cbend` overrides the auto bow — a signed perpendicular
+  // offset from the chord, clamped like the auto 80px cap but wider.
+  const b=(bend==null||!Number.isFinite(bend))?Math.min(0.25*len,80):Math.max(-400,Math.min(400,bend));
+  return{x:mx-dy/len*b,y:my+dx/len*b};
 }
 function _curveSegs(s){
-  const e=connEnds(s),cc=_curveCtrl(e),pts=[];
+  const e=connEnds(s),cc=_curveCtrl(e,s.cbend),pts=[];
   for(let i=0;i<=16;i++){const t=i/16,u=1-t;
     pts.push({x:u*u*e.x1+2*u*t*cc.x+t*t*e.x2,y:u*u*e.y1+2*u*t*cc.y+t*t*e.y2});}
   return pts;
 }
 function _curveLabelXY(s){
-  const e=connEnds(s),cc=_curveCtrl(e);
+  const e=connEnds(s),cc=_curveCtrl(e,s.cbend);
   return{x:0.25*e.x1+0.5*cc.x+0.25*e.x2,y:0.25*e.y1+0.5*cc.y+0.25*e.y2};
 }
 // ADR-0070: quick-connect dots on the hovered shape's 4 edge midpoints.
@@ -3338,6 +3341,8 @@ function abortGesture(){
     const sh=byId(ptr.rotOrig.id);if(sh){if(ptr.rotOrig.rotate==null)delete sh.rotate;Object.assign(sh,clone(ptr.rotOrig));}
   }else if(ptr.dragKind==='ebend'&&ptr.ebendOrig){                // ADR-0072
     const sh=byId(ptr.ebendOrig.id);if(sh){if(ptr.ebendOrig.bend==null)delete sh.bend;Object.assign(sh,clone(ptr.ebendOrig));}
+  }else if(ptr.dragKind==='cbend'&&ptr.cbendOrig){                // ADR-0132
+    const sh=byId(ptr.cbendOrig.id);if(sh){if(ptr.cbendOrig.cbend==null)delete sh.cbend;Object.assign(sh,clone(ptr.cbendOrig));}
   }else if(ptr.dragKind==='way'&&ptr.wayOrig){                     // ADR-0076
     const sh=byId(ptr.wayOrig.id);if(sh){delete sh.way;Object.assign(sh,clone(ptr.wayOrig));}
   }
@@ -3345,7 +3350,7 @@ function abortGesture(){
   _penPred=null;ptr.lineClick=false;
   state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.dragStartShapes=null;
-  ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;ptr.ebendOrig=null;ptr.wayOrig=null;ptr.wayIdx=null;ptr.wayNew=false;ptr.lblOrig=null;
+  ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;ptr.wayIdx=null;ptr.wayNew=false;ptr.lblOrig=null;
   invalidate();
 }
 
@@ -3407,14 +3412,34 @@ canvas.addEventListener('pointerdown',e=>{
           if(onlySel.elbow&&!onlySel.locked){          // ADR-0072: trunk drag
             const tr=_elbowTrunk(onlySel);
             if(tr&&distToSeg(wp,tr[0],tr[1])<=HANDLE_SIZE/state.viewport.zoom){
+              if(e.altKey&&onlySel.bend!=null){        // ADR-0143: ⌥click recentres the trunk
+                const origSel=[...state.selection];
+                Store._recordCommitted({op:'style',before:[{id:onlySel.id,bend:onlySel.bend}],after:[{id:onlySel.id,bend:null}]});
+                if(origSel.length)state.history[state.histIdx].origSel=origSel;
+                delete onlySel.bend;invalidate();return;
+              }
               ptr.dragKind='ebend';ptr.ebendOrig=clone(onlySel);
               return;
+            }
+          }
+          if(onlySel.curve&&!onlySel.locked){          // ADR-0132: curve-bend drag (apex grab)
+            const apex=_curveLabelXY(onlySel);
+            if(apex&&Math.hypot(wp.x-apex.x,wp.y-apex.y)<=HANDLE_SIZE/state.viewport.zoom){
+              ptr.dragKind='cbend';ptr.cbendOrig=clone(onlySel);return;
             }
           }
           if(!onlySel.elbow&&!onlySel.curve&&!onlySel.locked&&(onlySel.type==='line'||onlySel.type==='arrow')){   // ADR-0090
             const pts=_linePts(onlySel),R_=HANDLE_SIZE/state.viewport.zoom;
             for(let i=1;i<pts.length-1;i++){             // existing vertex → move it
               if(Math.hypot(wp.x-pts[i].x,wp.y-pts[i].y)<=R_){
+                if(e.altKey){                              // ADR-0141: ⌥click deletes the waypoint
+                  const wa=_wayArr(onlySel),bw=clone(wa.length?wa:null);
+                  wa.splice(i-1,1);onlySel.way=wa.length?wa:null;
+                  const origSel=[...state.selection];
+                  Store._recordCommitted({op:'style',before:[{id:onlySel.id,way:bw}],after:[{id:onlySel.id,way:wa.length?clone(wa):null}]});
+                  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+                  invalidate();return;
+                }
                 ptr.dragKind='way';ptr.wayIdx=i-1;ptr.wayNew=false;ptr.wayOrig=clone(onlySel);return;
               }
             }
@@ -3552,12 +3577,18 @@ canvas.addEventListener('pointermove',e=>{
           state.readout={x:_nb.x+_nb.w/2,y:_nb.y+_nb.h,label:`${rsh.rotate}°`};
           invalidateDamage(_dmgPair(_b0,_nb,(rsh.size||2)+16));           // ADR-0026
         }else invalidate();
-      }else if(ptr.dragKind==='move')doMove(wp,e.shiftKey);
+      }else if(ptr.dragKind==='move')doMove(wp,e.shiftKey,e.altKey);
       else if(ptr.dragKind==='marquee'){state.marquee={x1:ptr.wx0,y1:ptr.wy0,x2:wp.x,y2:wp.y};invalidateOverlay()}
       else if(ptr.dragKind==='qline')contLineLike(wp,e.shiftKey);   // ADR-0070
       else if(ptr.dragKind==='ebend'&&ptr.ebendOrig){               // ADR-0072
         const sh=byId(ptr.ebendOrig.id),tr=sh&&_elbowTrunk(sh);
         if(tr){const vert=Math.abs(tr[1].x-tr[0].x)<Math.abs(tr[1].y-tr[0].y);sh.bend=vert?snapV(wp.x):snapV(wp.y);invalidate()}   // ADR-0088: trunk drag honours grid snap
+      }
+      else if(ptr.dragKind==='cbend'&&ptr.cbendOrig){               // ADR-0132
+        const sh=byId(ptr.cbendOrig.id);
+        if(sh){const e=connEnds(sh),dx=e.x2-e.x1,dy=e.y2-e.y1,len=Math.hypot(dx,dy)||1,
+          mx=(e.x1+e.x2)/2,my=(e.y1+e.y2)/2;
+          sh.cbend=snapV((wp.x-mx)*(-dy/len)+(wp.y-my)*(dx/len));invalidate()}
       }
       else if(ptr.dragKind==='lblpos'&&ptr.lblOrig){                // ADR-0117
         const sh=byId(ptr.lblOrig.id);
@@ -3635,6 +3666,13 @@ canvas.addEventListener('pointerup',e=>{
         ptr.rotOrig=null;
       }else if(ptr.dragKind==='qline'){
         endLineLike();                                             // ADR-0070
+      }else if(ptr.dragKind==='cbend'&&ptr.cbendOrig){            // ADR-0132
+        const sh=byId(ptr.cbendOrig.id);
+        if(sh&&(sh.cbend||0)!==(ptr.cbendOrig.cbend||0)){
+          const origSel=[...state.selection];
+          Store._recordCommitted({op:'style',before:[{id:sh.id,cbend:ptr.cbendOrig.cbend||0}],after:[{id:sh.id,cbend:sh.cbend||0}]});
+          if(origSel.length)state.history[state.histIdx].origSel=origSel;
+        }
       }else if(ptr.dragKind==='ebend'&&ptr.ebendOrig){            // ADR-0072
         const sh=byId(ptr.ebendOrig.id);
         if(sh&&(sh.bend||0)!==(ptr.ebendOrig.bend||0)){
@@ -3659,7 +3697,7 @@ canvas.addEventListener('pointerup',e=>{
         }
         ptr.lblOrig=null;
       }else{
-        endSelect(wp,e.shiftKey);
+        endSelect(wp,e.shiftKey,e.altKey);
       }
       break;
       case 'pen':case 'marker':endPen();break;
@@ -3673,7 +3711,7 @@ canvas.addEventListener('pointerup',e=>{
     }
   }
   ptr.down=false;ptr.dragKind=null;ptr.dragStartShapes=null;
-  ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.ebendOrig=null;ptr.wayOrig=null;
+  ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;
   state.marquee=null;canvas.style.cursor='default';invalidateOverlay();
 });
 // v1.6.88: extracted as named function so tests can call it directly.
@@ -3692,6 +3730,8 @@ function _cancelPointerGesture(){
     if(rsh){if(ptr.rotOrig.rotate==null)delete rsh.rotate;Object.assign(rsh,clone(ptr.rotOrig));}
   }else if(ptr.dragKind==='ebend'&&ptr.ebendOrig){                // ADR-0072
     const sh=byId(ptr.ebendOrig.id);if(sh){if(ptr.ebendOrig.bend==null)delete sh.bend;Object.assign(sh,clone(ptr.ebendOrig));}
+  }else if(ptr.dragKind==='cbend'&&ptr.cbendOrig){                // ADR-0132
+    const sh=byId(ptr.cbendOrig.id);if(sh){if(ptr.cbendOrig.cbend==null)delete sh.cbend;Object.assign(sh,clone(ptr.cbendOrig));}
   }else if(ptr.dragKind==='way'&&ptr.wayOrig){                     // ADR-0076
     const sh=byId(ptr.wayOrig.id);if(sh){delete sh.way;Object.assign(sh,clone(ptr.wayOrig));}
   }else if(ptr.dragKind==='move'&&ptr.dragStartShapes){
@@ -3700,7 +3740,7 @@ function _cancelPointerGesture(){
   if(_eraseBatch.length){for(const s of _eraseBatch)state.shapes.push(s);_eraseBatch=[];sortZ();_invalidateGrid();}   // ADR-0009
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;
   ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.rotOrig=null;ptr.dragStartShapes=null;
-  ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.ebendOrig=null;ptr.wayOrig=null;
+  ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;
   canvas.dataset.panning='false';ptr.lineClick=false;state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;_penPred=null;invalidate();
 }
 // ADR-0006: fires after LONG_PRESS_MS. Guards: gesture still active, handle-drag not in
@@ -4122,18 +4162,18 @@ function pickTop(wp){
     // filtering all shapes twice — O(cells neighbourhood), not O(board).
     const cands=[..._queryGrid(_grid,wp)];
     cands.sort((a,b)=>(_grid.idx.get(b)|0)-(_grid.idx.get(a)|0));
-    for(const s of cands)if(s.type!=='frame'&&G.hit(s,wp))return s;
-    for(const s of cands)if(s.type==='frame'&&G.hit(s,wp))return s;
+    for(const s of cands)if(s.type!=='frame'&&s.visible!==0&&G.hit(s,wp))return s;
+    for(const s of cands)if(s.type==='frame'&&s.visible!==0&&G.hit(s,wp))return s;
     return null;
   }
   for(let i=state.shapes.length-1;i>=0;i--){
     const s=state.shapes[i];
-    if(s.type==='frame')continue;
+    if(s.type==='frame'||s.visible===0)continue;
     if(G.hit(s,wp))return s;
   }
   for(let i=state.shapes.length-1;i>=0;i--){
     const s=state.shapes[i];
-    if(s.type==='frame'&&G.hit(s,wp))return s;
+    if(s.type==='frame'&&s.visible!==0&&G.hit(s,wp))return s;
   }
   return null;
 }
@@ -4158,6 +4198,12 @@ function pickOrMarquee(wp,e){
         ptr.dragStartShapes=new Map(added.map(id=>{const s=byId(id);return[id,clone(s)]}));
         return;
       }
+    }
+    // ADR-0129: ⇧click on a fully-selected target removes it from the
+    // selection (Figma parity) — plain click starts the move drag instead.
+    if(alreadySel&&e.shiftKey){
+      for(const id of toSelect)state.selection.delete(id);
+      _announceSel();invalidate();return;
     }
     if(!alreadySel){
       if(!e.shiftKey)state.selection.clear();
@@ -4302,20 +4348,23 @@ function nudgeSelection(dx,dy){
 }
 // Shared by live drag (doMove) and commit (endSelect) so they agree exactly.
 // Grid snap (⇧G) takes precedence; otherwise snap to nearby objects.
-function moveDelta(wp,shift){
-  const sp=snapPt(wp),sx0=snapV(ptr.wx0),sy0=snapV(ptr.wy0);
+function moveDelta(wp,shift,alt){
+  // ADR-0128: held Alt suppresses every snap source for this delta — grid
+  // (snapPt/snapV) and object snap alike (draw.io parity: "hold Alt while
+  // dragging to disable all snap functions").
+  const sp=alt?wp:snapPt(wp),sx0=alt?ptr.wx0:snapV(ptr.wx0),sy0=alt?ptr.wy0:snapV(ptr.wy0);
   let dx=sp.x-sx0,dy=sp.y-sy0;
   if(shift){                            // ADR-0066: Shift+drag constrains to the dominant axis
     if(Math.abs(dx)>=Math.abs(dy))dy=0;else dx=0;
     state.guides=null;
-  }else if(!state.snap){const a=objectSnap(dx,dy);dx+=a.dx;dy+=a.dy;state.guides=a.guides.length?a.guides:null;}
+  }else if(!alt&&!state.snap){const a=objectSnap(dx,dy);dx+=a.dx;dy+=a.dy;state.guides=a.guides.length?a.guides:null;}
   else state.guides=null;
   const bb=ptr.dragStartShapes&&G.bboxAll([...ptr.dragStartShapes.values()]);
   state.readout=bb&&(dx||dy)?{x:bb.x+dx+bb.w/2,y:bb.y+dy+bb.h,label:`${dx>=0?'+':''}${Math.round(dx)}, ${dy>=0?'+':''}${Math.round(dy)}`}:null;
   return{dx,dy};
 }
-function doMove(wp,shift){
-  const{dx,dy}=moveDelta(wp,shift);let dmg=null;
+function doMove(wp,shift,alt){
+  const{dx,dy}=moveDelta(wp,shift,alt);let dmg=null;
   for(const [id,orig] of ptr.dragStartShapes){
     const sh=byId(id);if(!sh||sh.locked)continue;
     const b0=G.bbox(orig),m=(sh.size||2)+16;   // orig-bbox + same bbox shifted by (dx,dy) covers every position of the gesture
@@ -4326,9 +4375,9 @@ function doMove(wp,shift){
   }
   if(dmg)invalidateDamage(dmg);else invalidate();
 }
-function endSelect(wp,shift){
+function endSelect(wp,shift,alt){
   if(ptr.dragKind==='move'&&ptr.dragStartShapes){
-    const{dx,dy}=moveDelta(wp,shift);
+    const{dx,dy}=moveDelta(wp,shift,alt);
     state.guides=null;
     const mids=[...ptr.dragStartShapes.keys()].filter(id=>!byId(id)?.locked);
     if(Math.hypot(dx,dy)>0.5&&mids.length){
@@ -4342,7 +4391,9 @@ function endSelect(wp,shift){
     const r={x:Math.min(m.x1,m.x2),y:Math.min(m.y1,m.y2),
       w:Math.abs(m.x2-m.x1),h:Math.abs(m.y2-m.y1)};
     if(r.w>2||r.h>2){
-      state.selection.clear();
+      // ADR-0130: ⇧marquee adds to the current selection (Figma parity);
+      // plain marquee replaces it as before.
+      if(!shift)state.selection.clear();
       // ADR-0032: a fully-contained shape's cells are a subset of the marquee's
       // cells, so grid candidates are a superset of every possible hit — the
       // O(n) per-pointermove scan shrinks to the rect's neighbourhood.
@@ -4363,7 +4414,7 @@ function endSelect(wp,shift){
         // be edited anyway, and a region-drag shouldn't pick them up
         // (Figma/draw.io parity). Single-click selection still reaches them
         // for the ctx Unlock path.
-        if(hit&&!s.locked)state.selection.add(s.id);
+        if(hit&&!s.locked&&s.visible!==0)state.selection.add(s.id);
       }
       _announceSel();   // ADR-0037: announce the marquee result (incl. cleared)
     }
@@ -4878,7 +4929,7 @@ window.addEventListener('keydown',e=>{
   }
   if(meta&&k==='z'&&!e.shiftKey){e.preventDefault();if(Store.undo())UI.toast(t('undone'))}
   else if(meta&&(k==='y'||(k==='z'&&e.shiftKey))){e.preventDefault();if(Store.redo())UI.toast(t('redone'))}
-  else if(meta&&k==='a'){e.preventDefault();state.selection=new Set(state.shapes.map(s=>s.id));if(state.selection.size)_announceSel();invalidate()}   // ADR-0037
+  else if(meta&&k==='a'){e.preventDefault();state.selection=new Set(state.shapes.filter(s=>s.visible!==0).map(s=>s.id));if(state.selection.size)_announceSel();invalidate()}   // ADR-0037
   if(k==='p'&&e.shiftKey&&!meta&&!e.altKey){e.preventDefault();Presentation.enter();return}
   else if(meta&&k==='enter'){e.preventDefault();Presentation.enter()}
   else if(meta&&k==='c'){e.preventDefault();doCopy()}
@@ -4977,15 +5028,18 @@ window.addEventListener('keydown',e=>{
   else if(meta&&k==='g'&&e.shiftKey){e.preventDefault();doUngroup()}
   else if(meta&&k==='g'&&!e.shiftKey){e.preventDefault();doGroup()}
   else if(meta&&k==='l'&&e.shiftKey&&state.selection.size){e.preventDefault();doLock()}
-  else if(k==='g'&&!meta&&e.shiftKey){state.snap=!state.snap;UI.toast(`${t('snap')} ${state.snap?t('on'):t('off')}`)}
-  else if(k==='g'&&!meta){state.showGrid=!state.showGrid;invalidate();UI.toast(`${t('grid')} ${state.showGrid?t('on'):t('off')}`)}
+  else if(k==='g'&&!meta&&e.shiftKey){toggleSnapMode()}
+  else if(k==='g'&&!meta){toggleGridView()}
   else if(k==='m'&&!meta){UI.toggleMinimap()}
   else if(e.shiftKey&&(k==='1'||k==='!')){e.preventDefault();fitToContent()}
   else if(e.shiftKey&&(k==='2'||k==='@')){e.preventDefault();zoomToSelection()}
   else if(e.shiftKey&&!meta&&!e.altKey&&(k==='h'||k==='v')&&state.selection.size){e.preventDefault();doFlip(k)}
   else if(k===','&&!meta&&state.selection.size){e.preventDefault();doRotate(-15)}
   else if(k==='.'&&!meta&&state.selection.size){e.preventDefault();doRotate(15)}
-  else if(meta&&k==='f'){e.preventDefault();const sq=document.getElementById('sqinput');if(sq){sq.style.display=sq.style.display==='none'?'block':'none';if(sq.style.display!=='none'){sq.focus();sq.select();}else{_sq='';invalidateOverlay();}}}
+  else if(meta&&k==='f'){e.preventDefault();toggleSq()}
+  else if(k==='r'&&e.shiftKey&&!meta&&!e.altKey&&state.selection.size){e.preventDefault();doRotate(90)}
+  else if(k==='h'&&e.shiftKey&&meta&&!e.altKey){e.preventDefault();hideSelection()}   // ADR-0137: ⌘⇧H
+  else if(k==='i'&&e.shiftKey&&meta&&!e.altKey){e.preventDefault();selectInverse()}   // ADR-0139: ⌘⇧I
   else if(!meta&&KEYMAP[k]){pickTool(KEYMAP[k])}
   else if(k===' '&&!meta){e.preventDefault();pickTool('hand',true)}
 });
@@ -4994,6 +5048,18 @@ window.addEventListener('keyup',e=>{
     pickTool(window._prevTool);window._prevTool=null;
   }
 });
+// ADR-0135: view toggles were keyboard-only (G/⇧G) — extracted so the
+// ctx menu's touch path can reach them too.
+function toggleGridView(){state.showGrid=!state.showGrid;invalidate();UI.toast(`${t('grid')} ${state.showGrid?t('on'):t('off')}`)}
+function toggleSnapMode(){state.snap=!state.snap;UI.toast(`${t('snap')} ${state.snap?t('on'):t('off')}`)}
+// ADR-0134: the shape search box was ⌘F-only — invisible to touch users
+// (the exact keyboard-only trap FT-06 warned about). Shared by ⌘F and ctx.
+function toggleSq(){
+  const sq=document.getElementById('sqinput');if(!sq)return;
+  sq.style.display=sq.style.display==='none'?'block':'none';
+  if(sq.style.display!=='none'){sq.focus();sq.select();}
+  else{_sq='';invalidateOverlay();}
+}
 function pickTool(tool,temporary){
   if(temporary&&!window._prevTool)window._prevTool=state.tool;
   if(ptr.lineClick&&tool!=='line'&&tool!=='arrow'){ptr.lineClick=false;state.draft=null;invalidate()}   // ADR-0126
@@ -5209,18 +5275,66 @@ function selectSamePaint(){
   const sel=[...state.selection].map(byId).filter(Boolean);
   if(sel.length!==1)return;
   const s0=sel[0],key=s0.type==='sticky'?s0.color:s0.fill;
-  const same=state.shapes.filter(s=>(s.type==='sticky'?s.color:s.fill)===key);
+  const same=state.shapes.filter(s=>s.visible!==0&&(s.type==='sticky'?s.color:s.fill)===key);
   if(same.length<2)return;
   state.selection=new Set(same.map(s=>s.id));
   _announceSel();UI.toast(same.length+' '+t('selAllMatches'),'ok');
   invalidate();
+}
+// ADR-0137: hide/show shapes (Figma ⌘⇧H / eye). `s.visible===0` removes the
+// shape from drawShape (which covers minimap, export renderers and the PNG
+// cache path) and from every pointer path (pickTop/eraser/marquee), so a
+// hidden shape is completely non-interactive. Restore via "show all" since
+// hidden shapes can't be re-selected — same convention as Figma's layers.
+function hideSelection(){
+  const before=[],after=[];
+  for(const id of state.selection){
+    const s=byId(id);if(!s||s.locked||s.visible===0)continue;
+    before.push({id,visible:s.visible??null});after.push({id,visible:0});
+    s.visible=0;state.selection.delete(id);
+  }
+  if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate();UI.toast(before.length+' '+t('hiddenCount'),'ok')}
+}
+// ADR-0140: connect two selected shapes (draw.io "Connect" / Miro
+// quick-link). Makes an arrow bound at BOTH ends (s.a/s.b → connEnds
+// edge-projects), committed as one add op.
+function connectSelection(){
+  const sel=[...state.selection].map(byId)
+    .filter(s=>s&&!s.locked&&s.visible!==0&&s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen');
+  if(sel.length!==2){UI.toast(t('selectTwo'),'warn');return}
+  const a=sel[0],b=sel[1],ab=G.bbox(a),bb=G.bbox(b);
+  const s=Shape.make('arrow',{
+    x1:ab.x+ab.w/2,y1:ab.y+ab.h/2,x2:bb.x+bb.w/2,y2:bb.y+bb.h/2,
+    a:a.id,b:b.id});
+  const origSel=[...state.selection];
+  Store.commit({op:'add',shape:s});
+  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  state.selection=new Set([s.id]);
+  invalidate();
+}
+// ADR-0139: invert selection (draw.io ⌘⇧I / Photoshop parity) — the
+// complement over unlocked, visible shapes (marquee/select-all rules).
+function selectInverse(){
+  const inv=new Set();
+  for(const s of state.shapes)if(!s.locked&&s.visible!==0&&!state.selection.has(s.id))inv.add(s.id);
+  state.selection=inv;
+  _announceSel();invalidate();
+}
+function showAllShapes(){
+  const before=[],after=[];
+  for(const s of state.shapes){
+    if(s.visible!==0)continue;
+    before.push({id:s.id,visible:0});after.push({id:s.id,visible:null});
+    delete s.visible;
+  }
+  if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate();UI.toast(t('shownAll'),'ok')}
 }
 // ADR-0120: select every shape of the same type as the single selection —
 // sibling of selectSamePaint (e.g. all connectors, all stickies).
 function selectSameType(){
   const sel=[...state.selection].map(byId).filter(Boolean);
   if(sel.length!==1)return;
-  const same=state.shapes.filter(s=>s.type===sel[0].type);
+  const same=state.shapes.filter(s=>s.visible!==0&&s.type===sel[0].type);
   if(same.length<2)return;
   state.selection=new Set(same.map(s=>s.id));
   _announceSel();UI.toast(same.length+' '+t('selAllMatches'),'ok');
@@ -5396,6 +5510,11 @@ function doMatchSize(dim){
 // Flip: mirror across selection-bbox centre, recorded as an `align` op. See docs.
 function flipShape(s,axis,c){
   const m=v=>2*c-v;
+  // ADR-0133: s.bend is a world coordinate of the elbow trunk — mirror it on
+  // the matching axis (vertical trunk stores x, horizontal stores y) or a
+  // flipped elbow's trunk jumps to the other side of the board.
+  const tr=s.bend!=null?_elbowTrunk(s):null;
+  const trVert=tr&&Math.abs(tr[1].x-tr[0].x)<Math.abs(tr[1].y-tr[0].y);
   if(axis==='h'){
     if(s.pts)for(const p of s.pts)p[0]=m(p[0]);
     else if(s.x1!=null){s.x1=m(s.x1);s.x2=m(s.x2);if(s.way){s.way=_wayArr(s);for(const w of s.way)w.x=m(w.x)}}   // ADR-0090
@@ -5405,7 +5524,13 @@ function flipShape(s,axis,c){
     else if(s.y1!=null){s.y1=m(s.y1);s.y2=m(s.y2);if(s.way){s.way=_wayArr(s);for(const w of s.way)w.y=m(w.y)}}   // ADR-0090
     else s.y=m(s.y+s.h);
   }
-  if(s.rotate)s.rotate=(360-s.rotate)%360;
+  if(tr&&(axis==='h')===!!trVert)s.bend=m(s.bend);
+  if(s.cbend!=null)s.cbend=-s.cbend;   // ADR-0132: any mirror flips the curve's chirality
+  // ADR-0142: mirror maps angle θ → 180−θ across the vertical axis
+  // ('h' flips x) and θ → 360−θ across the horizontal axis ('v' flips
+  // y). Previously both axes took 360−θ, so an 'h' flip left a rotated
+  // shape tilted the wrong way (30°→330° instead of 150°).
+  if(s.rotate)s.rotate=((axis==='h'?180:360)-s.rotate+360)%360;
 }
 function doFlip(axis){
   const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);
@@ -6107,7 +6232,7 @@ function buildSVG(shapes,paper){
         break;}
       case 'line':{
         if(s.curve){
-          const _ce=connEnds(s),cc=_curveCtrl(_ce);
+          const _ce=connEnds(s),cc=_curveCtrl(_ce,s.cbend);
           els.push(`<path d="M ${_num(_ce.x1+ox)} ${_num(_ce.y1+oy)} Q ${_num(cc.x+ox)} ${_num(cc.y+oy)} ${_num(_ce.x2+ox)} ${_num(_ce.y2+oy)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}/>`);
           const lm=_curveLabelXY(s);
           {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
@@ -6125,7 +6250,7 @@ function buildSVG(shapes,paper){
       case 'arrow':{
         const ah=Math.max(6,(SZ||2)*3);
         if(s.curve){
-          const _ce=connEnds(s),cc=_curveCtrl(_ce);
+          const _ce=connEnds(s),cc=_curveCtrl(_ce,s.cbend);
           els.push(`<path d="M ${_num(_ce.x1+ox)} ${_num(_ce.y1+oy)} Q ${_num(cc.x+ox)} ${_num(cc.y+oy)} ${_num(_ce.x2+ox)} ${_num(_ce.y2+oy)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}/>`);
           const ang=Math.atan2(_ce.y2-cc.y,_ce.x2-cc.x);
           const a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5,tx=_ce.x2+ox,ty=_ce.y2+oy;
@@ -7219,12 +7344,24 @@ const UI={
       has&&state.selection.size>1&&['ctxGroup','⌘G',doGroup],
       has&&[...state.selection].some(id=>byId(id)?.groupId)&&['ctxUngroup','⌘⇧G',doUngroup],
       has&&'sep',
+      ['ctxSearch','⌘F',toggleSq],
+      ['ctxFit','⇧1',fitToContent],
+      ['ctxZoomReset','⌘0',zoomReset],
+      ['ctxGrid','G',toggleGridView],
+      ['ctxSnap','⇧G',toggleSnapMode],
+      ['ctxMinimap','M',()=>UI.toggleMinimap()],
       has&&['ctxBringFront','⇧]',doBringFront],
       has&&['ctxBringForward',']',doBringForward],
       has&&['ctxSendBackward','[',doSendBackward],
       has&&['ctxSendBack','⇧[',doSendBack],
       has&&['ctxFlipH','⇧H',()=>doFlip('h')],
       has&&['ctxFlipV','⇧V',()=>doFlip('v')],
+      has&&['ctxRotate90','⇧R',()=>doRotate(90)],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='rect'&&!s.locked})&&['ctxCorner','',cycleCorner],
+      has&&['ctxHide','⌘⇧H',hideSelection],
+      has&&[...state.selection].map(byId).filter(s=>s&&!s.locked&&s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen').length===2&&['ctxConnect','',connectSelection],
+      state.shapes.some(s=>s.visible===0)&&['ctxShowAll','',showAllShapes],
+      state.shapes.length&&['ctxSelectInverse','⌘⇧I',selectInverse],
       // ADR-0005's flagship feature was ⌥B-only — invisible to touch/mouse users
       // (the exact "keyboard-only feature" trap FT-06 warned about).
       has&&[...state.selection].some(id=>byId(id)?.type==='pen')&&['ctxBeautify','⌥B',doBeautify],
@@ -7253,7 +7390,7 @@ const UI={
       has&&['ctxExportSelBoard','',()=>exportSelection('board')],          // ADR-0114
       has&&state.selection.size===1&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='image'&&!s.locked})&&['ctxReplaceImg','',replaceImage],   // ADR-0089
       has&&'sep',
-      ['ctxSelectAll','⌘A',()=>{state.selection=new Set(state.shapes.map(s=>s.id));if(state.selection.size)_announceSel();invalidate()}],
+      ['ctxSelectAll','⌘A',()=>{state.selection=new Set(state.shapes.filter(s=>s.visible!==0).map(s=>s.id));if(state.selection.size)_announceSel();invalidate()}],
       state.shapes.length&&['ctxClear','',doClearAll]
     ].filter(Boolean).filter((it,i,a)=>!(it==='sep'&&(i===0||i===a.length-1||a[i-1]==='sep')));
     for(const it of items){
@@ -7315,7 +7452,8 @@ const UI={
       ['G',k.grid],['⇧G',t('snap')],['M',k.minimap],['Esc',k.esc],['?',k.help],
       ['↑↓←→',k.nudge],['⌥ ↑↓←→',k.kbdResize],
       [']/[',k.zorder],['⇧]/⇧[',k.zorderEnds],
-      [', / .',k.rotate],['⌘⇧L',t('lockToggle')],['⌘F',k.search],['⌥B',k.beautify],
+      [', / .',k.rotate],['⇧R',t('ctxRotate90')],
+      ['⌘⇧H',t('ctxHide')],['⌘⇧L',t('lockToggle')],['⌘F',k.search],['⌥B',k.beautify],
       ['Enter / ⇧Enter',k.searchNav],
       ['⇧H / ⇧V',t('ctxFlipH')+' / '+t('ctxFlipV')],
       ['⌥C / ⌥V',t('ctxCopyStyle')+' / '+t('ctxPasteStyle')],
@@ -7832,9 +7970,9 @@ function resetRoute(){
   for(const id of state.selection){
     const s=byId(id);if(!s||(s.type!=='line'&&s.type!=='arrow')||s.locked)continue;
     if(!_wayArr(s).length&&!s.bend&&!s.elbow&&!s.curve)continue;   // ADR-0090
-    before.push({id,way:s.way??null,bend:s.bend??null,elbow:s.elbow||0,curve:s.curve||0,labelPos:s.labelPos??null});
+    before.push({id,way:s.way??null,bend:s.bend??null,elbow:s.elbow||0,curve:s.curve||0,labelPos:s.labelPos??null,cbend:s.cbend??null});
     after.push({id,way:null,bend:null,elbow:0,curve:0});
-    s.way=null;s.bend=null;s.elbow=0;s.curve=0;s.labelPos=null;
+    s.way=null;s.bend=null;s.elbow=0;s.curve=0;s.labelPos=null;s.cbend=null;
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
 }
@@ -7888,6 +8026,19 @@ function cycleTextAlign(){
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
 }
+// ADR-0136: corner-radius cycle for rects — s.r existed in every render
+// path (canvas/SVG/hatch) since the box renderer, but nothing set it.
+// Steps 0→8→16→24→0 via style op (undo + sync free, same as other toggles).
+function cycleCorner(){
+  const before=[],after=[];
+  for(const id of state.selection){
+    const s=byId(id);if(!s||s.type!=='rect'||s.locked)continue;
+    const cur=s.r==null?8:s.r,nxt=cur<4?8:cur<12?16:cur<20?24:0;
+    before.push({id,r:s.r??null});after.push({id,r:nxt});
+    s.r=nxt;
+  }
+  if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
+}
 // ADR-0063: start-side arrowhead toggle via style op — undo + wclock sync free.
 function toggleBothEnds(){
   const before=[],after=[];
@@ -7904,10 +8055,16 @@ function copyStyle(){
   const ids=[...state.selection];
   const sh=ids.length?byId(ids[0]):null;
   if(!sh){UI.toast(t('noSelection'),'warn');return}
+  // ADR-0138: widened key set — paint + text + route style. Geometry
+  // (x/y/w/h/pts/way/bend/rotate/flip/z) stays out: format-painter copies
+  // look, not placement. Sticky's paint reads as `fill` here so it pastes
+  // onto box shapes; applyStyleToSelection maps it back to `color`.
   state.styleClipboard={
-    stroke:sh.stroke,fill:sh.fill,
+    stroke:sh.stroke,fill:sh.type==='sticky'?sh.color:sh.fill,
     size:sh.size,opacity:sh.opacity,dash:sh.dash||0,fstyle:sh.fstyle,   // ADR-0077
-    bold:sh.bold,italic:sh.italic                                       // ADR-0078
+    bold:sh.bold,italic:sh.italic,under:sh.under,strike:sh.strike,      // ADR-0078/0095/0100
+    align:sh.align,fontSize:sh.fontSize,
+    r:sh.r,head:sh.head,start:sh.start,elbow:sh.elbow,curve:sh.curve,cbend:sh.cbend
   };
   UI.toast(t('styleCopied'),'ok');
 }
@@ -8079,7 +8236,7 @@ const Minimap=(()=>{
         case 'rect':{const rx=s.x*sc+ox,ry=s.y*sc+oy,rw=s.w*sc,rh=s.h*sc;if(s.fill)sx.fillRect(rx,ry,rw,rh);sx.strokeRect(rx,ry,rw,rh);break}
         case 'ellipse':sx.beginPath();sx.ellipse(s.x*sc+ox+s.w*sc/2,s.y*sc+oy+s.h*sc/2,Math.abs(s.w*sc/2),Math.abs(s.h*sc/2),0,0,Math.PI*2);if(s.fill)sx.fill();sx.stroke();break;
         case 'diamond':{const dcx=s.x*sc+ox+s.w*sc/2,dcy=s.y*sc+oy+s.h*sc/2;sx.beginPath();sx.moveTo(dcx,s.y*sc+oy);sx.lineTo(s.x*sc+ox+s.w*sc,dcy);sx.lineTo(dcx,s.y*sc+oy+s.h*sc);sx.lineTo(s.x*sc+ox,dcy);sx.closePath();if(s.fill)sx.fill();sx.stroke();break;}
-        case 'line':case 'arrow':{if(s.elbow){const pts=_elbowPts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<pts.length;i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}if(s.curve){const me=connEnds(s),cc=_curveCtrl(me);sx.beginPath();sx.moveTo(me.x1*sc+ox,me.y1*sc+oy);sx.quadraticCurveTo(cc.x*sc+ox,cc.y*sc+oy,me.x2*sc+ox,me.y2*sc+oy);sx.stroke();break}const pts=_linePts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<pts.length;i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}
+        case 'line':case 'arrow':{if(s.elbow){const pts=_elbowPts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<pts.length;i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}if(s.curve){const me=connEnds(s),cc=_curveCtrl(me,s.cbend);sx.beginPath();sx.moveTo(me.x1*sc+ox,me.y1*sc+oy);sx.quadraticCurveTo(cc.x*sc+ox,cc.y*sc+oy,me.x2*sc+ox,me.y2*sc+oy);sx.stroke();break}const pts=_linePts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<pts.length;i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}
         case 'pen':if(s.pts.length<2)break;sx.beginPath();sx.moveTo(s.pts[0][0]*sc+ox,s.pts[0][1]*sc+oy);for(let i=1;i<s.pts.length;i++)sx.lineTo(s.pts[i][0]*sc+ox,s.pts[i][1]*sc+oy);sx.stroke();break;
         case 'text':case 'sticky':{const rx2=s.x*sc+ox,ry2=s.y*sc+oy,rw2=Math.max(2,s.w*sc),rh2=Math.max(2,s.h*sc);sx.fillStyle=s.type==='sticky'?(s.color||'#FEF08A'):(s.fill||getCSS('--brand'));sx.fillRect(rx2,ry2,rw2,rh2);break}
         case 'image':{const rx3=s.x*sc+ox,ry3=s.y*sc+oy,rw3=Math.max(2,s.w*sc),rh3=Math.max(2,s.h*sc);const img=s.dataUrl?_imgCache.get(_imgKey(s.dataUrl)):null;if(img&&img.complete&&img.naturalWidth)sx.drawImage(img,rx3,ry3,rw3,rh3);else{sx.fillStyle='#CBD5E1';sx.fillRect(rx3,ry3,rw3,rh3)}break}
