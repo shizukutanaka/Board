@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.336] - 2026-09-24
+
+### Added
+- .drawio: letterSpacing ↔ s.spacing 往復 (drawio ネイティブ属性、
+  ADR-0284)
+- SVG gradient の stop-color を style 属性内からも解決 (ADR-0283 追補)
+
 ## [1.7.335] - 2026-09-24
 
 ### Added

@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.335';
+const V='1.7.336';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6372,6 +6372,7 @@ function _dioStyApply(s,sty,hid){
   if(sty.shadow==='1')s.shadow=1;                                          // ADR-0246
   if(sty.editable==='0'||sty.deletable==='0'||sty.movable==='0')s.locked=1;   // ADR-0254
   {const _op=[+sty.opacity,+sty.strokeOpacity,+sty.fillOpacity].filter(v=>v>0);if(_op.length)s.opacity=Math.max(0.05,Math.min(..._op)/100)}   // ADR-0271
+  if(+sty.letterSpacing)s.spacing=Math.min(40,+sty.letterSpacing);   // ADR-0284
   if(sty.flipH==='1')s.flip=(s.flip||0)|1;                  // ADR-0260
   if(sty.flipV==='1')s.flip=(s.flip||0)|2;
   if(hid)s.visible=0;                                       // ADR-0245
@@ -6384,6 +6385,7 @@ function _dioStyEmit(s,edge){
   if(s.opacity!=null&&s.opacity<1)r+='opacity='+Math.round(s.opacity*100)+';';
   if(s.shadow)r+='shadow=1;';                                    // ADR-0246
   if(s.flip&1)r+='flipH=1;';if(s.flip&2)r+='flipV=1;';          // ADR-0260
+  if(s.spacing)r+='letterSpacing='+s.spacing+';';                // ADR-0284
   {const _fs=(s.bold?1:0)|(s.italic?2:0)|(s.under?4:0);          // ADR-0282
    if(_fs&&(!edge||s.label))r+='fontStyle='+_fs+';'}
   if(s.locked)r+='editable=0;deletable=0;movable=0;'+(edge?'':'resizable=0;');   // ADR-0254/0282
@@ -6710,7 +6712,7 @@ function svgToShapes(txt){
   const _grad=new Map();                                                     // ADR-0283
   for(const ge of doc.querySelectorAll('linearGradient,radialGradient')){
     const st=ge.querySelector('stop');
-    if(ge.id&&st)_grad.set(ge.id,st.getAttribute('stop-color')||'#000')}
+    if(ge.id&&st){const _sc=st.getAttribute('stop-color')||(((st.getAttribute('style')||'').match(/stop-color:\s*([^;]+)/)||[])[1]);_grad.set(ge.id,(_sc||'#000').trim())}}
   // viewBox → output: origin to (0,0), cap the width at 800px so giant
   // artboards paste at a sensible size.
   const vb=(root.getAttribute('viewBox')||'').trim().split(/[\s,]+/).map(Number);

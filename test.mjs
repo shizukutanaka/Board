@@ -719,6 +719,7 @@ const checks = [
   ['clipboard image/svg+xml → vector import (ADR-0272)', html.includes("i.type==='image/svg+xml'")],
   ['drawio strokeOpacity/fillOpacity → s.opacity (ADR-0271)', html.includes('+sty.strokeOpacity')],
   ['svg conn path/label emitters deduped (ADR-0270)', html.includes('const _sp=(d,j)')&&html.includes('_cL();')],
+  ['drawio letterSpacing ↔ s.spacing (ADR-0284)', html.includes('letterSpacing=')&&html.includes('sty.letterSpacing')],
   ['svg import gradient → first stop colour (ADR-0283)', html.includes('_grad=new Map()')],
   ['_dioStyEmit folds fontStyle+locked (ADR-0282)', html.includes('resizable=0;')],
   ['drawio edge rounded=1 → s.r (ADR-0269)', (html.match(/sty\.rounded==='1'/g)||[]).length>=2],
