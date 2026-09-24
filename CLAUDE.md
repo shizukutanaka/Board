@@ -186,6 +186,7 @@ Board/
 - [ADR-0134](docs/ADR-0134-search-ctx-item.md) 検索の ctx 項目
 - [ADR-0135](docs/ADR-0135-view-toggles-ctx.md) ビュー系トグルの ctx 項目
 - [ADR-0136](docs/ADR-0136-corner-radius-cycle.md) 矩形の角丸サイクル
+- [ADR-0137](docs/ADR-0137-hide-show-shapes.md) 図形の非表示/すべて表示
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

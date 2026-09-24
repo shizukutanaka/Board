@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.194]
+
+### 追加
+- **図形の非表示 / すべて表示** (ADR-0137)。選択を ⌘⇧H または
+  ctx「非表示」で隠す — 描画・ヒット・マーキー・⌘A・export の
+  全経路から除外。ctx「すべて表示」で一括復帰。
+
 ## [1.7.193]
 
 ### 追加
