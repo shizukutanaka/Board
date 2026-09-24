@@ -191,6 +191,7 @@ Board/
 - [ADR-0139](docs/ADR-0139-select-inverse.md) 選択の反転
 - [ADR-0140](docs/ADR-0140-connect-two-shapes.md) 選択2図形のコネクタ接続
 - [ADR-0141](docs/ADR-0141-waypoint-alt-delete.md) Alt+click でウェイポイント削除
+- [ADR-0142](docs/ADR-0142-flip-rotation-per-axis.md) フリップ回転角の軸別修正
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

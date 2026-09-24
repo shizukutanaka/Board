@@ -505,6 +505,7 @@ const checks = [
   ['invert selection ⌘⇧I + ctx', html.includes('function selectInverse')&&html.includes('ctxSelectInverse')&&html.includes('selectInverse()}')],
   ['connect 2 selected shapes via ctx', html.includes('function connectSelection')&&html.includes('a:a.id,b:b.id')&&html.includes('ctxConnect')],
   ['Alt+click deletes a waypoint', html.includes('wa.splice(i-1,1);onlySel.way=wa.length?wa:null')&&html.includes('ADR-0141')],
+  ['flip mirrors rotation per-axis (180−θ for h)', html.includes("axis==='h'?180:360")&&html.includes('ADR-0142')],
   ['line↔arrow conversion via style op (ctx)', html.includes('toggleLineArrow')&&html.includes('ctxToArrow')&&html.includes("s.type==='line'?'arrow':'line'")],
   ['sticky↔text conversion via style op (ctx)', html.includes('toggleStickyText')&&html.includes('ctxToSticky')&&html.includes("s.type==='sticky'?'text':'sticky'")],
   ['frame select-contents (ctx)', html.includes('selectFrameContents')&&html.includes('ctxSelContents')&&html.includes('withFrameChildren(')],
@@ -749,7 +750,7 @@ const checks = [
   ['search highlight drawn in world space', html.includes("if(_sq){") && html.includes("const q=_sq.toLowerCase()") && html.includes("'#F97316'") && html.includes("'#EA580C'")],
   ['Ctrl+F toggles search input', html.includes("meta&&k==='f'") && html.includes("sq.style.display")],
   // v1.6.62: Socratic feature-interaction fixes
-  ['flip negates rotation angle (reflection reverses sense)', html.includes("if(s.rotate)s.rotate=(360-s.rotate)%360;")],
+  ['flip negates rotation angle (reflection reverses sense)', html.includes("if(s.rotate)s.rotate=((axis==='h'?180:360)-s.rotate+360)%360;")],
   ['rotated box shapes expose handles at rotated positions', html.includes("return hs.map(p=>{const r=_rotPt(p.x,p.y,cx,cy,s.rotate);return{id:p.id,x:r.x,y:r.y}});")],
   ['search placeholder uses localized key (T.k.search — t(search) resolved to the raw key, v1.7.63)', html.includes('sq.placeholder=T.k.search')],
   ['rotate + search i18n keys in ja and en', html.includes("selAllMatches:'件のマッチを選択',search:'検索'") && html.includes("selAllMatches:'matches selected',search:'Search'")],
@@ -4210,10 +4211,12 @@ try {
     Store.commit({op:'add',shape:r});
     state.selection=new Set([r.id]);
     doFlip('h');
-    assert.strictEqual(state.shapes.find(s=>s.id===r.id).rotate,330,'flipH negates rotate 30°→330°');
+    assert.strictEqual(state.shapes.find(s=>s.id===r.id).rotate,150,'flipH mirrors rotate 30°→150° (x-axis mirror: 180−θ)');
     Store.undo();
     assert.strictEqual(state.shapes.find(s=>s.id===r.id).rotate,30,'flip undo restores rotate=30');
-    console.log('  ✓ doFlip + rotation: reflection negates the rotation angle, undo restores');
+    doFlip('v');
+    assert.strictEqual(state.shapes.find(s=>s.id===r.id).rotate,330,'flipV mirrors rotate 30°→330° (y-axis mirror: 360−θ)');
+    console.log('  ✓ doFlip + rotation: reflection mirrors the angle per axis, undo restores');
   }
   {
     // v1.6.63: doFlip skips locked shapes (was: only doRotate did)

@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.199]
+
+### 修正
+- **回転図形の水平フリップで角度が誤るバグ** (ADR-0142)。'h'
+  ミラーは `180−θ` が正解 (30°→150°) のところ `360−θ` を
+  適用していた — テキスト等の向きがある図形で倒置していた。
+
 ## [1.7.198]
 
 ### 追加

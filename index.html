@@ -774,7 +774,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.198';
+const V='1.7.199';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -5520,7 +5520,11 @@ function flipShape(s,axis,c){
   }
   if(tr&&(axis==='h')===!!trVert)s.bend=m(s.bend);
   if(s.cbend!=null)s.cbend=-s.cbend;   // ADR-0132: any mirror flips the curve's chirality
-  if(s.rotate)s.rotate=(360-s.rotate)%360;
+  // ADR-0142: mirror maps angle θ → 180−θ across the vertical axis
+  // ('h' flips x) and θ → 360−θ across the horizontal axis ('v' flips
+  // y). Previously both axes took 360−θ, so an 'h' flip left a rotated
+  // shape tilted the wrong way (30°→330° instead of 150°).
+  if(s.rotate)s.rotate=((axis==='h'?180:360)-s.rotate+360)%360;
 }
 function doFlip(axis){
   const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked);
