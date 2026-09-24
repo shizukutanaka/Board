@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.186]
+
+### 追加
+- **⇧click で選択解除** (ADR-0129)。選択済み図形への ⇧click は
+  選択から外す (Figma/draw.io のトグル選択、グループはまとめて)。
+
 ## [1.7.185]
 
 ### 追加

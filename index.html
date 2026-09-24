@@ -774,7 +774,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.185';
+const V='1.7.186';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4158,6 +4158,12 @@ function pickOrMarquee(wp,e){
         ptr.dragStartShapes=new Map(added.map(id=>{const s=byId(id);return[id,clone(s)]}));
         return;
       }
+    }
+    // ADR-0129: ⇧click on a fully-selected target removes it from the
+    // selection (Figma parity) — plain click starts the move drag instead.
+    if(alreadySel&&e.shiftKey){
+      for(const id of toSelect)state.selection.delete(id);
+      _announceSel();invalidate();return;
     }
     if(!alreadySel){
       if(!e.shiftKey)state.selection.clear();

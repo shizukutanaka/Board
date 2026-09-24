@@ -491,6 +491,7 @@ const checks = [
   ['click-click line/arrow — second click commits (lineClick mode)', html.includes('ptr.lineClick=true;break')&&html.includes('ptr.lineClick){ptr.lineClick=false;endLineLike()')],
   ['marquee skips locked shapes (Figma/draw.io parity)', html.includes('if(hit&&!s.locked)state.selection.add(s.id)')],
   ['Alt during move suppresses all snapping (draw.io parity)', html.includes('moveDelta(wp,shift,alt)')&&html.includes('!alt&&!state.snap')],
+  ['shift-click on selected shape removes it (toggle-off)', html.includes('alreadySel&&e.shiftKey')&&html.includes('state.selection.delete(id)')],
   ['line↔arrow conversion via style op (ctx)', html.includes('toggleLineArrow')&&html.includes('ctxToArrow')&&html.includes("s.type==='line'?'arrow':'line'")],
   ['sticky↔text conversion via style op (ctx)', html.includes('toggleStickyText')&&html.includes('ctxToSticky')&&html.includes("s.type==='sticky'?'text':'sticky'")],
   ['frame select-contents (ctx)', html.includes('selectFrameContents')&&html.includes('ctxSelContents')&&html.includes('withFrameChildren(')],
