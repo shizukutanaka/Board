@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.451] - 2026-09-23
+
+### Internal
+- dead const `SNAP_THRESHOLD` 削除 + `_setSq` 活性化・`_ss` 完全統一 (~146B 回収)
+
 ## [1.7.450] - 2026-09-23
 
 ### Fixed
