@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.156';
+const V='1.7.157';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3770,6 +3770,12 @@ window.addEventListener('paste',e=>{
     ti.getAsString(tx=>{
       const s=String(tx||'');
       if(/^\s*(<\?xml[^?]*\?>\s*)?<svg[\s>]/i.test(s)){e.preventDefault();importSvgText(s);return}
+      // ADR-0099: clipboard .excalidraw JSON imports as a scene (parity with the
+      // file path); on parse failure it degrades to the plain-text path below.
+      if(/^\s*\{/.test(s)&&/"type"\s*:\s*"excalidraw"/.test(s.slice(0,4096))){
+        e.preventDefault();
+        if(importExcText(s)!==false)return;
+      }
       // ADR-0044: any other non-empty text pastes in as a text shape — editors,
       // browsers, chat logs, markdown-as-plain-text all land on the board.
       const txt=s.trim();

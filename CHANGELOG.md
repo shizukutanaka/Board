@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.157]
+
+### 追加
+- **クリップボード .excalidraw のペースト取り込み** (ADR-0099)。
+  Excalidraw でコピーした JSON をそのままペーストでシーン
+  インポート — 従来は巨大なテキスト形状になっていた。パース
+  失敗時は従来のテキスト形状化へフォールバック。
+
 ## [1.7.156]
 
 ### 追加

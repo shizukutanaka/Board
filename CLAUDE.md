@@ -148,6 +148,7 @@ Board/
 - [ADR-0096](docs/ADR-0096-equal-size-snap.md) リサイズ等サイズスナップ
 - [ADR-0097](docs/ADR-0097-excalidraw-multi-segment.md) excalidraw 多点コネクタ→way
 - [ADR-0098](docs/ADR-0098-excalidraw-export.md) .excalidraw エクスポート (双方向)
+- [ADR-0099](docs/ADR-0099-paste-excalidraw.md) クリップボード excalidraw ペースト
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
