@@ -788,6 +788,7 @@ const _csh=(s,c)=>{if(_sh2(s)){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=1
 const _so=(b,a)=>{if(_ln(b)){_styleOp(b,a);_iv()}};   // ADR-0307
 const _selL=f=>_sb().filter(f);   // ADR-0308
 const _selUL=()=>_sb().filter(s=>!_lk(s));
+const _repC=(before,beforeWc,origSel)=>Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(_wc()),origSel});
 const _ctrAt=(ss,wp)=>{wp=wp||_midV();const bb=_bA(ss);if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);for(const s of ss)Shape.translate(s,dx,dy)}};
 const _selR=op=>{if(op.origSel)_ss(op.origSel.filter(id=>byId(id)))};   // ADR-0309
 const _keepSel=arr=>{if(_ln(arr))_hi()[_hx()].origSel=arr};   // ADR-0312
@@ -854,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.515';
+const V='1.7.516';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -7226,7 +7227,7 @@ function importBoard(file){
         _vp().x=+d.viewport.x;_vp().y=+d.viewport.y;_vp().zoom=clampZoom(+d.viewport.zoom);
       }
       _sz();_iv();
-      Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(_wc()),origSel});
+      _repC(before,beforeWc,origSel);
       _o(t('loadedBoard')+' ('+_ln(shapes)+')');
     }catch{_eT(_IB)}
   };
@@ -8177,7 +8178,7 @@ const Share={
       }
       _scl();state.wclock={};
       _sz();_iv();
-      Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(_wc()),origSel});
+      _repC(before,beforeWc,origSel);
       _g('docName').value=_dn();_syncDocTitle();
       // clean URL
       history.replaceState(null,'',location.pathname);
@@ -8385,7 +8386,7 @@ const Persist={
         _vp().x=+d.viewport.x;_vp().y=+d.viewport.y;_vp().zoom=clampZoom(+d.viewport.zoom);
       }
       _sz();_iv();
-      Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(_wc()),origSel});
+      _repC(before,beforeWc,origSel);
       await this.discardBackup();
       this.schedule();
       _oT('backupRestored');

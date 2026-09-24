@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.516] - 2026-09-23
+
+### リファクタ
+
+- `Store._recordCommitted({op:'replace',…})` の3重複を `_repC` に集約 (−79B、ADR-0483)
+
 ## [1.7.515] - 2026-09-23
 
 ### リファクタ
