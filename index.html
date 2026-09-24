@@ -827,7 +827,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.451';
+const V='1.7.452';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1932,6 +1932,7 @@ const Shape={
     if((type==='rect'||type==='diamond'||type==='image')&&_st().shadow!=null)base.shadow=_st().shadow;   // ADR-0194
     if((type==='rect'||type==='diamond')&&_st().fstyle)base.fstyle=_st().fstyle;
     if((type==='text'||type==='sticky')&&_st().align!=null)base.align=_st().align;
+    if((type==='rect'||type==='ellipse'||type==='diamond'||type==='sticky')&&_st().valign!=null)base.valign=_st().valign;   // ADR-0417
     if((type==='text'||type==='sticky')&&_st().lineH!=null)base.lineH=_st().lineH;   // ADR-0189
     if((type==='text'||type==='sticky')&&_st().spacing!=null)base.spacing=_st().spacing;   // ADR-0205
     return _oa(base,extras);
@@ -9305,6 +9306,7 @@ function cycleVAlign(){
     const cur=s.valign||null,nxt=sq[(sq.indexOf(cur)+1)%3];
     before.push({id,valign:cur});after.push({id,valign:nxt});
     if(nxt==null)delete s.valign;else s.valign=nxt;
+    _st().valign=nxt;                                     // ADR-0417: parity with every sibling style cycle
   })
   _so(before,after)
 }
