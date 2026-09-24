@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.329';
+const V='1.7.330';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -7025,7 +7025,7 @@ function buildSVG(shapes,paper){
   els.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`);
   els.push(`<rect width="100%" height="100%" fill="${_esc(paper||'#FFFFFF')}"/>`);
   // ADR-0194: one shared drop-shadow filter; shapes opt in via filter="url(#bsh)".
-  if(shapes.some(s=>s.visible!==0&&s.shadow))els.push('<defs><filter id="bsh" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#0F172A" flood-opacity="0.22"/></filter></defs>');
+  if(shapes.some(s=>s.visible!==0&&(s.shadow||s.type==='sticky')))els.push('<defs><filter id="bsh" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#0F172A" flood-opacity="0.22"/></filter></defs>');   // ADR-0278
   // ADR-0150 follow-up: SVG builds its own element list (bypasses drawShape's
   // visible guard) — hidden shapes must be excluded here too, like canvas.
   const _vis=shapes.filter(s=>s.visible!==0);
@@ -7048,12 +7048,12 @@ function buildSVG(shapes,paper){
     switch(s.type){
       case 'rect':{
         const r=Math.min(s.r!=null?s.r:8,Math.abs(W)/4,Math.abs(H)/4);
-        els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}/>`);
+        els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}${_sh}/>`);   // ADR-0278
         if(s.fstyle)_svgHatch(els,s,ox,oy,stroke,`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}"/>`,rT);   // ADR-0077
         if(s.label)_svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT);
         break;}
       case 'ellipse':
-        els.push(`<ellipse cx="${X+W/2+ox}" cy="${Y+H/2+oy}" rx="${Math.abs(W/2)}" ry="${Math.abs(H/2)}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}/>`);
+        els.push(`<ellipse cx="${X+W/2+ox}" cy="${Y+H/2+oy}" rx="${Math.abs(W/2)}" ry="${Math.abs(H/2)}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}${_sh}/>`);   // ADR-0278
         if(s.fstyle)_svgHatch(els,s,ox,oy,stroke,`<ellipse cx="${X+W/2+ox}" cy="${Y+H/2+oy}" rx="${Math.abs(W/2)}" ry="${Math.abs(H/2)}"/>`,rT);   // ADR-0077
         if(s.label)_svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT);
         break;
@@ -7163,7 +7163,7 @@ function buildSVG(shapes,paper){
           const p=s.pts[0];
           // fallback must match drawPen's canvas radius (s.size||2)/2 for a foreign/legacy
           // shape missing `size` (deep-audit fix; was (SZ||1)/2, half the canvas radius).
-          els.push(`<circle cx="${_num(p&&p[0])+ox}" cy="${_num(p&&p[1])+oy}" r="${(SZ||2)/2}" fill="${stroke}"${a}/>`);
+          els.push(`<circle cx="${_num(p&&p[0])+ox}" cy="${_num(p&&p[1])+oy}" r="${(SZ||2)/2}" fill="${stroke}"${a}${_sh}/>`);
           break;
         }
         if(s.pts.length<2)break;
@@ -7181,7 +7181,7 @@ function buildSVG(shapes,paper){
           d+=`M${r(P[i-1][0]+nx*ra)},${r(P[i-1][1]+ny*ra)}L${r(P[i][0]+nx*rb)},${r(P[i][1]+ny*rb)}L${r(P[i][0]-nx*rb)},${r(P[i][1]-ny*rb)}L${r(P[i-1][0]-nx*ra)},${r(P[i-1][1]-ny*ra)}Z`;
         }
         for(let i=0;i<n;i++)circles+=`<circle cx="${r(P[i][0])}" cy="${r(P[i][1])}" r="${r(Rr(i))}"/>`;
-        els.push(`<g fill="${stroke}"${a}><path d="${d}"/>${circles}</g>`);
+        els.push(`<g fill="${stroke}"${a}${_sh}><path d="${d}"/>${circles}</g>`);   // ADR-0278
         break;}
       case 'text':{
         const fs=_num(s.fontSize)||16;
@@ -7221,7 +7221,7 @@ function buildSVG(shapes,paper){
         break;}
       case 'sticky':{
         const r=Math.min(6,Math.abs(W)/6,Math.abs(H)/6);
-        els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}" fill="${_esc(s.color||'#FEF08A')}" stroke="rgba(0,0,0,.06)"${rT}/>`);
+        els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}" fill="${_esc(s.color||'#FEF08A')}" stroke="rgba(0,0,0,.06)"${rT} filter="url(#bsh)"/>`);   // ADR-0278
         if(s.text){
           const fs=_num(s.fontSize)||14;const pad2=8;
           // estimate measure (no canvas here); wraps to the same box as the app

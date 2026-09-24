@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.330] - 2026-09-24
+
+### Fixed
+- SVG export: rect/ellipse/pen の drop-shadow 欠落と sticky 常時
+  アンビエント影の未反映を canvas parity に修正 (ADR-0278)
+
 ## [1.7.329] - 2026-09-24
 
 ### Added
