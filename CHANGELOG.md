@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.205]
+
+### 修正
+- **複数選択リサイズでエルボー trunk が残るバグ** (ADR-0148)。
+  `_mapToBox` が `s.bend` をスケール対象に追加 — 軸平行
+  スケールで trunk 向きは不変のため座標を再導出。
+
 ## [1.7.204]
 
 ### 修正
