@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.285]
+
+### 修正
+- **drawio ラベル装飾往復** (ADR-0228)。インポートで
+  `align`→`s.align`、`fontStyle` ビットマスク→
+  bold/italic/under に復元。エクスポートも対称出力し
+  中央揃え・太字・斜体・下線が drawio 往復で保存。
+
 ## [1.7.284]
 
 ### 追加
