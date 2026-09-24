@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.296';
+const V='1.7.297';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6379,6 +6379,7 @@ function excScene(shapes){
     if(out.length)e.boundElements=out;
   }
   return{type:'excalidraw',version:2,source:'Board',elements:els,files,appState:{gridSize:null}};
+}
 // ---- ADR-0203: .drawio import ------------------------------------------------
 // Uncompressed mxGraphModel XML via DOMParser (no deps). drawio's default save
 // is deflate+base64 inside <diagram> — we can't inflate offline, so those warn
@@ -6404,13 +6405,26 @@ function drawioToShapes(txt){
   const cells=[...doc.querySelectorAll('mxCell')];
   if(cells.length>DIO_MAX)return null;
   const idOf=new Map(),shapes=[];
+  // ADR-0240: children of a group/container store parent-relative coords —
+  // resolve each vertex's world offset by walking its parent chain.
+  const _geo=new Map(),_par=new Map();
+  for(const c of cells){const id=c.getAttribute('id');if(!id)continue;
+    const g=c.querySelector('mxGeometry');if(g)_geo.set(id,g);
+    const p=c.getAttribute('parent');if(p)_par.set(id,p);}
+  const _off=new Map();
+  const off=id=>{if(_off.has(id))return _off.get(id);
+    const p=_par.get(id);let o={x:0,y:0};
+    if(p&&p!=='0'){const po=off(p),pg=_geo.get(p);
+      o={x:po.x+(+((pg&&pg.getAttribute('x'))||0)),y:po.y+(+((pg&&pg.getAttribute('y'))||0))}}
+    _off.set(id,o);return o};
   // Edges resolve bound endpoints by board id, so vertices must be built first.
   for(const c of cells){
     if(shapes.length>=DIO_MAX)break;
     if(c.getAttribute('vertex')!=='1')continue;
     const g=c.querySelector('mxGeometry');if(!g)continue;
     const sty=_dioSty(c.getAttribute('style'));
-    const x=+g.getAttribute('x')||0,y=+g.getAttribute('y')||0,w=+g.getAttribute('width')||0,ht=+g.getAttribute('height')||0;
+    const _o=off(c.getAttribute('id'));
+    const x=_o.x+(+g.getAttribute('x')||0),y=_o.y+(+g.getAttribute('y')||0),w=+g.getAttribute('width')||0,ht=+g.getAttribute('height')||0;
     const lbl=_dioLabel(c.getAttribute('value'));
     let s;
     if('ellipse' in sty)s=Shape.make('ellipse',{x,y,w:w||120,h:ht||80,label:lbl.slice(0,240)});
@@ -6494,7 +6508,6 @@ function importDrawioFile(file,wp){
   r.onload=()=>importDrawioText(String(r.result),wp);
   r.onerror=()=>UI.toast(t('invalidBoard'),'warn');
   r.readAsText(file);
-}
 }
 function exportExc(){
   if(!state.shapes.length){UI.toast(t('empty'),'warn');return}

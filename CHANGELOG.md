@@ -2,6 +2,16 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.297] - 2026-09-24
+
+### Fixed
+- .drawio インポートが出荷時からランタイムで動作しなかった致命的バグを修復
+  (excScene の閉じ括弧欠落により drawioToShapes 系がネストされていた、ADR-0240)
+
+### Added
+- .drawio インポート: グループ/スイムレーン内の子セルの親相対座標を解決し、
+  正しい世界座標へ配置 (ADR-0240)
+
 ## [1.7.296]
 
 ### 内部変更

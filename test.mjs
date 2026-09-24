@@ -703,6 +703,7 @@ const checks = [
   ['content beats extension routing', html.includes("d.type==='excalidraw'){importExcText(r.result);return}")],
   ['.excalidraw file entry points', html.includes("f.name.endsWith('.excalidraw')") && html.includes('.excalidraw,.drawio')],
   ['.drawio file entry points + parser (ADR-0203)', html.includes("f=>/\\.(drawio|dio)$/i.test(f.name)")&&html.includes('function drawioToShapes')],
+  ['drawio parent-relative offsets resolved (ADR-0240)', html.includes("const _geo=new Map(),_par=new Map();")&&html.includes("const _o=off(c.getAttribute('id'));")&&html.includes("x=_o.x+(+g.getAttribute('x')||0)")],
   ['frame label italic/under/strike (ADR-0204)', html.includes("600 ${fs}px")&&html.includes("s.type!=='frame'&&!s.label)||s.locked)continue;   // ADR-0170/0204")],
   ['letter-spacing cycle — canvas ctx+SVG+style-copy (ADR-0205)', html.includes("function cycleSpacing()")&&html.includes("c.letterSpacing=(s.spacing||0)+'px'")&&html.includes('_svgLs(s)')&&html.includes('spacing:sh.spacing')],
   ['elbow corner rounding canvas+SVG + cycleCorner gate (ADR-0207)', html.includes('function _polylineR')&&html.includes('_polylineRd(pts,ox,oy,s.r)')&&html.includes("connOk=(s.type==='line'||s.type==='arrow')&&s.elbow")],
@@ -1456,7 +1457,7 @@ try {
              endRectLike, endLineLike, I18N, applyTheme, editSelectedShapeKbd, Share,
              draw, drawOverlay, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; }, _setOCtx: (c) => { const p = octx; octx = c; return p; },
              _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg,
-             _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio,
+             _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, 
              _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER,
              _getLang: () => LANG, _getT: () => T };
   `);
@@ -1482,7 +1483,7 @@ try {
           _getPasteCount, _resetPasteClipboard,
           endRectLike, endLineLike, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
           _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg,
-          _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, excScene, exportExc, boardToDrawio, exportDrawio,
+          _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, 
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER } = api;
 
   console.log('\n-- behavioural --');
@@ -9513,6 +9514,15 @@ try {
      assert.ok(!rt.some(s=>s.type==='text'&&s.text==='hi'),'round-trip: no orphan container text remains (ADR-0225)');
      assert.ok(rtb.label==='cap','round-trip: labelled box restores s.label via bLabel container text (ADR-0234)');
      assert.ok(!rt.some(s=>s.type==='text'&&s.text==='cap'),'round-trip: no orphan label text remains (ADR-0234)');}
+
+    // ADR-0240: group children carry parent-relative coords in real drawio files.
+    // drawioToShapes needs DOMParser (absent in Node) — assert the parse layer
+    // still returns null here; the offset math is checked by the presence lines.
+    {const xml='<?xml version="1.0"?><mxfile><diagram><mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/>'+
+      '<mxCell id="g" style="rounded=1;" vertex="1" parent="1"><mxGeometry x="100" y="50" width="200" height="200" as="geometry"/></mxCell>'+
+      '<mxCell id="c1" value="kid" style="rounded=0;" vertex="1" parent="g"><mxGeometry x="10" y="20" width="30" height="30" as="geometry"/></mxCell>'+
+      '</root></mxGraphModel></diagram></mxfile>';
+     assert.ok(drawioToShapes(xml)===null,'no DOMParser → drawioToShapes returns null (ADR-0240)');}
     console.log('  ✓ excalidraw import (element mapping, styles, tombstones, reject paths)');
   }
 
