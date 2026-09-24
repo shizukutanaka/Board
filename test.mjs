@@ -475,6 +475,7 @@ const checks = [
   ['select same colour (ctx)', html.includes('selectSamePaint')&&html.includes('ctxSelectSame')&&html.includes("s0.type==='sticky'?s0.color:s0.fill")],
   ['sticky ⌘Enter chain: spawn next sticky + editor', html.includes('_stickyChain')&&html.includes('x+s.w+16')&&html.includes('openTextEditor(n,true)')],
   ['boot empty-view guard → fitToContent', html.includes('_fitIfEmptyView()')&&html.includes('b.x+b.w<v.x')],
+  ['tidy grid reflow (ctx, align op dir)', html.includes("doAlign('tidy')")&&html.includes('ctxTidy')&&html.includes('Math.ceil(Math.sqrt(units.length))')],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
@@ -1102,7 +1103,7 @@ const checks = [
     html.includes("if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)Object.assign(sh,p.before);}}")],
   // v1.7.47: validRemotePayload align must validate dir against a whitelist
   ['validRemotePayload align: dir whitelist (DIRS Set) prevents unknown dir values',
-    html.includes("const DIRS=new Set(['left','right','cx','top','bottom','cy','hspace','vspace','flip','rotate','lock','gresize','grot'")],
+    html.includes("const DIRS=new Set(['left','right','cx','top','bottom','cy','hspace','vspace','tidy','flip'")],
   // v1.7.47: doPaste uses canvas.getBoundingClientRect() for viewport center (not window.innerWidth)
   ['doPaste: canvas.getBoundingClientRect() used for viewport center (not window.innerWidth)',
     html.includes("const _r=canvas.getBoundingClientRect();\n  const vCx=v.x+_r.width/(v.zoom*2);")],

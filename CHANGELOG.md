@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.165]
+
+### 追加
+- **グリッドに整列 (Tidy up)** (ADR-0107)。ctx メニューで選択群を
+  読み順の近方形グリッドにリフロー — 列ピッチ=列最大幅・行ピッチ
+  =行最大高+32px、frame/group を1単位として扱う `align` op。
+
 ## [1.7.164]
 
 ### 追加

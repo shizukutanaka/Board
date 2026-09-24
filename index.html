@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.164';
+const V='1.7.165';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -874,7 +874,7 @@ const I18N={
     zoomCtl:'ズーム操作',zoomLevel:'ズーム率(クリックでリセット)',zoomResetT:'ズームをリセット',
     close:'閉じる',shareUrlLabel:'共有URL',minimapNav:'ミニマップ — クリックで移動',
     ctxAlignLeft:'左揃え',ctxAlignCX:'左右中央',ctxAlignRight:'右揃え',ctxMatchW:'幅を揃える',ctxMatchH:'高さを揃える',ctxMatchWH:'幅と高さを揃える',
-    ctxAlignTop:'上揃え',ctxAlignCY:'上下中央',ctxAlignBottom:'下揃え',
+    ctxAlignTop:'上揃え',ctxAlignCY:'上下中央',ctxAlignBottom:'下揃え',ctxTidy:'グリッドに整列',
     ctxHSpace:'水平均等配置',ctxVSpace:'垂直均等配置',
     ctxSelectAll:'すべて選択',ctxClear:'全消去',
     ctxExportPNG:'PNG書き出し',ctxCopyPNG:'PNGをクリップボードにコピー',ctxExportSVG:'SVG書き出し',ctxExportPDF:'PDF書き出し',ctxExportExc:'Excalidraw (.excalidraw) 書き出し',ctxExportBoard:'.boardファイル書き出し',ctxImportBoard:'.boardファイル読み込み...',
@@ -950,7 +950,7 @@ const I18N={
     zoomCtl:'Zoom controls',zoomLevel:'Zoom level, click to reset',zoomResetT:'Reset zoom',
     close:'Close',shareUrlLabel:'Share URL',minimapNav:'Minimap — click to navigate',
     ctxAlignLeft:'Align left',ctxAlignCX:'Center horizontal',ctxAlignRight:'Align right',ctxMatchW:'Match width',ctxMatchH:'Match height',ctxMatchWH:'Match size',
-    ctxAlignTop:'Align top',ctxAlignCY:'Center vertical',ctxAlignBottom:'Align bottom',
+    ctxAlignTop:'Align top',ctxAlignCY:'Center vertical',ctxAlignBottom:'Align bottom',ctxTidy:'Tidy up (grid)',
     ctxHSpace:'Distribute horizontal',ctxVSpace:'Distribute vertical',
     ctxSelectAll:'Select all',ctxClear:'Clear all',
     ctxExportPNG:'Export PNG',ctxCopyPNG:'Copy PNG to clipboard',ctxExportSVG:'Export SVG',ctxExportPDF:'Export PDF',ctxExportExc:'Export .excalidraw',ctxExportBoard:'Export .board file',ctxImportBoard:'Import .board file...',
@@ -1250,7 +1250,7 @@ function validRemotePayload(op){
     case 'resize':{const noLock=p=>!('locked' in p);
       return patches(op.after)&&op.after.every(noLock)
           &&patches(op.before)&&op.before.every(noLock);}
-    case 'align':{const DIRS=new Set(['left','right','cx','top','bottom','cy','hspace','vspace','flip','rotate','lock','gresize','grot','matchw','matchh','matchwh','framefit']);
+    case 'align':{const DIRS=new Set(['left','right','cx','top','bottom','cy','hspace','vspace','tidy','flip','rotate','lock','gresize','grot','matchw','matchh','matchwh','framefit']);
       if(typeof op.dir!=='string'||!DIRS.has(op.dir))return false;
       const noLock=p=>op.dir==='lock'||!('locked' in p);
       return patches(op.after)&&op.after.every(noLock)
@@ -5175,6 +5175,24 @@ function doAlign(dir){
       const totalH=units.reduce((s,{b})=>s+b.h,0);
       const gap2=(Math.max(...units.map(({b})=>b.y+b.h))-Math.min(...units.map(({b})=>b.y))-totalH)/(units.length-1);
       let y0=units[0].b.y;for(const u of units){mv(u,0,y0-u.b.y);y0+=u.b.h+gap2}break}
+    // ADR-0107: reflow units into a compact grid (Figma «Tidy up»).
+    // Reading order (y then x), cols=ceil(sqrt(n)); each row's pitch is that
+    // row's max height + 32 gap, each column's pitch is the widest member.
+    case 'tidy':{
+      units.sort((a,b)=>(a.b.y-b.b.y)||(a.b.x-b.b.x));
+      const GAP=32,cols=Math.ceil(Math.sqrt(units.length));
+      const rows=[];for(let i=0;i<units.length;i+=cols)rows.push(units.slice(i,i+cols));
+      const colW=[],rowH=[];
+      for(const r of rows)for(let j=0;j<r.length;j++){colW[j]=Math.max(colW[j]||0,r[j].b.w)}
+      for(const r of rows)rowH.push(Math.max(...r.map(u=>u.b.h)));
+      const x0=Math.min(...units.map(u=>u.b.x)),y0=Math.min(...units.map(u=>u.b.y));
+      let yy=y0;
+      for(let ri=0;ri<rows.length;ri++){
+        let xx=x0;
+        for(const u of rows[ri]){mv(u,xx-u.b.x,yy-u.b.y);xx+=colW[rows[ri].indexOf(u)]+GAP}
+        yy+=rowH[ri]+GAP;
+      }
+      break}
   }
   const afterSnap=sel.map(s=>clone(s));
   const origSel=[...state.selection];
@@ -6956,6 +6974,7 @@ const UI={
       has&&state.selection.size>1&&['ctxAlignBottom','',()=>doAlign('bottom')],
       has&&state.selection.size>1&&['ctxHSpace','',()=>doAlign('hspace')],
       has&&state.selection.size>1&&['ctxVSpace','',()=>doAlign('vspace')],
+      has&&state.selection.size>2&&['ctxTidy','',()=>doAlign('tidy')],
       has&&state.selection.size>1&&['ctxMatchW','',()=>doMatchSize('w')],       // ADR-0079
       has&&state.selection.size>1&&['ctxMatchH','',()=>doMatchSize('h')],
       has&&state.selection.size>1&&['ctxMatchWH','',()=>doMatchSize('wh')],
