@@ -173,6 +173,7 @@ Board/
 - [ADR-0121](docs/ADR-0121-export-viewport-png.md) 表示範囲を PNG 書き出し
 - [ADR-0122](docs/ADR-0122-dblclick-create-text.md) 空キャンバス dblclick でテキスト作成
 - [ADR-0123](docs/ADR-0123-unlock-all.md) 全てロック解除
+- [ADR-0124](docs/ADR-0124-directional-marquee.md) 方向付きマーキー
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

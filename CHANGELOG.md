@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.181]
+
+### 変更
+- **方向付きマーキー** (ADR-0124)。左→右ドラッグは従来通り完全包含、
+  右→左ドラッグは bbox 交差 (touch) 選択 — CAD/draw.io の crossing/
+  window 慣例。密集盤面の重なり形状が一括選択できる。
+
 ## [1.7.180]
 
 ### 追加

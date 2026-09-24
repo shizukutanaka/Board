@@ -486,6 +486,7 @@ const checks = [
   ['export viewport PNG (view-crop)', html.includes('exportViewportPNG')&&html.includes('ctxExportViewPNG')&&html.includes('inView(s,view)')],
   ['dblclick empty canvas creates text (Excalidraw parity)', html.includes('if(!hit){beginText(wp);return}')],
   ['unlock all locked shapes (one align lock op)', html.includes('function unlockAll')&&html.includes('ctxUnlockAll')&&html.includes("dir:'lock'")],
+  ['directional marquee (right-to-left = intersect)', html.includes('const cross=m.x2<m.x1')&&html.includes('G.marqueeHit(s,r)')],
   ['line↔arrow conversion via style op (ctx)', html.includes('toggleLineArrow')&&html.includes('ctxToArrow')&&html.includes("s.type==='line'?'arrow':'line'")],
   ['sticky↔text conversion via style op (ctx)', html.includes('toggleStickyText')&&html.includes('ctxToSticky')&&html.includes("s.type==='sticky'?'text':'sticky'")],
   ['frame select-contents (ctx)', html.includes('selectFrameContents')&&html.includes('ctxSelContents')&&html.includes('withFrameChildren(')],

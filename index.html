@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.180';
+const V='1.7.181';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4335,7 +4335,18 @@ function endSelect(wp,shift){
       const cands=state.shapes.length>40
         ?_gridRectCandidates(_grid||(_grid=_buildGrid(state.shapes)),r)
         :state.shapes;
-      for(const s of cands)if(G.marqueeHit(s,r))state.selection.add(s.id);
+      // ADR-0124: directional marquee (CAD/draw.io convention) — left→right
+      // selects only fully-contained shapes; right→left selects anything the
+      // rect touches (bbox intersect). Useful on dense boards where strict
+      // containment can't reach overlapping shapes.
+      const cross=m.x2<m.x1;
+      for(const s of cands){
+        const b=G.bbox(s);
+        const hit=cross
+          ? !(b.x>r.x+r.w||b.x+b.w<r.x||b.y>r.y+r.h||b.y+b.h<r.y)
+          : G.marqueeHit(s,r);
+        if(hit)state.selection.add(s.id);
+      }
       _announceSel();   // ADR-0037: announce the marquee result (incl. cleared)
     }
   }
