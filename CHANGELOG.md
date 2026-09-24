@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.511] - 2026-09-23
+
+### リファクタ
+
+- `ptr.dragKind==='X'` を `_dk('X')` shorthand に畳み込み (44 箇所、−445B、ADR-0478)
+
 ## [1.7.510] - 2026-09-23
 
 ### リファクタ

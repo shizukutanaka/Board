@@ -817,7 +817,7 @@ const _scl=()=>_sl().clear(),_sad=id=>_sl().add(id),_sdl=id=>_sl().delete(id);  
 const _selN=()=>_sl().size;   // ADR-0334
 const _selUnl=f=>_selAny(s=>f(s)&&!_lk(s));   // ADR-0454: unlocked-selection predicate
 const _nS=()=>_sh().length;   // ADR-0425
-const _sv=s=>s.visible!==0,_lk=s=>s.locked,_hd=s=>s.visible===0,_fS=s=>s.fontSize,_wh=(e,w,ht)=>{e.width=w;e.height=ht},_sk=s=>s.stroke,_fi=s=>s.fill,_lb=s=>s.label,_rt=s=>s.rotate,_du=s=>s.dataUrl,_gi=s=>s.groupId,_oP=s=>s.opacity,_lP=s=>s.labelPos,_sp=s=>s.spacing,_el=s=>s.elbow,_va=s=>s.valign,_szz=s=>s.size,_txx=s=>s.text,_ftt=s=>s.font,_coo=s=>s.color,_cv=()=>_ce('canvas'),_g2=c=>c.getContext('2d'),_ln=x=>x.length,_s0=(x,n)=>x.slice(0,n),_ix=(a,b)=>a.indexOf(b),_trm=x=>x.trim();   // ADR-0425/../0447
+const _sv=s=>s.visible!==0,_lk=s=>s.locked,_hd=s=>s.visible===0,_fS=s=>s.fontSize,_wh=(e,w,ht)=>{e.width=w;e.height=ht},_sk=s=>s.stroke,_fi=s=>s.fill,_lb=s=>s.label,_rt=s=>s.rotate,_du=s=>s.dataUrl,_gi=s=>s.groupId,_oP=s=>s.opacity,_lP=s=>s.labelPos,_sp=s=>s.spacing,_el=s=>s.elbow,_va=s=>s.valign,_szz=s=>s.size,_txx=s=>s.text,_ftt=s=>s.font,_coo=s=>s.color,_cv=()=>_ce('canvas'),_g2=c=>c.getContext('2d'),_ln=x=>x.length,_s0=(x,n)=>x.slice(0,n),_ix=(a,b)=>a.indexOf(b),_trm=x=>x.trim(),_dk=k=>ptr.dragKind===k;   // ADR-0425/../0447
 const _fin=Number.isFinite;   // ADR-0334
 const _min=Math.min,_max=Math.max,_abs=Math.abs;   // ADR-0337
 const _ga=(e,n)=>e.getAttribute(n),_sa=(e,n,v)=>e.setAttribute(n,v),_ap=(p,c)=>p.appendChild(c),_AL='aria-label',_AP='aria-pressed';   // ADR-0340/0392/0394/0399
@@ -852,7 +852,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.510';
+const V='1.7.511';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3791,19 +3791,19 @@ let _longPressTimer=null;   // ADR-0006
 // restores the shapes it had optimistically removed, and an uncommitted draft (which
 // never touched _sh()) is simply dropped. (Qiita/Zenn: multi-touch + pointer)
 function abortGesture(){
-  if(ptr.dragKind==='move'&&ptr.dragStartShapes){
+  if(_dk('move')&&ptr.dragStartShapes){
     for(const [id,orig] of ptr.dragStartShapes){const sh=byId(id);if(sh)_oa(sh,clone(orig))}
-  }else if(ptr.dragKind==='resize'&&ptr.resizeOrig){
+  }else if(_dk('resize')&&ptr.resizeOrig){
     const sh=byId(ptr.resizeOrig.id);if(sh)_oa(sh,clone(ptr.resizeOrig));
-  }else if((ptr.dragKind==='gresize'||ptr.dragKind==='grot')&&ptr.gOrig){
+  }else if((_dk('gresize')||_dk('grot'))&&ptr.gOrig){
     for(const [id,orig] of ptr.gOrig){const sh=byId(id);if(sh)_oa(sh,clone(orig))}
-  }else if(ptr.dragKind==='rotate'&&ptr.rotOrig){
+  }else if(_dk('rotate')&&ptr.rotOrig){
     const sh=byId(ptr.rotOrig.id);if(sh){if(ptr.rotOrig.rotate==null)delete sh.rotate;_oa(sh,clone(ptr.rotOrig));}
-  }else if(ptr.dragKind==='ebend'&&ptr.ebendOrig){                // ADR-0072
+  }else if(_dk('ebend')&&ptr.ebendOrig){                // ADR-0072
     const sh=byId(ptr.ebendOrig.id);if(sh){if(ptr.ebendOrig.bend==null)delete sh.bend;_oa(sh,clone(ptr.ebendOrig));}
-  }else if(ptr.dragKind==='cbend'&&ptr.cbendOrig){                // ADR-0132
+  }else if(_dk('cbend')&&ptr.cbendOrig){                // ADR-0132
     const sh=byId(ptr.cbendOrig.id);if(sh){if(ptr.cbendOrig.cbend==null)delete sh.cbend;_oa(sh,clone(ptr.cbendOrig));}
-  }else if(ptr.dragKind==='way'&&ptr.wayOrig){                     // ADR-0076
+  }else if(_dk('way')&&ptr.wayOrig){                     // ADR-0076
     const sh=byId(ptr.wayOrig.id);if(sh){delete sh.way;_oa(sh,clone(ptr.wayOrig));}
   }
   if(_ln(_eraseBatch)){for(const s of _eraseBatch)_sh().push(s);_eraseBatch=[];_sz();_iG();}   // ADR-0009
@@ -4048,7 +4048,7 @@ _on(canvas,_PM,e=>{
   }
   switch(_tl()){
     case 'select':
-      if(ptr.dragKind==='resize'){
+      if(_dk('resize')){
         const rsh=_sel0();
         if(rsh){
           const _b0=_bb(ptr.resizeOrig);
@@ -4056,11 +4056,11 @@ _on(canvas,_PM,e=>{
           applyResize(rsh,ptr.resizeHandle,ptr.resizeOrig,wp,e.shiftKey,e.altKey);
           _iD(_dmgPair(_b0,_bb(rsh),(rsh.size||2)+16));   // ADR-0026
         }else _iv();
-      }else if(ptr.dragKind==='gresize'){
+      }else if(_dk('gresize')){
         _gresizeDrag(wp,e.shiftKey,e.altKey);                          // ADR-0056
-      }else if(ptr.dragKind==='grot'){
+      }else if(_dk('grot')){
         _grotDrag(wp,e.shiftKey);                                      // ADR-0057
-      }else if(ptr.dragKind==='rotate'){
+      }else if(_dk('rotate')){
         const rsh=_sel0();
         if(rsh){
           const _b0=_bb(rsh);
@@ -4071,27 +4071,27 @@ _on(canvas,_PM,e=>{
           state.readout={x:_nb.x+_nb.w/2,y:_nb.y+_nb.h,label:`${rsh.rotate}°`};
           _iD(_dmgPair(_b0,_nb,(rsh.size||2)+16));           // ADR-0026
         }else _iv();
-      }else if(ptr.dragKind==='move')doMove(wp,e.shiftKey,e.altKey);
-      else if(ptr.dragKind==='marquee'){state.marquee={x1:ptr.wx0,y1:ptr.wy0,x2:wp.x,y2:wp.y};_ivO()}
-      else if(ptr.dragKind==='lasso'&&ptr.lasso){ptr.lasso.push(wp);_ivO()}
-      else if(ptr.dragKind==='qline')contLineLike(wp,e.shiftKey);   // ADR-0070
-      else if(ptr.dragKind==='ebend'&&ptr.ebendOrig){               // ADR-0072
+      }else if(_dk('move'))doMove(wp,e.shiftKey,e.altKey);
+      else if(_dk('marquee')){state.marquee={x1:ptr.wx0,y1:ptr.wy0,x2:wp.x,y2:wp.y};_ivO()}
+      else if(_dk('lasso')&&ptr.lasso){ptr.lasso.push(wp);_ivO()}
+      else if(_dk('qline'))contLineLike(wp,e.shiftKey);   // ADR-0070
+      else if(_dk('ebend')&&ptr.ebendOrig){               // ADR-0072
         const sh=byId(ptr.ebendOrig.id),tr=sh&&_elbowTrunk(sh);
         if(tr){const vert=_abs(tr[1].x-tr[0].x)<_abs(tr[1].y-tr[0].y);sh.bend=vert?snapV(wp.x):snapV(wp.y);_iv()}   // ADR-0088: trunk drag honours grid snap
       }
-      else if(ptr.dragKind==='cbend'&&ptr.cbendOrig){               // ADR-0132
+      else if(_dk('cbend')&&ptr.cbendOrig){               // ADR-0132
         const sh=byId(ptr.cbendOrig.id);
         if(sh){const e=_cE(sh),dx=e.x2-e.x1,dy=e.y2-e.y1,len=_hp(dx,dy)||1,
           mx=(e.x1+e.x2)/2,my=(e.y1+e.y2)/2;
           sh.cbend=snapV((wp.x-mx)*(-dy/len)+(wp.y-my)*(dx/len));_iv()}
       }
-      else if(ptr.dragKind==='lblpos'&&ptr.lblOrig){                // ADR-0117
+      else if(_dk('lblpos')&&ptr.lblOrig){                // ADR-0117
         const sh=byId(ptr.lblOrig.id);
         if(sh){let t=_pathNearestT(_connPathPts(sh),wp);
           for(const slot of[0,0.25,0.5,0.75,1])if(_abs(t-slot)<0.03){t=slot;break}   // ADR-0216: magnetic slots
           sh.labelPos=+t.toFixed(3);_iv()}
       }
-      else if(ptr.dragKind==='way'&&ptr.wayOrig){                   // ADR-0090
+      else if(_dk('way')&&ptr.wayOrig){                   // ADR-0090
         const sh=byId(ptr.wayOrig.id);
         if(sh){
           const wa=_wayArr(sh),i=ptr.wayIdx|0;
@@ -4127,7 +4127,7 @@ _on(canvas,_PU,e=>{
   else{
     switch(_tl()){
     case 'select':
-      if(ptr.dragKind==='resize'){
+      if(_dk('resize')){
         const rsh=_sel0();
         if(rsh){
           _endPointBind(rsh,ptr.resizeHandle,e.altKey);           // ADR-0065/0209
@@ -4138,14 +4138,14 @@ _on(canvas,_PU,e=>{
           }
         }
         ptr.resizeHandle=null;ptr.resizeOrig=null;state.guides=null;state.readout=null;state.bindPreview=null;
-      }else if(ptr.dragKind==='gresize'){
+      }else if(_dk('gresize')){
         _gresizeCommit();                                              // ADR-0056
         ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.resizeHandle=null;state.guides=null;state.readout=null;state.bindPreview=null;
-      }else if(ptr.dragKind==='grot'){
+      }else if(_dk('grot')){
         _grotCommit();                                                 // ADR-0057
         if(_selN()===1){const s=_sel0();if(s)_tst(describeShape(s));}
         ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;state.guides=null;state.readout=null;state.bindPreview=null;
-      }else if(ptr.dragKind==='rotate'){
+      }else if(_dk('rotate')){
         const rsh=_sel0();
         if(rsh){
           const after=clone(rsh),before=ptr.rotOrig;
@@ -4155,19 +4155,19 @@ _on(canvas,_PU,e=>{
           }
         }
         ptr.rotOrig=null;
-      }else if(ptr.dragKind==='qline'){
+      }else if(_dk('qline')){
         endLineLike();                                             // ADR-0070
-      }else if(ptr.dragKind==='cbend'&&ptr.cbendOrig){            // ADR-0132
+      }else if(_dk('cbend')&&ptr.cbendOrig){            // ADR-0132
         const sh=byId(ptr.cbendOrig.id);
         if(sh&&(sh.cbend||0)!==(ptr.cbendOrig.cbend||0)){
           _rcOp({op:'style',before:[{id:sh.id,cbend:ptr.cbendOrig.cbend||0}],after:[{id:sh.id,cbend:sh.cbend||0}]});
         }
-      }else if(ptr.dragKind==='ebend'&&ptr.ebendOrig){            // ADR-0072
+      }else if(_dk('ebend')&&ptr.ebendOrig){            // ADR-0072
         const sh=byId(ptr.ebendOrig.id);
         if(sh&&(sh.bend||0)!==(ptr.ebendOrig.bend||0)){
           _rcOp({op:'style',before:[{id:sh.id,bend:ptr.ebendOrig.bend||0}],after:[{id:sh.id,bend:sh.bend||0}]});
         }
-      }else if(ptr.dragKind==='way'&&ptr.wayOrig){                 // ADR-0076
+      }else if(_dk('way')&&ptr.wayOrig){                 // ADR-0076
         const sh=byId(ptr.wayOrig.id),ow=ptr.wayOrig.way||null,nw=sh&&sh.way||null;
         if(sh&&_JS(ow)!==_JS(nw)){
           const origSel=_selIds();
@@ -4175,7 +4175,7 @@ _on(canvas,_PU,e=>{
           _keepSel(origSel);
         }
         ptr.wayIdx=null;ptr.wayNew=false;
-      }else if(ptr.dragKind==='lblpos'&&ptr.lblOrig){               // ADR-0117
+      }else if(_dk('lblpos')&&ptr.lblOrig){               // ADR-0117
         const sh=byId(ptr.lblOrig.id),ol=ptr.lblOrig.labelPos??null,nl=sh?(sh.labelPos??null):null;
         if(sh&&ol!==nl){
           _rcOp({op:'style',before:[{id:sh.id,labelPos:ol}],after:[{id:sh.id,labelPos:nl}]});
@@ -4205,21 +4205,21 @@ _on(canvas,_PU,e=>{
 function _cancelPointerGesture(){
   _clearLongPress();   // ADR-0006: covers both the native pointercancel path and our own
   // Restore partial resize/move/erase on cancel (Android touch-takeover, stylus OOR).
-  if(ptr.dragKind==='resize'&&ptr.resizeOrig){
+  if(_dk('resize')&&ptr.resizeOrig){
     const rsh=_sel0();
     if(rsh)_oa(rsh,clone(ptr.resizeOrig));
-  }else if((ptr.dragKind==='gresize'||ptr.dragKind==='grot')&&ptr.gOrig){
+  }else if((_dk('gresize')||_dk('grot'))&&ptr.gOrig){
     for(const [id,orig] of ptr.gOrig){const sh=byId(id);if(sh)_oa(sh,clone(orig));}
-  }else if(ptr.dragKind==='rotate'&&ptr.rotOrig){
+  }else if(_dk('rotate')&&ptr.rotOrig){
     const rsh=_sel0();
     if(rsh){if(ptr.rotOrig.rotate==null)delete rsh.rotate;_oa(rsh,clone(ptr.rotOrig));}
-  }else if(ptr.dragKind==='ebend'&&ptr.ebendOrig){                // ADR-0072
+  }else if(_dk('ebend')&&ptr.ebendOrig){                // ADR-0072
     const sh=byId(ptr.ebendOrig.id);if(sh){if(ptr.ebendOrig.bend==null)delete sh.bend;_oa(sh,clone(ptr.ebendOrig));}
-  }else if(ptr.dragKind==='cbend'&&ptr.cbendOrig){                // ADR-0132
+  }else if(_dk('cbend')&&ptr.cbendOrig){                // ADR-0132
     const sh=byId(ptr.cbendOrig.id);if(sh){if(ptr.cbendOrig.cbend==null)delete sh.cbend;_oa(sh,clone(ptr.cbendOrig));}
-  }else if(ptr.dragKind==='way'&&ptr.wayOrig){                     // ADR-0076
+  }else if(_dk('way')&&ptr.wayOrig){                     // ADR-0076
     const sh=byId(ptr.wayOrig.id);if(sh){delete sh.way;_oa(sh,clone(ptr.wayOrig));}
-  }else if(ptr.dragKind==='move'&&ptr.dragStartShapes){
+  }else if(_dk('move')&&ptr.dragStartShapes){
     for(const[id,orig] of ptr.dragStartShapes){const sh=byId(id);if(sh)_oa(sh,clone(orig));}
   }
   if(_ln(_eraseBatch)){for(const s of _eraseBatch)_sh().push(s);_eraseBatch=[];_sz();_iG();}   // ADR-0009
@@ -4234,7 +4234,7 @@ function _cancelPointerGesture(){
 // this well before the timer fires, so no separate pointermove cancellation is needed).
 function _longPressFire(cx,cy){
   _longPressTimer=null;
-  if(!ptr.down||ptr.dragKind==='resize'||ptr.dragKind==='gresize'||ptr.dragKind==='grot'||ptr.dragKind==='rotate')return;
+  if(!ptr.down||_dk('resize')||_dk('gresize')||_dk('grot')||_dk('rotate'))return;
   if(_hp(ptr.x-ptr.x0,ptr.y-ptr.y0)>LONG_PRESS_MOVE_TOL)return;
   _cancelPointerGesture();
   UI.openCtxMenu(cx,cy);
@@ -4948,7 +4948,7 @@ function doMove(wp,shift,alt){
   if(dmg)_iD(dmg);else _iv();
 }
 function endSelect(wp,shift,alt){
-  if(ptr.dragKind==='move'&&ptr.dragStartShapes){
+  if(_dk('move')&&ptr.dragStartShapes){
     const{dx,dy}=moveDelta(wp,shift,alt);
     state.guides=null;
     const mids=[...ptr.dragStartShapes.keys()].filter(id=>!byId(id)?.locked);
@@ -4956,7 +4956,7 @@ function endSelect(wp,shift,alt){
       _rcOp({op:'move',ids:mids,dx,dy});
       if(_dd()&&mids.every(id=>state.dupIds.has(id))){_dd().x+=dx;_dd().y+=dy}   // ADR-0080
     }
-  }else if(ptr.dragKind==='marquee'&&_mq()){
+  }else if(_dk('marquee')&&_mq()){
     const m=_mq();
     const r={x:_min(m.x1,m.x2),y:_min(m.y1,m.y2),
       w:_abs(m.x2-m.x1),h:_abs(m.y2-m.y1)};
@@ -4988,7 +4988,7 @@ function endSelect(wp,shift,alt){
       }
       _aS();   // ADR-0037: announce the marquee result (incl. cleared)
     }
-  }else if(ptr.dragKind==='lasso'&&_la()){                    // ADR-0158
+  }else if(_dk('lasso')&&_la()){                    // ADR-0158
     const pts=_la();
     if(_ln(pts)>2){
       if(!shift)_scl();                          // ⇧lasso adds, plain replaces (marquee parity)
