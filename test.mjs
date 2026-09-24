@@ -810,7 +810,7 @@ const checks = [
   ['frame font via cycleFont gate + make() inheritance', html.includes("s.type!=='frame'&&!s.label")&&html.includes("type==='frame'||s.label")&&html.includes("type==='sticky'||type==='frame'")],
   ['line-height cycle — canvas/SVG/resize + style-copy/eyedropper', html.includes("function cycleLineH()")&&html.includes("fs*(s.lineH||1.3)")&&html.includes("'fontSize','lineH','cbend'")],
   ['sticky chain inherits full typography', html.includes("font:s.font,lineH:s.lineH,spacing:s.spacing,bold:s.bold,italic:s.italic")],
-  ['text s.fill paints bg plate (canvas+SVG)', html.includes("s.fill){let mw=0")&&html.includes('height="${svgLines.length*fs*(s.lineH||1.25)+6}"')],
+  ['text s.fill paints bg plate (canvas+SVG)', html.includes("if(s.fill){const mw=_tm.w;")&&html.includes('height="${svgLines.length*fs*(s.lineH||1.25)+6}"')],
   ['sticky text colour via s.stroke (canvas+SVG)', html.includes("c.fillStyle=s.stroke||'#1E293B'")&&html.includes('fill="${_esc(s.stroke||')],
   ['conn label pill honours s.fill (canvas+SVG)', html.includes("s.fill||getCSS('--paper')")&&html.includes("_esc(s.fill||paper")],
   ['drop shadow — canvas props + SVG filter + toggle + persistence', html.includes("shadowColor='rgba(15,23,42,.22)'")&&html.includes("id=\"bsh\"")&&html.includes("function toggleShadow()")&&html.includes("state.style.shadow=s.shadow||null")],

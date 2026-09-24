@@ -2787,7 +2787,7 @@ function drawShape(s,c){
       c.textAlign=alF==='right'?'right':alF==='center'?'center':'left';
       const txF2=alF==='right'?s.x+s.w-6:alF==='center'?s.x+s.w/2:s.x+6;
       c.fillText(lbl,txF2,s.y-2);
-      if(s.under||s.strike){const lw=c.measureText(lbl).width;      // ADR-0204
+      if(s.under||s.strike){const lw=_connLabelMeasure(s,c,[lbl],fs).w;   // ADR-0252/0204
         c.strokeStyle=c.fillStyle;c.lineWidth=Math.max(1,fs*0.06);
         const ux=alF==='left'?txF2:alF==='right'?txF2-lw:txF2-lw/2;
         if(s.under){const uy=s.y-2+fs*0.12;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}
@@ -2817,7 +2817,8 @@ function drawShape(s,c){
                   s.valign==='bottom'?s.y+s.h-pad-lines.length*lh:s.y+pad;
         for(let i=0;i<lines.length;i++)c.fillText(lines[i],tax,sty+i*lh);
         if(s.under||s.strike){c.strokeStyle=s.stroke||'#1E293B';c.lineWidth=Math.max(1,fs*0.06);   // ADR-0192
-          for(let i=0;i<lines.length;i++){const lw=c.measureText(lines[i]).width;
+          const _lwS=_connLabelMeasure(s,c,lines,fs).ws;         // ADR-0252
+          for(let i=0;i<lines.length;i++){const lw=_lwS[i];
             const ux=s.align==='center'?tax-lw/2:s.align==='right'?tax-lw:tax;
             if(s.under){const uy=sty+i*lh+fs*1.08;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}
             if(s.strike){const uy=sty+i*lh+fs*0.55;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}}}
@@ -3176,7 +3177,8 @@ function drawText(s,c){
   const ax=s.align==='center'?s.x+s.w/2:s.align==='right'?s.x+s.w:s.x;
   // ADR-0191: s.fill paints a highlight plate behind the text (draw.io parity —
   // previously settable via swatches/style-copy but rendered nowhere).
-  if(s.fill){let mw=0;for(const l of lines)mw=Math.max(mw,c.measureText(l).width);
+  const _tm=s.fill||s.under||s.strike?_connLabelMeasure(s,c,lines,fs):null;   // ADR-0252
+  if(s.fill){const mw=_tm.w;
     const bx=s.align==='center'?ax-mw/2:s.align==='right'?ax-mw:ax;
     c.save();c.fillStyle=s.fill;c.fillRect(bx-3,s.y-3,mw+6,lines.length*lh+6);c.restore();
     c.fillStyle=s.stroke||'#0F172A';}
@@ -3184,7 +3186,7 @@ function drawText(s,c){
   // ADR-0095: canvas has no text-decoration — stroke a line under each row
   // (per-line measureText honours all three align modes).
   if(s.under||s.strike){c.save();c.strokeStyle=s.stroke||'#0F172A';c.lineWidth=Math.max(1,fs*0.06);
-    for(let i=0;i<lines.length;i++){const lw=c.measureText(lines[i]).width;
+    for(let i=0;i<lines.length;i++){const lw=_tm.ws[i];
       const ux=s.align==='center'?ax-lw/2:s.align==='right'?ax-lw:ax;
       if(s.under){const uy=s.y+i*lh+fs*1.08;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}
       if(s.strike){const uy=s.y+i*lh+fs*0.55;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}}   // ADR-0100
