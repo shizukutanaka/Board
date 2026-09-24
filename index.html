@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.310';
+const V='1.7.311';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6398,6 +6398,8 @@ function drawioToShapes(txt){
       if(sty.fillColor&&sty.fillColor!=='none')s.color=sty.fillColor}
     else if(('text' in sty||sty.text===1)&&!w&&!ht)s=Shape.make('text',{x,y,w:120,h:24,text:lbl.slice(0,2000)});
     else s=Shape.make('rect',{x,y,w:w||120,h:ht||80,label:lbl.slice(0,240)});
+    {const _im=(sty.shape==='image')?(c.getAttribute('style')||'').match(/image=(data:[^;]*;base64,[^;]*|https?:[^;]*)/):null;   // ADR-0259
+     if(_im)s=Shape.make('image',{x,y,w:w||120,h:ht||80,dataUrl:_im[1].slice(0,25_000_000),label:lbl.slice(0,240)})}
     if(sty.rounded==='1'&&s.w!=null)s.r=8;
     if(sty.fillColor&&sty.fillColor!=='none')s.fill=sty.fillColor;
     _dioStyApply(s,sty,_hid);                                            // ADR-0258
@@ -6513,6 +6515,7 @@ function boardToDrawio(shapes){
     else if(t==='text')sty='text;';
     else if(t==='sticky')sty='shape=note;';
     else if(t==='frame')sty='swimlane;';
+    else if(t==='image'&&s.dataUrl)sty='shape=image;';
     else sty='rounded='+(s.r>0?1:0)+';';
     if(s.fill&&s.fill!=='none')sty+='fillColor='+s.fill+';';
     if(s.stroke&&t!=='text'&&t!=='sticky')sty+='strokeColor='+s.stroke+';';
@@ -6528,6 +6531,7 @@ function boardToDrawio(shapes){
     if(s.shadow)sty+='shadow=1;';                                            // ADR-0246
     const _dfs=(s.bold?1:0)|(s.italic?2:0)|(s.under?4:0);                  // ADR-0228: mxGraph bitmask
     if(_dfs)sty+='fontStyle='+_dfs+';';
+    if(t==='image'&&s.dataUrl)sty+='image='+s.dataUrl+';';                 // ADR-0259: last — ';base64,' inside
     const lbl=s.label!=null?s.label:s.text;
     cells.push(`<mxCell id="${id}" value="${nl(lbl||'')}" style="${esc(sty)}" vertex="1" parent="1"${s.visible===0?' visible="0"':''}><mxGeometry x="${s.x||0}" y="${s.y||0}" width="${s.w||120}" height="${s.h||80}" as="geometry"/></mxCell>`);   // ADR-0245
   }

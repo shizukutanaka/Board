@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.311] - 2026-09-24
+
+### Added
+- .drawio: 画像シェイプを shape=image;image=<url> として往復 (ADR-0259)。
+  data URL は `;base64,` を含むため末尾配置 + raw style 抽出で対応
+
 ## [1.7.310] - 2026-09-24
 
 ### Changed
