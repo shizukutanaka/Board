@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.257]
+
+### 追加
+- **付箋をテキストに合わせる** (ADR-0199)。ctx メニューで付箋の
+  幅を最長行に縮め、高さを折返し行数へ自動調整 (draw.io Autosize
+  相当、長文のクリップ溢れを解消)。
+
 ## [1.7.256]
 
 ### 追加
