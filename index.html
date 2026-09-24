@@ -851,7 +851,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.463';
+const V='1.7.464';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2335,7 +2335,7 @@ function centerOn(sh){
 }
 function describeShape(s){
   const b=_bb(s);
-  const nm=T.k?.[s.type]??s.type;
+  const nm=s.hl&&s.type==='pen'?(T.k?.marker??'marker'):T.k?.[s.type]??s.type;   // ADR-0429: highlighter strokes are markers, not pens
   // Announce the shape's content (text or label) first — for a screen-reader user
   // cycling shapes, "Arrow yes" / "Sticky buy milk" is the meaningful part, not the
   // coordinates. Truncated so a long note doesn't flood the live region.
