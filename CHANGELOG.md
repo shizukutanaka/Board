@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.463] - 2026-09-23
+
+### Internal
+- `_recordCommitted` の inline seenOps トリムを `_trimSeen()` に統一 + `_ck` op-clock キー helper (~85B)
+
 ## [1.7.462] - 2026-09-23
 
 ### Fixed

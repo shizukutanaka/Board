@@ -851,12 +851,13 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.462';
+const V='1.7.463';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
 const MAX_HISTORY=500;
 const MAX_SEEN_OPS=2000; // cap seenOps to prevent unbounded growth
+const _ck=op=>op.clock.peer+':'+op.clock.seq;   // ADR-0428
 const _trimSeen=()=>{if(_sO().size>MAX_SEEN_OPS){const k=[..._sO()];for(let i=0;i<_fl(MAX_SEEN_OPS*0.2);i++)_sO().delete(k[i])}};
 const MAX_OP_SHAPES=500; // max shapes in a single remote op (DoS guard)
 // ADR-0039: importFromHash payload ceilings — decompression runs before the
@@ -1404,7 +1405,7 @@ const Store={
   commit(op){
     // Stamp CRDT clock; local-origin only, remote ops keep theirs. nowTs() is monotonic.
     if(!op.clock)op.clock={peer:_pi(),seq:++state.seq,ts:nowTs()};
-    const k=op.clock.peer+':'+op.clock.seq;
+    const k=_ck(op);
     if(_sO().has(k))return;       // already applied (rare race)
     _sO().add(k);
     _trimSeen();
@@ -1460,7 +1461,7 @@ const Store={
     // Raise the monotonic-clock floor to any ts we observe, so a LOCAL edit made
     // causally-after this remote edit gets a ts >= it (HLC-lite; see nowTs).
     if(typeof op.clock.ts==='number')state._lastTs=_max(state._lastTs,op.clock.ts);
-    const k=op.clock.peer+':'+op.clock.seq;
+    const k=_ck(op);
     if(_sO().has(k))return;
     _sO().add(k);
     _trimSeen();
@@ -1546,10 +1547,10 @@ const Store={
   _recordCommitted(op){
     _iG();
     if(!op.clock)op.clock={peer:_pi(),seq:++state.seq,ts:nowTs()};
-    const k=op.clock.peer+':'+op.clock.seq;
+    const k=_ck(op);
     if(_sO().has(k))return;
     _sO().add(k);
-    if(_sO().size>MAX_SEEN_OPS){const keys=[..._sO()];for(let i=0;i<_fl(MAX_SEEN_OPS*0.2);i++)_sO().delete(keys[i])}
+    _trimSeen();                           // ADR-0428: same helper as commit/applyRemote
     this._stampWrites(op);                 // change already applied by caller; record clock
     _hi().length=_hx()+1;
     _hi().push(op);
