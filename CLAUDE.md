@@ -509,6 +509,8 @@ Board/
 │   ├── ADR-0457-peer-bye-message.md     # pagehide で bye を配信、離脱ピア即時除去 (実装済)
 │   ├── ADR-0458-room-switch-presence.md # ルーム切替で bye 送信 + BC ピア掃除 (実装済)
 │   ├── ADR-0459-peer-incarnation.md     # 起動毎 peerId nonce — seq/dedup 衝突 + タブ間同期解消 (実装済)
+│   ├── ADR-0460-wclock-persist.md       # LWW 仲裁テーブルを IDB 永続化 (実装済)
+│   ├── ADR-0461-toast-fold-consts.md    # _oT/_wT/_eT fold + 文字列 consts (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

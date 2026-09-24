@@ -2,6 +2,16 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.494] - 2026-09-23
+
+### 修正
+
+- **wclock (per-prop LWW) の IndexedDB 永続化** — 仲裁テーブルがメモリのみでリロード毎に消失し、相手ピアの古い op 再送でプロパティが退行し得た。doc record に `wc` を同梱・復元時 `validClock` で検証 (ADR-0460)
+
+### 変更
+
+- toast 呼び出し shorthand `_oT`/`_wT`/`_eT` — `t(...)` 単一引数形を 99 箇所畳み込み (~250B 回収) + 文字列 consts `_RO`/`_RW`/`_UT`/`_REC` (ADR-0461)
+
 ## [1.7.493] - 2026-09-23
 
 ### 修正
