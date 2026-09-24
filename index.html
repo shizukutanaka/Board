@@ -821,7 +821,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.430';
+const V='1.7.431';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -8448,6 +8448,8 @@ const UI={
     el.textContent=d<3?t('savedNow'):d+t('savedAgo');
   },
   toast(msg,kind){
+    const st=_g('toasts'),last=st.lastElementChild;
+    if(last&&last.textContent===msg)last.remove();   // ADR-0389: identical toast — move to top instead of stacking a twin (re-append still re-announces via aria-live)
     const div=_ce('div');
     div.className='toast'+(kind?' '+kind:'');
     div.setAttribute('role',kind==='err'||kind==='warn'?'alert':'status');
