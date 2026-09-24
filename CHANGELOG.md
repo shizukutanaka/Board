@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.345] - 2026-09-24
+
+### Changed
+- 開始ヘッドのスタイルを `state.style.startHead`/`state.style.start`
+  に永続化し新規矢印へ引き継ぎ (ADR-0293)
+
 ## [1.7.344] - 2026-09-24
 
 ### Changed

@@ -779,7 +779,7 @@ const _g=id=>document.getElementById(id);   // ADR-0289
 const _p=()=>getCSS('--paper'),_ac=()=>getCSS('--accent-contrast');   // ADR-0292
 
 // ====================== CONSTANTS ======================
-const V='1.7.344';
+const V='1.7.345';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1841,6 +1841,7 @@ const Shape={
     if((type==='text'||type==='sticky'||type==='frame')&&state.style.font!=null)base.font=state.style.font;   // ADR-0188
     if(type==='arrow'&&state.style.head!=null)base.head=state.style.head;
     if(type==='arrow'&&state.style.start!=null)base.start=state.style.start;   // ADR-0185
+    if(type==='arrow'&&state.style.startHead!=null)base.startHead=state.style.startHead;   // ADR-0293
     if(type==='line'||type==='arrow'){                          // ADR-0183
       if(state.style.elbow)base.elbow=state.style.elbow;
       if(state.style.curve)base.curve=state.style.curve;}
@@ -8832,6 +8833,8 @@ function cycleStartHead(){
   if(!sel.length)return;
   const seq=['none','arrow','dot','open'],cur=!sel[0].start?'none':(sel[0].startHead||'arrow');
   const next=seq[(seq.indexOf(cur)+1)%4];
+  state.style.startHead=next==='none'?null:next;
+  state.style.start=next==='none'?0:1;                         // ADR-0293
   _cOp({op:'style',before:sel.map(s=>({id:s.id,start:s.start?1:0,startHead:s.startHead??null})),
     after:sel.map(s=>({id:s.id,start:next==='none'?0:1,startHead:next==='none'?null:next==='arrow'?'arrow':next}))});
   invalidate();UI.toast(t('styleApplied'),'ok');
