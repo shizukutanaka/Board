@@ -249,7 +249,7 @@ const checks = [
     html.includes("if('dataUrl' in p&&p.dataUrl!=null&&!(typeof p.dataUrl==='string'&&p.dataUrl.length<=16_000_000&&/^data:image\\//.test(p.dataUrl)))return false;")],
   ['PDF export escapes docName', html.includes("_esc(_dn()||'board')")],
   ['getCSS is memoised', html.includes("_cssCache") && html.includes("function clearCSSCache")],
-  ['resize handles use AAA brand-ink ring', html.includes("getCSS('--brand-ink')")],
+  ['resize handles use AAA brand-ink ring', html.includes("_gC('--brand-ink')")],
   // spec-gap fixes
   ['_num coerces to finite number', html.includes("function _num") && html.includes("_fin(n)?n:0")],
   ['buildSVG coerces numeric coords via _num', html.includes("const X=_num(s.x)") && html.includes("_num(s.size)")],
@@ -778,7 +778,7 @@ const checks = [
   ['_c01() clamp01 helper (ADR-0295)', html.includes('const _c01=v=>_min(1,_max(0,v))')],
   ['bar (T字) head style (ADR-0294)', html.includes("style==='bar'")&&html.includes("endArrow=dash")],
   ['startHead style persistence (ADR-0293)', html.includes("_st().startHead=next")&&html.includes("base.startHead=_st().startHead")],
-  ['_p()/_ac() css token shorthands (ADR-0292)', html.includes("const _p=()=>getCSS('--paper')")],
+  ['_p()/_ac() css token shorthands (ADR-0292)', html.includes("const _p=()=>_gC('--paper')")],
   ['ctx start-head cycle (ADR-0291)', html.includes('cycleStartHead')&&html.includes('ctxStartHead')],
   ['exc transparent stroke/bg import (ADR-0290 追補)', html.includes("o.stroke=_TR")&&html.includes("o.fill='none'")],
   ['drawio strokeColor=none → transparent (ADR-0290)', html.includes("_TR:sty.strokeColor")||html.includes("sty.strokeColor==='none'?_TR")],
@@ -878,7 +878,7 @@ const checks = [
   ['flip keyboard shortcut (⇧H/⇧V) guarded by selection', html.includes("(k==='h'||k==='v')&&_selN()){_pd(e);doFlip(k)}")],
   // v1.6.58: rect/ellipse centre labels - dblclick to set, rendered centred, SVG export
   ['rect/ellipse label rendered centred in canvas', html.includes("_drawBoxLabel(s,c);break;") && html.includes("c.textAlign='center'")],
-  ['dblclick label editor handles rect and ellipse', html.includes("hit.type==='frame'||hit.type==='rect'||hit.type==='ellipse'") && html.includes("getCSS(bold?'--accent-contrast':'--ink')")],
+  ['dblclick label editor handles rect and ellipse', html.includes("hit.type==='frame'||hit.type==='rect'||hit.type==='ellipse'") && html.includes("_gC(bold?'--accent-contrast':'--ink')")],
   ['SVG export emits label for rect', html.includes("if(s.label)_svgBoxLabel(") && html.includes("text-anchor=\"middle\"")],
   // v1.6.59: laser pointer (presentation) + shape lock
   ['laser pointer state + presentation intercept', html.includes("let _laser=null") && html.includes("if(Presentation.isActive()){_laser=wp")],
@@ -1417,9 +1417,9 @@ const checks = [
   // on raw --brand: that's a style choice, not an accessibility-critical indicator.
   ["canvas UI-indicator strokes (selection/guides/marquee/rotation-tether/minimap-viewport) use --accent-contrast",
     (html.match(/_ac\(\)/g)||[]).length===11 &&
-    (html.match(/getCSS\('--brand'\)/g)||[]).length===5],
+    (html.match(/_gC\('--brand'\)/g)||[]).length===5],
   ['frame label editor text color uses --accent-contrast (real text, needs the 4.5:1 floor too)',
-    html.includes("getCSS(bold?'--accent-contrast':'--ink')")],
+    html.includes("_gC(bold?'--accent-contrast':'--ink')")],
   ['floating search box border uses --accent-contrast, not raw --brand',
     html.includes("border:2px solid var(--accent-contrast);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;")],
 ];
