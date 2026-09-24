@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.536] - 2026-09-23
+
+### リファクタ
+
+- `.every(id=>X(id))` を point-free `.every(X)` 化 (5 サイト、~40B 回収) (ADR-0503)
+
 ## [1.7.535] - 2026-09-23
 
 ### リファクタ
