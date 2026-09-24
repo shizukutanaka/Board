@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.261]
+
+### 追加
+- **.drawio インポート** (ADR-0203)。draw.io (非圧縮 mxGraphModel)
+  のドロップ/ファイルピッカー対応 — vertex→図形、edge→結合矢印
+  (orthogonal→elbow、waypoints、ラベル)、色/線幅/破線/opacity/角丸
+  を対応プロップへ。圧縮ペイロードは警告表示。
+
 ## [1.7.260]
 
 ### 追加

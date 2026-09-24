@@ -693,7 +693,7 @@ const checks = [
   ['svg transform matrix accumulator', html.includes('function _svgMOf(t)') && html.includes('function _svgMMul(P,Q)')],
   ['svg claimed before image branch on drop', html.includes("f.name.endsWith('.svg')||f.type==='image/svg+xml')")],
   ['svg markup paste hook', html.includes("i.type==='text/plain'") && html.includes('importSvgText(s)')],
-  ['file picker accepts svg + excalidraw', html.includes('accept=".board,.svg,image/svg+xml,.excalidraw"')],
+  ['file picker accepts svg + excalidraw', html.includes('accept=".board,.svg,image/svg+xml,.excalidraw,.drawio,.dio"')],
   ['i18n has svgImported ja+en', html.includes("svgImported:'SVG を取り込みました'") && html.includes("svgImported:'SVG imported'")],
   // v1.7.101: ADR-0043 .excalidraw import
   ['excalidraw import ceilings defined', html.includes('EXC_MAX_ELEMS') && html.includes('EXC_MAX_PTS')],
@@ -701,7 +701,8 @@ const checks = [
   ['isDeleted tombstones skipped', html.includes('e.isDeleted')],
   ['relative points absolutised', html.includes('pts.push([e.x+p[0],e.y+p[1]])')],
   ['content beats extension routing', html.includes("d.type==='excalidraw'){importExcText(r.result);return}")],
-  ['.excalidraw file entry points', html.includes("f.name.endsWith('.excalidraw')") && html.includes('.excalidraw"')],
+  ['.excalidraw file entry points', html.includes("f.name.endsWith('.excalidraw')") && html.includes('.excalidraw,.drawio')],
+  ['.drawio file entry points + parser (ADR-0203)', html.includes("f=>/\\.(drawio|dio)$/i.test(f.name)")&&html.includes('function drawioToShapes')],
   ['i18n has excImported ja+en', html.includes("excImported:'Excalidraw を取り込みました'") && html.includes("excImported:'Excalidraw imported'")],
   // v1.7.102: ADR-0044 text paste → text shape
   ['text paste ceiling defined', html.includes('PASTE_MAX_CHARS')],
@@ -1232,9 +1233,9 @@ const checks = [
     html.includes("&&typeof op.dx==='number'&&Number.isFinite(op.dx)&&typeof op.dy==='number'&&Number.isFinite(op.dy)")],
   // v1.7.56 (ADR-0007, FT-07): export menu + .board file-picker DOM/wiring
   ['btnExportMenu button and hidden fileImport input present in the DOM',
-    html.includes('id="btnExportMenu"') && html.includes('id="fileImport"') && html.includes('accept=".board,.svg,image/svg+xml,.excalidraw"')],
+    html.includes('id="btnExportMenu"') && html.includes('id="fileImport"') && html.includes('accept=".board,.svg,image/svg+xml,.excalidraw,.drawio,.dio"')],
   ['btnExportMenu wired to UI.openExportMenu, fileImport routes by type',
-    html.includes("UI.openExportMenu(r.left,r.bottom+4)") && html.includes("?importSvgFile(f):importBoard(f);")],
+    html.includes("UI.openExportMenu(r.left,r.bottom+4)") && html.includes("?importSvgFile(f):importBoard(f);   // ADR-0203")],
   ['openCtxMenu accepts an optional customItems override (backward-compatible default)',
     html.includes("openCtxMenu(x,y,customItems){") && html.includes("const items=customItems||[")],
   ['ctxExportPNG/SVG/PDF/Board + ctxImportBoard i18n keys present in ja and en',

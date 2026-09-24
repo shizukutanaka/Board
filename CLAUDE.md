@@ -252,6 +252,7 @@ Board/
 - [ADR-0200](docs/ADR-0200-pen-shift-straight.md) Shiftペン直線
 - [ADR-0201](docs/ADR-0201-move-readout.md) 移動中XY表示
 - [ADR-0202](docs/ADR-0202-draft-readout.md) 描画中寸法表示
+- [ADR-0203](docs/ADR-0203-drawio-import.md) .drawioインポート
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

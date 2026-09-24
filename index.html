@@ -607,7 +607,7 @@ body{visibility:visible}
     <button class="btn icon" id="btnExportMenu" aria-label="More export &amp; import options" title="More export &amp; import options" data-t-aria="moreExport" data-t-title="moreExport">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
     </button>
-    <input type="file" id="fileImport" accept=".board,.svg,image/svg+xml,.excalidraw" hidden>
+    <input type="file" id="fileImport" accept=".board,.svg,image/svg+xml,.excalidraw,.drawio,.dio" hidden>
     <button class="btn icon" id="btnInstall" aria-label="Install app" title="Install Board as an app" data-t-aria="install" data-t-title="install" hidden>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V3M8 12l4 4 4-4M4 20h16"/></svg>
     </button>
@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.260';
+const V='1.7.261';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -910,7 +910,7 @@ const I18N={
     sharePaste:'招待された側 手順1: 相手の招待コードを貼り付け',
     connected:'接続しました',disconnected:'切断しました',connectFailed:'接続に失敗しました',
     importConfirm:'共有された内容で現在のボードを置き換えますか？',
-    imported:'読み込みました',svgImported:'SVG を取り込みました',excImported:'Excalidraw を取り込みました',textPasted:'テキストを貼り付けました',
+    imported:'読み込みました',svgImported:'SVG を取り込みました',excImported:'Excalidraw を取り込みました',dioImported:'drawio を取り込みました',dioCompressed:'圧縮 .drawio は未対応 — draw.io で「圧縮しない」にして保存してください',textPasted:'テキストを貼り付けました',
     backupAvailable:'前回、上書きされる前のボードが保存されています。復元しますか？',
     backupRestored:'前回のボードを復元しました',
     backupRestoreFailed:'バックアップの復元に失敗しました',
@@ -986,7 +986,7 @@ const I18N={
     sharePaste:'Joining side, step 1: Paste the invite code from your peer',
     connected:'Connected',disconnected:'Disconnected',connectFailed:'Connection failed',
     importConfirm:'Replace current board with shared content?',
-    imported:'Imported',svgImported:'SVG imported',excImported:'Excalidraw imported',textPasted:'Text pasted',
+    imported:'Imported',svgImported:'SVG imported',excImported:'Excalidraw imported',dioImported:'drawio imported',dioCompressed:'Compressed .drawio is unsupported — re-save in draw.io with compression off',textPasted:'Text pasted',
     backupAvailable:'A board from before it was overwritten was saved. Restore it?',
     backupRestored:'Restored the previous board',
     backupRestoreFailed:'Failed to restore backup',
@@ -4143,6 +4143,8 @@ canvas.addEventListener('drop',e=>{
   if(bf){importBoard(bf);return}
   const xf=[...e.dataTransfer.files].find(f=>f.name.endsWith('.excalidraw'));
   if(xf){importExcFile(xf,G.s2w({x:e.offsetX,y:e.offsetY}));return}
+  const df=[...e.dataTransfer.files].find(f=>/\.(drawio|dio)$/i.test(f.name));   // ADR-0203
+  if(df){importDrawioFile(df,G.s2w({x:e.offsetX,y:e.offsetY}));return}
   // ADR-0042: .svg must be claimed BEFORE the generic image/* branch —
   // image/svg+xml also matches startsWith('image/') but <img> can't raster it.
   const sf=[...e.dataTransfer.files].find(f=>f.name.endsWith('.svg')||f.type==='image/svg+xml');
@@ -6188,6 +6190,101 @@ function excScene(shapes){
   }
   for(const e of els)if(gids[e.id])e.groupIds=gids[e.id];
   return{type:'excalidraw',version:2,source:'Board',elements:els,files,appState:{gridSize:null}};
+// ---- ADR-0203: .drawio import ------------------------------------------------
+// Uncompressed mxGraphModel XML via DOMParser (no deps). drawio's default save
+// is deflate+base64 inside <diagram> — we can't inflate offline, so those warn
+// instead of silently dropping. style="k=v;k=v;flag;" cells map onto the closest
+// Board type; unknown vertex shapes fall back to rect, unknown edges to arrow.
+const DIO_MAX=20000;
+function _dioSty(st){
+  const o={};for(const kv of String(st||'').split(';')){const i=kv.indexOf('=');if(i>=0)o[kv.slice(0,i)]=kv.slice(i+1);else if(kv)o[kv]=1}
+  return o;
+}
+function _dioLabel(v){
+  // drawio stores line breaks as <br> inside the value; textContent drops them
+  // silently, so pre-substitute newlines, then strip remaining markup.
+  const pre=String(v||'').replace(/<br\s*\/?>/gi,'\n');
+  try{const d2=new DOMParser().parseFromString('<x>'+pre+'</x>','text/xml');
+    return (d2.documentElement.textContent||'').replace(/\s+$/gm,'').trim()}catch(_){return pre.replace(/<[^>]*>/g,'').trim()}
+}
+function drawioToShapes(txt){
+  let doc;
+  try{doc=new DOMParser().parseFromString(String(txt||''),'text/xml')}catch(_){return null}
+  if(!doc||doc.querySelector('parsererror'))return null;
+  if(!doc.querySelector('mxGraphModel'))return null;
+  const cells=[...doc.querySelectorAll('mxCell')];
+  if(cells.length>DIO_MAX)return null;
+  const idOf=new Map(),shapes=[];
+  // Edges resolve bound endpoints by board id, so vertices must be built first.
+  for(const c of cells){
+    if(shapes.length>=DIO_MAX)break;
+    if(c.getAttribute('vertex')!=='1')continue;
+    const g=c.querySelector('mxGeometry');if(!g)continue;
+    const sty=_dioSty(c.getAttribute('style'));
+    const x=+g.getAttribute('x')||0,y=+g.getAttribute('y')||0,w=+g.getAttribute('width')||0,ht=+g.getAttribute('height')||0;
+    const lbl=_dioLabel(c.getAttribute('value'));
+    let s;
+    if('ellipse' in sty)s=Shape.make('ellipse',{x,y,w:w||120,h:ht||80,label:lbl.slice(0,240)});
+    else if(sty.shape==='rhombus'||'rhombus' in sty)s=Shape.make('diamond',{x,y,w:w||120,h:ht||80,label:lbl.slice(0,240)});
+    else if(('text' in sty||sty.text===1)&&!w&&!ht)s=Shape.make('text',{x,y,w:120,h:24,text:lbl.slice(0,2000)});
+    else s=Shape.make('rect',{x,y,w:w||120,h:ht||80,label:lbl.slice(0,240)});
+    if(sty.rounded==='1'&&s.w!=null)s.r=8;
+    if(sty.fillColor&&sty.fillColor!=='none')s.fill=sty.fillColor;
+    if(sty.strokeColor&&sty.strokeColor!=='none')s.stroke=sty.strokeColor;
+    if(+sty.strokeWidth>0)s.size=Math.min(40,+sty.strokeWidth);
+    if(sty.dashed==='1')s.dash=1;
+    if(+sty.fontSize>0)s.fontSize=Math.min(200,+sty.fontSize);
+    if(+sty.opacity>0)s.opacity=Math.max(0.05,+sty.opacity/100);
+    idOf.set(c.getAttribute('id'),s.id);shapes.push(s);
+  }
+  for(const c of cells){
+    if(shapes.length>=DIO_MAX)break;
+    if(c.getAttribute('edge')!=='1')continue;
+    const g=c.querySelector('mxGeometry'),sty=_dioSty(c.getAttribute('style'));
+    let x1=0,y1=0,x2=0,y2=0;
+    const sp=g?g.querySelector('mxPoint[as="sourcePoint"]'):null,tp=g?g.querySelector('mxPoint[as="targetPoint"]'):null;
+    if(sp){x1=+sp.getAttribute('x')||0;y1=+sp.getAttribute('y')||0}
+    if(tp){x2=+tp.getAttribute('x')||0;y2=+tp.getAttribute('y')||0}
+    const a=c.getAttribute('source'),b=c.getAttribute('target');
+    const sa=a?idOf.get(a):null,sb=b?idOf.get(b):null;
+    if(sa){const bs=shapes.find(s2=>s2.id===sa),bb=bs&&G.bbox(bs);if(bb){x1=bb.x+bb.w/2;y1=bb.y+bb.h/2}}
+    if(sb){const bs=shapes.find(s2=>s2.id===sb),bb=bs&&G.bbox(bs);if(bb){x2=bb.x+bb.w/2;y2=bb.y+bb.h/2}}
+    const s=Shape.make('arrow',{x1,y1,x2,y2,a:sa,b:sb});
+    const pts=g?[...g.querySelectorAll('Array mxPoint')]:[];
+    if(pts.length)s.way=pts.slice(0,200).map(p=>[+p.getAttribute('x')||0,+p.getAttribute('y')||0]);
+    if(/orthogonal|elbow/i.test(String(sty.edgeStyle||'')))s.elbow=1;
+    const lbl=_dioLabel(c.getAttribute('value'));if(lbl)s.label=lbl.slice(0,240);
+    if(sty.strokeColor&&sty.strokeColor!=='none')s.stroke=sty.strokeColor;
+    if(+sty.strokeWidth>0)s.size=Math.min(40,+sty.strokeWidth);
+    if(sty.dashed==='1')s.dash=1;
+    shapes.push(s);
+  }
+  return shapes;
+}
+function importDrawioText(txt,wp){
+  if(/<diagram[^>]*>[^<]+<\/diagram>/.test(String(txt||''))&&!txt.includes('<mxGraphModel')){
+    UI.toast(t('dioCompressed'),'warn');return false;   // deflate payload — can't inflate offline
+  }
+  let shapes=null;
+  try{shapes=drawioToShapes(txt)}catch(_){shapes=null}
+  if(!shapes||!shapes.length){UI.toast(t('invalidBoard'),'warn');return false}
+  if(!wp){const r=canvas.getBoundingClientRect();wp=G.s2w({x:r.width/2,y:r.height/2})}
+  const bb=G.bboxAll(shapes);
+  if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);
+    for(const s of shapes)Shape.translate(s,dx,dy)}
+  const origSel=[...state.selection];
+  Store.commit({op:'addMany',shapes});
+  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  state.selection.clear();for(const s of shapes)state.selection.add(s.id);
+  invalidate();UI.toast(t('dioImported'),'ok');
+  return true;
+}
+function importDrawioFile(file,wp){
+  const r=new FileReader();
+  r.onload=()=>importDrawioText(String(r.result),wp);
+  r.onerror=()=>UI.toast(t('invalidBoard'),'warn');
+  r.readAsText(file);
+}
 }
 function exportExc(){
   if(!state.shapes.length){UI.toast(t('empty'),'warn');return}
@@ -7995,7 +8092,7 @@ function wire(){
   };
   document.getElementById('fileImport').onchange=e=>{
     const f=e.target.files[0];
-    if(f)f.name.endsWith('.excalidraw')?importExcFile(f):(f.name.endsWith('.svg')||f.type==='image/svg+xml')?importSvgFile(f):importBoard(f);
+    if(f)/\.(drawio|dio)$/i.test(f.name)?importDrawioFile(f):f.name.endsWith('.excalidraw')?importExcFile(f):(f.name.endsWith('.svg')||f.type==='image/svg+xml')?importSvgFile(f):importBoard(f);   // ADR-0203
     e.target.value='';   // allow re-selecting the same filename to re-trigger change
   };
   document.getElementById('btnPresent').onclick=()=>Presentation.enter();
