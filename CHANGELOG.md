@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.214]
+
+### 追加
+- **ダイヤの角丸** (ADR-0156)。ctx「角丸を切替」が diamond にも
+  適用 — 各頂点を二次ベジエで丸める `_diamondPath` (canvas/
+  SVG 両経路)。既定は尖ったまま (r=0 で後方互換)。
+
 ## [1.7.213]
 
 ### 修正

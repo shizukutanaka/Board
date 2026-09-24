@@ -774,7 +774,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.213';
+const V='1.7.214';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2644,9 +2644,7 @@ function drawShape(s,c){
       if(s.fstyle)_hatchCtx(c,s);                              // ADR-0077
       _drawBoxLabel(s,c);break;
     case 'diamond':{
-      const cx=s.x+s.w/2,cy=s.y+s.h/2;
-      c.beginPath();
-      c.moveTo(cx,s.y);c.lineTo(s.x+s.w,cy);c.lineTo(cx,s.y+s.h);c.lineTo(s.x,cy);c.closePath();
+      _diamondPath(c,s);                                       // ADR-0156
       if(s.fill)c.fill();
       if(s.stroke)c.stroke();
       if(s.fstyle)_hatchCtx(c,s);                              // ADR-0077
@@ -2808,6 +2806,29 @@ function _elbowTrunk(s){
     if(vert===horizStub&&(a.x!==b.x||a.y!==b.y))return[a,b];
   }
   return null;
+}
+// ADR-0156: rounded diamond contour — trims each vertex by r along its two
+// edges and bridges the gap with a quadratic curve (vertex as control point).
+// s.r==null → sharp polygon (pre-ADR-0156 diamonds unchanged).
+function _diamondPath(c,s){
+  const cx=s.x+s.w/2,cy=s.y+s.h/2;
+  const P=[{x:cx,y:s.y},{x:s.x+s.w,y:cy},{x:cx,y:s.y+s.h},{x:s.x,y:cy}];
+  const r=Math.min(s.r||0,Math.abs(s.w)/6,Math.abs(s.h)/6);
+  c.beginPath();
+  if(r>0){
+    for(let i=0;i<4;i++){
+      const p0=P[i],p1=P[(i+1)%4],p2=P[(i+2)%4];
+      const e1=Math.hypot(p1.x-p0.x,p1.y-p0.y)||1,e2=Math.hypot(p2.x-p1.x,p2.y-p1.y)||1;
+      const rr=Math.min(r,e1/2,e2/2);
+      const t1={x:p1.x+(p0.x-p1.x)/e1*rr,y:p1.y+(p0.y-p1.y)/e1*rr};
+      const t2={x:p1.x+(p2.x-p1.x)/e2*rr,y:p1.y+(p2.y-p1.y)/e2*rr};
+      if(i===0)c.moveTo(t1.x,t1.y);else c.lineTo(t1.x,t1.y);
+      c.quadraticCurveTo(p1.x,p1.y,t2.x,t2.y);
+    }
+    c.closePath();
+  }else{
+    c.moveTo(cx,s.y);c.lineTo(s.x+s.w,cy);c.lineTo(cx,s.y+s.h);c.lineTo(s.x,cy);c.closePath();
+  }
 }
 function _polyline(c,pts){
   c.beginPath();c.moveTo(pts[0].x,pts[0].y);
@@ -6317,8 +6338,26 @@ function buildSVG(shapes,paper){
         if(s.label)_svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT);
         break;
       case 'diamond':{
-        els.push(`<polygon points="${X+W/2+ox},${Y+oy} ${X+W+ox},${Y+H/2+oy} ${X+W/2+ox},${Y+H+oy} ${X+ox},${Y+H/2+oy}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}/>`);
-        if(s.fstyle)_svgHatch(els,s,ox,oy,stroke,`<polygon points="${X+W/2+ox},${Y+oy} ${X+W+ox},${Y+H/2+oy} ${X+W/2+ox},${Y+H+oy} ${X+ox},${Y+H/2+oy}"/>`,rT);   // ADR-0077
+        const _dPts=[[X+W/2,Y],[X+W,Y+H/2],[X+W/2,Y+H],[X,Y+H/2]];
+        const _dr=Math.min(s.r||0,Math.abs(W)/6,Math.abs(H)/6);
+        let _dEl;
+        if(_dr>0){                                             // ADR-0156
+          let d='';for(let i=0;i<4;i++){
+            const p0=_dPts[i],p1=_dPts[(i+1)%4],p2=_dPts[(i+2)%4];
+            const e1=Math.hypot(p1[0]-p0[0],p1[1]-p0[1])||1,e2=Math.hypot(p2[0]-p1[0],p2[1]-p1[1])||1;
+            const rr=Math.min(_dr,e1/2,e2/2);
+            const t1x=p1[0]+(p0[0]-p1[0])/e1*rr,t1y=p1[1]+(p0[1]-p1[1])/e1*rr;
+            const t2x=p1[0]+(p2[0]-p1[0])/e2*rr,t2y=p1[1]+(p2[1]-p1[1])/e2*rr;
+            d+=(i===0?'M':'L')+` ${_num(t1x+ox)} ${_num(t1y+oy)} Q ${_num(p1[0]+ox)} ${_num(p1[1]+oy)} ${_num(t2x+ox)} ${_num(t2y+oy)} `;
+          }
+          _dEl=`<path d="${d.trim()} Z"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}/>`;
+          els.push(_dEl);
+          if(s.fstyle)_svgHatch(els,s,ox,oy,stroke,`<path d="${d.trim()} Z"/>`,rT);
+        }else{
+          _dEl=`<polygon points="${X+W/2+ox},${Y+oy} ${X+W+ox},${Y+H/2+oy} ${X+W/2+ox},${Y+H+oy} ${X+ox},${Y+H/2+oy}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}/>`;
+          els.push(_dEl);
+          if(s.fstyle)_svgHatch(els,s,ox,oy,stroke,`<polygon points="${X+W/2+ox},${Y+oy} ${X+W+ox},${Y+H/2+oy} ${X+W/2+ox},${Y+H+oy} ${X+ox},${Y+H/2+oy}"/>`,rT);   // ADR-0077
+        }
         if(s.label)_svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT);
         break;}
       case 'line':{
@@ -7452,7 +7491,7 @@ const UI={
       has&&['ctxFlipH','⇧H',()=>doFlip('h')],
       has&&['ctxFlipV','⇧V',()=>doFlip('v')],
       has&&['ctxRotate90','⇧R',()=>doRotate(90)],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='rect'&&!s.locked})&&['ctxCorner','',cycleCorner],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='rect'||s.type==='diamond')&&!s.locked})&&['ctxCorner','',cycleCorner],
       has&&['ctxHide','⌘⇧H',hideSelection],
       has&&[...state.selection].map(byId).filter(s=>s&&!s.locked&&s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen').length===2&&['ctxConnect','',connectSelection],
       state.shapes.some(s=>s.visible===0)&&['ctxShowAll','',showAllShapes],
@@ -8127,7 +8166,7 @@ function cycleTextAlign(){
 function cycleCorner(){
   const before=[],after=[];
   for(const id of state.selection){
-    const s=byId(id);if(!s||s.type!=='rect'||s.locked)continue;
+    const s=byId(id);if(!s||(s.type!=='rect'&&s.type!=='diamond')||s.locked)continue;   // ADR-0156
     const cur=s.r==null?8:s.r,nxt=cur<4?8:cur<12?16:cur<20?24:0;
     before.push({id,r:s.r??null});after.push({id,r:nxt});
     s.r=nxt;
