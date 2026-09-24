@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.264';
+const V='1.7.272';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -869,7 +869,7 @@ const I18N={
     ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxCurve:'曲線',ctxRouteReset:'ルートをリセット (直線に戻す)',ctxReverse:'方向を反転',ctxFitText:'テキストに合わせる',ctxSelContents:'内容を選択',ctxFrameFit:'コンテンツに合わせる',ctxArrowHead:'矢印ヘッド (矢印→丸→シェブロン)',ctxToArrow:'矢印に変換',ctxToLine:'直線に変換',ctxBothEnds:'両端ヘッド',ctxRrect:'角スタイル (角丸→直角)',ctxStickyColor:'付箋の色 (順送り)',ctxToText:'テキストに変換',ctxToSticky:'付箋に変換',ctxTextAlign:'テキスト揃え (左→中央→右)',ctxFillStyle:'塗りスタイル (塗り→ハッチ→斜格子)',
     ctxSelectSameType:'同じ種類を選択',ctxSelectSame:'同色を選択',ctxSearch:'検索',ctxFit:'全体を表示',ctxZoomReset:'ズーム100%',ctxGrid:'グリッド',ctxSnap:'吸着',ctxMinimap:'ミニマップ',ctxWrapFrame:'フレームで包む',ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
     ctxSendBackward:'背面へ',ctxSendBack:'最背面へ',
-    ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxRotate90:'90°回転',ctxCorner:'角丸を切替',ctxShadow:'影 (ドロップシャドウ)',ctxHide:'非表示',ctxShowAll:'すべて表示',ctxSelectInverse:'選択を反転',ctxConnect:'2図形をコネクタで接続',hiddenCount:'件を非表示',shownAll:'すべて表示しました',ctxUnbind:'結合を解除',ctxVAlign:'縦揃え (上→中央→下)',ctxLineH:'行間 (標準→狭い→広い)',ctxSpacing:'字間 (標準→1px→2px)',ctxFont:'書体',ctxOpacity:'不透明度 (巡回)',ctxLock:'ロック',ctxUnlock:'ロック解除',ctxUnlockAll:'全てロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
+    ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxRotate90:'90°回転',ctxCorner:'角丸を切替',ctxShadow:'影 (ドロップシャドウ)',ctxHide:'非表示',ctxShowAll:'すべて表示',ctxSelectInverse:'選択を反転',ctxConnect:'2図形をコネクタで接続',hiddenCount:'件を非表示',shownAll:'すべて表示しました',ctxUnbind:'結合を解除',ctxPinAnchor:'アンカー固定/解除',ctxVAlign:'縦揃え (上→中央→下)',ctxLineH:'行間 (標準→狭い→広い)',ctxSpacing:'字間 (標準→1px→2px)',ctxWrap:'テキスト折返し',ctxFont:'書体',ctxOpacity:'不透明度 (巡回)',ctxLock:'ロック',ctxUnlock:'ロック解除',ctxUnlockAll:'全てロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
     canvasHint:'描画キャンバス。Tab/⇧Tab で図形巡回、Enter で作成、矢印で移動、⌥+矢印でリサイズ',
     tools:'ツール',docNameLabel:'ドキュメント名',activePeers:'接続中のピア',expPng:'PNG 書き出し',
     moreExport:'その他の書き出し・読み込み',install:'アプリとしてインストール',style:'スタイル',
@@ -924,7 +924,7 @@ const I18N={
       grid:'グリッド',minimap:'ミニマップ切替',beautify:'選択したペン描画を整形',esc:'選択解除/キャンセル',
       cycle:'図形を巡回',create:'中央に作成',
       present:'プレゼン',nudge:'移動 (⇧: 10px)',zorder:'前面/背面',zorderEnds:'最前面/最背面',
-      rotate:'回転 (15° / ノブdrag)',selAllMatches:'件のマッチを選択',search:'検索',searchNav:'次/前のマッチへ移動',moveAxis:'軸拘束移動',resizeRatio:'比率保持リサイズ',resizeCenter:'中心固定リサイズ',kbdResize:'リサイズ (⇧:×10)',lasso:'ラッソ選択',swapFill:'塗り↔線を交換',digitOpacity:'不透明度 0-9',eyedropDone:'スタイルを取得',swapDone:'塗り↔線を交換'}},
+      rotate:'回転 (15° / ノブdrag)',selAllMatches:'件のマッチを選択',search:'検索',searchNav:'次/前のマッチへ移動',moveAxis:'軸拘束移動',resizeRatio:'比率保持リサイズ',resizeCenter:'中心固定リサイズ',kbdResize:'リサイズ (⇧:×10)',lasso:'ラッソ選択',swapFill:'塗り↔線を交換',digitOpacity:'不透明度 0-9',eyedropDone:'スタイルを取得',swapDone:'塗り↔線を交換',fixAnchor:'端点を固定アンカーとして結合'}},
   en:{export:'Export',present:'Present',snap:'Snap',size:'Size',lineStyle:'Line',helpTitle:'Shortcuts',
     helpSub:'No need to memorise. You\'ll pick it up.',
     saved:'saved',savedNow:'just now',savedAgo:'s ago',
@@ -945,7 +945,7 @@ const I18N={
     ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxCurve:'Curved',ctxRouteReset:'Reset route (straighten)',ctxReverse:'Reverse direction',ctxFitText:'Fit to text',ctxSelContents:'Select contents',ctxFrameFit:'Fit to contents',ctxArrowHead:'Arrowhead (arrow→dot→open)',ctxToArrow:'Convert to arrow',ctxToLine:'Convert to line',ctxBothEnds:'Arrowheads both ends',ctxRrect:'Corners (round→sharp)',ctxStickyColor:'Sticky colour (cycle)',ctxToText:'Convert to text',ctxToSticky:'Convert to sticky',ctxTextAlign:'Text align (left→center→right)',ctxFillStyle:'Fill style (solid→hatch→cross)',
     ctxSelectSameType:'Select same type',ctxSelectSame:'Select same colour',ctxSearch:'Search',ctxFit:'Fit board',ctxZoomReset:'Zoom 100%',ctxGrid:'Grid',ctxSnap:'Snap',ctxMinimap:'Minimap',ctxWrapFrame:'Frame selection',ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
     ctxSendBackward:'Send backward',ctxSendBack:'Send to back',
-    ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxRotate90:'Rotate 90°',ctxCorner:'Round corner',ctxShadow:'Drop shadow',ctxHide:'Hide',ctxShowAll:'Show all',ctxSelectInverse:'Invert selection',ctxConnect:'Connect 2 shapes',hiddenCount:'hidden',shownAll:'All shapes shown',ctxUnbind:'Unbind endpoints',ctxVAlign:'Vertical align (top→middle→bottom)',ctxLineH:'Line spacing (normal→tight→wide)',ctxSpacing:'Letter spacing (normal→1px→2px)',ctxFont:'Font family',ctxOpacity:'Opacity (cycle)',ctxLock:'Lock',ctxUnlock:'Unlock',ctxUnlockAll:'Unlock all',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
+    ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxRotate90:'Rotate 90°',ctxCorner:'Round corner',ctxShadow:'Drop shadow',ctxHide:'Hide',ctxShowAll:'Show all',ctxSelectInverse:'Invert selection',ctxConnect:'Connect 2 shapes',hiddenCount:'hidden',shownAll:'All shapes shown',ctxUnbind:'Unbind endpoints',ctxPinAnchor:'Pin/unpin anchor',ctxVAlign:'Vertical align (top→middle→bottom)',ctxLineH:'Line spacing (normal→tight→wide)',ctxSpacing:'Letter spacing (normal→1px→2px)',ctxWrap:'Wrap text',ctxFont:'Font family',ctxOpacity:'Opacity (cycle)',ctxLock:'Lock',ctxUnlock:'Unlock',ctxUnlockAll:'Unlock all',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
     canvasHint:'Drawing canvas. Tab/Shift+Tab cycles shapes, Enter creates, arrows move, Alt+arrows resize.',
     tools:'Tools',docNameLabel:'Document name',activePeers:'Active peers',expPng:'Export PNG',
     moreExport:'More export & import options',install:'Install Board as an app',style:'Style',
@@ -1002,7 +1002,7 @@ const I18N={
       grid:'Toggle grid',minimap:'Toggle minimap',beautify:'Beautify selected pen strokes',esc:'Deselect / cancel',
       cycle:'Cycle shapes',create:'Create at centre',
       present:'Present',nudge:'Move (⇧: 10px)',zorder:'Front / back',zorderEnds:'To front / to back',
-      rotate:'Rotate (15° / knob drag)',selAllMatches:'matches selected',search:'Search',searchNav:'Next / prev match',moveAxis:'Constrain move axis',resizeRatio:'Keep ratio (resize)',resizeCenter:'Resize from centre',kbdResize:'Resize (⇧:×10)',lasso:'Lasso select',swapFill:'Swap fill↔stroke',digitOpacity:'Opacity 0-9',eyedropDone:'Style picked',swapDone:'Fill↔stroke swapped'}}};
+      rotate:'Rotate (15° / knob drag)',selAllMatches:'matches selected',search:'Search',searchNav:'Next / prev match',moveAxis:'Constrain move axis',resizeRatio:'Keep ratio (resize)',resizeCenter:'Resize from centre',kbdResize:'Resize (⇧:×10)',lasso:'Lasso select',swapFill:'Swap fill↔stroke',digitOpacity:'Opacity 0-9',eyedropDone:'Style picked',swapDone:'Fill↔stroke swapped',fixAnchor:'Bind end at a fixed anchor'}}};
 // ADR-0014: LANG/T are `let`, not `const`, so UI.toggleLang() can reassign them — t()
 // closes over T by reference, so every t()/T.k call made AFTER a reassignment picks up
 // the new language automatically. Only elements that cache a translated string once at
@@ -1335,8 +1335,8 @@ const Store={
       const aGone=sh.a&&goneIds.has(sh.a),bGone=sh.b&&goneIds.has(sh.b);
       if(!aGone&&!bGone)continue;
       const e=connEnds(sh),patch={};
-      if(aGone){patch.a=null;patch.x1=e.x1;patch.y1=e.y1;}
-      if(bGone){patch.b=null;patch.x2=e.x2;patch.y2=e.y2;}
+      if(aGone){patch.a=null;patch.aF=null;patch.x1=e.x1;patch.y1=e.y1;}   // ADR-0209
+      if(bGone){patch.b=null;patch.bF=null;patch.x2=e.x2;patch.y2=e.y2;}
       fixes.push({id:sh.id,patch});
     }
     return fixes.length?fixes:null;
@@ -1699,8 +1699,8 @@ function connEnds(s){
   const ba=a&&G.bbox(a),bb=b&&G.bbox(b);
   const ac=ba?{x:ba.x+ba.w/2,y:ba.y+ba.h/2}:{x:s.x1,y:s.y1};
   const bc=bb?{x:bb.x+bb.w/2,y:bb.y+bb.h/2}:{x:s.x2,y:s.y2};
-  const p1=a?_edgePt(a,bc.x,bc.y):{x:s.x1,y:s.y1};
-  const p2=b?_edgePt(b,ac.x,ac.y):{x:s.x2,y:s.y2};
+  const p1=a?(s.aF?{x:ba.x+ba.w*s.aF.fx,y:ba.y+ba.h*s.aF.fy}:_edgePt(a,bc.x,bc.y)):{x:s.x1,y:s.y1};   // ADR-0209
+  const p2=b?(s.bF?{x:bb.x+bb.w*s.bF.fx,y:bb.y+bb.h*s.bF.fy}:_edgePt(b,ac.x,ac.y)):{x:s.x2,y:s.y2};
   return{x1:p1.x,y1:p1.y,x2:p2.x,y2:p2.y};
 }
 // ADR-0090: s.way is an ARRAY of interior vertices [{x,y},…] (was: single
@@ -1749,8 +1749,8 @@ function computeConnClears(delIds){
     if(!aAffected&&!bAffected)continue;
     const e=connEnds(sh);                   // resolve current endpoint before deletion
     const p={id:sh.id,before:{},after:{}};
-    if(aAffected){p.before.a=sh.a;p.before.x1=sh.x1;p.before.y1=sh.y1;p.after.a=null;p.after.x1=e.x1;p.after.y1=e.y1;}
-    if(bAffected){p.before.b=sh.b;p.before.x2=sh.x2;p.before.y2=sh.y2;p.after.b=null;p.after.x2=e.x2;p.after.y2=e.y2;}
+    if(aAffected){p.before.a=sh.a;p.before.aF=sh.aF;p.before.x1=sh.x1;p.before.y1=sh.y1;p.after.a=null;p.after.aF=null;p.after.x1=e.x1;p.after.y1=e.y1;}
+    if(bAffected){p.before.b=sh.b;p.before.bF=sh.bF;p.before.x2=sh.x2;p.before.y2=sh.y2;p.after.b=null;p.after.bF=null;p.after.x2=e.x2;p.after.y2=e.y2;}   // ADR-0209
     connClears.push(p);
   }
   return connClears;
@@ -2667,17 +2667,20 @@ function _connLabelXY(s){
 function _drawConnLabel(s,c){
   if(!s.label)return;
   const lp=_connLabelXY(s),mx=lp.x,my=lp.y;                       // ADR-0081
-  c.save();
+  c.save();c.shadowColor='transparent';c.shadowBlur=0;c.shadowOffsetY=0;   // ADR-0211: label never shadows
   const fs=s.fontSize||12;   // ADR-0169
   c.font=_fontStr(s,fs);c.textAlign='center';c.textBaseline='middle';   // ADR-0170
-  const w=c.measureText(s.label).width,pad=4;
+  const lns=String(s.label).split('\n'),llh=fs*(s.lineH||1.25),pad=4;   // ADR-0210/0212
+  let w=0;for(const l of lns)w=Math.max(w,c.measureText(l).width);
+  const th=lns.length*llh;
   c.fillStyle=s.fill||getCSS('--paper')||'#fff';              // ADR-0193
-  c.fillRect(mx-w/2-pad,my-fs*0.75,w+pad*2,fs*1.5);
+  c.fillRect(mx-w/2-pad,my-th/2,w+pad*2,th);
   c.fillStyle=s.stroke||'#0F172A';
-  c.fillText(s.label,mx,my);
+  for(let i=0;i<lns.length;i++)c.fillText(lns[i],mx,my+(i-(lns.length-1)/2)*llh);
   if(s.under||s.strike){c.strokeStyle=c.fillStyle;c.lineWidth=Math.max(1,fs*0.06);   // ADR-0170
-    if(s.under){c.beginPath();c.moveTo(mx-w/2,my+fs*0.55);c.lineTo(mx+w/2,my+fs*0.55);c.stroke()}
-    if(s.strike){c.beginPath();c.moveTo(mx-w/2,my);c.lineTo(mx+w/2,my);c.stroke()}}
+    for(let i=0;i<lns.length;i++){const lw=c.measureText(lns[i]).width,ly=my+(i-(lns.length-1)/2)*llh;
+      if(s.under){c.beginPath();c.moveTo(mx-lw/2,ly+fs*0.55);c.lineTo(mx+lw/2,ly+fs*0.55);c.stroke()}
+      if(s.strike){c.beginPath();c.moveTo(mx-lw/2,ly);c.lineTo(mx+lw/2,ly);c.stroke()}}}
   c.restore();
 }
 function drawShape(s,c){
@@ -2719,7 +2722,8 @@ function drawShape(s,c){
       if(s.fstyle)_hatchCtx(c,s);                              // ADR-0077
       _drawBoxLabel(s,c);break;}
     case 'line':{
-      if(s.elbow){_polyline(c,_elbowPts(s));c.stroke();_drawConnLabel(s,c);break}
+      if(s.shadow){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=10;c.shadowOffsetY=3}   // ADR-0211
+      if(s.elbow){const _ep=_elbowPts(s);(s.r>0)?_polylineR(c,_ep,s.r):_polyline(c,_ep);c.stroke();_drawConnLabel(s,c);break}   // ADR-0207
       if(s.curve){const e=connEnds(s),cc=_curveCtrl(e,s.cbend);c.beginPath();c.moveTo(e.x1,e.y1);c.quadraticCurveTo(cc.x,cc.y,e.x2,e.y2);c.stroke();_drawConnLabel(s,c);break}
       _polyline(c,_linePts(s));c.stroke();_drawConnLabel(s,c);break;}   // ADR-0076
     case 'arrow':
@@ -2809,6 +2813,7 @@ function drawShape(s,c){
       break;}
   }
   c.globalAlpha=1;c.letterSpacing='0px';
+  c.shadowColor='transparent';c.shadowBlur=0;c.shadowOffsetY=0;   // ADR-0211
   c.setLineDash([]);
   if(_rot)c.restore();
 }
@@ -2826,6 +2831,7 @@ function roundRect(c,x,y,w,h,r){
 }
 function drawArrow(s,c){
   c=c||ctx;
+  if(s.shadow){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=10;c.shadowOffsetY=3}   // ADR-0211
   const e=connEnds(s);
   const ah=Math.max(6,(s.size||2)*3);
   if(s.curve){
@@ -2836,7 +2842,7 @@ function drawArrow(s,c){
     return;
   }
   if(s.elbow){
-    const pts=_elbowPts(s);_polyline(c,pts);c.stroke();
+    const pts=_elbowPts(s);(s.r>0)?_polylineR(c,pts,s.r):_polyline(c,pts);c.stroke();   // ADR-0207
     const L=pts[pts.length-1],P=pts[pts.length-2];
     const ang=Math.atan2(L.y-P.y,L.x-P.x)||Math.atan2(e.y2-e.y1,e.x2-e.x1);
     _arrowHeadShape(c,L.x,L.y,ang,ah,s.stroke,s.head);
@@ -2925,6 +2931,36 @@ function _diamondPath(c,s){
 function _polyline(c,pts){
   c.beginPath();c.moveTo(pts[0].x,pts[0].y);
   for(let i=1;i<pts.length;i++)c.lineTo(pts[i].x,pts[i].y);
+}
+// ADR-0207: polyline with rounded interior joints (draw.io "rounded" edgeStyle).
+// Each interior vertex is trimmed by r along both segments and bridged with a
+// quadratic curve (vertex as control point) — same math as _diamondPath.
+function _polylineR(c,pts,r){
+  c.beginPath();c.moveTo(pts[0].x,pts[0].y);
+  for(let i=1;i<pts.length-1;i++){
+    const p0=pts[i-1],p1=pts[i],p2=pts[i+1];
+    const e1=Math.hypot(p1.x-p0.x,p1.y-p0.y)||1,e2=Math.hypot(p2.x-p1.x,p2.y-p1.y)||1;
+    const rr=Math.min(r,e1/2,e2/2);
+    if(rr<=0){c.lineTo(p1.x,p1.y);continue}
+    c.lineTo(p1.x+(p0.x-p1.x)/e1*rr,p1.y+(p0.y-p1.y)/e1*rr);
+    c.quadraticCurveTo(p1.x,p1.y,p1.x+(p2.x-p1.x)/e2*rr,p1.y+(p2.y-p1.y)/e2*rr);
+  }
+  c.lineTo(pts[pts.length-1].x,pts[pts.length-1].y);
+}
+// Same rounded-joint walk as an SVG path `d` string (parity with _polylineR).
+function _polylineRd(pts,ox,oy,r){
+  const n2=v=>Math.round(v*10)/10;
+  let d=`M ${n2(pts[0].x+ox)} ${n2(pts[0].y+oy)}`;
+  for(let i=1;i<pts.length-1;i++){
+    const p0=pts[i-1],p1=pts[i],p2=pts[i+1];
+    const e1=Math.hypot(p1.x-p0.x,p1.y-p0.y)||1,e2=Math.hypot(p2.x-p1.x,p2.y-p1.y)||1;
+    const rr=Math.min(r,e1/2,e2/2);
+    if(rr<=0){d+=` L ${n2(p1.x+ox)} ${n2(p1.y+oy)}`;continue}
+    d+=` L ${n2(p1.x+(p0.x-p1.x)/e1*rr+ox)} ${n2(p1.y+(p0.y-p1.y)/e1*rr+oy)}`;
+    d+=` Q ${n2(p1.x+ox)} ${n2(p1.y+oy)} ${n2(p1.x+(p2.x-p1.x)/e2*rr+ox)} ${n2(p1.y+(p2.y-p1.y)/e2*rr+oy)}`;
+  }
+  d+=` L ${n2(pts[pts.length-1].x+ox)} ${n2(pts[pts.length-1].y+oy)}`;
+  return d;
 }
 // ADR-0119: head style variants — 'arrow' (filled triangle, default),
 // 'dot' (filled circle), 'open' (stroked chevron). Applies to both ends.
@@ -3039,11 +3075,12 @@ function _fontStr(s,fs){
 function drawText(s,c){
   c=c||ctx;
   if(s.id===state.editing)return;
+  if(s.shadow){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=10;c.shadowOffsetY=3}   // ADR-0211
   c.fillStyle=s.stroke||'#0F172A';
   const fs=s.fontSize||16;
   c.font=_fontStr(s,fs);                                    // ADR-0078
   c.textBaseline='top';
-  const lines=(s.text||'').split('\n');
+  const lines=s.wrap?wrapTextCached(s,s.text||'',Math.abs(s.w),fs,t=>c.measureText(t).width):(s.text||'').split('\n');   // ADR-0208
   const lh=fs*(s.lineH||1.25);
   c.textAlign=s.align==='center'?'center':s.align==='right'?'right':'left';   // ADR-0073
   const ax=s.align==='center'?s.x+s.w/2:s.align==='right'?s.x+s.w:s.x;
@@ -3262,7 +3299,7 @@ function applyResize(sh,handle,orig,wp,shift,alt){
   }
   if(handle==='p1'||handle==='p2'){
     const bk=handle==='p1'?'a':'b';
-    if(sh[bk])sh[bk]=null;                                    // ADR-0065: grabbed a bound end — free while dragging
+    if(sh[bk]){sh[bk]=null;sh[bk+'F']=null}                    // ADR-0065/0209: grabbed a bound end — free while dragging
     if(shift){                                               // ADR-0206: constrain the free end to 45° increments
       const fx=handle==='p1'?orig.x2:orig.x1,fy=handle==='p1'?orig.y2:orig.y1;
       const dx=sp.x-fx,dy=sp.y-fy,dd=Math.hypot(dx,dy);
@@ -3873,7 +3910,7 @@ canvas.addEventListener('pointerup',e=>{
       if(ptr.dragKind==='resize'){
         const rsh=byId([...state.selection][0]);
         if(rsh){
-          _endPointBind(rsh,ptr.resizeHandle);                 // ADR-0065
+          _endPointBind(rsh,ptr.resizeHandle,e.altKey);           // ADR-0065/0209
           const after=clone(rsh);
           const before=ptr.resizeOrig;
           if(JSON.stringify(before)!==JSON.stringify(after)){
@@ -4954,19 +4991,35 @@ function endLineLike(){
 // ADR-0065: settle an endpoint drag — bind if dropped on a shape (not self /
 // not the other end's shape), else unbind. Called before the commit snapshot so
 // a/b lands inside the same `upd` op.
-function _endPointBind(sh,handle){
+function _endPointBind(sh,handle,alt){
   if(handle!=='p1'&&handle!=='p2')return;
-  const k=handle==='p1'?'a':'b',other=k==='a'?'b':'a';
+  const k=handle==='p1'?'a':'b',other=k==='a'?'b':'a',fk=k+'F';
   const hit=_bindAt(handle==='p1'?sh.x1:sh.x2,handle==='p1'?sh.y1:sh.y2);
   sh[k]=(hit&&hit!==sh.id&&hit!==sh[other])?hit:null;
+  if(sh[k]&&alt){                                          // ADR-0209: ⌥-drop pins a fixed
+    const bb=G.bbox(byId(sh[k]));                          // edge anchor (draw.io exitX/exitY)
+    const px=handle==='p1'?sh.x1:sh.x2,py=handle==='p1'?sh.y1:sh.y2;
+    const fx=Math.min(1,Math.max(0,(px-bb.x)/(bb.w||1))),fy=Math.min(1,Math.max(0,(py-bb.y)/(bb.h||1)));
+    if(Math.min(fx,1-fx)<Math.min(fy,1-fy))sh[fk]={fx:fx<0.5?0:1,fy};else sh[fk]={fx,fy:fy<0.5?0:1};
+  }else sh[fk]=null;
 }
 // Topmost non-connector shape whose bbox contains (x,y), for connector binding.
+// ADR-0214: same _queryGrid acceleration as pickTop — endpoint drags call this
+// per pointermove, so the full-board scan was the dominant cost on big boards.
 function _bindAt(x,y){
+  const ok=s=>{const t=s.type;return t!=='line'&&t!=='arrow'&&t!=='pen'&&s.visible!==0};   // ADR-0150
+  const has=s=>{const b=G.bbox(s);return b&&x>=b.x&&y>=b.y&&x<=b.x+b.w&&y<=b.y+b.h};
+  if(state.shapes.length>40){
+    if(!_grid)_grid=_buildGrid(state.shapes);
+    const cands=[..._queryGrid(_grid,{x,y})];
+    cands.sort((a,b)=>(_grid.idx.get(b)|0)-(_grid.idx.get(a)|0));
+    for(const s of cands)if(ok(s)&&has(s))return s.id;
+    return null;
+  }
   for(let i=state.shapes.length-1;i>=0;i--){
-    const s=state.shapes[i],t=s.type;
-    if(t==='line'||t==='arrow'||t==='pen'||s.visible===0)continue;   // ADR-0150
-    const b=G.bbox(s);
-    if(x>=b.x&&y>=b.y&&x<=b.x+b.w&&y<=b.y+b.h)return s.id;
+    const s=state.shapes[i];
+    if(!ok(s))continue;
+    if(has(s))return s.id;
   }
   return null;
 }
@@ -6631,9 +6684,12 @@ function _svgLs(s){return s.spacing?` letter-spacing="${s.spacing}px"`:''}   // 
 function _connLabelSVG(s,x1,y1,x2,y2,ox,oy,stroke,paper){
   if(!s.label)return '';
   const mx=(x1+x2)/2+ox,my=(y1+y2)/2+oy;
-  const fs=s.fontSize||12,lw=String(s.label).length*fs*0.6+8;   // ADR-0169
-  return `<rect x="${mx-lw/2}" y="${my-fs*0.75}" width="${lw}" height="${fs*1.5}" fill="${_esc(s.fill||paper||'#FFFFFF')}" opacity="0.9"/>`+
-    `<text x="${mx}" y="${my}" font-family="${_fontFam(s)}" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''}${_svgLs(s)} text-anchor="middle" dominant-baseline="central" fill="${stroke}">${_esc(s.label)}</text>`;   // ADR-0170
+  const fs=s.fontSize||12;
+  const lns=String(s.label).split('\n'),lh2=fs*(s.lineH||1.25);          // ADR-0210/0212
+  const lw=Math.max(...lns.map(l=>l.length),0)*fs*0.6+8,th=lns.length*lh2;
+  const tsp=lns.map((l,i)=>`<tspan x="${mx}" dy="${i?lh2:0}">${_esc(l)}</tspan>`).join('');
+  return `<rect x="${mx-lw/2}" y="${my-th/2}" width="${lw}" height="${th}" fill="${_esc(s.fill||paper||'#FFFFFF')}" opacity="0.9"/>`+
+    `<text x="${mx}" y="${my-(lns.length-1)*lh2/2}" font-family="${_fontFam(s)}" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''}${_svgLs(s)} text-anchor="middle" dominant-baseline="central" fill="${stroke}">${tsp}</text>`;   // ADR-0170/0210
 }
 // Pure SVG assembly; returns string or null. All attr values through _esc.
 function buildSVG(shapes,paper){
@@ -6700,17 +6756,19 @@ function buildSVG(shapes,paper){
       case 'line':{
         if(s.curve){
           const _ce=connEnds(s),cc=_curveCtrl(_ce,s.cbend);
-          els.push(`<path d="M ${_num(_ce.x1+ox)} ${_num(_ce.y1+oy)} Q ${_num(cc.x+ox)} ${_num(cc.y+oy)} ${_num(_ce.x2+ox)} ${_num(_ce.y2+oy)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}/>`);
+          els.push(`<path d="M ${_num(_ce.x1+ox)} ${_num(_ce.y1+oy)} Q ${_num(cc.x+ox)} ${_num(cc.y+oy)} ${_num(_ce.x2+ox)} ${_num(_ce.y2+oy)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`);
           const lm=_curveLabelXY(s);
           {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
         }else if(s.elbow){
-          const pts=_elbowPts(s),spts=pts.map(p=>`${_num(p.x+ox)},${_num(p.y+oy)}`).join(' ');
-          els.push(`<polyline points="${spts}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}/>`);
+          const pts=_elbowPts(s);
+          if(s.r>0)els.push(`<path d="${_polylineRd(pts,ox,oy,s.r)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`);   // ADR-0207
+          else{const spts=pts.map(p=>`${_num(p.x+ox)},${_num(p.y+oy)}`).join(' ');
+          els.push(`<polyline points="${spts}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`)}
           const lm=_elbowLabelXY(s);
           {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
         }else{
-          if(s.way){const w=s.way;els.push(`<polyline points="${X1+ox},${Y1+oy} ${_num(w.x+ox)},${_num(w.y+oy)} ${X2+ox},${Y2+oy}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}/>`)}   // ADR-0076
-          else els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}/>`);
+          if(s.way){const w=s.way;els.push(`<polyline points="${X1+ox},${Y1+oy} ${_num(w.x+ox)},${_num(w.y+oy)} ${X2+ox},${Y2+oy}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`)}   // ADR-0076
+          else els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`);
           {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
         }
         break;}
@@ -6718,7 +6776,7 @@ function buildSVG(shapes,paper){
         const ah=Math.max(6,(SZ||2)*3);
         if(s.curve){
           const _ce=connEnds(s),cc=_curveCtrl(_ce,s.cbend);
-          els.push(`<path d="M ${_num(_ce.x1+ox)} ${_num(_ce.y1+oy)} Q ${_num(cc.x+ox)} ${_num(cc.y+oy)} ${_num(_ce.x2+ox)} ${_num(_ce.y2+oy)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}/>`);
+          els.push(`<path d="M ${_num(_ce.x1+ox)} ${_num(_ce.y1+oy)} Q ${_num(cc.x+ox)} ${_num(cc.y+oy)} ${_num(_ce.x2+ox)} ${_num(_ce.y2+oy)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`);
           const ang=Math.atan2(_ce.y2-cc.y,_ce.x2-cc.x);
           const a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5,tx=_ce.x2+ox,ty=_ce.y2+oy;
           _svgArrowHead(els,tx,ty,a1,a2,ah,stroke,a,SZ,s.head);
@@ -6728,8 +6786,10 @@ function buildSVG(shapes,paper){
           const lm=_curveLabelXY(s);
           {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
         }else if(s.elbow){
-          const pts=_elbowPts(s),spts=pts.map(p=>`${_num(p.x+ox)},${_num(p.y+oy)}`).join(' ');
-          els.push(`<polyline points="${spts}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}/>`);
+          const pts=_elbowPts(s);
+          if(s.r>0)els.push(`<path d="${_polylineRd(pts,ox,oy,s.r)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`);   // ADR-0207
+          else{const spts=pts.map(p=>`${_num(p.x+ox)},${_num(p.y+oy)}`).join(' ');
+          els.push(`<polyline points="${spts}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`)}
           const Lp=pts[pts.length-1],Pp=pts[pts.length-2];
           const ang=Math.atan2(Lp.y-Pp.y,Lp.x-Pp.x)||Math.atan2(Y2-Y1,X2-X1);
           const a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5;
@@ -6743,7 +6803,7 @@ function buildSVG(shapes,paper){
           {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
         }else if(s.way){                                            // ADR-0090: full vertex list
           const pts=_linePts(s),wpts=pts.map(p=>_num(p.x+ox)+','+_num(p.y+oy)).join(' ');
-          els.push(`<polyline points="${wpts}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}/>`);
+          els.push(`<polyline points="${wpts}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`);
           const L=pts[pts.length-1],P=pts[pts.length-2],F=pts[1];
           const ang=Math.atan2(L.y-P.y,L.x-P.x),a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5,tx=L.x+ox,ty=L.y+oy;
           _svgArrowHead(els,tx,ty,a1,a2,ah,stroke,a,SZ,s.head);
@@ -6752,7 +6812,7 @@ function buildSVG(shapes,paper){
           const lm=_connLabelXY(s);
           {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
         }else{
-          els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}/>`);
+          els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`);
           const ang=Math.atan2(Y2-Y1,X2-X1);
           const a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5;
           const tx=X2+ox,ty=Y2+oy;
@@ -6790,13 +6850,13 @@ function buildSVG(shapes,paper){
         break;}
       case 'text':{
         const fs=_num(s.fontSize)||16;
-        const svgLines=String(s.text==null?'':s.text).split('\n');
+        const svgLines=s.wrap?wrapText(String(s.text==null?'':s.text),Math.abs(W),t=>t.length*fs*0.6):String(s.text==null?'':s.text).split('\n');   // ADR-0208
         const tax=s.align==='center'?X+ox+W/2:s.align==='right'?X+ox+W:X+ox;   // ADR-0073
         const anch=s.align==='center'?' text-anchor="middle"':s.align==='right'?' text-anchor="end"':'';
         if(s.fill){const mw2=Math.max(...svgLines.map(l=>l.length),0)*fs*0.6;              // ADR-0191
           const bx2=s.align==='center'?tax-mw2/2:s.align==='right'?tax-mw2:tax;
           els.push(`<rect x="${bx2-3}" y="${Y+oy-3}" width="${mw2+6}" height="${svgLines.length*fs*(s.lineH||1.25)+6}" fill="${_esc(s.fill)}"${a}${rT}/>`);}
-        els.push(`<text x="${tax}" y="${Y+oy}" dominant-baseline="hanging" font-family="${_fontFam(s)}" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''}${_svgLs(s)} fill="${stroke}"${anch}${a}${rT}>`);   // ADR-0078/0095/0100
+        els.push(`<text x="${tax}" y="${Y+oy}" dominant-baseline="hanging" font-family="${_fontFam(s)}" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''}${_svgLs(s)} fill="${stroke}"${anch}${a}${rT}${_sh}>`);   // ADR-0078/0095/0100
         for(let i=0;i<svgLines.length;i++)els.push(`<tspan x="${tax}" dy="${i?fs*(s.lineH||1.25):0}">${_esc(svgLines[i])}</tspan>`);
         els.push('</text>');break;}
       case 'image':
@@ -7828,6 +7888,7 @@ const UI={
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond'||s.type==='sticky'||(s.type==='image'&&!!s.label))&&!s.locked})&&['ctxVAlign','',cycleVAlign],   // ADR-0179   // ADR-0159
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky'||s.label)&&!s.locked})&&['ctxLineH','',cycleLineH],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky'||s.type==='frame'||s.label)&&!s.locked})&&['ctxSpacing','',cycleSpacing],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='text'&&!s.locked})&&['ctxWrap','',toggleWrap],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky')&&!s.locked})&&[[...state.selection].some(id=>byId(id)?.type==='sticky'&&!byId(id)?.locked)?'ctxToText':'ctxToSticky','',toggleStickyText],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='sticky'&&!s.locked})&&['ctxStickyColor','',cycleStickyColor],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond')&&!s.locked})&&['ctxFillStyle','',cycleFillStyle],
@@ -7856,9 +7917,10 @@ const UI={
       has&&['ctxFlipH','⇧H',()=>doFlip('h')],
       has&&['ctxFlipV','⇧V',()=>doFlip('v')],
       has&&['ctxRotate90','⇧R',()=>doRotate(90)],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='rect'||s.type==='diamond'||s.type==='image')&&!s.locked})&&['ctxCorner','',cycleCorner],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond'||s.type==='image')&&!s.locked})&&['ctxShadow','',toggleShadow],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&((s.type==='rect'||s.type==='diamond'||s.type==='image')||((s.type==='line'||s.type==='arrow')&&s.elbow))&&!s.locked})&&['ctxCorner','',cycleCorner],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond'||s.type==='image'||s.type==='text'||s.type==='line'||s.type==='arrow')&&!s.locked})&&['ctxShadow','',toggleShadow],
       has&&['ctxHide','⌘⇧H',hideSelection],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked&&(s.a||s.b)})&&['ctxPinAnchor','',pinAnchor],   // ADR-0213
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked&&(s.a||s.b)})&&['ctxUnbind','',unbindSelection],   // ADR-0157
       has&&[...state.selection].map(byId).filter(s=>s&&!s.locked&&s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen').length===2&&['ctxConnect','',connectSelection],
       state.shapes.some(s=>s.visible===0)&&['ctxShowAll','',showAllShapes],
@@ -7958,7 +8020,7 @@ const UI={
       ['Enter / ⇧Enter',k.searchNav],
       ['⇧H / ⇧V',t('ctxFlipH')+' / '+t('ctxFlipV')],
       ['⌥C / ⌥V',t('ctxCopyStyle')+' / '+t('ctxPasteStyle')],
-      ['⇧ + drag',k.moveAxis],['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],['⌥ + drag',k.lasso],['I',k.eyedropper],['⇧X',k.swapFill],['0-9',k.digitOpacity],['⌘⇧ , / .',k.fontSize],['⌘B / ⌘I / ⌘U / ⌘⇧X',k.boldItalic],
+      ['⇧ + drag',k.moveAxis],['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],['⌥ + drag',k.lasso],['⌥ + drop',k.fixAnchor],['I',k.eyedropper],['⇧X',k.swapFill],['0-9',k.digitOpacity],['⌘⇧ , / .',k.fontSize],['⌘B / ⌘I / ⌘U / ⌘⇧X',k.boldItalic],
       ['Tab / ⇧Tab',k.cycle],['Enter',k.create+' / '+t('editLabel')]
     ];
     while(g.firstChild)g.removeChild(g.firstChild);
@@ -8489,12 +8551,13 @@ function reverseConn(){
   const before=[],after=[];
   for(const id of state.selection){
     const s=byId(id);if(!s||(s.type!=='line'&&s.type!=='arrow')||s.locked)continue;
-    before.push({id,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2,a:s.a??null,b:s.b??null,way:s.way??null,labelPos:s.labelPos??null});
+    before.push({id,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2,a:s.a??null,b:s.b??null,aF:s.aF??null,bF:s.bF??null,way:s.way??null,labelPos:s.labelPos??null});
     const t1=s.x1,t2=s.y1;s.x1=s.x2;s.y1=s.y2;s.x2=t1;s.y2=t2;
     const tb=s.a;s.a=s.b??null;s.b=tb??null;
+    const tbF=s.aF;s.aF=s.bF??null;s.bF=tbF??null;               // ADR-0209
     if(s.way)s.way=_wayArr(s).slice().reverse();
     if(s.labelPos!=null)s.labelPos=1-s.labelPos;
-    after.push({id,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2,a:s.a??null,b:s.b??null,way:s.way??null,labelPos:s.labelPos??null});
+    after.push({id,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2,a:s.a??null,b:s.b??null,aF:s.aF??null,bF:s.bF??null,way:s.way??null,labelPos:s.labelPos??null});
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
 }
@@ -8522,13 +8585,36 @@ function fitSticky(){
 // Dragging an endpoint to empty space detaches one end; this clears a/b on
 // every selected connector in a single undoable style op — useful when a
 // flowchart section is copied without its targets.
+// ADR-0213: pin/unpin bound endpoints as fixed anchors via ctx —
+// the ⌥-drop gesture (ADR-0209) is unreachable for touch/keyboard users.
+// Pins at the CURRENT floating contact point (already on the edge), so
+// the visible geometry doesn't change when pinning.
+function pinAnchor(){
+  const before=[],after=[];
+  for(const id of state.selection){
+    const s=byId(id);if(!s||(s.type!=='line'&&s.type!=='arrow')||s.locked||(!s.a&&!s.b))continue;
+    before.push({id,aF:s.aF??null,bF:s.bF??null});
+    const e=connEnds(s);
+    for(const k of['a','b']){
+      const tgt=s[k]&&byId(s[k]);if(!tgt)continue;
+      const fk=k+'F';
+      if(s[fk])s[fk]=null;
+      else{
+        const bb=G.bbox(tgt),px=k==='a'?e.x1:e.x2,py=k==='a'?e.y1:e.y2;
+        s[fk]={fx:Math.min(1,Math.max(0,(px-bb.x)/(bb.w||1))),fy:Math.min(1,Math.max(0,(py-bb.y)/(bb.h||1)))};
+      }
+    }
+    after.push({id,aF:s.aF??null,bF:s.bF??null});
+  }
+  if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
+}
 function unbindSelection(){
   const before=[],after=[];
   for(const id of state.selection){
     const s=byId(id);if(!s||(s.type!=='line'&&s.type!=='arrow')||s.locked||(!s.a&&!s.b))continue;
-    before.push({id,a:s.a??null,b:s.b??null,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2});
-    s.a=null;s.b=null;
-    after.push({id,a:null,b:null,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2});
+    before.push({id,a:s.a??null,b:s.b??null,aF:s.aF??null,bF:s.bF??null,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2});
+    s.a=null;s.b=null;s.aF=null;s.bF=null;                     // ADR-0209
+    after.push({id,a:null,b:null,aF:null,bF:null,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2});
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
 }
@@ -8550,6 +8636,18 @@ function cycleVAlign(){
 // ADR-0205: letter-spacing cycle — draw.io's letterSpacing. Canvas exposes
 // it as ctx.letterSpacing (set once per drawShape so every text site inherits);
 // SVG emits a letter-spacing attr. Sequence mirrors the other type cycles.
+// ADR-0208: word-wrap toggle for text shapes — wraps lines at s.w
+// (draw.io wordWrap=1 parity). style op (undoable), default stays off so
+// existing boards are unchanged.
+function toggleWrap(){
+  const before=[],after=[];
+  for(const id of state.selection){
+    const s=byId(id);if(!s||s.type!=='text'||s.locked)continue;
+    before.push({id,wrap:s.wrap??null});after.push({id,wrap:s.wrap?null:1});
+    s.wrap=s.wrap?null:1;
+  }
+  if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
+}
 function cycleSpacing(){
   const seq=[null,1,2];
   const before=[],after=[];
@@ -8672,7 +8770,10 @@ function cycleTextAlign(){
 function cycleCorner(){
   const before=[],after=[];
   for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='rect'&&s.type!=='diamond'&&s.type!=='image')||s.locked)continue;   // ADR-0156/0168
+    const s=byId(id);if(!s||s.locked)continue;
+    const boxOk=s.type==='rect'||s.type==='diamond'||s.type==='image';
+    const connOk=(s.type==='line'||s.type==='arrow')&&s.elbow;   // ADR-0207
+    if(!boxOk&&!connOk)continue;
     const cur=s.r==null?8:s.r,nxt=cur<4?8:cur<12?16:cur<20?24:0;
     before.push({id,r:s.r??null});after.push({id,r:nxt});
     s.r=nxt;state.style.r=nxt;                                  // ADR-0184
@@ -8684,7 +8785,7 @@ function cycleCorner(){
 function toggleShadow(){
   const before=[],after=[];
   for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='rect'&&s.type!=='ellipse'&&s.type!=='diamond'&&s.type!=='image')||s.locked)continue;
+    const s=byId(id);if(!s||(s.type!=='rect'&&s.type!=='ellipse'&&s.type!=='diamond'&&s.type!=='image'&&s.type!=='text'&&s.type!=='line'&&s.type!=='arrow')||s.locked)continue;   // ADR-0211
     before.push({id,shadow:s.shadow||null});after.push({id,shadow:s.shadow?null:true});
     if(s.shadow)delete s.shadow;else s.shadow=true;
     state.style.shadow=s.shadow||null;

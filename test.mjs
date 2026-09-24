@@ -252,7 +252,7 @@ const checks = [
   // v1.7.0: connector (edge) labels (ADR-0003)
   ['openLabelEditor shared by boxes + connectors', html.includes("function openLabelEditor(hit,leftPx,topPx,bold)")],
   ['dblclick opens label editor on line/arrow at midpoint', html.includes("hit.type==='line'||hit.type==='arrow'") && html.includes("_connLabelXY(hit)")],
-  ['_drawConnLabel renders edge label on canvas', html.includes("function _drawConnLabel(s,c)") && html.includes("c.fillText(s.label,mx,my)")],
+  ['_drawConnLabel renders edge label on canvas', html.includes("function _drawConnLabel(s,c)") && html.includes("c.fillText(lns[i],mx,my+(i-(lns.length-1)/2)*llh)")],
   ['line/arrow drawShape calls _drawConnLabel', html.includes("c.stroke();_drawConnLabel(s,c);break;") && html.includes("drawArrow(s,c);_drawConnLabel(s,c);break;")],
   ['_connLabelSVG emits edge label in SVG', html.includes("function _connLabelSVG(s,x1,y1,x2,y2,ox,oy,stroke,paper)")],
   ['Persist.load validates shapes', html.includes("d.shapes.filter(validShape)")],
@@ -414,7 +414,7 @@ const checks = [
   ['diamond i18n ja+en', html.includes("diamond:'ダイヤ'")&&html.includes("diamond:'Diamond'")],
   // v1.7.120: ADR-0062 elbow connectors
   ['elbow route helper + toggle in ctx menu', html.includes('function _elbowPts(s)')&&html.includes('function toggleElbow()')&&html.includes("['ctxElbow','',toggleElbow]")],
-  ['elbow draw/hit/svg/minimap paths', html.includes('if(s.elbow){_polyline(c,_elbowPts(s))')&&html.includes('s.elbow){\n          const pts=_elbowPts')&&html.includes('<polyline points=')&&html.includes('stroke-linejoin="round"')],
+  ['elbow draw/hit/svg/minimap paths', html.includes('(s.r>0)?_polylineR(c,_ep,s.r):_polyline(c,_ep)')&&html.includes('s.elbow){\n          const pts=_elbowPts')&&html.includes('<polyline points=')&&html.includes('stroke-linejoin="round"')],
   ['elbow i18n ja+en', html.includes("ctxElbow:'エルボー (直角)'")&&html.includes("ctxElbow:'Elbow (right-angle)'")],
   // v1.7.121: ADR-0063 bidirectional arrowheads
   ['start arrowhead: draw + svg + ctx toggle', html.includes('if(s.start)_arrowHeadShape(c,e.x1,e.y1')&&html.includes('function toggleBothEnds()')&&html.includes("['ctxBothEnds','',toggleBothEnds]")],
@@ -423,8 +423,8 @@ const checks = [
   ['readout state + drawOverlay pill + ptr.down gate', html.includes('readout:null,             // ADR-0064')&&html.includes('if(ptr.down&&state.readout)')&&html.includes("roundRect(c,px-tw/2,py,tw,ph,4)")],
   ['readout set in applyResize/moveDelta/rotate paths + cleared with guides', html.includes('state.readout={x:_rb.x+_rb.w/2,y:_rb.y+_rb.h')&&html.includes('state.readout=bb&&(dx||dy)')&&html.includes('state.guides=null;state.readout=null;')],
   // v1.7.123: ADR-0065 connector endpoint rebind/unbind
-  ['endpoint rebind: always-handle + unbind-on-grab + bindPreview', html.includes("h.push({id:'p1',x:e.x1,y:e.y1});       // ADR-0065")&&html.includes('if(sh[bk])sh[bk]=null;')&&html.includes('state.bindPreview=')],
-  ['_endPointBind in pointerup + not-self/not-other-end guard', html.includes('_endPointBind(rsh,ptr.resizeHandle)')&&html.includes('hit!==sh[other]')],
+  ['endpoint rebind: always-handle + unbind-on-grab + bindPreview', html.includes("h.push({id:'p1',x:e.x1,y:e.y1});       // ADR-0065")&&html.includes("if(sh[bk]){sh[bk]=null;sh[bk+'F']=null}")&&html.includes('state.bindPreview=')],
+  ['_endPointBind in pointerup + not-self/not-other-end guard', html.includes('_endPointBind(rsh,ptr.resizeHandle,e.altKey)')&&html.includes('hit!==sh[other]')],
   // v1.7.124: ADR-0066 Shift+drag axis-constrained move
   ['shift axis constraint in moveDelta + objectSnap skipped', html.includes("if(Math.abs(dx)>=Math.abs(dy))dy=0;else dx=0;")&&html.includes('moveDelta(wp,shift,alt)')&&html.includes('doMove(wp,e.shiftKey,e.altKey)')&&html.includes('endSelect(wp,e.shiftKey,e.altKey)')],
   ['moveAxis i18n ja+en + help row', html.includes("moveAxis:'軸拘束移動'")&&html.includes("moveAxis:'Constrain move axis'")&&html.includes("['⇧ + drag',k.moveAxis]")],
@@ -513,7 +513,7 @@ const checks = [
   ['translate moves elbow bend (trunk follows connector)', html.includes('s.bend+=vert?dx:dy')&&html.includes('ADR-0147')],
   ['group resize scales elbow bend on trunk axis', html.includes('ADR-0148')&&html.includes('sh.bend=Math.abs(tr[1].x-tr[0].x)')],
   ['image flip mirrors pixels via s.flip bitmask', html.includes("s.flip=(s.flip||0)^(axis==='h'?1:2)")&&html.includes('ADR-0149')&&html.includes('scale(${s.flip&1?-1:1}')],
-  ['hidden shapes leave search + bindAt', html.includes('s.visible!==0&&(s.label||s.text||s.type')&&html.includes("t==='pen'||s.visible===0")],
+  ['hidden shapes leave search + bindAt', html.includes('s.visible!==0&&(s.label||s.text||s.type')&&html.includes("t!=='pen'&&s.visible!==0")],
   ['SVG export excludes hidden shapes', html.includes('const _vis=shapes.filter(s=>s.visible!==0)')&&html.includes('_vis.filter(s=>s.type==="frame")')],
   ['Alt+hover measure guides', html.includes('measure:null')&&html.includes('function _drawMeasure(c)')&&html.includes("e.altKey&&state.selection.size&&top&&!top.locked")],
   ['measure cleared on reset/down/Alt', html.includes('state.measure=null;ptr.x=ptr.x0')&&html.includes("e.key==='Alt'&&state.measure")],
@@ -521,7 +521,7 @@ const checks = [
   ['snap index skips hidden shapes', html.includes('exclFn(s)||s.visible===0')],
   ['DOM mirror marks hidden shapes', html.includes("tagHidden:'(非表示)'")&&html.includes("s.visible===0?' '+t('tagHidden')")],
   ['fit ignores hidden unless all hidden', html.includes('const vis=state.shapes.filter(s=>s.visible!==0)')&&html.includes('_vis.length?_vis:state.shapes')],
-  ['rounded diamond path + cycle + ctx', html.includes('function _diamondPath(c,s)')&&html.includes("s.type!=='rect'&&s.type!=='diamond'")&&html.includes("s.type==='rect'||s.type==='diamond'")],
+  ['rounded diamond path + cycle + ctx', html.includes('function _diamondPath(c,s)')&&html.includes("const boxOk=s.type==='rect'||s.type==='diamond'||s.type==='image'")&&html.includes("s.type==='rect'||s.type==='diamond'")],
   ['SVG diamond emits rounded path when r>0', html.includes('const _dPts=[[X+W/2,Y],[X+W,Y+H/2]')&&html.includes("Math.min(_dr,e1/2,e2/2)")],
   ['unbind-selection ctx item + fn', html.includes("ctxUnbind:'結合を解除'")&&html.includes('function unbindSelection()')&&html.includes("['ctxUnbind','',unbindSelection]")],
   ['valign cycle: box-label vertical align', html.includes('function cycleVAlign()')&&html.includes("s.valign==='top'?s.y+6")&&html.includes("['ctxVAlign','',cycleVAlign]")],
@@ -705,6 +705,14 @@ const checks = [
   ['.drawio file entry points + parser (ADR-0203)', html.includes("f=>/\\.(drawio|dio)$/i.test(f.name)")&&html.includes('function drawioToShapes')],
   ['frame label italic/under/strike (ADR-0204)', html.includes("600 ${fs}px")&&html.includes("s.type!=='frame'&&!s.label)||s.locked)continue;   // ADR-0170/0204")],
   ['letter-spacing cycle — canvas ctx+SVG+style-copy (ADR-0205)', html.includes("function cycleSpacing()")&&html.includes("c.letterSpacing=(s.spacing||0)+'px'")&&html.includes('_svgLs(s)')&&html.includes('spacing:sh.spacing')],
+  ['elbow corner rounding canvas+SVG + cycleCorner gate (ADR-0207)', html.includes('function _polylineR')&&html.includes('_polylineRd(pts,ox,oy,s.r)')&&html.includes("connOk=(s.type==='line'||s.type==='arrow')&&s.elbow")],
+  ['text word-wrap toggle + canvas/SVG wrap (ADR-0208)', html.includes('s.wrap?wrapTextCached')&&html.includes('s.wrap?wrapText(String')&&html.includes("['ctxWrap','',toggleWrap]")],
+  ['fixed edge anchors via Alt-drop + connEnds/reverse/unbind wiring (ADR-0209)', html.includes("sh[fk]={fx:fx<0.5?0:1,fy}")&&html.includes('s.aF?{x:ba.x+ba.w*s.aF.fx')&&html.includes('tbF=s.aF;s.aF=s.bF')],
+  ['multi-line conn label canvas+SVG (ADR-0210)', html.includes("String(s.label).split('\\n'),llh=fs*(s.lineH||1.25)")&&html.includes("lns.map((l,i)=>`<tspan")],
+  ['shadow on text/conns canvas+SVG + gate (ADR-0211)', html.includes("s.type!=='text'&&s.type!=='line'&&s.type!=='arrow'")&&html.includes('label never shadows')&&html.includes('${dA}${a}${_sh}/>`);')],
+  ['conn label honours lineH canvas+SVG (ADR-0212)', html.includes('llh=fs*(s.lineH||1.25)')&&html.includes('lh2=fs*(s.lineH||1.25)')],
+  ['pin/unpin anchor via ctx for touch/keyboard (ADR-0213)', html.includes('function pinAnchor()')&&html.includes("['ctxPinAnchor','',pinAnchor]")&&html.includes('px=k===\'a\'?e.x1:e.x2')],
+  ['_bindAt grid-accelerated candidate scan (ADR-0214)', html.includes('const cands=[..._queryGrid(_grid,{x,y})]')&&html.includes('const ok=s=>{const t=s.type;return t!==\'line\'&&t!==\'arrow\'&&t!==\'pen\'&&s.visible!==0}')],
   ['endpoint drag Shift constrains to 45 deg + label editor fontSize (ADR-0206)', html.includes("constrain the free end to 45")&&html.includes("${hit.fontSize||12}px")],
   ['i18n has excImported ja+en', html.includes("excImported:'Excalidraw を取り込みました'") && html.includes("excImported:'Excalidraw imported'")],
   // v1.7.102: ADR-0044 text paste → text shape
@@ -786,7 +794,7 @@ const checks = [
   ['empty-selection arrows pan viewport', html.includes("state.viewport.x+=k==='arrowleft'?-step:k==='arrowright'?step:0")],
   ['swapFillStroke: ⇧X swaps stroke↔fill via style op', html.includes('function swapFillStroke')&&html.includes("k==='x'&&e.shiftKey&&!meta")&&html.includes("const fk=s.type==='sticky'?'color':'fill'")],
   ['digit keys set opacity (Figma)', html.includes("/^[0-9]$/.test(k)&&state.selection.size")&&html.includes("opacity:k==='0'?1:+k/10")],
-  ['image corner radius via cycleCorner + clips', html.includes("s.type!=='image')||s.locked)continue;   // ADR-0156/0168")&&html.includes('clip-path="url(#irc')&&html.includes('roundRect(c,s.x,s.y,s.w,s.h,_cr);c.clip()')],
+  ['image corner radius via cycleCorner + clips', html.includes("if(!boxOk&&!connOk)continue;")&&html.includes('clip-path="url(#irc')&&html.includes('roundRect(c,s.x,s.y,s.w,s.h,_cr);c.clip()')],
   ['label fontSize honored across renderers', html.includes('const fs=s.fontSize||12;')&&html.includes('const fs=s.fontSize||14')&&html.includes("s.type!=='sticky'&&!s.label)||s.locked")],
     ['labels honor bold/italic/under/strike (ADR-0170)', html.includes('c.font=_fontStr(s,fs)')&&html.includes('font-weight="600"')&&html.includes('text-decoration=')],
   ['box/image labels honour s.align (ADR-0171)', html.includes("const al=s.align||'center';")&&html.includes('anc3=')&&html.includes("s.type!=='sticky'&&s.type!=='frame'&&!s.label)||s.locked)continue;   // ADR-0171/0197")],
@@ -796,7 +804,7 @@ const checks = [
   ['connEnds helper derives bound endpoints', html.includes("function connEnds") && html.includes("function _edgePt")],
   ['G.bbox line uses connEnds', html.includes("const e=connEnds(s);\n      let x=Math.min(e.x1,e.x2)")&&html.includes('for(const w of _wayArr(s))')],
   ['G.hit line uses connEnds', html.includes("const pts=_linePts(s);")],
-  ['drawArrow uses connEnds', html.includes("function drawArrow(s,c){\n  c=c||ctx;\n  const e=connEnds(s);")],
+  ['drawArrow uses connEnds', html.includes("const e=connEnds(s);\n  const ah=Math.max(6,(s.size||2)*3)")],
   ['endLineLike binds endpoints dropped on a shape', html.includes("const ba=_bindAt(d.x1,d.y1),bb=_bindAt(d.x2,d.y2)") && html.includes("function _bindAt")],
   ['connector endpoints always expose resize handles (ADR-0065 rebind)', html.includes("h.push({id:'p1',x:e.x1,y:e.y1});       // ADR-0065") && html.includes("h.push({id:'p2',x:e.x2,y:e.y2});")],
   ['SVG export derives bound endpoints', html.includes("const _e=connEnds(s);\n    const X1=_num(_e.x1)")],
@@ -6023,12 +6031,12 @@ try {
     const lineSvg = buildSVG([{id:'l',type:'line',x1:0,y1:0,x2:80,y2:60,label:'no',stroke:'#000',size:2,opacity:1}], '#fff');
     const plain = buildSVG([{id:'p',type:'arrow',x1:0,y1:0,x2:100,y2:0,stroke:'#000',size:2,opacity:1}], '#fff');
     assert.ok(arrSvg.includes('>yes<'), 'edge label: labeled arrow emits its label text');
-    assert.ok(/<text[^>]*text-anchor="middle"[^>]*>yes</.test(arrSvg), 'edge label: arrow label is centred <text>');
+    assert.ok(/<text[^>]*text-anchor="middle"[^>]*>(?:<tspan[^>]*>)?yes</.test(arrSvg), 'edge label: arrow label is centred <text>');
     assert.ok(lineSvg.includes('>no<'), 'edge label: labeled line emits its label text');
     assert.ok(!/<text/.test(plain), 'edge label: unlabeled connector emits no <text>');
     // midpoint placement: for the (0,0)->(100,0) arrow the label x must sit near 50+ox (=82),
     // i.e. between the endpoints, not at an endpoint
-    const m = arrSvg.match(/<text x="([\d.]+)"[^>]*>yes</);
+    const m = arrSvg.match(/<text x="([\d.]+)"[^>]*>(?:<tspan[^>]*>)?yes</);
     assert.ok(m, 'edge label: <text> has an x coordinate');
     const lx = parseFloat(m[1]);
     assert.ok(lx > 60 && lx < 105, `edge label: x (${lx}) is near the segment midpoint, not an endpoint`);

@@ -256,6 +256,14 @@ Board/
 - [ADR-0204](docs/ADR-0204-frame-label-decoration.md) フレームラベル装飾
 - [ADR-0205](docs/ADR-0205-letter-spacing.md) 字間
 - [ADR-0206](docs/ADR-0206-endpoint-shift-constrain.md) 端点45°拘束+ラベルエディタ一致
+- [ADR-0207](docs/ADR-0207-elbow-rounded-corners.md) エルボー角丸
+- [ADR-0208](docs/ADR-0208-text-word-wrap.md) テキスト幅折返し
+- [ADR-0209](docs/ADR-0209-fixed-edge-anchors.md) 端点固定アンカー
+- [ADR-0210](docs/ADR-0210-multiline-conn-label.md) コネクタラベル複数行
+- [ADR-0211](docs/ADR-0211-shadow-text-conns.md) 影をtext/connへ
+- [ADR-0212](docs/ADR-0212-conn-label-lineheight.md) connラベル行間
+- [ADR-0213](docs/ADR-0213-pin-anchor-ctx.md) ctxアンカー固定
+- [ADR-0214](docs/ADR-0214-bindat-grid.md) _bindAtグリッド化
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
