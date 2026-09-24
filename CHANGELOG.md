@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.500] - 2026-09-23
+
+### 修正
+
+- `_pCt` (ピア数 SR デルタ追跡) をルーム切替で再ベースライン化 — 旧ルームのカウントが残って次の announce が phantom デルタを鳴らすのを防止 (ADR-0467)
+
 ## [1.7.499] - 2026-09-23
 
 ### 修正

@@ -1140,6 +1140,7 @@ const checks = [
   ['room switch resets img transfer state (ADR-0464)', html.includes('this._imgSent.clear();this._imgChunks.clear();this._imgOuts.length=0')],
   ['snapshot responder = lowest non-asker peer (ADR-0465)', html.includes('this._loResp(msg.peer)') && html.includes('k!==pk&&k<_pi()')],
   ['room switch also clears inbound assemblies (ADR-0466)', html.includes('this._snapIn=null;this._opcIn=null') && html.indexOf('this._snapIn=null;this._opcIn=null')<html.indexOf('new BroadcastChannel')],
+  ['_pCt rebaselines after peer purge (ADR-0467)', html.includes('this._pCt=_pr().size')],
   // v1.6.80: multi-touch pinch cancels the single-pointer gesture (no stray edits)
   ['pointerdown aborts single-pointer gesture when a 2nd finger lands', html.includes("if(_pointers.size>=2){abortGesture();return;}")],
   ['pointermove bails while pinch is active', html.includes("if(_pointers.size>=2)return;   // pinch in progress")],
@@ -6378,6 +6379,30 @@ try {
     // non-vacuity: without the clearInterval, priorTimer._destroyed would still be false.
     assert.strictEqual(priorTimer._destroyed,true,'non-vacuity: the cleared flag is the leak guard under test');
     console.log('  ✓ Net.init: re-init closes channel + clears prior heartbeat (no timer leak)');
+  }
+
+  // ADR-0464/0466/0467: Net.init must reset ALL room-scoped transfer/presence state —
+  // _imgSent dedup, inbound chunk/assembly slots, pending sends, and the SR delta tracker.
+  // A missed field leaks across rooms (img refs arrive whose blobs never re-send;
+  // stale partial assemblies splice into the new room's stream).
+  {
+    Net.bc={close(){},postMessage(){},onmessage:null};
+    Net._imgSent.set('k1',1);Net._imgChunks.set('k2',{p:['x'],g:1,n:2});Net._imgOuts.push(['k3','d']);
+    Net._snapIn={p:['a'],g:1,n:2};Net._opcIn={p:['b'],g:1,n:2};Net._pCt=7;
+    state.seenOps.add('old:1');state.peers.set('ghost',{color:0,lastSeen:0});
+    Net._presenceTimer=setInterval(()=>{},1e6);
+    Net.init('roomB');
+    assert.strictEqual(Net._imgSent.size,0,'imgSent reset on room switch');
+    assert.strictEqual(Net._imgChunks.size,0,'imgChunks reset');
+    assert.strictEqual(Net._imgOuts.length,0,'imgOuts drained');
+    assert.strictEqual(Net._snapIn,null,'snapIn reset');
+    assert.strictEqual(Net._opcIn,null,'opcIn reset');
+    assert.strictEqual(Net._pCt,state.peers.size,'pCt rebaselined to live peers');
+    assert.strictEqual(state.seenOps.size,0,'seenOps cleared');
+    assert.strictEqual(state.peers.has('ghost'),false,'BC ghost peers purged');
+    clearInterval(Net._presenceTimer);
+    if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}
+    console.log('  ✓ Net.init: all room-scoped transfer/presence state resets (ADR-0464..0467)');
   }
 
   // v1.6.85: _reapPeers must NOT drop WebRTC peers by timeout — they don't ride the
