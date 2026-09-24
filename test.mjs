@@ -91,7 +91,7 @@ const checks = [
   // v1.1: exportPNG passes ctx as parameter (no global swap)
   ['exportPNG passes ctx as parameter', html.includes('drawShape(s,oc)')],
   // v1.1: toBlob null guard
-  ['toBlob has null guard', html.includes("if(!bl){_e(t(_EF)")],
+  ['toBlob has null guard', html.includes("if(!bl){_eT(_EF)")],
   // v1.1: op validation in _onRecv
   ['_onRecv validates op.clock', html.includes("!_iS(op.clock.peer)")],
   // v1.1: import validates shapes
@@ -228,8 +228,8 @@ const checks = [
   // round 9: presentation pointer guard + frame move + i18n
   ['pointerdown guarded during presentation', html.includes("if(Presentation.isActive())return")],
   ['frame move drags contained shapes', html.includes("dragIds") && html.includes("type==='frame'")],
-  ['copyStyle uses i18n', html.includes("t(_NS)") && html.includes("t('styleCopied')")],
-  ['group toasts use i18n', html.includes("t('grouped')") && html.includes("t(_ST)")],
+  ['copyStyle uses i18n', html.includes("_wT(_NS)") && html.includes("_oT('styleCopied')")],
+  ['group toasts use i18n', html.includes("_oT('grouped')") && html.includes("_wT(_ST)")],
   ['copyStyle captures stroke/fill/size/opacity', html.includes("stroke:sh.stroke,fill:sh.type==='sticky'?sh.color:sh.fill") && html.includes("size:sh.size,opacity:sh.opacity")],
   ['pasteStyle filters undefined keys', html.includes("filter(([,v])=>v!==_ud)")],
   ['applyStyleToSelection records undo', html.includes("_styleOp(before,after)")],
@@ -587,7 +587,7 @@ const checks = [
   ['file importers reject >32MB payloads (ADR-0398)', html.includes("_bigFile=f=>f.size>33554432")&&(html.match(/_bigFile\(file\)/g)||[]).length>=4],
   ['importBoard uses atomic replace op (not clear+adds)', html.includes('function importBoard') && html.includes('.filter(validShape)') && html.includes("op:'replace',before,after")],
   ['Ctrl+Shift+S triggers exportBoard', html.includes("e.shiftKey){_pd(e);exportBoard()}")],
-  ['doDelete warns on all-locked selection (ADR-0396)', html.includes("if(!_ln(sel)){if(_selAny())_w(t('lockedNoop'));return}")],
+  ['doDelete warns on all-locked selection (ADR-0396)', html.includes("if(!_ln(sel)){if(_selAny())_wT('lockedNoop');return}")],
   // ADR-0004: doClearAll/importBoard/importFromHash back up the pre-replace board to a
   // second IndexedDB slot before the destructive swap, so it survives past the session-only
   // undo window (reload / closed tab). importBoard can't be exercised directly in this
@@ -624,9 +624,9 @@ const checks = [
   // v1.6.32: i18n for popup-blocked and invalid-board; drop-image toast
   ['popupBlocked i18n key in both locales', html.includes("popupBlocked:'ポップアップ") && html.includes("popupBlocked:'Pop-up blocked")],
   ['invalidBoard i18n key in both locales', html.includes("invalidBoard:'ボードファイル") && html.includes("invalidBoard:'Invalid .board")],
-  ['drop-image handler shows toast', html.includes("_iv();_o(t('imagePasted')")],
-  ['popupBlocked used via t()', html.includes("t('popupBlocked')")],
-  ['invalidBoard used via t()', html.includes("t(_IB)")],
+  ['drop-image handler shows toast', html.includes("_iv();_oT('imagePasted')")],
+  ['popupBlocked used via t()', html.includes("'popupBlocked'")],
+  ['invalidBoard used via t()', html.includes("T(_IB)")],
   // v1.6.33: Present button data-t, snap/grid i18n, comment fix
   ['Present button span has data-t attribute', html.includes('data-t="present"')],
   ['present key in ja i18n', html.includes("present:'プレゼン'")],
@@ -642,7 +642,7 @@ const checks = [
   // v1.6.36: exportFailed/saveFailed i18n, shapes status label, describeShape locale
   ['exportFailed key in ja and en', html.includes("exportFailed:'書き出し失敗'") && html.includes("exportFailed:'Export failed'")],
   ['saveFailed key in ja and en', html.includes("saveFailed:'保存失敗'") && html.includes("saveFailed:'Save failed'")],
-  ['toBlob null guard uses t(exportFailed)', html.includes("t(_EF)")],
+  ['toBlob null guard uses t(exportFailed)', html.includes("T(_EF)")],
   ['Persist.save error uses t(saveFailed)', html.includes("t('saveFailed')")],
   ['shapes key in ja and en', html.includes("shapes:'図形'") && html.includes("shapes:'Shapes'")],
   ['status bar saved label has data-t', html.includes('class="lbl" data-t="saved"')],
@@ -659,7 +659,7 @@ const checks = [
   // v1.6.39: console cleanup - no redundant console.warn/error in production paths
   ['no console.warn in BroadcastChannel catch', !html.includes("console.warn('BroadcastChannel init failed'")],
   ['no console.error in save catch (user gets toast)', !html.includes("console.error('save failed'")],
-  ['import parse failure shows invalidBoard toast (not silent)', html.includes("_e(t(_IB))")],
+  ['import parse failure shows invalidBoard toast (not silent)', html.includes("_eT(_IB)")],
   // v1.6.40: style panel a11y - decorative labels hidden, panel groups have role/aria-label
   ['style panel S/F labels are aria-hidden (decorative)', html.includes('<span class="sp-label" aria-hidden="true">S</span>') && html.includes('<span class="sp-label" aria-hidden="true">F</span>')],
   ['size and opacity groups have role=group', html.includes('role="group" aria-label="Size"') && html.includes('role="group" aria-label="Opacity"')],
@@ -684,10 +684,10 @@ const checks = [
   ['i18n has selCount/selNone ja+en', html.includes("selCount:'個を選択'") && html.includes("selCount:' selected'")],
   // v1.7.96: ADR-0038 share-link reject paths all toast + clear hash
   ['importFromHash hoists clearHash helper', html.includes("const clearHash=()=>{try{history.replaceState(null,'',location.pathname)}catch(_){}};")],
-  ['unknown kind toasts + clears', html.includes("}else{_e(t(_IB));clearHash();return false}")],
-  ['non-array shapes toasts + clears', html.includes("if(!_iA(data.shapes)||_ln(data.shapes)>SHARE_MAX_SHAPES){_e(t(_IB));clearHash();return false}")],
-  ['all-invalid shapes toasts + clears', html.includes("if(!_ln(valid)){_e(t(_IB));clearHash();return false}")],
-  ['decode-throw catch also clears hash', html.includes("}catch{_e(t(_IB));clearHash();return false}")],
+  ['unknown kind toasts + clears', html.includes("}else{_eT(_IB);clearHash();return false}")],
+  ['non-array shapes toasts + clears', html.includes("if(!_iA(data.shapes)||_ln(data.shapes)>SHARE_MAX_SHAPES){_eT(_IB);clearHash();return false}")],
+  ['all-invalid shapes toasts + clears', html.includes("if(!_ln(valid)){_eT(_IB);clearHash();return false}")],
+  ['decode-throw catch also clears hash', html.includes("}catch{_eT(_IB);clearHash();return false}")],
   // v1.7.97: ADR-0039 share-link resource-bomb guard
   ['share payload ceilings defined', html.includes('SHARE_MAX_BYTES') && html.includes('SHARE_MAX_SHAPES')],
   ['decompressed payload byte cap before parse', html.includes('_ln(json)>SHARE_MAX_BYTES')],
@@ -696,7 +696,7 @@ const checks = [
   ['share URL length warn threshold defined', html.includes('SHARE_URL_WARN')],
   ['long-URL warning element exists', html.includes('id="shareWarnLong"')],
   ['overlong URL shows the warn', html.includes('_ln(url)<=SHARE_URL_WARN')],
-  ['export failure clears field + toasts', html.includes("shareUrl').value=''") && html.includes("_e(t('shareExportFailed'))")],
+  ['export failure clears field + toasts', html.includes("shareUrl').value=''") && html.includes("_eT('shareExportFailed')")],
   ['i18n has shareUrlTooLong/shareExportFailed ja+en', html.includes("shareUrlTooLong:'⚠ URL が非常に長い") && html.includes("shareUrlTooLong:'⚠ This URL is very long") && html.includes("shareExportFailed:'共有リンクの生成に失敗しました'") && html.includes("shareExportFailed:'Failed to build the share link'")],
   // v1.7.99: ADR-0041 DOM mirror a11y
   ['mirror region + list exist', html.includes('id="shapeMirror"') && html.includes('id="shapeMirrorList"')],
@@ -755,7 +755,7 @@ const checks = [
   ['drawio whiteSpace nowrap|wrap ↔ s.wrap (ADR-0321/0412)', html.includes("s.type==='text'&&sty.whiteSpace==='nowrap')s.wrap=0")&&html.includes("s.wrap?'whiteSpace=wrap;':'whiteSpace=nowrap;'")&&html.includes("sty.whiteSpace==='wrap')s.wrap=1")],
   ['validPatch: wrap numeric + flag props boolean|number (ADR-0411/0413)', html.includes("'visible','start','wrap']")&&html.includes("['bold','italic','under','strike','locked','shadow','hl']")],
   ['drawio labelPosition/verticalLabelPosition (ADR-0320)', html.includes("labelPosition='+s.align")&&html.includes("verticalLabelPosition='+s.valign")&&html.includes("sty.labelPosition))s.align")],
-  ['popup-blocked feedback on link open (ADR-0319)', html.includes("if(s&&!_wO(s.link,'_blank','noopener'))_w(t('popupBlocked'))")&&html.includes("if(!_wO(_h0.link,'_blank','noopener'))_w(t('popupBlocked'))")],
+  ['popup-blocked feedback on link open (ADR-0319)', html.includes("if(s&&!_wO(s.link,'_blank','noopener'))_wT('popupBlocked')")&&html.includes("if(!_wO(_h0.link,'_blank','noopener'))_wT('popupBlocked')")],
   ['ctx copy link item (ADR-0318)', html.includes("['ctxCopyLink',''")&&html.includes("ctxCopyLink:'リンクをコピー'")&&html.includes("ctxCopyLink:'Copy link'")],
   ['exc conn roundness→curve round-trip (ADR-0317)', html.includes("s.curve=1;delete s.r")&&html.includes("s.curve?{roundness:{type:2}}")],
   ['SVG export link badge (ADR-0316)', html.includes('>🔗</text></a>`)')],
@@ -815,7 +815,7 @@ const checks = [
   ['drawio fontFamily ↔ s.font category map (ADR-0253)', html.includes("sty.fontFamily&&s.type!=='image'")&&html.includes("fontFamily='+(_ftt(s)==='mono'?'Courier New':'Georgia')")],
   ['conn/box label widths memoized on WeakMap (ADR-0252)', html.includes('_connLabelMeasure')&&html.includes('_clCache')],
   ['drawio edge label styling: labelBackgroundColor/fontSize/fontStyle (ADR-0249)', html.includes("labelBackgroundColor='+_fi(s)")&&html.includes("sty.labelBackgroundColor&&sty.labelBackgroundColor!=='none'")],
-  ['drawio parent-relative offsets resolved (ADR-0240)', html.includes("const _geo=_mP(),_par=_mP();")&&html.includes("const _o=off(_ga(c,'id'));")&&html.includes("x=_o.x+(_doff.get(c)||0)+(+_ga(g,'x')||0)")],
+  ['drawio parent-relative offsets resolved (ADR-0240)', html.includes("const _geo=_mP(),_par=_mP();")&&html.includes("const _oo=off(_ga(c,'id'));")&&html.includes("x=_oo.x+(_doff.get(c)||0)+(+_ga(g,'x')||0)")],
   ['frame label italic/under/strike (ADR-0204)', html.includes("600 ${fs}px")&&html.includes("_forTxt=f=>_forSel((s,id)=>{if((s.type!=='text'&&s.type!=='sticky'&&s.type!=='frame'&&!_lb(s))||_lk(s))return;f(s,id)})")],
   ['letter-spacing cycle — canvas ctx+SVG+style-copy (ADR-0205)', html.includes("function cycleSpacing()")&&html.includes("c.letterSpacing=(_sp(s)||0)+'px'")&&html.includes('_svgLs(s)')&&html.includes('spacing:sh.spacing')],
   ['elbow corner rounding canvas+SVG + cycleCorner gate (ADR-0207)', html.includes('function _polylineR')&&html.includes('_polylineRd(pts,ox,oy,s.r)')&&html.includes("connOk=(_conn(s.type))&&_el(s)")],
@@ -838,7 +838,7 @@ const checks = [
   ['excalidraw import restores bindings to s.a/s.b (ADR-0223)', html.includes('_excBnd.push([s,e])')&&html.includes('idOf.get(sb.elementId)')],
   ['drawio import keeps line-vs-arrow/curved/jump/start-head (ADR-0224)', html.includes("sty.endArrow==='none'")&&html.includes('s.hop=1')],
   ['drawio import note→sticky / swimlane→frame (ADR-0226)', html.includes("sty.shape==='note'){s=Shape.make('sticky'")&&html.includes("sty.shape==='swimlane')s=Shape.make('frame'")],
-  ['storage quota pressure warns proactively via estimate() (ADR-0227)', html.includes('navigator.storage.estimate')&&html.includes('this._quotaWarn()')&&html.includes("t('quotaWarn')")],
+  ['storage quota pressure warns proactively via estimate() (ADR-0227)', html.includes('navigator.storage.estimate')&&html.includes('this._quotaWarn()')&&html.includes("T('quotaWarn')")],
   ['drawio import maps align + fontStyle bitmask (ADR-0228)', html.includes("sty.align==='center'||sty.align==='right'")&&html.includes('_fs&4)s.under=1')&&html.includes("'align='+s.align")&&html.includes("fontStyle='+_fs")],
   ['excalidraw import restores groupIds → groupId (ADR-0229)', html.includes("e.groupIds[0]")&&html.includes('s.groupId=e.groupIds')],
   ['excalidraw import maps fillStyle/roundness/align/arrowheads (ADR-0230)', html.includes("e.fillStyle==='hachure'")&&html.includes("e.strokeSharpness==='round')o.r=8")&&html.includes("e.endArrowhead===null)s.head='none'")&&html.includes("style==='none')return")],
@@ -946,7 +946,7 @@ const checks = [
   ['drawArrow uses connEnds', html.includes("const e=_cE(s);\n  const ah=_max(6,(_szz(s)||2)*3)")],
   ['endLineLike binds endpoints dropped on a shape', html.includes("const ba=_bindAt(d.x1,d.y1),bb=_bindAt(d.x2,d.y2)") && html.includes("function _bindAt")],
   ['connector endpoints always expose resize handles (ADR-0065 rebind)', html.includes("h.push({id:'p1',x:e.x1,y:e.y1});       // ADR-0065") && html.includes("h.push({id:'p2',x:e.x2,y:e.y2});")],
-  ['SVG export derives bound endpoints', html.includes("const _e=_cE(s);\n    const X1=_num(_e.x1)")],
+  ['SVG export derives bound endpoints', html.includes("const _ce=_cE(s);\n    const X1=_num(_ce.x1)")],
   // v1.6.61: rotation - shapes rotate on canvas, undo/redo, keyboard ,/.
   ['doRotate function exists', html.includes("function doRotate") && html.includes("op:'align',dir:'rotate'")],
   ['rotation applied in drawShape (save/restore)', html.includes("const _rot=shapeRot(s);") && html.includes("if(_rot)c.restore()")],
@@ -1026,7 +1026,7 @@ const checks = [
   ['snapshot amplification: _sendSnapshot throttled',
     html.includes('_lastSnapAt:0,_snapT:0') && html.includes('if(w>0){if(!this._snapT)this._snapT=_stO(()=>{this._snapT=0;this._sendSnapshot()},w);return}')],
   ['importBoard: FileReader onerror toasts instead of failing silently',
-    html.includes("r.onerror=()=>_e(t(_IB));")],
+    html.includes("r.onerror=()=>_eT(_IB);")],
   ['docName clamped to 80 chars on all four intake paths (import/IDB/backup/hash)',
     (html.match(/\.slice\(0,80\)/g)||[]).length>=4],
   // v1.7.63 UX/i18n audit
@@ -1090,8 +1090,8 @@ const checks = [
   ['Alt+arrow keyboard-resizes box shapes', html.includes("_rcOp({op:'resize',before,after});") && html.includes("sh.w=_max(4,sh.w+dw);sh.h=_max(4,sh.h+dh);")],
   // v1.6.71: image import error handling
   ['imgErr i18n key in both locales', html.includes("imgErr:'画像を読み込めませんでした'") && html.includes("imgErr:'Image failed to load'")],
-  ['drag-drop image import has img.onerror toast', html.includes("img.onerror=()=>_w(t('imgErr'));") ],
-  ['image import (shared _imgImportFile) has reader.onerror toast', html.includes("function _imgImportFile(") && html.includes("reader.onerror=()=>_w(t('imgErr'));")],
+  ['drag-drop image import has img.onerror toast', html.includes("img.onerror=()=>_wT('imgErr');") ],
+  ['image import (shared _imgImportFile) has reader.onerror toast', html.includes("function _imgImportFile(") && html.includes("reader.onerror=()=>_wT('imgErr');")],
   ['context menu deduplicates consecutive separators', html.includes(".filter((it,i,a)=>!(it==='sep'&&(i===0||i===_ln(a)-1||a[i-1]==='sep')))")],
   ['doDuplicate does not clobber clipboard (uses _placeCopies, not state.clipboard=)', html.includes("_placeCopies(sel,_dd().x,_dd().y):_placeCopies(sel);   // independent of _cl()") && html.includes("function _placeCopies(srcShapes")],
   // v1.6.71: import sites clear stale selection + wclock (mirror replace op's _apply)
@@ -1135,6 +1135,7 @@ const checks = [
   ['peer bye drops presence immediately — no 15s ghost (ADR-0457)', html.includes("case 'bye':{") && html.includes("if(pk&&_pr().delete(pk)){_ivO()")],
   ['room switch sends bye + clears BC peers (ADR-0458)', html.includes("this._send({k:'bye',peer:_pi()});this.bc.close()") && html.includes("if(!id.startsWith('rtc:'))_pr().delete(id)")],
   ['peer id carries a per-boot incarnation nonce (ADR-0459)', html.includes("peerId:PEER_ID+'.'+uid().slice(0,6)") && html.includes("_sO().clear();_cT(this._snapT)")],
+  ['wclock ships inside the IDB doc record (ADR-0460)', html.includes('wc:_wc()') && html.includes("validClock(m[p]))(state.wclock[k]")],
   // v1.6.80: multi-touch pinch cancels the single-pointer gesture (no stray edits)
   ['pointerdown aborts single-pointer gesture when a 2nd finger lands', html.includes("if(_pointers.size>=2){abortGesture();return;}")],
   ['pointermove bails while pinch is active', html.includes("if(_pointers.size>=2)return;   // pinch in progress")],
@@ -1160,8 +1161,8 @@ const checks = [
   // v1.7.76 / ADR-0017 (FT-20): ICE failure without an open channel showed nothing —
   // connectionState failed toasts once and suppresses the trailing dc.onclose toast
   ['rtc.onconnectionstatechange wired in _wrtcInit', html.includes("this.rtc.onconnectionstatechange=()=>{")],
-  ['connection failure toasts and stamps _rtcConnFailed', html.includes("connectionState!=='failed'") && html.includes("this._rtcConnFailed=true;") && html.includes("t('connectFailed')")],
-  ['dc.onclose suppresses disconnect toast after a failure', html.includes("if(!this._rtcConnFailed)_w(t('disconnected'));")],
+  ['connection failure toasts and stamps _rtcConnFailed', html.includes("connectionState!=='failed'") && html.includes("this._rtcConnFailed=true;") && html.includes("T('connectFailed')")],
+  ['dc.onclose suppresses disconnect toast after a failure', html.includes("if(!this._rtcConnFailed)_wT('disconnected');")],
   ['_wrtcInit resets the failure flag for reconnects', html.includes("this._rtcConnFailed=false;")],
   ['connectFailed i18n key (ja + en)', html.includes("connectFailed:'接続に失敗しました'") && html.includes("connectFailed:'Connection failed'")],
   // v1.6.86: multi-image drop cascades by index (async closure capture fix)
@@ -1216,7 +1217,7 @@ const checks = [
     html.includes('async function _onBtnInstall()')&&html.includes('_installPrompt.prompt()')&&html.includes('_installPrompt.userChoice')],
   // v1.6.93: SW update notification
   ['controllerchange listener shows update toast',
-    html.includes("'controllerchange'")&&html.includes('function _onSwUpdate()')&&html.includes("_o(t('appUpdated'))")],
+    html.includes("'controllerchange'")&&html.includes('function _onSwUpdate()')&&html.includes("_oT('appUpdated')")],
   ['appUpdated i18n key in ja and en',
     html.includes("appUpdated:'アプリが更新されました")&&html.includes("appUpdated:'App updated")],
   // v1.6.94: _esc single-quote + IME composition guard
@@ -3460,7 +3461,7 @@ try {
 
   // ADR-0403: sender refuses oversized snapshots before chunking
   {
-    assert.ok(html.includes("if(_ln(_sm)>24e6){_w(t('snapBig'));return}"),'send-side snapshot cap');
+    assert.ok(html.includes("if(_ln(_sm)>24e6){_wT('snapBig');return}"),'send-side snapshot cap');
     assert.strictEqual(api.I18N.ja.snapBig.length>0&&api.I18N.en.snapBig.length>0,true,'snapBig i18n both langs');
     console.log('  ✓ snapshot send-side 24MB fail-fast (ADR-0403)');
   }
