@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.470] - 2026-09-23
+
+### Fixed
+- `_psc` が `Net._imgPending` もパージ — blob 未到着間に削除された shape の駐車エントリ解放 (ADR-0435)
+
 ## [1.7.469] - 2026-09-23
 
 ### Refactored
