@@ -356,6 +356,7 @@ Board/
 │   ├── ADR-0304-link-ui.md  # s.link ctx UI (実装済)
 │   ├── ADR-0305-svg-frame-weight.md  # SVG frame ラベル weight parity (実装済)
 │   ├── ADR-0306-csh-helper.md  # canvas shadow `_csh` 集約 (実装済)
+│   ├── ADR-0307-so-helper.md  # style op コミット `_so` 集約 (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

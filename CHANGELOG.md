@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.358] - 2026-09-24
+
+### Changed
+- style op コミット末尾 `if(before.length){_styleOp…}` を `_so(b,a)`
+  に集約 (24 箇所、raw ~700B、ADR-0307)
+
 ## [1.7.357] - 2026-09-24
 
 ### Changed

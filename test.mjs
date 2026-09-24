@@ -719,6 +719,7 @@ const checks = [
   ['clipboard image/svg+xml → vector import (ADR-0272)', html.includes("i.type==='image/svg+xml'")],
   ['drawio strokeOpacity/fillOpacity → s.opacity (ADR-0271)', html.includes('+sty.strokeOpacity')],
   ['svg conn path/label emitters deduped (ADR-0270)', html.includes('const _sp=(d,j)')&&html.includes('_cL();')],
+  ['_so() style-op commit tail (ADR-0307)', html.includes("const _so=(b,a)=>")],
   ['_csh() canvas shadow helper (ADR-0306)', html.includes("const _csh=(s,c)=>")],
   ['SVG frame label always 600 weight (ADR-0305)', html.includes('s.bold?s:{...s,bold:true},s.fontSize||12')],
   ['ctx link set/open on s.link (ADR-0304)', html.includes('function setSelLink')&&html.includes('ctxOpenLink')&&html.includes('ctxSetLink')],
@@ -797,7 +798,7 @@ const checks = [
   ['editor textarea routes Cmd-B/I/U/X to toggleTextFlag (ADR-0236)', html.includes("fl={b:'bold',i:'italic',u:'under'}[mk]")&&html.includes('toggleTextFlag(fl)')],
   ['label input routes Cmd-B/I/U/X to toggleTextFlag (ADR-0237)', html.includes("fl2={b:'bold',i:'italic',u:'under'}[mk2]")],
   ['drawio verticalAlign round-trips s.valign (ADR-0238)', html.includes('sty.verticalAlign')&&html.includes("'verticalAlign='+s.valign")],
-  ['style-op commit shared via _styleOp (ADR-0239)', html.includes('function _styleOp(before,after)')&&(html.match(/_styleOp\(before,after\)/g)||[]).length>20],
+  ['style-op commit shared via _styleOp (ADR-0239)', html.includes('function _styleOp(before,after)')&&(html.match(/_so\(before,after\)/g)||[]).length>20],
   ['endpoint drag Shift constrains to 45 deg + label editor fontSize (ADR-0206)', html.includes("constrain the free end to 45")&&html.includes("${hit.fontSize||12}px")],
   ['i18n has excImported ja+en', html.includes("excImported:'Excalidraw を取り込みました'") && html.includes("excImported:'Excalidraw imported'")],
   // v1.7.102: ADR-0044 text paste → text shape
