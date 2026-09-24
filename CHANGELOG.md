@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.510] - 2026-09-23
+
+### リファクタ
+
+- `a.indexOf(b)` → `_ix(a,b)`、`x.trim()` → `_trm(x)` shorthand 畳み込み (ADR-0477)
+
 ## [1.7.509] - 2026-09-23
 
 ### リファクタ
