@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.232]
+
+### 追加
+- **ctx 不透明度巡回** (ADR-0174)。ctx「不透明度 (巡回)」で選択の
+  不透明度を 1→0.7→0.4→0.1 に巡回 — 数字キー (0-9) と同じ style op
+  経路をタッチ/ctx からも到達可能に。
+
 ## [1.7.231]
 
 ### 追加

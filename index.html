@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.231';
+const V='1.7.232';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -869,7 +869,7 @@ const I18N={
     ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxCurve:'曲線',ctxRouteReset:'ルートをリセット (直線に戻す)',ctxSelContents:'内容を選択',ctxFrameFit:'コンテンツに合わせる',ctxArrowHead:'矢印ヘッド (矢印→丸→シェブロン)',ctxToArrow:'矢印に変換',ctxToLine:'直線に変換',ctxBothEnds:'両端ヘッド',ctxRrect:'角スタイル (角丸→直角)',ctxStickyColor:'付箋の色 (順送り)',ctxToText:'テキストに変換',ctxToSticky:'付箋に変換',ctxTextAlign:'テキスト揃え (左→中央→右)',ctxFillStyle:'塗りスタイル (塗り→ハッチ→斜格子)',
     ctxSelectSameType:'同じ種類を選択',ctxSelectSame:'同色を選択',ctxSearch:'検索',ctxFit:'全体を表示',ctxZoomReset:'ズーム100%',ctxGrid:'グリッド',ctxSnap:'吸着',ctxMinimap:'ミニマップ',ctxWrapFrame:'フレームで包む',ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
     ctxSendBackward:'背面へ',ctxSendBack:'最背面へ',
-    ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxRotate90:'90°回転',ctxCorner:'角丸を切替',ctxHide:'非表示',ctxShowAll:'すべて表示',ctxSelectInverse:'選択を反転',ctxConnect:'2図形をコネクタで接続',hiddenCount:'件を非表示',shownAll:'すべて表示しました',ctxUnbind:'結合を解除',ctxVAlign:'ラベル縦揃え',ctxFont:'書体',ctxLock:'ロック',ctxUnlock:'ロック解除',ctxUnlockAll:'全てロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
+    ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxRotate90:'90°回転',ctxCorner:'角丸を切替',ctxHide:'非表示',ctxShowAll:'すべて表示',ctxSelectInverse:'選択を反転',ctxConnect:'2図形をコネクタで接続',hiddenCount:'件を非表示',shownAll:'すべて表示しました',ctxUnbind:'結合を解除',ctxVAlign:'ラベル縦揃え',ctxFont:'書体',ctxOpacity:'不透明度 (巡回)',ctxLock:'ロック',ctxUnlock:'ロック解除',ctxUnlockAll:'全てロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
     canvasHint:'描画キャンバス。Tab/⇧Tab で図形巡回、Enter で作成、矢印で移動、⌥+矢印でリサイズ',
     tools:'ツール',docNameLabel:'ドキュメント名',activePeers:'接続中のピア',expPng:'PNG 書き出し',
     moreExport:'その他の書き出し・読み込み',install:'アプリとしてインストール',style:'スタイル',
@@ -945,7 +945,7 @@ const I18N={
     ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxCurve:'Curved',ctxRouteReset:'Reset route (straighten)',ctxSelContents:'Select contents',ctxFrameFit:'Fit to contents',ctxArrowHead:'Arrowhead (arrow→dot→open)',ctxToArrow:'Convert to arrow',ctxToLine:'Convert to line',ctxBothEnds:'Arrowheads both ends',ctxRrect:'Corners (round→sharp)',ctxStickyColor:'Sticky colour (cycle)',ctxToText:'Convert to text',ctxToSticky:'Convert to sticky',ctxTextAlign:'Text align (left→center→right)',ctxFillStyle:'Fill style (solid→hatch→cross)',
     ctxSelectSameType:'Select same type',ctxSelectSame:'Select same colour',ctxSearch:'Search',ctxFit:'Fit board',ctxZoomReset:'Zoom 100%',ctxGrid:'Grid',ctxSnap:'Snap',ctxMinimap:'Minimap',ctxWrapFrame:'Frame selection',ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
     ctxSendBackward:'Send backward',ctxSendBack:'Send to back',
-    ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxRotate90:'Rotate 90°',ctxCorner:'Round corner',ctxHide:'Hide',ctxShowAll:'Show all',ctxSelectInverse:'Invert selection',ctxConnect:'Connect 2 shapes',hiddenCount:'hidden',shownAll:'All shapes shown',ctxUnbind:'Unbind endpoints',ctxVAlign:'Label vertical align',ctxFont:'Font family',ctxLock:'Lock',ctxUnlock:'Unlock',ctxUnlockAll:'Unlock all',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
+    ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxRotate90:'Rotate 90°',ctxCorner:'Round corner',ctxHide:'Hide',ctxShowAll:'Show all',ctxSelectInverse:'Invert selection',ctxConnect:'Connect 2 shapes',hiddenCount:'hidden',shownAll:'All shapes shown',ctxUnbind:'Unbind endpoints',ctxVAlign:'Label vertical align',ctxFont:'Font family',ctxOpacity:'Opacity (cycle)',ctxLock:'Lock',ctxUnlock:'Unlock',ctxUnlockAll:'Unlock all',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
     canvasHint:'Drawing canvas. Tab/Shift+Tab cycles shapes, Enter creates, arrows move, Alt+arrows resize.',
     tools:'Tools',docNameLabel:'Document name',activePeers:'Active peers',expPng:'Export PNG',
     moreExport:'More export & import options',install:'Install Board as an app',style:'Style',
@@ -7592,6 +7592,7 @@ const UI={
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='frame'&&!s.locked})&&['ctxSelContents','',selectFrameContents],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky'||s.label)&&!s.locked})&&['ctxTextAlign','',cycleTextAlign],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky'||s.label)&&!s.locked})&&['ctxFont','',cycleFont],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&!s.locked})&&['ctxOpacity','0-9',cycleOpacity],   // ADR-0174
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond')&&!s.locked})&&['ctxVAlign','',cycleVAlign],   // ADR-0159
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky')&&!s.locked})&&[[...state.selection].some(id=>byId(id)?.type==='sticky'&&!byId(id)?.locked)?'ctxToText':'ctxToSticky','',toggleStickyText],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='sticky'&&!s.locked})&&['ctxStickyColor','',cycleStickyColor],
@@ -8335,6 +8336,16 @@ function cycleFont(){
     if(nxt)s.font=nxt;else delete s.font;
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
+}
+// ADR-0174: ctx opacity cycle — same style op as the digit keys (ADR-0167),
+// reachable from touch/ctx. Levels mirror Figma's decimal steps.
+function cycleOpacity(){
+  const first=[...state.selection].map(byId).find(s=>s&&!s.locked);
+  if(!first)return;
+  const lv=[1,0.7,0.4,0.1],cur=first.opacity??1;
+  const idx=lv.findIndex(v=>Math.abs(v-cur)<0.051);
+  const nxt=idx>=0?lv[(idx+1)%lv.length]:(lv.find(v=>v<cur)??lv[0]);
+  applyStyleToSelection({opacity:nxt});
 }
 // ADR-0073: cycle text align left→center→right for text/sticky via style op.
 function cycleTextAlign(){

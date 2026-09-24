@@ -223,6 +223,7 @@ Board/
 - [ADR-0171](docs/ADR-0171-label-align.md) ラベル水平揃え
 - [ADR-0172](docs/ADR-0172-lock-badge.md) ロック選択の鍵バッジ
 - [ADR-0173](docs/ADR-0173-font-family.md) 書体ファミリ巡回
+- [ADR-0174](docs/ADR-0174-ctx-opacity.md) ctx 不透明度巡回
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
