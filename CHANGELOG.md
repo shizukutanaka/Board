@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.222]
+
+### 追加
+- **ステータスバーに選択寸法を表示** (ADR-0164)。選択 bbox の
+  W×H を常時表示 (Figma parity) — 非選択時は折り畳み、署名
+  ゲートで DOM 書き換えは変化時のみ。
+
 ## [1.7.221]
 
 ### 修正

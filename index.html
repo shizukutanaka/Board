@@ -689,6 +689,7 @@ body{visibility:visible}
     <div class="status-item"><span class="status-dot" id="sDot"></span><span id="sConn" aria-live="polite">offline</span></div>
     <div class="status-item optional"><span class="lbl" data-t="shapes">shapes</span><span id="sCount">0</span></div>
     <div class="status-item optional"><span class="lbl" aria-hidden="true">x,y</span><span id="sXY">0, 0</span></div>
+    <div class="status-item optional" id="sSelWrap" hidden><span class="lbl" data-t="selDims">sel</span><span id="sSel"></span></div>
     <div class="status-spacer"></div>
     <div class="status-item optional"><span class="lbl" data-t="saved">saved</span><span id="sSaved">—</span></div>
     <div class="status-item"><span id="sVer">v1.0</span></div>
@@ -775,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.221';
+const V='1.7.222';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -857,7 +858,7 @@ const I18N={
     emptyHint:'クリックまたはツールバーから描き始める · ? でショートカット一覧',
     themeAuto:'テーマ: 自動(OS 追従)',themeLight:'テーマ: ライト',themeDark:'テーマ: ダーク',
     popupBlocked:'ポップアップをブロックしてください',invalidBoard:'ボードファイルが無効です',exportFailed:'書き出し失敗',saveFailed:'保存失敗',quotaExceeded:'保存容量が逼迫しています — ⌘E/⌘⇧E で書き出しを推奨',
-    snap:'スナップ',grid:'グリッド',minimap:'ミニマップ',on:'オン',off:'オフ',online:'オンライン',offline:'オフライン',shapes:'図形',
+    snap:'スナップ',grid:'グリッド',minimap:'ミニマップ',on:'オン',off:'オフ',online:'オンライン',offline:'オフライン',shapes:'図形',selDims:'選択',
     selCount:'個を選択',selNone:'選択を解除',
     mirrorLabel:'ボード上の図形一覧',mirrorMore:'個は一覧に未掲載',tagHidden:'(非表示)',
     copied:'コピー',pasted:'貼り付け',deleted:'削除',cleared:'クリア',
@@ -989,7 +990,7 @@ const I18N={
     backupAvailable:'A board from before it was overwritten was saved. Restore it?',
     backupRestored:'Restored the previous board',
     backupRestoreFailed:'Failed to restore backup',
-    peers:'peers',you:'You',shapes:'Shapes',on:'On',off:'Off',online:'Online',offline:'Offline',grid:'Grid',minimap:'Minimap',
+    peers:'peers',you:'You',shapes:'Shapes',selDims:'Selection',on:'On',off:'Off',online:'Online',offline:'Offline',grid:'Grid',minimap:'Minimap',
     selCount:' selected',selNone:'Selection cleared',
     mirrorLabel:'Shapes on the board',mirrorMore:' more not listed',tagHidden:'(hidden)',
     k:{select:'Select',hand:'Pan',pen:'Pen',rect:'Rectangle',ellipse:'Ellipse',
@@ -2120,8 +2121,24 @@ function frame(){
     _mirrorSync();   // ADR-0041: DOM mirror rebuilds only on _gridVer change
     _teFollow();     // ADR-0053: open text overlay tracks pan/zoom
     _syncStylePanelIfChanged();   // ADR-0059
+    _statusSel();    // ADR-0164: selection dims readout, signature-gated
   }
   if(needsRender||needOverlay)_rafId=requestAnimationFrame(frame);  // draw() called invalidate() (rare re-entry)
+}
+// ADR-0164: live W×H readout of the selection bbox in the statusbar (Figma's
+// dimensions field). Signature-gated: the DOM write happens only when the
+// rendered text actually changes, so gesture frames cost one bboxAll + a
+// string compare. Hidden entirely when nothing is selected.
+let _selDimSig='';
+function _statusSel(){
+  const el=document.getElementById('sSel');if(!el)return;
+  let txt='';
+  if(state.selection.size){
+    const sel=[...state.selection].map(byId).filter(Boolean);
+    const b=sel.length&&G.bboxAll(sel);
+    if(b)txt=Math.round(b.w)+'×'+Math.round(b.h);
+  }
+  if(txt!==_selDimSig){_selDimSig=txt;el.parentElement.hidden=!txt;el.textContent=txt;}
 }
 function resize(){
   DPR=Math.max(1,Math.min(3,window.devicePixelRatio||1));
