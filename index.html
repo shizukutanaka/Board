@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.329';
+const V='1.7.333';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6303,14 +6303,14 @@ function excScene(shapes){
           roundness:s.r?{type:3}:null,strokeSharpness:s.r?'round':'sharp'}));   // ADR-0267
         // ADR-0234: label → container text marked bLabel (Board-only marker;
         // excalidraw ignores unknown fields, ours reads it back to s.label)
-        if(s.label)els.push(_ct(s,uid(),s.label,true));
+        if(s.label){const _tid=uid();els.push(_ct(s,_tid,s.label,true));els[els.length-2].boundElements=[{id:_tid,type:'text'}]}   // ADR-0280
         break;}
       case'frame':
         els.push(E(s,{type:'frame',x:s.x,y:s.y,width:s.w||0,height:s.h||0,name:s.label||'Frame'}));break;
       case'sticky':{
         els.push(E(s,{type:'rectangle',x:s.x,y:s.y,width:s.w,height:s.h,
           backgroundColor:s.color||'#FEF08A',fillStyle:'solid',roundness:{type:3}}));
-        if(s.text)els.push(_ct(s,uid(),s.text,false,14));
+        if(s.text){const _tid=uid();els.push(_ct(s,_tid,s.text,false,14));els[els.length-2].boundElements=[{id:_tid,type:'text'}]}   // ADR-0280
         break;}
       case'text':
         els.push(E(s,{type:'text',x:s.x,y:s.y,width:s.w||0,height:s.h||0,
@@ -6331,7 +6331,7 @@ function excScene(shapes){
           lastCommittedPoint:null,
           startArrowhead:s.start?'arrow':null,                                       // ADR-0231
           endArrowhead:s.type==='arrow'?(s.head&&s.head!=='arrow'?s.head:'arrow'):null,...(s.elbow?{elbowed:true}:{})}));   // ADR-0265
-        if(s.label){const _lp=_connLabelXY(s);els.push(_ct(s,uid(),s.label,true,null,{x:_lp.x-40,y:_lp.y-10,w:80,h:20}))}   // ADR-0266
+        if(s.label){const _lp=_connLabelXY(s),_tid=uid();els.push(_ct(s,_tid,s.label,true,null,{x:_lp.x-40,y:_lp.y-10,w:80,h:20}));els[els.length-2].boundElements=[{id:_tid,type:'text'}]}   // ADR-0266/0280
         break;}
       case'image':{
         const fid='f'+s.id;files[fid]={id:fid,mimeType:(s.dataUrl.match(/^data:([^;]+)/)||[])[1]||'image/png',dataURL:s.dataUrl,created:0,lastRetrieved:0};
@@ -6440,7 +6440,7 @@ function drawioToShapes(txt){
     if(sty.rounded==='1'&&s.w!=null)s.r=8;
     if(sty.fillColor&&sty.fillColor!=='none')s.fill=sty.fillColor;
     _dioStyApply(s,sty,_hid);                                            // ADR-0258
-    if(sty.fontColor&&sty.fontColor!=='none'&&(s.type==='text'||s.type==='sticky'))s.stroke=sty.fontColor;   // ADR-0247
+    if(sty.fontColor&&sty.fontColor!=='none'&&(s.type==='text'||s.type==='sticky'||s.label))s.stroke=sty.fontColor;   // ADR-0247/0281
     if(sty.fontFamily&&s.type!=='image'){const ff=sty.fontFamily.toLowerCase();
       if(/mono|courier|consol|cascadia|menlo|jetbrains/.test(ff))s.font='mono';
       else if(/serif|times|georgia|garamond|palatino|book/.test(ff))s.font='serif'}   // ADR-0253
@@ -6558,8 +6558,9 @@ function boardToDrawio(shapes){
     else if(t==='image'&&s.dataUrl)sty='shape=image;';
     else sty='rounded='+(s.r>0?1:0)+';';
     if(s.fill&&s.fill!=='none')sty+='fillColor='+s.fill+';';
+    if(t==='sticky'&&!s.fill)sty+='fillColor='+(s.color||'#FEF08A')+';';                 // ADR-0279
     if(s.stroke&&t!=='text'&&t!=='sticky')sty+='strokeColor='+s.stroke+';';
-    if(s.stroke&&(t==='text'||t==='sticky'))sty+='fontColor='+s.stroke+';';   // ADR-0247
+    if(s.stroke&&(t==='text'||t==='sticky'||s.label))sty+='fontColor='+s.stroke+';';   // ADR-0247/0281
     sty+=_dioStyEmit(s);                                                   // ADR-0263
     if(s.fontSize)sty+='fontSize='+s.fontSize+';';
     if(s.align==='center'||s.align==='right')sty+='align='+s.align+';';   // ADR-0228
@@ -7025,7 +7026,7 @@ function buildSVG(shapes,paper){
   els.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`);
   els.push(`<rect width="100%" height="100%" fill="${_esc(paper||'#FFFFFF')}"/>`);
   // ADR-0194: one shared drop-shadow filter; shapes opt in via filter="url(#bsh)".
-  if(shapes.some(s=>s.visible!==0&&s.shadow))els.push('<defs><filter id="bsh" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#0F172A" flood-opacity="0.22"/></filter></defs>');
+  if(shapes.some(s=>s.visible!==0&&(s.shadow||s.type==='sticky')))els.push('<defs><filter id="bsh" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#0F172A" flood-opacity="0.22"/></filter></defs>');   // ADR-0278
   // ADR-0150 follow-up: SVG builds its own element list (bypasses drawShape's
   // visible guard) — hidden shapes must be excluded here too, like canvas.
   const _vis=shapes.filter(s=>s.visible!==0);
@@ -7048,12 +7049,12 @@ function buildSVG(shapes,paper){
     switch(s.type){
       case 'rect':{
         const r=Math.min(s.r!=null?s.r:8,Math.abs(W)/4,Math.abs(H)/4);
-        els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}/>`);
+        els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}${_sh}/>`);   // ADR-0278
         if(s.fstyle)_svgHatch(els,s,ox,oy,stroke,`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}"/>`,rT);   // ADR-0077
         if(s.label)_svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT);
         break;}
       case 'ellipse':
-        els.push(`<ellipse cx="${X+W/2+ox}" cy="${Y+H/2+oy}" rx="${Math.abs(W/2)}" ry="${Math.abs(H/2)}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}/>`);
+        els.push(`<ellipse cx="${X+W/2+ox}" cy="${Y+H/2+oy}" rx="${Math.abs(W/2)}" ry="${Math.abs(H/2)}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}${_sh}/>`);   // ADR-0278
         if(s.fstyle)_svgHatch(els,s,ox,oy,stroke,`<ellipse cx="${X+W/2+ox}" cy="${Y+H/2+oy}" rx="${Math.abs(W/2)}" ry="${Math.abs(H/2)}"/>`,rT);   // ADR-0077
         if(s.label)_svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT);
         break;
@@ -7163,7 +7164,7 @@ function buildSVG(shapes,paper){
           const p=s.pts[0];
           // fallback must match drawPen's canvas radius (s.size||2)/2 for a foreign/legacy
           // shape missing `size` (deep-audit fix; was (SZ||1)/2, half the canvas radius).
-          els.push(`<circle cx="${_num(p&&p[0])+ox}" cy="${_num(p&&p[1])+oy}" r="${(SZ||2)/2}" fill="${stroke}"${a}/>`);
+          els.push(`<circle cx="${_num(p&&p[0])+ox}" cy="${_num(p&&p[1])+oy}" r="${(SZ||2)/2}" fill="${stroke}"${a}${_sh}/>`);
           break;
         }
         if(s.pts.length<2)break;
@@ -7181,7 +7182,7 @@ function buildSVG(shapes,paper){
           d+=`M${r(P[i-1][0]+nx*ra)},${r(P[i-1][1]+ny*ra)}L${r(P[i][0]+nx*rb)},${r(P[i][1]+ny*rb)}L${r(P[i][0]-nx*rb)},${r(P[i][1]-ny*rb)}L${r(P[i-1][0]-nx*ra)},${r(P[i-1][1]-ny*ra)}Z`;
         }
         for(let i=0;i<n;i++)circles+=`<circle cx="${r(P[i][0])}" cy="${r(P[i][1])}" r="${r(Rr(i))}"/>`;
-        els.push(`<g fill="${stroke}"${a}><path d="${d}"/>${circles}</g>`);
+        els.push(`<g fill="${stroke}"${a}${_sh}><path d="${d}"/>${circles}</g>`);   // ADR-0278
         break;}
       case 'text':{
         const fs=_num(s.fontSize)||16;
@@ -7221,7 +7222,7 @@ function buildSVG(shapes,paper){
         break;}
       case 'sticky':{
         const r=Math.min(6,Math.abs(W)/6,Math.abs(H)/6);
-        els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}" fill="${_esc(s.color||'#FEF08A')}" stroke="rgba(0,0,0,.06)"${rT}/>`);
+        els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}" fill="${_esc(s.color||'#FEF08A')}" stroke="rgba(0,0,0,.06)"${rT} filter="url(#bsh)"/>`);   // ADR-0278
         if(s.text){
           const fs=_num(s.fontSize)||14;const pad2=8;
           // estimate measure (no canvas here); wraps to the same box as the app
