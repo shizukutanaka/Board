@@ -794,6 +794,7 @@ const _ce=t=>document.createElement(t);   // ADR-0329
 const _selIds=()=>[..._sl()];   // ADR-0330
 const _sb=()=>_selIds().map(byId);   // ADR-0418: selected-shape objects (10 sites)
 const _hasS=id=>_sl().has(id);   // ADR-0418: selection-membership predicate
+const _scl=()=>_sl().clear(),_sad=id=>_sl().add(id),_sdl=id=>_sl().delete(id);   // ADR-0419: selection Set-mutation shorthands
 const _selN=()=>_sl().size;   // ADR-0334
 const _fin=Number.isFinite;   // ADR-0334
 const _min=Math.min,_max=Math.max,_abs=Math.abs;   // ADR-0337
@@ -829,7 +830,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.453';
+const V='1.7.455';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -970,7 +971,7 @@ const I18N={
     backupRestoreFailed:'バックアップの復元に失敗しました',
     peers:'人',you:'自分',
     k:{select:'選択',hand:'手のひら',pen:'ペン',rect:'矩形',ellipse:'楕円',
-      arrow:'矢印',line:'線',text:'文字',sticky:'付箋',frame:'フレーム',eraser:'消しゴム',diamond:'ダイヤ',marker:'マーカー',eyedropper:'スポイト',
+      arrow:'矢印',line:'線',text:'文字',sticky:'付箋',frame:'フレーム',eraser:'消しゴム',diamond:'ダイヤ',marker:'マーカー',eyedropper:'スポイト',image:'画像',
       undo:'元に戻す',redo:'やり直し',del:'削除',dup:'複製',fontSize:'フォントサイズ',boldItalic:'太字/斜体/下線/取消線',
       selAll:'全選択',copy:'コピー',paste:'貼付',cut:'切取',
       zoomIn:'拡大',zoomOut:'縮小',zoom100:'100%にリセット',
@@ -1049,7 +1050,7 @@ const I18N={
     selCount:' selected',selNone:'Selection cleared',
     mirrorLabel:'Shapes on the board',mirrorMore:' more not listed',tagHidden:'(hidden)',tagGroup:'(grouped)',srBound:'bound',
     k:{select:'Select',hand:'Pan',pen:'Pen',rect:'Rectangle',ellipse:'Ellipse',
-      arrow:'Arrow',line:'Line',text:'Text',sticky:'Sticky',frame:'Frame',eraser:'Eraser',diamond:'Diamond',marker:'Marker',eyedropper:'Eyedropper',
+      arrow:'Arrow',line:'Line',text:'Text',sticky:'Sticky',frame:'Frame',eraser:'Eraser',diamond:'Diamond',marker:'Marker',eyedropper:'Eyedropper',image:'Image',
       undo:'Undo',redo:'Redo',del:'Delete',dup:'Duplicate',fontSize:'Font size',boldItalic:'Bold/Italic/Underline/Strike',
       selAll:'Select all',copy:'Copy',paste:'Paste',cut:'Cut',
       zoomIn:'Zoom in',zoomOut:'Zoom out',zoom100:'Reset zoom',
@@ -1586,13 +1587,13 @@ const Store={
         // a duplicate. Local commits use fresh uids so this never blocks them; redo
         // re-pushes because undo removed the shape first.
         if(forward){if(!byId(op.shape.id)){_sh().push(clone(op.shape));_sz();}}
-        else{const i=_sh().findIndex(s=>s.id===op.shape.id);if(i>=0)_sh().splice(i,1);_sl().delete(op.shape.id);delete _wc()[op.shape.id];_selR(op);}
+        else{const i=_sh().findIndex(s=>s.id===op.shape.id);if(i>=0)_sh().splice(i,1);_sdl(op.shape.id);delete _wc()[op.shape.id];_selR(op);}
         break;}
       case 'addMany':{
         // Atomic multi-add (paste/duplicate): N copies as ONE undo step. Forward mirrors
         // 'add' (idempotent on id); reverse mirrors 'del' (remove all, drop selection).
         if(forward){for(const sh of op.shapes){if(!byId(sh.id))_sh().push(clone(sh));}_sz();}
-        else{for(const sh of op.shapes){const i=_sh().findIndex(s=>s.id===sh.id);if(i>=0)_sh().splice(i,1);_sl().delete(sh.id);delete _wc()[sh.id];}_selR(op);}
+        else{for(const sh of op.shapes){const i=_sh().findIndex(s=>s.id===sh.id);if(i>=0)_sh().splice(i,1);_sdl(sh.id);delete _wc()[sh.id];}_selR(op);}
         break;}
       case 'del':{
         if(forward){
@@ -1602,7 +1603,7 @@ const Store={
             if(byId(sh.id)?.locked)continue;   // parity with every other remote op: a peer cannot delete a locally-locked shape
             const i=_sh().findIndex(s=>s.id===sh.id);
             if(i>=0)_sh().splice(i,1);
-            _sl().delete(sh.id);
+            _sdl(sh.id);
             delete _wc()[sh.id];        // drop per-property write clocks
           }
           // Apply connector binding clears after shapes are gone (connectors still live)
@@ -1635,7 +1636,7 @@ const Store={
         if(!forward)_selR(op);
         break;}
       case 'clear':{
-        if(forward){_sh().length=0;_sl().clear();state.wclock={};}
+        if(forward){_sh().length=0;_scl();state.wclock={};}
         else{for(const s of op.shapes)_sh().push(clone(s));_sz();if(op.wc)state.wclock=clone(op.wc);_selR(op);}
         break;}
       case 'replace':{
@@ -1643,7 +1644,7 @@ const Store={
         // shape arrays so Ctrl+Z restores the board the import overwrote.
         // Local-only by design — NOT in REMOTE_OPS, so a peer can't wipe your board.
         const next=forward?op.after:op.before;
-        _sh().length=0;_sl().clear();state.wclock={};
+        _sh().length=0;_scl();state.wclock={};
         for(const s of next)_sh().push(clone(s));
         _sz();
         if(forward&&op.afterWc)state.wclock=clone(op.afterWc);
@@ -4395,7 +4396,7 @@ _on(canvas,'drop',e=>{
       if(w>maxDim||h>maxDim){const r=_min(maxDim/w,maxDim/h);w*=r;h*=r}
       const sh=Shape.make('image',{x:wp.x+i*20,y:wp.y,w,h,dataUrl});
       Store.commit({op:'add',shape:sh});
-      _sl().clear();_sl().add(sh.id);
+      _scl();_sad(sh.id);
       _iv();_o(t('imagePasted'));
     });
   });
@@ -4465,7 +4466,7 @@ _on(window,'paste',e=>{
       const wp=_s2({x:r.width/2,y:r.height/2});
       const sh=Shape.make('text',{x:wp.x-w/2,y:wp.y-(lines.length*fs*1.4)/2,w,h:lines.length*fs*1.4,text:body,fontSize:fs});
       _cOp({op:'add',shape:sh});
-      _sl().clear();_sl().add(sh.id);
+      _scl();_sad(sh.id);
       _iv();_o(t('textPasted'));
     });
     return;
@@ -4481,7 +4482,7 @@ _on(window,'paste',e=>{
       if(w>maxDim||h>maxDim){const sc=_min(maxDim/w,maxDim/h);w*=sc;h*=sc}
       const sh=Shape.make('image',{x:wp.x-w/2,y:wp.y-h/2,w,h,dataUrl});
       Store.commit({op:'add',shape:sh});
-      _sl().clear();_sl().add(sh.id);
+      _scl();_sad(sh.id);
       _iv();
       _o(t('imagePasted'));
     });
@@ -4732,12 +4733,12 @@ function pickOrMarquee(wp,e){
     // ADR-0129: ⇧click on a fully-selected target removes it from the
     // selection (Figma parity) — plain click starts the move drag instead.
     if(alreadySel&&e.shiftKey){
-      for(const id of toSelect)_sl().delete(id);
+      for(const id of toSelect)_sdl(id);
       _aS();_iv();return;
     }
     if(!alreadySel){
-      if(!e.shiftKey)_sl().clear();
-      for(const id of toSelect)_sl().add(id);
+      if(!e.shiftKey)_scl();
+      for(const id of toSelect)_sad(id);
       _aS();   // ADR-0037: click/group select was SR-silent
     }
     ptr.dragKind='move';
@@ -4748,10 +4749,10 @@ function pickOrMarquee(wp,e){
     }));
   }else{
     if(e.altKey){                     // ADR-0158: ⌥+drag on empty canvas = lasso
-      if(!e.shiftKey)_sl().clear();
+      if(!e.shiftKey)_scl();
       ptr.dragKind='lasso';ptr.lasso=[wp];state.lasso=ptr.lasso;_ivO();
     }else{
-      if(!e.shiftKey)_sl().clear();
+      if(!e.shiftKey)_scl();
       ptr.dragKind='marquee';
     }
   }
@@ -4932,7 +4933,7 @@ function endSelect(wp,shift,alt){
     if(r.w>2||r.h>2){
       // ADR-0130: ⇧marquee adds to the current selection (Figma parity);
       // plain marquee replaces it as before.
-      if(!shift)_sl().clear();
+      if(!shift)_scl();
       // ADR-0032: a fully-contained shape's cells are a subset of the marquee's
       // cells, so grid candidates are a superset of every possible hit — the
       // O(n) per-pointermove scan shrinks to the rect's neighbourhood.
@@ -4953,18 +4954,18 @@ function endSelect(wp,shift,alt){
         // be edited anyway, and a region-drag shouldn't pick them up
         // (Figma/draw.io parity). Single-click selection still reaches them
         // for the ctx Unlock path.
-        if(hit&&!s.locked&&s.visible!==0)_sl().add(s.id);
+        if(hit&&!s.locked&&s.visible!==0)_sad(s.id);
       }
       _aS();   // ADR-0037: announce the marquee result (incl. cleared)
     }
   }else if(ptr.dragKind==='lasso'&&_la()){                    // ADR-0158
     const pts=_la();
     if(pts.length>2){
-      if(!shift)_sl().clear();                          // ⇧lasso adds, plain replaces (marquee parity)
+      if(!shift)_scl();                          // ⇧lasso adds, plain replaces (marquee parity)
       for(const s of _sh()){
         if(s.locked||s.visible===0)continue;
         const b=_bb(s);if(!b)continue;
-        if(_ptInPoly(b.x+b.w/2,b.y+b.h/2,pts))_sl().add(s.id);   // centre-in-polygon (draw.io lasso rule)
+        if(_ptInPoly(b.x+b.w/2,b.y+b.h/2,pts))_sad(s.id);   // centre-in-polygon (draw.io lasso rule)
       }
       _aS();
     }
@@ -5157,7 +5158,7 @@ function endRectLike(){
   }
   _cOp({op:'add',shape:d});
   pickTool('select');
-  _sl().clear();_sl().add(d.id);
+  _scl();_sad(d.id);
   if(d.type==='sticky')openTextEditor(d,true);
 }
 
@@ -5193,7 +5194,7 @@ function endLineLike(){
   if(ba&&ba!==bb)d.a=ba;
   if(bb&&bb!==ba)d.b=bb;
   _cOp({op:'add',shape:d});
-  pickTool('select');_sl().clear();_sl().add(d.id);
+  pickTool('select');_scl();_sad(d.id);
 }
 // ADR-0065: settle an endpoint drag — bind if dropped on a shape (not self /
 // not the other end's shape), else unbind. Called before the commit snapshot so
@@ -5609,7 +5610,7 @@ _on(window,_KD,e=>{
     // mid-drag mutations are in-place, so without this Escape left shapes
     // displaced until pointerup committed them. Selection survives the cancel.
     else if(ptr.down&&ptr.dragKind)_cancelPointerGesture();
-    else{if(_selN())_tst(t('selNone'));_sl().clear();ptr.lineClick=false;state.marquee=null;state.draft=null;state.guides=null;state.readout=null;state.bindPreview=null;state.measure=null;state.lasso=null;_penPred=null;_iv()}   // ADR-0037
+    else{if(_selN())_tst(t('selNone'));_scl();ptr.lineClick=false;state.marquee=null;state.draft=null;state.guides=null;state.readout=null;state.bindPreview=null;state.measure=null;state.lasso=null;_penPred=null;_iv()}   // ADR-0037
   }
   else if(k==='?'||(e.shiftKey&&e.key==='/')){_pd(e);UI.toggleHelp()}
   else if(k===']'&&!meta&&e.shiftKey){_pd(e);doBringFront()}
@@ -5789,7 +5790,7 @@ function doDelete(){
   if(connClears.length)op.connClears=connClears;
   Store.commit(op);
   _keepSel(origSel);
-  _sl().clear();
+  _scl();
   _tst(t('deleted')+' '+sel.length);
 }
 // z-order ops (ADR-0001 Step 2): move only the selected shapes' fractional keys
@@ -5884,7 +5885,7 @@ function hideSelection(){
   const before=[],after=[];
   _forSel((s,id)=>{if(s.locked||s.visible===0)return;
     before.push({id,visible:s.visible??null});after.push({id,visible:0});
-    s.visible=0;_sl().delete(id);
+    s.visible=0;_sdl(id);
   })
   if(before.length){_styleOp(before,after);_iv();_o(before.length+' '+t('hiddenCount'))}
 }
@@ -5942,7 +5943,7 @@ function wrapInFrame(){
   const f=Shape.make('frame',{x:b.x-PAD,y:b.y-PAD,w:b.w+PAD*2,h:b.h+PAD*2,label:'Frame'});
   f.z=_min(...sel.map(s=>s.z||0))-0.5;      // ADR-0001: fractional z keeps order stable
   _cOp({op:'add',shape:f});
-  _sl().clear();_sl().add(f.id);
+  _scl();_sad(f.id);
   _iv();_o(t('framed'));
 }
 function doGroup(){
@@ -6715,7 +6716,7 @@ function importDrawioText(txt,wp){
   if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);
     for(const s of shapes)Shape.translate(s,dx,dy)}
   _cOp({op:'addMany',shapes});
-  _sl().clear();for(const s of shapes)_sl().add(s.id);
+  _scl();for(const s of shapes)_sad(s.id);
   if(_vpNull&&_dioVp){_vp().x=_dioVp.x;_vp().y=_dioVp.y;_vp().zoom=_dioVp.z;if(_dioVp.g!=null)state.showGrid=_dioVp.g}   // ADR-0359/0409: viewport+grid restore
   if(_dioNm)_setDocName(_dioNm.slice(0,80));   // ADR-0405
   _iv();_o(t('dioImported'));
@@ -7019,7 +7020,7 @@ function importSvgText(txt,wp){
   if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);
     for(const s of shapes)Shape.translate(s,dx,dy)}
   _cOp({op:'addMany',shapes});
-  _sl().clear();for(const s of shapes)_sl().add(s.id);
+  _scl();for(const s of shapes)_sad(s.id);
   _iv();_o(t('svgImported'));
   return true;
 }
@@ -7175,7 +7176,7 @@ function importExcText(txt,wp){
   if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);
     for(const s of shapes)Shape.translate(s,dx,dy)}
   _cOp({op:'addMany',shapes});
-  _sl().clear();for(const s of shapes)_sl().add(s.id);
+  _scl();for(const s of shapes)_sad(s.id);
   if(_vpNull){try{const ap=_JP(txt).appState;   // ADR-0409: scrollX/Y/zoom → viewport
     if(ap&&_fin(+ap.scrollX)&&_fin(+ap.scrollY)){_vp().x=-+ap.scrollX;_vp().y=-+ap.scrollY;
       if(ap.zoom&&_fin(+ap.zoom.value))_vp().zoom=clampZoom(+ap.zoom.value);
@@ -7239,7 +7240,7 @@ function importBoard(file){
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out. Skipping this leaks wclock entries and
       // can let a re-imported shape (same id) inherit a stale LWW clock.
-      _sl().clear();state.wclock={};
+      _scl();state.wclock={};
       if(typeof d.docName==='string'&&d.docName)_setDocName(d.docName.slice(0,80));   // clamp: the input enforces maxlength=80, intake paths must too
       if(d.viewport&&_fin(+d.viewport.x)&&_fin(+d.viewport.y)&&_fin(+d.viewport.zoom)&&d.viewport.zoom>0){   // ADR-0393
         _vp().x=+d.viewport.x;_vp().y=+d.viewport.y;_vp().zoom=clampZoom(+d.viewport.zoom);
@@ -8160,7 +8161,7 @@ const Share={
         _vp().x=+data.viewport.x;_vp().y=+data.viewport.y;
         _vp().zoom=clampZoom(+data.viewport.zoom);
       }
-      _sl().clear();state.wclock={};
+      _scl();state.wclock={};
       _sz();_iv();
       Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(_wc()),origSel});
       _g('docName').value=_dn();_syncDocTitle();
@@ -8362,7 +8363,7 @@ const Persist={
       const beforeWc=clone(_wc());
       const origSel=_selIds();
       state.shapes=shapes.map(clone);_iG();   // ADR-0009
-      _sl().clear();state.wclock={};
+      _scl();state.wclock={};
       if(typeof d.docName==='string'&&d.docName)_setDocName(d.docName.slice(0,80));   // clamp: the input enforces maxlength=80, intake paths must too
       if(d.viewport&&_fin(+d.viewport.x)&&_fin(+d.viewport.y)&&_fin(+d.viewport.zoom)&&d.viewport.zoom>0){
         _vp().x=+d.viewport.x;_vp().y=+d.viewport.y;_vp().zoom=clampZoom(+d.viewport.zoom);

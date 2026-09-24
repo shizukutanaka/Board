@@ -468,6 +468,8 @@ Board/
 │   ├── ADR-0416-dead-code-sweep.md   # SNAP_THRESHOLD 除去 + _setSq/_ss 活性化 (実装済)
 │   ├── ADR-0417-valign-persistence.md   # _st().valign last-used 永続化 (実装済)
 │   ├── ADR-0418-sb-hass-shorthands.md   # _sb/_hasS fold (実装済)
+│   ├── ADR-0419-selection-mutation-shorthands.md   # _scl/_sad/_sdl (実装済)
+│   ├── ADR-0420-image-i18n-key.md   # image を T.k に追加 (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
