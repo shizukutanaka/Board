@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.461] - 2026-09-23
+
+### Fixed
+- `_penRender` 失敗時に stale px と解像度を記録 — `_penCachePx` の会計リークと毎フレーム再試行 churn を解消
+
 ## [1.7.460] - 2026-09-23
 
 ### Internal
