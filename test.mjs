@@ -760,6 +760,7 @@ const checks = [
   ['route style persists via state.style.elbow/curve into Shape.make', html.includes("state.style.elbow=s.elbow;state.style.curve=0")&&html.includes('if(state.style.elbow)base.elbow=state.style.elbow;')],
   ['corner/hatch/align persist via state.style into Shape.make', html.includes("state.style.r!=null")&&html.includes("state.style.align=nxt")&&html.includes("state.style.fstyle=nxt||null")],
   ['eyedropper absorbs persisted look-props + start persists', html.includes("'elbow','curve','r','fstyle','align','valign','fontSize','cbend'")&&html.includes("state.style.start=s.start")],
+  ['frame label honors s.font family', html.includes('${_fontFam(s)}" font-size="12"')&&html.includes('${_fontFam(hit)};color')],
   // v1.7.05: Tab cycling excludes locked shapes (parity with doMove/doDelete/doRotate/doFlip)
   ['statusbar selection dims readout', html.includes('id="sSel"')&&html.includes('_statusSel()')&&html.includes('Math.round(b.w)')],
   ['empty-selection arrows pan viewport', html.includes("state.viewport.x+=k==='arrowleft'?-step:k==='arrowright'?step:0")],

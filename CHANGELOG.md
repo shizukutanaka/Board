@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.244]
+
+### 修正
+- **フレームラベル/ラベルエディタが s.font を反映** (ADR-0186)。
+  フレーム名とラベル編集入力が `_fontFam` に対応 — 600 ウェイト
+  規約は維持しファミリのみ継承。ラベル付きフレームで cycleFont が
+  完結する。
+
 ## [1.7.243]
 
 ### 追加

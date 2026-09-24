@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.243';
+const V='1.7.244';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2753,7 +2753,7 @@ function drawShape(s,c){
       const lbl=s.label||'Frame';
       const fs=12;
       c.fillStyle=s.stroke||getCSS('--brand')||'#00C4CC';
-      c.font=`600 ${fs}px system-ui,sans-serif`;
+      c.font=`600 ${fs}px ${_fontFam(s)}`;                          // ADR-0186
       c.textBaseline='bottom';
       c.fillText(lbl,s.x+6,s.y-2);
       c.restore();
@@ -4037,7 +4037,7 @@ function openLabelEditor(hit,leftPx,topPx,bold){
   inp.value=hit.label||'';inp.maxLength=80;
   const col=hit.stroke||getCSS(bold?'--accent-contrast':'--ink');   // a11y-audit-2026-07: this is real text (label editor), needs the 4.5:1 text floor too — --accent-contrast clears both themes
   inp.style.cssText=`position:fixed;left:${leftPx}px;top:${topPx}px;`+
-    `font:${bold?'600 ':''}12px system-ui,sans-serif;color:${col};`+
+    `font:${bold?'600 ':''}12px ${_fontFam(hit)};color:${col};`+   // ADR-0186
     `background:${getCSS('--paper')};border:1px solid ${col};`+
     `padding:2px 6px;outline:none;z-index:9500;min-width:80px;`;
   document.body.appendChild(inp);inp.select();
@@ -6650,7 +6650,7 @@ function buildSVG(shapes,paper){
         // export, not canvas/PNG/PDF (deep-audit fix).
         const fa=` opacity="${(s.opacity==null?1:_num(s.opacity))*0.9}"`;
         els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${fr}" fill="${s.fill||'rgba(248,250,252,0.6)'}" stroke="${clr}" stroke-width="${SZ||1.5}"${dA}${fa}${rT}/>`);   // ADR-0178
-        els.push(`<text x="${X+ox+6}" y="${Y+oy-4}" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="${clr}"${fa}${rT}>${_esc(s.label||'Frame')}</text>`);
+        els.push(`<text x="${X+ox+6}" y="${Y+oy-4}" font-family="${_fontFam(s)}" font-size="12" font-weight="600" fill="${clr}"${fa}${rT}>${_esc(s.label||'Frame')}</text>`);
         break;}
       case 'sticky':{
         const r=Math.min(6,Math.abs(W)/6,Math.abs(H)/6);
