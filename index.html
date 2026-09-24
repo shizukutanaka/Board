@@ -819,7 +819,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.425';
+const V='1.7.426';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3708,7 +3708,10 @@ function _sqMatches(){
   const q=_sq.toLowerCase();
   if(_sqVer===_gridVer&&_sqQ===q)return _sqList;
   _sqList=[];
-  for(const s of _sh()){if(s.visible!==0&&((s.label||'')+(s.text||'')+(s.type||'')+(s.link||'')).toLowerCase().includes(q))_sqList.push(s)}   // ADR-0346/0353
+  // ADR-0381: a connector is also found by its bound endpoints' names —
+  // "the arrow into the Login button" should match "login", not just the conn's own text.
+  const _bt=s=>{let o='';for(const id of [s.a,s.b]){const t=id&&byId(id);if(t)o+=(t.label||'')+(t.text||'')+(t.type||'')}return o};
+  for(const s of _sh()){if(s.visible!==0&&((s.label||'')+(s.text||'')+(s.type||'')+(s.link||'')+(_conn(s.type)?_bt(s):'')).toLowerCase().includes(q))_sqList.push(s)}   // ADR-0346/0353/0381
   _sqVer=_gridVer;_sqQ=q;
   return _sqList;
 }

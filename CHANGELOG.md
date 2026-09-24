@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.426] - 2026-09-23
+
+### 追加
+- ⌘F 検索でコネクタが結合先の名前でもヒット (ADR-0381) — 「Loginボタンへの矢印」が "login" で見つかるように、コネクタのみ結合先の label/text/type を検索対象に追加
+
 ## [1.7.425] - 2026-09-23
 
 ### 追加
