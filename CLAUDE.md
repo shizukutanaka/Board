@@ -219,6 +219,7 @@ Board/
 - [ADR-0167](docs/ADR-0167-digit-opacity.md) 数字キー不透明度
 - [ADR-0168](docs/ADR-0168-image-corner-radius.md) 画像の角丸
 - [ADR-0169](docs/ADR-0169-label-fontsize.md) ラベル fontSize
+- [ADR-0170](docs/ADR-0170-label-typography.md) ラベル太字斜体下線取消線
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

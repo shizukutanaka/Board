@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.227';
+const V='1.7.228';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2540,13 +2540,17 @@ function _drawBoxLabel(s,c){
   c.save();
   c.fillStyle=s.stroke||'#0F172A';
   const fs=s.fontSize||14;   // ADR-0169
-  c.font=fs+'px system-ui,sans-serif';
+  c.font=_fontStr(s,fs);   // ADR-0170
   c.textAlign='center';c.textBaseline='middle';
   const lines=wrapTextCached(s,s.label,Math.max(10,s.w-8),fs,t=>c.measureText(t).width);   // ADR-0074
   const lh=fs*1.25;
   // ADR-0159: s.valign 'top'|'bottom' (absent = centred) — draw.io parity.
   const top0=s.valign==='top'?s.y+6:s.valign==='bottom'?s.y+s.h-6-lines.length*lh:s.y+s.h/2-(lines.length*lh)/2;
   for(let i=0;i<lines.length;i++)c.fillText(lines[i],s.x+s.w/2,top0+lh/2+i*lh);
+  if(s.under||s.strike){c.strokeStyle=c.fillStyle;c.lineWidth=Math.max(1,fs*0.06);   // ADR-0170
+    for(let i=0;i<lines.length;i++){const lw=c.measureText(lines[i]).width;
+      if(s.under){const uy=top0+lh/2+i*lh+fs*0.55;c.beginPath();c.moveTo(s.x+s.w/2-lw/2,uy);c.lineTo(s.x+s.w/2+lw/2,uy);c.stroke()}
+      if(s.strike){const uy=top0+lh/2+i*lh;c.beginPath();c.moveTo(s.x+s.w/2-lw/2,uy);c.lineTo(s.x+s.w/2+lw/2,uy);c.stroke()}}}
   c.restore();
 }
 // ADR-0083: image caption — paper-backed strip along the inside bottom edge,
@@ -2555,7 +2559,7 @@ function _drawImgLabel(s,c){
   if(!s.label)return;
   c.save();
   const fs=s.fontSize||14;   // ADR-0169
-  c.font=fs+'px system-ui,sans-serif';
+  c.font=_fontStr(s,fs);   // ADR-0170
   let lines=wrapTextCached(s,s.label,Math.max(10,s.w-8),fs,t=>c.measureText(t).width);
   const lh=fs*1.25,maxL=Math.max(1,Math.floor((s.h-4)/lh));
   if(lines.length>maxL){lines=lines.slice(0,maxL);lines[maxL-1]+='…'}
@@ -2637,12 +2641,15 @@ function _drawConnLabel(s,c){
   const lp=_connLabelXY(s),mx=lp.x,my=lp.y;                       // ADR-0081
   c.save();
   const fs=s.fontSize||12;   // ADR-0169
-  c.font=fs+'px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';
+  c.font=_fontStr(s,fs);c.textAlign='center';c.textBaseline='middle';   // ADR-0170
   const w=c.measureText(s.label).width,pad=4;
   c.fillStyle=getCSS('--paper')||'#fff';
   c.fillRect(mx-w/2-pad,my-fs*0.75,w+pad*2,fs*1.5);
   c.fillStyle=s.stroke||'#0F172A';
   c.fillText(s.label,mx,my);
+  if(s.under||s.strike){c.strokeStyle=c.fillStyle;c.lineWidth=Math.max(1,fs*0.06);   // ADR-0170
+    if(s.under){c.beginPath();c.moveTo(mx-w/2,my+fs*0.55);c.lineTo(mx+w/2,my+fs*0.55);c.stroke()}
+    if(s.strike){c.beginPath();c.moveTo(mx-w/2,my);c.lineTo(mx+w/2,my);c.stroke()}}
   c.restore();
 }
 function drawShape(s,c){
@@ -6385,7 +6392,7 @@ function _connLabelSVG(s,x1,y1,x2,y2,ox,oy,stroke,paper){
   const mx=(x1+x2)/2+ox,my=(y1+y2)/2+oy;
   const fs=s.fontSize||12,lw=String(s.label).length*fs*0.6+8;   // ADR-0169
   return `<rect x="${mx-lw/2}" y="${my-fs*0.75}" width="${lw}" height="${fs*1.5}" fill="${_esc(paper||'#FFFFFF')}" opacity="0.9"/>`+
-    `<text x="${mx}" y="${my}" font-family="system-ui,sans-serif" font-size="${fs}" text-anchor="middle" dominant-baseline="central" fill="${stroke}">${_esc(s.label)}</text>`;
+    `<text x="${mx}" y="${my}" font-family="system-ui,sans-serif" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''} text-anchor="middle" dominant-baseline="central" fill="${stroke}">${_esc(s.label)}</text>`;   // ADR-0170
 }
 // Pure SVG assembly; returns string or null. All attr values through _esc.
 function buildSVG(shapes,paper){
@@ -6596,7 +6603,7 @@ function _svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT){
   if(lines.length>maxL){lines=lines.slice(0,maxL);lines[maxL-1]+='…'}
   const sh_=lines.length*lh+4,sy=Y+H-sh_;
   els.push(`<g${rT}><rect x="${X+ox}" y="${sy+oy}" width="${W}" height="${sh_}" fill="${_esc(paper||'#FFFFFF')}" opacity="0.85"/>`);
-  els.push(`<text x="${X+W/2+ox}" y="${sy+oy+2}" dominant-baseline="hanging" font-family="system-ui,sans-serif" font-size="${fs}" text-anchor="middle" fill="${stroke}">`);
+  els.push(`<text x="${X+W/2+ox}" y="${sy+oy+2}" dominant-baseline="hanging" font-family="system-ui,sans-serif" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''} text-anchor="middle" fill="${stroke}">`);   // ADR-0170
   for(let i=0;i<lines.length;i++)els.push(`<tspan x="${X+W/2+ox}" dy="${i?lh:0}">${_esc(lines[i])}</tspan>`);
   els.push('</text></g>');
 }
@@ -6605,7 +6612,7 @@ function _svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT){
   const lines=wrapText(s.label,Math.max(10,W-pad*2),t=>t.length*fs*0.6);
   const lh=fs*1.25;
   const cy=s.valign==='top'?Y+6+oy:s.valign==='bottom'?Y+H-6+oy-lines.length*lh:Y+H/2+oy-(lines.length*lh)/2;   // ADR-0159
-  els.push(`<text x="${X+W/2+ox}" y="${cy}" dominant-baseline="hanging" font-family="system-ui,sans-serif" font-size="${fs}" text-anchor="middle" fill="${stroke}"${a}${rT}>`);
+  els.push(`<text x="${X+W/2+ox}" y="${cy}" dominant-baseline="hanging" font-family="system-ui,sans-serif" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''} text-anchor="middle" fill="${stroke}"${a}${rT}>`);   // ADR-0170
   for(let i=0;i<lines.length;i++)els.push(`<tspan x="${X+W/2+ox}" dy="${i?lh:0}">${_esc(lines[i])}</tspan>`);
   els.push('</text>');
 }
@@ -8247,7 +8254,7 @@ function fontSizeStep(d){
 function toggleTextFlag(k){
   const before=[],after=[];
   for(const id of state.selection){
-    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky')||s.locked)continue;
+    const s=byId(id);if(!s||(s.type!=='text'&&s.type!=='sticky'&&!s.label)||s.locked)continue;   // ADR-0170
     const nxt=!s[k];
     before.push({id,[k]:s[k]||null});after.push({id,[k]:nxt?true:null});
     if(nxt)s[k]=true;else delete s[k];

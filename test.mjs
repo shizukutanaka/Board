@@ -754,6 +754,7 @@ const checks = [
   ['digit keys set opacity (Figma)', html.includes("/^[0-9]$/.test(k)&&state.selection.size")&&html.includes("opacity:k==='0'?1:+k/10")],
   ['image corner radius via cycleCorner + clips', html.includes("s.type!=='image')||s.locked)continue;   // ADR-0156/0168")&&html.includes('clip-path="url(#irc')&&html.includes('roundRect(c,s.x,s.y,s.w,s.h,_cr);c.clip()')],
   ['label fontSize honored across renderers', html.includes('const fs=s.fontSize||12;')&&html.includes('const fs=s.fontSize||14')&&html.includes("s.type!=='sticky'&&!s.label)||s.locked")],
+  ['labels honor bold/italic/under/strike (ADR-0170)', html.includes('c.font=_fontStr(s,fs);c.textAlign='center';c.textBaseline='middle';   // ADR-0170')&&html.includes("s.type!=='sticky'&&!s.label)||s.locked)continue;   // ADR-0170")],
   ['Tab cycling excludes locked+hidden shapes (filter before cycleSel)', html.includes("const ids=state.shapes.filter(s=>!s.locked&&s.visible!==0).map(s=>s.id)")],
   // v1.6.60: bound connectors - arrow/line endpoints follow bound shapes
   ['connEnds helper derives bound endpoints', html.includes("function connEnds") && html.includes("function _edgePt")],

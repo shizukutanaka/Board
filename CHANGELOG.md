@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.228]
+
+### 追加
+- **ラベルの太字/斜体/下線/取消線** (ADR-0170)。⌘B/⌘I/⌘U/⌘⇧X が
+  ラベル保持図形にも適用 — canvas は `_fontStr` + 手動ストローク、
+  SVG は font-weight/style/text-decoration 属性で一致。
+
 ## [1.7.227]
 
 ### 追加
