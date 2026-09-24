@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.253';
+const V='1.7.254';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4070,6 +4070,20 @@ function openLabelEditor(hit,leftPx,topPx,bold){
   inp.addEventListener('keydown',ev=>{
     if(ev.isComposing)return;
     if(ev.key==='Enter'){ev.preventDefault();commit()}
+    // ADR-0196: Tab commits and jumps to the next label-able shape (rapid
+    // labeling like Figma's table/cell flow); Shift+Tab walks backwards.
+    if(ev.key==='Tab'){ev.preventDefault();
+      const cur=state.shapes.indexOf(hit),dir=ev.shiftKey?-1:1;
+      for(let k=1;k<=state.shapes.length;k++){
+        const nx=state.shapes[(cur+dir*k+state.shapes.length)%state.shapes.length];
+        if(nx&&!nx.locked&&nx.visible!==0&&_lblAnchor(nx)){
+          state.selection=new Set([nx.id]);_announceSel();
+          inp.removeEventListener('blur',commit);commit();
+          if(_openLabelEditorFor(nx))return;
+        }
+      }
+      commit();
+    }
     if(ev.key==='Escape'){inp.removeEventListener('blur',commit);_lblTa=null;inp.remove()}
   });
 }

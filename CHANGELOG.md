@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.254]
+
+### 追加
+- **ラベル編集の Tab 巡回** (ADR-0196)。ラベルエディタで Tab /
+  Shift+Tab がコミットして次/前のラベル対応図形に移動 — 連続
+  ラベリングが一発化。
+
 ## [1.7.253]
 
 ### 追加
