@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.444] - 2026-09-23
+
+### Fixed
+- .excalidraw `appState` (scrollX/scrollY/zoom + gridSize) を import で復元 — 視点とグリッドの往復 (drawio と同等に)
+- .drawio `grid` フラグを import で復元 (`state.showGrid` 往復)
+
 ## [1.7.443] - 2026-09-23
 
 ### Added

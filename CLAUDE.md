@@ -458,6 +458,7 @@ Board/
 │   ├── ADR-0406-keyname-color-consts.md   # _ES/_EN/_TB/_IK/_YW + !==_un (実装済)
 │   ├── ADR-0407-drawio-strike-sel-export.md   # strikeThrough 往復 + 選択 .drawio 書き出し (実装済)
 │   ├── ADR-0408-toast-kind-shorthands.md   # _w/_o/_e + _trimSeen (実装済)
+│   ├── ADR-0409-file-viewport-grid-restore.md   # exc appState + drawio grid 往復 (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
