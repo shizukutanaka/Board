@@ -2,6 +2,15 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.134]
+
+### 追加
+- **直線コネクタの中間ウェイポイント** (ADR-0076)。選択中の直線 line/arrow
+  の中点ハンドルをドラッグで `s.way` を作成・移動 (draw.io parity) —
+  直線中点 ±6px に戻すと自動削除。`_linePts` が draw/hit/bbox/SVG/
+  minimap/label の共通経路源で、translate/flip/rotate/gresize/grot の
+  全変換経路で追従。`style` op で undo・同期は既存経路。
+
 ## [1.7.133]
 
 ### 追加

@@ -444,6 +444,7 @@ const checks = [
   ['text align: align prop cycles + canvas/SVG/editor respect it', html.includes('function cycleTextAlign()')&&html.includes("['ctxTextAlign','',cycleTextAlign]")&&html.includes('c.textAlign=s.align')&&html.includes('text-anchor')],
   ['box label wrap: canvas wraps to w-8 + SVG multi-tspan centred', html.includes('wrapTextCached(s,s.label,Math.max(10,s.w-8)')&&html.includes('function _svgBoxLabel(els,s,X,Y,W,H')&&html.includes('wrapText(s.label')],
   ['font size keys: ⌘⇧,/. steps fontSize ±2 clamped 8..64', html.includes('function fontSizeStep(d)')&&html.includes("k===','||k==='<'")&&html.includes('Math.min(64,Math.max(8')],
+  ['waypoint: _linePts + way drag + transforms + SVG polyline', html.includes('function _linePts(s)')&&html.includes("ptr.dragKind='way'")&&html.includes('s.way?')&&html.includes('if(orig.way)sh.way=')],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
@@ -658,8 +659,8 @@ const checks = [
   ['Tab cycling excludes locked shapes (filter before cycleSel)', html.includes("const ids=state.shapes.filter(s=>!s.locked).map(s=>s.id)")],
   // v1.6.60: bound connectors - arrow/line endpoints follow bound shapes
   ['connEnds helper derives bound endpoints', html.includes("function connEnds") && html.includes("function _edgePt")],
-  ['G.bbox line uses connEnds', html.includes("const e=connEnds(s);\n      const x=Math.min(e.x1,e.x2)")],
-  ['G.hit line uses connEnds', html.includes("const e=connEnds(s);\n        return distToSeg")],
+  ['G.bbox line uses connEnds', html.includes("const e=connEnds(s);\n      const x=Math.min(e.x1,e.x2,s.way")],
+  ['G.hit line uses connEnds', html.includes("const pts=_linePts(s);")],
   ['drawArrow uses connEnds', html.includes("function drawArrow(s,c){\n  c=c||ctx;\n  const e=connEnds(s);")],
   ['endLineLike binds endpoints dropped on a shape', html.includes("const ba=_bindAt(d.x1,d.y1),bb=_bindAt(d.x2,d.y2)") && html.includes("function _bindAt")],
   ['connector endpoints always expose resize handles (ADR-0065 rebind)', html.includes("h.push({id:'p1',x:e.x1,y:e.y1});       // ADR-0065") && html.includes("h.push({id:'p2',x:e.x2,y:e.y2});")],
@@ -1276,7 +1277,7 @@ try {
              doAlign, doFlip, snapV, snapPt,
              getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
-             copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, toggleCurve, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
+             copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, toggleCurve, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
              _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa: () => _teTa, zoomAt,
@@ -1303,7 +1304,7 @@ try {
           doAlign, doFlip, snapV, snapPt,
           getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
-          copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, toggleCurve, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
+          copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, toggleCurve, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
           _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa, zoomAt,
@@ -3510,6 +3511,23 @@ try {
     state.selection=new Set();
     Store.commit({op:'del',shapes:[T,R].map(s=>JSON.parse(JSON.stringify(s)))});
     console.log('  ✓ font size keys: step/clamp/type-gate (4 asserts)');
+  }
+
+  // ADR-0076: waypoint — _linePts expands, bbox covers vertex, translate moves it
+  {
+    const A=Shape.make('arrow',{x1:0,y1:0,x2:200,y2:0});
+    Store.commit({op:'add',shape:A});
+    const sh=byId(A.id);
+    assert.ok(_linePts(sh).length===2,'no way → 2 pts');
+    sh.way={x:100,y:80};
+    const pts=_linePts(sh);
+    assert.ok(pts.length===3&&pts[1].x===100&&pts[1].y===80,'way → 3-pt polyline');
+    const bb=G.bbox(sh);
+    assert.ok(bb.y+bb.h>=80,'bbox includes waypoint');
+    Shape.translate(sh,10,5);
+    assert.ok(sh.way.x===110&&sh.way.y===85,'translate moves way');
+    Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(sh))]});
+    console.log('  ✓ waypoint: polyline + bbox + translate (4 asserts)');
   }
 
   // validPatch recurses: nested poison in a remote `upd` (gated by validPatch alone)
