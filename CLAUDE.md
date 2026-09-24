@@ -521,6 +521,7 @@ Board/
 │   ├── ADR-0469-frag-sender-tagging.md    # _fragIn を送信者タグ付け (並行ストリーム継ぎ接ぎ防止、実装済)
 │   ├── ADR-0470-frag-sender-test.md       # _fragIn sender タグの実動作テスト (実装済)
 │   ├── ADR-0471-frac-key-compaction.md    # frac キー >48 で canonical 再採番 (キー増大・発散防止、実装済)
+│   ├── ADR-0472-zstep-fold-undo-correctness.md  # _zStep 統合 + compaction undo の before 正確性 (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

@@ -852,7 +852,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.504';
+const V='1.7.505';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -5821,7 +5821,7 @@ function doDelete(){
 function _zCommit(changes){
   changes=changes.filter(c=>c.before!==c.after);   // keep only real key moves
   if(!_ln(changes)){_iv();return}
-  if(changes.some(c=>_ln(c.after)>48)){const o=_sh().map(s=>s.frac);reindexFrac();changes=_sh().map((s,i)=>({id:s.id,before:o[i],after:s.frac}))}   // ADR-0471
+  if(_sh().some(s=>_ln(s.frac)>48)){const m=_mP(changes.map(c=>[c.id,c.before])),o=_sh().map(s=>s.frac);reindexFrac();changes=_sh().map((s,i)=>({id:s.id,before:m.has(s.id)?m.get(s.id):o[i],after:s.frac}))}   // ADR-0471: undo keeps the mover's ORIGINAL key (o[] already holds the new one)
   _sz();
   _rcOp({op:'zorder',changes});
   _ivp();
@@ -5859,33 +5859,21 @@ function doSendBack(){
   }
   _zCommit(changes);
 }
-function doBringForward(){
-  const ids=_usI();if(!_ln(ids))return;
+function _zStep(dir){   // dir=+1 toward front, -1 toward back
+  const[sel,ss]=_zSelShapes();if(!_ln(ss))return;
   _sz();
-  const sel=_sT(ids), arr=_sh(), changes=[];
-  // move up = toward higher frac; process top→down so selected don't collide.
-  for(let i=_ln(arr)-2;i>=0;i--){
+  const arr=_sh(),changes=[],lo=dir>0?_ln(arr)-2:1,hi=dir>0?-1:_ln(arr);
+  for(let i=lo;i!==hi;i-=dir){
     const s=arr[i];if(!sel.has(s.id))continue;
-    const above=arr[i+1];if(sel.has(above.id))continue;       // already at the top run
-    const upper=arr[i+2]?arr[i+2].frac:null, before=s.frac;
-    const nk=keyBetween(above.frac,upper);s.frac=nk;changes.push({id:s.id,before,after:nk});
-    arr[i]=above;arr[i+1]=s;                                  // reflect for next iterations
+    const o=arr[i+dir];if(sel.has(o.id))continue;            // edge of the selected run
+    const b=arr[i+2*dir]?arr[i+2*dir].frac:null,before=s.frac;
+    const nk=dir>0?keyBetween(o.frac,b):keyBetween(b,o.frac);s.frac=nk;changes.push({id:s.id,before,after:nk});
+    arr[i]=o;arr[i+dir]=s;
   }
   _zCommit(changes);
 }
-function doSendBackward(){
-  const ids=_usI();if(!_ln(ids))return;
-  _sz();
-  const sel=_sT(ids), arr=_sh(), changes=[];
-  for(let i=1;i<_ln(arr);i++){
-    const s=arr[i];if(!sel.has(s.id))continue;
-    const below=arr[i-1];if(sel.has(below.id))continue;
-    const lower=arr[i-2]?arr[i-2].frac:null, before=s.frac;
-    const nk=keyBetween(lower,below.frac);s.frac=nk;changes.push({id:s.id,before,after:nk});
-    arr[i]=below;arr[i-1]=s;
-  }
-  _zCommit(changes);
-}
+function doBringForward(){_zStep(1)}
+function doSendBackward(){_zStep(-1)}
 // ADR-0104: select every shape sharing the picked shape's paint (Figma
 // "Select Same → Fill"). Sticky's paint lives in `color`; everything else in
 // `fill`. Locked shapes are included — ops already skip them.

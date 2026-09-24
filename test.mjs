@@ -1142,7 +1142,7 @@ const checks = [
   ['room switch also clears inbound assemblies (ADR-0466)', html.includes('this._snapIn=null;this._opcIn=null') && html.indexOf('this._snapIn=null;this._opcIn=null')<html.indexOf('new BroadcastChannel')],
   ['_pCt rebaselines after peer purge (ADR-0467)', html.includes('this._pCt=_pr().size')],
   ['_fragIn tags assembly by sender (ADR-0469)', html.includes('sn.src!==src') && html.includes("viaRtc?'rtc':msg.peer")],
-  ['_zCommit compacts grown frac keys (ADR-0471)', html.includes('reindexFrac()') && html.includes('before:o[i],after:s.frac')],
+  ['_zCommit compacts grown frac keys (ADR-0471)', html.includes('reindexFrac()') && html.includes('m.has(s.id)?m.get(s.id):o[i]')],
   // v1.6.80: multi-touch pinch cancels the single-pointer gesture (no stray edits)
   ['pointerdown aborts single-pointer gesture when a 2nd finger lands', html.includes("if(_pointers.size>=2){abortGesture();return;}")],
   ['pointermove bails while pinch is active', html.includes("if(_pointers.size>=2)return;   // pinch in progress")],
@@ -6424,6 +6424,36 @@ try {
     const joined=Net._fragIn(A2,'_snapIn','peerA');
     assert.strictEqual(joined,'{"k":"x","a":1}','same-sender stream joins intact');
     console.log('  ✓ _fragIn sender-tagging: concurrent streams never splice (ADR-0469)');
+  }
+
+  // ADR-0471: _zCommit compacts grown frac keys via reindexFrac, and the emitted
+  // op must keep the mover's ORIGINAL `before` so undo restores the pre-move order.
+  {
+    state.shapes.length=0;_invalidateGrid();state.history.length=0;state.histIdx=-1;state.seq=0;state.seenOps=new Set();
+    const x1=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    const x2=Shape.make('rect',{x:5,y:5,w:10,h:10});
+    const x3=Shape.make('rect',{x:9,y:9,w:10,h:10});
+    Store.commit({op:'add',shape:x1});Store.commit({op:'add',shape:x2});Store.commit({op:'add',shape:x3});
+    // force a grown key on the stored x2 (commit clones) so the next z-move sees a >48 key
+    byId(x2.id).frac='0'.repeat(50);sortZ();
+    const preOrder=state.shapes.map(s=>s.id).join(',');
+    const preFrac=byId(x1.id).frac;
+    state.selection=new Set([x1.id]);
+    doSendBack();
+    const zo=state.history[state.history.length-1];
+    assert.strictEqual(zo&&zo.op,'zorder','a zorder op was recorded');
+    // compaction emits before/after for ALL shapes so every board converges identically
+    assert.strictEqual(zo.changes.length,3,'compaction emits changes for ALL shapes');
+    const ch=Object.fromEntries(zo.changes.map(c=>[c.id,c]));
+    // the mover keeps its ORIGINAL key in `before` (not the freshly assigned one) —
+    // otherwise undo writes the post-move key and silently no-ops.
+    assert.strictEqual(ch[x1.id].before,preFrac,'mover before is its original key');
+    assert.strictEqual(ch[x2.id].before,'0'.repeat(50),'untouched shape before is its current key');
+    // undo must restore the pre-op ordering exactly
+    Store.undo();
+    assert.strictEqual(state.shapes.map(s=>s.id).join(','),preOrder,'undo restores the pre-compaction order');
+    Store.redo();
+    console.log('  ✓ _zCommit compaction: full-shape changes + undo restores pre-op order (ADR-0471)');
   }
 
   // v1.6.85: _reapPeers must NOT drop WebRTC peers by timeout — they don't ride the

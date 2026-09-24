@@ -2,6 +2,16 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.505] - 2026-09-23
+
+### 修正
+
+- `_zCommit` の compaction を盤面全体のキー長で検出 — 未移動図形に残った >48 キーも任意の z 操作で self-heal (ADR-0472)。compaction 時の `before` を mover の**移行前キー**に修正し undo が旧順序を正確に復元 (従来は新キーが入り undo が no-op 化し得た)
+
+### リファクタ
+
+- `doBringForward`/`doSendBackward` を `_zStep(dir)` に統合 (−442B、ADR-0472)
+
 ## [1.7.504] - 2026-09-23
 
 ### 修正
