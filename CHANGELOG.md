@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.542] - 2026-09-23
+
+### リファクタ
+
+- ジェスチャ状態 reset cluster を `_zR` (7-field) / `_zG` (3-field) shorthand に集約 (9 サイト、~280B 回収) (ADR-0509)
+
 ## [1.7.541] - 2026-09-23
 
 ### リファクタ

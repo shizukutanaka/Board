@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.541';
+const V='1.7.542';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2015,6 +2015,7 @@ const _shV=()=>_sh().filter(_sv);   // ADR-0494: visible-shape subset (6 sites)
 const _ulv=s=>!_lk(s)&&_sv(s);   // ADR-0496
 const _ul=s=>!_lk(s);   // ADR-0506
 const _cpT=p=>p.then(ok=>_tst(t(ok?'copied':'copyFailed'),ok?'ok':'warn'));   // ADR-0507
+const _zG=()=>{state.guides=state.readout=state.bindPreview=null},_zR=()=>{state.draft=state.marquee=state.guides=state.readout=state.bindPreview=state.measure=state.lasso=null};   // ADR-0509: gesture-state reset
 const _hb=s=>s.w!=null;   // ADR-0501
 const _idOK=id=>_iS(id)&&_ln(id)<=64;   // ADR-0502: wire id cap (ADR-0485): unlocked+visible predicate (4 sites)
 const _idIdx=id=>_sh().findIndex(s=>s.id===id);   // ADR-0497: shape index by id (4 sites)
@@ -3819,7 +3820,7 @@ function abortGesture(){
   }
   if(_ln(_eraseBatch)){for(const s of _eraseBatch)_sh().push(s);_eraseBatch=[];_sz();_iG();}   // ADR-0009
   _penPred=null;ptr.lineClick=false;
-  state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;state.measure=null;state.lasso=null;
+  _zR();
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.dragStartShapes=null;
   ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;ptr.wayIdx=null;ptr.wayNew=false;ptr.lblOrig=null;
   _iv();
@@ -4148,14 +4149,14 @@ _on(canvas,_PU,e=>{
             _rcOp({op:'upd',id:rsh.id,before,after});
           }
         }
-        ptr.resizeHandle=null;ptr.resizeOrig=null;state.guides=null;state.readout=null;state.bindPreview=null;
+        ptr.resizeHandle=null;ptr.resizeOrig=null;_zG();
       }else if(_dk('gresize')){
         _gresizeCommit();                                              // ADR-0056
-        ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.resizeHandle=null;state.guides=null;state.readout=null;state.bindPreview=null;
+        ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.resizeHandle=null;_zG();
       }else if(_dk('grot')){
         _grotCommit();                                                 // ADR-0057
         if(_selN()===1){const s=_sel0();if(s)_tst(describeShape(s));}
-        ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;state.guides=null;state.readout=null;state.bindPreview=null;
+        ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;_zG();
       }else if(_dk('rotate')){
         const rsh=_sel0();
         if(rsh){
@@ -4235,7 +4236,7 @@ function _cancelPointerGesture(){
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;
   ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.rotOrig=null;ptr.dragStartShapes=null;
   ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;
-  canvas.dataset.panning='false';ptr.lineClick=false;state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;state.measure=null;state.lasso=null;_penPred=null;_iv();
+  canvas.dataset.panning='false';ptr.lineClick=false;_zR();_penPred=null;_iv();
 }
 // ADR-0006: fires after LONG_PRESS_MS. Guards: gesture still active, handle-drag not in
 // progress (resize/rotate — a deliberate precision drag we shouldn't interrupt), and the
@@ -5654,7 +5655,7 @@ _on(window,_KD,e=>{
     // mid-drag mutations are in-place, so without this Escape left shapes
     // displaced until pointerup committed them. Selection survives the cancel.
     else if(ptr.down&&ptr.dragKind)_cancelPointerGesture();
-    else{if(_selN())_tst(t('selNone'));_scl();ptr.lineClick=false;state.marquee=null;state.draft=null;state.guides=null;state.readout=null;state.bindPreview=null;state.measure=null;state.lasso=null;_penPred=null;_iv()}   // ADR-0037
+    else{if(_selN())_tst(t('selNone'));_scl();ptr.lineClick=false;_zR();_penPred=null;_iv()}   // ADR-0037
   }
   else if(k==='?'||(e.shiftKey&&e.key==='/')){_pd(e);UI.toggleHelp()}
   else if(k===']'&&!meta&&e.shiftKey){_pd(e);doBringFront()}
