@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.234]
+
+### 追加
+- **画像のボーダー** (ADR-0176)。`s.stroke`+`s.size` で画像に角丸
+  ボーダーを描画 (canvas/SVG) — 設定可能だったが描画されていなかった
+  スタイルを視覚化。
+
 ## [1.7.233]
 
 ### 追加
