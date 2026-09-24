@@ -387,7 +387,7 @@ const checks = [
   ['pan records effective viewport, subpixel pans skip scene', html.includes("_lastVp={x:ev.x,y:ev.y,zoom:v.zoom}") && html.includes("const _skipScene=panned&&")],
   // v1.7.87: ADR-0029 draft-pen incremental ink stamping
   ['draft pen stamps committed segments to bitmap', html.includes("function drawPenDraft(") && html.includes("while(d.c<n-9){d.c++;_inkSegDraw(d.c2,p,d.w,d.c);}")],
-  ['draft pen blits committed bitmap 1:1 snapped to device grid', html.includes("ctx.drawImage(d.cv,Math.round((d.bx-state.viewport.x)*_z)")],
+  ['draft pen blits committed bitmap 1:1 snapped to device grid', html.includes("ctx.drawImage(d.cv,_rnd((d.bx-state.viewport.x)*_z)")],
   ['draft pen rebuilds stamp on pressure-mode flip/extrema growth', html.includes("usePr!==d.usePr||(usePr&&extGrew)") && html.includes("_inkRebuild(s,d)")],
   // v1.7.88: ADR-0030 pinch-zoom scaled preview
   ['pinch snapshots canvas once at gesture start', html.includes("if(_pointers.size>=2)_pinchSnapNow()") && html.includes("function _pinchSnapNow()") && html.includes(".getContext('2d').drawImage(canvas,0,0)")],
@@ -488,7 +488,7 @@ const checks = [
   ['boot empty-view guard → fitToContent', html.includes('_fitIfEmptyView()')&&html.includes('b.x+b.w<v.x')],
   ['tidy grid reflow (ctx, align op dir)', html.includes("doAlign('tidy')")&&html.includes('ctxTidy')&&html.includes('Math.ceil(Math.sqrt(units.length))')],
   ['swap positions (ctx, 2 selections)', html.includes("doAlign('swap')")&&html.includes('ctxSwap')&&html.includes('units.length!==2')],
-  ['snap selection to grid (ctx, align op)', html.includes('snapSelToGrid')&&html.includes('ctxSnapGrid')&&html.includes("dir:'gsnap'")&&html.includes('Math.round(b.x/GRID_SIZE)')],
+  ['snap selection to grid (ctx, align op)', html.includes('snapSelToGrid')&&html.includes('ctxSnapGrid')&&html.includes("dir:'gsnap'")&&html.includes('_rnd(b.x/GRID_SIZE)')],
   ['select same type (ctx)', html.includes('selectSameType')&&html.includes('ctxSelectSameType')&&html.includes('s.type===sel[0].type')],
   ['connector label position (labelPos, drag anchor)', html.includes('s.labelPos!=null&&_fin(s.labelPos)')&&html.includes("ptr.dragKind='lblpos'")&&html.includes('_pathNearestT')],
   ['PNG export scale options (1x/4x via _renderPngBlob desired)', html.includes('_renderPngBlob(shapes,cb,desired)')&&html.includes('ctxExportPNG4x')&&html.includes('exportScale(w,h,desired||2)')],
@@ -647,7 +647,7 @@ const checks = [
   ['toast sets role=alert for err/warn, role=status otherwise', html.includes("setAttribute('role',kind==='err'||kind==='warn'?'alert':'status')")],
   ['Escape key closes context menu before modal dismiss', html.includes("ctx2.dataset.open==='true'){UI.closeCtxMenu();return}")],
   // v1.6.38: context menu auto-focuses first item on open (keyboard a11y)
-  ['context menu focuses first item on open', html.includes("m.querySelector('.ctx-item')?.focus()")],
+  ['context menu focuses first item on open', html.includes("_qs(m,'.ctx-item')?.focus()")],
   // v1.6.39: console cleanup - no redundant console.warn/error in production paths
   ['no console.warn in BroadcastChannel catch', !html.includes("console.warn('BroadcastChannel init failed'")],
   ['no console.error in save catch (user gets toast)', !html.includes("console.error('save failed'")],
@@ -698,7 +698,7 @@ const checks = [
   ['i18n has mirrorLabel/mirrorMore ja+en', html.includes("mirrorLabel:'ボード上の図形一覧'") && html.includes("mirrorLabel:'Shapes on the board'")],
   // v1.7.100: ADR-0042 SVG import
   ['svg import ceilings defined', html.includes('SVG_MAX_ELEMS') && html.includes('SVG_MAX_PTS')],
-  ['svgToShapes parses via DOMParser and rejects parsererror', html.includes("new DOMParser().parseFromString(txt,'image/svg+xml')") && html.includes("doc.querySelector('parsererror')")],
+  ['svgToShapes parses via DOMParser and rejects parsererror', html.includes("new DOMParser().parseFromString(txt,'image/svg+xml')") && html.includes("_qs(doc,'parsererror')")],
   ['svg path flattener exists', html.includes('function _svgPathPts(d,m)')],
   ['svg transform matrix accumulator', html.includes('function _svgMOf(t)') && html.includes('function _svgMMul(P,Q)')],
   ['svg claimed before image branch on drop', html.includes("f.name.endsWith('.svg')||f.type==='image/svg+xml')")],
@@ -791,8 +791,8 @@ const checks = [
   ['excalidraw conn label ↔ s.label (ADR-0266)', html.includes("_conn(p.type)")&&html.includes('boundElements=')],
   ['excalidraw elbowed ↔ s.elbow (ADR-0265)', html.includes('if(e.elbowed)s.elbow=1')&&html.includes('elbowed:true')],
   ['drawio edge mxGeometry@x ↔ s.labelPos (ADR-0264)', html.includes("s.labelPos*2-1")&&html.includes("_ga(g,'x')")],
-  ['drawio edge opacity export (ADR-0262)', html.includes('Math.round(s.opacity*100)')],
-  ['drawio rotation= ↔ s.rotate on vertices (ADR-0261)', html.includes("rotation='+Math.round(s.rotate)")&&html.includes("+sty.rotation)s.rotate")],
+  ['drawio edge opacity export (ADR-0262)', html.includes('_rnd(s.opacity*100)')],
+  ['drawio rotation= ↔ s.rotate on vertices (ADR-0261)', html.includes("rotation='+_rnd(s.rotate")&&html.includes("+sty.rotation)s.rotate")],
   ['drawio flipH/flipV ↔ s.flip bitmask (ADR-0260)', html.includes("r+='flipH=1;'")&&html.includes("sty.flipH==='1'")],
   ['drawio shape=image round-trips s.dataUrl (ADR-0259)', html.includes("sty+='shape=image;'")&&html.includes("sty+='image='+s.dataUrl")&&html.includes("_im[1].slice(0,25_000_000)")],
   ['excalidraw export embeds viewport in appState (ADR-0257)', html.includes("scrollX:-state.viewport.x,scrollY:-state.viewport.y,zoom:{value:state.viewport.zoom}")],
@@ -911,10 +911,10 @@ const checks = [
   ['ctxReverse reverses connector direction (ADR-0198)', html.includes('function reverseConn()')&&html.includes("['ctxReverse','',reverseConn]")],
   ['ctxFitText sizes sticky to wrapped text (ADR-0199)', html.includes('function fitSticky()')&&html.includes("['ctxFitText','',fitSticky]")],
   ['Shift constrains pen to straight line (ADR-0200)', html.includes("e.shiftKey&&pts.length){pts.length=1;pts.push")],
-  ['move gesture shows live X,Y readout (ADR-0201)', html.includes("label:`${Math.round(bx)}, ${Math.round(by)}`")],
-  ['draw drafts show dims/length readout (ADR-0202)', html.includes("Math.round(d.h)}`")&&html.includes("x2-ptr.wx0")],
+  ['move gesture shows live X,Y readout (ADR-0201)', html.includes("label:`${_rnd(bx)}, ${_rnd(by)}`")],
+  ['draw drafts show dims/length readout (ADR-0202)', html.includes("_rnd(d.h)}`")&&html.includes("x2-ptr.wx0")],
   // v1.7.05: Tab cycling excludes locked shapes (parity with doMove/doDelete/doRotate/doFlip)
-  ['statusbar selection dims readout', html.includes('id="sSel"')&&html.includes('_statusSel()')&&html.includes('Math.round(b.w)')],
+  ['statusbar selection dims readout', html.includes('id="sSel"')&&html.includes('_statusSel()')&&html.includes('_rnd(b.w)')],
   ['empty-selection arrows pan viewport', html.includes("state.viewport.x+=k==='arrowleft'?-step:k==='arrowright'?step:0")],
   ['swapFillStroke: ⇧X swaps stroke↔fill via style op', html.includes('function swapFillStroke')&&html.includes("k==='x'&&e.shiftKey&&!meta")&&html.includes("const fk=s.type==='sticky'?'color':'fill'")],
   ['digit keys set opacity (Figma)', html.includes("/^[0-9]$/.test(k)&&_selN()")&&html.includes("opacity:k==='0'?1:+k/10")],
@@ -984,7 +984,7 @@ const checks = [
   // v1.6.67: drag-to-rotate handle
   ['rotation handle helper + hit-test present', html.includes("function getRotHandle(s)") && html.includes("function hitRotHandle(wp,s)")],
   ['pointerdown enters rotate dragKind on knob hit', html.includes("const rh=hitRotHandle(wp,onlySel);") && html.includes("ptr.dragKind='rotate';")],
-  ['rotate drag maps angle (knob-up=0°), Shift snaps 15°', html.includes("Math.atan2(wp.y-ptr.rotCy,wp.x-ptr.rotCx)*180/Math.PI+90") && html.includes("deg=Math.round(deg/15)*15;")],
+  ['rotate drag maps angle (knob-up=0°), Shift snaps 15°', html.includes("Math.atan2(wp.y-ptr.rotCy,wp.x-ptr.rotCx)*180/Math.PI+90") && html.includes("deg=_rnd(deg/15)*15;")],
   ['rotate commit records upd + announces angle', html.includes("ptr.dragKind==='rotate'") && html.includes("UI.toast(describeShape(rsh)); // SR announce new angle")],
   ['rotation knob drawn in drawSelection', html.includes("const rh=getRotHandle(sh);") && html.includes("c.arc(kp.x,kp.y,hs/2,0,PI2)")],
   // v1.7.62: the overlay pass (selection/guides/marquee/laser/peer cursors) draws in CSS px
@@ -1126,7 +1126,7 @@ const checks = [
   ['docName input handler gates on imeShouldCommit', html.includes("docNameEl.addEventListener('input',e=>{if(imeShouldCommit(e))_commitDocName()})")],
   ['docName compositionend listener wires final commit', html.includes("docNameEl.addEventListener('compositionend',_commitDocName)")],
   // v1.6.83: coordinate rounding at serialization boundaries (Zenn float-precision bloat)
-  ['_round helper sheds float noise', html.includes("function _round(n,dp){return typeof n==='number'&&_fin(n)?Math.round(n*10**dp)/10**dp:n;}")],
+  ['_round helper sheds float noise', html.includes("function _round(n,dp){return typeof n==='number'&&_fin(n)?_rnd(n*10**dp)/10**dp:n;}")],
   ['roundShapesForExport rounds coord/dim fields', html.includes("function roundShapesForExport(shapes,dp=2)") && html.includes("['x','y','w','h','x1','y1','x2','y2','rotate']")],
   ['share export rounds shapes', html.includes("shapes:roundShapesForExport(state.shapes),name:state.docName")],
   ['.board export rounds shapes', html.includes("shapes:roundShapesForExport(shapes)})],{type:'application/json'})")],
