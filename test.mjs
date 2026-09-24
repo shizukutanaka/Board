@@ -463,6 +463,7 @@ const checks = [
   ['rect corners: s.r override + ctx menu + SVG rx', html.includes('s.r!=null?s.r:8')&&html.includes('toggleRound')&&html.includes('ctxRrect')&&html.includes('rx="${r}"')],
   ['shift+wheel → horizontal pan', html.includes('const dx=e.shiftKey&&!d.x?d.y:d.x')],
   ['escape cancels in-flight pointer gesture', html.includes('else if(ptr.down&&ptr.dragKind)_cancelPointerGesture()')],
+  ['underline: ⌘U toggle + canvas line + SVG text-decoration', html.includes("toggleTextFlag('under')")&&html.includes('s.under')&&html.includes('text-decoration="underline"')],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
@@ -3663,6 +3664,12 @@ try {
     toggleRound();assert.ok(rc.r===0,'rect → sharp (r=0)');
     toggleRound();assert.ok(rc.r==null,'rect → back to adaptive round');
     state.shapes.pop();state.selection.clear();state.history=[];state.histIdx=0;
+    state.histIdx=-1;   // rect block above flattened history — _recordCommitted needs -1 for empty
+    const tu=Shape.make('text',{x:0,y:0,w:100,h:30,text:'hi',fontSize:16});tu.id='tu1';state.shapes.push(tu);
+    _invalidateGrid();   // pop()+push() left length unchanged → lazy _idIndex misses tu1
+    state.selection=new Set(['tu1']);
+    toggleTextFlag('under');assert.ok(tu.under===true,'⌘U → under set');
+    toggleTextFlag('under');assert.ok(!('under' in tu),'⌘U again → cleared');
     Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(l)),JSON.parse(JSON.stringify(byId(A.id))),JSON.parse(JSON.stringify(byId(B.id)))]});
     console.log('  ✓ label anchor: straight/way/elbow/curve (4 asserts)');
   }

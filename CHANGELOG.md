@@ -2,6 +2,15 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.153]
+
+### 追加
+- **テキスト/付箋の下線** (ADR-0095)。`⌘U` トグル (`s.under`、
+  style op で undo/複数選択可)。canvas は各行 measureText 幅の
+  手動ライン (align 3種)、SVG は `text-decoration="underline"`、
+  編集 overlay も同期。ヘルプを `⌘B / ⌘I / ⌘U` に更新。
+- README サイズバッジを実測に同期 (113→126KB gzip)。
+
 ## [1.7.152]
 
 ### 追加
