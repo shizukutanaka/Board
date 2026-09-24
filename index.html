@@ -792,7 +792,7 @@ const _selIds=()=>[..._sl()];   // ADR-0330
 const _selN=()=>_sl().size;   // ADR-0334
 const _fin=Number.isFinite;   // ADR-0334
 const _min=Math.min,_max=Math.max,_abs=Math.abs;   // ADR-0337
-const _ga=(e,n)=>e.getAttribute(n);   // ADR-0340
+const _ga=(e,n)=>e.getAttribute(n),_sa=(e,n,v)=>e.setAttribute(n,v),_AL='aria-label',_AP='aria-pressed';   // ADR-0340/0392/0394
 const _cbr=()=>canvas.getBoundingClientRect();   // ADR-0342
 const _rnd=Math.round;                                                // ADR-0348
 const _qs=(e,s)=>e.querySelector(s);                                  // ADR-0348
@@ -821,7 +821,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.432';
+const V='1.7.433';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -5648,9 +5648,9 @@ function pickTool(tool,temporary){
   state._ehov=null;                                                     // ADR-0177
   if(ptr.lineClick&&tool!=='line'&&tool!=='arrow'){ptr.lineClick=false;state.draft=null;_iv()}   // ADR-0126
   state.tool=tool;canvas.dataset.tool=tool;
-  canvas.setAttribute('aria-label',(T.k[tool]||tool)+' — '+t('canvasHint'));   // localized (was hardcoded English)
+  _sa(canvas,_AL,(T.k[tool]||tool)+' — '+t('canvasHint'));   // localized (was hardcoded English)
   UI.announce(T.k[tool]||tool);   // tool switches were SR-silent (undo/group等 toast, this didn't)
-  for(const b of _qsa(document,'.tool'))b.setAttribute('aria-pressed',b.dataset.tool===tool);
+  for(const b of _qsa(document,'.tool'))_sa(b,_AP,b.dataset.tool===tool);
   // hide style panel for select/hand
   const sp=_g('stylePanel');
   sp.hidden=tool==='select'||tool==='hand'||tool==='eraser'||tool==='eyedropper';
@@ -6375,7 +6375,7 @@ function exportSVG(shapes=_sh()){
 function exportBoard(shapes=_sh()){                       // ADR-0114: optional selection subset
   if(!shapes.length){_tst(t('empty'),'warn');return}
   const a=_ce('a');
-  const _bu=URL.createObjectURL(new Blob([_JS({v:V,docName:_dn(),shapes:roundShapesForExport(shapes)})],{type:'application/json'}));
+  const _bu=URL.createObjectURL(new Blob([_JS({v:V,docName:_dn(),viewport:{x:+_vp().x.toFixed(2),y:+_vp().y.toFixed(2),zoom:+_vp().zoom.toFixed(4)},shapes:roundShapesForExport(shapes)})],{type:'application/json'}));   // ADR-0393
   a.href=_bu;a.download=(_dn()||'board')+'.board';
   a.click();setTimeout(()=>URL.revokeObjectURL(_bu),1e4);
   _tst(t('exportedBoard'),'ok');
@@ -7214,6 +7214,9 @@ function importBoard(file){
       // can let a re-imported shape (same id) inherit a stale LWW clock.
       _sl().clear();state.wclock={};
       if(typeof d.docName==='string'&&d.docName){state.docName=d.docName.slice(0,80);_g('docName').value=_dn();_syncDocTitle();}   // clamp: the input enforces maxlength=80, intake paths must too
+      if(d.viewport&&_fin(+d.viewport.x)&&_fin(+d.viewport.y)&&_fin(+d.viewport.zoom)&&d.viewport.zoom>0){   // ADR-0393
+        _vp().x=+d.viewport.x;_vp().y=+d.viewport.y;_vp().zoom=clampZoom(+d.viewport.zoom);
+      }
       _sz();_iv();
       Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(_wc()),origSel});
       _tst(t('loadedBoard')+' ('+shapes.length+')','ok');
@@ -7520,7 +7523,7 @@ async function copyText(text){
   }
   try{
     const ta=_ce('textarea');
-    ta.value=text;ta.setAttribute('readonly','');
+    ta.value=text;_sa(ta,'readonly','');
     ta.style.cssText='position:fixed;top:-9999px;left:-9999px;opacity:0';
     document.body.appendChild(ta);
     ta.select();ta.setSelectionRange(0,String(text).length);
@@ -8424,7 +8427,7 @@ const UI={
     const b=_g('btnTheme');if(!b)return;
     const mode=UI._themeMode();
     const key=mode===null?'themeAuto':mode==='light'?'themeLight':'themeDark';
-    b.setAttribute('aria-label',t(key));b.setAttribute('title',t(key));
+    _sa(b,_AL,t(key));_sa(b,'title',t(key));
     b.dataset.themeMode=mode??'auto';
   },
   // ADR-0014: LANG/T are `let`; toggleLang() reassigns them, then explicitly resyncs the
@@ -8439,15 +8442,15 @@ const UI={
     UI.updateOnline();   // only re-runs on connectivity change otherwise
     UI.refreshPeers();   // self-avatar title ('You'/'自分') was hardcoded English until this fix
     const sq=_g('sqinput');
-    if(sq){sq.placeholder=T.k.search;sq.setAttribute('aria-label',T.k.search);}
-    if(canvas.dataset.tool)canvas.setAttribute('aria-label',(T.k[canvas.dataset.tool]||canvas.dataset.tool)+' — '+t('canvasHint'));
+    if(sq){sq.placeholder=T.k.search;_sa(sq,_AL,T.k.search);}
+    if(canvas.dataset.tool)_sa(canvas,_AL,(T.k[canvas.dataset.tool]||canvas.dataset.tool)+' — '+t('canvasHint'));
     UI.refreshLangBtn();
     UI.announce(LANG==='ja'?'日本語':'English');   // language names are invariant proper nouns, not i18n keys
   },
   refreshLangBtn(){
     const b=_g('btnLang');if(!b)return;
     const name=LANG==='ja'?'日本語':'English';
-    b.setAttribute('aria-label',name);b.setAttribute('title',name);
+    _sa(b,_AL,name);_sa(b,'title',name);
     b.dataset.lang=LANG;
   },
   setStatusXY(x,y){_g('sXY').textContent=x+', '+y},
@@ -8462,7 +8465,7 @@ const UI={
     if(last&&last.textContent===msg)last.remove();   // ADR-0389: identical toast — move to top instead of stacking a twin (re-append still re-announces via aria-live)
     const div=_ce('div');
     div.className='toast'+(kind?' '+kind:'');
-    div.setAttribute('role',kind==='err'||kind==='warn'?'alert':'status');
+    _sa(div,'role',kind==='err'||kind==='warn'?'alert':'status');
     div.textContent=msg;
     _g('toasts').appendChild(div);
     setTimeout(()=>{div.style.opacity='0';div.style.transform='translateY(4px)';
@@ -8591,11 +8594,11 @@ const UI={
     for(const it of items){
       if(it==='sep'){
         const s=_ce('div');s.className='ctx-sep';
-        s.setAttribute('role','separator');m.appendChild(s);continue;
+        _sa(s,'role','separator');m.appendChild(s);continue;
       }
       const [k,shortcut,fn]=it;
       const b=_ce('button');
-      b.className='ctx-item';b.setAttribute('role','menuitem');
+      b.className='ctx-item';_sa(b,'role','menuitem');
       const lbl=_ce('span');lbl.textContent=t(k);
       b.appendChild(lbl);
       if(shortcut){
@@ -8688,10 +8691,10 @@ const UI={
     // i18n key ('k.xxx' reaches the nested shortcut-name table). Titles keep their
     // authored ' (V)' shortcut suffix.
     const tk=key=>key.startsWith('k.')?(T.k[key.slice(2)]||I18N.en.k[key.slice(2)]||key):t(key);
-    for(const el of _qsa(document,'[data-t-aria]'))el.setAttribute('aria-label',tk(_ga(el,'data-t-aria')));
+    for(const el of _qsa(document,'[data-t-aria]'))_sa(el,_AL,tk(_ga(el,'data-t-aria')));
     for(const el of _qsa(document,'[data-t-title]')){
       const sfx=((_ga(el,'title')||'').match(/\s(\([^)]*\))$/)||[])[1];
-      el.setAttribute('title',tk(_ga(el,'data-t-title'))+(sfx?' '+sfx:''));
+      _sa(el,'title',tk(_ga(el,'data-t-title'))+(sfx?' '+sfx:''));
     }
   },
   openShare(){
@@ -8780,7 +8783,7 @@ async function _onBtnInstall(){
   if(btn)btn.hidden=true;
 }
 function wire(){
-  {const sq=_ce('input');sq.id='sqinput';sq.type='text';sq.placeholder=T.k.search;sq.setAttribute('aria-label',T.k.search);sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--accent-contrast);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';document.body.appendChild(sq);_on(sq,'input',()=>{_sq=sq.value;_sqNav.idx=-1;_sqNav.lastQ='';_ivO()});_on(sq,'keydown',ev=>{if(ev.key==='Escape'){_sq='';_sqNav.idx=-1;_sqNav.lastQ='';sq.style.display='none';sq.value='';_ivO();canvas.focus();}else if(ev.key==='Enter'&&!ev.isComposing){_pd(ev);
+  {const sq=_ce('input');sq.id='sqinput';sq.type='text';sq.placeholder=T.k.search;_sa(sq,_AL,T.k.search);sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--accent-contrast);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';document.body.appendChild(sq);_on(sq,'input',()=>{_sq=sq.value;_sqNav.idx=-1;_sqNav.lastQ='';_ivO()});_on(sq,'keydown',ev=>{if(ev.key==='Escape'){_sq='';_sqNav.idx=-1;_sqNav.lastQ='';sq.style.display='none';sq.value='';_ivO();canvas.focus();}else if(ev.key==='Enter'&&!ev.isComposing){_pd(ev);
     // ⌘Enter: commit the whole match list as the selection, then fold the
     // box away — selecting is terminal, so stale search highlights only
     // distract from the follow-up (move/style the found group).
@@ -8832,20 +8835,20 @@ function wire(){
   for(const b of _qsa(document,'[data-stroke]'))
     _on(b,'click',()=>{
       _st().stroke=b.dataset.stroke;
-      for(const x of _qsa(document,'[data-stroke]'))x.setAttribute('aria-pressed',x===b);
+      for(const x of _qsa(document,'[data-stroke]'))_sa(x,_AP,x===b);
       // apply to selection
       if(_selN())applyStyleToSelection({stroke:_st().stroke});
     });
   for(const b of _qsa(document,'[data-fill]'))
     _on(b,'click',()=>{
       _st().fill=b.dataset.fill==='null'?null:b.dataset.fill;
-      for(const x of _qsa(document,'[data-fill]'))x.setAttribute('aria-pressed',x===b);
+      for(const x of _qsa(document,'[data-fill]'))_sa(x,_AP,x===b);
       if(_selN())applyStyleToSelection({fill:_st().fill});
     });
   for(const b of _qsa(document,'[data-dash]'))
     _on(b,'click',()=>{
       _st().dash=+b.dataset.dash;
-      for(const x of _qsa(document,'[data-dash]'))x.setAttribute('aria-pressed',x===b);
+      for(const x of _qsa(document,'[data-dash]'))_sa(x,_AP,x===b);
       if(_selN())applyStyleToSelection({dash:_st().dash});
     });
   // Native <input type=color> fires `input` continuously while the picker is open, so
@@ -8858,7 +8861,7 @@ function wire(){
     _on(cp,'pointerdown',()=>_sfbCapture(k));
     _on(cp,'input',()=>{
       _st()[k]=cp.value;
-      for(const x of _qsa(document,'[data-'+k+']'))x.setAttribute('aria-pressed',x===cp);
+      for(const x of _qsa(document,'[data-'+k+']'))_sa(x,_AP,x===cp);
       for(const id of _sl()){const s=byId(id);if(s&&!s.locked)s[k]=cp.value}
       if(_selN())_iv();
     });
@@ -8988,7 +8991,7 @@ function _syncStylePanel(){
   if(!sel.length)return;
   // common value across the selection, undefined when mixed / absent
   const uni=k=>{const v=sel[0][k]??null;return sel.every(s=>(s[k]??null)===v)?v:undefined};
-  const press=(attr,v)=>{for(const b of _qsa(document,'[data-'+attr+']'))b.setAttribute('aria-pressed',String(b.dataset[attr])===String(v))};
+  const press=(attr,v)=>{for(const b of _qsa(document,'[data-'+attr+']'))_sa(b,_AP,String(b.dataset[attr])===String(v))};
   let v;
   v=uni('stroke');
   if(v!=null){_st().stroke=v;press('stroke',v);

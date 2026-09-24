@@ -555,8 +555,8 @@ const checks = [
   ['drawShape opacity uses nullish coalescing (opacity=0 invisible, not opaque)', html.includes('c.globalAlpha=s.opacity??1')],
   ['pointercancel restores in-progress resize/move shapes', html.includes("ptr.dragKind==='resize'&&ptr.resizeOrig")],
   ['frame label Escape removes blur listener before cancelling', html.includes("inp.removeEventListener('blur',commit)")],
-  ['context menu items have role=menuitem (WCAG 4.1.2)', html.includes("setAttribute('role','menuitem')")],
-  ['context menu separators have role=separator', html.includes("setAttribute('role','separator')")],
+  ['context menu items have role=menuitem (WCAG 4.1.2)', html.includes("_sa(b,'role','menuitem')")],
+  ['context menu separators have role=separator', html.includes("_sa(s,'role','separator')")],
   // v1.6.21: fifth audit pass
   ['exportPDF uses setTransform for correct world-coordinate mapping', html.includes('oc.setTransform(dpr,0,0,dpr,(-b.x+pad)*dpr,(-b.y+pad)*dpr)')],
   ['G.hit handles single-point pen dot (length===1 early return)', html.includes('pts.length===1)return _hp')],
@@ -580,6 +580,7 @@ const checks = [
   // v1.6.23: .board file export/import
   ['exportBoard function exists', html.includes('function exportBoard(shapes')],
   ['exportBoard revokes Blob URL to prevent memory leak', html.includes("revokeObjectURL(_bu),1e4")],
+  ['.board file round-trips viewport (ADR-0393)', html.includes("viewport:{x:+_vp().x.toFixed(2),y:+_vp().y.toFixed(2),zoom:+_vp().zoom.toFixed(4)}")&&html.includes("_vp().zoom=clampZoom(+d.viewport.zoom)")],
   ['importBoard uses atomic replace op (not clear+adds)', html.includes('function importBoard') && html.includes('.filter(validShape)') && html.includes("op:'replace',before,after")],
   ['Ctrl+Shift+S triggers exportBoard', html.includes("e.shiftKey){_pd(e);exportBoard()}")],
   // ADR-0004: doClearAll/importBoard/importFromHash back up the pre-replace board to a
@@ -644,7 +645,7 @@ const checks = [
   ['describeShape uses T.k locale name', html.includes("T.k?.[s.type]??s.type")],
   ['no dead t() fallbacks in toast/confirm calls', !html.includes("t('connected')||") && !html.includes("t('importConfirm')||")],
   // v1.6.37: toast role=alert/status, Escape closes context menu
-  ['toast sets role=alert for err/warn, role=status otherwise', html.includes("setAttribute('role',kind==='err'||kind==='warn'?'alert':'status')")],
+  ['toast sets role=alert for err/warn, role=status otherwise', html.includes("_sa(div,'role',kind==='err'||kind==='warn'?'alert':'status')")],
   ['ADR-0389: identical consecutive toast re-append (no twin stacking)', html.includes("if(last&&last.textContent===msg)last.remove()")],
   ['Escape key closes context menu before modal dismiss', html.includes("ctx2.dataset.open==='true'){UI.closeCtxMenu();return}")],
   // v1.6.38: context menu auto-focuses first item on open (keyboard a11y)
@@ -965,7 +966,7 @@ const checks = [
   // v1.6.63: Socratic round 3 - internal consistency + a11y
   ['doFlip skips locked shapes (consistent with doRotate)', html.includes("const sel=_selL(s=>s&&!s.locked);")],
   ['doRotate orbits selection about group centre', html.includes("orbit about group centre, like doFlip") && html.includes("Shape.translate(s,nx-cx,ny-cy)")],
-  ['search input has localized aria-label', html.includes("sq.setAttribute('aria-label',T.k.search)")],
+  ['search input has localized aria-label', html.includes("_sa(sq,_AL,T.k.search)")],
   ['search Escape returns focus to canvas', html.includes("_ivO();canvas.focus();}") && html.includes("_sqAdvance(ev.shiftKey?-1:1)")],
   // v1.6.64: Socratic round 4 - rotation scope + lock completeness
   ['doRotate restricted to box shapes (s.w!=null, NaN-safe)', html.includes("_selL(s=>s&&!s.locked&&s.w!=null)")],
@@ -1027,7 +1028,7 @@ const checks = [
     && html.includes("UI.announce(T.k[tool]||tool)") && html.includes("UI.announce(t(lk?'ctxLock':'ctxUnlock'))")
     && html.includes("UI.announce(t(axis==='h'?'ctxFlipH':'ctxFlipV'))")],
   ['canvas aria-label localized in pickTool (was hardcoded English)',
-    html.includes("canvas.setAttribute('aria-label',(T.k[tool]||tool)+' — '+t('canvasHint'))")],
+    html.includes("_sa(canvas,_AL,(T.k[tool]||tool)+' — '+t('canvasHint'))")],
   // v1.7.64 (FT-17)
   ['empty-board hint: draws only when blank, reads emptyHint i18n key',
     html.includes('function drawEmptyHint(') && html.includes("if(_sh().length===0&&!_df())drawEmptyHint(c,W,H);")
