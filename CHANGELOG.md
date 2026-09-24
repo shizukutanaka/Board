@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.483] - 2026-09-23
+
+### Fixed
+- `_fragIn` が n-mismatch で assembly を再起動 — stale partial が異なる
+  チャンク数の新ストリームを永久ブロックするデッドロックを解消 (ADR-0448)
+- `dc.onclose` で `_snapIn`/`_opcIn` もリセット — 半受信 assembly の残存 (ADR-0448)
+
 ## [1.7.482] - 2026-09-23
 
 ### Changed

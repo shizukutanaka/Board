@@ -3915,7 +3915,13 @@ try {
       assert.ok(slim.shapes[0].dataUrl===undefined&&typeof slim.shapes[0].img==='string','del shapes slim to img refs');
       Net._imgPending.set('zz','k');_pcC();
       assert.strictEqual(Net._imgPending.size,0,'_pcC clears _imgPending');
-      console.log('  ✓ ADR-0443/0444/0445: undo-wire mapping + del slim + pending purge (15 asserts)');
+      // ADR-0448: a stale partial with a different chunk count must not block new streams
+      Net._fragIn({data:'aa',n:2,seq:0},'_snapIn');
+      assert.strictEqual(Net._fragIn({data:'x',n:1,seq:0},'_snapIn'),'x','_fragIn n-mismatch restarts the assembly');
+      Net._fragIn({data:'aa',n:2,seq:0},'_snapIn');
+      Net._fragIn({data:'zz',n:2,seq:1},'_snapIn');   // finish cleanly so no stale state leaks
+      assert.strictEqual(Net._snapIn,null,'_fragIn clears a finished assembly');
+      console.log('  ✓ ADR-0443/0444/0445/0448: undo-wire + del slim + purge + frag restart (18 asserts)');
     }
   }
 

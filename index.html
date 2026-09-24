@@ -851,7 +851,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.482';
+const V='1.7.483';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -7662,8 +7662,8 @@ const Net={
     const seq=typeof msg.seq==='number'&&msg.seq>=0?_fl(msg.seq):0;
     if(seq>=n)return;
     let sn=this[key];
-    if(!sn){sn={p:new Array(n),g:0,n};this[key]=sn}
-    if(sn.n===n&&!sn.p[seq]){sn.p[seq]=msg.data;sn.g++}
+    if(!sn||sn.n!==n){sn={p:new Array(n),g:0,n};this[key]=sn}   // ADR-0448: a stale partial with a different chunk count would block every later stream — fresh stream wins
+    if(!sn.p[seq]){sn.p[seq]=msg.data;sn.g++}
     if(sn.g<sn.n)return;
     this[key]=null;return sn.p.join('');
   },
@@ -8008,7 +8008,7 @@ const Net={
       try{this._onRecv(_JP(e.data),true)}catch(_){}   // ADR-0010: viaRtc=true
     };
     this.dc.onclose=()=>{
-      this._dcQ=null;   // ADR-0446: a channel-level close never reaches the 'failed' reset — without this every later _sendDC enqueues to a dead queue forever
+      this._dcQ=null;this._snapIn=null;this._opcIn=null;   // ADR-0446/0448: dead-channel queue + half-received assemblies must not survive into the next connection
       if(!this._rtcConnFailed)_w(t('disconnected'));
       if(this._rtcPeerId){_pr().delete(this._rtcPeerId);this._rtcPeerId=null;_ivO();}
       if(this._onConnChange)this._onConnChange();
