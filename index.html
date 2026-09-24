@@ -792,16 +792,16 @@ const _selIds=()=>[..._sl()];   // ADR-0330
 const _selN=()=>_sl().size;   // ADR-0334
 const _fin=Number.isFinite;   // ADR-0334
 const _min=Math.min,_max=Math.max,_abs=Math.abs;   // ADR-0337
-const _ga=(e,n)=>e.getAttribute(n),_sa=(e,n,v)=>e.setAttribute(n,v),_AL='aria-label',_AP='aria-pressed';   // ADR-0340/0392/0394
+const _ga=(e,n)=>e.getAttribute(n),_sa=(e,n,v)=>e.setAttribute(n,v),_ap=(p,c)=>p.appendChild(c),_AL='aria-label',_AP='aria-pressed';   // ADR-0340/0392/0394/0399
 const _cbr=()=>canvas.getBoundingClientRect();   // ADR-0342
 const _rnd=Math.round;                                                // ADR-0348
 const _qs=(e,s)=>e.querySelector(s);                                  // ADR-0348
 const _qsa=(e,s)=>e.querySelectorAll(s);                                // ADR-0350
 const _on=(e,t,f,o)=>e.addEventListener(t,f,o);                          // ADR-0356
-const _vp=()=>state.viewport;                                              // ADR-0362: live-read (tests reassign the object)
+const _vp=()=>state.viewport,_vpS=()=>({x:+_vp().x.toFixed(2),y:+_vp().y.toFixed(2),zoom:+_vp().zoom.toFixed(4)});                                              // ADR-0362: live-read (tests reassign the object)
 const _pi=()=>state.peerId,_ro=()=>state.readout,_gd=()=>state.guides,_cl=()=>state.clipboard,_bb=s=>G.bbox(s),_oa=Object.assign;   // ADR-0378
 const _sO=()=>state.seenOps,_la=()=>state.lasso,_mq=()=>state.marquee,_dd=()=>state.dupDelta,_w2=p=>G.w2s(p),_s2=p=>G.s2w(p),_cE=connEnds;   // ADR-0382
-const _iA=Array.isArray,_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches';   // ADR-0384/0386/0391/0395/0397
+const _iA=Array.isArray,_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click';   // ADR-0384/0386/0391/0395/0397
 const _sh=()=>state.shapes;                                                // ADR-0364
 const _sl=()=>state.selection;
 const _st=()=>state.style;
@@ -821,7 +821,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.436';
+const V='1.7.437';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2259,7 +2259,7 @@ function _watchDPR(){
   if(!window.matchMedia)return;
   const mq=window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
   const onChange=()=>{resize();_watchDPR()};   // single-fire, then re-watch the new ratio
-  if(mq.addEventListener)_on(mq,'change',onChange,{once:true});
+  if(mq.addEventListener)_on(mq,_CH,onChange,{once:true});
   else if(mq.addListener)mq.addListener(onChange);   // legacy Safari
 }
 // Visible world rectangle (for culling). screen = (world - vp) * zoom * DPR,
@@ -2341,12 +2341,12 @@ function _mirrorSync(){
     b.type='button';
     b.textContent=(i+1)+'. '+describeShape(s)+(s.visible===0?' '+t('tagHidden'):'');   // ADR-0154
     b.onclick=()=>_mirrorGo(s.id);
-    li.appendChild(b);ul.appendChild(li);
+    _ap(li,b);_ap(ul,li);
   }
   if(_sh().length>MIRROR_MAX){
     const li=_ce('li');
     li.textContent=(_sh().length-MIRROR_MAX)+t('mirrorMore');
-    ul.appendChild(li);
+    _ap(ul,li);
   }
 }
 function _mirrorGo(id){
@@ -4197,7 +4197,7 @@ function _longPressFire(cx,cy){
   UI.openCtxMenu(cx,cy);
 }
 function _armLongPress(cx,cy){
-  _longPressTimer=setTimeout(()=>_longPressFire(cx,cy),LONG_PRESS_MS);
+  _longPressTimer=_stO(()=>_longPressFire(cx,cy),LONG_PRESS_MS);
 }
 function _clearLongPress(){
   if(_longPressTimer){clearTimeout(_longPressTimer);_longPressTimer=null}
@@ -4278,7 +4278,7 @@ function openLabelEditor(hit,leftPx,topPx,bold){
     `font:${hit.italic?'italic ':''}${bold?'600 ':''}${hit.fontSize||12}px ${_fontFam(hit)};color:${col};`+   // ADR-0186/0206
     `background:${_p()};border:1px solid ${col};`+
     `padding:2px 6px;outline:none;z-index:9500;min-width:80px;`;
-  document.body.appendChild(inp);inp.select();
+  _ap(document.body,inp);inp.select();
   _lblTa={inp,hit};_lblVp='';   // ADR-0182: follow the viewport while editing
   const commit=()=>{
     const lbl=inp.value.trim();
@@ -4286,7 +4286,7 @@ function openLabelEditor(hit,leftPx,topPx,bold){
     _lblTa=null;inp.remove();
   };
   _on(inp,'blur',commit);
-  _on(inp,'keydown',ev=>{
+  _on(inp,_KD,ev=>{
     if(ev.isComposing)return;
     if(ev.key==='Enter'){_pd(ev);commit()}
     // ADR-0237: ⌘B/I/U/⇧X while labeling — box labels render bold/italic/
@@ -4496,7 +4496,7 @@ _on(canvas,'wheel',e=>{
     // stream in, settle to a crisp repaint ~180ms after the last one.
     _pinchSnapNow();
     clearTimeout(_wheelZoomEnd);
-    _wheelZoomEnd=setTimeout(()=>{_pinchSnap=null;_pinchVp=null;_iv()},180);
+    _wheelZoomEnd=_stO(()=>{_pinchSnap=null;_pinchVp=null;_iv()},180);
     zoomAt({x:e.offsetX,y:e.offsetY},-d.y*0.005);
   }else{
     // ADR-0093: ⇧+wheel pans horizontally (mouse wheels have no deltaX) —
@@ -5322,7 +5322,7 @@ function openTextEditor(s,isNew){
   ta.value=origText;
   ta.spellcheck=false;
   positionTextEditor(ta,s);
-  document.body.appendChild(ta);
+  _ap(document.body,ta);
   ta.focus();
   const auto=()=>{
     ta.style.height='auto';
@@ -5373,7 +5373,7 @@ function openTextEditor(s,isNew){
     }
     _teTa=null;ta.remove();_iv();
   });
-  _on(ta,'keydown',ev=>{
+  _on(ta,_KD,ev=>{
     if(ev.isComposing)return;
     if(ev.key==='Escape'){_pd(ev);ta.blur()}
     if(ev.key==='Enter'&&(ev.metaKey||ev.ctrlKey)){_pd(ev);ta.blur();_stickyChain(s)}   // ADR-0105
@@ -5477,7 +5477,7 @@ function _openDialog(){
   for(const id of ['help','share']){const m=_g(id);if(m&&m.dataset.open==='true')return m;}
   return null;
 }
-_on(window,'keydown',e=>{
+_on(window,_KD,e=>{
   if(e.target.matches('input,textarea')){
     if(e.key==='Escape')e.target.blur();
     return;
@@ -6287,7 +6287,7 @@ function exportViewportPNG(scale){
     const url=URL.createObjectURL(bl);
     const a=_ce('a');
     a.href=url;a.download=`${_dn()||'board'}-view${sc&&sc!==2?'@'+sc+'x':''}.png`;
-    a.click();setTimeout(()=>URL.revokeObjectURL(url),1e4);
+    a.click();_stO(()=>URL.revokeObjectURL(url),1e4);
     _tst(t('exported'),'ok');
   },'image/png');
 }
@@ -6297,7 +6297,7 @@ function exportPNG(shapes=_sh(),scale){
     const url=URL.createObjectURL(bl);
     const a=_ce('a');
     a.href=url;a.download=`${_dn()||'board'}${scale&&scale!==2?'@'+scale+'x':''}.png`;
-    a.click();setTimeout(()=>URL.revokeObjectURL(url),1e4);
+    a.click();_stO(()=>URL.revokeObjectURL(url),1e4);
     _tst(t('exported'),'ok');
   },scale);
 }
@@ -6356,7 +6356,7 @@ function exportPDF(){
     const w2=window.open('');
     if(!w2){_tst(t('popupBlocked'),'warn');return}
     w2.document.write(`<!DOCTYPE html><html><head><title>${_esc(_dn()||'board')}</title><style>*{margin:0;padding:0}img{max-width:100%;display:block}</style></head><body><img src="${url}" onload="window.print();window.close()"></body></html>`);
-    w2.document.close();setTimeout(()=>URL.revokeObjectURL(url),30e3);
+    w2.document.close();_stO(()=>URL.revokeObjectURL(url),30e3);
   };
   if(typeof off.toBlob==='function')off.toBlob(fin,'image/png');
   else off.convertToBlob({type:'image/png'}).then(fin,()=>fin(null));   // rejection → same exportFailed toast as toBlob(null)
@@ -6369,15 +6369,15 @@ function exportSVG(shapes=_sh()){
   const url=URL.createObjectURL(blob);
   const a=_ce('a');
   a.href=url;a.download=`${_dn()||'board'}.svg`;
-  a.click();setTimeout(()=>URL.revokeObjectURL(url),1e4);
+  a.click();_stO(()=>URL.revokeObjectURL(url),1e4);
   _tst(t('exportedSVG'),'ok');
 }
 function exportBoard(shapes=_sh()){                       // ADR-0114: optional selection subset
   if(!shapes.length){_tst(t(_EM),'warn');return}
   const a=_ce('a');
-  const _bu=URL.createObjectURL(new Blob([_JS({v:V,docName:_dn(),viewport:{x:+_vp().x.toFixed(2),y:+_vp().y.toFixed(2),zoom:+_vp().zoom.toFixed(4)},shapes:roundShapesForExport(shapes)})],{type:'application/json'}));   // ADR-0393
+  const _bu=URL.createObjectURL(new Blob([_JS({v:V,docName:_dn(),viewport:_vpS(),shapes:roundShapesForExport(shapes)})],{type:'application/json'}));   // ADR-0393
   a.href=_bu;a.download=(_dn()||'board')+'.board';
-  a.click();setTimeout(()=>URL.revokeObjectURL(_bu),1e4);
+  a.click();_stO(()=>URL.revokeObjectURL(_bu),1e4);
   _tst(t('exportedBoard'),'ok');
 }
 // ---- ADR-0098: .excalidraw export ------------------------------------------
@@ -6718,7 +6718,7 @@ function exportExc(){
   const a=_ce('a');
   const _bu=URL.createObjectURL(new Blob([_JS(excScene(_sh()))],{type:'application/json'}));
   a.href=_bu;a.download=(_dn()||'board')+'.excalidraw';
-  a.click();setTimeout(()=>URL.revokeObjectURL(_bu),1e4);
+  a.click();_stO(()=>URL.revokeObjectURL(_bu),1e4);
   _tst(t('exportedExc'),'ok');
 }
 
@@ -6828,7 +6828,7 @@ function exportDrawio(){
   const a=_ce('a');
   const _bu=URL.createObjectURL(new Blob([boardToDrawio(_sh())],{type:'application/xml'}));
   a.href=_bu;a.download=(_dn()||'board')+'.drawio';
-  a.click();setTimeout(()=>URL.revokeObjectURL(_bu),1e4);
+  a.click();_stO(()=>URL.revokeObjectURL(_bu),1e4);
   _tst(t('dioExported'),'ok');
 }
 // ---- ADR-0042: SVG import --------------------------------------------------
@@ -7530,7 +7530,7 @@ async function copyText(text){
     const ta=_ce('textarea');
     ta.value=text;_sa(ta,'readonly','');
     ta.style.cssText='position:fixed;top:-9999px;left:-9999px;opacity:0';
-    document.body.appendChild(ta);
+    _ap(document.body,ta);
     ta.select();ta.setSelectionRange(0,_St(text).length);
     const ok=document.execCommand&&document.execCommand('copy');
     document.body.removeChild(ta);
@@ -7956,7 +7956,7 @@ const Net={
         if(this.rtc.iceGatheringState==='complete')res();
       };
       // safety timeout — return what we have after 3s
-      setTimeout(res,3000);
+      _stO(res,3000);
     });
   },
   _wireDC(){
@@ -7967,8 +7967,10 @@ const Net={
       // 15s reaper — otherwise a live, idle connection's avatar vanishes after 15s.
       this._rtcPeerId='rtc:'+uid().slice(0,4);
       this._touchPeer(this._rtcPeerId);
-      // send snapshot to new peer (must include ops so a non-empty peer can merge)
-      try{this.dc.send(_JS(this._snapshotMsg()))}catch(_){}
+      // send snapshot to new peer (must include ops so a non-empty peer can merge). ADR-0383: >256KB snapshots die on the SCTP ceiling — send uniform 64KB 'snap' chunks.
+      try{const _sm=_JS(this._snapshotMsg()),_n=_ceil(_sm.length/65536);
+        for(let _i=0;_i<_n;_i++)this.dc.send(_JS({k:'snap',seq:_i,n:_n,data:_sm.slice(_i*65536,(_i+1)*65536)}))
+      }catch(_){}
     };
     this.dc.onmessage=e=>{
       try{this._onRecv(_JP(e.data),true)}catch(_){}   // ADR-0010: viaRtc=true
@@ -8034,7 +8036,7 @@ const Share={
   },
   async exportToUrl(enc){
     const data={v:V,shapes:roundShapesForExport(_sh()),name:_dn(),
-      viewport:{x:+_vp().x.toFixed(2),y:+_vp().y.toFixed(2),zoom:+_vp().zoom.toFixed(4)}};   // ADR-0112: receiver opens at the sharer's view
+      viewport:_vpS()};   // ADR-0112: receiver opens at the sharer's view
     const json=_JS(data);
     // CompressionStream if available, else base64
     let payload=json;
@@ -8181,7 +8183,7 @@ const Persist={
   },
   schedule(){
     clearTimeout(this._saveT);
-    this._saveT=setTimeout(()=>this.save(),SAVE_DEBOUNCE);
+    this._saveT=_stO(()=>this.save(),SAVE_DEBOUNCE);
   },
   // PWA durability: beforeunload is unreliable on mobile (Safari iOS skips it
   // on app-switch / swipe-away; Chrome Android drops it during background
@@ -8473,8 +8475,8 @@ const UI={
     _sa(div,'role',kind==='err'||kind==='warn'?'alert':'status');
     div.textContent=msg;
     _g('toasts').appendChild(div);
-    setTimeout(()=>{div.style.opacity='0';div.style.transform='translateY(4px)';
-      setTimeout(()=>div.remove(),240)},1600);
+    _stO(()=>{div.style.opacity='0';div.style.transform='translateY(4px)';
+      _stO(()=>div.remove(),240)},1600);
   },
   // SR-only announcement: for frequent state changes (tool switch, zoom, flip, lock,
   // keyboard rotate) a visible toast per keypress would be UI noise for sighted users,
@@ -8599,19 +8601,19 @@ const UI={
     for(const it of items){
       if(it==='sep'){
         const s=_ce('div');s.className='ctx-sep';
-        _sa(s,'role','separator');m.appendChild(s);continue;
+        _sa(s,'role','separator');_ap(m,s);continue;
       }
       const [k,shortcut,fn]=it;
       const b=_ce('button');
       b.className='ctx-item';_sa(b,'role','menuitem');
       const lbl=_ce('span');lbl.textContent=t(k);
-      b.appendChild(lbl);
+      _ap(b,lbl);
       if(shortcut){
         const sc=_ce('span');sc.className='k';sc.textContent=shortcut;
-        b.appendChild(sc);
+        _ap(b,sc);
       }
       b.onclick=()=>{fn();this.closeCtxMenu()};
-      m.appendChild(b);
+      _ap(m,b);
     }
     // Show first so offsetHeight reflects actual rendered height, then clamp
     // position so the menu never overflows the viewport bottom edge.
@@ -8669,8 +8671,8 @@ const UI={
       const row=_ce('div');row.className='help-row';
       const kSpan=_ce('span');kSpan.className='k';kSpan.textContent=key;
       const vSpan=_ce('span');vSpan.className='v';vSpan.textContent=val;
-      row.appendChild(kSpan);row.appendChild(vSpan);
-      g.appendChild(row);
+      _ap(row,kSpan);_ap(row,vSpan);
+      _ap(g,row);
     }
   },
   updateOnline(){
@@ -8746,7 +8748,7 @@ const UI={
     self.className='peer-avatar self';
     self.textContent=_pi().slice(0,2).toUpperCase();
     self.title=t('you');
-    stack.appendChild(self);
+    _ap(stack,self);
     // remote peers
     for(const [id,p] of _pr()){
       const el=_ce('div');
@@ -8754,7 +8756,7 @@ const UI={
       el.style.background=p.color;
       el.textContent=id.slice(0,2).toUpperCase();
       el.title=id;
-      stack.appendChild(el);
+      _ap(stack,el);
     }
   }};
 
@@ -8788,7 +8790,7 @@ async function _onBtnInstall(){
   if(btn)btn.hidden=true;
 }
 function wire(){
-  {const sq=_ce('input');sq.id='sqinput';sq.type='text';sq.placeholder=T.k.search;_sa(sq,_AL,T.k.search);sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--accent-contrast);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';document.body.appendChild(sq);_on(sq,'input',()=>{_sq=sq.value;_sqNav.idx=-1;_sqNav.lastQ='';_ivO()});_on(sq,'keydown',ev=>{if(ev.key==='Escape'){_sq='';_sqNav.idx=-1;_sqNav.lastQ='';sq.style.display='none';sq.value='';_ivO();canvas.focus();}else if(ev.key==='Enter'&&!ev.isComposing){_pd(ev);
+  {const sq=_ce('input');sq.id='sqinput';sq.type='text';sq.placeholder=T.k.search;_sa(sq,_AL,T.k.search);sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--accent-contrast);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';_ap(document.body,sq);_on(sq,'input',()=>{_sq=sq.value;_sqNav.idx=-1;_sqNav.lastQ='';_ivO()});_on(sq,_KD,ev=>{if(ev.key==='Escape'){_sq='';_sqNav.idx=-1;_sqNav.lastQ='';sq.style.display='none';sq.value='';_ivO();canvas.focus();}else if(ev.key==='Enter'&&!ev.isComposing){_pd(ev);
     // ⌘Enter: commit the whole match list as the selection, then fold the
     // box away — selecting is terminal, so stale search highlights only
     // distract from the follow-up (move/style the found group).
@@ -8799,7 +8801,7 @@ function wire(){
     }else _sqAdvance(ev.shiftKey?-1:1);}});}
   // tool buttons
   for(const b of _qsa(document,'.tool'))
-    _on(b,'click',()=>pickTool(b.dataset.tool));
+    _on(b,_CK,()=>pickTool(b.dataset.tool));
   // topbar
   _g('btnUndo').onclick=()=>Store.undo()&&_tst(t('undone'));
   _g('btnRedo').onclick=()=>Store.redo()&&_tst(t('redone'));
@@ -8826,32 +8828,32 @@ function wire(){
     const _commitDocName=()=>{state.docName=docNameEl.value;_syncDocTitle();state.dirty=true;_ps()};
     _on(docNameEl,'input',e=>{if(imeShouldCommit(e))_commitDocName()});
     _on(docNameEl,'compositionend',_commitDocName);
-    _on(docNameEl,'change',()=>{state.docName=docNameEl.value||'Untitled';_syncDocTitle();_ps()});
+    _on(docNameEl,_CH,()=>{state.docName=docNameEl.value||'Untitled';_syncDocTitle();_ps()});
   }
   _g('btnInstall').onclick=_onBtnInstall;
   _g('btnLang').onclick=()=>UI.toggleLang();
   _g('btnTheme').onclick=()=>UI.toggleTheme();
   _g('btnHelp').onclick=()=>UI.toggleHelp();
   _g('helpClose').onclick=()=>UI.toggleHelp();
-  _on(_g('help'),'click',e=>{
+  _on(_g('help'),_CK,e=>{
     if(e.target.id==='help')UI.toggleHelp();
   });
   // swatches
   for(const b of _qsa(document,'[data-stroke]'))
-    _on(b,'click',()=>{
+    _on(b,_CK,()=>{
       _st().stroke=b.dataset.stroke;
       for(const x of _qsa(document,'[data-stroke]'))_sa(x,_AP,x===b);
       // apply to selection
       if(_selN())applyStyleToSelection({stroke:_st().stroke});
     });
   for(const b of _qsa(document,'[data-fill]'))
-    _on(b,'click',()=>{
+    _on(b,_CK,()=>{
       _st().fill=b.dataset.fill==='null'?null:b.dataset.fill;
       for(const x of _qsa(document,'[data-fill]'))_sa(x,_AP,x===b);
       if(_selN())applyStyleToSelection({fill:_st().fill});
     });
   for(const b of _qsa(document,'[data-dash]'))
-    _on(b,'click',()=>{
+    _on(b,_CK,()=>{
       _st().dash=+b.dataset.dash;
       for(const x of _qsa(document,'[data-dash]'))_sa(x,_AP,x===b);
       if(_selN())applyStyleToSelection({dash:_st().dash});
@@ -8870,7 +8872,7 @@ function wire(){
       for(const id of _sl()){const s=byId(id);if(s&&!s.locked)s[k]=cp.value}
       if(_selN())_iv();
     });
-    _on(cp,'change',()=>{_sfbFlush(k,cp.value);_sfbCapture(k);});
+    _on(cp,_CH,()=>{_sfbFlush(k,cp.value);_sfbCapture(k);});
   }
   const rng=_g('rngSize');
   const opacRng=_g('rngOpacity');
@@ -8883,7 +8885,7 @@ function wire(){
     for(const id of _sl()){const s=byId(id);if(s&&!s.locked)s.size=_st().size}
     if(_selN())_iv();
   });
-  _on(rng,'change',()=>{_sfbFlush('size',_st().size);_sfbCapture('size');});
+  _on(rng,_CH,()=>{_sfbFlush('size',_st().size);_sfbCapture('size');});
   if(opacRng){
     _on(opacRng,'focus',()=>_sfbCapture('opacity'));
     _on(opacRng,_PD,()=>_sfbCapture('opacity'));
@@ -8894,7 +8896,7 @@ function wire(){
       for(const id of _sl()){const s=byId(id);if(s&&!s.locked)s.opacity=v}
       if(_selN())_iv();
     });
-    _on(opacRng,'change',()=>{_sfbFlush('opacity',_st().opacity);_sfbCapture('opacity');});
+    _on(opacRng,_CH,()=>{_sfbFlush('opacity',_st().opacity);_sfbCapture('opacity');});
   }
   // zoom
   _g('btnZoomIn').onclick=()=>zoomBy(1.2);
@@ -8926,17 +8928,17 @@ function wire(){
   // devicePixelRatio change (window dragged to a different-density monitor) fires no resize
   _watchDPR();
   // some Android devices fire orientationchange separately from resize
-  if('orientation' in screen)_on(screen.orientation,'change',resize);
+  if('orientation' in screen)_on(screen.orientation,_CH,resize);
   // theme / high-contrast switches change design-token values → drop getCSS cache
   if(window.matchMedia)for(const q of ['(prefers-color-scheme:dark)','(forced-colors:active)','(prefers-contrast:more)']){
-    try{_on(matchMedia(q),'change',clearCSSCache)}catch(_){}
+    try{_on(matchMedia(q),_CH,clearCSSCache)}catch(_){}
   }
   // close ctx on click outside
   _on(document,'mousedown',e=>{
     if(!e.target.closest('.ctx-menu'))UI.closeCtxMenu();
   });
   // v1.6.95: Arrow-key navigation inside the context menu (ARIA APG menu pattern)
-  _on(_g('ctx'),'keydown',e=>_ctxMenuKeyNav(_g('ctx'),e));
+  _on(_g('ctx'),_KD,e=>_ctxMenuKeyNav(_g('ctx'),e));
   // Initial tool styling
   pickTool('select');
   // periodic saved-ago refresh
@@ -8945,7 +8947,7 @@ function wire(){
   // ---- Share / Net (v1.1) ----
   _g('btnShare').onclick=()=>UI.openShare();
   _g('shareClose').onclick=()=>UI.closeShare();
-  _on(_g('share'),'click',e=>{
+  _on(_g('share'),_CK,e=>{
     if(e.target.id==='share')UI.closeShare();
   });
   _g('shareCopyBtn').onclick=async()=>{
@@ -9558,17 +9560,17 @@ const Presentation=(()=>{
     const counter=_ce('div');
     counter.id='presCounter';
     counter.style.cssText='position:absolute;bottom:16px;left:50%;transform:translateX(-50%);color:#fff;font-size:13px;font-family:system-ui;opacity:.7;pointer-events:none;';
-    _overlay.appendChild(counter);
+    _ap(_overlay,counter);
     // Exit button
     const exit=_ce('button');
     exit.textContent='✕ Esc';
     exit.style.cssText='position:absolute;top:12px;right:16px;background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:13px;';
     exit.onclick=leave;
-    _overlay.appendChild(exit);
+    _ap(_overlay,exit);
     // Canvas passthrough: hide the overlay visually and let canvas show
     _overlay.style.pointerEvents='none';  // clicks pass through to canvas
     exit.style.pointerEvents='auto';
-    document.body.appendChild(_overlay);
+    _ap(document.body,_overlay);
     // Hide UI chrome
     _qs(document,'.toolbar').style.display='none';
     _qs(document,'.topbar').style.display='none';
