@@ -323,13 +323,13 @@ const checks = [
   ['gresize reuses applyResize on a virtual box + commits one align op', html.includes("function _gresizeDrag(wp,shift,alt){") && html.includes("applyResize(vbox,ptr.resizeHandle,vorig,wp,shift,alt)") && html.includes("_mapToBox(sh,orig,ob,vbox)") && html.includes("op:'align',dir:'gresize'") && html.includes("'gresize'")],
   ['gresize cancelled in abortGesture + pointercancel', html.includes("ptr.dragKind==='gresize'||ptr.dragKind==='grot'") && html.includes("ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;")],
   // v1.7.115: ADR-0057 rotation knob for point geometry + multi-selection
-  ['getRotHandle generalised to point-geom bbox', html.includes("else{const b=G.bbox(s);if(!b||!(b.w>0)||!(b.h>0))return null;cx=b.x+b.w/2;") && html.includes("function _grpRotHandle(b){")],
+  ['getRotHandle generalised to point-geom bbox', html.includes("else{const b=_bb(s);if(!b||!(b.w>0)||!(b.h>0))return null;cx=b.x+b.w/2;") && html.includes("function _grpRotHandle(b){")],
   ['grot dragKind + delta-angle _rotShape + align commit', html.includes("ptr.dragKind='grot';") && html.includes("function _grotDrag(wp,shift){") && html.includes("_rotShape(sh,orig,ptr.rotCx,ptr.rotCy,deg)") && html.includes("op:'align',dir:'grot'") && html.includes("'grot'")],
   ['copyPNG guards ClipboardItem + write', html.includes("typeof ClipboardItem==='undefined'") && html.includes("copyUnsupported")],
   ['copyPNG in export menu', html.includes("['ctxCopyPNG','',copyPNG]")],
   ['ctxCopyPNG i18n ja+en', html.includes("ctxCopyPNG:'PNGをクリップボードにコピー'") && html.includes("ctxCopyPNG:'Copy PNG to clipboard'")],
   // v1.7.109: ADR-0051 real pen resize via pts scale
-  ['pen gets bbox handles', html.includes("if(s.type==='pen'){") && html.includes("const b=G.bbox(s);if(!b||!b.w||!b.h)return [];")],
+  ['pen gets bbox handles', html.includes("if(s.type==='pen'){") && html.includes("const b=_bb(s);if(!b||!b.w||!b.h)return [];")],
   ['applyResize scales pen pts from orig', html.includes("orig.type==='pen'") && html.includes("sh.pts=orig.pts.map")],
   ['SVG pen exports same primitive union', html.includes('_penTaperE(n-1-i)') && html.includes("<circle cx=") && html.includes("<g fill=")],
   ['SVG pen export uses penWidths (display=output parity)', html.includes("penWidths(P,SZ)")],
@@ -340,7 +340,7 @@ const checks = [
   // v1.6.15: smart alignment guides (snap to objects)
   ['snapBox helper present', html.includes("function snapBox")],
   ['move uses object snap when grid off', html.includes("function objectSnap") && html.includes("!state.snap")],
-  ['guides rendered during drag', html.includes("function drawGuides") && html.includes("state.guides")],
+  ['guides rendered during drag', html.includes("function drawGuides") && html.includes("_gd()")],
   // v1.6.16: dashed/dotted line styles
   ['dashArr helper present', html.includes("function dashArr")],
   ['drawShape applies line dash', html.includes("c.setLineDash((s.dash&&")],
@@ -374,13 +374,13 @@ const checks = [
   // v1.7.84: ADR-0026 drag damage rect
   ['invalidateDamage accumulates world damage', html.includes("function invalidateDamage(r){_damage=_dmgU(_damage,r)") && html.includes("function invalidate(){_damage=null")],
   ['draw() clips scene pass to damage rect', html.includes("ctx.rect(dmg.x,dmg.y,dmg.w,dmg.h);ctx.clip()") && html.includes("ctx.fillRect(dmg.x,dmg.y,dmg.w,dmg.h)")],
-  ['move/resize/rotate drag report damage', html.includes("_iD(_dmgPair(_b0,G.bbox(rsh)") && html.includes("if(dmg)_iD(dmg);else _iv()")],
-  ['draft draw + erase report damage', html.includes("_iD(_dmgPair(_b0,G.bbox(d)") && html.includes("_eraseBatch.push(clone(hit))")],
+  ['move/resize/rotate drag report damage', html.includes("_iD(_dmgPair(_b0,_bb(rsh)") && html.includes("if(dmg)_iD(dmg);else _iv()")],
+  ['draft draw + erase report damage', html.includes("_iD(_dmgPair(_b0,_bb(d)") && html.includes("_eraseBatch.push(clone(hit))")],
   ['damage path force-includes gesture targets vs stale grid', html.includes("ptr.dragStartShapes.keys()") && html.includes("ptr.resizeOrig.id") && html.includes("ptr.rotOrig.id")],
   // v1.7.85: ADR-0027 op-level damage propagation
   ['_apply harvests ids + pre/post bboxes for damage', html.includes("const _ids=new Set()") && html.includes("for(const id of _ids)_u(byId(id))") && html.includes("_iD(_dmg)")],
   ['_apply falls back to full invalidate on empty/huge damage', html.includes("if(!_dmg){_iv();}") && html.includes("_v.w*_v.h*0.6")],
-  ['applyRemote uses op damage (no blanket invalidate)', !html.includes("this._stampWrites(op);\n    state.dirty=true;\n    UI.refreshUndo();\n    Persist.schedule();\n    _iv();") && html.includes("_iD(_dmgPair(_cb,G.bbox(sh)")],
+  ['applyRemote uses op damage (no blanket invalidate)', !html.includes("this._stampWrites(op);\n    state.dirty=true;\n    UI.refreshUndo();\n    Persist.schedule();\n    _iv();") && html.includes("_iD(_dmgPair(_cb,_bb(sh)")],
   // v1.7.86: ADR-0028 pan pixel blit
   ['pan blits retained pixels via self drawImage', html.includes("ctx.drawImage(canvas,0,0,W,H,sx,sy,W,H)") && html.includes("const panned=pv&&pv.zoom===v.zoom")],
   ['pan repaints only exposed strips + damage', html.includes("clipRects.push({x:Ox1") && html.includes("if(dmg)clipRects.push(dmg)")],
@@ -403,8 +403,8 @@ const checks = [
   ['clampZoom is the single zoom-invariant source', html.includes("const clampZoom=z=>_max(MIN_ZOOM,_min(MAX_ZOOM,z))") && html.includes("const nz=clampZoom(") && html.includes("const z=clampZoom(")],
   // v1.6.18: deeper audit fixes
   ['P selects pen, Shift+P presents', html.includes("k==='p'&&e.shiftKey&&!meta&&!e.altKey")],
-  ['pen resize handles emit from pts bbox (ADR-0051)', html.includes("if(s.type==='pen'){") && html.includes("id:'se'") && html.includes("G.bbox(s);if(!b||!b.w||!b.h)return [];")],
-  ['presentation saves+restores viewport', html.includes("_savedVp={x:_vp().x") && html.includes("Object.assign(_vp(),_savedVp)")],
+  ['pen resize handles emit from pts bbox (ADR-0051)', html.includes("if(s.type==='pen'){") && html.includes("id:'se'") && html.includes("_bb(s);if(!b||!b.w||!b.h)return [];")],
+  ['presentation saves+restores viewport', html.includes("_savedVp={x:_vp().x") && html.includes("_oa(_vp(),_savedVp)")],
   ['help grid present row uses i18n', html.includes("['⇧P',k.present]") && html.includes("['↑↓←→',k.nudge]")],
   ['help i18n keys in ja and en', html.includes("present:'プレゼン'") && html.includes("present:'Present'")],
   // v1.6.19: sync + PWA fixes
@@ -430,7 +430,7 @@ const checks = [
   ['start arrowhead: draw + svg + ctx toggle', html.includes('if(s.start)_arrowHeadShape(c,e.x1,e.y1')&&html.includes('function toggleBothEnds()')&&html.includes("['ctxBothEnds','',toggleBothEnds]")],
   ['both-ends i18n ja+en', html.includes("ctxBothEnds:'両端ヘッド'")&&html.includes("ctxBothEnds:'Arrowheads both ends'")],
   // v1.7.122: ADR-0064 gesture readout pill
-  ['readout state + drawOverlay pill + ptr.down gate', html.includes('readout:null,             // ADR-0064')&&html.includes('if(ptr.down&&state.readout)')&&html.includes("roundRect(c,px-tw/2,py,tw,ph,4)")],
+  ['readout state + drawOverlay pill + ptr.down gate', html.includes('readout:null,             // ADR-0064')&&html.includes('if(ptr.down&&_ro())')&&html.includes("roundRect(c,px-tw/2,py,tw,ph,4)")],
   ['readout set in applyResize/moveDelta/rotate paths + cleared with guides', html.includes('state.readout={x:_rb.x+_rb.w/2,y:_rb.y+_rb.h')&&html.includes('state.readout=bb&&(dx||dy)')&&html.includes('state.guides=null;state.readout=null;')],
   // v1.7.123: ADR-0065 connector endpoint rebind/unbind
   ['endpoint rebind: always-handle + unbind-on-grab + bindPreview', html.includes("h.push({id:'p1',x:e.x1,y:e.y1});       // ADR-0065")&&html.includes("if(sh[bk]){sh[bk]=null;sh[bk+'F']=null}")&&html.includes('state.bindPreview=')],
@@ -971,7 +971,7 @@ const checks = [
   ['doDelete skips locked shapes', html.includes("function doDelete(){\n  const sel=_selL(s=>s&&!s.locked);")],
   ['eraser skips locked shapes', html.includes("if(hit&&!hit.locked&&!_eraseBatch.some")],
   // v1.6.65: budget removed - deferred fixes implemented
-  ['_edgePt is rotation-aware (projects to true rotated edge)', html.includes("const ub=sh.w!=null?{x:sh.x,y:sh.y,w:sh.w,h:sh.h}:G.bbox(sh)") && html.includes("const cx=ub.x+ub.w/2,cy=ub.y+ub.h/2,rot=sh.rotate")],
+  ['_edgePt is rotation-aware (projects to true rotated edge)', html.includes("const ub=sh.w!=null?{x:sh.x,y:sh.y,w:sh.w,h:sh.h}:_bb(sh)") && html.includes("const cx=ub.x+ub.w/2,cy=ub.y+ub.h/2,rot=sh.rotate")],
   ['rotation extends to all box types (text bbox uses envelope)', !html.includes("if(s.type==='text'){\n      return{x:s.x,y:s.y,w:s.w,h:s.h};")],
   ['SVG rotation applies to text/image/sticky/frame', html.includes("font-size=\"${fs}\"${s.bold?' font-weight=\"600\"':''}") && html.includes("href=\"${_esc(s.dataUrl)}\"${_cr2>0?` clip-path=\"url(#irc${_esc(s.id)})\"`:''}${a}${rT}${fT}${_sh}/>")],
   ['minimap applies rotation transform', html.includes("const _mr=s.rotate&&s.w!=null;") && html.includes("if(_mr)sx.restore();")],
@@ -1078,7 +1078,7 @@ const checks = [
   ['drag-drop image import has img.onerror toast', html.includes("img.onerror=()=>_tst(t('imgErr'),'warn');") ],
   ['image import (shared _imgImportFile) has reader.onerror toast', html.includes("function _imgImportFile(") && html.includes("reader.onerror=()=>_tst(t('imgErr'),'warn');")],
   ['context menu deduplicates consecutive separators', html.includes(".filter((it,i,a)=>!(it==='sep'&&(i===0||i===a.length-1||a[i-1]==='sep')))")],
-  ['doDuplicate does not clobber clipboard (uses _placeCopies, not state.clipboard=)', html.includes("_placeCopies(sel,state.dupDelta.x,state.dupDelta.y):_placeCopies(sel);   // independent of state.clipboard") && html.includes("function _placeCopies(srcShapes")],
+  ['doDuplicate does not clobber clipboard (uses _placeCopies, not state.clipboard=)', html.includes("_placeCopies(sel,state.dupDelta.x,state.dupDelta.y):_placeCopies(sel);   // independent of _cl()") && html.includes("function _placeCopies(srcShapes")],
   // v1.6.71: import sites clear stale selection + wclock (mirror replace op's _apply)
   ['importBoard clears selection+wclock on whole-board swap', html.includes("state.shapes=shapes.map(clone);_iG();   // ADR-0009\n      // Match the replace op's _apply") && html.includes("_sl().clear();state.wclock={};\n      if(typeof d.docName")],
   ['importFromHash clears selection+wclock on whole-board swap', html.includes("state.shapes=valid.map(clone);_iG();state.docName=") && /state\.shapes=valid\.map\(clone\)[\s\S]{0,900}_sl\(\)\.clear\(\);state\.wclock=\{\};/.test(html)],
@@ -1165,7 +1165,7 @@ const checks = [
   ['lockToggle i18n key present in ja and en', (html.match(/lockToggle:/g)||[]).length>=2],
   ['lockToggle in help grid', html.includes("t('lockToggle')")],
   // v1.7.06: doCopy excludes locked shapes (parity with doDelete/doMove/doAlign)
-  ['doCopy expands frame children and excludes locked shapes', html.includes("const sel=[...withFrameChildren(_sl())].map(byId).filter(s=>s&&!s.locked);\n  if(!sel.length)return;\n  state.clipboard")],
+  ['doCopy expands frame children and excludes locked shapes', html.includes("const sel=[...withFrameChildren(_sl())].map(byId).filter(s=>s&&!s.locked);\n  if(!sel.length)return;\n  state.clipboard={shapes:clone(sel)}")],
   // v1.6.77: paste/duplicate is one atomic undo — _placeCopies commits a single addMany op
   ['_placeCopies commits one addMany (not per-shape add)', html.includes("if(built.length)Store.commit({op:'addMany',shapes:built})")],
   ['addMany op has an _apply case', /case 'addMany':/.test(html)],
@@ -1270,7 +1270,7 @@ const checks = [
     html.includes("if(!sh||(forward&&sh.locked&&!('locked' in raw)))continue;")],
   // v1.7.39: _apply del forward connClears must guard sh.locked
   ['_apply del forward connClears: if(sh&&!sh.locked) guards locked connectors',
-    html.includes("if(sh&&!sh.locked)Object.assign(sh,p.after);}}")],
+    html.includes("if(sh&&!sh.locked)_oa(sh,p.after);}}")],
   // v1.7.40: _apply zorder forward must guard sh.locked (changes path)
   ['_apply zorder forward changes: !(forward&&sh.locked) guards locked shapes',
     html.includes("if(sh&&!(forward&&sh.locked))sh.frac=forward?c.after:c.before}")],
@@ -1322,7 +1322,7 @@ const checks = [
     html.includes("_rcOp({op:'upd',id:rsh.id,before,after});")],
   // v1.7.43: _apply upd backward restores origSel (drag-resize/rotate undo)
   ['_apply upd backward: if(!forward&&op.origSel) restores selection',
-    html.includes("Object.assign(sh,p);\n        if(!forward)_selR(op);\n        break;}\n      case 'move':{")],
+    html.includes("_oa(sh,p);\n        if(!forward)_selR(op);\n        break;}\n      case 'move':{")],
   // v1.7.45: openLabelEditor commit closure must capture origSel (label-edit undo restores selection)
   ['openLabelEditor commit: origSel captured before upd _recordCommitted',
     html.includes("hit.label=lbl||null;_rcOp({op:'upd',id:hit.id,before,after});_iv()")],
@@ -1337,7 +1337,7 @@ const checks = [
     !html.includes("if((s.type==='rect'||s.type==='ellipse')&&s.label){\n    const cx=s.x+s.w/2")],
   // v1.7.46: _apply del backward connClears must respect sh.locked (parity with forward)
   ['_apply del backward connClears: if(sh&&!sh.locked) lock guard added (parity with forward path)',
-    html.includes("if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)Object.assign(sh,p.before);}}")],
+    html.includes("if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_oa(sh,p.before);}}")],
   // v1.7.47: validRemotePayload align must validate dir against a whitelist
   ['validRemotePayload align: dir whitelist (DIRS Set) prevents unknown dir values',
     html.includes("const DIRS=new Set(['left','right','cx','top','bottom','cy','hspace','vspace','tidy','swap','gsnap','flip'")],
