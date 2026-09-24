@@ -813,11 +813,12 @@ const _dt=()=>state.dirty;
 const _ed=()=>state.editing;                                    // ADR-0365
 const _iv=invalidate,_ivO=invalidateOverlay;                    // ADR-0366
 const _tst=(m,k)=>UI.toast(m,k),_iG=_invalidateGrid,_aS=_announceSel,_iD=invalidateDamage,_sz=sortZ;   // ADR-0366
+const _ps=()=>Persist.schedule(),_ms=()=>Minimap.schedule(),_ru=()=>UI.refreshUndo();   // ADR-0370
 const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-0350
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.416';
+const V='1.7.417';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1371,8 +1372,8 @@ const Store={
       state.histIdx++;
     }
     state.dirty=true;
-    UI.refreshUndo();
-    Persist.schedule();
+    _ru();
+    _ps();
     if(op.clock.peer===state.peerId)Net.broadcast(op);   // outbound only
   },
   // A remote del removes shapes, but the SENDER's connClears (v1.6.78) only cover
@@ -1428,8 +1429,8 @@ const Store={
     }
     this._stampWrites(op);
     state.dirty=true;
-    UI.refreshUndo();
-    Persist.schedule();
+    _ru();
+    _ps();
   },
   // Per-property write clocks live in _wc() (shapeId -> {prop: clock}), NOT on
   // the shape — so they never pollute clones, snapshots, persistence or validation.
@@ -1505,7 +1506,7 @@ const Store={
     _hi().push(op);
     if(_hi().length>MAX_HISTORY)_hi().shift();
     else state.histIdx++;
-    state.dirty=true;UI.refreshUndo();Persist.schedule();
+    state.dirty=true;_ru();_ps();
     if(op.clock.peer===state.peerId)Net.broadcast(op);
   },
   undo(){
@@ -1514,8 +1515,8 @@ const Store={
     this._apply(op,false);
     state.histIdx--;
     state.dirty=true;
-    UI.refreshUndo();
-    Persist.schedule();
+    _ru();
+    _ps();
     return true;
   },
   redo(){
@@ -1524,8 +1525,8 @@ const Store={
     const op=_hi()[_hx()];
     this._apply(op,true);
     state.dirty=true;
-    UI.refreshUndo();
-    Persist.schedule();
+    _ru();
+    _ps();
     return true;
   },
   _apply(op,forward){
@@ -2172,14 +2173,14 @@ function drawPenDraft(s){
 let needsRender=true,needOverlay=true,_rafId=0;
 let _damage=null;   // ADR-0026: accumulated world-space dirty rect during drag gestures; null = full repaint
 let _pinchSnap=null,_pinchVp=null;   // ADR-0030: pinch-start canvas copy + viewport for scaled preview
-function invalidate(){_damage=null;needsRender=true;needOverlay=true;if(!_rafId)_rafId=requestAnimationFrame(frame);Minimap.schedule()}
+function invalidate(){_damage=null;needsRender=true;needOverlay=true;if(!_rafId)_rafId=requestAnimationFrame(frame);_ms()}
 // ADR-0026: gesture-local repaint — producers report the world-space rect they
 // dirtied and frame() clips the scene pass to its accumulated union (never
 // shrinks mid-gesture, so a fast teleport still covers the old position).
 // Everything else must keep calling _iv(), which resets _damage to full.
 function _dmgU(a,b){return a?{x:_min(a.x,b.x),y:_min(a.y,b.y),w:_max(a.x+a.w,b.x+b.w)-_min(a.x,b.x),h:_max(a.y+a.h,b.y+b.h)-_min(a.y,b.y)}:{x:b.x,y:b.y,w:b.w,h:b.h}}
 function _dmgPair(a,b,m){if(!a)return b?{x:b.x-m,y:b.y-m,w:b.w+2*m,h:b.h+2*m}:a;if(!b)return{x:a.x-m,y:a.y-m,w:a.w+2*m,h:a.h+2*m};const x0=_min(a.x,b.x)-m,y0=_min(a.y,b.y)-m;return{x:x0,y:y0,w:_max(a.x+a.w,b.x+b.w)-x0+m,h:_max(a.y+a.h,b.y+b.h)-y0+m}}
-function invalidateDamage(r){_damage=_dmgU(_damage,r);needsRender=true;needOverlay=true;if(!_rafId)_rafId=requestAnimationFrame(frame);Minimap.schedule()}
+function invalidateDamage(r){_damage=_dmgU(_damage,r);needsRender=true;needOverlay=true;if(!_rafId)_rafId=requestAnimationFrame(frame);_ms()}
 // Overlay-only repaint (ADR-0024): marquee / guides / peer cursors / laser /
 // search-highlight changes touch no scene pixels — skip the expensive scene
 // pass entirely. Never call this after mutating shapes, draft, or viewport.
@@ -2279,6 +2280,7 @@ function describeShape(s){
   if(txt)d+=` “${txt.length>30?txt.slice(0,30)+'…':txt}”`;
   d+=` @ ${_rnd(b.x)},${_rnd(b.y)}`;
   if(s.locked)d+=` ${t('ctxLock')}`;
+  if(s.visible===0)d+=` ${t('tagHidden')}`;   // ADR-0371: selection-restore / RTC can select a hidden shape
   if(s.rotate)d+=` ${s.rotate}°`;
   if(s.link)d+=' 🔗';   // ADR-0315: mirror the visual badge for SR users
   return d;
@@ -5317,11 +5319,11 @@ function openTextEditor(s,isNew){
       if(!newText.trim()){
         Store.undo();
         _hi().length=_hx()+1;
-        UI.refreshUndo();
+        _ru();
         _syncTextFinalize(s,origText,true);    // peers got the blank add → sync its removal
       }else{
         _hi()[_hx()].shape=clone(s);
-        state.dirty=true;Persist.schedule();
+        state.dirty=true;_ps();
         _syncTextFinalize(s,origText,false);   // peers got the blank add → sync typed content
       }
     }else{
@@ -5745,7 +5747,7 @@ function _zCommit(changes){
   if(!changes.length){_iv();return}
   _sz();
   _rcOp({op:'zorder',changes});
-  _iv();Persist.schedule();
+  _iv();_ps();
 }
 // Shared by doBringFront/doSendBack/doBringForward/doSendBackward: locked shapes never
 // take part in a z-order op (parity with doDelete/doGroup excluding locked shapes).
@@ -5998,7 +6000,7 @@ function doAlign(dir){
   }
   const afterSnap=sel.map(s=>clone(s));
   _rcOp({op:'align',dir,before:beforeSnap,after:afterSnap});
-  _iv();Persist.schedule();
+  _iv();_ps();
 }
 // ADR-0116: snap each selected shape's POSITION to the grid — translate so the
 // bbox top-left lands on the nearest GRID_SIZE multiple. Geometry is never
@@ -6017,7 +6019,7 @@ function snapSelToGrid(){
   if(!moved){_tst(t('alreadySnapped'),'warn');return}
   const afterSnap=sel.map(s=>clone(s));
   _rcOp({op:'align',dir:'gsnap',before:beforeSnap,after:afterSnap});
-  _iv();Persist.schedule();
+  _iv();_ps();
 }
 // ADR-0079: match width/height of selected box shapes to the first-selected
 // (draw.io Arrange → Match Size). Position untouched; align op for undo parity.
@@ -6031,7 +6033,7 @@ function doMatchSize(dim){
   const after=targets.map(s=>clone(s));
   if(before.every((b,i)=>b.w===after[i].w&&b.h===after[i].h))return;
   _rcOp({op:'align',dir:'match'+dim,before,after});
-  _iv();Persist.schedule();
+  _iv();_ps();
 }
 
 // Flip: mirror across selection-bbox centre, recorded as an `align` op. See docs.
@@ -6085,7 +6087,7 @@ function doFlip(axis){
   for(const s of sel)flipShape(s,axis,c);
   const after=sel.map(s=>clone(s));
   _rcOp({op:'align',dir:'flip',before,after});
-  _iv();Persist.schedule();
+  _iv();_ps();
   UI.announce(t(axis==='h'?'ctxFlipH':'ctxFlipV'));
 }
 
@@ -6097,7 +6099,7 @@ function doLock(){
   for(const s of sel)s.locked=lk||null;
   const after=sel.map(s=>({id:s.id,locked:s.locked??null}));
   _rcOp({op:'align',dir:'lock',before,after});
-  _iv();Persist.schedule();
+  _iv();_ps();
   UI.announce(t(lk?'ctxLock':'ctxUnlock'));
 }
 // ADR-0123: unlock every locked shape on the board in one op — boards can
@@ -6110,7 +6112,7 @@ function unlockAll(){
   for(const s of locked)s.locked=null;
   const after=locked.map(s=>({id:s.id,locked:null}));
   Store._recordCommitted({op:'align',dir:'lock',before,after});
-  _iv();Persist.schedule();
+  _iv();_ps();
   UI.announce(t('ctxUnlockAll'));
 }
 // ADR-0005: replace confidently-recognized pen strokes in the selection with clean shapes
@@ -6130,7 +6132,7 @@ function doBeautify(){
   const origSel=_selIds();
   for(const p of after){const sh=byId(p.id);if(sh)Object.assign(sh,clone(p))}
   Store._recordCommitted({op:'beautify',before,after,origSel});
-  _iv();Persist.schedule();
+  _iv();_ps();
   _tst(`${t('beautified')} (${after.length})`,'ok');
 }
 // ADR-0055: rotate applies to box shapes (orbit + s.rotate spin) AND point
@@ -6180,7 +6182,7 @@ function doRotate(d){
   }
   const after=sel.map(s=>clone(s));
   _rcOp({op:'align',dir:'rotate',before,after});
-  _iv();Persist.schedule();
+  _iv();_ps();
   UI.announce(sel.length===1?describeShape(sel[0]):d+'°');   // ,/. keyboard rotate was SR-silent (knob drag announces); point-geom selections have no .rotate (ADR-0055)
 }
 // ====================== EXPORT ======================
@@ -7765,7 +7767,7 @@ const Net={
     }
     if(dirty){
       state.dirty=true;_iG();
-      _iv();UI.refreshUndo();Persist.schedule();
+      _iv();_ru();_ps();
       return 'merge';
     }
     return 'keep';
@@ -7787,7 +7789,7 @@ const Net={
     const valid=shapes.slice(0,MAX_OP_SHAPES).map(s=>this._attachShape(s)).filter(validShape);
     state.shapes=clone(valid);_iG();   // ADR-0009
     _sz();
-    _iv();UI.refreshUndo();Persist.schedule();
+    _iv();_ru();_ps();
   },
   _touchPeer(peerId){
     if(peerId===state.peerId)return;
@@ -8049,7 +8051,7 @@ const Share={
       // clean URL
       history.replaceState(null,'',location.pathname);
       _tst(t('imported'),'ok');
-      Persist.schedule();
+      _ps();
       return true;
     }catch{_tst(t('invalidBoard'),'err');clearHash();return false}   // ADR-0038: corrupt link — don't pin it in the URL either
   }};
@@ -8318,7 +8320,7 @@ const UI={
     state.showMinimap=!state.showMinimap;
     try{localStorage.setItem('board.minimap',state.showMinimap?'on':'off')}catch(_){}
     UI.refreshMinimapVis();
-    if(state.showMinimap)Minimap.schedule();
+    if(state.showMinimap)_ms();
     _tst(`${t('minimap')} ${state.showMinimap?t('on'):t('off')}`);
   },
   // ADR-0012: cycles auto -> light -> dark -> auto. "Auto" (no stored value) follows
@@ -8728,10 +8730,10 @@ function wire(){
     // (Qiita: Rapls / Zenn: spacemarket). imeShouldCommit() returns false for
     // mid-composition input events to keep partial conversions out of state/IDB/sync;
     // a parallel compositionend listener picks up the final value once IME confirms.
-    const _commitDocName=()=>{state.docName=docNameEl.value;_syncDocTitle();state.dirty=true;Persist.schedule()};
+    const _commitDocName=()=>{state.docName=docNameEl.value;_syncDocTitle();state.dirty=true;_ps()};
     _on(docNameEl,'input',e=>{if(imeShouldCommit(e))_commitDocName()});
     _on(docNameEl,'compositionend',_commitDocName);
-    _on(docNameEl,'change',()=>{state.docName=docNameEl.value||'Untitled';_syncDocTitle();Persist.schedule()});
+    _on(docNameEl,'change',()=>{state.docName=docNameEl.value||'Untitled';_syncDocTitle();_ps()});
   }
   _g('btnInstall').onclick=_onBtnInstall;
   _g('btnLang').onclick=()=>UI.toggleLang();
@@ -9628,7 +9630,7 @@ const Minimap=(()=>{
       else await Persist.discardBackup();
     }
   }catch(_){}
-  UI.refreshUndo();UI.refreshZoom();UI.refreshSaved();UI.refreshMinimapVis();
+  _ru();UI.refreshZoom();UI.refreshSaved();UI.refreshMinimapVis();
   // version display
   _g('sVer').textContent='v'+V;
   // v1.1: import shared board from URL hash (if any)

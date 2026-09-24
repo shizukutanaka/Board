@@ -2,6 +2,16 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.417] - 2026-09-24
+
+### Fixed
+- `describeShape` が hidden (`visible===0`) 状態を `tagHidden` でアナウンス —
+  origSel 復元 / RTC 経由の hidden 選択を SR ユーザーが判別可能に (ADR-0371)
+
+### Changed
+- `Persist.schedule`/`Minimap.schedule`/`UI.refreshUndo` を `_ps`/`_ms`/`_ru`
+  shorthand 化 — ~300B 回収 (ADR-0370)
+
 ## [1.7.416] - 2026-09-24
 
 ### Fixed
