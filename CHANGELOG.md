@@ -2,6 +2,52 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.314] - 2026-09-24
+
+### Fixed
+- .drawio export: edge の opacity= 出力漏れを修正 (往復の非対称、
+  ADR-0262)
+
+## [1.7.313] - 2026-09-24
+
+### Added
+- .drawio: rotation= ↔ s.rotate を vertex で往復 (ADR-0261)
+
+## [1.7.312] - 2026-09-24
+
+### Added
+- .drawio: flipH/flipV ↔ s.flip ビットマスク往復 (vertex+edge、ADR-0260)
+
+## [1.7.311] - 2026-09-24
+
+### Added
+- .drawio: 画像シェイプを shape=image;image=<url> として往復 (ADR-0259)。
+  data URL は `;base64,` を含むため末尾配置 + raw style 抽出で対応
+
+## [1.7.310] - 2026-09-24
+
+### Changed
+- drawio import の共通 style キー適用を `_dioStyApply` に集約 (ADR-0258)。
+  edge の opacity 適用漏れも解消
+
+## [1.7.309] - 2026-09-24
+
+### Added
+- .excalidraw export: appState に scrollX/scrollY/zoom を同梱し開いた
+  時点の表示位置を復元 (ADR-0257)
+
+## [1.7.308] - 2026-09-24
+
+### Added
+- .drawio: endArrow タイプ (oval|open|none) ↔ s.head 往復、startArrow の
+  独立判定で line+start-head を復元 (ADR-0256)
+
+## [1.7.307] - 2026-09-24
+
+### Added
+- .drawio: dotted 線を dashed=1+dashPattern として往復 (vertex+edge、
+  ADR-0255)
+
 ## [1.7.306] - 2026-09-24
 
 ### Added

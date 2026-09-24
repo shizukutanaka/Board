@@ -304,6 +304,14 @@ Board/
 │   ├── ADR-0252-conn-label-measure-cache.md  # コネクタ/ボックスラベルの measureText メモ化 (実装済)
 │   ├── ADR-0253-drawio-fontfamily.md  # drawio fontFamily ↔ s.font カテゴリ (実装済)
 │   ├── ADR-0254-drawio-locked.md  # drawio locked ↔ editable/deletable/movable=0 (実装済)
+│   ├── ADR-0255-drawio-dotted.md  # drawio dotted ↔ dashPattern (実装済)
+│   ├── ADR-0256-drawio-arrowhead-types.md  # drawio endArrow タイプ ↔ s.head (実装済)
+│   ├── ADR-0257-exc-export-viewport.md  # .excalidraw export に viewport 同梱 (実装済)
+│   ├── ADR-0258-dio-sty-apply.md  # drawio 共通 sty 適用の _dioStyApply 集約 (実装済)
+│   ├── ADR-0259-drawio-image.md  # drawio shape=image ↔ 画像シェイプ往復 (実装済)
+│   ├── ADR-0260-drawio-flip.md  # drawio flipH/flipV ↔ s.flip (実装済)
+│   ├── ADR-0261-drawio-rotation.md  # drawio rotation= ↔ s.rotate (実装済)
+│   ├── ADR-0262-drawio-edge-opacity.md  # drawio edge opacity export 対称化 (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

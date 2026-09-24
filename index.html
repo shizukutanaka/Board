@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.306';
+const V='1.7.314';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6329,7 +6329,7 @@ function excScene(shapes){
     const out=[...(be?be.map(cid=>({id:cid,type:'arrow'})):[]),...(tid?[{id:tid,type:'text'}]:[])];
     if(out.length)e.boundElements=out;
   }
-  return{type:'excalidraw',version:2,source:'Board',elements:els,files,appState:{gridSize:null}};
+  return{type:'excalidraw',version:2,source:'Board',elements:els,files,appState:{gridSize:null,scrollX:-state.viewport.x,scrollY:-state.viewport.y,zoom:{value:state.viewport.zoom}}};   // ADR-0257
 }
 // ---- ADR-0203: .drawio import ------------------------------------------------
 // Uncompressed mxGraphModel XML via DOMParser (no deps). drawio's default save
@@ -6337,6 +6337,20 @@ function excScene(shapes){
 // instead of silently dropping. style="k=v;k=v;flag;" cells map onto the closest
 // Board type; unknown vertex shapes fall back to rect, unknown edges to arrow.
 const DIO_MAX=20000;
+// ADR-0258: style keys shared verbatim by vertex and edge cells — one site.
+function _dioStyApply(s,sty,hid){
+  if(sty.strokeColor&&sty.strokeColor!=='none')s.stroke=sty.strokeColor;
+  if(+sty.strokeWidth>0)s.size=Math.min(40,+sty.strokeWidth);
+  if(sty.dashed==='1')s.dash=/^1\s+\d/.test(String(sty.dashPattern||''))?2:1;   // ADR-0255
+  if(+sty.fontSize>0)s.fontSize=Math.min(200,+sty.fontSize);
+  {const _fs=+sty.fontStyle;if(_fs&1)s.bold=1;if(_fs&2)s.italic=1;if(_fs&4)s.under=1}
+  if(sty.shadow==='1')s.shadow=1;                                          // ADR-0246
+  if(sty.editable==='0'||sty.deletable==='0'||sty.movable==='0')s.locked=1;   // ADR-0254
+  if(+sty.opacity>0)s.opacity=Math.max(0.05,+sty.opacity/100);
+  if(sty.flipH==='1')s.flip=(s.flip||0)|1;                  // ADR-0260
+  if(sty.flipV==='1')s.flip=(s.flip||0)|2;
+  if(hid)s.visible=0;                                       // ADR-0245
+}
 function _dioSty(st){
   const o={};for(const kv of String(st||'').split(';')){const i=kv.indexOf('=');if(i>=0)o[kv.slice(0,i)]=kv.slice(i+1);else if(kv)o[kv]=1}
   return o;
@@ -6386,26 +6400,18 @@ function drawioToShapes(txt){
       if(sty.fillColor&&sty.fillColor!=='none')s.color=sty.fillColor}
     else if(('text' in sty||sty.text===1)&&!w&&!ht)s=Shape.make('text',{x,y,w:120,h:24,text:lbl.slice(0,2000)});
     else s=Shape.make('rect',{x,y,w:w||120,h:ht||80,label:lbl.slice(0,240)});
+    {const _im=(sty.shape==='image')?(c.getAttribute('style')||'').match(/image=(data:[^;]*;base64,[^;]*|https?:[^;]*)/):null;   // ADR-0259
+     if(_im)s=Shape.make('image',{x,y,w:w||120,h:ht||80,dataUrl:_im[1].slice(0,25_000_000),label:lbl.slice(0,240)})}
     if(sty.rounded==='1'&&s.w!=null)s.r=8;
     if(sty.fillColor&&sty.fillColor!=='none')s.fill=sty.fillColor;
-    if(sty.strokeColor&&sty.strokeColor!=='none')s.stroke=sty.strokeColor;
-    if(+sty.strokeWidth>0)s.size=Math.min(40,+sty.strokeWidth);
-    if(sty.dashed==='1')s.dash=1;
-    if(+sty.fontSize>0)s.fontSize=Math.min(200,+sty.fontSize);
+    _dioStyApply(s,sty,_hid);                                            // ADR-0258
     if(sty.fontColor&&sty.fontColor!=='none'&&(s.type==='text'||s.type==='sticky'))s.stroke=sty.fontColor;   // ADR-0247
     if(sty.fontFamily&&s.type!=='image'){const ff=sty.fontFamily.toLowerCase();
       if(/mono|courier|consol|cascadia|menlo|jetbrains/.test(ff))s.font='mono';
       else if(/serif|times|georgia|garamond|palatino|book/.test(ff))s.font='serif'}   // ADR-0253
-    if(sty.editable==='0'||sty.deletable==='0'||sty.movable==='0')s.locked=1;   // ADR-0254
-    if(+sty.opacity>0)s.opacity=Math.max(0.05,+sty.opacity/100);
-    // ADR-0228: label typography — drawio align + fontStyle bitmask
-    // (1=bold, 2=italic, 4=underline; mxGraph BOLD/ITALIC/UNDERLINE_FONT)
     if(sty.align==='center'||sty.align==='right')s.align=sty.align;
     if(/^(top|middle|bottom)$/.test(sty.verticalAlign))s.valign=sty.verticalAlign;   // ADR-0238
-    const _fs=+sty.fontStyle;
-    if(_fs&1)s.bold=1;if(_fs&2)s.italic=1;if(_fs&4)s.under=1;
-    if(sty.shadow==='1')s.shadow=1;                                          // ADR-0246
-    if(_hid)s.visible=0;
+    if(+sty.rotation)s.rotate=Math.min(360,Math.max(-360,+sty.rotation));   // ADR-0261
     idOf.set(c.getAttribute('id'),s.id);shapes.push(s);
   }
   for(const c of cells){
@@ -6425,7 +6431,9 @@ function drawioToShapes(txt){
     // ADR-0224: fidelity — a drawn line (endArrow=none) stays a line, a head
     // at the source end maps to s.start, curved/jump keep their route flags
     if(sty.endArrow==='none')s.type='line';
-    else if(sty.startArrow&&sty.startArrow!=='none')s.start=1;
+    else if(sty.endArrow==='oval'||sty.endArrow==='diamond')s.head='dot';   // ADR-0256
+    else if(sty.endArrow==='open')s.head='open';
+    if(sty.startArrow&&sty.startArrow!=='none')s.start=1;
     if(sty.curved==='1')s.curve=1;
     if(sty.jumpStyle&&sty.jumpStyle!=='none')s.hop=1;
     const pts=g?[...g.querySelectorAll('Array mxPoint')]:[];
@@ -6438,15 +6446,8 @@ function drawioToShapes(txt){
     if(sb&&sty.entryX!=null){const fx=+sty.entryX,fy=+sty.entryY;
       if(Number.isFinite(fx)&&Number.isFinite(fy))s.bF={fx:Math.min(1,Math.max(0,fx)),fy:Math.min(1,Math.max(0,fy))}}
     const lbl=_dioLabel(c.getAttribute('value'));if(lbl)s.label=lbl.slice(0,240);
-    if(sty.strokeColor&&sty.strokeColor!=='none')s.stroke=sty.strokeColor;
-    if(+sty.strokeWidth>0)s.size=Math.min(40,+sty.strokeWidth);
-    if(sty.dashed==='1')s.dash=1;
-    if(sty.shadow==='1')s.shadow=1;                                          // ADR-0246
+    _dioStyApply(s,sty,_hid);                                            // ADR-0258 (edges gain opacity)
     if(sty.labelBackgroundColor&&sty.labelBackgroundColor!=='none')s.fill=sty.labelBackgroundColor;   // ADR-0249
-    if(+sty.fontSize>0)s.fontSize=Math.min(200,+sty.fontSize);
-    {const _efs=+sty.fontStyle;if(_efs&1)s.bold=1;if(_efs&2)s.italic=1;if(_efs&4)s.under=1}
-    if(sty.editable==='0'||sty.deletable==='0'||sty.movable==='0')s.locked=1;   // ADR-0254
-    if(_hid)s.visible=0;                                       // ADR-0245
     shapes.push(s);
   }
   return shapes;
@@ -6517,21 +6518,25 @@ function boardToDrawio(shapes){
     else if(t==='text')sty='text;';
     else if(t==='sticky')sty='shape=note;';
     else if(t==='frame')sty='swimlane;';
+    else if(t==='image'&&s.dataUrl)sty='shape=image;';
     else sty='rounded='+(s.r>0?1:0)+';';
     if(s.fill&&s.fill!=='none')sty+='fillColor='+s.fill+';';
     if(s.stroke&&t!=='text'&&t!=='sticky')sty+='strokeColor='+s.stroke+';';
     if(s.stroke&&(t==='text'||t==='sticky'))sty+='fontColor='+s.stroke+';';   // ADR-0247
     if(s.size)sty+='strokeWidth='+s.size+';';
-    if(s.dash)sty+='dashed=1;';
+    if(s.dash)sty+='dashed=1;'+(s.dash===2?'dashPattern=1 1;':'');   // ADR-0255
     if(s.opacity!=null&&s.opacity<1)sty+='opacity='+Math.round(s.opacity*100)+';';
     if(s.fontSize)sty+='fontSize='+s.fontSize+';';
     if(s.align==='center'||s.align==='right')sty+='align='+s.align+';';   // ADR-0228
     if(s.valign)sty+='verticalAlign='+s.valign+';';                          // ADR-0238
     if(s.font)sty+='fontFamily='+(s.font==='mono'?'Courier New':'Georgia')+';';   // ADR-0253
     if(s.locked)sty+='editable=0;deletable=0;movable=0;resizable=0;';   // ADR-0254
+    if(s.flip&1)sty+='flipH=1;';if(s.flip&2)sty+='flipV=1;';            // ADR-0260
+    if(s.rotate)sty+='rotation='+Math.round(s.rotate)+';';              // ADR-0261
     if(s.shadow)sty+='shadow=1;';                                            // ADR-0246
     const _dfs=(s.bold?1:0)|(s.italic?2:0)|(s.under?4:0);                  // ADR-0228: mxGraph bitmask
     if(_dfs)sty+='fontStyle='+_dfs+';';
+    if(t==='image'&&s.dataUrl)sty+='image='+s.dataUrl+';';                 // ADR-0259: last — ';base64,' inside
     const lbl=s.label!=null?s.label:s.text;
     cells.push(`<mxCell id="${id}" value="${nl(lbl||'')}" style="${esc(sty)}" vertex="1" parent="1"${s.visible===0?' visible="0"':''}><mxGeometry x="${s.x||0}" y="${s.y||0}" width="${s.w||120}" height="${s.h||80}" as="geometry"/></mxCell>`);   // ADR-0245
   }
@@ -6539,19 +6544,21 @@ function boardToDrawio(shapes){
     const t=s.type;
     if((t!=='line'&&t!=='arrow'))continue;
     const id='e'+(i++);
-    let sty=t==='line'?'endArrow=none;':'';
+    let sty=t==='line'||s.head==='none'?'endArrow=none;':s.head==='dot'?'endArrow=oval;':s.head==='open'?'endArrow=open;':'';   // ADR-0256
     if(s.elbow)sty+='edgeStyle=orthogonalEdgeStyle;';
     if(s.curve)sty+='curved=1;';
     if(s.hop)sty+='jumpStyle=arc;';
     if(s.stroke)sty+='strokeColor='+s.stroke+';';
     if(s.size)sty+='strokeWidth='+s.size+';';
-    if(s.dash)sty+='dashed=1;';
+    if(s.dash)sty+='dashed=1;'+(s.dash===2?'dashPattern=1 1;':'');   // ADR-0255
     if(s.r)sty+='rounded=1;';
     if(s.shadow)sty+='shadow=1;';                                            // ADR-0246
+    if(s.opacity!=null&&s.opacity<1)sty+='opacity='+Math.round(s.opacity*100)+';';   // ADR-0262
     if(s.fill)sty+='labelBackgroundColor='+s.fill+';';                       // ADR-0249
     if(s.label&&(s.bold||s.italic||s.under)){const _ef=(s.bold?1:0)|(s.italic?2:0)|(s.under?4:0);sty+='fontStyle='+_ef+';';}
     if(s.label&&s.fontSize)sty+='fontSize='+s.fontSize+';';
     if(s.locked)sty+='editable=0;deletable=0;movable=0;';   // ADR-0254
+    if(s.flip&1)sty+='flipH=1;';if(s.flip&2)sty+='flipV=1;';            // ADR-0260
 
     const src=s.a&&idOf.get(s.a)?` source="${idOf.get(s.a)}"`:'';
     const tgt=s.b&&idOf.get(s.b)?` target="${idOf.get(s.b)}"`:'';
