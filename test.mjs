@@ -648,6 +648,7 @@ const checks = [
   ['status bar saved label has data-t', html.includes('class="lbl" data-t="saved"')],
   ['status bar shapes label has data-t', html.includes('class="lbl" data-t="shapes"')],
   ['describeShape uses T.k locale name', html.includes("T.k?.[s.type]??s.type")],
+  ['T.k covers every shape type incl. image (ADR-0420)', html.includes("image:'画像'")&&html.includes("image:'Image'")&&html.includes("image:'")],
   ['no dead t() fallbacks in toast/confirm calls', !html.includes("t('connected')||") && !html.includes("t('importConfirm')||")],
   // v1.6.37: toast role=alert/status, Escape closes context menu
   ['toast sets role=alert for err/warn, role=status otherwise', html.includes("_sa(div,'role',kind==='err'||kind==='warn'?'alert':'status')")],

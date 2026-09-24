@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.455] - 2026-09-23
+
+### Fixed
+- `image` を T.k に追加 — describeShape/DOM mirror が ja で「画像」と読み上げるよう修正 (従来は英字フォールバック)
+
 ## [1.7.454] - 2026-09-23
 
 ### Internal
