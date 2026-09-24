@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.520] - 2026-09-23
+
+### リファクタ
+
+- `_gV`/`_gH` — スナップガイド push の 4 サイト (resizeSnap 縦/横、_snapBoxIdx 縦/横) の min/max union 4点 push を pair ヘルパに集約、−98B (ADR-0487)
+
 ## [1.7.519] - 2026-09-23
 
 ### 修正
