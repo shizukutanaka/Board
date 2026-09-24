@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.333] - 2026-09-24
+
+### Fixed
+- .drawio: ラベル付き box の fontColor (ラベル色) が往復しないのを修正
+  (export 発行 + import 適用、ADR-0281)
+
 ## [1.7.332] - 2026-09-24
 
 ### Added

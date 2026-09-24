@@ -722,6 +722,7 @@ const checks = [
   ['drawio edge rounded=1 → s.r (ADR-0269)', (html.match(/sty\.rounded==='1'/g)||[]).length>=2],
   ['excalidraw pressures + zigzag → p[2]/hatch (ADR-0268)', html.includes('e.pressures[i]')&&html.includes("e.fillStyle==='zigzag'")],
   ['excalidraw strokeSharpness ↔ s.r (ADR-0267)', html.includes("strokeSharpness:s.r?'round':'sharp'")],
+  ['drawio fontColor on labeled boxes ↔ s.stroke (ADR-0281)', html.includes("'sticky'||s.label")],
   ['excalidraw boundElements backlink (ADR-0280)', (html.match(/boundElements=\[{id:_tid/g)||[]).length>=3],
   ['excalidraw conn label ↔ s.label (ADR-0266)', html.includes("p.type==='line'||p.type==='arrow'")&&html.includes('boundElements=')],
   ['excalidraw elbowed ↔ s.elbow (ADR-0265)', html.includes('if(e.elbowed)s.elbow=1')&&html.includes('elbowed:true')],
