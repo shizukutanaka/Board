@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.449] - 2026-09-23
+
+### Fixed
+- describeShape が flip/shadow/elbow/curve を announce — canvas/SVG のみの視覚情報を SR チャンネルにも (WCAG パリティ)
+
 ## [1.7.448] - 2026-09-23
 
 ### Fixed
