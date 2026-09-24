@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.330';
+const V='1.7.331';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6558,6 +6558,7 @@ function boardToDrawio(shapes){
     else if(t==='image'&&s.dataUrl)sty='shape=image;';
     else sty='rounded='+(s.r>0?1:0)+';';
     if(s.fill&&s.fill!=='none')sty+='fillColor='+s.fill+';';
+    if(t==='sticky'&&!s.fill)sty+='fillColor='+(s.color||'#FEF08A')+';';                 // ADR-0279
     if(s.stroke&&t!=='text'&&t!=='sticky')sty+='strokeColor='+s.stroke+';';
     if(s.stroke&&(t==='text'||t==='sticky'))sty+='fontColor='+s.stroke+';';   // ADR-0247
     sty+=_dioStyEmit(s);                                                   // ADR-0263

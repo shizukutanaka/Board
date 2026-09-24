@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.331] - 2026-09-24
+
+### Fixed
+- .drawio: sticky の紙色 s.color が fillColor として export されず
+  往復で失われていたのを修正 (ADR-0279)
+
 ## [1.7.330] - 2026-09-24
 
 ### Fixed
