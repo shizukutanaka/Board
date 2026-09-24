@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.204]
+
+### 修正
+- **エルボー移動で trunk が取り残されるバグ** (ADR-0147)。
+  `Shape.translate` が `s.bend` を平行移動しなかった問題を修正
+  — ドラッグ/ナッジ/整列/複製の全経路で trunk が追従。
+
 ## [1.7.203]
 
 ### 修正

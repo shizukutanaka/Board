@@ -510,6 +510,7 @@ const checks = [
   ['Alt+click apex restores auto curve bow', html.includes('ADR-0144')&&html.includes('cbend:onlySel.cbend')&&html.includes('delete onlySel.cbend')],
   ['Alt+click label dot resets labelPos', html.includes('ADR-0145')&&html.includes('labelPos:onlySel.labelPos')&&html.includes('delete onlySel.labelPos')],
   ['rotate keeps elbow bend glued to trunk', html.includes('function _rotBend')&&html.includes('_rotBend(s,tr,rot)')&&html.includes('_rotBend(sh,tr,R)')],
+  ['translate moves elbow bend (trunk follows connector)', html.includes('s.bend+=vert?dx:dy')&&html.includes('ADR-0147')],
   ['line↔arrow conversion via style op (ctx)', html.includes('toggleLineArrow')&&html.includes('ctxToArrow')&&html.includes("s.type==='line'?'arrow':'line'")],
   ['sticky↔text conversion via style op (ctx)', html.includes('toggleStickyText')&&html.includes('ctxToSticky')&&html.includes("s.type==='sticky'?'text':'sticky'")],
   ['frame select-contents (ctx)', html.includes('selectFrameContents')&&html.includes('ctxSelContents')&&html.includes('withFrameChildren(')],

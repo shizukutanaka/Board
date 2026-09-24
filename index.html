@@ -774,7 +774,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.203';
+const V='1.7.204';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1814,7 +1814,13 @@ function nextZ(){return state.shapes.length?state.shapes.reduce((m,s)=>Math.max(
 const Shape={
   translate(s,dx,dy){
     if(s.type==='pen'){for(const p of s.pts){p[0]+=dx;p[1]+=dy}}
-    else if(s.type==='line'||s.type==='arrow'){s.x1+=dx;s.y1+=dy;s.x2+=dx;s.y2+=dy;const wa=_wayArr(s);if(wa.length){for(const w of wa){w.x+=dx;w.y+=dy}s.way=wa}}   // ADR-0090
+    else if(s.type==='line'||s.type==='arrow'){
+      // ADR-0147: s.bend is a world coordinate — translate it with the
+      // connector or the trunk stays behind (same class as ADR-0146).
+      // Trunk orientation survives translation, so shift the matching axis.
+      const tr=s.bend!=null?_elbowTrunk(s):null;
+      s.x1+=dx;s.y1+=dy;s.x2+=dx;s.y2+=dy;const wa=_wayArr(s);if(wa.length){for(const w of wa){w.x+=dx;w.y+=dy}s.way=wa}   // ADR-0090
+      if(tr){const vert=Math.abs(tr[1].x-tr[0].x)<Math.abs(tr[1].y-tr[0].y);s.bend+=vert?dx:dy}}
     else{s.x+=dx;s.y+=dy}  // rect, ellipse, text, image, sticky — all have x/y
   },
   make(type,extras){
