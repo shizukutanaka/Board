@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.407] - 2026-09-24
+
+### Added
+- .drawio emit で elbow コネクタのルート角点を `<Array>` waypoint
+  として出力 — draw.io 側で同一 Manhattan 経路が再現・編集可能に
+  (ADR-0358)
+
 ## [1.7.406] - 2026-09-24
 
 ### Fixed

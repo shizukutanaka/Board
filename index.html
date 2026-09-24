@@ -802,7 +802,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.406';
+const V='1.7.407';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6719,7 +6719,7 @@ function boardToDrawio(shapes){
     const _gc2=_gbx[s.groupId];                                         // ADR-0347
     if(!src)geo+=`<mxPoint x="${s.x1-(_gc2?_gc2.x:0)}" y="${s.y1-(_gc2?_gc2.y:0)}" as="sourcePoint"/>`;
     if(!tgt)geo+=`<mxPoint x="${s.x2-(_gc2?_gc2.x:0)}" y="${s.y2-(_gc2?_gc2.y:0)}" as="targetPoint"/>`;
-    const wa=_wayArr(s);
+    const wa=s.elbow?_elbowPts(s).slice(1,-1):_wayArr(s);              // ADR-0358: elbow corners → drawio waypoints
     if(wa.length)geo+='<Array as="points">'+wa.map(p=>`<mxPoint x="${p.x-(_gc2?_gc2.x:0)}" y="${p.y-(_gc2?_gc2.y:0)}"/>`).join('')+'</Array>';
     geo+='</mxGeometry>';
     cells.push(`<mxCell id="${id}" value="${nl(s.label||'')}" style="${esc(sty)}" edge="1" parent="${_gc2?`g_${s.groupId}`:'1'}"${src}${tgt}${s.link?` link="${esc(s.link)}"`:''}${s.visible===0?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0245/0347
