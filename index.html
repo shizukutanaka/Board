@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.299';
+const V='1.7.306';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2575,7 +2575,8 @@ function _drawBoxLabel(s,c){
   const top0=s.valign==='top'?s.y+6:s.valign==='bottom'?s.y+s.h-6-lines.length*lh:s.y+s.h/2-(lines.length*lh)/2;
   for(let i=0;i<lines.length;i++)c.fillText(lines[i],tx,top0+lh/2+i*lh);
   if(s.under||s.strike){c.strokeStyle=c.fillStyle;c.lineWidth=Math.max(1,fs*0.06);   // ADR-0170
-    for(let i=0;i<lines.length;i++){const lw=c.measureText(lines[i]).width;
+    const _lw2=_connLabelMeasure(s,c,lines,fs).ws;             // ADR-0252
+    for(let i=0;i<lines.length;i++){const lw=_lw2[i];
       const ux=al==='left'?tx:al==='right'?tx-lw:tx-lw/2;      // ADR-0171
       if(s.under){const uy=top0+lh/2+i*lh+fs*0.55;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}
       if(s.strike){const uy=top0+lh/2+i*lh;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}}}
@@ -2646,6 +2647,16 @@ function _pathNearestT(pts,p){
   }
   return bt;
 }
+// ADR-0252: connector label widths are pure functions of (label,font,flags) —
+// memoize per shape so every frame doesn't pay lns.length measureText calls.
+const _clCache=new WeakMap();
+function _connLabelMeasure(s,c,lns,fs){
+  const key=lns.join('\n')+'|'+fs+'|'+(s.bold?1:0)+(s.italic?1:0)+(s.font||'');
+  let m=_clCache.get(s);
+  if(m&&m.key===key)return m;
+  let w=0;const ws=lns.map(l=>{const lw=c.measureText(l).width;if(lw>w)w=lw;return lw});
+  m={key,ws,w};_clCache.set(s,m);return m;
+}
 function _connLabelXY(s){
   if(s.labelPos!=null&&Number.isFinite(s.labelPos)){   // ADR-0117
     const lp=_pathAt(_connPathPts(s),s.labelPos);if(lp)return lp;
@@ -2673,14 +2684,14 @@ function _drawConnLabel(s,c){
   const fs=s.fontSize||12;   // ADR-0169
   c.font=_fontStr(s,fs);c.textAlign='center';c.textBaseline='middle';   // ADR-0170
   const lns=String(s.label).split('\n'),llh=fs*(s.lineH||1.25),pad=4;   // ADR-0210/0212
-  let w=0;for(const l of lns)w=Math.max(w,c.measureText(l).width);
+  const _lm=_connLabelMeasure(s,c,lns,fs),w=_lm.w;             // ADR-0252: measureText was per-frame per-line
   const th=lns.length*llh;
   c.fillStyle=s.fill||getCSS('--paper')||'#fff';              // ADR-0193
   c.fillRect(mx-w/2-pad,my-th/2,w+pad*2,th);
   c.fillStyle=s.stroke||'#0F172A';
   for(let i=0;i<lns.length;i++)c.fillText(lns[i],mx,my+(i-(lns.length-1)/2)*llh);
   if(s.under||s.strike){c.strokeStyle=c.fillStyle;c.lineWidth=Math.max(1,fs*0.06);   // ADR-0170
-    for(let i=0;i<lns.length;i++){const lw=c.measureText(lns[i]).width,ly=my+(i-(lns.length-1)/2)*llh;
+    for(let i=0;i<lns.length;i++){const lw=_lm.ws[i],ly=my+(i-(lns.length-1)/2)*llh;
       if(s.under){c.beginPath();c.moveTo(mx-lw/2,ly+fs*0.55);c.lineTo(mx+lw/2,ly+fs*0.55);c.stroke()}
       if(s.strike){c.beginPath();c.moveTo(mx-lw/2,ly);c.lineTo(mx+lw/2,ly);c.stroke()}}}
   c.restore();
@@ -2776,7 +2787,7 @@ function drawShape(s,c){
       c.textAlign=alF==='right'?'right':alF==='center'?'center':'left';
       const txF2=alF==='right'?s.x+s.w-6:alF==='center'?s.x+s.w/2:s.x+6;
       c.fillText(lbl,txF2,s.y-2);
-      if(s.under||s.strike){const lw=c.measureText(lbl).width;      // ADR-0204
+      if(s.under||s.strike){const lw=_connLabelMeasure(s,c,[lbl],fs).w;   // ADR-0252/0204
         c.strokeStyle=c.fillStyle;c.lineWidth=Math.max(1,fs*0.06);
         const ux=alF==='left'?txF2:alF==='right'?txF2-lw:txF2-lw/2;
         if(s.under){const uy=s.y-2+fs*0.12;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}
@@ -2806,7 +2817,8 @@ function drawShape(s,c){
                   s.valign==='bottom'?s.y+s.h-pad-lines.length*lh:s.y+pad;
         for(let i=0;i<lines.length;i++)c.fillText(lines[i],tax,sty+i*lh);
         if(s.under||s.strike){c.strokeStyle=s.stroke||'#1E293B';c.lineWidth=Math.max(1,fs*0.06);   // ADR-0192
-          for(let i=0;i<lines.length;i++){const lw=c.measureText(lines[i]).width;
+          const _lwS=_connLabelMeasure(s,c,lines,fs).ws;         // ADR-0252
+          for(let i=0;i<lines.length;i++){const lw=_lwS[i];
             const ux=s.align==='center'?tax-lw/2:s.align==='right'?tax-lw:tax;
             if(s.under){const uy=sty+i*lh+fs*1.08;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}
             if(s.strike){const uy=sty+i*lh+fs*0.55;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}}}
@@ -3165,7 +3177,8 @@ function drawText(s,c){
   const ax=s.align==='center'?s.x+s.w/2:s.align==='right'?s.x+s.w:s.x;
   // ADR-0191: s.fill paints a highlight plate behind the text (draw.io parity —
   // previously settable via swatches/style-copy but rendered nowhere).
-  if(s.fill){let mw=0;for(const l of lines)mw=Math.max(mw,c.measureText(l).width);
+  const _tm=s.fill||s.under||s.strike?_connLabelMeasure(s,c,lines,fs):null;   // ADR-0252
+  if(s.fill){const mw=_tm.w;
     const bx=s.align==='center'?ax-mw/2:s.align==='right'?ax-mw:ax;
     c.save();c.fillStyle=s.fill;c.fillRect(bx-3,s.y-3,mw+6,lines.length*lh+6);c.restore();
     c.fillStyle=s.stroke||'#0F172A';}
@@ -3173,7 +3186,7 @@ function drawText(s,c){
   // ADR-0095: canvas has no text-decoration — stroke a line under each row
   // (per-line measureText honours all three align modes).
   if(s.under||s.strike){c.save();c.strokeStyle=s.stroke||'#0F172A';c.lineWidth=Math.max(1,fs*0.06);
-    for(let i=0;i<lines.length;i++){const lw=c.measureText(lines[i]).width;
+    for(let i=0;i<lines.length;i++){const lw=_tm.ws[i];
       const ux=s.align==='center'?ax-lw/2:s.align==='right'?ax-lw:ax;
       if(s.under){const uy=s.y+i*lh+fs*1.08;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}
       if(s.strike){const uy=s.y+i*lh+fs*0.55;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}}   // ADR-0100
@@ -3282,9 +3295,7 @@ function _grotCommit(){
   if(after.length){
     const before=after.map(a=>ptr.gOrig.get(a.id));
     if(before.some((b,i)=>JSON.stringify(b)!==JSON.stringify(after[i]))){
-      const origSel=[...state.selection];
-      Store._recordCommitted({op:'align',dir:'grot',before,after});
-      if(origSel.length)state.history[state.histIdx].origSel=origSel;
+      _rcOp({op:'align',dir:'grot',before,after});
     }
   }
 }
@@ -3451,9 +3462,7 @@ function _gresizeCommit(){
   if(after.length){
     const before=after.map(a=>ptr.gOrig.get(a.id));
     if(before.some((b,i)=>JSON.stringify(b)!==JSON.stringify(after[i]))){
-      const origSel=[...state.selection];
-      Store._recordCommitted({op:'align',dir:'gresize',before,after});
-      if(origSel.length)state.history[state.histIdx].origSel=origSel;
+      _rcOp({op:'align',dir:'gresize',before,after});
     }
   }
 }
@@ -3721,9 +3730,7 @@ canvas.addEventListener('pointerdown',e=>{
             const lp=_connLabelXY(onlySel);
             if(lp&&Math.hypot(wp.x-lp.x,wp.y-lp.y)<=HANDLE_SIZE/state.viewport.zoom){
               if(e.altKey&&onlySel.labelPos!=null){    // ADR-0145: ⌥click back to midpoint
-                const origSel=[...state.selection];
-                Store._recordCommitted({op:'style',before:[{id:onlySel.id,labelPos:onlySel.labelPos}],after:[{id:onlySel.id,labelPos:null}]});
-                if(origSel.length)state.history[state.histIdx].origSel=origSel;
+                _rcOp({op:'style',before:[{id:onlySel.id,labelPos:onlySel.labelPos}],after:[{id:onlySel.id,labelPos:null}]});
                 delete onlySel.labelPos;invalidate();return;
               }
               ptr.dragKind='lblpos';ptr.lblOrig=clone(onlySel);return;
@@ -3733,9 +3740,7 @@ canvas.addEventListener('pointerdown',e=>{
             const tr=_elbowTrunk(onlySel);
             if(tr&&distToSeg(wp,tr[0],tr[1])<=HANDLE_SIZE/state.viewport.zoom){
               if(e.altKey&&onlySel.bend!=null){        // ADR-0143: ⌥click recentres the trunk
-                const origSel=[...state.selection];
-                Store._recordCommitted({op:'style',before:[{id:onlySel.id,bend:onlySel.bend}],after:[{id:onlySel.id,bend:null}]});
-                if(origSel.length)state.history[state.histIdx].origSel=origSel;
+                _rcOp({op:'style',before:[{id:onlySel.id,bend:onlySel.bend}],after:[{id:onlySel.id,bend:null}]});
                 delete onlySel.bend;invalidate();return;
               }
               ptr.dragKind='ebend';ptr.ebendOrig=clone(onlySel);
@@ -3746,9 +3751,7 @@ canvas.addEventListener('pointerdown',e=>{
             const apex=_curveLabelXY(onlySel);
             if(apex&&Math.hypot(wp.x-apex.x,wp.y-apex.y)<=HANDLE_SIZE/state.viewport.zoom){
               if(e.altKey&&onlySel.cbend!=null){       // ADR-0144: ⌥click restores auto-bow
-                const origSel=[...state.selection];
-                Store._recordCommitted({op:'style',before:[{id:onlySel.id,cbend:onlySel.cbend}],after:[{id:onlySel.id,cbend:null}]});
-                if(origSel.length)state.history[state.histIdx].origSel=origSel;
+                _rcOp({op:'style',before:[{id:onlySel.id,cbend:onlySel.cbend}],after:[{id:onlySel.id,cbend:null}]});
                 delete onlySel.cbend;invalidate();return;
               }
               ptr.dragKind='cbend';ptr.cbendOrig=clone(onlySel);return;
@@ -3761,9 +3764,7 @@ canvas.addEventListener('pointerdown',e=>{
                 if(e.altKey){                              // ADR-0141: ⌥click deletes the waypoint
                   const wa=_wayArr(onlySel),bw=clone(wa.length?wa:null);
                   wa.splice(i-1,1);onlySel.way=wa.length?wa:null;
-                  const origSel=[...state.selection];
-                  Store._recordCommitted({op:'style',before:[{id:onlySel.id,way:bw}],after:[{id:onlySel.id,way:wa.length?clone(wa):null}]});
-                  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+                  _rcOp({op:'style',before:[{id:onlySel.id,way:bw}],after:[{id:onlySel.id,way:wa.length?clone(wa):null}]});
                   invalidate();return;
                 }
                 ptr.dragKind='way';ptr.wayIdx=i-1;ptr.wayNew=false;ptr.wayOrig=clone(onlySel);return;
@@ -3993,9 +3994,7 @@ canvas.addEventListener('pointerup',e=>{
           const after=clone(rsh);
           const before=ptr.resizeOrig;
           if(JSON.stringify(before)!==JSON.stringify(after)){
-            const origSel=[...state.selection];
-            Store._recordCommitted({op:'upd',id:rsh.id,before,after});
-            if(origSel.length)state.history[state.histIdx].origSel=origSel;
+            _rcOp({op:'upd',id:rsh.id,before,after});
           }
         }
         ptr.resizeHandle=null;ptr.resizeOrig=null;state.guides=null;state.readout=null;state.bindPreview=null;
@@ -4011,9 +4010,7 @@ canvas.addEventListener('pointerup',e=>{
         if(rsh){
           const after=clone(rsh),before=ptr.rotOrig;
           if(JSON.stringify(before)!==JSON.stringify(after)){
-            const origSel=[...state.selection];
-            Store._recordCommitted({op:'upd',id:rsh.id,before,after});
-            if(origSel.length)state.history[state.histIdx].origSel=origSel;
+            _rcOp({op:'upd',id:rsh.id,before,after});
             UI.toast(describeShape(rsh)); // SR announce new angle
           }
         }
@@ -4023,16 +4020,12 @@ canvas.addEventListener('pointerup',e=>{
       }else if(ptr.dragKind==='cbend'&&ptr.cbendOrig){            // ADR-0132
         const sh=byId(ptr.cbendOrig.id);
         if(sh&&(sh.cbend||0)!==(ptr.cbendOrig.cbend||0)){
-          const origSel=[...state.selection];
-          Store._recordCommitted({op:'style',before:[{id:sh.id,cbend:ptr.cbendOrig.cbend||0}],after:[{id:sh.id,cbend:sh.cbend||0}]});
-          if(origSel.length)state.history[state.histIdx].origSel=origSel;
+          _rcOp({op:'style',before:[{id:sh.id,cbend:ptr.cbendOrig.cbend||0}],after:[{id:sh.id,cbend:sh.cbend||0}]});
         }
       }else if(ptr.dragKind==='ebend'&&ptr.ebendOrig){            // ADR-0072
         const sh=byId(ptr.ebendOrig.id);
         if(sh&&(sh.bend||0)!==(ptr.ebendOrig.bend||0)){
-          const origSel=[...state.selection];
-          Store._recordCommitted({op:'style',before:[{id:sh.id,bend:ptr.ebendOrig.bend||0}],after:[{id:sh.id,bend:sh.bend||0}]});
-          if(origSel.length)state.history[state.histIdx].origSel=origSel;
+          _rcOp({op:'style',before:[{id:sh.id,bend:ptr.ebendOrig.bend||0}],after:[{id:sh.id,bend:sh.bend||0}]});
         }
       }else if(ptr.dragKind==='way'&&ptr.wayOrig){                 // ADR-0076
         const sh=byId(ptr.wayOrig.id),ow=ptr.wayOrig.way||null,nw=sh&&sh.way||null;
@@ -4045,9 +4038,7 @@ canvas.addEventListener('pointerup',e=>{
       }else if(ptr.dragKind==='lblpos'&&ptr.lblOrig){               // ADR-0117
         const sh=byId(ptr.lblOrig.id),ol=ptr.lblOrig.labelPos??null,nl=sh?(sh.labelPos??null):null;
         if(sh&&ol!==nl){
-          const origSel=[...state.selection];
-          Store._recordCommitted({op:'style',before:[{id:sh.id,labelPos:ol}],after:[{id:sh.id,labelPos:nl}]});
-          if(origSel.length)state.history[state.histIdx].origSel=origSel;
+          _rcOp({op:'style',before:[{id:sh.id,labelPos:ol}],after:[{id:sh.id,labelPos:nl}]});
         }
         ptr.lblOrig=null;
       }else{
@@ -4194,7 +4185,7 @@ function openLabelEditor(hit,leftPx,topPx,bold){
   _lblTa={inp,hit};_lblVp='';   // ADR-0182: follow the viewport while editing
   const commit=()=>{
     const lbl=inp.value.trim();
-    if(lbl!==hit.label){const before={label:hit.label??null};const after={label:lbl||null};hit.label=lbl||null;const origSel=[...state.selection];Store._recordCommitted({op:'upd',id:hit.id,before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
+    if(lbl!==hit.label){const before={label:hit.label??null};const after={label:lbl||null};hit.label=lbl||null;_rcOp({op:'upd',id:hit.id,before,after});invalidate()}
     _lblTa=null;inp.remove();
   };
   inp.addEventListener('blur',commit);
@@ -4342,9 +4333,7 @@ window.addEventListener('paste',e=>{
       const r=canvas.getBoundingClientRect();
       const wp=G.s2w({x:r.width/2,y:r.height/2});
       const sh=Shape.make('text',{x:wp.x-w/2,y:wp.y-(lines.length*fs*1.4)/2,w,h:lines.length*fs*1.4,text:body,fontSize:fs});
-      const origSel=[...state.selection];
-      Store.commit({op:'add',shape:sh});
-      if(origSel.length)state.history[state.histIdx].origSel=origSel;
+      _cOp({op:'add',shape:sh});
       state.selection.clear();state.selection.add(sh.id);
       invalidate();UI.toast(t('textPasted'),'ok');
     });
@@ -4755,9 +4744,7 @@ function nudgeSelection(dx,dy){
   const ids=[...withFrameChildren(state.selection)].filter(id=>!byId(id)?.locked);
   if(!ids.length)return;
   for(const id of ids){const sh=byId(id);if(sh)Shape.translate(sh,dx,dy)}
-  const origSel=[...state.selection];
-  Store._recordCommitted({op:'move',ids,dx,dy});
-  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  _rcOp({op:'move',ids,dx,dy});
   if(state.dupDelta&&ids.every(id=>state.dupIds.has(id))){state.dupDelta.x+=dx;state.dupDelta.y+=dy}     // ADR-0080
   invalidate();
 }
@@ -4804,9 +4791,7 @@ function endSelect(wp,shift,alt){
     state.guides=null;
     const mids=[...ptr.dragStartShapes.keys()].filter(id=>!byId(id)?.locked);
     if(Math.hypot(dx,dy)>0.5&&mids.length){
-      const origSel=[...state.selection];
-      Store._recordCommitted({op:'move',ids:mids,dx,dy});
-      if(origSel.length)state.history[state.histIdx].origSel=origSel;
+      _rcOp({op:'move',ids:mids,dx,dy});
       if(state.dupDelta&&mids.every(id=>state.dupIds.has(id))){state.dupDelta.x+=dx;state.dupDelta.y+=dy}   // ADR-0080
     }
   }else if(ptr.dragKind==='marquee'&&state.marquee){
@@ -5039,9 +5024,7 @@ function endRectLike(){
     else if(d.type==='frame'){d.w=800;d.h=500;d.x-=400;d.y-=250}
     else{d.w=120;d.h=80;d.x-=60;d.y-=40}   // ADR-0086: click stamps a default box (matches center-stamp size)
   }
-  const origSel=[...state.selection];
-  Store.commit({op:'add',shape:d});
-  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  _cOp({op:'add',shape:d});
   pickTool('select');
   state.selection.clear();state.selection.add(d.id);
   if(d.type==='sticky')openTextEditor(d,true);
@@ -5078,9 +5061,7 @@ function endLineLike(){
   const ba=_bindAt(d.x1,d.y1),bb=_bindAt(d.x2,d.y2);
   if(ba&&ba!==bb)d.a=ba;
   if(bb&&bb!==ba)d.b=bb;
-  const origSel=[...state.selection];
-  Store.commit({op:'add',shape:d});
-  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  _cOp({op:'add',shape:d});
   pickTool('select');state.selection.clear();state.selection.add(d.id);
 }
 // ADR-0065: settle an endpoint drag — bind if dropped on a shape (not self /
@@ -5123,9 +5104,7 @@ function _bindAt(x,y){
 function beginText(wp){
   const sp=snapPt(wp);
   const s=Shape.make('text',{x:sp.x,y:sp.y,w:120,h:24,text:'',fontSize:state.style.fontSize||16});   // ADR-0180
-  const origSel=[...state.selection];
-  Store.commit({op:'add',shape:s});
-  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  _cOp({op:'add',shape:s});
   openTextEditor(s,true);
   pickTool('select');
 }
@@ -5138,9 +5117,7 @@ function _stickyChain(s){
   // reproduce the note's look, not just size/colour.
   const n=Shape.make('sticky',{x:s.x+s.w+16,y:s.y,w:s.w,h:s.h,color:s.color,fontSize:s.fontSize,align:s.align,
     font:s.font,lineH:s.lineH,spacing:s.spacing,bold:s.bold,italic:s.italic,under:s.under,strike:s.strike,valign:s.valign,stroke:s.stroke});   // ADR-0192 follow-up
-  const origSel=[...state.selection];
-  Store.commit({op:'add',shape:n});
-  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  _cOp({op:'add',shape:n});
   state.selection=new Set([n.id]);
   openTextEditor(n,true);
   invalidate();
@@ -5170,9 +5147,7 @@ function createShapeKbd(){
   }else{
     return false;   // pen/select/hand/eraser — nothing to create from the keyboard
   }
-  const origSel=[...state.selection];
-  Store.commit({op:'add',shape:s});
-  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  _cOp({op:'add',shape:s});
   pickTool('select');
   state.selection=new Set([s.id]);
   UI.toast(`${t('created')}: ${describeShape(s)}`);
@@ -5274,9 +5249,7 @@ function openTextEditor(s,isNew){
       }else if(newText!==origText){
         const before={text:origText,w:orig.w,h:orig.h};
         const after={text:newText,w:s.w,h:s.h};
-        const origSel=[...state.selection];
-        Store._recordCommitted({op:'upd',id:s.id,before,after});
-        if(origSel.length)state.history[state.histIdx].origSel=origSel;
+        _rcOp({op:'upd',id:s.id,before,after});
       }
     }
     _teTa=null;ta.remove();invalidate();
@@ -5461,9 +5434,7 @@ window.addEventListener('keydown',e=>{
         sh.w=Math.max(4,sh.w+dw);sh.h=Math.max(4,sh.h+dh);
         after.push({id:sh.id,w:sh.w,h:sh.h});
       }
-      const origSel=[...state.selection];
-      Store._recordCommitted({op:'resize',before,after});
-      if(origSel.length)state.history[state.histIdx].origSel=origSel;
+      _rcOp({op:'resize',before,after});
       if(sel.length===1)UI.toast(describeShape(sel[0]));
       invalidate();
     }
@@ -5686,9 +5657,7 @@ function _zCommit(changes){
   changes=changes.filter(c=>c.before!==c.after);   // keep only real key moves
   if(!changes.length){invalidate();return}
   sortZ();
-  const origSel=[...state.selection];
-  Store._recordCommitted({op:'zorder',changes});
-  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  _rcOp({op:'zorder',changes});
   invalidate();Persist.schedule();
 }
 // Shared by doBringFront/doSendBack/doBringForward/doSendBackward: locked shapes never
@@ -5788,9 +5757,7 @@ function connectSelection(){
   const s=Shape.make('arrow',{
     x1:ab.x+ab.w/2,y1:ab.y+ab.h/2,x2:bb.x+bb.w/2,y2:bb.y+bb.h/2,
     a:a.id,b:b.id});
-  const origSel=[...state.selection];
-  Store.commit({op:'add',shape:s});
-  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  _cOp({op:'add',shape:s});
   state.selection=new Set([s.id]);
   invalidate();
 }
@@ -5832,9 +5799,7 @@ function wrapInFrame(){
   const PAD=16;
   const f=Shape.make('frame',{x:b.x-PAD,y:b.y-PAD,w:b.w+PAD*2,h:b.h+PAD*2,label:'Frame'});
   f.z=Math.min(...sel.map(s=>s.z||0))-0.5;      // ADR-0001: fractional z keeps order stable
-  const origSel=[...state.selection];
-  Store.commit({op:'add',shape:f});
-  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  _cOp({op:'add',shape:f});
   state.selection.clear();state.selection.add(f.id);
   invalidate();UI.toast(t('framed'),'ok');
 }
@@ -5946,9 +5911,7 @@ function doAlign(dir){
       break}
   }
   const afterSnap=sel.map(s=>clone(s));
-  const origSel=[...state.selection];
-  Store._recordCommitted({op:'align',dir,before:beforeSnap,after:afterSnap});
-  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  _rcOp({op:'align',dir,before:beforeSnap,after:afterSnap});
   invalidate();Persist.schedule();
 }
 // ADR-0116: snap each selected shape's POSITION to the grid — translate so the
@@ -5967,9 +5930,7 @@ function snapSelToGrid(){
   }
   if(!moved){UI.toast(t('alreadySnapped'),'warn');return}
   const afterSnap=sel.map(s=>clone(s));
-  const origSel=[...state.selection];
-  Store._recordCommitted({op:'align',dir:'gsnap',before:beforeSnap,after:afterSnap});
-  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  _rcOp({op:'align',dir:'gsnap',before:beforeSnap,after:afterSnap});
   invalidate();Persist.schedule();
 }
 // ADR-0079: match width/height of selected box shapes to the first-selected
@@ -5983,9 +5944,7 @@ function doMatchSize(dim){
   for(const s of targets){if(dim!=='h')s.w=ref.w;if(dim!=='w')s.h=ref.h}
   const after=targets.map(s=>clone(s));
   if(before.every((b,i)=>b.w===after[i].w&&b.h===after[i].h))return;
-  const origSel=[...state.selection];
-  Store._recordCommitted({op:'align',dir:'match'+dim,before,after});
-  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  _rcOp({op:'align',dir:'match'+dim,before,after});
   invalidate();Persist.schedule();
 }
 
@@ -6039,9 +5998,7 @@ function doFlip(axis){
   const before=sel.map(s=>clone(s));
   for(const s of sel)flipShape(s,axis,c);
   const after=sel.map(s=>clone(s));
-  const origSel=[...state.selection];
-  Store._recordCommitted({op:'align',dir:'flip',before,after});
-  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  _rcOp({op:'align',dir:'flip',before,after});
   invalidate();Persist.schedule();
   UI.announce(t(axis==='h'?'ctxFlipH':'ctxFlipV'));
 }
@@ -6053,9 +6010,7 @@ function doLock(){
   const before=sel.map(s=>({id:s.id,locked:s.locked??null}));
   for(const s of sel)s.locked=lk||null;
   const after=sel.map(s=>({id:s.id,locked:s.locked??null}));
-  const origSel=[...state.selection];
-  Store._recordCommitted({op:'align',dir:'lock',before,after});
-  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  _rcOp({op:'align',dir:'lock',before,after});
   invalidate();Persist.schedule();
   UI.announce(t(lk?'ctxLock':'ctxUnlock'));
 }
@@ -6138,9 +6093,7 @@ function doRotate(d){
     s.rotate=((s.rotate||0)+d+360)%360;
   }
   const after=sel.map(s=>clone(s));
-  const origSel=[...state.selection];
-  Store._recordCommitted({op:'align',dir:'rotate',before,after});
-  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  _rcOp({op:'align',dir:'rotate',before,after});
   invalidate();Persist.schedule();
   UI.announce(sel.length===1?describeShape(sel[0]):d+'°');   // ,/. keyboard rotate was SR-silent (knob drag announces); point-geom selections have no .rotate (ADR-0055)
 }
@@ -6252,9 +6205,7 @@ function replaceImage(){
       const before=[{id:s.id,dataUrl:s.dataUrl??null,h:s.h}];
       const after=[{id:s.id,dataUrl,h:nh2}];
       s.dataUrl=dataUrl;s.h=nh2;
-      const origSel=[...state.selection];
-      Store._recordCommitted({op:'style',before,after});
-      if(origSel.length)state.history[state.histIdx].origSel=origSel;
+      _rcOp({op:'style',before,after});
       invalidate();UI.toast(t('imagePasted'),'ok');
     });
   };
@@ -6442,6 +6393,10 @@ function drawioToShapes(txt){
     if(sty.dashed==='1')s.dash=1;
     if(+sty.fontSize>0)s.fontSize=Math.min(200,+sty.fontSize);
     if(sty.fontColor&&sty.fontColor!=='none'&&(s.type==='text'||s.type==='sticky'))s.stroke=sty.fontColor;   // ADR-0247
+    if(sty.fontFamily&&s.type!=='image'){const ff=sty.fontFamily.toLowerCase();
+      if(/mono|courier|consol|cascadia|menlo|jetbrains/.test(ff))s.font='mono';
+      else if(/serif|times|georgia|garamond|palatino|book/.test(ff))s.font='serif'}   // ADR-0253
+    if(sty.editable==='0'||sty.deletable==='0'||sty.movable==='0')s.locked=1;   // ADR-0254
     if(+sty.opacity>0)s.opacity=Math.max(0.05,+sty.opacity/100);
     // ADR-0228: label typography — drawio align + fontStyle bitmask
     // (1=bold, 2=italic, 4=underline; mxGraph BOLD/ITALIC/UNDERLINE_FONT)
@@ -6487,14 +6442,32 @@ function drawioToShapes(txt){
     if(+sty.strokeWidth>0)s.size=Math.min(40,+sty.strokeWidth);
     if(sty.dashed==='1')s.dash=1;
     if(sty.shadow==='1')s.shadow=1;                                          // ADR-0246
+    if(sty.labelBackgroundColor&&sty.labelBackgroundColor!=='none')s.fill=sty.labelBackgroundColor;   // ADR-0249
+    if(+sty.fontSize>0)s.fontSize=Math.min(200,+sty.fontSize);
+    {const _efs=+sty.fontStyle;if(_efs&1)s.bold=1;if(_efs&2)s.italic=1;if(_efs&4)s.under=1}
+    if(sty.editable==='0'||sty.deletable==='0'||sty.movable==='0')s.locked=1;   // ADR-0254
     if(_hid)s.visible=0;                                       // ADR-0245
     shapes.push(s);
   }
   return shapes;
 }
+// ADR-0250: real .drawio files are deflate-raw + base64 inside <diagram>.
+// Native DecompressionStream inflates them with no dependency; older engines
+// keep the re-save warning.
+async function _dioInflate(b64){
+  try{
+    const bin=Uint8Array.from(atob(String(b64).trim()),c=>c.charCodeAt(0));
+    const ds=new DecompressionStream('deflate-raw');
+    const txt=await new Response(new Blob([bin]).stream().pipeThrough(ds)).text();
+    return decodeURIComponent(txt);
+  }catch(_){return null}
+}
 function importDrawioText(txt,wp){
-  if(/<diagram[^>]*>[^<]+<\/diagram>/.test(String(txt||''))&&!txt.includes('<mxGraphModel')){
-    UI.toast(t('dioCompressed'),'warn');return false;   // deflate payload — can't inflate offline
+  const _dm=String(txt||'').match(/<diagram[^>]*>([^<]+)<\/diagram>/);
+  if(_dm&&!txt.includes('<mxGraphModel')){
+    if(typeof DecompressionStream==='undefined'){UI.toast(t('dioCompressed'),'warn');return false}
+    _dioInflate(_dm[1]).then(x=>{if(x)importDrawioText(x,wp);else UI.toast(t('dioCompressed'),'warn')});
+    return true;
   }
   let shapes=null;
   try{shapes=drawioToShapes(txt)}catch(_){shapes=null}
@@ -6503,9 +6476,7 @@ function importDrawioText(txt,wp){
   const bb=G.bboxAll(shapes);
   if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);
     for(const s of shapes)Shape.translate(s,dx,dy)}
-  const origSel=[...state.selection];
-  Store.commit({op:'addMany',shapes});
-  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  _cOp({op:'addMany',shapes});
   state.selection.clear();for(const s of shapes)state.selection.add(s.id);
   invalidate();UI.toast(t('dioImported'),'ok');
   return true;
@@ -6556,6 +6527,8 @@ function boardToDrawio(shapes){
     if(s.fontSize)sty+='fontSize='+s.fontSize+';';
     if(s.align==='center'||s.align==='right')sty+='align='+s.align+';';   // ADR-0228
     if(s.valign)sty+='verticalAlign='+s.valign+';';                          // ADR-0238
+    if(s.font)sty+='fontFamily='+(s.font==='mono'?'Courier New':'Georgia')+';';   // ADR-0253
+    if(s.locked)sty+='editable=0;deletable=0;movable=0;resizable=0;';   // ADR-0254
     if(s.shadow)sty+='shadow=1;';                                            // ADR-0246
     const _dfs=(s.bold?1:0)|(s.italic?2:0)|(s.under?4:0);                  // ADR-0228: mxGraph bitmask
     if(_dfs)sty+='fontStyle='+_dfs+';';
@@ -6575,6 +6548,11 @@ function boardToDrawio(shapes){
     if(s.dash)sty+='dashed=1;';
     if(s.r)sty+='rounded=1;';
     if(s.shadow)sty+='shadow=1;';                                            // ADR-0246
+    if(s.fill)sty+='labelBackgroundColor='+s.fill+';';                       // ADR-0249
+    if(s.label&&(s.bold||s.italic||s.under)){const _ef=(s.bold?1:0)|(s.italic?2:0)|(s.under?4:0);sty+='fontStyle='+_ef+';';}
+    if(s.label&&s.fontSize)sty+='fontSize='+s.fontSize+';';
+    if(s.locked)sty+='editable=0;deletable=0;movable=0;';   // ADR-0254
+
     const src=s.a&&idOf.get(s.a)?` source="${idOf.get(s.a)}"`:'';
     const tgt=s.b&&idOf.get(s.b)?` target="${idOf.get(s.b)}"`:'';
     if(src&&s.aF)sty+=`exitX=${s.aF.fx};exitY=${s.aF.fy};exitDx=0;exitDy=0;`;   // ADR-0221
@@ -6762,9 +6740,7 @@ function importSvgText(txt,wp){
   const bb=G.bboxAll(shapes);
   if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);
     for(const s of shapes)Shape.translate(s,dx,dy)}
-  const origSel=[...state.selection];
-  Store.commit({op:'addMany',shapes});
-  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  _cOp({op:'addMany',shapes});
   state.selection.clear();for(const s of shapes)state.selection.add(s.id);
   invalidate();UI.toast(t('svgImported'),'ok');
   return true;
@@ -6897,9 +6873,7 @@ function importExcText(txt,wp){
   const bb=G.bboxAll(shapes);
   if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);
     for(const s of shapes)Shape.translate(s,dx,dy)}
-  const origSel=[...state.selection];
-  Store.commit({op:'addMany',shapes});
-  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  _cOp({op:'addMany',shapes});
   state.selection.clear();for(const s of shapes)state.selection.add(s.id);
   invalidate();UI.toast(t('excImported'),'ok');
   return true;
@@ -8622,6 +8596,7 @@ function wire(){
   });
   // resize
   window.addEventListener('resize',resize);
+  if(window.visualViewport)visualViewport.addEventListener('resize',resize);   // ADR-0251: iOS url-bar/keyboard shrink doesn't fire window resize
   // devicePixelRatio change (window dragged to a different-density monitor) fires no resize
   _watchDPR();
   // some Android devices fire orientationchange separately from resize
@@ -8736,7 +8711,7 @@ function applyStyleToSelection(patch){
 // style op on change. Multiple input events during a drag never hit the undo stack.
 const _sbf={};
 function _sfbCapture(p){for(const id of state.selection){const s=byId(id);if(s&&!s.locked&&!(id+p in _sbf))_sbf[id+p]=s[p]}}
-function _sfbFlush(p,v){const b=[],a=[];for(const id of state.selection){const k=id+p;if(k in _sbf){const s=byId(id);if(s&&!s.locked){b.push({id,[p]:_sbf[k]});a.push({id,[p]:v});}delete _sbf[k];}}if(b.length&&b.some(x=>x[p]!==v)){const origSel=[...state.selection];Store._recordCommitted({op:'style',before:b,after:a});if(origSel.length)state.history[state.histIdx].origSel=origSel;}}
+function _sfbFlush(p,v){const b=[],a=[];for(const id of state.selection){const k=id+p;if(k in _sbf){const s=byId(id);if(s&&!s.locked){b.push({id,[p]:_sbf[k]});a.push({id,[p]:v});}delete _sbf[k];}}if(b.length&&b.some(x=>x[p]!==v)){_styleOp(b,a)}}
 
 // ADR-0062: per-connector elbow toggle via style op — undo + wclock sync free.
 function toggleElbow(){
@@ -8787,9 +8762,7 @@ function cycleArrowHead(){
   const cur=sel[0].head||'arrow';
   const next=HEAD_STYLES[(HEAD_STYLES.indexOf(cur)+1)%HEAD_STYLES.length];
   state.style.head=next;                            // ADR-0181
-  const origSel=[...state.selection];
-  Store.commit({op:'style',before:sel.map(s=>({id:s.id,head:s.head??null})),after:sel.map(s=>({id:s.id,head:next}))});
-  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  _cOp({op:'style',before:sel.map(s=>({id:s.id,head:s.head??null})),after:sel.map(s=>({id:s.id,head:next}))});
   invalidate();UI.toast(t('styleApplied'),'ok');
 }
 // ADR-0109: line ↔ arrow type conversion (ctx). Bindings/way/label/route
@@ -9039,11 +9012,9 @@ function fontSizeStep(d){
   if(before.length){_styleOp(before,after);invalidate()}
 }
 // ADR-0078: ⌘B/⌘I toggles bold/italic on selected text/sticky via style op.
-function _styleOp(before,after){   // ADR-0239: shared style-op commit — selection snapshot + origSel restore
-  const origSel=[...state.selection];
-  Store._recordCommitted({op:'style',before,after});
-  if(origSel.length)state.history[state.histIdx].origSel=origSel;
-}
+function _rcOp(op){const o=[...state.selection];Store._recordCommitted(op);if(o.length)state.history[state.histIdx].origSel=o}
+function _cOp(op){const o=[...state.selection];Store.commit(op);if(o.length)state.history[state.histIdx].origSel=o}
+function _styleOp(before,after){_rcOp({op:'style',before,after})}   // ADR-0239/0248
 function toggleTextFlag(k){
   const before=[],after=[];
   for(const id of state.selection){
@@ -9053,9 +9024,7 @@ function toggleTextFlag(k){
     if(nxt)s[k]=true;else delete s[k];
   }
   if(before.length){
-    const origSel=[...state.selection];
-    Store._recordCommitted({op:'style',before,after});
-    if(origSel.length)state.history[state.histIdx].origSel=origSel;
+    _rcOp({op:'style',before,after});
     const ta=document.querySelector('.text-overlay');
     if(ta&&state.editing){const s2=byId(state.editing);if(s2){ta.style.fontWeight=s2.bold?'600':'';ta.style.fontStyle=s2.italic?'italic':'';ta.style.textDecoration=[s2.under?'underline':'',s2.strike?'line-through':''].filter(Boolean).join(' ')}}
     invalidate();

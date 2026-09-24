@@ -2,6 +2,48 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.306] - 2026-09-24
+
+### Added
+- .drawio: s.locked を editable/deletable/movable=0 として往復
+  (vertex+edge、ADR-0254)
+
+## [1.7.305] - 2026-09-24
+
+### Added
+- .drawio: vertex の fontFamily を mono/serif カテゴリへマップし往復
+  (ADR-0253)
+
+## [1.7.304] - 2026-09-24
+
+### Performance
+- コネクタ/ボックスラベルの行幅 measureText を WeakMap でメモ化 — 定常
+  フレームの計測コストを解消 (ADR-0252)
+
+## [1.7.303] - 2026-09-24
+
+### Fixed
+- iOS Safari の URL バー収縮/ソフトキーボードでキャンバスが再サイズ
+  されない問題を visualViewport.resize で修正 (ADR-0251)
+
+## [1.7.302] - 2026-09-24
+
+### Added
+- .drawio: 圧縮 (deflate-raw+base64) ファイルを DecompressionStream で
+  インポート — 既定保存の .drawio がそのまま開ける (ADR-0250)
+
+## [1.7.301] - 2026-09-24
+
+### Added
+- .drawio: edge ラベルの labelBackgroundColor/fontSize/fontStyle を往復
+  (ADR-0249)。edge の fontColor は線色とラベル色を分離できないため未対応
+
+## [1.7.300] - 2026-09-24
+
+### Changed
+- commit+origSel の3行イディオムを `_rcOp`/`_cOp` ヘルパーに集約 (39サイト、
+  ~3.5KB 回収、ADR-0248)
+
 ## [1.7.299] - 2026-09-24
 
 ### Added

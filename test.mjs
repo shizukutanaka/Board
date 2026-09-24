@@ -222,7 +222,7 @@ const checks = [
   ['group toasts use i18n', html.includes("t('grouped')") && html.includes("t('selectTwo')")],
   ['copyStyle captures stroke/fill/size/opacity', html.includes("stroke:sh.stroke,fill:sh.type==='sticky'?sh.color:sh.fill") && html.includes("size:sh.size,opacity:sh.opacity")],
   ['pasteStyle filters undefined keys', html.includes("filter(([,v])=>v!==undefined)")],
-  ['applyStyleToSelection records undo', html.includes("Store._recordCommitted({op:'upd'")],
+  ['applyStyleToSelection records undo', html.includes("_styleOp(before,after)")],
   // v1.6.6: reversibility + security hardening
   ['zorder op is minimal-delta changes (ADR-0001 Step2)', html.includes("op:'zorder',changes")],
   ['zorder _apply handles changes-delta + legacy snapshot', html.includes("sh.frac=forward?c.after:c.before") && html.includes("const snap=forward?op.after:op.before")],
@@ -708,6 +708,11 @@ const checks = [
   ['drawio visible=0 attr round-trips s.visible===0 (ADR-0245)', html.includes("s.visible===0?' visible=\"0\"':'")&&html.includes("getAttribute('visible')==='0'")],
   ['drawio shadow=1 round-trips s.shadow (ADR-0246)', html.includes("sty+='shadow=1;'")&&html.includes("sty.shadow==='1'")],
   ['drawio fontColor ↔ text/sticky s.stroke (ADR-0247)', html.includes("sty+='fontColor='+s.stroke")&&html.includes("sty.fontColor!=='none'")],
+  ['visualViewport.resize re-runs canvas resize for iOS chrome (ADR-0251)', html.includes("visualViewport.addEventListener('resize',resize)")],
+  ['drawio locked ↔ editable/deletable/movable=0 (ADR-0254)', (html.match(/editable=0/g)||[]).length>=2&&html.includes("sty.editable==='0'||sty.deletable==='0'||sty.movable==='0'")],
+  ['drawio fontFamily ↔ s.font category map (ADR-0253)', html.includes("sty.fontFamily&&s.type!=='image'")&&html.includes("fontFamily='+(s.font==='mono'?'Courier New':'Georgia')")],
+  ['conn/box label widths memoized on WeakMap (ADR-0252)', html.includes('_connLabelMeasure')&&html.includes('_clCache')],
+  ['drawio edge label styling: labelBackgroundColor/fontSize/fontStyle (ADR-0249)', html.includes("labelBackgroundColor='+s.fill")&&html.includes("sty.labelBackgroundColor&&sty.labelBackgroundColor!=='none'")],
   ['drawio parent-relative offsets resolved (ADR-0240)', html.includes("const _geo=new Map(),_par=new Map();")&&html.includes("const _o=off(c.getAttribute('id'));")&&html.includes("x=_o.x+(+g.getAttribute('x')||0)")],
   ['frame label italic/under/strike (ADR-0204)', html.includes("600 ${fs}px")&&html.includes("s.type!=='frame'&&!s.label)||s.locked)continue;   // ADR-0170/0204")],
   ['letter-spacing cycle — canvas ctx+SVG+style-copy (ADR-0205)', html.includes("function cycleSpacing()")&&html.includes("c.letterSpacing=(s.spacing||0)+'px'")&&html.includes('_svgLs(s)')&&html.includes('spacing:sh.spacing')],
@@ -807,7 +812,7 @@ const checks = [
   ['frame font via cycleFont gate + make() inheritance', html.includes("s.type!=='frame'&&!s.label")&&html.includes("type==='frame'||s.label")&&html.includes("type==='sticky'||type==='frame'")],
   ['line-height cycle — canvas/SVG/resize + style-copy/eyedropper', html.includes("function cycleLineH()")&&html.includes("fs*(s.lineH||1.3)")&&html.includes("'fontSize','lineH','cbend'")],
   ['sticky chain inherits full typography', html.includes("font:s.font,lineH:s.lineH,spacing:s.spacing,bold:s.bold,italic:s.italic")],
-  ['text s.fill paints bg plate (canvas+SVG)', html.includes("s.fill){let mw=0")&&html.includes('height="${svgLines.length*fs*(s.lineH||1.25)+6}"')],
+  ['text s.fill paints bg plate (canvas+SVG)', html.includes("if(s.fill){const mw=_tm.w;")&&html.includes('height="${svgLines.length*fs*(s.lineH||1.25)+6}"')],
   ['sticky text colour via s.stroke (canvas+SVG)', html.includes("c.fillStyle=s.stroke||'#1E293B'")&&html.includes('fill="${_esc(s.stroke||')],
   ['conn label pill honours s.fill (canvas+SVG)', html.includes("s.fill||getCSS('--paper')")&&html.includes("_esc(s.fill||paper")],
   ['drop shadow — canvas props + SVG filter + toggle + persistence', html.includes("shadowColor='rgba(15,23,42,.22)'")&&html.includes("id=\"bsh\"")&&html.includes("function toggleShadow()")&&html.includes("state.style.shadow=s.shadow||null")],
@@ -977,7 +982,7 @@ const checks = [
   ['selection outline traces rotated box', html.includes("if(single&&single.rotate&&single.w!=null){")],
   // v1.6.70: keyboard resize (Alt+arrow)
   ['resize op registered (apply, validate, remote)', html.includes("case 'resize':\n      case 'align':\n      case 'beautify':{") && html.includes("case 'resize':{const noLock=") && html.includes("'align','style','resize'])")],
-  ['Alt+arrow keyboard-resizes box shapes', html.includes("Store._recordCommitted({op:'resize',before,after});") && html.includes("sh.w=Math.max(4,sh.w+dw);sh.h=Math.max(4,sh.h+dh);")],
+  ['Alt+arrow keyboard-resizes box shapes', html.includes("_rcOp({op:'resize',before,after});") && html.includes("sh.w=Math.max(4,sh.w+dw);sh.h=Math.max(4,sh.h+dh);")],
   // v1.6.71: image import error handling
   ['imgErr i18n key in both locales', html.includes("imgErr:'画像を読み込めませんでした'") && html.includes("imgErr:'Image failed to load'")],
   ['drag-drop image import has img.onerror toast', html.includes("img.onerror=()=>UI.toast(t('imgErr'),'warn');") ],
@@ -1144,7 +1149,7 @@ const checks = [
   // v1.7.30: _apply add backward restores origSel; createShapeKbd attaches origSel
   ['_apply add backward restores origSel; createShapeKbd attaches origSel',
     html.includes("if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));") &&
-    html.includes("const origSel=[...state.selection];\n  Store.commit({op:'add',shape:s});\n  if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
+    html.includes("_cOp({op:'add',shape:s});")],
   // v1.7.33: validRemotePayload group must require before (string-id array)
   ['validRemotePayload group: requires before array with string ids',
     html.includes("&&Array.isArray(op.before)&&op.before.length<=MAX_OP_SHAPES&&op.before.every(b=>b&&typeof b.id==='string');")],
@@ -1202,11 +1207,11 @@ const checks = [
     html.includes("if(op.before)for(const b of op.before){\n            const sh=byId(b.id);if(!sh)continue;\n            if(_lwwSkip(b.id,'groupId',op))continue;")],
   // v1.7.31: endRectLike/endLineLike/beginText attach origSel (parity with createShapeKbd)
   ['endRectLike/endLineLike/beginText attach origSel before shape add commit',
-    (html.match(/const origSel=\[\.\.\.state\.selection\];\n  Store\.commit\(\{op:'add',shape:d\}\);\n  if\(origSel\.length\)state\.history\[state\.histIdx\]\.origSel=origSel;/g)||[]).length >= 2 &&
-    html.includes("const origSel=[...state.selection];\n  Store.commit({op:'add',shape:s});\n  if(origSel.length)state.history[state.histIdx].origSel=origSel;\n  openTextEditor")],
+    (html.match(/_cOp\(\{op:'add',shape:d\}\)/g)||[]).length >= 2 &&
+    html.includes("_cOp({op:'add',shape:s});\n  openTextEditor")],
   // v1.7.43: _zCommit captures origSel before zorder _recordCommitted
   ['_zCommit: origSel captured before zorder commit and patched onto history entry',
-    html.includes("Store._recordCommitted({op:'zorder',changes});\n  if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
+    html.includes("_rcOp({op:'zorder',changes});")],
   // v1.7.44: MAX_OP_SHAPES constant defined (DoS guard for remote ops)
   ['MAX_OP_SHAPES constant defined (remote array size cap)',
     html.includes("const MAX_OP_SHAPES=500;")],
@@ -1221,19 +1226,19 @@ const checks = [
     html.includes("if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));\n        break;}\n      case 'style':")],
   // v1.7.43: keyboard resize (Alt+Arrow) captures origSel around resize _recordCommitted
   ['keyboard resize (Alt+Arrow): origSel captured before resize commit',
-    html.includes("const origSel=[...state.selection];\n      Store._recordCommitted({op:'resize',before,after});\n      if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
+    html.includes("_rcOp({op:'resize',before,after});")],
   // v1.7.43: drag-resize upd captures origSel (mirrors endSelect/nudgeSelection pattern)
   ['drag-resize: origSel captured before upd _recordCommitted (ptr.resizeOrig path)',
-    html.includes("const origSel=[...state.selection];\n            Store._recordCommitted({op:'upd',id:rsh.id,before,after});\n            if(origSel.length)state.history[state.histIdx].origSel=origSel;\n          }\n        }\n        ptr.resizeHandle=null")],
+    html.includes("_rcOp({op:'upd',id:rsh.id,before,after});")],
   // v1.7.43: _apply upd backward restores origSel (drag-resize/rotate undo)
   ['_apply upd backward: if(!forward&&op.origSel) restores selection',
     html.includes("Object.assign(sh,p);\n        if(!forward&&op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)));\n        break;}\n      case 'move':{")],
   // v1.7.45: openLabelEditor commit closure must capture origSel (label-edit undo restores selection)
   ['openLabelEditor commit: origSel captured before upd _recordCommitted',
-    html.includes("hit.label=lbl||null;const origSel=[...state.selection];Store._recordCommitted({op:'upd',id:hit.id,before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()")],
+    html.includes("hit.label=lbl||null;_rcOp({op:'upd',id:hit.id,before,after});invalidate()")],
   // v1.7.45: openTextEditor existing-text changed path must capture origSel (text-edit undo restores selection)
   ['openTextEditor existing-text: origSel captured before upd _recordCommitted',
-    html.includes("Store._recordCommitted({op:'upd',id:s.id,before,after});\n        if(origSel.length)state.history[state.histIdx].origSel=origSel;")],
+    html.includes("_rcOp({op:'upd',id:s.id,before,after});")],
   // v1.7.46: validRemotePayload del connClears must have MAX_OP_SHAPES length cap
   ['validRemotePayload del connClears: length<=MAX_OP_SHAPES cap added',
     html.includes("&&op.connClears.length<=MAX_OP_SHAPES&&op.connClears.every(")],
@@ -1462,7 +1467,7 @@ try {
              endRectLike, endLineLike, I18N, applyTheme, editSelectedShapeKbd, Share,
              draw, drawOverlay, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; }, _setOCtx: (c) => { const p = octx; octx = c; return p; },
              _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg,
-             _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, 
+             _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
              _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER,
              _getLang: () => LANG, _getT: () => T };
   `);
@@ -1488,7 +1493,7 @@ try {
           _getPasteCount, _resetPasteClipboard,
           endRectLike, endLineLike, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
           _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg,
-          _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, 
+          _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER } = api;
 
   console.log('\n-- behavioural --');
@@ -9524,6 +9529,16 @@ try {
      assert.ok(!rt.some(s=>s.type==='text'&&s.text==='cap'),'round-trip: no orphan label text remains (ADR-0234)');}
 
     // ADR-0240: group children carry parent-relative coords in real drawio files.
+    // ADR-0250: _dioInflate — real deflate-raw+base64 <diagram> payload round-trips
+    {
+      const xml=encodeURIComponent('<mxGraphModel><root><mxCell id="0"/></root></mxGraphModel>');
+      const ds=new CompressionStream('deflate-raw');
+      const w=ds.writable.getWriter();w.write(new TextEncoder().encode(xml));w.close();
+      const buf=new Uint8Array(await new Response(ds.readable).arrayBuffer());
+      const b64=btoa(String.fromCharCode(...buf));
+      const out=await _dioInflate(b64);
+      assert.ok(out==='<mxGraphModel><root><mxCell id="0"/></root></mxGraphModel>','dioInflate inflates deflate-raw diagram payload (ADR-0250)');
+    }
     // drawioToShapes needs DOMParser (absent in Node) — assert the parse layer
     // still returns null here; the offset math is checked by the presence lines.
     {const xml='<?xml version="1.0"?><mxfile><diagram><mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/>'+
