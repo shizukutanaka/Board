@@ -280,6 +280,14 @@ Board/
 - [ADR-0228](docs/ADR-0228-drawio-label-style.md) drawioラベル装飾往復
 - [ADR-0229](docs/ADR-0229-exc-groupids.md) exc groupIds往復
 - [ADR-0230](docs/ADR-0230-exc-style-fidelity.md) exc装飾fidelity
+- [ADR-0231](docs/ADR-0231-exc-export-fidelity.md) excエクスポートfidelity+image
+- [ADR-0232](docs/ADR-0232-paste-mxfile.md) ペーストmxfile
+- [ADR-0233](docs/ADR-0233-arrowhead-none-cycle.md) ヘッドnone巡回
+- [ADR-0234](docs/ADR-0234-exc-label-roundtrip.md) excラベル往復
+- [ADR-0235](docs/ADR-0235-svg-image-import.md) SVG image+共有化
+- [ADR-0236](docs/ADR-0236-editor-type-keys.md) 編集中装飾キー
+- [ADR-0237](docs/ADR-0237-label-type-keys.md) ラベル装飾キー
+- [ADR-0238](docs/ADR-0238-drawio-valign.md) drawio縦揃え往復
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

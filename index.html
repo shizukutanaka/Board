@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.287';
+const V='1.7.295';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -867,7 +867,7 @@ const I18N={
     undone:'元に戻した',redone:'やり直した',created:'作成',editLabel:'選択中の図形を編集',
     confirmClear:'すべて削除しますか？',
     ctxCopy:'コピー',ctxPasteInPlace:'同じ位置に貼り付け',ctxPasteAt:'ここに貼り付け',ctxPaste:'貼り付け',ctxDuplicate:'複製',
-    ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxCurve:'曲線',ctxHop:'ホップ (交差を飛び越す)',ctxRouteReset:'ルートをリセット (直線に戻す)',ctxReverse:'方向を反転',ctxFitText:'テキストに合わせる',ctxSelContents:'内容を選択',ctxFrameFit:'コンテンツに合わせる',ctxArrowHead:'矢印ヘッド (矢印→丸→シェブロン)',ctxToArrow:'矢印に変換',ctxToLine:'直線に変換',ctxBothEnds:'両端ヘッド',ctxRrect:'角スタイル (角丸→直角)',ctxStickyColor:'付箋の色 (順送り)',ctxToText:'テキストに変換',ctxToSticky:'付箋に変換',ctxTextAlign:'テキスト揃え (左→中央→右)',ctxFillStyle:'塗りスタイル (塗り→ハッチ→斜格子)',
+    ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxCurve:'曲線',ctxHop:'ホップ (交差を飛び越す)',ctxRouteReset:'ルートをリセット (直線に戻す)',ctxReverse:'方向を反転',ctxFitText:'テキストに合わせる',ctxSelContents:'内容を選択',ctxFrameFit:'コンテンツに合わせる',ctxArrowHead:'矢印ヘッド (矢印→丸→シェブロン→なし)',ctxToArrow:'矢印に変換',ctxToLine:'直線に変換',ctxBothEnds:'両端ヘッド',ctxRrect:'角スタイル (角丸→直角)',ctxStickyColor:'付箋の色 (順送り)',ctxToText:'テキストに変換',ctxToSticky:'付箋に変換',ctxTextAlign:'テキスト揃え (左→中央→右)',ctxFillStyle:'塗りスタイル (塗り→ハッチ→斜格子)',
     ctxSelectSameType:'同じ種類を選択',ctxSelectSame:'同色を選択',ctxSearch:'検索',ctxFit:'全体を表示',ctxZoomReset:'ズーム100%',ctxGrid:'グリッド',ctxSnap:'吸着',ctxMinimap:'ミニマップ',ctxWrapFrame:'フレームで包む',ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
     ctxSendBackward:'背面へ',ctxSendBack:'最背面へ',
     ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxRotate90:'90°回転',ctxCorner:'角丸を切替',ctxShadow:'影 (ドロップシャドウ)',ctxHide:'非表示',ctxShowAll:'すべて表示',ctxSelectInverse:'選択を反転',ctxConnect:'2図形をコネクタで接続',hiddenCount:'件を非表示',shownAll:'すべて表示しました',ctxUnbind:'結合を解除',ctxPinAnchor:'アンカー固定/解除',ctxVAlign:'縦揃え (上→中央→下)',ctxLineH:'行間 (標準→狭い→広い)',ctxSpacing:'字間 (標準→1px→2px)',ctxWrap:'テキスト折返し',ctxFont:'書体',ctxOpacity:'不透明度 (巡回)',ctxLock:'ロック',ctxUnlock:'ロック解除',ctxUnlockAll:'全てロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
@@ -944,7 +944,7 @@ const I18N={
     undone:'Undone',redone:'Redone',created:'Created',editLabel:'Edit selected shape',
     confirmClear:'Delete everything?',
     ctxCopy:'Copy',ctxPasteInPlace:'Paste in place',ctxPasteAt:'Paste here',ctxPaste:'Paste',ctxDuplicate:'Duplicate',
-    ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxCurve:'Curved',ctxHop:'Jump arcs at crossings',ctxRouteReset:'Reset route (straighten)',ctxReverse:'Reverse direction',ctxFitText:'Fit to text',ctxSelContents:'Select contents',ctxFrameFit:'Fit to contents',ctxArrowHead:'Arrowhead (arrow→dot→open)',ctxToArrow:'Convert to arrow',ctxToLine:'Convert to line',ctxBothEnds:'Arrowheads both ends',ctxRrect:'Corners (round→sharp)',ctxStickyColor:'Sticky colour (cycle)',ctxToText:'Convert to text',ctxToSticky:'Convert to sticky',ctxTextAlign:'Text align (left→center→right)',ctxFillStyle:'Fill style (solid→hatch→cross)',
+    ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxCurve:'Curved',ctxHop:'Jump arcs at crossings',ctxRouteReset:'Reset route (straighten)',ctxReverse:'Reverse direction',ctxFitText:'Fit to text',ctxSelContents:'Select contents',ctxFrameFit:'Fit to contents',ctxArrowHead:'Arrowhead (arrow→dot→open→none)',ctxToArrow:'Convert to arrow',ctxToLine:'Convert to line',ctxBothEnds:'Arrowheads both ends',ctxRrect:'Corners (round→sharp)',ctxStickyColor:'Sticky colour (cycle)',ctxToText:'Convert to text',ctxToSticky:'Convert to sticky',ctxTextAlign:'Text align (left→center→right)',ctxFillStyle:'Fill style (solid→hatch→cross)',
     ctxSelectSameType:'Select same type',ctxSelectSame:'Select same colour',ctxSearch:'Search',ctxFit:'Fit board',ctxZoomReset:'Zoom 100%',ctxGrid:'Grid',ctxSnap:'Snap',ctxMinimap:'Minimap',ctxWrapFrame:'Frame selection',ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
     ctxSendBackward:'Send backward',ctxSendBack:'Send to back',
     ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxRotate90:'Rotate 90°',ctxCorner:'Round corner',ctxShadow:'Drop shadow',ctxHide:'Hide',ctxShowAll:'Show all',ctxSelectInverse:'Invert selection',ctxConnect:'Connect 2 shapes',hiddenCount:'hidden',shownAll:'All shapes shown',ctxUnbind:'Unbind endpoints',ctxPinAnchor:'Pin/unpin anchor',ctxVAlign:'Vertical align (top→middle→bottom)',ctxLineH:'Line spacing (normal→tight→wide)',ctxSpacing:'Letter spacing (normal→1px→2px)',ctxWrap:'Wrap text',ctxFont:'Font family',ctxOpacity:'Opacity (cycle)',ctxLock:'Lock',ctxUnlock:'Unlock',ctxUnlockAll:'Unlock all',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
@@ -4201,6 +4201,10 @@ function openLabelEditor(hit,leftPx,topPx,bold){
   inp.addEventListener('keydown',ev=>{
     if(ev.isComposing)return;
     if(ev.key==='Enter'){ev.preventDefault();commit()}
+    // ADR-0237: ⌘B/I/U/⇧X while labeling — box labels render bold/italic/
+    // under/strike (ADR-0204) but the keys died on the input target.
+    const mk2=ev.key.toLowerCase(),fl2={b:'bold',i:'italic',u:'under'}[mk2]||(mk2==='x'&&ev.shiftKey?'strike':null);
+    if((ev.metaKey||ev.ctrlKey)&&fl2){ev.preventDefault();toggleTextFlag(fl2)}
     // ADR-0196: Tab commits and jumps to the next label-able shape (rapid
     // labeling like Figma's table/cell flow); Shift+Tab walks backwards.
     if(ev.key==='Tab'){ev.preventDefault();
@@ -4319,6 +4323,13 @@ window.addEventListener('paste',e=>{
       if(/^\s*\{/.test(s)&&/"type"\s*:\s*"excalidraw"/.test(s.slice(0,4096))){
         e.preventDefault();
         if(importExcText(s)!==false)return;
+      }
+      // ADR-0232: drawio's copy puts uncompressed <mxfile> XML on the clipboard —
+      // route it to the drawio importer instead of the text-shape fallback.
+      if(/<mxfile[\s>]/.test(s.slice(0,4096))){
+        e.preventDefault();
+        const wp=G.s2w({x:canvas.getBoundingClientRect().width/2,y:canvas.getBoundingClientRect().height/2});
+        if(importDrawioText(s,wp)!==false)return;
       }
       // ADR-0044: any other non-empty text pastes in as a text shape — editors,
       // browsers, chat logs, markdown-as-plain-text all land on the board.
@@ -5274,6 +5285,10 @@ function openTextEditor(s,isNew){
     if(ev.isComposing)return;
     if(ev.key==='Escape'){ev.preventDefault();ta.blur()}
     if(ev.key==='Enter'&&(ev.metaKey||ev.ctrlKey)){ev.preventDefault();ta.blur();_stickyChain(s)}   // ADR-0105
+    // ADR-0236: ⌘B/I/U/⇧X inside the editor toggle the shape's typography —
+    // the global keydown skips input/textarea targets, so these bind locally.
+    const mk=ev.key.toLowerCase(),fl={b:'bold',i:'italic',u:'under'}[mk]||(mk==='x'&&ev.shiftKey?'strike':null);
+    if((ev.metaKey||ev.ctrlKey)&&fl){ev.preventDefault();toggleTextFlag(fl)}
   });
   auto();
   _teTa=ta;_teVp='';   // ADR-0053: track the live overlay for viewport follow
@@ -6291,31 +6306,37 @@ function exportBoard(shapes=state.shapes){                       // ADR-0114: op
 function excScene(shapes){
   const els=[],files={};
   const E=(s,over)=>Object.assign({id:s.id,strokeColor:s.stroke||'#1e1e1e',
-    backgroundColor:s.fill||'transparent',fillStyle:s.fill?'solid':'transparent',
+    backgroundColor:s.fill||'transparent',
+    fillStyle:!s.fill?'transparent':s.fstyle==='hatch'?'hachure':s.fstyle==='cross'?'cross-hatch':'solid',   // ADR-0231
     strokeWidth:s.size||2,strokeStyle:s.dash===1?'dashed':s.dash===2?'dotted':'solid',
     roughness:0,opacity:Math.round((s.opacity==null?1:s.opacity)*100),
     angle:(s.rotate||0)*Math.PI/180,seed:0,version:1,versionNonce:0,
     isDeleted:false,boundElements:null,updated:0,link:null,locked:false},over);
   const gids={};for(const s of shapes)if(s.groupId)(gids[s.id]=gids[s.id]||[]).push(s.groupId);
   const _excTid=new Map();   // ADR-0225: sticky rect id → its container text id
+  const _ct=(s,tid,txt,bL,fs)=>{   // shared container-text element (sticky body / box label)
+    _excTid.set(s.id,tid);
+    return{id:tid,type:'text',x:s.x+4,y:s.y+4,
+    width:Math.abs(s.w||120)-8,height:Math.abs(s.h||80)-8,text:txt,originalText:txt,
+    fontSize:fs||s.fontSize||16,textAlign:s.align||'center',verticalAlign:'middle',lineHeight:1.25,baseline:0,...(bL?{bLabel:1}:{}),
+    strokeColor:'#1e1e1e',backgroundColor:'transparent',fillStyle:'solid',strokeWidth:1,strokeStyle:'solid',
+    roughness:0,opacity:100,angle:(s.rotate||0)*Math.PI/180,seed:0,version:1,versionNonce:0,isDeleted:false,
+    containerId:s.id,boundElements:null,updated:0,link:null,locked:false,groupIds:gids[s.id]||[]};};
   for(const s of shapes){
     switch(s.type){
-      case'rect':case'ellipse':case'diamond':
+      case'rect':case'ellipse':case'diamond':{
         els.push(E(s,{type:s.type==='rect'?'rectangle':s.type,x:s.x,y:s.y,width:s.w||0,height:s.h||0,   // ADR-0223: excalidraw type is 'rectangle' not 'rect'
-          roundness:s.r?{type:3}:null}));break;
+          roundness:s.r?{type:3}:null}));
+        // ADR-0234: label → container text marked bLabel (Board-only marker;
+        // excalidraw ignores unknown fields, ours reads it back to s.label)
+        if(s.label)els.push(_ct(s,uid(),s.label,true));
+        break;}
       case'frame':
         els.push(E(s,{type:'frame',x:s.x,y:s.y,width:s.w||0,height:s.h||0,name:s.label||'Frame'}));break;
       case'sticky':{
         els.push(E(s,{type:'rectangle',x:s.x,y:s.y,width:s.w,height:s.h,
           backgroundColor:s.color||'#FEF08A',fillStyle:'solid',roundness:{type:3}}));
-        if(s.text){const tid=uid();
-          _excTid.set(s.id,tid);                              // ADR-0225: container link for round-trip
-          els.push({id:tid,type:'text',x:s.x+4,y:s.y+4,
-          width:Math.abs(s.w)-8,height:Math.abs(s.h)-8,text:s.text,originalText:s.text,
-          fontSize:s.fontSize||14,textAlign:s.align||'center',verticalAlign:'middle',lineHeight:1.25,baseline:0,
-          strokeColor:'#1e1e1e',backgroundColor:'transparent',fillStyle:'solid',strokeWidth:1,strokeStyle:'solid',
-          roughness:0,opacity:100,angle:(s.rotate||0)*Math.PI/180,seed:0,version:1,versionNonce:0,isDeleted:false,
-          containerId:s.id,boundElements:null,updated:0,link:null,locked:false,groupIds:gids[s.id]||[]});}
+        if(s.text)els.push(_ct(s,uid(),s.text,false,14));
         break;}
       case'text':
         els.push(E(s,{type:'text',x:s.x,y:s.y,width:s.w||0,height:s.h||0,
@@ -6333,10 +6354,13 @@ function excScene(shapes){
           points:pts.map(p=>[p[0]-x0,p[1]-y0]),
           startBinding:s.a?{elementId:s.a,focus:s.aF?+(s.aF.fx*2-1).toFixed(2):0,gap:1}:null,   // ADR-0222: was s.bind1 (never set)
           endBinding:s.b?{elementId:s.b,focus:s.bF?+(s.bF.fx*2-1).toFixed(2):0,gap:1}:null,
-          lastCommittedPoint:null,startArrowhead:null,endArrowhead:s.type==='arrow'?'arrow':null}));break;}
+          lastCommittedPoint:null,
+          startArrowhead:s.start?'arrow':null,                                       // ADR-0231
+          endArrowhead:s.type==='arrow'?(s.head&&s.head!=='arrow'?s.head:'arrow'):null}));break;}
       case'image':{
         const fid='f'+s.id;files[fid]={id:fid,mimeType:(s.dataUrl.match(/^data:([^;]+)/)||[])[1]||'image/png',dataURL:s.dataUrl,created:0,lastRetrieved:0};
-        els.push(E(s,{type:'image',x:s.x,y:s.y,width:s.w||0,height:s.h||0,fileId:fid,status:'saved',scale:[1,1]}));break;}
+        els.push(E(s,{type:'image',x:s.x,y:s.y,width:s.w||0,height:s.h||0,fileId:fid,status:'saved',
+          scale:s.flip?[s.flip&1?-1:1,s.flip&2?-1:1]:[1,1]}));break;}                  // ADR-0231
       default:break;
     }
   }
@@ -6406,6 +6430,7 @@ function drawioToShapes(txt){
     // ADR-0228: label typography — drawio align + fontStyle bitmask
     // (1=bold, 2=italic, 4=underline; mxGraph BOLD/ITALIC/UNDERLINE_FONT)
     if(sty.align==='center'||sty.align==='right')s.align=sty.align;
+    if(/^(top|middle|bottom)$/.test(sty.verticalAlign))s.valign=sty.verticalAlign;   // ADR-0238
     const _fs=+sty.fontStyle;
     if(_fs&1)s.bold=1;if(_fs&2)s.italic=1;if(_fs&4)s.under=1;
     idOf.set(c.getAttribute('id'),s.id);shapes.push(s);
@@ -6509,6 +6534,7 @@ function boardToDrawio(shapes){
     if(s.opacity!=null&&s.opacity<1)sty+='opacity='+Math.round(s.opacity*100)+';';
     if(s.fontSize)sty+='fontSize='+s.fontSize+';';
     if(s.align==='center'||s.align==='right')sty+='align='+s.align+';';   // ADR-0228
+    if(s.valign)sty+='verticalAlign='+s.valign+';';                          // ADR-0238
     const _dfs=(s.bold?1:0)|(s.italic?2:0)|(s.under?4:0);                  // ADR-0228: mxGraph bitmask
     if(_dfs)sty+='fontStyle='+_dfs+';';
     const lbl=s.label!=null?s.label:s.text;
@@ -6680,6 +6706,16 @@ function svgToShapes(txt){
     }else if(tag==='path'){
       const pts=_svgPathPts(el.getAttribute('d'),m2);
       if(pts.length>1)s=Shape.make('pen',{pts});
+    }else if(tag==='image'){
+      // ADR-0235: <image href=data:...> — round-trips our own SVG exports.
+      // Only inline data: URIs are accepted (the mapping is the sanitizer);
+      // external hrefs would be a network fetch we can't honour offline.
+      const href=el.getAttribute('href')||el.getAttribute('xlink:href')||'';
+      const w=+el.getAttribute('width')||0,ht=+el.getAttribute('height')||0;
+      if(/^data:image\//.test(href)&&w>0&&ht>0){
+        const a=_svgMPt(m2,+el.getAttribute('x')||0,+el.getAttribute('y')||0);
+        s=Shape.make('image',{x:a.x,y:a.y,w:w,h:ht,dataUrl:href.slice(0,25_000_000)});
+      }
     }else if(tag==='text'){
       const content=(el.textContent||'').replace(/\s+/g,' ').trim();
       if(content){
@@ -6727,6 +6763,7 @@ function excToShapes(txt){
   if(!d||d.type!=='excalidraw'||!Array.isArray(d.elements))return null;
   const shapes=[],_excBnd=[],idOf=new Map();   // ADR-0223: bindings resolve post-walk
   const _excTxt=new Map();                     // ADR-0225: container text → parent
+  const _excTxtE=new Map();                    // ADR-0234: sid → source element (bLabel marker)
   const st=e=>{
     const o={};
     const sc=typeof e.strokeColor==='string'&&e.strokeColor!=='transparent'?e.strokeColor:null;
@@ -6780,14 +6817,20 @@ function excToShapes(txt){
         }
         break;
       }
-      default:break;   // image (needs files ref), unknown — skip
+      case'image':{   // ADR-0231: files-map lookup restores image bytes + flip
+        const f=d.files&&e.fileId?d.files[e.fileId]:null;
+        if(!f||typeof f.dataURL!=='string'||!/^data:image\//.test(f.dataURL))break;
+        s=Shape.make('image',{x:e.x,y:e.y,w:W||80,h:H||80,dataUrl:f.dataURL.slice(0,25_000_000)});
+        if(Array.isArray(e.scale))s.flip=((e.scale[0]<0)?1:0)|((e.scale[1]<0)?2:0);
+        break;}
+      default:break;   // unknown — skip
     }
     if(s){if(r&&s.w!=null)s.rotate=r;Object.assign(s,S);shapes.push(s);
       // ADR-0223: line/arrow keep a back-ref to their exc element so
       // start/endBinding (element ids) can resolve after every vertex exists
       if(s.type==='line'||s.type==='arrow')_excBnd.push([s,e]);
       if(e.id)idOf.set(e.id,s.id);
-      if(s.type==='text'&&e.containerId)_excTxt.set(s.id,e.containerId);
+      if(s.type==='text'&&e.containerId){_excTxt.set(s.id,e.containerId);_excTxtE.set(s.id,e)}
       // ADR-0229: excalidraw groupIds → Board groupId (nested groups flatten
       // to the outermost — Board models one group level)
       if(Array.isArray(e.groupIds)&&e.groupIds.length)s.groupId=e.groupIds[0]}
@@ -6796,7 +6839,14 @@ function excToShapes(txt){
   // exported from. Parent kept when it carries a label of its own.
   for(const [sid,cid] of _excTxt){
     const s=shapes.find(x=>x.id===sid),p=shapes.find(x=>x.id===idOf.get(cid));
-    if(!s||!p||p.type!=='rect'||p.label)continue;
+    if(!s||!p||p.label)continue;
+    const e=_excTxtE.get(sid);                               // ADR-0234
+    // bLabel parents restore the label on any box type (rect/ellipse/diamond);
+    // the sticky fold below stays rect-only since stickies export as rectangles
+    if(e&&e.bLabel){p.label=s.text.slice(0,240);
+      if(s.fontSize)p.fontSize=s.fontSize;
+      shapes.splice(shapes.indexOf(s),1);continue;}
+    if(p.type!=='rect')continue;
     p.type='sticky';p.text=s.text;
     if(s.fontSize)p.fontSize=s.fontSize;
     if(p.fill!=null){p.color=p.fill;delete p.fill}
@@ -6905,6 +6955,7 @@ function _svgArrowHead(els,tx,ty,a1,a2,ah,stroke,a,sz,style){
   }
   els.push(`<polygon points="${tx},${ty} ${tx+Math.cos(a1)*ah},${ty+Math.sin(a1)*ah} ${tx+Math.cos(a2)*ah},${ty+Math.sin(a2)*ah}" fill="${stroke}"${a}/>`);
 }
+function _svgFont(s,fs){return`font-family="${_fontFam(s)}" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''}${_svgLs(s)}`}   // shared SVG text-attribute bundle (ADR-0235)
 function _svgLs(s){return s.spacing?` letter-spacing="${s.spacing}px"`:''}   // ADR-0205
 function _connLabelSVG(s,x1,y1,x2,y2,ox,oy,stroke,paper){
   if(!s.label)return '';
@@ -6914,7 +6965,7 @@ function _connLabelSVG(s,x1,y1,x2,y2,ox,oy,stroke,paper){
   const lw=Math.max(...lns.map(l=>l.length),0)*fs*0.6+8,th=lns.length*lh2;
   const tsp=lns.map((l,i)=>`<tspan x="${mx}" dy="${i?lh2:0}">${_esc(l)}</tspan>`).join('');
   return `<rect x="${mx-lw/2}" y="${my-th/2}" width="${lw}" height="${th}" fill="${_esc(s.fill||paper||'#FFFFFF')}" opacity="0.9"/>`+
-    `<text x="${mx}" y="${my-(lns.length-1)*lh2/2}" font-family="${_fontFam(s)}" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''}${_svgLs(s)} text-anchor="middle" dominant-baseline="central" fill="${stroke}">${tsp}</text>`;   // ADR-0170/0210
+    `<text x="${mx}" y="${my-(lns.length-1)*lh2/2}" ${_svgFont(s,fs)} text-anchor="middle" dominant-baseline="central" fill="${stroke}">${tsp}</text>`;   // ADR-0170/0210
 }
 // Pure SVG assembly; returns string or null. All attr values through _esc.
 function buildSVG(shapes,paper){
@@ -7095,7 +7146,7 @@ function buildSVG(shapes,paper){
         if(s.fill){const mw2=Math.max(...svgLines.map(l=>l.length),0)*fs*0.6;              // ADR-0191
           const bx2=s.align==='center'?tax-mw2/2:s.align==='right'?tax-mw2:tax;
           els.push(`<rect x="${bx2-3}" y="${Y+oy-3}" width="${mw2+6}" height="${svgLines.length*fs*(s.lineH||1.25)+6}" fill="${_esc(s.fill)}"${a}${rT}/>`);}
-        els.push(`<text x="${tax}" y="${Y+oy}" dominant-baseline="hanging" font-family="${_fontFam(s)}" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''}${_svgLs(s)} fill="${stroke}"${anch}${a}${rT}${_sh}>`);   // ADR-0078/0095/0100
+        els.push(`<text x="${tax}" y="${Y+oy}" dominant-baseline="hanging" ${_svgFont(s,fs)} fill="${stroke}"${anch}${a}${rT}${_sh}>`);   // ADR-0078/0095/0100
         for(let i=0;i<svgLines.length;i++)els.push(`<tspan x="${tax}" dy="${i?fs*(s.lineH||1.25):0}">${_esc(svgLines[i])}</tspan>`);
         els.push('</text>');break;}
       case 'image':
@@ -7121,7 +7172,7 @@ function buildSVG(shapes,paper){
         els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${fr}" fill="${s.fill||'rgba(248,250,252,0.6)'}" stroke="${clr}" stroke-width="${SZ||1.5}"${dA}${fa}${rT}/>`);   // ADR-0178
         const alF2=s.align||'left',txF=alF2==='right'?X+ox+W-6:alF2==='center'?X+ox+W/2:X+ox+6;   // ADR-0197
         const ancF=alF2==='right'?' text-anchor="end"':alF2==='center'?' text-anchor="middle"':'';
-        els.push(`<text x="${txF}" y="${Y+oy-4}" font-family="${_fontFam(s)}" font-size="12" font-weight="600"${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''}${_svgLs(s)} fill="${clr}"${ancF}${fa}${rT}>${_esc(s.label||'Frame')}</text>`);
+        els.push(`<text x="${txF}" y="${Y+oy-4}" ${_svgFont(s,12)} fill="${clr}"${ancF}${fa}${rT}>${_esc(s.label||'Frame')}</text>`);
         break;}
       case 'sticky':{
         const r=Math.min(6,Math.abs(W)/6,Math.abs(H)/6);
@@ -7134,7 +7185,7 @@ function buildSVG(shapes,paper){
           const anch2=s.align==='center'?' text-anchor="middle"':s.align==='right'?' text-anchor="end"':'';
           const sy2v=s.valign==='middle'?Y+oy+(H-lines2.length*fs*(s.lineH||1.3))/2:                  // ADR-0187
                      s.valign==='bottom'?Y+oy+H-pad2-lines2.length*fs*(s.lineH||1.3):Y+oy+pad2;
-          els.push(`<text x="${tax2}" y="${sy2v}" dominant-baseline="hanging" font-family="${_fontFam(s)}" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''}${_svgLs(s)} fill="${_esc(s.stroke||'#1E293B')}"${anch2}${rT}>`);   // ADR-0192
+          els.push(`<text x="${tax2}" y="${sy2v}" dominant-baseline="hanging" ${_svgFont(s,fs)} fill="${_esc(s.stroke||'#1E293B')}"${anch2}${rT}>`);   // ADR-0192
           for(let i=0;i<lines2.length;i++)els.push(`<tspan x="${tax2}" dy="${i?fs*(s.lineH||1.3):0}">${_esc(lines2[i])}</tspan>`);
           els.push('</text>');
         }break;}
@@ -7157,7 +7208,7 @@ function _svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT){
   els.push(`<g${rT}><rect x="${X+ox}" y="${sy+oy}" width="${W}" height="${sh_}" fill="${_esc(s.fill||paper||'#FFFFFF')}" opacity="0.85"/>`);
   const al4=s.align||'center',tx4=al4==='left'?X+ox+6:al4==='right'?X+ox+W-6:X+W/2+ox;   // ADR-0171
   const anc4=al4==='left'?'start':al4==='right'?'end':'middle';
-  els.push(`<text x="${tx4}" y="${sy+oy+2}" dominant-baseline="hanging" font-family="${_fontFam(s)}" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''}${_svgLs(s)} text-anchor="${anc4}" fill="${stroke}">`);   // ADR-0170
+  els.push(`<text x="${tx4}" y="${sy+oy+2}" dominant-baseline="hanging" ${_svgFont(s,fs)} text-anchor="${anc4}" fill="${stroke}">`);   // ADR-0170
   for(let i=0;i<lines.length;i++)els.push(`<tspan x="${tx4}" dy="${i?lh:0}">${_esc(lines[i])}</tspan>`);
   els.push('</text></g>');
 }
@@ -7168,7 +7219,7 @@ function _svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT){
   const cy=s.valign==='top'?Y+6+oy:s.valign==='bottom'?Y+H-6+oy-lines.length*lh:Y+H/2+oy-(lines.length*lh)/2;   // ADR-0159
   const al3=s.align||'center',tx3=al3==='left'?X+ox+6:al3==='right'?X+ox+W-6:X+W/2+ox;   // ADR-0171
   const anc3=al3==='left'?'start':al3==='right'?'end':'middle';
-  els.push(`<text x="${tx3}" y="${cy}" dominant-baseline="hanging" font-family="${_fontFam(s)}" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''}${_svgLs(s)} text-anchor="${anc3}" fill="${stroke}"${a}${rT}>`);   // ADR-0170
+  els.push(`<text x="${tx3}" y="${cy}" dominant-baseline="hanging" ${_svgFont(s,fs)} text-anchor="${anc3}" fill="${stroke}"${a}${rT}>`);   // ADR-0170
   for(let i=0;i<lines.length;i++)els.push(`<tspan x="${tx3}" dy="${i?lh:0}">${_esc(lines[i])}</tspan>`);
   els.push('</text>');
 }
@@ -8700,7 +8751,7 @@ function toggleStickyText(){
 // ADR-0119: arrowhead style cycle (ctx) — arrow → dot → open. One s.head
 // drives both ends; 'line' shapes carry the property harmlessly until
 // converted (a line never draws heads).
-const HEAD_STYLES=['arrow','dot','open'];
+const HEAD_STYLES=['arrow','dot','open','none'];   // ADR-0233: 'none' joins the cycle
 function cycleArrowHead(){
   const sel=[...state.selection].map(byId).filter(s=>s&&s.type==='arrow'&&!s.locked);
   if(!sel.length)return;

@@ -2,6 +2,70 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.295]
+
+### 修正
+- **drawio verticalAlign 往復** (ADR-0238)。import で
+  `verticalAlign`→`s.valign`、export で逆出力 —
+  値域一致により縦揃えが完全往復。
+
+## [1.7.294]
+
+### 追加
+- **ラベル入力中の装飾キー** (ADR-0237)。ラベル input
+  でも ⌘B/I/U/⇧X が図形ラベルの装飾をトグル —
+  Tab 巡回による連続ラベリングの手を止めない。
+
+## [1.7.293]
+
+### 追加
+- **編集中の装飾キー** (ADR-0236)。インラインエディタ
+  内で ⌘B/I/U/⇧X が図形の bold/italic/under/strike を
+  トグル — グローバルキーは textarea で止まるため
+  ローカルに配線。オーバーレイ表示も即時反映。
+
+## [1.7.292]
+
+### 修正
+- **SVG `<image>` インポート** (ADR-0235)。`href`/
+  `xlink:href` の `data:image/` を image 図形へ復元 —
+  Board 自身の SVG 出力が往復する。
+- excalidraw コンテナtext と SVG font 属性束を
+  `_ct()`/`_svgFont()` に共有化 (~1.7KB 削減、
+  512KB 上限内へ復帰)。
+
+## [1.7.291]
+
+### 修正
+- **excalidraw ラベル往復** (ADR-0234)。ラベル付き
+  図形がコンテナtext (`bLabel` マーカー) として出力
+  され、取込時に `label` へ復元 — sticky fold と
+  判別できるため型も正しく往復する。
+
+## [1.7.290]
+
+### 追加
+- **矢印ヘッド巡回に 'none'** (ADR-0233)。ctx メニュー
+  のヘッド巡回が arrow→dot→open→none の4値に —
+  ヘッドを消すのに型変換が不要になった。
+
+## [1.7.289]
+
+### 追加
+- **クリップボード mxfile 受付** (ADR-0232)。drawio で
+  ⌘C した図形 (非圧縮 `<mxfile>` XML) をペーストで
+  drawio インポートへルーティング — 従来はテキスト
+  図形に落ちていた。
+
+## [1.7.288]
+
+### 修正
+- **excalidraw エクスポートfidelity** (ADR-0231)。
+  `fstyle`→hachure/cross-hatch、head/start→arrowhead
+  スタイル、flip→scale を出力。インポートは
+  `type:'image'` を `files` マップから復元 (`scale`
+  →flip) — 画像が往復で保存される。
+
 ## [1.7.287]
 
 ### 修正
