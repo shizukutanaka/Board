@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.320] - 2026-09-24
+
+### Added
+- .excalidraw: freedraw pressures → p[2] 復元、fillStyle zigzag → hatch
+  近似マップ (ADR-0268)
+
 ## [1.7.319] - 2026-09-24
 
 ### Added
