@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.190]
+
+### 修正
+- **elbow コネクタのフリップ** (ADR-0133)。trunk のワールド座標
+  `s.bend` が鏡像化されず反転後の経路が元位置を横断していた —
+  trunk 走行軸とフリップ軸が一致する時に `s.bend` も鏡像化。
+
 ## [1.7.189]
 
 ### 追加

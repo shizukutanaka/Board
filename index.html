@@ -774,7 +774,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.189';
+const V='1.7.190';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -5433,6 +5433,11 @@ function doMatchSize(dim){
 // Flip: mirror across selection-bbox centre, recorded as an `align` op. See docs.
 function flipShape(s,axis,c){
   const m=v=>2*c-v;
+  // ADR-0133: s.bend is a world coordinate of the elbow trunk — mirror it on
+  // the matching axis (vertical trunk stores x, horizontal stores y) or a
+  // flipped elbow's trunk jumps to the other side of the board.
+  const tr=s.bend!=null?_elbowTrunk(s):null;
+  const trVert=tr&&Math.abs(tr[1].x-tr[0].x)<Math.abs(tr[1].y-tr[0].y);
   if(axis==='h'){
     if(s.pts)for(const p of s.pts)p[0]=m(p[0]);
     else if(s.x1!=null){s.x1=m(s.x1);s.x2=m(s.x2);if(s.way){s.way=_wayArr(s);for(const w of s.way)w.x=m(w.x)}}   // ADR-0090
@@ -5442,6 +5447,7 @@ function flipShape(s,axis,c){
     else if(s.y1!=null){s.y1=m(s.y1);s.y2=m(s.y2);if(s.way){s.way=_wayArr(s);for(const w of s.way)w.y=m(w.y)}}   // ADR-0090
     else s.y=m(s.y+s.h);
   }
+  if(tr&&(axis==='h')===!!trVert)s.bend=m(s.bend);
   if(s.cbend!=null)s.cbend=-s.cbend;   // ADR-0132: any mirror flips the curve's chirality
   if(s.rotate)s.rotate=(360-s.rotate)%360;
 }
