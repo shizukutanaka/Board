@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.457] - 2026-09-23
+
+### Fixed
+- `_zoomToFrame` が `clampZoom` 未経由で degenerate frame 時 NaN zoom → viewport blank になる実害を修正
+
 ## [1.7.456] - 2026-09-23
 
 ### Internal
