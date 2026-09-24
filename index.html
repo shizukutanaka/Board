@@ -851,7 +851,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.469';
+const V='1.7.470';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2011,7 +2011,7 @@ let _penCachePx=0;
 // wholesale `state.shapes=` replacement (clones miss the pts-identity signature
 // anyway, so old entries would sit until the global caps evict them).
 const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear()}
-const _psc=id=>{_penBboxCache.delete(id);const e=_penCache.get(id);if(e){_penCache.delete(id);_penCachePx-=e.px||0;}}   // ADR-0427
+const _psc=id=>{_penBboxCache.delete(id);Net._imgPending.delete(id);const e=_penCache.get(id);if(e){_penCache.delete(id);_penCachePx-=e.px||0;}}   // ADR-0427/0435
 // Effective raster resolution: zoom-adaptive (supersampled at low zoom is just
 // wasted pixels), clamped 0.25..2 so extreme zoom-outs still rasterize tiny.
 function _penRes(){return _min(2,_max(0.25,_vp().zoom*DPR))}
