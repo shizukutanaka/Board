@@ -789,7 +789,7 @@ const _keepSel=arr=>{if(arr.length)state.history[state.histIdx].origSel=arr};   
 const _pd=e=>e.preventDefault();   // ADR-0326
 
 // ====================== CONSTANTS ======================
-const V='1.7.378';
+const V='1.7.379';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6461,9 +6461,10 @@ function drawioToShapes(txt){
     const g=c.querySelector('mxGeometry');if(!g)continue;
     const sty=_dioSty(c.getAttribute('style'));
     const _hid=c.getAttribute('visible')==='0';                  // ADR-0245
+    const _uo=c.parentElement&&c.parentElement.tagName==='UserObject'?c.parentElement:null;   // ADR-0328: drawio wraps linked cells in UserObject — label+link live on it
     const _o=off(c.getAttribute('id'));
     const x=_o.x+(_doff.get(c)||0)+(+g.getAttribute('x')||0),y=_o.y+(+g.getAttribute('y')||0),w=+g.getAttribute('width')||0,ht=+g.getAttribute('height')||0;
-    const lbl=_dioLabel(c.getAttribute('value'));
+    const lbl=_dioLabel(c.getAttribute('value')||(_uo&&_uo.getAttribute('label')));
     let s;
     if('ellipse' in sty||sty.shape==='cylinder'||sty.shape==='cloud')s=Shape.make('ellipse',{x,y,w:w||120,h:ht||80,label:lbl.slice(0,240)});   // ADR-0274
     else if(sty.shape==='rhombus'||'rhombus' in sty)s=Shape.make('diamond',{x,y,w:w||120,h:ht||80,label:lbl.slice(0,240)});
@@ -6485,7 +6486,7 @@ function drawioToShapes(txt){
     if(/^(top|middle|bottom)$/.test(sty.verticalAlign))s.valign=sty.verticalAlign;   // ADR-0238
     if(+sty.rotation)s.rotate=Math.min(360,Math.max(-360,+sty.rotation));   // ADR-0261
     idOf.set(c.getAttribute('id'),s.id);
-    {const _lk=c.getAttribute('link');if(_lk&&/^https?:\/\//.test(_lk))s.link=_lk.slice(0,500)}   // ADR-0313
+    {const _lk=c.getAttribute('link')||(_uo&&_uo.getAttribute('link'));if(_lk&&/^https?:\/\//.test(_lk))s.link=_lk.slice(0,500)}   // ADR-0313
     shapes.push(s);
   }
   for(const c of cells){
@@ -6493,6 +6494,7 @@ function drawioToShapes(txt){
     if(c.getAttribute('edge')!=='1')continue;
     const g=c.querySelector('mxGeometry'),sty=_dioSty(c.getAttribute('style'));
     const _hid=c.getAttribute('visible')==='0';                  // ADR-0245
+    const _uo=c.parentElement&&c.parentElement.tagName==='UserObject'?c.parentElement:null;   // ADR-0328
     let x1=0,y1=0,x2=0,y2=0;
     const sp=g?g.querySelector('mxPoint[as="sourcePoint"]'):null,tp=g?g.querySelector('mxPoint[as="targetPoint"]'):null;
     const _do=_doff.get(c)||0;
@@ -6526,12 +6528,12 @@ function drawioToShapes(txt){
       if(Number.isFinite(fx)&&Number.isFinite(fy))s.aF={fx:_c01(fx),fy:_c01(fy)}}
     if(sb&&sty.entryX!=null){const fx=+sty.entryX,fy=+sty.entryY;
       if(Number.isFinite(fx)&&Number.isFinite(fy))s.bF={fx:_c01(fx),fy:_c01(fy)}}
-    const lbl=_dioLabel(c.getAttribute('value'));if(lbl)s.label=lbl.slice(0,240);
+    const lbl=_dioLabel(c.getAttribute('value')||(_uo&&_uo.getAttribute('label')));if(lbl)s.label=lbl.slice(0,240);
     {const _lx=g?g.getAttribute('x'):null;if(_lx!=null&&_lx!==''){const _t=(+_lx+1)/2;if(Number.isFinite(_t))s.labelPos=_c01(+_t.toFixed(3))}}   // ADR-0264
     if(sty.rounded==='1')s.r=8;                                           // ADR-0269
     _dioStyApply(s,sty,_hid);                                            // ADR-0258 (edges gain opacity)
     if(sty.labelBackgroundColor&&sty.labelBackgroundColor!=='none')s.fill=sty.labelBackgroundColor;   // ADR-0249
-    {const _lk=c.getAttribute('link');if(_lk&&/^https?:\/\//.test(_lk))s.link=_lk.slice(0,500)}   // ADR-0313
+    {const _lk=c.getAttribute('link')||(_uo&&_uo.getAttribute('link'));if(_lk&&/^https?:\/\//.test(_lk))s.link=_lk.slice(0,500)}   // ADR-0313
     shapes.push(s);
   }
   return shapes;

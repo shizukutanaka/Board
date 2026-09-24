@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.379] - 2026-09-24
+
+### Fixed
+- `<UserObject>` ラッパー内セルの label/link を復元 (drawio の
+  ハイパーリンク付き図形、ADR-0328)
+
 ## [1.7.378] - 2026-09-24
 
 ### Security
