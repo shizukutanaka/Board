@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.340] - 2026-09-24
+
+### Fixed
+- drawio `fillColor=none` を真の透過塗りとして輸入し、`s.fill='none'`
+  が canvas `fillStyle` を汚染する潜在バグも修正 (ADR-0288)
+
 ## [1.7.339] - 2026-09-24
 
 ### Fixed

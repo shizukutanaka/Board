@@ -777,7 +777,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.339';
+const V='1.7.340';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2594,7 +2594,7 @@ function _drawImgLabel(s,c){
   const lh=fs*(s.lineH||1.25),maxL=Math.max(1,Math.floor((s.h-4)/lh));
   if(lines.length>maxL){lines=lines.slice(0,maxL);lines[maxL-1]+='…'}
   const sh_=lines.length*lh+4,sy=s.valign==='top'?s.y:s.y+s.h-sh_;   // ADR-0179
-  c.fillStyle=s.fill||getCSS('--paper')||'#fff';c.globalAlpha=0.85;   // ADR-0195
+  c.fillStyle=s.fill&&s.fill!=='none'?s.fill:getCSS('--paper')||'#fff';c.globalAlpha=0.85;   // ADR-0288
   c.fillRect(s.x,sy,s.w,sh_);
   c.globalAlpha=1;c.fillStyle=s.stroke||'#0F172A';
   const al2=s.align||'center';   // ADR-0171
@@ -2687,8 +2687,8 @@ function _drawConnLabel(s,c){
   const lns=String(s.label).split('\n'),llh=fs*(s.lineH||1.25),pad=4;   // ADR-0210/0212
   const _lm=_connLabelMeasure(s,c,lns,fs),w=_lm.w;             // ADR-0252: measureText was per-frame per-line
   const th=lns.length*llh;
-  c.fillStyle=s.fill||getCSS('--paper')||'#fff';              // ADR-0193
-  c.fillRect(mx-w/2-pad,my-th/2,w+pad*2,th);
+  if(s.fill!=='none'){c.fillStyle=s.fill||getCSS('--paper')||'#fff';   // ADR-0288
+  c.fillRect(mx-w/2-pad,my-th/2,w+pad*2,th)}
   c.fillStyle=s.stroke||'#0F172A';
   for(let i=0;i<lns.length;i++)c.fillText(lns[i],mx,my+(i-(lns.length-1)/2)*llh);
   if(s.under||s.strike){c.strokeStyle=c.fillStyle;c.lineWidth=Math.max(1,fs*0.06);   // ADR-0170
@@ -2705,7 +2705,7 @@ function drawShape(s,c){
   c.strokeStyle=s.stroke||'#0F172A';
   c.lineWidth=s.size||1;
   c.setLineDash((s.dash&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond'||s.type==='line'||s.type==='arrow'||s.type==='frame'||s.type==='image'))?dashArr(s.dash,s.size):[]);   // ADR-0178
-  if(s.fill){c.fillStyle=s.fill}
+  if(s.fill&&s.fill!=='none'){c.fillStyle=s.fill}   // ADR-0288
   const _rot=shapeRot(s);
   if(_rot){const _cx=s.x+s.w/2,_cy=s.y+s.h/2;c.save();c.translate(_cx,_cy);c.rotate(_rot*Math.PI/180);c.translate(-_cx,-_cy);}
   switch(s.type){
@@ -2771,7 +2771,7 @@ function drawShape(s,c){
       c.globalAlpha=(s.opacity??1)*0.9;
       // ADR-0175: s.fill tints the frame (was hard-coded translucent);
       // frames draw in the first pass so contents still render on top.
-      c.fillStyle=s.fill||'rgba(248,250,252,0.6)';
+      c.fillStyle=s.fill&&s.fill!=='none'?s.fill:'rgba(248,250,252,0.6)';   // ADR-0288
       c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,r);c.fill();
       // border
       c.strokeStyle=s.stroke||getCSS('--brand')||'#00C4CC';
@@ -3181,7 +3181,7 @@ function drawText(s,c){
   const _tm=s.fill||s.under||s.strike?_connLabelMeasure(s,c,lines,fs):null;   // ADR-0252
   if(s.fill){const mw=_tm.w;
     const bx=s.align==='center'?ax-mw/2:s.align==='right'?ax-mw:ax;
-    c.save();c.fillStyle=s.fill;c.fillRect(bx-3,s.y-3,mw+6,lines.length*lh+6);c.restore();
+    if(s.fill!=='none'){c.save();c.fillStyle=s.fill;c.fillRect(bx-3,s.y-3,mw+6,lines.length*lh+6);c.restore()}   // ADR-0288
     c.fillStyle=s.stroke||'#0F172A';}
   for(let i=0;i<lines.length;i++)c.fillText(lines[i],ax,s.y+i*lh);
   // ADR-0095: canvas has no text-decoration — stroke a line under each row
@@ -6444,7 +6444,7 @@ function drawioToShapes(txt){
     {const _im=(sty.shape==='image')?(c.getAttribute('style')||'').match(/image=(data:[^;]*;base64,[^;]*|https?:[^;]*)/):null;   // ADR-0259
      if(_im)s=Shape.make('image',{x,y,w:w||120,h:ht||80,dataUrl:_im[1].slice(0,25_000_000),label:lbl.slice(0,240)})}
     if(sty.rounded==='1'&&s.w!=null)s.r=8;
-    if(sty.fillColor&&sty.fillColor!=='none')s.fill=sty.fillColor;
+    if(sty.fillColor)s.fill=sty.fillColor==='none'?'none':sty.fillColor;   // ADR-0288
     _dioStyApply(s,sty,_hid);                                            // ADR-0258
     if(sty.fontColor&&sty.fontColor!=='none'&&(s.type==='text'||s.type==='sticky'||s.label))s.stroke=sty.fontColor;   // ADR-0247/0281
     if(sty.fontFamily&&s.type!=='image'){const ff=sty.fontFamily.toLowerCase();
@@ -9365,7 +9365,7 @@ const Minimap=(()=>{
     for(const s of shapes){
       if(!s||s.opacity===0)continue;
       sx.globalAlpha=(s.opacity??1)*0.8;
-      sx.fillStyle=s.fill||'transparent';
+      sx.fillStyle=s.fill&&s.fill!=='none'?s.fill:'transparent';   // ADR-0288
       sx.strokeStyle=s.stroke||getCSS('--ink');
       sx.lineWidth=Math.max(0.5,(s.size||1)*sc);
       const _mr=s.rotate&&s.w!=null;

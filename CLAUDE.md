@@ -337,6 +337,7 @@ Board/
 │   ├── ADR-0285-icon-sprite.md  # toolbar icon を SVG sprite 化 (実装済)
 │   ├── ADR-0286-start-head-style.md  # 開始ヘッド s.startHead 独立 (実装済)
 │   ├── ADR-0287-drawio-open-head-fill.md  # endFill=0 → open head (実装済)
+│   ├── ADR-0288-transparent-fill.md  # fillColor=none → 透過塗り (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
