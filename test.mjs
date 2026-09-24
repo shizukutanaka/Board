@@ -484,6 +484,7 @@ const checks = [
   ['PNG export scale options (1x/4x via _renderPngBlob desired)', html.includes('_renderPngBlob(shapes,cb,desired)')&&html.includes('ctxExportPNG4x')&&html.includes('exportScale(w,h,desired||2)')],
   ['arrowhead style variants (dot/open, both renderers)', html.includes("style==='dot'")&&html.includes("style==='open'")&&html.includes('function _svgArrowHead')&&html.includes('cycleArrowHead')&&html.includes('ctxArrowHead')],
   ['export viewport PNG (view-crop)', html.includes('exportViewportPNG')&&html.includes('ctxExportViewPNG')&&html.includes('inView(s,view)')],
+  ['dblclick empty canvas creates text (Excalidraw parity)', html.includes('if(!hit){beginText(wp);return}')],
   ['line↔arrow conversion via style op (ctx)', html.includes('toggleLineArrow')&&html.includes('ctxToArrow')&&html.includes("s.type==='line'?'arrow':'line'")],
   ['sticky↔text conversion via style op (ctx)', html.includes('toggleStickyText')&&html.includes('ctxToSticky')&&html.includes("s.type==='sticky'?'text':'sticky'")],
   ['frame select-contents (ctx)', html.includes('selectFrameContents')&&html.includes('ctxSelContents')&&html.includes('withFrameChildren(')],
@@ -7471,8 +7472,8 @@ try {
   // _openLabelEditorFor(hit) (reused by the new keyboard path) — same invariant, DRY source.
   // DOM event firing cannot be unit-tested in this harness, so the guard is verified by presence
   // check: the fixed strings must exist in html (fail before fix, pass after).
-  assert.ok(html.includes("if(!hit||hit.locked)return;"),
-    'dblclick: single early-return guard rejects locked shapes for every type (v1.7.66)');
+  assert.ok(html.includes("if(!hit){beginText(wp);return}")&&html.includes("if(hit.locked)return;"),
+    'dblclick: early-return guards — empty creates text (ADR-0122), locked rejects every type (v1.7.66)');
   assert.ok(html.includes("if(hit.type==='text'||hit.type==='sticky'){openTextEditor(hit,false);return}"),
     'dblclick: text/sticky still routes to openTextEditor after the lock guard');
   assert.ok(html.includes('function _openLabelEditorFor(hit){'),

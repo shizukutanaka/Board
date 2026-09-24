@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.179]
+
+### 追加
+- **空キャンバス dblclick でテキスト作成** (ADR-0122)。ヒット無しの
+  dblclick は `beginText(wp)` でその点にテキストを新規作成し
+  エディタを開く (Excalidraw parity、全ツールで有効)。
+
 ## [1.7.178]
 
 ### 追加

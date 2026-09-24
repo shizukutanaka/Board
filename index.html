@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.178';
+const V='1.7.179';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3714,7 +3714,11 @@ canvas.addEventListener('pointerleave',()=>{if(_laser){_laser=null;invalidateOve
 canvas.addEventListener('dblclick',e=>{
   const wp=G.s2w({x:e.offsetX,y:e.offsetY});
   const hit=pickTop(wp);
-  if(!hit||hit.locked)return;
+  // ADR-0122: double-click empty canvas → new text at the point, editor open
+  // (Excalidraw parity). beginText commits the add + opens the editor; empty
+  // text is dismissed on blur by the existing finalize path.
+  if(!hit){beginText(wp);return}
+  if(hit.locked)return;
   if(hit.type==='text'||hit.type==='sticky'){openTextEditor(hit,false);return}
   _openLabelEditorFor(hit);
 });

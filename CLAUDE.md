@@ -171,6 +171,7 @@ Board/
 - [ADR-0119](docs/ADR-0119-arrowhead-styles.md) 矢印ヘッドスタイル
 - [ADR-0120](docs/ADR-0120-select-same-type.md) 同じ種類を選択
 - [ADR-0121](docs/ADR-0121-export-viewport-png.md) 表示範囲を PNG 書き出し
+- [ADR-0122](docs/ADR-0122-dblclick-create-text.md) 空キャンバス dblclick でテキスト作成
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
