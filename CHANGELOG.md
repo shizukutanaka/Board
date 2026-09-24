@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.497] - 2026-09-23
+
+### 修正
+
+- **ルーム切替で画像が届かなくなるバグ** — `_imgSent`/`_imgChunks`/`_imgOuts` が room-scoped なのに持ち越され、新ルームのピアへ `img` 参照のみ届いて blob が来ず `_imgPending` に滞留していた。init で3状態をクリア (ADR-0464)
+
 ## [1.7.496] - 2026-09-23
 
 ### 追加
