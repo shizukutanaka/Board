@@ -535,6 +535,10 @@ body{visibility:visible}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="12" rx="9" ry="7"/></svg>
       <kbd>O</kbd>
     </button>
+    <button class="tool" data-tool="diamond" aria-label="Diamond" title="Diamond (D)" data-t-aria="k.diamond" data-t-title="k.diamond">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l8 9-8 9-8-9z"/></svg>
+      <kbd>D</kbd>
+    </button>
     <button class="tool" data-tool="arrow" aria-label="Arrow" title="Arrow (A)" data-t-aria="k.arrow" data-t-title="k.arrow">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
       <kbd>A</kbd>
@@ -766,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.117';
+const V='1.7.125';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -856,7 +860,7 @@ const I18N={
     undone:'元に戻した',redone:'やり直した',created:'作成',editLabel:'選択中の図形を編集',
     confirmClear:'すべて削除しますか？',
     ctxCopy:'コピー',ctxPaste:'貼り付け',ctxDuplicate:'複製',
-    ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',
+    ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxBothEnds:'両端ヘッド',
     ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
     ctxSendBackward:'背面へ',ctxSendBack:'最背面へ',
     ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxLock:'ロック',ctxUnlock:'ロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
@@ -906,7 +910,7 @@ const I18N={
     backupRestoreFailed:'バックアップの復元に失敗しました',
     peers:'人',you:'自分',
     k:{select:'選択',hand:'手のひら',pen:'ペン',rect:'矩形',ellipse:'楕円',
-      arrow:'矢印',line:'線',text:'文字',sticky:'付箋',frame:'フレーム',eraser:'消しゴム',
+      arrow:'矢印',line:'線',text:'文字',sticky:'付箋',frame:'フレーム',eraser:'消しゴム',diamond:'ダイヤ',
       undo:'元に戻す',redo:'やり直し',del:'削除',dup:'複製',
       selAll:'全選択',copy:'コピー',paste:'貼付',cut:'切取',
       zoomIn:'拡大',zoomOut:'縮小',zoom100:'100%にリセット',
@@ -914,7 +918,7 @@ const I18N={
       grid:'グリッド',minimap:'ミニマップ切替',beautify:'選択したペン描画を整形',esc:'選択解除/キャンセル',
       cycle:'図形を巡回',create:'中央に作成',
       present:'プレゼン',nudge:'移動 (⇧: 10px)',zorder:'前面/背面',zorderEnds:'最前面/最背面',
-      rotate:'回転 (15° / ノブdrag)',search:'検索',searchNav:'次/前のマッチへ移動',resizeRatio:'比率保持リサイズ',resizeCenter:'中心固定リサイズ',kbdResize:'リサイズ (⇧:×10)'}},
+      rotate:'回転 (15° / ノブdrag)',search:'検索',searchNav:'次/前のマッチへ移動',moveAxis:'軸拘束移動',resizeRatio:'比率保持リサイズ',resizeCenter:'中心固定リサイズ',kbdResize:'リサイズ (⇧:×10)'}},
   en:{export:'Export',present:'Present',snap:'Snap',size:'Size',lineStyle:'Line',helpTitle:'Shortcuts',
     helpSub:'No need to memorise. You\'ll pick it up.',
     saved:'saved',savedNow:'just now',savedAgo:'s ago',
@@ -932,7 +936,7 @@ const I18N={
     undone:'Undone',redone:'Redone',created:'Created',editLabel:'Edit selected shape',
     confirmClear:'Delete everything?',
     ctxCopy:'Copy',ctxPaste:'Paste',ctxDuplicate:'Duplicate',
-    ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',
+    ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxBothEnds:'Arrowheads both ends',
     ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
     ctxSendBackward:'Send backward',ctxSendBack:'Send to back',
     ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxLock:'Lock',ctxUnlock:'Unlock',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
@@ -984,7 +988,7 @@ const I18N={
     selCount:' selected',selNone:'Selection cleared',
     mirrorLabel:'Shapes on the board',mirrorMore:' more not listed',
     k:{select:'Select',hand:'Pan',pen:'Pen',rect:'Rectangle',ellipse:'Ellipse',
-      arrow:'Arrow',line:'Line',text:'Text',sticky:'Sticky',frame:'Frame',eraser:'Eraser',
+      arrow:'Arrow',line:'Line',text:'Text',sticky:'Sticky',frame:'Frame',eraser:'Eraser',diamond:'Diamond',
       undo:'Undo',redo:'Redo',del:'Delete',dup:'Duplicate',
       selAll:'Select all',copy:'Copy',paste:'Paste',cut:'Cut',
       zoomIn:'Zoom in',zoomOut:'Zoom out',zoom100:'Reset zoom',
@@ -992,7 +996,7 @@ const I18N={
       grid:'Toggle grid',minimap:'Toggle minimap',beautify:'Beautify selected pen strokes',esc:'Deselect / cancel',
       cycle:'Cycle shapes',create:'Create at centre',
       present:'Present',nudge:'Move (⇧: 10px)',zorder:'Front / back',zorderEnds:'To front / to back',
-      rotate:'Rotate (15° / knob drag)',search:'Search',searchNav:'Next / prev match',resizeRatio:'Keep ratio (resize)',resizeCenter:'Resize from centre',kbdResize:'Resize (⇧:×10)'}}};
+      rotate:'Rotate (15° / knob drag)',search:'Search',searchNav:'Next / prev match',moveAxis:'Constrain move axis',resizeRatio:'Keep ratio (resize)',resizeCenter:'Resize from centre',kbdResize:'Resize (⇧:×10)'}}};
 // ADR-0014: LANG/T are `let`, not `const`, so UI.toggleLang() can reassign them — t()
 // closes over T by reference, so every t()/T.k call made AFTER a reassignment picks up
 // the new language automatically. Only elements that cache a translated string once at
@@ -1020,6 +1024,8 @@ const state={
   editing:null,             // id of shape being text-edited
   marquee:null,             // {x1,y1,x2,y2} in world coords
   guides:null,              // object-snap alignment guide lines (during drag)
+  readout:null,             // ADR-0064: live dims pill during transform gestures {x,y,label}
+  bindPreview:null,         // ADR-0065: shape under a dragged connector endpoint
   showGrid:true,
   showMinimap:MINIMAP_ON,
   snap:true,        // snap-to-grid when dragging shapes
@@ -1118,7 +1124,17 @@ const G={
         const dx=(p.x-cx)/rx,dy=(p.y-cy)/ry,d=dx*dx+dy*dy;
         if(s.fill)return d<=1;
         const edge=Math.abs(d-1);return edge<0.15;}
+      case 'diamond':{
+        const cx=s.x+s.w/2,cy=s.y+s.h/2,rx=s.w/2,ry=s.h/2;
+        if(rx<=0||ry<=0)return false;
+        const dx=Math.abs(p.x-cx)/rx,dy=Math.abs(p.y-cy)/ry,d=dx+dy;
+        if(s.fill)return d<=1;
+        return Math.abs(d-1)<0.15;}
       case 'line':case 'arrow':{
+        if(s.elbow){
+          const pts=_elbowPts(s);
+          for(let i=1;i<pts.length;i++)if(distToSeg(p,pts[i-1],pts[i])<=tol+3)return true;
+          return false;}
         const e=connEnds(s);
         return distToSeg(p,{x:e.x1,y:e.y1},{x:e.x2,y:e.y2})<=tol+3;}
       case 'pen':{
@@ -1652,7 +1668,11 @@ function _edgePt(sh,fx,fy){
   if(rot){const a=-rot*Math.PI/180,c=Math.cos(a),sn=Math.sin(a),dx=fx-cx,dy=fy-cy;px=cx+dx*c-dy*sn;py=cy+dx*sn+dy*c;}
   const dx=px-cx,dy=py-cy;
   if(!dx&&!dy)return{x:cx,y:cy};
-  const k=Math.min(Math.abs(dx)>1e-6?(ub.w/2)/Math.abs(dx):1e9,Math.abs(dy)>1e-6?(ub.h/2)/Math.abs(dy):1e9);
+  const _rx=ub.w/2,_ry=ub.h/2;
+  // ADR-0067: diamond/ellipse land on their true contour, not the bbox edge.
+  const k=sh.type==='diamond'?1/((Math.abs(dx)/(_rx||1e-6))+(Math.abs(dy)/(_ry||1e-6))||1e-6)
+       :sh.type==='ellipse'?1/(Math.hypot(dx/(_rx||1e-6),dy/(_ry||1e-6))||1e-6)
+       :Math.min(Math.abs(dx)>1e-6?_rx/Math.abs(dx):1e9,Math.abs(dy)>1e-6?_ry/Math.abs(dy):1e9);
   let ex=cx+dx*k,ey=cy+dy*k;
   if(rot){const a=rot*Math.PI/180,c=Math.cos(a),sn=Math.sin(a),dX=ex-cx,dY=ey-cy;ex=cx+dX*c-dY*sn;ey=cy+dX*sn+dY*c;}
   return{x:ex,y:ey};
@@ -2294,6 +2314,26 @@ function drawOverlay(){
   }
   drawSelection(c);
   drawGuides(c);
+  if(ptr.down&&state.readout){                                        // ADR-0064: only while a gesture is live
+    const r=state.readout,sp=G.w2s({x:r.x,y:r.y});
+    c.save();
+    c.font='11px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';
+    const tw=c.measureText(r.label).width+14,ph=18,px=sp.x,py=sp.y+14;
+    c.fillStyle='rgba(15,23,42,.85)';
+    c.beginPath();roundRect(c,px-tw/2,py,tw,ph,4);c.fill();
+    c.fillStyle='#fff';c.fillText(r.label,px,py+ph/2);
+    c.restore();
+  }
+  if(ptr.down&&state.bindPreview){                                     // ADR-0065
+    const t=byId(state.bindPreview);
+    if(t){
+      const b=G.bbox(t),p1=G.w2s({x:b.x,y:b.y}),p2=G.w2s({x:b.x+b.w,y:b.y+b.h});
+      c.save();
+      c.strokeStyle=getCSS('--accent-contrast');c.lineWidth=2;c.setLineDash([6,4]);
+      c.strokeRect(p1.x-3,p1.y-3,p2.x-p1.x+6,p2.y-p1.y+6);
+      c.restore();
+    }
+  }
   if(state.marquee)drawMarquee(c);
   if(_laser&&Presentation.isActive()){const lp=G.w2s(_laser);c.beginPath();c.arc(lp.x,lp.y,8,0,PI2);c.fillStyle='rgba(255,50,50,.75)';c.fill();}
   drawPeerSelections(c);   // ADR-0011 (before cursors: pointer renders on top of frames)
@@ -2394,7 +2434,7 @@ function _drawBoxLabel(s,c){
 // SVG export. World-space → scales with zoom like every other label.
 function _drawConnLabel(s,c){
   if(!s.label)return;
-  const e=connEnds(s),mx=(e.x1+e.x2)/2,my=(e.y1+e.y2)/2;
+  const m=s.elbow?_elbowLabelXY(s):connEnds(s),mx=s.elbow?m.x:(m.x1+m.x2)/2,my=s.elbow?m.y:(m.y1+m.y2)/2;
   c.save();
   c.font='12px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';
   const w=c.measureText(s.label).width,pad=4;
@@ -2410,7 +2450,7 @@ function drawShape(s,c){
   c.lineCap='round';c.lineJoin='round';
   c.strokeStyle=s.stroke||'#0F172A';
   c.lineWidth=s.size||1;
-  c.setLineDash((s.dash&&(s.type==='rect'||s.type==='ellipse'||s.type==='line'||s.type==='arrow'))?dashArr(s.dash,s.size):[]);
+  c.setLineDash((s.dash&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond'||s.type==='line'||s.type==='arrow'))?dashArr(s.dash,s.size):[]);
   if(s.fill){c.fillStyle=s.fill}
   const _rot=shapeRot(s);
   if(_rot){const _cx=s.x+s.w/2,_cy=s.y+s.h/2;c.save();c.translate(_cx,_cy);c.rotate(_rot*Math.PI/180);c.translate(-_cx,-_cy);}
@@ -2427,7 +2467,15 @@ function drawShape(s,c){
       if(s.fill){c.fill()}
       if(s.stroke){c.stroke()}
       _drawBoxLabel(s,c);break;
+    case 'diamond':{
+      const cx=s.x+s.w/2,cy=s.y+s.h/2;
+      c.beginPath();
+      c.moveTo(cx,s.y);c.lineTo(s.x+s.w,cy);c.lineTo(cx,s.y+s.h);c.lineTo(s.x,cy);c.closePath();
+      if(s.fill)c.fill();
+      if(s.stroke)c.stroke();
+      _drawBoxLabel(s,c);break;}
     case 'line':{
+      if(s.elbow){_polyline(c,_elbowPts(s));c.stroke();_drawConnLabel(s,c);break}
       const e=connEnds(s);c.beginPath();c.moveTo(e.x1,e.y1);c.lineTo(e.x2,e.y2);c.stroke();_drawConnLabel(s,c);break;}
     case 'arrow':
       drawArrow(s,c);_drawConnLabel(s,c);break;
@@ -2501,15 +2549,63 @@ function roundRect(c,x,y,w,h,r){
 function drawArrow(s,c){
   c=c||ctx;
   const e=connEnds(s);
-  c.beginPath();c.moveTo(e.x1,e.y1);c.lineTo(e.x2,e.y2);c.stroke();
   const ah=Math.max(6,(s.size||2)*3);
+  if(s.elbow){
+    const pts=_elbowPts(s);_polyline(c,pts);c.stroke();
+    const L=pts[pts.length-1],P=pts[pts.length-2];
+    const ang=Math.atan2(L.y-P.y,L.x-P.x)||Math.atan2(e.y2-e.y1,e.x2-e.x1);
+    _arrowHeadShape(c,L.x,L.y,ang,ah,s.stroke);
+    if(s.start){
+      const sAng=Math.atan2(pts[0].y-pts[1].y,pts[0].x-pts[1].x)||ang+Math.PI;
+      _arrowHeadShape(c,pts[0].x,pts[0].y,sAng,ah,s.stroke);
+    }
+    return;
+  }
+  c.beginPath();c.moveTo(e.x1,e.y1);c.lineTo(e.x2,e.y2);c.stroke();
   const ang=Math.atan2(e.y2-e.y1,e.x2-e.x1);
+  _arrowHeadShape(c,e.x2,e.y2,ang,ah,s.stroke);
+  if(s.start)_arrowHeadShape(c,e.x1,e.y1,ang+Math.PI,ah,s.stroke);
+}
+// ADR-0062: orthogonal (Manhattan) route for elbow connectors.
+// Bound ends exit along the edge's outward normal (stub); free ends take the
+// dominant axis toward the other end. Stub tips are joined by one bend —
+// degenerate cases collapse to an L or a straight line.
+function _elbowPts(s){
+  const e=connEnds(s);
+  const a=s.a&&byId(s.a),b=s.b&&byId(s.b);
+  const dom=Math.abs(e.x2-e.x1)>=Math.abs(e.y2-e.y1);
+  const _dir=(sh,px,py,fb)=>{
+    if(!sh)return fb;
+    const bb=G.bbox(sh),cx=bb.x+bb.w/2,cy=bb.y+bb.h/2;
+    const dx=px-cx,dy=py-cy;
+    return Math.abs(dx/(bb.w||1))>=Math.abs(dy/(bb.h||1))?{x:Math.sign(dx)||1,y:0}:{x:0,y:Math.sign(dy)||1};
+  };
+  const d1=_dir(a,e.x1,e.y1,dom?{x:Math.sign(e.x2-e.x1)||1,y:0}:{x:0,y:Math.sign(e.y2-e.y1)||1});
+  const d2=_dir(b,e.x2,e.y2,{x:-d1.x,y:-d1.y});
+  const STUB=Math.max(16,(s.size||2)*8);
+  const q1={x:e.x1+d1.x*STUB,y:e.y1+d1.y*STUB},q2={x:e.x2+d2.x*STUB,y:e.y2+d2.y*STUB};
+  const pts=[{x:e.x1,y:e.y1},q1];
+  const mid=d1.x!==0?{x:q2.x,y:q1.y}:{x:q1.x,y:q2.y};
+  if((mid.x!==q1.x||mid.y!==q1.y)&&(mid.x!==q2.x||mid.y!==q2.y))pts.push(mid);
+  pts.push(q2,{x:e.x2,y:e.y2});
+  return pts;
+}
+// Label anchor: midpoint between the two stub tips (inner segment region).
+function _elbowLabelXY(s){
+  const pts=_elbowPts(s);
+  return{x:(pts[1].x+pts[pts.length-2].x)/2,y:(pts[1].y+pts[pts.length-2].y)/2};
+}
+function _polyline(c,pts){
+  c.beginPath();c.moveTo(pts[0].x,pts[0].y);
+  for(let i=1;i<pts.length;i++)c.lineTo(pts[i].x,pts[i].y);
+}
+function _arrowHeadShape(c,x,y,ang,ah,stroke){
   const a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5;
   c.beginPath();
-  c.moveTo(e.x2,e.y2);
-  c.lineTo(e.x2+Math.cos(a1)*ah,e.y2+Math.sin(a1)*ah);
-  c.lineTo(e.x2+Math.cos(a2)*ah,e.y2+Math.sin(a2)*ah);
-  c.closePath();c.fillStyle=s.stroke||'#0F172A';c.fill();
+  c.moveTo(x,y);
+  c.lineTo(x+Math.cos(a1)*ah,y+Math.sin(a1)*ah);
+  c.lineTo(x+Math.cos(a2)*ah,y+Math.sin(a2)*ah);
+  c.closePath();c.fillStyle=stroke||'#0F172A';c.fill();
 }
 // Variable stroke width from spacing (velocity proxy); render-only, no model change.
 function penWidths(pts,size){
@@ -2575,8 +2671,8 @@ function getHandles(s){
   if(s.locked)return [];
   if(s.type==='line'||s.type==='arrow'){
     const e=connEnds(s),h=[];   // bound endpoints follow their shape, so no drag handle
-    if(!s.a)h.push({id:'p1',x:e.x1,y:e.y1});
-    if(!s.b)h.push({id:'p2',x:e.x2,y:e.y2});
+    h.push({id:'p1',x:e.x1,y:e.y1});       // ADR-0065: bound ends are draggable too (rebind)
+    h.push({id:'p2',x:e.x2,y:e.y2});
     return h;
   }
   // ADR-0051: pens resize for real — emit the same 8 handles around the pts bbox
@@ -2654,7 +2750,9 @@ function _grotDrag(wp,shift){
   let deg=Math.atan2(wp.y-ptr.rotCy,wp.x-ptr.rotCx)*180/Math.PI-ptr.rotA0;
   if(shift)deg=Math.round(deg/15)*15;
   for(const [id,orig] of ptr.gOrig){const sh=byId(id);if(sh)_rotShape(sh,orig,ptr.rotCx,ptr.rotCy,deg);}
-  invalidateDamage(_dmgPair(_b0,G.bboxAll(live),ptr.gPad||40));     // ADR-0026
+  const _nb=G.bboxAll(live);
+  if(_nb&&deg)state.readout={x:_nb.x+_nb.w/2,y:_nb.y+_nb.h,label:`${deg>0?'+':''}${Math.round(deg)}°`};
+  invalidateDamage(_dmgPair(_b0,_nb,ptr.gPad||40));                 // ADR-0026
 }
 function _grotCommit(){
   const after=[...ptr.gOrig.keys()].map(id=>byId(id)).filter(Boolean).map(clone);
@@ -2719,6 +2817,7 @@ function applyResize(sh,handle,orig,wp,shift,alt){
     applyResize(vbox,handle,vorig,wp,shift,alt);
     const sx=vbox.w/ob.w,sy=vbox.h/ob.h;
     sh.pts=orig.pts.map(p=>[vbox.x+(p[0]-ob.x)*sx,vbox.y+(p[1]-ob.y)*sy,p[2]]);
+    const _rb=G.bbox(sh);state.readout={x:_rb.x+_rb.w/2,y:_rb.y+_rb.h,label:`${Math.round(Math.abs(_rb.w))} × ${Math.round(Math.abs(_rb.h))}`};
     return;
   }
   let sp;
@@ -2732,8 +2831,15 @@ function applyResize(sh,handle,orig,wp,shift,alt){
     state.guides=os.guides.length?os.guides:null;  // alignment guides during drag
     sp=snapPt({x:os.x,y:os.y});                    // grid-snap (grid on); identity otherwise
   }
-  if(handle==='p1'){sh.x1=sp.x;sh.y1=sp.y;return}
-  if(handle==='p2'){sh.x2=sp.x;sh.y2=sp.y;return}
+  if(handle==='p1'||handle==='p2'){
+    const bk=handle==='p1'?'a':'b';
+    if(sh[bk])sh[bk]=null;                                    // ADR-0065: grabbed a bound end — free while dragging
+    if(handle==='p1'){sh.x1=sp.x;sh.y1=sp.y}else{sh.x2=sp.x;sh.y2=sp.y}
+    const _bv=_bindAt(handle==='p1'?sh.x1:sh.x2,handle==='p1'?sh.y1:sh.y2);
+    state.bindPreview=(_bv&&_bv!==sh.id&&_bv!==sh[bk==='a'?'b':'a'])?_bv:null;
+    state.readout={x:(sh.x1+sh.x2)/2,y:Math.max(sh.y1,sh.y2),label:`↔ ${Math.round(Math.hypot(sh.x2-sh.x1,sh.y2-sh.y1))}`};
+    return;
+  }
   switch(handle){
     case 'se':sh.w=Math.max(clamp,sp.x-ox);sh.h=Math.max(clamp,sp.y-oy);break;
     case 's': sh.h=Math.max(clamp,sp.y-oy);break;
@@ -2747,6 +2853,7 @@ function applyResize(sh,handle,orig,wp,shift,alt){
   if(alt){
     // Mirror the dragged edge about the original centre (symmetric resize).
     if(/[ew]/.test(handle)){const half=/e/.test(handle)?sh.x+sh.w-cx0:cx0-sh.x;sh.w=Math.max(clamp,2*half);sh.x=cx0-sh.w/2;}
+
     if(/[ns]/.test(handle)){const half=/s/.test(handle)?sh.y+sh.h-cy0:cy0-sh.y;sh.h=Math.max(clamp,2*half);sh.y=cy0-sh.h/2;}
   }
   if(lock){
@@ -2771,6 +2878,8 @@ function applyResize(sh,handle,orig,wp,shift,alt){
       sh.x+=tgt.x-cur.x;sh.y+=tgt.y-cur.y;                            // translate to re-pin
     }
   }
+  const _rb=G.bbox(sh);
+  state.readout={x:_rb.x+_rb.w/2,y:_rb.y+_rb.h,label:`${Math.round(Math.abs(_rb.w))} × ${Math.round(Math.abs(_rb.h))}`};
 }
 // ADR-0056: group-resize drag step / commit as named functions so the gesture is
 // testable without driving the DOM listeners (precedent: abortGesture v1.6.88).
@@ -2952,7 +3061,7 @@ function abortGesture(){
   }
   if(_eraseBatch.length){for(const s of _eraseBatch)state.shapes.push(s);_eraseBatch=[];sortZ();_invalidateGrid();}   // ADR-0009
   _penPred=null;
-  state.draft=null;state.marquee=null;state.guides=null;
+  state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.dragStartShapes=null;
   ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;
   invalidate();
@@ -3043,7 +3152,7 @@ canvas.addEventListener('pointerdown',e=>{
       }
       pickOrMarquee(wp,e);break;
     case 'pen':beginPen(wp,e);break;
-    case 'rect':case 'ellipse':case 'sticky':case 'frame':beginRectLike(wp);break;
+    case 'rect':case 'ellipse':case 'diamond':case 'sticky':case 'frame':beginRectLike(wp);break;
     case 'line':case 'arrow':beginLineLike(wp);break;
     case 'text':beginText(wp);break;
     case 'eraser':_eraseBatch=[];eraseAt(wp);break;
@@ -3117,9 +3226,11 @@ canvas.addEventListener('pointermove',e=>{
           let deg=Math.atan2(wp.y-ptr.rotCy,wp.x-ptr.rotCx)*180/Math.PI+90; // knob-up = 0°
           if(e.shiftKey)deg=Math.round(deg/15)*15;                          // Shift snaps to 15°
           rsh.rotate=((Math.round(deg)%360)+360)%360;
-          invalidateDamage(_dmgPair(_b0,G.bbox(rsh),(rsh.size||2)+16));   // ADR-0026
+          const _nb=G.bbox(rsh);
+          state.readout={x:_nb.x+_nb.w/2,y:_nb.y+_nb.h,label:`${rsh.rotate}°`};
+          invalidateDamage(_dmgPair(_b0,_nb,(rsh.size||2)+16));           // ADR-0026
         }else invalidate();
-      }else if(ptr.dragKind==='move')doMove(wp);
+      }else if(ptr.dragKind==='move')doMove(wp,e.shiftKey);
       else if(ptr.dragKind==='marquee'){state.marquee={x1:ptr.wx0,y1:ptr.wy0,x2:wp.x,y2:wp.y};invalidateOverlay()}
       break;
     case 'pen':{
@@ -3130,7 +3241,7 @@ canvas.addEventListener('pointermove',e=>{
       _penPred=pr?G.s2w(pr):null;
       break;
     }
-    case 'rect':case 'ellipse':case 'sticky':case 'frame':contRectLike(wp,e.shiftKey);break;
+    case 'rect':case 'ellipse':case 'diamond':case 'sticky':case 'frame':contRectLike(wp,e.shiftKey);break;
     case 'line':case 'arrow':contLineLike(wp,e.shiftKey);break;
     case 'eraser':eraseAt(wp);break;
   }
@@ -3147,6 +3258,7 @@ canvas.addEventListener('pointerup',e=>{
       if(ptr.dragKind==='resize'){
         const rsh=byId([...state.selection][0]);
         if(rsh){
+          _endPointBind(rsh,ptr.resizeHandle);                 // ADR-0065
           const after=clone(rsh);
           const before=ptr.resizeOrig;
           if(JSON.stringify(before)!==JSON.stringify(after)){
@@ -3155,14 +3267,14 @@ canvas.addEventListener('pointerup',e=>{
             if(origSel.length)state.history[state.histIdx].origSel=origSel;
           }
         }
-        ptr.resizeHandle=null;ptr.resizeOrig=null;state.guides=null;
+        ptr.resizeHandle=null;ptr.resizeOrig=null;state.guides=null;state.readout=null;state.bindPreview=null;
       }else if(ptr.dragKind==='gresize'){
         _gresizeCommit();                                              // ADR-0056
-        ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.resizeHandle=null;state.guides=null;
+        ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.resizeHandle=null;state.guides=null;state.readout=null;state.bindPreview=null;
       }else if(ptr.dragKind==='grot'){
         _grotCommit();                                                 // ADR-0057
         if(state.selection.size===1){const s=byId([...state.selection][0]);if(s)UI.toast(describeShape(s));}
-        ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;state.guides=null;
+        ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;state.guides=null;state.readout=null;state.bindPreview=null;
       }else if(ptr.dragKind==='rotate'){
         const rsh=byId([...state.selection][0]);
         if(rsh){
@@ -3176,11 +3288,11 @@ canvas.addEventListener('pointerup',e=>{
         }
         ptr.rotOrig=null;
       }else{
-        endSelect(wp);
+        endSelect(wp,e.shiftKey);
       }
       break;
       case 'pen':endPen();break;
-      case 'rect':case 'ellipse':case 'sticky':case 'frame':endRectLike();break;
+      case 'rect':case 'ellipse':case 'diamond':case 'sticky':case 'frame':endRectLike();break;
       case 'line':case 'arrow':endLineLike();break;
       case 'eraser':flushErase();break;
     }
@@ -3210,7 +3322,7 @@ function _cancelPointerGesture(){
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;
   ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.rotOrig=null;ptr.dragStartShapes=null;
   ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;
-  canvas.dataset.panning='false';state.draft=null;state.marquee=null;state.guides=null;_penPred=null;invalidate();
+  canvas.dataset.panning='false';state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;_penPred=null;invalidate();
 }
 // ADR-0006: fires after LONG_PRESS_MS. Guards: gesture still active, handle-drag not in
 // progress (resize/rotate — a deliberate precision drag we shouldn't interrupt), and the
@@ -3620,6 +3732,19 @@ function pickOrMarquee(wp,e){
       ? state.shapes.filter(s=>s.groupId===gid).map(s=>s.id)
       : [hit.id];
     const alreadySel=toSelect.every(id=>state.selection.has(id));
+    // ADR-0060: Alt+drag duplicates first — copies become the selection and the
+    // move gesture drags them (Figma/Excalidraw/draw.io parity). Locked hits and
+    // locked members are excluded; frames bring their children.
+    if(e.altKey&&!hit.locked){
+      const dupSet=alreadySel?new Set(state.selection):new Set(toSelect);
+      const srcShapes=[...withFrameChildren(dupSet)].map(byId).filter(s=>s&&!s.locked);
+      if(srcShapes.length){
+        const added=_placeCopies(srcShapes,0,0);   // addMany commit + selection→copies
+        ptr.dragKind='move';
+        ptr.dragStartShapes=new Map(added.map(id=>{const s=byId(id);return[id,clone(s)]}));
+        return;
+      }
+    }
     if(!alreadySel){
       if(!e.shiftKey)state.selection.clear();
       for(const id of toSelect)state.selection.add(id);
@@ -3723,15 +3848,20 @@ function nudgeSelection(dx,dy){
 }
 // Shared by live drag (doMove) and commit (endSelect) so they agree exactly.
 // Grid snap (⇧G) takes precedence; otherwise snap to nearby objects.
-function moveDelta(wp){
+function moveDelta(wp,shift){
   const sp=snapPt(wp),sx0=snapV(ptr.wx0),sy0=snapV(ptr.wy0);
   let dx=sp.x-sx0,dy=sp.y-sy0;
-  if(!state.snap){const a=objectSnap(dx,dy);dx+=a.dx;dy+=a.dy;state.guides=a.guides.length?a.guides:null;}
+  if(shift){                            // ADR-0066: Shift+drag constrains to the dominant axis
+    if(Math.abs(dx)>=Math.abs(dy))dy=0;else dx=0;
+    state.guides=null;
+  }else if(!state.snap){const a=objectSnap(dx,dy);dx+=a.dx;dy+=a.dy;state.guides=a.guides.length?a.guides:null;}
   else state.guides=null;
+  const bb=ptr.dragStartShapes&&G.bboxAll([...ptr.dragStartShapes.values()]);
+  state.readout=bb&&(dx||dy)?{x:bb.x+dx+bb.w/2,y:bb.y+dy+bb.h,label:`${dx>=0?'+':''}${Math.round(dx)}, ${dy>=0?'+':''}${Math.round(dy)}`}:null;
   return{dx,dy};
 }
-function doMove(wp){
-  const{dx,dy}=moveDelta(wp);let dmg=null;
+function doMove(wp,shift){
+  const{dx,dy}=moveDelta(wp,shift);let dmg=null;
   for(const [id,orig] of ptr.dragStartShapes){
     const sh=byId(id);if(!sh||sh.locked)continue;
     const b0=G.bbox(orig),m=(sh.size||2)+16;   // orig-bbox + same bbox shifted by (dx,dy) covers every position of the gesture
@@ -3742,9 +3872,9 @@ function doMove(wp){
   }
   if(dmg)invalidateDamage(dmg);else invalidate();
 }
-function endSelect(wp){
+function endSelect(wp,shift){
   if(ptr.dragKind==='move'&&ptr.dragStartShapes){
-    const{dx,dy}=moveDelta(wp);
+    const{dx,dy}=moveDelta(wp,shift);
     state.guides=null;
     const mids=[...ptr.dragStartShapes.keys()].filter(id=>!byId(id)?.locked);
     if(Math.hypot(dx,dy)>0.5&&mids.length){
@@ -3981,6 +4111,15 @@ function endLineLike(){
   if(origSel.length)state.history[state.histIdx].origSel=origSel;
   pickTool('select');state.selection.clear();state.selection.add(d.id);
 }
+// ADR-0065: settle an endpoint drag — bind if dropped on a shape (not self /
+// not the other end's shape), else unbind. Called before the commit snapshot so
+// a/b lands inside the same `upd` op.
+function _endPointBind(sh,handle){
+  if(handle!=='p1'&&handle!=='p2')return;
+  const k=handle==='p1'?'a':'b',other=k==='a'?'b':'a';
+  const hit=_bindAt(handle==='p1'?sh.x1:sh.x2,handle==='p1'?sh.y1:sh.y2);
+  sh[k]=(hit&&hit!==sh.id&&hit!==sh[other])?hit:null;
+}
 // Topmost non-connector shape whose bbox contains (x,y), for connector binding.
 function _bindAt(x,y){
   for(let i=state.shapes.length-1;i>=0;i--){
@@ -4201,7 +4340,7 @@ function flushErase(){
 
 // ====================== KEYBOARD ======================
 const KEYMAP={v:'select',h:'hand',p:'pen',r:'rect',o:'ellipse',
-  a:'arrow',l:'line',t:'text',n:'sticky',f:'frame',e:'eraser'};
+  a:'arrow',l:'line',t:'text',n:'sticky',f:'frame',e:'eraser',d:'diamond'};
 // Focus trap for open dialogs (WCAG 2.4.3 Focus Order / 2.1.2 No Keyboard Trap-escape).
 // _focusables lists the tabbable controls inside a root; _trapStep is the pure wrap step:
 // given those controls, the active element and direction, it returns which element to
@@ -4327,7 +4466,7 @@ window.addEventListener('keydown',e=>{
     const hp=document.getElementById('help'),sp2=document.getElementById('share');
     if(hp.dataset.open==='true')UI.toggleHelp();
     else if(sp2.dataset.open==='true')UI.closeShare();
-    else{if(state.selection.size)UI.toast(t('selNone'));state.selection.clear();state.marquee=null;state.draft=null;state.guides=null;_penPred=null;invalidate()}   // ADR-0037
+    else{if(state.selection.size)UI.toast(t('selNone'));state.selection.clear();state.marquee=null;state.draft=null;state.guides=null;state.readout=null;state.bindPreview=null;_penPred=null;invalidate()}   // ADR-0037
   }
   else if(k==='?'||(e.shiftKey&&e.key==='/')){e.preventDefault();UI.toggleHelp()}
   else if(k===']'&&!meta&&e.shiftKey){e.preventDefault();doBringFront()}
@@ -5035,8 +5174,7 @@ function excToShapes(txt){
     switch(e.type){
       case'rectangle':s=Shape.make('rect',{x:e.x,y:e.y,w:W,h:H});break;
       case'ellipse':s=Shape.make('ellipse',{x:e.x,y:e.y,w:W,h:H});break;
-      case'diamond':   // no diamond type — polygon pen is the faithful shape
-        s=Shape.make('pen',{pts:[[e.x+W/2,e.y],[e.x+W,e.y+H/2],[e.x+W/2,e.y+H],[e.x,e.y+H/2],[e.x+W/2,e.y]]});break;
+      case'diamond':s=Shape.make('diamond',{x:e.x,y:e.y,w:W,h:H});break;   // ADR-0061: real type
       case'frame':s=Shape.make('frame',{x:e.x,y:e.y,w:W,h:H,label:typeof e.name==='string'?e.name.slice(0,120):''});break;
       case'text':{
         const fs=Number.isFinite(e.fontSize)?e.fontSize:16;
@@ -5158,18 +5296,47 @@ function buildSVG(shapes,paper){
         els.push(`<ellipse cx="${X+W/2+ox}" cy="${Y+H/2+oy}" rx="${Math.abs(W/2)}" ry="${Math.abs(H/2)}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}/>`);
         if(s.label)els.push(`<text x="${X+W/2+ox}" y="${Y+H/2+oy+7}" font-family="system-ui,sans-serif" font-size="14" text-anchor="middle" fill="${stroke}"${a}${rT}>${_esc(s.label)}</text>`);
         break;
-      case 'line':
-        els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}/>`);
-        els.push(_connLabelSVG(s,X1,Y1,X2,Y2,ox,oy,stroke,paper));
-        break;
+      case 'diamond':{
+        els.push(`<polygon points="${X+W/2+ox},${Y+oy} ${X+W+ox},${Y+H/2+oy} ${X+W/2+ox},${Y+H+oy} ${X+ox},${Y+H/2+oy}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}/>`);
+        if(s.label)els.push(`<text x="${X+W/2+ox}" y="${Y+H/2+oy+7}" font-family="system-ui,sans-serif" font-size="14" text-anchor="middle" fill="${stroke}"${a}${rT}>${_esc(s.label)}</text>`);
+        break;}
+      case 'line':{
+        if(s.elbow){
+          const pts=_elbowPts(s),spts=pts.map(p=>`${_num(p.x+ox)},${_num(p.y+oy)}`).join(' ');
+          els.push(`<polyline points="${spts}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}/>`);
+          const lm=_elbowLabelXY(s);
+          els.push(_connLabelSVG(s,lm.x,lm.y,lm.x,lm.y,ox,oy,stroke,paper));
+        }else{
+          els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}/>`);
+          els.push(_connLabelSVG(s,X1,Y1,X2,Y2,ox,oy,stroke,paper));
+        }
+        break;}
       case 'arrow':{
-        els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}/>`);
         const ah=Math.max(6,(SZ||2)*3);
-        const ang=Math.atan2(Y2-Y1,X2-X1);
-        const a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5;
-        const tx=X2+ox,ty=Y2+oy;
-        els.push(`<polygon points="${tx},${ty} ${tx+Math.cos(a1)*ah},${ty+Math.sin(a1)*ah} ${tx+Math.cos(a2)*ah},${ty+Math.sin(a2)*ah}" fill="${stroke}"${a}/>`);
-        els.push(_connLabelSVG(s,X1,Y1,X2,Y2,ox,oy,stroke,paper));
+        if(s.elbow){
+          const pts=_elbowPts(s),spts=pts.map(p=>`${_num(p.x+ox)},${_num(p.y+oy)}`).join(' ');
+          els.push(`<polyline points="${spts}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}/>`);
+          const Lp=pts[pts.length-1],Pp=pts[pts.length-2];
+          const ang=Math.atan2(Lp.y-Pp.y,Lp.x-Pp.x)||Math.atan2(Y2-Y1,X2-X1);
+          const a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5;
+          const tx=Lp.x+ox,ty=Lp.y+oy;
+          els.push(`<polygon points="${tx},${ty} ${tx+Math.cos(a1)*ah},${ty+Math.sin(a1)*ah} ${tx+Math.cos(a2)*ah},${ty+Math.sin(a2)*ah}" fill="${stroke}"${a}/>`);
+          if(s.start){
+            const sAng=Math.atan2(pts[0].y-pts[1].y,pts[0].x-pts[1].x)||ang+Math.PI;
+            const s1=sAng+Math.PI-0.5,s2=sAng+Math.PI+0.5,sx2=pts[0].x+ox,sy2=pts[0].y+oy;
+            els.push(`<polygon points="${sx2},${sy2} ${sx2+Math.cos(s1)*ah},${sy2+Math.sin(s1)*ah} ${sx2+Math.cos(s2)*ah},${sy2+Math.sin(s2)*ah}" fill="${stroke}"${a}/>`)}
+          const lm=_elbowLabelXY(s);
+          els.push(_connLabelSVG(s,lm.x,lm.y,lm.x,lm.y,ox,oy,stroke,paper));
+        }else{
+          els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}/>`);
+          const ang=Math.atan2(Y2-Y1,X2-X1);
+          const a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5;
+          const tx=X2+ox,ty=Y2+oy;
+          els.push(`<polygon points="${tx},${ty} ${tx+Math.cos(a1)*ah},${ty+Math.sin(a1)*ah} ${tx+Math.cos(a2)*ah},${ty+Math.sin(a2)*ah}" fill="${stroke}"${a}/>`);
+          if(s.start){const s1=ang-0.5,s2=ang+0.5,sx2=X1+ox,sy2=Y1+oy;
+            els.push(`<polygon points="${sx2},${sy2} ${sx2+Math.cos(s1)*ah},${sy2+Math.sin(s1)*ah} ${sx2+Math.cos(s2)*ah},${sy2+Math.sin(s2)*ah}" fill="${stroke}"${a}/>`)}
+          els.push(_connLabelSVG(s,X1,Y1,X2,Y2,ox,oy,stroke,paper));
+        }
         break;}
       case 'pen':{
         if(!Array.isArray(s.pts)||!s.pts.length)break;
@@ -6090,6 +6257,8 @@ const UI={
       has&&['ctxDuplicate','⌘D',doDuplicate],
       has&&['ctxCopyStyle','⌥C',copyStyle],
       state.styleClipboard&&has&&['ctxPasteStyle','⌥V',pasteStyle],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked})&&['ctxElbow','',toggleElbow],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='arrow'&&!s.locked})&&['ctxBothEnds','',toggleBothEnds],
       has&&['ctxDelete','⌫',doDelete],
       has&&'sep',
       has&&state.selection.size>1&&['ctxGroup','⌘G',doGroup],
@@ -6167,7 +6336,7 @@ const UI={
     const rows=[
       ['V',k.select],['H / Space',k.pan],['P',k.pen],
       ['R',k.rect],['O',k.ellipse],['A',k.arrow],
-      ['L',k.line],['T',k.text],['N',k.sticky],['F',k.frame],['E',k.eraser],
+      ['L',k.line],['T',k.text],['N',k.sticky],['F',k.frame],['E',k.eraser],['D',k.diamond],
       ['⇧P',k.present],
       ['⌘Z',k.undo],['⌘⇧Z',k.redo],['⌘A',k.selAll],
       ['⌘C/V/X',k.copy+'/'+k.paste+'/'+k.cut],['⌘D',k.dup],['⌫',k.del],
@@ -6180,7 +6349,7 @@ const UI={
       ['Enter / ⇧Enter',k.searchNav],
       ['⇧H / ⇧V',t('ctxFlipH')+' / '+t('ctxFlipV')],
       ['⌥C / ⌥V',t('ctxCopyStyle')+' / '+t('ctxPasteStyle')],
-      ['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],
+      ['⇧ + drag',k.moveAxis],['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],
       ['Tab / ⇧Tab',k.cycle],['Enter',k.create+' / '+t('editLabel')]
     ];
     while(g.firstChild)g.removeChild(g.firstChild);
@@ -6545,6 +6714,28 @@ const _sbf={};
 function _sfbCapture(p){for(const id of state.selection){const s=byId(id);if(s&&!s.locked&&!(id+p in _sbf))_sbf[id+p]=s[p]}}
 function _sfbFlush(p,v){const b=[],a=[];for(const id of state.selection){const k=id+p;if(k in _sbf){const s=byId(id);if(s&&!s.locked){b.push({id,[p]:_sbf[k]});a.push({id,[p]:v});}delete _sbf[k];}}if(b.length&&b.some(x=>x[p]!==v)){const origSel=[...state.selection];Store._recordCommitted({op:'style',before:b,after:a});if(origSel.length)state.history[state.histIdx].origSel=origSel;}}
 
+// ADR-0062: per-connector elbow toggle via style op — undo + wclock sync free.
+function toggleElbow(){
+  const before=[],after=[];
+  for(const id of state.selection){
+    const s=byId(id);if(!s||(s.type!=='line'&&s.type!=='arrow')||s.locked)continue;
+    before.push({id,elbow:s.elbow||0});
+    after.push({id,elbow:s.elbow?0:1});
+    s.elbow=s.elbow?0:1;
+  }
+  if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
+}
+// ADR-0063: start-side arrowhead toggle via style op — undo + wclock sync free.
+function toggleBothEnds(){
+  const before=[],after=[];
+  for(const id of state.selection){
+    const s=byId(id);if(!s||s.type!=='arrow'||s.locked)continue;
+    before.push({id,start:s.start||0});
+    after.push({id,start:s.start?0:1});
+    s.start=s.start?0:1;
+  }
+  if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
+}
 function copyStyle(){
   // Copy style from the first selected shape
   const ids=[...state.selection];
@@ -6723,7 +6914,8 @@ const Minimap=(()=>{
         case 'frame':
         case 'rect':{const rx=s.x*sc+ox,ry=s.y*sc+oy,rw=s.w*sc,rh=s.h*sc;if(s.fill)sx.fillRect(rx,ry,rw,rh);sx.strokeRect(rx,ry,rw,rh);break}
         case 'ellipse':sx.beginPath();sx.ellipse(s.x*sc+ox+s.w*sc/2,s.y*sc+oy+s.h*sc/2,Math.abs(s.w*sc/2),Math.abs(s.h*sc/2),0,0,Math.PI*2);if(s.fill)sx.fill();sx.stroke();break;
-        case 'line':case 'arrow':{const me=connEnds(s);sx.beginPath();sx.moveTo(me.x1*sc+ox,me.y1*sc+oy);sx.lineTo(me.x2*sc+ox,me.y2*sc+oy);sx.stroke();break}
+        case 'diamond':{const dcx=s.x*sc+ox+s.w*sc/2,dcy=s.y*sc+oy+s.h*sc/2;sx.beginPath();sx.moveTo(dcx,s.y*sc+oy);sx.lineTo(s.x*sc+ox+s.w*sc,dcy);sx.lineTo(dcx,s.y*sc+oy+s.h*sc);sx.lineTo(s.x*sc+ox,dcy);sx.closePath();if(s.fill)sx.fill();sx.stroke();break;}
+        case 'line':case 'arrow':{if(s.elbow){const pts=_elbowPts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<pts.length;i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}const me=connEnds(s);sx.beginPath();sx.moveTo(me.x1*sc+ox,me.y1*sc+oy);sx.lineTo(me.x2*sc+ox,me.y2*sc+oy);sx.stroke();break}
         case 'pen':if(s.pts.length<2)break;sx.beginPath();sx.moveTo(s.pts[0][0]*sc+ox,s.pts[0][1]*sc+oy);for(let i=1;i<s.pts.length;i++)sx.lineTo(s.pts[i][0]*sc+ox,s.pts[i][1]*sc+oy);sx.stroke();break;
         case 'text':case 'sticky':{const rx2=s.x*sc+ox,ry2=s.y*sc+oy,rw2=Math.max(2,s.w*sc),rh2=Math.max(2,s.h*sc);sx.fillStyle=s.type==='sticky'?(s.color||'#FEF08A'):(s.fill||getCSS('--brand'));sx.fillRect(rx2,ry2,rw2,rh2);break}
         case 'image':{const rx3=s.x*sc+ox,ry3=s.y*sc+oy,rw3=Math.max(2,s.w*sc),rh3=Math.max(2,s.h*sc);const img=s.dataUrl?_imgCache.get(_imgKey(s.dataUrl)):null;if(img&&img.complete&&img.naturalWidth)sx.drawImage(img,rx3,ry3,rw3,rh3);else{sx.fillStyle='#CBD5E1';sx.fillRect(rx3,ry3,rw3,rh3)}break}

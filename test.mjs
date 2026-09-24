@@ -406,6 +406,30 @@ const checks = [
   // v1.7.117: ADR-0059 style panel ← selection sync
   ['style panel syncs on selection signature change', html.includes("_syncStylePanelIfChanged();   // ADR-0059")&&html.includes("[...state.selection].sort().join(',')")],
   ['_syncStylePanel adopts only uniform props (mixed skipped)', html.includes("sel.every(s=>(s[k]??null)===v)")&&html.includes("if(v!==undefined){state.style.fill")],
+  // v1.7.118: ADR-0060 Alt+drag duplicate
+  ['alt+drag duplicates picked shape then drags copies', html.includes("if(e.altKey&&!hit.locked){")&&html.includes("_placeCopies(srcShapes,0,0)")&&html.includes("dupSet=alreadySel")],
+  // v1.7.118: ADR-0061 diamond shape
+  ['diamond tool in KEYMAP + toolbar + help', html.includes("e:'eraser',d:'diamond'")&&html.includes('data-tool="diamond"')&&html.includes("['D',k.diamond]")],
+  ['diamond draw/hit/svg/minimap paths', html.includes("case 'diamond':{")&&html.includes("case'diamond':s=Shape.make('diamond'")&&html.includes('Math.abs(d-1)<0.15')],
+  ['diamond i18n ja+en', html.includes("diamond:'ダイヤ'")&&html.includes("diamond:'Diamond'")],
+  // v1.7.120: ADR-0062 elbow connectors
+  ['elbow route helper + toggle in ctx menu', html.includes('function _elbowPts(s)')&&html.includes('function toggleElbow()')&&html.includes("['ctxElbow','',toggleElbow]")],
+  ['elbow draw/hit/svg/minimap paths', html.includes('if(s.elbow){_polyline(c,_elbowPts(s))')&&html.includes('s.elbow){\n          const pts=_elbowPts')&&html.includes('<polyline points=')&&html.includes('stroke-linejoin="round"')],
+  ['elbow i18n ja+en', html.includes("ctxElbow:'エルボー (直角)'")&&html.includes("ctxElbow:'Elbow (right-angle)'")],
+  // v1.7.121: ADR-0063 bidirectional arrowheads
+  ['start arrowhead: draw + svg + ctx toggle', html.includes('if(s.start)_arrowHeadShape(c,e.x1,e.y1')&&html.includes('function toggleBothEnds()')&&html.includes("['ctxBothEnds','',toggleBothEnds]")],
+  ['both-ends i18n ja+en', html.includes("ctxBothEnds:'両端ヘッド'")&&html.includes("ctxBothEnds:'Arrowheads both ends'")],
+  // v1.7.122: ADR-0064 gesture readout pill
+  ['readout state + drawOverlay pill + ptr.down gate', html.includes('readout:null,             // ADR-0064')&&html.includes('if(ptr.down&&state.readout)')&&html.includes("roundRect(c,px-tw/2,py,tw,ph,4)")],
+  ['readout set in applyResize/moveDelta/rotate paths + cleared with guides', html.includes('state.readout={x:_rb.x+_rb.w/2,y:_rb.y+_rb.h')&&html.includes('state.readout=bb&&(dx||dy)')&&html.includes('state.guides=null;state.readout=null;')],
+  // v1.7.123: ADR-0065 connector endpoint rebind/unbind
+  ['endpoint rebind: always-handle + unbind-on-grab + bindPreview', html.includes("h.push({id:'p1',x:e.x1,y:e.y1});       // ADR-0065")&&html.includes('if(sh[bk])sh[bk]=null;')&&html.includes('state.bindPreview=')],
+  ['_endPointBind in pointerup + not-self/not-other-end guard', html.includes('_endPointBind(rsh,ptr.resizeHandle)')&&html.includes('hit!==sh[other]')],
+  // v1.7.124: ADR-0066 Shift+drag axis-constrained move
+  ['shift axis constraint in moveDelta + objectSnap skipped', html.includes("if(Math.abs(dx)>=Math.abs(dy))dy=0;else dx=0;")&&html.includes('moveDelta(wp,shift)')&&html.includes('doMove(wp,e.shiftKey)')&&html.includes('endSelect(wp,e.shiftKey)')],
+  ['moveAxis i18n ja+en + help row', html.includes("moveAxis:'軸拘束移動'")&&html.includes("moveAxis:'Constrain move axis'")&&html.includes("['⇧ + drag',k.moveAxis]")],
+  // v1.7.125: ADR-0067 per-type edge projection
+  ['edge projection: diamond/ellipse contour formula', html.includes("sh.type==='diamond'?1/((Math.abs(dx)/(_rx||1e-6))")&&html.includes("sh.type==='ellipse'?1/(Math.hypot(dx/(_rx||1e-6),dy/(_ry||1e-6))||1e-6)")],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
@@ -622,9 +646,9 @@ const checks = [
   ['connEnds helper derives bound endpoints', html.includes("function connEnds") && html.includes("function _edgePt")],
   ['G.bbox line uses connEnds', html.includes("const e=connEnds(s);\n      const x=Math.min(e.x1,e.x2)")],
   ['G.hit line uses connEnds', html.includes("const e=connEnds(s);\n        return distToSeg")],
-  ['drawArrow uses connEnds', html.includes("const e=connEnds(s);\n  c.beginPath();c.moveTo(e.x1,e.y1)")],
+  ['drawArrow uses connEnds', html.includes("function drawArrow(s,c){\n  c=c||ctx;\n  const e=connEnds(s);")],
   ['endLineLike binds endpoints dropped on a shape', html.includes("const ba=_bindAt(d.x1,d.y1),bb=_bindAt(d.x2,d.y2)") && html.includes("function _bindAt")],
-  ['bound endpoints expose no resize handle', html.includes("if(!s.a)h.push({id:'p1'") && html.includes("if(!s.b)h.push({id:'p2'")],
+  ['connector endpoints always expose resize handles (ADR-0065 rebind)', html.includes("h.push({id:'p1',x:e.x1,y:e.y1});       // ADR-0065") && html.includes("h.push({id:'p2',x:e.x2,y:e.y2});")],
   ['SVG export derives bound endpoints', html.includes("const _e=connEnds(s);\n    const X1=_num(_e.x1)")],
   // v1.6.61: rotation - shapes rotate on canvas, undo/redo, keyboard ,/.
   ['doRotate function exists', html.includes("function doRotate") && html.includes("op:'align',dir:'rotate'")],
@@ -1100,7 +1124,7 @@ const checks = [
   // Shape-drawing DEFAULT colors (new frame/sticky stroke fallbacks) are deliberately left
   // on raw --brand: that's a style choice, not an accessibility-critical indicator.
   ["canvas UI-indicator strokes (selection/guides/marquee/rotation-tether/minimap-viewport) use --accent-contrast",
-    (html.match(/getCSS\('--accent-contrast'\)/g)||[]).length===6 &&
+    (html.match(/getCSS\('--accent-contrast'\)/g)||[]).length===7 &&
     (html.match(/getCSS\('--brand'\)/g)||[]).length===5],
   ['frame label editor text color uses --accent-contrast (real text, needs the 4.5:1 floor too)',
     html.includes("getCSS(bold?'--accent-contrast':'--ink')")],
@@ -1238,9 +1262,9 @@ try {
              doAlign, doFlip, snapV, snapPt,
              getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
-             copyStyle, pasteStyle, applyStyleToSelection,
-             _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
+             copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts,
+             _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa: () => _teTa, zoomAt,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
              exportPNG, copyPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
@@ -1265,9 +1289,9 @@ try {
           doAlign, doFlip, snapV, snapPt,
           getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
-          copyStyle, pasteStyle, applyStyleToSelection,
-          _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
+          copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts,
+          _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa, zoomAt,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
           exportPNG, copyPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
@@ -3142,6 +3166,26 @@ try {
     console.log('  ✓ snapshot LWW merge: per-prop convergence, no history (6 asserts)');
   }
 
+  // ADR-0060: Alt+drag on a shape duplicates it (addMany commit, selection→copies,
+  // move-drag starts on the copies). Unselected hit duplicates just that shape;
+  // already-selected hit duplicates the whole selection.
+  {
+    state.shapes=[];_invalidateGrid();state.selection=new Set();state.history=[];state.histIdx=-1;
+    const R={id:'R',type:'rect',x:0,y:0,w:10,h:10,z:1,stroke:'#000',size:2,opacity:1};
+    Store.commit({op:'add',shape:R});
+    pickOrMarquee({x:5,y:5},{altKey:true,shiftKey:false});
+    assert.strictEqual(state.shapes.length,2,'alt-drag: copy added');
+    const ids=state.shapes.map(s=>s.id);
+    assert.strictEqual(ids[0],'R','original untouched');
+    const copyId=ids[1];
+    assert.strictEqual(state.selection.size===1&&state.selection.has(copyId),true,'selection moved to copy');
+    assert.strictEqual(ptr.dragKind,'move','move-drag armed on the copy');
+    assert.ok(ptr.dragStartShapes.has(copyId),'drag tracks the copy');
+    Store.undo();
+    assert.strictEqual(state.shapes.length,1,'single undo removes the duplicate');
+    console.log('  ✓ alt+drag duplicate: copy selected, move armed, atomic undo (5 asserts)');
+  }
+
   // ADR-0059: selecting a styled shape reflects its values in the panel —
   // uniform props adopted into state.style + controls; mixed props left alone.
   {
@@ -3163,6 +3207,155 @@ try {
     assert.strictEqual(state.style.fill,'#123456','multi: mixed fill left alone');
     assert.strictEqual(state.style.dash,1,'multi: uniform dash adopted');
     console.log('  ✓ style panel sync: uniform adopted, mixed left (8 asserts)');
+  }
+
+  // ADR-0061: diamond is a first-class box shape — draw, hit, undo, svg all work.
+  {
+    state.shapes=[];_invalidateGrid();state.selection=new Set();state.history=[];state.histIdx=-1;
+    const D={id:'D',type:'diamond',x:0,y:0,w:100,h:80,z:1,stroke:'#000',fill:'#fff',size:2,opacity:1,dash:0};
+    Store.commit({op:'add',shape:D});
+    const dl=byId('D');
+    assert.ok(G.bbox(dl).w===100&&G.bbox(dl).h===80,'diamond bbox');
+    assert.ok(G.hit(dl,{x:50,y:40}),'centre hit');
+    assert.ok(G.hit(dl,{x:2,y:40}),'near left vertex hit (fill)');
+    assert.ok(!G.hit(dl,{x:4,y:4}),'corner outside → miss');
+    dl.fill=null;
+    assert.ok(!G.hit(dl,{x:50,y:40}),'unfilled centre → miss');
+    assert.ok(G.hit(dl,{x:50,y:1}),'unfilled edge → hit');
+    const svg=buildSVG([dl],'#fff');
+    assert.ok(svg.includes('<polygon'),'svg polygon emitted');
+    Store.undo();assert.strictEqual(state.shapes.length,0,'undo removes diamond');
+    console.log('  ✓ diamond shape: draw/hit/svg/undo (8 asserts)');
+  }
+
+  // ADR-0062: elbow connectors — Manhattan route, hit segments, svg polyline, style-op toggle.
+  {
+    state.shapes=[];_invalidateGrid();state.selection=new Set();state.history=[];state.histIdx=-1;
+    const A=Shape.make('rect',{x:0,y:0,w:40,h:40,z:1});
+    const B=Shape.make('rect',{x:200,y:100,w:40,h:40,z:2});
+    Store.commit({op:'add',shape:A});Store.commit({op:'add',shape:B});
+    const Ar={id:'Ar',type:'arrow',x1:0,y1:0,x2:0,y2:0,z:3,stroke:'#000',size:2,opacity:1,dash:0,a:A.id,b:B.id};
+    Store.commit({op:'add',shape:Ar});
+    const ar=byId('Ar');
+    // straight by default; toggle via selection
+    state.selection=new Set([ar.id]);toggleElbow();
+    assert.ok(ar.elbow===1,'toggle on');
+    const pts=_elbowPts(ar);
+    assert.ok(pts.length>=4&&pts.length<=5,'manhattan points count');
+    // every segment axis-aligned
+    for(let i=1;i<pts.length;i++){const p=pts[i-1],q=pts[i];assert.ok(p.x===q.x||p.y===q.y,'axis-aligned segment '+i)}
+    // stubs exit along edge normals: first seg shares an axis with endpoint
+    assert.ok(pts[0].x===pts[1].x||pts[0].y===pts[1].y,'stub1 axis-aligned');
+    // hit on a middle segment, miss in the diagonal void
+    const midSeg={x:(pts[2].x+pts[3].x)/2,y:(pts[2].y+pts[3].y)/2};
+    assert.ok(G.hit(ar,midSeg),'elbow mid-seg hit');
+    assert.ok(!G.hit(ar,{x:(pts[0].x+pts[4].x)/2,y:(pts[0].y+pts[4].y)/2-3}),'diagonal void miss');
+    const svg=buildSVG([ar],'#fff');
+    assert.ok(svg.includes('<polyline'),'svg elbow polyline');
+    assert.ok(svg.includes('<polygon'),'svg arrowhead present');
+    toggleElbow();
+    assert.ok(!ar.elbow,'toggle off → straight');
+    assert.ok(G.hit(ar,{x:(connEnds(ar).x1+connEnds(ar).x2)/2,y:(connEnds(ar).y1+connEnds(ar).y2)/2}),'straight mid hit');
+    console.log('  ✓ elbow connector: manhattan route/hit/svg/toggle (9 asserts)');
+  }
+
+  // ADR-0063: start arrowhead — toggle draws head at both ends, straight + elbow.
+  {
+    state.shapes=[];_invalidateGrid();state.selection=new Set();state.history=[];state.histIdx=-1;
+    const A2={id:'A2',type:'arrow',x1:0,y1:0,x2:100,y2:0,z:1,stroke:'#000',size:2,opacity:1,dash:0};
+    Store.commit({op:'add',shape:A2});
+    const a2=byId('A2');
+    state.selection=new Set([a2.id]);toggleBothEnds();
+    assert.ok(a2.start===1,'start toggled on');
+    const svg=buildSVG([a2],'#fff');
+    assert.ok((svg.match(/<polygon/g)||[]).length===2,'two head polygons in svg');
+    Store.undo();
+    assert.ok(!a2.start,'undo removes start flag');
+    Store.redo();
+    assert.ok(a2.start===1,'redo restores start flag');
+    // elbow + start compose
+    a2.elbow=1;
+    const svg2=buildSVG([a2],'#fff');
+    assert.ok(svg2.includes('<polyline')&&(svg2.match(/<polygon/g)||[]).length===2,'elbow both-ends svg');
+    console.log('  ✓ bidirectional arrow: style-op toggle + svg heads (5 asserts)');
+  }
+
+  // ADR-0064: live readout — resize shows W×H, move shows snapped offset, cleared on gesture end.
+  {
+    state.shapes=[];_invalidateGrid();state.selection=new Set();state.history=[];state.histIdx=-1;state.readout=null;
+    const R={id:'R',type:'rect',x:0,y:0,w:50,h:30,z:1,stroke:'#000',size:2,opacity:1};
+    Store.commit({op:'add',shape:R});
+    const r=byId('R');
+    applyResize(r,'se',JSON.parse(JSON.stringify(r)),{x:80,y:60},false,false);
+    assert.ok(state.readout&&state.readout.label==='80 × 60','resize readout W×H');
+    assert.ok(state.readout.x===40&&state.readout.y===60,'anchor = bottom-centre');
+    // move: ptr.down path — dragStartShapes + moveDelta → offset label
+    ptr.wx0=0;ptr.wy0=0;ptr.dragStartShapes=new Map([[r.id,JSON.parse(JSON.stringify(r))]]);
+    state.snap=true;   // grid snap active → snapV rounds; use exact grid step
+    const d=moveDelta({x:40,y:20});   // GRID_SIZE=20 — already grid-aligned
+    assert.ok(d.dx===40&&d.dy===20,'moveDelta snapped');
+    assert.ok(state.readout&&state.readout.label==='+40, +20','move offset label');
+    moveDelta({x:0,y:0});
+    assert.ok(state.readout===null,'zero delta hides readout');
+    state.readout=null;ptr.dragStartShapes=null;
+    console.log('  ✓ gesture readout: resize W×H / move +dx,+dy / zero-hide (5 asserts)');
+  }
+
+  // ADR-0065: endpoint rebind — grab frees a bound end, drop rebinds/unbinds
+  {
+    const r=Shape.make('rect',{x:0,y:0,w:100,h:100,stroke:'#000',fill:'#fff'});
+    const r2=Shape.make('rect',{x:300,y:0,w:100,h:100,stroke:'#000',fill:'#fff'});
+    const a=Shape.make('arrow',{x1:10,y1:10,x2:200,y2:200,a:r.id});
+    Store.commit({op:'addMany',shapes:[r,r2,a]});
+    const live=byId(a.id),orig=JSON.parse(JSON.stringify(live));
+    applyResize(live,'p1',orig,{x:200,y:200},false,false);   // pull bound end to empty space
+    assert.ok(live.a===null&&live.x1===200&&live.y1===200,'bound end unbinds on grab');
+    assert.ok(state.bindPreview===null,'no preview over empty space');
+    live.x1=350;live.y1=50;_endPointBind(live,'p1');          // drop inside r2
+    assert.ok(live.a===r2.id,'drop on shape rebinds');
+    live.a=null;live.x1=500;live.y1=500;_endPointBind(live,'p1');
+    assert.ok(live.a===null,'drop on empty stays unbound');
+    live.b=r.id;live.x1=50;live.y1=50;_endPointBind(live,'p1'); // p1 inside r but b already binds r
+    assert.ok(live.a===null,'same-shape-as-other-end rejected');
+    Store.commit({op:'del',shapes:[byId(r.id),byId(r2.id),byId(a.id)].map(s=>JSON.parse(JSON.stringify(s)))});
+    console.log('  ✓ endpoint rebind: unbind-on-grab + rebind/unbind (5 asserts)');
+  }
+
+  // ADR-0066: Shift+drag constrains move to the dominant axis
+  {
+    const r=Shape.make('rect',{x:0,y:0,w:100,h:100,stroke:'#000',fill:'#fff'});
+    Store.commit({op:'add',shape:r});
+    const live=byId(r.id);
+    ptr.wx0=0;ptr.wy0=0;ptr.dragStartShapes=new Map([[r.id,JSON.parse(JSON.stringify(live))]]);
+    state.snap=true;
+    const h=moveDelta({x:40,y:20},true);   // dominant X
+    assert.ok(h.dx===40&&h.dy===0,'shift keeps dominant X');
+    const v=moveDelta({x:20,y:40},true);   // dominant Y
+    assert.ok(v.dx===0&&v.dy===40,'shift keeps dominant Y');
+    assert.ok(state.guides===null,'no object-snap guides while constrained');
+    const f=moveDelta({x:20,y:40},false);  // unconstrained sanity
+    assert.ok(f.dx===20&&f.dy===40,'no shift → free move');
+    Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(live))]});
+    ptr.dragStartShapes=null;
+    console.log('  ✓ shift axis move: dominant-axis zero + free fallback (4 asserts)');
+  }
+
+  // ADR-0067: bound connector endpoint lands on the true contour
+  {
+    const d=Shape.make('diamond',{x:0,y:0,w:100,h:100,stroke:'#000',fill:'#fff'});
+    const e=Shape.make('ellipse',{x:300,y:0,w:100,h:100,stroke:'#000',fill:'#fff'});
+    const a1=Shape.make('arrow',{x1:0,y1:0,x2:200,y2:50,a:d.id});
+    const a2=Shape.make('arrow',{x1:0,y1:0,x2:200,y2:50,a:e.id});
+    Store.commit({op:'addMany',shapes:[d,e,a1,a2]});
+    // endpoint toward (200,50) from centre (50,50): direction (150,0) → diamond hits (50,50)+(1,0)*50=(100,50)
+    const p1=connEnds(byId(a1.id));
+    const u=Math.abs(p1.x1-50)/50,v=Math.abs(p1.y1-50)/50;
+    assert.ok(Math.abs(u+v-1)<0.01,'arrow lands on diamond contour |dx|/rx+|dy|/ry≈1');
+    const p2=connEnds(byId(a2.id));
+    const m=Math.hypot((p2.x1-350)/50,(p2.y1-50)/50);
+    assert.ok(Math.abs(m-1)<0.01,'arrow lands on ellipse contour');
+    Store.commit({op:'del',shapes:[d,e,a1,a2].map(s=>JSON.parse(JSON.stringify(s)))});
+    console.log('  ✓ edge projection: diamond/ellipse true contour (2 asserts)');
   }
 
   // validPatch recurses: nested poison in a remote `upd` (gated by validPatch alone)
@@ -8708,7 +8901,7 @@ try {
     assert.ok(sh.length===8,'mapped element count');
     assert.ok(sh[0].type==='rect'&&sh[0].stroke==='#f00'&&sh[0].fill==='#fee'&&sh[0].size===3&&Math.abs(sh[0].opacity-0.8)<1e-9&&sh[0].dash===1,'style mapping');
     assert.ok(sh[1].type==='ellipse'&&Math.abs(sh[1].rotate-45)<0.11,'angle → rotate');
-    assert.ok(sh[2].type==='pen'&&sh[2].pts.length===5,'diamond → closed polygon pen');
+    assert.ok(sh[2].type==='diamond'&&sh[2].w===20&&sh[2].h===20,'diamond → real type (ADR-0061)');
     assert.ok(sh[3].type==='arrow'&&sh[3].x2===35&&sh[3].y2===45,'relative points absolutised');
     assert.ok(sh[4].type==='pen'&&sh[4].pts.length===3,'3-point line → pen');
     assert.ok(sh[5].type==='pen','freedraw → pen');
