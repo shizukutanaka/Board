@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.459] - 2026-09-23
+
+### Fixed
+- del op・全形状置換時に `_penCache`/`_penBboxCache` の per-shape エントリをパージ — 削除ペンの bitmap が px キャップまで滞留するリークを解消
+
 ## [1.7.458] - 2026-09-23
 
 ### Internal

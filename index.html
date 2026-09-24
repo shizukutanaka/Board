@@ -849,7 +849,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.458';
+const V='1.7.459';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1624,6 +1624,8 @@ const Store={
             if(i>=0)_sh().splice(i,1);
             _sdl(sh.id);
             delete _wc()[sh.id];        // drop per-property write clocks
+            _penBboxCache.delete(sh.id);                  // ADR-0424
+            const _pe=_penCache.get(sh.id);if(_pe){_penCache.delete(sh.id);_penCachePx-=_pe.px||0;}   // ADR-0424
           }
           // Apply connector binding clears after shapes are gone (connectors still live)
           if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_oa(sh,p.after);}}
@@ -2003,6 +2005,10 @@ const STICKY_COLORS=[_YW,'#FBCFE8','#BBF7D0','#BFDBFE','#DDD6FE','#FED7AA'];
 // the first settled frame after the drag ends.
 const _penCache=_mP(),PEN_CACHE_MAX_PX=12e6,PEN_CACHE_MAX_DIM=4096;
 let _penCachePx=0;
+// ADR-0424: per-shape caches keyed by shape id die with the shape — purge on
+// wholesale `state.shapes=` replacement (clones miss the pts-identity signature
+// anyway, so old entries would sit until the global caps evict them).
+const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear()}
 // Effective raster resolution: zoom-adaptive (supersampled at low zoom is just
 // wasted pixels), clamped 0.25..2 so extreme zoom-outs still rasterize tiny.
 function _penRes(){return _min(2,_max(0.25,_vp().zoom*DPR))}
@@ -7219,7 +7225,7 @@ function importBoard(file){
       const beforeWc=clone(_wc());
       const origSel=_selIds();
       if(before.length)Persist.saveBackup(before,{..._vp()},_dn());   // ADR-0004
-      state.shapes=shapes.map(clone);_iG();   // ADR-0009
+      state.shapes=shapes.map(clone);_iG();_pcC();   // ADR-0009
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out. Skipping this leaks wclock entries and
       // can let a re-imported shape (same id) inherit a stale LWW clock.
@@ -7881,7 +7887,7 @@ const Net={
     const shapes=msg.shapes;
     if(!_iA(shapes))return;
     const valid=shapes.slice(0,MAX_OP_SHAPES).map(s=>this._attachShape(s)).filter(validShape);
-    state.shapes=clone(valid);_iG();   // ADR-0009
+    state.shapes=clone(valid);_iG();_pcC();   // ADR-0009
     _sz();
     if(typeof msg.name==='string')_setDocName(msg.name.slice(0,80));   // ADR-0402
     _iv();_ru();_ps();
@@ -8135,7 +8141,7 @@ const Share={
       const origSel=_selIds();
       // ADR-0004: also survives past the undo window (reload/closed-tab), not just this session.
       if(before.length)Persist.saveBackup(before,{..._vp()},_dn());
-      state.shapes=valid.map(clone);_iG();_setDocName(((typeof data.name==='string'&&data.name)||'Shared').slice(0,80));   // ADR-0009
+      state.shapes=valid.map(clone);_iG();_pcC();_setDocName(((typeof data.name==='string'&&data.name)||'Shared').slice(0,80));   // ADR-0009
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out (see importBoard for rationale).
       if(data.viewport&&_fin(+data.viewport.x)&&_fin(+data.viewport.y)&&_fin(+data.viewport.zoom)&&data.viewport.zoom>0){
@@ -8275,7 +8281,7 @@ const Persist={
       }
       // Validate like the other intake paths (importFromHash / snapshot): never
       // adopt malformed shapes from IDB (corruption / forward-incompat schema).
-      state.shapes=shapes.filter(validShape);_iG();   // ADR-0009
+      state.shapes=shapes.filter(validShape);_iG();_pcC();   // ADR-0009
       if(d.viewport&&_fin(+d.viewport.x)&&_fin(+d.viewport.y)&&_fin(+d.viewport.zoom)&&d.viewport.zoom>0){
         // Clamp zoom to the app invariant [MIN_ZOOM,MAX_ZOOM] that every compute path
         // (wheel/fit) maintains — a corrupt or forward-incompat IDB record with an
@@ -8345,7 +8351,7 @@ const Persist={
       const before=clone(_sh());
       const beforeWc=clone(_wc());
       const origSel=_selIds();
-      state.shapes=shapes.map(clone);_iG();   // ADR-0009
+      state.shapes=shapes.map(clone);_iG();_pcC();   // ADR-0009
       _scl();state.wclock={};
       if(typeof d.docName==='string'&&d.docName)_setDocName(d.docName.slice(0,80));   // clamp: the input enforces maxlength=80, intake paths must too
       if(d.viewport&&_fin(+d.viewport.x)&&_fin(+d.viewport.y)&&_fin(+d.viewport.zoom)&&d.viewport.zoom>0){
