@@ -2,6 +2,45 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.321] - 2026-09-24
+
+### Fixed
+- .drawio: edge の rounded=1 が import されずエルボー角丸が往復で
+  失われていたのを修正 (ADR-0269)
+
+## [1.7.320] - 2026-09-24
+
+### Added
+- .excalidraw: freedraw pressures → p[2] 復元、fillStyle zigzag → hatch
+  近似マップ (ADR-0268)
+
+## [1.7.319] - 2026-09-24
+
+### Added
+- .excalidraw: strokeSharpness (現行 spec) ↔ s.r 往復 (ADR-0267)
+
+## [1.7.318] - 2026-09-24
+
+### Added
+- .excalidraw: コネクタラベル ↔ s.label 往復 (矢印/線の bound text、
+  `_ct` に ov オーバーライド追加、ADR-0266)
+
+## [1.7.317] - 2026-09-24
+
+### Added
+- .excalidraw: elbowed ↔ s.elbow 往復 (arrow/line、ADR-0265)
+
+## [1.7.316] - 2026-09-24
+
+### Added
+- .drawio: edge の mxGeometry@x (−1..1 相対座標) ↔ s.labelPos を往復
+  (ADR-0264)
+
+## [1.7.315] - 2026-09-24
+
+### Changed
+- drawio export の共通 style キー出力を `_dioStyEmit` に集約 (ADR-0263)
+
 ## [1.7.314] - 2026-09-24
 
 ### Fixed

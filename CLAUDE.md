@@ -312,6 +312,13 @@ Board/
 │   ├── ADR-0260-drawio-flip.md  # drawio flipH/flipV ↔ s.flip (実装済)
 │   ├── ADR-0261-drawio-rotation.md  # drawio rotation= ↔ s.rotate (実装済)
 │   ├── ADR-0262-drawio-edge-opacity.md  # drawio edge opacity export 対称化 (実装済)
+│   ├── ADR-0263-dio-sty-emit.md  # drawio 共通 sty 出力の _dioStyEmit 集約 (実装済)
+│   ├── ADR-0264-drawio-edge-labelpos.md  # drawio edge mxGeometry@x ↔ s.labelPos (実装済)
+│   ├── ADR-0265-exc-elbowed.md  # excalidraw elbowed ↔ s.elbow (実装済)
+│   ├── ADR-0266-exc-conn-label.md  # excalidraw conn ラベル ↔ s.label (実装済)
+│   ├── ADR-0267-exc-strokesharpness.md  # excalidraw strokeSharpness ↔ s.r (実装済)
+│   ├── ADR-0268-exc-fidelity-tail.md  # excalidraw pressures/zigzag 受容 (実装済)
+│   ├── ADR-0269-drawio-edge-rounded.md  # drawio edge rounded=1 → s.r (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
