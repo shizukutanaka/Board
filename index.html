@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.161';
+const V='1.7.169';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -860,8 +860,8 @@ const I18N={
     undone:'元に戻した',redone:'やり直した',created:'作成',editLabel:'選択中の図形を編集',
     confirmClear:'すべて削除しますか？',
     ctxCopy:'コピー',ctxPasteAt:'ここに貼り付け',ctxPaste:'貼り付け',ctxDuplicate:'複製',
-    ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxCurve:'曲線',ctxRouteReset:'ルートをリセット (直線に戻す)',ctxFrameFit:'コンテンツに合わせる',ctxBothEnds:'両端ヘッド',ctxRrect:'角スタイル (角丸→直角)',ctxStickyColor:'付箋の色 (順送り)',ctxTextAlign:'テキスト揃え (左→中央→右)',ctxFillStyle:'塗りスタイル (塗り→ハッチ→斜格子)',
-    ctxWrapFrame:'フレームで包む',ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
+    ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxCurve:'曲線',ctxRouteReset:'ルートをリセット (直線に戻す)',ctxSelContents:'内容を選択',ctxFrameFit:'コンテンツに合わせる',ctxToArrow:'矢印に変換',ctxToLine:'直線に変換',ctxBothEnds:'両端ヘッド',ctxRrect:'角スタイル (角丸→直角)',ctxStickyColor:'付箋の色 (順送り)',ctxToText:'テキストに変換',ctxToSticky:'付箋に変換',ctxTextAlign:'テキスト揃え (左→中央→右)',ctxFillStyle:'塗りスタイル (塗り→ハッチ→斜格子)',
+    ctxSelectSame:'同色を選択',ctxWrapFrame:'フレームで包む',ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
     ctxSendBackward:'背面へ',ctxSendBack:'最背面へ',
     ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxLock:'ロック',ctxUnlock:'ロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
     canvasHint:'描画キャンバス。Tab/⇧Tab で図形巡回、Enter で作成、矢印で移動、⌥+矢印でリサイズ',
@@ -874,7 +874,7 @@ const I18N={
     zoomCtl:'ズーム操作',zoomLevel:'ズーム率(クリックでリセット)',zoomResetT:'ズームをリセット',
     close:'閉じる',shareUrlLabel:'共有URL',minimapNav:'ミニマップ — クリックで移動',
     ctxAlignLeft:'左揃え',ctxAlignCX:'左右中央',ctxAlignRight:'右揃え',ctxMatchW:'幅を揃える',ctxMatchH:'高さを揃える',ctxMatchWH:'幅と高さを揃える',
-    ctxAlignTop:'上揃え',ctxAlignCY:'上下中央',ctxAlignBottom:'下揃え',
+    ctxAlignTop:'上揃え',ctxAlignCY:'上下中央',ctxAlignBottom:'下揃え',ctxSwap:'位置を入れ替え',ctxTidy:'グリッドに整列',
     ctxHSpace:'水平均等配置',ctxVSpace:'垂直均等配置',
     ctxSelectAll:'すべて選択',ctxClear:'全消去',
     ctxExportPNG:'PNG書き出し',ctxCopyPNG:'PNGをクリップボードにコピー',ctxExportSVG:'SVG書き出し',ctxExportPDF:'PDF書き出し',ctxExportExc:'Excalidraw (.excalidraw) 書き出し',ctxExportBoard:'.boardファイル書き出し',ctxImportBoard:'.boardファイル読み込み...',
@@ -936,8 +936,8 @@ const I18N={
     undone:'Undone',redone:'Redone',created:'Created',editLabel:'Edit selected shape',
     confirmClear:'Delete everything?',
     ctxCopy:'Copy',ctxPasteAt:'Paste here',ctxPaste:'Paste',ctxDuplicate:'Duplicate',
-    ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxCurve:'Curved',ctxRouteReset:'Reset route (straighten)',ctxFrameFit:'Fit to contents',ctxBothEnds:'Arrowheads both ends',ctxRrect:'Corners (round→sharp)',ctxStickyColor:'Sticky colour (cycle)',ctxTextAlign:'Text align (left→center→right)',ctxFillStyle:'Fill style (solid→hatch→cross)',
-    ctxWrapFrame:'Frame selection',ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
+    ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxCurve:'Curved',ctxRouteReset:'Reset route (straighten)',ctxSelContents:'Select contents',ctxFrameFit:'Fit to contents',ctxToArrow:'Convert to arrow',ctxToLine:'Convert to line',ctxBothEnds:'Arrowheads both ends',ctxRrect:'Corners (round→sharp)',ctxStickyColor:'Sticky colour (cycle)',ctxToText:'Convert to text',ctxToSticky:'Convert to sticky',ctxTextAlign:'Text align (left→center→right)',ctxFillStyle:'Fill style (solid→hatch→cross)',
+    ctxSelectSame:'Select same colour',ctxWrapFrame:'Frame selection',ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
     ctxSendBackward:'Send backward',ctxSendBack:'Send to back',
     ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxLock:'Lock',ctxUnlock:'Unlock',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
     canvasHint:'Drawing canvas. Tab/Shift+Tab cycles shapes, Enter creates, arrows move, Alt+arrows resize.',
@@ -950,7 +950,7 @@ const I18N={
     zoomCtl:'Zoom controls',zoomLevel:'Zoom level, click to reset',zoomResetT:'Reset zoom',
     close:'Close',shareUrlLabel:'Share URL',minimapNav:'Minimap — click to navigate',
     ctxAlignLeft:'Align left',ctxAlignCX:'Center horizontal',ctxAlignRight:'Align right',ctxMatchW:'Match width',ctxMatchH:'Match height',ctxMatchWH:'Match size',
-    ctxAlignTop:'Align top',ctxAlignCY:'Center vertical',ctxAlignBottom:'Align bottom',
+    ctxAlignTop:'Align top',ctxAlignCY:'Center vertical',ctxAlignBottom:'Align bottom',ctxSwap:'Swap positions',ctxTidy:'Tidy up (grid)',
     ctxHSpace:'Distribute horizontal',ctxVSpace:'Distribute vertical',
     ctxSelectAll:'Select all',ctxClear:'Clear all',
     ctxExportPNG:'Export PNG',ctxCopyPNG:'Copy PNG to clipboard',ctxExportSVG:'Export SVG',ctxExportPDF:'Export PDF',ctxExportExc:'Export .excalidraw',ctxExportBoard:'Export .board file',ctxImportBoard:'Import .board file...',
@@ -1250,7 +1250,7 @@ function validRemotePayload(op){
     case 'resize':{const noLock=p=>!('locked' in p);
       return patches(op.after)&&op.after.every(noLock)
           &&patches(op.before)&&op.before.every(noLock);}
-    case 'align':{const DIRS=new Set(['left','right','cx','top','bottom','cy','hspace','vspace','flip','rotate','lock','gresize','grot','matchw','matchh','matchwh','framefit']);
+    case 'align':{const DIRS=new Set(['left','right','cx','top','bottom','cy','hspace','vspace','tidy','swap','flip','rotate','lock','gresize','grot','matchw','matchh','matchwh','framefit']);
       if(typeof op.dir!=='string'||!DIRS.has(op.dir))return false;
       const noLock=p=>op.dir==='lock'||!('locked' in p);
       return patches(op.after)&&op.after.every(noLock)
@@ -3937,6 +3937,17 @@ function fitToContent(){
   const z=_fitViewport(b,40,2);
   UI.announce(Math.round(z*100)+'%');
 }
+// ADR-0106: boot guard against "lost content" — a persisted/imported viewport
+// that contains zero shapes looks like an empty board and reads as data loss.
+// Only fires when shapes exist AND none are visible; an intentionally panned
+// empty view is left alone.
+function _fitIfEmptyView(){
+  if(!state.shapes.length)return;
+  const v=state.viewport,r=canvas.getBoundingClientRect();
+  const b=G.bboxAll(state.shapes);if(!b)return;
+  const vw=r.width/v.zoom,vh=r.height/v.zoom;
+  if(b.x+b.w<v.x||b.y+b.h<v.y||b.x>v.x+vw||b.y>v.y+vh)fitToContent();
+}
 // ⇧2: zoom to the selection's bbox (Excalidraw parity). Cap 4 — tighter than
 // fit-all's 2 so a small selection actually enlarges, short of the 16x extreme.
 function zoomToSelection(){
@@ -4479,6 +4490,19 @@ function beginText(wp){
   openTextEditor(s,true);
   pickTool('select');
 }
+// ADR-0105: ⌘Enter inside a sticky's editor chains the next note — commit
+// happens on blur, then a same-styled sticky spawns to the right and its
+// editor opens (rapid note-taking like Post-it®/FigJam).
+function _stickyChain(s){
+  if(s.type!=='sticky'||s.locked)return;
+  const n=Shape.make('sticky',{x:s.x+s.w+16,y:s.y,w:s.w,h:s.h,color:s.color,fontSize:s.fontSize,align:s.align});
+  const origSel=[...state.selection];
+  Store.commit({op:'add',shape:n});
+  if(origSel.length)state.history[state.histIdx].origSel=origSel;
+  state.selection=new Set([n.id]);
+  openTextEditor(n,true);
+  invalidate();
+}
 // ---- keyboard shape creation (a11y) ----
 // Create a default-sized shape of the active tool, centred in the viewport, so the
 // whole create→select→edit loop is reachable without a pointer (complements the
@@ -4618,7 +4642,7 @@ function openTextEditor(s,isNew){
   ta.addEventListener('keydown',ev=>{
     if(ev.isComposing)return;
     if(ev.key==='Escape'){ev.preventDefault();ta.blur()}
-    if(ev.key==='Enter'&&(ev.metaKey||ev.ctrlKey)){ev.preventDefault();ta.blur()}
+    if(ev.key==='Enter'&&(ev.metaKey||ev.ctrlKey)){ev.preventDefault();ta.blur();_stickyChain(s)}   // ADR-0105
   });
   auto();
   _teTa=ta;_teVp='';   // ADR-0053: track the live overlay for viewport follow
@@ -5041,6 +5065,19 @@ function doSendBackward(){
   }
   _zCommit(changes);
 }
+// ADR-0104: select every shape sharing the picked shape's paint (Figma
+// "Select Same → Fill"). Sticky's paint lives in `color`; everything else in
+// `fill`. Locked shapes are included — ops already skip them.
+function selectSamePaint(){
+  const sel=[...state.selection].map(byId).filter(Boolean);
+  if(sel.length!==1)return;
+  const s0=sel[0],key=s0.type==='sticky'?s0.color:s0.fill;
+  const same=state.shapes.filter(s=>(s.type==='sticky'?s.color:s.fill)===key);
+  if(same.length<2)return;
+  state.selection=new Set(same.map(s=>s.id));
+  _announceSel();UI.toast(same.length+' '+t('selAllMatches'),'ok');
+  invalidate();
+}
 // ADR-0102: wrap the selection in a frame (Figma ⌘⌥G). Spatial membership is
 // automatic — the frame simply covers the union bbox + padding; z is tucked
 // just below the lowest member so contents stay on top.
@@ -5138,6 +5175,31 @@ function doAlign(dir){
       const totalH=units.reduce((s,{b})=>s+b.h,0);
       const gap2=(Math.max(...units.map(({b})=>b.y+b.h))-Math.min(...units.map(({b})=>b.y))-totalH)/(units.length-1);
       let y0=units[0].b.y;for(const u of units){mv(u,0,y0-u.b.y);y0+=u.b.h+gap2}break}
+    // ADR-0107: reflow units into a compact grid (Figma «Tidy up»).
+    // Reading order (y then x), cols=ceil(sqrt(n)); each row's pitch is that
+    // row's max height + 32 gap, each column's pitch is the widest member.
+    case 'tidy':{
+      units.sort((a,b)=>(a.b.y-b.b.y)||(a.b.x-b.b.x));
+      const GAP=32,cols=Math.ceil(Math.sqrt(units.length));
+      const rows=[];for(let i=0;i<units.length;i+=cols)rows.push(units.slice(i,i+cols));
+      const colW=[],rowH=[];
+      for(const r of rows)for(let j=0;j<r.length;j++){colW[j]=Math.max(colW[j]||0,r[j].b.w)}
+      for(const r of rows)rowH.push(Math.max(...r.map(u=>u.b.h)));
+      const x0=Math.min(...units.map(u=>u.b.x)),y0=Math.min(...units.map(u=>u.b.y));
+      let yy=y0;
+      for(let ri=0;ri<rows.length;ri++){
+        let xx=x0;
+        for(const u of rows[ri]){mv(u,xx-u.b.x,yy-u.b.y);xx+=colW[rows[ri].indexOf(u)]+GAP}
+        yy+=rowH[ri]+GAP;
+      }
+      break}
+    // ADR-0108: two units swap positions (centre-aligned, sizes unchanged).
+    case 'swap':{
+      if(units.length!==2)break;
+      const [a,b]=units;
+      const ddx=(b.b.x+b.b.w/2)-(a.b.x+a.b.w/2),ddy=(b.b.y+b.b.h/2)-(a.b.y+a.b.h/2);
+      mv(a,ddx,ddy);mv(b,-ddx,-ddy);
+      break}
   }
   const afterSnap=sel.map(s=>clone(s));
   const origSel=[...state.selection];
@@ -6888,14 +6950,18 @@ const UI={
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked})&&['ctxCurve','',toggleCurve],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked&&(_wayArr(s).length||s.bend||s.elbow||s.curve)})&&['ctxRouteReset','',resetRoute],   // ADR-0090
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='frame'&&!s.locked})&&['ctxFrameFit','',fitFrames],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='frame'&&!s.locked})&&['ctxSelContents','',selectFrameContents],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky')&&!s.locked})&&['ctxTextAlign','',cycleTextAlign],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky')&&!s.locked})&&[[...state.selection].some(id=>byId(id)?.type==='sticky'&&!byId(id)?.locked)?'ctxToText':'ctxToSticky','',toggleStickyText],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='sticky'&&!s.locked})&&['ctxStickyColor','',cycleStickyColor],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond')&&!s.locked})&&['ctxFillStyle','',cycleFillStyle],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='arrow'&&!s.locked})&&['ctxBothEnds','',toggleBothEnds],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked})&&[[...state.selection].some(id=>byId(id)?.type==='line'&&!byId(id)?.locked)?'ctxToArrow':'ctxToLine','',toggleLineArrow],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='rect'&&!s.locked})&&['ctxRrect','',toggleRound],
       has&&['ctxDelete','⌫',doDelete],
       has&&'sep',
       has&&['ctxWrapFrame','⌘⌥G',wrapInFrame],
+      has&&state.selection.size===1&&['ctxSelectSame','',selectSamePaint],
       has&&state.selection.size>1&&['ctxGroup','⌘G',doGroup],
       has&&[...state.selection].some(id=>byId(id)?.groupId)&&['ctxUngroup','⌘⇧G',doUngroup],
       has&&'sep',
@@ -6918,6 +6984,8 @@ const UI={
       has&&state.selection.size>1&&['ctxAlignBottom','',()=>doAlign('bottom')],
       has&&state.selection.size>1&&['ctxHSpace','',()=>doAlign('hspace')],
       has&&state.selection.size>1&&['ctxVSpace','',()=>doAlign('vspace')],
+      has&&state.selection.size>2&&['ctxTidy','',()=>doAlign('tidy')],
+      has&&state.selection.size===2&&['ctxSwap','',()=>doAlign('swap')],
       has&&state.selection.size>1&&['ctxMatchW','',()=>doMatchSize('w')],       // ADR-0079
       has&&state.selection.size>1&&['ctxMatchH','',()=>doMatchSize('h')],
       has&&state.selection.size>1&&['ctxMatchWH','',()=>doMatchSize('wh')],
@@ -7377,6 +7445,46 @@ function toggleElbow(){
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
 }
+// ADR-0111: select a frame's contents (ctx). Reuses withFrameChildren's
+// spatial containment — the same rule drags/nudge/z-order already use, so
+// "what moves with the frame" is exactly what gets selected. Frame itself
+// drops out of the selection so follow-up ops act on the contents.
+function selectFrameContents(){
+  const frames=[...state.selection].map(byId).filter(s=>s&&s.type==='frame');
+  if(!frames.length)return;
+  const inner=withFrameChildren(new Set(frames.map(f=>f.id)));
+  for(const f of frames)inner.delete(f.id);
+  if(!inner.size){UI.toast(t('selectTwo'),'warn');return}
+  state.selection=inner;
+  _announceSel();UI.toast(inner.size+' '+t('selAllMatches'),'ok');
+  invalidate();
+}
+// ADR-0110: sticky ↔ text conversion (ctx). Same type-patch trick as
+// ADR-0109 — text/align/fontSize/w/h carry over; sticky's `color` simply
+// becomes unused on text (text ink = stroke), text's `stroke` unused on
+// sticky (border is fixed). Undo restores the original type wholesale.
+function toggleStickyText(){
+  const before=[],after=[];
+  for(const id of state.selection){
+    const s=byId(id);if(!s||(s.type!=='sticky'&&s.type!=='text')||s.locked)continue;
+    before.push({id,type:s.type});after.push({id,type:s.type==='sticky'?'text':'sticky'});
+    s.type=s.type==='sticky'?'text':'sticky';
+  }
+  if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
+}
+// ADR-0109: line ↔ arrow type conversion (ctx). Bindings/way/label/route
+// (elbow/curve) all live on the shape, so a type patch preserves everything —
+// only head rendering changes. Type rides the existing style op so undo +
+// LWW + remote sync need no new plumbing.
+function toggleLineArrow(){
+  const before=[],after=[];
+  for(const id of state.selection){
+    const s=byId(id);if(!s||(s.type!=='line'&&s.type!=='arrow')||s.locked)continue;
+    before.push({id,type:s.type});after.push({id,type:s.type==='line'?'arrow':'line'});
+    s.type=s.type==='line'?'arrow':'line';
+  }
+  if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
+}
 // ADR-0068: curved (quadratic) route toggle — exclusive with elbow.
 function toggleCurve(){
   const before=[],after=[];
@@ -7771,7 +7879,7 @@ const Minimap=(()=>{
   try{Share.inviteFromHash()}catch(_){}   // ADR-0045
   // v1.1: start BroadcastChannel sync for same-browser tab sync
   Net.init();
-  UI.refreshPeers();
+  _fitIfEmptyView();   // ADR-0106: restored view shows nothing → fit content
   _rafId=requestAnimationFrame(frame);
 })();
 

@@ -2,6 +2,63 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.169]
+
+### 追加
+- **フレームの内容を選択** (ADR-0111)。frame 選択時の ctx
+  「内容を選択」で `withFrameChildren` の包含判定 (ドラッグ/
+  nudge と同一ルール) に一致する内包形状だけを選択に置換。
+  フレーム自身は外れるため後続 op が内容へ効く。
+
+## [1.7.168]
+
+### 追加
+- **付箋↔テキスト変換** (ADR-0110)。ctx メニューで `s.type` を
+  sticky↔text に反転 (text/align/fontSize/装飾全保持、色属性も
+  残るため往復変換はロスレス、style op で undo・同期対応)。
+
+## [1.7.167]
+
+### 追加
+- **直線↔矢印の型変換** (ADR-0109)。ctx メニューで `s.type` を
+  line↔arrow に反転 (bindings/way/label/route 全保持、style op
+  で undo・共有同期対応、ラベル動的切替)。
+
+## [1.7.166]
+
+### 追加
+- **位置を入れ替え** (ADR-0108)。選択2の ctx「位置を入れ替え」で
+  両 unit を相手の bbox 中心へ平行移動する `align` op
+  (Figma Swap positions parity)。
+
+## [1.7.165]
+
+### 追加
+- **グリッドに整列 (Tidy up)** (ADR-0107)。ctx メニューで選択群を
+  読み順の近方形グリッドにリフロー — 列ピッチ=列最大幅・行ピッチ
+  =行最大高+32px、frame/group を1単位として扱う `align` op。
+
+## [1.7.164]
+
+### 追加
+- **起動時の空ビュー自動フィット** (ADR-0106)。復元された viewport
+  に形状が1つも見えていない (= 空白ボード＝消失誤認) 場合のみ
+  `fitToContent()` で案内。永続ビューの復元は従来通り優先。
+
+## [1.7.163]
+
+### 追加
+- **付箋 ⌘Enter 連鎖** (ADR-0105)。付箋の編集中に ⌘Enter で確定後、
+  同スタイルの付箋を右隣に生成して即編集継続 (FigJam 式の連続
+  ノート入力。text 形状は従来通り確定のみ)。
+
+## [1.7.162]
+
+### 追加
+- **同色を選択** (ADR-0104)。単一選択時の ctx メニュー「同色を選択」で
+  同じ paint (sticky=color、その他=fill) を持つ全形状を選択
+  (Figma Select Same parity、ロック含む、件数トースト)。
+
 ## [1.7.161]
 
 ### 追加
