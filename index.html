@@ -788,7 +788,7 @@ const _selR=op=>{if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byI
 const _keepSel=arr=>{if(arr.length)state.history[state.histIdx].origSel=arr};   // ADR-0312
 
 // ====================== CONSTANTS ======================
-const V='1.7.370';
+const V='1.7.373';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6392,6 +6392,9 @@ function _dioStyApply(s,sty,hid){
   if(+sty.letterSpacing)s.spacing=Math.min(40,+sty.letterSpacing);   // ADR-0284
   if(sty.flipH==='1')s.flip=(s.flip||0)|1;                  // ADR-0260
   if(sty.flipV==='1')s.flip=(s.flip||0)|2;
+  if(/^(left|center|right)$/.test(sty.labelPosition))s.align=sty.labelPosition;   // ADR-0320
+  if(/^(top|middle|bottom)$/.test(sty.verticalLabelPosition))s.valign=sty.verticalLabelPosition;   // ADR-0320
+  if(sty.whiteSpace==='nowrap'&&s.type==='text')s.wrap=0;              // ADR-0321
   if(hid)s.visible=0;                                       // ADR-0245
 }
 // ADR-0263: style keys identical on vertex and edge export — one site.
@@ -6589,14 +6592,14 @@ function boardToDrawio(shapes){
     const t=s.type;
     if(t==='line'||t==='arrow'||t==='pen')continue;
     const id='b'+(i++);idOf.set(s.id,id);
-    let sty;
-    if(t==='ellipse')sty='ellipse;';
-    else if(t==='diamond')sty='rhombus;';
-    else if(t==='text')sty='text;';
-    else if(t==='sticky')sty='shape=note;';
-    else if(t==='frame')sty='swimlane;';
-    else if(t==='image'&&s.dataUrl)sty='shape=image;';
-    else sty='rounded='+(s.r>0?1:0)+';';
+    let sty='html=1;';                                                   // ADR-0322
+    if(t==='ellipse')sty+='ellipse;';
+    else if(t==='diamond')sty+='rhombus;';
+    else if(t==='text')sty+='text;';
+    else if(t==='sticky')sty+='shape=note;';
+    else if(t==='frame')sty+='swimlane;';
+    else if(t==='image'&&s.dataUrl)sty+='shape=image;';
+    else sty+='rounded='+(s.r>0?1:0)+';';
     if(s.fill==='none')sty+='fillColor=none;';                            // ADR-0290
     else if(s.fill)sty+='fillColor='+s.fill+';';
     if(t==='sticky'&&!s.fill)sty+='fillColor='+(s.color||'#FEF08A')+';';                 // ADR-0279
@@ -6605,6 +6608,9 @@ function boardToDrawio(shapes){
     sty+=_dioStyEmit(s);                                                   // ADR-0263
     if(s.fontSize)sty+='fontSize='+s.fontSize+';';
     if(s.align==='center'||s.align==='right')sty+='align='+s.align+';';   // ADR-0228
+    if(s.align)sty+='labelPosition='+s.align+';';                          // ADR-0320
+    if(s.valign)sty+='verticalLabelPosition='+s.valign+';';                // ADR-0320
+    if(t==='text'&&s.wrap===0)sty+='whiteSpace=nowrap;';                     // ADR-0321
     if(s.valign)sty+='verticalAlign='+s.valign+';';                          // ADR-0238
     if(s.font)sty+='fontFamily='+(s.font==='mono'?'Courier New':'Georgia')+';';   // ADR-0253
     if(s.rotate)sty+='rotation='+Math.round(s.rotate)+';';              // ADR-0261
@@ -6616,7 +6622,7 @@ function boardToDrawio(shapes){
     const t=s.type;
     if((t!=='line'&&t!=='arrow'))continue;
     const id='e'+(i++);
-    let sty=s.start?'startArrow='+(s.startHead==='dot'?'oval':s.startHead==='open'?'open':s.startHead==='bar'?'dash':'classic')+';':'';   // ADR-0286/0294
+    let sty='html=1;'+(s.start?'startArrow='+(s.startHead==='dot'?'oval':s.startHead==='open'?'open':s.startHead==='bar'?'dash':'classic')+';':'');   // ADR-0286/0294/0322
     sty+=t==='line'||s.head==='none'?'endArrow=none;':s.head==='dot'?'endArrow=oval;':s.head==='open'?'endArrow=open;':s.head==='bar'?'endArrow=dash;':'';   // ADR-0256/0294
     if(s.elbow)sty+='edgeStyle=orthogonalEdgeStyle;';
     if(s.curve)sty+='curved=1;';
