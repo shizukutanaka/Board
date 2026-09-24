@@ -793,7 +793,7 @@ const _selN=()=>state.selection.size;   // ADR-0334
 const _fin=Number.isFinite;   // ADR-0334
 
 // ====================== CONSTANTS ======================
-const V='1.7.385';
+const V='1.7.386';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -8895,7 +8895,7 @@ function cycleArrowHead(){
   const next=HEAD_STYLES[(HEAD_STYLES.indexOf(cur)+1)%HEAD_STYLES.length];
   state.style.head=next;                            // ADR-0181
   _cOp({op:'style',before:sel.map(s=>({id:s.id,head:s.head??null})),after:sel.map(s=>({id:s.id,head:next}))});
-  invalidate();UI.toast(t('styleApplied'),'ok');
+  invalidate();UI.toast(t('stylePasted'),'ok');
 }
 // ADR-0291: start-end head cycle (ctx) — none → arrow → dot → open.
 // s.start toggles presence, s.startHead carries the style (null = inherit s.head).
@@ -8908,7 +8908,7 @@ function cycleStartHead(){
   state.style.start=next==='none'?0:1;                         // ADR-0293
   _cOp({op:'style',before:sel.map(s=>({id:s.id,start:s.start?1:0,startHead:s.startHead??null})),
     after:sel.map(s=>({id:s.id,start:next==='none'?0:1,startHead:next==='none'?null:next==='arrow'?'arrow':next}))});
-  invalidate();UI.toast(t('styleApplied'),'ok');
+  invalidate();UI.toast(t('stylePasted'),'ok');
 }
 // ADR-0109: line ↔ arrow type conversion (ctx). Bindings/way/label/route
 // (elbow/curve) all live on the shape, so a type patch preserves everything —

@@ -38,8 +38,18 @@ console.log(`  ℹ index.html: ${_rawSize} raw, ${_gzSize} gzip, ${_brSize} brot
 const _badgeKB = parseInt((readme.match(/size-~(\d+)KB%20gzip/) || [])[1], 10);
 const _gzKB = _gzSize / 1024;
 
+// ADR-0335 guard: every t('key') call site must resolve in BOTH ja and en —
+// a missing key reaches the UI as the raw key string (styleApplied bug).
+const _i18nJa=(html.match(/\n  ja:\{([\s\S]*?)\n  en:/)||[])[1]||'';
+const _i18nEn=(html.match(/\n  en:\{([\s\S]*?)\n\};/)||[])[1]||'';
+const _i18nKeys=s=>new Set([...s.matchAll(/(?<![A-Za-z0-9_])([A-Za-z0-9_]+)\s*:/g)].map(m=>m[1]));
+const _jaK=_i18nKeys(_i18nJa),_enK=_i18nKeys(_i18nEn);
+const _usedK=[...html.matchAll(/(?<![A-Za-z0-9_$])t\('([A-Za-z0-9_]+)'\)/g)].map(m=>m[1]);
+const _missingI18n=[...new Set(_usedK)].filter(k=>!_jaK.has(k)||!_enK.has(k));
 // ---- presence checks ----
 const checks = [
+  ['every t() key defined in ja+en (ADR-0335)', _missingI18n.length===0],
+
   ['Single-file (no external script)', !/<script[^>]+src=["']https?:/.test(html)],
   ['Single-file (no external link)', !/<link[^>]+(href)=["']https?:/.test(html)],
   // Socratic perspective (2026-06-14): the product is defined by NEGATIONS (no
