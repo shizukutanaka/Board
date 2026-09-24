@@ -1,4 +1,4 @@
-# ADR-0333: コネクタにもリンクバッジ
+# ADR-0333: コネクタ・ペンにもリンクバッジ
 
 ## 状態
 承認 — round63
@@ -9,8 +9,9 @@
 両経路で欠落、SR announce は既存)。
 
 ## 決定
-canvas: `_connLabelXY` のラベルアンカー右にオフセット描画。
-SVG: `_cL` 内部に `<text>` 追加 (ラベル有無に依らず表示)。
+canvas: conn は `_connLabelXY` アンカー右、pen は `pts[0]` 起点に
+オフセット描画。SVG: conn は `_cL` 内部、pen は stroke `<g>` の後に
+`<text>` 追加 (ラベル有無に依らず表示)。
 
 ## 影響
 2041 全緑。
