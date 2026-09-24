@@ -516,6 +516,7 @@ Board/
 │   ├── ADR-0464-img-state-room-switch.md   # ルーム切替で画像転送状態をリセット (実装済)
 │   ├── ADR-0465-snapshot-responder-election.md # snapshot 応答者=最小 non-asker (starvation 修正、実装済)
 │   ├── ADR-0466-assembly-room-switch.md    # ルーム切替で受信再組立スロットもリセット (実装済)
+│   ├── ADR-0467-pct-rebaseline.md          # _pCt をルーム切替で再ベースライン (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

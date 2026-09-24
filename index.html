@@ -852,7 +852,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.499';
+const V='1.7.500';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -7625,7 +7625,7 @@ const Net={
     // ghosts into the new room. RTC entries survive: their DataChannel doesn't.
     _sO().clear();_cT(this._snapT);this._snapT=0;this._lastSnapAt=0;   // ADR-0459: dedup table + deferred resend must not bleed across rooms
     this._imgSent.clear();this._imgChunks.clear();this._imgOuts.length=0;this._snapIn=null;this._opcIn=null;   // ADR-0464/0466: img blobs + inbound assemblies are per-room — stale partials could splice old-room chunks into the new stream
-    for(const id of _pr().keys())if(!id.startsWith('rtc:'))_pr().delete(id);_ivO();
+    for(const id of _pr().keys())if(!id.startsWith('rtc:'))_pr().delete(id);this._pCt=_pr().size;_ivO();   // ADR-0467: re-baseline SR delta tracker
     clearInterval(this._presenceTimer);   // re-init (room switch) must not leak the old heartbeat
     state.roomId=roomId||DOC_KEY;
     if(typeof BroadcastChannel===_un)return;     // not supported
