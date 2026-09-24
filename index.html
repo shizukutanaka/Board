@@ -774,7 +774,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.200';
+const V='1.7.208';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1814,7 +1814,13 @@ function nextZ(){return state.shapes.length?state.shapes.reduce((m,s)=>Math.max(
 const Shape={
   translate(s,dx,dy){
     if(s.type==='pen'){for(const p of s.pts){p[0]+=dx;p[1]+=dy}}
-    else if(s.type==='line'||s.type==='arrow'){s.x1+=dx;s.y1+=dy;s.x2+=dx;s.y2+=dy;const wa=_wayArr(s);if(wa.length){for(const w of wa){w.x+=dx;w.y+=dy}s.way=wa}}   // ADR-0090
+    else if(s.type==='line'||s.type==='arrow'){
+      // ADR-0147: s.bend is a world coordinate — translate it with the
+      // connector or the trunk stays behind (same class as ADR-0146).
+      // Trunk orientation survives translation, so shift the matching axis.
+      const tr=s.bend!=null?_elbowTrunk(s):null;
+      s.x1+=dx;s.y1+=dy;s.x2+=dx;s.y2+=dy;const wa=_wayArr(s);if(wa.length){for(const w of wa){w.x+=dx;w.y+=dy}s.way=wa}   // ADR-0090
+      if(tr){const vert=Math.abs(tr[1].x-tr[0].x)<Math.abs(tr[1].y-tr[0].y);s.bend+=vert?dx:dy}}
     else{s.x+=dx;s.y+=dy}  // rect, ellipse, text, image, sticky — all have x/y
   },
   make(type,extras){
@@ -2628,7 +2634,9 @@ function drawShape(s,c){
       drawText(s,c);break;
     case 'image':{
       const img=s.dataUrl?getImg(s.dataUrl):null;   // ADR-0035: dataUrl-less image renders placeholder, never throws (getImg guards non-data:)
-      if(img&&img.complete&&img.naturalWidth)c.drawImage(img,s.x,s.y,s.w,s.h);
+      if(img&&img.complete&&img.naturalWidth){
+        if(s.flip){const fx=s.x+s.w/2,fy=s.y+s.h/2;c.save();c.translate(fx,fy);c.scale(s.flip&1?-1:1,s.flip&2?-1:1);c.translate(-fx,-fy);c.drawImage(img,s.x,s.y,s.w,s.h);c.restore()}
+        else c.drawImage(img,s.x,s.y,s.w,s.h);}   // ADR-0149
       else{c.strokeStyle=s.stroke||'#CBD5E1';c.lineWidth=1;c.strokeRect(s.x,s.y,s.w,s.h)}
       _drawImgLabel(s,c);                                         // ADR-0083
       break;}
@@ -2979,7 +2987,8 @@ function _rotShape(sh,orig,cx,cy,deg){
   const r=deg*Math.PI/180,c=Math.cos(r),sn=Math.sin(r);
   const R=(px,py)=>({x:cx+(px-cx)*c-(py-cy)*sn,y:cy+(px-cx)*sn+(py-cy)*c});
   if(orig.pts)sh.pts=orig.pts.map(p=>{const q=R(p[0],p[1]);return[q.x,q.y,p[2]]});
-  else if(orig.x1!=null){const a=R(orig.x1,orig.y1),b=R(orig.x2,orig.y2);sh.x1=a.x;sh.y1=a.y;sh.x2=b.x;sh.y2=b.y;if(orig.way)sh.way=_wayArr(orig).map(p=>R(p.x,p.y))}   // ADR-0090
+  else if(orig.x1!=null){const tr=orig.bend!=null?_elbowTrunk(orig):null;const a=R(orig.x1,orig.y1),b=R(orig.x2,orig.y2);sh.x1=a.x;sh.y1=a.y;sh.x2=b.x;sh.y2=b.y;if(orig.way)sh.way=_wayArr(orig).map(p=>R(p.x,p.y));   // ADR-0090
+    if(tr)_rotBend(sh,tr,R)}
   else if(orig.x!=null){
     const q=R(orig.x+orig.w/2,orig.y+orig.h/2);
     sh.x=q.x-orig.w/2;sh.y=q.y-orig.h/2;sh.w=orig.w;sh.h=orig.h;
@@ -3049,7 +3058,12 @@ function _mapToBox(sh,orig,ob,vb){
   const sx=vb.w/ob.w,sy=vb.h/ob.h;
   const M=(px,py)=>({x:vb.x+(px-ob.x)*sx,y:vb.y+(py-ob.y)*sy});
   if(orig.pts)sh.pts=orig.pts.map(p=>{const q=M(p[0],p[1]);return[q.x,q.y,p[2]]});
-  else if(orig.x1!=null){const a=M(orig.x1,orig.y1),b=M(orig.x2,orig.y2);sh.x1=a.x;sh.y1=a.y;sh.x2=b.x;sh.y2=b.y;if(orig.way)sh.way=_wayArr(orig).map(p=>M(p.x,p.y))}   // ADR-0090
+  else if(orig.x1!=null){const a=M(orig.x1,orig.y1),b=M(orig.x2,orig.y2);sh.x1=a.x;sh.y1=a.y;sh.x2=b.x;sh.y2=b.y;if(orig.way)sh.way=_wayArr(orig).map(p=>M(p.x,p.y));   // ADR-0090
+    // ADR-0148: s.bend is a world coord — scale it on the trunk's axis so
+    // the elbow keeps its offset under group resize (axis-aligned scaling
+    // preserves the trunk's orientation, so the scalar stays representable).
+    if(orig.bend!=null){const tr=_elbowTrunk(orig);if(tr){const ta=M(tr[0].x,tr[0].y),tb=M(tr[1].x,tr[1].y);
+      sh.bend=Math.abs(tr[1].x-tr[0].x)<Math.abs(tr[1].y-tr[0].y)?ta.x:ta.y}}}
   else if(orig.x!=null){const a=M(orig.x,orig.y),b=M(orig.x+orig.w,orig.y+orig.h);sh.x=a.x;sh.y=a.y;sh.w=b.x-a.x;sh.h=b.y-a.y}
 }
 // Apply resize given handle id, original shape, new world point, Shift and Alt state.
@@ -3297,7 +3311,7 @@ function _sqMatches(){
   const q=_sq.toLowerCase();
   if(_sqVer===_gridVer&&_sqQ===q)return _sqList;
   _sqList=[];
-  for(const s of state.shapes){if((s.label||s.text||s.type||'').toLowerCase().includes(q))_sqList.push(s)}
+  for(const s of state.shapes){if(s.visible!==0&&(s.label||s.text||s.type||'').toLowerCase().includes(q))_sqList.push(s)}
   _sqVer=_gridVer;_sqQ=q;
   return _sqList;
 }
@@ -3406,6 +3420,12 @@ canvas.addEventListener('pointerdown',e=>{
           if(onlySel.label&&!onlySel.locked&&(onlySel.type==='line'||onlySel.type==='arrow')){   // ADR-0117
             const lp=_connLabelXY(onlySel);
             if(lp&&Math.hypot(wp.x-lp.x,wp.y-lp.y)<=HANDLE_SIZE/state.viewport.zoom){
+              if(e.altKey&&onlySel.labelPos!=null){    // ADR-0145: ⌥click back to midpoint
+                const origSel=[...state.selection];
+                Store._recordCommitted({op:'style',before:[{id:onlySel.id,labelPos:onlySel.labelPos}],after:[{id:onlySel.id,labelPos:null}]});
+                if(origSel.length)state.history[state.histIdx].origSel=origSel;
+                delete onlySel.labelPos;invalidate();return;
+              }
               ptr.dragKind='lblpos';ptr.lblOrig=clone(onlySel);return;
             }
           }
@@ -3425,6 +3445,12 @@ canvas.addEventListener('pointerdown',e=>{
           if(onlySel.curve&&!onlySel.locked){          // ADR-0132: curve-bend drag (apex grab)
             const apex=_curveLabelXY(onlySel);
             if(apex&&Math.hypot(wp.x-apex.x,wp.y-apex.y)<=HANDLE_SIZE/state.viewport.zoom){
+              if(e.altKey&&onlySel.cbend!=null){       // ADR-0144: ⌥click restores auto-bow
+                const origSel=[...state.selection];
+                Store._recordCommitted({op:'style',before:[{id:onlySel.id,cbend:onlySel.cbend}],after:[{id:onlySel.id,cbend:null}]});
+                if(origSel.length)state.history[state.histIdx].origSel=origSel;
+                delete onlySel.cbend;invalidate();return;
+              }
               ptr.dragKind='cbend';ptr.cbendOrig=clone(onlySel);return;
             }
           }
@@ -4649,7 +4675,7 @@ function _endPointBind(sh,handle){
 function _bindAt(x,y){
   for(let i=state.shapes.length-1;i>=0;i--){
     const s=state.shapes[i],t=s.type;
-    if(t==='line'||t==='arrow'||t==='pen')continue;
+    if(t==='line'||t==='arrow'||t==='pen'||s.visible===0)continue;   // ADR-0150
     const b=G.bbox(s);
     if(x>=b.x&&y>=b.y&&x<=b.x+b.w&&y<=b.y+b.h)return s.id;
   }
@@ -5524,6 +5550,11 @@ function flipShape(s,axis,c){
     else if(s.y1!=null){s.y1=m(s.y1);s.y2=m(s.y2);if(s.way){s.way=_wayArr(s);for(const w of s.way)w.y=m(w.y)}}   // ADR-0090
     else s.y=m(s.y+s.h);
   }
+  // ADR-0149: images mirror their PIXELS, not just their box — a symmetric
+  // box flip alone was a dead op (same bitmap drawn back into the same rect).
+  // s.flip bitmask: 1=horizontal, 2=vertical. Position still mirrors so group
+  // flips place the image correctly within the mirrored envelope.
+  if(s.type==='image')s.flip=(s.flip||0)^(axis==='h'?1:2);
   if(tr&&(axis==='h')===!!trVert)s.bend=m(s.bend);
   if(s.cbend!=null)s.cbend=-s.cbend;   // ADR-0132: any mirror flips the curve's chirality
   // ADR-0142: mirror maps angle θ → 180−θ across the vertical axis
@@ -5608,10 +5639,22 @@ function doBeautify(){
 // ADR-0055: rotate applies to box shapes (orbit + s.rotate spin) AND point
 // geometry (pen pts / line-arrow endpoints rotate rigidly about the group centre).
 const _rotatable=s=>s.w!=null||s.pts||s.x1!=null;
+// ADR-0146: s.bend is a world coordinate of the elbow trunk, so a rotate
+// that moves the endpoints leaves the trunk stranded at its old spot.
+// Rotate the trunk segment rigidly with the connector: if the rotated
+// trunk stays axis-aligned the scalar is re-derived, otherwise it can't
+// be represented and falls back to auto (null).
+function _rotBend(s,tr,rot){
+  const a=rot(tr[0].x,tr[0].y),b=rot(tr[1].x,tr[1].y);
+  if(Math.abs(a.x-b.x)<0.01)s.bend=a.x;
+  else if(Math.abs(a.y-b.y)<0.01)s.bend=a.y;
+  else s.bend=null;
+}
 function _rotPtsAbout(s,gx,gy,cs,sn){
   const rot=(px,py)=>({x:gx+(px-gx)*cs-(py-gy)*sn,y:gy+(px-gx)*sn+(py-gy)*cs});
   if(s.pts)for(const p of s.pts){const q=rot(p[0],p[1]);p[0]=q.x;p[1]=q.y}
-  else if(s.x1!=null){const a=rot(s.x1,s.y1),b=rot(s.x2,s.y2);s.x1=a.x;s.y1=a.y;s.x2=b.x;s.y2=b.y;if(s.way){s.way=_wayArr(s).map(p=>rot(p.x,p.y))}}   // ADR-0090
+  else if(s.x1!=null){const tr=s.bend!=null?_elbowTrunk(s):null;const a=rot(s.x1,s.y1),b=rot(s.x2,s.y2);s.x1=a.x;s.y1=a.y;s.x2=b.x;s.y2=b.y;if(s.way){s.way=_wayArr(s).map(p=>rot(p.x,p.y))}   // ADR-0090
+    if(tr)_rotBend(s,tr,rot);}
 }
 function doRotate(d){
   const sel=[...state.selection].map(byId).filter(s=>s&&!s.locked&&_rotatable(s));
@@ -6202,7 +6245,10 @@ function buildSVG(shapes,paper){
   const els=[];
   els.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`);
   els.push(`<rect width="100%" height="100%" fill="${_esc(paper||'#FFFFFF')}"/>`);
-  const svgShapes=[...shapes.filter(s=>s.type==="frame"),...shapes.filter(s=>s.type!=="frame")];
+  // ADR-0150 follow-up: SVG builds its own element list (bypasses drawShape's
+  // visible guard) — hidden shapes must be excluded here too, like canvas.
+  const _vis=shapes.filter(s=>s.visible!==0);
+  const svgShapes=[..._vis.filter(s=>s.type==="frame"),..._vis.filter(s=>s.type!=="frame")];
   for(const s of svgShapes){
     const X=_num(s.x),Y=_num(s.y),W=_num(s.w),H=_num(s.h);
     const _e=connEnds(s);
@@ -6330,7 +6376,11 @@ function buildSVG(shapes,paper){
         for(let i=0;i<svgLines.length;i++)els.push(`<tspan x="${tax}" dy="${i?fs*1.25:0}">${_esc(svgLines[i])}</tspan>`);
         els.push('</text>');break;}
       case 'image':
-        if(typeof s.dataUrl==='string'&&/^data:image\//.test(s.dataUrl))els.push(`<image x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" href="${_esc(s.dataUrl)}"${a}${rT}/>`);
+        if(typeof s.dataUrl==='string'&&/^data:image\//.test(s.dataUrl)){
+          // ADR-0149: flip composes INSIDE the image transform (after rotation)
+          // so it mirrors along the shape's local axes — same as the canvas path.
+          const fT=s.flip?` translate(${_num(X+W/2+ox)} ${_num(Y+H/2+oy)}) scale(${s.flip&1?-1:1} ${s.flip&2?-1:1}) translate(${_num(-(X+W/2+ox))} ${_num(-(Y+H/2+oy))})`:'';
+          els.push(`<image x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" href="${_esc(s.dataUrl)}"${a}${rT}${fT}/>`);}
         if(s.label)_svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT);  // ADR-0083
         break;
       case 'frame':{
@@ -8239,7 +8289,7 @@ const Minimap=(()=>{
         case 'line':case 'arrow':{if(s.elbow){const pts=_elbowPts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<pts.length;i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}if(s.curve){const me=connEnds(s),cc=_curveCtrl(me,s.cbend);sx.beginPath();sx.moveTo(me.x1*sc+ox,me.y1*sc+oy);sx.quadraticCurveTo(cc.x*sc+ox,cc.y*sc+oy,me.x2*sc+ox,me.y2*sc+oy);sx.stroke();break}const pts=_linePts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<pts.length;i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}
         case 'pen':if(s.pts.length<2)break;sx.beginPath();sx.moveTo(s.pts[0][0]*sc+ox,s.pts[0][1]*sc+oy);for(let i=1;i<s.pts.length;i++)sx.lineTo(s.pts[i][0]*sc+ox,s.pts[i][1]*sc+oy);sx.stroke();break;
         case 'text':case 'sticky':{const rx2=s.x*sc+ox,ry2=s.y*sc+oy,rw2=Math.max(2,s.w*sc),rh2=Math.max(2,s.h*sc);sx.fillStyle=s.type==='sticky'?(s.color||'#FEF08A'):(s.fill||getCSS('--brand'));sx.fillRect(rx2,ry2,rw2,rh2);break}
-        case 'image':{const rx3=s.x*sc+ox,ry3=s.y*sc+oy,rw3=Math.max(2,s.w*sc),rh3=Math.max(2,s.h*sc);const img=s.dataUrl?_imgCache.get(_imgKey(s.dataUrl)):null;if(img&&img.complete&&img.naturalWidth)sx.drawImage(img,rx3,ry3,rw3,rh3);else{sx.fillStyle='#CBD5E1';sx.fillRect(rx3,ry3,rw3,rh3)}break}
+        case 'image':{const rx3=s.x*sc+ox,ry3=s.y*sc+oy,rw3=Math.max(2,s.w*sc),rh3=Math.max(2,s.h*sc);const img=s.dataUrl?_imgCache.get(_imgKey(s.dataUrl)):null;if(img&&img.complete&&img.naturalWidth){if(s.flip){const fx3=rx3+rw3/2,fy3=ry3+rh3/2;sx.save();sx.translate(fx3,fy3);sx.scale(s.flip&1?-1:1,s.flip&2?-1:1);sx.translate(-fx3,-fy3);sx.drawImage(img,rx3,ry3,rw3,rh3);sx.restore()}else sx.drawImage(img,rx3,ry3,rw3,rh3)}else{sx.fillStyle='#CBD5E1';sx.fillRect(rx3,ry3,rw3,rh3)}break}
       }
       if(_mr)sx.restore();
     }
