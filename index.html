@@ -795,6 +795,24 @@ const _selIds=()=>[..._sl()];   // ADR-0330
 const _sb=()=>_selIds().map(byId);   // ADR-0418: selected-shape objects (10 sites)
 const _hasS=id=>_sl().has(id);   // ADR-0418: selection-membership predicate
 const _sel0=()=>byId(_selIds()[0]);   // ADR-0421: single-selected shape (12 sites)
+const _grpOf=gid=>_sh().filter(s=>s.groupId===gid).map(s=>s.id);   // ADR-0423: members of a group (id list)
+// ADR-0423: expand a working selection by its frameOf map — add each
+// child's id as a shape (unlocked only), idempotent across callers.
+const _xFS=(sel,frameOf)=>{for(const [cid] of frameOf){if(!sel.find(s=>s.id===cid)){const ch=byId(cid);if(ch&&!ch.locked)sel.push(ch);}}}
+// ADR-0423: childId→frameId map for shapes fully inside any selected frame —
+// drives frame-containment expansion in delete/move/flip/rotate.
+const _frameOf=(sel,ok)=>{const m=_mP();
+  for(const f of sel){
+    if(f.type!=='frame')continue;
+    const fb=_bb(f);
+    for(const s of _sh()){
+      if(s.id===f.id||s.type==='frame'||s.locked||(ok&&!ok(s))||m.has(s.id))continue;
+      const b=_bb(s);
+      if(b.x>=fb.x&&b.y>=fb.y&&b.x+b.w<=fb.x+fb.w&&b.y+b.h<=fb.y+fb.h)m.set(s.id,f.id);
+    }
+  }
+  return m;
+};
 const _scl=()=>_sl().clear(),_sad=id=>_sl().add(id),_sdl=id=>_sl().delete(id);   // ADR-0419: selection Set-mutation shorthands
 const _selN=()=>_sl().size;   // ADR-0334
 const _fin=Number.isFinite;   // ADR-0334
@@ -831,7 +849,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.457';
+const V='1.7.458';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4232,7 +4250,7 @@ _on(canvas,'dblclick',e=>{
   // descends — narrows the selection to that member (Figma parity). A second
   // dblclick on the solo-selected member reaches the label editor normally.
   if(hit.groupId){
-    const grp=_sh().filter(s=>s.groupId===hit.groupId).map(s=>s.id);
+    const grp=_grpOf(hit.groupId);
     if(grp.length>1&&grp.every(id=>_hasS(id))){
       _ss([hit.id]);_aS();_iv();return;
     }
@@ -4715,7 +4733,7 @@ function pickOrMarquee(wp,e){
     // Hit shape in a group → select the whole group
     const gid=hit.groupId;
     const toSelect=gid
-      ? _sh().filter(s=>s.groupId===gid).map(s=>s.id)
+      ? _grpOf(gid)
       : [hit.id];
     const alreadySel=toSelect.every(id=>_hasS(id));
     // ADR-0060: Alt+drag duplicates first — copies become the selection and the
@@ -5773,17 +5791,8 @@ function doDelete(){
   if(!sel.length){if(_selAny())_w(t('lockedNoop'));return}   // ADR-0396
   const origSel=_selIds();
   // Frame-aware: shapes fully inside a selected frame are deleted with the frame (parity with doDuplicate)
-  const frameOf=_mP();
-  for(const f of sel){
-    if(f.type!=='frame')continue;
-    const fb=_bb(f);
-    for(const s of _sh()){
-      if(s.id===f.id||s.type==='frame'||s.locked||frameOf.has(s.id))continue;
-      const b=_bb(s);
-      if(b.x>=fb.x&&b.y>=fb.y&&b.x+b.w<=fb.x+fb.w&&b.y+b.h<=fb.y+fb.h)frameOf.set(s.id,f.id);
-    }
-  }
-  for(const [cid] of frameOf){if(!sel.find(s=>s.id===cid)){const ch=byId(cid);if(ch&&!ch.locked)sel.push(ch);}}
+  const frameOf=_frameOf(sel);
+  _xFS(sel,frameOf)
   const delIds=new Set(sel.map(s=>s.id));
   // Resolve connector bindings BEFORE splicing so connEnds can see the live shapes.
   const connClears=computeConnClears(delIds);
@@ -5991,17 +6000,8 @@ function doAlign(dir){
   if(sel.length<2)return;
   // Frame-aware: shapes fully inside a selected frame move with the frame as one unit
   // (parity with drag/nudge; mirrors withFrameChildren logic used in doMove/nudgeSelection)
-  const frameOf=_mP(); // childId → frameId (unit key for unitMap)
-  for(const f of sel){
-    if(f.type!=='frame')continue;
-    const fb=_bb(f);
-    for(const s of _sh()){
-      if(s.id===f.id||s.type==='frame'||s.locked||frameOf.has(s.id))continue;
-      const b=_bb(s);
-      if(b.x>=fb.x&&b.y>=fb.y&&b.x+b.w<=fb.x+fb.w&&b.y+b.h<=fb.y+fb.h)frameOf.set(s.id,f.id);
-    }
-  }
-  for(const [cid] of frameOf){if(!sel.find(s=>s.id===cid)){const c=byId(cid);if(c&&!c.locked)sel.push(c);}}
+  const frameOf=_frameOf(sel); // childId → frameId (unit key for unitMap)
+  _xFS(sel,frameOf)
   // Group-aware + frame-aware: shapes sharing groupId or inside a selected frame move as one unit
   const unitMap=_mP();
   for(const s of sel){const k=frameOf.get(s.id)||s.groupId||s.id;if(!unitMap.has(k))unitMap.set(k,{shapes:[],b:null});unitMap.get(k).shapes.push(s);}
@@ -6009,7 +6009,7 @@ function doAlign(dir){
   const units=[...unitMap.values()].filter(u=>u.b);
   if(units.length<2)return;
   // Capture before state (full shape clone)
-  const beforeSnap=sel.map(s=>clone(s));
+  const beforeSnap=sel.map(clone);
   const mv=(u,dx,dy)=>{for(const s of u.shapes)Shape.translate(s,dx,dy)};
   switch(dir){
     case 'left':{const mn=_min(...units.map(({b})=>b.x));for(const u of units)mv(u,mn-u.b.x,0);break}
@@ -6054,7 +6054,7 @@ function doAlign(dir){
       mv(a,ddx,ddy);mv(b,-ddx,-ddy);
       break}
   }
-  const afterSnap=sel.map(s=>clone(s));
+  const afterSnap=sel.map(clone);
   _rcOp({op:'align',dir,before:beforeSnap,after:afterSnap});
   _ivp();
 }
@@ -6065,7 +6065,7 @@ function doAlign(dir){
 function snapSelToGrid(){
   const sel=_selL(s=>s&&!s.locked);
   if(!sel.length)return;
-  const beforeSnap=sel.map(s=>clone(s));
+  const beforeSnap=sel.map(clone);
   let moved=0;
   for(const s of sel){
     const b=_bb(s);if(!b)continue;
@@ -6073,7 +6073,7 @@ function snapSelToGrid(){
     if(dx||dy){Shape.translate(s,dx,dy);moved++}
   }
   if(!moved){_w(t('alreadySnapped'));return}
-  const afterSnap=sel.map(s=>clone(s));
+  const afterSnap=sel.map(clone);
   _rcOp({op:'align',dir:'gsnap',before:beforeSnap,after:afterSnap});
   _ivp();
 }
@@ -6084,9 +6084,9 @@ function doMatchSize(dim){
   const sel=_selL(s=>s&&!s.locked&&_MSZ.has(s.type));
   if(sel.length<2)return;
   const ref=sel[0],targets=sel.slice(1);
-  const before=targets.map(s=>clone(s));
+  const before=targets.map(clone);
   for(const s of targets){if(dim!=='h')s.w=ref.w;if(dim!=='w')s.h=ref.h}
-  const after=targets.map(s=>clone(s));
+  const after=targets.map(clone);
   if(before.every((b,i)=>b.w===after[i].w&&b.h===after[i].h))return;
   _rcOp({op:'align',dir:'match'+dim,before,after});
   _ivp();
@@ -6128,20 +6128,11 @@ function doFlip(axis){
   const bb=_bA(sel);if(!bb)return;
   const c=axis==='h'?bb.x+bb.w/2:bb.y+bb.h/2;
   // Frame-aware: shapes fully inside a selected frame flip with the frame (parity with doAlign)
-  const frameOf=_mP();
-  for(const f of sel){
-    if(f.type!=='frame')continue;
-    const fb=_bb(f);
-    for(const s of _sh()){
-      if(s.id===f.id||s.type==='frame'||s.locked||frameOf.has(s.id))continue;
-      const b=_bb(s);
-      if(b.x>=fb.x&&b.y>=fb.y&&b.x+b.w<=fb.x+fb.w&&b.y+b.h<=fb.y+fb.h)frameOf.set(s.id,f.id);
-    }
-  }
-  for(const [cid] of frameOf){if(!sel.find(s=>s.id===cid)){const ch=byId(cid);if(ch&&!ch.locked)sel.push(ch);}}
-  const before=sel.map(s=>clone(s));
+  const frameOf=_frameOf(sel);
+  _xFS(sel,frameOf)
+  const before=sel.map(clone);
   for(const s of sel)flipShape(s,axis,c);
-  const after=sel.map(s=>clone(s));
+  const after=sel.map(clone);
   _rcOp({op:'align',dir:'flip',before,after});
   _ivp();
   UI.announce(t(axis==='h'?'ctxFlipH':'ctxFlipV'));
@@ -6216,17 +6207,8 @@ function doRotate(d){
   if(!sel.length)return;
   const bb=_bA(sel),gx=bb.x+bb.w/2,gy=bb.y+bb.h/2; // orbit about group centre, like doFlip
   // Frame-aware: box-shape children inside selected frames orbit and rotate with the frame (parity with doAlign)
-  const frameOf=_mP();
-  for(const f of sel){
-    if(f.type!=='frame')continue;
-    const fb=_bb(f);
-    for(const s of _sh()){
-      if(s.id===f.id||s.type==='frame'||s.locked||!_rotatable(s)||frameOf.has(s.id))continue;
-      const b=_bb(s);
-      if(b.x>=fb.x&&b.y>=fb.y&&b.x+b.w<=fb.x+fb.w&&b.y+b.h<=fb.y+fb.h)frameOf.set(s.id,f.id);
-    }
-  }
-  for(const [cid] of frameOf){if(!sel.find(s=>s.id===cid)){const ch=byId(cid);if(ch&&!ch.locked)sel.push(ch);}}
+  const frameOf=_frameOf(sel,s=>_rotatable(s));
+  _xFS(sel,frameOf)
   const r=d*_PI/180,cs=_cos(r),sn=_sin(r);
   const before=sel.map(s=>clone({...s,rotate:s.rotate||0}));
   for(const s of sel){
@@ -6236,7 +6218,7 @@ function doRotate(d){
     Shape.translate(s,nx-cx,ny-cy);
     s.rotate=((s.rotate||0)+d+360)%360;
   }
-  const after=sel.map(s=>clone(s));
+  const after=sel.map(clone);
   _rcOp({op:'align',dir:'rotate',before,after});
   _ivp();
   UI.announce(sel.length===1?describeShape(sel[0]):d+'°');   // ,/. keyboard rotate was SR-silent (knob drag announces); point-geom selections have no .rotate (ADR-0055)

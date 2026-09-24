@@ -472,6 +472,7 @@ Board/
 │   ├── ADR-0420-image-i18n-key.md   # image を T.k に追加 (実装済)
 │   ├── ADR-0421-sel0-ivp-shorthands.md   # _sel0/_ivp fold + _selAny 重複解消 (実装済)
 │   ├── ADR-0422-framezoom-clamp.md   # _zoomToFrame zoom clamp + 退化 frame ガード (実装済)
+│   ├── ADR-0423-frameexpansion-dedupe.md   # _frameOf/_xFS/_grpOf fold + map(clone) (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

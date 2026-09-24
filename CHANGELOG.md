@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.458] - 2026-09-23
+
+### Internal
+- `_frameOf`/`_xFS`/`_grpOf` fold (~800B 回収) — frame 拡張ロジックの 4 重複を単一 helper 化
+
 ## [1.7.457] - 2026-09-23
 
 ### Fixed
