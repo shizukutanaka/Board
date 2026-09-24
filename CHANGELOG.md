@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.406] - 2026-09-24
+
+### Fixed
+- drawio import の `off()` が parent 循環で無限再帰するクラッシュを
+  暫定値先行登録で修正 (ADR-0357)
+
 ## [1.7.405] - 2026-09-24
 
 ### Changed
