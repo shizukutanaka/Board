@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.223';
+const V='1.7.224';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -924,7 +924,7 @@ const I18N={
       grid:'グリッド',minimap:'ミニマップ切替',beautify:'選択したペン描画を整形',esc:'選択解除/キャンセル',
       cycle:'図形を巡回',create:'中央に作成',
       present:'プレゼン',nudge:'移動 (⇧: 10px)',zorder:'前面/背面',zorderEnds:'最前面/最背面',
-      rotate:'回転 (15° / ノブdrag)',selAllMatches:'件のマッチを選択',search:'検索',searchNav:'次/前のマッチへ移動',moveAxis:'軸拘束移動',resizeRatio:'比率保持リサイズ',resizeCenter:'中心固定リサイズ',kbdResize:'リサイズ (⇧:×10)',lasso:'ラッソ選択',eyedropDone:'スタイルを取得'}},
+      rotate:'回転 (15° / ノブdrag)',selAllMatches:'件のマッチを選択',search:'検索',searchNav:'次/前のマッチへ移動',moveAxis:'軸拘束移動',resizeRatio:'比率保持リサイズ',resizeCenter:'中心固定リサイズ',kbdResize:'リサイズ (⇧:×10)',lasso:'ラッソ選択',swapFill:'塗り↔線を交換',eyedropDone:'スタイルを取得',swapDone:'塗り↔線を交換'}},
   en:{export:'Export',present:'Present',snap:'Snap',size:'Size',lineStyle:'Line',helpTitle:'Shortcuts',
     helpSub:'No need to memorise. You\'ll pick it up.',
     saved:'saved',savedNow:'just now',savedAgo:'s ago',
@@ -1002,7 +1002,7 @@ const I18N={
       grid:'Toggle grid',minimap:'Toggle minimap',beautify:'Beautify selected pen strokes',esc:'Deselect / cancel',
       cycle:'Cycle shapes',create:'Create at centre',
       present:'Present',nudge:'Move (⇧: 10px)',zorder:'Front / back',zorderEnds:'To front / to back',
-      rotate:'Rotate (15° / knob drag)',selAllMatches:'matches selected',search:'Search',searchNav:'Next / prev match',moveAxis:'Constrain move axis',resizeRatio:'Keep ratio (resize)',resizeCenter:'Resize from centre',kbdResize:'Resize (⇧:×10)',lasso:'Lasso select',eyedropDone:'Style picked'}}};
+      rotate:'Rotate (15° / knob drag)',selAllMatches:'matches selected',search:'Search',searchNav:'Next / prev match',moveAxis:'Constrain move axis',resizeRatio:'Keep ratio (resize)',resizeCenter:'Resize from centre',kbdResize:'Resize (⇧:×10)',lasso:'Lasso select',swapFill:'Swap fill↔stroke',eyedropDone:'Style picked',swapDone:'Fill↔stroke swapped'}}};
 // ADR-0014: LANG/T are `let`, not `const`, so UI.toggleLang() can reassign them — t()
 // closes over T by reference, so every t()/T.k call made AFTER a reassignment picks up
 // the new language automatically. Only elements that cache a translated string once at
@@ -5205,6 +5205,7 @@ window.addEventListener('keydown',e=>{
   else if(e.shiftKey&&(k==='1'||k==='!')){e.preventDefault();fitToContent()}
   else if(e.shiftKey&&(k==='2'||k==='@')){e.preventDefault();zoomToSelection()}
   else if(e.shiftKey&&!meta&&!e.altKey&&(k==='h'||k==='v')&&state.selection.size){e.preventDefault();doFlip(k)}
+  else if(k==='x'&&e.shiftKey&&!meta&&state.selection.size){e.preventDefault();swapFillStroke()}   // ADR-0166
   else if(k===','&&!meta&&state.selection.size){e.preventDefault();doRotate(-15)}
   else if(k==='.'&&!meta&&state.selection.size){e.preventDefault();doRotate(15)}
   else if(meta&&k==='f'){e.preventDefault();toggleSq()}
@@ -7679,7 +7680,7 @@ const UI={
       ['Enter / ⇧Enter',k.searchNav],
       ['⇧H / ⇧V',t('ctxFlipH')+' / '+t('ctxFlipV')],
       ['⌥C / ⌥V',t('ctxCopyStyle')+' / '+t('ctxPasteStyle')],
-      ['⇧ + drag',k.moveAxis],['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],['⌥ + drag',k.lasso],['I',k.eyedropper],['⌘⇧ , / .',k.fontSize],['⌘B / ⌘I / ⌘U / ⌘⇧X',k.boldItalic],
+      ['⇧ + drag',k.moveAxis],['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],['⌥ + drag',k.lasso],['I',k.eyedropper],['⇧X',k.swapFill],['⌘⇧ , / .',k.fontSize],['⌘B / ⌘I / ⌘U / ⌘⇧X',k.boldItalic],
       ['Tab / ⇧Tab',k.cycle],['Enter',k.create+' / '+t('editLabel')]
     ];
     while(g.firstChild)g.removeChild(g.firstChild);
@@ -8263,6 +8264,23 @@ function cycleFillStyle(){
     if(nxt)s.fstyle=nxt;else delete s.fstyle;
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
+}
+// ADR-0166: swap stroke↔fill on painted shapes via one style op (Illustrator
+// ⇧X parity). Sticky maps its body paint through `color` — the same convention
+// applyStyleToSelection uses — and stroke↔color is meaningful there too
+// (border tint vs body). Pen/line/arrow/text/image are stroke-only → skipped.
+function swapFillStroke(){
+  const before=[],after=[];
+  for(const id of state.selection){
+    const s=byId(id);if(!s||s.locked)continue;
+    const fk=s.type==='sticky'?'color':'fill';
+    if(!(s.type==='rect'||s.type==='ellipse'||s.type==='diamond'||s.type==='frame'||s.type==='sticky'))continue;
+    before.push({id,stroke:s.stroke??null,[fk]:s[fk]??null});
+    after.push({id,stroke:s[fk]??null,[fk]:s.stroke??null});
+    const t2=s[fk];s[fk]=s.stroke;s.stroke=t2;
+    if(s[fk]==null)delete s[fk];if(s.stroke==null)delete s.stroke;
+  }
+  if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate();UI.toast(t('swapDone'),'ok')}
 }
 // ADR-0073: cycle text align left→center→right for text/sticky via style op.
 function cycleTextAlign(){

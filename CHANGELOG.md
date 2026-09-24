@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.224]
+
+### 追加
+- **⇧X で塗り↔線色スワップ** (ADR-0166)。Illustrator parity —
+  rect/ellipse/diamond/frame/sticky (付箋は color を塗りとして交換)、
+  単一 style op で undo 1回。
+
 ## [1.7.223]
 
 ### 追加
