@@ -796,7 +796,7 @@ const _ga=(e,n)=>e.getAttribute(n);   // ADR-0340
 const _cbr=()=>canvas.getBoundingClientRect();   // ADR-0342
 
 // ====================== CONSTANTS ======================
-const V='1.7.393';
+const V='1.7.394';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6408,6 +6408,7 @@ function _dioStyApply(s,sty,hid){
   if(/^(left|center|right)$/.test(sty.labelPosition))s.align=sty.labelPosition;   // ADR-0320
   if(/^(top|middle|bottom)$/.test(sty.verticalLabelPosition))s.valign=sty.verticalLabelPosition;   // ADR-0320
   if(sty.whiteSpace==='nowrap'&&s.type==='text')s.wrap=0;              // ADR-0321
+  if(+sty.lineHeight>0&&+sty.lineHeight!==1.2)s.lineH=_min(4,_max(0.5,+sty.lineHeight));   // ADR-0343
   if(hid)s.visible=0;                                       // ADR-0245
 }
 // ADR-0263: style keys identical on vertex and edge export — one site.
@@ -6419,6 +6420,7 @@ function _dioStyEmit(s,edge){
   if(s.shadow)r+='shadow=1;';                                    // ADR-0246
   if(s.flip&1)r+='flipH=1;';if(s.flip&2)r+='flipV=1;';          // ADR-0260
   if(s.spacing)r+='letterSpacing='+s.spacing+';';                // ADR-0284
+  if(s.lineH&&s.lineH!==1.25)r+='lineHeight='+s.lineH+';';       // ADR-0343
   if(!edge&&s.fstyle)r+='fillStyle='+(s.fstyle==='cross'?'cross-hatch':'hachure')+';';   // ADR-0331
   {const _fs=(s.bold?1:0)|(s.italic?2:0)|(s.under?4:0);          // ADR-0282
    if(_fs&&(!edge||s.label))r+='fontStyle='+_fs+';'}

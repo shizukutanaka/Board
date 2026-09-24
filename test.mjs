@@ -780,6 +780,7 @@ const checks = [
   ['drawio endFill=0 → open head (ADR-0287)', html.includes("endFill==='0'&&sty.endArrow")],
   ['startHead separate vocab round-trip (ADR-0286)', html.includes("s.startHead||s.head")&&html.includes("startArrow='+(s.startHead")],
   ['drawio letterSpacing ↔ s.spacing (ADR-0284)', html.includes('letterSpacing=')&&html.includes('sty.letterSpacing')],
+  ['drawio lineHeight ↔ s.lineH (ADR-0343)', html.includes("r+='lineHeight='+s.lineH")&&html.includes('sty.lineHeight')],
   ['svg import gradient → first stop colour (ADR-0283)', html.includes('_grad=new Map()')],
   ['_dioStyEmit folds fontStyle+locked (ADR-0282)', html.includes('resizable=0;')],
   ['drawio edge rounded=1 → s.r (ADR-0269)', (html.match(/sty\.rounded==='1'/g)||[]).length>=2],
