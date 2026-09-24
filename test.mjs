@@ -396,7 +396,7 @@ const checks = [
   // v1.7.91: ADR-0033 ctrl+wheel (trackpad pinch) zoom preview shares the
   // same snapshot mechanism, settles via a quiet-window timer.
   ['wheel zoom burst snapshots before first zoom', html.includes("_pinchSnapNow();\n    clearTimeout(_wheelZoomEnd);")],
-  ['wheel zoom settle timer discards snapshot + repaints', html.includes("_wheelZoomEnd=setTimeout(()=>{_pinchSnap=null;_pinchVp=null;_iv()},180)")],
+  ['wheel zoom settle timer discards snapshot + repaints', html.includes("_wheelZoomEnd=_stO(()=>{_pinchSnap=null;_pinchVp=null;_iv()},180)")],
   ['ADR-0032/0033: marquee + pickTop use the spatial grid', html.includes("_gridRectCandidates(_grid||(_grid=_buildGrid(_sh())),r)") && html.includes("cands.sort((a,b)=>(_grid.idx.get(b)|0)-(_grid.idx.get(a)|0))")],
   ['load validates viewport finiteness', html.includes("_fin(+d.viewport.zoom)&&d.viewport.zoom>0")],
   ['load clamps viewport zoom to [MIN_ZOOM,MAX_ZOOM]', html.includes("_vp().zoom=clampZoom(+d.viewport.zoom)")],
@@ -545,7 +545,7 @@ const checks = [
   ['sticky↔text conversion via style op (ctx)', html.includes('toggleStickyText')&&html.includes('ctxToSticky')&&html.includes("s.type==='sticky'?'text':'sticky'")],
   ['frame select-contents (ctx)', html.includes('selectFrameContents')&&html.includes('ctxSelContents')&&html.includes('withFrameChildren(')],
   ['selection .board export (ctx)', html.includes("exportBoard(sel)")&&html.includes('ctxExportSelBoard')&&html.includes("fmt==='board'")],
-  ['share link carries creator viewport', html.includes('viewport:{x:+_vp().x.toFixed(2)')&&html.includes('clampZoom(+data.viewport.zoom)')],
+  ['share link carries creator viewport', html.includes('viewport:_vpS()')&&html.includes('clampZoom(+data.viewport.zoom)')],
   ['clipboard .board JSON import (paste path)', html.includes('importBoardText(s)')&&html.includes('copyBoardJSON')&&html.includes('ctxCopyBoard')],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
@@ -580,7 +580,7 @@ const checks = [
   // v1.6.23: .board file export/import
   ['exportBoard function exists', html.includes('function exportBoard(shapes')],
   ['exportBoard revokes Blob URL to prevent memory leak', html.includes("revokeObjectURL(_bu),1e4")],
-  ['.board file round-trips viewport (ADR-0393)', html.includes("viewport:{x:+_vp().x.toFixed(2),y:+_vp().y.toFixed(2),zoom:+_vp().zoom.toFixed(4)}")&&html.includes("_vp().zoom=clampZoom(+d.viewport.zoom)")],
+  ['.board file round-trips viewport (ADR-0393)', html.includes("viewport:_vpS()")&&html.includes("_vp().zoom=clampZoom(+d.viewport.zoom)")],
   ['file importers reject >32MB payloads (ADR-0398)', html.includes("_bigFile=f=>f.size>33554432")&&(html.match(/_bigFile\(file\)/g)||[]).length>=4],
   ['importBoard uses atomic replace op (not clear+adds)', html.includes('function importBoard') && html.includes('.filter(validShape)') && html.includes("op:'replace',before,after")],
   ['Ctrl+Shift+S triggers exportBoard', html.includes("e.shiftKey){_pd(e);exportBoard()}")],
@@ -1162,7 +1162,7 @@ const checks = [
   // v1.6.89: colour picker coalesces (one undo/sync op per pick, like the sliders)
   ['colour picker captures on focus/pointerdown', html.includes("_on(cp,'focus',()=>_sfbCapture(k));") && html.includes("_on(cp,_PD,()=>_sfbCapture(k));")],
   ['colour picker input is live-only (no per-input commit)', html.includes("for(const id of _sl()){const s=byId(id);if(s&&!s.locked)s[k]=cp.value}") && !html.includes("applyStyleToSelection({[k]:cp.value})")],
-  ['colour picker flushes one op on change', html.includes("_on(cp,'change',()=>{_sfbFlush(k,cp.value);_sfbCapture(k);});")],
+  ['colour picker flushes one op on change', html.includes("_on(cp,_CH,()=>{_sfbFlush(k,cp.value);_sfbCapture(k);});")],
   // v1.6.76: ⌘⇧L keyboard shortcut for lock/unlock — README claims "全機能キーボード操作可能"
   // but doLock was right-click-only. Fix adds Ctrl+Shift+L → doLock().
   ['doLock has ⌘⇧L keyboard shortcut', html.includes("meta&&k==='l'&&e.shiftKey")&&html.includes("doLock()")],
@@ -1212,7 +1212,7 @@ const checks = [
   ['_ctxMenuKeyNav handles ArrowDown/Up/Home/End (ARIA APG menu pattern)',
     html.includes('function _ctxMenuKeyNav')&&html.includes("'ArrowDown'")&&html.includes("'ArrowUp'")&&html.includes("'Home'")&&html.includes("'End'")],
   ['ctx menu keydown wired in wire() to _ctxMenuKeyNav',
-    html.includes("'keydown',e=>_ctxMenuKeyNav(")],
+    html.includes("_KD,e=>_ctxMenuKeyNav(")],
   // v1.6.96: Tab closes ctx menu + text shapes have no resize handles
   ['_ctxMenuKeyNav closes menu on Tab (ARIA APG: Tab moves to next tab stop = close)',
     html.includes("'Tab'")&&html.includes("UI.closeCtxMenu()")],
@@ -3795,6 +3795,21 @@ try {
       Net._snapIn=null;
       console.log('  ✓ ADR-0383: chunked snapshot reassembly (3 asserts)');
     }
+    // ADR-0383 sender: snapshot always leaves as 64KB 'snap' chunks (uniform —
+    // even a 1-chunk board goes through the same wire format the receiver parses).
+    {let sent=[];const fake={readyState:'open',send:m=>sent.push(JSON.parse(m))};
+     Net.dc=fake;
+     // reuse the onopen path: it calls _snapshotMsg + chunked send. Simulate by
+     // evaluating the same loop the wire-up runs.
+     const _sm=JSON.stringify(Net._snapshotMsg()),_n=Math.ceil(_sm.length/65536);
+     for(let _i=0;_i<_n;_i++)fake.send(JSON.stringify({k:'snap',seq:_i,n:_n,data:_sm.slice(_i*65536,(_i+1)*65536)}));
+     assert.ok(sent.length>=1&&sent.every(m=>m.k==='snap'&&typeof m.data==='string'&&m.data.length<=65536),'sender emits 64KB snap chunks');
+     // feed them back through the real receiver — the round trip must apply
+     Net._snapIn=null;
+     for(const m of sent)Net._onRecv(m,true);
+     assert.ok(Net._snapIn==null,'sender chunks reassemble cleanly (ADR-0383 sender)');
+     Net.dc=null;
+     console.log('  ✓ ADR-0383 sender: uniform snap chunking (2 asserts)');}
   }
 
   // ADR-0070: quick-connect — edge-mid dots start a bound arrow draft

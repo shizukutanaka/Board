@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.437] - 2026-09-23
+### 修正
+- ADR-0400: RTC スナップショット送信が >256KB で SCTP 天井に静かに死んでいた実害を修正 — ADR-0383 は受信側のみコミットされており送信側のチャンク化が欠落していた。`dc.onopen` のスナップショットを常時 64KB の 'snap' チャンク送出に統一 (1 チャンク盤面も同じ経路)
+### 変更
+- ADR-0399: `_ap` (appendChild) / `_stO` (setTimeout) / `_KD`/`_CH`/`_CK` (keydown/change/click) / `_vpS` (viewport emit) の shorthand 化 (~280B 回収)
+
 ## [1.7.436] - 2026-09-23
 ### 修正
 - ADR-0398: ファイル取込4経路 (.board/.excalidraw/.svg/.drawio) に 32MB 上限 — 巨大ファイルで JSON/XML parse がメインスレッドをハングさせる経路を遮断 (dataUrl 16M / snap 24M の既存 cap と同系統)
