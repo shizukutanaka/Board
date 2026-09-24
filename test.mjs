@@ -9656,6 +9656,15 @@ try {
      assert.strictEqual((xml3.match(/parent="g_g1"/g)||[]).length,2,'both members parent the group cell (ADR-0336)');
      assert.ok(xml3.includes('x="0"'),'child geometry is group-relative — member a at group origin (ADR-0336)');
      assert.ok(xml3.includes('x="100"'),'member b offset by +100 from group origin (ADR-0336)');}
+
+    // ADR-0345: frame → swimlane containment (member parent + relative coords)
+    {const xml4=boardToDrawio([{id:'f',type:'frame',x:0,y:0,w:400,h:300,label:'F',stroke:'#000',fill:null,size:2,opacity:1},
+                               {id:'m',type:'rect',x:50,y:60,w:80,h:60,stroke:'#000',fill:null,size:2,opacity:1},
+                               {id:'o',type:'rect',x:500,y:60,w:80,h:60,stroke:'#000',fill:null,size:2,opacity:1}]);
+     const _fid=(xml4.match(/id="(b\d+)"[^>]*swimlane/)||[])[1];
+     assert.ok(_fid,'frame emits a swimlane cell (ADR-0345)');
+     assert.ok(new RegExp('id="b\\d+"[^>]*parent="'+_fid+'"[^>]*>[\\s\\S]*?x="50"').test(xml4)||xml4.includes('parent="'+_fid+'"><mxGeometry x="50"'),'contained member parents the frame with relative x (ADR-0345)');
+     assert.ok(!/parent="b\d+"/.test(xml4.match(/id="b\d+"[^>]*x="500"[^>]*/)?.[0]||''),'outside member stays parent=1 (ADR-0345)');}
      assert.ok(boardToDrawio([{id:'y',type:'rect',x:0,y:0,w:1,h:1,stroke:'#000',fill:null,size:2,opacity:1}]).indexOf('visible="0"')<0,'visible shape carries no visible attr');}
     console.log('  ✓ excalidraw import (element mapping, styles, tombstones, reject paths)');
   }
