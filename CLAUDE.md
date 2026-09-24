@@ -264,6 +264,14 @@ Board/
 - [ADR-0212](docs/ADR-0212-conn-label-lineheight.md) connラベル行間
 - [ADR-0213](docs/ADR-0213-pin-anchor-ctx.md) ctxアンカー固定
 - [ADR-0214](docs/ADR-0214-bindat-grid.md) _bindAtグリッド化
+- [ADR-0215](docs/ADR-0215-modal-focus-trap.md) モーダルfocus復帰
+- [ADR-0216](docs/ADR-0216-labelpos-slots.md) ラベル位置スロット
+- [ADR-0217](docs/ADR-0217-route-reset-reach.md) ルートリセット到達性
+- [ADR-0218](docs/ADR-0218-conn-hop-arcs.md) コネクタホップ
+- [ADR-0219](docs/ADR-0219-center-draw.md) ⌥中心基点描画
+- [ADR-0220](docs/ADR-0220-drawio-export.md) .drawioエクスポート
+- [ADR-0221](docs/ADR-0221-drawio-anchor-roundtrip.md) drawioアンカー往復
+- [ADR-0222](docs/ADR-0222-exc-binding-fix.md) excalidraw結合修復
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

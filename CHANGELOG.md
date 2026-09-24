@@ -2,6 +2,65 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.280]
+
+### 修正
+- **excalidraw 結合修復** (ADR-0222)。エクスポートが
+  存在しない `bind1/bind2` を読み常に unbound だった
+  バグを `s.a/s.b` に修正 + `boundElements` 出力と
+  aF/bF → focus 近似。
+
+## [1.7.279]
+
+### 追加
+- **drawio 固定アンカー往復** (ADR-0221)。`exitX/exitY` /
+  `entryX/entryY` を aF/bF 固定エッジアンカーと双方向
+  マップ — drawio↔Board で固定ポートが保存される。
+
+## [1.7.278]
+
+### 追加
+- **.drawio エクスポート** (ADR-0220)。エクスポートメニューに
+  drawio 形式を追加 — ADR-0203 インポートとの往復。
+  bound 端点・waypoints・orthogonal routing・curve/hop・
+  共有スタイル語彙を mxGraphModel にマップ。
+
+## [1.7.277]
+
+### 追加
+- **⌥ 中心基点描画** (ADR-0219)。rect/ellipse/diamond/
+  sticky/frame のドラッグ中に ⌥ でアンカーを中心に拡大
+  (Figma/draw.io 慣例)。⇧ 併用で中心+正方形/真円。
+
+## [1.7.276]
+
+### 追加
+- **コネクタのホップ (交差ジャンプアーク)** (ADR-0218)。
+  ctx メニューでトグル — 交差点を半円で飛び越す回路図/
+  draw.io "jump" スタイル。直線・ウェイポイント・エルボー
+  に対応、canvas/SVG 同一幾何。
+
+## [1.7.275]
+
+### 修正
+- **ルートリセットの ctx 到達性** (ADR-0217)。`labelPos` /
+  `cbend` だけが残ったコネクタにも「ルートをリセット」が
+  出るようゲートを拡張 (⌥click の代替到達)。
+
+## [1.7.274]
+
+### 改善
+- **ラベル位置のスロット吸着** (ADR-0216)。コネクタラベルの
+  ドラッグ位置が 0/0.25/0.5/0.75/1 に磁石吸着
+  (draw.io の start/center/end 系)。
+
+## [1.7.273]
+
+### 改善
+- **モーダルのフォーカストラップ** (ADR-0215、a11y)。help/share
+  ダイアログで Tab が内部を巡回 (外への抜け防止 + 閉鎖時に
+  呼び出し元へフォーカス復帰、WCAG 2.1.2/2.4.3)。
+
 ## [1.7.272]
 
 ### 改善

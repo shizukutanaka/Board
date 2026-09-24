@@ -713,6 +713,14 @@ const checks = [
   ['conn label honours lineH canvas+SVG (ADR-0212)', html.includes('llh=fs*(s.lineH||1.25)')&&html.includes('lh2=fs*(s.lineH||1.25)')],
   ['pin/unpin anchor via ctx for touch/keyboard (ADR-0213)', html.includes('function pinAnchor()')&&html.includes("['ctxPinAnchor','',pinAnchor]")&&html.includes('px=k===\'a\'?e.x1:e.x2')],
   ['_bindAt grid-accelerated candidate scan (ADR-0214)', html.includes('const cands=[..._queryGrid(_grid,{x,y})]')&&html.includes('const ok=s=>{const t=s.type;return t!==\'line\'&&t!==\'arrow\'&&t!==\'pen\'&&s.visible!==0}')],
+  ['modal focus capture/restore + summary tabbable (ADR-0215)', html.includes('_captureFocus()')&&html.includes('this._restoreFocus()')&&html.includes('select,textarea,summary,[tabindex')],
+  ['labelPos drag snaps to 0/.25/.5/.75/1 slots (ADR-0216)', html.includes('for(const slot of[0,0.25,0.5,0.75,1])')],
+  ['ctx route-reset reachable when only labelPos/cbend set (ADR-0217)', html.includes('s.labelPos==null&&s.cbend==null)continue')&&html.includes('s.labelPos!=null||s.cbend!=null')],
+  ['connector jump arcs canvas+SVG + ctx toggle (ADR-0218)', html.includes('function _polylineHop(c,s,pts,R)')&&html.includes('function _hopPathD(s,pts,ox,oy,R)')&&html.includes('function toggleHop()')&&html.includes("['ctxHop','',toggleHop]")],
+  ['Alt draws box shapes from center (ADR-0219)', html.includes('contRectLike(wp,e.shiftKey,e.altKey)')&&html.includes('// ADR-0219: ⌥ = draw from center')],
+  ['.drawio export mxGraphModel round-trip (ADR-0220)', html.includes('function boardToDrawio(shapes)')&&html.includes('edgeStyle=orthogonalEdgeStyle')&&html.includes("jumpStyle=arc")],
+  ['drawio exitX/entryX fixed ports round-trip aF/bF (ADR-0221)', html.includes('s.aF={fx:Math.min(1,Math.max(0,fx)),fy')&&html.includes('exitX=${s.aF.fx};exitY=${s.aF.fy}')],
+  ['excalidraw export keeps bindings via s.a/s.b + boundElements (ADR-0222)', html.includes('startBinding:s.a?{elementId:s.a')&&html.includes('e.boundElements=be.map')],
   ['endpoint drag Shift constrains to 45 deg + label editor fontSize (ADR-0206)', html.includes("constrain the free end to 45")&&html.includes("${hit.fontSize||12}px")],
   ['i18n has excImported ja+en', html.includes("excImported:'Excalidraw を取り込みました'") && html.includes("excImported:'Excalidraw imported'")],
   // v1.7.102: ADR-0044 text paste → text shape
@@ -732,9 +740,9 @@ const checks = [
   // v1.6.45: zoom badge has role=group for semantic grouping
   ['zoom-badge has role=group and aria-label', html.includes('class="zoom-badge" role="group" aria-label="Zoom controls"')],
   // v1.6.52: dialog focus management (WCAG 2.4.3)
-  ['toggleHelp moves focus to helpClose on open', html.includes("open?'helpClose':'btnHelp'")],
+  ['toggleHelp moves focus to helpClose on open', html.includes("this._captureFocus();document.getElementById('helpClose').focus()")],
   ['openShare moves focus to shareClose', html.includes("document.getElementById('shareClose').focus()")],
-  ['closeShare returns focus to btnShare', html.includes("document.getElementById('btnShare').focus()")],
+  ['closeShare restores focus to the invoker', html.includes("this._restoreFocus()")],
   // v1.6.56: custom color pickers (native <input type=color>) for stroke and fill
   ['custom stroke color picker present', html.includes('class="swatch cp" data-cp="stroke"')],
   ['custom fill color picker present', html.includes('class="swatch cp" data-cp="fill"')],
@@ -771,7 +779,7 @@ const checks = [
   ['label editor follows the viewport (ADR-0182)', html.includes('function _lblFollow()')&&html.includes('_lblAnchor(hit)')&&html.includes('_lblTa={inp,hit}')],
   ['route style persists via state.style.elbow/curve into Shape.make', html.includes("state.style.elbow=s.elbow;state.style.curve=0")&&html.includes('if(state.style.elbow)base.elbow=state.style.elbow;')],
   ['corner/hatch/align persist via state.style into Shape.make', html.includes("state.style.r!=null")&&html.includes("state.style.align=nxt")&&html.includes("state.style.fstyle=nxt||null")],
-  ['eyedropper absorbs persisted look-props + start persists', html.includes("'elbow','curve','r','fstyle','align','valign','fontSize','lineH','cbend'")&&html.includes("state.style.start=s.start")],
+  ['eyedropper absorbs persisted look-props + start persists', html.includes("'elbow','curve','hop','r','fstyle','align','valign','fontSize','lineH','cbend'")&&html.includes("state.style.start=s.start")],
   ['frame label honors s.font family', html.includes('${_fontFam(s)}" font-size="12"')&&html.includes('${_fontFam(hit)};color')],
   ['sticky body valign via s.valign (ctxVAlign gate + canvas/SVG)', html.includes("seqS=[null,'middle','bottom']")&&html.includes("const sty=s.valign==='middle'")&&html.includes("const sy2v=s.valign==='middle'")],
   ['frame font via cycleFont gate + make() inheritance', html.includes("s.type!=='frame'&&!s.label")&&html.includes("type==='frame'||s.label")&&html.includes("type==='sticky'||type==='frame'")],
@@ -1432,7 +1440,7 @@ try {
              endRectLike, endLineLike, I18N, applyTheme, editSelectedShapeKbd, Share,
              draw, drawOverlay, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; }, _setOCtx: (c) => { const p = octx; octx = c; return p; },
              _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg,
-             _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc,
+             _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio,
              _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER,
              _getLang: () => LANG, _getT: () => T };
   `);
@@ -1458,7 +1466,7 @@ try {
           _getPasteCount, _resetPasteClipboard,
           endRectLike, endLineLike, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
           _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg,
-          _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, excScene, exportExc,
+          _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, excScene, exportExc, boardToDrawio, exportDrawio,
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER } = api;
 
   console.log('\n-- behavioural --');
@@ -9250,8 +9258,8 @@ try {
       const items=captured[2];
       assert.ok(Array.isArray(items),'v1.7.56a: openExportMenu passes an items array, not the default (undefined)');
       const keys=items.map(it=>it==='sep'?'sep':it[0]);
-      assert.deepStrictEqual(keys,['ctxExportPNG','ctxExportPNG1x','ctxExportPNG4x','ctxExportViewPNG','ctxCopyPNG','ctxExportSVG','ctxExportPDF','ctxExportBoard','ctxCopyBoard','ctxExportExc','sep','ctxImportBoard'],
-        'v1.7.56a: openExportMenu offers PNG/copy-PNG/SVG/PDF/.board/.excalidraw export + a separator + .board import, in that order');
+      assert.deepStrictEqual(keys,['ctxExportPNG','ctxExportPNG1x','ctxExportPNG4x','ctxExportViewPNG','ctxCopyPNG','ctxExportSVG','ctxExportPDF','ctxExportBoard','ctxCopyBoard','ctxExportExc','ctxExportDrawio','sep','ctxImportBoard'],
+        'v1.7.56a: openExportMenu offers PNG/copy-PNG/SVG/PDF/.board/.excalidraw/.drawio export + a separator + .board import, in that order');
       const fnByKey=Object.fromEntries(items.filter(it=>it!=='sep').map(it=>[it[0],it[2]]));
       assert.strictEqual(fnByKey.ctxExportPNG,exportPNG,'v1.7.56a: PNG item wired to the real exportPNG');
       assert.strictEqual(fnByKey.ctxCopyPNG,copyPNG,'v1.7.56a: copy-PNG item wired to the real copyPNG (ADR-0050)');
@@ -9259,6 +9267,7 @@ try {
       assert.strictEqual(fnByKey.ctxExportPDF,exportPDF,'v1.7.56a: PDF item wired to the real exportPDF');
       assert.strictEqual(fnByKey.ctxExportBoard,exportBoard,'v1.7.56a: .board export item wired to the real exportBoard');
       assert.strictEqual(fnByKey.ctxExportExc,exportExc,'v1.7.56a: .excalidraw export item wired to the real exportExc (ADR-0098)');
+      assert.strictEqual(fnByKey.ctxExportDrawio,exportDrawio,'v1.7.276+: .drawio export item wired to the real exportDrawio (ADR-0220)');
       assert.strictEqual(fnByKey.ctxCopyBoard,copyBoardJSON,'v1.7.170+: copy-board-JSON item wired to copyBoardJSON (ADR-0115)');
       assert.strictEqual(typeof fnByKey.ctxImportBoard,'function','v1.7.56a: import item is a callable (opens the file picker)');
     }finally{
@@ -9470,7 +9479,7 @@ try {
 
     // ADR-0098: excScene round-trip — export then re-import keeps connectors real
     {const a1=excToShapes(scene)[3];                       // arrow
-     a1.bind2='boxA';a1.way=[{x:15,y:30}];
+     a1.b='boxA';a1.way=[{x:15,y:30}];   // ADR-0222: real bind field is s.b (was bind2 — fixture mirrored the bug)
      const sc=excScene([a1,{id:'boxA',type:'rect',x:0,y:0,w:40,h:40,stroke:'#000',fill:null,size:2,opacity:1},
        {id:'st1',type:'sticky',x:0,y:0,w:100,h:100,color:'#FEF08A',text:'hi',stroke:'#000',size:1,opacity:1,align:'center'},
        {id:'im1',type:'image',x:0,y:0,w:10,h:10,dataUrl:'data:image/png;base64,xx',stroke:'#000',size:1,opacity:1}]);
