@@ -735,6 +735,7 @@ const checks = [
   ['SVG import reads <image href=data:> (ADR-0235)', html.includes("tag==='image'")&&html.includes('dataUrl:href.slice')],
   ['editor textarea routes Cmd-B/I/U/X to toggleTextFlag (ADR-0236)', html.includes("fl={b:'bold',i:'italic',u:'under'}[mk]")&&html.includes('toggleTextFlag(fl)')],
   ['label input routes Cmd-B/I/U/X to toggleTextFlag (ADR-0237)', html.includes("fl2={b:'bold',i:'italic',u:'under'}[mk2]")],
+  ['drawio verticalAlign round-trips s.valign (ADR-0238)', html.includes('sty.verticalAlign')&&html.includes("'verticalAlign='+s.valign")],
   ['endpoint drag Shift constrains to 45 deg + label editor fontSize (ADR-0206)', html.includes("constrain the free end to 45")&&html.includes("${hit.fontSize||12}px")],
   ['i18n has excImported ja+en', html.includes("excImported:'Excalidraw を取り込みました'") && html.includes("excImported:'Excalidraw imported'")],
   // v1.7.102: ADR-0044 text paste → text shape

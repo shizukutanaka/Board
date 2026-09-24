@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.294';
+const V='1.7.295';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6430,6 +6430,7 @@ function drawioToShapes(txt){
     // ADR-0228: label typography — drawio align + fontStyle bitmask
     // (1=bold, 2=italic, 4=underline; mxGraph BOLD/ITALIC/UNDERLINE_FONT)
     if(sty.align==='center'||sty.align==='right')s.align=sty.align;
+    if(/^(top|middle|bottom)$/.test(sty.verticalAlign))s.valign=sty.verticalAlign;   // ADR-0238
     const _fs=+sty.fontStyle;
     if(_fs&1)s.bold=1;if(_fs&2)s.italic=1;if(_fs&4)s.under=1;
     idOf.set(c.getAttribute('id'),s.id);shapes.push(s);
@@ -6533,6 +6534,7 @@ function boardToDrawio(shapes){
     if(s.opacity!=null&&s.opacity<1)sty+='opacity='+Math.round(s.opacity*100)+';';
     if(s.fontSize)sty+='fontSize='+s.fontSize+';';
     if(s.align==='center'||s.align==='right')sty+='align='+s.align+';';   // ADR-0228
+    if(s.valign)sty+='verticalAlign='+s.valign+';';                          // ADR-0238
     const _dfs=(s.bold?1:0)|(s.italic?2:0)|(s.under?4:0);                  // ADR-0228: mxGraph bitmask
     if(_dfs)sty+='fontStyle='+_dfs+';';
     const lbl=s.label!=null?s.label:s.text;

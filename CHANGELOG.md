@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.295]
+
+### 修正
+- **drawio verticalAlign 往復** (ADR-0238)。import で
+  `verticalAlign`→`s.valign`、export で逆出力 —
+  値域一致により縦揃えが完全往復。
+
 ## [1.7.294]
 
 ### 追加
