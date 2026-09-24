@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.183]
+
+### 追加
+- **クリック-クリック式 line/arrow** (ADR-0126)。ドラッグせず
+  1クリック目で始点・2クリック目で終点を指定 (Excalidraw parity、
+  結合バインド/⇧角度拘束も通常通り動作)。Esc/ツール切替でキャンセル。
+
 ## [1.7.182]
 
 ### 追加

@@ -774,7 +774,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.182';
+const V='1.7.183';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3342,7 +3342,7 @@ function abortGesture(){
     const sh=byId(ptr.wayOrig.id);if(sh){delete sh.way;Object.assign(sh,clone(ptr.wayOrig));}
   }
   if(_eraseBatch.length){for(const s of _eraseBatch)state.shapes.push(s);_eraseBatch=[];sortZ();_invalidateGrid();}   // ADR-0009
-  _penPred=null;
+  _penPred=null;ptr.lineClick=false;
   state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.dragStartShapes=null;
   ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;ptr.ebendOrig=null;ptr.wayOrig=null;ptr.wayIdx=null;ptr.wayNew=false;ptr.lblOrig=null;
@@ -3469,7 +3469,10 @@ canvas.addEventListener('pointerdown',e=>{
       pickOrMarquee(wp,e);break;
     case 'pen':case 'marker':beginPen(wp,e);break;
     case 'rect':case 'ellipse':case 'diamond':case 'sticky':case 'frame':beginRectLike(wp);break;
-    case 'line':case 'arrow':beginLineLike(wp);break;
+    case 'line':case 'arrow':{
+      if(ptr.lineClick){ptr.lineClick=false;endLineLike();break}   // ADR-0126: second click commits
+      beginLineLike(wp);break;
+    }
     case 'text':beginText(wp);break;
     case 'eraser':_eraseBatch=[];eraseAt(wp);break;
   }
@@ -3483,6 +3486,9 @@ canvas.addEventListener('pointermove',e=>{
   Net.sendCursor(wp);   // ADR-0010
   UI.setStatusXY(Math.round(wp.x),Math.round(wp.y));
   if(!ptr.down){
+    // ADR-0126: click-click line mode — after a click, the draft previews
+    // to the cursor until the second click commits it (Excalidraw parity).
+    if(ptr.lineClick&&(state.tool==='line'||state.tool==='arrow')){contLineLike(wp,e.shiftKey);return}
     // hover feedback
     if(state.tool==='select'){
       // Check for resize handle hover first
@@ -3658,7 +3664,11 @@ canvas.addEventListener('pointerup',e=>{
       break;
       case 'pen':case 'marker':endPen();break;
       case 'rect':case 'ellipse':case 'diamond':case 'sticky':case 'frame':endRectLike();break;
-      case 'line':case 'arrow':endLineLike();break;
+      case 'line':case 'arrow':{
+        const _d=state.draft;
+        if(_d&&Math.hypot(_d.x2-_d.x1,_d.y2-_d.y1)<2){ptr.lineClick=true;break}   // ADR-0126: click → pick-point mode
+        ptr.lineClick=false;endLineLike();break;
+      }
       case 'eraser':flushErase();break;
     }
   }
@@ -3691,7 +3701,7 @@ function _cancelPointerGesture(){
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;
   ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.rotOrig=null;ptr.dragStartShapes=null;
   ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.ebendOrig=null;ptr.wayOrig=null;
-  canvas.dataset.panning='false';state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;_penPred=null;invalidate();
+  canvas.dataset.panning='false';ptr.lineClick=false;state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;_penPred=null;invalidate();
 }
 // ADR-0006: fires after LONG_PRESS_MS. Guards: gesture still active, handle-drag not in
 // progress (resize/rotate — a deliberate precision drag we shouldn't interrupt), and the
@@ -4952,7 +4962,7 @@ window.addEventListener('keydown',e=>{
     // mid-drag mutations are in-place, so without this Escape left shapes
     // displaced until pointerup committed them. Selection survives the cancel.
     else if(ptr.down&&ptr.dragKind)_cancelPointerGesture();
-    else{if(state.selection.size)UI.toast(t('selNone'));state.selection.clear();state.marquee=null;state.draft=null;state.guides=null;state.readout=null;state.bindPreview=null;_penPred=null;invalidate()}   // ADR-0037
+    else{if(state.selection.size)UI.toast(t('selNone'));state.selection.clear();ptr.lineClick=false;state.marquee=null;state.draft=null;state.guides=null;state.readout=null;state.bindPreview=null;_penPred=null;invalidate()}   // ADR-0037
   }
   else if(k==='?'||(e.shiftKey&&e.key==='/')){e.preventDefault();UI.toggleHelp()}
   else if(k===']'&&!meta&&e.shiftKey){e.preventDefault();doBringFront()}
@@ -4982,6 +4992,7 @@ window.addEventListener('keyup',e=>{
 });
 function pickTool(tool,temporary){
   if(temporary&&!window._prevTool)window._prevTool=state.tool;
+  if(ptr.lineClick&&tool!=='line'&&tool!=='arrow'){ptr.lineClick=false;state.draft=null;invalidate()}   // ADR-0126
   state.tool=tool;canvas.dataset.tool=tool;
   canvas.setAttribute('aria-label',(T.k[tool]||tool)+' — '+t('canvasHint'));   // localized (was hardcoded English)
   UI.announce(T.k[tool]||tool);   // tool switches were SR-silent (undo/group等 toast, this didn't)
