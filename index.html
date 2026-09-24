@@ -829,7 +829,7 @@ const _on=(e,t,f,o)=>e.addEventListener(t,f,o);                          // ADR-
 const _vp=()=>state.viewport,_vpS=()=>({x:+_vp().x.toFixed(2),y:+_vp().y.toFixed(2),zoom:+_vp().zoom.toFixed(4)});                                              // ADR-0362: live-read (tests reassign the object)
 const _pi=()=>state.peerId,_ro=()=>state.readout,_gd=()=>state.guides,_cl=()=>state.clipboard,_bb=s=>G.bbox(s),_bA=s=>G.bboxAll(s),_oa=Object.assign;   // ADR-0378
 const _sO=()=>state.seenOps,_la=()=>state.lasso,_mq=()=>state.marquee,_dd=()=>state.dupDelta,_w2=p=>G.w2s(p),_s2=p=>G.s2w(p),_cE=connEnds;   // ADR-0382
-const _dpr=()=>window.devicePixelRatio,_iA=Array.isArray,_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log,_rAF=requestAnimationFrame,_pF=parseFloat,_db=document.body,_de=document.documentElement,_wO=window.open,_lg=k=>localStorage.getItem(k),_ls=(k,v)=>localStorage.setItem(k,v),_mP=a=>new Map(a),_sT=a=>new Set(a),_eU=encodeURIComponent,_dU=decodeURIComponent,_un='undefined',_AU='arrowup',_AD='arrowdown',_AL2='arrowleft',_AR2='arrowright',_ES='escape',_EN='enter',_TB='tab',_IK='#0F172A',_YW='#FEF08A',_BOX=_sT(['rect','ellipse','diamond']),_BX4=_sT([..._BOX,'sticky']),_BOXF=_sT([..._BOX,'frame','sticky']),_HF4=_sT([..._BOX,'frame']),_RD=_sT(['rect','diamond']),_RDI=_sT([..._RD,'image']),_D6=_sT([..._BOX,'frame','image']),_SH5=_sT([..._BOX,'image','text']),_TS=_sT(['text','sticky']),_TSF=_sT([..._TS,'frame']);   // ADR-0384/../0397/0453
+const _dpr=()=>window.devicePixelRatio,_iA=Array.isArray,_iS=v=>typeof v==='string',_iN=v=>typeof v==='number',_iO=v=>typeof v==='object',_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log,_rAF=requestAnimationFrame,_pF=parseFloat,_db=document.body,_de=document.documentElement,_wO=window.open,_lg=k=>localStorage.getItem(k),_ls=(k,v)=>localStorage.setItem(k,v),_mP=a=>new Map(a),_sT=a=>new Set(a),_eU=encodeURIComponent,_dU=decodeURIComponent,_un='undefined',_AU='arrowup',_AD='arrowdown',_AL2='arrowleft',_AR2='arrowright',_ES='escape',_EN='enter',_TB='tab',_IK='#0F172A',_YW='#FEF08A',_BOX=_sT(['rect','ellipse','diamond']),_BX4=_sT([..._BOX,'sticky']),_BOXF=_sT([..._BOX,'frame','sticky']),_HF4=_sT([..._BOX,'frame']),_RD=_sT(['rect','diamond']),_RDI=_sT([..._RD,'image']),_D6=_sT([..._BOX,'frame','image']),_SH5=_sT([..._BOX,'image','text']),_TS=_sT(['text','sticky']),_TSF=_sT([..._TS,'frame']);   // ADR-0384/../0397/0453
 const _sh=()=>state.shapes;                                                // ADR-0364
 const _sl=()=>state.selection;
 const _ss=ids=>{state.selection=_sT(ids)};   // ADR-0415: selection-set writes (18 sites)
@@ -852,7 +852,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.490';
+const V='1.7.491';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1276,19 +1276,19 @@ function distToSeg(p,a,b){
 // payload like {pts:[[1,NaN]]} must be caught here. Depth-capped to bound a hostile
 // deeply-nested object (stack-overflow DoS); no valid shape nests beyond a few levels.
 function validPatch(p){
-  if(!p||typeof p!=='object')return false;   // a patch/shape must be an object
+  if(!p||!_iO(p))return false;   // a patch/shape must be an object
   if(!_cleanVal(p,0))return false;
   // Numeric geometry fields must be actual numbers, not strings that slip past _cleanVal
   for(const k of ['x','y','w','h','x1','y1','x2','y2','z','rotate','size','opacity','dash','labelPos','cbend','bend','spacing','lineH','fontSize','elbow','curve','hop','flip','r','visible','start','wrap']){   // ADR-0367/0369
     if(k in p&&p[k]!=null&&typeof p[k]!=='number')return false;
   }
   for(const k of ['bold','italic','under','strike','locked','shadow','hl'])if(k in p&&p[k]!=null&&typeof p[k]!=='boolean'&&typeof p[k]!=='number')return false;   // ADR-0411/0413/0430: flags are true|1 (drawio writes 1; shadow writes true)
-  if(p.aF!=null&&(typeof p.aF!=='object'||!_fin(p.aF.fx)||!_fin(p.aF.fy)))return false;   // ADR-0367: {fx,fy} object — structural check
-  if(p.bF!=null&&(typeof p.bF!=='object'||!_fin(p.bF.fx)||!_fin(p.bF.fy)))return false;   // ADR-0367
+  if(p.aF!=null&&(!_iO(p.aF)||!_fin(p.aF.fx)||!_fin(p.aF.fy)))return false;   // ADR-0367: {fx,fy} object — structural check
+  if(p.bF!=null&&(!_iO(p.bF)||!_fin(p.bF.fx)||!_fin(p.bF.fy)))return false;   // ADR-0367
   // ADR-0368: array-prop shape checks — upd patches bypass validShape's pen check,
   // so a crafted {pts:[["x"]]} or {way:[{x:'a'}]} reaches the renderers as NaN.
   if(p.pts!=null&&!(_iA(p.pts)&&_ln(p.pts)<=50000&&p.pts.every(q=>_iA(q)&&_fin(q[0])&&_fin(q[1])&&(q[2]==null||_fin(q[2])))))return false;
-  if(p.way!=null&&!(_iA(p.way)&&_ln(p.way)<=200&&p.way.every(w=>w&&typeof w==='object'&&_fin(w.x)&&_fin(w.y))))return false;
+  if(p.way!=null&&!(_iA(p.way)&&_ln(p.way)<=200&&p.way.every(w=>w&&_iO(w)&&_fin(w.x)&&_fin(w.y))))return false;
   // ADR-0369: string props — type + length. A hostile upd could inject a 1MB
   // text that every frame's wrapText then rescans, or a non-string that the
   // renderers coerce weirdly.
@@ -1303,10 +1303,10 @@ function validPatch(p){
   // resources invariant. This is the shared intake gate (validShape + upd/patch paths),
   // so guarding here closes every vector at once. Mirrors buildSVG's /^data:image\// guard;
   // SVG loaded via <img> can't run scripts or fetch subresources, so data:image/svg+xml is safe.
-  if('dataUrl' in p&&p.dataUrl!=null&&!(typeof p.dataUrl==='string'&&_ln(p.dataUrl)<=16_000_000&&/^data:image\//.test(p.dataUrl)))return false;   // ADR-0379: length cap — img.src buffers unbounded otherwise
+  if('dataUrl' in p&&p.dataUrl!=null&&!(_iS(p.dataUrl)&&_ln(p.dataUrl)<=16_000_000&&/^data:image\//.test(p.dataUrl)))return false;   // ADR-0379: length cap — img.src buffers unbounded otherwise
   // ADR-0327: s.link flows into window.open — a hostile .board/peer upd could carry
   // a javascript:/data: URL; only http(s) is openable.
-  if('link' in p&&p.link!=null&&!(typeof p.link==='string'&&/^https?:\/\//.test(p.link)))return false;
+  if('link' in p&&p.link!=null&&!(_iS(p.link)&&/^https?:\/\//.test(p.link)))return false;
   return true;
 }
 // ADR-0373: patches may carry structural/internal keys a remote peer can abuse —
@@ -1318,8 +1318,8 @@ function _stripStruct(p,idToo){delete p.type;if(idToo)delete p.id;for(const k of
 function _cleanVal(v,depth){
   if(depth>8)return false;
   if(typeof v==='function')return false;
-  if(typeof v==='number')return _fin(v);
-  if(v==null||typeof v!=='object')return true;   // string/boolean/null are fine
+  if(_iN(v))return _fin(v);
+  if(v==null||!_iO(v))return true;   // string/boolean/null are fine
   if(_iA(v))return v.every(x=>_cleanVal(x,depth+1));
   for(const k of _ok(v)){
     if(k==='__proto__'||k==='constructor'||k==='prototype')return false;
@@ -1328,18 +1328,18 @@ function _cleanVal(v,depth){
   return true;
 }
 const _TYPES=_sT(['rect','ellipse','diamond','pen','line','arrow','text','sticky','image','frame']);   // ADR-0387
-const _ptsOK=a=>_iA(a)&&a.every(p=>_iA(p)&&_ln(p)>=2&&p.every(n=>typeof n==='number'&&_fin(n)));   // ADR-0436: shared pen-pts tuple check
+const _ptsOK=a=>_iA(a)&&a.every(p=>_iA(p)&&_ln(p)>=2&&p.every(n=>_iN(n)&&_fin(n)));   // ADR-0436: shared pen-pts tuple check
 function validShape(s){
-  if(!s||typeof s!=='object'||typeof s.id!=='string'||_ln(s.id)>64||!_TYPES.has(s.type)||typeof s.z!=='number')return false;   // ADR-0387/0388: non-string/huge id — byId lookups by string silently miss, Map keys diverge
+  if(!s||!_iO(s)||!_iS(s.id)||_ln(s.id)>64||!_TYPES.has(s.type)||!_iN(s.z))return false;   // ADR-0387/0388: non-string/huge id — byId lookups by string silently miss, Map keys diverge
   if(!validPatch(s))return false;                  // no NaN/Inf coords, no pollution keys
   if(s.type==='pen')return _ptsOK(s.pts)&&_ln(s.pts)>0;
   return true;
 }
 // Validate a REMOTE op's payload before _apply. See docs/architecture.md.
 const _CC_KEYS=_sT(['a','aF','b','bF','x1','y1','x2','y2']);   // ADR-0377
-const _ccOk=q=>q&&typeof q==='object'&&!_iA(q)&&_ok(q).every(k=>_CC_KEYS.has(k))&&validPatch(q);
+const _ccOk=q=>q&&_iO(q)&&!_iA(q)&&_ok(q).every(k=>_CC_KEYS.has(k))&&validPatch(q);
 function validRemotePayload(op){
-  const patches=a=>_iA(a)&&_ln(a)<=MAX_OP_SHAPES&&a.every(p=>p&&typeof p.id==='string'&&validPatch(p));
+  const patches=a=>_iA(a)&&_ln(a)<=MAX_OP_SHAPES&&a.every(p=>p&&_iS(p.id)&&validPatch(p));
   switch(op.op){
     case 'add':    return validShape(op.shape);
     case 'addMany':    return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape);
@@ -1351,38 +1351,38 @@ function validRemotePayload(op){
       // `locked`/`type`/`id`/`_x` through (noLock exists for upd/style only, and
       // _stripStruct isn't applied at the connClears assign sites).
       if(op.connClears!=null&&!(_iA(op.connClears)&&_ln(op.connClears)<=MAX_OP_SHAPES&&op.connClears.every(p=>
-          p&&typeof p.id==='string'&&(p.before==null||_ccOk(p.before))&&(p.after==null||_ccOk(p.after)))))return false;
+          p&&_iS(p.id)&&(p.before==null||_ccOk(p.before))&&(p.after==null||_ccOk(p.after)))))return false;
       return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape);
     case 'clear':  return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape);
     case 'upd':{const noLock=p=>!('locked' in p);
-      if(typeof op.id!=='string'||!validPatch(op.after)||!noLock(op.after)||(op.before!=null&&!validPatch(op.before)))return false;
+      if(!_iS(op.id)||!validPatch(op.after)||!noLock(op.after)||(op.before!=null&&!validPatch(op.before)))return false;
       // pen pts must be array-of-[x,y] — flat arrays crash drawPen which expects [[x,y],...]
       if(op.after.pts!=null&&!_ptsOK(op.after.pts))return false;
       return true;}
-    case 'move':   return _iA(op.ids)&&_ln(op.ids)>0&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(id=>typeof id==='string')&&typeof op.dx==='number'&&_fin(op.dx)&&typeof op.dy==='number'&&_fin(op.dy)&&(op.dx!==0||op.dy!==0);
+    case 'move':   return _iA(op.ids)&&_ln(op.ids)>0&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(id=>_iS(id))&&_iN(op.dx)&&_fin(op.dx)&&_iN(op.dy)&&_fin(op.dy)&&(op.dx!==0||op.dy!==0);
     case 'zorder':  // Step2 minimal-delta {changes:[{id,before,after}]} or legacy {after:[…]}
-      return (_iA(op.changes)&&_ln(op.changes)<=MAX_OP_SHAPES&&op.changes.every(c=>c&&typeof c.id==='string'
-                &&(c.after==null||typeof c.after==='string')&&(c.before==null||typeof c.before==='string')))
+      return (_iA(op.changes)&&_ln(op.changes)<=MAX_OP_SHAPES&&op.changes.every(c=>c&&_iS(c.id)
+                &&(c.after==null||_iS(c.after))&&(c.before==null||_iS(c.before))))
              // legacy snapshot: each entry must carry a string id, finite z (if present),
              // and a string-or-null frac (if present) — otherwise sh.z=NaN or sh.frac=object
              // would silently corrupt the ADR-0001 sort invariant.
-             ||(_iA(op.after)&&_ln(op.after)<=MAX_OP_SHAPES&&op.after.every(c=>c&&typeof c.id==='string'
+             ||(_iA(op.after)&&_ln(op.after)<=MAX_OP_SHAPES&&op.after.every(c=>c&&_iS(c.id)
                 &&(c.z==null||_fin(c.z))
-                &&(c.frac==null||typeof c.frac==='string')));
+                &&(c.frac==null||_iS(c.frac))));
     case 'style':
     case 'resize':{const noLock=p=>!('locked' in p);
       return patches(op.after)&&op.after.every(noLock)
           &&patches(op.before)&&op.before.every(noLock);}
     case 'align':{const DIRS=_sT(['left','right','cx','top','bottom','cy','hspace','vspace','tidy','swap','gsnap','flip','rotate','lock','gresize','grot','matchw','matchh','matchwh','framefit']);
-      if(typeof op.dir!=='string'||!DIRS.has(op.dir))return false;
+      if(!_iS(op.dir)||!DIRS.has(op.dir))return false;
       const noLock=p=>op.dir==='lock'||!('locked' in p);
       return patches(op.after)&&op.after.every(noLock)
           &&patches(op.before)&&op.before.every(noLock);}
-    case 'group':  return _iA(op.ids)&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(id=>typeof id==='string')
-                          &&typeof op.gid==='string'&&_ln(op.gid)>0
-                          &&_iA(op.before)&&_ln(op.before)<=MAX_OP_SHAPES&&op.before.every(b=>b&&typeof b.id==='string');
-    case 'ungroup':return _iA(op.ids)&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(id=>typeof id==='string')
-                          &&_iA(op.gids)&&_ln(op.gids)<=MAX_OP_SHAPES&&op.gids.every(g=>typeof g==='string'&&_ln(g)>0);
+    case 'group':  return _iA(op.ids)&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(id=>_iS(id))
+                          &&_iS(op.gid)&&_ln(op.gid)>0
+                          &&_iA(op.before)&&_ln(op.before)<=MAX_OP_SHAPES&&op.before.every(b=>b&&_iS(b.id));
+    case 'ungroup':return _iA(op.ids)&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(id=>_iS(id))
+                          &&_iA(op.gids)&&_ln(op.gids)<=MAX_OP_SHAPES&&op.gids.every(g=>_iS(g)&&_ln(g)>0);
     default:       return false;
   }
 }
@@ -1395,10 +1395,10 @@ function validRemotePayload(op){
 // needs op-signing (§3.8). seq is a finite number for live ops OR a non-empty string
 // for snapshot adds ('snap:<id>'); ts is optional but, if present, must be finite.
 function validClock(c){
-  if(!c||typeof c!=='object')return false;
-  if(typeof c.peer!=='string'||!c.peer)return false;
-  if(!((typeof c.seq==='number'&&_fin(c.seq))||(typeof c.seq==='string'&&c.seq)))return false;
-  if(c.ts!=null&&!(typeof c.ts==='number'&&_fin(c.ts)))return false;
+  if(!c||!_iO(c))return false;
+  if(!_iS(c.peer)||!c.peer)return false;
+  if(!((_iN(c.seq)&&_fin(c.seq))||(_iS(c.seq)&&c.seq)))return false;
+  if(c.ts!=null&&!(_iN(c.ts)&&_fin(c.ts)))return false;
   return true;
 }
 const Store={
@@ -1459,7 +1459,7 @@ const Store={
     if(!validRemotePayload(op))return;
     // Raise the monotonic-clock floor to any ts we observe, so a LOCAL edit made
     // causally-after this remote edit gets a ts >= it (HLC-lite; see nowTs).
-    if(typeof op.clock.ts==='number')state._lastTs=_max(state._lastTs,op.clock.ts);
+    if(_iN(op.clock.ts))state._lastTs=_max(state._lastTs,op.clock.ts);
     const k=_ck(op);
     if(_sO().has(k))return;
     _sO().add(k);
@@ -1972,10 +1972,10 @@ const _imgCache=_mP(),IMG_CACHE_MAX=60;
 // the payload's head/middle/tail. Still O(1), but a colliding image must now
 // match byte ranges at three distant offsets (previously a same-length file
 // sharing the last 64 bytes rendered the WRONG image from cache).
-function _imgKey(u){if(typeof u!=='string')return'';
+function _imgKey(u){if(!_iS(u))return'';
   const m=_ln(u)>>1;return u.slice(5,32)+':'+_ln(u)+':'+u.slice(0,48)+':'+u.slice(m-24,m+24)+':'+u.slice(-48)}
 function getImg(dataUrl){
-  if(typeof dataUrl!=='string'||!dataUrl.startsWith('data:'))return null;   // ADR-0035: never decode a non-dataUrl (e.g. dangling img ref)
+  if(!_iS(dataUrl)||!dataUrl.startsWith('data:'))return null;   // ADR-0035: never decode a non-dataUrl (e.g. dangling img ref)
   const k=_imgKey(dataUrl);
   let img=_imgCache.get(k);
   if(img){_imgCache.delete(k);_imgCache.set(k,img);return img}
@@ -6934,7 +6934,7 @@ function _svgPathPts(d,m){
   return pts;
 }
 function svgToShapes(txt){
-  if(typeof DOMParser===_un||typeof txt!=='string')return null;
+  if(typeof DOMParser===_un||!_iS(txt))return null;
   const doc=new DOMParser().parseFromString(txt,'image/svg+xml');
   if(_qs(doc,'parsererror'))return null;
   const root=doc.documentElement;
@@ -7039,8 +7039,8 @@ function excToShapes(txt){
   const _excTxtE=_mP();                    // ADR-0234: sid → source element (bLabel marker)
   const st=e=>{
     const o={};
-    const sc=typeof e.strokeColor==='string'&&e.strokeColor!==_TR?e.strokeColor:null;
-    const bg=typeof e.backgroundColor==='string'&&e.backgroundColor!==_TR?e.backgroundColor:null;
+    const sc=_iS(e.strokeColor)&&e.strokeColor!==_TR?e.strokeColor:null;
+    const bg=_iS(e.backgroundColor)&&e.backgroundColor!==_TR?e.backgroundColor:null;
     if(sc)o.stroke=sc;else if(e.strokeColor===_TR)o.stroke=_TR;   // ADR-0290
     if(bg)o.fill=bg;else if(e.backgroundColor===_TR)o.fill='none';           // ADR-0290
     if(_fin(e.strokeWidth)&&e.strokeWidth>0)o.size=e.strokeWidth;
@@ -7055,14 +7055,14 @@ function excToShapes(txt){
   const rot=e=>_fin(e.angle)?_rnd(e.angle*180/_PI*10)/10:0;
   for(const e of d.elements){
     if(_ln(shapes)>=EXC_MAX_ELEMS)break;
-    if(!e||e.isDeleted||typeof e.x!=='number'||typeof e.y!=='number')continue;
+    if(!e||e.isDeleted||!_iN(e.x)||!_iN(e.y))continue;
     const W=+e.width||0,H=+e.height||0,S=st(e),r=rot(e);
     let s=null;
     switch(e.type){
       case'rectangle':s=Shape.make('rect',{x:e.x,y:e.y,w:W,h:H});break;
       case'ellipse':s=Shape.make('ellipse',{x:e.x,y:e.y,w:W,h:H});break;
       case'diamond':s=Shape.make('diamond',{x:e.x,y:e.y,w:W,h:H});break;   // ADR-0061: real type
-      case'frame':s=Shape.make('frame',{x:e.x,y:e.y,w:W,h:H,label:typeof e.name==='string'?e.name.slice(0,120):''});break;
+      case'frame':s=Shape.make('frame',{x:e.x,y:e.y,w:W,h:H,label:_iS(e.name)?e.name.slice(0,120):''});break;
       case'text':{
         const fs=_fin(e.fontSize)?e.fontSize:16;
         const content=_St(e.text||'').replace(/\s+/g,' ').trim();
@@ -7097,7 +7097,7 @@ function excToShapes(txt){
       }
       case'image':{   // ADR-0231: files-map lookup restores image bytes + flip
         const f=d.files&&e.fileId?d.files[e.fileId]:null;
-        if(!f||typeof f.dataURL!=='string'||!/^data:image\//.test(f.dataURL))break;
+        if(!f||!_iS(f.dataURL)||!/^data:image\//.test(f.dataURL))break;
         s=Shape.make('image',{x:e.x,y:e.y,w:W||80,h:H||80,dataUrl:f.dataURL.slice(0,25_000_000)});
         break;}
       default:break;   // unknown — skip
@@ -7105,7 +7105,7 @@ function excToShapes(txt){
     if(s){if(r&&s.w!=null)s.rotate=r;if(e.locked)s.locked=1;
       if(r&&_conn(s.type)){const _rm=r*_PI/180,_cx=(s.x1+s.x2)/2,_cy=(s.y1+s.y2)/2;   // ADR-0300: conn angle → rotate endpoints+way about midpoint
         for(const p of[[s,'x1','y1'],[s,'x2','y2'],...(s.way||[]).map(w=>[w,'x','y'])]){const dx=p[0][p[1]]-_cx,dy=p[0][p[2]]-_cy;p[0][p[1]]=+(_cx+dx*_cos(_rm)-dy*_sin(_rm)).toFixed(1);p[0][p[2]]=+(_cy+dx*_sin(_rm)+dy*_cos(_rm)).toFixed(1)}}
-      if(typeof e.link==='string'&&/^https?:\/\//.test(e.link))s.link=e.link.slice(0,500);   // ADR-0301
+      if(_iS(e.link)&&/^https?:\/\//.test(e.link))s.link=e.link.slice(0,500);   // ADR-0301
       if(_conn(s.type)&&e.roundness&&!e.elbowed){s.curve=1;delete s.r}   // ADR-0317: excalidraw's round arrow routes are curved — r only styles elbow corners
       if(_iA(e.scale)&&(e.scale[0]<0||e.scale[1]<0))s.flip=((e.scale[0]<0)?1:0)|((e.scale[1]<0)?2:0);   // ADR-0276
       _oa(s,S);shapes.push(s);   // ADR-0241
@@ -7458,7 +7458,7 @@ function buildSVG(shapes,paper){
         for(let i=0;i<_ln(svgLines);i++)els.push(`<tspan x="${tax}" dy="${i?fs*(s.lineH||1.25):0}">${_esc(svgLines[i])}</tspan>`);
         els.push('</text>');break;}
       case 'image':
-        if(typeof s.dataUrl==='string'&&/^data:image\//.test(_du(s))){
+        if(_iS(s.dataUrl)&&/^data:image\//.test(_du(s))){
           // ADR-0149: flip composes INSIDE the image transform (after rotation)
           // so it mirrors along the shape's local axes — same as the canvas path.
           const fT=s.flip?` translate(${_num(X+W/2+ox)} ${_num(Y+H/2+oy)}) scale(${s.flip&1?-1:1} ${s.flip&2?-1:1}) translate(${_num(-(X+W/2+ox))} ${_num(-(Y+H/2+oy))})`:'';
@@ -7658,9 +7658,9 @@ const Net={
     const n=_ceil(_ln(buf)/65536);for(let i=0;i<n;i++)this._sendDC(_JS({k,seq:i,n,data:buf.slice(i*65536,(i+1)*65536)}))
   },
   _fragIn(msg,key){   // shared single-assembly intake for 'snap'/'opc' — returns joined payload or undefined
-    if(typeof msg.data!=='string'||_ln(msg.data)>96*1024)return;
-    const n=typeof msg.n==='number'&&msg.n>=1&&msg.n<=384?_fl(msg.n):1;
-    const seq=typeof msg.seq==='number'&&msg.seq>=0?_fl(msg.seq):0;
+    if(!_iS(msg.data)||_ln(msg.data)>96*1024)return;
+    const n=_iN(msg.n)&&msg.n>=1&&msg.n<=384?_fl(msg.n):1;
+    const seq=_iN(msg.seq)&&msg.seq>=0?_fl(msg.seq):0;
     if(seq>=n)return;
     let sn=this[key];
     if(!sn||sn.n!==n){sn={p:new Array(n),g:0,n};this[key]=sn}   // ADR-0448: a stale partial with a different chunk count would block every later stream — fresh stream wins
@@ -7680,12 +7680,12 @@ const Net={
     }
   },
   _attachShape(s){
-    if(s&&typeof s.img==='string'&&!_du(s)){
+    if(s&&_iS(s.img)&&!_du(s)){
       const d=this._imgIn.get(s.img);
       if(d){const{img:_x,...rest}=s;return{...rest,dataUrl:d}}
       // ADR-0374: cap the parked-ref waitlist — a peer that sends slim refs then
       // leaves without chunks would otherwise grow _imgPending unboundedly.
-      if(typeof s.id==='string'){
+      if(_iS(s.id)){
         if(this._imgPending.size>=256&&!this._imgPending.has(s.id))this._imgPending.delete(this._imgPending.keys().next().value);
         this._imgPending.set(s.id,s.img);
       }
@@ -7693,7 +7693,7 @@ const Net={
     return s;
   },
   _attachOp(op){
-    if(!op||typeof op!=='object')return op;
+    if(!op||!_iO(op))return op;
     if(op.op==='add'&&op.shape)return{...op,shape:this._attachShape(op.shape)};
     if(op.op==='addMany'&&_iA(op.shapes))return{...op,shapes:op.shapes.map(s=>this._attachShape(s))};
     return op;
@@ -7749,20 +7749,20 @@ const Net={
     this._sendDC(_JS(msg))
   },
   _onRecv(msg,viaRtc){
-    if(!msg||typeof msg!=='object'||msg.peer===_pi())return;
+    if(!msg||!_iO(msg)||msg.peer===_pi())return;
     // Defensive intake for the peer id itself (payloads are validated per-case, but the
     // id feeds _touchPeer/_pr() directly). WebRTC delivers EVERY message kind here
     // unfiltered — "hello/ping never ride the DataChannel" only holds for honest peers.
-    if(msg.peer!==_ud&&(typeof msg.peer!=='string'||_ln(msg.peer)>MAX_PEER_ID_LEN))return;
+    if(msg.peer!==_ud&&(!_iS(msg.peer)||_ln(msg.peer)>MAX_PEER_ID_LEN))return;
     switch(msg.k){
       case 'img':{
         // ADR-0069: blob chunks → _imgIn, then drain parked shape refs.
         // ADR-0379: cap each chunk too — the wire format sends ~64KB slices, but the
         // 12MB post-assembly check runs only after ALL parts land. An oversized
         // msg.data × up to 4096 slots per key × 64 keys could still buffer-hoard.
-        if(typeof msg.key!=='string'||_ln(msg.key)>64||typeof msg.data!=='string'||_ln(msg.data)>96*1024)break;
-        const n=typeof msg.n==='number'&&msg.n>=1&&msg.n<=4096?_fl(msg.n):1;
-        const seq=typeof msg.seq==='number'&&msg.seq>=0?_fl(msg.seq):0;
+        if(!_iS(msg.key)||_ln(msg.key)>64||!_iS(msg.data)||_ln(msg.data)>96*1024)break;
+        const n=_iN(msg.n)&&msg.n>=1&&msg.n<=4096?_fl(msg.n):1;
+        const seq=_iN(msg.seq)&&msg.seq>=0?_fl(msg.seq):0;
         if(seq>=n)break;
         let st=this._imgChunks.get(msg.key);
         // ADR-0374: bound in-flight reassemblies — a peer opening thousands of
@@ -7789,8 +7789,8 @@ const Net={
       case 'op':{
         // Validate op shape before applying — reject garbage from bad peers
         const op=this._attachOp(msg.op);
-        if(!op||typeof op!=='object'||typeof op.op!=='string')break;
-        if(!op.clock||typeof op.clock.peer!=='string'||typeof op.clock.seq!=='number')break;
+        if(!op||!_iO(op)||!_iS(op.op))break;
+        if(!op.clock||!_iS(op.clock.peer)||!_iN(op.clock.seq))break;
         Store.applyRemote(op);break;}
       case 'hello':
         this._touchPeer(msg.peer);
@@ -7811,8 +7811,13 @@ const Net={
         }
         break;
       case 'name':   // ADR-0402: doc-name rename propagates as a plain broadcast
-        if(typeof msg.name==='string'&&_ln(msg.name)<=80){_setDocName(msg.name);_ps()}
+        if(_iS(msg.name)&&_ln(msg.name)<=80){_setDocName(msg.name);_ps()}
         break;
+      case 'bye':{   // ADR-0456: peer left — drop presence now, don't wait for the 15s reap
+        const pk=viaRtc?this._rtcPeerId:msg.peer;
+        if(pk&&_pr().delete(pk)){_ivO();if(this._onConnChange)this._onConnChange()}
+        if(viaRtc)this._rtcPeerId=null;
+        break;}
       case 'ping':
         this._touchPeer(msg.peer);
         break;
@@ -7822,7 +7827,7 @@ const Net={
         // locally-generated synthetic id (_rtcPeerId), not msg.peer. Route accordingly —
         // looking this up by msg.peer over that transport would silently miss (or worse,
         // create a duplicate/phantom peer entry).
-        if(typeof msg.x!=='number'||!_fin(msg.x)||typeof msg.y!=='number'||!_fin(msg.y))break;
+        if(!_iN(msg.x)||!_fin(msg.x)||!_iN(msg.y)||!_fin(msg.y))break;
         const peerKey=viaRtc?this._rtcPeerId:msg.peer;
         const p=peerKey&&_pr().get(peerKey);
         if(p){p.cursor={x:msg.x,y:msg.y};_ivO();}
@@ -7832,7 +7837,7 @@ const Net={
         // so an RTC peer lives under a synthetic id, not msg.peer). Defensive intake:
         // string ids only, capped — a bad peer can't flood us with a giant array.
         if(!_iA(msg.ids))break;
-        const ids=msg.ids.slice(0,MAX_OP_SHAPES).filter(id=>typeof id==='string');
+        const ids=msg.ids.slice(0,MAX_OP_SHAPES).filter(id=>_iS(id));
         const peerKey=viaRtc?this._rtcPeerId:msg.peer;
         const p=peerKey&&_pr().get(peerKey);
         if(p){p.sel=ids;_ivO();}
@@ -7870,7 +7875,7 @@ const Net={
     if(!op||op.op!=='add'||!op.shape)return 'skip';   // snapshot ops are adds only
     const ex=byId(op.shape.id);
     if(!ex){Store.applyRemote(op);return 'add';}
-    const rw=(op.wc&&typeof op.wc==='object')?op.wc:null;
+    const rw=(op.wc&&_iO(op.wc))?op.wc:null;
     if(!rw)return 'skip';
     const lw=_wc()[ex.id]||(_wc()[ex.id]={});
     let dirty=false;
@@ -7916,7 +7921,7 @@ const Net={
     const valid=shapes.slice(0,MAX_OP_SHAPES).map(s=>this._attachShape(s)).filter(validShape);
     state.shapes=clone(valid);_iG();_pcC();   // ADR-0009
     _sz();
-    if(typeof msg.name==='string')_setDocName(msg.name.slice(0,80));   // ADR-0402
+    if(_iS(msg.name))_setDocName(msg.name.slice(0,80));   // ADR-0402
     _iv();_ru();_ps();
   },
   _touchPeer(peerId){
@@ -8038,7 +8043,7 @@ const Net={
 // Round a number to `dp` decimals, shedding IEEE-754 noise (100.00000000000001) and
 // trailing precision that bloats serialized output. NaN/Inf pass through unchanged so
 // downstream validation still rejects them. Pure.
-function _round(n,dp){return typeof n==='number'&&_fin(n)?_rnd(n*10**dp)/10**dp:n;}
+function _round(n,dp){return _iN(n)&&_fin(n)?_rnd(n*10**dp)/10**dp:n;}
 // Deep copy of shapes with coordinate/dimension fields rounded, for SERIALIZATION
 // boundaries only (share URL, .board export) — never the in-memory model, so undo
 // fidelity and live rendering are untouched. Sub-pixel rounding is imperceptible on a
@@ -8168,7 +8173,7 @@ const Share={
       const origSel=_selIds();
       // ADR-0004: also survives past the undo window (reload/closed-tab), not just this session.
       if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());
-      state.shapes=valid.map(clone);_iG();_pcC();_setDocName(((typeof data.name==='string'&&data.name)||'Shared').slice(0,80));   // ADR-0009
+      state.shapes=valid.map(clone);_iG();_pcC();_setDocName(((_iS(data.name)&&data.name)||'Shared').slice(0,80));   // ADR-0009
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out (see importBoard for rationale).
       if(data.viewport&&_fin(+data.viewport.x)&&_fin(+data.viewport.y)&&_fin(+data.viewport.zoom)&&data.viewport.zoom>0){
@@ -8405,7 +8410,7 @@ function _imgNextKey(k){const m=/^(.*):(\d+)$/.exec(k);return m?m[1]+':'+(+m[2]+
 function _imgSlim(shapes,stored){
   const slim=[],puts=[];
   for(const s of shapes){
-    if(s&&s.type==='image'&&typeof s.dataUrl==='string'&&_du(s).length>128){
+    if(s&&s.type==='image'&&_iS(s.dataUrl)&&_du(s).length>128){
       let k=_imgHash(_du(s));
       while(stored.get(k)!==_ud&&stored.get(k)!==_du(s))k=_imgNextKey(k);
       if(stored.get(k)===_ud){stored.set(k,_du(s));puts.push([k,_du(s)])}
@@ -8419,7 +8424,7 @@ function _imgSlim(shapes,stored){
 // wire-format dataUrl exactly as before (ops/share/history unchanged).
 function _imgAttach(shapes,imgs){
   return shapes.map(s=>{
-    if(s&&typeof s.img==='string'&&!_du(s)){
+    if(s&&_iS(s.img)&&!_du(s)){
       const d=imgs.get(s.img);
       if(d){const{img:_x,...rest}=s;return{...rest,dataUrl:d}}
     }
@@ -8434,7 +8439,7 @@ _on(window,'beforeunload',e=>{
 _on(document,'visibilitychange',()=>Persist.flushIfHidden(document.visibilityState));
 // pagehide is iOS Safari's last reliable signal (visibilitychange can be skipped on
 // swipe-away / frozen-tab eviction); route it through the same tested flush.
-_on(window,'pagehide',()=>Persist.flushIfHidden('hidden'));   // ADR-0453
+_on(window,'pagehide',()=>{Persist.flushIfHidden('hidden');Net._bcast({k:'bye',peer:_pi()})});   // ADR-0453+0456
 
 // ====================== UI ======================
 const UI={
@@ -9383,7 +9388,7 @@ function fontSizeStep(d){
 // ADR-0078: ⌘B/⌘I toggles bold/italic on selected text/sticky via style op.
 const _rdb=()=>{_md(!0);_ru();_ps()},
       _fck=o=>{o.clock={peer:_pi(),seq:++state.seq,ts:nowTs()}},
-      _docN=d=>{if(typeof d.docName==='string'&&d.docName)_setDocName(d.docName.slice(0,80))},
+      _docN=d=>{if(_iS(d.docName)&&d.docName)_setDocName(d.docName.slice(0,80))},
       _fs2=s=>s.fstyle,_sh2=s=>s.shadow,_usI=unlockedSelectionIds,
       _noSh=c=>{c.shadowColor=_TR;c.shadowBlur=0;c.shadowOffsetY=0},
       _rO=u=>_stO(()=>URL.revokeObjectURL(u),1e4),

@@ -2,6 +2,16 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.491] - 2026-09-23
+
+### 修正
+
+- **ピア離脱の `bye` メッセージ** — `pagehide` で `{k:'bye',peer:_pi()}` を `_bcast` し、残ピアがカーソル/選択ハロー/接続数を即時に除去。従来は `NET_PRESENCE_TIMEOUT` (15s) の reap までゴーストが残った。RTC 経路では合成 id `_rtcPeerId` を消去 (ADR-0457)
+
+### 変更
+
+- `typeof` 型ガード shorthand `_iS`/`_iN`/`_iO` — 74 箇所畳み込みで ~933B 回収 (ADR-0456)
+
 ## [1.7.490] - 2026-09-23
 
 ### 修正
