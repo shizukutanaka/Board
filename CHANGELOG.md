@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.481] - 2026-09-23
+
+### Fixed
+- `dc.onclose` で `_dcQ` をリセット — チャネル単体 close でキューが残り
+  再接続後の送信が全て滞留するバグ (ADR-0446)
+
 ## [1.7.480] - 2026-09-23
 
 ### Fixed

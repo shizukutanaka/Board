@@ -1095,6 +1095,7 @@ const checks = [
   ['context menu deduplicates consecutive separators', html.includes(".filter((it,i,a)=>!(it==='sep'&&(i===0||i===a.length-1||a[i-1]==='sep')))")],
   ['doDuplicate does not clobber clipboard (uses _placeCopies, not state.clipboard=)', html.includes("_placeCopies(sel,_dd().x,_dd().y):_placeCopies(sel);   // independent of _cl()") && html.includes("function _placeCopies(srcShapes")],
   // v1.6.71: import sites clear stale selection + wclock (mirror replace op's _apply)
+  ['dc.onclose drops _dcQ backlog so reconnect sends (ADR-0446)', /this\.dc\.onclose=\(\)=>\{[^}]*this\._dcQ=null/.test(html)],
   ['importBoard clears selection+wclock on whole-board swap', html.includes("state.shapes=shapes.map(clone);_iG();_pcC();   // ADR-0009\n      // Match the replace op's _apply") && html.includes("_scl();state.wclock={};\n      _docN(d);")],
   ['importFromHash clears selection+wclock on whole-board swap', html.includes("state.shapes=valid.map(clone);_iG();_pcC();_setDocName(") && /state\.shapes=valid\.map\(clone\)[\s\S]{0,900}_scl\(\);state\.wclock=\{\};/.test(html)],
   // v1.6.71: presentation-mode guard precedes editing shortcuts (no undo mid-slideshow)
