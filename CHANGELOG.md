@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.324] - 2026-09-24
+
+### Added
+- クリップボードの image/svg+xml アイテムをベクター図形として取込
+  (draw.io/Figma からのコピー、ADR-0272)
+
 ## [1.7.323] - 2026-09-24
 
 ### Added

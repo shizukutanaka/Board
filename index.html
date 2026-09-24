@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.323';
+const V='1.7.324';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4295,6 +4295,10 @@ canvas.addEventListener('drop',e=>{
 // ---- Image import: clipboard paste ----
 window.addEventListener('paste',e=>{
   if(e.target.matches('input,textarea'))return;
+  // ADR-0272: an image/svg+xml clipboard item imports as vector shapes —
+  // without this it rasterised through the image branch and lost editability.
+  {const _svi=[...e.clipboardData.items].find(i=>i.type==='image/svg+xml');
+   if(_svi){const f=_svi.getAsFile();if(f){e.preventDefault();f.text().then(s=>importSvgText(s));return}}}
   const items=[...e.clipboardData.items].filter(i=>i.type.startsWith('image/'));
   if(!items.length){
     // ADR-0042: raw SVG markup copied to the clipboard imports as vector shapes.

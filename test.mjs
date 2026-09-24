@@ -709,6 +709,7 @@ const checks = [
   ['drawio shadow=1 round-trips s.shadow (ADR-0246)', html.includes("r+='shadow=1;'")&&html.includes("sty.shadow==='1'")],
   ['drawio fontColor ↔ text/sticky s.stroke (ADR-0247)', html.includes("sty+='fontColor='+s.stroke")&&html.includes("sty.fontColor!=='none'")],
   ['visualViewport.resize re-runs canvas resize for iOS chrome (ADR-0251)', html.includes("visualViewport.addEventListener('resize',resize)")],
+  ['clipboard image/svg+xml → vector import (ADR-0272)', html.includes("i.type==='image/svg+xml'")],
   ['drawio strokeOpacity/fillOpacity → s.opacity (ADR-0271)', html.includes('+sty.strokeOpacity')],
   ['svg conn path/label emitters deduped (ADR-0270)', html.includes('const _sp=(d,j)')&&html.includes('_cL();')],
   ['drawio edge rounded=1 → s.r (ADR-0269)', (html.match(/sty\.rounded==='1'/g)||[]).length>=2],
