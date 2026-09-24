@@ -2,6 +2,30 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.356] - 2026-09-24
+
+### Fixed
+- SVG export のフレームラベルが canvas 側の常時 600 weight と
+  一致するよう修正 (ADR-0305)
+
+## [1.7.355] - 2026-09-24
+
+### Added
+- ctx「リンクを設定…/リンクを開く」— `s.link` を prompt で設定
+  (https? 検証、空で解除) し別タブで開ける (ADR-0304)
+
+## [1.7.354] - 2026-09-24
+
+### Changed
+- 選択ループ `for(const id of state.selection){byId…}` 26 箇所を
+  `_forSel((s,id)=>…)` に集約 (raw ~1KB、ADR-0303)
+
+## [1.7.353] - 2026-09-24
+
+### Changed
+- ctx メニューゲートの `[...state.selection].some(…)` 29 箇所を
+  `_selAny(s=>…)` ヘルパーに集約 (raw -1.3KB、ADR-0302)
+
 ## [1.7.352] - 2026-09-24
 
 ### Added
