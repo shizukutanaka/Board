@@ -518,6 +518,7 @@ Board/
 │   ├── ADR-0466-assembly-room-switch.md    # ルーム切替で受信再組立スロットもリセット (実装済)
 │   ├── ADR-0467-pct-rebaseline.md          # _pCt をルーム切替で再ベースライン (実装済)
 │   ├── ADR-0468-architecture-wire-lifecycle.md # architecture.md の wire ライフサイクル節 (実装済)
+│   ├── ADR-0469-frag-sender-tagging.md    # _fragIn を送信者タグ付け (並行ストリーム継ぎ接ぎ防止、実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

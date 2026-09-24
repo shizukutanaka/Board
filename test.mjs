@@ -1141,6 +1141,7 @@ const checks = [
   ['snapshot responder = lowest non-asker peer (ADR-0465)', html.includes('this._loResp(msg.peer)') && html.includes('k!==pk&&k<_pi()')],
   ['room switch also clears inbound assemblies (ADR-0466)', html.includes('this._snapIn=null;this._opcIn=null') && html.indexOf('this._snapIn=null;this._opcIn=null')<html.indexOf('new BroadcastChannel')],
   ['_pCt rebaselines after peer purge (ADR-0467)', html.includes('this._pCt=_pr().size')],
+  ['_fragIn tags assembly by sender (ADR-0469)', html.includes('sn.src!==src') && html.includes("viaRtc?'rtc':msg.peer")],
   // v1.6.80: multi-touch pinch cancels the single-pointer gesture (no stray edits)
   ['pointerdown aborts single-pointer gesture when a 2nd finger lands', html.includes("if(_pointers.size>=2){abortGesture();return;}")],
   ['pointermove bails while pinch is active', html.includes("if(_pointers.size>=2)return;   // pinch in progress")],
