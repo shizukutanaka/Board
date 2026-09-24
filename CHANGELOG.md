@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.533] - 2026-09-23
+
+### リファクタ
+
+- `broadcast()` の `op` メッセージを `_mk` envelope に統一 (`peer` 同梱の一貫性) (ADR-0500)
+
 ## [1.7.532] - 2026-09-23
 
 ### リファクタ

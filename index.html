@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.532';
+const V='1.7.533';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -7699,7 +7699,7 @@ const Net={
   // Outbound: from local Store.commit
   broadcast(op){
     const s=this._slimOp(op);this._flushImgOuts();
-    this._send({k:'op',op:s});
+    this._send(_mk('op',{op:s}));   // ADR-0499: same envelope as every other wire kind
     if(this.dc&&this.dc.readyState==='open'){
       try{const _mo=_JS({k:'op',op:s});   // ADR-0431: ops over the ~256KB SCTP ceiling die silently — fragment like 'snap'
         if(_ln(_mo)>200000)this._fragSend(_mo,'opc');else this._sendDC(_mo)
