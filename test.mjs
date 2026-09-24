@@ -463,6 +463,15 @@ const checks = [
   ['rect corners: s.r override + ctx menu + SVG rx', html.includes('s.r!=null?s.r:8')&&html.includes('toggleRound')&&html.includes('ctxRrect')&&html.includes('rx="${r}"')],
   ['shift+wheel → horizontal pan', html.includes('const dx=e.shiftKey&&!d.x?d.y:d.x')],
   ['escape cancels in-flight pointer gesture', html.includes('else if(ptr.down&&ptr.dragKind)_cancelPointerGesture()')],
+  ['underline: ⌘U toggle + canvas line + SVG text-decoration', html.includes("toggleTextFlag('under')")&&html.includes('s.under')&&html.includes("'underline'")&&html.includes('text-decoration=')],
+  ['equal-size snap: resize matches another shape\'s w/h', html.includes('equal-size snap')&&html.includes('nw=eH?x-orig.x')&&html.includes('Math.abs(nw-b.w)')],
+  ['excalidraw multi-segment arrow → real connector + way[]', html.includes('pts.slice(1,-1).map(p=>({x:p[0],y:p[1]}))')],
+  ['excalidraw export: excScene maps types/bindings/files', html.includes('function excScene')&&html.includes('endArrowhead')&&html.includes('ctxExportExc')],
+  ['clipboard .excalidraw JSON routes to importExcText', html.includes('importExcText(s)!==false')],
+  ['strikethrough: ⌘⇧X + canvas midline + SVG line-through', html.includes("toggleTextFlag('strike')")&&html.includes('s.strike')&&html.includes('line-through')],
+  ['sticky colour quick-cycle (ctx)', html.includes('cycleStickyColor')&&html.includes('STICKY_COLORS[(i+1)%')&&html.includes('ctxStickyColor')],
+  ['wrap in frame: ⌘⌥G + ctx (frame bbox+pad, z below min)', html.includes('wrapInFrame')&&html.includes('ctxWrapFrame')&&html.includes('b.y-PAD,w:b.w+PAD*2')],
+  ['paste at cursor (ctx): centred at menu world point', html.includes('doPasteAt')&&html.includes('ctxPasteAt')&&html.includes('wx-srcCx,wy-srcCy')],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
@@ -1295,7 +1304,7 @@ try {
              doAlign, doFlip, snapV, snapPt,
              getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
-             copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, toggleCurve, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
+             copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, cycleStickyColor, wrapInFrame, doPasteAt, toggleCurve, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
              _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa: () => _teTa, zoomAt,
@@ -1307,7 +1316,7 @@ try {
              endRectLike, endLineLike, I18N, applyTheme, editSelectedShapeKbd, Share,
              draw, drawOverlay, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; }, _setOCtx: (c) => { const p = octx; octx = c; return p; },
              _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg,
-             _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText,
+             _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc,
              _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER,
              _getLang: () => LANG, _getT: () => T };
   `);
@@ -1322,7 +1331,7 @@ try {
           doAlign, doFlip, snapV, snapPt,
           getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
-          copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, toggleCurve, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
+          copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, cycleStickyColor, wrapInFrame, doPasteAt, toggleCurve, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
           _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa, zoomAt,
@@ -1333,7 +1342,7 @@ try {
           _getPasteCount, _resetPasteClipboard,
           endRectLike, endLineLike, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
           _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg,
-          _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes,
+          _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, excScene, exportExc,
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER } = api;
 
   console.log('\n-- behavioural --');
@@ -3663,6 +3672,23 @@ try {
     toggleRound();assert.ok(rc.r===0,'rect → sharp (r=0)');
     toggleRound();assert.ok(rc.r==null,'rect → back to adaptive round');
     state.shapes.pop();state.selection.clear();state.history=[];state.histIdx=0;
+    state.histIdx=-1;   // rect block above flattened history — _recordCommitted needs -1 for empty
+    const tu=Shape.make('text',{x:0,y:0,w:100,h:30,text:'hi',fontSize:16});tu.id='tu1';state.shapes.push(tu);
+    _invalidateGrid();   // pop()+push() left length unchanged → lazy _idIndex misses tu1
+    state.selection=new Set(['tu1']);
+    toggleTextFlag('under');assert.ok(tu.under===true,'⌘U → under set');
+    toggleTextFlag('under');assert.ok(!('under' in tu),'⌘U again → cleared');
+    toggleTextFlag('strike');assert.ok(tu.strike===true,'⌘⇧X → strike set');
+    toggleTextFlag('strike');assert.ok(!('strike' in tu),'⌘⇧X again → cleared');
+    state.shapes.pop();_invalidateGrid();
+    {const A=Shape.make('rect',{x:100,y:100,w:40,h:40,color:'#0F172A'}),B=Shape.make('ellipse',{x:200,y:300,w:50,h:30,color:'#0F172A'});
+    A.id='wf1';B.id='wf2';state.shapes.push(A,B);_invalidateGrid();
+    state.selection=new Set(['wf1','wf2']);wrapInFrame();
+    const f=[...state.shapes].pop();
+    assert.ok(f.type==='frame'&&f.x<=84&&f.y<=84&&f.x+f.w>=266&&f.y+f.h>=346,'frame covers bbox+pad');
+    assert.ok((f.z||0)<Math.min(A.z||0,B.z||0),'frame z below members');
+    assert.ok(state.selection.size===1&&[...state.selection][0]===f.id,'frame selected');
+    state.shapes.splice(-3);_invalidateGrid();state.selection.clear();}
     Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(l)),JSON.parse(JSON.stringify(byId(A.id))),JSON.parse(JSON.stringify(byId(B.id)))]});
     console.log('  ✓ label anchor: straight/way/elbow/curve (4 asserts)');
   }
@@ -9100,14 +9126,15 @@ try {
       const items=captured[2];
       assert.ok(Array.isArray(items),'v1.7.56a: openExportMenu passes an items array, not the default (undefined)');
       const keys=items.map(it=>it==='sep'?'sep':it[0]);
-      assert.deepStrictEqual(keys,['ctxExportPNG','ctxCopyPNG','ctxExportSVG','ctxExportPDF','ctxExportBoard','sep','ctxImportBoard'],
-        'v1.7.56a: openExportMenu offers PNG/copy-PNG/SVG/PDF/.board export + a separator + .board import, in that order');
+      assert.deepStrictEqual(keys,['ctxExportPNG','ctxCopyPNG','ctxExportSVG','ctxExportPDF','ctxExportBoard','ctxExportExc','sep','ctxImportBoard'],
+        'v1.7.56a: openExportMenu offers PNG/copy-PNG/SVG/PDF/.board/.excalidraw export + a separator + .board import, in that order');
       const fnByKey=Object.fromEntries(items.filter(it=>it!=='sep').map(it=>[it[0],it[2]]));
       assert.strictEqual(fnByKey.ctxExportPNG,exportPNG,'v1.7.56a: PNG item wired to the real exportPNG');
       assert.strictEqual(fnByKey.ctxCopyPNG,copyPNG,'v1.7.56a: copy-PNG item wired to the real copyPNG (ADR-0050)');
       assert.strictEqual(fnByKey.ctxExportSVG,exportSVG,'v1.7.56a: SVG item wired to the real exportSVG');
       assert.strictEqual(fnByKey.ctxExportPDF,exportPDF,'v1.7.56a: PDF item wired to the real exportPDF');
       assert.strictEqual(fnByKey.ctxExportBoard,exportBoard,'v1.7.56a: .board export item wired to the real exportBoard');
+      assert.strictEqual(fnByKey.ctxExportExc,exportExc,'v1.7.56a: .excalidraw export item wired to the real exportExc (ADR-0098)');
       assert.strictEqual(typeof fnByKey.ctxImportBoard,'function','v1.7.56a: import item is a callable (opens the file picker)');
     }finally{
       UI.openCtxMenu=origOpenCtxMenu;
@@ -9294,7 +9321,7 @@ try {
       {type:'ellipse',x:0,y:0,width:40,height:40,angle:Math.PI/4},
       {type:'diamond',x:0,y:0,width:20,height:20},
       {type:'arrow',x:5,y:5,points:[[0,0],[30,40]],strokeColor:'#00f'},
-      {type:'line',x:0,y:0,points:[[0,0],[10,10],[20,0]]},   // 3+ points → pen
+      {type:'line',x:0,y:0,points:[[0,0],[10,10],[20,0]]},   // ADR-0097: 3+ points → connector + way[]
       {type:'freedraw',x:100,y:100,points:[[0,0],[5,5],[10,0]]},
       {type:'text',x:7,y:8,width:60,height:20,text:'hello world',fontSize:24},
       {type:'frame',x:0,y:0,width:200,height:200,name:'My frame'},
@@ -9308,13 +9335,27 @@ try {
     assert.ok(sh[1].type==='ellipse'&&Math.abs(sh[1].rotate-45)<0.11,'angle → rotate');
     assert.ok(sh[2].type==='diamond'&&sh[2].w===20&&sh[2].h===20,'diamond → real type (ADR-0061)');
     assert.ok(sh[3].type==='arrow'&&sh[3].x2===35&&sh[3].y2===45,'relative points absolutised');
-    assert.ok(sh[4].type==='pen'&&sh[4].pts.length===3,'3-point line → pen');
+    assert.ok(sh[4].type==='line'&&sh[4].way.length===1&&sh[4].way[0].x===10&&sh[4].way[0].y===10,'3-point line → connector + way (ADR-0097)');
     assert.ok(sh[5].type==='pen','freedraw → pen');
     assert.ok(sh[6].type==='text'&&sh[6].fontSize===24&&sh[6].text==='hello world','text + fontSize');
     assert.ok(sh[7].type==='frame'&&sh[7].label==='My frame','frame + name');
     assert.ok(excToShapes('not json')===null,'bad JSON → null');
     assert.ok(excToShapes('{"type":"other"}')===null,'wrong marker → null');
     assert.ok(excToShapes('{"type":"excalidraw"}')===null,'no elements → null');
+
+    // ADR-0098: excScene round-trip — export then re-import keeps connectors real
+    {const a1=excToShapes(scene)[3];                       // arrow
+     a1.bind2='boxA';a1.way=[{x:15,y:30}];
+     const sc=excScene([a1,{id:'boxA',type:'rect',x:0,y:0,w:40,h:40,stroke:'#000',fill:null,size:2,opacity:1},
+       {id:'st1',type:'sticky',x:0,y:0,w:100,h:100,color:'#FEF08A',text:'hi',stroke:'#000',size:1,opacity:1,align:'center'},
+       {id:'im1',type:'image',x:0,y:0,w:10,h:10,dataUrl:'data:image/png;base64,xx',stroke:'#000',size:1,opacity:1}]);
+     const el=sc.elements.find(e=>e.type==='arrow');
+     assert.ok(el.endArrowhead==='arrow'&&el.points.length===3&&el.endBinding.elementId==='boxA','export: arrow pts+binding');
+     assert.ok(sc.elements.some(e=>e.type==='rectangle'&&e.backgroundColor==='#FEF08A')&&sc.elements.some(e=>e.type==='text'&&e.text==='hi'),'export: sticky → rect+text');
+     assert.ok(sc.files['fim1'].dataURL.startsWith('data:image'),'export: image file entry');
+     const rt=excToShapes(JSON.stringify(sc));
+     const rta=rt.find(s=>s.type==='arrow');
+     assert.ok(rta&&rta.way&&rta.way.length===1,'round-trip: way survives import (ADR-0097)');}
     console.log('  ✓ excalidraw import (element mapping, styles, tombstones, reject paths)');
   }
 

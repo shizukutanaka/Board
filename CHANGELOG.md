@@ -2,6 +2,79 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.161]
+
+### 追加
+- **ここに貼り付け** (ADR-0103)。ctx メニュー開放点へクリップ
+  ボード内容を中心配置する「ここに貼り付け」を追加 (カスケード
+  無しの確定位置。⌘V のビューポート中央ペーストと併存)。
+
+## [1.7.160]
+
+### 追加
+- **選択をフレームで包む ⌘⌥G** (ADR-0102)。選択群の union bbox
+  +16px を覆うフレームを生成 (Figma parity、ctx メニューにも)。
+  z を最下位メンバ直下へ分数配置し中身を覆わない。`e.code` 経由で
+  macOS の ⌥ 修飾キー化けを回避。
+
+## [1.7.159]
+
+### 追加
+- **付箋色クイックサイクル** (ADR-0101)。ctx メニュー「付箋の色」で
+  `STICKY_COLORS` 6色を順送り (style op、複数選択可、パレット外の
+  色からも先頭色へ復帰)。
+
+## [1.7.158]
+
+### 追加
+- **取り消し線** (ADR-0100)。`⌘⇧X` で `s.strike` トグル (style op)。
+  canvas は各行中央に手動ライン、SVG は `text-decoration` を
+  `"underline line-through"` 連結に一般化、編集 overlay も同期。
+  4装飾 (太字/斜体/下線/取消線) が完結。
+
+## [1.7.157]
+
+### 追加
+- **クリップボード .excalidraw のペースト取り込み** (ADR-0099)。
+  Excalidraw でコピーした JSON をそのままペーストでシーン
+  インポート — 従来は巨大なテキスト形状になっていた。パース
+  失敗時は従来のテキスト形状化へフォールバック。
+
+## [1.7.156]
+
+### 追加
+- **.excalidraw エクスポート** (ADR-0098)。エクスポートメニューに
+  「Excalidraw」追加 — 全図形を excalidraw 要素へ変換
+  (sticky→rect+text、line/arrow→points+way、image→files 辞書、
+  binding/groupIds 維持)。id 保持により ADR-0097 経路で再
+  インポート可能なラウンドトリップをテスト担保。
+
+## [1.7.155]
+
+### 変更
+- **.excalidraw 多点コネクタの実インポート** (ADR-0097)。3点以上の
+  line/arrow が `pen` 化していたのを、真のコネクタ + `s.way`
+  中間点へマッピング — elbowed 矢印が矢印のまま編集可能に復元
+  (矢印ヘッド・バインド・ルート編集すべて有効)。`freedraw` は
+  従来通り `pen`。
+
+## [1.7.154]
+
+### 追加
+- **等サイズスナップ** (ADR-0096)。リサイズ中、新しい幅/高さが
+  他図形の `w`/`h` と近いとき一致側へ吸着 (draw.io スマート寸法)。
+  edge スナップと共存、ガイドは対象図形の該当辺に表示。lock/alt/
+  グリッドスナップ時は従来通り非適用。
+
+## [1.7.153]
+
+### 追加
+- **テキスト/付箋の下線** (ADR-0095)。`⌘U` トグル (`s.under`、
+  style op で undo/複数選択可)。canvas は各行 measureText 幅の
+  手動ライン (align 3種)、SVG は `text-decoration="underline"`、
+  編集 overlay も同期。ヘルプを `⌘B / ⌘I / ⌘U` に更新。
+- README サイズバッジを実測に同期 (113→126KB gzip)。
+
 ## [1.7.152]
 
 ### 追加
