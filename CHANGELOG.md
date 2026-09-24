@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.147]
+
+### 追加
+- **画像差替え** (ADR-0089)。画像単一選択の ctx「画像を差替え」で
+  位置・幅を保持したままバイトを置換 (高さは新アスペクトに追従)。
+  `_imgImportFile` 既存経路 (4MB上限・2048px縮退)、style op で undo 可。
+
 ## [1.7.146]
 
 ### 修正

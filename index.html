@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.146';
+const V='1.7.147';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -878,7 +878,7 @@ const I18N={
     ctxHSpace:'水平均等配置',ctxVSpace:'垂直均等配置',
     ctxSelectAll:'すべて選択',ctxClear:'全消去',
     ctxExportPNG:'PNG書き出し',ctxCopyPNG:'PNGをクリップボードにコピー',ctxExportSVG:'SVG書き出し',ctxExportPDF:'PDF書き出し',ctxExportBoard:'.boardファイル書き出し',ctxImportBoard:'.boardファイル読み込み...',
-    ctxExportSelPNG:'選択をPNG書き出し',ctxCopySelPNG:'選択のPNGをコピー',ctxExportSelSVG:'選択をSVG書き出し',ctxCopySelSVG:'選択のSVGをコピー',
+    ctxExportSelPNG:'選択をPNG書き出し',ctxCopySelPNG:'選択のPNGをコピー',ctxExportSelSVG:'選択をSVG書き出し',ctxCopySelSVG:'選択のSVGをコピー',ctxReplaceImg:'画像を差替え',
     share:'共有',shareTitle:'共有',
     shareUrlHint:'このURLをコピーして送ると、相手に内容が共有されます',
     shareEncLabel:'🔒 暗号化リンク (推奨)',
@@ -954,7 +954,7 @@ const I18N={
     ctxHSpace:'Distribute horizontal',ctxVSpace:'Distribute vertical',
     ctxSelectAll:'Select all',ctxClear:'Clear all',
     ctxExportPNG:'Export PNG',ctxCopyPNG:'Copy PNG to clipboard',ctxExportSVG:'Export SVG',ctxExportPDF:'Export PDF',ctxExportBoard:'Export .board file',ctxImportBoard:'Import .board file...',
-    ctxExportSelPNG:'Export selection to PNG',ctxCopySelPNG:'Copy selection PNG',ctxExportSelSVG:'Export selection to SVG',ctxCopySelSVG:'Copy selection SVG',
+    ctxExportSelPNG:'Export selection to PNG',ctxCopySelPNG:'Copy selection PNG',ctxExportSelSVG:'Export selection to SVG',ctxCopySelSVG:'Copy selection SVG',ctxReplaceImg:'Replace image',
     share:'Share',shareTitle:'Share',
     shareUrlHint:'Copy this URL and send it — the recipient gets your board.',
     shareEncLabel:'🔒 Encrypted link (recommended)',
@@ -5240,6 +5240,29 @@ function copySVG(shapes=state.shapes){
   if(svg===null){UI.toast(t('empty'),'warn');return}
   copyText(svg).then(ok=>UI.toast(t(ok?'copied':'copyFailed'),ok?'ok':'warn'));
 }
+// ADR-0089: replace image bytes in place — same frame position/width, height
+// follows the new aspect. One style op so undo restores bytes AND geometry.
+function replaceImage(){
+  const s=[...state.selection].map(byId).find(x=>x&&x.type==='image'&&!x.locked);
+  if(!s)return;
+  const inp=document.createElement('input');
+  inp.type='file';inp.accept='image/*';
+  inp.onchange=()=>{
+    const f=inp.files&&inp.files[0];if(!f)return;
+    _imgImportFile(f,(dataUrl,nw,nh)=>{
+      if(!dataUrl)return;
+      const nh2=Math.max(2,s.w*nh/nw);
+      const before=[{id:s.id,dataUrl:s.dataUrl??null,h:s.h}];
+      const after=[{id:s.id,dataUrl,h:nh2}];
+      s.dataUrl=dataUrl;s.h=nh2;
+      const origSel=[...state.selection];
+      Store._recordCommitted({op:'style',before,after});
+      if(origSel.length)state.history[state.histIdx].origSel=origSel;
+      invalidate();UI.toast(t('imagePasted'),'ok');
+    });
+  };
+  inp.click();
+}
 function exportPDF(){
   if(!state.shapes.length){UI.toast(t('empty'),'warn');return}
   const b=G.bboxAll(state.shapes);if(!b)return;
@@ -6724,6 +6747,7 @@ const UI={
       has&&['ctxCopySelPNG','',()=>exportSelection('copy')],
       has&&['ctxExportSelSVG','',()=>exportSelection('svg')],
       has&&['ctxCopySelSVG','',()=>exportSelection('svgcopy')],        // ADR-0087
+      has&&state.selection.size===1&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='image'&&!s.locked})&&['ctxReplaceImg','',replaceImage],   // ADR-0089
       has&&'sep',
       ['ctxSelectAll','⌘A',()=>{state.selection=new Set(state.shapes.map(s=>s.id));if(state.selection.size)_announceSel();invalidate()}],
       state.shapes.length&&['ctxClear','',doClearAll]
