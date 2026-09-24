@@ -721,6 +721,7 @@ const checks = [
   ['svg conn path/label emitters deduped (ADR-0270)', html.includes('const _sp=(d,j)')&&html.includes('_cL();')],
   ['drawio multi-page side-by-side import (ADR-0311)', html.includes("for(const dg of doc.querySelectorAll('diagram'))")],
   ['link badge 🔗 on linked shapes (ADR-0310)', html.includes("c.fillText('🔗',s.x+Math.abs(s.w)-3,s.y+3)")],
+  ['drawio labelPosition/verticalLabelPosition (ADR-0320)', html.includes("labelPosition='+s.align")&&html.includes("verticalLabelPosition='+s.valign")&&html.includes("sty.labelPosition))s.align")],
   ['popup-blocked feedback on link open (ADR-0319)', html.includes("if(s&&!window.open(s.link,'_blank','noopener'))UI.toast(t('popupBlocked'),'warn')")&&html.includes("if(!window.open(_h0.link,'_blank','noopener'))UI.toast(t('popupBlocked'),'warn')")],
   ['ctx copy link item (ADR-0318)', html.includes("['ctxCopyLink',''")&&html.includes("ctxCopyLink:'リンクをコピー'")&&html.includes("ctxCopyLink:'Copy link'")],
   ['exc conn roundness→curve round-trip (ADR-0317)', html.includes("s.curve=1;delete s.r")&&html.includes("s.curve?{roundness:{type:2}}")],
