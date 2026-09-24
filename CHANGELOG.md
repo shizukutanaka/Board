@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.231]
+
+### 追加
+- **書体ファミリ巡回** (ADR-0173)。ctx「書体」で system→等幅→serif を
+  巡回 (text/sticky/ラベル保持図形)。canvas/SVG/テキストエディタで
+  一貫、オフライン安全なシステムスタックのみ使用。
+
 ## [1.7.230]
 
 ### 追加
