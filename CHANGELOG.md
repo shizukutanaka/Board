@@ -2,6 +2,15 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.140]
+
+### 修正
+- **付箋の色変更** (ADR-0082)。fill スウォッチ/カラーピッカーを sticky
+  では `s.color` にマップ — 生成時ランダム固定だった付箋色が変更可能に。
+  `applyStyleToSelection` の before パッチを `??null` にし、未設定
+  プロパティでも undo が確実に戻るよう修正 (clone が undefined を落とす
+  潜在的な undo 欠損を同時に解消)。
+
 ## [1.7.139]
 
 ### 修正

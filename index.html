@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.139';
+const V='1.7.140';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -7088,9 +7088,12 @@ function applyStyleToSelection(patch){
   const before=[],after=[];
   for(const id of state.selection){
     const sh=byId(id);if(!sh||sh.locked)continue;
-    const b={id},a={id};
-    for(const k of Object.keys(patch)){b[k]=sh[k];a[k]=patch[k]}
-    Object.assign(sh,patch);
+    const b={id},a={id},eff={};
+    for(const k of Object.keys(patch)){
+      const ek=sh.type==='sticky'&&k==='fill'?'color':k;   // ADR-0082: sticky recolors via color
+      b[ek]=sh[ek]??null;a[ek]=patch[k]??null;eff[ek]=patch[k];   // ADR-0082: ??null keeps before JSON-safe (clone drops undefined → undo couldn't unset)
+    }
+    Object.assign(sh,eff);
     before.push(b);after.push(a);
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;}

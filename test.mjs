@@ -450,6 +450,7 @@ const checks = [
   ['match size: doMatchSize + DIRS + ctx items', html.includes('function doMatchSize(dim)')&&html.includes("'matchw','matchh','matchwh'")&&html.includes("['ctxMatchWH'")],
   ['smart duplicate: dupIds/dupDelta chain', html.includes('dupIds:new Set()')&&html.includes('state.dupDelta+=')||html.includes('dupIds:new Set()')&&html.includes('dupDelta.x+=dx')],
   ['label editor: _connLabelXY + diamond gate', html.includes('function _connLabelXY(s)')&&html.includes("hit.type==='diamond'")&&html.includes('lp=_connLabelXY')],
+  ['sticky recolor: fill patch maps to s.color', html.includes("sh.type==='sticky'&&k==='fill'?'color':k")],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
@@ -3638,6 +3639,24 @@ try {
     delete l.curve;
     Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(l)),JSON.parse(JSON.stringify(byId(A.id))),JSON.parse(JSON.stringify(byId(B.id)))]});
     console.log('  ✓ label anchor: straight/way/elbow/curve (4 asserts)');
+  }
+
+  // ADR-0082: fill swatch recolors sticky via color, rect still uses fill
+  {
+    const S=Shape.make('sticky',{x:0,y:0,w:100,h:100,text:'n'});   // color unset → undo must restore to null
+    const R=Shape.make('rect',{x:200,y:0,w:100,h:100});
+    Store.commit({op:'addMany',shapes:[S,R]});
+    state.selection=new Set([S.id,R.id]);
+    const sF0=byId(S.id).fill,sC0=byId(S.id).color;
+    applyStyleToSelection({fill:'#BBF7D0'});
+    const s=byId(S.id),r=byId(R.id);
+    assert.ok(s.color==='#BBF7D0'&&s.fill===sF0,'sticky: color set, fill untouched');
+    assert.ok(r.fill==='#BBF7D0'&&r.color==null,'rect: fill set normally');
+    Store.undo();
+    assert.ok(byId(S.id).color==null,'undo restores unset color to null');
+    state.selection=new Set();
+    Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(byId(S.id))),JSON.parse(JSON.stringify(byId(R.id)))]});
+    console.log('  ✓ sticky recolor: map + unset-undo (3 asserts)');
   }
 
   // validPatch recurses: nested poison in a remote `upd` (gated by validPatch alone)
