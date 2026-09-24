@@ -2,6 +2,16 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.480] - 2026-09-23
+
+### Fixed
+- `_slimOp` を del/clear にも拡張 — 画像を含む削除 op の dataUrl が
+  `img:` 参照にスリム化され wire バイト数が大幅縮小 (ADR-0445)
+- `_pcC` が `_imgPending` もパージ — clear/replace 後の駐車参照リーク (ADR-0445)
+
+### Changed
+- `_docN`/`_fs2`/`_sh2`/`_usI`/`_oa` 集約 (~350B 回収)
+
 ## [1.7.479] - 2026-09-23
 
 ### Fixed
