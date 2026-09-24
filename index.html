@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.151';
+const V='1.7.152';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4779,6 +4779,10 @@ window.addEventListener('keydown',e=>{
     const hp=document.getElementById('help'),sp2=document.getElementById('share');
     if(hp.dataset.open==='true')UI.toggleHelp();
     else if(sp2.dataset.open==='true')UI.closeShare();
+    // ADR-0094: an in-flight pointer gesture cancels before the generic clear —
+    // mid-drag mutations are in-place, so without this Escape left shapes
+    // displaced until pointerup committed them. Selection survives the cancel.
+    else if(ptr.down&&ptr.dragKind)_cancelPointerGesture();
     else{if(state.selection.size)UI.toast(t('selNone'));state.selection.clear();state.marquee=null;state.draft=null;state.guides=null;state.readout=null;state.bindPreview=null;_penPred=null;invalidate()}   // ADR-0037
   }
   else if(k==='?'||(e.shiftKey&&e.key==='/')){e.preventDefault();UI.toggleHelp()}

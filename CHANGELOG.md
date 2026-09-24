@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.152]
+
+### 追加
+- **Esc でドラッグキャンセル** (ADR-0094)。move/resize/marquee/
+  erase 進行中の Esc が `_cancelPointerGesture` を呼び、in-place
+  変異を巻き戻す — 従来は pointerup まで変位が残り意図しない
+  commit になった。選択は維持。
+
 ## [1.7.151]
 
 ### 追加

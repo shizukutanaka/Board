@@ -143,6 +143,7 @@ Board/
 - [ADR-0091](docs/ADR-0091-search-select-all.md) 検索結果の全選択 (⌘Enter)
 - [ADR-0092](docs/ADR-0092-rounded-rect.md) 矩形角丸/直角トグル (s.r)
 - [ADR-0093](docs/ADR-0093-shift-wheel-pan.md) ⇧+ホイール水平パン
+- [ADR-0094](docs/ADR-0094-escape-cancel-gesture.md) Esc でジェスチャキャンセル
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
