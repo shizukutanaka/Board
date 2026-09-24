@@ -319,7 +319,7 @@ const checks = [
   // v1.7.113: ADR-0055 rotate point-geometry shapes
   ['doRotate covers pen/line/arrow geometry', html.includes("const _rotatable=s=>_hb(s)||s.pts||s.x1!=null") && html.includes("_rotPtsAbout(s,gx,gy,cs,sn)") && html.includes("if(!_hb(s)){_rotPtsAbout")],
   // v1.7.114: ADR-0056 multi-selection resize
-  ['gresize dragKind wires group handles', html.includes("ptr.dragKind='gresize';") && html.includes("ptr.gOrig=new Map(sel.filter(s=>!_lk(s)).map(s=>[s.id,clone(s)]))") && html.includes("if(!sel.some(s=>_rt(s))){")],
+  ['gresize dragKind wires group handles', html.includes("ptr.dragKind='gresize';") && html.includes("ptr.gOrig=new Map(sel.filter(s=>!_lk(s)).map(s=>[s.id,clone(s)]))") && html.includes("if(!sel.some(_rt)){")],
   ['gresize reuses applyResize on a virtual box + commits one align op', html.includes("function _gresizeDrag(wp,shift,alt){") && html.includes("applyResize(vbox,ptr.resizeHandle,vorig,wp,shift,alt)") && html.includes("_mapToBox(sh,orig,ob,vbox)") && html.includes("op:'align',dir:'gresize'") && html.includes("'gresize'")],
   ['gresize cancelled in abortGesture + pointercancel', html.includes("_dk('gresize')||_dk('grot')") && html.includes("ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;")],
   // v1.7.115: ADR-0057 rotation knob for point geometry + multi-selection
@@ -524,7 +524,7 @@ const checks = [
   ['group resize scales elbow bend on trunk axis', html.includes('ADR-0148')&&html.includes('sh.bend=_abs(tr[1].x-tr[0].x)')],
   ['image flip mirrors pixels via s.flip bitmask', html.includes("s.flip=(s.flip||0)^(axis==='h'?1:2)")&&html.includes('ADR-0149')&&html.includes('scale(${s.flip&1?-1:1}')],
   ['hidden shapes leave search + bindAt', html.includes("_sv(s)&&_lc((_lb(s)||'')+(_txx(s)||'')+(s.type||'')")&&html.includes("t!=='pen'&&_sv(s)")],
-  ['SVG export excludes hidden shapes', html.includes('const _vis=shapes.filter(s=>_sv(s))')&&html.includes('_vis.filter(s=>s.type==="frame")')],
+  ['SVG export excludes hidden shapes', html.includes('const _vis=shapes.filter(_sv)')&&html.includes('_vis.filter(s=>s.type==="frame")')],
   ['Alt+hover measure guides', html.includes('measure:null')&&html.includes('function _drawMeasure(c)')&&html.includes("e.altKey&&_selN()&&top&&!top.locked")],
   ['measure cleared on reset/down/Alt', html.includes('state.measure=null;ptr.x=ptr.x0')&&html.includes("e.key==='Alt'&&state.measure")],
   ['gresize scales curve cbend affinely', html.includes('sh.cbend=orig.cbend*sx*sy*ol/nl')],
@@ -896,7 +896,7 @@ const checks = [
   ['locked hover shows not-allowed cursor', html.includes("top.locked?'not-allowed':'move'")],
   ['lock/unlock ctx labels in ja and en', html.includes("ctxLock:'ロック'") && html.includes("ctxLock:'Lock'")],
   ['lock context-menu entry toggles label by locked state', html.includes("?'ctxUnlock':'ctxLock','',doLock")],
-  ['locked selection drawn with dashed outline, padlock badge', html.includes("const lockedSel=sel.every(s=>_lk(s))") && html.includes("if(lockedSel){")],
+  ['locked selection drawn with dashed outline, padlock badge', html.includes("const lockedSel=sel.every(_lk)") && html.includes("if(lockedSel){")],
   ['font family cycle via ctx on text/sticky/labels', html.includes("_ftt(s)==='mono'")&&html.includes("font:sh.font")&&html.includes('ctxFont')&&html.includes("font-family=\"${_fontFam(s)}\"")],
   ['ctx opacity cycle reaches any unlocked selection', html.includes('function cycleOpacity(){')&&html.includes('ctxOpacity')&&html.includes('applyStyleToSelection({opacity:nxt})')],
   ['frame honours s.fill tint in canvas+SVG', html.includes("c.fillStyle=_fi(s)&&_fi(s)!=='none'?_fi(s):'rgba(248,250,252,0.6)'")&&html.includes("fill=\"${_fi(s)||'rgba(248,250,252,0.6)'}\"")],
