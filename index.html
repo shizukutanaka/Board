@@ -774,7 +774,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.217';
+const V='1.7.218';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6990,11 +6990,16 @@ const Net={
       if(this._onConnChange)this._onConnChange();
     };
   },
+  // ADR-0160: modern base64url over UTF-8 bytes — the legacy escape/unescape
+  // path is deprecated and inflates any non-ASCII bytes 3x. Decoder keeps the
+  // old escape() format as a fallback so pre-1.7.218 invites still parse.
   _encodeToken(sdp){
-    return btoa(unescape(encodeURIComponent(JSON.stringify({type:sdp.type,sdp:sdp.sdp}))));
+    return this._b64uEnc(new TextEncoder().encode(JSON.stringify({type:sdp.type,sdp:sdp.sdp})));
   },
   _decodeToken(s){
-    const j=JSON.parse(decodeURIComponent(escape(atob(s.trim()))));
+    s=s.trim();let j;
+    try{j=JSON.parse(new TextDecoder().decode(this._b64uDec(s)))}
+    catch(_){j=JSON.parse(decodeURIComponent(escape(atob(s))))}   // legacy escape() token
     return new RTCSessionDescription(j);
   }};
 

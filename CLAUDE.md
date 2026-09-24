@@ -209,6 +209,7 @@ Board/
 - [ADR-0157](docs/ADR-0157-unbind-selection.md) コネクタ結合一括解除
 - [ADR-0158](docs/ADR-0158-lasso-select.md) ⌥drag ラッソ選択
 - [ADR-0159](docs/ADR-0159-label-valign.md) ボックスラベル縦揃え
+- [ADR-0160](docs/ADR-0160-rtc-token-modern.md) RTC 招待トークン近代化
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

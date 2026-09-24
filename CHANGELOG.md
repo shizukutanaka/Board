@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.218]
+
+### 修正
+- **WebRTC 招待トークンの近代化** (ADR-0160)。廃止済み
+  `escape/unescape` を UTF-8 安全な base64url (`_b64uEnc`) に
+  置換 — デコーダは旧形式をフォールバック受理 (後方互換)。
+
 ## [1.7.217]
 
 ### 追加
