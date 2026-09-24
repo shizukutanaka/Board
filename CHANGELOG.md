@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.182]
+
+### 追加
+- **マーカー (ハイライター) ツール** (ADR-0125)。ツールバー + `K` キー、
+  幅8・透明度0.4・圧力フラットの太い半透明線で手書きの強調に最適 —
+  pen シェイプ + `hl` フラグなので全レンダ経路は変更不要。
+
 ## [1.7.181]
 
 ### 変更

@@ -487,6 +487,7 @@ const checks = [
   ['dblclick empty canvas creates text (Excalidraw parity)', html.includes('if(!hit){beginText(wp);return}')],
   ['unlock all locked shapes (one align lock op)', html.includes('function unlockAll')&&html.includes('ctxUnlockAll')&&html.includes("dir:'lock'")],
   ['directional marquee (right-to-left = intersect)', html.includes('const cross=m.x2<m.x1')&&html.includes('G.marqueeHit(s,r)')],
+  ['marker tool — pen variant with hl flag + flat pressure', html.includes("k:'marker'")&&html.includes('d.hl=1;d.size=8;d.opacity=0.4')&&html.includes("data-tool=\"marker\"")],
   ['line↔arrow conversion via style op (ctx)', html.includes('toggleLineArrow')&&html.includes('ctxToArrow')&&html.includes("s.type==='line'?'arrow':'line'")],
   ['sticky↔text conversion via style op (ctx)', html.includes('toggleStickyText')&&html.includes('ctxToSticky')&&html.includes("s.type==='sticky'?'text':'sticky'")],
   ['frame select-contents (ctx)', html.includes('selectFrameContents')&&html.includes('ctxSelContents')&&html.includes('withFrameChildren(')],

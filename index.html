@@ -527,6 +527,10 @@ body{visibility:visible}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3zM18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5zM2 2l7.586 7.586M11 11a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
       <kbd>P</kbd>
     </button>
+    <button class="tool" data-tool="marker" aria-label="Marker" title="Marker (K)" data-t-aria="k.marker" data-t-title="k.marker">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4l8 8Z"/></svg>
+      <kbd>K</kbd>
+    </button>
     <button class="tool" data-tool="rect" aria-label="Rectangle" title="Rectangle (R)" data-t-aria="k.rect" data-t-title="k.rect">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/></svg>
       <kbd>R</kbd>
@@ -770,7 +774,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.181';
+const V='1.7.182';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -910,7 +914,7 @@ const I18N={
     backupRestoreFailed:'バックアップの復元に失敗しました',
     peers:'人',you:'自分',
     k:{select:'選択',hand:'手のひら',pen:'ペン',rect:'矩形',ellipse:'楕円',
-      arrow:'矢印',line:'線',text:'文字',sticky:'付箋',frame:'フレーム',eraser:'消しゴム',diamond:'ダイヤ',
+      arrow:'矢印',line:'線',text:'文字',sticky:'付箋',frame:'フレーム',eraser:'消しゴム',diamond:'ダイヤ',marker:'マーカー',
       undo:'元に戻す',redo:'やり直し',del:'削除',dup:'複製',fontSize:'フォントサイズ',boldItalic:'太字/斜体/下線/取消線',
       selAll:'全選択',copy:'コピー',paste:'貼付',cut:'切取',
       zoomIn:'拡大',zoomOut:'縮小',zoom100:'100%にリセット',
@@ -988,7 +992,7 @@ const I18N={
     selCount:' selected',selNone:'Selection cleared',
     mirrorLabel:'Shapes on the board',mirrorMore:' more not listed',
     k:{select:'Select',hand:'Pan',pen:'Pen',rect:'Rectangle',ellipse:'Ellipse',
-      arrow:'Arrow',line:'Line',text:'Text',sticky:'Sticky',frame:'Frame',eraser:'Eraser',diamond:'Diamond',
+      arrow:'Arrow',line:'Line',text:'Text',sticky:'Sticky',frame:'Frame',eraser:'Eraser',diamond:'Diamond',marker:'Marker',
       undo:'Undo',redo:'Redo',del:'Delete',dup:'Duplicate',fontSize:'Font size',boldItalic:'Bold/Italic/Underline/Strike',
       selAll:'Select all',copy:'Copy',paste:'Paste',cut:'Cut',
       zoomIn:'Zoom in',zoomOut:'Zoom out',zoom100:'Reset zoom',
@@ -3463,7 +3467,7 @@ canvas.addEventListener('pointerdown',e=>{
         break;
       }
       pickOrMarquee(wp,e);break;
-    case 'pen':beginPen(wp,e);break;
+    case 'pen':case 'marker':beginPen(wp,e);break;
     case 'rect':case 'ellipse':case 'diamond':case 'sticky':case 'frame':beginRectLike(wp);break;
     case 'line':case 'arrow':beginLineLike(wp);break;
     case 'text':beginText(wp);break;
@@ -3569,7 +3573,7 @@ canvas.addEventListener('pointermove',e=>{
         }
       }
       break;
-    case 'pen':{
+    case 'pen':case 'marker':{
       for(const ce of coalescedSamples(e))contPen(G.s2w({x:ce.offsetX,y:ce.offsetY}),ce);
       // Predicted tail (ADR-0023): one render-only segment ahead of the last
       // committed sample, shaves ~1 frame of perceived stylus latency.
@@ -3652,7 +3656,7 @@ canvas.addEventListener('pointerup',e=>{
         endSelect(wp,e.shiftKey);
       }
       break;
-      case 'pen':endPen();break;
+      case 'pen':case 'marker':endPen();break;
       case 'rect':case 'ellipse':case 'diamond':case 'sticky':case 'frame':endRectLike();break;
       case 'line':case 'arrow':endLineLike();break;
       case 'eraser':flushErase();break;
@@ -4382,6 +4386,10 @@ let _penPred=null;   // world pt of the last predicted sample — render-only
 function beginPen(wp,e){
   _penPred=null;
   state.draft=Shape.make('pen',{pts:[[wp.x,wp.y,_penPr(e)]]});
+  // ADR-0125: marker is the pen gesture with highlighter defaults — flat
+  // (pressure-free) wide translucent stroke; same 'pen' shape type, so every
+  // renderer/exporter/sync path is unchanged.
+  if(state.tool==='marker'){const d=state.draft;d.hl=1;d.size=8;d.opacity=0.4}
 }
 function contPen(wp,e){
   if(!state.draft)return;
@@ -4389,7 +4397,7 @@ function contPen(wp,e){
   const last=pts[pts.length-1];
   // decimate by min distance for smoothness
   const d=Math.hypot(wp.x-last[0],wp.y-last[1]);
-  if(d>1/state.viewport.zoom)pts.push([wp.x,wp.y,_penPr(e)]);
+  if(d>1/state.viewport.zoom)pts.push([wp.x,wp.y,state.draft.hl?0.5:_penPr(e)]);
   const _m=(state.draft.size||2)+16;   // ADR-0026: ink corridor — accumulated union covers the whole stroke
   invalidateDamage({x:Math.min(wp.x,last[0])-_m,y:Math.min(wp.y,last[1])-_m,w:Math.abs(wp.x-last[0])+2*_m,h:Math.abs(wp.y-last[1])+2*_m});
 }
@@ -4807,7 +4815,7 @@ function flushErase(){
 
 // ====================== KEYBOARD ======================
 const KEYMAP={v:'select',h:'hand',p:'pen',r:'rect',o:'ellipse',
-  a:'arrow',l:'line',t:'text',n:'sticky',f:'frame',e:'eraser',d:'diamond'};
+  a:'arrow',l:'line',t:'text',n:'sticky',f:'frame',e:'eraser',d:'diamond',k:'marker'};
 // Focus trap for open dialogs (WCAG 2.4.3 Focus Order / 2.1.2 No Keyboard Trap-escape).
 // _focusables lists the tabbable controls inside a root; _trapStep is the pure wrap step:
 // given those controls, the active element and direction, it returns which element to
@@ -7282,7 +7290,7 @@ const UI={
     const k=T.k;
     const rows=[
       ['V',k.select],['H / Space',k.pan],['P',k.pen],
-      ['R',k.rect],['O',k.ellipse],['A',k.arrow],
+      ['K',k.marker],['R',k.rect],['O',k.ellipse],['A',k.arrow],
       ['L',k.line],['T',k.text],['N',k.sticky],['F',k.frame],['E',k.eraser],['D',k.diamond],
       ['⇧P',k.present],
       ['⌘Z',k.undo],['⌘⇧Z',k.redo],['⌘A',k.selAll],['⌘G / ⌘⌥G',k.group+'/'+t('ctxWrapFrame')],
