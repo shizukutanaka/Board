@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.316] - 2026-09-24
+
+### Added
+- .drawio: edge の mxGeometry@x (−1..1 相対座標) ↔ s.labelPos を往復
+  (ADR-0264)
+
 ## [1.7.315] - 2026-09-24
 
 ### Changed
