@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.388] - 2026-09-24
+
+### Changed
+- `Math.min/max/abs` → `_min/_max/_abs` shorthand で ~1.5KB 回収 (ADR-0337)
+
 ## [1.7.387] - 2026-09-24
 
 ### Added
