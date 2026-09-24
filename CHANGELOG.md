@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.397] - 2026-09-24
+
+### Added
+- ⌘F 検索が link / frameLabel / cap も照合 (ADR-0346)
+- .drawio emit でコネクタが `parent=g_<gid>` + 相対座標 — import 側に
+  edge の group 原点オフセット解決を追加 (ADR-0347)
+
 ## [1.7.396] - 2026-09-24
 
 ### Added
