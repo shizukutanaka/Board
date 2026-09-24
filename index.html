@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.153';
+const V='1.7.154';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2962,6 +2962,18 @@ function resizeSnap(orig,handle,wp){
     if(best){x=best.at;const ys=[orig.y,orig.y+orig.h,best.b.y,best.b.y+best.b.h];guides.push({x1:best.at,y1:Math.min(...ys),x2:best.at,y2:Math.max(...ys)});}}
   if(movesY){let best=null;for(const e of _snapNear(idx.ys,wp.y,tol)){const d=e.v-wp.y;if(!best||Math.abs(d)<Math.abs(best.d))best={d,at:e.v,b:e.b};}
     if(best){y=best.at;const xs=[orig.x,orig.x+orig.w,best.b.x,best.b.x+best.b.w];guides.push({x1:Math.min(...xs),y1:best.at,x2:Math.max(...xs),y2:best.at});}}
+  // ADR-0096: equal-size snap — match an existing shape's w/h (draw.io smart
+  // dims). Runs after edge snap so a dim hit can override the dragged coord;
+  // targets come from the same index (selection already excluded).
+  {const dims=new Set();for(const e of idx.xs)if(e.b)dims.add(e.b);for(const e of idx.ys)if(e.b)dims.add(e.b);
+   if(movesX){const eH=/e/.test(handle),nw=eH?x-orig.x:orig.x+orig.w-x;
+     let bd=null;for(const b of dims){const d=Math.abs(nw-b.w);if(d<tol&&(!bd||d<bd.d))bd={d,w:b.w,b}}
+     if(bd){x=eH?orig.x+bd.w:orig.x+orig.w-bd.w;
+       guides.push({x1:bd.b.x,y1:bd.b.y+bd.b.h,x2:bd.b.x+bd.b.w,y2:bd.b.y+bd.b.h});}}
+   if(movesY){const sH=/s/.test(handle),nh=sH?y-orig.y:orig.y+orig.h-y;
+     let bd=null;for(const b of dims){const d=Math.abs(nh-b.h);if(d<tol&&(!bd||d<bd.d))bd={d,h:b.h,b}}
+     if(bd){y=sH?orig.y+bd.h:orig.y+orig.h-bd.h;
+       guides.push({x1:bd.b.x,y1:bd.b.y,x2:bd.b.x,y2:bd.b.y+bd.b.h});}}}
   return{x,y,guides};
 }
 // ADR-0056: affine-map one group's member geometry from the start-of-drag group

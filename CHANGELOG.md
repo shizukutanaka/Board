@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.154]
+
+### 追加
+- **等サイズスナップ** (ADR-0096)。リサイズ中、新しい幅/高さが
+  他図形の `w`/`h` と近いとき一致側へ吸着 (draw.io スマート寸法)。
+  edge スナップと共存、ガイドは対象図形の該当辺に表示。lock/alt/
+  グリッドスナップ時は従来通り非適用。
+
 ## [1.7.153]
 
 ### 追加
