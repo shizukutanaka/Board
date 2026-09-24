@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.395] - 2026-09-24
+
+### Fixed
+- .excalidraw 画像 emit に `roundness`/`strokeSharpness` を追加
+  (`s.r` 付き画像の角丸が失われていた) (ADR-0344)
+
 ## [1.7.394] - 2026-09-24
 
 ### Added

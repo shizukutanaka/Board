@@ -393,6 +393,7 @@ Board/
 │   ├── ADR-0341-rotated-resize-cursor.md  # 回転カーソル追従 (実装済)
 │   ├── ADR-0342-canvas-rect-shorthand.md  # _cbr() (実装済)
 │   ├── ADR-0343-drawio-lineheight-roundtrip.md  # lineHeight 往復 (実装済)
+│   ├── ADR-0344-exc-image-roundness.md  # exc 画像 roundness (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

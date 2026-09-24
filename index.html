@@ -796,7 +796,7 @@ const _ga=(e,n)=>e.getAttribute(n);   // ADR-0340
 const _cbr=()=>canvas.getBoundingClientRect();   // ADR-0342
 
 // ====================== CONSTANTS ======================
-const V='1.7.394';
+const V='1.7.395';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6365,7 +6365,7 @@ function excScene(shapes){
       case'image':{
         const fid='f'+s.id;files[fid]={id:fid,mimeType:(s.dataUrl.match(/^data:([^;]+)/)||[])[1]||'image/png',dataURL:s.dataUrl,created:0,lastRetrieved:0};
         els.push(E(s,{type:'image',x:s.x,y:s.y,width:s.w||0,height:s.h||0,fileId:fid,status:'saved',
-          }));break;}
+          roundness:s.r?{type:3}:null,strokeSharpness:s.r?'round':'sharp'}));break;}   // ADR-0344
       default:break;
     }
   }
