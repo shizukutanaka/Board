@@ -774,7 +774,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.191';
+const V='1.7.192';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -865,7 +865,7 @@ const I18N={
     confirmClear:'すべて削除しますか？',
     ctxCopy:'コピー',ctxPasteInPlace:'同じ位置に貼り付け',ctxPasteAt:'ここに貼り付け',ctxPaste:'貼り付け',ctxDuplicate:'複製',
     ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxCurve:'曲線',ctxRouteReset:'ルートをリセット (直線に戻す)',ctxSelContents:'内容を選択',ctxFrameFit:'コンテンツに合わせる',ctxArrowHead:'矢印ヘッド (矢印→丸→シェブロン)',ctxToArrow:'矢印に変換',ctxToLine:'直線に変換',ctxBothEnds:'両端ヘッド',ctxRrect:'角スタイル (角丸→直角)',ctxStickyColor:'付箋の色 (順送り)',ctxToText:'テキストに変換',ctxToSticky:'付箋に変換',ctxTextAlign:'テキスト揃え (左→中央→右)',ctxFillStyle:'塗りスタイル (塗り→ハッチ→斜格子)',
-    ctxSelectSameType:'同じ種類を選択',ctxSelectSame:'同色を選択',ctxSearch:'検索',ctxWrapFrame:'フレームで包む',ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
+    ctxSelectSameType:'同じ種類を選択',ctxSelectSame:'同色を選択',ctxSearch:'検索',ctxFit:'全体を表示',ctxZoomReset:'ズーム100%',ctxGrid:'グリッド',ctxSnap:'吸着',ctxMinimap:'ミニマップ',ctxWrapFrame:'フレームで包む',ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
     ctxSendBackward:'背面へ',ctxSendBack:'最背面へ',
     ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxRotate90:'90°回転',ctxLock:'ロック',ctxUnlock:'ロック解除',ctxUnlockAll:'全てロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
     canvasHint:'描画キャンバス。Tab/⇧Tab で図形巡回、Enter で作成、矢印で移動、⌥+矢印でリサイズ',
@@ -941,7 +941,7 @@ const I18N={
     confirmClear:'Delete everything?',
     ctxCopy:'Copy',ctxPasteInPlace:'Paste in place',ctxPasteAt:'Paste here',ctxPaste:'Paste',ctxDuplicate:'Duplicate',
     ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxCurve:'Curved',ctxRouteReset:'Reset route (straighten)',ctxSelContents:'Select contents',ctxFrameFit:'Fit to contents',ctxArrowHead:'Arrowhead (arrow→dot→open)',ctxToArrow:'Convert to arrow',ctxToLine:'Convert to line',ctxBothEnds:'Arrowheads both ends',ctxRrect:'Corners (round→sharp)',ctxStickyColor:'Sticky colour (cycle)',ctxToText:'Convert to text',ctxToSticky:'Convert to sticky',ctxTextAlign:'Text align (left→center→right)',ctxFillStyle:'Fill style (solid→hatch→cross)',
-    ctxSelectSameType:'Select same type',ctxSelectSame:'Select same colour',ctxSearch:'Search',ctxWrapFrame:'Frame selection',ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
+    ctxSelectSameType:'Select same type',ctxSelectSame:'Select same colour',ctxSearch:'Search',ctxFit:'Fit board',ctxZoomReset:'Zoom 100%',ctxGrid:'Grid',ctxSnap:'Snap',ctxMinimap:'Minimap',ctxWrapFrame:'Frame selection',ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
     ctxSendBackward:'Send backward',ctxSendBack:'Send to back',
     ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxRotate90:'Rotate 90°',ctxLock:'Lock',ctxUnlock:'Unlock',ctxUnlockAll:'Unlock all',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
     canvasHint:'Drawing canvas. Tab/Shift+Tab cycles shapes, Enter creates, arrows move, Alt+arrows resize.',
@@ -5013,8 +5013,8 @@ window.addEventListener('keydown',e=>{
   else if(meta&&k==='g'&&e.shiftKey){e.preventDefault();doUngroup()}
   else if(meta&&k==='g'&&!e.shiftKey){e.preventDefault();doGroup()}
   else if(meta&&k==='l'&&e.shiftKey&&state.selection.size){e.preventDefault();doLock()}
-  else if(k==='g'&&!meta&&e.shiftKey){state.snap=!state.snap;UI.toast(`${t('snap')} ${state.snap?t('on'):t('off')}`)}
-  else if(k==='g'&&!meta){state.showGrid=!state.showGrid;invalidate();UI.toast(`${t('grid')} ${state.showGrid?t('on'):t('off')}`)}
+  else if(k==='g'&&!meta&&e.shiftKey){toggleSnapMode()}
+  else if(k==='g'&&!meta){toggleGridView()}
   else if(k==='m'&&!meta){UI.toggleMinimap()}
   else if(e.shiftKey&&(k==='1'||k==='!')){e.preventDefault();fitToContent()}
   else if(e.shiftKey&&(k==='2'||k==='@')){e.preventDefault();zoomToSelection()}
@@ -5031,6 +5031,10 @@ window.addEventListener('keyup',e=>{
     pickTool(window._prevTool);window._prevTool=null;
   }
 });
+// ADR-0135: view toggles were keyboard-only (G/⇧G) — extracted so the
+// ctx menu's touch path can reach them too.
+function toggleGridView(){state.showGrid=!state.showGrid;invalidate();UI.toast(`${t('grid')} ${state.showGrid?t('on'):t('off')}`)}
+function toggleSnapMode(){state.snap=!state.snap;UI.toast(`${t('snap')} ${state.snap?t('on'):t('off')}`)}
 // ADR-0134: the shape search box was ⌘F-only — invisible to touch users
 // (the exact keyboard-only trap FT-06 warned about). Shared by ⌘F and ctx.
 function toggleSq(){
@@ -7272,6 +7276,11 @@ const UI={
       has&&[...state.selection].some(id=>byId(id)?.groupId)&&['ctxUngroup','⌘⇧G',doUngroup],
       has&&'sep',
       ['ctxSearch','⌘F',toggleSq],
+      ['ctxFit','⇧1',fitToContent],
+      ['ctxZoomReset','⌘0',zoomReset],
+      ['ctxGrid','G',toggleGridView],
+      ['ctxSnap','⇧G',toggleSnapMode],
+      ['ctxMinimap','M',()=>UI.toggleMinimap()],
       has&&['ctxBringFront','⇧]',doBringFront],
       has&&['ctxBringForward',']',doBringForward],
       has&&['ctxSendBackward','[',doSendBackward],

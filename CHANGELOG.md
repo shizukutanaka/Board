@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.192]
+
+### 追加
+- **ビュー系トグルの ctx メニュー項目** (ADR-0135)。全体を表示 /
+  ズーム100% / グリッド / 吸着 / ミニマップをコンテキスト
+  メニューから — キーボード限定だった表示操作がタッチでも到達。
+
 ## [1.7.191]
 
 ### 追加
