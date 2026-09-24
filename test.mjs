@@ -719,6 +719,7 @@ const checks = [
   ['clipboard image/svg+xml → vector import (ADR-0272)', html.includes("i.type==='image/svg+xml'")],
   ['drawio strokeOpacity/fillOpacity → s.opacity (ADR-0271)', html.includes('+sty.strokeOpacity')],
   ['svg conn path/label emitters deduped (ADR-0270)', html.includes('const _sp=(d,j)')&&html.includes('_cL();')],
+  ['drawio endFill=0 → open head (ADR-0287)', html.includes("endFill==='0'&&sty.endArrow")],
   ['startHead separate vocab round-trip (ADR-0286)', html.includes("s.startHead||s.head")&&html.includes("startArrow='+(s.startHead")],
   ['drawio letterSpacing ↔ s.spacing (ADR-0284)', html.includes('letterSpacing=')&&html.includes('sty.letterSpacing')],
   ['svg import gradient → first stop colour (ADR-0283)', html.includes('_grad=new Map()')],

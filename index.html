@@ -777,7 +777,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.338';
+const V='1.7.339';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6474,6 +6474,8 @@ function drawioToShapes(txt){
     if(sty.endArrow==='none')s.type='line';
     else if(sty.endArrow==='oval'||sty.endArrow==='diamond')s.head='dot';   // ADR-0256
     else if(sty.endArrow==='open')s.head='open';
+    if(sty.endFill==='0'&&sty.endArrow&&sty.endArrow!=='none'&&s.head!=='dot')s.head='open';   // ADR-0287
+    if(sty.startFill==='0'&&s.start)s.startHead='open';                    // ADR-0287
     if(sty.startArrow&&sty.startArrow!=='none'){s.start=1;   // ADR-0286
       if(sty.startArrow==='oval'||sty.startArrow==='diamond')s.startHead='dot';
       else if(sty.startArrow==='open')s.startHead='open'}
