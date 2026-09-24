@@ -6525,6 +6525,7 @@ function boardToDrawio(shapes){
     if(s.fontSize)sty+='fontSize='+s.fontSize+';';
     if(s.align==='center'||s.align==='right')sty+='align='+s.align+';';   // ADR-0228
     if(s.valign)sty+='verticalAlign='+s.valign+';';                          // ADR-0238
+    if(s.font)sty+='fontFamily='+(s.font==='mono'?'Courier New':'Georgia')+';';   // ADR-0253
     if(s.shadow)sty+='shadow=1;';                                            // ADR-0246
     const _dfs=(s.bold?1:0)|(s.italic?2:0)|(s.under?4:0);                  // ADR-0228: mxGraph bitmask
     if(_dfs)sty+='fontStyle='+_dfs+';';
@@ -6547,7 +6548,7 @@ function boardToDrawio(shapes){
     if(s.fill)sty+='labelBackgroundColor='+s.fill+';';                       // ADR-0249
     if(s.label&&(s.bold||s.italic||s.under)){const _ef=(s.bold?1:0)|(s.italic?2:0)|(s.under?4:0);sty+='fontStyle='+_ef+';';}
     if(s.label&&s.fontSize)sty+='fontSize='+s.fontSize+';';
-    if(s.font)sty+='fontFamily='+(s.font==='mono'?'Courier New':'Georgia')+';';   // ADR-0253
+
     const src=s.a&&idOf.get(s.a)?` source="${idOf.get(s.a)}"`:'';
     const tgt=s.b&&idOf.get(s.b)?` target="${idOf.get(s.b)}"`:'';
     if(src&&s.aF)sty+=`exitX=${s.aF.fx};exitY=${s.aF.fy};exitDx=0;exitDy=0;`;   // ADR-0221
