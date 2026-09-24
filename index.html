@@ -801,7 +801,7 @@ const _on=(e,t,f,o)=>e.addEventListener(t,f,o);                          // ADR-
 const _vp=()=>state.viewport,_vpS=()=>({x:+_vp().x.toFixed(2),y:+_vp().y.toFixed(2),zoom:+_vp().zoom.toFixed(4)});                                              // ADR-0362: live-read (tests reassign the object)
 const _pi=()=>state.peerId,_ro=()=>state.readout,_gd=()=>state.guides,_cl=()=>state.clipboard,_bb=s=>G.bbox(s),_oa=Object.assign;   // ADR-0378
 const _sO=()=>state.seenOps,_la=()=>state.lasso,_mq=()=>state.marquee,_dd=()=>state.dupDelta,_w2=p=>G.w2s(p),_s2=p=>G.s2w(p),_cE=connEnds;   // ADR-0382
-const _iA=Array.isArray,_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click';   // ADR-0384/0386/0391/0395/0397
+const _dpr=()=>window.devicePixelRatio,_iA=Array.isArray,_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase();   // ADR-0384/0386/0391/0395/0397
 const _sh=()=>state.shapes;                                                // ADR-0364
 const _sl=()=>state.selection;
 const _st=()=>state.style;
@@ -809,6 +809,7 @@ const _df=()=>state.draft;
 const _wc=()=>state.wclock;
 const _tl=()=>state.tool;
 const _dn=()=>state.docName;
+const _setDocName=n=>{state.docName=n;const d=_g('docName');if(d)d.value=_dn();_syncDocTitle();};
 const _pr=()=>state.peers;
 const _hi=()=>state.history;
 const _hx=()=>state.histIdx;
@@ -821,7 +822,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.437';
+const V='1.7.438';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1107,7 +1108,7 @@ let ctx=canvas.getContext('2d',{alpha:false,desynchronized:true});
 // Scene redraws stay expensive; overlay-only changes repaint this layer alone.
 const ocanvas=_g('ov');
 let octx=ocanvas.getContext('2d',{desynchronized:true});
-let DPR=_max(1,_min(3,window.devicePixelRatio||1));
+let DPR=_max(1,_min(3,_dpr()||1));
 
 // ====================== GEOM ======================
 // Pure functions. Deterministic. No state mutation.
@@ -2241,7 +2242,7 @@ function _statusSel(){
   if(txt!==_selDimSig){_selDimSig=txt;el.parentElement.hidden=!txt;el.textContent=txt;}
 }
 function resize(){
-  DPR=_max(1,_min(3,window.devicePixelRatio||1));
+  DPR=_max(1,_min(3,_dpr()||1));
   const r=_cbr();
   canvas.width=_rnd(r.width*DPR);
   canvas.height=_rnd(r.height*DPR);
@@ -2257,7 +2258,7 @@ function resize(){
 // canvas backing store keeps the stale DPR and renders blurry on the new screen.
 function _watchDPR(){
   if(!window.matchMedia)return;
-  const mq=window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+  const mq=window.matchMedia(`(resolution: ${_dpr()}dppx)`);
   const onChange=()=>{resize();_watchDPR()};   // single-fire, then re-watch the new ratio
   if(mq.addEventListener)_on(mq,_CH,onChange,{once:true});
   else if(mq.addListener)mq.addListener(onChange);   // legacy Safari
@@ -2475,7 +2476,7 @@ function drawOverlay(){
   if(_sq){
     const v=_vp();
     c.setTransform(v.zoom*DPR,0,0,v.zoom*DPR,-v.x*v.zoom*DPR,-v.y*v.zoom*DPR);
-    const q=_sq.toLowerCase();c.setLineDash([]);let _mi=0;
+    const q=_lc(_sq);c.setLineDash([]);let _mi=0;
     for(const s of _sqMatches()){
       const b=_bb(s),isCur=_sqNav.lastQ===q&&_mi===_sqNav.idx;
       c.strokeStyle=isCur?'#EA580C':'#F97316';c.lineWidth=(isCur?5:3)/v.zoom;c.strokeRect(b.x,b.y,b.w,b.h);_mi++;
@@ -3708,13 +3709,13 @@ function _setSq(v){_sq=v;_sqNav.idx=-1;_sqNav.lastQ='';}
 // current-match index (_sqNav.idx) styles per frame and stays out of the key.
 let _sqVer=-1,_sqQ='',_sqList=null;
 function _sqMatches(){
-  const q=_sq.toLowerCase();
+  const q=_lc(_sq);
   if(_sqVer===_gridVer&&_sqQ===q)return _sqList;
   _sqList=[];
   // ADR-0381: a connector is also found by its bound endpoints' names —
   // "the arrow into the Login button" should match "login", not just the conn's own text.
   const _bt=s=>{let o='';for(const id of [s.a,s.b]){const t=id&&byId(id);if(t)o+=(t.label||'')+(t.text||'')+(t.type||'')}return o};
-  for(const s of _sh()){if(s.visible!==0&&((s.label||'')+(s.text||'')+(s.type||'')+(s.link||'')+(_conn(s.type)?_bt(s):'')).toLowerCase().includes(q))_sqList.push(s)}   // ADR-0346/0353/0381
+  for(const s of _sh()){if(s.visible!==0&&_lc((s.label||'')+(s.text||'')+(s.type||'')+(s.link||'')+(_conn(s.type)?_bt(s):'')).includes(q))_sqList.push(s)}   // ADR-0346/0353/0381
   _sqVer=_gridVer;_sqQ=q;
   return _sqList;
 }
@@ -3724,7 +3725,7 @@ function _sqMatches(){
 // searches by content, so hearing only "2/7" without the matched shape is uninformative.
 function _sqAdvance(dir){
   if(!_sq)return;
-  const q=_sq.toLowerCase();
+  const q=_lc(_sq);
   if(q!==_sqNav.lastQ){_sqNav.idx=-1;_sqNav.lastQ=q;}
   const matches=_sqMatches();   // same ordered list the overlay highlights use (ADR-0048)
   if(!matches.length)return;
@@ -3939,7 +3940,7 @@ _on(canvas,_PD,e=>{
   }
   _iv();
 });
-_on(canvas,'pointermove',e=>{
+_on(canvas,_PM,e=>{
   const sp={x:e.offsetX,y:e.offsetY};
   const wp=_s2(sp);
   if(Presentation.isActive()){_laser=wp;_ivO();return;}
@@ -4076,7 +4077,7 @@ _on(canvas,'pointermove',e=>{
   }
   ptr.x=sp.x;ptr.y=sp.y;ptr.wx=wp.x;ptr.wy=wp.y;
 });
-_on(canvas,'pointerup',e=>{
+_on(canvas,_PU,e=>{
   _clearLongPress();   // ADR-0006
   if(!ptr.down)return;
   const wp=_s2({x:e.offsetX,y:e.offsetY});
@@ -4202,7 +4203,7 @@ function _armLongPress(cx,cy){
 function _clearLongPress(){
   if(_longPressTimer){clearTimeout(_longPressTimer);_longPressTimer=null}
 }
-_on(canvas,'pointercancel',_cancelPointerGesture);
+_on(canvas,_PC,_cancelPointerGesture);
 _on(canvas,'contextmenu',e=>{_pd(e);UI.openCtxMenu(e.clientX,e.clientY)});
 _on(canvas,'pointerleave',()=>{if(_laser){_laser=null;_ivO()}});
 
@@ -4291,7 +4292,7 @@ function openLabelEditor(hit,leftPx,topPx,bold){
     if(ev.key==='Enter'){_pd(ev);commit()}
     // ADR-0237: ⌘B/I/U/⇧X while labeling — box labels render bold/italic/
     // under/strike (ADR-0204) but the keys died on the input target.
-    const mk2=ev.key.toLowerCase(),fl2={b:'bold',i:'italic',u:'under'}[mk2]||(mk2==='x'&&ev.shiftKey?'strike':null);
+    const mk2=_lc(ev.key),fl2={b:'bold',i:'italic',u:'under'}[mk2]||(mk2==='x'&&ev.shiftKey?'strike':null);
     if((ev.metaKey||ev.ctrlKey)&&fl2){_pd(ev);toggleTextFlag(fl2)}
     // ADR-0196: Tab commits and jumps to the next label-able shape (rapid
     // labeling like Figma's table/cell flow); Shift+Tab walks backwards.
@@ -4513,9 +4514,9 @@ const _pointers=new Map();  // pointerId → {x,y}
 _on(canvas,_PD,e=>{
   _pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
 },{capture:true});
-_on(canvas,'pointerup',e=>{_pointers.delete(e.pointerId)},{capture:true});
-_on(canvas,'pointercancel',e=>{_pointers.delete(e.pointerId)},{capture:true});
-_on(canvas,'pointermove',e=>{
+_on(canvas,_PU,e=>{_pointers.delete(e.pointerId)},{capture:true});
+_on(canvas,_PC,e=>{_pointers.delete(e.pointerId)},{capture:true});
+_on(canvas,_PM,e=>{
   if(_pointers.size<2){_pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});return}
   const prev=_pointers.get(e.pointerId);
   if(!prev)return;
@@ -4535,8 +4536,8 @@ _on(canvas,'pointermove',e=>{
 let _pinchPrev=0;
 // Reset pinch state when fewer than 2 pointers
 const _resetPinch=()=>{if(_pointers.size<2){_pinchPrev=0;if(_pinchSnap){_pinchSnap=null;_pinchVp=null;_iv();}}};
-_on(canvas,'pointerup',_resetPinch);
-_on(canvas,'pointercancel',_resetPinch);
+_on(canvas,_PU,_resetPinch);
+_on(canvas,_PC,_resetPinch);
 
 let _wheelZoomEnd=0;
 // ADR-0030/0033 shared: capture the pristine canvas + viewport for the
@@ -5379,7 +5380,7 @@ function openTextEditor(s,isNew){
     if(ev.key==='Enter'&&(ev.metaKey||ev.ctrlKey)){_pd(ev);ta.blur();_stickyChain(s)}   // ADR-0105
     // ADR-0236: ⌘B/I/U/⇧X inside the editor toggle the shape's typography —
     // the global keydown skips input/textarea targets, so these bind locally.
-    const mk=ev.key.toLowerCase(),fl={b:'bold',i:'italic',u:'under'}[mk]||(mk==='x'&&ev.shiftKey?'strike':null);
+    const mk=_lc(ev.key),fl={b:'bold',i:'italic',u:'under'}[mk]||(mk==='x'&&ev.shiftKey?'strike':null);
     if((ev.metaKey||ev.ctrlKey)&&fl){_pd(ev);toggleTextFlag(fl)}
     // ADR-0375: Tab/⇧Tab commits and jumps to the next text/sticky — parity with
     // the label editor's chain (ADR-0196) and Figma's Tab→next-cell flow.
@@ -5483,7 +5484,7 @@ _on(window,_KD,e=>{
     return;
   }
   const meta=e.metaKey||e.ctrlKey;
-  const k=e.key.toLowerCase();
+  const k=_lc(e.key);
   // Presentation mode is view-only (see "no editing during presentation"): handle
   // navigation keys and suppress EVERYTHING else — undo/redo/select-all/copy etc.
   // This guard must precede the editing shortcuts below, or they'd mutate the board
@@ -6344,7 +6345,7 @@ function replaceImage(){
 function exportPDF(){
   if(!_sh().length){_tst(t(_EM),'warn');return}
   const b=G.bboxAll(_sh());if(!b)return;
-  const pad=32,W=_ceil(b.w+pad*2),H=_ceil(b.h+pad*2),dpr=exportScale(W,H,window.devicePixelRatio||1);
+  const pad=32,W=_ceil(b.w+pad*2),H=_ceil(b.h+pad*2),dpr=exportScale(W,H,_dpr()||1);
   let off;try{off=new OffscreenCanvas(W*dpr,H*dpr)}catch(_){off=_ce('canvas');off.width=W*dpr;off.height=H*dpr}
   const oc=off.getContext('2d');
   oc.fillStyle=_p()||'#fff';oc.fillRect(0,0,W*dpr,H*dpr);
@@ -6596,7 +6597,7 @@ function drawioToShapes(txt){
     if(sty.fillColor)s.fill=sty.fillColor==='none'?'none':sty.fillColor;   // ADR-0288
     _dioStyApply(s,sty,_hid);                                            // ADR-0258
     if(sty.fontColor&&sty.fontColor!=='none'&&(s.type==='text'||s.type==='sticky'||s.label))s.stroke=sty.fontColor;   // ADR-0247/0281
-    if(sty.fontFamily&&s.type!=='image'){const ff=sty.fontFamily.toLowerCase();
+    if(sty.fontFamily&&s.type!=='image'){const ff=_lc(sty.fontFamily);
       if(/mono|courier|consol|cascadia|menlo|jetbrains/.test(ff))s.font='mono';
       else if(/serif|times|georgia|garamond|palatino|book/.test(ff))s.font='serif'}   // ADR-0253
     {const _pid=_ga(c,'parent');if(_pid&&_grpIds.has(_pid))s.groupId=_pid}   // ADR-0336
@@ -6904,7 +6905,7 @@ function _svgPathPts(d,m){
   while(i<toks.length){
     if(/[a-zA-Z]/.test(toks[i]))cmd=toks[i++];
     if(!cmd)break;
-    const rel=cmd===cmd.toLowerCase(),C=cmd.toUpperCase();
+    const rel=cmd===_lc(cmd),C=cmd.toUpperCase();
     const ax=rel?x:0,ay=rel?y:0;
     if(C==='M'){x=ax+num();y=ay+num();x0=x;y0=y;push(x,y);cmd=rel?'l':'L';}
     else if(C==='L'){x=ax+num();y=ay+num();push(x,y);}
@@ -7218,7 +7219,7 @@ function importBoard(file){
       // clocks from the board we just swapped out. Skipping this leaks wclock entries and
       // can let a re-imported shape (same id) inherit a stale LWW clock.
       _sl().clear();state.wclock={};
-      if(typeof d.docName==='string'&&d.docName){state.docName=d.docName.slice(0,80);_g('docName').value=_dn();_syncDocTitle();}   // clamp: the input enforces maxlength=80, intake paths must too
+      if(typeof d.docName==='string'&&d.docName)_setDocName(d.docName.slice(0,80));   // clamp: the input enforces maxlength=80, intake paths must too
       if(d.viewport&&_fin(+d.viewport.x)&&_fin(+d.viewport.y)&&_fin(+d.viewport.zoom)&&d.viewport.zoom>0){   // ADR-0393
         _vp().x=+d.viewport.x;_vp().y=+d.viewport.y;_vp().zoom=clampZoom(+d.viewport.zoom);
       }
@@ -7644,8 +7645,7 @@ const Net={
       const n=_max(1,_ceil(d.length/CH));
       for(let i=0;i<n;i++){
         const m={k:'img',key,seq:i,n,data:d.slice(i*CH,(i+1)*CH)};
-        this._send(m);
-        if(this.dc&&this.dc.readyState==='open'){try{this.dc.send(_JS(m))}catch(_){}}
+        this._bcast(m);
       }
     }
   },
@@ -7685,11 +7685,7 @@ const Net={
     const now=_now();
     if(now-this._lastCursorSend<CURSOR_THROTTLE_MS)return;
     this._lastCursorSend=now;
-    const msg={k:'cursor',peer:_pi(),x:wp.x,y:wp.y};
-    this._send(msg);
-    if(this.dc&&this.dc.readyState==='open'){
-      try{this.dc.send(_JS(msg))}catch(_){}
-    }
+    this._bcast({k:'cursor',peer:_pi(),x:wp.x,y:wp.y});
   },
   // ADR-0011: ephemeral peer selection presence. Called from frame() (the rAF driver,
   // NOT draw() — render must stay side-effect-free) once per drawn frame; sends only
@@ -7703,14 +7699,14 @@ const Net={
     const key=ids.join(',');
     if(key===this._lastSelSent)return;
     this._lastSelSent=key;
-    const msg={k:'selection',peer:_pi(),ids};
-    this._send(msg);
-    if(this.dc&&this.dc.readyState==='open'){
-      try{this.dc.send(_JS(msg))}catch(_){}
-    }
+    this._bcast({k:'selection',peer:_pi(),ids});
   },
   _send(msg){
     if(this.bc){try{this.bc.postMessage(msg)}catch(_){}}
+  },
+  _bcast(msg){   // ADR-0401: dual-transport fold — BroadcastChannel + RTC DataChannel
+    this._send(msg);
+    if(this.dc&&this.dc.readyState==='open'){try{this.dc.send(_JS(msg))}catch(_){}}
   },
   _onRecv(msg,viaRtc){
     if(!msg||typeof msg!=='object'||msg.peer===_pi())return;
@@ -7782,6 +7778,9 @@ const Net={
           this._mergeSnapshotOp(op);   // ADR-0058: add unknown shapes, LWW-merge known ones
         }
         break;
+      case 'name':   // ADR-0402: doc-name rename propagates as a plain broadcast
+        if(typeof msg.name==='string'&&msg.name.length<=80){_setDocName(msg.name);_ps()}
+        break;
       case 'ping':
         this._touchPeer(msg.peer);
         break;
@@ -7827,7 +7826,7 @@ const Net={
     const slim=this._slimShapes(ops.map(o=>o.shape),new Map());
     ops.forEach((o,i)=>o.shape=slim[i]);
     this._flushImgOuts();
-    return {k:'snapshot',shapes:slim,ops,peer:_pi()};
+    return {k:'snapshot',shapes:slim,ops,peer:_pi(),name:_dn()};
   },
   // ADR-0058: merge one snapshot add-op. Unknown shape → adopt via applyRemote
   // (unchanged); known shape → per-property LWW merge against wc so concurrent
@@ -7879,6 +7878,7 @@ const Net={
     const valid=shapes.slice(0,MAX_OP_SHAPES).map(s=>this._attachShape(s)).filter(validShape);
     state.shapes=clone(valid);_iG();   // ADR-0009
     _sz();
+    if(typeof msg.name==='string')_setDocName(msg.name.slice(0,80));   // ADR-0402
     _iv();_ru();_ps();
   },
   _touchPeer(peerId){
@@ -8128,7 +8128,7 @@ const Share={
       const origSel=_selIds();
       // ADR-0004: also survives past the undo window (reload/closed-tab), not just this session.
       if(before.length)Persist.saveBackup(before,{..._vp()},_dn());
-      state.shapes=valid.map(clone);_iG();state.docName=((typeof data.name==='string'&&data.name)||'Shared').slice(0,80);   // ADR-0009
+      state.shapes=valid.map(clone);_iG();_setDocName(((typeof data.name==='string'&&data.name)||'Shared').slice(0,80));   // ADR-0009
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out (see importBoard for rationale).
       if(data.viewport&&_fin(+data.viewport.x)&&_fin(+data.viewport.y)&&_fin(+data.viewport.zoom)&&data.viewport.zoom>0){
@@ -8277,7 +8277,7 @@ const Persist={
         _vp().x=+d.viewport.x; _vp().y=+d.viewport.y;
         _vp().zoom=clampZoom(+d.viewport.zoom);
       }
-      if(typeof d.docName==='string'&&d.docName){state.docName=d.docName.slice(0,80);_g('docName').value=_dn();_syncDocTitle();}   // clamp: the input enforces maxlength=80, intake paths must too
+      if(typeof d.docName==='string'&&d.docName)_setDocName(d.docName.slice(0,80));   // clamp: the input enforces maxlength=80, intake paths must too
       state.lastSaveAt=d.savedAt||0;
       _sz();
     }
@@ -8340,7 +8340,7 @@ const Persist={
       const origSel=_selIds();
       state.shapes=shapes.map(clone);_iG();   // ADR-0009
       _sl().clear();state.wclock={};
-      if(typeof d.docName==='string'&&d.docName){state.docName=d.docName.slice(0,80);_g('docName').value=_dn();_syncDocTitle();}   // clamp: the input enforces maxlength=80, intake paths must too
+      if(typeof d.docName==='string'&&d.docName)_setDocName(d.docName.slice(0,80));   // clamp: the input enforces maxlength=80, intake paths must too
       if(d.viewport&&_fin(+d.viewport.x)&&_fin(+d.viewport.y)&&_fin(+d.viewport.zoom)&&d.viewport.zoom>0){
         _vp().x=+d.viewport.x;_vp().y=+d.viewport.y;_vp().zoom=clampZoom(+d.viewport.zoom);
       }
@@ -8825,10 +8825,10 @@ function wire(){
     // (Qiita: Rapls / Zenn: spacemarket). imeShouldCommit() returns false for
     // mid-composition input events to keep partial conversions out of state/IDB/sync;
     // a parallel compositionend listener picks up the final value once IME confirms.
-    const _commitDocName=()=>{state.docName=docNameEl.value;_syncDocTitle();state.dirty=true;_ps()};
+    const _commitDocName=()=>{_setDocName(docNameEl.value);state.dirty=true;_ps();Net._bcast({k:'name',peer:_pi(),name:state.docName})};   // ADR-0402
     _on(docNameEl,'input',e=>{if(imeShouldCommit(e))_commitDocName()});
     _on(docNameEl,'compositionend',_commitDocName);
-    _on(docNameEl,_CH,()=>{state.docName=docNameEl.value||'Untitled';_syncDocTitle();_ps()});
+    _on(docNameEl,_CH,()=>{_setDocName(docNameEl.value||'Untitled');_ps()});
   }
   _g('btnInstall').onclick=_onBtnInstall;
   _g('btnLang').onclick=()=>UI.toggleLang();
@@ -9700,9 +9700,9 @@ const Minimap=(()=>{
     _iv();
   };
   _on(mc,_PD,e=>{_mmNav=true;mc.setPointerCapture(e.pointerId);_mmGo(e)});
-  _on(mc,'pointermove',e=>{if(_mmNav)_mmGo(e)});
-  _on(mc,'pointerup',e=>{_mmNav=false;try{mc.releasePointerCapture(e.pointerId)}catch(_){}});
-  _on(mc,'pointercancel',()=>{_mmNav=false});
+  _on(mc,_PM,e=>{if(_mmNav)_mmGo(e)});
+  _on(mc,_PU,e=>{_mmNav=false;try{mc.releasePointerCapture(e.pointerId)}catch(_){}});
+  _on(mc,_PC,()=>{_mmNav=false});
 
   return{draw,schedule,invalidateCache};
 })();

@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.438] - 2026-09-23
+### 追加
+- ADR-0402: ドキュメント名をピア同期 — リネームが `k:'name'` ブロードキャストで即時伝播し、snapshot に `name` を同梱して遅れて参加するピアも引き継ぐ (空ボード参加時のみ採用・既存ボードはローカル名維持)
+### 変更
+- ADR-0401: `Net._bcast` (BC+RTC 二重送信) と `_setDocName` ヘルパー化、`_dpr`/`_PM`/`_PU`/`_PC`/`_lc` shorthand (~230B 回収)
+
 ## [1.7.437] - 2026-09-23
 ### 修正
 - ADR-0400: RTC スナップショット送信が >256KB で SCTP 天井に静かに死んでいた実害を修正 — ADR-0383 は受信側のみコミットされており送信側のチャンク化が欠落していた。`dc.onopen` のスナップショットを常時 64KB の 'snap' チャンク送出に統一 (1 チャンク盤面も同じ経路)

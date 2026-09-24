@@ -523,7 +523,7 @@ const checks = [
   ['translate moves elbow bend (trunk follows connector)', html.includes('s.bend+=vert?dx:dy')&&html.includes('ADR-0147')],
   ['group resize scales elbow bend on trunk axis', html.includes('ADR-0148')&&html.includes('sh.bend=_abs(tr[1].x-tr[0].x)')],
   ['image flip mirrors pixels via s.flip bitmask', html.includes("s.flip=(s.flip||0)^(axis==='h'?1:2)")&&html.includes('ADR-0149')&&html.includes('scale(${s.flip&1?-1:1}')],
-  ['hidden shapes leave search + bindAt', html.includes("s.visible!==0&&((s.label||'')+(s.text||'')+(s.type||'')")&&html.includes("t!=='pen'&&s.visible!==0")],
+  ['hidden shapes leave search + bindAt', html.includes("s.visible!==0&&_lc((s.label||'')+(s.text||'')+(s.type||'')")&&html.includes("t!=='pen'&&s.visible!==0")],
   ['SVG export excludes hidden shapes', html.includes('const _vis=shapes.filter(s=>s.visible!==0)')&&html.includes('_vis.filter(s=>s.type==="frame")')],
   ['Alt+hover measure guides', html.includes('measure:null')&&html.includes('function _drawMeasure(c)')&&html.includes("e.altKey&&_selN()&&top&&!top.locked")],
   ['measure cleared on reset/down/Alt', html.includes('state.measure=null;ptr.x=ptr.x0')&&html.includes("e.key==='Alt'&&state.measure")],
@@ -669,7 +669,7 @@ const checks = [
   ['minimap canvas has role=img', html.includes('id="minimap"') && html.includes('role="img"')],
   ['minimap canvas has descriptive aria-label', html.includes('aria-label="Board minimap — click to navigate"')],
   // v1.7.94: ADR-0036 minimap drag-scrub
-  ['minimap scrubs on held pointermove', html.includes("_on(mc,'pointermove'") && html.includes('if(_mmNav)_mmGo(e)')],
+  ['minimap scrubs on held pointermove', html.includes("_on(mc,_PM") && html.includes('if(_mmNav)_mmGo(e)')],
   ['minimap scrub captures pointer + releases on up', html.includes('mc.setPointerCapture(e.pointerId)') && html.includes('mc.releasePointerCapture(e.pointerId)')],
   // v1.7.95: ADR-0037 screen-reader selection announcements
   ['_announceSel announces 0/1/N via toast', html.includes('function _announceSel()') && html.includes("t('selNone')") && html.includes("t('selCount')")],
@@ -952,7 +952,7 @@ const checks = [
   // v1.6.61: shape search - Ctrl+F highlights matching shapes
   ['_sq search state variable', html.includes("let _sq='';")],
   ['search input DOM element created in wire()', html.includes("sq.id='sqinput'") && html.includes("_on(sq,'input'")],
-  ['search highlight drawn in world space', html.includes("if(_sq){") && html.includes("const q=_sq.toLowerCase()") && html.includes("'#F97316'") && html.includes("'#EA580C'")],
+  ['search highlight drawn in world space', html.includes("if(_sq){") && html.includes("const q=_lc(_sq)") && html.includes("'#F97316'") && html.includes("'#EA580C'")],
   ['Ctrl+F toggles search input', html.includes("meta&&k==='f'") && html.includes("sq.style.display")],
   // v1.6.62: Socratic feature-interaction fixes
   ['flip negates rotation angle (reflection reverses sense)', html.includes("if(s.rotate)s.rotate=((axis==='h'?180:360)-s.rotate+360)%360;")],
@@ -1085,12 +1085,12 @@ const checks = [
   ['doDuplicate does not clobber clipboard (uses _placeCopies, not state.clipboard=)', html.includes("_placeCopies(sel,_dd().x,_dd().y):_placeCopies(sel);   // independent of _cl()") && html.includes("function _placeCopies(srcShapes")],
   // v1.6.71: import sites clear stale selection + wclock (mirror replace op's _apply)
   ['importBoard clears selection+wclock on whole-board swap', html.includes("state.shapes=shapes.map(clone);_iG();   // ADR-0009\n      // Match the replace op's _apply") && html.includes("_sl().clear();state.wclock={};\n      if(typeof d.docName")],
-  ['importFromHash clears selection+wclock on whole-board swap', html.includes("state.shapes=valid.map(clone);_iG();state.docName=") && /state\.shapes=valid\.map\(clone\)[\s\S]{0,900}_sl\(\)\.clear\(\);state\.wclock=\{\};/.test(html)],
+  ['importFromHash clears selection+wclock on whole-board swap', html.includes("state.shapes=valid.map(clone);_iG();_setDocName(") && /state\.shapes=valid\.map\(clone\)[\s\S]{0,900}_sl\(\)\.clear\(\);state\.wclock=\{\};/.test(html)],
   // v1.6.71: presentation-mode guard precedes editing shortcuts (no undo mid-slideshow)
   ['presentation guard runs before undo/redo/select-all shortcuts', /if\(Presentation\.isActive\(\)\)\{[\s\S]{0,260}return;\n  \}[\s\S]{0,700}if\(meta&&k==='z'&&!e\.shiftKey\)/.test(html)],
   // v1.6.71: export canvas clamped to browser limits
   ['exportPNG uses exportScale clamp', html.includes("const scale=exportScale(w,h,desired||2);")],
-  ['exportPDF uses exportScale clamp for dpr', html.includes("dpr=exportScale(W,H,window.devicePixelRatio||1)")],
+  ['exportPDF uses exportScale clamp for dpr', html.includes("dpr=exportScale(W,H,_dpr()||1)")],
   // v1.6.72: sticky note resize preserves user's chosen width
   ['resizeAfterTextEdit helper present', html.includes("function resizeAfterTextEdit(s,text,c)")],
   ['sticky branch preserves s.w (no text-width overwrite)', html.includes("if(s.type==='sticky'){") && html.includes("wl=wrapText(s.text||'',_abs(s.w)-pad*2")],
@@ -1182,7 +1182,7 @@ const checks = [
     /const _dlg=_openDialog\(\);[\s\S]{0,200}if\(_dlg&&k!=='escape'\)/.test(html)],
   // v1.6.86: track devicePixelRatio changes (monitor switch) that fire no resize event.
   ['DPR-change watcher present and wired',
-    html.includes('function _watchDPR')&&/resolution: \$\{window\.devicePixelRatio\}dppx/.test(html)&&html.includes('_watchDPR();')],
+    html.includes('function _watchDPR')&&/resolution: \$\{_dpr\(\)\}dppx/.test(html)&&html.includes('_watchDPR();')],
   // v1.6.87: clipboard copy works on file:// (navigator.clipboard absent) via execCommand
   ['copyText has execCommand fallback for non-secure contexts',
     html.includes('async function copyText')&&html.includes("execCommand('copy')")&&html.includes('window.isSecureContext')],
