@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.526';
+const V='1.7.527';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2010,7 +2010,8 @@ let _penCachePx=0;
 // wholesale `state.shapes=` replacement (clones miss the pts-identity signature
 // anyway, so old entries would sit until the global caps evict them).
 const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPending.clear()}   // ADR-0445: wholesale swap also drops parked img refs
-const _rs=arr=>{state.shapes=arr;_iG();_pcC()}   // ADR-0494: wholesale board replace (5 sites)
+const _rs=arr=>{state.shapes=arr;_iG();_pcC()}   // ADR-0493: wholesale board replace (5 sites)
+const _shV=()=>_sh().filter(s=>_sv(s));   // ADR-0494: visible-shape subset (6 sites)
 const _psc=id=>{_penBboxCache.delete(id);Net._imgPending.delete(id);const e=_penCache.get(id);if(e){_penCache.delete(id);_penCachePx-=e.px||0;}}   // ADR-0427/0435
 // Effective raster resolution: zoom-adaptive (supersampled at low zoom is just
 // wasted pixels), clamped 0.25..2 so extreme zoom-outs still rasterize tiny.
@@ -4641,7 +4642,7 @@ function _fitViewport(b,pad,cap){
 function fitToContent(){
   // ADR-0155: hidden shapes shouldn't drag the fit window to empty space —
   // fit what's VISIBLE; fall back to all only when everything is hidden.
-  const vis=_sh().filter(s=>_sv(s));
+  const vis=_shV();
   const b=_bA(_ln(vis)?vis:_sh());if(!b){zoomReset();return}
   const z=_fitViewport(b,40,2);
   UI.announce(_rnd(z*100)+'%');
@@ -4653,7 +4654,7 @@ function fitToContent(){
 function _fitIfEmptyView(){
   if(!_nS())return;
   const v=_vp(),r=_cbr();
-  const _vis=_sh().filter(s=>_sv(s));const b=_bA(_ln(_vis)?_vis:_sh());if(!b)return;   // ADR-0155
+  const _vis=_shV();const b=_bA(_ln(_vis)?_vis:_sh());if(!b)return;   // ADR-0155
   const vw=r.width/v.zoom,vh=r.height/v.zoom;
   if(b.x+b.w<v.x||b.y+b.h<v.y||b.x>v.x+vw||b.y>v.y+vh)fitToContent();
 }
@@ -5554,7 +5555,7 @@ _on(window,_KD,e=>{
   }
   if(meta&&k==='z'&&!e.shiftKey){_pd(e);if(Store.undo())_tst(t('undone'))}
   else if(meta&&(k==='y'||(k==='z'&&e.shiftKey))){_pd(e);if(Store.redo())_tst(t('redone'))}
-  else if(meta&&k==='a'){_pd(e);_ss(_sh().filter(s=>_sv(s)).map(s=>s.id));if(_selN())_aS();_iv()}   // ADR-0037
+  else if(meta&&k==='a'){_pd(e);_ss(_shV().map(s=>s.id));if(_selN())_aS();_iv()}   // ADR-0037
   if(k==='p'&&e.shiftKey&&!meta&&!e.altKey){_pd(e);Presentation.enter();return}
   else if(meta&&k===_EN){_pd(e);Presentation.enter()}
   else if(meta&&k==='c'){_pd(e);doCopy()}
@@ -5888,7 +5889,7 @@ function selectSamePaint(){
   const sel=_selL(Boolean);
   if(_ln(sel)!==1)return;
   const s0=sel[0],key=_stk(s0)?s0.color:s0.fill;
-  const same=_sh().filter(s=>_sv(s)&&(_stk(s)?_coo(s):_fi(s))===key);
+  const same=_shV().filter(s=>(_stk(s)?_coo(s):_fi(s))===key);
   if(_ln(same)<2)return;
   _ss(same.map(s=>s.id));
   _aS();_o(_ln(same)+' '+t(_SM));
@@ -5944,7 +5945,7 @@ function showAllShapes(){
 function selectSameType(){
   const sel=_selL(Boolean);
   if(_ln(sel)!==1)return;
-  const same=_sh().filter(s=>_sv(s)&&s.type===sel[0].type);
+  const same=_shV().filter(s=>s.type===sel[0].type);
   if(_ln(same)<2)return;
   _ss(same.map(s=>s.id));
   _aS();_o(_ln(same)+' '+t(_SM));
@@ -8642,7 +8643,7 @@ const UI={
       has&&['ctxExportSelDrawio','',()=>exportSelection('drawio')],       // ADR-0407
       has&&_selN()===1&&_selUnl(s=>_im(s))&&['ctxReplaceImg','',replaceImage],   // ADR-0089
       has&&'sep',
-      ['ctxSelectAll','⌘A',()=>{_ss(_sh().filter(s=>_sv(s)).map(s=>s.id));if(_selN())_aS();_iv()}],
+      ['ctxSelectAll','⌘A',()=>{_ss(_shV().map(s=>s.id));if(_selN())_aS();_iv()}],
       _nS()&&['ctxClear','',doClearAll]
     ].filter(Boolean).filter((it,i,a)=>!(it==='sep'&&(i===0||i===_ln(a)-1||a[i-1]==='sep')));
     for(const it of items){

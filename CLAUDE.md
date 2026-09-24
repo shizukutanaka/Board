@@ -543,6 +543,7 @@ Board/
 │   ├── ADR-0491-mid-fold.md           # _mid(pts) 中間 waypoint 集約 (実装済)
 │   ├── ADR-0492-pl-fold.md            # _pL(pts) 末尾点集約 (実装済)
 │   ├── ADR-0493-rs-fold.md            # _rs 盤面総取替え集約 (実装済)
+│   ├── ADR-0494-shv-fold.md           # _shV 可視図形 subset 集約 (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

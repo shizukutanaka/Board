@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.527] - 2026-09-23
+
+### リファクタ
+
+- `_shV()` — 可視図形 subset (`_sh().filter(s=>_sv(s))`) を 6 サイトに集約、~50B 回収 (ADR-0494)
+
 ## [1.7.526] - 2026-09-23
 
 ### リファクタ
