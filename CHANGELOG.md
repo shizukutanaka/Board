@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.236]
+
+### 追加
+- **フレーム/画像ボーダーの破線** (ADR-0178)。dash スタイルが
+  フレーム枠と画像ボーダーにも適用 (canvas/SVG 一致)。
+
 ## [1.7.235]
 
 ### 追加

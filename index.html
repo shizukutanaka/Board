@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.235';
+const V='1.7.236';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2671,7 +2671,7 @@ function drawShape(s,c){
   c.lineCap='round';c.lineJoin='round';
   c.strokeStyle=s.stroke||'#0F172A';
   c.lineWidth=s.size||1;
-  c.setLineDash((s.dash&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond'||s.type==='line'||s.type==='arrow'))?dashArr(s.dash,s.size):[]);
+  c.setLineDash((s.dash&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond'||s.type==='line'||s.type==='arrow'||s.type==='frame'||s.type==='image'))?dashArr(s.dash,s.size):[]);   // ADR-0178
   if(s.fill){c.fillStyle=s.fill}
   const _rot=shapeRot(s);
   if(_rot){const _cx=s.x+s.w/2,_cy=s.y+s.h/2;c.save();c.translate(_cx,_cy);c.rotate(_rot*Math.PI/180);c.translate(-_cx,-_cy);}
@@ -2717,7 +2717,8 @@ function drawShape(s,c){
         // ADR-0176: s.stroke+s.size draws a border (stroke swatch already
         // reaches images through applyStyleToSelection but was never painted).
         if(s.stroke&&s.size){c.strokeStyle=s.stroke;c.lineWidth=s.size;
-          c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,_cr);c.stroke()}}   // ADR-0149
+          c.setLineDash(dashArr(s.dash||0,s.size));                     // ADR-0178
+          c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,_cr);c.stroke();c.setLineDash([])}}   // ADR-0149
       else{c.strokeStyle=s.stroke||'#CBD5E1';c.lineWidth=1;c.strokeRect(s.x,s.y,s.w,s.h)}
       _drawImgLabel(s,c);                                         // ADR-0083
       break;}
@@ -2733,7 +2734,7 @@ function drawShape(s,c){
       // border
       c.strokeStyle=s.stroke||getCSS('--brand')||'#00C4CC';
       c.lineWidth=s.size||1.5;
-      c.setLineDash([]);
+      c.setLineDash(dashArr(s.dash||0,s.size||1.5));                    // ADR-0178
       c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,r);c.stroke();
       // label
       const lbl=s.label||'Frame';
@@ -6604,7 +6605,7 @@ function buildSVG(shapes,paper){
           const _cr2=Math.min(s.r||0,Math.abs(W)/2,Math.abs(H)/2);   // ADR-0168
           if(_cr2>0)els.push(`<clipPath id="irc${_esc(s.id)}"><rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${_cr2}"/></clipPath>`);
           els.push(`<image x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" href="${_esc(s.dataUrl)}"${_cr2>0?` clip-path="url(#irc${_esc(s.id)})"`:''}${a}${rT}${fT}/>`);
-          if(s.stroke&&s.size)els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${_cr2}" fill="none" stroke="${_esc(s.stroke)}" stroke-width="${_num(s.size)}"${a}${rT}/>`);   // ADR-0176
+          if(s.stroke&&s.size)els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${_cr2}" fill="none" stroke="${_esc(s.stroke)}" stroke-width="${_num(s.size)}"${dA}${a}${rT}/>`);   // ADR-0176/0178
         }
         if(s.label)_svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT);  // ADR-0083
         break;
@@ -6616,7 +6617,7 @@ function buildSVG(shapes,paper){
         // or default-opacity frame rendered wrong (fully opaque, unlabeled) only in SVG
         // export, not canvas/PNG/PDF (deep-audit fix).
         const fa=` opacity="${(s.opacity==null?1:_num(s.opacity))*0.9}"`;
-        els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${fr}" fill="${s.fill||'rgba(248,250,252,0.6)'}" stroke="${clr}" stroke-width="${SZ||1.5}"${fa}${rT}/>`);
+        els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${fr}" fill="${s.fill||'rgba(248,250,252,0.6)'}" stroke="${clr}" stroke-width="${SZ||1.5}"${dA}${fa}${rT}/>`);   // ADR-0178
         els.push(`<text x="${X+ox+6}" y="${Y+oy-4}" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="${clr}"${fa}${rT}>${_esc(s.label||'Frame')}</text>`);
         break;}
       case 'sticky':{
