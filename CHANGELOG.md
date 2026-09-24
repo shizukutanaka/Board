@@ -2,6 +2,16 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.264]
+
+### 追加
+- **コネクタ端点ドラッグの 45° 拘束** (ADR-0206)。端点掴み中に
+  Shift で固定端から 45° 刻み (新規描画の Shift 拘束と同一規約)。
+
+### 修正
+- ラベルエディタの入力フォントを `s.fontSize`/`s.italic` に一致
+  (従来は常に 12px 通常体)。
+
 ## [1.7.263]
 
 ### 追加

@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.263';
+const V='1.7.264';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3263,6 +3263,11 @@ function applyResize(sh,handle,orig,wp,shift,alt){
   if(handle==='p1'||handle==='p2'){
     const bk=handle==='p1'?'a':'b';
     if(sh[bk])sh[bk]=null;                                    // ADR-0065: grabbed a bound end — free while dragging
+    if(shift){                                               // ADR-0206: constrain the free end to 45° increments
+      const fx=handle==='p1'?orig.x2:orig.x1,fy=handle==='p1'?orig.y2:orig.y1;
+      const dx=sp.x-fx,dy=sp.y-fy,dd=Math.hypot(dx,dy);
+      if(dd){const q=Math.round(Math.atan2(dy,dx)/(Math.PI/4))*(Math.PI/4);sp={x:fx+Math.cos(q)*dd,y:fy+Math.sin(q)*dd}}
+    }
     if(handle==='p1'){sh.x1=sp.x;sh.y1=sp.y}else{sh.x2=sp.x;sh.y2=sp.y}
     const _bv=_bindAt(handle==='p1'?sh.x1:sh.x2,handle==='p1'?sh.y1:sh.y2);
     state.bindPreview=(_bv&&_bv!==sh.id&&_bv!==sh[bk==='a'?'b':'a'])?_bv:null;
@@ -4066,7 +4071,7 @@ function openLabelEditor(hit,leftPx,topPx,bold){
   inp.value=hit.label||'';inp.maxLength=80;
   const col=hit.stroke||getCSS(bold?'--accent-contrast':'--ink');   // a11y-audit-2026-07: this is real text (label editor), needs the 4.5:1 text floor too — --accent-contrast clears both themes
   inp.style.cssText=`position:fixed;left:${leftPx}px;top:${topPx}px;`+
-    `font:${bold?'600 ':''}12px ${_fontFam(hit)};color:${col};`+   // ADR-0186
+    `font:${hit.italic?'italic ':''}${bold?'600 ':''}${hit.fontSize||12}px ${_fontFam(hit)};color:${col};`+   // ADR-0186/0206
     `background:${getCSS('--paper')};border:1px solid ${col};`+
     `padding:2px 6px;outline:none;z-index:9500;min-width:80px;`;
   document.body.appendChild(inp);inp.select();
