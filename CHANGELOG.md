@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.523] - 2026-09-23
+
+### リファクタ
+
+- `_ss([id])` — `_scl();_sad(id)` の単一 id selection 置換を `_ss` 集約 (6 サイト、−36B) (ADR-0490)
+
 ## [1.7.522] - 2026-09-23
 
 ### リファクタ

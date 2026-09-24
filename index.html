@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.522';
+const V='1.7.523';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4427,7 +4427,7 @@ _on(canvas,'drop',e=>{
       if(w>maxDim||h>maxDim){const r=_min(maxDim/w,maxDim/h);w*=r;h*=r}
       const sh=Shape.make('image',{x:wp.x+i*20,y:wp.y,w,h,dataUrl});
       Store.commit({op:'add',shape:sh});
-      _scl();_sad(sh.id);
+      _ss([sh.id]);
       _iv();_oT('imagePasted');
     });
   });
@@ -4497,7 +4497,7 @@ _on(window,'paste',e=>{
       const wp=_s2({x:r.width/2,y:r.height/2});
       const sh=Shape.make('text',{x:wp.x-w/2,y:wp.y-(_ln(lines)*fs*1.4)/2,w,h:_ln(lines)*fs*1.4,text:body,fontSize:fs});
       _cOp({op:'add',shape:sh});
-      _scl();_sad(sh.id);
+      _ss([sh.id]);
       _iv();_oT('textPasted');
     });
     return;
@@ -4513,7 +4513,7 @@ _on(window,'paste',e=>{
       if(w>maxDim||h>maxDim){const sc=_min(maxDim/w,maxDim/h);w*=sc;h*=sc}
       const sh=Shape.make('image',{x:wp.x-w/2,y:wp.y-h/2,w,h,dataUrl});
       Store.commit({op:'add',shape:sh});
-      _scl();_sad(sh.id);
+      _ss([sh.id]);
       _iv();
       _oT('imagePasted');
     });
@@ -5192,7 +5192,7 @@ function endRectLike(){
   }
   _cOp({op:'add',shape:d});
   pickTool('select');
-  _scl();_sad(d.id);
+  _ss([d.id]);
   if(_stk(d))openTextEditor(d,true);
 }
 
@@ -5228,7 +5228,7 @@ function endLineLike(){
   if(ba&&ba!==bb)d.a=ba;
   if(bb&&bb!==ba)d.b=bb;
   _cOp({op:'add',shape:d});
-  pickTool('select');_scl();_sad(d.id);
+  pickTool('select');_ss([d.id]);
 }
 // ADR-0065: settle an endpoint drag — bind if dropped on a shape (not self /
 // not the other end's shape), else unbind. Called before the commit snapshot so
@@ -5958,7 +5958,7 @@ function wrapInFrame(){
   const f=Shape.make('frame',{x:b.x-PAD,y:b.y-PAD,w:b.w+PAD*2,h:b.h+PAD*2,label:'Frame'});
   f.z=_min(...sel.map(s=>s.z||0))-0.5;      // ADR-0001: fractional z keeps order stable
   _cOp({op:'add',shape:f});
-  _scl();_sad(f.id);
+  _ss([f.id]);
   _iv();_oT('framed');
 }
 function doGroup(){
