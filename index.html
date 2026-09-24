@@ -796,9 +796,11 @@ const _ga=(e,n)=>e.getAttribute(n);   // ADR-0340
 const _cbr=()=>canvas.getBoundingClientRect();   // ADR-0342
 const _rnd=Math.round;                                                // ADR-0348
 const _qs=(e,s)=>e.querySelector(s);                                  // ADR-0348
+const _qsa=(e,s)=>e.querySelectorAll(s);                                // ADR-0350
+const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-0350
 
 // ====================== CONSTANTS ======================
-const V='1.7.399';
+const V='1.7.400';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1407,7 +1409,7 @@ const Store={
   _lwwOp(op){return op.op==='upd'||op.op==='style'||op.op==='resize'||op.op==='align'||op.op==='group'||op.op==='ungroup'},
   // A patch key counts for LWW only if its value actually CHANGED. pen `pts` (nested
   // array) compared deeply via JSON; before may be absent → treat as changed.
-  _chg(before,after,key){return JSON.stringify(before?before[key]:undefined)!==JSON.stringify(after[key])},
+  _chg(before,after,key){return _JS(before?before[key]:undefined)!==_JS(after[key])},
   // Returns false if `op` has no changed property newer than the shape's recorded write
   // clock — a no-op after filtering. Mutates op.after to drop losing AND unchanged keys,
   // so a snapshot op can't overwrite a concurrent edit to a property it didn't touch.
@@ -1666,7 +1668,7 @@ function byId(id){
   if(!_idIndex||_idIndex.size!==state.shapes.length){_idIndex=new Map();for(const s of state.shapes)_idIndex.set(s.id,s);}
   return _idIndex.get(id);
 }
-function clone(o){return JSON.parse(JSON.stringify(o))}
+function clone(o){return _JP(_JS(o))}
 // Monotonic local timestamp (HLC-lite). clockNewer compares ts BEFORE seq, so a
 // wall-clock that jumps BACKWARDS (NTP correction / DST / manual set) between two
 // edits by the SAME peer would make the peer's own newer edit (higher seq) LOSE to
@@ -3324,7 +3326,7 @@ function _grotCommit(){
   const after=[...ptr.gOrig.keys()].map(id=>byId(id)).filter(Boolean).map(clone);
   if(after.length){
     const before=after.map(a=>ptr.gOrig.get(a.id));
-    if(before.some((b,i)=>JSON.stringify(b)!==JSON.stringify(after[i]))){
+    if(before.some((b,i)=>_JS(b)!==_JS(after[i]))){
       _rcOp({op:'align',dir:'grot',before,after});
     }
   }
@@ -3491,7 +3493,7 @@ function _gresizeCommit(){
   const after=[...ptr.gOrig.keys()].map(id=>byId(id)).filter(Boolean).map(clone);
   if(after.length){
     const before=after.map(a=>ptr.gOrig.get(a.id));
-    if(before.some((b,i)=>JSON.stringify(b)!==JSON.stringify(after[i]))){
+    if(before.some((b,i)=>_JS(b)!==_JS(after[i]))){
       _rcOp({op:'align',dir:'gresize',before,after});
     }
   }
@@ -4025,7 +4027,7 @@ canvas.addEventListener('pointerup',e=>{
           _endPointBind(rsh,ptr.resizeHandle,e.altKey);           // ADR-0065/0209
           const after=clone(rsh);
           const before=ptr.resizeOrig;
-          if(JSON.stringify(before)!==JSON.stringify(after)){
+          if(_JS(before)!==_JS(after)){
             _rcOp({op:'upd',id:rsh.id,before,after});
           }
         }
@@ -4041,7 +4043,7 @@ canvas.addEventListener('pointerup',e=>{
         const rsh=byId(_selIds()[0]);
         if(rsh){
           const after=clone(rsh),before=ptr.rotOrig;
-          if(JSON.stringify(before)!==JSON.stringify(after)){
+          if(_JS(before)!==_JS(after)){
             _rcOp({op:'upd',id:rsh.id,before,after});
             UI.toast(describeShape(rsh)); // SR announce new angle
           }
@@ -4061,7 +4063,7 @@ canvas.addEventListener('pointerup',e=>{
         }
       }else if(ptr.dragKind==='way'&&ptr.wayOrig){                 // ADR-0076
         const sh=byId(ptr.wayOrig.id),ow=ptr.wayOrig.way||null,nw=sh&&sh.way||null;
-        if(sh&&JSON.stringify(ow)!==JSON.stringify(nw)){
+        if(sh&&_JS(ow)!==_JS(nw)){
           const origSel=_selIds();
           Store._recordCommitted({op:'style',before:[{id:sh.id,way:clone(ow)}],after:[{id:sh.id,way:clone(nw)}]});   // ADR-0090: arrays clone whole
           _keepSel(origSel);
@@ -5384,7 +5386,7 @@ const KEYMAP={v:'select',h:'hand',p:'pen',r:'rect',o:'ellipse',i:'eyedropper',
 // given those controls, the active element and direction, it returns which element to
 // focus to keep Tab/Shift+Tab cycling INSIDE the dialog, or null to let native Tab move.
 function _focusables(root){
-  return [...root.querySelectorAll('button,[href],input,select,textarea,summary,[tabindex]:not([tabindex="-1"])')]
+  return [..._qsa(root,'button,[href],input,select,textarea,summary,[tabindex]:not([tabindex="-1"])')]
     .filter(el=>!el.disabled&&!el.hidden);
 }
 function _trapStep(items,active,back){
@@ -5573,7 +5575,7 @@ function pickTool(tool,temporary){
   state.tool=tool;canvas.dataset.tool=tool;
   canvas.setAttribute('aria-label',(T.k[tool]||tool)+' — '+t('canvasHint'));   // localized (was hardcoded English)
   UI.announce(T.k[tool]||tool);   // tool switches were SR-silent (undo/group等 toast, this didn't)
-  for(const b of document.querySelectorAll('.tool'))b.setAttribute('aria-pressed',b.dataset.tool===tool);
+  for(const b of _qsa(document,'.tool'))b.setAttribute('aria-pressed',b.dataset.tool===tool);
   // hide style panel for select/hand
   const sp=_g('stylePanel');
   sp.hidden=tool==='select'||tool==='hand'||tool==='eraser'||tool==='eyedropper';
@@ -6298,7 +6300,7 @@ function exportSVG(shapes=state.shapes){
 function exportBoard(shapes=state.shapes){                       // ADR-0114: optional selection subset
   if(!shapes.length){UI.toast(t('empty'),'warn');return}
   const a=_ce('a');
-  const _bu=URL.createObjectURL(new Blob([JSON.stringify({v:V,docName:state.docName,shapes:roundShapesForExport(shapes)})],{type:'application/json'}));
+  const _bu=URL.createObjectURL(new Blob([_JS({v:V,docName:state.docName,shapes:roundShapesForExport(shapes)})],{type:'application/json'}));
   a.href=_bu;a.download=(state.docName||'board')+'.board';
   a.click();setTimeout(()=>URL.revokeObjectURL(_bu),1e4);
   UI.toast(t('exportedBoard'),'ok');
@@ -6450,7 +6452,7 @@ function drawioToShapes(txt){
   try{doc=new DOMParser().parseFromString(String(txt||''),'text/xml')}catch(_){return null}
   if(!doc||_qs(doc,'parsererror'))return null;
   if(!_qs(doc,'mxGraphModel'))return null;
-  const cells=[...doc.querySelectorAll('mxCell')];
+  const cells=[..._qsa(doc,'mxCell')];
   if(cells.length>DIO_MAX)return null;
   const idOf=new Map(),shapes=[];
   // ADR-0240: children of a group/container store parent-relative coords —
@@ -6464,9 +6466,9 @@ function drawioToShapes(txt){
   // ADR-0311: multiple <diagram> pages flatten side-by-side — each page's
   // cells offset by cumulative pageWidth+200 so pages don't overlap.
   const _doff=new Map();{let _dx=0;
-    for(const dg of doc.querySelectorAll('diagram')){
+    for(const dg of _qsa(doc,'diagram')){
       const m=_qs(dg,'mxGraphModel'),pw=+(m&&_ga(m,'pageWidth'))||850;
-      for(const c2 of dg.querySelectorAll('mxCell'))_doff.set(c2,_dx);
+      for(const c2 of _qsa(dg,'mxCell'))_doff.set(c2,_dx);
       _dx+=pw+200;
     }}
   const _off=new Map();
@@ -6542,7 +6544,7 @@ function drawioToShapes(txt){
       else if(sty.startArrow==='dash')s.startHead='bar'}                   // ADR-0294
     if(sty.curved==='1')s.curve=1;
     if(sty.jumpStyle&&sty.jumpStyle!=='none')s.hop=1;
-    const pts=g?[...g.querySelectorAll('Array mxPoint')]:[];
+    const pts=g?[..._qsa(g,'Array mxPoint')]:[];
     if(pts.length)s.way=pts.slice(0,200).map(p=>[(+_ga(p,'x')||0)+_do+_eo.x,(+_ga(p,'y')||0)+_eo.y]);   // ADR-0347
     if(/orthogonal|elbow/i.test(String(sty.edgeStyle||'')))s.elbow=1;
     // ADR-0221: drawio exitX/exitY/entryX/entryY fixed ports → aF/bF fractions
@@ -6612,7 +6614,7 @@ function importDrawioFile(file,wp){
 function exportExc(){
   if(!state.shapes.length){UI.toast(t('empty'),'warn');return}
   const a=_ce('a');
-  const _bu=URL.createObjectURL(new Blob([JSON.stringify(excScene(state.shapes))],{type:'application/json'}));
+  const _bu=URL.createObjectURL(new Blob([_JS(excScene(state.shapes))],{type:'application/json'}));
   a.href=_bu;a.download=(state.docName||'board')+'.excalidraw';
   a.click();setTimeout(()=>URL.revokeObjectURL(_bu),1e4);
   UI.toast(t('exportedExc'),'ok');
@@ -6809,7 +6811,7 @@ function svgToShapes(txt){
   const root=doc.documentElement;
   if(!root||root.localName!=='svg')return null;
   const _grad=new Map();                                                     // ADR-0283
-  for(const ge of doc.querySelectorAll('linearGradient,radialGradient')){
+  for(const ge of _qsa(doc,'linearGradient,radialGradient')){
     const st=_qs(ge,'stop');
     if(ge.id&&st){const _sc=_ga(st,'stop-color')||(((_ga(st,'style')||'').match(/stop-color:\s*([^;]+)/)||[])[1]);_grad.set(ge.id,(_sc||'#000').trim())}}
   // viewBox → output: origin to (0,0), cap the width at 800px so giant
@@ -6900,7 +6902,7 @@ function importSvgFile(file,wp){
 // than rejecting the whole scene; the mapping itself is the sanitizer.
 function excToShapes(txt){
   let d;
-  try{d=JSON.parse(txt)}catch(_){return null}
+  try{d=_JP(txt)}catch(_){return null}
   if(!d||d.type!=='excalidraw'||!Array.isArray(d.elements))return null;
   const shapes=[],_excBnd=[],idOf=new Map();   // ADR-0223: bindings resolve post-walk
   const _excTxt=new Map();                     // ADR-0225: container text → parent
@@ -7042,7 +7044,7 @@ function importExcText(txt,wp){
 // JSON can paste repeatedly onto the same board without id collisions.
 function importBoardText(txt,wp){
   let data=null;
-  try{data=JSON.parse(txt)}catch(_){return false}
+  try{data=_JP(txt)}catch(_){return false}
   if(!data||!Array.isArray(data.shapes))return false;
   const shapes=data.shapes.filter(validShape);
   if(!shapes.length)return false;
@@ -7060,7 +7062,7 @@ function importBoardText(txt,wp){
 // a file round-trip.
 function copyBoardJSON(shapes=state.shapes){
   if(!shapes.length){UI.toast(t('empty'),'warn');return}
-  copyText(JSON.stringify({v:V,docName:state.docName,shapes:roundShapesForExport(shapes)}))
+  copyText(_JS({v:V,docName:state.docName,shapes:roundShapesForExport(shapes)}))
     .then(ok=>UI.toast(t(ok?'copied':'copyFailed'),ok?'ok':'warn'));
 }
 function importExcFile(file,wp){
@@ -7074,7 +7076,7 @@ function importBoard(file){
   const r=new FileReader();
   r.onload=()=>{
     try{
-      const d=JSON.parse(r.result);
+      const d=_JP(r.result);
       // ADR-0043: content beats extension — an .excalidraw scene saved with a
       // different suffix still routes to the excalidraw importer.
       if(d&&d.type==='excalidraw'){importExcText(r.result);return}
@@ -7516,7 +7518,7 @@ const Net={
       for(let i=0;i<n;i++){
         const m={k:'img',key,seq:i,n,data:d.slice(i*CH,(i+1)*CH)};
         this._send(m);
-        if(this.dc&&this.dc.readyState==='open'){try{this.dc.send(JSON.stringify(m))}catch(_){}}
+        if(this.dc&&this.dc.readyState==='open'){try{this.dc.send(_JS(m))}catch(_){}}
       }
     }
   },
@@ -7539,7 +7541,7 @@ const Net={
     const s=this._slimOp(op);this._flushImgOuts();
     this._send({k:'op',op:s});
     if(this.dc&&this.dc.readyState==='open'){
-      try{this.dc.send(JSON.stringify({k:'op',op:s}))}catch(_){}
+      try{this.dc.send(_JS({k:'op',op:s}))}catch(_){}
     }
   },
   // ADR-0010: ephemeral peer cursor presence — never touches Store/history/Persist.
@@ -7554,7 +7556,7 @@ const Net={
     const msg={k:'cursor',peer:state.peerId,x:wp.x,y:wp.y};
     this._send(msg);
     if(this.dc&&this.dc.readyState==='open'){
-      try{this.dc.send(JSON.stringify(msg))}catch(_){}
+      try{this.dc.send(_JS(msg))}catch(_){}
     }
   },
   // ADR-0011: ephemeral peer selection presence. Called from frame() (the rAF driver,
@@ -7572,7 +7574,7 @@ const Net={
     const msg={k:'selection',peer:state.peerId,ids};
     this._send(msg);
     if(this.dc&&this.dc.readyState==='open'){
-      try{this.dc.send(JSON.stringify(msg))}catch(_){}
+      try{this.dc.send(_JS(msg))}catch(_){}
     }
   },
   _send(msg){
@@ -7808,10 +7810,10 @@ const Net={
       this._rtcPeerId='rtc:'+uid().slice(0,4);
       this._touchPeer(this._rtcPeerId);
       // send snapshot to new peer (must include ops so a non-empty peer can merge)
-      try{this.dc.send(JSON.stringify(this._snapshotMsg()))}catch(_){}
+      try{this.dc.send(_JS(this._snapshotMsg()))}catch(_){}
     };
     this.dc.onmessage=e=>{
-      try{this._onRecv(JSON.parse(e.data),true)}catch(_){}   // ADR-0010: viaRtc=true
+      try{this._onRecv(_JP(e.data),true)}catch(_){}   // ADR-0010: viaRtc=true
     };
     this.dc.onclose=()=>{
       if(!this._rtcConnFailed)UI.toast(t('disconnected'),'warn');
@@ -7823,12 +7825,12 @@ const Net={
   // path is deprecated and inflates any non-ASCII bytes 3x. Decoder keeps the
   // old escape() format as a fallback so pre-1.7.218 invites still parse.
   _encodeToken(sdp){
-    return this._b64uEnc(new TextEncoder().encode(JSON.stringify({type:sdp.type,sdp:sdp.sdp})));
+    return this._b64uEnc(new TextEncoder().encode(_JS({type:sdp.type,sdp:sdp.sdp})));
   },
   _decodeToken(s){
     s=s.trim();let j;
-    try{j=JSON.parse(new TextDecoder().decode(this._b64uDec(s)))}
-    catch(_){j=JSON.parse(decodeURIComponent(escape(atob(s))))}   // legacy escape() token
+    try{j=_JP(new TextDecoder().decode(this._b64uDec(s)))}
+    catch(_){j=_JP(decodeURIComponent(escape(atob(s))))}   // legacy escape() token
     return new RTCSessionDescription(j);
   }};
 
@@ -7875,7 +7877,7 @@ const Share={
   async exportToUrl(enc){
     const data={v:V,shapes:roundShapesForExport(state.shapes),name:state.docName,
       viewport:{x:+state.viewport.x.toFixed(2),y:+state.viewport.y.toFixed(2),zoom:+state.viewport.zoom.toFixed(4)}};   // ADR-0112: receiver opens at the sharer's view
-    const json=JSON.stringify(data);
+    const json=_JS(data);
     // CompressionStream if available, else base64
     let payload=json;
     if(typeof CompressionStream!=='undefined'){
@@ -7953,7 +7955,7 @@ const Share={
       // confirm prompt, so bound the decompressed payload and the shape count;
       // otherwise a multi-hundred-MB deflate bomb pegs the tab on link open.
       if(json.length>SHARE_MAX_BYTES){UI.toast(t('invalidBoard'),'err');clearHash();return false}
-      const data=JSON.parse(json);
+      const data=_JP(json);
       if(!Array.isArray(data.shapes)||data.shapes.length>SHARE_MAX_SHAPES){UI.toast(t('invalidBoard'),'err');clearHash();return false}
       // validate each shape — reject anything without id/type/z
       const valid=data.shapes.filter(validShape);
@@ -8525,7 +8527,7 @@ const UI={
     // Walk all elements with data-t and replace textContent with the
     // translated string. This makes the Share modal (and any future
     // translatable element) honour the detected language.
-    for(const el of document.querySelectorAll('[data-t]')){
+    for(const el of _qsa(document,'[data-t]')){
       const key=_ga(el,'data-t');
       if(key){el.textContent=t(key)}
     }
@@ -8534,8 +8536,8 @@ const UI={
     // i18n key ('k.xxx' reaches the nested shortcut-name table). Titles keep their
     // authored ' (V)' shortcut suffix.
     const tk=key=>key.startsWith('k.')?(T.k[key.slice(2)]||I18N.en.k[key.slice(2)]||key):t(key);
-    for(const el of document.querySelectorAll('[data-t-aria]'))el.setAttribute('aria-label',tk(_ga(el,'data-t-aria')));
-    for(const el of document.querySelectorAll('[data-t-title]')){
+    for(const el of _qsa(document,'[data-t-aria]'))el.setAttribute('aria-label',tk(_ga(el,'data-t-aria')));
+    for(const el of _qsa(document,'[data-t-title]')){
       const sfx=((_ga(el,'title')||'').match(/\s(\([^)]*\))$/)||[])[1];
       el.setAttribute('title',tk(_ga(el,'data-t-title'))+(sfx?' '+sfx:''));
     }
@@ -8603,7 +8605,7 @@ const UI={
 function _ctxMenuKeyNav(m,e){
   // v1.6.96: Tab also closes the menu (ARIA APG: "Tab: closes the menu and moves to next tab stop")
   if(e.key==='Escape'||e.key==='Tab'){_pd(e);UI.closeCtxMenu();return;}
-  const items=[...m.querySelectorAll('.ctx-item')];
+  const items=[..._qsa(m,'.ctx-item')];
   if(!items.length)return;
   const cur=items.indexOf(document.activeElement);
   if(e.key==='ArrowDown'){_pd(e);items[(cur+1)%items.length].focus();return;}
@@ -8636,7 +8638,7 @@ function wire(){
       _sq='';_sqNav.idx=-1;_sqNav.lastQ='';sq.style.display='none';sq.value='';invalidateOverlay();canvas.focus();
     }else _sqAdvance(ev.shiftKey?-1:1);}});}
   // tool buttons
-  for(const b of document.querySelectorAll('.tool'))
+  for(const b of _qsa(document,'.tool'))
     b.addEventListener('click',()=>pickTool(b.dataset.tool));
   // topbar
   _g('btnUndo').onclick=()=>Store.undo()&&UI.toast(t('undone'));
@@ -8675,36 +8677,36 @@ function wire(){
     if(e.target.id==='help')UI.toggleHelp();
   });
   // swatches
-  for(const b of document.querySelectorAll('[data-stroke]'))
+  for(const b of _qsa(document,'[data-stroke]'))
     b.addEventListener('click',()=>{
       state.style.stroke=b.dataset.stroke;
-      for(const x of document.querySelectorAll('[data-stroke]'))x.setAttribute('aria-pressed',x===b);
+      for(const x of _qsa(document,'[data-stroke]'))x.setAttribute('aria-pressed',x===b);
       // apply to selection
       if(_selN())applyStyleToSelection({stroke:state.style.stroke});
     });
-  for(const b of document.querySelectorAll('[data-fill]'))
+  for(const b of _qsa(document,'[data-fill]'))
     b.addEventListener('click',()=>{
       state.style.fill=b.dataset.fill==='null'?null:b.dataset.fill;
-      for(const x of document.querySelectorAll('[data-fill]'))x.setAttribute('aria-pressed',x===b);
+      for(const x of _qsa(document,'[data-fill]'))x.setAttribute('aria-pressed',x===b);
       if(_selN())applyStyleToSelection({fill:state.style.fill});
     });
-  for(const b of document.querySelectorAll('[data-dash]'))
+  for(const b of _qsa(document,'[data-dash]'))
     b.addEventListener('click',()=>{
       state.style.dash=+b.dataset.dash;
-      for(const x of document.querySelectorAll('[data-dash]'))x.setAttribute('aria-pressed',x===b);
+      for(const x of _qsa(document,'[data-dash]'))x.setAttribute('aria-pressed',x===b);
       if(_selN())applyStyleToSelection({dash:state.style.dash});
     });
   // Native <input type=color> fires `input` continuously while the picker is open, so
   // committing per-input would stack dozens of undo steps and sync broadcasts for one
   // colour pick. Coalesce exactly like the size/opacity sliders: snapshot on open, live-
   // preview on input (no Store), flush ONE style op on change.
-  for(const cp of document.querySelectorAll('input.cp')){
+  for(const cp of _qsa(document,'input.cp')){
     const k=cp.dataset.cp;   // 'stroke' or 'fill'
     cp.addEventListener('focus',()=>_sfbCapture(k));
     cp.addEventListener('pointerdown',()=>_sfbCapture(k));
     cp.addEventListener('input',()=>{
       state.style[k]=cp.value;
-      for(const x of document.querySelectorAll('[data-'+k+']'))x.setAttribute('aria-pressed',x===cp);
+      for(const x of _qsa(document,'[data-'+k+']'))x.setAttribute('aria-pressed',x===cp);
       for(const id of state.selection){const s=byId(id);if(s&&!s.locked)s[k]=cp.value}
       if(_selN())invalidate();
     });
@@ -8834,7 +8836,7 @@ function _syncStylePanel(){
   if(!sel.length)return;
   // common value across the selection, undefined when mixed / absent
   const uni=k=>{const v=sel[0][k]??null;return sel.every(s=>(s[k]??null)===v)?v:undefined};
-  const press=(attr,v)=>{for(const b of document.querySelectorAll('[data-'+attr+']'))b.setAttribute('aria-pressed',String(b.dataset[attr])===String(v))};
+  const press=(attr,v)=>{for(const b of _qsa(document,'[data-'+attr+']'))b.setAttribute('aria-pressed',String(b.dataset[attr])===String(v))};
   let v;
   v=uni('stroke');
   if(v!=null){state.style.stroke=v;press('stroke',v);
