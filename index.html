@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.291';
+const V='1.7.292';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6306,6 +6306,14 @@ function excScene(shapes){
     isDeleted:false,boundElements:null,updated:0,link:null,locked:false},over);
   const gids={};for(const s of shapes)if(s.groupId)(gids[s.id]=gids[s.id]||[]).push(s.groupId);
   const _excTid=new Map();   // ADR-0225: sticky rect id → its container text id
+  const _ct=(s,tid,txt,bL,fs)=>{   // shared container-text element (sticky body / box label)
+    _excTid.set(s.id,tid);
+    return{id:tid,type:'text',x:s.x+4,y:s.y+4,
+    width:Math.abs(s.w||120)-8,height:Math.abs(s.h||80)-8,text:txt,originalText:txt,
+    fontSize:fs||s.fontSize||16,textAlign:s.align||'center',verticalAlign:'middle',lineHeight:1.25,baseline:0,...(bL?{bLabel:1}:{}),
+    strokeColor:'#1e1e1e',backgroundColor:'transparent',fillStyle:'solid',strokeWidth:1,strokeStyle:'solid',
+    roughness:0,opacity:100,angle:(s.rotate||0)*Math.PI/180,seed:0,version:1,versionNonce:0,isDeleted:false,
+    containerId:s.id,boundElements:null,updated:0,link:null,locked:false,groupIds:gids[s.id]||[]};};
   for(const s of shapes){
     switch(s.type){
       case'rect':case'ellipse':case'diamond':{
@@ -6313,27 +6321,14 @@ function excScene(shapes){
           roundness:s.r?{type:3}:null}));
         // ADR-0234: label → container text marked bLabel (Board-only marker;
         // excalidraw ignores unknown fields, ours reads it back to s.label)
-        if(s.label){const tid=uid();_excTid.set(s.id,tid);
-          els.push({id:tid,type:'text',x:s.x+4,y:s.y+4,
-          width:Math.abs(s.w||120)-8,height:Math.abs(s.h||80)-8,text:s.label,originalText:s.label,
-          fontSize:s.fontSize||16,textAlign:s.align||'center',verticalAlign:'middle',lineHeight:1.25,baseline:0,bLabel:1,
-          strokeColor:'#1e1e1e',backgroundColor:'transparent',fillStyle:'solid',strokeWidth:1,strokeStyle:'solid',
-          roughness:0,opacity:100,angle:(s.rotate||0)*Math.PI/180,seed:0,version:1,versionNonce:0,isDeleted:false,
-          containerId:s.id,boundElements:null,updated:0,link:null,locked:false,groupIds:[]});}
+        if(s.label)els.push(_ct(s,uid(),s.label,true));
         break;}
       case'frame':
         els.push(E(s,{type:'frame',x:s.x,y:s.y,width:s.w||0,height:s.h||0,name:s.label||'Frame'}));break;
       case'sticky':{
         els.push(E(s,{type:'rectangle',x:s.x,y:s.y,width:s.w,height:s.h,
           backgroundColor:s.color||'#FEF08A',fillStyle:'solid',roundness:{type:3}}));
-        if(s.text){const tid=uid();
-          _excTid.set(s.id,tid);                              // ADR-0225: container link for round-trip
-          els.push({id:tid,type:'text',x:s.x+4,y:s.y+4,
-          width:Math.abs(s.w)-8,height:Math.abs(s.h)-8,text:s.text,originalText:s.text,
-          fontSize:s.fontSize||14,textAlign:s.align||'center',verticalAlign:'middle',lineHeight:1.25,baseline:0,
-          strokeColor:'#1e1e1e',backgroundColor:'transparent',fillStyle:'solid',strokeWidth:1,strokeStyle:'solid',
-          roughness:0,opacity:100,angle:(s.rotate||0)*Math.PI/180,seed:0,version:1,versionNonce:0,isDeleted:false,
-          containerId:s.id,boundElements:null,updated:0,link:null,locked:false,groupIds:gids[s.id]||[]});}
+        if(s.text)els.push(_ct(s,uid(),s.text,false,14));
         break;}
       case'text':
         els.push(E(s,{type:'text',x:s.x,y:s.y,width:s.w||0,height:s.h||0,
@@ -6701,6 +6696,16 @@ function svgToShapes(txt){
     }else if(tag==='path'){
       const pts=_svgPathPts(el.getAttribute('d'),m2);
       if(pts.length>1)s=Shape.make('pen',{pts});
+    }else if(tag==='image'){
+      // ADR-0235: <image href=data:...> — round-trips our own SVG exports.
+      // Only inline data: URIs are accepted (the mapping is the sanitizer);
+      // external hrefs would be a network fetch we can't honour offline.
+      const href=el.getAttribute('href')||el.getAttribute('xlink:href')||'';
+      const w=+el.getAttribute('width')||0,ht=+el.getAttribute('height')||0;
+      if(/^data:image\//.test(href)&&w>0&&ht>0){
+        const a=_svgMPt(m2,+el.getAttribute('x')||0,+el.getAttribute('y')||0);
+        s=Shape.make('image',{x:a.x,y:a.y,w:w,h:ht,dataUrl:href.slice(0,25_000_000)});
+      }
     }else if(tag==='text'){
       const content=(el.textContent||'').replace(/\s+/g,' ').trim();
       if(content){
@@ -6940,6 +6945,7 @@ function _svgArrowHead(els,tx,ty,a1,a2,ah,stroke,a,sz,style){
   }
   els.push(`<polygon points="${tx},${ty} ${tx+Math.cos(a1)*ah},${ty+Math.sin(a1)*ah} ${tx+Math.cos(a2)*ah},${ty+Math.sin(a2)*ah}" fill="${stroke}"${a}/>`);
 }
+function _svgFont(s,fs){return`font-family="${_fontFam(s)}" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''}${_svgLs(s)}`}   // shared SVG text-attribute bundle (ADR-0235)
 function _svgLs(s){return s.spacing?` letter-spacing="${s.spacing}px"`:''}   // ADR-0205
 function _connLabelSVG(s,x1,y1,x2,y2,ox,oy,stroke,paper){
   if(!s.label)return '';
@@ -6949,7 +6955,7 @@ function _connLabelSVG(s,x1,y1,x2,y2,ox,oy,stroke,paper){
   const lw=Math.max(...lns.map(l=>l.length),0)*fs*0.6+8,th=lns.length*lh2;
   const tsp=lns.map((l,i)=>`<tspan x="${mx}" dy="${i?lh2:0}">${_esc(l)}</tspan>`).join('');
   return `<rect x="${mx-lw/2}" y="${my-th/2}" width="${lw}" height="${th}" fill="${_esc(s.fill||paper||'#FFFFFF')}" opacity="0.9"/>`+
-    `<text x="${mx}" y="${my-(lns.length-1)*lh2/2}" font-family="${_fontFam(s)}" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''}${_svgLs(s)} text-anchor="middle" dominant-baseline="central" fill="${stroke}">${tsp}</text>`;   // ADR-0170/0210
+    `<text x="${mx}" y="${my-(lns.length-1)*lh2/2}" ${_svgFont(s,fs)} text-anchor="middle" dominant-baseline="central" fill="${stroke}">${tsp}</text>`;   // ADR-0170/0210
 }
 // Pure SVG assembly; returns string or null. All attr values through _esc.
 function buildSVG(shapes,paper){
@@ -7130,7 +7136,7 @@ function buildSVG(shapes,paper){
         if(s.fill){const mw2=Math.max(...svgLines.map(l=>l.length),0)*fs*0.6;              // ADR-0191
           const bx2=s.align==='center'?tax-mw2/2:s.align==='right'?tax-mw2:tax;
           els.push(`<rect x="${bx2-3}" y="${Y+oy-3}" width="${mw2+6}" height="${svgLines.length*fs*(s.lineH||1.25)+6}" fill="${_esc(s.fill)}"${a}${rT}/>`);}
-        els.push(`<text x="${tax}" y="${Y+oy}" dominant-baseline="hanging" font-family="${_fontFam(s)}" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''}${_svgLs(s)} fill="${stroke}"${anch}${a}${rT}${_sh}>`);   // ADR-0078/0095/0100
+        els.push(`<text x="${tax}" y="${Y+oy}" dominant-baseline="hanging" ${_svgFont(s,fs)} fill="${stroke}"${anch}${a}${rT}${_sh}>`);   // ADR-0078/0095/0100
         for(let i=0;i<svgLines.length;i++)els.push(`<tspan x="${tax}" dy="${i?fs*(s.lineH||1.25):0}">${_esc(svgLines[i])}</tspan>`);
         els.push('</text>');break;}
       case 'image':
@@ -7156,7 +7162,7 @@ function buildSVG(shapes,paper){
         els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${fr}" fill="${s.fill||'rgba(248,250,252,0.6)'}" stroke="${clr}" stroke-width="${SZ||1.5}"${dA}${fa}${rT}/>`);   // ADR-0178
         const alF2=s.align||'left',txF=alF2==='right'?X+ox+W-6:alF2==='center'?X+ox+W/2:X+ox+6;   // ADR-0197
         const ancF=alF2==='right'?' text-anchor="end"':alF2==='center'?' text-anchor="middle"':'';
-        els.push(`<text x="${txF}" y="${Y+oy-4}" font-family="${_fontFam(s)}" font-size="12" font-weight="600"${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''}${_svgLs(s)} fill="${clr}"${ancF}${fa}${rT}>${_esc(s.label||'Frame')}</text>`);
+        els.push(`<text x="${txF}" y="${Y+oy-4}" ${_svgFont(s,12)} fill="${clr}"${ancF}${fa}${rT}>${_esc(s.label||'Frame')}</text>`);
         break;}
       case 'sticky':{
         const r=Math.min(6,Math.abs(W)/6,Math.abs(H)/6);
@@ -7169,7 +7175,7 @@ function buildSVG(shapes,paper){
           const anch2=s.align==='center'?' text-anchor="middle"':s.align==='right'?' text-anchor="end"':'';
           const sy2v=s.valign==='middle'?Y+oy+(H-lines2.length*fs*(s.lineH||1.3))/2:                  // ADR-0187
                      s.valign==='bottom'?Y+oy+H-pad2-lines2.length*fs*(s.lineH||1.3):Y+oy+pad2;
-          els.push(`<text x="${tax2}" y="${sy2v}" dominant-baseline="hanging" font-family="${_fontFam(s)}" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''}${_svgLs(s)} fill="${_esc(s.stroke||'#1E293B')}"${anch2}${rT}>`);   // ADR-0192
+          els.push(`<text x="${tax2}" y="${sy2v}" dominant-baseline="hanging" ${_svgFont(s,fs)} fill="${_esc(s.stroke||'#1E293B')}"${anch2}${rT}>`);   // ADR-0192
           for(let i=0;i<lines2.length;i++)els.push(`<tspan x="${tax2}" dy="${i?fs*(s.lineH||1.3):0}">${_esc(lines2[i])}</tspan>`);
           els.push('</text>');
         }break;}
@@ -7192,7 +7198,7 @@ function _svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT){
   els.push(`<g${rT}><rect x="${X+ox}" y="${sy+oy}" width="${W}" height="${sh_}" fill="${_esc(s.fill||paper||'#FFFFFF')}" opacity="0.85"/>`);
   const al4=s.align||'center',tx4=al4==='left'?X+ox+6:al4==='right'?X+ox+W-6:X+W/2+ox;   // ADR-0171
   const anc4=al4==='left'?'start':al4==='right'?'end':'middle';
-  els.push(`<text x="${tx4}" y="${sy+oy+2}" dominant-baseline="hanging" font-family="${_fontFam(s)}" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''}${_svgLs(s)} text-anchor="${anc4}" fill="${stroke}">`);   // ADR-0170
+  els.push(`<text x="${tx4}" y="${sy+oy+2}" dominant-baseline="hanging" ${_svgFont(s,fs)} text-anchor="${anc4}" fill="${stroke}">`);   // ADR-0170
   for(let i=0;i<lines.length;i++)els.push(`<tspan x="${tx4}" dy="${i?lh:0}">${_esc(lines[i])}</tspan>`);
   els.push('</text></g>');
 }
@@ -7203,7 +7209,7 @@ function _svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT){
   const cy=s.valign==='top'?Y+6+oy:s.valign==='bottom'?Y+H-6+oy-lines.length*lh:Y+H/2+oy-(lines.length*lh)/2;   // ADR-0159
   const al3=s.align||'center',tx3=al3==='left'?X+ox+6:al3==='right'?X+ox+W-6:X+W/2+ox;   // ADR-0171
   const anc3=al3==='left'?'start':al3==='right'?'end':'middle';
-  els.push(`<text x="${tx3}" y="${cy}" dominant-baseline="hanging" font-family="${_fontFam(s)}" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''}${_svgLs(s)} text-anchor="${anc3}" fill="${stroke}"${a}${rT}>`);   // ADR-0170
+  els.push(`<text x="${tx3}" y="${cy}" dominant-baseline="hanging" ${_svgFont(s,fs)} text-anchor="${anc3}" fill="${stroke}"${a}${rT}>`);   // ADR-0170
   for(let i=0;i<lines.length;i++)els.push(`<tspan x="${tx3}" dy="${i?lh:0}">${_esc(lines[i])}</tspan>`);
   els.push('</text>');
 }

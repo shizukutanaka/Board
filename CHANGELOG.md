@@ -2,6 +2,16 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.292]
+
+### 修正
+- **SVG `<image>` インポート** (ADR-0235)。`href`/
+  `xlink:href` の `data:image/` を image 図形へ復元 —
+  Board 自身の SVG 出力が往復する。
+- excalidraw コンテナtext と SVG font 属性束を
+  `_ct()`/`_svgFont()` に共有化 (~1.7KB 削減、
+  512KB 上限内へ復帰)。
+
 ## [1.7.291]
 
 ### 修正

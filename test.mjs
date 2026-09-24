@@ -731,7 +731,8 @@ const checks = [
   ['excalidraw export emits fstyle/arrowheads/image-flip (ADR-0231)', html.includes("'cross'?'cross-hatch':'solid'")&&html.includes("startArrowhead:s.start?'arrow':null")&&html.includes("scale:s.flip?")&&html.includes("d.files[e.fileId]")],
   ['clipboard mxfile XML routes to drawio import (ADR-0232)', html.includes('<mxfile[')&&html.includes('importDrawioText(s,wp)')],
   ['arrowhead cycle includes none (ADR-0233)', html.includes("['arrow','dot','open','none']")],
-  ['excalidraw label → bLabel container text round-trip (ADR-0234)', html.includes('bLabel:1,')&&html.includes('e.bLabel){p.label=')],
+  ['excalidraw label → bLabel container text round-trip (ADR-0234)', html.includes('{bLabel:1}')&&html.includes('e.bLabel){p.label=')],
+  ['SVG import reads <image href=data:> (ADR-0235)', html.includes("tag==='image'")&&html.includes('dataUrl:href.slice')],
   ['endpoint drag Shift constrains to 45 deg + label editor fontSize (ADR-0206)', html.includes("constrain the free end to 45")&&html.includes("${hit.fontSize||12}px")],
   ['i18n has excImported ja+en', html.includes("excImported:'Excalidraw を取り込みました'") && html.includes("excImported:'Excalidraw imported'")],
   // v1.7.102: ADR-0044 text paste → text shape
@@ -791,7 +792,7 @@ const checks = [
   ['route style persists via state.style.elbow/curve into Shape.make', html.includes("state.style.elbow=s.elbow;state.style.curve=0")&&html.includes('if(state.style.elbow)base.elbow=state.style.elbow;')],
   ['corner/hatch/align persist via state.style into Shape.make', html.includes("state.style.r!=null")&&html.includes("state.style.align=nxt")&&html.includes("state.style.fstyle=nxt||null")],
   ['eyedropper absorbs persisted look-props + start persists', html.includes("'elbow','curve','hop','r','fstyle','align','valign','fontSize','lineH','cbend'")&&html.includes("state.style.start=s.start")],
-  ['frame label honors s.font family', html.includes('${_fontFam(s)}" font-size="12"')&&html.includes('${_fontFam(hit)};color')],
+  ['frame label honors s.font family', html.includes('${_svgFont(s,12)}')&&html.includes('${_fontFam(hit)};color')],
   ['sticky body valign via s.valign (ctxVAlign gate + canvas/SVG)', html.includes("seqS=[null,'middle','bottom']")&&html.includes("const sty=s.valign==='middle'")&&html.includes("const sy2v=s.valign==='middle'")],
   ['frame font via cycleFont gate + make() inheritance', html.includes("s.type!=='frame'&&!s.label")&&html.includes("type==='frame'||s.label")&&html.includes("type==='sticky'||type==='frame'")],
   ['line-height cycle — canvas/SVG/resize + style-copy/eyedropper', html.includes("function cycleLineH()")&&html.includes("fs*(s.lineH||1.3)")&&html.includes("'fontSize','lineH','cbend'")],
