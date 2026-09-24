@@ -797,11 +797,12 @@ const _cbr=()=>canvas.getBoundingClientRect();   // ADR-0342
 const _rnd=Math.round;                                                // ADR-0348
 const _qs=(e,s)=>e.querySelector(s);                                  // ADR-0348
 const _qsa=(e,s)=>e.querySelectorAll(s);                                // ADR-0350
+const _on=(e,t,f,o)=>e.addEventListener(t,f,o);                          // ADR-0356
 const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-0350
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.404';
+const V='1.7.405';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2206,7 +2207,7 @@ function _watchDPR(){
   if(!window.matchMedia)return;
   const mq=window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
   const onChange=()=>{resize();_watchDPR()};   // single-fire, then re-watch the new ratio
-  if(mq.addEventListener)mq.addEventListener('change',onChange,{once:true});
+  if(mq.addEventListener)_on(mq,'change',onChange,{once:true});
   else if(mq.addListener)mq.addListener(onChange);   // legacy Safari
 }
 // Visible world rectangle (for culling). screen = (world - vp) * zoom * DPR,
@@ -3709,7 +3710,7 @@ function abortGesture(){
   invalidate();
 }
 
-canvas.addEventListener('pointerdown',e=>{
+_on(canvas,'pointerdown',e=>{
   if(Presentation.isActive())return;  // no editing during presentation
   // Second finger down → pinch-zoom takes over; cancel the single-pointer gesture so
   // it doesn't keep drawing/moving underneath the zoom. _pointers is updated by the
@@ -3877,7 +3878,7 @@ canvas.addEventListener('pointerdown',e=>{
   }
   invalidate();
 });
-canvas.addEventListener('pointermove',e=>{
+_on(canvas,'pointermove',e=>{
   const sp={x:e.offsetX,y:e.offsetY};
   const wp=G.s2w(sp);
   if(Presentation.isActive()){_laser=wp;invalidateOverlay();return;}
@@ -4014,7 +4015,7 @@ canvas.addEventListener('pointermove',e=>{
   }
   ptr.x=sp.x;ptr.y=sp.y;ptr.wx=wp.x;ptr.wy=wp.y;
 });
-canvas.addEventListener('pointerup',e=>{
+_on(canvas,'pointerup',e=>{
   _clearLongPress();   // ADR-0006
   if(!ptr.down)return;
   const wp=G.s2w({x:e.offsetX,y:e.offsetY});
@@ -4140,12 +4141,12 @@ function _armLongPress(cx,cy){
 function _clearLongPress(){
   if(_longPressTimer){clearTimeout(_longPressTimer);_longPressTimer=null}
 }
-canvas.addEventListener('pointercancel',_cancelPointerGesture);
-canvas.addEventListener('contextmenu',e=>{_pd(e);UI.openCtxMenu(e.clientX,e.clientY)});
-canvas.addEventListener('pointerleave',()=>{if(_laser){_laser=null;invalidateOverlay()}});
+_on(canvas,'pointercancel',_cancelPointerGesture);
+_on(canvas,'contextmenu',e=>{_pd(e);UI.openCtxMenu(e.clientX,e.clientY)});
+_on(canvas,'pointerleave',()=>{if(_laser){_laser=null;invalidateOverlay()}});
 
 // Double-click: re-edit text shapes / label boxes & connectors
-canvas.addEventListener('dblclick',e=>{
+_on(canvas,'dblclick',e=>{
   const wp=G.s2w({x:e.offsetX,y:e.offsetY});
   const hit=pickTop(wp);
   // ADR-0122: double-click empty canvas → new text at the point, editor open
@@ -4223,8 +4224,8 @@ function openLabelEditor(hit,leftPx,topPx,bold){
     if(lbl!==hit.label){const before={label:hit.label??null};const after={label:lbl||null};hit.label=lbl||null;_rcOp({op:'upd',id:hit.id,before,after});invalidate()}
     _lblTa=null;inp.remove();
   };
-  inp.addEventListener('blur',commit);
-  inp.addEventListener('keydown',ev=>{
+  _on(inp,'blur',commit);
+  _on(inp,'keydown',ev=>{
     if(ev.isComposing)return;
     if(ev.key==='Enter'){_pd(ev);commit()}
     // ADR-0237: ⌘B/I/U/⇧X while labeling — box labels render bold/italic/
@@ -4294,8 +4295,8 @@ function _imgImportFile(f,cb){
   reader.onerror=()=>UI.toast(t('imgErr'),'warn');
   reader.readAsDataURL(f);
 }
-canvas.addEventListener('dragover',e=>{_pd(e);e.dataTransfer.dropEffect='copy'});
-canvas.addEventListener('drop',e=>{
+_on(canvas,'dragover',e=>{_pd(e);e.dataTransfer.dropEffect='copy'});
+_on(canvas,'drop',e=>{
   _pd(e);
   const bf=[...e.dataTransfer.files].find(f=>f.name.endsWith('.board'));
   if(bf){importBoard(bf);return}
@@ -4328,7 +4329,7 @@ canvas.addEventListener('drop',e=>{
 });
 
 // ---- Image import: clipboard paste ----
-window.addEventListener('paste',e=>{
+_on(window,'paste',e=>{
   if(e.target.matches('input,textarea'))return;
   // ADR-0272: an image/svg+xml clipboard item imports as vector shapes —
   // without this it rasterised through the image branch and lost editability.
@@ -4425,7 +4426,7 @@ function wheelPx(e){
   const u=e.deltaMode===1?16:e.deltaMode===2?400:1;
   return{x:(e.deltaX||0)*u,y:(e.deltaY||0)*u};
 }
-canvas.addEventListener('wheel',e=>{
+_on(canvas,'wheel',e=>{
   _pd(e);
   const d=wheelPx(e);
   if(e.ctrlKey||e.metaKey){
@@ -4448,12 +4449,12 @@ canvas.addEventListener('wheel',e=>{
 
 // Pinch zoom (multi-touch via pointer events)
 const _pointers=new Map();  // pointerId → {x,y}
-canvas.addEventListener('pointerdown',e=>{
+_on(canvas,'pointerdown',e=>{
   _pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
 },{capture:true});
-canvas.addEventListener('pointerup',e=>{_pointers.delete(e.pointerId)},{capture:true});
-canvas.addEventListener('pointercancel',e=>{_pointers.delete(e.pointerId)},{capture:true});
-canvas.addEventListener('pointermove',e=>{
+_on(canvas,'pointerup',e=>{_pointers.delete(e.pointerId)},{capture:true});
+_on(canvas,'pointercancel',e=>{_pointers.delete(e.pointerId)},{capture:true});
+_on(canvas,'pointermove',e=>{
   if(_pointers.size<2){_pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});return}
   const prev=_pointers.get(e.pointerId);
   if(!prev)return;
@@ -4473,8 +4474,8 @@ canvas.addEventListener('pointermove',e=>{
 let _pinchPrev=0;
 // Reset pinch state when fewer than 2 pointers
 const _resetPinch=()=>{if(_pointers.size<2){_pinchPrev=0;if(_pinchSnap){_pinchSnap=null;_pinchVp=null;invalidate();}}};
-canvas.addEventListener('pointerup',_resetPinch);
-canvas.addEventListener('pointercancel',_resetPinch);
+_on(canvas,'pointerup',_resetPinch);
+_on(canvas,'pointercancel',_resetPinch);
 
 let _wheelZoomEnd=0;
 // ADR-0030/0033 shared: capture the pristine canvas + viewport for the
@@ -5273,10 +5274,10 @@ function openTextEditor(s,isNew){
   // v1.6.94: guard auto-resize during IME composition (CJK input caused size thrashing).
   // Pattern: Zenn「入力中の文字が確定されるまでリサイズしない」— same as docName editor.
   let _textComposing=false;
-  ta.addEventListener('compositionstart',()=>{_textComposing=true;});
-  ta.addEventListener('compositionend',()=>{_textComposing=false;auto();});
-  ta.addEventListener('input',()=>{if(!_textComposing)auto();});
-  ta.addEventListener('blur',()=>{
+  _on(ta,'compositionstart',()=>{_textComposing=true;});
+  _on(ta,'compositionend',()=>{_textComposing=false;auto();});
+  _on(ta,'input',()=>{if(!_textComposing)auto();});
+  _on(ta,'blur',()=>{
     const newText=ta.value;
     ctx.save();
     resizeAfterTextEdit(s,newText,ctx);
@@ -5311,7 +5312,7 @@ function openTextEditor(s,isNew){
     }
     _teTa=null;ta.remove();invalidate();
   });
-  ta.addEventListener('keydown',ev=>{
+  _on(ta,'keydown',ev=>{
     if(ev.isComposing)return;
     if(ev.key==='Escape'){_pd(ev);ta.blur()}
     if(ev.key==='Enter'&&(ev.metaKey||ev.ctrlKey)){_pd(ev);ta.blur();_stickyChain(s)}   // ADR-0105
@@ -5403,7 +5404,7 @@ function _openDialog(){
   for(const id of ['help','share']){const m=_g(id);if(m&&m.dataset.open==='true')return m;}
   return null;
 }
-window.addEventListener('keydown',e=>{
+_on(window,'keydown',e=>{
   if(e.target.matches('input,textarea')){
     if(e.key==='Escape')e.target.blur();
     return;
@@ -5551,7 +5552,7 @@ window.addEventListener('keydown',e=>{
   else if(!meta&&KEYMAP[k]){pickTool(KEYMAP[k],k==='i')}
   else if(k===' '&&!meta){_pd(e);pickTool('hand',true)}
 });
-window.addEventListener('keyup',e=>{
+_on(window,'keyup',e=>{
   if(e.key===' '&&state.tool==='hand'&&window._prevTool){
     pickTool(window._prevTool);window._prevTool=null;
   }
@@ -8246,11 +8247,11 @@ function _imgAttach(shapes,imgs){
   });
 }
 function reqDone(rq){return new Promise((r,j)=>{rq.onsuccess=()=>r(rq.result);rq.onerror=()=>j(rq.error)})}
-window.addEventListener('beforeunload',e=>{
+_on(window,'beforeunload',e=>{
   if(state.dirty){Persist.save();_pd(e);e.returnValue=''}
 });
 // Mobile-reliable durability flush — see Persist.flushIfHidden for context.
-document.addEventListener('visibilitychange',()=>Persist.flushIfHidden(document.visibilityState));
+_on(document,'visibilitychange',()=>Persist.flushIfHidden(document.visibilityState));
 
 // ====================== UI ======================
 const UI={
@@ -8647,7 +8648,7 @@ async function _onBtnInstall(){
   if(btn)btn.hidden=true;
 }
 function wire(){
-  {const sq=_ce('input');sq.id='sqinput';sq.type='text';sq.placeholder=T.k.search;sq.setAttribute('aria-label',T.k.search);sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--accent-contrast);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';document.body.appendChild(sq);sq.addEventListener('input',()=>{_sq=sq.value;_sqNav.idx=-1;_sqNav.lastQ='';invalidateOverlay()});sq.addEventListener('keydown',ev=>{if(ev.key==='Escape'){_sq='';_sqNav.idx=-1;_sqNav.lastQ='';sq.style.display='none';sq.value='';invalidateOverlay();canvas.focus();}else if(ev.key==='Enter'&&!ev.isComposing){_pd(ev);
+  {const sq=_ce('input');sq.id='sqinput';sq.type='text';sq.placeholder=T.k.search;sq.setAttribute('aria-label',T.k.search);sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--accent-contrast);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';document.body.appendChild(sq);_on(sq,'input',()=>{_sq=sq.value;_sqNav.idx=-1;_sqNav.lastQ='';invalidateOverlay()});_on(sq,'keydown',ev=>{if(ev.key==='Escape'){_sq='';_sqNav.idx=-1;_sqNav.lastQ='';sq.style.display='none';sq.value='';invalidateOverlay();canvas.focus();}else if(ev.key==='Enter'&&!ev.isComposing){_pd(ev);
     // ⌘Enter: commit the whole match list as the selection, then fold the
     // box away — selecting is terminal, so stale search highlights only
     // distract from the follow-up (move/style the found group).
@@ -8658,7 +8659,7 @@ function wire(){
     }else _sqAdvance(ev.shiftKey?-1:1);}});}
   // tool buttons
   for(const b of _qsa(document,'.tool'))
-    b.addEventListener('click',()=>pickTool(b.dataset.tool));
+    _on(b,'click',()=>pickTool(b.dataset.tool));
   // topbar
   _g('btnUndo').onclick=()=>Store.undo()&&UI.toast(t('undone'));
   _g('btnRedo').onclick=()=>Store.redo()&&UI.toast(t('redone'));
@@ -8683,9 +8684,9 @@ function wire(){
     // mid-composition input events to keep partial conversions out of state/IDB/sync;
     // a parallel compositionend listener picks up the final value once IME confirms.
     const _commitDocName=()=>{state.docName=docNameEl.value;_syncDocTitle();state.dirty=true;Persist.schedule()};
-    docNameEl.addEventListener('input',e=>{if(imeShouldCommit(e))_commitDocName()});
-    docNameEl.addEventListener('compositionend',_commitDocName);
-    docNameEl.addEventListener('change',()=>{state.docName=docNameEl.value||'Untitled';_syncDocTitle();Persist.schedule()});
+    _on(docNameEl,'input',e=>{if(imeShouldCommit(e))_commitDocName()});
+    _on(docNameEl,'compositionend',_commitDocName);
+    _on(docNameEl,'change',()=>{state.docName=docNameEl.value||'Untitled';_syncDocTitle();Persist.schedule()});
   }
   _g('btnInstall').onclick=_onBtnInstall;
   _g('btnLang').onclick=()=>UI.toggleLang();
@@ -8697,20 +8698,20 @@ function wire(){
   });
   // swatches
   for(const b of _qsa(document,'[data-stroke]'))
-    b.addEventListener('click',()=>{
+    _on(b,'click',()=>{
       state.style.stroke=b.dataset.stroke;
       for(const x of _qsa(document,'[data-stroke]'))x.setAttribute('aria-pressed',x===b);
       // apply to selection
       if(_selN())applyStyleToSelection({stroke:state.style.stroke});
     });
   for(const b of _qsa(document,'[data-fill]'))
-    b.addEventListener('click',()=>{
+    _on(b,'click',()=>{
       state.style.fill=b.dataset.fill==='null'?null:b.dataset.fill;
       for(const x of _qsa(document,'[data-fill]'))x.setAttribute('aria-pressed',x===b);
       if(_selN())applyStyleToSelection({fill:state.style.fill});
     });
   for(const b of _qsa(document,'[data-dash]'))
-    b.addEventListener('click',()=>{
+    _on(b,'click',()=>{
       state.style.dash=+b.dataset.dash;
       for(const x of _qsa(document,'[data-dash]'))x.setAttribute('aria-pressed',x===b);
       if(_selN())applyStyleToSelection({dash:state.style.dash});
@@ -8721,39 +8722,39 @@ function wire(){
   // preview on input (no Store), flush ONE style op on change.
   for(const cp of _qsa(document,'input.cp')){
     const k=cp.dataset.cp;   // 'stroke' or 'fill'
-    cp.addEventListener('focus',()=>_sfbCapture(k));
-    cp.addEventListener('pointerdown',()=>_sfbCapture(k));
-    cp.addEventListener('input',()=>{
+    _on(cp,'focus',()=>_sfbCapture(k));
+    _on(cp,'pointerdown',()=>_sfbCapture(k));
+    _on(cp,'input',()=>{
       state.style[k]=cp.value;
       for(const x of _qsa(document,'[data-'+k+']'))x.setAttribute('aria-pressed',x===cp);
       for(const id of state.selection){const s=byId(id);if(s&&!s.locked)s[k]=cp.value}
       if(_selN())invalidate();
     });
-    cp.addEventListener('change',()=>{_sfbFlush(k,cp.value);_sfbCapture(k);});
+    _on(cp,'change',()=>{_sfbFlush(k,cp.value);_sfbCapture(k);});
   }
   const rng=_g('rngSize');
   const opacRng=_g('rngOpacity');
   const opacVal=_g('opacVal');
-  rng.addEventListener('focus',()=>_sfbCapture('size'));
-  rng.addEventListener('pointerdown',()=>_sfbCapture('size'));
-  rng.addEventListener('input',()=>{
+  _on(rng,'focus',()=>_sfbCapture('size'));
+  _on(rng,'pointerdown',()=>_sfbCapture('size'));
+  _on(rng,'input',()=>{
     state.style.size=+rng.value;
     _g('sizeVal').textContent=rng.value;
     for(const id of state.selection){const s=byId(id);if(s&&!s.locked)s.size=state.style.size}
     if(_selN())invalidate();
   });
-  rng.addEventListener('change',()=>{_sfbFlush('size',state.style.size);_sfbCapture('size');});
+  _on(rng,'change',()=>{_sfbFlush('size',state.style.size);_sfbCapture('size');});
   if(opacRng){
-    opacRng.addEventListener('focus',()=>_sfbCapture('opacity'));
-    opacRng.addEventListener('pointerdown',()=>_sfbCapture('opacity'));
-    opacRng.addEventListener('input',()=>{
+    _on(opacRng,'focus',()=>_sfbCapture('opacity'));
+    _on(opacRng,'pointerdown',()=>_sfbCapture('opacity'));
+    _on(opacRng,'input',()=>{
       const v=+opacRng.value/100;
       state.style.opacity=v;
       if(opacVal)opacVal.textContent=opacRng.value;
       for(const id of state.selection){const s=byId(id);if(s&&!s.locked)s.opacity=v}
       if(_selN())invalidate();
     });
-    opacRng.addEventListener('change',()=>{_sfbFlush('opacity',state.style.opacity);_sfbCapture('opacity');});
+    _on(opacRng,'change',()=>{_sfbFlush('opacity',state.style.opacity);_sfbCapture('opacity');});
   }
   // zoom
   _g('btnZoomIn').onclick=()=>zoomBy(1.2);
@@ -8761,27 +8762,27 @@ function wire(){
   _g('btnFit').onclick=fitToContent;
   _g('zoomVal').onclick=zoomReset;
   // online
-  window.addEventListener('online',UI.updateOnline);
-  window.addEventListener('offline',UI.updateOnline);
+  _on(window,'online',UI.updateOnline);
+  _on(window,'offline',UI.updateOnline);
   // PWA install button (v1.6.92): show when browser signals installability; hide after install.
   // `beforeinstallprompt` fires on Chrome/Edge/Samsung Internet when all install criteria are
   // met. Safari/Firefox do not fire it — the button stays hidden there (progressive enhancement).
   // We call _pd(e) to suppress the browser's ambient mini-infobar prompt so that
   // install is fully user-initiated via our button. Ref: web.dev/customize-install/
-  window.addEventListener('beforeinstallprompt',e=>{
+  _on(window,'beforeinstallprompt',e=>{
     _pd(e);
     _installPrompt=e;
     const btn=_g('btnInstall');
     if(btn)btn.hidden=false;
   });
-  window.addEventListener('appinstalled',()=>{
+  _on(window,'appinstalled',()=>{
     _installPrompt=null;
     const btn=_g('btnInstall');
     if(btn)btn.hidden=true;
   });
   // resize
-  window.addEventListener('resize',resize);
-  if(window.visualViewport)visualViewport.addEventListener('resize',resize);   // ADR-0251: iOS url-bar/keyboard shrink doesn't fire window resize
+  _on(window,'resize',resize);
+  if(window.visualViewport)_on(visualViewport,'resize',resize);   // ADR-0251: iOS url-bar/keyboard shrink doesn't fire window resize
   // devicePixelRatio change (window dragged to a different-density monitor) fires no resize
   _watchDPR();
   // some Android devices fire orientationchange separately from resize
@@ -8791,7 +8792,7 @@ function wire(){
     try{matchMedia(q).addEventListener('change',clearCSSCache)}catch(_){}
   }
   // close ctx on click outside
-  document.addEventListener('mousedown',e=>{
+  _on(document,'mousedown',e=>{
     if(!e.target.closest('.ctx-menu'))UI.closeCtxMenu();
   });
   // v1.6.95: Arrow-key navigation inside the context menu (ARIA APG menu pattern)
@@ -9378,7 +9379,7 @@ const Presentation=(()=>{
   function _releaseWakeLock(){
     if(_wakeLock){_wakeLock.release().catch(()=>{});_wakeLock=null;}
   }
-  document.addEventListener('visibilitychange',()=>{
+  _on(document,'visibilitychange',()=>{
     if(document.visibilityState==='visible'&&_active)_acquireWakeLock();
   });
 
@@ -9556,10 +9557,10 @@ const Minimap=(()=>{
     state.viewport.y=wy-_r.height/state.viewport.zoom/2;
     invalidate();
   };
-  mc.addEventListener('pointerdown',e=>{_mmNav=true;mc.setPointerCapture(e.pointerId);_mmGo(e)});
-  mc.addEventListener('pointermove',e=>{if(_mmNav)_mmGo(e)});
-  mc.addEventListener('pointerup',e=>{_mmNav=false;try{mc.releasePointerCapture(e.pointerId)}catch(_){}});
-  mc.addEventListener('pointercancel',()=>{_mmNav=false});
+  _on(mc,'pointerdown',e=>{_mmNav=true;mc.setPointerCapture(e.pointerId);_mmGo(e)});
+  _on(mc,'pointermove',e=>{if(_mmNav)_mmGo(e)});
+  _on(mc,'pointerup',e=>{_mmNav=false;try{mc.releasePointerCapture(e.pointerId)}catch(_){}});
+  _on(mc,'pointercancel',()=>{_mmNav=false});
 
   return{draw,schedule,invalidateCache};
 })();
