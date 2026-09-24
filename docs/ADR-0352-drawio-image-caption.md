@@ -18,3 +18,7 @@
 ## 影響
 +~150B (522,972B)。画像ラベルが Board↔drawio で可視を保つ。
 2044 全緑。
+
+> **訂正 (ADR-0353)**: 同じく `s.cap` 前提だったため revert —
+> `s.label` が実 prop として往復に復帰 (`verticalAlign=bottom` の
+> emit は維持)。
