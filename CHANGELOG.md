@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.250]
+
+### 追加
+- **付箋の文字色** (ADR-0192)。`s.stroke` が付箋本文・下線/取消線
+  の色に反映 (canvas+SVG) — stroke スウォッチ/スタイルコピーが
+  付箋でも有効に。
+
 ## [1.7.249]
 
 ### 追加

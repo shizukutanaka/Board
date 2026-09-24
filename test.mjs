@@ -766,6 +766,7 @@ const checks = [
   ['line-height cycle — canvas/SVG/resize + style-copy/eyedropper', html.includes("function cycleLineH()")&&html.includes("fs*(s.lineH||1.3)")&&html.includes("'fontSize','lineH','cbend'")],
   ['sticky chain inherits full typography', html.includes("font:s.font,lineH:s.lineH,bold:s.bold,italic:s.italic")],
   ['text s.fill paints bg plate (canvas+SVG)', html.includes("s.fill){let mw=0")&&html.includes('height="${svgLines.length*fs*(s.lineH||1.25)+6}"')],
+  ['sticky text colour via s.stroke (canvas+SVG)', html.includes("c.fillStyle=s.stroke||'#1E293B'")&&html.includes('fill="${_esc(s.stroke||')],
   // v1.7.05: Tab cycling excludes locked shapes (parity with doMove/doDelete/doRotate/doFlip)
   ['statusbar selection dims readout', html.includes('id="sSel"')&&html.includes('_statusSel()')&&html.includes('Math.round(b.w)')],
   ['empty-selection arrows pan viewport', html.includes("state.viewport.x+=k==='arrowleft'?-step:k==='arrowright'?step:0")],

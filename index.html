@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.249';
+const V='1.7.250';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2769,7 +2769,7 @@ function drawShape(s,c){
       // text
       if(s.text){
         const fs=s.fontSize||14;
-        c.fillStyle='#1E293B';c.font=_fontStr(s,fs);        // ADR-0078
+        c.fillStyle=s.stroke||'#1E293B';c.font=_fontStr(s,fs);  // ADR-0192
         c.textBaseline='top';
         const lh=fs*(s.lineH||1.3), pad=8;
         const lines=wrapTextCached(s,s.text,Math.abs(s.w)-pad*2,fs,t=>c.measureText(t).width);
@@ -2780,7 +2780,7 @@ function drawShape(s,c){
         const sty=s.valign==='middle'?s.y+(s.h-lines.length*lh)/2:
                   s.valign==='bottom'?s.y+s.h-pad-lines.length*lh:s.y+pad;
         for(let i=0;i<lines.length;i++)c.fillText(lines[i],tax,sty+i*lh);
-        if(s.under||s.strike){c.strokeStyle='#1E293B';c.lineWidth=Math.max(1,fs*0.06);   // ADR-0095/0100
+        if(s.under||s.strike){c.strokeStyle=s.stroke||'#1E293B';c.lineWidth=Math.max(1,fs*0.06);   // ADR-0192
           for(let i=0;i<lines.length;i++){const lw=c.measureText(lines[i]).width;
             const ux=s.align==='center'?tax-lw/2:s.align==='right'?tax-lw:tax;
             if(s.under){const uy=sty+i*lh+fs*1.08;c.beginPath();c.moveTo(ux,uy);c.lineTo(ux+lw,uy);c.stroke()}
@@ -6679,7 +6679,7 @@ function buildSVG(shapes,paper){
           const anch2=s.align==='center'?' text-anchor="middle"':s.align==='right'?' text-anchor="end"':'';
           const sy2v=s.valign==='middle'?Y+oy+(H-lines2.length*fs*(s.lineH||1.3))/2:                  // ADR-0187
                      s.valign==='bottom'?Y+oy+H-pad2-lines2.length*fs*(s.lineH||1.3):Y+oy+pad2;
-          els.push(`<text x="${tax2}" y="${sy2v}" dominant-baseline="hanging" font-family="${_fontFam(s)}" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''} fill="#1E293B"${anch2}${rT}>`);   // ADR-0078/0095/0100
+          els.push(`<text x="${tax2}" y="${sy2v}" dominant-baseline="hanging" font-family="${_fontFam(s)}" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''} fill="${_esc(s.stroke||'#1E293B')}"${anch2}${rT}>`);   // ADR-0192
           for(let i=0;i<lines2.length;i++)els.push(`<tspan x="${tax2}" dy="${i?fs*(s.lineH||1.3):0}">${_esc(lines2[i])}</tspan>`);
           els.push('</text>');
         }break;}
