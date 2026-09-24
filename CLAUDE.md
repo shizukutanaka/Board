@@ -461,6 +461,7 @@ Board/
 │   ├── ADR-0409-file-viewport-grid-restore.md   # exc appState + drawio grid 往復 (実装済)
 │   ├── ADR-0410-bboxall-getcss-shorthands.md   # _bA + _gC shorthand (実装済)
 │   ├── ADR-0411-wrap-flag-validation.md   # s.wrap=0 正規化 + フラグ prop 検証 (実装済)
+│   ├── ADR-0412-wrap-autoresize-roundtrip.md   # text wrap の drawio/exc 完全往復 (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

@@ -69,7 +69,7 @@ const checks = [
   ['i18n ja + en', /I18N\s*=/.test(html) && html.includes('ja:{') && html.includes('en:{')],
   ['WCAG AAA brand-ink token', html.includes('--brand-ink:#003B40')],
   ['IndexedDB store', html.includes("DB_NAME='board'")],
-  ['RAF render loop', /requestAnimationFrame\(frame\)/.test(html)],
+  ['RAF render loop', /_rAF\(frame\)/.test(html)],
   ['op-log op types (add/del/upd/move/clear/zorder/replace)',
     ['add','del','upd','move','clear','zorder','replace'].every(op => html.includes(`op:'${op}'`))],
   ['Tools: pen, rect, ellipse, arrow, line, text, eraser, select, hand',
@@ -120,7 +120,7 @@ const checks = [
   ['Help grid populated', html.includes('fillHelp')],
   // v1.1 additions
   ['BroadcastChannel sync code present', html.includes("NET_CHANNEL_PREFIX='board:'")],
-  ['PEER_ID persistence', html.includes("localStorage.getItem('board.peer')")],
+  ['PEER_ID persistence', html.includes("_lg('board.peer')")],
   ['Share export/import', html.includes('exportToUrl') && html.includes('importFromHash')],
   // v1.7.71 (First-Principles audit): the share link was deflate+base64 — COMPRESSED, NOT
   // ENCRYPTED. v1.7.73 / ADR-0015 closes the gap: real AES-256-GCM with the key inside the
@@ -154,7 +154,7 @@ const checks = [
   ['pointercancel restores eraser batch + clears guides', html.includes("_cancelPointerGesture") && html.includes("state.guides=null") && /if\(_eraseBatch\.length\)[\s\S]{0,280}state\.guides=null/.test(html)],
   ['document.title synced on docName change (WCAG 2.4.2)', html.includes('_syncDocTitle')&&html.includes("document.title=")&&html.includes("_syncDocTitle();")],
   ['Screen Wake Lock in presentation mode', html.includes('navigator.wakeLock')&&html.includes('_acquireWakeLock')&&html.includes('_releaseWakeLock')],
-  ['RAF idle-stop: invalidate guards with _rafId (no 60fps busy-loop on idle board)', html.includes('let needsRender=true,needOverlay=true,_rafId=0')&&html.includes('if(!_rafId)_rafId=requestAnimationFrame(frame)')&&html.includes('_rafId=0;')],
+  ['RAF idle-stop: invalidate guards with _rafId (no 60fps busy-loop on idle board)', html.includes('let needsRender=true,needOverlay=true,_rafId=0')&&html.includes('if(!_rafId)_rafId=_rAF(frame)')&&html.includes('_rafId=0;')],
   ['drawShape accepts ctx param', html.includes("function drawShape(s,c)")],
   // round 4 improvements (current session)
   ['Double-click re-edit text', html.includes("dblclick") && html.includes("openTextEditor")],
@@ -188,7 +188,7 @@ const checks = [
   // board with zero user control. M toggles visibility; preference persists (localStorage).
   ['M key routes to UI.toggleMinimap', html.includes("else if(k==='m'&&!meta){UI.toggleMinimap()}")],
   ['help grid documents the M shortcut', html.includes("['M',k.minimap]")],
-  ['Minimap.schedule skips requestAnimationFrame while hidden', html.includes("function schedule(){if(!state.showMinimap||_raf)return;_raf=requestAnimationFrame(draw)}")],
+  ['Minimap.schedule skips requestAnimationFrame while hidden', html.includes("function schedule(){if(!state.showMinimap||_raf)return;_raf=_rAF(draw)}")],
   ['Format painter copyStyle/pasteStyle', html.includes("function copyStyle") && html.includes("function pasteStyle")],
   ['Format painter styleClipboard state', html.includes("styleClipboard")],
   ['PDF export function', html.includes("function exportPDF") && html.includes("window.print")],
@@ -751,7 +751,7 @@ const checks = [
   ['compressed drawio inflates every page (ADR-0324)', html.includes("Promise.all(_dms.map(m=>_dioInflate(m[1])))")&&html.includes("matchAll(/<diagram[^>]*>([^<]+)<\\/diagram>/g)")],
   ['exc conn-label lineHeight restore (ADR-0323)', html.includes("e.lineHeight!==1.25)p.lineH=")],
   ['drawio export emits html=1 (ADR-0322)', html.includes("let sty='html=1;';")&&html.includes("'html=1;'+(s.start")],
-  ['drawio whiteSpace=nowrap ↔ s.wrap (ADR-0321)', html.includes("sty.whiteSpace==='nowrap'&&s.type==='text')s.wrap=0")&&html.includes("s.wrap===0)sty+='whiteSpace=nowrap;'")],
+  ['drawio whiteSpace nowrap|wrap ↔ s.wrap (ADR-0321/0412)', html.includes("s.type==='text'&&sty.whiteSpace==='nowrap')s.wrap=0")&&html.includes("s.wrap?'whiteSpace=wrap;':'whiteSpace=nowrap;'")&&html.includes("sty.whiteSpace==='wrap')s.wrap=1")],
   ['validPatch: wrap numeric + flag props boolean|number (ADR-0411)', html.includes("'visible','start','wrap']")&&html.includes("['bold','italic','under','strike','locked']")],
   ['drawio labelPosition/verticalLabelPosition (ADR-0320)', html.includes("labelPosition='+s.align")&&html.includes("verticalLabelPosition='+s.valign")&&html.includes("sty.labelPosition))s.align")],
   ['popup-blocked feedback on link open (ADR-0319)', html.includes("if(s&&!window.open(s.link,'_blank','noopener'))_w(t('popupBlocked'))")&&html.includes("if(!window.open(_h0.link,'_blank','noopener'))_w(t('popupBlocked'))")],
@@ -772,7 +772,7 @@ const checks = [
   ['_selAny() ctx-gate shorthand (ADR-0302)', html.includes("_selAny=f=>_selIds().some")],
   ['exc conn angle rotates endpoints (ADR-0300)', html.includes('conn angle → rotate endpoints')],
   ['exc link round-trips (ADR-0301)', html.includes("s.link=e.link.slice(0,500)")&&html.includes("link:s.link||null")],
-  ['exc autoResize emitted on text (ADR-0299)', (html.match(/autoResize:true/g)||[]).length===2],
+  ['exc autoResize emitted on text (ADR-0299/0412)', html.includes('autoResize:false')&&html.includes('autoResize:!s.wrap')&&html.includes('e.autoResize===false')],
   ['frame label fontSize via s.fontSize (ADR-0298)', html.includes("const fs=s.fontSize||12")],
   ['_conn() type shorthand (ADR-0297)', html.includes("_conn=t=>t==='line'||t==='arrow'")],
   ['exc binding.focus → aF/bF (ADR-0296)', html.includes('sb.focus+1)/2')],
@@ -1073,7 +1073,7 @@ const checks = [
     html.includes("self.title=t('you');") && html.includes('UI.refreshPeers();   // self-avatar title')
     && html.includes("you:'自分'") && html.includes("you:'You'")],
   ['theme mode cached in memory (_themeCache), not re-read from localStorage on every call (deep-audit fix)',
-    html.includes('let _themeCache=(()=>{try{return localStorage.getItem(THEME_KEY)}catch(_){return null}})();')
+    html.includes('let _themeCache=(()=>{try{return _lg(THEME_KEY)}catch(_){return null}})();')
     && html.includes('_themeMode(){return _themeCache;},') && html.includes('_themeCache=next;')],
   // v1.6.68: Alt resize-from-centre
   ['Alt resizes about original centre', html.includes("function applyResize(sh,handle,orig,wp,shift,alt)") && html.includes("if(alt){sh.x=cx0-sh.w/2;sh.y=cy0-sh.h/2;}") && html.includes("applyResize(rsh,ptr.resizeHandle,ptr.resizeOrig,wp,e.shiftKey,e.altKey);")],

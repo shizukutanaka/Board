@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.447] - 2026-09-23
+
+### Fixed
+- text wrap を drawio/excalidraw で完全往復 — `whiteSpace=wrap|nowrap` を常時 emit、excalidraw `autoResize:!s.wrap`、bound text は `autoResize:false`、import 側で wrap 復元
+
+### Internal
+- `_rAF`/`_pF`/`_lg`/`_ls` shorthand 追加 (~190B 回収)
+
 ## [1.7.446] - 2026-09-23
 
 ### Fixed
