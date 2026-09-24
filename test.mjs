@@ -423,8 +423,8 @@ const checks = [
   ['readout state + drawOverlay pill + ptr.down gate', html.includes('readout:null,             // ADR-0064')&&html.includes('if(ptr.down&&state.readout)')&&html.includes("roundRect(c,px-tw/2,py,tw,ph,4)")],
   ['readout set in applyResize/moveDelta/rotate paths + cleared with guides', html.includes('state.readout={x:_rb.x+_rb.w/2,y:_rb.y+_rb.h')&&html.includes('state.readout=bb&&(dx||dy)')&&html.includes('state.guides=null;state.readout=null;')],
   // v1.7.123: ADR-0065 connector endpoint rebind/unbind
-  ['endpoint rebind: always-handle + unbind-on-grab + bindPreview', html.includes("h.push({id:'p1',x:e.x1,y:e.y1});       // ADR-0065")&&html.includes('if(sh[bk])sh[bk]=null;')&&html.includes('state.bindPreview=')],
-  ['_endPointBind in pointerup + not-self/not-other-end guard', html.includes('_endPointBind(rsh,ptr.resizeHandle)')&&html.includes('hit!==sh[other]')],
+  ['endpoint rebind: always-handle + unbind-on-grab + bindPreview', html.includes("h.push({id:'p1',x:e.x1,y:e.y1});       // ADR-0065")&&html.includes("if(sh[bk]){sh[bk]=null;sh[bk+'F']=null}")&&html.includes('state.bindPreview=')],
+  ['_endPointBind in pointerup + not-self/not-other-end guard', html.includes('_endPointBind(rsh,ptr.resizeHandle,e.altKey)')&&html.includes('hit!==sh[other]')],
   // v1.7.124: ADR-0066 Shift+drag axis-constrained move
   ['shift axis constraint in moveDelta + objectSnap skipped', html.includes("if(Math.abs(dx)>=Math.abs(dy))dy=0;else dx=0;")&&html.includes('moveDelta(wp,shift,alt)')&&html.includes('doMove(wp,e.shiftKey,e.altKey)')&&html.includes('endSelect(wp,e.shiftKey,e.altKey)')],
   ['moveAxis i18n ja+en + help row', html.includes("moveAxis:'軸拘束移動'")&&html.includes("moveAxis:'Constrain move axis'")&&html.includes("['⇧ + drag',k.moveAxis]")],
@@ -707,6 +707,7 @@ const checks = [
   ['letter-spacing cycle — canvas ctx+SVG+style-copy (ADR-0205)', html.includes("function cycleSpacing()")&&html.includes("c.letterSpacing=(s.spacing||0)+'px'")&&html.includes('_svgLs(s)')&&html.includes('spacing:sh.spacing')],
   ['elbow corner rounding canvas+SVG + cycleCorner gate (ADR-0207)', html.includes('function _polylineR')&&html.includes('_polylineRd(pts,ox,oy,s.r)')&&html.includes("connOk=(s.type==='line'||s.type==='arrow')&&s.elbow")],
   ['text word-wrap toggle + canvas/SVG wrap (ADR-0208)', html.includes('s.wrap?wrapTextCached')&&html.includes('s.wrap?wrapText(String')&&html.includes("['ctxWrap','',toggleWrap]")],
+  ['fixed edge anchors via Alt-drop + connEnds/reverse/unbind wiring (ADR-0209)', html.includes("sh[fk]={fx:fx<0.5?0:1,fy}")&&html.includes('s.aF?{x:ba.x+ba.w*s.aF.fx')&&html.includes('tbF=s.aF;s.aF=s.bF')],
   ['endpoint drag Shift constrains to 45 deg + label editor fontSize (ADR-0206)', html.includes("constrain the free end to 45")&&html.includes("${hit.fontSize||12}px")],
   ['i18n has excImported ja+en', html.includes("excImported:'Excalidraw を取り込みました'") && html.includes("excImported:'Excalidraw imported'")],
   // v1.7.102: ADR-0044 text paste → text shape

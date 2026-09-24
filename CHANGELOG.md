@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.267]
+
+### 追加
+- **コネクタ固定エッジアンカー** (ADR-0209)。端点を ⌥+ドロップで
+  結合すると draw.io exitX/exitY 相当の固定アンカー (bbox 分数
+  座標、最近接エッジへクランプ) になり、図形移動で接続点が
+  回り込まない。⌥無しは従来のフローティング。
+
 ## [1.7.266]
 
 ### 追加
