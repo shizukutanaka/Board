@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.229';
+const V='1.7.230';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3305,7 +3305,17 @@ function drawSelection(c){
     c.strokeRect(x-1,y-1,w+2,h+2);
   }
   c.setLineDash([]);
-  if(lockedSel)return;
+  if(lockedSel){
+    // ADR-0172: padlock badge (draw.io parity) — the dashed outline alone
+    // doesn't clearly read as "this is locked". Top-left, inside the bbox.
+    const lx=x+3,ly=y+3;
+    c.fillStyle=getCSS('--paper');c.strokeStyle=getCSS('--brand-ink');c.lineWidth=1.5;
+    c.beginPath();roundRect(c,lx,ly,16,12,2);c.fill();c.stroke();
+    c.beginPath();c.arc(lx+8,ly,4,Math.PI,0);c.stroke();               // shackle
+    c.fillStyle=getCSS('--ink');
+    c.beginPath();c.arc(lx+8,ly+6,1.4,0,PI2);c.fill();                 // keyhole
+    return;
+  }
   if(state.selection.size===1){
     const sh=sel[0];
     const hs=HANDLE_SIZE;

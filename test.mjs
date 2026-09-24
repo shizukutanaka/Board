@@ -746,7 +746,7 @@ const checks = [
   ['locked hover shows not-allowed cursor', html.includes("top.locked?'not-allowed':'move'")],
   ['lock/unlock ctx labels in ja and en', html.includes("ctxLock:'ロック'") && html.includes("ctxLock:'Lock'")],
   ['lock context-menu entry toggles label by locked state', html.includes("?'ctxUnlock':'ctxLock','',doLock")],
-  ['locked selection drawn with dashed outline, no handles', html.includes("const lockedSel=sel.every(s=>s.locked)") && html.includes("if(lockedSel)return")],
+  ['locked selection drawn with dashed outline, padlock badge', html.includes("const lockedSel=sel.every(s=>s.locked)") && html.includes("if(lockedSel){")],
   // v1.7.05: Tab cycling excludes locked shapes (parity with doMove/doDelete/doRotate/doFlip)
   ['statusbar selection dims readout', html.includes('id="sSel"')&&html.includes('_statusSel()')&&html.includes('Math.round(b.w)')],
   ['empty-selection arrows pan viewport', html.includes("state.viewport.x+=k==='arrowleft'?-step:k==='arrowright'?step:0")],
@@ -756,6 +756,7 @@ const checks = [
   ['label fontSize honored across renderers', html.includes('const fs=s.fontSize||12;')&&html.includes('const fs=s.fontSize||14')&&html.includes("s.type!=='sticky'&&!s.label)||s.locked")],
     ['labels honor bold/italic/under/strike (ADR-0170)', html.includes('c.font=_fontStr(s,fs)')&&html.includes('font-weight="600"')&&html.includes('text-decoration=')],
   ['box/image labels honour s.align (ADR-0171)', html.includes("const al=s.align||'center';")&&html.includes('anc3=')&&html.includes("s.type!=='sticky'&&!s.label)||s.locked)continue;   // ADR-0171")],
+  ['locked selection shows a padlock badge', html.includes('c.arc(lx+8,ly,4,Math.PI,0)')&&html.includes("if(lockedSel){")],
   ['Tab cycling excludes locked+hidden shapes (filter before cycleSel)', html.includes("const ids=state.shapes.filter(s=>!s.locked&&s.visible!==0).map(s=>s.id)")],
   // v1.6.60: bound connectors - arrow/line endpoints follow bound shapes
   ['connEnds helper derives bound endpoints', html.includes("function connEnds") && html.includes("function _edgePt")],

@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.230]
+
+### 追加
+- **ロック選択に鍵バッジ** (ADR-0172)。ロック済み図形の選択枠に
+  padlock アイコンを表示 (draw.io parity) — 破線のみだった「動かせ
+  ない」状態の視認性を改善。
+
 ## [1.7.229]
 
 ### 追加
