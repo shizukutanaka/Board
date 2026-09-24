@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.413] - 2026-09-24
+
+### Changed
+- `invalidate()`/`UI.toast`/`sortZ` 等の長名関数を `_iv()/_tst()/_sz()` 等に
+  一括 shorthand 化 (~1.8KB) — function 定義サイトは本名を保持 (ADR-0366)
+
 ## [1.7.412] - 2026-09-24
 
 ### Changed

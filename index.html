@@ -782,7 +782,7 @@ const _conn=t=>t==='line'||t==='arrow';   // ADR-0297
 const _selAny=f=>_selIds().some(id=>{const s=byId(id);return s&&f(s)});   // ADR-0302
 const _forSel=f=>{for(const id of _sl()){const s=byId(id);if(s)f(s,id)}};   // ADR-0303
 const _csh=(s,c)=>{if(s.shadow){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=10;c.shadowOffsetY=3}};   // ADR-0306
-const _so=(b,a)=>{if(b.length){_styleOp(b,a);invalidate()}};   // ADR-0307
+const _so=(b,a)=>{if(b.length){_styleOp(b,a);_iv()}};   // ADR-0307
 const _selL=f=>_selIds().map(byId).filter(f);   // ADR-0308
 const _selR=op=>{if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)))};   // ADR-0309
 const _keepSel=arr=>{if(arr.length)_hi()[_hx()].origSel=arr};   // ADR-0312
@@ -811,11 +811,13 @@ const _hi=()=>state.history;
 const _hx=()=>state.histIdx;
 const _dt=()=>state.dirty;
 const _ed=()=>state.editing;                                    // ADR-0365
+const _iv=invalidate,_ivO=invalidateOverlay;                    // ADR-0366
+const _tst=(m,k)=>UI.toast(m,k),_iG=_invalidateGrid,_aS=_announceSel,_iD=invalidateDamage,_sz=sortZ;   // ADR-0366
 const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-0350
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.412';
+const V='1.7.413';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1409,7 +1411,7 @@ const Store={
       const sh=byId(f.id);
       // ADR-0027: endpoint re-dock mutates a connector outside _apply — report its
       // own damage (old endpoint sat inside the deleted shape's damage union).
-      if(sh){const _cb=G.bbox(sh);Object.assign(sh,f.patch);invalidateDamage(_dmgPair(_cb,G.bbox(sh),(sh.size||2)+16));}
+      if(sh){const _cb=G.bbox(sh);Object.assign(sh,f.patch);_iD(_dmgPair(_cb,G.bbox(sh),(sh.size||2)+16));}
     }
     this._stampWrites(op);
     state.dirty=true;
@@ -1479,7 +1481,7 @@ const Store={
       for(const p of op.after)stamp(p.id,p,bb[p.id]);}
   },
   _recordCommitted(op){
-    _invalidateGrid();
+    _iG();
     if(!op.clock)op.clock={peer:state.peerId,seq:++state.seq,ts:nowTs()};
     const k=op.clock.peer+':'+op.clock.seq;
     if(state.seenOps.has(k))return;
@@ -1514,7 +1516,7 @@ const Store={
     return true;
   },
   _apply(op,forward){
-    _invalidateGrid();
+    _iG();
     // ADR-0027: harvest the ids and pre-mutation bboxes this op can touch so the
     // repaint clips to their union instead of repainting the whole canvas.
     // Partial patch payloads ({id,c:'#f00'}) yield NaN bboxes -> filtered to
@@ -1541,13 +1543,13 @@ const Store={
         // but doesn't populate seenOps, so the live add isn't deduped) must NOT push
         // a duplicate. Local commits use fresh uids so this never blocks them; redo
         // re-pushes because undo removed the shape first.
-        if(forward){if(!byId(op.shape.id)){_sh().push(clone(op.shape));sortZ();}}
+        if(forward){if(!byId(op.shape.id)){_sh().push(clone(op.shape));_sz();}}
         else{const i=_sh().findIndex(s=>s.id===op.shape.id);if(i>=0)_sh().splice(i,1);_sl().delete(op.shape.id);delete _wc()[op.shape.id];_selR(op);}
         break;}
       case 'addMany':{
         // Atomic multi-add (paste/duplicate): N copies as ONE undo step. Forward mirrors
         // 'add' (idempotent on id); reverse mirrors 'del' (remove all, drop selection).
-        if(forward){for(const sh of op.shapes){if(!byId(sh.id))_sh().push(clone(sh));}sortZ();}
+        if(forward){for(const sh of op.shapes){if(!byId(sh.id))_sh().push(clone(sh));}_sz();}
         else{for(const sh of op.shapes){const i=_sh().findIndex(s=>s.id===sh.id);if(i>=0)_sh().splice(i,1);_sl().delete(sh.id);delete _wc()[sh.id];}_selR(op);}
         break;}
       case 'del':{
@@ -1565,7 +1567,7 @@ const Store={
           if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)Object.assign(sh,p.after);}}
         }else{
           for(const sh of op.shapes)_sh().push(clone(sh));
-          sortZ();
+          _sz();
           // Restore connector bindings after shapes are back so references are valid
           if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)Object.assign(sh,p.before);}}
           if(op.wc)for(const [id,w] of Object.entries(op.wc))_wc()[id]=clone(w);
@@ -1592,7 +1594,7 @@ const Store={
         break;}
       case 'clear':{
         if(forward){_sh().length=0;_sl().clear();state.wclock={};}
-        else{for(const s of op.shapes)_sh().push(clone(s));sortZ();if(op.wc)state.wclock=clone(op.wc);_selR(op);}
+        else{for(const s of op.shapes)_sh().push(clone(s));_sz();if(op.wc)state.wclock=clone(op.wc);_selR(op);}
         break;}
       case 'replace':{
         // Whole-board swap (shared-link import). Reversible: before/after are full
@@ -1601,7 +1603,7 @@ const Store={
         const next=forward?op.after:op.before;
         _sh().length=0;_sl().clear();state.wclock={};
         for(const s of next)_sh().push(clone(s));
-        sortZ();
+        _sz();
         if(forward&&op.afterWc)state.wclock=clone(op.afterWc);
         if(!forward&&op.wc)state.wclock=clone(op.wc);
         if(!forward)_selR(op);
@@ -1631,7 +1633,7 @@ const Store={
         if(op.changes){
           // minimal-delta (ADR-0001 Step 2): set moved shapes' keys, re-sort by key.
           for(const c of op.changes){const sh=byId(c.id);if(sh&&!(forward&&sh.locked))sh.frac=forward?c.after:c.before}
-          sortZ();
+          _sz();
         }else{
           // legacy full-snapshot format (pre-Step2 history / mixed-version peer).
           const snap=forward?op.after:op.before;
@@ -1667,10 +1669,10 @@ const Store={
     // ADR-0027: post-mutation bboxes of the same ids cover add/upd/move targets;
     // a union covering most of the viewport isn't worth clipping for.
     for(const id of _ids)_u(byId(id));
-    if(!_dmg){invalidate();}
-    else{const _v=visibleWorldRect();if(_dmg.w*_dmg.h>_v.w*_v.h*0.6)invalidate();else invalidateDamage(_dmg);}
+    if(!_dmg){_iv();}
+    else{const _v=visibleWorldRect();if(_dmg.w*_dmg.h>_v.w*_v.h*0.6)_iv();else _iD(_dmg);}
   }};
-// ADR-0009: lazy-rebuilt id→shape index. Invalidated by _invalidateGrid() (the same
+// ADR-0009: lazy-rebuilt id→shape index. Invalidated by _iG() (the same
 // choke point the spatial hit-test grid already uses) whenever shapes are added/removed
 // or _sh() is reassigned — property mutations (position, style, ...) don't touch
 // membership, so they never need to invalidate this. The size check below is a second,
@@ -1915,7 +1917,7 @@ function getImg(dataUrl){
   let img=_imgCache.get(k);
   if(img){_imgCache.delete(k);_imgCache.set(k,img);return img}
   img=new Image();
-  img.onload=()=>{invalidate();Minimap.invalidateCache();};   // minimap scene bitmap keys on _gridVer — an image finishing load changes pixels without touching it (ADR-0025)
+  img.onload=()=>{_iv();Minimap.invalidateCache();};   // minimap scene bitmap keys on _gridVer — an image finishing load changes pixels without touching it (ADR-0025)
   img.src=dataUrl;
   if(_imgCache.size>=IMG_CACHE_MAX)_imgCache.delete(_imgCache.keys().next().value);
   _imgCache.set(k,img);
@@ -2152,8 +2154,8 @@ function drawPenDraft(s){
 // Qiita/Zenn: "requestAnimationFrame で常にループするとバッテリーが消耗する"
 // The always-running loop (requestAnimationFrame(frame) unconditionally) burns
 // ~60 draw calls/second even on a completely idle board. Idle-stop: hold a pending
-// RAF id (_rafId); invalidate() restarts the loop only when it is not already running;
-// frame() clears the id on entry so that a mid-frame invalidate() reschedules once.
+// RAF id (_rafId); _iv() restarts the loop only when it is not already running;
+// frame() clears the id on entry so that a mid-frame _iv() reschedules once.
 let needsRender=true,needOverlay=true,_rafId=0;
 let _damage=null;   // ADR-0026: accumulated world-space dirty rect during drag gestures; null = full repaint
 let _pinchSnap=null,_pinchVp=null;   // ADR-0030: pinch-start canvas copy + viewport for scaled preview
@@ -2161,7 +2163,7 @@ function invalidate(){_damage=null;needsRender=true;needOverlay=true;if(!_rafId)
 // ADR-0026: gesture-local repaint — producers report the world-space rect they
 // dirtied and frame() clips the scene pass to its accumulated union (never
 // shrinks mid-gesture, so a fast teleport still covers the old position).
-// Everything else must keep calling invalidate(), which resets _damage to full.
+// Everything else must keep calling _iv(), which resets _damage to full.
 function _dmgU(a,b){return a?{x:_min(a.x,b.x),y:_min(a.y,b.y),w:_max(a.x+a.w,b.x+b.w)-_min(a.x,b.x),h:_max(a.y+a.h,b.y+b.h)-_min(a.y,b.y)}:{x:b.x,y:b.y,w:b.w,h:b.h}}
 function _dmgPair(a,b,m){if(!a)return b?{x:b.x-m,y:b.y-m,w:b.w+2*m,h:b.h+2*m}:a;if(!b)return{x:a.x-m,y:a.y-m,w:a.w+2*m,h:a.h+2*m};const x0=_min(a.x,b.x)-m,y0=_min(a.y,b.y)-m;return{x:x0,y:y0,w:_max(a.x+a.w,b.x+b.w)-x0+m,h:_max(a.y+a.h,b.y+b.h)-y0+m}}
 function invalidateDamage(r){_damage=_dmgU(_damage,r);needsRender=true;needOverlay=true;if(!_rafId)_rafId=requestAnimationFrame(frame);Minimap.schedule()}
@@ -2185,7 +2187,7 @@ function frame(){
     _syncStylePanelIfChanged();   // ADR-0059
     _statusSel();    // ADR-0164: selection dims readout, signature-gated
   }
-  if(needsRender||needOverlay)_rafId=requestAnimationFrame(frame);  // draw() called invalidate() (rare re-entry)
+  if(needsRender||needOverlay)_rafId=requestAnimationFrame(frame);  // draw() called _iv() (rare re-entry)
 }
 // ADR-0164: live W×H readout of the selection bbox in the statusbar (Figma's
 // dimensions field). Signature-gated: the DOM write happens only when the
@@ -2210,7 +2212,7 @@ function resize(){
   ocanvas.width=canvas.width;ocanvas.height=canvas.height;
   _lastVp=null;   // backing-store reallocation drops all retained pixels (ADR-0028)
   _pinchSnap=null;_pinchVp=null;   // ADR-0030: stale-sized snapshot must not blit
-  invalidate();
+  _iv();
 }
 // devicePixelRatio can change with NO resize event — dragging the window between monitors
 // of different density (Retina ↔ external 1×) or an OS display-scaling change. A
@@ -2273,7 +2275,7 @@ function describeShape(s){
 // Announcement goes through UI.toast (aria-live) like the other status messages.
 function _announceSel(){
   const n=_selN();
-  UI.toast(n===0?t('selNone'):n===1?describeShape(byId(_selIds()[0])):n+t('selCount'));
+  _tst(n===0?t('selNone'):n===1?describeShape(byId(_selIds()[0])):n+t('selCount'));
 }
 
 // ADR-0041: DOM mirror — a visually-hidden <ul> of every shape so screen
@@ -2310,7 +2312,7 @@ function _mirrorGo(id){
   state.selection=new Set([id]);
   // Centre the view on the shape, zooming out only when it doesn't fit (ADR-0049)
   const b=G.bbox(s);
-  if(b&&b.w>0&&b.h>0)_fitViewport(b,40,2);else invalidate();
+  if(b&&b.w>0&&b.h>0)_fitViewport(b,40,2);else _iv();
   UI.announce(describeShape(s));
 }
 let _lastVp=null;   // ADR-0028: the effective viewport the scene canvas currently represents
@@ -2381,7 +2383,7 @@ function draw(){
     _vis=_gridRectCandidates(_grid,_view);
   }
   let _drawIter=_vis||_sh();
-  // ADR-0026: gesture handlers mutate shapes in place WITHOUT _invalidateGrid(),
+  // ADR-0026: gesture handlers mutate shapes in place WITHOUT _iG(),
   // so a stale grid can drop a dragged shape that left its cell — force-include
   // gesture targets while preserving z-order via the shapes array itself.
   if(dmg&&_vis){
@@ -2419,8 +2421,8 @@ function draw(){
 // ====================== OVERLAY LAYER (ADR-0024) ======================
 // Second stacked canvas (#ov): all ephemeral chrome — selection outlines,
 // snap guides, marquee, peer cursors/selections, laser, search highlights —
-// repaints here without touching the scene pass. invalidateOverlay() drives
-// it; invalidate() marks both. Everything converts through G.w2s (CSS-px
+// repaints here without touching the scene pass. _ivO() drives
+// it; _iv() marks both. Everything converts through G.w2s (CSS-px
 // space, the transform supplies DPR — multiplying by DPR double-applies it,
 // the v1.6.5–v1.7.61 HiDPI bug).
 function drawOverlay(){
@@ -2577,7 +2579,7 @@ function _drawMeasure(c){
 // Design-token lookups run every frame; memoise and drop on theme flip (see wire()).
 let _cssCache=Object.create(null);
 function getCSS(v){let x=_cssCache[v];if(x===undefined){x=getComputedStyle(document.documentElement).getPropertyValue(v).trim();_cssCache[v]=x}return x}
-function clearCSSCache(){_cssCache=Object.create(null);invalidate()}
+function clearCSSCache(){_cssCache=Object.create(null);_iv()}
 function drawGrid(W,H){
   const v=_vp();
   const gs=GRID_SIZE;
@@ -3336,7 +3338,7 @@ function _grotDrag(wp,shift){
   for(const [id,orig] of ptr.gOrig){const sh=byId(id);if(sh)_rotShape(sh,orig,ptr.rotCx,ptr.rotCy,deg);}
   const _nb=G.bboxAll(live);
   if(_nb&&deg)state.readout={x:_nb.x+_nb.w/2,y:_nb.y+_nb.h,label:`${deg>0?'+':''}${_rnd(deg)}°`};
-  invalidateDamage(_dmgPair(_b0,_nb,ptr.gPad||40));                 // ADR-0026
+  _iD(_dmgPair(_b0,_nb,ptr.gPad||40));                 // ADR-0026
 }
 function _grotCommit(){
   const after=[...ptr.gOrig.keys()].map(id=>byId(id)).filter(Boolean).map(clone);
@@ -3501,7 +3503,7 @@ function _gresizeDrag(wp,shift,alt){
   const vorig={x:ob.x,y:ob.y,w:ob.w,h:ob.h,id:'__gresize__'};
   applyResize(vbox,ptr.resizeHandle,vorig,wp,shift,alt);
   for(const [id,orig] of ptr.gOrig){const sh=byId(id);if(sh)_mapToBox(sh,orig,ob,vbox);}
-  invalidateDamage(_dmgPair(_b0,G.bboxAll(live),ptr.gPad||40));     // ADR-0026
+  _iD(_dmgPair(_b0,G.bboxAll(live),ptr.gPad||40));     // ADR-0026
 }
 // Commit: one 'align' op batches all member before/after — a single undo
 // restores the whole group (same mechanism flip/rotate/lock already use).
@@ -3685,8 +3687,8 @@ function _sqAdvance(dir){
   const sh=matches[_sqNav.idx];
   state.selection=new Set([sh.id]);
   centerOn(sh);
-  invalidate();
-  UI.toast(`${describeShape(sh)} (${_sqNav.idx+1}/${matches.length})`);
+  _iv();
+  _tst(`${describeShape(sh)} (${_sqNav.idx+1}/${matches.length})`);
   return sh;
 }
 let ptr={down:false,x:0,y:0,x0:0,y0:0,wx:0,wy:0,wx0:0,wy0:0,
@@ -3716,12 +3718,12 @@ function abortGesture(){
   }else if(ptr.dragKind==='way'&&ptr.wayOrig){                     // ADR-0076
     const sh=byId(ptr.wayOrig.id);if(sh){delete sh.way;Object.assign(sh,clone(ptr.wayOrig));}
   }
-  if(_eraseBatch.length){for(const s of _eraseBatch)_sh().push(s);_eraseBatch=[];sortZ();_invalidateGrid();}   // ADR-0009
+  if(_eraseBatch.length){for(const s of _eraseBatch)_sh().push(s);_eraseBatch=[];_sz();_iG();}   // ADR-0009
   _penPred=null;ptr.lineClick=false;
   state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;state.measure=null;state.lasso=null;
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.dragStartShapes=null;
   ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;ptr.wayIdx=null;ptr.wayNew=false;ptr.lblOrig=null;
-  invalidate();
+  _iv();
 }
 
 _on(canvas,'pointerdown',e=>{
@@ -3778,7 +3780,7 @@ _on(canvas,'pointerdown',e=>{
             if(lp&&_hp(wp.x-lp.x,wp.y-lp.y)<=HANDLE_SIZE/_vp().zoom){
               if(e.altKey&&onlySel.labelPos!=null){    // ADR-0145: ⌥click back to midpoint
                 _rcOp({op:'style',before:[{id:onlySel.id,labelPos:onlySel.labelPos}],after:[{id:onlySel.id,labelPos:null}]});
-                delete onlySel.labelPos;invalidate();return;
+                delete onlySel.labelPos;_iv();return;
               }
               ptr.dragKind='lblpos';ptr.lblOrig=clone(onlySel);return;
             }
@@ -3788,7 +3790,7 @@ _on(canvas,'pointerdown',e=>{
             if(tr&&distToSeg(wp,tr[0],tr[1])<=HANDLE_SIZE/_vp().zoom){
               if(e.altKey&&onlySel.bend!=null){        // ADR-0143: ⌥click recentres the trunk
                 _rcOp({op:'style',before:[{id:onlySel.id,bend:onlySel.bend}],after:[{id:onlySel.id,bend:null}]});
-                delete onlySel.bend;invalidate();return;
+                delete onlySel.bend;_iv();return;
               }
               ptr.dragKind='ebend';ptr.ebendOrig=clone(onlySel);
               return;
@@ -3799,7 +3801,7 @@ _on(canvas,'pointerdown',e=>{
             if(apex&&_hp(wp.x-apex.x,wp.y-apex.y)<=HANDLE_SIZE/_vp().zoom){
               if(e.altKey&&onlySel.cbend!=null){       // ADR-0144: ⌥click restores auto-bow
                 _rcOp({op:'style',before:[{id:onlySel.id,cbend:onlySel.cbend}],after:[{id:onlySel.id,cbend:null}]});
-                delete onlySel.cbend;invalidate();return;
+                delete onlySel.cbend;_iv();return;
               }
               ptr.dragKind='cbend';ptr.cbendOrig=clone(onlySel);return;
             }
@@ -3812,7 +3814,7 @@ _on(canvas,'pointerdown',e=>{
                   const wa=_wayArr(onlySel),bw=clone(wa.length?wa:null);
                   wa.splice(i-1,1);onlySel.way=wa.length?wa:null;
                   _rcOp({op:'style',before:[{id:onlySel.id,way:bw}],after:[{id:onlySel.id,way:wa.length?clone(wa):null}]});
-                  invalidate();return;
+                  _iv();return;
                 }
                 ptr.dragKind='way';ptr.wayIdx=i-1;ptr.wayNew=false;ptr.wayOrig=clone(onlySel);return;
               }
@@ -3867,7 +3869,7 @@ _on(canvas,'pointerdown',e=>{
       }
       // ADR-0314: ⌘ on macOS / Ctrl elsewhere (Figma parity) — ctrl+click on
       // macOS is the context-menu chord, so the modifier is platform-specific.
-      if((/Mac|iPhone|iPad/.test(navigator.platform)?e.metaKey:e.ctrlKey)){const _h0=pickTop(wp);if(_h0&&_h0.link){if(!window.open(_h0.link,'_blank','noopener'))UI.toast(t('popupBlocked'),'warn');break}}
+      if((/Mac|iPhone|iPad/.test(navigator.platform)?e.metaKey:e.ctrlKey)){const _h0=pickTop(wp);if(_h0&&_h0.link){if(!window.open(_h0.link,'_blank','noopener'))_tst(t('popupBlocked'),'warn');break}}
       pickOrMarquee(wp,e);break;
     case 'pen':case 'marker':beginPen(wp,e);break;
     case 'rect':case 'ellipse':case 'diamond':case 'sticky':case 'frame':beginRectLike(wp);break;
@@ -3885,17 +3887,17 @@ _on(canvas,'pointerdown',e=>{
         // next shape carries the picked style (Figma eyedropper parity).
         for(const k of['stroke','fill','size','opacity','dash','font','head','start','startHead','elbow','curve','hop','r','fstyle','align','valign','fontSize','lineH','cbend','spacing','shadow'])_st()[k]=ext[k];
         state.styleClipboard=ext;                   // ⌥V applies it to the selection too
-        UI.toast(t('eyedropDone'),'ok');UI.announce(t('eyedropDone'));
+        _tst(t('eyedropDone'),'ok');UI.announce(t('eyedropDone'));
       }
       pickTool(window._prevTool||'select');window._prevTool=null;
       break;}
   }
-  invalidate();
+  _iv();
 });
 _on(canvas,'pointermove',e=>{
   const sp={x:e.offsetX,y:e.offsetY};
   const wp=G.s2w(sp);
-  if(Presentation.isActive()){_laser=wp;invalidateOverlay();return;}
+  if(Presentation.isActive()){_laser=wp;_ivO();return;}
   if(_pointers.size>=2)return;   // pinch in progress — the pinch handler owns the gesture
   Net.sendCursor(wp);   // ADR-0010
   UI.setStatusXY(_rnd(wp.x),_rnd(wp.y));
@@ -3931,21 +3933,21 @@ _on(canvas,'pointermove',e=>{
       canvas.style.cursor=top?(top.locked?'not-allowed':'move'):'default';
       // state.hover feeds nothing visual (cursor is set above) — no invalidate:
       // on a heavy board this used to repaint the whole scene per shape boundary crossed.
-      if(top?.id!==state.hover){state.hover=top?.id||null;invalidateOverlay()}   // ADR-0070: qconn dots track hover
+      if(top?.id!==state.hover){state.hover=top?.id||null;_ivO()}   // ADR-0070: qconn dots track hover
       // ADR-0151: Alt+hover (Figma measure mode) — gap guides between the
       // selection envelope and the hovered shape. Signature-compare so a
       // steady cursor repaints nothing.
       const _m=(e.altKey&&_selN()&&top&&!top.locked&&top.visible!==0&&!_sl().has(top.id))
         ?{a:G.bboxAll(_selIds().map(byId).filter(Boolean)),b:G.bbox(top)}:null;
       const _sig=m=>m?`${m.a.x}|${m.a.y}|${m.a.w}|${m.a.h}|${m.b.x}|${m.b.y}|${m.b.w}|${m.b.h}`:'';
-      if(_sig(_m)!==_sig(state.measure)){state.measure=_m;invalidateOverlay()}
+      if(_sig(_m)!==_sig(state.measure)){state.measure=_m;_ivO()}
     }
     else if(_tl()==='eraser'){
       // ADR-0177: eraser hover preview — Excalidraw-style red target outline
       // so a mis-click doesn't vaporize the wrong shape. pickTop is
       // grid-accelerated (ADR-0032), so per-move cost is tiny.
       const top=pickTop(wp),id=top&&!top.locked?top.id:null;
-      if(id!==state._ehov){state._ehov=id;invalidateOverlay()}
+      if(id!==state._ehov){state._ehov=id;_ivO()}
       canvas.style.cursor='crosshair';
     }
     return;
@@ -3954,7 +3956,7 @@ _on(canvas,'pointermove',e=>{
   if(ptr.panning){
     _vp().x-=(sp.x-ptr.x)/_vp().zoom;
     _vp().y-=(sp.y-ptr.y)/_vp().zoom;
-    ptr.x=sp.x;ptr.y=sp.y;invalidate();return;
+    ptr.x=sp.x;ptr.y=sp.y;_iv();return;
   }
   switch(_tl()){
     case 'select':
@@ -3964,8 +3966,8 @@ _on(canvas,'pointermove',e=>{
           const _b0=G.bbox(ptr.resizeOrig);
           Object.assign(rsh,clone(ptr.resizeOrig));
           applyResize(rsh,ptr.resizeHandle,ptr.resizeOrig,wp,e.shiftKey,e.altKey);
-          invalidateDamage(_dmgPair(_b0,G.bbox(rsh),(rsh.size||2)+16));   // ADR-0026
-        }else invalidate();
+          _iD(_dmgPair(_b0,G.bbox(rsh),(rsh.size||2)+16));   // ADR-0026
+        }else _iv();
       }else if(ptr.dragKind==='gresize'){
         _gresizeDrag(wp,e.shiftKey,e.altKey);                          // ADR-0056
       }else if(ptr.dragKind==='grot'){
@@ -3979,27 +3981,27 @@ _on(canvas,'pointermove',e=>{
           rsh.rotate=((_rnd(deg)%360)+360)%360;
           const _nb=G.bbox(rsh);
           state.readout={x:_nb.x+_nb.w/2,y:_nb.y+_nb.h,label:`${rsh.rotate}°`};
-          invalidateDamage(_dmgPair(_b0,_nb,(rsh.size||2)+16));           // ADR-0026
-        }else invalidate();
+          _iD(_dmgPair(_b0,_nb,(rsh.size||2)+16));           // ADR-0026
+        }else _iv();
       }else if(ptr.dragKind==='move')doMove(wp,e.shiftKey,e.altKey);
-      else if(ptr.dragKind==='marquee'){state.marquee={x1:ptr.wx0,y1:ptr.wy0,x2:wp.x,y2:wp.y};invalidateOverlay()}
-      else if(ptr.dragKind==='lasso'&&ptr.lasso){ptr.lasso.push(wp);invalidateOverlay()}
+      else if(ptr.dragKind==='marquee'){state.marquee={x1:ptr.wx0,y1:ptr.wy0,x2:wp.x,y2:wp.y};_ivO()}
+      else if(ptr.dragKind==='lasso'&&ptr.lasso){ptr.lasso.push(wp);_ivO()}
       else if(ptr.dragKind==='qline')contLineLike(wp,e.shiftKey);   // ADR-0070
       else if(ptr.dragKind==='ebend'&&ptr.ebendOrig){               // ADR-0072
         const sh=byId(ptr.ebendOrig.id),tr=sh&&_elbowTrunk(sh);
-        if(tr){const vert=_abs(tr[1].x-tr[0].x)<_abs(tr[1].y-tr[0].y);sh.bend=vert?snapV(wp.x):snapV(wp.y);invalidate()}   // ADR-0088: trunk drag honours grid snap
+        if(tr){const vert=_abs(tr[1].x-tr[0].x)<_abs(tr[1].y-tr[0].y);sh.bend=vert?snapV(wp.x):snapV(wp.y);_iv()}   // ADR-0088: trunk drag honours grid snap
       }
       else if(ptr.dragKind==='cbend'&&ptr.cbendOrig){               // ADR-0132
         const sh=byId(ptr.cbendOrig.id);
         if(sh){const e=connEnds(sh),dx=e.x2-e.x1,dy=e.y2-e.y1,len=_hp(dx,dy)||1,
           mx=(e.x1+e.x2)/2,my=(e.y1+e.y2)/2;
-          sh.cbend=snapV((wp.x-mx)*(-dy/len)+(wp.y-my)*(dx/len));invalidate()}
+          sh.cbend=snapV((wp.x-mx)*(-dy/len)+(wp.y-my)*(dx/len));_iv()}
       }
       else if(ptr.dragKind==='lblpos'&&ptr.lblOrig){                // ADR-0117
         const sh=byId(ptr.lblOrig.id);
         if(sh){let t=_pathNearestT(_connPathPts(sh),wp);
           for(const slot of[0,0.25,0.5,0.75,1])if(_abs(t-slot)<0.03){t=slot;break}   // ADR-0216: magnetic slots
-          sh.labelPos=+t.toFixed(3);invalidate()}
+          sh.labelPos=+t.toFixed(3);_iv()}
       }
       else if(ptr.dragKind==='way'&&ptr.wayOrig){                   // ADR-0090
         const sh=byId(ptr.wayOrig.id);
@@ -4011,7 +4013,7 @@ _on(canvas,'pointermove',e=>{
             if(_hp(wp.x-mx,wp.y-my)<6/_vp().zoom){wa.splice(i,1);if(wa.length)sh.way=wa;else delete sh.way}   // ADR-0088: RAW point keeps the clear gesture reachable
             else{wa[i]=snapPt(wp);sh.way=wa}
           }
-          invalidate();
+          _iv();
         }
       }
       break;
@@ -4053,7 +4055,7 @@ _on(canvas,'pointerup',e=>{
         ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.resizeHandle=null;state.guides=null;state.readout=null;state.bindPreview=null;
       }else if(ptr.dragKind==='grot'){
         _grotCommit();                                                 // ADR-0057
-        if(_selN()===1){const s=byId(_selIds()[0]);if(s)UI.toast(describeShape(s));}
+        if(_selN()===1){const s=byId(_selIds()[0]);if(s)_tst(describeShape(s));}
         ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;state.guides=null;state.readout=null;state.bindPreview=null;
       }else if(ptr.dragKind==='rotate'){
         const rsh=byId(_selIds()[0]);
@@ -4061,7 +4063,7 @@ _on(canvas,'pointerup',e=>{
           const after=clone(rsh),before=ptr.rotOrig;
           if(_JS(before)!==_JS(after)){
             _rcOp({op:'upd',id:rsh.id,before,after});
-            UI.toast(describeShape(rsh)); // SR announce new angle
+            _tst(describeShape(rsh)); // SR announce new angle
           }
         }
         ptr.rotOrig=null;
@@ -4107,7 +4109,7 @@ _on(canvas,'pointerup',e=>{
   }
   ptr.down=false;ptr.dragKind=null;ptr.dragStartShapes=null;
   ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;
-  state.marquee=null;canvas.style.cursor='default';invalidateOverlay();
+  state.marquee=null;canvas.style.cursor='default';_ivO();
 });
 // v1.6.88: extracted as named function so tests can call it directly.
 // Fixes: (1) state.guides not cleared → stale snap-guide lines after stylus OOR / Android
@@ -4132,11 +4134,11 @@ function _cancelPointerGesture(){
   }else if(ptr.dragKind==='move'&&ptr.dragStartShapes){
     for(const[id,orig] of ptr.dragStartShapes){const sh=byId(id);if(sh)Object.assign(sh,clone(orig));}
   }
-  if(_eraseBatch.length){for(const s of _eraseBatch)_sh().push(s);_eraseBatch=[];sortZ();_invalidateGrid();}   // ADR-0009
+  if(_eraseBatch.length){for(const s of _eraseBatch)_sh().push(s);_eraseBatch=[];_sz();_iG();}   // ADR-0009
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;
   ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.rotOrig=null;ptr.dragStartShapes=null;
   ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;
-  canvas.dataset.panning='false';ptr.lineClick=false;state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;state.measure=null;state.lasso=null;_penPred=null;invalidate();
+  canvas.dataset.panning='false';ptr.lineClick=false;state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;state.measure=null;state.lasso=null;_penPred=null;_iv();
 }
 // ADR-0006: fires after LONG_PRESS_MS. Guards: gesture still active, handle-drag not in
 // progress (resize/rotate — a deliberate precision drag we shouldn't interrupt), and the
@@ -4157,7 +4159,7 @@ function _clearLongPress(){
 }
 _on(canvas,'pointercancel',_cancelPointerGesture);
 _on(canvas,'contextmenu',e=>{_pd(e);UI.openCtxMenu(e.clientX,e.clientY)});
-_on(canvas,'pointerleave',()=>{if(_laser){_laser=null;invalidateOverlay()}});
+_on(canvas,'pointerleave',()=>{if(_laser){_laser=null;_ivO()}});
 
 // Double-click: re-edit text shapes / label boxes & connectors
 _on(canvas,'dblclick',e=>{
@@ -4173,7 +4175,7 @@ _on(canvas,'dblclick',e=>{
   if(hit.groupId){
     const grp=_sh().filter(s=>s.groupId===hit.groupId).map(s=>s.id);
     if(grp.length>1&&grp.every(id=>_sl().has(id))){
-      state.selection=new Set([hit.id]);_announceSel();invalidate();return;
+      state.selection=new Set([hit.id]);_aS();_iv();return;
     }
   }
   if(hit.locked)return;
@@ -4235,7 +4237,7 @@ function openLabelEditor(hit,leftPx,topPx,bold){
   _lblTa={inp,hit};_lblVp='';   // ADR-0182: follow the viewport while editing
   const commit=()=>{
     const lbl=inp.value.trim();
-    if(lbl!==hit.label){const before={label:hit.label??null};const after={label:lbl||null};hit.label=lbl||null;_rcOp({op:'upd',id:hit.id,before,after});invalidate()}
+    if(lbl!==hit.label){const before={label:hit.label??null};const after={label:lbl||null};hit.label=lbl||null;_rcOp({op:'upd',id:hit.id,before,after});_iv()}
     _lblTa=null;inp.remove();
   };
   _on(inp,'blur',commit);
@@ -4253,7 +4255,7 @@ function openLabelEditor(hit,leftPx,topPx,bold){
       for(let k=1;k<=_sh().length;k++){
         const nx=_sh()[(cur+dir*k+_sh().length)%_sh().length];
         if(nx&&!nx.locked&&nx.visible!==0&&_lblAnchor(nx)){
-          state.selection=new Set([nx.id]);_announceSel();
+          state.selection=new Set([nx.id]);_aS();
           inp.removeEventListener('blur',commit);commit();
           if(_openLabelEditorFor(nx))return;
         }
@@ -4287,7 +4289,7 @@ function _imgImportFile(f,cb){
   const reader=new FileReader();
   reader.onload=()=>{
     if(reader.result.length > 4*1024*1024){
-      UI.toast(t('imgBig')+' ('+_rnd(reader.result.length/1024)+'KB)','warn');return;
+      _tst(t('imgBig')+' ('+_rnd(reader.result.length/1024)+'KB)','warn');return;
     }
     const img=new Image();
     img.onload=()=>{
@@ -4303,10 +4305,10 @@ function _imgImportFile(f,cb){
       }
       cb(dataUrl,nw,nh);
     };
-    img.onerror=()=>UI.toast(t('imgErr'),'warn');
+    img.onerror=()=>_tst(t('imgErr'),'warn');
     img.src=reader.result;
   };
-  reader.onerror=()=>UI.toast(t('imgErr'),'warn');
+  reader.onerror=()=>_tst(t('imgErr'),'warn');
   reader.readAsDataURL(f);
 }
 _on(canvas,'dragover',e=>{_pd(e);e.dataTransfer.dropEffect='copy'});
@@ -4337,7 +4339,7 @@ _on(canvas,'drop',e=>{
       const sh=Shape.make('image',{x:wp.x+i*20,y:wp.y,w,h,dataUrl});
       Store.commit({op:'add',shape:sh});
       _sl().clear();_sl().add(sh.id);
-      invalidate();UI.toast(t('imagePasted'),'ok');
+      _iv();_tst(t('imagePasted'),'ok');
     });
   });
 });
@@ -4395,7 +4397,7 @@ _on(window,'paste',e=>{
           const v=String(cell||'').trim();
           if(v)built.push(Shape.make('sticky',{x:x0+ci*(sw+gx),y:y0+ri*(sh+gy),w:sw,h:sh,color:'#FEF08A',text:v.slice(0,2000)}));
         }));
-        if(built.length){Store.commit({op:'addMany',shapes:built});state.selection=new Set(built.map(x=>x.id));invalidate();UI.toast(t('textPasted'),'ok')}
+        if(built.length){Store.commit({op:'addMany',shapes:built});state.selection=new Set(built.map(x=>x.id));_iv();_tst(t('textPasted'),'ok')}
         return;
       }
       _pd(e);
@@ -4407,7 +4409,7 @@ _on(window,'paste',e=>{
       const sh=Shape.make('text',{x:wp.x-w/2,y:wp.y-(lines.length*fs*1.4)/2,w,h:lines.length*fs*1.4,text:body,fontSize:fs});
       _cOp({op:'add',shape:sh});
       _sl().clear();_sl().add(sh.id);
-      invalidate();UI.toast(t('textPasted'),'ok');
+      _iv();_tst(t('textPasted'),'ok');
     });
     return;
   }
@@ -4423,8 +4425,8 @@ _on(window,'paste',e=>{
       const sh=Shape.make('image',{x:wp.x-w/2,y:wp.y-h/2,w,h,dataUrl});
       Store.commit({op:'add',shape:sh});
       _sl().clear();_sl().add(sh.id);
-      invalidate();
-      UI.toast(t('imagePasted'),'ok');
+      _iv();
+      _tst(t('imagePasted'),'ok');
     });
   }
 });
@@ -4449,7 +4451,7 @@ _on(canvas,'wheel',e=>{
     // stream in, settle to a crisp repaint ~180ms after the last one.
     _pinchSnapNow();
     clearTimeout(_wheelZoomEnd);
-    _wheelZoomEnd=setTimeout(()=>{_pinchSnap=null;_pinchVp=null;invalidate()},180);
+    _wheelZoomEnd=setTimeout(()=>{_pinchSnap=null;_pinchVp=null;_iv()},180);
     zoomAt({x:e.offsetX,y:e.offsetY},-d.y*0.005);
   }else{
     // ADR-0093: ⇧+wheel pans horizontally (mouse wheels have no deltaX) —
@@ -4457,7 +4459,7 @@ _on(canvas,'wheel',e=>{
     const dx=e.shiftKey&&!d.x?d.y:d.x,dy=e.shiftKey&&!d.x?0:d.y;
     _vp().x+=dx/_vp().zoom;
     _vp().y+=dy/_vp().zoom;
-    invalidate();
+    _iv();
   }
 },{passive:false});
 
@@ -4487,7 +4489,7 @@ _on(canvas,'pointermove',e=>{
 },{capture:true,passive:true});
 let _pinchPrev=0;
 // Reset pinch state when fewer than 2 pointers
-const _resetPinch=()=>{if(_pointers.size<2){_pinchPrev=0;if(_pinchSnap){_pinchSnap=null;_pinchVp=null;invalidate();}}};
+const _resetPinch=()=>{if(_pointers.size<2){_pinchPrev=0;if(_pinchSnap){_pinchSnap=null;_pinchVp=null;_iv();}}};
 _on(canvas,'pointerup',_resetPinch);
 _on(canvas,'pointercancel',_resetPinch);
 
@@ -4523,7 +4525,7 @@ function zoomAt(sp,delta){
   v.y=wp.y-sp.y/nz;
   v.zoom=nz;
   UI.refreshZoom();
-  invalidate();
+  _iv();
 }
 function zoomBy(f){
   const r=_cbr();
@@ -4532,7 +4534,7 @@ function zoomBy(f){
 }
 function zoomReset(){
   _vp().zoom=1;
-  UI.refreshZoom();invalidate();
+  UI.refreshZoom();_iv();
   UI.announce('100%');
 }
 // ADR-0049: shared viewport-fit math — was duplicated in fitToContent/_mirrorGo.
@@ -4543,7 +4545,7 @@ function _fitViewport(b,pad,cap){
   _vp().zoom=z;
   _vp().x=b.x+b.w/2-r.width/(2*z);
   _vp().y=b.y+b.h/2-r.height/(2*z);
-  UI.refreshZoom();invalidate();
+  UI.refreshZoom();_iv();
   return z;
 }
 function fitToContent(){
@@ -4568,9 +4570,9 @@ function _fitIfEmptyView(){
 // ⇧2: zoom to the selection's bbox (Excalidraw parity). Cap 4 — tighter than
 // fit-all's 2 so a small selection actually enlarges, short of the 16x extreme.
 function zoomToSelection(){
-  if(!_selN()){UI.toast(t('noSelection'),'warn');return}
+  if(!_selN()){_tst(t('noSelection'),'warn');return}
   const b=G.bboxAll(_sh().filter(s=>_sl().has(s.id)));
-  if(!b){UI.toast(t('noSelection'),'warn');return}
+  if(!b){_tst(t('noSelection'),'warn');return}
   const z=_fitViewport(b,60,4);
   UI.announce(_rnd(z*100)+'%');
 }
@@ -4674,12 +4676,12 @@ function pickOrMarquee(wp,e){
     // selection (Figma parity) — plain click starts the move drag instead.
     if(alreadySel&&e.shiftKey){
       for(const id of toSelect)_sl().delete(id);
-      _announceSel();invalidate();return;
+      _aS();_iv();return;
     }
     if(!alreadySel){
       if(!e.shiftKey)_sl().clear();
       for(const id of toSelect)_sl().add(id);
-      _announceSel();   // ADR-0037: click/group select was SR-silent
+      _aS();   // ADR-0037: click/group select was SR-silent
     }
     ptr.dragKind='move';
     // When moving a frame, also move shapes fully contained within it
@@ -4690,7 +4692,7 @@ function pickOrMarquee(wp,e){
   }else{
     if(e.altKey){                     // ADR-0158: ⌥+drag on empty canvas = lasso
       if(!e.shiftKey)_sl().clear();
-      ptr.dragKind='lasso';ptr.lasso=[wp];state.lasso=ptr.lasso;invalidateOverlay();
+      ptr.dragKind='lasso';ptr.lasso=[wp];state.lasso=ptr.lasso;_ivO();
     }else{
       if(!e.shiftKey)_sl().clear();
       ptr.dragKind='marquee';
@@ -4818,7 +4820,7 @@ function nudgeSelection(dx,dy){
   for(const id of ids){const sh=byId(id);if(sh)Shape.translate(sh,dx,dy)}
   _rcOp({op:'move',ids,dx,dy});
   if(state.dupDelta&&ids.every(id=>state.dupIds.has(id))){state.dupDelta.x+=dx;state.dupDelta.y+=dy}     // ADR-0080
-  invalidate();
+  _iv();
 }
 // Shared by live drag (doMove) and commit (endSelect) so they agree exactly.
 // Grid snap (⇧G) takes precedence; otherwise snap to nearby objects.
@@ -4855,7 +4857,7 @@ function doMove(wp,shift,alt){
       bx=bx==null?b.x:_min(bx,b.x);by=by==null?b.y:_min(by,b.y);bb=bb==null?b.y+b.h:_max(bb,b.y+b.h);}
     if(bx!=null)state.readout={x:bx,y:bb,label:`${_rnd(bx)}, ${_rnd(by)}`};
   }
-  if(dmg)invalidateDamage(dmg);else invalidate();
+  if(dmg)_iD(dmg);else _iv();
 }
 function endSelect(wp,shift,alt){
   if(ptr.dragKind==='move'&&ptr.dragStartShapes){
@@ -4896,7 +4898,7 @@ function endSelect(wp,shift,alt){
         // for the ctx Unlock path.
         if(hit&&!s.locked&&s.visible!==0)_sl().add(s.id);
       }
-      _announceSel();   // ADR-0037: announce the marquee result (incl. cleared)
+      _aS();   // ADR-0037: announce the marquee result (incl. cleared)
     }
   }else if(ptr.dragKind==='lasso'&&state.lasso){                    // ADR-0158
     const pts=state.lasso;
@@ -4907,9 +4909,9 @@ function endSelect(wp,shift,alt){
         const b=G.bbox(s);if(!b)continue;
         if(_ptInPoly(b.x+b.w/2,b.y+b.h/2,pts))_sl().add(s.id);   // centre-in-polygon (draw.io lasso rule)
       }
-      _announceSel();
+      _aS();
     }
-    state.lasso=null;invalidateOverlay();
+    state.lasso=null;_ivO();
   }
 }
 
@@ -4954,13 +4956,13 @@ function contPen(wp,e){
   // ADR-0200: Shift held = straight-line mode (Excalidraw). The stroke
   // collapses to [start, current] while held; releasing resumes freehand
   // from that point. Full invalidate — the shrink breaks the damage corridor.
-  if(e.shiftKey&&pts.length){pts.length=1;pts.push([wp.x,wp.y,_df().hl?0.5:_penPr(e)]);invalidate();return}
+  if(e.shiftKey&&pts.length){pts.length=1;pts.push([wp.x,wp.y,_df().hl?0.5:_penPr(e)]);_iv();return}
   const last=pts[pts.length-1];
   // decimate by min distance for smoothness
   const d=_hp(wp.x-last[0],wp.y-last[1]);
   if(d>1/_vp().zoom)pts.push([wp.x,wp.y,_df().hl?0.5:_penPr(e)]);
   const _m=(_df().size||2)+16;   // ADR-0026: ink corridor — accumulated union covers the whole stroke
-  invalidateDamage({x:_min(wp.x,last[0])-_m,y:_min(wp.y,last[1])-_m,w:_abs(wp.x-last[0])+2*_m,h:_abs(wp.y-last[1])+2*_m});
+  _iD({x:_min(wp.x,last[0])-_m,y:_min(wp.y,last[1])-_m,w:_abs(wp.x-last[0])+2*_m,h:_abs(wp.y-last[1])+2*_m});
 }
 // RDP decimation for pen pts [[x,y,p?],…]; keeps pressure, eps in world units.
 // ADR-0034: iterative index-range version — the recursive pts.slice() form made
@@ -5086,7 +5088,7 @@ function contRectLike(wp,uniform,center){
     if(h<0){d.y=sy0+h;d.h=-h}else{d.y=sy0;d.h=h}
   }
   state.readout={x:d.x+d.w/2,y:d.y+d.h,label:`${_rnd(d.w)} × ${_rnd(d.h)}`};   // ADR-0202
-  invalidateDamage(_dmgPair(_b0,G.bbox(d),(d.size||2)+16));   // ADR-0026
+  _iD(_dmgPair(_b0,G.bbox(d),(d.size||2)+16));   // ADR-0026
 }
 function endRectLike(){
   if(!_df())return;
@@ -5123,7 +5125,7 @@ function contLineLike(wp,uniform){
   _df().x2=x2;_df().y2=y2;
   const _mx=(ptr.wx0+x2)/2,_my=_max(ptr.wy0,y2);   // ADR-0202: draft-length readout
   state.readout={x:_mx,y:_my,label:`↔ ${_rnd(_hp(x2-ptr.wx0,y2-ptr.wy0))}`};
-  invalidateDamage(_dmgPair(_b0,G.bbox(_df()),(_df().size||2)+16));   // ADR-0026
+  _iD(_dmgPair(_b0,G.bbox(_df()),(_df().size||2)+16));   // ADR-0026
 }
 function endLineLike(){
   if(!_df())return;
@@ -5192,7 +5194,7 @@ function _stickyChain(s){
   _cOp({op:'add',shape:n});
   state.selection=new Set([n.id]);
   openTextEditor(n,true);
-  invalidate();
+  _iv();
 }
 // ---- keyboard shape creation (a11y) ----
 // Create a default-sized shape of the active tool, centred in the viewport, so the
@@ -5222,9 +5224,9 @@ function createShapeKbd(){
   _cOp({op:'add',shape:s});
   pickTool('select');
   state.selection=new Set([s.id]);
-  UI.toast(`${t('created')}: ${describeShape(s)}`);
+  _tst(`${t('created')}: ${describeShape(s)}`);
   if(s.type==='sticky')openTextEditor(s,true);
-  invalidate();
+  _iv();
   return true;
 }
 // Resize a text/sticky shape to fit its content after editing.
@@ -5267,7 +5269,7 @@ function _syncTextFinalize(s,before,deleted){
   Net.broadcast(op);
 }
 function openTextEditor(s,isNew){
-  state.editing=s.id;invalidate();
+  state.editing=s.id;_iv();
   const ta=_ce('textarea');
   ta.className='text-overlay';
   const origText=s.text||'';
@@ -5324,7 +5326,7 @@ function openTextEditor(s,isNew){
         _rcOp({op:'upd',id:s.id,before,after});
       }
     }
-    _teTa=null;ta.remove();invalidate();
+    _teTa=null;ta.remove();_iv();
   });
   _on(ta,'keydown',ev=>{
     if(ev.isComposing)return;
@@ -5372,8 +5374,8 @@ function eraseAt(wp){
     const i=_sh().findIndex(s=>s.id===hit.id);
     if(i>=0){
       const _eb=G.bbox(hit);
-      _sh().splice(i,1);_invalidateGrid();   // ADR-0009
-      invalidateDamage(_dmgPair(_eb,null,(hit.size||2)+16));   // ADR-0026: reveal under-shapes inside the erased bbox only
+      _sh().splice(i,1);_iG();   // ADR-0009
+      _iD(_dmgPair(_eb,null,(hit.size||2)+16));   // ADR-0026: reveal under-shapes inside the erased bbox only
     }
     _eraseBatch.push(clone(hit));
   }
@@ -5382,7 +5384,7 @@ function flushErase(){
   if(!_eraseBatch.length)return;
   // Restore shapes so Store.commit's _apply can find & remove them
   for(const s of _eraseBatch)_sh().push(s);
-  sortZ();_invalidateGrid();   // ADR-0009: connEnds below calls byId, must see the restored shapes
+  _sz();_iG();   // ADR-0009: connEnds below calls byId, must see the restored shapes
   // Resolve connector bindings now that erased shapes are back in state (connEnds works)
   const delIds=new Set(_eraseBatch.map(s=>s.id));
   const connClears=computeConnClears(delIds);
@@ -5443,9 +5445,9 @@ _on(window,'keydown',e=>{
     if(k==='tab'){const tgt=_trapStep(_focusables(_dlg),document.activeElement,e.shiftKey);if(tgt){_pd(e);tgt.focus()}}
     return;
   }
-  if(meta&&k==='z'&&!e.shiftKey){_pd(e);if(Store.undo())UI.toast(t('undone'))}
-  else if(meta&&(k==='y'||(k==='z'&&e.shiftKey))){_pd(e);if(Store.redo())UI.toast(t('redone'))}
-  else if(meta&&k==='a'){_pd(e);state.selection=new Set(_sh().filter(s=>s.visible!==0).map(s=>s.id));if(_selN())_announceSel();invalidate()}   // ADR-0037
+  if(meta&&k==='z'&&!e.shiftKey){_pd(e);if(Store.undo())_tst(t('undone'))}
+  else if(meta&&(k==='y'||(k==='z'&&e.shiftKey))){_pd(e);if(Store.redo())_tst(t('redone'))}
+  else if(meta&&k==='a'){_pd(e);state.selection=new Set(_sh().filter(s=>s.visible!==0).map(s=>s.id));if(_selN())_aS();_iv()}   // ADR-0037
   if(k==='p'&&e.shiftKey&&!meta&&!e.altKey){_pd(e);Presentation.enter();return}
   else if(meta&&k==='enter'){_pd(e);Presentation.enter()}
   else if(meta&&k==='c'){_pd(e);doCopy()}
@@ -5480,9 +5482,9 @@ _on(window,'keydown',e=>{
     const sh=byId(id);
     if(sh){
       if(!inView(sh,visibleWorldRect()))centerOn(sh);
-      UI.toast(`${describeShape(sh)} (${ids.indexOf(id)+1}/${ids.length})`);
+      _tst(`${describeShape(sh)} (${ids.indexOf(id)+1}/${ids.length})`);
     }
-    invalidate();
+    _iv();
   }
   else if(k==='enter'&&!meta&&!e.shiftKey){
     // ADR-0013: with the select tool active, Enter re-edits the single selected shape's
@@ -5507,8 +5509,8 @@ _on(window,'keydown',e=>{
         after.push({id:sh.id,w:sh.w,h:sh.h});
       }
       _rcOp({op:'resize',before,after});
-      if(sel.length===1)UI.toast(describeShape(sel[0]));
-      invalidate();
+      if(sel.length===1)_tst(describeShape(sel[0]));
+      _iv();
     }
   }
   else if(k==='arrowup'||k==='arrowdown'||k==='arrowleft'||k==='arrowright'){
@@ -5524,7 +5526,7 @@ _on(window,'keydown',e=>{
       const step=(e.shiftKey?200:40)/_vp().zoom;
       _vp().x+=k==='arrowleft'?-step:k==='arrowright'?step:0;
       _vp().y+=k==='arrowup'?-step:k==='arrowdown'?step:0;
-      invalidate();
+      _iv();
     }
   }
   else if(k==='escape'){
@@ -5538,7 +5540,7 @@ _on(window,'keydown',e=>{
     // mid-drag mutations are in-place, so without this Escape left shapes
     // displaced until pointerup committed them. Selection survives the cancel.
     else if(ptr.down&&ptr.dragKind)_cancelPointerGesture();
-    else{if(_selN())UI.toast(t('selNone'));_sl().clear();ptr.lineClick=false;state.marquee=null;state.draft=null;state.guides=null;state.readout=null;state.bindPreview=null;state.measure=null;state.lasso=null;_penPred=null;invalidate()}   // ADR-0037
+    else{if(_selN())_tst(t('selNone'));_sl().clear();ptr.lineClick=false;state.marquee=null;state.draft=null;state.guides=null;state.readout=null;state.bindPreview=null;state.measure=null;state.lasso=null;_penPred=null;_iv()}   // ADR-0037
   }
   else if(k==='?'||(e.shiftKey&&e.key==='/')){_pd(e);UI.toggleHelp()}
   else if(k===']'&&!meta&&e.shiftKey){_pd(e);doBringFront()}
@@ -5570,24 +5572,24 @@ _on(window,'keyup',e=>{
   if(e.key===' '&&_tl()==='hand'&&window._prevTool){
     pickTool(window._prevTool);window._prevTool=null;
   }
-  if(e.key==='Alt'&&state.measure){state.measure=null;invalidateOverlay()}   // ADR-0151
+  if(e.key==='Alt'&&state.measure){state.measure=null;_ivO()}   // ADR-0151
 });
 // ADR-0135: view toggles were keyboard-only (G/⇧G) — extracted so the
 // ctx menu's touch path can reach them too.
-function toggleGridView(){state.showGrid=!state.showGrid;invalidate();UI.toast(`${t('grid')} ${state.showGrid?t('on'):t('off')}`)}
-function toggleSnapMode(){state.snap=!state.snap;UI.toast(`${t('snap')} ${state.snap?t('on'):t('off')}`)}
+function toggleGridView(){state.showGrid=!state.showGrid;_iv();_tst(`${t('grid')} ${state.showGrid?t('on'):t('off')}`)}
+function toggleSnapMode(){state.snap=!state.snap;_tst(`${t('snap')} ${state.snap?t('on'):t('off')}`)}
 // ADR-0134: the shape search box was ⌘F-only — invisible to touch users
 // (the exact keyboard-only trap FT-06 warned about). Shared by ⌘F and ctx.
 function toggleSq(){
   const sq=_g('sqinput');if(!sq)return;
   sq.style.display=sq.style.display==='none'?'block':'none';
   if(sq.style.display!=='none'){sq.focus();sq.select();}
-  else{_sq='';invalidateOverlay();}
+  else{_sq='';_ivO();}
 }
 function pickTool(tool,temporary){
   if(temporary&&!window._prevTool)window._prevTool=_tl();
   state._ehov=null;                                                     // ADR-0177
-  if(ptr.lineClick&&tool!=='line'&&tool!=='arrow'){ptr.lineClick=false;state.draft=null;invalidate()}   // ADR-0126
+  if(ptr.lineClick&&tool!=='line'&&tool!=='arrow'){ptr.lineClick=false;state.draft=null;_iv()}   // ADR-0126
   state.tool=tool;canvas.dataset.tool=tool;
   canvas.setAttribute('aria-label',(T.k[tool]||tool)+' — '+t('canvasHint'));   // localized (was hardcoded English)
   UI.announce(T.k[tool]||tool);   // tool switches were SR-silent (undo/group等 toast, this didn't)
@@ -5602,7 +5604,7 @@ function doCopy(){
   const sel=[...withFrameChildren(_sl())].map(byId).filter(s=>s&&!s.locked);
   if(!sel.length)return;
   state.clipboard={shapes:clone(sel)};
-  UI.toast(t('copied')+' '+sel.length);
+  _tst(t('copied')+' '+sel.length);
 }
 // v1.6.97: paste cascade counter — resets when a new clipboard is captured so that
 // Ctrl+V × N cascades from viewport center, not from the original copy position.
@@ -5624,7 +5626,7 @@ function doPaste(){
   const origSel=_selIds();
   const added=_placeCopies(state.clipboard.shapes,vCx-srcCx+co,vCy-srcCy+co);
   _keepSel(origSel);
-  UI.toast(t('pasted')+' '+added.length);
+  _tst(t('pasted')+' '+added.length);
 }
 // ADR-0115: paste in place — ⌘⇧V restores shapes at their original coordinates
 // (Figma's Paste-in-place). No offset at all: dx=dy=0 keeps source coords.
@@ -5634,7 +5636,7 @@ function doPasteInPlace(){
   const origSel=_selIds();
   const added=_placeCopies(state.clipboard.shapes,0,0);
   _keepSel(origSel);
-  UI.toast(t('pasted')+' '+added.length);
+  _tst(t('pasted')+' '+added.length);
 }
 // ADR-0103: paste centred at the context-menu point (right-click «paste here»).
 // No cascade — the user picked the spot, so _pasteCount is left alone.
@@ -5645,7 +5647,7 @@ function doPasteAt(wx,wy){
   const origSel=_selIds();
   const added=_placeCopies(state.clipboard.shapes,wx-srcCx,wy-srcCy);
   _keepSel(origSel);
-  UI.toast(t('pasted')+' '+added.length);
+  _tst(t('pasted')+' '+added.length);
 }
 // Clone a set of shapes onto the board with fresh ids/group ids, offset by (dx,dy),
 // and select the copies. Shared by paste (clipboard source) and duplicate (selection
@@ -5681,7 +5683,7 @@ function _placeCopies(srcShapes,dx,dy){
   if(built.length)Store.commit({op:'addMany',shapes:built});
   state.selection=new Set(added);
   state.dupIds=new Set(added);state.dupDelta={x:dx,y:dy};     // ADR-0080: reseed chain
-  invalidate();
+  _iv();
   return added;
 }
 function doDuplicate(){
@@ -5693,7 +5695,7 @@ function doDuplicate(){
   const smart=state.dupIds.size&&state.dupDelta&&sel.every(s=>state.dupIds.has(s.id));
   const added=smart?_placeCopies(sel,state.dupDelta.x,state.dupDelta.y):_placeCopies(sel);   // independent of state.clipboard
   _keepSel(origSel);
-  UI.toast(t('pasted')+' '+added.length);
+  _tst(t('pasted')+' '+added.length);
 }
 function doDelete(){
   const sel=_selL(s=>s&&!s.locked);
@@ -5719,29 +5721,29 @@ function doDelete(){
   Store.commit(op);
   _keepSel(origSel);
   _sl().clear();
-  UI.toast(t('deleted')+' '+sel.length);
+  _tst(t('deleted')+' '+sel.length);
 }
 // z-order ops (ADR-0001 Step 2): move only the selected shapes' fractional keys
 // and record a minimal `{op:'zorder',changes:[{id,before,after}]}` — only the
-// shapes that actually moved (vs. the old full-shape snapshot). sortZ() at entry
+// shapes that actually moved (vs. the old full-shape snapshot). _sz() at entry
 // guarantees every shape has a key (migrates legacy/raw shapes) and a sorted array.
 function _zCommit(changes){
   changes=changes.filter(c=>c.before!==c.after);   // keep only real key moves
-  if(!changes.length){invalidate();return}
-  sortZ();
+  if(!changes.length){_iv();return}
+  _sz();
   _rcOp({op:'zorder',changes});
-  invalidate();Persist.schedule();
+  _iv();Persist.schedule();
 }
 // Shared by doBringFront/doSendBack/doBringForward/doSendBackward: locked shapes never
 // take part in a z-order op (parity with doDelete/doGroup excluding locked shapes).
 function unlockedSelectionIds(){return _selIds().filter(id=>!byId(id)?.locked);}
 function doBringFront(){
   const ids=unlockedSelectionIds();if(!ids.length)return;
-  sortZ();
+  _sz();
   const sel=new Set(ids), selShapes=_sh().filter(s=>sel.has(s.id));
   if(!selShapes.length)return;
   const n=_sh().length, k=selShapes.length;
-  if(_sh().slice(n-k).every(s=>sel.has(s.id))){invalidate();return}  // already at front: no churn
+  if(_sh().slice(n-k).every(s=>sel.has(s.id))){_iv();return}  // already at front: no churn
   const others=_sh().filter(s=>!sel.has(s.id));
   let p=others.length?others[others.length-1].frac:null;
   const changes=[];
@@ -5752,10 +5754,10 @@ function doBringFront(){
 }
 function doSendBack(){
   const ids=unlockedSelectionIds();if(!ids.length)return;
-  sortZ();
+  _sz();
   const sel=new Set(ids), selShapes=_sh().filter(s=>sel.has(s.id));
   if(!selShapes.length)return;
-  if(_sh().slice(0,selShapes.length).every(s=>sel.has(s.id))){invalidate();return}  // already at back
+  if(_sh().slice(0,selShapes.length).every(s=>sel.has(s.id))){_iv();return}  // already at back
   const others=_sh().filter(s=>!sel.has(s.id));
   const hi=others.length?others[0].frac:null;
   const changes=[];let prev=null;
@@ -5766,7 +5768,7 @@ function doSendBack(){
 }
 function doBringForward(){
   const ids=unlockedSelectionIds();if(!ids.length)return;
-  sortZ();
+  _sz();
   const sel=new Set(ids), arr=_sh(), changes=[];
   // move up = toward higher frac; process top→down so selected don't collide.
   for(let i=arr.length-2;i>=0;i--){
@@ -5780,7 +5782,7 @@ function doBringForward(){
 }
 function doSendBackward(){
   const ids=unlockedSelectionIds();if(!ids.length)return;
-  sortZ();
+  _sz();
   const sel=new Set(ids), arr=_sh(), changes=[];
   for(let i=1;i<arr.length;i++){
     const s=arr[i];if(!sel.has(s.id))continue;
@@ -5801,8 +5803,8 @@ function selectSamePaint(){
   const same=_sh().filter(s=>s.visible!==0&&(s.type==='sticky'?s.color:s.fill)===key);
   if(same.length<2)return;
   state.selection=new Set(same.map(s=>s.id));
-  _announceSel();UI.toast(same.length+' '+t('selAllMatches'),'ok');
-  invalidate();
+  _aS();_tst(same.length+' '+t('selAllMatches'),'ok');
+  _iv();
 }
 // ADR-0137: hide/show shapes (Figma ⌘⇧H / eye). `s.visible===0` removes the
 // shape from drawShape (which covers minimap, export renderers and the PNG
@@ -5815,7 +5817,7 @@ function hideSelection(){
     before.push({id,visible:s.visible??null});after.push({id,visible:0});
     s.visible=0;_sl().delete(id);
   })
-  if(before.length){_styleOp(before,after);invalidate();UI.toast(before.length+' '+t('hiddenCount'),'ok')}
+  if(before.length){_styleOp(before,after);_iv();_tst(before.length+' '+t('hiddenCount'),'ok')}
 }
 // ADR-0140: connect two selected shapes (draw.io "Connect" / Miro
 // quick-link). Makes an arrow bound at BOTH ends (s.a/s.b → connEnds
@@ -5823,14 +5825,14 @@ function hideSelection(){
 function connectSelection(){
   const sel=_selIds().map(byId)
     .filter(s=>s&&!s.locked&&s.visible!==0&&s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen');
-  if(sel.length!==2){UI.toast(t('selectTwo'),'warn');return}
+  if(sel.length!==2){_tst(t('selectTwo'),'warn');return}
   const a=sel[0],b=sel[1],ab=G.bbox(a),bb=G.bbox(b);
   const s=Shape.make('arrow',{
     x1:ab.x+ab.w/2,y1:ab.y+ab.h/2,x2:bb.x+bb.w/2,y2:bb.y+bb.h/2,
     a:a.id,b:b.id});
   _cOp({op:'add',shape:s});
   state.selection=new Set([s.id]);
-  invalidate();
+  _iv();
 }
 // ADR-0139: invert selection (draw.io ⌘⇧I / Photoshop parity) — the
 // complement over unlocked, visible shapes (marquee/select-all rules).
@@ -5838,7 +5840,7 @@ function selectInverse(){
   const inv=new Set();
   for(const s of _sh())if(!s.locked&&s.visible!==0&&!_sl().has(s.id))inv.add(s.id);
   state.selection=inv;
-  _announceSel();invalidate();
+  _aS();_iv();
 }
 function showAllShapes(){
   const before=[],after=[];
@@ -5847,7 +5849,7 @@ function showAllShapes(){
     before.push({id:s.id,visible:0});after.push({id:s.id,visible:null});
     delete s.visible;
   }
-  if(before.length){_styleOp(before,after);invalidate();UI.toast(t('shownAll'),'ok')}
+  if(before.length){_styleOp(before,after);_iv();_tst(t('shownAll'),'ok')}
 }
 // ADR-0120: select every shape of the same type as the single selection —
 // sibling of selectSamePaint (e.g. all connectors, all stickies).
@@ -5857,41 +5859,41 @@ function selectSameType(){
   const same=_sh().filter(s=>s.visible!==0&&s.type===sel[0].type);
   if(same.length<2)return;
   state.selection=new Set(same.map(s=>s.id));
-  _announceSel();UI.toast(same.length+' '+t('selAllMatches'),'ok');
-  invalidate();
+  _aS();_tst(same.length+' '+t('selAllMatches'),'ok');
+  _iv();
 }
 // ADR-0102: wrap the selection in a frame (Figma ⌘⌥G). Spatial membership is
 // automatic — the frame simply covers the union bbox + padding; z is tucked
 // just below the lowest member so contents stay on top.
 function wrapInFrame(){
   const sel=_selL(s=>s&&!s.locked);
-  if(!sel.length){UI.toast(t('selectTwo'),'warn');return}
+  if(!sel.length){_tst(t('selectTwo'),'warn');return}
   const b=G.bboxAll(sel);if(!b)return;
   const PAD=16;
   const f=Shape.make('frame',{x:b.x-PAD,y:b.y-PAD,w:b.w+PAD*2,h:b.h+PAD*2,label:'Frame'});
   f.z=_min(...sel.map(s=>s.z||0))-0.5;      // ADR-0001: fractional z keeps order stable
   _cOp({op:'add',shape:f});
   _sl().clear();_sl().add(f.id);
-  invalidate();UI.toast(t('framed'),'ok');
+  _iv();_tst(t('framed'),'ok');
 }
 function doGroup(){
   const ids=_selIds().filter(id=>{const s=byId(id);return s&&!s.locked;});
-  if(ids.length<2){UI.toast(t('selectTwo'),'warn');return}
+  if(ids.length<2){_tst(t('selectTwo'),'warn');return}
   const gid=uid();
   const origSel=_selIds();
   const before=ids.map(id=>({id,groupId:byId(id)?.groupId}));
   for(const id of ids){const sh=byId(id);if(sh)sh.groupId=gid}
   Store._recordCommitted({op:'group',ids,gid,before});
   _keepSel(origSel);
-  UI.toast(t('grouped'),'ok');
-  invalidate();
+  _tst(t('grouped'),'ok');
+  _iv();
 }
 function doUngroup(){
   const ids=_selIds();
   const origSel=[...ids];
   // find all groupIds touched by selection
   const gids=new Set(ids.map(id=>byId(id)?.groupId).filter(Boolean));
-  if(!gids.size){UI.toast(t('noGroup'),'warn');return}
+  if(!gids.size){_tst(t('noGroup'),'warn');return}
   const ungrouped=[],before=[];
   for(const s of _sh()){
     if(gids.has(s.groupId)&&!s.locked){before.push({id:s.id,groupId:s.groupId});delete s.groupId;ungrouped.push(s.id)}
@@ -5899,8 +5901,8 @@ function doUngroup(){
   state.selection=new Set([...ids.filter(id=>byId(id)),...ungrouped]);
   Store._recordCommitted({op:'ungroup',ids:ungrouped,gids:[...gids],before});
   _keepSel(origSel);
-  UI.toast(t('ungrouped'),'ok');
-  invalidate();
+  _tst(t('ungrouped'),'ok');
+  _iv();
 }
 function doClearAll(){
   if(!_sh().length)return;
@@ -5909,7 +5911,7 @@ function doClearAll(){
   Persist.saveBackup(clone(_sh()),{..._vp()},_dn());   // ADR-0004
   Store.commit({op:'clear',shapes:clone(_sh()),wc:clone(_wc())});
   _keepSel(origSel);
-  UI.toast(t('cleared'));
+  _tst(t('cleared'));
 }
 
 // ---- alignment (multiple selection) ----
@@ -5983,7 +5985,7 @@ function doAlign(dir){
   }
   const afterSnap=sel.map(s=>clone(s));
   _rcOp({op:'align',dir,before:beforeSnap,after:afterSnap});
-  invalidate();Persist.schedule();
+  _iv();Persist.schedule();
 }
 // ADR-0116: snap each selected shape's POSITION to the grid — translate so the
 // bbox top-left lands on the nearest GRID_SIZE multiple. Geometry is never
@@ -5999,10 +6001,10 @@ function snapSelToGrid(){
     const dx=_rnd(b.x/GRID_SIZE)*GRID_SIZE-b.x,dy=_rnd(b.y/GRID_SIZE)*GRID_SIZE-b.y;
     if(dx||dy){Shape.translate(s,dx,dy);moved++}
   }
-  if(!moved){UI.toast(t('alreadySnapped'),'warn');return}
+  if(!moved){_tst(t('alreadySnapped'),'warn');return}
   const afterSnap=sel.map(s=>clone(s));
   _rcOp({op:'align',dir:'gsnap',before:beforeSnap,after:afterSnap});
-  invalidate();Persist.schedule();
+  _iv();Persist.schedule();
 }
 // ADR-0079: match width/height of selected box shapes to the first-selected
 // (draw.io Arrange → Match Size). Position untouched; align op for undo parity.
@@ -6016,7 +6018,7 @@ function doMatchSize(dim){
   const after=targets.map(s=>clone(s));
   if(before.every((b,i)=>b.w===after[i].w&&b.h===after[i].h))return;
   _rcOp({op:'align',dir:'match'+dim,before,after});
-  invalidate();Persist.schedule();
+  _iv();Persist.schedule();
 }
 
 // Flip: mirror across selection-bbox centre, recorded as an `align` op. See docs.
@@ -6070,7 +6072,7 @@ function doFlip(axis){
   for(const s of sel)flipShape(s,axis,c);
   const after=sel.map(s=>clone(s));
   _rcOp({op:'align',dir:'flip',before,after});
-  invalidate();Persist.schedule();
+  _iv();Persist.schedule();
   UI.announce(t(axis==='h'?'ctxFlipH':'ctxFlipV'));
 }
 
@@ -6082,7 +6084,7 @@ function doLock(){
   for(const s of sel)s.locked=lk||null;
   const after=sel.map(s=>({id:s.id,locked:s.locked??null}));
   _rcOp({op:'align',dir:'lock',before,after});
-  invalidate();Persist.schedule();
+  _iv();Persist.schedule();
   UI.announce(t(lk?'ctxLock':'ctxUnlock'));
 }
 // ADR-0123: unlock every locked shape on the board in one op — boards can
@@ -6090,12 +6092,12 @@ function doLock(){
 // Same 'align' lock-dir before/after contract as doLock (single undo + sync).
 function unlockAll(){
   const locked=_sh().filter(s=>s.locked);
-  if(!locked.length){UI.toast(t('nothingLocked'),'warn');return}
+  if(!locked.length){_tst(t('nothingLocked'),'warn');return}
   const before=locked.map(s=>({id:s.id,locked:s.locked??null}));
   for(const s of locked)s.locked=null;
   const after=locked.map(s=>({id:s.id,locked:null}));
   Store._recordCommitted({op:'align',dir:'lock',before,after});
-  invalidate();Persist.schedule();
+  _iv();Persist.schedule();
   UI.announce(t('ctxUnlockAll'));
 }
 // ADR-0005: replace confidently-recognized pen strokes in the selection with clean shapes
@@ -6103,7 +6105,7 @@ function unlockAll(){
 // pen stroke to a rectangle behind their back would be confusing, not helpful.
 function doBeautify(){
   const sel=_selL(s=>s&&!s.locked&&s.type==='pen');
-  if(!sel.length){UI.toast(t('beautifyNone'),'warn');return}
+  if(!sel.length){_tst(t('beautifyNone'),'warn');return}
   const before=[],after=[];
   for(const s of sel){
     const rec=recognizeStroke(s.pts);
@@ -6111,12 +6113,12 @@ function doBeautify(){
     before.push({id:s.id,type:'pen',pts:clone(s.pts)});
     after.push({id:s.id,...rec});
   }
-  if(!after.length){UI.toast(t('beautifyNone'),'warn');return}
+  if(!after.length){_tst(t('beautifyNone'),'warn');return}
   const origSel=_selIds();
   for(const p of after){const sh=byId(p.id);if(sh)Object.assign(sh,clone(p))}
   Store._recordCommitted({op:'beautify',before,after,origSel});
-  invalidate();Persist.schedule();
-  UI.toast(`${t('beautified')} (${after.length})`,'ok');
+  _iv();Persist.schedule();
+  _tst(`${t('beautified')} (${after.length})`,'ok');
 }
 // ADR-0055: rotate applies to box shapes (orbit + s.rotate spin) AND point
 // geometry (pen pts / line-arrow endpoints rotate rigidly about the group centre).
@@ -6165,7 +6167,7 @@ function doRotate(d){
   }
   const after=sel.map(s=>clone(s));
   _rcOp({op:'align',dir:'rotate',before,after});
-  invalidate();Persist.schedule();
+  _iv();Persist.schedule();
   UI.announce(sel.length===1?describeShape(sel[0]):d+'°');   // ,/. keyboard rotate was SR-silent (knob drag announces); point-geom selections have no .rotate (ADR-0055)
 }
 // ====================== EXPORT ======================
@@ -6182,7 +6184,7 @@ function exportScale(w,h,desired){
 // (clipboard). cb receives the PNG blob or null on failure.
 function _renderPngBlob(shapes,cb,desired){
   const b=G.bboxAll(shapes);
-  if(!b){UI.toast(t('empty'),'warn');return}
+  if(!b){_tst(t('empty'),'warn');return}
   const pad=32;
   const w=_ceil(b.w+pad*2),h=_ceil(b.h+pad*2);
   const off=_ce('canvas');
@@ -6200,7 +6202,7 @@ function _renderPngBlob(shapes,cb,desired){
 function _selShapes(){return _sh().filter(s=>_sl().has(s.id))}
 function exportSelection(fmt){
   const sel=_selShapes();
-  if(!sel.length){UI.toast(t('noSelection'),'warn');return}
+  if(!sel.length){_tst(t('noSelection'),'warn');return}
   if(fmt==='board')exportBoard(sel);   // ADR-0114
   else if(fmt==='svg')exportSVG(sel);
   else if(fmt==='copy')copyPNG(sel);
@@ -6215,7 +6217,7 @@ function exportViewportPNG(scale){
   const v=_vp();
   const view={x:v.x,y:v.y,w:r.width/v.zoom,h:r.height/v.zoom};
   const shapes=_sh().filter(s=>inView(s,view));
-  if(!shapes.length){UI.toast(t('empty'),'warn');return}
+  if(!shapes.length){_tst(t('empty'),'warn');return}
   const off=_ce('canvas');
   const sc=exportScale(view.w,view.h,scale||2);
   off.width=_ceil(view.w*sc);off.height=_ceil(view.h*sc);
@@ -6224,33 +6226,33 @@ function exportViewportPNG(scale){
   oc.setTransform(sc,0,0,sc,-view.x*sc,-view.y*sc);
   for(const s of shapes)drawShape(s,oc);
   off.toBlob(bl=>{
-    if(!bl){UI.toast(t('exportFailed'),'err');return}
+    if(!bl){_tst(t('exportFailed'),'err');return}
     const url=URL.createObjectURL(bl);
     const a=_ce('a');
     a.href=url;a.download=`${_dn()||'board'}-view${sc&&sc!==2?'@'+sc+'x':''}.png`;
     a.click();setTimeout(()=>URL.revokeObjectURL(url),1e4);
-    UI.toast(t('exported'),'ok');
+    _tst(t('exported'),'ok');
   },'image/png');
 }
 function exportPNG(shapes=_sh(),scale){
   _renderPngBlob(shapes,bl=>{
-    if(!bl){UI.toast(t('exportFailed'),'err');return}
+    if(!bl){_tst(t('exportFailed'),'err');return}
     const url=URL.createObjectURL(bl);
     const a=_ce('a');
     a.href=url;a.download=`${_dn()||'board'}${scale&&scale!==2?'@'+scale+'x':''}.png`;
     a.click();setTimeout(()=>URL.revokeObjectURL(url),1e4);
-    UI.toast(t('exported'),'ok');
+    _tst(t('exported'),'ok');
   },scale);
 }
 // Copy the board PNG to the OS clipboard (Excalidraw parity). No shortcut —
 // ⌘⇧C collides with the browser DevTools inspector; menu-only.
 function copyPNG(shapes=_sh()){
-  if(!navigator.clipboard||!navigator.clipboard.write||typeof ClipboardItem==='undefined'){UI.toast(t('copyUnsupported'),'warn');return}
+  if(!navigator.clipboard||!navigator.clipboard.write||typeof ClipboardItem==='undefined'){_tst(t('copyUnsupported'),'warn');return}
   _renderPngBlob(shapes,bl=>{
-    if(!bl){UI.toast(t('exportFailed'),'err');return}
+    if(!bl){_tst(t('exportFailed'),'err');return}
     navigator.clipboard.write([new ClipboardItem({'image/png':bl})]).then(
-      ()=>UI.toast(t('copied'),'ok'),
-      ()=>UI.toast(t('copyFailed'),'warn'));
+      ()=>_tst(t('copied'),'ok'),
+      ()=>_tst(t('copyFailed'),'warn'));
   });
 }
 
@@ -6258,8 +6260,8 @@ function copyPNG(shapes=_sh()){
 // MIME is browser-inconsistent, but plain-text SVG pastes everywhere useful.
 function copySVG(shapes=_sh()){
   const svg=buildSVG(shapes,_p());
-  if(svg===null){UI.toast(t('empty'),'warn');return}
-  copyText(svg).then(ok=>UI.toast(t(ok?'copied':'copyFailed'),ok?'ok':'warn'));
+  if(svg===null){_tst(t('empty'),'warn');return}
+  copyText(svg).then(ok=>_tst(t(ok?'copied':'copyFailed'),ok?'ok':'warn'));
 }
 // ADR-0089: replace image bytes in place — same frame position/width, height
 // follows the new aspect. One style op so undo restores bytes AND geometry.
@@ -6277,13 +6279,13 @@ function replaceImage(){
       const after=[{id:s.id,dataUrl,h:nh2}];
       s.dataUrl=dataUrl;s.h=nh2;
       _rcOp({op:'style',before,after});
-      invalidate();UI.toast(t('imagePasted'),'ok');
+      _iv();_tst(t('imagePasted'),'ok');
     });
   };
   inp.click();
 }
 function exportPDF(){
-  if(!_sh().length){UI.toast(t('empty'),'warn');return}
+  if(!_sh().length){_tst(t('empty'),'warn');return}
   const b=G.bboxAll(_sh());if(!b)return;
   const pad=32,W=_ceil(b.w+pad*2),H=_ceil(b.h+pad*2),dpr=exportScale(W,H,window.devicePixelRatio||1);
   let off;try{off=new OffscreenCanvas(W*dpr,H*dpr)}catch(_){off=_ce('canvas');off.width=W*dpr;off.height=H*dpr}
@@ -6292,10 +6294,10 @@ function exportPDF(){
   oc.setTransform(dpr,0,0,dpr,(-b.x+pad)*dpr,(-b.y+pad)*dpr);
   for(const s of _sh())drawShape(s,oc);
   const fin=bl=>{
-    if(!bl){UI.toast(t('exportFailed'),'err');return}
+    if(!bl){_tst(t('exportFailed'),'err');return}
     const url=URL.createObjectURL(bl);
     const w2=window.open('');
-    if(!w2){UI.toast(t('popupBlocked'),'warn');return}
+    if(!w2){_tst(t('popupBlocked'),'warn');return}
     w2.document.write(`<!DOCTYPE html><html><head><title>${_esc(_dn()||'board')}</title><style>*{margin:0;padding:0}img{max-width:100%;display:block}</style></head><body><img src="${url}" onload="window.print();window.close()"></body></html>`);
     w2.document.close();setTimeout(()=>URL.revokeObjectURL(url),30e3);
   };
@@ -6305,21 +6307,21 @@ function exportPDF(){
 
 function exportSVG(shapes=_sh()){
   const svg=buildSVG(shapes,_p());
-  if(svg===null){UI.toast(t('empty'),'warn');return}
+  if(svg===null){_tst(t('empty'),'warn');return}
   const blob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'});
   const url=URL.createObjectURL(blob);
   const a=_ce('a');
   a.href=url;a.download=`${_dn()||'board'}.svg`;
   a.click();setTimeout(()=>URL.revokeObjectURL(url),1e4);
-  UI.toast(t('exportedSVG'),'ok');
+  _tst(t('exportedSVG'),'ok');
 }
 function exportBoard(shapes=_sh()){                       // ADR-0114: optional selection subset
-  if(!shapes.length){UI.toast(t('empty'),'warn');return}
+  if(!shapes.length){_tst(t('empty'),'warn');return}
   const a=_ce('a');
   const _bu=URL.createObjectURL(new Blob([_JS({v:V,docName:_dn(),shapes:roundShapesForExport(shapes)})],{type:'application/json'}));
   a.href=_bu;a.download=(_dn()||'board')+'.board';
   a.click();setTimeout(()=>URL.revokeObjectURL(_bu),1e4);
-  UI.toast(t('exportedBoard'),'ok');
+  _tst(t('exportedBoard'),'ok');
 }
 // ---- ADR-0098: .excalidraw export ------------------------------------------
 // Board shapes → excalidraw elements. Shape ids are preserved verbatim so
@@ -6615,16 +6617,16 @@ function importDrawioText(txt,wp){
   // multi-page path (ADR-0311) flattens every page, not just page 1.
   const _dms=[...String(txt||'').matchAll(/<diagram[^>]*>([^<]+)<\/diagram>/g)];
   if(_dms.length&&!txt.includes('<mxGraphModel')){
-    if(typeof DecompressionStream==='undefined'){UI.toast(t('dioCompressed'),'warn');return false}
+    if(typeof DecompressionStream==='undefined'){_tst(t('dioCompressed'),'warn');return false}
     Promise.all(_dms.map(m=>_dioInflate(m[1]))).then(xs=>{
       const ok=xs.filter(Boolean);
-      if(!ok.length){UI.toast(t('dioCompressed'),'warn');return}
+      if(!ok.length){_tst(t('dioCompressed'),'warn');return}
       importDrawioText('<mxfile>'+ok.map(x=>`<diagram>${x}</diagram>`).join('')+'</mxfile>',wp)});
     return true;
   }
   let shapes=null;
   try{shapes=drawioToShapes(txt)}catch(_){shapes=null}
-  if(!shapes||!shapes.length){UI.toast(t('invalidBoard'),'warn');return false}
+  if(!shapes||!shapes.length){_tst(t('invalidBoard'),'warn');return false}
   const _vpNull=wp==null;
   if(!wp){const r=_cbr();wp=G.s2w({x:r.width/2,y:r.height/2})}
   const bb=G.bboxAll(shapes);
@@ -6633,22 +6635,22 @@ function importDrawioText(txt,wp){
   _cOp({op:'addMany',shapes});
   _sl().clear();for(const s of shapes)_sl().add(s.id);
   if(_vpNull&&_dioVp){_vp().x=_dioVp.x;_vp().y=_dioVp.y;_vp().zoom=_dioVp.z}   // ADR-0359: viewport restore
-  invalidate();UI.toast(t('dioImported'),'ok');
+  _iv();_tst(t('dioImported'),'ok');
   return true;
 }
 function importDrawioFile(file,wp){
   const r=new FileReader();
   r.onload=()=>importDrawioText(String(r.result),wp);
-  r.onerror=()=>UI.toast(t('invalidBoard'),'warn');
+  r.onerror=()=>_tst(t('invalidBoard'),'warn');
   r.readAsText(file);
 }
 function exportExc(){
-  if(!_sh().length){UI.toast(t('empty'),'warn');return}
+  if(!_sh().length){_tst(t('empty'),'warn');return}
   const a=_ce('a');
   const _bu=URL.createObjectURL(new Blob([_JS(excScene(_sh()))],{type:'application/json'}));
   a.href=_bu;a.download=(_dn()||'board')+'.excalidraw';
   a.click();setTimeout(()=>URL.revokeObjectURL(_bu),1e4);
-  UI.toast(t('exportedExc'),'ok');
+  _tst(t('exportedExc'),'ok');
 }
 
 // ---- ADR-0220: .drawio export ------------------------------------------------
@@ -6753,12 +6755,12 @@ function boardToDrawio(shapes){
   return `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile compressed="false"><diagram name="Page-1"><mxGraphModel dx="${_rnd(-vx)}" dy="${_rnd(-vy)}" grid="${state.showGrid?1:0}" gridSize="${GRID_SIZE}" guides="1" tooltips="0" connect="0" arrows="0" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0" zoom="${vz}"><root><mxCell id="0"/><mxCell id="1" parent="0"/>${cells.join('')}</root></mxGraphModel></diagram></mxfile>`;   // ADR-0359: dx/dy/zoom viewport round-trip
 }
 function exportDrawio(){
-  if(!_sh().length){UI.toast(t('empty'),'warn');return}
+  if(!_sh().length){_tst(t('empty'),'warn');return}
   const a=_ce('a');
   const _bu=URL.createObjectURL(new Blob([boardToDrawio(_sh())],{type:'application/xml'}));
   a.href=_bu;a.download=(_dn()||'board')+'.drawio';
   a.click();setTimeout(()=>URL.revokeObjectURL(_bu),1e4);
-  UI.toast(t('dioExported'),'ok');
+  _tst(t('dioExported'),'ok');
 }
 // ---- ADR-0042: SVG import --------------------------------------------------
 // DOMParser-walk → Board shapes. Unmapped elements (use/defs/filter/gradient/
@@ -6925,7 +6927,7 @@ function svgToShapes(txt){
 function importSvgText(txt,wp){
   let shapes=null;
   try{shapes=svgToShapes(txt)}catch(_){shapes=null}
-  if(!shapes||!shapes.length){UI.toast(t('invalidBoard'),'warn');return false}
+  if(!shapes||!shapes.length){_tst(t('invalidBoard'),'warn');return false}
   if(!wp){const r=_cbr();wp=G.s2w({x:r.width/2,y:r.height/2})}
   // centre the imported group at wp (drop point / viewport centre)
   const bb=G.bboxAll(shapes);
@@ -6933,13 +6935,13 @@ function importSvgText(txt,wp){
     for(const s of shapes)Shape.translate(s,dx,dy)}
   _cOp({op:'addMany',shapes});
   _sl().clear();for(const s of shapes)_sl().add(s.id);
-  invalidate();UI.toast(t('svgImported'),'ok');
+  _iv();_tst(t('svgImported'),'ok');
   return true;
 }
 function importSvgFile(file,wp){
   const r=new FileReader();
   r.onload=()=>importSvgText(String(r.result),wp);
-  r.onerror=()=>UI.toast(t('invalidBoard'),'warn');
+  r.onerror=()=>_tst(t('invalidBoard'),'warn');
   r.readAsText(file);
 }
 
@@ -7079,14 +7081,14 @@ function excToShapes(txt){
 function importExcText(txt,wp){
   let shapes=null;
   try{shapes=excToShapes(txt)}catch(_){shapes=null}
-  if(!shapes||!shapes.length){UI.toast(t('invalidBoard'),'warn');return false}
+  if(!shapes||!shapes.length){_tst(t('invalidBoard'),'warn');return false}
   if(!wp){const r=_cbr();wp=G.s2w({x:r.width/2,y:r.height/2})}
   const bb=G.bboxAll(shapes);
   if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);
     for(const s of shapes)Shape.translate(s,dx,dy)}
   _cOp({op:'addMany',shapes});
   _sl().clear();for(const s of shapes)_sl().add(s.id);
-  invalidate();UI.toast(t('excImported'),'ok');
+  _iv();_tst(t('excImported'),'ok');
   return true;
 }
 // ADR-0115: paste .board JSON → shapes added at the view centre (inbound half
@@ -7104,21 +7106,21 @@ function importBoardText(txt,wp){
   const origSel=_selIds();
   const added=_placeCopies(shapes,dx,dy);
   _keepSel(origSel);
-  UI.toast(t('imported')+' '+added.length,'ok');
+  _tst(t('imported')+' '+added.length,'ok');
   return true;
 }
 // ADR-0115 (outbound half): whole board (or selection via exportSelection)
 // as .board JSON on the clipboard — moves content between boards/tabs without
 // a file round-trip.
 function copyBoardJSON(shapes=_sh()){
-  if(!shapes.length){UI.toast(t('empty'),'warn');return}
+  if(!shapes.length){_tst(t('empty'),'warn');return}
   copyText(_JS({v:V,docName:_dn(),shapes:roundShapesForExport(shapes)}))
-    .then(ok=>UI.toast(t(ok?'copied':'copyFailed'),ok?'ok':'warn'));
+    .then(ok=>_tst(t(ok?'copied':'copyFailed'),ok?'ok':'warn'));
 }
 function importExcFile(file,wp){
   const r=new FileReader();
   r.onload=()=>importExcText(String(r.result),wp);
-  r.onerror=()=>UI.toast(t('invalidBoard'),'warn');
+  r.onerror=()=>_tst(t('invalidBoard'),'warn');
   r.readAsText(file);
 }
 
@@ -7131,7 +7133,7 @@ function importBoard(file){
       // different suffix still routes to the excalidraw importer.
       if(d&&d.type==='excalidraw'){importExcText(r.result);return}
       const shapes=(d.shapes||[]).filter(validShape);
-      if(!shapes.length){UI.toast(t('empty'),'warn');return}
+      if(!shapes.length){_tst(t('empty'),'warn');return}
       // Atomic whole-board swap (mirrors importFromHash): a single replace op means
       // one Ctrl+Z fully restores the previous board regardless of import size.
       // clear+N-adds would overflow MAX_HISTORY for large boards and require N+1 undos.
@@ -7139,20 +7141,20 @@ function importBoard(file){
       const beforeWc=clone(_wc());
       const origSel=_selIds();
       if(before.length)Persist.saveBackup(before,{..._vp()},_dn());   // ADR-0004
-      state.shapes=shapes.map(clone);_invalidateGrid();   // ADR-0009
+      state.shapes=shapes.map(clone);_iG();   // ADR-0009
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out. Skipping this leaks wclock entries and
       // can let a re-imported shape (same id) inherit a stale LWW clock.
       _sl().clear();state.wclock={};
       if(typeof d.docName==='string'&&d.docName){state.docName=d.docName.slice(0,80);_g('docName').value=_dn();_syncDocTitle();}   // clamp: the input enforces maxlength=80, intake paths must too
-      sortZ();invalidate();
+      _sz();_iv();
       Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(_wc()),origSel});
-      UI.toast(t('loadedBoard')+' ('+shapes.length+')','ok');
-    }catch{UI.toast(t('invalidBoard'),'err')}
+      _tst(t('loadedBoard')+' ('+shapes.length+')','ok');
+    }catch{_tst(t('invalidBoard'),'err')}
   };
   // read failure (I/O, revoked permission) previously gave NO feedback at all — the
   // image-import readers and importFromHash both toast, so this path must too.
-  r.onerror=()=>UI.toast(t('invalidBoard'),'err');
+  r.onerror=()=>_tst(t('invalidBoard'),'err');
   r.readAsText(file);
 }
 // Connector edge label as SVG (ADR-0003): a paper background rect + centred text at the
@@ -7654,7 +7656,7 @@ const Net={
         for(const[id,k]of this._imgPending){
           if(k===msg.key){const sh=byId(id);if(sh){delete sh.img;sh.dataUrl=data}this._imgPending.delete(id)}
         }
-        invalidate();break;}
+        _iv();break;}
       case 'op':{
         // Validate op shape before applying — reject garbage from bad peers
         const op=this._attachOp(msg.op);
@@ -7692,7 +7694,7 @@ const Net={
         if(typeof msg.x!=='number'||!_fin(msg.x)||typeof msg.y!=='number'||!_fin(msg.y))break;
         const peerKey=viaRtc?this._rtcPeerId:msg.peer;
         const p=peerKey&&_pr().get(peerKey);
-        if(p){p.cursor={x:msg.x,y:msg.y};invalidateOverlay();}
+        if(p){p.cursor={x:msg.x,y:msg.y};_ivO();}
         break;}
       case 'selection':{
         // ADR-0011: same _rtcPeerId routing as 'cursor' (hello/ping never ride WebRTC,
@@ -7702,7 +7704,7 @@ const Net={
         const ids=msg.ids.slice(0,MAX_OP_SHAPES).filter(id=>typeof id==='string');
         const peerKey=viaRtc?this._rtcPeerId:msg.peer;
         const p=peerKey&&_pr().get(peerKey);
-        if(p){p.sel=ids;invalidateOverlay();}
+        if(p){p.sel=ids;_ivO();}
         break;}
     }
   },
@@ -7749,8 +7751,8 @@ const Net={
       if(!lc||clockNewer(rc,lc)){ex[k]=op.shape[k];lw[k]=clone(rc);dirty=true;}
     }
     if(dirty){
-      state.dirty=true;_invalidateGrid();
-      invalidate();UI.refreshUndo();Persist.schedule();
+      state.dirty=true;_iG();
+      _iv();UI.refreshUndo();Persist.schedule();
       return 'merge';
     }
     return 'keep';
@@ -7770,9 +7772,9 @@ const Net={
     const shapes=msg.shapes;
     if(!Array.isArray(shapes))return;
     const valid=shapes.slice(0,MAX_OP_SHAPES).map(s=>this._attachShape(s)).filter(validShape);
-    state.shapes=clone(valid);_invalidateGrid();   // ADR-0009
-    sortZ();
-    invalidate();UI.refreshUndo();Persist.schedule();
+    state.shapes=clone(valid);_iG();   // ADR-0009
+    _sz();
+    _iv();UI.refreshUndo();Persist.schedule();
   },
   _touchPeer(peerId){
     if(peerId===state.peerId)return;
@@ -7784,7 +7786,7 @@ const Net={
       _pr().set(peerId,{color:PEER_COLORS[colorIdx],lastSeen:Date.now()});
       // ADR-0011: a latecomer would otherwise not see our selection until it next
       // changes — force one resend on the next frame.
-      this._lastSelSent=null;invalidate();
+      this._lastSelSent=null;_iv();
       if(this._onConnChange)this._onConnChange();
     }
   },
@@ -7794,7 +7796,7 @@ const Net={
       if(id.startsWith('rtc:'))continue;   // WebRTC peers are lifecycle-managed (onclose), not heartbeat-reaped
       if(now-p.lastSeen>NET_PRESENCE_TIMEOUT){_pr().delete(id);changed=true}
     }
-    if(changed){invalidateOverlay();if(this._onConnChange)this._onConnChange()}
+    if(changed){_ivO();if(this._onConnChange)this._onConnChange()}
   },
   peerCount(){return _pr().size},
 
@@ -7836,8 +7838,8 @@ const Net={
     this.rtc.onconnectionstatechange=()=>{
       if(this.rtc.connectionState!=='failed')return;
       this._rtcConnFailed=true;
-      UI.toast(t('connectFailed'),'warn');
-      if(this._rtcPeerId){_pr().delete(this._rtcPeerId);this._rtcPeerId=null;invalidateOverlay();}
+      _tst(t('connectFailed'),'warn');
+      if(this._rtcPeerId){_pr().delete(this._rtcPeerId);this._rtcPeerId=null;_ivO();}
       if(this._onConnChange)this._onConnChange();
     };
   },
@@ -7853,7 +7855,7 @@ const Net={
   },
   _wireDC(){
     this.dc.onopen=()=>{
-      UI.toast(t('connected'),'ok');
+      _tst(t('connected'),'ok');
       // WebRTC peers don't ride the BroadcastChannel heartbeat, so they're managed by
       // the DataChannel lifecycle (added here, removed on close) and exempted from the
       // 15s reaper — otherwise a live, idle connection's avatar vanishes after 15s.
@@ -7866,8 +7868,8 @@ const Net={
       try{this._onRecv(_JP(e.data),true)}catch(_){}   // ADR-0010: viaRtc=true
     };
     this.dc.onclose=()=>{
-      if(!this._rtcConnFailed)UI.toast(t('disconnected'),'warn');
-      if(this._rtcPeerId){_pr().delete(this._rtcPeerId);this._rtcPeerId=null;invalidateOverlay();}
+      if(!this._rtcConnFailed)_tst(t('disconnected'),'warn');
+      if(this._rtcPeerId){_pr().delete(this._rtcPeerId);this._rtcPeerId=null;_ivO();}
       if(this._onConnChange)this._onConnChange();
     };
   },
@@ -7963,7 +7965,7 @@ const Share={
     if(!code)return false;
     UI.openShare();
     _g('rtcOfferIn').value=code;
-    UI.toast(t('inviteLinkOpened'),'ok');
+    _tst(t('inviteLinkOpened'),'ok');
     return true;
   },
   async importFromHash(){
@@ -7980,16 +7982,16 @@ const Share={
     let json;
     try{
       if(kind==='e:'){
-        if(!opt.k){UI.toast(t('shareNoKey'),'err');clearHash();return false}
-        if(!Share.canEncrypt()){UI.toast(t('shareNoCrypto'),'err');clearHash();return false}
+        if(!opt.k){_tst(t('shareNoKey'),'err');clearHash();return false}
+        if(!Share.canEncrypt()){_tst(t('shareNoCrypto'),'err');clearHash();return false}
         const bin=Share._b64uDec(body),iv=bin.slice(0,12),ct=bin.slice(12);
         const key=await crypto.subtle.importKey('raw',Share._b64uDec(opt.k),{name:'AES-GCM'},false,['decrypt']);
         let pt;
         try{pt=await crypto.subtle.decrypt({name:'AES-GCM',iv,additionalData:new TextEncoder().encode('board:e1')},key,ct)}
-        catch{UI.toast(t('shareBadKey'),'err');clearHash();return false}
+        catch{_tst(t('shareBadKey'),'err');clearHash();return false}
         const inner=new TextDecoder().decode(pt);
         kind=inner.slice(0,2);body=inner.slice(2);
-        if(kind!=='z:'&&kind!=='j:'){UI.toast(t('shareBadKey'),'err');clearHash();return false}
+        if(kind!=='z:'&&kind!=='j:'){_tst(t('shareBadKey'),'err');clearHash();return false}
       }
       if(kind==='z:'&&typeof DecompressionStream!=='undefined'){
         const bin=atob(body);
@@ -8000,16 +8002,16 @@ const Share={
         json=await new Response(stream).text();
       }else if(kind==='j:'){
         json=decodeURIComponent(escape(atob(body)));
-      }else{UI.toast(t('invalidBoard'),'err');clearHash();return false}
+      }else{_tst(t('invalidBoard'),'err');clearHash();return false}
       // ADR-0039: resource-bomb guard — a crafted z: link decodes BEFORE the
       // confirm prompt, so bound the decompressed payload and the shape count;
       // otherwise a multi-hundred-MB deflate bomb pegs the tab on link open.
-      if(json.length>SHARE_MAX_BYTES){UI.toast(t('invalidBoard'),'err');clearHash();return false}
+      if(json.length>SHARE_MAX_BYTES){_tst(t('invalidBoard'),'err');clearHash();return false}
       const data=_JP(json);
-      if(!Array.isArray(data.shapes)||data.shapes.length>SHARE_MAX_SHAPES){UI.toast(t('invalidBoard'),'err');clearHash();return false}
+      if(!Array.isArray(data.shapes)||data.shapes.length>SHARE_MAX_SHAPES){_tst(t('invalidBoard'),'err');clearHash();return false}
       // validate each shape — reject anything without id/type/z
       const valid=data.shapes.filter(validShape);
-      if(!valid.length){UI.toast(t('invalidBoard'),'err');clearHash();return false}
+      if(!valid.length){_tst(t('invalidBoard'),'err');clearHash();return false}
       if(_sh().length&&!confirm(t('importConfirm')))return false;
       // Reversible whole-board swap: a mistaken import is undoable (Ctrl+Z), so the
       // shared link can't silently destroy the board it replaced (§3.9 self-overwrite).
@@ -8018,7 +8020,7 @@ const Share={
       const origSel=_selIds();
       // ADR-0004: also survives past the undo window (reload/closed-tab), not just this session.
       if(before.length)Persist.saveBackup(before,{..._vp()},_dn());
-      state.shapes=valid.map(clone);_invalidateGrid();state.docName=((typeof data.name==='string'&&data.name)||'Shared').slice(0,80);   // ADR-0009
+      state.shapes=valid.map(clone);_iG();state.docName=((typeof data.name==='string'&&data.name)||'Shared').slice(0,80);   // ADR-0009
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out (see importBoard for rationale).
       if(data.viewport&&_fin(+data.viewport.x)&&_fin(+data.viewport.y)&&_fin(+data.viewport.zoom)&&data.viewport.zoom>0){
@@ -8028,15 +8030,15 @@ const Share={
         _vp().zoom=clampZoom(+data.viewport.zoom);
       }
       _sl().clear();state.wclock={};
-      sortZ();invalidate();
+      _sz();_iv();
       Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(_wc()),origSel});
       _g('docName').value=_dn();_syncDocTitle();
       // clean URL
       history.replaceState(null,'',location.pathname);
-      UI.toast(t('imported'),'ok');
+      _tst(t('imported'),'ok');
       Persist.schedule();
       return true;
-    }catch{UI.toast(t('invalidBoard'),'err');clearHash();return false}   // ADR-0038: corrupt link — don't pin it in the URL either
+    }catch{_tst(t('invalidBoard'),'err');clearHash();return false}   // ADR-0038: corrupt link — don't pin it in the URL either
   }};
 // v1.6.89: sync browser-tab title whenever the board name changes.
 // Without this, the tab always shows "index.html" regardless of what the user named their
@@ -8105,7 +8107,7 @@ const Persist={
     if(!nav||!nav.storage||!nav.storage.estimate)return;
     if(this._qWAt&&Date.now()-this._qWAt<300e3)return;
     nav.storage.estimate().then(({usage,quota})=>{
-      if(quota&&usage/quota>0.8){this._qWAt=Date.now();UI.toast(t('quotaWarn'),'err')}
+      if(quota&&usage/quota>0.8){this._qWAt=Date.now();_tst(t('quotaWarn'),'err')}
     }).catch(()=>{});
   },
   async save(explicit){
@@ -8137,9 +8139,9 @@ const Persist={
       UI.refreshSaved();
       if(_sh().length)this.requestDurable();   // user has content worth keeping
       this._quotaWarn();                               // ADR-0227
-      if(explicit)UI.toast(t('saved'),'ok');
+      if(explicit)_tst(t('saved'),'ok');
     }catch(err){
-      UI.toast(this._saveErrMsg(err),'err');
+      _tst(this._saveErrMsg(err),'err');
     }
   },
   async load(){
@@ -8158,7 +8160,7 @@ const Persist={
       }
       // Validate like the other intake paths (importFromHash / snapshot): never
       // adopt malformed shapes from IDB (corruption / forward-incompat schema).
-      state.shapes=shapes.filter(validShape);_invalidateGrid();   // ADR-0009
+      state.shapes=shapes.filter(validShape);_iG();   // ADR-0009
       if(d.viewport&&_fin(+d.viewport.x)&&_fin(+d.viewport.y)&&_fin(+d.viewport.zoom)&&d.viewport.zoom>0){
         // Clamp zoom to the app invariant [MIN_ZOOM,MAX_ZOOM] that every compute path
         // (wheel/fit) maintains — a corrupt or forward-incompat IDB record with an
@@ -8169,7 +8171,7 @@ const Persist={
       }
       if(typeof d.docName==='string'&&d.docName){state.docName=d.docName.slice(0,80);_g('docName').value=_dn();_syncDocTitle();}   // clamp: the input enforces maxlength=80, intake paths must too
       state.lastSaveAt=d.savedAt||0;
-      sortZ();
+      _sz();
     }
   },
   // ADR-0004 (self-overwrite protection): doClearAll/importBoard/importFromHash replace
@@ -8228,19 +8230,19 @@ const Persist={
       const before=clone(_sh());
       const beforeWc=clone(_wc());
       const origSel=_selIds();
-      state.shapes=shapes.map(clone);_invalidateGrid();   // ADR-0009
+      state.shapes=shapes.map(clone);_iG();   // ADR-0009
       _sl().clear();state.wclock={};
       if(typeof d.docName==='string'&&d.docName){state.docName=d.docName.slice(0,80);_g('docName').value=_dn();_syncDocTitle();}   // clamp: the input enforces maxlength=80, intake paths must too
       if(d.viewport&&_fin(+d.viewport.x)&&_fin(+d.viewport.y)&&_fin(+d.viewport.zoom)&&d.viewport.zoom>0){
         _vp().x=+d.viewport.x;_vp().y=+d.viewport.y;_vp().zoom=clampZoom(+d.viewport.zoom);
       }
-      sortZ();invalidate();
+      _sz();_iv();
       Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(_wc()),origSel});
       await this.discardBackup();
       this.schedule();
-      UI.toast(t('backupRestored'),'ok');
+      _tst(t('backupRestored'),'ok');
       return true;
-    }catch(_){UI.toast(t('backupRestoreFailed'),'err');return false}
+    }catch(_){_tst(t('backupRestoreFailed'),'err');return false}
   }};
 function txDone(tx){return new Promise((r,j)=>{tx.oncomplete=()=>r();tx.onerror=()=>j(tx.error);tx.onabort=()=>j(tx.error)})}
 // ADR-0031: content-hash keys for image blobs. FNV-1a over the dataUrl is enough
@@ -8304,7 +8306,7 @@ const UI={
     try{localStorage.setItem('board.minimap',state.showMinimap?'on':'off')}catch(_){}
     UI.refreshMinimapVis();
     if(state.showMinimap)Minimap.schedule();
-    UI.toast(`${t('minimap')} ${state.showMinimap?t('on'):t('off')}`);
+    _tst(`${t('minimap')} ${state.showMinimap?t('on'):t('off')}`);
   },
   // ADR-0012: cycles auto -> light -> dark -> auto. "Auto" (no stored value) follows
   // prefers-color-scheme, matching the pre-existing default; explicit light/dark override it.
@@ -8401,7 +8403,7 @@ const UI={
       has&&['ctxCopyStyle','⌥C',copyStyle],
       has&&_selAny(s=>!s.locked)&&['ctxSetLink','',setSelLink],   // ADR-0304
       has&&_selAny(s=>s.link)&&['ctxOpenLink','',openSelLink],    // ADR-0304
-      has&&_selAny(s=>s.link)&&['ctxCopyLink','',()=>{const s=_selL(x=>x.link)[0];if(s)copyText(s.link).then(ok=>UI.toast(t(ok?'copied':'copyFailed'),ok?'ok':'warn'))}],   // ADR-0318
+      has&&_selAny(s=>s.link)&&['ctxCopyLink','',()=>{const s=_selL(x=>x.link)[0];if(s)copyText(s.link).then(ok=>_tst(t(ok?'copied':'copyFailed'),ok?'ok':'warn'))}],   // ADR-0318
       state.styleClipboard&&has&&['ctxPasteStyle','⌥V',pasteStyle],
       has&&_selAny(s=>(_conn(s.type))&&!s.locked)&&['ctxElbow','',toggleElbow],
       has&&_selAny(s=>(_conn(s.type))&&!s.locked)&&['ctxCurve','',toggleCurve],
@@ -8483,7 +8485,7 @@ const UI={
       has&&['ctxExportSelBoard','',()=>exportSelection('board')],          // ADR-0114
       has&&_selN()===1&&_selAny(s=>s.type==='image'&&!s.locked)&&['ctxReplaceImg','',replaceImage],   // ADR-0089
       has&&'sep',
-      ['ctxSelectAll','⌘A',()=>{state.selection=new Set(_sh().filter(s=>s.visible!==0).map(s=>s.id));if(_selN())_announceSel();invalidate()}],
+      ['ctxSelectAll','⌘A',()=>{state.selection=new Set(_sh().filter(s=>s.visible!==0).map(s=>s.id));if(_selN())_aS();_iv()}],
       _sh().length&&['ctxClear','',doClearAll]
     ].filter(Boolean).filter((it,i,a)=>!(it==='sep'&&(i===0||i===a.length-1||a[i-1]==='sep')));
     for(const it of items){
@@ -8616,7 +8618,7 @@ const UI={
         // field and the user would copy a broken link.
         _g('shareUrl').value='';
         _g('shareWarnLong').hidden=true;
-        UI.toast(t('shareExportFailed'),'err');
+        _tst(t('shareExportFailed'),'err');
       });
     };
     chk.onchange=refresh;
@@ -8678,21 +8680,21 @@ async function _onBtnInstall(){
   if(btn)btn.hidden=true;
 }
 function wire(){
-  {const sq=_ce('input');sq.id='sqinput';sq.type='text';sq.placeholder=T.k.search;sq.setAttribute('aria-label',T.k.search);sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--accent-contrast);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';document.body.appendChild(sq);_on(sq,'input',()=>{_sq=sq.value;_sqNav.idx=-1;_sqNav.lastQ='';invalidateOverlay()});_on(sq,'keydown',ev=>{if(ev.key==='Escape'){_sq='';_sqNav.idx=-1;_sqNav.lastQ='';sq.style.display='none';sq.value='';invalidateOverlay();canvas.focus();}else if(ev.key==='Enter'&&!ev.isComposing){_pd(ev);
+  {const sq=_ce('input');sq.id='sqinput';sq.type='text';sq.placeholder=T.k.search;sq.setAttribute('aria-label',T.k.search);sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--accent-contrast);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';document.body.appendChild(sq);_on(sq,'input',()=>{_sq=sq.value;_sqNav.idx=-1;_sqNav.lastQ='';_ivO()});_on(sq,'keydown',ev=>{if(ev.key==='Escape'){_sq='';_sqNav.idx=-1;_sqNav.lastQ='';sq.style.display='none';sq.value='';_ivO();canvas.focus();}else if(ev.key==='Enter'&&!ev.isComposing){_pd(ev);
     // ⌘Enter: commit the whole match list as the selection, then fold the
     // box away — selecting is terminal, so stale search highlights only
     // distract from the follow-up (move/style the found group).
     if(ev.metaKey||ev.ctrlKey){const ms=_sqMatches();if(!ms.length)return;
-      state.selection=new Set(ms.map(s=>s.id));_announceSel();invalidate();
-      UI.toast(`${ms.length} ${t('selAllMatches')}`);
-      _sq='';_sqNav.idx=-1;_sqNav.lastQ='';sq.style.display='none';sq.value='';invalidateOverlay();canvas.focus();
+      state.selection=new Set(ms.map(s=>s.id));_aS();_iv();
+      _tst(`${ms.length} ${t('selAllMatches')}`);
+      _sq='';_sqNav.idx=-1;_sqNav.lastQ='';sq.style.display='none';sq.value='';_ivO();canvas.focus();
     }else _sqAdvance(ev.shiftKey?-1:1);}});}
   // tool buttons
   for(const b of _qsa(document,'.tool'))
     _on(b,'click',()=>pickTool(b.dataset.tool));
   // topbar
-  _g('btnUndo').onclick=()=>Store.undo()&&UI.toast(t('undone'));
-  _g('btnRedo').onclick=()=>Store.redo()&&UI.toast(t('redone'));
+  _g('btnUndo').onclick=()=>Store.undo()&&_tst(t('undone'));
+  _g('btnRedo').onclick=()=>Store.redo()&&_tst(t('redone'));
   _g('btnExport').onclick=exportPNG;
   _g('btnExportMenu').onclick=e=>{
     const r=e.currentTarget.getBoundingClientRect();
@@ -8758,7 +8760,7 @@ function wire(){
       _st()[k]=cp.value;
       for(const x of _qsa(document,'[data-'+k+']'))x.setAttribute('aria-pressed',x===cp);
       for(const id of _sl()){const s=byId(id);if(s&&!s.locked)s[k]=cp.value}
-      if(_selN())invalidate();
+      if(_selN())_iv();
     });
     _on(cp,'change',()=>{_sfbFlush(k,cp.value);_sfbCapture(k);});
   }
@@ -8771,7 +8773,7 @@ function wire(){
     _st().size=+rng.value;
     _g('sizeVal').textContent=rng.value;
     for(const id of _sl()){const s=byId(id);if(s&&!s.locked)s.size=_st().size}
-    if(_selN())invalidate();
+    if(_selN())_iv();
   });
   _on(rng,'change',()=>{_sfbFlush('size',_st().size);_sfbCapture('size');});
   if(opacRng){
@@ -8782,7 +8784,7 @@ function wire(){
       _st().opacity=v;
       if(opacVal)opacVal.textContent=opacRng.value;
       for(const id of _sl()){const s=byId(id);if(s&&!s.locked)s.opacity=v}
-      if(_selN())invalidate();
+      if(_selN())_iv();
     });
     _on(opacRng,'change',()=>{_sfbFlush('opacity',_st().opacity);_sfbCapture('opacity');});
   }
@@ -8840,16 +8842,16 @@ function wire(){
   });
   _g('shareCopyBtn').onclick=async()=>{
     const url=_g('shareUrl').value;
-    if(url){const ok=await copyText(url);UI.toast(ok?t('shareUrlCopied'):t('copyFailed'),ok?'ok':'warn')}
+    if(url){const ok=await copyText(url);_tst(ok?t('shareUrlCopied'):t('copyFailed'),ok?'ok':'warn')}
   };
   // WebRTC manual signaling
   {
-  _g('rtcCreateOffer').onclick=async()=>{try{_g('rtcOffer').value=await Net.wrtcCreateOffer()}catch(e){UI.toast(String(e),'err')}};
-  _g('rtcConnect').onclick=async()=>{const a=_g('rtcAnswerIn').value.trim();if(!a)return;try{await Net.wrtcConsumeAnswer(a);UI.toast(t('connected'),'ok')}catch(e){UI.toast(String(e),'err')}};
-  _g('rtcCreateAnswer').onclick=async()=>{const o=_g('rtcOfferIn').value.trim();if(!o)return;try{_g('rtcAnswer').value=await Net.wrtcAcceptOffer(o)}catch(e){UI.toast(String(e),'err')}};
+  _g('rtcCreateOffer').onclick=async()=>{try{_g('rtcOffer').value=await Net.wrtcCreateOffer()}catch(e){_tst(String(e),'err')}};
+  _g('rtcConnect').onclick=async()=>{const a=_g('rtcAnswerIn').value.trim();if(!a)return;try{await Net.wrtcConsumeAnswer(a);_tst(t('connected'),'ok')}catch(e){_tst(String(e),'err')}};
+  _g('rtcCreateAnswer').onclick=async()=>{const o=_g('rtcOfferIn').value.trim();if(!o)return;try{_g('rtcAnswer').value=await Net.wrtcAcceptOffer(o)}catch(e){_tst(String(e),'err')}};
   // ADR-0008 (FT-05): copy buttons for the signaling codes — mirrors shareCopyBtn's pattern,
   // avoids the earlier select-in-a-readonly-textarea friction (especially fiddly on touch).
-  const _copyCode=async(taId)=>{const v=_g(taId).value;if(!v)return;const ok=await copyText(v);UI.toast(ok?t('shareCodeCopied'):t('copyFailed'),ok?'ok':'warn')};
+  const _copyCode=async(taId)=>{const v=_g(taId).value;if(!v)return;const ok=await copyText(v);_tst(ok?t('shareCodeCopied'):t('copyFailed'),ok?'ok':'warn')};
   _g('rtcOfferCopyBtn').onclick=()=>_copyCode('rtcOffer');
   _g('rtcAnswerCopyBtn').onclick=()=>_copyCode('rtcAnswer');
   // ADR-0045: invite link — the offer rides in the URL hash, so the joiner skips
@@ -8858,9 +8860,9 @@ function wire(){
   // link must not expose the joiner's IP to the host before consent.
   _g('rtcInviteLinkBtn').onclick=async()=>{
     const v=_g('rtcOffer').value;
-    if(!v){UI.toast(t('inviteLinkNoCode'),'warn');return}
+    if(!v){_tst(t('inviteLinkNoCode'),'warn');return}
     const ok=await copyText(location.origin+location.pathname+'#s='+encodeURIComponent(v));
-    UI.toast(ok?t('shareCodeCopied'):t('copyFailed'),ok?'ok':'warn')
+    _tst(ok?t('shareCodeCopied'):t('copyFailed'),ok?'ok':'warn')
   };
   }
   // Net presence → UI
@@ -8921,7 +8923,7 @@ function applyStyleToSelection(patch){
     before.push(b);after.push(a);
   }
   if(before.length){_styleOp(before,after);}
-  invalidate();
+  _iv();
 }
 // Slider undo coalescing: capture shape prop values on pointerdown, flush a single
 // style op on change. Multiple input events during a drag never hit the undo stack.
@@ -8949,10 +8951,10 @@ function selectFrameContents(){
   if(!frames.length)return;
   const inner=withFrameChildren(new Set(frames.map(f=>f.id)));
   for(const f of frames)inner.delete(f.id);
-  if(!inner.size){UI.toast(t('selectTwo'),'warn');return}
+  if(!inner.size){_tst(t('selectTwo'),'warn');return}
   state.selection=inner;
-  _announceSel();UI.toast(inner.size+' '+t('selAllMatches'),'ok');
-  invalidate();
+  _aS();_tst(inner.size+' '+t('selAllMatches'),'ok');
+  _iv();
 }
 // ADR-0110: sticky ↔ text conversion (ctx). Same type-patch trick as
 // ADR-0109 — text/align/fontSize/w/h carry over; sticky's `color` simply
@@ -8977,7 +8979,7 @@ function cycleArrowHead(){
   const next=HEAD_STYLES[(HEAD_STYLES.indexOf(cur)+1)%HEAD_STYLES.length];
   _st().head=next;                            // ADR-0181
   _cOp({op:'style',before:sel.map(s=>({id:s.id,head:s.head??null})),after:sel.map(s=>({id:s.id,head:next}))});
-  invalidate();UI.toast(t('stylePasted'),'ok');
+  _iv();_tst(t('stylePasted'),'ok');
 }
 // ADR-0291: start-end head cycle (ctx) — none → arrow → dot → open.
 // s.start toggles presence, s.startHead carries the style (null = inherit s.head).
@@ -8990,7 +8992,7 @@ function cycleStartHead(){
   _st().start=next==='none'?0:1;                         // ADR-0293
   _cOp({op:'style',before:sel.map(s=>({id:s.id,start:s.start?1:0,startHead:s.startHead??null})),
     after:sel.map(s=>({id:s.id,start:next==='none'?0:1,startHead:next==='none'?null:next==='arrow'?'arrow':next}))});
-  invalidate();UI.toast(t('stylePasted'),'ok');
+  _iv();_tst(t('stylePasted'),'ok');
 }
 // ADR-0109: line ↔ arrow type conversion (ctx). Bindings/way/label/route
 // (elbow/curve) all live on the shape, so a type patch preserves everything —
@@ -9076,7 +9078,7 @@ function fitFrames(){
     after.push({id:f.id,x:nx,y:ny,w:nw,h:nh});
     f.x=nx;f.y=ny;f.w=nw;f.h=nh;
   }
-  if(before.length){const origSel=_selIds();Store._recordCommitted({op:'align',dir:'framefit',before,after});_keepSel(origSel);invalidate()}
+  if(before.length){const origSel=_selIds();Store._recordCommitted({op:'align',dir:'framefit',before,after});_keepSel(origSel);_iv()}
 }
 // ADR-0084: route reset — one style op clears way/bend/elbow/curve back to a
 // straight edge (draw.io "Clear Waypoints"). way/bend are objects → ??null;
@@ -9238,7 +9240,7 @@ function toggleTextFlag(k){
     _rcOp({op:'style',before,after});
     const ta=_qs(document,'.text-overlay');
     if(ta&&_ed()){const s2=byId(_ed());if(s2){ta.style.fontWeight=s2.bold?'600':'';ta.style.fontStyle=s2.italic?'italic':'';ta.style.textDecoration=[s2.under?'underline':'',s2.strike?'line-through':''].filter(Boolean).join(' ')}}
-    invalidate();
+    _iv();
   }
 }
 // ADR-0077: cycle fill style solid→hatch→cross→solid for box shapes via style op.
@@ -9266,7 +9268,7 @@ function swapFillStroke(){
     const t2=s[fk];s[fk]=s.stroke;s.stroke=t2;
     if(s[fk]==null)delete s[fk];if(s.stroke==null)delete s.stroke;
   })
-  if(before.length){_styleOp(before,after);invalidate();UI.toast(t('swapDone'),'ok')}
+  if(before.length){_styleOp(before,after);_iv();_tst(t('swapDone'),'ok')}
 }
 // ADR-0173: cycle font family system→mono→serif→system for text-bearing
 // shapes via style op (Excalidraw font-switch parity).
@@ -9356,7 +9358,7 @@ function setSelLink(){
   const u=prompt(t('linkPrompt'),first.link||'');
   if(u==null)return;
   const v=u.trim().slice(0,500);
-  if(v&&!/^https?:\/\//.test(v)){UI.toast(t('badUrl'),'warn');return}
+  if(v&&!/^https?:\/\//.test(v)){_tst(t('badUrl'),'warn');return}
   const before=[],after=[];
   _forSel((s,id)=>{if(s.locked)return;
     if(v?s.link===v:!s.link)return;
@@ -9367,16 +9369,16 @@ function setSelLink(){
 }
 function openSelLink(){
   const s=_selIds().map(byId).find(s=>s&&s.link);
-  if(s&&!window.open(s.link,'_blank','noopener'))UI.toast(t('popupBlocked'),'warn');   // ADR-0319
+  if(s&&!window.open(s.link,'_blank','noopener'))_tst(t('popupBlocked'),'warn');   // ADR-0319
 }
 
 function copyStyle(){
   // Copy style from the first selected shape
   const ids=_selIds();
   const sh=ids.length?byId(ids[0]):null;
-  if(!sh){UI.toast(t('noSelection'),'warn');return}
+  if(!sh){_tst(t('noSelection'),'warn');return}
   state.styleClipboard=_styleOf(sh);
-  UI.toast(t('styleCopied'),'ok');
+  _tst(t('styleCopied'),'ok');
 }
 function pasteStyle(){
   if(!state.styleClipboard||!_selN()){return}
@@ -9385,7 +9387,7 @@ function pasteStyle(){
     Object.entries(state.styleClipboard).filter(([,v])=>v!==undefined)
   );
   applyStyleToSelection(patch);
-  UI.toast(t('stylePasted'),'ok');
+  _tst(t('stylePasted'),'ok');
 }
 
 // ====================== PRESENTATION MODE ======================
@@ -9431,12 +9433,12 @@ const Presentation=(()=>{
     _vp().x=cx-vW/(2*zoom);
     _vp().y=cy-vH/(2*zoom);
     UI.refreshZoom();
-    invalidate();
+    _iv();
   }
 
   function enter(){
     _frames=_getFrames();
-    if(!_frames.length){UI.toast(t('noFrames'),'warn');return}
+    if(!_frames.length){_tst(t('noFrames'),'warn');return}
     _focusTrigger=document.activeElement;
     _active=true;_idx=0;
     _savedVp={x:_vp().x,y:_vp().y,zoom:_vp().zoom};
@@ -9491,7 +9493,7 @@ const Presentation=(()=>{
     // native resize event — re-sync the backing buffer or it stays fullscreen-sized.
     resize();
     if(_savedVp){Object.assign(_vp(),_savedVp);_savedVp=null;UI.refreshZoom()}
-    invalidate();
+    _iv();
     _focusTrigger?.focus();_focusTrigger=null;
   }
 
@@ -9519,7 +9521,7 @@ const Minimap=(()=>{
   // ADR-0025: the minimap splits into (a) shape content — depends only on shape
   // data, cached to an offscreen bitmap keyed on _gridVer — and (b) the viewport
   // rect, redrawn every call for one strokeRect. Pan/zoom updates (the common
-  // invalidate() cause) no longer re-walk every shape.
+  // _iv() cause) no longer re-walk every shape.
   let _scene=null,_sceneVer=-1,_sc=0,_ox=0,_oy=0;
   function _renderScene(){
     _sceneVer=_gridVer;
@@ -9585,7 +9587,7 @@ const Minimap=(()=>{
     const _r=_cbr();
     _vp().x=wx-_r.width/_vp().zoom/2;
     _vp().y=wy-_r.height/_vp().zoom/2;
-    invalidate();
+    _iv();
   };
   _on(mc,'pointerdown',e=>{_mmNav=true;mc.setPointerCapture(e.pointerId);_mmGo(e)});
   _on(mc,'pointermove',e=>{if(_mmNav)_mmGo(e)});
@@ -9627,7 +9629,7 @@ const Minimap=(()=>{
 
 // ====================== SERVICE WORKER (inline) ======================
 // Named handler exported for tests — avoids closure-identity issues with UI.toast mocking.
-function _onSwUpdate(){ UI.toast(t('appUpdated'),'ok'); }
+function _onSwUpdate(){ _tst(t('appUpdated'),'ok'); }
 // offline-first caching of this single page
 if('serviceWorker' in navigator){
   const sw=`
