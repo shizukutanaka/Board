@@ -2,6 +2,79 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.143]
+
+### 追加
+- **フレームをコンテンツに合わせる** (ADR-0085)。ctx メニュー
+  「コンテンツに合わせる」で選択 frame を完全内包シェイプの union
+  bbox + 12px にリサイズ (draw.io コンテナ parity)。複数 frame を
+  1 align op で原子化。空 frame は no-op。
+
+## [1.7.142]
+
+### 追加
+- **ルートリセット** (ADR-0084)。ctx メニュー「ルートをリセット」で
+  コネクタの way/bend/elbow/curve を一括クリアし直線に戻す
+  (draw.io Clear Waypoints)。1つの style op で原子化、undo 一発。
+
+## [1.7.141]
+
+### 追加
+- **画像キャプション** (ADR-0083)。image にも dblclick/Enter でラベル
+  編集が開き、内側下端に paper 帯 + 折返しテキストで描画 (draw.io式)。
+  画像高でクリップし溢れは '…'。SVG 書き出しにも同様に emit。
+
+## [1.7.140]
+
+### 修正
+- **付箋の色変更** (ADR-0082)。fill スウォッチ/カラーピッカーを sticky
+  では `s.color` にマップ — 生成時ランダム固定だった付箋色が変更可能に。
+  `applyStyleToSelection` の before パッチを `??null` にし、未設定
+  プロパティでも undo が確実に戻るよう修正 (clone が undefined を落とす
+  潜在的な undo 欠損を同時に解消)。
+
+## [1.7.139]
+
+### 修正
+- **ラベル編集オーバレイの正位置化** (ADR-0081)。diamond でダブル
+  クリック/Enter のラベル編集が開かなかった抜けを解消し、
+  elbow/curve/waypoint コネクタではラベル描画位置と同じアンカー
+  (`_connLabelXY` で canvas/editor の位置計算を単一化) に開く。
+
+## [1.7.138]
+
+### 追加
+- **スマート複製 (反復変換)** (ADR-0080)。複製したシェイプを移動して
+  もう一度 ⌘D で**同じベクトルが反復**され、等間隔の行/列/グリッドが
+  一発で並ぶ (Figma/draw.io parity)。`dupIds`/`dupDelta` で複製
+  チェーンを追跡し、move/nudge コミットでネット変位を累積。
+  既存 op で undo・同期は無料。
+
+## [1.7.137]
+
+### 追加
+- **幅 / 高さ揃え (match size)** (ADR-0079)。ctx メニューに
+  「幅を揃える」「高さを揃える」「幅と高さを揃える」— 最初に選択した
+  シェイプを基準に box 型の寸法を揃える (draw.io parity)。`align` op
+  で一括 undo、位置は不変 (top-left アンカー相当)。
+
+## [1.7.136]
+
+### 追加
+- **テキストの太字 / 斜体** (ADR-0078)。⌘B/⌘I で選択中 text/sticky の
+  `s.bold`/`s.italic` を `style` op トグル (Figma/draw.io parity)。
+  `_fontStr` が canvas フォント宣言を単一化、編集オーバレイと
+  SVG 書き出し (`font-weight`/`font-style`) も一致。copyStyle で伝搬。
+
+## [1.7.135]
+
+### 追加
+- **ハッチ / 斜格子フィル** (ADR-0077)。rect/ellipse/diamond に
+  `s.fstyle` ('hatch'|'cross') — ctx メニュー「塗りスタイル」で
+  塗り→ハッチ→斜格子を巡回 (Excalidraw parity)。fill 色と直交で
+  fill=null でも線のみ描画、canvas `clip()` と SVG `<clipPath>` が
+  `_hatchSegs` の線分列を共用。copyStyle/pasteStyle でも伝搬。
+
 ## [1.7.134]
 
 ### 追加
