@@ -774,7 +774,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.188';
+const V='1.7.189';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2514,7 +2514,7 @@ function _drawImgLabel(s,c){
 // Elbow → its polyline, curve → 16-sample bezier, else _linePts (way-aware).
 function _connPathPts(s){
   if(s.elbow)return _elbowPts(s);
-  if(s.curve){const e=connEnds(s),cc=_curveCtrl(e),pts=[];
+  if(s.curve){const e=connEnds(s),cc=_curveCtrl(e,s.cbend),pts=[];
     for(let i=0;i<=16;i++){const u=i/16,v=1-u;
       pts.push({x:v*v*e.x1+2*v*u*cc.x+u*u*e.x2,y:v*v*e.y1+2*v*u*cc.y+u*u*e.y2})}
     return pts}
@@ -2617,7 +2617,7 @@ function drawShape(s,c){
       _drawBoxLabel(s,c);break;}
     case 'line':{
       if(s.elbow){_polyline(c,_elbowPts(s));c.stroke();_drawConnLabel(s,c);break}
-      if(s.curve){const e=connEnds(s),cc=_curveCtrl(e);c.beginPath();c.moveTo(e.x1,e.y1);c.quadraticCurveTo(cc.x,cc.y,e.x2,e.y2);c.stroke();_drawConnLabel(s,c);break}
+      if(s.curve){const e=connEnds(s),cc=_curveCtrl(e,s.cbend);c.beginPath();c.moveTo(e.x1,e.y1);c.quadraticCurveTo(cc.x,cc.y,e.x2,e.y2);c.stroke();_drawConnLabel(s,c);break}
       _polyline(c,_linePts(s));c.stroke();_drawConnLabel(s,c);break;}   // ADR-0076
     case 'arrow':
       drawArrow(s,c);_drawConnLabel(s,c);break;
@@ -2701,7 +2701,7 @@ function drawArrow(s,c){
   const e=connEnds(s);
   const ah=Math.max(6,(s.size||2)*3);
   if(s.curve){
-    const cc=_curveCtrl(e);
+    const cc=_curveCtrl(e,s.cbend);
     c.beginPath();c.moveTo(e.x1,e.y1);c.quadraticCurveTo(cc.x,cc.y,e.x2,e.y2);c.stroke();
     _arrowHeadShape(c,e.x2,e.y2,Math.atan2(e.y2-cc.y,e.x2-cc.x),ah,s.stroke,s.head);
     if(s.start)_arrowHeadShape(c,e.x1,e.y1,Math.atan2(e.y1-cc.y,e.x1-cc.x),ah,s.stroke,s.head);
@@ -2798,20 +2798,22 @@ function _arrowHeadShape(c,x,y,ang,ah,stroke,style){
 }
 // ADR-0068: quadratic-bezier route for curved connectors. Control point is the
 // midpoint pushed along the left normal by bend=min(0.25*len,80).
-function _curveCtrl(e){
+function _curveCtrl(e,bend){
   const mx=(e.x1+e.x2)/2,my=(e.y1+e.y2)/2;
   const dx=e.x2-e.x1,dy=e.y2-e.y1,len=Math.hypot(dx,dy)||1;
-  const bend=Math.min(0.25*len,80);
-  return{x:mx-dy/len*bend,y:my+dx/len*bend};
+  // ADR-0132: `s.cbend` overrides the auto bow — a signed perpendicular
+  // offset from the chord, clamped like the auto 80px cap but wider.
+  const b=(bend==null||!Number.isFinite(bend))?Math.min(0.25*len,80):Math.max(-400,Math.min(400,bend));
+  return{x:mx-dy/len*b,y:my+dx/len*b};
 }
 function _curveSegs(s){
-  const e=connEnds(s),cc=_curveCtrl(e),pts=[];
+  const e=connEnds(s),cc=_curveCtrl(e,s.cbend),pts=[];
   for(let i=0;i<=16;i++){const t=i/16,u=1-t;
     pts.push({x:u*u*e.x1+2*u*t*cc.x+t*t*e.x2,y:u*u*e.y1+2*u*t*cc.y+t*t*e.y2});}
   return pts;
 }
 function _curveLabelXY(s){
-  const e=connEnds(s),cc=_curveCtrl(e);
+  const e=connEnds(s),cc=_curveCtrl(e,s.cbend);
   return{x:0.25*e.x1+0.5*cc.x+0.25*e.x2,y:0.25*e.y1+0.5*cc.y+0.25*e.y2};
 }
 // ADR-0070: quick-connect dots on the hovered shape's 4 edge midpoints.
@@ -3338,6 +3340,8 @@ function abortGesture(){
     const sh=byId(ptr.rotOrig.id);if(sh){if(ptr.rotOrig.rotate==null)delete sh.rotate;Object.assign(sh,clone(ptr.rotOrig));}
   }else if(ptr.dragKind==='ebend'&&ptr.ebendOrig){                // ADR-0072
     const sh=byId(ptr.ebendOrig.id);if(sh){if(ptr.ebendOrig.bend==null)delete sh.bend;Object.assign(sh,clone(ptr.ebendOrig));}
+  }else if(ptr.dragKind==='cbend'&&ptr.cbendOrig){                // ADR-0132
+    const sh=byId(ptr.cbendOrig.id);if(sh){if(ptr.cbendOrig.cbend==null)delete sh.cbend;Object.assign(sh,clone(ptr.cbendOrig));}
   }else if(ptr.dragKind==='way'&&ptr.wayOrig){                     // ADR-0076
     const sh=byId(ptr.wayOrig.id);if(sh){delete sh.way;Object.assign(sh,clone(ptr.wayOrig));}
   }
@@ -3345,7 +3349,7 @@ function abortGesture(){
   _penPred=null;ptr.lineClick=false;
   state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.dragStartShapes=null;
-  ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;ptr.ebendOrig=null;ptr.wayOrig=null;ptr.wayIdx=null;ptr.wayNew=false;ptr.lblOrig=null;
+  ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;ptr.wayIdx=null;ptr.wayNew=false;ptr.lblOrig=null;
   invalidate();
 }
 
@@ -3409,6 +3413,12 @@ canvas.addEventListener('pointerdown',e=>{
             if(tr&&distToSeg(wp,tr[0],tr[1])<=HANDLE_SIZE/state.viewport.zoom){
               ptr.dragKind='ebend';ptr.ebendOrig=clone(onlySel);
               return;
+            }
+          }
+          if(onlySel.curve&&!onlySel.locked){          // ADR-0132: curve-bend drag (apex grab)
+            const apex=_curveLabelXY(onlySel);
+            if(apex&&Math.hypot(wp.x-apex.x,wp.y-apex.y)<=HANDLE_SIZE/state.viewport.zoom){
+              ptr.dragKind='cbend';ptr.cbendOrig=clone(onlySel);return;
             }
           }
           if(!onlySel.elbow&&!onlySel.curve&&!onlySel.locked&&(onlySel.type==='line'||onlySel.type==='arrow')){   // ADR-0090
@@ -3559,6 +3569,12 @@ canvas.addEventListener('pointermove',e=>{
         const sh=byId(ptr.ebendOrig.id),tr=sh&&_elbowTrunk(sh);
         if(tr){const vert=Math.abs(tr[1].x-tr[0].x)<Math.abs(tr[1].y-tr[0].y);sh.bend=vert?snapV(wp.x):snapV(wp.y);invalidate()}   // ADR-0088: trunk drag honours grid snap
       }
+      else if(ptr.dragKind==='cbend'&&ptr.cbendOrig){               // ADR-0132
+        const sh=byId(ptr.cbendOrig.id);
+        if(sh){const e=connEnds(sh),dx=e.x2-e.x1,dy=e.y2-e.y1,len=Math.hypot(dx,dy)||1,
+          mx=(e.x1+e.x2)/2,my=(e.y1+e.y2)/2;
+          sh.cbend=snapV((wp.x-mx)*(-dy/len)+(wp.y-my)*(dx/len));invalidate()}
+      }
       else if(ptr.dragKind==='lblpos'&&ptr.lblOrig){                // ADR-0117
         const sh=byId(ptr.lblOrig.id);
         if(sh){let t=_pathNearestT(_connPathPts(sh),wp);
@@ -3635,6 +3651,13 @@ canvas.addEventListener('pointerup',e=>{
         ptr.rotOrig=null;
       }else if(ptr.dragKind==='qline'){
         endLineLike();                                             // ADR-0070
+      }else if(ptr.dragKind==='cbend'&&ptr.cbendOrig){            // ADR-0132
+        const sh=byId(ptr.cbendOrig.id);
+        if(sh&&(sh.cbend||0)!==(ptr.cbendOrig.cbend||0)){
+          const origSel=[...state.selection];
+          Store._recordCommitted({op:'style',before:[{id:sh.id,cbend:ptr.cbendOrig.cbend||0}],after:[{id:sh.id,cbend:sh.cbend||0}]});
+          if(origSel.length)state.history[state.histIdx].origSel=origSel;
+        }
       }else if(ptr.dragKind==='ebend'&&ptr.ebendOrig){            // ADR-0072
         const sh=byId(ptr.ebendOrig.id);
         if(sh&&(sh.bend||0)!==(ptr.ebendOrig.bend||0)){
@@ -3673,7 +3696,7 @@ canvas.addEventListener('pointerup',e=>{
     }
   }
   ptr.down=false;ptr.dragKind=null;ptr.dragStartShapes=null;
-  ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.ebendOrig=null;ptr.wayOrig=null;
+  ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;
   state.marquee=null;canvas.style.cursor='default';invalidateOverlay();
 });
 // v1.6.88: extracted as named function so tests can call it directly.
@@ -3692,6 +3715,8 @@ function _cancelPointerGesture(){
     if(rsh){if(ptr.rotOrig.rotate==null)delete rsh.rotate;Object.assign(rsh,clone(ptr.rotOrig));}
   }else if(ptr.dragKind==='ebend'&&ptr.ebendOrig){                // ADR-0072
     const sh=byId(ptr.ebendOrig.id);if(sh){if(ptr.ebendOrig.bend==null)delete sh.bend;Object.assign(sh,clone(ptr.ebendOrig));}
+  }else if(ptr.dragKind==='cbend'&&ptr.cbendOrig){                // ADR-0132
+    const sh=byId(ptr.cbendOrig.id);if(sh){if(ptr.cbendOrig.cbend==null)delete sh.cbend;Object.assign(sh,clone(ptr.cbendOrig));}
   }else if(ptr.dragKind==='way'&&ptr.wayOrig){                     // ADR-0076
     const sh=byId(ptr.wayOrig.id);if(sh){delete sh.way;Object.assign(sh,clone(ptr.wayOrig));}
   }else if(ptr.dragKind==='move'&&ptr.dragStartShapes){
@@ -3700,7 +3725,7 @@ function _cancelPointerGesture(){
   if(_eraseBatch.length){for(const s of _eraseBatch)state.shapes.push(s);_eraseBatch=[];sortZ();_invalidateGrid();}   // ADR-0009
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;
   ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.rotOrig=null;ptr.dragStartShapes=null;
-  ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.ebendOrig=null;ptr.wayOrig=null;
+  ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;
   canvas.dataset.panning='false';ptr.lineClick=false;state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;_penPred=null;invalidate();
 }
 // ADR-0006: fires after LONG_PRESS_MS. Guards: gesture still active, handle-drag not in
@@ -5417,6 +5442,7 @@ function flipShape(s,axis,c){
     else if(s.y1!=null){s.y1=m(s.y1);s.y2=m(s.y2);if(s.way){s.way=_wayArr(s);for(const w of s.way)w.y=m(w.y)}}   // ADR-0090
     else s.y=m(s.y+s.h);
   }
+  if(s.cbend!=null)s.cbend=-s.cbend;   // ADR-0132: any mirror flips the curve's chirality
   if(s.rotate)s.rotate=(360-s.rotate)%360;
 }
 function doFlip(axis){
@@ -6119,7 +6145,7 @@ function buildSVG(shapes,paper){
         break;}
       case 'line':{
         if(s.curve){
-          const _ce=connEnds(s),cc=_curveCtrl(_ce);
+          const _ce=connEnds(s),cc=_curveCtrl(_ce,s.cbend);
           els.push(`<path d="M ${_num(_ce.x1+ox)} ${_num(_ce.y1+oy)} Q ${_num(cc.x+ox)} ${_num(cc.y+oy)} ${_num(_ce.x2+ox)} ${_num(_ce.y2+oy)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}/>`);
           const lm=_curveLabelXY(s);
           {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
@@ -6137,7 +6163,7 @@ function buildSVG(shapes,paper){
       case 'arrow':{
         const ah=Math.max(6,(SZ||2)*3);
         if(s.curve){
-          const _ce=connEnds(s),cc=_curveCtrl(_ce);
+          const _ce=connEnds(s),cc=_curveCtrl(_ce,s.cbend);
           els.push(`<path d="M ${_num(_ce.x1+ox)} ${_num(_ce.y1+oy)} Q ${_num(cc.x+ox)} ${_num(cc.y+oy)} ${_num(_ce.x2+ox)} ${_num(_ce.y2+oy)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}/>`);
           const ang=Math.atan2(_ce.y2-cc.y,_ce.x2-cc.x);
           const a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5,tx=_ce.x2+ox,ty=_ce.y2+oy;
@@ -7845,9 +7871,9 @@ function resetRoute(){
   for(const id of state.selection){
     const s=byId(id);if(!s||(s.type!=='line'&&s.type!=='arrow')||s.locked)continue;
     if(!_wayArr(s).length&&!s.bend&&!s.elbow&&!s.curve)continue;   // ADR-0090
-    before.push({id,way:s.way??null,bend:s.bend??null,elbow:s.elbow||0,curve:s.curve||0,labelPos:s.labelPos??null});
+    before.push({id,way:s.way??null,bend:s.bend??null,elbow:s.elbow||0,curve:s.curve||0,labelPos:s.labelPos??null,cbend:s.cbend??null});
     after.push({id,way:null,bend:null,elbow:0,curve:0});
-    s.way=null;s.bend=null;s.elbow=0;s.curve=0;s.labelPos=null;
+    s.way=null;s.bend=null;s.elbow=0;s.curve=0;s.labelPos=null;s.cbend=null;
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
 }
@@ -8092,7 +8118,7 @@ const Minimap=(()=>{
         case 'rect':{const rx=s.x*sc+ox,ry=s.y*sc+oy,rw=s.w*sc,rh=s.h*sc;if(s.fill)sx.fillRect(rx,ry,rw,rh);sx.strokeRect(rx,ry,rw,rh);break}
         case 'ellipse':sx.beginPath();sx.ellipse(s.x*sc+ox+s.w*sc/2,s.y*sc+oy+s.h*sc/2,Math.abs(s.w*sc/2),Math.abs(s.h*sc/2),0,0,Math.PI*2);if(s.fill)sx.fill();sx.stroke();break;
         case 'diamond':{const dcx=s.x*sc+ox+s.w*sc/2,dcy=s.y*sc+oy+s.h*sc/2;sx.beginPath();sx.moveTo(dcx,s.y*sc+oy);sx.lineTo(s.x*sc+ox+s.w*sc,dcy);sx.lineTo(dcx,s.y*sc+oy+s.h*sc);sx.lineTo(s.x*sc+ox,dcy);sx.closePath();if(s.fill)sx.fill();sx.stroke();break;}
-        case 'line':case 'arrow':{if(s.elbow){const pts=_elbowPts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<pts.length;i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}if(s.curve){const me=connEnds(s),cc=_curveCtrl(me);sx.beginPath();sx.moveTo(me.x1*sc+ox,me.y1*sc+oy);sx.quadraticCurveTo(cc.x*sc+ox,cc.y*sc+oy,me.x2*sc+ox,me.y2*sc+oy);sx.stroke();break}const pts=_linePts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<pts.length;i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}
+        case 'line':case 'arrow':{if(s.elbow){const pts=_elbowPts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<pts.length;i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}if(s.curve){const me=connEnds(s),cc=_curveCtrl(me,s.cbend);sx.beginPath();sx.moveTo(me.x1*sc+ox,me.y1*sc+oy);sx.quadraticCurveTo(cc.x*sc+ox,cc.y*sc+oy,me.x2*sc+ox,me.y2*sc+oy);sx.stroke();break}const pts=_linePts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<pts.length;i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}
         case 'pen':if(s.pts.length<2)break;sx.beginPath();sx.moveTo(s.pts[0][0]*sc+ox,s.pts[0][1]*sc+oy);for(let i=1;i<s.pts.length;i++)sx.lineTo(s.pts[i][0]*sc+ox,s.pts[i][1]*sc+oy);sx.stroke();break;
         case 'text':case 'sticky':{const rx2=s.x*sc+ox,ry2=s.y*sc+oy,rw2=Math.max(2,s.w*sc),rh2=Math.max(2,s.h*sc);sx.fillStyle=s.type==='sticky'?(s.color||'#FEF08A'):(s.fill||getCSS('--brand'));sx.fillRect(rx2,ry2,rw2,rh2);break}
         case 'image':{const rx3=s.x*sc+ox,ry3=s.y*sc+oy,rw3=Math.max(2,s.w*sc),rh3=Math.max(2,s.h*sc);const img=s.dataUrl?_imgCache.get(_imgKey(s.dataUrl)):null;if(img&&img.complete&&img.naturalWidth)sx.drawImage(img,rx3,ry3,rw3,rh3);else{sx.fillStyle='#CBD5E1';sx.fillRect(rx3,ry3,rw3,rh3)}break}

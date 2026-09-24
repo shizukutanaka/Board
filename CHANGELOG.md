@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.189]
+
+### 追加
+- **曲線コネクタのベンドドラッグ** (ADR-0132)。選択中の曲線の頂点を
+  ドラッグすると `s.cbend` (弦法線方向の符号付きオフセット) で
+  カーブの強さ/向きを調整 — ラベル位置ドラッグも自動追従。
+  リセットルートで解除、フリップで符号反転。
+
 ## [1.7.188]
 
 ### 追加
