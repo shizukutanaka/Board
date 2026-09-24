@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.150]
+
+### 追加
+- **矩形の角スタイル** (ADR-0092)。ctx メニュー「角スタイル」で
+  適応角丸 (min(8,w/4,h/4)) ↔ 直角 (`s.r=0`) を切替 — style op で
+  undo/共有対応、複数選択可。canvas・SVG `<rect rx>` とも反映。
+
 ## [1.7.149]
 
 ### 追加
