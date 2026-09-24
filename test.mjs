@@ -466,6 +466,7 @@ const checks = [
   ['underline: ⌘U toggle + canvas line + SVG text-decoration', html.includes("toggleTextFlag('under')")&&html.includes('s.under')&&html.includes('text-decoration="underline"')],
   ['equal-size snap: resize matches another shape\'s w/h', html.includes('equal-size snap')&&html.includes('nw=eH?x-orig.x')&&html.includes('Math.abs(nw-b.w)')],
   ['excalidraw multi-segment arrow → real connector + way[]', html.includes('pts.slice(1,-1).map(p=>({x:p[0],y:p[1]}))')],
+  ['excalidraw export: excScene maps types/bindings/files', html.includes('function excScene')&&html.includes('endArrowhead')&&html.includes('ctxExportExc')],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
@@ -1310,7 +1311,7 @@ try {
              endRectLike, endLineLike, I18N, applyTheme, editSelectedShapeKbd, Share,
              draw, drawOverlay, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; }, _setOCtx: (c) => { const p = octx; octx = c; return p; },
              _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg,
-             _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText,
+             _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc,
              _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER,
              _getLang: () => LANG, _getT: () => T };
   `);
@@ -1336,7 +1337,7 @@ try {
           _getPasteCount, _resetPasteClipboard,
           endRectLike, endLineLike, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
           _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg,
-          _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes,
+          _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, excScene, exportExc,
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER } = api;
 
   console.log('\n-- behavioural --');
@@ -9109,14 +9110,15 @@ try {
       const items=captured[2];
       assert.ok(Array.isArray(items),'v1.7.56a: openExportMenu passes an items array, not the default (undefined)');
       const keys=items.map(it=>it==='sep'?'sep':it[0]);
-      assert.deepStrictEqual(keys,['ctxExportPNG','ctxCopyPNG','ctxExportSVG','ctxExportPDF','ctxExportBoard','sep','ctxImportBoard'],
-        'v1.7.56a: openExportMenu offers PNG/copy-PNG/SVG/PDF/.board export + a separator + .board import, in that order');
+      assert.deepStrictEqual(keys,['ctxExportPNG','ctxCopyPNG','ctxExportSVG','ctxExportPDF','ctxExportBoard','ctxExportExc','sep','ctxImportBoard'],
+        'v1.7.56a: openExportMenu offers PNG/copy-PNG/SVG/PDF/.board/.excalidraw export + a separator + .board import, in that order');
       const fnByKey=Object.fromEntries(items.filter(it=>it!=='sep').map(it=>[it[0],it[2]]));
       assert.strictEqual(fnByKey.ctxExportPNG,exportPNG,'v1.7.56a: PNG item wired to the real exportPNG');
       assert.strictEqual(fnByKey.ctxCopyPNG,copyPNG,'v1.7.56a: copy-PNG item wired to the real copyPNG (ADR-0050)');
       assert.strictEqual(fnByKey.ctxExportSVG,exportSVG,'v1.7.56a: SVG item wired to the real exportSVG');
       assert.strictEqual(fnByKey.ctxExportPDF,exportPDF,'v1.7.56a: PDF item wired to the real exportPDF');
       assert.strictEqual(fnByKey.ctxExportBoard,exportBoard,'v1.7.56a: .board export item wired to the real exportBoard');
+      assert.strictEqual(fnByKey.ctxExportExc,exportExc,'v1.7.56a: .excalidraw export item wired to the real exportExc (ADR-0098)');
       assert.strictEqual(typeof fnByKey.ctxImportBoard,'function','v1.7.56a: import item is a callable (opens the file picker)');
     }finally{
       UI.openCtxMenu=origOpenCtxMenu;
@@ -9324,6 +9326,20 @@ try {
     assert.ok(excToShapes('not json')===null,'bad JSON → null');
     assert.ok(excToShapes('{"type":"other"}')===null,'wrong marker → null');
     assert.ok(excToShapes('{"type":"excalidraw"}')===null,'no elements → null');
+
+    // ADR-0098: excScene round-trip — export then re-import keeps connectors real
+    {const a1=excToShapes(scene)[3];                       // arrow
+     a1.bind2='boxA';a1.way=[{x:15,y:30}];
+     const sc=excScene([a1,{id:'boxA',type:'rect',x:0,y:0,w:40,h:40,stroke:'#000',fill:null,size:2,opacity:1},
+       {id:'st1',type:'sticky',x:0,y:0,w:100,h:100,color:'#FEF08A',text:'hi',stroke:'#000',size:1,opacity:1,align:'center'},
+       {id:'im1',type:'image',x:0,y:0,w:10,h:10,dataUrl:'data:image/png;base64,xx',stroke:'#000',size:1,opacity:1}]);
+     const el=sc.elements.find(e=>e.type==='arrow');
+     assert.ok(el.endArrowhead==='arrow'&&el.points.length===3&&el.endBinding.elementId==='boxA','export: arrow pts+binding');
+     assert.ok(sc.elements.some(e=>e.type==='rectangle'&&e.backgroundColor==='#FEF08A')&&sc.elements.some(e=>e.type==='text'&&e.text==='hi'),'export: sticky → rect+text');
+     assert.ok(sc.files['fim1'].dataURL.startsWith('data:image'),'export: image file entry');
+     const rt=excToShapes(JSON.stringify(sc));
+     const rta=rt.find(s=>s.type==='arrow');
+     assert.ok(rta&&rta.way&&rta.way.length===1,'round-trip: way survives import (ADR-0097)');}
     console.log('  ✓ excalidraw import (element mapping, styles, tombstones, reject paths)');
   }
 

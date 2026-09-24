@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.155';
+const V='1.7.156';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -843,7 +843,7 @@ const I18N={
   ja:{export:'書き出し',present:'プレゼン',size:'太さ',lineStyle:'線種',helpTitle:'ショートカット',
     helpSub:'全部覚えなくていい。使いながら自然に。',
     saved:'保存済み',savedNow:'たった今',savedAgo:'秒前',
-    exported:'PNGを書き出しました',exportedSVG:'SVGを書き出しました',exportedBoard:'.boardファイルを保存しました',loadedBoard:'ボードを読み込みました',
+    exported:'PNGを書き出しました',exportedSVG:'SVGを書き出しました',exportedBoard:'.boardファイルを保存しました',exportedExc:'.excalidrawファイルを保存しました',loadedBoard:'ボードを読み込みました',
     imagePasted:'画像を貼り付けました',empty:'キャンバスが空',
     noSelection:'選択なし',styleCopied:'スタイルコピー',stylePasted:'スタイル適用',
     selectTwo:'2つ以上選択してください',grouped:'グループ化',noGroup:'グループなし',
@@ -877,7 +877,7 @@ const I18N={
     ctxAlignTop:'上揃え',ctxAlignCY:'上下中央',ctxAlignBottom:'下揃え',
     ctxHSpace:'水平均等配置',ctxVSpace:'垂直均等配置',
     ctxSelectAll:'すべて選択',ctxClear:'全消去',
-    ctxExportPNG:'PNG書き出し',ctxCopyPNG:'PNGをクリップボードにコピー',ctxExportSVG:'SVG書き出し',ctxExportPDF:'PDF書き出し',ctxExportBoard:'.boardファイル書き出し',ctxImportBoard:'.boardファイル読み込み...',
+    ctxExportPNG:'PNG書き出し',ctxCopyPNG:'PNGをクリップボードにコピー',ctxExportSVG:'SVG書き出し',ctxExportPDF:'PDF書き出し',ctxExportExc:'Excalidraw (.excalidraw) 書き出し',ctxExportBoard:'.boardファイル書き出し',ctxImportBoard:'.boardファイル読み込み...',
     ctxExportSelPNG:'選択をPNG書き出し',ctxCopySelPNG:'選択のPNGをコピー',ctxExportSelSVG:'選択をSVG書き出し',ctxCopySelSVG:'選択のSVGをコピー',ctxReplaceImg:'画像を差替え',
     share:'共有',shareTitle:'共有',
     shareUrlHint:'このURLをコピーして送ると、相手に内容が共有されます',
@@ -922,7 +922,7 @@ const I18N={
   en:{export:'Export',present:'Present',snap:'Snap',size:'Size',lineStyle:'Line',helpTitle:'Shortcuts',
     helpSub:'No need to memorise. You\'ll pick it up.',
     saved:'saved',savedNow:'just now',savedAgo:'s ago',
-    exported:'PNG exported',exportedSVG:'SVG exported',exportedBoard:'Board file saved',loadedBoard:'Board loaded',
+    exported:'PNG exported',exportedSVG:'SVG exported',exportedBoard:'Board file saved',exportedExc:'Excalidraw file saved',loadedBoard:'Board loaded',
     imagePasted:'Image pasted',empty:'Canvas is empty',
     noSelection:'No selection',styleCopied:'Style copied',stylePasted:'Style applied',
     selectTwo:'Select 2 or more',grouped:'Grouped',noGroup:'No group',
@@ -953,7 +953,7 @@ const I18N={
     ctxAlignTop:'Align top',ctxAlignCY:'Center vertical',ctxAlignBottom:'Align bottom',
     ctxHSpace:'Distribute horizontal',ctxVSpace:'Distribute vertical',
     ctxSelectAll:'Select all',ctxClear:'Clear all',
-    ctxExportPNG:'Export PNG',ctxCopyPNG:'Copy PNG to clipboard',ctxExportSVG:'Export SVG',ctxExportPDF:'Export PDF',ctxExportBoard:'Export .board file',ctxImportBoard:'Import .board file...',
+    ctxExportPNG:'Export PNG',ctxCopyPNG:'Copy PNG to clipboard',ctxExportSVG:'Export SVG',ctxExportPDF:'Export PDF',ctxExportExc:'Export .excalidraw',ctxExportBoard:'Export .board file',ctxImportBoard:'Import .board file...',
     ctxExportSelPNG:'Export selection to PNG',ctxCopySelPNG:'Copy selection PNG',ctxExportSelSVG:'Export selection to SVG',ctxCopySelSVG:'Copy selection SVG',ctxReplaceImg:'Replace image',
     share:'Share',shareTitle:'Share',
     shareUrlHint:'Copy this URL and send it — the recipient gets your board.',
@@ -5368,6 +5368,70 @@ function exportBoard(){
   a.click();setTimeout(()=>URL.revokeObjectURL(_bu),1e4);
   UI.toast(t('exportedBoard'),'ok');
 }
+// ---- ADR-0098: .excalidraw export ------------------------------------------
+// Board shapes → excalidraw elements. Shape ids are preserved verbatim so
+// connector bindings resolve 1:1; unsupported decorations (hatch, elbow,
+// curve) degrade to defaults while way[] keeps the route shape.
+function excScene(shapes){
+  const els=[],files={};
+  const E=(s,over)=>Object.assign({id:s.id,strokeColor:s.stroke||'#1e1e1e',
+    backgroundColor:s.fill||'transparent',fillStyle:s.fill?'solid':'transparent',
+    strokeWidth:s.size||2,strokeStyle:s.dash===1?'dashed':s.dash===2?'dotted':'solid',
+    roughness:0,opacity:Math.round((s.opacity==null?1:s.opacity)*100),
+    angle:(s.rotate||0)*Math.PI/180,seed:0,version:1,versionNonce:0,
+    isDeleted:false,boundElements:null,updated:0,link:null,locked:false},over);
+  const gids={};for(const s of shapes)if(s.groupId)(gids[s.id]=gids[s.id]||[]).push(s.groupId);
+  for(const s of shapes){
+    switch(s.type){
+      case'rect':case'ellipse':case'diamond':
+        els.push(E(s,{type:s.type,x:s.x,y:s.y,width:s.w||0,height:s.h||0,
+          roundness:s.r?{type:3}:null}));break;
+      case'frame':
+        els.push(E(s,{type:'frame',x:s.x,y:s.y,width:s.w||0,height:s.h||0,name:s.label||'Frame'}));break;
+      case'sticky':{
+        els.push(E(s,{type:'rectangle',x:s.x,y:s.y,width:s.w,height:s.h,
+          backgroundColor:s.color||'#FEF08A',fillStyle:'solid',roundness:{type:3}}));
+        if(s.text){const tid=uid();els.push({id:tid,type:'text',x:s.x+4,y:s.y+4,
+          width:Math.abs(s.w)-8,height:Math.abs(s.h)-8,text:s.text,originalText:s.text,
+          fontSize:s.fontSize||14,textAlign:s.align||'center',verticalAlign:'middle',lineHeight:1.25,baseline:0,
+          strokeColor:'#1e1e1e',backgroundColor:'transparent',fillStyle:'solid',strokeWidth:1,strokeStyle:'solid',
+          roughness:0,opacity:100,angle:0,seed:0,version:1,versionNonce:0,isDeleted:false,
+          boundElements:null,updated:0,link:null,locked:false,groupIds:gids[s.id]||[]});}
+        break;}
+      case'text':
+        els.push(E(s,{type:'text',x:s.x,y:s.y,width:s.w||0,height:s.h||0,
+          text:s.text||'',originalText:s.text||'',fontSize:s.fontSize||16,
+          textAlign:s.align||'left',lineHeight:1.25,baseline:0}));break;
+      case'pen':{
+        const xs=s.pts.map(p=>p[0]),ys=s.pts.map(p=>p[1]);
+        const x0=Math.min(...xs),y0=Math.min(...ys);
+        els.push(E(s,{type:'freedraw',x:x0,y:y0,width:Math.max(...xs)-x0,height:Math.max(...ys)-y0,
+          points:s.pts.map(p=>[p[0]-x0,p[1]-y0]),pressures:s.pts.map(p=>p[2]||0.5)}));break;}
+      case'line':case'arrow':{
+        const pts=[[0,0],..._wayArr(s).map(w=>[w.x-s.x1,w.y-s.y1]),[s.x2-s.x1,s.y2-s.y1]];
+        const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]),x0=Math.min(...xs),y0=Math.min(...ys);
+        els.push(E(s,{type:s.type,x:s.x1+x0,y:s.y1+y0,width:Math.max(...xs)-x0,height:Math.max(...ys)-y0,
+          points:pts.map(p=>[p[0]-x0,p[1]-y0]),
+          startBinding:s.bind1?{elementId:s.bind1,focus:0,gap:1}:null,
+          endBinding:s.bind2?{elementId:s.bind2,focus:0,gap:1}:null,
+          lastCommittedPoint:null,startArrowhead:null,endArrowhead:s.type==='arrow'?'arrow':null}));break;}
+      case'image':{
+        const fid='f'+s.id;files[fid]={id:fid,mimeType:(s.dataUrl.match(/^data:([^;]+)/)||[])[1]||'image/png',dataURL:s.dataUrl,created:0,lastRetrieved:0};
+        els.push(E(s,{type:'image',x:s.x,y:s.y,width:s.w||0,height:s.h||0,fileId:fid,status:'saved',scale:[1,1]}));break;}
+      default:break;
+    }
+  }
+  for(const e of els)if(gids[e.id])e.groupIds=gids[e.id];
+  return{type:'excalidraw',version:2,source:'Board',elements:els,files,appState:{gridSize:null}};
+}
+function exportExc(){
+  if(!state.shapes.length){UI.toast(t('empty'),'warn');return}
+  const a=document.createElement('a');
+  const _bu=URL.createObjectURL(new Blob([JSON.stringify(excScene(state.shapes))],{type:'application/json'}));
+  a.href=_bu;a.download=(state.docName||'board')+'.excalidraw';
+  a.click();setTimeout(()=>URL.revokeObjectURL(_bu),1e4);
+  UI.toast(t('exportedExc'),'ok');
+}
 // ---- ADR-0042: SVG import --------------------------------------------------
 // DOMParser-walk → Board shapes. Unmapped elements (use/defs/filter/gradient/
 // mask/clipPath/animation/CSS classes) are skipped, never imported raw — the
@@ -6860,6 +6924,7 @@ const UI={
       ['ctxExportSVG','⌘⇧E',exportSVG],
       ['ctxExportPDF','⌘P',exportPDF],
       ['ctxExportBoard','⌘⇧S',exportBoard],
+      ['ctxExportExc','',exportExc],
       'sep',
       ['ctxImportBoard','',()=>document.getElementById('fileImport').click()]
     ]);

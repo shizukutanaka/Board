@@ -2,6 +2,15 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.156]
+
+### 追加
+- **.excalidraw エクスポート** (ADR-0098)。エクスポートメニューに
+  「Excalidraw」追加 — 全図形を excalidraw 要素へ変換
+  (sticky→rect+text、line/arrow→points+way、image→files 辞書、
+  binding/groupIds 維持)。id 保持により ADR-0097 経路で再
+  インポート可能なラウンドトリップをテスト担保。
+
 ## [1.7.155]
 
 ### 変更
