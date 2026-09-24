@@ -7,6 +7,8 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
 ### 追加
 - ⌘F 検索でコネクタが結合先の名前でもヒット (ADR-0381) — 「Loginボタンへの矢印」が "login" で見つかるように、コネクタのみ結合先の label/text/type を検索対象に追加
 
+## [1.7.427] - 2026-09-23
+
 ### 修正
 - RTC スナップショットを 64KB チャンク化 (ADR-0383) — ~256KB の SCTP メッセージ上限を超える大盤面で参加側が静かに同期失敗していたのを解消
 - `state.seenOps/lasso/marquee/dupDelta`・`G.w2s/s2w`・`connEnds` の shorthand (ADR-0382)

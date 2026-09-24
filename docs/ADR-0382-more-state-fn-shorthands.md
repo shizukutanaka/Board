@@ -1,7 +1,7 @@
 # ADR-0382: state.seenOps/lasso/marquee/dupDelta + G.w2s/s2w + connEnds shorthand
 
 ## 状態
-採用 (v1.7.426)
+採用 (v1.7.427)
 
 ## 背景
 512KB raw 天井まで ~700B。hot fields の残り (seenOps, lasso, marquee,
