@@ -1138,6 +1138,7 @@ const checks = [
   ['wclock ships inside the IDB doc record (ADR-0460)', html.includes('wc:_wc()') && html.includes("validClock(m[p]))(state.wclock[k]")],
   ['peer join/leave is SR-announced via _pCt delta (ADR-0463)', html.includes('Net._pCt') && html.includes("'peerJoined'") && html.includes("'peerLeft'")],
   ['room switch resets img transfer state (ADR-0464)', html.includes('this._imgSent.clear();this._imgChunks.clear();this._imgOuts.length=0')],
+  ['snapshot responder = lowest non-asker peer (ADR-0465)', html.includes('this._loResp(msg.peer)') && html.includes('k!==pk&&k<_pi()')],
   // v1.6.80: multi-touch pinch cancels the single-pointer gesture (no stray edits)
   ['pointerdown aborts single-pointer gesture when a 2nd finger lands', html.includes("if(_pointers.size>=2){abortGesture();return;}")],
   ['pointermove bails while pinch is active', html.includes("if(_pointers.size>=2)return;   // pinch in progress")],
