@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.292';
+const V='1.7.293';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -5281,6 +5281,10 @@ function openTextEditor(s,isNew){
     if(ev.isComposing)return;
     if(ev.key==='Escape'){ev.preventDefault();ta.blur()}
     if(ev.key==='Enter'&&(ev.metaKey||ev.ctrlKey)){ev.preventDefault();ta.blur();_stickyChain(s)}   // ADR-0105
+    // ADR-0236: ⌘B/I/U/⇧X inside the editor toggle the shape's typography —
+    // the global keydown skips input/textarea targets, so these bind locally.
+    const mk=ev.key.toLowerCase(),fl={b:'bold',i:'italic',u:'under'}[mk]||(mk==='x'&&ev.shiftKey?'strike':null);
+    if((ev.metaKey||ev.ctrlKey)&&fl){ev.preventDefault();toggleTextFlag(fl)}
   });
   auto();
   _teTa=ta;_teVp='';   // ADR-0053: track the live overlay for viewport follow

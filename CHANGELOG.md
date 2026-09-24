@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.293]
+
+### 追加
+- **編集中の装飾キー** (ADR-0236)。インラインエディタ
+  内で ⌘B/I/U/⇧X が図形の bold/italic/under/strike を
+  トグル — グローバルキーは textarea で止まるため
+  ローカルに配線。オーバーレイ表示も即時反映。
+
 ## [1.7.292]
 
 ### 修正
