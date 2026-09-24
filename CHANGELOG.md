@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.398] - 2026-09-24
+
+### Changed
+- `_rnd`/`_qs` shorthand で ~650B 回収 (Math.round 59箇所 +
+  querySelector 23箇所) (ADR-0348)
+
 ## [1.7.397] - 2026-09-24
 
 ### Added
