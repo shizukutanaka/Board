@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.300';
+const V='1.7.301';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6425,6 +6425,9 @@ function drawioToShapes(txt){
     if(+sty.strokeWidth>0)s.size=Math.min(40,+sty.strokeWidth);
     if(sty.dashed==='1')s.dash=1;
     if(sty.shadow==='1')s.shadow=1;                                          // ADR-0246
+    if(sty.labelBackgroundColor&&sty.labelBackgroundColor!=='none')s.fill=sty.labelBackgroundColor;   // ADR-0249
+    if(+sty.fontSize>0)s.fontSize=Math.min(200,+sty.fontSize);
+    {const _efs=+sty.fontStyle;if(_efs&1)s.bold=1;if(_efs&2)s.italic=1;if(_efs&4)s.under=1}
     if(_hid)s.visible=0;                                       // ADR-0245
     shapes.push(s);
   }
@@ -6511,6 +6514,9 @@ function boardToDrawio(shapes){
     if(s.dash)sty+='dashed=1;';
     if(s.r)sty+='rounded=1;';
     if(s.shadow)sty+='shadow=1;';                                            // ADR-0246
+    if(s.fill)sty+='labelBackgroundColor='+s.fill+';';                       // ADR-0249
+    if(s.label&&(s.bold||s.italic||s.under)){const _ef=(s.bold?1:0)|(s.italic?2:0)|(s.under?4:0);sty+='fontStyle='+_ef+';';}
+    if(s.label&&s.fontSize)sty+='fontSize='+s.fontSize+';';
     const src=s.a&&idOf.get(s.a)?` source="${idOf.get(s.a)}"`:'';
     const tgt=s.b&&idOf.get(s.b)?` target="${idOf.get(s.b)}"`:'';
     if(src&&s.aF)sty+=`exitX=${s.aF.fx};exitY=${s.aF.fy};exitDx=0;exitDy=0;`;   // ADR-0221

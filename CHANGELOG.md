@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.301] - 2026-09-24
+
+### Added
+- .drawio: edge ラベルの labelBackgroundColor/fontSize/fontStyle を往復
+  (ADR-0249)。edge の fontColor は線色とラベル色を分離できないため未対応
+
 ## [1.7.300] - 2026-09-24
 
 ### Changed
