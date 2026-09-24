@@ -799,11 +799,12 @@ const _qs=(e,s)=>e.querySelector(s);                                  // ADR-034
 const _qsa=(e,s)=>e.querySelectorAll(s);                                // ADR-0350
 const _on=(e,t,f,o)=>e.addEventListener(t,f,o);                          // ADR-0356
 const _vp=()=>state.viewport;                                              // ADR-0362: live-read (tests reassign the object)
+const _sh=()=>state.shapes;                                                // ADR-0364
 const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-0350
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.410';
+const V='1.7.411';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1361,7 +1362,7 @@ const Store={
     const goneIds=new Set(op.shapes.map(s=>s.id));
     const handled=new Set((op.connClears||[]).map(p=>p.id));
     const fixes=[];
-    for(const sh of state.shapes){
+    for(const sh of _sh()){
       if(sh.type!=='line'&&sh.type!=='arrow')continue;
       if(goneIds.has(sh.id)||handled.has(sh.id))continue;
       if(sh.locked)continue;
@@ -1529,14 +1530,14 @@ const Store={
         // but doesn't populate seenOps, so the live add isn't deduped) must NOT push
         // a duplicate. Local commits use fresh uids so this never blocks them; redo
         // re-pushes because undo removed the shape first.
-        if(forward){if(!byId(op.shape.id)){state.shapes.push(clone(op.shape));sortZ();}}
-        else{const i=state.shapes.findIndex(s=>s.id===op.shape.id);if(i>=0)state.shapes.splice(i,1);state.selection.delete(op.shape.id);delete state.wclock[op.shape.id];_selR(op);}
+        if(forward){if(!byId(op.shape.id)){_sh().push(clone(op.shape));sortZ();}}
+        else{const i=_sh().findIndex(s=>s.id===op.shape.id);if(i>=0)_sh().splice(i,1);state.selection.delete(op.shape.id);delete state.wclock[op.shape.id];_selR(op);}
         break;}
       case 'addMany':{
         // Atomic multi-add (paste/duplicate): N copies as ONE undo step. Forward mirrors
         // 'add' (idempotent on id); reverse mirrors 'del' (remove all, drop selection).
-        if(forward){for(const sh of op.shapes){if(!byId(sh.id))state.shapes.push(clone(sh));}sortZ();}
-        else{for(const sh of op.shapes){const i=state.shapes.findIndex(s=>s.id===sh.id);if(i>=0)state.shapes.splice(i,1);state.selection.delete(sh.id);delete state.wclock[sh.id];}_selR(op);}
+        if(forward){for(const sh of op.shapes){if(!byId(sh.id))_sh().push(clone(sh));}sortZ();}
+        else{for(const sh of op.shapes){const i=_sh().findIndex(s=>s.id===sh.id);if(i>=0)_sh().splice(i,1);state.selection.delete(sh.id);delete state.wclock[sh.id];}_selR(op);}
         break;}
       case 'del':{
         if(forward){
@@ -1544,15 +1545,15 @@ const Store={
           op.wc={};for(const sh of op.shapes)if(state.wclock[sh.id])op.wc[sh.id]=clone(state.wclock[sh.id]);
           for(const sh of op.shapes){
             if(byId(sh.id)?.locked)continue;   // parity with every other remote op: a peer cannot delete a locally-locked shape
-            const i=state.shapes.findIndex(s=>s.id===sh.id);
-            if(i>=0)state.shapes.splice(i,1);
+            const i=_sh().findIndex(s=>s.id===sh.id);
+            if(i>=0)_sh().splice(i,1);
             state.selection.delete(sh.id);
             delete state.wclock[sh.id];        // drop per-property write clocks
           }
           // Apply connector binding clears after shapes are gone (connectors still live)
           if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)Object.assign(sh,p.after);}}
         }else{
-          for(const sh of op.shapes)state.shapes.push(clone(sh));
+          for(const sh of op.shapes)_sh().push(clone(sh));
           sortZ();
           // Restore connector bindings after shapes are back so references are valid
           if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)Object.assign(sh,p.before);}}
@@ -1579,16 +1580,16 @@ const Store={
         if(!forward)_selR(op);
         break;}
       case 'clear':{
-        if(forward){state.shapes.length=0;state.selection.clear();state.wclock={};}
-        else{for(const s of op.shapes)state.shapes.push(clone(s));sortZ();if(op.wc)state.wclock=clone(op.wc);_selR(op);}
+        if(forward){_sh().length=0;state.selection.clear();state.wclock={};}
+        else{for(const s of op.shapes)_sh().push(clone(s));sortZ();if(op.wc)state.wclock=clone(op.wc);_selR(op);}
         break;}
       case 'replace':{
         // Whole-board swap (shared-link import). Reversible: before/after are full
         // shape arrays so Ctrl+Z restores the board the import overwrote.
         // Local-only by design — NOT in REMOTE_OPS, so a peer can't wipe your board.
         const next=forward?op.after:op.before;
-        state.shapes.length=0;state.selection.clear();state.wclock={};
-        for(const s of next)state.shapes.push(clone(s));
+        _sh().length=0;state.selection.clear();state.wclock={};
+        for(const s of next)_sh().push(clone(s));
         sortZ();
         if(forward&&op.afterWc)state.wclock=clone(op.afterWc);
         if(!forward&&op.wc)state.wclock=clone(op.wc);
@@ -1624,11 +1625,11 @@ const Store={
           // legacy full-snapshot format (pre-Step2 history / mixed-version peer).
           const snap=forward?op.after:op.before;
           if(snap){
-            const map=new Map(state.shapes.map(s=>[s.id,s]));
+            const map=new Map(_sh().map(s=>[s.id,s]));
             const next=[];
             for(const p of snap){const sh=map.get(p.id);if(sh){if(!(forward&&sh.locked)){sh.z=p.z;if(p.frac!=null)sh.frac=p.frac;}next.push(sh);map.delete(p.id)}}
             for(const sh of map.values())next.push(sh);   // keep any extras (defensive)
-            state.shapes.length=0;Array.prototype.push.apply(state.shapes,next);
+            _sh().length=0;Array.prototype.push.apply(_sh(),next);
           }
         }
         if(!forward)_selR(op);
@@ -1660,16 +1661,16 @@ const Store={
   }};
 // ADR-0009: lazy-rebuilt id→shape index. Invalidated by _invalidateGrid() (the same
 // choke point the spatial hit-test grid already uses) whenever shapes are added/removed
-// or state.shapes is reassigned — property mutations (position, style, ...) don't touch
+// or _sh() is reassigned — property mutations (position, style, ...) don't touch
 // membership, so they never need to invalidate this. The size check below is a second,
 // cheap safety net: several _apply cases call byId() (idempotency/lock checks) BEFORE
-// push()ing or splice()ing state.shapes in the same op, which would otherwise leave the
+// push()ing or splice()ing _sh() in the same op, which would otherwise leave the
 // index one membership-change stale until the *next* op's top-of-_apply invalidation —
 // comparing sizes catches exactly that gap without needing to hunt down every such
 // interior call site.
 let _idIndex=null;
 function byId(id){
-  if(!_idIndex||_idIndex.size!==state.shapes.length){_idIndex=new Map();for(const s of state.shapes)_idIndex.set(s.id,s);}
+  if(!_idIndex||_idIndex.size!==_sh().length){_idIndex=new Map();for(const s of _sh())_idIndex.set(s.id,s);}
   return _idIndex.get(id);
 }
 function clone(o){return _JP(_JS(o))}
@@ -1773,7 +1774,7 @@ function _svgHatch(els,s,ox,oy,stroke,shapeTag,rT){
 // delIds = ids about to be removed; returns [{id,before:{a|b,x1,y1|x2,y2},after:{...null}}].
 function computeConnClears(delIds){
   const connClears=[];
-  for(const sh of state.shapes){
+  for(const sh of _sh()){
     if(sh.type!=='line'&&sh.type!=='arrow')continue;
     if(delIds.has(sh.id))continue;          // connector itself is being deleted
     if(sh.locked)continue;                  // do not clear bindings on locked connectors
@@ -1823,7 +1824,7 @@ function keyBetween(a,b){
 // reindexFrac: stamp every shape with a strictly increasing key from array order.
 // The keyBetween(null,…) chain is prefix-stable (first N keys are independent of
 // total count), so add/del splices that don't reindex still leave canonical keys.
-function reindexFrac(){let p=null;for(const s of state.shapes){p=keyBetween(p,null);s.frac=p;}}
+function reindexFrac(){let p=null;for(const s of _sh()){p=keyBetween(p,null);s.frac=p;}}
 // sortZ: order shapes by fractional key. Keyless shapes are reconciled first:
 // a fully-legacy board (no keys at all) is migrated from integer z; otherwise a
 // newly added keyless shape is placed above the current top key (matching the
@@ -1832,20 +1833,20 @@ function reindexFrac(){let p=null;for(const s of state.shapes){p=keyBetween(p,nu
 // Ties on frac (concurrent inserts into the same gap across peers) break on the
 // globally-unique replicated shape id, so every peer converges to one order. (Step 3)
 function sortZ(){
-  if(!state.shapes.length)return;
-  if(state.shapes.some(s=>s.frac==null)){
-    if(state.shapes.every(s=>s.frac==null)){
-      state.shapes.sort((a,b)=>(a.z||0)-(b.z||0));   // legacy board: seed from z
+  if(!_sh().length)return;
+  if(_sh().some(s=>s.frac==null)){
+    if(_sh().every(s=>s.frac==null)){
+      _sh().sort((a,b)=>(a.z||0)-(b.z||0));   // legacy board: seed from z
       reindexFrac();
     }else{
       let top=null;
-      for(const s of state.shapes)if(s.frac!=null&&(top==null||s.frac>top))top=s.frac;
-      for(const s of state.shapes)if(s.frac==null){top=keyBetween(top,null);s.frac=top;}
+      for(const s of _sh())if(s.frac!=null&&(top==null||s.frac>top))top=s.frac;
+      for(const s of _sh())if(s.frac==null){top=keyBetween(top,null);s.frac=top;}
     }
   }
-  state.shapes.sort((a,b)=>a.frac<b.frac?-1:a.frac>b.frac?1:a.id<b.id?-1:a.id>b.id?1:0);
+  _sh().sort((a,b)=>a.frac<b.frac?-1:a.frac>b.frac?1:a.id<b.id?-1:a.id>b.id?1:0);
 }
-function nextZ(){return state.shapes.length?state.shapes.reduce((m,s)=>_max(m,s.z||0),0)+1:1}
+function nextZ(){return _sh().length?_sh().reduce((m,s)=>_max(m,s.z||0),0)+1:1}
 
 // ====================== SHAPE helpers ======================
 const Shape={
@@ -2277,9 +2278,9 @@ function _mirrorSync(){
   const ul=_g('shapeMirrorList');
   if(!ul)return;
   while(ul.firstChild)ul.removeChild(ul.firstChild);
-  const n=_min(state.shapes.length,MIRROR_MAX);
+  const n=_min(_sh().length,MIRROR_MAX);
   for(let i=0;i<n;i++){
-    const s=state.shapes[i];
+    const s=_sh()[i];
     const li=_ce('li');
     const b=_ce('button');
     b.type='button';
@@ -2287,9 +2288,9 @@ function _mirrorSync(){
     b.onclick=()=>_mirrorGo(s.id);
     li.appendChild(b);ul.appendChild(li);
   }
-  if(state.shapes.length>MIRROR_MAX){
+  if(_sh().length>MIRROR_MAX){
     const li=_ce('li');
-    li.textContent=(state.shapes.length-MIRROR_MAX)+t('mirrorMore');
+    li.textContent=(_sh().length-MIRROR_MAX)+t('mirrorMore');
     ul.appendChild(li);
   }
 }
@@ -2364,11 +2365,11 @@ function draw(){
   // instead of O(n) per frame. inView() still makes the final per-shape call,
   // so the rendered result is identical.
   let _vis=null;
-  if(state.shapes.length>40){
-    if(!_grid)_grid=_buildGrid(state.shapes);
+  if(_sh().length>40){
+    if(!_grid)_grid=_buildGrid(_sh());
     _vis=_gridRectCandidates(_grid,_view);
   }
-  let _drawIter=_vis||state.shapes;
+  let _drawIter=_vis||_sh();
   // ADR-0026: gesture handlers mutate shapes in place WITHOUT _invalidateGrid(),
   // so a stale grid can drop a dragged shape that left its cell — force-include
   // gesture targets while preserving z-order via the shapes array itself.
@@ -2377,7 +2378,7 @@ function draw(){
     if(ptr.dragStartShapes)for(const id of ptr.dragStartShapes.keys()){const s=byId(id);if(s)need.add(s);}
     if(ptr.resizeOrig){const s=byId(ptr.resizeOrig.id);if(s)need.add(s);}
     if(ptr.rotOrig){const s=byId(ptr.rotOrig.id);if(s)need.add(s);}
-    if(need.size){const vs=new Set(_vis);_drawIter=state.shapes.filter(s=>vs.has(s)||need.has(s));}
+    if(need.size){const vs=new Set(_vis);_drawIter=_sh().filter(s=>vs.has(s)||need.has(s));}
   }
   // ADR-0028: a pan whose rounded shift exposed no strip (sub-pixel step) needs
   // no scene pass at all — the blit already carries every pixel.
@@ -2426,7 +2427,7 @@ function drawOverlay(){
     }
   }
   c.setTransform(DPR,0,0,DPR,0,0);
-  if(state.shapes.length===0&&!state.draft)drawEmptyHint(c,W,H);   // FT-17: onboarding for a blank board
+  if(_sh().length===0&&!state.draft)drawEmptyHint(c,W,H);   // FT-17: onboarding for a blank board
   for(const[,members] of _grpMapGet()){
     const b=G.bboxAll(members);if(!b)continue;
     const p1=G.w2s({x:b.x-4,y:b.y-4}),p2=G.w2s({x:b.x+b.w+4,y:b.y+b.h+4});
@@ -2487,7 +2488,7 @@ function drawOverlay(){
 }
 // FT-17: a blank board previously gave zero on-canvas guidance — the only discovery
 // path was the '?' help modal. Draw-only (reads state, no mutation); disappears the
-// instant a shape is added (state.shapes.length check at the call site).
+// instant a shape is added (_sh().length check at the call site).
 function drawEmptyHint(c,W,H){
   c.fillStyle=getCSS('--ink-3');   // tertiary text token: 4.7:1 AA, deliberately muted
   c.textAlign='center';c.textBaseline='middle';
@@ -3007,7 +3008,7 @@ function _segIntT(ax,ay,bx,by,cx,cy,dx,dy){
 }
 function _hopsFor(s,pts){
   const hops=[];                                   // packed i*1e6+t, sorted
-  for(const o of state.shapes){
+  for(const o of _sh()){
     if(o===s||o.visible===0)continue;
     const t=o.type;if(t!=='line'&&t!=='arrow')continue;
     const op=_connPathPts(o);if(!op||op.length<2)continue;
@@ -3342,7 +3343,7 @@ function hitRotHandle(wp,s){
 }
 // Object-snap for resize: snap the dragged handle's moving edge(s) to nearby shape
 // edges/centres. Only the coordinates the handle actually moves are snapped. Pure-ish
-// (reads state.shapes/viewport). Mirrors move's objectSnap; active only when grid-snap
+// (reads _sh()/viewport). Mirrors move's objectSnap; active only when grid-snap
 // is off. Rotated shapes are skipped (axis-aligned edge snap would be incoherent).
 function resizeSnap(orig,handle,wp){
   if(state.snap||orig.rotate||handle==='p1'||handle==='p2')return{x:wp.x,y:wp.y,guides:[]};
@@ -3655,7 +3656,7 @@ function _sqMatches(){
   const q=_sq.toLowerCase();
   if(_sqVer===_gridVer&&_sqQ===q)return _sqList;
   _sqList=[];
-  for(const s of state.shapes){if(s.visible!==0&&((s.label||'')+(s.text||'')+(s.type||'')+(s.link||'')).toLowerCase().includes(q))_sqList.push(s)}   // ADR-0346/0353
+  for(const s of _sh()){if(s.visible!==0&&((s.label||'')+(s.text||'')+(s.type||'')+(s.link||'')).toLowerCase().includes(q))_sqList.push(s)}   // ADR-0346/0353
   _sqVer=_gridVer;_sqQ=q;
   return _sqList;
 }
@@ -3687,7 +3688,7 @@ let _longPressTimer=null;   // ADR-0006
 // the pre-gesture snapshot captured at pointerdown so nothing is half-applied or left
 // non-undoable: move/resize/rotate roll back to their originals, an in-progress erase
 // restores the shapes it had optimistically removed, and an uncommitted draft (which
-// never touched state.shapes) is simply dropped. (Qiita/Zenn: multi-touch + pointer)
+// never touched _sh()) is simply dropped. (Qiita/Zenn: multi-touch + pointer)
 function abortGesture(){
   if(ptr.dragKind==='move'&&ptr.dragStartShapes){
     for(const [id,orig] of ptr.dragStartShapes){const sh=byId(id);if(sh)Object.assign(sh,clone(orig))}
@@ -3704,7 +3705,7 @@ function abortGesture(){
   }else if(ptr.dragKind==='way'&&ptr.wayOrig){                     // ADR-0076
     const sh=byId(ptr.wayOrig.id);if(sh){delete sh.way;Object.assign(sh,clone(ptr.wayOrig));}
   }
-  if(_eraseBatch.length){for(const s of _eraseBatch)state.shapes.push(s);_eraseBatch=[];sortZ();_invalidateGrid();}   // ADR-0009
+  if(_eraseBatch.length){for(const s of _eraseBatch)_sh().push(s);_eraseBatch=[];sortZ();_invalidateGrid();}   // ADR-0009
   _penPred=null;ptr.lineClick=false;
   state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;state.measure=null;state.lasso=null;
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.dragStartShapes=null;
@@ -4120,7 +4121,7 @@ function _cancelPointerGesture(){
   }else if(ptr.dragKind==='move'&&ptr.dragStartShapes){
     for(const[id,orig] of ptr.dragStartShapes){const sh=byId(id);if(sh)Object.assign(sh,clone(orig));}
   }
-  if(_eraseBatch.length){for(const s of _eraseBatch)state.shapes.push(s);_eraseBatch=[];sortZ();_invalidateGrid();}   // ADR-0009
+  if(_eraseBatch.length){for(const s of _eraseBatch)_sh().push(s);_eraseBatch=[];sortZ();_invalidateGrid();}   // ADR-0009
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;
   ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.rotOrig=null;ptr.dragStartShapes=null;
   ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;
@@ -4159,7 +4160,7 @@ _on(canvas,'dblclick',e=>{
   // descends — narrows the selection to that member (Figma parity). A second
   // dblclick on the solo-selected member reaches the label editor normally.
   if(hit.groupId){
-    const grp=state.shapes.filter(s=>s.groupId===hit.groupId).map(s=>s.id);
+    const grp=_sh().filter(s=>s.groupId===hit.groupId).map(s=>s.id);
     if(grp.length>1&&grp.every(id=>state.selection.has(id))){
       state.selection=new Set([hit.id]);_announceSel();invalidate();return;
     }
@@ -4237,9 +4238,9 @@ function openLabelEditor(hit,leftPx,topPx,bold){
     // ADR-0196: Tab commits and jumps to the next label-able shape (rapid
     // labeling like Figma's table/cell flow); Shift+Tab walks backwards.
     if(ev.key==='Tab'){_pd(ev);
-      const cur=state.shapes.indexOf(hit),dir=ev.shiftKey?-1:1;
-      for(let k=1;k<=state.shapes.length;k++){
-        const nx=state.shapes[(cur+dir*k+state.shapes.length)%state.shapes.length];
+      const cur=_sh().indexOf(hit),dir=ev.shiftKey?-1:1;
+      for(let k=1;k<=_sh().length;k++){
+        const nx=_sh()[(cur+dir*k+_sh().length)%_sh().length];
         if(nx&&!nx.locked&&nx.visible!==0&&_lblAnchor(nx)){
           state.selection=new Set([nx.id]);_announceSel();
           inp.removeEventListener('blur',commit);commit();
@@ -4537,8 +4538,8 @@ function _fitViewport(b,pad,cap){
 function fitToContent(){
   // ADR-0155: hidden shapes shouldn't drag the fit window to empty space —
   // fit what's VISIBLE; fall back to all only when everything is hidden.
-  const vis=state.shapes.filter(s=>s.visible!==0);
-  const b=G.bboxAll(vis.length?vis:state.shapes);if(!b){zoomReset();return}
+  const vis=_sh().filter(s=>s.visible!==0);
+  const b=G.bboxAll(vis.length?vis:_sh());if(!b){zoomReset();return}
   const z=_fitViewport(b,40,2);
   UI.announce(_rnd(z*100)+'%');
 }
@@ -4547,9 +4548,9 @@ function fitToContent(){
 // Only fires when shapes exist AND none are visible; an intentionally panned
 // empty view is left alone.
 function _fitIfEmptyView(){
-  if(!state.shapes.length)return;
+  if(!_sh().length)return;
   const v=_vp(),r=_cbr();
-  const _vis=state.shapes.filter(s=>s.visible!==0);const b=G.bboxAll(_vis.length?_vis:state.shapes);if(!b)return;   // ADR-0155
+  const _vis=_sh().filter(s=>s.visible!==0);const b=G.bboxAll(_vis.length?_vis:_sh());if(!b)return;   // ADR-0155
   const vw=r.width/v.zoom,vh=r.height/v.zoom;
   if(b.x+b.w<v.x||b.y+b.h<v.y||b.x>v.x+vw||b.y>v.y+vh)fitToContent();
 }
@@ -4557,7 +4558,7 @@ function _fitIfEmptyView(){
 // fit-all's 2 so a small selection actually enlarges, short of the 16x extreme.
 function zoomToSelection(){
   if(!_selN()){UI.toast(t('noSelection'),'warn');return}
-  const b=G.bboxAll(state.shapes.filter(s=>state.selection.has(s.id)));
+  const b=G.bboxAll(_sh().filter(s=>state.selection.has(s.id)));
   if(!b){UI.toast(t('noSelection'),'warn');return}
   const z=_fitViewport(b,60,4);
   UI.announce(_rnd(z*100)+'%');
@@ -4573,7 +4574,7 @@ let _grpMapVer=-1,_grpMap=null;
 function _grpMapGet(){
   if(_grpMapVer===_gridVer)return _grpMap;
   _grpMap=new Map();
-  for(const s of state.shapes){if(s.groupId){if(!_grpMap.has(s.groupId))_grpMap.set(s.groupId,[]);_grpMap.get(s.groupId).push(s)}}
+  for(const s of _sh()){if(s.groupId){if(!_grpMap.has(s.groupId))_grpMap.set(s.groupId,[]);_grpMap.get(s.groupId).push(s)}}
   _grpMapVer=_gridVer;
   return _grpMap;
 }
@@ -4594,7 +4595,7 @@ function _buildGrid(shapes){
 // ADR-0016: rect query — every shape whose cells overlap the view rect (plus one
 // cell of margin for stroke overshoot) is a draw() candidate; inView still decides.
 // Returns a z-ORDERED array so draw() iterates candidates directly — the full
-// state.shapes scan is skipped entirely.
+// _sh() scan is skipped entirely.
 function _gridRectCandidates(grid,r){
   const cands=new Set(grid.big);
   const x0=_fl((r.x-_GCELL)/_GCELL),x1=_fl((r.x+r.w+_GCELL)/_GCELL);
@@ -4615,8 +4616,8 @@ function _queryGrid(grid,pt){
 }
 // ---- select tool ----
 function pickTop(wp){
-  if(state.shapes.length>40){
-    if(!_grid)_grid=_buildGrid(state.shapes);
+  if(_sh().length>40){
+    if(!_grid)_grid=_buildGrid(_sh());
     // ADR-0032: iterate candidates in reverse z-order (grid.idx) instead of
     // filtering all shapes twice — O(cells neighbourhood), not O(board).
     const cands=[..._queryGrid(_grid,wp)];
@@ -4625,13 +4626,13 @@ function pickTop(wp){
     for(const s of cands)if(s.type==='frame'&&s.visible!==0&&G.hit(s,wp))return s;
     return null;
   }
-  for(let i=state.shapes.length-1;i>=0;i--){
-    const s=state.shapes[i];
+  for(let i=_sh().length-1;i>=0;i--){
+    const s=_sh()[i];
     if(s.type==='frame'||s.visible===0)continue;
     if(G.hit(s,wp))return s;
   }
-  for(let i=state.shapes.length-1;i>=0;i--){
-    const s=state.shapes[i];
+  for(let i=_sh().length-1;i>=0;i--){
+    const s=_sh()[i];
     if(s.type==='frame'&&s.visible!==0&&G.hit(s,wp))return s;
   }
   return null;
@@ -4642,7 +4643,7 @@ function pickOrMarquee(wp,e){
     // Hit shape in a group → select the whole group
     const gid=hit.groupId;
     const toSelect=gid
-      ? state.shapes.filter(s=>s.groupId===gid).map(s=>s.id)
+      ? _sh().filter(s=>s.groupId===gid).map(s=>s.id)
       : [hit.id];
     const alreadySel=toSelect.every(id=>state.selection.has(id));
     // ADR-0060: Alt+drag duplicates first — copies become the selection and the
@@ -4705,7 +4706,7 @@ function _snapIndex(kind,key,exclFn){
   const slot=_snapIdx[kind];
   if(slot.ver!==_gridVer||slot.key!==key){
     const targets=[];
-    for(const s of state.shapes){if(exclFn(s)||s.visible===0)continue;const b=G.bbox(s);if(b)targets.push(b)}   // ADR-0153: hidden shapes attract no snap
+    for(const s of _sh()){if(exclFn(s)||s.visible===0)continue;const b=G.bbox(s);if(b)targets.push(b)}   // ADR-0153: hidden shapes attract no snap
     slot.ver=_gridVer;slot.key=key;slot.idx=_mkSnapIdx(targets);
   }
   return slot.idx;
@@ -4740,7 +4741,7 @@ function _eqGapSnap(mov,excl,tol){
   for(const ax of['x','y']){
     const L=ax==='x'?'x':'y',D=ax==='x'?'w':'h',O=ax==='x'?'y':'x',OD=ax==='x'?'h':'w';
     const row=[];
-    for(const s of state.shapes){
+    for(const s of _sh()){
       if(excl(s))continue;
       const b=G.bbox(s);if(!b)continue;
       if(b[O]<mov[O]+mov[OD]&&b[O]+b[OD]>mov[O])row.push(b);
@@ -4781,14 +4782,14 @@ function objectSnap(dx,dy){
 // Expand a set of selected ids to include shapes fully contained in any selected
 // frame, so moving a frame moves its contents. Other frames are never captured as
 // children. Shared by pointer-drag (pickOrMarquee) and keyboard nudge (nudgeSelection)
-// so both move paths agree. Pure read of state.shapes; returns a fresh Set.
+// so both move paths agree. Pure read of _sh(); returns a fresh Set.
 function withFrameChildren(ids){
   const out=new Set(ids);
   for(const selId of ids){
     const sel=byId(selId);
     if(sel&&sel.type==='frame'){
       const fb=G.bbox(sel);
-      for(const s of state.shapes){
+      for(const s of _sh()){
         if(s.id===selId||s.type==='frame')continue;
         const b=G.bbox(s);
         if(b.x>=fb.x&&b.y>=fb.y&&b.x+b.w<=fb.x+fb.w&&b.y+b.h<=fb.y+fb.h)out.add(s.id);
@@ -4865,9 +4866,9 @@ function endSelect(wp,shift,alt){
       // ADR-0032: a fully-contained shape's cells are a subset of the marquee's
       // cells, so grid candidates are a superset of every possible hit — the
       // O(n) per-pointermove scan shrinks to the rect's neighbourhood.
-      const cands=state.shapes.length>40
-        ?_gridRectCandidates(_grid||(_grid=_buildGrid(state.shapes)),r)
-        :state.shapes;
+      const cands=_sh().length>40
+        ?_gridRectCandidates(_grid||(_grid=_buildGrid(_sh())),r)
+        :_sh();
       // ADR-0124: directional marquee (CAD/draw.io convention) — left→right
       // selects only fully-contained shapes; right→left selects anything the
       // rect touches (bbox intersect). Useful on dense boards where strict
@@ -4890,7 +4891,7 @@ function endSelect(wp,shift,alt){
     const pts=state.lasso;
     if(pts.length>2){
       if(!shift)state.selection.clear();                          // ⇧lasso adds, plain replaces (marquee parity)
-      for(const s of state.shapes){
+      for(const s of _sh()){
         if(s.locked||s.visible===0)continue;
         const b=G.bbox(s);if(!b)continue;
         if(_ptInPoly(b.x+b.w/2,b.y+b.h/2,pts))state.selection.add(s.id);   // centre-in-polygon (draw.io lasso rule)
@@ -5052,7 +5053,7 @@ function beginRectLike(wp){
     extras.color=STICKY_COLORS[_fl(Math.random()*STICKY_COLORS.length)];
     extras.text='';extras.fontSize=state.style.fontSize||14;          // ADR-0180
   }else if(state.tool==='frame'){
-    const n=state.shapes.filter(s=>s.type==='frame').length+1;
+    const n=_sh().filter(s=>s.type==='frame').length+1;
     extras.label=`Frame ${n}`;
     extras.stroke=getCSS('--brand')||'#00C4CC';
     extras.fill=null;extras.size=1.5;
@@ -5145,15 +5146,15 @@ function _endPointBind(sh,handle,alt){
 function _bindAt(x,y){
   const ok=s=>{const t=s.type;return t!=='line'&&t!=='arrow'&&t!=='pen'&&s.visible!==0};   // ADR-0150
   const has=s=>{const b=G.bbox(s);return b&&x>=b.x&&y>=b.y&&x<=b.x+b.w&&y<=b.y+b.h};
-  if(state.shapes.length>40){
-    if(!_grid)_grid=_buildGrid(state.shapes);
+  if(_sh().length>40){
+    if(!_grid)_grid=_buildGrid(_sh());
     const cands=[..._queryGrid(_grid,{x,y})];
     cands.sort((a,b)=>(_grid.idx.get(b)|0)-(_grid.idx.get(a)|0));
     for(const s of cands)if(ok(s)&&has(s))return s.id;
     return null;
   }
-  for(let i=state.shapes.length-1;i>=0;i--){
-    const s=state.shapes[i];
+  for(let i=_sh().length-1;i>=0;i--){
+    const s=_sh()[i];
     if(!ok(s))continue;
     if(has(s))return s.id;
   }
@@ -5198,7 +5199,7 @@ function createShapeKbd(){
     s=Shape.make('sticky',{x:cx-80,y:cy-80,w:160,h:160,
       color:STICKY_COLORS[_fl(Math.random()*STICKY_COLORS.length)],text:'',fontSize:state.style.fontSize||14});   // ADR-0180
   }else if(tool==='frame'){
-    const n=state.shapes.filter(x=>x.type==='frame').length+1;
+    const n=_sh().filter(x=>x.type==='frame').length+1;
     s=Shape.make('frame',{x:cx-400,y:cy-250,w:800,h:500,
       label:`Frame ${n}`,stroke:getCSS('--brand')||'#00C4CC',fill:null,size:1.5});
   }else if(tool==='text'){
@@ -5357,10 +5358,10 @@ function eraseAt(wp){
   const hit=pickTop(wp);
   if(hit&&!hit.locked&&!_eraseBatch.some(s=>s.id===hit.id)){
     // Remove from rendering immediately for feedback
-    const i=state.shapes.findIndex(s=>s.id===hit.id);
+    const i=_sh().findIndex(s=>s.id===hit.id);
     if(i>=0){
       const _eb=G.bbox(hit);
-      state.shapes.splice(i,1);_invalidateGrid();   // ADR-0009
+      _sh().splice(i,1);_invalidateGrid();   // ADR-0009
       invalidateDamage(_dmgPair(_eb,null,(hit.size||2)+16));   // ADR-0026: reveal under-shapes inside the erased bbox only
     }
     _eraseBatch.push(clone(hit));
@@ -5369,7 +5370,7 @@ function eraseAt(wp){
 function flushErase(){
   if(!_eraseBatch.length)return;
   // Restore shapes so Store.commit's _apply can find & remove them
-  for(const s of _eraseBatch)state.shapes.push(s);
+  for(const s of _eraseBatch)_sh().push(s);
   sortZ();_invalidateGrid();   // ADR-0009: connEnds below calls byId, must see the restored shapes
   // Resolve connector bindings now that erased shapes are back in state (connEnds works)
   const delIds=new Set(_eraseBatch.map(s=>s.id));
@@ -5433,7 +5434,7 @@ _on(window,'keydown',e=>{
   }
   if(meta&&k==='z'&&!e.shiftKey){_pd(e);if(Store.undo())UI.toast(t('undone'))}
   else if(meta&&(k==='y'||(k==='z'&&e.shiftKey))){_pd(e);if(Store.redo())UI.toast(t('redone'))}
-  else if(meta&&k==='a'){_pd(e);state.selection=new Set(state.shapes.filter(s=>s.visible!==0).map(s=>s.id));if(_selN())_announceSel();invalidate()}   // ADR-0037
+  else if(meta&&k==='a'){_pd(e);state.selection=new Set(_sh().filter(s=>s.visible!==0).map(s=>s.id));if(_selN())_announceSel();invalidate()}   // ADR-0037
   if(k==='p'&&e.shiftKey&&!meta&&!e.altKey){_pd(e);Presentation.enter();return}
   else if(meta&&k==='enter'){_pd(e);Presentation.enter()}
   else if(meta&&k==='c'){_pd(e);doCopy()}
@@ -5461,7 +5462,7 @@ _on(window,'keydown',e=>{
   else if(k==='tab'){
     // Cycle selection (z-order) for keyboard/SR users; wraps, recentres, announces.
     _pd(e);
-    const ids=state.shapes.filter(s=>!s.locked&&s.visible!==0).map(s=>s.id);   // ADR-0163: hidden shapes are unreachable by pointer — Tab parity
+    const ids=_sh().filter(s=>!s.locked&&s.visible!==0).map(s=>s.id);   // ADR-0163: hidden shapes are unreachable by pointer — Tab parity
     if(!ids.length)return;
     const id=cycleSel(ids,_selIds()[0],e.shiftKey?-1:1);
     state.selection=new Set([id]);
@@ -5650,7 +5651,7 @@ function _placeCopies(srcShapes,dx,dy){
   const idMap=new Map();
   for(const orig of srcShapes)idMap.set(orig.id,uid());
   // Deferred single commit (atomic undo): build every copy first, then commit ONE
-  // addMany op. nextZ() reads state.shapes, which we don't mutate until commit, so
+  // addMany op. nextZ() reads _sh(), which we don't mutate until commit, so
   // assign z incrementally off a captured base to keep copies' paint order distinct.
   let zBase=nextZ();
   for(const orig of srcShapes){
@@ -5692,7 +5693,7 @@ function doDelete(){
   for(const f of sel){
     if(f.type!=='frame')continue;
     const fb=G.bbox(f);
-    for(const s of state.shapes){
+    for(const s of _sh()){
       if(s.id===f.id||s.type==='frame'||s.locked||frameOf.has(s.id))continue;
       const b=G.bbox(s);
       if(b.x>=fb.x&&b.y>=fb.y&&b.x+b.w<=fb.x+fb.w&&b.y+b.h<=fb.y+fb.h)frameOf.set(s.id,f.id);
@@ -5726,11 +5727,11 @@ function unlockedSelectionIds(){return _selIds().filter(id=>!byId(id)?.locked);}
 function doBringFront(){
   const ids=unlockedSelectionIds();if(!ids.length)return;
   sortZ();
-  const sel=new Set(ids), selShapes=state.shapes.filter(s=>sel.has(s.id));
+  const sel=new Set(ids), selShapes=_sh().filter(s=>sel.has(s.id));
   if(!selShapes.length)return;
-  const n=state.shapes.length, k=selShapes.length;
-  if(state.shapes.slice(n-k).every(s=>sel.has(s.id))){invalidate();return}  // already at front: no churn
-  const others=state.shapes.filter(s=>!sel.has(s.id));
+  const n=_sh().length, k=selShapes.length;
+  if(_sh().slice(n-k).every(s=>sel.has(s.id))){invalidate();return}  // already at front: no churn
+  const others=_sh().filter(s=>!sel.has(s.id));
   let p=others.length?others[others.length-1].frac:null;
   const changes=[];
   for(const s of selShapes){   // current (sorted) order
@@ -5741,10 +5742,10 @@ function doBringFront(){
 function doSendBack(){
   const ids=unlockedSelectionIds();if(!ids.length)return;
   sortZ();
-  const sel=new Set(ids), selShapes=state.shapes.filter(s=>sel.has(s.id));
+  const sel=new Set(ids), selShapes=_sh().filter(s=>sel.has(s.id));
   if(!selShapes.length)return;
-  if(state.shapes.slice(0,selShapes.length).every(s=>sel.has(s.id))){invalidate();return}  // already at back
-  const others=state.shapes.filter(s=>!sel.has(s.id));
+  if(_sh().slice(0,selShapes.length).every(s=>sel.has(s.id))){invalidate();return}  // already at back
+  const others=_sh().filter(s=>!sel.has(s.id));
   const hi=others.length?others[0].frac:null;
   const changes=[];let prev=null;
   for(const s of selShapes){
@@ -5755,7 +5756,7 @@ function doSendBack(){
 function doBringForward(){
   const ids=unlockedSelectionIds();if(!ids.length)return;
   sortZ();
-  const sel=new Set(ids), arr=state.shapes, changes=[];
+  const sel=new Set(ids), arr=_sh(), changes=[];
   // move up = toward higher frac; process top→down so selected don't collide.
   for(let i=arr.length-2;i>=0;i--){
     const s=arr[i];if(!sel.has(s.id))continue;
@@ -5769,7 +5770,7 @@ function doBringForward(){
 function doSendBackward(){
   const ids=unlockedSelectionIds();if(!ids.length)return;
   sortZ();
-  const sel=new Set(ids), arr=state.shapes, changes=[];
+  const sel=new Set(ids), arr=_sh(), changes=[];
   for(let i=1;i<arr.length;i++){
     const s=arr[i];if(!sel.has(s.id))continue;
     const below=arr[i-1];if(sel.has(below.id))continue;
@@ -5786,7 +5787,7 @@ function selectSamePaint(){
   const sel=_selL(Boolean);
   if(sel.length!==1)return;
   const s0=sel[0],key=s0.type==='sticky'?s0.color:s0.fill;
-  const same=state.shapes.filter(s=>s.visible!==0&&(s.type==='sticky'?s.color:s.fill)===key);
+  const same=_sh().filter(s=>s.visible!==0&&(s.type==='sticky'?s.color:s.fill)===key);
   if(same.length<2)return;
   state.selection=new Set(same.map(s=>s.id));
   _announceSel();UI.toast(same.length+' '+t('selAllMatches'),'ok');
@@ -5824,13 +5825,13 @@ function connectSelection(){
 // complement over unlocked, visible shapes (marquee/select-all rules).
 function selectInverse(){
   const inv=new Set();
-  for(const s of state.shapes)if(!s.locked&&s.visible!==0&&!state.selection.has(s.id))inv.add(s.id);
+  for(const s of _sh())if(!s.locked&&s.visible!==0&&!state.selection.has(s.id))inv.add(s.id);
   state.selection=inv;
   _announceSel();invalidate();
 }
 function showAllShapes(){
   const before=[],after=[];
-  for(const s of state.shapes){
+  for(const s of _sh()){
     if(s.visible!==0)continue;
     before.push({id:s.id,visible:0});after.push({id:s.id,visible:null});
     delete s.visible;
@@ -5842,7 +5843,7 @@ function showAllShapes(){
 function selectSameType(){
   const sel=_selL(Boolean);
   if(sel.length!==1)return;
-  const same=state.shapes.filter(s=>s.visible!==0&&s.type===sel[0].type);
+  const same=_sh().filter(s=>s.visible!==0&&s.type===sel[0].type);
   if(same.length<2)return;
   state.selection=new Set(same.map(s=>s.id));
   _announceSel();UI.toast(same.length+' '+t('selAllMatches'),'ok');
@@ -5881,7 +5882,7 @@ function doUngroup(){
   const gids=new Set(ids.map(id=>byId(id)?.groupId).filter(Boolean));
   if(!gids.size){UI.toast(t('noGroup'),'warn');return}
   const ungrouped=[],before=[];
-  for(const s of state.shapes){
+  for(const s of _sh()){
     if(gids.has(s.groupId)&&!s.locked){before.push({id:s.id,groupId:s.groupId});delete s.groupId;ungrouped.push(s.id)}
   }
   state.selection=new Set([...ids.filter(id=>byId(id)),...ungrouped]);
@@ -5891,11 +5892,11 @@ function doUngroup(){
   invalidate();
 }
 function doClearAll(){
-  if(!state.shapes.length)return;
+  if(!_sh().length)return;
   if(!confirm(t('confirmClear')))return;
   const origSel=_selIds();
-  Persist.saveBackup(clone(state.shapes),{..._vp()},state.docName);   // ADR-0004
-  Store.commit({op:'clear',shapes:clone(state.shapes),wc:clone(state.wclock)});
+  Persist.saveBackup(clone(_sh()),{..._vp()},state.docName);   // ADR-0004
+  Store.commit({op:'clear',shapes:clone(_sh()),wc:clone(state.wclock)});
   _keepSel(origSel);
   UI.toast(t('cleared'));
 }
@@ -5910,7 +5911,7 @@ function doAlign(dir){
   for(const f of sel){
     if(f.type!=='frame')continue;
     const fb=G.bbox(f);
-    for(const s of state.shapes){
+    for(const s of _sh()){
       if(s.id===f.id||s.type==='frame'||s.locked||frameOf.has(s.id))continue;
       const b=G.bbox(s);
       if(b.x>=fb.x&&b.y>=fb.y&&b.x+b.w<=fb.x+fb.w&&b.y+b.h<=fb.y+fb.h)frameOf.set(s.id,f.id);
@@ -6047,7 +6048,7 @@ function doFlip(axis){
   for(const f of sel){
     if(f.type!=='frame')continue;
     const fb=G.bbox(f);
-    for(const s of state.shapes){
+    for(const s of _sh()){
       if(s.id===f.id||s.type==='frame'||s.locked||frameOf.has(s.id))continue;
       const b=G.bbox(s);
       if(b.x>=fb.x&&b.y>=fb.y&&b.x+b.w<=fb.x+fb.w&&b.y+b.h<=fb.y+fb.h)frameOf.set(s.id,f.id);
@@ -6077,7 +6078,7 @@ function doLock(){
 // accumulate locked shapes across sessions/imports with no bulk way back.
 // Same 'align' lock-dir before/after contract as doLock (single undo + sync).
 function unlockAll(){
-  const locked=state.shapes.filter(s=>s.locked);
+  const locked=_sh().filter(s=>s.locked);
   if(!locked.length){UI.toast(t('nothingLocked'),'warn');return}
   const before=locked.map(s=>({id:s.id,locked:s.locked??null}));
   for(const s of locked)s.locked=null;
@@ -6135,7 +6136,7 @@ function doRotate(d){
   for(const f of sel){
     if(f.type!=='frame')continue;
     const fb=G.bbox(f);
-    for(const s of state.shapes){
+    for(const s of _sh()){
       if(s.id===f.id||s.type==='frame'||s.locked||!_rotatable(s)||frameOf.has(s.id))continue;
       const b=G.bbox(s);
       if(b.x>=fb.x&&b.y>=fb.y&&b.x+b.w<=fb.x+fb.w&&b.y+b.h<=fb.y+fb.h)frameOf.set(s.id,f.id);
@@ -6185,7 +6186,7 @@ function _renderPngBlob(shapes,cb,desired){
 }
 // ADR-0052: selection-scoped exports share the whole-board renderers — the
 // exported region is exactly the selection's bbox (same pad/scale semantics).
-function _selShapes(){return state.shapes.filter(s=>state.selection.has(s.id))}
+function _selShapes(){return _sh().filter(s=>state.selection.has(s.id))}
 function exportSelection(fmt){
   const sel=_selShapes();
   if(!sel.length){UI.toast(t('noSelection'),'warn');return}
@@ -6202,7 +6203,7 @@ function exportViewportPNG(scale){
   const r=_cbr();
   const v=_vp();
   const view={x:v.x,y:v.y,w:r.width/v.zoom,h:r.height/v.zoom};
-  const shapes=state.shapes.filter(s=>inView(s,view));
+  const shapes=_sh().filter(s=>inView(s,view));
   if(!shapes.length){UI.toast(t('empty'),'warn');return}
   const off=_ce('canvas');
   const sc=exportScale(view.w,view.h,scale||2);
@@ -6220,7 +6221,7 @@ function exportViewportPNG(scale){
     UI.toast(t('exported'),'ok');
   },'image/png');
 }
-function exportPNG(shapes=state.shapes,scale){
+function exportPNG(shapes=_sh(),scale){
   _renderPngBlob(shapes,bl=>{
     if(!bl){UI.toast(t('exportFailed'),'err');return}
     const url=URL.createObjectURL(bl);
@@ -6232,7 +6233,7 @@ function exportPNG(shapes=state.shapes,scale){
 }
 // Copy the board PNG to the OS clipboard (Excalidraw parity). No shortcut —
 // ⌘⇧C collides with the browser DevTools inspector; menu-only.
-function copyPNG(shapes=state.shapes){
+function copyPNG(shapes=_sh()){
   if(!navigator.clipboard||!navigator.clipboard.write||typeof ClipboardItem==='undefined'){UI.toast(t('copyUnsupported'),'warn');return}
   _renderPngBlob(shapes,bl=>{
     if(!bl){UI.toast(t('exportFailed'),'err');return}
@@ -6244,7 +6245,7 @@ function copyPNG(shapes=state.shapes){
 
 // ADR-0087: selection/board SVG as clipboard text — the ClipboardItem SVG
 // MIME is browser-inconsistent, but plain-text SVG pastes everywhere useful.
-function copySVG(shapes=state.shapes){
+function copySVG(shapes=_sh()){
   const svg=buildSVG(shapes,_p());
   if(svg===null){UI.toast(t('empty'),'warn');return}
   copyText(svg).then(ok=>UI.toast(t(ok?'copied':'copyFailed'),ok?'ok':'warn'));
@@ -6271,14 +6272,14 @@ function replaceImage(){
   inp.click();
 }
 function exportPDF(){
-  if(!state.shapes.length){UI.toast(t('empty'),'warn');return}
-  const b=G.bboxAll(state.shapes);if(!b)return;
+  if(!_sh().length){UI.toast(t('empty'),'warn');return}
+  const b=G.bboxAll(_sh());if(!b)return;
   const pad=32,W=_ceil(b.w+pad*2),H=_ceil(b.h+pad*2),dpr=exportScale(W,H,window.devicePixelRatio||1);
   let off;try{off=new OffscreenCanvas(W*dpr,H*dpr)}catch(_){off=_ce('canvas');off.width=W*dpr;off.height=H*dpr}
   const oc=off.getContext('2d');
   oc.fillStyle=_p()||'#fff';oc.fillRect(0,0,W*dpr,H*dpr);
   oc.setTransform(dpr,0,0,dpr,(-b.x+pad)*dpr,(-b.y+pad)*dpr);
-  for(const s of state.shapes)drawShape(s,oc);
+  for(const s of _sh())drawShape(s,oc);
   const fin=bl=>{
     if(!bl){UI.toast(t('exportFailed'),'err');return}
     const url=URL.createObjectURL(bl);
@@ -6291,7 +6292,7 @@ function exportPDF(){
   else off.convertToBlob({type:'image/png'}).then(fin,()=>fin(null));   // rejection → same exportFailed toast as toBlob(null)
 }
 
-function exportSVG(shapes=state.shapes){
+function exportSVG(shapes=_sh()){
   const svg=buildSVG(shapes,_p());
   if(svg===null){UI.toast(t('empty'),'warn');return}
   const blob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'});
@@ -6301,7 +6302,7 @@ function exportSVG(shapes=state.shapes){
   a.click();setTimeout(()=>URL.revokeObjectURL(url),1e4);
   UI.toast(t('exportedSVG'),'ok');
 }
-function exportBoard(shapes=state.shapes){                       // ADR-0114: optional selection subset
+function exportBoard(shapes=_sh()){                       // ADR-0114: optional selection subset
   if(!shapes.length){UI.toast(t('empty'),'warn');return}
   const a=_ce('a');
   const _bu=URL.createObjectURL(new Blob([_JS({v:V,docName:state.docName,shapes:roundShapesForExport(shapes)})],{type:'application/json'}));
@@ -6631,9 +6632,9 @@ function importDrawioFile(file,wp){
   r.readAsText(file);
 }
 function exportExc(){
-  if(!state.shapes.length){UI.toast(t('empty'),'warn');return}
+  if(!_sh().length){UI.toast(t('empty'),'warn');return}
   const a=_ce('a');
-  const _bu=URL.createObjectURL(new Blob([_JS(excScene(state.shapes))],{type:'application/json'}));
+  const _bu=URL.createObjectURL(new Blob([_JS(excScene(_sh()))],{type:'application/json'}));
   a.href=_bu;a.download=(state.docName||'board')+'.excalidraw';
   a.click();setTimeout(()=>URL.revokeObjectURL(_bu),1e4);
   UI.toast(t('exportedExc'),'ok');
@@ -6741,9 +6742,9 @@ function boardToDrawio(shapes){
   return `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile compressed="false"><diagram name="Page-1"><mxGraphModel dx="${_rnd(-vx)}" dy="${_rnd(-vy)}" grid="${state.showGrid?1:0}" gridSize="${GRID_SIZE}" guides="1" tooltips="0" connect="0" arrows="0" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0" zoom="${vz}"><root><mxCell id="0"/><mxCell id="1" parent="0"/>${cells.join('')}</root></mxGraphModel></diagram></mxfile>`;   // ADR-0359: dx/dy/zoom viewport round-trip
 }
 function exportDrawio(){
-  if(!state.shapes.length){UI.toast(t('empty'),'warn');return}
+  if(!_sh().length){UI.toast(t('empty'),'warn');return}
   const a=_ce('a');
-  const _bu=URL.createObjectURL(new Blob([boardToDrawio(state.shapes)],{type:'application/xml'}));
+  const _bu=URL.createObjectURL(new Blob([boardToDrawio(_sh())],{type:'application/xml'}));
   a.href=_bu;a.download=(state.docName||'board')+'.drawio';
   a.click();setTimeout(()=>URL.revokeObjectURL(_bu),1e4);
   UI.toast(t('dioExported'),'ok');
@@ -7033,12 +7034,14 @@ function excToShapes(txt){
     // real excalidraw files don't, so match on the parent type instead.
     if(_conn(p.type)){p.label=s.text.slice(0,240);
       if(s.fontSize)p.fontSize=s.fontSize;
+      if(e&&e.textAlign&&e.textAlign!=='center')p.align=e.textAlign;   // ADR-0363
       if(e&&_fin(e.lineHeight)&&e.lineHeight!==1.25)p.lineH=_min(4,_max(0.5,e.lineHeight));   // ADR-0323
       shapes.splice(shapes.indexOf(s),1);continue;}
     // bLabel parents restore the label on any box type (rect/ellipse/diamond);
     // the sticky fold below stays rect-only since stickies export as rectangles
     if(e&&e.bLabel){p.label=s.text.slice(0,240);
       if(s.fontSize)p.fontSize=s.fontSize;
+      if(e.textAlign&&e.textAlign!=='center')p.align=e.textAlign;   // ADR-0363
       if(_fin(e.lineHeight)&&e.lineHeight!==1.25)p.lineH=_min(4,_max(0.5,e.lineHeight));   // ADR-0323
       if(/^(top|middle|bottom)$/.test(e.verticalAlign))p.valign=e.verticalAlign;   // ADR-0244
       if(e.fontFamily===3)p.font='mono';else if(e.fontFamily===1||e.fontFamily===5)p.font='serif';   // ADR-0243
@@ -7048,6 +7051,7 @@ function excToShapes(txt){
     if(s.fontSize)p.fontSize=s.fontSize;
     if(e&&/^(top|middle|bottom)$/.test(e.verticalAlign))p.valign=e.verticalAlign;   // ADR-0244
     if(e&&e.fontFamily===3)p.font='mono';else if(e&&(e.fontFamily===1||e.fontFamily===5))p.font='serif';   // ADR-0243
+    if(e&&e.textAlign&&e.textAlign!=='center')p.align=e.textAlign;   // ADR-0363
     if(p.fill!=null){p.color=p.fill;delete p.fill}
     shapes.splice(shapes.indexOf(s),1);
   }
@@ -7095,7 +7099,7 @@ function importBoardText(txt,wp){
 // ADR-0115 (outbound half): whole board (or selection via exportSelection)
 // as .board JSON on the clipboard — moves content between boards/tabs without
 // a file round-trip.
-function copyBoardJSON(shapes=state.shapes){
+function copyBoardJSON(shapes=_sh()){
   if(!shapes.length){UI.toast(t('empty'),'warn');return}
   copyText(_JS({v:V,docName:state.docName,shapes:roundShapesForExport(shapes)}))
     .then(ok=>UI.toast(t(ok?'copied':'copyFailed'),ok?'ok':'warn'));
@@ -7120,7 +7124,7 @@ function importBoard(file){
       // Atomic whole-board swap (mirrors importFromHash): a single replace op means
       // one Ctrl+Z fully restores the previous board regardless of import size.
       // clear+N-adds would overflow MAX_HISTORY for large boards and require N+1 undos.
-      const before=clone(state.shapes);
+      const before=clone(_sh());
       const beforeWc=clone(state.wclock);
       const origSel=_selIds();
       if(before.length)Persist.saveBackup(before,{..._vp()},state.docName);   // ADR-0004
@@ -7131,7 +7135,7 @@ function importBoard(file){
       state.selection.clear();state.wclock={};
       if(typeof d.docName==='string'&&d.docName){state.docName=d.docName.slice(0,80);_g('docName').value=state.docName;_syncDocTitle();}   // clamp: the input enforces maxlength=80, intake paths must too
       sortZ();invalidate();
-      Store._recordCommitted({op:'replace',before,after:clone(state.shapes),wc:beforeWc,afterWc:clone(state.wclock),origSel});
+      Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(state.wclock),origSel});
       UI.toast(t('loadedBoard')+' ('+shapes.length+')','ok');
     }catch{UI.toast(t('invalidBoard'),'err')}
   };
@@ -7656,7 +7660,7 @@ const Net={
         if(state.peerId<msg.peer)this._sendSnapshot();
         break;
       case 'snapshot':
-        if(state.shapes.length===0)this._applySnapshot(msg);
+        if(_sh().length===0)this._applySnapshot(msg);
         // Already have shapes: merge — adopt only shapes we don't have yet.
         // Restrict to 'add' ops: _snapshotMsg() only emits adds; accepting other
         // op types here would let a malicious peer embed clear/del/upd inside a
@@ -7701,7 +7705,7 @@ const Net={
   _snapshotMsg(){
     // ADR-0058: `wc` ships each shape's per-property last-write clocks so a
     // non-empty receiver can LWW-merge properties, not just adopt new shapes.
-    const ops=state.shapes.map(s=>({
+    const ops=_sh().map(s=>({
       op:'add',shape:clone(s),wc:clone(state.wclock[s.id]||{}),
       clock:{peer:state.peerId,seq:'snap:'+s.id,ts:0,_snap:true}
     }));
@@ -7910,7 +7914,7 @@ const Share={
     return{ct:Share._b64uEnc(all),k:Share._b64uEnc(raw)};
   },
   async exportToUrl(enc){
-    const data={v:V,shapes:roundShapesForExport(state.shapes),name:state.docName,
+    const data={v:V,shapes:roundShapesForExport(_sh()),name:state.docName,
       viewport:{x:+_vp().x.toFixed(2),y:+_vp().y.toFixed(2),zoom:+_vp().zoom.toFixed(4)}};   // ADR-0112: receiver opens at the sharer's view
     const json=_JS(data);
     // CompressionStream if available, else base64
@@ -7995,10 +7999,10 @@ const Share={
       // validate each shape — reject anything without id/type/z
       const valid=data.shapes.filter(validShape);
       if(!valid.length){UI.toast(t('invalidBoard'),'err');clearHash();return false}
-      if(state.shapes.length&&!confirm(t('importConfirm')))return false;
+      if(_sh().length&&!confirm(t('importConfirm')))return false;
       // Reversible whole-board swap: a mistaken import is undoable (Ctrl+Z), so the
       // shared link can't silently destroy the board it replaced (§3.9 self-overwrite).
-      const before=clone(state.shapes);
+      const before=clone(_sh());
       const beforeWc=clone(state.wclock);
       const origSel=_selIds();
       // ADR-0004: also survives past the undo window (reload/closed-tab), not just this session.
@@ -8014,7 +8018,7 @@ const Share={
       }
       state.selection.clear();state.wclock={};
       sortZ();invalidate();
-      Store._recordCommitted({op:'replace',before,after:clone(state.shapes),wc:beforeWc,afterWc:clone(state.wclock),origSel});
+      Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(state.wclock),origSel});
       _g('docName').value=state.docName;_syncDocTitle();
       // clean URL
       history.replaceState(null,'',location.pathname);
@@ -8102,7 +8106,7 @@ const Persist={
       const stored=new Map(ks.map((k,i)=>[k,kv[i]]));
       // ADR-0031: strip image bytes out of the doc record into content-hash
       // blobs — doc + :prev share one copy, autosave clones stay small.
-      const{slim,puts}=_imgSlim(state.shapes,stored);
+      const{slim,puts}=_imgSlim(_sh(),stored);
       for(const[k,d]of puts)imgs.put(d,k);
       // GC: drop blobs neither the live doc nor the :prev backup references.
       const prev=await reqDone(tx.objectStore(DB_STORE).get(DOC_KEY+':prev'));
@@ -8120,7 +8124,7 @@ const Persist={
       state.dirty=false;
       state.lastSaveAt=Date.now();
       UI.refreshSaved();
-      if(state.shapes.length)this.requestDurable();   // user has content worth keeping
+      if(_sh().length)this.requestDurable();   // user has content worth keeping
       this._quotaWarn();                               // ADR-0227
       if(explicit)UI.toast(t('saved'),'ok');
     }catch(err){
@@ -8158,7 +8162,7 @@ const Persist={
     }
   },
   // ADR-0004 (self-overwrite protection): doClearAll/importBoard/importFromHash replace
-  // state.shapes wholesale. Session undo (Ctrl+Z) covers that, but the very next autosave
+  // _sh() wholesale. Session undo (Ctrl+Z) covers that, but the very next autosave
   // overwrites the ONLY IndexedDB slot with the destructive result — after a reload or
   // closed tab the pre-replace board is gone for good. Stash it in a second key first.
   // Best-effort: a failed backup must never block the destructive op it's guarding.
@@ -8210,7 +8214,7 @@ const Persist={
       shapes=shapes.filter(validShape);
       if(!shapes.length){await this.discardBackup();return false}
       // Reversible whole-board swap, same pattern as importBoard/importFromHash.
-      const before=clone(state.shapes);
+      const before=clone(_sh());
       const beforeWc=clone(state.wclock);
       const origSel=_selIds();
       state.shapes=shapes.map(clone);_invalidateGrid();   // ADR-0009
@@ -8220,7 +8224,7 @@ const Persist={
         _vp().x=+d.viewport.x;_vp().y=+d.viewport.y;_vp().zoom=clampZoom(+d.viewport.zoom);
       }
       sortZ();invalidate();
-      Store._recordCommitted({op:'replace',before,after:clone(state.shapes),wc:beforeWc,afterWc:clone(state.wclock),origSel});
+      Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(state.wclock),origSel});
       await this.discardBackup();
       this.schedule();
       UI.toast(t('backupRestored'),'ok');
@@ -8273,7 +8277,7 @@ const UI={
   refreshUndo(){
     _g('btnUndo').disabled=state.histIdx<0;
     _g('btnRedo').disabled=state.histIdx>=state.history.length-1;
-    _g('sCount').textContent=state.shapes.length;
+    _g('sCount').textContent=_sh().length;
   },
   refreshZoom(){
     _g('zoomVal').textContent=_rnd(_vp().zoom*100)+'%';
@@ -8438,13 +8442,13 @@ const UI={
       has&&_selAny(s=>(_conn(s.type))&&!s.locked&&(s.a||s.b))&&['ctxPinAnchor','',pinAnchor],   // ADR-0213
       has&&_selAny(s=>(_conn(s.type))&&!s.locked&&(s.a||s.b))&&['ctxUnbind','',unbindSelection],   // ADR-0157
       has&&_selIds().map(byId).filter(s=>s&&!s.locked&&s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen').length===2&&['ctxConnect','',connectSelection],
-      state.shapes.some(s=>s.visible===0)&&['ctxShowAll','',showAllShapes],
-      state.shapes.length&&['ctxSelectInverse','⌘⇧I',selectInverse],
+      _sh().some(s=>s.visible===0)&&['ctxShowAll','',showAllShapes],
+      _sh().length&&['ctxSelectInverse','⌘⇧I',selectInverse],
       // ADR-0005's flagship feature was ⌥B-only — invisible to touch/mouse users
       // (the exact "keyboard-only feature" trap FT-06 warned about).
       has&&_selIds().some(id=>byId(id)?.type==='pen')&&['ctxBeautify','⌥B',doBeautify],
       has&&[byId(_selIds()[0])?.locked?'ctxUnlock':'ctxLock','',doLock],
-      state.shapes.some(s=>s.locked)&&['ctxUnlockAll','',unlockAll],
+      _sh().some(s=>s.locked)&&['ctxUnlockAll','',unlockAll],
       has&&_selN()>1&&'sep',
       has&&_selN()>1&&['ctxAlignLeft','',()=>doAlign('left')],
       has&&_selN()>1&&['ctxAlignCX','',()=>doAlign('cx')],
@@ -8468,8 +8472,8 @@ const UI={
       has&&['ctxExportSelBoard','',()=>exportSelection('board')],          // ADR-0114
       has&&_selN()===1&&_selAny(s=>s.type==='image'&&!s.locked)&&['ctxReplaceImg','',replaceImage],   // ADR-0089
       has&&'sep',
-      ['ctxSelectAll','⌘A',()=>{state.selection=new Set(state.shapes.filter(s=>s.visible!==0).map(s=>s.id));if(_selN())_announceSel();invalidate()}],
-      state.shapes.length&&['ctxClear','',doClearAll]
+      ['ctxSelectAll','⌘A',()=>{state.selection=new Set(_sh().filter(s=>s.visible!==0).map(s=>s.id));if(_selN())_announceSel();invalidate()}],
+      _sh().length&&['ctxClear','',doClearAll]
     ].filter(Boolean).filter((it,i,a)=>!(it==='sep'&&(i===0||i===a.length-1||a[i-1]==='sep')));
     for(const it of items){
       if(it==='sep'){
@@ -8502,8 +8506,8 @@ const UI={
   openExportMenu(x,y){
     this.openCtxMenu(x,y,[
       ['ctxExportPNG','⌘E',exportPNG],
-      ['ctxExportPNG1x','',()=>exportPNG(state.shapes,1)],
-      ['ctxExportPNG4x','',()=>exportPNG(state.shapes,4)],
+      ['ctxExportPNG1x','',()=>exportPNG(_sh(),1)],
+      ['ctxExportPNG4x','',()=>exportPNG(_sh(),4)],
       ['ctxExportViewPNG','',()=>exportViewportPNG(2)],
       ['ctxCopyPNG','',copyPNG],
       ['ctxExportSVG','⌘⇧E',exportSVG],
@@ -9046,7 +9050,7 @@ function fitFrames(){
   const before=[],after=[];
   for(const f of frames){
     let m=null;
-    for(const s of state.shapes){
+    for(const s of _sh()){
       if(s.id===f.id||s.locked)continue;
       const b=G.bbox(s);if(!b||b.w==null)continue;
       if(b.x>=f.x&&b.y>=f.y&&b.x+b.w<=f.x+f.w&&b.y+b.h<=f.y+f.h){
@@ -9399,7 +9403,7 @@ const Presentation=(()=>{
   });
 
   function _getFrames(){
-    return [...state.shapes]
+    return [..._sh()]
       .filter(s=>s.type==='frame')
       .sort((a,b)=>a.x-b.x||(a.y-b.y));  // left→right, then top→bottom
   }
@@ -9511,7 +9515,7 @@ const Minimap=(()=>{
     if(!_scene){_scene=_ce('canvas');_scene.width=W;_scene.height=H;}
     const sx=_scene.getContext('2d');
     sx.clearRect(0,0,W,H);
-    const shapes=state.shapes;
+    const shapes=_sh();
     const bb=G.bboxAll(shapes);
     if(!bb){_sc=0;return;}
     const pad=20;
@@ -9543,7 +9547,7 @@ const Minimap=(()=>{
   function draw(){
     _raf=0;
     mx.clearRect(0,0,W,H);
-    if(!state.shapes.length){_sceneVer=-1;_sc=0;return;}
+    if(!_sh().length){_sceneVer=-1;_sc=0;return;}
     if(_sceneVer!==_gridVer||!_scene)_renderScene();
     if(!_sc)return;
     mx.drawImage(_scene,0,0);
@@ -9563,7 +9567,7 @@ const Minimap=(()=>{
   const _mmGo=e=>{
     const r=mc.getBoundingClientRect();
     const mx2=(e.clientX-r.left)/r.width,my2=(e.clientY-r.top)/r.height;
-    const shapes=state.shapes;const bb=G.bboxAll(shapes);if(!bb)return;
+    const shapes=_sh();const bb=G.bboxAll(shapes);if(!bb)return;
     const pad=20,sc=_min(W/(bb.w+pad*2),H/(bb.h+pad*2),1);
     const ox=-bb.x*sc+(W-bb.w*sc)/2,oy=-bb.y*sc+(H-bb.h*sc)/2;
     const wx=(mc.width*mx2-ox)/sc,wy=(mc.height*my2-oy)/sc;

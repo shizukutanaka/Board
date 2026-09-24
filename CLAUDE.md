@@ -412,6 +412,8 @@ Board/
 │   ├── ADR-0360-drawio-curve-cbend-roundtrip.md # drawio curve 制御点往復 (実装済)
 │   ├── ADR-0361-drawio-waypoint-object-form.md  # drawio waypoint 形式修正 (実装済)
 │   ├── ADR-0362-vp-live-read-shorthand.md    # _vp() live-read shorthand (実装済)
+│   ├── ADR-0363-excalidraw-textalign-fold.md  # exc textAlign → s.align 復元 (実装済)
+│   ├── ADR-0364-sh-live-read-shorthand.md    # _sh() live-read shorthand (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
