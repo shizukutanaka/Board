@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.276]
+
+### 追加
+- **コネクタのホップ (交差ジャンプアーク)** (ADR-0218)。
+  ctx メニューでトグル — 交差点を半円で飛び越す回路図/
+  draw.io "jump" スタイル。直線・ウェイポイント・エルボー
+  に対応、canvas/SVG 同一幾何。
+
 ## [1.7.275]
 
 ### 修正

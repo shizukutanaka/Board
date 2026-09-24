@@ -716,6 +716,7 @@ const checks = [
   ['modal focus capture/restore + summary tabbable (ADR-0215)', html.includes('_captureFocus()')&&html.includes('this._restoreFocus()')&&html.includes('select,textarea,summary,[tabindex')],
   ['labelPos drag snaps to 0/.25/.5/.75/1 slots (ADR-0216)', html.includes('for(const slot of[0,0.25,0.5,0.75,1])')],
   ['ctx route-reset reachable when only labelPos/cbend set (ADR-0217)', html.includes('s.labelPos==null&&s.cbend==null)continue')&&html.includes('s.labelPos!=null||s.cbend!=null')],
+  ['connector jump arcs canvas+SVG + ctx toggle (ADR-0218)', html.includes('function _polylineHop(c,s,pts,R)')&&html.includes('function _hopPathD(s,pts,ox,oy,R)')&&html.includes('function toggleHop()')&&html.includes("['ctxHop','',toggleHop]")],
   ['endpoint drag Shift constrains to 45 deg + label editor fontSize (ADR-0206)', html.includes("constrain the free end to 45")&&html.includes("${hit.fontSize||12}px")],
   ['i18n has excImported ja+en', html.includes("excImported:'Excalidraw を取り込みました'") && html.includes("excImported:'Excalidraw imported'")],
   // v1.7.102: ADR-0044 text paste → text shape
@@ -774,7 +775,7 @@ const checks = [
   ['label editor follows the viewport (ADR-0182)', html.includes('function _lblFollow()')&&html.includes('_lblAnchor(hit)')&&html.includes('_lblTa={inp,hit}')],
   ['route style persists via state.style.elbow/curve into Shape.make', html.includes("state.style.elbow=s.elbow;state.style.curve=0")&&html.includes('if(state.style.elbow)base.elbow=state.style.elbow;')],
   ['corner/hatch/align persist via state.style into Shape.make', html.includes("state.style.r!=null")&&html.includes("state.style.align=nxt")&&html.includes("state.style.fstyle=nxt||null")],
-  ['eyedropper absorbs persisted look-props + start persists', html.includes("'elbow','curve','r','fstyle','align','valign','fontSize','lineH','cbend'")&&html.includes("state.style.start=s.start")],
+  ['eyedropper absorbs persisted look-props + start persists', html.includes("'elbow','curve','hop','r','fstyle','align','valign','fontSize','lineH','cbend'")&&html.includes("state.style.start=s.start")],
   ['frame label honors s.font family', html.includes('${_fontFam(s)}" font-size="12"')&&html.includes('${_fontFam(hit)};color')],
   ['sticky body valign via s.valign (ctxVAlign gate + canvas/SVG)', html.includes("seqS=[null,'middle','bottom']")&&html.includes("const sty=s.valign==='middle'")&&html.includes("const sy2v=s.valign==='middle'")],
   ['frame font via cycleFont gate + make() inheritance', html.includes("s.type!=='frame'&&!s.label")&&html.includes("type==='frame'||s.label")&&html.includes("type==='sticky'||type==='frame'")],

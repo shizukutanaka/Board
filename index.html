@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.275';
+const V='1.7.276';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -866,7 +866,7 @@ const I18N={
     undone:'元に戻した',redone:'やり直した',created:'作成',editLabel:'選択中の図形を編集',
     confirmClear:'すべて削除しますか？',
     ctxCopy:'コピー',ctxPasteInPlace:'同じ位置に貼り付け',ctxPasteAt:'ここに貼り付け',ctxPaste:'貼り付け',ctxDuplicate:'複製',
-    ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxCurve:'曲線',ctxRouteReset:'ルートをリセット (直線に戻す)',ctxReverse:'方向を反転',ctxFitText:'テキストに合わせる',ctxSelContents:'内容を選択',ctxFrameFit:'コンテンツに合わせる',ctxArrowHead:'矢印ヘッド (矢印→丸→シェブロン)',ctxToArrow:'矢印に変換',ctxToLine:'直線に変換',ctxBothEnds:'両端ヘッド',ctxRrect:'角スタイル (角丸→直角)',ctxStickyColor:'付箋の色 (順送り)',ctxToText:'テキストに変換',ctxToSticky:'付箋に変換',ctxTextAlign:'テキスト揃え (左→中央→右)',ctxFillStyle:'塗りスタイル (塗り→ハッチ→斜格子)',
+    ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxCurve:'曲線',ctxHop:'ホップ (交差を飛び越す)',ctxRouteReset:'ルートをリセット (直線に戻す)',ctxReverse:'方向を反転',ctxFitText:'テキストに合わせる',ctxSelContents:'内容を選択',ctxFrameFit:'コンテンツに合わせる',ctxArrowHead:'矢印ヘッド (矢印→丸→シェブロン)',ctxToArrow:'矢印に変換',ctxToLine:'直線に変換',ctxBothEnds:'両端ヘッド',ctxRrect:'角スタイル (角丸→直角)',ctxStickyColor:'付箋の色 (順送り)',ctxToText:'テキストに変換',ctxToSticky:'付箋に変換',ctxTextAlign:'テキスト揃え (左→中央→右)',ctxFillStyle:'塗りスタイル (塗り→ハッチ→斜格子)',
     ctxSelectSameType:'同じ種類を選択',ctxSelectSame:'同色を選択',ctxSearch:'検索',ctxFit:'全体を表示',ctxZoomReset:'ズーム100%',ctxGrid:'グリッド',ctxSnap:'吸着',ctxMinimap:'ミニマップ',ctxWrapFrame:'フレームで包む',ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
     ctxSendBackward:'背面へ',ctxSendBack:'最背面へ',
     ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxRotate90:'90°回転',ctxCorner:'角丸を切替',ctxShadow:'影 (ドロップシャドウ)',ctxHide:'非表示',ctxShowAll:'すべて表示',ctxSelectInverse:'選択を反転',ctxConnect:'2図形をコネクタで接続',hiddenCount:'件を非表示',shownAll:'すべて表示しました',ctxUnbind:'結合を解除',ctxPinAnchor:'アンカー固定/解除',ctxVAlign:'縦揃え (上→中央→下)',ctxLineH:'行間 (標準→狭い→広い)',ctxSpacing:'字間 (標準→1px→2px)',ctxWrap:'テキスト折返し',ctxFont:'書体',ctxOpacity:'不透明度 (巡回)',ctxLock:'ロック',ctxUnlock:'ロック解除',ctxUnlockAll:'全てロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
@@ -942,7 +942,7 @@ const I18N={
     undone:'Undone',redone:'Redone',created:'Created',editLabel:'Edit selected shape',
     confirmClear:'Delete everything?',
     ctxCopy:'Copy',ctxPasteInPlace:'Paste in place',ctxPasteAt:'Paste here',ctxPaste:'Paste',ctxDuplicate:'Duplicate',
-    ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxCurve:'Curved',ctxRouteReset:'Reset route (straighten)',ctxReverse:'Reverse direction',ctxFitText:'Fit to text',ctxSelContents:'Select contents',ctxFrameFit:'Fit to contents',ctxArrowHead:'Arrowhead (arrow→dot→open)',ctxToArrow:'Convert to arrow',ctxToLine:'Convert to line',ctxBothEnds:'Arrowheads both ends',ctxRrect:'Corners (round→sharp)',ctxStickyColor:'Sticky colour (cycle)',ctxToText:'Convert to text',ctxToSticky:'Convert to sticky',ctxTextAlign:'Text align (left→center→right)',ctxFillStyle:'Fill style (solid→hatch→cross)',
+    ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxCurve:'Curved',ctxHop:'Jump arcs at crossings',ctxRouteReset:'Reset route (straighten)',ctxReverse:'Reverse direction',ctxFitText:'Fit to text',ctxSelContents:'Select contents',ctxFrameFit:'Fit to contents',ctxArrowHead:'Arrowhead (arrow→dot→open)',ctxToArrow:'Convert to arrow',ctxToLine:'Convert to line',ctxBothEnds:'Arrowheads both ends',ctxRrect:'Corners (round→sharp)',ctxStickyColor:'Sticky colour (cycle)',ctxToText:'Convert to text',ctxToSticky:'Convert to sticky',ctxTextAlign:'Text align (left→center→right)',ctxFillStyle:'Fill style (solid→hatch→cross)',
     ctxSelectSameType:'Select same type',ctxSelectSame:'Select same colour',ctxSearch:'Search',ctxFit:'Fit board',ctxZoomReset:'Zoom 100%',ctxGrid:'Grid',ctxSnap:'Snap',ctxMinimap:'Minimap',ctxWrapFrame:'Frame selection',ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
     ctxSendBackward:'Send backward',ctxSendBack:'Send to back',
     ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxRotate90:'Rotate 90°',ctxCorner:'Round corner',ctxShadow:'Drop shadow',ctxHide:'Hide',ctxShowAll:'Show all',ctxSelectInverse:'Invert selection',ctxConnect:'Connect 2 shapes',hiddenCount:'hidden',shownAll:'All shapes shown',ctxUnbind:'Unbind endpoints',ctxPinAnchor:'Pin/unpin anchor',ctxVAlign:'Vertical align (top→middle→bottom)',ctxLineH:'Line spacing (normal→tight→wide)',ctxSpacing:'Letter spacing (normal→1px→2px)',ctxWrap:'Wrap text',ctxFont:'Font family',ctxOpacity:'Opacity (cycle)',ctxLock:'Lock',ctxUnlock:'Unlock',ctxUnlockAll:'Unlock all',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
@@ -2842,7 +2842,7 @@ function drawArrow(s,c){
     return;
   }
   if(s.elbow){
-    const pts=_elbowPts(s);(s.r>0)?_polylineR(c,pts,s.r):_polyline(c,pts);c.stroke();   // ADR-0207
+    const pts=_elbowPts(s);s.hop?_polylineHop(c,s,pts,7):(s.r>0)?_polylineR(c,pts,s.r):_polyline(c,pts);c.stroke();   // ADR-0207/0218
     const L=pts[pts.length-1],P=pts[pts.length-2];
     const ang=Math.atan2(L.y-P.y,L.x-P.x)||Math.atan2(e.y2-e.y1,e.x2-e.x1);
     _arrowHeadShape(c,L.x,L.y,ang,ah,s.stroke,s.head);
@@ -2853,7 +2853,7 @@ function drawArrow(s,c){
     return;
   }
   const pts=_linePts(s);                                            // ADR-0076
-  _polyline(c,pts);c.stroke();
+  s.hop?_polylineHop(c,s,pts,7):_polyline(c,pts);c.stroke();        // ADR-0218
   const L=pts[pts.length-1],P=pts[pts.length-2],F=pts[1];
   const ang=Math.atan2(L.y-P.y,L.x-P.x);
   _arrowHeadShape(c,L.x,L.y,ang,ah,s.stroke,s.head);
@@ -2946,6 +2946,82 @@ function _polylineR(c,pts,r){
     c.quadraticCurveTo(p1.x,p1.y,p1.x+(p2.x-p1.x)/e2*rr,p1.y+(p2.y-p1.y)/e2*rr);
   }
   c.lineTo(pts[pts.length-1].x,pts[pts.length-1].y);
+}
+// ADR-0218: connector "jump" arcs — where this conn's polyline crosses another
+// conn, the segment bulges over it in a semicircle (circuit-diagram / draw.io
+// "jump" style). Render-only: endpoints within 3% count as bindings, not
+// crossings, so bound ends never hop their own shape's edges.
+function _segIntT(ax,ay,bx,by,cx,cy,dx,dy){
+  const rx=bx-ax,ry=by-ay,sx=dx-cx,sy=dy-cy,den=rx*sy-ry*sx;
+  if(Math.abs(den)<1e-9)return null;
+  const t=((cx-ax)*sy-(cy-ay)*sx)/den,u=((cx-ax)*ry-(cy-ay)*rx)/den;
+  if(t<=0.03||t>=0.97||u<=0.03||u>=0.97)return null;
+  return t;
+}
+function _hopsFor(s,pts){
+  const hops=[];                                   // packed i*1e6+t, sorted
+  for(const o of state.shapes){
+    if(o===s||o.visible===0)continue;
+    const t=o.type;if(t!=='line'&&t!=='arrow')continue;
+    const op=_connPathPts(o);if(!op||op.length<2)continue;
+    for(let i=0;i<pts.length-1;i++){
+      const a=pts[i],b=pts[i+1];
+      for(let j=0;j<op.length-1;j++){
+        const tt=_segIntT(a.x,a.y,b.x,b.y,op[j].x,op[j].y,op[j+1].x,op[j+1].y);
+        if(tt!=null)hops.push(i*1e6+tt);
+      }
+    }
+  }
+  hops.sort((x,y)=>x-y);
+  return hops;
+}
+// Canvas: draw pts with semicircular hops (always to the +normal side — a fixed
+// chirality keeps parallel crossings readable, same as draw.io).
+function _polylineHop(c,s,pts,R){
+  const hops=_hopsFor(s,pts);
+  c.beginPath();c.moveTo(pts[0].x,pts[0].y);
+  for(let i=0;i<pts.length-1;i++){
+    const a=pts[i],b=pts[i+1];
+    const L=Math.hypot(b.x-a.x,b.y-a.y)||1,nx=-(b.y-a.y)/L,ny=(b.x-a.x)/L;
+    const rf=Math.min(R,L*0.35)/L;
+    let prev=0;
+    while(hops.length){
+      const pk=hops[0],si=Math.floor(pk/1e6);
+      if(si>i)break;
+      const t=pk-si*1e6;hops.shift();
+      const ta=Math.max(prev,t-rf),tb=Math.min(t+rf,1);
+      if(tb-ta<0.01)continue;
+      c.lineTo(a.x+(b.x-a.x)*ta,a.y+(b.y-a.y)*ta);
+      const midt=(ta+tb)/2;
+      c.quadraticCurveTo(a.x+(b.x-a.x)*midt+nx*R*2,a.y+(b.y-a.y)*midt+ny*R*2,
+        a.x+(b.x-a.x)*tb,a.y+(b.y-a.y)*tb);
+      prev=tb;
+    }
+    c.lineTo(b.x,b.y);
+  }
+}
+// SVG: same geometry as a `d` string.
+function _hopPathD(s,pts,ox,oy,R){
+  const hops=_hopsFor(s,pts);
+  let d=`M ${_num(pts[0].x+ox)} ${_num(pts[0].y+oy)}`;
+  for(let i=0;i<pts.length-1;i++){
+    const a=pts[i],b=pts[i+1];
+    const L=Math.hypot(b.x-a.x,b.y-a.y)||1,nx=-(b.y-a.y)/L,ny=(b.x-a.x)/L;
+    const rf=Math.min(R,L*0.35)/L;
+    let prev=0;
+    while(hops.length){
+      const pk=hops[0],si=Math.floor(pk/1e6);
+      if(si>i)break;
+      const t=pk-si*1e6;hops.shift();
+      const ta=Math.max(prev,t-rf),tb=Math.min(t+rf,1);
+      if(tb-ta<0.01)continue;
+      const midt=(ta+tb)/2;
+      d+=` L ${_num(a.x+(b.x-a.x)*ta+ox)} ${_num(a.y+(b.y-a.y)*ta+oy)} Q ${_num(a.x+(b.x-a.x)*midt+nx*R*2+ox)} ${_num(a.y+(b.y-a.y)*midt+ny*R*2+oy)} ${_num(a.x+(b.x-a.x)*tb+ox)} ${_num(a.y+(b.y-a.y)*tb+oy)}`;
+      prev=tb;
+    }
+    d+=` L ${_num(b.x+ox)} ${_num(b.y+oy)}`;
+  }
+  return d;
 }
 // Same rounded-joint walk as an SVG path `d` string (parity with _polylineR).
 function _polylineRd(pts,ox,oy,r){
@@ -3753,7 +3829,7 @@ canvas.addEventListener('pointerdown',e=>{
         const ext=_styleOf(hit);
         // ADR-0185: eyedropper also absorbs every persisted look-prop so the
         // next shape carries the picked style (Figma eyedropper parity).
-        for(const k of['stroke','fill','size','opacity','dash','font','head','start','elbow','curve','r','fstyle','align','valign','fontSize','lineH','cbend','spacing','shadow'])state.style[k]=ext[k];
+        for(const k of['stroke','fill','size','opacity','dash','font','head','start','elbow','curve','hop','r','fstyle','align','valign','fontSize','lineH','cbend','spacing','shadow'])state.style[k]=ext[k];
         state.styleClipboard=ext;                   // ⌥V applies it to the selection too
         UI.toast(t('eyedropDone'),'ok');UI.announce(t('eyedropDone'));
       }
@@ -6761,13 +6837,15 @@ function buildSVG(shapes,paper){
           {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
         }else if(s.elbow){
           const pts=_elbowPts(s);
-          if(s.r>0)els.push(`<path d="${_polylineRd(pts,ox,oy,s.r)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`);   // ADR-0207
+          if(s.hop)els.push(`<path d="${_hopPathD(s,pts,ox,oy,7)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`);   // ADR-0218
+          else if(s.r>0)els.push(`<path d="${_polylineRd(pts,ox,oy,s.r)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`);   // ADR-0207
           else{const spts=pts.map(p=>`${_num(p.x+ox)},${_num(p.y+oy)}`).join(' ');
           els.push(`<polyline points="${spts}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`)}
           const lm=_elbowLabelXY(s);
           {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
         }else{
-          if(s.way){const w=s.way;els.push(`<polyline points="${X1+ox},${Y1+oy} ${_num(w.x+ox)},${_num(w.y+oy)} ${X2+ox},${Y2+oy}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`)}   // ADR-0076
+          if(s.hop){const pts=_linePts(s);els.push(`<path d="${_hopPathD(s,pts,ox,oy,7)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`)}   // ADR-0218
+          else if(s.way){const w=s.way;els.push(`<polyline points="${X1+ox},${Y1+oy} ${_num(w.x+ox)},${_num(w.y+oy)} ${X2+ox},${Y2+oy}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`)}   // ADR-0076
           else els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`);
           {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
         }
@@ -6787,7 +6865,8 @@ function buildSVG(shapes,paper){
           {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
         }else if(s.elbow){
           const pts=_elbowPts(s);
-          if(s.r>0)els.push(`<path d="${_polylineRd(pts,ox,oy,s.r)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`);   // ADR-0207
+          if(s.hop)els.push(`<path d="${_hopPathD(s,pts,ox,oy,7)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`);   // ADR-0218
+          else if(s.r>0)els.push(`<path d="${_polylineRd(pts,ox,oy,s.r)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`);   // ADR-0207
           else{const spts=pts.map(p=>`${_num(p.x+ox)},${_num(p.y+oy)}`).join(' ');
           els.push(`<polyline points="${spts}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`)}
           const Lp=pts[pts.length-1],Pp=pts[pts.length-2];
@@ -6801,6 +6880,16 @@ function buildSVG(shapes,paper){
             _svgArrowHead(els,sx2,sy2,s1,s2,ah,stroke,a,SZ,s.head)}
           const lm=_elbowLabelXY(s);
           {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
+        }else if(s.hop){
+          const pts=_linePts(s);
+          els.push(`<path d="${_hopPathD(s,pts,ox,oy,7)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`);   // ADR-0218
+          const L=pts[pts.length-1],P=pts[pts.length-2],F=pts[1];
+          const ang=Math.atan2(L.y-P.y,L.x-P.x),a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5,tx=L.x+ox,ty=L.y+oy;
+          _svgArrowHead(els,tx,ty,a1,a2,ah,stroke,a,SZ,s.head);
+          if(s.start){const sAng=Math.atan2(pts[0].y-F.y,pts[0].x-F.x),s1=sAng+Math.PI-0.5,s2=sAng+Math.PI+0.5,sx2=pts[0].x+ox,sy2=pts[0].y+oy;
+            _svgArrowHead(els,sx2,sy2,s1,s2,ah,stroke,a,SZ,s.head)}
+          const lm=_connLabelXY(s);
+          {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
         }else if(s.way){                                            // ADR-0090: full vertex list
           const pts=_linePts(s),wpts=pts.map(p=>_num(p.x+ox)+','+_num(p.y+oy)).join(' ');
           els.push(`<polyline points="${wpts}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`);
@@ -6812,7 +6901,8 @@ function buildSVG(shapes,paper){
           const lm=_connLabelXY(s);
           {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
         }else{
-          els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`);
+          if(s.hop){const pts=_linePts(s);els.push(`<path d="${_hopPathD(s,pts,ox,oy,7)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`)}   // ADR-0218
+          else els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`);
           const ang=Math.atan2(Y2-Y1,X2-X1);
           const a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5;
           const tx=X2+ox,ty=Y2+oy;
@@ -7884,6 +7974,7 @@ const UI={
       state.styleClipboard&&has&&['ctxPasteStyle','⌥V',pasteStyle],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked})&&['ctxElbow','',toggleElbow],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked})&&['ctxCurve','',toggleCurve],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked&&!s.curve})&&['ctxHop','',toggleHop],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked&&(_wayArr(s).length||s.bend||s.elbow||s.curve||s.labelPos!=null||s.cbend!=null)})&&['ctxRouteReset','',resetRoute],   // ADR-0090/0217
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked})&&['ctxReverse','',reverseConn],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='sticky'&&!s.locked})&&['ctxFitText','',fitSticky],
@@ -8483,6 +8574,19 @@ function toggleCurve(){
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
 }
+// ADR-0218: toggle jump arcs at crossings (draw.io "jump" edgeStyle).
+function toggleHop(){
+  const before=[],after=[];
+  for(const id of state.selection){
+    const s=byId(id);if(!s||(s.type!=='line'&&s.type!=='arrow')||s.locked)continue;
+    before.push({id,hop:s.hop||0});
+    after.push({id,hop:s.hop?0:1});
+    s.hop=s.hop?0:1;
+    state.style.hop=s.hop;                        // ADR-0183
+  }
+  if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
+}
+
 // ADR-0092: corner-radius toggle — rects default to adaptive rounding
 // (min(8,w/4,h/4)). r=0 is sharp; toggling back restores the adaptive
 // default by removing the override (patch null → key dropped on apply
