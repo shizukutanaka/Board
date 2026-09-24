@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.485] - 2026-09-23
+
+### Changed
+- member-expr レシーバの `.length` も `_ln()` fold — `a.b.length`→`_ln(a.b)`
+  46 箇所、~92B 追加回収 (ADR-0450)
+
 ## [1.7.484] - 2026-09-23
 
 ### Fixed
