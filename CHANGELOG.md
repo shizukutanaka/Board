@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.263]
+
+### 追加
+- **字間 (letter-spacing)** (ADR-0205)。ctx メニュー「字間」で
+  text/sticky/フレーム/ラベル系の字送りを 標準→1px→2px に巡回
+  (canvas `ctx.letterSpacing` + SVG `letter-spacing`、継承・
+  eyedropper・style-copy・付箋連鎖 対応)。
+
 ## [1.7.262]
 
 ### 追加

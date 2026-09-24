@@ -704,6 +704,7 @@ const checks = [
   ['.excalidraw file entry points', html.includes("f.name.endsWith('.excalidraw')") && html.includes('.excalidraw,.drawio')],
   ['.drawio file entry points + parser (ADR-0203)', html.includes("f=>/\\.(drawio|dio)$/i.test(f.name)")&&html.includes('function drawioToShapes')],
   ['frame label italic/under/strike (ADR-0204)', html.includes("600 ${fs}px")&&html.includes("s.type!=='frame'&&!s.label)||s.locked)continue;   // ADR-0170/0204")],
+  ['letter-spacing cycle — canvas ctx+SVG+style-copy (ADR-0205)', html.includes("function cycleSpacing()")&&html.includes("c.letterSpacing=(s.spacing||0)+'px'")&&html.includes('_svgLs(s)')&&html.includes('spacing:sh.spacing')],
   ['i18n has excImported ja+en', html.includes("excImported:'Excalidraw を取り込みました'") && html.includes("excImported:'Excalidraw imported'")],
   // v1.7.102: ADR-0044 text paste → text shape
   ['text paste ceiling defined', html.includes('PASTE_MAX_CHARS')],
@@ -766,7 +767,7 @@ const checks = [
   ['sticky body valign via s.valign (ctxVAlign gate + canvas/SVG)', html.includes("seqS=[null,'middle','bottom']")&&html.includes("const sty=s.valign==='middle'")&&html.includes("const sy2v=s.valign==='middle'")],
   ['frame font via cycleFont gate + make() inheritance', html.includes("s.type!=='frame'&&!s.label")&&html.includes("type==='frame'||s.label")&&html.includes("type==='sticky'||type==='frame'")],
   ['line-height cycle — canvas/SVG/resize + style-copy/eyedropper', html.includes("function cycleLineH()")&&html.includes("fs*(s.lineH||1.3)")&&html.includes("'fontSize','lineH','cbend'")],
-  ['sticky chain inherits full typography', html.includes("font:s.font,lineH:s.lineH,bold:s.bold,italic:s.italic")],
+  ['sticky chain inherits full typography', html.includes("font:s.font,lineH:s.lineH,spacing:s.spacing,bold:s.bold,italic:s.italic")],
   ['text s.fill paints bg plate (canvas+SVG)', html.includes("s.fill){let mw=0")&&html.includes('height="${svgLines.length*fs*(s.lineH||1.25)+6}"')],
   ['sticky text colour via s.stroke (canvas+SVG)', html.includes("c.fillStyle=s.stroke||'#1E293B'")&&html.includes('fill="${_esc(s.stroke||')],
   ['conn label pill honours s.fill (canvas+SVG)', html.includes("s.fill||getCSS('--paper')")&&html.includes("_esc(s.fill||paper")],
