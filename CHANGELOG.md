@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.210]
+
+### 修正
+- **グループリサイズで曲線ベンドが取り残されるバグ** (ADR-0152)。
+  `s.cbend` をアフィン写像 `sx·sy·len/len'` で再計算 — ハンドル
+  跨ぎフリップではキラリティも正しく反転。
+
 ## [1.7.209]
 
 ### 追加

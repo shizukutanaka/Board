@@ -774,7 +774,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.209';
+const V='1.7.210';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3092,7 +3092,12 @@ function _mapToBox(sh,orig,ob,vb){
     // the elbow keeps its offset under group resize (axis-aligned scaling
     // preserves the trunk's orientation, so the scalar stays representable).
     if(orig.bend!=null){const tr=_elbowTrunk(orig);if(tr){const ta=M(tr[0].x,tr[0].y),tb=M(tr[1].x,tr[1].y);
-      sh.bend=Math.abs(tr[1].x-tr[0].x)<Math.abs(tr[1].y-tr[0].y)?ta.x:ta.y}}}
+      sh.bend=Math.abs(tr[1].x-tr[0].x)<Math.abs(tr[1].y-tr[0].y)?ta.x:ta.y}}
+    // ADR-0152: cbend is a signed PERPENDICULAR px offset — under the affine
+    // map it scales by sx*sy*chord/new-chord (closed form), negative sx*sy
+    // under a cross-handle flip correctly flips the curve's chirality.
+    if(orig.cbend!=null){const sx=vb.w/ob.w||1,sy=vb.h/ob.h||1,ol=Math.hypot(orig.x2-orig.x1,orig.y2-orig.y1)||1,nl=Math.hypot(sh.x2-sh.x1,sh.y2-sh.y1)||1;
+      sh.cbend=orig.cbend*sx*sy*ol/nl}}
   else if(orig.x!=null){const a=M(orig.x,orig.y),b=M(orig.x+orig.w,orig.y+orig.h);sh.x=a.x;sh.y=a.y;sh.w=b.x-a.x;sh.h=b.y-a.y}
 }
 // Apply resize given handle id, original shape, new world point, Shift and Alt state.
