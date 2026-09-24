@@ -6,6 +6,7 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
 
 ### 修正
 - `validShape` に型ホワイトリスト (ADR-0387) — リモート/インポート経由の未知型が `_apply` を通り抜けて描画不能のゴースト図形になるのを棄却 (NaN bbox → スナップ/ヒット判定伝播を防止)
+- shape id を `typeof==='string'` + 64 文字上限に (ADR-0388) — 数値 id の Map キー分裂を棄却
 
 ## [1.7.429] - 2026-09-23
 

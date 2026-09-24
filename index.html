@@ -1296,7 +1296,7 @@ function _cleanVal(v,depth){
 }
 const _TYPES=new Set(['rect','ellipse','diamond','pen','line','arrow','text','sticky','image','frame']);   // ADR-0387
 function validShape(s){
-  if(!s||typeof s!=='object'||!s.id||!_TYPES.has(s.type)||typeof s.z!=='number')return false;   // ADR-0387: unknown types pass _apply but miss every renderer branch — ghost/NaN-bbox shapes
+  if(!s||typeof s!=='object'||typeof s.id!=='string'||s.id.length>64||!_TYPES.has(s.type)||typeof s.z!=='number')return false;   // ADR-0387/0388: non-string/huge id — byId lookups by string silently miss, Map keys diverge
   if(!validPatch(s))return false;                  // no NaN/Inf coords, no pollution keys
   if(s.type==='pen')return _iA(s.pts)&&s.pts.length>0&&
     s.pts.every(p=>_iA(p)&&_fin(p[0])&&_fin(p[1]));
