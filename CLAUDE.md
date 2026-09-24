@@ -502,6 +502,7 @@ Board/
 │   ├── ADR-0450-ln-fold-memberexpr.md      # X.Y.length も _ln fold (実装済)
 │   ├── ADR-0451-mp-st-argfold.md           # _mP/_sT 引数取り化 + new Map/Set(a) fold (実装済)
 │   ├── ADR-0452-snapshot-throttle-resend.md # _sendSnapshot throttle 超過の deferred resend (実装済)
+│   ├── ADR-0453-type-sets-pagehide-flush.md # 図形型メンバーシップSet化 + pagehide flush (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
