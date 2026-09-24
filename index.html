@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.158';
+const V='1.7.159';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -860,7 +860,7 @@ const I18N={
     undone:'元に戻した',redone:'やり直した',created:'作成',editLabel:'選択中の図形を編集',
     confirmClear:'すべて削除しますか？',
     ctxCopy:'コピー',ctxPaste:'貼り付け',ctxDuplicate:'複製',
-    ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxCurve:'曲線',ctxRouteReset:'ルートをリセット (直線に戻す)',ctxFrameFit:'コンテンツに合わせる',ctxBothEnds:'両端ヘッド',ctxRrect:'角スタイル (角丸→直角)',ctxTextAlign:'テキスト揃え (左→中央→右)',ctxFillStyle:'塗りスタイル (塗り→ハッチ→斜格子)',
+    ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxCurve:'曲線',ctxRouteReset:'ルートをリセット (直線に戻す)',ctxFrameFit:'コンテンツに合わせる',ctxBothEnds:'両端ヘッド',ctxRrect:'角スタイル (角丸→直角)',ctxStickyColor:'付箋の色 (順送り)',ctxTextAlign:'テキスト揃え (左→中央→右)',ctxFillStyle:'塗りスタイル (塗り→ハッチ→斜格子)',
     ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
     ctxSendBackward:'背面へ',ctxSendBack:'最背面へ',
     ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxLock:'ロック',ctxUnlock:'ロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
@@ -936,7 +936,7 @@ const I18N={
     undone:'Undone',redone:'Redone',created:'Created',editLabel:'Edit selected shape',
     confirmClear:'Delete everything?',
     ctxCopy:'Copy',ctxPaste:'Paste',ctxDuplicate:'Duplicate',
-    ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxCurve:'Curved',ctxRouteReset:'Reset route (straighten)',ctxFrameFit:'Fit to contents',ctxBothEnds:'Arrowheads both ends',ctxRrect:'Corners (round→sharp)',ctxTextAlign:'Text align (left→center→right)',ctxFillStyle:'Fill style (solid→hatch→cross)',
+    ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxCurve:'Curved',ctxRouteReset:'Reset route (straighten)',ctxFrameFit:'Fit to contents',ctxBothEnds:'Arrowheads both ends',ctxRrect:'Corners (round→sharp)',ctxStickyColor:'Sticky colour (cycle)',ctxTextAlign:'Text align (left→center→right)',ctxFillStyle:'Fill style (solid→hatch→cross)',
     ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
     ctxSendBackward:'Send backward',ctxSendBack:'Send to back',
     ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxLock:'Lock',ctxUnlock:'Unlock',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
@@ -6858,6 +6858,7 @@ const UI={
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked&&(_wayArr(s).length||s.bend||s.elbow||s.curve)})&&['ctxRouteReset','',resetRoute],   // ADR-0090
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='frame'&&!s.locked})&&['ctxFrameFit','',fitFrames],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky')&&!s.locked})&&['ctxTextAlign','',cycleTextAlign],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='sticky'&&!s.locked})&&['ctxStickyColor','',cycleStickyColor],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond')&&!s.locked})&&['ctxFillStyle','',cycleFillStyle],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='arrow'&&!s.locked})&&['ctxBothEnds','',toggleBothEnds],
       has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='rect'&&!s.locked})&&['ctxRrect','',toggleRound],
@@ -7366,6 +7367,18 @@ function toggleRound(){
     before.push({id,r:s.r??null});
     after.push({id,r:s.r===0?null:0});
     s.r=s.r===0?null:0;
+  }
+  if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
+}
+// ADR-0101: sticky colour quick-cycle through the palette (style op).
+// The fill swatch already remaps for stickies (ADR-0082); this cycles the
+// canonical 6-colour set in one click — no picker round-trip.
+function cycleStickyColor(){
+  const before=[],after=[];
+  for(const id of state.selection){
+    const s=byId(id);if(!s||s.type!=='sticky'||s.locked)continue;
+    const i=STICKY_COLORS.indexOf(s.color),nxt=STICKY_COLORS[(i+1)%STICKY_COLORS.length];
+    before.push({id,color:s.color||'#FEF08A'});after.push({id,color:nxt});s.color=nxt;
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
 }

@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.159]
+
+### 追加
+- **付箋色クイックサイクル** (ADR-0101)。ctx メニュー「付箋の色」で
+  `STICKY_COLORS` 6色を順送り (style op、複数選択可、パレット外の
+  色からも先頭色へ復帰)。
+
 ## [1.7.158]
 
 ### 追加
