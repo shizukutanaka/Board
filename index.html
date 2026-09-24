@@ -779,18 +779,19 @@ const _g=id=>document.getElementById(id);   // ADR-0289
 const _p=()=>getCSS('--paper'),_ac=()=>getCSS('--accent-contrast');   // ADR-0292
 const _c01=v=>Math.min(1,Math.max(0,v));   // ADR-0295
 const _conn=t=>t==='line'||t==='arrow';   // ADR-0297
-const _selAny=f=>[...state.selection].some(id=>{const s=byId(id);return s&&f(s)});   // ADR-0302
+const _selAny=f=>_selIds().some(id=>{const s=byId(id);return s&&f(s)});   // ADR-0302
 const _forSel=f=>{for(const id of state.selection){const s=byId(id);if(s)f(s,id)}};   // ADR-0303
 const _csh=(s,c)=>{if(s.shadow){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=10;c.shadowOffsetY=3}};   // ADR-0306
 const _so=(b,a)=>{if(b.length){_styleOp(b,a);invalidate()}};   // ADR-0307
-const _selL=f=>[...state.selection].map(byId).filter(f);   // ADR-0308
+const _selL=f=>_selIds().map(byId).filter(f);   // ADR-0308
 const _selR=op=>{if(op.origSel)state.selection=new Set(op.origSel.filter(id=>byId(id)))};   // ADR-0309
 const _keepSel=arr=>{if(arr.length)state.history[state.histIdx].origSel=arr};   // ADR-0312
 const _pd=e=>e.preventDefault();   // ADR-0326
 const _ce=t=>document.createElement(t);   // ADR-0329
+const _selIds=()=>[...state.selection];   // ADR-0330
 
 // ====================== CONSTANTS ======================
-const V='1.7.380';
+const V='1.7.381';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2247,7 +2248,7 @@ function describeShape(s){
 // Announcement goes through UI.toast (aria-live) like the other status messages.
 function _announceSel(){
   const n=state.selection.size;
-  UI.toast(n===0?t('selNone'):n===1?describeShape(byId([...state.selection][0])):n+t('selCount'));
+  UI.toast(n===0?t('selNone'):n===1?describeShape(byId(_selIds()[0])):n+t('selCount'));
 }
 
 // ADR-0041: DOM mirror — a visually-hidden <ul> of every shape so screen
@@ -3333,7 +3334,7 @@ function resizeSnap(orig,handle,wp){
   const tol=SNAP_OBJ/state.viewport.zoom;
   const movesX=/[ew]/.test(handle),movesY=/[ns]/.test(handle);
   let x=wp.x,y=wp.y;const guides=[];
-  const idx=_snapIndex('resize',[...state.selection].sort().join(','),s=>state.selection.has(s.id));   // ADR-0056: exclude the whole dragged set
+  const idx=_snapIndex('resize',_selIds().sort().join(','),s=>state.selection.has(s.id));   // ADR-0056: exclude the whole dragged set
   if(movesX){let best=null;for(const e of _snapNear(idx.xs,wp.x,tol)){const d=e.v-wp.x;if(!best||Math.abs(d)<Math.abs(best.d))best={d,at:e.v,b:e.b};}
     if(best){x=best.at;const ys=[orig.y,orig.y+orig.h,best.b.y,best.b.y+best.b.h];guides.push({x1:best.at,y1:Math.min(...ys),x2:best.at,y2:Math.max(...ys)});}}
   if(movesY){let best=null;for(const e of _snapNear(idx.ys,wp.y,tol)){const d=e.v-wp.y;if(!best||Math.abs(d)<Math.abs(best.d))best={d,at:e.v,b:e.b};}
@@ -3722,7 +3723,7 @@ canvas.addEventListener('pointerdown',e=>{
     case 'select':
       // Resize handles take priority over pick
       if(state.selection.size===1){
-        const onlySel=byId([...state.selection][0]);
+        const onlySel=byId(_selIds()[0]);
         if(onlySel){
           const rh=hitRotHandle(wp,onlySel);
           if(rh){
@@ -3880,7 +3881,7 @@ canvas.addEventListener('pointermove',e=>{
     if(state.tool==='select'){
       // Check for resize handle hover first
       if(state.selection.size===1){
-        const onlySel=byId([...state.selection][0]);
+        const onlySel=byId(_selIds()[0]);
         if(onlySel){
           if(hitRotHandle(wp,onlySel)){canvas.style.cursor='grab';return}
           const hid=hitHandle(wp,onlySel);
@@ -3909,7 +3910,7 @@ canvas.addEventListener('pointermove',e=>{
       // selection envelope and the hovered shape. Signature-compare so a
       // steady cursor repaints nothing.
       const _m=(e.altKey&&state.selection.size&&top&&!top.locked&&top.visible!==0&&!state.selection.has(top.id))
-        ?{a:G.bboxAll([...state.selection].map(byId).filter(Boolean)),b:G.bbox(top)}:null;
+        ?{a:G.bboxAll(_selIds().map(byId).filter(Boolean)),b:G.bbox(top)}:null;
       const _sig=m=>m?`${m.a.x}|${m.a.y}|${m.a.w}|${m.a.h}|${m.b.x}|${m.b.y}|${m.b.w}|${m.b.h}`:'';
       if(_sig(_m)!==_sig(state.measure)){state.measure=_m;invalidateOverlay()}
     }
@@ -3932,7 +3933,7 @@ canvas.addEventListener('pointermove',e=>{
   switch(state.tool){
     case 'select':
       if(ptr.dragKind==='resize'){
-        const rsh=byId([...state.selection][0]);
+        const rsh=byId(_selIds()[0]);
         if(rsh){
           const _b0=G.bbox(ptr.resizeOrig);
           Object.assign(rsh,clone(ptr.resizeOrig));
@@ -3944,7 +3945,7 @@ canvas.addEventListener('pointermove',e=>{
       }else if(ptr.dragKind==='grot'){
         _grotDrag(wp,e.shiftKey);                                      // ADR-0057
       }else if(ptr.dragKind==='rotate'){
-        const rsh=byId([...state.selection][0]);
+        const rsh=byId(_selIds()[0]);
         if(rsh){
           const _b0=G.bbox(rsh);
           let deg=Math.atan2(wp.y-ptr.rotCy,wp.x-ptr.rotCx)*180/Math.PI+90; // knob-up = 0°
@@ -4011,7 +4012,7 @@ canvas.addEventListener('pointerup',e=>{
     switch(state.tool){
     case 'select':
       if(ptr.dragKind==='resize'){
-        const rsh=byId([...state.selection][0]);
+        const rsh=byId(_selIds()[0]);
         if(rsh){
           _endPointBind(rsh,ptr.resizeHandle,e.altKey);           // ADR-0065/0209
           const after=clone(rsh);
@@ -4026,10 +4027,10 @@ canvas.addEventListener('pointerup',e=>{
         ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.resizeHandle=null;state.guides=null;state.readout=null;state.bindPreview=null;
       }else if(ptr.dragKind==='grot'){
         _grotCommit();                                                 // ADR-0057
-        if(state.selection.size===1){const s=byId([...state.selection][0]);if(s)UI.toast(describeShape(s));}
+        if(state.selection.size===1){const s=byId(_selIds()[0]);if(s)UI.toast(describeShape(s));}
         ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;state.guides=null;state.readout=null;state.bindPreview=null;
       }else if(ptr.dragKind==='rotate'){
-        const rsh=byId([...state.selection][0]);
+        const rsh=byId(_selIds()[0]);
         if(rsh){
           const after=clone(rsh),before=ptr.rotOrig;
           if(JSON.stringify(before)!==JSON.stringify(after)){
@@ -4053,7 +4054,7 @@ canvas.addEventListener('pointerup',e=>{
       }else if(ptr.dragKind==='way'&&ptr.wayOrig){                 // ADR-0076
         const sh=byId(ptr.wayOrig.id),ow=ptr.wayOrig.way||null,nw=sh&&sh.way||null;
         if(sh&&JSON.stringify(ow)!==JSON.stringify(nw)){
-          const origSel=[...state.selection];
+          const origSel=_selIds();
           Store._recordCommitted({op:'style',before:[{id:sh.id,way:clone(ow)}],after:[{id:sh.id,way:clone(nw)}]});   // ADR-0090: arrays clone whole
           _keepSel(origSel);
         }
@@ -4089,12 +4090,12 @@ function _cancelPointerGesture(){
   _clearLongPress();   // ADR-0006: covers both the native pointercancel path and our own
   // Restore partial resize/move/erase on cancel (Android touch-takeover, stylus OOR).
   if(ptr.dragKind==='resize'&&ptr.resizeOrig){
-    const rsh=byId([...state.selection][0]);
+    const rsh=byId(_selIds()[0]);
     if(rsh)Object.assign(rsh,clone(ptr.resizeOrig));
   }else if((ptr.dragKind==='gresize'||ptr.dragKind==='grot')&&ptr.gOrig){
     for(const [id,orig] of ptr.gOrig){const sh=byId(id);if(sh)Object.assign(sh,clone(orig));}
   }else if(ptr.dragKind==='rotate'&&ptr.rotOrig){
-    const rsh=byId([...state.selection][0]);
+    const rsh=byId(_selIds()[0]);
     if(rsh){if(ptr.rotOrig.rotate==null)delete rsh.rotate;Object.assign(rsh,clone(ptr.rotOrig));}
   }else if(ptr.dragKind==='ebend'&&ptr.ebendOrig){                // ADR-0072
     const sh=byId(ptr.ebendOrig.id);if(sh){if(ptr.ebendOrig.bend==null)delete sh.bend;Object.assign(sh,clone(ptr.ebendOrig));}
@@ -4188,7 +4189,7 @@ function _openLabelEditorFor(hit){
 // branch, which only calls this when state.tool==='select'.
 function editSelectedShapeKbd(){
   if(state.selection.size!==1)return false;
-  const sh=byId([...state.selection][0]);
+  const sh=byId(_selIds()[0]);
   if(!sh||sh.locked)return false;
   if(sh.type==='text'||sh.type==='sticky'){openTextEditor(sh,false);return true}
   return _openLabelEditorFor(sh);
@@ -5285,7 +5286,7 @@ function openTextEditor(s,isNew){
     }else{
       // Existing text: emptied → delete original (single undo); else changed → upd
       if(!newText.trim()){
-        const origSel=[...state.selection];
+        const origSel=_selIds();
         const connClears=computeConnClears(new Set([orig.id]));
         const delOp={op:'del',shapes:[orig]};
         if(connClears.length)delOp.connClears=connClears;
@@ -5359,7 +5360,7 @@ function flushErase(){
   // Resolve connector bindings now that erased shapes are back in state (connEnds works)
   const delIds=new Set(_eraseBatch.map(s=>s.id));
   const connClears=computeConnClears(delIds);
-  const origSel=[...state.selection];
+  const origSel=_selIds();
   const op={op:'del',shapes:clone(_eraseBatch)};
   if(connClears.length)op.connClears=connClears;
   Store.commit(op);
@@ -5448,7 +5449,7 @@ window.addEventListener('keydown',e=>{
     _pd(e);
     const ids=state.shapes.filter(s=>!s.locked&&s.visible!==0).map(s=>s.id);   // ADR-0163: hidden shapes are unreachable by pointer — Tab parity
     if(!ids.length)return;
-    const id=cycleSel(ids,[...state.selection][0],e.shiftKey?-1:1);
+    const id=cycleSel(ids,_selIds()[0],e.shiftKey?-1:1);
     state.selection=new Set([id]);
     const sh=byId(id);
     if(sh){
@@ -5594,7 +5595,7 @@ function doPaste(){
   const srcCx=bb?bb.x+bb.w/2:vCx,srcCy=bb?bb.y+bb.h/2:vCy;
   const co=(_pasteCount+1)*20/v.zoom;   // +1 so first paste has a small inset offset
   _pasteCount++;
-  const origSel=[...state.selection];
+  const origSel=_selIds();
   const added=_placeCopies(state.clipboard.shapes,vCx-srcCx+co,vCy-srcCy+co);
   _keepSel(origSel);
   UI.toast(t('pasted')+' '+added.length);
@@ -5604,7 +5605,7 @@ function doPaste(){
 // Used to paste across boards/views or to drop a copy exactly atop the source.
 function doPasteInPlace(){
   if(!state.clipboard)return;
-  const origSel=[...state.selection];
+  const origSel=_selIds();
   const added=_placeCopies(state.clipboard.shapes,0,0);
   _keepSel(origSel);
   UI.toast(t('pasted')+' '+added.length);
@@ -5615,7 +5616,7 @@ function doPasteAt(wx,wy){
   if(!state.clipboard)return;
   const bb=G.bboxAll(state.clipboard.shapes);
   const srcCx=bb?bb.x+bb.w/2:wx,srcCy=bb?bb.y+bb.h/2:wy;
-  const origSel=[...state.selection];
+  const origSel=_selIds();
   const added=_placeCopies(state.clipboard.shapes,wx-srcCx,wy-srcCy);
   _keepSel(origSel);
   UI.toast(t('pasted')+' '+added.length);
@@ -5659,7 +5660,7 @@ function _placeCopies(srcShapes,dx,dy){
 }
 function doDuplicate(){
   if(!state.selection.size)return;
-  const origSel=[...state.selection];
+  const origSel=_selIds();
   const sel=[...withFrameChildren(state.selection)].map(byId).filter(s=>s&&!s.locked);
   if(!sel.length)return;
   // ADR-0080: whole selection is the last duplicate chain → repeat its delta.
@@ -5671,7 +5672,7 @@ function doDuplicate(){
 function doDelete(){
   const sel=_selL(s=>s&&!s.locked);
   if(!sel.length)return;
-  const origSel=[...state.selection];
+  const origSel=_selIds();
   // Frame-aware: shapes fully inside a selected frame are deleted with the frame (parity with doDuplicate)
   const frameOf=new Map();
   for(const f of sel){
@@ -5707,7 +5708,7 @@ function _zCommit(changes){
 }
 // Shared by doBringFront/doSendBack/doBringForward/doSendBackward: locked shapes never
 // take part in a z-order op (parity with doDelete/doGroup excluding locked shapes).
-function unlockedSelectionIds(){return [...state.selection].filter(id=>!byId(id)?.locked);}
+function unlockedSelectionIds(){return _selIds().filter(id=>!byId(id)?.locked);}
 function doBringFront(){
   const ids=unlockedSelectionIds();if(!ids.length)return;
   sortZ();
@@ -5794,7 +5795,7 @@ function hideSelection(){
 // quick-link). Makes an arrow bound at BOTH ends (s.a/s.b → connEnds
 // edge-projects), committed as one add op.
 function connectSelection(){
-  const sel=[...state.selection].map(byId)
+  const sel=_selIds().map(byId)
     .filter(s=>s&&!s.locked&&s.visible!==0&&s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen');
   if(sel.length!==2){UI.toast(t('selectTwo'),'warn');return}
   const a=sel[0],b=sel[1],ab=G.bbox(a),bb=G.bbox(b);
@@ -5848,10 +5849,10 @@ function wrapInFrame(){
   invalidate();UI.toast(t('framed'),'ok');
 }
 function doGroup(){
-  const ids=[...state.selection].filter(id=>{const s=byId(id);return s&&!s.locked;});
+  const ids=_selIds().filter(id=>{const s=byId(id);return s&&!s.locked;});
   if(ids.length<2){UI.toast(t('selectTwo'),'warn');return}
   const gid=uid();
-  const origSel=[...state.selection];
+  const origSel=_selIds();
   const before=ids.map(id=>({id,groupId:byId(id)?.groupId}));
   for(const id of ids){const sh=byId(id);if(sh)sh.groupId=gid}
   Store._recordCommitted({op:'group',ids,gid,before});
@@ -5860,7 +5861,7 @@ function doGroup(){
   invalidate();
 }
 function doUngroup(){
-  const ids=[...state.selection];
+  const ids=_selIds();
   const origSel=[...ids];
   // find all groupIds touched by selection
   const gids=new Set(ids.map(id=>byId(id)?.groupId).filter(Boolean));
@@ -5878,7 +5879,7 @@ function doUngroup(){
 function doClearAll(){
   if(!state.shapes.length)return;
   if(!confirm(t('confirmClear')))return;
-  const origSel=[...state.selection];
+  const origSel=_selIds();
   Persist.saveBackup(clone(state.shapes),{...state.viewport},state.docName);   // ADR-0004
   Store.commit({op:'clear',shapes:clone(state.shapes),wc:clone(state.wclock)});
   _keepSel(origSel);
@@ -6085,7 +6086,7 @@ function doBeautify(){
     after.push({id:s.id,...rec});
   }
   if(!after.length){UI.toast(t('beautifyNone'),'warn');return}
-  const origSel=[...state.selection];
+  const origSel=_selIds();
   for(const p of after){const sh=byId(p.id);if(sh)Object.assign(sh,clone(p))}
   Store._recordCommitted({op:'beautify',before,after,origSel});
   invalidate();Persist.schedule();
@@ -6237,7 +6238,7 @@ function copySVG(shapes=state.shapes){
 // ADR-0089: replace image bytes in place — same frame position/width, height
 // follows the new aspect. One style op so undo restores bytes AND geometry.
 function replaceImage(){
-  const s=[...state.selection].map(byId).find(x=>x&&x.type==='image'&&!x.locked);
+  const s=_selIds().map(byId).find(x=>x&&x.type==='image'&&!x.locked);
   if(!s)return;
   const inp=_ce('input');
   inp.type='file';inp.accept='image/*';
@@ -7011,7 +7012,7 @@ function importBoardText(txt,wp){
   if(!wp){const r=canvas.getBoundingClientRect();wp=G.s2w({x:r.width/2,y:r.height/2})}
   const bb=G.bboxAll(shapes);
   const dx=bb?wp.x-(bb.x+bb.w/2):0,dy=bb?wp.y-(bb.y+bb.h/2):0;
-  const origSel=[...state.selection];
+  const origSel=_selIds();
   const added=_placeCopies(shapes,dx,dy);
   _keepSel(origSel);
   UI.toast(t('imported')+' '+added.length,'ok');
@@ -7047,7 +7048,7 @@ function importBoard(file){
       // clear+N-adds would overflow MAX_HISTORY for large boards and require N+1 undos.
       const before=clone(state.shapes);
       const beforeWc=clone(state.wclock);
-      const origSel=[...state.selection];
+      const origSel=_selIds();
       if(before.length)Persist.saveBackup(before,{...state.viewport},state.docName);   // ADR-0004
       state.shapes=shapes.map(clone);_invalidateGrid();   // ADR-0009
       // Match the replace op's _apply: drop stale selection ids and per-property write
@@ -7525,7 +7526,7 @@ const Net={
   _lastSelSent:'',
   sendSelectionIfChanged(){
     if(state.peers.size===0)return;
-    const ids=[...state.selection];
+    const ids=_selIds();
     const key=ids.join(',');
     if(key===this._lastSelSent)return;
     this._lastSelSent=key;
@@ -7923,7 +7924,7 @@ const Share={
       // shared link can't silently destroy the board it replaced (§3.9 self-overwrite).
       const before=clone(state.shapes);
       const beforeWc=clone(state.wclock);
-      const origSel=[...state.selection];
+      const origSel=_selIds();
       // ADR-0004: also survives past the undo window (reload/closed-tab), not just this session.
       if(before.length)Persist.saveBackup(before,{...state.viewport},state.docName);
       state.shapes=valid.map(clone);_invalidateGrid();state.docName=((typeof data.name==='string'&&data.name)||'Shared').slice(0,80);   // ADR-0009
@@ -8135,7 +8136,7 @@ const Persist={
       // Reversible whole-board swap, same pattern as importBoard/importFromHash.
       const before=clone(state.shapes);
       const beforeWc=clone(state.wclock);
-      const origSel=[...state.selection];
+      const origSel=_selIds();
       state.shapes=shapes.map(clone);_invalidateGrid();   // ADR-0009
       state.selection.clear();state.wclock={};
       if(typeof d.docName==='string'&&d.docName){state.docName=d.docName.slice(0,80);_g('docName').value=state.docName;_syncDocTitle();}   // clamp: the input enforces maxlength=80, intake paths must too
@@ -8326,11 +8327,11 @@ const UI={
       has&&_selAny(s=>(s.type==='text'||s.type==='sticky'||s.label)&&!s.locked)&&['ctxLineH','',cycleLineH],
       has&&_selAny(s=>(s.type==='text'||s.type==='sticky'||s.type==='frame'||s.label)&&!s.locked)&&['ctxSpacing','',cycleSpacing],
       has&&_selAny(s=>s.type==='text'&&!s.locked)&&['ctxWrap','',toggleWrap],
-      has&&_selAny(s=>(s.type==='text'||s.type==='sticky')&&!s.locked)&&[[...state.selection].some(id=>byId(id)?.type==='sticky'&&!byId(id)?.locked)?'ctxToText':'ctxToSticky','',toggleStickyText],
+      has&&_selAny(s=>(s.type==='text'||s.type==='sticky')&&!s.locked)&&[_selIds().some(id=>byId(id)?.type==='sticky'&&!byId(id)?.locked)?'ctxToText':'ctxToSticky','',toggleStickyText],
       has&&_selAny(s=>s.type==='sticky'&&!s.locked)&&['ctxStickyColor','',cycleStickyColor],
       has&&_selAny(s=>(s.type==='rect'||s.type==='ellipse'||s.type==='diamond')&&!s.locked)&&['ctxFillStyle','',cycleFillStyle],
       has&&_selAny(s=>s.type==='arrow'&&!s.locked)&&['ctxBothEnds','',toggleBothEnds],
-      has&&_selAny(s=>(_conn(s.type))&&!s.locked)&&[[...state.selection].some(id=>byId(id)?.type==='line'&&!byId(id)?.locked)?'ctxToArrow':'ctxToLine','',toggleLineArrow],
+      has&&_selAny(s=>(_conn(s.type))&&!s.locked)&&[_selIds().some(id=>byId(id)?.type==='line'&&!byId(id)?.locked)?'ctxToArrow':'ctxToLine','',toggleLineArrow],
       has&&_selAny(s=>s.type==='arrow'&&!s.locked)&&['ctxArrowHead','',cycleArrowHead],
       has&&_selAny(s=>s.type==='arrow'&&!s.locked)&&['ctxStartHead','',cycleStartHead],
       has&&_selAny(s=>s.type==='rect'&&!s.locked)&&['ctxRrect','',toggleRound],
@@ -8340,7 +8341,7 @@ const UI={
       has&&state.selection.size===1&&['ctxSelectSame','',selectSamePaint],
       has&&state.selection.size===1&&['ctxSelectSameType','',selectSameType],
       has&&state.selection.size>1&&['ctxGroup','⌘G',doGroup],
-      has&&[...state.selection].some(id=>byId(id)?.groupId)&&['ctxUngroup','⌘⇧G',doUngroup],
+      has&&_selIds().some(id=>byId(id)?.groupId)&&['ctxUngroup','⌘⇧G',doUngroup],
       has&&'sep',
       ['ctxSearch','⌘F',toggleSq],
       ['ctxFit','⇧1',fitToContent],
@@ -8360,13 +8361,13 @@ const UI={
       has&&['ctxHide','⌘⇧H',hideSelection],
       has&&_selAny(s=>(_conn(s.type))&&!s.locked&&(s.a||s.b))&&['ctxPinAnchor','',pinAnchor],   // ADR-0213
       has&&_selAny(s=>(_conn(s.type))&&!s.locked&&(s.a||s.b))&&['ctxUnbind','',unbindSelection],   // ADR-0157
-      has&&[...state.selection].map(byId).filter(s=>s&&!s.locked&&s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen').length===2&&['ctxConnect','',connectSelection],
+      has&&_selIds().map(byId).filter(s=>s&&!s.locked&&s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen').length===2&&['ctxConnect','',connectSelection],
       state.shapes.some(s=>s.visible===0)&&['ctxShowAll','',showAllShapes],
       state.shapes.length&&['ctxSelectInverse','⌘⇧I',selectInverse],
       // ADR-0005's flagship feature was ⌥B-only — invisible to touch/mouse users
       // (the exact "keyboard-only feature" trap FT-06 warned about).
-      has&&[...state.selection].some(id=>byId(id)?.type==='pen')&&['ctxBeautify','⌥B',doBeautify],
-      has&&[byId([...state.selection][0])?.locked?'ctxUnlock':'ctxLock','',doLock],
+      has&&_selIds().some(id=>byId(id)?.type==='pen')&&['ctxBeautify','⌥B',doBeautify],
+      has&&[byId(_selIds()[0])?.locked?'ctxUnlock':'ctxLock','',doLock],
       state.shapes.some(s=>s.locked)&&['ctxUnlockAll','',unlockAll],
       has&&state.selection.size>1&&'sep',
       has&&state.selection.size>1&&['ctxAlignLeft','',()=>doAlign('left')],
@@ -8782,7 +8783,7 @@ function wire(){
 // mutated in 39 places, so a frame-boundary diff is the only universal hook).
 let _selSig=null;
 function _syncStylePanelIfChanged(){
-  const sig=state.selection.size+'|'+[...state.selection].sort().join(',');
+  const sig=state.selection.size+'|'+_selIds().sort().join(',');
   if(sig===_selSig)return;
   _selSig=sig;
   _syncStylePanel();
@@ -8853,7 +8854,7 @@ function toggleElbow(){
 // "what moves with the frame" is exactly what gets selected. Frame itself
 // drops out of the selection so follow-up ops act on the contents.
 function selectFrameContents(){
-  const frames=[...state.selection].map(byId).filter(s=>s&&s.type==='frame');
+  const frames=_selIds().map(byId).filter(s=>s&&s.type==='frame');
   if(!frames.length)return;
   const inner=withFrameChildren(new Set(frames.map(f=>f.id)));
   for(const f of frames)inner.delete(f.id);
@@ -8964,7 +8965,7 @@ function cycleStickyColor(){
 // "Fully inside" matches the membership rule used by move/delete/duplicate.
 function fitFrames(){
   const PAD=12;
-  const frames=[...state.selection].map(byId).filter(s=>s&&s.type==='frame'&&!s.locked);
+  const frames=_selIds().map(byId).filter(s=>s&&s.type==='frame'&&!s.locked);
   if(!frames.length)return;
   const before=[],after=[];
   for(const f of frames){
@@ -8984,7 +8985,7 @@ function fitFrames(){
     after.push({id:f.id,x:nx,y:ny,w:nw,h:nh});
     f.x=nx;f.y=ny;f.w=nw;f.h=nh;
   }
-  if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'align',dir:'framefit',before,after});_keepSel(origSel);invalidate()}
+  if(before.length){const origSel=_selIds();Store._recordCommitted({op:'align',dir:'framefit',before,after});_keepSel(origSel);invalidate()}
 }
 // ADR-0084: route reset — one style op clears way/bend/elbow/curve back to a
 // straight edge (draw.io "Clear Waypoints"). way/bend are objects → ??null;
@@ -9132,8 +9133,8 @@ function fontSizeStep(d){
   _so(before,after)
 }
 // ADR-0078: ⌘B/⌘I toggles bold/italic on selected text/sticky via style op.
-function _rcOp(op){const o=[...state.selection];Store._recordCommitted(op);_keepSel(o)}
-function _cOp(op){const o=[...state.selection];Store.commit(op);_keepSel(o)}
+function _rcOp(op){const o=_selIds();Store._recordCommitted(op);_keepSel(o)}
+function _cOp(op){const o=_selIds();Store.commit(op);_keepSel(o)}
 function _styleOp(before,after){_rcOp({op:'style',before,after})}   // ADR-0239/0248
 function toggleTextFlag(k){
   const before=[],after=[];
@@ -9191,7 +9192,7 @@ function cycleFont(){
 // ADR-0174: ctx opacity cycle — same style op as the digit keys (ADR-0167),
 // reachable from touch/ctx. Levels mirror Figma's decimal steps.
 function cycleOpacity(){
-  const first=[...state.selection].map(byId).find(s=>s&&!s.locked);
+  const first=_selIds().map(byId).find(s=>s&&!s.locked);
   if(!first)return;
   const lv=[1,0.7,0.4,0.1],cur=first.opacity??1;
   const idx=lv.findIndex(v=>Math.abs(v-cur)<0.051);
@@ -9259,7 +9260,7 @@ function _styleOf(sh){return{
 // ADR-0304: ctx link set/open — completes ADR-0301's s.link round-trip with
 // a user-facing setter (prompt → style op on every unlocked selection).
 function setSelLink(){
-  const first=[...state.selection].map(byId).find(s=>s&&!s.locked);
+  const first=_selIds().map(byId).find(s=>s&&!s.locked);
   if(!first)return;
   const u=prompt(t('linkPrompt'),first.link||'');
   if(u==null)return;
@@ -9274,13 +9275,13 @@ function setSelLink(){
   _so(before,after)
 }
 function openSelLink(){
-  const s=[...state.selection].map(byId).find(s=>s&&s.link);
+  const s=_selIds().map(byId).find(s=>s&&s.link);
   if(s&&!window.open(s.link,'_blank','noopener'))UI.toast(t('popupBlocked'),'warn');   // ADR-0319
 }
 
 function copyStyle(){
   // Copy style from the first selected shape
-  const ids=[...state.selection];
+  const ids=_selIds();
   const sh=ids.length?byId(ids[0]):null;
   if(!sh){UI.toast(t('noSelection'),'warn');return}
   state.styleClipboard=_styleOf(sh);

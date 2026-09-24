@@ -404,7 +404,7 @@ const checks = [
   ['snapshot ops carry per-shape wclock', html.includes("wc:clone(state.wclock[s.id]||{})")],
   ['_mergeSnapshotOp: LWW per-property merge on known shapes', html.includes("function _mergeSnapshotOp(op)")===false&&html.includes("_mergeSnapshotOp(op){") && html.includes("clockNewer(rc,lc)") && html.includes("return 'merge';")],
   // v1.7.117: ADR-0059 style panel ← selection sync
-  ['style panel syncs on selection signature change', html.includes("_syncStylePanelIfChanged();   // ADR-0059")&&html.includes("[...state.selection].sort().join(',')")],
+  ['style panel syncs on selection signature change', html.includes("_syncStylePanelIfChanged();   // ADR-0059")&&html.includes("_selIds().sort().join(',')")],
   ['_syncStylePanel adopts only uniform props (mixed skipped)', html.includes("sel.every(s=>(s[k]??null)===v)")&&html.includes("if(v!==undefined){state.style.fill")],
   // v1.7.118: ADR-0060 Alt+drag duplicate
   ['alt+drag duplicates picked shape then drags copies', html.includes("if(e.altKey&&!hit.locked){")&&html.includes("_placeCopies(srcShapes,0,0)")&&html.includes("dupSet=alreadySel")],
@@ -721,6 +721,7 @@ const checks = [
   ['svg conn path/label emitters deduped (ADR-0270)', html.includes('const _sp=(d,j)')&&html.includes('_cL();')],
   ['drawio multi-page side-by-side import (ADR-0311)', html.includes("for(const dg of doc.querySelectorAll('diagram'))")],
   ['link badge 🔗 on linked shapes (ADR-0310)', html.includes("c.fillText('🔗',s.x+Math.abs(s.w)-3,s.y+3)")],
+  ['_selIds() selection-ids shorthand (ADR-0330)', html.includes("const _selIds=()=>[...state.selection]")],
   ['_ce() createElement shorthand (ADR-0329)', html.includes("const _ce=t=>document.createElement(t)")],
   ['UserObject label/link fallback (ADR-0328)', html.includes("tagName==='UserObject'?c.parentElement:null")&&html.includes("_uo.getAttribute('label')")],
   ['s.link scheme gate in validPatch (ADR-0327)', html.includes("'link' in p&&p.link!=null")&&html.includes('ADR-0327')],
@@ -746,7 +747,7 @@ const checks = [
   ['SVG frame label always 600 weight (ADR-0305)', html.includes('s.bold?s:{...s,bold:true},s.fontSize||12')],
   ['ctx link set/open on s.link (ADR-0304)', html.includes('function setSelLink')&&html.includes('ctxOpenLink')&&html.includes('ctxSetLink')],
   ['_forSel() apply-loop shorthand (ADR-0303)', html.includes("_forSel((s,id)=>")],
-  ['_selAny() ctx-gate shorthand (ADR-0302)', html.includes("_selAny=f=>[...state.selection].some")],
+  ['_selAny() ctx-gate shorthand (ADR-0302)', html.includes("_selAny=f=>_selIds().some")],
   ['exc conn angle rotates endpoints (ADR-0300)', html.includes('conn angle → rotate endpoints')],
   ['exc link round-trips (ADR-0301)', html.includes("s.link=e.link.slice(0,500)")&&html.includes("link:s.link||null")],
   ['exc autoResize emitted on text (ADR-0299)', (html.match(/autoResize:true/g)||[]).length===2],
@@ -1237,11 +1238,11 @@ const checks = [
     !html.includes("(op.before==null||(patches(op.before)&&op.before.every(noLock)))")],
   // v1.7.35: text-blur del origSel pattern must exist at the existing-text-empty path
   ['text-blur del: origSel captured and patched before and after Store.commit del',
-    html.includes("const origSel=[...state.selection];\n        const connClears=computeConnClears(new Set([orig.id]));")&&
+    html.includes("const origSel=_selIds();\n        const connClears=computeConnClears(new Set([orig.id]));")&&
     html.includes("Store.commit(delOp);\n        _keepSel(origSel);")],
   // v1.7.36: flushErase must capture origSel before del commit and patch after
   ['flushErase del: origSel captured before commit and patched after (parity with doDelete)',
-    html.includes("const origSel=[...state.selection];\n  const op={op:'del',shapes:clone(_eraseBatch)};")],
+    html.includes("const origSel=_selIds();\n  const op={op:'del',shapes:clone(_eraseBatch)};")],
   // v1.7.38: _apply('upd', forward) must guard sh.locked (parity with move forward)
   ['_apply upd forward: if(forward&&sh.locked)break guards locked shapes',
     html.includes("const sh=byId(op.id);if(!sh)break;\n        if(forward&&sh.locked)break;")],
