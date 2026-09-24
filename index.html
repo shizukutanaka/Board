@@ -818,7 +818,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.421';
+const V='1.7.422';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1138,6 +1138,12 @@ const G={
       const e=connEnds(s);
       let x=_min(e.x1,e.x2),y=_min(e.y1,e.y2),x2=_max(e.x1,e.x2),y2=_max(e.y1,e.y2);   // ADR-0090
       for(const w of _wayArr(s)){x=_min(x,w.x);y=_min(y,w.y);x2=_max(x2,w.x);y2=_max(y2,w.y)}
+      // ADR-0376: off-box route points — a curve's ctrl point sits cbend px off the
+      // chord and an elbow's trunk can be dragged outside the endpoint rect. Missing
+      // them made the damage rect skip the apex (ghost pixels on drag) and let
+      // inView cull a curve still inside the viewport.
+      if(s.curve){const cc=_curveCtrl(e,s.cbend);x=_min(x,cc.x);y=_min(y,cc.y);x2=_max(x2,cc.x);y2=_max(y2,cc.y)}
+      else if(s.elbow)for(const q of _elbowPts(s)){x=_min(x,q.x);y=_min(y,q.y);x2=_max(x2,q.x);y2=_max(y2,q.y)}
       const p=(s.size||1)/2+(s.type==='arrow'?s.size*3:0);
       return{x:x-p,y:y-p,w:x2-x+2*p,h:y2-y+2*p};
     }
@@ -1293,6 +1299,8 @@ function validShape(s){
   return true;
 }
 // Validate a REMOTE op's payload before _apply. See docs/architecture.md.
+const _CC_KEYS=new Set(['a','aF','b','bF','x1','y1','x2','y2']);   // ADR-0377
+const _ccOk=q=>q&&typeof q==='object'&&!Array.isArray(q)&&Object.keys(q).every(k=>_CC_KEYS.has(k))&&validPatch(q);
 function validRemotePayload(op){
   const patches=a=>Array.isArray(a)&&a.length<=MAX_OP_SHAPES&&a.every(p=>p&&typeof p.id==='string'&&validPatch(p));
   switch(op.op){
@@ -1302,8 +1310,11 @@ function validRemotePayload(op){
       // connClears (binding-cleanup deltas, v1.6.78) are Object.assign'd into live
       // connectors by _apply — validate each before/after like any remote patch so a
       // hostile peer can't NaN-poison/pollute a connector through the del path.
+      // ADR-0377: whitelist the 8 binding-cleanup props — validPatch alone lets
+      // `locked`/`type`/`id`/`_x` through (noLock exists for upd/style only, and
+      // _stripStruct isn't applied at the connClears assign sites).
       if(op.connClears!=null&&!(Array.isArray(op.connClears)&&op.connClears.length<=MAX_OP_SHAPES&&op.connClears.every(p=>
-          p&&typeof p.id==='string'&&(p.before==null||validPatch(p.before))&&(p.after==null||validPatch(p.after)))))return false;
+          p&&typeof p.id==='string'&&(p.before==null||_ccOk(p.before))&&(p.after==null||_ccOk(p.after)))))return false;
       return Array.isArray(op.shapes)&&op.shapes.length<=MAX_OP_SHAPES&&op.shapes.every(validShape);
     case 'clear':  return Array.isArray(op.shapes)&&op.shapes.length<=MAX_OP_SHAPES&&op.shapes.every(validShape);
     case 'upd':{const noLock=p=>!('locked' in p);

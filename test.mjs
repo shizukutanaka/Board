@@ -1697,6 +1697,18 @@ try {
   assert.ok(bl.w >= 100 && bl.h >= 50);
   console.log('  ✓ G.bbox for line includes stroke padding');
 
+  // ADR-0376: conn bbox includes off-box route points — curve ctrl point and
+  // elbow trunk. A curve bowed 300px up must grow the bbox beyond endpoints.
+  {
+    const bc=G.bbox({type:'arrow',x1:0,y1:0,x2:200,y2:0,curve:1,cbend:300,size:2});
+    assert.ok(bc.y+bc.h>200,'curve ctrl extends bbox past endpoints (got '+bc.y+','+bc.h+')');
+    const bn=G.bbox({type:'arrow',x1:0,y1:0,x2:200,y2:0,curve:1,cbend:0,size:2});
+    assert.ok(bn.y+bn.h<100,'flat ctrl barely extends bbox');
+    const be=G.bbox({type:'arrow',x1:0,y1:0,x2:200,y2:200,elbow:1,bend:400,size:2});
+    assert.ok(be.x+be.w>=400,'elbow trunk at bend=400 extends bbox (got '+(be.x+be.w)+')');
+    console.log('  ✓ ADR-0376: G.bbox conn includes curve ctrl + elbow trunk (3 asserts)');
+  }
+
   // G.hit miss-outside-bbox
   assert.strictEqual(G.hit({type:'rect', x:0, y:0, w:10, h:10, fill:null, stroke:'#000', size:2}, {x:1000, y:1000}), false);
   console.log('  ✓ G.hit rejects far-away points');
@@ -8769,9 +8781,21 @@ try {
     assert.ok(!validRemotePayload({op:'del',shapes:[],connClears:Array(501).fill({id:'c1'})}),
       'v1.7.46a: del with 501 connClears rejected (DoS cap)');
     // Small connClears still accepted
-    assert.ok(validRemotePayload({op:'del',shapes:[],connClears:[{id:'c1',before:{a1:'t'},after:{a1:null}}]}),
+    assert.ok(validRemotePayload({op:'del',shapes:[],connClears:[{id:'c1',before:{a:'t'},after:{a:null}}]}),
       'v1.7.46a: del with 1 valid connClear still accepted');
     console.log('  ✓ validRemotePayload del connClears: >MAX_OP_SHAPES rejected (v1.7.46a)');
+    // ADR-0377: connClears patches are whitelisted to the 8 binding-cleanup props —
+    // structural/lock keys (type/id/locked/_x) are Object.assign'd into live connectors
+    // by _apply and must not pass remote validation.
+    assert.ok(!validRemotePayload({op:'del',shapes:[],connClears:[{id:'c1',after:{locked:1}}]}),
+      'ADR-0377: connClear with locked rejected');
+    assert.ok(!validRemotePayload({op:'del',shapes:[],connClears:[{id:'c1',before:{type:'rect'}}]}),
+      'ADR-0377: connClear with type rejected');
+    assert.ok(!validRemotePayload({op:'del',shapes:[],connClears:[{id:'c1',after:{_imgCache:{}}}]}),
+      'ADR-0377: connClear with _-key rejected');
+    assert.ok(validRemotePayload({op:'del',shapes:[],connClears:[{id:'c1',before:{a:'t',aF:{fx:.5,fy:0},x1:0,y1:0},after:{a:null,aF:null,x1:9,y1:9}}]}),
+      'ADR-0377: full legit connClear still accepted');
+    console.log('  ✓ ADR-0377: connClears whitelist — locked/type/_x rejected, legit props pass');
   }
 
   // v1.7.46c: _apply del backward connClears must respect sh.locked (parity with forward path)
