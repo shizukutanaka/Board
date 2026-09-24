@@ -789,7 +789,7 @@ const _keepSel=arr=>{if(arr.length)state.history[state.histIdx].origSel=arr};   
 const _pd=e=>e.preventDefault();   // ADR-0326
 
 // ====================== CONSTANTS ======================
-const V='1.7.377';
+const V='1.7.378';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1219,6 +1219,9 @@ function validPatch(p){
   // so guarding here closes every vector at once. Mirrors buildSVG's /^data:image\// guard;
   // SVG loaded via <img> can't run scripts or fetch subresources, so data:image/svg+xml is safe.
   if('dataUrl' in p&&p.dataUrl!=null&&!(typeof p.dataUrl==='string'&&/^data:image\//.test(p.dataUrl)))return false;
+  // ADR-0327: s.link flows into window.open — a hostile .board/peer upd could carry
+  // a javascript:/data: URL; only http(s) is openable.
+  if('link' in p&&p.link!=null&&!(typeof p.link==='string'&&/^https?:\/\//.test(p.link)))return false;
   return true;
 }
 function _cleanVal(v,depth){
