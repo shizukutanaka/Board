@@ -2,6 +2,24 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.346] - 2026-09-24
+
+### Added
+- 'bar' (T字) 矢印ヘッド — excalidraw `bar` / drawio `dash` と往復、
+  ctx ヘッド巡回にも追加 (ER 図記法対応、ADR-0294)
+
+## [1.7.345] - 2026-09-24
+
+### Changed
+- 開始ヘッドのスタイルを `state.style.startHead`/`state.style.start`
+  に永続化し新規矢印へ引き継ぎ (ADR-0293)
+
+## [1.7.344] - 2026-09-24
+
+### Changed
+- `getCSS('--paper'/'--accent-contrast')` を `_p()`/`_ac()` に集約
+  (raw -355B、ADR-0292)
+
 ## [1.7.343] - 2026-09-24
 
 ### Added
