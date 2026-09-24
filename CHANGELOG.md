@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.251]
+
+### 追加
+- **コネクタラベル背景に s.fill** (ADR-0193)。エッジラベルの pill
+  背景が fill スウォッチに追随 (canvas+SVG、透過0.9規約維持) —
+  「設定可能だが描画されない」監査完結。
+
 ## [1.7.250]
 
 ### 追加

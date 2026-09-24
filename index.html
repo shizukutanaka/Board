@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.250';
+const V='1.7.251';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2669,7 +2669,7 @@ function _drawConnLabel(s,c){
   const fs=s.fontSize||12;   // ADR-0169
   c.font=_fontStr(s,fs);c.textAlign='center';c.textBaseline='middle';   // ADR-0170
   const w=c.measureText(s.label).width,pad=4;
-  c.fillStyle=getCSS('--paper')||'#fff';
+  c.fillStyle=s.fill||getCSS('--paper')||'#fff';              // ADR-0193
   c.fillRect(mx-w/2-pad,my-fs*0.75,w+pad*2,fs*1.5);
   c.fillStyle=s.stroke||'#0F172A';
   c.fillText(s.label,mx,my);
@@ -6481,7 +6481,7 @@ function _connLabelSVG(s,x1,y1,x2,y2,ox,oy,stroke,paper){
   if(!s.label)return '';
   const mx=(x1+x2)/2+ox,my=(y1+y2)/2+oy;
   const fs=s.fontSize||12,lw=String(s.label).length*fs*0.6+8;   // ADR-0169
-  return `<rect x="${mx-lw/2}" y="${my-fs*0.75}" width="${lw}" height="${fs*1.5}" fill="${_esc(paper||'#FFFFFF')}" opacity="0.9"/>`+
+  return `<rect x="${mx-lw/2}" y="${my-fs*0.75}" width="${lw}" height="${fs*1.5}" fill="${_esc(s.fill||paper||'#FFFFFF')}" opacity="0.9"/>`+
     `<text x="${mx}" y="${my}" font-family="${_fontFam(s)}" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''} text-anchor="middle" dominant-baseline="central" fill="${stroke}">${_esc(s.label)}</text>`;   // ADR-0170
 }
 // Pure SVG assembly; returns string or null. All attr values through _esc.
