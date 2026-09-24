@@ -819,7 +819,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.423';
+const V='1.7.424';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1268,7 +1268,7 @@ function validPatch(p){
   // resources invariant. This is the shared intake gate (validShape + upd/patch paths),
   // so guarding here closes every vector at once. Mirrors buildSVG's /^data:image\// guard;
   // SVG loaded via <img> can't run scripts or fetch subresources, so data:image/svg+xml is safe.
-  if('dataUrl' in p&&p.dataUrl!=null&&!(typeof p.dataUrl==='string'&&/^data:image\//.test(p.dataUrl)))return false;
+  if('dataUrl' in p&&p.dataUrl!=null&&!(typeof p.dataUrl==='string'&&p.dataUrl.length<=16_000_000&&/^data:image\//.test(p.dataUrl)))return false;   // ADR-0379: length cap — img.src buffers unbounded otherwise
   // ADR-0327: s.link flows into window.open — a hostile .board/peer upd could carry
   // a javascript:/data: URL; only http(s) is openable.
   if('link' in p&&p.link!=null&&!(typeof p.link==='string'&&/^https?:\/\//.test(p.link)))return false;
@@ -7692,7 +7692,10 @@ const Net={
     switch(msg.k){
       case 'img':{
         // ADR-0069: blob chunks → _imgIn, then drain parked shape refs.
-        if(typeof msg.key!=='string'||msg.key.length>64||typeof msg.data!=='string')break;
+        // ADR-0379: cap each chunk too — the wire format sends ~64KB slices, but the
+        // 12MB post-assembly check runs only after ALL parts land. An oversized
+        // msg.data × up to 4096 slots per key × 64 keys could still buffer-hoard.
+        if(typeof msg.key!=='string'||msg.key.length>64||typeof msg.data!=='string'||msg.data.length>96*1024)break;
         const n=typeof msg.n==='number'&&msg.n>=1&&msg.n<=4096?_fl(msg.n):1;
         const seq=typeof msg.seq==='number'&&msg.seq>=0?_fl(msg.seq):0;
         if(seq>=n)break;

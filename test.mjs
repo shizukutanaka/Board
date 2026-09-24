@@ -246,7 +246,7 @@ const checks = [
   // v1.7.69: the SAME guard now also gates the canvas/render + all remote/import intake
   // via validPatch, so an image dataUrl can never be an external URL (getImg→img.src).
   ['image dataUrl restricted to data:image/ at the validPatch intake gate (no external img.src)',
-    html.includes("if('dataUrl' in p&&p.dataUrl!=null&&!(typeof p.dataUrl==='string'&&/^data:image\\//.test(p.dataUrl)))return false;")],
+    html.includes("if('dataUrl' in p&&p.dataUrl!=null&&!(typeof p.dataUrl==='string'&&p.dataUrl.length<=16_000_000&&/^data:image\\//.test(p.dataUrl)))return false;")],
   ['PDF export escapes docName', html.includes("_esc(_dn()||'board')")],
   ['getCSS is memoised', html.includes("_cssCache") && html.includes("function clearCSSCache")],
   ['resize handles use AAA brand-ink ring', html.includes("getCSS('--brand-ink')")],
@@ -3740,6 +3740,20 @@ try {
     assert.ok(Net._imgIn.get('kX')==='DATA','chunk reassembles into _imgIn');
     assert.ok(!Net._imgPending.has('zz'),'pending drained on blob arrival');
     console.log('  ✓ wire image refs: slim/dedup/re-emit/attach/pending (7 asserts)');
+    // ADR-0379: an oversized msg.data must be rejected before buffering —
+    // the 12MB post-assembly check only runs once all parts land.
+    Net._onRecv({k:'img',key:'big1',seq:0,n:2,data:'x'.repeat(97*1024)},false);
+    assert.ok(!Net._imgChunks.has('big1'),'ADR-0379: oversized chunk never buffers');
+    console.log('  ✓ ADR-0379: oversized img chunk dropped (1 assert)');
+    // ADR-0379: dataUrl length cap — >16M chars is rejected at validPatch
+    // (add/upd/snapshot paths), so img.src can't be fed an unbounded string.
+    const bigImg={id:'i1',type:'image',z:1,x:0,y:0,w:10,h:10,dataUrl:'data:image/png;base64,'+'A'.repeat(16_000_100)};
+    assert.ok(!validShape(bigImg),'ADR-0379: >16M dataUrl rejected at validShape');
+    assert.ok(!validRemotePayload({op:'upd',id:'i1',after:{dataUrl:'data:image/png;base64,'+'A'.repeat(16_000_100)}}),
+      'ADR-0379: >16M dataUrl rejected at upd intake');
+    assert.ok(validShape({id:'i2',type:'image',z:1,x:0,y:0,w:10,h:10,dataUrl:'data:image/png;base64,AAAA'}),
+      'ADR-0379: small dataUrl still valid');
+    console.log('  ✓ ADR-0379: dataUrl 16M cap at intake (3 asserts)');
   }
 
   // ADR-0070: quick-connect — edge-mid dots start a bound arrow draft
