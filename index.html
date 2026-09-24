@@ -777,7 +777,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.337';
+const V='1.7.340';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2594,7 +2594,7 @@ function _drawImgLabel(s,c){
   const lh=fs*(s.lineH||1.25),maxL=Math.max(1,Math.floor((s.h-4)/lh));
   if(lines.length>maxL){lines=lines.slice(0,maxL);lines[maxL-1]+='…'}
   const sh_=lines.length*lh+4,sy=s.valign==='top'?s.y:s.y+s.h-sh_;   // ADR-0179
-  c.fillStyle=s.fill||getCSS('--paper')||'#fff';c.globalAlpha=0.85;   // ADR-0195
+  c.fillStyle=s.fill&&s.fill!=='none'?s.fill:getCSS('--paper')||'#fff';c.globalAlpha=0.85;   // ADR-0288
   c.fillRect(s.x,sy,s.w,sh_);
   c.globalAlpha=1;c.fillStyle=s.stroke||'#0F172A';
   const al2=s.align||'center';   // ADR-0171
@@ -2687,8 +2687,8 @@ function _drawConnLabel(s,c){
   const lns=String(s.label).split('\n'),llh=fs*(s.lineH||1.25),pad=4;   // ADR-0210/0212
   const _lm=_connLabelMeasure(s,c,lns,fs),w=_lm.w;             // ADR-0252: measureText was per-frame per-line
   const th=lns.length*llh;
-  c.fillStyle=s.fill||getCSS('--paper')||'#fff';              // ADR-0193
-  c.fillRect(mx-w/2-pad,my-th/2,w+pad*2,th);
+  if(s.fill!=='none'){c.fillStyle=s.fill||getCSS('--paper')||'#fff';   // ADR-0288
+  c.fillRect(mx-w/2-pad,my-th/2,w+pad*2,th)}
   c.fillStyle=s.stroke||'#0F172A';
   for(let i=0;i<lns.length;i++)c.fillText(lns[i],mx,my+(i-(lns.length-1)/2)*llh);
   if(s.under||s.strike){c.strokeStyle=c.fillStyle;c.lineWidth=Math.max(1,fs*0.06);   // ADR-0170
@@ -2705,7 +2705,7 @@ function drawShape(s,c){
   c.strokeStyle=s.stroke||'#0F172A';
   c.lineWidth=s.size||1;
   c.setLineDash((s.dash&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond'||s.type==='line'||s.type==='arrow'||s.type==='frame'||s.type==='image'))?dashArr(s.dash,s.size):[]);   // ADR-0178
-  if(s.fill){c.fillStyle=s.fill}
+  if(s.fill&&s.fill!=='none'){c.fillStyle=s.fill}   // ADR-0288
   const _rot=shapeRot(s);
   if(_rot){const _cx=s.x+s.w/2,_cy=s.y+s.h/2;c.save();c.translate(_cx,_cy);c.rotate(_rot*Math.PI/180);c.translate(-_cx,-_cy);}
   switch(s.type){
@@ -2771,7 +2771,7 @@ function drawShape(s,c){
       c.globalAlpha=(s.opacity??1)*0.9;
       // ADR-0175: s.fill tints the frame (was hard-coded translucent);
       // frames draw in the first pass so contents still render on top.
-      c.fillStyle=s.fill||'rgba(248,250,252,0.6)';
+      c.fillStyle=s.fill&&s.fill!=='none'?s.fill:'rgba(248,250,252,0.6)';   // ADR-0288
       c.beginPath();roundRect(c,s.x,s.y,s.w,s.h,r);c.fill();
       // border
       c.strokeStyle=s.stroke||getCSS('--brand')||'#00C4CC';
@@ -2853,7 +2853,7 @@ function drawArrow(s,c){
     const cc=_curveCtrl(e,s.cbend);
     c.beginPath();c.moveTo(e.x1,e.y1);c.quadraticCurveTo(cc.x,cc.y,e.x2,e.y2);c.stroke();
     _arrowHeadShape(c,e.x2,e.y2,Math.atan2(e.y2-cc.y,e.x2-cc.x),ah,s.stroke,s.head);
-    if(s.start)_arrowHeadShape(c,e.x1,e.y1,Math.atan2(e.y1-cc.y,e.x1-cc.x),ah,s.stroke,s.head);
+    if(s.start)_arrowHeadShape(c,e.x1,e.y1,Math.atan2(e.y1-cc.y,e.x1-cc.x),ah,s.stroke,s.startHead||s.head);
     return;
   }
   if(s.elbow){
@@ -2863,7 +2863,7 @@ function drawArrow(s,c){
     _arrowHeadShape(c,L.x,L.y,ang,ah,s.stroke,s.head);
     if(s.start){
       const sAng=Math.atan2(pts[0].y-pts[1].y,pts[0].x-pts[1].x)||ang+Math.PI;
-      _arrowHeadShape(c,pts[0].x,pts[0].y,sAng,ah,s.stroke,s.head);
+      _arrowHeadShape(c,pts[0].x,pts[0].y,sAng,ah,s.stroke,s.startHead||s.head);
     }
     return;
   }
@@ -2872,7 +2872,7 @@ function drawArrow(s,c){
   const L=pts[pts.length-1],P=pts[pts.length-2],F=pts[1];
   const ang=Math.atan2(L.y-P.y,L.x-P.x);
   _arrowHeadShape(c,L.x,L.y,ang,ah,s.stroke,s.head);
-  if(s.start)_arrowHeadShape(c,pts[0].x,pts[0].y,Math.atan2(pts[0].y-F.y,pts[0].x-F.x),ah,s.stroke,s.head);
+  if(s.start)_arrowHeadShape(c,pts[0].x,pts[0].y,Math.atan2(pts[0].y-F.y,pts[0].x-F.x),ah,s.stroke,s.startHead||s.head);
 }
 // ADR-0062: orthogonal (Manhattan) route for elbow connectors.
 // Bound ends exit along the edge's outward normal (stub); free ends take the
@@ -3181,7 +3181,7 @@ function drawText(s,c){
   const _tm=s.fill||s.under||s.strike?_connLabelMeasure(s,c,lines,fs):null;   // ADR-0252
   if(s.fill){const mw=_tm.w;
     const bx=s.align==='center'?ax-mw/2:s.align==='right'?ax-mw:ax;
-    c.save();c.fillStyle=s.fill;c.fillRect(bx-3,s.y-3,mw+6,lines.length*lh+6);c.restore();
+    if(s.fill!=='none'){c.save();c.fillStyle=s.fill;c.fillRect(bx-3,s.y-3,mw+6,lines.length*lh+6);c.restore()}   // ADR-0288
     c.fillStyle=s.stroke||'#0F172A';}
   for(let i=0;i<lines.length;i++)c.fillText(lines[i],ax,s.y+i*lh);
   // ADR-0095: canvas has no text-decoration — stroke a line under each row
@@ -6330,7 +6330,7 @@ function excScene(shapes){
           startBinding:s.a?{elementId:s.a,focus:s.aF?+(s.aF.fx*2-1).toFixed(2):0,gap:1}:null,   // ADR-0222: was s.bind1 (never set)
           endBinding:s.b?{elementId:s.b,focus:s.bF?+(s.bF.fx*2-1).toFixed(2):0,gap:1}:null,
           lastCommittedPoint:null,
-          startArrowhead:s.start?'arrow':null,                                       // ADR-0231
+          startArrowhead:s.start?(s.startHead||'arrow'):null,                                       // ADR-0231
           endArrowhead:s.type==='arrow'?(s.head&&s.head!=='arrow'?s.head:'arrow'):null,...(s.elbow?{elbowed:true}:{})}));   // ADR-0265
         if(s.label){const _lp=_connLabelXY(s),_tid=uid();els.push(_ct(s,_tid,s.label,true,null,{x:_lp.x-40,y:_lp.y-10,w:80,h:20}));els[els.length-2].boundElements=[{id:_tid,type:'text'}]}   // ADR-0266/0280
         break;}
@@ -6444,7 +6444,7 @@ function drawioToShapes(txt){
     {const _im=(sty.shape==='image')?(c.getAttribute('style')||'').match(/image=(data:[^;]*;base64,[^;]*|https?:[^;]*)/):null;   // ADR-0259
      if(_im)s=Shape.make('image',{x,y,w:w||120,h:ht||80,dataUrl:_im[1].slice(0,25_000_000),label:lbl.slice(0,240)})}
     if(sty.rounded==='1'&&s.w!=null)s.r=8;
-    if(sty.fillColor&&sty.fillColor!=='none')s.fill=sty.fillColor;
+    if(sty.fillColor)s.fill=sty.fillColor==='none'?'none':sty.fillColor;   // ADR-0288
     _dioStyApply(s,sty,_hid);                                            // ADR-0258
     if(sty.fontColor&&sty.fontColor!=='none'&&(s.type==='text'||s.type==='sticky'||s.label))s.stroke=sty.fontColor;   // ADR-0247/0281
     if(sty.fontFamily&&s.type!=='image'){const ff=sty.fontFamily.toLowerCase();
@@ -6474,7 +6474,11 @@ function drawioToShapes(txt){
     if(sty.endArrow==='none')s.type='line';
     else if(sty.endArrow==='oval'||sty.endArrow==='diamond')s.head='dot';   // ADR-0256
     else if(sty.endArrow==='open')s.head='open';
-    if(sty.startArrow&&sty.startArrow!=='none')s.start=1;
+    if(sty.endFill==='0'&&sty.endArrow&&sty.endArrow!=='none'&&s.head!=='dot')s.head='open';   // ADR-0287
+    if(sty.startFill==='0'&&s.start)s.startHead='open';                    // ADR-0287
+    if(sty.startArrow&&sty.startArrow!=='none'){s.start=1;   // ADR-0286
+      if(sty.startArrow==='oval'||sty.startArrow==='diamond')s.startHead='dot';
+      else if(sty.startArrow==='open')s.startHead='open'}
     if(sty.curved==='1')s.curve=1;
     if(sty.jumpStyle&&sty.jumpStyle!=='none')s.hop=1;
     const pts=g?[...g.querySelectorAll('Array mxPoint')]:[];
@@ -6581,7 +6585,8 @@ function boardToDrawio(shapes){
     const t=s.type;
     if((t!=='line'&&t!=='arrow'))continue;
     const id='e'+(i++);
-    let sty=t==='line'||s.head==='none'?'endArrow=none;':s.head==='dot'?'endArrow=oval;':s.head==='open'?'endArrow=open;':'';   // ADR-0256
+    let sty=s.start?'startArrow='+(s.startHead==='dot'?'oval':s.startHead==='open'?'open':'classic')+';':'';   // ADR-0286
+    sty+=t==='line'||s.head==='none'?'endArrow=none;':s.head==='dot'?'endArrow=oval;':s.head==='open'?'endArrow=open;':'';   // ADR-0256
     if(s.elbow)sty+='edgeStyle=orthogonalEdgeStyle;';
     if(s.curve)sty+='curved=1;';
     if(s.hop)sty+='jumpStyle=arc;';
@@ -6859,7 +6864,7 @@ function excToShapes(txt){
         // ADR-0230: excalidraw arrowhead styles → head/start
         if(e.type==='arrow'){
           if(e.endArrowhead===null)s.head='none';else if(e.endArrowhead&&e.endArrowhead!=='arrow')s.head=e.endArrowhead==='dot'?'dot':'open';
-          if(e.startArrowhead)s.start=1;
+          if(e.startArrowhead){s.start=1;if(e.startArrowhead!=='arrow')s.startHead=e.startArrowhead}   // ADR-0286
         }
         break;
       }
@@ -7117,7 +7122,7 @@ function buildSVG(shapes,paper){
           _svgArrowHead(els,tx,ty,a1,a2,ah,stroke,a,SZ,s.head);
           if(s.start){
             const sAng=Math.atan2(_ce.y1-cc.y,_ce.x1-cc.x),s1=sAng+Math.PI-0.5,s2=sAng+Math.PI+0.5,sx2=_ce.x1+ox,sy2=_ce.y1+oy;
-            _svgArrowHead(els,sx2,sy2,s1,s2,ah,stroke,a,SZ,s.head)}
+            _svgArrowHead(els,sx2,sy2,s1,s2,ah,stroke,a,SZ,s.startHead||s.head)}
           _cL();
         }else if(s.elbow){
           const pts=_elbowPts(s);
@@ -7133,7 +7138,7 @@ function buildSVG(shapes,paper){
           if(s.start){
             const sAng=Math.atan2(pts[0].y-pts[1].y,pts[0].x-pts[1].x)||ang+Math.PI;
             const s1=sAng+Math.PI-0.5,s2=sAng+Math.PI+0.5,sx2=pts[0].x+ox,sy2=pts[0].y+oy;
-            _svgArrowHead(els,sx2,sy2,s1,s2,ah,stroke,a,SZ,s.head)}
+            _svgArrowHead(els,sx2,sy2,s1,s2,ah,stroke,a,SZ,s.startHead||s.head)}
           _cL();
         }else if(s.hop){
           const pts=_linePts(s);
@@ -7142,7 +7147,7 @@ function buildSVG(shapes,paper){
           const ang=Math.atan2(L.y-P.y,L.x-P.x),a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5,tx=L.x+ox,ty=L.y+oy;
           _svgArrowHead(els,tx,ty,a1,a2,ah,stroke,a,SZ,s.head);
           if(s.start){const sAng=Math.atan2(pts[0].y-F.y,pts[0].x-F.x),s1=sAng+Math.PI-0.5,s2=sAng+Math.PI+0.5,sx2=pts[0].x+ox,sy2=pts[0].y+oy;
-            _svgArrowHead(els,sx2,sy2,s1,s2,ah,stroke,a,SZ,s.head)}
+            _svgArrowHead(els,sx2,sy2,s1,s2,ah,stroke,a,SZ,s.startHead||s.head)}
           _cL();
         }else if(s.way){                                            // ADR-0090: full vertex list
           const pts=_linePts(s),wpts=pts.map(p=>_num(p.x+ox)+','+_num(p.y+oy)).join(' ');
@@ -7151,7 +7156,7 @@ function buildSVG(shapes,paper){
           const ang=Math.atan2(L.y-P.y,L.x-P.x),a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5,tx=L.x+ox,ty=L.y+oy;
           _svgArrowHead(els,tx,ty,a1,a2,ah,stroke,a,SZ,s.head);
           if(s.start){const sAng=Math.atan2(pts[0].y-F.y,pts[0].x-F.x),s1=sAng+Math.PI-0.5,s2=sAng+Math.PI+0.5,sx2=pts[0].x+ox,sy2=pts[0].y+oy;
-            _svgArrowHead(els,sx2,sy2,s1,s2,ah,stroke,a,SZ,s.head)}
+            _svgArrowHead(els,sx2,sy2,s1,s2,ah,stroke,a,SZ,s.startHead||s.head)}
           _cL();
         }else{
           if(s.hop){const pts=_linePts(s);els.push(_sp(_hopPathD(s,pts,ox,oy,7)))}   // ADR-0218
@@ -7161,7 +7166,7 @@ function buildSVG(shapes,paper){
           const tx=X2+ox,ty=Y2+oy;
           _svgArrowHead(els,tx,ty,a1,a2,ah,stroke,a,SZ,s.head);
           if(s.start){const s1=ang-0.5,s2=ang+0.5,sx2=X1+ox,sy2=Y1+oy;
-            _svgArrowHead(els,sx2,sy2,s1,s2,ah,stroke,a,SZ,s.head)}
+            _svgArrowHead(els,sx2,sy2,s1,s2,ah,stroke,a,SZ,s.startHead||s.head)}
           _cL();
         }
         break;}
@@ -9360,7 +9365,7 @@ const Minimap=(()=>{
     for(const s of shapes){
       if(!s||s.opacity===0)continue;
       sx.globalAlpha=(s.opacity??1)*0.8;
-      sx.fillStyle=s.fill||'transparent';
+      sx.fillStyle=s.fill&&s.fill!=='none'?s.fill:'transparent';   // ADR-0288
       sx.strokeStyle=s.stroke||getCSS('--ink');
       sx.lineWidth=Math.max(0.5,(s.size||1)*sc);
       const _mr=s.rotate&&s.w!=null;

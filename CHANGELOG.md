@@ -2,6 +2,25 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.340] - 2026-09-24
+
+### Fixed
+- drawio `fillColor=none` を真の透過塗りとして輸入し、`s.fill='none'`
+  が canvas `fillStyle` を汚染する潜在バグも修正 (ADR-0288)
+
+## [1.7.339] - 2026-09-24
+
+### Fixed
+- drawio `endFill=0`/`startFill=0` (未塗り classic 表記) を open ヘッドと
+  して輸入 — UML 白抜き矢印の誤表示を修正 (ADR-0287)
+
+## [1.7.338] - 2026-09-24
+
+### Added
+- 矢印開始ヘッドを `s.startHead` (dot|open) で独立 — drawio
+  `startArrow=oval|diamond|open` と excalidraw `startArrowhead` の
+  往復 (UML 集約記法対応、ADR-0286)
+
 ## [1.7.337] - 2026-09-24
 
 ### Changed
