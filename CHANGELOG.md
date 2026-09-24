@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.373] - 2026-09-24
+
+### Fixed
+- .drawio 書出に `html=1;` を付与 — draw.io で多行ラベルが
+  リテラル `<br>` 表示になっていた実害バグを修正 (ADR-0322)
+
 ## [1.7.372] - 2026-09-24
 
 ### Added
