@@ -721,6 +721,7 @@ const checks = [
   ['svg conn path/label emitters deduped (ADR-0270)', html.includes('const _sp=(d,j)')&&html.includes('_cL();')],
   ['drawio multi-page side-by-side import (ADR-0311)', html.includes("for(const dg of doc.querySelectorAll('diagram'))")],
   ['link badge 🔗 on linked shapes (ADR-0310)', html.includes("c.fillText('🔗',s.x+Math.abs(s.w)-3,s.y+3)")],
+  ['drawio fillStyle hachure round-trip (ADR-0331)', html.includes("sty.fillStyle||'')")&&html.includes("fillStyle='+(s.fstyle==='cross'?'cross-hatch':'hachure')")],
   ['_selIds() selection-ids shorthand (ADR-0330)', html.includes("const _selIds=()=>[...state.selection]")],
   ['_ce() createElement shorthand (ADR-0329)', html.includes("const _ce=t=>document.createElement(t)")],
   ['UserObject label/link fallback (ADR-0328)', html.includes("tagName==='UserObject'?c.parentElement:null")&&html.includes("_uo.getAttribute('label')")],
