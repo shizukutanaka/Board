@@ -798,7 +798,7 @@ const _rnd=Math.round;                                                // ADR-034
 const _qs=(e,s)=>e.querySelector(s);                                  // ADR-0348
 
 // ====================== CONSTANTS ======================
-const V='1.7.398';
+const V='1.7.399';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6353,7 +6353,8 @@ function excScene(shapes){
         els.push(E(s,{type:'freedraw',x:x0,y:y0,width:_max(...xs)-x0,height:_max(...ys)-y0,
           points:s.pts.map(p=>[p[0]-x0,p[1]-y0]),pressures:s.pts.map(p=>p[2]||0.5)}));break;}
       case'line':case'arrow':{
-        const pts=[[0,0],..._wayArr(s).map(w=>[w.x-s.x1,w.y-s.y1]),[s.x2-s.x1,s.y2-s.y1]];
+        const _rp=s.elbow?_elbowPts(s):s.curve?_curveSegs(s):null;     // ADR-0349: bake route → points
+        const pts=_rp?_rp.map(p=>[p.x-s.x1,p.y-s.y1]):[[0,0],..._wayArr(s).map(w=>[w.x-s.x1,w.y-s.y1]),[s.x2-s.x1,s.y2-s.y1]];
         const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]),x0=_min(...xs),y0=_min(...ys);
         els.push(E(s,{type:s.type,x:s.x1+x0,y:s.y1+y0,width:_max(...xs)-x0,height:_max(...ys)-y0,
           points:pts.map(p=>[p[0]-x0,p[1]-y0]),
