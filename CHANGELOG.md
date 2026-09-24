@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.143]
+
+### 追加
+- **フレームをコンテンツに合わせる** (ADR-0085)。ctx メニュー
+  「コンテンツに合わせる」で選択 frame を完全内包シェイプの union
+  bbox + 12px にリサイズ (draw.io コンテナ parity)。複数 frame を
+  1 align op で原子化。空 frame は no-op。
+
 ## [1.7.142]
 
 ### 追加
