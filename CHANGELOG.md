@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.506] - 2026-09-23
+
+### 修正
+
+- `validRemotePayload` の wire キャップを `validPatch` と整合 — `zorder` の `changes[].before/after` に frac 上限 (600) が無く remote が巨大キーを `s.frac` へ注入できた経路、`group.gid` / `ungroup.gids` の無上限文字列も遮断 (ADR-0473)
+
 ## [1.7.505] - 2026-09-23
 
 ### 修正

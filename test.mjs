@@ -1273,7 +1273,7 @@ const checks = [
     html.includes("&&_iA(op.before)&&_ln(op.before)<=MAX_OP_SHAPES&&op.before.every(b=>b&&_iS(b.id));")],
   // v1.7.34: validRemotePayload ungroup must require gids array
   ['validRemotePayload ungroup: requires gids array with string elements',
-    html.includes("&&_iA(op.gids)&&_ln(op.gids)<=MAX_OP_SHAPES&&op.gids.every(g=>_iS(g)&&_ln(g)>0);")],
+    html.includes("&&_iA(op.gids)&&_ln(op.gids)<=MAX_OP_SHAPES&&op.gids.every(g=>_iS(g)&&_ln(g)>0&&_ln(g)<=64)")],
   // v1.7.34: _apply ungroup backward must use optional chaining on op.gids
   ['_apply ungroup backward: op.gids?.[0] optional chaining null guard',
     html.includes("const gid=op.gids?.[0];")],
@@ -6454,6 +6454,21 @@ try {
     assert.strictEqual(state.shapes.map(s=>s.id).join(','),preOrder,'undo restores the pre-compaction order');
     Store.redo();
     console.log('  ✓ _zCommit compaction: full-shape changes + undo restores pre-op order (ADR-0471)');
+  }
+
+  // ADR-0473: oversized frac keys / group ids arriving over the wire are rejected —
+  // zorder changes previously took unbounded strings into s.frac, bypassing the
+  // 600-char validPatch cap, and group/ungroup gids had no length bound.
+  {
+    const badFrac='x'.repeat(601), okFrac='x'.repeat(60);
+    const mk=o=>({op:'zorder',changes:[{id:'a',before:'a',after:o}]});
+    assert.strictEqual(validRemotePayload(mk(badFrac)),false,'zorder change with >600-char after is rejected');
+    assert.strictEqual(validRemotePayload(mk(okFrac)),true,'zorder change with a normal frac is accepted');
+    assert.strictEqual(validRemotePayload({op:'group',ids:['a'],gid:'g'.repeat(65),before:[]}),false,'group gid >64 rejected');
+    assert.strictEqual(validRemotePayload({op:'group',ids:['a'],gid:'g'.repeat(64),before:[]}),true,'group gid <=64 accepted');
+    assert.strictEqual(validRemotePayload({op:'ungroup',ids:['a'],gids:['g'.repeat(65)]}),false,'ungroup gid >64 rejected');
+    assert.strictEqual(validRemotePayload({op:'ungroup',ids:['a'],gids:['g'.repeat(64)]}),true,'ungroup gid <=64 accepted');
+    console.log('  ✓ validRemotePayload caps zorder frac keys + group gids (ADR-0473)');
   }
 
   // v1.6.85: _reapPeers must NOT drop WebRTC peers by timeout — they don't ride the
