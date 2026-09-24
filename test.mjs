@@ -1133,6 +1133,7 @@ const checks = [
   ['visibilitychange listener wires document.visibilityState to flushIfHidden', html.includes("_on(document,'visibilitychange',()=>Persist.flushIfHidden(document.visibilityState));")],
   ['pagehide routes through flushIfHidden — iOS swipe-away durable (ADR-0453)', html.includes("_on(window,'pagehide',()=>{Persist.flushIfHidden('hidden');Net._bcast({k:'bye',peer:_pi()})})")],
   ['peer bye drops presence immediately — no 15s ghost (ADR-0457)', html.includes("case 'bye':{") && html.includes("if(pk&&_pr().delete(pk)){_ivO()")],
+  ['room switch sends bye + clears BC peers (ADR-0458)', html.includes("this._send({k:'bye',peer:_pi()});this.bc.close()") && html.includes("if(!id.startsWith('rtc:'))_pr().delete(id)")],
   // v1.6.80: multi-touch pinch cancels the single-pointer gesture (no stray edits)
   ['pointerdown aborts single-pointer gesture when a 2nd finger lands', html.includes("if(_pointers.size>=2){abortGesture();return;}")],
   ['pointermove bails while pinch is active', html.includes("if(_pointers.size>=2)return;   // pinch in progress")],

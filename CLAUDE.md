@@ -507,6 +507,7 @@ Board/
 │   ├── ADR-0455-lowest-peer-snapshot.md # snapshot応答を最小idピアのみへ + prop畳み込み (実装済)
 │   ├── ADR-0456-typeof-shorthands.md    # _iS/_iN/_iO で typeof ガード畳み込み (実装済)
 │   ├── ADR-0457-peer-bye-message.md     # pagehide で bye を配信、離脱ピア即時除去 (実装済)
+│   ├── ADR-0458-room-switch-presence.md # ルーム切替で bye 送信 + BC ピア掃除 (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

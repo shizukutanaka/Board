@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.492] - 2026-09-23
+
+### 修正
+
+- **ルーム切替時のプレゼンス掃除** — `Net.init` が旧ルームの `state.peers` を掃除せず、別ルームのゴーストカーソル/選択ハロー/接続数が 15 秒持ち越されていた。切替前に旧チャンネルへ `bye` を送信 + `rtc:` 以外のピアを即時削除 (RTC DataChannel は切替で閉じないため保持) (ADR-0458)
+
 ## [1.7.491] - 2026-09-23
 
 ### 修正
