@@ -9281,6 +9281,17 @@ try {
     assert.strictEqual(state.shapes.length,600,'ADR-0474: _applySnapshot adopts >500 shapes (was truncated at 500)');
   }
 
+  // ADR-0475: _snapRx marks snapshot receipt — the presence-interval retry loop
+  // re-sends sync-req (≤3) only while no snapshot has landed. A lost response
+  // (SCTP drop / throttled responder) used to leave the joiner empty forever.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    Net._snapRx=false;
+    Net._onRecv({k:'snapshot',peer:'rTx',shapes:[Shape.make('rect',{x:0,y:0,w:10,h:10})]});
+    assert.strictEqual(Net._snapRx,true,'ADR-0475: snapshot receipt sets _snapRx (stops retries)');
+    console.log('  ✓ _snapRx marks snapshot receipt — bounded sync-req retry (ADR-0475)');
+  }
+
   // v1.7.49e: validRemotePayload ungroup must reject empty-string gids (parity with group.gid)
   {
     // Before fix: gids.every(g=>typeof g==='string') accepts '' (empty string is a string).

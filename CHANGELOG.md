@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.508] - 2026-09-23
+
+### 修正
+
+- join 時の `sync-req` をスナップショット受領まで有界再送 (presence 間隔で ≤3 回) — 応答が SCTP ドロップ/スロットルで失われると joiner が空盤面のまま永遠に待機していた経路を閉塞。受領は `_snapRx` で記録し部屋切替でリセット (ADR-0475)
+
 ## [1.7.507] - 2026-09-23
 
 ### 修正
