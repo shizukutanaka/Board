@@ -724,6 +724,7 @@ const checks = [
   ['excalidraw import restores bindings to s.a/s.b (ADR-0223)', html.includes('_excBnd.push([s,e])')&&html.includes('idOf.get(sb.elementId)')],
   ['drawio import keeps line-vs-arrow/curved/jump/start-head (ADR-0224)', html.includes("sty.endArrow==='none'")&&html.includes('s.hop=1')],
   ['drawio import note→sticky / swimlane→frame (ADR-0226)', html.includes("sty.shape==='note'){s=Shape.make('sticky'")&&html.includes("sty.shape==='swimlane')s=Shape.make('frame'")],
+  ['storage quota pressure warns proactively via estimate() (ADR-0227)', html.includes('navigator.storage.estimate')&&html.includes('this._quotaWarn()')&&html.includes("t('quotaWarn')")],
   ['endpoint drag Shift constrains to 45 deg + label editor fontSize (ADR-0206)', html.includes("constrain the free end to 45")&&html.includes("${hit.fontSize||12}px")],
   ['i18n has excImported ja+en', html.includes("excImported:'Excalidraw を取り込みました'") && html.includes("excImported:'Excalidraw imported'")],
   // v1.7.102: ADR-0044 text paste → text shape

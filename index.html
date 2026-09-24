@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.283';
+const V='1.7.284';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -858,6 +858,7 @@ const I18N={
     emptyHint:'クリックまたはツールバーから描き始める · ? でショートカット一覧',
     themeAuto:'テーマ: 自動(OS 追従)',themeLight:'テーマ: ライト',themeDark:'テーマ: ダーク',
     popupBlocked:'ポップアップをブロックしてください',invalidBoard:'ボードファイルが無効です',exportFailed:'書き出し失敗',saveFailed:'保存失敗',quotaExceeded:'保存容量が逼迫しています — ⌘E/⌘⇧E で書き出しを推奨',
+    quotaWarn:'保存容量の 8 割超を使用中です — ⌘E/⌘⇧E で書き出しておくと安全です',
     snap:'スナップ',grid:'グリッド',minimap:'ミニマップ',on:'オン',off:'オフ',online:'オンライン',offline:'オフライン',shapes:'図形',selDims:'選択',
     selCount:'個を選択',selNone:'選択を解除',
     mirrorLabel:'ボード上の図形一覧',mirrorMore:'個は一覧に未掲載',tagHidden:'(非表示)',
@@ -937,6 +938,7 @@ const I18N={
     emptyHint:'Click or pick a tool to start drawing · Press ? for shortcuts',
     themeAuto:'Theme: Auto (follows OS)',themeLight:'Theme: Light',themeDark:'Theme: Dark',
     popupBlocked:'Pop-up blocked — please allow pop-ups for PDF export',invalidBoard:'Invalid .board file',exportFailed:'Export failed',saveFailed:'Save failed',quotaExceeded:'Storage quota exceeded — export locally with ⌘E/⌘⇧E',
+    quotaWarn:'Storage is over 80% full — exporting via ⌘E/⌘⇧E is recommended',
     copied:'Copied',pasted:'Pasted',deleted:'Deleted',cleared:'Cleared',
     beautified:'Beautified',beautifyNone:'Nothing to beautify (select a pen stroke close to a rectangle, ellipse, or line)',
     undone:'Undone',redone:'Redone',created:'Created',editLabel:'Edit selected shape',
@@ -7805,6 +7807,18 @@ const Persist={
     if(err&&err.name==='QuotaExceededError')return t('quotaExceeded');
     return t('saveFailed')+': '+((err&&err.message)||'unknown');
   },
+  // Proactive quota pressure warning — fires once per ~5min while usage
+  // exceeds 80% of the origin's budget so the user can export before
+  // saves start failing with QuotaExceededError. navigator.storage.estimate
+  // is async + may not exist (old Safari) — errors are swallowed.
+  _quotaWarn(){
+    const nav=(typeof navigator!=='undefined')?navigator:null;
+    if(!nav||!nav.storage||!nav.storage.estimate)return;
+    if(this._qWAt&&Date.now()-this._qWAt<300e3)return;
+    nav.storage.estimate().then(({usage,quota})=>{
+      if(quota&&usage/quota>0.8){this._qWAt=Date.now();UI.toast(t('quotaWarn'),'err')}
+    }).catch(()=>{});
+  },
   async save(explicit){
     if(!this.db)return;
     try{
@@ -7833,6 +7847,7 @@ const Persist={
       state.lastSaveAt=Date.now();
       UI.refreshSaved();
       if(state.shapes.length)this.requestDurable();   // user has content worth keeping
+      this._quotaWarn();                               // ADR-0227
       if(explicit)UI.toast(t('saved'),'ok');
     }catch(err){
       UI.toast(this._saveErrMsg(err),'err');

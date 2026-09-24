@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.284]
+
+### 追加
+- **ストレージ残量警告** (ADR-0227)。保存後に
+  `storage.estimate()` を参照し、使用量が 80% 超で
+  エクスポート誘導トーストを表示 — 保存失敗の前に
+  気づける (5分クールダウン、非対応環境は no-op)。
+
 ## [1.7.283]
 
 ### 修正
