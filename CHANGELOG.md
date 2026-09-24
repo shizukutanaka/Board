@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.405] - 2026-09-24
+
+### Changed
+- `_on` addEventListener shorthand で ~750B 回収 (62箇所、SW・
+  ドット連鎖 receiver は除外) (ADR-0356)
+
 ## [1.7.404] - 2026-09-24
 
 ### Fixed

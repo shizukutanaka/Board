@@ -562,7 +562,7 @@ const checks = [
   ['G.hit handles single-point pen dot (length===1 early return)', html.includes('pts.length===1)return _hp')],
   ['doPaste remaps groupId via gidMap to avoid cross-group contamination', html.includes('gidMap') && html.includes('gidMap.has(sh.groupId)')],
   // v1.6.22: IME + pen RDP + docs
-  ['frame label keydown guards ev.isComposing (IME safe)', html.includes('inp.addEventListener') && html.includes('if(ev.isComposing)return')],
+  ['frame label keydown guards ev.isComposing (IME safe)', html.includes('_on(inp') && html.includes('if(ev.isComposing)return')],
   ['text editor keydown guards ev.isComposing (IME safe)', (html.match(/if\(ev\.isComposing\)return/g)||[]).length >= 2],
   ['pen RDP decimation function _rdp present', html.includes('function _rdp(pts,eps)')],
   ['endPen applies RDP on commit', html.includes('d.pts.length>3')&&html.includes('_rdp(d.pts,0.5/state.viewport.zoom)')],
@@ -665,7 +665,7 @@ const checks = [
   ['minimap canvas has role=img', html.includes('id="minimap"') && html.includes('role="img"')],
   ['minimap canvas has descriptive aria-label', html.includes('aria-label="Board minimap — click to navigate"')],
   // v1.7.94: ADR-0036 minimap drag-scrub
-  ['minimap scrubs on held pointermove', html.includes("mc.addEventListener('pointermove'") && html.includes('if(_mmNav)_mmGo(e)')],
+  ['minimap scrubs on held pointermove', html.includes("_on(mc,'pointermove'") && html.includes('if(_mmNav)_mmGo(e)')],
   ['minimap scrub captures pointer + releases on up', html.includes('mc.setPointerCapture(e.pointerId)') && html.includes('mc.releasePointerCapture(e.pointerId)')],
   // v1.7.95: ADR-0037 screen-reader selection announcements
   ['_announceSel announces 0/1/N via toast', html.includes('function _announceSel()') && html.includes("t('selNone')") && html.includes("t('selCount')")],
@@ -718,7 +718,7 @@ const checks = [
   ['drawio visible=0 attr round-trips s.visible===0 (ADR-0245)', html.includes("s.visible===0?' visible=\"0\"':'")&&html.includes("_ga(c,'visible')==='0'")],
   ['drawio shadow=1 round-trips s.shadow (ADR-0246)', html.includes("r+='shadow=1;'")&&html.includes("sty.shadow==='1'")],
   ['drawio fontColor ↔ text/sticky s.stroke (ADR-0247)', html.includes("sty+='fontColor='+s.stroke")&&html.includes("sty.fontColor!=='none'")],
-  ['visualViewport.resize re-runs canvas resize for iOS chrome (ADR-0251)', html.includes("visualViewport.addEventListener('resize',resize)")],
+  ['visualViewport.resize re-runs canvas resize for iOS chrome (ADR-0251)', html.includes("_on(visualViewport,'resize',resize)")],
   ['drawio sticky fillColor ↔ s.color (ADR-0279)', html.includes("(s.color||'#FEF08A')")],
   ['svg shadow parity rect/ellipse/sticky/pen (ADR-0278)', (html.match(/\$\{_sh\}/g)||[]).length>=11],
   ['excalidraw fillStyle dots → hatch (ADR-0277)', html.includes("e.fillStyle==='dots'")],
@@ -946,7 +946,7 @@ const checks = [
   ['SVG export rotation transform', html.includes("rT=shapeRot(s)?` transform=") && html.includes("rotate(${_num(s.rotate)}")],
   // v1.6.61: shape search - Ctrl+F highlights matching shapes
   ['_sq search state variable', html.includes("let _sq='';")],
-  ['search input DOM element created in wire()', html.includes("sq.id='sqinput'") && html.includes("sq.addEventListener('input'")],
+  ['search input DOM element created in wire()', html.includes("sq.id='sqinput'") && html.includes("_on(sq,'input'")],
   ['search highlight drawn in world space', html.includes("if(_sq){") && html.includes("const q=_sq.toLowerCase()") && html.includes("'#F97316'") && html.includes("'#EA580C'")],
   ['Ctrl+F toggles search input', html.includes("meta&&k==='f'") && html.includes("sq.style.display")],
   // v1.6.62: Socratic feature-interaction fixes
@@ -1113,7 +1113,7 @@ const checks = [
   // v1.6.79: Persist.flushIfHidden — visibilitychange→hidden as mobile-reliable durability signal
   ['Persist.flushIfHidden gates on vis===hidden && state.dirty', html.includes("flushIfHidden(vis){") && html.includes("if(vis==='hidden'&&state.dirty){")],
   ['Persist.flushIfHidden cancels pending debounce + calls save', html.includes("clearTimeout(this._saveT);\n      this.save();")],
-  ['visibilitychange listener wires document.visibilityState to flushIfHidden', html.includes("document.addEventListener('visibilitychange',()=>Persist.flushIfHidden(document.visibilityState));")],
+  ['visibilitychange listener wires document.visibilityState to flushIfHidden', html.includes("_on(document,'visibilitychange',()=>Persist.flushIfHidden(document.visibilityState));")],
   // v1.6.80: multi-touch pinch cancels the single-pointer gesture (no stray edits)
   ['pointerdown aborts single-pointer gesture when a 2nd finger lands', html.includes("if(_pointers.size>=2){abortGesture();return;}")],
   ['pointermove bails while pinch is active', html.includes("if(_pointers.size>=2)return;   // pinch in progress")],
@@ -1123,8 +1123,8 @@ const checks = [
   ['wheel handler routes through wheelPx', html.includes("const d=wheelPx(e);") && html.includes("zoomAt({x:e.offsetX,y:e.offsetY},-d.y*0.005)")],
   // v1.6.82: IME-safe docName live update (Qiita Rapls / Zenn spacemarket)
   ['imeShouldCommit helper present', html.includes("function imeShouldCommit(e){return !(e&&e.isComposing);}")],
-  ['docName input handler gates on imeShouldCommit', html.includes("docNameEl.addEventListener('input',e=>{if(imeShouldCommit(e))_commitDocName()})")],
-  ['docName compositionend listener wires final commit', html.includes("docNameEl.addEventListener('compositionend',_commitDocName)")],
+  ['docName input handler gates on imeShouldCommit', html.includes("_on(docNameEl,'input',e=>{if(imeShouldCommit(e))_commitDocName()})")],
+  ['docName compositionend listener wires final commit', html.includes("_on(docNameEl,'compositionend',_commitDocName)")],
   // v1.6.83: coordinate rounding at serialization boundaries (Zenn float-precision bloat)
   ['_round helper sheds float noise', html.includes("function _round(n,dp){return typeof n==='number'&&_fin(n)?_rnd(n*10**dp)/10**dp:n;}")],
   ['roundShapesForExport rounds coord/dim fields', html.includes("function roundShapesForExport(shapes,dp=2)") && html.includes("['x','y','w','h','x1','y1','x2','y2','rotate']")],
@@ -1155,9 +1155,9 @@ const checks = [
   ['rect case renders label', html.includes("if(s.fstyle)_hatchCtx(c,s);")&&html.includes("_drawBoxLabel(s,c);break;\n    case 'ellipse':")],
   ['ellipse case renders label', /case 'ellipse':[\s\S]{0,500}_drawBoxLabel\(s,c\);break;/.test(html)],
   // v1.6.89: colour picker coalesces (one undo/sync op per pick, like the sliders)
-  ['colour picker captures on focus/pointerdown', html.includes("cp.addEventListener('focus',()=>_sfbCapture(k));") && html.includes("cp.addEventListener('pointerdown',()=>_sfbCapture(k));")],
+  ['colour picker captures on focus/pointerdown', html.includes("_on(cp,'focus',()=>_sfbCapture(k));") && html.includes("_on(cp,'pointerdown',()=>_sfbCapture(k));")],
   ['colour picker input is live-only (no per-input commit)', html.includes("for(const id of state.selection){const s=byId(id);if(s&&!s.locked)s[k]=cp.value}") && !html.includes("applyStyleToSelection({[k]:cp.value})")],
-  ['colour picker flushes one op on change', html.includes("cp.addEventListener('change',()=>{_sfbFlush(k,cp.value);_sfbCapture(k);});")],
+  ['colour picker flushes one op on change', html.includes("_on(cp,'change',()=>{_sfbFlush(k,cp.value);_sfbCapture(k);});")],
   // v1.6.76: ⌘⇧L keyboard shortcut for lock/unlock — README claims "全機能キーボード操作可能"
   // but doLock was right-click-only. Fix adds Ctrl+Shift+L → doLock().
   ['doLock has ⌘⇧L keyboard shortcut', html.includes("meta&&k==='l'&&e.shiftKey")&&html.includes("doLock()")],
