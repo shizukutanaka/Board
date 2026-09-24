@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.321';
+const V='1.7.329';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4295,6 +4295,10 @@ canvas.addEventListener('drop',e=>{
 // ---- Image import: clipboard paste ----
 window.addEventListener('paste',e=>{
   if(e.target.matches('input,textarea'))return;
+  // ADR-0272: an image/svg+xml clipboard item imports as vector shapes —
+  // without this it rasterised through the image branch and lost editability.
+  {const _svi=[...e.clipboardData.items].find(i=>i.type==='image/svg+xml');
+   if(_svi){const f=_svi.getAsFile();if(f){e.preventDefault();f.text().then(s=>importSvgText(s));return}}}
   const items=[...e.clipboardData.items].filter(i=>i.type.startsWith('image/'));
   if(!items.length){
     // ADR-0042: raw SVG markup copied to the clipboard imports as vector shapes.
@@ -4326,6 +4330,24 @@ window.addEventListener('paste',e=>{
       // browsers, chat logs, markdown-as-plain-text all land on the board.
       const txt=s.trim();
       if(!txt)return;
+      // ADR-0273: tab-separated paste → sticky grid (spreadsheet columns →
+      // sticky columns, rows → rows). Any cell may be empty.
+      if(/	/.test(txt)&&txt.includes('\n')){
+        e.preventDefault();
+        const rows=txt.slice(0,PASTE_MAX_CHARS).split('\n').map(r=>r.split('\t'));
+        const C=Math.max(...rows.map(r=>r.length)),R=rows.length;
+        const sw=160,sh=96,gx=16,gy=16;
+        const r2=canvas.getBoundingClientRect();
+        const wp=G.s2w({x:r2.width/2,y:r2.height/2});
+        const x0=wp.x-(C*sw+(C-1)*gx)/2,y0=wp.y-(R*sh+(R-1)*gy)/2;
+        const built=[];
+        rows.forEach((row,ri)=>row.slice(0,C).forEach((cell,ci)=>{
+          const v=String(cell||'').trim();
+          if(v)built.push(Shape.make('sticky',{x:x0+ci*(sw+gx),y:y0+ri*(sh+gy),w:sw,h:sh,color:'#FEF08A',text:v.slice(0,2000)}));
+        }));
+        if(built.length){Store.commit({op:'addMany',shapes:built});state.selection=new Set(built.map(x=>x.id));invalidate();UI.toast(t('textPasted'),'ok')}
+        return;
+      }
       e.preventDefault();
       const fs=16,body=txt.slice(0,PASTE_MAX_CHARS);
       const lines=body.split('\n');
@@ -6262,6 +6284,7 @@ function excScene(shapes){
     strokeWidth:s.size||2,strokeStyle:s.dash===1?'dashed':s.dash===2?'dotted':'solid',
     roughness:0,opacity:Math.round((s.opacity==null?1:s.opacity)*100),
     angle:(s.rotate||0)*Math.PI/180,seed:0,version:1,versionNonce:0,
+    scale:[s.flip&1?-1:1,s.flip&2?-1:1],                                            // ADR-0276
     isDeleted:false,boundElements:null,updated:0,link:null,locked:!!s.locked},over);   // ADR-0241
   const gids={};for(const s of shapes)if(s.groupId)(gids[s.id]=gids[s.id]||[]).push(s.groupId);
   const _excTid=new Map();   // ADR-0225: sticky rect id → its container text id
@@ -6313,7 +6336,7 @@ function excScene(shapes){
       case'image':{
         const fid='f'+s.id;files[fid]={id:fid,mimeType:(s.dataUrl.match(/^data:([^;]+)/)||[])[1]||'image/png',dataURL:s.dataUrl,created:0,lastRetrieved:0};
         els.push(E(s,{type:'image',x:s.x,y:s.y,width:s.w||0,height:s.h||0,fileId:fid,status:'saved',
-          scale:s.flip?[s.flip&1?-1:1,s.flip&2?-1:1]:[1,1]}));break;}                  // ADR-0231
+          }));break;}
       default:break;
     }
   }
@@ -6348,7 +6371,7 @@ function _dioStyApply(s,sty,hid){
   {const _fs=+sty.fontStyle;if(_fs&1)s.bold=1;if(_fs&2)s.italic=1;if(_fs&4)s.under=1}
   if(sty.shadow==='1')s.shadow=1;                                          // ADR-0246
   if(sty.editable==='0'||sty.deletable==='0'||sty.movable==='0')s.locked=1;   // ADR-0254
-  if(+sty.opacity>0)s.opacity=Math.max(0.05,+sty.opacity/100);
+  {const _op=[+sty.opacity,+sty.strokeOpacity,+sty.fillOpacity].filter(v=>v>0);if(_op.length)s.opacity=Math.max(0.05,Math.min(..._op)/100)}   // ADR-0271
   if(sty.flipH==='1')s.flip=(s.flip||0)|1;                  // ADR-0260
   if(sty.flipV==='1')s.flip=(s.flip||0)|2;
   if(hid)s.visible=0;                                       // ADR-0245
@@ -6405,7 +6428,7 @@ function drawioToShapes(txt){
     const x=_o.x+(+g.getAttribute('x')||0),y=_o.y+(+g.getAttribute('y')||0),w=+g.getAttribute('width')||0,ht=+g.getAttribute('height')||0;
     const lbl=_dioLabel(c.getAttribute('value'));
     let s;
-    if('ellipse' in sty)s=Shape.make('ellipse',{x,y,w:w||120,h:ht||80,label:lbl.slice(0,240)});
+    if('ellipse' in sty||sty.shape==='cylinder'||sty.shape==='cloud')s=Shape.make('ellipse',{x,y,w:w||120,h:ht||80,label:lbl.slice(0,240)});   // ADR-0274
     else if(sty.shape==='rhombus'||'rhombus' in sty)s=Shape.make('diamond',{x,y,w:w||120,h:ht||80,label:lbl.slice(0,240)});
     else if('swimlane' in sty||sty.shape==='swimlane')s=Shape.make('frame',{x,y,w:w||800,h:ht||500,label:lbl.slice(0,120)});   // ADR-0226
     else if(sty.shape==='note'){s=Shape.make('sticky',{x,y,w:w||160,h:ht||160,color:'#FEF08A',text:lbl.slice(0,2000)});   // ADR-0226
@@ -6578,7 +6601,7 @@ function boardToDrawio(shapes){
     geo+='</mxGeometry>';
     cells.push(`<mxCell id="${id}" value="${nl(s.label||'')}" style="${esc(sty)}" edge="1" parent="1"${src}${tgt}${s.visible===0?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0245
   }
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile><diagram name="Page-1"><mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/>${cells.join('')}</root></mxGraphModel></diagram></mxfile>`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile compressed="false"><diagram name="Page-1"><mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/>${cells.join('')}</root></mxGraphModel></diagram></mxfile>`;
 }
 function exportDrawio(){
   if(!state.shapes.length){UI.toast(t('empty'),'warn');return}
@@ -6786,7 +6809,7 @@ function excToShapes(txt){
     if(e.strokeStyle==='dashed')o.dash=1;else if(e.strokeStyle==='dotted')o.dash=2;
     if(Number.isFinite(e.lineHeight)&&e.lineHeight!==1.25)o.lineH=Math.min(4,Math.max(0.5,e.lineHeight));   // ADR-0242
     // ADR-0230: excalidraw fidelity — hatch fills, roundness, align, arrowheads
-    if(e.fillStyle==='hachure'||e.fillStyle==='zigzag'||e.fillStyle==='zigzag-line')o.fstyle='hatch';else if(e.fillStyle==='cross-hatch')o.fstyle='cross';   // ADR-0268
+    if(e.fillStyle==='hachure'||e.fillStyle==='zigzag'||e.fillStyle==='zigzag-line'||e.fillStyle==='dots')o.fstyle='hatch';else if(e.fillStyle==='cross-hatch')o.fstyle='cross';   // ADR-0268
     if(e.roundness||e.strokeSharpness==='round')o.r=8;   // ADR-0267
     return o;
   };
@@ -6836,11 +6859,12 @@ function excToShapes(txt){
         const f=d.files&&e.fileId?d.files[e.fileId]:null;
         if(!f||typeof f.dataURL!=='string'||!/^data:image\//.test(f.dataURL))break;
         s=Shape.make('image',{x:e.x,y:e.y,w:W||80,h:H||80,dataUrl:f.dataURL.slice(0,25_000_000)});
-        if(Array.isArray(e.scale))s.flip=((e.scale[0]<0)?1:0)|((e.scale[1]<0)?2:0);
         break;}
       default:break;   // unknown — skip
     }
-    if(s){if(r&&s.w!=null)s.rotate=r;if(e.locked)s.locked=1;Object.assign(s,S);shapes.push(s);   // ADR-0241
+    if(s){if(r&&s.w!=null)s.rotate=r;if(e.locked)s.locked=1;
+      if(Array.isArray(e.scale)&&(e.scale[0]<0||e.scale[1]<0))s.flip=((e.scale[0]<0)?1:0)|((e.scale[1]<0)?2:0);   // ADR-0276
+      Object.assign(s,S);shapes.push(s);   // ADR-0241
       // ADR-0223: line/arrow keep a back-ref to their exc element so
       // start/endBinding (element ids) can resolve after every vertex exists
       if(s.type==='line'||s.type==='arrow')_excBnd.push([s,e]);
@@ -7016,6 +7040,10 @@ function buildSVG(shapes,paper){
     const _dsh=dashArr(s.dash,SZ);
     const dA=_dsh.length?` stroke-dasharray="${_dsh.map(n=>Math.round(n*10)/10).join(' ')}"`:'';
     const _sh=s.shadow?' filter="url(#bsh)"':'';   // ADR-0194
+    // ADR-0270: shared conn-path element + conn-label emitters (was 8-10x duplicated)
+    const _sp=(d,j)=>`<path d="${d}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${j?' stroke-linejoin="round"':''}${dA}${a}${_sh}/>`;
+    const _po=pt=>`<polyline points="${pt}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`;
+    const _cL=()=>{const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper))};
     const rT=shapeRot(s)?` transform="rotate(${_num(s.rotate)},${X+W/2+ox},${Y+H/2+oy})"`:''
     switch(s.type){
       case 'rect':{
@@ -7055,43 +7083,40 @@ function buildSVG(shapes,paper){
       case 'line':{
         if(s.curve){
           const _ce=connEnds(s),cc=_curveCtrl(_ce,s.cbend);
-          els.push(`<path d="M ${_num(_ce.x1+ox)} ${_num(_ce.y1+oy)} Q ${_num(cc.x+ox)} ${_num(cc.y+oy)} ${_num(_ce.x2+ox)} ${_num(_ce.y2+oy)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`);
-          const lm=_curveLabelXY(s);
-          {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
+          els.push(_sp(`M ${_num(_ce.x1+ox)} ${_num(_ce.y1+oy)} Q ${_num(cc.x+ox)} ${_num(cc.y+oy)} ${_num(_ce.x2+ox)} ${_num(_ce.y2+oy)}`));
+          _cL();
         }else if(s.elbow){
           const pts=_elbowPts(s);
-          if(s.hop)els.push(`<path d="${_hopPathD(s,pts,ox,oy,7)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`);   // ADR-0218
-          else if(s.r>0)els.push(`<path d="${_polylineRd(pts,ox,oy,s.r)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`);   // ADR-0207
+          if(s.hop)els.push(_sp(_hopPathD(s,pts,ox,oy,7)));   // ADR-0218
+          else if(s.r>0)els.push(_sp(_polylineRd(pts,ox,oy,s.r),1));   // ADR-0207
           else{const spts=pts.map(p=>`${_num(p.x+ox)},${_num(p.y+oy)}`).join(' ');
-          els.push(`<polyline points="${spts}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`)}
-          const lm=_elbowLabelXY(s);
-          {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
+          els.push(_po(spts))}
+          _cL();
         }else{
-          if(s.hop){const pts=_linePts(s);els.push(`<path d="${_hopPathD(s,pts,ox,oy,7)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`)}   // ADR-0218
-          else if(s.way){const w=s.way;els.push(`<polyline points="${X1+ox},${Y1+oy} ${_num(w.x+ox)},${_num(w.y+oy)} ${X2+ox},${Y2+oy}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`)}   // ADR-0076
+          if(s.hop){const pts=_linePts(s);els.push(_sp(_hopPathD(s,pts,ox,oy,7)))}   // ADR-0218
+          else if(s.way){const w=s.way;els.push(_po(`${X1+ox},${Y1+oy} ${_num(w.x+ox)},${_num(w.y+oy)} ${X2+ox},${Y2+oy}`))}   // ADR-0076
           else els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`);
-          {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
+          _cL();
         }
         break;}
       case 'arrow':{
         const ah=Math.max(6,(SZ||2)*3);
         if(s.curve){
           const _ce=connEnds(s),cc=_curveCtrl(_ce,s.cbend);
-          els.push(`<path d="M ${_num(_ce.x1+ox)} ${_num(_ce.y1+oy)} Q ${_num(cc.x+ox)} ${_num(cc.y+oy)} ${_num(_ce.x2+ox)} ${_num(_ce.y2+oy)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`);
+          els.push(_sp(`M ${_num(_ce.x1+ox)} ${_num(_ce.y1+oy)} Q ${_num(cc.x+ox)} ${_num(cc.y+oy)} ${_num(_ce.x2+ox)} ${_num(_ce.y2+oy)}`));
           const ang=Math.atan2(_ce.y2-cc.y,_ce.x2-cc.x);
           const a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5,tx=_ce.x2+ox,ty=_ce.y2+oy;
           _svgArrowHead(els,tx,ty,a1,a2,ah,stroke,a,SZ,s.head);
           if(s.start){
             const sAng=Math.atan2(_ce.y1-cc.y,_ce.x1-cc.x),s1=sAng+Math.PI-0.5,s2=sAng+Math.PI+0.5,sx2=_ce.x1+ox,sy2=_ce.y1+oy;
             _svgArrowHead(els,sx2,sy2,s1,s2,ah,stroke,a,SZ,s.head)}
-          const lm=_curveLabelXY(s);
-          {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
+          _cL();
         }else if(s.elbow){
           const pts=_elbowPts(s);
-          if(s.hop)els.push(`<path d="${_hopPathD(s,pts,ox,oy,7)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`);   // ADR-0218
-          else if(s.r>0)els.push(`<path d="${_polylineRd(pts,ox,oy,s.r)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`);   // ADR-0207
+          if(s.hop)els.push(_sp(_hopPathD(s,pts,ox,oy,7)));   // ADR-0218
+          else if(s.r>0)els.push(_sp(_polylineRd(pts,ox,oy,s.r),1));   // ADR-0207
           else{const spts=pts.map(p=>`${_num(p.x+ox)},${_num(p.y+oy)}`).join(' ');
-          els.push(`<polyline points="${spts}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`)}
+          els.push(_po(spts))}
           const Lp=pts[pts.length-1],Pp=pts[pts.length-2];
           const ang=Math.atan2(Lp.y-Pp.y,Lp.x-Pp.x)||Math.atan2(Y2-Y1,X2-X1);
           const a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5;
@@ -7101,30 +7126,27 @@ function buildSVG(shapes,paper){
             const sAng=Math.atan2(pts[0].y-pts[1].y,pts[0].x-pts[1].x)||ang+Math.PI;
             const s1=sAng+Math.PI-0.5,s2=sAng+Math.PI+0.5,sx2=pts[0].x+ox,sy2=pts[0].y+oy;
             _svgArrowHead(els,sx2,sy2,s1,s2,ah,stroke,a,SZ,s.head)}
-          const lm=_elbowLabelXY(s);
-          {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
+          _cL();
         }else if(s.hop){
           const pts=_linePts(s);
-          els.push(`<path d="${_hopPathD(s,pts,ox,oy,7)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`);   // ADR-0218
+          els.push(_sp(_hopPathD(s,pts,ox,oy,7)));   // ADR-0218
           const L=pts[pts.length-1],P=pts[pts.length-2],F=pts[1];
           const ang=Math.atan2(L.y-P.y,L.x-P.x),a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5,tx=L.x+ox,ty=L.y+oy;
           _svgArrowHead(els,tx,ty,a1,a2,ah,stroke,a,SZ,s.head);
           if(s.start){const sAng=Math.atan2(pts[0].y-F.y,pts[0].x-F.x),s1=sAng+Math.PI-0.5,s2=sAng+Math.PI+0.5,sx2=pts[0].x+ox,sy2=pts[0].y+oy;
             _svgArrowHead(els,sx2,sy2,s1,s2,ah,stroke,a,SZ,s.head)}
-          const lm=_connLabelXY(s);
-          {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
+          _cL();
         }else if(s.way){                                            // ADR-0090: full vertex list
           const pts=_linePts(s),wpts=pts.map(p=>_num(p.x+ox)+','+_num(p.y+oy)).join(' ');
-          els.push(`<polyline points="${wpts}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`);
+          els.push(_po(wpts));
           const L=pts[pts.length-1],P=pts[pts.length-2],F=pts[1];
           const ang=Math.atan2(L.y-P.y,L.x-P.x),a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5,tx=L.x+ox,ty=L.y+oy;
           _svgArrowHead(els,tx,ty,a1,a2,ah,stroke,a,SZ,s.head);
           if(s.start){const sAng=Math.atan2(pts[0].y-F.y,pts[0].x-F.x),s1=sAng+Math.PI-0.5,s2=sAng+Math.PI+0.5,sx2=pts[0].x+ox,sy2=pts[0].y+oy;
             _svgArrowHead(els,sx2,sy2,s1,s2,ah,stroke,a,SZ,s.head)}
-          const lm=_connLabelXY(s);
-          {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
+          _cL();
         }else{
-          if(s.hop){const pts=_linePts(s);els.push(`<path d="${_hopPathD(s,pts,ox,oy,7)}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`)}   // ADR-0218
+          if(s.hop){const pts=_linePts(s);els.push(_sp(_hopPathD(s,pts,ox,oy,7)))}   // ADR-0218
           else els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`);
           const ang=Math.atan2(Y2-Y1,X2-X1);
           const a1=ang+Math.PI-0.5,a2=ang+Math.PI+0.5;
@@ -7132,7 +7154,7 @@ function buildSVG(shapes,paper){
           _svgArrowHead(els,tx,ty,a1,a2,ah,stroke,a,SZ,s.head);
           if(s.start){const s1=ang-0.5,s2=ang+0.5,sx2=X1+ox,sy2=Y1+oy;
             _svgArrowHead(els,sx2,sy2,s1,s2,ah,stroke,a,SZ,s.head)}
-          {const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));}
+          _cL();
         }
         break;}
       case 'pen':{

@@ -319,6 +319,14 @@ Board/
 │   ├── ADR-0267-exc-strokesharpness.md  # excalidraw strokeSharpness ↔ s.r (実装済)
 │   ├── ADR-0268-exc-fidelity-tail.md  # excalidraw pressures/zigzag 受容 (実装済)
 │   ├── ADR-0269-drawio-edge-rounded.md  # drawio edge rounded=1 → s.r (実装済)
+│   ├── ADR-0270-svg-conn-emit-dedupe.md  # SVG conn パス/ラベル集約 _sp/_po/_cL (実装済)
+│   ├── ADR-0271-drawio-split-opacity.md  # drawio 分割 opacity → s.opacity 近似 (実装済)
+│   ├── ADR-0272-paste-svg-mime.md  # clipboard image/svg+xml → vector import (実装済)
+│   ├── ADR-0273-paste-tsv-grid.md  # TSV ペースト → 付箋グリッド (実装済)
+│   ├── ADR-0274-drawio-shape-approx.md  # drawio cylinder/cloud → ellipse 近似 (実装済)
+│   ├── ADR-0275-drawio-compressed-flag.md  # drawio export compressed=false 明記 (実装済)
+│   ├── ADR-0276-exc-scale-flip.md  # excalidraw scale 反転を全要素へ (実装済)
+│   ├── ADR-0277-exc-fillstyle-dots.md  # excalidraw fillStyle dots → hatch (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

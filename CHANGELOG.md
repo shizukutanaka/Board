@@ -2,6 +2,52 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.329] - 2026-09-24
+
+### Added
+- .excalidraw: fillStyle dots → hatch 近似 (ADR-0277)
+
+## [1.7.328] - 2026-09-24
+
+### Added
+- .excalidraw: scale 反転を全要素へ一般化 (import 共通 tail + E() 常設
+  scale、ADR-0276)
+
+## [1.7.327] - 2026-09-24
+
+### Fixed
+- .drawio export: `<mxfile>` に `compressed="false"` を明記 (非圧縮XML、
+  ADR-0275)
+
+## [1.7.326] - 2026-09-24
+
+### Added
+- .drawio: shape=cylinder/cloud を ellipse に近似マップ (ADR-0274)
+
+## [1.7.325] - 2026-09-24
+
+### Added
+- タブ区切り (TSV) テキストのペーストでセルを付箋グリッドに展開
+  (スプレッドシートのコピー、ADR-0273)
+
+## [1.7.324] - 2026-09-24
+
+### Added
+- クリップボードの image/svg+xml アイテムをベクター図形として取込
+  (draw.io/Figma からのコピー、ADR-0272)
+
+## [1.7.323] - 2026-09-24
+
+### Added
+- .drawio: strokeOpacity/fillOpacity の個別指定 → s.opacity に近似受容
+  (ADR-0271)
+
+## [1.7.322] - 2026-09-24
+
+### Changed
+- SVG export: conn パス/ポリライン/ラベル出力を `_sp`/`_po`/`_cL` に
+  集約 + dead `lm` 変数6件削除 (~1.9KB 回収、ADR-0270)
+
 ## [1.7.321] - 2026-09-24
 
 ### Fixed
