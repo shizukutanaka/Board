@@ -583,6 +583,7 @@ const checks = [
   ['.board file round-trips viewport (ADR-0393)', html.includes("viewport:{x:+_vp().x.toFixed(2),y:+_vp().y.toFixed(2),zoom:+_vp().zoom.toFixed(4)}")&&html.includes("_vp().zoom=clampZoom(+d.viewport.zoom)")],
   ['importBoard uses atomic replace op (not clear+adds)', html.includes('function importBoard') && html.includes('.filter(validShape)') && html.includes("op:'replace',before,after")],
   ['Ctrl+Shift+S triggers exportBoard', html.includes("e.shiftKey){_pd(e);exportBoard()}")],
+  ['doDelete warns on all-locked selection (ADR-0396)', html.includes("if(!sel.length){if(_selAny())_tst(t('lockedNoop'),'warn');return}")],
   // ADR-0004: doClearAll/importBoard/importFromHash back up the pre-replace board to a
   // second IndexedDB slot before the destructive swap, so it survives past the session-only
   // undo window (reload / closed tab). importBoard can't be exercised directly in this
@@ -621,7 +622,7 @@ const checks = [
   ['invalidBoard i18n key in both locales', html.includes("invalidBoard:'ボードファイル") && html.includes("invalidBoard:'Invalid .board")],
   ['drop-image handler shows toast', html.includes("_iv();_tst(t('imagePasted')")],
   ['popupBlocked used via t()', html.includes("t('popupBlocked')")],
-  ['invalidBoard used via t()', html.includes("t('invalidBoard')")],
+  ['invalidBoard used via t()', html.includes("t(_IB)")],
   // v1.6.33: Present button data-t, snap/grid i18n, comment fix
   ['Present button span has data-t attribute', html.includes('data-t="present"')],
   ['present key in ja i18n', html.includes("present:'プレゼン'")],
@@ -653,7 +654,7 @@ const checks = [
   // v1.6.39: console cleanup - no redundant console.warn/error in production paths
   ['no console.warn in BroadcastChannel catch', !html.includes("console.warn('BroadcastChannel init failed'")],
   ['no console.error in save catch (user gets toast)', !html.includes("console.error('save failed'")],
-  ['import parse failure shows invalidBoard toast (not silent)', html.includes("_tst(t('invalidBoard'),'err')")],
+  ['import parse failure shows invalidBoard toast (not silent)', html.includes("_tst(t(_IB),'err')")],
   // v1.6.40: style panel a11y - decorative labels hidden, panel groups have role/aria-label
   ['style panel S/F labels are aria-hidden (decorative)', html.includes('<span class="sp-label" aria-hidden="true">S</span>') && html.includes('<span class="sp-label" aria-hidden="true">F</span>')],
   ['size and opacity groups have role=group', html.includes('role="group" aria-label="Size"') && html.includes('role="group" aria-label="Opacity"')],
@@ -678,10 +679,10 @@ const checks = [
   ['i18n has selCount/selNone ja+en', html.includes("selCount:'個を選択'") && html.includes("selCount:' selected'")],
   // v1.7.96: ADR-0038 share-link reject paths all toast + clear hash
   ['importFromHash hoists clearHash helper', html.includes("const clearHash=()=>{try{history.replaceState(null,'',location.pathname)}catch(_){}};")],
-  ['unknown kind toasts + clears', html.includes("}else{_tst(t('invalidBoard'),'err');clearHash();return false}")],
-  ['non-array shapes toasts + clears', html.includes("if(!_iA(data.shapes)||data.shapes.length>SHARE_MAX_SHAPES){_tst(t('invalidBoard'),'err');clearHash();return false}")],
-  ['all-invalid shapes toasts + clears', html.includes("if(!valid.length){_tst(t('invalidBoard'),'err');clearHash();return false}")],
-  ['decode-throw catch also clears hash', html.includes("}catch{_tst(t('invalidBoard'),'err');clearHash();return false}")],
+  ['unknown kind toasts + clears', html.includes("}else{_tst(t(_IB),'err');clearHash();return false}")],
+  ['non-array shapes toasts + clears', html.includes("if(!_iA(data.shapes)||data.shapes.length>SHARE_MAX_SHAPES){_tst(t(_IB),'err');clearHash();return false}")],
+  ['all-invalid shapes toasts + clears', html.includes("if(!valid.length){_tst(t(_IB),'err');clearHash();return false}")],
+  ['decode-throw catch also clears hash', html.includes("}catch{_tst(t(_IB),'err');clearHash();return false}")],
   // v1.7.97: ADR-0039 share-link resource-bomb guard
   ['share payload ceilings defined', html.includes('SHARE_MAX_BYTES') && html.includes('SHARE_MAX_SHAPES')],
   ['decompressed payload byte cap before parse', html.includes('json.length>SHARE_MAX_BYTES')],
@@ -1013,7 +1014,7 @@ const checks = [
   ['snapshot amplification: _sendSnapshot throttled',
     html.includes('_lastSnapAt:0') && html.includes('if(now-this._lastSnapAt<1000)return;')],
   ['importBoard: FileReader onerror toasts instead of failing silently',
-    html.includes("r.onerror=()=>_tst(t('invalidBoard'),'err');")],
+    html.includes("r.onerror=()=>_tst(t(_IB),'err');")],
   ['docName clamped to 80 chars on all four intake paths (import/IDB/backup/hash)',
     (html.match(/\.slice\(0,80\)/g)||[]).length>=4],
   // v1.7.63 UX/i18n audit
