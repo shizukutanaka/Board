@@ -851,7 +851,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.461';
+const V='1.7.462';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1608,13 +1608,13 @@ const Store={
         // a duplicate. Local commits use fresh uids so this never blocks them; redo
         // re-pushes because undo removed the shape first.
         if(forward){if(!byId(op.shape.id)){_sh().push(clone(op.shape));_sz();}}
-        else{const i=_sh().findIndex(s=>s.id===op.shape.id);if(i>=0)_sh().splice(i,1);_sdl(op.shape.id);delete _wc()[op.shape.id];_selR(op);}
+        else{const i=_sh().findIndex(s=>s.id===op.shape.id);if(i>=0)_sh().splice(i,1);_sdl(op.shape.id);delete _wc()[op.shape.id];_psc(op.shape.id);_selR(op);}
         break;}
       case 'addMany':{
         // Atomic multi-add (paste/duplicate): N copies as ONE undo step. Forward mirrors
         // 'add' (idempotent on id); reverse mirrors 'del' (remove all, drop selection).
         if(forward){for(const sh of op.shapes){if(!byId(sh.id))_sh().push(clone(sh));}_sz();}
-        else{for(const sh of op.shapes){const i=_sh().findIndex(s=>s.id===sh.id);if(i>=0)_sh().splice(i,1);_sdl(sh.id);delete _wc()[sh.id];}_selR(op);}
+        else{for(const sh of op.shapes){const i=_sh().findIndex(s=>s.id===sh.id);if(i>=0)_sh().splice(i,1);_sdl(sh.id);delete _wc()[sh.id];_psc(sh.id);}_selR(op);}
         break;}
       case 'del':{
         if(forward){
@@ -1626,8 +1626,7 @@ const Store={
             if(i>=0)_sh().splice(i,1);
             _sdl(sh.id);
             delete _wc()[sh.id];        // drop per-property write clocks
-            _penBboxCache.delete(sh.id);                  // ADR-0424
-            const _pe=_penCache.get(sh.id);if(_pe){_penCache.delete(sh.id);_penCachePx-=_pe.px||0;}   // ADR-0424
+            _psc(sh.id);                     // ADR-0424/0427
           }
           // Apply connector binding clears after shapes are gone (connectors still live)
           if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_oa(sh,p.after);}}
@@ -1659,7 +1658,7 @@ const Store={
         if(!forward)_selR(op);
         break;}
       case 'clear':{
-        if(forward){_sh().length=0;_scl();state.wclock={};}
+        if(forward){_sh().length=0;_scl();state.wclock={};_pcC();}
         else{for(const s of op.shapes)_sh().push(clone(s));_sz();if(op.wc)state.wclock=clone(op.wc);_selR(op);}
         break;}
       case 'replace':{
@@ -1667,7 +1666,7 @@ const Store={
         // shape arrays so Ctrl+Z restores the board the import overwrote.
         // Local-only by design — NOT in REMOTE_OPS, so a peer can't wipe your board.
         const next=forward?op.after:op.before;
-        _sh().length=0;_scl();state.wclock={};
+        _sh().length=0;_scl();state.wclock={};_pcC();
         for(const s of next)_sh().push(clone(s));
         _sz();
         if(forward&&op.afterWc)state.wclock=clone(op.afterWc);
@@ -2011,6 +2010,7 @@ let _penCachePx=0;
 // wholesale `state.shapes=` replacement (clones miss the pts-identity signature
 // anyway, so old entries would sit until the global caps evict them).
 const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear()}
+const _psc=id=>{_penBboxCache.delete(id);const e=_penCache.get(id);if(e){_penCache.delete(id);_penCachePx-=e.px||0;}}   // ADR-0427
 // Effective raster resolution: zoom-adaptive (supersampled at low zoom is just
 // wasted pixels), clamped 0.25..2 so extreme zoom-outs still rasterize tiny.
 function _penRes(){return _min(2,_max(0.25,_vp().zoom*DPR))}
@@ -5477,7 +5477,7 @@ function eraseAt(wp){
     const i=_sh().findIndex(s=>s.id===hit.id);
     if(i>=0){
       const _eb=_bb(hit);
-      _sh().splice(i,1);_iG();   // ADR-0009
+      _sh().splice(i,1);_iG();_psc(hit.id);   // ADR-0009/0427
       _iD(_dmgPair(_eb,null,(hit.size||2)+16));   // ADR-0026: reveal under-shapes inside the erased bbox only
     }
     _eraseBatch.push(clone(hit));

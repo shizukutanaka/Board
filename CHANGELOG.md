@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.462] - 2026-09-23
+
+### Fixed
+- per-shape キャッシュパージを全削除経路に拡大 (`_psc` helper) — `add`/`addMany` undo・`clear`/`replace`・イレーサー即時削除でも `_penCache`/`_penBboxCache` を解放
+
 ## [1.7.461] - 2026-09-23
 
 ### Fixed
