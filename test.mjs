@@ -444,7 +444,7 @@ const checks = [
   ['text align: align prop cycles + canvas/SVG/editor respect it', html.includes('function cycleTextAlign()')&&html.includes("['ctxTextAlign','',cycleTextAlign]")&&html.includes('c.textAlign=s.align')&&html.includes('text-anchor')],
   ['box label wrap: canvas wraps to w-8 + SVG multi-tspan centred', html.includes('wrapTextCached(s,s.label,Math.max(10,s.w-8)')&&html.includes('function _svgBoxLabel(els,s,X,Y,W,H')&&html.includes('wrapText(s.label')],
   ['font size keys: ⌘⇧,/. steps fontSize ±2 clamped 8..64', html.includes('function fontSizeStep(d)')&&html.includes("k===','||k==='<'")&&html.includes('Math.min(64,Math.max(8')],
-  ['waypoint: _linePts + way drag + transforms + SVG polyline', html.includes('function _linePts(s)')&&html.includes("ptr.dragKind='way'")&&html.includes('s.way?')&&html.includes('if(orig.way)sh.way=')],
+  ['waypoint: _linePts + way drag + transforms + SVG polyline', html.includes('function _linePts(s)')&&html.includes("ptr.dragKind='way'")&&html.includes('_wayArr(s)')&&html.includes('if(orig.way)sh.way=')],
   ['hatch: _hatchSegs/ctx/svg + cycleFillStyle + ctx item', html.includes('function _hatchSegs(')&&html.includes('function cycleFillStyle()')&&html.includes("['ctxFillStyle'")&&html.includes('clip-path="url(#')],
   ['bold/italic: _fontStr + toggleTextFlag + ⌘B/⌘I + SVG attrs', html.includes('function _fontStr(s,fs)')&&html.includes('function toggleTextFlag(k)')&&html.includes("k==='b'&&!e.shiftKey")&&html.includes('font-weight="600"')],
   ['match size: doMatchSize + DIRS + ctx items', html.includes('function doMatchSize(dim)')&&html.includes("'matchw','matchh','matchwh'")&&html.includes("['ctxMatchWH'")],
@@ -454,6 +454,15 @@ const checks = [
   ['image caption: bottom paper strip + editor gate', html.includes('function _drawImgLabel(s,c)')&&html.includes('_drawImgLabel(s,c);')&&html.includes('function _svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT)')&&html.includes("hit.type==='image'")],
   ['route reset: resetRoute clears way/bend/elbow/curve via one style op', html.includes('function resetRoute()')&&html.includes('ctxRouteReset')&&html.includes('way:null,bend:null,elbow:0,curve:0')],
   ['frame fit: bbox of fully-inside shapes + padding via align op', html.includes('function fitFrames()')&&html.includes('ctxFrameFit')&&html.includes('framefit')],
+  ['click stamp: click places a default 120x80 box', html.includes('d.w=120;d.h=80;d.x-=60;d.y-=40')&&html.includes("ADR-0086")],
+  ['copySVG: selection SVG via copyText in ctx menu', html.includes('function copySVG(shapes=state.shapes)')&&html.includes("exportSelection('svgcopy')")&&html.includes('ctxCopySelSVG')],
+  ['waypoint + elbow-trunk drags honour grid snap', html.includes('wa[i]=snapPt(wp)')&&html.includes('snapV(wp.x):snapV(wp.y)')&&html.includes('RAW point')],
+  ['replace image: ctx item + aspect-follow via style op', html.includes('function replaceImage()')&&html.includes('ctxReplaceImg')&&html.includes('s.w*nh/nw')],
+  ['multi-waypoint: way is an array; insert/move/delete via wayIdx+wayNew', html.includes('function _wayArr(s)')&&html.includes('ptr.wayIdx')&&html.includes('wa.splice(i,0,snapPt(wp))')],
+  ['search select-all: ⌘Enter selects every match', html.includes('ev.metaKey||ev.ctrlKey')&&html.includes('state.selection=new Set(ms.map')&&html.includes('selAllMatches')],
+  ['rect corners: s.r override + ctx menu + SVG rx', html.includes('s.r!=null?s.r:8')&&html.includes('toggleRound')&&html.includes('ctxRrect')&&html.includes('rx="${r}"')],
+  ['shift+wheel → horizontal pan', html.includes('const dx=e.shiftKey&&!d.x?d.y:d.x')],
+  ['escape cancels in-flight pointer gesture', html.includes('else if(ptr.down&&ptr.dragKind)_cancelPointerGesture()')],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
@@ -668,7 +677,7 @@ const checks = [
   ['Tab cycling excludes locked shapes (filter before cycleSel)', html.includes("const ids=state.shapes.filter(s=>!s.locked).map(s=>s.id)")],
   // v1.6.60: bound connectors - arrow/line endpoints follow bound shapes
   ['connEnds helper derives bound endpoints', html.includes("function connEnds") && html.includes("function _edgePt")],
-  ['G.bbox line uses connEnds', html.includes("const e=connEnds(s);\n      const x=Math.min(e.x1,e.x2,s.way")],
+  ['G.bbox line uses connEnds', html.includes("const e=connEnds(s);\n      let x=Math.min(e.x1,e.x2)")&&html.includes('for(const w of _wayArr(s))')],
   ['G.hit line uses connEnds', html.includes("const pts=_linePts(s);")],
   ['drawArrow uses connEnds', html.includes("function drawArrow(s,c){\n  c=c||ctx;\n  const e=connEnds(s);")],
   ['endLineLike binds endpoints dropped on a shape', html.includes("const ba=_bindAt(d.x1,d.y1),bb=_bindAt(d.x2,d.y2)") && html.includes("function _bindAt")],
@@ -695,7 +704,7 @@ const checks = [
   ['flip negates rotation angle (reflection reverses sense)', html.includes("if(s.rotate)s.rotate=(360-s.rotate)%360;")],
   ['rotated box shapes expose handles at rotated positions', html.includes("return hs.map(p=>{const r=_rotPt(p.x,p.y,cx,cy,s.rotate);return{id:p.id,x:r.x,y:r.y}});")],
   ['search placeholder uses localized key (T.k.search — t(search) resolved to the raw key, v1.7.63)', html.includes('sq.placeholder=T.k.search')],
-  ['rotate + search i18n keys in ja and en', html.includes("rotate:'回転 (15° / ノブdrag)',search:'検索'") && html.includes("rotate:'Rotate (15° / knob drag)',search:'Search'")],
+  ['rotate + search i18n keys in ja and en', html.includes("selAllMatches:'件のマッチを選択',search:'検索'") && html.includes("selAllMatches:'matches selected',search:'Search'")],
   ['help grid lists rotate and search shortcuts', html.includes("[', / .',k.rotate]") && html.includes("['⌘F',k.search]") && html.includes("['Enter / ⇧Enter',k.searchNav]")],
   // keyboard shortcuts (all documented in README)
   ['N shortcut for sticky (in KEYMAP)', html.includes("n:'sticky'")],
@@ -1286,7 +1295,7 @@ try {
              doAlign, doFlip, snapV, snapPt,
              getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
-             copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _svgImgLabel, toggleCurve, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
+             copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, toggleCurve, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
              _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa: () => _teTa, zoomAt,
@@ -1313,7 +1322,7 @@ try {
           doAlign, doFlip, snapV, snapPt,
           getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
-          copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _svgImgLabel, toggleCurve, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
+          copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, toggleCurve, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
           _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa, zoomAt,
@@ -3528,13 +3537,15 @@ try {
     Store.commit({op:'add',shape:A});
     const sh=byId(A.id);
     assert.ok(_linePts(sh).length===2,'no way → 2 pts');
-    sh.way={x:100,y:80};
+    sh.way=[{x:100,y:80},{x:150,y:120}];                                   // ADR-0090 array
     const pts=_linePts(sh);
-    assert.ok(pts.length===3&&pts[1].x===100&&pts[1].y===80,'way → 3-pt polyline');
+    assert.ok(pts.length===4&&pts[1].x===100&&pts[2].x===150,'way → 4-pt polyline');
     const bb=G.bbox(sh);
-    assert.ok(bb.y+bb.h>=80,'bbox includes waypoint');
+    assert.ok(bb.y+bb.h>=120,'bbox includes waypoints');
     Shape.translate(sh,10,5);
-    assert.ok(sh.way.x===110&&sh.way.y===85,'translate moves way');
+    assert.ok(sh.way[0].x===110&&sh.way[0].y===85&&sh.way[1].x===160,'translate moves every way pt');
+    const leg=JSON.parse(JSON.stringify(sh));leg.way={x:1,y:2};            // legacy object form
+    assert.ok(_wayArr(leg).length===1&&_wayArr(leg)[0].x===1,'legacy object normalizes');
     Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(sh))]});
     console.log('  ✓ waypoint: polyline + bbox + translate (4 asserts)');
   }
@@ -3631,8 +3642,8 @@ try {
     Store.commit({op:'add',shape:L});
     const l=byId(L.id);
     assert.ok(_connLabelXY(l).x===100,'straight → midpoint');
-    l.way={x:100,y:60};
-    assert.ok(_connLabelXY(l).x===100&&_connLabelXY(l).y===60,'way → waypoint');
+    l.way=[{x:100,y:60}];
+    assert.ok(_connLabelXY(l).x===100&&_connLabelXY(l).y===60,'way → vertex (symmetric midpoint)');
     delete l.way;l.elbow=1;
     const lp=_connLabelXY(l);
     assert.ok(Number.isFinite(lp.x)&&Number.isFinite(lp.y),'elbow → trunk anchor');
@@ -3640,6 +3651,18 @@ try {
     const cp=_connLabelXY(l);
     assert.ok(Number.isFinite(cp.x),'curve → ctrl anchor');
     delete l.curve;
+    // ADR-0090: two vertices — label lands on the path's length-midpoint
+    l.way=[{x:60,y:80},{x:140,y:80}];
+    const mp=_connLabelXY(l);
+    assert.ok(mp.x===100&&mp.y===80,'multi-way → length-midpoint on middle segment');
+    delete l.way;
+
+    // ADR-0092: corner-radius toggle — rounded → sharp → adaptive round, undoable
+    const rc=Shape.make('rect',0,0,100,60);rc.id='rct1';state.shapes.push(rc);
+    state.selection=new Set(['rct1']);
+    toggleRound();assert.ok(rc.r===0,'rect → sharp (r=0)');
+    toggleRound();assert.ok(rc.r==null,'rect → back to adaptive round');
+    state.shapes.pop();state.selection.clear();state.history=[];state.histIdx=0;
     Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(l)),JSON.parse(JSON.stringify(byId(A.id))),JSON.parse(JSON.stringify(byId(B.id)))]});
     console.log('  ✓ label anchor: straight/way/elbow/curve (4 asserts)');
   }
@@ -3720,6 +3743,24 @@ try {
     state.selection=new Set();
     Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(byId(F.id))),JSON.parse(JSON.stringify(byId(K.id))),JSON.parse(JSON.stringify(byId(K2.id))),JSON.parse(JSON.stringify(byId(O.id)))]});
     console.log('  ✓ frame fit: bbox + pad + undo (3 asserts)');
+  }
+
+  // ADR-0086: click-only box tools stamp a default-size shape
+  {
+    state.draft=Shape.make('rect',{x:300,y:300,w:1,h:1});
+    endRectLike();
+    const b=state.shapes[state.shapes.length-1];
+    assert.ok(b.type==='rect'&&b.w===120&&b.h===80,'click stamps default 120x80');
+    assert.ok(b.x===240&&b.y===260,'click-stamp centers on the click point');
+    assert.ok(state.tool==='select','auto-return to select after stamping');
+    state.selection=new Set();
+    Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(b))]});
+    state.draft=Shape.make('ellipse',{x:400,y:400,w:1,h:1});
+    endRectLike();
+    const e2=state.shapes[state.shapes.length-1];
+    assert.ok(e2.type==='ellipse'&&e2.w===120,'ellipse also stamps');
+    Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(e2))]});
+    console.log('  ✓ click stamp: default size + center + select (4 asserts)');
   }
 
   // validPatch recurses: nested poison in a remote `upd` (gated by validPatch alone)
