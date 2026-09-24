@@ -2,6 +2,17 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.423] - 2026-09-23
+
+### 変更
+- 追加 shorthand 一括化 (ADR-0378): `_pi`/`_ro`/`_gd`/`_cl` の live-read と `_bb`(G.bbox)/`_oa`(Object.assign) — 約650B削減
+
+## [1.7.422] - 2026-09-23
+
+### 修正
+- コネクタのバウンディングボックスにオフボックス経路点を含める (ADR-0376)。曲線の制御点 (`cbend`) とエルボーの trunk (`bend`) が終端矩形の外に出るケースで、damage rect 欠落によるゴースト描画、および viewport 内の apex が `inView` で誤カリングされる問題を解消
+- `del` op の `connClears` パッチを8プロパティのホワイトリストに制限 (ADR-0377)。リモートピアが `locked`/`type`/`id`/`_` 系キーを経由して生きたコネクタへ注入する経路を閉塞
+
 ## [1.7.421] - 2026-09-24
 
 ### Added

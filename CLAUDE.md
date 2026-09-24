@@ -425,6 +425,9 @@ Board/
 │   ├── ADR-0373-patch-structural-keys.md   # patch 構造キー剥がし+_u 防御 (実装済)
 │   ├── ADR-0374-img-channel-bounds.md   # img チャンク経路の容量上限 (実装済)
 │   ├── ADR-0375-text-editor-tab-chain.md   # テキストエディタ Tab 連鎖 (実装済)
+│   ├── ADR-0376-conn-bbox-offbox-routes.md   # コネクタbboxがcurve制御点/elbow trunkを包含 (実装済)
+│   ├── ADR-0377-connclears-whitelist.md   # del connClears を8propホワイトリスト化 (実装済)
+│   ├── ADR-0378-more-shorthands.md   # _pi/_ro/_gd/_cl/_bb/_oa shorthand (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
