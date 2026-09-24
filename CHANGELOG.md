@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.146]
+
+### 修正
+- **ウェイポイント/エルボートランクのドラッグがグリッドスナップに従う**
+  (ADR-0088)。全配置ジェスチャで唯一スナップを通らなかった2経路を
+  `snapPt`/`snapV` に統一。way の6pxクリア判定は生座標のまま
+  (グリッドに吸われて削除不能にならないよう)。
+
 ## [1.7.145]
 
 ### 追加

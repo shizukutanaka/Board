@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.145';
+const V='1.7.146';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3424,14 +3424,14 @@ canvas.addEventListener('pointermove',e=>{
       else if(ptr.dragKind==='qline')contLineLike(wp,e.shiftKey);   // ADR-0070
       else if(ptr.dragKind==='ebend'&&ptr.ebendOrig){               // ADR-0072
         const sh=byId(ptr.ebendOrig.id),tr=sh&&_elbowTrunk(sh);
-        if(tr){const vert=Math.abs(tr[1].x-tr[0].x)<Math.abs(tr[1].y-tr[0].y);sh.bend=vert?wp.x:wp.y;invalidate()}
+        if(tr){const vert=Math.abs(tr[1].x-tr[0].x)<Math.abs(tr[1].y-tr[0].y);sh.bend=vert?snapV(wp.x):snapV(wp.y);invalidate()}   // ADR-0088: trunk drag honours grid snap
       }
       else if(ptr.dragKind==='way'&&ptr.wayOrig){                   // ADR-0076
         const sh=byId(ptr.wayOrig.id);
         if(sh){
           const e=connEnds(sh),mx=(e.x1+e.x2)/2,my=(e.y1+e.y2)/2;
-          if(Math.hypot(wp.x-mx,wp.y-my)<6/state.viewport.zoom)delete sh.way;
-          else sh.way={x:wp.x,y:wp.y};
+          if(Math.hypot(wp.x-mx,wp.y-my)<6/state.viewport.zoom)delete sh.way;   // ADR-0088: clear test stays on the RAW point so grid pull can't block it
+          else sh.way=snapPt(wp);
           invalidate();
         }
       }
