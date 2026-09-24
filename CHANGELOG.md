@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.512] - 2026-09-23
+
+### 修正
+
+- zorder op の legacy `after` ブランチで `c.frac`/`c.id` の長さキャップ欠落を修正 (≤600/≤64、ADR-0479) — ADR-0473 の wire キャップ整合の残穴で、1MB 級文字列の注入を遮断
+
 ## [1.7.511] - 2026-09-23
 
 ### リファクタ
