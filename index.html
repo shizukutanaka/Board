@@ -774,7 +774,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.208';
+const V='1.7.216';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -858,7 +858,7 @@ const I18N={
     popupBlocked:'ポップアップをブロックしてください',invalidBoard:'ボードファイルが無効です',exportFailed:'書き出し失敗',saveFailed:'保存失敗',quotaExceeded:'保存容量が逼迫しています — ⌘E/⌘⇧E で書き出しを推奨',
     snap:'スナップ',grid:'グリッド',minimap:'ミニマップ',on:'オン',off:'オフ',online:'オンライン',offline:'オフライン',shapes:'図形',
     selCount:'個を選択',selNone:'選択を解除',
-    mirrorLabel:'ボード上の図形一覧',mirrorMore:'個は一覧に未掲載',
+    mirrorLabel:'ボード上の図形一覧',mirrorMore:'個は一覧に未掲載',tagHidden:'(非表示)',
     copied:'コピー',pasted:'貼り付け',deleted:'削除',cleared:'クリア',
     beautified:'整形しました',beautifyNone:'整形できる図形がありません(矩形・楕円・直線に近いペン描画を選択してください)',
     undone:'元に戻した',redone:'やり直した',created:'作成',editLabel:'選択中の図形を編集',
@@ -867,7 +867,7 @@ const I18N={
     ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxCurve:'曲線',ctxRouteReset:'ルートをリセット (直線に戻す)',ctxSelContents:'内容を選択',ctxFrameFit:'コンテンツに合わせる',ctxArrowHead:'矢印ヘッド (矢印→丸→シェブロン)',ctxToArrow:'矢印に変換',ctxToLine:'直線に変換',ctxBothEnds:'両端ヘッド',ctxRrect:'角スタイル (角丸→直角)',ctxStickyColor:'付箋の色 (順送り)',ctxToText:'テキストに変換',ctxToSticky:'付箋に変換',ctxTextAlign:'テキスト揃え (左→中央→右)',ctxFillStyle:'塗りスタイル (塗り→ハッチ→斜格子)',
     ctxSelectSameType:'同じ種類を選択',ctxSelectSame:'同色を選択',ctxSearch:'検索',ctxFit:'全体を表示',ctxZoomReset:'ズーム100%',ctxGrid:'グリッド',ctxSnap:'吸着',ctxMinimap:'ミニマップ',ctxWrapFrame:'フレームで包む',ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
     ctxSendBackward:'背面へ',ctxSendBack:'最背面へ',
-    ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxRotate90:'90°回転',ctxCorner:'角丸を切替',ctxHide:'非表示',ctxShowAll:'すべて表示',ctxSelectInverse:'選択を反転',ctxConnect:'2図形をコネクタで接続',hiddenCount:'件を非表示',shownAll:'すべて表示しました',ctxLock:'ロック',ctxUnlock:'ロック解除',ctxUnlockAll:'全てロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
+    ctxFlipH:'左右反転',ctxFlipV:'上下反転',ctxRotate90:'90°回転',ctxCorner:'角丸を切替',ctxHide:'非表示',ctxShowAll:'すべて表示',ctxSelectInverse:'選択を反転',ctxConnect:'2図形をコネクタで接続',hiddenCount:'件を非表示',shownAll:'すべて表示しました',ctxUnbind:'結合を解除',ctxLock:'ロック',ctxUnlock:'ロック解除',ctxUnlockAll:'全てロック解除',lockToggle:'ロック切り替え',ctxBeautify:'図形に整形',
     canvasHint:'描画キャンバス。Tab/⇧Tab で図形巡回、Enter で作成、矢印で移動、⌥+矢印でリサイズ',
     tools:'ツール',docNameLabel:'ドキュメント名',activePeers:'接続中のピア',expPng:'PNG 書き出し',
     moreExport:'その他の書き出し・読み込み',install:'アプリとしてインストール',style:'スタイル',
@@ -922,7 +922,7 @@ const I18N={
       grid:'グリッド',minimap:'ミニマップ切替',beautify:'選択したペン描画を整形',esc:'選択解除/キャンセル',
       cycle:'図形を巡回',create:'中央に作成',
       present:'プレゼン',nudge:'移動 (⇧: 10px)',zorder:'前面/背面',zorderEnds:'最前面/最背面',
-      rotate:'回転 (15° / ノブdrag)',selAllMatches:'件のマッチを選択',search:'検索',searchNav:'次/前のマッチへ移動',moveAxis:'軸拘束移動',resizeRatio:'比率保持リサイズ',resizeCenter:'中心固定リサイズ',kbdResize:'リサイズ (⇧:×10)'}},
+      rotate:'回転 (15° / ノブdrag)',selAllMatches:'件のマッチを選択',search:'検索',searchNav:'次/前のマッチへ移動',moveAxis:'軸拘束移動',resizeRatio:'比率保持リサイズ',resizeCenter:'中心固定リサイズ',kbdResize:'リサイズ (⇧:×10)',lasso:'ラッソ選択'}},
   en:{export:'Export',present:'Present',snap:'Snap',size:'Size',lineStyle:'Line',helpTitle:'Shortcuts',
     helpSub:'No need to memorise. You\'ll pick it up.',
     saved:'saved',savedNow:'just now',savedAgo:'s ago',
@@ -943,7 +943,7 @@ const I18N={
     ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxCurve:'Curved',ctxRouteReset:'Reset route (straighten)',ctxSelContents:'Select contents',ctxFrameFit:'Fit to contents',ctxArrowHead:'Arrowhead (arrow→dot→open)',ctxToArrow:'Convert to arrow',ctxToLine:'Convert to line',ctxBothEnds:'Arrowheads both ends',ctxRrect:'Corners (round→sharp)',ctxStickyColor:'Sticky colour (cycle)',ctxToText:'Convert to text',ctxToSticky:'Convert to sticky',ctxTextAlign:'Text align (left→center→right)',ctxFillStyle:'Fill style (solid→hatch→cross)',
     ctxSelectSameType:'Select same type',ctxSelectSame:'Select same colour',ctxSearch:'Search',ctxFit:'Fit board',ctxZoomReset:'Zoom 100%',ctxGrid:'Grid',ctxSnap:'Snap',ctxMinimap:'Minimap',ctxWrapFrame:'Frame selection',ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
     ctxSendBackward:'Send backward',ctxSendBack:'Send to back',
-    ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxRotate90:'Rotate 90°',ctxCorner:'Round corner',ctxHide:'Hide',ctxShowAll:'Show all',ctxSelectInverse:'Invert selection',ctxConnect:'Connect 2 shapes',hiddenCount:'hidden',shownAll:'All shapes shown',ctxLock:'Lock',ctxUnlock:'Unlock',ctxUnlockAll:'Unlock all',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
+    ctxFlipH:'Flip horizontal',ctxFlipV:'Flip vertical',ctxRotate90:'Rotate 90°',ctxCorner:'Round corner',ctxHide:'Hide',ctxShowAll:'Show all',ctxSelectInverse:'Invert selection',ctxConnect:'Connect 2 shapes',hiddenCount:'hidden',shownAll:'All shapes shown',ctxUnbind:'Unbind endpoints',ctxLock:'Lock',ctxUnlock:'Unlock',ctxUnlockAll:'Unlock all',lockToggle:'Toggle lock',ctxBeautify:'Beautify to shape',
     canvasHint:'Drawing canvas. Tab/Shift+Tab cycles shapes, Enter creates, arrows move, Alt+arrows resize.',
     tools:'Tools',docNameLabel:'Document name',activePeers:'Active peers',expPng:'Export PNG',
     moreExport:'More export & import options',install:'Install Board as an app',style:'Style',
@@ -990,7 +990,7 @@ const I18N={
     backupRestoreFailed:'Failed to restore backup',
     peers:'peers',you:'You',shapes:'Shapes',on:'On',off:'Off',online:'Online',offline:'Offline',grid:'Grid',minimap:'Minimap',
     selCount:' selected',selNone:'Selection cleared',
-    mirrorLabel:'Shapes on the board',mirrorMore:' more not listed',
+    mirrorLabel:'Shapes on the board',mirrorMore:' more not listed',tagHidden:'(hidden)',
     k:{select:'Select',hand:'Pan',pen:'Pen',rect:'Rectangle',ellipse:'Ellipse',
       arrow:'Arrow',line:'Line',text:'Text',sticky:'Sticky',frame:'Frame',eraser:'Eraser',diamond:'Diamond',marker:'Marker',
       undo:'Undo',redo:'Redo',del:'Delete',dup:'Duplicate',fontSize:'Font size',boldItalic:'Bold/Italic/Underline/Strike',
@@ -1000,7 +1000,7 @@ const I18N={
       grid:'Toggle grid',minimap:'Toggle minimap',beautify:'Beautify selected pen strokes',esc:'Deselect / cancel',
       cycle:'Cycle shapes',create:'Create at centre',
       present:'Present',nudge:'Move (⇧: 10px)',zorder:'Front / back',zorderEnds:'To front / to back',
-      rotate:'Rotate (15° / knob drag)',selAllMatches:'matches selected',search:'Search',searchNav:'Next / prev match',moveAxis:'Constrain move axis',resizeRatio:'Keep ratio (resize)',resizeCenter:'Resize from centre',kbdResize:'Resize (⇧:×10)'}}};
+      rotate:'Rotate (15° / knob drag)',selAllMatches:'matches selected',search:'Search',searchNav:'Next / prev match',moveAxis:'Constrain move axis',resizeRatio:'Keep ratio (resize)',resizeCenter:'Resize from centre',kbdResize:'Resize (⇧:×10)',lasso:'Lasso select'}}};
 // ADR-0014: LANG/T are `let`, not `const`, so UI.toggleLang() can reassign them — t()
 // closes over T by reference, so every t()/T.k call made AFTER a reassignment picks up
 // the new language automatically. Only elements that cache a translated string once at
@@ -1032,6 +1032,8 @@ const state={
   guides:null,              // object-snap alignment guide lines (during drag)
   readout:null,             // ADR-0064: live dims pill during transform gestures {x,y,label}
   bindPreview:null,         // ADR-0065: shape under a dragged connector endpoint
+  measure:null,             // ADR-0151: Alt+hover gap guides {a,b} world bboxes
+  lasso:null,               // ADR-0158: Alt+drag freehand select — live polyline pts (world)
   showGrid:true,
   showMinimap:MINIMAP_ON,
   snap:true,        // snap-to-grid when dragging shapes
@@ -2212,7 +2214,7 @@ function _mirrorSync(){
     const li=document.createElement('li');
     const b=document.createElement('button');
     b.type='button';
-    b.textContent=(i+1)+'. '+describeShape(s);
+    b.textContent=(i+1)+'. '+describeShape(s)+(s.visible===0?' '+t('tagHidden'):'');   // ADR-0154
     b.onclick=()=>_mirrorGo(s.id);
     li.appendChild(b);ul.appendChild(li);
   }
@@ -2364,6 +2366,7 @@ function drawOverlay(){
   }
   drawSelection(c);
   drawGuides(c);
+  _drawMeasure(c);                                                     // ADR-0151
   if(ptr.down&&state.readout){                                        // ADR-0064: only while a gesture is live
     const r=state.readout,sp=G.w2s({x:r.x,y:r.y});
     c.save();
@@ -2396,6 +2399,12 @@ function drawOverlay(){
     }
   }
   if(state.marquee)drawMarquee(c);
+  if(state.lasso&&state.lasso.length>1){                            // ADR-0158
+    c.save();c.fillStyle='rgba(0,196,204,.08)';c.strokeStyle=getCSS('--accent-contrast');c.lineWidth=1;c.setLineDash([4,4]);
+    c.beginPath();const _p0=G.w2s(state.lasso[0]);c.moveTo(_p0.x,_p0.y);
+    for(let i=1;i<state.lasso.length;i++){const p=G.w2s(state.lasso[i]);c.lineTo(p.x,p.y)}
+    c.closePath();c.fill();c.stroke();c.restore();
+  }
   if(_laser&&Presentation.isActive()){const lp=G.w2s(_laser);c.beginPath();c.arc(lp.x,lp.y,8,0,PI2);c.fillStyle='rgba(255,50,50,.75)';c.fill();}
   drawPeerSelections(c);   // ADR-0011 (before cursors: pointer renders on top of frames)
   drawPeerCursors(c);   // ADR-0010
@@ -2449,6 +2458,33 @@ function drawGuides(c){
     c.beginPath();c.moveTo(p1.x,p1.y);c.lineTo(p2.x,p2.y);c.stroke();
   }
   c.setLineDash([]);
+}
+// ADR-0151: gap measurement guides (Figma measure mode). For each axis where the
+// two envelopes are separated, draws a solid guide across the gap at the midpoint
+// of the overlap/projection band plus end ticks and a px pill.
+function _drawMeasure(c){
+  const m=state.measure;if(!m)return;
+  const a=m.a,b=m.b;
+  const xmid=(Math.max(a.x,b.x)+Math.min(a.x+a.w,b.x+b.w))/2;
+  const ymid=(Math.max(a.y,b.y)+Math.min(a.y+a.h,b.y+b.h))/2;
+  const segs=[];
+  if(a.x+a.w<b.x)segs.push({x1:a.x+a.w,y1:ymid,x2:b.x,y2:ymid});
+  else if(b.x+b.w<a.x)segs.push({x1:b.x+b.w,y1:ymid,x2:a.x,y2:ymid});
+  if(a.y+a.h<b.y)segs.push({x1:xmid,y1:a.y+a.h,x2:xmid,y2:b.y});
+  else if(b.y+b.h<a.y)segs.push({x1:xmid,y1:b.y+b.h,x2:xmid,y2:a.y});
+  c.save();c.strokeStyle=getCSS('--accent-contrast');c.lineWidth=1;
+  c.font='11px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';
+  for(const s of segs){
+    const p1=G.w2s({x:s.x1,y:s.y1}),p2=G.w2s({x:s.x2,y:s.y2});
+    c.beginPath();c.moveTo(p1.x,p1.y);c.lineTo(p2.x,p2.y);c.stroke();
+    const dx=p2.x-p1.x,dy=p2.y-p1.y,L=Math.hypot(dx,dy)||1,ux=dx/L,uy=dy/L,ex=-uy,ey=ux;
+    for(const p of [p1,p2]){c.beginPath();c.moveTo(p.x-ex*4,p.y-ey*4);c.lineTo(p.x+ex*4,p.y+ey*4);c.stroke()}
+    const label=String(Math.round(L)),tw=c.measureText(label).width+12;
+    const mx=(p1.x+p2.x)/2,my=(p1.y+p2.y)/2;
+    c.fillStyle='rgba(15,23,42,.85)';c.beginPath();roundRect(c,mx-tw/2,my-9,tw,18,4);c.fill();
+    c.fillStyle='#fff';c.fillText(label,mx,my);
+  }
+  c.restore();
 }
 // Design-token lookups run every frame; memoise and drop on theme flip (see wire()).
 let _cssCache=Object.create(null);
@@ -2615,9 +2651,7 @@ function drawShape(s,c){
       if(s.fstyle)_hatchCtx(c,s);                              // ADR-0077
       _drawBoxLabel(s,c);break;
     case 'diamond':{
-      const cx=s.x+s.w/2,cy=s.y+s.h/2;
-      c.beginPath();
-      c.moveTo(cx,s.y);c.lineTo(s.x+s.w,cy);c.lineTo(cx,s.y+s.h);c.lineTo(s.x,cy);c.closePath();
+      _diamondPath(c,s);                                       // ADR-0156
       if(s.fill)c.fill();
       if(s.stroke)c.stroke();
       if(s.fstyle)_hatchCtx(c,s);                              // ADR-0077
@@ -2779,6 +2813,29 @@ function _elbowTrunk(s){
     if(vert===horizStub&&(a.x!==b.x||a.y!==b.y))return[a,b];
   }
   return null;
+}
+// ADR-0156: rounded diamond contour — trims each vertex by r along its two
+// edges and bridges the gap with a quadratic curve (vertex as control point).
+// s.r==null → sharp polygon (pre-ADR-0156 diamonds unchanged).
+function _diamondPath(c,s){
+  const cx=s.x+s.w/2,cy=s.y+s.h/2;
+  const P=[{x:cx,y:s.y},{x:s.x+s.w,y:cy},{x:cx,y:s.y+s.h},{x:s.x,y:cy}];
+  const r=Math.min(s.r||0,Math.abs(s.w)/6,Math.abs(s.h)/6);
+  c.beginPath();
+  if(r>0){
+    for(let i=0;i<4;i++){
+      const p0=P[i],p1=P[(i+1)%4],p2=P[(i+2)%4];
+      const e1=Math.hypot(p1.x-p0.x,p1.y-p0.y)||1,e2=Math.hypot(p2.x-p1.x,p2.y-p1.y)||1;
+      const rr=Math.min(r,e1/2,e2/2);
+      const t1={x:p1.x+(p0.x-p1.x)/e1*rr,y:p1.y+(p0.y-p1.y)/e1*rr};
+      const t2={x:p1.x+(p2.x-p1.x)/e2*rr,y:p1.y+(p2.y-p1.y)/e2*rr};
+      if(i===0)c.moveTo(t1.x,t1.y);else c.lineTo(t1.x,t1.y);
+      c.quadraticCurveTo(p1.x,p1.y,t2.x,t2.y);
+    }
+    c.closePath();
+  }else{
+    c.moveTo(cx,s.y);c.lineTo(s.x+s.w,cy);c.lineTo(cx,s.y+s.h);c.lineTo(s.x,cy);c.closePath();
+  }
 }
 function _polyline(c,pts){
   c.beginPath();c.moveTo(pts[0].x,pts[0].y);
@@ -3063,7 +3120,12 @@ function _mapToBox(sh,orig,ob,vb){
     // the elbow keeps its offset under group resize (axis-aligned scaling
     // preserves the trunk's orientation, so the scalar stays representable).
     if(orig.bend!=null){const tr=_elbowTrunk(orig);if(tr){const ta=M(tr[0].x,tr[0].y),tb=M(tr[1].x,tr[1].y);
-      sh.bend=Math.abs(tr[1].x-tr[0].x)<Math.abs(tr[1].y-tr[0].y)?ta.x:ta.y}}}
+      sh.bend=Math.abs(tr[1].x-tr[0].x)<Math.abs(tr[1].y-tr[0].y)?ta.x:ta.y}}
+    // ADR-0152: cbend is a signed PERPENDICULAR px offset — under the affine
+    // map it scales by sx*sy*chord/new-chord (closed form), negative sx*sy
+    // under a cross-handle flip correctly flips the curve's chirality.
+    if(orig.cbend!=null){const sx=vb.w/ob.w||1,sy=vb.h/ob.h||1,ol=Math.hypot(orig.x2-orig.x1,orig.y2-orig.y1)||1,nl=Math.hypot(sh.x2-sh.x1,sh.y2-sh.y1)||1;
+      sh.cbend=orig.cbend*sx*sy*ol/nl}}
   else if(orig.x!=null){const a=M(orig.x,orig.y),b=M(orig.x+orig.w,orig.y+orig.h);sh.x=a.x;sh.y=a.y;sh.w=b.x-a.x;sh.h=b.y-a.y}
 }
 // Apply resize given handle id, original shape, new world point, Shift and Alt state.
@@ -3279,6 +3341,15 @@ function drawSelection(c){
     c.beginPath();c.arc(gkp.x,gkp.y,hs2/2,0,PI2);c.fill();c.stroke();
   }
 }
+// ADR-0158: point-in-polygon (even-odd ray cast) for the lasso.
+function _ptInPoly(x,y,pts){
+  let inside=false;
+  for(let i=0,j=pts.length-1;i<pts.length;j=i++){
+    const xi=pts[i].x,yi=pts[i].y,xj=pts[j].x,yj=pts[j].y;
+    if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi)inside=!inside;
+  }
+  return inside;
+}
 function drawMarquee(c){
   const m=state.marquee;
   const p1=G.w2s({x:m.x1,y:m.y1}),p2=G.w2s({x:m.x2,y:m.y2});
@@ -3362,7 +3433,7 @@ function abortGesture(){
   }
   if(_eraseBatch.length){for(const s of _eraseBatch)state.shapes.push(s);_eraseBatch=[];sortZ();_invalidateGrid();}   // ADR-0009
   _penPred=null;ptr.lineClick=false;
-  state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;
+  state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;state.measure=null;state.lasso=null;
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.dragStartShapes=null;
   ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;ptr.wayIdx=null;ptr.wayNew=false;ptr.lblOrig=null;
   invalidate();
@@ -3377,7 +3448,7 @@ canvas.addEventListener('pointerdown',e=>{
   canvas.setPointerCapture(e.pointerId);
   const sp={x:e.offsetX,y:e.offsetY};
   const wp=G.s2w(sp);
-  ptr.down=true;ptr.x=ptr.x0=sp.x;ptr.y=ptr.y0=sp.y;
+  ptr.down=true;state.measure=null;ptr.x=ptr.x0=sp.x;ptr.y=ptr.y0=sp.y;
   ptr.wx=ptr.wx0=wp.x;ptr.wy=ptr.wy0=wp.y;
   // space or middle click => pan
   const isPan=e.button===1||state.tool==='hand'||e.shiftKey&&state.tool==='select'&&false;
@@ -3569,6 +3640,13 @@ canvas.addEventListener('pointermove',e=>{
       // state.hover feeds nothing visual (cursor is set above) — no invalidate:
       // on a heavy board this used to repaint the whole scene per shape boundary crossed.
       if(top?.id!==state.hover){state.hover=top?.id||null;invalidateOverlay()}   // ADR-0070: qconn dots track hover
+      // ADR-0151: Alt+hover (Figma measure mode) — gap guides between the
+      // selection envelope and the hovered shape. Signature-compare so a
+      // steady cursor repaints nothing.
+      const _m=(e.altKey&&state.selection.size&&top&&!top.locked&&top.visible!==0&&!state.selection.has(top.id))
+        ?{a:G.bboxAll([...state.selection].map(byId).filter(Boolean)),b:G.bbox(top)}:null;
+      const _sig=m=>m?`${m.a.x}|${m.a.y}|${m.a.w}|${m.a.h}|${m.b.x}|${m.b.y}|${m.b.w}|${m.b.h}`:'';
+      if(_sig(_m)!==_sig(state.measure)){state.measure=_m;invalidateOverlay()}
     }
     return;
   }
@@ -3605,6 +3683,7 @@ canvas.addEventListener('pointermove',e=>{
         }else invalidate();
       }else if(ptr.dragKind==='move')doMove(wp,e.shiftKey,e.altKey);
       else if(ptr.dragKind==='marquee'){state.marquee={x1:ptr.wx0,y1:ptr.wy0,x2:wp.x,y2:wp.y};invalidateOverlay()}
+      else if(ptr.dragKind==='lasso'&&ptr.lasso){ptr.lasso.push(wp);invalidateOverlay()}
       else if(ptr.dragKind==='qline')contLineLike(wp,e.shiftKey);   // ADR-0070
       else if(ptr.dragKind==='ebend'&&ptr.ebendOrig){               // ADR-0072
         const sh=byId(ptr.ebendOrig.id),tr=sh&&_elbowTrunk(sh);
@@ -3767,7 +3846,7 @@ function _cancelPointerGesture(){
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;
   ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.rotOrig=null;ptr.dragStartShapes=null;
   ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;
-  canvas.dataset.panning='false';ptr.lineClick=false;state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;_penPred=null;invalidate();
+  canvas.dataset.panning='false';ptr.lineClick=false;state.draft=null;state.marquee=null;state.guides=null;state.readout=null;state.bindPreview=null;state.measure=null;state.lasso=null;_penPred=null;invalidate();
 }
 // ADR-0006: fires after LONG_PRESS_MS. Guards: gesture still active, handle-drag not in
 // progress (resize/rotate — a deliberate precision drag we shouldn't interrupt), and the
@@ -4105,7 +4184,10 @@ function _fitViewport(b,pad,cap){
   return z;
 }
 function fitToContent(){
-  const b=G.bboxAll(state.shapes);if(!b){zoomReset();return}
+  // ADR-0155: hidden shapes shouldn't drag the fit window to empty space —
+  // fit what's VISIBLE; fall back to all only when everything is hidden.
+  const vis=state.shapes.filter(s=>s.visible!==0);
+  const b=G.bboxAll(vis.length?vis:state.shapes);if(!b){zoomReset();return}
   const z=_fitViewport(b,40,2);
   UI.announce(Math.round(z*100)+'%');
 }
@@ -4116,7 +4198,7 @@ function fitToContent(){
 function _fitIfEmptyView(){
   if(!state.shapes.length)return;
   const v=state.viewport,r=canvas.getBoundingClientRect();
-  const b=G.bboxAll(state.shapes);if(!b)return;
+  const _vis=state.shapes.filter(s=>s.visible!==0);const b=G.bboxAll(_vis.length?_vis:state.shapes);if(!b)return;   // ADR-0155
   const vw=r.width/v.zoom,vh=r.height/v.zoom;
   if(b.x+b.w<v.x||b.y+b.h<v.y||b.x>v.x+vw||b.y>v.y+vh)fitToContent();
 }
@@ -4243,8 +4325,13 @@ function pickOrMarquee(wp,e){
       const s=byId(id);return[id,clone(s)];
     }));
   }else{
-    if(!e.shiftKey)state.selection.clear();
-    ptr.dragKind='marquee';
+    if(e.altKey){                     // ADR-0158: ⌥+drag on empty canvas = lasso
+      if(!e.shiftKey)state.selection.clear();
+      ptr.dragKind='lasso';ptr.lasso=[wp];state.lasso=ptr.lasso;invalidateOverlay();
+    }else{
+      if(!e.shiftKey)state.selection.clear();
+      ptr.dragKind='marquee';
+    }
   }
 }
 // ---- snap-target edge index (ADR-0020) ----
@@ -4267,7 +4354,7 @@ function _snapIndex(kind,key,exclFn){
   const slot=_snapIdx[kind];
   if(slot.ver!==_gridVer||slot.key!==key){
     const targets=[];
-    for(const s of state.shapes){if(exclFn(s))continue;const b=G.bbox(s);if(b)targets.push(b)}
+    for(const s of state.shapes){if(exclFn(s)||s.visible===0)continue;const b=G.bbox(s);if(b)targets.push(b)}   // ADR-0153: hidden shapes attract no snap
     slot.ver=_gridVer;slot.key=key;slot.idx=_mkSnapIdx(targets);
   }
   return slot.idx;
@@ -4444,6 +4531,18 @@ function endSelect(wp,shift,alt){
       }
       _announceSel();   // ADR-0037: announce the marquee result (incl. cleared)
     }
+  }else if(ptr.dragKind==='lasso'&&state.lasso){                    // ADR-0158
+    const pts=state.lasso;
+    if(pts.length>2){
+      if(!shift)state.selection.clear();                          // ⇧lasso adds, plain replaces (marquee parity)
+      for(const s of state.shapes){
+        if(s.locked||s.visible===0)continue;
+        const b=G.bbox(s);if(!b)continue;
+        if(_ptInPoly(b.x+b.w/2,b.y+b.h/2,pts))state.selection.add(s.id);   // centre-in-polygon (draw.io lasso rule)
+      }
+      _announceSel();
+    }
+    state.lasso=null;invalidateOverlay();
   }
 }
 
@@ -5043,7 +5142,7 @@ window.addEventListener('keydown',e=>{
     // mid-drag mutations are in-place, so without this Escape left shapes
     // displaced until pointerup committed them. Selection survives the cancel.
     else if(ptr.down&&ptr.dragKind)_cancelPointerGesture();
-    else{if(state.selection.size)UI.toast(t('selNone'));state.selection.clear();ptr.lineClick=false;state.marquee=null;state.draft=null;state.guides=null;state.readout=null;state.bindPreview=null;_penPred=null;invalidate()}   // ADR-0037
+    else{if(state.selection.size)UI.toast(t('selNone'));state.selection.clear();ptr.lineClick=false;state.marquee=null;state.draft=null;state.guides=null;state.readout=null;state.bindPreview=null;state.measure=null;state.lasso=null;_penPred=null;invalidate()}   // ADR-0037
   }
   else if(k==='?'||(e.shiftKey&&e.key==='/')){e.preventDefault();UI.toggleHelp()}
   else if(k===']'&&!meta&&e.shiftKey){e.preventDefault();doBringFront()}
@@ -5073,6 +5172,7 @@ window.addEventListener('keyup',e=>{
   if(e.key===' '&&state.tool==='hand'&&window._prevTool){
     pickTool(window._prevTool);window._prevTool=null;
   }
+  if(e.key==='Alt'&&state.measure){state.measure=null;invalidateOverlay()}   // ADR-0151
 });
 // ADR-0135: view toggles were keyboard-only (G/⇧G) — extracted so the
 // ctx menu's touch path can reach them too.
@@ -6272,8 +6372,26 @@ function buildSVG(shapes,paper){
         if(s.label)_svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT);
         break;
       case 'diamond':{
-        els.push(`<polygon points="${X+W/2+ox},${Y+oy} ${X+W+ox},${Y+H/2+oy} ${X+W/2+ox},${Y+H+oy} ${X+ox},${Y+H/2+oy}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}/>`);
-        if(s.fstyle)_svgHatch(els,s,ox,oy,stroke,`<polygon points="${X+W/2+ox},${Y+oy} ${X+W+ox},${Y+H/2+oy} ${X+W/2+ox},${Y+H+oy} ${X+ox},${Y+H/2+oy}"/>`,rT);   // ADR-0077
+        const _dPts=[[X+W/2,Y],[X+W,Y+H/2],[X+W/2,Y+H],[X,Y+H/2]];
+        const _dr=Math.min(s.r||0,Math.abs(W)/6,Math.abs(H)/6);
+        let _dEl;
+        if(_dr>0){                                             // ADR-0156
+          let d='';for(let i=0;i<4;i++){
+            const p0=_dPts[i],p1=_dPts[(i+1)%4],p2=_dPts[(i+2)%4];
+            const e1=Math.hypot(p1[0]-p0[0],p1[1]-p0[1])||1,e2=Math.hypot(p2[0]-p1[0],p2[1]-p1[1])||1;
+            const rr=Math.min(_dr,e1/2,e2/2);
+            const t1x=p1[0]+(p0[0]-p1[0])/e1*rr,t1y=p1[1]+(p0[1]-p1[1])/e1*rr;
+            const t2x=p1[0]+(p2[0]-p1[0])/e2*rr,t2y=p1[1]+(p2[1]-p1[1])/e2*rr;
+            d+=(i===0?'M':'L')+` ${_num(t1x+ox)} ${_num(t1y+oy)} Q ${_num(p1[0]+ox)} ${_num(p1[1]+oy)} ${_num(t2x+ox)} ${_num(t2y+oy)} `;
+          }
+          _dEl=`<path d="${d.trim()} Z"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}/>`;
+          els.push(_dEl);
+          if(s.fstyle)_svgHatch(els,s,ox,oy,stroke,`<path d="${d.trim()} Z"/>`,rT);
+        }else{
+          _dEl=`<polygon points="${X+W/2+ox},${Y+oy} ${X+W+ox},${Y+H/2+oy} ${X+W/2+ox},${Y+H+oy} ${X+ox},${Y+H/2+oy}"${s.fill?` fill="${_esc(s.fill)}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}/>`;
+          els.push(_dEl);
+          if(s.fstyle)_svgHatch(els,s,ox,oy,stroke,`<polygon points="${X+W/2+ox},${Y+oy} ${X+W+ox},${Y+H/2+oy} ${X+W/2+ox},${Y+H+oy} ${X+ox},${Y+H/2+oy}"/>`,rT);   // ADR-0077
+        }
         if(s.label)_svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT);
         break;}
       case 'line':{
@@ -7407,8 +7525,9 @@ const UI={
       has&&['ctxFlipH','⇧H',()=>doFlip('h')],
       has&&['ctxFlipV','⇧V',()=>doFlip('v')],
       has&&['ctxRotate90','⇧R',()=>doRotate(90)],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='rect'&&!s.locked})&&['ctxCorner','',cycleCorner],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='rect'||s.type==='diamond')&&!s.locked})&&['ctxCorner','',cycleCorner],
       has&&['ctxHide','⌘⇧H',hideSelection],
+      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='line'||s.type==='arrow')&&!s.locked&&(s.a||s.b)})&&['ctxUnbind','',unbindSelection],   // ADR-0157
       has&&[...state.selection].map(byId).filter(s=>s&&!s.locked&&s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen').length===2&&['ctxConnect','',connectSelection],
       state.shapes.some(s=>s.visible===0)&&['ctxShowAll','',showAllShapes],
       state.shapes.length&&['ctxSelectInverse','⌘⇧I',selectInverse],
@@ -7507,7 +7626,7 @@ const UI={
       ['Enter / ⇧Enter',k.searchNav],
       ['⇧H / ⇧V',t('ctxFlipH')+' / '+t('ctxFlipV')],
       ['⌥C / ⌥V',t('ctxCopyStyle')+' / '+t('ctxPasteStyle')],
-      ['⇧ + drag',k.moveAxis],['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],['⌘⇧ , / .',k.fontSize],['⌘B / ⌘I / ⌘U / ⌘⇧X',k.boldItalic],
+      ['⇧ + drag',k.moveAxis],['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],['⌥ + drag',k.lasso],['⌘⇧ , / .',k.fontSize],['⌘B / ⌘I / ⌘U / ⌘⇧X',k.boldItalic],
       ['Tab / ⇧Tab',k.cycle],['Enter',k.create+' / '+t('editLabel')]
     ];
     while(g.firstChild)g.removeChild(g.firstChild);
@@ -8026,6 +8145,20 @@ function resetRoute(){
   }
   if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
 }
+// ADR-0157: detach all bound endpoints of the selected connectors (ctx).
+// Dragging an endpoint to empty space detaches one end; this clears a/b on
+// every selected connector in a single undoable style op — useful when a
+// flowchart section is copied without its targets.
+function unbindSelection(){
+  const before=[],after=[];
+  for(const id of state.selection){
+    const s=byId(id);if(!s||(s.type!=='line'&&s.type!=='arrow')||s.locked||(!s.a&&!s.b))continue;
+    before.push({id,a:s.a??null,b:s.b??null,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2});
+    s.a=null;s.b=null;
+    after.push({id,a:null,b:null,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2});
+  }
+  if(before.length){const origSel=[...state.selection];Store._recordCommitted({op:'style',before,after});if(origSel.length)state.history[state.histIdx].origSel=origSel;invalidate()}
+}
 // ADR-0075: ⌘⇧,/. nudges fontSize ±2 on selected text/sticky via style op.
 function fontSizeStep(d){
   const before=[],after=[];
@@ -8082,7 +8215,7 @@ function cycleTextAlign(){
 function cycleCorner(){
   const before=[],after=[];
   for(const id of state.selection){
-    const s=byId(id);if(!s||s.type!=='rect'||s.locked)continue;
+    const s=byId(id);if(!s||(s.type!=='rect'&&s.type!=='diamond')||s.locked)continue;   // ADR-0156
     const cur=s.r==null?8:s.r,nxt=cur<4?8:cur<12?16:cur<20?24:0;
     before.push({id,r:s.r??null});after.push({id,r:nxt});
     s.r=nxt;
