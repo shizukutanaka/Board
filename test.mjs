@@ -321,7 +321,7 @@ const checks = [
   // v1.7.114: ADR-0056 multi-selection resize
   ['gresize dragKind wires group handles', html.includes("ptr.dragKind='gresize';") && html.includes("ptr.gOrig=new Map(sel.filter(s=>!_lk(s)).map(s=>[s.id,clone(s)]))") && html.includes("if(!sel.some(s=>_rt(s))){")],
   ['gresize reuses applyResize on a virtual box + commits one align op', html.includes("function _gresizeDrag(wp,shift,alt){") && html.includes("applyResize(vbox,ptr.resizeHandle,vorig,wp,shift,alt)") && html.includes("_mapToBox(sh,orig,ob,vbox)") && html.includes("op:'align',dir:'gresize'") && html.includes("'gresize'")],
-  ['gresize cancelled in abortGesture + pointercancel', html.includes("ptr.dragKind==='gresize'||ptr.dragKind==='grot'") && html.includes("ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;")],
+  ['gresize cancelled in abortGesture + pointercancel', html.includes("_dk('gresize')||_dk('grot')") && html.includes("ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;")],
   // v1.7.115: ADR-0057 rotation knob for point geometry + multi-selection
   ['getRotHandle generalised to point-geom bbox', html.includes("else{const b=_bb(s);if(!b||!(b.w>0)||!(b.h>0))return null;cx=b.x+b.w/2;") && html.includes("function _grpRotHandle(b){")],
   ['grot dragKind + delta-angle _rotShape + align commit', html.includes("ptr.dragKind='grot';") && html.includes("function _grotDrag(wp,shift){") && html.includes("_rotShape(sh,orig,ptr.rotCx,ptr.rotCy,deg)") && html.includes("op:'align',dir:'grot'") && html.includes("'grot'")],
@@ -366,7 +366,7 @@ const checks = [
   // v1.7.82: ADR-0024 layered overlay canvas
   ['overlay canvas element + separate ctx', html.includes('id="ov"') && html.includes("octx=ocanvas.getContext")],
   ['invalidateOverlay skips scene pass', html.includes("function invalidateOverlay(){needOverlay=true") && html.includes("if(needsRender)draw();") && html.includes("if(needOverlay)drawOverlay();")],
-  ['marquee drag repaints overlay only', html.includes("dragKind==='marquee'){state.marquee=") && html.includes("_ivO()")],
+  ['marquee drag repaints overlay only', html.includes("_dk('marquee')){state.marquee=") && html.includes("_ivO()")],
   ['hover no longer repaints scene', !html.includes("state.hover=top?.id||null;_iv()")],
   // v1.7.83: ADR-0025 minimap content cache
   ['minimap caches scene bitmap keyed on _gridVer', html.includes("_sceneVer!==_gridVer") && html.includes("mx.drawImage(_scene,0,0)")],
@@ -447,7 +447,7 @@ const checks = [
   ['img wire refs: slim op + 64KB chunk msgs + snapshot re-emit', html.includes("this._slimOp(op);this._flushImgOuts()")&&html.includes('k:\'img\',key,seq:i,n,data:d.slice')&&html.includes('this._slimShapes(ops.map(o=>o.shape),_mP())')],
   ['img inbound: chunk reassembly + pending drain + attach paths', html.includes("this._imgChunks.get(msg.key)")&&html.includes("delete sh.img;sh.dataUrl=data")&&html.includes('op=this._attachOp(op)')&&html.includes('const op=this._attachOp(msg.op)')],
   // v1.7.128: ADR-0070 quick-connect
-  ['qconn: hover dots + _qdotAt + qline→endLineLike', html.includes('function _qconnShape()')&&html.includes("ptr.dragKind='qline';")&&html.includes("else if(ptr.dragKind==='qline')")&&html.includes('_ivO()}   // ADR-0070')],
+  ['qconn: hover dots + _qdotAt + qline→endLineLike', html.includes('function _qconnShape()')&&html.includes("ptr.dragKind='qline';")&&html.includes("else if(_dk('qline'))")&&html.includes('_ivO()}   // ADR-0070')],
   // v1.7.129: ADR-0071 equal-gap snap
   ['eqGap snap: same-row gaps → candidate slots + edge-snap priority', html.includes('function _eqGapSnap(mov,excl,tol)')&&html.includes('for(const cand of[a[L]-g-mov[D], b[L]+b[D]+g, a[L]+a[D]+g, b[L]-g-mov[D]])')&&html.includes('const eq=_eqGapSnap(mov,excl')],
   ['elbow bend: s.bend two-corner route + trunk hit + ebend dragKind', html.includes('if(s.bend){')&&html.includes('function _elbowTrunk(s)')&&html.includes("ptr.dragKind='ebend'")&&html.includes('ptr.ebendOrig=clone(onlySel)')],
@@ -556,7 +556,7 @@ const checks = [
   ['service worker purges stale caches', html.includes("caches.keys()") && html.includes("k!==C")],
   // v1.6.20: fourth audit pass
   ['drawShape opacity uses nullish coalescing (opacity=0 invisible, not opaque)', html.includes('c.globalAlpha=_oP(s)??1')],
-  ['pointercancel restores in-progress resize/move shapes', html.includes("ptr.dragKind==='resize'&&ptr.resizeOrig")],
+  ['pointercancel restores in-progress resize/move shapes', html.includes("_dk('resize')&&ptr.resizeOrig")],
   ['frame label Escape removes blur listener before cancelling', html.includes("inp.removeEventListener('blur',commit)")],
   ['context menu items have role=menuitem (WCAG 4.1.2)', html.includes("_sa(b,'role','menuitem')")],
   ['context menu separators have role=separator', html.includes("_sa(s,'role','separator')")],
@@ -1001,7 +1001,7 @@ const checks = [
   ['rotation handle helper + hit-test present', html.includes("function getRotHandle(s)") && html.includes("function hitRotHandle(wp,s)")],
   ['pointerdown enters rotate dragKind on knob hit', html.includes("const rh=hitRotHandle(wp,onlySel);") && html.includes("ptr.dragKind='rotate';")],
   ['rotate drag maps angle (knob-up=0°), Shift snaps 15°', html.includes("_at2(wp.y-ptr.rotCy,wp.x-ptr.rotCx)*180/_PI+90") && html.includes("deg=_rnd(deg/15)*15;")],
-  ['rotate commit records upd + announces angle', html.includes("ptr.dragKind==='rotate'") && html.includes("_tst(describeShape(rsh)); // SR announce new angle")],
+  ['rotate commit records upd + announces angle', html.includes("_dk('rotate')") && html.includes("_tst(describeShape(rsh)); // SR announce new angle")],
   ['rotation knob drawn in drawSelection', html.includes("const rh=getRotHandle(sh);") && html.includes("c.arc(kp.x,kp.y,hs/2,0,PI2)")],
   // v1.7.62: the overlay pass (selection/guides/marquee/laser/peer cursors) draws in CSS px
   // under a DPR transform — multiplying w2s output by DPR double-applied it on HiDPI.
@@ -1146,7 +1146,7 @@ const checks = [
   // v1.6.80: multi-touch pinch cancels the single-pointer gesture (no stray edits)
   ['pointerdown aborts single-pointer gesture when a 2nd finger lands', html.includes("if(_pointers.size>=2){abortGesture();return;}")],
   ['pointermove bails while pinch is active', html.includes("if(_pointers.size>=2)return;   // pinch in progress")],
-  ['abortGesture reverts move/resize/rotate from pointerdown snapshots', html.includes("function abortGesture(){") && html.includes("if(ptr.dragKind==='move'&&ptr.dragStartShapes){")],
+  ['abortGesture reverts move/resize/rotate from pointerdown snapshots', html.includes("function abortGesture(){") && html.includes("if(_dk('move')&&ptr.dragStartShapes){")],
   // v1.6.81: wheel deltaMode normalization (Firefox line-mode parity with Chrome pixels)
   ['wheelPx normalizes deltaMode to pixels', html.includes("function wheelPx(e)") && html.includes("e.deltaMode===1?16:e.deltaMode===2?400:1")],
   ['wheel handler routes through wheelPx', html.includes("const d=wheelPx(e);") && html.includes("zoomAt({x:e.offsetX,y:e.offsetY},-d.y*0.005)")],
