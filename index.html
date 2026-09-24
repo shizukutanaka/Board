@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.259';
+const V='1.7.260';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4882,6 +4882,7 @@ function contRectLike(wp,uniform){
   const _b0=G.bbox(d);
   if(w<0){d.x=sx0+w;d.w=-w}else{d.x=sx0;d.w=w}
   if(h<0){d.y=sy0+h;d.h=-h}else{d.y=sy0;d.h=h}
+  state.readout={x:d.x+d.w/2,y:d.y+d.h,label:`${Math.round(d.w)} × ${Math.round(d.h)}`};   // ADR-0202
   invalidateDamage(_dmgPair(_b0,G.bbox(d),(d.size||2)+16));   // ADR-0026
 }
 function endRectLike(){
@@ -4919,6 +4920,8 @@ function contLineLike(wp,uniform){
   }
   const _b0=G.bbox(state.draft);
   state.draft.x2=x2;state.draft.y2=y2;
+  const _mx=(ptr.wx0+x2)/2,_my=Math.max(ptr.wy0,y2);   // ADR-0202: draft-length readout
+  state.readout={x:_mx,y:_my,label:`↔ ${Math.round(Math.hypot(x2-ptr.wx0,y2-ptr.wy0))}`};
   invalidateDamage(_dmgPair(_b0,G.bbox(state.draft),(state.draft.size||2)+16));   // ADR-0026
 }
 function endLineLike(){

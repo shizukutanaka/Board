@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.260]
+
+### 追加
+- **描画中の寸法/線長ピル** (ADR-0202)。rect/ellipse/diamond/
+  sticky/frame のドラッグ描画で W×H、line/arrow で ↔長さ をライブ
+  表示 — 既存図形のリサイズ表示と同一形式。
+
 ## [1.7.259]
 
 ### 追加

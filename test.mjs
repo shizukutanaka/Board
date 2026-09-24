@@ -776,6 +776,7 @@ const checks = [
   ['ctxFitText sizes sticky to wrapped text (ADR-0199)', html.includes('function fitSticky()')&&html.includes("['ctxFitText','',fitSticky]")],
   ['Shift constrains pen to straight line (ADR-0200)', html.includes("e.shiftKey&&pts.length){pts.length=1;pts.push")],
   ['move gesture shows live X,Y readout (ADR-0201)', html.includes("label:`${Math.round(bx)}, ${Math.round(by)}`")],
+  ['draw drafts show dims/length readout (ADR-0202)', html.includes("` × ${Math.round(d.h)}`")&&html.includes("x2-ptr.wx0")],
   // v1.7.05: Tab cycling excludes locked shapes (parity with doMove/doDelete/doRotate/doFlip)
   ['statusbar selection dims readout', html.includes('id="sSel"')&&html.includes('_statusSel()')&&html.includes('Math.round(b.w)')],
   ['empty-selection arrows pan viewport', html.includes("state.viewport.x+=k==='arrowleft'?-step:k==='arrowright'?step:0")],
