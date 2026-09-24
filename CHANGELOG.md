@@ -2,6 +2,18 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.348] - 2026-09-24
+
+### Added
+- excalidraw `startBinding.focus`/`endBinding.focus` を `s.aF`/`s.bF`
+  固定アンカー近似として輸入 (往復完成、ADR-0296)
+
+## [1.7.347] - 2026-09-24
+
+### Changed
+- `Math.min(1,Math.max(0,X))` ×11 を `_c01(X)` に集約 (raw -143B、
+  ADR-0295)
+
 ## [1.7.346] - 2026-09-24
 
 ### Added
