@@ -713,6 +713,7 @@ const checks = [
   ['conn label honours lineH canvas+SVG (ADR-0212)', html.includes('llh=fs*(s.lineH||1.25)')&&html.includes('lh2=fs*(s.lineH||1.25)')],
   ['pin/unpin anchor via ctx for touch/keyboard (ADR-0213)', html.includes('function pinAnchor()')&&html.includes("['ctxPinAnchor','',pinAnchor]")&&html.includes('px=k===\'a\'?e.x1:e.x2')],
   ['_bindAt grid-accelerated candidate scan (ADR-0214)', html.includes('const cands=[..._queryGrid(_grid,{x,y})]')&&html.includes('const ok=s=>{const t=s.type;return t!==\'line\'&&t!==\'arrow\'&&t!==\'pen\'&&s.visible!==0}')],
+  ['modal focus trap + focus restore (ADR-0215)', html.includes('_trapOn(id)')&&html.includes("document.addEventListener('keydown',key,true)")&&html.includes('this._trapOff();this._restoreFocus()')],['modal focus restore + summary tabbable (ADR-0215)', html.includes('_captureFocus()')&&html.includes('this._restoreFocus()')&&html.includes('select,textarea,summary,[tabindex')],
   ['endpoint drag Shift constrains to 45 deg + label editor fontSize (ADR-0206)', html.includes("constrain the free end to 45")&&html.includes("${hit.fontSize||12}px")],
   ['i18n has excImported ja+en', html.includes("excImported:'Excalidraw を取り込みました'") && html.includes("excImported:'Excalidraw imported'")],
   // v1.7.102: ADR-0044 text paste → text shape
@@ -732,9 +733,9 @@ const checks = [
   // v1.6.45: zoom badge has role=group for semantic grouping
   ['zoom-badge has role=group and aria-label', html.includes('class="zoom-badge" role="group" aria-label="Zoom controls"')],
   // v1.6.52: dialog focus management (WCAG 2.4.3)
-  ['toggleHelp moves focus to helpClose on open', html.includes("open?'helpClose':'btnHelp'")],
+  ['toggleHelp moves focus to helpClose on open', html.includes("this._trapOn('help')")],
   ['openShare moves focus to shareClose', html.includes("document.getElementById('shareClose').focus()")],
-  ['closeShare returns focus to btnShare', html.includes("document.getElementById('btnShare').focus()")],
+  ['closeShare returns focus to btnShare', html.includes("this._trapOff();this._restoreFocus()")],
   // v1.6.56: custom color pickers (native <input type=color>) for stroke and fill
   ['custom stroke color picker present', html.includes('class="swatch cp" data-cp="stroke"')],
   ['custom fill color picker present', html.includes('class="swatch cp" data-cp="fill"')],

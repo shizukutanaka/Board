@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.273]
+
+### 改善
+- **モーダルのフォーカストラップ** (ADR-0215、a11y)。help/share
+  ダイアログで Tab が内部を巡回 (外への抜け防止 + 閉鎖時に
+  呼び出し元へフォーカス復帰、WCAG 2.1.2/2.4.3)。
+
 ## [1.7.272]
 
 ### 改善

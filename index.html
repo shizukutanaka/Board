@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.272';
+const V='1.7.273';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -5258,7 +5258,7 @@ const KEYMAP={v:'select',h:'hand',p:'pen',r:'rect',o:'ellipse',i:'eyedropper',
 // given those controls, the active element and direction, it returns which element to
 // focus to keep Tab/Shift+Tab cycling INSIDE the dialog, or null to let native Tab move.
 function _focusables(root){
-  return [...root.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])')]
+  return [...root.querySelectorAll('button,[href],input,select,textarea,summary,[tabindex]:not([tabindex="-1"])')]
     .filter(el=>!el.disabled&&!el.hidden);
 }
 function _trapStep(items,active,back){
@@ -7856,10 +7856,34 @@ const UI={
     const el=document.getElementById('sr');if(!el)return;
     el.textContent=el.textContent===msg?msg+' ':msg;
   },
+  // ADR-0215: shared modal focus trap — Tab/Shift+Tab cycles inside the open
+  // dialog, a jump outside is pulled back in, and focus returns to the element
+  // that opened it on close (WCAG 2.1.2 no-keyboard-trap inverse + focus restore).
+  _trapRel:null,_prevFocus:null,
+  _trapOn(id){
+    this._trapOff();
+    const m=document.getElementById(id);
+    this._prevFocus=document.activeElement;
+    const sel='a[href],button:not([disabled]),input:not([disabled]),select,textarea,[tabindex]:not([tabindex="-1"]),summary';
+    const key=ev=>{
+      if(ev.key!=='Tab'||m.dataset.open!=='true')return;
+      const f=[...m.querySelectorAll(sel)].filter(el=>el.offsetParent!==null||el===document.activeElement);
+      if(!f.length)return;
+      const first=f[0],last=f[f.length-1];
+      if(ev.shiftKey&&document.activeElement===first){ev.preventDefault();last.focus()}
+      else if(!ev.shiftKey&&document.activeElement===last){ev.preventDefault();first.focus()}
+      else if(!m.contains(document.activeElement)){ev.preventDefault();first.focus()}
+    };
+    document.addEventListener('keydown',key,true);
+    this._trapRel=()=>document.removeEventListener('keydown',key,true);
+  },
+  _trapOff(){if(this._trapRel){this._trapRel();this._trapRel=null}},
+  _restoreFocus(){const p=this._prevFocus;this._prevFocus=null;if(p&&p.focus)p.focus()},
   toggleHelp(){
     const h=document.getElementById('help'),open=h.dataset.open!=='true';
     h.dataset.open=open;
-    document.getElementById(open?'helpClose':'btnHelp').focus();
+    if(open){this._trapOn('help');document.getElementById('helpClose').focus()}
+    else{this._trapOff();this._restoreFocus()}
   },
   openCtxMenu(x,y,customItems){
     const m=document.getElementById('ctx');
@@ -8090,11 +8114,12 @@ const UI={
     };
     chk.onchange=refresh;
     refresh();
+    this._trapOn('share');
     document.getElementById('shareClose').focus();
   },
   closeShare(){
     document.getElementById('share').dataset.open='false';
-    document.getElementById('btnShare').focus();
+    this._trapOff();this._restoreFocus();
   },
   refreshPeers(){
     const stack=document.getElementById('peerStack');
