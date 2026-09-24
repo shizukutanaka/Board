@@ -231,7 +231,7 @@ const checks = [
   ['copyStyle uses i18n', html.includes("t('noSelection')") && html.includes("t('styleCopied')")],
   ['group toasts use i18n', html.includes("t('grouped')") && html.includes("t('selectTwo')")],
   ['copyStyle captures stroke/fill/size/opacity', html.includes("stroke:sh.stroke,fill:sh.type==='sticky'?sh.color:sh.fill") && html.includes("size:sh.size,opacity:sh.opacity")],
-  ['pasteStyle filters undefined keys', html.includes("filter(([,v])=>v!==undefined)")],
+  ['pasteStyle filters undefined keys', html.includes("filter(([,v])=>v!==_ud)")],
   ['applyStyleToSelection records undo', html.includes("_styleOp(before,after)")],
   // v1.6.6: reversibility + security hardening
   ['zorder op is minimal-delta changes (ADR-0001 Step2)', html.includes("op:'zorder',changes")],
@@ -415,7 +415,7 @@ const checks = [
   ['_mergeSnapshotOp: LWW per-property merge on known shapes', html.includes("function _mergeSnapshotOp(op)")===false&&html.includes("_mergeSnapshotOp(op){") && html.includes("clockNewer(rc,lc)") && html.includes("return 'merge';")],
   // v1.7.117: ADR-0059 style panel ← selection sync
   ['style panel syncs on selection signature change', html.includes("_syncStylePanelIfChanged();   // ADR-0059")&&html.includes("_selIds().sort().join(',')")],
-  ['_syncStylePanel adopts only uniform props (mixed skipped)', html.includes("sel.every(s=>(s[k]??null)===v)")&&html.includes("if(v!==undefined){_st().fill")],
+  ['_syncStylePanel adopts only uniform props (mixed skipped)', html.includes("sel.every(s=>(s[k]??null)===v)")&&html.includes("if(v!==_ud){_st().fill")],
   // v1.7.118: ADR-0060 Alt+drag duplicate
   ['alt+drag duplicates picked shape then drags copies', html.includes("if(e.altKey&&!hit.locked){")&&html.includes("_placeCopies(srcShapes,0,0)")&&html.includes("dupSet=alreadySel")],
   // v1.7.118: ADR-0061 diamond shape
@@ -774,8 +774,8 @@ const checks = [
   ['startHead style persistence (ADR-0293)', html.includes("_st().startHead=next")&&html.includes("base.startHead=_st().startHead")],
   ['_p()/_ac() css token shorthands (ADR-0292)', html.includes("const _p=()=>getCSS('--paper')")],
   ['ctx start-head cycle (ADR-0291)', html.includes('cycleStartHead')&&html.includes('ctxStartHead')],
-  ['exc transparent stroke/bg import (ADR-0290 追補)', html.includes("o.stroke='transparent'")&&html.includes("o.fill='none'")],
-  ['drawio strokeColor=none → transparent (ADR-0290)', html.includes("'transparent':sty.strokeColor")||html.includes("sty.strokeColor==='none'?'transparent'")],
+  ['exc transparent stroke/bg import (ADR-0290 追補)', html.includes("o.stroke=_TR")&&html.includes("o.fill='none'")],
+  ['drawio strokeColor=none → transparent (ADR-0290)', html.includes("_TR:sty.strokeColor")||html.includes("sty.strokeColor==='none'?_TR")],
   ['_g() getElementById shorthand (ADR-0289)', html.includes("const _g=id=>document.getElementById(id)")],
   ['drawio fillColor=none → transparent fill (ADR-0288)', html.includes("s.fill=sty.fillColor==='none'")&&html.includes("s.fill!=='none'")],
   ['drawio endFill=0 → open head (ADR-0287)', html.includes("endFill==='0'&&sty.endArrow")],
@@ -9802,6 +9802,16 @@ try {
      const rt2=excToShapes(JSON.stringify({type:'excalidraw',elements:[{...el2,endArrowhead:'crowfoot',startArrowhead:'crowfoot_one',startBinding:null,endBinding:null}]}));
      const ra2=rt2.find(s=>s.type==='arrow');
      assert.ok(ra2.head==='open'&&ra2.startHead==='open','import: crowfoot/crowfoot_one → open (ADR-0338)');}
+
+    // ADR-0390: excalidraw frameId emitted for shapes spatially contained in a frame
+    {const fr={id:'f1',type:'frame',x:0,y:0,w:200,h:200,stroke:'#000',fill:null,size:2,opacity:1};
+     const inside={id:'r1',type:'rect',x:10,y:10,w:40,h:40,stroke:'#000',fill:null,size:2,opacity:1};
+     const outside={id:'r2',type:'rect',x:500,y:500,w:40,h:40,stroke:'#000',fill:null,size:2,opacity:1};
+     const els=excScene([fr,inside,outside]).elements;
+     const eIn=els.find(e=>e.id==='r1'),eOut=els.find(e=>e.id==='r2'),eFr=els.find(e=>e.id==='f1');
+     assert.ok(eIn.frameId==='f1','export: contained shape gets frameId (ADR-0390)');
+     assert.ok(eOut.frameId==null,'export: outside shape gets no frameId (ADR-0390)');
+     assert.ok(eFr.frameId==null,'export: the frame itself gets no frameId (ADR-0390)');}
 
     // ADR-0240: group children carry parent-relative coords in real drawio files.
     // ADR-0250: _dioInflate — real deflate-raw+base64 <diagram> payload round-trips

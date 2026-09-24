@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.432] - 2026-09-23
+### 追加
+- ADR-0390: .excalidraw 書き出しで `frameId` を空間内包から付与 — Board の frame メンバーシップを Excalidraw 側で再現。bound ラベル text も containerId 経由で継承
+### 変更
+- ADR-0391: shorthand 追加 (`_TR`/`_ud`/`_now`) — およそ 280B 回収。`nowTs` はテストの `Date.now` モンキーパッチ維持のためリテラルのまま
+
 ## [1.7.431] - 2026-09-23
 
 ### 修正
