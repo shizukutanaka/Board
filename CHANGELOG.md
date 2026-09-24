@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.206]
+
+### 修正
+- **画像フリップが効かないバグ** (ADR-0149)。`s.flip` ビット
+  マスクを追加し canvas/SVG/ミニマップの全3経路でピクセルを
+  実反転 — 従来は対称箱の鏡像のみで見た目が変わらなかった。
+
 ## [1.7.205]
 
 ### 修正

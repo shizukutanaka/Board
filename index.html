@@ -774,7 +774,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.205';
+const V='1.7.206';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2634,7 +2634,9 @@ function drawShape(s,c){
       drawText(s,c);break;
     case 'image':{
       const img=s.dataUrl?getImg(s.dataUrl):null;   // ADR-0035: dataUrl-less image renders placeholder, never throws (getImg guards non-data:)
-      if(img&&img.complete&&img.naturalWidth)c.drawImage(img,s.x,s.y,s.w,s.h);
+      if(img&&img.complete&&img.naturalWidth){
+        if(s.flip){const fx=s.x+s.w/2,fy=s.y+s.h/2;c.save();c.translate(fx,fy);c.scale(s.flip&1?-1:1,s.flip&2?-1:1);c.translate(-fx,-fy);c.drawImage(img,s.x,s.y,s.w,s.h);c.restore()}
+        else c.drawImage(img,s.x,s.y,s.w,s.h);}   // ADR-0149
       else{c.strokeStyle=s.stroke||'#CBD5E1';c.lineWidth=1;c.strokeRect(s.x,s.y,s.w,s.h)}
       _drawImgLabel(s,c);                                         // ADR-0083
       break;}
@@ -5548,6 +5550,11 @@ function flipShape(s,axis,c){
     else if(s.y1!=null){s.y1=m(s.y1);s.y2=m(s.y2);if(s.way){s.way=_wayArr(s);for(const w of s.way)w.y=m(w.y)}}   // ADR-0090
     else s.y=m(s.y+s.h);
   }
+  // ADR-0149: images mirror their PIXELS, not just their box — a symmetric
+  // box flip alone was a dead op (same bitmap drawn back into the same rect).
+  // s.flip bitmask: 1=horizontal, 2=vertical. Position still mirrors so group
+  // flips place the image correctly within the mirrored envelope.
+  if(s.type==='image')s.flip=(s.flip||0)^(axis==='h'?1:2);
   if(tr&&(axis==='h')===!!trVert)s.bend=m(s.bend);
   if(s.cbend!=null)s.cbend=-s.cbend;   // ADR-0132: any mirror flips the curve's chirality
   // ADR-0142: mirror maps angle θ → 180−θ across the vertical axis
@@ -6366,7 +6373,12 @@ function buildSVG(shapes,paper){
         for(let i=0;i<svgLines.length;i++)els.push(`<tspan x="${tax}" dy="${i?fs*1.25:0}">${_esc(svgLines[i])}</tspan>`);
         els.push('</text>');break;}
       case 'image':
-        if(typeof s.dataUrl==='string'&&/^data:image\//.test(s.dataUrl))els.push(`<image x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" href="${_esc(s.dataUrl)}"${a}${rT}/>`);
+        if(typeof s.dataUrl==='string'&&/^data:image\//.test(s.dataUrl)){
+          const im=`<image x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" href="${_esc(s.dataUrl)}"${a}${rT}/>`;
+          if(s.flip){   // ADR-0149: world-space mirror about the image's own centre
+            const fcx=X+W/2+ox,fcy=Y+H/2+oy;
+            els.push(`<g transform="translate(${_num(fcx)} ${_num(fcy)}) scale(${s.flip&1?-1:1} ${s.flip&2?-1:1}) translate(${_num(-fcx)} ${_num(-fcy)})">${im}</g>`);
+          }else els.push(im);}
         if(s.label)_svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT);  // ADR-0083
         break;
       case 'frame':{
@@ -8275,7 +8287,7 @@ const Minimap=(()=>{
         case 'line':case 'arrow':{if(s.elbow){const pts=_elbowPts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<pts.length;i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}if(s.curve){const me=connEnds(s),cc=_curveCtrl(me,s.cbend);sx.beginPath();sx.moveTo(me.x1*sc+ox,me.y1*sc+oy);sx.quadraticCurveTo(cc.x*sc+ox,cc.y*sc+oy,me.x2*sc+ox,me.y2*sc+oy);sx.stroke();break}const pts=_linePts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<pts.length;i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}
         case 'pen':if(s.pts.length<2)break;sx.beginPath();sx.moveTo(s.pts[0][0]*sc+ox,s.pts[0][1]*sc+oy);for(let i=1;i<s.pts.length;i++)sx.lineTo(s.pts[i][0]*sc+ox,s.pts[i][1]*sc+oy);sx.stroke();break;
         case 'text':case 'sticky':{const rx2=s.x*sc+ox,ry2=s.y*sc+oy,rw2=Math.max(2,s.w*sc),rh2=Math.max(2,s.h*sc);sx.fillStyle=s.type==='sticky'?(s.color||'#FEF08A'):(s.fill||getCSS('--brand'));sx.fillRect(rx2,ry2,rw2,rh2);break}
-        case 'image':{const rx3=s.x*sc+ox,ry3=s.y*sc+oy,rw3=Math.max(2,s.w*sc),rh3=Math.max(2,s.h*sc);const img=s.dataUrl?_imgCache.get(_imgKey(s.dataUrl)):null;if(img&&img.complete&&img.naturalWidth)sx.drawImage(img,rx3,ry3,rw3,rh3);else{sx.fillStyle='#CBD5E1';sx.fillRect(rx3,ry3,rw3,rh3)}break}
+        case 'image':{const rx3=s.x*sc+ox,ry3=s.y*sc+oy,rw3=Math.max(2,s.w*sc),rh3=Math.max(2,s.h*sc);const img=s.dataUrl?_imgCache.get(_imgKey(s.dataUrl)):null;if(img&&img.complete&&img.naturalWidth){if(s.flip){const fx3=rx3+rw3/2,fy3=ry3+rh3/2;sx.save();sx.translate(fx3,fy3);sx.scale(s.flip&1?-1:1,s.flip&2?-1:1);sx.translate(-fx3,-fy3);sx.drawImage(img,rx3,ry3,rw3,rh3);sx.restore()}else sx.drawImage(img,rx3,ry3,rw3,rh3)}else{sx.fillStyle='#CBD5E1';sx.fillRect(rx3,ry3,rw3,rh3)}break}
       }
       if(_mr)sx.restore();
     }
