@@ -252,7 +252,7 @@ const checks = [
   // v1.7.0: connector (edge) labels (ADR-0003)
   ['openLabelEditor shared by boxes + connectors', html.includes("function openLabelEditor(hit,leftPx,topPx,bold)")],
   ['dblclick opens label editor on line/arrow at midpoint', html.includes("hit.type==='line'||hit.type==='arrow'") && html.includes("_connLabelXY(hit)")],
-  ['_drawConnLabel renders edge label on canvas', html.includes("function _drawConnLabel(s,c)") && html.includes("c.fillText(s.label,mx,my)")],
+  ['_drawConnLabel renders edge label on canvas', html.includes("function _drawConnLabel(s,c)") && html.includes("c.fillText(lns[i],mx,my+(i-(lns.length-1)/2)*llh)")],
   ['line/arrow drawShape calls _drawConnLabel', html.includes("c.stroke();_drawConnLabel(s,c);break;") && html.includes("drawArrow(s,c);_drawConnLabel(s,c);break;")],
   ['_connLabelSVG emits edge label in SVG', html.includes("function _connLabelSVG(s,x1,y1,x2,y2,ox,oy,stroke,paper)")],
   ['Persist.load validates shapes', html.includes("d.shapes.filter(validShape)")],
@@ -708,6 +708,7 @@ const checks = [
   ['elbow corner rounding canvas+SVG + cycleCorner gate (ADR-0207)', html.includes('function _polylineR')&&html.includes('_polylineRd(pts,ox,oy,s.r)')&&html.includes("connOk=(s.type==='line'||s.type==='arrow')&&s.elbow")],
   ['text word-wrap toggle + canvas/SVG wrap (ADR-0208)', html.includes('s.wrap?wrapTextCached')&&html.includes('s.wrap?wrapText(String')&&html.includes("['ctxWrap','',toggleWrap]")],
   ['fixed edge anchors via Alt-drop + connEnds/reverse/unbind wiring (ADR-0209)', html.includes("sh[fk]={fx:fx<0.5?0:1,fy}")&&html.includes('s.aF?{x:ba.x+ba.w*s.aF.fx')&&html.includes('tbF=s.aF;s.aF=s.bF')],
+  ['multi-line conn label canvas+SVG (ADR-0210)', html.includes("String(s.label).split('\\n'),llh=fs*1.25")&&html.includes("lns.map((l,i)=>`<tspan")],
   ['endpoint drag Shift constrains to 45 deg + label editor fontSize (ADR-0206)', html.includes("constrain the free end to 45")&&html.includes("${hit.fontSize||12}px")],
   ['i18n has excImported ja+en', html.includes("excImported:'Excalidraw を取り込みました'") && html.includes("excImported:'Excalidraw imported'")],
   // v1.7.102: ADR-0044 text paste → text shape
@@ -6026,12 +6027,12 @@ try {
     const lineSvg = buildSVG([{id:'l',type:'line',x1:0,y1:0,x2:80,y2:60,label:'no',stroke:'#000',size:2,opacity:1}], '#fff');
     const plain = buildSVG([{id:'p',type:'arrow',x1:0,y1:0,x2:100,y2:0,stroke:'#000',size:2,opacity:1}], '#fff');
     assert.ok(arrSvg.includes('>yes<'), 'edge label: labeled arrow emits its label text');
-    assert.ok(/<text[^>]*text-anchor="middle"[^>]*>yes</.test(arrSvg), 'edge label: arrow label is centred <text>');
+    assert.ok(/<text[^>]*text-anchor="middle"[^>]*>(?:<tspan[^>]*>)?yes</.test(arrSvg), 'edge label: arrow label is centred <text>');
     assert.ok(lineSvg.includes('>no<'), 'edge label: labeled line emits its label text');
     assert.ok(!/<text/.test(plain), 'edge label: unlabeled connector emits no <text>');
     // midpoint placement: for the (0,0)->(100,0) arrow the label x must sit near 50+ox (=82),
     // i.e. between the endpoints, not at an endpoint
-    const m = arrSvg.match(/<text x="([\d.]+)"[^>]*>yes</);
+    const m = arrSvg.match(/<text x="([\d.]+)"[^>]*>(?:<tspan[^>]*>)?yes</);
     assert.ok(m, 'edge label: <text> has an x coordinate');
     const lx = parseFloat(m[1]);
     assert.ok(lx > 60 && lx < 105, `edge label: x (${lx}) is near the segment midpoint, not an endpoint`);

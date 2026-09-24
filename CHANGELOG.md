@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.268]
+
+### 修正
+- **コネクタラベルの複数行描画** (ADR-0210)。インポート由来の
+  `\n` 入りラベルを canvas/SVG とも行スタックで表示
+  (pill は全行包含、下線/取消線は行毎、`<tspan dy>` 対応)。
+
 ## [1.7.267]
 
 ### 追加
