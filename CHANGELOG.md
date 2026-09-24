@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.166]
+
+### 追加
+- **位置を入れ替え** (ADR-0108)。選択2の ctx「位置を入れ替え」で
+  両 unit を相手の bbox 中心へ平行移動する `align` op
+  (Figma Swap positions parity)。
+
 ## [1.7.165]
 
 ### 追加

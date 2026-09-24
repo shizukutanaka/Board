@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.165';
+const V='1.7.166';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -874,7 +874,7 @@ const I18N={
     zoomCtl:'ズーム操作',zoomLevel:'ズーム率(クリックでリセット)',zoomResetT:'ズームをリセット',
     close:'閉じる',shareUrlLabel:'共有URL',minimapNav:'ミニマップ — クリックで移動',
     ctxAlignLeft:'左揃え',ctxAlignCX:'左右中央',ctxAlignRight:'右揃え',ctxMatchW:'幅を揃える',ctxMatchH:'高さを揃える',ctxMatchWH:'幅と高さを揃える',
-    ctxAlignTop:'上揃え',ctxAlignCY:'上下中央',ctxAlignBottom:'下揃え',ctxTidy:'グリッドに整列',
+    ctxAlignTop:'上揃え',ctxAlignCY:'上下中央',ctxAlignBottom:'下揃え',ctxSwap:'位置を入れ替え',ctxTidy:'グリッドに整列',
     ctxHSpace:'水平均等配置',ctxVSpace:'垂直均等配置',
     ctxSelectAll:'すべて選択',ctxClear:'全消去',
     ctxExportPNG:'PNG書き出し',ctxCopyPNG:'PNGをクリップボードにコピー',ctxExportSVG:'SVG書き出し',ctxExportPDF:'PDF書き出し',ctxExportExc:'Excalidraw (.excalidraw) 書き出し',ctxExportBoard:'.boardファイル書き出し',ctxImportBoard:'.boardファイル読み込み...',
@@ -950,7 +950,7 @@ const I18N={
     zoomCtl:'Zoom controls',zoomLevel:'Zoom level, click to reset',zoomResetT:'Reset zoom',
     close:'Close',shareUrlLabel:'Share URL',minimapNav:'Minimap — click to navigate',
     ctxAlignLeft:'Align left',ctxAlignCX:'Center horizontal',ctxAlignRight:'Align right',ctxMatchW:'Match width',ctxMatchH:'Match height',ctxMatchWH:'Match size',
-    ctxAlignTop:'Align top',ctxAlignCY:'Center vertical',ctxAlignBottom:'Align bottom',ctxTidy:'Tidy up (grid)',
+    ctxAlignTop:'Align top',ctxAlignCY:'Center vertical',ctxAlignBottom:'Align bottom',ctxSwap:'Swap positions',ctxTidy:'Tidy up (grid)',
     ctxHSpace:'Distribute horizontal',ctxVSpace:'Distribute vertical',
     ctxSelectAll:'Select all',ctxClear:'Clear all',
     ctxExportPNG:'Export PNG',ctxCopyPNG:'Copy PNG to clipboard',ctxExportSVG:'Export SVG',ctxExportPDF:'Export PDF',ctxExportExc:'Export .excalidraw',ctxExportBoard:'Export .board file',ctxImportBoard:'Import .board file...',
@@ -1250,7 +1250,7 @@ function validRemotePayload(op){
     case 'resize':{const noLock=p=>!('locked' in p);
       return patches(op.after)&&op.after.every(noLock)
           &&patches(op.before)&&op.before.every(noLock);}
-    case 'align':{const DIRS=new Set(['left','right','cx','top','bottom','cy','hspace','vspace','tidy','flip','rotate','lock','gresize','grot','matchw','matchh','matchwh','framefit']);
+    case 'align':{const DIRS=new Set(['left','right','cx','top','bottom','cy','hspace','vspace','tidy','swap','flip','rotate','lock','gresize','grot','matchw','matchh','matchwh','framefit']);
       if(typeof op.dir!=='string'||!DIRS.has(op.dir))return false;
       const noLock=p=>op.dir==='lock'||!('locked' in p);
       return patches(op.after)&&op.after.every(noLock)
@@ -5193,6 +5193,13 @@ function doAlign(dir){
         yy+=rowH[ri]+GAP;
       }
       break}
+    // ADR-0108: two units swap positions (centre-aligned, sizes unchanged).
+    case 'swap':{
+      if(units.length!==2)break;
+      const [a,b]=units;
+      const ddx=(b.b.x+b.b.w/2)-(a.b.x+a.b.w/2),ddy=(b.b.y+b.b.h/2)-(a.b.y+a.b.h/2);
+      mv(a,ddx,ddy);mv(b,-ddx,-ddy);
+      break}
   }
   const afterSnap=sel.map(s=>clone(s));
   const origSel=[...state.selection];
@@ -6975,6 +6982,7 @@ const UI={
       has&&state.selection.size>1&&['ctxHSpace','',()=>doAlign('hspace')],
       has&&state.selection.size>1&&['ctxVSpace','',()=>doAlign('vspace')],
       has&&state.selection.size>2&&['ctxTidy','',()=>doAlign('tidy')],
+      has&&state.selection.size===2&&['ctxSwap','',()=>doAlign('swap')],
       has&&state.selection.size>1&&['ctxMatchW','',()=>doMatchSize('w')],       // ADR-0079
       has&&state.selection.size>1&&['ctxMatchH','',()=>doMatchSize('h')],
       has&&state.selection.size>1&&['ctxMatchWH','',()=>doMatchSize('wh')],
