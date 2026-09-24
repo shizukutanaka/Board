@@ -779,9 +779,10 @@ const _g=id=>document.getElementById(id);   // ADR-0289
 const _p=()=>getCSS('--paper'),_ac=()=>getCSS('--accent-contrast');   // ADR-0292
 const _c01=v=>Math.min(1,Math.max(0,v));   // ADR-0295
 const _conn=t=>t==='line'||t==='arrow';   // ADR-0297
+const _selAny=f=>_selAny(s=>f(s));   // ADR-0302
 
 // ====================== CONSTANTS ======================
-const V='1.7.352';
+const V='1.7.353';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -8257,29 +8258,29 @@ const UI={
       has&&['ctxDuplicate','⌘D',doDuplicate],
       has&&['ctxCopyStyle','⌥C',copyStyle],
       state.styleClipboard&&has&&['ctxPasteStyle','⌥V',pasteStyle],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(_conn(s.type))&&!s.locked})&&['ctxElbow','',toggleElbow],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(_conn(s.type))&&!s.locked})&&['ctxCurve','',toggleCurve],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(_conn(s.type))&&!s.locked&&!s.curve})&&['ctxHop','',toggleHop],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(_conn(s.type))&&!s.locked&&(_wayArr(s).length||s.bend||s.elbow||s.curve||s.labelPos!=null||s.cbend!=null)})&&['ctxRouteReset','',resetRoute],   // ADR-0090/0217
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(_conn(s.type))&&!s.locked})&&['ctxReverse','',reverseConn],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='sticky'&&!s.locked})&&['ctxFitText','',fitSticky],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='frame'&&!s.locked})&&['ctxFrameFit','',fitFrames],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='frame'&&!s.locked})&&['ctxSelContents','',selectFrameContents],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky'||s.type==='frame'||s.label)&&!s.locked})&&['ctxTextAlign','',cycleTextAlign],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky'||s.type==='frame'||s.label)&&!s.locked})&&['ctxFont','',cycleFont],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&!s.locked})&&['ctxOpacity','0-9',cycleOpacity],   // ADR-0174
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond'||s.type==='sticky'||(s.type==='image'&&!!s.label))&&!s.locked})&&['ctxVAlign','',cycleVAlign],   // ADR-0179   // ADR-0159
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky'||s.label)&&!s.locked})&&['ctxLineH','',cycleLineH],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky'||s.type==='frame'||s.label)&&!s.locked})&&['ctxSpacing','',cycleSpacing],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='text'&&!s.locked})&&['ctxWrap','',toggleWrap],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='text'||s.type==='sticky')&&!s.locked})&&[[...state.selection].some(id=>byId(id)?.type==='sticky'&&!byId(id)?.locked)?'ctxToText':'ctxToSticky','',toggleStickyText],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='sticky'&&!s.locked})&&['ctxStickyColor','',cycleStickyColor],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond')&&!s.locked})&&['ctxFillStyle','',cycleFillStyle],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='arrow'&&!s.locked})&&['ctxBothEnds','',toggleBothEnds],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(_conn(s.type))&&!s.locked})&&[[...state.selection].some(id=>byId(id)?.type==='line'&&!byId(id)?.locked)?'ctxToArrow':'ctxToLine','',toggleLineArrow],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='arrow'&&!s.locked})&&['ctxArrowHead','',cycleArrowHead],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='arrow'&&!s.locked})&&['ctxStartHead','',cycleStartHead],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='rect'&&!s.locked})&&['ctxRrect','',toggleRound],
+      has&&_selAny(s=>(_conn(s.type))&&!s.locked)&&['ctxElbow','',toggleElbow],
+      has&&_selAny(s=>(_conn(s.type))&&!s.locked)&&['ctxCurve','',toggleCurve],
+      has&&_selAny(s=>(_conn(s.type))&&!s.locked&&!s.curve)&&['ctxHop','',toggleHop],
+      has&&_selAny(s=>(_conn(s.type))&&!s.locked&&(_wayArr(s).length||s.bend||s.elbow||s.curve||s.labelPos!=null||s.cbend!=null))&&['ctxRouteReset','',resetRoute],   // ADR-0090/0217
+      has&&_selAny(s=>(_conn(s.type))&&!s.locked)&&['ctxReverse','',reverseConn],
+      has&&_selAny(s=>s.type==='sticky'&&!s.locked)&&['ctxFitText','',fitSticky],
+      has&&_selAny(s=>s.type==='frame'&&!s.locked)&&['ctxFrameFit','',fitFrames],
+      has&&_selAny(s=>s.type==='frame'&&!s.locked)&&['ctxSelContents','',selectFrameContents],
+      has&&_selAny(s=>(s.type==='text'||s.type==='sticky'||s.type==='frame'||s.label)&&!s.locked)&&['ctxTextAlign','',cycleTextAlign],
+      has&&_selAny(s=>(s.type==='text'||s.type==='sticky'||s.type==='frame'||s.label)&&!s.locked)&&['ctxFont','',cycleFont],
+      has&&_selAny(s=>!s.locked)&&['ctxOpacity','0-9',cycleOpacity],   // ADR-0174
+      has&&_selAny(s=>(s.type==='rect'||s.type==='ellipse'||s.type==='diamond'||s.type==='sticky'||(s.type==='image'&&!!s.label))&&!s.locked)&&['ctxVAlign','',cycleVAlign],   // ADR-0179   // ADR-0159
+      has&&_selAny(s=>(s.type==='text'||s.type==='sticky'||s.label)&&!s.locked)&&['ctxLineH','',cycleLineH],
+      has&&_selAny(s=>(s.type==='text'||s.type==='sticky'||s.type==='frame'||s.label)&&!s.locked)&&['ctxSpacing','',cycleSpacing],
+      has&&_selAny(s=>s.type==='text'&&!s.locked)&&['ctxWrap','',toggleWrap],
+      has&&_selAny(s=>(s.type==='text'||s.type==='sticky')&&!s.locked)&&[[...state.selection].some(id=>byId(id)?.type==='sticky'&&!byId(id)?.locked)?'ctxToText':'ctxToSticky','',toggleStickyText],
+      has&&_selAny(s=>s.type==='sticky'&&!s.locked)&&['ctxStickyColor','',cycleStickyColor],
+      has&&_selAny(s=>(s.type==='rect'||s.type==='ellipse'||s.type==='diamond')&&!s.locked)&&['ctxFillStyle','',cycleFillStyle],
+      has&&_selAny(s=>s.type==='arrow'&&!s.locked)&&['ctxBothEnds','',toggleBothEnds],
+      has&&_selAny(s=>(_conn(s.type))&&!s.locked)&&[[...state.selection].some(id=>byId(id)?.type==='line'&&!byId(id)?.locked)?'ctxToArrow':'ctxToLine','',toggleLineArrow],
+      has&&_selAny(s=>s.type==='arrow'&&!s.locked)&&['ctxArrowHead','',cycleArrowHead],
+      has&&_selAny(s=>s.type==='arrow'&&!s.locked)&&['ctxStartHead','',cycleStartHead],
+      has&&_selAny(s=>s.type==='rect'&&!s.locked)&&['ctxRrect','',toggleRound],
       has&&['ctxDelete','⌫',doDelete],
       has&&'sep',
       has&&['ctxWrapFrame','⌘⌥G',wrapInFrame],
@@ -8301,11 +8302,11 @@ const UI={
       has&&['ctxFlipH','⇧H',()=>doFlip('h')],
       has&&['ctxFlipV','⇧V',()=>doFlip('v')],
       has&&['ctxRotate90','⇧R',()=>doRotate(90)],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&((s.type==='rect'||s.type==='diamond'||s.type==='image')||((_conn(s.type))&&s.elbow))&&!s.locked})&&['ctxCorner','',cycleCorner],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(s.type==='rect'||s.type==='ellipse'||s.type==='diamond'||s.type==='image'||s.type==='text'||_conn(s.type))&&!s.locked})&&['ctxShadow','',toggleShadow],
+      has&&_selAny(s=>((s.type==='rect'||s.type==='diamond'||s.type==='image')||((_conn(s.type))&&s.elbow))&&!s.locked)&&['ctxCorner','',cycleCorner],
+      has&&_selAny(s=>(s.type==='rect'||s.type==='ellipse'||s.type==='diamond'||s.type==='image'||s.type==='text'||_conn(s.type))&&!s.locked)&&['ctxShadow','',toggleShadow],
       has&&['ctxHide','⌘⇧H',hideSelection],
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(_conn(s.type))&&!s.locked&&(s.a||s.b)})&&['ctxPinAnchor','',pinAnchor],   // ADR-0213
-      has&&[...state.selection].some(id=>{const s=byId(id);return s&&(_conn(s.type))&&!s.locked&&(s.a||s.b)})&&['ctxUnbind','',unbindSelection],   // ADR-0157
+      has&&_selAny(s=>(_conn(s.type))&&!s.locked&&(s.a||s.b))&&['ctxPinAnchor','',pinAnchor],   // ADR-0213
+      has&&_selAny(s=>(_conn(s.type))&&!s.locked&&(s.a||s.b))&&['ctxUnbind','',unbindSelection],   // ADR-0157
       has&&[...state.selection].map(byId).filter(s=>s&&!s.locked&&s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen').length===2&&['ctxConnect','',connectSelection],
       state.shapes.some(s=>s.visible===0)&&['ctxShowAll','',showAllShapes],
       state.shapes.length&&['ctxSelectInverse','⌘⇧I',selectInverse],
@@ -8335,7 +8336,7 @@ const UI={
       has&&['ctxExportSelSVG','',()=>exportSelection('svg')],
       has&&['ctxCopySelSVG','',()=>exportSelection('svgcopy')],        // ADR-0087
       has&&['ctxExportSelBoard','',()=>exportSelection('board')],          // ADR-0114
-      has&&state.selection.size===1&&[...state.selection].some(id=>{const s=byId(id);return s&&s.type==='image'&&!s.locked})&&['ctxReplaceImg','',replaceImage],   // ADR-0089
+      has&&state.selection.size===1&&_selAny(s=>s.type==='image'&&!s.locked)&&['ctxReplaceImg','',replaceImage],   // ADR-0089
       has&&'sep',
       ['ctxSelectAll','⌘A',()=>{state.selection=new Set(state.shapes.filter(s=>s.visible!==0).map(s=>s.id));if(state.selection.size)_announceSel();invalidate()}],
       state.shapes.length&&['ctxClear','',doClearAll]

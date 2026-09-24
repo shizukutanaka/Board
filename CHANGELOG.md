@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.353] - 2026-09-24
+
+### Changed
+- ctx メニューゲートの `[...state.selection].some(…)` 29 箇所を
+  `_selAny(s=>…)` ヘルパーに集約 (raw -1.3KB、ADR-0302)
+
 ## [1.7.352] - 2026-09-24
 
 ### Added
