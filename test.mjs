@@ -499,6 +499,7 @@ const checks = [
   ['z-order ctx items — touch path for ]/[ keys', html.includes("['ctxBringFront','⇧]',doBringFront]")&&html.includes('ctxSendBack')],
   ['search via ctx — ⌘F box is touch-reachable now', html.includes("['ctxSearch','⌘F',toggleSq]")&&html.includes('function toggleSq')],
   ['view toggles in ctx — grid/snap/minimap/fit/reset touch path', html.includes("['ctxGrid','G',toggleGridView]")&&html.includes('toggleSnapMode')&&html.includes('ctxMinimap')],
+  ['corner-radius cycle for rects via ctx', html.includes('function cycleCorner')&&html.includes("['ctxCorner'" )&&html.includes('ctxCorner:')],
   ['line↔arrow conversion via style op (ctx)', html.includes('toggleLineArrow')&&html.includes('ctxToArrow')&&html.includes("s.type==='line'?'arrow':'line'")],
   ['sticky↔text conversion via style op (ctx)', html.includes('toggleStickyText')&&html.includes('ctxToSticky')&&html.includes("s.type==='sticky'?'text':'sticky'")],
   ['frame select-contents (ctx)', html.includes('selectFrameContents')&&html.includes('ctxSelContents')&&html.includes('withFrameChildren(')],

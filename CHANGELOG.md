@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.193]
+
+### 追加
+- **矩形の角丸サイクル** (ADR-0136)。ctx メニュー「角丸を切替」で
+  選択中の矩形の角丸を 0→8→16→24 に巡回 — 描画経路に存在した
+  `s.r` を実際に編集可能に。
+
 ## [1.7.192]
 
 ### 追加
