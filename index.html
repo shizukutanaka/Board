@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.277';
+const V='1.7.278';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -883,7 +883,7 @@ const I18N={
     ctxSnapGrid:'グリッドに吸着',ctxAlignTop:'上揃え',ctxAlignCY:'上下中央',ctxAlignBottom:'下揃え',ctxSwap:'位置を入れ替え',ctxTidy:'グリッドに整列',
     ctxHSpace:'水平均等配置',ctxVSpace:'垂直均等配置',
     ctxSelectAll:'すべて選択',ctxClear:'全消去',
-    ctxExportPNG:'PNG書き出し',ctxCopyPNG:'PNGをクリップボードにコピー',ctxExportSVG:'SVG書き出し',ctxExportPDF:'PDF書き出し',ctxExportExc:'Excalidraw (.excalidraw) 書き出し',ctxExportBoard:'.boardファイル書き出し',ctxImportBoard:'.boardファイル読み込み...',
+    ctxExportPNG:'PNG書き出し',ctxCopyPNG:'PNGをクリップボードにコピー',ctxExportSVG:'SVG書き出し',ctxExportPDF:'PDF書き出し',ctxExportExc:'Excalidraw (.excalidraw) 書き出し',ctxExportDrawio:'drawio (.drawio) 書き出し',ctxExportBoard:'.boardファイル書き出し',ctxImportBoard:'.boardファイル読み込み...',
     ctxExportSelPNG:'選択をPNG書き出し',ctxCopySelPNG:'選択のPNGをコピー',ctxExportSelSVG:'選択をSVG書き出し',ctxCopySelSVG:'選択のSVGをコピー',ctxCopyBoard:'ボードJSONをコピー',ctxExportPNG1x:'PNG @1x 書き出し',ctxExportPNG4x:'PNG @4x 書き出し (高解像度)',ctxExportViewPNG:'表示範囲を PNG 書き出し',ctxExportSelBoard:'選択を.board書き出し',ctxReplaceImg:'画像を差替え',
     share:'共有',shareTitle:'共有',
     shareUrlHint:'このURLをコピーして送ると、相手に内容が共有されます',
@@ -910,7 +910,7 @@ const I18N={
     sharePaste:'招待された側 手順1: 相手の招待コードを貼り付け',
     connected:'接続しました',disconnected:'切断しました',connectFailed:'接続に失敗しました',
     importConfirm:'共有された内容で現在のボードを置き換えますか？',
-    imported:'読み込みました',svgImported:'SVG を取り込みました',excImported:'Excalidraw を取り込みました',dioImported:'drawio を取り込みました',dioCompressed:'圧縮 .drawio は未対応 — draw.io で「圧縮しない」にして保存してください',textPasted:'テキストを貼り付けました',
+    imported:'読み込みました',svgImported:'SVG を取り込みました',excImported:'Excalidraw を取り込みました',dioImported:'drawio を取り込みました',dioCompressed:'圧縮 .drawio は未対応 — draw.io で「圧縮しない」にして保存してください',dioExported:'.drawioファイルを保存しました',textPasted:'テキストを貼り付けました',
     backupAvailable:'前回、上書きされる前のボードが保存されています。復元しますか？',
     backupRestored:'前回のボードを復元しました',
     backupRestoreFailed:'バックアップの復元に失敗しました',
@@ -959,7 +959,7 @@ const I18N={
     ctxSnapGrid:'Snap to grid',ctxAlignTop:'Align top',ctxAlignCY:'Center vertical',ctxAlignBottom:'Align bottom',ctxSwap:'Swap positions',ctxTidy:'Tidy up (grid)',
     ctxHSpace:'Distribute horizontal',ctxVSpace:'Distribute vertical',
     ctxSelectAll:'Select all',ctxClear:'Clear all',
-    ctxExportPNG:'Export PNG',ctxCopyPNG:'Copy PNG to clipboard',ctxExportSVG:'Export SVG',ctxExportPDF:'Export PDF',ctxExportExc:'Export .excalidraw',ctxExportBoard:'Export .board file',ctxImportBoard:'Import .board file...',
+    ctxExportPNG:'Export PNG',ctxCopyPNG:'Copy PNG to clipboard',ctxExportSVG:'Export SVG',ctxExportPDF:'Export PDF',ctxExportExc:'Export .excalidraw',ctxExportDrawio:'Export .drawio',ctxExportBoard:'Export .board file',ctxImportBoard:'Import .board file...',
     ctxExportSelPNG:'Export selection to PNG',ctxCopySelPNG:'Copy selection PNG',ctxExportSelSVG:'Export selection to SVG',ctxCopySelSVG:'Copy selection SVG',ctxCopyBoard:'Copy board JSON',ctxExportPNG1x:'Export PNG @1x',ctxExportPNG4x:'Export PNG @4x (hi-res)',ctxExportViewPNG:'Export visible region as PNG',ctxExportSelBoard:'Export selection to .board',ctxReplaceImg:'Replace image',
     share:'Share',shareTitle:'Share',
     shareUrlHint:'Copy this URL and send it — the recipient gets your board.',
@@ -986,7 +986,7 @@ const I18N={
     sharePaste:'Joining side, step 1: Paste the invite code from your peer',
     connected:'Connected',disconnected:'Disconnected',connectFailed:'Connection failed',
     importConfirm:'Replace current board with shared content?',
-    imported:'Imported',svgImported:'SVG imported',excImported:'Excalidraw imported',dioImported:'drawio imported',dioCompressed:'Compressed .drawio is unsupported — re-save in draw.io with compression off',textPasted:'Text pasted',
+    imported:'Imported',svgImported:'SVG imported',excImported:'Excalidraw imported',dioImported:'drawio imported',dioCompressed:'Compressed .drawio is unsupported — re-save in draw.io with compression off',dioExported:'.drawio file saved',textPasted:'Text pasted',
     backupAvailable:'A board from before it was overwritten was saved. Restore it?',
     backupRestored:'Restored the previous board',
     backupRestoreFailed:'Failed to restore backup',
@@ -6440,6 +6440,70 @@ function exportExc(){
   a.click();setTimeout(()=>URL.revokeObjectURL(_bu),1e4);
   UI.toast(t('exportedExc'),'ok');
 }
+
+// ---- ADR-0220: .drawio export ------------------------------------------------
+// Round-trip with ADR-0203's import: uncompressed mxGraphModel — vertices for
+// box shapes (text/sticky/frame included), edges for line/arrow with bound
+// ends, waypoints, orthogonal routing, curved, jump arcs, and the shared style
+// vocabulary (fill/stroke/size/dash/opacity/fontSize). pens are skipped (no
+// drawio freeform equivalent); hidden shapes stay home.
+function boardToDrawio(shapes){
+  const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const nl=v=>esc(v).replace(/\n/g,'&lt;br&gt;');
+  const cells=[],idOf=new Map();
+  let i=0;
+  for(const s of shapes){
+    const t=s.type;
+    if(s.visible===0||t==='line'||t==='arrow'||t==='pen')continue;
+    const id='b'+(i++);idOf.set(s.id,id);
+    let sty;
+    if(t==='ellipse')sty='ellipse;';
+    else if(t==='diamond')sty='rhombus;';
+    else if(t==='text')sty='text;';
+    else if(t==='sticky')sty='shape=note;';
+    else if(t==='frame')sty='swimlane;';
+    else sty='rounded='+(s.r>0?1:0)+';';
+    if(s.fill&&s.fill!=='none')sty+='fillColor='+s.fill+';';
+    if(s.stroke)sty+='strokeColor='+s.stroke+';';
+    if(s.size)sty+='strokeWidth='+s.size+';';
+    if(s.dash)sty+='dashed=1;';
+    if(s.opacity!=null&&s.opacity<1)sty+='opacity='+Math.round(s.opacity*100)+';';
+    if(s.fontSize)sty+='fontSize='+s.fontSize+';';
+    const lbl=s.label!=null?s.label:s.text;
+    cells.push(`<mxCell id="${id}" value="${nl(lbl||'')}" style="${esc(sty)}" vertex="1" parent="1"><mxGeometry x="${s.x||0}" y="${s.y||0}" width="${s.w||120}" height="${s.h||80}" as="geometry"/></mxCell>`);
+  }
+  for(const s of shapes){
+    const t=s.type;
+    if(s.visible===0||(t!=='line'&&t!=='arrow'))continue;
+    const id='e'+(i++);
+    let sty=t==='line'?'endArrow=none;':'';
+    if(s.elbow)sty+='edgeStyle=orthogonalEdgeStyle;';
+    if(s.curve)sty+='curved=1;';
+    if(s.hop)sty+='jumpStyle=arc;';
+    if(s.stroke)sty+='strokeColor='+s.stroke+';';
+    if(s.size)sty+='strokeWidth='+s.size+';';
+    if(s.dash)sty+='dashed=1;';
+    if(s.r)sty+='rounded=1;';
+    const src=s.a&&idOf.get(s.a)?` source="${idOf.get(s.a)}"`:'';
+    const tgt=s.b&&idOf.get(s.b)?` target="${idOf.get(s.b)}"`:'';
+    let geo=`<mxGeometry relative="1" as="geometry">`;
+    if(!src)geo+=`<mxPoint x="${s.x1}" y="${s.y1}" as="sourcePoint"/>`;
+    if(!tgt)geo+=`<mxPoint x="${s.x2}" y="${s.y2}" as="targetPoint"/>`;
+    const wa=_wayArr(s);
+    if(wa.length)geo+='<Array as="points">'+wa.map(p=>`<mxPoint x="${p.x}" y="${p.y}"/>`).join('')+'</Array>';
+    geo+='</mxGeometry>';
+    cells.push(`<mxCell id="${id}" value="${nl(s.label||'')}" style="${esc(sty)}" edge="1" parent="1"${src}${tgt}>${geo}</mxCell>`);
+  }
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile><diagram name="Page-1"><mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/>${cells.join('')}</root></mxGraphModel></diagram></mxfile>`;
+}
+function exportDrawio(){
+  if(!state.shapes.length){UI.toast(t('empty'),'warn');return}
+  const a=document.createElement('a');
+  const _bu=URL.createObjectURL(new Blob([boardToDrawio(state.shapes)],{type:'application/xml'}));
+  a.href=_bu;a.download=(state.docName||'board')+'.drawio';
+  a.click();setTimeout(()=>URL.revokeObjectURL(_bu),1e4);
+  UI.toast(t('dioExported'),'ok');
+}
 // ---- ADR-0042: SVG import --------------------------------------------------
 // DOMParser-walk → Board shapes. Unmapped elements (use/defs/filter/gradient/
 // mask/clipPath/animation/CSS classes) are skipped, never imported raw — the
@@ -8099,6 +8163,7 @@ const UI={
       ['ctxExportBoard','⌘⇧S',exportBoard],
       ['ctxCopyBoard','',copyBoardJSON],
       ['ctxExportExc','',exportExc],
+      ['ctxExportDrawio','',exportDrawio],
       'sep',
       ['ctxImportBoard','',()=>document.getElementById('fileImport').click()]
     ]);

@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.278]
+
+### 追加
+- **.drawio エクスポート** (ADR-0220)。エクスポートメニューに
+  drawio 形式を追加 — ADR-0203 インポートとの往復。
+  bound 端点・waypoints・orthogonal routing・curve/hop・
+  共有スタイル語彙を mxGraphModel にマップ。
+
 ## [1.7.277]
 
 ### 追加
