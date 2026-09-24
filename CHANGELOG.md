@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.259]
+
+### 追加
+- **移動中の X,Y リードアウト** (ADR-0201)。選択ドラッグ中に選択群
+  bbox の左上座標をライブピル表示 (回転角/寸法/線長の既存表示と
+  揃い、Figma の X/Y パネル相当)。
+
 ## [1.7.258]
 
 ### 追加

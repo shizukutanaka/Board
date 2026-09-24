@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.258';
+const V='1.7.259';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4646,6 +4646,14 @@ function doMove(wp,shift,alt){
     Shape.translate(sh,dx,dy);
     const x0=Math.min(b0.x,b0.x+dx)-m,y0=Math.min(b0.y,b0.y+dy)-m;
     dmg=_dmgU(dmg,{x:x0,y:y0,w:Math.max(b0.x+b0.w,b0.x+b0.w+dx)-x0+m,h:Math.max(b0.y+b0.h,b0.y+b0.h+dy)-y0+m});
+  }
+  // ADR-0201: live X,Y readout at the selection's top-left while moving —
+  // Figma shows the panel position during drag; rotate/resize already pill.
+  {
+    let bx=null,by=null,bb=null;
+    for(const [id] of ptr.dragStartShapes){const sh=byId(id);if(!sh)continue;const b=G.bbox(sh);if(!b)continue;
+      bx=bx==null?b.x:Math.min(bx,b.x);by=by==null?b.y:Math.min(by,b.y);bb=bb==null?b.y+b.h:Math.max(bb,b.y+b.h);}
+    if(bx!=null)state.readout={x:bx,y:bb,label:`${Math.round(bx)}, ${Math.round(by)}`};
   }
   if(dmg)invalidateDamage(dmg);else invalidate();
 }
