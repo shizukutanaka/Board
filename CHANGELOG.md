@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.418] - 2026-09-24
+
+### Fixed
+- snapshot LWW マージが値を `validPatch` せず `ex[k]=v` していた実害を修正 —
+  敵対ピアが snapshot op で NaN 座標/非配列 pts/id・type 差替え/`__proto__`
+  汚染を注入可能だった (構造キー id/type は merge 不可 + 値ゲート、`frac`
+  を文字列リストに追加) (ADR-0372)
+
 ## [1.7.417] - 2026-09-24
 
 ### Fixed

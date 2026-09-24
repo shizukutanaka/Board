@@ -3448,6 +3448,30 @@ try {
     console.log('  ✓ snapshot LWW merge: per-prop convergence, no history (6 asserts)');
   }
 
+  // ADR-0372: snapshot merge gates values — NaN coords, non-array pts, structural
+  // keys (id/type), and pollution keys are skipped even with a newer clock.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+    state.seq=0;state.seenOps=new Set();state.wclock={};state.peerId='B';
+    const r={id:'S2',type:'rect',z:1,x:0,y:0,w:10,h:10,stroke:'#000',size:2,opacity:1};
+    Store.commit({op:'add',shape:r});
+    const res=Net._mergeSnapshotOp({op:'add',shape:{id:'S2',x:NaN,pts:'bad',label:'ok',type:'pen'},wc:{
+      x:{peer:'A',seq:1,ts:5000},
+      pts:{peer:'A',seq:2,ts:5000},
+      label:{peer:'A',seq:3,ts:5000},
+      type:{peer:'A',seq:4,ts:5000},
+      id:{peer:'A',seq:5,ts:5000},
+    }});
+    const ls=byId('S2');
+    assert.strictEqual(res,'merge','merge reported');
+    assert.strictEqual(ls.x,0,'NaN x skipped');
+    assert.strictEqual(ls.pts,undefined,'non-array pts skipped');
+    assert.strictEqual(ls.label,'ok','valid newer prop still merged');
+    assert.strictEqual(ls.type,'rect','type never merges');
+    assert.strictEqual(ls.id,'S2','id never merges');
+    console.log('  ✓ ADR-0372: snapshot merge value-gates NaN/pts/id/type (6 asserts)');
+  }
+
   // ADR-0060: Alt+drag on a shape duplicates it (addMany commit, selection→copies,
   // move-drag starts on the copies). Unselected hit duplicates just that shape;
   // already-selected hit duplicates the whole selection.
