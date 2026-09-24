@@ -7856,34 +7856,17 @@ const UI={
     const el=document.getElementById('sr');if(!el)return;
     el.textContent=el.textContent===msg?msg+' ':msg;
   },
-  // ADR-0215: shared modal focus trap — Tab/Shift+Tab cycles inside the open
-  // dialog, a jump outside is pulled back in, and focus returns to the element
-  // that opened it on close (WCAG 2.1.2 no-keyboard-trap inverse + focus restore).
-  _trapRel:null,_prevFocus:null,
-  _trapOn(id){
-    this._trapOff();
-    const m=document.getElementById(id);
-    this._prevFocus=document.activeElement;
-    const sel='a[href],button:not([disabled]),input:not([disabled]),select,textarea,[tabindex]:not([tabindex="-1"]),summary';
-    const key=ev=>{
-      if(ev.key!=='Tab'||m.dataset.open!=='true')return;
-      const f=[...m.querySelectorAll(sel)].filter(el=>el.offsetParent!==null||el===document.activeElement);
-      if(!f.length)return;
-      const first=f[0],last=f[f.length-1];
-      if(ev.shiftKey&&document.activeElement===first){ev.preventDefault();last.focus()}
-      else if(!ev.shiftKey&&document.activeElement===last){ev.preventDefault();first.focus()}
-      else if(!m.contains(document.activeElement)){ev.preventDefault();first.focus()}
-    };
-    document.addEventListener('keydown',key,true);
-    this._trapRel=()=>document.removeEventListener('keydown',key,true);
-  },
-  _trapOff(){if(this._trapRel){this._trapRel();this._trapRel=null}},
+  // ADR-0215: focus capture/restore around dialogs — _trapStep/_focusables
+  // (window keydown) already traps Tab inside the open dialog; this adds the
+  // missing half: remember the invoker and return focus to it on close.
+  _prevFocus:null,
+  _captureFocus(){this._prevFocus=document.activeElement},
   _restoreFocus(){const p=this._prevFocus;this._prevFocus=null;if(p&&p.focus)p.focus()},
   toggleHelp(){
     const h=document.getElementById('help'),open=h.dataset.open!=='true';
     h.dataset.open=open;
-    if(open){this._trapOn('help');document.getElementById('helpClose').focus()}
-    else{this._trapOff();this._restoreFocus()}
+    if(open){this._captureFocus();document.getElementById('helpClose').focus()}
+    else this._restoreFocus();
   },
   openCtxMenu(x,y,customItems){
     const m=document.getElementById('ctx');
@@ -8114,12 +8097,12 @@ const UI={
     };
     chk.onchange=refresh;
     refresh();
-    this._trapOn('share');
+    this._captureFocus();
     document.getElementById('shareClose').focus();
   },
   closeShare(){
     document.getElementById('share').dataset.open='false';
-    this._trapOff();this._restoreFocus();
+    this._restoreFocus();
   },
   refreshPeers(){
     const stack=document.getElementById('peerStack');
