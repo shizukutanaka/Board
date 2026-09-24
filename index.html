@@ -852,7 +852,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.491';
+const V='1.7.492';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -7620,7 +7620,10 @@ const Net={
   _onConnChange:null,         // UI callback
   _rtcPeerId:null,            // synthetic peer id for the WebRTC link (lifecycle-managed)
   init(roomId){
-    if(this.bc){try{this.bc.close()}catch(_){}}
+    if(this.bc){try{this._send({k:'bye',peer:_pi()});this.bc.close()}catch(_){}}   // ADR-0458: bye on the old channel before it's gone
+    // ADR-0458: drop the old room's presence — a switch would otherwise carry 15s
+    // ghosts into the new room. RTC entries survive: their DataChannel doesn't.
+    for(const id of _pr().keys())if(!id.startsWith('rtc:'))_pr().delete(id);_ivO();
     clearInterval(this._presenceTimer);   // re-init (room switch) must not leak the old heartbeat
     state.roomId=roomId||DOC_KEY;
     if(typeof BroadcastChannel===_un)return;     // not supported
