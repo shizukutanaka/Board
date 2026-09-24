@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.196]
+
+### 追加
+- **選択の反転** (ADR-0139)。⌘⇧I または ctx「選択を反転」で
+  未選択の図形を選択 (ロック・非表示は除外)。
+
 ## [1.7.195]
 
 ### 変更

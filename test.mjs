@@ -502,6 +502,7 @@ const checks = [
   ['corner-radius cycle for rects via ctx', html.includes('function cycleCorner')&&html.includes("['ctxCorner'" )&&html.includes('ctxCorner:')],
   ['hide/show shapes — visible:0 skips draw+hit', html.includes('s.visible===0)return')&&html.includes('function hideSelection')&&html.includes('function showAllShapes')&&html.includes('ctxShowAll')],
   ['style copy widened — text/route props included', html.includes('align:sh.align,fontSize:sh.fontSize')&&html.includes('cbend:sh.cbend')],
+  ['invert selection ⌘⇧I + ctx', html.includes('function selectInverse')&&html.includes('ctxSelectInverse')&&html.includes('selectInverse()}')],
   ['line↔arrow conversion via style op (ctx)', html.includes('toggleLineArrow')&&html.includes('ctxToArrow')&&html.includes("s.type==='line'?'arrow':'line'")],
   ['sticky↔text conversion via style op (ctx)', html.includes('toggleStickyText')&&html.includes('ctxToSticky')&&html.includes("s.type==='sticky'?'text':'sticky'")],
   ['frame select-contents (ctx)', html.includes('selectFrameContents')&&html.includes('ctxSelContents')&&html.includes('withFrameChildren(')],

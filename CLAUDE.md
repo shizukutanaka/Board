@@ -188,6 +188,7 @@ Board/
 - [ADR-0136](docs/ADR-0136-corner-radius-cycle.md) 矩形の角丸サイクル
 - [ADR-0137](docs/ADR-0137-hide-show-shapes.md) 図形の非表示/すべて表示
 - [ADR-0138](docs/ADR-0138-style-copy-widened.md) スタイルコピーの対象拡大
+- [ADR-0139](docs/ADR-0139-select-inverse.md) 選択の反転
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
