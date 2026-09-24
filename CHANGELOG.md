@@ -2,6 +2,10 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.442] - 2026-09-23
+### 変更
+- ADR-0406: `_ES`/`_EN`/`_TB` キー名 + `_IK`/`_YW` 色 + `!==_un` 否定形統一 (~330B 回収) + drawio docName 往復テスト
+
 ## [1.7.441] - 2026-09-23
 ### 追加
 - ADR-0405: .drawio `<diagram name>` ↔ docName 往復 (emit で `_esc` 済み名、import で `_dioNm` ハンドオフ採用) — 全フォーマットで名前任せた往復が完結
