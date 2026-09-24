@@ -210,8 +210,8 @@ const checks = [
   ['Frame zoomToFrame', html.includes("_zoomToFrame")],
   ['Presentation on Shift+P / Ctrl+Enter', html.includes("k==='p'&&e.shiftKey") && html.includes("Presentation.enter")],
   // round 6: frame hit priority + label edit + image size guard
-  ['pickTop skips frames on first pass', html.includes("s.type==='frame')continue")],
-  ['frame dblclick label edit', html.includes("hit.type==='frame'") && html.includes("hit.label")],
+  ['pickTop skips frames on first pass', html.includes("_frm(s))continue")],
+  ['frame dblclick label edit', html.includes("_frm(hit)") && html.includes("hit.label")],
   ['image size guard 4MB', html.includes("4*1024*1024") && html.includes("大きすぎます")],
   ['SVG export frames first', html.includes("svgShapes") && html.includes("type===\"frame\"")],
   // round 7: _apply completeness + opacity UI
@@ -230,7 +230,7 @@ const checks = [
   ['frame move drags contained shapes', html.includes("dragIds") && html.includes("type==='frame'")],
   ['copyStyle uses i18n', html.includes("_wT(_NS)") && html.includes("_oT('styleCopied')")],
   ['group toasts use i18n', html.includes("_oT('grouped')") && html.includes("_wT(_ST)")],
-  ['copyStyle captures stroke/fill/size/opacity', html.includes("stroke:sh.stroke,fill:sh.type==='sticky'?sh.color:sh.fill") && html.includes("size:sh.size,opacity:sh.opacity")],
+  ['copyStyle captures stroke/fill/size/opacity', html.includes("stroke:sh.stroke,fill:_stk(sh)?sh.color:sh.fill") && html.includes("size:sh.size,opacity:sh.opacity")],
   ['pasteStyle filters undefined keys', html.includes("filter(([,v])=>v!==_ud)")],
   ['applyStyleToSelection records undo', html.includes("_styleOp(before,after)")],
   // v1.6.6: reversibility + security hardening
@@ -329,8 +329,8 @@ const checks = [
   ['copyPNG in export menu', html.includes("['ctxCopyPNG','',copyPNG]")],
   ['ctxCopyPNG i18n ja+en', html.includes("ctxCopyPNG:'PNGをクリップボードにコピー'") && html.includes("ctxCopyPNG:'Copy PNG to clipboard'")],
   // v1.7.109: ADR-0051 real pen resize via pts scale
-  ['pen gets bbox handles', html.includes("if(s.type==='pen'){") && html.includes("const b=_bb(s);if(!b||!b.w||!b.h)return [];")],
-  ['applyResize scales pen pts from orig', html.includes("orig.type==='pen'") && html.includes("sh.pts=orig.pts.map")],
+  ['pen gets bbox handles', html.includes("if(_pn(s)){") && html.includes("const b=_bb(s);if(!b||!b.w||!b.h)return [];")],
+  ['applyResize scales pen pts from orig', html.includes("_pn(orig)") && html.includes("sh.pts=orig.pts.map")],
   ['SVG pen exports same primitive union', html.includes('_penTaperE(n-1-i)') && html.includes("<circle cx=") && html.includes("<g fill=")],
   ['SVG pen export uses penWidths (display=output parity)', html.includes("penWidths(P,SZ)")],
   // v1.6.14: pointer pressure input
@@ -403,7 +403,7 @@ const checks = [
   ['clampZoom is the single zoom-invariant source', html.includes("const clampZoom=z=>_max(MIN_ZOOM,_min(MAX_ZOOM,z))") && html.includes("const nz=clampZoom(") && html.includes("const z=clampZoom(")],
   // v1.6.18: deeper audit fixes
   ['P selects pen, Shift+P presents', html.includes("k==='p'&&e.shiftKey&&!meta&&!e.altKey")],
-  ['pen resize handles emit from pts bbox (ADR-0051)', html.includes("if(s.type==='pen'){") && html.includes("id:'se'") && html.includes("_bb(s);if(!b||!b.w||!b.h)return [];")],
+  ['pen resize handles emit from pts bbox (ADR-0051)', html.includes("if(_pn(s)){") && html.includes("id:'se'") && html.includes("_bb(s);if(!b||!b.w||!b.h)return [];")],
   ['presentation saves+restores viewport', html.includes("_savedVp={x:_vp().x") && html.includes("_oa(_vp(),_savedVp)")],
   ['help grid present row uses i18n', html.includes("['⇧P',k.present]") && html.includes("['↑↓←→',k.nudge]")],
   ['help i18n keys in ja and en', html.includes("present:'プレゼン'") && html.includes("present:'Present'")],
@@ -460,8 +460,8 @@ const checks = [
   ['match size: doMatchSize + DIRS + ctx items', html.includes('function doMatchSize(dim)')&&html.includes("'matchw','matchh','matchwh'")&&html.includes("['ctxMatchWH'")],
   ['smart duplicate: dupIds/dupDelta chain', html.includes('dupIds:_sT()')&&html.includes('_dd().x+=dx')||html.includes('dupIds:_sT()')&&html.includes('dupDelta.x+=dx')],
   ['label editor: _connLabelXY + diamond gate', html.includes('function _connLabelXY(s)')&&html.includes("_HF4.has(hit.type)")&&html.includes('lp=_connLabelXY')],
-  ['sticky recolor: fill patch maps to s.color', html.includes("sh.type==='sticky'&&k==='fill'?'color':k")],
-  ['image caption: bottom paper strip + editor gate', html.includes('function _drawImgLabel(s,c)')&&html.includes('_drawImgLabel(s,c);')&&html.includes('function _svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT)')&&html.includes("hit.type==='image'")],
+  ['sticky recolor: fill patch maps to s.color', html.includes("_stk(sh)&&k==='fill'?'color':k")],
+  ['image caption: bottom paper strip + editor gate', html.includes('function _drawImgLabel(s,c)')&&html.includes('_drawImgLabel(s,c);')&&html.includes('function _svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT)')&&html.includes("_im(hit)")],
   ['route reset: resetRoute clears way/bend/elbow/curve via one style op', html.includes('function resetRoute()')&&html.includes('ctxRouteReset')&&html.includes('way:null,bend:null,elbow:0,curve:0')],
   ['frame fit: bbox of fully-inside shapes + padding via align op', html.includes('function fitFrames()')&&html.includes('ctxFrameFit')&&html.includes('framefit')],
   ['click stamp: click places a default 120x80 box', html.includes('d.w=120;d.h=80;d.x-=60;d.y-=40')&&html.includes("ADR-0086")],
@@ -483,7 +483,7 @@ const checks = [
   ['wrap in frame: ⌘⌥G + ctx (frame bbox+pad, z below min)', html.includes('wrapInFrame')&&html.includes('ctxWrapFrame')&&html.includes('b.y-PAD,w:b.w+PAD*2')],
   ['paste at cursor (ctx): centred at menu world point', html.includes('doPasteAt')&&html.includes('ctxPasteAt')&&html.includes('wx-srcCx,wy-srcCy')],
   ['paste in place: ⌘⇧V at original coords', html.includes('doPasteInPlace')&&html.includes('ctxPasteInPlace')&&html.includes('shapes,0,0')],
-  ['select same colour (ctx)', html.includes('selectSamePaint')&&html.includes('ctxSelectSame')&&html.includes("s0.type==='sticky'?s0.color:s0.fill")],
+  ['select same colour (ctx)', html.includes('selectSamePaint')&&html.includes('ctxSelectSame')&&html.includes("_stk(s0)?s0.color:s0.fill")],
   ['sticky ⌘Enter chain: spawn next sticky + editor', html.includes('_stickyChain')&&html.includes('x+s.w+16')&&html.includes('openTextEditor(n,true)')],
   ['boot empty-view guard → fitToContent', html.includes('_fitIfEmptyView()')&&html.includes('b.x+b.w<v.x')],
   ['tidy grid reflow (ctx, align op dir)', html.includes("doAlign('tidy')")&&html.includes('ctxTidy')&&html.includes('_ceil(_sqr(_ln(units)))')],
@@ -542,7 +542,7 @@ const checks = [
   ['eyedropper tool: i key + pick + _styleOf shared', html.includes("i:'eyedropper'")&&html.includes("case 'eyedropper'")&&html.includes('state.styleClipboard=_styleOf(sh)')&&html.includes('eyedropDone')&&html.includes('eyedropper')],
   ['dblclick group descent', html.includes('grp.every(id=>_hasS(id))')&&html.includes('_ss([hit.id])')],
     ['line↔arrow conversion via style op (ctx)', html.includes('toggleLineArrow')&&html.includes('ctxToArrow')&&html.includes("s.type==='line'?'arrow':'line'")],
-  ['sticky↔text conversion via style op (ctx)', html.includes('toggleStickyText')&&html.includes('ctxToSticky')&&html.includes("s.type==='sticky'?'text':'sticky'")],
+  ['sticky↔text conversion via style op (ctx)', html.includes('toggleStickyText')&&html.includes('ctxToSticky')&&html.includes("_stk(s)?'text':'sticky'")],
   ['frame select-contents (ctx)', html.includes('selectFrameContents')&&html.includes('ctxSelContents')&&html.includes('withFrameChildren(')],
   ['selection .board export (ctx)', html.includes("exportBoard(sel)")&&html.includes('ctxExportSelBoard')&&html.includes("fmt==='board'")],
   ['selection .drawio export (ctx) (ADR-0407)', html.includes("exportDrawio(sel)")&&html.includes('ctxExportSelDrawio')&&html.includes("fmt==='drawio'")&&html.includes('function exportDrawio(shapes=_sh())')],
@@ -752,7 +752,7 @@ const checks = [
   ['compressed drawio inflates every page (ADR-0324)', html.includes("Promise.all(_dms.map(m=>_dioInflate(m[1])))")&&html.includes("matchAll(/<diagram[^>]*>([^<]+)<\\/diagram>/g)")],
   ['exc conn-label lineHeight restore (ADR-0323)', html.includes("e.lineHeight!==1.25)p.lineH=")],
   ['drawio export emits html=1 (ADR-0322)', html.includes("let sty='html=1;';")&&html.includes("'html=1;'+(s.start")],
-  ['drawio whiteSpace nowrap|wrap ↔ s.wrap (ADR-0321/0412)', html.includes("s.type==='text'&&sty.whiteSpace==='nowrap')s.wrap=0")&&html.includes("s.wrap?'whiteSpace=wrap;':'whiteSpace=nowrap;'")&&html.includes("sty.whiteSpace==='wrap')s.wrap=1")],
+  ['drawio whiteSpace nowrap|wrap ↔ s.wrap (ADR-0321/0412)', html.includes("_txt(s)&&sty.whiteSpace==='nowrap')s.wrap=0")&&html.includes("s.wrap?'whiteSpace=wrap;':'whiteSpace=nowrap;'")&&html.includes("sty.whiteSpace==='wrap')s.wrap=1")],
   ['validPatch: wrap numeric + flag props boolean|number (ADR-0411/0413)', html.includes("'visible','start','wrap']")&&html.includes("['bold','italic','under','strike','locked','shadow','hl']")],
   ['drawio labelPosition/verticalLabelPosition (ADR-0320)', html.includes("labelPosition='+s.align")&&html.includes("verticalLabelPosition='+s.valign")&&html.includes("sty.labelPosition))s.align")],
   ['popup-blocked feedback on link open (ADR-0319)', html.includes("if(s&&!_wO(s.link,'_blank','noopener'))_wT('popupBlocked')")&&html.includes("if(!_wO(_h0.link,'_blank','noopener'))_wT('popupBlocked')")],
@@ -903,7 +903,7 @@ const checks = [
   ['image border via s.stroke+s.size in canvas+SVG', html.includes("if(_sk(s)&&_szz(s)){c.strokeStyle=_sk(s);c.lineWidth=_szz(s);")&&html.includes('fill="none" stroke="${_esc(_sk(s))}"')],
   ['eraser hover shows a red dashed target', html.includes("state._ehov=id;_ivO()")&&html.includes("c.strokeStyle='#EF4444'")],
   ['dash applies to frame+image borders in canvas+SVG', html.includes("_D6.has(s.type)||_conn(s.type)")&&html.includes('fill="none" stroke="${_esc(_sk(s))}" stroke-width="${_num(_szz(s))}"${dA}')],
-  ['image caption honors valign top via cycleVAlign', html.includes("sy=_va(s)==='top'?s.y:s.y+s.h-sh_")&&html.includes("sy=_va(s)==='top'?Y:Y+H-sh_")&&html.includes("s.type==='image'&&_lb(s)")],
+  ['image caption honors valign top via cycleVAlign', html.includes("sy=_va(s)==='top'?s.y:s.y+s.h-sh_")&&html.includes("sy=_va(s)==='top'?Y:Y+H-sh_")&&html.includes("_im(s)&&_lb(s)")],
   ['new text/sticky inherit last-used fontSize', html.includes("fontSize:_st().fontSize||16")&&html.includes("_st().fontSize=nxt")],
   ['last-used head/font persist via Shape.make', html.includes("_st().head=next")&&html.includes("_st().head!=null")&&html.includes("_st().font!=null")],
   ['label editor follows the viewport (ADR-0182)', html.includes('function _lblFollow()')&&html.includes('_lblAnchor(hit)')&&html.includes('_lblTa={inp,hit}')],
@@ -912,7 +912,7 @@ const checks = [
   ['eyedropper absorbs persisted look-props + start persists', html.includes("'elbow','curve','hop','r','fstyle','align','valign','fontSize','lineH','cbend'")&&html.includes("_st().start=s.start")],
   ['frame label honors s.font family', html.includes('${_svgFont(s.bold?s:{...s,bold:true},_fS(s)||12)}')&&html.includes('${_fontFam(hit)};color')],
   ['sticky body valign via s.valign (ctxVAlign gate + canvas/SVG)', html.includes("seqS=[null,'middle','bottom']")&&html.includes("const sty=_va(s)==='middle'")&&html.includes("const sy2v=_va(s)==='middle'")],
-  ['frame font via cycleFont gate + make() inheritance', html.includes("s.type!=='frame'&&!_lb(s)")&&html.includes("type==='frame'||_lb(s)")&&html.includes("_TSF.has(type)")],
+  ['frame font via cycleFont gate + make() inheritance', html.includes("s.type!=='frame'&&!_lb(s)")&&html.includes("_frm(s)||_lb(s)")&&html.includes("_TSF.has(type)")],
   ['line-height cycle — canvas/SVG/resize + style-copy/eyedropper', html.includes("function cycleLineH()")&&html.includes("fs*(s.lineH||1.3)")&&html.includes("'fontSize','lineH','cbend'")],
   ['sticky chain inherits full typography', html.includes("font:_ftt(s),lineH:s.lineH,spacing:_sp(s),bold:s.bold,italic:s.italic")],
   ['text s.fill paints bg plate (canvas+SVG)', html.includes("if(_fi(s)){const mw=_tm.w;")&&html.includes('height="${_ln(svgLines)*fs*(s.lineH||1.25)+6}"')],
@@ -931,7 +931,7 @@ const checks = [
   // v1.7.05: Tab cycling excludes locked shapes (parity with doMove/doDelete/doRotate/doFlip)
   ['statusbar selection dims readout', html.includes('id="sSel"')&&html.includes('_statusSel()')&&html.includes('_rnd(b.w)')],
   ['empty-selection arrows pan viewport', html.includes("_vp().x+=k===_AL2?-step:k===_AR2?step:0")],
-  ['swapFillStroke: ⇧X swaps stroke↔fill via style op', html.includes('function swapFillStroke')&&html.includes("k==='x'&&e.shiftKey&&!meta")&&html.includes("const fk=s.type==='sticky'?'color':'fill'")],
+  ['swapFillStroke: ⇧X swaps stroke↔fill via style op', html.includes('function swapFillStroke')&&html.includes("k==='x'&&e.shiftKey&&!meta")&&html.includes("const fk=_stk(s)?'color':'fill'")],
   ['digit keys set opacity (Figma)', html.includes("/^[0-9]$/.test(k)&&_selN()")&&html.includes("opacity:k==='0'?1:+k/10")],
   ['image corner radius via cycleCorner + clips', html.includes("if(!boxOk&&!connOk)return;")&&html.includes('clip-path="url(#irc')&&html.includes('roundRect(c,s.x,s.y,s.w,s.h,_cr);c.clip()')],
   ['label fontSize honored across renderers', html.includes('const fs=_fS(s)||12;')&&html.includes('const fs=_fS(s)||14')&&html.includes("s.type!=='sticky'&&!_lb(s))||_lk(s)")],
@@ -986,7 +986,7 @@ const checks = [
   ['eraser skips locked shapes', html.includes("if(hit&&!hit.locked&&!_eraseBatch.some")],
   // v1.6.65: budget removed - deferred fixes implemented
   ['_edgePt is rotation-aware (projects to true rotated edge)', html.includes("const ub=sh.w!=null?{x:sh.x,y:sh.y,w:sh.w,h:sh.h}:_bb(sh)") && html.includes("const cx=ub.x+ub.w/2,cy=ub.y+ub.h/2,rot=sh.rotate")],
-  ['rotation extends to all box types (text bbox uses envelope)', !html.includes("if(s.type==='text'){\n      return{x:s.x,y:s.y,w:s.w,h:s.h};")],
+  ['rotation extends to all box types (text bbox uses envelope)', !html.includes("if(_txt(s)){\n      return{x:s.x,y:s.y,w:s.w,h:s.h};")],
   ['SVG rotation applies to text/image/sticky/frame', html.includes("font-size=\"${fs}\"${s.bold?' font-weight=\"600\"':''}") && html.includes("href=\"${_esc(_du(s))}\"${_cr2>0?` clip-path=\"url(#irc${_esc(s.id)})\"`:''}${a}${rT}${fT}${_sh}/>")],
   ['minimap applies rotation transform', html.includes("const _mr=_rt(s)&&s.w!=null;") && html.includes("if(_mr)sx.restore();")],
   ['minimap renders frame shapes (case frame fallthrough to rect)', html.includes("case 'frame':\n        case 'rect':")],
@@ -1105,7 +1105,7 @@ const checks = [
   ['exportPDF uses exportScale clamp for dpr', html.includes("dpr=exportScale(W,H,_dpr()||1)")],
   // v1.6.72: sticky note resize preserves user's chosen width
   ['resizeAfterTextEdit helper present', html.includes("function resizeAfterTextEdit(s,text,c)")],
-  ['sticky branch preserves s.w (no text-width overwrite)', html.includes("if(s.type==='sticky'){") && html.includes("wl=wrapText(_txx(s)||'',_abs(s.w)-pad*2")],
+  ['sticky branch preserves s.w (no text-width overwrite)', html.includes("if(_stk(s)){") && html.includes("wl=wrapText(_txx(s)||'',_abs(s.w)-pad*2")],
   ['text branch still auto-sizes width', html.includes("}else{\n    const lines=(_txx(s)||'').split('\\n');")],
   // v1.6.73: doAlign skips locked shapes (parity with doDelete/doRotate/doFlip)
   ['doAlign filters locked shapes', html.includes("const sel=_selL(s=>s&&!_lk(s));\n  if(_ln(sel)<2)return;")],
@@ -1234,7 +1234,7 @@ const checks = [
   ['_ctxMenuKeyNav closes menu on Tab (ARIA APG: Tab moves to next tab stop = close)',
     html.includes("'Tab'")&&html.includes("UI.closeCtxMenu()")],
   ['getHandles returns empty for text shapes (content-driven size, no resize conflict)',
-    html.includes("s.type==='text')return []")],
+    html.includes("_txt(s))return []")],
   // v1.6.97: doPaste viewport centering + wrapText \\r\\n normalization
   ['doPaste centers at viewport center (_pasteCount cascade, not clipboard mutation)',
     html.includes('_pasteCount')&&html.includes('_lastClipboard')&&html.includes('vCx-srcCx+co')],
@@ -8020,7 +8020,7 @@ try {
   // check: the fixed strings must exist in html (fail before fix, pass after).
   assert.ok(html.includes("if(!hit){beginText(wp);return}")&&html.includes("if(hit.locked)return;"),
     'dblclick: early-return guards — empty creates text (ADR-0122), locked rejects every type (v1.7.66)');
-  assert.ok(html.includes("if(hit.type==='text'||hit.type==='sticky'){openTextEditor(hit,false);return}"),
+  assert.ok(html.includes("if(_txt(hit)||_stk(hit)){openTextEditor(hit,false);return}"),
     'dblclick: text/sticky still routes to openTextEditor after the lock guard');
   assert.ok(html.includes('function _openLabelEditorFor(hit){'),
     'dblclick: frame/rect/ellipse/line/arrow now share _openLabelEditorFor with the keyboard path');
