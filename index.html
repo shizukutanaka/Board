@@ -770,7 +770,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.169';
+const V='1.7.170';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6499,7 +6499,8 @@ const Share={
     return{ct:Share._b64uEnc(all),k:Share._b64uEnc(raw)};
   },
   async exportToUrl(enc){
-    const data={v:V,shapes:roundShapesForExport(state.shapes),name:state.docName};
+    const data={v:V,shapes:roundShapesForExport(state.shapes),name:state.docName,
+      viewport:{x:+state.viewport.x.toFixed(2),y:+state.viewport.y.toFixed(2),zoom:+state.viewport.zoom.toFixed(4)}};   // ADR-0112: receiver opens at the sharer's view
     const json=JSON.stringify(data);
     // CompressionStream if available, else base64
     let payload=json;
@@ -6594,6 +6595,12 @@ const Share={
       state.shapes=valid.map(clone);_invalidateGrid();state.docName=((typeof data.name==='string'&&data.name)||'Shared').slice(0,80);   // ADR-0009
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out (see importBoard for rationale).
+      if(data.viewport&&Number.isFinite(+data.viewport.x)&&Number.isFinite(+data.viewport.y)&&Number.isFinite(+data.viewport.zoom)&&data.viewport.zoom>0){
+        // ADR-0112: adopt the sharer's viewport (same numeric validation as the
+        // IDB restore path — corrupt/out-of-range zoom never reaches state).
+        state.viewport.x=+data.viewport.x;state.viewport.y=+data.viewport.y;
+        state.viewport.zoom=clampZoom(+data.viewport.zoom);
+      }
       state.selection.clear();state.wclock={};
       sortZ();invalidate();
       Store._recordCommitted({op:'replace',before,after:clone(state.shapes),wc:beforeWc,afterWc:clone(state.wclock),origSel});

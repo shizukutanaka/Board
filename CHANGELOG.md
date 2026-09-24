@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.170]
+
+### 追加
+- **共有リンクにビューポート同梱** (ADR-0112)。`exportToUrl` が
+  `{x,y,zoom}` を含め、`importFromHash` が同じ数値ゲート
+  (`clampZoom` 込み) で採用 — 受け手は送り手の景色で開く
+  (旧リンクは従来通り)。
+
 ## [1.7.169]
 
 ### 追加
