@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.530';
+const V='1.7.531';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -7742,6 +7742,9 @@ const Net={
   _send(msg){
     if(this.bc){try{this.bc.postMessage(msg)}catch(_){}}
   },
+  _pk(msg,viaRtc){   // ADR-0498: peer-key routing — RTC peers live under a synthetic id, BC peers under msg.peer
+    return viaRtc?this._rtcPeerId:msg.peer;
+  },
   _bcast(msg){   // ADR-0401: dual-transport fold — BroadcastChannel + RTC DataChannel
     this._send(msg);
     this._sendDC(_JS(msg))
@@ -7813,7 +7816,7 @@ const Net={
         if(_iS(msg.name)&&_ln(msg.name)<=80){_setDocName(msg.name);_ps()}
         break;
       case 'bye':{   // ADR-0456: peer left — drop presence now, don't wait for the 15s reap
-        const pk=viaRtc?this._rtcPeerId:msg.peer;
+        const pk=this._pk(msg,viaRtc);
         if(pk&&_pr().delete(pk)){_ivO();if(this._onConnChange)this._onConnChange()}
         if(viaRtc)this._rtcPeerId=null;
         break;}
@@ -7827,7 +7830,7 @@ const Net={
         // looking this up by msg.peer over that transport would silently miss (or worse,
         // create a duplicate/phantom peer entry).
         if(!_iN(msg.x)||!_fin(msg.x)||!_iN(msg.y)||!_fin(msg.y))break;
-        const peerKey=viaRtc?this._rtcPeerId:msg.peer;
+        const peerKey=this._pk(msg,viaRtc);
         const p=peerKey&&_pr().get(peerKey);
         if(p){p.cursor={x:msg.x,y:msg.y};_ivO();}
         break;}
@@ -7837,7 +7840,7 @@ const Net={
         // string ids only, capped — a bad peer can't flood us with a giant array.
         if(!_iA(msg.ids))break;
         const ids=_s0(msg.ids,MAX_OP_SHAPES).filter(id=>_iS(id)&&_ln(id)<=64);   // ADR-0485: same ≤64 cap as every other wire id field
-        const peerKey=viaRtc?this._rtcPeerId:msg.peer;
+        const peerKey=this._pk(msg,viaRtc);
         const p=peerKey&&_pr().get(peerKey);
         if(p){p.sel=ids;_ivO();}
         break;}
