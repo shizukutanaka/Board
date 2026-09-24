@@ -2,6 +2,14 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.195]
+
+### 変更
+- **スタイルコピーの対象拡大** (ADR-0138)。⌥C がテキスト揃え・
+  フォントサイズ・下線/取消線・角丸・矢印ヘッド・ルート
+  (elbow/curve/cbend) も拾うよう拡大。付箋色は fill として
+  読み出され矩形等へも貼付可能。
+
 ## [1.7.194]
 
 ### 追加

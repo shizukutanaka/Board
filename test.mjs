@@ -220,7 +220,7 @@ const checks = [
   ['frame move drags contained shapes', html.includes("dragIds") && html.includes("type==='frame'")],
   ['copyStyle uses i18n', html.includes("t('noSelection')") && html.includes("t('styleCopied')")],
   ['group toasts use i18n', html.includes("t('grouped')") && html.includes("t('selectTwo')")],
-  ['copyStyle captures stroke/fill/size/opacity', html.includes("stroke:sh.stroke,fill:sh.fill") && html.includes("size:sh.size,opacity:sh.opacity")],
+  ['copyStyle captures stroke/fill/size/opacity', html.includes("stroke:sh.stroke,fill:sh.type==='sticky'?sh.color:sh.fill") && html.includes("size:sh.size,opacity:sh.opacity")],
   ['pasteStyle filters undefined keys', html.includes("filter(([,v])=>v!==undefined)")],
   ['applyStyleToSelection records undo', html.includes("Store._recordCommitted({op:'upd'")],
   // v1.6.6: reversibility + security hardening
@@ -501,6 +501,7 @@ const checks = [
   ['view toggles in ctx — grid/snap/minimap/fit/reset touch path', html.includes("['ctxGrid','G',toggleGridView]")&&html.includes('toggleSnapMode')&&html.includes('ctxMinimap')],
   ['corner-radius cycle for rects via ctx', html.includes('function cycleCorner')&&html.includes("['ctxCorner'" )&&html.includes('ctxCorner:')],
   ['hide/show shapes — visible:0 skips draw+hit', html.includes('s.visible===0)return')&&html.includes('function hideSelection')&&html.includes('function showAllShapes')&&html.includes('ctxShowAll')],
+  ['style copy widened — text/route props included', html.includes('align:sh.align,fontSize:sh.fontSize')&&html.includes('cbend:sh.cbend')],
   ['line↔arrow conversion via style op (ctx)', html.includes('toggleLineArrow')&&html.includes('ctxToArrow')&&html.includes("s.type==='line'?'arrow':'line'")],
   ['sticky↔text conversion via style op (ctx)', html.includes('toggleStickyText')&&html.includes('ctxToSticky')&&html.includes("s.type==='sticky'?'text':'sticky'")],
   ['frame select-contents (ctx)', html.includes('selectFrameContents')&&html.includes('ctxSelContents')&&html.includes('withFrameChildren(')],

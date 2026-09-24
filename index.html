@@ -774,7 +774,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.194';
+const V='1.7.195';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -8009,10 +8009,16 @@ function copyStyle(){
   const ids=[...state.selection];
   const sh=ids.length?byId(ids[0]):null;
   if(!sh){UI.toast(t('noSelection'),'warn');return}
+  // ADR-0138: widened key set — paint + text + route style. Geometry
+  // (x/y/w/h/pts/way/bend/rotate/flip/z) stays out: format-painter copies
+  // look, not placement. Sticky's paint reads as `fill` here so it pastes
+  // onto box shapes; applyStyleToSelection maps it back to `color`.
   state.styleClipboard={
-    stroke:sh.stroke,fill:sh.fill,
+    stroke:sh.stroke,fill:sh.type==='sticky'?sh.color:sh.fill,
     size:sh.size,opacity:sh.opacity,dash:sh.dash||0,fstyle:sh.fstyle,   // ADR-0077
-    bold:sh.bold,italic:sh.italic                                       // ADR-0078
+    bold:sh.bold,italic:sh.italic,under:sh.under,strike:sh.strike,      // ADR-0078/0095/0100
+    align:sh.align,fontSize:sh.fontSize,
+    r:sh.r,head:sh.head,start:sh.start,elbow:sh.elbow,curve:sh.curve,cbend:sh.cbend
   };
   UI.toast(t('styleCopied'),'ok');
 }
