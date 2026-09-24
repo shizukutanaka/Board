@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.390] - 2026-09-24
+
+### Added
+- SVG 書き出しの 🔗 バッジを `<a href target=_blank rel=noopener>` で
+  ラップしクリッカブル化 (draw.io/Excalidraw SVG 相当) (ADR-0339)
+
 ## [1.7.389] - 2026-09-24
 
 ### Fixed

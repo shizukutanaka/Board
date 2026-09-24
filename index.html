@@ -794,7 +794,7 @@ const _fin=Number.isFinite;   // ADR-0334
 const _min=Math.min,_max=Math.max,_abs=Math.abs;   // ADR-0337
 
 // ====================== CONSTANTS ======================
-const V='1.7.389';
+const V='1.7.390';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -7146,7 +7146,7 @@ function buildSVG(shapes,paper){
     const _sp=(d,j)=>`<path d="${d}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${j?' stroke-linejoin="round"':''}${dA}${a}${_sh}/>`;
     const _po=pt=>`<polyline points="${pt}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`;
     const _cL=()=>{const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));
-      if(s.link)els.push(`<text x="${lp.x+10+ox}" y="${lp.y-10+oy}" text-anchor="middle" dominant-baseline="middle" font-size="10" font-family="sans-serif"${a}>🔗</text>`)};   // ADR-0333
+      if(s.link)els.push(`<a href="${esc(s.link)}" target="_blank" rel="noopener"><text x="${lp.x+10+ox}" y="${lp.y-10+oy}" text-anchor="middle" dominant-baseline="middle" font-size="10" font-family="sans-serif"${a}>🔗</text></a>`)};   // ADR-0333/0339
     const rT=shapeRot(s)?` transform="rotate(${_num(s.rotate)},${X+W/2+ox},${Y+H/2+oy})"`:''
     switch(s.type){
       case 'rect':{
@@ -7285,7 +7285,7 @@ function buildSVG(shapes,paper){
         }
         for(let i=0;i<n;i++)circles+=`<circle cx="${r(P[i][0])}" cy="${r(P[i][1])}" r="${r(Rr(i))}"/>`;
         els.push(`<g fill="${stroke}"${a}${_sh}><path d="${d}"/>${circles}</g>`);   // ADR-0278
-        if(s.link)els.push(`<text x="${P[0][0]+4}" y="${P[0][1]-2}" font-size="10" font-family="sans-serif"${a}>🔗</text>`);   // ADR-0333
+        if(s.link)els.push(`<a href="${esc(s.link)}" target="_blank" rel="noopener"><text x="${P[0][0]+4}" y="${P[0][1]-2}" font-size="10" font-family="sans-serif"${a}>🔗</text></a>`);   // ADR-0333/0339
         break;}
       case 'text':{
         const fs=_num(s.fontSize)||16;
@@ -7339,7 +7339,7 @@ function buildSVG(shapes,paper){
           els.push('</text>');
         }break;}
     }
-    if(s.link&&s.w!=null)els.push(`<text x="${X+_abs(W)+ox-3}" y="${Y+oy+3}" text-anchor="end" dominant-baseline="hanging" font-size="10" font-family="sans-serif"${a}>🔗</text>`);   // ADR-0316
+    if(s.link&&s.w!=null)els.push(`<a href="${esc(s.link)}" target="_blank" rel="noopener"><text x="${X+_abs(W)+ox-3}" y="${Y+oy+3}" text-anchor="end" dominant-baseline="hanging" font-size="10" font-family="sans-serif"${a}>🔗</text></a>`);   // ADR-0316/0339
   }
   els.push('</svg>');
   return els.join('\n');
