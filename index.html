@@ -816,7 +816,7 @@ const _frameOf=(sel,ok)=>{const m=_mP();
 const _scl=()=>_sl().clear(),_sad=id=>_sl().add(id),_sdl=id=>_sl().delete(id);   // ADR-0419: selection Set-mutation shorthands
 const _selN=()=>_sl().size;   // ADR-0334
 const _nS=()=>_sh().length;   // ADR-0425
-const _sv=s=>s.visible!==0,_lk=s=>s.locked,_hd=s=>s.visible===0,_fS=s=>s.fontSize,_wh=(e,w,ht)=>{e.width=w;e.height=ht},_sk=s=>s.stroke,_fi=s=>s.fill,_lb=s=>s.label;   // ADR-0425/0432/0433
+const _sv=s=>s.visible!==0,_lk=s=>s.locked,_hd=s=>s.visible===0,_fS=s=>s.fontSize,_wh=(e,w,ht)=>{e.width=w;e.height=ht},_sk=s=>s.stroke,_fi=s=>s.fill,_lb=s=>s.label,_rt=s=>s.rotate,_du=s=>s.dataUrl,_gi=s=>s.groupId;   // ADR-0425/0432/0433
 const _fin=Number.isFinite;   // ADR-0334
 const _min=Math.min,_max=Math.max,_abs=Math.abs;   // ADR-0337
 const _ga=(e,n)=>e.getAttribute(n),_sa=(e,n,v)=>e.setAttribute(n,v),_ap=(p,c)=>p.appendChild(c),_AL='aria-label',_AP='aria-pressed';   // ADR-0340/0392/0394/0399
@@ -851,7 +851,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.468';
+const V='1.7.469';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1182,7 +1182,7 @@ const G={
       return{x:x-p,y:y-p,w:x2-x+2*p,h:y2-y+2*p};
     }
     const _rb={x:s.x,y:s.y,w:s.w,h:s.h};
-    if(s.rotate){const _cx=_rb.x+_rb.w/2,_cy=_rb.y+_rb.h/2,_r=s.rotate*_PI/180,_c=_abs(_cos(_r)),_si=_abs(_sin(_r)),_hw=_rb.w/2,_hh=_rb.h/2,_nw=_hw*_c+_hh*_si,_nh=_hw*_si+_hh*_c;return{x:_cx-_nw,y:_cy-_nh,w:2*_nw,h:2*_nh};}
+    if(_rt(s)){const _cx=_rb.x+_rb.w/2,_cy=_rb.y+_rb.h/2,_r=_rt(s)*_PI/180,_c=_abs(_cos(_r)),_si=_abs(_sin(_r)),_hw=_rb.w/2,_hh=_rb.h/2,_nw=_hw*_c+_hh*_si,_nh=_hw*_si+_hh*_c;return{x:_cx-_nw,y:_cy-_nh,w:2*_nw,h:2*_nh};}
     return _rb;
   },
   bboxAll(shapes){
@@ -1208,7 +1208,7 @@ const G={
     // (crafted import or a remote op — validPatch permits `rotate` on any shape) renders
     // UNrotated; without the `s.w!=null` guard its center would be s.x+(undefined||0)/2 =
     // NaN, un-rotating p to {NaN,NaN} and making the shape permanently unhittable.
-    if(s.rotate&&s.w!=null){const _cx=s.x+s.w/2,_cy=s.y+(s.h||0)/2,_r=-s.rotate*_PI/180,_c=_cos(_r),_si=_sin(_r),_dx=p.x-_cx,_dy=p.y-_cy;p={x:_cx+_dx*_c-_dy*_si,y:_cy+_dx*_si+_dy*_c};}
+    if(_rt(s)&&s.w!=null){const _cx=s.x+s.w/2,_cy=s.y+(s.h||0)/2,_r=-_rt(s)*_PI/180,_c=_cos(_r),_si=_sin(_r),_dx=p.x-_cx,_dy=p.y-_cy;p={x:_cx+_dx*_c-_dy*_si,y:_cy+_dx*_si+_dy*_c};}
     switch(s.type){
       case 'rect':
         if(_fi(s))return true;
@@ -2345,12 +2345,12 @@ function describeShape(s){
   d+=` @ ${_rnd(b.x)},${_rnd(b.y)}`;
   if(_lk(s))d+=` ${t('ctxLock')}`;
   if(_hd(s))d+=` ${t('tagHidden')}`;   // ADR-0371: selection-restore / RTC can select a hidden shape
-  if(s.groupId)d+=` ${t('tagGroup')}`;   // ADR-0380: visual group halo has no SR channel
+  if(_gi(s))d+=` ${t('tagGroup')}`;   // ADR-0380: visual group halo has no SR channel
   if(_conn(s.type)&&(s.a||s.b)){   // ADR-0380: bound endpoints are the conn's identity
     const A=s.a&&byId(s.a),B=s.b&&byId(s.b);
     d+=` ${t('srBound')}: ${A?(T.k?.[A.type]??A.type):'?'}→${B?(T.k?.[B.type]??B.type):'?'}`;
   }
-  if(s.rotate)d+=` ${s.rotate}°`;
+  if(_rt(s))d+=` ${_rt(s)}°`;
   if(s.flip)d+=' '+[s.flip&1&&t('ctxFlipH'),s.flip&2&&t('ctxFlipV')].filter(Boolean).join('+');   // ADR-0414
   if(s.shadow)d+=` ${t('ctxShadow')}`;   // ADR-0414
   if(_conn(s.type)&&(s.elbow||s.curve))d+=' '+(s.elbow?t('ctxElbow'):t('ctxCurve'));   // ADR-0414: routes are exclusive
@@ -2692,7 +2692,7 @@ function drawGrid(W,H){
 // rotation centre; line/arrow/pen are point geometry, so a stray `rotate` (only
 // reachable via a remote `upd` — doRotate is box-only) is ignored. Keeps canvas and
 // SVG export in agreement (表示=出力パリティ) and avoids a NaN rotation centre.
-function shapeRot(s){return s.rotate&&s.w!=null?s.rotate:0;}
+function shapeRot(s){return _rt(s)&&s.w!=null?_rt(s):0;}
 // Centred label for rect/ellipse (frames draw their own corner label). Mirrors the
 // SVG export's <text> so a label added via double-click is visible on canvas too —
 // otherwise it's stored/exported but invisible while editing (表示=出力パリティ).
@@ -2882,7 +2882,7 @@ function drawShape(s,c){
     case 'text':
       drawText(s,c);break;
     case 'image':{
-      const img=s.dataUrl?getImg(s.dataUrl):null;   // ADR-0035: dataUrl-less image renders placeholder, never throws (getImg guards non-data:)
+      const img=_du(s)?getImg(_du(s)):null;   // ADR-0035: dataUrl-less image renders placeholder, never throws (getImg guards non-data:)
       if(img&&img.complete&&img.naturalWidth){
         const _cr=_min(s.r||0,_abs(s.w)/2,_abs(s.h)/2);   // ADR-0168
         _csh(s,c)   // ADR-0194
@@ -3371,9 +3371,9 @@ function getHandles(s){
     {id:'w',x,y:y+h/2},                {id:'e',x:x+w,y:y+h/2},
     {id:'sw',x,y:y+h},{id:'s',x:x+w/2,y:y+h},{id:'se',x:x+w,y:y+h}
   ];
-  if(!s.rotate)return hs;
+  if(!_rt(s))return hs;
   const cx=x+w/2,cy=y+h/2;
-  return hs.map(p=>{const r=_rotPt(p.x,p.y,cx,cy,s.rotate);return{id:p.id,x:r.x,y:r.y}});
+  return hs.map(p=>{const r=_rotPt(p.x,p.y,cx,cy,_rt(s));return{id:p.id,x:r.x,y:r.y}});
 }
 function hitHandle(wp,s){
   const tol=HANDLE_SIZE/_vp().zoom;
@@ -3392,7 +3392,7 @@ function getRotHandle(s){
   if(s.w!=null){cx=s.x+s.w/2;cy=s.y+s.h/2;ty=s.y}
   else{const b=_bb(s);if(!b||!(b.w>0)||!(b.h>0))return null;cx=b.x+b.w/2;cy=b.y+b.h/2;ty=b.y}
   const d=ROT_OFFSET/_vp().zoom;
-  const r=(s.w!=null&&s.rotate)?s.rotate*_PI/180:0,c=_cos(r),sn=_sin(r);
+  const r=(s.w!=null&&_rt(s))?_rt(s)*_PI/180:0,c=_cos(r),sn=_sin(r);
   const R=(px,py)=>({x:cx+(px-cx)*c-(py-cy)*sn,y:cy+(px-cx)*sn+(py-cy)*c});
   const k=R(cx,ty-d),an=R(cx,ty);
   return{x:k.x,y:k.y,ax:an.x,ay:an.y,cx,cy};
@@ -3697,7 +3697,7 @@ function drawSelection(c){
     // decorative corners that were never hit-testable). Hidden when a member is
     // rotated: axis scaling a rotated box would skew, which x/y/w/h+rotate can't
     // express.
-    if(!sel.some(s=>s.rotate)){
+    if(!sel.some(s=>_rt(s))){
       const hs=HANDLE_SIZE;
       c.fillStyle=_p();c.strokeStyle=_gC('--brand-ink');c.lineWidth=1.5;
       for(const h of getHandles({x:b.x,y:b.y,w:b.w,h:b.h})){
@@ -3939,7 +3939,7 @@ _on(canvas,_PD,e=>{
           }
           // ADR-0056: group-resize — 8 handles on the selection bbox. Skipped when a
           // member is rotated (skew can't be expressed).
-          if(!sel.some(s=>s.rotate)){
+          if(!sel.some(s=>_rt(s))){
             const hid=gb&&hitHandle(wp,{x:gb.x,y:gb.y,w:gb.w,h:gb.h});
             if(hid){
               ptr.dragKind='gresize';
@@ -4015,7 +4015,7 @@ _on(canvas,_PM,e=>{
           const tol=HANDLE_SIZE/_vp().zoom;
           if(gr&&_abs(wp.x-gr.x)<=tol&&_abs(wp.y-gr.y)<=tol){canvas.style.cursor='grab';return}   // ADR-0057
           // ADR-0056: same hover affordance on the group handles
-          if(!sel.some(s=>s.rotate)){
+          if(!sel.some(s=>_rt(s))){
             const hid=gb&&hitHandle(wp,{x:gb.x,y:gb.y,w:gb.w,h:gb.h});
             if(hid){canvas.style.cursor=handleCursor(hid);return}
           }
@@ -4679,7 +4679,7 @@ let _grpMapVer=-1,_grpMap=null;
 function _grpMapGet(){
   if(_grpMapVer===_gridVer)return _grpMap;
   _grpMap=_mP();
-  for(const s of _sh()){if(s.groupId){if(!_grpMap.has(s.groupId))_grpMap.set(s.groupId,[]);_grpMap.get(s.groupId).push(s)}}
+  for(const s of _sh()){if(_gi(s)){if(!_grpMap.has(_gi(s)))_grpMap.set(_gi(s),[]);_grpMap.get(_gi(s)).push(s)}}
   _grpMapVer=_gridVer;
   return _grpMap;
 }
@@ -5991,7 +5991,7 @@ function doUngroup(){
   if(!gids.size){_w(t('noGroup'));return}
   const ungrouped=[],before=[];
   for(const s of _sh()){
-    if(gids.has(s.groupId)&&!_lk(s)){before.push({id:s.id,groupId:s.groupId});delete s.groupId;ungrouped.push(s.id)}
+    if(gids.has(_gi(s))&&!_lk(s)){before.push({id:s.id,groupId:_gi(s)});delete s.groupId;ungrouped.push(s.id)}
   }
   _ss([...ids.filter(id=>byId(id)),...ungrouped]);
   Store._recordCommitted({op:'ungroup',ids:ungrouped,gids:[...gids],before});
@@ -6019,7 +6019,7 @@ function doAlign(dir){
   _xFS(sel,frameOf)
   // Group-aware + frame-aware: shapes sharing groupId or inside a selected frame move as one unit
   const unitMap=_mP();
-  for(const s of sel){const k=frameOf.get(s.id)||s.groupId||s.id;if(!unitMap.has(k))unitMap.set(k,{shapes:[],b:null});unitMap.get(k).shapes.push(s);}
+  for(const s of sel){const k=frameOf.get(s.id)||_gi(s)||s.id;if(!unitMap.has(k))unitMap.set(k,{shapes:[],b:null});unitMap.get(k).shapes.push(s);}
   for(const u of unitMap.values())u.b=_bA(u.shapes);
   const units=[...unitMap.values()].filter(u=>u.b);
   if(units.length<2)return;
@@ -6135,7 +6135,7 @@ function flipShape(s,axis,c){
   // ('h' flips x) and θ → 360−θ across the horizontal axis ('v' flips
   // y). Previously both axes took 360−θ, so an 'h' flip left a rotated
   // shape tilted the wrong way (30°→330° instead of 150°).
-  if(s.rotate)s.rotate=((axis==='h'?180:360)-s.rotate+360)%360;
+  if(_rt(s))s.rotate=((axis==='h'?180:360)-_rt(s)+360)%360;
 }
 function doFlip(axis){
   const sel=_selL(s=>s&&!_lk(s));
@@ -6197,7 +6197,7 @@ function doBeautify(){
   _ivp();
   _o(`${t('beautified')} (${after.length})`);
 }
-// ADR-0055: rotate applies to box shapes (orbit + s.rotate spin) AND point
+// ADR-0055: rotate applies to box shapes (orbit + _rt(s) spin) AND point
 // geometry (pen pts / line-arrow endpoints rotate rigidly about the group centre).
 const _rotatable=s=>s.w!=null||s.pts||s.x1!=null;
 // ADR-0146: s.bend is a world coordinate of the elbow trunk, so a rotate
@@ -6225,13 +6225,13 @@ function doRotate(d){
   const frameOf=_frameOf(sel,s=>_rotatable(s));
   _xFS(sel,frameOf)
   const r=d*_PI/180,cs=_cos(r),sn=_sin(r);
-  const before=sel.map(s=>clone({...s,rotate:s.rotate||0}));
+  const before=sel.map(s=>clone({...s,rotate:_rt(s)||0}));
   for(const s of sel){
     if(s.w==null){_rotPtsAbout(s,gx,gy,cs,sn);continue}   // ADR-0055: point geometry
     const b=_bb(s),cx=b.x+b.w/2,cy=b.y+b.h/2;
     const nx=gx+(cx-gx)*cs-(cy-gy)*sn,ny=gy+(cx-gx)*sn+(cy-gy)*cs;
     Shape.translate(s,nx-cx,ny-cy);
-    s.rotate=((s.rotate||0)+d+360)%360;
+    s.rotate=((_rt(s)||0)+d+360)%360;
   }
   const after=sel.map(clone);
   _rcOp({op:'align',dir:'rotate',before,after});
@@ -6344,7 +6344,7 @@ function replaceImage(){
     _imgImportFile(f,(dataUrl,nw,nh)=>{
       if(!dataUrl)return;
       const nh2=_max(2,s.w*nh/nw);
-      const before=[{id:s.id,dataUrl:s.dataUrl??null,h:s.h}];
+      const before=[{id:s.id,dataUrl:_du(s)??null,h:s.h}];
       const after=[{id:s.id,dataUrl,h:nh2}];
       s.dataUrl=dataUrl;s.h=nh2;
       _rcOp({op:'style',before,after});
@@ -6403,10 +6403,10 @@ function excScene(shapes){
     fillStyle:!_fi(s)?_TR:s.fstyle==='hatch'?'hachure':s.fstyle==='cross'?'cross-hatch':'solid',   // ADR-0231
     strokeWidth:s.size||2,strokeStyle:s.dash===1?'dashed':s.dash===2?'dotted':'solid',
     roughness:0,opacity:_rnd((s.opacity==null?1:s.opacity)*100),
-    angle:(s.rotate||0)*_PI/180,seed:0,version:1,versionNonce:0,
+    angle:(_rt(s)||0)*_PI/180,seed:0,version:1,versionNonce:0,
     scale:[s.flip&1?-1:1,s.flip&2?-1:1],                                            // ADR-0276
     isDeleted:false,boundElements:null,updated:0,link:s.link||null,locked:!!_lk(s)},over);   // ADR-0241
-  const gids={};for(const s of shapes)if(s.groupId)(gids[s.id]=gids[s.id]||[]).push(s.groupId);
+  const gids={};for(const s of shapes)if(_gi(s))(gids[s.id]=gids[s.id]||[]).push(_gi(s));
   const _excTid=_mP();   // ADR-0225: sticky rect id → its container text id
   const _ct=(s,tid,txt,bL,fs,ov)=>{   // shared container-text element (sticky body / box label)
     _excTid.set(s.id,tid);
@@ -6414,7 +6414,7 @@ function excScene(shapes){
     width:ov?ov.w:_abs(s.w||120)-8,height:ov?ov.h:_abs(s.h||80)-8,text:txt,originalText:txt,autoResize:false,   // ADR-0412: bound text wraps to the container
     fontSize:fs||_fS(s)||16,textAlign:s.align||'center',verticalAlign:s.valign||'middle',lineHeight:s.lineH||1.25,baseline:0,fontFamily:s.font==='mono'?3:2,...(bL?{bLabel:1}:{}),   // ADR-0242/0243/0244
     strokeColor:'#1e1e1e',backgroundColor:_TR,fillStyle:'solid',strokeWidth:1,strokeStyle:'solid',
-    roughness:0,opacity:100,angle:(s.rotate||0)*_PI/180,seed:0,version:1,versionNonce:0,isDeleted:false,
+    roughness:0,opacity:100,angle:(_rt(s)||0)*_PI/180,seed:0,version:1,versionNonce:0,isDeleted:false,
     containerId:s.id,boundElements:null,updated:0,link:null,locked:false,groupIds:gids[s.id]||[]};};
   for(const s of shapes){
     switch(s.type){
@@ -6455,7 +6455,7 @@ function excScene(shapes){
         if(_lb(s)){const _lp=_connLabelXY(s),_tid=uid();els.push(_ct(s,_tid,_lb(s),true,null,{x:_lp.x-40,y:_lp.y-10,w:80,h:20}));els[els.length-2].boundElements=[{id:_tid,type:'text'}]}   // ADR-0266/0280
         break;}
       case'image':{
-        const fid='f'+s.id;files[fid]={id:fid,mimeType:(s.dataUrl.match(/^data:([^;]+)/)||[])[1]||'image/png',dataURL:s.dataUrl,created:0,lastRetrieved:0};
+        const fid='f'+s.id;files[fid]={id:fid,mimeType:(_du(s).match(/^data:([^;]+)/)||[])[1]||'image/png',dataURL:_du(s),created:0,lastRetrieved:0};
         els.push(E(s,{type:'image',x:s.x,y:s.y,width:s.w||0,height:s.h||0,fileId:fid,status:'saved',
           roundness:s.r?{type:3}:null,strokeSharpness:s.r?'round':'sharp'}));   // ADR-0344
         if(_lb(s)){const _tid=uid();els.push(_ct(s,_tid,_lb(s),true,null,{x:s.x,y:s.y+(s.h||0)-22,w:s.w||120,h:22}));els[els.length-2].boundElements=[{id:_tid,type:'text'}]}   // ADR-0353
@@ -6750,7 +6750,7 @@ function boardToDrawio(shapes){
   let i=0;
   // ADR-0336: Board groupId → drawio group cell (wrapper vertex + parent refs,
   // child geometry stored relative to the group origin).
-  const _gbx={};for(const s of shapes)if(s.groupId&&s.w!=null){const g=_gbx[s.groupId]||(_gbx[s.groupId]={x:1/0,y:1/0,x2:-1/0,y2:-1/0});
+  const _gbx={};for(const s of shapes)if(_gi(s)&&s.w!=null){const g=_gbx[_gi(s)]||(_gbx[_gi(s)]={x:1/0,y:1/0,x2:-1/0,y2:-1/0});
     g.x=_min(g.x,s.x);g.y=_min(g.y,s.y);g.x2=_max(g.x2,s.x+s.w);g.y2=_max(g.y2,s.y+(s.h||0))}
   for(const gid in _gbx){const g=_gbx[gid];
     cells.push(`<mxCell id="g_${gid}" value="" style="group;" vertex="1" parent="1"><mxGeometry x="${g.x}" y="${g.y}" width="${g.x2-g.x}" height="${g.y2-g.y}" as="geometry"/></mxCell>`)}
@@ -6769,7 +6769,7 @@ function boardToDrawio(shapes){
     else if(t==='text')sty+='text;';
     else if(t==='sticky')sty+='shape=note;';
     else if(t==='frame')sty+='swimlane;';
-    else if(t==='image'&&s.dataUrl)sty+='shape=image;';
+    else if(t==='image'&&_du(s))sty+='shape=image;';
     else sty+='rounded='+(s.r>0?1:0)+';';
     if(s.r>0&&(t==='diamond'||t==='image'))sty+='rounded=1;';          // ADR-0332
     if(s.fill==='none')sty+='fillColor=none;';                            // ADR-0290
@@ -6785,13 +6785,13 @@ function boardToDrawio(shapes){
     if(t==='text')sty+=s.wrap?'whiteSpace=wrap;':'whiteSpace=nowrap;';          // ADR-0412: emit both states — drawio wraps by default, Board doesn't
     if(s.valign)sty+='verticalAlign='+s.valign+';';                          // ADR-0238
     if(s.font)sty+='fontFamily='+(s.font==='mono'?'Courier New':'Georgia')+';';   // ADR-0253
-    if(s.rotate)sty+='rotation='+_rnd(s.rotate)+';';              // ADR-0261
-    if(t==='image'&&s.dataUrl)sty+='image='+s.dataUrl+';';                 // ADR-0259: last — ';base64,' inside
+    if(_rt(s))sty+='rotation='+_rnd(_rt(s))+';';              // ADR-0261
+    if(t==='image'&&_du(s))sty+='image='+_du(s)+';';                 // ADR-0259: last — ';base64,' inside
     const lbl=_lb(s)!=null?_lb(s):s.text;
     if(t==='image'&&_lb(s))sty+='verticalAlign=bottom;';                 // ADR-0353
-    const _gc=_gbx[s.groupId];                                          // ADR-0336
+    const _gc=_gbx[_gi(s)];                                          // ADR-0336
     const _pf=_gc?null:_fOf(s);                                         // ADR-0345: frame containment (group wins)
-    cells.push(`<mxCell id="${id}" value="${nl(lbl||'')}" style="${esc(sty)}" vertex="1" parent="${_gc?`g_${s.groupId}`:_pf?idOf.get(_pf.id):'1'}"${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}><mxGeometry x="${(s.x||0)-(_gc?_gc.x:_pf?_pf.x:0)}" y="${(s.y||0)-(_gc?_gc.y:_pf?_pf.y:0)}" width="${s.w||120}" height="${s.h||80}" as="geometry"/></mxCell>`);   // ADR-0245/0336/0345
+    cells.push(`<mxCell id="${id}" value="${nl(lbl||'')}" style="${esc(sty)}" vertex="1" parent="${_gc?`g_${_gi(s)}`:_pf?idOf.get(_pf.id):'1'}"${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}><mxGeometry x="${(s.x||0)-(_gc?_gc.x:_pf?_pf.x:0)}" y="${(s.y||0)-(_gc?_gc.y:_pf?_pf.y:0)}" width="${s.w||120}" height="${s.h||80}" as="geometry"/></mxCell>`);   // ADR-0245/0336/0345
   }
   // ADR-0354: pen strokes export as polyline edges — endArrow=none + one
   // mxPoint per stroke point keeps the ink visible in draw.io.
@@ -6801,11 +6801,11 @@ function boardToDrawio(shapes){
     let sty='html=1;endArrow=none;rounded=1;';
     if(_sk(s))sty+='strokeColor='+(s.stroke===_TR?'none':_sk(s))+';';   // ADR-0290
     sty+=_dioStyEmit(s,1);
-    const _gp=_gbx[s.groupId];
+    const _gp=_gbx[_gi(s)];
     let geo=`<mxGeometry relative="1" as="geometry"><mxPoint x="${s.pts[0][0]-(_gp?_gp.x:0)}" y="${s.pts[0][1]-(_gp?_gp.y:0)}" as="sourcePoint"/><mxPoint x="${s.pts[s.pts.length-1][0]-(_gp?_gp.x:0)}" y="${s.pts[s.pts.length-1][1]-(_gp?_gp.y:0)}" as="targetPoint"/>`;
     if(s.pts.length>2)geo+='<Array as="points">'+s.pts.slice(1,-1).map(p=>`<mxPoint x="${p[0]-(_gp?_gp.x:0)}" y="${p[1]-(_gp?_gp.y:0)}"/>`).join('')+'</Array>';
     geo+='</mxGeometry>';
-    cells.push(`<mxCell id="${id}" value="" style="${esc(sty)}" edge="1" parent="${_gp?`g_${s.groupId}`:'1'}"${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0354
+    cells.push(`<mxCell id="${id}" value="" style="${esc(sty)}" edge="1" parent="${_gp?`g_${_gi(s)}`:'1'}"${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0354
   }
   for(const s of shapes){
     const t=s.type;
@@ -6827,13 +6827,13 @@ function boardToDrawio(shapes){
     if(src&&s.aF)sty+=`exitX=${s.aF.fx};exitY=${s.aF.fy};exitDx=0;exitDy=0;`;   // ADR-0221
     if(tgt&&s.bF)sty+=`entryX=${s.bF.fx};entryY=${s.bF.fy};entryDx=0;entryDy=0;`;
     let geo=`<mxGeometry relative="1"${s.labelPos!=null?` x="${(s.labelPos*2-1).toFixed(3)}"`:''} as="geometry">`;   // ADR-0264
-    const _gc2=_gbx[s.groupId];                                         // ADR-0347
+    const _gc2=_gbx[_gi(s)];                                         // ADR-0347
     if(!src)geo+=`<mxPoint x="${s.x1-(_gc2?_gc2.x:0)}" y="${s.y1-(_gc2?_gc2.y:0)}" as="sourcePoint"/>`;
     if(!tgt)geo+=`<mxPoint x="${s.x2-(_gc2?_gc2.x:0)}" y="${s.y2-(_gc2?_gc2.y:0)}" as="targetPoint"/>`;
     const wa=s.elbow?_elbowPts(s).slice(1,-1):s.curve?[_curveCtrl(_cE(s),s.cbend)]:_wayArr(s);   // ADR-0358/0360
     if(wa.length)geo+='<Array as="points">'+wa.map(p=>`<mxPoint x="${p.x-(_gc2?_gc2.x:0)}" y="${p.y-(_gc2?_gc2.y:0)}"/>`).join('')+'</Array>';
     geo+='</mxGeometry>';
-    cells.push(`<mxCell id="${id}" value="${nl(_lb(s)||'')}" style="${esc(sty)}" edge="1" parent="${_gc2?`g_${s.groupId}`:'1'}"${src}${tgt}${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0245/0347
+    cells.push(`<mxCell id="${id}" value="${nl(_lb(s)||'')}" style="${esc(sty)}" edge="1" parent="${_gc2?`g_${_gi(s)}`:'1'}"${src}${tgt}${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0245/0347
   }
   const vx=_vp().x,vy=_vp().y,vz=_vp().zoom;
   return `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile compressed="false"><diagram name="${_esc(_dn()||'Page-1')}"><mxGraphModel dx="${_rnd(-vx)}" dy="${_rnd(-vy)}" grid="${state.showGrid?1:0}" gridSize="${GRID_SIZE}" guides="1" tooltips="0" connect="0" arrows="0" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0" zoom="${vz}"><root><mxCell id="0"/><mxCell id="1" parent="0"/>${cells.join('')}</root></mxGraphModel></diagram></mxfile>`;   // ADR-0359: dx/dy/zoom viewport round-trip
@@ -7310,7 +7310,7 @@ function buildSVG(shapes,paper){
     const _po=pt=>`<polyline points="${pt}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`;
     const _cL=()=>{const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));
       if(s.link)els.push(`<a href="${esc(s.link)}" target="_blank" rel="noopener"><text x="${lp.x+10+ox}" y="${lp.y-10+oy}" text-anchor="middle" dominant-baseline="middle" font-size="10" font-family="sans-serif"${a}>🔗</text></a>`)};   // ADR-0333/0339
-    const rT=shapeRot(s)?` transform="rotate(${_num(s.rotate)},${X+W/2+ox},${Y+H/2+oy})"`:''
+    const rT=shapeRot(s)?` transform="rotate(${_num(_rt(s))},${X+W/2+ox},${Y+H/2+oy})"`:''
     switch(s.type){
       case 'rect':{
         const r=_min(s.r!=null?s.r:8,_abs(W)/4,_abs(H)/4);
@@ -7462,13 +7462,13 @@ function buildSVG(shapes,paper){
         for(let i=0;i<svgLines.length;i++)els.push(`<tspan x="${tax}" dy="${i?fs*(s.lineH||1.25):0}">${_esc(svgLines[i])}</tspan>`);
         els.push('</text>');break;}
       case 'image':
-        if(typeof s.dataUrl==='string'&&/^data:image\//.test(s.dataUrl)){
+        if(typeof s.dataUrl==='string'&&/^data:image\//.test(_du(s))){
           // ADR-0149: flip composes INSIDE the image transform (after rotation)
           // so it mirrors along the shape's local axes — same as the canvas path.
           const fT=s.flip?` translate(${_num(X+W/2+ox)} ${_num(Y+H/2+oy)}) scale(${s.flip&1?-1:1} ${s.flip&2?-1:1}) translate(${_num(-(X+W/2+ox))} ${_num(-(Y+H/2+oy))})`:'';
           const _cr2=_min(s.r||0,_abs(W)/2,_abs(H)/2);   // ADR-0168
           if(_cr2>0)els.push(`<clipPath id="irc${_esc(s.id)}"><rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${_cr2}"/></clipPath>`);
-          els.push(`<image x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" href="${_esc(s.dataUrl)}"${_cr2>0?` clip-path="url(#irc${_esc(s.id)})"`:''}${a}${rT}${fT}${_sh}/>`);
+          els.push(`<image x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" href="${_esc(_du(s))}"${_cr2>0?` clip-path="url(#irc${_esc(s.id)})"`:''}${a}${rT}${fT}${_sh}/>`);
           if(_sk(s)&&s.size)els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${_cr2}" fill="none" stroke="${_esc(_sk(s))}" stroke-width="${_num(s.size)}"${dA}${a}${rT}/>`);   // ADR-0176/0178
         }
         if(_lb(s))_svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT);  // ADR-0083
@@ -7684,7 +7684,7 @@ const Net={
     }
   },
   _attachShape(s){
-    if(s&&typeof s.img==='string'&&!s.dataUrl){
+    if(s&&typeof s.img==='string'&&!_du(s)){
       const d=this._imgIn.get(s.img);
       if(d){const{img:_x,...rest}=s;return{...rest,dataUrl:d}}
       // ADR-0374: cap the parked-ref waitlist — a peer that sends slim refs then
@@ -8401,10 +8401,10 @@ function _imgNextKey(k){const m=/^(.*):(\d+)$/.exec(k);return m?m[1]+':'+(+m[2]+
 function _imgSlim(shapes,stored){
   const slim=[],puts=[];
   for(const s of shapes){
-    if(s&&s.type==='image'&&typeof s.dataUrl==='string'&&s.dataUrl.length>128){
-      let k=_imgHash(s.dataUrl);
-      while(stored.get(k)!==_ud&&stored.get(k)!==s.dataUrl)k=_imgNextKey(k);
-      if(stored.get(k)===_ud){stored.set(k,s.dataUrl);puts.push([k,s.dataUrl])}
+    if(s&&s.type==='image'&&typeof s.dataUrl==='string'&&_du(s).length>128){
+      let k=_imgHash(_du(s));
+      while(stored.get(k)!==_ud&&stored.get(k)!==_du(s))k=_imgNextKey(k);
+      if(stored.get(k)===_ud){stored.set(k,_du(s));puts.push([k,_du(s)])}
       const{dataUrl:_x,...rest}=s;
       slim.push({...rest,img:k});
     }else slim.push(s);
@@ -8415,7 +8415,7 @@ function _imgSlim(shapes,stored){
 // wire-format dataUrl exactly as before (ops/share/history unchanged).
 function _imgAttach(shapes,imgs){
   return shapes.map(s=>{
-    if(s&&typeof s.img==='string'&&!s.dataUrl){
+    if(s&&typeof s.img==='string'&&!_du(s)){
       const d=imgs.get(s.img);
       if(d){const{img:_x,...rest}=s;return{...rest,dataUrl:d}}
     }
@@ -8580,7 +8580,7 @@ const UI={
       has&&_selN()===1&&['ctxSelectSame','',selectSamePaint],
       has&&_selN()===1&&['ctxSelectSameType','',selectSameType],
       has&&_selN()>1&&['ctxGroup','⌘G',doGroup],
-      has&&_selAny(s=>s.groupId)&&['ctxUngroup','⌘⇧G',doUngroup],
+      has&&_selAny(s=>_gi(s))&&['ctxUngroup','⌘⇧G',doUngroup],
       has&&'sep',
       ['ctxSearch','⌘F',toggleSq],
       ['ctxFit','⇧1',fitToContent],
@@ -9414,7 +9414,7 @@ function swapFillStroke(){
     before.push({id,stroke:_sk(s)??null,[fk]:s[fk]??null});
     after.push({id,stroke:s[fk]??null,[fk]:_sk(s)??null});
     const t2=s[fk];s[fk]=_sk(s);s.stroke=t2;
-    if(s[fk]==null)delete s[fk];if(s.stroke==null)delete _sk(s);
+    if(s[fk]==null)delete s[fk];if(s.stroke==null)delete s.stroke;
   })
   if(before.length){_styleOp(before,after);_iv();_o(t('swapDone'))}
 }
@@ -9689,8 +9689,8 @@ const Minimap=(()=>{
       sx.fillStyle=_fi(s)&&_fi(s)!=='none'?_fi(s):_TR;   // ADR-0288
       sx.strokeStyle=_sk(s)||_gC('--ink');
       sx.lineWidth=_max(0.5,(s.size||1)*sc);
-      const _mr=s.rotate&&s.w!=null;
-      if(_mr){const ccx=(s.x+s.w/2)*sc+ox,ccy=(s.y+s.h/2)*sc+oy;sx.save();sx.translate(ccx,ccy);sx.rotate(s.rotate*_PI/180);sx.translate(-ccx,-ccy);}
+      const _mr=_rt(s)&&s.w!=null;
+      if(_mr){const ccx=(s.x+s.w/2)*sc+ox,ccy=(s.y+s.h/2)*sc+oy;sx.save();sx.translate(ccx,ccy);sx.rotate(_rt(s)*_PI/180);sx.translate(-ccx,-ccy);}
       switch(s.type){
         case 'frame':
         case 'rect':{const rx=s.x*sc+ox,ry=s.y*sc+oy,rw=s.w*sc,rh=s.h*sc;if(_fi(s))sx.fillRect(rx,ry,rw,rh);sx.strokeRect(rx,ry,rw,rh);break}
@@ -9699,7 +9699,7 @@ const Minimap=(()=>{
         case 'line':case 'arrow':{if(s.elbow){const pts=_elbowPts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<pts.length;i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}if(s.curve){const me=_cE(s),cc=_curveCtrl(me,s.cbend);sx.beginPath();sx.moveTo(me.x1*sc+ox,me.y1*sc+oy);sx.quadraticCurveTo(cc.x*sc+ox,cc.y*sc+oy,me.x2*sc+ox,me.y2*sc+oy);sx.stroke();break}const pts=_linePts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<pts.length;i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}
         case 'pen':if(s.pts.length<2)break;sx.beginPath();sx.moveTo(s.pts[0][0]*sc+ox,s.pts[0][1]*sc+oy);for(let i=1;i<s.pts.length;i++)sx.lineTo(s.pts[i][0]*sc+ox,s.pts[i][1]*sc+oy);sx.stroke();break;
         case 'text':case 'sticky':{const rx2=s.x*sc+ox,ry2=s.y*sc+oy,rw2=_max(2,s.w*sc),rh2=_max(2,s.h*sc);sx.fillStyle=s.type==='sticky'?(s.color||_YW):(_fi(s)||_gC('--brand'));sx.fillRect(rx2,ry2,rw2,rh2);break}
-        case 'image':{const rx3=s.x*sc+ox,ry3=s.y*sc+oy,rw3=_max(2,s.w*sc),rh3=_max(2,s.h*sc);const img=s.dataUrl?_imgCache.get(_imgKey(s.dataUrl)):null;if(img&&img.complete&&img.naturalWidth){if(s.flip){const fx3=rx3+rw3/2,fy3=ry3+rh3/2;sx.save();sx.translate(fx3,fy3);sx.scale(s.flip&1?-1:1,s.flip&2?-1:1);sx.translate(-fx3,-fy3);sx.drawImage(img,rx3,ry3,rw3,rh3);sx.restore()}else sx.drawImage(img,rx3,ry3,rw3,rh3)}else{sx.fillStyle='#CBD5E1';sx.fillRect(rx3,ry3,rw3,rh3)}break}
+        case 'image':{const rx3=s.x*sc+ox,ry3=s.y*sc+oy,rw3=_max(2,s.w*sc),rh3=_max(2,s.h*sc);const img=_du(s)?_imgCache.get(_imgKey(_du(s))):null;if(img&&img.complete&&img.naturalWidth){if(s.flip){const fx3=rx3+rw3/2,fy3=ry3+rh3/2;sx.save();sx.translate(fx3,fy3);sx.scale(s.flip&1?-1:1,s.flip&2?-1:1);sx.translate(-fx3,-fy3);sx.drawImage(img,rx3,ry3,rw3,rh3);sx.restore()}else sx.drawImage(img,rx3,ry3,rw3,rh3)}else{sx.fillStyle='#CBD5E1';sx.fillRect(rx3,ry3,rw3,rh3)}break}
       }
       if(_mr)sx.restore();
     }

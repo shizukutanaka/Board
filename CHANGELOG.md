@@ -2,6 +2,11 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.469] - 2026-09-23
+
+### Refactored
+- `_rt`/`_du`/`_gi` prop read fold (~130B 追加回収 — `delete s.X` は参照のため除外保護)
+
 ## [1.7.468] - 2026-09-23
 
 ### Refactored
