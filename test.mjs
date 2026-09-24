@@ -514,6 +514,7 @@ const checks = [
   ['group resize scales elbow bend on trunk axis', html.includes('ADR-0148')&&html.includes('sh.bend=Math.abs(tr[1].x-tr[0].x)')],
   ['image flip mirrors pixels via s.flip bitmask', html.includes("s.flip=(s.flip||0)^(axis==='h'?1:2)")&&html.includes('ADR-0149')&&html.includes('scale(${s.flip&1?-1:1}')],
   ['hidden shapes leave search + bindAt', html.includes('s.visible!==0&&(s.label||s.text||s.type')&&html.includes("t==='pen'||s.visible===0")],
+  ['SVG export excludes hidden shapes', html.includes('const _vis=shapes.filter(s=>s.visible!==0)')&&html.includes('_vis.filter(s=>s.type==="frame")')],
   ['line↔arrow conversion via style op (ctx)', html.includes('toggleLineArrow')&&html.includes('ctxToArrow')&&html.includes("s.type==='line'?'arrow':'line'")],
   ['sticky↔text conversion via style op (ctx)', html.includes('toggleStickyText')&&html.includes('ctxToSticky')&&html.includes("s.type==='sticky'?'text':'sticky'")],
   ['frame select-contents (ctx)', html.includes('selectFrameContents')&&html.includes('ctxSelContents')&&html.includes('withFrameChildren(')],

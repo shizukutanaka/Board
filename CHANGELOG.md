@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.208]
+
+### 修正
+- **SVG エクスポートに非表示図形が混入するバグ** (ADR-0150 追補)。
+  buildSVG は drawShape を通らず独自に要素を構築するため、
+  `s.visible===0` のフィルタを追加。
+
 ## [1.7.207]
 
 ### 修正

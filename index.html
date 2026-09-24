@@ -774,7 +774,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.207';
+const V='1.7.208';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6245,7 +6245,10 @@ function buildSVG(shapes,paper){
   const els=[];
   els.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`);
   els.push(`<rect width="100%" height="100%" fill="${_esc(paper||'#FFFFFF')}"/>`);
-  const svgShapes=[...shapes.filter(s=>s.type==="frame"),...shapes.filter(s=>s.type!=="frame")];
+  // ADR-0150 follow-up: SVG builds its own element list (bypasses drawShape's
+  // visible guard) — hidden shapes must be excluded here too, like canvas.
+  const _vis=shapes.filter(s=>s.visible!==0);
+  const svgShapes=[..._vis.filter(s=>s.type==="frame"),..._vis.filter(s=>s.type!=="frame")];
   for(const s of svgShapes){
     const X=_num(s.x),Y=_num(s.y),W=_num(s.w),H=_num(s.h);
     const _e=connEnds(s);
