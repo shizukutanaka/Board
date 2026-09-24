@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.325] - 2026-09-24
+
+### Added
+- タブ区切り (TSV) テキストのペーストでセルを付箋グリッドに展開
+  (スプレッドシートのコピー、ADR-0273)
+
 ## [1.7.324] - 2026-09-24
 
 ### Added

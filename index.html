@@ -776,7 +776,7 @@ body{visibility:visible}
 'use strict';
 
 // ====================== CONSTANTS ======================
-const V='1.7.324';
+const V='1.7.325';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4330,6 +4330,24 @@ window.addEventListener('paste',e=>{
       // browsers, chat logs, markdown-as-plain-text all land on the board.
       const txt=s.trim();
       if(!txt)return;
+      // ADR-0273: tab-separated paste → sticky grid (spreadsheet columns →
+      // sticky columns, rows → rows). Any cell may be empty.
+      if(/	/.test(txt)&&txt.includes('\n')){
+        e.preventDefault();
+        const rows=txt.slice(0,PASTE_MAX_CHARS).split('\n').map(r=>r.split('\t'));
+        const C=Math.max(...rows.map(r=>r.length)),R=rows.length;
+        const sw=160,sh=96,gx=16,gy=16;
+        const r2=canvas.getBoundingClientRect();
+        const wp=G.s2w({x:r2.width/2,y:r2.height/2});
+        const x0=wp.x-(C*sw+(C-1)*gx)/2,y0=wp.y-(R*sh+(R-1)*gy)/2;
+        const built=[];
+        rows.forEach((row,ri)=>row.slice(0,C).forEach((cell,ci)=>{
+          const v=String(cell||'').trim();
+          if(v)built.push(Shape.make('sticky',{x:x0+ci*(sw+gx),y:y0+ri*(sh+gy),w:sw,h:sh,color:'#FEF08A',text:v.slice(0,2000)}));
+        }));
+        if(built.length){Store.commit({op:'addMany',shapes:built});state.selection=new Set(built.map(x=>x.id));invalidate();UI.toast(t('textPasted'),'ok')}
+        return;
+      }
       e.preventDefault();
       const fs=16,body=txt.slice(0,PASTE_MAX_CHARS);
       const lines=body.split('\n');
