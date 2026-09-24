@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.502] - 2026-09-23
+
+### 修正
+
+- `_fragIn` 再組立を送信者タグ付け — 2ピアの並行 snap/opc ストリームが seq 空間で衝突して JSON が継ぎ接ぎされるのを防止 (ADR-0469)
+
 ## [1.7.501] - 2026-09-23
 
 ### 変更
