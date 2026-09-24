@@ -325,7 +325,7 @@ const checks = [
   // v1.7.115: ADR-0057 rotation knob for point geometry + multi-selection
   ['getRotHandle generalised to point-geom bbox', html.includes("else{const b=_bb(s);if(!b||!(b.w>0)||!(b.h>0))return null;cx=b.x+b.w/2;") && html.includes("function _grpRotHandle(b){")],
   ['grot dragKind + delta-angle _rotShape + align commit', html.includes("ptr.dragKind='grot';") && html.includes("function _grotDrag(wp,shift){") && html.includes("_rotShape(sh,orig,ptr.rotCx,ptr.rotCy,deg)") && html.includes("op:'align',dir:'grot'") && html.includes("'grot'")],
-  ['copyPNG guards ClipboardItem + write', html.includes("typeof ClipboardItem==='undefined'") && html.includes("copyUnsupported")],
+  ['copyPNG guards ClipboardItem + write', html.includes("typeof ClipboardItem===_un") && html.includes("copyUnsupported")],
   ['copyPNG in export menu', html.includes("['ctxCopyPNG','',copyPNG]")],
   ['ctxCopyPNG i18n ja+en', html.includes("ctxCopyPNG:'PNGをクリップボードにコピー'") && html.includes("ctxCopyPNG:'Copy PNG to clipboard'")],
   // v1.7.109: ADR-0051 real pen resize via pts scale
@@ -920,7 +920,7 @@ const checks = [
   ['draw drafts show dims/length readout (ADR-0202)', html.includes("_rnd(d.h)}`")&&html.includes("x2-ptr.wx0")],
   // v1.7.05: Tab cycling excludes locked shapes (parity with doMove/doDelete/doRotate/doFlip)
   ['statusbar selection dims readout', html.includes('id="sSel"')&&html.includes('_statusSel()')&&html.includes('_rnd(b.w)')],
-  ['empty-selection arrows pan viewport', html.includes("_vp().x+=k==='arrowleft'?-step:k==='arrowright'?step:0")],
+  ['empty-selection arrows pan viewport', html.includes("_vp().x+=k===_AL2?-step:k===_AR2?step:0")],
   ['swapFillStroke: ⇧X swaps stroke↔fill via style op', html.includes('function swapFillStroke')&&html.includes("k==='x'&&e.shiftKey&&!meta")&&html.includes("const fk=s.type==='sticky'?'color':'fill'")],
   ['digit keys set opacity (Figma)', html.includes("/^[0-9]$/.test(k)&&_selN()")&&html.includes("opacity:k==='0'?1:+k/10")],
   ['image corner radius via cycleCorner + clips', html.includes("if(!boxOk&&!connOk)return;")&&html.includes('clip-path="url(#irc')&&html.includes('roundRect(c,s.x,s.y,s.w,s.h,_cr);c.clip()')],
