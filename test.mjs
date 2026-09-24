@@ -703,6 +703,12 @@ const checks = [
   ['content beats extension routing', html.includes("d.type==='excalidraw'){importExcText(r.result);return}")],
   ['.excalidraw file entry points', html.includes("f.name.endsWith('.excalidraw')") && html.includes('.excalidraw,.drawio')],
   ['.drawio file entry points + parser (ADR-0203)', html.includes("f=>/\\.(drawio|dio)$/i.test(f.name)")&&html.includes('function drawioToShapes')],
+  ['excalidraw lineHeight/fontFamily/verticalAlign round-trip (ADR-0242..0244)', html.includes("lineHeight:s.lineH||1.25")&&html.includes("o.lineH=Math.min(4,Math.max(0.5,e.lineHeight))")&&html.includes("fontFamily:s.font==='mono'?3:2")&&html.includes("verticalAlign:s.valign||'middle'")],
+  ['excalidraw locked round-trips s.locked (ADR-0241)', html.includes("locked:!!s.locked},over)")&&html.includes("if(e.locked)s.locked=1")],
+  ['drawio visible=0 attr round-trips s.visible===0 (ADR-0245)', html.includes("s.visible===0?' visible=\"0\"':'")&&html.includes("getAttribute('visible')==='0'")],
+  ['drawio shadow=1 round-trips s.shadow (ADR-0246)', html.includes("sty+='shadow=1;'")&&html.includes("sty.shadow==='1'")],
+  ['drawio fontColor ↔ text/sticky s.stroke (ADR-0247)', html.includes("sty+='fontColor='+s.stroke")&&html.includes("sty.fontColor!=='none'")],
+  ['drawio parent-relative offsets resolved (ADR-0240)', html.includes("const _geo=new Map(),_par=new Map();")&&html.includes("const _o=off(c.getAttribute('id'));")&&html.includes("x=_o.x+(+g.getAttribute('x')||0)")],
   ['frame label italic/under/strike (ADR-0204)', html.includes("600 ${fs}px")&&html.includes("s.type!=='frame'&&!s.label)||s.locked)continue;   // ADR-0170/0204")],
   ['letter-spacing cycle — canvas ctx+SVG+style-copy (ADR-0205)', html.includes("function cycleSpacing()")&&html.includes("c.letterSpacing=(s.spacing||0)+'px'")&&html.includes('_svgLs(s)')&&html.includes('spacing:sh.spacing')],
   ['elbow corner rounding canvas+SVG + cycleCorner gate (ADR-0207)', html.includes('function _polylineR')&&html.includes('_polylineRd(pts,ox,oy,s.r)')&&html.includes("connOk=(s.type==='line'||s.type==='arrow')&&s.elbow")],
@@ -736,6 +742,7 @@ const checks = [
   ['editor textarea routes Cmd-B/I/U/X to toggleTextFlag (ADR-0236)', html.includes("fl={b:'bold',i:'italic',u:'under'}[mk]")&&html.includes('toggleTextFlag(fl)')],
   ['label input routes Cmd-B/I/U/X to toggleTextFlag (ADR-0237)', html.includes("fl2={b:'bold',i:'italic',u:'under'}[mk2]")],
   ['drawio verticalAlign round-trips s.valign (ADR-0238)', html.includes('sty.verticalAlign')&&html.includes("'verticalAlign='+s.valign")],
+  ['style-op commit shared via _styleOp (ADR-0239)', html.includes('function _styleOp(before,after)')&&(html.match(/_styleOp\(before,after\)/g)||[]).length>20],
   ['endpoint drag Shift constrains to 45 deg + label editor fontSize (ADR-0206)', html.includes("constrain the free end to 45")&&html.includes("${hit.fontSize||12}px")],
   ['i18n has excImported ja+en', html.includes("excImported:'Excalidraw を取り込みました'") && html.includes("excImported:'Excalidraw imported'")],
   // v1.7.102: ADR-0044 text paste → text shape
@@ -1455,7 +1462,7 @@ try {
              endRectLike, endLineLike, I18N, applyTheme, editSelectedShapeKbd, Share,
              draw, drawOverlay, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; }, _setOCtx: (c) => { const p = octx; octx = c; return p; },
              _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg,
-             _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio,
+             _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, 
              _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER,
              _getLang: () => LANG, _getT: () => T };
   `);
@@ -1481,7 +1488,7 @@ try {
           _getPasteCount, _resetPasteClipboard,
           endRectLike, endLineLike, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
           _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg,
-          _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, excScene, exportExc, boardToDrawio, exportDrawio,
+          _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, 
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER } = api;
 
   console.log('\n-- behavioural --');
@@ -9472,14 +9479,16 @@ try {
       {type:'arrow',x:5,y:5,points:[[0,0],[30,40]],strokeColor:'#00f'},
       {type:'line',x:0,y:0,points:[[0,0],[10,10],[20,0]]},   // ADR-0097: 3+ points → connector + way[]
       {type:'freedraw',x:100,y:100,points:[[0,0],[5,5],[10,0]]},
-      {type:'text',x:7,y:8,width:60,height:20,text:'hello world',fontSize:24},
+      {type:'text',x:7,y:8,width:60,height:20,text:'hello world',fontSize:24,lineHeight:2,fontFamily:3},
       {type:'frame',x:0,y:0,width:200,height:200,name:'My frame'},
       {type:'rectangle',x:999,y:999,width:5,height:5,isDeleted:true},   // tombstone — skipped
       {type:'image',x:0,y:0,width:10,height:10,fileId:'abc'},           // needs files — skipped
+      {type:'rectangle',x:300,y:300,width:9,height:9,locked:true},      // ADR-0241: lock survives
       {type:'mysteryelement',x:0,y:0,width:1,height:1}                  // unknown — skipped
     ]});
     const sh=excToShapes(scene);
-    assert.ok(sh.length===8,'mapped element count');
+    assert.ok(sh.length===9,'mapped element count');
+    assert.ok(sh[8].locked===1,'locked:true → s.locked (ADR-0241)');
     assert.ok(sh[0].type==='rect'&&sh[0].stroke==='#f00'&&sh[0].fill==='#fee'&&sh[0].size===3&&Math.abs(sh[0].opacity-0.8)<1e-9&&sh[0].dash===1,'style mapping');
     assert.ok(sh[1].type==='ellipse'&&Math.abs(sh[1].rotate-45)<0.11,'angle → rotate');
     assert.ok(sh[2].type==='diamond'&&sh[2].w===20&&sh[2].h===20,'diamond → real type (ADR-0061)');
@@ -9487,6 +9496,7 @@ try {
     assert.ok(sh[4].type==='line'&&sh[4].way.length===1&&sh[4].way[0].x===10&&sh[4].way[0].y===10,'3-point line → connector + way (ADR-0097)');
     assert.ok(sh[5].type==='pen','freedraw → pen');
     assert.ok(sh[6].type==='text'&&sh[6].fontSize===24&&sh[6].text==='hello world','text + fontSize');
+    assert.ok(sh[6].lineH===2&&sh[6].font==='mono','lineHeight+fontFamily → lineH/font (ADR-0242/0243)');
     assert.ok(sh[7].type==='frame'&&sh[7].label==='My frame','frame + name');
     assert.ok(excToShapes('not json')===null,'bad JSON → null');
     assert.ok(excToShapes('{"type":"other"}')===null,'wrong marker → null');
@@ -9512,6 +9522,20 @@ try {
      assert.ok(!rt.some(s=>s.type==='text'&&s.text==='hi'),'round-trip: no orphan container text remains (ADR-0225)');
      assert.ok(rtb.label==='cap','round-trip: labelled box restores s.label via bLabel container text (ADR-0234)');
      assert.ok(!rt.some(s=>s.type==='text'&&s.text==='cap'),'round-trip: no orphan label text remains (ADR-0234)');}
+
+    // ADR-0240: group children carry parent-relative coords in real drawio files.
+    // drawioToShapes needs DOMParser (absent in Node) — assert the parse layer
+    // still returns null here; the offset math is checked by the presence lines.
+    {const xml='<?xml version="1.0"?><mxfile><diagram><mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/>'+
+      '<mxCell id="g" style="rounded=1;" vertex="1" parent="1"><mxGeometry x="100" y="50" width="200" height="200" as="geometry"/></mxCell>'+
+      '<mxCell id="c1" value="kid" style="rounded=0;" vertex="1" parent="g"><mxGeometry x="10" y="20" width="30" height="30" as="geometry"/></mxCell>'+
+      '</root></mxGraphModel></diagram></mxfile>';
+     assert.ok(drawioToShapes(xml)===null,'no DOMParser → drawioToShapes returns null (ADR-0240)');}
+
+    // ADR-0245: hidden shapes export as visible="0" cells (previously dropped)
+    {const xml2=boardToDrawio([{id:'x',type:'rect',x:1,y:2,w:3,h:4,visible:0,stroke:'#000',fill:null,size:2,opacity:1}]);
+     assert.ok(xml2.includes('visible="0"'),'hidden shape exports with visible="0" (ADR-0245)');
+     assert.ok(boardToDrawio([{id:'y',type:'rect',x:0,y:0,w:1,h:1,stroke:'#000',fill:null,size:2,opacity:1}]).indexOf('visible="0"')<0,'visible shape carries no visible attr');}
     console.log('  ✓ excalidraw import (element mapping, styles, tombstones, reject paths)');
   }
 

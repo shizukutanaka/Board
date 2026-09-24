@@ -2,6 +2,35 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.299] - 2026-09-24
+
+### Added
+- .drawio 書き出し/読み込み: visible="0"・shadow=1・fontColor を往復
+  (ADR-0245..0247)。非表示図形は除外せず visible="0" で保持するよう変更
+
+## [1.7.298] - 2026-09-24
+
+### Added
+- .excalidraw 書き出し/読み込み: locked・lineHeight・fontFamily・
+  verticalAlign を往復 (ADR-0241..0244)
+
+## [1.7.297] - 2026-09-24
+
+### Fixed
+- .drawio インポートが出荷時からランタイムで動作しなかった致命的バグを修復
+  (excScene の閉じ括弧欠落により drawioToShapes 系がネストされていた、ADR-0240)
+
+### Added
+- .drawio インポート: グループ/スイムレーン内の子セルの親相対座標を解決し、
+  正しい世界座標へ配置 (ADR-0240)
+
+## [1.7.296]
+
+### 内部変更
+- **style op 共有化** (ADR-0239)。27箇所に重複した
+  `{op:'style'}` コミット定型文を `_styleOp()` へ —
+  約3.1KB削減 (挙動不変、512KB上限内に余裕回復)。
+
 ## [1.7.295]
 
 ### 修正
