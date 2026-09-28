@@ -29,18 +29,29 @@
 ### 1. Input
 `canvas.addEventListener` と `window.addEventListener` で pointer / keyboard / wheel を受ける。ここでは **状態を変更しない**。ツールハンドラに委譲。
 
-#### ジェスチャライフサイクル (v1.7.55x — ADR-0516..0526)
+#### ジェスチャライフサイクル (v1.7.55x–562 — ADR-0516..0534)
 `ptr` (down/dragKind/dragStartShapes/resizeOrig/… の単一構造体) が全ドラッグの
-唯一の状態。pointerdown で `setPointerCapture` + `ptr.down=true`、pointerup で
-コミット、pointercancel / `lostpointercapture` / ドラッグ中の `contextmenu`
-/ touch long-press / Esc で `_cancelPointerGesture()` — いずれも dragKind 別に
-部分変更を復元する統一キャンセル経路。`pointerleave` は hover/laser のみ消去
-(ドラッグは capture で継続)。ドラッグ中の 24px 端帯は rAF エッジオートパン
-(ADR-0519)。`pointerId` は `_pointers` Map で追跡し 2 本目でピンチ遷移。
+唯一の状態。pointerdown で `setPointerCapture` + (右ボタン以外のときのみ)
+`ptr.down=true` — 右 down は即 return (ADR-0532: macOS/Linux の contextmenu は
+mousedown 時点で発火するため、arm するとメニューガードが誤発動した)。
+pointerup でコミット、pointercancel / `lostpointercapture` / ドラッグ中の
+`contextmenu` / touch long-press / Esc / window `blur` で
+`_cancelPointerGesture()` — いずれも dragKind 別に部分変更を復元する統一
+キャンセル経路。blur は同時に `_pointers.clear()` と `_pinchPrev`/`_pinchSnap`
+と space 一時 hand ツール (`window._prevTool`) を再ベースライン化する — 別アプリで
+取りこぼされた pointerup/keyup が後続ジェスチャを壊さないための防壁
+(ADR-0534)。`pointerleave` は hover/laser のみ消去 (ドラッグは capture で継続)。
+ドラッグ中の 24px 端帯は rAF エッジオートパン (ADR-0519)。`pointerId` は
+`_pointers` Map で追跡し 2 本目でピンチ遷移。
 クリップボードの OS 橋渡しは `_cpNow`/`_osClip` + `_textCascade` (SVG →
 .board → .excalidraw → mxfile → TSV → 平文) が paste/drop 双方に効く
 (ADR-0516/0518)。Safari の GestureEvent は gesturestart/change/end で
 `_gScale` 比ズームに変換 (ADR-0517)。
+
+`openTextEditor` は `byId(s.id)` で live 図形を再解決してから bind する
+(ADR-0533) — `add` コミットは `_sh()` に clone を載せるため、呼び出し側が
+持つ clone 前参照へ書き込むと live 図形だけが `text:''` のまま残る
+(ローカルのみ不可視化・ピアは `upd` で正しいテキストを得ていた)。
 
 ### 2. Tools
 現在のツール (`state.tool`) に応じて `begin* / cont* / end*` の三段階で gesture を処理。途中状態は `state.draft` に置く (undo に入れない)。`end*` で Store.commit。

@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.563] - 2026-09-28
+### Docs
+- architecture.md のジェスチャライフサイクル節を ADR-0532/0533/0534 に同期 (右 down の早期 return・openTextEditor の live 再解決・blur リセット防壁)
+
 ## [1.7.562] - 2026-09-28
 ### Fixed
 - ウィンドウ blur で取りこぼされた pointerup が後続ジェスチャを壊す問題を修正 (ADR-0534) — `ptr.down`/`_pointers`/`_pinchPrev`/`_pinchSnap` を blur で再ベースライン化。ジェスチャ中の ⌘Tab / OS オーバーレイ後にドラッグが失敗し続ける固着を解消
