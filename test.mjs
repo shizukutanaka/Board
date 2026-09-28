@@ -7171,6 +7171,21 @@ try {
     console.log('  ✓ grot bound anchors: aF remap, idempotent re-drag, undo (4 asserts)');
   }
 
+  // ADR-0588: conn OUTSIDE the selection still mirrors aF when its bound flips
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+    const bx=Shape.make('rect',{x:0,y:0,w:100,h:50});
+    const ar=Shape.make('arrow',{x1:0,y1:25,x2:200,y2:25,a:bx.id,aF:{fx:0,fy:0.5}});
+    Store.commit({op:'add',shape:bx});Store.commit({op:'add',shape:ar});
+    state.selection=new Set([bx.id]);                     // conn NOT selected
+    doFlip('h');
+    const f=byId(ar.id).aF;
+    assert.strictEqual(f.fx,1,'unselected conn mirrors aF when bound shape flips, got '+f.fx);
+    Store.undo();
+    assert.strictEqual(byId(ar.id).aF.fx,0,'undo restores unselected conn aF');
+    console.log('  ✓ flip unselected-conn anchor: aF mirror + undo (2 asserts)');
+  }
+
   // search navigation a11y: SR users search BY content, so the announcement must name
   // WHICH shape was found (describeShape), not a bare "2/7" count — parity with Tab cycle.
   {

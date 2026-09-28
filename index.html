@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.614';
+const V='1.7.615';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6305,7 +6305,16 @@ function doFlip(axis){
     if(s.aF&&flipIds.has(s.a)){if(axis==='h')s.aF.fx=1-s.aF.fx;else s.aF.fy=1-s.aF.fy}
     if(s.bF&&flipIds.has(s.b)){if(axis==='h')s.bF.fx=1-s.bF.fx;else s.bF.fy=1-s.bF.fy}
   }
+  // ADR-0588: a conn OUTSIDE the selection whose bound shape flipped also needs
+  // its fraction mirrored — the bound extent maps fraction f to 1−f across the
+  // flip centre, so an unmirrored {0,·} anchor jumps to the opposite edge.
+  const _mC=[];for(const s of _sh())if(_conn(s.type)&&!flipIds.has(s.id)&&((s.aF&&flipIds.has(s.a))||(s.bF&&flipIds.has(s.b))))_mC.push(s);
+  for(const s of _mC){before.push(clone(s));
+    if(s.aF&&flipIds.has(s.a)){if(axis==='h')s.aF.fx=1-s.aF.fx;else s.aF.fy=1-s.aF.fy}
+    if(s.bF&&flipIds.has(s.b)){if(axis==='h')s.bF.fx=1-s.bF.fx;else s.bF.fy=1-s.bF.fy}
+  }
   const after=sel.map(clone);
+  for(const s of _mC)after.push(clone(s));
   _rcOp({op:'align',dir:'flip',before,after});
   _ivp();
   _ann(t(axis==='h'?'ctxFlipH':'ctxFlipV'));
