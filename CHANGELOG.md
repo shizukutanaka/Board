@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.553] - 2026-09-28
+
+### 変更
+
+- canvas プロパティ代入の shorthand 化 — `_fsS`/`_ssS`/`_lnW`/`_gaS`/`_taS`/`_tbS` (fillStyle/strokeStyle/lineWidth/globalAlpha/textAlign/textBaseline) で単純値サイト 79 箇所を畳み込み ~340B 回収。複合式サイトは値境界が曖昧なため残置 (ADR-0520)
+
 ## [1.7.552] - 2026-09-28
 
 ### 修正

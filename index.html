@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.552';
+const V='1.7.553';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1834,7 +1834,7 @@ function _hatchSegs(x,y,w,h,gap,cross){
 // Canvas hatch: clip() reuses the still-current shape path (stroke doesn't consume it).
 function _hatchCtx(c,s){
   const segs=_hatchSegs(s.x,s.y,s.w,s.h,_max(6,(_szz(s)||1)*4),_fs2(s)==='cross');
-  _sv2(c);c.clip();c.globalAlpha=0.55;
+  _sv2(c);c.clip();_gaS(c,0.55);
   c.strokeStyle=_sk(s)||_IK;c.lineWidth=_max(0.5,(_szz(s)||1)*0.6);_sD(c,[]);
   _bp(c);for(const g of segs){_mT(c,g[0],g[1]);_lT(c,g[2],g[3])}_st2(c);
   _rs2(c);
@@ -2023,6 +2023,7 @@ const _sD=(c,d)=>c.setLineDash(d),_mTX=(c,s)=>c.measureText(s),_sR2=(c,x,y,w,h)=
 const _cmt=o=>Store.commit(o),_ann=m=>UI.announce(m),_oURL=b=>URL.createObjectURL(b),_oS=(tx,n)=>tx.objectStore(n),_pA=()=>Presentation.isActive();   // ADR-0513
 const _smk=(t,x)=>Shape.make(t,x),_sT2=(s,dx,dy)=>Shape.translate(s,dx,dy),_rZ=()=>UI.refreshZoom(),_trx=(db,t,n)=>db.transaction(t,n),_fT=(c,s,x,y)=>c.fillText(s,x,y),_pu=(a,...v)=>a.push(...v);   // ADR-0514
 const _sK=e=>e.shiftKey,_aK=e=>e.altKey,_mod=e=>e.metaKey||e.ctrlKey;   // ADR-0515: modifier-key reads
+const _fsS=(c,v)=>c.fillStyle=v,_ssS=(c,v)=>c.strokeStyle=v,_lnW=(c,v)=>c.lineWidth=v,_gaS=(c,v)=>c.globalAlpha=v,_taS=(c,v)=>c.textAlign=v,_tbS=(c,v)=>c.textBaseline=v;   // ADR-0520: canvas prop-assignment setters
 const _hb=s=>s.w!=null;   // ADR-0501
 const _idOK=id=>_iS(id)&&_ln(id)<=64;   // ADR-0502: wire id cap (ADR-0485): unlocked+visible predicate (4 sites)
 const _idIdx=id=>_sh().findIndex(s=>s.id===id);   // ADR-0497: shape index by id (4 sites)
@@ -2180,7 +2181,7 @@ function _inkGrow(d,pad){
   const n2=_g2(ncv);
   n2.drawImage(d.cv,(d.bx-mnx)*d.R,(d.by-mny)*d.R);
   n2.setTransform(d.R,0,0,d.R,-mnx*d.R,-mny*d.R);
-  n2.fillStyle=d.stroke;
+  _fsS(n2,d.stroke);
   d.cv=ncv;d.c2=n2;d.bx=mnx;d.by=mny;d.bw=mxx-mnx;d.bh=mxy-mny;
 }
 function drawPenDraft(s){
@@ -2433,7 +2434,7 @@ function draw(){
     // pinching; _lastVp=null so the post-gesture frame repaints for real.
     const z0=_pinchVp.zoom*DPR;
     _sTF(ctx,1,0,0,1,0,0);
-    ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+    _fsS(ctx,bg);ctx.fillRect(0,0,W,H);
     ctx.drawImage(_pinchSnap,0,0,W,H,(_pinchVp.x-v.x)*z,(_pinchVp.y-v.y)*z,W*z/z0,H*z/z0);
     _lastVp=null;
     return;
@@ -2462,7 +2463,7 @@ function draw(){
       _sTF(ctx,z,0,0,z,-ev.x*z,-ev.y*z);
       _sv2(ctx);
       _bp(ctx);for(const r of clipRects)ctx.rect(r.x,r.y,r.w,r.h);ctx.clip();
-      ctx.fillStyle=bg;ctx.fillRect(ev.x,ev.y,Ww,Hh);
+      _fsS(ctx,bg);ctx.fillRect(ev.x,ev.y,Ww,Hh);
     }
   }else if(dmg){
     // ADR-0026: clip to the accumulated damage rect and repaint just it — the
@@ -2470,10 +2471,10 @@ function draw(){
     _sTF(ctx,z,0,0,z,-v.x*z,-v.y*z);
     _sv2(ctx);
     _bp(ctx);ctx.rect(dmg.x,dmg.y,dmg.w,dmg.h);ctx.clip();
-    ctx.fillStyle=bg;ctx.fillRect(dmg.x,dmg.y,dmg.w,dmg.h);
+    _fsS(ctx,bg);ctx.fillRect(dmg.x,dmg.y,dmg.w,dmg.h);
     clipRects=[dmg];
   }else{
-    ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+    _fsS(ctx,bg);ctx.fillRect(0,0,W,H);
     _sTF(ctx,z,0,0,z,-v.x*z,-v.y*z);
   }
 
@@ -2515,7 +2516,7 @@ function draw(){
         const _oc=ctx.lineCap,_ow=ctx.lineWidth;
         ctx.strokeStyle=_df().stroke;ctx.lineCap='round';ctx.lineWidth=_pw[_pl-1];
         _bp(ctx);_mT(ctx,_pp[_pl-1][0],_pp[_pl-1][1]);_lT(ctx,_penPred.x,_penPred.y);_st2(ctx);
-        ctx.lineCap=_oc;ctx.lineWidth=_ow;
+        ctx.lineCap=_oc;_lnW(ctx,_ow);
       }
     }
   }
@@ -2548,14 +2549,14 @@ function drawOverlay(){
   for(const[,members] of _grpMapGet()){
     const b=_bA(members);if(!b)continue;
     const p1=_w2({x:b.x-4,y:b.y-4}),p2=_w2({x:b.x+b.w+4,y:b.y+b.h+4});
-    c.strokeStyle='rgba(0,196,204,.3)';c.lineWidth=1;_sD(c,[4,4]);
+    _ssS(c,'rgba(0,196,204,.3)');_lnW(c,1);_sD(c,[4,4]);
     _sR2(c,p1.x,p1.y,p2.x-p1.x,p2.y-p1.y);_sD(c,[]);
   }
   // ADR-0177: eraser hover target (red dashed bbox, locked excluded upstream).
   if(state._ehov&&_tl()==='eraser'){
     const es=byId(state._ehov);
     if(es){const eb=_bb(es),ep1=_w2({x:eb.x-3,y:eb.y-3}),ep2=_w2({x:eb.x+eb.w+3,y:eb.y+eb.h+3});
-      c.strokeStyle='#EF4444';c.lineWidth=1.5;_sD(c,[5,4]);
+      _ssS(c,'#EF4444');_lnW(c,1.5);_sD(c,[5,4]);
       _sR2(c,ep1.x,ep1.y,ep2.x-ep1.x,ep2.y-ep1.y);_sD(c,[]);}
   }
   drawSelection(c);
@@ -2564,18 +2565,18 @@ function drawOverlay(){
   if(ptr.down&&_ro()){                                        // ADR-0064: only while a gesture is live
     const r=_ro(),sp=_w2({x:r.x,y:r.y});
     _sv2(c);
-    c.font='11px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';
+    c.font='11px system-ui,sans-serif';_taS(c,'center');_tbS(c,'middle');
     const tw=_mTX(c,r.label).width+14,ph=18,px=sp.x,py=sp.y+14;
-    c.fillStyle='rgba(15,23,42,.85)';
+    _fsS(c,'rgba(15,23,42,.85)');
     _bp(c);roundRect(c,px-tw/2,py,tw,ph,4);_fil(c);
-    c.fillStyle='#fff';_fT(c,r.label,px,py+ph/2);
+    _fsS(c,'#fff');_fT(c,r.label,px,py+ph/2);
     _rs2(c);
   }
   const _qs=_qconnShape();                                             // ADR-0070
   if(_qs){
     _sv2(c);
     c.fillStyle=_ac();
-    c.strokeStyle='#fff';c.lineWidth=1.5;
+    _ssS(c,'#fff');_lnW(c,1.5);
     for(const d of _qdots(_qs)){
       const sp=_w2(d);
       _bp(c);c.arc(sp.x,sp.y,5,0,_PI*2);_fil(c);_st2(c);
@@ -2587,19 +2588,19 @@ function drawOverlay(){
     if(t){
       const b=_bb(t),p1=_w2({x:b.x,y:b.y}),p2=_w2({x:b.x+b.w,y:b.y+b.h});
       _sv2(c);
-      c.strokeStyle=_ac();c.lineWidth=2;_sD(c,[6,4]);
+      c.strokeStyle=_ac();_lnW(c,2);_sD(c,[6,4]);
       _sR2(c,p1.x-3,p1.y-3,p2.x-p1.x+6,p2.y-p1.y+6);
       _rs2(c);
     }
   }
   if(_mq())drawMarquee(c);
   if(_la()&&_la().length>1){                            // ADR-0158
-    _sv2(c);c.fillStyle='rgba(0,196,204,.08)';c.strokeStyle=_ac();c.lineWidth=1;_sD(c,[4,4]);
+    _sv2(c);_fsS(c,'rgba(0,196,204,.08)');c.strokeStyle=_ac();_lnW(c,1);_sD(c,[4,4]);
     _bp(c);const _p0=_w2(_la()[0]);_mT(c,_p0.x,_p0.y);
     for(let i=1;i<_la().length;i++){const p=_w2(_la()[i]);_lT(c,p.x,p.y)}
     _cP(c);_fil(c);_st2(c);_rs2(c);
   }
-  if(_laser&&_pA()){const lp=_w2(_laser);_bp(c);c.arc(lp.x,lp.y,8,0,PI2);c.fillStyle='rgba(255,50,50,.75)';_fil(c);}
+  if(_laser&&_pA()){const lp=_w2(_laser);_bp(c);c.arc(lp.x,lp.y,8,0,PI2);_fsS(c,'rgba(255,50,50,.75)');_fil(c);}
   drawPeerSelections(c);   // ADR-0011 (before cursors: pointer renders on top of frames)
   drawPeerCursors(c);   // ADR-0010
 }
@@ -2608,7 +2609,7 @@ function drawOverlay(){
 // instant a shape is added (_nS() check at the call site).
 function drawEmptyHint(c,W,H){
   c.fillStyle=_gC('--ink-3');   // tertiary text token: 4.7:1 AA, deliberately muted
-  c.textAlign='center';c.textBaseline='middle';
+  _taS(c,'center');_tbS(c,'middle');
   c.font='14px '+(_gC('--ui-font')||'system-ui,sans-serif');
   _fT(c,t('emptyHint'),W/(2*DPR),H/(2*DPR));
 }
@@ -2621,7 +2622,7 @@ function drawPeerSelections(c){
   if(_pA())return;   // same rationale as drawPeerCursors
   for(const p of _pr().values()){
     if(!p.sel||!_ln(p.sel))continue;
-    c.strokeStyle=p.color;c.lineWidth=1;_sD(c,[3,3]);
+    _ssS(c,p.color);_lnW(c,1);_sD(c,[3,3]);
     for(const id of p.sel){
       const s=byId(id);if(!s)continue;      // peer may reference a shape we since deleted
       const b=_bb(s);if(!b)continue;
@@ -2640,13 +2641,13 @@ function drawPeerCursors(c){
     if(!p.cursor)continue;
     const sp=_w2(p.cursor);
     _bp(c);c.arc(sp.x,sp.y,5,0,PI2);
-    c.fillStyle=p.color;_fil(c);
-    c.lineWidth=1.5;c.strokeStyle=_p();_st2(c);
+    _fsS(c,p.color);_fil(c);
+    _lnW(c,1.5);c.strokeStyle=_p();_st2(c);
   }
 }
 function drawGuides(c){
   if(!_gd()||!_gd().length)return;
-  c.strokeStyle=_ac();c.lineWidth=1;_sD(c,[4,4]);   // a11y-audit-2026-07
+  c.strokeStyle=_ac();_lnW(c,1);_sD(c,[4,4]);   // a11y-audit-2026-07
   for(const g of _gd()){
     const p1=_w2({x:g.x1,y:g.y1}),p2=_w2({x:g.x2,y:g.y2});
     _bp(c);_mT(c,p1.x,p1.y);_lT(c,p2.x,p2.y);_st2(c);
@@ -2666,8 +2667,8 @@ function _drawMeasure(c){
   else if(b.x+b.w<a.x)_pu(segs,{x1:b.x+b.w,y1:ymid,x2:a.x,y2:ymid});
   if(a.y+a.h<b.y)_pu(segs,{x1:xmid,y1:a.y+a.h,x2:xmid,y2:b.y});
   else if(b.y+b.h<a.y)_pu(segs,{x1:xmid,y1:b.y+b.h,x2:xmid,y2:a.y});
-  _sv2(c);c.strokeStyle=_ac();c.lineWidth=1;
-  c.font='11px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';
+  _sv2(c);c.strokeStyle=_ac();_lnW(c,1);
+  c.font='11px system-ui,sans-serif';_taS(c,'center');_tbS(c,'middle');
   for(const s of segs){
     const p1=_w2({x:s.x1,y:s.y1}),p2=_w2({x:s.x2,y:s.y2});
     _bp(c);_mT(c,p1.x,p1.y);_lT(c,p2.x,p2.y);_st2(c);
@@ -2675,8 +2676,8 @@ function _drawMeasure(c){
     for(const p of [p1,p2]){_bp(c);_mT(c,p.x-ex*4,p.y-ey*4);_lT(c,p.x+ex*4,p.y+ey*4);_st2(c)}
     const label=_St(_rnd(L)),tw=_mTX(c,label).width+12;
     const mx=(p1.x+p2.x)/2,my=(p1.y+p2.y)/2;
-    c.fillStyle='rgba(15,23,42,.85)';_bp(c);roundRect(c,mx-tw/2,my-9,tw,18,4);_fil(c);
-    c.fillStyle='#fff';_fT(c,label,mx,my);
+    _fsS(c,'rgba(15,23,42,.85)');_bp(c);roundRect(c,mx-tw/2,my-9,tw,18,4);_fil(c);
+    _fsS(c,'#fff');_fT(c,label,mx,my);
   }
   _rs2(c);
 }
@@ -2694,14 +2695,14 @@ function drawGrid(W,H){
   const x0=_fl(wl/gs)*gs, y0=_fl(wt/gs)*gs;
 
   const color=_gC('--line');
-  ctx.strokeStyle=color;
+  _ssS(ctx,color);
   ctx.lineWidth=1/(v.zoom*DPR);
   ctx.globalAlpha=_min(1,(gsZ-6)/10);
   _bp(ctx);
   for(let x=x0;x<=wr;x+=gs){_mT(ctx,x,wt);_lT(ctx,x,wb)}
   for(let y=y0;y<=wb;y+=gs){_mT(ctx,wl,y);_lT(ctx,wr,y)}
   _st2(ctx);
-  ctx.globalAlpha=1;
+  _gaS(ctx,1);
 }
 // Effective render rotation. Only box shapes (x/y/w/h present) have a meaningful
 // rotation centre; line/arrow/pen are point geometry, so a stray `rotate` (only
@@ -2718,14 +2719,14 @@ function _drawBoxLabel(s,c){
   const fs=_fS(s)||14;   // ADR-0169
   c.font=_fontStr(s,fs);   // ADR-0170
   const al=s.align||'center';   // ADR-0171: label honours horizontal align
-  c.textAlign=al==='left'?'left':al==='right'?'right':'center';c.textBaseline='middle';
+  c.textAlign=al==='left'?'left':al==='right'?'right':'center';_tbS(c,'middle');
   const tx=al==='left'?s.x+6:al==='right'?s.x+s.w-6:s.x+s.w/2;
   const lines=wrapTextCached(s,_lb(s),_max(10,s.w-8),fs,t=>_mTX(c,t).width);   // ADR-0074
   const lh=fs*(s.lineH||1.25);
   // ADR-0159: _va(s) 'top'|'bottom' (absent = centred) — draw.io parity.
   const top0=_va(s)==='top'?s.y+6:_va(s)==='bottom'?s.y+s.h-6-_ln(lines)*lh:s.y+s.h/2-(_ln(lines)*lh)/2;
   for(let i=0;i<_ln(lines);i++)_fT(c,lines[i],tx,top0+lh/2+i*lh);
-  if(s.under||s.strike){c.strokeStyle=c.fillStyle;c.lineWidth=_max(1,fs*0.06);   // ADR-0170
+  if(s.under||s.strike){_ssS(c,c.fillStyle);c.lineWidth=_max(1,fs*0.06);   // ADR-0170
     const _lw2=_connLabelMeasure(s,c,lines,fs).ws;             // ADR-0252
     for(let i=0;i<_ln(lines);i++){const lw=_lw2[i];
       const ux=al==='left'?tx:al==='right'?tx-lw:tx-lw/2;      // ADR-0171
@@ -2744,11 +2745,11 @@ function _drawImgLabel(s,c){
   const lh=fs*(s.lineH||1.25),maxL=_max(1,_fl((s.h-4)/lh));
   if(_ln(lines)>maxL){lines=_s0(lines,maxL);lines[maxL-1]+='…'}
   const sh_=_ln(lines)*lh+4,sy=_va(s)==='top'?s.y:s.y+s.h-sh_;   // ADR-0179
-  c.fillStyle=_fi(s)&&_fi(s)!=='none'?_fi(s):_p()||'#fff';c.globalAlpha=0.85;   // ADR-0288
+  c.fillStyle=_fi(s)&&_fi(s)!=='none'?_fi(s):_p()||'#fff';_gaS(c,0.85);   // ADR-0288
   c.fillRect(s.x,sy,s.w,sh_);
-  c.globalAlpha=1;c.fillStyle=_sk(s)||_IK;
+  _gaS(c,1);c.fillStyle=_sk(s)||_IK;
   const al2=s.align||'center';   // ADR-0171
-  c.textAlign=al2==='left'?'left':al2==='right'?'right':'center';c.textBaseline='middle';
+  c.textAlign=al2==='left'?'left':al2==='right'?'right':'center';_tbS(c,'middle');
   const tx2=al2==='left'?s.x+6:al2==='right'?s.x+s.w-6:s.x+s.w/2;
   for(let i=0;i<_ln(lines);i++)_fT(c,lines[i],tx2,sy+2+lh/2+i*lh);
   _rs2(c);
@@ -2833,7 +2834,7 @@ function _drawConnLabel(s,c){
   const lp=_connLabelXY(s),mx=lp.x,my=lp.y;                       // ADR-0081
   _sv2(c);_noSh(c);   // ADR-0211: label never shadows
   const fs=_fS(s)||12;   // ADR-0169
-  c.font=_fontStr(s,fs);c.textAlign='center';c.textBaseline='middle';   // ADR-0170
+  c.font=_fontStr(s,fs);_taS(c,'center');_tbS(c,'middle');   // ADR-0170
   const lns=_St(_lb(s)).split('\n'),llh=fs*(s.lineH||1.25),pad=4;   // ADR-0210/0212
   const _lm=_connLabelMeasure(s,c,lns,fs),w=_lm.w;             // ADR-0252: measureText was per-frame per-line
   const th=_ln(lns)*llh;
@@ -2841,7 +2842,7 @@ function _drawConnLabel(s,c){
   c.fillRect(mx-w/2-pad,my-th/2,w+pad*2,th)}
   c.fillStyle=_sk(s)||_IK;
   for(let i=0;i<_ln(lns);i++)_fT(c,lns[i],mx,my+(i-(_ln(lns)-1)/2)*llh);
-  if(s.under||s.strike){c.strokeStyle=c.fillStyle;c.lineWidth=_max(1,fs*0.06);   // ADR-0170
+  if(s.under||s.strike){_ssS(c,c.fillStyle);c.lineWidth=_max(1,fs*0.06);   // ADR-0170
     for(let i=0;i<_ln(lns);i++){const lw=_lm.ws[i],ly=my+(i-(_ln(lns)-1)/2)*llh;
       if(s.under){_bp(c);_mT(c,mx-lw/2,ly+fs*0.55);_lT(c,mx+lw/2,ly+fs*0.55);_st2(c)}
       if(s.strike){_bp(c);_mT(c,mx-lw/2,ly);_lT(c,mx+lw/2,ly);_st2(c)}}}
@@ -2911,7 +2912,7 @@ function drawShape(s,c){
         if(_sk(s)&&_szz(s)){c.strokeStyle=_sk(s);c.lineWidth=_szz(s);
           _sD(c,dashArr(s.dash||0,_szz(s)));                     // ADR-0178
           _bp(c);roundRect(c,s.x,s.y,s.w,s.h,_cr);_st2(c);_sD(c,[])}}   // ADR-0149
-      else{c.strokeStyle=_sk(s)||'#CBD5E1';c.lineWidth=1;_sR2(c,s.x,s.y,s.w,s.h)}
+      else{c.strokeStyle=_sk(s)||'#CBD5E1';_lnW(c,1);_sR2(c,s.x,s.y,s.w,s.h)}
       _drawImgLabel(s,c);                                         // ADR-0083
       break;}
     case 'frame':{
@@ -2933,17 +2934,17 @@ function drawShape(s,c){
       const fs=_fS(s)||12;   // ADR-0298
       c.fillStyle=_sk(s)||_gC('--brand')||'#00C4CC';
       c.font=`${s.italic?'italic ':''}600 ${fs}px ${_fontFam(s)}`;  // ADR-0186/0204
-      c.textBaseline='bottom';
+      _tbS(c,'bottom');
       const alF=s.align||'left';                                    // ADR-0197
       c.textAlign=alF==='right'?'right':alF==='center'?'center':'left';
       const txF2=alF==='right'?s.x+s.w-6:alF==='center'?s.x+s.w/2:s.x+6;
       _fT(c,lbl,txF2,s.y-2);
       if(s.under||s.strike){const lw=_connLabelMeasure(s,c,[lbl],fs).w;   // ADR-0252/0204
-        c.strokeStyle=c.fillStyle;c.lineWidth=_max(1,fs*0.06);
+        _ssS(c,c.fillStyle);c.lineWidth=_max(1,fs*0.06);
         const ux=alF==='left'?txF2:alF==='right'?txF2-lw:txF2-lw/2;
         if(s.under){const uy=s.y-2+fs*0.12;_bp(c);_mT(c,ux,uy);_lT(c,ux+lw,uy);_st2(c)}
         if(s.strike){const uy=s.y-2-fs*0.45;_bp(c);_mT(c,ux,uy);_lT(c,ux+lw,uy);_st2(c)}}
-      c.textAlign='left';
+      _taS(c,'left');
       _rs2(c);
       break;}
     case 'sticky':{
@@ -2952,12 +2953,12 @@ function drawShape(s,c){
       c.shadowColor='rgba(0,0,0,.08)';c.shadowBlur=8;c.shadowOffsetY=2;
       _bp(c);roundRect(c,s.x,s.y,s.w,s.h,r);_fil(c);
       _noSh(c);
-      c.strokeStyle='rgba(0,0,0,.06)';c.lineWidth=1;_st2(c);
+      _ssS(c,'rgba(0,0,0,.06)');_lnW(c,1);_st2(c);
       // text
       if(_txx(s)){
         const fs=_fS(s)||14;
         c.fillStyle=_sk(s)||'#1E293B';c.font=_fontStr(s,fs);  // ADR-0192
-        c.textBaseline='top';
+        _tbS(c,'top');
         const lh=fs*(s.lineH||1.3), pad=8;
         const lines=wrapTextCached(s,_txx(s),_abs(s.w)-pad*2,fs,t=>_mTX(c,t).width);
         _sv2(c);_bp(c);roundRect(c,s.x,s.y,s.w,s.h,r);c.clip();
@@ -2977,7 +2978,7 @@ function drawShape(s,c){
       }
       break;}
   }
-  c.globalAlpha=1;c.letterSpacing='0px';
+  _gaS(c,1);c.letterSpacing='0px';
   _noSh(c);   // ADR-0211
   _sD(c,[]);
   if(_rot)_rs2(c);
@@ -3210,20 +3211,20 @@ function _arrowHeadShape(c,x,y,ang,ah,stroke,style){
   const a1=ang+_PI-0.5,a2=ang+_PI+0.5;
   const col=stroke||_IK;
   if(style==='dot'){
-    _bp(c);c.arc(x,y,ah*0.35,0,PI2);c.fillStyle=col;_fil(c);return;
+    _bp(c);c.arc(x,y,ah*0.35,0,PI2);_fsS(c,col);_fil(c);return;
   }
   if(style==='open'||style==='bar'){                              // ADR-0294
     _bp(c);
     _mT(c,x+_cos(a1)*ah,y+_sin(a1)*ah);
     if(style==='open')_lT(c,x,y);
     _lT(c,x+_cos(a2)*ah,y+_sin(a2)*ah);
-    c.strokeStyle=col;_st2(c);return;
+    _ssS(c,col);_st2(c);return;
   }
   _bp(c);
   _mT(c,x,y);
   _lT(c,x+_cos(a1)*ah,y+_sin(a1)*ah);
   _lT(c,x+_cos(a2)*ah,y+_sin(a2)*ah);
-  _cP(c);c.fillStyle=col;_fil(c);
+  _cP(c);_fsS(c,col);_fil(c);
 }
 // ADR-0068: quadratic-bezier route for curved connectors. Control point is the
 // midpoint pushed along the left normal by bend=min(0.25*len,80).
@@ -3301,7 +3302,7 @@ function drawPen(s,c){
   const w=penWidths(p,_szz(s)),oldFill=c.fillStyle;
   c.fillStyle=_sk(s);
   _penFillRange(c,p,w,n,0,n-1);
-  c.fillStyle=oldFill;
+  _fsS(c,oldFill);
 }
 // ADR-0078: shared font declaration — bold/italic flags prepend weight/posture.
 // ADR-0173: _ftt(s) selects the family stack — 'mono'|'serif'|absent(system).
@@ -3321,7 +3322,7 @@ function drawText(s,c){
   c.fillStyle=_sk(s)||_IK;
   const fs=_fS(s)||16;
   c.font=_fontStr(s,fs);                                    // ADR-0078
-  c.textBaseline='top';
+  _tbS(c,'top');
   const lines=s.wrap?wrapTextCached(s,_txx(s)||'',_abs(s.w),fs,t=>_mTX(c,t).width):(_txx(s)||'').split('\n');   // ADR-0208
   const lh=fs*(s.lineH||1.25);
   c.textAlign=s.align==='center'?'center':s.align==='right'?'right':'left';   // ADR-0073
@@ -3342,9 +3343,9 @@ function drawText(s,c){
       if(s.under){const uy=s.y+i*lh+fs*1.08;_bp(c);_mT(c,ux,uy);_lT(c,ux+lw,uy);_st2(c)}
       if(s.strike){const uy=s.y+i*lh+fs*0.55;_bp(c);_mT(c,ux,uy);_lT(c,ux+lw,uy);_st2(c)}}   // ADR-0100
     _rs2(c)}
-  if(s.link&&_hb(s)){c.font='10px sans-serif';c.textAlign='right';c.textBaseline='top';_fT(c,'🔗',s.x+_abs(s.w)-3,s.y+3)}   // ADR-0310: link badge top-right
-  if(s.link&&_conn(s.type)){const lp=_connLabelXY(s);c.font='10px sans-serif';c.textAlign='center';c.textBaseline='middle';_fT(c,'🔗',lp.x+10,lp.y-10)}   // ADR-0333: badge at label anchor (offset so it doesn't sit on the line)
-  if(s.link&&_pn(s)&&s.pts[0]){c.font='10px sans-serif';c.textAlign='left';c.textBaseline='bottom';_fT(c,'🔗',s.pts[0][0]+4,s.pts[0][1]-2)}   // ADR-0333
+  if(s.link&&_hb(s)){c.font='10px sans-serif';_taS(c,'right');_tbS(c,'top');_fT(c,'🔗',s.x+_abs(s.w)-3,s.y+3)}   // ADR-0310: link badge top-right
+  if(s.link&&_conn(s.type)){const lp=_connLabelXY(s);c.font='10px sans-serif';_taS(c,'center');_tbS(c,'middle');_fT(c,'🔗',lp.x+10,lp.y-10)}   // ADR-0333: badge at label anchor (offset so it doesn't sit on the line)
+  if(s.link&&_pn(s)&&s.pts[0]){c.font='10px sans-serif';_taS(c,'left');_tbS(c,'bottom');_fT(c,'🔗',s.pts[0][0]+4,s.pts[0][1]-2)}   // ADR-0333
 }
 
 // Rotate point (px,py) about centre (cx,cy) by `deg` degrees. Shared by handles,
@@ -3639,7 +3640,7 @@ function drawSelection(c){
   const lockedSel=sel.every(_lk);
   const single=_selN()===1?sel[0]:null;
   c.strokeStyle=_ac();   // a11y-audit-2026-07
-  c.lineWidth=1.5;_sD(c,lockedSel?[5,4]:[]);
+  _lnW(c,1.5);_sD(c,lockedSel?[5,4]:[]);
   if(single&&single.rotate&&single.w!=null){
     // rotated box: trace the rotated rectangle so the outline hugs the shape
     const cx=single.x+single.w/2,cy=single.y+single.h/2,rot=single.rotate;
@@ -3654,7 +3655,7 @@ function drawSelection(c){
     // ADR-0172: padlock badge (draw.io parity) — the dashed outline alone
     // doesn't clearly read as "this is locked". Top-left, inside the bbox.
     const lx=x+3,ly=y+3;
-    c.fillStyle=_p();c.strokeStyle=_gC('--brand-ink');c.lineWidth=1.5;
+    c.fillStyle=_p();c.strokeStyle=_gC('--brand-ink');_lnW(c,1.5);
     _bp(c);roundRect(c,lx,ly,16,12,2);_fil(c);_st2(c);
     _bp(c);c.arc(lx+8,ly,4,_PI,0);_st2(c);               // shackle
     c.fillStyle=_gC('--ink');
@@ -3666,7 +3667,7 @@ function drawSelection(c){
     const hs=HANDLE_SIZE;
     c.fillStyle=_p();
     c.strokeStyle=_gC('--brand-ink');  // dark ring: AAA non-text contrast vs cyan
-    c.lineWidth=1.5;
+    _lnW(c,1.5);
     for(const h of getHandles(sh)){
       const sp=_w2({x:h.x,y:h.y});
       c.fillRect(sp.x-hs/2,sp.y-hs/2,hs,hs);
@@ -3676,7 +3677,7 @@ function drawSelection(c){
     const rh=getRotHandle(sh);
     if(rh){
       const kp=_w2({x:rh.x,y:rh.y}),ap=_w2({x:rh.ax,y:rh.ay});
-      c.strokeStyle=_ac();c.lineWidth=1.5;   // a11y-audit-2026-07
+      c.strokeStyle=_ac();_lnW(c,1.5);   // a11y-audit-2026-07
       _bp(c);_mT(c,ap.x,ap.y);_lT(c,kp.x,kp.y);_st2(c);
       c.fillStyle=_p();c.strokeStyle=_gC('--brand-ink');
       _bp(c);c.arc(kp.x,kp.y,hs/2,0,PI2);_fil(c);_st2(c);
@@ -3714,7 +3715,7 @@ function drawSelection(c){
     // express.
     if(!sel.some(_rt)){
       const hs=HANDLE_SIZE;
-      c.fillStyle=_p();c.strokeStyle=_gC('--brand-ink');c.lineWidth=1.5;
+      c.fillStyle=_p();c.strokeStyle=_gC('--brand-ink');_lnW(c,1.5);
       for(const h of getHandles({x:b.x,y:b.y,w:b.w,h:b.h})){
         const sp=_w2({x:h.x,y:h.y});
         c.fillRect(sp.x-hs/2,sp.y-hs/2,hs,hs);
@@ -3726,7 +3727,7 @@ function drawSelection(c){
     const gr=_grpRotHandle(b);
     const gkp=_w2({x:gr.x,y:gr.y}),gap=_w2({x:gr.ax,y:gr.ay});
     const hs2=HANDLE_SIZE;
-    c.strokeStyle=_ac();c.lineWidth=1.5;
+    c.strokeStyle=_ac();_lnW(c,1.5);
     _bp(c);_mT(c,gap.x,gap.y);_lT(c,gkp.x,gkp.y);_st2(c);
     c.fillStyle=_p();c.strokeStyle=_gC('--brand-ink');
     _bp(c);c.arc(gkp.x,gkp.y,hs2/2,0,PI2);_fil(c);_st2(c);
@@ -3746,10 +3747,10 @@ function drawMarquee(c){
   const p1=_w2({x:m.x1,y:m.y1}),p2=_w2({x:m.x2,y:m.y2});
   const x=_min(p1.x,p2.x),y=_min(p1.y,p2.y);
   const w=_abs(p2.x-p1.x),h=_abs(p2.y-p1.y);
-  c.fillStyle='rgba(0,196,204,.08)';
+  _fsS(c,'rgba(0,196,204,.08)');
   c.fillRect(x,y,w,h);
   c.strokeStyle=_ac();   // a11y-audit-2026-07
-  c.lineWidth=1;
+  _lnW(c,1);
   _sD(c,[4,4]);
   _sR2(c,x,y,w,h);
   _sD(c,[]);
@@ -9823,11 +9824,11 @@ const Minimap=(()=>{
         case 'line':case 'arrow':{if(_el(s)){const pts=_elbowPts(s);_bp(sx);_mT(sx,pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<_ln(pts);i++)_lT(sx,pts[i].x*sc+ox,pts[i].y*sc+oy);_st2(sx);break}if(s.curve){const me=_cE(s),cc=_curveCtrl(me,s.cbend);_bp(sx);_mT(sx,me.x1*sc+ox,me.y1*sc+oy);_qC(sx,cc.x*sc+ox,cc.y*sc+oy,me.x2*sc+ox,me.y2*sc+oy);_st2(sx);break}const pts=_linePts(s);_bp(sx);_mT(sx,pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<_ln(pts);i++)_lT(sx,pts[i].x*sc+ox,pts[i].y*sc+oy);_st2(sx);break}
         case 'pen':if(_ln(s.pts)<2)break;_bp(sx);_mT(sx,s.pts[0][0]*sc+ox,s.pts[0][1]*sc+oy);for(let i=1;i<_ln(s.pts);i++)_lT(sx,s.pts[i][0]*sc+ox,s.pts[i][1]*sc+oy);_st2(sx);break;
         case 'text':case 'sticky':{const rx2=s.x*sc+ox,ry2=s.y*sc+oy,rw2=_max(2,s.w*sc),rh2=_max(2,s.h*sc);sx.fillStyle=_stk(s)?(_coo(s)||_YW):(_fi(s)||_gC('--brand'));sx.fillRect(rx2,ry2,rw2,rh2);break}
-        case 'image':{const rx3=s.x*sc+ox,ry3=s.y*sc+oy,rw3=_max(2,s.w*sc),rh3=_max(2,s.h*sc);const img=_du(s)?_imgCache.get(_imgKey(_du(s))):null;if(img&&img.complete&&img.naturalWidth){if(s.flip){const fx3=rx3+rw3/2,fy3=ry3+rh3/2;_sv2(sx);_tr2(sx,fx3,fy3);sx.scale(s.flip&1?-1:1,s.flip&2?-1:1);_tr2(sx,-fx3,-fy3);sx.drawImage(img,rx3,ry3,rw3,rh3);_rs2(sx)}else sx.drawImage(img,rx3,ry3,rw3,rh3)}else{sx.fillStyle='#CBD5E1';sx.fillRect(rx3,ry3,rw3,rh3)}break}
+        case 'image':{const rx3=s.x*sc+ox,ry3=s.y*sc+oy,rw3=_max(2,s.w*sc),rh3=_max(2,s.h*sc);const img=_du(s)?_imgCache.get(_imgKey(_du(s))):null;if(img&&img.complete&&img.naturalWidth){if(s.flip){const fx3=rx3+rw3/2,fy3=ry3+rh3/2;_sv2(sx);_tr2(sx,fx3,fy3);sx.scale(s.flip&1?-1:1,s.flip&2?-1:1);_tr2(sx,-fx3,-fy3);sx.drawImage(img,rx3,ry3,rw3,rh3);_rs2(sx)}else sx.drawImage(img,rx3,ry3,rw3,rh3)}else{_fsS(sx,'#CBD5E1');sx.fillRect(rx3,ry3,rw3,rh3)}break}
       }
       if(_mr)_rs2(sx);
     }
-    sx.globalAlpha=1;
+    _gaS(sx,1);
   }
   function draw(){
     _raf=0;
@@ -9838,7 +9839,7 @@ const Minimap=(()=>{
     mx.drawImage(_scene,0,0);
     const vp=_vp(),_r=_cbr(),cW=_r.width,cH=_r.height;
     const vx=vp.x*_sc+_ox,vy=vp.y*_sc+_oy,vw=(cW/vp.zoom)*_sc,vh=(cH/vp.zoom)*_sc;
-    mx.strokeStyle=_ac();mx.lineWidth=1.5;mx.setLineDash([3,2]);   // a11y-audit-2026-07
+    mx.strokeStyle=_ac();_lnW(mx,1.5);mx.setLineDash([3,2]);   // a11y-audit-2026-07
     mx.strokeRect(vx,vy,vw,vh);mx.setLineDash([]);
   }
   function invalidateCache(){_sceneVer=-1;schedule();}
