@@ -7279,7 +7279,10 @@ try {
   // ADR-0595: minimap draws only visible shapes
   {
     assert.ok(html.includes('const shapes=_sh().filter(_sv)'),'minimap scene filters hidden shapes');
-    console.log('  ✓ minimap: hidden-shape filter pin (1 assert)');
+    assert.ok(html.includes("for(const s of _sh()){if(_gi(s)&&!_hd(s))"),'halo map filters hidden');
+    assert.ok(html.includes('_bA(shapes.filter(_sv))'),'export bbox filters hidden (PNG+SVG)');
+    assert.ok(html.includes('if(_hd(s))continue;   // ADR-0594'),'excScene drops hidden');
+    console.log('  ✓ minimap + hidden-parity surfaces: filters pinned (4 asserts)');
   }
 
   // search navigation a11y: SR users search BY content, so the announcement must name

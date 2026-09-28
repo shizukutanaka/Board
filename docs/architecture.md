@@ -118,6 +118,12 @@ remote/redo をカバー)。hide 時に編集中 overlay があれば畳む — 
 `drawPeerSelections` が `_hd` で落とす (ADR-0576: 非表示図形の位置を他者へ漏らさない)。
 direct `state.selection.add` や新たな `_ss` バイパスを増やさないこと。
 
+派生レンダリング面も同規則 (ADR-0592–0595): `_grpMapGet` のハロー集約・`_renderPngBlob`/
+`buildSVG` の bbox 計算・`excScene` の要素 emit・Minimap の scene 描画はいずれも `_sv` で
+フィルタする — 不可視内容がハロー・エクスポート余白・ミニマップ・第三者フォーマットへ
+漏洩しない。例外はデータ保持が目的の経路のみ: `.board` エクスポートは `visible` prop を
+保持し、`boardToDrawio` は `visible="0"` を emit して往復可能にする。
+
 **img 参照の再解決**: 形状を復元する全経路 (del/clear/replace の backward、replace の forward) は
 `_sh().push(Net._attachShape(clone(s)))` を通す。`img:` 参照を抱えた図形が undo で戻る際に
 `_imgIn` の到達済み blob から `dataUrl` を再解決し、未到達なら `_imgPending` に再駐留する
