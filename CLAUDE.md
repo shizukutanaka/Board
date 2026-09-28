@@ -579,6 +579,7 @@ Board/
 │   ├── ADR-0527-image-import-cap-16mb.md # 画像取込事前キャップ 4MB→16MB (実装済)
 │   ├── ADR-0528-dom-method-folds.md # _fc/_clk/_aE/_csr shorthand + dead isPan 節除去 (実装済)
 │   ├── ADR-0529-sw-cache-ok-only.md # SW c.put を n.ok でゲート (実装済)
+│   ├── ADR-0530-sw-ok-gate-pin.md # SW ok ゲートの test.mjs ピン (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

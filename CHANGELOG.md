@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.559] - 2026-09-28
+
+### テスト
+
+- SW ok ゲートのピン追加 — `n.ok` なし `c.put` への回帰を防ぐ (ADR-0530)
+
 ## [1.7.558] - 2026-09-28
 
 ### 修正

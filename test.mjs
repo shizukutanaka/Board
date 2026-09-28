@@ -559,6 +559,7 @@ const checks = [
   ['lostpointercapture gesture cancel (ADR-0521)', html.includes("'lostpointercapture'")&&html.includes('_cancelPointerGesture()')&&html.includes('_nP=()=>')],
   ['pointerleave clears hover + laser (ADR-0526)', html.includes("'pointerleave'")&&html.includes('state.hover=null')],
   ['contextmenu cancels mid-gesture (ADR-0524)', html.includes("'contextmenu'")&&html.includes('if(ptr.down)_cancelPointerGesture();else UI.openCtxMenu')],
+  ['SW caches only ok responses (ADR-0529)', html.includes('if(n.ok)c.put(e.request,n.clone())')&&html.includes("e.request.method==='GET'&&n.ok")],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
