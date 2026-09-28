@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.578';
+const V='1.7.579';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -912,7 +912,7 @@ const THEME_KEY='board.theme';
 // EVERY call — blocked cookies, storage partitioning, a sandboxed iframe: all plausible
 // for Board's privacy-focused, downloadable-single-file audience — that always collapsed
 // to null, so toggleTheme()/refreshThemeBtn() could never observe what applyTheme() had
-// actually just set on the DOM: the cycle got stuck re-applying 'light' forever while the
+// actually just set on the DOM: the cycle got stuck re-applying 'light' while the
 // button permanently displayed/announced 'auto'. Mirrors ADR-0014's LANG/T fix: keep the
 // current mode in memory (read from storage once); persistence becomes best-effort
 // rather than the source of truth for what's currently applied.
@@ -1306,7 +1306,7 @@ function validPatch(p){
   // peer's add/upd op — could point it at an external host, turning every peer's render
   // into a tracking-pixel / IP-deanonymization request and breaking the no-external-
   // resources invariant. This is the shared intake gate (validShape + upd/patch paths),
-  // so guarding here closes every vector at once. Mirrors buildSVG's /^data:image\// guard;
+  // so guarding here closes every vector at once (mirrors buildSVG's data: guard);
   // <img>-loaded SVG can't run scripts or fetch subresources — data: svg is safe.
   if('dataUrl' in p&&p.dataUrl!=null&&!(_iS(p.dataUrl)&&_ln(p.dataUrl)<=16_000_000&&/^data:image\//.test(p.dataUrl)))return false;   // ADR-0379: length cap — else img.src buffers unbounded
   // ADR-0327: s.link flows into window.open — a hostile .board/peer upd could carry
@@ -1634,7 +1634,8 @@ const Store={
           if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_oa(sh,p.after);}}
         }else{
           // ADR-0547: forward skipped locked shapes — undo must not re-push (dup ids).
-          for(const sh of op.shapes)if(!byId(sh.id))_sh().push(clone(sh));
+          // ADR-0551: re-resolve parked img refs (else stale placeholder).
+          for(const sh of op.shapes)if(!byId(sh.id))_sh().push(Net._attachShape(clone(sh)));
           _sz();
           // Restore connector bindings after shapes are back
           if(op.connClears)for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_oa(sh,p.before)}
@@ -1663,7 +1664,7 @@ const Store={
         break;}
       case 'clear':{
         if(forward){_sh().length=0;_scl();state.wclock={};_pcC();}
-        else{for(const s of op.shapes)_sh().push(clone(s));_sz();if(op.wc)state.wclock=clone(op.wc);_selR(op);}
+        else{for(const s of op.shapes)_sh().push(Net._attachShape(clone(s)));_sz();if(op.wc)state.wclock=clone(op.wc);_selR(op);}
         break;}
       case 'replace':{
         // Whole-board swap (shared-link import). Reversible: before/after are full
@@ -1671,7 +1672,7 @@ const Store={
         // Local-only by design — NOT in REMOTE_OPS, so a peer can't wipe your board.
         const next=forward?op.after:op.before;
         _sh().length=0;_scl();state.wclock={};_pcC();
-        for(const s of next)_sh().push(clone(s));
+        for(const s of next)_sh().push(Net._attachShape(clone(s)));
         _sz();
         if(forward&&op.afterWc)state.wclock=clone(op.afterWc);
         if(!forward&&op.wc)state.wclock=clone(op.wc);
@@ -2321,7 +2322,7 @@ function resize(){
   _pinchSnap=null;_pinchVp=null;   // ADR-0030: stale-sized snapshot must not blit
   _iv();
 }
-// devicePixelRatio can change with NO resize event — dragging the window between monitors
+// devicePixelRatio can change with NO resize event — dragging across monitors
 // of different density (Retina ↔ external 1×) or an OS display-scaling change. A
 // `(resolution: Xdppx)` media query matches the current ratio and fires `change` once
 // when it stops matching; re-arm a fresh query to keep tracking. Without this the
@@ -2373,7 +2374,7 @@ function describeShape(s){
   if(txt)d+=` “${_ln(txt)>30?_s0(txt,30)+'…':txt}”`;
   d+=` @ ${_rnd(b.x)},${_rnd(b.y)}`;
   if(_lk(s))d+=` ${t('ctxLock')}`;
-  if(_hd(s)||_oP(s)===0)d+=` ${t('tagHidden')}`;   // ADR-0371/0440: hidden or fully-transparent (RTC/selection-restore can still select one)
+  if(_hd(s)||_oP(s)===0)d+=` ${t('tagHidden')}`;   // ADR-0371/0440: hidden or fully-transparent (RTC/undo-restore can still select one)
   if(_gi(s))d+=` ${t('tagGroup')}`;   // ADR-0380: visual group halo has no SR channel
   if(_conn(s.type)&&(s.a||s.b)){   // ADR-0380: bound endpoints are the conn's identity
     const A=s.a&&byId(s.a),B=s.b&&byId(s.b);
@@ -3868,7 +3869,7 @@ _on(canvas,_PD,e=>{
   }
   UI.closeCtxMenu();
   // ADR-0006: select tool only — that's where _sl() (which every menu item but
-  // clear-all operates on) is meaningful and gets set synchronously below by pickOrMarquee.
+  // clear-all operates on) is meaningful and set synchronously below by pickOrMarquee.
   if(e.pointerType==='touch'&&_tl()==='select')_armLongPress(e.clientX,e.clientY);
   switch(_tl()){
     case 'select':
@@ -4283,7 +4284,7 @@ function _cancelPointerGesture(){
 }
 // ADR-0006: fires after LONG_PRESS_MS. Guards: gesture still active, handle-drag not in
 // progress (resize/rotate — a deliberate precision drag we shouldn't interrupt), and the
-// pointer hasn't travelled past LONG_PRESS_MOVE_TOL (a real move/marquee naturally exceeds
+// pointer hasn't travelled past LONG_PRESS_MOVE_TOL (a real move/marquee exceeds
 // this well before the timer fires, so no separate pointermove cancellation is needed).
 function _longPressFire(cx,cy){
   _longPressTimer=null;
@@ -5186,8 +5187,8 @@ function _rdp(pts,eps){
 }
 // ADR-0005: geometric-heuristic shape recognition for the "beautify" feature (Alt+B).
 // Pure, deterministic, dependency-free — classifies a rough stroke as line/rect/ellipse
-// if it closely matches that shape's geometry (size-relative thresholds + absolute floors,
-// so a tiny sketch and a huge one use a proportionally similar "how wobbly is too wobbly"
+// if it closely matches that shape's geometry (size-relative thresholds + floors,
+// so a tiny sketch and a huge one share proportionally similar wobble thresholds
 // bar), else returns null. Triangle/other shapes are unsupported: Board has no
 // drawing tool to convert them into.
 function recognizeStroke(pts){
@@ -5610,7 +5611,7 @@ function flushErase(){
 const KEYMAP={v:'select',h:'hand',p:'pen',r:'rect',o:'ellipse',i:'eyedropper',
   a:'arrow',l:'line',t:'text',n:'sticky',f:'frame',e:'eraser',d:'diamond',k:'marker'};
 // Focus trap for open dialogs (WCAG 2.4.3 Focus Order / 2.1.2 No Keyboard Trap-escape).
-// _focusables lists the tabbable controls inside a root; _trapStep is the pure wrap step:
+// _focusables lists tabbable controls in a root; _trapStep is the pure wrap step:
 // given those controls, the active element and direction, it returns which element to
 // focus to keep Tab/Shift+Tab cycling INSIDE the dialog, or null to let native Tab move.
 function _focusables(root){
@@ -5624,7 +5625,7 @@ function _trapStep(items,active,back){
   if(back&&active===items[0])return items[_ln(items)-1];                  // wrap backward off the first
   return null;                                                              // middle → let native Tab move
 }
-// The currently-open modal dialog (help/share), or null. While one is open, global canvas
+// The open modal dialog (help/share), or null. While one is open, global canvas
 // shortcuts must not fire behind it.
 function _openDialog(){
   for(const id of ['help','share']){const m=_g(id);if(m&&m.dataset.open==='true')return m;}
@@ -5647,7 +5648,7 @@ _on(window,_KD,e=>{
     else if(k===_ES){Presentation.leave()}
     return;
   }
-  // Dialog isolation + focus trap: while help/share is open, keep Tab inside the dialog and
+  // Dialog isolation + focus trap: while help/share is open, keep Tab inside and
   // stop canvas shortcuts (tool keys, Delete, undo…) from firing behind it. Escape falls
   // through to the close handler below.
   const _dlg=_openDialog();
@@ -5700,7 +5701,7 @@ _on(window,_KD,e=>{
   else if(k===_EN&&!meta&&!_sK(e)){
     // ADR-0013: with the select tool active, Enter re-edits the single selected shape's
     // label/text instead (createShapeKbd() would no-op for 'select' anyway, so no clash).
-    // Any other tool keeps the original behaviour: place its default shape at viewport centre.
+    // Any other tool keeps the original behaviour: stamp its default shape at viewport centre.
     if(_tl()==='select'&&editSelectedShapeKbd()){_pd(e);}
     else if(createShapeKbd())_pd(e);
   }
@@ -6110,7 +6111,7 @@ function doAlign(dir){
   const sel=_selUL();
   if(_ln(sel)<2)return;
   // Frame-aware: shapes fully inside a selected frame move with the frame as one unit
-  // (parity with drag/nudge; mirrors withFrameChildren logic used in doMove/nudgeSelection)
+  // (parity with drag/nudge; mirrors withFrameChildren in doMove/nudgeSelection)
   const frameOf=_frameOf(sel); // childId → frameId (unit key for unitMap)
   _xFS(sel,frameOf)
   // Group+frame-aware: same groupId or inside a selected frame moves as one
@@ -8274,7 +8275,7 @@ const Share={
       const before=clone(_sh());
       const beforeWc=clone(_wc());
       const origSel=_selIds();
-      // ADR-0004: also survives past the undo window (reload/closed-tab), not just this session.
+      // ADR-0004: also survives past the undo window (reload/closed-tab), not just the session.
       if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());
       _rs(valid.map(clone));_setDocName(_s0((_iS(data.name)&&data.name)||'Shared',80));   // ADR-0009
       // Match the replace op's _apply: drop stale selection ids and per-property write
@@ -9119,7 +9120,7 @@ function wire(){
   _oC(_g('rtcCreateOffer'),async()=>{try{_g('rtcOffer').value=await Net.wrtcCreateOffer()}catch(e){_e(_St(e))}});
   _oC(_g('rtcConnect'),async()=>{const a=_trm(_g('rtcAnswerIn').value);if(!a)return;try{await Net.wrtcConsumeAnswer(a);_oT('connected')}catch(e){_e(_St(e))}});
   _oC(_g('rtcCreateAnswer'),async()=>{const o=_trm(_g('rtcOfferIn').value);if(!o)return;try{_g('rtcAnswer').value=await Net.wrtcAcceptOffer(o)}catch(e){_e(_St(e))}});
-  // ADR-0008 (FT-05): copy buttons for the signaling codes — mirrors shareCopyBtn's pattern,
+  // ADR-0008 (FT-05): copy buttons for the signaling codes — mirrors shareCopyBtn,
   // avoids the earlier select-in-a-readonly-textarea friction (especially fiddly on touch).
   const _copyCode=async(taId)=>{const v=_g(taId).value;if(!v)return;const ok=await copyText(v);_tst(ok?t('shareCodeCopied'):t(_CF),ok?'ok':'warn')};
   _oC(_g('rtcOfferCopyBtn'),()=>_copyCode('rtcOffer'));
@@ -9703,7 +9704,7 @@ const Presentation=(()=>{
   // v1.6.90: Screen Wake Lock — prevent the display from sleeping mid-presentation.
   // Zenn/Qiita: "プレゼンテーション中にスクリーンがオフになる問題" / Screen Wake Lock API.
   // Silent best-effort; browsers that don't support it (Safari < 16.4) simply skip.
-  // The browser auto-releases the lock when the tab goes to the background (visibilitychange
+  // The browser auto-releases the lock when the tab backgrounds (visibilitychange
   // → hidden), so we re-acquire it when the tab becomes visible again.
   let _wakeLock=null;
   async function _acquireWakeLock(){
@@ -9931,7 +9932,7 @@ const Minimap=(()=>{
 })();
 
 // ====================== SERVICE WORKER (inline) ======================
-// Named handler exported for tests — avoids closure-identity issues with UI.toast mocking.
+// Named handler exported for tests — avoids closure identity issues under mocking.
 function _onSwUpdate(){ _oT('appUpdated'); }
 // offline-first caching of this single page
 if('serviceWorker' in navigator){

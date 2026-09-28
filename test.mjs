@@ -3859,6 +3859,20 @@ try {
     console.log('  ✓ move undo: locked shape not shifted backward (4 asserts)');
   }
 
+  // ADR-0551: del undo must re-resolve a parked img ref whose blob landed mid-delete
+  {
+    const s={id:'imgx',type:'image',x:0,y:0,w:10,h:10,img:'bkk'};
+    Store.commit({op:'addMany',shapes:[JSON.parse(JSON.stringify(s))]});
+    Net._imgIn.set('bkk','data:image/png;base64,BLOB');
+    Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(byId('imgx')))]});
+    Store.undo();
+    const r=byId('imgx');
+    assert.ok(r&&r.dataUrl==='data:image/png;base64,BLOB'&&r.img===undefined,'undo re-resolves parked img ref');
+    Net._imgIn.delete('bkk');
+    Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(r))]});
+    console.log('  ✓ del undo: parked img ref re-resolved (1 assert)');
+  }
+
   // ADR-0549: locked-parity audit — style/group undo on locked-skipped shapes is a no-op
   {
     const a=Shape.make('rect',{x:0,y:0,w:50,h:50,stroke:'#000000'});
