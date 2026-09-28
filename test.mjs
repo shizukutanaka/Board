@@ -10390,7 +10390,58 @@ try {
       assert.ok(state.selection.has(pasted.id)&&state.selection.size===1,'doPasteInPlace selects the pasted copy');
       assert.deepStrictEqual(state.history[state.history.length-1].origSel,selBefore,'doPasteInPlace stashes origSel for undo-restore (ADR-0312)');
     }
-    console.log('  ✓ coverage sweep: _imgNextKey/_mapToBox/_fitViewport/unlockAll/selectSameType/selectFrameContents/toggle*/cycle*/snapSelToGrid/doPasteInPlace');
+    // importBoardText: rejects garbage, imports a valid .board payload centred at wp
+    {
+      reset();
+      assert.strictEqual(importBoardText('not json'),false,'importBoardText rejects non-JSON');
+      assert.strictEqual(importBoardText('{"shapes":[]}'),false,'importBoardText rejects empty shapes');
+      const payload=JSON.stringify({v:'1.7.571',shapes:[{type:'rect',x:0,y:0,w:20,h:20,id:'ib1',stroke:'#000',fill:null,size:2,opacity:1,z:0}]});
+      assert.ok(importBoardText(payload,{x:200,y:200}),'importBoardText accepts a valid payload');
+      const im=state.shapes[state.shapes.length-1];
+      assert.strictEqual(im.type,'rect','importBoardText imports the rect');
+      assert.ok(Math.abs(im.x+im.w/2-200)<1e-6,'importBoardText centres on wp.x');
+    }
+    // doPasteAt: pastes clipboard centred at the given world point
+    {
+      reset();
+      const s=Shape.make('rect',{x:0,y:0,w:40,h:40});
+      Store.commit({op:'add',shape:s});
+      state.selection=new Set([s.id]);
+      doCopy();
+      doPasteAt(500,500);
+      const p=state.shapes[state.shapes.length-1];
+      assert.ok(Math.abs(p.x+20-500)<1e-6&&Math.abs(p.y+20-500)<1e-6,'doPasteAt centres at the point');
+    }
+    // _connPathPts: straight/elbow/curve all return ≥2 points ending at endpoints
+    {
+      const base={type:'arrow',x1:0,y1:0,x2:100,y2:50,stroke:'#000',size:2,opacity:1};
+      const straight=_connPathPts({...base});
+      assert.ok(straight.length>=2,'_connPathPts straight ≥2 pts');
+      const elbow=_connPathPts({...base,elbow:1});
+      assert.ok(elbow.length>=3,'_connPathPts elbow has corner pts');
+      const curved=_connPathPts({...base,curve:1,cbend:30});
+      assert.strictEqual(curved.length,17,'_connPathPts curve = 17 sampled pts');
+      assert.ok(Math.abs(curved[8].y-25)>0,'_connPathPts curve bends off the chord');
+    }
+    // _grpRotHandle: rotation handle sits above the bbox top edge centre
+    {
+      state.viewport={x:0,y:0,zoom:1};
+      const h=_grpRotHandle({x:0,y:0,w:100,h:50});
+      assert.strictEqual(h.cx,50,'_grpRotHandle centres on bbox');
+      assert.ok(h.y<0&&h.ay===0,'_grpRotHandle sits above the top edge');
+    }
+    // _fitIfEmptyView: no shapes → no-op; shapes off-screen → fit brings them in view
+    {
+      reset();
+      state.viewport={x:99999,y:99999,zoom:1};
+      _fitIfEmptyView();
+      assert.strictEqual(state.viewport.x,99999,'_fitIfEmptyView no-ops on empty board');
+      const s=Shape.make('rect',{x:0,y:0,w:100,h:100});
+      Store.commit({op:'add',shape:s});
+      _fitIfEmptyView();
+      assert.ok(state.viewport.x<99999,'_fitIfEmptyView fits lost content');
+    }
+    console.log('  ✓ coverage sweep2: importBoardText/doPasteAt/_connPathPts/_grpRotHandle/_fitIfEmptyView');
   }
 
   console.log('\n✓ All behavioural tests passed');

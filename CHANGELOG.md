@@ -5354,6 +5354,12 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.572]
+
+### テスト・内部
+
+- **ADR-0544**: 未テスト残件の第二弾 — `importBoardText` (reject 経路 + wp 中央配置)、`doPasteAt` (指定点センタリング)、`_connPathPts` (直線/elbow/curve 3経路)、`_grpRotHandle` (bbox 上辺中央の上)、`_fitIfEmptyView` (空盤面 no-op + 迷子コンテンツの回収)。
+
 ## [1.7.571]
 
 ### テスト・内部
