@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.631]
+### Fixed
+- モバイルのバックグラウンド化/bfcache 退避で pointerup を喪失し、ドラッグ状態 (ptr.down) が復帰後も残存していた問題を修正 — visibilitychange→hidden と pagehide で window blur と同じく `_cancelPointerGesture` を flush 前に実行 (ADR-0604)。
+
 ## [1.7.630]
 ### Fixed
 - 24MB 結合上限 (384 フラグメント) を超える巨大 op/スナップショットを送信側が無警告で送出し、全受信者が無通知棄却して分岐していた問題を修正 — 送信時は `syncTooLarge` トーストで警告、受信側は宣言 n>384 を明示棄却 (ADR-0603)。

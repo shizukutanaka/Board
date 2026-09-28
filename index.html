@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.630';
+const V='1.7.631';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -8653,10 +8653,10 @@ _on(window,'beforeunload',e=>{
   if(_dt()){Persist.save();_pd(e);e.returnValue=''}
 });
 // Mobile-reliable durability flush — see Persist.flushIfHidden for context.
-_on(document,'visibilitychange',()=>Persist.flushIfHidden(document.visibilityState));
+_on(document,'visibilitychange',()=>{if(document.visibilityState==='hidden'&&ptr.down)_cancelPointerGesture();Persist.flushIfHidden(document.visibilityState)});   // ADR-0604: mobile backgrounding drops pointerup — cancel like window blur (before flush so the restored state persists)
 // pagehide is iOS Safari's last reliable signal (visibilitychange can be skipped on
 // swipe-away / frozen-tab eviction); route it through the same tested flush.
-_on(window,'pagehide',()=>{Persist.flushIfHidden('hidden');Net._bcast(_mk('bye'))});   // ADR-0453+0456
+_on(window,'pagehide',()=>{if(ptr.down)_cancelPointerGesture();Persist.flushIfHidden('hidden');Net._bcast(_mk('bye'))});   // ADR-0453+0456/0604: same cancel on bfcache eviction
 
 // ====================== UI ======================
 const UI={

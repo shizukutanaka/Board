@@ -1188,8 +1188,8 @@ const checks = [
   // v1.6.79: Persist.flushIfHidden — visibilitychange→hidden as mobile-reliable durability signal
   ['Persist.flushIfHidden gates on vis===hidden && _dt()', html.includes("flushIfHidden(vis){") && html.includes("if(vis==='hidden'&&_dt()){")],
   ['Persist.flushIfHidden cancels pending debounce + calls save', html.includes("_cT(this._saveT);\n      this.save();")],
-  ['visibilitychange listener wires document.visibilityState to flushIfHidden', html.includes("_on(document,'visibilitychange',()=>Persist.flushIfHidden(document.visibilityState));")],
-  ['pagehide routes through flushIfHidden — iOS swipe-away durable (ADR-0453)', html.includes("_on(window,'pagehide',()=>{Persist.flushIfHidden('hidden');Net._bcast(_mk('bye'))})")],
+  ['visibilitychange listener wires document.visibilityState to flushIfHidden (ADR-0604: cancels gesture first)', html.includes("document.visibilityState==='hidden'&&ptr.down)_cancelPointerGesture();Persist.flushIfHidden(document.visibilityState)")],
+  ['pagehide routes through flushIfHidden — iOS swipe-away durable (ADR-0453/0604)', html.includes("'pagehide',()=>{if(ptr.down)_cancelPointerGesture();Persist.flushIfHidden('hidden');Net._bcast(_mk('bye'))}")],
   ['peer bye drops presence immediately — no 15s ghost (ADR-0457)', html.includes("case 'bye':{") && html.includes("if(pk&&_pr().delete(pk)){_ivO()")],
   ['room switch sends bye + clears BC peers (ADR-0458)', html.includes("this._send(_mk('bye'));this.bc.close()") && html.includes("if(!_sw(id,'rtc:'))_pr().delete(id)")],
   ['peer id carries a per-boot incarnation nonce (ADR-0459)', html.includes("peerId:PEER_ID+'.'+uid().slice(0,6)") && html.includes("_sO().clear();_cT(this._snapT)")],
@@ -7327,6 +7327,15 @@ try {
     assert.equal(html.split('try{drawShape(s)}catch(_){}').length-1,2,'both draw loops isolate per-shape');
     assert.ok(html.includes('try{drawShape(_df())}catch(_){}'),'draft draw isolated too');
     console.log('  \u2713 draw(): per-shape isolation pinned (2 asserts)');
+  }
+
+  // ADR-0604: visibilitychange→hidden and pagehide cancel an in-progress
+  // pointer gesture (mobile backgrounding drops pointerup → stuck ptr.down);
+  // cancel runs BEFORE flushIfHidden so the restored state is what persists.
+  {
+    assert.ok(html.includes("document.visibilityState==='hidden'&&ptr.down)_cancelPointerGesture()"),'visibilitychange cancels gesture on hidden');
+    assert.ok(html.includes("pagehide',()=>{if(ptr.down)_cancelPointerGesture();Persist.flushIfHidden('hidden')"),'pagehide cancels gesture before flush');
+    console.log('  ✓ hidden/pagehide gesture cancel pinned (2 asserts)');
   }
 
   // ADR-0603: fragment streams larger than the 384-chunk join bound are
