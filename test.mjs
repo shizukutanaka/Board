@@ -703,6 +703,8 @@ const checks = [
   ['label overlay closes when labelled shape removed/hidden (ADR-0559/0569)', html.includes("if(!_lt||_hd(_lt)){_rm(_lblTa.inp);_lblTa=null;return}")],
   ['editors close a still-open overlay first (ADR-0560)', html.includes("const _cxO=()=>{if(_teTa)_teTa.blur();if(_lblTa)_lblTa.inp.blur()}")],
   ['resize resets overlay follow sigs (ADR-0561)', html.includes("_teVp=_lblVp=''")],
+  ['hide folds an open editor first (ADR-0569)', html.includes("function hideSelection(){\n  _cxO()")],
+  ['all-locked hide toasts lockedNoop (ADR-0570)', html.includes("else if(_selN())_wT('lockedNoop')")],
   // v1.6.39: console cleanup - no redundant console.warn/error in production paths
   ['no console.warn in BroadcastChannel catch', !html.includes("console.warn('BroadcastChannel init failed'")],
   ['no console.error in save catch (user gets toast)', !html.includes("console.error('save failed'")],

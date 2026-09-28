@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.598]
+### Tests
+- ADR-0569/0570 のソースピン追加 — hide→overlay畳みと lockedNoop トーストの回帰検出。
+
 ## [1.7.597]
 ### Fixed
 - 全てロック済みの選択に対する ⌘⇧H (hide) が沈黙していたのを `lockedNoop` トーストに修正 (ADR-0570) — doDelete と同じ慣例。
