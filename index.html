@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.638';
+const V='1.7.639';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4742,6 +4742,7 @@ function _clearTouchState(){_pointers.clear();_pinchPrev=0;if(_pinchSnap){_pinch
 _on(window,'blur',()=>{
   if(ptr.down)_cancelPointerGesture();
   _clearTouchState();
+  Net.sendCursorHide();   // ADR-0611: blur doesn't fire pointerleave — hide our cursor on peers too
   if(window._prevTool){pickTool(window._prevTool);window._prevTool=null}   // space keyup lost to blur
 });
 
@@ -8660,7 +8661,7 @@ _on(window,'beforeunload',e=>{
   if(_dt()){Persist.save();_pd(e);e.returnValue=''}
 });
 // Mobile-reliable durability flush — see Persist.flushIfHidden for context.
-_on(document,'visibilitychange',()=>{if(document.visibilityState==='hidden'){if(ptr.down)_cancelPointerGesture();_clearTouchState()}Persist.flushIfHidden(document.visibilityState)});   // ADR-0604/0608: mobile backgrounding drops pointerup — cancel gesture + drop stale pointer ids before flush
+_on(document,'visibilitychange',()=>{if(document.visibilityState==='hidden'){if(ptr.down)_cancelPointerGesture();_clearTouchState();Net.sendCursorHide()}Persist.flushIfHidden(document.visibilityState)});   // ADR-0604/0608/0611
 // pagehide is iOS Safari's last reliable signal (visibilitychange can be skipped on
 // swipe-away / frozen-tab eviction); route it through the same tested flush.
 _on(window,'pagehide',()=>{if(ptr.down)_cancelPointerGesture();_clearTouchState();Persist.flushIfHidden('hidden');Net._bcast(_mk('bye'))});   // ADR-0453+0456/0604/0608: same cancel + pointer-state cleanup on bfcache eviction

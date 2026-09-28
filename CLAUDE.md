@@ -660,7 +660,8 @@ Board/
     │   ├── ADR-0608-touchstate-hidden-cleanup.md  # hidden/pagehide でタッチ状態 (_pointers/pinch) も掃除 (実装済)
     │   ├── ADR-0609-docname-focus-clobber.md      # フォーカス中の docName input をリモート改名が上書きしない (実装済)
     │   ├── ADR-0610-pts-round-dedup.md            # roundShapesForExport の pts 丸め二重処理を除去 (実装済)
-    │   └── ADR-0611-cursor-hide-on-leave.md       # pointerleave でピアカーソルを隠す (凍結残存の解消) (実装済)
+    │   ├── ADR-0611-cursor-hide-on-leave.md       # pointerleave でピアカーソルを隠す (凍結残存の解消) (実装済)
+    │   └── ADR-0612-cursor-hide-blur-hidden.md    # blur/hidden でもピアカーソルを隠す (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

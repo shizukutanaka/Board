@@ -1188,7 +1188,7 @@ const checks = [
   // v1.6.79: Persist.flushIfHidden — visibilitychange→hidden as mobile-reliable durability signal
   ['Persist.flushIfHidden gates on vis===hidden && _dt()', html.includes("flushIfHidden(vis){") && html.includes("if(vis==='hidden'&&_dt()){")],
   ['Persist.flushIfHidden cancels pending debounce + calls save', html.includes("_cT(this._saveT);\n      this.save();")],
-  ['visibilitychange listener wires document.visibilityState to flushIfHidden (ADR-0604/0608: cancels gesture + clears touch state first)', html.includes("document.visibilityState==='hidden'){if(ptr.down)_cancelPointerGesture();_clearTouchState()}Persist.flushIfHidden(document.visibilityState)")],
+  ['visibilitychange listener wires document.visibilityState to flushIfHidden (ADR-0604/0608/0611: cancels gesture + clears touch state + hides cursor first)', html.includes("document.visibilityState==='hidden'){if(ptr.down)_cancelPointerGesture();_clearTouchState();Net.sendCursorHide()}Persist.flushIfHidden(document.visibilityState)")],
   ['pagehide routes through flushIfHidden — iOS swipe-away durable (ADR-0453/0604/0608)', html.includes("'pagehide',()=>{if(ptr.down)_cancelPointerGesture();_clearTouchState();Persist.flushIfHidden('hidden');Net._bcast(_mk('bye'))}")],
   ['peer bye drops presence immediately — no 15s ghost (ADR-0457)', html.includes("case 'bye':{") && html.includes("if(pk&&_pr().delete(pk)){_ivO()")],
   ['room switch sends bye + clears BC peers (ADR-0458)', html.includes("this._send(_mk('bye'));this.bc.close()") && html.includes("if(!_sw(id,'rtc:'))_pr().delete(id)")],
@@ -7367,14 +7367,15 @@ try {
     assert.ok(html.includes("sendCursorHide(){"),'sendCursorHide exists');
     assert.ok(html.includes("p.cursor=msg.h===1?null:{x:msg.x,y:msg.y}"),'h:1 clears the peer cursor');
     assert.ok(html.includes("Net.sendCursorHide()});   // ADR-0611"),'pointerleave notifies peers');
-    console.log('  ✓ cursor-hide-on-leave pinned (3 asserts)');
+    assert.ok(html.includes("Net.sendCursorHide();   // ADR-0611: blur doesn't fire pointerleave"),'window blur also hides the peer cursor');
+    console.log('  ✓ cursor-hide-on-leave pinned (4 asserts)');
   }
 
   // ADR-0604: visibilitychange→hidden and pagehide cancel an in-progress
   // pointer gesture (mobile backgrounding drops pointerup → stuck ptr.down);
   // cancel runs BEFORE flushIfHidden so the restored state is what persists.
   {
-    assert.ok(html.includes("document.visibilityState==='hidden'){if(ptr.down)_cancelPointerGesture();_clearTouchState()}"),'hidden cancels gesture + clears touch state');
+    assert.ok(html.includes("_clearTouchState();Net.sendCursorHide()}Persist.flushIfHidden"),'hidden cancels gesture + clears touch state + hides cursor');
     assert.ok(html.includes("pagehide',()=>{if(ptr.down)_cancelPointerGesture();_clearTouchState();Persist.flushIfHidden('hidden')"),'pagehide cancels gesture + clears touch state before flush');
     assert.ok(html.includes("function _clearTouchState(){_pointers.clear();_pinchPrev=0;if(_pinchSnap){_pinchSnap=null;_pinchVp=null;_iv()}}"),'shared touch-state cleanup (ADR-0608)');
     console.log('  ✓ hidden/pagehide gesture cancel pinned (2 asserts)');

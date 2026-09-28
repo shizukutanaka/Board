@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.639]
+### Fixed
+- Alt-Tab 等のウィンドウ blur / モバイルのバックグラウンド移行 (pointerleave 非発火) でもピアカーソルが凍結残存していた問題を修正 — blur / visibilitychange→hidden の両経路で `sendCursorHide` (ADR-0612)。
+
 ## [1.7.638]
 ### Fixed
 - ポインタがキャンバスを離れてもリモート盤面にピアカーソルが最終位置で凍結残存していた問題を修正 — `pointerleave` で `cursor h:1` を送出し受信側で `p.cursor` をクリア (ADR-0611)。
