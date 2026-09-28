@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.636';
+const V='1.7.637';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -8271,7 +8271,6 @@ function roundShapesForExport(shapes,dp=2){
     const o={...s};
     delete o.img;        // ADR-0035: internal IDB blob ref — meaningl
     for(const k of ['x','y','w','h','x1','y1','x2','y2','rotate'])if(typeof o[k]==='number')o[k]=_round(o[k],dp);
-    if(_iA(o.pts))o.pts=o.pts.map(p=>_iA(p)?p.map((v,i)=>_round(v,i<2?dp:3)):p);
     if(_iA(o.pts))o.pts=o.pts.map(p=>_iA(p)?p.map((v,i)=>_round(v,i<2?dp:3)):p);
     return o;
   });
