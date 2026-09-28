@@ -7361,6 +7361,15 @@ try {
     console.log('  ✓ docName focus clobber guard pinned (2 asserts)');
   }
 
+  // ADR-0611: pointerleave broadcasts a cursor-hide so peers don't keep a
+  // frozen cursor at the last position; the receiver clears p.cursor on h:1.
+  {
+    assert.ok(html.includes("sendCursorHide(){"),'sendCursorHide exists');
+    assert.ok(html.includes("p.cursor=msg.h===1?null:{x:msg.x,y:msg.y}"),'h:1 clears the peer cursor');
+    assert.ok(html.includes("Net.sendCursorHide()});   // ADR-0611"),'pointerleave notifies peers');
+    console.log('  ✓ cursor-hide-on-leave pinned (3 asserts)');
+  }
+
   // ADR-0604: visibilitychange→hidden and pagehide cancel an in-progress
   // pointer gesture (mobile backgrounding drops pointerup → stuck ptr.down);
   // cancel runs BEFORE flushIfHidden so the restored state is what persists.

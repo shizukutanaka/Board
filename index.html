@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.637';
+const V='1.7.638';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4357,7 +4357,8 @@ _on(canvas,'contextmenu',e=>{_pd(e);
 _on(canvas,'pointerleave',()=>{if(_laser){_laser=null;_ivO()}
   // ADR-0526: state.hover keeps feeding the qu
   // pointer exits — clear it so stale dots don
-  if(state.hover){state.hover=null;_ivO()}});
+  if(state.hover){state.hover=null;_ivO()}
+  Net.sendCursorHide()});   // ADR-0611: don't leave a frozen cursor on peers' boards
 
 // Double-click: re-edit text shapes / label boxes & connectors
 _on(canvas,'dblclick',e=>{
@@ -7933,6 +7934,11 @@ const Net={
     this._lastCursorSend=now;
     this._bcast(_mk('cursor',{x:wp.x,y:wp.y}));
   },
+  sendCursorHide(){   // ADR-0611: pointer left the canvas — peers must not keep a frozen cursor at the last position
+    if(_pr().size===0)return;
+    this._lastCursorSend=0;   // let the next real cursor in immediately
+    this._bcast(_mk('cursor',{x:0,y:0,h:1}));
+  },
   // ADR-0011: ephemeral peer selection presenc
   // NOT draw() — render must stay side-effect-
   // when the serialized selection differs from
@@ -8048,7 +8054,7 @@ const Net={
         if(!_iN(msg.x)||!_fin(msg.x)||!_iN(msg.y)||!_fin(msg.y))break;
         const peerKey=this._pk(msg,viaRtc);
         const p=peerKey&&_pr().get(peerKey);
-        if(p){p.cursor={x:msg.x,y:msg.y};_ivO();}
+        if(p){p.cursor=msg.h===1?null:{x:msg.x,y:msg.y};_ivO();}   // ADR-0611: h:1 hides the peer cursor (older peers keep it — acceptable drift)
         break;}
       case 'selection':{
         // ADR-0011: same _rtcPeerId routing as 'curs
