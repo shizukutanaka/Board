@@ -5354,6 +5354,12 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.573]
+
+### テスト・内部
+
+- **ADR-0545**: カバレッジ第三弾 — ペン内部プリミティブ (`_penTaperI`/`_penTaperE` テーパー飽和、`_penQuad` 台形セグメント、`_penDisc`、`_penFillRange`) をレコーディング ctx で検証 + `_svgBoxLabel` (label エスケープ、valign/align → text-anchor)。
+
 ## [1.7.572]
 
 ### テスト・内部

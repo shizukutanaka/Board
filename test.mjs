@@ -10441,7 +10441,39 @@ try {
       _fitIfEmptyView();
       assert.ok(state.viewport.x<99999,'_fitIfEmptyView fits lost content');
     }
-    console.log('  ✓ coverage sweep2: importBoardText/doPasteAt/_connPathPts/_grpRotHandle/_fitIfEmptyView');
+    // pen internals: taper curve + quad/disc/fill primitives on a recording ctx
+    {
+      assert.ok(_penTaperI(0)>0&&_penTaperI(0)<1,'_penTaperI starts below 1');
+      assert.strictEqual(_penTaperI(PEN_TAPER),1,'_penTaperI saturates at PEN_TAPER');
+      assert.ok(_penTaperE(0)>0&&_penTaperE(0)<1,'_penTaperE starts below 1');
+      assert.strictEqual(_penTaperE(PEN_TAPER),1,'_penTaperE saturates at PEN_TAPER');
+      assert.ok(_penTaperI(0)===_penTaperE(0),'taper in/out floors match');
+      const calls=[];
+      const rc={beginPath(){},moveTo(x,y){calls.push(['m',x,y])},lineTo(x,y){calls.push(['l',x,y])},
+                quadraticCurveTo(){},arc(x,y,r){calls.push(['a',r])},fill(){calls.push(['f'])},stroke(){}};
+      _penDisc(rc,5,5,2);
+      assert.ok(calls.some(c=>c[0]==='a'&&c[1]===2),'_penDisc arcs at radius');
+      calls.length=0;
+      const pp=[[0,0],[10,0]];
+      _penQuad(rc,pp,1,2,1);
+      assert.strictEqual(calls.filter(c=>c[0]==='m').length,1,'_penQuad moveTo once');
+      assert.strictEqual(calls.filter(c=>c[0]==='l').length,3,'_penQuad 3 lineTo (trapezoid)');
+      calls.length=0;
+      _penFillRange(rc,[[0,0],[10,0],[20,0]],[4,4,4],3,0,2);
+      assert.ok(calls.some(c=>c[0]==='f'),'_penFillRange fills once');
+    }
+    // _svgBoxLabel: emits <text> + tspans, honours valign/align, escapes markup
+    {
+      const els=[];
+      _svgBoxLabel(els,{type:'rect',label:'a<b',fontSize:14},0,0,100,50,0,0,'#000','','');
+      const svg=els.join('');
+      assert.ok(svg.includes('<text')&&svg.includes('a&lt;b'),'_svgBoxLabel escapes label markup');
+      assert.ok(svg.includes('text-anchor="middle"'),'_svgBoxLabel default centre anchor');
+      els.length=0;
+      _svgBoxLabel(els,{type:'rect',label:'x',fontSize:14,align:'left',valign:'top'},0,0,100,50,0,0,'#000','','');
+      assert.ok(els.join('').includes('text-anchor="start"'),'_svgBoxLabel left align');
+    }
+    console.log('  ✓ coverage sweep3: pen taper/quad/disc/fill primitives + _svgBoxLabel');
   }
 
   console.log('\n✓ All behavioural tests passed');
