@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.632]
+### Changed
+- architecture.md を ADR-0602/0603/0604 の不変条件へ同期 — op 配列上限=盤面上限規則、frag ストリーム n>384 両端ガード、hidden/pagehide のジェスチャ取消経路を文書化 (ADR-0605)。
+
 ## [1.7.631]
 ### Fixed
 - モバイルのバックグラウンド化/bfcache 退避で pointerup を喪失し、ドラッグ状態 (ptr.down) が復帰後も残存していた問題を修正 — visibilitychange→hidden と pagehide で window blur と同じく `_cancelPointerGesture` を flush 前に実行 (ADR-0604)。

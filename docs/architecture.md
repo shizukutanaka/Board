@@ -34,7 +34,8 @@
 唯一の状態。pointerdown で `setPointerCapture` + (右ボタン以外のときのみ)
 `ptr.down=true` — 右 down は即 return (ADR-0532: macOS/Linux の contextmenu は
 mousedown 時点で発火するため、arm するとメニューガードが誤発動した)。
-pointerup でコミット、pointercancel / `lostpointercapture` / ドラッグ中の
+pointerup でコミット、pointercancel / `lostpointercapture` /
+`visibilitychange`→hidden / `pagehide` / ドラッグ中の
 `contextmenu` / touch long-press / Esc / window `blur` で
 `_cancelPointerGesture()` — いずれも dragKind 別に部分変更を復元する統一
 キャンセル経路。blur は同時に `_pointers.clear()` と `_pinchPrev`/`_pinchSnap`
@@ -297,7 +298,9 @@ DOM 要素は `data-t` 属性 + `UI.applyI18n()` で翻訳 (起動時に 1 回�
 - `snap` / `opc` — 64KB 断片 `{k,seq,n,data}`、受信は `_fragIn` が
   `{p,g,n}` 再構成。重複 `seq` は `!p[seq]` で棄却、n 不一致も棄却、
   完了時に join して元メッセージとして `_onRecv` に流す (24MB 上限)。
-  切断時 `_snapIn/_opcIn` をリセット (ADR-0385)。
+  宣言 `n>384` (24MB÷64KB) は受理不能として明示棄却、送信側 `_fragSend`
+  も超過時に `syncTooLarge` トーストで中止 (ADR-0603) — 両側一致で
+  「送ったが届かない」分岐を排除。切断時 `_snapIn/_opcIn` をリセット (ADR-0385)。
 - `img` — 画像 blob の `{k,key,seq,n,data}` 断片。op/snapshot 内の画像は
   `_slimOp` で `img:<key>` 参照に痩身化され、バイト本体は別経路
   (`_imgOuts` → 64KB chunks → `_imgChunks` 再構成 → `_imgIn`)。
@@ -341,6 +344,13 @@ DOM 要素は `data-t` 属性 + `UI.applyI18n()` で翻訳 (起動時に 1 回�
   文字列注入を `validRemotePayload` で遮断。スナップショット取込は
   `SHARE_MAX_SHAPES` (200k) まで許容し >500 図形盤面の切捨てを解消
   (ADR-0474)。
+- **op 配列上限 = 盤面上限** (ADR-0602): `addMany`/`del`/`zorder`/
+  `group`/`ungroup`/`connClears` の配列キャップは旧 ~500 固定から
+  `MAX_OP_SHAPES=SHARE_MAX_SHAPES` へ統一 — 「一つの op が盤面の
+  全図形をアドレスできる」上限で、501+ 一括 op が受信側だけ
+  無通知棄却されて分岐していた問題を解消。実効の DoS 上限は
+  配列数でなくワイヤサイズ (生 op ≤256KiB、断片化経路 ≤24MB)
+  にある — それ超過は `_fragSend`/`_fragIn` の明示ガード (ADR-0603)。
 
 ### CRDT clock
 各 op は `{peer, seq}` clock を持ち、`seenOps` (Set) で重複排除。スナップショット
