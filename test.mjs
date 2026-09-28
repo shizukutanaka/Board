@@ -1189,6 +1189,7 @@ const checks = [
   ['room switch also clears inbound assemblies (ADR-0466)', html.includes('this._snapIn=null;this._opcIn=null') && html.indexOf('this._snapIn=null;this._opcIn=null')<html.indexOf('new BroadcastChannel')],
   ['_pCt rebaselines after peer purge (ADR-0467)', html.includes('this._pCt=_pr().size')],
   ['_fragIn tags assembly by sender (ADR-0469)', html.includes('sn.src!==src') && html.includes("viaRtc?'rtc':msg.peer")],
+  ['_fragIn/imgChunks restart on seq 0 (ADR-0563)', html.includes('sn.src!==src||seq===0') && html.includes('st.n!==n||seq===0')],
   ['_zCommit compacts grown frac keys (ADR-0471)', html.includes('reindexFrac()') && html.includes('m.has(s.id)?m.get(s.id):o[i]')],
   // v1.6.80: multi-touch pinch cancels the single-pointer gesture (no stray edits)
   ['pointerdown aborts single-pointer gesture when a 2nd finger lands', html.includes("if(_nP()>=2){abortGesture();return;}")],
@@ -4092,6 +4093,12 @@ try {
       assert.ok(Net._imgChunks.get('kk').g===1,'partial img assembly parked');
       Net._onRecv({k:'img',peer:'P1',key:'kk',seq:0,n:1,data:'q'},true);
       assert.strictEqual(Net._imgIn.get('kk'),'q','img n-mismatch restarts and completes');
+      // ADR-0563: same-src img stream restart (seq 0) must not splice old+new
+      Net._imgChunks.clear();Net._imgIn.clear();
+      Net._onRecv({k:'img',peer:'P1',key:'kk',seq:0,n:2,data:'OL'},true);
+      Net._onRecv({k:'img',peer:'P1',key:'kk',seq:0,n:2,data:'NE'},true);
+      Net._onRecv({k:'img',peer:'P1',key:'kk',seq:1,n:2,data:'W!'},true);
+      assert.strictEqual(Net._imgIn.get('kk'),'NEW!','img seq 0 restarts a stale assembly');
       Net._imgIn.clear();
       for(let i=0;i<258;i++)Net._imgIn.set('b'+i,'d');
       assert.ok(Net._imgIn.size>=256,'pre-cap store setup');
