@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.628';
+const V='1.7.629';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -866,10 +866,13 @@ const MAX_HISTORY=500;
 const MAX_SEEN_OPS=2000; // cap seenOps to prevent unbounded growth
 const _ck=op=>op.clock.peer+':'+op.clock.seq;   // ADR-0428
 const _trimSeen=()=>{if(_sO().size>MAX_SEEN_OPS){const k=[..._sO()];for(let i=0;i<_fl(MAX_SEEN_OPS*0.2);i++)_sO().delete(k[i])}};
-const MAX_OP_SHAPES=500; // max shapes in a single remote op (DoS guard)
 // ADR-0039: importFromHash payload ceilings — decompression runs before the
 // confirm prompt, so an absurd z: payload would peg the tab on link open.
 const SHARE_MAX_BYTES=128*1024*1024,SHARE_MAX_SHAPES=200000;
+// ADR-0602: op-level shape/id arrays cap at the board's own shape ceiling —
+// the 24MB wire/join bound is the real DoS bound; a 500-cap silently DROPPED
+// legal bulk ops (e.g. select-all+del on a 501+ board) causing divergence.
+const MAX_OP_SHAPES=SHARE_MAX_SHAPES;
 const SHARE_URL_WARN=32768;   // ADR-0040: share links longer than this risk chat truncation
 const MIRROR_MAX=300;         // ADR-0041: cap the SR DOM-mirror list on huge boards
 const SVG_MAX_ELEMS=5000,SVG_MAX_PTS=2000;   // ADR-0042: SVG import ceilings (same anti-bomb spirit as ADR-0039)
