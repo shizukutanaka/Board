@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.593] - 2026-09-28
+### 修正
+- ADR-0565: `frame()` の `draw()`/`drawOverlay()` を try/catch で囲み、描画例外が `needsRender=true` + `_rafId=0` のままループを停止させる経路を塞いだ — draw 中の一過性 throw が外部 `_iv()` が来るまで描画を止めていた。
+
 ## [1.7.592] - 2026-09-28
 ### ドキュメント
 - ADR-0564: spec.md §8 (同期プロトコル) に incarnation peerId (ADR-0459)・wclock 永続化 (ADR-0460)・チャンク再組立の seq0 再起動 (ADR-0563) を追記 — wire 層の収束保証が仕様書レベルでも読めるようにした。

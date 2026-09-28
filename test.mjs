@@ -366,7 +366,7 @@ const checks = [
   ['pen predicted-events ink tail', html.includes("getPredictedEvents") && html.includes("_penPred") && html.includes("function _predTail(")],
   // v1.7.82: ADR-0024 layered overlay canvas
   ['overlay canvas element + separate ctx', html.includes('id="ov"') && html.includes("octx=ocanvas.getContext")],
-  ['invalidateOverlay skips scene pass', html.includes("function invalidateOverlay(){needOverlay=true") && html.includes("if(needsRender)draw();") && html.includes("if(needOverlay)drawOverlay();")],
+  ['invalidateOverlay skips scene pass', html.includes("function invalidateOverlay(){needOverlay=true") && html.includes("if(needsRender)draw();") && html.includes("needOverlay)drawOverlay()")],
   ['marquee drag repaints overlay only', html.includes("_dk('marquee')){state.marquee=") && html.includes("_ivO()")],
   ['hover no longer repaints scene', !html.includes("state.hover=top?.id||null;_iv()")],
   // v1.7.83: ADR-0025 minimap content cache
@@ -1190,6 +1190,7 @@ const checks = [
   ['_pCt rebaselines after peer purge (ADR-0467)', html.includes('this._pCt=_pr().size')],
   ['_fragIn tags assembly by sender (ADR-0469)', html.includes('sn.src!==src') && html.includes("viaRtc?'rtc':msg.peer")],
   ['_fragIn/imgChunks restart on seq 0 (ADR-0563)', html.includes('sn.src!==src||seq===0') && html.includes('st.n!==n||seq===0')],
+  ['frame() draw throw cannot kill the loop (ADR-0565)', html.includes('try{if(needsRender)draw();if(needOverlay)drawOverlay()}catch')],
   ['_zCommit compacts grown frac keys (ADR-0471)', html.includes('reindexFrac()') && html.includes('m.has(s.id)?m.get(s.id):o[i]')],
   // v1.6.80: multi-touch pinch cancels the single-pointer gesture (no stray edits)
   ['pointerdown aborts single-pointer gesture when a 2nd finger lands', html.includes("if(_nP()>=2){abortGesture();return;}")],
