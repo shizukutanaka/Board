@@ -7329,6 +7329,15 @@ try {
     console.log('  \u2713 draw(): per-shape isolation pinned (2 asserts)');
   }
 
+  // ADR-0603: fragment streams larger than the 384-chunk join bound are
+  // undeliverable — sender warns (toast) instead of emitting doomed fragments,
+  // and intake rejects declared n>384 outright (not a bogus 1-chunk join).
+  {
+    assert.ok(html.includes("if(n>384){_wT('syncTooLarge');return}"),'sender toasts + aborts on undeliverable fragment stream');
+    assert.ok(html.includes('if(_iN(msg.n)&&msg.n>384)return;'),'intake rejects declared n>384 before assembly');
+    console.log('  ✓ _fragSend/_fragIn: undeliverable stream guard pinned (2 asserts)');
+  }
+
   // search navigation a11y: SR users search BY content, so the announcement must name
   // WHICH shape was found (describeShape), not a bare "2/7" count — parity with Tab cycle.
   {
