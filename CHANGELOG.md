@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.603]
+### Fixed
+- ピア選択アウトラインが `visible:0` 図形の位置/サイズを他者へ可視化していたのを修正 (ADR-0576) — `drawPeerSelections` の byId ガードに `_hd` を追加し hidden parity をプレゼンスにも適用。
+
 ## [1.7.602]
 ### Fixed
 - ドラッグ中の ⌘Z/⌘Y で undo/redo がジェスチャを跨いで適用され、`dragStartShapes` の before スナップショットと実状態が食い違う op が記録され得たのを修正 (ADR-0574) — Esc と同じく先に `_cancelPointerGesture()`。
