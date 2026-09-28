@@ -14,10 +14,13 @@ id を落とさない。結果、ユーザーが見えない図形を選択し�
 remote 適用はその経路を通らない。
 
 ## 決定
-`_apply` の ADR-0546 サイト (prop-patch 系 op が選択図形に触れたときの
+_apply` の ADR-0546 サイト (prop-patch 系 op が選択図形に触れたときの
 パネル再同期チェック) を拡張し、style/upd/align/resize/beautify が
-選択中図形を `_hd` にしたら `_sdl(id)` する。1 箇所の統合で
-local/remote/undo/redo 全経路をカバーする。
+選択中図形を `_hd` にしたら `_sdl(id)` する。さらに復帰方向として
+`_selR` (undo の origSel 復元チョークポイント) の `byId` フィルタに
+`_sv` を追加 — 削除時は可視だったが undo までに非表示化された図形
+(peer が間に hide した場合等) が選択に復帰するのを防ぐ。
+2 箇所で local/remote/undo/redo 全経路をカバーする。
 
 ## 影響
 - 「非表示は選択されない」不変条件が選択起点だけでなく状態遷移にも保たれる

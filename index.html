@@ -792,7 +792,7 @@ const _selL=f=>_sb().filter(f);   // ADR-0308
 const _selUL=()=>_sb().filter(_ul);
 const _repC=(before,beforeWc,origSel)=>Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(_wc()),origSel});
 const _ctrAt=(ss,wp)=>{wp=wp||_midV();const bb=_bA(ss);if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);for(const s of ss)_sT2(s,dx,dy)}};
-const _selR=op=>{if(op.origSel)_ss(op.origSel.filter(byId))};   // ADR-0309
+const _selR=op=>{if(op.origSel)_ss(op.origSel.filter(id=>{const s=byId(id);return s&&_sv(s)}))};   // ADR-0309/0568: restore skips missing and hidden shapes
 const _keepSel=arr=>{if(_ln(arr))_hi()[_hx()].origSel=arr};   // ADR-0312
 const _pd=e=>e.preventDefault();   // ADR-0326
 const _ce=t=>document.createElement(t);   // ADR-0329
@@ -1775,7 +1775,7 @@ function clone(o){return _JP(_JS(o))}
 function nowTs(){state._lastTs=_max(Date.now(),state._lastTs);return state._lastTs}
 // Total order on op clocks for per-property LWW (ADR-0002): "newer" = larger by
 // (ts, then peer, then seq). Every peer compares identical clock triples, so the
-// winner is deterministic regardless of wall-clock skew. b may be undefined (no prior
+// winner is deterministic regardless
 // recorded write for that property → a wins).
 function clockNewer(a,b){
   if(!a)return false;
@@ -7681,7 +7681,7 @@ async function copyText(text){
 const KINSOKU_START=_sT([...'、。，．・：；！？‼⁇⁈⁉）]｝」』〕〉》】〗〙〟”’｠»ヽヾゝゞ々ーぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮ〜～…‥,.!?:;)]}']);
 const KINSOKU_END=new Set([...'（[｛「『〔〈《【〖〘〝“‘｟«([{']);
 // Perf: drawShape() re-wraps sticky-note text (measureText per char-token) on EVERY
-// frame it's visible, even when nothing about the shape changed since the last frame.
+// frame it's visible, even when nothi
 // Memoize per-shape keyed by (text,maxWidth,fontSize); WeakMap means eviction is
 // automatic (no manual cleanup) once a shape is no longer referenced. Shape objects
 // are mutated in place by Store (see Object.assign in _apply), so the reference stays

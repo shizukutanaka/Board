@@ -5356,7 +5356,7 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [1.7.595]
 ### Fixed
-- リモートの hide (style op `visible:0`) や hide の redo で、選択中の図形が非表示のまま選択に残り続けていたのを修正 (ADR-0568) — `_apply` の prop-patch 経路で `_hd` になった選択 id を `_sdl` で落とし、0566 の選択不変条件を動的経路にも適用。
+- リモートの hide (style op `visible:0`) や hide の redo で、選択中の図形が非表示のまま選択に残り続けていたのを修正 (ADR-0568) — `_apply` の prop-patch 経路で `_hd` になった選択 id を `_sdl` で落とす。併せて `_selR` (undo の origSel 復元) でも `_sv` フィルタし、削除後に非表示化された図形の選択復帰を遮断 — 0566 不変条件を状態遷移の双方向に適用。
 
 ## [1.7.594]
 ### Fixed

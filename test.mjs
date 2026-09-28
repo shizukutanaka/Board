@@ -10436,6 +10436,20 @@ try {
       assert.strictEqual(state.shapes.find(x=>x.id===s.id).visible,0,'remote hide applied');
       assert.ok(!state.selection.has(s.id),'remote hide drops the id from selection');
     }
+    // ADR-0568 (restore direction): undo's _selR must not re-select a shape that
+    // is hidden (e.g. a peer hid it between the delete's origSel capture and undo).
+    {
+      reset();
+      const a=Shape.make('rect',{x:0,y:0,w:10,h:10}),b=Shape.make('rect',{x:20,y:0,w:10,h:10});
+      Store.commit({op:'add',shape:a});Store.commit({op:'add',shape:b});
+      state.selection=new Set([a.id,b.id]);
+      const cpy=x=>JSON.parse(JSON.stringify(x));
+      const hid=cpy(a);hid.visible=0;
+      Store.commit({op:'del',shapes:[hid,cpy(b)],origSel:[a.id,b.id]});
+      Store.undo();
+      assert.ok(state.selection.has(b.id),'undo re-selects the visible shape');
+      assert.ok(!state.selection.has(a.id),'undo does not re-select a hidden shape');
+    }
     // toggleStickyText: sticky ↔ text type patch, undo-safe
     {
       reset();
