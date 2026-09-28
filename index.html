@@ -843,6 +843,7 @@ const _df=()=>state.draft;
 const _wc=()=>state.wclock;
 const _tl=()=>state.tool;
 const _dn=()=>state.docName;
+let _nameTs=0;
 const _setDocName=n=>{state.docName=n;const d=_g('docName');if(d)d.value=_dn();_syncDocTitle();};
 const _pr=()=>state.peers;
 const _hi=()=>state.history;
@@ -857,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.607';
+const V='1.7.608';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -7948,8 +7949,8 @@ const Net={
           this._mergeSnapshotOp(op);   // ADR-0058: add unknown shapes, LWW-merge known ones
         }
         break;
-      case 'name':   // ADR-0402: doc-name rename propagates as a plain broadcast
-        if(_iS(msg.name)&&_ln(msg.name)<=80){_setDocName(msg.name);_ps()}
+      case 'name':   // ADR-0402/0581: rename is LWW — a stale peer's slower-arriving rename can't clobber a newer local one
+        if(_iS(msg.name)&&_ln(msg.name)<=80&&(_iN(msg.ts)?msg.ts>_nameTs:!0)){_nameTs=_iN(msg.ts)?msg.ts:_nameTs;_setDocName(msg.name);_ps()}
         break;
       case 'bye':{   // ADR-0456: peer left — drop presence now, don't wait for the 15s reap
         const pk=this._pk(msg,viaRtc);
@@ -9020,7 +9021,7 @@ function wire(){
     // (Qiita: Rapls / Zenn: spacemarket). imeSho
     // mid-composition input events keep partial
     // a parallel compositionend listener picks u
-    const _commitDocName=()=>{_setDocName(docNameEl.value);_md(!0);_ps();Net._bcast(_mk('name',{name:state.docName}))};   // ADR-0402
+    const _commitDocName=()=>{_setDocName(docNameEl.value);_md(!0);_ps();Net._bcast(_mk('name',{name:state.docName,ts:_nameTs=nowTs()}))};   // ADR-0402
     _on(docNameEl,'input',e=>{if(imeShouldCommit(e))_commitDocName()});
     _on(docNameEl,'compositionend',_commitDocName);
     _on(docNameEl,_CH,()=>{_setDocName(docNameEl.value||_UT);_ps()});

@@ -629,7 +629,8 @@ Board/
     │   ├── ADR-0577-presence-hidden-parity-doc.md # architecture/spec へ presence hidden parity 同期 (実装済)
     │   ├── ADR-0578-wire-guard-pins.md          # _fragIn dup スロット + _dcQ cap のピン (実装済)
     │   ├── ADR-0579-research-doc-sync.md        # research-improvements.md の stale 未実装3件を同期 (実装済)
-    │   └── ADR-0580-comment-tail-reclaim.md     # コメント尾一括刈り ~17.9KB 回収 (実装済)
+    │   ├── ADR-0580-comment-tail-reclaim.md     # コメント尾一括刈り ~17.9KB 回収 (実装済)
+    │   └── ADR-0581-docname-lww.md              # ドキュメント名の改名を ts ベース LWW で収束 (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
