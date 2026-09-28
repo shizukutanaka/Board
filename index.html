@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.560';
+const V='1.7.561';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3849,14 +3849,16 @@ _on(canvas,_PD,e=>{
   canvas.setPointerCapture(e.pointerId);
   const sp=_osp(e);
   const wp=_s2(sp);
-  ptr.down=true;state.measure=null;ptr.x=ptr.x0=sp.x;ptr.y=ptr.y0=sp.y;
+  state.measure=null;
+  // ADR-0532: right-down must not arm ptr.down — macOS/Linux contextmenu fires at mousedown.
+  if(e.button===2)return;
+  ptr.down=true;ptr.x=ptr.x0=sp.x;ptr.y=ptr.y0=sp.y;
   ptr.wx=ptr.wx0=wp.x;ptr.wy=ptr.wy0=wp.y;
   // middle click or hand tool => pan
   const isPan=e.button===1||_tl()==='hand';
   if(isPan||(_tl()==='hand')){
     ptr.panning=true;canvas.dataset.panning='true';return;
   }
-  if(e.button===2){return}       // right-click handled elsewhere
   UI.closeCtxMenu();
   // ADR-0006: select tool only — that's where _sl() (which every menu item but
   // clear-all operates on) is meaningful and gets set synchronously below by pickOrMarquee.
@@ -4540,15 +4542,9 @@ _on(canvas,'drop',e=>{
 });
 
 // ---- OS clipboard bridge ----
-// ADR-0516: ⌘C/⌘X write the selection as .board JSON (text/plain) so keyboard
-// copy-paste works across tabs/instances — previously the OS clipboard was only
-// filled via the ctx-menu "Copy .board" item, and ⌘V's keydown preventDefault
-// suppressed the window 'paste' event entirely, so external clipboard content
-// was unreachable by keyboard. The copy/cut event is the only place
-// clipboardData.setData is allowed, so the keydown just marks _cpNow and lets
-// the native event dispatch; the handler consumes the flag and writes the JSON.
-// _osClip remembers what we wrote so a paste of our own echo takes the internal
-// doPaste path (keeps the _pasteCount cascade) instead of a foreign import.
+// ADR-0516: ⌘C/⌘X write the selection as .board JSON (text/plain). clipboardData.setData
+// is only legal inside the copy/cut event, so keydown marks _cpNow and this handler
+// writes the JSON. _osClip echoes back to take the internal doPaste path.
 let _osClip=null,_cpNow=false;
 function _osCopy(e){
   if(!_cpNow)return;
@@ -5456,6 +5452,7 @@ function _syncTextFinalize(s,before,deleted){
   Net.broadcast(op);
 }
 function openTextEditor(s,isNew){
+  s=byId(s.id)||s;   // ADR-0533: add commits clone — bind the live object, not the pre-clone
   state.editing=s.id;_iv();
   const ta=_ce('textarea');
   ta.className='text-overlay';

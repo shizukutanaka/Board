@@ -5354,6 +5354,14 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.561] - 2026-09-28
+### Fixed
+- macOS/Linux でコンテキストメニューが開かない回帰を修正 (ADR-0532) — 右ボタンの pointerdown が `ptr.down` を立て、mousedown 時点で発火する contextmenu のガードを誤発動させていた。右ボタン down は即 return し ptr 状態を立てない
+- 新規テキスト/付箋がタイプ内容を失うバグを修正 (ADR-0533) — `openTextEditor` が `add` commit の clone 前オブジェクトに bind しており、ブラー時のコミットが分離オブジェクトへ書き込まれていた。`byId` で live 図形を再解決
+
+### Added
+- 上記2件の test.mjs ピン
+
 ### Security
 - **リモート `del` op の `connClears` を検証(upd/style とのセキュリティパリティ)**:
   ソクラテス式問答「そのクリーンアップはネットワーク境界を越えても安全か?」で発見。
