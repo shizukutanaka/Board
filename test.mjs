@@ -7145,6 +7145,32 @@ try {
     console.log('  ✓ grot: pen knob, group pivot, Shift snap, single-op undo (8 asserts)');
   }
 
+  // ADR-0587: grot remaps bound conns' aF from ORIG fractions (no drift)
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+    const bx=Shape.make('rect',{x:0,y:0,w:100,h:50});
+    const ar=Shape.make('arrow',{x1:0,y1:25,x2:200,y2:25,a:bx.id,aF:{fx:0,fy:0.5}});
+    Store.commit({op:'add',shape:bx});Store.commit({op:'add',shape:ar});
+    // arm like the single-shape path: gOrig + gAnc
+    ptr.dragKind='grot';
+    ptr.gOrig=new Map([[bx.id,JSON.parse(JSON.stringify(byId(bx.id)))]]);
+    ptr.gAnc=new Map([[ar.id,JSON.parse(JSON.stringify(byId(ar.id)))]]).set(ar.id,JSON.parse(JSON.stringify(byId(ar.id))));
+    ptr.rotCx=50;ptr.rotCy=25;ptr.rotA0=-90;
+    _grotDrag({x:60,y:25},false);                         // atan2=0 → deg=90
+    const f=byId(ar.id).aF;
+    assert.ok(Math.abs(f.fx-0.5)<1e-9&&Math.abs(f.fy)<1e-9,'grot aF remapped to top edge, got '+JSON.stringify(f));
+    // second drag frame re-derives from ORIG — no double-rotation drift
+    _grotDrag({x:60,y:25},false);
+    const f2=byId(ar.id).aF;
+    assert.ok(Math.abs(f2.fx-0.5)<1e-9&&Math.abs(f2.fy)<1e-9,'grot re-drag idempotent, got '+JSON.stringify(f2));
+    _grotCommit();
+    assert.strictEqual(state.history[state.histIdx].dir,'grot');
+    Store.undo();
+    assert.strictEqual(byId(ar.id).aF.fx,0,'undo restores orig aF');
+    ptr.dragKind=null;ptr.gOrig=null;ptr.gAnc=null;ptr.rotA0=null;ptr.gPad=null;
+    console.log('  ✓ grot bound anchors: aF remap, idempotent re-drag, undo (4 asserts)');
+  }
+
   // search navigation a11y: SR users search BY content, so the announcement must name
   // WHICH shape was found (describeShape), not a bare "2/7" count — parity with Tab cycle.
   {
