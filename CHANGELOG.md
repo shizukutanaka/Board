@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.604]
+### Docs/Tests
+- architecture.md / spec.md にプレゼンス描画の hidden parity (ピア選択アウトラインも `visible:0` を除外) を同期 + ADR-0576 ソースピン追加 (ADR-0577)。
+
 ## [1.7.603]
 ### Fixed
 - ピア選択アウトラインが `visible:0` 図形の位置/サイズを他者へ可視化していたのを修正 (ADR-0576) — `drawPeerSelections` の byId ガードに `_hd` を追加し hidden parity をプレゼンスにも適用。

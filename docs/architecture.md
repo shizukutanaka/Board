@@ -114,7 +114,9 @@ paste/duplicate/import どの経路でも選択に入らない。遷移方向 (�
 は `_apply` が prop-patch の後処理で `_sdl` する (style/upd/align/resize/beautify の
 remote/redo をカバー)。hide 時に編集中 overlay があれば畳む — local hide は `hideSelection`
 冒頭の `_cxO()`、remote/undo 経由は `_teFollow`/`_lblFollow` の `_hd` ガードが次フレームで
-畳む (ADR-0569)。direct `state.selection.add` や新たな `_ss` バイパスを増やさないこと。
+畳む (ADR-0569)。描画系でも同規則を守る — ピアの `p.sel` プレゼンスは
+`drawPeerSelections` が `_hd` で落とす (ADR-0576: 非表示図形の位置を他者へ漏らさない)。
+direct `state.selection.add` や新たな `_ss` バイパスを増やさないこと。
 
 **img 参照の再解決**: 形状を復元する全経路 (del/clear/replace の backward、replace の forward) は
 `_sh().push(Net._attachShape(clone(s)))` を通す。`img:` 参照を抱えた図形が undo で戻る際に

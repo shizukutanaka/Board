@@ -625,7 +625,8 @@ Board/
     │   ├── ADR-0573-spec-overlay-fold.md     # spec.md に overlay 非到達化規則 (実装済)
     │   ├── ADR-0574-undo-cancels-gesture.md  # ドラッグ中の ⌘Z/⌘Y はジェスチャを先キャンセル (実装済)
     │   ├── ADR-0575-overlay-close-repaint.md # overlay 畳み後に _iv() で再描画 (実装済)
-    │   └── ADR-0576-peer-sel-hidden-skip.md  # ピア選択アウトラインが hidden を描かない (実装済)
+    │   ├── ADR-0576-peer-sel-hidden-skip.md  # ピア選択アウトラインが hidden を描かない (実装済)
+    │   └── ADR-0577-presence-hidden-parity-doc.md # architecture/spec へ presence hidden parity 同期 (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
