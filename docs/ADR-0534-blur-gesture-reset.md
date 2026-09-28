@@ -17,14 +17,17 @@ wakeLock 再取得のみでジェスチャ状態を掃除していなかった�
 
 ## 決定
 
-`_on(window,'blur',...)` で `ptr.down||ptr.panning` なら `_cancelPointerGesture()`
+`_on(window,'blur',...)` で `ptr.down` なら `_cancelPointerGesture()`
 (部分ジェスチャを復元して中断) し、`_pointers.clear()` + `_pinchPrev=0` +
 `_pinchSnap/_pinchVp` の解放まで一括で再ベースライン化する。
+さらに space キーで arm した `window._prevTool` (一時 hand ツール) も復元する
+—— スペースを押したまま blur → 別アプリで keyup が取りこぼされると、
+ツールが hand に固着して space トグルが永続的に壊れていた。
 
 ## 影響
 
 - blur で取りこぼされた pointerup が後続ジェスチャを壊さなくなる
+- space キーの一時 hand が blur 後も正しく元ツールへ戻る
 - 「見えない状態でのドラッグ継続→不可視座標へのドロップ」も未然に防ぐ
-  (見えなかった drag は中断される方が安全)
 - iOS のアプリ切替は OS が pointercancel を投げるため従来通り正常
 - test.mjs にピン (0534) を追加

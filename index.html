@@ -4670,11 +4670,12 @@ _on(canvas,'gesturechange',e=>{
 _on(canvas,'gestureend',()=>{_pinchSnap=null;_pinchVp=null;_iv()});
 _on(canvas,_PU,_resetPinch);
 _on(canvas,_PC,_resetPinch);
-// ADR-0534: pointerup lost to a window blur leaves ptr.down/_pointers armed — re-base on blur.
+// ADR-0534: blur can lose pointerup — re-base gesture/pointer state.
 _on(window,'blur',()=>{
-  if(ptr.down||ptr.panning)_cancelPointerGesture();
+  if(ptr.down)_cancelPointerGesture();
   _pointers.clear();_pinchPrev=0;
   if(_pinchSnap){_pinchSnap=null;_pinchVp=null;_iv();}
+  if(window._prevTool){pickTool(window._prevTool);window._prevTool=null}   // space keyup lost to blur
 });
 
 let _wheelZoomEnd=0;

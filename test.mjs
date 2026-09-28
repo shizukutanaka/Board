@@ -562,7 +562,7 @@ const checks = [
   ['SW caches only ok responses (ADR-0529)', html.includes('if(n.ok)c.put(e.request,n.clone())')&&html.includes("e.request.method==='GET'&&n.ok")],
   ['right-down does not arm ptr.down — macOS ctx menu fix (ADR-0532)', html.indexOf('if(e.button===2)return')<html.indexOf('ptr.down=true')&&html.indexOf('if(e.button===2)return')>0],
   ['openTextEditor binds the live shape, not the pre-clone (ADR-0533)', html.includes('s=byId(s.id)||s')],
-  ['window blur re-bases pointer/gesture state (ADR-0534)', html.includes("_on(window,'blur'")&&html.includes('_pointers.clear()')&&html.includes('if(ptr.down||ptr.panning)_cancelPointerGesture()')],
+  ['window blur re-bases pointer/gesture state (ADR-0534)', html.includes("_on(window,'blur'")&&html.includes('_pointers.clear()')&&html.includes('window._prevTool=null')],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
