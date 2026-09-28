@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.607]
+### Refactor
+- コメント尾のガード付き一括刈り込みで ~17.9KB 回収 (raw 524,269→506,241B、余白 ~18KB) — ピン済み文字列・URL・バナー・今季 ADR 参照を除外して長い説明コメントのみ短縮 (ADR-0580)。
+
 ## [1.7.606]
 ### Docs
 - research-improvements.md の陳腐化した「未実装」記述3件を実装済み ADR 参照へ同期 — filled-outline パス (ADR-0046)、`DOC_KEY:prev` 系のセッション間安全網 (ADR-0004)、offscreen DOM ミラー (ADR-0041) (ADR-0579)。
