@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.597]
+### Fixed
+- 全てロック済みの選択に対する ⌘⇧H (hide) が沈黙していたのを `lockedNoop` トーストに修正 (ADR-0570) — doDelete と同じ慣例。
+
 ## [1.7.596]
 ### Fixed
 - 編集中図形を hide した際に overlay が不可視のまま残っていたのを修正 (ADR-0569) — `hideSelection` で `_cxO()` 先行し、`_teFollow`/`_lblFollow` のガードに `_hd` を追加して remote hide/hide redo でも次フレームで畳む。

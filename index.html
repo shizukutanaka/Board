@@ -857,7 +857,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.596';
+const V='1.7.597';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3829,7 +3829,7 @@ let ptr={down:false,x:0,y:0,x0:0,y0:0,wx:0,wy:0,wx0:0,wy0:0,
 let _longPressTimer=null;   // ADR-0006
 
 // Revert any in-progress single-pointer gesture without committing — used when a
-// second finger lands and a pinch-zoom takes over (multi-touch). Each branch restores
+// second finger lands and a pinch-zoom
 // the pre-gesture snapshot captured at pointerdown so nothing is half-applied or left
 // non-undoable: move/resize/rotate ro
 // restores the shapes it had optimistically removed, and an uncommitted draft (which
@@ -6040,6 +6040,7 @@ function hideSelection(){
     s.visible=0;_sdl(id);
   })
   if(_ln(before)){_styleOp(before,after);_iv();_o(_ln(before)+' '+t('hiddenCount'))}
+  else if(_selN())_wT('lockedNoop')   // ADR-0570: all-locked selection hid nothing
 }
 // ADR-0140: connect two selected shapes (draw.io "Connect" / Miro
 // quick-link). Makes an arrow bound at BOTH ends (s.a/s.b → connEnds
@@ -7373,7 +7374,7 @@ function importBoard(file){
 }
 // Connector edge label as SVG (ADR-0003): paper background rect + centred text at the
 // segment midpoint. Width is estimated (no canvas measure); mirrors the canvas pill.
-// Returns '' when unlabeled so callers can push unconditionally. All values via _esc.
+// Returns '' when unlabeled so callers
 // ADR-0119: SVG twin of _arrowHeadShape — triangle | dot | open chevron.
 function _svgArrowHead(els,tx,ty,a1,a2,ah,stroke,a,sz,style){
   if(style==='none')return;                                  // ADR-0230
