@@ -638,7 +638,8 @@ Board/
     │   ├── ADR-0586-rotate-remaps-bound-anchor.md# 結合先回転で aF/bF を extent へ再正規化 (実装済)
     │   ├── ADR-0587-grot-remaps-bound-anchor.md # 回転ノブでも aF/bF を extent へ再正規化 (実装済)
     │   ├── ADR-0588-flip-mirrors-unselected-anchor.md# 選択外コネクタの結合先反転でも aF/bF をミラー (実装済)
-    │   └── ADR-0589-anchor-transform-matrix.md  # コネクタ束縛×変換の不変条件文書化+ピン (実装済)
+    │   ├── ADR-0589-anchor-transform-matrix.md  # コネクタ束縛×変換の不変条件文書化+ピン (実装済)
+    │   └── ADR-0590-exportscale-behavioral-pin.md# exportScale のクランプ実動作テスト (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

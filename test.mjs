@@ -7204,6 +7204,19 @@ try {
     console.log('  ✓ anchor-transform coverage: 9 source pins');
   }
 
+  // exportScale: big boards clamp to canvas limits instead of blanking
+  {
+    assert.strictEqual(exportScale(10,10,2),2,'small board keeps desired scale');
+    const s1=exportScale(40000,40000,2);
+    assert.ok(s1<=16384/40000+1e-12&&s1>0,'huge board clamps under dim cap, got '+s1);
+    const s2=exportScale(20000,10,4);
+    assert.ok(s2<=16384/20000+1e-12,'wide board clamps by width');
+    const s3=exportScale(20000,20000,1);
+    assert.ok(20000*s3*20000*s3<=16384*16384+1,'area cap respected');
+    assert.ok(exportScale(0,0,2)>=0,'degenerate bbox does not NaN');
+    console.log('  ✓ exportScale: dim/area clamps, degenerate safe (5 asserts)');
+  }
+
   // search navigation a11y: SR users search BY content, so the announcement must name
   // WHICH shape was found (describeShape), not a bare "2/7" count — parity with Tab cycle.
   {

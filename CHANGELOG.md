@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.617]
+### Test
+- `exportScale` の実動作テスト — 小盤面は所望スケール維持、巨大盤面は 16384px 辺上限/面積上限でクランプ (空白化しない)、退化 bbox で NaN にならないことを assert (ADR-0590)。
+
 ## [1.7.616]
 ### Docs+Test
 - architecture.md に「コネクタ束縛と変換」節 — `a`/`b`/`aF`/`bF`/`labelPos`/`way`/`bend`/`cbend` × translate/flip/reverse/rotate/grot/gresize の不変条件行列 + `connClears`・選択外コネクタ同梱規則を文書化 (ADR-0589)。
