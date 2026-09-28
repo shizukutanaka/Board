@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.557';
+const V='1.7.558';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4428,8 +4428,7 @@ const IMG_IMPORT_MAX_DIM=2048;
 function _imgImportFile(f,cb){
   const reader=new FileReader();
   reader.onload=()=>{
-    // ADR-0527: 4MB → 16MB — phone photos died here even though the 2048px
-    // WebP downscale below would shrink them well under the 16M dataUrl cap.
+    // ADR-0527: 4MB→16MB — the 2048px WebP downscale below shrinks phone photos under the downstream 16M cap anyway.
     if(_ln(reader.result) > 16*1024*1024){
       _w(t('imgBig')+' ('+_rnd(_ln(reader.result)/1024)+'KB)');return;
     }
@@ -9931,12 +9930,12 @@ if('serviceWorker' in navigator){
           // network-first for the document: pure cache-first pinned users to the first
           // cached HTML forever (old HTML regenerates the old SW -> activate/controllerchange
           // never fire, updates never arrive). Offline still falls back to the cache.
-          try{const n=await fetch(e.request);c.put(e.request,n.clone());return n}
+          try{const n=await fetch(e.request);if(n.ok)c.put(e.request,n.clone());return n}
           catch(_){const r=await c.match(e.request);if(r)return r;return new Response('offline',{status:503})}
         }
         const r=await c.match(e.request);
         if(r)return r;
-        try{const n=await fetch(e.request);if(e.request.method==='GET')c.put(e.request,n.clone());return n}
+        try{const n=await fetch(e.request);if(e.request.method==='GET'&&n.ok)c.put(e.request,n.clone());return n}
         catch(_){return new Response('offline',{status:503})}
       }));
     });`;

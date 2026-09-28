@@ -2,6 +2,16 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.558] - 2026-09-28
+
+### 修正
+
+- **SW が ok 応答のみキャッシュ** — navigate (network-first) と GET (cache-first) の両 `c.put` が `Response.ok` を見ず、一時的な 404/500 応答が永続キャッシュに混入しオフライン時にエラーページを返し続け得た。両経路を `n.ok` でゲート (ADR-0529)
+
+### ドキュメント
+
+- architecture.md の Input 節にジェスチャライフサイクル節を追加 (ADR-0516..0526 同期)
+
 ## [1.7.557] - 2026-09-28
 
 ### 修正
