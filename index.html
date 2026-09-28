@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.619';
+const V='1.7.620';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6435,7 +6435,7 @@ function exportScale(w,h,desired){
 // ADR-0050: the render-to-blob path shared by exportPNG (download) and copyPNG
 // (clipboard). cb receives the PNG blob or null on failure.
 function _renderPngBlob(shapes,cb,desired){
-  const b=_bA(shapes);
+  const b=_bA(shapes.filter(_sv));   // ADR-0593: hidden shapes must not inflate the export bbox
   if(!b){_wT(_EM);return}
   const pad=32;
   const w=_ceil(b.w+pad*2),h=_ceil(b.h+pad*2);
@@ -7458,7 +7458,7 @@ function _connLabelSVG(s,x1,y1,x2,y2,ox,oy,stroke,paper){
 }
 // Pure SVG assembly; returns string or null. All attr values through _esc.
 function buildSVG(shapes,paper){
-  const b=_bA(shapes);
+  const b=_bA(shapes.filter(_sv));   // ADR-0593: hidden shapes must not inflate the export viewBox
   if(!b)return null;
   const pad=32;
   const w=_ceil(b.w+pad*2),h=_ceil(b.h+pad*2);

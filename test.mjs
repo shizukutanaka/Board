@@ -7251,6 +7251,19 @@ try {
     console.log('  ✓ group halo: hidden members excluded, fully-hidden group no halo (3 asserts)');
   }
 
+  // ADR-0593: export viewBox/bbox excludes hidden shapes (no position leak)
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+    const v1=Shape.make('rect',{x:0,y:0,w:100,h:100});
+    const h1=Shape.make('rect',{x:5000,y:5000,w:50,h:50,visible:0});
+    Store.commit({op:'add',shape:v1});Store.commit({op:'add',shape:h1});
+    const svg=buildSVG(state.shapes,'#fff');
+    assert.ok(svg&&!svg.includes('5182'),'viewBox width ignores hidden shape bbox, got: '+svg.slice(0,120));
+    const svg2=buildSVG([byId(h1.id)],'#fff');
+    assert.strictEqual(svg2,null,'all-hidden export yields null');
+    console.log('  ✓ export bbox: hidden shapes excluded from viewBox, all-hidden → null (2 asserts)');
+  }
+
   // search navigation a11y: SR users search BY content, so the announcement must name
   // WHICH shape was found (describeShape), not a bare "2/7" count — parity with Tab cycle.
   {
