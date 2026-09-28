@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.565';
+const V='1.7.566';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1983,7 +1983,7 @@ function getImg(dataUrl){
   let img=_imgCache.get(k);
   if(img){_imgCache.delete(k);_imgCache.set(k,img);return img}
   img=new Image();
-  img.onload=()=>{_iv();Minimap.invalidateCache();};   // minimap scene bitmap keys on _gridVer — an image finishing load changes pixels without touching it (ADR-0025)
+  img.onload=()=>{_iv();Minimap.invalidateCache();};   // minimap cache keys on _gridVer — image load changes pixels without touching it (ADR-0025)
   img.src=dataUrl;
   if(_imgCache.size>=IMG_CACHE_MAX)_imgCache.delete(_imgCache.keys().next().value);
   _imgCache.set(k,img);
@@ -2366,7 +2366,7 @@ function describeShape(s){
   if(txt)d+=` “${_ln(txt)>30?_s0(txt,30)+'…':txt}”`;
   d+=` @ ${_rnd(b.x)},${_rnd(b.y)}`;
   if(_lk(s))d+=` ${t('ctxLock')}`;
-  if(_hd(s)||_oP(s)===0)d+=` ${t('tagHidden')}`;   // ADR-0440: fully-transparent is invisible to sighted users too   // ADR-0371: selection-restore / RTC can select a hidden shape
+  if(_hd(s)||_oP(s)===0)d+=` ${t('tagHidden')}`;   // ADR-0371/0440: hidden or fully-transparent (RTC/selection-restore can still select one)
   if(_gi(s))d+=` ${t('tagGroup')}`;   // ADR-0380: visual group halo has no SR channel
   if(_conn(s.type)&&(s.a||s.b)){   // ADR-0380: bound endpoints are the conn's identity
     const A=s.a&&byId(s.a),B=s.b&&byId(s.b);
@@ -4370,7 +4370,7 @@ function editSelectedShapeKbd(){
 function openLabelEditor(hit,leftPx,topPx,bold){
   const inp=_ce('input');
   inp.value=hit.label||'';inp.maxLength=80;
-  const col=hit.stroke||_gC(bold?'--accent-contrast':'--ink');   // a11y-audit-2026-07: this is real text (label editor), needs the 4.5:1 text floor too — --accent-contrast clears both themes
+  const col=hit.stroke||_gC(bold?'--accent-contrast':'--ink');   // a11y-audit-2026-07: label-editor text needs the 4.5:1 floor — --accent-contrast clears both themes
   inp.style.cssText=`position:fixed;left:${leftPx}px;top:${topPx}px;`+
     `font:${hit.italic?'italic ':''}${bold?'600 ':''}${hit.fontSize||12}px ${_fontFam(hit)};color:${col};`+   // ADR-0186/0206
     `background:${_p()};border:1px solid ${col};`+
@@ -4430,7 +4430,7 @@ const IMG_IMPORT_MAX_DIM=2048;
 function _imgImportFile(f,cb){
   const reader=new FileReader();
   reader.onload=()=>{
-    // ADR-0527: 4MB→16MB — the 2048px WebP downscale below shrinks phone photos under the downstream 16M cap anyway.
+    // ADR-0527: 4MB→16MB — the 2048px downscale below already shrinks phone photos under the cap.
     if(_ln(reader.result) > 16*1024*1024){
       _w(t('imgBig')+' ('+_rnd(_ln(reader.result)/1024)+'KB)');return;
     }
@@ -7862,7 +7862,7 @@ const Net={
         let st=this._imgChunks.get(msg.key);
         // ADR-0374: bound in-flight reassemblies — a peer opening thousands of
         // keys mid-transfer and never finishing would grow the map unboundedly.
-        if(!st||st.n!==n){if(!st&&this._imgChunks.size>=64)this._imgChunks.delete(this._imgChunks.keys().next().value);st={p:new Array(n),g:0,n};this._imgChunks.set(msg.key,st)}   // ADR-0449/0454: evict oldest stalled key; n-mismatch restarts the assembly like _fragIn — a stale partial used to block the fresh stream forever
+        if(!st||st.n!==n){if(!st&&this._imgChunks.size>=64)this._imgChunks.delete(this._imgChunks.keys().next().value);st={p:new Array(n),g:0,n};this._imgChunks.set(msg.key,st)}   // ADR-0449/0454: evict oldest stalled key; n-mismatch restarts (else a stale partial blocks the stream forever)
         if(!st.p[seq]){st.p[seq]=msg.data;st.g++}
         if(st.g<st.n)break;
         this._imgChunks.delete(msg.key);
@@ -8106,7 +8106,7 @@ const Net={
       // 15s reaper — otherwise a live, idle connection's avatar vanishes after 15s.
       this._rtcPeerId='rtc:'+uid().slice(0,4);
       this._touchPeer(this._rtcPeerId);
-      // send snapshot to new peer (must include ops so a non-empty peer can merge). ADR-0383: >256KB snapshots die on the SCTP ceiling — send uniform 64KB 'snap' chunks.
+      // snapshot to new peer (ops included for merge); ADR-0383: 64KB chunks stay under the SCTP ceiling.
       try{const _sm=_JS(this._snapshotMsg());
         if(_ln(_sm)>24e6){_wT('snapBig');return} // ADR-0403
         this._fragSend(_sm,'snap')
@@ -8116,7 +8116,7 @@ const Net={
       try{this._onRecv(_JP(e.data),true)}catch(_){}   // ADR-0010: viaRtc=true
     };
     this.dc.onclose=()=>{
-      this._dcQ=null;this._snapIn=null;this._opcIn=null;   // ADR-0446/0448: dead-channel queue + half-received assemblies must not survive into the next connection
+      this._dcQ=null;this._snapIn=null;this._opcIn=null;   // ADR-0446/0448: dead-channel queue + partial assemblies must not survive into the next connection
       if(!this._rtcConnFailed)_wT('disconnected');
       if(this._rtcPeerId){_pr().delete(this._rtcPeerId);this._rtcPeerId=null;_ivO();}
       if(this._onConnChange)this._onConnChange();
@@ -8615,7 +8615,7 @@ const UI={
   },
   toast(msg,kind){
     const st=_g('toasts'),last=st.lastElementChild;
-    if(last&&last.textContent===msg)_rm(last);   // ADR-0389: identical toast — move to top instead of stacking a twin (re-append still re-announces via aria-live)
+    if(last&&last.textContent===msg)_rm(last);   // ADR-0389: identical toast — re-append (move to top) instead of stacking
     const div=_ce('div');
     div.className='toast'+(kind?' '+kind:'');
     _sa(div,'role',kind==='err'||kind==='warn'?'alert':'status');

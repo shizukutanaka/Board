@@ -564,6 +564,20 @@ const checks = [
   ['openTextEditor binds the live shape, not the pre-clone (ADR-0533)', html.includes('s=byId(s.id)||s')],
   ['window blur re-bases pointer/gesture state (ADR-0534)', html.includes("_on(window,'blur'")&&html.includes('_pointers.clear()')&&html.includes('window._prevTool=null')],
   ['rtc answer/offer trim uses _trm free fn, not a DOM method (ADR-0536)', html.includes("_trm(_g('rtcAnswerIn').value)")&&html.includes("_trm(_g('rtcOfferIn').value)")&&!html.includes('._trm(')],
+  ['no _helper is method-called — ADR-0536 class guard', (()=>{
+    const names=new Set([...html.matchAll(/(?:const |,|let |var |function )\s*(_[a-zA-Z]\w{1,4})[= (]/g)].map(m=>m[1]));
+    const NS=new Set(['this','Net','Store','Persist','UI','Shape','G','Presentation','self']);
+    const bad=[];
+    for(const m of html.matchAll(/\.(_[a-zA-Z]\w{1,4})\(/g)){
+      if(!names.has(m[1]))continue;
+      const pre=html.slice(0,m.index).match(/[A-Za-z_$][\w$]*$/);
+      const recv=pre?pre[0]:'';   // '' when receiver is `)`, `]`, `'`, `` ` `` etc.
+      if(recv&&NS.has(recv))continue;
+      if(html[m.index-1]==='.')continue;   // spread `...name(` — not a method call
+      bad.push((recv||'?')+'.'+m[1]);
+    }
+    return bad.length===0;
+  })()],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
