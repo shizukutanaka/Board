@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.585] - 2026-09-28
+### 修正
+- ADR-0557: ラベル編集 (openLabelEditor) にも同型の remote-del ガード — 編集中にピアが図形を消すと orphan へ `hit.label` 書込み + phantom upd commit していた。
+
 ## [1.7.584] - 2026-09-28
 ### 修正
 - ADR-0556: リモートの del がテキスト編集中に図形を消した場合、blur で phantom upd/del op を commit していた。`byId` ガードで editor を閉じるだけに (履歴汚染 + 無駄 broadcast を解消)。
