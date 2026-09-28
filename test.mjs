@@ -7341,6 +7341,17 @@ try {
     console.log('  ✓ presentation resize refit pinned (3 asserts)');
   }
 
+  // ADR-0607: long-press opens the ctx menu under the finger — the lift-off
+  // synthesized mouse sequence (mousedown+click at the same point) would
+  // either fire the first menu item or, when the menu clamps off the point,
+  // instantly dismiss it via the outside-mousedown closer.
+  {
+    assert.ok(html.includes("UI._ctxEat=_now()"),'long-press stamps the eat window');
+    assert.ok(html.includes("if(_now()-(UI._ctxEat||0)<400){UI._ctxEat=0;return}fn();this.closeCtxMenu()"),'item clicks swallowed inside the window');
+    assert.ok(html.includes("!e.target.closest('.ctx-menu')&&_now()-(UI._ctxEat||0)>=400"),'outside-close deferred past the window');
+    console.log('  ✓ long-press ghost-click guard pinned (3 asserts)');
+  }
+
   // ADR-0604: visibilitychange→hidden and pagehide cancel an in-progress
   // pointer gesture (mobile backgrounding drops pointerup → stuck ptr.down);
   // cancel runs BEFORE flushIfHidden so the restored state is what persists.

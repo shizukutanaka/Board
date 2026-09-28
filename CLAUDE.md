@@ -655,7 +655,8 @@ Board/
     │   ├── ADR-0603-frag-undeliverable-stream.md  # 24MB 結合上限超のフラグメントストリーム: 送信側 toast 警告 + 受信側明示棄却 (実装済)
     │   ├── ADR-0604-hidden-gesture-cancel.md      # visibilitychange→hidden / pagehide でのジェスチャ取消 (stuck ptr.down 解消) (実装済)
     │   ├── ADR-0605-wire-bound-docs-sync.md       # ワイヤ境界・ジェスチャライフサイクルの文書同期 (0602/0603/0604) (実装済)
-    │   └── ADR-0606-present-resize-refit.md       # プレゼン中のビューポートリサイズで現在フレームを再フィット (実装済)
+    │   ├── ADR-0606-present-resize-refit.md       # プレゼン中のビューポートリサイズで現在フレームを再フィット (実装済)
+    │   └── ADR-0607-longpress-ghost-click.md      # 長押し ctx メニューのゴースト click/mousedown 抑止 (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

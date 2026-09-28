@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.633';
+const V='1.7.634';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4338,6 +4338,7 @@ function _longPressFire(cx,cy){
   if(!ptr.down||_dk('resize')||_dk('gresize')||_dk('grot')||_dk('rotate'))return;
   if(_hp(ptr.x-ptr.x0,ptr.y-ptr.y0)>LONG_PRESS_MOVE_TOL)return;
   _cancelPointerGesture();
+  UI._ctxEat=_now();   // ADR-0607: menu opens under the finger — the lift-off synthesized click would fire the item it lands on
   UI.openCtxMenu(cx,cy);
 }
 function _armLongPress(cx,cy){
@@ -8879,7 +8880,7 @@ const UI={
         const sc=_ce('span');sc.className='k';_tC(sc,shortcut);
         _ap(b,sc);
       }
-      _oC(b,()=>{fn();this.closeCtxMenu()});
+      _oC(b,()=>{if(_now()-(UI._ctxEat||0)<400){UI._ctxEat=0;return}fn();this.closeCtxMenu()});
       _ap(m,b);
     }
     // Show first so offsetHeight reflects actual
@@ -9209,7 +9210,7 @@ function wire(){
   }
   // close ctx on click outside
   _on(document,'mousedown',e=>{
-    if(!e.target.closest('.ctx-menu'))UI.closeCtxMenu();
+    if(!e.target.closest('.ctx-menu')&&_now()-(UI._ctxEat||0)>=400)UI.closeCtxMenu();   // ADR-0607: a clamped menu sits off the finger — the lift-off ghost mousedown would dismiss it instantly
   });
   // v1.6.95: Arrow-key navigation inside the c
   _on(_g('ctx'),_KD,e=>_ctxMenuKeyNav(_g('ctx'),e));
