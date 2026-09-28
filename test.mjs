@@ -7499,6 +7499,21 @@ try {
     closedMenu = false;
     _ctxMenuKeyNav(mockMenu, {key:'Tab', shiftKey:true, preventDefault(){}});
     assert.ok(closedMenu, 'ctx Shift+Tab: closes menu');
+
+    // v1.7.569 (ADR-0541): unhandled keys close the menu so canvas shortcuts don't
+    // fire behind a stale floating menu; Space/Enter stay native (item activation).
+    closedMenu=false;
+    _ctxMenuKeyNav(mockMenu, {key:'v', preventDefault(){}});
+    assert.ok(closedMenu, 'ctx letter key: closes menu (ADR-0541)');
+    closedMenu=false;
+    _ctxMenuKeyNav(mockMenu, {key:'Delete', preventDefault(){}});
+    assert.ok(closedMenu, 'ctx Delete: closes menu (ADR-0541)');
+    closedMenu=false;
+    _ctxMenuKeyNav(mockMenu, {key:' ', preventDefault(){}});
+    assert.ok(!closedMenu, 'ctx Space: menu stays open (APG item activation)');
+    closedMenu=false;
+    _ctxMenuKeyNav(mockMenu, {key:'Enter', preventDefault(){}});
+    assert.ok(!closedMenu, 'ctx Enter: menu stays open (APG item activation)');
     UI.closeCtxMenu = origClose;
 
     console.log('  ✓ ctx menu keyboard nav: ArrowDown/Up (with wrap), Home/End, Tab/Shift+Tab (ARIA APG)');

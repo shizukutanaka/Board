@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.568';
+const V='1.7.569';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -8921,6 +8921,10 @@ function _ctxMenuKeyNav(m,e){
   if(e.key==='ArrowUp'){_pd(e);_fc(items[(cur-1+_ln(items))%_ln(items)]);return;}
   if(e.key==='Home'){_pd(e);_fc(items[0]);return;}
   if(e.key==='End'){_pd(e);_fc(items[_ln(items)-1]);return;}
+  // Any other key: close the menu and let the event bubble to canvas shortcuts —
+  // otherwise 'v'/⌘Z/Delete fire behind a stale floating menu. Space/Enter still
+  // activate the focused item natively (APG).
+  else if(e.key!==' '&&e.key!=='Enter')UI.closeCtxMenu();
 }
 
 // ====================== WIRE-UP ======================
