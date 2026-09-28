@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.610';
+const V='1.7.611';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6277,7 +6277,16 @@ function doFlip(axis){
   const frameOf=_frameOf(sel);
   _xFS(sel,frameOf)
   const before=sel.map(clone);
+  const flipIds=_sT(sel.map(s=>s.id));
   for(const s of sel)flipShape(s,axis,c);
+  // ADR-0584: aF/bF live in the BOUND shape's bbox fraction frame — when the
+  // bound shape flips with the selection the anchor lands on the mirrored
+  // side unless the fraction mirrors too. Mirror only when that bound shape
+  // was actually flipped (in sel): an unflipped/locked anchor keeps its spot.
+  for(const s of sel){
+    if(s.aF&&flipIds.has(s.a)){if(axis==='h')s.aF.fx=1-s.aF.fx;else s.aF.fy=1-s.aF.fy}
+    if(s.bF&&flipIds.has(s.b)){if(axis==='h')s.bF.fx=1-s.bF.fx;else s.bF.fy=1-s.bF.fy}
+  }
   const after=sel.map(clone);
   _rcOp({op:'align',dir:'flip',before,after});
   _ivp();

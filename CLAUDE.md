@@ -632,7 +632,8 @@ Board/
     │   ├── ADR-0580-comment-tail-reclaim.md     # コメント尾一括刈り ~17.9KB 回収 (実装済)
     │   ├── ADR-0581-docname-lww.md              # ドキュメント名の改名を ts ベース LWW で収束 (実装済)
     │   ├── ADR-0582-pres-enter-folds-editor.md  # プレゼン開始で編集 overlay を畳む (実装済)
-    │   └── ADR-0583-flip-mirrors-labelpos.md    # コネクタ反転で labelPos を 1-t へミラー (実装済)
+    │   ├── ADR-0583-flip-mirrors-labelpos.md    # コネクタ反転で labelPos を 1-t へミラー (実装済)
+    │   └── ADR-0584-flip-mirrors-bound-anchor.md# 結合先同時反転で aF/bF を 1-f へミラー (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

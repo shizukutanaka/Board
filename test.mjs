@@ -5340,6 +5340,21 @@ try {
       const got=B.state.shapes.find(s=>s.id===ar.id).labelPos;
       assert.ok(Math.abs(got-0.8)<1e-9,'labelPos mirrored to 0.8, got '+got);
     }
+    { // ADR-0584: flip mirrors aF when the BOUND shape flips too
+      const bx=B.Shape.make('rect',{x:100,y:100,w:50,h:50});
+      const ar=B.Shape.make('arrow',{x1:0,y1:0,x2:200,y2:0,a:bx.id,aF:{fx:0.2,fy:0.5}});
+      B.state.shapes.push(bx,ar);B._invalidateGrid();
+      B.state.selection=new Set([bx.id,ar.id]);B.doFlip('h');
+      const f=B.state.shapes.find(s=>s.id===ar.id).aF;
+      assert.ok(Math.abs(f.fx-0.8)<1e-9,'aF.fx mirrored to 0.8, got '+f.fx);
+      // bound shape NOT flipped (locked) → aF stays
+      const bx2=B.Shape.make('rect',{x:400,y:100,w:50,h:50});bx2.locked=1;
+      const ar2=B.Shape.make('arrow',{x1:400,y1:0,x2:600,y2:0,a:bx2.id,aF:{fx:0.2,fy:0.5}});
+      B.state.shapes.push(bx2,ar2);B._invalidateGrid();
+      B.state.selection=new Set([ar2.id]);B.doFlip('h');
+      const f2=B.state.shapes.find(s=>s.id===ar2.id).aF;
+      assert.strictEqual(f2.fx,0.2,'aF kept when bound shape unflipped');
+    }
     const sb = B.Shape.make('ellipse',{x:9,y:9,w:5,h:5}); B.state.shapes.push(sb);
     A.Net._sendSnapshot();   // A → B (B already has sb, so B must MERGE, not replace)
     B.Net._sendSnapshot();   // B → A
