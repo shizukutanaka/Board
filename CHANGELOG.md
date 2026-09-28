@@ -2,6 +2,13 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.549] - 2026-09-28
+
+### 修正
+
+- ⌘C/⌘X が OS クリップボードへ .board JSON (text/plain) を書き込むように — 別タブ/別インスタンスへのキーボード貼り付けが動作。従来は keydown の preventDefault が 'paste' イベントを抑止し、外部クリップボードの内容はメニューペースト経由でのみ到達可能だった (ADR-0516)
+- ペースト時に自分が書いた clipboard エコー (同一 JSON) は内部 doPaste パスへ振り分け、_pasteCount カスケードを維持。OS クリップボードが空/無内容のときは内部 clipboard へフォールバック (ADR-0516)
+
 ## [1.7.548] - 2026-09-28
 
 ### リファクタ

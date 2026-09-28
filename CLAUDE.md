@@ -565,6 +565,7 @@ Board/
 │   ├── ADR-0513-bulk-shorthand.md     # canvas/Store/UI/Persist 一括 shorthand (実装済)
 │   ├── ADR-0514-second-bulk-fold.md   # make/translate/push/refreshZoom/transaction/fillText shorthand (実装済)
 │   ├── ADR-0515-modifier-key-fold.md  # shiftKey/altKey/metaKey||ctrlKey shorthand (実装済)
+│   ├── ADR-0516-os-clipboard-bridge.md # ⌘C/⌘X → OS clipboard .board JSON、⌘V を paste イベント経由化 (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.548';
+const V='1.7.549';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4449,6 +4449,28 @@ _on(canvas,'drop',e=>{
   });
 });
 
+// ---- OS clipboard bridge ----
+// ADR-0516: ⌘C/⌘X write the selection as .board JSON (text/plain) so keyboard
+// copy-paste works across tabs/instances — previously the OS clipboard was only
+// filled via the ctx-menu "Copy .board" item, and ⌘V's keydown preventDefault
+// suppressed the window 'paste' event entirely, so external clipboard content
+// was unreachable by keyboard. The copy/cut event is the only place
+// clipboardData.setData is allowed, so the keydown just marks _cpNow and lets
+// the native event dispatch; the handler consumes the flag and writes the JSON.
+// _osClip remembers what we wrote so a paste of our own echo takes the internal
+// doPaste path (keeps the _pasteCount cascade) instead of a foreign import.
+let _osClip=null,_cpNow=false;
+function _osCopy(e){
+  if(!_cpNow)return;
+  _cpNow=false;
+  if(e.target.matches&&e.target.matches('input,textarea'))return;
+  const cl=_cl();if(!cl)return;
+  _pd(e);
+  e.clipboardData.setData('text/plain',_osClip=_JS({v:V,docName:_dn(),shapes:roundShapesForExport(cl.shapes)}));
+}
+_on(window,'copy',_osCopy);
+_on(window,'cut',_osCopy);
+
 // ---- Image import: clipboard paste ----
 _on(window,'paste',e=>{
   if(e.target.matches('input,textarea'))return;
@@ -4460,7 +4482,7 @@ _on(window,'paste',e=>{
   if(!_ln(items)){
     // ADR-0042: raw SVG markup copied to the clipboard imports as vector shapes.
     const ti=[...e.clipboardData.items].find(i=>i.type==='text/plain');
-    if(!ti)return;
+    if(!ti){doPaste();return}   // ADR-0516: nothing usable on the OS clipboard → internal clipboard
     ti.getAsString(tx=>{
       const s=_St(tx||'');
       if(/^\s*(<\?xml[^?]*\?>\s*)?<svg[\s>]/i.test(s)){_pd(e);importSvgText(s);return}
@@ -4468,6 +4490,7 @@ _on(window,'paste',e=>{
       // copyBoardJSON). Falls through to excalidraw/text on parse failure.
       if(/^\s*\{/.test(s)&&/"(shapes|v)"\s*:/.test(_s0(s,8192))&&/"shapes"\s*:\s*\[/.test(s)){
         _pd(e);
+        if(s===_osClip){doPaste();return}   // ADR-0516: our own clipboard echo → internal cascade path
         if(importBoardText(s)!==false)return;
       }
       // ADR-0099: clipboard .excalidraw JSON imports as a scene (parity with the
@@ -4486,7 +4509,7 @@ _on(window,'paste',e=>{
       // ADR-0044: any other non-empty text pastes in as a text shape — editors,
       // browsers, chat logs, markdown-as-plain-text all land on the board.
       const txt=_trm(s);
-      if(!txt)return;
+      if(!txt){doPaste();return}   // ADR-0516: empty/blank text → internal clipboard fallback
       // ADR-0273: tab-separated paste → sticky grid (spreadsheet columns →
       // sticky columns, rows → rows). Any cell may be empty.
       if(/	/.test(txt)&&txt.includes('\n')){
@@ -5572,11 +5595,12 @@ _on(window,_KD,e=>{
   else if(meta&&k==='a'){_pd(e);_ss(_shV().map(s=>s.id));if(_selN())_aS();_iv()}   // ADR-0037
   if(k==='p'&&_sK(e)&&!meta&&!_aK(e)){_pd(e);Presentation.enter();return}
   else if(meta&&k===_EN){_pd(e);Presentation.enter()}
-  else if(meta&&k==='c'){_pd(e);doCopy()}
+  else if(meta&&k==='c'){doCopy()}   // ADR-0516: no _pd — the 'copy' event writes the OS clipboard
   else if(meta&&k==='v'&&_sK(e)){_pd(e);doPasteInPlace()}   // ADR-0113
-  else if(meta&&k==='v'){_pd(e);doPaste()}
+  // ADR-0516: plain ⌘V lets the 'paste' event dispatch — it handles OS content
+  // (images/SVG/.board/excalidraw/drawio/text) and falls back to doPaste().
   else if(meta&&k==='x'&&_sK(e)){_pd(e);toggleTextFlag('strike')}   // ADR-0100
-  else if(meta&&k==='x'){_pd(e);doCopy();doDelete()}
+  else if(meta&&k==='x'){doCopy();doDelete()}   // ADR-0516: no _pd — the 'cut' event writes the OS clipboard
   else if(meta&&k==='d'){_pd(e);doDuplicate()}
   else if(meta&&k==='e'&&_sK(e)){_pd(e);exportSVG()}
   else if(meta&&k==='e'&&!_sK(e)){_pd(e);exportPNG()}
@@ -5726,6 +5750,7 @@ function doCopy(){
   const sel=[...withFrameChildren(_sl())].map(byId).filter(s=>s&&!_lk(s));
   if(!_ln(sel))return;
   state.clipboard={shapes:clone(sel)};
+  _cpNow=true;   // ADR-0516: the following copy/cut event turns this into an OS-clipboard .board write
   _tst(t('copied')+' '+_ln(sel));
 }
 // v1.6.97: paste cascade counter — resets when a new clipboard is captured so that
