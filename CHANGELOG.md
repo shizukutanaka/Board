@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.590] - 2026-09-28
+### ドキュメント
+- ADR-0562: architecture.md の Input 節に編集 overlay ライフサイクル段落を追加 (ADR-0556..0561 クラスタの同期 — commit 側 byId ガード / follow 側 proactive close / `_cxO` 順序化 / resize sig リセット)。
+
 ## [1.7.589] - 2026-09-28
 ### 修正
 - ADR-0561: window/fullscreen resize で canvas rect が動いても editor overlay の follow sig (x,y,zoom) が不変なため次の pan/zoom までズレ続けていたのを、`resize()` で `_teVp`/`_lblVp` をリセットして即再配置。

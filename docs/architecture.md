@@ -53,6 +53,18 @@ pointerup でコミット、pointercancel / `lostpointercapture` / ドラッグ�
 持つ clone 前参照へ書き込むと live 図形だけが `text:''` のまま残る
 (ローカルのみ不可視化・ピアは `upd` で正しいテキストを得ていた)。
 
+#### 編集 overlay のライフサイクル (v1.7.58x — ADR-0556..0561)
+text (textarea) / label (input) overlay は blur/Enter で commit、Escape で破棄。
+コミット側は `byId` ガードで orphan 化 (remote del mid-edit) 時に phantom
+upd/del を撃たない (ADR-0556/0557)。発生元が消えた付箋 ⌘Enter 連鎖も同様に
+遮断 (ADR-0558)。毎フレームの `_teFollow`/`_lblFollow` が対象削除を検知して
+**proactive close** するため del/clear/replace/snapshot/undo の全経路で overlay
+が残らない (ADR-0559)。`_cxO()` が新規 editor オープン前に旧 overlay を blur
+→ commit させ、`state.editing` の clobber (新 editor の follow 死亡 + 本文の
+canvas/overlay 二重描画) を防ぐ (ADR-0560)。resize は canvas rect を動かすが
+follow sig (x,y,zoom) が不変のため、`resize()` で sig をリセットして即再配置
+(ADR-0561)。
+
 ### 2. Tools
 現在のツール (`state.tool`) に応じて `begin* / cont* / end*` の三段階で gesture を処理。途中状態は `state.draft` に置く (undo に入れない)。`end*` で Store.commit。
 
