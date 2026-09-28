@@ -5354,6 +5354,12 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.578]
+
+### ドキュメント
+
+- **ADR-0550**: architecture.md の Store 節に locked parity を同期 — `del` の `byId` 冪等ガード、`move` の `op.moved` 記録、および「絶対パッチ系は冪等 / 存在・差分系はスキップ集合を backward に伝える」分類を追記。
+
 ## [1.7.577]
 
 ### テスト

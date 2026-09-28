@@ -599,6 +599,7 @@ Board/
 │   ├── ADR-0547-del-undo-locked-dedup.md # del undo で locked 図形の二重登録を防止 (実装済)
 │   ├── ADR-0548-move-undo-moved-set.md # move undo で locked 図形の逆移動を防止 (実装済)
 │   ├── ADR-0549-locked-parity-audit.md # locked parity undo 監査の結論ピン (実装済)
+│   ├── ADR-0550-architecture-undo-parity-sync.md # architecture.md の locked parity 同期 (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

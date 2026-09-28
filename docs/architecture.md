@@ -74,9 +74,11 @@ op 型 (全て可逆; `_apply(op, false)` で完全に戻る):
   push しない。`_applySnapshot` は seenOps を埋めずに shapes を差し替えるため、スナップショットが
   ライブ add op を追い越すと dedup を素通りする — 冪等性でその二重化を塞ぐ。ローカル commit は
   毎回新規 uid なので阻害されず、redo は undo が消した後なので再 push される)
-- `{op:'del', shapes:[...]}` — 複数削除を1つに
+- `{op:'del', shapes:[...], connClears?}` — 複数削除を1つに。forward は `sh.locked` をスキップし、
+  undo は `byId` 冪等ガードでスキップ分を再 push しない (ADR-0547: さもないと同一 id 二重登録)
 - `{op:'upd', id, before, after}` — 汎用プロパティ変更
-- `{op:'move', ids:[...], dx, dy}` — 平行移動
+- `{op:'move', ids:[...], dx, dy}` — 平行移動。forward は実際に動かした id を `op.moved` に記録し、
+  undo は `moved` のみを逆移動 (ADR-0548: locked スキップ分が逆方向にずれるのを防止)
 - `{op:'zorder', before:[{id,z},...], after:[{id,z},...]}` — z 順序スナップショット差分
 - `{op:'style', before:[{id,...},...], after:[{id,...},...]}` — マルチ選択スタイル一括変更 (スライダーコアレス)
 - `{op:'align', before:[{id,...},...], after:[{id,...},...]}` — 整列
@@ -86,6 +88,12 @@ op 型 (全て可逆; `_apply(op, false)` で完全に戻る):
 - `{op:'clear', shapes:[...]}` — 全消去
 
 **全 op が可逆**。`_apply(op, false)` で完全に戻せる。`test.mjs` のプロパティベーステストで30シナリオ往復検証。
+
+**locked parity**: 全 mutating op の forward は `sh.locked` をスキップする (ローカル/リモート共通)。
+undo 経路では op 型ごとに対称性が異なる — 絶対パッチ系 (upd/style/align/resize/beautify/zorder/
+group/ungroup) は per-shape `before` の書き戻しが冪等なため no-op で安全だが、存在を復元する `del`
+と差分を適用する `move` はスキップ集合を backward に伝える必要がある (それぞれ `byId` ガードと
+`op.moved` で対応 — ADR-0547/0548/0549)。
 
 **反転 (flip H/V)** は専用 op を持たず、`align` op を再利用する: `doFlip(axis)` が選択 bbox 中心軸で
 各シェイプ座標をミラー (`flipShape`) し、変更前後の完全クローンを `{op:'align',dir:'flip',before,after}`
