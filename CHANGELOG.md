@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.584] - 2026-09-28
+### 修正
+- ADR-0556: リモートの del がテキスト編集中に図形を消した場合、blur で phantom upd/del op を commit していた。`byId` ガードで editor を閉じるだけに (履歴汚染 + 無駄 broadcast を解消)。
+
 ## [1.7.583] - 2026-09-28
 ### 追加 (テスト/ドキュメント)
 - ADR-0552/0553/0554 (ctx キー呑み込み・メニュー max-height・プレゼン stale フレーム) のソースピンを追加 + architecture.md の Store 節に img 参照再解決規則を追記 (ADR-0555)。

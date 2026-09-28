@@ -857,7 +857,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.583';
+const V='1.7.584';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1310,7 +1310,7 @@ function validPatch(p){
   // resources invariant. This is the shared intake gate (validShape + upd/patch paths),
   // so guarding here closes every vector at once (mirrors buildSVG's data: guard);
   // <img>-loaded SVG can't run scripts or fetch subresources — data: svg is safe.
-  if('dataUrl' in p&&p.dataUrl!=null&&!(_iS(p.dataUrl)&&_ln(p.dataUrl)<=16_000_000&&/^data:image\//.test(p.dataUrl)))return false;   // ADR-0379: length cap — else img.src buffers unbounded
+  if('dataUrl' in p&&p.dataUrl!=null&&!(_iS(p.dataUrl)&&_ln(p.dataUrl)<=16_000_000&&/^data:image\//.test(p.dataUrl)))return false;   // ADR-0379: length cap — unbounded img.src otherwise
   // ADR-0327: s.link flows into window.open — a hostile .board/peer upd could carry
   // a javascript:/data: URL; only http(s) is openable.
   if('link' in p&&p.link!=null&&!(_iS(p.link)&&/^https?:\/\//.test(p.link)))return false;
@@ -1363,7 +1363,7 @@ function validRemotePayload(op){
     case 'clear':  return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape);
     case 'upd':{const noLock=p=>!('locked' in p);
       if(!_iS(op.id)||_ln(op.id)>64||!validPatch(op.after)||!noLock(op.after)||(op.before!=null&&!validPatch(op.before)))return false;
-      // pen pts must be array-of-[x,y] — flat arrays crash drawPen which expects [[x,y],...]
+      // pen pts must be array-of-[x,y] — flat arrays crash drawPen (expects [[x,y],...])
       if(op.after.pts!=null&&!_ptsOK(op.after.pts))return false;
       return true;}
     case 'move':   return _iA(op.ids)&&_ln(op.ids)>0&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(_idOK)&&_iN(op.dx)&&_fin(op.dx)&&_iN(op.dy)&&_fin(op.dy)&&(op.dx!==0||op.dy!==0);
@@ -1497,7 +1497,7 @@ const Store={
   // array) compared deeply via JSON; before may be absent → treat as changed.
   _chg(before,after,key){return _JS(before?before[key]:undefined)!==_JS(after[key])},
   // Returns false if `op` has no changed property newer than the shape's recorded write
-  // clock — a no-op after filtering. Mutates op.after to drop losing AND unchanged keys,
+  // clock — a no-op after filtering. Mutates op.after to drop losing + unchanged keys,
   // so a snapshot op can't overwrite a concurrent edit to a property it didn't touch.
   _lwwDrop(op){
     if(!this._lwwOp(op))return true;
@@ -4347,7 +4347,7 @@ function _lblAnchor(hit){
     return {left:r.left+sp.x+(isFrame?6:-40),top:r.top+sp.y+(isFrame?-24:-12),bold:isFrame};
   }
   if(_conn(hit.type)){
-    // Edge label at the connector's label anchor (ADR-0003/0081) — routed routes included.
+    // Edge label at the connector's label anchor (ADR-0003/0081) — routes included.
     const lp=_connLabelXY(hit),sp=_w2({x:lp.x,y:lp.y});
     return {left:r.left+sp.x-40,top:r.top+sp.y-12,bold:false};
   }
@@ -5331,7 +5331,7 @@ function endLineLike(){
   if(!_df())return;
   const d=_df();state.draft=null;
   if(_hp(d.x2-d.x1,d.y2-d.y1)<2)return;
-  // Bind each endpoint dropped on a shape so the connector follows it (not both to one).
+  // Bind each endpoint dropped on a shape so the connector follows it.
   const ba=_bindAt(d.x1,d.y1),bb=_bindAt(d.x2,d.y2);
   if(ba&&ba!==bb)d.a=ba;
   if(bb&&bb!==ba)d.b=bb;
@@ -5488,7 +5488,7 @@ function openTextEditor(s,isNew){
     ta.style.width=newW+'px';
     ta.style.height=newH+'px';
   };
-  // v1.6.94: guard auto-resize during IME composition (CJK input caused size thrashing).
+  // v1.6.94: guard auto-resize during IME composition (CJK size thrashing).
   // Pattern: Zenn「入力中の文字が確定されるまでリサイズしない」— same as docName editor.
   let _textComposing=false;
   _on(ta,'compositionstart',()=>{_textComposing=true;});
@@ -5496,6 +5496,9 @@ function openTextEditor(s,isNew){
   _on(ta,'input',()=>{if(!_textComposing)auto();});
   _on(ta,'blur',()=>{
     const newText=ta.value;
+    // ADR-0556: a remote del mid-edit leaves `s` orphaned — close the editor without
+    // committing a phantom upd/del (it would no-op apply but pollute history + wire).
+    if(!byId(s.id)){state.editing=null;_teTa=null;_rm(ta);_iv();return}
     _sv2(ctx);
     resizeAfterTextEdit(s,newText,ctx);
     _rs2(ctx);
@@ -5598,7 +5601,7 @@ function flushErase(){
   // Restore shapes so Store.commit's _apply can find & remove them
   for(const s of _eraseBatch)_sh().push(s);
   _sz();_iG();   // ADR-0009: connEnds below calls byId, must see the restored shapes
-  // Resolve connector bindings now that erased shapes are back in state (connEnds works)
+  // Resolve connector bindings now that erased shapes are back (connEnds works)
   const delIds=_sT(_eraseBatch.map(s=>s.id));
   const connClears=computeConnClears(delIds);
   const origSel=_selIds();
@@ -5651,7 +5654,7 @@ _on(window,_KD,e=>{
     return;
   }
   // Dialog isolation + focus trap: while help/share is open, keep Tab inside and
-  // stop canvas shortcuts (tool keys, Delete, undo…) from firing behind it. Escape falls
+  // stop canvas shortcuts (Delete, undo…) firing behind it. Escape falls
   // through to the close handler below.
   const _dlg=_openDialog();
   if(_dlg&&k!==_ES){
@@ -5703,7 +5706,7 @@ _on(window,_KD,e=>{
   else if(k===_EN&&!meta&&!_sK(e)){
     // ADR-0013: with the select tool active, Enter re-edits the single selected shape's
     // label/text instead (createShapeKbd() would no-op for 'select' anyway, so no clash).
-    // Any other tool keeps original behaviour: stamp its default shape at viewport centre.
+    // Other tools keep original behaviour: stamp default shape at viewport centre.
     if(_tl()==='select'&&editSelectedShapeKbd()){_pd(e);}
     else if(createShapeKbd())_pd(e);
   }
@@ -5828,7 +5831,7 @@ function doPaste(){
   if(!_cl())return;
   // Reset cascade on new clipboard (new copy/cut)
   if(_cl()!==_lastClipboard){_pasteCount=0;_lastClipboard=_cl();}
-  // Center pasted content at the current viewport center, then offset by cascade amount.
+  // Center pasted content at the viewport center, then offset by cascade amount.
   // Pattern: Figma/Excalidraw — paste at viewport centre so it is always visible.
   const bb=_bA(_cl().shapes);
   const v=_vp();
@@ -5916,7 +5919,7 @@ function doDelete(){
   const sel=_selUL();
   if(!_ln(sel)){if(_selAny())_wT('lockedNoop');return}   // ADR-0396
   const origSel=_selIds();
-  // Frame-aware: shapes inside a selected frame are deleted with it (doDuplicate parity)
+  // Frame-aware: shapes inside a selected frame delete with it (doDuplicate parity)
   const frameOf=_frameOf(sel);
   _xFS(sel,frameOf)
   const delIds=_sT(sel.map(s=>s.id));
@@ -7759,7 +7762,7 @@ const Net={
   _fragSend(buf,k){   // ADR-0431: 64KB fragment sender for the dc-direct sites (snap, oversized ops)
     const n=_ceil(_ln(buf)/65536);for(let i=0;i<n;i++)this._sendDC(_JS({k,seq:i,n,data:buf.slice(i*65536,(i+1)*65536)}))
   },
-  _fragIn(msg,key,src){   // shared single-assembly intake for 'snap'/'opc' — returns joined payload or undefined
+  _fragIn(msg,key,src){   // shared single-assembly intake for 'snap'/'opc' — joined payload or undefined
     if(!_iS(msg.data)||_ln(msg.data)>96*1024)return;
     const n=_iN(msg.n)&&msg.n>=1&&msg.n<=384?_fl(msg.n):1;
     const seq=_iN(msg.seq)&&msg.seq>=0?_fl(msg.seq):0;
@@ -8167,7 +8170,7 @@ function roundShapesForExport(shapes,dp=2){
 }
 // Compact, dependency-free encoding. Works for any size up to ~2MB URL-safe.
 const Share={
-  // ADR-0015: AES-256-GCM. crypto.subtle exists only in secure contexts — file:// counts
+  // ADR-0015: AES-256-GCM. crypto.subtle exists only in secure contexts —
   // (potentially trustworthy in Chrome/Firefox), plain http:// hosts do not.
   canEncrypt(){return typeof crypto!==_un&&!!crypto.subtle},
   // chunked base64url — String.fromCharCode(...u8) overflows on large payloads
@@ -8175,7 +8178,7 @@ const Share={
     return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')},
   _b64uDec(s){const b=atob(s.replace(/-/g,'+').replace(/_/g,'/'));const u=new Uint8Array(_ln(b));
     for(let i=0;i<_ln(b);i++)u[i]=b.charCodeAt(i);return u},
-  // e: wraps the WHOLE inner payload (z:/j:) so compression stays first (ciphertext won't
+  // e: wraps the whole inner payload (z:/j:) so compression stays first
   // compress) and inner format changes ride along untouched.
   async _encrypt(inner){
     const key=await crypto.subtle.generateKey({name:'AES-GCM',length:256},true,['encrypt','decrypt']);
@@ -8277,7 +8280,7 @@ const Share={
       const before=clone(_sh());
       const beforeWc=clone(_wc());
       const origSel=_selIds();
-      // ADR-0004: also survives past the undo window (reload/closed-tab), not just the session.
+      // ADR-0004: survives reload/closed-tab too, not just the session undo window.
       if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());
       _rs(valid.map(clone));_setDocName(_s0((_iS(data.name)&&data.name)||'Shared',80));   // ADR-0009
       // Match the replace op's _apply: drop stale selection ids and per-property write
@@ -8471,7 +8474,7 @@ const Persist={
     }catch(_){}
   },
   // Single-slot, single-notification: whether accepted or declined, the backup is
-  // consumed so the boot-time prompt (main()) only ever surfaces once per destructive op.
+  // consumed so the boot-time prompt only ever surfaces once per destructive op.
   async restoreBackup(){
     if(!this.db)return false;
     try{
@@ -8559,8 +8562,8 @@ const UI={
   refreshZoom(){
     _tC(_g('zoomVal'),_rnd(_vp().zoom*100)+'%');
   },
-  // §3.18: minimap has no dismiss affordance — always-on is pure visual noise on a small
-  // board. `M` toggles it; the preference persists (localStorage) so it doesn't reappear
+  // §3.18: minimap has no dismiss affordance — always-on is visual noise on a small
+  // board. `M` toggles it; persists (localStorage) so it doesn't reappear
   // on next reload. Hidden draw is also skipped (Minimap.schedule).
   refreshMinimapVis(){
     _qs(document,'.minimap-wrap')?.style.setProperty('display',state.showMinimap?'':'none');
@@ -8593,7 +8596,7 @@ const UI={
     _sa(b,_AL,t(key));_sa(b,'title',t(key));
     b.dataset.themeMode=mode??'auto';
   },
-  // ADR-0014: LANG/T are `let`; toggleLang() reassigns them, then explicitly resyncs the
+  // ADR-0014: LANG/T are `let`; toggleLang() reassigns, then resyncs the
   // few things that cache a translated string once instead of re-reading T on demand —
   // everything else (toasts, openCtxMenu, applyI18n's data-t walk) already re-evaluates
   // t()/T on its next call and needs no help here.
@@ -9024,7 +9027,7 @@ function wire(){
     });
   // Native <input type=color> fires `input` continuously while the picker is open, so
   // committing per-input would stack dozens of undo steps and sync broadcasts for one
-  // colour pick. Coalesce exactly like the size/opacity sliders: snapshot on open, live-
+  // colour pick. Coalesce like the size/opacity sliders: snapshot on open, live-
   // preview on input (no Store), flush ONE style op on change.
   for(const cp of _qsa(document,'input.cp')){
     const k=cp.dataset.cp;   // 'stroke' or 'fill'
@@ -9071,7 +9074,7 @@ function wire(){
   _on(window,'online',UI.updateOnline);
   _on(window,'offline',UI.updateOnline);
   // PWA install button (v1.6.92): show on installable; hide after install.
-  // `beforeinstallprompt` fires on Chrome/Edge/Samsung Internet when install criteria are
+  // `beforeinstallprompt` fires on Chrome/Edge when install criteria are
   // met. Safari/Firefox never fire it — the button stays hidden there (progressive).
   // We call _pd(e) to suppress the browser's ambient mini-infobar prompt so that
   // install is fully user-initiated via our button. Ref: web.dev/customize-install/
@@ -9191,7 +9194,7 @@ function applyStyleToSelection(patch){
     const b={id},a={id},eff={};
     for(const k of _ok(patch)){
       const ek=_stk(sh)&&k==='fill'?'color':k;   // ADR-0082: sticky recolors via color
-      b[ek]=sh[ek]??null;a[ek]=patch[k]??null;eff[ek]=patch[k];   // ADR-0082: ??null keeps before JSON-safe (clone drops undefined → undo couldn't unset)
+      b[ek]=sh[ek]??null;a[ek]=patch[k]??null;eff[ek]=patch[k];   // ADR-0082: ??null keeps before JSON-safe (clone drops undefined → unset lost)
     }
     _oa(sh,eff);
     _pu(before,b);_pu(after,a);

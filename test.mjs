@@ -695,6 +695,8 @@ const checks = [
   ['ctx menu swallows unhandled keys (ADR-0552)', html.includes("e.key!==' '&&e.key!=='Enter'){_pd(e);e.stopPropagation();UI.closeCtxMenu()}")],
   // v1.7.582 (ADR-0554): presentation frame navigation drops deleted frames
   ['presentation _goto filters stale frames (ADR-0554)', html.includes('_frames=_frames.filter(f=>byId(f.id))')],
+  // v1.7.584 (ADR-0556): blur on a remotely-deleted shape must not commit a phantom op
+  ['text editor blur guards remote-deleted shape (ADR-0556)', html.includes("if(!byId(s.id)){state.editing=null;_teTa=null;_rm(ta);_iv();return}")],
   // v1.6.39: console cleanup - no redundant console.warn/error in production paths
   ['no console.warn in BroadcastChannel catch', !html.includes("console.warn('BroadcastChannel init failed'")],
   ['no console.error in save catch (user gets toast)', !html.includes("console.error('save failed'")],
