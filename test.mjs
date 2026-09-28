@@ -226,7 +226,7 @@ const checks = [
   ['forced-colors support', html.includes("forced-colors:active")],
   ['prefers-contrast support', html.includes("prefers-contrast:more")],
   // round 9: presentation pointer guard + frame move + i18n
-  ['pointerdown guarded during presentation', html.includes("if(Presentation.isActive())return")],
+  ['pointerdown guarded during presentation', html.includes("if(_pA())return")],
   ['frame move drags contained shapes', html.includes("dragIds") && html.includes("type==='frame'")],
   ['copyStyle uses i18n', html.includes("_wT(_NS)") && html.includes("_oT('styleCopied')")],
   ['group toasts use i18n', html.includes("_oT('grouped')") && html.includes("_wT(_ST)")],
@@ -343,7 +343,7 @@ const checks = [
   ['guides rendered during drag', html.includes("function drawGuides") && html.includes("_gd()")],
   // v1.6.16: dashed/dotted line styles
   ['dashArr helper present', html.includes("function dashArr")],
-  ['drawShape applies line dash', html.includes("c.setLineDash((s.dash&&")],
+  ['drawShape applies line dash', html.includes("_sD(c,(s.dash&&")],
   ['SVG export emits stroke-dasharray', html.includes("stroke-dasharray=") && html.includes("dashArr(s.dash,SZ)")],
   ['line-style buttons in style panel', html.includes('data-dash="1"') && html.includes('data-dash="2"')],
   ['dash wired to selection', html.includes("applyStyleToSelection({dash:_st().dash})")],
@@ -578,7 +578,7 @@ const checks = [
   ['applyStyleToSelection uses style op not per-shape upd', html.includes("{op:'style',before,after}")],
   // v1.6.26: emptying existing text = single undo (not upd+del)
   ['text editor captures orig clone at open', html.includes('const orig=clone(s)')],
-  ['emptied existing text deletes original via single del op', html.includes("const delOp={op:'del',shapes:[orig]};")&&html.includes("Store.commit(delOp);")],
+  ['emptied existing text deletes original via single del op', html.includes("const delOp={op:'del',shapes:[orig]};")&&html.includes("_cmt(delOp);")],
   ['existing text edit branch is else-if (no double op)', html.includes("}else if(newText!==origText){")],
   // v1.6.23: .board file export/import
   ['exportBoard function exists', html.includes('function exportBoard(shapes')],
@@ -594,7 +594,7 @@ const checks = [
   // harness (FileReader has no fake), so its trigger wiring is presence-checked; the backup
   // mechanism itself (Persist.saveBackup/checkBackup/restoreBackup) is behaviourally tested.
   ['ADR-0004: doClearAll backs up pre-clear board before the destructive commit',
-    html.includes("Persist.saveBackup(clone(_sh()),{..._vp()},_dn());   // ADR-0004\n  Store.commit({op:'clear'")],
+    html.includes("Persist.saveBackup(clone(_sh()),{..._vp()},_dn());   // ADR-0004\n  _cmt({op:'clear'")],
   ['ADR-0004: importBoard backs up pre-import board before the whole-board swap',
     html.includes("if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());   // ADR-0004\n      _rs(shapes.map(clone));")],
   ['ADR-0004: importFromHash backs up pre-import board before the whole-board swap',
@@ -886,8 +886,8 @@ const checks = [
   ['dblclick label editor handles rect and ellipse', html.includes("_HF4.has(hit.type)") && html.includes("_gC(bold?'--accent-contrast':'--ink')")],
   ['SVG export emits label for rect', html.includes("if(_lb(s))_svgBoxLabel(") && html.includes("text-anchor=\"middle\"")],
   // v1.6.59: laser pointer (presentation) + shape lock
-  ['laser pointer state + presentation intercept', html.includes("let _laser=null") && html.includes("if(Presentation.isActive()){_laser=wp")],
-  ['laser dot drawn during presentation', html.includes("_laser&&Presentation.isActive()") && html.includes("rgba(255,50,50,.75)")],
+  ['laser pointer state + presentation intercept', html.includes("let _laser=null") && html.includes("if(_pA()){_laser=wp")],
+  ['laser dot drawn during presentation', html.includes("_laser&&_pA()") && html.includes("rgba(255,50,50,.75)")],
   ['laser cleared on presentation leave and pointerleave', html.includes("_laser=null;_active=false") && html.includes("pointerleave")],
   ['doLock toggles locked via align op', html.includes("function doLock") && html.includes("op:'align',dir:'lock'")],
   ['locked shapes have no resize handles', html.includes("function getHandles(s){\n  if(_lk(s))return [];")],
@@ -988,7 +988,7 @@ const checks = [
   ['_edgePt is rotation-aware (projects to true rotated edge)', html.includes("const ub=sh.w!=null?{x:sh.x,y:sh.y,w:sh.w,h:sh.h}:_bb(sh)") && html.includes("const cx=ub.x+ub.w/2,cy=ub.y+ub.h/2,rot=sh.rotate")],
   ['rotation extends to all box types (text bbox uses envelope)', !html.includes("if(_txt(s)){\n      return{x:s.x,y:s.y,w:s.w,h:s.h};")],
   ['SVG rotation applies to text/image/sticky/frame', html.includes("font-size=\"${fs}\"${s.bold?' font-weight=\"600\"':''}") && html.includes("href=\"${_esc(_du(s))}\"${_cr2>0?` clip-path=\"url(#irc${_esc(s.id)})\"`:''}${a}${rT}${fT}${_sh}/>")],
-  ['minimap applies rotation transform', html.includes("const _mr=_rt(s)&&_hb(s);") && html.includes("if(_mr)sx.restore();")],
+  ['minimap applies rotation transform', html.includes("const _mr=_rt(s)&&_hb(s);") && html.includes("if(_mr)_rs2(sx);")],
   ['minimap renders frame shapes (case frame fallthrough to rect)', html.includes("case 'frame':\n        case 'rect':")],
   ['describeShape announces locked and rotated state', html.includes("if(_lk(s))d+=` ${t('ctxLock')}`;") && html.includes("if(_rt(s))d+=` ${_rt(s)}°`;")],
   ['describeShape announces flip/shadow/route (ADR-0414)', html.includes("s.flip&1&&t('ctxFlipH')")&&html.includes("if(_sh2(s))d+=` ${t('ctxShadow')}`")&&html.includes("_el(s)?t('ctxElbow'):t('ctxCurve')")&&html.includes("_fs2(s)==='hatch'||_fs2(s)==='cross'")&&html.includes("if(s.hop)d+=` ${t('ctxHop')}`")],
@@ -1006,7 +1006,7 @@ const checks = [
   // v1.7.62: the overlay pass (selection/guides/marquee/laser/peer cursors) draws in CSS px
   // under a DPR transform — multiplying w2s output by DPR double-applied it on HiDPI.
   ['overlay pass draws in CSS px, no double DPR (HiDPI fix)',
-    html.includes('function drawOverlay()') && html.includes('c.setTransform(DPR,0,0,DPR,0,0)')
+    html.includes('function drawOverlay()') && html.includes('_sTF(c,DPR,0,0,DPR,0,0)')
     && !html.includes('sp.x*DPR') && !html.includes('kp.x*DPR') && !html.includes('lp.x*DPR')
     && html.includes('const x=p1.x,y=p1.y,w=p2.x-p1.x,h=p2.y-p1.y;')],
   // v1.7.62 / ADR-0011: peer selection presence
@@ -1038,8 +1038,8 @@ const checks = [
     html.includes("['⇧H / ⇧V',t('ctxFlipH')") && html.includes("['⌥C / ⌥V',t('ctxCopyStyle')")],
   ['SR-only live region + UI.announce wired into tool/zoom/flip/lock/rotate',
     html.includes('<div id="sr" aria-live="polite"') && html.includes('announce(msg){')
-    && html.includes("UI.announce(T.k[tool]||tool)") && html.includes("UI.announce(t(lk?'ctxLock':'ctxUnlock'))")
-    && html.includes("UI.announce(t(axis==='h'?'ctxFlipH':'ctxFlipV'))")],
+    && html.includes("_ann(T.k[tool]||tool)") && html.includes("_ann(t(lk?'ctxLock':'ctxUnlock'))")
+    && html.includes("_ann(t(axis==='h'?'ctxFlipH':'ctxFlipV'))")],
   ['canvas aria-label localized in pickTool (was hardcoded English)',
     html.includes("_sa(canvas,_AL,(T.k[tool]||tool)+' — '+t('canvasHint'))")],
   // v1.7.64 (FT-17)
@@ -1099,7 +1099,7 @@ const checks = [
   ['importBoard clears selection+wclock on whole-board swap', html.includes("_rs(shapes.map(clone));   // ADR-0009\n      // Match the replace op's _apply") && html.includes("_scl();state.wclock={};\n      _docN(d);")],
   ['importFromHash clears selection+wclock on whole-board swap', html.includes("_rs(valid.map(clone));_setDocName(") && /_rs\(valid\.map\(clone\)\)[\s\S]{0,900}_scl\(\);state\.wclock=\{\};/.test(html)],
   // v1.6.71: presentation-mode guard precedes editing shortcuts (no undo mid-slideshow)
-  ['presentation guard runs before undo/redo/select-all shortcuts', /if\(Presentation\.isActive\(\)\)\{[\s\S]{0,260}return;\n  \}[\s\S]{0,700}if\(meta&&k==='z'&&!e\.shiftKey\)/.test(html)],
+  ['presentation guard runs before undo/redo/select-all shortcuts', /if\(_pA\(\)\)\{[\s\S]{0,260}return;\n  \}[\s\S]{0,700}if\(meta&&k==='z'&&!e\.shiftKey\)/.test(html)],
   // v1.6.71: export canvas clamped to browser limits
   ['exportPNG uses exportScale clamp', html.includes("const scale=exportScale(w,h,desired||2);")],
   ['exportPDF uses exportScale clamp for dpr', html.includes("dpr=exportScale(W,H,_dpr()||1)")],
@@ -1195,7 +1195,7 @@ const checks = [
   // v1.7.06: doCopy excludes locked shapes (parity with doDelete/doMove/doAlign)
   ['doCopy expands frame children and excludes locked shapes', html.includes("const sel=[...withFrameChildren(_sl())].map(byId).filter(s=>s&&!_lk(s));\n  if(!_ln(sel))return;\n  state.clipboard={shapes:clone(sel)}")],
   // v1.6.77: paste/duplicate is one atomic undo — _placeCopies commits a single addMany op
-  ['_placeCopies commits one addMany (not per-shape add)', html.includes("if(_ln(built))Store.commit({op:'addMany',shapes:built})")],
+  ['_placeCopies commits one addMany (not per-shape add)', html.includes("if(_ln(built))_cmt({op:'addMany',shapes:built})")],
   ['addMany op has an _apply case', /case 'addMany':/.test(html)],
   ['addMany in REMOTE_OPS allow-list', /REMOTE_OPS[\s\S]{0,160}'addMany'/.test(html)],
   ['addMany validated in validRemotePayload (with MAX_OP_SHAPES cap)', /case 'addMany':/.test(html)&&html.includes("case 'addMany':    return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape)")],
@@ -1283,7 +1283,7 @@ const checks = [
   // v1.7.35: text-blur del origSel pattern must exist at the existing-text-empty path
   ['text-blur del: origSel captured and patched before and after Store.commit del',
     html.includes("const origSel=_selIds();\n        const connClears=computeConnClears(_sT([orig.id]));")&&
-    html.includes("Store.commit(delOp);\n        _keepSel(origSel);")],
+    html.includes("_cmt(delOp);\n        _keepSel(origSel);")],
   // v1.7.36: flushErase must capture origSel before del commit and patch after
   ['flushErase del: origSel captured before commit and patched after (parity with doDelete)',
     html.includes("const origSel=_selIds();\n  const op={op:'del',shapes:clone(_eraseBatch)};")],

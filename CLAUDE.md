@@ -562,6 +562,7 @@ Board/
 │   ├── ADR-0510-canvas-path-fold.md   # _bp/_st2/_fil canvas path shorthand (実装済)
 │   ├── ADR-0511-mt-lt-fold.md         # _mT/_lT canvas moveTo/lineTo shorthand (実装済)
 │   ├── ADR-0512-canvas-state-fold.md  # _sv2/_rs2/_cP/_qC canvas state/curve shorthand (実装済)
+│   ├── ADR-0513-bulk-shorthand.md     # canvas/Store/UI/Persist 一括 shorthand (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.545';
+const V='1.7.546';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1835,7 +1835,7 @@ function _hatchSegs(x,y,w,h,gap,cross){
 function _hatchCtx(c,s){
   const segs=_hatchSegs(s.x,s.y,s.w,s.h,_max(6,(_szz(s)||1)*4),_fs2(s)==='cross');
   _sv2(c);c.clip();c.globalAlpha=0.55;
-  c.strokeStyle=_sk(s)||_IK;c.lineWidth=_max(0.5,(_szz(s)||1)*0.6);c.setLineDash([]);
+  c.strokeStyle=_sk(s)||_IK;c.lineWidth=_max(0.5,(_szz(s)||1)*0.6);_sD(c,[]);
   _bp(c);for(const g of segs){_mT(c,g[0],g[1]);_lT(c,g[2],g[3])}_st2(c);
   _rs2(c);
 }
@@ -2019,6 +2019,8 @@ const _zG=()=>{state.guides=state.readout=state.bindPreview=null},_zR=()=>{state
 const _bp=c=>c.beginPath(),_st2=c=>c.stroke(),_fil=c=>c.fill();   // ADR-0510: canvas path shorthand
 const _mT=(c,x,y)=>c.moveTo(x,y),_lT=(c,x,y)=>c.lineTo(x,y);   // ADR-0511
 const _sv2=c=>c.save(),_rs2=c=>c.restore(),_cP=c=>c.closePath(),_qC=(c,x,y,cx,cy)=>c.quadraticCurveTo(x,y,cx,cy);   // ADR-0512
+const _sD=(c,d)=>c.setLineDash(d),_mTX=(c,s)=>c.measureText(s),_sR2=(c,x,y,w,h)=>c.strokeRect(x,y,w,h),_tr2=(c,x,y)=>c.translate(x,y),_sTF=(c,a,b,d,e,f,g)=>c.setTransform(a,b,d,e,f,g);   // ADR-0513
+const _cmt=o=>Store.commit(o),_ann=m=>UI.announce(m),_oURL=b=>URL.createObjectURL(b),_oS=(tx,n)=>tx.objectStore(n),_pA=()=>Presentation.isActive();   // ADR-0513
 const _hb=s=>s.w!=null;   // ADR-0501
 const _idOK=id=>_iS(id)&&_ln(id)<=64;   // ADR-0502: wire id cap (ADR-0485): unlocked+visible predicate (4 sites)
 const _idIdx=id=>_sh().findIndex(s=>s.id===id);   // ADR-0497: shape index by id (4 sites)
@@ -2228,9 +2230,9 @@ function drawPenDraft(s){
   if(d.R===_z){
     // 1:1 device-space blit snapped to whole pixels — composites without
     // resampling, AA-identical to drawing the same segments on the main ctx.
-    ctx.save();ctx.setTransform(1,0,0,1,0,0);
+    _sv2(ctx);_sTF(ctx,1,0,0,1,0,0);
     ctx.drawImage(d.cv,_rnd((d.bx-_vp().x)*_z),_rnd((d.by-_vp().y)*_z));
-    ctx.restore();
+    _rs2(ctx);
   }
   else ctx.drawImage(d.cv,d.bx,d.by,d.bw,d.bh);
   // ADR-0046: live tail = unstamped primitives (discs d.c..n-1, quads d.c+1..n-1)
@@ -2413,7 +2415,7 @@ function _mirrorGo(id){
   // Centre the view on the shape, zooming out only when it doesn't fit (ADR-0049)
   const b=_bb(s);
   if(b&&b.w>0&&b.h>0)_fitViewport(b,40,2);else _iv();
-  UI.announce(describeShape(s));
+  _ann(describeShape(s));
 }
 let _lastVp=null;   // ADR-0028: the effective viewport the scene canvas currently represents
 function draw(){
@@ -2428,7 +2430,7 @@ function draw(){
     // (vp0-v)*z1. One scaled blit replaces the whole scene pass while
     // pinching; _lastVp=null so the post-gesture frame repaints for real.
     const z0=_pinchVp.zoom*DPR;
-    ctx.setTransform(1,0,0,1,0,0);
+    _sTF(ctx,1,0,0,1,0,0);
     ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
     ctx.drawImage(_pinchSnap,0,0,W,H,(_pinchVp.x-v.x)*z,(_pinchVp.y-v.y)*z,W*z/z0,H*z/z0);
     _lastVp=null;
@@ -2445,7 +2447,7 @@ function draw(){
     // pending damage is world-space so it maps correctly onto the new view.
     const sx=_rnd((pv.x-v.x)*z),sy=_rnd((pv.y-v.y)*z);
     ev={x:pv.x-sx/z,y:pv.y-sy/z,zoom:v.zoom};
-    ctx.setTransform(1,0,0,1,0,0);
+    _sTF(ctx,1,0,0,1,0,0);
     ctx.drawImage(canvas,0,0,W,H,sx,sy,W,H);
     const Ww=W/z,Hh=H/z,Nx1=ev.x+Ww,Ny1=ev.y+Hh,Ox1=pv.x+Ww,Oy1=pv.y+Hh;
     clipRects=[];
@@ -2455,22 +2457,22 @@ function draw(){
     else if(ev.y<pv.y)clipRects.push({x:ev.x,y:ev.y,w:Ww,h:pv.y-ev.y});// top
     if(dmg)clipRects.push(dmg);
     if(_ln(clipRects)){
-      ctx.setTransform(z,0,0,z,-ev.x*z,-ev.y*z);
-      ctx.save();
-      ctx.beginPath();for(const r of clipRects)ctx.rect(r.x,r.y,r.w,r.h);ctx.clip();
+      _sTF(ctx,z,0,0,z,-ev.x*z,-ev.y*z);
+      _sv2(ctx);
+      _bp(ctx);for(const r of clipRects)ctx.rect(r.x,r.y,r.w,r.h);ctx.clip();
       ctx.fillStyle=bg;ctx.fillRect(ev.x,ev.y,Ww,Hh);
     }
   }else if(dmg){
     // ADR-0026: clip to the accumulated damage rect and repaint just it — the
     // rest of the scene canvas is retained from the previous frame.
-    ctx.setTransform(z,0,0,z,-v.x*z,-v.y*z);
-    ctx.save();
-    ctx.beginPath();ctx.rect(dmg.x,dmg.y,dmg.w,dmg.h);ctx.clip();
+    _sTF(ctx,z,0,0,z,-v.x*z,-v.y*z);
+    _sv2(ctx);
+    _bp(ctx);ctx.rect(dmg.x,dmg.y,dmg.w,dmg.h);ctx.clip();
     ctx.fillStyle=bg;ctx.fillRect(dmg.x,dmg.y,dmg.w,dmg.h);
     clipRects=[dmg];
   }else{
     ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
-    ctx.setTransform(z,0,0,z,-v.x*z,-v.y*z);
+    _sTF(ctx,z,0,0,z,-v.x*z,-v.y*z);
   }
 
   const _view=panned?{x:ev.x,y:ev.y,w:W/z,h:H/z}:(dmg?{x:dmg.x-16,y:dmg.y-16,w:dmg.w+32,h:dmg.h+32}:visibleWorldRect());
@@ -2510,12 +2512,12 @@ function draw(){
         const _pw=penWidths(_pp,_df().size);
         const _oc=ctx.lineCap,_ow=ctx.lineWidth;
         ctx.strokeStyle=_df().stroke;ctx.lineCap='round';ctx.lineWidth=_pw[_pl-1];
-        ctx.beginPath();ctx.moveTo(_pp[_pl-1][0],_pp[_pl-1][1]);ctx.lineTo(_penPred.x,_penPred.y);ctx.stroke();
+        _bp(ctx);_mT(ctx,_pp[_pl-1][0],_pp[_pl-1][1]);_lT(ctx,_penPred.x,_penPred.y);_st2(ctx);
         ctx.lineCap=_oc;ctx.lineWidth=_ow;
       }
     }
   }
-  if(clipRects&&_ln(clipRects))ctx.restore();
+  if(clipRects&&_ln(clipRects))_rs2(ctx);
   _lastVp={x:ev.x,y:ev.y,zoom:v.zoom};
 }
 // ====================== OVERLAY LAYER (ADR-0024) ======================
@@ -2527,32 +2529,32 @@ function draw(){
 // the v1.6.5–v1.7.61 HiDPI bug).
 function drawOverlay(){
   const c=octx,W=ocanvas.width,H=ocanvas.height;
-  c.setTransform(1,0,0,1,0,0);
+  _sTF(c,1,0,0,1,0,0);
   c.clearRect(0,0,W,H);
   // Search highlights live in world space (they hug world bboxes).
   if(_sq){
     const v=_vp();
-    c.setTransform(v.zoom*DPR,0,0,v.zoom*DPR,-v.x*v.zoom*DPR,-v.y*v.zoom*DPR);
-    const q=_lc(_sq);c.setLineDash([]);let _mi=0;
+    _sTF(c,v.zoom*DPR,0,0,v.zoom*DPR,-v.x*v.zoom*DPR,-v.y*v.zoom*DPR);
+    const q=_lc(_sq);_sD(c,[]);let _mi=0;
     for(const s of _sqMatches()){
       const b=_bb(s),isCur=_sqNav.lastQ===q&&_mi===_sqNav.idx;
-      c.strokeStyle=isCur?'#EA580C':'#F97316';c.lineWidth=(isCur?5:3)/v.zoom;c.strokeRect(b.x,b.y,b.w,b.h);_mi++;
+      c.strokeStyle=isCur?'#EA580C':'#F97316';c.lineWidth=(isCur?5:3)/v.zoom;_sR2(c,b.x,b.y,b.w,b.h);_mi++;
     }
   }
-  c.setTransform(DPR,0,0,DPR,0,0);
+  _sTF(c,DPR,0,0,DPR,0,0);
   if(_nS()===0&&!_df())drawEmptyHint(c,W,H);   // FT-17: onboarding for a blank board
   for(const[,members] of _grpMapGet()){
     const b=_bA(members);if(!b)continue;
     const p1=_w2({x:b.x-4,y:b.y-4}),p2=_w2({x:b.x+b.w+4,y:b.y+b.h+4});
-    c.strokeStyle='rgba(0,196,204,.3)';c.lineWidth=1;c.setLineDash([4,4]);
-    c.strokeRect(p1.x,p1.y,p2.x-p1.x,p2.y-p1.y);c.setLineDash([]);
+    c.strokeStyle='rgba(0,196,204,.3)';c.lineWidth=1;_sD(c,[4,4]);
+    _sR2(c,p1.x,p1.y,p2.x-p1.x,p2.y-p1.y);_sD(c,[]);
   }
   // ADR-0177: eraser hover target (red dashed bbox, locked excluded upstream).
   if(state._ehov&&_tl()==='eraser'){
     const es=byId(state._ehov);
     if(es){const eb=_bb(es),ep1=_w2({x:eb.x-3,y:eb.y-3}),ep2=_w2({x:eb.x+eb.w+3,y:eb.y+eb.h+3});
-      c.strokeStyle='#EF4444';c.lineWidth=1.5;c.setLineDash([5,4]);
-      c.strokeRect(ep1.x,ep1.y,ep2.x-ep1.x,ep2.y-ep1.y);c.setLineDash([]);}
+      c.strokeStyle='#EF4444';c.lineWidth=1.5;_sD(c,[5,4]);
+      _sR2(c,ep1.x,ep1.y,ep2.x-ep1.x,ep2.y-ep1.y);_sD(c,[]);}
   }
   drawSelection(c);
   drawGuides(c);
@@ -2561,7 +2563,7 @@ function drawOverlay(){
     const r=_ro(),sp=_w2({x:r.x,y:r.y});
     _sv2(c);
     c.font='11px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';
-    const tw=c.measureText(r.label).width+14,ph=18,px=sp.x,py=sp.y+14;
+    const tw=_mTX(c,r.label).width+14,ph=18,px=sp.x,py=sp.y+14;
     c.fillStyle='rgba(15,23,42,.85)';
     _bp(c);roundRect(c,px-tw/2,py,tw,ph,4);_fil(c);
     c.fillStyle='#fff';c.fillText(r.label,px,py+ph/2);
@@ -2583,19 +2585,19 @@ function drawOverlay(){
     if(t){
       const b=_bb(t),p1=_w2({x:b.x,y:b.y}),p2=_w2({x:b.x+b.w,y:b.y+b.h});
       _sv2(c);
-      c.strokeStyle=_ac();c.lineWidth=2;c.setLineDash([6,4]);
-      c.strokeRect(p1.x-3,p1.y-3,p2.x-p1.x+6,p2.y-p1.y+6);
+      c.strokeStyle=_ac();c.lineWidth=2;_sD(c,[6,4]);
+      _sR2(c,p1.x-3,p1.y-3,p2.x-p1.x+6,p2.y-p1.y+6);
       _rs2(c);
     }
   }
   if(_mq())drawMarquee(c);
   if(_la()&&_la().length>1){                            // ADR-0158
-    _sv2(c);c.fillStyle='rgba(0,196,204,.08)';c.strokeStyle=_ac();c.lineWidth=1;c.setLineDash([4,4]);
+    _sv2(c);c.fillStyle='rgba(0,196,204,.08)';c.strokeStyle=_ac();c.lineWidth=1;_sD(c,[4,4]);
     _bp(c);const _p0=_w2(_la()[0]);_mT(c,_p0.x,_p0.y);
     for(let i=1;i<_la().length;i++){const p=_w2(_la()[i]);_lT(c,p.x,p.y)}
     _cP(c);_fil(c);_st2(c);_rs2(c);
   }
-  if(_laser&&Presentation.isActive()){const lp=_w2(_laser);_bp(c);c.arc(lp.x,lp.y,8,0,PI2);c.fillStyle='rgba(255,50,50,.75)';_fil(c);}
+  if(_laser&&_pA()){const lp=_w2(_laser);_bp(c);c.arc(lp.x,lp.y,8,0,PI2);c.fillStyle='rgba(255,50,50,.75)';_fil(c);}
   drawPeerSelections(c);   // ADR-0011 (before cursors: pointer renders on top of frames)
   drawPeerCursors(c);   // ADR-0010
 }
@@ -2614,24 +2616,24 @@ function drawEmptyHint(c,W,H){
 // selection dash pattern [5,4]. _pr()[].sel is set only by Net's 'selection'
 // handler and vanishes with the peer entry on reap/disconnect.
 function drawPeerSelections(c){
-  if(Presentation.isActive())return;   // same rationale as drawPeerCursors
+  if(_pA())return;   // same rationale as drawPeerCursors
   for(const p of _pr().values()){
     if(!p.sel||!_ln(p.sel))continue;
-    c.strokeStyle=p.color;c.lineWidth=1;c.setLineDash([3,3]);
+    c.strokeStyle=p.color;c.lineWidth=1;_sD(c,[3,3]);
     for(const id of p.sel){
       const s=byId(id);if(!s)continue;      // peer may reference a shape we since deleted
       const b=_bb(s);if(!b)continue;
       const p1=_w2({x:_min(b.x,b.x+b.w),y:_min(b.y,b.y+b.h)});
       const p2=_w2({x:_max(b.x,b.x+b.w),y:_max(b.y,b.y+b.h)});
-      c.strokeRect(p1.x-3,p1.y-3,p2.x-p1.x+6,p2.y-p1.y+6);
+      _sR2(c,p1.x-3,p1.y-3,p2.x-p1.x+6,p2.y-p1.y+6);
     }
-    c.setLineDash([]);
+    _sD(c,[]);
   }
 }
 // ADR-0010: ephemeral, never persisted — _pr().cursor is set only by Net's 'cursor'
 // message handler and cleared implicitly when a peer is reaped/disconnected.
 function drawPeerCursors(c){
-  if(Presentation.isActive())return;   // presence is for co-editing, not solo frame review
+  if(_pA())return;   // presence is for co-editing, not solo frame review
   for(const p of _pr().values()){
     if(!p.cursor)continue;
     const sp=_w2(p.cursor);
@@ -2642,12 +2644,12 @@ function drawPeerCursors(c){
 }
 function drawGuides(c){
   if(!_gd()||!_gd().length)return;
-  c.strokeStyle=_ac();c.lineWidth=1;c.setLineDash([4,4]);   // a11y-audit-2026-07
+  c.strokeStyle=_ac();c.lineWidth=1;_sD(c,[4,4]);   // a11y-audit-2026-07
   for(const g of _gd()){
     const p1=_w2({x:g.x1,y:g.y1}),p2=_w2({x:g.x2,y:g.y2});
     _bp(c);_mT(c,p1.x,p1.y);_lT(c,p2.x,p2.y);_st2(c);
   }
-  c.setLineDash([]);
+  _sD(c,[]);
 }
 // ADR-0151: gap measurement guides (Figma measure mode). For each axis where the
 // two envelopes are separated, draws a solid guide across the gap at the midpoint
@@ -2669,7 +2671,7 @@ function _drawMeasure(c){
     _bp(c);_mT(c,p1.x,p1.y);_lT(c,p2.x,p2.y);_st2(c);
     const dx=p2.x-p1.x,dy=p2.y-p1.y,L=_hp(dx,dy)||1,ux=dx/L,uy=dy/L,ex=-uy,ey=ux;
     for(const p of [p1,p2]){_bp(c);_mT(c,p.x-ex*4,p.y-ey*4);_lT(c,p.x+ex*4,p.y+ey*4);_st2(c)}
-    const label=_St(_rnd(L)),tw=c.measureText(label).width+12;
+    const label=_St(_rnd(L)),tw=_mTX(c,label).width+12;
     const mx=(p1.x+p2.x)/2,my=(p1.y+p2.y)/2;
     c.fillStyle='rgba(15,23,42,.85)';_bp(c);roundRect(c,mx-tw/2,my-9,tw,18,4);_fil(c);
     c.fillStyle='#fff';c.fillText(label,mx,my);
@@ -2693,10 +2695,10 @@ function drawGrid(W,H){
   ctx.strokeStyle=color;
   ctx.lineWidth=1/(v.zoom*DPR);
   ctx.globalAlpha=_min(1,(gsZ-6)/10);
-  ctx.beginPath();
-  for(let x=x0;x<=wr;x+=gs){ctx.moveTo(x,wt);ctx.lineTo(x,wb)}
-  for(let y=y0;y<=wb;y+=gs){ctx.moveTo(wl,y);ctx.lineTo(wr,y)}
-  ctx.stroke();
+  _bp(ctx);
+  for(let x=x0;x<=wr;x+=gs){_mT(ctx,x,wt);_lT(ctx,x,wb)}
+  for(let y=y0;y<=wb;y+=gs){_mT(ctx,wl,y);_lT(ctx,wr,y)}
+  _st2(ctx);
   ctx.globalAlpha=1;
 }
 // Effective render rotation. Only box shapes (x/y/w/h present) have a meaningful
@@ -2716,7 +2718,7 @@ function _drawBoxLabel(s,c){
   const al=s.align||'center';   // ADR-0171: label honours horizontal align
   c.textAlign=al==='left'?'left':al==='right'?'right':'center';c.textBaseline='middle';
   const tx=al==='left'?s.x+6:al==='right'?s.x+s.w-6:s.x+s.w/2;
-  const lines=wrapTextCached(s,_lb(s),_max(10,s.w-8),fs,t=>c.measureText(t).width);   // ADR-0074
+  const lines=wrapTextCached(s,_lb(s),_max(10,s.w-8),fs,t=>_mTX(c,t).width);   // ADR-0074
   const lh=fs*(s.lineH||1.25);
   // ADR-0159: _va(s) 'top'|'bottom' (absent = centred) — draw.io parity.
   const top0=_va(s)==='top'?s.y+6:_va(s)==='bottom'?s.y+s.h-6-_ln(lines)*lh:s.y+s.h/2-(_ln(lines)*lh)/2;
@@ -2736,7 +2738,7 @@ function _drawImgLabel(s,c){
   _sv2(c);
   const fs=_fS(s)||14;   // ADR-0169
   c.font=_fontStr(s,fs);   // ADR-0170
-  let lines=wrapTextCached(s,_lb(s),_max(10,s.w-8),fs,t=>c.measureText(t).width);
+  let lines=wrapTextCached(s,_lb(s),_max(10,s.w-8),fs,t=>_mTX(c,t).width);
   const lh=fs*(s.lineH||1.25),maxL=_max(1,_fl((s.h-4)/lh));
   if(_ln(lines)>maxL){lines=_s0(lines,maxL);lines[maxL-1]+='…'}
   const sh_=_ln(lines)*lh+4,sy=_va(s)==='top'?s.y:s.y+s.h-sh_;   // ADR-0179
@@ -2801,7 +2803,7 @@ function _connLabelMeasure(s,c,lns,fs){
   const key=lns.join('\n')+'|'+fs+'|'+(s.bold?1:0)+(s.italic?1:0)+(_ftt(s)||'');
   let m=_clCache.get(s);
   if(m&&m.key===key)return m;
-  let w=0;const ws=lns.map(l=>{const lw=c.measureText(l).width;if(lw>w)w=lw;return lw});
+  let w=0;const ws=lns.map(l=>{const lw=_mTX(c,l).width;if(lw>w)w=lw;return lw});
   m={key,ws,w};_clCache.set(s,m);return m;
 }
 function _connLabelXY(s){
@@ -2850,10 +2852,10 @@ function drawShape(s,c){
   c.lineCap='round';c.lineJoin='round';
   c.strokeStyle=_sk(s)||_IK;
   c.lineWidth=_szz(s)||1;
-  c.setLineDash((s.dash&&(_D6.has(s.type)||_conn(s.type)))?dashArr(s.dash,_szz(s)):[]);   // ADR-0178
+  _sD(c,(s.dash&&(_D6.has(s.type)||_conn(s.type)))?dashArr(s.dash,_szz(s)):[]);   // ADR-0178
   if(_fi(s)&&_fi(s)!=='none'){c.fillStyle=_fi(s)}   // ADR-0288
   const _rot=shapeRot(s);
-  if(_rot){const _cx=s.x+s.w/2,_cy=s.y+s.h/2;_sv2(c);c.translate(_cx,_cy);c.rotate(_rot*_PI/180);c.translate(-_cx,-_cy);}
+  if(_rot){const _cx=s.x+s.w/2,_cy=s.y+s.h/2;_sv2(c);_tr2(c,_cx,_cy);c.rotate(_rot*_PI/180);_tr2(c,-_cx,-_cy);}
   switch(s.type){
     case 'rect':
       _bp(c);
@@ -2898,16 +2900,16 @@ function drawShape(s,c){
         const _cr=_min(s.r||0,_abs(s.w)/2,_abs(s.h)/2);   // ADR-0168
         _csh(s,c)   // ADR-0194
         if(_cr>0){_sv2(c);_bp(c);roundRect(c,s.x,s.y,s.w,s.h,_cr);c.clip()}
-        if(s.flip){const fx=s.x+s.w/2,fy=s.y+s.h/2;_sv2(c);c.translate(fx,fy);c.scale(s.flip&1?-1:1,s.flip&2?-1:1);c.translate(-fx,-fy);c.drawImage(img,s.x,s.y,s.w,s.h);_rs2(c)}
+        if(s.flip){const fx=s.x+s.w/2,fy=s.y+s.h/2;_sv2(c);_tr2(c,fx,fy);c.scale(s.flip&1?-1:1,s.flip&2?-1:1);_tr2(c,-fx,-fy);c.drawImage(img,s.x,s.y,s.w,s.h);_rs2(c)}
         else c.drawImage(img,s.x,s.y,s.w,s.h);
         _noSh(c);
         if(_cr>0)_rs2(c);
         // ADR-0176: _sk(s)+_szz(s) draws a border (stroke swatch already
         // reaches images through applyStyleToSelection but was never painted).
         if(_sk(s)&&_szz(s)){c.strokeStyle=_sk(s);c.lineWidth=_szz(s);
-          c.setLineDash(dashArr(s.dash||0,_szz(s)));                     // ADR-0178
-          _bp(c);roundRect(c,s.x,s.y,s.w,s.h,_cr);_st2(c);c.setLineDash([])}}   // ADR-0149
-      else{c.strokeStyle=_sk(s)||'#CBD5E1';c.lineWidth=1;c.strokeRect(s.x,s.y,s.w,s.h)}
+          _sD(c,dashArr(s.dash||0,_szz(s)));                     // ADR-0178
+          _bp(c);roundRect(c,s.x,s.y,s.w,s.h,_cr);_st2(c);_sD(c,[])}}   // ADR-0149
+      else{c.strokeStyle=_sk(s)||'#CBD5E1';c.lineWidth=1;_sR2(c,s.x,s.y,s.w,s.h)}
       _drawImgLabel(s,c);                                         // ADR-0083
       break;}
     case 'frame':{
@@ -2922,7 +2924,7 @@ function drawShape(s,c){
       // border
       c.strokeStyle=_sk(s)||_gC('--brand')||'#00C4CC';
       c.lineWidth=_szz(s)||1.5;
-      c.setLineDash(dashArr(s.dash||0,_szz(s)||1.5));                    // ADR-0178
+      _sD(c,dashArr(s.dash||0,_szz(s)||1.5));                    // ADR-0178
       _bp(c);roundRect(c,s.x,s.y,s.w,s.h,r);_st2(c);
       // label
       const lbl=_lb(s)||'Frame';
@@ -2955,7 +2957,7 @@ function drawShape(s,c){
         c.fillStyle=_sk(s)||'#1E293B';c.font=_fontStr(s,fs);  // ADR-0192
         c.textBaseline='top';
         const lh=fs*(s.lineH||1.3), pad=8;
-        const lines=wrapTextCached(s,_txx(s),_abs(s.w)-pad*2,fs,t=>c.measureText(t).width);
+        const lines=wrapTextCached(s,_txx(s),_abs(s.w)-pad*2,fs,t=>_mTX(c,t).width);
         _sv2(c);_bp(c);roundRect(c,s.x,s.y,s.w,s.h,r);c.clip();
         c.textAlign=s.align==='center'?'center':s.align==='right'?'right':'left';   // ADR-0073
         const tax=s.align==='center'?s.x+s.w/2:s.align==='right'?s.x+s.w-pad:s.x+pad;
@@ -2975,7 +2977,7 @@ function drawShape(s,c){
   }
   c.globalAlpha=1;c.letterSpacing='0px';
   _noSh(c);   // ADR-0211
-  c.setLineDash([]);
+  _sD(c,[]);
   if(_rot)_rs2(c);
 }
 // Dash pattern (world units, scaled by stroke size). dash: 1=dashed, 2=dotted.
@@ -3318,7 +3320,7 @@ function drawText(s,c){
   const fs=_fS(s)||16;
   c.font=_fontStr(s,fs);                                    // ADR-0078
   c.textBaseline='top';
-  const lines=s.wrap?wrapTextCached(s,_txx(s)||'',_abs(s.w),fs,t=>c.measureText(t).width):(_txx(s)||'').split('\n');   // ADR-0208
+  const lines=s.wrap?wrapTextCached(s,_txx(s)||'',_abs(s.w),fs,t=>_mTX(c,t).width):(_txx(s)||'').split('\n');   // ADR-0208
   const lh=fs*(s.lineH||1.25);
   c.textAlign=s.align==='center'?'center':s.align==='right'?'right':'left';   // ADR-0073
   const ax=s.align==='center'?s.x+s.w/2:s.align==='right'?s.x+s.w:s.x;
@@ -3635,7 +3637,7 @@ function drawSelection(c){
   const lockedSel=sel.every(_lk);
   const single=_selN()===1?sel[0]:null;
   c.strokeStyle=_ac();   // a11y-audit-2026-07
-  c.lineWidth=1.5;c.setLineDash(lockedSel?[5,4]:[]);
+  c.lineWidth=1.5;_sD(c,lockedSel?[5,4]:[]);
   if(single&&single.rotate&&single.w!=null){
     // rotated box: trace the rotated rectangle so the outline hugs the shape
     const cx=single.x+single.w/2,cy=single.y+single.h/2,rot=single.rotate;
@@ -3643,9 +3645,9 @@ function drawSelection(c){
       .map(([px,py])=>{const r=_rotPt(px,py,cx,cy,rot);return _w2(r);});
     _bp(c);_mT(c,cs[0].x,cs[0].y);for(let i=1;i<4;i++)_lT(c,cs[i].x,cs[i].y);_cP(c);_st2(c);
   }else{
-    c.strokeRect(x-1,y-1,w+2,h+2);
+    _sR2(c,x-1,y-1,w+2,h+2);
   }
-  c.setLineDash([]);
+  _sD(c,[]);
   if(lockedSel){
     // ADR-0172: padlock badge (draw.io parity) — the dashed outline alone
     // doesn't clearly read as "this is locked". Top-left, inside the bbox.
@@ -3666,7 +3668,7 @@ function drawSelection(c){
     for(const h of getHandles(sh)){
       const sp=_w2({x:h.x,y:h.y});
       c.fillRect(sp.x-hs/2,sp.y-hs/2,hs,hs);
-      c.strokeRect(sp.x-hs/2,sp.y-hs/2,hs,hs);
+      _sR2(c,sp.x-hs/2,sp.y-hs/2,hs,hs);
     }
     // Rotation knob: a circle above the (rotated) top edge, tethered to the shape.
     const rh=getRotHandle(sh);
@@ -3714,7 +3716,7 @@ function drawSelection(c){
       for(const h of getHandles({x:b.x,y:b.y,w:b.w,h:b.h})){
         const sp=_w2({x:h.x,y:h.y});
         c.fillRect(sp.x-hs/2,sp.y-hs/2,hs,hs);
-        c.strokeRect(sp.x-hs/2,sp.y-hs/2,hs,hs);
+        _sR2(c,sp.x-hs/2,sp.y-hs/2,hs,hs);
       }
     }
     // ADR-0057: rotation knob on the group bbox — always offered (rotation
@@ -3746,9 +3748,9 @@ function drawMarquee(c){
   c.fillRect(x,y,w,h);
   c.strokeStyle=_ac();   // a11y-audit-2026-07
   c.lineWidth=1;
-  c.setLineDash([4,4]);
-  c.strokeRect(x,y,w,h);
-  c.setLineDash([]);
+  _sD(c,[4,4]);
+  _sR2(c,x,y,w,h);
+  _sD(c,[]);
 }
 
 // ====================== INPUT / TOOLS ======================
@@ -3830,7 +3832,7 @@ function abortGesture(){
 }
 
 _on(canvas,_PD,e=>{
-  if(Presentation.isActive())return;  // no editing during presentation
+  if(_pA())return;  // no editing during presentation
   // Second finger down → pinch-zoom takes over; cancel the single-pointer gesture so
   // it doesn't keep drawing/moving underneath the zoom. _pointers is updated by the
   // capture-phase listener that runs before this bubble-phase one.
@@ -3990,7 +3992,7 @@ _on(canvas,_PD,e=>{
         // next shape carries the picked style (Figma eyedropper parity).
         for(const k of['stroke','fill','size','opacity','dash','font','head','start','startHead','elbow','curve','hop','r','fstyle','align','valign','fontSize','lineH','cbend','spacing','shadow'])_st()[k]=ext[k];
         state.styleClipboard=ext;                   // ⌥V applies it to the selection too
-        _oT('eyedropDone');UI.announce(t('eyedropDone'));
+        _oT('eyedropDone');_ann(t('eyedropDone'));
       }
       pickTool(window._prevTool||'select');window._prevTool=null;
       break;}
@@ -4000,7 +4002,7 @@ _on(canvas,_PD,e=>{
 _on(canvas,_PM,e=>{
   const sp={x:e.offsetX,y:e.offsetY};
   const wp=_s2(sp);
-  if(Presentation.isActive()){_laser=wp;_ivO();return;}
+  if(_pA()){_laser=wp;_ivO();return;}
   if(_pointers.size>=2)return;   // pinch in progress — the pinch handler owns the gesture
   Net.sendCursor(wp);   // ADR-0010
   UI.setStatusXY(_rnd(wp.x),_rnd(wp.y));
@@ -4438,7 +4440,7 @@ _on(canvas,'drop',e=>{
       let w=nw,h=nh;
       if(w>maxDim||h>maxDim){const r=_min(maxDim/w,maxDim/h);w*=r;h*=r}
       const sh=Shape.make('image',{x:wp.x+i*20,y:wp.y,w,h,dataUrl});
-      Store.commit({op:'add',shape:sh});
+      _cmt({op:'add',shape:sh});
       _ss([sh.id]);
       _iv();_oT('imagePasted');
     });
@@ -4498,7 +4500,7 @@ _on(window,'paste',e=>{
           const v=_trm(_St(cell||''));
           if(v)built.push(Shape.make('sticky',{x:x0+ci*(sw+gx),y:y0+ri*(sh+gy),w:sw,h:sh,color:_YW,text:_s0(v,2000)}));
         }));
-        if(_ln(built)){Store.commit({op:'addMany',shapes:built});_ss(built.map(x=>x.id));_iv();_oT('textPasted')}
+        if(_ln(built)){_cmt({op:'addMany',shapes:built});_ss(built.map(x=>x.id));_iv();_oT('textPasted')}
         return;
       }
       _pd(e);
@@ -4524,7 +4526,7 @@ _on(window,'paste',e=>{
       let w=nw,h=nh;
       if(w>maxDim||h>maxDim){const sc=_min(maxDim/w,maxDim/h);w*=sc;h*=sc}
       const sh=Shape.make('image',{x:wp.x-w/2,y:wp.y-h/2,w,h,dataUrl});
-      Store.commit({op:'add',shape:sh});
+      _cmt({op:'add',shape:sh});
       _ss([sh.id]);
       _iv();
       _oT('imagePasted');
@@ -4631,12 +4633,12 @@ function zoomAt(sp,delta){
 function zoomBy(f){
   const r=_cbr();
   zoomAt({x:r.width/2,y:r.height/2},_log(f));
-  UI.announce(_rnd(_vp().zoom*100)+'%');   // discrete zoom is SR-silent otherwise (wheel zoom stays quiet on purpose)
+  _ann(_rnd(_vp().zoom*100)+'%');   // discrete zoom is SR-silent otherwise (wheel zoom stays quiet on purpose)
 }
 function zoomReset(){
   _vp().zoom=1;
   UI.refreshZoom();_iv();
-  UI.announce('100%');
+  _ann('100%');
 }
 // ADR-0049: shared viewport-fit math — was duplicated in fitToContent/_mirrorGo.
 // Callers announce their own message (zoom % vs shape name).
@@ -4655,7 +4657,7 @@ function fitToContent(){
   const vis=_shV();
   const b=_bA(_ln(vis)?vis:_sh());if(!b){zoomReset();return}
   const z=_fitViewport(b,40,2);
-  UI.announce(_rnd(z*100)+'%');
+  _ann(_rnd(z*100)+'%');
 }
 // ADR-0106: boot guard against "lost content" — a persisted/imported viewport
 // that contains zero shapes looks like an empty board and reads as data loss.
@@ -4675,7 +4677,7 @@ function zoomToSelection(){
   const b=_bA(_selShapes());
   if(!b){_wT(_NS);return}
   const z=_fitViewport(b,60,4);
-  UI.announce(_rnd(z*100)+'%');
+  _ann(_rnd(z*100)+'%');
 }
 
 // ---- spatial index: uniform 200wu grid, lazy rebuild on _apply; big shapes in
@@ -5160,7 +5162,7 @@ function endPen(){
     // spacing), so zoomed-in strokes keep the detail they were drawn with —
     // 0.5 world units at zoom 1, finer when zoomed in, coarser when zoomed out.
     if(_ln(d.pts)>3)d.pts=_rdp(d.pts,0.5/_vp().zoom);
-    Store.commit({op:'add',shape:d});
+    _cmt({op:'add',shape:d});
   }
 }
 
@@ -5344,11 +5346,11 @@ function resizeAfterTextEdit(s,text,c){
   c.font=`${fs}px Hiragino Sans,Helvetica Neue,system-ui,sans-serif`;
   if(_stk(s)){
     const pad=8;
-    const wl=wrapText(_txx(s)||'',_abs(s.w)-pad*2,t=>c.measureText(t).width);
+    const wl=wrapText(_txx(s)||'',_abs(s.w)-pad*2,t=>_mTX(c,t).width);
     s.h=_max(fs*(s.lineH||1.3)+pad*2,_ln(wl)*fs*(s.lineH||1.3)+pad*2);
   }else{
     const lines=(_txx(s)||'').split('\n');
-    let mw=0;for(const l of lines)mw=_max(mw,c.measureText(l).width);
+    let mw=0;for(const l of lines)mw=_max(mw,_mTX(c,l).width);
     s.w=_max(20,mw);s.h=_max(fs*(s.lineH||1.25),_ln(lines)*fs*(s.lineH||1.25));
   }
 }
@@ -5401,9 +5403,9 @@ function openTextEditor(s,isNew){
   _on(ta,'input',()=>{if(!_textComposing)auto();});
   _on(ta,'blur',()=>{
     const newText=ta.value;
-    ctx.save();
+    _sv2(ctx);
     resizeAfterTextEdit(s,newText,ctx);
-    ctx.restore();
+    _rs2(ctx);
     state.editing=null;
     if(isNew){
       // New text: empty → undo the add; non-empty → patch the add op
@@ -5424,7 +5426,7 @@ function openTextEditor(s,isNew){
         const connClears=computeConnClears(_sT([orig.id]));
         const delOp={op:'del',shapes:[orig]};
         if(_ln(connClears))delOp.connClears=connClears;
-        Store.commit(delOp);
+        _cmt(delOp);
         _keepSel(origSel);
       }else if(newText!==origText){
         const before={text:origText,w:orig.w,h:orig.h};
@@ -5509,7 +5511,7 @@ function flushErase(){
   const origSel=_selIds();
   const op={op:'del',shapes:clone(_eraseBatch)};
   if(_ln(connClears))op.connClears=connClears;
-  Store.commit(op);
+  _cmt(op);
   _keepSel(origSel);
   _eraseBatch=[];
 }
@@ -5549,7 +5551,7 @@ _on(window,_KD,e=>{
   // navigation keys and suppress EVERYTHING else — undo/redo/select-all/copy etc.
   // This guard must precede the editing shortcuts below, or they'd mutate the board
   // mid-slideshow before the early return.
-  if(Presentation.isActive()){
+  if(_pA()){
     if(k===_AR2||k===_AD||k===' '){_pd(e);Presentation.next()}
     else if(k===_AL2||k===_AU){_pd(e);Presentation.prev()}
     else if(k===_ES){Presentation.leave()}
@@ -5710,7 +5712,7 @@ function pickTool(tool,temporary){
   if(ptr.lineClick&&tool!=='line'&&tool!=='arrow'){ptr.lineClick=false;state.draft=null;_iv()}   // ADR-0126
   state.tool=tool;canvas.dataset.tool=tool;
   _sa(canvas,_AL,(T.k[tool]||tool)+' — '+t('canvasHint'));   // localized (was hardcoded English)
-  UI.announce(T.k[tool]||tool);   // tool switches were SR-silent (undo/group等 toast, this didn't)
+  _ann(T.k[tool]||tool);   // tool switches were SR-silent (undo/group等 toast, this didn't)
   for(const b of _qsa(document,'.tool'))_sa(b,_AP,b.dataset.tool===tool);
   // hide style panel for select/hand
   const sp=_g('stylePanel');
@@ -5798,7 +5800,7 @@ function _placeCopies(srcShapes,dx,dy){
     built.push(sh);
     added.push(sh.id);
   }
-  if(_ln(built))Store.commit({op:'addMany',shapes:built});
+  if(_ln(built))_cmt({op:'addMany',shapes:built});
   _ss(added);
   state.dupIds=_sT(added);state.dupDelta={x:dx,y:dy};     // ADR-0080: reseed chain
   _iv();
@@ -5827,7 +5829,7 @@ function doDelete(){
   const connClears=computeConnClears(delIds);
   const op={op:'del',shapes:clone(sel)};
   if(_ln(connClears))op.connClears=connClears;
-  Store.commit(op);
+  _cmt(op);
   _keepSel(origSel);
   _scl();
   _tst(t('deleted')+' '+_ln(sel));
@@ -6006,7 +6008,7 @@ function doClearAll(){
   if(!confirm(t('confirmClear')))return;
   const origSel=_selIds();
   Persist.saveBackup(clone(_sh()),{..._vp()},_dn());   // ADR-0004
-  Store.commit({op:'clear',shapes:clone(_sh()),wc:clone(_wc())});
+  _cmt({op:'clear',shapes:clone(_sh()),wc:clone(_wc())});
   _keepSel(origSel);
   _tst(t('cleared'));
 }
@@ -6152,7 +6154,7 @@ function doFlip(axis){
   const after=sel.map(clone);
   _rcOp({op:'align',dir:'flip',before,after});
   _ivp();
-  UI.announce(t(axis==='h'?'ctxFlipH':'ctxFlipV'));
+  _ann(t(axis==='h'?'ctxFlipH':'ctxFlipV'));
 }
 
 function doLock(){
@@ -6164,7 +6166,7 @@ function doLock(){
   const after=sel.map(s=>({id:s.id,locked:_lk(s)??null}));
   _rcOp({op:'align',dir:'lock',before,after});
   _ivp();
-  UI.announce(t(lk?'ctxLock':'ctxUnlock'));
+  _ann(t(lk?'ctxLock':'ctxUnlock'));
 }
 // ADR-0123: unlock every locked shape on the board in one op — boards can
 // accumulate locked shapes across sessions/imports with no bulk way back.
@@ -6177,7 +6179,7 @@ function unlockAll(){
   const after=locked.map(s=>({id:s.id,locked:null}));
   Store._recordCommitted({op:'align',dir:'lock',before,after});
   _ivp();
-  UI.announce(t('ctxUnlockAll'));
+  _ann(t('ctxUnlockAll'));
 }
 // ADR-0005: replace confidently-recognized pen strokes in the selection with clean shapes
 // (Alt+B). Local-only (not in REMOTE_OPS, like replace/clear) — converting a collaborator's
@@ -6238,7 +6240,7 @@ function doRotate(d){
   const after=sel.map(clone);
   _rcOp({op:'align',dir:'rotate',before,after});
   _ivp();
-  UI.announce(_ln(sel)===1?describeShape(sel[0]):d+'°');   // ,/. keyboard rotate was SR-silent (knob drag announces); point-geom selections have no .rotate (ADR-0055)
+  _ann(_ln(sel)===1?describeShape(sel[0]):d+'°');   // ,/. keyboard rotate was SR-silent (knob drag announces); point-geom selections have no .rotate (ADR-0055)
 }
 // ====================== EXPORT ======================
 // Browsers cap a canvas's single dimension (~16384px on most) and its total area.
@@ -6298,7 +6300,7 @@ function exportViewportPNG(scale){
   for(const s of shapes)drawShape(s,oc);
   off.toBlob(bl=>{
     if(!bl){_eT(_EF);return}
-    const url=URL.createObjectURL(bl);
+    const url=_oURL(bl);
     const a=_ce('a');
     a.href=url;a.download=`${_dn()||'board'}-view${sc&&sc!==2?'@'+sc+'x':''}.png`;
     a.click();_rO(url);
@@ -6308,7 +6310,7 @@ function exportViewportPNG(scale){
 function exportPNG(shapes=_sh(),scale){
   _renderPngBlob(shapes,bl=>{
     if(!bl){_eT(_EF);return}
-    const url=URL.createObjectURL(bl);
+    const url=_oURL(bl);
     const a=_ce('a');
     a.href=url;a.download=`${_dn()||'board'}${scale&&scale!==2?'@'+scale+'x':''}.png`;
     a.click();_rO(url);
@@ -6366,7 +6368,7 @@ function exportPDF(){
   for(const s of _sh())drawShape(s,oc);
   const fin=bl=>{
     if(!bl){_eT(_EF);return}
-    const url=URL.createObjectURL(bl);
+    const url=_oURL(bl);
     const w2=_wO('');
     if(!w2){_wT('popupBlocked');return}
     w2.document.write(`<!DOCTYPE html><html><head><title>${_esc(_dn()||'board')}</title><style>*{margin:0;padding:0}img{max-width:100%;display:block}</style></head><body><img src="${url}" onload="window.print();window.close()"></body></html>`);
@@ -6380,7 +6382,7 @@ function exportSVG(shapes=_sh()){
   const svg=buildSVG(shapes,_p());
   if(svg===null){_wT(_EM);return}
   const blob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'});
-  const url=URL.createObjectURL(blob);
+  const url=_oURL(blob);
   const a=_ce('a');
   a.href=url;a.download=`${_dn()||'board'}.svg`;
   a.click();_rO(url);
@@ -6389,7 +6391,7 @@ function exportSVG(shapes=_sh()){
 function exportBoard(shapes=_sh()){                       // ADR-0114: optional selection subset
   if(!_ln(shapes)){_wT(_EM);return}
   const a=_ce('a');
-  const _bu=URL.createObjectURL(new Blob([_JS({v:V,docName:_dn(),viewport:_vpS(),shapes:roundShapesForExport(shapes)})],{type:'application/json'}));   // ADR-0393
+  const _bu=_oURL(new Blob([_JS({v:V,docName:_dn(),viewport:_vpS(),shapes:roundShapesForExport(shapes)})],{type:'application/json'}));   // ADR-0393
   a.href=_bu;a.download=(_dn()||'board')+'.board';
   a.click();_rO(_bu);
   _oT('exportedBoard');
@@ -6730,7 +6732,7 @@ function importDrawioFile(file,wp){
 function exportExc(){
   if(!_nS()){_wT(_EM);return}
   const a=_ce('a');
-  const _bu=URL.createObjectURL(new Blob([_JS(excScene(_sh()))],{type:'application/json'}));
+  const _bu=_oURL(new Blob([_JS(excScene(_sh()))],{type:'application/json'}));
   a.href=_bu;a.download=(_dn()||'board')+'.excalidraw';
   a.click();_rO(_bu);
   _oT('exportedExc');
@@ -6840,7 +6842,7 @@ function boardToDrawio(shapes){
 function exportDrawio(shapes=_sh()){
   if(!_ln(shapes)){_wT(_EM);return}
   const a=_ce('a');
-  const _bu=URL.createObjectURL(new Blob([boardToDrawio(shapes)],{type:'application/xml'}));
+  const _bu=_oURL(new Blob([boardToDrawio(shapes)],{type:'application/xml'}));
   a.href=_bu;a.download=(_dn()||'board')+'.drawio';
   a.click();_rO(_bu);
   _oT('dioExported');
@@ -8276,7 +8278,7 @@ const Persist={
     if(!this.db)return;
     try{
       const tx=this.db.transaction([DB_STORE,DB_IMG_STORE],_RW);
-      const imgs=tx.objectStore(DB_IMG_STORE);
+      const imgs=_oS(tx,DB_IMG_STORE);
       const kv=await reqDone(imgs.getAll()),ks=await reqDone(imgs.getAllKeys());
       const stored=new Map(ks.map((k,i)=>[k,kv[i]]));
       // ADR-0031: strip image bytes out of the doc record into content-hash
@@ -8284,11 +8286,11 @@ const Persist={
       const{slim,puts}=_imgSlim(_sh(),stored);
       for(const[k,d]of puts)imgs.put(d,k);
       // GC: drop blobs neither the live doc nor the :prev backup references.
-      const prev=await reqDone(tx.objectStore(DB_STORE).get(DOC_KEY+':prev'));
+      const prev=await reqDone(_oS(tx,DB_STORE).get(DOC_KEY+':prev'));
       const live=_sT(slim.filter(s=>s.img).map(s=>s.img));
       if(prev&&_iA(prev.shapes))for(const s of prev.shapes)if(s.img)live.add(s.img);
       for(const k of stored.keys())if(!live.has(k))imgs.delete(k);
-      tx.objectStore(DB_STORE).put({
+      _oS(tx,DB_STORE).put({
         v:V,
         shapes:slim,
         viewport:_vp(),
@@ -8310,15 +8312,15 @@ const Persist={
   async load(){
     if(!this.db)return;
     const tx=this.db.transaction([DB_STORE,DB_IMG_STORE],_RO);
-    const rq=tx.objectStore(DB_STORE).get(DOC_KEY);
+    const rq=_oS(tx,DB_STORE).get(DOC_KEY);
     const d=await reqDone(rq);
     if(d&&_iA(d.shapes)){
       // ADR-0031: v2 records store image bytes in the imgs store — re-attach
       // them BEFORE validation so image shapes look exactly as they did live.
       let shapes=d.shapes;
       if(shapes.some(s=>s.img)){
-        const kv=await reqDone(tx.objectStore(DB_IMG_STORE).getAll());
-        const ks=await reqDone(tx.objectStore(DB_IMG_STORE).getAllKeys());
+        const kv=await reqDone(_oS(tx,DB_IMG_STORE).getAll());
+        const ks=await reqDone(_oS(tx,DB_IMG_STORE).getAllKeys());
         shapes=_imgAttach(shapes,new Map(ks.map((k,i)=>[k,kv[i]])));
       }
       // Validate like the other intake paths (importFromHash / snapshot): never
@@ -8347,12 +8349,12 @@ const Persist={
     if(!this.db||!shapes||!_ln(shapes))return;
     try{
       const tx=this.db.transaction([DB_STORE,DB_IMG_STORE],_RW);
-      const imgs=tx.objectStore(DB_IMG_STORE);
+      const imgs=_oS(tx,DB_IMG_STORE);
       const kv=await reqDone(imgs.getAll()),ks=await reqDone(imgs.getAllKeys());
       const stored=new Map(ks.map((k,i)=>[k,kv[i]]));
       const{slim,puts}=_imgSlim(shapes,stored);
       for(const[k,d]of puts)imgs.put(d,k);
-      tx.objectStore(DB_STORE).put({v:V,shapes:slim,viewport,docName,savedAt:_now()},DOC_KEY+':prev');
+      _oS(tx,DB_STORE).put({v:V,shapes:slim,viewport,docName,savedAt:_now()},DOC_KEY+':prev');
       await txDone(tx);
     }catch(_){}
   },
@@ -8360,7 +8362,7 @@ const Persist={
     if(!this.db)return false;
     try{
       const tx=this.db.transaction(DB_STORE,_RO);
-      const rq=tx.objectStore(DB_STORE).get(DOC_KEY+':prev');
+      const rq=_oS(tx,DB_STORE).get(DOC_KEY+':prev');
       const d=await reqDone(rq);
       return !!(d&&_iA(d.shapes)&&d.shapes.filter(validShape).length);
     }catch(_){return false}
@@ -8369,7 +8371,7 @@ const Persist={
     if(!this.db)return;
     try{
       const tx=this.db.transaction(DB_STORE,_RW);
-      tx.objectStore(DB_STORE).delete(DOC_KEY+':prev');
+      _oS(tx,DB_STORE).delete(DOC_KEY+':prev');
       await txDone(tx);
     }catch(_){}
   },
@@ -8379,7 +8381,7 @@ const Persist={
     if(!this.db)return false;
     try{
       const tx=this.db.transaction(DB_STORE,_RO);
-      const rq=tx.objectStore(DB_STORE).get(DOC_KEY+':prev');
+      const rq=_oS(tx,DB_STORE).get(DOC_KEY+':prev');
       const d=await reqDone(rq);
       let shapes=d&&_iA(d.shapes)?d.shapes:[];
       if(shapes.some(s=>s.img)){
@@ -8487,7 +8489,7 @@ const UI={
     try{next?_ls(THEME_KEY,next):localStorage.removeItem(THEME_KEY);}catch(_){}
     applyTheme(next);
     UI.refreshThemeBtn();
-    UI.announce(t(next===null?'themeAuto':next==='light'?'themeLight':'themeDark'));
+    _ann(t(next===null?'themeAuto':next==='light'?'themeLight':'themeDark'));
   },
   refreshThemeBtn(){
     const b=_g('btnTheme');if(!b)return;
@@ -8511,7 +8513,7 @@ const UI={
     if(sq){sq.placeholder=T.k.search;_sa(sq,_AL,T.k.search);}
     if(canvas.dataset.tool)_sa(canvas,_AL,(T.k[canvas.dataset.tool]||canvas.dataset.tool)+' — '+t('canvasHint'));
     UI.refreshLangBtn();
-    UI.announce(LANG==='ja'?'日本語':'English');   // language names are invariant proper nouns, not i18n keys
+    _ann(LANG==='ja'?'日本語':'English');   // language names are invariant proper nouns, not i18n keys
   },
   refreshLangBtn(){
     const b=_g('btnLang');if(!b)return;
@@ -9036,7 +9038,7 @@ function wire(){
   };
   }
   // Net presence → UI
-  Net._onConnChange=()=>{UI.refreshPeers();const n=_pr().size;if(n!==(Net._pCt|0))UI.announce(t(n>(Net._pCt|0)?'peerJoined':'peerLeft'));Net._pCt=n};   // ADR-0463: join/leave was SR-silent
+  Net._onConnChange=()=>{UI.refreshPeers();const n=_pr().size;if(n!==(Net._pCt|0))_ann(t(n>(Net._pCt|0)?'peerJoined':'peerLeft'));Net._pCt=n};   // ADR-0463: join/leave was SR-silent
 }
 // ADR-0059: reflect the selection's style in the panel. For each property, only
 // when EVERY unlocked selected shape shares the value is it adopted into
@@ -9289,11 +9291,11 @@ function fitSticky(){
   const before=[],after=[];
   _forSel((s,id)=>{if(s.type!=='sticky'||_lk(s))return;
     const fs=_fS(s)||14,pad=8,lh=fs*(s.lineH||1.3);
-    ctx.save();ctx.font=_fontStr(s,fs);
-    let nw=64;for(const l of _St(_txx(s)||'').split('\n'))nw=_max(nw,ctx.measureText(l).width+pad*2);
+    _sv2(ctx);ctx.font=_fontStr(s,fs);
+    let nw=64;for(const l of _St(_txx(s)||'').split('\n'))nw=_max(nw,_mTX(ctx,l).width+pad*2);
     nw=_min(_max(64,nw),_max(64,s.w));   // never grow width past current
-    const lines=wrapTextCached(s,_St(_txx(s)||''),_max(10,nw-pad*2),fs,t=>ctx.measureText(t).width);
-    ctx.restore();
+    const lines=wrapTextCached(s,_St(_txx(s)||''),_max(10,nw-pad*2),fs,t=>_mTX(ctx,t).width);
+    _rs2(ctx);
     const nh=_max(40,_ln(lines)*lh+pad*2);
     if(nw===s.w&&nh===s.h)return;
     before.push({id,w:s.w,h:s.h});after.push({id,w:nw,h:nh});s.w=nw;s.h=nh;
@@ -9429,7 +9431,7 @@ function _undoWire(op){
     default:       return null;
   }}
 function _rcOp(op){const o=_selIds();Store._recordCommitted(op);_keepSel(o)}
-function _cOp(op){const o=_selIds();Store.commit(op);_keepSel(o)}
+function _cOp(op){const o=_selIds();_cmt(op);_keepSel(o)}
 function _styleOp(before,after){_rcOp({op:'style',before,after})}   // ADR-0239/0248
 function toggleTextFlag(k){
   const before=[],after=[];
@@ -9744,18 +9746,18 @@ const Minimap=(()=>{
       sx.strokeStyle=_sk(s)||_gC('--ink');
       sx.lineWidth=_max(0.5,(_szz(s)||1)*sc);
       const _mr=_rt(s)&&_hb(s);
-      if(_mr){const ccx=(s.x+s.w/2)*sc+ox,ccy=(s.y+s.h/2)*sc+oy;sx.save();sx.translate(ccx,ccy);sx.rotate(_rt(s)*_PI/180);sx.translate(-ccx,-ccy);}
+      if(_mr){const ccx=(s.x+s.w/2)*sc+ox,ccy=(s.y+s.h/2)*sc+oy;_sv2(sx);_tr2(sx,ccx,ccy);sx.rotate(_rt(s)*_PI/180);_tr2(sx,-ccx,-ccy);}
       switch(s.type){
         case 'frame':
-        case 'rect':{const rx=s.x*sc+ox,ry=s.y*sc+oy,rw=s.w*sc,rh=s.h*sc;if(_fi(s))sx.fillRect(rx,ry,rw,rh);sx.strokeRect(rx,ry,rw,rh);break}
-        case 'ellipse':sx.beginPath();sx.ellipse(s.x*sc+ox+s.w*sc/2,s.y*sc+oy+s.h*sc/2,_abs(s.w*sc/2),_abs(s.h*sc/2),0,0,_PI*2);if(_fi(s))sx.fill();sx.stroke();break;
-        case 'diamond':{const dcx=s.x*sc+ox+s.w*sc/2,dcy=s.y*sc+oy+s.h*sc/2;sx.beginPath();sx.moveTo(dcx,s.y*sc+oy);sx.lineTo(s.x*sc+ox+s.w*sc,dcy);sx.lineTo(dcx,s.y*sc+oy+s.h*sc);sx.lineTo(s.x*sc+ox,dcy);sx.closePath();if(_fi(s))sx.fill();sx.stroke();break;}
-        case 'line':case 'arrow':{if(_el(s)){const pts=_elbowPts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<_ln(pts);i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}if(s.curve){const me=_cE(s),cc=_curveCtrl(me,s.cbend);sx.beginPath();sx.moveTo(me.x1*sc+ox,me.y1*sc+oy);sx.quadraticCurveTo(cc.x*sc+ox,cc.y*sc+oy,me.x2*sc+ox,me.y2*sc+oy);sx.stroke();break}const pts=_linePts(s);sx.beginPath();sx.moveTo(pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<_ln(pts);i++)sx.lineTo(pts[i].x*sc+ox,pts[i].y*sc+oy);sx.stroke();break}
-        case 'pen':if(_ln(s.pts)<2)break;sx.beginPath();sx.moveTo(s.pts[0][0]*sc+ox,s.pts[0][1]*sc+oy);for(let i=1;i<_ln(s.pts);i++)sx.lineTo(s.pts[i][0]*sc+ox,s.pts[i][1]*sc+oy);sx.stroke();break;
+        case 'rect':{const rx=s.x*sc+ox,ry=s.y*sc+oy,rw=s.w*sc,rh=s.h*sc;if(_fi(s))sx.fillRect(rx,ry,rw,rh);_sR2(sx,rx,ry,rw,rh);break}
+        case 'ellipse':_bp(sx);sx.ellipse(s.x*sc+ox+s.w*sc/2,s.y*sc+oy+s.h*sc/2,_abs(s.w*sc/2),_abs(s.h*sc/2),0,0,_PI*2);if(_fi(s))_fil(sx);_st2(sx);break;
+        case 'diamond':{const dcx=s.x*sc+ox+s.w*sc/2,dcy=s.y*sc+oy+s.h*sc/2;_bp(sx);_mT(sx,dcx,s.y*sc+oy);_lT(sx,s.x*sc+ox+s.w*sc,dcy);_lT(sx,dcx,s.y*sc+oy+s.h*sc);_lT(sx,s.x*sc+ox,dcy);_cP(sx);if(_fi(s))_fil(sx);_st2(sx);break;}
+        case 'line':case 'arrow':{if(_el(s)){const pts=_elbowPts(s);_bp(sx);_mT(sx,pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<_ln(pts);i++)_lT(sx,pts[i].x*sc+ox,pts[i].y*sc+oy);_st2(sx);break}if(s.curve){const me=_cE(s),cc=_curveCtrl(me,s.cbend);_bp(sx);_mT(sx,me.x1*sc+ox,me.y1*sc+oy);_qC(sx,cc.x*sc+ox,cc.y*sc+oy,me.x2*sc+ox,me.y2*sc+oy);_st2(sx);break}const pts=_linePts(s);_bp(sx);_mT(sx,pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<_ln(pts);i++)_lT(sx,pts[i].x*sc+ox,pts[i].y*sc+oy);_st2(sx);break}
+        case 'pen':if(_ln(s.pts)<2)break;_bp(sx);_mT(sx,s.pts[0][0]*sc+ox,s.pts[0][1]*sc+oy);for(let i=1;i<_ln(s.pts);i++)_lT(sx,s.pts[i][0]*sc+ox,s.pts[i][1]*sc+oy);_st2(sx);break;
         case 'text':case 'sticky':{const rx2=s.x*sc+ox,ry2=s.y*sc+oy,rw2=_max(2,s.w*sc),rh2=_max(2,s.h*sc);sx.fillStyle=_stk(s)?(_coo(s)||_YW):(_fi(s)||_gC('--brand'));sx.fillRect(rx2,ry2,rw2,rh2);break}
-        case 'image':{const rx3=s.x*sc+ox,ry3=s.y*sc+oy,rw3=_max(2,s.w*sc),rh3=_max(2,s.h*sc);const img=_du(s)?_imgCache.get(_imgKey(_du(s))):null;if(img&&img.complete&&img.naturalWidth){if(s.flip){const fx3=rx3+rw3/2,fy3=ry3+rh3/2;sx.save();sx.translate(fx3,fy3);sx.scale(s.flip&1?-1:1,s.flip&2?-1:1);sx.translate(-fx3,-fy3);sx.drawImage(img,rx3,ry3,rw3,rh3);sx.restore()}else sx.drawImage(img,rx3,ry3,rw3,rh3)}else{sx.fillStyle='#CBD5E1';sx.fillRect(rx3,ry3,rw3,rh3)}break}
+        case 'image':{const rx3=s.x*sc+ox,ry3=s.y*sc+oy,rw3=_max(2,s.w*sc),rh3=_max(2,s.h*sc);const img=_du(s)?_imgCache.get(_imgKey(_du(s))):null;if(img&&img.complete&&img.naturalWidth){if(s.flip){const fx3=rx3+rw3/2,fy3=ry3+rh3/2;_sv2(sx);_tr2(sx,fx3,fy3);sx.scale(s.flip&1?-1:1,s.flip&2?-1:1);_tr2(sx,-fx3,-fy3);sx.drawImage(img,rx3,ry3,rw3,rh3);_rs2(sx)}else sx.drawImage(img,rx3,ry3,rw3,rh3)}else{sx.fillStyle='#CBD5E1';sx.fillRect(rx3,ry3,rw3,rh3)}break}
       }
-      if(_mr)sx.restore();
+      if(_mr)_rs2(sx);
     }
     sx.globalAlpha=1;
   }
@@ -9857,7 +9859,7 @@ if('serviceWorker' in navigator){
       }));
     });`;
   const bl=new Blob([sw],{type:'text/javascript'});
-  navigator.serviceWorker.register(URL.createObjectURL(bl)).catch(()=>{});
+  navigator.serviceWorker.register(_oURL(bl)).catch(()=>{});
   // v1.6.93: SW update notification. skipWaiting()+clients.claim() in the SW means a
   // new version activates immediately, but the page gets no feedback. Listen for
   // controllerchange (fires when a new SW takes over) and prompt a reload.
