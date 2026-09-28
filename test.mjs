@@ -7276,6 +7276,12 @@ try {
     console.log('  ✓ excalidraw export: hidden shapes dropped (2 asserts)');
   }
 
+  // ADR-0595: minimap draws only visible shapes
+  {
+    assert.ok(html.includes('const shapes=_sh().filter(_sv)'),'minimap scene filters hidden shapes');
+    console.log('  ✓ minimap: hidden-shape filter pin (1 assert)');
+  }
+
   // search navigation a11y: SR users search BY content, so the announcement must name
   // WHICH shape was found (describeShape), not a bare "2/7" count — parity with Tab cycle.
   {
