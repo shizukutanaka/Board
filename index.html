@@ -901,7 +901,7 @@ const PEER_ID=(()=>{try{
   if(!id){id=uid();_ls('board.peer',id)}
   return id;
 }catch(_){return uid()}})();
-// minimap visibility: persisted across reloads (§3.18 — small boards get no value from
+// minimap visibility: persisted across relo
 // an always-on minimap with no dismiss; a session toggle would just nag
 // on every reload).
 const MINIMAP_ON=(()=>{try{return _lg('board.minimap')!=='off'}catch(_){return true}})();
@@ -1091,7 +1091,7 @@ const I18N={
       rotate:'Rotate (15° / knob drag)',selAllMatches:'matches selected',search:'Search',searchNav:'Next / prev match',moveAxis:'Constrain move axis',resizeRatio:'Keep ratio (resize)',resizeCenter:'Resize from centre',kbdResize:'Resize (⇧:×10)',lasso:'Lasso select',swapFill:'Swap fill↔stroke',digitOpacity:'Opacity 0-9',eyedropDone:'Style picked',swapDone:'Fill↔stroke swapped',fixAnchor:'Bind end at a fixed anchor'}}};
 // ADR-0014: LANG/T are `let`, not `const`, so UI.toggleLang() can reassign them — t()
 // closes over T by reference, so every t()/T.
-// the new language automatically. Only elements that cache a translated string once at
+// the new language automatically. Only elem
 // creation time need explicit resync (done in toggleLang(), not here).
 let LANG=_sw(navigator.language||'en','ja')?'ja':'en';
 const LANG_KEY='board.lang';
@@ -1798,7 +1798,7 @@ function _lwwSkip(id,key,op){
 // Bound connectors: line/arrow endpoints (s.a/s.b = shape id) derive from the bound
 // shape's edge at render/hit/export so the connector follows. Stored = fallback.
 // Where a ray from shape centre toward (fx,fy) exits the shape's true edge.
-// Rotation-aware: projects onto the UNROTATED box, then rotates the hit back to world.
+// Rotation-aware: projects onto the UNROTAT
 function _edgePt(sh,fx,fy){
   const ub=sh.w!=null?{x:sh.x,y:sh.y,w:sh.w,h:sh.h}:_bb(sh); // unrotated box
   const cx=ub.x+ub.w/2,cy=ub.y+ub.h/2,rot=sh.rotate;
@@ -2291,12 +2291,16 @@ function frame(){
     // ADR-0011: selection presence rides the frame boundary — _sl() is mutat
     // in 40+ places, but every change invalidates (selection drawn), so one hook
     // catches them all. Change-detection inside keeps it a no-op on unrelated frames.
-    Net.sendSelectionIfChanged();
-    _mirrorSync();   // ADR-0041: DOM mirror rebuilds only on _gridVer change
-    _teFollow();     // ADR-0053: open text overlay tracks pan/zoom
-    _lblFollow();    // ADR-0182: open label overlay tracks pan/zoom
-    _syncStylePanelIfChanged();   // ADR-0059
-    _statusSel();    // ADR-0164: selection dims readout, signature-gated
+    // ADR-0565: a hook throw must not strand the trailing reschedule either —
+    // same try/catch discipline as the draw calls above.
+    try{
+      Net.sendSelectionIfChanged();
+      _mirrorSync();   // ADR-0041: DOM mirror rebuilds only on _gridVer change
+      _teFollow();     // ADR-0053: open text overlay tracks pan/zoom
+      _lblFollow();    // ADR-0182: open label overlay tracks pan/zoom
+      _syncStylePanelIfChanged();   // ADR-0059
+      _statusSel();    // ADR-0164: selection dims readout, signature-gated
+    }catch(_){}
   }
   if(needsRender||needOverlay)_rafId=_rAF(frame);  // draw() called _iv() (rare re-entry)
 }
@@ -5959,7 +5963,7 @@ function _zCommit(changes){
   _rcOp({op:'zorder',changes});
   _ivp();
 }
-// Shared by doBringFront/doSendBack/doBringForward/doSendBackward: locked shapes never
+// Shared by doBringFront/doSendBack/doBring
 // take part in a z-order op (parity with doDelete/doGroup excluding locked shapes).
 function unlockedSelectionIds(){return _selIds().filter(id=>!byId(id)?.locked);}
 function _zSelShapes(){const ids=_usI(),sel=_sT(ids);return[sel,_ln(ids)?_sh().filter(s=>sel.has(s.id)):[]]}
