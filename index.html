@@ -857,7 +857,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.581';
+const V='1.7.582';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -913,7 +913,7 @@ const THEME_KEY='board.theme';
 // (UI._themeMode() did localStorage.getItem each time). If storage access throws on
 // EVERY call — blocked cookies, storage partitioning, a sandboxed iframe: all real
 // for Board's privacy-focused, single-file audience — that always collapsed
-// to null, so toggleTheme()/refreshThemeBtn() could never observe what applyTheme() had
+// to null, so toggleTheme()/refreshThemeBtn() never observe what applyTheme() had
 // actually just set on the DOM: the cycle got stuck re-applying 'light' while the
 // button permanently displayed/announced 'auto'. Mirrors ADR-0014's LANG/T fix: keep
 // current mode in memory (read from storage once); persistence becomes best-effort
@@ -1310,7 +1310,7 @@ function validPatch(p){
   // resources invariant. This is the shared intake gate (validShape + upd/patch paths),
   // so guarding here closes every vector at once (mirrors buildSVG's data: guard);
   // <img>-loaded SVG can't run scripts or fetch subresources — data: svg is safe.
-  if('dataUrl' in p&&p.dataUrl!=null&&!(_iS(p.dataUrl)&&_ln(p.dataUrl)<=16_000_000&&/^data:image\//.test(p.dataUrl)))return false;   // ADR-0379: length cap — else img.src buffers without bound
+  if('dataUrl' in p&&p.dataUrl!=null&&!(_iS(p.dataUrl)&&_ln(p.dataUrl)<=16_000_000&&/^data:image\//.test(p.dataUrl)))return false;   // ADR-0379: length cap — else img.src buffers unbounded
   // ADR-0327: s.link flows into window.open — a hostile .board/peer upd could carry
   // a javascript:/data: URL; only http(s) is openable.
   if('link' in p&&p.link!=null&&!(_iS(p.link)&&/^https?:\/\//.test(p.link)))return false;
@@ -1748,7 +1748,7 @@ const Store={
     else{const _v=visibleWorldRect();if(_dmg.w*_dmg.h>_v.w*_v.h*0.6)_iv();else _iD(_dmg);}
   }};
 // ADR-0009: lazy-rebuilt id→shape index. Invalidated by _iG() (the same
-// choke point the spatial hit-test grid already uses) whenever shapes are added/removed
+// choke point the spatial hit-test grid already uses) whenever shapes change
 // or _sh() is reassigned — property mutations (position, style, ...) don't touch
 // membership, so they never need to invalidate this. The size check below is a second,
 // cheap safety net: several _apply cases call byId() (idempotency/lock checks) BEFORE
@@ -1796,7 +1796,7 @@ function _lwwSkip(id,key,op){
   return !!(wc&&wc[key]&&wc[key].peer!==_pi()&&clockNewer(wc[key],op.clock));
 }
 // Bound connectors: line/arrow endpoints (s.a/s.b = shape id) derive from the bound
-// shape's edge at render/hit/export, so the connector follows. Stored = fallback.
+// shape's edge at render/hit/export so the connector follows. Stored = fallback.
 // Where a ray from shape centre toward (fx,fy) exits the shape's true edge.
 // Rotation-aware: projects onto the UNROTATED box, then rotates the hit back to world.
 function _edgePt(sh,fx,fy){
@@ -1841,7 +1841,7 @@ function _hatchSegs(x,y,w,h,gap,cross){
   if(cross)for(let d=-h;d<w;d+=gap)_pu(out,[x+d+h,y,x+d,y+h]);
   return out;
 }
-// Canvas hatch: clip() reuses the current shape path (stroke doesn't consume it).
+// Canvas hatch: clip() reuses the current path (stroke doesn't consume it).
 function _hatchCtx(c,s){
   const segs=_hatchSegs(s.x,s.y,s.w,s.h,_max(6,(_szz(s)||1)*4),_fs2(s)==='cross');
   _sv2(c);c.clip();_gaS(c,0.55);
@@ -3791,7 +3791,7 @@ function _sqMatches(){
   if(_sqVer===_gridVer&&_sqQ===q)return _sqList;
   _sqList=[];
   // ADR-0381: a connector is also found by its bound endpoints' names —
-  // "the arrow into the Login button" should match "login", not just the conn's own text.
+  // "the arrow into the Login button" should match "login", not only the conn's text.
   const _bt=s=>{let o='';for(const id of [s.a,s.b]){const t=id&&byId(id);if(t)o+=(t.label||'')+(t.text||'')+(t.type||'')}return o};
   for(const s of _sh()){if(_sv(s)&&_lc((_lb(s)||'')+(_txx(s)||'')+(s.type||'')+(s.link||'')+(_conn(s.type)?_bt(s):'')).includes(q))_pu(_sqList,s)}   // ADR-0346/0353/0381
   _sqVer=_gridVer;_sqQ=q;
@@ -3800,7 +3800,7 @@ function _sqMatches(){
 // Step through Ctrl+F search matches. dir=+1 next, -1 prev; wraps; selects + centres.
 // A new query resets the index so the first Enter always starts from match 0.
 // Announces WHICH shape was found via describeShape (parity with Tab cycle): a SR user
-// searches by content, so hearing "2/7" without the matched shape is uninformative.
+// searches by content, so "2/7" without the matched shape is uninformative.
 function _sqAdvance(dir){
   if(!_sq)return;
   const q=_lc(_sq);
@@ -4287,7 +4287,7 @@ function _cancelPointerGesture(){
 // ADR-0006: fires after LONG_PRESS_MS. Guards: gesture still active, handle-drag not in
 // progress (resize/rotate — a deliberate precision drag not to interrupt), and the
 // pointer hasn't travelled past LONG_PRESS_MOVE_TOL (a real move/marquee exceeds
-// this well before the timer fires, so no separate pointermove cancellation is needed).
+// this well before the timer fires — no separate pointermove cancellation needed).
 function _longPressFire(cx,cy){
   _longPressTimer=null;
   if(!ptr.down||_dk('resize')||_dk('gresize')||_dk('grot')||_dk('rotate'))return;
@@ -4336,7 +4336,7 @@ _on(canvas,'dblclick',e=>{
 });
 // Positions and opens the shared label editor for box labels (frame/rect/ellipse, at
 // their centre/corner) and connector labels (line/arrow, at the segment midpoint).
-// Shared by dblclick and ADR-0013's keyboard path so both stay in sync by construction.
+// Shared by dblclick and ADR-0013's keyboard path so both stay in sync.
 // ADR-0182: anchor geometry shared by openLabelEditor and the follow pass —
 // recomputable on every viewport change so the input rides the shape.
 function _lblAnchor(hit){
@@ -4364,7 +4364,7 @@ function _openLabelEditorFor(hit){
   return true;
 }
 // ADR-0013 (FT-19): the only entry point above was dblclick, so keyboard/SR users could
-// never edit a connector or frame label. Enter is otherwise unused with the select tool
+// never edit a connector or frame label. Enter is unused with the select tool
 // active (createShapeKbd() no-ops for select/hand/eraser/pen) — see the keydown Enter
 // branch, which only calls this when _tl()==='select'.
 function editSelectedShapeKbd(){
@@ -4374,7 +4374,7 @@ function editSelectedShapeKbd(){
   if(_txt(sh)||_stk(sh)){openTextEditor(sh,false);return true}
   return _openLabelEditorFor(sh);
 }
-// Shared inline label editor for boxes (rect/ellipse/frame) and connectors. Commits via
+// Shared inline label editor for boxes (rect/ellipse/frame) and connectors; commits via
 // the generic `upd` op (reversible + synced). bold = frame styling. IME-safe; Enter
 // commits, Escape discards (detaching blur so remove() doesn't re-commit).
 function openLabelEditor(hit,leftPx,topPx,bold){
@@ -4552,7 +4552,7 @@ _on(canvas,'drop',e=>{
 });
 
 // ---- OS clipboard bridge ----
-// ADR-0516: ⌘C/⌘X write the selection as .board JSON (text/plain). setData
+// ADR-0516: ⌘C/⌘X write the selection as .board JSON (text/plain); setData
 // is only legal inside the copy/cut event, so keydown marks _cpNow and this handler
 // writes the JSON. _osClip echoes back to take the internal doPaste path.
 let _osClip=null,_cpNow=false;
@@ -4775,7 +4775,7 @@ function zoomToSelection(){
 // ---- spatial index: uniform 200wu grid, lazy rebuild on _apply; big shapes in
 // a `big` list always returned; query covers the 3×3 cell neighbourhood (tol<200wu).
 const _GCELL=200;let _grid=null,_gridVer=0;
-function _invalidateGrid(){_grid=null;_idIndex=null;_gridVer++;}   // ADR-0009: id index shares this choke point; _gridVer drives the snap index (ADR-0020)
+function _invalidateGrid(){_grid=null;_idIndex=null;_gridVer++;}   // ADR-0009: id index shares this choke point; _gridVer drives the snap index
 // ADR-0047: group-halo membership map — grouping only changes via group/ungroup
 // ops (every commit bumps _gridVer), so drawOverlay doesn't rebuild it per frame.
 let _grpMapVer=-1,_grpMap=null;
@@ -5012,7 +5012,7 @@ function withFrameChildren(ids){
   return out;
 }
 // Keyboard arrow-key nudge. Mirrors pointer-drag move: frame contents follow the
-// frame (withFrameChildren) and locked shapes never move (parity with doMove/endSelect,
+// frame (withFrameChildren) and locked shapes never move (parity with doMove/endSelect)
 // which filter !_lk(s)). Records one reversible `move` op for the shapes that moved.
 function nudgeSelection(dx,dy){
   const ids=[...withFrameChildren(_sl())].filter(id=>!byId(id)?.locked);
@@ -5119,7 +5119,7 @@ function endSelect(wp,shift,alt){
 // Coerce pen pressure: mouse=const 0.5, stylus=0..1; finite-safe.
 function _penPr(e){const p=e&&e.pressure;return _fin(p)&&p>0?_min(1,p):0.5}
 // IME composition gate. Returns true when an `input`-class event is the final commit
-// (no IME in progress), false during composition. Used for live-update inputs (docName)
+// (no IME in progress), false during composition. Used for live inputs (docName)
 // to keep mid-composition characters out of state/IDB/sync. Pure → unit-tested.
 // (Qiita: Rapls "isComposing だけでは足りなかった"; Zenn: spacemarket Safari IME 確定)
 function imeShouldCommit(e){return !(e&&e.isComposing);}
@@ -5188,7 +5188,7 @@ function _rdp(pts,eps){
   return out;
 }
 // ADR-0005: geometric-heuristic shape recognition for the "beautify" feature (Alt+B).
-// Pure, deterministic, dependency-free — classifies a rough stroke as line/rect/ellipse
+// Pure, deterministic — classifies a rough stroke as line/rect/ellipse
 // if it closely matches that shape's geometry (size-relative thresholds + floors,
 // so a tiny sketch and a huge one share proportionally similar wobble thresholds
 // bar), else returns null. Triangle/other shapes are unsupported: Board has no
@@ -5450,7 +5450,7 @@ function resizeAfterTextEdit(s,text,c){
 // then filled in the editor. Live collaborators therefore receive a blank shape and
 // never the typed content (and a dismissed-empty editor's local undo isn't broadcast
 // either, leaving an invisible hitbox on peers). Bridge both with a broadcast-ONLY op
-// for the finalize delta: stamped for LWW correctness, but kept OUT of local history so
+// for the finalize delta: stamped for LWW correctness, but OUT of local history so
 // single-user undo stays one step (the local add already carries the final text).
 function _syncTextFinalize(s,before,deleted){
   if(typeof Net===_un||typeof Net.broadcast!=='function')return;
@@ -5612,10 +5612,10 @@ function flushErase(){
 // ====================== KEYBOARD ======================
 const KEYMAP={v:'select',h:'hand',p:'pen',r:'rect',o:'ellipse',i:'eyedropper',
   a:'arrow',l:'line',t:'text',n:'sticky',f:'frame',e:'eraser',d:'diamond',k:'marker'};
-// Focus trap for open dialogs (WCAG 2.4.3 Focus Order / 2.1.2 No Keyboard Trap-escape).
+// Focus trap for open dialogs (WCAG 2.4.3 / 2.1.2).
 // _focusables lists tabbable controls in a root; _trapStep is the pure wrap step:
 // given those controls, the active element and direction, it returns which element to
-// focus to keep Tab/Shift+Tab cycling INSIDE the dialog, else let native Tab move.
+// focus to keep Tab/Shift+Tab cycling INSIDE the dialog; else native Tab moves.
 function _focusables(root){
   return [..._qsa(root,'button,[href],input,select,textarea,summary,[tabindex]:not([tabindex="-1"])')]
     .filter(el=>!el.disabled&&!el.hidden);
@@ -5829,7 +5829,7 @@ function doPaste(){
   // Reset cascade on new clipboard (new copy/cut)
   if(_cl()!==_lastClipboard){_pasteCount=0;_lastClipboard=_cl();}
   // Center pasted content at the current viewport center, then offset by cascade amount.
-  // Pattern: Figma/Excalidraw — paste at viewport center so the result is always visible.
+  // Pattern: Figma/Excalidraw — paste at viewport centre so it is always visible.
   const bb=_bA(_cl().shapes);
   const v=_vp();
   const _r=_cbr();
@@ -6340,7 +6340,7 @@ function doRotate(d){
 // ====================== EXPORT ======================
 // Browsers cap a canvas's single dimension (~16384px on most) and its total area.
 // At a fixed export scale a large board silently exceeds these limits: toBlob yields
-// null (or a blank/truncated image). Clamp the scale so width, height AND area all fit,
+// null (or a blank/truncated image). Clamp the scale so width, height, area fit,
 // degrading resolution rather than failing. Pure → unit-tested.
 const EXPORT_MAX_DIM=16384, EXPORT_MAX_AREA=16384*16384;
 function exportScale(w,h,desired){
@@ -7345,7 +7345,7 @@ function importBoard(file){
   r.onerror=()=>_eT(_IB);
   r.readAsText(file);
 }
-// Connector edge label as SVG (ADR-0003): a paper background rect + centred text at the
+// Connector edge label as SVG (ADR-0003): paper background rect + centred text at the
 // segment midpoint. Width is estimated (no canvas measure); mirrors the canvas pill.
 // Returns '' when unlabeled so callers can push unconditionally. All values via _esc.
 // ADR-0119: SVG twin of _arrowHeadShape — triangle | dot | open chevron.
@@ -7954,7 +7954,7 @@ const Net={
   // keyed by SHAPE ID (`snap:<id>`), not array index: ids are globally unique so keys
   // stay distinct (no dedup collapse), AND stable across re-snapshots — an index-based
   // key would let a newly-added shape inherit a `peer:snapN` already in seenOps after
-  // the sender's shape set changed, so applyRemote would silently drop it (missed merge).
+  // the sender's shape set changed, so applyRemote silently drops it (missed merge).
   // `ops` is REQUIRED: a non-empty receiver merges via `ops` (see _onRecv 'snapshot'),
   // so any transport that omits ops fails to sync two non-empty boards.
   _snapshotMsg(){
@@ -8277,7 +8277,7 @@ const Share={
       const before=clone(_sh());
       const beforeWc=clone(_wc());
       const origSel=_selIds();
-      // ADR-0004: also survives past the undo window (reload/closed-tab), not only this session.
+      // ADR-0004: also survives past the undo window (reload/closed-tab), not just the session.
       if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());
       _rs(valid.map(clone));_setDocName(_s0((_iS(data.name)&&data.name)||'Shared',80));   // ADR-0009
       // Match the replace op's _apply: drop stale selection ids and per-property write
@@ -8573,7 +8573,7 @@ const UI={
     _tst(`${t('minimap')} ${state.showMinimap?t('on'):t('off')}`);
   },
   // ADR-0012: cycles auto -> light -> dark -> auto. "Auto" (no stored value) follows
-  // prefers-color-scheme, matching the pre-existing default; explicit light/dark override.
+  // prefers-color-scheme, matching the pre-existing default; explicit light/dark wins.
   // _themeMode() returns the in-memory _themeCache (deep-audit fix), not a live storage
   // re-read, so a storage failure can't desync it from what applyTheme() applied.
   _themeMode(){return _themeCache;},
@@ -9804,6 +9804,8 @@ const Presentation=(()=>{
   }
 
   function _goto(i){
+    // ADR-0554: drop frames deleted mid-presentation; exit when none remain.
+    _frames=_frames.filter(f=>byId(f.id));if(!_ln(_frames)){leave();return}
     _idx=_max(0,_min(_ln(_frames)-1,i));
     _zoomToFrame(_frames[_idx]);
     const c=_g('presCounter');
