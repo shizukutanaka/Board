@@ -7234,6 +7234,23 @@ try {
     console.log('  ✓ unbind endpoint freeze: anchor kept, undo restores (3 asserts)');
   }
 
+  // ADR-0592: group halo covers only visible members — fully-hidden group draws no halo
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+    const a1=Shape.make('rect',{x:0,y:0,w:10,h:10,groupId:'g1'});
+    const a2=Shape.make('rect',{x:100,y:0,w:10,h:10,groupId:'g1'});
+    const b1=Shape.make('rect',{x:500,y:0,w:10,h:10,groupId:'g2',visible:0});
+    const b2=Shape.make('rect',{x:600,y:0,w:10,h:10,groupId:'g2',visible:0});
+    Store.commit({op:'add',shape:a1});Store.commit({op:'add',shape:a2});
+    Store.commit({op:'add',shape:b1});Store.commit({op:'add',shape:b2});
+    _invalidateGrid();
+    const m=_grpMapGet();
+    assert.ok(m.has('g1'),'visible group present');
+    assert.ok(!m.get('g1').includes(byId(b1.id)),'hidden member excluded');
+    assert.ok(!m.has('g2')||m.get('g2').length===0,'fully-hidden group yields no halo');
+    console.log('  ✓ group halo: hidden members excluded, fully-hidden group no halo (3 asserts)');
+  }
+
   // search navigation a11y: SR users search BY content, so the announcement must name
   // WHICH shape was found (describeShape), not a bare "2/7" count — parity with Tab cycle.
   {

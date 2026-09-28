@@ -640,7 +640,8 @@ Board/
     │   ├── ADR-0588-flip-mirrors-unselected-anchor.md# 選択外コネクタの結合先反転でも aF/bF をミラー (実装済)
     │   ├── ADR-0589-anchor-transform-matrix.md  # コネクタ束縛×変換の不変条件文書化+ピン (実装済)
     │   ├── ADR-0590-exportscale-behavioral-pin.md# exportScale のクランプ実動作テスト (実装済)
-    │   └── ADR-0591-unbind-freezes-endpoint.md  # 結合解除で端点を解決済み位置へ凍結 (実装済)
+    │   ├── ADR-0591-unbind-freezes-endpoint.md  # 結合解除で端点を解決済み位置へ凍結 (実装済)
+    │   └── ADR-0592-group-halo-visible-only.md  # 非表示メンバーをグループハローから除外 (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

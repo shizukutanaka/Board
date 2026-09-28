@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.618';
+const V='1.7.619';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4819,7 +4819,7 @@ let _grpMapVer=-1,_grpMap=null;
 function _grpMapGet(){
   if(_grpMapVer===_gridVer)return _grpMap;
   _grpMap=_mP();
-  for(const s of _sh()){if(_gi(s)){if(!_grpMap.has(_gi(s)))_grpMap.set(_gi(s),[]);_grpMap.get(_gi(s)).push(s)}}
+  for(const s of _sh()){if(_gi(s)&&!_hd(s)){if(!_grpMap.has(_gi(s)))_grpMap.set(_gi(s),[]);_grpMap.get(_gi(s)).push(s)}}   // ADR-0592: hidden members — no halo
   _grpMapVer=_gridVer;
   return _grpMap;
 }
