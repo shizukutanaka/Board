@@ -857,7 +857,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.601';
+const V='1.7.602';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -906,10 +906,10 @@ const PEER_ID=(()=>{try{
 // on every reload).
 const MINIMAP_ON=(()=>{try{return _lg('board.minimap')!=='off'}catch(_){return true}})();
 // ADR-0012: theme is a DOM attribute + localStorage setting, not board state — it's
-// purely visual and doesn't affect board content, unlike showMinimap (a render toggle
+// purely visual and doesn't affect boar
 // for something drawn on the board itself). Not undo-tracked.
 const THEME_KEY='board.theme';
-// deep-audit fix: the current mode used to be re-read from localStorage on every call
+// deep-audit fix: the current mode us
 // (UI._themeMode() did localStorage.getItem each time). If storage access throws on
 // EVERY call — blocked cookies, storage partitioning, a sandboxed iframe: all real
 // for Board's privacy-focused, single-file audience — that always collapsed
@@ -5205,7 +5205,7 @@ function _rdp(pts,eps){
   const out=[];for(let i=0;i<_ln(pts);i++)if(keep[i])_pu(out,pts[i]);
   return out;
 }
-// ADR-0005: geometric-heuristic shape recognition for the "beautify" feature (Alt+B).
+// ADR-0005: geometric-heuristic shape
 // Pure, deterministic — classifies a rough stroke as line/rect/ellipse
 // if it closely matches that shape's geometry (size-relative thresholds + floors,
 // so a tiny sketch and a huge one share proportionally similar wobble thresholds
@@ -5587,7 +5587,7 @@ function _teFollow(){
   // us (remote del/clear/replace/hide/lock, local undo) — close the overlay at
   // once instead of dangling until blur. No commit: a locked shape rejects the
   // upd anyway, so the typed text can't be applied.
-  const s=byId(_ed());if(!s||_hd(s)||_lk(s)){_rm(_teTa);_teTa=null;state.editing=null;return}
+  const s=byId(_ed());if(!s||_hd(s)||_lk(s)){_rm(_teTa);_teTa=null;state.editing=null;_iv();return}   // ADR-0574: _iv — skipped text stays undrawn otherwise
   const v=_vp(),sig=v.x+','+v.y+','+v.zoom;
   if(sig===_teVp)return;
   _teVp=sig;positionTextEditor(_teTa,s);
@@ -5685,6 +5685,7 @@ _on(window,_KD,e=>{
     if(k===_TB){const tgt=_trapStep(_focusables(_dlg),_aE(),_sK(e));if(tgt){_pd(e);_fc(tgt)}}
     return;
   }
+  if(meta&&(k==='z'||k==='y')&&ptr.down)_cancelPointerGesture();   // ADR-0574: undo/redo can't apply sanely mid-gesture — the drag's before-snapshot would be stale
   if(meta&&k==='z'&&!_sK(e)){_pd(e);if(Store.undo())_tst(t('undone'))}
   else if(meta&&(k==='y'||(k==='z'&&_sK(e)))){_pd(e);if(Store.redo())_tst(t('redone'))}
   else if(meta&&k==='a'){_pd(e);_ss(_shV().map(s=>s.id));if(_selN())_aS();_iv()}   // ADR-0037
@@ -8176,10 +8177,9 @@ const Net={
     return new RTCSessionDescription(j);
   }};
 
-// ====================== SHARE (URL hash snapshot + WebRTC UI) ======================
+// ====================== SHARE (URL hash) =====
 // Round a number to `dp` decimals, shedding IEEE-754 noise (100.00000000000001) and
-// trailing precision that bloats serialized output. NaN/Inf pass through unchanged so
-// downstream validation still rejects them. Pure.
+// trailing precision that bloats serialization; validation still rejects them. Pure.
 function _round(n,dp){return _iN(n)&&_fin(n)?_rnd(n*10**dp)/10**dp:n;}
 // Deep copy of shapes with coordinate/dimension fields rounded, for SERIALIZATION
 // boundaries only (share URL, .board export) — never the in-memory model, so undo

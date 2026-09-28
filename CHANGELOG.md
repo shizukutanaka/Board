@@ -5354,6 +5354,11 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.602]
+### Fixed
+- ドラッグ中の ⌘Z/⌘Y で undo/redo がジェスチャを跨いで適用され、`dragStartShapes` の before スナップショットと実状態が食い違う op が記録され得たのを修正 (ADR-0574) — Esc と同じく先に `_cancelPointerGesture()`。
+- `_teFollow` が hide/lock で overlay を畳む際 `_iv()` 未呼出で、編集中 skip されていた本文が次の無効化まで描画されなかったのを修正 (ADR-0575、Devin Review 指摘)。
+
 ## [1.7.601]
 ### Docs
 - spec.md §5 に編集 overlay の非到達化規則を追記 — 対象図形の del/hide/lock で overlay が畳まれる (ADR-0573、0559/0569/0572 の仕様化)。

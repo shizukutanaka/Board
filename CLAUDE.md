@@ -622,7 +622,9 @@ Board/
     │   ├── ADR-0570-locked-hide-toast.md     # 全ロック選択の hide で lockedNoop トースト (実装済)
     │   ├── ADR-0571-hidden-parity-doc.md     # architecture.md に hidden parity 節 (実装済)
     │   ├── ADR-0572-lock-folds-editor.md     # lock 時に編集 overlay を畳む (実装済)
-    │   └── ADR-0573-spec-overlay-fold.md     # spec.md に overlay 非到達化規則 (実装済)
+    │   ├── ADR-0573-spec-overlay-fold.md     # spec.md に overlay 非到達化規則 (実装済)
+    │   ├── ADR-0574-undo-cancels-gesture.md  # ドラッグ中の ⌘Z/⌘Y はジェスチャを先キャンセル (実装済)
+    │   └── ADR-0575-overlay-close-repaint.md # overlay 畳み後に _iv() で再描画 (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
