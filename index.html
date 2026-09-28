@@ -743,13 +743,13 @@ body{visibility:visible}
         <textarea id="rtcOffer" class="share-code" rows="3" readonly placeholder="…"></textarea>
 
         <p class="share-step" data-t="shareStep2">誘う側 手順2: 相手に送り、届いた応答コードを下に貼り付けて接続</p>
-        <textarea id="rtcAnswerIn" class="share-code" rows="3" placeholder=""></textarea>
+        <textarea id="rtcAnswerIn" class="share-code" rows="3" placeholder="" data-t-ph="rtcAnswerPh"></textarea>
         <button class="btn primary" id="rtcConnect" data-t="shareConnect">接続</button>
 
         <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
 
         <p class="share-step" data-t="sharePaste">招待された側 手順1: 相手の招待コードを貼り付け</p>
-        <textarea id="rtcOfferIn" class="share-code" rows="3" placeholder=""></textarea>
+        <textarea id="rtcOfferIn" class="share-code" rows="3" placeholder="" data-t-ph="rtcOfferPh"></textarea>
         <div class="share-row">
           <button class="btn" id="rtcCreateAnswer" data-t="shareCreateAnswer">応答コード作成</button>
           <button class="btn" id="rtcAnswerCopyBtn" data-t="shareCopyCode">コピー</button>
@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.569';
+const V='1.7.570';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -989,6 +989,7 @@ const I18N={
     shareConnect:'接続',
     shareInvite:'招待コード',shareAnswer:'応答コード',
     sharePaste:'招待された側 手順1: 相手の招待コードを貼り付け',
+    rtcOfferPh:'相手の招待コードを貼り付け',rtcAnswerPh:'相手の応答コードを貼り付け',
     connected:'接続しました',disconnected:'切断しました',connectFailed:'接続に失敗しました',
     importConfirm:'共有された内容で現在のボードを置き換えますか？',
     imported:'読み込みました',svgImported:'SVG を取り込みました',excImported:'Excalidraw を取り込みました',dioImported:'drawio を取り込みました',dioCompressed:'圧縮 .drawio は未対応 — draw.io で「圧縮しない」にして保存してください',dioExported:'.drawioファイルを保存しました',textPasted:'テキストを貼り付けました',
@@ -1066,6 +1067,7 @@ const I18N={
     shareConnect:'Connect',
     shareInvite:'Invite code',shareAnswer:'Answer code',
     sharePaste:'Joining side, step 1: Paste the invite code from your peer',
+    rtcOfferPh:'Paste the invite code from your peer',rtcAnswerPh:'Paste the answer code from your peer',
     connected:'Connected',disconnected:'Disconnected',connectFailed:'Connection failed',
     importConfirm:'Replace current board with shared content?',
     imported:'Imported',svgImported:'SVG imported',excImported:'Excalidraw imported',dioImported:'drawio imported',dioCompressed:'Compressed .drawio is unsupported — re-save in draw.io with compression off',dioExported:'.drawio file saved',textPasted:'Text pasted',
@@ -1594,7 +1596,7 @@ const Store={
       else _addId(v);
     }
     let _dmg=null;
-    const _u=s=>{if(!s)return;let b=null;try{b=_bb(s)}catch(_){return}   // ADR-0373: payload patches are pseudo-shapes — {type:'pen'} without pts must not crash the damage estimate
+    const _u=s=>{if(!s)return;let b=null;try{b=_bb(s)}catch(_){return}   // ADR-0373: pseudo-shape patches must not crash the damage estimate
     if(!b||![b.x,b.y,b.w,b.h].every(Number.isFinite))return;const m=(_szz(s)||2)/2+10;_dmg=_dmgU(_dmg,{x:b.x-m,y:b.y-m,w:b.w+2*m,h:b.h+2*m});};
     for(const id of _ids)_u(byId(id));                          // pre-mutation (del/move/upd)
     for(const v of [op.shape,op.shapes,op.before,op.after]){
@@ -5906,7 +5908,7 @@ function doDelete(){
   const sel=_selUL();
   if(!_ln(sel)){if(_selAny())_wT('lockedNoop');return}   // ADR-0396
   const origSel=_selIds();
-  // Frame-aware: shapes fully inside a selected frame are deleted with the frame (parity with doDuplicate)
+  // Frame-aware: shapes inside a selected frame are deleted with it (doDuplicate parity)
   const frameOf=_frameOf(sel);
   _xFS(sel,frameOf)
   const delIds=_sT(sel.map(s=>s.id));
@@ -6310,7 +6312,7 @@ function doRotate(d){
   const sel=_selL(s=>s&&!_lk(s)&&_rotatable(s));
   if(!_ln(sel))return;
   const bb=_bA(sel),gx=bb.x+bb.w/2,gy=bb.y+bb.h/2; // orbit about group centre, like doFlip
-  // Frame-aware: box-shape children inside selected frames orbit and rotate with the frame (parity with doAlign)
+  // Frame-aware: children of selected frames orbit/rotate with it (doAlign parity)
   const frameOf=_frameOf(sel,s=>_rotatable(s));
   _xFS(sel,frameOf)
   const r=d*_PI/180,cs=_cos(r),sn=_sin(r);
@@ -7743,7 +7745,7 @@ const Net={
   },
   _slimOp(op){
     if(op.op==='add'&&op.shape)return{...op,shape:this._slimShapes([op.shape])[0]};
-    if(_iA(op.shapes)&&(op.op==='addMany'||op.op==='del'||op.op==='clear'))return{...op,shapes:this._slimShapes(op.shapes)};   // ADR-0445: del/clear slim too — remote only needs id/locked, and undo's del-emitting addMany benefits either way
+    if(_iA(op.shapes)&&(op.op==='addMany'||op.op==='del'||op.op==='clear'))return{...op,shapes:this._slimShapes(op.shapes)};   // ADR-0445: remote del/clear needs only id/locked
     return op;
   },
   _fragSend(buf,k){   // ADR-0431: 64KB fragment sender for the dc-direct sites (snap, oversized ops)
@@ -7862,7 +7864,7 @@ const Net={
         let st=this._imgChunks.get(msg.key);
         // ADR-0374: bound in-flight reassemblies — a peer opening thousands of
         // keys mid-transfer and never finishing would grow the map unboundedly.
-        if(!st||st.n!==n){if(!st&&this._imgChunks.size>=64)this._imgChunks.delete(this._imgChunks.keys().next().value);st={p:new Array(n),g:0,n};this._imgChunks.set(msg.key,st)}   // ADR-0449/0454: evict oldest stalled key; n-mismatch restarts (else a stale partial blocks the stream forever)
+        if(!st||st.n!==n){if(!st&&this._imgChunks.size>=64)this._imgChunks.delete(this._imgChunks.keys().next().value);st={p:new Array(n),g:0,n};this._imgChunks.set(msg.key,st)}   // ADR-0449/0454: evict oldest stalled key; n-mismatch restarts the stream
         if(!st.p[seq]){st.p[seq]=msg.data;st.g++}
         if(st.g<st.n)break;
         this._imgChunks.delete(msg.key);
@@ -8106,7 +8108,7 @@ const Net={
       // 15s reaper — otherwise a live, idle connection's avatar vanishes after 15s.
       this._rtcPeerId='rtc:'+uid().slice(0,4);
       this._touchPeer(this._rtcPeerId);
-      // snapshot to new peer (ops included for merge); ADR-0383: 64KB chunks stay under the SCTP ceiling.
+      // snapshot to new peer (ops for merge); ADR-0383: 64KB chunks under the SCTP ceiling.
       try{const _sm=_JS(this._snapshotMsg());
         if(_ln(_sm)>24e6){_wT('snapBig');return} // ADR-0403
         this._fragSend(_sm,'snap')
@@ -8846,6 +8848,8 @@ const UI={
     // authored ' (V)' shortcut suffix.
     const tk=key=>_sw(key,'k.')?(T.k[key.slice(2)]||I18N.en.k[key.slice(2)]||key):t(key);
     for(const el of _qsa(document,'[data-t-aria]'))_sa(el,_AL,tk(_ga(el,'data-t-aria')));
+    // data-t-ph localizes placeholders
+    for(const el of _qsa(document,'[data-t-ph]'))el.placeholder=tk(_ga(el,'data-t-ph'));
     for(const el of _qsa(document,'[data-t-title]')){
       const sfx=((_ga(el,'title')||'').match(/\s(\([^)]*\))$/)||[])[1];
       _sa(el,'title',tk(_ga(el,'data-t-title'))+(sfx?' '+sfx:''));
@@ -8912,7 +8916,7 @@ const UI={
 // Extracted as a named function so test.mjs can exercise it without a real DOM.
 // Pattern: w3.org/WAI/ARIA/apg/patterns/menu-button/
 function _ctxMenuKeyNav(m,e){
-  // v1.6.96: Tab also closes the menu (ARIA APG: "Tab: closes the menu and moves to next tab stop")
+  // v1.6.96: Tab closes the menu (ARIA APG: next tab stop)
   if(e.key==='Escape'||e.key==='Tab'){_pd(e);UI.closeCtxMenu();return;}
   const items=[..._qsa(m,'.ctx-item')];
   if(!_ln(items))return;
@@ -9760,7 +9764,7 @@ const Presentation=(()=>{
     _dsp(_qs(document,'.statusbar'),'none');
     _qs(document,'.minimap-wrap')?.style.setProperty('display','none');
     canvas.style.position='fixed';canvas.style.inset='0';canvas.style.zIndex='8999';
-    ocanvas.style.position='fixed';ocanvas.style.inset='0';ocanvas.style.zIndex='8999';   // ADR-0024: lift overlay too; same z as #c, DOM order keeps it above scene, below presOverlay(9000)
+    ocanvas.style.position='fixed';ocanvas.style.inset='0';ocanvas.style.zIndex='8999';   // ADR-0024: lift overlay too; DOM order keeps it above scene, below presOverlay
     // The CSS box just changed to fullscreen but no native window 'resize' event fires
     // (only the canvas element's own layout moved) — the backing pixel buffer stays at
     // its old, smaller size and gets stretched, blurring the canvas and desyncing the
@@ -9897,7 +9901,7 @@ const Minimap=(()=>{
   UI.fillHelp();
   UI.applyI18n();
   applyTheme(UI._themeMode());UI.refreshThemeBtn();   // ADR-0012: restore persisted theme before first paint
-  UI.refreshLangBtn();   // ADR-0014: LANG/T already reflect the persisted language (set at load time), just label the button
+  UI.refreshLangBtn();   // ADR-0014: LANG/T already reflect the persisted language; just label the button
   UI.updateOnline();
   resize();
   try{await Persist.open();await Persist.load()}catch(err){console.warn('persist init',err)}

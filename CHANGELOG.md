@@ -5354,6 +5354,12 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.570]
+
+### 機能・i18n
+
+- **ADR-0542**: `data-t-ph` placeholder 翻訳機構を `applyI18n` に追加し、RTC ペースト欄 (`rtcOfferIn`/`rtcAnswerIn`) に ja/en ヒントを付与。言語切替で追従。コメント刈りで帳尻合わせ (raw 残量 ~51B)。
+
 ## [1.7.569]
 
 ### 修正
