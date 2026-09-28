@@ -103,6 +103,11 @@ IndexedDB(`board`/`docs`/`main`)。保存対象=`{v,shapes,viewport,docName,save
   図形には載せない)で**古い書込を落として決定的収束**。**互いに素なプロパティは双方生存**。
   `move`/`zorder` は可換なので LWW 非適用。`upd`/`style`/`resize`/`align`/`group`/`ungroup` に適用。
 - 共有: URL fragment にスナップショット。`importFromHash` は shape を検証してから採用。
+- **ピア識別**: `peerId` は起動毎の incarnation 付き (ADR-0459) — リロードで `seq` が 0 に
+  戻っても旧 `peer:seq` キーと衝突しない。`wclock` は IDB に永続化 (ADR-0460) —
+  リロードを跨いでもプロパティ単位 LWW の仲裁履歴が保持される。
+- **チャンク再組立**: `snap`/`opc`/`img` の分割受信は `n`/`src` 不一致または `seq===0` で
+  assembly を再起動 (ADR-0448/0469/0563) — 同一送信元の中断→再送で新旧断片が混結合しない。
 
 ## 9. エクスポート
 - **PNG**: 2x、可視領域クロップ + 32px パディング。`toBlob` null ガード。
