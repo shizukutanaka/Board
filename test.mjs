@@ -7186,6 +7186,24 @@ try {
     console.log('  ✓ flip unselected-conn anchor: aF mirror + undo (2 asserts)');
   }
 
+  // ADR-0589: transform×anchor coverage — every transform path remaps the
+  // position-dependent conn props it owns (source pins; doFlip/doRotate/grot tested above)
+  {
+    const checks=[
+      ['flip: labelPos 1−t',      "s.labelPos=1-s.labelPos"],
+      ['flip: cbend chirality',   "s.cbend=-s.cbend"],
+      ['flip: sel aF/bF mirror',  "s.aF.fx=1-s.aF.fx"],
+      ['flip: unsel conn mirror', "ADR-0588"],
+      ['reverse: cbend negate',   "ADR-0585"],
+      ['doRotate: aF remap',      "ADR-0586"],
+      ['grot: orig anchors',      "ptr.gAnc"],
+      ['grot: aF remap',          "ADR-0587"],
+      ['del: connClears',         "computeConnClears(_sT("],
+    ];
+    for(const [name,src] of checks)assert.ok(html.includes(src),'anchor transform missing: '+name);
+    console.log('  ✓ anchor-transform coverage: 9 source pins');
+  }
+
   // search navigation a11y: SR users search BY content, so the announcement must name
   // WHICH shape was found (describeShape), not a bare "2/7" count — parity with Tab cycle.
   {

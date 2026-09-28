@@ -376,6 +376,27 @@ pen/line/arrow は点ジオメトリで box 中心が無く回転中心が NaN �
 > 解消済み: 回転リサイズのカーソル向き (v1.7.392 / ADR-0341)、
 > マーキー選択のロック除外 (ADR-0127)。
 
+## コネクタ束縛と変換 (v1.7.61x — ADR-0209/0377/0583–0588)
+
+コネクタ (`line`/`arrow`) は `a`/`b` (結合先 id)、`aF`/`bF` (結合先の回転込み extent
+`_bb` 上の比率座標 {fx,fy})、`labelPos` (経路パラメタ t∈0..1)、`way`/`bend`/`cbend`
+(経路形状) を持つ。`connEnds` が `a`/`b`/`aF`/`bF` を優先解決し、非結合時は `x1..y2`。
+
+**変換ごとの不変条件**:
+
+| 変換 | `x1..y2`/`way`/`bend` | `cbend` | `labelPos` | `aF`/`bF` |
+|---|---|---|---|---|
+| translate | 平行移動 | 不変 (符号付き垂距) | 不変 (パラメタ) | 不変 (extent 追随) |
+| flip | 鏡映 (bend は trunk 軸のみ) | 符号反転 (chirality) | `1−t` (0583) | `1−f` — 結合先が反転した場合のみ (0584/0588) |
+| reverse | 端点交換+way 逆順 | 符号反転 (0585) | `1−t` | `a`↔`b` swap 保持 |
+| rotate/grot | 軌道+自転 (_rotBend) | 不変 (方向に追従) | 不変 | 軌道+自転で再正規化 (0586/0587) |
+| gresize/resize | `_mapToBox` 写像 | スケール | 不変 | 比率なので extent 追随 |
+
+- **`connClears`** (del 系 op 同梱): 結合先削除時に `a`/`b`/`aF`/`bF` をクリアし
+  端点を現在値に凍結 (`computeConnClears`)。locked コネクタは清書しない。
+- **選択外コネクタ**も結合先が変換対象なら before/after に同梱して変換
+  (0586 doRotate / 0588 doFlip / 0587 grot は `ptr.gAnc` で原値退避・再計算 — ドリフト防止)。
+
 ## 検索ハイライトの描画 (v1.6.61)
 
 `_sq` にマッチするシェイプはワールド変換ブロック内で `strokeRect` され、

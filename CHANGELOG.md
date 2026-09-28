@@ -5354,6 +5354,11 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.616]
+### Docs+Test
+- architecture.md に「コネクタ束縛と変換」節 — `a`/`b`/`aF`/`bF`/`labelPos`/`way`/`bend`/`cbend` × translate/flip/reverse/rotate/grot/gresize の不変条件行列 + `connClears`・選択外コネクタ同梱規則を文書化 (ADR-0589)。
+- 各変換経路が担当するアンカー prop のリマップ実装を assert するソースピン (9件) — 将来の変換追加がアンカーを壊すのを防ぐ。
+
 ## [1.7.615]
 ### Fixed
 - 選択外のコネクタが結合先(選択内)を持つ場合、結合先 extent の反転でアンカー比率 f→1−f の意味が変わるのに `aF`/`bF` が未ミラーで反対辺へ跳ぶ問題を修正 — ADR-0584 の `flipIds` ゲートを拡張し、選択外コネクタも分数ミラー + before/after に同梱 (ADR-0588)。
