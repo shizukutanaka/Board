@@ -5354,6 +5354,12 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.574]
+
+### 修正
+
+- **ADR-0546**: スタイルパネルの同期署名が選択 id のみを見ていたため、リモート op・undo/redo・style/upd/align/resize/beautify 経由で選択中図形の prop が変わってもパネル表示が古いまま残る staleness を修正 — `_apply` で prop 系 op が選択中の図形に触れたら `_selSig` を無効化。
+
 ## [1.7.573]
 
 ### テスト・内部

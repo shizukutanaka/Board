@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.573';
+const V='1.7.574';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -900,7 +900,7 @@ const PEER_ID=(()=>{try{
   return id;
 }catch(_){return uid()}})();
 // minimap visibility: persisted across reloads (§3.18 — small boards get zero value from
-// an always-on minimap with no way to dismiss it; a session-only toggle would just nag again
+// an always-on minimap with no way to dismiss; a session toggle would just nag
 // on every reload).
 const MINIMAP_ON=(()=>{try{return _lg('board.minimap')!=='off'}catch(_){return true}})();
 // ADR-0012: theme is a DOM attribute + localStorage setting, not board state — it's
@@ -1733,6 +1733,9 @@ const Store={
         if(!forward)_selR(op);
         break;}
     }
+    // ADR-0546: prop-patching ops touching a selected shape must resync the
+    // panel — its signature only covers membership, so remote/undo writes go unseen.
+    if(/^(?:style|upd|align|resize|beautify)$/.test(op.op))for(const id of _ids)if(_sl().has(id)){_selSig=null;break}
     // ADR-0027: post-mutation bboxes of the same ids cover add/upd/move targets;
     // a union covering most of the viewport isn't worth clipping for.
     for(const id of _ids)_u(byId(id));
@@ -1851,7 +1854,7 @@ function _svgHatch(els,s,ox,oy,stroke,shapeTag,rT){
 }
 // Shared by doDelete/flushErase/openTextEditor/_syncTextFinalize: resolve live endpoint
 // coords BEFORE the referenced shapes are gone, so undo can restore exact bindings.
-// delIds = ids about to be removed; returns [{id,before:{a|b,x1,y1|x2,y2},after:{...null}}].
+// delIds = ids being removed; returns [{id,before:{a|b,x1,y1|x2,y2},after:{...}}].
 function computeConnClears(delIds){
   const connClears=[];
   for(const sh of _sh()){
@@ -1985,7 +1988,7 @@ function getImg(dataUrl){
   let img=_imgCache.get(k);
   if(img){_imgCache.delete(k);_imgCache.set(k,img);return img}
   img=new Image();
-  img.onload=()=>{_iv();Minimap.invalidateCache();};   // minimap cache keys on _gridVer — image load changes pixels without touching it (ADR-0025)
+  img.onload=()=>{_iv();Minimap.invalidateCache();};   // minimap cache keys on _gridVer — image load doesn't touch it (ADR-0025)
   img.src=dataUrl;
   if(_imgCache.size>=IMG_CACHE_MAX)_imgCache.delete(_imgCache.keys().next().value);
   _imgCache.set(k,img);
@@ -2319,7 +2322,7 @@ function resize(){
 // devicePixelRatio can change with NO resize event — dragging the window between monitors
 // of different density (Retina ↔ external 1×) or an OS display-scaling change. A
 // `(resolution: Xdppx)` media query matches only the current ratio and fires `change` once
-// when it stops matching; re-arm a fresh query each time to keep tracking. Without this the
+// when it stops matching; re-arm a fresh query to keep tracking. Without this the
 // canvas backing store keeps the stale DPR and renders blurry on the new screen.
 function _watchDPR(){
   if(!window.matchMedia)return;
@@ -4249,7 +4252,7 @@ _on(canvas,_PU,e=>{
 });
 // v1.6.88: extracted as named function so tests can call it directly.
 // Fixes: (1) _gd() not cleared → stale snap-guide lines after stylus OOR / Android
-//        gesture takeover; (2) _eraseBatch not restored → data-loss when cancel fires mid-erase.
+//        gesture takeover; (2) _eraseBatch not restored → data loss mid-erase.
 function _cancelPointerGesture(){
   _clearLongPress();   // ADR-0006: covers both the native pointercancel path and our own
   // Restore partial resize/move/erase on cancel (Android touch-takeover, stylus OOR).
@@ -6233,7 +6236,7 @@ function doFlip(axis){
   if(!_ln(sel))return;
   const bb=_bA(sel);if(!bb)return;
   const c=axis==='h'?bb.x+bb.w/2:bb.y+bb.h/2;
-  // Frame-aware: shapes fully inside a selected frame flip with the frame (parity with doAlign)
+  // Frame-aware: shapes inside a selected frame flip with it (doAlign parity)
   const frameOf=_frameOf(sel);
   _xFS(sel,frameOf)
   const before=sel.map(clone);
@@ -9063,7 +9066,7 @@ function wire(){
   _on(window,'offline',UI.updateOnline);
   // PWA install button (v1.6.92): show on installable; hide after install.
   // `beforeinstallprompt` fires on Chrome/Edge/Samsung Internet when all install criteria are
-  // met. Safari/Firefox do not fire it — the button stays hidden there (progressive enhancement).
+  // met. Safari/Firefox never fire it — the button stays hidden there (progressive).
   // We call _pd(e) to suppress the browser's ambient mini-infobar prompt so that
   // install is fully user-initiated via our button. Ref: web.dev/customize-install/
   _on(window,'beforeinstallprompt',e=>{
