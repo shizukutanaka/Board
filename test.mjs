@@ -144,7 +144,7 @@ const checks = [
   ['Net.init called in main()', html.includes('Net.init()')],
   ['Share.importFromHash called in main()', html.includes('Share.importFromHash()')],
   ['UI.refreshPeers defined', html.includes('refreshPeers')],
-  ['Version display dynamic', html.includes("sVer').textContent='v'+V")],
+  ['Version display dynamic', html.includes("_tC(_g('sVer'),'v'+V)")],
   // v1.1 functional additions
   ['Arrow key nudge code', html.includes("arrowup") && html.includes("arrowdown") && html.includes("Shape.translate")],
   ['Pinch zoom code', html.includes("_pointers") && html.includes("_pinchPrev")],
@@ -668,7 +668,7 @@ const checks = [
   ['ADR-0389: identical consecutive toast re-append (no twin stacking)', html.includes("if(last&&last.textContent===msg)_rm(last)")],
   ['Escape key closes context menu before modal dismiss', html.includes("ctx2.dataset.open==='true'){UI.closeCtxMenu();return}")],
   // v1.6.38: context menu auto-focuses first item on open (keyboard a11y)
-  ['context menu focuses first item on open', html.includes("_qs(m,'.ctx-item')?.focus()")],
+  ['context menu focuses first item on open', html.includes("_fc(_qs(m,'.ctx-item'))")],
   // v1.6.39: console cleanup - no redundant console.warn/error in production paths
   ['no console.warn in BroadcastChannel catch', !html.includes("console.warn('BroadcastChannel init failed'")],
   ['no console.error in save catch (user gets toast)', !html.includes("console.error('save failed'")],
@@ -883,8 +883,8 @@ const checks = [
   // v1.6.45: zoom badge has role=group for semantic grouping
   ['zoom-badge has role=group and aria-label', html.includes('class="zoom-badge" role="group" aria-label="Zoom controls"')],
   // v1.6.52: dialog focus management (WCAG 2.4.3)
-  ['toggleHelp moves focus to helpClose on open', html.includes("this._captureFocus();_g('helpClose').focus()")],
-  ['openShare moves focus to shareClose', html.includes("_g('shareClose').focus()")],
+  ['toggleHelp moves focus to helpClose on open', html.includes("this._captureFocus();_fc(_g('helpClose'))")],
+  ['openShare moves focus to shareClose', html.includes("_fc(_g('shareClose'))")],
   ['closeShare restores focus to the invoker', html.includes("this._restoreFocus()")],
   // v1.6.56: custom color pickers (native <input type=color>) for stroke and fill
   ['custom stroke color picker present', html.includes('class="swatch cp" data-cp="stroke"')],

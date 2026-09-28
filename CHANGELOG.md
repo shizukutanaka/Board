@@ -5354,6 +5354,13 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.564] - 2026-09-28
+### Fixed
+- ミニマップドラッグ中の blur で `_mmNav` が残存し次のホバーが無押下スクラブになる問題を修正 (ADR-0534/0535)
+
+### Changed
+- `_tC`/`_fc` shorthand の適用完了 — `.textContent=`×5 / `.focus()`×8 の残サイトを畳み込み ~61B 回収 (ADR-0535)
+
 ## [1.7.563] - 2026-09-28
 ### Docs
 - architecture.md のジェスチャライフサイクル節を ADR-0532/0533/0534 に同期 (右 down の早期 return・openTextEditor の live 再解決・blur リセット防壁)

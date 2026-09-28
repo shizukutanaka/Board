@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.563';
+const V='1.7.564';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -8544,10 +8544,10 @@ const UI={
   refreshUndo(){
     _g('btnUndo').disabled=_hx()<0;
     _g('btnRedo').disabled=_hx()>=_hi().length-1;
-    _g('sCount').textContent=_nS();
+    _tC(_g('sCount'),_nS());
   },
   refreshZoom(){
-    _g('zoomVal').textContent=_rnd(_vp().zoom*100)+'%';
+    _tC(_g('zoomVal'),_rnd(_vp().zoom*100)+'%');
   },
   // §3.18: minimap has no dismiss affordance — always-on is pure visual noise on a small
   // board. `M` toggles it; the preference persists (localStorage) so it doesn't reappear
@@ -8606,7 +8606,7 @@ const UI={
     _sa(b,_AL,name);_sa(b,'title',name);
     b.dataset.lang=LANG;
   },
-  setStatusXY(x,y){_g('sXY').textContent=x+', '+y},
+  setStatusXY(x,y){_tC(_g('sXY'),x+', '+y)},
   refreshSaved(){
     const el=_g('sSaved');if(!el)return;
     if(!state.lastSaveAt){_tC(el,'—');return}
@@ -8641,7 +8641,7 @@ const UI={
   toggleHelp(){
     const h=_g('help'),open=h.dataset.open!=='true';
     h.dataset.open=open;
-    if(open){this._captureFocus();_g('helpClose').focus()}
+    if(open){this._captureFocus();_fc(_g('helpClose'))}
     else this._restoreFocus();
   },
   openCtxMenu(x,y,customItems){
@@ -8767,7 +8767,7 @@ const UI={
     m.dataset.open='true';
     m.style.left=_min(x,innerWidth-200)+'px';
     m.style.top=_min(y,innerHeight-m.offsetHeight-20)+'px';
-    _qs(m,'.ctx-item')?.focus();
+    _fc(_qs(m,'.ctx-item'));
   },
   closeCtxMenu(){_g('ctx').dataset.open='false'},
   // FT-07: reuses openCtxMenu's rendering/positioning/keyboard-nav/focus-trap wholesale
@@ -8881,7 +8881,7 @@ const UI={
     chk.onchange=refresh;
     refresh();
     this._captureFocus();
-    _g('shareClose').focus();
+    _fc(_g('shareClose'));
   },
   closeShare(){
     _g('share').dataset.open='false';
@@ -8917,10 +8917,10 @@ function _ctxMenuKeyNav(m,e){
   const items=[..._qsa(m,'.ctx-item')];
   if(!_ln(items))return;
   const cur=_ix(items,_aE());
-  if(e.key==='ArrowDown'){_pd(e);items[(cur+1)%_ln(items)].focus();return;}
-  if(e.key==='ArrowUp'){_pd(e);items[(cur-1+_ln(items))%_ln(items)].focus();return;}
-  if(e.key==='Home'){_pd(e);items[0].focus();return;}
-  if(e.key==='End'){_pd(e);items[_ln(items)-1].focus();return;}
+  if(e.key==='ArrowDown'){_pd(e);_fc(items[(cur+1)%_ln(items)]);return;}
+  if(e.key==='ArrowUp'){_pd(e);_fc(items[(cur-1+_ln(items))%_ln(items)]);return;}
+  if(e.key==='Home'){_pd(e);_fc(items[0]);return;}
+  if(e.key==='End'){_pd(e);_fc(items[_ln(items)-1]);return;}
 }
 
 // ====================== WIRE-UP ======================
@@ -9028,7 +9028,7 @@ function wire(){
   _on(rng,_PD,()=>_sfbCapture('size'));
   _on(rng,'input',()=>{
     _st().size=+rng.value;
-    _g('sizeVal').textContent=rng.value;
+    _tC(_g('sizeVal'),rng.value);
     for(const id of _sl()){const s=byId(id);if(s&&!_lk(s))s.size=_st().size}
     if(_selN())_iv();
   });
@@ -9783,7 +9783,7 @@ const Presentation=(()=>{
     resize();
     if(_savedVp){_oa(_vp(),_savedVp);_savedVp=null;_rZ()}
     _iv();
-    _focusTrigger?.focus();_focusTrigger=null;
+    _fc(_focusTrigger);_focusTrigger=null;
   }
 
   function _goto(i){
@@ -9882,6 +9882,7 @@ const Minimap=(()=>{
   _on(mc,_PM,e=>{if(_mmNav)_mmGo(e)});
   _on(mc,_PU,e=>{_mmNav=false;try{mc.releasePointerCapture(e.pointerId)}catch(_){}});
   _on(mc,_PC,()=>{_mmNav=false});
+  _on(window,'blur',()=>{_mmNav=false});   // ADR-0534
 
   return{draw,schedule,invalidateCache};
 })();
@@ -9906,7 +9907,7 @@ const Minimap=(()=>{
   }catch(_){}
   _ru();_rZ();UI.refreshSaved();UI.refreshMinimapVis();
   // version display
-  _g('sVer').textContent='v'+V;
+  _tC(_g('sVer'),'v'+V);
   // v1.1: import shared board from URL hash (if any)
   try{await Share.importFromHash()}catch(_){}
   try{Share.inviteFromHash()}catch(_){}   // ADR-0045
