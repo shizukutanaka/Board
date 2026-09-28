@@ -4074,6 +4074,10 @@ try {
       Net._fragIn({data:'aa',n:2,seq:0},'_snapIn');
       Net._fragIn({data:'zz',n:2,seq:1},'_snapIn');   // finish cleanly so no stale state leaks
       assert.strictEqual(Net._snapIn,null,'_fragIn clears a finished assembly');
+      // ADR-0563: a same-src stream restart (seq 0) must not splice old+new fragments
+      Net._fragIn({data:'OL',n:2,seq:0},'_opcIn');
+      Net._fragIn({data:'NE',n:2,seq:0},'_opcIn');     // restart mid-assembly
+      assert.strictEqual(Net._fragIn({data:'W!',n:2,seq:1},'_opcIn'),'NEW!','_fragIn seq 0 restarts a stale same-src assembly');
       // ADR-0449: img intake bounds — stalled keys evict oldest, not new keys;
       // the received-blob store is capped (refs re-resolve on the next snapshot).
       Net._imgChunks.clear();
