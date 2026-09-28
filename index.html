@@ -820,7 +820,7 @@ const _scl=()=>_sl().clear(),_sad=id=>_sl().add(id),_sdl=id=>_sl().delete(id);  
 const _selN=()=>_sl().size;   // ADR-0334
 const _selUnl=f=>_selAny(s=>f(s)&&!_lk(s));   // ADR-0454: unlocked-selection predicate
 const _nS=()=>_sh().length;   // ADR-0425
-const _sv=s=>s.visible!==0,_lk=s=>s.locked,_hd=s=>s.visible===0,_fS=s=>s.fontSize,_wh=(e,w,ht)=>{e.width=w;e.height=ht},_sk=s=>s.stroke,_fi=s=>s.fill,_lb=s=>s.label,_rt=s=>s.rotate,_du=s=>s.dataUrl,_gi=s=>s.groupId,_oP=s=>s.opacity,_lP=s=>s.labelPos,_sp=s=>s.spacing,_el=s=>s.elbow,_va=s=>s.valign,_szz=s=>s.size,_txx=s=>s.text,_ftt=s=>s.font,_coo=s=>s.color,_cv=()=>_ce('canvas'),_g2=c=>c.getContext('2d'),_ln=x=>x.length,_s0=(x,n)=>x.slice(0,n),_ix=(a,b)=>a.indexOf(b),_trm=x=>x.trim(),_dk=k=>ptr.dragKind===k;   // ADR-0425/../0447
+const _sv=s=>s.visible!==0,_lk=s=>s.locked,_hd=s=>s.visible===0,_fS=s=>s.fontSize,_wh=(e,w,ht)=>{e.width=w;e.height=ht},_sk=s=>s.stroke,_fi=s=>s.fill,_lb=s=>s.label,_rt=s=>s.rotate,_du=s=>s.dataUrl,_gi=s=>s.groupId,_oP=s=>s.opacity,_lP=s=>s.labelPos,_sp=s=>s.spacing,_el=s=>s.elbow,_va=s=>s.valign,_szz=s=>s.size,_txx=s=>s.text,_ftt=s=>s.font,_coo=s=>s.color,_cv=()=>_ce('canvas'),_g2=c=>c.getContext('2d'),_ln=x=>x.length,_s0=(x,n)=>x.slice(0,n),_ix=(a,b)=>a.indexOf(b),_ew=(x,y)=>x.endsWith(y),_trm=x=>x.trim(),_sw=(x,y)=>x.startsWith(y),_dsp=(e,v)=>e.style.display=v,_hdn=(e,v)=>e.hidden=v,_dk=k=>ptr.dragKind===k;   // ADR-0425/../0447
 const _fin=Number.isFinite;   // ADR-0334
 const _min=Math.min,_max=Math.max,_abs=Math.abs;   // ADR-0337
 const _ga=(e,n)=>e.getAttribute(n),_sa=(e,n,v)=>e.setAttribute(n,v),_ap=(p,c)=>p.appendChild(c),_AL='aria-label',_AP='aria-pressed';   // ADR-0340/0392/0394/0399
@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.564';
+const V='1.7.565';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1089,7 +1089,7 @@ const I18N={
 // closes over T by reference, so every t()/T.k call made AFTER a reassignment picks up
 // the new language automatically. Only elements that cache a translated string once at
 // creation time need explicit resync (done in toggleLang(), not here).
-let LANG=(navigator.language||'en').startsWith('ja')?'ja':'en';
+let LANG=_sw(navigator.language||'en','ja')?'ja':'en';
 const LANG_KEY='board.lang';
 try{const _savedLang=_lg(LANG_KEY);if(_savedLang==='ja'||_savedLang==='en')LANG=_savedLang;}catch(_){}
 let T=I18N[LANG];
@@ -1978,7 +1978,7 @@ const _imgCache=_mP(),IMG_CACHE_MAX=60;
 function _imgKey(u){if(!_iS(u))return'';
   const m=_ln(u)>>1;return u.slice(5,32)+':'+_ln(u)+':'+_s0(u,48)+':'+u.slice(m-24,m+24)+':'+u.slice(-48)}
 function getImg(dataUrl){
-  if(!_iS(dataUrl)||!dataUrl.startsWith('data:'))return null;   // ADR-0035: never decode a non-dataUrl (e.g. dangling img ref)
+  if(!_iS(dataUrl)||!_sw(dataUrl,'data:'))return null;   // ADR-0035: never decode a non-dataUrl (e.g. dangling img ref)
   const k=_imgKey(dataUrl);
   let img=_imgCache.get(k);
   if(img){_imgCache.delete(k);_imgCache.set(k,img);return img}
@@ -2302,7 +2302,7 @@ function _statusSel(){
     const b=_ln(sel)&&_bA(sel);
     if(b)txt=_rnd(b.w)+'×'+_rnd(b.h);
   }
-  if(txt!==_selDimSig){_selDimSig=txt;el.parentElement.hidden=!txt;_tC(el,txt);}
+  if(txt!==_selDimSig){_selDimSig=txt;_hdn(el.parentElement,!txt);_tC(el,txt);}
 }
 function resize(){
   DPR=_max(1,_min(3,_dpr()||1));
@@ -4393,7 +4393,7 @@ function openLabelEditor(hit,leftPx,topPx,bold){
     // ADR-0196: Tab commits and jumps to the next label-able shape (rapid
     // labeling like Figma's table/cell flow); Shift+Tab walks backwards.
     if(ev.key==='Tab'){_pd(ev);
-      const cur=_sh().indexOf(hit),dir=_sK(ev)?-1:1;
+      const cur=_ix(_sh(),hit),dir=_sK(ev)?-1:1;
       for(let k=1;k<=_nS();k++){
         const nx=_sh()[(cur+dir*k+_nS())%_nS()];
         if(nx&&!nx.locked&&nx.visible!==0&&_lblAnchor(nx)){
@@ -4504,17 +4504,17 @@ function _textCascade(s,wp){
 _on(canvas,'dragover',e=>{_pd(e);e.dataTransfer.dropEffect='copy'});
 _on(canvas,'drop',e=>{
   _pd(e);
-  const bf=[...e.dataTransfer.files].find(f=>f.name.endsWith('.board'));
+  const bf=[...e.dataTransfer.files].find(f=>_ew(f.name,'.board'));
   if(bf){importBoard(bf);return}
-  const xf=[...e.dataTransfer.files].find(f=>f.name.endsWith('.excalidraw'));
+  const xf=[...e.dataTransfer.files].find(f=>_ew(f.name,'.excalidraw'));
   if(xf){importExcFile(xf,_o2w(e));return}
   const df=[...e.dataTransfer.files].find(f=>/\.(drawio|dio)$/i.test(f.name));   // ADR-0203
   if(df){importDrawioFile(df,_o2w(e));return}
   // ADR-0042: .svg must be claimed BEFORE the generic image/* branch —
   // image/svg+xml also matches startsWith('image/') but <img> can't raster it.
-  const sf=[...e.dataTransfer.files].find(f=>f.name.endsWith('.svg')||f.type==='image/svg+xml');
+  const sf=[...e.dataTransfer.files].find(f=>_ew(f.name,'.svg')||f.type==='image/svg+xml');
   if(sf){importSvgFile(sf,_o2w(e));return}
-  const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith('image/'));
+  const files=[...e.dataTransfer.files].filter(f=>_sw(f.type,'image/'));
   if(!_ln(files)){
     // ADR-0518: non-file drops — dragged text/URLs land at the drop point via
     // the shared intake cascade (paste parity). uri-list covers link drags
@@ -4564,7 +4564,7 @@ _on(window,'paste',e=>{
   // without this it rasterised through the image branch and lost editability.
   {const _svi=[...e.clipboardData.items].find(i=>i.type==='image/svg+xml');
    if(_svi){const f=_svi.getAsFile();if(f){_pd(e);f.text().then(s=>importSvgText(s));return}}}
-  const items=[...e.clipboardData.items].filter(i=>i.type.startsWith('image/'));
+  const items=[...e.clipboardData.items].filter(i=>_sw(i.type,'image/'));
   if(!_ln(items)){
     // ADR-0042: raw SVG markup copied to the clipboard imports as vector shapes.
     const ti=[...e.clipboardData.items].find(i=>i.type==='text/plain');
@@ -5530,7 +5530,7 @@ function openTextEditor(s,isNew){
     // ADR-0375: Tab/⇧Tab commits and jumps to the next text/sticky — parity with
     // the label editor's chain (ADR-0196) and Figma's Tab→next-cell flow.
     if(ev.key==='Tab'){_pd(ev);
-      const cur=_sh().indexOf(s),dir=_sK(ev)?-1:1;
+      const cur=_ix(_sh(),s),dir=_sK(ev)?-1:1;
       for(let k=1;k<=_nS();k++){
         const nx=_sh()[(cur+dir*k+_nS())%_nS()];
         if(nx&&(_txt(nx)||_stk(nx))&&!nx.locked&&nx.visible!==0){
@@ -5786,7 +5786,7 @@ function toggleSnapMode(){state.snap=!state.snap;_tst(`${t('snap')} ${state.snap
 // (the exact keyboard-only trap FT-06 warned about). Shared by ⌘F and ctx.
 function toggleSq(){
   const sq=_g('sqinput');if(!sq)return;
-  sq.style.display=sq.style.display==='none'?'block':'none';
+  _dsp(sq,sq.style.display==='none'?'block':'none');
   if(sq.style.display!=='none'){_fc(sq);sq.select();}
   else{_setSq('');_ivO();}
 }
@@ -5800,7 +5800,7 @@ function pickTool(tool,temporary){
   for(const b of _qsa(document,'.tool'))_sa(b,_AP,b.dataset.tool===tool);
   // hide style panel for select/hand
   const sp=_g('stylePanel');
-  sp.hidden=tool==='select'||tool==='hand'||tool==='eraser'||tool==='eyedropper';
+  _hdn(sp,tool==='select'||tool==='hand'||tool==='eraser'||tool==='eyedropper');
 }
 
 // ====================== CLIPBOARD-LIKE ops ======================
@@ -6146,7 +6146,7 @@ function doAlign(dir){
       let yy=y0;
       for(let ri=0;ri<_ln(rows);ri++){
         let xx=x0;
-        for(const u of rows[ri]){mv(u,xx-u.b.x,yy-u.b.y);xx+=colW[rows[ri].indexOf(u)]+GAP}
+        for(const u of rows[ri]){mv(u,xx-u.b.x,yy-u.b.y);xx+=colW[_ix(rows[ri],u)]+GAP}
         yy+=rowH[ri]+GAP;
       }
       break}
@@ -7710,7 +7710,7 @@ const Net={
     // ADR-0458: drop old-room presence (RTC entries survive — no channel close)
     _sO().clear();_cT(this._snapT);this._snapT=0;this._lastSnapAt=0;this._snapRx=false;this._snapRetry=0;   // ADR-0459/0475
     this._imgSent.clear();this._imgChunks.clear();this._imgOuts.length=0;this._snapIn=null;this._opcIn=null;   // ADR-0464/0466
-    for(const id of _pr().keys())if(!id.startsWith('rtc:'))_pr().delete(id);this._pCt=_pr().size;_ivO();   // ADR-0467
+    for(const id of _pr().keys())if(!_sw(id,'rtc:'))_pr().delete(id);this._pCt=_pr().size;_ivO();   // ADR-0467
     clearInterval(this._presenceTimer);   // re-init (room switch) must not leak the old heartbeat
     state.roomId=roomId||DOC_KEY;
     if(typeof BroadcastChannel===_un)return;     // not supported
@@ -8037,7 +8037,7 @@ const Net={
   _reapPeers(){
     const now=_now();let changed=false;
     for(const [id,p] of _pr()){
-      if(id.startsWith('rtc:'))continue;   // WebRTC peers are lifecycle-managed (onclose), not heartbeat-reaped
+      if(_sw(id,'rtc:'))continue;   // WebRTC peers are lifecycle-managed (onclose), not heartbeat-reaped
       if(now-p.lastSeen>NET_PRESENCE_TIMEOUT){_pr().delete(id);changed=true}
     }
     if(changed){_ivO();if(this._onConnChange)this._onConnChange()}
@@ -8208,7 +8208,7 @@ const Share={
   // explicit "create answer" click is still required (no auto-connect).
   inviteFromHash(){
     const h=location.hash;
-    if(!h.startsWith('#s='))return false;
+    if(!_sw(h,'#s='))return false;
     try{history.replaceState(null,'',location.pathname)}catch(_){}
     const code=_dU(h.slice(3));
     if(!code)return false;
@@ -8219,7 +8219,7 @@ const Share={
   },
   async importFromHash(){
     const h=location.hash;
-    if(!h.startsWith('#b='))return false;
+    if(!_sw(h,'#b='))return false;
     const enc=_dU(h.slice(3));
     const parts=enc.split('&'),opt={};
     for(const p of parts.slice(1)){const i=_ix(p,'=');if(i>0)opt[_s0(p,i)]=p.slice(i+1)}
@@ -8844,7 +8844,7 @@ const UI={
     // user heard the whole tool palette in English. data-t-aria / data-t-title hold an
     // i18n key ('k.xxx' reaches the nested shortcut-name table). Titles keep their
     // authored ' (V)' shortcut suffix.
-    const tk=key=>key.startsWith('k.')?(T.k[key.slice(2)]||I18N.en.k[key.slice(2)]||key):t(key);
+    const tk=key=>_sw(key,'k.')?(T.k[key.slice(2)]||I18N.en.k[key.slice(2)]||key):t(key);
     for(const el of _qsa(document,'[data-t-aria]'))_sa(el,_AL,tk(_ga(el,'data-t-aria')));
     for(const el of _qsa(document,'[data-t-title]')){
       const sfx=((_ga(el,'title')||'').match(/\s(\([^)]*\))$/)||[])[1];
@@ -8863,18 +8863,18 @@ const UI={
     chk.title=can?'':t('shareNoCrypto');
     const refresh=()=>{
       const enc=!chk.disabled&&chk.checked;
-      _g('shareWarnPlain').hidden=enc;
-      _g('shareWarnEnc').hidden=!enc;
+      _hdn(_g('shareWarnPlain'),enc);
+      _hdn(_g('shareWarnEnc'),!enc);
       Share.exportToUrl(enc).then(url=>{
         _g('shareUrl').value=url;
         // ADR-0040: links this long get mangled by chat apps — nudge toward
         // .board export instead of letting the user send a broken link.
-        _g('shareWarnLong').hidden=_ln(url)<=SHARE_URL_WARN;
+        _hdn(_g('shareWarnLong'),_ln(url)<=SHARE_URL_WARN);
       }).catch(()=>{
         // ADR-0040: previously swallowed — an old/stale URL stayed in the
         // field and the user would copy a broken link.
         _g('shareUrl').value='';
-        _g('shareWarnLong').hidden=true;
+        _hdn(_g('shareWarnLong'),true);
         _eT('shareExportFailed');
       });
     };
@@ -8934,17 +8934,17 @@ async function _onBtnInstall(){
   await _installPrompt.userChoice;
   _installPrompt=null;
   const btn=_g('btnInstall');
-  if(btn)btn.hidden=true;
+  if(btn)_hdn(btn,!0);
 }
 function wire(){
-  {const sq=_ce('input');sq.id='sqinput';sq.type='text';sq.placeholder=T.k.search;_sa(sq,_AL,T.k.search);sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--accent-contrast);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';_ap(_db,sq);_on(sq,'input',()=>{_setSq(sq.value);_ivO()});_on(sq,_KD,ev=>{if(ev.key==='Escape'){_setSq('');sq.style.display='none';sq.value='';_ivO();_fc(canvas);}else if(ev.key==='Enter'&&!ev.isComposing){_pd(ev);
+  {const sq=_ce('input');sq.id='sqinput';sq.type='text';sq.placeholder=T.k.search;_sa(sq,_AL,T.k.search);sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--accent-contrast);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';_ap(_db,sq);_on(sq,'input',()=>{_setSq(sq.value);_ivO()});_on(sq,_KD,ev=>{if(ev.key==='Escape'){_setSq('');_dsp(sq,'none');sq.value='';_ivO();_fc(canvas);}else if(ev.key==='Enter'&&!ev.isComposing){_pd(ev);
     // ⌘Enter: commit the whole match list as the selection, then fold the
     // box away — selecting is terminal, so stale search highlights only
     // distract from the follow-up (move/style the found group).
     if(_mod(ev)){const ms=_sqMatches();if(!_ln(ms))return;
       _ss(ms.map(s=>s.id));_aS();_iv();
       _tst(`${_ln(ms)} ${t(_SM)}`);
-      _setSq('');sq.style.display='none';sq.value='';_ivO();_fc(canvas);
+      _setSq('');_dsp(sq,'none');sq.value='';_ivO();_fc(canvas);
     }else _sqAdvance(_sK(ev)?-1:1);}});}
   // tool buttons
   for(const b of _qsa(document,'.tool'))
@@ -8959,7 +8959,7 @@ function wire(){
   };
   _g('fileImport').onchange=e=>{
     const f=e.target.files[0];
-    if(f)/\.(drawio|dio)$/i.test(f.name)?importDrawioFile(f):f.name.endsWith('.excalidraw')?importExcFile(f):(f.name.endsWith('.svg')||f.type==='image/svg+xml')?importSvgFile(f):importBoard(f);   // ADR-0203
+    if(f)/\.(drawio|dio)$/i.test(f.name)?importDrawioFile(f):_ew(f.name,'.excalidraw')?importExcFile(f):(_ew(f.name,'.svg')||f.type==='image/svg+xml')?importSvgFile(f):importBoard(f);   // ADR-0203
     e.target.value='';   // allow re-selecting the same filename to re-trigger change
   };
   _g('btnPresent').onclick=()=>Presentation.enter();
@@ -9062,12 +9062,12 @@ function wire(){
     _pd(e);
     _installPrompt=e;
     const btn=_g('btnInstall');
-    if(btn)btn.hidden=false;
+    if(btn)_hdn(btn,!1);
   });
   _on(window,'appinstalled',()=>{
     _installPrompt=null;
     const btn=_g('btnInstall');
-    if(btn)btn.hidden=true;
+    if(btn)_hdn(btn,!0);
   });
   // resize
   _on(window,'resize',resize);
@@ -9104,8 +9104,8 @@ function wire(){
   // WebRTC manual signaling
   {
   _g('rtcCreateOffer').onclick=async()=>{try{_g('rtcOffer').value=await Net.wrtcCreateOffer()}catch(e){_e(_St(e))}};
-  _g('rtcConnect').onclick=async()=>{const a=_g('rtcAnswerIn')._trm(value);if(!a)return;try{await Net.wrtcConsumeAnswer(a);_oT('connected')}catch(e){_e(_St(e))}};
-  _g('rtcCreateAnswer').onclick=async()=>{const o=_g('rtcOfferIn')._trm(value);if(!o)return;try{_g('rtcAnswer').value=await Net.wrtcAcceptOffer(o)}catch(e){_e(_St(e))}};
+  _g('rtcConnect').onclick=async()=>{const a=_trm(_g('rtcAnswerIn').value);if(!a)return;try{await Net.wrtcConsumeAnswer(a);_oT('connected')}catch(e){_e(_St(e))}};
+  _g('rtcCreateAnswer').onclick=async()=>{const o=_trm(_g('rtcOfferIn').value);if(!o)return;try{_g('rtcAnswer').value=await Net.wrtcAcceptOffer(o)}catch(e){_e(_St(e))}};
   // ADR-0008 (FT-05): copy buttons for the signaling codes — mirrors shareCopyBtn's pattern,
   // avoids the earlier select-in-a-readonly-textarea friction (especially fiddly on touch).
   const _copyCode=async(taId)=>{const v=_g(taId).value;if(!v)return;const ok=await copyText(v);_tst(ok?t('shareCodeCopied'):t(_CF),ok?'ok':'warn')};
@@ -9751,9 +9751,9 @@ const Presentation=(()=>{
     exit.style.pointerEvents='auto';
     _ap(_db,_overlay);
     // Hide UI chrome
-    _qs(document,'.toolbar').style.display='none';
-    _qs(document,'.topbar').style.display='none';
-    _qs(document,'.statusbar').style.display='none';
+    _dsp(_qs(document,'.toolbar'),'none');
+    _dsp(_qs(document,'.topbar'),'none');
+    _dsp(_qs(document,'.statusbar'),'none');
     _qs(document,'.minimap-wrap')?.style.setProperty('display','none');
     canvas.style.position='fixed';canvas.style.inset='0';canvas.style.zIndex='8999';
     ocanvas.style.position='fixed';ocanvas.style.inset='0';ocanvas.style.zIndex='8999';   // ADR-0024: lift overlay too; same z as #c, DOM order keeps it above scene, below presOverlay(9000)
@@ -9774,9 +9774,9 @@ const Presentation=(()=>{
     _overlay?.remove();_overlay=null;
     canvas.style.position='';canvas.style.inset='';canvas.style.zIndex='';
     ocanvas.style.position='';ocanvas.style.inset='';ocanvas.style.zIndex='';
-    _qs(document,'.toolbar').style.display='';
-    _qs(document,'.topbar').style.display='';
-    _qs(document,'.statusbar').style.display='';
+    _dsp(_qs(document,'.toolbar'),'');
+    _dsp(_qs(document,'.topbar'),'');
+    _dsp(_qs(document,'.statusbar'),'');
     _qs(document,'.minimap-wrap')?.style.removeProperty('display');
     // Mirror enter(): the canvas CSS box just shrank back to its in-flow size with no
     // native resize event — re-sync the backing buffer or it stays fullscreen-sized.
