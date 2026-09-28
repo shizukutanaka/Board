@@ -7891,7 +7891,7 @@ const Net={
         let st=this._imgChunks.get(msg.key);
         // ADR-0374: bound in-flight reassemblies — a peer opening thousands of
         // keys mid-transfer and never finishing would grow the map unboundedly.
-        if(!st||st.n!==n){if(!st&&this._imgChunks.size>=64)this._imgChunks.delete(this._imgChunks.keys().next().value);st={p:new Array(n),g:0,n};this._imgChunks.set(msg.key,st)}   // ADR-0449/0454: evict oldest stalled key; n-mismatch restarts the stream
+        if(!st||st.n!==n||seq===0){if(!st&&this._imgChunks.size>=64)this._imgChunks.delete(this._imgChunks.keys().next().value);st={p:new Array(n),g:0,n};this._imgChunks.set(msg.key,st)}   // ADR-0449/0454/0563: evict oldest stalled key; n-mismatch or seq0 restarts the stream
         if(!st.p[seq]){st.p[seq]=msg.data;st.g++}
         if(st.g<st.n)break;
         this._imgChunks.delete(msg.key);
