@@ -857,7 +857,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.593';
+const V='1.7.594';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1753,7 +1753,7 @@ const Store={
 // membership, so they never need to invalidate this. The size check below is a second,
 // cheap safety net: several _apply cases call byId() (idempotency/lock checks) BEFORE
 // push()ing or splice()ing _sh() in the same op, which would otherwise leave the
-// index one membership-change stale until the *next* op's top-of-_apply invalidation —
+// index one membership-change stale until t
 // comparing sizes catches exactly that gap without needing to hunt down every such
 // interior call site.
 let _idIndex=null;
@@ -5140,7 +5140,7 @@ function _penPr(e){const p=e&&e.pressure;return _fin(p)&&p>0?_min(1,p):0.5}
 function imeShouldCommit(e){return !(e&&e.isComposing);}
 // Every sub-sample the browser coalesced into one pointermove. High-rate styluses
 // (Apple Pencil ~240Hz) and 120Hz+ displays emit several physical samples per 60Hz
-// frame; keeping only the last (the bare event) coarsens the stroke and drops pressure
+// frame; keeping only the last (the bare ev
 // detail. getCoalescedEvents recovers them all → smoother curves that match the pen
 // path. Falls back to [e] where unsupported / empty. (Qiita: sen-ltd, MDN)
 function coalescedSamples(e){
@@ -9249,6 +9249,7 @@ function selectFrameContents(){
   if(!_ln(frames))return;
   const inner=withFrameChildren(_sT(frames.map(f=>f.id)));
   for(const f of frames)inner.delete(f.id);
+  for(const id of inner){const s=byId(id);if(!s||!_sv(s))inner.delete(id)}   // ADR-0566: hidden members never enter selection
   if(!inner.size){_wT(_ST);return}
   _ss(inner);
   _aS();_o(inner.size+' '+t(_SM));

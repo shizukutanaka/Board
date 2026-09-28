@@ -10414,12 +10414,13 @@ try {
     // selectFrameContents: replaces selection with the shapes inside the frame
     {
       reset();
-      const f=Shape.make('frame',{x:0,y:0,w:200,h:200}),inner=Shape.make('rect',{x:10,y:10,w:20,h:20}),out=Shape.make('rect',{x:500,y:500,w:20,h:20});
-      Store.commit({op:'add',shape:f});Store.commit({op:'add',shape:inner});Store.commit({op:'add',shape:out});
+      const f=Shape.make('frame',{x:0,y:0,w:200,h:200}),inner=Shape.make('rect',{x:10,y:10,w:20,h:20}),out=Shape.make('rect',{x:500,y:500,w:20,h:20}),hid=Shape.make('rect',{x:30,y:30,w:20,h:20,visible:0});
+      Store.commit({op:'add',shape:f});Store.commit({op:'add',shape:inner});Store.commit({op:'add',shape:out});Store.commit({op:'add',shape:hid});
       state.selection=new Set([f.id]);
       selectFrameContents();
       assert.ok(state.selection.has(inner.id),'selectFrameContents selects the inner shape');
       assert.ok(!state.selection.has(f.id)&&!state.selection.has(out.id),'selectFrameContents drops frame + outsiders');
+      assert.ok(!state.selection.has(hid.id),'selectFrameContents skips hidden members (ADR-0566)');
     }
     // toggleStickyText: sticky ↔ text type patch, undo-safe
     {

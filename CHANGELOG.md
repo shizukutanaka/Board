@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.594]
+### Fixed
+- selectFrameContents が hidden メンバーを選択に含めていたのを修正 (ADR-0566) — ⌘A/マーキーは `_sv` で可視のみにするため、見えない図形が選択され後続の move/delete が不可視のまま作用し得た。
+
 ## [1.7.593] - 2026-09-28
 ### 修正
 - ADR-0565: `frame()` の `draw()`/`drawOverlay()` を try/catch で囲み、描画例外が `needsRender=true` + `_rafId=0` のままループを停止させる経路を塞いだ — draw 中の一過性 throw が外部 `_iv()` が来るまで描画を止めていた。post-draw フック群 (presence 送信・DOM ミラー・overlay follow・style パネル同期) も同じ try/catch で保護。
