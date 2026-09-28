@@ -171,6 +171,11 @@ RAF ループ。`needsRender`/`needsOverlay` フラグで再描画をゲート�
    ずらし、露出した帯だけ `_dmgPair` clip で再描画。
 3. **ダメージ矩形** (ADR-0026/0027): ドラッグ系ジェスチャや `_apply`/`applyRemote`
    由来の world 空間汚れ矩形を clip して局所再描画。交差判定は `_queryGrid`。
+   **束縛コネクタ規則** (ADR-0597/0598/0599): 図形の変形に追従する束縛コネクタ
+   (`aF`/`bF` が束縛先 extent から端点を動的解決) の掃引領域は、対象図形の bbox だけ
+   では覆えない。ダメージを構成する全経路 (doMove/_gresizeDrag/_grotDrag/resize/
+   rotate/`_apply`) は `(aF&&a∈対象)||(bF&&b∈対象)` のコネクタを変形前に収集し、
+   変形後 `_bb` との `_dmgPair` union を合流する。
 4. **全量**: 上記いずれでもない通常フレーム。
 
 シーン側の描画順:
