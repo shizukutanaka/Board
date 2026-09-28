@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.611';
+const V='1.7.612';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -9418,13 +9418,14 @@ function resetRoute(){
 function reverseConn(){
   const before=[],after=[];
   _forConn((s,id)=>{
-    _pu(before,{id,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2,a:s.a??null,b:s.b??null,aF:s.aF??null,bF:s.bF??null,way:s.way??null,labelPos:_lP(s)??null});
+    _pu(before,{id,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2,a:s.a??null,b:s.b??null,aF:s.aF??null,bF:s.bF??null,way:s.way??null,labelPos:_lP(s)??null,cbend:s.cbend??null});
     const t1=s.x1,t2=s.y1;s.x1=s.x2;s.y1=s.y2;s.x2=t1;s.y2=t2;
     const tb=s.a;s.a=s.b??null;s.b=tb??null;
     const tbF=s.aF;s.aF=s.bF??null;s.bF=tbF??null;               // ADR-0209
     if(s.way)s.way=_wayArr(s).slice().reverse();
     if(_lP(s)!=null)s.labelPos=1-_lP(s);
-    _pu(after,{id,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2,a:s.a??null,b:s.b??null,aF:s.aF??null,bF:s.bF??null,way:s.way??null,labelPos:_lP(s)??null});
+    if(s.cbend!=null)s.cbend=-s.cbend;   // ADR-0585: signed perpendicular offset — reversing direction flips which side it bows to; negate to keep the same curve
+    _pu(after,{id,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2,a:s.a??null,b:s.b??null,aF:s.aF??null,bF:s.bF??null,way:s.way??null,labelPos:_lP(s)??null,cbend:s.cbend??null});
   })
   _so(before,after)
 }

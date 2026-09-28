@@ -1639,7 +1639,7 @@ try {
              copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, cycleStickyColor, wrapInFrame, doPasteAt, doPasteInPlace, selectSamePaint, selectSameType, _stickyChain, _fitIfEmptyView, toggleCurve, toggleLineArrow, toggleStickyText, selectFrameContents, unlockAll, exportViewportPNG, cycleArrowHead, _connPathPts, _pathAt, _pathNearestT, snapSelToGrid, importBoardText, copyBoardJSON, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
              _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
-             _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa: () => _teTa, zoomAt,
+             _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa: () => _teTa, zoomAt, reverseConn,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
              exportPNG, copyPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
              _onBtnInstall, _getInstallPrompt: () => _installPrompt, _setInstallPrompt: (v) => { _installPrompt = v; },
@@ -1666,7 +1666,7 @@ try {
           copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, cycleStickyColor, wrapInFrame, doPasteAt, doPasteInPlace, selectSamePaint, selectSameType, _stickyChain, _fitIfEmptyView, toggleCurve, toggleLineArrow, toggleStickyText, selectFrameContents, unlockAll, exportViewportPNG, cycleArrowHead, _connPathPts, _pathAt, _pathNearestT, snapSelToGrid, importBoardText, copyBoardJSON, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
           _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
-          _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa, zoomAt,
+          _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa, zoomAt, reverseConn,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
           exportPNG, copyPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
           _onBtnInstall, _getInstallPrompt, _setInstallPrompt,
@@ -5339,6 +5339,14 @@ try {
       B.doFlip('h');
       const got=B.state.shapes.find(s=>s.id===ar.id).labelPos;
       assert.ok(Math.abs(got-0.8)<1e-9,'labelPos mirrored to 0.8, got '+got);
+    }
+    { // ADR-0585: reverseConn negates cbend — same curve, opposite direction
+      const ar=B.Shape.make('arrow',{x1:0,y1:0,x2:200,y2:0,curve:1,cbend:40});
+      B.state.shapes.push(ar);B._invalidateGrid();B.state.selection=new Set([ar.id]);
+      B.reverseConn();
+      const got=B.state.shapes.find(s=>s.id===ar.id);
+      assert.strictEqual(got.cbend,-40,'cbend negated on reverse, got '+got.cbend);
+      assert.strictEqual(got.x1,200,'x1/x2 swapped');
     }
     { // ADR-0584: flip mirrors aF when the BOUND shape flips too
       const bx=B.Shape.make('rect',{x:100,y:100,w:50,h:50});
