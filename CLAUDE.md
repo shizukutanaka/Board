@@ -601,6 +601,7 @@ Board/
 │   ├── ADR-0549-locked-parity-audit.md # locked parity undo 監査の結論ピン (実装済)
 │   ├── ADR-0550-architecture-undo-parity-sync.md # architecture.md の locked parity 同期 (実装済)
 │   ├── ADR-0551-img-ref-undo-restore.md # del undo の img 参照再解決 (実装済)
+    │   ├── ADR-0552-ctx-menu-key-swallow.md # ctx メニュー未処理キーを呑み込み (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

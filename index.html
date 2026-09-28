@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.579';
+const V='1.7.580';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -899,7 +899,7 @@ const PEER_ID=(()=>{try{
   if(!id){id=uid();_ls('board.peer',id)}
   return id;
 }catch(_){return uid()}})();
-// minimap visibility: persisted across reloads (§3.18 — small boards get zero value from
+// minimap visibility: persisted across reloads (§3.18 — small boards get no value from
 // an always-on minimap with no dismiss; a session toggle would just nag
 // on every reload).
 const MINIMAP_ON=(()=>{try{return _lg('board.minimap')!=='off'}catch(_){return true}})();
@@ -5701,7 +5701,7 @@ _on(window,_KD,e=>{
   else if(k===_EN&&!meta&&!_sK(e)){
     // ADR-0013: with the select tool active, Enter re-edits the single selected shape's
     // label/text instead (createShapeKbd() would no-op for 'select' anyway, so no clash).
-    // Any other tool keeps the original behaviour: stamp its default shape at viewport centre.
+    // Any other tool keeps original behaviour: stamp its default shape at viewport centre.
     if(_tl()==='select'&&editSelectedShapeKbd()){_pd(e);}
     else if(createShapeKbd())_pd(e);
   }
@@ -6274,7 +6274,7 @@ function unlockAll(){
   _ivp();
   _ann(t('ctxUnlockAll'));
 }
-// ADR-0005: replace confidently-recognized pen strokes in the selection with clean shapes
+// ADR-0005: replace confidently-recognized pen strokes in selection with clean shapes
 // (Alt+B). Local-only (not in REMOTE_OPS, like replace/clear) — converting a peer's
 // pen stroke to a rectangle behind their back would be confusing, not helpful.
 function doBeautify(){
@@ -7631,8 +7631,8 @@ function _esc(s){return _St(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&l
 function _num(v){const n=+v;return _fin(n)?n:0}
 // Copy text to the clipboard with a non-secure-context fallback. _nc() is
 // undefined on file:// and plain http:// — Board's primary "just open it" use case —
-// so prefer it only in a secure context and otherwise fall back to a temporary textarea +
-// execCommand('copy'), which still works there. Returns Promise<boolean> for UI feedback.
+// so prefer it in a secure context, else a textarea + execCommand('copy') fallback.
+// Returns Promise<boolean> for UI feedback.
 async function copyText(text){
   if(window.isSecureContext&&_nc()){
     try{await _nc().writeText(text);return true}catch(_){}
@@ -8298,7 +8298,7 @@ const Share={
     }catch{_eT(_IB);clearHash();return false}   // ADR-0038: corrupt link — don't pin it in the URL either
   }};
 // v1.6.89: sync browser-tab title whenever the board name changes.
-// Without this, the tab always shows "index.html" regardless of what the user named their
+// Without this, the tab always shows "index.html" regardless of the user's
 // board — a WCAG 2.4.2 (Page Titled) failure and a usability oversight common in canvas
 // apps (Qiita: "document.title を更新しないとブラウザタブに反映されない").
 function _syncDocTitle(){document.title=(_dn()||_UT)+' — Board';}
@@ -8931,15 +8931,16 @@ function _ctxMenuKeyNav(m,e){
   if(e.key==='ArrowUp'){_pd(e);_fc(items[(cur-1+_ln(items))%_ln(items)]);return;}
   if(e.key==='Home'){_pd(e);_fc(items[0]);return;}
   if(e.key==='End'){_pd(e);_fc(items[_ln(items)-1]);return;}
-  // Any other key: close the menu and let the event bubble to canvas shortcuts —
-  // otherwise 'v'/⌘Z/Delete fire behind a stale floating menu. Space/Enter still
-  // activate the focused item natively (APG).
-  else if(e.key!==' '&&e.key!=='Enter')UI.closeCtxMenu();
+  // Any other key: close the menu and swallow it (ADR-0552) — the menu is modal;
+  // a key fired while it was open shouldn't act on the canvas behind it (a Delete
+  // through the menu deleted the selection). Space/Enter still activate the
+  // focused item natively (APG).
+  else if(e.key!==' '&&e.key!=='Enter'){_pd(e);e.stopPropagation();UI.closeCtxMenu()}
 }
 
 // ====================== WIRE-UP ======================
 // PWA install deferred-event reference (v1.6.92). Captured in 'beforeinstallprompt',
-// cleared after install or dismissal. null = browser hasn't signalled installability yet.
+// cleared after install or dismissal. null = browser hasn't signalled installability.
 let _installPrompt=null;
 // Install-button click handler — exported so test.mjs can call it directly.
 async function _onBtnInstall(){
@@ -9086,7 +9087,7 @@ function wire(){
   // resize
   _on(window,'resize',resize);
   if(window.visualViewport)_on(visualViewport,'resize',resize);   // ADR-0251: iOS url-bar/keyboard shrink doesn't fire window resize
-  // devicePixelRatio change (window dragged to a different-density monitor) fires no resize
+  // devicePixelRatio change (window dragged to a different-density monitor) fires no
   _watchDPR();
   // some Android devices fire orientationchange separately from resize
   if('orientation' in screen)_on(screen.orientation,_CH,resize);
