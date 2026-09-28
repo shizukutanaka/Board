@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.587] - 2026-09-28
+### 修正
+- ADR-0559: 編集中図形が消えた (remote del/clear/replace/undo) 際、テキスト・ラベル overlay が blur まで開いたまま残っていたのを、`_teFollow`/`_lblFollow` の毎フレーム follow に proactive close を載せて即座に畳む。全削除経路をカバー。
+
 ## [1.7.586] - 2026-09-28
 ### 修正
 - ADR-0558: `_stickyChain` に remote-del ガード — 編集中にピアが付箋を削除した状態で ⌘Enter すると orphan から新付箋が復活していた。`byId` 確認で抑止。

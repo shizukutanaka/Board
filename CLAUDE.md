@@ -608,6 +608,7 @@ Board/
     │   ├── ADR-0556-text-edit-remote-del.md # 編集中図形のリモート削除で phantom op 防止 (実装済)
     │   ├── ADR-0557-label-edit-remote-del.md # ラベル編集の remote-del orphan ガード (実装済)
     │   ├── ADR-0558-sticky-chain-remote-del.md # ⌘Enter 連鎖の remote-del orphan ガード (実装済)
+    │   ├── ADR-0559-editor-follow-remote-del.md # 編集 overlay の削除時 proactive close (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

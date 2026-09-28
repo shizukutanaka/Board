@@ -857,7 +857,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.586';
+const V='1.7.587';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1204,7 +1204,7 @@ const G={
   },
   hit(s,p){
     // Quick-reject the WORLD point against G.bbox — for a rotated box that's the rotated
-    // axis-aligned envelope, so this MUST run before un-rotating p. (Reversing the order
+    // axis-aligned envelope, so it MUST run before un-rotating p. (Reversing the order
     // compares an un-rotated local point against the rotated world envelope and wrongly
     // rejects large parts of rotated non-square boxes: renders but can't be clicked.)
     const b=_bb(s);
@@ -1213,7 +1213,7 @@ const G={
     // Rotation is box-only (x/y/w/h). shapeRot() gates rendering the same way, so gate
     // hit-testing identically: un-rotate the pointer into the box's local frame for the
     // per-type check below (which uses s.x/s.w). A line/arrow/pen with a stray `rotate`
-    // (crafted import or a remote op — validPatch permits `rotate` on any shape) renders
+    // (crafted import/remote op — validPatch permits `rotate` on any shape) renders
     // UNrotated; without the `_hb(s)` guard its center would be s.x+(undefined||0)/2 =
     // NaN, un-rotating p to {NaN,NaN} and making the shape permanently unhittable.
     if(_rt(s)&&_hb(s)){const _cx=s.x+s.w/2,_cy=s.y+(s.h||0)/2,_r=-_rt(s)*_PI/180,_c=_cos(_r),_si=_sin(_r),_dx=p.x-_cx,_dy=p.y-_cy;p={x:_cx+_dx*_c-_dy*_si,y:_cy+_dx*_si+_dy*_c};}
@@ -1306,7 +1306,7 @@ function validPatch(p){
   // Security: an image shape's dataUrl flows into img.src (getImg). If it isn't
   // an inline data:image/ URL, a crafted .board/share/IDB record — or a hostile sync
   // peer's add/upd op — could point it at an external host, turning peers' render
-  // into a tracking-pixel / IP-deanonymization request and breaking the no-external-
+  // into a tracking-pixel / IP-deanonymization request and breaking no-external-
   // resources invariant. The shared intake gate (validShape + upd/patch paths),
   // so guarding here closes every vector at once (mirrors buildSVG's data: guard);
   // <img>-loaded SVG can't run scripts or fetch subresources — data: svg is safe.
@@ -1363,7 +1363,7 @@ function validRemotePayload(op){
     case 'clear':  return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape);
     case 'upd':{const noLock=p=>!('locked' in p);
       if(!_iS(op.id)||_ln(op.id)>64||!validPatch(op.after)||!noLock(op.after)||(op.before!=null&&!validPatch(op.before)))return false;
-      // pen pts must be array-of-[x,y] — flat arrays crash drawPen (expects [[x,y],...])
+      // pen pts must be array-of-[x,y] — flat arrays crash drawPen (wants [[x,y],...])
       if(op.after.pts!=null&&!_ptsOK(op.after.pts))return false;
       return true;}
     case 'move':   return _iA(op.ids)&&_ln(op.ids)>0&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(_idOK)&&_iN(op.dx)&&_fin(op.dx)&&_iN(op.dy)&&_fin(op.dy)&&(op.dx!==0||op.dy!==0);
@@ -1411,7 +1411,7 @@ function validClock(c){
 const Store={
   // Op types + reversibility: see docs/architecture.md (Store section).
   commit(op){
-    // Stamp CRDT clock; local-origin only, remote ops keep theirs. nowTs() is monotonic.
+    // Stamp CRDT clock; local-origin only, remotes keep theirs. nowTs() is monotonic.
     if(!op.clock)_fck(op);
     const k=_ck(op);
     if(_sO().has(k))return;       // already applied (rare race)
@@ -1435,7 +1435,7 @@ const Store={
   // A remote del removes shapes, but the SENDER's connClears (v1.6.78) only cover
   // connectors the sender knew about. A connector that exists only on THIS receiver
   // (drawn locally, not yet synced; or a concurrent-edit race) bound to a now-deleted
-  // shape would dangle — connEnds would snap it to its stale draw-time coords. Resolve
+  // shape would dangle — connEnds snaps it to stale draw-time coords. Resolve
   // its endpoint via connEnds BEFORE _apply splices the shape (the bbox must still be
   // live), so the caller can sever the binding at the shape's actual last position.
   // Skips connectors already in op.connClears (sender's after wins, avoiding
@@ -1472,7 +1472,7 @@ const Store={
     _sO().add(k);
     _trimSeen();
     // Per-property LWW (ADR-0002): drop any absolute-patch writes older than what the
-    // target shape already recorded. If the whole op becomes a no-op, skip applying it
+    // target shape already recorded. If the op becomes a no-op, skip applying it
     // (it is already deduped). move/zorder are commutative and are not gated here.
     if(!this._lwwDrop(op))return;
     const _connFix=this._remoteDelConnFix(op);
@@ -1488,16 +1488,16 @@ const Store={
   },
   // Per-property write clocks live in _wc() (shapeId -> {prop: clock}), NOT on
   // the shape — so they never pollute clones, snapshots, persistence or validation.
-  // LWW is gated/stamped only on keys an op actually changed (before-vs-after diff),
+  // LWW is gated/stamped only on keys an op changed (before-vs-after diff),
   // so resize/align (whole-shape snapshots) claim only moved geometry, never a
-  // concurrently-edited property like stroke. group/ungroup are treated as per-shape
+  // concurrently-edited property like stroke. group/ungroup are per-shape
   // writes to the 'groupId' property, so overlapping concurrent groups converge.
   _lwwOp(op){return op.op==='upd'||op.op==='style'||op.op==='resize'||op.op==='align'||op.op==='group'||op.op==='ungroup'},
-  // A patch key counts for LWW only if its value actually CHANGED. pen `pts` (nested
+  // A patch key counts for LWW only if its value actually changed. pen `pts` (nested
   // array) compared deeply via JSON; before may be absent → treat as changed.
   _chg(before,after,key){return _JS(before?before[key]:undefined)!==_JS(after[key])},
   // Returns false if `op` has no changed prop newer than the shape's recorded write
-  // clock — a no-op after filtering. Mutates op.after to drop losing + unchanged keys,
+  // clock — a no-op after filtering. Mutates op.after to drop losing/unchanged keys,
   // so a snapshot op can't overwrite a concurrent edit to a property it didn't touch.
   _lwwDrop(op){
     if(!this._lwwOp(op))return true;
@@ -1524,7 +1524,7 @@ const Store={
     op.after=op.after.filter(p=>byId(p.id)?filt(p.id,p,bb[p.id])>0:false);
     return _ln(op.after)>0;
   },
-  // Stamp the per-property write clock for the keys an op actually changed, so later
+  // Stamp the per-property write clock for keys an op actually changed, so later
   // concurrent writes can be ordered against it. Local commits and accepted remotes
   // alike (both forward writes; for remote, _lwwDrop already reduced op.after).
   _stampWrites(op){
@@ -1532,7 +1532,7 @@ const Store={
     const C=op.clock;if(!C)return;
     // Only stamp shapes that actually exist: a late remote upd for a deleted/unknown
     // shape no-ops in _apply but would create a stale wclock entry that nothing
-    // ever cleans (del/clear/replace clean live ids only), leaking unbounded over sync
+    // ever cleans (del/clear/replace clean live ids only), leaking unbounded in sync
     // session. Array/group paths are pre-filtered by _lwwDrop, but guard here too.
     const stamp=(id,after,before)=>{if(!after||!byId(id))return;const w=_wc()[id]||(_wc()[id]={});
       for(const key of _ok(after)){if(key==='id')continue;if(this._chg(before,after,key))w[key]=C;}};
@@ -2347,8 +2347,8 @@ function visibleWorldRect(){
 function inView(s,view){
   const b=_bb(s);if(!b)return true;
   const x0=_min(b.x,b.x+b.w),x1=_max(b.x,b.x+b.w);
-  // Margin covers the stroke, which for rect/ellipse/frame extends size/2 BEYOND the
-  // bbox (G.bbox omits it for box shapes). Without this, a thick-stroked shape at the
+  // Margin covers the stroke, which for rect/ellipse/frame extends size/2 past the
+  // bbox (G.bbox omits it for box shapes). Without it, a thick-stroked shape at the
   // viewport edge is culled while its stroke is still on screen.
   const y0=_min(b.y,b.y+b.h),y1=_max(b.y,b.y+b.h),m=4+(_szz(s)||0)/2;
   return x1>=view.x-m&&x0<=view.x+view.w+m&&y1>=view.y-m&&y0<=view.y+view.h+m;
@@ -2369,7 +2369,7 @@ function describeShape(s){
   const b=_bb(s);
   const nm=s.hl&&_pn(s)?(T.k?.marker??'marker'):T.k?.[s.type]??s.type;   // ADR-0429: highlighter strokes are markers, not pens
   // Announce the shape's content (text or label) first — for a screen-reader user
-  // cycling shapes, "Arrow yes" / "Sticky buy milk" is the meaningful part, not the
+  // cycling shapes, "Arrow yes" / "Sticky buy milk" is the meaningful part not
   // coordinates. Truncated so a long note doesn't flood the live region.
   const txt=_trm(_St(_txx(s)||_lb(s)||'').replace(/\s+/g,' '));
   let d=nm;
@@ -3549,7 +3549,7 @@ function applyResize(sh,handle,orig,wp,shift,alt){
   }
   let sp;
   if(orig.rotate){
-    // Rotated box: work in the shape's unrotated (local) frame. Bring the pointer in,
+    // Rotated box: work in the shape's unrotated (local) frame. Bring the pointer in
     // run the same switch below, then re-pin the anchor in world (see end of fn).
     state.guides=null;
     sp=_rotPt(wp.x,wp.y,cx0,cy0,-orig.rotate);
@@ -3600,8 +3600,8 @@ function applyResize(sh,handle,orig,wp,shift,alt){
     else{sh.x=ox;sh.y=oy;}                        // se: pin opposite corner (top-left)
   }
   if(orig.rotate){
-    // Re-pin the anchor (opposite corner/edge-midpoint) to its original world position,
-    // so a rotated box grows from the grabbed handle. Anchor is fixed in local coords.
+    // Re-pin the anchor (opposite corner/edge-midpoint) to its original world position
+    // so a rotated box grows from the grabbed handle. Anchor is fixed in local coords
     const fx={se:[ox,oy],ne:[ox,oy+oh],sw:[ox+ow,oy],nw:[ox+ow,oy+oh],
               e:[ox,oy+oh/2],w:[ox+ow,oy+oh/2],s:[ox+ow/2,oy],n:[ox+ow/2,oy+oh]}[handle];
     if(fx){
@@ -3791,7 +3791,7 @@ function _sqMatches(){
   if(_sqVer===_gridVer&&_sqQ===q)return _sqList;
   _sqList=[];
   // ADR-0381: a connector is also found by its bound endpoints' names —
-  // "the arrow into the Login button" should match "login", not only the conn's text.
+  // "arrow into the Login button" should match "login", not only the conn's text.
   const _bt=s=>{let o='';for(const id of [s.a,s.b]){const t=id&&byId(id);if(t)o+=(t.label||'')+(t.text||'')+(t.type||'')}return o};
   for(const s of _sh()){if(_sv(s)&&_lc((_lb(s)||'')+(_txx(s)||'')+(s.type||'')+(s.link||'')+(_conn(s.type)?_bt(s):'')).includes(q))_pu(_sqList,s)}   // ADR-0346/0353/0381
   _sqVer=_gridVer;_sqQ=q;
@@ -3852,8 +3852,8 @@ function abortGesture(){
 
 _on(canvas,_PD,e=>{
   if(_pA())return;  // no editing during presentation
-  // Second finger down → pinch-zoom takes over; cancel the single-pointer gesture so
-  // it doesn't keep drawing/moving underneath the zoom. _pointers is updated by the
+  // Second finger down → pinch-zoom takes over; cancel the single-pointer gesture
+  // it doesn't keep drawing/moving under the zoom. _pointers is updated by the
   // capture-phase listener that runs before this bubble-phase one.
   if(_nP()>=2){abortGesture();return;}
   canvas.setPointerCapture(e.pointerId);
@@ -4058,7 +4058,7 @@ _on(canvas,_PM,e=>{
       const top=pickTop(wp);
       _csr(top?(top.locked?'not-allowed':'move'):'default');
       // state.hover feeds nothing visual (cursor is set above) — no invalidate:
-      // on a heavy board this used to repaint the whole scene per shape boundary crossed.
+      // on a heavy board this repainted the whole scene per shape boundary crossed.
       if(top?.id!==state.hover){state.hover=top?.id||null;_ivO()}   // ADR-0070: qconn dots track hover
       // ADR-0151: Alt+hover (Figma measure mode) — gap guides between the
       // selection envelope and the hovered shape. Signature-compare so a
@@ -4260,7 +4260,7 @@ _on(canvas,_PU,e=>{
 //        gesture takeover; (2) _eraseBatch not restored → data loss mid-erase.
 function _cancelPointerGesture(){
   _clearLongPress();   // ADR-0006: covers both the native pointercancel path and our own
-  // Restore partial resize/move/erase on cancel (Android touch-takeover, stylus OOR).
+  // Restore partial resize/move/erase on cancel (Android takeover, stylus OOR)
   if(_dk('resize')&&ptr.resizeOrig){
     const rsh=_sel0();
     if(rsh)_oa(rsh,clone(ptr.resizeOrig));
@@ -4306,7 +4306,7 @@ _on(canvas,_PC,_cancelPointerGesture);
 // stuck — cancel the gesture (no-op after a normal pointerup).
 _on(canvas,'lostpointercapture',()=>{if(ptr.down)_cancelPointerGesture()});
 _on(canvas,'contextmenu',e=>{_pd(e);
-  // ADR-0524: contextmenu mid-gesture swallows the real pointerup — cancel instead.
+  // ADR-0524: contextmenu mid-gesture swallows the real pointerup — cancel instead
   if(ptr.down)_cancelPointerGesture();else UI.openCtxMenu(e.clientX,e.clientY)});
 _on(canvas,'pointerleave',()=>{if(_laser){_laser=null;_ivO()}
   // ADR-0526: state.hover keeps feeding the quick-connect dots after the
@@ -4425,6 +4425,8 @@ function openLabelEditor(hit,leftPx,topPx,bold){
 let _lblTa=null,_lblVp='';
 function _lblFollow(){
   if(!_lblTa)return;
+  // ADR-0559: same proactive close when the labelled shape is gone.
+  if(!byId(_lblTa.hit.id)){_rm(_lblTa.inp);_lblTa=null;return}
   const v=_vp(),sig=v.x+'|'+v.y+'|'+v.z;
   if(sig===_lblVp)return;
   _lblVp=sig;
@@ -4443,7 +4445,7 @@ const IMG_IMPORT_MAX_DIM=2048;
 function _imgImportFile(f,cb){
   const reader=new FileReader();
   reader.onload=()=>{
-    // ADR-0527: the 2048px downscale below already shrinks phone photos under the cap.
+    // ADR-0527: the 2048px downscale below already shrinks phone photos under cap.
     if(_ln(reader.result) > 16*1024*1024){
       _w(t('imgBig')+' ('+_rnd(_ln(reader.result)/1024)+'KB)');return;
     }
@@ -4537,10 +4539,10 @@ _on(canvas,'drop',e=>{
     return;
   }
   const wp=_o2w(e);
-  // Cascade multiple dropped images by index. NOTE: the offset must be captured
+  // Cascade multiple dropped images by index — the offset must be captured
   // per-iteration (forEach's `i`), not a shared `let ox` incremented in the loop —
   // reader.onload is async, so a shared counter would have reached its final value
-  // (20×N) by the time ANY onload fires, stacking every image at the same spot.
+  // (20×N) by the time any onload fires, stacking every image at one spot.
   files.forEach((f,i)=>{
     _imgImportFile(f,(dataUrl,nw,nh)=>{
       const maxDim=400;
@@ -5501,7 +5503,7 @@ function openTextEditor(s,isNew){
   _on(ta,'blur',()=>{
     const newText=ta.value;
     // ADR-0556: a remote del mid-edit leaves `s` orphaned — close the editor without
-    // committing a phantom upd/del (it would no-op apply but pollute history + wire).
+    // committing a phantom upd/del (it no-ops but pollutes history + wire).
     if(!byId(s.id)){state.editing=null;_teTa=null;_rm(ta);_iv();return}
     _sv2(ctx);
     resizeAfterTextEdit(s,newText,ctx);
@@ -5567,7 +5569,9 @@ function openTextEditor(s,isNew){
 let _teTa=null,_teVp='';
 function _teFollow(){
   if(!_teTa||!_ed())return;
-  const s=byId(_ed());if(!s)return;
+  // ADR-0559: the edited shape was removed under us (remote del/clear/replace,
+  // local undo) — close the overlay at once instead of dangling until blur.
+  const s=byId(_ed());if(!s){_rm(_teTa);_teTa=null;state.editing=null;return}
   const v=_vp(),sig=v.x+','+v.y+','+v.zoom;
   if(sig===_teVp)return;
   _teVp=sig;positionTextEditor(_teTa,s);
@@ -5605,7 +5609,7 @@ function flushErase(){
   // Restore shapes so Store.commit's _apply can find & remove them
   for(const s of _eraseBatch)_sh().push(s);
   _sz();_iG();   // ADR-0009: connEnds below calls byId, must see the restored shapes
-  // Resolve connector bindings now that erased shapes are back (connEnds works)
+  // Resolve connector bindings once erased shapes are back (connEnds works)
   const delIds=_sT(_eraseBatch.map(s=>s.id));
   const connClears=computeConnClears(delIds);
   const origSel=_selIds();
@@ -5649,7 +5653,7 @@ _on(window,_KD,e=>{
   const k=_lc(e.key);
   // Presentation mode is view-only (see "no editing during presentation"): handle
   // navigation keys and suppress EVERYTHING else — undo/redo/select-all/copy etc.
-  // This guard must precede the editing shortcuts below, or they'd mutate the board
+  // This guard precedes the editing shortcuts below, or they'd mutate the board
   // mid-slideshow before the early return.
   if(_pA()){
     if(k===_AR2||k===_AD||k===' '){_pd(e);Presentation.next()}
@@ -5708,15 +5712,15 @@ _on(window,_KD,e=>{
     _iv();
   }
   else if(k===_EN&&!meta&&!_sK(e)){
-    // ADR-0013: with the select tool active, Enter re-edits the single selected shape's
-    // label/text instead (createShapeKbd() no-ops for 'select' anyway, no clash).
+    // ADR-0013: with select tool active, Enter re-edits the single selected shape's
+    // label/text instead (createShapeKbd no-ops for 'select' anyway, no clash).
     // Other tools keep original behaviour: stamp default shape at viewport centre.
     if(_tl()==='select'&&editSelectedShapeKbd()){_pd(e);}
     else if(createShapeKbd())_pd(e);
   }
   else if((k===_AU||k===_AD||k===_AL2||k===_AR2)&&_aK(e)){
     // Alt+arrow = keyboard resize (a11y: pointer-free). L/R = width, U/D = height,
-    // top-left anchored; ⇧ = ×10 step. Box shapes only. Single reversible `resize` op.
+    // top-left anchored; ⇧ = ×10 step. Box shapes only. One reversible `resize` op.
     const sel=_selL(s=>s&&!_lk(s)&&_hb(s));
     if(_ln(sel)){
       _pd(e);
@@ -5887,7 +5891,7 @@ function _placeCopies(srcShapes,dx,dy){
   for(const orig of srcShapes)idMap.set(orig.id,uid());
   // Deferred single commit (atomic undo): build every copy first, then commit ONE
   // addMany op. nextZ() reads _sh(), which we don't mutate until commit, so
-  // assign z incrementally off a captured base to keep copies' paint order distinct.
+  // assign z incrementally off a captured base so copies' paint order stays distinct.
   let zBase=nextZ();
   for(const orig of srcShapes){
     const sh=clone(orig);
@@ -5923,11 +5927,11 @@ function doDelete(){
   const sel=_selUL();
   if(!_ln(sel)){if(_selAny())_wT('lockedNoop');return}   // ADR-0396
   const origSel=_selIds();
-  // Frame-aware: shapes inside a selected frame delete with it (doDuplicate parity)
+  // Frame-aware: shapes in a selected frame delete with it (doDuplicate parity)
   const frameOf=_frameOf(sel);
   _xFS(sel,frameOf)
   const delIds=_sT(sel.map(s=>s.id));
-  // Resolve connector bindings BEFORE splicing so connEnds can see the live shapes.
+  // Resolve connector bindings BEFORE splicing so connEnds sees the live shapes.
   const connClears=computeConnClears(delIds);
   const op={op:'del',shapes:clone(sel)};
   if(_ln(connClears))op.connClears=connClears;
@@ -6119,7 +6123,7 @@ function doClearAll(){
 function doAlign(dir){
   const sel=_selUL();
   if(_ln(sel)<2)return;
-  // Frame-aware: shapes fully inside a selected frame move with the frame as one unit
+  // Frame-aware: shapes fully inside a selected frame move with it as one unit
   // (parity with drag/nudge; mirrors withFrameChildren in doMove/nudgeSelection)
   const frameOf=_frameOf(sel); // childId → frameId (unit key for unitMap)
   _xFS(sel,frameOf)
@@ -6689,7 +6693,7 @@ function drawioToShapes(txt){
     if(p&&p!=='0'){const po=off(p),pg=_geo.get(p);
       o={x:po.x+(+((pg&&_ga(pg,'x'))||0)),y:po.y+(+((pg&&_ga(pg,'y'))||0))}}
     _off.set(id,o);return o};
-  // Edges resolve bound endpoints by board id, so vertices must be built first.
+  // Edges resolve bound endpoints by board id, so vertices are built first.
   for(const c of cells){
     if(_ln(shapes)>=DIO_MAX)break;
     if(_ga(c,'vertex')!=='1')continue;
@@ -7036,7 +7040,7 @@ function _svgPathPts(d,m){
     else if(C==='A'){num();num();num();num();num();x=ax+num();y=ay+num();push(x,y);}   // arc → endpoint chord approximation
     else break;   // unknown command → end this path here
   }
-  // transform all points once at the end — cheaper than multiplying inside every push
+  // transform all points once at the end — cheaper than multiplying inside each push
   for(let k=0;k<_ln(pts);k++)pts[k]=[pts[k][0]*m[0]+pts[k][1]*m[2]+m[4],pts[k][0]*m[1]+pts[k][1]*m[3]+m[5]];
   return pts;
 }
@@ -7326,16 +7330,16 @@ function importBoard(file){
       if(d&&d.type==='excalidraw'){importExcText(r.result);return}
       const shapes=(d.shapes||[]).filter(validShape);
       if(!_ln(shapes)){_wT(_EM);return}
-      // Atomic whole-board swap (mirrors importFromHash): a single replace op means
+      // Atomic whole-board swap (mirrors importFromHash): one replace op means
       // one Ctrl+Z fully restores the previous board regardless of import size.
-      // clear+N-adds would overflow MAX_HISTORY for large boards and require N+1 undos.
+      // clear+N-adds would overflow MAX_HISTORY on large boards and need N+1 undos.
       const before=clone(_sh());
       const beforeWc=clone(_wc());
       const origSel=_selIds();
       if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());   // ADR-0004
       _rs(shapes.map(clone));   // ADR-0009
       // Match the replace op's _apply: drop stale selection ids and per-property write
-      // clocks from the board we just swapped out. Skipping this leaks wclock entries and
+      // clocks from the board we just swapped out. Skipping leaks wclock entries and
       // can let a re-imported shape (same id) inherit a stale LWW clock.
       _scl();state.wclock={};
       _docN(d);
@@ -7347,7 +7351,7 @@ function importBoard(file){
       _o(t('loadedBoard')+' ('+_ln(shapes)+')');
     }catch{_eT(_IB)}
   };
-  // read failure (I/O, revoked permission) previously gave NO feedback at all — the
+  // read failure (I/O, revoked permission) previously gave no feedback at all — the
   // image-import readers and importFromHash both toast, so this path must too.
   r.onerror=()=>_eT(_IB);
   r.readAsText(file);
@@ -7404,7 +7408,7 @@ function buildSVG(shapes,paper){
     const _dsh=dashArr(s.dash,SZ);
     const dA=_ln(_dsh)?` stroke-dasharray="${_dsh.map(n=>_rnd(n*10)/10).join(' ')}"`:'';
     const _sh=s.shadow?' filter="url(#bsh)"':'';   // ADR-0194
-    // ADR-0270: shared conn-path element + conn-label emitters (was 8-10x duplicated)
+    // ADR-0270: shared conn-path element + conn-label emitters (was ~10x duplicated)
     const _sp=(d,j)=>`<path d="${d}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${j?' stroke-linejoin="round"':''}${dA}${a}${_sh}/>`;
     const _po=pt=>`<polyline points="${pt}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`;
     const _cL=()=>{const lp=_connLabelXY(s);_pu(els,_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));
@@ -7526,7 +7530,7 @@ function buildSVG(shapes,paper){
         if(!_iA(s.pts)||!_ln(s.pts))break;
         if(_ln(s.pts)===1){
           const p=s.pts[0];
-          // fallback must match drawPen's canvas radius (_szz(s)||2)/2 for a foreign/legacy
+          // fallback must match drawPen's canvas radius (_szz(s)||2)/2 for foreign/legacy
           // shape missing `size` (deep-audit fix; was (SZ||1)/2, half the canvas radius).
           _pu(els,`<circle cx="${_num(p&&p[0])+ox}" cy="${_num(p&&p[1])+oy}" r="${(SZ||2)/2}" fill="${stroke}"${a}${_sh}/>`);
           break;
@@ -7682,8 +7686,8 @@ function wrapTextCached(s,text,maxWidth,fontSize,measure){
 // The char-break path applies 禁則処理 so prohibited chars never start/end a wrapped line.
 function wrapText(text,maxWidth,measure){
   const out=[];
-  // v1.6.97: normalize Windows (\r\n) and old Mac (\r) line endings before splitting
-  // so measureText doesn't see a trailing \r that skews wrap-width calculation.
+  // v1.6.97: normalize Windows (\r\n) and old Mac (\r) line endings pre-split
+  // so measureText doesn't see a trailing \r skewing wrap-width.
   const norm=_St(text==null?'':text).replace(/\r\n/g,'\n').replace(/\r/g,'\n');
   for(const para of _spL(norm)){
     if(para===''){_pu(out,'');continue;}
@@ -7700,7 +7704,7 @@ function wrapText(text,maxWidth,measure){
         // 禁則: a line-start-prohibited char must not begin the next line — let it hang on
         // the current line (ぶら下げ) so the break falls after it instead.
         if(KINSOKU_START.has(ch)){chunk+=ch;continue;}
-        // 禁則: an opening bracket must not end the line — push trailing ones down with ch.
+        // 禁則: opening brackets must not end a line — push trailing ones down with ch.
         let carry='';
         while(_ln(chunk)>1&&KINSOKU_END.has(chunk[_ln(chunk)-1])){carry=chunk[_ln(chunk)-1]+carry;chunk=_s0(chunk,-1);}
         _pu(out,chunk);chunk=carry+ch;
@@ -7817,8 +7821,8 @@ const Net={
       }catch(_){}
     }
   },
-  // ADR-0010: ephemeral peer cursor presence — never touches Store/history/Persist.
-  // Same dual-transport pattern as broadcast() (unlike hello/ping/sync-req, which are
+  // ADR-0010: ephemeral peer cursor presence — never touches Store/history/Persist
+  // Same dual-transport pattern as broadcast() (unlike hello/ping/sync-req which are
   // BroadcastChannel-only via _send): cursors matter most cross-device (WebRTC).
   _lastCursorSend:0,
   sendCursor(wp){
@@ -7828,8 +7832,8 @@ const Net={
     this._lastCursorSend=now;
     this._bcast(_mk('cursor',{x:wp.x,y:wp.y}));
   },
-  // ADR-0011: ephemeral peer selection presence. Called from frame() (the rAF driver,
-  // NOT draw() — render must stay side-effect-free) once per drawn frame; sends only
+  // ADR-0011: ephemeral peer selection presence. Called from frame() (rAF driver,
+  // NOT draw() — render must stay side-effect-free) once per drawn frame; sends
   // when the serialized selection differs from last send, so no throttle needed
   // (selection changes are discrete). null forces a resend — set by
   // _touchPeer when a new peer joins, so latecomers see the current selection.
@@ -7843,7 +7847,7 @@ const Net={
     this._bcast(_mk('selection',{ids}));
   },
   _sendDC(m){   // ADR-0432: single dc funnel — full SCTP buffer throws; requeue on buffer drain
-    if(_ln(m)>262144)return;   // ADR-0438: >SCTP max can never send — drop instead of poison-queuing a retry loop
+    if(_ln(m)>262144)return;   // ADR-0438: >SCTP max can never send — drop instead of poison-queueing a retry
     const q=this._dcQ,d=this.dc;
     if(q){_ln(q)<4096&&_pu(q,m);return}
     if(!d||d.readyState!=='open')return;
@@ -7947,7 +7951,7 @@ const Net={
         break;}
       case 'selection':{
         // ADR-0011: same _rtcPeerId routing as 'cursor' (hello/ping never ride WebRTC,
-        // so an RTC peer lives under a synthetic id, not msg.peer). Defensive intake:
+        // so an RTC peer lives under a synthetic id, not msg.peer). Defensive intake
         // string ids only, capped — a bad peer can't flood us with a giant array.
         if(!_iA(msg.ids))break;
         const ids=_s0(msg.ids,MAX_OP_SHAPES).filter(_idOK);   // ADR-0485: same ≤64 cap as every other wire id field
@@ -7961,8 +7965,8 @@ const Net={
   // keyed by SHAPE ID (`snap:<id>`), not array index: ids are globally unique so keys
   // stay distinct (no dedup collapse) and stable across re-snapshots — an index-based
   // key would let a newly-added shape inherit a `peer:snapN` already in seenOps after
-  // the sender's shape set changed, so applyRemote silently drops it (missed merge).
-  // `ops` is required: a non-empty receiver merges via `ops` (see _onRecv 'snapshot'),
+  // the sender's shape set changed, so applyRemote drops it (missed merge).
+  // `ops` is required: a non-empty receiver merges via `ops` (see _onRecv 'snapshot')
   // so any transport that omits ops fails to sync two non-empty boards.
   _snapshotMsg(){
     // ADR-0058: `wc` ships each shape's per-property last-write clocks so a
@@ -7982,7 +7986,7 @@ const Net={
   // (unchanged); known shape → per-property LWW merge against wc so concurrent
   // edits on both peers converge instead of staying diverged. `wc` absent (old
   // peer) → 'skip', the previous keep-everything behaviour. No history entries —
-  // convergence, not a user action. Named for testability (precedent: _gresizeDrag).
+  // convergence, not a user action. Named for testability (cf. _gresizeDrag).
   _mergeSnapshotOp(op){
     op=this._attachOp(op);                            // ADR-0069
     if(!op||op.op!=='add'||!op.shape)return 'skip';   // snapshot ops are adds only
@@ -7998,7 +8002,7 @@ const Net={
       // ADR-0372: gate the merged VALUE too — before, a hostile snapshot op could
       // LWW-merge {x:NaN, pts:'bad', id:'x', __proto__:{…}} straight into the live
       // shape (render NaN / drawPen crash / id-index corruption). Structural keys
-      // id/type are never mergeable; pollution keys and invalid values are skipped.
+      // id/type are never mergeable; pollution keys + invalid values are skipped.
       const v=op.shape[k];
       if(v===_ud||k==='id'||k==='type'||k[0]==='_'||k==='__proto__'||k==='constructor'||k==='prototype'||!validPatch({[k]:v}))continue;
       const lc=lw[k];
@@ -8011,8 +8015,8 @@ const Net={
     }
     return 'keep';
   },
-  // Throttled: hello/sync-req are attacker-controlled; each snapshot clones the whole
-  // board twice — unthrottled, a hostile peer gets a cheap-request/expensive-response
+  // Throttled: hello/sync-req are attacker-controlled; each snapshot clones a whole
+  // board twice — unthrottled, a hostile peer gets cheap-request/expensive-response
   // amplifier. Honest peers only need one snapshot at join time.
   _lastSnapAt:0,_snapT:0,
   _sendSnapshot(){
@@ -8101,7 +8105,7 @@ const Net={
       this._rtcConnFailed=true;
       _wT('connectFailed');
       if(this._rtcPeerId){_pr().delete(this._rtcPeerId);this._rtcPeerId=null;_ivO();}
-      this._snapIn=null;this._opcIn=null;this._dcQ=null;   // ADR-0385/0431/0432: drop half-received assemblies + pending sends on disconnect
+      this._snapIn=null;this._opcIn=null;this._dcQ=null;   // ADR-0385/0431/0432: drop half-received assemblies + pending sends on close
       if(this._onConnChange)this._onConnChange();
     };
   },
@@ -8120,10 +8124,10 @@ const Net={
       _oT('connected');
       // WebRTC peers don't ride the BroadcastChannel heartbeat, so they're managed by
       // the DataChannel lifecycle (added here, removed on close) and exempted from the
-      // 15s reaper — otherwise a live, idle connection's avatar vanishes after 15s.
+      // 15s reaper — else a live idle connection's avatar vanishes after 15s.
       this._rtcPeerId='rtc:'+uid().slice(0,4);
       this._touchPeer(this._rtcPeerId);
-      // snapshot to new peer (ops for merge); ADR-0383: 64KB chunks under SCTP ceiling.
+      // snapshot to new peer (ops for merge); ADR-0383: 64KB chunks under SCTP ceiling
       try{const _sm=_JS(this._snapshotMsg());
         if(_ln(_sm)>24e6){_wT('snapBig');return} // ADR-0403
         this._fragSend(_sm,'snap')
@@ -8133,7 +8137,7 @@ const Net={
       try{this._onRecv(_JP(e.data),true)}catch(_){}   // ADR-0010: viaRtc=true
     };
     this.dc.onclose=()=>{
-      this._dcQ=null;this._snapIn=null;this._opcIn=null;   // ADR-0446/0448: dead-channel queue + partial assemblies must not cross a reconnect
+      this._dcQ=null;this._snapIn=null;this._opcIn=null;   // ADR-0446/0448: dead-channel queue + partial assemblies must not cross reconnect
       if(!this._rtcConnFailed)_wT('disconnected');
       if(this._rtcPeerId){_pr().delete(this._rtcPeerId);this._rtcPeerId=null;_ivO();}
       if(this._onConnChange)this._onConnChange();
@@ -8165,7 +8169,7 @@ function _round(n,dp){return _iN(n)&&_fin(n)?_rnd(n*10**dp)/10**dp:n;}
 function roundShapesForExport(shapes,dp=2){
   return shapes.map(s=>{
     const o={...s};
-    delete o.img;        // ADR-0035: internal IDB blob ref — meaningless outside this document's store
+    delete o.img;        // ADR-0035: internal IDB blob ref — meaningless outside this doc's store
     for(const k of ['x','y','w','h','x1','y1','x2','y2','rotate'])if(typeof o[k]==='number')o[k]=_round(o[k],dp);
     if(_iA(o.pts))o.pts=o.pts.map(p=>_iA(p)?p.map((v,i)=>_round(v,i<2?dp:3)):p);
     if(_iA(o.pts))o.pts=o.pts.map(p=>_iA(p)?p.map((v,i)=>_round(v,i<2?dp:3)):p);
@@ -8214,7 +8218,7 @@ const Share={
     }
     const base=location.origin+location.pathname;
     if(enc&&Share.canEncrypt()){
-      // key travels inside the fragment — fragments are never sent in HTTP requests
+      // key travels inside the fragment — fragments never go in HTTP requests
       const e=await Share._encrypt(payload);
       return base+'#b='+_eU('e:'+e.ct)+'&k='+e.k;
     }
@@ -8241,7 +8245,7 @@ const Share={
     const parts=enc.split('&'),opt={};
     for(const p of parts.slice(1)){const i=_ix(p,'=');if(i>0)opt[_s0(p,i)]=p.slice(i+1)}
     // ADR-0038: every reject path toasts and clears the hash — a corrupt/tampered
-    // link must not leave the user staring at an untouched board with the bad URL
+    // link must not leave the user staring at an untouched board with a bad URL
     // still pinned in the address bar.
     const clearHash=()=>{try{history.replaceState(null,'',location.pathname)}catch(_){}};
     let kind=parts[0].slice(0,2),body=parts[0].slice(2);
@@ -8279,12 +8283,12 @@ const Share={
       const valid=data.shapes.filter(validShape);
       if(!_ln(valid)){_eT(_IB);clearHash();return false}
       if(_nS()&&!confirm(t('importConfirm')))return false;
-      // Reversible whole-board swap: a mistaken import is undoable (Ctrl+Z), so the
-      // shared link can't silently destroy the board it replaced (§3.9 self-overwrite).
+      // Reversible whole-board swap: a mistaken import is undoable (Ctrl+Z), so a
+      // shared link can't silently destroy the board it replaced (self-overwrite).
       const before=clone(_sh());
       const beforeWc=clone(_wc());
       const origSel=_selIds();
-      // ADR-0004: survives reload/closed-tab too, not just the session undo window.
+      // ADR-0004: survives reload/closed-tab too, not just session undo.
       if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());
       _rs(valid.map(clone));_setDocName(_s0((_iS(data.name)&&data.name)||'Shared',80));   // ADR-0009
       // Match the replace op's _apply: drop stale selection ids and per-property write
@@ -8429,7 +8433,7 @@ const Persist={
       // adopt malformed shapes from IDB (corruption / forward-incompat schema).
       _rs(shapes.filter(validShape));   // ADR-0009
       if(d.viewport&&_fin(+d.viewport.x)&&_fin(+d.viewport.y)&&_fin(+d.viewport.zoom)&&d.viewport.zoom>0){
-        // Clamp zoom to the app invariant [MIN_ZOOM,MAX_ZOOM] that every compute path
+        // Clamp zoom to the invariant [MIN_ZOOM,MAX_ZOOM] that every compute path
         // (wheel/fit) maintains — a corrupt or forward-incompat IDB record with an
         // out-of-range zoom would otherwise load an unusable (microscopic/astronomical)
         // canvas with no recovery. Assign explicitly so junk props aren't adopted.
@@ -8446,7 +8450,7 @@ const Persist={
   // _sh() wholesale. Session undo (Ctrl+Z) covers that, but the very next autosave
   // overwrites the only IndexedDB slot with the destructive result — after reload or
   // closed tab the pre-replace board is gone. Stash it in a second key first.
-  // Best-effort: a failed backup must never block the destructive op it's guarding.
+  // Best-effort: a failed backup must not block the destructive op it guards.
   async saveBackup(shapes,viewport,docName){
     if(!this.db||!shapes||!_ln(shapes))return;
     try{
@@ -8566,7 +8570,7 @@ const UI={
   refreshZoom(){
     _tC(_g('zoomVal'),_rnd(_vp().zoom*100)+'%');
   },
-  // §3.18: minimap has no dismiss affordance — always-on is visual noise on a small
+  // §3.18: minimap has no dismiss affordance — always-on is visual noise on small
   // board. `M` toggles it; persists (localStorage) so it doesn't reappear
   // on next reload. Hidden draw is also skipped (Minimap.schedule).
   refreshMinimapVis(){
@@ -8579,7 +8583,7 @@ const UI={
     if(state.showMinimap)_ms();
     _tst(`${t('minimap')} ${state.showMinimap?t('on'):t('off')}`);
   },
-  // ADR-0012: cycles auto -> light -> dark -> auto. "Auto" (no stored value) follows
+  // ADR-0012: cycles auto -> light -> dark -> auto. "Auto" (no stored value) tracks
   // prefers-color-scheme, matching the default; explicit light/dark wins.
   // _themeMode() returns the in-memory _themeCache, not a live storage
   // re-read, so a storage failure can't desync it from what applyTheme() applied.
@@ -8602,7 +8606,7 @@ const UI={
   },
   // ADR-0014: LANG/T are `let`; toggleLang() reassigns, then resyncs the
   // few things cache a translated string once instead of re-reading T on demand —
-  // everything else (toasts, ctx menu, applyI18n's data-t walk) already re-evaluates
+  // everything else (toasts, ctx menu, applyI18n's data-t walk) re-evaluates
   // t()/T on its next call and needs no help here.
   toggleLang(){
     LANG=LANG==='ja'?'en':'ja';T=I18N[LANG];
@@ -8641,9 +8645,9 @@ const UI={
     _stO(()=>{div.style.opacity='0';div.style.transform='translateY(4px)';
       _stO(()=>_rm(div),240)},1600);
   },
-  // SR-only announcement: for frequent state changes (tool switch, zoom, flip, lock,
+  // SR-only announcement: for frequent state changes (tool switch, zoom, flip, lock)
   // keyboard rotate) a toast per keypress would be UI noise for sighted users,
-  // but silence is an a11y asymmetry — undo/group/etc. all announce via toasts.
+  // but silence is an a11y asymmetry — undo/group/etc. announce via toasts.
   // Same-text repeats (V pressed twice) need a nudge for the live region to re-fire.
   announce(msg){
     const el=_g('sr');if(!el)return;
@@ -8787,7 +8791,7 @@ const UI={
     _fc(_qs(m,'.ctx-item'));
   },
   closeCtxMenu(){_g('ctx').dataset.open='false'},
-  // FT-07: reuses openCtxMenu rendering/positioning/keyboard-nav/focus-trap wholesale
+  // FT-07: reuses openCtxMenu render/position/nav/focus-trap wholesale
   // (all of it operates on #ctx generically, not on any hard-coded item set) —
   // touch users get every export format + import in one tap, not just PNG.
   openExportMenu(x,y){
@@ -8846,8 +8850,8 @@ const UI={
   },
   applyI18n(){
     // Sync the page language to the detected locale (WCAG 3.1.1 Language of Page).
-    // <html lang> is authored "ja" (primary audience) but an en-browser user gets the
-    // English UI — leaving lang="ja" makes a screen reader read English with a Japanese
+    // <html lang> is authored "ja" (primary audience) but an en user gets the
+    // English UI — leaving lang="ja" makes a screen reader read English with Japanese
     // speech engine, and risks CJK han-unification picking the wrong glyph variants.
     _de.lang=LANG;
     // Walk all elements with data-t and replace textContent with the
@@ -8991,10 +8995,10 @@ function wire(){
   const docNameEl=_g('docName');
   if(docNameEl){
     docNameEl.value=_dn()||_UT;
-    // IME-safe live update. During Japanese (etc.) composition, `input` fires for
+    // IME-safe live update. During composition, `input` fires for
     // each unconfirmed update, and on Safari `input` also fires twice on commit
     // (Qiita: Rapls / Zenn: spacemarket). imeShouldCommit() returns false for
-    // mid-composition input events to keep partial conversions out of state/IDB/sync;
+    // mid-composition input events keep partial conversions out of state/IDB/sync;
     // a parallel compositionend listener picks up the final value once IME confirms.
     const _commitDocName=()=>{_setDocName(docNameEl.value);_md(!0);_ps();Net._bcast(_mk('name',{name:state.docName}))};   // ADR-0402
     _on(docNameEl,'input',e=>{if(imeShouldCommit(e))_commitDocName()});
@@ -9029,8 +9033,8 @@ function wire(){
       for(const x of _qsa(document,'[data-dash]'))_sa(x,_AP,x===b);
       if(_selN())applyStyleToSelection({dash:_st().dash});
     });
-  // Native <input type=color> fires `input` continuously while the picker is open, so
-  // committing per-input would stack dozens of undo steps and sync broadcasts for one
+  // Native color input fires `input` continuously while the picker is open, so
+  // committing per-input would stack dozens of undo steps and sync broadcasts for a
   // colour pick. Coalesce like the size/opacity sliders: snapshot on open, live-
   // preview on input (no Store), flush ONE style op on change.
   for(const cp of _qsa(document,'input.cp')){
@@ -9081,7 +9085,7 @@ function wire(){
   // `beforeinstallprompt` fires on Chrome/Edge when install criteria are
   // met. Safari/Firefox never fire it — the button stays hidden there (progressive).
   // We call _pd(e) to suppress the browser's ambient mini-infobar prompt so that
-  // install is fully user-initiated via our button. Ref: web.dev/customize-install/
+  // install is fully user-initiated via our button (web.dev/customize-install)
   _on(window,'beforeinstallprompt',e=>{
     _pd(e);
     _installPrompt=e;
@@ -9713,7 +9717,7 @@ const Presentation=(()=>{
   let _focusTrigger=null;  // element to restore focus to on leave (WCAG SC 2.4.3)
   // v1.6.90: Screen Wake Lock — prevent the display from sleeping mid-presentation.
   // Zenn/Qiita: "プレゼンテーション中にスクリーンがオフになる問題" / Screen Wake Lock API.
-  // Silent best-effort; browsers that don't support it (Safari < 16.4) simply skip.
+  // Silent best-effort; browsers without it (Safari < 16.4) simply skip.
   // The browser auto-releases the lock when the tab backgrounds (visibilitychange
   // → hidden), so we re-acquire it when the tab becomes visible again.
   let _wakeLock=null;
@@ -9783,9 +9787,9 @@ const Presentation=(()=>{
     ocanvas.style.position='fixed';ocanvas.style.inset='0';ocanvas.style.zIndex='8999';   // ADR-0024: lift overlay too; DOM order keeps it above scene, below presOverlay
     // The CSS box just changed to fullscreen but no native window 'resize' event fires
     // (only the canvas element's own layout moved) — the backing pixel buffer stays at
-    // its old, smaller size and gets stretched, blurring the canvas and desyncing the
+    // its old smaller size and gets stretched, blurring the canvas and desyncing the
     // world↔screen transform math from what _zoomToFrame (window.innerWidth/Height)
-    // assumes. Recompute the buffer against the new box before the first frame draws.
+    // assumes. Recompute the buffer against the new box before the first frame draws
     resize();
     _goto(0);
     _acquireWakeLock();
@@ -9802,7 +9806,7 @@ const Presentation=(()=>{
     _dsp(_qs(document,'.topbar'),'');
     _dsp(_qs(document,'.statusbar'),'');
     _qs(document,'.minimap-wrap')?.style.removeProperty('display');
-    // Mirror enter(): the canvas CSS box just shrank back to its in-flow size with no
+    // Mirror enter(): the canvas CSS box just shrank to its in-flow size with no
     // native resize event — re-sync the backing buffer or it stays fullscreen-sized.
     resize();
     if(_savedVp){_oa(_vp(),_savedVp);_savedVp=null;_rZ()}
@@ -9833,7 +9837,7 @@ const Minimap=(()=>{
   const W=160,H=100;
   let _raf=0;
 
-  // ADR-0025: the minimap splits into (a) shape content — depends only on shape
+  // ADR-0025: minimap splits into (a) shape content — depends only on shape
   // data, cached to an offscreen bitmap keyed on _gridVer — and (b) the viewport
   // rect, redrawn every call for one strokeRect. Pan/zoom updates (the common
   // _iv() cause) no longer re-walk every shape.
@@ -9924,7 +9928,7 @@ const Minimap=(()=>{
   resize();
   try{await Persist.open();await Persist.load()}catch(err){console.warn('persist init',err)}
   // ADR-0004: single-notification restore prompt for a backup left by the last
-  // destructive replace (clear-all/import) that was never undone before reload.
+  // destructive replace (clear-all/import) never undone before reload.
   try{
     if(await Persist.checkBackup()){
       if(confirm(t('backupAvailable')))await Persist.restoreBackup();
@@ -9959,7 +9963,7 @@ if('serviceWorker' in navigator){
       e.respondWith(caches.open(C).then(async c=>{
         if(e.request.mode==='navigate'){
           // network-first for the document: pure cache-first pinned users to the first
-          // cached HTML forever (old HTML regenerates the old SW -> activate/controllerchange
+          // cached HTML forever (old HTML regenerates old SW -> activate/controllerchange
           // never fire, updates never arrive). Offline still falls back to the cache.
           try{const n=await fetch(e.request);if(n.ok)c.put(e.request,n.clone());return n}
           catch(_){const r=await c.match(e.request);if(r)return r;return new Response('offline',{status:503})}
