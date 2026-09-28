@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.606]
+### Docs
+- research-improvements.md の陳腐化した「未実装」記述3件を実装済み ADR 参照へ同期 — filled-outline パス (ADR-0046)、`DOC_KEY:prev` 系のセッション間安全網 (ADR-0004)、offscreen DOM ミラー (ADR-0041) (ADR-0579)。
+
 ## [1.7.605]
 ### Tests
 - wire 層の残存未ピンガードを回帰固定 — `_fragIn` の重複 seq スロット無視と `_dcQ` requeue 4096 上限 (ADR-0578)。wire 監査スイープの結論として全受信経路のガードがピン済みになった。
