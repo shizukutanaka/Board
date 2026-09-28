@@ -7285,6 +7285,15 @@ try {
     console.log('  ✓ minimap + hidden-parity surfaces: filters pinned (4 asserts)');
   }
 
+  // ADR-0597: drag damage includes bound conns' swept extent
+  {
+    assert.ok(html.includes("ptr.dragStartShapes.has(s.a))||(s.bF&&ptr.dragStartShapes.has(s.b))))_pu(_dc"),'doMove collects bound conns');
+    assert.ok(html.includes("_dmgPair(d.b,_bb(d.s),(d.s.size||2)+16)"),'doMove/gresize unions conn swept extent');
+    assert.ok(html.includes("ptr.gOrig.has(s.a))||(s.bF&&ptr.gOrig.has(s.b))))_pu(_gc"),'gresize collects bound conns');
+    assert.ok(html.includes("_dmgPair(_bb(oc),_bb(sh),(sh.size||2)+16)"),'grot unions gAnc swept extent');
+    console.log('  ✓ drag damage: bound-conn swept extent pinned at 3 sites (4 asserts)');
+  }
+
   // search navigation a11y: SR users search BY content, so the announcement must name
   // WHICH shape was found (describeShape), not a bare "2/7" count — parity with Tab cycle.
   {

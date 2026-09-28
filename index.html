@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.623';
+const V='1.7.624';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3482,7 +3482,9 @@ function _grotDrag(wp,shift){
     }}                                                       // ADR-0587: anchors ride the rotated bound shape
   const _nb=_bA(live);
   if(_nb&&deg)state.readout={x:_nb.x+_nb.w/2,y:_nb.y+_nb.h,label:`${deg>0?'+':''}${_rnd(deg)}°`};
-  _iD(_dmgPair(_b0,_nb,ptr.gPad||40));                 // ADR-0026
+  let _gd=_dmgPair(_b0,_nb,ptr.gPad||40);
+  if(ptr.gAnc)for(const [cid,oc] of ptr.gAnc){const sh=byId(cid);if(sh)_gd=_dmgU(_gd,_dmgPair(_bb(oc),_bb(sh),(sh.size||2)+16));}   // ADR-0597
+  _iD(_gd);                 // ADR-0026
 }
 function _grotCommit(){
   const after=[...ptr.gOrig.keys()].map(byId).filter(Boolean).map(clone);
@@ -3647,8 +3649,11 @@ function _gresizeDrag(wp,shift,alt){
   const vbox={x:ob.x,y:ob.y,w:ob.w,h:ob.h};
   const vorig={x:ob.x,y:ob.y,w:ob.w,h:ob.h,id:'__gresize__'};
   applyResize(vbox,ptr.resizeHandle,vorig,wp,shift,alt);
+  const _gc=[];for(const s of _sh())if(_conn(s.type)&&((s.aF&&ptr.gOrig.has(s.a))||(s.bF&&ptr.gOrig.has(s.b))))_pu(_gc,{s,b:_bb(s)});   // ADR-0597
   for(const [id,orig] of ptr.gOrig){const sh=byId(id);if(sh)_mapToBox(sh,orig,ob,vbox);}
-  _iD(_dmgPair(_b0,_bA(live),ptr.gPad||40));     // ADR-0026
+  let _gd=_dmgPair(_b0,_bA(live),ptr.gPad||40);
+  for(const d of _gc)_gd=_dmgU(_gd,_dmgPair(d.b,_bb(d.s),(d.s.size||2)+16));
+  _iD(_gd);     // ADR-0026/0597
 }
 // Commit: one 'align' op batches all member before/after — a single undo
 // restores the whole group (same mechanism flip/rotate/lock already use).
@@ -5078,6 +5083,7 @@ function moveDelta(wp,shift,alt){
 }
 function doMove(wp,shift,alt){
   const{dx,dy}=moveDelta(wp,shift,alt);let dmg=null;
+  const _dc=[];for(const s of _sh())if(_conn(s.type)&&((s.aF&&ptr.dragStartShapes.has(s.a))||(s.bF&&ptr.dragStartShapes.has(s.b))))_pu(_dc,{s,b:_bb(s)});   // ADR-0597
   for(const [id,orig] of ptr.dragStartShapes){
     const sh=byId(id);if(!sh||sh.locked)continue;
     const b0=_bb(orig),m=(sh.size||2)+16;   // orig-bbox + same bbox shifted by (dx,dy) c
@@ -5094,6 +5100,7 @@ function doMove(wp,shift,alt){
       bx=bx==null?b.x:_min(bx,b.x);by=by==null?b.y:_min(by,b.y);bb=bb==null?b.y+b.h:_max(bb,b.y+b.h);}
     if(bx!=null)state.readout={x:bx,y:bb,label:`${_rnd(bx)}, ${_rnd(by)}`};
   }
+  for(const d of _dc)dmg=_dmgU(dmg,_dmgPair(d.b,_bb(d.s),(d.s.size||2)+16));   // ADR-0597: bound conns follow — include their swept extent
   if(dmg)_iD(dmg);else _iv();
 }
 function endSelect(wp,shift,alt){
