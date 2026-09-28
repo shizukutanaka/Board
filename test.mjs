@@ -1396,7 +1396,7 @@ const checks = [
     !html.includes("if((s.type==='rect'||s.type==='ellipse')&&_lb(s)){\n    const cx=s.x+s.w/2")],
   // v1.7.46: _apply del backward connClears must respect sh.locked (parity with forward)
   ['_apply del backward connClears: if(sh&&!sh.locked) lock guard added (parity with forward path)',
-    html.includes("if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_oa(sh,p.before);}}")],
+    html.includes("if(op.connClears)for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_oa(sh,p.before)}")],
   // v1.7.47: validRemotePayload align must validate dir against a whitelist
   ['validRemotePayload align: dir whitelist (DIRS Set) prevents unknown dir values',
     html.includes("const DIRS=_sT(['left','right','cx','top','bottom','cy','hspace','vspace','tidy','swap','gsnap','flip'")],
@@ -3823,6 +3823,22 @@ try {
     assert.ok(Math.abs(m-1)<0.01,'arrow lands on ellipse contour');
     Store.commit({op:'del',shapes:[d,e,a1,a2].map(s=>JSON.parse(JSON.stringify(s)))});
     console.log('  ✓ edge projection: diamond/ellipse true contour (2 asserts)');
+  }
+
+  // ADR-0546/0547: del undo must not duplicate locked shapes that forward skipped
+  {
+    const a=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    const b=Shape.make('rect',{x:200,y:0,w:50,h:50});
+    Store.commit({op:'addMany',shapes:[a,b]});
+    byId(a.id).locked=true;
+    Store.commit({op:'del',shapes:[byId(a.id),byId(b.id)].map(s=>JSON.parse(JSON.stringify(s)))});
+    assert.ok(byId(a.id)&&!byId(b.id),'locked survives del, unlocked deleted');
+    Store.undo();
+    assert.ok(state.shapes.filter(s=>s.id===a.id).length===1,'undo does not duplicate locked shape');
+    assert.ok(byId(b.id),'undo restores deleted shape');
+    byId(a.id).locked=false;
+    Store.commit({op:'del',shapes:[byId(a.id),byId(b.id)].map(s=>JSON.parse(JSON.stringify(s)))});
+    console.log('  ✓ del undo: locked shape not duplicated (3 asserts)');
   }
 
   // ADR-0068: curved connector — quadratic route, exclusive toggle, undo
