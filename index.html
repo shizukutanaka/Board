@@ -792,7 +792,7 @@ const _selL=f=>_sb().filter(f);   // ADR-0308
 const _selUL=()=>_sb().filter(_ul);
 const _repC=(before,beforeWc,origSel)=>Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(_wc()),origSel});
 const _ctrAt=(ss,wp)=>{wp=wp||_midV();const bb=_bA(ss);if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);for(const s of ss)_sT2(s,dx,dy)}};
-const _selR=op=>{if(op.origSel)_ss(op.origSel.filter(id=>{const s=byId(id);return s&&_sv(s)}))};   // ADR-0309/0568: restore skips missing and hidden shapes
+const _selR=op=>{if(op.origSel)_ss(op.origSel)};   // ADR-0309/0568: _ss drops missing/hidden ids
 const _keepSel=arr=>{if(_ln(arr))_hi()[_hx()].origSel=arr};   // ADR-0312
 const _pd=e=>e.preventDefault();   // ADR-0326
 const _ce=t=>document.createElement(t);   // ADR-0329
@@ -818,7 +818,7 @@ const _frameOf=(sel,ok)=>{const m=_mP();
   }
   return m;
 };
-const _scl=()=>_sl().clear(),_sad=id=>_sl().add(id),_sdl=id=>_sl().delete(id);   // ADR-0419: selection Set-mutation shorthands
+const _scl=()=>_sl().clear(),_sad=id=>{const s=byId(id);if(s&&_sv(s))_sl().add(id)},_sdl=id=>_sl().delete(id);   // ADR-0419/0568: _sad enforces the hidden-selection invariant at the chokepoint
 const _selN=()=>_sl().size;   // ADR-0334
 const _selUnl=f=>_selAny(s=>f(s)&&!_lk(s));   // ADR-0454: unlocked-selection predicate
 const _nS=()=>_sh().length;   // ADR-0425
@@ -837,7 +837,7 @@ const _sO=()=>state.seenOps,_la=()=>state.lasso,_mq=()=>state.marquee,_dd=()=>st
 const _dpr=()=>window.devicePixelRatio,_cT=clearTimeout,_iA=Array.isArray,_iS=v=>typeof v==='string',_iN=v=>typeof v==='number',_iO=v=>typeof v==='object',_stk=v=>v.type==='sticky',_frm=v=>v.type==='frame',_pn=v=>v.type==='pen',_txt=v=>v.type==='text',_im=v=>v.type==='image',_arw=v=>v.type==='arrow',_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log,_rAF=requestAnimationFrame,_pF=parseFloat,_db=document.body,_de=document.documentElement,_wO=window.open,_lg=k=>localStorage.getItem(k),_ls=(k,v)=>localStorage.setItem(k,v),_mP=a=>new Map(a),_sT=a=>new Set(a),_eU=encodeURIComponent,_dU=decodeURIComponent,_un='undefined',_AU='arrowup',_AD='arrowdown',_AL2='arrowleft',_AR2='arrowright',_ES='escape',_RO='readonly',_RW='readwrite',_UT='Untitled',_REC='rectangle',_EN='enter',_TB='tab',_IK='#0F172A',_YW='#FEF08A',_BOX=_sT(['rect','ellipse','diamond']),_BX4=_sT([..._BOX,'sticky']),_BOXF=_sT([..._BOX,'frame','sticky']),_HF4=_sT([..._BOX,'frame']),_RD=_sT(['rect','diamond']),_RDI=_sT([..._RD,'image']),_D6=_sT([..._BOX,'frame','image']),_SH5=_sT([..._BOX,'image','text']),_TS=_sT(['text','sticky']),_TSF=_sT([..._TS,'frame']);   // ADR-0384/../0397/0453
 const _sh=()=>state.shapes;                                                // ADR-0364
 const _sl=()=>state.selection;
-const _ss=ids=>{state.selection=_sT(ids)};   // ADR-0415: selection-set writes (18 sites)
+const _ss=ids=>{const s=_sT();for(const id of ids){const h=byId(id);if(h&&_sv(h))s.add(id)}state.selection=s};   // ADR-0415/0568: only existing+visible ids ever enter selection
 const _st=()=>state.style;
 const _df=()=>state.draft;
 const _wc=()=>state.wclock;
@@ -5920,7 +5920,7 @@ function _placeCopies(srcShapes,dx,dy){
     _pu(added,sh.id);
   }
   if(_ln(built))_cmt({op:'addMany',shapes:built});
-  _ss(added.filter(id=>_sv(byId(id))));   // ADR-0568: hidden copies are created but never selected
+  _ss(added);   // ADR-0568: _ss filters out hidden copies
   state.dupIds=_sT(added);state.dupDelta={x:dx,y:dy};     // ADR-0080: reseed chain
   _iv();
   return added;
@@ -6834,7 +6834,7 @@ function importDrawioText(txt,wp){
   const _vpNull=wp==null;
   _ctrAt(shapes,wp)
   _cOp({op:'addMany',shapes});
-  _scl();for(const s of shapes)if(_sv(s))_sad(s.id);   // ADR-0568: imported hidden shapes must not enter selection
+  _scl();for(const s of shapes)_sad(s.id);   // ADR-0568: _sad drops hidden imports
   if(_vpNull&&_dioVp){_vp().x=_dioVp.x;_vp().y=_dioVp.y;_vp().zoom=_dioVp.z;if(_dioVp.g!=null)state.showGrid=_dioVp.g}   // ADR-0359/0409: viewport+grid restore
   if(_dioNm)_setDocName(_s0(_dioNm,80));   // ADR-0405
   _iv();_oT('dioImported');
@@ -7138,7 +7138,7 @@ function importSvgText(txt,wp){
   if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);
     for(const s of shapes)_sT2(s,dx,dy)}
   _cOp({op:'addMany',shapes});
-  _scl();for(const s of shapes)if(_sv(s))_sad(s.id);   // ADR-0568: imported hidden shapes must not enter selection
+  _scl();for(const s of shapes)_sad(s.id);   // ADR-0568: _sad drops hidden imports
   _iv();_oT('svgImported');
   return true;
 }
@@ -7291,7 +7291,7 @@ function importExcText(txt,wp){
   const _vpNull=wp==null;   // ADR-0409: adopt the file's viewport only on a point-less open
   _ctrAt(shapes,wp)
   _cOp({op:'addMany',shapes});
-  _scl();for(const s of shapes)if(_sv(s))_sad(s.id);   // ADR-0568: imported hidden shapes must not enter selection
+  _scl();for(const s of shapes)_sad(s.id);   // ADR-0568: _sad drops hidden imports
   if(_vpNull){try{const ap=_JP(txt).appState;   // ADR-0409: scrollX/Y/zoom → viewport
     if(ap&&_fin(+ap.scrollX)&&_fin(+ap.scrollY)){_vp().x=-+ap.scrollX;_vp().y=-+ap.scrollY;
       if(ap.zoom&&_fin(+ap.zoom.value))_vp().zoom=clampZoom(+ap.zoom.value);

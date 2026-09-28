@@ -5356,7 +5356,7 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [1.7.595]
 ### Fixed
-- リモートの hide (style op `visible:0`) や hide の redo で、選択中の図形が非表示のまま選択に残り続けていたのを修正 (ADR-0568) — `_apply` の prop-patch 経路で `_hd` になった選択 id を `_sdl` で落とす。併せて `_selR` (undo の origSel 復元) でも `_sv` フィルタし、削除後に非表示化された図形の選択復帰を遮断。さらに `_placeCopies` (paste/duplicate) と drawio/SVG/excalidraw import が `visible:0` を含む集合を無条件選択していたのも修正 — コピーは hiddenness を保って生成し、選択のみ可視に限定。0566 不変条件を全遷移方向に適用。
+- リモートの hide (style op `visible:0`) や hide の redo で、選択中の図形が非表示のまま選択に残り続けていたのを修正 (ADR-0568) — `_apply` の prop-patch 経路で `_hd` になった選択 id を `_sdl` で落とす。併せて `_selR` (undo の origSel 復元) でも `_sv` フィルタし、削除後に非表示化された図形の選択復帰を遮断。さらに `_placeCopies` (paste/duplicate) と drawio/SVG/excalidraw import が `visible:0` を含む集合を無条件選択していたのも修正。これらを個別に塞ぐ代わり、不変条件を `_ss`/`_sad` (選択への唯一の入口) に集約 — 存在しない・非表示の id はどの経路でも選択に入らない。コピーは hiddenness を保って生成し選択のみ可視に限定。
 
 ## [1.7.594]
 ### Fixed
