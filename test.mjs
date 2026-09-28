@@ -10450,6 +10450,18 @@ try {
       assert.ok(state.selection.has(b.id),'undo re-selects the visible shape');
       assert.ok(!state.selection.has(a.id),'undo does not re-select a hidden shape');
     }
+    // ADR-0568 (creation direction): pasting a clipboard with hidden members
+    // creates the copies but selects only the visible ones.
+    {
+      reset();
+      const v=Shape.make('rect',{x:0,y:0,w:10,h:10}),h=Shape.make('rect',{x:20,y:0,w:10,h:10,visible:0});
+      const cpy=x=>JSON.parse(JSON.stringify(x));
+      _placeCopies([cpy(v),cpy(h)],50,50);
+      const hidCopy=state.shapes.find(x=>x.visible===0);
+      assert.ok(hidCopy,'hidden copy is created (hiddenness preserved)');
+      assert.ok(!state.selection.has(hidCopy.id),'hidden copy is not selected');
+      assert.strictEqual(state.selection.size,1,'only the visible copy selected');
+    }
     // toggleStickyText: sticky ↔ text type patch, undo-safe
     {
       reset();

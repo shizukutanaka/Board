@@ -1089,7 +1089,7 @@ const I18N={
       cycle:'Cycle shapes',create:'Create at centre',
       present:'Present',nudge:'Move (⇧: 10px)',zorder:'Front / back',zorderEnds:'To front / to back',
       rotate:'Rotate (15° / knob drag)',selAllMatches:'matches selected',search:'Search',searchNav:'Next / prev match',moveAxis:'Constrain move axis',resizeRatio:'Keep ratio (resize)',resizeCenter:'Resize from centre',kbdResize:'Resize (⇧:×10)',lasso:'Lasso select',swapFill:'Swap fill↔stroke',digitOpacity:'Opacity 0-9',eyedropDone:'Style picked',swapDone:'Fill↔stroke swapped',fixAnchor:'Bind end at a fixed anchor'}}};
-// ADR-0014: LANG/T are `let`, not `const`, so UI.toggleLang() can reassign them — t()
+// ADR-0014: LANG/T are `let`, not `co
 // closes over T by reference, so every t()/T.
 // the new language automatically. Only elem
 // creation time need explicit resync (done in toggleLang(), not here).
@@ -1753,7 +1753,7 @@ const Store={
 // choke point the spatial hit-test grid already uses) whenever shapes change
 // or _sh() is reassigned — property mutations (position, style, ...) don't touch
 // membership, so they never need to inv
-// cheap safety net: several _apply cases call byId() (idempotency/lock checks) BEFORE
+// cheap safety net: several _apply ca
 // push()ing or splice()ing _sh() in the same op, which would otherwise leave the
 // index one membership-change stale until t
 // comparing sizes catches exactly that gap without needing to hunt down every such
@@ -3484,7 +3484,7 @@ function hitRotHandle(wp,s){
   return(_abs(wp.x-rh.x)<=tol&&_abs(wp.y-rh.y)<=tol)?rh:null;
 }
 // Object-snap for resize: snap the dragged handle's moving edge(s) to nearby shape
-// edges/centres. Only the coordinates the handle actually moves are snapped. Pure-ish
+// edges/centres. Only the coordinates
 // (reads _sh()/viewport). Mirrors move's objectSnap; active only when grid-snap
 // is off. Rotated shapes are skipped (axis-aligned edge snap would be incoherent).
 function resizeSnap(orig,handle,wp){
@@ -3786,7 +3786,7 @@ function drawMarquee(c){
 let _laser=null;
 let _sq='';
 const _sqNav={idx:-1,lastQ:''};  // step-through navigation state (exported for test)
-// Setter for _sq (exported for test: primitives can't be aliased, so callers use this
+// Setter for _sq (exported for test:
 // instead of assigning _sq directly). Also resets navigation state, mirroring the
 // search input's `input` event handler.
 function _setSq(v){_sq=v;_sqNav.idx=-1;_sqNav.lastQ='';}
@@ -5920,7 +5920,7 @@ function _placeCopies(srcShapes,dx,dy){
     _pu(added,sh.id);
   }
   if(_ln(built))_cmt({op:'addMany',shapes:built});
-  _ss(added);
+  _ss(added.filter(id=>_sv(byId(id))));   // ADR-0568: hidden copies are created but never selected
   state.dupIds=_sT(added);state.dupDelta={x:dx,y:dy};     // ADR-0080: reseed chain
   _iv();
   return added;
@@ -6834,7 +6834,7 @@ function importDrawioText(txt,wp){
   const _vpNull=wp==null;
   _ctrAt(shapes,wp)
   _cOp({op:'addMany',shapes});
-  _scl();for(const s of shapes)_sad(s.id);
+  _scl();for(const s of shapes)if(_sv(s))_sad(s.id);   // ADR-0568: imported hidden shapes must not enter selection
   if(_vpNull&&_dioVp){_vp().x=_dioVp.x;_vp().y=_dioVp.y;_vp().zoom=_dioVp.z;if(_dioVp.g!=null)state.showGrid=_dioVp.g}   // ADR-0359/0409: viewport+grid restore
   if(_dioNm)_setDocName(_s0(_dioNm,80));   // ADR-0405
   _iv();_oT('dioImported');
@@ -7138,7 +7138,7 @@ function importSvgText(txt,wp){
   if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);
     for(const s of shapes)_sT2(s,dx,dy)}
   _cOp({op:'addMany',shapes});
-  _scl();for(const s of shapes)_sad(s.id);
+  _scl();for(const s of shapes)if(_sv(s))_sad(s.id);   // ADR-0568: imported hidden shapes must not enter selection
   _iv();_oT('svgImported');
   return true;
 }
@@ -7291,7 +7291,7 @@ function importExcText(txt,wp){
   const _vpNull=wp==null;   // ADR-0409: adopt the file's viewport only on a point-less open
   _ctrAt(shapes,wp)
   _cOp({op:'addMany',shapes});
-  _scl();for(const s of shapes)_sad(s.id);
+  _scl();for(const s of shapes)if(_sv(s))_sad(s.id);   // ADR-0568: imported hidden shapes must not enter selection
   if(_vpNull){try{const ap=_JP(txt).appState;   // ADR-0409: scrollX/Y/zoom → viewport
     if(ap&&_fin(+ap.scrollX)&&_fin(+ap.scrollY)){_vp().x=-+ap.scrollX;_vp().y=-+ap.scrollY;
       if(ap.zoom&&_fin(+ap.zoom.value))_vp().zoom=clampZoom(+ap.zoom.value);
@@ -7675,7 +7675,7 @@ async function copyText(text){
   }catch(_){return false}
 }
 // 禁則処理 (kinsoku shori): JIS X 4051 line-break prohibitions for CJK text. Japanese has
-// no spaces, so wrapText char-breaks CJK runs — a naive break could start a line with
+// no spaces, so wrapText char-breaks
 // closing punctuation/brackets/small-kana/prolonged-mark (行頭禁則) or end one with an
 // opening bracket (行末禁則). Both read as broken typography to a Japanese reader.
 const KINSOKU_START=_sT([...'、。，．・：；！？‼⁇⁈⁉）]｝」』〕〉》】〗〙〟”’｠»ヽヾゝゞ々ーぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮ〜～…‥,.!?:;)]}']);
@@ -8178,7 +8178,7 @@ const Net={
 function _round(n,dp){return _iN(n)&&_fin(n)?_rnd(n*10**dp)/10**dp:n;}
 // Deep copy of shapes with coordinate/dimension fields rounded, for SERIALIZATION
 // boundaries only (share URL, .board export) — never the in-memory model, so undo
-// fidelity and live rendering are untouched. Sub-pixel rounding is imperceptible on a
+// fidelity and live rendering are unt
 // whiteboard but trims URL length / file size (Zenn: float-precision data bloat). Pen
 // pressure keeps 3dp; positions/dimensions 2dp. Returns a fresh array (no mutation).
 function roundShapesForExport(shapes,dp=2){
