@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.588] - 2026-09-28
+### 修正
+- ADR-0560: editor 二重オープンで旧 overlay の blur が `state.editing` を clobber — 新 editor の `_teFollow` 死亡 + 本文が canvas/overlay で二重描画される実害。`_cxO()` で先行 commit。
+
 ## [1.7.587] - 2026-09-28
 ### 修正
 - ADR-0559: 編集中図形が消えた (remote del/clear/replace/undo) 際、テキスト・ラベル overlay が blur まで開いたまま残っていたのを、`_teFollow`/`_lblFollow` の毎フレーム follow に proactive close を載せて即座に畳む。全削除経路をカバー。

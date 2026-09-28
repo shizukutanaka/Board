@@ -701,6 +701,7 @@ const checks = [
   ['sticky chain guards remote-deleted source (ADR-0558)', html.includes("_lk(s)||!byId(s.id))return")],
   ['text overlay closes when edited shape removed (ADR-0559)', html.includes("if(!s){_rm(_teTa);_teTa=null;state.editing=null;return}")],
   ['label overlay closes when labelled shape removed (ADR-0559)', html.includes("if(!byId(_lblTa.hit.id)){_rm(_lblTa.inp);_lblTa=null;return}")],
+  ['editors close a still-open overlay first (ADR-0560)', html.includes("const _cxO=()=>{if(_teTa)_teTa.blur();if(_lblTa)_lblTa.inp.blur()}")],
   // v1.6.39: console cleanup - no redundant console.warn/error in production paths
   ['no console.warn in BroadcastChannel catch', !html.includes("console.warn('BroadcastChannel init failed'")],
   ['no console.error in save catch (user gets toast)', !html.includes("console.error('save failed'")],
