@@ -7352,6 +7352,15 @@ try {
     console.log('  ✓ long-press ghost-click guard pinned (3 asserts)');
   }
 
+  // ADR-0609: _setDocName must not rewrite the #docName input while it is
+  // focused — a remote rename would clobber in-flight typing (incl. mid-IME
+  // composition). The input keeps its text; blur resyncs to the resolved name.
+  {
+    assert.ok(html.includes("if(d&&d!==document.activeElement)d.value=_dn()"),'focused input keeps in-flight text');
+    assert.ok(html.includes("_on(docNameEl,'blur',()=>{docNameEl.value=_dn()})"),'blur resyncs display to resolved name');
+    console.log('  ✓ docName focus clobber guard pinned (2 asserts)');
+  }
+
   // ADR-0604: visibilitychange→hidden and pagehide cancel an in-progress
   // pointer gesture (mobile backgrounding drops pointerup → stuck ptr.down);
   // cancel runs BEFORE flushIfHidden so the restored state is what persists.

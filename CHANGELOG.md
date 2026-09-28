@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.636]
+### Fixed
+- リモートのドキュメント改名が #docName 入力中の文字列 (IME 合成中含む) を上書きして消失させる問題を修正 — フォーカス中は input 表示を保持し、blur で LWW 解決値へ同期 (ADR-0609)。
+
 ## [1.7.635]
 ### Fixed
 - bfcache 復帰/バックグラウンド往復で `_pointers` の stale エントリが残り、復帰後の初タッチがピンチと誤判定されていた問題を修正 — `_pointers`/pinch 状態の掃除を `_clearTouchState()` に集約し hidden/pagehide 経路へも適用 (ADR-0608)。
