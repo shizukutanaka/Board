@@ -554,6 +554,7 @@ const checks = [
   ['OS clipboard bridge (ADR-0516): copy/cut write .board JSON, ⌘V reaches paste event', html.includes("_on(window,'copy',_osCopy)")&&html.includes("_on(window,'cut',_osCopy)")&&html.includes("clipboardData.setData('text/plain'")&&html.includes('_cpNow=true')&&html.includes('s===_osClip')&&!html.includes("meta&&k==='v'){_pd(e);doPaste()}")],
   ['Safari GestureEvent pinch-zoom (ADR-0517)', html.includes("'gesturestart'")&&html.includes("'gesturechange'")&&html.includes('e.scale/_gScale')&&html.includes("'gestureend'")],
   ['Text drop cascade (ADR-0518): non-file drops land as shapes at the drop point', html.includes('function _textCascade(s,wp)')&&html.includes("getData('text/plain')")&&html.includes("'text/uri-list'")&&html.includes('importBoardText(s,wp)')],
+  ['Edge auto-pan during drag (ADR-0519)', html.includes('_edgePanTick')&&html.includes('_edgePanKick()')&&html.includes('ptr.panning')&&html.includes('_o2w(e)')],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],

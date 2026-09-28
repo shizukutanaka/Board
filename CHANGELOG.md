@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.552] - 2026-09-28
+
+### 修正
+
+- **ドラッグ中のエッジオートパン** — 移動/リサイズ/マーキー/描画/waypoint 等のコンテンツドラッグでポインタがキャンバス端 24px 内に入ると rAF で viewport を連続パン。静止ポインタでも pan が継続し、次の pointermove が成長した viewport から wp を再導出するため全ドラッグ種が正しく延長される (Figma/draw.io 慣例) (ADR-0519)。併せて `_s2({x:e.offsetX,y:e.offsetY})` を `_o2w` に集約 (~120B)
+
 ## [1.7.551] - 2026-09-28
 
 ### 修正

@@ -831,7 +831,7 @@ const _qsa=(e,s)=>e.querySelectorAll(s);                                // ADR-0
 const _on=(e,t,f,o)=>e.addEventListener(t,f,o);                          // ADR-0356
 const _vp=()=>state.viewport,_vpS=()=>({x:+_vp().x.toFixed(2),y:+_vp().y.toFixed(2),zoom:+_vp().zoom.toFixed(4)});                                              // ADR-0362: live-read (tests reassign the object)
 const _mk=(k,x)=>({k,peer:_pi(),...x}),_pi=()=>state.peerId,_ro=()=>state.readout,_gd=()=>state.guides,_cl=()=>state.clipboard,_bb=s=>G.bbox(s),_bA=s=>G.bboxAll(s),_oa=Object.assign;   // ADR-0378
-const _sO=()=>state.seenOps,_la=()=>state.lasso,_mq=()=>state.marquee,_dd=()=>state.dupDelta,_w2=p=>G.w2s(p),_s2=p=>G.s2w(p),_cE=connEnds;   // ADR-0382
+const _sO=()=>state.seenOps,_la=()=>state.lasso,_mq=()=>state.marquee,_dd=()=>state.dupDelta,_w2=p=>G.w2s(p),_s2=p=>G.s2w(p),_cE=connEnds,_o2w=e=>_s2({x:e.offsetX,y:e.offsetY});   // ADR-0382
 const _dpr=()=>window.devicePixelRatio,_cT=clearTimeout,_iA=Array.isArray,_iS=v=>typeof v==='string',_iN=v=>typeof v==='number',_iO=v=>typeof v==='object',_stk=v=>v.type==='sticky',_frm=v=>v.type==='frame',_pn=v=>v.type==='pen',_txt=v=>v.type==='text',_im=v=>v.type==='image',_arw=v=>v.type==='arrow',_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log,_rAF=requestAnimationFrame,_pF=parseFloat,_db=document.body,_de=document.documentElement,_wO=window.open,_lg=k=>localStorage.getItem(k),_ls=(k,v)=>localStorage.setItem(k,v),_mP=a=>new Map(a),_sT=a=>new Set(a),_eU=encodeURIComponent,_dU=decodeURIComponent,_un='undefined',_AU='arrowup',_AD='arrowdown',_AL2='arrowleft',_AR2='arrowright',_ES='escape',_RO='readonly',_RW='readwrite',_UT='Untitled',_REC='rectangle',_EN='enter',_TB='tab',_IK='#0F172A',_YW='#FEF08A',_BOX=_sT(['rect','ellipse','diamond']),_BX4=_sT([..._BOX,'sticky']),_BOXF=_sT([..._BOX,'frame','sticky']),_HF4=_sT([..._BOX,'frame']),_RD=_sT(['rect','diamond']),_RDI=_sT([..._RD,'image']),_D6=_sT([..._BOX,'frame','image']),_SH5=_sT([..._BOX,'image','text']),_TS=_sT(['text','sticky']),_TSF=_sT([..._TS,'frame']);   // ADR-0384/../0397/0453
 const _sh=()=>state.shapes;                                                // ADR-0364
 const _sl=()=>state.selection;
@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.551';
+const V='1.7.552';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4137,11 +4137,34 @@ _on(canvas,_PM,e=>{
     case 'eraser':eraseAt(wp);break;
   }
   ptr.x=sp.x;ptr.y=sp.y;ptr.wx=wp.x;ptr.wy=wp.y;
+  _edgePanKick();
 });
+// ADR-0519: edge auto-pan — while a content drag (move/resize/marquee/draw/
+// waypoint…) holds the pointer within 24px of a canvas edge, keep panning the
+// viewport so the gesture can reach beyond the visible region (Figma/draw.io
+// convention). rAF-driven because a held-stationary pointer emits no
+// pointermove; every drag kind re-derives wp from the live viewport on the
+// next move, so the gesture extends correctly as the pan accrues.
+let _edgeRaf=0;
+function _edgePanTick(){
+  _edgeRaf=0;
+  if(!ptr.down||ptr.panning||_pointers.size>=2)return;
+  const r=_cbr(),M=24,S=14,rw=r.width-M,rh=r.height-M;
+  const vx=ptr.x<M?-S*(M-ptr.x)/M:ptr.x>rw?S*(ptr.x-rw)/M:0;
+  const vy=ptr.y<M?-S*(M-ptr.y)/M:ptr.y>rh?S*(ptr.y-rh)/M:0;
+  if(!vx&&!vy)return;
+  const v=_vp();v.x+=vx/v.zoom;v.y+=vy/v.zoom;_iv();
+  _edgeRaf=_rAF(_edgePanTick);
+}
+function _edgePanKick(){
+  if(_edgeRaf||!ptr.down||ptr.panning)return;
+  const r=_cbr(),M=24;
+  if(ptr.x<M||ptr.y<M||ptr.x>r.width-M||ptr.y>r.height-M)_edgeRaf=_rAF(_edgePanTick);
+}
 _on(canvas,_PU,e=>{
   _clearLongPress();   // ADR-0006
   if(!ptr.down)return;
-  const wp=_s2({x:e.offsetX,y:e.offsetY});
+  const wp=_o2w(e);
   if(ptr.panning){ptr.panning=false;canvas.dataset.panning='false'}
   else{
     switch(_tl()){
@@ -4268,7 +4291,7 @@ _on(canvas,'pointerleave',()=>{if(_laser){_laser=null;_ivO()}});
 
 // Double-click: re-edit text shapes / label boxes & connectors
 _on(canvas,'dblclick',e=>{
-  const wp=_s2({x:e.offsetX,y:e.offsetY});
+  const wp=_o2w(e);
   const hit=pickTop(wp);
   // ADR-0122: double-click empty canvas → new text at the point, editor open
   // (Excalidraw parity). beginText commits the add + opens the editor; empty
@@ -4469,23 +4492,23 @@ _on(canvas,'drop',e=>{
   const bf=[...e.dataTransfer.files].find(f=>f.name.endsWith('.board'));
   if(bf){importBoard(bf);return}
   const xf=[...e.dataTransfer.files].find(f=>f.name.endsWith('.excalidraw'));
-  if(xf){importExcFile(xf,_s2({x:e.offsetX,y:e.offsetY}));return}
+  if(xf){importExcFile(xf,_o2w(e));return}
   const df=[...e.dataTransfer.files].find(f=>/\.(drawio|dio)$/i.test(f.name));   // ADR-0203
-  if(df){importDrawioFile(df,_s2({x:e.offsetX,y:e.offsetY}));return}
+  if(df){importDrawioFile(df,_o2w(e));return}
   // ADR-0042: .svg must be claimed BEFORE the generic image/* branch —
   // image/svg+xml also matches startsWith('image/') but <img> can't raster it.
   const sf=[...e.dataTransfer.files].find(f=>f.name.endsWith('.svg')||f.type==='image/svg+xml');
-  if(sf){importSvgFile(sf,_s2({x:e.offsetX,y:e.offsetY}));return}
+  if(sf){importSvgFile(sf,_o2w(e));return}
   const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith('image/'));
   if(!_ln(files)){
     // ADR-0518: non-file drops — dragged text/URLs land at the drop point via
     // the shared intake cascade (paste parity). uri-list covers link drags
     // that don't populate text/plain.
     const s=e.dataTransfer.getData('text/plain')||e.dataTransfer.getData('text/uri-list');
-    if(s)_textCascade(_St(s),_s2({x:e.offsetX,y:e.offsetY}));
+    if(s)_textCascade(_St(s),_o2w(e));
     return;
   }
-  const wp=_s2({x:e.offsetX,y:e.offsetY});
+  const wp=_o2w(e);
   // Cascade multiple dropped images by index. NOTE: the offset must be captured
   // per-iteration (forEach's `i`), not a shared `let ox` incremented in the loop —
   // reader.onload is async, so a shared counter would have reached its final value
