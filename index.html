@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.567';
+const V='1.7.568';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -5625,7 +5625,7 @@ function _openDialog(){
 }
 _on(window,_KD,e=>{
   if(e.target.matches('input,textarea')){
-    if(e.key==='Escape')e.target.blur();
+    if(e.key==='Escape'&&!e.isComposing)e.target.blur();   // IME: Esc cancels the conversion first
     return;
   }
   const meta=_mod(e);
@@ -6325,7 +6325,7 @@ function doRotate(d){
   const after=sel.map(clone);
   _rcOp({op:'align',dir:'rotate',before,after});
   _ivp();
-  _ann(_ln(sel)===1?describeShape(sel[0]):d+'°');   // ,/. keyboard rotate was SR-silent (knob drag announces); point-geom selections have no .rotate (ADR-0055)
+  _ann(_ln(sel)===1?describeShape(sel[0]):d+'°');   // ,/. keyboard rotate announce; point-geom selections have no .rotate (ADR-0055)
 }
 // ====================== EXPORT ======================
 // Browsers cap a canvas's single dimension (~16384px on most) and its total area.
@@ -6566,7 +6566,7 @@ function excScene(shapes){
     const out=[...(be?be.map(cid=>({id:cid,type:'arrow'})):[]),...(tid?[{id:tid,type:'text'}]:[])];
     if(_ln(out))e.boundElements=out;
   }
-  // ADR-0390: emit exc frameId for shapes contained in a frame (withFrameChildren rule); label texts inherit via containerId.
+  // ADR-0390: emit frameId for frame-contained shapes; labels inherit via containerId.
   for(const f of shapes)if(_frm(f)){
     const fb=_bb(f);
     for(const s of shapes){
@@ -7825,7 +7825,7 @@ const Net={
     this._lastSelSent=key;
     this._bcast(_mk('selection',{ids}));
   },
-  _sendDC(m){   // ADR-0432: single dc funnel — a full SCTP buffer throws; requeue on bufferedAmountLow instead of dropping
+  _sendDC(m){   // ADR-0432: single dc funnel — full SCTP buffer throws; requeue on bufferedAmountLow
     if(_ln(m)>262144)return;   // ADR-0438: >SCTP max can never send — drop instead of poison-queuing a retry loop
     const q=this._dcQ,d=this.dc;
     if(q){_ln(q)<4096&&_pu(q,m);return}

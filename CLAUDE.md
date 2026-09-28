@@ -589,6 +589,7 @@ Board/
 │   ├── ADR-0537-dom-prop-stragglers.md # _sw/_ew/_dsp/_hdn + _ix 残サイト畳み込み ~85B (実装済)
 │   ├── ADR-0538-helper-method-misuse-sweep.md # _helper のメソッド形誤呼び総当たりガード (test.mjs) + コメント刈り ~350B (実装済)
 │   ├── ADR-0539-onclick-fold.md # .onclick= を _oC へ畳み込み ~55B + プレゼン leave() null トリガーガード (実装済)
+│   ├── ADR-0540-global-escape-ime.md # グローバル input Escape の IME 合成ガード (docName/RTC 欄) (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

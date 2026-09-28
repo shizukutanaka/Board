@@ -580,6 +580,7 @@ const checks = [
   })()],
   ['.onclick= assignments folded to _oC helper (ADR-0539)', html.includes("_oC=(e,f)=>e.onclick=f")&&html.split('.onclick=').length-1===1],
   ['presentation leave() tolerates null focus trigger (ADR-0539)', html.includes('_focusTrigger?.focus();_focusTrigger=null;')],
+  ['global input Escape respects IME composition (ADR-0540)', html.includes("e.key==='Escape'&&!e.isComposing")],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
