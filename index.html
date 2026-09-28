@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.554';
+const V='1.7.555';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2026,6 +2026,7 @@ const _sK=e=>e.shiftKey,_aK=e=>e.altKey,_mod=e=>e.metaKey||e.ctrlKey;   // ADR-0
 const _fsS=(c,v)=>c.fillStyle=v,_ssS=(c,v)=>c.strokeStyle=v,_lnW=(c,v)=>c.lineWidth=v,_gaS=(c,v)=>c.globalAlpha=v,_taS=(c,v)=>c.textAlign=v,_tbS=(c,v)=>c.textBaseline=v;   // ADR-0520: canvas prop-assignment setters
 const _cPt=e=>({x:e.clientX,y:e.clientY}),_nP=()=>_pointers.size,_osp=e=>({x:e.offsetX,y:e.offsetY}),_spL=s=>s.split('\n');   // ADR-0522: input/coord/lines folds
 const _rm=e=>e.remove(),_nc=()=>navigator.clipboard;   // ADR-0522
+const _tC=(e,v)=>e.textContent=v;   // ADR-0523: textContent setter fold
 
 const _hb=s=>s.w!=null;   // ADR-0501
 const _idOK=id=>_iS(id)&&_ln(id)<=64;   // ADR-0502: wire id cap (ADR-0485): unlocked+visible predicate (4 sites)
@@ -2299,7 +2300,7 @@ function _statusSel(){
     const b=_ln(sel)&&_bA(sel);
     if(b)txt=_rnd(b.w)+'×'+_rnd(b.h);
   }
-  if(txt!==_selDimSig){_selDimSig=txt;el.parentElement.hidden=!txt;el.textContent=txt;}
+  if(txt!==_selDimSig){_selDimSig=txt;el.parentElement.hidden=!txt;_tC(el,txt);}
 }
 function resize(){
   DPR=_max(1,_min(3,_dpr()||1));
@@ -2405,13 +2406,13 @@ function _mirrorSync(){
     const li=_ce('li');
     const b=_ce('button');
     b.type='button';
-    b.textContent=(i+1)+'. '+describeShape(s)+(_hd(s)||_oP(s)===0?' '+t('tagHidden'):'');   // ADR-0154
+    _tC(b,(i+1)+'. '+describeShape(s)+(_hd(s)||_oP(s)===0?' '+t('tagHidden'):''));   // ADR-0154
     b.onclick=()=>_mirrorGo(s.id);
     _ap(li,b);_ap(ul,li);
   }
   if(_nS()>MIRROR_MAX){
     const li=_ce('li');
-    li.textContent=(_nS()-MIRROR_MAX)+t('mirrorMore');
+    _tC(li,(_nS()-MIRROR_MAX)+t('mirrorMore'));
     _ap(ul,li);
   }
 }
@@ -4143,12 +4144,9 @@ _on(canvas,_PM,e=>{
   ptr.x=sp.x;ptr.y=sp.y;ptr.wx=wp.x;ptr.wy=wp.y;
   _edgePanKick();
 });
-// ADR-0519: edge auto-pan — while a content drag (move/resize/marquee/draw/
-// waypoint…) holds the pointer within 24px of a canvas edge, keep panning the
-// viewport so the gesture can reach beyond the visible region (Figma/draw.io
-// convention). rAF-driven because a held-stationary pointer emits no
-// pointermove; every drag kind re-derives wp from the live viewport on the
-// next move, so the gesture extends correctly as the pan accrues.
+// ADR-0519: edge auto-pan — a held pointer within 24px of an edge pans the
+// viewport so the drag can reach beyond the visible region (Figma/draw.io).
+// rAF-driven (no pointermove while stationary); drags re-derive wp per move.
 let _edgeRaf=0;
 function _edgePanTick(){
   _edgeRaf=0;
@@ -4293,7 +4291,9 @@ _on(canvas,_PC,_cancelPointerGesture);
 // ADR-0521: capture revocation without pointercancel would leave ptr.down
 // stuck — cancel the gesture (no-op after a normal pointerup).
 _on(canvas,'lostpointercapture',()=>{if(ptr.down)_cancelPointerGesture()});
-_on(canvas,'contextmenu',e=>{_pd(e);UI.openCtxMenu(e.clientX,e.clientY)});
+_on(canvas,'contextmenu',e=>{_pd(e);
+  // ADR-0524: contextmenu mid-gesture swallows the real pointerup — cancel instead.
+  if(ptr.down)_cancelPointerGesture();else UI.openCtxMenu(e.clientX,e.clientY)});
 _on(canvas,'pointerleave',()=>{if(_laser){_laser=null;_ivO()}});
 
 // Double-click: re-edit text shapes / label boxes & connectors
@@ -8599,9 +8599,9 @@ const UI={
   setStatusXY(x,y){_g('sXY').textContent=x+', '+y},
   refreshSaved(){
     const el=_g('sSaved');if(!el)return;
-    if(!state.lastSaveAt){el.textContent='—';return}
+    if(!state.lastSaveAt){_tC(el,'—');return}
     const d=_rnd((_now()-state.lastSaveAt)/1000);
-    el.textContent=d<3?t('savedNow'):d+t('savedAgo');
+    _tC(el,d<3?t('savedNow'):d+t('savedAgo'));
   },
   toast(msg,kind){
     const st=_g('toasts'),last=st.lastElementChild;
@@ -8609,7 +8609,7 @@ const UI={
     const div=_ce('div');
     div.className='toast'+(kind?' '+kind:'');
     _sa(div,'role',kind==='err'||kind==='warn'?'alert':'status');
-    div.textContent=msg;
+    _tC(div,msg);
     _g('toasts').appendChild(div);
     _stO(()=>{div.style.opacity='0';div.style.transform='translateY(4px)';
       _stO(()=>_rm(div),240)},1600);
@@ -8620,7 +8620,7 @@ const UI={
   // Same-text repeats (V pressed twice) need a nudge for the live region to re-fire.
   announce(msg){
     const el=_g('sr');if(!el)return;
-    el.textContent=el.textContent===msg?msg+' ':msg;
+    _tC(el,el.textContent===msg?msg+' ':msg);
   },
   // ADR-0215: focus capture/restore around dialogs — _trapStep/_focusables
   // (window keydown) already traps Tab inside the open dialog; this adds the
@@ -8743,10 +8743,10 @@ const UI={
       const [k,shortcut,fn]=it;
       const b=_ce('button');
       b.className='ctx-item';_sa(b,'role','menuitem');
-      const lbl=_ce('span');lbl.textContent=t(k);
+      const lbl=_ce('span');_tC(lbl,t(k));
       _ap(b,lbl);
       if(shortcut){
-        const sc=_ce('span');sc.className='k';sc.textContent=shortcut;
+        const sc=_ce('span');sc.className='k';_tC(sc,shortcut);
         _ap(b,sc);
       }
       b.onclick=()=>{fn();this.closeCtxMenu()};
@@ -8806,16 +8806,16 @@ const UI={
     while(g.firstChild)g.removeChild(g.firstChild);
     for(const [key,val] of rows){
       const row=_ce('div');row.className='help-row';
-      const kSpan=_ce('span');kSpan.className='k';kSpan.textContent=key;
-      const vSpan=_ce('span');vSpan.className='v';vSpan.textContent=val;
+      const kSpan=_ce('span');kSpan.className='k';_tC(kSpan,key);
+      const vSpan=_ce('span');vSpan.className='v';_tC(vSpan,val);
       _ap(row,kSpan);_ap(row,vSpan);
       _ap(g,row);
     }
   },
   updateOnline(){
     const dot=_g('sDot'),lbl=_g('sConn');
-    if(navigator.onLine){dot.classList.remove('offline');lbl.textContent=t('online')}
-    else{dot.classList.add('offline');lbl.textContent=t('offline')}
+    if(navigator.onLine){dot.classList.remove('offline');_tC(lbl,t('online'))}
+    else{dot.classList.add('offline');_tC(lbl,t('offline'))}
   },
   applyI18n(){
     // Sync the page language to the detected locale (WCAG 3.1.1 Language of Page).
@@ -8828,7 +8828,7 @@ const UI={
     // translatable element) honour the detected language.
     for(const el of _qsa(document,'[data-t]')){
       const key=_ga(el,'data-t');
-      if(key){el.textContent=t(key)}
+      if(key){_tC(el,t(key))}
     }
     // aria-label / title were hardcoded English on ~44 controls — a JA screen-reader
     // user heard the whole tool palette in English. data-t-aria / data-t-title hold an
@@ -8883,7 +8883,7 @@ const UI={
     // self avatar
     const self=_ce('div');
     self.className='peer-avatar self';
-    self.textContent=_pi().slice(0,2).toUpperCase();
+    _tC(self,_pi().slice(0,2).toUpperCase());
     self.title=t('you');
     _ap(stack,self);
     // remote peers
@@ -8891,7 +8891,7 @@ const UI={
       const el=_ce('div');
       el.className='peer-avatar';
       el.style.background=p.color;
-      el.textContent=_s0(id,2).toUpperCase();
+      _tC(el,_s0(id,2).toUpperCase());
       el.title=id;
       _ap(stack,el);
     }
@@ -9029,7 +9029,7 @@ function wire(){
     _on(opacRng,'input',()=>{
       const v=+opacRng.value/100;
       _st().opacity=v;
-      if(opacVal)opacVal.textContent=opacRng.value;
+      if(opacVal)_tC(opacVal,opacRng.value);
       for(const id of _sl()){const s=byId(id);if(s&&!_lk(s))s.opacity=v}
       if(_selN())_iv();
     });
@@ -9150,11 +9150,11 @@ function _syncStylePanel(){
   v=uni('size');
   if(v!=null){_st().size=v;
     const r=_g('rngSize'),sv=_g('sizeVal');
-    if(r)r.value=v;if(sv)sv.textContent=v;}
+    if(r)r.value=v;if(sv)_tC(sv,v);}
   v=uni('opacity');
   if(v!=null){_st().opacity=v;
     const r=_g('rngOpacity'),ov=_g('opacVal'),p=_rnd(v*100);
-    if(r)r.value=p;if(ov)ov.textContent=p;}
+    if(r)r.value=p;if(ov)_tC(ov,p);}
 }
 function applyStyleToSelection(patch){
   if(!_selN())return;
@@ -9732,7 +9732,7 @@ const Presentation=(()=>{
     _ap(_overlay,counter);
     // Exit button
     const exit=_ce('button');
-    exit.textContent='✕ Esc';
+    _tC(exit,'✕ Esc');
     exit.style.cssText='position:absolute;top:12px;right:16px;background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:13px;';
     exit.onclick=leave;
     _ap(_overlay,exit);
@@ -9780,7 +9780,7 @@ const Presentation=(()=>{
     _idx=_max(0,_min(_ln(_frames)-1,i));
     _zoomToFrame(_frames[_idx]);
     const c=_g('presCounter');
-    if(c)c.textContent=`${_idx+1} / ${_ln(_frames)}`;
+    if(c)_tC(c,`${_idx+1} / ${_ln(_frames)}`);
   }
 
   function next(){if(_active&&_idx<_ln(_frames)-1)_goto(_idx+1)}

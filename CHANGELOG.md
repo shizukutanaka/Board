@@ -2,6 +2,16 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.555] - 2026-09-28
+
+### 修正
+
+- **ドラッグ中の contextmenu でジェスチャキャンセル** — 右クリック/ペンのバレルボタンがドラッグ中にコンテキストメニューを開くと、メニューが本来の pointerup を呑み込みポインタを離したのにドラッグが継続し得た。`ptr.down` 中は `_cancelPointerGesture` でジェスチャを正常終了しメニューを開かない (ADR-0524)
+
+### 変更
+
+- `_tC` textContent setter shorthand 化 (21 サイト) — 追加分を相殺 (ADR-0523)
+
 ## [1.7.554] - 2026-09-28
 
 ### 修正

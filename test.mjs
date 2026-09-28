@@ -149,7 +149,7 @@ const checks = [
   ['Arrow key nudge code', html.includes("arrowup") && html.includes("arrowdown") && html.includes("Shape.translate")],
   ['Pinch zoom code', html.includes("_pointers") && html.includes("_pinchPrev")],
   // round 4 improvements
-  ['data-t i18n auto-apply', html.includes("UI.applyI18n") && html.includes("el.textContent=t(key)")],
+  ['data-t i18n auto-apply', html.includes("UI.applyI18n") && html.includes("_tC(el,t(key))")],
   ['Eraser batches into single undo', html.includes("_eraseBatch") && html.includes("flushErase")],
   ['pointercancel restores eraser batch + clears guides', html.includes("_cancelPointerGesture") && html.includes("_zR()") && /if\(_ln\(_eraseBatch\)\)[\s\S]{0,280}_zR\(\)/.test(html)],
   ['document.title synced on docName change (WCAG 2.4.2)', html.includes('_syncDocTitle')&&html.includes("document.title=")&&html.includes("_syncDocTitle();")],
@@ -556,7 +556,7 @@ const checks = [
   ['Text drop cascade (ADR-0518): non-file drops land as shapes at the drop point', html.includes('function _textCascade(s,wp)')&&html.includes("getData('text/plain')")&&html.includes("'text/uri-list'")&&html.includes('importBoardText(s,wp)')],
   ['Edge auto-pan during drag (ADR-0519)', html.includes('_edgePanTick')&&html.includes('_edgePanKick()')&&html.includes('ptr.panning')&&html.includes('_o2w(e)')],
   ['Canvas prop-assignment setters (ADR-0520)', html.includes('const _fsS=(c,v)=>c.fillStyle=v')&&html.includes('_tbS=(c,v)=>c.textBaseline=v')],
-  ['lostpointercapture gesture cancel (ADR-0521)', html.includes("'lostpointercapture'")&&html.includes('_cancelPointerGesture()')&&html.includes('const _nP=')],
+  ['lostpointercapture gesture cancel (ADR-0521)', html.includes("'lostpointercapture'")&&html.includes('_cancelPointerGesture()')&&html.includes('_nP=()=>')],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
