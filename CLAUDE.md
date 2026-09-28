@@ -583,6 +583,7 @@ Board/
 │   ├── ADR-0531-spec-roadmap-sync.md # spec.md ロードマップ現況同期 (実装済)
 │   ├── ADR-0532-right-down-no-arm.md # 右 down は ptr.down 不立て — macOS ctx menu 回帰修正 (実装済)
 │   ├── ADR-0533-text-editor-live-binding.md # openTextEditor が byId で live 図形に bind (実装済)
+│   ├── ADR-0534-blur-gesture-reset.md # window blur でジェスチャ/ポインタ状態を再ベースライン化 (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

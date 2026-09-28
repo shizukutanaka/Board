@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.561';
+const V='1.7.562';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4670,6 +4670,12 @@ _on(canvas,'gesturechange',e=>{
 _on(canvas,'gestureend',()=>{_pinchSnap=null;_pinchVp=null;_iv()});
 _on(canvas,_PU,_resetPinch);
 _on(canvas,_PC,_resetPinch);
+// ADR-0534: pointerup lost to a window blur leaves ptr.down/_pointers armed — re-base on blur.
+_on(window,'blur',()=>{
+  if(ptr.down||ptr.panning)_cancelPointerGesture();
+  _pointers.clear();_pinchPrev=0;
+  if(_pinchSnap){_pinchSnap=null;_pinchVp=null;_iv();}
+});
 
 let _wheelZoomEnd=0;
 // ADR-0030/0033 shared: capture the pristine canvas + viewport for the
