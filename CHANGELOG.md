@@ -5354,6 +5354,11 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.599]
+### Docs/Tests
+- architecture.md の Store 節に hidden parity (選択不変条件のチョークポイント集約 + 遷移方向 `_sdl` + hide→overlay畳み) を追記 (ADR-0571)。
+- `_sl().add`/`state.selection=` が各1箇所のみの否定形ピンを追加 — `_ss`/`_sad` バイパスの恒久的遮断。
+
 ## [1.7.598]
 ### Tests
 - ADR-0569/0570 のソースピン追加 — hide→overlay畳みと lockedNoop トーストの回帰検出。

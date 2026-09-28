@@ -619,7 +619,8 @@ Board/
     │   ├── ADR-0567-spec-hidden-invariant.md # spec へ非表示の選択不変条件 (実装済)
     │   ├── ADR-0568-remote-hide-deselect.md  # 非表示化された図形を選択から落とす (実装済)
     │   ├── ADR-0569-hide-folds-editor.md     # hide 時に編集 overlay を畳む (実装済)
-    │   └── ADR-0570-locked-hide-toast.md     # 全ロック選択の hide で lockedNoop トースト (実装済)
+    │   ├── ADR-0570-locked-hide-toast.md     # 全ロック選択の hide で lockedNoop トースト (実装済)
+    │   └── ADR-0571-hidden-parity-doc.md     # architecture.md に hidden parity 節 (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

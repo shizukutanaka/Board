@@ -107,6 +107,15 @@ group/ungroup) は per-shape `before` の書き戻しが冪等なため no-op �
 と差分を適用する `move` はスキップ集合を backward に伝える必要がある (それぞれ `byId` ガードと
 `op.moved` で対応 — ADR-0547/0548/0549)。
 
+**hidden parity**: 「非表示図形は選択されない」不変条件は**チョークポイント集約**で保つ
+(ADR-0566/0568)。selection への入口は `_ss(ids)` / `_sad(id)` の2つだけで、両者が
+`byId`+`_sv` でフィルタする — 存在しない・非表示の id は ⌘A・マーキー・検索・undo 復元・
+paste/duplicate/import どの経路でも選択に入らない。遷移方向 (既に選択済みの図形が `_hd` 化)
+は `_apply` が prop-patch の後処理で `_sdl` する (style/upd/align/resize/beautify の
+remote/redo をカバー)。hide 時に編集中 overlay があれば畳む — local hide は `hideSelection`
+冒頭の `_cxO()`、remote/undo 経由は `_teFollow`/`_lblFollow` の `_hd` ガードが次フレームで
+畳む (ADR-0569)。direct `state.selection.add` や新たな `_ss` バイパスを増やさないこと。
+
 **img 参照の再解決**: 形状を復元する全経路 (del/clear/replace の backward、replace の forward) は
 `_sh().push(Net._attachShape(clone(s)))` を通す。`img:` 参照を抱えた図形が undo で戻る際に
 `_imgIn` の到達済み blob から `dataUrl` を再解決し、未到達なら `_imgPending` に再駐留する
