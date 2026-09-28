@@ -5354,6 +5354,12 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.571]
+
+### テスト・内部
+
+- **ADR-0543**: export 済みだが behavioural で未実行だった関数12件にカバレッジ (`unlockAll`/`selectSameType`/`selectFrameContents`/`toggleStickyText`/`toggleLineArrow`/`cycleArrowHead`/`cycleStickyColor`/`snapSelToGrid`/`doPasteInPlace`/`_imgNextKey`/`_mapToBox`/`_fitViewport`)。`_keepSel` が `origSel` を履歴に退避する契約を pin 化。コメント刈りで raw 残量 ~218B に回復。
+
 ## [1.7.570]
 
 ### 機能・i18n

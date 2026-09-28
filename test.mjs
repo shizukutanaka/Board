@@ -10263,6 +10263,136 @@ try {
     const clamp=_pathAt(pts,1.4);
     assert.strictEqual(clamp.x,100,'_pathAt clamps t>1 to the end');
   }
+  // v1.7.571: cover previously-untested exports — ctx ops, frame/convert helpers,
+  // key/geom utilities. Behaviour-level: set state, call, assert op+mutation.
+  {
+    const reset=()=>{state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();};
+    // _imgNextKey: image-key rotation used by _imgAttach for duplicate dataUrls
+    assert.strictEqual(_imgNextKey('abc'),'abc:1','_imgNextKey seeds :1');
+    assert.strictEqual(_imgNextKey('abc:1'),'abc:2','_imgNextKey bumps suffix');
+    assert.strictEqual(_imgNextKey('a:b:9'),'a:b:10','_imgNextKey keeps prefix with colons');
+    // _mapToBox: maps a point-geometry shape into a new bbox (affine on pts)
+    {
+      const sh={type:'pen',x:0,y:0,w:100,h:50,pts:[]};
+      const orig={type:'pen',x:0,y:0,w:100,h:50,pts:[[0,0],[100,50]]};
+      _mapToBox(sh,orig,{x:0,y:0,w:100,h:50},{x:10,y:20,w:200,h:100});
+      assert.strictEqual(sh.pts[0][0],10,'_mapToBox pt0 x');
+      assert.strictEqual(sh.pts[0][1],20,'_mapToBox pt0 y');
+      assert.strictEqual(sh.pts[1][0],210,'_mapToBox pt1 x');
+      assert.strictEqual(sh.pts[1][1],120,'_mapToBox pt1 y');
+    }
+    // _fitViewport: returns zoom, centres bbox in the fake 800x600 canvas rect
+    {
+      state.viewport={x:0,y:0,zoom:1};
+      const z=_fitViewport({x:0,y:0,w:100,h:100},40,4);
+      assert.ok(z>0&&z<=4,'_fitViewport returns a clamped zoom');
+      const cx=state.viewport.x+800/(2*state.viewport.zoom);
+      assert.ok(Math.abs(cx-50)<1e-6,'_fitViewport centres the bbox horizontally');
+    }
+    // unlockAll: clears locked on every locked shape, announces + one op
+    {
+      reset();
+      const a=Shape.make('rect',{x:0,y:0}),b=Shape.make('rect',{x:50,y:0});
+      a.locked=1;
+      Store.commit({op:'add',shape:a});Store.commit({op:'add',shape:b});
+      const h=state.history.length;
+      unlockAll();
+      assert.ok(!byId(a.id).locked,'unlockAll clears the lock');
+      assert.strictEqual(state.history.length,h+1,'unlockAll records exactly one op');
+    }
+    // selectSameType: with one rect selected, selects ALL rects (visible only)
+    {
+      reset();
+      const r1=Shape.make('rect',{x:0,y:0}),r2=Shape.make('rect',{x:50,y:0}),e1=Shape.make('ellipse',{x:100,y:0});
+      Store.commit({op:'add',shape:r1});Store.commit({op:'add',shape:r2});Store.commit({op:'add',shape:e1});
+      state.selection=new Set([r1.id]);
+      selectSameType();
+      assert.ok(state.selection.has(r1.id)&&state.selection.has(r2.id),'selectSameType selects both rects');
+      assert.ok(!state.selection.has(e1.id),'selectSameType skips the ellipse');
+    }
+    // selectFrameContents: replaces selection with the shapes inside the frame
+    {
+      reset();
+      const f=Shape.make('frame',{x:0,y:0,w:200,h:200}),inner=Shape.make('rect',{x:10,y:10,w:20,h:20}),out=Shape.make('rect',{x:500,y:500,w:20,h:20});
+      Store.commit({op:'add',shape:f});Store.commit({op:'add',shape:inner});Store.commit({op:'add',shape:out});
+      state.selection=new Set([f.id]);
+      selectFrameContents();
+      assert.ok(state.selection.has(inner.id),'selectFrameContents selects the inner shape');
+      assert.ok(!state.selection.has(f.id)&&!state.selection.has(out.id),'selectFrameContents drops frame + outsiders');
+    }
+    // toggleStickyText: sticky ↔ text type patch, undo-safe
+    {
+      reset();
+      const s=Shape.make('sticky',{x:0,y:0,text:'hi'});
+      Store.commit({op:'add',shape:s});
+      state.selection=new Set([s.id]);
+      toggleStickyText();
+      assert.strictEqual(byId(s.id).type,'text','toggleStickyText sticky→text');
+      toggleStickyText();
+      assert.strictEqual(byId(s.id).type,'sticky','toggleStickyText text→sticky');
+    }
+    // toggleLineArrow: line ↔ arrow
+    {
+      reset();
+      const s=Shape.make('line',{x1:0,y1:0,x2:10,y2:10});
+      Store.commit({op:'add',shape:s});
+      state.selection=new Set([s.id]);
+      toggleLineArrow();
+      assert.strictEqual(byId(s.id).type,'arrow','toggleLineArrow line→arrow');
+      toggleLineArrow();
+      assert.strictEqual(byId(s.id).type,'line','toggleLineArrow arrow→line');
+    }
+    // cycleArrowHead: arrow → dot → bar → open → none → arrow
+    {
+      reset();
+      const s=Shape.make('arrow',{x1:0,y1:0,x2:10,y2:10});
+      Store.commit({op:'add',shape:s});
+      state.selection=new Set([s.id]);
+      cycleArrowHead();
+      assert.strictEqual(byId(s.id).head,'dot','cycleArrowHead arrow→dot');
+      cycleArrowHead();
+      assert.strictEqual(byId(s.id).head,'bar','cycleArrowHead dot→bar');
+    }
+    // cycleStickyColor: advances to the next palette entry
+    {
+      reset();
+      const s=Shape.make('sticky',{x:0,y:0});
+      Store.commit({op:'add',shape:s});
+      state.selection=new Set([s.id]);
+      cycleStickyColor();
+      const c1=byId(s.id).color;
+      assert.ok(c1!==undefined,'cycleStickyColor sets a colour');
+      cycleStickyColor();
+      assert.ok(byId(s.id).color!==c1,'cycleStickyColor advances the palette');
+    }
+    // snapSelToGrid: snaps a misaligned shape to GRID_SIZE
+    {
+      reset();
+      const s=Shape.make('rect',{x:7,y:13,w:20,h:20});
+      Store.commit({op:'add',shape:s});
+      state.selection=new Set([s.id]);
+      snapSelToGrid();
+      assert.strictEqual(byId(s.id).x%20,0,'snapSelToGrid x on grid');
+      assert.strictEqual(byId(s.id).y%20,0,'snapSelToGrid y on grid');
+    }
+    // doPasteInPlace: pastes at original coords (0-offset) keeping selection
+    {
+      reset();
+      const s=Shape.make('rect',{x:33,y:44,w:10,h:10,stroke:'#C00'});
+      Store.commit({op:'add',shape:s});
+      state.selection=new Set([s.id]);
+      doCopy();_resetPasteClipboard();
+      const selBefore=[...state.selection];
+      doPasteInPlace();
+      const pasted=state.shapes[state.shapes.length-1];
+      assert.strictEqual(pasted.x,33,'doPasteInPlace keeps x');
+      assert.strictEqual(pasted.y,44,'doPasteInPlace keeps y');
+      assert.ok(state.selection.has(pasted.id)&&state.selection.size===1,'doPasteInPlace selects the pasted copy');
+      assert.deepStrictEqual(state.history[state.history.length-1].origSel,selBefore,'doPasteInPlace stashes origSel for undo-restore (ADR-0312)');
+    }
+    console.log('  ✓ coverage sweep: _imgNextKey/_mapToBox/_fitViewport/unlockAll/selectSameType/selectFrameContents/toggle*/cycle*/snapSelToGrid/doPasteInPlace');
+  }
+
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
   // asserts but actually contains 6 (recounted directly: at1.length, at2.length, and 4

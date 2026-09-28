@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.570';
+const V='1.7.571';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1307,8 +1307,8 @@ function validPatch(p){
   // into a tracking-pixel / IP-deanonymization request and breaking the no-external-
   // resources invariant. This is the shared intake gate (validShape + upd/patch paths),
   // so guarding here closes every vector at once. Mirrors buildSVG's /^data:image\// guard;
-  // SVG loaded via <img> can't run scripts or fetch subresources, so data:image/svg+xml is safe.
-  if('dataUrl' in p&&p.dataUrl!=null&&!(_iS(p.dataUrl)&&_ln(p.dataUrl)<=16_000_000&&/^data:image\//.test(p.dataUrl)))return false;   // ADR-0379: length cap — img.src buffers unbounded otherwise
+  // <img>-loaded SVG can't run scripts or fetch subresources — data: svg is safe.
+  if('dataUrl' in p&&p.dataUrl!=null&&!(_iS(p.dataUrl)&&_ln(p.dataUrl)<=16_000_000&&/^data:image\//.test(p.dataUrl)))return false;   // ADR-0379: length cap — else img.src buffers unbounded
   // ADR-0327: s.link flows into window.open — a hostile .board/peer upd could carry
   // a javascript:/data: URL; only http(s) is openable.
   if('link' in p&&p.link!=null&&!(_iS(p.link)&&/^https?:\/\//.test(p.link)))return false;
@@ -1335,7 +1335,7 @@ function _cleanVal(v,depth){
 const _TYPES=_sT(['rect','ellipse','diamond','pen','line','arrow','text','sticky','image','frame']);   // ADR-0387
 const _ptsOK=a=>_iA(a)&&a.every(p=>_iA(p)&&_ln(p)>=2&&p.every(n=>_iN(n)&&_fin(n)));   // ADR-0436: shared pen-pts tuple check
 function validShape(s){
-  if(!s||!_iO(s)||!_iS(s.id)||_ln(s.id)>64||!_TYPES.has(s.type)||!_iN(s.z))return false;   // ADR-0387/0388: non-string/huge id — byId lookups by string silently miss, Map keys diverge
+  if(!s||!_iO(s)||!_iS(s.id)||_ln(s.id)>64||!_TYPES.has(s.type)||!_iN(s.z))return false;   // ADR-0387/0388: non-string/huge id — byId misses, Map keys diverge
   if(!validPatch(s))return false;                  // no NaN/Inf coords, no pollution keys
   if(_pn(s))return _ptsOK(s.pts)&&_ln(s.pts)>0;
   return true;
@@ -3387,7 +3387,7 @@ function getHandles(s){
   }
   if(s.w==null)return [];
   // v1.6.96: text size is purely content-driven (resizeAfterTextEdit overwrites w/h on edit);
-  // resize handles conflict with auto-fit, so omit them. Rotation still works via getRotHandle.
+  // resize handles conflict with auto-fit; rotation still works via getRotHandle.
   if(_txt(s))return [];
   const x=s.x,y=s.y,w=s.w,h=s.h;
   const hs=[
@@ -4372,7 +4372,7 @@ function editSelectedShapeKbd(){
 function openLabelEditor(hit,leftPx,topPx,bold){
   const inp=_ce('input');
   inp.value=hit.label||'';inp.maxLength=80;
-  const col=hit.stroke||_gC(bold?'--accent-contrast':'--ink');   // a11y-audit-2026-07: label-editor text needs the 4.5:1 floor — --accent-contrast clears both themes
+  const col=hit.stroke||_gC(bold?'--accent-contrast':'--ink');   // a11y-audit-2026-07: label-editor text needs the 4.5:1 floor too
   inp.style.cssText=`position:fixed;left:${leftPx}px;top:${topPx}px;`+
     `font:${hit.italic?'italic ':''}${bold?'600 ':''}${hit.fontSize||12}px ${_fontFam(hit)};color:${col};`+   // ADR-0186/0206
     `background:${_p()};border:1px solid ${col};`+
@@ -4432,7 +4432,7 @@ const IMG_IMPORT_MAX_DIM=2048;
 function _imgImportFile(f,cb){
   const reader=new FileReader();
   reader.onload=()=>{
-    // ADR-0527: 4MB→16MB — the 2048px downscale below already shrinks phone photos under the cap.
+    // ADR-0527: the 2048px downscale below already shrinks phone photos under the cap.
     if(_ln(reader.result) > 16*1024*1024){
       _w(t('imgBig')+' ('+_rnd(_ln(reader.result)/1024)+'KB)');return;
     }
@@ -6108,7 +6108,7 @@ function doAlign(dir){
   // (parity with drag/nudge; mirrors withFrameChildren logic used in doMove/nudgeSelection)
   const frameOf=_frameOf(sel); // childId → frameId (unit key for unitMap)
   _xFS(sel,frameOf)
-  // Group-aware + frame-aware: shapes sharing groupId or inside a selected frame move as one unit
+  // Group+frame-aware: same groupId or inside a selected frame moves as one
   const unitMap=_mP();
   for(const s of sel){const k=frameOf.get(s.id)||_gi(s)||s.id;if(!unitMap.has(k))unitMap.set(k,{shapes:[],b:null});unitMap.get(k).shapes.push(s);}
   for(const u of unitMap.values())u.b=_bA(u.shapes);
@@ -8118,7 +8118,7 @@ const Net={
       try{this._onRecv(_JP(e.data),true)}catch(_){}   // ADR-0010: viaRtc=true
     };
     this.dc.onclose=()=>{
-      this._dcQ=null;this._snapIn=null;this._opcIn=null;   // ADR-0446/0448: dead-channel queue + partial assemblies must not survive into the next connection
+      this._dcQ=null;this._snapIn=null;this._opcIn=null;   // ADR-0446/0448: dead-channel queue + partial assemblies must not cross a reconnect
       if(!this._rtcConnFailed)_wT('disconnected');
       if(this._rtcPeerId){_pr().delete(this._rtcPeerId);this._rtcPeerId=null;_ivO();}
       if(this._onConnChange)this._onConnChange();
@@ -9061,7 +9061,7 @@ function wire(){
   // online
   _on(window,'online',UI.updateOnline);
   _on(window,'offline',UI.updateOnline);
-  // PWA install button (v1.6.92): show when browser signals installability; hide after install.
+  // PWA install button (v1.6.92): show on installable; hide after install.
   // `beforeinstallprompt` fires on Chrome/Edge/Samsung Internet when all install criteria are
   // met. Safari/Firefox do not fire it — the button stays hidden there (progressive enhancement).
   // We call _pd(e) to suppress the browser's ambient mini-infobar prompt so that
