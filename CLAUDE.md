@@ -649,7 +649,8 @@ Board/
     │   ├── ADR-0597-drag-damage-bound-conn.md   # ドラッグのダメージ矩形に束縛コネクタの掃引領域を含める (実装済)
     │   ├── ADR-0598-apply-damage-bound-conn.md  # _apply のダメージ収穫に束縛コネクタの掃引領域を含める (実装済)
     │   ├── ADR-0599-resize-rotate-damage-conn.md # 単一リサイズ/回転ドラッグにも束縛コネクタ掃引を含める (実装済)
-    │   └── ADR-0600-damage-conn-invariant-docs.md # 束縛コネクタ×ダメージ矩形の不変条件を文書化 (実装済)
+    │   ├── ADR-0600-damage-conn-invariant-docs.md # 束縛コネクタ×ダメージ矩形の不変条件を文書化 (実装済)
+    │   └── ADR-0601-per-shape-draw-isolation.md  # 1図形の描画例外が後続全図形を殺さない per-shape 隔離 (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

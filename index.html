@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.627';
+const V='1.7.628';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2531,9 +2531,9 @@ function draw(){
   const _skipScene=panned&&!(clipRects&&_ln(clipRects));
   if(!_skipScene){
     if(state.showGrid)drawGrid(W,H);
-    for(const s of _drawIter){if(_frm(s)&&inView(s,_view))drawShape(s)}
-    for(const s of _drawIter){if(s.type!=='frame'&&inView(s,_view))drawShape(s)}
-    if(_df())drawShape(_df());
+    for(const s of _drawIter){if(_frm(s)&&inView(s,_view))try{drawShape(s)}catch(_){}}   // ADR-0601: one bad shape must not blank the rest
+    for(const s of _drawIter){if(s.type!=='frame'&&inView(s,_view))try{drawShape(s)}catch(_){}}
+    if(_df())try{drawShape(_df())}catch(_){}
     // Predicted ink tail (ADR-0023) — one segmen
     // point, discarded when the next real sample
     // touches draft.pts, so it can't leak into S

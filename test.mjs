@@ -7308,6 +7308,13 @@ try {
     console.log('  \u2713 resize/rotate drag: bound-conn sweep pinned at 2 sites (2 asserts)');
   }
 
+  // ADR-0601: per-shape draw isolation — one bad shape can't blank the board
+  {
+    assert.equal(html.split('try{drawShape(s)}catch(_){}').length-1,2,'both draw loops isolate per-shape');
+    assert.ok(html.includes('try{drawShape(_df())}catch(_){}'),'draft draw isolated too');
+    console.log('  \u2713 draw(): per-shape isolation pinned (2 asserts)');
+  }
+
   // search navigation a11y: SR users search BY content, so the announcement must name
   // WHICH shape was found (describeShape), not a bare "2/7" count — parity with Tab cycle.
   {
