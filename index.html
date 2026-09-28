@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.609';
+const V='1.7.610';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6261,6 +6261,7 @@ function flipShape(s,axis,c){
   if(_im(s))s.flip=(s.flip||0)^(axis==='h'?1:2);
   if(tr&&(axis==='h')===!!trVert)s.bend=m(s.bend);
   if(s.cbend!=null)s.cbend=-s.cbend;   // ADR-0132: any mirror flips the curve's chirality
+  if(s.labelPos!=null)s.labelPos=1-s.labelPos;   // ADR-0583: mirrored path reverses t — keep the label at the same visual spot
   // ADR-0142: mirror maps angle θ → 180−θ across the vertical axis
   // ('h' flips x) and θ → 360−θ across the horizontal axis ('v' flips
   // y). Previously both axes took 360−θ, so an 'h' flip left a rotated

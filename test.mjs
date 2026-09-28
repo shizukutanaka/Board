@@ -937,6 +937,7 @@ const checks = [
   // v1.6.57: flip H/V - reuses the align op, context menu + ⇧H/⇧V shortcut
   ['flip ctx labels in ja and en', html.includes("ctxFlipH:'左右反転'") && html.includes("ctxFlipH:'Flip horizontal'")],
   ['flip context-menu entries present', html.includes("['ctxFlipH','⇧H',()=>doFlip('h')]") && html.includes("['ctxFlipV','⇧V',()=>doFlip('v')]")],
+  ['flip mirrors conn labelPos (ADR-0583)', html.includes("s.labelPos=1-s.labelPos")],
   ['flip keyboard shortcut (⇧H/⇧V) guarded by selection', html.includes("(k==='h'||k==='v')&&_selN()){_pd(e);doFlip(k)}")],
   // v1.6.58: rect/ellipse centre labels - dblclick to set, rendered centred, SVG export
   ['rect/ellipse label rendered centred in canvas', html.includes("_drawBoxLabel(s,c);break;") && html.includes("_taS(c,'center')")],
@@ -5332,6 +5333,13 @@ try {
     //     This is the non-empty-peer merge that sync bugs #2/#3 silently broke.
     reset(A); reset(B);
     const sa = A.Shape.make('rect',{x:1,y:1,w:5,h:5});   A.state.shapes.push(sa);
+    { // ADR-0583: flip mirrors conn labelPos — t=0.2 stays at the same visual end
+      const ar=B.Shape.make('arrow',{x1:0,y1:0,x2:200,y2:0,labelPos:0.2});
+      B.state.shapes.push(ar);B._invalidateGrid();B.state.selection=new Set([ar.id]);
+      B.doFlip('h');
+      const got=B.state.shapes.find(s=>s.id===ar.id).labelPos;
+      assert.ok(Math.abs(got-0.8)<1e-9,'labelPos mirrored to 0.8, got '+got);
+    }
     const sb = B.Shape.make('ellipse',{x:9,y:9,w:5,h:5}); B.state.shapes.push(sb);
     A.Net._sendSnapshot();   // A → B (B already has sb, so B must MERGE, not replace)
     B.Net._sendSnapshot();   // B → A
