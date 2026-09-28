@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.556';
+const V='1.7.557';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2027,6 +2027,8 @@ const _fsS=(c,v)=>c.fillStyle=v,_ssS=(c,v)=>c.strokeStyle=v,_lnW=(c,v)=>c.lineWi
 const _cPt=e=>({x:e.clientX,y:e.clientY}),_nP=()=>_pointers.size,_osp=e=>({x:e.offsetX,y:e.offsetY}),_spL=s=>s.split('\n');   // ADR-0522: input/coord/lines folds
 const _rm=e=>e.remove(),_nc=()=>navigator.clipboard;   // ADR-0522
 const _tC=(e,v)=>e.textContent=v;   // ADR-0523: textContent setter fold
+const _fc=e=>e.focus(),_clk=e=>e.click();   // ADR-0528
+const _aE=()=>document.activeElement,_csr=v=>canvas.style.cursor=v;   // ADR-0528
 
 const _hb=s=>s.w!=null;   // ADR-0501
 const _idOK=id=>_iS(id)&&_ln(id)<=64;   // ADR-0502: wire id cap (ADR-0485): unlocked+visible predicate (4 sites)
@@ -3849,8 +3851,8 @@ _on(canvas,_PD,e=>{
   const wp=_s2(sp);
   ptr.down=true;state.measure=null;ptr.x=ptr.x0=sp.x;ptr.y=ptr.y0=sp.y;
   ptr.wx=ptr.wx0=wp.x;ptr.wy=ptr.wy0=wp.y;
-  // space or middle click => pan
-  const isPan=e.button===1||_tl()==='hand'||_sK(e)&&_tl()==='select'&&false;
+  // middle click or hand tool => pan
+  const isPan=e.button===1||_tl()==='hand';
   if(isPan||(_tl()==='hand')){
     ptr.panning=true;canvas.dataset.panning='true';return;
   }
@@ -4023,9 +4025,9 @@ _on(canvas,_PM,e=>{
       if(_selN()===1){
         const onlySel=_sel0();
         if(onlySel){
-          if(hitRotHandle(wp,onlySel)){canvas.style.cursor='grab';return}
+          if(hitRotHandle(wp,onlySel)){_csr('grab');return}
           const hid=hitHandle(wp,onlySel);
-          if(hid){canvas.style.cursor=handleCursor(hid,onlySel.rotate);return}
+          if(hid){_csr(handleCursor(hid,onlySel.rotate));return}
         }
       }else if(_selN()>1){
         const sel=_selL(Boolean);
@@ -4033,16 +4035,16 @@ _on(canvas,_PM,e=>{
           const gb=_bA(sel);
           const gr=gb&&_grpRotHandle(gb);
           const tol=HANDLE_SIZE/_vp().zoom;
-          if(gr&&_abs(wp.x-gr.x)<=tol&&_abs(wp.y-gr.y)<=tol){canvas.style.cursor='grab';return}   // ADR-0057
+          if(gr&&_abs(wp.x-gr.x)<=tol&&_abs(wp.y-gr.y)<=tol){_csr('grab');return}   // ADR-0057
           // ADR-0056: same hover affordance on the group handles
           if(!sel.some(_rt)){
             const hid=gb&&hitHandle(wp,{x:gb.x,y:gb.y,w:gb.w,h:gb.h});
-            if(hid){canvas.style.cursor=handleCursor(hid);return}
+            if(hid){_csr(handleCursor(hid));return}
           }
         }
       }
       const top=pickTop(wp);
-      canvas.style.cursor=top?(top.locked?'not-allowed':'move'):'default';
+      _csr(top?(top.locked?'not-allowed':'move'):'default');
       // state.hover feeds nothing visual (cursor is set above) — no invalidate:
       // on a heavy board this used to repaint the whole scene per shape boundary crossed.
       if(top?.id!==state.hover){state.hover=top?.id||null;_ivO()}   // ADR-0070: qconn dots track hover
@@ -4060,7 +4062,7 @@ _on(canvas,_PM,e=>{
       // grid-accelerated (ADR-0032), so per-move cost is tiny.
       const top=pickTop(wp),id=top&&!top.locked?top.id:null;
       if(id!==state._ehov){state._ehov=id;_ivO()}
-      canvas.style.cursor='crosshair';
+      _csr('crosshair');
     }
     return;
   }
@@ -4239,7 +4241,7 @@ _on(canvas,_PU,e=>{
   }
   ptr.down=false;ptr.dragKind=null;ptr.dragStartShapes=null;
   ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;
-  state.marquee=null;canvas.style.cursor='default';_ivO();
+  state.marquee=null;_csr('default');_ivO();
 });
 // v1.6.88: extracted as named function so tests can call it directly.
 // Fixes: (1) _gd() not cleared → stale snap-guide lines after stylus OOR / Android
@@ -4426,7 +4428,9 @@ const IMG_IMPORT_MAX_DIM=2048;
 function _imgImportFile(f,cb){
   const reader=new FileReader();
   reader.onload=()=>{
-    if(_ln(reader.result) > 4*1024*1024){
+    // ADR-0527: 4MB → 16MB — phone photos died here even though the 2048px
+    // WebP downscale below would shrink them well under the 16M dataUrl cap.
+    if(_ln(reader.result) > 16*1024*1024){
       _w(t('imgBig')+' ('+_rnd(_ln(reader.result)/1024)+'KB)');return;
     }
     const img=new Image();
@@ -5462,7 +5466,7 @@ function openTextEditor(s,isNew){
   ta.spellcheck=false;
   positionTextEditor(ta,s);
   _ap(_db,ta);
-  ta.focus();
+  _fc(ta);
   const auto=()=>{
     ta.style.height='auto';
     ta.style.width='auto';
@@ -5638,7 +5642,7 @@ _on(window,_KD,e=>{
   // through to the close handler below.
   const _dlg=_openDialog();
   if(_dlg&&k!==_ES){
-    if(k===_TB){const tgt=_trapStep(_focusables(_dlg),document.activeElement,_sK(e));if(tgt){_pd(e);tgt.focus()}}
+    if(k===_TB){const tgt=_trapStep(_focusables(_dlg),_aE(),_sK(e));if(tgt){_pd(e);_fc(tgt)}}
     return;
   }
   if(meta&&k==='z'&&!_sK(e)){_pd(e);if(Store.undo())_tst(t('undone'))}
@@ -5780,7 +5784,7 @@ function toggleSnapMode(){state.snap=!state.snap;_tst(`${t('snap')} ${state.snap
 function toggleSq(){
   const sq=_g('sqinput');if(!sq)return;
   sq.style.display=sq.style.display==='none'?'block':'none';
-  if(sq.style.display!=='none'){sq.focus();sq.select();}
+  if(sq.style.display!=='none'){_fc(sq);sq.select();}
   else{_setSq('');_ivO();}
 }
 function pickTool(tool,temporary){
@@ -6381,7 +6385,7 @@ function exportViewportPNG(scale){
     const url=_oURL(bl);
     const a=_ce('a');
     a.href=url;a.download=`${_dn()||'board'}-view${sc&&sc!==2?'@'+sc+'x':''}.png`;
-    a.click();_rO(url);
+    _clk(a);_rO(url);
     _oT('exported');
   },'image/png');
 }
@@ -6391,7 +6395,7 @@ function exportPNG(shapes=_sh(),scale){
     const url=_oURL(bl);
     const a=_ce('a');
     a.href=url;a.download=`${_dn()||'board'}${scale&&scale!==2?'@'+scale+'x':''}.png`;
-    a.click();_rO(url);
+    _clk(a);_rO(url);
     _oT('exported');
   },scale);
 }
@@ -6433,7 +6437,7 @@ function replaceImage(){
       _iv();_oT('imagePasted');
     });
   };
-  inp.click();
+  _clk(inp);
 }
 function exportPDF(){
   if(!_nS()){_wT(_EM);return}
@@ -6463,7 +6467,7 @@ function exportSVG(shapes=_sh()){
   const url=_oURL(blob);
   const a=_ce('a');
   a.href=url;a.download=`${_dn()||'board'}.svg`;
-  a.click();_rO(url);
+  _clk(a);_rO(url);
   _oT('exportedSVG');
 }
 function exportBoard(shapes=_sh()){                       // ADR-0114: optional selection subset
@@ -6471,7 +6475,7 @@ function exportBoard(shapes=_sh()){                       // ADR-0114: optional 
   const a=_ce('a');
   const _bu=_oURL(new Blob([_JS({v:V,docName:_dn(),viewport:_vpS(),shapes:roundShapesForExport(shapes)})],{type:'application/json'}));   // ADR-0393
   a.href=_bu;a.download=(_dn()||'board')+'.board';
-  a.click();_rO(_bu);
+  _clk(a);_rO(_bu);
   _oT('exportedBoard');
 }
 // ---- ADR-0098: .excalidraw export ------------------------------------------
@@ -6812,7 +6816,7 @@ function exportExc(){
   const a=_ce('a');
   const _bu=_oURL(new Blob([_JS(excScene(_sh()))],{type:'application/json'}));
   a.href=_bu;a.download=(_dn()||'board')+'.excalidraw';
-  a.click();_rO(_bu);
+  _clk(a);_rO(_bu);
   _oT('exportedExc');
 }
 
@@ -6922,7 +6926,7 @@ function exportDrawio(shapes=_sh()){
   const a=_ce('a');
   const _bu=_oURL(new Blob([boardToDrawio(shapes)],{type:'application/xml'}));
   a.href=_bu;a.download=(_dn()||'board')+'.drawio';
-  a.click();_rO(_bu);
+  _clk(a);_rO(_bu);
   _oT('dioExported');
 }
 // ---- ADR-0042: SVG import --------------------------------------------------
@@ -8629,8 +8633,8 @@ const UI={
   // (window keydown) already traps Tab inside the open dialog; this adds the
   // missing half: remember the invoker and return focus to it on close.
   _prevFocus:null,
-  _captureFocus(){this._prevFocus=document.activeElement},
-  _restoreFocus(){const p=this._prevFocus;this._prevFocus=null;if(p&&p.focus)p.focus()},
+  _captureFocus(){this._prevFocus=_aE()},
+  _restoreFocus(){const p=this._prevFocus;this._prevFocus=null;if(p&&p.focus)_fc(p)},
   toggleHelp(){
     const h=_g('help'),open=h.dataset.open!=='true';
     h.dataset.open=open;
@@ -8909,7 +8913,7 @@ function _ctxMenuKeyNav(m,e){
   if(e.key==='Escape'||e.key==='Tab'){_pd(e);UI.closeCtxMenu();return;}
   const items=[..._qsa(m,'.ctx-item')];
   if(!_ln(items))return;
-  const cur=_ix(items,document.activeElement);
+  const cur=_ix(items,_aE());
   if(e.key==='ArrowDown'){_pd(e);items[(cur+1)%_ln(items)].focus();return;}
   if(e.key==='ArrowUp'){_pd(e);items[(cur-1+_ln(items))%_ln(items)].focus();return;}
   if(e.key==='Home'){_pd(e);items[0].focus();return;}
@@ -8930,14 +8934,14 @@ async function _onBtnInstall(){
   if(btn)btn.hidden=true;
 }
 function wire(){
-  {const sq=_ce('input');sq.id='sqinput';sq.type='text';sq.placeholder=T.k.search;_sa(sq,_AL,T.k.search);sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--accent-contrast);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';_ap(_db,sq);_on(sq,'input',()=>{_setSq(sq.value);_ivO()});_on(sq,_KD,ev=>{if(ev.key==='Escape'){_setSq('');sq.style.display='none';sq.value='';_ivO();canvas.focus();}else if(ev.key==='Enter'&&!ev.isComposing){_pd(ev);
+  {const sq=_ce('input');sq.id='sqinput';sq.type='text';sq.placeholder=T.k.search;_sa(sq,_AL,T.k.search);sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--accent-contrast);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';_ap(_db,sq);_on(sq,'input',()=>{_setSq(sq.value);_ivO()});_on(sq,_KD,ev=>{if(ev.key==='Escape'){_setSq('');sq.style.display='none';sq.value='';_ivO();_fc(canvas);}else if(ev.key==='Enter'&&!ev.isComposing){_pd(ev);
     // ⌘Enter: commit the whole match list as the selection, then fold the
     // box away — selecting is terminal, so stale search highlights only
     // distract from the follow-up (move/style the found group).
     if(_mod(ev)){const ms=_sqMatches();if(!_ln(ms))return;
       _ss(ms.map(s=>s.id));_aS();_iv();
       _tst(`${_ln(ms)} ${t(_SM)}`);
-      _setSq('');sq.style.display='none';sq.value='';_ivO();canvas.focus();
+      _setSq('');sq.style.display='none';sq.value='';_ivO();_fc(canvas);
     }else _sqAdvance(_sK(ev)?-1:1);}});}
   // tool buttons
   for(const b of _qsa(document,'.tool'))
@@ -9721,7 +9725,7 @@ const Presentation=(()=>{
   function enter(){
     _frames=_getFrames();
     if(!_ln(_frames)){_wT('noFrames');return}
-    _focusTrigger=document.activeElement;
+    _focusTrigger=_aE();
     _active=true;_idx=0;
     _savedVp={x:_vp().x,y:_vp().y,zoom:_vp().zoom};
     // Build overlay

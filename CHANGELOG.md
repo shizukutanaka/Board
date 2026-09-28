@@ -2,6 +2,17 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.557] - 2026-09-28
+
+### 修正
+
+- **画像取込の事前キャップを 4MB → 16MB** — 12MP 級のスマホ写真 (~5-6MB base64) が 2048px WebP 縮退で ~300KB に収まるのに decode 前の 4MB ゲートで弾かれていた。ガードの目的は保存ペイロード量であり、下流の ADR-0379 16M キャップと整合させた (ADR-0527)
+- `isPan` の dead 節 (`&&false`) 除去 (ADR-0528)
+
+### 変更
+
+- `_fc`/`_clk`/`_aE`/`_csr` shorthand 化 (focus/click/activeElement/canvas cursor、~110B) (ADR-0528)
+
 ## [1.7.556] - 2026-09-28
 
 ### 修正

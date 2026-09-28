@@ -213,7 +213,7 @@ const checks = [
   // round 6: frame hit priority + label edit + image size guard
   ['pickTop skips frames on first pass', html.includes("_frm(s))continue")],
   ['frame dblclick label edit', html.includes("_frm(hit)") && html.includes("hit.label")],
-  ['image size guard 4MB', html.includes("4*1024*1024") && html.includes("大きすぎます")],
+  ['image size guard 16MB', html.includes("16*1024*1024") && html.includes("大きすぎます")],
   ['SVG export frames first', html.includes("svgShapes") && html.includes("type===\"frame\"")],
   // round 7: _apply completeness + opacity UI
   ['_apply handles group op', html.includes("case 'group':") && html.includes("sh.groupId=op.gid")],
@@ -558,6 +558,7 @@ const checks = [
   ['Canvas prop-assignment setters (ADR-0520)', html.includes('const _fsS=(c,v)=>c.fillStyle=v')&&html.includes('_tbS=(c,v)=>c.textBaseline=v')],
   ['lostpointercapture gesture cancel (ADR-0521)', html.includes("'lostpointercapture'")&&html.includes('_cancelPointerGesture()')&&html.includes('_nP=()=>')],
   ['pointerleave clears hover + laser (ADR-0526)', html.includes("'pointerleave'")&&html.includes('state.hover=null')],
+  ['contextmenu cancels mid-gesture (ADR-0524)', html.includes("'contextmenu'")&&html.includes('if(ptr.down)_cancelPointerGesture();else UI.openCtxMenu')],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
@@ -987,7 +988,7 @@ const checks = [
   ['doFlip skips locked shapes (consistent with doRotate)', html.includes("const sel=_selUL();")],
   ['doRotate orbits selection about group centre', html.includes("orbit about group centre, like doFlip") && html.includes("_sT2(s,nx-cx,ny-cy)")],
   ['search input has localized aria-label', html.includes("_sa(sq,_AL,T.k.search)")],
-  ['search Escape returns focus to canvas', html.includes("_ivO();canvas.focus();}") && html.includes("_sqAdvance(_sK(ev)?-1:1)")],
+  ['search Escape returns focus to canvas', html.includes("_ivO();_fc(canvas);}") && html.includes("_sqAdvance(_sK(ev)?-1:1)")],
   // v1.6.64: Socratic round 4 - rotation scope + lock completeness
   ['doRotate restricted to box shapes (s.w!=null, NaN-safe)', html.includes("_selL(s=>s&&!_lk(s)&&_hb(s))")],
   ['doDelete skips locked shapes', html.includes("function doDelete(){\n  const sel=_selUL();")],
