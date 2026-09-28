@@ -3841,6 +3841,24 @@ try {
     console.log('  ✓ del undo: locked shape not duplicated (3 asserts)');
   }
 
+  // ADR-0548: move undo must not shift locked shapes the forward pass skipped
+  {
+    const a=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    const b=Shape.make('rect',{x:200,y:0,w:50,h:50});
+    Store.commit({op:'addMany',shapes:[a,b]});
+    byId(a.id).locked=true;
+    Store.commit({op:'move',ids:[a.id,b.id],dx:100,dy:0});
+    assert.ok(byId(a.id).x===0&&byId(b.id).x===300,'locked stays, unlocked moves');
+    Store.undo();
+    assert.ok(byId(a.id).x===0,'undo leaves locked shape unmoved');
+    assert.ok(byId(b.id).x===200,'undo restores moved shape');
+    Store.redo();
+    assert.ok(byId(b.id).x===300,'redo re-moves via recorded moved set');
+    byId(a.id).locked=false;
+    Store.commit({op:'del',shapes:[byId(a.id),byId(b.id)].map(s=>JSON.parse(JSON.stringify(s)))});
+    console.log('  ✓ move undo: locked shape not shifted backward (4 asserts)');
+  }
+
   // ADR-0068: curved connector — quadratic route, exclusive toggle, undo
   {
     const a=Shape.make('arrow',{x1:0,y1:0,x2:100,y2:0});
