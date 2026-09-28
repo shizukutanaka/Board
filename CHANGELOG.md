@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.550] - 2026-09-28
+
+### 修正
+
+- Safari (macOS/iPadOS) のトラックパッド pinch-zoom に対応 — Safari は ctrl+wheel ではなく独自の GestureEvent (`gesturestart`/`gesturechange`/`gestureend`, `e.scale`) を発火するため、ピンチが無反応だった。`_pinchSnapNow` プレビューを共有して滑らかさも揃えた (ADR-0517)
+
 ## [1.7.549] - 2026-09-28
 
 ### 修正

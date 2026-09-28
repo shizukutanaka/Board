@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.549';
+const V='1.7.550';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4618,6 +4618,20 @@ _on(canvas,_PM,e=>{
 let _pinchPrev=0;
 // Reset pinch state when fewer than 2 pointers
 const _resetPinch=()=>{if(_pointers.size<2){_pinchPrev=0;if(_pinchSnap){_pinchSnap=null;_pinchVp=null;_iv();}}};
+
+// ADR-0517: Safari trackpad pinch — macOS/iPadOS Safari fire proprietary
+// GestureEvent (gesturestart/change/end, e.scale) instead of ctrl+wheel, so
+// trackpad pinch-zoom was silently unsupported there while Chrome/FF worked.
+// Unknown event names are inert elsewhere, so plain listeners are safe.
+let _gScale=1;
+_on(canvas,'gesturestart',e=>{_pd(e);_pinchSnapNow();_gScale=e.scale},{passive:false});
+_on(canvas,'gesturechange',e=>{
+  _pd(e);
+  const r=_cbr();
+  zoomAt({x:e.clientX-r.left,y:e.clientY-r.top},_log(e.scale/_gScale));
+  _gScale=e.scale;
+},{passive:false});
+_on(canvas,'gestureend',()=>{_pinchSnap=null;_pinchVp=null;_iv()});
 _on(canvas,_PU,_resetPinch);
 _on(canvas,_PC,_resetPinch);
 
