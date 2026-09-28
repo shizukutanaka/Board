@@ -789,7 +789,7 @@ const _so=(b,a)=>{if(_ln(b)){_styleOp(b,a);_iv()}};   // ADR-0307
 const _selL=f=>_sb().filter(f);   // ADR-0308
 const _selUL=()=>_sb().filter(_ul);
 const _repC=(before,beforeWc,origSel)=>Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(_wc()),origSel});
-const _ctrAt=(ss,wp)=>{wp=wp||_midV();const bb=_bA(ss);if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);for(const s of ss)Shape.translate(s,dx,dy)}};
+const _ctrAt=(ss,wp)=>{wp=wp||_midV();const bb=_bA(ss);if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);for(const s of ss)_sT2(s,dx,dy)}};
 const _selR=op=>{if(op.origSel)_ss(op.origSel.filter(byId))};   // ADR-0309
 const _keepSel=arr=>{if(_ln(arr))_hi()[_hx()].origSel=arr};   // ADR-0312
 const _pd=e=>e.preventDefault();   // ADR-0326
@@ -801,7 +801,7 @@ const _sel0=()=>byId(_selIds()[0]);   // ADR-0421: single-selected shape (12 sit
 const _grpOf=gid=>_sh().filter(s=>s.groupId===gid).map(s=>s.id);   // ADR-0423: members of a group (id list)
 // ADR-0423: expand a working selection by its frameOf map — add each
 // child's id as a shape (unlocked only), idempotent across callers.
-const _xFS=(sel,frameOf)=>{for(const [cid] of frameOf){if(!sel.find(s=>s.id===cid)){const ch=byId(cid);if(ch&&!ch.locked)sel.push(ch);}}}
+const _xFS=(sel,frameOf)=>{for(const [cid] of frameOf){if(!sel.find(s=>s.id===cid)){const ch=byId(cid);if(ch&&!ch.locked)_pu(sel,ch);}}}
 // ADR-0423: childId→frameId map for shapes fully inside any selected frame —
 // drives frame-containment expansion in delete/move/flip/rotate.
 const _frameOf=(sel,ok)=>{const m=_mP();
@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.546';
+const V='1.7.547';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1450,7 +1450,7 @@ const Store={
       const e=_cE(sh),patch={};
       if(aGone){patch.a=null;patch.aF=null;patch.x1=e.x1;patch.y1=e.y1;}   // ADR-0209
       if(bGone){patch.b=null;patch.bF=null;patch.x2=e.x2;patch.y2=e.y2;}
-      fixes.push({id:sh.id,patch});
+      _pu(fixes,{id:sh.id,patch});
     }
     return _ln(fixes)?fixes:null;
   },
@@ -1654,7 +1654,7 @@ const Store={
       case 'move':{
         const d=forward?1:-1;
         for(const id of op.ids){const sh=byId(id);if(!sh)continue;if(forward&&sh.locked)continue;
-          Shape.translate(sh,op.dx*d,op.dy*d);}
+          _sT2(sh,op.dx*d,op.dy*d);}
         if(!forward)_selR(op);
         break;}
       case 'clear':{
@@ -1705,8 +1705,8 @@ const Store={
           if(snap){
             const map=_mP(_sh().map(s=>[s.id,s]));
             const next=[];
-            for(const p of snap){const sh=map.get(p.id);if(sh){if(!(forward&&sh.locked)){sh.z=p.z;if(p.frac!=null)sh.frac=p.frac;}next.push(sh);map.delete(p.id)}}
-            for(const sh of map.values())next.push(sh);   // keep any extras (defensive)
+            for(const p of snap){const sh=map.get(p.id);if(sh){if(!(forward&&sh.locked)){sh.z=p.z;if(p.frac!=null)sh.frac=p.frac;}_pu(next,sh);map.delete(p.id)}}
+            for(const sh of map.values())_pu(next,sh);   // keep any extras (defensive)
             _sh().length=0;Array.prototype.push.apply(_sh(),next);
           }
         }
@@ -1827,8 +1827,8 @@ function _linePts(s){
 // ADR-0077: hatch segments over a bbox — 45° family, plus 135° when cross.
 function _hatchSegs(x,y,w,h,gap,cross){
   const out=[];
-  for(let d=-h;d<w;d+=gap)out.push([x+d,y,x+d+h,y+h]);
-  if(cross)for(let d=-h;d<w;d+=gap)out.push([x+d+h,y,x+d,y+h]);
+  for(let d=-h;d<w;d+=gap)_pu(out,[x+d,y,x+d+h,y+h]);
+  if(cross)for(let d=-h;d<w;d+=gap)_pu(out,[x+d+h,y,x+d,y+h]);
   return out;
 }
 // Canvas hatch: clip() reuses the still-current shape path (stroke doesn't consume it).
@@ -1845,7 +1845,7 @@ function _svgHatch(els,s,ox,oy,stroke,shapeTag,rT){
   const segs=_hatchSegs(s.x+ox,s.y+oy,s.w,s.h,_max(6,(_szz(s)||1)*4),_fs2(s)==='cross');
   const lw=_max(0.5,(_szz(s)||1)*0.6);
   const lns=segs.map(g=>`<line x1="${_num(g[0])}" y1="${_num(g[1])}" x2="${_num(g[2])}" y2="${_num(g[3])}" stroke="${stroke}" stroke-width="${_num(lw)}"/>`).join('');
-  els.push(`<defs><clipPath id="${hid}">${shapeTag}</clipPath></defs><g clip-path="url(#${hid})" opacity="0.55"${rT}>${lns}</g>`);
+  _pu(els,`<defs><clipPath id="${hid}">${shapeTag}</clipPath></defs><g clip-path="url(#${hid})" opacity="0.55"${rT}>${lns}</g>`);
 }
 // Shared by doDelete/flushErase/openTextEditor/_syncTextFinalize: resolve live endpoint
 // coords BEFORE the referenced shapes are gone, so undo can restore exact bindings.
@@ -1863,7 +1863,7 @@ function computeConnClears(delIds){
     const p={id:sh.id,before:{},after:{}};
     if(aAffected){p.before.a=sh.a;p.before.aF=sh.aF;p.before.x1=sh.x1;p.before.y1=sh.y1;p.after.a=null;p.after.aF=null;p.after.x1=e.x1;p.after.y1=e.y1;}
     if(bAffected){p.before.b=sh.b;p.before.bF=sh.bF;p.before.x2=sh.x2;p.before.y2=sh.y2;p.after.b=null;p.after.bF=null;p.after.x2=e.x2;p.after.y2=e.y2;}   // ADR-0209
-    connClears.push(p);
+    _pu(connClears,p);
   }
   return connClears;
 }
@@ -1884,16 +1884,16 @@ function keyBetween(a,b){
       // Both sequences exhausted and still equal ⇒ a≈b (degenerate / malformed
       // input such as b="0"). No strict midpoint exists; emit a mid digit and stop
       // instead of looping forever (guards against a hostile peer's frac key).
-      if(i>=_ln(A)&&(B==null||i>=_ln(B))){out.push(N>>1);break;}
-      out.push(x);i++;continue;                // shared prefix: copy and descend
+      if(i>=_ln(A)&&(B==null||i>=_ln(B))){_pu(out,N>>1);break;}
+      _pu(out,x);i++;continue;                // shared prefix: copy and descend
     }
     const mid=(x+y)>>1;
-    if(mid>x){out.push(mid);break;}          // gap between digits: take midpoint
-    out.push(x);i++;                          // y===x+1: commit x, go above lower
+    if(mid>x){_pu(out,mid);break;}          // gap between digits: take midpoint
+    _pu(out,x);i++;                          // y===x+1: commit x, go above lower
     while(true){
       const lx=i<_ln(A)?A[i]:0;
-      if(lx<N-1){out.push((lx+N)>>1);break;}  // a digit strictly above the lower
-      out.push(lx);i++;                        // lower saturated: keep descending
+      if(lx<N-1){_pu(out,(lx+N)>>1);break;}  // a digit strictly above the lower
+      _pu(out,lx);i++;                        // lower saturated: keep descending
     }
     break;
   }
@@ -2021,6 +2021,7 @@ const _mT=(c,x,y)=>c.moveTo(x,y),_lT=(c,x,y)=>c.lineTo(x,y);   // ADR-0511
 const _sv2=c=>c.save(),_rs2=c=>c.restore(),_cP=c=>c.closePath(),_qC=(c,x,y,cx,cy)=>c.quadraticCurveTo(x,y,cx,cy);   // ADR-0512
 const _sD=(c,d)=>c.setLineDash(d),_mTX=(c,s)=>c.measureText(s),_sR2=(c,x,y,w,h)=>c.strokeRect(x,y,w,h),_tr2=(c,x,y)=>c.translate(x,y),_sTF=(c,a,b,d,e,f,g)=>c.setTransform(a,b,d,e,f,g);   // ADR-0513
 const _cmt=o=>Store.commit(o),_ann=m=>UI.announce(m),_oURL=b=>URL.createObjectURL(b),_oS=(tx,n)=>tx.objectStore(n),_pA=()=>Presentation.isActive();   // ADR-0513
+const _smk=(t,x)=>Shape.make(t,x),_sT2=(s,dx,dy)=>Shape.translate(s,dx,dy),_rZ=()=>UI.refreshZoom(),_trx=(db,t,n)=>db.transaction(t,n),_fT=(c,s,x,y)=>c.fillText(s,x,y),_pu=(a,...v)=>a.push(...v);   // ADR-0514
 const _hb=s=>s.w!=null;   // ADR-0501
 const _idOK=id=>_iS(id)&&_ln(id)<=64;   // ADR-0502: wire id cap (ADR-0485): unlocked+visible predicate (4 sites)
 const _idIdx=id=>_sh().findIndex(s=>s.id===id);   // ADR-0497: shape index by id (4 sites)
@@ -2451,11 +2452,11 @@ function draw(){
     ctx.drawImage(canvas,0,0,W,H,sx,sy,W,H);
     const Ww=W/z,Hh=H/z,Nx1=ev.x+Ww,Ny1=ev.y+Hh,Ox1=pv.x+Ww,Oy1=pv.y+Hh;
     clipRects=[];
-    if(Nx1>Ox1)clipRects.push({x:Ox1,y:ev.y,w:Nx1-Ox1,h:Hh});          // right
-    else if(ev.x<pv.x)clipRects.push({x:ev.x,y:ev.y,w:pv.x-ev.x,h:Hh});// left
-    if(Ny1>Oy1)clipRects.push({x:ev.x,y:Oy1,w:Ww,h:Ny1-Oy1});          // bottom
-    else if(ev.y<pv.y)clipRects.push({x:ev.x,y:ev.y,w:Ww,h:pv.y-ev.y});// top
-    if(dmg)clipRects.push(dmg);
+    if(Nx1>Ox1)_pu(clipRects,{x:Ox1,y:ev.y,w:Nx1-Ox1,h:Hh});          // right
+    else if(ev.x<pv.x)_pu(clipRects,{x:ev.x,y:ev.y,w:pv.x-ev.x,h:Hh});// left
+    if(Ny1>Oy1)_pu(clipRects,{x:ev.x,y:Oy1,w:Ww,h:Ny1-Oy1});          // bottom
+    else if(ev.y<pv.y)_pu(clipRects,{x:ev.x,y:ev.y,w:Ww,h:pv.y-ev.y});// top
+    if(dmg)_pu(clipRects,dmg);
     if(_ln(clipRects)){
       _sTF(ctx,z,0,0,z,-ev.x*z,-ev.y*z);
       _sv2(ctx);
@@ -2566,7 +2567,7 @@ function drawOverlay(){
     const tw=_mTX(c,r.label).width+14,ph=18,px=sp.x,py=sp.y+14;
     c.fillStyle='rgba(15,23,42,.85)';
     _bp(c);roundRect(c,px-tw/2,py,tw,ph,4);_fil(c);
-    c.fillStyle='#fff';c.fillText(r.label,px,py+ph/2);
+    c.fillStyle='#fff';_fT(c,r.label,px,py+ph/2);
     _rs2(c);
   }
   const _qs=_qconnShape();                                             // ADR-0070
@@ -2608,7 +2609,7 @@ function drawEmptyHint(c,W,H){
   c.fillStyle=_gC('--ink-3');   // tertiary text token: 4.7:1 AA, deliberately muted
   c.textAlign='center';c.textBaseline='middle';
   c.font='14px '+(_gC('--ui-font')||'system-ui,sans-serif');
-  c.fillText(t('emptyHint'),W/(2*DPR),H/(2*DPR));
+  _fT(c,t('emptyHint'),W/(2*DPR),H/(2*DPR));
 }
 // ADR-0011: ephemeral peer selection outlines — bbox frame only, in the peer's color,
 // thin [3,3] dashes. Deliberately distinct from the user's own selection on all three
@@ -2660,10 +2661,10 @@ function _drawMeasure(c){
   const xmid=(_max(a.x,b.x)+_min(a.x+a.w,b.x+b.w))/2;
   const ymid=(_max(a.y,b.y)+_min(a.y+a.h,b.y+b.h))/2;
   const segs=[];
-  if(a.x+a.w<b.x)segs.push({x1:a.x+a.w,y1:ymid,x2:b.x,y2:ymid});
-  else if(b.x+b.w<a.x)segs.push({x1:b.x+b.w,y1:ymid,x2:a.x,y2:ymid});
-  if(a.y+a.h<b.y)segs.push({x1:xmid,y1:a.y+a.h,x2:xmid,y2:b.y});
-  else if(b.y+b.h<a.y)segs.push({x1:xmid,y1:b.y+b.h,x2:xmid,y2:a.y});
+  if(a.x+a.w<b.x)_pu(segs,{x1:a.x+a.w,y1:ymid,x2:b.x,y2:ymid});
+  else if(b.x+b.w<a.x)_pu(segs,{x1:b.x+b.w,y1:ymid,x2:a.x,y2:ymid});
+  if(a.y+a.h<b.y)_pu(segs,{x1:xmid,y1:a.y+a.h,x2:xmid,y2:b.y});
+  else if(b.y+b.h<a.y)_pu(segs,{x1:xmid,y1:b.y+b.h,x2:xmid,y2:a.y});
   _sv2(c);c.strokeStyle=_ac();c.lineWidth=1;
   c.font='11px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';
   for(const s of segs){
@@ -2674,7 +2675,7 @@ function _drawMeasure(c){
     const label=_St(_rnd(L)),tw=_mTX(c,label).width+12;
     const mx=(p1.x+p2.x)/2,my=(p1.y+p2.y)/2;
     c.fillStyle='rgba(15,23,42,.85)';_bp(c);roundRect(c,mx-tw/2,my-9,tw,18,4);_fil(c);
-    c.fillStyle='#fff';c.fillText(label,mx,my);
+    c.fillStyle='#fff';_fT(c,label,mx,my);
   }
   _rs2(c);
 }
@@ -2722,7 +2723,7 @@ function _drawBoxLabel(s,c){
   const lh=fs*(s.lineH||1.25);
   // ADR-0159: _va(s) 'top'|'bottom' (absent = centred) — draw.io parity.
   const top0=_va(s)==='top'?s.y+6:_va(s)==='bottom'?s.y+s.h-6-_ln(lines)*lh:s.y+s.h/2-(_ln(lines)*lh)/2;
-  for(let i=0;i<_ln(lines);i++)c.fillText(lines[i],tx,top0+lh/2+i*lh);
+  for(let i=0;i<_ln(lines);i++)_fT(c,lines[i],tx,top0+lh/2+i*lh);
   if(s.under||s.strike){c.strokeStyle=c.fillStyle;c.lineWidth=_max(1,fs*0.06);   // ADR-0170
     const _lw2=_connLabelMeasure(s,c,lines,fs).ws;             // ADR-0252
     for(let i=0;i<_ln(lines);i++){const lw=_lw2[i];
@@ -2748,7 +2749,7 @@ function _drawImgLabel(s,c){
   const al2=s.align||'center';   // ADR-0171
   c.textAlign=al2==='left'?'left':al2==='right'?'right':'center';c.textBaseline='middle';
   const tx2=al2==='left'?s.x+6:al2==='right'?s.x+s.w-6:s.x+s.w/2;
-  for(let i=0;i<_ln(lines);i++)c.fillText(lines[i],tx2,sy+2+lh/2+i*lh);
+  for(let i=0;i<_ln(lines);i++)_fT(c,lines[i],tx2,sy+2+lh/2+i*lh);
   _rs2(c);
 }
 // Connector (edge) label at the midpoint of the bound endpoints (ADR-0003). A paper-
@@ -2762,7 +2763,7 @@ function _connPathPts(s){
   if(_el(s))return _elbowPts(s);
   if(s.curve){const e=_cE(s),cc=_curveCtrl(e,s.cbend),pts=[];
     for(let i=0;i<=16;i++){const u=i/16,v=1-u;
-      pts.push({x:v*v*e.x1+2*v*u*cc.x+u*u*e.x2,y:v*v*e.y1+2*v*u*cc.y+u*u*e.y2})}
+      _pu(pts,{x:v*v*e.x1+2*v*u*cc.x+u*u*e.x2,y:v*v*e.y1+2*v*u*cc.y+u*u*e.y2})}
     return pts}
   return _linePts(s);
 }
@@ -2838,7 +2839,7 @@ function _drawConnLabel(s,c){
   if(_fi(s)!=='none'){c.fillStyle=_fi(s)||_p()||'#fff';   // ADR-0288
   c.fillRect(mx-w/2-pad,my-th/2,w+pad*2,th)}
   c.fillStyle=_sk(s)||_IK;
-  for(let i=0;i<_ln(lns);i++)c.fillText(lns[i],mx,my+(i-(_ln(lns)-1)/2)*llh);
+  for(let i=0;i<_ln(lns);i++)_fT(c,lns[i],mx,my+(i-(_ln(lns)-1)/2)*llh);
   if(s.under||s.strike){c.strokeStyle=c.fillStyle;c.lineWidth=_max(1,fs*0.06);   // ADR-0170
     for(let i=0;i<_ln(lns);i++){const lw=_lm.ws[i],ly=my+(i-(_ln(lns)-1)/2)*llh;
       if(s.under){_bp(c);_mT(c,mx-lw/2,ly+fs*0.55);_lT(c,mx+lw/2,ly+fs*0.55);_st2(c)}
@@ -2935,7 +2936,7 @@ function drawShape(s,c){
       const alF=s.align||'left';                                    // ADR-0197
       c.textAlign=alF==='right'?'right':alF==='center'?'center':'left';
       const txF2=alF==='right'?s.x+s.w-6:alF==='center'?s.x+s.w/2:s.x+6;
-      c.fillText(lbl,txF2,s.y-2);
+      _fT(c,lbl,txF2,s.y-2);
       if(s.under||s.strike){const lw=_connLabelMeasure(s,c,[lbl],fs).w;   // ADR-0252/0204
         c.strokeStyle=c.fillStyle;c.lineWidth=_max(1,fs*0.06);
         const ux=alF==='left'?txF2:alF==='right'?txF2-lw:txF2-lw/2;
@@ -2964,7 +2965,7 @@ function drawShape(s,c){
         // ADR-0187: _va(s) on sticky positions the text block (top default).
         const sty=_va(s)==='middle'?s.y+(s.h-_ln(lines)*lh)/2:
                   _va(s)==='bottom'?s.y+s.h-pad-_ln(lines)*lh:s.y+pad;
-        for(let i=0;i<_ln(lines);i++)c.fillText(lines[i],tax,sty+i*lh);
+        for(let i=0;i<_ln(lines);i++)_fT(c,lines[i],tax,sty+i*lh);
         if(s.under||s.strike){c.strokeStyle=_sk(s)||'#1E293B';c.lineWidth=_max(1,fs*0.06);   // ADR-0192
           const _lwS=_connLabelMeasure(s,c,lines,fs).ws;         // ADR-0252
           for(let i=0;i<_ln(lines);i++){const lw=_lwS[i];
@@ -3044,12 +3045,12 @@ function _elbowPts(s){
   if(s.bend){                              // ADR-0072: user-set trunk position
     const c1=d1.x!==0?{x:s.bend,y:q1.y}:{x:q1.x,y:s.bend};
     const c2=d1.x!==0?{x:s.bend,y:q2.y}:{x:q2.x,y:s.bend};
-    pts.push(c1,c2,q2,{x:e.x2,y:e.y2});
+    _pu(pts,c1,c2,q2,{x:e.x2,y:e.y2});
     return pts;
   }
   const mid=d1.x!==0?{x:q2.x,y:q1.y}:{x:q1.x,y:q2.y};
-  if((mid.x!==q1.x||mid.y!==q1.y)&&(mid.x!==q2.x||mid.y!==q2.y))pts.push(mid);
-  pts.push(q2,{x:e.x2,y:e.y2});
+  if((mid.x!==q1.x||mid.y!==q1.y)&&(mid.x!==q2.x||mid.y!==q2.y))_pu(pts,mid);
+  _pu(pts,q2,{x:e.x2,y:e.y2});
   return pts;
 }
 // Label anchor: midpoint between the two stub tips (inner segment region).
@@ -3131,7 +3132,7 @@ function _hopsFor(s,pts){
       const a=pts[i],b=pts[i+1];
       for(let j=0;j<_ln(op)-1;j++){
         const tt=_segIntT(a.x,a.y,b.x,b.y,op[j].x,op[j].y,op[j+1].x,op[j+1].y);
-        if(tt!=null)hops.push(i*1e6+tt);
+        if(tt!=null)_pu(hops,i*1e6+tt);
       }
     }
   }
@@ -3236,7 +3237,7 @@ function _curveCtrl(e,bend){
 function _curveSegs(s){
   const e=_cE(s),cc=_curveCtrl(e,s.cbend),pts=[];
   for(let i=0;i<=16;i++){const t=i/16,u=1-t;
-    pts.push({x:u*u*e.x1+2*u*t*cc.x+t*t*e.x2,y:u*u*e.y1+2*u*t*cc.y+t*t*e.y2});}
+    _pu(pts,{x:u*u*e.x1+2*u*t*cc.x+t*t*e.x2,y:u*u*e.y1+2*u*t*cc.y+t*t*e.y2});}
   return pts;
 }
 function _curveLabelXY(s){
@@ -3331,7 +3332,7 @@ function drawText(s,c){
     const bx=s.align==='center'?ax-mw/2:s.align==='right'?ax-mw:ax;
     if(_fi(s)!=='none'){_sv2(c);c.fillStyle=_fi(s);c.fillRect(bx-3,s.y-3,mw+6,_ln(lines)*lh+6);_rs2(c)}   // ADR-0288
     c.fillStyle=_sk(s)||_IK;}
-  for(let i=0;i<_ln(lines);i++)c.fillText(lines[i],ax,s.y+i*lh);
+  for(let i=0;i<_ln(lines);i++)_fT(c,lines[i],ax,s.y+i*lh);
   // ADR-0095: canvas has no text-decoration — stroke a line under each row
   // (per-line measureText honours all three align modes).
   if(s.under||s.strike){_sv2(c);c.strokeStyle=_sk(s)||_IK;c.lineWidth=_max(1,fs*0.06);
@@ -3340,9 +3341,9 @@ function drawText(s,c){
       if(s.under){const uy=s.y+i*lh+fs*1.08;_bp(c);_mT(c,ux,uy);_lT(c,ux+lw,uy);_st2(c)}
       if(s.strike){const uy=s.y+i*lh+fs*0.55;_bp(c);_mT(c,ux,uy);_lT(c,ux+lw,uy);_st2(c)}}   // ADR-0100
     _rs2(c)}
-  if(s.link&&_hb(s)){c.font='10px sans-serif';c.textAlign='right';c.textBaseline='top';c.fillText('🔗',s.x+_abs(s.w)-3,s.y+3)}   // ADR-0310: link badge top-right
-  if(s.link&&_conn(s.type)){const lp=_connLabelXY(s);c.font='10px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText('🔗',lp.x+10,lp.y-10)}   // ADR-0333: badge at label anchor (offset so it doesn't sit on the line)
-  if(s.link&&_pn(s)&&s.pts[0]){c.font='10px sans-serif';c.textAlign='left';c.textBaseline='bottom';c.fillText('🔗',s.pts[0][0]+4,s.pts[0][1]-2)}   // ADR-0333
+  if(s.link&&_hb(s)){c.font='10px sans-serif';c.textAlign='right';c.textBaseline='top';_fT(c,'🔗',s.x+_abs(s.w)-3,s.y+3)}   // ADR-0310: link badge top-right
+  if(s.link&&_conn(s.type)){const lp=_connLabelXY(s);c.font='10px sans-serif';c.textAlign='center';c.textBaseline='middle';_fT(c,'🔗',lp.x+10,lp.y-10)}   // ADR-0333: badge at label anchor (offset so it doesn't sit on the line)
+  if(s.link&&_pn(s)&&s.pts[0]){c.font='10px sans-serif';c.textAlign='left';c.textBaseline='bottom';_fT(c,'🔗',s.pts[0][0]+4,s.pts[0][1]-2)}   // ADR-0333
 }
 
 // Rotate point (px,py) about centre (cx,cy) by `deg` degrees. Shared by handles,
@@ -3358,8 +3359,8 @@ function getHandles(s){
   if(_lk(s))return [];
   if(_conn(s.type)){
     const e=_cE(s),h=[];   // bound endpoints follow their shape, so no drag handle
-    h.push({id:'p1',x:e.x1,y:e.y1});       // ADR-0065: bound ends are draggable too (rebind)
-    h.push({id:'p2',x:e.x2,y:e.y2});
+    _pu(h,{id:'p1',x:e.x1,y:e.y1});       // ADR-0065: bound ends are draggable too (rebind)
+    _pu(h,{id:'p2',x:e.x2,y:e.y2});
     return h;
   }
   // ADR-0051: pens resize for real — emit the same 8 handles around the pts bbox
@@ -3467,9 +3468,9 @@ function resizeSnap(orig,handle,wp){
   let x=wp.x,y=wp.y;const guides=[];
   const idx=_snapIndex('resize',_selIds().sort().join(','),s=>_hasS(s.id));   // ADR-0056: exclude the whole dragged set
   if(movesX){const best=_snapBest(idx.xs,wp.x,tol);
-    if(best){x=best.at;guides.push(_gV(best.at,orig,best.b));}}
+    if(best){x=best.at;_pu(guides,_gV(best.at,orig,best.b));}}
   if(movesY){const best=_snapBest(idx.ys,wp.y,tol);
-    if(best){y=best.at;guides.push(_gH(best.at,orig,best.b));}}
+    if(best){y=best.at;_pu(guides,_gH(best.at,orig,best.b));}}
   // ADR-0096: equal-size snap — match an existing shape's w/h (draw.io smart
   // dims). Runs after edge snap so a dim hit can override the dragged coord;
   // targets come from the same index (selection already excluded).
@@ -3477,11 +3478,11 @@ function resizeSnap(orig,handle,wp){
    if(movesX){const eH=/e/.test(handle),nw=eH?x-orig.x:orig.x+orig.w-x;
      let bd=null;for(const b of dims){const d=_abs(nw-b.w);if(d<tol&&(!bd||d<bd.d))bd={d,w:b.w,b}}
      if(bd){x=eH?orig.x+bd.w:orig.x+orig.w-bd.w;
-       guides.push({x1:bd.b.x,y1:bd.b.y+bd.b.h,x2:bd.b.x+bd.b.w,y2:bd.b.y+bd.b.h});}}
+       _pu(guides,{x1:bd.b.x,y1:bd.b.y+bd.b.h,x2:bd.b.x+bd.b.w,y2:bd.b.y+bd.b.h});}}
    if(movesY){const sH=/s/.test(handle),nh=sH?y-orig.y:orig.y+orig.h-y;
      let bd=null;for(const b of dims){const d=_abs(nh-b.h);if(d<tol&&(!bd||d<bd.d))bd={d,h:b.h,b}}
      if(bd){y=sH?orig.y+bd.h:orig.y+orig.h-bd.h;
-       guides.push({x1:bd.b.x,y1:bd.b.y,x2:bd.b.x,y2:bd.b.y+bd.b.h});}}}
+       _pu(guides,{x1:bd.b.x,y1:bd.b.y,x2:bd.b.x,y2:bd.b.y+bd.b.h});}}}
   return{x,y,guides};
 }
 // ADR-0056: affine-map one group's member geometry from the start-of-drag group
@@ -3774,7 +3775,7 @@ function _sqMatches(){
   // ADR-0381: a connector is also found by its bound endpoints' names —
   // "the arrow into the Login button" should match "login", not just the conn's own text.
   const _bt=s=>{let o='';for(const id of [s.a,s.b]){const t=id&&byId(id);if(t)o+=(t.label||'')+(t.text||'')+(t.type||'')}return o};
-  for(const s of _sh()){if(_sv(s)&&_lc((_lb(s)||'')+(_txx(s)||'')+(s.type||'')+(s.link||'')+(_conn(s.type)?_bt(s):'')).includes(q))_sqList.push(s)}   // ADR-0346/0353/0381
+  for(const s of _sh()){if(_sv(s)&&_lc((_lb(s)||'')+(_txx(s)||'')+(s.type||'')+(s.link||'')+(_conn(s.type)?_bt(s):'')).includes(q))_pu(_sqList,s)}   // ADR-0346/0353/0381
   _sqVer=_gridVer;_sqQ=q;
   return _sqList;
 }
@@ -3967,7 +3968,7 @@ _on(canvas,_PD,e=>{
       }
       const qd=_qdotAt(wp);                                   // ADR-0070
       if(qd){
-        state.draft=Shape.make('arrow',{x1:qd.x,y1:qd.y,x2:qd.x,y2:qd.y});
+        state.draft=_smk('arrow',{x1:qd.x,y1:qd.y,x2:qd.x,y2:qd.y});
         _df().a=qd.id;
         ptr.dragKind='qline';
         break;
@@ -4090,7 +4091,7 @@ _on(canvas,_PM,e=>{
         }else _iv();
       }else if(_dk('move'))doMove(wp,e.shiftKey,e.altKey);
       else if(_dk('marquee')){state.marquee={x1:ptr.wx0,y1:ptr.wy0,x2:wp.x,y2:wp.y};_ivO()}
-      else if(_dk('lasso')&&ptr.lasso){ptr.lasso.push(wp);_ivO()}
+      else if(_dk('lasso')&&ptr.lasso){_pu(ptr.lasso,wp);_ivO()}
       else if(_dk('qline'))contLineLike(wp,e.shiftKey);   // ADR-0070
       else if(_dk('ebend')&&ptr.ebendOrig){               // ADR-0072
         const sh=byId(ptr.ebendOrig.id),tr=sh&&_elbowTrunk(sh);
@@ -4439,7 +4440,7 @@ _on(canvas,'drop',e=>{
       const maxDim=400;
       let w=nw,h=nh;
       if(w>maxDim||h>maxDim){const r=_min(maxDim/w,maxDim/h);w*=r;h*=r}
-      const sh=Shape.make('image',{x:wp.x+i*20,y:wp.y,w,h,dataUrl});
+      const sh=_smk('image',{x:wp.x+i*20,y:wp.y,w,h,dataUrl});
       _cmt({op:'add',shape:sh});
       _ss([sh.id]);
       _iv();_oT('imagePasted');
@@ -4498,7 +4499,7 @@ _on(window,'paste',e=>{
         const built=[];
         rows.forEach((row,ri)=>_s0(row,C).forEach((cell,ci)=>{
           const v=_trm(_St(cell||''));
-          if(v)built.push(Shape.make('sticky',{x:x0+ci*(sw+gx),y:y0+ri*(sh+gy),w:sw,h:sh,color:_YW,text:_s0(v,2000)}));
+          if(v)_pu(built,_smk('sticky',{x:x0+ci*(sw+gx),y:y0+ri*(sh+gy),w:sw,h:sh,color:_YW,text:_s0(v,2000)}));
         }));
         if(_ln(built)){_cmt({op:'addMany',shapes:built});_ss(built.map(x=>x.id));_iv();_oT('textPasted')}
         return;
@@ -4509,7 +4510,7 @@ _on(window,'paste',e=>{
       const w=_min(600,_max(60,_max(...lines.map(_ln))*fs*0.55));
       const r=_cbr();
       const wp=_s2({x:r.width/2,y:r.height/2});
-      const sh=Shape.make('text',{x:wp.x-w/2,y:wp.y-(_ln(lines)*fs*1.4)/2,w,h:_ln(lines)*fs*1.4,text:body,fontSize:fs});
+      const sh=_smk('text',{x:wp.x-w/2,y:wp.y-(_ln(lines)*fs*1.4)/2,w,h:_ln(lines)*fs*1.4,text:body,fontSize:fs});
       _cOp({op:'add',shape:sh});
       _ss([sh.id]);
       _iv();_oT('textPasted');
@@ -4525,7 +4526,7 @@ _on(window,'paste',e=>{
       const maxDim=400;
       let w=nw,h=nh;
       if(w>maxDim||h>maxDim){const sc=_min(maxDim/w,maxDim/h);w*=sc;h*=sc}
-      const sh=Shape.make('image',{x:wp.x-w/2,y:wp.y-h/2,w,h,dataUrl});
+      const sh=_smk('image',{x:wp.x-w/2,y:wp.y-h/2,w,h,dataUrl});
       _cmt({op:'add',shape:sh});
       _ss([sh.id]);
       _iv();
@@ -4627,7 +4628,7 @@ function zoomAt(sp,delta){
   v.x=wp.x-sp.x/nz;
   v.y=wp.y-sp.y/nz;
   v.zoom=nz;
-  UI.refreshZoom();
+  _rZ();
   _iv();
 }
 function zoomBy(f){
@@ -4637,7 +4638,7 @@ function zoomBy(f){
 }
 function zoomReset(){
   _vp().zoom=1;
-  UI.refreshZoom();_iv();
+  _rZ();_iv();
   _ann('100%');
 }
 // ADR-0049: shared viewport-fit math — was duplicated in fitToContent/_mirrorGo.
@@ -4648,7 +4649,7 @@ function _fitViewport(b,pad,cap){
   _vp().zoom=z;
   _vp().x=b.x+b.w/2-r.width/(2*z);
   _vp().y=b.y+b.h/2-r.height/(2*z);
-  UI.refreshZoom();_iv();
+  _rZ();_iv();
   return z;
 }
 function fitToContent(){
@@ -4698,12 +4699,12 @@ function _buildGrid(shapes){
   const cells=_mP(),big=[],idx=_mP();
   for(let i=0;i<_ln(shapes);i++){
     const s=shapes[i];idx.set(s,i);
-    const b=_bb(s);if(!b){big.push(s);continue;}
+    const b=_bb(s);if(!b){_pu(big,s);continue;}
     const x0=_fl(_min(b.x,b.x+b.w)/_GCELL),x1=_fl(_max(b.x,b.x+b.w)/_GCELL);
     const y0=_fl(_min(b.y,b.y+b.h)/_GCELL),y1=_fl(_max(b.y,b.y+b.h)/_GCELL);
-    if(x1-x0>8||y1-y0>8){big.push(s);continue;}
+    if(x1-x0>8||y1-y0>8){_pu(big,s);continue;}
     for(let cx=x0;cx<=x1;cx++)for(let cy=y0;cy<=y1;cy++){
-      const k=cx+'|'+cy;let bk=cells.get(k);if(!bk){bk=[];cells.set(k,bk);}bk.push(s);
+      const k=cx+'|'+cy;let bk=cells.get(k);if(!bk){bk=[];cells.set(k,bk);}_pu(bk,s);
     }
   }
   return{cells,big,idx};
@@ -4812,8 +4813,8 @@ const _snapIdx={move:{ver:-1,key:'',idx:null},resize:{ver:-1,key:'',idx:null}};
 function _mkSnapIdx(targets){
   const xs=[],ys=[];
   for(const b of targets){
-    xs.push({v:b.x,b},{v:b.x+b.w/2,b},{v:b.x+b.w,b});
-    ys.push({v:b.y,b},{v:b.y+b.h/2,b},{v:b.y+b.h,b});
+    _pu(xs,{v:b.x,b},{v:b.x+b.w/2,b},{v:b.x+b.w,b});
+    _pu(ys,{v:b.y,b},{v:b.y+b.h/2,b},{v:b.y+b.h,b});
   }
   xs.sort((a,c)=>a.v-c.v);ys.sort((a,c)=>a.v-c.v);
   return{xs,ys};
@@ -4822,7 +4823,7 @@ function _snapIndex(kind,key,exclFn){
   const slot=_snapIdx[kind];
   if(slot.ver!==_gridVer||slot.key!==key){
     const targets=[];
-    for(const s of _sh()){if(exclFn(s)||_hd(s))continue;const b=_bb(s);if(b)targets.push(b)}   // ADR-0153: hidden shapes attract no snap
+    for(const s of _sh()){if(exclFn(s)||_hd(s))continue;const b=_bb(s);if(b)_pu(targets,b)}   // ADR-0153: hidden shapes attract no snap
     slot.ver=_gridVer;slot.key=key;slot.idx=_mkSnapIdx(targets);
   }
   return slot.idx;
@@ -4832,7 +4833,7 @@ function _snapNear(arr,v,tol){
   let lo=0,hi=_ln(arr);
   while(lo<hi){const m=(lo+hi)>>1;if(arr[m].v<v-tol)lo=m+1;else hi=m}
   const out=[];
-  for(let i=lo;i<_ln(arr)&&arr[i].v<=v+tol;i++)out.push(arr[i]);
+  for(let i=lo;i<_ln(arr)&&arr[i].v<=v+tol;i++)_pu(out,arr[i]);
   return out;
 }
 const _snapBest=(arr,v,tol)=>{let best=null;for(const e of _snapNear(arr,v,tol)){const d=e.v-v;if(!best||_abs(d)<_abs(best.d))best={d,at:e.v,b:e.b}}return best};   // ADR-0488
@@ -4846,8 +4847,8 @@ function _snapBoxIdx(mov,idx,tol){
   for(const m of mX){const e=_snapBest(idx.xs,m,tol);if(e&&(!bx||_abs(e.d)<_abs(bx.d)))bx=e}
   for(const m of mY){const e=_snapBest(idx.ys,m,tol);if(e&&(!by||_abs(e.d)<_abs(by.d)))by=e}
   const guides=[];let dx=0,dy=0;
-  if(bx){dx=bx.d;guides.push(_gV(bx.at,mov,bx.b));}
-  if(by){dy=by.d;guides.push(_gH(by.at,mov,by.b));}
+  if(bx){dx=bx.d;_pu(guides,_gV(bx.at,mov,bx.b));}
+  if(by){dy=by.d;_pu(guides,_gH(by.at,mov,by.b));}
   return{dx,dy,guides};
 }
 // Snap moving bbox to target edges/centres; returns {dx,dy,guides}. Pure.
@@ -4865,7 +4866,7 @@ function _eqGapSnap(mov,excl,tol){
     for(const s of _sh()){
       if(excl(s))continue;
       const b=_bb(s);if(!b)continue;
-      if(b[O]<mov[O]+mov[OD]&&b[O]+b[OD]>mov[O])row.push(b);
+      if(b[O]<mov[O]+mov[OD]&&b[O]+b[OD]>mov[O])_pu(row,b);
     }
     row.sort((a,b)=>a[L]-b[L]);
     let best=null;
@@ -4881,7 +4882,7 @@ function _eqGapSnap(mov,excl,tol){
         }
       }
     }
-    if(best){if(ax==='x')out.dx=best.d;else out.dy=best.d;out.guides.push(...best.guides)}
+    if(best){if(ax==='x')out.dx=best.d;else out.dy=best.d;_pu(out.guides,...best.guides)}
   }
   return out;
 }
@@ -4896,8 +4897,8 @@ function objectSnap(dx,dy){
   if(base.dx!==0&&base.dy!==0)return base;
   const excl=s=>ptr.dragStartShapes.has(s.id);
   const eq=_eqGapSnap(mov,excl,SNAP_OBJ/_vp().zoom);
-  if(base.dx===0&&eq.dx!==0){base.dx=eq.dx;base.guides.push(...eq.guides)}
-  if(base.dy===0&&eq.dy!==0){base.dy=eq.dy;base.guides.push(...eq.guides)}
+  if(base.dx===0&&eq.dx!==0){base.dx=eq.dx;_pu(base.guides,...eq.guides)}
+  if(base.dy===0&&eq.dy!==0){base.dy=eq.dy;_pu(base.guides,...eq.guides)}
   return base;
 }
 // Expand a set of selected ids to include shapes fully contained in any selected
@@ -4925,7 +4926,7 @@ function withFrameChildren(ids){
 function nudgeSelection(dx,dy){
   const ids=[...withFrameChildren(_sl())].filter(id=>!byId(id)?.locked);
   if(!_ln(ids))return;
-  for(const id of ids){const sh=byId(id);if(sh)Shape.translate(sh,dx,dy)}
+  for(const id of ids){const sh=byId(id);if(sh)_sT2(sh,dx,dy)}
   _rcOp({op:'move',ids,dx,dy});
   if(_dd()&&ids.every(id=>state.dupIds.has(id))){_dd().x+=dx;_dd().y+=dy}     // ADR-0080
   _iv();
@@ -4953,7 +4954,7 @@ function doMove(wp,shift,alt){
     const sh=byId(id);if(!sh||sh.locked)continue;
     const b0=_bb(orig),m=(sh.size||2)+16;   // orig-bbox + same bbox shifted by (dx,dy) covers every position of the gesture
     _oa(sh,clone(orig));
-    Shape.translate(sh,dx,dy);
+    _sT2(sh,dx,dy);
     const x0=_min(b0.x,b0.x+dx)-m,y0=_min(b0.y,b0.y+dy)-m;
     dmg=_dmgU(dmg,{x:x0,y:y0,w:_max(b0.x+b0.w,b0.x+b0.w+dx)-x0+m,h:_max(b0.y+b0.h,b0.y+b0.h+dy)-y0+m});
   }
@@ -5052,7 +5053,7 @@ function _predTail(e){
 let _penPred=null;   // world pt of the last predicted sample — render-only
 function beginPen(wp,e){
   _penPred=null;
-  state.draft=Shape.make('pen',{pts:[[wp.x,wp.y,_penPr(e)]]});
+  state.draft=_smk('pen',{pts:[[wp.x,wp.y,_penPr(e)]]});
   // ADR-0125: marker is the pen gesture with highlighter defaults — flat
   // (pressure-free) wide translucent stroke; same 'pen' shape type, so every
   // renderer/exporter/sync path is unchanged.
@@ -5064,11 +5065,11 @@ function contPen(wp,e){
   // ADR-0200: Shift held = straight-line mode (Excalidraw). The stroke
   // collapses to [start, current] while held; releasing resumes freehand
   // from that point. Full invalidate — the shrink breaks the damage corridor.
-  if(e.shiftKey&&_ln(pts)){pts.length=1;pts.push([wp.x,wp.y,_df().hl?0.5:_penPr(e)]);_iv();return}
+  if(e.shiftKey&&_ln(pts)){pts.length=1;_pu(pts,[wp.x,wp.y,_df().hl?0.5:_penPr(e)]);_iv();return}
   const last=_pL(pts);
   // decimate by min distance for smoothness
   const d=_hp(wp.x-last[0],wp.y-last[1]);
-  if(d>1/_vp().zoom)pts.push([wp.x,wp.y,_df().hl?0.5:_penPr(e)]);
+  if(d>1/_vp().zoom)_pu(pts,[wp.x,wp.y,_df().hl?0.5:_penPr(e)]);
   const _m=(_df().size||2)+16;   // ADR-0026: ink corridor — accumulated union covers the whole stroke
   _iD({x:_min(wp.x,last[0])-_m,y:_min(wp.y,last[1])-_m,w:_abs(wp.x-last[0])+2*_m,h:_abs(wp.y-last[1])+2*_m});
 }
@@ -5090,9 +5091,9 @@ function _rdp(pts,eps){
       const d=_abs(dy*pts[i][0]-dx*pts[i][1]+bx*ay-by*ax)/len;
       if(d>mx){mx=d;idx=i}
     }
-    if(mx>eps){keep[idx]=1;stack.push([lo,idx],[idx,hi]);}
+    if(mx>eps){keep[idx]=1;_pu(stack,[lo,idx],[idx,hi]);}
   }
-  const out=[];for(let i=0;i<_ln(pts);i++)if(keep[i])out.push(pts[i]);
+  const out=[];for(let i=0;i<_ln(pts);i++)if(keep[i])_pu(out,pts[i]);
   return out;
 }
 // ADR-0005: geometric-heuristic shape recognition for the "beautify" feature (Alt+B).
@@ -5179,7 +5180,7 @@ function beginRectLike(wp){
     extras.stroke=_gC('--brand')||'#00C4CC';
     extras.fill=null;extras.size=1.5;
   }
-  state.draft=Shape.make(_tl(),extras);
+  state.draft=_smk(_tl(),extras);
 }
 function contRectLike(wp,uniform,center){
   if(!_df())return;
@@ -5215,7 +5216,7 @@ function endRectLike(){
 // ---- line / arrow ----
 function beginLineLike(wp){
   const sp=snapPt(wp);
-  state.draft=Shape.make(_tl(),{x1:sp.x,y1:sp.y,x2:sp.x,y2:sp.y});
+  state.draft=_smk(_tl(),{x1:sp.x,y1:sp.y,x2:sp.x,y2:sp.y});
 }
 function contLineLike(wp,uniform){
   if(!_df())return;
@@ -5285,7 +5286,7 @@ function _bindAt(x,y){
 // ---- text ----
 function beginText(wp){
   const sp=snapPt(wp);
-  const s=Shape.make('text',{x:sp.x,y:sp.y,w:120,h:24,text:'',fontSize:_st().fontSize||16});   // ADR-0180
+  const s=_smk('text',{x:sp.x,y:sp.y,w:120,h:24,text:'',fontSize:_st().fontSize||16});   // ADR-0180
   _cOp({op:'add',shape:s});
   openTextEditor(s,true);
   pickTool('select');
@@ -5297,7 +5298,7 @@ function _stickyChain(s){
   if(s.type!=='sticky'||_lk(s))return;
   // ADR-0190: the chain inherits ALL typography — ⌘Enter duplication must
   // reproduce the note's look, not just size/colour.
-  const n=Shape.make('sticky',{x:s.x+s.w+16,y:s.y,w:s.w,h:s.h,color:_coo(s),fontSize:_fS(s),align:s.align,
+  const n=_smk('sticky',{x:s.x+s.w+16,y:s.y,w:s.w,h:s.h,color:_coo(s),fontSize:_fS(s),align:s.align,
     font:_ftt(s),lineH:s.lineH,spacing:_sp(s),bold:s.bold,italic:s.italic,under:s.under,strike:s.strike,valign:_va(s),stroke:_sk(s)});   // ADR-0192 follow-up
   _cOp({op:'add',shape:n});
   _ss([n.id]);
@@ -5313,15 +5314,15 @@ function createShapeKbd(){
   const cx=_rnd(view.x+view.w/2),cy=_rnd(view.y+view.h/2);
   let s;
   if(tool==='rect'||tool==='ellipse'){
-    s=Shape.make(tool,{x:cx-60,y:cy-40,w:120,h:80});
+    s=_smk(tool,{x:cx-60,y:cy-40,w:120,h:80});
   }else if(tool==='line'||tool==='arrow'){
-    s=Shape.make(tool,{x1:cx-80,y1:cy,x2:cx+80,y2:cy});
+    s=_smk(tool,{x1:cx-80,y1:cy,x2:cx+80,y2:cy});
   }else if(tool==='sticky'){
-    s=Shape.make('sticky',{x:cx-80,y:cy-80,w:160,h:160,
+    s=_smk('sticky',{x:cx-80,y:cy-80,w:160,h:160,
       color:STICKY_COLORS[_fl(_rN()*_ln(STICKY_COLORS))],text:'',fontSize:_st().fontSize||14});   // ADR-0180
   }else if(tool==='frame'){
     const n=_sh().filter(_frm).length+1;
-    s=Shape.make('frame',{x:cx-400,y:cy-250,w:800,h:500,
+    s=_smk('frame',{x:cx-400,y:cy-250,w:800,h:500,
       label:`Frame ${n}`,stroke:_gC('--brand')||'#00C4CC',fill:null,size:1.5});
   }else if(tool==='text'){
     beginText({x:cx-60,y:cy-12});   // opens editor + switches to select
@@ -5497,7 +5498,7 @@ function eraseAt(wp){
       _sh().splice(i,1);_iG();_psc(hit.id);   // ADR-0009/0427
       _iD(_dmgPair(_eb,null,(hit.size||2)+16));   // ADR-0026: reveal under-shapes inside the erased bbox only
     }
-    _eraseBatch.push(clone(hit));
+    _pu(_eraseBatch,clone(hit));
   }
 }
 function flushErase(){
@@ -5624,9 +5625,9 @@ _on(window,_KD,e=>{
       const dh=k===_AD?step:k===_AU?-step:0;
       const before=[],after=[];
       for(const sh of sel){
-        before.push({id:sh.id,w:sh.w,h:sh.h});
+        _pu(before,{id:sh.id,w:sh.w,h:sh.h});
         sh.w=_max(4,sh.w+dw);sh.h=_max(4,sh.h+dh);
-        after.push({id:sh.id,w:sh.w,h:sh.h});
+        _pu(after,{id:sh.id,w:sh.w,h:sh.h});
       }
       _rcOp({op:'resize',before,after});
       if(_ln(sel)===1)_tst(describeShape(sel[0]));
@@ -5796,9 +5797,9 @@ function _placeCopies(srcShapes,dx,dy){
     }
     if(sh.a&&idMap.has(sh.a))sh.a=idMap.get(sh.a);
     if(sh.b&&idMap.has(sh.b))sh.b=idMap.get(sh.b);
-    Shape.translate(sh,dx,dy);
-    built.push(sh);
-    added.push(sh.id);
+    _sT2(sh,dx,dy);
+    _pu(built,sh);
+    _pu(added,sh.id);
   }
   if(_ln(built))_cmt({op:'addMany',shapes:built});
   _ss(added);
@@ -5861,7 +5862,7 @@ function doBringFront(){
   let p=_ln(others)?others[_ln(others)-1].frac:null;
   const changes=[];
   for(const s of selShapes){   // current (sorted) order
-    const before=s.frac;p=keyBetween(p,null);s.frac=p;changes.push({id:s.id,before,after:p});
+    const before=s.frac;p=keyBetween(p,null);s.frac=p;_pu(changes,{id:s.id,before,after:p});
   }
   _zCommit(changes);
 }
@@ -5875,7 +5876,7 @@ function doSendBack(){
   const hi=_ln(others)?others[0].frac:null;
   const changes=[];let prev=null;
   for(const s of selShapes){
-    const before=s.frac, k=keyBetween(prev,hi);s.frac=k;prev=k;changes.push({id:s.id,before,after:k});
+    const before=s.frac, k=keyBetween(prev,hi);s.frac=k;prev=k;_pu(changes,{id:s.id,before,after:k});
   }
   _zCommit(changes);
 }
@@ -5887,7 +5888,7 @@ function _zStep(dir){   // dir=+1 toward front, -1 toward back
     const s=arr[i];if(!sel.has(s.id))continue;
     const o=arr[i+dir];if(sel.has(o.id))continue;            // edge of the selected run
     const b=arr[i+2*dir]?arr[i+2*dir].frac:null,before=s.frac;
-    const nk=dir>0?keyBetween(o.frac,b):keyBetween(b,o.frac);s.frac=nk;changes.push({id:s.id,before,after:nk});
+    const nk=dir>0?keyBetween(o.frac,b):keyBetween(b,o.frac);s.frac=nk;_pu(changes,{id:s.id,before,after:nk});
     arr[i]=o;arr[i+dir]=s;
   }
   _zCommit(changes);
@@ -5928,7 +5929,7 @@ function connectSelection(){
     .filter(s=>s&&_ulv(s)&&s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen');
   if(_ln(sel)!==2){_wT(_ST);return}
   const a=sel[0],b=sel[1],ab=_bb(a),bb=_bb(b);
-  const s=Shape.make('arrow',{
+  const s=_smk('arrow',{
     x1:ab.x+ab.w/2,y1:ab.y+ab.h/2,x2:bb.x+bb.w/2,y2:bb.y+bb.h/2,
     a:a.id,b:b.id});
   _cOp({op:'add',shape:s});
@@ -5947,7 +5948,7 @@ function showAllShapes(){
   const before=[],after=[];
   for(const s of _sh()){
     if(_sv(s))continue;
-    before.push({id:s.id,visible:0});after.push({id:s.id,visible:null});
+    _pu(before,{id:s.id,visible:0});_pu(after,{id:s.id,visible:null});
     delete s.visible;
   }
   if(_ln(before)){_styleOp(before,after);_iv();_oT('shownAll')}
@@ -5971,7 +5972,7 @@ function wrapInFrame(){
   if(!_ln(sel)){_wT(_ST);return}
   const b=_bA(sel);if(!b)return;
   const PAD=16;
-  const f=Shape.make('frame',{x:b.x-PAD,y:b.y-PAD,w:b.w+PAD*2,h:b.h+PAD*2,label:'Frame'});
+  const f=_smk('frame',{x:b.x-PAD,y:b.y-PAD,w:b.w+PAD*2,h:b.h+PAD*2,label:'Frame'});
   f.z=_min(...sel.map(s=>s.z||0))-0.5;      // ADR-0001: fractional z keeps order stable
   _cOp({op:'add',shape:f});
   _ss([f.id]);
@@ -5995,7 +5996,7 @@ function doUngroup(){
   if(!gids.size){_wT('noGroup');return}
   const ungrouped=[],before=[];
   for(const s of _sh()){
-    if(gids.has(_gi(s))&&!_lk(s)){before.push({id:s.id,groupId:_gi(s)});delete s.groupId;ungrouped.push(s.id)}
+    if(gids.has(_gi(s))&&!_lk(s)){_pu(before,{id:s.id,groupId:_gi(s)});delete s.groupId;_pu(ungrouped,s.id)}
   }
   _ss([...ids.filter(byId),...ungrouped]);
   Store._recordCommitted({op:'ungroup',ids:ungrouped,gids:[...gids],before});
@@ -6029,7 +6030,7 @@ function doAlign(dir){
   if(_ln(units)<2)return;
   // Capture before state (full shape clone)
   const beforeSnap=sel.map(clone);
-  const mv=(u,dx,dy)=>{for(const s of u.shapes)Shape.translate(s,dx,dy)};
+  const mv=(u,dx,dy)=>{for(const s of u.shapes)_sT2(s,dx,dy)};
   switch(dir){
     case 'left':{const mn=_min(...units.map(({b})=>b.x));for(const u of units)mv(u,mn-u.b.x,0);break}
     case 'right':{const mx=_max(...units.map(({b})=>b.x+b.w));for(const u of units)mv(u,mx-u.b.x-u.b.w,0);break}
@@ -6053,10 +6054,10 @@ function doAlign(dir){
     case 'tidy':{
       units.sort((a,b)=>(a.b.y-b.b.y)||(a.b.x-b.b.x));
       const GAP=32,cols=_ceil(_sqr(_ln(units)));
-      const rows=[];for(let i=0;i<_ln(units);i+=cols)rows.push(units.slice(i,i+cols));
+      const rows=[];for(let i=0;i<_ln(units);i+=cols)_pu(rows,units.slice(i,i+cols));
       const colW=[],rowH=[];
       for(const r of rows)for(let j=0;j<_ln(r);j++){colW[j]=_max(colW[j]||0,r[j].b.w)}
-      for(const r of rows)rowH.push(_max(...r.map(u=>u.b.h)));
+      for(const r of rows)_pu(rowH,_max(...r.map(u=>u.b.h)));
       const x0=_min(...units.map(u=>u.b.x)),y0=_min(...units.map(u=>u.b.y));
       let yy=y0;
       for(let ri=0;ri<_ln(rows);ri++){
@@ -6089,7 +6090,7 @@ function snapSelToGrid(){
   for(const s of sel){
     const b=_bb(s);if(!b)continue;
     const dx=_rnd(b.x/GRID_SIZE)*GRID_SIZE-b.x,dy=_rnd(b.y/GRID_SIZE)*GRID_SIZE-b.y;
-    if(dx||dy){Shape.translate(s,dx,dy);moved++}
+    if(dx||dy){_sT2(s,dx,dy);moved++}
   }
   if(!moved){_wT('alreadySnapped');return}
   const afterSnap=sel.map(clone);
@@ -6191,8 +6192,8 @@ function doBeautify(){
   for(const s of sel){
     const rec=recognizeStroke(s.pts);
     if(!rec)continue;
-    before.push({id:s.id,type:'pen',pts:clone(s.pts)});
-    after.push({id:s.id,...rec});
+    _pu(before,{id:s.id,type:'pen',pts:clone(s.pts)});
+    _pu(after,{id:s.id,...rec});
   }
   if(!_ln(after)){_wT('beautifyNone');return}
   const origSel=_selIds();
@@ -6234,7 +6235,7 @@ function doRotate(d){
     if(!_hb(s)){_rotPtsAbout(s,gx,gy,cs,sn);continue}   // ADR-0055: point geometry
     const b=_bb(s),cx=b.x+b.w/2,cy=b.y+b.h/2;
     const nx=gx+(cx-gx)*cs-(cy-gy)*sn,ny=gy+(cx-gx)*sn+(cy-gy)*cs;
-    Shape.translate(s,nx-cx,ny-cy);
+    _sT2(s,nx-cx,ny-cy);
     s.rotate=((_rt(s)||0)+d+360)%360;
   }
   const after=sel.map(clone);
@@ -6423,46 +6424,46 @@ function excScene(shapes){
   for(const s of shapes){
     switch(s.type){
       case'rect':case'ellipse':case'diamond':{
-        els.push(E(s,{type:s.type==='rect'?_REC:s.type,x:s.x,y:s.y,width:s.w||0,height:s.h||0,   // ADR-0223: excalidraw type is _REC not 'rect'
+        _pu(els,E(s,{type:s.type==='rect'?_REC:s.type,x:s.x,y:s.y,width:s.w||0,height:s.h||0,   // ADR-0223: excalidraw type is _REC not 'rect'
           roundness:s.r?{type:3}:null,strokeSharpness:s.r?'round':'sharp'}));   // ADR-0267
         // ADR-0234: label → container text marked bLabel (Board-only marker;
         // excalidraw ignores unknown fields, ours reads it back to _lb(s))
-        if(_lb(s)){const _tid=uid();els.push(_ct(s,_tid,_lb(s),true));els[_ln(els)-2].boundElements=[{id:_tid,type:'text'}]}   // ADR-0280
+        if(_lb(s)){const _tid=uid();_pu(els,_ct(s,_tid,_lb(s),true));els[_ln(els)-2].boundElements=[{id:_tid,type:'text'}]}   // ADR-0280
         break;}
       case'frame':
-        els.push(E(s,{type:'frame',x:s.x,y:s.y,width:s.w||0,height:s.h||0,name:_lb(s)||'Frame'}));break;
+        _pu(els,E(s,{type:'frame',x:s.x,y:s.y,width:s.w||0,height:s.h||0,name:_lb(s)||'Frame'}));break;
       case'sticky':{
-        els.push(E(s,{type:_REC,x:s.x,y:s.y,width:s.w,height:s.h,
+        _pu(els,E(s,{type:_REC,x:s.x,y:s.y,width:s.w,height:s.h,
           backgroundColor:_coo(s)||_YW,fillStyle:'solid',roundness:{type:3}}));
-        if(_txx(s)){const _tid=uid();els.push(_ct(s,_tid,_txx(s),false,14));els[_ln(els)-2].boundElements=[{id:_tid,type:'text'}]}   // ADR-0280
+        if(_txx(s)){const _tid=uid();_pu(els,_ct(s,_tid,_txx(s),false,14));els[_ln(els)-2].boundElements=[{id:_tid,type:'text'}]}   // ADR-0280
         break;}
       case'text':
-        els.push(E(s,{type:'text',x:s.x,y:s.y,width:s.w||0,height:s.h||0,
+        _pu(els,E(s,{type:'text',x:s.x,y:s.y,width:s.w||0,height:s.h||0,
           text:_txx(s)||'',originalText:_txx(s)||'',autoResize:!s.wrap,fontSize:_fS(s)||16,
           textAlign:s.align||'left',lineHeight:s.lineH||1.25,baseline:0,fontFamily:_ftt(s)==='mono'?3:2}));break;   // ADR-0242/0243
       case'pen':{
         const xs=s.pts.map(p=>p[0]),ys=s.pts.map(p=>p[1]);
         const x0=_min(...xs),y0=_min(...ys);
-        els.push(E(s,{type:'freedraw',x:x0,y:y0,width:_max(...xs)-x0,height:_max(...ys)-y0,
+        _pu(els,E(s,{type:'freedraw',x:x0,y:y0,width:_max(...xs)-x0,height:_max(...ys)-y0,
           points:s.pts.map(p=>[p[0]-x0,p[1]-y0]),pressures:s.pts.map(p=>p[2]||0.5)}));break;}
       case'line':case'arrow':{
         const _rp=_el(s)?_elbowPts(s):s.curve?_curveSegs(s):null;     // ADR-0349: bake route → points
         const pts=_rp?_rp.map(p=>[p.x-s.x1,p.y-s.y1]):[[0,0],..._wayArr(s).map(w=>[w.x-s.x1,w.y-s.y1]),[s.x2-s.x1,s.y2-s.y1]];
         const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]),x0=_min(...xs),y0=_min(...ys);
-        els.push(E(s,{type:s.type,x:s.x1+x0,y:s.y1+y0,width:_max(...xs)-x0,height:_max(...ys)-y0,
+        _pu(els,E(s,{type:s.type,x:s.x1+x0,y:s.y1+y0,width:_max(...xs)-x0,height:_max(...ys)-y0,
           points:pts.map(p=>[p[0]-x0,p[1]-y0]),
           startBinding:s.a?{elementId:s.a,focus:s.aF?+(s.aF.fx*2-1).toFixed(2):0,gap:1}:null,   // ADR-0222: was s.bind1 (never set)
           endBinding:s.b?{elementId:s.b,focus:s.bF?+(s.bF.fx*2-1).toFixed(2):0,gap:1}:null,
           lastCommittedPoint:null,
           startArrowhead:s.start?_excHead(s.startHead||'arrow'):null,                               // ADR-0231/0338
           endArrowhead:_arw(s)?_excHead(s.head&&s.head!=='arrow'?s.head:'arrow'):null,...(_el(s)?{elbowed:true}:{}),...(s.curve?{roundness:{type:2}}:{})}));   // ADR-0265/0317/0338
-        if(_lb(s)){const _lp=_connLabelXY(s),_tid=uid();els.push(_ct(s,_tid,_lb(s),true,null,{x:_lp.x-40,y:_lp.y-10,w:80,h:20}));els[_ln(els)-2].boundElements=[{id:_tid,type:'text'}]}   // ADR-0266/0280
+        if(_lb(s)){const _lp=_connLabelXY(s),_tid=uid();_pu(els,_ct(s,_tid,_lb(s),true,null,{x:_lp.x-40,y:_lp.y-10,w:80,h:20}));els[_ln(els)-2].boundElements=[{id:_tid,type:'text'}]}   // ADR-0266/0280
         break;}
       case'image':{
         const fid='f'+s.id;files[fid]={id:fid,mimeType:(_du(s).match(/^data:([^;]+)/)||[])[1]||'image/png',dataURL:_du(s),created:0,lastRetrieved:0};
-        els.push(E(s,{type:'image',x:s.x,y:s.y,width:s.w||0,height:s.h||0,fileId:fid,status:'saved',
+        _pu(els,E(s,{type:'image',x:s.x,y:s.y,width:s.w||0,height:s.h||0,fileId:fid,status:'saved',
           roundness:s.r?{type:3}:null,strokeSharpness:s.r?'round':'sharp'}));   // ADR-0344
-        if(_lb(s)){const _tid=uid();els.push(_ct(s,_tid,_lb(s),true,null,{x:s.x,y:s.y+(s.h||0)-22,w:s.w||120,h:22}));els[_ln(els)-2].boundElements=[{id:_tid,type:'text'}]}   // ADR-0353
+        if(_lb(s)){const _tid=uid();_pu(els,_ct(s,_tid,_lb(s),true,null,{x:s.x,y:s.y+(s.h||0)-22,w:s.w||120,h:22}));els[_ln(els)-2].boundElements=[{id:_tid,type:'text'}]}   // ADR-0353
         break;}
       default:break;
     }
@@ -6600,15 +6601,15 @@ function drawioToShapes(txt){
     const x=_oo.x+(_doff.get(c)||0)+(+_ga(g,'x')||0),y=_oo.y+(+_ga(g,'y')||0),w=+_ga(g,'width')||0,ht=+_ga(g,'height')||0;
     const lbl=_dioLabel(_ga(c,'value')||(_uo&&_ga(_uo,'label')));
     let s;
-    if('ellipse' in sty||sty.shape==='cylinder'||sty.shape==='cloud')s=Shape.make('ellipse',{x,y,w:w||120,h:ht||80,label:_s0(lbl,240)});   // ADR-0274
-    else if(sty.shape==='rhombus'||'rhombus' in sty)s=Shape.make('diamond',{x,y,w:w||120,h:ht||80,label:_s0(lbl,240)});
-    else if('swimlane' in sty||sty.shape==='swimlane')s=Shape.make('frame',{x,y,w:w||800,h:ht||500,label:_s0(lbl,120)});   // ADR-0226
-    else if(sty.shape==='note'){s=Shape.make('sticky',{x,y,w:w||160,h:ht||160,color:_YW,text:_s0(lbl,2000)});   // ADR-0226
+    if('ellipse' in sty||sty.shape==='cylinder'||sty.shape==='cloud')s=_smk('ellipse',{x,y,w:w||120,h:ht||80,label:_s0(lbl,240)});   // ADR-0274
+    else if(sty.shape==='rhombus'||'rhombus' in sty)s=_smk('diamond',{x,y,w:w||120,h:ht||80,label:_s0(lbl,240)});
+    else if('swimlane' in sty||sty.shape==='swimlane')s=_smk('frame',{x,y,w:w||800,h:ht||500,label:_s0(lbl,120)});   // ADR-0226
+    else if(sty.shape==='note'){s=_smk('sticky',{x,y,w:w||160,h:ht||160,color:_YW,text:_s0(lbl,2000)});   // ADR-0226
       if(sty.fillColor&&sty.fillColor!=='none')s.color=sty.fillColor}
-    else if(('text' in sty||sty.text===1)&&!w&&!ht)s=Shape.make('text',{x,y,w:120,h:24,text:_s0(lbl,2000)});
-    else s=Shape.make('rect',{x,y,w:w||120,h:ht||80,label:_s0(lbl,240)});
+    else if(('text' in sty||sty.text===1)&&!w&&!ht)s=_smk('text',{x,y,w:120,h:24,text:_s0(lbl,2000)});
+    else s=_smk('rect',{x,y,w:w||120,h:ht||80,label:_s0(lbl,240)});
     {const _im=(sty.shape==='image')?(_ga(c,'style')||'').match(/image=(data:[^;]*;base64,[^;]*|https?:[^;]*)/):null;   // ADR-0259
-     if(_im)s=Shape.make('image',{x,y,w:w||120,h:ht||80,dataUrl:_im[1].slice(0,25_000_000),label:_s0(lbl,240)})   // ADR-0353
+     if(_im)s=_smk('image',{x,y,w:w||120,h:ht||80,dataUrl:_im[1].slice(0,25_000_000),label:_s0(lbl,240)})   // ADR-0353
     }
     if(sty.rounded==='1'&&_hb(s))s.r=8;
     if(sty.fillColor)s.fill=sty.fillColor==='none'?'none':sty.fillColor;   // ADR-0288
@@ -6623,7 +6624,7 @@ function drawioToShapes(txt){
     if(+sty.rotation)s.rotate=_min(360,_max(-360,+sty.rotation));   // ADR-0261
     idOf.set(_ga(c,'id'),s.id);
     {const _lk=_ga(c,'link')||(_uo&&_ga(_uo,'link'));if(_lk&&/^https?:\/\//.test(_lk))s.link=_s0(_lk,500)}   // ADR-0313
-    shapes.push(s);
+    _pu(shapes,s);
   }
   for(const c of cells){
     if(_ln(shapes)>=DIO_MAX)break;
@@ -6640,7 +6641,7 @@ function drawioToShapes(txt){
     const sa=a?idOf.get(a):null,sb=b?idOf.get(b):null;
     if(sa){const bs=shapes.find(s2=>s2.id===sa),bb=bs&&_bb(bs);if(bb){x1=bb.x+bb.w/2;y1=bb.y+bb.h/2}}
     if(sb){const bs=shapes.find(s2=>s2.id===sb),bb=bs&&_bb(bs);if(bb){x2=bb.x+bb.w/2;y2=bb.y+bb.h/2}}
-    const s=Shape.make('arrow',{x1,y1,x2,y2,a:sa,b:sb});
+    const s=_smk('arrow',{x1,y1,x2,y2,a:sa,b:sb});
     // ADR-0224: fidelity — a drawn line (endArrow=none) stays a line, a head
     // at the source end maps to s.start, curved/jump keep their route flags
     if(sty.endArrow==='none')s.type='line';
@@ -6676,7 +6677,7 @@ function drawioToShapes(txt){
     if(sty.labelBackgroundColor&&sty.labelBackgroundColor!=='none')s.fill=sty.labelBackgroundColor;   // ADR-0249
     {const _lk=_ga(c,'link')||(_uo&&_ga(_uo,'link'));if(_lk&&/^https?:\/\//.test(_lk))s.link=_s0(_lk,500)}   // ADR-0313
     {const _pid=_ga(c,'parent');if(_pid&&_grpIds.has(_pid))s.groupId=_pid}   // ADR-0336
-    shapes.push(s);
+    _pu(shapes,s);
   }
   return shapes;
 }
@@ -6754,7 +6755,7 @@ function boardToDrawio(shapes){
   const _gbx={};for(const s of shapes)if(_gi(s)&&_hb(s)){const g=_gbx[_gi(s)]||(_gbx[_gi(s)]={x:1/0,y:1/0,x2:-1/0,y2:-1/0});
     g.x=_min(g.x,s.x);g.y=_min(g.y,s.y);g.x2=_max(g.x2,s.x+s.w);g.y2=_max(g.y2,s.y+(s.h||0))}
   for(const gid in _gbx){const g=_gbx[gid];
-    cells.push(`<mxCell id="g_${gid}" value="" style="group;" vertex="1" parent="1"><mxGeometry x="${g.x}" y="${g.y}" width="${g.x2-g.x}" height="${g.y2-g.y}" as="geometry"/></mxCell>`)}
+    _pu(cells,`<mxCell id="g_${gid}" value="" style="group;" vertex="1" parent="1"><mxGeometry x="${g.x}" y="${g.y}" width="${g.x2-g.x}" height="${g.y2-g.y}" as="geometry"/></mxCell>`)}
   // ADR-0345: pre-assign vertex ids up-front so a member can reference
   // its containing frame's swimlane cell id regardless of z-order.
   for(const s of shapes)if(s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen')idOf.set(s.id,'b'+(i++));
@@ -6792,7 +6793,7 @@ function boardToDrawio(shapes){
     if(t==='image'&&_lb(s))sty+='verticalAlign=bottom;';                 // ADR-0353
     const _gc=_gbx[_gi(s)];                                          // ADR-0336
     const _pf=_gc?null:_fOf(s);                                         // ADR-0345: frame containment (group wins)
-    cells.push(`<mxCell id="${id}" value="${nl(lbl||'')}" style="${esc(sty)}" vertex="1" parent="${_gc?`g_${_gi(s)}`:_pf?idOf.get(_pf.id):'1'}"${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}><mxGeometry x="${(s.x||0)-(_gc?_gc.x:_pf?_pf.x:0)}" y="${(s.y||0)-(_gc?_gc.y:_pf?_pf.y:0)}" width="${s.w||120}" height="${s.h||80}" as="geometry"/></mxCell>`);   // ADR-0245/0336/0345
+    _pu(cells,`<mxCell id="${id}" value="${nl(lbl||'')}" style="${esc(sty)}" vertex="1" parent="${_gc?`g_${_gi(s)}`:_pf?idOf.get(_pf.id):'1'}"${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}><mxGeometry x="${(s.x||0)-(_gc?_gc.x:_pf?_pf.x:0)}" y="${(s.y||0)-(_gc?_gc.y:_pf?_pf.y:0)}" width="${s.w||120}" height="${s.h||80}" as="geometry"/></mxCell>`);   // ADR-0245/0336/0345
   }
   // ADR-0354: pen strokes export as polyline edges — endArrow=none + one
   // mxPoint per stroke point keeps the ink visible in draw.io.
@@ -6806,7 +6807,7 @@ function boardToDrawio(shapes){
     let geo=`<mxGeometry relative="1" as="geometry"><mxPoint x="${s.pts[0][0]-(_gp?_gp.x:0)}" y="${s.pts[0][1]-(_gp?_gp.y:0)}" as="sourcePoint"/><mxPoint x="${s.pts[_ln(s.pts)-1][0]-(_gp?_gp.x:0)}" y="${s.pts[_ln(s.pts)-1][1]-(_gp?_gp.y:0)}" as="targetPoint"/>`;
     if(_ln(s.pts)>2)geo+='<Array as="points">'+_mid(s.pts).map(p=>`<mxPoint x="${p[0]-(_gp?_gp.x:0)}" y="${p[1]-(_gp?_gp.y:0)}"/>`).join('')+'</Array>';
     geo+='</mxGeometry>';
-    cells.push(`<mxCell id="${id}" value="" style="${esc(sty)}" edge="1" parent="${_gp?`g_${_gi(s)}`:'1'}"${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0354
+    _pu(cells,`<mxCell id="${id}" value="" style="${esc(sty)}" edge="1" parent="${_gp?`g_${_gi(s)}`:'1'}"${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0354
   }
   for(const s of shapes){
     const t=s.type;
@@ -6834,7 +6835,7 @@ function boardToDrawio(shapes){
     const wa=_el(s)?_mid(_elbowPts(s)):s.curve?[_curveCtrl(_cE(s),s.cbend)]:_wayArr(s);   // ADR-0358/0360
     if(_ln(wa))geo+='<Array as="points">'+wa.map(p=>`<mxPoint x="${p.x-(_gc2?_gc2.x:0)}" y="${p.y-(_gc2?_gc2.y:0)}"/>`).join('')+'</Array>';
     geo+='</mxGeometry>';
-    cells.push(`<mxCell id="${id}" value="${nl(_lb(s)||'')}" style="${esc(sty)}" edge="1" parent="${_gc2?`g_${_gi(s)}`:'1'}"${src}${tgt}${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0245/0347
+    _pu(cells,`<mxCell id="${id}" value="${nl(_lb(s)||'')}" style="${esc(sty)}" edge="1" parent="${_gc2?`g_${_gi(s)}`:'1'}"${src}${tgt}${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0245/0347
   }
   const vx=_vp().x,vy=_vp().y,vz=_vp().zoom;
   return `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile compressed="false"><diagram name="${_esc(_dn()||'Page-1')}"><mxGraphModel dx="${_rnd(-vx)}" dy="${_rnd(-vy)}" grid="${state.showGrid?1:0}" gridSize="${GRID_SIZE}" guides="1" tooltips="0" connect="0" arrows="0" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0" zoom="${vz}"><root><mxCell id="0"/><mxCell id="1" parent="0"/>${cells.join('')}</root></mxGraphModel></diagram></mxfile>`;   // ADR-0359: dx/dy/zoom viewport round-trip
@@ -6908,7 +6909,7 @@ function _svgPathPts(d,m){
   if(!toks)return pts;
   let i=0,cmd='',x=0,y=0,x0=0,y0=0;
   const num=()=>{if(i<_ln(toks)&&!/[a-zA-Z]/.test(toks[i]))return+toks[i++];return NaN};
-  const push=(px,py)=>{if(_ln(pts)<SVG_MAX_PTS&&_fin(px)&&_fin(py))pts.push([px,py]);};
+  const push=(px,py)=>{if(_ln(pts)<SVG_MAX_PTS&&_fin(px)&&_fin(py))_pu(pts,[px,py]);};
   const cubic=(x1,y1,x2,y2,ex,ey)=>{const sx=x,sy=y;
     for(let s=1;s<=10;s++){const t=s/10,u=1-t;
       push(u*u*u*sx+3*u*u*t*x1+3*u*t*t*x2+t*t*t*ex,u*u*u*sy+3*u*u*t*y1+3*u*t*t*y2+t*t*t*ey)}
@@ -6964,27 +6965,27 @@ function svgToShapes(txt){
     if(tag==='rect'){
       const x=+_ga(el,'x')||0,y=+_ga(el,'y')||0,w=+_ga(el,'width'),h=+_ga(el,'height');
       if(w>0&&h>0){const a=_svgMPt(m2,x,y),b=_svgMPt(m2,x+w,y+h);
-        s=Shape.make('rect',{x:_min(a.x,b.x),y:_min(a.y,b.y),w:_abs(b.x-a.x),h:_abs(b.y-a.y)})}
+        s=_smk('rect',{x:_min(a.x,b.x),y:_min(a.y,b.y),w:_abs(b.x-a.x),h:_abs(b.y-a.y)})}
     }else if(tag==='circle'||tag==='ellipse'){
       const cx=+_ga(el,'cx')||0,cy=+_ga(el,'cy')||0;
       const rx=tag==='circle'?+_ga(el,'r')||0:+_ga(el,'rx')||0;
       const ry=tag==='circle'?rx:+_ga(el,'ry')||0;
       if(rx>0&&ry>0){const a=_svgMPt(m2,cx-rx,cy-ry),b=_svgMPt(m2,cx+rx,cy+ry);
-        s=Shape.make('ellipse',{x:_min(a.x,b.x),y:_min(a.y,b.y),w:_abs(b.x-a.x),h:_abs(b.y-a.y)})}
+        s=_smk('ellipse',{x:_min(a.x,b.x),y:_min(a.y,b.y),w:_abs(b.x-a.x),h:_abs(b.y-a.y)})}
     }else if(tag==='line'){
       const a=_svgMPt(m2,+_ga(el,'x1')||0,+_ga(el,'y1')||0);
       const b=_svgMPt(m2,+_ga(el,'x2')||0,+_ga(el,'y2')||0);
-      if(_hp(b.x-a.x,b.y-a.y)>0.5)s=Shape.make('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y});
+      if(_hp(b.x-a.x,b.y-a.y)>0.5)s=_smk('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y});
     }else if(tag==='polyline'||tag==='polygon'){
       const nums=_trm(_ga(el,'points')||'').split(/[\s,]+/).map(Number);
       const pts=[];
       for(let i=0;i+1<_ln(nums)&&_ln(pts)<SVG_MAX_PTS;i+=2)
-        if(_fin(nums[i])&&_fin(nums[i+1]))pts.push(_svgMPt(m2,nums[i],nums[i+1]));
-      if(tag==='polygon'&&_ln(pts)>1)pts.push(pts[0]);
-      if(_ln(pts)>1)s=Shape.make('pen',{pts:pts.map(p=>[p.x,p.y])});
+        if(_fin(nums[i])&&_fin(nums[i+1]))_pu(pts,_svgMPt(m2,nums[i],nums[i+1]));
+      if(tag==='polygon'&&_ln(pts)>1)_pu(pts,pts[0]);
+      if(_ln(pts)>1)s=_smk('pen',{pts:pts.map(p=>[p.x,p.y])});
     }else if(tag==='path'){
       const pts=_svgPathPts(_ga(el,'d'),m2);
-      if(_ln(pts)>1)s=Shape.make('pen',{pts});
+      if(_ln(pts)>1)s=_smk('pen',{pts});
     }else if(tag==='image'){
       // ADR-0235: <image href=data:...> — round-trips our own SVG exports.
       // Only inline data: URIs are accepted (the mapping is the sanitizer);
@@ -6993,17 +6994,17 @@ function svgToShapes(txt){
       const w=+_ga(el,'width')||0,ht=+_ga(el,'height')||0;
       if(/^data:image\//.test(href)&&w>0&&ht>0){
         const a=_svgMPt(m2,+_ga(el,'x')||0,+_ga(el,'y')||0);
-        s=Shape.make('image',{x:a.x,y:a.y,w:w,h:ht,dataUrl:_s0(href,25_000_000)});
+        s=_smk('image',{x:a.x,y:a.y,w:w,h:ht,dataUrl:_s0(href,25_000_000)});
       }
     }else if(tag==='text'){
       const content=_trm((el.textContent||'').replace(/\s+/g,' '));
       if(content){
         const p=_svgMPt(m2,+_ga(el,'x')||0,+_ga(el,'y')||0);
         const fs=_svgStyle(el,_grad).fontSize||16;
-        s=Shape.make('text',{x:p.x,y:p.y-fs,w:_min(600,_max(60,_ln(content)*fs*0.55)),h:fs*1.4,text:_s0(content,200),fontSize:fs});
+        s=_smk('text',{x:p.x,y:p.y-fs,w:_min(600,_max(60,_ln(content)*fs*0.55)),h:fs*1.4,text:_s0(content,200),fontSize:fs});
       }
     }
-    if(s){const st=_svgStyle(el,_grad);if(s.type!=='text')delete st.fontSize;_oa(s,st);shapes.push(s)}
+    if(s){const st=_svgStyle(el,_grad);if(s.type!=='text')delete st.fontSize;_oa(s,st);_pu(shapes,s)}
     for(const c of el.children)visit(c,m2);
   };
   visit(root,base);
@@ -7017,7 +7018,7 @@ function importSvgText(txt,wp){
   // centre the imported group at wp (drop point / viewport centre)
   const bb=_bA(shapes);
   if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);
-    for(const s of shapes)Shape.translate(s,dx,dy)}
+    for(const s of shapes)_sT2(s,dx,dy)}
   _cOp({op:'addMany',shapes});
   _scl();for(const s of shapes)_sad(s.id);
   _iv();_oT('svgImported');
@@ -7064,15 +7065,15 @@ function excToShapes(txt){
     const W=+e.width||0,H=+e.height||0,S=st(e),r=rot(e);
     let s=null;
     switch(e.type){
-      case _REC:s=Shape.make('rect',{x:e.x,y:e.y,w:W,h:H});break;
-      case'ellipse':s=Shape.make('ellipse',{x:e.x,y:e.y,w:W,h:H});break;
-      case'diamond':s=Shape.make('diamond',{x:e.x,y:e.y,w:W,h:H});break;   // ADR-0061: real type
-      case'frame':s=Shape.make('frame',{x:e.x,y:e.y,w:W,h:H,label:_iS(e.name)?_s0(e.name,120):''});break;
+      case _REC:s=_smk('rect',{x:e.x,y:e.y,w:W,h:H});break;
+      case'ellipse':s=_smk('ellipse',{x:e.x,y:e.y,w:W,h:H});break;
+      case'diamond':s=_smk('diamond',{x:e.x,y:e.y,w:W,h:H});break;   // ADR-0061: real type
+      case'frame':s=_smk('frame',{x:e.x,y:e.y,w:W,h:H,label:_iS(e.name)?_s0(e.name,120):''});break;
       case'text':{
         const fs=_fin(e.fontSize)?e.fontSize:16;
         const content=_trm(_St(e.text||'').replace(/\s+/g,' '));
         if(!content)break;
-        s=Shape.make('text',{x:e.x,y:e.y,w:W||_min(600,_max(60,_ln(content)*fs*0.55)),h:H||fs*1.4,text:_s0(content,2000),fontSize:fs});
+        s=_smk('text',{x:e.x,y:e.y,w:W||_min(600,_max(60,_ln(content)*fs*0.55)),h:H||fs*1.4,text:_s0(content,2000),fontSize:fs});
         if(e.textAlign==='left'||e.textAlign==='right')s.align=e.textAlign;   // ADR-0230
         if(e.autoResize===false)s.wrap=1;                                     // ADR-0412: excalidraw manual-width text wraps to w
         if(e.fontFamily===3)s.font='mono';else if(e.fontFamily===1||e.fontFamily===5)s.font='serif';   // ADR-0243
@@ -7083,14 +7084,14 @@ function excToShapes(txt){
         const pts=[];
         for(const p of raw){
           if(_ln(pts)>=EXC_MAX_PTS)break;
-          if(_iA(p)&&_fin(p[0])&&_fin(p[1]))pts.push([e.x+p[0],e.y+p[1]]);
+          if(_iA(p)&&_fin(p[0])&&_fin(p[1]))_pu(pts,[e.x+p[0],e.y+p[1]]);
         }
         if(_ln(pts)<2)break;
-        if(e.type==='freedraw'){if(_iA(e.pressures))pts.forEach((p,i)=>{if(_fin(e.pressures[i]))p[2]=+e.pressures[i].toFixed(3)});s=Shape.make('pen',{pts});break}   // ADR-0268
+        if(e.type==='freedraw'){if(_iA(e.pressures))pts.forEach((p,i)=>{if(_fin(e.pressures[i]))p[2]=+e.pressures[i].toFixed(3)});s=_smk('pen',{pts});break}   // ADR-0268
         // ADR-0097: multi-segment line/arrow stays a real connector — the
         // interior points map onto the way[] array (ADR-0090), not a
         // dead-end pen stroke. Elbowed excalidraw arrows land naturally.
-        s=Shape.make(_arw(e)?'arrow':'line',{x1:pts[0][0],y1:pts[0][1],x2:_pL(pts)[0],y2:_pL(pts)[1]});
+        s=_smk(_arw(e)?'arrow':'line',{x1:pts[0][0],y1:pts[0][1],x2:_pL(pts)[0],y2:_pL(pts)[1]});
         if(_ln(pts)>2)s.way=_mid(pts).map(p=>({x:p[0],y:p[1]}));
         if(e.elbowed)s.elbow=1;                                              // ADR-0265
         // ADR-0230: excalidraw arrowhead styles → head/start
@@ -7103,7 +7104,7 @@ function excToShapes(txt){
       case'image':{   // ADR-0231: files-map lookup restores image bytes + flip
         const f=d.files&&e.fileId?d.files[e.fileId]:null;
         if(!f||!_iS(f.dataURL)||!/^data:image\//.test(f.dataURL))break;
-        s=Shape.make('image',{x:e.x,y:e.y,w:W||80,h:H||80,dataUrl:_s0(f.dataURL,25_000_000)});
+        s=_smk('image',{x:e.x,y:e.y,w:W||80,h:H||80,dataUrl:_s0(f.dataURL,25_000_000)});
         break;}
       default:break;   // unknown — skip
     }
@@ -7113,10 +7114,10 @@ function excToShapes(txt){
       if(_iS(e.link)&&/^https?:\/\//.test(e.link))s.link=_s0(e.link,500);   // ADR-0301
       if(_conn(s.type)&&e.roundness&&!e.elbowed){s.curve=1;delete s.r}   // ADR-0317: excalidraw's round arrow routes are curved — r only styles elbow corners
       if(_iA(e.scale)&&(e.scale[0]<0||e.scale[1]<0))s.flip=((e.scale[0]<0)?1:0)|((e.scale[1]<0)?2:0);   // ADR-0276
-      _oa(s,S);shapes.push(s);   // ADR-0241
+      _oa(s,S);_pu(shapes,s);   // ADR-0241
       // ADR-0223: line/arrow keep a back-ref to their exc element so
       // start/endBinding (element ids) can resolve after every vertex exists
-      if(_conn(s.type))_excBnd.push([s,e]);
+      if(_conn(s.type))_pu(_excBnd,[s,e]);
       if(e.id)idOf.set(e.id,s.id);
       if(_txt(s)&&e.containerId){_excTxt.set(s.id,e.containerId);_excTxtE.set(s.id,e)}
       // ADR-0229: excalidraw groupIds → Board groupId (nested groups flatten
@@ -7257,12 +7258,12 @@ function importBoard(file){
 function _svgArrowHead(els,tx,ty,a1,a2,ah,stroke,a,sz,style){
   if(style==='none')return;                                  // ADR-0230
   if(style==='dot'){
-    els.push(`<circle cx="${tx}" cy="${ty}" r="${ah*0.35}" fill="${stroke}"${a}/>`);return;
+    _pu(els,`<circle cx="${tx}" cy="${ty}" r="${ah*0.35}" fill="${stroke}"${a}/>`);return;
   }
   if(style==='open'||style==='bar'){                               // ADR-0294
-    els.push(`<polyline points="${tx+_cos(a1)*ah},${ty+_sin(a1)*ah}${style==='open'?` ${tx},${ty}`:''} ${tx+_cos(a2)*ah},${ty+_sin(a2)*ah}" fill="none" stroke="${stroke}" stroke-width="${sz||1}" stroke-linecap="round"${a}/>`);return;
+    _pu(els,`<polyline points="${tx+_cos(a1)*ah},${ty+_sin(a1)*ah}${style==='open'?` ${tx},${ty}`:''} ${tx+_cos(a2)*ah},${ty+_sin(a2)*ah}" fill="none" stroke="${stroke}" stroke-width="${sz||1}" stroke-linecap="round"${a}/>`);return;
   }
-  els.push(`<polygon points="${tx},${ty} ${tx+_cos(a1)*ah},${ty+_sin(a1)*ah} ${tx+_cos(a2)*ah},${ty+_sin(a2)*ah}" fill="${stroke}"${a}/>`);
+  _pu(els,`<polygon points="${tx},${ty} ${tx+_cos(a1)*ah},${ty+_sin(a1)*ah} ${tx+_cos(a2)*ah},${ty+_sin(a2)*ah}" fill="${stroke}"${a}/>`);
 }
 function _svgFont(s,fs){return`font-family="${_fontFam(s)}" font-size="${fs}"${s.bold?' font-weight="600"':''}${s.italic?' font-style="italic"':''}${(s.under||s.strike)?` text-decoration="${[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ')}"`:''}${_svgLs(s)}`}   // shared SVG text-attribute bundle (ADR-0235)
 function _svgLs(s){return _sp(s)?` letter-spacing="${_sp(s)}px"`:''}   // ADR-0205
@@ -7284,10 +7285,10 @@ function buildSVG(shapes,paper){
   const w=_ceil(b.w+pad*2),h=_ceil(b.h+pad*2);
   const ox=-b.x+pad,oy=-b.y+pad;
   const els=[];
-  els.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`);
-  els.push(`<rect width="100%" height="100%" fill="${_esc(paper||'#FFFFFF')}"/>`);
+  _pu(els,`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`);
+  _pu(els,`<rect width="100%" height="100%" fill="${_esc(paper||'#FFFFFF')}"/>`);
   // ADR-0194: one shared drop-shadow filter; shapes opt in via filter="url(#bsh)".
-  if(shapes.some(s=>_sv(s)&&(s.shadow||_stk(s))))els.push('<defs><filter id="bsh" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#0F172A" flood-opacity="0.22"/></filter></defs>');   // ADR-0278
+  if(shapes.some(s=>_sv(s)&&(s.shadow||_stk(s))))_pu(els,'<defs><filter id="bsh" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#0F172A" flood-opacity="0.22"/></filter></defs>');   // ADR-0278
   // ADR-0150 follow-up: SVG builds its own element list (bypasses drawShape's
   // visible guard) — hidden shapes must be excluded here too, like canvas.
   const _vis=shapes.filter(_sv);
@@ -7305,18 +7306,18 @@ function buildSVG(shapes,paper){
     // ADR-0270: shared conn-path element + conn-label emitters (was 8-10x duplicated)
     const _sp=(d,j)=>`<path d="${d}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${j?' stroke-linejoin="round"':''}${dA}${a}${_sh}/>`;
     const _po=pt=>`<polyline points="${pt}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`;
-    const _cL=()=>{const lp=_connLabelXY(s);els.push(_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));
-      if(s.link)els.push(`<a href="${esc(s.link)}" target="_blank" rel="noopener"><text x="${lp.x+10+ox}" y="${lp.y-10+oy}" text-anchor="middle" dominant-baseline="middle" font-size="10" font-family="sans-serif"${a}>🔗</text></a>`)};   // ADR-0333/0339
+    const _cL=()=>{const lp=_connLabelXY(s);_pu(els,_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));
+      if(s.link)_pu(els,`<a href="${esc(s.link)}" target="_blank" rel="noopener"><text x="${lp.x+10+ox}" y="${lp.y-10+oy}" text-anchor="middle" dominant-baseline="middle" font-size="10" font-family="sans-serif"${a}>🔗</text></a>`)};   // ADR-0333/0339
     const rT=shapeRot(s)?` transform="rotate(${_num(_rt(s))},${X+W/2+ox},${Y+H/2+oy})"`:''
     switch(s.type){
       case 'rect':{
         const r=_min(s.r!=null?s.r:8,_abs(W)/4,_abs(H)/4);
-        els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}"${_fi(s)?` fill="${_esc(_fi(s))}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}${_sh}/>`);   // ADR-0278
+        _pu(els,`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}"${_fi(s)?` fill="${_esc(_fi(s))}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}${_sh}/>`);   // ADR-0278
         if(_fs2(s))_svgHatch(els,s,ox,oy,stroke,`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}"/>`,rT);   // ADR-0077
         if(_lb(s))_svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT);
         break;}
       case 'ellipse':
-        els.push(`<ellipse cx="${X+W/2+ox}" cy="${Y+H/2+oy}" rx="${_abs(W/2)}" ry="${_abs(H/2)}"${_fi(s)?` fill="${_esc(_fi(s))}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}${_sh}/>`);   // ADR-0278
+        _pu(els,`<ellipse cx="${X+W/2+ox}" cy="${Y+H/2+oy}" rx="${_abs(W/2)}" ry="${_abs(H/2)}"${_fi(s)?` fill="${_esc(_fi(s))}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}${_sh}/>`);   // ADR-0278
         if(_fs2(s))_svgHatch(els,s,ox,oy,stroke,`<ellipse cx="${X+W/2+ox}" cy="${Y+H/2+oy}" rx="${_abs(W/2)}" ry="${_abs(H/2)}"/>`,rT);   // ADR-0077
         if(_lb(s))_svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT);
         break;
@@ -7334,11 +7335,11 @@ function buildSVG(shapes,paper){
             d+=(i===0?'M':'L')+` ${_num(t1x+ox)} ${_num(t1y+oy)} Q ${_num(p1[0]+ox)} ${_num(p1[1]+oy)} ${_num(t2x+ox)} ${_num(t2y+oy)} `;
           }
           _dEl=`<path d="${_trm(d)} Z"${_fi(s)?` fill="${_esc(_fi(s))}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}${_sh}/>`;
-          els.push(_dEl);
+          _pu(els,_dEl);
           if(_fs2(s))_svgHatch(els,s,ox,oy,stroke,`<path d="${_trm(d)} Z"/>`,rT);
         }else{
           _dEl=`<polygon points="${X+W/2+ox},${Y+oy} ${X+W+ox},${Y+H/2+oy} ${X+W/2+ox},${Y+H+oy} ${X+ox},${Y+H/2+oy}"${_fi(s)?` fill="${_esc(_fi(s))}"`:' fill="none"'} stroke="${stroke}" stroke-width="${SZ||1}"${dA}${a}${rT}${_sh}/>`;
-          els.push(_dEl);
+          _pu(els,_dEl);
           if(_fs2(s))_svgHatch(els,s,ox,oy,stroke,`<polygon points="${X+W/2+ox},${Y+oy} ${X+W+ox},${Y+H/2+oy} ${X+W/2+ox},${Y+H+oy} ${X+ox},${Y+H/2+oy}"/>`,rT);   // ADR-0077
         }
         if(_lb(s))_svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT);
@@ -7346,19 +7347,19 @@ function buildSVG(shapes,paper){
       case 'line':{
         if(s.curve){
           const _ce=_cE(s),cc=_curveCtrl(_ce,s.cbend);
-          els.push(_sp(`M ${_num(_ce.x1+ox)} ${_num(_ce.y1+oy)} Q ${_num(cc.x+ox)} ${_num(cc.y+oy)} ${_num(_ce.x2+ox)} ${_num(_ce.y2+oy)}`));
+          _pu(els,_sp(`M ${_num(_ce.x1+ox)} ${_num(_ce.y1+oy)} Q ${_num(cc.x+ox)} ${_num(cc.y+oy)} ${_num(_ce.x2+ox)} ${_num(_ce.y2+oy)}`));
           _cL();
         }else if(_el(s)){
           const pts=_elbowPts(s);
-          if(s.hop)els.push(_sp(_hopPathD(s,pts,ox,oy,7)));   // ADR-0218
-          else if(s.r>0)els.push(_sp(_polylineRd(pts,ox,oy,s.r),1));   // ADR-0207
+          if(s.hop)_pu(els,_sp(_hopPathD(s,pts,ox,oy,7)));   // ADR-0218
+          else if(s.r>0)_pu(els,_sp(_polylineRd(pts,ox,oy,s.r),1));   // ADR-0207
           else{const spts=pts.map(p=>`${_num(p.x+ox)},${_num(p.y+oy)}`).join(' ');
-          els.push(_po(spts))}
+          _pu(els,_po(spts))}
           _cL();
         }else{
-          if(s.hop){const pts=_linePts(s);els.push(_sp(_hopPathD(s,pts,ox,oy,7)))}   // ADR-0218
-          else if(s.way){const w=s.way;els.push(_po(`${X1+ox},${Y1+oy} ${_num(w.x+ox)},${_num(w.y+oy)} ${X2+ox},${Y2+oy}`))}   // ADR-0076
-          else els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`);
+          if(s.hop){const pts=_linePts(s);_pu(els,_sp(_hopPathD(s,pts,ox,oy,7)))}   // ADR-0218
+          else if(s.way){const w=s.way;_pu(els,_po(`${X1+ox},${Y1+oy} ${_num(w.x+ox)},${_num(w.y+oy)} ${X2+ox},${Y2+oy}`))}   // ADR-0076
+          else _pu(els,`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`);
           _cL();
         }
         break;}
@@ -7366,7 +7367,7 @@ function buildSVG(shapes,paper){
         const ah=_max(6,(SZ||2)*3);
         if(s.curve){
           const _ce=_cE(s),cc=_curveCtrl(_ce,s.cbend);
-          els.push(_sp(`M ${_num(_ce.x1+ox)} ${_num(_ce.y1+oy)} Q ${_num(cc.x+ox)} ${_num(cc.y+oy)} ${_num(_ce.x2+ox)} ${_num(_ce.y2+oy)}`));
+          _pu(els,_sp(`M ${_num(_ce.x1+ox)} ${_num(_ce.y1+oy)} Q ${_num(cc.x+ox)} ${_num(cc.y+oy)} ${_num(_ce.x2+ox)} ${_num(_ce.y2+oy)}`));
           const ang=_at2(_ce.y2-cc.y,_ce.x2-cc.x);
           const a1=ang+_PI-0.5,a2=ang+_PI+0.5,tx=_ce.x2+ox,ty=_ce.y2+oy;
           _svgArrowHead(els,tx,ty,a1,a2,ah,stroke,a,SZ,s.head);
@@ -7376,10 +7377,10 @@ function buildSVG(shapes,paper){
           _cL();
         }else if(_el(s)){
           const pts=_elbowPts(s);
-          if(s.hop)els.push(_sp(_hopPathD(s,pts,ox,oy,7)));   // ADR-0218
-          else if(s.r>0)els.push(_sp(_polylineRd(pts,ox,oy,s.r),1));   // ADR-0207
+          if(s.hop)_pu(els,_sp(_hopPathD(s,pts,ox,oy,7)));   // ADR-0218
+          else if(s.r>0)_pu(els,_sp(_polylineRd(pts,ox,oy,s.r),1));   // ADR-0207
           else{const spts=pts.map(p=>`${_num(p.x+ox)},${_num(p.y+oy)}`).join(' ');
-          els.push(_po(spts))}
+          _pu(els,_po(spts))}
           const Lp=_pL(pts),Pp=pts[_ln(pts)-2];
           const ang=_at2(Lp.y-Pp.y,Lp.x-Pp.x)||_at2(Y2-Y1,X2-X1);
           const a1=ang+_PI-0.5,a2=ang+_PI+0.5;
@@ -7392,7 +7393,7 @@ function buildSVG(shapes,paper){
           _cL();
         }else if(s.hop){
           const pts=_linePts(s);
-          els.push(_sp(_hopPathD(s,pts,ox,oy,7)));   // ADR-0218
+          _pu(els,_sp(_hopPathD(s,pts,ox,oy,7)));   // ADR-0218
           const L=_pL(pts),P=pts[_ln(pts)-2],F=pts[1];
           const ang=_at2(L.y-P.y,L.x-P.x),a1=ang+_PI-0.5,a2=ang+_PI+0.5,tx=L.x+ox,ty=L.y+oy;
           _svgArrowHead(els,tx,ty,a1,a2,ah,stroke,a,SZ,s.head);
@@ -7401,7 +7402,7 @@ function buildSVG(shapes,paper){
           _cL();
         }else if(s.way){                                            // ADR-0090: full vertex list
           const pts=_linePts(s),wpts=pts.map(p=>_num(p.x+ox)+','+_num(p.y+oy)).join(' ');
-          els.push(_po(wpts));
+          _pu(els,_po(wpts));
           const L=_pL(pts),P=pts[_ln(pts)-2],F=pts[1];
           const ang=_at2(L.y-P.y,L.x-P.x),a1=ang+_PI-0.5,a2=ang+_PI+0.5,tx=L.x+ox,ty=L.y+oy;
           _svgArrowHead(els,tx,ty,a1,a2,ah,stroke,a,SZ,s.head);
@@ -7409,8 +7410,8 @@ function buildSVG(shapes,paper){
             _svgArrowHead(els,sx2,sy2,s1,s2,ah,stroke,a,SZ,s.startHead||s.head)}
           _cL();
         }else{
-          if(s.hop){const pts=_linePts(s);els.push(_sp(_hopPathD(s,pts,ox,oy,7)))}   // ADR-0218
-          else els.push(`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`);
+          if(s.hop){const pts=_linePts(s);_pu(els,_sp(_hopPathD(s,pts,ox,oy,7)))}   // ADR-0218
+          else _pu(els,`<line x1="${X1+ox}" y1="${Y1+oy}" x2="${X2+ox}" y2="${Y2+oy}" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${dA}${a}${_sh}/>`);
           const ang=_at2(Y2-Y1,X2-X1);
           const a1=ang+_PI-0.5,a2=ang+_PI+0.5;
           const tx=X2+ox,ty=Y2+oy;
@@ -7426,7 +7427,7 @@ function buildSVG(shapes,paper){
           const p=s.pts[0];
           // fallback must match drawPen's canvas radius (_szz(s)||2)/2 for a foreign/legacy
           // shape missing `size` (deep-audit fix; was (SZ||1)/2, half the canvas radius).
-          els.push(`<circle cx="${_num(p&&p[0])+ox}" cy="${_num(p&&p[1])+oy}" r="${(SZ||2)/2}" fill="${stroke}"${a}${_sh}/>`);
+          _pu(els,`<circle cx="${_num(p&&p[0])+ox}" cy="${_num(p&&p[1])+oy}" r="${(SZ||2)/2}" fill="${stroke}"${a}${_sh}/>`);
           break;
         }
         if(_ln(s.pts)<2)break;
@@ -7444,8 +7445,8 @@ function buildSVG(shapes,paper){
           d+=`M${r(P[i-1][0]+nx*ra)},${r(P[i-1][1]+ny*ra)}L${r(P[i][0]+nx*rb)},${r(P[i][1]+ny*rb)}L${r(P[i][0]-nx*rb)},${r(P[i][1]-ny*rb)}L${r(P[i-1][0]-nx*ra)},${r(P[i-1][1]-ny*ra)}Z`;
         }
         for(let i=0;i<n;i++)circles+=`<circle cx="${r(P[i][0])}" cy="${r(P[i][1])}" r="${r(Rr(i))}"/>`;
-        els.push(`<g fill="${stroke}"${a}${_sh}><path d="${d}"/>${circles}</g>`);   // ADR-0278
-        if(s.link)els.push(`<a href="${esc(s.link)}" target="_blank" rel="noopener"><text x="${P[0][0]+4}" y="${P[0][1]-2}" font-size="10" font-family="sans-serif"${a}>🔗</text></a>`);   // ADR-0333/0339
+        _pu(els,`<g fill="${stroke}"${a}${_sh}><path d="${d}"/>${circles}</g>`);   // ADR-0278
+        if(s.link)_pu(els,`<a href="${esc(s.link)}" target="_blank" rel="noopener"><text x="${P[0][0]+4}" y="${P[0][1]-2}" font-size="10" font-family="sans-serif"${a}>🔗</text></a>`);   // ADR-0333/0339
         break;}
       case 'text':{
         const fs=_num(_fS(s))||16;
@@ -7454,19 +7455,19 @@ function buildSVG(shapes,paper){
         const anch=s.align==='center'?' text-anchor="middle"':s.align==='right'?' text-anchor="end"':'';
         if(_fi(s)){const mw2=_max(...svgLines.map(_ln),0)*fs*0.6;              // ADR-0191
           const bx2=s.align==='center'?tax-mw2/2:s.align==='right'?tax-mw2:tax;
-          els.push(`<rect x="${bx2-3}" y="${Y+oy-3}" width="${mw2+6}" height="${_ln(svgLines)*fs*(s.lineH||1.25)+6}" fill="${_esc(_fi(s))}"${a}${rT}/>`);}
-        els.push(`<text x="${tax}" y="${Y+oy}" dominant-baseline="hanging" ${_svgFont(s,fs)} fill="${stroke}"${anch}${a}${rT}${_sh}>`);   // ADR-0078/0095/0100
-        for(let i=0;i<_ln(svgLines);i++)els.push(`<tspan x="${tax}" dy="${i?fs*(s.lineH||1.25):0}">${_esc(svgLines[i])}</tspan>`);
-        els.push('</text>');break;}
+          _pu(els,`<rect x="${bx2-3}" y="${Y+oy-3}" width="${mw2+6}" height="${_ln(svgLines)*fs*(s.lineH||1.25)+6}" fill="${_esc(_fi(s))}"${a}${rT}/>`);}
+        _pu(els,`<text x="${tax}" y="${Y+oy}" dominant-baseline="hanging" ${_svgFont(s,fs)} fill="${stroke}"${anch}${a}${rT}${_sh}>`);   // ADR-0078/0095/0100
+        for(let i=0;i<_ln(svgLines);i++)_pu(els,`<tspan x="${tax}" dy="${i?fs*(s.lineH||1.25):0}">${_esc(svgLines[i])}</tspan>`);
+        _pu(els,'</text>');break;}
       case 'image':
         if(_iS(s.dataUrl)&&/^data:image\//.test(_du(s))){
           // ADR-0149: flip composes INSIDE the image transform (after rotation)
           // so it mirrors along the shape's local axes — same as the canvas path.
           const fT=s.flip?` translate(${_num(X+W/2+ox)} ${_num(Y+H/2+oy)}) scale(${s.flip&1?-1:1} ${s.flip&2?-1:1}) translate(${_num(-(X+W/2+ox))} ${_num(-(Y+H/2+oy))})`:'';
           const _cr2=_min(s.r||0,_abs(W)/2,_abs(H)/2);   // ADR-0168
-          if(_cr2>0)els.push(`<clipPath id="irc${_esc(s.id)}"><rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${_cr2}"/></clipPath>`);
-          els.push(`<image x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" href="${_esc(_du(s))}"${_cr2>0?` clip-path="url(#irc${_esc(s.id)})"`:''}${a}${rT}${fT}${_sh}/>`);
-          if(_sk(s)&&_szz(s))els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${_cr2}" fill="none" stroke="${_esc(_sk(s))}" stroke-width="${_num(_szz(s))}"${dA}${a}${rT}/>`);   // ADR-0176/0178
+          if(_cr2>0)_pu(els,`<clipPath id="irc${_esc(s.id)}"><rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${_cr2}"/></clipPath>`);
+          _pu(els,`<image x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" href="${_esc(_du(s))}"${_cr2>0?` clip-path="url(#irc${_esc(s.id)})"`:''}${a}${rT}${fT}${_sh}/>`);
+          if(_sk(s)&&_szz(s))_pu(els,`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${_cr2}" fill="none" stroke="${_esc(_sk(s))}" stroke-width="${_num(_szz(s))}"${dA}${a}${rT}/>`);   // ADR-0176/0178
         }
         if(_lb(s))_svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT);  // ADR-0083
         break;
@@ -7478,14 +7479,14 @@ function buildSVG(shapes,paper){
         // or default-opacity frame rendered wrong (fully opaque, unlabeled) only in SVG
         // export, not canvas/PNG/PDF (deep-audit fix).
         const fa=` opacity="${(_oP(s)==null?1:_num(_oP(s)))*0.9}"`;
-        els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${fr}" fill="${_fi(s)||'rgba(248,250,252,0.6)'}" stroke="${clr}" stroke-width="${SZ||1.5}"${dA}${fa}${rT}/>`);   // ADR-0178
+        _pu(els,`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${fr}" fill="${_fi(s)||'rgba(248,250,252,0.6)'}" stroke="${clr}" stroke-width="${SZ||1.5}"${dA}${fa}${rT}/>`);   // ADR-0178
         const alF2=s.align||'left',txF=alF2==='right'?X+ox+W-6:alF2==='center'?X+ox+W/2:X+ox+6;   // ADR-0197
         const ancF=alF2==='right'?' text-anchor="end"':alF2==='center'?' text-anchor="middle"':'';
-        els.push(`<text x="${txF}" y="${Y+oy-4}" ${_svgFont(s.bold?s:{...s,bold:true},_fS(s)||12)} fill="${clr}"${ancF}${fa}${rT}>${_esc(_lb(s)||'Frame')}</text>`);
+        _pu(els,`<text x="${txF}" y="${Y+oy-4}" ${_svgFont(s.bold?s:{...s,bold:true},_fS(s)||12)} fill="${clr}"${ancF}${fa}${rT}>${_esc(_lb(s)||'Frame')}</text>`);
         break;}
       case 'sticky':{
         const r=_min(6,_abs(W)/6,_abs(H)/6);
-        els.push(`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}" fill="${_esc(_coo(s)||_YW)}" stroke="rgba(0,0,0,.06)"${rT} filter="url(#bsh)"/>`);   // ADR-0278
+        _pu(els,`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}" fill="${_esc(_coo(s)||_YW)}" stroke="rgba(0,0,0,.06)"${rT} filter="url(#bsh)"/>`);   // ADR-0278
         if(_txx(s)){
           const fs=_num(_fS(s))||14;const pad2=8;
           // estimate measure (no canvas here); wraps to the same box as the app
@@ -7494,14 +7495,14 @@ function buildSVG(shapes,paper){
           const anch2=s.align==='center'?' text-anchor="middle"':s.align==='right'?' text-anchor="end"':'';
           const sy2v=_va(s)==='middle'?Y+oy+(H-_ln(lines2)*fs*(s.lineH||1.3))/2:                  // ADR-0187
                      _va(s)==='bottom'?Y+oy+H-pad2-_ln(lines2)*fs*(s.lineH||1.3):Y+oy+pad2;
-          els.push(`<text x="${tax2}" y="${sy2v}" dominant-baseline="hanging" ${_svgFont(s,fs)} fill="${_esc(_sk(s)||'#1E293B')}"${anch2}${rT}>`);   // ADR-0192
-          for(let i=0;i<_ln(lines2);i++)els.push(`<tspan x="${tax2}" dy="${i?fs*(s.lineH||1.3):0}">${_esc(lines2[i])}</tspan>`);
-          els.push('</text>');
+          _pu(els,`<text x="${tax2}" y="${sy2v}" dominant-baseline="hanging" ${_svgFont(s,fs)} fill="${_esc(_sk(s)||'#1E293B')}"${anch2}${rT}>`);   // ADR-0192
+          for(let i=0;i<_ln(lines2);i++)_pu(els,`<tspan x="${tax2}" dy="${i?fs*(s.lineH||1.3):0}">${_esc(lines2[i])}</tspan>`);
+          _pu(els,'</text>');
         }break;}
     }
-    if(s.link&&_hb(s))els.push(`<a href="${esc(s.link)}" target="_blank" rel="noopener"><text x="${X+_abs(W)+ox-3}" y="${Y+oy+3}" text-anchor="end" dominant-baseline="hanging" font-size="10" font-family="sans-serif"${a}>🔗</text></a>`);   // ADR-0316/0339
+    if(s.link&&_hb(s))_pu(els,`<a href="${esc(s.link)}" target="_blank" rel="noopener"><text x="${X+_abs(W)+ox-3}" y="${Y+oy+3}" text-anchor="end" dominant-baseline="hanging" font-size="10" font-family="sans-serif"${a}>🔗</text></a>`);   // ADR-0316/0339
   }
-  els.push('</svg>');
+  _pu(els,'</svg>');
   return els.join('\n');
 }
 // ADR-0074: box-shape label wrapped to the shape width, vertically centred —
@@ -7515,12 +7516,12 @@ function _svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT){
   const lh=fs*(s.lineH||1.25),maxL=_max(1,_fl((H-4)/lh));
   if(_ln(lines)>maxL){lines=_s0(lines,maxL);lines[maxL-1]+='…'}
   const sh_=_ln(lines)*lh+4,sy=_va(s)==='top'?Y:Y+H-sh_;   // ADR-0179
-  els.push(`<g${rT}><rect x="${X+ox}" y="${sy+oy}" width="${W}" height="${sh_}" fill="${_esc(_fi(s)||paper||'#FFFFFF')}" opacity="0.85"/>`);
+  _pu(els,`<g${rT}><rect x="${X+ox}" y="${sy+oy}" width="${W}" height="${sh_}" fill="${_esc(_fi(s)||paper||'#FFFFFF')}" opacity="0.85"/>`);
   const al4=s.align||'center',tx4=al4==='left'?X+ox+6:al4==='right'?X+ox+W-6:X+W/2+ox;   // ADR-0171
   const anc4=al4==='left'?'start':al4==='right'?'end':'middle';
-  els.push(`<text x="${tx4}" y="${sy+oy+2}" dominant-baseline="hanging" ${_svgFont(s,fs)} text-anchor="${anc4}" fill="${stroke}">`);   // ADR-0170
-  for(let i=0;i<_ln(lines);i++)els.push(`<tspan x="${tx4}" dy="${i?lh:0}">${_esc(lines[i])}</tspan>`);
-  els.push('</text></g>');
+  _pu(els,`<text x="${tx4}" y="${sy+oy+2}" dominant-baseline="hanging" ${_svgFont(s,fs)} text-anchor="${anc4}" fill="${stroke}">`);   // ADR-0170
+  for(let i=0;i<_ln(lines);i++)_pu(els,`<tspan x="${tx4}" dy="${i?lh:0}">${_esc(lines[i])}</tspan>`);
+  _pu(els,'</text></g>');
 }
 function _svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT){
   const fs=_fS(s)||14,pad=4;   // ADR-0169
@@ -7529,9 +7530,9 @@ function _svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT){
   const cy=_va(s)==='top'?Y+6+oy:_va(s)==='bottom'?Y+H-6+oy-_ln(lines)*lh:Y+H/2+oy-(_ln(lines)*lh)/2;   // ADR-0159
   const al3=s.align||'center',tx3=al3==='left'?X+ox+6:al3==='right'?X+ox+W-6:X+W/2+ox;   // ADR-0171
   const anc3=al3==='left'?'start':al3==='right'?'end':'middle';
-  els.push(`<text x="${tx3}" y="${cy}" dominant-baseline="hanging" ${_svgFont(s,fs)} text-anchor="${anc3}" fill="${stroke}"${a}${rT}>`);   // ADR-0170
-  for(let i=0;i<_ln(lines);i++)els.push(`<tspan x="${tx3}" dy="${i?lh:0}">${_esc(lines[i])}</tspan>`);
-  els.push('</text>');
+  _pu(els,`<text x="${tx3}" y="${cy}" dominant-baseline="hanging" ${_svgFont(s,fs)} text-anchor="${anc3}" fill="${stroke}"${a}${rT}>`);   // ADR-0170
+  for(let i=0;i<_ln(lines);i++)_pu(els,`<tspan x="${tx3}" dy="${i?lh:0}">${_esc(lines[i])}</tspan>`);
+  _pu(els,'</text>');
 }
 function _esc(s){return _St(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
 // Coerce to finite number; prevents string geometry breaking SVG numeric attributes.
@@ -7584,13 +7585,13 @@ function wrapText(text,maxWidth,measure){
   // so measureText doesn't see a trailing \r that skews wrap-width calculation.
   const norm=_St(text==null?'':text).replace(/\r\n/g,'\n').replace(/\r/g,'\n');
   for(const para of norm.split('\n')){
-    if(para===''){out.push('');continue;}
-    if(!(maxWidth>0)||measure(para)<=maxWidth){out.push(para);continue;}
+    if(para===''){_pu(out,'');continue;}
+    if(!(maxWidth>0)||measure(para)<=maxWidth){_pu(out,para);continue;}
     let line='';
     for(const tok of (para.match(/\s+|\S+/g)||[])){
       if(line===''&&/^\s+$/.test(tok))continue;            // no leading space on a wrapped line
       if(measure(line+tok)<=maxWidth){line+=tok;continue;}
-      if(line!==''){out.push(line.replace(/\s+$/,''));line='';if(/^\s+$/.test(tok))continue;}
+      if(line!==''){_pu(out,line.replace(/\s+$/,''));line='';if(/^\s+$/.test(tok))continue;}
       if(measure(tok)<=maxWidth){line=tok;continue;}
       let chunk='';                                         // single token longer than the line → char-break
       for(const ch of tok){
@@ -7601,11 +7602,11 @@ function wrapText(text,maxWidth,measure){
         // 禁則: an opening bracket must not end the line — push trailing ones down with ch.
         let carry='';
         while(_ln(chunk)>1&&KINSOKU_END.has(chunk[_ln(chunk)-1])){carry=chunk[_ln(chunk)-1]+carry;chunk=_s0(chunk,-1);}
-        out.push(chunk);chunk=carry+ch;
+        _pu(out,chunk);chunk=carry+ch;
       }
       line=chunk;
     }
-    if(line!=='')out.push(line.replace(/\s+$/,''));
+    if(line!=='')_pu(out,line.replace(/\s+$/,''));
   }
   return out;
 }
@@ -7653,7 +7654,7 @@ const Net={
   _imgOuts:[], _imgChunks:_mP(),
   _slimShapes(shapes,sent){
     const{slim,puts}=_imgSlim(shapes,sent||this._imgSent);
-    for(const[k,d]of puts)this._imgOuts.push([k,d]);
+    for(const[k,d]of puts)_pu(this._imgOuts,[k,d]);
     return slim;
   },
   _slimOp(op){
@@ -7743,7 +7744,7 @@ const Net={
   _sendDC(m){   // ADR-0432: single dc funnel — a full SCTP buffer throws; requeue on bufferedAmountLow instead of dropping
     if(_ln(m)>262144)return;   // ADR-0438: >SCTP max can never send — drop instead of poison-queuing a retry loop
     const q=this._dcQ,d=this.dc;
-    if(q){_ln(q)<4096&&q.push(m);return}
+    if(q){_ln(q)<4096&&_pu(q,m);return}
     if(!d||d.readyState!=='open')return;
     try{d.send(m)}catch(_){this._dcQ=[m];d.bufferedAmountLowThreshold=65536;
       d.onbufferedamountlow=()=>{const b=this._dcQ;this._dcQ=null;for(const x of b)this._sendDC(x)}}
@@ -8277,7 +8278,7 @@ const Persist={
   async save(explicit){
     if(!this.db)return;
     try{
-      const tx=this.db.transaction([DB_STORE,DB_IMG_STORE],_RW);
+      const tx=_trx(this.db,[DB_STORE,DB_IMG_STORE],_RW);
       const imgs=_oS(tx,DB_IMG_STORE);
       const kv=await reqDone(imgs.getAll()),ks=await reqDone(imgs.getAllKeys());
       const stored=new Map(ks.map((k,i)=>[k,kv[i]]));
@@ -8311,7 +8312,7 @@ const Persist={
   },
   async load(){
     if(!this.db)return;
-    const tx=this.db.transaction([DB_STORE,DB_IMG_STORE],_RO);
+    const tx=_trx(this.db,[DB_STORE,DB_IMG_STORE],_RO);
     const rq=_oS(tx,DB_STORE).get(DOC_KEY);
     const d=await reqDone(rq);
     if(d&&_iA(d.shapes)){
@@ -8348,7 +8349,7 @@ const Persist={
   async saveBackup(shapes,viewport,docName){
     if(!this.db||!shapes||!_ln(shapes))return;
     try{
-      const tx=this.db.transaction([DB_STORE,DB_IMG_STORE],_RW);
+      const tx=_trx(this.db,[DB_STORE,DB_IMG_STORE],_RW);
       const imgs=_oS(tx,DB_IMG_STORE);
       const kv=await reqDone(imgs.getAll()),ks=await reqDone(imgs.getAllKeys());
       const stored=new Map(ks.map((k,i)=>[k,kv[i]]));
@@ -8361,7 +8362,7 @@ const Persist={
   async checkBackup(){
     if(!this.db)return false;
     try{
-      const tx=this.db.transaction(DB_STORE,_RO);
+      const tx=_trx(this.db,DB_STORE,_RO);
       const rq=_oS(tx,DB_STORE).get(DOC_KEY+':prev');
       const d=await reqDone(rq);
       return !!(d&&_iA(d.shapes)&&d.shapes.filter(validShape).length);
@@ -8370,7 +8371,7 @@ const Persist={
   async discardBackup(){
     if(!this.db)return;
     try{
-      const tx=this.db.transaction(DB_STORE,_RW);
+      const tx=_trx(this.db,DB_STORE,_RW);
       _oS(tx,DB_STORE).delete(DOC_KEY+':prev');
       await txDone(tx);
     }catch(_){}
@@ -8380,12 +8381,12 @@ const Persist={
   async restoreBackup(){
     if(!this.db)return false;
     try{
-      const tx=this.db.transaction(DB_STORE,_RO);
+      const tx=_trx(this.db,DB_STORE,_RO);
       const rq=_oS(tx,DB_STORE).get(DOC_KEY+':prev');
       const d=await reqDone(rq);
       let shapes=d&&_iA(d.shapes)?d.shapes:[];
       if(shapes.some(s=>s.img)){
-        const tx2=this.db.transaction([DB_IMG_STORE],_RO);
+        const tx2=_trx(this.db,[DB_IMG_STORE],_RO);
         const kv=await reqDone(tx2.objectStore(DB_IMG_STORE).getAll());
         const ks=await reqDone(tx2.objectStore(DB_IMG_STORE).getAllKeys());
         shapes=_imgAttach(shapes,new Map(ks.map((k,i)=>[k,kv[i]])));
@@ -8426,10 +8427,10 @@ function _imgSlim(shapes,stored){
     if(s&&_im(s)&&_iS(s.dataUrl)&&_du(s).length>128){
       let k=_imgHash(_du(s));
       while(stored.get(k)!==_ud&&stored.get(k)!==_du(s))k=_imgNextKey(k);
-      if(stored.get(k)===_ud){stored.set(k,_du(s));puts.push([k,_du(s)])}
+      if(stored.get(k)===_ud){stored.set(k,_du(s));_pu(puts,[k,_du(s)])}
       const{dataUrl:_x,...rest}=s;
-      slim.push({...rest,img:k});
-    }else slim.push(s);
+      _pu(slim,{...rest,img:k});
+    }else _pu(slim,s);
   }
   return{slim,puts};
 }
@@ -9056,7 +9057,7 @@ function _syncStylePanelIfChanged(){
 function _syncStylePanel(){
   if(!_selN())return;   // empty selection keeps the panel as-is
   const sel=[];
-  for(const id of _sl()){const s=byId(id);if(s&&!_lk(s))sel.push(s)}
+  for(const id of _sl()){const s=byId(id);if(s&&!_lk(s))_pu(sel,s)}
   if(!_ln(sel))return;
   // common value across the selection, undefined when mixed / absent
   const uni=k=>{const v=sel[0][k]??null;return sel.every(s=>(s[k]??null)===v)?v:undefined};
@@ -9092,7 +9093,7 @@ function applyStyleToSelection(patch){
       b[ek]=sh[ek]??null;a[ek]=patch[k]??null;eff[ek]=patch[k];   // ADR-0082: ??null keeps before JSON-safe (clone drops undefined → undo couldn't unset)
     }
     _oa(sh,eff);
-    before.push(b);after.push(a);
+    _pu(before,b);_pu(after,a);
   }
   if(_ln(before)){_styleOp(before,after);}
   _iv();
@@ -9101,14 +9102,14 @@ function applyStyleToSelection(patch){
 // style op on change. Multiple input events during a drag never hit the undo stack.
 const _sbf={};
 function _sfbCapture(p){for(const id of _sl()){const s=byId(id);if(s&&!_lk(s)&&!(id+p in _sbf))_sbf[id+p]=s[p]}}
-function _sfbFlush(p,v){const b=[],a=[];for(const id of _sl()){const k=id+p;if(k in _sbf){const s=byId(id);if(s&&!_lk(s)){b.push({id,[p]:_sbf[k]});a.push({id,[p]:v});}delete _sbf[k];}}if(_ln(b)&&b.some(x=>x[p]!==v)){_styleOp(b,a)}}
+function _sfbFlush(p,v){const b=[],a=[];for(const id of _sl()){const k=id+p;if(k in _sbf){const s=byId(id);if(s&&!_lk(s)){_pu(b,{id,[p]:_sbf[k]});_pu(a,{id,[p]:v});}delete _sbf[k];}}if(_ln(b)&&b.some(x=>x[p]!==v)){_styleOp(b,a)}}
 
 // ADR-0062: per-connector elbow toggle via style op — undo + wclock sync free.
 function toggleElbow(){
   const before=[],after=[];
   _forConn((s,id)=>{
-    before.push({id,elbow:_el(s)||0,curve:s.curve||0});
-    after.push({id,elbow:_el(s)?0:1,curve:0});
+    _pu(before,{id,elbow:_el(s)||0,curve:s.curve||0});
+    _pu(after,{id,elbow:_el(s)?0:1,curve:0});
     s.elbow=_el(s)?0:1;s.curve=0;               // ADR-0068: routes are exclusive
     _st().elbow=_el(s);_st().curve=0;              // ADR-0183
   })
@@ -9182,8 +9183,8 @@ function toggleLineArrow(){
 function toggleCurve(){
   const before=[],after=[];
   _forConn((s,id)=>{
-    before.push({id,elbow:_el(s)||0,curve:s.curve||0});
-    after.push({id,elbow:0,curve:s.curve?0:1});
+    _pu(before,{id,elbow:_el(s)||0,curve:s.curve||0});
+    _pu(after,{id,elbow:0,curve:s.curve?0:1});
     s.elbow=0;s.curve=s.curve?0:1;
     _st().elbow=0;_st().curve=s.curve;              // ADR-0183
   })
@@ -9193,8 +9194,8 @@ function toggleCurve(){
 function toggleHop(){
   const before=[],after=[];
   _forConn((s,id)=>{
-    before.push({id,hop:s.hop||0});
-    after.push({id,hop:s.hop?0:1});
+    _pu(before,{id,hop:s.hop||0});
+    _pu(after,{id,hop:s.hop?0:1});
     s.hop=s.hop?0:1;
     _st().hop=s.hop;                        // ADR-0183
   })
@@ -9208,8 +9209,8 @@ function toggleHop(){
 function toggleRound(){
   const before=[],after=[];
   _forSel((s,id)=>{if(s.type!=='rect'||_lk(s))return;
-    before.push({id,r:s.r??null});
-    after.push({id,r:s.r===0?null:0});
+    _pu(before,{id,r:s.r??null});
+    _pu(after,{id,r:s.r===0?null:0});
     s.r=s.r===0?null:0;_st().r=s.r;                       // ADR-0184
   })
   _so(before,after)
@@ -9246,8 +9247,8 @@ function fitFrames(){
     if(!m)continue;   // empty frame: no contents to fit
     const nx=m.x-PAD,ny=m.y-PAD,nw=m.r-m.x+PAD*2,nh=m.bt-m.y+PAD*2;
     if(nx===f.x&&ny===f.y&&nw===f.w&&nh===f.h)continue;
-    before.push({id:f.id,x:f.x,y:f.y,w:f.w,h:f.h});
-    after.push({id:f.id,x:nx,y:ny,w:nw,h:nh});
+    _pu(before,{id:f.id,x:f.x,y:f.y,w:f.w,h:f.h});
+    _pu(after,{id:f.id,x:nx,y:ny,w:nw,h:nh});
     f.x=nx;f.y=ny;f.w=nw;f.h=nh;
   }
   if(_ln(before)){_rcOp({op:'align',dir:'framefit',before,after});_iv()}
@@ -9259,8 +9260,8 @@ function resetRoute(){
   const before=[],after=[];
   _forConn((s,id)=>{
     if(!_wayArr(s).length&&!s.bend&&!_el(s)&&!s.curve&&_lP(s)==null&&s.cbend==null)return;   // ADR-0090/0217
-    before.push({id,way:s.way??null,bend:s.bend??null,elbow:_el(s)||0,curve:s.curve||0,labelPos:_lP(s)??null,cbend:s.cbend??null});
-    after.push({id,way:null,bend:null,elbow:0,curve:0});
+    _pu(before,{id,way:s.way??null,bend:s.bend??null,elbow:_el(s)||0,curve:s.curve||0,labelPos:_lP(s)??null,cbend:s.cbend??null});
+    _pu(after,{id,way:null,bend:null,elbow:0,curve:0});
     s.way=null;s.bend=null;s.elbow=0;s.curve=0;s.labelPos=null;s.cbend=null;
     _st().elbow=0;_st().curve=0;                    // ADR-0183: reset clears the remembered route too
   })
@@ -9273,13 +9274,13 @@ function resetRoute(){
 function reverseConn(){
   const before=[],after=[];
   _forConn((s,id)=>{
-    before.push({id,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2,a:s.a??null,b:s.b??null,aF:s.aF??null,bF:s.bF??null,way:s.way??null,labelPos:_lP(s)??null});
+    _pu(before,{id,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2,a:s.a??null,b:s.b??null,aF:s.aF??null,bF:s.bF??null,way:s.way??null,labelPos:_lP(s)??null});
     const t1=s.x1,t2=s.y1;s.x1=s.x2;s.y1=s.y2;s.x2=t1;s.y2=t2;
     const tb=s.a;s.a=s.b??null;s.b=tb??null;
     const tbF=s.aF;s.aF=s.bF??null;s.bF=tbF??null;               // ADR-0209
     if(s.way)s.way=_wayArr(s).slice().reverse();
     if(_lP(s)!=null)s.labelPos=1-_lP(s);
-    after.push({id,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2,a:s.a??null,b:s.b??null,aF:s.aF??null,bF:s.bF??null,way:s.way??null,labelPos:_lP(s)??null});
+    _pu(after,{id,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2,a:s.a??null,b:s.b??null,aF:s.aF??null,bF:s.bF??null,way:s.way??null,labelPos:_lP(s)??null});
   })
   _so(before,after)
 }
@@ -9298,7 +9299,7 @@ function fitSticky(){
     _rs2(ctx);
     const nh=_max(40,_ln(lines)*lh+pad*2);
     if(nw===s.w&&nh===s.h)return;
-    before.push({id,w:s.w,h:s.h});after.push({id,w:nw,h:nh});s.w=nw;s.h=nh;
+    _pu(before,{id,w:s.w,h:s.h});_pu(after,{id,w:nw,h:nh});s.w=nw;s.h=nh;
   })
   _so(before,after)
 }
@@ -9313,7 +9314,7 @@ function fitSticky(){
 function pinAnchor(){
   const before=[],after=[];
   _forSel((s,id)=>{if((s.type!=='line'&&s.type!=='arrow')||_lk(s)||(!s.a&&!s.b))return;
-    before.push({id,aF:s.aF??null,bF:s.bF??null});
+    _pu(before,{id,aF:s.aF??null,bF:s.bF??null});
     const e=_cE(s);
     for(const k of['a','b']){
       const tgt=s[k]&&byId(s[k]);if(!tgt)return;
@@ -9324,16 +9325,16 @@ function pinAnchor(){
         s[fk]={fx:_c01((px-bb.x)/(bb.w||1)),fy:_c01((py-bb.y)/(bb.h||1))};
       }
     }
-    after.push({id,aF:s.aF??null,bF:s.bF??null});
+    _pu(after,{id,aF:s.aF??null,bF:s.bF??null});
   })
   _so(before,after)
 }
 function unbindSelection(){
   const before=[],after=[];
   _forSel((s,id)=>{if((s.type!=='line'&&s.type!=='arrow')||_lk(s)||(!s.a&&!s.b))return;
-    before.push({id,a:s.a??null,b:s.b??null,aF:s.aF??null,bF:s.bF??null,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2});
+    _pu(before,{id,a:s.a??null,b:s.b??null,aF:s.aF??null,bF:s.bF??null,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2});
     s.a=null;s.b=null;s.aF=null;s.bF=null;                     // ADR-0209
-    after.push({id,a:null,b:null,aF:null,bF:null,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2});
+    _pu(after,{id,a:null,b:null,aF:null,bF:null,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2});
   })
   _so(before,after)
 }
@@ -9408,7 +9409,7 @@ const _rdb=()=>{_md(!0);_ru();_ps()},
       _midV=()=>{const r=_cbr();return _s2({x:r.width/2,y:r.height/2})},
       _forConn=f=>_forSel((s,id)=>{if((s.type!=='line'&&s.type!=='arrow')||_lk(s))return;f(s,id)}),
       _forTxt=f=>_forSel((s,id)=>{if((s.type!=='text'&&s.type!=='sticky'&&s.type!=='frame'&&!_lb(s))||_lk(s))return;f(s,id)}),
-      _pp=(b,a,id,k,c,n)=>{b.push({id,[k]:c});a.push({id,[k]:n})};
+      _pp=(b,a,id,k,c,n)=>{_pu(b,{id,[k]:c});_pu(a,{id,[k]:n})};
 // ADR-0443: undo/redo propagate as fresh-clock wire ops — a revert becomes a new
 // write that restores old values (fresh peer clock wins every stale wclock, LWW-
 // consistent). group/ungroup/replace/beautify have no remote-safe inverse: their
@@ -9418,7 +9419,7 @@ function _undoWire(op){
     case 'add':    return[{op:'del',shapes:[op.shape]}];
     case 'addMany':return[{op:'del',shapes:op.shapes}];
     case 'del':case 'clear':{const o=[{op:'addMany',shapes:op.shapes}];
-      for(const c of op.connClears||[])if(c.before)o.push({op:'upd',id:c.id,after:c.before});
+      for(const c of op.connClears||[])if(c.before)_pu(o,{op:'upd',id:c.id,after:c.before});
       return o;}
     case 'move':   return[{op:'move',ids:op.ids,dx:-op.dx,dy:-op.dy}];
     case 'upd':case 'style':case 'resize':case 'align':
@@ -9437,7 +9438,7 @@ function toggleTextFlag(k){
   const before=[],after=[];
   _forTxt((s,id)=>{   // ADR-0170/0204
     const nxt=!s[k];
-    before.push({id,[k]:s[k]||null});after.push({id,[k]:nxt?true:null});
+    _pu(before,{id,[k]:s[k]||null});_pu(after,{id,[k]:nxt?true:null});
     if(nxt)s[k]=true;else delete s[k];
   })
   if(_ln(before)){
@@ -9467,8 +9468,8 @@ function swapFillStroke(){
   _forSel((s,id)=>{if(_lk(s))return;
     const fk=_stk(s)?'color':'fill';
     if(!(_BOXF.has(s.type)))return;
-    before.push({id,stroke:_sk(s)??null,[fk]:s[fk]??null});
-    after.push({id,stroke:s[fk]??null,[fk]:_sk(s)??null});
+    _pu(before,{id,stroke:_sk(s)??null,[fk]:s[fk]??null});
+    _pu(after,{id,stroke:s[fk]??null,[fk]:_sk(s)??null});
     const t2=s[fk];s[fk]=_sk(s);s.stroke=t2;
     if(s[fk]==null)delete s[fk];if(s.stroke==null)delete s.stroke;
   })
@@ -9536,8 +9537,8 @@ function toggleShadow(){
 function toggleBothEnds(){
   const before=[],after=[];
   _forSel((s,id)=>{if(s.type!=='arrow'||_lk(s))return;
-    before.push({id,start:s.start||0});
-    after.push({id,start:s.start?0:1});
+    _pu(before,{id,start:s.start||0});
+    _pu(after,{id,start:s.start?0:1});
     s.start=s.start?0:1;_st().start=s.start;              // ADR-0185
   })
   _so(before,after)
@@ -9636,7 +9637,7 @@ const Presentation=(()=>{
     _vp().zoom=zoom;
     _vp().x=cx-vW/(2*zoom);
     _vp().y=cy-vH/(2*zoom);
-    UI.refreshZoom();
+    _rZ();
     _iv();
   }
 
@@ -9696,7 +9697,7 @@ const Presentation=(()=>{
     // Mirror enter(): the canvas CSS box just shrank back to its in-flow size with no
     // native resize event — re-sync the backing buffer or it stays fullscreen-sized.
     resize();
-    if(_savedVp){_oa(_vp(),_savedVp);_savedVp=null;UI.refreshZoom()}
+    if(_savedVp){_oa(_vp(),_savedVp);_savedVp=null;_rZ()}
     _iv();
     _focusTrigger?.focus();_focusTrigger=null;
   }
@@ -9819,7 +9820,7 @@ const Minimap=(()=>{
       else await Persist.discardBackup();
     }
   }catch(_){}
-  _ru();UI.refreshZoom();UI.refreshSaved();UI.refreshMinimapVis();
+  _ru();_rZ();UI.refreshSaved();UI.refreshMinimapVis();
   // version display
   _g('sVer').textContent='v'+V;
   // v1.1: import shared board from URL hash (if any)

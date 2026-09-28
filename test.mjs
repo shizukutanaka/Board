@@ -262,7 +262,7 @@ const checks = [
   // v1.7.0: connector (edge) labels (ADR-0003)
   ['openLabelEditor shared by boxes + connectors', html.includes("function openLabelEditor(hit,leftPx,topPx,bold)")],
   ['dblclick opens label editor on line/arrow at midpoint', html.includes("_conn(hit.type)") && html.includes("_connLabelXY(hit)")],
-  ['_drawConnLabel renders edge label on canvas', html.includes("function _drawConnLabel(s,c)") && html.includes("c.fillText(lns[i],mx,my+(i-(_ln(lns)-1)/2)*llh)")],
+  ['_drawConnLabel renders edge label on canvas', html.includes("function _drawConnLabel(s,c)") && html.includes("_fT(c,lns[i],mx,my+(i-(_ln(lns)-1)/2)*llh)")],
   ['line/arrow drawShape calls _drawConnLabel', html.includes("_st2(c);_drawConnLabel(s,c);break;") && html.includes("drawArrow(s,c);_drawConnLabel(s,c);break;")],
   ['_connLabelSVG emits edge label in SVG', html.includes("function _connLabelSVG(s,x1,y1,x2,y2,ox,oy,stroke,paper)")],
   ['Persist.load validates shapes', html.includes("d.shapes.filter(validShape)")],
@@ -279,7 +279,7 @@ const checks = [
   ['spatial grid helpers present', html.includes("function _buildGrid") && html.includes("function _queryGrid")],
   ['ADR-0016: draw() prefilters via grid rect query on large boards', html.includes("function _gridRectCandidates") && html.includes("_vis=_gridRectCandidates(_grid,_view)") && html.includes("let _drawIter=_vis||_sh()") && html.includes("for(const s of _drawIter)")],
   ['ADR-0016: candidates return z-ordered via grid.idx', html.includes("idx=_mP()") && html.includes("out.sort((a,b)=>(grid.idx.get(a)|0)-(grid.idx.get(b)|0))")],
-  ['ADR-0016: no-bbox shapes stay always-candidate via big', html.includes("if(!b){big.push(s);continue;}")],
+  ['ADR-0016: no-bbox shapes stay always-candidate via big', html.includes("if(!b){_pu(big,s);continue;}")],
   ['pickTop uses grid for large boards', html.includes("_nS()>40") && html.includes("_buildGrid(_sh())")],
   ['grid invalidated on every _apply', html.includes("_apply(op,forward){") && html.includes("_iG()")],
   // v1.6.12: keyboard shape creation (a11y)
@@ -375,7 +375,7 @@ const checks = [
   ['invalidateDamage accumulates world damage', html.includes("function invalidateDamage(r){_damage=_dmgU(_damage,r)") && html.includes("function invalidate(){_damage=null")],
   ['draw() clips scene pass to damage rect', html.includes("ctx.rect(dmg.x,dmg.y,dmg.w,dmg.h);ctx.clip()") && html.includes("ctx.fillRect(dmg.x,dmg.y,dmg.w,dmg.h)")],
   ['move/resize/rotate drag report damage', html.includes("_iD(_dmgPair(_b0,_bb(rsh)") && html.includes("if(dmg)_iD(dmg);else _iv()")],
-  ['draft draw + erase report damage', html.includes("_iD(_dmgPair(_b0,_bb(d)") && html.includes("_eraseBatch.push(clone(hit))")],
+  ['draft draw + erase report damage', html.includes("_iD(_dmgPair(_b0,_bb(d)") && html.includes("_pu(_eraseBatch,clone(hit))")],
   ['damage path force-includes gesture targets vs stale grid', html.includes("ptr.dragStartShapes.keys()") && html.includes("ptr.resizeOrig.id") && html.includes("ptr.rotOrig.id")],
   // v1.7.85: ADR-0027 op-level damage propagation
   ['_apply harvests ids + pre/post bboxes for damage', html.includes("const _ids=_sT()") && html.includes("for(const id of _ids)_u(byId(id))") && html.includes("_iD(_dmg)")],
@@ -383,7 +383,7 @@ const checks = [
   ['applyRemote uses op damage (no blanket invalidate)', !html.includes("this._stampWrites(op);\n    state.dirty=true;\n    UI.refreshUndo();\n    Persist.schedule();\n    _iv();") && html.includes("_iD(_dmgPair(_cb,_bb(sh)")],
   // v1.7.86: ADR-0028 pan pixel blit
   ['pan blits retained pixels via self drawImage', html.includes("ctx.drawImage(canvas,0,0,W,H,sx,sy,W,H)") && html.includes("const panned=pv&&pv.zoom===v.zoom")],
-  ['pan repaints only exposed strips + damage', html.includes("clipRects.push({x:Ox1") && html.includes("if(dmg)clipRects.push(dmg)")],
+  ['pan repaints only exposed strips + damage', html.includes("_pu(clipRects,{x:Ox1") && html.includes("if(dmg)_pu(clipRects,dmg)")],
   ['pan records effective viewport, subpixel pans skip scene', html.includes("_lastVp={x:ev.x,y:ev.y,zoom:v.zoom}") && html.includes("const _skipScene=panned&&")],
   // v1.7.87: ADR-0029 draft-pen incremental ink stamping
   ['draft pen stamps committed segments to bitmap', html.includes("function drawPenDraft(") && html.includes("while(d.c<n-9){d.c++;_inkSegDraw(d.c2,p,d.w,d.c);}")],
@@ -420,7 +420,7 @@ const checks = [
   ['alt+drag duplicates picked shape then drags copies', html.includes("if(e.altKey&&!hit.locked){")&&html.includes("_placeCopies(srcShapes,0,0)")&&html.includes("dupSet=alreadySel")],
   // v1.7.118: ADR-0061 diamond shape
   ['diamond tool in KEYMAP + toolbar + help', html.includes("e:'eraser',d:'diamond'")&&html.includes('data-tool="diamond"')&&html.includes("['D',k.diamond]")],
-  ['diamond draw/hit/svg/minimap paths', html.includes("case 'diamond':{")&&html.includes("case'diamond':s=Shape.make('diamond'")&&html.includes('_abs(d-1)<0.15')],
+  ['diamond draw/hit/svg/minimap paths', html.includes("case 'diamond':{")&&html.includes("case'diamond':s=_smk('diamond'")&&html.includes('_abs(d-1)<0.15')],
   ['diamond i18n ja+en', html.includes("diamond:'ダイヤ'")&&html.includes("diamond:'Diamond'")],
   // v1.7.120: ADR-0062 elbow connectors
   ['elbow route helper + toggle in ctx menu', html.includes('function _elbowPts(s)')&&html.includes('function toggleElbow()')&&html.includes("['ctxElbow','',toggleElbow]")],
@@ -433,7 +433,7 @@ const checks = [
   ['readout state + drawOverlay pill + ptr.down gate', html.includes('readout:null,             // ADR-0064')&&html.includes('if(ptr.down&&_ro())')&&html.includes("roundRect(c,px-tw/2,py,tw,ph,4)")],
   ['readout set in applyResize/moveDelta/rotate paths + cleared with guides', html.includes('state.readout={x:_rb.x+_rb.w/2,y:_rb.y+_rb.h')&&html.includes('state.readout=bb&&(dx||dy)')&&html.includes('state.guides=state.readout=state.bindPreview=null')],
   // v1.7.123: ADR-0065 connector endpoint rebind/unbind
-  ['endpoint rebind: always-handle + unbind-on-grab + bindPreview', html.includes("h.push({id:'p1',x:e.x1,y:e.y1});       // ADR-0065")&&html.includes("if(sh[bk]){sh[bk]=null;sh[bk+'F']=null}")&&html.includes('state.bindPreview=')],
+  ['endpoint rebind: always-handle + unbind-on-grab + bindPreview', html.includes("_pu(h,{id:'p1',x:e.x1,y:e.y1});       // ADR-0065")&&html.includes("if(sh[bk]){sh[bk]=null;sh[bk+'F']=null}")&&html.includes('state.bindPreview=')],
   ['_endPointBind in pointerup + not-self/not-other-end guard', html.includes('_endPointBind(rsh,ptr.resizeHandle,e.altKey)')&&html.includes('hit!==sh[other]')],
   // v1.7.124: ADR-0066 Shift+drag axis-constrained move
   ['shift axis constraint in moveDelta + objectSnap skipped', html.includes("if(_abs(dx)>=_abs(dy))dy=0;else dx=0;")&&html.includes('moveDelta(wp,shift,alt)')&&html.includes('doMove(wp,e.shiftKey,e.altKey)')&&html.includes('endSelect(wp,e.shiftKey,e.altKey)')],
@@ -570,7 +570,7 @@ const checks = [
   ['pen RDP decimation function _rdp present', html.includes('function _rdp(pts,eps)')],
   ['endPen applies RDP on commit', html.includes('_ln(d.pts)>3')&&html.includes('_rdp(d.pts,0.5/_vp().zoom)')],
   // v1.7.92: ADR-0034 iterative index-range RDP + zoom-adaptive eps
-  ['RDP is iterative index-range (no slice recursion)', html.includes('const keep=new Uint8Array(_ln(pts))')&&html.includes('stack.push([lo,idx],[idx,hi])')],
+  ['RDP is iterative index-range (no slice recursion)', html.includes('const keep=new Uint8Array(_ln(pts))')&&html.includes('_pu(stack,[lo,idx],[idx,hi])')],
   ['size is reported (no hard cap since 2026-06-13)', readFileSync('./test.mjs','utf8').includes("Size is no longer hard-capped")],
   // v1.6.25: style op for single-undo multi-select style
   ['style op in _apply (single undo for multi-select style)', html.includes("case 'style':")],
@@ -606,7 +606,7 @@ const checks = [
   ['SVG export handles single-point pen shape', html.includes('_ln(s.pts)===1')],
   ['SVG export emits circle for single-point pen', html.includes('<circle cx=')],
   // v1.6.28: ungroup undo preserves per-shape groupId across multi-group ungroup
-  ['doUngroup captures before snapshot', html.includes('before.push({id:s.id,groupId:_gi(s)})')],
+  ['doUngroup captures before snapshot', html.includes('_pu(before,{id:s.id,groupId:_gi(s)})')],
   ['ungroup backward uses before snapshot when available', html.includes('if(op.before){for(const b of op.before)')],
   // v1.6.29: slider undo coalescing - single op per drag, not per input event
   ['slider before-capture helper _sfbCapture defined', html.includes('function _sfbCapture(p)')],
@@ -717,7 +717,7 @@ const checks = [
   ['excalidraw import ceilings defined', html.includes('EXC_MAX_ELEMS') && html.includes('EXC_MAX_PTS')],
   ['excToShapes checks type marker + elements array', html.includes("d.type!=='excalidraw'||!_iA(d.elements)")],
   ['isDeleted tombstones skipped', html.includes('e.isDeleted')],
-  ['relative points absolutised', html.includes('pts.push([e.x+p[0],e.y+p[1]])')],
+  ['relative points absolutised', html.includes('_pu(pts,[e.x+p[0],e.y+p[1]])')],
   ['content beats extension routing', html.includes("d.type==='excalidraw'){importExcText(r.result);return}")],
   ['.excalidraw file entry points', html.includes("f.name.endsWith('.excalidraw')") && html.includes('.excalidraw,.drawio')],
   ['.drawio file entry points + parser (ADR-0203)', html.includes("f=>/\\.(drawio|dio)$/i.test(f.name)")&&html.includes('function drawioToShapes')],
@@ -738,9 +738,9 @@ const checks = [
   ['drawio strokeOpacity/fillOpacity → s.opacity (ADR-0271)', html.includes('+sty.strokeOpacity')],
   ['svg conn path/label emitters deduped (ADR-0270)', html.includes('const _sp=(d,j)')&&html.includes('_cL();')],
   ['drawio multi-page side-by-side import (ADR-0311)', html.includes("for(const dg of _qsa(doc,'diagram'))")],
-  ['link badge 🔗 on linked shapes (ADR-0310)', html.includes("c.fillText('🔗',s.x+_abs(s.w)-3,s.y+3)")],
+  ['link badge 🔗 on linked shapes (ADR-0310)', html.includes("_fT(c,'🔗',s.x+_abs(s.w)-3,s.y+3)")],
   ['_selN/_fin shorthands (ADR-0334)', html.includes("const _selN=()=>_sl().size")&&html.includes("const _fin=Number.isFinite")],
-  ['conn link badge canvas+SVG (ADR-0333)', html.includes("if(s.link&&_conn(s.type)){const lp=_connLabelXY(s)")&&html.includes('if(s.link)els.push(`<a href="${esc(s.link)}"')&&html.split('`<a href="${esc(s.link)}"').length===4],
+  ['conn link badge canvas+SVG (ADR-0333)', html.includes("if(s.link&&_conn(s.type)){const lp=_connLabelXY(s)")&&html.includes('if(s.link)_pu(els,`<a href="${esc(s.link)}"')&&html.split('`<a href="${esc(s.link)}"').length===4],
   ['drawio rounded emit on diamond/image (ADR-0332)', html.includes("if(s.r>0&&(t==='diamond'||t==='image'))sty+='rounded=1;'")],
   ['drawio fillStyle hachure round-trip (ADR-0331)', html.includes("sty.fillStyle||'')")&&html.includes("fillStyle='+(_fs2(s)==='cross'?'cross-hatch':'hachure')")],
   ['_selIds() selection-ids shorthand (ADR-0330)', html.includes("const _selIds=()=>[..._sl()]")],
@@ -835,9 +835,9 @@ const checks = [
   ['.drawio export mxGraphModel round-trip (ADR-0220)', html.includes('function boardToDrawio(shapes)')&&html.includes('edgeStyle=orthogonalEdgeStyle')&&html.includes("jumpStyle=arc")],
   ['drawio exitX/entryX fixed ports round-trip aF/bF (ADR-0221)', html.includes('s.aF={fx:_c01(fx),fy')&&html.includes('exitX=${s.aF.fx};exitY=${s.aF.fy}')],
   ['excalidraw export keeps bindings via s.a/s.b + boundElements (ADR-0222)', html.includes('startBinding:s.a?{elementId:s.a')&&html.includes('if(_ln(out))e.boundElements=out')],
-  ['excalidraw import restores bindings to s.a/s.b (ADR-0223)', html.includes('_excBnd.push([s,e])')&&html.includes('idOf.get(sb.elementId)')],
+  ['excalidraw import restores bindings to s.a/s.b (ADR-0223)', html.includes('_pu(_excBnd,[s,e])')&&html.includes('idOf.get(sb.elementId)')],
   ['drawio import keeps line-vs-arrow/curved/jump/start-head (ADR-0224)', html.includes("sty.endArrow==='none'")&&html.includes('s.hop=1')],
-  ['drawio import note→sticky / swimlane→frame (ADR-0226)', html.includes("sty.shape==='note'){s=Shape.make('sticky'")&&html.includes("sty.shape==='swimlane')s=Shape.make('frame'")],
+  ['drawio import note→sticky / swimlane→frame (ADR-0226)', html.includes("sty.shape==='note'){s=_smk('sticky'")&&html.includes("sty.shape==='swimlane')s=_smk('frame'")],
   ['storage quota pressure warns proactively via estimate() (ADR-0227)', html.includes('navigator.storage.estimate')&&html.includes('this._quotaWarn()')&&html.includes("T('quotaWarn')")],
   ['drawio import maps align + fontStyle bitmask (ADR-0228)', html.includes("sty.align==='center'||sty.align==='right'")&&html.includes('_fs&4)s.under=1')&&html.includes("'align='+s.align")&&html.includes("fontStyle='+_fs")],
   ['excalidraw import restores groupIds → groupId (ADR-0229)', html.includes("e.groupIds[0]")&&html.includes('s.groupId=e.groupIds')],
@@ -855,7 +855,7 @@ const checks = [
   ['i18n has excImported ja+en', html.includes("excImported:'Excalidraw を取り込みました'") && html.includes("excImported:'Excalidraw imported'")],
   // v1.7.102: ADR-0044 text paste → text shape
   ['text paste ceiling defined', html.includes('PASTE_MAX_CHARS')],
-  ['plain text pastes as text shape', html.includes("Shape.make('text'") && html.includes('text:body')],
+  ['plain text pastes as text shape', html.includes("_smk('text'") && html.includes('text:body')],
   ['svg markup still wins over plain text', html.includes("importSvgText(s);return}")],
   ['i18n has textPasted ja+en', html.includes("textPasted:'テキストを貼り付けました'") && html.includes("textPasted:'Text pasted'")],
   // v1.7.103: ADR-0045 invite link — offer rides the URL hash
@@ -925,7 +925,7 @@ const checks = [
   ['frame label honours s.align + cycleTextAlign gate', html.includes("const alF=s.align||'left'")&&html.includes("_selTxtL()&&['ctxTextAlign'")],
   ['ctxReverse reverses connector direction (ADR-0198)', html.includes('function reverseConn()')&&html.includes("['ctxReverse','',reverseConn]")],
   ['ctxFitText sizes sticky to wrapped text (ADR-0199)', html.includes('function fitSticky()')&&html.includes("['ctxFitText','',fitSticky]")],
-  ['Shift constrains pen to straight line (ADR-0200)', html.includes("e.shiftKey&&_ln(pts)){pts.length=1;pts.push")],
+  ['Shift constrains pen to straight line (ADR-0200)', html.includes("e.shiftKey&&_ln(pts)){pts.length=1;_pu(pts")],
   ['move gesture shows live X,Y readout (ADR-0201)', html.includes("label:`${_rnd(bx)}, ${_rnd(by)}`")],
   ['draw drafts show dims/length readout (ADR-0202)', html.includes("_rnd(d.h)}`")&&html.includes("x2-ptr.wx0")],
   // v1.7.05: Tab cycling excludes locked shapes (parity with doMove/doDelete/doRotate/doFlip)
@@ -945,7 +945,7 @@ const checks = [
   ['G.hit line uses connEnds', html.includes("const pts=_linePts(s);")],
   ['drawArrow uses connEnds', html.includes("const e=_cE(s);\n  const ah=_max(6,(_szz(s)||2)*3)")],
   ['endLineLike binds endpoints dropped on a shape', html.includes("const ba=_bindAt(d.x1,d.y1),bb=_bindAt(d.x2,d.y2)") && html.includes("function _bindAt")],
-  ['connector endpoints always expose resize handles (ADR-0065 rebind)', html.includes("h.push({id:'p1',x:e.x1,y:e.y1});       // ADR-0065") && html.includes("h.push({id:'p2',x:e.x2,y:e.y2});")],
+  ['connector endpoints always expose resize handles (ADR-0065 rebind)', html.includes("_pu(h,{id:'p1',x:e.x1,y:e.y1});       // ADR-0065") && html.includes("_pu(h,{id:'p2',x:e.x2,y:e.y2});")],
   ['SVG export derives bound endpoints', html.includes("const _ce=_cE(s);\n    const X1=_num(_ce.x1)")],
   // v1.6.61: rotation - shapes rotate on canvas, undo/redo, keyboard ,/.
   ['doRotate function exists', html.includes("function doRotate") && html.includes("op:'align',dir:'rotate'")],
@@ -977,7 +977,7 @@ const checks = [
   ['⌘⇧E SVG export shortcut', html.includes("meta&&k==='e'&&e.shiftKey") && html.includes("exportSVG")],
   // v1.6.63: Socratic round 3 - internal consistency + a11y
   ['doFlip skips locked shapes (consistent with doRotate)', html.includes("const sel=_selUL();")],
-  ['doRotate orbits selection about group centre', html.includes("orbit about group centre, like doFlip") && html.includes("Shape.translate(s,nx-cx,ny-cy)")],
+  ['doRotate orbits selection about group centre', html.includes("orbit about group centre, like doFlip") && html.includes("_sT2(s,nx-cx,ny-cy)")],
   ['search input has localized aria-label', html.includes("_sa(sq,_AL,T.k.search)")],
   ['search Escape returns focus to canvas', html.includes("_ivO();canvas.focus();}") && html.includes("_sqAdvance(ev.shiftKey?-1:1)")],
   // v1.6.64: Socratic round 4 - rotation scope + lock completeness
@@ -1045,7 +1045,7 @@ const checks = [
   // v1.7.64 (FT-17)
   ['empty-board hint: draws only when blank, reads emptyHint i18n key',
     html.includes('function drawEmptyHint(') && html.includes("if(_nS()===0&&!_df())drawEmptyHint(c,W,H);")
-    && html.includes("c.fillText(t('emptyHint'),")],
+    && html.includes("_fT(c,t('emptyHint'),")],
   // v1.7.65 (ADR-0012)
   ['theme toggle: applyTheme/toggleTheme/refreshThemeBtn wired, boot restores persisted mode',
     html.includes("function applyTheme(mode){") && html.includes("toggleTheme(){")
@@ -1174,7 +1174,7 @@ const checks = [
   ['connectFailed i18n key (ja + en)', html.includes("connectFailed:'接続に失敗しました'") && html.includes("connectFailed:'Connection failed'")],
   // v1.6.86: multi-image drop cascades by index (async closure capture fix)
   ['drop image cascade uses per-iteration index (not shared ox)', html.includes("files.forEach((f,i)=>{") && html.includes("x:wp.x+i*20,y:wp.y")],
-  ['drop image no longer uses a shared incremented ox counter', !html.includes("const sh=Shape.make('image',{x:wp.x+ox,y:wp.y")],
+  ['drop image no longer uses a shared incremented ox counter', !html.includes("const sh=_smk('image',{x:wp.x+ox,y:wp.y")],
   // v1.6.87: new text/sticky finalize syncs typed content to live peers
   ['_syncTextFinalize present (broadcast-only finalize op)', html.includes("function _syncTextFinalize(s,before,deleted)")],
   ['text editor finalize syncs typed content (non-empty isNew)', html.includes("_syncTextFinalize(s,origText,false);")],

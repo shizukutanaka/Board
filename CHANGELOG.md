@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.547] - 2026-09-28
+
+### リファクタ
+
+- `Shape.make`/`Shape.translate`/`X.push`/`UI.refreshZoom`/`this.db.transaction`/`c.fillText` を shorthand 化 (264 サイト、~489B 回収) (ADR-0514)
+
 ## [1.7.546] - 2026-09-28
 
 ### リファクタ
