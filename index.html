@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.625';
+const V='1.7.626';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4124,9 +4124,12 @@ _on(canvas,_PM,e=>{
         const rsh=_sel0();
         if(rsh){
           const _b0=_bb(ptr.resizeOrig);
+          const _rc=[];for(const s of _sh())if(_conn(s.type)&&((s.aF&&s.a===rsh.id)||(s.bF&&s.b===rsh.id)))_pu(_rc,{s,b:_bb(s)});   // ADR-0599
           _oa(rsh,clone(ptr.resizeOrig));
           applyResize(rsh,ptr.resizeHandle,ptr.resizeOrig,wp,_sK(e),_aK(e));
-          _iD(_dmgPair(_b0,_bb(rsh),(rsh.size||2)+16));   // ADR-0026
+          let _gd=_dmgPair(_b0,_bb(rsh),(rsh.size||2)+16);
+          for(const d of _rc)_gd=_dmgU(_gd,_dmgPair(d.b,_bb(d.s),(d.s.size||2)+16));
+          _iD(_gd);   // ADR-0026/0599
         }else _iv();
       }else if(_dk('gresize')){
         _gresizeDrag(wp,_sK(e),_aK(e));                          // ADR-0056
@@ -4136,12 +4139,15 @@ _on(canvas,_PM,e=>{
         const rsh=_sel0();
         if(rsh){
           const _b0=_bb(rsh);
+          const _rc=[];for(const s of _sh())if(_conn(s.type)&&((s.aF&&s.a===rsh.id)||(s.bF&&s.b===rsh.id)))_pu(_rc,{s,b:_bb(s)});   // ADR-0599
           let deg=_at2(wp.y-ptr.rotCy,wp.x-ptr.rotCx)*180/_PI+90; // knob-up = 0°
           if(_sK(e))deg=_rnd(deg/15)*15;                          // Shift snaps to 15°
           rsh.rotate=((_rnd(deg)%360)+360)%360;
           const _nb=_bb(rsh);
           state.readout={x:_nb.x+_nb.w/2,y:_nb.y+_nb.h,label:`${rsh.rotate}°`};
-          _iD(_dmgPair(_b0,_nb,(rsh.size||2)+16));           // ADR-0026
+          let _gd=_dmgPair(_b0,_nb,(rsh.size||2)+16);
+          for(const d of _rc)_gd=_dmgU(_gd,_dmgPair(d.b,_bb(d.s),(d.s.size||2)+16));
+          _iD(_gd);           // ADR-0026/0599
         }else _iv();
       }else if(_dk('move'))doMove(wp,_sK(e),_aK(e));
       else if(_dk('marquee')){state.marquee={x1:ptr.wx0,y1:ptr.wy0,x2:wp.x,y2:wp.y};_ivO()}

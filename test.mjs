@@ -375,7 +375,7 @@ const checks = [
   // v1.7.84: ADR-0026 drag damage rect
   ['invalidateDamage accumulates world damage', html.includes("function invalidateDamage(r){_damage=_dmgU(_damage,r)") && html.includes("function invalidate(){_damage=null")],
   ['draw() clips scene pass to damage rect', html.includes("ctx.rect(dmg.x,dmg.y,dmg.w,dmg.h);ctx.clip()") && html.includes("ctx.fillRect(dmg.x,dmg.y,dmg.w,dmg.h)")],
-  ['move/resize/rotate drag report damage', html.includes("_iD(_dmgPair(_b0,_bb(rsh)") && html.includes("if(dmg)_iD(dmg);else _iv()")],
+  ['move/resize/rotate drag report damage', html.includes("let _gd=_dmgPair(_b0,_bb(rsh)") && html.includes("if(dmg)_iD(dmg);else _iv()")],
   ['draft draw + erase report damage', html.includes("_iD(_dmgPair(_b0,_bb(d)") && html.includes("_pu(_eraseBatch,clone(hit))")],
   ['damage path force-includes gesture targets vs stale grid', html.includes("ptr.dragStartShapes.keys()") && html.includes("ptr.resizeOrig.id") && html.includes("ptr.rotOrig.id")],
   // v1.7.85: ADR-0027 op-level damage propagation
@@ -7299,6 +7299,13 @@ try {
     assert.ok(html.includes("_bc=[];for(const s of _sh())if(_conn(s.type)&&((s.aF&&_ids.has(s.a))||(s.bF&&_ids.has(s.b))))_pu(_bc,s)"),'_apply collects bound conns');
     assert.ok(html.includes("for(const c of _bc)_u(byId(c.id));   // ADR-0598"),'_apply post-mutation conn sweep');
     console.log('  \u2713 applyRemote damage: bound-conn sweep pinned (2 asserts)');
+  }
+
+  // ADR-0599: single-shape resize/rotate drags also sweep bound conns
+  {
+    assert.equal(html.split("_rc=[];for(const s of _sh())if(_conn(s.type)&&((s.aF&&s.a===rsh.id)||(s.bF&&s.b===rsh.id)))_pu(_rc,{s,b:_bb(s)})").length-1,2,'resize+rotate collect bound conns');
+    assert.equal(html.split("for(const d of _rc)_gd=_dmgU(_gd,_dmgPair(d.b,_bb(d.s),(d.s.size||2)+16))").length-1,2,'both union conn sweep');
+    console.log('  \u2713 resize/rotate drag: bound-conn sweep pinned at 2 sites (2 asserts)');
   }
 
   // search navigation a11y: SR users search BY content, so the announcement must name
