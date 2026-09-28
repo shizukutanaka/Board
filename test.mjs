@@ -7264,6 +7264,18 @@ try {
     console.log('  ✓ export bbox: hidden shapes excluded from viewBox, all-hidden → null (2 asserts)');
   }
 
+  // ADR-0594: excalidraw export drops hidden shapes (no hidden concept there)
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+    const v1=Shape.make('rect',{x:0,y:0,w:100,h:100});
+    const h1=Shape.make('rect',{x:500,y:0,w:50,h:50,visible:0});
+    Store.commit({op:'add',shape:v1});Store.commit({op:'add',shape:h1});
+    const els=excScene(state.shapes).elements;
+    assert.strictEqual(els.length,1,'excScene drops hidden shapes');
+    assert.strictEqual(els[0].id,v1.id,'visible shape remains');
+    console.log('  ✓ excalidraw export: hidden shapes dropped (2 asserts)');
+  }
+
   // search navigation a11y: SR users search BY content, so the announcement must name
   // WHICH shape was found (describeShape), not a bare "2/7" count — parity with Tab cycle.
   {

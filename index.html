@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.620';
+const V='1.7.621';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6601,6 +6601,7 @@ function excScene(shapes){
     roughness:0,opacity:100,angle:(_rt(s)||0)*_PI/180,seed:0,version:1,versionNonce:0,isDeleted:false,
     containerId:s.id,boundElements:null,updated:0,link:null,locked:false,groupIds:gids[s.id]||[]};};
   for(const s of shapes){
+    if(_hd(s))continue;   // ADR-0594: excalidraw has no hidden concept — exporting invisible content would render it
     switch(s.type){
       case'rect':case'ellipse':case'diamond':{
         _pu(els,E(s,{type:s.type==='rect'?_REC:s.type,x:s.x,y:s.y,width:s.w||0,height:s.h||0,   // ADR-0223: excalidraw type is _REC not 'rect'
