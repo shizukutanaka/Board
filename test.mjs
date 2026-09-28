@@ -829,7 +829,7 @@ const checks = [
   ['text word-wrap toggle + canvas/SVG wrap (ADR-0208)', html.includes('s.wrap?wrapTextCached')&&html.includes('s.wrap?wrapText(_St')&&html.includes("['ctxWrap','',toggleWrap]")],
   ['wrap toggle writes 0 so drawio emit sees it (ADR-0411)', html.includes('s.wrap=s.wrap?0:1')&&html.includes("_pp(before,after,id,'wrap',s.wrap??null,s.wrap?0:1)")],
   ['fixed edge anchors via Alt-drop + connEnds/reverse/unbind wiring (ADR-0209)', html.includes("sh[fk]={fx:fx<0.5?0:1,fy}")&&html.includes('s.aF?{x:ba.x+ba.w*s.aF.fx')&&html.includes('tbF=s.aF;s.aF=s.bF')],
-  ['multi-line conn label canvas+SVG (ADR-0210)', html.includes("_St(_lb(s)).split('\\n'),llh=fs*(s.lineH||1.25)")&&html.includes("lns.map((l,i)=>`<tspan")],
+  ['multi-line conn label canvas+SVG (ADR-0210)', html.includes("_spL(_St(_lb(s))),llh=fs*(s.lineH||1.25)")&&html.includes("lns.map((l,i)=>`<tspan")],
   ['shadow on text/conns canvas+SVG + gate (ADR-0211)', html.includes("s.type!=='text'&&s.type!=='line'&&s.type!=='arrow'")&&html.includes('label never shadows')&&html.includes('${dA}${a}${_sh}/>`);')],
   ['conn label honours lineH canvas+SVG (ADR-0212)', html.includes('llh=fs*(s.lineH||1.25)')&&html.includes('lh2=fs*(s.lineH||1.25)')],
   ['pin/unpin anchor via ctx for touch/keyboard (ADR-0213)', html.includes('function pinAnchor()')&&html.includes("['ctxPinAnchor','',pinAnchor]")&&html.includes('px=k===\'a\'?e.x1:e.x2')],
@@ -1113,7 +1113,7 @@ const checks = [
   // v1.6.72: sticky note resize preserves user's chosen width
   ['resizeAfterTextEdit helper present', html.includes("function resizeAfterTextEdit(s,text,c)")],
   ['sticky branch preserves s.w (no text-width overwrite)', html.includes("if(_stk(s)){") && html.includes("wl=wrapText(_txx(s)||'',_abs(s.w)-pad*2")],
-  ['text branch still auto-sizes width', html.includes("}else{\n    const lines=(_txx(s)||'').split('\\n');")],
+  ['text branch still auto-sizes width', html.includes("}else{\n    const lines=_spL(_txx(s)||'');")],
   // v1.6.73: doAlign skips locked shapes (parity with doDelete/doRotate/doFlip)
   ['doAlign filters locked shapes', html.includes("const sel=_selUL();\n  if(_ln(sel)<2)return;")],
   // v1.6.74: _placeCopies remaps connector bindings (sh.a/sh.b) within pasted set

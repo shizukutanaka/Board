@@ -11,6 +11,7 @@ All notable changes to Board follow [Keep a Changelog](https://keepachangelog.co
 ### 変更
 
 - `_tC` textContent setter shorthand 化 (21 サイト) — 追加分を相殺 (ADR-0523)
+- `_spL` `.split('\n')` 活性化 (9 サイト) (ADR-0525)
 
 ## [1.7.554] - 2026-09-28
 

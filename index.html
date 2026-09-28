@@ -2839,7 +2839,7 @@ function _drawConnLabel(s,c){
   _sv2(c);_noSh(c);   // ADR-0211: label never shadows
   const fs=_fS(s)||12;   // ADR-0169
   c.font=_fontStr(s,fs);_taS(c,'center');_tbS(c,'middle');   // ADR-0170
-  const lns=_St(_lb(s)).split('\n'),llh=fs*(s.lineH||1.25),pad=4;   // ADR-0210/0212
+  const lns=_spL(_St(_lb(s))),llh=fs*(s.lineH||1.25),pad=4;   // ADR-0210/0212
   const _lm=_connLabelMeasure(s,c,lns,fs),w=_lm.w;             // ADR-0252: measureText was per-frame per-line
   const th=_ln(lns)*llh;
   if(_fi(s)!=='none'){c.fillStyle=_fi(s)||_p()||'#fff';   // ADR-0288
@@ -3327,7 +3327,7 @@ function drawText(s,c){
   const fs=_fS(s)||16;
   c.font=_fontStr(s,fs);                                    // ADR-0078
   _tbS(c,'top');
-  const lines=s.wrap?wrapTextCached(s,_txx(s)||'',_abs(s.w),fs,t=>_mTX(c,t).width):(_txx(s)||'').split('\n');   // ADR-0208
+  const lines=s.wrap?wrapTextCached(s,_txx(s)||'',_abs(s.w),fs,t=>_mTX(c,t).width):_spL(_txx(s)||'');   // ADR-0208
   const lh=fs*(s.lineH||1.25);
   c.textAlign=s.align==='center'?'center':s.align==='right'?'right':'left';   // ADR-0073
   const ax=s.align==='center'?s.x+s.w/2:s.align==='right'?s.x+s.w:s.x;
@@ -4472,7 +4472,7 @@ function _textCascade(s,wp){
   // ADR-0273: tab-separated intake → sticky grid (spreadsheet columns → sticky
   // columns, rows → rows). Any cell may be empty.
   if(/\t/.test(txt)&&txt.includes('\n')){
-    const rows=_s0(txt,PASTE_MAX_CHARS).split('\n').map(r=>r.split('\t'));
+    const rows=_spL(_s0(txt,PASTE_MAX_CHARS)).map(r=>r.split('\t'));
     const C=_max(...rows.map(_ln)),R=_ln(rows);
     const sw=160,sh=96,gx=16,gy=16;
     const x0=wp.x-(C*sw+(C-1)*gx)/2,y0=wp.y-(R*sh+(R-1)*gy)/2;
@@ -4485,7 +4485,7 @@ function _textCascade(s,wp){
     return true;
   }
   const fs=16,body=_s0(txt,PASTE_MAX_CHARS);
-  const lines=body.split('\n');
+  const lines=_spL(body);
   const w=_min(600,_max(60,_max(...lines.map(_ln))*fs*0.55));
   const sh=_smk('text',{x:wp.x-w/2,y:wp.y-(_ln(lines)*fs*1.4)/2,w,h:_ln(lines)*fs*1.4,text:body,fontSize:fs});
   _cOp({op:'add',shape:sh});
@@ -5422,7 +5422,7 @@ function resizeAfterTextEdit(s,text,c){
     const wl=wrapText(_txx(s)||'',_abs(s.w)-pad*2,t=>_mTX(c,t).width);
     s.h=_max(fs*(s.lineH||1.3)+pad*2,_ln(wl)*fs*(s.lineH||1.3)+pad*2);
   }else{
-    const lines=(_txx(s)||'').split('\n');
+    const lines=_spL(_txx(s)||'');
     let mw=0;for(const l of lines)mw=_max(mw,_mTX(c,l).width);
     s.w=_max(20,mw);s.h=_max(fs*(s.lineH||1.25),_ln(lines)*fs*(s.lineH||1.25));
   }
@@ -7345,7 +7345,7 @@ function _connLabelSVG(s,x1,y1,x2,y2,ox,oy,stroke,paper){
   if(!_lb(s))return '';
   const mx=(x1+x2)/2+ox,my=(y1+y2)/2+oy;
   const fs=_fS(s)||12;
-  const lns=_St(_lb(s)).split('\n'),lh2=fs*(s.lineH||1.25);          // ADR-0210/0212
+  const lns=_spL(_St(_lb(s))),lh2=fs*(s.lineH||1.25);          // ADR-0210/0212
   const lw=_max(...lns.map(_ln),0)*fs*0.6+8,th=_ln(lns)*lh2;
   const tsp=lns.map((l,i)=>`<tspan x="${mx}" dy="${i?lh2:0}">${_esc(l)}</tspan>`).join('');
   return `<rect x="${mx-lw/2}" y="${my-th/2}" width="${lw}" height="${th}" fill="${_esc(_fi(s)||paper||'#FFFFFF')}" opacity="0.9"/>`+
@@ -7524,7 +7524,7 @@ function buildSVG(shapes,paper){
         break;}
       case 'text':{
         const fs=_num(_fS(s))||16;
-        const svgLines=s.wrap?wrapText(_St(_txx(s)==null?'':_txx(s)),_abs(W),t=>_ln(t)*fs*0.6):_St(_txx(s)==null?'':_txx(s)).split('\n');   // ADR-0208
+        const svgLines=s.wrap?wrapText(_St(_txx(s)==null?'':_txx(s)),_abs(W),t=>_ln(t)*fs*0.6):_spL(_St(_txx(s)==null?'':_txx(s)));   // ADR-0208
         const tax=s.align==='center'?X+ox+W/2:s.align==='right'?X+ox+W:X+ox;   // ADR-0073
         const anch=s.align==='center'?' text-anchor="middle"':s.align==='right'?' text-anchor="end"':'';
         if(_fi(s)){const mw2=_max(...svgLines.map(_ln),0)*fs*0.6;              // ADR-0191
@@ -7658,7 +7658,7 @@ function wrapText(text,maxWidth,measure){
   // v1.6.97: normalize Windows (\r\n) and old Mac (\r) line endings before splitting
   // so measureText doesn't see a trailing \r that skews wrap-width calculation.
   const norm=_St(text==null?'':text).replace(/\r\n/g,'\n').replace(/\r/g,'\n');
-  for(const para of norm.split('\n')){
+  for(const para of _spL(norm)){
     if(para===''){_pu(out,'');continue;}
     if(!(maxWidth>0)||measure(para)<=maxWidth){_pu(out,para);continue;}
     let line='';
@@ -9367,7 +9367,7 @@ function fitSticky(){
   _forSel((s,id)=>{if(s.type!=='sticky'||_lk(s))return;
     const fs=_fS(s)||14,pad=8,lh=fs*(s.lineH||1.3);
     _sv2(ctx);ctx.font=_fontStr(s,fs);
-    let nw=64;for(const l of _St(_txx(s)||'').split('\n'))nw=_max(nw,_mTX(ctx,l).width+pad*2);
+    let nw=64;for(const l of _St(_spL(_txx(s)||'')))nw=_max(nw,_mTX(ctx,l).width+pad*2);
     nw=_min(_max(64,nw),_max(64,s.w));   // never grow width past current
     const lines=wrapTextCached(s,_St(_txx(s)||''),_max(10,nw-pad*2),fs,t=>_mTX(ctx,t).width);
     _rs2(ctx);
