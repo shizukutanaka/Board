@@ -209,6 +209,7 @@ const checks = [
   ['Present button in topbar', html.includes("btnPresent")],
   ['Frame zoomToFrame', html.includes("_zoomToFrame")],
   ['Presentation on Shift+P / Ctrl+Enter', html.includes("k==='p'&&_sK(e)") && html.includes("Presentation.enter")],
+  ['_sK/_aK/_mod modifier-key shorthands (ADR-0515)', html.includes('const _sK=e=>e.shiftKey')&&html.includes('_aK=e=>e.altKey')&&html.includes('_mod=e=>e.metaKey||e.ctrlKey')],
   // round 6: frame hit priority + label edit + image size guard
   ['pickTop skips frames on first pass', html.includes("_frm(s))continue")],
   ['frame dblclick label edit', html.includes("_frm(hit)") && html.includes("hit.label")],
