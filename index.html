@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.632';
+const V='1.7.633';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2337,6 +2337,7 @@ function resize(){
   _lastVp=null;   // backing-store reallocation drops all retained pixels (0028)
   _pinchSnap=null;_pinchVp=null;   // ADR-0030: stale-sized snapshot must not blit
   _teVp=_lblVp='';   // ADR-0561: canvas rect moved — force overlay reposition
+  if(_pA())Presentation.refit();   // ADR-0606: keep the current frame zoom-fitted across viewport resizes
   _iv();
 }
 // devicePixelRatio can change with no resize event — dragging across monitors
@@ -9929,8 +9930,9 @@ const Presentation=(()=>{
   function next(){if(_active&&_idx<_ln(_frames)-1)_goto(_idx+1)}
   function prev(){if(_active&&_idx>0)_goto(_idx-1)}
   function isActive(){return _active}
+  function refit(){if(_active)_goto(_idx)}   // ADR-0606: window/visualViewport resize (incl. mobile rotation) during presentation re-fits the current frame
 
-  return{enter,leave,next,prev,isActive,_acquireWakeLock,_releaseWakeLock,
+  return{enter,leave,next,prev,isActive,refit,_acquireWakeLock,_releaseWakeLock,
     _setTestState:(active,trigger)=>{_active=active;_focusTrigger=trigger;}};
 })();
 const Minimap=(()=>{

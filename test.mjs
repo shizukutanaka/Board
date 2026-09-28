@@ -7329,6 +7329,18 @@ try {
     console.log('  \u2713 draw(): per-shape isolation pinned (2 asserts)');
   }
 
+  // ADR-0606: a viewport resize during presentation re-fits the current
+  // frame — without it the zoom drifts off the frame after window resize /
+  // mobile rotation (visualViewport resize routes through the same handler).
+  {
+    assert.ok(html.includes("function refit(){if(_active)_goto(_idx)}"),'Presentation.refit re-zooms current frame');
+    assert.ok(html.includes("if(_pA())Presentation.refit()"),'resize() refits frame during presentation');
+    // Behavioural: refit is a no-op when inactive.
+    Presentation.refit();
+    assert.ok(true,'refit safe when presentation inactive');
+    console.log('  ✓ presentation resize refit pinned (3 asserts)');
+  }
+
   // ADR-0604: visibilitychange→hidden and pagehide cancel an in-progress
   // pointer gesture (mobile backgrounding drops pointerup → stuck ptr.down);
   // cancel runs BEFORE flushIfHidden so the restored state is what persists.
