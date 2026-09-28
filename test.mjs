@@ -1191,6 +1191,7 @@ const checks = [
   ['_fragIn tags assembly by sender (ADR-0469)', html.includes('sn.src!==src') && html.includes("viaRtc?'rtc':msg.peer")],
   ['_fragIn/imgChunks restart on seq 0 (ADR-0563)', html.includes('sn.src!==src||seq===0') && html.includes('st.n!==n||seq===0')],
   ['frame() draw throw cannot kill the loop (ADR-0565)', html.includes('try{if(needsRender)draw();if(needOverlay)drawOverlay()}catch')],
+  ['remote hide drops selected id (ADR-0568)', html.includes('if(_s&&_hd(_s))_sdl(id)')],
   ['post-draw hooks wrapped in try/catch (ADR-0565)', html.includes('_statusSel();    // ADR-0164: selection dims readout, signature-gated\n    }catch')],
 
   ['_zCommit compacts grown frac keys (ADR-0471)', html.includes('reindexFrac()') && html.includes('m.has(s.id)?m.get(s.id):o[i]')],
@@ -10423,6 +10424,17 @@ try {
       assert.ok(state.selection.has(inner.id),'selectFrameContents selects the inner shape');
       assert.ok(!state.selection.has(f.id)&&!state.selection.has(out.id),'selectFrameContents drops frame + outsiders');
       assert.ok(!state.selection.has(hid.id),'selectFrameContents skips hidden members (ADR-0566)');
+    }
+    // ADR-0568: a REMOTE hide drops the id from selection — the 0566 invariant,
+    // enforced inside _apply for style/upd/align/resize/beautify patches.
+    {
+      reset();
+      const s=Shape.make('rect',{x:0,y:0,w:10,h:10});
+      Store.commit({op:'add',shape:s});
+      state.selection=new Set([s.id]);
+      Store.applyRemote({op:'style',before:[{id:s.id}],after:[{id:s.id,visible:0}],clock:{peer:'r-peer-h',seq:9,ts:Date.now()}});
+      assert.strictEqual(state.shapes.find(x=>x.id===s.id).visible,0,'remote hide applied');
+      assert.ok(!state.selection.has(s.id),'remote hide drops the id from selection');
     }
     // toggleStickyText: sticky ↔ text type patch, undo-safe
     {

@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.595]
+### Fixed
+- リモートの hide (style op `visible:0`) や hide の redo で、選択中の図形が非表示のまま選択に残り続けていたのを修正 (ADR-0568) — `_apply` の prop-patch 経路で `_hd` になった選択 id を `_sdl` で落とし、0566 の選択不変条件を動的経路にも適用。
+
 ## [1.7.594]
 ### Fixed
 - selectFrameContents が hidden メンバーを選択に含めていたのを修正 (ADR-0566) — ⌘A/マーキーは `_sv` で可視のみにするため、見えない図形が選択され後続の move/delete が不可視のまま作用し得た。

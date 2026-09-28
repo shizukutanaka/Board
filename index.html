@@ -857,7 +857,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.594';
+const V='1.7.595';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1281,7 +1281,7 @@ function distToSeg(p,a,b){
 // functions, and prototype-pollution keys from a hostile peer. Recurses to ANY
 // depth: a remote `upd` is gated by validPatch alone (not validShape), so a nested
 // payload like {pts:[[1,NaN]]} must be caught here. Depth-capped to bound a hostile
-// deeply-nested object (stack-overflow DoS); no valid shape nests beyond a few levels.
+// deeply-nested object (stack-overflow
 function validPatch(p){
   if(!p||!_iO(p))return false;   // a patch/shape must be an object
   if(!_cleanVal(p,0))return false;
@@ -1740,7 +1740,9 @@ const Store={
     }
     // ADR-0546: prop-patching ops touching a selected shape must resync the
     // panel — its signature only covers membership, so remote/undo writes go unseen.
-    if(/^(?:style|upd|align|resize|beautify)$/.test(op.op))for(const id of _ids)if(_sl().has(id)){_selSig=null;break}
+    // ADR-0568: a remote hide (or redo of one) leaves the id selected — hidden
+    // shapes must not stay in selection (0566 invariant), drop them here.
+    if(/^(?:style|upd|align|resize|beautify)$/.test(op.op))for(const id of _ids)if(_sl().has(id)){_selSig=null;const _s=byId(id);if(_s&&_hd(_s))_sdl(id)}
     // ADR-0027: post-mutation bboxes of the same ids cover add/upd/move targets;
     // a union covering most of the viewport isn't worth clipping for.
     for(const id of _ids)_u(byId(id));
@@ -1750,7 +1752,7 @@ const Store={
 // ADR-0009: lazy-rebuilt id→shape index. Invalidated by _iG() (the same
 // choke point the spatial hit-test grid already uses) whenever shapes change
 // or _sh() is reassigned — property mutations (position, style, ...) don't touch
-// membership, so they never need to invalidate this. The size check below is a second,
+// membership, so they never need to inv
 // cheap safety net: several _apply cases call byId() (idempotency/lock checks) BEFORE
 // push()ing or splice()ing _sh() in the same op, which would otherwise leave the
 // index one membership-change stale until t
@@ -5009,7 +5011,7 @@ function objectSnap(dx,dy){
 }
 // Expand a set of selected ids to include shapes fully contained in any selected
 // frame, so moving a frame moves its contents. Other frames are never captured as
-// children. Shared by pointer-drag (pickOrMarquee) and keyboard nudge (nudgeSelection)
+// children. Shared by pointer-drag (pic
 // so both move paths agree. Pure read of _sh(); returns a fresh Set.
 function withFrameChildren(ids){
   const out=_sT(ids);
@@ -7694,7 +7696,7 @@ function wrapTextCached(s,text,maxWidth,fontSize,measure){
   return lines;
 }
 // Word-wrap to maxWidth: honours \n, wraps on whitespace, hard-breaks long tokens.
-// The char-break path applies 禁則処理 so prohibited chars never start/end a wrapped line.
+// The char-break path applies 禁則処理 so p
 function wrapText(text,maxWidth,measure){
   const out=[];
   // v1.6.97: normalize Windows (\r\n) and old Mac (\r) line endings pre-split
@@ -7896,7 +7898,7 @@ const Net={
         let st=this._imgChunks.get(msg.key);
         // ADR-0374: bound in-flight reassemblies — a peer opening thousands of
         // keys mid-transfer and never finishing would grow the map unboundedly.
-        if(!st||st.n!==n||seq===0){if(!st&&this._imgChunks.size>=64)this._imgChunks.delete(this._imgChunks.keys().next().value);st={p:new Array(n),g:0,n};this._imgChunks.set(msg.key,st)}   // ADR-0449/0454/0563: evict oldest stalled key; n-mismatch or seq0 restarts the stream
+        if(!st||st.n!==n||seq===0){if(!st&&this._imgChunks.size>=64)this._imgChunks.delete(this._imgChunks.keys().next().value);st={p:new Array(n),g:0,n};this._imgChunks.set(msg.key,st)}   // ADR-0449/0454/0563: evict oldest stal
         if(!st.p[seq]){st.p[seq]=msg.data;st.g++}
         if(st.g<st.n)break;
         this._imgChunks.delete(msg.key);
