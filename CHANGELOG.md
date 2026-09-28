@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.605]
+### Tests
+- wire 層の残存未ピンガードを回帰固定 — `_fragIn` の重複 seq スロット無視と `_dcQ` requeue 4096 上限 (ADR-0578)。wire 監査スイープの結論として全受信経路のガードがピン済みになった。
+
 ## [1.7.604]
 ### Docs/Tests
 - architecture.md / spec.md にプレゼンス描画の hidden parity (ピア選択アウトラインも `visible:0` を除外) を同期 + ADR-0576 ソースピン追加 (ADR-0577)。

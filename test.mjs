@@ -702,6 +702,8 @@ const checks = [
   ['text overlay closes when edited shape removed/hidden/locked (ADR-0559/0569/0572/0574)', html.includes("if(!s||_hd(s)||_lk(s)){_rm(_teTa);_teTa=null;state.editing=null;_iv();return}")],
   ['label overlay closes when labelled shape removed/hidden/locked (ADR-0559/0569/0572)', html.includes("if(!_lt||_hd(_lt)||_lk(_lt)){_rm(_lblTa.inp);_lblTa=null;return}")],
   ['peer selection outlines skip hidden shapes (ADR-0576)', html.includes("const s=byId(id);if(!s||_hd(s))continue")],
+  ['fragIn ignores duplicate seq slots (ADR-0578)', html.includes("if(!sn.p[seq]){sn.p[seq]=msg.data;sn.g++}")],
+  ['_dcQ requeue queue is capped at 4096 (ADR-0578)', html.includes("_ln(q)<4096&&_pu(q,m)")],
   ['editors close a still-open overlay first (ADR-0560)', html.includes("const _cxO=()=>{if(_teTa)_teTa.blur();if(_lblTa)_lblTa.inp.blur()}")],
   ['resize resets overlay follow sigs (ADR-0561)', html.includes("_teVp=_lblVp=''")],
   ['hide folds an open editor first (ADR-0569)', html.includes("function hideSelection(){\n  _cxO()")],
