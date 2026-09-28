@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.612';
+const V='1.7.613';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6366,6 +6366,12 @@ function doRotate(d){
   _xFS(sel,frameOf)
   const r=d*_PI/180,cs=_cos(r),sn=_sin(r);
   const before=sel.map(s=>clone({...s,rotate:_rt(s)||0}));
+  // ADR-0586: conns whose bound shapes rotate must re-derive aF/bF — the
+  // fraction lives on the bound shape's (rotated) extent, so pin the anchor
+  // at the same material point: orbit+spin it like the shape, re-normalize.
+  const selIds=_sT(sel.map(s=>s.id)),extB=_mP();for(const s of sel)extB.set(s.id,_bb(s));
+  const _bC=[];for(const s of _sh())if(_conn(s.type)&&((s.aF&&selIds.has(s.a))||(s.bF&&selIds.has(s.b))))_bC.push(s);
+  for(const c of _bC)if(!selIds.has(c.id))before.push(clone(c));
   for(const s of sel){
     if(!_hb(s)){_rotPtsAbout(s,gx,gy,cs,sn);continue}   // ADR-0055: point geometry
     const b=_bb(s),cx=b.x+b.w/2,cy=b.y+b.h/2;
@@ -6373,7 +6379,18 @@ function doRotate(d){
     _sT2(s,nx-cx,ny-cy);
     s.rotate=((_rt(s)||0)+d+360)%360;
   }
+  for(const c of _bC){
+    for(const [k,fk] of[['a','aF'],['b','bF']]){
+      const A=byId(c[k]),f=c[fk];if(!A||!f||!selIds.has(A.id))continue;
+      const ob=extB.get(A.id),c0x=ob.x+ob.w/2,c0y=ob.y+ob.h/2;
+      const ocx=gx+(c0x-gx)*cs-(c0y-gy)*sn,ocy=gy+(c0x-gx)*sn+(c0y-gy)*cs;
+      const spx=ocx+(ob.x+ob.w*f.fx-c0x)*cs-(ob.y+ob.h*f.fy-c0y)*sn;
+      const spy=ocy+(ob.x+ob.w*f.fx-c0x)*sn+(ob.y+ob.h*f.fy-c0y)*cs;
+      const nb=_bb(A);f.fx=_c01((spx-nb.x)/(nb.w||1));f.fy=_c01((spy-nb.y)/(nb.h||1));
+    }
+  }
   const after=sel.map(clone);
+  for(const c of _bC)if(!selIds.has(c.id))after.push(clone(c));
   _rcOp({op:'align',dir:'rotate',before,after});
   _ivp();
   _ann(_ln(sel)===1?describeShape(sel[0]):d+'°');   // ,/. keyboard rotate announce; point-geom selections have no .rotate (ADR-0055)

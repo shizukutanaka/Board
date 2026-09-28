@@ -5340,6 +5340,14 @@ try {
       const got=B.state.shapes.find(s=>s.id===ar.id).labelPos;
       assert.ok(Math.abs(got-0.8)<1e-9,'labelPos mirrored to 0.8, got '+got);
     }
+    { // ADR-0586: rotating a bound shape remaps aF — left-edge anchor → top edge after 90°
+      const bx=B.Shape.make('rect',{x:0,y:0,w:100,h:50});
+      const ar=B.Shape.make('arrow',{x1:0,y1:25,x2:200,y2:25,a:bx.id,aF:{fx:0,fy:0.5}});
+      B.state.shapes.push(bx,ar);B._invalidateGrid();
+      B.state.selection=new Set([bx.id]);B.doRotate(90);
+      const f=B.state.shapes.find(s=>s.id===ar.id).aF;
+      assert.ok(Math.abs(f.fx-0.5)<1e-9&&Math.abs(f.fy)<1e-9,'aF remapped to top edge {0.5,0}, got '+JSON.stringify(f));
+    }
     { // ADR-0585: reverseConn negates cbend — same curve, opposite direction
       const ar=B.Shape.make('arrow',{x1:0,y1:0,x2:200,y2:0,curve:1,cbend:40});
       B.state.shapes.push(ar);B._invalidateGrid();B.state.selection=new Set([ar.id]);
