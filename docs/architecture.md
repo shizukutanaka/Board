@@ -29,6 +29,19 @@
 ### 1. Input
 `canvas.addEventListener` と `window.addEventListener` で pointer / keyboard / wheel を受ける。ここでは **状態を変更しない**。ツールハンドラに委譲。
 
+#### ジェスチャライフサイクル (v1.7.55x — ADR-0516..0526)
+`ptr` (down/dragKind/dragStartShapes/resizeOrig/… の単一構造体) が全ドラッグの
+唯一の状態。pointerdown で `setPointerCapture` + `ptr.down=true`、pointerup で
+コミット、pointercancel / `lostpointercapture` / ドラッグ中の `contextmenu`
+/ touch long-press / Esc で `_cancelPointerGesture()` — いずれも dragKind 別に
+部分変更を復元する統一キャンセル経路。`pointerleave` は hover/laser のみ消去
+(ドラッグは capture で継続)。ドラッグ中の 24px 端帯は rAF エッジオートパン
+(ADR-0519)。`pointerId` は `_pointers` Map で追跡し 2 本目でピンチ遷移。
+クリップボードの OS 橋渡しは `_cpNow`/`_osClip` + `_textCascade` (SVG →
+.board → .excalidraw → mxfile → TSV → 平文) が paste/drop 双方に効く
+(ADR-0516/0518)。Safari の GestureEvent は gesturestart/change/end で
+`_gScale` 比ズームに変換 (ADR-0517)。
+
 ### 2. Tools
 現在のツール (`state.tool`) に応じて `begin* / cont* / end*` の三段階で gesture を処理。途中状態は `state.draft` に置く (undo に入れない)。`end*` で Store.commit。
 
