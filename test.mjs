@@ -687,6 +687,14 @@ const checks = [
   ['Escape key closes context menu before modal dismiss', html.includes("ctx2.dataset.open==='true'){UI.closeCtxMenu();return}")],
   // v1.6.38: context menu auto-focuses first item on open (keyboard a11y)
   ['context menu focuses first item on open', html.includes("_fc(_qs(m,'.ctx-item'))")],
+  // v1.7.581 (ADR-0553): tall ctx menus must cap height + scroll — top items were
+  // clipping off-screen on multi-selection; top clamp needs a lower bound too
+  ['ctx menu has max-height + overflow scroll (ADR-0553)', html.includes('max-height:calc(100vh - 16px)') && html.includes('overflow-y:auto')],
+  ['ctx menu top clamp has a lower bound (ADR-0553)', html.includes("_max(8,_min(y,innerHeight-m.offsetHeight-20))")],
+  // v1.7.580 (ADR-0552): unhandled ctx-menu keys are swallowed, not bubbled
+  ['ctx menu swallows unhandled keys (ADR-0552)', html.includes("e.key!==' '&&e.key!=='Enter'){_pd(e);e.stopPropagation();UI.closeCtxMenu()}")],
+  // v1.7.582 (ADR-0554): presentation frame navigation drops deleted frames
+  ['presentation _goto filters stale frames (ADR-0554)', html.includes('_frames=_frames.filter(f=>byId(f.id))')],
   // v1.6.39: console cleanup - no redundant console.warn/error in production paths
   ['no console.warn in BroadcastChannel catch', !html.includes("console.warn('BroadcastChannel init failed'")],
   ['no console.error in save catch (user gets toast)', !html.includes("console.error('save failed'")],

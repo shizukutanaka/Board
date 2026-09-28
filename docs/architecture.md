@@ -95,6 +95,11 @@ group/ungroup) は per-shape `before` の書き戻しが冪等なため no-op �
 と差分を適用する `move` はスキップ集合を backward に伝える必要がある (それぞれ `byId` ガードと
 `op.moved` で対応 — ADR-0547/0548/0549)。
 
+**img 参照の再解決**: 形状を復元する全経路 (del/clear/replace の backward、replace の forward) は
+`_sh().push(Net._attachShape(clone(s)))` を通す。`img:` 参照を抱えた図形が undo で戻る際に
+`_imgIn` の到達済み blob から `dataUrl` を再解決し、未到達なら `_imgPending` に再駐留する
+(ADR-0551)。直接 `push(clone(s))` すると削除中に blob が到達した図形が永久 placeholder になる。
+
 **反転 (flip H/V)** は専用 op を持たず、`align` op を再利用する: `doFlip(axis)` が選択 bbox 中心軸で
 各シェイプ座標をミラー (`flipShape`) し、変更前後の完全クローンを `{op:'align',dir:'flip',before,after}`
 として記録する。`align` の `_apply` が `Object.assign` でクローンを復元するため、追加の `_apply` 分岐は不要。
