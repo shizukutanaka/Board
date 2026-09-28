@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.548] - 2026-09-28
+
+### リファクタ
+
+- 修飾キー読み取りを `_sK`/`_aK`/`_mod` shorthand 化 (86 サイト、~280B 回収) (ADR-0515)
+
 ## [1.7.547] - 2026-09-28
 
 ### リファクタ

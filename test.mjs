@@ -208,7 +208,7 @@ const checks = [
   ['Presentation mode enter/leave', html.includes("Presentation.enter") && html.includes("Presentation.leave")],
   ['Present button in topbar', html.includes("btnPresent")],
   ['Frame zoomToFrame', html.includes("_zoomToFrame")],
-  ['Presentation on Shift+P / Ctrl+Enter', html.includes("k==='p'&&e.shiftKey") && html.includes("Presentation.enter")],
+  ['Presentation on Shift+P / Ctrl+Enter', html.includes("k==='p'&&_sK(e)") && html.includes("Presentation.enter")],
   // round 6: frame hit priority + label edit + image size guard
   ['pickTop skips frames on first pass', html.includes("_frm(s))continue")],
   ['frame dblclick label edit', html.includes("_frm(hit)") && html.includes("hit.label")],
@@ -284,12 +284,12 @@ const checks = [
   ['grid invalidated on every _apply', html.includes("_apply(op,forward){") && html.includes("_iG()")],
   // v1.6.12: keyboard shape creation (a11y)
   ['createShapeKbd helper present', html.includes("function createShapeKbd")],
-  ['Enter creates shape at viewport centre', html.includes("k===_EN&&!meta&&!e.shiftKey") && html.includes("createShapeKbd()")],
+  ['Enter creates shape at viewport centre', html.includes("k===_EN&&!meta&&!_sK(e)") && html.includes("createShapeKbd()")],
   ['canvas aria-label includes Enter creates hint', html.includes("Enter creates, arrows move, Alt+arrows resize.")],
   ['help grid lists Tab cycle and Enter create/edit', html.includes("['Tab / ⇧Tab',k.cycle]") && html.includes("['Enter',k.create+' / '+t('editLabel')]")],
   // v1.7.75: ⇧1 must match e.key too — under Shift the digit row reports '!' (US/JIS),
   // not '1', so a bare k==='1' never fires
-  ['Shift+1 fit shortcut also matches !', html.includes("e.shiftKey&&(k==='1'||k==='!')")],
+  ['Shift+1 fit shortcut also matches !', html.includes("_sK(e)&&(k==='1'||k==='!')")],
   // v1.6.13: variable-width pen (velocity-based)
   ['penWidths helper present', html.includes("function penWidths")],
   ['drawPen uses variable width', html.includes("penWidths(p,_szz(s))") && html.includes("_penFillRange(c,p,w,n,0,n-1)")],
@@ -402,7 +402,7 @@ const checks = [
   ['load clamps viewport zoom to [MIN_ZOOM,MAX_ZOOM]', html.includes("_vp().zoom=clampZoom(+d.viewport.zoom)")],
   ['clampZoom is the single zoom-invariant source', html.includes("const clampZoom=z=>_max(MIN_ZOOM,_min(MAX_ZOOM,z))") && html.includes("const nz=clampZoom(") && html.includes("const z=clampZoom(")],
   // v1.6.18: deeper audit fixes
-  ['P selects pen, Shift+P presents', html.includes("k==='p'&&e.shiftKey&&!meta&&!e.altKey")],
+  ['P selects pen, Shift+P presents', html.includes("k==='p'&&_sK(e)&&!meta&&!_aK(e)")],
   ['pen resize handles emit from pts bbox (ADR-0051)', html.includes("if(_pn(s)){") && html.includes("id:'se'") && html.includes("_bb(s);if(!b||!b.w||!b.h)return [];")],
   ['presentation saves+restores viewport', html.includes("_savedVp={x:_vp().x") && html.includes("_oa(_vp(),_savedVp)")],
   ['help grid present row uses i18n', html.includes("['⇧P',k.present]") && html.includes("['↑↓←→',k.nudge]")],
@@ -417,7 +417,7 @@ const checks = [
   ['style panel syncs on selection signature change', html.includes("_syncStylePanelIfChanged();   // ADR-0059")&&html.includes("_selIds().sort().join(',')")],
   ['_syncStylePanel adopts only uniform props (mixed skipped)', html.includes("sel.every(s=>(s[k]??null)===v)")&&html.includes("if(v!==_ud){_st().fill")],
   // v1.7.118: ADR-0060 Alt+drag duplicate
-  ['alt+drag duplicates picked shape then drags copies', html.includes("if(e.altKey&&!hit.locked){")&&html.includes("_placeCopies(srcShapes,0,0)")&&html.includes("dupSet=alreadySel")],
+  ['alt+drag duplicates picked shape then drags copies', html.includes("if(_aK(e)&&!hit.locked){")&&html.includes("_placeCopies(srcShapes,0,0)")&&html.includes("dupSet=alreadySel")],
   // v1.7.118: ADR-0061 diamond shape
   ['diamond tool in KEYMAP + toolbar + help', html.includes("e:'eraser',d:'diamond'")&&html.includes('data-tool="diamond"')&&html.includes("['D',k.diamond]")],
   ['diamond draw/hit/svg/minimap paths', html.includes("case 'diamond':{")&&html.includes("case'diamond':s=_smk('diamond'")&&html.includes('_abs(d-1)<0.15')],
@@ -434,9 +434,9 @@ const checks = [
   ['readout set in applyResize/moveDelta/rotate paths + cleared with guides', html.includes('state.readout={x:_rb.x+_rb.w/2,y:_rb.y+_rb.h')&&html.includes('state.readout=bb&&(dx||dy)')&&html.includes('state.guides=state.readout=state.bindPreview=null')],
   // v1.7.123: ADR-0065 connector endpoint rebind/unbind
   ['endpoint rebind: always-handle + unbind-on-grab + bindPreview', html.includes("_pu(h,{id:'p1',x:e.x1,y:e.y1});       // ADR-0065")&&html.includes("if(sh[bk]){sh[bk]=null;sh[bk+'F']=null}")&&html.includes('state.bindPreview=')],
-  ['_endPointBind in pointerup + not-self/not-other-end guard', html.includes('_endPointBind(rsh,ptr.resizeHandle,e.altKey)')&&html.includes('hit!==sh[other]')],
+  ['_endPointBind in pointerup + not-self/not-other-end guard', html.includes('_endPointBind(rsh,ptr.resizeHandle,_aK(e))')&&html.includes('hit!==sh[other]')],
   // v1.7.124: ADR-0066 Shift+drag axis-constrained move
-  ['shift axis constraint in moveDelta + objectSnap skipped', html.includes("if(_abs(dx)>=_abs(dy))dy=0;else dx=0;")&&html.includes('moveDelta(wp,shift,alt)')&&html.includes('doMove(wp,e.shiftKey,e.altKey)')&&html.includes('endSelect(wp,e.shiftKey,e.altKey)')],
+  ['shift axis constraint in moveDelta + objectSnap skipped', html.includes("if(_abs(dx)>=_abs(dy))dy=0;else dx=0;")&&html.includes('moveDelta(wp,shift,alt)')&&html.includes('doMove(wp,_sK(e),_aK(e))')&&html.includes('endSelect(wp,_sK(e),_aK(e))')],
   ['moveAxis i18n ja+en + help row', html.includes("moveAxis:'軸拘束移動'")&&html.includes("moveAxis:'Constrain move axis'")&&html.includes("['⇧ + drag',k.moveAxis]")],
   // v1.7.125: ADR-0067 per-type edge projection
   ['edge projection: diamond/ellipse contour formula', html.includes("sh.type==='diamond'?1/((_abs(dx)/(_rx||1e-6))")&&html.includes("sh.type==='ellipse'?1/(_hp(dx/(_rx||1e-6),dy/(_ry||1e-6))||1e-6)")],
@@ -456,7 +456,7 @@ const checks = [
   ['font size keys: ⌘⇧,/. steps fontSize ±2 clamped 8..64', html.includes('function fontSizeStep(d)')&&html.includes("k===','||k==='<'")&&html.includes('_min(64,_max(8')],
   ['waypoint: _linePts + way drag + transforms + SVG polyline', html.includes('function _linePts(s)')&&html.includes("ptr.dragKind='way'")&&html.includes('_wayArr(s)')&&html.includes('if(orig.way)sh.way=')],
   ['hatch: _hatchSegs/ctx/svg + cycleFillStyle + ctx item', html.includes('function _hatchSegs(')&&html.includes('function cycleFillStyle()')&&html.includes("['ctxFillStyle'")&&html.includes('clip-path="url(#')],
-  ['bold/italic: _fontStr + toggleTextFlag + ⌘B/⌘I + SVG attrs', html.includes('function _fontStr(s,fs)')&&html.includes('function toggleTextFlag(k)')&&html.includes("k==='b'&&!e.shiftKey")&&html.includes('font-weight="600"')],
+  ['bold/italic: _fontStr + toggleTextFlag + ⌘B/⌘I + SVG attrs', html.includes('function _fontStr(s,fs)')&&html.includes('function toggleTextFlag(k)')&&html.includes("k==='b'&&!_sK(e)")&&html.includes('font-weight="600"')],
   ['match size: doMatchSize + DIRS + ctx items', html.includes('function doMatchSize(dim)')&&html.includes("'matchw','matchh','matchwh'")&&html.includes("['ctxMatchWH'")],
   ['smart duplicate: dupIds/dupDelta chain', html.includes('dupIds:_sT()')&&html.includes('_dd().x+=dx')||html.includes('dupIds:_sT()')&&html.includes('dupDelta.x+=dx')],
   ['label editor: _connLabelXY + diamond gate', html.includes('function _connLabelXY(s)')&&html.includes("_HF4.has(hit.type)")&&html.includes('lp=_connLabelXY')],
@@ -469,9 +469,9 @@ const checks = [
   ['waypoint + elbow-trunk drags honour grid snap', html.includes('wa[i]=snapPt(wp)')&&html.includes('snapV(wp.x):snapV(wp.y)')&&html.includes('RAW point')],
   ['replace image: ctx item + aspect-follow via style op', html.includes('function replaceImage()')&&html.includes('ctxReplaceImg')&&html.includes('s.w*nh/nw')],
   ['multi-waypoint: way is an array; insert/move/delete via wayIdx+wayNew', html.includes('function _wayArr(s)')&&html.includes('ptr.wayIdx')&&html.includes('wa.splice(i,0,snapPt(wp))')],
-  ['search select-all: ⌘Enter selects every match', html.includes('ev.metaKey||ev.ctrlKey')&&html.includes('_ss(ms.map')&&html.includes('selAllMatches')],
+  ['search select-all: ⌘Enter selects every match', html.includes('_mod(ev)')&&html.includes('_ss(ms.map')&&html.includes('selAllMatches')],
   ['rect corners: s.r override + ctx menu + SVG rx', html.includes('s.r!=null?s.r:8')&&html.includes('toggleRound')&&html.includes('ctxRrect')&&html.includes('rx="${r}"')],
-  ['shift+wheel → horizontal pan', html.includes('const dx=e.shiftKey&&!d.x?d.y:d.x')],
+  ['shift+wheel → horizontal pan', html.includes('const dx=_sK(e)&&!d.x?d.y:d.x')],
   ['escape cancels in-flight pointer gesture', html.includes('else if(ptr.down&&ptr.dragKind)_cancelPointerGesture()')],
   ['underline: ⌘U toggle + canvas line + SVG text-decoration', html.includes("toggleTextFlag('under')")&&html.includes('s.under')&&html.includes("'underline'")&&html.includes('text-decoration=')],
   ['equal-size snap: resize matches another shape\'s w/h', html.includes('equal-size snap')&&html.includes('nw=eH?x-orig.x')&&html.includes('_abs(nw-b.w)')],
@@ -501,9 +501,9 @@ const checks = [
   ['click-click line/arrow — second click commits (lineClick mode)', html.includes('ptr.lineClick=true;break')&&html.includes('ptr.lineClick){ptr.lineClick=false;endLineLike()')],
   ['marquee skips locked shapes (Figma/draw.io parity)', html.includes('if(hit&&_ulv(s))_sad(s.id)')],
   ['Alt during move suppresses all snapping (draw.io parity)', html.includes('moveDelta(wp,shift,alt)')&&html.includes('!alt&&!state.snap')],
-  ['shift-click on selected shape removes it (toggle-off)', html.includes('alreadySel&&e.shiftKey')&&html.includes('_sdl(id)')],
+  ['shift-click on selected shape removes it (toggle-off)', html.includes('alreadySel&&_sK(e)')&&html.includes('_sdl(id)')],
   ['shift-marquee adds to selection (Figma parity)', html.includes('if(!shift)_scl()')],
-  ['ctx + ⇧R rotate-90 (draw.io parity)', html.includes("['ctxRotate90','⇧R',()=>doRotate(90)]")&&html.includes("k==='r'&&e.shiftKey")&&html.includes('ctxRotate90:')],
+  ['ctx + ⇧R rotate-90 (draw.io parity)', html.includes("['ctxRotate90','⇧R',()=>doRotate(90)]")&&html.includes("k==='r'&&_sK(e)")&&html.includes('ctxRotate90:')],
   ['curve-bend drag — s.cbend offsets the control point', html.includes("dragKind='cbend'")&&html.includes('_curveCtrl(e,s.cbend)')&&html.includes('sh.cbend=snapV')],
   ['flip mirrors elbow s.bend on the matching axis', html.includes('_elbowTrunk(s):null')&&html.includes("(axis==='h')===!!trVert")],
   ['z-order ctx items — touch path for ]/[ keys', html.includes("['ctxBringFront','⇧]',doBringFront]")&&html.includes('ctxSendBack')],
@@ -525,7 +525,7 @@ const checks = [
   ['image flip mirrors pixels via s.flip bitmask', html.includes("s.flip=(s.flip||0)^(axis==='h'?1:2)")&&html.includes('ADR-0149')&&html.includes('scale(${s.flip&1?-1:1}')],
   ['hidden shapes leave search + bindAt', html.includes("_sv(s)&&_lc((_lb(s)||'')+(_txx(s)||'')+(s.type||'')")&&html.includes("t!=='pen'&&_sv(s)")],
   ['SVG export excludes hidden shapes', html.includes('const _vis=shapes.filter(_sv)')&&html.includes('_vis.filter(s=>s.type==="frame")')],
-  ['Alt+hover measure guides', html.includes('measure:null')&&html.includes('function _drawMeasure(c)')&&html.includes("e.altKey&&_selN()&&top&&!top.locked")],
+  ['Alt+hover measure guides', html.includes('measure:null')&&html.includes('function _drawMeasure(c)')&&html.includes("_aK(e)&&_selN()&&top&&!top.locked")],
   ['measure cleared on reset/down/Alt', html.includes('state.measure=null;ptr.x=ptr.x0')&&html.includes("e.key==='Alt'&&state.measure")],
   ['gresize scales curve cbend affinely', html.includes('sh.cbend=orig.cbend*sx*sy*ol/nl')],
   ['snap index skips hidden shapes', html.includes('exclFn(s)||_hd(s)')],
@@ -586,7 +586,7 @@ const checks = [
   ['.board file round-trips viewport (ADR-0393)', html.includes("viewport:_vpS()")&&html.includes("_vp().zoom=clampZoom(+d.viewport.zoom)")],
   ['file importers reject >32MB payloads (ADR-0398)', html.includes("_bigFile=f=>f.size>33554432")&&(html.match(/_bigFile\(file\)/g)||[]).length>=4],
   ['importBoard uses atomic replace op (not clear+adds)', html.includes('function importBoard') && html.includes('.filter(validShape)') && html.includes("op:'replace',before,after")],
-  ['Ctrl+Shift+S triggers exportBoard', html.includes("e.shiftKey){_pd(e);exportBoard()}")],
+  ['Ctrl+Shift+S triggers exportBoard', html.includes("_sK(e)){_pd(e);exportBoard()}")],
   ['doDelete warns on all-locked selection (ADR-0396)', html.includes("if(!_ln(sel)){if(_selAny())_wT('lockedNoop');return}")],
   // ADR-0004: doClearAll/importBoard/importFromHash back up the pre-replace board to a
   // second IndexedDB slot before the destructive swap, so it survives past the session-only
@@ -831,7 +831,7 @@ const checks = [
   ['labelPos drag snaps to 0/.25/.5/.75/1 slots (ADR-0216)', html.includes('for(const slot of[0,0.25,0.5,0.75,1])')],
   ['ctx route-reset reachable when only labelPos/cbend set (ADR-0217)', html.includes('_lP(s)==null&&s.cbend==null)return')&&html.includes('_lP(s)!=null||s.cbend!=null')],
   ['connector jump arcs canvas+SVG + ctx toggle (ADR-0218)', html.includes('function _polylineHop(c,s,pts,R)')&&html.includes('function _hopPathD(s,pts,ox,oy,R)')&&html.includes('function toggleHop()')&&html.includes("['ctxHop','',toggleHop]")],
-  ['Alt draws box shapes from center (ADR-0219)', html.includes('contRectLike(wp,e.shiftKey,e.altKey)')&&html.includes('// ADR-0219: ⌥ = draw from center')],
+  ['Alt draws box shapes from center (ADR-0219)', html.includes('contRectLike(wp,_sK(e),_aK(e))')&&html.includes('// ADR-0219: ⌥ = draw from center')],
   ['.drawio export mxGraphModel round-trip (ADR-0220)', html.includes('function boardToDrawio(shapes)')&&html.includes('edgeStyle=orthogonalEdgeStyle')&&html.includes("jumpStyle=arc")],
   ['drawio exitX/entryX fixed ports round-trip aF/bF (ADR-0221)', html.includes('s.aF={fx:_c01(fx),fy')&&html.includes('exitX=${s.aF.fx};exitY=${s.aF.fy}')],
   ['excalidraw export keeps bindings via s.a/s.b + boundElements (ADR-0222)', html.includes('startBinding:s.a?{elementId:s.a')&&html.includes('if(_ln(out))e.boundElements=out')],
@@ -925,13 +925,13 @@ const checks = [
   ['frame label honours s.align + cycleTextAlign gate', html.includes("const alF=s.align||'left'")&&html.includes("_selTxtL()&&['ctxTextAlign'")],
   ['ctxReverse reverses connector direction (ADR-0198)', html.includes('function reverseConn()')&&html.includes("['ctxReverse','',reverseConn]")],
   ['ctxFitText sizes sticky to wrapped text (ADR-0199)', html.includes('function fitSticky()')&&html.includes("['ctxFitText','',fitSticky]")],
-  ['Shift constrains pen to straight line (ADR-0200)', html.includes("e.shiftKey&&_ln(pts)){pts.length=1;_pu(pts")],
+  ['Shift constrains pen to straight line (ADR-0200)', html.includes("_sK(e)&&_ln(pts)){pts.length=1;_pu(pts")],
   ['move gesture shows live X,Y readout (ADR-0201)', html.includes("label:`${_rnd(bx)}, ${_rnd(by)}`")],
   ['draw drafts show dims/length readout (ADR-0202)', html.includes("_rnd(d.h)}`")&&html.includes("x2-ptr.wx0")],
   // v1.7.05: Tab cycling excludes locked shapes (parity with doMove/doDelete/doRotate/doFlip)
   ['statusbar selection dims readout', html.includes('id="sSel"')&&html.includes('_statusSel()')&&html.includes('_rnd(b.w)')],
   ['empty-selection arrows pan viewport', html.includes("_vp().x+=k===_AL2?-step:k===_AR2?step:0")],
-  ['swapFillStroke: ⇧X swaps stroke↔fill via style op', html.includes('function swapFillStroke')&&html.includes("k==='x'&&e.shiftKey&&!meta")&&html.includes("const fk=_stk(s)?'color':'fill'")],
+  ['swapFillStroke: ⇧X swaps stroke↔fill via style op', html.includes('function swapFillStroke')&&html.includes("k==='x'&&_sK(e)&&!meta")&&html.includes("const fk=_stk(s)?'color':'fill'")],
   ['digit keys set opacity (Figma)', html.includes("/^[0-9]$/.test(k)&&_selN()")&&html.includes("opacity:k==='0'?1:+k/10")],
   ['image corner radius via cycleCorner + clips', html.includes("if(!boxOk&&!connOk)return;")&&html.includes('clip-path="url(#irc')&&html.includes('roundRect(c,s.x,s.y,s.w,s.h,_cr);c.clip()')],
   ['label fontSize honored across renderers', html.includes('const fs=_fS(s)||12;')&&html.includes('const fs=_fS(s)||14')&&html.includes("s.type!=='sticky'&&!_lb(s))||_lk(s)")],
@@ -972,14 +972,14 @@ const checks = [
   ['help grid lists rotate and search shortcuts', html.includes("[', / .',k.rotate]") && html.includes("['⌘F',k.search]") && html.includes("['Enter / ⇧Enter',k.searchNav]")],
   // keyboard shortcuts (all documented in README)
   ['N shortcut for sticky (in KEYMAP)', html.includes("n:'sticky'")],
-  ['⌘G / ⌘⇧G group/ungroup shortcuts', html.includes("k==='g'&&e.shiftKey") && html.includes("doUngroup") && html.includes("doGroup")],
-  ['⌥C / ⌥V style copy/paste shortcuts', html.includes("k==='c'&&e.altKey") && html.includes("copyStyle") && html.includes("k==='v'&&e.altKey")],
-  ['⌘⇧E SVG export shortcut', html.includes("meta&&k==='e'&&e.shiftKey") && html.includes("exportSVG")],
+  ['⌘G / ⌘⇧G group/ungroup shortcuts', html.includes("k==='g'&&_sK(e)") && html.includes("doUngroup") && html.includes("doGroup")],
+  ['⌥C / ⌥V style copy/paste shortcuts', html.includes("k==='c'&&_aK(e)") && html.includes("copyStyle") && html.includes("k==='v'&&_aK(e)")],
+  ['⌘⇧E SVG export shortcut', html.includes("meta&&k==='e'&&_sK(e)") && html.includes("exportSVG")],
   // v1.6.63: Socratic round 3 - internal consistency + a11y
   ['doFlip skips locked shapes (consistent with doRotate)', html.includes("const sel=_selUL();")],
   ['doRotate orbits selection about group centre', html.includes("orbit about group centre, like doFlip") && html.includes("_sT2(s,nx-cx,ny-cy)")],
   ['search input has localized aria-label', html.includes("_sa(sq,_AL,T.k.search)")],
-  ['search Escape returns focus to canvas', html.includes("_ivO();canvas.focus();}") && html.includes("_sqAdvance(ev.shiftKey?-1:1)")],
+  ['search Escape returns focus to canvas', html.includes("_ivO();canvas.focus();}") && html.includes("_sqAdvance(_sK(ev)?-1:1)")],
   // v1.6.64: Socratic round 4 - rotation scope + lock completeness
   ['doRotate restricted to box shapes (s.w!=null, NaN-safe)', html.includes("_selL(s=>s&&!_lk(s)&&_hb(s))")],
   ['doDelete skips locked shapes', html.includes("function doDelete(){\n  const sel=_selUL();")],
@@ -1080,7 +1080,7 @@ const checks = [
     html.includes('let _themeCache=(()=>{try{return _lg(THEME_KEY)}catch(_){return null}})();')
     && html.includes('_themeMode(){return _themeCache;},') && html.includes('_themeCache=next;')],
   // v1.6.68: Alt resize-from-centre
-  ['Alt resizes about original centre', html.includes("function applyResize(sh,handle,orig,wp,shift,alt)") && html.includes("if(alt){sh.x=cx0-sh.w/2;sh.y=cy0-sh.h/2;}") && html.includes("applyResize(rsh,ptr.resizeHandle,ptr.resizeOrig,wp,e.shiftKey,e.altKey);")],
+  ['Alt resizes about original centre', html.includes("function applyResize(sh,handle,orig,wp,shift,alt)") && html.includes("if(alt){sh.x=cx0-sh.w/2;sh.y=cy0-sh.h/2;}") && html.includes("applyResize(rsh,ptr.resizeHandle,ptr.resizeOrig,wp,_sK(e),_aK(e));")],
   // v1.6.69: rotated-box resize
   ['_rotPt shared rotation helper present', html.includes("function _rotPt(px,py,cx,cy,deg)")],
   ['rotated resize works in local frame + world re-pin', html.includes("sp=_rotPt(wp.x,wp.y,cx0,cy0,-orig.rotate);") && html.includes("sh.x+=tgt.x-cur.x;sh.y+=tgt.y-cur.y;")],
@@ -1099,7 +1099,7 @@ const checks = [
   ['importBoard clears selection+wclock on whole-board swap', html.includes("_rs(shapes.map(clone));   // ADR-0009\n      // Match the replace op's _apply") && html.includes("_scl();state.wclock={};\n      _docN(d);")],
   ['importFromHash clears selection+wclock on whole-board swap', html.includes("_rs(valid.map(clone));_setDocName(") && /_rs\(valid\.map\(clone\)\)[\s\S]{0,900}_scl\(\);state\.wclock=\{\};/.test(html)],
   // v1.6.71: presentation-mode guard precedes editing shortcuts (no undo mid-slideshow)
-  ['presentation guard runs before undo/redo/select-all shortcuts', /if\(_pA\(\)\)\{[\s\S]{0,260}return;\n  \}[\s\S]{0,700}if\(meta&&k==='z'&&!e\.shiftKey\)/.test(html)],
+  ['presentation guard runs before undo/redo/select-all shortcuts', /if\(_pA\(\)\)\{[\s\S]{0,260}return;\n  \}[\s\S]{0,700}if\(meta&&k==='z'&&!_sK\(e\)\)/.test(html)],
   // v1.6.71: export canvas clamped to browser limits
   ['exportPNG uses exportScale clamp', html.includes("const scale=exportScale(w,h,desired||2);")],
   ['exportPDF uses exportScale clamp for dpr', html.includes("dpr=exportScale(W,H,_dpr()||1)")],
@@ -1189,7 +1189,7 @@ const checks = [
   ['colour picker flushes one op on change', html.includes("_on(cp,_CH,()=>{_sfbFlush(k,cp.value);_sfbCapture(k);});")],
   // v1.6.76: ⌘⇧L keyboard shortcut for lock/unlock — README claims "全機能キーボード操作可能"
   // but doLock was right-click-only. Fix adds Ctrl+Shift+L → doLock().
-  ['doLock has ⌘⇧L keyboard shortcut', html.includes("meta&&k==='l'&&e.shiftKey")&&html.includes("doLock()")],
+  ['doLock has ⌘⇧L keyboard shortcut', html.includes("meta&&k==='l'&&_sK(e)")&&html.includes("doLock()")],
   ['lockToggle i18n key present in ja and en', (html.match(/lockToggle:/g)||[]).length>=2],
   ['lockToggle in help grid', html.includes("t('lockToggle')")],
   // v1.7.06: doCopy excludes locked shapes (parity with doDelete/doMove/doAlign)
