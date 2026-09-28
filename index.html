@@ -414,6 +414,8 @@ canvas#c[data-tool=eyedropper]{cursor:crosshair}
   border-radius:var(--radius);
   box-shadow:var(--shadow-lg);
   padding:4px;min-width:180px;
+  /* ADR-0553: tall menus exceed the viewport — cap + scroll, else top items clip. */
+  max-height:calc(100vh - 16px);overflow-y:auto;
   z-index:50;
   display:none;
 }
@@ -855,7 +857,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.580';
+const V='1.7.581';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -909,11 +911,11 @@ const MINIMAP_ON=(()=>{try{return _lg('board.minimap')!=='off'}catch(_){return t
 const THEME_KEY='board.theme';
 // deep-audit fix: the current mode used to be re-read from localStorage on every call
 // (UI._themeMode() did localStorage.getItem each time). If storage access throws on
-// EVERY call — blocked cookies, storage partitioning, a sandboxed iframe: all plausible
-// for Board's privacy-focused, downloadable-single-file audience — that always collapsed
+// EVERY call — blocked cookies, storage partitioning, a sandboxed iframe: all real
+// for Board's privacy-focused, single-file audience — that always collapsed
 // to null, so toggleTheme()/refreshThemeBtn() could never observe what applyTheme() had
 // actually just set on the DOM: the cycle got stuck re-applying 'light' while the
-// button permanently displayed/announced 'auto'. Mirrors ADR-0014's LANG/T fix: keep the
+// button permanently displayed/announced 'auto'. Mirrors ADR-0014's LANG/T fix: keep
 // current mode in memory (read from storage once); persistence becomes best-effort
 // rather than the source of truth for what's currently applied.
 let _themeCache=(()=>{try{return _lg(THEME_KEY)}catch(_){return null}})();
@@ -1210,7 +1212,7 @@ const G={
     if(p.x<b.x-tol||p.y<b.y-tol||p.x>b.x+b.w+tol||p.y>b.y+b.h+tol)return false;
     // Rotation is box-only (x/y/w/h). shapeRot() gates rendering the same way, so gate
     // hit-testing identically: un-rotate the pointer into the box's local frame for the
-    // per-type check below (which uses s.x/s.w). A line/arrow/pen carrying a stray `rotate`
+    // per-type check below (which uses s.x/s.w). A line/arrow/pen with a stray `rotate`
     // (crafted import or a remote op — validPatch permits `rotate` on any shape) renders
     // UNrotated; without the `_hb(s)` guard its center would be s.x+(undefined||0)/2 =
     // NaN, un-rotating p to {NaN,NaN} and making the shape permanently unhittable.
@@ -1302,13 +1304,13 @@ function validPatch(p){
     if(k in p&&typeof p[k]==='string'&&k!=='dataUrl'&&p[k].length>(k==='text'?5000:600))return false;
   }
   // Security/privacy: an image shape's dataUrl flows into img.src (getImg). If it isn't
-  // an inline data:image/ URL, a crafted .board/share-link/IDB record — or a hostile sync
+  // an inline data:image/ URL, a crafted .board/share/IDB record — or a hostile sync
   // peer's add/upd op — could point it at an external host, turning every peer's render
   // into a tracking-pixel / IP-deanonymization request and breaking the no-external-
   // resources invariant. This is the shared intake gate (validShape + upd/patch paths),
   // so guarding here closes every vector at once (mirrors buildSVG's data: guard);
   // <img>-loaded SVG can't run scripts or fetch subresources — data: svg is safe.
-  if('dataUrl' in p&&p.dataUrl!=null&&!(_iS(p.dataUrl)&&_ln(p.dataUrl)<=16_000_000&&/^data:image\//.test(p.dataUrl)))return false;   // ADR-0379: length cap — else img.src buffers unbounded
+  if('dataUrl' in p&&p.dataUrl!=null&&!(_iS(p.dataUrl)&&_ln(p.dataUrl)<=16_000_000&&/^data:image\//.test(p.dataUrl)))return false;   // ADR-0379: length cap — else img.src buffers without bound
   // ADR-0327: s.link flows into window.open — a hostile .board/peer upd could carry
   // a javascript:/data: URL; only http(s) is openable.
   if('link' in p&&p.link!=null&&!(_iS(p.link)&&/^https?:\/\//.test(p.link)))return false;
@@ -1794,7 +1796,7 @@ function _lwwSkip(id,key,op){
   return !!(wc&&wc[key]&&wc[key].peer!==_pi()&&clockNewer(wc[key],op.clock));
 }
 // Bound connectors: line/arrow endpoints (s.a/s.b = shape id) derive from the bound
-// shape's edge at render/hit/export, so the connector follows. Stored coords = fallback.
+// shape's edge at render/hit/export, so the connector follows. Stored = fallback.
 // Where a ray from shape centre toward (fx,fy) exits the shape's true edge.
 // Rotation-aware: projects onto the UNROTATED box, then rotates the hit back to world.
 function _edgePt(sh,fx,fy){
@@ -1839,7 +1841,7 @@ function _hatchSegs(x,y,w,h,gap,cross){
   if(cross)for(let d=-h;d<w;d+=gap)_pu(out,[x+d+h,y,x+d,y+h]);
   return out;
 }
-// Canvas hatch: clip() reuses the still-current shape path (stroke doesn't consume it).
+// Canvas hatch: clip() reuses the current shape path (stroke doesn't consume it).
 function _hatchCtx(c,s){
   const segs=_hatchSegs(s.x,s.y,s.w,s.h,_max(6,(_szz(s)||1)*4),_fs2(s)==='cross');
   _sv2(c);c.clip();_gaS(c,0.55);
@@ -1855,7 +1857,7 @@ function _svgHatch(els,s,ox,oy,stroke,shapeTag,rT){
   const lns=segs.map(g=>`<line x1="${_num(g[0])}" y1="${_num(g[1])}" x2="${_num(g[2])}" y2="${_num(g[3])}" stroke="${stroke}" stroke-width="${_num(lw)}"/>`).join('');
   _pu(els,`<defs><clipPath id="${hid}">${shapeTag}</clipPath></defs><g clip-path="url(#${hid})" opacity="0.55"${rT}>${lns}</g>`);
 }
-// Shared by doDelete/flushErase/openTextEditor/_syncTextFinalize: resolve live endpoint
+// Shared by doDelete/flushErase/openTextEditor/_syncTextFinalize: resolve endpoint
 // coords BEFORE the referenced shapes are gone, so undo can restore exact bindings.
 // delIds = ids being removed; returns [{id,before:{a|b,x1,y1|x2,y2},after:{...}}].
 function computeConnClears(delIds){
@@ -2265,7 +2267,7 @@ function drawPenDraft(s){
 // RAF id (_rafId); _iv() restarts the loop only when it is not already running;
 // frame() clears the id on entry so that a mid-frame _iv() reschedules once.
 let needsRender=true,needOverlay=true,_rafId=0;
-let _damage=null;   // ADR-0026: accumulated world-space dirty rect during drag gestures; null = full repaint
+let _damage=null;   // ADR-0026: accumulated world-space dirty rect during drags; null = full repaint
 let _pinchSnap=null,_pinchVp=null;   // ADR-0030: pinch-start canvas copy + viewport for scaled preview
 function invalidate(){_damage=null;needsRender=true;needOverlay=true;if(!_rafId)_rafId=_rAF(frame);_ms()}
 // ADR-0026: gesture-local repaint — producers report the world-space rect they
@@ -3798,7 +3800,7 @@ function _sqMatches(){
 // Step through Ctrl+F search matches. dir=+1 next, -1 prev; wraps; selects + centres.
 // A new query resets the index so the first Enter always starts from match 0.
 // Announces WHICH shape was found via describeShape (parity with Tab cycle): a SR user
-// searches by content, so hearing only "2/7" without the matched shape is uninformative.
+// searches by content, so hearing "2/7" without the matched shape is uninformative.
 function _sqAdvance(dir){
   if(!_sq)return;
   const q=_lc(_sq);
@@ -4283,7 +4285,7 @@ function _cancelPointerGesture(){
   canvas.dataset.panning='false';ptr.lineClick=false;_zR();_penPred=null;_iv();
 }
 // ADR-0006: fires after LONG_PRESS_MS. Guards: gesture still active, handle-drag not in
-// progress (resize/rotate — a deliberate precision drag we shouldn't interrupt), and the
+// progress (resize/rotate — a deliberate precision drag not to interrupt), and the
 // pointer hasn't travelled past LONG_PRESS_MOVE_TOL (a real move/marquee exceeds
 // this well before the timer fires, so no separate pointermove cancellation is needed).
 function _longPressFire(cx,cy){
@@ -4550,7 +4552,7 @@ _on(canvas,'drop',e=>{
 });
 
 // ---- OS clipboard bridge ----
-// ADR-0516: ⌘C/⌘X write the selection as .board JSON (text/plain). clipboardData.setData
+// ADR-0516: ⌘C/⌘X write the selection as .board JSON (text/plain). setData
 // is only legal inside the copy/cut event, so keydown marks _cpNow and this handler
 // writes the JSON. _osClip echoes back to take the internal doPaste path.
 let _osClip=null,_cpNow=false;
@@ -5613,7 +5615,7 @@ const KEYMAP={v:'select',h:'hand',p:'pen',r:'rect',o:'ellipse',i:'eyedropper',
 // Focus trap for open dialogs (WCAG 2.4.3 Focus Order / 2.1.2 No Keyboard Trap-escape).
 // _focusables lists tabbable controls in a root; _trapStep is the pure wrap step:
 // given those controls, the active element and direction, it returns which element to
-// focus to keep Tab/Shift+Tab cycling INSIDE the dialog, or null to let native Tab move.
+// focus to keep Tab/Shift+Tab cycling INSIDE the dialog, else let native Tab move.
 function _focusables(root){
   return [..._qsa(root,'button,[href],input,select,textarea,summary,[tabindex]:not([tabindex="-1"])')]
     .filter(el=>!el.disabled&&!el.hidden);
@@ -7631,7 +7633,7 @@ function _esc(s){return _St(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&l
 function _num(v){const n=+v;return _fin(n)?n:0}
 // Copy text to the clipboard with a non-secure-context fallback. _nc() is
 // undefined on file:// and plain http:// — Board's primary "just open it" use case —
-// so prefer it in a secure context, else a textarea + execCommand('copy') fallback.
+// so prefer it in a secure context, else textarea + execCommand('copy') fallback.
 // Returns Promise<boolean> for UI feedback.
 async function copyText(text){
   if(window.isSecureContext&&_nc()){
@@ -7649,7 +7651,7 @@ async function copyText(text){
   }catch(_){return false}
 }
 // 禁則処理 (kinsoku shori): JIS X 4051 line-break prohibitions for CJK text. Japanese has
-// no spaces, so wrapText char-breaks runs of CJK — a naive break could start a line with
+// no spaces, so wrapText char-breaks CJK runs — a naive break could start a line with
 // closing punctuation/brackets/small-kana/prolonged-mark (行頭禁則) or end one with an
 // opening bracket (行末禁則). Both read as broken typography to a Japanese reader.
 const KINSOKU_START=_sT([...'、。，．・：；！？‼⁇⁈⁉）]｝」』〕〉》】〗〙〟”’｠»ヽヾゝゞ々ーぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮ〜～…‥,.!?:;)]}']);
@@ -8002,7 +8004,7 @@ const Net={
     }
     return 'keep';
   },
-  // Throttled: hello/sync-req are attacker-controllable and each snapshot clones the whole
+  // Throttled: hello/sync-req are attacker-controlled; each snapshot clones the whole
   // board twice — unthrottled, a hostile peer gets a cheap-request/expensive-response
   // amplifier. Honest peers only need one snapshot at join time.
   _lastSnapAt:0,_snapT:0,
@@ -8275,7 +8277,7 @@ const Share={
       const before=clone(_sh());
       const beforeWc=clone(_wc());
       const origSel=_selIds();
-      // ADR-0004: also survives past the undo window (reload/closed-tab), not just the session.
+      // ADR-0004: also survives past the undo window (reload/closed-tab), not only this session.
       if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());
       _rs(valid.map(clone));_setDocName(_s0((_iS(data.name)&&data.name)||'Shared',80));   // ADR-0009
       // Match the replace op's _apply: drop stale selection ids and per-property write
@@ -8571,9 +8573,9 @@ const UI={
     _tst(`${t('minimap')} ${state.showMinimap?t('on'):t('off')}`);
   },
   // ADR-0012: cycles auto -> light -> dark -> auto. "Auto" (no stored value) follows
-  // prefers-color-scheme, matching the pre-existing default; explicit light/dark override it.
+  // prefers-color-scheme, matching the pre-existing default; explicit light/dark override.
   // _themeMode() returns the in-memory _themeCache (deep-audit fix), not a live storage
-  // re-read, so a storage failure can't desync it from what applyTheme() actually applied.
+  // re-read, so a storage failure can't desync it from what applyTheme() applied.
   _themeMode(){return _themeCache;},
   toggleTheme(){
     const cur=_themeCache;
@@ -8774,12 +8776,12 @@ const UI={
     // position so the menu never overflows the viewport bottom edge.
     m.dataset.open='true';
     m.style.left=_min(x,innerWidth-200)+'px';
-    m.style.top=_min(y,innerHeight-m.offsetHeight-20)+'px';
+    m.style.top=_max(8,_min(y,innerHeight-m.offsetHeight-20))+'px';
     _fc(_qs(m,'.ctx-item'));
   },
   closeCtxMenu(){_g('ctx').dataset.open='false'},
   // FT-07: reuses openCtxMenu's rendering/positioning/keyboard-nav/focus-trap wholesale
-  // (all of it operates on the #ctx element generically, not on any hard-coded item set) —
+  // (all of it operates on #ctx generically, not on any hard-coded item set) —
   // touch users get every export format + import via one tap, not just the PNG default.
   openExportMenu(x,y){
     this.openCtxMenu(x,y,[
@@ -8932,7 +8934,7 @@ function _ctxMenuKeyNav(m,e){
   if(e.key==='Home'){_pd(e);_fc(items[0]);return;}
   if(e.key==='End'){_pd(e);_fc(items[_ln(items)-1]);return;}
   // Any other key: close the menu and swallow it (ADR-0552) — the menu is modal;
-  // a key fired while it was open shouldn't act on the canvas behind it (a Delete
+  // a key fired while open shouldn't act on the canvas behind it (a Delete
   // through the menu deleted the selection). Space/Enter still activate the
   // focused item natively (APG).
   else if(e.key!==' '&&e.key!=='Enter'){_pd(e);e.stopPropagation();UI.closeCtxMenu()}
@@ -9122,7 +9124,7 @@ function wire(){
   _oC(_g('rtcConnect'),async()=>{const a=_trm(_g('rtcAnswerIn').value);if(!a)return;try{await Net.wrtcConsumeAnswer(a);_oT('connected')}catch(e){_e(_St(e))}});
   _oC(_g('rtcCreateAnswer'),async()=>{const o=_trm(_g('rtcOfferIn').value);if(!o)return;try{_g('rtcAnswer').value=await Net.wrtcAcceptOffer(o)}catch(e){_e(_St(e))}});
   // ADR-0008 (FT-05): copy buttons for the signaling codes — mirrors shareCopyBtn,
-  // avoids the earlier select-in-a-readonly-textarea friction (especially fiddly on touch).
+  // avoids the earlier select-in-a-readonly-textarea friction (fiddly on touch).
   const _copyCode=async(taId)=>{const v=_g(taId).value;if(!v)return;const ok=await copyText(v);_tst(ok?t('shareCodeCopied'):t(_CF),ok?'ok':'warn')};
   _oC(_g('rtcOfferCopyBtn'),()=>_copyCode('rtcOffer'));
   _oC(_g('rtcAnswerCopyBtn'),()=>_copyCode('rtcAnswer'));
