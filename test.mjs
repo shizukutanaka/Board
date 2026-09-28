@@ -313,7 +313,7 @@ const checks = [
   ['selection export items in ctx menu', html.includes("['ctxExportSelPNG','',()=>exportSelection('png')]") && html.includes("['ctxCopySelPNG','',()=>exportSelection('copy')]") && html.includes("['ctxExportSelSVG','',()=>exportSelection('svg')]")],
   ['selection export i18n ja+en', html.includes("ctxExportSelPNG:'選択をPNG書き出し'") && html.includes("ctxExportSelSVG:'Export selection to SVG'")],
   // v1.7.111: ADR-0053 text overlay follows pan/zoom
-  ['text overlay tracked for viewport follow', html.includes("_teTa=ta;_teVp=''") && html.includes("_teTa=null;ta.remove();")],
+  ['text overlay tracked for viewport follow', html.includes("_teTa=ta;_teVp=''") && html.includes("_teTa=null;_rm(ta);")],
   ['_teFollow per-frame, viewport-signature gated', html.includes("_teFollow();     // ADR-0053") && html.includes("positionTextEditor(_teTa,s)") && html.includes("sig=v.x+','+v.y+','+v.zoom")],
   // v1.7.112: ADR-0054 no micro-pan at zoom bounds
   ['zoomAt pure no-op at zoom bounds', html.includes("if(nz===v.zoom)return;") && html.includes("const nz=clampZoom(v.zoom*Math.exp(delta));")],
@@ -391,7 +391,7 @@ const checks = [
   ['draft pen blits committed bitmap 1:1 snapped to device grid', html.includes("ctx.drawImage(d.cv,_rnd((d.bx-_vp().x)*_z)")],
   ['draft pen rebuilds stamp on pressure-mode flip/extrema growth', html.includes("usePr!==d.usePr||(usePr&&extGrew)") && html.includes("_inkRebuild(s,d)")],
   // v1.7.88: ADR-0030 pinch-zoom scaled preview
-  ['pinch snapshots canvas once at gesture start', html.includes("if(_pointers.size>=2)_pinchSnapNow()") && html.includes("function _pinchSnapNow()") && html.includes("_g2(_pinchSnap).drawImage(canvas,0,0)")],
+  ['pinch snapshots canvas once at gesture start', html.includes("if(_nP()>=2)_pinchSnapNow()") && html.includes("function _pinchSnapNow()") && html.includes("_g2(_pinchSnap).drawImage(canvas,0,0)")],
   ['pinch preview blits snapshot under accumulated transform', html.includes("if(_pinchSnap&&_pinchVp)") && html.includes("ctx.drawImage(_pinchSnap,0,0,W,H,(_pinchVp.x-v.x)*z")],
   ['pinch end clears snapshot and repaints crisp', html.includes("if(_pinchSnap){_pinchSnap=null;_pinchVp=null;_iv();}")],
   // v1.7.91: ADR-0033 ctrl+wheel (trackpad pinch) zoom preview shares the
@@ -556,6 +556,7 @@ const checks = [
   ['Text drop cascade (ADR-0518): non-file drops land as shapes at the drop point', html.includes('function _textCascade(s,wp)')&&html.includes("getData('text/plain')")&&html.includes("'text/uri-list'")&&html.includes('importBoardText(s,wp)')],
   ['Edge auto-pan during drag (ADR-0519)', html.includes('_edgePanTick')&&html.includes('_edgePanKick()')&&html.includes('ptr.panning')&&html.includes('_o2w(e)')],
   ['Canvas prop-assignment setters (ADR-0520)', html.includes('const _fsS=(c,v)=>c.fillStyle=v')&&html.includes('_tbS=(c,v)=>c.textBaseline=v')],
+  ['lostpointercapture gesture cancel (ADR-0521)', html.includes("'lostpointercapture'")&&html.includes('_cancelPointerGesture()')&&html.includes('const _nP=')],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
@@ -658,7 +659,7 @@ const checks = [
   ['no dead t() fallbacks in toast/confirm calls', !html.includes("t('connected')||") && !html.includes("t('importConfirm')||")],
   // v1.6.37: toast role=alert/status, Escape closes context menu
   ['toast sets role=alert for err/warn, role=status otherwise', html.includes("_sa(div,'role',kind==='err'||kind==='warn'?'alert':'status')")],
-  ['ADR-0389: identical consecutive toast re-append (no twin stacking)', html.includes("if(last&&last.textContent===msg)last.remove()")],
+  ['ADR-0389: identical consecutive toast re-append (no twin stacking)', html.includes("if(last&&last.textContent===msg)_rm(last)")],
   ['Escape key closes context menu before modal dismiss', html.includes("ctx2.dataset.open==='true'){UI.closeCtxMenu();return}")],
   // v1.6.38: context menu auto-focuses first item on open (keyboard a11y)
   ['context menu focuses first item on open', html.includes("_qs(m,'.ctx-item')?.focus()")],
@@ -1150,8 +1151,8 @@ const checks = [
   ['_fragIn tags assembly by sender (ADR-0469)', html.includes('sn.src!==src') && html.includes("viaRtc?'rtc':msg.peer")],
   ['_zCommit compacts grown frac keys (ADR-0471)', html.includes('reindexFrac()') && html.includes('m.has(s.id)?m.get(s.id):o[i]')],
   // v1.6.80: multi-touch pinch cancels the single-pointer gesture (no stray edits)
-  ['pointerdown aborts single-pointer gesture when a 2nd finger lands', html.includes("if(_pointers.size>=2){abortGesture();return;}")],
-  ['pointermove bails while pinch is active', html.includes("if(_pointers.size>=2)return;   // pinch in progress")],
+  ['pointerdown aborts single-pointer gesture when a 2nd finger lands', html.includes("if(_nP()>=2){abortGesture();return;}")],
+  ['pointermove bails while pinch is active', html.includes("if(_nP()>=2)return;   // pinch in progress")],
   ['abortGesture reverts move/resize/rotate from pointerdown snapshots', html.includes("function abortGesture(){") && html.includes("if(_dk('move')&&ptr.dragStartShapes){")],
   // v1.6.81: wheel deltaMode normalization (Firefox line-mode parity with Chrome pixels)
   ['wheelPx normalizes deltaMode to pixels', html.includes("function wheelPx(e)") && html.includes("e.deltaMode===1?16:e.deltaMode===2?400:1")],

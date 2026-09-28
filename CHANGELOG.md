@@ -2,6 +2,16 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.554] - 2026-09-28
+
+### 修正
+
+- **`lostpointercapture` でジェスチャキャンセル** — ブラウザが pointer capture を pointercancel なしに取り消す経路 (ジェスチャ横取り等) で `ptr.down` が残りポインタが論理的に永続 down し得た。通常経路では pointerup が先に落とすため no-op (ADR-0521)
+
+### 変更
+
+- `_cPt`/`_nP`/`_osp`/`_rm`/`_nc` shorthand 化 (input 座標・ピア数・DOM 除去・clipboard) — edge-pan/lostpointercapture の追加分を相殺し 512KB 天井内に収容 (ADR-0522)
+
 ## [1.7.553] - 2026-09-28
 
 ### 変更

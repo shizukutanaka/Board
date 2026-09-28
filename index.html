@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.553';
+const V='1.7.554';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2024,6 +2024,9 @@ const _cmt=o=>Store.commit(o),_ann=m=>UI.announce(m),_oURL=b=>URL.createObjectUR
 const _smk=(t,x)=>Shape.make(t,x),_sT2=(s,dx,dy)=>Shape.translate(s,dx,dy),_rZ=()=>UI.refreshZoom(),_trx=(db,t,n)=>db.transaction(t,n),_fT=(c,s,x,y)=>c.fillText(s,x,y),_pu=(a,...v)=>a.push(...v);   // ADR-0514
 const _sK=e=>e.shiftKey,_aK=e=>e.altKey,_mod=e=>e.metaKey||e.ctrlKey;   // ADR-0515: modifier-key reads
 const _fsS=(c,v)=>c.fillStyle=v,_ssS=(c,v)=>c.strokeStyle=v,_lnW=(c,v)=>c.lineWidth=v,_gaS=(c,v)=>c.globalAlpha=v,_taS=(c,v)=>c.textAlign=v,_tbS=(c,v)=>c.textBaseline=v;   // ADR-0520: canvas prop-assignment setters
+const _cPt=e=>({x:e.clientX,y:e.clientY}),_nP=()=>_pointers.size,_osp=e=>({x:e.offsetX,y:e.offsetY}),_spL=s=>s.split('\n');   // ADR-0522: input/coord/lines folds
+const _rm=e=>e.remove(),_nc=()=>navigator.clipboard;   // ADR-0522
+
 const _hb=s=>s.w!=null;   // ADR-0501
 const _idOK=id=>_iS(id)&&_ln(id)<=64;   // ADR-0502: wire id cap (ADR-0485): unlocked+visible predicate (4 sites)
 const _idIdx=id=>_sh().findIndex(s=>s.id===id);   // ADR-0497: shape index by id (4 sites)
@@ -3839,9 +3842,9 @@ _on(canvas,_PD,e=>{
   // Second finger down → pinch-zoom takes over; cancel the single-pointer gesture so
   // it doesn't keep drawing/moving underneath the zoom. _pointers is updated by the
   // capture-phase listener that runs before this bubble-phase one.
-  if(_pointers.size>=2){abortGesture();return;}
+  if(_nP()>=2){abortGesture();return;}
   canvas.setPointerCapture(e.pointerId);
-  const sp={x:e.offsetX,y:e.offsetY};
+  const sp=_osp(e);
   const wp=_s2(sp);
   ptr.down=true;state.measure=null;ptr.x=ptr.x0=sp.x;ptr.y=ptr.y0=sp.y;
   ptr.wx=ptr.wx0=wp.x;ptr.wy=ptr.wy0=wp.y;
@@ -4003,10 +4006,10 @@ _on(canvas,_PD,e=>{
   _iv();
 });
 _on(canvas,_PM,e=>{
-  const sp={x:e.offsetX,y:e.offsetY};
+  const sp=_osp(e);
   const wp=_s2(sp);
   if(_pA()){_laser=wp;_ivO();return;}
-  if(_pointers.size>=2)return;   // pinch in progress — the pinch handler owns the gesture
+  if(_nP()>=2)return;   // pinch in progress — the pinch handler owns the gesture
   Net.sendCursor(wp);   // ADR-0010
   UI.setStatusXY(_rnd(wp.x),_rnd(wp.y));
   if(!ptr.down){
@@ -4149,7 +4152,7 @@ _on(canvas,_PM,e=>{
 let _edgeRaf=0;
 function _edgePanTick(){
   _edgeRaf=0;
-  if(!ptr.down||ptr.panning||_pointers.size>=2)return;
+  if(!ptr.down||ptr.panning||_nP()>=2)return;
   const r=_cbr(),M=24,S=14,rw=r.width-M,rh=r.height-M;
   const vx=ptr.x<M?-S*(M-ptr.x)/M:ptr.x>rw?S*(ptr.x-rw)/M:0;
   const vy=ptr.y<M?-S*(M-ptr.y)/M:ptr.y>rh?S*(ptr.y-rh)/M:0;
@@ -4287,6 +4290,9 @@ function _clearLongPress(){
   if(_longPressTimer){_cT(_longPressTimer);_longPressTimer=null}
 }
 _on(canvas,_PC,_cancelPointerGesture);
+// ADR-0521: capture revocation without pointercancel would leave ptr.down
+// stuck — cancel the gesture (no-op after a normal pointerup).
+_on(canvas,'lostpointercapture',()=>{if(ptr.down)_cancelPointerGesture()});
 _on(canvas,'contextmenu',e=>{_pd(e);UI.openCtxMenu(e.clientX,e.clientY)});
 _on(canvas,'pointerleave',()=>{if(_laser){_laser=null;_ivO()}});
 
@@ -4367,7 +4373,7 @@ function openLabelEditor(hit,leftPx,topPx,bold){
   const commit=()=>{
     const lbl=_trm(inp.value);
     if(lbl!==hit.label){const before={label:hit.label??null};const after={label:lbl||null};hit.label=lbl||null;_rcOp({op:'upd',id:hit.id,before,after});_iv()}
-    _lblTa=null;inp.remove();
+    _lblTa=null;_rm(inp);
   };
   _on(inp,'blur',commit);
   _on(inp,_KD,ev=>{
@@ -4391,7 +4397,7 @@ function openLabelEditor(hit,leftPx,topPx,bold){
       }
       commit();
     }
-    if(ev.key==='Escape'){inp.removeEventListener('blur',commit);_lblTa=null;inp.remove()}
+    if(ev.key==='Escape'){inp.removeEventListener('blur',commit);_lblTa=null;_rm(inp)}
   });
 }
 // ADR-0182: same viewport-signature follow as _teFollow (ADR-0053), for the
@@ -4622,15 +4628,15 @@ _on(canvas,'wheel',e=>{
 // Pinch zoom (multi-touch via pointer events)
 const _pointers=_mP();  // pointerId → {x,y}
 _on(canvas,_PD,e=>{
-  _pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  _pointers.set(e.pointerId,_cPt(e));
 },{capture:true});
 _on(canvas,_PU,e=>{_pointers.delete(e.pointerId)},{capture:true});
 _on(canvas,_PC,e=>{_pointers.delete(e.pointerId)},{capture:true});
 _on(canvas,_PM,e=>{
-  if(_pointers.size<2){_pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});return}
+  if(_nP()<2){_pointers.set(e.pointerId,_cPt(e));return}
   const prev=_pointers.get(e.pointerId);
   if(!prev)return;
-  _pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  _pointers.set(e.pointerId,_cPt(e));
   const pts=[..._pointers.values()];
   if(_ln(pts)<2)return;
   const curDist=_hp(pts[0].x-pts[1].x,pts[0].y-pts[1].y);
@@ -4645,7 +4651,7 @@ _on(canvas,_PM,e=>{
 },{capture:true,passive:true});
 let _pinchPrev=0;
 // Reset pinch state when fewer than 2 pointers
-const _resetPinch=()=>{if(_pointers.size<2){_pinchPrev=0;if(_pinchSnap){_pinchSnap=null;_pinchVp=null;_iv();}}};
+const _resetPinch=()=>{if(_nP()<2){_pinchPrev=0;if(_pinchSnap){_pinchSnap=null;_pinchVp=null;_iv();}}};
 
 // ADR-0517: Safari trackpad pinch — macOS/iPadOS Safari fire proprietary
 // GestureEvent (gesturestart/change/end, e.scale) instead of ctrl+wheel, so
@@ -4666,7 +4672,7 @@ _on(canvas,_PC,_resetPinch);
 let _wheelZoomEnd=0;
 // ADR-0030/0033 shared: capture the pristine canvas + viewport for the
 // scaled-preview path. Called before the first zoom of a gesture (touch pinch
-// via _pointers.size>=2, or a ctrl+wheel burst) so every subsequent frame can
+// via _nP()>=2, or a ctrl+wheel burst) so every subsequent frame can
 // blit under the accumulated transform without rescanning the scene.
 function _pinchSnapNow(){
   if(!_pinchSnap){
@@ -4689,7 +4695,7 @@ function zoomAt(sp,delta){
   // ticks (the "micro-pan" audit remainder). A clamped zoom is a pure no-op —
   // return before the pinch snapshot, nothing will move.
   if(nz===v.zoom)return;
-  if(_pointers.size>=2)_pinchSnapNow();
+  if(_nP()>=2)_pinchSnapNow();
   const wp=_s2(sp);
   v.x=wp.x-sp.x/nz;
   v.y=wp.y-sp.y/nz;
@@ -5501,7 +5507,7 @@ function openTextEditor(s,isNew){
         _rcOp({op:'upd',id:s.id,before,after});
       }
     }
-    _teTa=null;ta.remove();_iv();
+    _teTa=null;_rm(ta);_iv();
   });
   _on(ta,_KD,ev=>{
     if(ev.isComposing)return;
@@ -6389,10 +6395,10 @@ function exportPNG(shapes=_sh(),scale){
 // Copy the board PNG to the OS clipboard (Excalidraw parity). No shortcut —
 // ⌘⇧C collides with the browser DevTools inspector; menu-only.
 function copyPNG(shapes=_sh()){
-  if(!navigator.clipboard||!navigator.clipboard.write||typeof ClipboardItem===_un){_wT('copyUnsupported');return}
+  if(!_nc()||!_nc().write||typeof ClipboardItem===_un){_wT('copyUnsupported');return}
   _renderPngBlob(shapes,bl=>{
     if(!bl){_eT(_EF);return}
-    navigator.clipboard.write([new ClipboardItem({'image/png':bl})]).then(
+    _nc().write([new ClipboardItem({'image/png':bl})]).then(
       ()=>_oT('copied'),
       ()=>_wT(_CF));
   });
@@ -7605,13 +7611,13 @@ function _svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT){
 function _esc(s){return _St(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
 // Coerce to finite number; prevents string geometry breaking SVG numeric attributes.
 function _num(v){const n=+v;return _fin(n)?n:0}
-// Copy text to the clipboard with a non-secure-context fallback. navigator.clipboard is
+// Copy text to the clipboard with a non-secure-context fallback. _nc() is
 // undefined on file:// and plain http:// — Board's primary "just open index.html" use case —
 // so prefer it only in a secure context and otherwise fall back to a temporary textarea +
 // execCommand('copy'), which still works there. Returns Promise<boolean> for UI feedback.
 async function copyText(text){
-  if(window.isSecureContext&&navigator.clipboard){
-    try{await navigator.clipboard.writeText(text);return true}catch(_){}
+  if(window.isSecureContext&&_nc()){
+    try{await _nc().writeText(text);return true}catch(_){}
   }
   try{
     const ta=_ce('textarea');
@@ -8599,14 +8605,14 @@ const UI={
   },
   toast(msg,kind){
     const st=_g('toasts'),last=st.lastElementChild;
-    if(last&&last.textContent===msg)last.remove();   // ADR-0389: identical toast — move to top instead of stacking a twin (re-append still re-announces via aria-live)
+    if(last&&last.textContent===msg)_rm(last);   // ADR-0389: identical toast — move to top instead of stacking a twin (re-append still re-announces via aria-live)
     const div=_ce('div');
     div.className='toast'+(kind?' '+kind:'');
     _sa(div,'role',kind==='err'||kind==='warn'?'alert':'status');
     div.textContent=msg;
     _g('toasts').appendChild(div);
     _stO(()=>{div.style.opacity='0';div.style.transform='translateY(4px)';
-      _stO(()=>div.remove(),240)},1600);
+      _stO(()=>_rm(div),240)},1600);
   },
   // SR-only announcement: for frequent state changes (tool switch, zoom, flip, lock,
   // keyboard rotate) a visible toast per keypress would be UI noise for sighted users,
