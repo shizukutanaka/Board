@@ -557,6 +557,7 @@ const checks = [
   ['Edge auto-pan during drag (ADR-0519)', html.includes('_edgePanTick')&&html.includes('_edgePanKick()')&&html.includes('ptr.panning')&&html.includes('_o2w(e)')],
   ['Canvas prop-assignment setters (ADR-0520)', html.includes('const _fsS=(c,v)=>c.fillStyle=v')&&html.includes('_tbS=(c,v)=>c.textBaseline=v')],
   ['lostpointercapture gesture cancel (ADR-0521)', html.includes("'lostpointercapture'")&&html.includes('_cancelPointerGesture()')&&html.includes('_nP=()=>')],
+  ['pointerleave clears hover + laser (ADR-0526)', html.includes("'pointerleave'")&&html.includes('state.hover=null')],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],

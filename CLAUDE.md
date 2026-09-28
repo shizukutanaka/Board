@@ -575,6 +575,7 @@ Board/
 │   ├── ADR-0523-textcontent-fold.md # _tC textContent setter shorthand (実装済)
 │   ├── ADR-0524-contextmenu-drag-guard.md # ドラッグ中 contextmenu でジェスチャキャンセル (実装済)
 │   ├── ADR-0525-split-lines-fold.md # _spL split('\n') 活性化 (実装済)
+│   ├── ADR-0526-pointerleave-hover-clear.md # pointerleave で state.hover クリア (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

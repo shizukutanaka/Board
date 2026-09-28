@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.555';
+const V='1.7.556';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4294,7 +4294,10 @@ _on(canvas,'lostpointercapture',()=>{if(ptr.down)_cancelPointerGesture()});
 _on(canvas,'contextmenu',e=>{_pd(e);
   // ADR-0524: contextmenu mid-gesture swallows the real pointerup — cancel instead.
   if(ptr.down)_cancelPointerGesture();else UI.openCtxMenu(e.clientX,e.clientY)});
-_on(canvas,'pointerleave',()=>{if(_laser){_laser=null;_ivO()}});
+_on(canvas,'pointerleave',()=>{if(_laser){_laser=null;_ivO()}
+  // ADR-0526: state.hover keeps feeding the quick-connect dots after the
+  // pointer exits — clear it so stale dots don't linger on the edge shape.
+  if(state.hover){state.hover=null;_ivO()}});
 
 // Double-click: re-edit text shapes / label boxes & connectors
 _on(canvas,'dblclick',e=>{

@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.556] - 2026-09-28
+
+### 修正
+
+- **pointerleave で hover をクリア** — ポインタがキャンバスを離れた後も `state.hover` が残り、端にあった図形の quick-connect ドットが滞留していた。既存の `_laser` クリアと同じハンドラで `state.hover` も消去 (ADR-0526)
+
 ## [1.7.555] - 2026-09-28
 
 ### 修正
