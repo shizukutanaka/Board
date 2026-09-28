@@ -857,7 +857,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.595';
+const V='1.7.596';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2638,7 +2638,7 @@ function drawEmptyHint(c,W,H){
   _fT(c,t('emptyHint'),W/(2*DPR),H/(2*DPR));
 }
 // ADR-0011: ephemeral peer selection outlines — bbox frame only, in the peer's color,
-// thin [3,3] dashes. Deliberately distinct from the user's own selection on all three
+// thin [3,3] dashes. Deliberately dis
 // axes (color / --accent-contrast, dash / solid, no handles) and from the locked-
 // selection dash pattern [5,4]. _pr()[].sel is set only by Net's 'selection'
 // handler and vanishes with the peer entry on reap/disconnect.
@@ -3831,7 +3831,7 @@ let _longPressTimer=null;   // ADR-0006
 // Revert any in-progress single-pointer gesture without committing — used when a
 // second finger lands and a pinch-zoom takes over (multi-touch). Each branch restores
 // the pre-gesture snapshot captured at pointerdown so nothing is half-applied or left
-// non-undoable: move/resize/rotate roll back to their originals, an in-progress erase
+// non-undoable: move/resize/rotate ro
 // restores the shapes it had optimistically removed, and an uncommitted draft (which
 // never touched _sh()) is simply dropped. (Qiita/Zenn: multi-touch + pointer)
 function abortGesture(){
@@ -4437,8 +4437,8 @@ let _lblTa=null,_lblVp='';
 const _cxO=()=>{if(_teTa)_teTa.blur();if(_lblTa)_lblTa.inp.blur()};
 function _lblFollow(){
   if(!_lblTa)return;
-  // ADR-0559: same proactive close when the labelled shape is gone.
-  if(!byId(_lblTa.hit.id)){_rm(_lblTa.inp);_lblTa=null;return}
+  // ADR-0559/0569: same proactive close when the labelled shape is gone or hidden.
+  const _lt=byId(_lblTa.hit.id);if(!_lt||_hd(_lt)){_rm(_lblTa.inp);_lblTa=null;return}
   const v=_vp(),sig=v.x+'|'+v.y+'|'+v.z;
   if(sig===_lblVp)return;
   _lblVp=sig;
@@ -5582,9 +5582,10 @@ function openTextEditor(s,isNew){
 let _teTa=null,_teVp='';
 function _teFollow(){
   if(!_teTa||!_ed())return;
-  // ADR-0559: the edited shape was removed under us (remote del/clear/replace,
-  // local undo) — close the overlay at once instead of dangling until blur.
-  const s=byId(_ed());if(!s){_rm(_teTa);_teTa=null;state.editing=null;return}
+  // ADR-0559/0569: the edited shape was removed OR hidden under us (remote
+  // del/clear/replace/hide, local undo) — close the overlay at once instead of
+  // dangling until blur. No commit: the hidden shape can't be edited to anyway.
+  const s=byId(_ed());if(!s||_hd(s)){_rm(_teTa);_teTa=null;state.editing=null;return}
   const v=_vp(),sig=v.x+','+v.y+','+v.zoom;
   if(sig===_teVp)return;
   _teVp=sig;positionTextEditor(_teTa,s);
@@ -6032,6 +6033,7 @@ function selectSamePaint(){
 // hidden shape is completely non-interactive. Restore via "show all" since
 // hidden shapes can't be re-selected — same convention as Figma's layers.
 function hideSelection(){
+  _cxO();   // ADR-0569: fold any open editor first
   const before=[],after=[];
   _forSel((s,id)=>{if(_lk(s)||_hd(s))return;
     _pp(before,after,id,'visible',s.visible??null,0);

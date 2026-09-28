@@ -699,8 +699,8 @@ const checks = [
   ['text editor blur guards remote-deleted shape (ADR-0556)', html.includes("if(!byId(s.id)){state.editing=null;_teTa=null;_rm(ta);_iv();return}")],
   ['label editor commit guards remote-deleted shape (ADR-0557)', html.includes("if(!byId(hit.id)){_lblTa=null;_rm(inp);_iv();return}")],
   ['sticky chain guards remote-deleted source (ADR-0558)', html.includes("_lk(s)||!byId(s.id))return")],
-  ['text overlay closes when edited shape removed (ADR-0559)', html.includes("if(!s){_rm(_teTa);_teTa=null;state.editing=null;return}")],
-  ['label overlay closes when labelled shape removed (ADR-0559)', html.includes("if(!byId(_lblTa.hit.id)){_rm(_lblTa.inp);_lblTa=null;return}")],
+  ['text overlay closes when edited shape removed/hidden (ADR-0559/0569)', html.includes("if(!s||_hd(s)){_rm(_teTa);_teTa=null;state.editing=null;return}")],
+  ['label overlay closes when labelled shape removed/hidden (ADR-0559/0569)', html.includes("if(!_lt||_hd(_lt)){_rm(_lblTa.inp);_lblTa=null;return}")],
   ['editors close a still-open overlay first (ADR-0560)', html.includes("const _cxO=()=>{if(_teTa)_teTa.blur();if(_lblTa)_lblTa.inp.blur()}")],
   ['resize resets overlay follow sigs (ADR-0561)', html.includes("_teVp=_lblVp=''")],
   // v1.6.39: console cleanup - no redundant console.warn/error in production paths
