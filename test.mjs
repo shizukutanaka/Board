@@ -578,6 +578,8 @@ const checks = [
     }
     return bad.length===0;
   })()],
+  ['.onclick= assignments folded to _oC helper (ADR-0539)', html.includes("_oC=(e,f)=>e.onclick=f")&&html.split('.onclick=').length-1===1],
+  ['presentation leave() tolerates null focus trigger (ADR-0539)', html.includes('_focusTrigger?.focus();_focusTrigger=null;')],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
@@ -1078,7 +1080,7 @@ const checks = [
   ['theme toggle: applyTheme/toggleTheme/refreshThemeBtn wired, boot restores persisted mode',
     html.includes("function applyTheme(mode){") && html.includes("toggleTheme(){")
     && html.includes("refreshThemeBtn(){") && html.includes("applyTheme(UI._themeMode());UI.refreshThemeBtn();")
-    && html.includes("_g('btnTheme').onclick=()=>UI.toggleTheme();")],
+    && html.includes("_oC(_g('btnTheme'),()=>UI.toggleTheme());")],
   ['theme toggle: existing data-theme=light/dark CSS selectors are finally reachable from JS',
     html.includes("_de.dataset.theme=mode") && html.includes(':root[data-theme=light]') && html.includes(':root[data-theme=dark]')],
   // v1.7.66 (ADR-0013, FT-19)
@@ -1093,7 +1095,7 @@ const checks = [
     && html.includes("if(_savedLang==='ja'||_savedLang==='en')LANG=_savedLang;")],
   ['language toggle: toggleLang resyncs applyI18n/fillHelp/updateOnline/search-box/canvas, wired to btnLang',
     html.includes('toggleLang(){') && html.includes('UI.applyI18n();') && html.includes('UI.fillHelp();')
-    && html.includes("_g('btnLang').onclick=()=>UI.toggleLang();")],
+    && html.includes("_oC(_g('btnLang'),()=>UI.toggleLang());")],
   // v1.7.68 (deep-audit fix): ADR-0002's per-property LWW guard against undo clobbering
   // a newer remote write was implemented only in the 'upd' case; style/resize/align and
   // group/ungroup shared the forward stamping (_stampWrites) but not the reverse guard.

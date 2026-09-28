@@ -820,7 +820,7 @@ const _scl=()=>_sl().clear(),_sad=id=>_sl().add(id),_sdl=id=>_sl().delete(id);  
 const _selN=()=>_sl().size;   // ADR-0334
 const _selUnl=f=>_selAny(s=>f(s)&&!_lk(s));   // ADR-0454: unlocked-selection predicate
 const _nS=()=>_sh().length;   // ADR-0425
-const _sv=s=>s.visible!==0,_lk=s=>s.locked,_hd=s=>s.visible===0,_fS=s=>s.fontSize,_wh=(e,w,ht)=>{e.width=w;e.height=ht},_sk=s=>s.stroke,_fi=s=>s.fill,_lb=s=>s.label,_rt=s=>s.rotate,_du=s=>s.dataUrl,_gi=s=>s.groupId,_oP=s=>s.opacity,_lP=s=>s.labelPos,_sp=s=>s.spacing,_el=s=>s.elbow,_va=s=>s.valign,_szz=s=>s.size,_txx=s=>s.text,_ftt=s=>s.font,_coo=s=>s.color,_cv=()=>_ce('canvas'),_g2=c=>c.getContext('2d'),_ln=x=>x.length,_s0=(x,n)=>x.slice(0,n),_ix=(a,b)=>a.indexOf(b),_ew=(x,y)=>x.endsWith(y),_trm=x=>x.trim(),_sw=(x,y)=>x.startsWith(y),_dsp=(e,v)=>e.style.display=v,_hdn=(e,v)=>e.hidden=v,_dk=k=>ptr.dragKind===k;   // ADR-0425/../0447
+const _sv=s=>s.visible!==0,_lk=s=>s.locked,_hd=s=>s.visible===0,_fS=s=>s.fontSize,_wh=(e,w,ht)=>{e.width=w;e.height=ht},_sk=s=>s.stroke,_fi=s=>s.fill,_lb=s=>s.label,_rt=s=>s.rotate,_du=s=>s.dataUrl,_gi=s=>s.groupId,_oP=s=>s.opacity,_lP=s=>s.labelPos,_sp=s=>s.spacing,_el=s=>s.elbow,_va=s=>s.valign,_szz=s=>s.size,_txx=s=>s.text,_ftt=s=>s.font,_coo=s=>s.color,_cv=()=>_ce('canvas'),_g2=c=>c.getContext('2d'),_ln=x=>x.length,_s0=(x,n)=>x.slice(0,n),_ix=(a,b)=>a.indexOf(b),_ew=(x,y)=>x.endsWith(y),_trm=x=>x.trim(),_sw=(x,y)=>x.startsWith(y),_dsp=(e,v)=>e.style.display=v,_hdn=(e,v)=>e.hidden=v,_oC=(e,f)=>e.onclick=f,_dk=k=>ptr.dragKind===k;   // ADR-0425/../0447
 const _fin=Number.isFinite;   // ADR-0334
 const _min=Math.min,_max=Math.max,_abs=Math.abs;   // ADR-0337
 const _ga=(e,n)=>e.getAttribute(n),_sa=(e,n,v)=>e.setAttribute(n,v),_ap=(p,c)=>p.appendChild(c),_AL='aria-label',_AP='aria-pressed';   // ADR-0340/0392/0394/0399
@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.566';
+const V='1.7.567';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2409,7 +2409,7 @@ function _mirrorSync(){
     const b=_ce('button');
     b.type='button';
     _tC(b,(i+1)+'. '+describeShape(s)+(_hd(s)||_oP(s)===0?' '+t('tagHidden'):''));   // ADR-0154
-    b.onclick=()=>_mirrorGo(s.id);
+    _oC(b,()=>_mirrorGo(s.id));
     _ap(li,b);_ap(ul,li);
   }
   if(_nS()>MIRROR_MAX){
@@ -8759,7 +8759,7 @@ const UI={
         const sc=_ce('span');sc.className='k';_tC(sc,shortcut);
         _ap(b,sc);
       }
-      b.onclick=()=>{fn();this.closeCtxMenu()};
+      _oC(b,()=>{fn();this.closeCtxMenu()});
       _ap(m,b);
     }
     // Show first so offsetHeight reflects actual rendered height, then clamp
@@ -8950,19 +8950,19 @@ function wire(){
   for(const b of _qsa(document,'.tool'))
     _on(b,_CK,()=>pickTool(b.dataset.tool));
   // topbar
-  _g('btnUndo').onclick=()=>Store.undo()&&_tst(t('undone'));
-  _g('btnRedo').onclick=()=>Store.redo()&&_tst(t('redone'));
-  _g('btnExport').onclick=exportPNG;
-  _g('btnExportMenu').onclick=e=>{
+  _oC(_g('btnUndo'),()=>Store.undo()&&_tst(t('undone')));
+  _oC(_g('btnRedo'),()=>Store.redo()&&_tst(t('redone')));
+  _oC(_g('btnExport'),exportPNG);
+  _oC(_g('btnExportMenu'),e=>{
     const r=e.currentTarget.getBoundingClientRect();
     UI.openExportMenu(r.left,r.bottom+4);
-  };
+  });
   _g('fileImport').onchange=e=>{
     const f=e.target.files[0];
     if(f)/\.(drawio|dio)$/i.test(f.name)?importDrawioFile(f):_ew(f.name,'.excalidraw')?importExcFile(f):(_ew(f.name,'.svg')||f.type==='image/svg+xml')?importSvgFile(f):importBoard(f);   // ADR-0203
     e.target.value='';   // allow re-selecting the same filename to re-trigger change
   };
-  _g('btnPresent').onclick=()=>Presentation.enter();
+  _oC(_g('btnPresent'),()=>Presentation.enter());
   // doc name
   const docNameEl=_g('docName');
   if(docNameEl){
@@ -8977,11 +8977,11 @@ function wire(){
     _on(docNameEl,'compositionend',_commitDocName);
     _on(docNameEl,_CH,()=>{_setDocName(docNameEl.value||_UT);_ps()});
   }
-  _g('btnInstall').onclick=_onBtnInstall;
-  _g('btnLang').onclick=()=>UI.toggleLang();
-  _g('btnTheme').onclick=()=>UI.toggleTheme();
-  _g('btnHelp').onclick=()=>UI.toggleHelp();
-  _g('helpClose').onclick=()=>UI.toggleHelp();
+  _oC(_g('btnInstall'),_onBtnInstall);
+  _oC(_g('btnLang'),()=>UI.toggleLang());
+  _oC(_g('btnTheme'),()=>UI.toggleTheme());
+  _oC(_g('btnHelp'),()=>UI.toggleHelp());
+  _oC(_g('helpClose'),()=>UI.toggleHelp());
   _on(_g('help'),_CK,e=>{
     if(e.target.id==='help')UI.toggleHelp();
   });
@@ -9046,10 +9046,10 @@ function wire(){
     _on(opacRng,_CH,()=>{_sfbFlush('opacity',_st().opacity);_sfbCapture('opacity');});
   }
   // zoom
-  _g('btnZoomIn').onclick=()=>zoomBy(1.2);
-  _g('btnZoomOut').onclick=()=>zoomBy(1/1.2);
-  _g('btnFit').onclick=fitToContent;
-  _g('zoomVal').onclick=zoomReset;
+  _oC(_g('btnZoomIn'),()=>zoomBy(1.2));
+  _oC(_g('btnZoomOut'),()=>zoomBy(1/1.2));
+  _oC(_g('btnFit'),fitToContent);
+  _oC(_g('zoomVal'),zoomReset);
   // online
   _on(window,'online',UI.updateOnline);
   _on(window,'offline',UI.updateOnline);
@@ -9092,35 +9092,35 @@ function wire(){
   setInterval(UI.refreshSaved,5000);
 
   // ---- Share / Net (v1.1) ----
-  _g('btnShare').onclick=()=>UI.openShare();
-  _g('shareClose').onclick=()=>UI.closeShare();
+  _oC(_g('btnShare'),()=>UI.openShare());
+  _oC(_g('shareClose'),()=>UI.closeShare());
   _on(_g('share'),_CK,e=>{
     if(e.target.id==='share')UI.closeShare();
   });
-  _g('shareCopyBtn').onclick=async()=>{
+  _oC(_g('shareCopyBtn'),async()=>{
     const url=_g('shareUrl').value;
     if(url){const ok=await copyText(url);_tst(ok?t('shareUrlCopied'):t(_CF),ok?'ok':'warn')}
-  };
+  });
   // WebRTC manual signaling
   {
-  _g('rtcCreateOffer').onclick=async()=>{try{_g('rtcOffer').value=await Net.wrtcCreateOffer()}catch(e){_e(_St(e))}};
-  _g('rtcConnect').onclick=async()=>{const a=_trm(_g('rtcAnswerIn').value);if(!a)return;try{await Net.wrtcConsumeAnswer(a);_oT('connected')}catch(e){_e(_St(e))}};
-  _g('rtcCreateAnswer').onclick=async()=>{const o=_trm(_g('rtcOfferIn').value);if(!o)return;try{_g('rtcAnswer').value=await Net.wrtcAcceptOffer(o)}catch(e){_e(_St(e))}};
+  _oC(_g('rtcCreateOffer'),async()=>{try{_g('rtcOffer').value=await Net.wrtcCreateOffer()}catch(e){_e(_St(e))}});
+  _oC(_g('rtcConnect'),async()=>{const a=_trm(_g('rtcAnswerIn').value);if(!a)return;try{await Net.wrtcConsumeAnswer(a);_oT('connected')}catch(e){_e(_St(e))}});
+  _oC(_g('rtcCreateAnswer'),async()=>{const o=_trm(_g('rtcOfferIn').value);if(!o)return;try{_g('rtcAnswer').value=await Net.wrtcAcceptOffer(o)}catch(e){_e(_St(e))}});
   // ADR-0008 (FT-05): copy buttons for the signaling codes — mirrors shareCopyBtn's pattern,
   // avoids the earlier select-in-a-readonly-textarea friction (especially fiddly on touch).
   const _copyCode=async(taId)=>{const v=_g(taId).value;if(!v)return;const ok=await copyText(v);_tst(ok?t('shareCodeCopied'):t(_CF),ok?'ok':'warn')};
-  _g('rtcOfferCopyBtn').onclick=()=>_copyCode('rtcOffer');
-  _g('rtcAnswerCopyBtn').onclick=()=>_copyCode('rtcAnswer');
+  _oC(_g('rtcOfferCopyBtn'),()=>_copyCode('rtcOffer'));
+  _oC(_g('rtcAnswerCopyBtn'),()=>_copyCode('rtcAnswer'));
   // ADR-0045: invite link — the offer rides in the URL hash, so the joiner skips
   // the "paste the invite code" step entirely (they only need to click
   // "create answer" and send the answer back). No auto-connect: opening the
   // link must not expose the joiner's IP to the host before consent.
-  _g('rtcInviteLinkBtn').onclick=async()=>{
+  _oC(_g('rtcInviteLinkBtn'),async()=>{
     const v=_g('rtcOffer').value;
     if(!v){_wT('inviteLinkNoCode');return}
     const ok=await copyText(location.origin+location.pathname+'#s='+_eU(v));
     _tst(ok?t('shareCodeCopied'):t(_CF),ok?'ok':'warn')
-  };
+  });
   }
   // Net presence → UI
   Net._onConnChange=()=>{UI.refreshPeers();const n=_pr().size;if(n!==(Net._pCt|0))_ann(t(n>(Net._pCt|0)?'peerJoined':'peerLeft'));Net._pCt=n};   // ADR-0463: join/leave was SR-silent
@@ -9744,7 +9744,7 @@ const Presentation=(()=>{
     const exit=_ce('button');
     _tC(exit,'✕ Esc');
     exit.style.cssText='position:absolute;top:12px;right:16px;background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:13px;';
-    exit.onclick=leave;
+    _oC(exit,leave);
     _ap(_overlay,exit);
     // Canvas passthrough: hide the overlay visually and let canvas show
     _overlay.style.pointerEvents='none';  // clicks pass through to canvas
@@ -9783,7 +9783,7 @@ const Presentation=(()=>{
     resize();
     if(_savedVp){_oa(_vp(),_savedVp);_savedVp=null;_rZ()}
     _iv();
-    _fc(_focusTrigger);_focusTrigger=null;
+    _focusTrigger?.focus();_focusTrigger=null;
   }
 
   function _goto(i){
