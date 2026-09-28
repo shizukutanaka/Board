@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.560] - 2026-09-28
+
+### ドキュメント
+
+- spec.md §14.2/14.3 を実装状況に同期 — DOM ミラー・インポート拡張・パリティ監査・画像ワイヤ参照を DONE へ、§14.3.1 に真の残課題 (多ページのみ未完) を集約 (ADR-0531)
+
 ## [1.7.559] - 2026-09-28
 
 ### テスト
