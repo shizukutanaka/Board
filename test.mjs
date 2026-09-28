@@ -698,6 +698,7 @@ const checks = [
   // v1.7.584 (ADR-0556): blur on a remotely-deleted shape must not commit a phantom op
   ['text editor blur guards remote-deleted shape (ADR-0556)', html.includes("if(!byId(s.id)){state.editing=null;_teTa=null;_rm(ta);_iv();return}")],
   ['label editor commit guards remote-deleted shape (ADR-0557)', html.includes("if(!byId(hit.id)){_lblTa=null;_rm(inp);_iv();return}")],
+  ['sticky chain guards remote-deleted source (ADR-0558)', html.includes("_lk(s)||!byId(s.id))return")],
   // v1.6.39: console cleanup - no redundant console.warn/error in production paths
   ['no console.warn in BroadcastChannel catch', !html.includes("console.warn('BroadcastChannel init failed'")],
   ['no console.error in save catch (user gets toast)', !html.includes("console.error('save failed'")],

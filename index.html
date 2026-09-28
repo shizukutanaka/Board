@@ -857,7 +857,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.585';
+const V='1.7.586';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1458,7 +1458,7 @@ const Store={
     }
     return _ln(fixes)?fixes:null;
   },
-  // Apply remote op: dedup by clock; REMOTE_OPS allow-list + validRemotePayload guard.
+  // Apply remote op: dedup by clock; REMOTE_OPS allow-list + payload guard.
   REMOTE_OPS:_sT(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize']),
   applyRemote(op){
     if(!op||!op.clock||!this.REMOTE_OPS.has(op.op))return;
@@ -1488,7 +1488,7 @@ const Store={
   },
   // Per-property write clocks live in _wc() (shapeId -> {prop: clock}), NOT on
   // the shape — so they never pollute clones, snapshots, persistence or validation.
-  // LWW is gated/stamped only on the keys an op actually changed (before-vs-after diff),
+  // LWW is gated/stamped only on keys an op actually changed (before-vs-after diff),
   // so resize/align (whole-shape snapshots) claim only moved geometry, never a
   // concurrently-edited property like stroke. group/ungroup are treated as per-shape
   // writes to the 'groupId' property, so overlapping concurrent groups converge.
@@ -1525,14 +1525,14 @@ const Store={
     return _ln(op.after)>0;
   },
   // Stamp the per-property write clock for the keys an op actually changed, so later
-  // concurrent writes can be ordered against it. Local commits and accepted remote ops
+  // concurrent writes can be ordered against it. Local commits and accepted remotes
   // alike (both forward writes; for remote, _lwwDrop already reduced op.after).
   _stampWrites(op){
     if(!this._lwwOp(op))return;
     const C=op.clock;if(!C)return;
     // Only stamp shapes that actually exist: a late remote upd for a deleted/unknown
     // shape no-ops in _apply but would create a stale wclock entry that nothing
-    // ever cleans (del/clear/replace only clean live ids), leaking unbounded over a sync
+    // ever cleans (del/clear/replace clean live ids only), leaking unbounded over sync
     // session. Array/group paths are pre-filtered by _lwwDrop, but guard here too.
     const stamp=(id,after,before)=>{if(!after||!byId(id))return;const w=_wc()[id]||(_wc()[id]={});
       for(const key of _ok(after)){if(key==='id')continue;if(this._chg(before,after,key))w[key]=C;}};
@@ -2288,7 +2288,7 @@ function frame(){
     if(needOverlay)drawOverlay();
     needsRender=false;needOverlay=false;
     // ADR-0011: selection presence rides the frame boundary — _sl() is mutated
-    // in 40+ places, but every change invalidates (selection is drawn), so this one hook
+    // in 40+ places, but every change invalidates (selection drawn), so this one hook
     // catches them all. Change-detection inside keeps it a no-op on unrelated frames.
     Net.sendSelectionIfChanged();
     _mirrorSync();   // ADR-0041: DOM mirror rebuilds only on _gridVer change
@@ -2376,7 +2376,7 @@ function describeShape(s){
   if(txt)d+=` “${_ln(txt)>30?_s0(txt,30)+'…':txt}”`;
   d+=` @ ${_rnd(b.x)},${_rnd(b.y)}`;
   if(_lk(s))d+=` ${t('ctxLock')}`;
-  if(_hd(s)||_oP(s)===0)d+=` ${t('tagHidden')}`;   // ADR-0371/0440: hidden or fully-transparent (RTC/undo-restore can still select one)
+  if(_hd(s)||_oP(s)===0)d+=` ${t('tagHidden')}`;   // ADR-0371/0440: hidden/transparent (RTC/undo-restore can still select one)
   if(_gi(s))d+=` ${t('tagGroup')}`;   // ADR-0380: visual group halo has no SR channel
   if(_conn(s.type)&&(s.a||s.b)){   // ADR-0380: bound endpoints are the conn's identity
     const A=s.a&&byId(s.a),B=s.b&&byId(s.b);
@@ -3871,7 +3871,7 @@ _on(canvas,_PD,e=>{
   }
   UI.closeCtxMenu();
   // ADR-0006: select tool only — that's where _sl() (which every menu item but
-  // clear-all operates on) is meaningful and set synchronously below by pickOrMarquee.
+  // clear-all operates on) is meaningful and set below by pickOrMarquee.
   if(e.pointerType==='touch'&&_tl()==='select')_armLongPress(e.clientX,e.clientY);
   switch(_tl()){
     case 'select':
@@ -5389,7 +5389,8 @@ function beginText(wp){
 // happens on blur, then a same-styled sticky spawns to the right and its
 // editor opens (rapid note-taking like Post-it®/FigJam).
 function _stickyChain(s){
-  if(s.type!=='sticky'||_lk(s))return;
+  // ADR-0556: orphaned source (remote del mid-edit) must not resurrect a sticky
+  if(s.type!=='sticky'||_lk(s)||!byId(s.id))return;
   // ADR-0190: the chain inherits ALL typography — ⌘Enter duplication must
   // reproduce the note's look, not just size/colour.
   const n=_smk('sticky',{x:s.x+s.w+16,y:s.y,w:s.w,h:s.h,color:_coo(s),fontSize:_fS(s),align:s.align,
@@ -6582,7 +6583,7 @@ function excScene(shapes){
     const out=[...(be?be.map(cid=>({id:cid,type:'arrow'})):[]),...(tid?[{id:tid,type:'text'}]:[])];
     if(_ln(out))e.boundElements=out;
   }
-  // ADR-0390: emit frameId for frame-contained shapes; labels inherit via containerId.
+  // ADR-0390: emit frameId for frame-contained shapes; labels inherit via containerId
   for(const f of shapes)if(_frm(f)){
     const fb=_bb(f);
     for(const s of shapes){
@@ -7212,7 +7213,7 @@ function excToShapes(txt){
       if(r&&_conn(s.type)){const _rm=r*_PI/180,_cx=(s.x1+s.x2)/2,_cy=(s.y1+s.y2)/2;   // ADR-0300: conn angle → rotate endpoints+way about midpoint
         for(const p of[[s,'x1','y1'],[s,'x2','y2'],...(s.way||[]).map(w=>[w,'x','y'])]){const dx=p[0][p[1]]-_cx,dy=p[0][p[2]]-_cy;p[0][p[1]]=+(_cx+dx*_cos(_rm)-dy*_sin(_rm)).toFixed(1);p[0][p[2]]=+(_cy+dx*_sin(_rm)+dy*_cos(_rm)).toFixed(1)}}
       if(_iS(e.link)&&/^https?:\/\//.test(e.link))s.link=_s0(e.link,500);   // ADR-0301
-      if(_conn(s.type)&&e.roundness&&!e.elbowed){s.curve=1;delete s.r}   // ADR-0317: excalidraw's round arrow routes are curved — r only styles elbow corners
+      if(_conn(s.type)&&e.roundness&&!e.elbowed){s.curve=1;delete s.r}   // ADR-0317: excalidraw's round routes are curved — r only styles elbow corners
       if(_iA(e.scale)&&(e.scale[0]<0||e.scale[1]<0))s.flip=((e.scale[0]<0)?1:0)|((e.scale[1]<0)?2:0);   // ADR-0276
       _oa(s,S);_pu(shapes,s);   // ADR-0241
       // ADR-0223: line/arrow keep a back-ref to their exc element so
@@ -7818,7 +7819,7 @@ const Net={
   },
   // ADR-0010: ephemeral peer cursor presence — never touches Store/history/Persist.
   // Same dual-transport pattern as broadcast() (unlike hello/ping/sync-req, which are
-  // BroadcastChannel-only via _send): cursors are most valuable cross-device (WebRTC).
+  // BroadcastChannel-only via _send): cursors matter most cross-device (WebRTC).
   _lastCursorSend:0,
   sendCursor(wp){
     if(_pr().size===0)return;   // nobody to tell
@@ -7829,7 +7830,7 @@ const Net={
   },
   // ADR-0011: ephemeral peer selection presence. Called from frame() (the rAF driver,
   // NOT draw() — render must stay side-effect-free) once per drawn frame; sends only
-  // when the serialized selection differs from the last send, so no throttle is needed
+  // when the serialized selection differs from last send, so no throttle needed
   // (selection changes are discrete). null forces a resend — set by
   // _touchPeer when a new peer joins, so latecomers see the current selection.
   _lastSelSent:'',
@@ -7841,7 +7842,7 @@ const Net={
     this._lastSelSent=key;
     this._bcast(_mk('selection',{ids}));
   },
-  _sendDC(m){   // ADR-0432: single dc funnel — full SCTP buffer throws; requeue on bufferedAmountLow
+  _sendDC(m){   // ADR-0432: single dc funnel — full SCTP buffer throws; requeue on buffer drain
     if(_ln(m)>262144)return;   // ADR-0438: >SCTP max can never send — drop instead of poison-queuing a retry loop
     const q=this._dcQ,d=this.dc;
     if(q){_ln(q)<4096&&_pu(q,m);return}
@@ -7958,10 +7959,10 @@ const Net={
   },
   // Build a snapshot message. Snapshot = all shapes as add ops. The clock seq is
   // keyed by SHAPE ID (`snap:<id>`), not array index: ids are globally unique so keys
-  // stay distinct (no dedup collapse), AND stable across re-snapshots — an index-based
+  // stay distinct (no dedup collapse) and stable across re-snapshots — an index-based
   // key would let a newly-added shape inherit a `peer:snapN` already in seenOps after
   // the sender's shape set changed, so applyRemote silently drops it (missed merge).
-  // `ops` is REQUIRED: a non-empty receiver merges via `ops` (see _onRecv 'snapshot'),
+  // `ops` is required: a non-empty receiver merges via `ops` (see _onRecv 'snapshot'),
   // so any transport that omits ops fails to sync two non-empty boards.
   _snapshotMsg(){
     // ADR-0058: `wc` ships each shape's per-property last-write clocks so a
@@ -8443,8 +8444,8 @@ const Persist={
   },
   // ADR-0004 (self-overwrite): doClearAll/importBoard/importFromHash replace
   // _sh() wholesale. Session undo (Ctrl+Z) covers that, but the very next autosave
-  // overwrites the ONLY IndexedDB slot with the destructive result — after a reload or
-  // closed tab the pre-replace board is gone for good. Stash it in a second key first.
+  // overwrites the only IndexedDB slot with the destructive result — after reload or
+  // closed tab the pre-replace board is gone. Stash it in a second key first.
   // Best-effort: a failed backup must never block the destructive op it's guarding.
   async saveBackup(shapes,viewport,docName){
     if(!this.db||!shapes||!_ln(shapes))return;

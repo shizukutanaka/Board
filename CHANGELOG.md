@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.586] - 2026-09-28
+### 修正
+- ADR-0558: `_stickyChain` に remote-del ガード — 編集中にピアが付箋を削除した状態で ⌘Enter すると orphan から新付箋が復活していた。`byId` 確認で抑止。
+
 ## [1.7.585] - 2026-09-28
 ### 修正
 - ADR-0557: ラベル編集 (openLabelEditor) にも同型の remote-del ガード — 編集中にピアが図形を消すと orphan へ `hit.label` 書込み + phantom upd commit していた。
