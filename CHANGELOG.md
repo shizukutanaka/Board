@@ -2,6 +2,12 @@
 
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.551] - 2026-09-28
+
+### 修正
+
+- **テキスト/URL のキャンバスドロップ** — 従来 drop は `dataTransfer.files` のみ処理し、テキスト選択範囲やリンクのドラッグは無反応だった。貼付カスケードを `_textCascade(s,wp)` に共通化し、drop でも SVG マークアップ / .board JSON / .excalidraw / mxfile / TSV / 平文が**ドロップ地点**に配置される (`text/uri-list` フォールバック込み) (ADR-0518)
+
 ## [1.7.550] - 2026-09-28
 
 ### 修正

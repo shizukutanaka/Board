@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.550';
+const V='1.7.551';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4416,6 +4416,53 @@ function _imgImportFile(f,cb){
   reader.onerror=()=>_wT('imgErr');
   reader.readAsDataURL(f);
 }
+// ADR-0518: shared text-intake cascade — SVG markup → .board JSON →
+// .excalidraw → mxfile → TSV grid → plain-text shape. `wp` is the landing
+// point in world coords (drop: the cursor; keyboard paste: viewport centre).
+// Returns true when the text was consumed; false → caller falls back to the
+// internal clipboard path.
+function _textCascade(s,wp){
+  if(/^\s*(<\?xml[^?]*\?>\s*)?<svg[\s>]/i.test(s)){importSvgText(s,wp);return true}
+  if(/^\s*\{/.test(s)&&/"(shapes|v)"\s*:/.test(_s0(s,8192))&&/"shapes"\s*:\s*\[/.test(s)){
+    // ADR-0516: our own OS-clipboard echo → internal doPaste (keeps the
+    // _pasteCount cascade) instead of a foreign re-import.
+    if(s===_osClip){doPaste();return true}
+    if(importBoardText(s,wp)!==false)return true;
+  }
+  if(/^\s*\{/.test(s)&&/"type"\s*:\s*"excalidraw"/.test(_s0(s,4096))){
+    if(importExcText(s,wp)!==false)return true;
+  }
+  // ADR-0232: drawio's copy puts uncompressed <mxfile> XML on the clipboard —
+  // route it to the drawio importer instead of the text-shape fallback.
+  if(/<mxfile[\s>]/.test(_s0(s,4096))){
+    if(importDrawioText(s,wp)!==false)return true;
+  }
+  const txt=_trm(s);
+  if(!txt)return false;
+  // ADR-0273: tab-separated intake → sticky grid (spreadsheet columns → sticky
+  // columns, rows → rows). Any cell may be empty.
+  if(/\t/.test(txt)&&txt.includes('\n')){
+    const rows=_s0(txt,PASTE_MAX_CHARS).split('\n').map(r=>r.split('\t'));
+    const C=_max(...rows.map(_ln)),R=_ln(rows);
+    const sw=160,sh=96,gx=16,gy=16;
+    const x0=wp.x-(C*sw+(C-1)*gx)/2,y0=wp.y-(R*sh+(R-1)*gy)/2;
+    const built=[];
+    rows.forEach((row,ri)=>_s0(row,C).forEach((cell,ci)=>{
+      const v=_trm(_St(cell||''));
+      if(v)_pu(built,_smk('sticky',{x:x0+ci*(sw+gx),y:y0+ri*(sh+gy),w:sw,h:sh,color:_YW,text:_s0(v,2000)}));
+    }));
+    if(_ln(built)){_cmt({op:'addMany',shapes:built});_ss(built.map(x=>x.id));_iv();_oT('textPasted')}
+    return true;
+  }
+  const fs=16,body=_s0(txt,PASTE_MAX_CHARS);
+  const lines=body.split('\n');
+  const w=_min(600,_max(60,_max(...lines.map(_ln))*fs*0.55));
+  const sh=_smk('text',{x:wp.x-w/2,y:wp.y-(_ln(lines)*fs*1.4)/2,w,h:_ln(lines)*fs*1.4,text:body,fontSize:fs});
+  _cOp({op:'add',shape:sh});
+  _ss([sh.id]);
+  _iv();_oT('textPasted');
+  return true;
+}
 _on(canvas,'dragover',e=>{_pd(e);e.dataTransfer.dropEffect='copy'});
 _on(canvas,'drop',e=>{
   _pd(e);
@@ -4430,7 +4477,14 @@ _on(canvas,'drop',e=>{
   const sf=[...e.dataTransfer.files].find(f=>f.name.endsWith('.svg')||f.type==='image/svg+xml');
   if(sf){importSvgFile(sf,_s2({x:e.offsetX,y:e.offsetY}));return}
   const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith('image/'));
-  if(!_ln(files))return;
+  if(!_ln(files)){
+    // ADR-0518: non-file drops — dragged text/URLs land at the drop point via
+    // the shared intake cascade (paste parity). uri-list covers link drags
+    // that don't populate text/plain.
+    const s=e.dataTransfer.getData('text/plain')||e.dataTransfer.getData('text/uri-list');
+    if(s)_textCascade(_St(s),_s2({x:e.offsetX,y:e.offsetY}));
+    return;
+  }
   const wp=_s2({x:e.offsetX,y:e.offsetY});
   // Cascade multiple dropped images by index. NOTE: the offset must be captured
   // per-iteration (forEach's `i`), not a shared `let ox` incremented in the loop —
@@ -4484,60 +4538,10 @@ _on(window,'paste',e=>{
     const ti=[...e.clipboardData.items].find(i=>i.type==='text/plain');
     if(!ti){doPaste();return}   // ADR-0516: nothing usable on the OS clipboard → internal clipboard
     ti.getAsString(tx=>{
-      const s=_St(tx||'');
-      if(/^\s*(<\?xml[^?]*\?>\s*)?<svg[\s>]/i.test(s)){_pd(e);importSvgText(s);return}
-      // ADR-0115: clipboard .board JSON adds the shapes (inbound half of
-      // copyBoardJSON). Falls through to excalidraw/text on parse failure.
-      if(/^\s*\{/.test(s)&&/"(shapes|v)"\s*:/.test(_s0(s,8192))&&/"shapes"\s*:\s*\[/.test(s)){
-        _pd(e);
-        if(s===_osClip){doPaste();return}   // ADR-0516: our own clipboard echo → internal cascade path
-        if(importBoardText(s)!==false)return;
-      }
-      // ADR-0099: clipboard .excalidraw JSON imports as a scene (parity with the
-      // file path); on parse failure it degrades to the plain-text path below.
-      if(/^\s*\{/.test(s)&&/"type"\s*:\s*"excalidraw"/.test(_s0(s,4096))){
-        _pd(e);
-        if(importExcText(s)!==false)return;
-      }
-      // ADR-0232: drawio's copy puts uncompressed <mxfile> XML on the clipboard —
-      // route it to the drawio importer instead of the text-shape fallback.
-      if(/<mxfile[\s>]/.test(_s0(s,4096))){
-        _pd(e);
-        const wp=_s2({x:_cbr().width/2,y:_cbr().height/2});
-        if(importDrawioText(s,wp)!==false)return;
-      }
-      // ADR-0044: any other non-empty text pastes in as a text shape — editors,
-      // browsers, chat logs, markdown-as-plain-text all land on the board.
-      const txt=_trm(s);
-      if(!txt){doPaste();return}   // ADR-0516: empty/blank text → internal clipboard fallback
-      // ADR-0273: tab-separated paste → sticky grid (spreadsheet columns →
-      // sticky columns, rows → rows). Any cell may be empty.
-      if(/	/.test(txt)&&txt.includes('\n')){
-        _pd(e);
-        const rows=_s0(txt,PASTE_MAX_CHARS).split('\n').map(r=>r.split('\t'));
-        const C=_max(...rows.map(_ln)),R=_ln(rows);
-        const sw=160,sh=96,gx=16,gy=16;
-        const r2=_cbr();
-        const wp=_s2({x:r2.width/2,y:r2.height/2});
-        const x0=wp.x-(C*sw+(C-1)*gx)/2,y0=wp.y-(R*sh+(R-1)*gy)/2;
-        const built=[];
-        rows.forEach((row,ri)=>_s0(row,C).forEach((cell,ci)=>{
-          const v=_trm(_St(cell||''));
-          if(v)_pu(built,_smk('sticky',{x:x0+ci*(sw+gx),y:y0+ri*(sh+gy),w:sw,h:sh,color:_YW,text:_s0(v,2000)}));
-        }));
-        if(_ln(built)){_cmt({op:'addMany',shapes:built});_ss(built.map(x=>x.id));_iv();_oT('textPasted')}
-        return;
-      }
-      _pd(e);
-      const fs=16,body=_s0(txt,PASTE_MAX_CHARS);
-      const lines=body.split('\n');
-      const w=_min(600,_max(60,_max(...lines.map(_ln))*fs*0.55));
-      const r=_cbr();
-      const wp=_s2({x:r.width/2,y:r.height/2});
-      const sh=_smk('text',{x:wp.x-w/2,y:wp.y-(_ln(lines)*fs*1.4)/2,w,h:_ln(lines)*fs*1.4,text:body,fontSize:fs});
-      _cOp({op:'add',shape:sh});
-      _ss([sh.id]);
-      _iv();_oT('textPasted');
+      // ADR-0518: the shared cascade runs at the viewport centre; a consumed
+      // text needs _pd so the browser doesn't also insert it anywhere.
+      if(_textCascade(_St(tx||''),_midV()))_pd(e);
+      else doPaste();   // ADR-0516: nothing usable → internal clipboard path
     });
     return;
   }
