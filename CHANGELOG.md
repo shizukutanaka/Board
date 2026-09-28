@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.589] - 2026-09-28
+### 修正
+- ADR-0561: window/fullscreen resize で canvas rect が動いても editor overlay の follow sig (x,y,zoom) が不変なため次の pan/zoom までズレ続けていたのを、`resize()` で `_teVp`/`_lblVp` をリセットして即再配置。
+
 ## [1.7.588] - 2026-09-28
 ### 修正
 - ADR-0560: editor 二重オープンで旧 overlay の blur が `state.editing` を clobber — 新 editor の `_teFollow` 死亡 + 本文が canvas/overlay で二重描画される実害。`_cxO()` で先行 commit。

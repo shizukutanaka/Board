@@ -857,7 +857,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.588';
+const V='1.7.589';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1435,7 +1435,7 @@ const Store={
   // A remote del removes shapes, but the SENDER's connClears (v1.6.78) only cover
   // connectors the sender knew about. A connector that exists only on THIS receiver
   // (drawn locally, not yet synced; or a concurrent-edit race) bound to a now-deleted
-  // shape would dangle — connEnds snaps it to stale draw-time coords. Resolve
+  // shape would dangle — connEnds snaps it to stale draw coords. Resolve
   // its endpoint via connEnds BEFORE _apply splices the shape (the bbox must still be
   // live), so the caller can sever the binding at the shape's actual last position.
   // Skips connectors already in op.connClears (sender's after wins, avoiding
@@ -1497,7 +1497,7 @@ const Store={
   // array) compared deeply via JSON; before may be absent → treat as changed.
   _chg(before,after,key){return _JS(before?before[key]:undefined)!==_JS(after[key])},
   // Returns false if `op` has no changed prop newer than the shape's recorded write
-  // clock — a no-op after filtering. Mutates op.after to drop losing/unchanged keys,
+  // clock — a no-op after filtering. Mutates op.after dropping losing/unchanged keys,
   // so a snapshot op can't overwrite a concurrent edit to a property it didn't touch.
   _lwwDrop(op){
     if(!this._lwwOp(op))return true;
@@ -1525,14 +1525,14 @@ const Store={
     return _ln(op.after)>0;
   },
   // Stamp the per-property write clock for keys an op actually changed, so later
-  // concurrent writes can be ordered against it. Local commits and accepted remotes
+  // concurrent writes order against it. Local commits and accepted remotes
   // alike (both forward writes; for remote, _lwwDrop already reduced op.after).
   _stampWrites(op){
     if(!this._lwwOp(op))return;
     const C=op.clock;if(!C)return;
     // Only stamp shapes that actually exist: a late remote upd for a deleted/unknown
     // shape no-ops in _apply but would create a stale wclock entry that nothing
-    // ever cleans (del/clear/replace clean live ids only), leaking unbounded in sync
+    // ever cleans (del/clear/replace clean live ids only), leaking unbounded
     // session. Array/group paths are pre-filtered by _lwwDrop, but guard here too.
     const stamp=(id,after,before)=>{if(!after||!byId(id))return;const w=_wc()[id]||(_wc()[id]={});
       for(const key of _ok(after)){if(key==='id')continue;if(this._chg(before,after,key))w[key]=C;}};
@@ -2288,7 +2288,7 @@ function frame(){
     if(needOverlay)drawOverlay();
     needsRender=false;needOverlay=false;
     // ADR-0011: selection presence rides the frame boundary — _sl() is mutat
-    // in 40+ places, but every change invalidates (selection drawn), so this one hook
+    // in 40+ places, but every change invalidates (selection drawn), so one hook
     // catches them all. Change-detection inside keeps it a no-op on unrelated frames.
     Net.sendSelectionIfChanged();
     _mirrorSync();   // ADR-0041: DOM mirror rebuilds only on _gridVer change
@@ -2322,10 +2322,11 @@ function resize(){
   _wh(ocanvas,canvas.width,canvas.height);
   _lastVp=null;   // backing-store reallocation drops all retained pixels (0028)
   _pinchSnap=null;_pinchVp=null;   // ADR-0030: stale-sized snapshot must not blit
+  _teVp=_lblVp='';   // ADR-0561: canvas rect moved — force overlay reposition
   _iv();
 }
-// devicePixelRatio can change with NO resize event — dragging across monitors
-// of different density (Retina ↔ external 1×) or an OS display-scaling change. A
+// devicePixelRatio can change with no resize event — dragging across monitors
+// of different density (Retina ↔ external 1×) or an OS display-scale change. A
 // `(resolution: Xdppx)` media query matches the current ratio and fires `change` once
 // when it stops matching; re-arm a fresh query to keep tracking. Without this the
 // canvas backing store keeps the stale DPR and renders blurry on the new screen.
@@ -2376,7 +2377,7 @@ function describeShape(s){
   if(txt)d+=` “${_ln(txt)>30?_s0(txt,30)+'…':txt}”`;
   d+=` @ ${_rnd(b.x)},${_rnd(b.y)}`;
   if(_lk(s))d+=` ${t('ctxLock')}`;
-  if(_hd(s)||_oP(s)===0)d+=` ${t('tagHidden')}`;   // ADR-0371/0440: hidden/transparent (RTC/undo-restore can still select one)
+  if(_hd(s)||_oP(s)===0)d+=` ${t('tagHidden')}`;   // ADR-0371/0440: hidden/transparent (RTC/undo can still select one)
   if(_gi(s))d+=` ${t('tagGroup')}`;   // ADR-0380: visual group halo has no SR channel
   if(_conn(s.type)&&(s.a||s.b)){   // ADR-0380: bound endpoints are the conn's identity
     const A=s.a&&byId(s.a),B=s.b&&byId(s.b);
@@ -7599,7 +7600,7 @@ function buildSVG(shapes,paper){
         _pu(els,`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${r}" fill="${_esc(_coo(s)||_YW)}" stroke="rgba(0,0,0,.06)"${rT} filter="url(#bsh)"/>`);   // ADR-0278
         if(_txx(s)){
           const fs=_num(_fS(s))||14;const pad2=8;
-          // estimate measure (no canvas here); wraps to the same box as the app
+          // estimate measure (no canvas here); wraps to the app's same box
           const lines2=wrapText(_txx(s),_abs(W)-pad2*2,t=>_ln(t)*fs*0.6);
           const tax2=s.align==='center'?X+ox+W/2:s.align==='right'?X+ox+W-pad2:X+ox+pad2;   // ADR-0073
           const anch2=s.align==='center'?' text-anchor="middle"':s.align==='right'?' text-anchor="end"':'';
@@ -7802,7 +7803,7 @@ const Net={
       const d=this._imgIn.get(s.img);
       if(d){const{img:_x,...rest}=s;return{...rest,dataUrl:d}}
       // ADR-0374: cap the parked-ref waitlist — a peer sending slim refs then
-      // leaves without chunks would otherwise grow _imgPending unboundedly.
+      // leaves without chunks would grow _imgPending unboundedly.
       if(_iS(s.id)){
         if(this._imgPending.size>=256&&!this._imgPending.has(s.id))this._imgPending.delete(this._imgPending.keys().next().value);
         this._imgPending.set(s.id,s.img);
@@ -7971,8 +7972,8 @@ const Net={
   // stay distinct (no dedup collapse) and stable across re-snapshots — an index-based
   // key would let a newly-added shape inherit a `peer:snapN` already in seenOps after
   // the sender's shape set changed, so applyRemote drops it (missed merge).
-  // `ops` is required: a non-empty receiver merges via `ops` (see _onRecv 'snapshot')
-  // so any transport that omits ops fails to sync two non-empty boards.
+  // `ops` is required: a non-empty receiver merges via ops (see _onRecv 'snapshot')
+  // so a transport that omits ops fails to sync two non-empty boards.
   _snapshotMsg(){
     // ADR-0058: `wc` ships each shape's per-property last-write clocks so a
     // non-empty receiver can LWW-merge properties, not just adopt new shapes.
@@ -8191,7 +8192,7 @@ const Share={
     return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')},
   _b64uDec(s){const b=atob(s.replace(/-/g,'+').replace(/_/g,'/'));const u=new Uint8Array(_ln(b));
     for(let i=0;i<_ln(b);i++)u[i]=b.charCodeAt(i);return u},
-  // e: wraps the whole inner payload (z:/j:) so compression stays first
+  // e: wraps the inner payload (z:/j:) so compression stays first
   // compress) and inner format changes ride along untouched.
   async _encrypt(inner){
     const key=await crypto.subtle.generateKey({name:'AES-GCM',length:256},true,['encrypt','decrypt']);
@@ -9748,7 +9749,7 @@ const Presentation=(()=>{
     const pad=40;
     const scaleX=(vW-pad*2)/frame.w;
     const scaleY=(vH-pad*2)/frame.h;
-    const zoom=_fin(scaleX)&&_fin(scaleY)?clampZoom(_min(scaleX,scaleY,4)):1;   // ADR-0422: degenerate frame dims → NaN zoom would blank the viewport
+    const zoom=_fin(scaleX)&&_fin(scaleY)?clampZoom(_min(scaleX,scaleY,4)):1;   // ADR-0422: degenerate frame dims → NaN zoom blanks the viewport
     const cx=frame.x+frame.w/2;
     const cy=frame.y+frame.h/2;
     _vp().zoom=zoom;
