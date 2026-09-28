@@ -3859,6 +3859,28 @@ try {
     console.log('  ✓ move undo: locked shape not shifted backward (4 asserts)');
   }
 
+  // ADR-0549: locked-parity audit — style/group undo on locked-skipped shapes is a no-op
+  {
+    const a=Shape.make('rect',{x:0,y:0,w:50,h:50,stroke:'#000000'});
+    const b=Shape.make('rect',{x:200,y:0,w:50,h:50,stroke:'#000000'});
+    Store.commit({op:'addMany',shapes:[a,b]});
+    byId(a.id).locked=true;
+    // style op lists both ids; forward skips locked, undo restores before — must be no-op on locked
+    Store.commit({op:'style',before:[{id:a.id,stroke:'#000000'},{id:b.id,stroke:'#000000'}],after:[{id:a.id,stroke:'#FF0000'},{id:b.id,stroke:'#FF0000'}]});
+    assert.ok(byId(a.id).stroke==='#000000'&&byId(b.id).stroke==='#FF0000','style skips locked, applies unlocked');
+    Store.undo();
+    assert.ok(byId(a.id).stroke==='#000000'&&byId(b.id).stroke==='#000000','style undo restores only applied shape');
+    // group op with a locked member: undo restores before-groupId (undefined) — must not resurrect a bogus membership
+    const gid='g1';
+    Store.commit({op:'group',ids:[a.id,b.id],gid,before:[{id:a.id},{id:b.id}]});
+    assert.ok(byId(a.id).groupId===undefined&&byId(b.id).groupId===gid,'group skips locked, applies unlocked');
+    Store.undo();
+    assert.ok(byId(a.id).groupId===undefined&&byId(b.id).groupId===undefined,'group undo is consistent');
+    byId(a.id).locked=false;
+    Store.commit({op:'del',shapes:[byId(a.id),byId(b.id)].map(s=>JSON.parse(JSON.stringify(s)))});
+    console.log('  ✓ locked-parity audit: style/group undo no-op on locked (4 asserts)');
+  }
+
   // ADR-0068: curved connector — quadratic route, exclusive toggle, undo
   {
     const a=Shape.make('arrow',{x1:0,y1:0,x2:100,y2:0});

@@ -5354,6 +5354,12 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.577]
+
+### テスト
+
+- **ADR-0549**: locked parity 監査の結論をピン — style/group の undo が forward でスキップした locked 図形に対し冪等 no-op であることを behavioural テストで固定 (ADR-0547/0548 の残経路)。
+
 ## [1.7.576]
 
 ### 修正
