@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.624';
+const V='1.7.625';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1605,6 +1605,8 @@ const Store={
     for(const v of [op.shape,op.shapes,op.before,op.after]){
       if(_iA(v))for(const x of v)_u(x);else _u(v);   // payload side (add/del/clear/replace)
     }
+    const _bc=[];for(const s of _sh())if(_conn(s.type)&&((s.aF&&_ids.has(s.a))||(s.bF&&_ids.has(s.b))))_pu(_bc,s);   // ADR-0598: bound conns' extent resolves on the touched shapes — their sweep isn't in _ids
+    for(const c of _bc)_u(c);
     switch(op.op){
       case 'add':{
         // Idempotent on shape id: a remote add for a
@@ -1747,6 +1749,7 @@ const Store={
     // ADR-0027: post-mutation bboxes of the same
     // a union covering most of the viewport isn't worth clipping for.
     for(const id of _ids)_u(byId(id));
+    for(const c of _bc)_u(byId(c.id));   // ADR-0598: post-mutation conn sweep
     if(!_dmg){_iv();}
     else{const _v=visibleWorldRect();if(_dmg.w*_dmg.h>_v.w*_v.h*0.6)_iv();else _iD(_dmg);}
   }};

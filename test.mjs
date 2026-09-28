@@ -7294,6 +7294,13 @@ try {
     console.log('  ✓ drag damage: bound-conn swept extent pinned at 3 sites (4 asserts)');
   }
 
+  // ADR-0598: remote apply damage includes bound conns (same class on the wire side)
+  {
+    assert.ok(html.includes("_bc=[];for(const s of _sh())if(_conn(s.type)&&((s.aF&&_ids.has(s.a))||(s.bF&&_ids.has(s.b))))_pu(_bc,s)"),'_apply collects bound conns');
+    assert.ok(html.includes("for(const c of _bc)_u(byId(c.id));   // ADR-0598"),'_apply post-mutation conn sweep');
+    console.log('  \u2713 applyRemote damage: bound-conn sweep pinned (2 asserts)');
+  }
+
   // search navigation a11y: SR users search BY content, so the announcement must name
   // WHICH shape was found (describeShape), not a bare "2/7" count — parity with Tab cycle.
   {
