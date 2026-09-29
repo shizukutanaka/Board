@@ -785,6 +785,7 @@ Board/
 │   └── ADR-0734-wclock-delete-tombstones.md  # 存在仲裁: del/addMany 逆写/pageDel が wclock に {_del:clock} 墓標を残し add 系 push が墓標下位の遅延 add を棄却 (実装済)
 │   └── ADR-0735-snapshot-adopt-tomb-filter.md  # 残存墓標穴: 空盤面の snapshot 一括採用も墓標フィルタ (del 前 snapshot の復活閉塞) + pageAdd tomb クリア parity (実装済)
 │   └── ADR-0736-clear-replace-tombstones.md  # clear/'replace' が wclock 全消去で墓標を喪失 → swap 除去 id を tomb 化 + 上位 tomb 生存 (実装済)
+│   └── ADR-0737-import-swap-tombstones.md  # ローカル import 3経路 (_recordCommitted 経由) の wclock wipe にも墓標書込み (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

@@ -1,3 +1,13 @@
+## [1.7.763] - 2026-09-29
+
+### Fixed
+- ADR-0737: the three local import swaps (`.board`/`.drawio`/backup-restore)
+  bypass `_apply` — they wipe `wclock` themselves and record the 'replace' via
+  `_recordCommitted` — so their removed shapes carried no tomb on the
+  importer's own board and prior tombs were lost. `_recordCommitted` now
+  performs the same tomb write as `_apply` for 'replace': every before-not-in-
+  after id tombed at the swap clock, prior `{_del}` entries survive max'd
+
 ## [1.7.762] - 2026-09-29
 
 ### Fixed

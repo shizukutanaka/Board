@@ -868,7 +868,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.762';   // ADR-0736
+const V='1.7.763';   // ADR-0737
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1602,7 +1602,7 @@ const Store={
     if(_sO().has(k))return;
     _sO().add(k);
     _trimSeen();                           // ADR-0428: same helper as commit/applyRemote
-    if(op.op==='replace')state._lastRep=op.clock;   // ADR-0616: the caller applied the swap without _apply — the marker must still stand or a staler remote swap applies afterward and diverges
+    if(op.op==='replace'){state._lastRep=op.clock;const inN=_sT(op.after.map(s=>s.id));for(const s of op.before)if(!inN.has(s.id))_wc()[s.id]={_del:op.clock};for(const[id,w]of Object.entries(op.wc||{}))if(w._del&&(clockNewer(w._del,op.clock)||!inN.has(id)))_wc()[id]={_del:clockNewer(w._del,op.clock)?w._del:op.clock}}   // ADR-0616/0736
     this._stampWrites(op);                 // change already applied by caller; record clock
     _hi().length=_hx()+1;
     _hi().push(op);
@@ -1740,7 +1740,7 @@ const Store={
         if(!forward)_selR(op);
         break;}
       case 'clear':{
-        if(forward){if(op.clock)state._lastRep=op.clock;const wc0=state.wclock||{},dead=_sh().map(s=>s.id);_sh().length=0;_scl();state.wclock={};for(const id of dead)_wc()[id]={_del:op.clock};for(const[id,w]of Object.entries(wc0))if(w._del)_wc()[id]={_del:clockNewer(w._del,op.clock)?w._del:op.clock};_pcC();}   // ADR-0626/0736: sender stamps _lastRep too; tomb every cleared id (max'd with prior tombs) so a stale in-flight add can't resurrect
+        if(forward){if(op.clock)state._lastRep=op.clock;const wc0=state.wclock||{},dead=_sh().map(s=>s.id);_sh().length=0;_scl();state.wclock={};for(const id of dead)_wc()[id]={_del:op.clock};for(const[id,w]of Object.entries(wc0))if(w._del)_wc()[id]={_del:clockNewer(w._del,op.clock)?w._del:op.clock};_pcC();}   // ADR-0626/0736
         else{for(const s of op.shapes)if(!byId(s.id))_sh().push(Net._attachShape(clone(s)));_sz();if(op.wc)for(const[id,w]of Object.entries(op.wc))_wc()[id]=clone(w);_selR(op);}   // ADR-0723
         break;}
       case 'replace':{
