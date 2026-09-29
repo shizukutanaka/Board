@@ -868,7 +868,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.752';   // ADR-0726
+const V='1.7.753';   // ADR-0727
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1803,7 +1803,11 @@ const Store={
         // while the inverse op still reverted peers -> divergence.
         const win=p.nts==null||(forward?clockNewer({ts,peer:_iS(op.clock&&op.clock.peer)?op.clock.peer:'',seq:0},{ts:p.nts,peer:_iS(p.ntp)?p.ntp:'',seq:0})
           :!clockNewer({ts:p.nts||0,peer:_iS(p.ntp)?p.ntp:'',seq:0},{ts:_iN(op.clock&&op.clock.ts)?op.clock.ts:0,peer:_iS(op.clock&&op.clock.peer)?op.clock.peer:'',seq:0}));
-        if(win){if(forward){op.bts=p.nts;op.btp=p.ntp}p.name=forward?op.after:(op.before||p.name);p.nts=ts;if(forward)p.ntp=op.clock?op.clock.peer:'';else p.ntp=op.btp!=null?op.btp:''}
+        // ADR-0727: undo-wire renames carry nts/ntp — the RESTORED clock, not the undo
+        // clock. Without it the undoer wrote bts while peers wrote the fresh undo clock
+        // into nts, and a rename landing between the two won on one side only.
+        if(win){if(forward){op.bts=p.nts;op.btp=p.ntp}p.name=forward?op.after:(op.before||p.name);p.nts=ts;if(forward)p.ntp=op.clock?op.clock.peer:'';else p.ntp=op.btp!=null?op.btp:'';
+          if(forward&&op.nts!=null){if(_iN(op.nts)&&_fin(op.nts))p.nts=op.nts;if(op.ntp!=null)p.ntp=op.ntp}}
         _pgBar();
         break;}
       case 'group':{
@@ -8127,7 +8131,7 @@ const Net={
     if(op.op==='clear')return{op:'replace',after:[],afterWc:{},clock:op.clock};   // ADR-0626: a wholesale wipe IS an empty swap — routing through 'replace' inherits the _lastRep causal ordering + snapshot rep marker for free (inbound 'clear' stays rejected: the wire never carries it now)
     if(op.op==='add'&&op.shape)return{...op,shape:this._slimShapes([op.shape])[0]};
     if(op.op==='pageDel'){const s={op:'pageDel',id:op.id,clock:op.clock};if(op.firstId!=null)s.firstId=op.firstId;if(op.unpage){s.unpage=1;s.shapes=this._slimShapes(op.shapes||[])}return s}   // ADR-0705/0724/0725: receiver re-derives members/i/name — the undo-record fields were dead weight (~bytes×members)
-    if(op.op==='pageName')return{op:'pageName',id:op.id,after:op.after,clock:op.clock};   // ADR-0705: forward uses after+clock only — before/bts/btp are undo-domain
+    if(op.op==='pageName'){const s={op:'pageName',id:op.id,after:op.after,clock:op.clock};if(op.nts!=null){s.nts=op.nts;s.ntp=op.ntp}return s}   // ADR-0705/0727: undo-wire also carries the restored nts/ntp
     if(_iA(op.shapes)&&op.op==='addMany'){const{origSel:_o1,...r}=op;return{...r,shapes:this._slimShapes(op.shapes)}}   // ADR-0625/0721: addMany's wc is the del/clear-undo wclock restore — real wire data, not undo-domain   // ADR-0445: id/locked only
     if(_iA(op.shapes)&&(op.op==='del'||op.op==='clear'||op.op==='pageAdd')){const{wc:_wc1,origSel:_o1,...r}=op;return{...r,shapes:this._slimShapes(op.shapes)}}   // ADR-0445/0625: id/locked only; undo-only fields never ride the wire
     if(op.op==='replace')return{op:'replace',after:this._slimShapes(op.after||[]),afterWc:op.afterWc,clock:op.clock,pages:op.pages,curPg:op.curPg};   // ADR-0646/0720: pages AND the landing page ride the wire — receivers' _pgAdopt(op.pages,op.curPg) fell back to page 1 while the sender landed on op.curPg; before* stay local   // ADR-0613: strip the huge before/wc/origSel from the wire copy
@@ -9971,7 +9975,7 @@ function _undoWire(op){
     case 'pageDel':  {const o=[{op:'pageAdd',id:op.id,name:op.name,i:op.i},{op:'addMany',shapes:op.shapes||[],wc:op.wc}];   // ADR-0721/0722: member clocks ride too
       for(const c of op.connClears||[])if(c.before)_pu(o,{op:'upd',id:c.id,after:c.before});   // ADR-0707: re-bind connectors on peers too — same as 'del'
       return o;}
-    case 'pageName': return[{op:'pageName',id:op.id,after:op.before,before:op.after,bts:op.bts}];
+    case 'pageName': return[{op:'pageName',id:op.id,after:op.before,before:op.after,bts:op.bts,nts:op.bts,ntp:op.btp}];   // ADR-0727: carry the restored name clock — peers were writing the undo clock as nts while the undoer restored bts
     default:       return null;
   }}
 function _rcOp(op){const o=_selIds();Store._recordCommitted(op);_keepSel(o)}

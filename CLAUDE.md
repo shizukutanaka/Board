@@ -775,6 +775,7 @@ Board/
 │   └── ADR-0724-pageadd-undo-unpage.md  # pageAdd undo を _pgDel2 現メンバー基準へ + 最終ページ undo は 'unpage' wire で op由来のみ死/残り un-page (実装済)
 │   └── ADR-0725-pagedel-wire-firstid.md  # pageDel の rehome 先を wire で送側の firstId に統一 (ページ順発散時のメンバー帰属分裂を解消) (実装済)
 │   └── ADR-0726-addmany-wc-validate.md  # addMany.wc (undo-wire の wclock スナップ) を validRemotePayload で検証 (NaN 時計の仲裁汚染を閉塞) (実装済)
+│   └── ADR-0727-pagename-undo-nts.md  # pageName undo-wire に復元 nts/ntp を同梱 (undo clock を受側が刻んで次の改名 LWW が分裂するのを解消) (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

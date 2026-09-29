@@ -6977,6 +6977,29 @@ try {
     }
     console.log('  ✓ ADR-0725: pageDel rehome follows the wire-carried sender choice, not local page order');
 
+    // ADR-0727 (round477): pageName undo-wire must carry the RESTORED name clock
+    // (nts/ntp = bts/btp), else the undoer restores the old ts while peers stamp
+    // the fresh undo clock — a rename landing between the two wins on one side.
+    reset(A); reset(B);
+    A.state.pages=[{id:'pn1',name:'Old',nts:500,ntp:'peerC'}];
+    B.state.pages=[{id:'pn1',name:'Old',nts:500,ntp:'peerC'}];
+    A.state.curPg='pn1';B.state.curPg='pn1';
+    rAB=[];
+    A.Net.broadcast = op => rAB.push({k:'op',op:cp(op)});
+    A.Store.commit({op:'pageName',id:'pn1',before:'Old',after:'New',bts:500,btp:'peerC',clock:{peer:'peerA',seq:3,ts:1000}});
+    rAB.forEach(m=>B.Net._onRecv(m)); rAB.length=0;
+    assert.ok(B.state.pages[0].name==='New'&&B.state.pages[0].nts===1000,'precondition: rename applied on peer');
+    A.state.seq=3;
+    A.Store.undo();
+    rAB.forEach(m=>B.Net._onRecv(m));
+    for(const[X,name]of[[A,'local'],[B,'peer']]){
+      const p=X.state.pages[0];
+      assert.ok(p.name==='Old',name+': undo restores the old name');
+      assert.ok(p.nts===500,name+': name clock restored to the pre-rename ts, not the undo clock (ADR-0727)');
+      assert.ok(p.ntp==='peerC',name+': name writer restored too');
+    }
+    console.log('  ✓ ADR-0727: pageName undo-wire carries the restored nts/ntp — both sides keep the old clock');
+
     // v1.6.87: a new text/sticky is committed+broadcast with EMPTY text, then filled in
     // the editor. _syncTextFinalize must push the typed content (and a dismissed-empty
     // removal) to already-connected peers, or collaborators see a blank shape forever.
@@ -13097,7 +13120,7 @@ try {
     }
     // ADR-0705: wire pageDel/pageName drop receiver-recomputed + undo-domain fields
     assert.ok(html.includes("if(op.op==='pageDel'){const s={op:'pageDel',id:op.id,clock:op.clock};if(op.firstId!=null)s.firstId=op.firstId;if(op.unpage){s.unpage=1;s.shapes=this._slimShapes(op.shapes||[])}return s}"),'wire pageDel slims to id+firstId+unpage(+kill-set)+clock (ADR-0705/0724/0725)');
-    assert.ok(html.includes("if(op.op==='pageName')return{op:'pageName',id:op.id,after:op.after,clock:op.clock};"),'wire pageName drops undo fields (ADR-0705)');
+    assert.ok(html.includes("if(op.op==='pageName'){const s={op:'pageName',id:op.id,after:op.after,clock:op.clock};if(op.nts!=null){s.nts=op.nts;s.ntp=op.ntp}return s}"),'wire pageName drops undo fields, keeps restored nts/ntp (ADR-0705/0727)');
     console.log('  ✓ wire pageDel/pageName slim to the applied fields only (ADR-0705, 2 asserts)');
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;
     Store.applyRemote({op:'pageAdd',id:'pgA',name:'A',clock:{peer:'rp',seq:12,ts:12}});
@@ -13278,7 +13301,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1625; // prev 1624 + 1 ADR-0726 pin
+  pass += 1629; // prev 1625 + 4 ADR-0727 behavioural
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

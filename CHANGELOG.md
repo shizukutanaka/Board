@@ -1,3 +1,11 @@
+## [1.7.753] - 2026-09-29
+
+### Fixed
+- ADR-0727: pageName undo-wire reverted the NAME but peers stamped the
+  fresh undo clock into nts while the undoer restored bts — a rename
+  between the two won on one side only. Wire now carries nts/ntp (the
+  restored bts/btp) — same class as ADR-0721's wclock snapshot
+
 ## [1.7.752] - 2026-09-29
 
 ### Fixed
