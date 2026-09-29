@@ -866,7 +866,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.712';   // ADR-0685
+const V='1.7.713';   // ADR-0686
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2162,7 +2162,8 @@ _oC(c,()=>c._pgid===state.curPg?_pgRename():switchPage(c._pgid));   // click the
 _ap(tb,c)}}
 for(const c of tb.children||[]){const on=c._pgid===state.curPg;c.classList.toggle('on',on);if(on)c.setAttribute('aria-current','page');else c.removeAttribute('aria-current')}
 if(_fid)for(const c of tb.children||[])if(c._pgid===_fid){c.focus();break}
-const _onc=tb.querySelector&&tb.querySelector('.pg-t.on');if(_onc&&_onc.scrollIntoView)_onc.scrollIntoView({block:'nearest',inline:'nearest'})}   // ADR-0685: keep the live tab visible in the strip — PgDn/remote switches could land it off-screen
+const _onc=tb.querySelector&&tb.querySelector('.pg-t.on');if(_onc&&_onc.scrollIntoView)_onc.scrollIntoView({block:'nearest',inline:'nearest'})
+if(UI&&UI.refreshPeers)UI.refreshPeers()}   // ADR-0686: page renames/set changes also update the avatar '· page' tooltip — else it stays stale until the peer's next presence tick
 const _shV=()=>_sh().filter(s=>_sv(s)&&_pgOk(s));   // ADR-0494/0646: visible+current-page subset
 const _ulv=s=>!_lk(s)&&_sv(s)&&_pgOk(s);   // ADR-0496/0646
 const _ul=s=>!_lk(s);   // ADR-0506

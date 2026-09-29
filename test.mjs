@@ -4629,6 +4629,11 @@ try {
       assert.ok(html.includes("_onc.scrollIntoView({block:'nearest',inline:'nearest'})"),'live tab scrolled into view (ADR-0685)');
       console.log('  ✓ live-tab scrollIntoView pin (1 assert)');
     }
+    // ADR-0686: pgBar refreshes the peer avatars' page tooltip
+    {
+      assert.ok(html.includes('if(UI&&UI.refreshPeers)UI.refreshPeers()'),'pgBar refreshPeers hook (ADR-0686)');
+      console.log('  ✓ pgBar avatar-refresh pin (1 assert)');
+    }
     // ADR-0673: per-page tab strip — direct jump, active tab renames
     {
       assert.ok(html.includes('id="pgTabs"')&&html.includes("c._pgid===state.curPg?_pgRename():switchPage(c._pgid)"),'page tab chips switch/rename (ADR-0673/0675)');
@@ -12811,7 +12816,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1524; // prev 1517 + 1 tab aria-label pin (ADR-0682)
+  pass += 1525; // prev 1517 + 1 tab aria-label pin (ADR-0682)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
