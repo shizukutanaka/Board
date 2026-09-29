@@ -1590,6 +1590,7 @@ const fakeDoc = {
   _L: {},
   addEventListener(t, f, o){ (this._L[t + (o && o.capture ? '|c' : '')] ||= []).push(f); },
   title: '',
+  visibilityState: 'visible',
   activeElement: null,
 };
 const fakeWin = {
@@ -11214,8 +11215,24 @@ try {
     fireKey('Escape');
     assert.ok(!ptr.down,'real Escape cancels the in-flight drag');
     assert.ok(Math.abs(byId(R3.id).x-100)<1e-6,'Escape restores the pre-gesture position');
+    // visibilitychange→hidden through the real document listener cancels the gesture
+    // and restores position (ADR-0604); same wiring as the pagehide path
+    reset();
+    state.tool='select';
+    const R4=Shape.make('rect',{x:100,y:100,w:50,h:50});
+    Store.commit({op:'add',shape:R4});
+    state.selection=new Set([R4.id]);
+    fire('pointerdown',120,120);
+    fire('pointermove',160,150);
+    assert.ok(ptr.down,'drag in flight before hidden');
+    fakeDoc.visibilityState='hidden';
+    for(const f of fakeDoc._L['visibilitychange']||[])f({});
+    fakeDoc.visibilityState='visible';
+    assert.ok(!ptr.down,'visibilitychange→hidden cancels the in-flight drag');
+    assert.ok(Math.abs(byId(R4.id).x-100)<1e-6,'hidden-cancel restores the pre-gesture position');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
+    console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
   }
 
   console.log('\n✓ All behavioural tests passed');
@@ -11224,7 +11241,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1182; // prev 1168 + 14 event-sequence asserts (ADR-0641)
+  pass += 1185; // prev 1168 + 17 event-sequence asserts (ADR-0641)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
