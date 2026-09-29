@@ -12514,13 +12514,16 @@ try {
     Store.applyRemote({op:'del',shapes:[delSh],clock:{peer:'r1',seq:4,ts:4}});   // valid form, exercises the real re-apply path
     assert.ok(!byId(rX.id)&&state.shapes.length===0,'re-applied remote del is a no-op');
 
+    // ADR-0656: peer avatar tooltip names the page a cross-page peer occupies
+    assert.ok(html.includes("el.title=id+((p.pg&&p.pg!==state.curPg&&_pgById(p.pg))?' · '+_pgById(p.pg).name:'')"),'peer avatar title annotates the page only when it differs');
+
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
   // asserts but actually contains 6 (recounted directly: at1.length, at2.length, and 4
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1458; // prev 1454 + 4 seenOps-eviction reapply asserts (ADR-0655)
+  pass += 1459; // prev 1458 + 1 peer-avatar-page pin (ADR-0656)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
