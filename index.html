@@ -868,7 +868,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.765';   // ADR-0739
+const V='1.7.766';   // ADR-0740
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -8125,10 +8125,10 @@ const Net={
       this.bc=new BroadcastChannel(NET_CHANNEL_PREFIX+state.roomId);
       this.bc.onmessage=e=>this._onRecv(e.data);
       // announce arrival + request snapshot
-      this._send(_mk('hello',{seq:state.seq}));
+      this._send(_mk('hello'));   // ADR-0740
       this._send(_mk('sync-req'));
       this._presenceTimer=setInterval(()=>{
-        this._send(_mk('ping',{seq:state.seq}));
+        this._send(_mk('ping'));   // ADR-0740
         this._reapPeers();
         // ADR-0475
         if(!this._snapRx&&this._snapRetry++<3)this._send(_mk('sync-req'));
@@ -8404,7 +8404,7 @@ const Net={
     const slim=this._slimShapes(ops.map(o=>o.shape),_mP());
     ops.forEach((o,i)=>o.shape=slim[i]);
     this._flushImgOuts();
-    return {k:'snapshot',shapes:slim,ops,peer:_pi(),name:_dn(),nameTs:_nameTs,namePeer:_namePeer,rep:state._lastRep,pages:state.pages,curPg:state.curPg};   // ADR-0646: pages ride the snapshot
+    return {k:'snapshot',shapes:slim,ops,peer:_pi(),name:_dn(),nameTs:_nameTs,namePeer:_namePeer,rep:state._lastRep,pages:state.pages};   // ADR-0646/0740
   },
   // ADR-0058: merge one snapshot add-op. Unkno
   // (unchanged); known shape → per-property LW

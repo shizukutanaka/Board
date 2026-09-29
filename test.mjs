@@ -6917,6 +6917,13 @@ try {
     assert.ok((html.match(/ts:nowTs\(\)/g)||[]).length>=4,'ADR-0739: all clock-stamp sites go through nowTs()');
     console.log('  ✓ ADR-0739: clock stamps use the HLC floor everywhere');
 
+    // ADR-0740: dead wire fields — hello/ping carried {seq:state.seq} no receiver
+    // ever reads, and the snapshot carried the sender's curPg which _applySnapshot
+    // intentionally ignores (0672: the view is local). Gone.
+    assert.ok(/_send\(_mk\('hello'\)\)/.test(html)&&/_send\(_mk\('ping'\)\)/.test(html),'ADR-0740: hello/ping carry no dead seq field');
+    assert.ok(!/k:'snapshot'[^}]*curPg/.test(html),'ADR-0740: snapshot drops the sender-side curPg field');
+    console.log('  ✓ ADR-0740: dead wire fields removed');
+
     // resize/align now LWW too (ADR-0002 follow-up): whole-shape snapshot ops gate/stamp
     // only the keys they actually changed (diff before/after). (i) concurrent resize of
     // the SAME geometry converges to the newer writer.
@@ -13553,7 +13560,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1686; // prev 1684 + 2 ADR-0739 source
+  pass += 1688; // prev 1686 + 2 ADR-0740 source
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
