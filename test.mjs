@@ -6909,6 +6909,14 @@ try {
     state._lastTs=0; B.state._lastTs=0;
     console.log('  ✓ ADR-0738: wclock flood cap preserves tombstones');
 
+    // ADR-0739: compat-broadcast + _pgRename clocks stamped raw Date.now — after a
+    // remote op bumped _lastTs upward, those ops ordered BELOW the remote writes
+    // they raced with (convergent but unfair/unintuitive). nowTs() keeps every
+    // stamped clock on the HLC floor.
+    assert.ok(!/ts:_now\(\)\}/.test(html),'ADR-0739: no op-clock object stamped with raw _now()');
+    assert.ok((html.match(/ts:nowTs\(\)/g)||[]).length>=4,'ADR-0739: all clock-stamp sites go through nowTs()');
+    console.log('  ✓ ADR-0739: clock stamps use the HLC floor everywhere');
+
     // resize/align now LWW too (ADR-0002 follow-up): whole-shape snapshot ops gate/stamp
     // only the keys they actually changed (diff before/after). (i) concurrent resize of
     // the SAME geometry converges to the newer writer.
@@ -13545,7 +13553,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1684; // prev 1681 + 3 ADR-0738 behavioural
+  pass += 1686; // prev 1684 + 2 ADR-0739 source
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

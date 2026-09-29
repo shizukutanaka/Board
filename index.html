@@ -805,7 +805,7 @@ const _keepSel=arr=>{if(_ln(arr))_hi()[_hx()].origSel=arr};   // ADR-0312
 const _pd=e=>e.preventDefault();   // ADR-0326
 const _ce=t=>document.createElement(t);   // ADR-0329
 const _selIds=()=>[..._sl()];   // ADR-0330
-const _sb=()=>_selIds().map(byId).filter(Boolean);   // ADR-0418/0623: selected-shape objects — drop dead ids at the source (callers' scattered `s&&` guards prove the leak); _ul/ downstream props would TypeError on undefined
+const _sb=()=>_selIds().map(byId).filter(Boolean);   // ADR-0418/0623
 const _hasS=id=>_sl().has(id);   // ADR-0418: selection-membership predicate
 const _sel0=()=>byId(_selIds()[0]);   // ADR-0421: single-selected shape (12 sites)
 const _grpOf=gid=>_sh().filter(s=>s.groupId===gid).map(s=>s.id);   // ADR-0423: members of a group (id list)
@@ -868,7 +868,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.764';   // ADR-0738
+const V='1.7.765';   // ADR-0739
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2222,7 +2222,7 @@ function _pgDup(){   // ADR-0651: duplicate the current page — pageAdd+shapes 
     return c;
   });
   _cmt({op:'pageAdd',id,name:src.name+' '+t('ctxDuplicate'),shapes:sh});
-  Net.broadcast({op:'addMany',shapes:sh,clock:{peer:_pi(),seq:++state.seq,ts:_now()}});   // ADR-0650: compat broadcast for pre-0650 peers
+  Net.broadcast({op:'addMany',shapes:sh,clock:{peer:_pi(),seq:++state.seq,ts:nowTs()}});   // ADR-0650/0739
   switchPage(id);
 }
 function _pgDel(){if(!_pgOn()||_ln(state.pages)<2)return;const p=state.pages[_pgIdx()];if(!confirm(t('pgDelQ')+': '+p.name+'?'))return;_cmt({op:'pageDel',id:p.id,i:_pgIdx(),name:p.name})}
@@ -2242,7 +2242,7 @@ function _pgDel2(op,firstId,only,viewId){   // ADR-0646: remove the deleted page
   state.shapes=_sh().filter(s=>!dead.has(s.id));_iG();_pcC();
   const land=(viewId!==undefined?viewId:firstId);if(state.curPg===op.id&&land!=null)switchPage(land);   // ADR-0649/0725: land via switchPage so the page change is announced + cursors hidden
 }
-function _pgRename(){const p=_pgById(state.curPg);if(!p)return;const n=prompt(t('pgRename'),p.name);if(n==null||_trm(n)==='')return;_cmt({op:'pageName',id:p.id,before:p.name,after:_s0(_trm(n),80),bts:p.nts,clock:{peer:_pi(),seq:++state.seq,ts:_now()}})}
+function _pgRename(){const p=_pgById(state.curPg);if(!p)return;const n=prompt(t('pgRename'),p.name);if(n==null||_trm(n)==='')return;_cmt({op:'pageName',id:p.id,before:p.name,after:_s0(_trm(n),80),bts:p.nts,clock:{peer:_pi(),seq:++state.seq,ts:nowTs()}})}
 let _pgSig='';
 function _pgBar(){const el=_g('pgBar');if(!el)return;_hdn(el,!_pgOn());if(!_pgOn())return;
 const tb=_g('pgTabs');if(!tb)return;
@@ -7180,7 +7180,7 @@ function importDrawioText(txt,wp){
         _ctrAt(p.sh,wp);
         const id=uid();for(const s of p.sh)s.pg=id;
         _cmt({op:'pageAdd',id,name:p.nm||t('pgPage'),shapes:p.sh});
-        Net.broadcast({op:'addMany',shapes:p.sh,clock:{peer:_pi(),seq:++state.seq,ts:_now()}});
+        Net.broadcast({op:'addMany',shapes:p.sh,clock:{peer:_pi(),seq:++state.seq,ts:nowTs()}});
         if(!selId){selId=id;selSh=p.sh}
       }
       if(selId){switchPage(selId);_scl();for(const s of selSh)_sad(s.id)}

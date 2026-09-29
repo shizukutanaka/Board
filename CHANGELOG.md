@@ -1,3 +1,11 @@
+## [1.7.765] - 2026-09-28
+
+### Fixed
+- ADR-0739: the two addMany compat broadcasts and `_pgRename` stamped op clocks
+  with raw `Date.now()` — after a remote op ratcheted `_lastTs` upward those
+  ops ordered below the remote writes they actually followed (convergent but
+  unfair). Every stamped clock now goes through the HLC floor `nowTs()`
+
 ## [1.7.764] - 2026-09-29
 
 ### Fixed
