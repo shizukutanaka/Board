@@ -868,7 +868,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.756';   // ADR-0729
+const V='1.7.757';   // ADR-0729
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -9978,8 +9978,8 @@ function _undoWire(op){
       for(const c of op.connClears||[])if(c.before)_pu(o,{op:'upd',id:c.id,after:c.before});
       return o;}
     case 'move':   return[{op:'move',ids:op.moved||op.ids,dx:-op.dx,dy:-op.dy}];   // ADR-0719: send the forward-moved set — a selected-but-locked-at-commit id in op.ids would get negated on peers (it never moved)
-    case 'upd':case 'style':case 'resize':case 'align':
-                   return[{op:op.op,id:op.id,dir:op.dir,before:op.after,after:op.before}];   // ADR-0717: before rides too — style/resize/align wire ops are rejected without it (dead undo-wire since ADR-0443) and _lwwDrop diffs against it
+    case 'upd':case 'style':case 'resize':case 'align':case 'beautify':
+                   return[{op:op.op,id:op.id,dir:op.dir,before:op.after,after:op.before}];   // ADR-0717/0731: before rides too — these wire ops are rejected without it (dead undo-wire since ADR-0443) and _lwwDrop diffs against it; 'beautify' undoes via patch swap since ADR-0730
     case 'group':case 'ungroup':   // restore per-shape groupId via upd patches
       return _iA(op.before)?op.before.map(b=>({op:'upd',id:b.id,after:{groupId:b.groupId||null}})):null;
     case 'zorder':
