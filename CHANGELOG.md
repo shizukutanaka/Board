@@ -1,3 +1,11 @@
+## [1.7.769] - 2026-09-28
+
+### Docs
+- ADR-0743: sync architecture.md to the current wire contract — move op
+  documents the required absolute after, zorder documents changes-only,
+  and a mixed-version intake bullet covers ADR-0739–0742 (stale-SW peers'
+  legacy wire forms are rejected rather than applied on a raced base)
+
 ## [1.7.768] - 2026-09-28
 
 ### Fixed

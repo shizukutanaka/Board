@@ -107,9 +107,13 @@ op 型 (全て可逆; `_apply(op, false)` で完全に戻る):
 - `{op:'del', shapes:[...], connClears?}` — 複数削除を1つに。forward は `sh.locked` をスキップし、
   undo は `byId` 冪等ガードでスキップ分を再 push しない (ADR-0547: さもないと同一 id 二重登録)
 - `{op:'upd', id, before, after}` — 汎用プロパティ変更
-- `{op:'move', ids:[...], dx, dy}` — 平行移動。forward は実際に動かした id を `op.moved` に記録し、
-  undo は `moved` のみを逆移動 (ADR-0548: locked スキップ分が逆方向にずれるのを防止)
-- `{op:'zorder', before:[{id,z},...], after:[{id,z},...]}` — z 順序スナップショット差分
+- `{op:'move', ids:[...], dx, dy, after:[{id,x,y},...], before?}` — 平行移動。wire は絶対位置 `after`
+  必須 (ADR-0729/0741: bare delta は raced-base 適用で発散するため受信側が拒絶)。forward は実際に
+  動かした id を `op.moved` に記録し、undo は `moved` のみを逆移動 (ADR-0548: locked スキップ分が
+  逆方向にずれるのを防止)
+- `{op:'zorder', changes:[{id,before,after},...]}` — 分数インデックスの minimal-delta。
+  wire はこの形式のみ (ADR-0742: 旧 `{after:[{id,z,frac}]}` wholesale は LWW/stamp なしの
+  raced clobber のため受信側が拒絶)
 - `{op:'style', before:[{id,...},...], after:[{id,...},...]}` — マルチ選択スタイル一括変更 (スライダーコアレス)
 - `{op:'align', before:[{id,...},...], after:[{id,...},...]}` — 整列
 - `{op:'resize', before:[{id,w,h},...], after:[{id,w,h},...]}` — キーボードリサイズ (Alt+矢印) の
@@ -412,11 +416,16 @@ DOM 要素は `data-t` 属性 + `UI.applyI18n()` で翻訳 (起動時に 1 回�
   で上限化 (ADR-0448/0449/0454)。
 - **切断**: `dc.onclose` で `_dcQ` 破棄 + 再組立スロット掃除
   (ADR-0446/0448)。
-- **wire キャップ整合** (ADR-0473/0479): zorder `changes`/`after` の
+- **wire キャップ整合** (ADR-0473/0479): zorder `changes` の
   frac ≤600・id ≤64、group/ungroup の gid ≤64 — 敵性ピアの巨大
   文字列注入を `validRemotePayload` で遮断。スナップショット取込は
   `SHARE_MAX_SHAPES` (200k) まで許容し >500 図形盤面の切捨てを解消
   (ADR-0474)。
+- **mixed-version intake** (ADR-0739–0742): 全 op clock は HLC floor (`nowTs`) で統一、
+  wire の dead field (hello/ping seq・snapshot curPg) は剥がし、remote `move` は絶対
+  `after` 必須・remote `zorder` は `changes` 必須 — stale-SW 旧版ピアが送出しうる
+  旧 wire 形 (bare delta / wholesale z-order) を受信側で全て拒絶し、混在ルームでも
+  収束規則が破れないようにした。
 - **op 配列上限 = 盤面上限** (ADR-0602): `addMany`/`del`/`zorder`/
   `group`/`ungroup`/`connClears` の配列キャップは旧 ~500 固定から
   `MAX_OP_SHAPES=SHARE_MAX_SHAPES` へ統一 — 「一つの op が盤面の
