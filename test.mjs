@@ -11388,6 +11388,21 @@ try {
     fireKey('Delete');
     assert.deepStrictEqual(state.shapes.map(s=>s.id),[A3.id],'Delete removes the unlocked selection via the real key path');
     assert.strictEqual(state.selection.size,0,'selection cleared after delete');
+    // Arrow keys: nudge the selection, pan the view when nothing is selected (ADR-0165)
+    reset();
+    state.tool='select';
+    Store.commit({op:'add',shape:Shape.make('rect',{x:50,y:50,w:40,h:40})});
+    const N1=state.shapes[state.shapes.length-1];
+    state.selection=new Set([N1.id]);
+    const x0=N1.x;
+    fireKey('ArrowRight');
+    assert.strictEqual(N1.x,x0+1,'arrow nudges the selection by 1');
+    fireKey('ArrowRight',{shiftKey:true});
+    assert.strictEqual(N1.x,x0+11,'⇧arrow nudges by 10');
+    state.selection.clear();
+    const pxx=state.viewport.x;
+    fireKey('ArrowLeft');
+    assert.ok(state.viewport.x<pxx,'arrow without a selection pans the view');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -11399,7 +11414,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1210; // prev 1168 + 42 event-sequence asserts (ADR-0641)
+  pass += 1214; // prev 1168 + 46 event-sequence asserts (ADR-0641)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
