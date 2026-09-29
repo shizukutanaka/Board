@@ -12069,6 +12069,46 @@ try {
     fireKey1('keydown',{key:'Enter'});
     assert.ok(appd3.some(el=>el.tagName==='INPUT'&&el.value==='c'),'Enter on conn opens the label editor');
     fakeDoc.body.appendChild=()=>{};
+    // directional marquee (ADR-0124): L→R encloses only, R→L intersects
+    reset();
+    state.viewport={x:0,y:0,zoom:1};
+    state.tool='select';
+    const DM1=Shape.make('rect',{x:50,y:50,w:40,h:40});
+    const DM2=Shape.make('rect',{x:180,y:50,w:40,h:40});
+    Store.commit({op:'add',shape:DM1});Store.commit({op:'add',shape:DM2});
+    fire1('pointerdown',10,10);
+    fire1('pointermove',200,120);
+    fire1('pointerup',200,120);
+    assert.ok(state.selection.has(DM1.id),'L→R marquee selects the enclosed shape');
+    assert.ok(!state.selection.has(DM2.id),'L→R marquee skips the edge-touching shape');
+    reset();
+    state.tool='select';
+    const DM3=Shape.make('rect',{x:50,y:50,w:40,h:40});
+    const DM4=Shape.make('rect',{x:180,y:50,w:40,h:40});
+    Store.commit({op:'add',shape:DM3});Store.commit({op:'add',shape:DM4});
+    fire1('pointerdown',200,10);
+    fire1('pointermove',160,120);
+    fire1('pointerup',160,120);
+    assert.ok(state.selection.has(DM4.id)&&!state.selection.has(DM3.id),'R→L marquee selects intersecting shapes');
+    // ⇧marquee adds instead of replacing (marquee/lasso parity)
+    reset();
+    state.tool='select';
+    const SM1=Shape.make('rect',{x:50,y:50,w:40,h:40});
+    const SM2=Shape.make('rect',{x:200,y:200,w:40,h:40});
+    Store.commit({op:'add',shape:SM1});Store.commit({op:'add',shape:SM2});
+    state.selection=new Set([SM2.id]);
+    fire1('pointerdown',10,10,{shiftKey:true});
+    fire1('pointermove',120,120,{shiftKey:true});
+    fire1('pointerup',120,120,{shiftKey:true});
+    assert.ok(state.selection.has(SM1.id)&&state.selection.has(SM2.id),'⇧marquee adds to the selection');
+    // dblclick on a label-less conn still opens the (empty) label editor
+    reset();
+    const NL1=Shape.make('arrow',{x1:0,y1:0,x2:100,y2:100});
+    Store.commit({op:'add',shape:NL1});
+    const appd4=[];fakeDoc.body.appendChild=el=>{appd4.push(el)};
+    fire1('dblclick',50,50);
+    assert.ok(appd4.some(el=>el.tagName==='INPUT'),'dblclick on a label-less conn opens the editor');
+    fakeDoc.body.appendChild=()=>{};
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -12080,7 +12120,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1367; // prev 1362 + 5 event-sequence asserts (ADR-0641: ⇧wheel/⌥measure/frame-dblclick/Enter-conn)
+  pass += 1372; // prev 1367 + 5 event-sequence asserts (ADR-0641: directional marquee/⇧marquee/無ラベルconn dblclick)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
