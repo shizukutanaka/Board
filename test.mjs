@@ -253,6 +253,7 @@ const checks = [
   ["contextlost purges GPU caches on restore (ADR-0627)", html.includes("_on(canvas,'contextlost',_pd)") && html.includes("_on(canvas,'contextrestored',_ctxUp)") && html.includes("_penCache.clear();_penCachePx=0;_inkD=null;Minimap.invalidateCache()")],
   ["img blob resolves evicted pending stragglers (ADR-0629)", html.includes("for(const s of _sh())if(s.img===msg.key){delete s.img;s.dataUrl=data;this._imgPending.delete(s.id)}")],
   ["resize handlers debounced (ADR-0631)", html.includes("_on(window,'resize',_resizeSoon)") && html.includes("_on(visualViewport,'resize',_resizeSoon)") && html.includes("_on(screen.orientation,_CH,_resizeSoon)")],
+  ["minimap nav cancels on hidden/pagehide (ADR-0632)", html.includes("cancelNav(){_mmNav=false}") && html.includes("Minimap.cancelNav()")],
   ['applyRemote validates remote add shape', html.includes("case 'add':    return validShape(op.shape)")],
   ['SVG export uses testable buildSVG', html.includes("function buildSVG") && html.includes("buildSVG(shapes")],
   ['SVG attrs escaped via _esc', html.includes("stroke=\"${stroke}\"") && html.includes("_esc(_fi(s))")],
@@ -11133,7 +11134,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1162; // prev 1161 + resize debounce pin (ADR-0631)
+  pass += 1163; // prev 1162 + minimap cancelNav pin (ADR-0632)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

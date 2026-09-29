@@ -680,7 +680,8 @@ Board/
     │   ├── ADR-0628-architecture-context-restore-sync.md   # architecture.md へ GPU キャッシュ不変条件を同期 (実装済)
     │   ├── ADR-0629-img-blob-stragglers.md   # 追い出された parked 図形も blob 到着時に解決 (実装済)
     │   ├── ADR-0630-img-stragglers-test.md   # ADR-0629 の実動作ピン (evicted+pending 両経路) (実装済)
-    │   └── ADR-0631-resize-debounce.md   # resize を trailing-edge debounce 化 (canvas 再確保の嵐解消) (実装済)
+    │   ├── ADR-0631-resize-debounce.md   # resize を trailing-edge debounce 化 (canvas 再確保の嵐解消) (実装済)
+    │   └── ADR-0632-minimap-nav-cancel.md   # _mmNav を hidden/pagehide でもクリア (bfcache 復帰ジャンプ解消) (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

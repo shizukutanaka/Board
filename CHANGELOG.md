@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.659]
+### 修正
+- ミニマップのドラッグスクラブ状態 `_mmNav` が hidden/pagehide でクリアされない問題を修正 — bfcache 復帰後にポインタが離れても次の pointermove でビューポートがジャンプし得た。`_clearTouchState` から `Minimap.cancelNav()` を呼びジェスチャライフサイクル系と揃える (ADR-0632)。
+
 ## [1.7.658]
 ### 修正
 - window/visualViewport/orientation の resize を 150ms trailing-edge debounce 化 — OS ウィンドウドラッグや iOS URL バーアニメーションのイベント嵐で、canvas バッキングストア (4K で ~33MB×2) がピクセル毎に再確保されていた (ADR-0631)。

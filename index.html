@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.658';   // ADR-0631
+const V='1.7.659';   // ADR-0632
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4753,7 +4753,7 @@ _on(canvas,'gestureend',()=>{_pinchSnap=null;_pinchVp=null;_iv()});
 _on(canvas,_PU,_resetPinch);
 _on(canvas,_PC,_resetPinch);
 // ADR-0534: blur can lose pointerup — re-base gesture/pointer state.
-function _clearTouchState(){_pointers.clear();_pinchPrev=0;if(_pinchSnap){_pinchSnap=null;_pinchVp=null;_iv()}}   // ADR-0608: shared across blur / hidden / pagehide — stale pointer ids must not survive
+function _clearTouchState(){_pointers.clear();_pinchPrev=0;if(_pinchSnap){_pinchSnap=null;_pinchVp=null;_iv()}Minimap.cancelNav()}   // ADR-0608/0632: shared across blur / hidden / pagehide — stale pointer ids must not survive
 _on(window,'blur',()=>{
   if(ptr.down)_cancelPointerGesture();
   _clearTouchState();
@@ -10066,7 +10066,7 @@ const Minimap=(()=>{
   _on(mc,_PC,()=>{_mmNav=false});
   _on(window,'blur',()=>{_mmNav=false});   // ADR-0534
 
-  return{draw,schedule,invalidateCache};
+  return{draw,schedule,invalidateCache,cancelNav(){_mmNav=false}};
 })();
 
 // ====================== MAIN ======================
