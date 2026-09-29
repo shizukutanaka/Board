@@ -498,10 +498,10 @@ DOM 要素は `data-t` 属性 + `UI.applyI18n()` で翻訳 (起動時に 1 回�
   `_xyOK` (|v|≤1e7) に、非座標 prop も `size≤1e4` (bbox pad: pen/conn÷2、矢印×3、
   elbow stub×8)、`bend` (world coord) `_xyOK`、結合フォーカス `aF/bF∈[0,1]` に —
   座標に触れない遠方値でも bboxAll を汚染し得た経路を完走閉塞。
-- **viewport 中心は常に座標ドメイン内** (ADR-0795/0798/0799): 外部由来の採用値
+- **viewport 中心は常に座標ドメイン内** (ADR-0795/0798/0799/0803): 外部由来の採用値
   (共有リンク/IDB/インポータ appState·dx·scrollX) は `_vpOK` で棄却・`_xyOK` で
   ゲートし、**全てのライブ書き込み** (ポインタドラッグ/ホイール/矢印キーパン、
-  `zoomAt`、`centerOn`、`_fitViewport`) は `_xC(v)=clamp(v,±1e7)` を通る — 境界の
+  `zoomAt`、`centerOn`、`_fitViewport`、プレゼン `_zoomToFrame`) は `_xC(v)=clamp(v,±1e7)` を通る — 境界の
   外には wire-valid な図形が存在し得ないため、中心が外に出ると描く図形が全て
   ピア棄却となる発散クラスだった (境界ではパンが停止、届く表示は失われない)。
 - **ローカル取込も wire 上限に揃える** (ADR-0796/0797): drawio/svg/excalidraw
