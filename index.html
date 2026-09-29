@@ -873,7 +873,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.796';   // ADR-0770
+const V='1.7.797';   // ADR-0771
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2203,7 +2203,7 @@ function _pgFollow(op){   // ADR-0652: undo/redo of a change you can't see lands
 function _pgAdd(){if(_pgOn()&&_ln(state.pages)>=64){_wT('pgMax');return}if(!_pgOn())_cmt({op:'pageAdd',id:uid(),name:t('pgPage')+' 1'});const id=uid();_cmt({op:'pageAdd',id,name:t('pgPage')+' '+(_ln(state.pages)+1)});switchPage(id)}   // ADR-0688
 function _pgDup(){   // ADR-0651: duplicate the current page — pageAdd+shapes makes it one atomic op
   if(!_pgOn())_cmt({op:'pageAdd',id:uid(),name:t('pgPage')+' 1'});
-  const src=state.pages[_pgIdx()];if(!src)return;
+  const si=_pgIdx(),src=state.pages[si];if(!src)return;
   if(_ln(state.pages)>=64){_wT('pgMax');return}   // ADR-0688: same cap as _pgAdd
   const id=uid(),gidMap=_mP(),idMap=_mP();
   const srcSh=_sh().filter(s=>(s.pg||state.pages[0].id)===src.id);
@@ -2215,7 +2215,7 @@ function _pgDup(){   // ADR-0651: duplicate the current page — pageAdd+shapes 
     if(c.b&&idMap.has(c.b))c.b=idMap.get(c.b);
     return c;
   });
-  _cmt({op:'pageAdd',id,name:src.name+' '+t('ctxDuplicate'),shapes:sh});
+  _cmt({op:'pageAdd',id,i:si+1,name:src.name+' '+t('ctxDuplicate'),shapes:sh});   // ADR-0771
   Net.broadcast({op:'addMany',shapes:sh,clock:{peer:_pi(),seq:++state.seq,ts:nowTs()}});   // ADR-0650/0739
   switchPage(id);
 }

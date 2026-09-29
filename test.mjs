@@ -13767,9 +13767,10 @@ try {
     const dpC=Shape.make('arrow',{x1:0,y1:0,x2:30,y2:0});dpC.a=dpA.id;dpC.b=dpB.id;
     dpA.groupId='g1';dpB.groupId='g1';
     Store.commit({op:'addMany',shapes:[dpA,dpB,dpC]});
-    const dupSrcPg=state.curPg;
+    const dupSrcPg=state.curPg,dupSrcIdx=state.pages.findIndex(p=>p.id===dupSrcPg);
     _pgDup();
     assert.ok(state.pages.length===3&&state.curPg!==dupSrcPg,'_pgDup creates a new page and lands on it');
+    assert.ok(state.pages[dupSrcIdx+1]&&state.pages[dupSrcIdx+1].id===state.curPg,'_pgDup lands the copy right after its source (ADR-0771)');
     const dupSh=state.shapes.filter(s=>(s.pg||state.pages[0].id)===state.curPg);
     assert.ok(dupSh.length===3&&dupSh.every(s=>s.pg===state.curPg&&s.id!==dpA.id&&s.id!==dpB.id&&s.id!==dpC.id),'duplicate carries 3 fresh-id copies stamped to the new page');
     const dupConn=dupSh.find(s=>s.type==='arrow');
