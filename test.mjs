@@ -4519,7 +4519,7 @@ try {
       assert.ok(ptr.down===true,'same-page adopt leaves the gesture alone');
       assert.ok(html.includes('if(nc!==oc){_cancelPointerGesture();_cxO()}'),'_pgAdopt gesture+editor-cancel gate (ADR-0664/0684)');
       assert.ok(html.includes('if(nc!==oc)Net.sendCursorHide()'),'_pgAdopt hides cursor on page move (ADR-0690)');
-      assert.ok(html.includes('for(const s of _sh())if(s.pg&&!_pgById(s.pg)&&_ln(state.pages)<64)_pu(state.pages'),'_pgAdopt heals unknown pg → ? page (ADR-0692)');
+      assert.ok(html.includes('for(const s of _sh()){if(s.pg&&!_pgById(s.pg)&&_ln(state.pages)<64)_pu(state.pages'),'_pgAdopt heals unknown pg → ? page (ADR-0692)');
       state.pages=null;state.curPg=null;ptr.down=false;ptr.dragKind=null;ptr.dragStartShapes=null;
       // ADR-0692: a shape carrying an unknown pg spawns a ? page on adopt
       {
@@ -4529,6 +4529,14 @@ try {
         const healed=state.pages.find(p=>p.id==='ghostPg');
         assert.ok(healed&&healed.name==='?','unknown pg heals to a ? page (ADR-0692)');
         state.pages=null;state.curPg=null;
+        // ADR-0694: adopting a null page set scrubs stale s.pg entirely
+        {
+          const G2=Shape.make('rect',{x:0,y:0,w:10,h:10});G2.pg='stalePg';
+          Store.commit({op:'add',shape:G2});
+          _pgAdopt(null,null);
+          assert.ok(byId(G2.id).pg===undefined,'null adopt scrubs stale s.pg (ADR-0694)');
+          Store.commit({op:'del',shapes:[{...byId(G2.id)}]});
+        }
         Store.commit({op:'del',shapes:[{...byId(G.id)}]});
         assert.ok(html.includes('_pgHealS();_pgBar()'),'snapshot union-heal also heals shape-carried unknown pg (ADR-0693)');
       }
@@ -12844,7 +12852,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1532; // prev 1517 + 1 tab aria-label pin (ADR-0682)
+  pass += 1533; // prev 1517 + 1 tab aria-label pin (ADR-0682)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
