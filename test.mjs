@@ -6771,6 +6771,36 @@ try {
     assert.strictEqual(B.state.shapes.find(s=>s.id==='mv').x, 100, 'ADR-0732: absolute undo-wire converges the peer (was: -delta left it at 140)');
     console.log('  ✓ ADR-0732: move undo-wire absolute swap + backward absolute restore');
 
+    // ADR-0733: delta-path backward (the real recorded form — local ops carry
+    // ids+dx+dy only) must arbitrate per axis like the absolute path. A remote
+    // write whose clock beats the undo's fresh clock owns that axis; the undoer
+    // un-moves only the rest. (Before: -dx ran unconditionally → the axis split:
+    // peer's _lwwDrop dropped the wire x while the undoer had already moved it.)
+    reset(A); reset(B);
+    A.state.peerId='peerA';
+    const mv2={id:'mv2',type:'rect',x:100,y:0,w:10,h:10,z:1};
+    A.state.shapes.push(cp(mv2)); B.state.shapes.push(cp(mv2)); A._invalidateGrid(); B._invalidateGrid(); A.sortZ(); B.sortZ();
+    const bfAB4=[];
+    A.Net.broadcast = op => bfAB4.push({k:'op',op:cp(A.Net._slimOp(op))});
+    B.Net.broadcast = () => {};
+    const mv3={op:'move',ids:['mv2'],dx:10,dy:5,clock:{peer:'peerA',seq:1,ts:100}};
+    A.Store._apply(mv3,true);
+    A.Store._recordCommitted(mv3);
+    assert.deepStrictEqual([A.state.shapes.find(s=>s.id==='mv2').x,A.state.shapes.find(s=>s.id==='mv2').y],[110,5],'ADR-0733: sender applied its move');
+    const race={k:'op',op:{op:'upd',id:'mv2',after:{x:150},clock:{peer:'peerX',seq:99,ts:9e15}}};
+    A.Net._onRecv(cp(race)); B.Net._onRecv(cp(race));
+    assert.strictEqual(A.state.shapes.find(s=>s.id==='mv2').x, 150, 'ADR-0733: racing upd lands at the undoer too');
+    A.Store.undo();
+    const aS2=A.state.shapes.find(s=>s.id==='mv2');
+    assert.strictEqual(aS2.x, 150, 'ADR-0733: arbitrated axis keeps the remote-winning value (was: -dx split it)');
+    assert.strictEqual(aS2.y, 0, 'ADR-0733: unarbitrated axis still un-moves');
+    bfAB4.splice(0).forEach(m=>B.Net._onRecv(m));
+    const bS2=B.state.shapes.find(s=>s.id==='mv2');
+    assert.strictEqual(bS2.x, 150, 'ADR-0733: peer keeps the arbitrated x');
+    assert.strictEqual(bS2.y, 0, 'ADR-0733: peer un-moves y — converged');
+    state._lastTs=0; B.state._lastTs=0;   // the far-future race raised both HLC floors — restore them or later local commits get poisoned clocks (A IS api — shares `state`)
+    console.log('  ✓ ADR-0733: delta backward arbitrates per axis via _lwwSkip');
+
     // resize/align now LWW too (ADR-0002 follow-up): whole-shape snapshot ops gate/stamp
     // only the keys they actually changed (diff before/after). (i) concurrent resize of
     // the SAME geometry converges to the newer writer.
@@ -13407,7 +13437,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1655; // prev 1649 + 6 ADR-0732 behavioural
+  pass += 1661; // prev 1655 + 6 ADR-0733 behavioural
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

@@ -1,3 +1,7 @@
+## [1.7.759] - 2026-09-29
+
+ADR-0733: delta-path move undo arbitrated per axis — the real recorded form (ids+dx+dy only) un-moved -dx/-dy unconditionally, so a remote write whose clock beat the undo's fresh clock split an axis (peers' _lwwDrop removed that axis on the wire while the undoer had already moved it). Backward now _lwwSkip-gates x/y independently: arbitrated axes keep the remote-winning value, the rest still un-move — and the wire's derived absolute mirrors the outcome on every peer.
+
 ## [1.7.758] - 2026-09-29
 
 ### Fixed
