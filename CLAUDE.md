@@ -865,6 +865,7 @@ Board/
 │   └── ADR-0814-rejection-audit-complete.md  # 非同期 rejection 監査完走 — 全 promise 経路 catch 済み
 │   └── ADR-0815-hash-decode-guard.md  # #b= ハッシュの decodeURIComponent を try 内へ (malformed % の pinned URL 解消)
 │   └── ADR-0816-send-lifecycle-audit.md  # 送信ファネル・キューライフサイクル監査完走 — 全経路 clean
+│   └── ADR-0817-timer-lifecycle-audit.md  # タイマー・インターバルのライフサイクル監査完走 — 全クリア/再アーム/単一スロット
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
