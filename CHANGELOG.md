@@ -1,3 +1,8 @@
+## [1.7.867] - 2026-09-29
+
+### Fixed
+- ADR-0841: パッチ適用 (`upd`/`style`/`align`/`beautify`/snapshot マージ/`connClears`) で図形へ書き込まれる `img:` 参照が `_imgPending` 未登録だった残穴を、`_oa` を shape パッチ適用の単一ゲートにして閉塞 — 参照が dangling なら 256-cap 駐車で imgq 修復へ乗せる。`dataUrl` 同載時は駐車しない
+
 ## [1.7.866] - 2026-09-29
 
 ### Fixed

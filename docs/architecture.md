@@ -184,6 +184,9 @@ RTC-only ピアに届かず、mid-flush 切断が最も起きやすい WebRTC �
 (ADR-0836)、`_imgqT` は `Net.init` のルーム切替リセット群に含まれる。
 IDB 復元 (`Persist.load`/`restoreBackup`) も `_attachShape` を通して未解決参照を
 駐車する (ADR-0840) — 送信途中切断→永続化→リロードの参照が imgq 修復に乗る。
+図形への全パッチ適用は `_oa` 通過のため、そこで dangling `img` を検出して同じ駐車を
+行う (ADR-0841) — `upd`/`style`/`align`/`beautify`/snapshot マージ/`connClears`
+経由の参照も imgq 修復に乗る (`dataUrl` 同載時は駐車しない)。
 
 **反転 (flip H/V)** は専用 op を持たず、`align` op を再利用する: `doFlip(axis)` が選択 bbox 中心軸で
 各シェイプ座標をミラー (`flipShape`) し、変更前後の完全クローンを `{op:'align',dir:'flip',before,after}`

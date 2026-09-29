@@ -1708,7 +1708,7 @@ try {
              _getPasteCount: () => _pasteCount, _resetPasteClipboard: () => { _lastClipboard = null; },
              endRectLike, endLineLike, endSelect, I18N, applyTheme, editSelectedShapeKbd, Share,
              draw, drawOverlay, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; }, _setOCtx: (c) => { const p = octx; octx = c; return p; },
-             _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, 
+             _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, _oa,
              _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
              _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER,
              switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx,
@@ -1735,7 +1735,7 @@ try {
           _onSwUpdate, _ctxMenuKeyNav,
           _getPasteCount, _resetPasteClipboard,
           endRectLike, endLineLike, endSelect, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
-          _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, 
+          _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, _oa,
           _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER,
           switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx } = api;
@@ -14426,6 +14426,13 @@ try {
     // both load() and restoreBackup() route through Net._attachShape.
     assert.strictEqual((html.match(/shapes\.map\(s=>Net\._attachShape\(s\)\)/g)||[]).length,2,
       'both IDB img-attach paths park unresolved refs');
+    // ADR-0841: a patch-carried img ref (remote upd/style/align/snapshot-merge)
+    // must park too — _oa is the single gate for shape-level patch applies.
+    {Net._imgPending.clear();const _ps={id:'u1'};_oa(_ps,{img:'kx'});
+     assert.strictEqual(Net._imgPending.get('u1').k,'kx','_oa parks a patch-carried img ref');
+     Net._imgPending.clear();_oa(_ps,{img:'ky',dataUrl:'data:x'});
+     assert.ok(!Net._imgPending.has('u1'),'resolved dataUrl does not park');
+     Net._imgPending.clear();}
     console.log('  ✓ imgq re-request answered from blob store or live shape (ADR-0835)');
   }
 
