@@ -1,3 +1,10 @@
+## [1.7.775] - 2026-09-28
+
+### Fixed
+- ADR-0749: _pgAdopt re-validates the selection on page change — selected
+  shapes from the old page otherwise stayed selected while invisible, so
+  Delete/move would hit shapes the user cannot see
+
 ## [1.7.774] - 2026-09-28
 
 ### Fixed
