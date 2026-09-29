@@ -868,7 +868,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.727';   // ADR-0701
+const V='1.7.728';   // ADR-0702
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1753,11 +1753,15 @@ const Store={
         }
         _ss(_selIds());_iG();_iv();_ivO();_pgBar();
         break;}
-      case 'pageName':{   // ADR-0646/0698: LWW on (p.nts,p.ntp) — clockNewer total order, else equal-ts concurrent renames diverge (>= applies on both, > skips on both)
+      case 'pageName':{   // ADR-0646/0698/0702: LWW on (p.nts,p.ntp) — clockNewer total order, else equal-ts concurrent renames diverge (>= applies on both, > skips on both)
         const p=_pgById(op.id);if(!p)break;
         const ts=forward?(op.clock&&_iN(op.clock.ts)?op.clock.ts:_now()):(op.bts!=null?op.bts:0);
-        const win=p.nts==null||(forward?clockNewer({ts,peer:op.clock?op.clock.peer:'',seq:0},{ts:p.nts,peer:p.ntp||''}):ts>=p.nts);
-        if(win){if(forward){op.bts=p.nts;op.btp=p.ntp}p.name=forward?op.after:(op.before||p.name);p.nts=ts;if(forward)p.ntp=op.clock?op.clock.peer:'';else if(op.btp!=null)p.ntp=op.btp}
+        // ADR-0702: undo gate must compare the CURRENT name's write against OUR op's clock —
+        // bts>=p.nts could never hold (bts predates our own write), so undo was a local no-op
+        // while the inverse op still reverted peers -> divergence.
+        const win=p.nts==null||(forward?clockNewer({ts,peer:_iS(op.clock&&op.clock.peer)?op.clock.peer:'',seq:0},{ts:p.nts,peer:_iS(p.ntp)?p.ntp:'',seq:0})
+          :!clockNewer({ts:p.nts||0,peer:_iS(p.ntp)?p.ntp:'',seq:0},{ts:_iN(op.clock&&op.clock.ts)?op.clock.ts:0,peer:_iS(op.clock&&op.clock.peer)?op.clock.peer:'',seq:0}));
+        if(win){if(forward){op.bts=p.nts;op.btp=p.ntp}p.name=forward?op.after:(op.before||p.name);p.nts=ts;if(forward)p.ntp=op.clock?op.clock.peer:'';else p.ntp=op.btp!=null?op.btp:''}
         _pgBar();
         break;}
       case 'group':{
@@ -8771,7 +8775,7 @@ const Persist={
       }
       _docN(d);
       if(d.wc&&_iO(d.wc))for(const k in d.wc){const m=d.wc[k];if(_iO(m))for(const p in m)if(validClock(m[p]))(state.wclock[k]=state.wclock[k]||{})[p]=m[p]}   // ADR-0460
-      if(validClock(d.rep))state._lastRep=d.rep;if(_iN(d.nts))_nameTs=d.nts;if(_iS(d.ntp))_namePeer=d.ntp;   // ADR-0695/0699
+      if(validClock(d.rep))state._lastRep=d.rep;if(_iN(d.nts)&&_fin(d.nts))_nameTs=d.nts;if(_iS(d.ntp))_namePeer=d.ntp;   // ADR-0695/0699/0701
       state.lastSaveAt=d.savedAt||0;
       _sz();
     }

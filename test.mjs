@@ -12739,6 +12739,25 @@ try {
     Store.applyRemote({op:'pageName',id:p1.id,after:'Bad',clock:{peer:'zz',seq:2,ts:9e15}});
     assert.ok(_pgById(p1.id).name==='Hi2','equal-ts pageName: a mid peer still loses (ADR-0698)');
     state._lastTs=0;   // my far-future remote ts raised the HLC floor — restore it or later local commits get poisoned clocks
+    // ADR-0702: undo of a page rename actually restores the name — the bts>=nts gate
+    // could never hold (bts predates our own write), so undo was a local no-op while
+    // the inverse op still reverted peers -> divergence.
+    {
+      state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=[{id:'pgU',name:'Orig',nts:0}];state.curPg='pgU';
+      Store.commit({op:'pageName',id:'pgU',before:'Orig',after:'Renamed'});
+      assert.strictEqual(_pgById('pgU').name,'Renamed','local rename applies');
+      Store.undo();
+      assert.strictEqual(_pgById('pgU').name,'Orig','undo restores the pre-rename name (ADR-0702)');
+      Store.redo();
+      assert.strictEqual(_pgById('pgU').name,'Renamed','redo re-applies the rename');
+      // a newer concurrent remote write is NOT clobbered by the undo
+      Store.applyRemote({op:'pageName',id:'pgU',after:'Newer',clock:{peer:'zz',seq:1,ts:9e15}});
+      Store.undo();
+      assert.strictEqual(_pgById('pgU').name,'Newer','undo skips when a newer write stands (ADR-0702)');
+      state._lastTs=0;
+      state.history=[];state.histIdx=-1;
+      console.log('  ✓ pageName undo restores the name without clobbering newer writes (ADR-0702, 4 asserts)');
+    }
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;
     const s3=Shape.make('rect',{x:0,y:0,w:5,h:5});
     Store.commit({op:'add',shape:s3});
@@ -12926,7 +12945,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1560; // prev 1517 + 1 tab aria-label pin (ADR-0682)
+  pass += 1564; // prev 1517 + 1 tab aria-label pin (ADR-0682)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
