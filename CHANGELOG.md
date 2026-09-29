@@ -1,3 +1,10 @@
+## [1.7.774] - 2026-09-28
+
+### Fixed
+- ADR-0748: _pgAdopt now invalidates _gridVer-keyed caches on any adopt —
+  a silent curPg or membership change otherwise served stale page-filtered
+  results (search matches, group halo)
+
 ## [1.7.773] - 2026-09-28
 
 ### Fixed
