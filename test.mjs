@@ -1386,7 +1386,7 @@ const checks = [
     html.includes("if(sh&&!sh.locked)_oa(sh,p.after);}}")],
   // v1.7.40: _apply zorder forward must guard sh.locked (changes path)
   ['_apply zorder forward changes: !(forward&&sh.locked) guards locked shapes',
-    html.includes("if(sh&&!(forward&&sh.locked))sh.frac=forward?c.after:c.before}")],
+    html.includes("if(sh&&!(forward&&sh.locked)&&!_lwwSkip(c.id,'frac',op))sh.frac=forward?c.after:c.before}")],
   // v1.7.40: _apply group forward must guard sh.locked
   ['_apply group forward: !(forward&&sh.locked) guards locked shapes from remote group',
     html.includes("if(sh&&!(forward&&sh.locked))sh.groupId=op.gid}")],
@@ -12466,6 +12466,18 @@ try {
     state.pages=null;state.curPg=null;
     assert.ok(html.includes("function _pgFollow(op){"),'ADR-0652 _pgFollow exists');
     assert.ok((html.match(/_pgFollow\(op\);/g)||[]).length===2,'_pgFollow wired into undo + redo');
+    console.log('  ✓ undo/redo page-follow (ADR-0652, 6 asserts)');
+    // ADR-0653: zorder frac LWW — concurrent reorders of the same shape converge on the newest write
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;
+    const zX=Shape.make('rect',{x:0,y:0,w:10,h:10});zX.frac='a0';
+    Store.commit({op:'add',shape:zX});
+    Store.commit({op:'zorder',changes:[{id:zX.id,before:'a0',after:'a1'}]});
+    Store.applyRemote({op:'zorder',changes:[{id:zX.id,before:'a0',after:'a2'}],clock:{peer:'zz',seq:1,ts:1}});
+    assert.ok(byId(zX.id).frac==='a1','staler remote zorder loses to the recorded local write');
+    Store.applyRemote({op:'zorder',changes:[{id:zX.id,before:'a1',after:'a3'}],clock:{peer:'zz',seq:2,ts:9e12}});
+    assert.ok(byId(zX.id).frac==='a3','newer remote zorder wins — both peers converge to the same order');
+    Store.undo();   // undoing our older local write must not regress the converged remote win
+    assert.ok(byId(zX.id).frac==='a3','_lwwSkip blocks undo from clobbering a converged remote frac write');
 
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
@@ -12473,7 +12485,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1446; // prev 1440 + 6 undo/redo page-follow asserts (ADR-0652)
+  pass += 1449; // prev 1446 + 3 zorder-frac-LWW asserts (ADR-0653)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

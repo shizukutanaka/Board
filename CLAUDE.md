@@ -700,7 +700,8 @@ Board/
 │   ├── ADR-0649-pagedel-lands-via-switchpage.md    # 閲覧ページ削除の着地点を switchPage 化 (実装済)
 │   ├── ADR-0650-drawio-real-pages.md               # .drawio 複数ページ ↔ Board 真のページ — pageAdd+shapes op (実装済)
 │   ├── ADR-0651-page-duplicate.md                  # ページ複製 (⧉) — pageAdd+shapes で一括コピー (実装済)
-│   └── ADR-0652-undo-page-follow.md                # undo/redo のページ追従 + pageAdd backward heal (実装済)
+│   ├── ADR-0652-undo-page-follow.md                # undo/redo のページ追従 + pageAdd backward heal (実装済)
+│   └── ADR-0653-zorder-frac-lww.md                 # zorder frac の per-shape LWW 収束 (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

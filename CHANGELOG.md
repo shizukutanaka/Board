@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.7.680] - 2026-09-28
+### Fixed
+- **ADR-0653 zorder frac LWW**: 同一図形を2ピアが同時に並べ替えると `sh.frac`
+  が無条件上書きで到着順依存に発散していた — `frac` を wclock 仲裁対象に追加
+  (`_lwwOp`/`_lwwDrop`/`_stampWrites` + `_apply` に `_lwwSkip` ゲート)。並行
+  reorder は clockNewer 全順序で一意の勝者へ収束し、undo が収束済みリモート
+  書き込みを退行させることも防止。legacy after 形式は従来どおり無条件適用。
+- 回帰テスト +3 (古いリモート負け・新しいリモート勝ち収束・undo 退行防止)
+
+
 ## [1.7.679] - 2026-09-28
 ### Added
 - **ADR-0652 undo/redo のページ追従**: 別ページの変更を戻す時、変更が起きた

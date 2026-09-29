@@ -863,7 +863,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.679';   // ADR-0652
+const V='1.7.680';   // ADR-0653
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1520,7 +1520,7 @@ const Store={
   // so resize/align (whole-shape snapshots) cl
   // concurrently-edited property like stroke.
   // writes to the 'groupId' property, so overl
-  _lwwOp(op){return op.op==='upd'||op.op==='style'||op.op==='resize'||op.op==='align'||op.op==='group'||op.op==='ungroup'},
+  _lwwOp(op){return op.op==='upd'||op.op==='style'||op.op==='resize'||op.op==='align'||op.op==='group'||op.op==='ungroup'||op.op==='zorder'},
   // A patch key counts for LWW only if its val
   // array) compared deeply via JSON; before ma
   _chg(before,after,key){return _JS(before?before[key]:undefined)!==_JS(after[key])},
@@ -1547,6 +1547,11 @@ const Store={
       if(op.before)op.before=op.before.filter(b=>op.ids.includes(b.id));
       return _ln(op.ids)>0;
     }
+    if(op.op==='zorder'){   // ADR-0653: per-shape frac LWW — concurrent reorders of the same shape converge on the newest write
+      if(!_iA(op.changes))return true;   // legacy after-snapshot: pre-Step2 peers don't clock frac — apply unconditionally
+      op.changes=op.changes.filter(c=>byId(c.id)&&this._chg({frac:c.before},{frac:c.after},'frac')&&clockNewer(C,_wc()[c.id]&&_wc()[c.id].frac));
+      return _ln(op.changes)>0;
+    }
     if(!_iA(op.after))return true;
     const bb={};if(_iA(op.before))for(const b of op.before)bb[b.id]=b;
     op.after=op.after.filter(p=>byId(p.id)?filt(p.id,p,bb[p.id])>0:false);
@@ -1572,6 +1577,10 @@ const Store={
         if(byId(id)&&this._chg({groupId:(bmap[id]||{}).groupId},{groupId:gval},'groupId')){
           const w=_wc()[id]||(_wc()[id]={});w['groupId']=C;
         }
+      }
+    }else if(op.op==='zorder'&&_iA(op.changes)){   // ADR-0653
+      for(const c of op.changes)if(byId(c.id)&&this._chg({frac:c.before},{frac:c.after},'frac')){
+        const w=_wc()[c.id]||(_wc()[c.id]={});w.frac=C;
       }
     }else if(_iA(op.after)){const bb={};if(_iA(op.before))for(const b of op.before)bb[b.id]=b;
       for(const p of op.after)stamp(p.id,p,bb[p.id]);}
@@ -1768,7 +1777,7 @@ const Store={
       case 'zorder':{
         if(op.changes){
           // minimal-delta (ADR-0001 Step 2): set moved
-          for(const c of op.changes){const sh=byId(c.id);if(sh&&!(forward&&sh.locked))sh.frac=forward?c.after:c.before}
+          for(const c of op.changes){const sh=byId(c.id);if(sh&&!(forward&&sh.locked)&&!_lwwSkip(c.id,'frac',op))sh.frac=forward?c.after:c.before}   // ADR-0653
           _sz();
         }else{
           // legacy full-snapshot format (pre-Step2 his
