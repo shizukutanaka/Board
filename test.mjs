@@ -1385,14 +1385,14 @@ const checks = [
   ['_apply del forward connClears: if(sh&&!sh.locked) guards locked connectors',
     html.includes("if(sh&&!sh.locked)_oa(sh,p.after);}}")],
   // v1.7.40: _apply zorder forward must guard sh.locked (changes path)
-  ['_apply zorder forward changes: !(forward&&sh.locked) guards locked shapes',
-    html.includes("if(sh&&!(forward&&sh.locked)&&!_lwwSkip(c.id,'frac',op))sh.frac=forward?c.after:c.before}")],
+  ['_apply zorder forward changes: !sh.locked guards locked shapes in BOTH directions',
+    html.includes("if(sh&&!sh.locked&&!_lwwSkip(c.id,'frac',op))sh.frac=forward?c.after:c.before}")],
   // v1.7.40: _apply group forward must guard sh.locked
-  ['_apply group forward: !(forward&&sh.locked) guards locked shapes from remote group',
-    html.includes("if(sh&&!(forward&&sh.locked))sh.groupId=op.gid}")],
+  ['_apply group forward: !sh.locked guards locked shapes in BOTH directions',
+    html.includes("if(sh&&!sh.locked)sh.groupId=op.gid}")],
   // v1.7.40: _apply ungroup forward must guard sh.locked
-  ['_apply ungroup forward: !(forward&&sh.locked) guards locked shapes from remote ungroup',
-    html.includes("if(sh&&!(forward&&sh.locked))delete sh.groupId}")],
+  ['_apply ungroup forward: !sh.locked guards locked shapes in BOTH directions',
+    html.includes("if(sh&&!sh.locked)delete sh.groupId}")],
   // v1.7.37: doGroup/_apply group backward must carry and restore origSel
   ['doGroup: origSel patched onto history entry after _recordCommitted',
     html.includes("_rcOp({op:'group',ids,gid,before});")],
@@ -9205,13 +9205,13 @@ try {
     assert.strictEqual(mvLive.x, 50,'move undo locked: move applied while unlocked (x=50)');
     // Lock the shape post-move
     mvLive.locked=true;
-    // Undo the move: BEFORE fix undo skips the locked shape (x stays 50); AFTER fix x restored to 0
+    // ADR-0716: undo skips the now-locked shape — convergent with the peers'
+    // forward-skip of our undo-wire move (the old local-only restore diverged)
     Store.undo();
-    assert.strictEqual(mvLive.x, 0,'move undo locked: undo restores position even though shape is now locked');
-    // Forward direction still skips locked shapes (no regression on v1.7.12a fix)
+    assert.strictEqual(mvLive.x, 50,'move undo locked: undo skips the since-locked shape (x stays 50)');
     Store.redo();
-    assert.strictEqual(mvLive.x, 0,'move undo locked: redo is a no-op for locked shape (forward still skips locked)');
-    console.log('  ✓ _apply move undo: undo restores locked shape position (undo direction skips locked-check)');
+    assert.strictEqual(mvLive.x, 50,'move undo locked: redo is a no-op for locked shape (forward still skips locked)');
+    console.log('  ✓ _apply move undo: locked gate applies in BOTH directions (ADR-0716)');
   }
 
   // v1.7.15b: doDelete must not clear connector bindings on locked connectors.

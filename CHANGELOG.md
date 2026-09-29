@@ -1,3 +1,12 @@
+## [1.7.742] - 2026-09-29
+
+### Fixed
+- ADR-0716: undo of move/group/ungroup/zorder on a shape locked since the
+  forward applied the restore locally while peers' remote apply of the
+  undo-wire op skipped it — same divergence class as ADR-0712. The locked
+  gate now covers backward on every op kind (these ops can never carry a
+  legitimate 'locked' write)
+
 ## [1.7.741] - 2026-09-29
 
 ### Fixed
