@@ -12263,6 +12263,34 @@ try {
         await new Promise(r=>setTimeout(r,30));
         assert.ok(state.shapes.length===1&&state.shapes[0].type==='image'&&state.shapes[0].w>0,'a dropped image file decodes and adds an image shape (ADR-0022)');
       }finally{globalThis.Image=_IM}
+      const _DP=globalThis.DOMParser;
+      const _miniDom=s=>{
+        const mk=tag=>({localName:tag,_at:{},children:[],textContent:'',id:undefined,
+          getAttribute(n){return n in this._at?this._at[n]:null},
+          querySelector(sel){return this.querySelectorAll(sel)[0]||null},
+          querySelectorAll(sel){const want=sel.split(',');const out=[];
+            const w=e=>{for(const c of e.children){if(want.includes(c.localName))out.push(c);w(c)}};w(this);return out}});
+        const st=[mk('#root')];const re=/<(\/?)([\w:-]+)((?:[^"'>]|"[^"]*")*?)(\/?)>|([^<]+)/g;let m;
+        while((m=re.exec(s))){
+          if(m[5]!==undefined){if(/\S/.test(m[5]))st[st.length-1].textContent+=m[5];continue}
+          if(m[1]==='/'){st.pop();continue}
+          const el=mk(m[2]);const are=/([\w:-]+)\s*=\s*"([^"]*)"/g;let a;
+          while((a=are.exec(m[3]||'')))el._at[a[1]]=a[2];
+          el.id=el._at.id;
+          st[st.length-1].children.push(el);
+          if(!m[4])st.push(el);
+        }
+        const rootEl=st[0].children[0]||null;
+        return{documentElement:rootEl,querySelector(sel){return rootEl?rootEl.querySelector(sel):null},querySelectorAll(sel){return rootEl?rootEl.querySelectorAll(sel):[]}};
+      };
+      globalThis.DOMParser=class{parseFromString(txt){return _miniDom(txt)}};
+      try{
+        reset();
+        const sfile={name:'d.svg',type:'image/svg+xml',size:80,text:()=>Promise.resolve('<svg viewBox="0 0 100 100"><rect x="10" y="10" width="30" height="20"/></svg>')};
+        for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[sfile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
+        await new Promise(r=>setTimeout(r,30));
+        assert.ok(state.shapes.length===1&&state.shapes[0].type==='rect'&&state.shapes[0].w===30,'a dropped .svg file converts markup to board shapes via DOMParser (ADR-0042)');
+      }finally{globalThis.DOMParser=_DP}
     }finally{globalThis.FileReader=_FR}
     // selection presence broadcast + peer reaping (ADR-0011 / peer lifecycle)
     reset();
@@ -12295,7 +12323,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1404; // prev 1401 + 3 presence asserts (ADR-0011/0641: selection broadcast + reap)
+  pass += 1405; // prev 1404 + 1 svg-drop assert (ADR-0042/0641: mini-DOMParser stub)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
