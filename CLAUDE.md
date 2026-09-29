@@ -803,6 +803,7 @@ Board/
 │   └── ADR-0752-pageadd-member-attach.md  # リモート pageAdd のメンバー図形は _attachShape 経由 (ピン)
 │   └── ADR-0753-pagedel-pending-wipe.md  # pageDel の _pcC は駐車 img 参照を全域 wipe → straggler が解決 (ピン)
 │   └── ADR-0754-img-lifecycle-sync.md  # architecture.md の img 参照ライフサイクル節へ 0752/0753 同期 (docs)
+│   └── ADR-0755-pageop-wire-fields.md  # validRemotePayload が pageAdd.i / pageDel.firstId / pageName.nts を検証
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

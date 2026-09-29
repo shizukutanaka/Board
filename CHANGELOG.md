@@ -1,3 +1,10 @@
+## [1.7.781] - 2026-09-28
+
+### Fixed
+- ADR-0755: validRemotePayload now validates the wire-carried page-op fields —
+  pageAdd `i` (finite), pageDel `firstId` (<=64-char string), pageName `nts`
+  (finite) — a hostile non-finite value no longer reaches the apply path
+
 ## [1.7.780] - 2026-09-28
 
 ### Docs
