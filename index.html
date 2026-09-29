@@ -866,7 +866,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.705';   // ADR-0678
+const V='1.7.706';   // ADR-0679
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2146,6 +2146,7 @@ function _pgDup(){   // ADR-0651: duplicate the current page — pageAdd+shapes 
 function _pgDel(){if(!_pgOn()||_ln(state.pages)<2)return;const p=state.pages[_pgIdx()];if(!confirm(t('pgDelQ')+': '+p.name+'?'))return;_cmt({op:'pageDel',id:p.id,i:_pgIdx(),name:p.name})}
 const _pgIdx=()=>_pgOn()?state.pages.findIndex(p=>p.id===state.curPg):-1;
 function _pgDel2(op,firstId){   // ADR-0646: remove the deleted page's members + land the view on a live page
+  for(const s of _sh())if((s.pg||firstId)===op.id)delete _wc()[s.id];   // ADR-0679: drop member write-clocks like 'del' does — a resurrected shape must not arbitrate against a clock from its previous life
   state.shapes=_sh().filter(s=>(s.pg||firstId)!==op.id);_iG();_pcC();
   if(state.curPg===op.id)switchPage(firstId);   // ADR-0649: land via switchPage so the page change is announced + cursors hidden
 }

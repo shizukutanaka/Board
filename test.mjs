@@ -4623,6 +4623,10 @@ try {
       assert.ok(html.includes('function exportDrawio(shapes=_sh().filter(_sv))'),'drawio doc export default drops hidden (ADR-0678)');
       console.log('  ✓ drawio hidden-parity pins (2 asserts)');
     }
+    // ADR-0679: pageDel drops member write-clocks like del
+    {
+      assert.ok(html.includes("for(const s of _sh())if((s.pg||firstId)===op.id)delete _wc()[s.id]"),'_pgDel2 purges member wclocks (ADR-0679)');
+      console.log('  ✓ pageDel wclock purge pin (1 assert)');
   }
 
   // ADR-0072: elbow trunk locate + bend-override two-corner route
@@ -12770,7 +12774,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1514; // prev 1512 + 2 drawio hidden-parity pins (ADR-0678)
+  pass += 1515; // prev 1514 + 1 pageDel wclock pin (ADR-0679)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
