@@ -835,7 +835,7 @@ const _scl=()=>_sl().clear(),_sad=id=>{const s=byId(id);if(s&&_sv(s)&&_pgOk(s))_
 const _selN=()=>_sl().size;   // ADR-0334
 const _selUnl=f=>_selAny(s=>f(s)&&!_lk(s));   // ADR-0454: unlocked-selection predicate
 const _nS=()=>_sh().length;   // ADR-0425
-const _sv=s=>s.visible!==0,_lk=s=>s.locked,_hd=s=>s.visible===0,_fS=s=>s.fontSize,_wh=(e,w,ht)=>{e.width=w;e.height=ht},_sk=s=>s.stroke,_fi=s=>s.fill,_lb=s=>s.label,_rt=s=>s.rotate,_du=s=>s.dataUrl,_gi=s=>s.groupId,_oP=s=>s.opacity,_lP=s=>s.labelPos,_sp=s=>s.spacing,_el=s=>s.elbow,_va=s=>s.valign,_szz=s=>s.size,_txx=s=>s.text,_ftt=s=>s.font,_coo=s=>s.color,_cv=()=>_ce('canvas'),_g2=c=>c.getContext('2d'),_ln=x=>x.length,_s0=(x,n)=>x.slice(0,n),_ix=(a,b)=>a.indexOf(b),_ew=(x,y)=>x.endsWith(y),_trm=x=>x.trim(),_sw=(x,y)=>x.startsWith(y),_dsp=(e,v)=>e.style.display=v,_hdn=(e,v)=>e.hidden=v,_oC=(e,f)=>e.onclick=f,_dk=k=>ptr.dragKind===k;   // ADR-0425/../0447
+const _sv=s=>s.visible!==0,_lk=s=>s.locked,_hd=s=>s.visible===0,_fS=s=>s.fontSize,_wh=(e,w,ht)=>{e.width=w;e.height=ht},_sk=s=>s.stroke,_fi=s=>s.fill,_lb=s=>s.label,_rt=s=>s.rotate,_du=s=>s.dataUrl,_gi=s=>s.groupId,_oP=s=>s.opacity,_lP=s=>s.labelPos,_sp=s=>s.spacing,_el=s=>s.elbow,_va=s=>s.valign,_szz=s=>s.size,_txx=s=>s.text,_ftt=s=>s.font,_coo=s=>s.color,_cv=()=>_ce('canvas'),_g2=c=>c.getContext('2d'),_ln=x=>x.length,_s0=(x,n)=>x.slice(0,n),_s80=x=>_s0(x,80),_ix=(a,b)=>a.indexOf(b),_ew=(x,y)=>x.endsWith(y),_trm=x=>x.trim(),_sw=(x,y)=>x.startsWith(y),_dsp=(e,v)=>e.style.display=v,_hdn=(e,v)=>e.hidden=v,_oC=(e,f)=>e.onclick=f,_dk=k=>ptr.dragKind===k;   // ADR-0425/../0447
 const _fin=Number.isFinite;   // ADR-0334
 const _min=Math.min,_max=Math.max,_abs=Math.abs;   // ADR-0337
 const _ga=(e,n)=>e.getAttribute(n),_sa=(e,n,v)=>e.setAttribute(n,v),_ap=(p,c)=>p.appendChild(c),_AL='aria-label',_AP='aria-pressed';   // ADR-0340/0392/0394/0399
@@ -873,7 +873,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.797';   // ADR-0771
+const V='1.7.798';   // ADR-0772
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2215,7 +2215,7 @@ function _pgDup(){   // ADR-0651: duplicate the current page — pageAdd+shapes 
     if(c.b&&idMap.has(c.b))c.b=idMap.get(c.b);
     return c;
   });
-  _cmt({op:'pageAdd',id,i:si+1,name:src.name+' '+t('ctxDuplicate'),shapes:sh});   // ADR-0771
+  _cmt({op:'pageAdd',id,i:si+1,name:_s80(src.name+' '+t('ctxDuplicate')),shapes:sh});   // ADR-0771/0772
   Net.broadcast({op:'addMany',shapes:sh,clock:{peer:_pi(),seq:++state.seq,ts:nowTs()}});   // ADR-0650/0739
   switchPage(id);
 }
@@ -2236,7 +2236,7 @@ function _pgDel2(op,firstId,only,viewId){   // ADR-0646: remove the deleted page
   state.shapes=_sh().filter(s=>!dead.has(s.id));_iG();_pcC();
   const land=(viewId!==undefined?viewId:firstId);if(state.curPg===op.id&&land!=null)switchPage(land);   // ADR-0649/0725: land via switchPage so the page change is announced + cursors hidden
 }
-function _pgRename(){const p=_pgById(state.curPg);if(!p)return;const n=prompt(t('pgRename'),p.name);if(n==null||_trm(n)==='')return;_cmt({op:'pageName',id:p.id,before:p.name,after:_s0(_trm(n),80),bts:p.nts,clock:{peer:_pi(),seq:++state.seq,ts:nowTs()}})}
+function _pgRename(){const p=_pgById(state.curPg);if(!p)return;const n=prompt(t('pgRename'),p.name);if(n==null||_trm(n)==='')return;_cmt({op:'pageName',id:p.id,before:p.name,after:_s80(_trm(n)),bts:p.nts,clock:{peer:_pi(),seq:++state.seq,ts:nowTs()}})}
 let _pgSig='';
 function _pgBar(){const el=_g('pgBar');if(!el)return;_hdn(el,!_pgOn());if(!_pgOn())return;
 const tb=_g('pgTabs');if(!tb)return;
@@ -7170,13 +7170,13 @@ function importDrawioText(txt,wp){
         if(!p)continue;
         _ctrAt(p.sh,wp);
         const id=uid();for(const s of p.sh)s.pg=id;
-        _cmt({op:'pageAdd',id,name:p.nm||t('pgPage'),shapes:p.sh});
+        _cmt({op:'pageAdd',id,name:_s80(p.nm||t('pgPage')),shapes:p.sh});   // ADR-0772
         Net.broadcast({op:'addMany',shapes:p.sh,clock:{peer:_pi(),seq:++state.seq,ts:nowTs()}});
         if(!selId){selId=id;selSh=p.sh}
       }
       if(selId){switchPage(selId);_scl();for(const s of selSh)_sad(s.id)}
       if(pgVp){_vp().x=pgVp.x;_vp().y=pgVp.y;_vp().zoom=pgVp.z;if(pgVp.g!=null)state.showGrid=pgVp.g}
-      if(pgNm){_setDocName(_s0(pgNm,80));_bName()}
+      if(pgNm){_setDocName(_s80(pgNm));_bName()}
       _iv();_oT('dioImported');
       return true;
     }
@@ -7189,7 +7189,7 @@ function importDrawioText(txt,wp){
   _cOp({op:'addMany',shapes});
   _scl();for(const s of shapes)_sad(s.id);   // ADR-0568: _sad drops hidden imports
   if(_vpNull&&_dioVp){_vp().x=_dioVp.x;_vp().y=_dioVp.y;_vp().zoom=_dioVp.z;if(_dioVp.g!=null)state.showGrid=_dioVp.g}   // ADR-0359/0409: viewport+grid restore
-  if(_dioNm){_setDocName(_s0(_dioNm,80));_bName()}   // ADR-0405
+  if(_dioNm){_setDocName(_s80(_dioNm));_bName()}   // ADR-0405
   _iv();_oT('dioImported');
   return true;
 }
@@ -8140,7 +8140,7 @@ const Net={
     return slim;
   },
   _slimOp(op){
-    if(op.op==='clear')return{op:'replace',after:[],afterWc:{},clock:op.clock};   // ADR-0626: a wholesale wipe IS an empty swap — routing through 'replace' inherits the _lastRep causal ordering + snapshot rep marker for free (inbound 'clear' stays rejected: the wire never carries it now)
+    if(op.op==='clear')return{op:'replace',after:[],afterWc:{},clock:op.clock};   // ADR-0626: wipe routes through 'replace' — inherits _lastRep ordering + rep marker
     if(op.op==='add'&&op.shape)return{...op,shape:this._slimShapes([op.shape])[0]};
     if(op.op==='pageDel'){const s={op:'pageDel',id:op.id,clock:op.clock};if(op.firstId!=null)s.firstId=op.firstId;if(op.unpage){s.unpage=1;s.shapes=this._slimShapes(op.shapes||[])}return s}   // ADR-0705/0724/0725: receiver re-derives members/i/name — the undo-record fields were dead weight (~bytes×members)
     if(op.op==='pageName'){const s={op:'pageName',id:op.id,after:op.after,clock:op.clock};if(op.nts!=null){s.nts=op.nts;s.ntp=op.ntp}return s}   // ADR-0705/0727: undo-wire also carries the restored nts/ntp
@@ -8459,7 +8459,7 @@ const Net={
     _rs(clone(valid));   // ADR-0009
     _sz();
     _pgAdopt(msg.pages,state.curPg);   // ADR-0672: curPg is a LOCAL view filter — a re-sync must not yank the view to the sender's page
-    if(_iS(msg.name)&&(_iN(msg.nameTs)?_fin(msg.nameTs)&&_nameWin(msg.nameTs,_iS(msg.namePeer)?msg.namePeer:''):!0)){if(_iN(msg.nameTs)&&_fin(msg.nameTs))_nameTs=msg.nameTs;if(_iS(msg.namePeer))_namePeer=msg.namePeer;_setDocName(_s0(msg.name,80));}   // ADR-0618/0699
+    if(_iS(msg.name)&&(_iN(msg.nameTs)?_fin(msg.nameTs)&&_nameWin(msg.nameTs,_iS(msg.namePeer)?msg.namePeer:''):!0)){if(_iN(msg.nameTs)&&_fin(msg.nameTs))_nameTs=msg.nameTs;if(_iS(msg.namePeer))_namePeer=msg.namePeer;_setDocName(_s80(msg.name));}   // ADR-0618/0699
     _iv();_ru();_ps();
   },
   _touchPeer(peerId){
@@ -8710,7 +8710,7 @@ const Share={
       const _bpg=clone(state.pages),_bcp=state.curPg;   // ADR-0646
       // ADR-0004: survives reload/closed-tab too, not just session undo.
       if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());
-      _rs(valid.map(clone));_pgAdopt(data.pages,data.curPg);_setDocName(_s0((_iS(data.name)&&data.name)||'Shared',80));_bName();   // ADR-0009/0646/0696
+      _rs(valid.map(clone));_pgAdopt(data.pages,data.curPg);_setDocName(_s80((_iS(data.name)&&data.name)||'Shared'));_bName();   // ADR-0009/0646/0696
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out
       if(data.viewport&&_fin(+data.viewport.x)&&_fin(+data.viewport.y)&&_fin(+data.viewport.zoom)&&data.viewport.zoom>0){
@@ -9965,7 +9965,7 @@ function fontSizeStep(d){
 // ADR-0078: ⌘B/⌘I toggles bold/italic on selected text/sticky via style op.
 const _rdb=()=>{_md(!0);_ru();_ps()},
       _fck=o=>{o.clock={peer:_pi(),seq:++state.seq,ts:nowTs()}},
-      _docN=d=>{if(_iS(d.docName)&&d.docName)_setDocName(_s0(d.docName,80))},
+      _docN=d=>{if(_iS(d.docName)&&d.docName)_setDocName(_s80(d.docName))},
       _fs2=s=>s.fstyle,_sh2=s=>s.shadow,_usI=unlockedSelectionIds,
       _noSh=c=>{c.shadowColor=_TR;c.shadowBlur=0;c.shadowOffsetY=0},
       _rO=u=>_stO(()=>URL.revokeObjectURL(u),1e4),

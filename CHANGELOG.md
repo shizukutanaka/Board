@@ -1,3 +1,8 @@
+## [1.7.798] - 2026-09-29
+
+### Fixed
+- ADR-0772: pageAdd 生成側も 80 字へ clamp — `_pgDup`/`drawio` 複数ページ取込のページ名が wire cap (80字) を超えると受信側が op を棄却し、ページ集合がピア間で発散していた。`_s80` shorthand を新設し docName clamp 5 サイトも同一 helper へ畳み込み
+
 ## [1.7.797] - 2026-09-29
 
 ### Fixed

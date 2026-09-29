@@ -820,6 +820,7 @@ Board/
 │   └── ADR-0769-peer-pg-avatar-refresh.md  # ピアの pg 変化で _refreshPeers 即時再描画 (ツールチップページ名の遅延解消)
 │   └── ADR-0770-architecture-sync-round519.md  # architecture.md へ 0764-0769 期の規則を同期 (docs)
 │   └── ADR-0771-pgdup-insert-index.md  # ページ複製を元の直後へ挿入 (op.i 同梱)
+│   └── ADR-0772-pageadd-name-cap.md  # pageAdd 生成側も 80 字へ clamp (wire 発散防止)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
