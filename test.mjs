@@ -1687,7 +1687,7 @@ try {
              _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, 
              _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
              _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER,
-             switchPage, _pgAdd, _pgDel, _pgRename, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx,
+             switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx,
              _getLang: () => LANG, _getT: () => T };
   `);
   const api = fn(
@@ -1714,7 +1714,7 @@ try {
           _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, 
           _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER,
-          switchPage, _pgAdd, _pgDel, _pgRename, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx } = api;
+          switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx } = api;
 
   console.log('\n-- behavioural --');
 
@@ -12423,7 +12423,26 @@ try {
     assert.ok(!!_pgById('pgJ')&&!!byId('rj1'),'remote pageAdd attaches its member shapes');
     state.pages=null;state.curPg=null;
     console.log('  ✓ pageDel of the viewed page lands via switchPage — curPg healed (ADR-0649, 1 assert)');
+    // ADR-0651: page duplicate — one pageAdd+shapes op with remapped ids/binds/groups
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;
+    _pgAdd();
+    const dpA=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    const dpB=Shape.make('rect',{x:30,y:0,w:10,h:10});
+    const dpC=Shape.make('arrow',{x1:0,y1:0,x2:30,y2:0});dpC.a=dpA.id;dpC.b=dpB.id;
+    dpA.groupId='g1';dpB.groupId='g1';
+    Store.commit({op:'addMany',shapes:[dpA,dpB,dpC]});
+    const dupSrcPg=state.curPg;
+    _pgDup();
+    assert.ok(state.pages.length===3&&state.curPg!==dupSrcPg,'_pgDup creates a new page and lands on it');
+    const dupSh=state.shapes.filter(s=>(s.pg||state.pages[0].id)===state.curPg);
+    assert.ok(dupSh.length===3&&dupSh.every(s=>s.pg===state.curPg&&s.id!==dpA.id&&s.id!==dpB.id&&s.id!==dpC.id),'duplicate carries 3 fresh-id copies stamped to the new page');
+    const dupConn=dupSh.find(s=>s.type==='arrow');
+    assert.ok(dupConn&&dupConn.a!==dpA.id&&dupConn.b!==dpB.id&&!!dupSh.find(s=>s.id===dupConn.a),'bound conn endpoints remap to the copies, not the originals');
+    const dupBox=dupSh.find(s=>s.type==='rect');
+    assert.ok(dupBox.groupId&&dupBox.groupId!=='g1'&&dupSh.every(s=>s.type!=='arrow'||s.groupId==null)&&dupSh.filter(s=>s.groupId===dupBox.groupId).length===2,'groupId remapped to a fresh id shared by the pair');
+    state.pages=null;state.curPg=null;
     console.log('  ✓ pageAdd carries member shapes: local+remote attach, undo/redo (ADR-0650, 4 asserts)');
+    console.log('  ✓ page duplicate: pageAdd+shapes op with remapped ids/binds/groups (ADR-0651, 4 asserts)');
 
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
@@ -12431,7 +12450,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1436; // prev 1432 + 4 pageAdd-shapes asserts (ADR-0650)
+  pass += 1440; // prev 1436 + 4 page-duplicate asserts (ADR-0651)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

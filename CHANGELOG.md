@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.7.678] - 2026-09-28
+### Added
+- **ADR-0651 ページ複製**: pgBar の ⧉ ボタンで現ページを丸ごと複製 —
+  ADR-0650 の `pageAdd`+shapes op によりページ作成とメンバー複製が1つの
+  原子 op (undo もページ単位)。図形 id・コネクタ束縛 `a`/`b`・`groupId` は
+  `_placeCopies` と同じ規則でリマップ。pre-0650 ピア向けに `addMany` 同伴
+  送出で収束互換を維持。
+- 回帰テスト +4 (新ページ作成・id/束縛/groupId リマップの検証)
+
+
 ## [1.7.677] - 2026-09-28
 ### Changed
 - **ADR-0650 .drawio 複数ページ ↔ 真のページ**: 複数 `<diagram>` の mxfile を
