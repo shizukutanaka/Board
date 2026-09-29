@@ -866,7 +866,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.717';   // ADR-0691
+const V='1.7.718';   // ADR-0692
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2104,7 +2104,8 @@ const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPe
 const _rs=arr=>{state.shapes=arr;_iG();_pcC()}   // ADR-0493: wholesale board replace (5 sites)
 const _pgOn=()=>!!(state.pages&&_ln(state.pages)),_pgById=id=>_pgOn()&&state.pages.find(p=>p.id===id),_pgOk=s=>!_pgOn()||(s.pg||state.pages[0].id)===state.curPg;   // ADR-0646: unpg'd shapes belong to pages[0] positionally
 const _vPages=a=>!_iA(a)||!_ln(a)||_ln(a)>64?null:(a.every(p=>p&&_iS(p.id)&&_ln(p.id)<=64&&_iS(p.name)&&_ln(p.name)<=80&&(p.nts==null||_iN(p.nts)))?a:null);
-function _pgAdopt(pages,cur){const v=_vPages(pages);state.pages=v?clone(v):null;const nc=v&&_pgById(cur)?cur:(v?v[0].id:null);const oc=state.curPg;if(nc!==oc){_cancelPointerGesture();_cxO()}   // ADR-0684
+function _pgAdopt(pages,cur){const v=_vPages(pages);state.pages=v?clone(v):null;if(_pgOn())for(const s of _sh())if(s.pg&&!_pgById(s.pg)&&_ln(state.pages)<64)_pu(state.pages,{id:s.pg,name:'?',nts:0});   // ADR-0692: same unknown-pg heal as remote ops — a crafted/corrupt file could otherwise strand shapes invisible on every page
+const nc=v&&_pgById(cur)?cur:(v?v[0].id:null);const oc=state.curPg;if(nc!==oc){_cancelPointerGesture();_cxO()}   // ADR-0684
 state.curPg=nc;if(nc!==oc)Net.sendCursorHide();_pgBar()}   // ADR-0664/0690: adopt-page change hides the cursor too — else peers keep our stale page/cursor until the next tick
 function switchPage(id){if(!_pgById(id)||state.curPg===id)return;_cxO();_cancelPointerGesture();state.curPg=id;Net.sendCursorHide();_iG();_zR();_ss(_selIds());_iv();_ivO();_ann(_pgById(id).name);_pgBar();_ps()}   // ADR-0664/0674: schedule a save — a view-only session's last page must survive reload (curPg rides the doc record): page change cancels a live pointer gesture — otherwise the drag continues on the new page and commits moves to shapes you can't see   // ADR-0689: the hide carries pg — send AFTER curPg moves, else peers record our stale page until the next presence tick
 function _pgNav(d){if(!_pgOn())return;const i=_pgIdx(),n=_ln(state.pages);const j=(i+d+n)%n;if(j!==i)switchPage(state.pages[j].id)}
