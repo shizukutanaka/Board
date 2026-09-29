@@ -242,6 +242,7 @@ const checks = [
     ['applyRemote whitelists op types', html.includes("REMOTE_OPS") && html.includes("this.REMOTE_OPS.has(op.op)")],
   ["undo-wire emits 'replace' restoring swap (ADR-0615)", html.includes("case 'replace':   // ADR-0615") && html.includes("return _iA(op.before)?[{op:'replace',after:op.before,afterWc:op.wc}]:null;")],
   ["undo-wire swap advances _lastRep to the fresh clock (ADR-0615)", html.includes("if(w.op==='replace')state._lastRep=w.clock;") && html.includes("_fck(op);if(op.op==='replace')state._lastRep=op.clock;")],
+  ["_recordCommitted sets _lastRep for local 'replace' (ADR-0616)", html.includes("if(op.op==='replace')state._lastRep=op.clock;   // ADR-0616")],
   ['applyRemote validates remote add shape', html.includes("case 'add':    return validShape(op.shape)")],
   ['SVG export uses testable buildSVG', html.includes("function buildSVG") && html.includes("buildSVG(shapes")],
   ['SVG attrs escaped via _esc', html.includes("stroke=\"${stroke}\"") && html.includes("_esc(_fi(s))")],
@@ -1915,6 +1916,19 @@ try {
     assert.deepStrictEqual(w[0].afterWc,{s1:{x:{peer:'p',seq:1,ts:1}}},'undo-wire restores the pre-swap wclock');
     assert.strictEqual(_undoWire({op:'replace'}),null,'replace without before emits no wire op');
     console.log('  ✓ undo of replace emits a restoring swap (ADR-0615)');
+  }
+  // ADR-0616: _recordCommitted does not run _apply (caller already mutated the
+  // board) — without its own marker line, a local import leaves _lastRep unset
+  // and a staler remote swap applies afterward, diverging every peer.
+  {
+    const prev=state.shapes.length?JSON.parse(JSON.stringify(state.shapes)):[];
+    state._lastRep=null;state.seenOps=new Set();
+    Store._recordCommitted({op:'replace',before:prev,after:[],wc:{},afterWc:{}});
+    assert.ok(state._lastRep&&state._lastRep.peer===state.peerId,'local import marks the swap clock');
+    assert.ok(!clockNewer({peer:'zz',seq:1,ts:1},state._lastRep),'staler remote swap now rejected');
+    state._lastRep=null;state.shapes.length=0;
+    for(const s of prev)state.shapes.push(s);
+    console.log('  ✓ _recordCommitted sets _lastRep on local replace (ADR-0616)');
   }
 
   // applyRemote does NOT enter local undo stack
@@ -10982,7 +10996,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1126; // prev 1122 + undo-wire 'replace' pins (4, ADR-0615)
+  pass += 1129; // prev 1122 + undo-wire 'replace' pins (4, ADR-0615)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
