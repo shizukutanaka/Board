@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.639';
+const V='1.7.640';   // ADR-0613
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -998,7 +998,7 @@ const I18N={
     rtcOfferPh:'相手の招待コードを貼り付け',rtcAnswerPh:'相手の応答コードを貼り付け',
     connected:'接続しました',disconnected:'切断しました',connectFailed:'接続に失敗しました',
     importConfirm:'共有された内容で現在のボードを置き換えますか？',
-    imported:'読み込みました',svgImported:'SVG を取り込みました',excImported:'Excalidraw を取り込みました',dioImported:'drawio を取り込みました',dioCompressed:'圧縮 .drawio は未対応 — draw.io で「圧縮しない」にして保存してください',dioExported:'.drawioファイルを保存しました',textPasted:'テキストを貼り付けました',
+    imported:'読み込みました',svgImported:'SVG を取り込みました',excImported:'Excalidraw を取り込みました',dioImported:'drawio を取り込みました',dioCompressed:'圧縮 .drawio は未対応 — draw.io で「圧縮しない」にして保存してください',dioExported:'.drawioファイルを保存しました',textPasted:'テキストを貼り付けました',peerReplaced:'相手が盤面を丸ごと置き換えました (再起動時に復元できます)',
     backupAvailable:'前回、上書きされる前のボードが保存されています。復元しますか？',
     backupRestored:'前回のボードを復元しました',
     backupRestoreFailed:'バックアップの復元に失敗しました',
@@ -1076,7 +1076,7 @@ const I18N={
     rtcOfferPh:'Paste the invite code from your peer',rtcAnswerPh:'Paste the answer code from your peer',
     connected:'Connected',disconnected:'Disconnected',connectFailed:'Connection failed',
     importConfirm:'Replace current board with shared content?',
-    imported:'Imported',svgImported:'SVG imported',excImported:'Excalidraw imported',dioImported:'drawio imported',dioCompressed:'Compressed .drawio is unsupported — re-save in draw.io with compression off',dioExported:'.drawio file saved',textPasted:'Text pasted',
+    imported:'Imported',svgImported:'SVG imported',excImported:'Excalidraw imported',dioImported:'drawio imported',dioCompressed:'Compressed .drawio is unsupported — re-save in draw.io with compression off',dioExported:'.drawio file saved',textPasted:'Text pasted',peerReplaced:'Peer replaced the whole board (recoverable on restart)',
     backupAvailable:'A board from before it was overwritten was saved. Restore it?',
     backupRestored:'Restored the previous board',
     backupRestoreFailed:'Failed to restore backup',
@@ -1365,6 +1365,10 @@ function validRemotePayload(op){
           p&&_iS(p.id)&&_ln(p.id)<=64&&(p.before==null||_ccOk(p.before))&&(p.after==null||_ccOk(p.after)))))return false;
       return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape);
     case 'clear':  return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape);
+    case 'replace':{   // ADR-0613: like 'clear' but carries the whole after-board + its write-clock map
+      const wcOk=m=>_iO(m)&&_ln(_ok(m))<=MAX_OP_SHAPES&&_ok(m).every(k=>_iO(m[k])&&_ok(m[k]).every(p=>validClock(m[k][p])));
+      return _iA(op.after)&&_ln(op.after)<=MAX_OP_SHAPES&&op.after.every(validShape)
+        &&(op.afterWc==null||wcOk(op.afterWc));}
     case 'upd':{const noLock=p=>!('locked' in p);
       if(!_iS(op.id)||_ln(op.id)>64||!validPatch(op.after)||!noLock(op.after)||(op.before!=null&&!validPatch(op.before)))return false;
       // pen pts must be array-of-[x,y] — flat arra
@@ -1463,7 +1467,7 @@ const Store={
     return _ln(fixes)?fixes:null;
   },
   // Apply remote op: dedup by clock; REMOTE_OP
-  REMOTE_OPS:_sT(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize']),
+  REMOTE_OPS:_sT(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize','replace']),   // ADR-0613: wholesale swap must converge too — 'replace' joins the wire set (older peers drop it; divergence scoped to mixed-version rooms)
   applyRemote(op){
     if(!op||!op.clock||!this.REMOTE_OPS.has(op.op))return;
     if(!validClock(op.clock))return;        // reject malformed clocks (wclock poisoning)
@@ -1479,6 +1483,10 @@ const Store={
     // target shape already recorded. If the op b
     // (it is already deduped). move/zorder are c
     if(!this._lwwDrop(op))return;
+    if(op.op==='replace'){   // ADR-0613: same wipe-safety as 'clear' — keep the pre-swap board recoverable (:prev slot, boot-time restore prompt) and tell the user who did it
+      if(_ln(_sh()))Persist.saveBackup(clone(_sh()),{..._vp()},_dn());
+      _oT('peerReplaced');
+    }
     const _connFix=this._remoteDelConnFix(op);
     this._apply(op,true);
     if(_connFix)for(const f of _connFix){
@@ -1681,6 +1689,7 @@ const Store={
         const next=forward?op.after:op.before;
         _sh().length=0;_scl();state.wclock={};_pcC();
         for(const s of next)_sh().push(Net._attachShape(clone(s)));
+        _iG();   // ADR-0613: byId's size guard misses equal-length swaps — the pre-mutation index survives
         _sz();
         if(forward&&op.afterWc)state.wclock=clone(op.afterWc);
         if(!forward&&op.wc)state.wclock=clone(op.wc);
@@ -7863,6 +7872,7 @@ const Net={
   _slimOp(op){
     if(op.op==='add'&&op.shape)return{...op,shape:this._slimShapes([op.shape])[0]};
     if(_iA(op.shapes)&&(op.op==='addMany'||op.op==='del'||op.op==='clear'))return{...op,shapes:this._slimShapes(op.shapes)};   // ADR-0445: remote del/clear needs only id/locked
+    if(op.op==='replace')return{op:'replace',after:this._slimShapes(op.after||[]),afterWc:op.afterWc,clock:op.clock};   // ADR-0613: strip the huge before/wc/origSel from the wire copy
     return op;
   },
   _fragSend(buf,k){   // ADR-0431: 64KB fragment sender for the dc-
@@ -7912,6 +7922,7 @@ const Net={
     if(!op||!_iO(op))return op;
     if(op.op==='add'&&op.shape)return{...op,shape:this._attachShape(op.shape)};
     if(op.op==='addMany'&&_iA(op.shapes))return{...op,shapes:op.shapes.map(s=>this._attachShape(s))};
+    if(op.op==='replace'&&_iA(op.after))return{...op,after:op.after.map(s=>this._attachShape(s))};   // ADR-0613
     return op;
   },
   // Outbound: from local Store.commit

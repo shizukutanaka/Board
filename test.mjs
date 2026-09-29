@@ -1144,7 +1144,7 @@ const checks = [
   ['rotated resize works in local frame + world re-pin', html.includes("sp=_rotPt(wp.x,wp.y,cx0,cy0,-orig.rotate);") && html.includes("sh.x+=tgt.x-cur.x;sh.y+=tgt.y-cur.y;")],
   ['selection outline traces rotated box', html.includes("if(single&&single.rotate&&single.w!=null){")],
   // v1.6.70: keyboard resize (Alt+arrow)
-  ['resize op registered (apply, validate, remote)', html.includes("case 'resize':\n      case 'align':\n      case 'beautify':{") && html.includes("case 'resize':{const noLock=") && html.includes("'align','style','resize'])")],
+  ['resize op registered (apply, validate, remote)', html.includes("case 'resize':\n      case 'align':\n      case 'beautify':{") && html.includes("case 'resize':{const noLock=") && html.includes("'style','resize','replace'])")],
   ['Alt+arrow keyboard-resizes box shapes', html.includes("_rcOp({op:'resize',before,after});") && html.includes("sh.w=_max(4,sh.w+dw);sh.h=_max(4,sh.h+dh);")],
   // v1.6.71: image import error handling
   ['imgErr i18n key in both locales', html.includes("imgErr:'画像を読み込めませんでした'") && html.includes("imgErr:'Image failed to load'")],
@@ -1444,8 +1444,8 @@ const checks = [
     !html.includes("if(!op.wc){op.wc={};for")&&
     html.includes("op.wc={};for(const sh of op.shapes)if(_wc()[sh.id])op.wc[sh.id]=clone(_wc()[sh.id]);")],
   // v1.7.48: 'clear' removed from REMOTE_OPS (remote peer cannot wipe board)
-  ["REMOTE_OPS excludes 'clear' (board-wipe is local-only like 'replace')",
-    html.includes("REMOTE_OPS:_sT(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize'])")],
+  ["REMOTE_OPS excludes 'clear' but includes 'replace' (ADR-0613: wipe+write converges; pre-swap board is parked in :prev)",
+    html.includes("REMOTE_OPS:_sT(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize','replace'])")],
   // v1.7.48/ADR-0474: _applySnapshot caps at SHARE_MAX_SHAPES — a 500-op cap truncated boards >500 shapes
   ['_applySnapshot: SHARE_MAX_SHAPES cap on snapshot shapes (board-size bound, DoS-bounded by the 24MB join cap)',
     html.includes("const valid=_s0(shapes,SHARE_MAX_SHAPES).map(s=>this._attachShape(s)).filter(validShape);")],
@@ -1868,6 +1868,23 @@ try {
   Store.applyRemote(remoteOp);
   assert.strictEqual(state.shapes.length, before2 + 1, 'remote op applied');
   console.log('  ✓ applyRemote applies ops from different peers');
+
+  // ADR-0613: remote 'replace' converges a peer's wholesale import —
+  // shapes absent from `after` are removed (not merged), wclock ← afterWc.
+  {
+    state.shapes.length = 0;_invalidateGrid();state.wclock={};
+    Store.commit({op:'add', shape: Shape.make('rect',{x:0,y:0,w:10,h:10})});
+    const kept = Shape.make('ellipse',{x:1,y:1,w:5,h:5});
+    Store.applyRemote({op:'replace',after:[kept],afterWc:{[kept.id]:{x:{peer:'p',seq:1,ts:1}}},clock:{peer:'peer-rep',seq:2,ts:Date.now()}});
+    assert.strictEqual(state.shapes.length,1,'remote replace drops absent shapes');
+    assert.strictEqual(byId(kept.id).type,'ellipse','after-board applied');
+    assert.ok(state.wclock[kept.id]&&state.wclock[kept.id].x,'afterWc adopted');
+    Store.applyRemote({op:'clear',shapes:[],clock:{peer:'peer-rep',seq:3,ts:Date.now()}});
+    assert.strictEqual(state.shapes.length,1,"remote 'clear' still not whitelisted");
+    Store.applyRemote({op:'replace',clock:{peer:'peer-rep',seq:4,ts:Date.now()}});
+    assert.strictEqual(state.shapes.length,1,'replace without after rejected');
+    console.log('  ✓ remote replace converges wholesale swap (clear stays local-only)');
+  }
 
   // applyRemote does NOT enter local undo stack
   const histLen = state.history.length;
@@ -4665,15 +4682,19 @@ try {
     console.log('  ✓ replace op: import swaps board, undo restores it, redo re-applies');
   }
 
-  // replace op is local-only - a remote peer must NOT be able to wipe your board
+  // ADR-0613: remote 'replace' now converges (was local-only before v1.7.640); a peer's
+  // wholesale import swaps the board. 'clear' stays rejected — wipe without content is still refused.
   {
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();
     const keep=Shape.make('rect',{x:0,y:0,w:50,h:50});
     state.shapes.push(keep);
-    Store.applyRemote({op:'replace',before:[],after:[],clock:{peer:'evil',seq:1,ts:0}});
-    assert.strictEqual(state.shapes.length,1,'replace rejected from remote: board intact');
-    assert.strictEqual(state.shapes[0].id,keep.id,'replace rejected from remote: shape unchanged');
-    console.log('  ✓ replace op: rejected over the wire (REMOTE_OPS allow-list)');
+    const fresh=Shape.make('ellipse',{x:9,y:9,w:8,h:8});
+    Store.applyRemote({op:'replace',before:[],after:[fresh],clock:{peer:'evil',seq:1,ts:0}});
+    assert.strictEqual(state.shapes.length,1,'remote replace swaps board');
+    assert.strictEqual(state.shapes[0].id,fresh.id,'remote replace applied the after-board');
+    Store.applyRemote({op:'replace',before:[],after:'nope',clock:{peer:'evil',seq:2,ts:0}});
+    assert.strictEqual(state.shapes.length,1,'malformed remote replace rejected');
+    console.log('  ✓ replace op: converges over the wire (ADR-0613)');
   }
 
   // importBoard uses atomic replace op (1 undo restores full board, not N+1 undos)
@@ -10930,10 +10951,10 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1113; // prev 1109 + G.hit render/hit parity for stray rotate on point geometry (4)
+  pass += 1119; // prev 1113 + remote 'replace' convergence/reject pins (6, ADR-0613)
 
 } catch (err) {
-  console.log('  ✗ behavioural tests crashed:', err.message);
+  console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
   fail += 1;
 }
 

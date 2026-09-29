@@ -5354,6 +5354,11 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.640]
+### Fixed
+- 共有リンク/.board/excalidraw 取込の全置換 op ('replace') が `REMOTE_OPS` で棄却され、接続中のピアへ届かず盤面が永久に発散していた問題を修正 — 'replace' を wire 許可集合へ追加し、`after`/`afterWc` の payload 検証・`_slimOp` (before/wc/origSel を帯域外へ)・`_attachOp` (img 参照の復元)・適用直前の `Persist.saveBackup` + `peerReplaced` トーストで wipe 安全性を確保 (ADR-0613)。
+- 同数の全置換 (before/after の図形数一致) で `byId` のサイズガードが stale index を返し続ける潜在バグを修正 — 'replace' 適用後に `_iG()` で id index/空間グリッドを再無効化 (同 ADR)。'clear' は引き続き wire 拒否。
+
 ## [1.7.639]
 ### Fixed
 - Alt-Tab 等のウィンドウ blur / モバイルのバックグラウンド移行 (pointerleave 非発火) でもピアカーソルが凍結残存していた問題を修正 — blur / visibilitychange→hidden の両経路で `sendCursorHide` (ADR-0612)。
