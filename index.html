@@ -304,6 +304,9 @@ canvas#c[data-tool=eyedropper]{cursor:crosshair}
 .status-item .lbl{color:var(--ink-3)}
 .status-spacer{flex:1}
 #pgBar{gap:2px}
+#pgTabs{display:inline-flex;gap:2px;overflow-x:auto;max-width:38vw}
+.pg-t{max-width:9em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pg-t.on{font-weight:700;text-decoration:underline}
 .pg-b{background:none;border:1px solid var(--line);border-radius:4px;color:var(--ink-2);cursor:pointer;font:500 11px/1 var(--mono-font);padding:2px 6px}
 .pg-b:hover{background:var(--ink-5)}
 .pg-name{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:none}
@@ -697,7 +700,7 @@ body{visibility:visible}
     <div class="status-item optional"><span class="lbl" data-t="shapes">shapes</span><span id="sCount">0</span></div>
     <div class="status-item optional"><span class="lbl" aria-hidden="true">x,y</span><span id="sXY">0, 0</span></div>
     <div class="status-item optional" id="sSelWrap" hidden><span class="lbl" data-t="selDims">sel</span><span id="sSel"></span></div>
-    <div class="status-item" id="pgBar" hidden><button class="pg-b" id="pgPrev" data-t-title="pgPrev">‹</button><button class="pg-b pg-name" id="pgName" data-t-title="pgRename"></button><button class="pg-b" id="pgNext" data-t-title="pgNext">›</button><button class="pg-b" id="pgAdd" data-t-title="pgAdd">+</button><button class="pg-b" id="pgDup" data-t-title="pgDup">⧉</button><button class="pg-b" id="pgDel" data-t-title="pgDel">✕</button></div>
+    <div class="status-item" id="pgBar" hidden><button class="pg-b" id="pgPrev" data-t-title="pgPrev">‹</button><span id="pgTabs"></span><button class="pg-b pg-name" id="pgName" data-t-title="pgRename">✎</button><button class="pg-b" id="pgNext" data-t-title="pgNext">›</button><button class="pg-b" id="pgAdd" data-t-title="pgAdd">+</button><button class="pg-b" id="pgDup" data-t-title="pgDup">⧉</button><button class="pg-b" id="pgDel" data-t-title="pgDel">✕</button></div>
     <div class="status-spacer"></div>
     <div class="status-item optional"><span class="lbl" data-t="saved">saved</span><span id="sSaved">—</span></div>
     <div class="status-item"><span id="sVer">v1.0</span></div>
@@ -863,7 +866,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.699';   // ADR-0672
+const V='1.7.700';   // ADR-0673
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2147,7 +2150,11 @@ function _pgDel2(op,firstId){   // ADR-0646: remove the deleted page's members +
   if(state.curPg===op.id)switchPage(firstId);   // ADR-0649: land via switchPage so the page change is announced + cursors hidden
 }
 function _pgRename(){const p=_pgById(state.curPg);if(!p)return;const n=prompt(t('pgRename'),p.name);if(n==null||_trm(n)==='')return;_cmt({op:'pageName',id:p.id,before:p.name,after:_s0(_trm(n),80),bts:p.nts,clock:{peer:_pi(),seq:++state.seq,ts:_now()}})}
-function _pgBar(){const el=_g('pgBar');if(!el)return;_hdn(el,!_pgOn());if(!_pgOn())return;const p=_pgById(state.curPg);if(p)_tC(_g('pgName'),(_pgIdx()+1)+'/'+_ln(state.pages)+' '+p.name)}
+function _pgBar(){const el=_g('pgBar');if(!el)return;_hdn(el,!_pgOn());if(!_pgOn())return;
+const tb=_g('pgTabs');if(!tb)return;_tC(tb,'');   // ADR-0673: per-page tab chips — direct jump replaces ‹› stepping (imported docs can reach the 64-page cap)
+for(const p of state.pages){const c=_ce('button');c.className='pg-b pg-t'+(p.id===state.curPg?' on':'');c.title=p.name;_tC(c,_s0(p.name,12));
+_oC(c,()=>p.id===state.curPg?_pgRename():switchPage(p.id));   // click the live tab to rename — keeps 0646's rename path one click away
+_ap(tb,c)}}
 const _shV=()=>_sh().filter(s=>_sv(s)&&_pgOk(s));   // ADR-0494/0646: visible+current-page subset
 const _ulv=s=>!_lk(s)&&_sv(s)&&_pgOk(s);   // ADR-0496/0646
 const _ul=s=>!_lk(s);   // ADR-0506

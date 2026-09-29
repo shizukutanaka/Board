@@ -4598,6 +4598,12 @@ try {
       state.pages=savedP;state.curPg=savedC;
       console.log('  ✓ snapshot ingest local-view preservation (3 asserts)');
     }
+    // ADR-0673: per-page tab strip — direct jump, active tab renames
+    {
+      assert.ok(html.includes('id="pgTabs"')&&html.includes("p.id===state.curPg?_pgRename():switchPage(p.id)"),'page tab chips switch/rename (ADR-0673)');
+      assert.ok(html.includes('.pg-t.on'),'active tab styling pinned');
+      console.log('  ✓ page tab strip pins (2 asserts)');
+    }
   }
 
   // ADR-0072: elbow trunk locate + bend-override two-corner route
@@ -12745,7 +12751,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1506; // prev 1503 + 3 snapshot local-view pins (ADR-0672)
+  pass += 1508; // prev 1506 + 2 page-tab strip pins (ADR-0673)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
