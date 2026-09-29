@@ -3781,19 +3781,12 @@ try {
     assert.ok(!validRemotePayload({op:'zorder',changes:[{id:'a',after:{evil:1}}]}),'non-string key rejected');
     assert.ok(!validRemotePayload({op:'zorder',changes:[{before:'V',after:'k'}]}),'missing id rejected');
     assert.ok(!validRemotePayload({op:'zorder',changes:'nope'}),'non-array changes rejected');
-    assert.ok(validRemotePayload({op:'zorder',after:[]}),'legacy snapshot format still accepted');
-    assert.ok(validRemotePayload({op:'zorder',after:[{id:'a',z:1,frac:'Vz'}]}),'legacy with valid z+frac accepted');
-    // legacy path assigns sh.z=p.z and sh.frac=p.frac directly - malformed values corrupt the
-    // ADR-0001 sort invariant. Guard them at the validator.
-    assert.ok(!validRemotePayload({op:'zorder',after:[{id:'a',z:NaN}]}),'legacy with NaN z rejected (would corrupt sortZ)');
-    assert.ok(!validRemotePayload({op:'zorder',after:[{id:'a',frac:{x:1}}]}),'legacy with object frac rejected (breaks ADR-0001 sort)');
-    assert.ok(!validRemotePayload({op:'zorder',after:[{z:1}]}),'legacy entry missing id rejected');
-    // ADR-0479: legacy frac/id length caps — the changes branch got caps at ADR-0473,
-    // the legacy path was missed; a 1MB frac/id string would be adopted verbatim.
-    assert.ok(!validRemotePayload({op:'zorder',after:[{id:'a',frac:'a'.repeat(601)}]}),'legacy frac >600 rejected');
-    assert.ok(validRemotePayload({op:'zorder',after:[{id:'a',frac:'a'.repeat(600)}]}),'legacy frac =600 accepted');
-    assert.ok(!validRemotePayload({op:'zorder',after:[{id:'a'.repeat(65)}]}),'legacy id >64 rejected');
-    assert.ok(validRemotePayload({op:'zorder',after:[{id:'a'.repeat(64)}]}),'legacy id =64 accepted');
+    // ADR-0742: the legacy {after:[…]} wholesale snapshot form is REJECTED — it
+    // applied z+frac unconditionally on every entry (no per-shape LWW gate, no
+    // stamp), so a pre-Step2 peer's raced reorder clobbered newer frac writes
+    // with no convergence path to heal. No current producer emits it.
+    assert.ok(!validRemotePayload({op:'zorder',after:[]}),'legacy snapshot form rejected (ADR-0742)');
+    assert.ok(!validRemotePayload({op:'zorder',after:[{id:'a',z:1,frac:'Vz'}]}),'legacy entry rejected (ADR-0742)');
     // move: ids must be strings (consistent with group/ungroup fix); ADR-0741:
     // absolute `after` positions are required — the bare delta form is rejected.
     assert.ok(validRemotePayload({op:'move',ids:['s1','s2'],dx:5,dy:3,after:[{id:'s1',x:5,y:3},{id:'s2',x:5,y:3}]}),'move with string ids + absolute after accepted');
@@ -6938,6 +6931,18 @@ try {
     B.Net._onRecv({k:'op',op:{op:'move',ids:['mv1'],dx:5,dy:0,after:[{id:'mv1',x:105,y:100}],clock:{peer:'peerA',seq:2,ts:11}}});
     assert.ok(B.byId('mv1').x===105,'ADR-0741: absolute remote move applies');
     console.log('  ✓ ADR-0741: remote move requires absolute positions');
+
+    // ADR-0742: the legacy zorder {after:[{id,z,frac}]} wholesale form applied
+    // z+frac unconditionally (no LWW gate/stamp) — a pre-Step2 peer's raced
+    // reorder clobbered newer per-shape frac writes permanently.
+    reset(A); reset(B);
+    state.shapes.push({id:'z1',type:'rect',x:0,y:0,w:10,h:10,z:1,frac:'a0'});A._invalidateGrid();A.sortZ();
+    B.state.shapes.push({id:'z1',type:'rect',x:0,y:0,w:10,h:10,z:1,frac:'a0'});B._invalidateGrid();B.sortZ();
+    B.Net._onRecv({k:'op',op:{op:'zorder',changes:[{id:'z1',before:'a0',after:'k1'}],clock:{peer:'peerA',seq:1,ts:10}}});
+    assert.ok(B.byId('z1').frac==='k1','ADR-0742: changes-form zorder applies');
+    B.Net._onRecv({k:'op',op:{op:'zorder',after:[{id:'z1',z:5,frac:'zz'}],clock:{peer:'peerX',seq:1,ts:9e15}}});
+    assert.ok(B.byId('z1').frac==='k1','ADR-0742: legacy wholesale zorder dropped (was: unguarded clobber)');
+    console.log('  ✓ ADR-0742: legacy zorder wholesale form rejected');
 
     // resize/align now LWW too (ADR-0002 follow-up): whole-shape snapshot ops gate/stamp
     // only the keys they actually changed (diff before/after). (i) concurrent resize of
@@ -13575,7 +13580,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1691; // prev 1688 + 2 ADR-0741 behavioural + 1 ADR-0741 payload pin
+  pass += 1686; // prev 1691 − 9 legacy-zorder pins replaced by 2 (ADR-0742) + 2 ADR-0742 behavioural
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

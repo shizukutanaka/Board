@@ -868,7 +868,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.767';   // ADR-0741
+const V='1.7.768';   // ADR-0742
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1392,15 +1392,12 @@ function validRemotePayload(op){
       return true;}
     case 'move':   return _iA(op.ids)&&_ln(op.ids)>0&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(_idOK)&&_iN(op.dx)&&_fin(op.dx)&&_iN(op.dy)&&_fin(op.dy)&&(op.dx!==0||op.dy!==0)
       &&patches(op.after)&&(op.before==null||patches(op.before));   // ADR-0729/0741: absolute positions are REQUIRED on the wire — a bare delta applied on a raced base diverges unrecoverably
-    case 'zorder':  // Step2 minimal-delta {changes:[{id,before,after}]} or legacy {after:[…]}
-      return (_iA(op.changes)&&_ln(op.changes)<=MAX_OP_SHAPES&&op.changes.every(c=>c&&_iS(c.id)&&_ln(c.id)<=64
-                &&(c.after==null||_iS(c.after)&&_ln(c.after)<=600)&&(c.before==null||_iS(c.before)&&_ln(c.before)<=600)))   // ADR-0473/0485
-             // legacy snapshot: each entry must carry a s
-             // and a string-or-null frac (if present) — o
-             // would silently corrupt the ADR-0001 sort invariant.
-             ||(_iA(op.after)&&_ln(op.after)<=MAX_OP_SHAPES&&op.after.every(c=>c&&_iS(c.id)&&_ln(c.id)<=64
-                &&(c.z==null||_fin(c.z))
-                &&(c.frac==null||_iS(c.frac)&&_ln(c.frac)<=600)));
+    case 'zorder':  // Step2 minimal-delta {changes:[{id,before,after}]} only — ADR-0742: the legacy {after:[…]}
+                    // wholesale snapshot applied z+frac unconditionally on every entry (no per-shape LWW gate,
+                    // no clock stamp) so a pre-Step2 peer's raced reorder clobbered newer frac writes with no
+                    // convergence path to heal. No current producer emits it.
+      return _iA(op.changes)&&_ln(op.changes)<=MAX_OP_SHAPES&&op.changes.every(c=>c&&_iS(c.id)&&_ln(c.id)<=64
+                &&(c.after==null||_iS(c.after)&&_ln(c.after)<=600)&&(c.before==null||_iS(c.before)&&_ln(c.before)<=600));   // ADR-0473/0485
     case 'style':
     case 'resize':
     case 'beautify':{const noLock=p=>!('locked' in p);
