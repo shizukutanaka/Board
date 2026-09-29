@@ -14375,11 +14375,12 @@ try {
   {
     Net._imgPending.clear();Net._imgIn.clear();Net._imgOuts.length=0;
     const sent=[];const _os=Net._send;Net._send=m=>{if(m&&m.k==='img')sent.push(m.key);};
-    const s0=Shape.make('image',{x:0,y:0,w:10,h:10,img:'kQ'});
-    s0.dataUrl='data:image/png;base64,QQ';
-    state.shapes=[s0];_invalidateGrid();
-    Net._onRecv({k:'imgq',key:'kQ',peer:'zz'},false);
-    assert.ok(sent.includes('kQ'),"imgq answered from the live shape's dataUrl");
+    const s0=Shape.make('image',{x:0,y:0,w:10,h:10});
+    s0.dataUrl='data:image/png;base64,'+'Q'.repeat(200);
+    const kQ=Net._slimShapes([s0])[0].img;Net._imgOuts.length=0;
+    assert.ok(typeof kQ==='string'&&kQ.length>0,'slim emits the blob key');
+    Net._onRecv({k:'imgq',key:kQ,peer:'zz'},false);
+    assert.ok(sent.includes(kQ),'imgq answered from the sent-key map O(1)');
     sent.length=0;
     Net._imgIn.set('kR','data:image/png;base64,RR');
     Net._onRecv({k:'imgq',key:'kR',peer:'zz'},false);

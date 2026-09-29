@@ -8123,9 +8123,8 @@ const Net={
       this._presenceTimer=setInterval(()=>{
         this._send(_mk('ping'));   // ADR-0740
         this._reapPeers();this._reapFrags();
-        // ADR-0835: parked img refs ask for a re-send once the normal
-        // ordering window passes; the park drops at 60s — the shape's
-        // `img:` ref still heals from any later blob carrying the key.
+        // ADR-0835: aged parked refs re-request via imgq; park drops at 60s —
+        // the shape's `img:` ref still heals from any later blob with the key.
         const _ipq=nowTs();for(const[id,e]of this._imgPending){if(_ipq-e.t0>60000)this._imgPending.delete(id);else if(_ipq-e.t0>NET_PRESENCE_INTERVAL*2)this._send(_mk('imgq',{key:e.k}))}
         // ADR-0475
         if(!this._snapRx&&this._snapRetry++<3)this._send(_mk('sync-req'));
@@ -8311,12 +8310,11 @@ const Net={
         // resolve any board shape still holding this ref directly.
         for(const s of _sh())if(s.img===msg.key){delete s.img;s.dataUrl=data;this._imgPending.delete(s.id)}
         _iv();break;}
-      case 'imgq':{   // ADR-0835: a peer's parked ref asks for a re-send —
-        // answer with the received blob or our own shape's bytes.
-        if(!_idOK(msg.key))break;
-        const d0=this._imgIn.get(msg.key);
+      case 'imgq':{   // ADR-0835: O(1) answer — wire refs only ever exist for
+        // keys slimmed (_imgSent) or received (_imgIn); a _sh() scan would let
+        // an imgq flood cost O(board)/msg.
+        const d0=this._imgIn.get(msg.key)||(_idOK(msg.key)?this._imgSent.get(msg.key):null);
         if(d0)_pu(this._imgOuts,[msg.key,d0]);
-        else for(const s of _sh())if(s.img===msg.key&&_iS(s.dataUrl)){_pu(this._imgOuts,[msg.key,s.dataUrl]);break}
         this._flushImgOuts();break;}
       case 'snap':case 'opc':{
         // ADR-0383/0431: chunked intake — snapshots

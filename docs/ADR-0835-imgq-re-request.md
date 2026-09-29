@@ -19,9 +19,11 @@ heartbeat sweeps the map:
   blob resolution sweeps `_sh()` directly, so a late-arriving blob or a future
   snapshot still fixes the image).
 
-Peers answer `imgq` from `_imgIn` (a received blob) or by scanning `_sh()` for
-a live shape still holding `s.img===key` + `s.dataUrl`, then flush
-`_imgOuts` immediately — no extra round-trip machinery. `imgq` keys are
+Peers answer `imgq` O(1): `_imgIn.get(key)` (a received blob) or
+`_imgSent.get(key)` (the slim-time key→dataUrl map — a wire ref only ever
+exists for a key that was slimmed or received, so a live-shape scan adds
+coverage only at `_imgIn`-eviction edges while letting an imgq flood cost
+O(board) per message). `_imgOuts` flushes immediately. `imgq` keys are
 `_idOK`-bounded like every wire id.
 
 ## Why not a dedicated request channel
@@ -33,6 +35,6 @@ No addressing, no new ack state.
 ## Test
 
 Behavioural pin in test.mjs — `Net._onRecv({k:'imgq'})` answers from both the
-live shape's `dataUrl` and the `_imgIn` blob store (send captured via `Net._send`
+`_imgSent` slim map and the `_imgIn` blob store (send captured via `Net._send`
 stub), and an oversized key is ignored. The pending-map assertions moved to the
 `{k,t0}` value shape.

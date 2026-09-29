@@ -177,8 +177,8 @@ remote del/replace と選択書込みの間には選択が stale id を持つ窓
 除去/弱化すると pageDel が他ページの画像を永久破壊する — test が両側面を固定する。
 駐車エントリは `{k,t0}` を持ち、presence heartbeat が 10s 超の滞留に `{k:'imgq',key}` を
 再要求して 60s で解放する (ADR-0835 — 送信側の flush 途中切断で永久 placeholder 化する
-経路を自己修復)。応答側は `_imgIn` または `s.img===key` を持つ live shape の `dataUrl`
-から blob を即時再送する。
+経路を自己修復)。応答側は `_imgIn`/`_imgSent` の O(1) Map 参照で blob を即時再送する
+(盤面走査を挟まない)。
 
 **反転 (flip H/V)** は専用 op を持たず、`align` op を再利用する: `doFlip(axis)` が選択 bbox 中心軸で
 各シェイプ座標をミラー (`flipShape`) し、変更前後の完全クローンを `{op:'align',dir:'flip',before,after}`
