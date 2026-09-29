@@ -4849,6 +4849,18 @@ try {
         state.pages=null;state.curPg=null;state.shapes=[];state._lastTs=0;
         console.log('  ✓ pageAdd-backward locked parity (2 asserts)');
       }
+      // ADR-0715: clear backward is idempotent on shape id — a shape re-added
+      // since the clear must not be pushed a second time (dup-id corruption).
+      {
+        state.pages=null;state.shapes=[];
+        const s=Shape.make('rect',{x:0,y:0,w:10,h:10});
+        Store._apply({op:'clear',shapes:[JSON.parse(JSON.stringify(s))],clock:{peer:'zz',seq:36,ts:7}},true);
+        state.shapes.push(JSON.parse(JSON.stringify(s)));   // re-added since the clear
+        Store._apply({op:'clear',shapes:[JSON.parse(JSON.stringify(s))],clock:{peer:'zz',seq:36,ts:7}},false);
+        assert.strictEqual(state.shapes.filter(q=>q.id===s.id).length,1,'clear undo skips already-present ids (ADR-0715)');
+        state.shapes=[];state._lastTs=0;
+        console.log('  ✓ clear-backward idempotency (1 assert)');
+      }
       assert.ok(html.includes("ids.join(',')+'|'+(state.curPg||'')"),'sel presence key includes page (ADR-0680)');
       console.log('  ✓ sel-presence pg key pin (1 assert)');
     }
@@ -13061,7 +13073,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1586; // prev 1517 + 1 tab aria-label pin (ADR-0682)
+  pass += 1587; // prev 1517 + 1 tab aria-label pin (ADR-0682)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

@@ -1,3 +1,10 @@
+## [1.7.741] - 2026-09-29
+
+### Fixed
+- ADR-0715: undo of clear pushed every recorded shape unconditionally — a shape
+  re-added since the clear got a duplicate id registration (byId ambiguity,
+  count divergence). Backward now skips already-present ids like add does
+
 ## [1.7.740] - 2026-09-29
 
 ### Fixed

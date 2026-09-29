@@ -868,7 +868,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.740';   // ADR-0714
+const V='1.7.741';   // ADR-0715
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1713,7 +1713,7 @@ const Store={
         break;}
       case 'clear':{
         if(forward){if(op.clock)state._lastRep=op.clock;_sh().length=0;_scl();state.wclock={};_pcC();}   // ADR-0626: wire form is 'replace' — receivers stamp this clock on _lastRep, so the sender must too or a staler swap applies only here
-        else{for(const s of op.shapes)_sh().push(Net._attachShape(clone(s)));_sz();if(op.wc)state.wclock=clone(op.wc);_selR(op);}
+        else{for(const s of op.shapes)if(!byId(s.id))_sh().push(Net._attachShape(clone(s)));_sz();if(op.wc)state.wclock=clone(op.wc);_selR(op);}   // ADR-0715: idempotent like 'add' — a shape re-present since the clear must not double-register
         break;}
       case 'replace':{
         // Whole-board swap (shared-link import). Rev
