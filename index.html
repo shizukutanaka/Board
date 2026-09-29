@@ -868,7 +868,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.726';   // ADR-0700
+const V='1.7.727';   // ADR-0701
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -8254,7 +8254,7 @@ const Net={
         if(msg.rep&&validClock(msg.rep)&&clockNewer(msg.rep,state._lastRep))state._lastRep=msg.rep;   // ADR-0617: the snapshot reflects a newer swap — align the marker
         break;
       case 'name':   // ADR-0402/0581: rename is LWW — a stale peer's slower-arriving rename can't clobber a newer local one
-        if(_iS(msg.name)&&_ln(msg.name)<=80&&(_iN(msg.ts)?_nameWin(msg.ts,_iS(msg.peer)?msg.peer:''):!0)){_nameTs=_iN(msg.ts)?msg.ts:_nameTs;if(_iS(msg.peer))_namePeer=msg.peer;_setDocName(msg.name);_ps()}
+        if(_iS(msg.name)&&_ln(msg.name)<=80&&(_iN(msg.ts)?_fin(msg.ts)&&_nameWin(msg.ts,_iS(msg.peer)?msg.peer:''):!0)){_nameTs=_iN(msg.ts)&&_fin(msg.ts)?msg.ts:_nameTs;if(_iS(msg.peer))_namePeer=msg.peer;_setDocName(msg.name);_ps()}   // ADR-0701: a numeric-but-non-finite ts is hostile — dropped (Infinity would freeze docName on every peer); only absent ts gets the legacy unconditional accept
         break;
       case 'bye':{   // ADR-0456: peer left — drop presence now, don't wait for the 15s reap
         const pk=this._pk(msg,viaRtc);
@@ -8365,7 +8365,7 @@ const Net={
     _rs(clone(valid));   // ADR-0009
     _sz();
     _pgAdopt(msg.pages,state.curPg);   // ADR-0672: curPg is a LOCAL view filter — a re-sync must not yank the view to the sender's page
-    if(_iS(msg.name)&&(_iN(msg.nameTs)?_nameWin(msg.nameTs,_iS(msg.namePeer)?msg.namePeer:''):!0)){if(_iN(msg.nameTs))_nameTs=msg.nameTs;if(_iS(msg.namePeer))_namePeer=msg.namePeer;_setDocName(_s0(msg.name,80));}   // ADR-0618/0699: rename (ts,writer) total order — a stale snapshot's name can't clobber a newer local rename; the writer peer (not the sender) decides ties
+    if(_iS(msg.name)&&(_iN(msg.nameTs)?_fin(msg.nameTs)&&_nameWin(msg.nameTs,_iS(msg.namePeer)?msg.namePeer:''):!0)){if(_iN(msg.nameTs)&&_fin(msg.nameTs))_nameTs=msg.nameTs;if(_iS(msg.namePeer))_namePeer=msg.namePeer;_setDocName(_s0(msg.name,80));}   // ADR-0618/0699: rename (ts,writer) total order — a stale snapshot's name can't clobber a newer local rename; the writer peer (not the sender) decides ties
     _iv();_ru();_ps();
   },
   _touchPeer(peerId){

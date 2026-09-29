@@ -2039,6 +2039,25 @@ try {
     state.docName='';
     console.log('  ✓ docName + snapshot equal-ts tie order (ADR-0699, 5 asserts)');
   }
+  // ADR-0701: a numeric-but-non-finite rename ts is hostile — drop it, or the
+  // name freezes on every peer (Infinity wins every (ts,writer) compare).
+  {
+    state.roomId='roomOld';
+    Net.init('roomInf');
+    state.docName='';
+    Net._onRecv({k:'name',name:'Frozen',ts:Infinity,peer:'zz'},false);
+    assert.strictEqual(state.docName,'','Infinity-ts rename rejected (ADR-0701)');
+    Net._onRecv({k:'name',name:'Frozen2',ts:NaN,peer:'zz'},false);
+    assert.strictEqual(state.docName,'','NaN-ts rename rejected (ADR-0701)');
+    Net._onRecv({k:'name',name:'Ok',ts:3,peer:'zz'},false);
+    assert.strictEqual(state.docName,'Ok','legit rename still applies after the hostile ones');
+    state.shapes.length=0;
+    const sI=Shape.make('rect',{id:'x4',x:0,y:0,w:10,h:10});
+    Net._onRecv({k:'snapshot',shapes:[sI],ops:[],peer:'sp',name:'SnapFrozen',nameTs:Infinity,namePeer:'zz'},false);
+    assert.strictEqual(state.docName,'Ok','snapshot with Infinity nameTs keeps the local name (ADR-0701)');
+    state.docName='';
+    console.log('  ✓ non-finite rename ts rejected everywhere (ADR-0701, 4 asserts)');
+  }
   // ADR-0621: a shape removed mid-gesture (remote del/replace) must not ride the
   // move commit — byId is null there, and a phantom op would land in history +
   // broadcast as noise (peers no-op it, so converged but polluted).
@@ -3814,7 +3833,7 @@ try {
     assert.strictEqual(msg.name,'WireName','snapshot carries docName for late joiners');
     assert.ok(html.includes("case 'name'"),"receiver has a 'name' case");
     assert.ok(html.includes("Net._bcast(_mk('name',{name:state.docName,ts:_nameTs=nowTs()}))"),'rename broadcasts k:name + LWW ts (ADR-0581)');
-    assert.ok(html.includes("(_iN(msg.ts)?_nameWin(msg.ts,_iS(msg.peer)?msg.peer:''):!0)"),'stale remote rename dropped (ADR-0581/0699)');
+    assert.ok(html.includes("(_iN(msg.ts)?_fin(msg.ts)&&_nameWin(msg.ts,_iS(msg.peer)?msg.peer:''):!0)"),'stale remote rename dropped; non-finite ts rejected (ADR-0581/0699/0701)');
     assert.ok(html.includes("_iS(msg.name)"),'receiver type-guards name');
     state.docName='';
     console.log('  ✓ doc name propagates via k:name broadcast + snapshot.name (ADR-0402)');
@@ -12907,7 +12926,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1556; // prev 1517 + 1 tab aria-label pin (ADR-0682)
+  pass += 1560; // prev 1517 + 1 tab aria-label pin (ADR-0682)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

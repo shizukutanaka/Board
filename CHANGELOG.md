@@ -1,3 +1,8 @@
+## [1.7.727] - 2026-09-29
+
+### Fixed
+- ADR-0701: non-finite rename ts rejected on both docName paths (Infinity/NaN would freeze the doc name on every peer)
+
 ## [1.7.726] - 2026-09-29
 
 ### Fixed
