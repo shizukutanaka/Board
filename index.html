@@ -700,7 +700,7 @@ body{visibility:visible}
     <div class="status-item optional"><span class="lbl" data-t="shapes">shapes</span><span id="sCount">0</span></div>
     <div class="status-item optional"><span class="lbl" aria-hidden="true">x,y</span><span id="sXY">0, 0</span></div>
     <div class="status-item optional" id="sSelWrap" hidden><span class="lbl" data-t="selDims">sel</span><span id="sSel"></span></div>
-    <div class="status-item" id="pgBar" hidden><button class="pg-b" id="pgPrev" data-t-title="pgPrev">‹</button><span id="pgTabs"></span><button class="pg-b pg-name" id="pgName" data-t-title="pgRename">✎</button><button class="pg-b" id="pgNext" data-t-title="pgNext">›</button><button class="pg-b" id="pgAdd" data-t-title="pgAdd">+</button><button class="pg-b" id="pgDup" data-t-title="pgDup">⧉</button><button class="pg-b" id="pgDel" data-t-title="pgDel">✕</button></div>
+    <div class="status-item" id="pgBar" hidden><button class="pg-b" id="pgPrev" data-t-title="pgPrev" data-t-aria="pgPrev">‹</button><span id="pgTabs"></span><button class="pg-b pg-name" id="pgName" data-t-title="pgRename" data-t-aria="pgRename">✎</button><button class="pg-b" id="pgNext" data-t-title="pgNext" data-t-aria="pgNext">›</button><button class="pg-b" id="pgAdd" data-t-title="pgAdd" data-t-aria="pgAdd">+</button><button class="pg-b" id="pgDup" data-t-title="pgDup" data-t-aria="pgDup">⧉</button><button class="pg-b" id="pgDel" data-t-title="pgDel" data-t-aria="pgDel">✕</button></div>
     <div class="status-spacer"></div>
     <div class="status-item optional"><span class="lbl" data-t="saved">saved</span><span id="sSaved">—</span></div>
     <div class="status-item"><span id="sVer">v1.0</span></div>
@@ -867,7 +867,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.722';   // ADR-0696
+const V='1.7.723';   // ADR-0697
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;

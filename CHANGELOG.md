@@ -1,3 +1,8 @@
+## [1.7.723] - 2026-09-29
+
+### Fixed
+- ADR-0697: page-bar buttons expose aria-labels (was title-attribute fallback only)
+
 ## [1.7.722] - 2026-09-29
 
 ### Fixed
