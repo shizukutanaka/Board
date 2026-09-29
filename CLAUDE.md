@@ -724,7 +724,8 @@ Board/
 │   ├── ADR-0673-page-tab-strip.md  # ページタブストリップ (実装済)
 │   ├── ADR-0674-curpg-persist-on-switch.md  # ページ切替で persist (実装済)
 │   ├── ADR-0675-tab-rebuild-signature.md  # タブ sig キャッシュ + aria-current (実装済)
-│   └── ADR-0676-stale-research-sync.md  # stale 調査記述の同期 (実装済)
+│   ├── ADR-0676-stale-research-sync.md  # stale 調査記述の同期 (実装済)
+│   └── ADR-0677-pres-page-switch-frames.md  # プレゼン中ページ切替の幻影フレーム (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

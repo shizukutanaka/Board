@@ -714,7 +714,7 @@ const checks = [
   // v1.7.580 (ADR-0552): unhandled ctx-menu keys are swallowed, not bubbled
   ['ctx menu swallows unhandled keys (ADR-0552)', html.includes("e.key!==' '&&e.key!=='Enter'){_pd(e);e.stopPropagation();UI.closeCtxMenu()}")],
   // v1.7.582 (ADR-0554): presentation frame navigation drops deleted frames
-  ['presentation _goto filters stale frames (ADR-0554)', html.includes('_frames=_frames.filter(f=>byId(f.id))')],
+  ['presentation _goto filters stale+off-page frames (ADR-0554/0677)', html.includes('_frames=_frames.filter(f=>byId(f.id)&&_pgOk(f))')],
   // v1.7.584 (ADR-0556): blur on a remotely-deleted shape must not commit a phantom op
   ['text editor blur guards remote-deleted shape (ADR-0556)', html.includes("if(!byId(s.id)){state.editing=null;_teTa=null;_rm(ta);_iv();return}")],
   ['label editor commit guards remote-deleted shape (ADR-0557)', html.includes("if(!byId(hit.id)){_lblTa=null;_rm(inp);_iv();return}")],
