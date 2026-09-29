@@ -1,3 +1,12 @@
+## [1.7.768] - 2026-09-28
+
+### Fixed
+- ADR-0742: remote 'zorder' still accepted the pre-Step2 `{after:[…]}`
+  wholesale snapshot — applied z+frac unconditionally on every entry with no
+  per-shape LWW gate or clock stamp, so a stale-SW peer's raced reorder
+  clobbered newer frac writes permanently. Wire zorder now requires the
+  minimal-delta `changes` form (same mixed-version class as ADR-0741)
+
 ## [1.7.767] - 2026-09-28
 
 ### Fixed
