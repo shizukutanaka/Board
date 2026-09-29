@@ -1,3 +1,8 @@
+## [1.7.826] - 2026-09-29
+
+### Docs
+- ADR-0800: architecture.md の wire-bounds 節へ 0795–0799 の規則を同期 (viewport 中心不変 + ローカル取込 parity)
+
 ## [1.7.825] - 2026-09-29
 
 ### Fixed
