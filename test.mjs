@@ -327,9 +327,9 @@ const checks = [
   ['shared _fitViewport used by all three fit paths', html.includes("function _fitViewport(") && html.includes("_fitViewport(b,40,2)") && html.includes("_fitViewport(b,60,4)")],
   ['selFit i18n ja+en', html.includes("selFit:'選択にフィット'") && html.includes("selFit:'Zoom to selection'")],
   // v1.7.108: ADR-0050 copy PNG to clipboard via shared _renderPngBlob
-  ['shared _renderPngBlob drives export + copy', html.includes("function _renderPngBlob(shapes,cb,desired)") && html.includes("exportPNG(shapes=_sh(),scale){\n  _renderPngBlob(shapes," ) && html.includes("function copyPNG(")],
+  ['shared _renderPngBlob drives export + copy', html.includes("function _renderPngBlob(shapes,cb,desired)") && html.includes("exportPNG(shapes=_shV(),scale){   // ADR-0658\n  _renderPngBlob(shapes," ) && html.includes("function copyPNG(")],
   // v1.7.110: ADR-0052 selection-scoped export (PNG / copy / SVG)
-  ['exports take a shapes arg (default whole board)', html.includes("exportPNG(shapes=_sh(),scale)") && html.includes("copyPNG(shapes=_sh())") && html.includes("exportSVG(shapes=_sh())")],
+  ['exports take a shapes arg (default whole board)', html.includes("exportPNG(shapes=_shV(),scale)") && html.includes("copyPNG(shapes=_shV())") && html.includes("exportSVG(shapes=_shV())")],
   ['selection export items in ctx menu', html.includes("['ctxExportSelPNG','',()=>exportSelection('png')]") && html.includes("['ctxCopySelPNG','',()=>exportSelection('copy')]") && html.includes("['ctxExportSelSVG','',()=>exportSelection('svg')]")],
   ['selection export i18n ja+en', html.includes("ctxExportSelPNG:'選択をPNG書き出し'") && html.includes("ctxExportSelSVG:'Export selection to SVG'")],
   // v1.7.111: ADR-0053 text overlay follows pan/zoom
@@ -486,7 +486,7 @@ const checks = [
   ['route reset: resetRoute clears way/bend/elbow/curve via one style op', html.includes('function resetRoute()')&&html.includes('ctxRouteReset')&&html.includes('way:null,bend:null,elbow:0,curve:0')],
   ['frame fit: bbox of fully-inside shapes + padding via align op', html.includes('function fitFrames()')&&html.includes('ctxFrameFit')&&html.includes('framefit')],
   ['click stamp: click places a default 120x80 box', html.includes('d.w=120;d.h=80;d.x-=60;d.y-=40')&&html.includes("ADR-0086")],
-  ['copySVG: selection SVG via copyText in ctx menu', html.includes('function copySVG(shapes=_sh())')&&html.includes("exportSelection('svgcopy')")&&html.includes('ctxCopySelSVG')],
+  ['copySVG: selection SVG via copyText in ctx menu', html.includes('function copySVG(shapes=_shV())')&&html.includes("exportSelection('svgcopy')")&&html.includes('ctxCopySelSVG')],
   ['waypoint + elbow-trunk drags honour grid snap', html.includes('wa[i]=snapPt(wp)')&&html.includes('snapV(wp.x):snapV(wp.y)')&&html.includes('RAW point')],
   ['replace image: ctx item + aspect-follow via style op', html.includes('function replaceImage()')&&html.includes('ctxReplaceImg')&&html.includes('s.w*nh/nw')],
   ['multi-waypoint: way is an array; insert/move/delete via wayIdx+wayNew', html.includes('function _wayArr(s)')&&html.includes('ptr.wayIdx')&&html.includes('wa.splice(i,0,snapPt(wp))')],
@@ -12535,13 +12535,24 @@ try {
     Store.applyRemote({op:'pageDel',id:'p2',clock:{peer:'r1',seq:8,ts:8}});
     assert.ok(!_pgById('p2')&&!!_pgById('p3'),'re-applied pageDel is a no-op (findIndex guard)');
 
+    // ADR-0658: single-scene exports carry the current page only — _sh() would overlap every page
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;
+    const ea=Shape.make('rect',{x:0,y:0,w:10,h:10}),eb=Shape.make('rect',{x:0,y:0,w:10,h:10}),ec=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    Store.commit({op:'add',shape:ea});
+    Store.applyRemote({op:'pageAdd',id:'pB',name:'B',shapes:[{...eb,pg:'pB'}],clock:{peer:'r1',seq:1,ts:1}});
+    Store.applyRemote({op:'pageAdd',id:'pC',name:'C',shapes:[{...ec,pg:'pC'}],clock:{peer:'r1',seq:2,ts:2}});
+    const exs=excScene(state.shapes.filter(s=>s.visible!==0&&_pgOk(s))).elements;
+    assert.ok(exs.length===2&&exs.every(e=>e.id!==ec.id),'page-scoped export excludes other-page shapes (same coords would overlap)');
+    assert.ok(html.includes('excScene(_shV())'),'exportExc scopes to the current page');
+    assert.ok((html.match(/shapes=_shV\(\)/g)||[]).length>=4,'PNG/SVG export+copy defaults are page-scoped');
+
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
   // asserts but actually contains 6 (recounted directly: at1.length, at2.length, and 4
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1462; // prev 1459 + 3 page-op reapply asserts (ADR-0657)
+  pass += 1465; // prev 1462 + 3 page-scoped-export asserts (ADR-0658)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

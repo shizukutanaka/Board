@@ -863,7 +863,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.682';   // ADR-0656
+const V='1.7.683';   // ADR-0658
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6650,7 +6650,7 @@ function exportViewportPNG(scale){
     _oT('exported');
   },'image/png');
 }
-function exportPNG(shapes=_sh(),scale){
+function exportPNG(shapes=_shV(),scale){   // ADR-0658
   _renderPngBlob(shapes,bl=>{
     if(!bl){_eT(_EF);return}
     const url=_oURL(bl);
@@ -6662,7 +6662,7 @@ function exportPNG(shapes=_sh(),scale){
 }
 // Copy the board PNG to the OS clipboard (Excalidraw parity). No shortcut —
 // ⌘⇧C collides with the browser DevTools inspector; menu-only.
-function copyPNG(shapes=_sh()){
+function copyPNG(shapes=_shV()){   // ADR-0658
   if(!_nc()||!_nc().write||typeof ClipboardItem===_un){_wT('copyUnsupported');return}
   _renderPngBlob(shapes,bl=>{
     if(!bl){_eT(_EF);return}
@@ -6674,7 +6674,7 @@ function copyPNG(shapes=_sh()){
 
 // ADR-0087: selection/board SVG as clipboard text — the ClipboardItem SVG
 // MIME is browser-inconsistent, but plain-text SVG pastes everywhere useful.
-function copySVG(shapes=_sh()){
+function copySVG(shapes=_shV()){   // ADR-0658
   const svg=buildSVG(shapes,_p());
   if(svg===null){_wT(_EM);return}
   _cpT(copyText(svg));
@@ -6702,13 +6702,13 @@ function replaceImage(){
 }
 function exportPDF(){
   if(!_nS()){_wT(_EM);return}
-  const b=_bA(_sh());if(!b)return;
+  const b=_bA(_shV());if(!b)return;   // ADR-0658
   const pad=32,W=_ceil(b.w+pad*2),H=_ceil(b.h+pad*2),dpr=exportScale(W,H,_dpr()||1);
   let off;try{off=new OffscreenCanvas(W*dpr,H*dpr)}catch(_){off=_cv();_wh(off,W*dpr,H*dpr)}
   const oc=_g2(off);
   oc.fillStyle=_p()||'#fff';oc.fillRect(0,0,W*dpr,H*dpr);
   oc.setTransform(dpr,0,0,dpr,(-b.x+pad)*dpr,(-b.y+pad)*dpr);
-  for(const s of _sh())drawShape(s,oc);
+  for(const s of _shV())drawShape(s,oc);   // ADR-0658
   const fin=bl=>{
     if(!bl){_eT(_EF);return}
     const url=_oURL(bl);
@@ -6721,7 +6721,7 @@ function exportPDF(){
   else off.convertToBlob({type:'image/png'}).then(fin,()=>fin(null));   // rejection → same exportFailed toast as toBlob(null)
 }
 
-function exportSVG(shapes=_sh()){
+function exportSVG(shapes=_shV()){   // ADR-0658
   const svg=buildSVG(shapes,_p());
   if(svg===null){_wT(_EM);return}
   const blob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'});
@@ -7105,7 +7105,7 @@ function importDrawioFile(file,wp){
 function exportExc(){
   if(!_nS()){_wT(_EM);return}
   const a=_ce('a');
-  const _bu=_oURL(new Blob([_JS(excScene(_sh()))],{type:'application/json'}));
+  const _bu=_oURL(new Blob([_JS(excScene(_shV()))],{type:'application/json'}));   // ADR-0658: single-scene formats export the current page — _sh() would overlap every page at identical coords
   a.href=_bu;a.download=(_dn()||'board')+'.excalidraw';
   _clk(a);_rO(_bu);
   _oT('exportedExc');
