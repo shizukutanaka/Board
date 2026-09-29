@@ -11201,6 +11201,18 @@ try {
       for(const f of fakeWin._L['keydown']||[])f(ev);
       return ev;
     };
+    // ADR-0641: index-0-only variant for asserts that read shared module state after a key whose
+    // handler broadcasts on the wire (⌘Z/⌘Y → undo-wire inverse ops, ADR-0443). Firing every
+    // stale instance's keydown listener also runs *their* undo, which rebroadcasts inverse ops
+    // back into api via the shared fake BroadcastChannel — correct multi-peer behaviour in
+    // production, but it makes the local assert depend on peer replay.
+    const fireKey1=(key,o={})=>{
+      const ev={key,ctrlKey:false,metaKey:false,shiftKey:false,altKey:false,
+        isComposing:false,target:{matches:()=>false},preventDefault(){},stopPropagation(){},...o};
+      for(const f of (fakeWin._L['keydown|c']||[]).slice(0,1))f(ev);
+      for(const f of (fakeWin._L['keydown']||[]).slice(0,1))f(ev);
+      return ev;
+    };
     reset();
     fireKey('p');
     assert.strictEqual(state.tool,'pen',"real keydown 'p' selects the pen tool");
@@ -11403,6 +11415,25 @@ try {
     const pxx=state.viewport.x;
     fireKey('ArrowLeft');
     assert.ok(state.viewport.x<pxx,'arrow without a selection pans the view');
+    // ⌘D duplicates the selection to fresh ids; ⇧⌘Z re-applies an undone delete (real key path)
+    reset();
+    state.tool='select';
+    const D1=Shape.make('rect',{x:10,y:10,w:40,h:40});
+    const D2=Shape.make('ellipse',{x:100,y:10,w:40,h:40});
+    Store.commit({op:'add',shape:D1});Store.commit({op:'add',shape:D2});
+    state.selection=new Set([D1.id,D2.id]);
+    fireKey('d',{metaKey:true});
+    assert.strictEqual(state.shapes.length,4,'⌘D duplicates the selection');
+    const dupIds=state.shapes.slice(2).map(s=>s.id);
+    assert.ok(dupIds.every(id=>id!==D1.id&&id!==D2.id),'duplicates get fresh ids');
+    fireKey('Delete');
+    assert.strictEqual(state.shapes.length,2,'delete removes the duplicate selection');
+    // fireKey1: undo/redo broadcast inverse ops on the wire — stale peer listeners would
+    // echo their own undos back into api (peer replay is correct in production, noise here)
+    fireKey1('z',{metaKey:true});
+    assert.strictEqual(state.shapes.length,4,'⌘Z restores the deleted duplicates');
+    fireKey1('z',{metaKey:true,shiftKey:true});
+    assert.strictEqual(state.shapes.length,2,'⇧⌘Z re-applies the delete');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -11414,7 +11445,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1214; // prev 1168 + 46 event-sequence asserts (ADR-0641)
+  pass += 1219; // prev 1214 + 5 event-sequence asserts (ADR-0641: ⌘D/Delete/⌘Z/⇧⌘Z)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
