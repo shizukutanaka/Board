@@ -239,7 +239,9 @@ const checks = [
   ['zorder _apply handles changes-delta + legacy snapshot', html.includes("sh.frac=forward?c.after:c.before") && html.includes("const snap=forward?op.after:op.before")],
   ['fractional index keyBetween/reindexFrac present (ADR-0001)', html.includes("function keyBetween") && html.includes("function reindexFrac")],
   ['z-step ops route through _zCommit (undoable, minimal-delta)', html.includes("_zCommit(changes)") && html.includes("function _zCommit")],
-  ['applyRemote whitelists op types', html.includes("REMOTE_OPS") && html.includes("this.REMOTE_OPS.has(op.op)")],
+    ['applyRemote whitelists op types', html.includes("REMOTE_OPS") && html.includes("this.REMOTE_OPS.has(op.op)")],
+  ["undo-wire emits 'replace' restoring swap (ADR-0615)", html.includes("case 'replace':   // ADR-0615") && html.includes("return _iA(op.before)?[{op:'replace',after:op.before,afterWc:op.wc}]:null;")],
+  ["undo-wire swap advances _lastRep to the fresh clock (ADR-0615)", html.includes("if(w.op==='replace')state._lastRep=w.clock;") && html.includes("_fck(op);if(op.op==='replace')state._lastRep=op.clock;")],
   ['applyRemote validates remote add shape', html.includes("case 'add':    return validShape(op.shape)")],
   ['SVG export uses testable buildSVG', html.includes("function buildSVG") && html.includes("buildSVG(shapes")],
   ['SVG attrs escaped via _esc', html.includes("stroke=\"${stroke}\"") && html.includes("_esc(_fi(s))")],
@@ -1902,6 +1904,17 @@ try {
     Store.applyRemote({op:'replace',after:[b],clock:ck('peerB',2,400)});
     assert.strictEqual(state.shapes[0].type,'ellipse','later-arriving newer replace still wins');
     console.log('  ✓ concurrent replace ops converge on the newest clock (ADR-0614)');
+  }
+
+  // ADR-0615: undo of 'replace' emits a restoring swap — peers must receive the
+  // pre-swap board back, or the undoing side diverges alone.
+  {
+    const w=_undoWire({op:'replace',before:[{id:'s1'}],after:[{id:'s2'}],wc:{s1:{x:{peer:'p',seq:1,ts:1}}}});
+    assert.ok(Array.isArray(w)&&w.length===1&&w[0].op==='replace','undo-wire emits a replace op');
+    assert.deepStrictEqual(w[0].after,[{id:'s1'}],'undo-wire restores the pre-swap board');
+    assert.deepStrictEqual(w[0].afterWc,{s1:{x:{peer:'p',seq:1,ts:1}}},'undo-wire restores the pre-swap wclock');
+    assert.strictEqual(_undoWire({op:'replace'}),null,'replace without before emits no wire op');
+    console.log('  ✓ undo of replace emits a restoring swap (ADR-0615)');
   }
 
   // applyRemote does NOT enter local undo stack
@@ -10969,7 +10982,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1122; // prev 1119 + concurrent 'replace' newest-clock pins (3, ADR-0614)
+  pass += 1126; // prev 1122 + undo-wire 'replace' pins (4, ADR-0615)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

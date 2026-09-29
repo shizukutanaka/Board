@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.641';   // ADR-0614
+const V='1.7.642';   // ADR-0615
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1583,6 +1583,7 @@ const Store={
     this._apply(op,false);
     state.histIdx--;
     for(const w of _undoWire(op)||[]){_fck(w);
+      if(w.op==='replace')state._lastRep=w.clock;   // ADR-0615: the undo-wire swap produced the board — its fresh clock is the marker on all peers
       this._stampWrites(w);Net.broadcast(w)}
     _rdb();
     return true;
@@ -1592,7 +1593,7 @@ const Store={
     state.histIdx++;
     const op=_hi()[_hx()];
     this._apply(op,true);
-    _fck(op);this._stampWrites(op);Net.broadcast(op);
+    _fck(op);if(op.op==='replace')state._lastRep=op.clock;this._stampWrites(op);Net.broadcast(op);   // ADR-0615: redo rebroadcasts under the restamped clock
     _rdb();
     return true;
   },
@@ -9666,6 +9667,8 @@ function _undoWire(op){
     case 'zorder':
       return op.changes?[{op:'zorder',changes:op.changes.map(c=>({id:c.id,before:c.after,after:c.before}))}]
                        :op.before?[{op:'zorder',after:op.before}]:null;
+    case 'replace':   // ADR-0615: undo of a wholesale swap must reach peers too — rebroadcast the pre-swap board (newest clock wins via ADR-0614)
+      return _iA(op.before)?[{op:'replace',after:op.before,afterWc:op.wc}]:null;
     default:       return null;
   }}
 function _rcOp(op){const o=_selIds();Store._recordCommitted(op);_keepSel(o)}
