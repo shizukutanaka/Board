@@ -274,6 +274,7 @@ const checks = [
   ["gesture cancel purges touch/pinch state (ADR-0636)", html.includes("_clearTouchState();   // ADR-0636")],
   ["kbd editor cancels in-flight gesture (ADR-0637)", html.includes("if(ptr.down)_cancelPointerGesture();   // ADR-0637")],
   ["presentation announces enter/goto/exit to SR (ADR-0639)", html.includes("_ann(`${t('presEnter')}") && html.includes("_ann(t('presExit'))") && html.includes("_ann(`${_frames[_idx].label||t('frame')}")],
+  ["presentation _goto re-resolves frames by id (ADR-0765)", html.includes("_frames=_frames.map(f=>byId(f.id)).filter(f=>f&&_pgOk(f))")],
   ["presentation gates dblclick/ctx/wheel/pinch (ADR-0640)", html.includes("_on(canvas,'dblclick',e=>{\n  if(_pA())return;") && html.includes("if(_pA())return;   // ADR-0640: no editing menu") && html.includes("if(_pA())return;   // ADR-0640: pan/zoom behind") && html.includes("_ln(pts)<2||_pA()") && html.includes("_pd(e);if(_pA())return;   // ADR-0640")],
   ['applyRemote validates remote add shape', html.includes("case 'add':    return validShape(op.shape)")],
   ['SVG export uses testable buildSVG', html.includes("function buildSVG") && html.includes("buildSVG(shapes")],
@@ -731,7 +732,7 @@ const checks = [
   // v1.7.580 (ADR-0552): unhandled ctx-menu keys are swallowed, not bubbled
   ['ctx menu swallows unhandled keys (ADR-0552)', html.includes("e.key!==' '&&e.key!=='Enter'){_pd(e);e.stopPropagation();UI.closeCtxMenu()}")],
   // v1.7.582 (ADR-0554): presentation frame navigation drops deleted frames
-  ['presentation _goto filters stale+off-page frames (ADR-0554/0677)', html.includes('_frames=_frames.filter(f=>byId(f.id)&&_pgOk(f))')],
+  ['presentation _goto filters stale+off-page frames (ADR-0554/0677)', html.includes('_frames=_frames.map(f=>byId(f.id)).filter(f=>f&&_pgOk(f))')],
   // v1.7.584 (ADR-0556): blur on a remotely-deleted shape must not commit a phantom op
   ['text editor blur guards remote-deleted shape (ADR-0556)', html.includes("if(!byId(s.id)){state.editing=null;_teTa=null;_rm(ta);_iv();return}")],
   ['label editor commit guards remote-deleted shape (ADR-0557)', html.includes("if(!byId(hit.id)){_lblTa=null;_rm(inp);_iv();return}")],
@@ -7867,6 +7868,28 @@ try {
     console.log('  ✓ gesture cancel: abortGesture + pointercancel leave identical dead field state (ADR-0764)');
   }
 
+  // v1.7.791 (ADR-0765): presentation _goto must re-resolve frames by id — a wholesale
+  // swap (remote 'replace', del/add undo-redo) replaces the shape object under a live
+  // id, and zooming the stale captured clone would land on the pre-swap rect.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+    const pf1=Shape.make('frame',{x:0,y:0,w:200,h:100});
+    const pf2=Shape.make('frame',{x:400,y:0,w:200,h:100});
+    Store.commit({op:'addMany',shapes:[pf1,pf2]});
+    Presentation.enter();
+    assert.ok(Presentation.isActive(),'pres enters with 2 frames');
+    // wholesale swap: same ids, NEW clones, f2 moved from x=400 to x=900
+    const nf1=JSON.parse(JSON.stringify(pf1)),nf2=JSON.parse(JSON.stringify(pf2));nf2.x=900;
+    state.shapes=[nf1,nf2];_invalidateGrid();
+    Presentation.next();   // frame 2 — must zoom to the LIVE clone (cx=1000), not the stale captured one (cx=500)
+    // vW=800,pad=40: zoom=min((800-80)/200,(600-80)/100,4)=3.6; x=cx-vW/(2*zoom)
+    const expX=1000-800/7.2,staleX=500-800/7.2;
+    assert.ok(Math.abs(state.viewport.x-expX)<0.001,`stale-clone guard: zoom lands on the live frame rect (expected x≈${expX.toFixed(2)}, got ${state.viewport.x.toFixed(2)})`);
+    assert.ok(Math.abs(state.viewport.x-staleX)>1,'non-vacuity: differs from the stale-rect landing');
+    Presentation.leave();
+    console.log('  ✓ presentation _goto re-resolves frames by id under wholesale swaps (ADR-0765, 3 asserts)');
+  }
+
   // v1.6.81: wheelPx normalizes wheel deltas across deltaMode so Firefox's line-mode
   // mouse wheel isn't ~16× weaker than Chrome's pixel mode. Pure → directly unit-tested.
   {
@@ -13795,7 +13818,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1736; // prev 1720 + 16 v1.7.790 gesture-cancel terminal-state asserts
+  pass += 1739; // prev 1736 + 3 v1.7.791 presentation stale-frame asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

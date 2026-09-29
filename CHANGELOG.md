@@ -1,3 +1,8 @@
+## [1.7.791] - 2026-09-28
+
+### Fixed
+- ADR-0765: プレゼン `_goto` が生存確認した `byId` を捨てて stale clone へ zoom していた問題を修正 — `_frames` を `map(f=>byId(f.id)).filter(f=>f&&_pgOk(f))` で live 参照へ再解決 (リモート 'replace'/undo でフレームが同 id の別インスタンスへ交換されると、交換前の rect/pg へ着陸していた)
+
 ## [1.7.790] - 2026-09-28
 
 ### Fixed
