@@ -1,3 +1,9 @@
+## [1.7.754] - 2026-09-29
+
+### Docs
+- ADR-0728: architecture.md undo×sync — the seven convergence rules of
+  the undo-wire family (0717–0727) documented inline
+
 ## [1.7.753] - 2026-09-29
 
 ### Fixed
