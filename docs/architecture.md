@@ -367,8 +367,13 @@ DOM 要素は `data-t` 属性 + `UI.applyI18n()` で翻訳 (起動時に 1 回�
 - 送信は `_sendDC` 単一漏斗 — SCTP バッファ満杯の throw を
   `onbufferedamountlow` 再送キュー (`_dcQ`) に変換 (ADR-0432)。
   >256KiB の単一メッセージは永久に送れないため即 drop (ADR-0438)。
-- `hello`/`sync-req`/`ping`/`cursor`/`selection`/`name` — BroadcastChannel
-  経路のみ (RTC ピアは `_rtcPeerId` 合成 id で追跡、ADR-0010/0011)。
+- `hello`/`sync-req`/`ping` — BroadcastChannel 経路のみ (`_send`)。
+- `op`/`cursor`/`selection`/`name`/`bye`/`img`/`snapshot` — dual-transport
+  (BC + DataChannel)。`_bcast` = `_send` + `_sendDC` の fold; `op` は
+  `broadcast()` 内の dc 分岐 (>200KB → `opc`)、snapshot は BC では raw
+  object・dc では `snap` 断片、`img` は両経路で chunk object の別
+  packaging。RTC ピアは `_rtcPeerId` 合成 id で追跡、`_pk` が viaRtc
+  メッセージをその合成行へ振り分ける (ADR-0010/0011/0456/0498)。
   snapshot 要求は 1 秒 throttle (安価要求×高価応答の増幅防止)。
 
 ### ライフサイクル (v1.7.49x)

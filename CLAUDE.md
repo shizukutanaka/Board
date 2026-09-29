@@ -872,6 +872,7 @@ Board/
 │   └── ADR-0821-rtc-presence-pin.md  # Net.init の rtc: presence 維持不変を behavioural pin で固定
 │   └── ADR-0822-superseded-channel-guard.md  # RTC 再接続の stale-channel race — per-channel _pid + superseded ガード
 │   └── ADR-0823-invite-hash-decode-guard.md  # #s= 招待リンクの malformed % も _eT(_IB) へ (#b= parity)
+│   └── ADR-0824-transport-matrix-sync.md  # architecture.md の transport×kind 表を dual-transport 実態へ同期
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

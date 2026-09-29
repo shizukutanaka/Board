@@ -1,3 +1,8 @@
+## [1.7.850] - 2026-09-29
+
+### Docs
+- ADR-0824: architecture.md の transport×kind 表をコードへ同期 — `cursor`/`selection`/`name`/`bye`/`img`/`op`/`snapshot` は dual-transport、BC-only は `hello`/`sync-req`/`ping` のみ
+
 ## [1.7.849] - 2026-09-29
 
 ### Fixed
