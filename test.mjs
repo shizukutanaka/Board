@@ -1673,7 +1673,7 @@ try {
              doAlign, doFlip, snapV, snapPt,
              getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
-             copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, cycleStickyColor, wrapInFrame, doPasteAt, doPasteInPlace, selectSamePaint, selectSameType, _stickyChain, _fitIfEmptyView, toggleCurve, toggleLineArrow, toggleStickyText, selectFrameContents, unlockAll, exportViewportPNG, cycleArrowHead, _connPathPts, _pathAt, _pathNearestT, snapSelToGrid, importBoardText, copyBoardJSON, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
+             copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, cycleStickyColor, wrapInFrame, doPasteAt, doPasteInPlace, selectSamePaint, selectSameType, showAllShapes, _stickyChain, _fitIfEmptyView, toggleCurve, toggleLineArrow, toggleStickyText, selectFrameContents, unlockAll, exportViewportPNG, cycleArrowHead, _connPathPts, _pathAt, _pathNearestT, snapSelToGrid, importBoardText, copyBoardJSON, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
              _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
              _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa: () => _teTa, zoomAt, reverseConn, unbindSelection,
@@ -1701,7 +1701,7 @@ try {
           doAlign, doFlip, snapV, snapPt,
           getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
-          copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, cycleStickyColor, wrapInFrame, doPasteAt, doPasteInPlace, selectSamePaint, selectSameType, _stickyChain, _fitIfEmptyView, toggleCurve, toggleLineArrow, toggleStickyText, selectFrameContents, unlockAll, exportViewportPNG, cycleArrowHead, _connPathPts, _pathAt, _pathNearestT, snapSelToGrid, importBoardText, copyBoardJSON, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
+          copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, cycleStickyColor, wrapInFrame, doPasteAt, doPasteInPlace, selectSamePaint, selectSameType, showAllShapes, _stickyChain, _fitIfEmptyView, toggleCurve, toggleLineArrow, toggleStickyText, selectFrameContents, unlockAll, exportViewportPNG, cycleArrowHead, _connPathPts, _pathAt, _pathNearestT, snapSelToGrid, importBoardText, copyBoardJSON, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
           _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
           _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa, zoomAt, reverseConn, unbindSelection,
@@ -4419,6 +4419,19 @@ try {
       state.pages=null;state.curPg=null;
       Store.commit({op:'del',shapes:[C,D].map(s=>JSON.parse(JSON.stringify(s)))});
       console.log('  ✓ equal-gap snap: hidden/off-page excluded (3 asserts)');
+    }
+    // ADR-0660: show-all is page-scoped — off-page hidden shapes are not revealed
+    {
+      const P=Shape.make('rect',{x:0,y:0,w:10,h:10,visible:0}),Q=Shape.make('rect',{x:20,y:0,w:10,h:10,visible:0});
+      state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';
+      Store.commit({op:'addMany',shapes:[{...P,pg:'pA'},{...Q,pg:'pB'}]});
+      showAllShapes();
+      assert.ok(byId(P.id).visible!==0,'current-page hidden shape is revealed');
+      assert.ok(byId(Q.id).visible===0,'off-page hidden shape stays hidden (ADR-0660)');
+      assert.ok(html.includes('_sv(s)||!_pgOk(s))continue'),'showAllShapes filters off-page');
+      state.pages=null;state.curPg=null;
+      Store.commit({op:'del',shapes:[P,Q].map(s=>JSON.parse(JSON.stringify(s)))});
+      console.log('  ✓ show-all is page-scoped (3 asserts)');
     }
   }
 
@@ -12567,7 +12580,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1468; // prev 1465 + 3 eqGap hidden/off-page asserts (ADR-0659)
+  pass += 1471; // prev 1468 + 3 show-all page-scope asserts (ADR-0660)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
