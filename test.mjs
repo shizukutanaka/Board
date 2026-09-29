@@ -13706,13 +13706,14 @@ try {
     assert.ok(_pgById(p1.id).name==='Alpha','pageName applies the rename');
     Store.applyRemote({op:'pageName',id:p1.id,after:'Old',clock:{peer:'rp',seq:9,ts:1}});
     assert.ok(_pgById(p1.id).name==='Alpha','a stale remote pageName loses to newer nts (LWW)');
-    Store.applyRemote({op:'pageName',id:p1.id,after:'Hi',clock:{peer:'zz',seq:1,ts:Date.now()+1e3}});
+    const T0=Date.now()+1e3;   // ADR-0698: sample once — a ms tick between Date.now() calls broke the equal-ts arbitration premise (flake)
+    Store.applyRemote({op:'pageName',id:p1.id,after:'Hi',clock:{peer:'zz',seq:1,ts:T0}});
     assert.ok(_pgById(p1.id).name==='Hi','a strictly newer remote pageName wins');
-    Store.applyRemote({op:'pageName',id:p1.id,after:'Lo',clock:{peer:'aa',seq:1,ts:Date.now()+1e3}});
+    Store.applyRemote({op:'pageName',id:p1.id,after:'Lo',clock:{peer:'aa',seq:1,ts:T0}});
     assert.ok(_pgById(p1.id).name==='Hi','equal-ts pageName: lower peer id loses (ADR-0698)');
-    Store.applyRemote({op:'pageName',id:p1.id,after:'Hi2',clock:{peer:'zzz',seq:1,ts:Date.now()+1e3}});
+    Store.applyRemote({op:'pageName',id:p1.id,after:'Hi2',clock:{peer:'zzz',seq:1,ts:T0}});
     assert.ok(_pgById(p1.id).name==='Hi2','equal-ts pageName: higher peer id wins (ADR-0698)');
-    Store.applyRemote({op:'pageName',id:p1.id,after:'Bad',clock:{peer:'zz',seq:2,ts:Date.now()+1e3}});
+    Store.applyRemote({op:'pageName',id:p1.id,after:'Bad',clock:{peer:'zz',seq:2,ts:T0}});
     assert.ok(_pgById(p1.id).name==='Hi2','equal-ts pageName: a mid peer still loses (ADR-0698)');
     state._lastTs=0;   // my far-future remote ts raised the HLC floor — restore it or later local commits get poisoned clocks
     // ADR-0702: undo of a page rename actually restores the name — the bts>=nts gate
