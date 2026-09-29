@@ -157,6 +157,13 @@ remote del/replace と選択書込みの間には選択が stale id を持つ窓
 `_sh().push(Net._attachShape(clone(s)))` を通す。`img:` 参照を抱えた図形が undo で戻る際に
 `_imgIn` の到達済み blob から `dataUrl` を再解決し、未到達なら `_imgPending` に再駐留する
 (ADR-0551)。直接 `push(clone(s))` すると削除中に blob が到達した図形が永久 placeholder になる。
+同じ attach は `pageAdd` forward のメンバー図形にも適用される (ADR-0752 — page duplicate・
+.drawio multi-page・undo-wire addMany の image メンバーが参照のみで届くため)。
+`_pgDel2` は末尾で `_pcC()` を呼び `_penCache`+`_imgPending` を**全域** purge する
+(ADR-0753 — 生き残るページの駐車参照も巻き込む)。この wholesale wipe は安全:
+`_imgPending` はあくまで fast index であり、blob 到着時の straggler 走査
+(`for(const s of _sh())if(s.img===key)…`、ADR-0629) が全域を救済する。straggler 経路を
+除去/弱化すると pageDel が他ページの画像を永久破壊する — test が両側面を固定する。
 
 **反転 (flip H/V)** は専用 op を持たず、`align` op を再利用する: `doFlip(axis)` が選択 bbox 中心軸で
 各シェイプ座標をミラー (`flipShape`) し、変更前後の完全クローンを `{op:'align',dir:'flip',before,after}`

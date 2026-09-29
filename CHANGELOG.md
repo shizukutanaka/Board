@@ -1,3 +1,10 @@
+## [1.7.780] - 2026-09-28
+
+### Docs
+- ADR-0754: architecture.md img-reference lifecycle section synced — pageAdd
+  members ride _attachShape (0752); pageDel's _pcC wipes _imgPending wholesale
+  and the 0629 straggler scan is the safety net (0753)
+
 ## [1.7.779] - 2026-09-28
 
 ### Tests
