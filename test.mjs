@@ -12318,6 +12318,16 @@ try {
     Net._reapPeers();
     assert.ok(!state.peers.has('stale-peer')&&state.peers.has('rtc:abc')&&state.peers.has('fresh-peer'),'reaping removes only stale non-rtc peers');
     state.peers.clear();
+    // beforeunload: dirty → flush + prompt; clean → silent
+    reset();
+    state.dirty=true;
+    let pd=0;const bu={preventDefault(){pd++},returnValue:undefined};
+    for(const f of (fakeWin._L['beforeunload']||[]).slice(0,1))f(bu);
+    assert.ok(pd===1&&bu.returnValue==='','a dirty board prompts and flushes on beforeunload');
+    state.dirty=false;
+    let pd2=0;
+    for(const f of (fakeWin._L['beforeunload']||[]).slice(0,1))f({preventDefault(){pd2++}});
+    assert.strictEqual(pd2,0,'a clean board leaves quietly on beforeunload');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -12329,7 +12339,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1406; // prev 1404 + 2 DOM-drop asserts (ADR-0042/0199: mini-DOMParser stub)
+  pass += 1408; // prev 1406 + 2 lifecycle asserts (ADR-0641: beforeunload dirty/clean)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
