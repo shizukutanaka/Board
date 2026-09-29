@@ -12142,6 +12142,22 @@ try {
     assert.ok(sent.some(m=>m&&m.k==='cursor'&&m.h===1),'pointerleave broadcasts cursor-hide (ADR-0611)');
     Net._send=_snSave;
     state.peers.clear();
+    // touch long-press → ctx menu (ADR-0006): real 500ms timer through the real PD path
+    reset();
+    state.tool='select';
+    _els.ctx.dataset.open='false';
+    fire1('pointerdown',200,200,{pointerType:'touch'});
+    assert.ok(ptr.down,'touch PD on select arms the gesture');
+    await new Promise(r=>setTimeout(r,600));
+    assert.strictEqual(_els.ctx.dataset.open,'true','long-press hold opens the ctx menu (ADR-0006)');
+    assert.ok(!ptr.down,'long-press fire cancels the in-flight gesture');
+    _els.ctx.dataset.open='false';
+    reset();
+    state.tool='select';
+    fire1('pointerdown',200,200,{pointerType:'touch'});
+    fire1('pointermove',260,260,{pointerType:'touch'});
+    await new Promise(r=>setTimeout(r,600));
+    assert.strictEqual(_els.ctx.dataset.open,'false','movement beyond the tolerance cancels the long-press timer');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -12153,7 +12169,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1379; // prev 1376 + 3 event-sequence asserts (ADR-0641: presence wire 実経路)
+  pass += 1383; // prev 1379 + 4 event-sequence asserts (ADR-0641: touch long-press 実タイマ)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
