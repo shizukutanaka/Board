@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.649]
+### ドキュメント
+- spec.md の op 表・受信検証 MUST を ADR-0613-0619 に同期 — `replace` を「local 専用・非 REMOTE_OPS」とする旧規定を wire 収束規則 (`_lastRep`/`rep`/`nameTs` causal marker) へ置換 (ADR-0622)。
+
 ## [1.7.648]
 ### Fixed
 - ジェスチャ中に remote del/clear/replace で消えた図形が `move` コミットに残り、phantom history エントリ + 無意味なピア送信が発生していた問題を修正 — コミット集合を「生存 + 非ロック」で構成 (`_gresizeCommit`/`_grotCommit` と同じ整合) (ADR-0621)。

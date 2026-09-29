@@ -50,7 +50,7 @@ frame=`label`、group=`groupId`。
 | `style` | `{before:[], after:[]}` | スナップショット復元(色/線種/不透明度) |
 | `resize` | `{before:[], after:[]}` | スナップショット復元(w/h) |
 | `clear` | `{shapes:[]}` | re-add |
-| `replace` | `{before:[], after:[]}` | 盤面まるごと swap(共有URLインポート。**local 専用** = 非 `REMOTE_OPS`) |
+| `replace` | `{before:[], after:[], afterWc}` | 盤面まるごと swap(共有URL/ファイルインポート。wire 対応 — 並行 swap は `_lastRep` の全順序で仲裁、ADR-0613-0618) |
 
 - **MUST**: 各 op は `_apply(op,false)` で完全に逆操作できる(`test.mjs` の property-based テストで
   add/move/upd/del/zorder/align を混在生成し往復検証)。
@@ -107,11 +107,19 @@ IndexedDB(`board`/`docs`/`main`)。保存対象=`{v,shapes,viewport,docName,save
 - 同一ブラウザ=BroadcastChannel、端末間=WebRTC DataChannel(手動シグナリング)。
 - op エンベロープに CRDT clock `{peer, seq, ts}`、`peer:seq` で dedup(`seenOps`、上限 `MAX_SEEN_OPS`)。
 - **MUST(受信検証)**: `applyRemote` は (a) op 型 allow-list(`REMOTE_OPS` =
-  add/del/upd/move/clear/group/ungroup/zorder/align/style/resize)、(b) **ペイロード検証**
+  add/del/upd/move/clear/group/ungroup/zorder/align/style/resize/replace)、(b) **ペイロード検証**
   (`validRemotePayload`: 各 forward-apply が参照するフィールドの型 + move の有限数、`validPatch` で
   NaN/Inf・prototype 汚染キーを再帰的に排除)、(c) **クロック検証**(`validClock`)を通った op のみ適用。
-  remote op は local undo に入れない。`replace`(盤面まるごと swap)は `REMOTE_OPS` に**含めない** —
-  悪意ある peer が盤面を消せないように local 専用。
+  remote op は local undo に入れない。
+- **`replace` の収束規則 (ADR-0613-0619)**: 全置換は `{op:'replace',after,afterWc}` で送信 —
+  `after` は `validShape` 配列、`afterWc` は prop clock マップとして受信検証。
+  `state._lastRep` (最新適用 swap の clock) が全順序を仲裁: 古い swap は適用前に棄却
+  (equal = 同世代で棄却しない)、undo/redo は `_undoWire` が pre-swap 盤面を新 clock で
+  再ブロードキャスト、`commit`/`_recordCommitted` 経路も marker を記録。
+  snapshot は `rep:_lastRep` を同梱 — 受信側 marker が厳密に新しい snapshot は
+  棄却 (pre-swap 図形の再追加を防止)、新しい `rep` は採用後に marker を整合。
+  docName は `nameTs` LWW (0609/0618)。これら causal marker は wire ドメインの状態 —
+  `Net.init` で `seenOps` と同じくリセット (0619)。
 - **並行収束 (ADR-0002 / プロパティ単位 LWW)**: 同一図形の**同一プロパティ**への並行編集は
   `(ts,peer,seq)` の全順序 `clockNewer()` と書込クロック `state.wclock`(`shapeId→{prop:clock}`、
   図形には載せない)で**古い書込を落として決定的収束**。**互いに素なプロパティは双方生存**。
