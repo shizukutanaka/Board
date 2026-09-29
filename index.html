@@ -875,7 +875,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.854';   // ADR-0828
+const V='1.7.855';   // ADR-0829
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1168,7 +1168,7 @@ const state={
 
 const canvas=_g('c');
 let ctx=canvas.getContext('2d',{alpha:false,desynchronized:true});
-// ADR-0024: second stacked canvas for ephemeral chrome (selection outlines,
+// ADR-0024: second stacked canvas for ephemeral chrome …
 // marquee, snap guides, peer cursors/selections, laser, search highlights).
 // Scene redraws stay expensive; overlay-only changes repaint this layer alone.
 const ocanvas=_g('ov');
@@ -1177,7 +1177,7 @@ let DPR=_max(1,_min(3,_dpr()||1));
 
 // ====================== GEOM ======================
 // Pure functions. Deterministic. No state mutation.
-// (_penBboxCache is the sole exception — an observational memoization keyed by
+// …
 // an O(1) point signature; it never changes what bbox returns, only how fast.)
 const _penBboxCache=_mP();
 const G={
@@ -1347,7 +1347,7 @@ function validPatch(p){
 }
 // ADR-0373: patches may carry structural/internal keys a remote peer can abuse —
 // `id` rebinds break the byId index, `type` rebinds send a shape into a renderer
-// case it doesn't satisfy (e.g. {type:'pen'} without pts → drawPen crash every
+// case it doesn't satisfy …
 // frame, persisted), `_`-prefixed writes clobber cache fields (_penSig/_bmp).
 // Batch patches keep `id` only for the byId lookup; it's stripped pre-assign.
 function _stripStruct(p,idToo){delete p.type;if(idToo)delete p.id;for(const k of _ok(p))if(k[0]==='_')delete p[k];return p}
@@ -1398,7 +1398,7 @@ function validRemotePayload(op){
     case 'move':   return _iA(op.ids)&&_ln(op.ids)>0&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(_idOK)&&_iN(op.dx)&&_fin(op.dx)&&_iN(op.dy)&&_fin(op.dy)&&(op.dx!==0||op.dy!==0)
       &&patches(op.after)&&(op.before==null||patches(op.before));   // ADR-0729/0741
     case 'zorder':  // Step2 minimal-delta {changes:[{id,before,after}]} only — ADR-0742: the legacy {after:[…]}
-                    // wholesale snapshot applied z+frac unconditionally on every entry (no per-shape LWW gate,
+                    // wholesale snapshot applied z+frac unconditionally on every entry …
                     // no clock stamp) so a pre-Step2 peer's raced reorder clobbered newer frac writes with no
                     // convergence path to heal. No current producer emits it.
       return _iA(op.changes)&&_ln(op.changes)<=MAX_OP_SHAPES&&op.changes.every(c=>c&&_iS(c.id)&&_ln(c.id)<=64
@@ -1619,7 +1619,7 @@ const Store={
     // restore against a fresh clock stamped with the same (ts,peer) the peers
     // see on the undo-wire ops. Arbitrating against the ORIGINAL commit clock
     // diverged: a remote write landing between the commit and the undo won on
-    // our side (clockNewer(remote, oldClock)) yet lost on theirs (their _lwwDrop
+    // our side (clockNewer(remote, oldClock)) yet lost on theirs …
     // compares the wire op's fresh clock) — props split-brained.
     const _ut=nowTs();op.clock={peer:_pi(),seq:++state.seq,ts:_ut};
     this._apply(op,false);
@@ -1776,7 +1776,7 @@ const Store={
           // ADR-0724: purge by CURRENT membership via _pgDel2, not op.shapes — a shape
           // that acquired pg=op.id after the commit (a peer's add on that page)
           // survived locally while peers' wire pageDel removed it. When the undo
-          // empties the page set the members revert to un-paged instead (wire
+          // empties the page set the members revert to un-paged instead …
           // 'unpage' flag below — the sender keeps them too).
           if(_pgs()){const i=_pgs().findIndex(p=>p.id===op.id);if(i>=0)_pgs().splice(i,1);
             if(_ln(_pgs()))_pgDel2(op,_pgs()[0].id);
@@ -1787,7 +1787,7 @@ const Store={
       case 'pageDel':{
         if(forward){
           // ADR-0703: the <2 guard is LOCAL-only — a remote del must apply even when it
-          // empties our set (a peer that ran a concurrent del sees fewer pages than the
+          // empties our set …
           // sender did; refusing here diverges the page sets permanently).
           if(!_pgs()||(_ln(_pgs())<2&&(!op.clock||op.clock.peer===_pi())))break;
           const i=_pgs().findIndex(p=>p.id===op.id);if(i<0)break;
@@ -1873,7 +1873,7 @@ const Store={
           const sh=byId(raw.id);
           // ADR-0712: the locked gate applies in BOTH directions — backward used to
           // restore props on a shape locked since the forward, while peers' remote
-          // apply of our undo-wire skips it → diverged props. ('locked' in raw'
+          // apply of our undo-wire skips it → diverged props. …
           // still passes so the unlock-undo isn't dead)
           if(!sh||(sh.locked&&!('locked' in raw)))continue;
           const p=clone(raw);if(op.op!=='beautify'){delete p.type;for(const k of _ok(p))if(k[0]==='_')delete p[k];}   // ADR-0373/0730
@@ -1899,7 +1899,7 @@ const Store={
     if(!_dmg){_iv();}
     else{const _v=visibleWorldRect();if(_dmg.w*_dmg.h>_v.w*_v.h*0.6)_iv();else _iD(_dmg);}
   }};
-// ADR-0009: lazy-rebuilt id→shape index. Invalidated by _iG() (the same
+// ADR-0009: lazy-rebuilt id→shape index. Invalidated by _iG() …
 // choke point the spatial hit-test grid already uses) whenever shapes change
 // or _sh() is reassigned — property mutations (position, style, ...) don't touch
 // membership, so they never need to inv
@@ -1977,7 +1977,7 @@ function connEnds(s){
   const p2=b?(s.bF?{x:bb.x+bb.w*s.bF.fx,y:bb.y+bb.h*s.bF.fy}:_edgePt(b,ac.x,ac.y)):{x:s.x2,y:s.y2};
   return{x1:p1.x,y1:p1.y,x2:p2.x,y2:p2.y};
 }
-// ADR-0090: s.way is an ARRAY of interior vertices [{x,y},…] (was: single
+// ADR-0090: s.way is an ARRAY of interior vertices [{x,y},…] …
 // point in ADR-0076). _wayArr normalizes reads so legacy object-form boards
 // and ops still load — writers re-store the normalized array on mutation.
 function _wayArr(s){const w=s.way;return _iA(w)?w:(w?[w]:[])}
@@ -2030,7 +2030,7 @@ function computeConnClears(delIds){
   return connClears;
 }
 // ---- fractional z-index (ADR-0001 Step 1) ----------------------------------
-// keyBetween(a,b): a string key strictly ordered between a and b (lexicographic;
+// keyBetween(a,b): a string key strictly ordered between a and b …
 // shorter compares as if 0-padded). null = open end. Pure, no deps. This is the
 // foundation for minimal-delta z-order ops (Step 2); for now keys are *derived*
 // from array order (see reindexFrac) and z is kept as a back-compat fallback.
@@ -2062,12 +2062,12 @@ function keyBetween(a,b){
   return out.map(d=>FRAC_DIGITS[d]).join('');
 }
 // reindexFrac: stamp every shape with a strictly increasing key from array order.
-// The keyBetween(null,…) chain is prefix-stable (first N keys are independent of
+// The keyBetween(null,…) chain is prefix-stable …
 // total count), so add/del splices that don't reindex still leave canonical keys.
 function reindexFrac(){let p=null;for(const s of _sh()){p=keyBetween(p,null);s.frac=p;}}
 // sortZ: order shapes by fractional key. Keyless shapes are reconciled first:
 // a fully-legacy board (no keys at all) is migrated from integer z; otherwise a
-// newly added keyless shape is placed above the current top key (matching the
+// newly added keyless shape is placed above the current top key …
 // old nextZ() "new shape goes to front"). Existing keys are never reshuffled by
 // the z fallback, so an established frac order is preserved. (ADR-0001 Step 1)
 // Ties on frac (concurrent inserts into the same gap across peers) break on the
@@ -2127,7 +2127,7 @@ const Shape={
   }};
 
 // ====================== IMAGE CACHE ======================
-// Cache loaded Image objects to avoid re-decoding. Bounded LRU (Map keeps
+// Cache loaded Image objects to avoid re-decoding. Bounded LRU …
 // insertion order): on access we re-insert to mark recent, and evict the oldest
 // past the cap so a board with many pasted images can't leak memory.
 const _imgCache=_mP(),IMG_CACHE_MAX=60;
@@ -2136,7 +2136,7 @@ const _imgCache=_mP(),IMG_CACHE_MAX=60;
 // segments are collision-safe within a board and cost a fixed ~150 chars.
 // ADR-0035: three-segment fingerprint — mime head + length + 48 chars each from
 // the payload's head/middle/tail. Still O(1), but a colliding image must now
-// match byte ranges at three distant offsets (previously a same-length file
+// match byte ranges at three distant offsets …
 // sharing the last 64 bytes rendered the WRONG image from cache).
 function _imgKey(u){if(!_iS(u))return'';
   const m=_ln(u)>>1;return u.slice(5,32)+':'+_ln(u)+':'+_s0(u,48)+':'+u.slice(m-24,m+24)+':'+u.slice(-48)}
@@ -2170,7 +2170,7 @@ const STICKY_COLORS=[_YW,'#FBCFE8','#BBF7D0','#BFDBFE','#DDD6FE','#FED7AA'];
 const _penCache=_mP(),PEN_CACHE_MAX_PX=12e6,PEN_CACHE_MAX_DIM=4096;
 let _penCachePx=0;
 // ADR-0424: per-shape caches keyed by shape id die with the shape — purge on
-// wholesale `state.shapes=` replacement (clones miss the pts-identity signature
+// wholesale `state.shapes=` replacement …
 // anyway, so old entries would sit until the global caps evict them).
 const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPending.clear()}   // ADR-0445: wholesale swap also drops parked img refs
 const _uniq=a=>{const se=_sT();for(let i=_ln(a)-1;i>=0;i--)if(se.has(a[i].id))a.splice(i,1);else se.add(a[i].id);return a};   // ADR-0790: keep-LAST matches byId's last-wins — a dup id would phantom-render otherwise
@@ -2273,7 +2273,7 @@ const _hb=s=>s.w!=null;   // ADR-0501
 const _idOK=id=>_iS(id)&&_ln(id)<=64;   // ADR-0502: wire id cap (ADR-0485): unlocked
 const _idIdx=id=>_sh().findIndex(s=>s.id===id);   // ADR-0497: shape index by id (4 sites)
 const _psc=id=>{_penBboxCache.delete(id);Net._imgPending.delete(id);const e=_penCache.get(id);if(e){_penCache.delete(id);_penCachePx-=e.px||0;}}   // ADR-0427/0435
-// Effective raster resolution: zoom-adaptive (supersampled at low zoom is just
+// Effective raster resolution: zoom-adaptive …
 // wasted pixels), clamped 0.25..2 so extreme zoom-outs still rasterize tiny.
 function _penRes(){return _min(2,_max(0.25,_vp().zoom*DPR))}
 // Render (or re-render) a cache entry's canvas from the stroke at resolution R.
@@ -2337,7 +2337,7 @@ function drawPenMaybeCached(s,c){
 // ====================== DRAFT INK STAMP (ADR-0029) ======================
 // ADR-0046: variable-width ink is a union fill of convex primitives — one
 // trapezoid per segment + one disc per vertex, all the same winding direction,
-// so a nonzero fill always covers the union (no boundary-walk self-intersections
+// so a nonzero fill always covers the union …
 // on sharp turns, no gaps at segment joints). Ends taper over PEN_TAPER samples:
 // start taper is an absolute-index ramp (settles), end taper tracks the live
 // end so primitives within reach of it must stay in the live tail.
@@ -2367,7 +2367,7 @@ function _penFillRange(c,p,w,n,lo,hi){
 }
 // The live pen draft used to re-stroke all n points every frame — O(n) per
 // pointermove on long strokes. Since each new sample only affects the last few
-// primitives (width smoothing is a 3-tap filter; quad i uses w[i-1],w[i] —
+// primitives …
 // stable once i<=n-3 — and the end taper stays live for n-1-i<PEN_TAPER), we
 // stamp committed primitives onto an offscreen bitmap and draw only the
 // ~PEN_TAPER-primitive live tail. Index i settles once i<=n-3 AND i<=n-1-PEN_TAPER
@@ -2383,8 +2383,8 @@ function _inkSegDraw(cc,p,w,i){
   _penQuad(cc,p,_penR(w,i-1,n),_penR(w,i,n),i);
   cc.fill();
 }
-// Rebuild the stamp bitmap + full width arrays (fresh stroke, extrema flip,
-// zoom-bucket crossing, or a shrink). Commits indices 1..n-9 (ADR-0046: index i
+// Rebuild the stamp bitmap + full width arrays …
+// zoom-bucket crossing, or a shrink). Commits indices 1..n-9 …
 // bakes disc(i-1)+quad(i-1→i); end-taper primitives never settle).
 function _inkRebuild(s,d){
   const p=s.pts,n=_ln(p),R=_penRes();
@@ -2501,7 +2501,7 @@ let _pinchSnap=null,_pinchVp=null;   // ADR-0030: pinch-start canvas copy + view
 let _rszT=0;   // ADR-0631: pending debounced window resize
 function invalidate(){_damage=null;needsRender=true;needOverlay=true;if(!_rafId)_rafId=_rAF(frame);_ms()}
 // ADR-0026: gesture-local repaint — producers report the world-space rect they
-// dirtied and frame() clips the scene pass to its accumulated union (never
+// dirtied and frame() clips the scene pass to its accumulated union …
 // shrinks mid-gesture, so a fast teleport still covers the old position).
 // Everything else must keep calling _iv(), which resets _damage to full.
 function _dmgU(a,b){return a?{x:_min(a.x,b.x),y:_min(a.y,b.y),w:_max(a.x+a.w,b.x+b.w)-_min(a.x,b.x),h:_max(a.y+a.h,b.y+b.h)-_min(a.y,b.y)}:{x:b.x,y:b.y,w:b.w,h:b.h}}
@@ -2534,7 +2534,7 @@ function frame(){
   }
   if(needsRender||needOverlay)_rafId=_rAF(frame);  // draw() called _iv() (rare re-entry)
 }
-// ADR-0164: live W×H readout of the selection bbox in the statusbar (Figma's
+// ADR-0164: live W×H readout of the selection bbox in the statusbar …
 // dimensions field). Signature-gated: the DOM write happens only when the
 // rendered text actually changes, so gesture frames cost one bboxAll + a
 // string compare. Hidden entirely when nothing is selected.
@@ -2638,7 +2638,7 @@ function _announceSel(){
 
 // ADR-0041: DOM mirror — a visually-hidden <ul> of every shape so screen
 // readers can enumerate board content as a tree and jump to a shape. The
-// list is rebuilt only when _gridVer changes (the shared dirty key every
+// list is rebuilt only when _gridVer changes …
 // shape mutation already bumps), never per-frame, and capped at
 // MIRROR_MAX to bound DOM size on huge boards — past the cap a trailing
 // 'N more not listed' item keeps the truncation explicit.
@@ -2781,7 +2781,7 @@ function draw(){
 // Second stacked canvas (#ov): all ephemeral chrome — selection outlines,
 // snap guides, marquee, peer cursors/selections, laser, search highlights —
 // repaints here without touching the scene pass. _ivO() drives
-// it; _iv() marks both. Everything converts through G.w2s (CSS-px
+// it; _iv() marks both. Everything converts through G.w2s …
 // space, the transform supplies DPR — multiplying by DPR double-applies it,
 // the v1.6.5–v1.7.61 HiDPI bug).
 function drawOverlay(){
@@ -2960,7 +2960,7 @@ function drawGrid(W,H){
   _gaS(ctx,1);
 }
 // Effective render rotation. Only box shapes (x/y/w/h present) have a meaningful
-// rotation centre; line/arrow/pen are point geometry, so a stray `rotate` (only
+// rotation centre; line/arrow/pen are point geometry, so a stray `rotate` …
 // reachable via a remote `upd` — doRotate is box-only) is ignored. Keeps canvas and
 // SVG export in agreement (表示=出力パリティ) and avoids a NaN rotation centre.
 function shapeRot(s){return _rt(s)&&_hb(s)?_rt(s):0;}
@@ -3162,7 +3162,7 @@ function drawShape(s,c){
         else c.drawImage(img,s.x,s.y,s.w,s.h);
         _noSh(c);
         if(_cr>0)_rs2(c);
-        // ADR-0176: _sk(s)+_szz(s) draws a border (stroke swatch already
+        // ADR-0176: _sk(s)+_szz(s) draws a border …
         // reaches images through applyStyleToSelecti
         if(_sk(s)&&_szz(s)){c.strokeStyle=_sk(s);c.lineWidth=_szz(s);
           _sD(c,dashArr(s.dash||0,_szz(s)));                     // ADR-0178
@@ -3369,7 +3369,7 @@ function _polylineR(c,pts,r){
   _lT(c,_pL(pts).x,_pL(pts).y);
 }
 // ADR-0218: connector "jump" arcs — where this conn's polyline crosses another
-// conn, the segment bulges over it in a semicircle (circuit-diagram / draw.io
+// conn, the segment bulges over it in a semicircle …
 // "jump" style). Render-only: endpoints within 3% count as bindings, not
 // crossings, so bound ends never hop their own shape's edges.
 function _segIntT(ax,ay,bx,by,cx,cy,dx,dy){
@@ -3396,7 +3396,7 @@ function _hopsFor(s,pts){
   hops.sort((x,y)=>x-y);
   return hops;
 }
-// Canvas: draw pts with semicircular hops (always to the +normal side — a fixed
+// Canvas: draw pts with semicircular hops …
 // chirality keeps parallel crossings readable, same as draw.io).
 function _polylineHop(c,s,pts,R){
   const hops=_hopsFor(s,pts);
@@ -3763,7 +3763,7 @@ function resizeSnap(orig,handle,wp){
   return{x,y,guides};
 }
 // ADR-0056: affine-map one group's member geometry from the start-of-drag group
-// box `ob` into the resized virtual box `vb`. Covers box (x/y/w/h), pen (pts,
+// box `ob` into the resized virtual box `vb`. Covers box (x/y/w/h), pen …
 // pressure kept) and line/arrow (x1..y2). Orig-clone → live writes every frame,
 // so no float error accumulates across the drag.
 function _mapToBox(sh,orig,ob,vb){
@@ -4086,7 +4086,7 @@ let _longPressTimer=null;   // ADR-0006
 // second finger lands and a pinch-zoom
 // the pre-gesture snapshot captured at pointerdown so nothing is half-applied or left
 // non-undoable: move/resize/rotate ro
-// restores the shapes it had optimistically removed, and an uncommitted draft (which
+// restores the shapes it had optimistically removed, and an uncommitted draft …
 // never touched _sh()) is simply dropped. (Qiita/Zenn: multi-touch + pointer)
 const _ptrReset=()=>{ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.dragStartShapes=null;ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.rotOrig=null;ptr.gOrig=null;ptr.gAnc=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;ptr.wayIdx=null;ptr.wayNew=false;ptr.lblOrig=null;ptr.lineClick=false;canvas.dataset.panning='false'};   // ADR-0764
 // ADR-0766: gesture orig-restores must not stomp non-geometry props — a remote
@@ -4558,7 +4558,7 @@ function _cancelPointerGesture(){
 }
 // ADR-0006: fires after LONG_PRESS_MS. Guards: gest
 // progress (resize/rotate — a deliberate precision drag not to interrupt), and the
-// pointer hasn't travelled past LONG_PRESS_MOVE_TOL (a real move/marquee exceeds
+// pointer hasn't travelled past LONG_PRESS_MOVE_TOL …
 // this well before the timer fires — no separate pointermove cancellation needed).
 function _longPressFire(cx,cy){
   _longPressTimer=null;
@@ -4610,7 +4610,7 @@ _on(canvas,'dblclick',e=>{
   if(_txt(hit)||_stk(hit)){openTextEditor(hit,false);return}
   _openLabelEditorFor(hit);
 });
-// Positions and opens the shared label editor for box labels (frame/rect/ellipse, at
+// Positions and opens the shared label editor for box labels …
 // their centre/corner) and connector labels (line/arrow, at the segment midpoint).
 // Shared by dblclick and ADR-0013's keyboard path so both stay in sync.
 // ADR-0182: anchor geometry shared by openLabelEditor and the follow pass —
@@ -4759,7 +4759,7 @@ function _imgImportFile(f,cb){
 function _textCascade(s,wp){
   if(/^\s*(<\?xml[^?]*\?>\s*)?<svg[\s>]/i.test(s)){importSvgText(s,wp);return true}
   if(/^\s*\{/.test(s)&&/"(shapes|v)"\s*:/.test(_s0(s,8192))&&/"shapes"\s*:\s*\[/.test(s)){
-    // ADR-0516: our own OS-clipboard echo → internal doPaste (keeps the
+    // ADR-0516: our own OS-clipboard echo → internal doPaste …
     // _pasteCount cascade) instead of a foreign re-import.
     if(s===_osClip){doPaste();return true}
     if(importBoardText(s,wp)!==false)return true;
@@ -4893,7 +4893,7 @@ _on(window,'paste',e=>{
 });
 
 // Wheel: zoom (ctrl) or pan
-// Wheel deltas arrive in different units per deltaMode: pixels (0), lines (1 —
+// Wheel deltas arrive in different units per deltaMode: pixels (0), lines …
 // Firefox mouse wheel) or pages (2). Reading deltaY raw makes a line-mode wheel
 // ~16× weaker, so pan/zoom barely move in Firefox while Chrome (pixel mode) is
 // fine. Normalize to pixels so behaviour is consistent across browsers. Chrome's
@@ -4979,7 +4979,7 @@ _on(window,'blur',()=>{
 
 let _wheelZoomEnd=0;
 // ADR-0030/0033 shared: capture the pristine canvas + viewport for the
-// scaled-preview path. Called before the first zoom of a gesture (touch pinch
+// scaled-preview path. Called before the first zoom of a gesture …
 // via _nP()>=2, or a ctrl+wheel burst) so every subsequent frame can
 // blit under the accumulated transform without rescanning the scene.
 function _pinchSnapNow(){
@@ -5091,7 +5091,7 @@ function _buildGrid(shapes){
   }
   return{cells,big,idx,cs};
 }
-// ADR-0016: rect query — every shape whose cells overlap the view rect (plus one
+// ADR-0016: rect query — every shape whose cells overlap the view rect …
 // cell of margin for stroke overshoot) is a draw() candidate; inView still decides.
 // Returns a z-ORDERED array so draw() iterates candidates directly — the full
 // _sh() scan is skipped entirely.
@@ -5187,7 +5187,7 @@ function pickOrMarquee(wp,e){
 }
 // ---- snap-target edge index (ADR-0020) ----
 // objectSnap/resizeSnap rebuilt the "all other shapes' edges" list on EVERY
-// pointermove — O(shapes) per event (plus a G.bbox walk per shape before
+// pointermove — O(shapes) per event …
 // ADR-0019). The board can't change under the snap path without going through
 // _invalidateGrid, so key the index on _gridVer + the caller's exclusion key:
 // one rebuild per gesture/mutation instead of per pointermove.
@@ -5425,7 +5425,7 @@ function coalescedSamples(e){
   return cs&&_ln(cs)?cs:[e];
 }
 // ADR-0023: read the last predicted pointer position for the render-only ink
-// tail. Predicted events exist on the pointermove event itself (not on the
+// tail. Predicted events exist on the pointermove event itself …
 // coalesced children), so callers must pass the original `e`. Returns a screen
 // pt or null; unsupported/empty → null (pure feature-detect, unit-testable).
 function _predTail(e){
@@ -5481,7 +5481,7 @@ function _rdp(pts,eps){
 }
 // ADR-0005: geometric-heuristic shape
 // Pure, deterministic — classifies a rough stroke as line/rect/ellipse
-// if it closely matches that shape's geometry (size-relative thresholds + floors,
+// if it closely matches that shape's geometry …
 // so a tiny sketch and a huge one share proportionally similar wobble thresholds
 // bar), else returns null. Triangle/other shapes are unsupported: Board has no
 // drawing tool to convert them into.
@@ -5630,7 +5630,7 @@ function endLineLike(){
   _cOp({op:'add',shape:d});
   pickTool('select');_ss([d.id]);
 }
-// ADR-0065: settle an endpoint drag — bind if dropped on a shape (not self /
+// ADR-0065: settle an endpoint drag — bind if dropped on a shape …
 // not the other end's shape), else unbind. Called before the commit snapshot so
 // a/b lands inside the same `upd` op.
 function _endPointBind(sh,handle,alt){
@@ -5691,7 +5691,7 @@ function _stickyChain(s){
 }
 // ---- keyboard shape creation (a11y) ----
 // Create a default-sized shape of the active tool, centred in the viewport, so the
-// whole create→select→edit loop is reachable without a pointer (complements the
+// whole create→select→edit loop is reachable without a pointer …
 // Tab navigation added in v1.6.10). Returns true if a shape was created/handled.
 function createShapeKbd(){
   const tool=_tl(),view=visibleWorldRect();
@@ -5741,7 +5741,7 @@ function resizeAfterTextEdit(s,text,c){
 }
 // New text/sticky shapes are committed — and broadcast — with empty text up front,
 // then filled in the editor. Live collaborators therefore receive a blank shape and
-// never the typed content (and a dismissed-empty editor's local undo isn't broadcast
+// never the typed content …
 // either, leaving an invisible hitbox on peers). Bridge both with a broadcast-ONLY op
 // for the finalize delta: stamped for LWW correctness, but OUT of local history so
 // single-user undo stays one step (the local add already carries the final text).
@@ -6168,7 +6168,7 @@ function doPasteAt(wx,wy){
   _tst(t(_PA)+' '+_ln(added));
 }
 // Clone a set of shapes onto the board with fresh ids/group ids, offset by (dx,dy),
-// and select the copies. Shared by paste (clipboard source) and duplicate (selection
+// and select the copies. Shared by paste (clipboard source) and duplicate …
 // source). Duplicate must NOT route through _cl() — doing so would clobber
 // the user's copy/paste buffer (Copy A, select B, Ctrl+D → Ctrl+V wrongly pastes B).
 // dx/dy default to 20/zoom for duplicate; paste supplies viewport-centering offsets.
@@ -6292,7 +6292,7 @@ function _zStep(dir){   // dir=+1 toward front, -1 toward back
 }
 function doBringForward(){_zStep(1)}
 function doSendBackward(){_zStep(-1)}
-// ADR-0104: select every shape sharing the picked shape's paint (Figma
+// ADR-0104: select every shape sharing the picked shape's paint …
 // "Select Same → Fill"). Sticky's paint lives in `color`; everything else in
 // `fill`. Locked shapes are included — ops already skip them.
 function selectSamePaint(){
@@ -6306,7 +6306,7 @@ function selectSamePaint(){
   _iv();
 }
 // ADR-0137: hide/show shapes (Figma ⌘⇧H / eye). `_hd(s)` removes the
-// shape from drawShape (which covers minimap, export renderers and the PNG
+// shape from drawShape …
 // cache path) and from every pointer path (pickTop/eraser/marquee), so a
 // hidden shape is completely non-interactive. Restore via "show all" since
 // hidden shapes can't be re-selected — same convention as Figma's layers.
@@ -6320,8 +6320,8 @@ function hideSelection(){
   if(_ln(before)){_styleOp(before,after);_iv();_o(_ln(before)+' '+t('hiddenCount'))}
   else if(_selN())_wT('lockedNoop')   // ADR-0570: all-locked selection hid nothing
 }
-// ADR-0140: connect two selected shapes (draw.io "Connect" / Miro
-// quick-link). Makes an arrow bound at BOTH ends (s.a/s.b → connEnds
+// ADR-0140: connect two selected shapes …
+// quick-link). Makes an arrow bound at BOTH ends …
 // edge-projects), committed as one add op.
 function connectSelection(){
   const sel=_sb()
@@ -6545,7 +6545,7 @@ function flipShape(s,axis,c){
   if(s.cbend!=null)s.cbend=-s.cbend;   // ADR-0132: any mirror flips the curve's chirality
   if(s.labelPos!=null)s.labelPos=1-s.labelPos;   // ADR-0583: mirrored path reverses t — keep the label at the same visual spot
   // ADR-0142: mirror maps angle θ → 180−θ across the vertical axis
-  // ('h' flips x) and θ → 360−θ across the horizontal axis ('v' flips
+  // ('h' flips x) and θ → 360−θ across the horizontal axis …
   // y). Previously both axes took 360−θ, so an 'h' flip left a rotated
   // shape tilted the wrong way (30°→330° instead of 150°).
   if(_rt(s))s.rotate=((axis==='h'?180:360)-_rt(s)+360)%360;
@@ -6842,7 +6842,7 @@ function exportBoard(shapes=_sh()){                       // ADR-0114: optional 
 }
 // ---- ADR-0098: .excalidraw export ------------------------------------------
 // Board shapes → excalidraw elements. Shape ids are preserved verbatim so
-// connector bindings resolve 1:1; unsupported decorations (hatch, elbow,
+// connector bindings resolve 1:1; unsupported decorations …
 // curve) degrade to defaults while way[] keeps the route shape.
 function excScene(shapes){
   const els=[],files={};
@@ -6870,7 +6870,7 @@ function excScene(shapes){
       case'rect':case'ellipse':case'diamond':{
         _pu(els,E(s,{type:s.type==='rect'?_REC:s.type,x:s.x,y:s.y,width:s.w||0,height:s.h||0,   // ADR-0223: excalidraw type is _REC not 'rect'
           roundness:s.r?{type:3}:null,strokeSharpness:s.r?'round':'sharp'}));   // ADR-0267
-        // ADR-0234: label → container text marked bLabel (Board-only marker;
+        // ADR-0234: label → container text marked bLabel …
         // excalidraw ignores unknown fields, ours reads it back to _lb(s))
         if(_lb(s)){const _tid=uid();_pu(els,_ct(s,_tid,_lb(s),true));els[_ln(els)-2].boundElements=[{id:_tid,type:'text'}]}   // ADR-0280
         break;}
@@ -7215,7 +7215,7 @@ function exportExc(){
 // Round-trip with ADR-0203's import: uncompressed mxGraphModel — vertices for
 // box shapes (text/sticky/frame included), edges for line/arrow with bound
 // ends, waypoints, orthogonal routing, curved, jump arcs, and the shared style
-// vocabulary (fill/stroke/size/dash/opacity/fontSize). pens are skipped (no
+// vocabulary (fill/stroke/size/dash/opacity/fontSize). pens are skipped …
 // drawio freeform equivalent); hidden shapes stay home.
 const _dioEsc=v=>_St(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 function _dioCells(shapes){
@@ -7329,7 +7329,7 @@ function exportDrawio(shapes=_sh().filter(_sv)){   // ADR-0678
   _oT('dioExported');
 }
 // ---- ADR-0042: SVG import --------------------------------------------------
-// DOMParser-walk → Board shapes. Unmapped elements (use/defs/filter/gradient/
+// DOMParser-walk → Board shapes. Unmapped elements …
 // mask/clipPath/animation/CSS classes) are skipped, never imported raw — the
 // mapping itself is the sanitizer. Ceilings SVG_MAX_ELEMS/SVG_MAX_PTS bound a
 // hostile or enormous artwork file the same way ADR-0039 bounds share links.
@@ -7610,7 +7610,7 @@ function excToShapes(txt){
     const s=shapes.find(x=>x.id===sid),p=shapes.find(x=>x.id===idOf.get(cid));
     if(!s||!p||p.label)continue;
     const e=_excTxtE.get(sid);                               // ADR-0234
-    // ADR-0266: text bound to a connector → its label (excalidraw arrows
+    // ADR-0266: text bound to a connector → its label …
     // carry labels the same way). Board's own re
     // real excalidraw files don't, so match on the parent type instead.
     if(_conn(p.type)){p.label=_txx(s).slice(0,240);
@@ -7661,7 +7661,7 @@ function importExcText(txt,wp){
   _iv();_oT('excImported');
   return true;
 }
-// ADR-0115: paste .board JSON → shapes added at the view centre (inbound half
+// ADR-0115: paste .board JSON → shapes added at the view centre …
 // of copyBoardJSON). _placeCopies remaps ids/groupIds/bindings so the same
 // JSON can paste repeatedly onto the same board without id collisions.
 function importBoardText(txt,wp){
@@ -7988,9 +7988,9 @@ function buildSVG(shapes,paper){
   return els.join('\n');
 }
 // ADR-0074: box-shape label wrapped to the shape width, vertically centred —
-// mirrors _drawBoxLabel so canvas and SVG agree (wrap uses the same char-est
+// mirrors _drawBoxLabel so canvas and SVG agree …
 // heuristic as sticky's export path).
-// ADR-0083: image caption strip — mirrors _drawImgLabel (paper band + clipped
+// ADR-0083: image caption strip — mirrors _drawImgLabel …
 // wrapped text anchored to the inside bottom edge).
 function _svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT){
   const fs=_fS(s)||14,pad=4;   // ADR-0169
@@ -8094,7 +8094,7 @@ function wrapText(text,maxWidth,measure){
 }
 
 // ====================== NET (sync layer) ======================
-// BroadcastChannel (same-browser tabs) + WebRTC DataChannel (cross-machine, manual
+// BroadcastChannel (same-browser tabs) + WebRTC DataChannel …
 // signalling, no server). All ops carry a CRDT clock, dedup by peer:seq, idempotent.
 const Net={
   bc:null,                    // BroadcastChannel
@@ -8330,7 +8330,7 @@ const Net={
       case 'snapshot':
         this._snapRx=true;   // ADR-0475
         // ADR-0617: a snapshot strictly predating our newest swap carries pre-swap
-        // shapes — merging it re-adds what the winning swap removed (an equal marker
+        // shapes — merging it re-adds what the winning swap removed …
         // is the same generation, not stale; only a newer local marker rejects it).
         if(msg.rep&&validClock(msg.rep)&&state._lastRep&&clockNewer(state._lastRep,msg.rep))break;
         if(_nS()===0)this._applySnapshot(msg);
@@ -9000,7 +9000,7 @@ _on(window,'beforeunload',e=>{
 });
 // Mobile-reliable durability flush — see Persist.flushIfHidden for context.
 _on(document,'visibilitychange',()=>{if(document.visibilityState==='hidden'){if(ptr.down)_cancelPointerGesture();_clearTouchState();Net.sendCursorHide()}Persist.flushIfHidden(document.visibilityState)});   // ADR-0604/0608/0611
-// pagehide is iOS Safari's last reliable signal (visibilitychange can be skipped on
+// pagehide is iOS Safari's last reliable signal …
 // swipe-away / frozen-tab eviction); route it through the same tested flush.
 _on(window,'pagehide',()=>{if(ptr.down)_cancelPointerGesture();_clearTouchState();Persist.flushIfHidden('hidden');Net._bcast(_mk('bye'))});   // ADR-0453+0456/0604/0608: same cancel + pointer-state cleanup on bfcache eviction
 
@@ -9300,7 +9300,7 @@ const UI={
     // speech engine, and risks CJK han-unificati
     _de.lang=LANG;
     // Walk all data-t elements and replace textContent with the
-    // translated string. This makes the Share modal (and any future
+    // translated string. This makes the Share modal …
     // translatable element) honour the detected language.
     for(const el of _qsa(document,'[data-t]')){
       const key=_ga(el,'data-t');
@@ -9605,7 +9605,7 @@ function wire(){
   _oC(_g('rtcOfferCopyBtn'),()=>_copyCode('rtcOffer'));
   _oC(_g('rtcAnswerCopyBtn'),()=>_copyCode('rtcAnswer'));
   // ADR-0045: invite link — the offer rides in
-  // the "paste the invite code" step entirely (they only need to click
+  // the "paste the invite code" step entirely …
   // "create answer" and send the answer back).
   // link must not expose the joiner's IP to the host before consent.
   _oC(_g('rtcInviteLinkBtn'),async()=>{
@@ -9622,7 +9622,7 @@ function wire(){
 // when EVERY unlocked selected shape shares the value is it adopted into
 // _st() + the matching control — a mixed prop is left alone rather than
 // shown a misleading value. Selection changes are detected by a sorted-id
-// signature compared once per frame (same hook pattern as ADR-0011: the Set is
+// signature compared once per frame …
 // mutated in 39 places, so a frame-boundary diff is the only universal hook).
 let _selSig=null;
 function _syncStylePanelIfChanged(){
@@ -9782,7 +9782,7 @@ function toggleHop(){
 
 // ADR-0092: corner-radius toggle — rects default to adaptive rounding
 // (min(8,w/4,h/4)). r=0 is sharp; toggling back restores the adaptive
-// default by removing the override (patch null → key dropped on apply
+// default by removing the override …
 // via the ??null convention, leaving r falsy → 8px at draw).
 function toggleRound(){
   const before=[],after=[];
@@ -9978,7 +9978,7 @@ const _rdb=()=>{_md(!0);_ru();_ps()},
       _forTxt=f=>_forSel((s,id)=>{if((s.type!=='text'&&s.type!=='sticky'&&s.type!=='frame'&&!_lb(s))||_lk(s))return;f(s,id)}),
       _pp=(b,a,id,k,c,n)=>{_pu(b,{id,[k]:c});_pu(a,{id,[k]:n})};
 // ADR-0443: undo/redo propagate as fresh-clock wire ops — a revert becomes a new
-// write that restores old values (fresh peer clock wins every stale wclock, LWW-
+// write that restores old values …
 // consistent). group/ungroup/replace/beautify have no remote-safe inverse: their
 // per-shape befores aren't carried on the op — they stay local-only.
 function _undoWire(op){
@@ -10034,7 +10034,7 @@ function cycleFillStyle(){
   })
   _so(before,after)
 }
-// ADR-0166: swap stroke↔fill on painted shapes via one style op (Illustrator
+// ADR-0166: swap stroke↔fill on painted shapes via one style op …
 // ⇧X parity). Sticky maps its body paint through `color` — the same convention
 // applyStyleToSelection uses — and stroke↔color is meaningful there too
 // (border tint vs body). Pen/line/arrow/text/image are stroke-only → skipped.

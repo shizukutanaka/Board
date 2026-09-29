@@ -877,6 +877,7 @@ Board/
 │   └── ADR-0826-loresp-election-pin.md  # _loResp snapshot 応答選出 (最小id・asker/rtc 除外) を behavioural pin で固定
 │   └── ADR-0827-forged-rtc-peerid.md  # BC 経路の偽装 rtc: peer id 棄却 (reaper 免除悪用の幽霊行を閉塞)
 │   └── ADR-0828-rtc-provenance-rule.md  # rtc: 行の provenance 規則を architecture.md へ同期
+│   └── ADR-0829-comment-tail-sweep2.md  # 未完括弧コメント残滓の第2刈り込み (~1.3KB)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
