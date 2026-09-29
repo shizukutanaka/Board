@@ -12158,6 +12158,41 @@ try {
     fire1('pointermove',260,260,{pointerType:'touch'});
     await new Promise(r=>setTimeout(r,600));
     assert.strictEqual(_els.ctx.dataset.open,'false','movement beyond the tolerance cancels the long-press timer');
+    // pagehide: cancels the in-flight gesture AND broadcasts bye (ADR-0457/0604)
+    reset();
+    state.peers.set('fake-peer',{});
+    const sent2=[];const _snSave2=Net._send;Net._send=function(m){sent2.push(m)};
+    fire1('pointerdown',100,100);
+    for(const f of (fakeWin._L['pagehide']||[]).slice(0,1))f({});
+    assert.ok(!ptr.down,'pagehide cancels the in-flight gesture (ADR-0604)');
+    assert.ok(sent2.some(m=>m&&m.k==='bye'),'pagehide broadcasts bye to peers (ADR-0457)');
+    Net._send=_snSave2;
+    state.peers.clear();
+    // lostpointercapture without pointercancel still cancels (ADR-0521)
+    reset();
+    fire1('pointerdown',100,100);
+    assert.ok(ptr.down,'precondition: gesture armed');
+    for(const f of (canvas._L['lostpointercapture']||[]).slice(0,1))f({});
+    assert.ok(!ptr.down,'lostpointercapture cancels the gesture (ADR-0521)');
+    // document mousedown outside the ctx menu closes it; _ctxEat suppresses the lift-off ghost (ADR-0607)
+    reset();
+    _els.ctx.dataset.open='true';
+    for(const f of (fakeDoc._L['mousedown']||[]).slice(0,1))f({target:{closest:()=>null}});
+    assert.strictEqual(_els.ctx.dataset.open,'false','mousedown outside the ctx menu closes it');
+    _els.ctx.dataset.open='true';
+    UI._ctxEat=Date.now();
+    for(const f of (fakeDoc._L['mousedown']||[]).slice(0,1))f({target:{closest:()=>null}});
+    assert.strictEqual(_els.ctx.dataset.open,'true','mousedown within the _ctxEat window is suppressed (ADR-0607)');
+    UI._ctxEat=0;
+    _els.ctx.dataset.open='false';
+    // online/offline flips the status line via updateOnline
+    const nav=fakeWin.navigator;
+    nav.onLine=false;
+    for(const f of (fakeWin._L['offline']||[]).slice(0,1))f({});
+    assert.strictEqual(_els.sConn.textContent,api.I18N[api._getLang()].offline,'offline event updates the status line');
+    nav.onLine=true;
+    for(const f of (fakeWin._L['online']||[]).slice(0,1))f({});
+    assert.strictEqual(_els.sConn.textContent,api.I18N[api._getLang()].online,'online event restores the status line');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -12169,7 +12204,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1383; // prev 1379 + 4 event-sequence asserts (ADR-0641: touch long-press 実タイマ)
+  pass += 1390; // prev 1383 + 7 event-sequence asserts (ADR-0641: pagehide/lostpc/mousedown-outside/online 実経路)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
