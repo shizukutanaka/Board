@@ -229,6 +229,8 @@ RAF ループ。`needsRender`/`needsOverlay` フラグで再描画をゲート�
 ### 6. Persist
 IndexedDB (`board` / stores `docs` + `imgs`, DB_VER=2)。500ms デバウンス。`visibilitychange`→hidden で最終セーブ (`beforeunload` はモバイルで不可靠)。`Ctrl+S` で即時保存。読み込み時に `validShape` で全 shape を検証。ADR-0031 で画像バイトは `dataUrl` から content-hash キーの `imgs` blob ストアへ分離 — doc レコードは `img` 参照のみ保持し、`DOC_KEY`/`DOC_KEY+':prev'` が blob を共有 (重複書き込みなし、孤児は save 時 GC)。save 失敗は `_saveErrMsg` で `QuotaExceededError` を識別してトースト。
 
+**因果マーカーも永続化する** (ADR-0460/0695/0699/0701): doc レコードは `shapes`/`viewport`/`pages`/`curPg` に加えて `wc` (per-prop 書込みクロック) と `rep`/`nts`/`ntp` (最後の replace マーカー・改名クロック) を同梱する。リロードでこれらが null/0 に戻ると、ピアの古い pre-swap スナップショットや旧 rename が wipe 済み内容を復活させ得るため。読み込み側は `validClock`/`_fin` で検証してから採用する (0864/0700/0701 の非有限値拒否と同一規則)。`:prev` バックアップ (ADR-0004) はスコープ外 — 復元自体が replace op として commit され新しい causal marker を立てる。
+
 ## 座標系
 
 - **world**: shape が持つ座標 (無限)

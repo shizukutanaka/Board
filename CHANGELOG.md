@@ -1,3 +1,8 @@
+## [1.7.783] - 2026-09-29
+
+### Docs
+- ADR-0757: architecture.md §6 Persist へ causal marker 永続化規則を同期 — doc レコードが `wc`/`rep`/`nts`/`ntp` を同梱し、リロード時リセットによる stale snapshot/旧 rename 復活を防ぐ (ADR-0460/0695/0699/0701 系)。監査により `_rdb` 永続化カバレッジ・`:prev` バックアップ・hidden フラッシュの不整合なしを確認
+
 ## [1.7.782] - 2026-09-28
 
 ### Docs
