@@ -504,6 +504,11 @@ DOM 要素は `data-t` 属性 + `UI.applyI18n()` で翻訳 (起動時に 1 回�
   `zoomAt`、`centerOn`、`_fitViewport`、プレゼン `_zoomToFrame`、エッジオートパン) は `_xC(v)=clamp(v,±1e7)` を通る — 境界の
   外には wire-valid な図形が存在し得ないため、中心が外に出ると描く図形が全て
   ピア棄却となる発散クラスだった (境界ではパンが停止、届く表示は失われない)。
+  全書き込み形式は監査済み (リテラル `_vp().x=`・保存参照 `v.x=`・`+=`) で、
+  各累積経路は behavioural ピンが固定: 矢印キー (0802)・wheel パンと ctrl+wheel
+  zoomAt (0805)・`_edgePanTick` (0808)・hand ドラッグ (0809)、サイト数ピン
+  `>=16` が単発サイトを守る。BC/RTC 受信は単一 `_onRecv` 経路で transport 別の
+  検証穴なし、presence は peer が匿名 (name フィールド非保持) で文字列攻撃面なし。
 - **ローカル取込も wire 上限に揃える** (ADR-0796/0797): drawio/svg/excalidraw
   パーサ出力と複数ページ経路は `validShape` を通り (ピアが棄却する図形を
   ローカルが受理しない)、テキストエディタは `maxLength=5000` で wire の
