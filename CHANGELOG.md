@@ -1,3 +1,11 @@
+## [1.7.751] - 2026-09-29
+
+### Fixed
+- ADR-0725: pageDel rehomed locked survivors to each peer's OWN first page —
+  under divergent page order (concurrent pageAdds) member pg attribution
+  split permanently since pg isn't LWW-arbitrated. The wire op now carries
+  the sender's firstId; view landing stays local
+
 ## [1.7.750] - 2026-09-29
 
 ### Fixed
