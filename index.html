@@ -853,7 +853,8 @@ const _sl=()=>state.selection;
 const _ss=ids=>{const s=_sT();for(const id of ids){const h=byId(id);if(h&&_sv(h)&&_pgOk(h))s.add(id)}state.selection=s};   // ADR-0415/0568/0646
 const _st=()=>state.style;
 const _df=()=>state.draft;
-const _wc=()=>state.wclock,_wM=x=>Object.assign(Object.create(null),x);   // ADR-0788: '__proto__' id must never hit a prototype-bearing map — a write would mutate the map's prototype, then every missing-id tomb read returns the planted entry (one op.wc key freezes all future adds). Null-proto keeps it a plain own key
+const _wc=()=>state.wclock,_wM=x=>Object.assign(Object.create(null),x),_oe=Object.entries;   // ADR-0788: '__proto__' id must never hit a prototype-bearing map — a write would mutate the map's prototype, then every missing-id tomb read returns the planted entry (one op.wc key freezes all future adds). Null-proto keeps it a plain own key
+const _wD=(id,c)=>_wc()[id]=_wM({_del:c}),_wR=(id,w)=>_wc()[id]=_wM(clone(w)),_wTb=(rw,c,inN)=>{for(const[id,w]of _oe(rw||{}))if(w._del&&(clockNewer(w._del,c)||!inN.has(id)))_wD(id,clockNewer(w._del,c)?w._del:c)};   // ADR-0789: tomb write / clock-restore / tomb-set merge sites folded
 const _tl=()=>state.tool;
 const _dn=()=>state.docName;
 let _nameTs=0,_namePeer='';
@@ -873,7 +874,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.814';   // ADR-0788
+const V='1.7.815';   // ADR-0788
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1599,7 +1600,7 @@ const Store={
     if(_sO().has(k))return;
     _sO().add(k);
     _trimSeen();                           // ADR-0428: same helper as commit/applyRemote
-    if(op.op==='replace'){state._lastRep=op.clock;const inN=_sT(op.after.map(s=>s.id));for(const s of op.before)if(!inN.has(s.id))_wc()[s.id]=_wM({_del:op.clock});for(const[id,w]of Object.entries(op.wc||{}))if(w._del&&(clockNewer(w._del,op.clock)||!inN.has(id)))_wc()[id]=_wM({_del:clockNewer(w._del,op.clock)?w._del:op.clock})}   // ADR-0616/0736
+    if(op.op==='replace'){state._lastRep=op.clock;const inN=_sT(op.after.map(s=>s.id));for(const s of op.before)if(!inN.has(s.id))_wD(s.id,op.clock);_wTb(op.wc,op.clock,inN)}   // ADR-0616/0736
     this._stampWrites(op);                 // change already applied by caller; record clock
     _hi().length=_hx()+1;
     _hi().push(op);
@@ -1674,7 +1675,7 @@ const Store={
         // 'add' (idempotent on id); reverse mirrors
         if(forward){for(const sh of op.shapes){const wd=_wc()[sh.id];if(wd&&wd._del&&clockNewer(wd._del,op.clock||{}))continue;   // ADR-0734: tombstone beats a stale add
           if(wd)delete wd._del;if(!byId(sh.id))_sh().push(clone(sh));}_sz();
-          if(op.wc)for(const[id,w]of Object.entries(op.wc))_wc()[id]=_wM(clone(w));}   // ADR-0721
+          if(op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);}   // ADR-0721
         else{for(const sh of op.shapes){const cur=byId(sh.id);if(cur&&cur.locked)continue;   // ADR-0713
           const i=_idIdx(sh.id);if(i>=0)_sh().splice(i,1);_sdl(sh.id);_wc()[sh.id]=_wM({_del:op.clock});_psc(sh.id);}_selR(op);const fx=this._remoteDelConnFix({op:'del',shapes:op.shapes});if(fx)for(const p of fx)_oa(byId(p.id),p.patch);}   // ADR-0734/0759
         break;}
@@ -1690,7 +1691,7 @@ const Store={
             _wc()[sh.id]=_wM({_del:op.clock});   // ADR-0734
             _psc(sh.id);                     // ADR-0424/0427
           }
-          if(_ok(_wc()).length>8192){const t=_wM();for(const[id,w]of Object.entries(_wc()))if(w._del)t[id]={_del:w._del};state.wclock=t}   // ADR-0734/0738: cap keeps tombs — prop clocks self-heal, existence doesn't
+          if(_ok(_wc()).length>8192){const t=_wM();for(const[id,w]of _oe(_wc()))if(w._del)t[id]={_del:w._del};state.wclock=t}   // ADR-0734/0738: cap keeps tombs — prop clocks self-heal, existence doesn't
           // connector clears after shapes are gone
           if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked){const pt={},pb=p.before||{};for(const e of['a','b'])if(pb[e]!=null&&!(byId(pb[e])||{}).locked){const x=e==='a'?['x1','y1']:['x2','y2'];pt[e]=null;pt[e+'F']=null;pt[x[0]]=p.after[x[0]];pt[x[1]]=p.after[x[1]]}_oa(sh,pt)}}}   // ADR-0760
           const fx=this._remoteDelConnFix(op);if(fx)for(const p of fx)_oa(byId(p.id),p.patch);   // ADR-0758: gap-bound conns — same scan peers run
@@ -1701,7 +1702,7 @@ const Store={
           _sz();
           // connector binds restored after shapes are back
           if(op.connClears)for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_oa(sh,p.before)}
-          if(op.wc)for(const [id,w] of Object.entries(op.wc))_wc()[id]=_wM(clone(w));
+          if(op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);
           _selR(op);
         }
         break;}
@@ -1738,8 +1739,8 @@ const Store={
         if(!forward)_selR(op);
         break;}
       case 'clear':{
-        if(forward){if(op.clock)state._lastRep=op.clock;const wc0=state.wclock||{},dead=_sh().map(s=>s.id);_sh().length=0;_scl();state.wclock=_wM();for(const id of dead)_wc()[id]=_wM({_del:op.clock});for(const[id,w]of Object.entries(wc0))if(w._del)_wc()[id]=_wM({_del:clockNewer(w._del,op.clock)?w._del:op.clock});_pcC();}   // ADR-0626/0736
-        else{for(const s of op.shapes)if(!byId(s.id))_sh().push(Net._attachShape(clone(s)));_sz();if(op.wc)for(const[id,w]of Object.entries(op.wc))_wc()[id]=_wM(clone(w));_selR(op);}   // ADR-0723
+        if(forward){if(op.clock)state._lastRep=op.clock;const wc0=state.wclock||{},dead=_sh().map(s=>s.id);_sh().length=0;_scl();state.wclock=_wM();for(const id of dead)_wD(id,op.clock);_wTb(wc0,op.clock,_sT());_pcC();}   // ADR-0626/0736
+        else{for(const s of op.shapes)if(!byId(s.id))_sh().push(Net._attachShape(clone(s)));_sz();if(op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);_selR(op);}   // ADR-0723
         break;}
       case 'replace':{
         // Whole-board swap (shared-link import). Rev
@@ -1754,7 +1755,7 @@ const Store={
         _sz();
         if(forward&&op.afterWc)state.wclock=_wM(clone(op.afterWc));
         if(!forward&&op.wc)state.wclock=_wM(clone(op.wc));
-        if(forward){const inN=_sT(next.map(s=>s.id));for(const id of old0)if(!inN.has(id))_wc()[id]=_wM({_del:op.clock});for(const[id,w]of Object.entries(wc0))if(w._del&&(clockNewer(w._del,op.clock)||!inN.has(id)))_wc()[id]=_wM({_del:clockNewer(w._del,op.clock)?w._del:op.clock})}   // ADR-0736
+        if(forward){const inN=_sT(next.map(s=>s.id));for(const id of old0)if(!inN.has(id))_wD(id,op.clock);_wTb(wc0,op.clock,inN)}   // ADR-0736
         if(forward)_pgAdopt(op.pages,op.curPg);else _pgAdopt(op.beforePages,op.beforeCurPg);   // ADR-0646: the swap carries the page set
         if(!forward)_selR(op);
         break;}
@@ -1807,7 +1808,7 @@ const Store={
           state.pages.splice(_min(op.i!=null?op.i:_ln(state.pages),_ln(state.pages)),0,{id:op.id,name:op.name!=null?op.name:'?',nts:0});
           for(const sh of op.shapes||[])if(!byId(sh.id))_sh().push(Net._attachShape(clone(sh)));
           _sz();
-          if(op.wc)for(const[id,w]of Object.entries(op.wc))_wc()[id]=_wM(clone(w));   // ADR-0722: restore member clocks — del backward parity
+          if(op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);   // ADR-0722: restore member clocks — del backward parity
           _selR(op);
           if(op.connClears)for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_oa(sh,p.before)}   // ADR-0707/0711: re-bind the endpoints the forward cleared — del-backward locked parity (a connector locked between del and undo must not be written)
           switchPage(op.id);   // ADR-0663: undo lands back on the restored page — _pgDel only deletes the viewed page, so the undo's natural view is where the deletion happened (_pgFollow skips pageDel on purpose)
@@ -10165,7 +10166,7 @@ function pasteStyle(){
   if(!state.styleClipboard||!_selN()){return}
   // Remove undefined keys
   const patch=Object.fromEntries(
-    Object.entries(state.styleClipboard).filter(([,v])=>v!==_ud)
+    _oe(state.styleClipboard).filter(([,v])=>v!==_ud)
   );
   applyStyleToSelection(patch);
   _oT('stylePasted');

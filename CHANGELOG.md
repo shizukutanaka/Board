@@ -1,3 +1,8 @@
+## [1.7.815] - 2026-09-29
+
+### Refactor
+- ADR-0789: wclock write/merge の全サイトを `_wD`/`_wR`/`_wTb` + `Object.entries`→`_oe` へ集約 (~226B 回収) — tomb merge の採択規則を単一定義化
+
 ## [1.7.814] - 2026-09-29
 
 ### Fixed
