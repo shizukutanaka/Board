@@ -1,3 +1,10 @@
+## [1.7.773] - 2026-09-28
+
+### Fixed
+- ADR-0747: img blob resolution now gated on the live ref — an upd/merge
+  rewriting sh.img while parked left a stale pending that deleted the new
+  ref and clobbered dataUrl when the old blob arrived
+
 ## [1.7.772] - 2026-09-28
 
 ### Fixed

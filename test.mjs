@@ -4015,6 +4015,31 @@ try {
     console.log('  ✓ ADR-0746: dataUrl merge drops stale img ref + pending (4 asserts)');
   }
 
+  // ADR-0747: a pending resolution must only fire while the shape still references
+  // that key — an upd/merge can rewrite sh.img while parked, and resolving the stale
+  // key would delete the live ref + clobber dataUrl.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+    state.seq=0;state.seenOps=new Set();state.wclock={};state.peerId='B';
+    Net._imgPending.clear();Net._imgIn.clear();
+    // shape parked on K_OLD; a remote upd rewrote it to a new ref + merged dataUrl
+    const r={id:'I3',type:'image',z:1,x:0,y:0,w:10,h:10,img:'K_OLD'};
+    Store.commit({op:'add',shape:r});
+    Net._imgPending.set('I3','K_OLD');
+    const ls=byId('I3');
+    ls.img='K_NEW';ls.dataUrl='data:image/png;base64,CUR';   // as an upd/merge would leave it
+    Net._onRecv({k:'img',key:'K_OLD',data:'data:image/png;base64,STALE',n:1,seq:0,peer:'A'},false);
+    assert.strictEqual(ls.img,'K_NEW','stale pending no longer deletes the live img ref');
+    assert.strictEqual(ls.dataUrl,'data:image/png;base64,CUR','stale blob never clobbers dataUrl');
+    assert.ok(!Net._imgPending.has('I3'),'stale pending drained');
+    // a shape still referencing the resolved key resolves normally
+    Net._imgPending.set('I3','K_NEW');
+    Net._onRecv({k:'img',key:'K_NEW',data:'data:image/png;base64,NW',n:1,seq:0,peer:'A'},false);
+    assert.strictEqual(ls.dataUrl,'data:image/png;base64,NW','live ref resolves');
+    assert.strictEqual(ls.img,undefined,'resolved ref deleted');
+    console.log('  ✓ ADR-0747: pending img resolution gated on live ref (5 asserts)');
+  }
+
   // ADR-0060: Alt+drag on a shape duplicates it (addMany commit, selection→copies,
   // move-drag starts on the copies). Unselected hit duplicates just that shape;
   // already-selected hit duplicates the whole selection.
@@ -13638,7 +13663,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1696; // prev 1686 + 6 ADR-0745 + 4 ADR-0746 snapshot-img-merge asserts
+  pass += 1701; // prev 1686 + 6 ADR-0745 + 4 ADR-0746 + 5 ADR-0747 img-merge asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
