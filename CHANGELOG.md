@@ -1,3 +1,10 @@
+## [1.7.734] - 2026-09-29
+
+### Fixed
+- ADR-0708: remote pageAdd forces member shapes' pg to op.id — the op defines
+  membership, so a malformed or absent wire pg can't mis-file the member on
+  another page (all peers normalize identically → convergent)
+
 ## [1.7.733] - 2026-09-29
 
 ### Fixed

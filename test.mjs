@@ -4791,6 +4791,19 @@ try {
         state.pages=null;state.curPg=null;state.shapes=[];
         console.log('  ✓ pageDel locked parity + connClears (5 asserts)');
       }
+      // ADR-0708: remote pageAdd forces member pg=op.id — a malformed/absent wire pg
+      // must not mis-file the member (all peers normalize identically → convergent).
+      {
+        state.pages=[{id:'pA',name:'A',nts:0}];state.curPg='pA';state.shapes=[];
+        const m=Shape.make('rect',{x:0,y:0,w:10,h:10});
+        const wire=JSON.parse(JSON.stringify(m));wire.pg='pZ';   // malformed wire pg
+        Store.applyRemote({op:'pageAdd',id:'pB',name:'B',shapes:[wire],clock:{peer:'zz',seq:31,ts:7}});
+        assert.ok(_pgById('pB'),'page added');
+        const landed=state.shapes.find(s=>s.id===m.id);
+        assert.ok(landed&&landed.pg==='pB','member pg forced to op.id (ADR-0708)');
+        state.pages=null;state.curPg=null;state.shapes=[];
+        console.log('  ✓ pageAdd member pg normalization (2 asserts)');
+      }
       assert.ok(html.includes("ids.join(',')+'|'+(state.curPg||'')"),'sel presence key includes page (ADR-0680)');
       console.log('  ✓ sel-presence pg key pin (1 assert)');
     }
@@ -13003,7 +13016,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1578; // prev 1517 + 1 tab aria-label pin (ADR-0682)
+  pass += 1580; // prev 1517 + 1 tab aria-label pin (ADR-0682)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
