@@ -1567,7 +1567,7 @@ const fakeDoc = {
     width: 800, height: 600, value: '', textContent: '',
     querySelectorAll: () => [],
     querySelector: () => ({focus(){}, click(){}, style:{}}),
-    focus(){}, blur(){}, click(){}, contains(){ return false; },
+    focus(){}, blur(){}, click(){}, select(){}, contains(){ return false; },
     hidden: false,
     onclick: null, oninput: null,
   }),
@@ -11675,6 +11675,35 @@ try {
     fireKey('i');
     assert.strictEqual(state.tool,'eyedropper',"'i' picks the eyedropper (temporary)");
     fakeWin._prevTool=null;
+    // ⌘F toggles the search box; ⇧1/⇧2 fit the viewport; ⇧P enters
+    // presentation only when a frame exists, Esc leaves it
+    reset();
+    state.tool='select';
+    fakeDoc.getElementById('sqinput').style.display='none';
+    fireKey('f',{metaKey:true});
+    assert.strictEqual(fakeDoc.getElementById('sqinput').style.display,'block','⌘F opens the search box');
+    fireKey('f',{metaKey:true});
+    assert.strictEqual(fakeDoc.getElementById('sqinput').style.display,'none','⌘F closes it again');
+    const FT1=Shape.make('rect',{x:100,y:100,w:100,h:100});
+    const FT2=Shape.make('rect',{x:2000,y:2000,w:400,h:300});
+    Store.commit({op:'add',shape:FT1});Store.commit({op:'add',shape:FT2});
+    const fv0={...state.viewport};
+    fireKey('1',{shiftKey:true});
+    assert.ok(state.viewport.x!==fv0.x||state.viewport.y!==fv0.y||state.viewport.zoom!==fv0.zoom,'⇧1 fits the view to content');
+    const fv1={...state.viewport};
+    state.selection=new Set([FT1.id]);
+    fireKey('2',{shiftKey:true});
+    assert.ok(state.viewport.zoom!==fv1.zoom||state.viewport.x!==fv1.x||state.viewport.y!==fv1.y,'⇧2 zooms to the selection');
+    reset();
+    state.tool='select';
+    fireKey('p',{shiftKey:true});
+    assert.ok(!Presentation.isActive(),'⇧P without a frame is a no-op');
+    const FR1=Shape.make('frame',{x:0,y:0,w:300,h:200});
+    Store.commit({op:'add',shape:FR1});
+    fireKey('p',{shiftKey:true});
+    assert.ok(Presentation.isActive(),'⇧P enters presentation when a frame exists');
+    fireKey('Escape');
+    assert.ok(!Presentation.isActive(),'Esc leaves presentation');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -11686,7 +11715,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1294; // prev 1276 + 18 event-sequence asserts (ADR-0641: clipboard + tool keys)
+  pass += 1303; // prev 1294 + 9 event-sequence asserts (ADR-0641: ⌘F + fit + presentation keys)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
