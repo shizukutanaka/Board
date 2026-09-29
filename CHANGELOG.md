@@ -1,3 +1,8 @@
+## [1.7.864] - 2026-09-29
+
+### Docs
+- ADR-0838: wire 送出監査完走 — 全 `this._send`/`_bcast` サイトのトランスポート選択を確認、imgq のみ BC-only で誤配していた (0837 で修正)。`hello`/`sync-req`/`ping`/`bye` は RTC 側を dc ライフサイクルが担うため BC-only が正しい設計。architecture.md を 0833–0837 の img ライフサイクル規則へ同期
+
 ## [1.7.863] - 2026-09-29
 
 ### Fixed
