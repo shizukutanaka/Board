@@ -2028,6 +2028,18 @@ try {
     state.docName='KeepName';
     Net._onRecv({k:'name',name:'RoomName',ts:1,peer:'sp'},false);
     assert.strictEqual(state.docName,'RoomName','rename clock reset — small ts applies');
+  }
+  // ADR-0773: union-heal adopts the snapshot's page ORDER — concurrent same-index
+  // pageAdds leave the tab order diverged until a heal reorders to the sender's.
+  {
+    state.shapes=[Shape.make('rect',{id:'po1',x:0,y:0,w:10,h:10,pg:'pX'})];   // non-empty so the union-heal branch runs
+    state.pages=[{id:'p1',name:'One',nts:0},{id:'pX',name:'LocalOnly',nts:0},{id:'p2',name:'Two',nts:0}];
+    state.curPg='pX';
+    Net._onRecv({k:'snapshot',shapes:[],ops:[],peer:'sp',pages:[{id:'p1',name:'One',nts:0},{id:'pY',name:'Mid',nts:0},{id:'p2',name:'Two',nts:0}]},false);
+    assert.deepStrictEqual(state.pages.map(p=>p.id),['p1','pY','p2','pX'],'heal adopts snapshot order; local-only page appended at the end');
+    assert.strictEqual(state.curPg,'pX','curPg preserved through the reorder');
+    state.pages=null;state.curPg=null;state.shapes.length=0;
+    console.log('  ✓ snapshot union-heal adopts page order (ADR-0773)');
     // ADR-0695: boot-time init (null prior room) does NOT wipe restored markers
     state.roomId=null;state._lastRep={peer:'me',seq:5,ts:5e5};
     Net.init();
