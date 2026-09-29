@@ -4608,6 +4608,13 @@ try {
       assert.ok(html.includes("c.setAttribute('aria-label',p.name)"),'tab chip carries full-name aria-label (ADR-0682)');
       console.log('  ✓ tab aria-label pin (1 assert)');
     }
+    // ADR-0683: sig separator + focus restore pins
+    {
+      assert.ok(html.includes("p.id+'\\x1f'+p.name"),'page sig separates id from name (ADR-0683)');
+      assert.ok(html.includes('_fid=_fe&&_fe._pgid'),'focused chip recorded before rebuild (ADR-0683)');
+      assert.ok(html.includes('c._pgid===_fid'),'focus restored to same page chip (ADR-0683)');
+      console.log('  ✓ pgBar sig/focus pins (3 asserts)');
+    }
     // ADR-0673: per-page tab strip — direct jump, active tab renames
     {
       assert.ok(html.includes('id="pgTabs"')&&html.includes("c._pgid===state.curPg?_pgRename():switchPage(c._pgid)"),'page tab chips switch/rename (ADR-0673/0675)');
@@ -12790,7 +12797,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1518; // prev 1517 + 1 tab aria-label pin (ADR-0682)
+  pass += 1521; // prev 1517 + 1 tab aria-label pin (ADR-0682)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
