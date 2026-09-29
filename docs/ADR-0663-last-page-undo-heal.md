@@ -15,5 +15,9 @@ Accepted — round411
 - undo で null-pages 状態へ戻る時、図形の帰属も null-pages セマンティクス (帰属なし) へ一致
 - その後の pageAdd/snapshot adopt が正しく再帰属する
 
+## 追記 (round412)
+`pageDel` の backward も同じ「削除前ビューへ戻る」ヒールが抜けていた — `_pgDel` は現行ページしか削除しないので、undo 時は `switchPage(op.id)` で復元ページへ着地点を戻す (`_pgFollow` は pageDel を意図的にスキップするため `_apply` 側で処理)。
+
 ## Tests
 - undo2回→`pg` クリア、再 pageAdd→`pg` 再帰属+`_pgOk` 真 (3 asserts)
+- pageDel の undo→`curPg` が復元ページへ + メンバー可視 (3 asserts)

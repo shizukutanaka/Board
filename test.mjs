@@ -4477,6 +4477,20 @@ try {
       Store.commit({op:'del',shapes:[{...byId(X.id)}]});
       console.log('  ✓ last-page undo clears pg membership (3 asserts)');
     }
+    // ADR-0663: undoing a page deletion lands the view on the restored page
+    {
+      const Y=Shape.make('rect',{x:0,y:0,w:10,h:10});
+      Store.commit({op:'add',shape:{...Y,pg:'pB'}});
+      state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pB';
+      Store.commit({op:'pageDel',id:'pB',i:1,name:'B'});
+      assert.ok(state.curPg==='pA'&&!byId(Y.id),'view healed off the deleted page');
+      Store.undo();
+      assert.ok(state.curPg==='pB'&&_pgById('pB'),'undo lands on the restored page (ADR-0663)');
+      assert.ok(byId(Y.id)&&_pgOk(byId(Y.id)),'restored member visible on landing');
+      state.pages=null;state.curPg=null;
+      Store.commit({op:'del',shapes:[{...byId(Y.id)}]});
+      console.log('  ✓ page-del undo lands on restored page (3 asserts)');
+    }
   }
 
   // ADR-0072: elbow trunk locate + bend-override two-corner route
@@ -12624,7 +12638,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1481; // prev 1478 + 3 last-page-undo asserts (ADR-0663)
+  pass += 1484; // prev 1481 + 3 pageDel-undo-landing asserts (ADR-0663)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
