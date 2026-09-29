@@ -695,7 +695,8 @@ Board/
     │   ├── ADR-0644-sequence-harness-rules.md       # イベント系列 harness 運用規約 (fire1/stale混入/reset境界) (実装済)
     │   ├── ADR-0645-sequence-verification-complete.md  # 系列検証の完走状態 — 全リスナ型網羅、残: レンダリング実体+FileReader (実装済)
 │   ├── ADR-0646-multi-page.md                      # 多ページ — pages/curPg + s.pg 帰属、ページバー、ワイヤ収束 (実装済)
-│   └── ADR-0647-page-scoped-presence.md            # ページ別プレゼンス — presence msg に pg 同梱、別ページピア非描画 (実装済)
+│   ├── ADR-0647-page-scoped-presence.md            # ページ別プレゼンス — presence msg に pg 同梱、別ページピア非描画 (実装済)
+│   └── ADR-0648-page-nav-keys.md                   # PgUp/PgDn ページ巡回 — キーボード/SR 到達経路 (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

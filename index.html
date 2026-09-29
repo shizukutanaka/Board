@@ -863,7 +863,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.674';   // ADR-0647
+const V='1.7.675';   // ADR-0648
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2097,6 +2097,7 @@ const _pgOn=()=>!!(state.pages&&_ln(state.pages)),_pgById=id=>_pgOn()&&state.pag
 const _vPages=a=>!_iA(a)||!_ln(a)||_ln(a)>64?null:(a.every(p=>p&&_iS(p.id)&&_ln(p.id)<=64&&_iS(p.name)&&_ln(p.name)<=80&&(p.nts==null||_iN(p.nts)))?a:null);
 function _pgAdopt(pages,cur){const v=_vPages(pages);state.pages=v?clone(v):null;state.curPg=v&&_pgById(cur)?cur:(v?v[0].id:null);_pgBar()}
 function switchPage(id){if(!_pgById(id)||state.curPg===id)return;Net.sendCursorHide();_cxO();state.curPg=id;_iG();_zR();_ss(_selIds());_iv();_ivO();_ann(_pgById(id).name);_pgBar()}
+function _pgNav(d){if(!_pgOn())return;const i=_pgIdx(),n=_ln(state.pages);const j=(i+d+n)%n;if(j!==i)switchPage(state.pages[j].id)}
 function _pgAdd(){if(!_pgOn())_cmt({op:'pageAdd',id:uid(),name:t('pgPage')+' 1'});const id=uid();_cmt({op:'pageAdd',id,name:t('pgPage')+' '+(_ln(state.pages)+1)});switchPage(id)}
 function _pgDel(){if(!_pgOn()||_ln(state.pages)<2)return;const p=state.pages[_pgIdx()];if(!confirm(t('pgDelQ')+': '+p.name+'?'))return;_cmt({op:'pageDel',id:p.id,i:_pgIdx(),name:p.name})}
 const _pgIdx=()=>_pgOn()?state.pages.findIndex(p=>p.id===state.curPg):-1;
@@ -5819,6 +5820,7 @@ _on(window,_KD,e=>{
   if(meta&&k==='z'&&!_sK(e)){_pd(e);if(Store.undo())_tst(t('undone'))}
   else if(meta&&(k==='y'||(k==='z'&&_sK(e)))){_pd(e);if(Store.redo())_tst(t('redone'))}
   else if(meta&&k==='a'){_pd(e);_ss(_shV().map(s=>s.id));if(_selN())_aS();_iv()}   // ADR-0037
+  else if(!meta&&(k==='pagedown'||k==='pageup')){_pd(e);_pgNav(k==='pagedown'?1:-1)}   // ADR-0648: keyboard page nav — the pgBar was pointer-only
   if(k==='p'&&_sK(e)&&!meta&&!_aK(e)){_pd(e);Presentation.enter();return}
   else if(meta&&k===_EN){_pd(e);Presentation.enter()}
   else if(meta&&k==='c'){doCopy()}   // ADR-0516: no _pd — the 'copy' event writes the OS clipboard
@@ -9050,6 +9052,7 @@ const UI={
       ['⌘+/−/0',k.zoomIn+'/'+k.zoomOut+'/'+k.zoom100],
       ['⇧1',k.fit],['⇧2',t('selFit')],['⌘E',k.exp],['⌘⇧E','SVG'],['⌘P','PDF'],['⌘⇧S','.board'],
       ['G',k.grid],['⇧G',t('snap')],['M',k.minimap],['Esc',k.esc],['?',k.help],
+      ['PgUp / PgDn',t('pgPrev')+' / '+t('pgNext')],
       ['↑↓←→',k.nudge],['⌥ ↑↓←→',k.kbdResize],
       [']/[',k.zorder],['⇧]/⇧[',k.zorderEnds],
       [', / .',k.rotate],['⇧R',t('ctxRotate90')],

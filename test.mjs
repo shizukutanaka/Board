@@ -12387,9 +12387,22 @@ try {
     Net._onRecv({k:'cursor',peer:'pgpeer',x:1,y:2},false);
     assert.ok(pp.pg===null,'a missing pg (older peer) clears the page scope — stays visible everywhere');
     state.peers.delete('pgpeer');
+    // ADR-0648: keyboard page nav — PgDn/PgUp switch pages through the real window listener
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;
+    const _keyNav=(key)=>{for(const f of (fakeWin._L['keydown']||[]).slice(0,1))f({key,ctrlKey:false,metaKey:false,shiftKey:false,altKey:false,isComposing:false,target:{matches:()=>false},preventDefault(){},stopPropagation(){}})};
+    _pgAdd();
+    const navP1=state.pages[0].id,navP2=state.pages[1].id;
+    assert.ok(state.curPg===navP2,'precondition: on page 2');
+    _keyNav('PageUp');
+    assert.ok(state.curPg===navP1,'PgUp moves to the previous page via the real key listener');
+    _keyNav('PageDown');
+    assert.ok(state.curPg===navP2,'PgDn moves to the next page');
+    _keyNav('PageDown');
+    assert.ok(state.curPg===navP1,'PgDn wraps past the last page back to the first');
     state.pages=null;state.curPg=null;
     console.log('  ✓ multi-page: add/switch/del+undo/name-LWW/remote heal/snapshot union (ADR-0646, 16 asserts)');
     console.log('  ✓ page-scoped presence: pg on cursor/selection + off-page cursor skip (ADR-0647, 3 asserts)');
+    console.log('  ✓ page nav: PgUp/PgDn through the real key listener, wraps (ADR-0648, 4 asserts)');
 
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
@@ -12397,7 +12410,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1427; // prev 1424 + 3 page-scoped presence asserts (ADR-0647)
+  pass += 1431; // prev 1427 + 4 keyboard page-nav asserts (ADR-0648)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
