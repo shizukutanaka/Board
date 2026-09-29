@@ -12402,7 +12402,15 @@ try {
     state.pages=null;state.curPg=null;
     console.log('  ✓ multi-page: add/switch/del+undo/name-LWW/remote heal/snapshot union (ADR-0646, 16 asserts)');
     console.log('  ✓ page-scoped presence: pg on cursor/selection + off-page cursor skip (ADR-0647, 3 asserts)');
+    // ADR-0649: deleting the viewed page (remote path) lands via switchPage — curPg healed, not dangling
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;
+    _pgAdd();const dp1=state.pages[0].id,dp2=state.pages[1].id;
+    switchPage(dp1);
+    Store.applyRemote({op:'pageDel',id:dp1,clock:{peer:'rp',seq:14,ts:14}});
+    assert.ok(state.curPg===dp2,'remote pageDel of the viewed page falls onto a survivor via switchPage');
+    state.pages=null;state.curPg=null;
     console.log('  ✓ page nav: PgUp/PgDn through the real key listener, wraps (ADR-0648, 4 asserts)');
+    console.log('  ✓ pageDel of the viewed page lands via switchPage — curPg healed (ADR-0649, 1 assert)');
 
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
@@ -12410,7 +12418,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1431; // prev 1427 + 4 keyboard page-nav asserts (ADR-0648)
+  pass += 1432; // prev 1431 + 1 pageDel lands-via-switchPage assert (ADR-0649)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
