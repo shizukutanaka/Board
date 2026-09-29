@@ -13728,13 +13728,40 @@ try {
     assert.ok(html.includes('excScene(_shV())'),'exportExc scopes to the current page');
     assert.ok((html.match(/shapes=_shV\(\)/g)||[]).length>=4,'PNG/SVG export+copy defaults are page-scoped');
 
+  // v1.7.78a: del→undo→(gap rebind)→redo clears the gap-bound connector (ADR-0758)
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const t2=Shape.make('rect',{x:90,y:-5,w:20,h:10});
+    const c2=Shape.make('arrow',{x1:0,y1:0,x2:100,y2:0});
+    state.shapes.push(t2,c2);
+    Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(t2))]});
+    Store.undo();
+    c2.a=t2.id;   // gap: connector binds to the restored target BEFORE the redo
+    Store.redo(); // del forward re-runs — _remoteDelConnFix must clear the gap-bound endpoint
+    assert.strictEqual(c2.a,null,'v1.7.78a: gap-bound connector cleared on del redo');
+    console.log('  ✓ _apply del forward: _remoteDelConnFix clears gap-bound conns on redo (v1.7.78a)');
+  }
+
+  // v1.7.78b: add undo clears a connector bound while the added shape existed (ADR-0759)
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const t3=Shape.make('rect',{x:90,y:-5,w:20,h:10});
+    const c3=Shape.make('arrow',{x1:0,y1:0,x2:100,y2:0});
+    state.shapes.push(t3,c3);
+    Store.commit({op:'add',shape:JSON.parse(JSON.stringify(t3))});
+    c3.a=t3.id;   // bind during the add's lifetime
+    Store.undo(); // inverse del — _remoteDelConnFix must clear the binding like a real del
+    assert.strictEqual(c3.a,null,'v1.7.78b: add undo clears connector bound during add lifetime');
+    console.log('  ✓ _apply add backward: _remoteDelConnFix clears lifetime-bound conns (v1.7.78b)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
   // asserts but actually contains 6 (recounted directly: at1.length, at2.length, and 4
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1718; // prev 1717 + 1 ADR-0760 locked-survivor connClears pin
+  pass += 1720; // prev 1718 + 2 v1.7.78a/b connClears gap/lifetime pins
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
