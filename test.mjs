@@ -246,6 +246,7 @@ const checks = [
   ["redo restamps before the local apply (ADR-0718)", html.includes("_fck(op);   // ADR-0718") && html.includes("this._apply(op,true);")],
   ["move undo-wire sends op.moved, not op.ids (ADR-0719)", html.includes("ids:op.moved||op.ids,dx:-op.dx,dy:-op.dy")],
   ["del/clear undo-wire carries wc; addMany applies it (ADR-0721)", html.includes("{op:'addMany',shapes:op.shapes,wc:op.wc}") && html.includes("if(op.wc)for(const[id,w]of Object.entries(op.wc))_wc()[id]=clone(w)")],
+  ["pageDel snapshots + restores member wclocks (ADR-0722)", html.includes("op.wc={};for(const id of dead)if(_wc()[id])op.wc[id]=clone(_wc()[id])") && html.includes("op.shapes||[],wc:op.wc}")],
   ["_recordCommitted sets _lastRep for local 'replace' (ADR-0616)", html.includes("if(op.op==='replace')state._lastRep=op.clock;   // ADR-0616")],
   ["snapshot carries rep marker + stale-snapshot skip (ADR-0617)", html.includes("rep:state._lastRep") && html.includes("clockNewer(state._lastRep,msg.rep))break;")],
   ["snapshot docName is LWW-gated via (ts,writer) order (ADR-0618/0699)", html.includes("nameTs:_nameTs,namePeer:_namePeer") && html.includes("_nameWin(msg.nameTs,_iS(msg.namePeer)?msg.namePeer:'')")],
@@ -6869,6 +6870,30 @@ try {
       'ADR-0721: peer restores the deleted shape’s wclock — later arbitration stays identical');
     console.log('  ✓ ADR-0721: del undo-wire carries the wclock snapshot — arbitration stays convergent');
 
+    // ADR-0722 (round472): pageDel now snapshots member wclocks into op.wc like
+    // del does — undo restores them locally AND over the wire addMany.
+    reset(A); reset(B);
+    const pd1={id:'q1',name:'P1',nts:0}, pd2={id:'q2',name:'P2',nts:0};
+    A.state.pages=[cp(pd1),cp(pd2)]; A.state.curPg='q1';
+    B.state.pages=[cp(pd1),cp(pd2)]; B.state.curPg='q1';
+    const w2=Shape.make('rect',{x:0,y:0,w:10,h:10}); w2.pg='q2';
+    A.state.shapes.push(cp(w2)); B.state.shapes.push(cp(w2)); A.sortZ(); B.sortZ();
+    rAB=[]; rBA=[];
+    A.Net.broadcast = op => rAB.push({k:'op',op:cp(op)});
+    B.Net.broadcast = op => rBA.push({k:'op',op:cp(op)});
+    A.Store.commit({op:'style',before:[{id:w2.id,stroke:null}],after:[{id:w2.id,stroke:'#000'}],clock:{peer:'peerA',seq:1,ts:1000}});
+    rAB.forEach(m=>B.Net._onRecv(m)); rAB.length=0;
+    A.Store.commit({op:'pageDel',id:'q2',clock:{peer:'peerA',seq:2,ts:2000}});
+    rAB.forEach(m=>B.Net._onRecv(m)); rAB.length=0;
+    assert.ok(!B.state.wclock[w2.id],'precondition: pageDel purged member clocks on both sides');
+    A.state.seq=2;
+    A.Store.undo();
+    rAB.forEach(m=>B.Net._onRecv(m));
+    assert.ok(B.state.shapes.some(s=>s.id===w2.id),'ADR-0722: member restored on peer');
+    assert.strictEqual(B.state.wclock[w2.id]&&B.state.wclock[w2.id].stroke&&B.state.wclock[w2.id].stroke.ts,1000,
+      'ADR-0722: peer restores the page member’s wclock — later arbitration stays identical');
+    console.log('  ✓ ADR-0722: pageDel undo restores member wclocks on both sides');
+
     // v1.6.87: a new text/sticky is committed+broadcast with EMPTY text, then filled in
     // the editor. _syncTextFinalize must push the typed content (and a dismissed-empty
     // removal) to already-connected peers, or collaborators see a blank shape forever.
@@ -13170,7 +13195,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1607; // prev 1603 + 3 ADR-0721 behavioural + 1 pin
+  pass += 1611; // prev 1607 + 3 ADR-0722 behavioural + 1 pin
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

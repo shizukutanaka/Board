@@ -770,6 +770,7 @@ Board/
 │   └── ADR-0719-move-undo-moved-ids.md  # move undo-wire は op.moved 集合を送る (phantom 逆移動解消) (実装済)
 │   └── ADR-0720-replace-wire-curpg.md  # 'replace' ワイヤに着陸ページを同梱 (受信側 page1 固定化を解消) (実装済)
 │   └── ADR-0721-undo-wire-wclock.md  # del/clear undo-wire に wclock スナップを同梱 (LWW 仲裁発散を解消) (実装済)
+│   └── ADR-0722-pagedel-wclock.md  # pageDel も member wclock を記録+復元 (del parity) (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
