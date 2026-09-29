@@ -11342,8 +11342,8 @@ try {
     // dblclick opens the text editor; presentation suppresses it too (ADR-0640)
     reset();
     state.tool='select';
-    const T1=Shape.make('text',{x:100,y:100,w:80,h:40,text:'dbl'});
-    Store.commit({op:'add',shape:T1});
+    const CY1=Shape.make('text',{x:100,y:100,w:80,h:40,text:'dbl'});
+    Store.commit({op:'add',shape:CY1});
     Store.commit({op:'add',shape:Shape.make('frame',{x:0,y:0,w:400,h:300})});
     state.editing=null;
     Presentation.enter();
@@ -11351,7 +11351,7 @@ try {
     assert.strictEqual(state.editing,null,'presentation suppresses dblclick editing');
     Presentation.leave();
     fire1('dblclick',110,110);
-    assert.strictEqual(state.editing,T1.id,'dblclick on a text shape opens the editor');
+    assert.strictEqual(state.editing,CY1.id,'dblclick on a text shape opens the editor');
     // Escape closes an open ctx menu via the real window keydown listener (before gesture handling)
     reset();
     state.tool='select';
@@ -11374,11 +11374,11 @@ try {
     reset();
     state.tool='select';
     state.editing=null;
-    const T2=Shape.make('text',{x:100,y:100,w:80,h:40,text:'k'});
-    Store.commit({op:'add',shape:T2});
+    const CY2=Shape.make('text',{x:100,y:100,w:80,h:40,text:'k'});
+    Store.commit({op:'add',shape:CY2});
     Store.commit({op:'add',shape:Shape.make('frame',{x:0,y:0,w:400,h:300})});
     Store.commit({op:'add',shape:Shape.make('frame',{x:500,y:0,w:400,h:300})});
-    state.selection=new Set([T2.id]);
+    state.selection=new Set([CY2.id]);
     Presentation.enter();
     fireKey('Enter');
     assert.strictEqual(state.editing,null,'presentation swallows the Enter edit key');
@@ -11467,6 +11467,27 @@ try {
     assert.strictEqual(state.shapes[state.shapes.length-1].id,z1.id,'⇧] brings to front');
     fireKey('[',{shiftKey:true});
     assert.strictEqual(state.shapes[0].id,z1.id,'⇧[ sends to back');
+    // Tab/⇧Tab cycles the selection in z-order through _ulv shapes only (ADR-0163):
+    // hidden and locked shapes are unreachable by keyboard cycling
+    reset();
+    state.tool='select';
+    const TB1=Shape.make('rect',{x:10,y:10,w:20,h:20});
+    const TB2=Shape.make('rect',{x:60,y:10,w:20,h:20});
+    const TB3=Shape.make('rect',{x:110,y:10,w:20,h:20});
+    Store.commit({op:'add',shape:TB1});Store.commit({op:'add',shape:TB2});Store.commit({op:'add',shape:TB3});
+    const tb1=state.shapes[0],tb2=state.shapes[1],tb3=state.shapes[2];
+    tb3.visible=0;                       // hidden: unreachable by Tab
+    fireKey('Tab');
+    assert.strictEqual([...state.selection][0],tb1.id,'Tab selects the first cycleable shape');
+    fireKey('Tab');
+    assert.strictEqual([...state.selection][0],tb2.id,'Tab advances in z-order');
+    fireKey('Tab');
+    assert.strictEqual([...state.selection][0],tb1.id,'Tab wraps past the hidden shape');
+    fireKey('Tab',{shiftKey:true});
+    assert.strictEqual([...state.selection][0],tb2.id,'⇧Tab cycles backwards');
+    tb2.locked=1;
+    fireKey('Tab',{shiftKey:true});
+    assert.strictEqual([...state.selection][0],tb1.id,'⇧Tab skips the locked shape');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -11478,7 +11499,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1228; // prev 1219 + 9 event-sequence asserts (ADR-0641: ⌥arrow resize + [/] z-order)
+  pass += 1234; // prev 1228 + 6 event-sequence asserts (ADR-0641: Tab/⇧Tab cycle)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
