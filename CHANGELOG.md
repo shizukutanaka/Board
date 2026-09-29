@@ -1,3 +1,11 @@
+## [1.7.764] - 2026-09-29
+
+### Fixed
+- ADR-0738: the 8192-entry wclock flood cap wiped tombstones along with prop
+  clocks — under hostile flood a stale in-flight 'add' could resurrect deleted
+  shapes again. The cap now preserves `{_del}` entries (existence state is not
+  self-healing) and drops only prop clocks (which are)
+
 ## [1.7.763] - 2026-09-29
 
 ### Fixed

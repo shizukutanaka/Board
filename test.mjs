@@ -6895,6 +6895,20 @@ try {
     state._lastTs=0; B.state._lastTs=0;
     console.log('  ✓ ADR-0737: _recordCommitted tombs local-import removed ids');
 
+    // ADR-0738: the 8192 wclock flood cap used to wipe EVERYTHING — tombs
+    // included — reopening stale-add resurrection under adversarial flood.
+    // Keep {_del} entries; prop clocks self-heal via later writes.
+    reset(A); reset(B);
+    B.state.wclock.tk1={_del:{peer:'peerX',seq:1,ts:100}};
+    for(let i=0;i<8192;i++)B.state.wclock['f'+i]={x:{peer:'peerY',seq:i,ts:1}};
+    B.Net._onRecv({k:'op',op:{op:'del',shapes:[{id:'none',type:'rect',x:0,y:0,w:1,h:1,z:1}],clock:{peer:'peerA',seq:1,ts:2}}});
+    assert.ok(B.state.wclock.tk1&&B.state.wclock.tk1._del.ts===100,'ADR-0738: flood cap preserves delete tombstones');
+    assert.ok(!B.state.wclock.f0,'ADR-0738: flood cap drops self-healing prop clocks');
+    B.Net._onRecv({k:'op',op:{op:'add',shape:{id:'tk1',type:'rect',x:0,y:0,w:10,h:10,z:1},clock:{peer:'peerX',seq:2,ts:50}}});
+    assert.ok(!B.state.shapes.find(s=>s.id==='tk1'),'ADR-0738: post-cap tomb still drops a stale add');
+    state._lastTs=0; B.state._lastTs=0;
+    console.log('  ✓ ADR-0738: wclock flood cap preserves tombstones');
+
     // resize/align now LWW too (ADR-0002 follow-up): whole-shape snapshot ops gate/stamp
     // only the keys they actually changed (diff before/after). (i) concurrent resize of
     // the SAME geometry converges to the newer writer.
@@ -13531,7 +13545,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1681; // prev 1678 + 3 ADR-0737 behavioural
+  pass += 1684; // prev 1681 + 3 ADR-0738 behavioural
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
