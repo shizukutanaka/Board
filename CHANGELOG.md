@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.643]
+### Fixed
+- ローカルの 'replace' commit (共有リンク/.board 取込) が `_recordCommitted` 経由で `_apply` を通らず `_lastRep` marker が立たず、直後に届く古いリモート全置換が棄却されず全ピアが発散する問題を修正 — `_recordCommitted` で marker を記録 (ADR-0616)。
+
 ## [1.7.642]
 ### Fixed
 - 'replace' (共有リンク/.board 取込の全置換) の undo がピアへ伝播せず、undo した側だけ旧盤面へ戻り永久に発散する問題を修正 — `_undoWire` が `{op:'replace',after:op.before,afterWc:op.wc}` を返し、ADR-0614 の新 clock 勝者規則で全ピアが復元盤面へ収束。undo/redo の `_lastRep` marker も新 clock へ進めローカル/リモートの不一致を防止 (ADR-0615)。
