@@ -246,6 +246,7 @@ const checks = [
   ["snapshot carries rep marker + stale-snapshot skip (ADR-0617)", html.includes("rep:state._lastRep") && html.includes("clockNewer(state._lastRep,msg.rep))break;")],
   ["snapshot docName is LWW-gated via nameTs (ADR-0618)", html.includes("nameTs:_nameTs") && html.includes("msg.nameTs>_nameTs")],
   ["Net.init resets causal markers across rooms (ADR-0619)", html.includes("state._lastRep=null;_nameTs=0;")],
+  ["move commit drops ids removed mid-gesture (ADR-0621)", html.includes("filter(id=>{const s=byId(id);return s&&_ul(s)})")],
   ['applyRemote validates remote add shape', html.includes("case 'add':    return validShape(op.shape)")],
   ['SVG export uses testable buildSVG', html.includes("function buildSVG") && html.includes("buildSVG(shapes")],
   ['SVG attrs escaped via _esc', html.includes("stroke=\"${stroke}\"") && html.includes("_esc(_fi(s))")],
@@ -1651,7 +1652,7 @@ try {
              _onBtnInstall, _getInstallPrompt: () => _installPrompt, _setInstallPrompt: (v) => { _installPrompt = v; },
              _onSwUpdate, _ctxMenuKeyNav,
              _getPasteCount: () => _pasteCount, _resetPasteClipboard: () => { _lastClipboard = null; },
-             endRectLike, endLineLike, I18N, applyTheme, editSelectedShapeKbd, Share,
+             endRectLike, endLineLike, endSelect, I18N, applyTheme, editSelectedShapeKbd, Share,
              draw, drawOverlay, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; }, _setOCtx: (c) => { const p = octx; octx = c; return p; },
              _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, 
              _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
@@ -1678,7 +1679,7 @@ try {
           _onBtnInstall, _getInstallPrompt, _setInstallPrompt,
           _onSwUpdate, _ctxMenuKeyNav,
           _getPasteCount, _resetPasteClipboard,
-          endRectLike, endLineLike, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
+          endRectLike, endLineLike, endSelect, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
           _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, 
           _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER } = api;
@@ -1978,6 +1979,22 @@ try {
     clearInterval(Net._presenceTimer);
     if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}
     console.log('  ✓ Net.init resets _lastRep/_nameTs across rooms (ADR-0619)');
+  }
+  // ADR-0621: a shape removed mid-gesture (remote del/replace) must not ride the
+  // move commit — byId is null there, and a phantom op would land in history +
+  // broadcast as noise (peers no-op it, so converged but polluted).
+  {
+    state.shapes.length=0;_invalidateGrid();state.history.length=0;state.histIdx=-1;
+    const mv1=Shape.make('rect',{x:0,y:0,w:10,h:10}),mvDead=Shape.make('rect',{x:50,y:0,w:10,h:10});
+    state.shapes.push(mv1,mvDead);_invalidateGrid();
+    ptr.down=true;ptr.dragKind='move';ptr.wx0=0;ptr.wy0=0;
+    ptr.dragStartShapes=new Map([[mv1.id,JSON.parse(JSON.stringify(mv1))],[mvDead.id,JSON.parse(JSON.stringify(mvDead))]]);
+    state.shapes.splice(state.shapes.findIndex(s=>s.id===mvDead.id),1);_invalidateGrid();   // remote del mid-gesture
+    endSelect({x:10,y:0},false,true);
+    const mvOp=state.history[state.history.length-1];
+    assert.deepStrictEqual(mvOp.ids,[mv1.id],'dead id dropped from move commit');
+    ptr.down=false;ptr.dragKind=null;ptr.dragStartShapes=null;state.guides=null;
+    console.log('  ✓ move commit drops ids removed mid-gesture (ADR-0621)');
   }
 
   // applyRemote does NOT enter local undo stack
@@ -11045,7 +11062,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1140; // prev 1122 + undo-wire 'replace' pins (4, ADR-0615)
+  pass += 1142; // prev 1140 + move-commit dead-id drop (1 assert + 1 pin, ADR-0621)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

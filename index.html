@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.647';   // ADR-0620
+const V='1.7.648';   // ADR-0621
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -5137,7 +5137,7 @@ function endSelect(wp,shift,alt){
   if(_dk('move')&&ptr.dragStartShapes){
     const{dx,dy}=moveDelta(wp,shift,alt);
     state.guides=null;
-    const mids=[...ptr.dragStartShapes.keys()].filter(id=>!byId(id)?.locked);
+    const mids=[...ptr.dragStartShapes.keys()].filter(id=>{const s=byId(id);return s&&_ul(s)});   // ADR-0621: dead ids must not ride the commit — remote del/replace mid-gesture leaves byId null, and a phantom move op would land in history + broadcast as noise (peers no-op it, so converged but polluted)
     if(_hp(dx,dy)>0.5&&_ln(mids)){
       _rcOp({op:'move',ids:mids,dx,dy});
       if(_dd()&&mids.every(id=>state.dupIds.has(id))){_dd().x+=dx;_dd().y+=dy}   // ADR-0080

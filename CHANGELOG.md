@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.648]
+### Fixed
+- ジェスチャ中に remote del/clear/replace で消えた図形が `move` コミットに残り、phantom history エントリ + 無意味なピア送信が発生していた問題を修正 — コミット集合を「生存 + 非ロック」で構成 (`_gresizeCommit`/`_grotCommit` と同じ整合) (ADR-0621)。
+
 ## [1.7.647]
 ### ドキュメント
 - architecture.md の wire ライフサイクル節に 'replace' 収束系 (`_lastRep` 全順序 marker・snapshot `rep`/`nameTs` 因果順序・undo 再ブロードキャスト) を同期し、ルーム切替 hygiene の持ち越し禁止リストに causal marker を追記 (ADR-0620)。
