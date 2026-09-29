@@ -2150,6 +2150,24 @@ try {
     assert.strictEqual(Net._imgPending.has(s3.id),false,'pending entry cleared');
     console.log('  ✓ img blob resolves evicted + pending shapes (ADR-0629)');
   }
+  // ADR-0752: a remote pageAdd's member shapes ride Net._attachShape — an img ref
+  // parks in _imgPending (or resolves immediately when the blob already arrived).
+  // Regression would leave images broken on duplicated/imported/remote pages.
+  {
+    state.pages=null;state.curPg=null;state.shapes.length=0;_invalidateGrid();
+    Net._imgPending.clear();Net._imgIn.clear();
+    const im1=Shape.make('image',{x:0,y:0,w:10,h:10,img:'kk9'});
+    Store.applyRemote({op:'pageAdd',id:'pI',name:'I',shapes:[JSON.parse(JSON.stringify(im1))],clock:{peer:'zz',seq:41,ts:9}});
+    const g1=byId(im1.id);
+    assert.ok(g1&&g1.pg==='pI','pageAdd member lands on its page');
+    assert.strictEqual(Net._imgPending.get(im1.id),'kk9','unresolved img parks via _attachShape');
+    Net._imgIn.set('kk8','data:image/png;base64,CC');
+    const im2=Shape.make('image',{x:0,y:0,w:10,h:10,img:'kk8'});
+    Store.applyRemote({op:'pageAdd',id:'pJ',name:'J',shapes:[JSON.parse(JSON.stringify(im2))],clock:{peer:'zz',seq:42,ts:9}});
+    assert.strictEqual(byId(im2.id).dataUrl,'data:image/png;base64,CC','blob already present → dataUrl resolved');
+    assert.strictEqual(byId(im2.id).img,undefined,'resolved ref dropped');
+    console.log('  ✓ pageAdd member attach pins img parking + resolution (ADR-0752)');
+  }
 
   // applyRemote does NOT enter local undo stack
   const histLen = state.history.length;
@@ -13693,7 +13711,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1705; // prev 1701 + 3 ADR-0748 + 1 ADR-0749 page-adopt asserts
+  pass += 1710; // prev 1705 + 5 ADR-0752 pageAdd-attach asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

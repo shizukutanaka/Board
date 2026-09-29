@@ -800,6 +800,7 @@ Board/
 │   └── ADR-0749-pgadopt-sel-revalidate.md  # _pgAdopt で選択を _pgOk 再検証 (実装済)
 │   └── ADR-0750-pgadopt-sr-announce.md  # _pgAdopt でページ切替を SR アナウンス (実装済)
 │   └── ADR-0751-page-transition-audit.md  # ページ遷移不変条件の監査完走 (ドキュメント化)
+│   └── ADR-0752-pageadd-member-attach.md  # リモート pageAdd のメンバー図形は _attachShape 経由 (ピン)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

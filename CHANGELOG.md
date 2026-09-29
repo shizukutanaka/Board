@@ -1,3 +1,10 @@
+## [1.7.778] - 2026-09-28
+
+### Tests
+- ADR-0752: pin that remote pageAdd member shapes ride Net._attachShape —
+  unresolved img refs park in _imgPending, already-arrived blobs resolve
+  to dataUrl immediately (a dropped attach leaves page images broken)
+
 ## [1.7.777] - 2026-09-28
 
 ### Docs
