@@ -245,6 +245,7 @@ const checks = [
   ["_recordCommitted sets _lastRep for local 'replace' (ADR-0616)", html.includes("if(op.op==='replace')state._lastRep=op.clock;   // ADR-0616")],
   ["snapshot carries rep marker + stale-snapshot skip (ADR-0617)", html.includes("rep:state._lastRep") && html.includes("clockNewer(state._lastRep,msg.rep))break;")],
   ["snapshot docName is LWW-gated via nameTs (ADR-0618)", html.includes("nameTs:_nameTs") && html.includes("msg.nameTs>_nameTs")],
+  ["Net.init resets causal markers across rooms (ADR-0619)", html.includes("state._lastRep=null;_nameTs=0;")],
   ['applyRemote validates remote add shape', html.includes("case 'add':    return validShape(op.shape)")],
   ['SVG export uses testable buildSVG', html.includes("function buildSVG") && html.includes("buildSVG(shapes")],
   ['SVG attrs escaped via _esc', html.includes("stroke=\"${stroke}\"") && html.includes("_esc(_fi(s))")],
@@ -1963,6 +1964,20 @@ try {
     assert.strictEqual(state.docName,'NewerName','newer snapshot name adopted');
     state.shapes.length=0;
     console.log('  ✓ snapshot docName is LWW-gated (ADR-0618)');
+  }
+  // ADR-0619: causal markers are wire-domain state — Net.init must reset them
+  // or the new room's snapshots/renames get rejected as 'stale' forever.
+  {
+    state._lastRep={peer:'me',seq:9,ts:9e9};
+    Net._onRecv({k:'name',name:'X',ts:9e9,peer:'sp'},false);   // bump _nameTs
+    Net.init('roomX');
+    assert.strictEqual(state._lastRep,null,'swap marker reset on room switch');
+    state.docName='KeepName';
+    Net._onRecv({k:'name',name:'RoomName',ts:1,peer:'sp'},false);
+    assert.strictEqual(state.docName,'RoomName','rename clock reset — small ts applies');
+    clearInterval(Net._presenceTimer);
+    if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}
+    console.log('  ✓ Net.init resets _lastRep/_nameTs across rooms (ADR-0619)');
   }
 
   // applyRemote does NOT enter local undo stack
@@ -11030,7 +11045,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1136; // prev 1122 + undo-wire 'replace' pins (4, ADR-0615)
+  pass += 1140; // prev 1122 + undo-wire 'replace' pins (4, ADR-0615)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
