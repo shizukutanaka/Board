@@ -1587,13 +1587,15 @@ const fakeDoc = {
   documentElement: { setAttribute(){}, getAttribute(){}, dataset:{} },
   querySelectorAll: () => [],
   querySelector: () => ({style:{display:'',removeProperty(){},setProperty(){}}, hidden:false}),
-  addEventListener(){},
+  _L: {},
+  addEventListener(t, f, o){ (this._L[t + (o && o.capture ? '|c' : '')] ||= []).push(f); },
   title: '',
   activeElement: null,
 };
 const fakeWin = {
   devicePixelRatio: 1, innerWidth: 800, innerHeight: 600,
-  addEventListener(){}, removeEventListener(){},
+  _L: {},
+  addEventListener(t, f, o){ (this._L[t + (o && o.capture ? '|c' : '')] ||= []).push(f); }, removeEventListener(){},
   requestAnimationFrame: (fn) => 0,
   setTimeout, clearTimeout, setInterval: () => 0, clearInterval,
   location: { hash: '', origin: 'http://test', pathname: '/index.html' },
@@ -11185,7 +11187,35 @@ try {
     assert.ok(!ptr.down,'right-button PD does not arm ptr.down');
     fire('pointerup',50,50);
     assert.strictEqual(state.shapes.length,0,'no phantom shape from right-click');
+    // keydown through the real window listener: tool keys, ⌘Z undo, Esc cancels
+    const fireKey=(key,o={})=>{
+      const ev={key,ctrlKey:false,metaKey:false,shiftKey:false,altKey:false,
+        isComposing:false,target:{matches:()=>false},preventDefault(){},stopPropagation(){},...o};
+      for(const f of fakeWin._L['keydown|c']||[])f(ev);
+      for(const f of fakeWin._L['keydown']||[])f(ev);
+      return ev;
+    };
+    reset();
+    fireKey('p');
+    assert.strictEqual(state.tool,'pen',"real keydown 'p' selects the pen tool");
+    fireKey('v');
+    assert.strictEqual(state.tool,'select',"real keydown 'v' selects the select tool");
+    const R2=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    Store.commit({op:'add',shape:R2});
+    fireKey('z',{metaKey:true});
+    assert.strictEqual(state.shapes.length,0,'real ⌘Z undoes through the key handler');
+    // Esc mid-drag cancels AND restores the pre-gesture position (ADR-0094);
+    // pen strokes keep ptr.down without dragKind by design (stroke is live-committed at PU)
+    const R3=Shape.make('rect',{x:100,y:100,w:50,h:50});
+    Store.commit({op:'add',shape:R3});
+    state.selection=new Set([R3.id]);
+    fire('pointerdown',120,120);
+    fire('pointermove',160,150);
+    fireKey('Escape');
+    assert.ok(!ptr.down,'real Escape cancels the in-flight drag');
+    assert.ok(Math.abs(byId(R3.id).x-100)<1e-6,'Escape restores the pre-gesture position');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
+    console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
   }
 
   console.log('\n✓ All behavioural tests passed');
@@ -11194,7 +11224,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1177; // prev 1168 + 9 pointer-sequence asserts (ADR-0641)
+  pass += 1182; // prev 1168 + 14 event-sequence asserts (ADR-0641)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
