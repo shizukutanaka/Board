@@ -869,6 +869,7 @@ Board/
 │   └── ADR-0818-listener-raf-audit.md  # リスナ・rAF スロット監査完走 — 一回性/GC/once 再アーム/代入差し替え/単一アーム
 │   └── ADR-0819-storage-quota-audit.md  # storage・quota・img 送信キュー監査完走 — drain/room 切替/quota toast/estimate catch
 │   └── ADR-0820-misc-lifecycle-audit.md  # RTC/history/img queue/pinch/fonts 残余監査完走 + spec backlog 空を確認
+│   └── ADR-0821-rtc-presence-pin.md  # Net.init の rtc: presence 維持不変を behavioural pin で固定
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

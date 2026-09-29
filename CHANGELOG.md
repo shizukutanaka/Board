@@ -1,3 +1,8 @@
+## [1.7.847] - 2026-09-29
+
+### Test
+- ADR-0821: `Net.init` の `rtc:` presence 維持不変を behavioural pin で固定 — room 切替でも live WebRTC link が落ちないことを実検証
+
 ## [1.7.846] - 2026-09-29
 
 ### Docs

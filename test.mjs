@@ -2068,6 +2068,21 @@ try {
     if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}
     console.log('  ✓ Net.init resets _lastRep/_nameTs across rooms (ADR-0619/0695)');
   }
+  // ADR-0820: Net.init preserves 'rtc:' presence rows — the WebRTC link is a
+  // manual 1:1 invite pair that deliberately survives a BroadcastChannel room
+  // switch; only BC presence gets swept.
+  {
+    state.roomId='roomA';
+    state.peers.set('rtc:xyz',{color:'#111',lastSeen:Date.now()});
+    state.peers.set('peerQ',{color:'#222',lastSeen:Date.now()});
+    Net.init('roomB');
+    assert.ok(state.peers.has('rtc:xyz'),'rtc: row survives the room switch');
+    assert.ok(!state.peers.has('peerQ'),'BC-only row dropped on room switch');
+    state.peers.delete('rtc:xyz');
+    clearInterval(Net._presenceTimer);
+    if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}
+    console.log('  ✓ Net.init preserves rtc: presence across rooms (ADR-0820)');
+  }
   // ADR-0699: docName renames order on (ts, writer-peer) — equal-ts concurrent
   // renames must pick one winner on every peer, not diverge on strict >.
   {
