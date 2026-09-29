@@ -757,7 +757,8 @@ Board/
 │   ├── ADR-0706-arch-sync-pagewire.md  # architecture.md へ改名/削除収束規則を同期 (実装済)
 │   ├── ADR-0707-pagedel-del-parity.md  # pageDel の locked 生存 + connClears 束縛解除 (実装済)
 │   ├── ADR-0708-pageadd-member-pg.md  # remote pageAdd メンバーの pg を op.id へ正規化 (実装済)
-│   └── ADR-0709-editor-fold-offpage.md  # 編集中図形の off-page 化で overlay を畳む (実装済)
+│   ├── ADR-0709-editor-fold-offpage.md  # 編集中図形の off-page 化で overlay を畳む (実装済)
+│   └── ADR-0710-arch-sync-pgparity.md  # architecture.md へ pageDel parity/member-pg/fold 規則を同期 (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

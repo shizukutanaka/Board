@@ -543,6 +543,14 @@ pen/line/arrow は点ジオメトリで box 中心が無く回転中心が NaN �
 - **wire は適用フィールドのみ**: pageDel → `{id,clock}`、pageName →
   `{id,after,clock}` — メンバー/i/name/undo-domain は受信側が再計算するため
   dead weight (0705)
+- **pageDel は 'del' parity**: locked メンバーは除去せず `firstId` へ再帰属
+  (空集合経路では un-paged → `_pgHealS`)、結合コネクタは
+  `computeConnClears` で端点凍結+`op.connClears` 記録 (backward は
+  `before` 復元、undo-wire はピアへ `upd{before}` で再結合) (0707)
+- **pageAdd のメンバーは `pg=op.id` 強制**: wire `shapes` の `pg` を信頼しない
+  — op が帰属を定義し全ピアで同値正規化 (0708)
+- **編集 overlay は off-page で畳む**: `_teFollow`/`_lblFollow` の畳み条件に
+  `!_pgOk` — remote `upd{pg}` の再帰属で不可視図形へ沈黙入力しない (0709)
 
 ## 今後
 

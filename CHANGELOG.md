@@ -1,3 +1,10 @@
+## [1.7.736] - 2026-09-29
+
+### Docs
+- ADR-0710: architecture.md multi-page convergence rules synced with
+  ADR-0707–0709 (pageDel del-parity, member pg normalization, off-page
+  editor fold)
+
 ## [1.7.735] - 2026-09-29
 
 ### Fixed
