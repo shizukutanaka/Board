@@ -742,7 +742,7 @@ const checks = [
   ['label overlay closes when labelled shape removed/hidden/locked/off-page (ADR-0559/0569/0572/0709)', html.includes("if(!_lt||_hd(_lt)||_lk(_lt)||!_pgOk(_lt)){_rm(_lblTa.inp);_lblTa=null;return}")],
   ['peer selection outlines skip hidden shapes (ADR-0576)', html.includes("const s=byId(id);if(!s||_hd(s)||!_pgOk(s))continue")],
   ['fragIn ignores duplicate seq slots (ADR-0578)', html.includes("if(!sn.p[seq]){sn.p[seq]=msg.data;sn.g++;sn.b=(sn.b||0)+_ln(msg.data)}")],
-  ['_dcQ requeue queue is capped at 4096 (ADR-0578)', html.includes("_ln(q)<4096&&_pu(q,m)")],
+  ['_dcQ requeue queue is capped at 4096 (ADR-0578)', html.includes("if(_ln(q)<4096&&(this._dcQB||0)+_ln(m)<=33554432)")],
   ['Presentation.enter folds open editor first (ADR-0582)', html.includes("function enter(){\n    _cxO();")],
   ['editors close a still-open overlay first (ADR-0560)', html.includes("const _cxO=()=>{if(_teTa)_teTa.blur();if(_lblTa)_lblTa.inp.blur()}")],
   ['resize resets overlay follow sigs (ADR-0561)', html.includes("_teVp=_lblVp=''")],
@@ -14017,6 +14017,23 @@ try {
     assert.strictEqual(Net._snapIn,null,'normal 1-chunk snap completes and clears');
     console.log('  ✓ frag reassembly aborts at the joined cap mid-flight (ADR-0782)');
   }
+  // ADR-0783: _dcQ's only bound was the 4096-message count — with ≤256KB
+  // messages a stalled channel could queue ~1GB. The queue now also caps at
+  // 32MB of string bytes (one max 'snap' burst is ~24MB, so legit bursts pass).
+  {
+    const od=Net.dc;
+    Net.dc={readyState:'open',send(){throw new Error('full')}};
+    Net._dcQ=null;Net._dcQB=0;
+    const big='x'.repeat(200000);
+    Net._sendDC(big);   // send throws → queue starts (first msg + its bytes)
+    for(let i=0;i<300;i++)Net._sendDC(big);
+    assert.ok(Net._dcQ.length<=167,'byte cap stops the queue far below the 4096 count cap');
+    const qLen=Net._dcQ.length;
+    Net._sendDC(big);Net._sendDC(big);
+    assert.strictEqual(Net._dcQ.length,qLen,'messages past the byte cap are dropped');
+    Net._dcQ=null;Net._dcQB=0;Net.dc=od;
+    console.log('  ✓ _dcQ bounded by bytes as well as count (ADR-0783)');
+  }
 
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
@@ -14024,7 +14041,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1766; // prev 1763 + 3 ADR-0782 frag reassembly early-abort asserts
+  pass += 1768; // prev 1766 + 2 ADR-0783 _dcQ byte-cap asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

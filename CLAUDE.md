@@ -831,6 +831,7 @@ Board/
 │   └── ADR-0780-snapshot-namepeer-cap.md  # スナップショット namePeer/復元 ntp に 64 キャップ (永続化肥大閉塞)
 │   └── ADR-0781-img-reassembly-byte-cap.md  # img 再組立て中間バイト 12MB 早期中断
 │   └── ADR-0782-fragin-reassembly-byte-cap.md  # snap/opc 再組立て中間バイト 24MB 早期中断
+│   └── ADR-0783-dcq-byte-cap.md  # _dcQ 送信キューに 32MB バイト上限
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
