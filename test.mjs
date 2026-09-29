@@ -14352,6 +14352,25 @@ try {
     console.log('  ✓ _placeCopies lands copies on the viewed page (ADR-0833)');
   }
 
+  // ADR-0834: a remote pageAdd rejected at the 64-page cap used to still push
+  // its member shapes with pg=op.id — invisible shapes pointing at a page we
+  // don't have, unhealable because _pgHealS won't stub past the cap either.
+  // Members now apply only when the page actually landed.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.pages=Array.from({length:64},(_,i)=>({id:'pp'+i,name:'P'+i,nts:0}));state.curPg='pp0';
+    const member={id:'m65',type:'rect',x:0,y:0,w:10,h:10,z:1};
+    Store.applyRemote({op:'pageAdd',id:'p65',name:'P65',shapes:[member],clock:{peer:'r1',seq:1,ts:1}});
+    assert.ok(!state.pages.find(p=>p.id==='p65'),'pageAdd over the 64 cap is dropped');
+    assert.ok(!byId('m65'),'dropped pageAdd leaves no invisible member shapes');
+    // and the page that DOES land keeps its members
+    state.pages=[{id:'pp0',name:'P0',nts:0}];state.curPg='pp0';
+    Store.applyRemote({op:'pageAdd',id:'pOk',name:'POk',shapes:[{id:'mOk',type:'rect',x:0,y:0,w:10,h:10,z:1}],clock:{peer:'r1',seq:2,ts:2}});
+    assert.ok(byId('mOk')&&byId('mOk').pg==='pOk','landed pageAdd keeps its members');
+    state.shapes=[];_invalidateGrid();state.pages=null;state.curPg=null;
+    console.log('  ✓ over-cap pageAdd drops its members too (ADR-0834)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
   // asserts but actually contains 6 (recounted directly: at1.length, at2.length, and 4
