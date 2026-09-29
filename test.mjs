@@ -796,7 +796,7 @@ const checks = [
   ['drawio visible=0 attr round-trips s.visible===0 (ADR-0245)', html.includes("_hd(s)?' visible=\"0\"':'")&&html.includes("_ga(c,'visible')==='0'")],
   ['drawio shadow=1 round-trips s.shadow (ADR-0246)', html.includes("r+='shadow=1;'")&&html.includes("sty.shadow==='1'")],
   ['drawio fontColor ↔ text/sticky s.stroke (ADR-0247)', html.includes("sty+='fontColor='+_sk(s)")&&html.includes("sty.fontColor!=='none'")],
-  ['visualViewport.resize re-runs canvas resize for iOS chrome (ADR-0251)', html.includes("_on(visualViewport,'resize',resize)")],
+  ['visualViewport.resize re-runs canvas resize for iOS chrome (ADR-0251, debounced ADR-0631)', html.includes("_on(visualViewport,'resize',_resizeSoon)")],
   ['drawio sticky fillColor ↔ s.color (ADR-0279)', html.includes("(_coo(s)||_YW)")],
   ['svg shadow parity rect/ellipse/sticky/pen (ADR-0278)', (html.match(/\$\{_sh\}/g)||[]).length>=11],
   ['excalidraw fillStyle dots → hatch (ADR-0277)', html.includes("e.fillStyle==='dots'")],
