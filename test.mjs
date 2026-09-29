@@ -12264,6 +12264,26 @@ try {
         assert.ok(state.shapes.length===1&&state.shapes[0].type==='image'&&state.shapes[0].w>0,'a dropped image file decodes and adds an image shape (ADR-0022)');
       }finally{globalThis.Image=_IM}
     }finally{globalThis.FileReader=_FR}
+    // selection presence broadcast + peer reaping (ADR-0011 / peer lifecycle)
+    reset();
+    state.peers.set('fake-peer',{lastSeen:Date.now()});
+    const sent3=[];const _snSave3=Net._send;Net._send=function(m){sent3.push(m)};
+    const PSEL=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    Store.commit({op:'add',shape:PSEL});
+    state.selection.add(PSEL.id);
+    Net._lastSelSent=null;
+    Net.sendSelectionIfChanged();
+    assert.ok(sent3.some(m=>m&&m.k==='selection'&&Array.isArray(m.ids)&&m.ids.includes(PSEL.id)),'selection change broadcasts a selection op to peers (ADR-0011)');
+    sent3.length=0;
+    Net.sendSelectionIfChanged();
+    assert.strictEqual(sent3.length,0,'an unchanged selection is not re-broadcast');
+    Net._send=_snSave3;
+    state.peers.set('stale-peer',{lastSeen:0});
+    state.peers.set('rtc:abc',{lastSeen:0});
+    state.peers.set('fresh-peer',{lastSeen:Date.now()});
+    Net._reapPeers();
+    assert.ok(!state.peers.has('stale-peer')&&state.peers.has('rtc:abc')&&state.peers.has('fresh-peer'),'reaping removes only stale non-rtc peers');
+    state.peers.clear();
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -12275,7 +12295,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1401; // prev 1398 + 3 event-sequence asserts (ADR-0641: drop file via FileReader/Image stub)
+  pass += 1404; // prev 1401 + 3 presence asserts (ADR-0011/0641: selection broadcast + reap)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
