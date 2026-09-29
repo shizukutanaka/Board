@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.644';   // ADR-0617
+const V='1.7.645';   // ADR-0618
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -8109,7 +8109,7 @@ const Net={
     const slim=this._slimShapes(ops.map(o=>o.shape),_mP());
     ops.forEach((o,i)=>o.shape=slim[i]);
     this._flushImgOuts();
-    return {k:'snapshot',shapes:slim,ops,peer:_pi(),name:_dn(),rep:state._lastRep};   // ADR-0617: the causal marker — receivers holding a newer swap must not merge pre-swap shapes back
+    return {k:'snapshot',shapes:slim,ops,peer:_pi(),name:_dn(),nameTs:_nameTs,rep:state._lastRep};   // ADR-0617/0618: causal markers — swap generation + rename clock
   },
   // ADR-0058: merge one snapshot add-op. Unkno
   // (unchanged); known shape → per-property LW
@@ -8167,7 +8167,7 @@ const Net={
     const valid=_s0(shapes,SHARE_MAX_SHAPES).map(s=>this._attachShape(s)).filter(validShape);   // ADR-0474
     _rs(clone(valid));   // ADR-0009
     _sz();
-    if(_iS(msg.name))_setDocName(_s0(msg.name,80));   // ADR-0402
+    if(_iS(msg.name)&&(_iN(msg.nameTs)?msg.nameTs>_nameTs:!0)){if(_iN(msg.nameTs))_nameTs=msg.nameTs;_setDocName(_s0(msg.name,80));}   // ADR-0618: renames are LWW — a stale snapshot's name can't clobber a newer local rename
     _iv();_ru();_ps();
   },
   _touchPeer(peerId){

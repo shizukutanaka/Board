@@ -244,6 +244,7 @@ const checks = [
   ["undo-wire swap advances _lastRep to the fresh clock (ADR-0615)", html.includes("if(w.op==='replace')state._lastRep=w.clock;") && html.includes("_fck(op);if(op.op==='replace')state._lastRep=op.clock;")],
   ["_recordCommitted sets _lastRep for local 'replace' (ADR-0616)", html.includes("if(op.op==='replace')state._lastRep=op.clock;   // ADR-0616")],
   ["snapshot carries rep marker + stale-snapshot skip (ADR-0617)", html.includes("rep:state._lastRep") && html.includes("clockNewer(state._lastRep,msg.rep))break;")],
+  ["snapshot docName is LWW-gated via nameTs (ADR-0618)", html.includes("nameTs:_nameTs") && html.includes("msg.nameTs>_nameTs")],
   ['applyRemote validates remote add shape', html.includes("case 'add':    return validShape(op.shape)")],
   ['SVG export uses testable buildSVG', html.includes("function buildSVG") && html.includes("buildSVG(shapes")],
   ['SVG attrs escaped via _esc', html.includes("stroke=\"${stroke}\"") && html.includes("_esc(_fi(s))")],
@@ -1946,6 +1947,22 @@ try {
     assert.strictEqual(state._lastRep,newer,'snapshot marker adopted');
     state._lastRep=null;state.shapes.length=0;state.seenOps=new Set();
     console.log('  ✓ snapshot rep marker orders merges vs swaps (ADR-0617)');
+  }
+  // ADR-0618: the snapshot's docName is LWW too — a stale snapshot assembled
+  // before a local rename must not clobber it; a newer snapshot adopts its ts.
+  {
+    state.shapes.length=0;state._lastRep=null;state.seenOps=new Set();
+    const s1=Shape.make('rect',{id:'x2',x:0,y:0,w:10,h:10});
+    // a rename clock newer than the snapshot's already stands locally
+    Net._onRecv({k:'name',name:'LocalNew',ts:1000,peer:'sp'},false);
+    Net._onRecv({k:'snapshot',shapes:[s1],ops:[],peer:'sp',name:'OldName',nameTs:1},false);
+    assert.strictEqual(state.docName,'LocalNew','stale snapshot name rejected');
+    const big=Date.now()+1e6;
+    state.shapes.length=0;   // name adoption lives on the empty-board path
+    Net._onRecv({k:'snapshot',shapes:[s1],ops:[],peer:'sp',name:'NewerName',nameTs:big},false);
+    assert.strictEqual(state.docName,'NewerName','newer snapshot name adopted');
+    state.shapes.length=0;
+    console.log('  ✓ snapshot docName is LWW-gated (ADR-0618)');
   }
 
   // applyRemote does NOT enter local undo stack
@@ -11013,7 +11030,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1133; // prev 1122 + undo-wire 'replace' pins (4, ADR-0615)
+  pass += 1136; // prev 1122 + undo-wire 'replace' pins (4, ADR-0615)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
