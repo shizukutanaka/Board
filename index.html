@@ -875,7 +875,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.838';   // ADR-0812
+const V='1.7.839';   // ADR-0813
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -10434,7 +10434,7 @@ if('serviceWorker' in navigator){
       }));
     });`;
   const bl=new Blob([sw],{type:'text/javascript'});
-  navigator.serviceWorker.register(_oURL(bl)).catch(()=>{});
+  const _swu=_oURL(bl);navigator.serviceWorker.register(_swu).then(()=>URL.revokeObjectURL(_swu),()=>URL.revokeObjectURL(_swu));
   // v1.6.93: SW update notification. skipWaiting()+clients.claim() in the SW means a
   // new version activates immediately, but the
   // controllerchange (fires when a new SW take
