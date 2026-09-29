@@ -904,7 +904,7 @@ const checks = [
   ['conn label honours lineH canvas+SVG (ADR-0212)', html.includes('llh=fs*(s.lineH||1.25)')&&html.includes('lh2=fs*(s.lineH||1.25)')],
   ['pin/unpin anchor via ctx for touch/keyboard (ADR-0213)', html.includes('function pinAnchor()')&&html.includes("['ctxPinAnchor','',pinAnchor]")&&html.includes('px=k===\'a\'?e.x1:e.x2')],
   ["presence msgs carry curPg; peers on another page are not drawn (ADR-0647)",
-    html.includes("_mk('cursor',{x:wp.x,y:wp.y,pg:state.curPg})")&&html.includes("_mk('selection',{ids,pg:state.curPg})")&&html.includes("p.pg=_iS(msg.pg)?_s0(msg.pg,64):null")&&html.includes("if(_pgOn()&&p.pg&&p.pg!==state.curPg)continue")&&html.includes("return;Net.sendCursorHide();_cxO()")],
+    html.includes("_mk('cursor',{x:wp.x,y:wp.y,pg:state.curPg})")&&html.includes("_mk('selection',{ids,pg:state.curPg})")&&html.includes("p.pg=_iS(msg.pg)?_s0(msg.pg,64):null")&&html.includes("if(_pgOn()&&p.pg&&p.pg!==state.curPg)continue")&&html.includes("return;_cxO()")&&html.includes("state.curPg=id;Net.sendCursorHide()")],
   ['_bindAt grid-accelerated candidate scan (ADR-0214)', html.includes('const cands=[..._queryGrid(_grid,{x,y})]')&&html.includes('const ok=s=>{const t=s.type;return t!==\'line\'&&t!==\'arrow\'&&t!==\'pen\'&&_sv(s)&&_pgOk(s)}')],
   ['modal focus capture/restore + summary tabbable (ADR-0215)', html.includes('_captureFocus()')&&html.includes('this._restoreFocus()')&&html.includes('select,textarea,summary,[tabindex')],
   ['labelPos drag snaps to 0/.25/.5/.75/1 slots (ADR-0216)', html.includes('for(const slot of[0,0.25,0.5,0.75,1])')],
@@ -4643,6 +4643,11 @@ try {
       assert.ok(state.pages.length===64,'_pgDup caps at 64 (ADR-0688)');
       state.pages=null;state.curPg=null;
       console.log('  ✓ local page-op cap (2 asserts)');
+    }
+    // ADR-0689: cursorHide rides the NEW curPg on page switch
+    {
+      assert.ok(html.includes('state.curPg=id;Net.sendCursorHide()'),'cursorHide sent after curPg moves (ADR-0689)');
+      console.log('  ✓ switchPage pg-order pin (1 assert)');
     }
     // ADR-0673: per-page tab strip — direct jump, active tab renames
     {
@@ -12826,7 +12831,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1527; // prev 1517 + 1 tab aria-label pin (ADR-0682)
+  pass += 1528; // prev 1517 + 1 tab aria-label pin (ADR-0682)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
