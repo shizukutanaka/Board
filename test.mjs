@@ -248,6 +248,7 @@ const checks = [
   ["Net.init resets causal markers across rooms (ADR-0619)", html.includes("state._lastRep=null;_nameTs=0;")],
   ["move commit drops ids removed mid-gesture (ADR-0621)", html.includes("filter(id=>{const s=byId(id);return s&&_ul(s)})")],
   ["_sb drops dead ids at source + nudgeSelection parity (ADR-0623)", html.includes("_sb=()=>_selIds().map(byId).filter(Boolean)") && html.includes("unlockedSelectionIds(){return _selIds().filter(id=>{const s=byId(id);return s&&_ul(s)});}")],
+  ["_slimOp strips undo-only fields from wire ops (ADR-0625)", html.includes("const{origSel:_o2,moved:_m2,...rest}=op;return rest;") && html.includes("const{wc:_wc1,origSel:_o1,...r}=op;")],
   ['applyRemote validates remote add shape', html.includes("case 'add':    return validShape(op.shape)")],
   ['SVG export uses testable buildSVG', html.includes("function buildSVG") && html.includes("buildSVG(shapes")],
   ['SVG attrs escaped via _esc', html.includes("stroke=\"${stroke}\"") && html.includes("_esc(_fi(s))")],
@@ -2009,6 +2010,19 @@ try {
     assert.deepStrictEqual(nOp.ids,[n1.id],'dead id dropped from nudge ids');
     state.selection.clear();
     console.log('  ✓ nudgeSelection drops dead ids (ADR-0623)');
+  }
+  // ADR-0625: wc/origSel/moved are undo-domain — _slimOp strips them from the
+  // wire copy while preserving the fields peers actually consume.
+  {
+    const delOp={op:'del',shapes:[{id:'a'},{id:'b'}],connClears:[{id:'c'}],wc:{a:{x:1}},origSel:['a']};
+    const slim=Net._slimOp(delOp);
+    assert.strictEqual(slim.wc,undefined);assert.strictEqual(slim.origSel,undefined);
+    assert.ok(slim.connClears&&slim.shapes.length===2);
+    const mvOp={op:'move',ids:['a'],dx:1,dy:2,moved:['a'],origSel:['a']};
+    const slim2=Net._slimOp(mvOp);
+    assert.strictEqual(slim2.moved,undefined);assert.strictEqual(slim2.origSel,undefined);
+    assert.deepStrictEqual([slim2.dx,slim2.dy],[1,2]);
+    console.log('  ✓ _slimOp strips undo-only fields (ADR-0625)');
   }
 
   // applyRemote does NOT enter local undo stack
@@ -11076,7 +11090,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1144; // prev 1142 + selection dead-id hygiene (1 assert + 1 pin, ADR-0623)
+  pass += 1146; // prev 1144 + _slimOp undo-field strip (1 assert + 1 pin, ADR-0625)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

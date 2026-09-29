@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.651';   // ADR-0624
+const V='1.7.652';   // ADR-0625
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -7877,9 +7877,9 @@ const Net={
   },
   _slimOp(op){
     if(op.op==='add'&&op.shape)return{...op,shape:this._slimShapes([op.shape])[0]};
-    if(_iA(op.shapes)&&(op.op==='addMany'||op.op==='del'||op.op==='clear'))return{...op,shapes:this._slimShapes(op.shapes)};   // ADR-0445: remote del/clear needs only id/locked
+    if(_iA(op.shapes)&&(op.op==='addMany'||op.op==='del'||op.op==='clear')){const{wc:_wc1,origSel:_o1,...r}=op;return{...r,shapes:this._slimShapes(op.shapes)}}   // ADR-0445/0625: id/locked only; undo-only fields never ride the wire
     if(op.op==='replace')return{op:'replace',after:this._slimShapes(op.after||[]),afterWc:op.afterWc,clock:op.clock};   // ADR-0613: strip the huge before/wc/origSel from the wire copy
-    return op;
+    const{origSel:_o2,moved:_m2,...rest}=op;return rest;   // ADR-0625: wc/origSel/moved are undo-domain — peers' _apply rebuilds them; wire copies were dead weight (~30B/shape on big dels) + selection-id leak
   },
   _fragSend(buf,k){   // ADR-0431: 64KB fragment sender for the dc-
     const n=_ceil(_ln(buf)/65536);   // ADR-0603: >384 chunks overflows the intake join bound — undeliverable; tell the sender instead of emitting doomed fragments

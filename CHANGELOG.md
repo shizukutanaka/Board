@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.652]
+### 修正
+- `_slimOp` が wire op から undo 専用フィールドを剥離 — `wc` (del/clear の clock マップ、受信側が再構築するためデッドウェイト ~30B/図形)、`origSel` (ungroup/beautify 経由の選択 id 漏洩)、`moved` (move の undo 補助) を除去 (ADR-0625)。
+
 ## [1.7.651]
 ### ドキュメント
 - architecture.md の選択不変条件に **dead-id parity** を追記 — 選択由来リストは dead id を含まない (`id=>{const s=byId(id);return s&&_ul(s)}` フィルタ形、`_sb()` の `map(byId).filter(Boolean)` 供給源閉塞、ADR-0624)。
