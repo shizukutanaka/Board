@@ -245,7 +245,7 @@ const checks = [
   ["_recordCommitted sets _lastRep for local 'replace' (ADR-0616)", html.includes("if(op.op==='replace')state._lastRep=op.clock;   // ADR-0616")],
   ["snapshot carries rep marker + stale-snapshot skip (ADR-0617)", html.includes("rep:state._lastRep") && html.includes("clockNewer(state._lastRep,msg.rep))break;")],
   ["snapshot docName is LWW-gated via nameTs (ADR-0618)", html.includes("nameTs:_nameTs") && html.includes("msg.nameTs>_nameTs")],
-  ["Net.init resets causal markers across rooms (ADR-0619)", html.includes("state._lastRep=null;_nameTs=0;")],
+  ["Net.init resets causal markers across rooms (ADR-0619)", html.includes("state.roomId&&state.roomId!==(roomId||DOC_KEY)){state._lastRep=null;_nameTs=0}")],
   ["move commit drops ids removed mid-gesture (ADR-0621)", html.includes("filter(id=>{const s=byId(id);return s&&_ul(s)})")],
   ["_sb drops dead ids at source + nudgeSelection parity (ADR-0623)", html.includes("_sb=()=>_selIds().map(byId).filter(Boolean)") && html.includes("unlockedSelectionIds(){return _selIds().filter(id=>{const s=byId(id);return s&&_ul(s)});}")],
   ["_slimOp strips undo-only fields from wire ops (ADR-0625)", html.includes("const{origSel:_o2,moved:_m2,...rest}=op;return rest;") && html.includes("const{wc:_wc1,origSel:_o1,...r}=op;")],
@@ -2001,6 +2001,7 @@ try {
   // ADR-0619: causal markers are wire-domain state — Net.init must reset them
   // or the new room's snapshots/renames get rejected as 'stale' forever.
   {
+    state.roomId='roomOld';
     state._lastRep={peer:'me',seq:9,ts:9e9};
     Net._onRecv({k:'name',name:'X',ts:9e9,peer:'sp'},false);   // bump _nameTs
     Net.init('roomX');
@@ -2008,9 +2009,14 @@ try {
     state.docName='KeepName';
     Net._onRecv({k:'name',name:'RoomName',ts:1,peer:'sp'},false);
     assert.strictEqual(state.docName,'RoomName','rename clock reset — small ts applies');
+    // ADR-0695: boot-time init (null prior room) does NOT wipe restored markers
+    state.roomId=null;state._lastRep={peer:'me',seq:5,ts:5e5};
+    Net.init();
+    assert.strictEqual(state._lastRep.seq,5,'boot init keeps restored markers');
+    state._lastRep=null;
     clearInterval(Net._presenceTimer);
     if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}
-    console.log('  ✓ Net.init resets _lastRep/_nameTs across rooms (ADR-0619)');
+    console.log('  ✓ Net.init resets _lastRep/_nameTs across rooms (ADR-0619/0695)');
   }
   // ADR-0621: a shape removed mid-gesture (remote del/replace) must not ride the
   // move commit — byId is null there, and a phantom op would land in history +
@@ -12852,7 +12858,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1533; // prev 1517 + 1 tab aria-label pin (ADR-0682)
+  pass += 1534; // prev 1517 + 1 tab aria-label pin (ADR-0682)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
