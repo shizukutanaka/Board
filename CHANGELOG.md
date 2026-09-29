@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.642]
+### Fixed
+- 'replace' (共有リンク/.board 取込の全置換) の undo がピアへ伝播せず、undo した側だけ旧盤面へ戻り永久に発散する問題を修正 — `_undoWire` が `{op:'replace',after:op.before,afterWc:op.wc}` を返し、ADR-0614 の新 clock 勝者規則で全ピアが復元盤面へ収束。undo/redo の `_lastRep` marker も新 clock へ進めローカル/リモートの不一致を防止 (ADR-0615)。
+
 ## [1.7.641]
 ### Fixed
 - 2ピアが同時に全置換 (共有リンク/.board 取込) すると各々が相手の盤面を適用して交差発散する問題を修正 — 最後に適用した 'replace' の clock を `state._lastRep` に保持し、到着したリモート swap がそれより新しくない限り棄却。`clockNewer` の (ts,peer,seq) 全順序で全ピアが到着順に関わらず同一の勝者を選ぶ (ADR-0614)。

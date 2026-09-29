@@ -663,7 +663,8 @@ Board/
     │   ├── ADR-0611-cursor-hide-on-leave.md       # pointerleave でピアカーソルを隠す (凍結残存の解消) (実装済)
     │   ├── ADR-0612-cursor-hide-blur-hidden.md    # blur/hidden でもピアカーソルを隠す (実装済)
     │   ├── ADR-0613-remote-replace-converge.md    # 'replace' op を wire 収束 (全置換のピア同期 + 同数 stale-index 修正) (実装済)
-    │   └── ADR-0614-concurrent-replace-lww.md     # 並行 'replace' の勝者を clockNewer 全順序で一意化 (実装済)
+    │   ├── ADR-0614-concurrent-replace-lww.md     # 並行 'replace' の勝者を clockNewer 全順序で一意化 (実装済)
+    │   └── ADR-0615-replace-undo-wire.md          # 'replace' の undo を wire へ (pre-swap 盤面の復元をピア同期) (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
