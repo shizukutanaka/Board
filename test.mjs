@@ -13403,6 +13403,11 @@ try {
     state.viewport={x:1e7-5,y:1e7-5,zoom:1};ptr.down=true;ptr.panning=false;ptr.x=790;ptr.y=590;
     _edgePanTick();
     assert.ok(state.viewport.x===1e7&&state.viewport.y===1e7,'edge auto-pan clamps the center at +1e7 (ADR-0806)');
+    // hand-tool pointer-drag pan clamps at the coord bound too
+    state.viewport={x:1e7-10,y:1e7-10,zoom:1};pickTool('hand');
+    fire1('pointerdown',400,300);for(let i=0;i<20;i++)fire1('pointermove',390-i*20,290-i*20);
+    assert.ok(state.viewport.x===1e7&&state.viewport.y===1e7,'hand-drag pan clamps the center at +1e7 (ADR-0798)');
+    fire1('pointerup',10,10);
     ptr.down=false;
     // ⌥hover over a non-selected shape shows gap-measure guides (ADR-0151)
     reset();
