@@ -1,3 +1,8 @@
+## [1.7.724] - 2026-09-29
+
+### Fixed
+- ADR-0698: pageName renames converging via (ts,peer) total order — equal-ts ties diverged on both the op (>=) and union-heal (>) paths
+
 ## [1.7.723] - 2026-09-29
 
 ### Fixed

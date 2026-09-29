@@ -4629,7 +4629,7 @@ try {
     }
     // ADR-0681: snapshot union-heal merges same-id page names via nts LWW
     {
-      assert.ok(html.includes("else if((p.nts||0)>(l.nts||0)){l.name=p.name;l.nts=p.nts}"),'same-id page nts LWW merge present (ADR-0681)');
+      assert.ok(html.includes("else if(clockNewer({ts:p.nts||0,peer:_iS(p.ntp)?p.ntp:'',seq:0}"),'same-id page nts LWW merge via (ts,peer) total order (ADR-0681/0698)');
       console.log('  ✓ snapshot page-name LWW pin (1 assert)');
     }
     // ADR-0682: page tab chips expose the full name to AT
@@ -12673,6 +12673,15 @@ try {
     assert.ok(_pgById(p1.id).name==='Alpha','pageName applies the rename');
     Store.applyRemote({op:'pageName',id:p1.id,after:'Old',clock:{peer:'rp',seq:9,ts:1}});
     assert.ok(_pgById(p1.id).name==='Alpha','a stale remote pageName loses to newer nts (LWW)');
+    Store.applyRemote({op:'pageName',id:p1.id,after:'Hi',clock:{peer:'zz',seq:1,ts:9e15}});
+    assert.ok(_pgById(p1.id).name==='Hi','a strictly newer remote pageName wins');
+    Store.applyRemote({op:'pageName',id:p1.id,after:'Lo',clock:{peer:'aa',seq:1,ts:9e15}});
+    assert.ok(_pgById(p1.id).name==='Hi','equal-ts pageName: lower peer id loses (ADR-0698)');
+    Store.applyRemote({op:'pageName',id:p1.id,after:'Hi2',clock:{peer:'zzz',seq:1,ts:9e15}});
+    assert.ok(_pgById(p1.id).name==='Hi2','equal-ts pageName: higher peer id wins (ADR-0698)');
+    Store.applyRemote({op:'pageName',id:p1.id,after:'Bad',clock:{peer:'zz',seq:2,ts:9e15}});
+    assert.ok(_pgById(p1.id).name==='Hi2','equal-ts pageName: a mid peer still loses (ADR-0698)');
+    state._lastTs=0;   // my far-future remote ts raised the HLC floor — restore it or later local commits get poisoned clocks
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;
     const s3=Shape.make('rect',{x:0,y:0,w:5,h:5});
     Store.commit({op:'add',shape:s3});
@@ -12860,7 +12869,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1541; // prev 1517 + 1 tab aria-label pin (ADR-0682)
+  pass += 1546; // prev 1517 + 1 tab aria-label pin (ADR-0682)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
