@@ -258,6 +258,7 @@ const checks = [
   ["resize/rotate resolve gesture target by orig.id not _sel0 (ADR-0635)", html.includes("const rsh=byId(ptr.resizeOrig.id)") && html.includes("const rsh=byId(ptr.rotOrig.id)")],
   ["gesture cancel purges touch/pinch state (ADR-0636)", html.includes("_clearTouchState();   // ADR-0636")],
   ["kbd editor cancels in-flight gesture (ADR-0637)", html.includes("if(ptr.down)_cancelPointerGesture();   // ADR-0637")],
+  ["presentation announces enter/goto/exit to SR (ADR-0639)", html.includes("_ann(`${t('presEnter')}") && html.includes("_ann(t('presExit'))") && html.includes("_ann(`${_frames[_idx].label||t('frame')}")],
   ['applyRemote validates remote add shape', html.includes("case 'add':    return validShape(op.shape)")],
   ['SVG export uses testable buildSVG', html.includes("function buildSVG") && html.includes("buildSVG(shapes")],
   ['SVG attrs escaped via _esc', html.includes("stroke=\"${stroke}\"") && html.includes("_esc(_fi(s))")],
@@ -11138,7 +11139,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1167; // prev 1166 + kbd-editor-cancel pin (ADR-0637)
+  pass += 1168; // prev 1167 + presentation-SR pin (ADR-0639)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

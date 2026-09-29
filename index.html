@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.665';   // ADR-0638
+const V='1.7.666';   // ADR-0639
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -940,6 +940,7 @@ const I18N={
     noSelection:'選択なし',alreadySnapped:'既にグリッド上です',nothingLocked:'ロックされた図形はありません',styleCopied:'スタイルコピー',stylePasted:'スタイル適用',
     selectTwo:'2つ以上選択してください',framed:'フレームで包みました',grouped:'グループ化',noGroup:'グループなし',
     ungrouped:'グループ解除',noFrames:'フレームがありません (F キーで作成)',
+    presEnter:'プレゼンテーション開始',presExit:'プレゼンテーション終了',
     imgBig:'画像が大きすぎます。縮小してください',snapBig:'ボードが大きすぎて共有できません',imgErr:'画像を読み込めませんでした',
     emptyHint:'クリックまたはツールバーから描き始める · ? でショートカット一覧',
     themeAuto:'テーマ: 自動(OS 追従)',themeLight:'テーマ: ライト',themeDark:'テーマ: ダーク',
@@ -1021,6 +1022,7 @@ const I18N={
     noSelection:'No selection',alreadySnapped:'Already on grid',nothingLocked:'No locked shapes',styleCopied:'Style copied',stylePasted:'Style applied',
     selectTwo:'Select 2 or more',framed:'Wrapped in frame',grouped:'Grouped',noGroup:'No group',
     ungrouped:'Ungrouped',noFrames:'No frames (press F to create)',
+    presEnter:'Presentation started',presExit:'Presentation ended',
     imgBig:'Image too large — please resize',snapBig:'Board too large to share',imgErr:'Image failed to load',
     emptyHint:'Click or pick a tool to start drawing · Press ? for shortcuts',
     themeAuto:'Theme: Auto (follows OS)',themeLight:'Theme: Light',themeDark:'Theme: Dark',
@@ -9914,6 +9916,7 @@ const Presentation=(()=>{
     _focusTrigger=_aE();
     _active=true;_idx=0;
     _savedVp={x:_vp().x,y:_vp().y,zoom:_vp().zoom};
+    _ann(`${t('presEnter')} — ${_ln(_frames)} ${t('frame')}`);   // ADR-0639: SR gets no other signal that presentation started
     // Build overlay
     _overlay=_ce('div');
     _overlay.id='presOverlay';
@@ -9966,6 +9969,7 @@ const Presentation=(()=>{
     resize();
     if(_savedVp){_oa(_vp(),_savedVp);_savedVp=null;_rZ()}
     _iv();
+    _ann(t('presExit'));   // ADR-0639
     _focusTrigger?.focus();_focusTrigger=null;
   }
 
@@ -9976,6 +9980,7 @@ const Presentation=(()=>{
     _zoomToFrame(_frames[_idx]);
     const c=_g('presCounter');
     if(c)_tC(c,`${_idx+1} / ${_ln(_frames)}`);
+    _ann(`${_frames[_idx].label||t('frame')} ${_idx+1}/${_ln(_frames)}`);   // ADR-0639: the counter is visual-only — mirror it to SR
   }
 
   function next(){if(_active&&_idx<_ln(_frames)-1)_goto(_idx+1)}

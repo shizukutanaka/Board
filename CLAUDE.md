@@ -687,7 +687,8 @@ Board/
     │   ├── ADR-0635-gesture-target-byid.md   # resize/rotate の対象を _sel0→byId(orig.id) (mid-gesture 選択変更で誤対象) (実装済)
     │   ├── ADR-0636-cancel-clears-pinch.md   # _cancelPointerGesture が _pointers/ピンチ状態も掃除 (実装済)
     │   ├── ADR-0637-kbd-editor-cancels-gesture.md   # Enter 編集オープンも mid-gesture キャンセル (実装済)
-    │   └── ADR-0638-architecture-gesture-sync.md   # architecture.md へジェスチャ×外部変化の不変条件を同期 (実装済)
+    │   ├── ADR-0638-architecture-gesture-sync.md   # architecture.md へジェスチャ×外部変化の不変条件を同期 (実装済)
+    │   └── ADR-0639-presentation-sr-announce.md   # プレゼン突入/遷移/終了を SR announce (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
