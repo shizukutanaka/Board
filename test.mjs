@@ -4517,7 +4517,8 @@ try {
       ptr.down=true;ptr.dragKind='move';ptr.dragStartShapes=new Map([[W.id,JSON.parse(JSON.stringify(W))]]);
       _pgAdopt(state.pages,'pB');
       assert.ok(ptr.down===true,'same-page adopt leaves the gesture alone');
-      assert.ok(html.includes('if(nc!==state.curPg){_cancelPointerGesture();_cxO()}'),'_pgAdopt gesture+editor-cancel gate (ADR-0664/0684)');
+      assert.ok(html.includes('if(nc!==oc){_cancelPointerGesture();_cxO()}'),'_pgAdopt gesture+editor-cancel gate (ADR-0664/0684)');
+      assert.ok(html.includes('if(nc!==oc)Net.sendCursorHide()'),'_pgAdopt hides cursor on page move (ADR-0690)');
       state.pages=null;state.curPg=null;ptr.down=false;ptr.dragKind=null;ptr.dragStartShapes=null;
       Store.commit({op:'del',shapes:[{...byId(W.id)}]});
       console.log('  ✓ _pgAdopt cancels gesture only on real page change (3 asserts)');
@@ -12831,7 +12832,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1528; // prev 1517 + 1 tab aria-label pin (ADR-0682)
+  pass += 1529; // prev 1517 + 1 tab aria-label pin (ADR-0682)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
