@@ -14332,6 +14332,26 @@ try {
     console.log('  ✓ bbox-feeding props bounded at intake (ADR-0793)');
   }
 
+  // ADR-0833: _placeCopies stamps sh.pg=curPg — duplicating or pasting a
+  // page-1 shape while viewing page 2 must land the copy on page 2, or it
+  // becomes an invisible shape the user can't see or select (paste "does
+  // nothing" from their point of view). Single-page mode leaves pg unset.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';
+    const src=Shape.make('rect',{x:10,y:10,w:50,h:50});src.pg='pA';Store.commit({op:'add',shape:src});
+    state.curPg='pB';
+    const added=_placeCopies([src],0,0);
+    assert.strictEqual(added.length,1,'copy produced');
+    assert.strictEqual(byId(added[0]).pg,'pB','copy lands on the viewed page, not the source page');
+    state.shapes=[];_invalidateGrid();state.pages=null;state.curPg=null;
+    const src2=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    const added2=_placeCopies([src2],0,0);
+    assert.ok(byId(added2[0]).pg==null,'single-page mode leaves pg unset');
+    state.shapes=[];_invalidateGrid();state.selection=new Set();state.dupIds=new Set();state.dupDelta=null;
+    console.log('  ✓ _placeCopies lands copies on the viewed page (ADR-0833)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
   // asserts but actually contains 6 (recounted directly: at1.length, at2.length, and 4
