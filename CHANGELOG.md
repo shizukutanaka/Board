@@ -1,3 +1,10 @@
+## [1.7.776] - 2026-09-28
+
+### Fixed
+- ADR-0750: _pgAdopt announces the adopted page to screen readers on
+  page change — remote pageDel/snapshot flips were SR-silent while
+  switchPage already announces (ADR-0649 comment assumed it)
+
 ## [1.7.775] - 2026-09-28
 
 ### Fixed

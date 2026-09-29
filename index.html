@@ -868,7 +868,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.775';   // ADR-0749
+const V='1.7.776';   // ADR-0750
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2173,7 +2173,7 @@ const _vPages=a=>!_iA(a)||!_ln(a)||_ln(a)>64?null:(a.every(p=>p&&_iS(p.id)&&_ln(
 const _pgHealS=()=>{if(_pgOn())for(const s of _sh()){if(s.pg&&!_pgById(s.pg)&&_ln(state.pages)<64)_pu(state.pages,{id:s.pg,name:'?',nts:0})}else for(const s of _sh())delete s.pg};   // ADR-0694: no page set → every s.pg is stale — scrub, else a later pageAdd's `!s.pg` heal misses them and they go invisible
 function _pgAdopt(pages,cur){const v=_vPages(pages);state.pages=v?clone(v):null;_pgHealS();
 const nc=v&&_pgById(cur)?cur:(v?v[0].id:null);const oc=state.curPg;if(nc!==oc){_cancelPointerGesture();_cxO()}   // ADR-0684
-state.curPg=nc;if(nc!==oc){Net.sendCursorHide();_ss(_selIds())}_pgBar();_iG()}   // ADR-0664/0690/0748/0749: invalidate caches + re-validate selection on adopt
+state.curPg=nc;if(nc!==oc){Net.sendCursorHide();_ss(_selIds());if(nc)_ann(_pgById(nc).name)}_pgBar();_iG()}   // ADR-0664/0690/0748/0749/0750
 function switchPage(id){if(!_pgById(id)||state.curPg===id)return;_cxO();_cancelPointerGesture();state.curPg=id;Net.sendCursorHide();_iG();_zR();_ss(_selIds());_iv();_ivO();_ann(_pgById(id).name);_pgBar();_ps()}   // ADR-0664/0674/0689: persist curPg on page switch (survives reload); cancel live gestures; send the hide AFTER curPg moves
 function _pgNav(d){if(!_pgOn())return;const i=_pgIdx(),n=_ln(state.pages);const j=(i+d+n)%n;if(j!==i)switchPage(state.pages[j].id)}
 const _opIds=op=>{   // ADR-0652: the touched-id harvest _apply uses — shared with _pgFollow so undo/redo can see where the change landed

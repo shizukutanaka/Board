@@ -4666,7 +4666,7 @@ try {
       }
       state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';
       assert.ok(html.includes('if(nc!==oc){_cancelPointerGesture();_cxO()}'),'_pgAdopt gesture+editor-cancel gate (ADR-0664/0684)');
-      assert.ok(html.includes('if(nc!==oc){Net.sendCursorHide();_ss(_selIds())}'),'_pgAdopt hides cursor + re-validates selection on page move (ADR-0690/0749)');
+      assert.ok(html.includes('if(nc!==oc){Net.sendCursorHide();_ss(_selIds());if(nc)_ann(_pgById(nc).name)}'),'_pgAdopt hides cursor + re-validates selection + announces on page move (ADR-0690/0749/0750)');
       assert.ok(html.includes('for(const s of _sh()){if(s.pg&&!_pgById(s.pg)&&_ln(state.pages)<64)_pu(state.pages'),'_pgAdopt heals unknown pg → ? page (ADR-0692)');
       state.pages=null;state.curPg=null;ptr.down=false;ptr.dragKind=null;ptr.dragStartShapes=null;
       // ADR-0692: a shape carrying an unknown pg spawns a ? page on adopt
