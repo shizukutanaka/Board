@@ -12254,6 +12254,15 @@ try {
       for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[efile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
       await new Promise(r=>setTimeout(r,30));
       assert.ok(state.shapes.length>=1,'a dropped .excalidraw file imports its elements via FileReader (ADR-0043)');
+      const _IM=globalThis.Image;
+      globalThis.Image=class{set src(v){Promise.resolve().then(()=>{this.width=100;this.height=80;if(this.onload)this.onload()})}};
+      try{
+        reset();
+        const ifile={name:'i.png',type:'image/png',size:100};
+        for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[ifile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
+        await new Promise(r=>setTimeout(r,30));
+        assert.ok(state.shapes.length===1&&state.shapes[0].type==='image'&&state.shapes[0].w>0,'a dropped image file decodes and adds an image shape (ADR-0022)');
+      }finally{globalThis.Image=_IM}
     }finally{globalThis.FileReader=_FR}
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
@@ -12266,7 +12275,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1400; // prev 1398 + 2 event-sequence asserts (ADR-0641: drop file via FileReader stub)
+  pass += 1401; // prev 1398 + 3 event-sequence asserts (ADR-0641: drop file via FileReader/Image stub)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
