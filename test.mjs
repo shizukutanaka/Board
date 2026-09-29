@@ -13973,6 +13973,21 @@ try {
     assert.ok(!state.wclock[s.id]||!state.wclock[s.id].stroke||state.wclock[s.id].stroke.peer==='r1','no oversized-peer wclock entry was written');
     console.log('  ✓ validClock bounds peer/seq string lengths (ADR-0779)');
   }
+  // ADR-0780: snapshot `namePeer` flows into `_namePeer` — persisted to the IDB doc
+  // record as `ntp`. An oversized value must be rejected at intake (same 64-cap as
+  // every other wire id) or it bloats storage forever; the outbound namePeer of a
+  // freshly built snapshot exposes the stored value.
+  {
+    state.shapes=[];_invalidateGrid();state.pages=null;state.curPg=null;state.docName='';
+    Net._onRecv({k:'name',name:'Base',ts:Date.now()+5000,peer:'base'},false);
+    assert.strictEqual(Net._snapshotMsg().namePeer,'base','baseline namePeer stored');
+    Net._onRecv({k:'snapshot',shapes:[],ops:[],peer:'sp',name:'SnapName',nameTs:Date.now()+6000,namePeer:'A'.repeat(200)},false);
+    assert.strictEqual(state.docName,'SnapName','snapshot name still applies on ts win');
+    assert.strictEqual(Net._snapshotMsg().namePeer,'base','oversized namePeer rejected at intake');
+    Net._onRecv({k:'snapshot',shapes:[],ops:[],peer:'sp',name:'Snap2',nameTs:Date.now()+7000,namePeer:'ok'},false);
+    assert.strictEqual(Net._snapshotMsg().namePeer,'ok','valid namePeer still stored');
+    console.log('  ✓ snapshot namePeer bounded like every wire id (ADR-0780)');
+  }
 
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
@@ -13980,7 +13995,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1756; // prev 1752 + 4 ADR-0779 validClock length-cap asserts
+  pass += 1760; // prev 1756 + 4 ADR-0780 snapshot namePeer cap asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
