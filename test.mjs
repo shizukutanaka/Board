@@ -11731,6 +11731,33 @@ try {
     assert.ok(state.hover,'pointermove over a shape sets hover');
     fire('pointerleave',20,20);
     assert.ok(!state.hover,'pointerleave clears hover');
+    // window-level events: 'paste' text → text shape, 'blur' cancels an armed
+    // gesture, pointercancel cancels it, webkit gesture events pinch-zoom
+    const fireWin=(t,o={})=>{
+      const ev={preventDefault(){},stopPropagation(){},target:{matches:()=>false},...o};
+      for(const f of fakeWin._L[t+'|c']||[])f(ev);
+      for(const f of fakeWin._L[t]||[])f(ev);
+      return ev;
+    };
+    reset();
+    state.tool='select';
+    fireWin('paste',{clipboardData:{items:[{type:'text/plain',getAsString(cb){cb('hello paste')}}]}});
+    const psh=state.shapes[state.shapes.length-1];
+    assert.ok(psh&&psh.type==='text'&&psh.text==='hello paste','paste text creates a text shape');
+    reset();
+    state.tool='pen';
+    fire('pointerdown',10,10);
+    fireWin('blur');
+    assert.ok(!ptr.down,'window blur cancels the gesture');
+    fire('pointerdown',10,10);
+    fire('pointercancel',10,10);
+    assert.ok(!ptr.down,'pointercancel cancels the gesture');
+    reset();
+    state.viewport={x:0,y:0,zoom:1};
+    fire('gesturestart',400,300,{scale:1});
+    fire('gesturechange',400,300,{scale:2});
+    assert.ok(state.viewport.zoom>1.5,'gesturechange pinch zooms');
+    fire('gestureend',400,300);
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -11742,7 +11769,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1310; // prev 1303 + 7 event-sequence asserts (ADR-0641: ctx mid-gesture + wheel + hover)
+  pass += 1315; // prev 1310 + 5 event-sequence asserts (ADR-0641: paste + blur + cancel + webkit pinch)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
