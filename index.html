@@ -868,7 +868,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.763';   // ADR-0737
+const V='1.7.764';   // ADR-0738
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1693,7 +1693,7 @@ const Store={
             _wc()[sh.id]={_del:op.clock};   // ADR-0734
             _psc(sh.id);                     // ADR-0424/0427
           }
-          if(_ok(_wc()).length>8192)state.wclock={};   // ADR-0734
+          if(_ok(_wc()).length>8192){const t={};for(const[id,w]of Object.entries(_wc()))if(w._del)t[id]={_del:w._del};state.wclock=t}   // ADR-0734/0738: cap keeps tombs — prop clocks self-heal, existence doesn't
           // Apply connector binding clears after shapes are gone
           if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_oa(sh,p.after);}}
         }else{
