@@ -1,3 +1,8 @@
+## [1.7.852] - 2026-09-29
+
+### Test
+- ADR-0826: `_loResp` の snapshot 応答選出を behavioural pin で固定 — 最小 id 勝者・asker 除外 (0465)・live rtc: 行除外 (0455) の3不変を検出可能に
+
 ## [1.7.851] - 2026-09-29
 
 ### Test

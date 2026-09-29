@@ -2115,6 +2115,21 @@ try {
     assert.strictEqual(Net._rtcPeerId,null,'rtc bye clears the live peer id');
     console.log('  ✓ _pk viaRtc routing + rtc bye peer-id clear (ADR-0825)');
   }
+  // ADR-0826: snapshot responder election — lowest non-asker, non-rtc peer id
+  // answers (ADR-0455/0465). A regression starves or storms joiners.
+  {
+    state.peerId='m';state.peers.clear();
+    state.peers.set('zzz',{});
+    assert.ok(Net._loResp('zzz'),'higher id only: we are the responder');
+    state.peers.set('aaa',{});
+    assert.ok(!Net._loResp('zzz'),'a lower id wins the election');
+    assert.ok(Net._loResp('aaa'),'the asker is excluded — no starvation');
+    state.peerId='z';state.peers.clear();Net._rtcPeerId='rtc:x';
+    state.peers.set('rtc:x',{});
+    assert.ok(Net._loResp('q'),'the live rtc: row is excluded from election');
+    state.peers.clear();Net._rtcPeerId=null;state.peerId='B';
+    console.log('  ✓ _loResp election pins (ADR-0826)');
+  }
   // ADR-0699: docName renames order on (ts, writer-peer) — equal-ts concurrent
   // renames must pick one winner on every peer, not diverge on strict >.
   {
