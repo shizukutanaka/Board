@@ -2105,6 +2105,16 @@ try {
     state.peers.delete(newPid);Net._rtcPeerId=null;Net.dc=null;
     console.log('  ✓ superseded dc purges own row, preserves live link (ADR-0822)');
   }
+  // ADR-0825: _pk routes viaRtc presence msgs onto the synthetic rtc: row and
+  // 'bye' clears _rtcPeerId — a stale link must not keep shadowing.
+  {
+    Net._rtcPeerId='rtc:test';
+    assert.strictEqual(Net._pk({peer:'q'},true),'rtc:test','viaRtc routes to the synthetic row');
+    assert.strictEqual(Net._pk({peer:'q'},false),'q','BC keeps the sender id');
+    Net._onRecv({k:'bye',peer:'zzz'},true);
+    assert.strictEqual(Net._rtcPeerId,null,'rtc bye clears the live peer id');
+    console.log('  ✓ _pk viaRtc routing + rtc bye peer-id clear (ADR-0825)');
+  }
   // ADR-0699: docName renames order on (ts, writer-peer) — equal-ts concurrent
   // renames must pick one winner on every peer, not diverge on strict >.
   {

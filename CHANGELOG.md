@@ -1,3 +1,8 @@
+## [1.7.851] - 2026-09-29
+
+### Test
+- ADR-0825: `_pk` の viaRtc 振分け + RTC `bye` の `_rtcPeerId` クリアを behavioural pin で固定 — 合成行と実 id 行の分裂を検出可能に
+
 ## [1.7.850] - 2026-09-29
 
 ### Docs
