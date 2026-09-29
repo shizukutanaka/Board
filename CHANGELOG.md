@@ -1,3 +1,15 @@
+## [1.7.761] - 2026-09-29
+
+### Fixed
+- ADR-0735: residual tomb gaps — the wholesale `_applySnapshot` adopt (empty
+  board, `_nS()===0`) never consulted tombstones, so a pre-delete snapshot
+  arriving after a del that emptied the board resurrected every tombed shape
+  on the receiver only. Adopt now filters `!(_wc()[s.id]||{})._del` — a
+  lingering tomb means the last observed existence decision was delete, and
+  snapshot adds (ts:0 clocks) carry no ordering evidence to overturn it.
+  Also gives pageAdd members the 'add' parity `delete wd._del` on a winning
+  push (was: tomb persisted after the member landed)
+
 ## [1.7.760] - 2026-09-29
 
 ### Fixed
