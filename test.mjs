@@ -260,7 +260,7 @@ const checks = [
   ["_slimOp strips undo-only fields from wire ops (ADR-0625)", html.includes("const{origSel:_o2,moved:_m2,...rest}=op;") && html.includes("const{wc:_wc1,origSel:_o1,...r}=op;")],
   ["undo restamps op.clock fresh before the backward apply (ADR-0717)", html.includes("const _ut=nowTs();op.clock={peer:_pi(),seq:++state.seq,ts:_ut};")],
   ["undo-wire carries before for style/resize/align (ADR-0717)", html.includes("before:op.after,after:op.before}")],
-  ["'clear' rides the wire as empty 'replace' + sender marker parity (ADR-0626)", html.includes("if(op.op==='clear')return{op:'replace',after:[],afterWc:{},clock:op.clock};") && html.includes("if(forward){if(op.clock)state._lastRep=op.clock;_sh().length=0")],
+  ["'clear' rides the wire as empty 'replace' + sender marker parity (ADR-0626)", html.includes("if(op.op==='clear')return{op:'replace',after:[],afterWc:{},clock:op.clock};") && html.includes("if(forward){if(op.clock)state._lastRep=op.clock;const wc0=state.wclock||{},dead=_sh().map(s=>s.id);_sh().length=0")],
   ["contextlost purges GPU caches on restore (ADR-0627)", html.includes("_on(canvas,'contextlost',_pd)") && html.includes("_on(canvas,'contextrestored',_ctxUp)") && html.includes("_penCache.clear();_penCachePx=0;_inkD=null;Minimap.invalidateCache()")],
   ["img blob resolves evicted pending stragglers (ADR-0629)", html.includes("for(const s of _sh())if(s.img===msg.key){delete s.img;s.dataUrl=data;this._imgPending.delete(s.id)}")],
   ["resize handlers debounced (ADR-0631)", html.includes("_on(window,'resize',_resizeSoon)") && html.includes("_on(visualViewport,'resize',_resizeSoon)") && html.includes("_on(screen.orientation,_CH,_resizeSoon)")],
@@ -6855,6 +6855,27 @@ try {
     state._lastTs=0; B.state._lastTs=0;
     console.log('  ✓ ADR-0735: snapshot-adopt tomb filter + del-first ordering + pageAdd tomb-clear parity');
 
+    // ADR-0736: clear/'replace' wiped wclock WHOLESALE — including tombstones —
+    // so a stale in-flight 'add' could resurrect a shape the swap just removed,
+    // and a receiver tomb newer than the swap clock was lost entirely.
+    reset(A); reset(B);
+    const rb1={id:'rb1',type:'rect',x:0,y:0,w:10,h:10,z:1};
+    B.state.shapes.push(cp(rb1)); B._invalidateGrid(); B.sortZ();
+    B.state.wclock.rb1={x:{peer:'peerB',seq:1,ts:5}};
+    const tm5tomb={peer:'peerX',seq:1,ts:Date.now()+1e6};
+    B.state.wclock.tm5={_del:tm5tomb};
+    const repClock={peer:'peerA',seq:1,ts:Date.now()};
+    B.Net._onRecv({k:'op',op:{op:'replace',after:[],afterWc:{},clock:repClock}});
+    assert.ok(B.state.shapes.length===0,'ADR-0736: replace still empties the board');
+    assert.ok(B.state.wclock.rb1&&B.state.wclock.rb1._del,'ADR-0736: swap-removed id tombed at the swap clock');
+    assert.ok(B.state.wclock.tm5&&B.state.wclock.tm5._del===tm5tomb,'ADR-0736: a tomb newer than the swap survives');
+    B.Net._onRecv({k:'op',op:{op:'add',shape:{id:'rb1',type:'rect',x:0,y:0,w:10,h:10,z:1},clock:{peer:'peerX',seq:2,ts:repClock.ts-1}}});
+    assert.ok(!B.state.shapes.find(s=>s.id==='rb1'),'ADR-0736: stale in-flight add cannot resurrect a swap-removed shape (was: resurrection)');
+    B.Net._onRecv({k:'op',op:{op:'replace',after:[{id:'tm5',type:'rect',x:0,y:0,w:10,h:10,z:1}],afterWc:{},clock:{peer:'peerA',seq:2,ts:repClock.ts}}});
+    assert.ok(!B.state.shapes.find(s=>s.id==='tm5'),'ADR-0736: receiver tomb newer than the swap filters the carried member');
+    state._lastTs=0; B.state._lastTs=0;
+    console.log('  ✓ ADR-0736: clear/replace tomb the swap-removed ids + keep newer tombs');
+
     // resize/align now LWW too (ADR-0002 follow-up): whole-shape snapshot ops gate/stamp
     // only the keys they actually changed (diff before/after). (i) concurrent resize of
     // the SAME geometry converges to the newer writer.
@@ -9539,7 +9560,7 @@ try {
     assert.ok(Object.keys(state.wclock).includes(A.id), 'clear undo wclock: wclock has A.id (seeded from prior remote op)');
     // Simulate doClearAll (without confirm): snapshot wc, then clear
     Store.commit({op:'clear',shapes:JSON.parse(JSON.stringify(state.shapes)),wc:JSON.parse(JSON.stringify(state.wclock))});
-    assert.strictEqual(Object.keys(state.wclock).length, 0, 'clear undo wclock: wclock empty after clear');
+    assert.ok(state.wclock[A.id]&&state.wclock[A.id]._del, 'clear undo wclock: cleared id tombed (ADR-0736)');
     // Undo: wclock must be restored — FAILS before fix (wclock stays {}), PASSES after
     Store.undo();
     assert.ok(Object.keys(state.wclock).includes(A.id), 'clear undo wclock: wclock restored after undo');
@@ -13491,7 +13512,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1673; // prev 1667 + 6 ADR-0735 behavioural
+  pass += 1678; // prev 1673 + 5 ADR-0736 behavioural
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
