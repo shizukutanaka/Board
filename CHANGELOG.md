@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.657]
+### テスト
+- ADR-0629 の実動作検証を追加 — `_onRecv` の img 経路で (a) `_imgPending` 外の parked 図形 (evicted straggler) が `s.img===key` で解決、(b) pending 追跡中の図形が主経路で解決+クリア、の4 assert (ADR-0630)。
+
 ## [1.7.656]
 ### 修正
 - `_imgPending` の 256 上限で追い出された parked 図形が、blob 到着後も永続プレースホルダーになる問題を修正 — 画像 blob 到着時に盤面を `s.img===key` で直接走査し、保留リスト外の参照も解決 (ADR-0629)。

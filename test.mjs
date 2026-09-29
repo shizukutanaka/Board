@@ -2049,6 +2049,23 @@ try {
     assert.strictEqual(state._lastRep,state.history[state.history.length-1].clock,'sender stamps same marker');
     console.log('  ✓ clear rides the wire as empty replace, sender/receiver marker parity (ADR-0626)');
   }
+  // ADR-0629: a parked shape evicted from _imgPending still resolves when the
+  // blob arrives — the fallback sweeps the board for s.img===key.
+  {
+    state.shapes.length=0;_invalidateGrid();Net._imgPending.clear();Net._imgIn.clear();
+    const s2=Shape.make('image',{x:0,y:0,w:10,h:10,img:'kk1'});
+    state.shapes.push(s2);_invalidateGrid();   // parked: no dataUrl, not in pending (evicted)
+    Net._onRecv({k:'img',key:'kk1',seq:0,n:1,data:'data:image/png;base64,AA',peer:'peerZ'},false);
+    assert.strictEqual(s2.dataUrl,'data:image/png;base64,AA','evicted straggler resolves on blob');
+    assert.strictEqual(s2.img,undefined,'img ref dropped');
+    // and a pending-tracked shape resolves via the primary path
+    const s3=Shape.make('image',{x:0,y:0,w:10,h:10,img:'kk2'});
+    state.shapes.push(s3);_invalidateGrid();Net._imgPending.set(s3.id,'kk2');
+    Net._onRecv({k:'img',key:'kk2',seq:0,n:1,data:'data:image/png;base64,BB',peer:'peerZ'},false);
+    assert.strictEqual(s3.dataUrl,'data:image/png;base64,BB','pending shape resolves');
+    assert.strictEqual(Net._imgPending.has(s3.id),false,'pending entry cleared');
+    console.log('  ✓ img blob resolves evicted + pending shapes (ADR-0629)');
+  }
 
   // applyRemote does NOT enter local undo stack
   const histLen = state.history.length;
@@ -11115,7 +11132,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1157; // prev 1156 + img stragglers pin (ADR-0629)
+  pass += 1161; // prev 1157 + img stragglers behavioural (4 asserts, ADR-0630)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
