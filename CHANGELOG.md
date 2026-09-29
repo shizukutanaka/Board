@@ -1,3 +1,8 @@
+## [1.7.813] - 2026-09-29
+
+### Docs
+- ADR-0787: architecture.md の wire 境界節へ ADR-0775–0786 期の規則を同期 — clock の文字列長 bound・kill-set 必須化・'?' スタブ heal・全経路バイト予算・再組立て TTL
+
 ## [1.7.812] - 2026-09-29
 
 ### Fixed
