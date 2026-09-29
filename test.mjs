@@ -441,7 +441,7 @@ const checks = [
   ['load validates viewport finiteness+range', html.includes("_vpOK=v=>v&&_xyOK(+v.x)&&_xyOK(+v.y)&&_fin(+v.zoom)&&+v.zoom>0") && html.includes("if(_vpOK(d.viewport))") && html.includes("if(_vpOK(data.viewport))")],
   ['load clamps viewport zoom to [MIN_ZOOM,MAX_ZOOM]', html.includes("_vp().zoom=clampZoom(+d.viewport.zoom)")],
   ['importer intake parity (ADR-0796)', (html.match(/_ln\(shapes=shapes\.filter\(validShape\)\)/g)||[]).length>=3 && html.includes("p.sh=p.sh.filter(validShape)") && html.includes("_xyOK(ddx)&&_xyOK(ddy)") && html.includes("_xyOK(+ap.scrollX)")],
-  ['text editor capped at the wire text bound (ADR-0797)', html.includes("ta.maxLength=5000")],
+  ['text editor capped at the wire text bound (ADR-0797)', html.includes("ta.maxLength=5e3")],
   ['clampZoom is the single zoom-invariant source', html.includes("const clampZoom=z=>_max(MIN_ZOOM,_min(MAX_ZOOM,z))") && html.includes("const nz=clampZoom(") && html.includes("const z=clampZoom(")],
   // v1.6.18: deeper audit fixes
   ['P selects pen, Shift+P presents', html.includes("k==='p'&&_sK(e)&&!meta&&!_aK(e)")],

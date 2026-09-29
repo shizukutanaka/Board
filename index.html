@@ -5770,8 +5770,7 @@ function openTextEditor(s,isNew){
   const origText=_txx(s)||'';
   const orig=clone(s);
   ta.value=origText;
-  ta.spellcheck=false;
-  ta.maxLength=5000;   // ADR-0797: wire parity — validPatch rejects text>5000, so the editor must not produce it (peers would drop the broadcast while local keeps it)
+  ta.spellcheck=false;ta.maxLength=5e3;   // ADR-0797
   positionTextEditor(ta,s);
   _ap(_db,ta);
   _fc(ta);
@@ -7021,7 +7020,7 @@ function drawioToShapes(txt){
       const m=_qs(dg,'mxGraphModel'),pw=+(m&&_ga(m,'pageWidth'))||850;
       if(!_dioNm)_dioNm=_ga(dg,'name');   // ADR-0405: first page's name → docName
       if(!_dioVp&&m){const ddx=+_ga(m,'dx'),ddy=+_ga(m,'dy'),dz=+_ga(m,'zoom');
-        if(_xyOK(ddx)&&_xyOK(ddy))_dioVp={x:-ddx,y:-ddy,z:_fin(dz)?clampZoom(dz):1,g:+_ga(m,'grid')===1}}   // ADR-0359/0409/0796: viewport + grid restore, bounded
+        if(_xyOK(ddx)&&_xyOK(ddy))_dioVp={x:-ddx,y:-ddy,z:_fin(dz)?clampZoom(dz):1,g:+_ga(m,'grid')===1}}   // ADR-0359/0409/0796
       for(const c2 of _qsa(dg,'mxCell'))_doff.set(c2,_dx);
       _dx+=pw+200;
     }}
@@ -7185,7 +7184,7 @@ function importDrawioText(txt,wp){
   }
   let shapes=null;
   try{shapes=drawioToShapes(txt)}catch(_){shapes=null}
-  if(!shapes||!_ln(shapes=shapes.filter(validShape))){_wT(_IB);return false}   // ADR-0796: intake parity — peers reject what locals must not accept
+  if(!shapes||!_ln(shapes=shapes.filter(validShape))){_wT(_IB);return false}   // ADR-0796: wire parity
   const _vpNull=wp==null;
   _ctrAt(shapes,wp)
   _cOp({op:'addMany',shapes});
