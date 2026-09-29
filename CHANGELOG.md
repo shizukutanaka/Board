@@ -1,3 +1,10 @@
+## [1.7.771] - 2026-09-28
+
+### Fixed
+- ADR-0745: snapshot merge no longer resolves a losing img blob ref —
+  _attachOp parks the ref in _imgPending before the LWW merge runs, so a
+  rejected img would still overwrite dataUrl when its blob arrived
+
 ## [1.7.770] - 2026-09-28
 
 ### Removed
