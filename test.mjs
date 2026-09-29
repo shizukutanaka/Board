@@ -741,7 +741,7 @@ const checks = [
   ['text overlay closes when edited shape removed/hidden/locked/off-page (ADR-0559/0569/0572/0574/0709)', html.includes("if(!s||_hd(s)||_lk(s)||!_pgOk(s)){_rm(_teTa);_teTa=null;state.editing=null;_iv();return}")],
   ['label overlay closes when labelled shape removed/hidden/locked/off-page (ADR-0559/0569/0572/0709)', html.includes("if(!_lt||_hd(_lt)||_lk(_lt)||!_pgOk(_lt)){_rm(_lblTa.inp);_lblTa=null;return}")],
   ['peer selection outlines skip hidden shapes (ADR-0576)', html.includes("const s=byId(id);if(!s||_hd(s)||!_pgOk(s))continue")],
-  ['fragIn ignores duplicate seq slots (ADR-0578)', html.includes("if(!sn.p[seq]){sn.p[seq]=msg.data;sn.g++}")],
+  ['fragIn ignores duplicate seq slots (ADR-0578)', html.includes("if(!sn.p[seq]){sn.p[seq]=msg.data;sn.g++;sn.b=(sn.b||0)+_ln(msg.data)}")],
   ['_dcQ requeue queue is capped at 4096 (ADR-0578)', html.includes("_ln(q)<4096&&_pu(q,m)")],
   ['Presentation.enter folds open editor first (ADR-0582)', html.includes("function enter(){\n    _cxO();")],
   ['editors close a still-open overlay first (ADR-0560)', html.includes("const _cxO=()=>{if(_teTa)_teTa.blur();if(_lblTa)_lblTa.inp.blur()}")],
@@ -14004,6 +14004,19 @@ try {
     assert.strictEqual(Net._imgIn.get('ok1'),'data:image/png;base64,AA','normal stream unaffected');
     console.log('  ✓ img reassembly aborts at the joined cap mid-flight (ADR-0781)');
   }
+  // ADR-0782: _fragIn ('snap'/'opc') had the same gap — 384×96KB ≈ 37MB could
+  // accumulate before the post-join 24MB check ran. sn.b aborts mid-flight.
+  {
+    Net._snapIn=null;
+    const chunk='x'.repeat(96*1024);
+    for(let i=0;i<260;i++)Net._onRecv({k:'snap',seq:i,n:300,data:chunk,peer:'pz'},false);
+    // abort fires at ~251 chunks; later seqs open a fresh slot, so the counter restarted.
+    assert.ok(Net._snapIn,'post-abort stream opens a fresh slot');
+    assert.ok(Net._snapIn.b<1_500_000,'aborted accumulation is gone — byte counter restarted');
+    Net._onRecv({k:'snap',seq:0,n:1,data:'{"k":"x"}',peer:'pz'},false);
+    assert.strictEqual(Net._snapIn,null,'normal 1-chunk snap completes and clears');
+    console.log('  ✓ frag reassembly aborts at the joined cap mid-flight (ADR-0782)');
+  }
 
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
@@ -14011,7 +14024,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1763; // prev 1760 + 3 ADR-0781 img reassembly early-abort asserts
+  pass += 1766; // prev 1763 + 3 ADR-0782 frag reassembly early-abort asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
