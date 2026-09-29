@@ -875,7 +875,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.872';   // ADR-0846
+const V='1.7.873';   // ADR-0847
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1619,7 +1619,7 @@ const Store={
     // restore against a fresh clock stamped with the same (ts,peer) the peers
     // see on the undo-wire ops. Arbitrating against the ORIGINAL commit clock
     // diverged: a remote write landing between the commit and the undo won on
-    // our side (clockNewer(remote, oldClock)) yet lost on theirs …
+    // our side (clockNewer(remote, oldClock)) yet lost on theirs (which
     // compares the wire op's fresh clock) — props split-brained.
     const _ut=nowTs();op.clock={peer:_pi(),seq:++state.seq,ts:_ut};
     this._apply(op,false);
@@ -1776,7 +1776,7 @@ const Store={
           // ADR-0724: purge by CURRENT membership via _pgDel2, not op.shapes — a shape
           // that acquired pg=op.id after the commit (a peer's add on that page)
           // survived locally while peers' wire pageDel removed it. When the undo
-          // empties the page set the members revert to un-paged instead …
+          // empties the page set the members revert to un-paged (the
           // 'unpage' flag below — the sender keeps them too).
           if(_pgs()){const i=_pgs().findIndex(p=>p.id===op.id);if(i>=0)_pgs().splice(i,1);
             if(_ln(_pgs()))_pgDel2(op,_pgs()[0].id);
@@ -1787,7 +1787,7 @@ const Store={
       case 'pageDel':{
         if(forward){
           // ADR-0703: the <2 guard is LOCAL-only — a remote del must apply even when it
-          // empties our set …
+          // empties our set — apply it exactly as the
           // sender did; refusing here diverges the page sets permanently).
           if(!_pgs()||(_ln(_pgs())<2&&(!op.clock||op.clock.peer===_pi())))break;
           const i=_pgs().findIndex(p=>p.id===op.id);if(i<0)break;
@@ -1873,8 +1873,8 @@ const Store={
           const sh=byId(raw.id);
           // ADR-0712: the locked gate applies in BOTH directions — backward used to
           // restore props on a shape locked since the forward, while peers' remote
-          // apply of our undo-wire skips it → diverged props. …
-          // still passes so the unlock-undo isn't dead)
+          // apply of our undo-wire skips it → diverged props. The forward
+          // gate still applies so an unlock-undo isn't dead)
           if(!sh||(sh.locked&&!('locked' in raw)))continue;
           const p=clone(raw);if(op.op!=='beautify'){delete p.type;for(const k of _ok(p))if(k[0]==='_')delete p[k];}   // ADR-0373/0730
           // Same LWW guard as 'upd' (_lwwSkip) — these
@@ -8341,8 +8341,8 @@ const Net={
       case 'snapshot':
         this._snapRx=true;   // ADR-0475
         // ADR-0617: a snapshot strictly predating our newest swap carries pre-swap
-        // shapes — merging it re-adds what the winning swap removed …
-        // is the same generation, not stale; only a newer local marker rejects it).
+        // shapes — merging it re-adds what the winning swap removed (a same-
+        // generation snapshot isn't stale; only a newer local marker rejects).
         if(msg.rep&&validClock(msg.rep)&&state._lastRep&&clockNewer(state._lastRep,msg.rep))break;
         if(_nS()===0)this._applySnapshot(msg);
         // Already have shapes: merge — adopt only shapes we don't have yet.
