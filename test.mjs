@@ -4836,6 +4836,19 @@ try {
         state.shapes=[];state._lastTs=0;
         console.log('  ✓ add-backward locked parity (2 asserts)');
       }
+      // ADR-0714: pageAdd backward skips locked members — the undo-wire pageDel
+      // leaves them on peers (rehomed); the heal refiles their pg locally.
+      {
+        state.pages=[{id:'pA',name:'A',nts:0}];state.curPg='pA';state.shapes=[];
+        const s=Shape.make('rect',{x:0,y:0,w:10,h:10});s.pg='pB';
+        Store.applyRemote({op:'pageAdd',id:'pB',name:'B',shapes:[JSON.parse(JSON.stringify(s))],clock:{peer:'zz',seq:35,ts:7}});
+        byId(s.id).locked=1;
+        Store._apply({op:'pageAdd',id:'pB',name:'B',shapes:[JSON.parse(JSON.stringify(s))],clock:{peer:'zz',seq:35,ts:7}},false);
+        assert.ok(byId(s.id)&&byId(s.id).pg==='pA','locked member survives pageAdd-undo, rehomed (ADR-0714)');
+        assert.ok(!_pgById('pB'),'page still removed (ADR-0714)');
+        state.pages=null;state.curPg=null;state.shapes=[];state._lastTs=0;
+        console.log('  ✓ pageAdd-backward locked parity (2 asserts)');
+      }
       assert.ok(html.includes("ids.join(',')+'|'+(state.curPg||'')"),'sel presence key includes page (ADR-0680)');
       console.log('  ✓ sel-presence pg key pin (1 assert)');
     }
@@ -13048,7 +13061,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1584; // prev 1517 + 1 tab aria-label pin (ADR-0682)
+  pass += 1586; // prev 1517 + 1 tab aria-label pin (ADR-0682)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

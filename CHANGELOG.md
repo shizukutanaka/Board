@@ -1,3 +1,11 @@
+## [1.7.740] - 2026-09-29
+
+### Fixed
+- ADR-0714: undo of pageAdd removed locked members while the undo-wire pageDel
+  kept them on peers (rehomed via _pgDel2) — membership divergence. Backward
+  now skips locked members; the existing heal refiles their pg to the first
+  page so they stay visible
+
 ## [1.7.739] - 2026-09-29
 
 ### Fixed
