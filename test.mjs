@@ -11558,6 +11558,42 @@ try {
     assert.strictEqual(x1.opacity,0.5,'digit 5 sets 50% opacity');
     fireKey('0');
     assert.strictEqual(x1.opacity,1,'digit 0 restores full opacity');
+    // view toggles + temp-hand: g grid, ⇧G snap, m minimap, ? help (Esc cascade closes),
+    // space picks 'hand' temporarily and the real keyup restores the previous tool
+    reset();
+    state.tool='select';
+    const vg0=state.showGrid;
+    fireKey('g');
+    assert.strictEqual(state.showGrid,!vg0,'g toggles the grid view');
+    const sn0=state.snap;
+    fireKey('g',{shiftKey:true});
+    assert.strictEqual(state.snap,!sn0,'⇧G toggles the snap mode');
+    const mm0=state.showMinimap;
+    fireKey('m');
+    assert.strictEqual(state.showMinimap,!mm0,'m toggles the minimap');
+    fireKey('?');
+    assert.strictEqual(_els.help.dataset.open===true||_els.help.dataset.open==='true',true,'? opens the help dialog');
+    _els.help.dataset.open='true';   // real DOM coerces dataset to strings; the stub keeps booleans
+    fireKey('Escape');
+    assert.notStrictEqual(_els.help.dataset.open===true||_els.help.dataset.open==='true',true,'Escape closes the open dialog first');
+    fireKey(' ');
+    assert.strictEqual(state.tool,'hand','space holds the temporary hand tool');
+    for(const f of fakeWin._L['keyup']||[])f({key:' ',target:{matches:()=>false}});
+    assert.strictEqual(state.tool,'select','space keyup restores the previous tool');
+    // ⌘⇧H hides; ⌘⇧I inverts the selection (complement over _ulv)
+    reset();
+    state.tool='select';
+    const H1=Shape.make('rect',{x:10,y:10,w:20,h:20});
+    const H2=Shape.make('rect',{x:60,y:10,w:20,h:20});
+    const H3=Shape.make('rect',{x:110,y:10,w:20,h:20});
+    Store.commit({op:'add',shape:H1});Store.commit({op:'add',shape:H2});Store.commit({op:'add',shape:H3});
+    const h1=state.shapes[0],h2=state.shapes[1],h3=state.shapes[2];
+    state.selection=new Set([h1.id]);
+    fireKey('h',{metaKey:true,shiftKey:true});
+    assert.strictEqual(h1.visible,0,'⌘⇧H hides the selection');
+    state.selection=new Set([h1.id]);
+    fireKey('i',{metaKey:true,shiftKey:true});
+    assert.ok(state.selection.has(h2.id)&&state.selection.has(h3.id)&&!state.selection.has(h1.id),'⌘⇧I selects the inverse');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -11569,7 +11605,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1254; // prev 1242 + 12 event-sequence asserts (ADR-0641: transform keys)
+  pass += 1265; // prev 1254 + 11 event-sequence asserts (ADR-0641: view toggles + hide/inverse)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
