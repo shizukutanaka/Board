@@ -483,10 +483,35 @@ pen/line/arrow は点ジオメトリで box 中心が無く回転中心が NaN �
 - セキュリティ: `validPatch` が全 intake パスの共有ゲート (dataUrl/link のスキーム
   検証 ADR-0327)。
 
+## マルチページ (v1.7.67x — ADR-0646–0670)
+
+`state.pages=[{id,name,nts}]` (null = ページ機構未起動)、`state.curPg`=閲覧中ページ、
+図形 `s.pg` は帰属ページ (未設定は `pages[0].id` へ位置づけ帰属)。
+`pageAdd/pageDel/pageName` op が wire 収束 — `pageAdd` は `op.shapes` でメンバーを
+同梱 (0650)、`pageDel` は forward が `op.shapes`+`op.i` を記録して undo 可能、
+`pageName` は `p.nts` の LWW。
+
+**ページスコープ不変条件** (0658–0669 の監査結論):
+
+| 層 | スコープ | 例 |
+|---|---|---|
+| 表示/選択/入力 | `_pgOk` (閲覧ページ) | draw 反復、pickTop、marquee (`_sad`/`_ss` チョークポイント)、検索 `_sqMatches`、Tab チェーン、selectInverse/frame contents、showAll/unlockAll、fitFrames、ホップ候補、空ヒント、ミニマップナビ、ステータス図形数 |
+| 単一シーン export | `_shV` (可視+ページ) | PNG/SVG/.excalidraw — 明示引数にも同じ制約 (0666) |
+| 永続化/全ドキュメント | `_sh()` グローバル | `.board`/.drawio export、Persist、snapshot、`replace`/`clear` |
+| 幾何不変条件 | `_sh()` グローバル | 結合コネクタ掃引 (`ptr.gAnc`/`_bc`/`_rc`/`computeConnClears`)、z 空間、`_buildGrid` 候補生成 |
+
+- **遷移はジェスチャを殺す**: `switchPage`/`_pgAdopt` が `_cancelPointerGesture`
+  (0664) — 別ページ図形への不可視コミットを防ぐ
+- **プレゼンス**: `cursor`/`selection` wire に `pg` 同梱、別ページカーソルは非描画
+  (0647)、アバターツールチップ+クリック follow (0656/0670)
+- **帰属ヒール**: 未知 `pg` を持つ remote 図形は `?` ページを自動生成 (0646)、
+  `pageAdd` backward の最終ページ→残部へ再帰属、`pageDel` 系は switchPage 経由で
+  ビュー着地 (0649/0663)
+
 ## 今後
 
 - Plugin API (iframe sandbox + postMessage)、Figma import (v2.0)
 
 > 完了済み: z 順序の fractional indexing (ADR-0001)、AES-GCM E2E 暗号化
-> (ADR-0015)。マルチページ/スレッドコメントは scratchpad 製品判断で対象外
-> (CLAUDE.md「100点への距離」)。
+> (ADR-0015)、マルチページ (ADR-0646–0670)。
+> スレッドコメントは scratchpad 製品判断で対象外 (CLAUDE.md「100点への距離」)。

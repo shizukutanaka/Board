@@ -4572,6 +4572,13 @@ try {
       assert.ok(html.includes("switchPage(p.pg)")&&html.includes("el.style.cursor='pointer'"),'peer avatar follows to the peer page (ADR-0670)');
       console.log('  ✓ peer-avatar follow pin (1 assert)');
     }
+    // ADR-0671: architecture.md documents the page-scope invariant (audit conclusion)
+    {
+      const arch=(()=>{try{return readFileSync('docs/architecture.md','utf8')}catch(_){return''}})();
+      assert.ok(arch.includes('ページスコープ不変条件'),'architecture.md has the page-scope section (ADR-0671)');
+      assert.ok(!arch.includes('マルチページ/スレッドコメントは'),'stale "multi-page out of scope" claim removed');
+      console.log('  ✓ page-scope invariant doc sync pins (2 asserts)');
+    }
   }
 
   // ADR-0072: elbow trunk locate + bend-override two-corner route
@@ -12719,7 +12726,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1501; // prev 1500 + 1 peer-avatar follow pin (ADR-0670)
+  pass += 1503; // prev 1501 + 2 page-scope doc-sync pins (ADR-0671)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
