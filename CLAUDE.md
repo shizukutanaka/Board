@@ -829,6 +829,7 @@ Board/
 │   └── ADR-0778-op-pg-stub-heal.md  # 個別 op の未知 s.pg を '?' スタブへ即時 heal (永久不可視 orphan の閉塞)
 │   └── ADR-0779-validclock-length-caps.md  # validClock に peer/seq 文字列長上限 (seenOps+wclock 肥大閉塞)
 │   └── ADR-0780-snapshot-namepeer-cap.md  # スナップショット namePeer/復元 ntp に 64 キャップ (永続化肥大閉塞)
+│   └── ADR-0781-img-reassembly-byte-cap.md  # img 再組立て中間バイト 12MB 早期中断
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

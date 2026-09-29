@@ -13988,6 +13988,22 @@ try {
     assert.strictEqual(Net._snapshotMsg().namePeer,'ok','valid namePeer still stored');
     console.log('  ✓ snapshot namePeer bounded like every wire id (ADR-0780)');
   }
+  // ADR-0781: img reassembly tracked per-part count only — the 12MB joined check
+  // ran AFTER all n parts landed, so a stream of 96KB chunks could accumulate
+  // ~384MB mid-flight. st.b now aborts the slot the moment assembled bytes cross
+  // the same cap the join would apply.
+  {
+    Net._imgChunks.clear();
+    const chunk='x'.repeat(96*1024);
+    for(let i=0;i<130;i++)Net._onRecv({k:'img',key:'big1',seq:i,n:200,data:chunk,peer:'pz'},false);
+    // abort fires at ~123 chunks; later seqs legitimately open a fresh slot
+    // (out-of-order reassembly), so assert the byte counter restarted instead.
+    assert.ok(Net._imgChunks.has('big1'),'post-abort stream opens a fresh slot');
+    assert.ok(Net._imgChunks.get('big1').b<1_000_000,'aborted accumulation is gone — only post-abort bytes counted');
+    Net._onRecv({k:'img',key:'ok1',seq:0,n:1,data:'data:image/png;base64,AA',peer:'pz'},false);
+    assert.strictEqual(Net._imgIn.get('ok1'),'data:image/png;base64,AA','normal stream unaffected');
+    console.log('  ✓ img reassembly aborts at the joined cap mid-flight (ADR-0781)');
+  }
 
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
@@ -13995,7 +14011,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1760; // prev 1756 + 4 ADR-0780 snapshot namePeer cap asserts
+  pass += 1763; // prev 1760 + 3 ADR-0781 img reassembly early-abort asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

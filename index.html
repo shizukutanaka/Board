@@ -873,7 +873,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.806';   // ADR-0780
+const V='1.7.807';   // ADR-0781
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -8272,18 +8272,16 @@ const Net={
     switch(msg.k){
       case 'img':{
         // ADR-0069: blob chunks → _imgIn, then drain parked shape refs.
-        // ADR-0379: cap each chunk too — the wire fo
-        // 12MB post-assembly check runs only after A
-        // msg.data × up to 4096 slots per key × 64 k
+        // ADR-0379: cap each chunk too.
         if(!_iS(msg.key)||_ln(msg.key)>64||!_iS(msg.data)||_ln(msg.data)>96*1024)break;
         const n=_iN(msg.n)&&msg.n>=1&&msg.n<=4096?_fl(msg.n):1;
         const seq=_iN(msg.seq)&&msg.seq>=0?_fl(msg.seq):0;
         if(seq>=n)break;
         let st=this._imgChunks.get(msg.key);
-        // ADR-0374: bound in-flight reassemblies — a
-        // keys mid-transfer and never finishing woul
-        if(!st||st.n!==n||seq===0){if(!st&&this._imgChunks.size>=64)this._imgChunks.delete(this._imgChunks.keys().next().value);st={p:new Array(n),g:0,n};this._imgChunks.set(msg.key,st)}   // ADR-0449/0454/0563: evict oldest stal
-        if(!st.p[seq]){st.p[seq]=msg.data;st.g++}
+        // ADR-0374: bound in-flight reassemblies (64 slots, LRU).
+        if(!st||st.n!==n||seq===0){if(!st&&this._imgChunks.size>=64)this._imgChunks.delete(this._imgChunks.keys().next().value);st={p:new Array(n),g:0,n};this._imgChunks.set(msg.key,st)}   // ADR-0449/0454/0563
+        if(!st.p[seq]){st.p[seq]=msg.data;st.g++;st.b=(st.b||0)+_ln(msg.data)}
+        if(st.b>12_000_000){this._imgChunks.delete(msg.key);break}   // ADR-0781
         if(st.g<st.n)break;
         this._imgChunks.delete(msg.key);
         const data=st.p.join('');
