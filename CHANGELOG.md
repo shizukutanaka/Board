@@ -1,3 +1,52 @@
+## [1.7.759] - 2026-09-29
+
+ADR-0733: delta-path move undo arbitrated per axis — the real recorded form (ids+dx+dy only) un-moved -dx/-dy unconditionally, so a remote write whose clock beat the undo's fresh clock split an axis (peers' _lwwDrop removed that axis on the wire while the undoer had already moved it). Backward now _lwwSkip-gates x/y independently: arbitrated axes keep the remote-winning value, the rest still un-move — and the wire's derived absolute mirrors the outcome on every peer.
+
+## [1.7.758] - 2026-09-29
+
+### Fixed
+- ADR-0732: move's undo-wire was the pre-0729 delta form — a peer where the
+  forward move lost LWW (kept a racing write) applied -dx off a different
+  position = divergence. The inverse now rides the absolute path both ways:
+  local backward restores the recorded positions and the wire op's derived
+  after = the restored position
+
+## [1.7.757] - 2026-09-29
+
+### Fixed
+- ADR-0731: undoing a 'beautify' had no _undoWire case — the undoer restored
+  the pen while every peer kept the rect, re-creating the divergence
+  ADR-0730 closed. Inverse rides the before/after patch swap (upd family)
+
+## [1.7.756] - 2026-09-29
+
+### Fixed
+- ADR-0730: 'beautify' ops broadcast but every receiver dropped them at the
+  wire (not in REMOTE_OPS, no validator case) — the sender's pen→rect
+  retype stayed local while peers kept the pen = guaranteed divergence.
+  Now a real wire op: REMOTE_OPS + patch validation + per-property LWW
+
+## [1.7.755] - 2026-09-29
+
+### Fixed
+- ADR-0729: move racing an absolute write diverged (delta+upd don't
+  commute) — wire moves carry absolute after/before positions and join
+  the per-property LWW path; legacy delta moves still apply
+
+## [1.7.754] - 2026-09-29
+
+### Docs
+- ADR-0728: architecture.md undo×sync — the seven convergence rules of
+  the undo-wire family (0717–0727) documented inline
+
+## [1.7.753] - 2026-09-29
+
+### Fixed
+- ADR-0727: pageName undo-wire reverted the NAME but peers stamped the
+  fresh undo clock into nts while the undoer restored bts — a rename
+  between the two won on one side only. Wire now carries nts/ntp (the
+  restored bts/btp) — same class as ADR-0721's wclock snapshot
+
 ## [1.7.752] - 2026-09-29
 
 ### Fixed

@@ -775,6 +775,13 @@ Board/
 │   └── ADR-0724-pageadd-undo-unpage.md  # pageAdd undo を _pgDel2 現メンバー基準へ + 最終ページ undo は 'unpage' wire で op由来のみ死/残り un-page (実装済)
 │   └── ADR-0725-pagedel-wire-firstid.md  # pageDel の rehome 先を wire で送側の firstId に統一 (ページ順発散時のメンバー帰属分裂を解消) (実装済)
 │   └── ADR-0726-addmany-wc-validate.md  # addMany.wc (undo-wire の wclock スナップ) を validRemotePayload で検証 (NaN 時計の仲裁汚染を閉塞) (実装済)
+│   └── ADR-0727-pagename-undo-nts.md  # pageName undo-wire に復元 nts/ntp を同梱 (undo clock を受側が刻んで次の改名 LWW が分裂するのを解消) (実装済)
+│   └── ADR-0728-arch-sync-undowire.md  # architecture.md の undo×sync に 0717–0727 の7規則を文書化 (実装済)
+│   └── ADR-0729-move-absolute-wire.md  # wire move に絶対 after/before を同梱し LWW 化 (delta×absolute 競合の発散解消) (実装済)
+│   └── ADR-0730-beautify-wire.md  # 'beautify' を wire op 化 (REMOTE_OPS+validator+LWW — 送側のみ retype の発散解消) (実装済)
+│   └── ADR-0731-beautify-undo-wire.md  # 'beautify' undo-wire を patch-swap 化 (ADR-0730 の発散が undo で再燃していた) (実装済)
+│   ├── ADR-0732-move-undo-absolute.md  # move undo-wire を絶対値化 + backward 絶対復元 (ADR-0729 残 delta の発散解消) (実装済)
+│   └── ADR-0733-move-delta-undo-axis-arbitration.md  # delta backward を _lwwSkip で軸毎仲裁 (racing write 保有軸の発散解消) (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

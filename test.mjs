@@ -1177,7 +1177,7 @@ const checks = [
   ['rotated resize works in local frame + world re-pin', html.includes("sp=_rotPt(wp.x,wp.y,cx0,cy0,-orig.rotate);") && html.includes("sh.x+=tgt.x-cur.x;sh.y+=tgt.y-cur.y;")],
   ['selection outline traces rotated box', html.includes("if(single&&single.rotate&&single.w!=null){")],
   // v1.6.70: keyboard resize (Alt+arrow)
-  ['resize op registered (apply, validate, remote)', html.includes("case 'resize':\n      case 'align':\n      case 'beautify':{") && html.includes("case 'resize':{const noLock=") && html.includes("'style','resize','replace','pageAdd','pageDel','pageName'])")],
+  ['resize op registered (apply, validate, remote)', html.includes("case 'resize':\n      case 'align':\n      case 'beautify':{") && html.includes("case 'beautify':{const noLock=") && html.includes("'style','resize','replace','pageAdd','pageDel','pageName','beautify'])")],
   ['Alt+arrow keyboard-resizes box shapes', html.includes("_rcOp({op:'resize',before,after});") && html.includes("sh.w=_max(4,sh.w+dw);sh.h=_max(4,sh.h+dh);")],
   // v1.6.71: image import error handling
   ['imgErr i18n key in both locales', html.includes("imgErr:'画像を読み込めませんでした'") && html.includes("imgErr:'Image failed to load'")],
@@ -1352,7 +1352,7 @@ const checks = [
     html.includes("_keepSel(origSel);")],
   // v1.7.24b: validRemotePayload must block locked key in remote style/resize ops
   ['remote style/resize ops cannot set locked (noLock guard extended)',
-    html.includes("case 'resize':{const noLock=p=>!('locked' in p);")],
+    html.includes("case 'beautify':{const noLock=p=>!('locked' in p);")],
   // v1.7.26: _apply replace backward restores origSel; importBoard/importFromHash attach it
   ['_apply replace backward restores origSel; import callers attach origSel + afterWc to op',
     html.includes("if(!forward)_selR(op);") &&
@@ -1477,8 +1477,8 @@ const checks = [
     !html.includes("if(!op.wc){op.wc={};for")&&
     html.includes("op.wc={};for(const sh of op.shapes)if(_wc()[sh.id])op.wc[sh.id]=clone(_wc()[sh.id]);")],
   // v1.7.48: 'clear' removed from REMOTE_OPS (remote peer cannot wipe board)
-  ["REMOTE_OPS excludes 'clear' but includes 'replace' (ADR-0613: wipe+write converges; pre-swap board is parked in :prev)",
-    html.includes("REMOTE_OPS:_sT(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize','replace','pageAdd','pageDel','pageName'])")],
+  ["REMOTE_OPS excludes 'clear' but includes 'replace'+'beautify' (ADR-0613/0730)",
+    html.includes("REMOTE_OPS:_sT(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize','replace','pageAdd','pageDel','pageName','beautify'])")],
   // v1.7.48/ADR-0474: _applySnapshot caps at SHARE_MAX_SHAPES — a 500-op cap truncated boards >500 shapes
   ['_applySnapshot: SHARE_MAX_SHAPES cap on snapshot shapes (board-size bound, DoS-bounded by the 24MB join cap)',
     html.includes("const valid=_s0(shapes,SHARE_MAX_SHAPES).map(s=>this._attachShape(s)).filter(validShape);")],
@@ -6665,6 +6665,142 @@ try {
     assert.ok(A_mX.x===10 && A_mX.y===5, 'commute: both deltas applied (sum), order-independent');
     console.log('  ✓ two-peer commute: concurrent MOVES converge (delta ops commute) - §3.16');
 
+    // ADR-0729: a move racing an ABSOLUTE write (upd x=…) can't commute — the wire
+    // move now carries absolute after/before positions so it joins the LWW path.
+    // (i) move newer than upd → the move's absolute pos wins on both sides
+    //     (pre-0729: A computed 50+10=60, B stayed 10 — diverged).
+    reset(A); reset(B);
+    A.state.shapes.push(cp(mX)); B.state.shapes.push(cp(mX)); A.sortZ(); B.sortZ();
+    const wAB=[], wBA=[];
+    A.Net.broadcast = op => wAB.push({k:'op',op:cp(op)});
+    B.Net.broadcast = op => wBA.push({k:'op',op:cp(B.Net._slimOp(op))});   // _slimOp adds after/before — the real wire form
+    A.Store.commit({op:'upd',id:'mX',before:{x:0},after:{x:50},clock:{peer:'peerA',seq:1,ts:1000}});
+    B.Store.commit({op:'move',ids:['mX'],dx:10,dy:0,clock:{peer:'peerB',seq:1,ts:2000}});   // move newer
+    wAB.forEach(m=>B.Net._onRecv(m)); wBA.forEach(m=>A.Net._onRecv(m));
+    assert.strictEqual(A.state.shapes.find(s=>s.id==='mX').x, 10, 'ADR-0729: newer move pos wins on A');
+    assert.strictEqual(B.state.shapes.find(s=>s.id==='mX').x, 10, 'ADR-0729: B converged on the same x');
+
+    // (ii) upd newer than move → upd's x wins on both sides (the move's keys drop in _lwwDrop).
+    reset(A); reset(B);
+    A.state.shapes.push(cp(mX)); B.state.shapes.push(cp(mX)); A.sortZ(); B.sortZ();
+    wAB.length=0; wBA.length=0;
+    A.Store.commit({op:'upd',id:'mX',before:{x:0},after:{x:50},clock:{peer:'peerA',seq:1,ts:3000}});   // upd newer
+    B.Store.commit({op:'move',ids:['mX'],dx:10,dy:0,clock:{peer:'peerB',seq:1,ts:2000}});
+    wAB.forEach(m=>B.Net._onRecv(m)); wBA.forEach(m=>A.Net._onRecv(m));
+    assert.strictEqual(A.state.shapes.find(s=>s.id==='mX').x, 50, 'ADR-0729: newer upd wins on A');
+    assert.strictEqual(B.state.shapes.find(s=>s.id==='mX').x, 50, 'ADR-0729: B converged on the same x');
+
+    // (iii) a legacy delta-form move (no after) still applies the delta — pre-0729 peers.
+    reset(A); reset(B);
+    A.state.shapes.push(cp(mX));
+    A.Net._onRecv({k:'op',op:{op:'move',ids:['mX'],dx:7,dy:0,clock:{peer:'peerB',seq:1,ts:1}}});
+    assert.strictEqual(A.state.shapes.find(s=>s.id==='mX').x, 7, 'ADR-0729: legacy delta moves still apply');
+    console.log('  ✓ ADR-0729: move×upd race converges on the newer clock; legacy delta still applies');
+
+    // ADR-0730: 'beautify' broadcast was dropped at the wire validator — the sender's
+    // pen→rect retype stayed local-only while every peer kept the pen (divergence).
+    // Now it validates, rides the LWW patch path, and converges.
+    reset(A); reset(B);
+    const penS={id:'pX',type:'pen',pts:[[0,0],[10,0],[10,10],[0,10]],stroke:'#000',size:2,z:1};
+    A.state.shapes.push(cp(penS)); B.state.shapes.push(cp(penS)); A._invalidateGrid(); B._invalidateGrid(); A.sortZ(); B.sortZ();
+    const bfAB=[];
+    A.Net.broadcast = op => bfAB.push({k:'op',op:cp(A.Net._slimOp(op))});
+    B.Net.broadcast = () => {};
+    const after=[{id:'pX',type:'rect',x:0,y:0,w:10,h:10}];
+    for(const p of after){const sh=A.state.shapes.find(s=>s.id===p.id);if(sh)Object.assign(sh,cp(p))}   // caller applies, as doBeautify does
+    A.Store._recordCommitted({op:'beautify',before:[{id:'pX',type:'pen',pts:cp(penS.pts)}],after,origSel:[]});
+    assert.strictEqual(A.state.shapes.find(s=>s.id==='pX').type, 'rect', 'beautify: sender retyped pen → rect');
+    bfAB.forEach(m=>B.Net._onRecv(m));
+    const bs=B.state.shapes.find(s=>s.id==='pX');
+    assert.strictEqual(bs.type, 'rect', 'ADR-0730: remote beautify applies the retype (was: dropped at the validator)');
+    assert.strictEqual(bs.w, 10, 'ADR-0730: remote beautify applies the fitted geometry');
+    // a crafted beautify carrying `locked` in after is still rejected
+    reset(A); reset(B);
+    B.state.shapes.push(cp(penS)); B._invalidateGrid();
+    B.Net._onRecv({k:'op',op:{op:'beautify',before:[cp(penS)],after:[{id:'pX',type:'rect',x:0,y:0,w:10,h:10,locked:1}],clock:{peer:'peerA',seq:1,ts:1}}});
+    assert.strictEqual(B.state.shapes.find(s=>s.id==='pX').type, 'pen', 'ADR-0730: noLock still rejects a crafted locked-setting beautify');
+    console.log('  ✓ ADR-0730: remote beautify applies + converges; crafted locked payload still rejected');
+
+    // ADR-0731: undo of a beautify had no _undoWire case — the undoer restored the
+    // pen while every peer kept the rect, re-creating the divergence ADR-0730 closed.
+    // The inverse rides the same before/after patch swap as upd/style/resize/align.
+    reset(A); reset(B);
+    const penS2={id:'pY',type:'pen',pts:[[0,0],[10,0],[10,10],[0,10]],stroke:'#000',size:2,z:1};
+    A.state.shapes.push(cp(penS2)); B.state.shapes.push(cp(penS2)); A._invalidateGrid(); B._invalidateGrid(); A.sortZ(); B.sortZ();
+    const bfAB2=[];
+    A.Net.broadcast = op => bfAB2.push({k:'op',op:cp(A.Net._slimOp(op))});
+    B.Net.broadcast = () => {};
+    const aft2=[{id:'pY',type:'rect',x:0,y:0,w:10,h:10}];
+    for(const p of aft2){const sh=A.state.shapes.find(s=>s.id===p.id);if(sh)Object.assign(sh,cp(p))}
+    A.Store._recordCommitted({op:'beautify',before:[{id:'pY',type:'pen',pts:cp(penS2.pts)}],after:aft2,origSel:[]});
+    bfAB2.splice(0).forEach(m=>B.Net._onRecv(m));
+    assert.strictEqual(B.state.shapes.find(s=>s.id==='pY').type, 'rect', 'ADR-0731: forward beautify lands first');
+    A.Store.undo();
+    assert.strictEqual(A.state.shapes.find(s=>s.id==='pY').type, 'pen', 'ADR-0731: local undo restores pen');
+    bfAB2.splice(0).forEach(m=>B.Net._onRecv(m));
+    assert.strictEqual(B.state.shapes.find(s=>s.id==='pY').type, 'pen', 'ADR-0731: undo-wire restores the pen on peers (was: peer kept rect)');
+    assert.ok(B.state.shapes.find(s=>s.id==='pY').pts.length>=4, 'ADR-0731: undo-wire restores pen pts on peers');
+    A.Store.redo();
+    bfAB2.splice(0).forEach(m=>B.Net._onRecv(m));
+    assert.strictEqual(B.state.shapes.find(s=>s.id==='pY').type, 'rect', 'ADR-0731: redo re-applies the retype on peers');
+    console.log('  ✓ ADR-0731: beautify undo/redo converge via patch-swap wire op');
+
+    // ADR-0732: move's undo-wire was the pre-0729 delta form — a peer where the
+    // forward move lost LWW (kept a racing write) applied -dx off a different
+    // position = divergence. The inverse now rides the absolute path both ways:
+    // local backward restores the recorded positions and the wire op's derived
+    // after = the restored position, so both sides converge.
+    reset(A); reset(B);
+    A.state.peerId='peerA';
+    const mvS={id:'mv',type:'rect',x:100,y:0,w:10,h:10,z:1};
+    A.state.shapes.push(cp(mvS)); B.state.shapes.push(cp(mvS)); A._invalidateGrid(); B._invalidateGrid(); A.sortZ(); B.sortZ();
+    const bfAB3=[];
+    A.Net.broadcast = op => bfAB3.push({k:'op',op:cp(A.Net._slimOp(op))});
+    B.Net.broadcast = () => {};
+    B.Net._onRecv({k:'op',op:{op:'upd',id:'mv',after:{x:150},clock:{peer:'peerX',seq:1,ts:200}}});
+    assert.strictEqual(B.state.shapes.find(s=>s.id==='mv').x, 150, 'ADR-0732: racing upd lands at the peer');
+    const mv={op:'move',ids:['mv'],dx:10,dy:0,before:[{id:'mv',x:100,y:0}],after:[{id:'mv',x:110,y:0}],clock:{peer:'peerA',seq:1,ts:100}};
+    A.Store._apply(mv,true);
+    A.Store._recordCommitted(mv);
+    assert.strictEqual(A.state.shapes.find(s=>s.id==='mv').x, 110, 'ADR-0732: sender applied its move');
+    bfAB3.splice(0).forEach(m=>B.Net._onRecv(m));
+    assert.strictEqual(B.state.shapes.find(s=>s.id==='mv').x, 150, 'ADR-0732: forward move lost LWW at the peer (kept 150)');
+    A.Store.undo();
+    assert.strictEqual(A.state.shapes.find(s=>s.id==='mv').x, 100, 'ADR-0732: local undo restores the recorded x (was: -delta off whatever raced in)');
+    bfAB3.splice(0).forEach(m=>B.Net._onRecv(m));
+    assert.strictEqual(B.state.shapes.find(s=>s.id==='mv').x, 100, 'ADR-0732: absolute undo-wire converges the peer (was: -delta left it at 140)');
+    console.log('  ✓ ADR-0732: move undo-wire absolute swap + backward absolute restore');
+
+    // ADR-0733: delta-path backward (the real recorded form — local ops carry
+    // ids+dx+dy only) must arbitrate per axis like the absolute path. A remote
+    // write whose clock beats the undo's fresh clock owns that axis; the undoer
+    // un-moves only the rest. (Before: -dx ran unconditionally → the axis split:
+    // peer's _lwwDrop dropped the wire x while the undoer had already moved it.)
+    reset(A); reset(B);
+    A.state.peerId='peerA';
+    const mv2={id:'mv2',type:'rect',x:100,y:0,w:10,h:10,z:1};
+    A.state.shapes.push(cp(mv2)); B.state.shapes.push(cp(mv2)); A._invalidateGrid(); B._invalidateGrid(); A.sortZ(); B.sortZ();
+    const bfAB4=[];
+    A.Net.broadcast = op => bfAB4.push({k:'op',op:cp(A.Net._slimOp(op))});
+    B.Net.broadcast = () => {};
+    const mv3={op:'move',ids:['mv2'],dx:10,dy:5,clock:{peer:'peerA',seq:1,ts:100}};
+    A.Store._apply(mv3,true);
+    A.Store._recordCommitted(mv3);
+    assert.deepStrictEqual([A.state.shapes.find(s=>s.id==='mv2').x,A.state.shapes.find(s=>s.id==='mv2').y],[110,5],'ADR-0733: sender applied its move');
+    const race={k:'op',op:{op:'upd',id:'mv2',after:{x:150},clock:{peer:'peerX',seq:99,ts:9e15}}};
+    A.Net._onRecv(cp(race)); B.Net._onRecv(cp(race));
+    assert.strictEqual(A.state.shapes.find(s=>s.id==='mv2').x, 150, 'ADR-0733: racing upd lands at the undoer too');
+    A.Store.undo();
+    const aS2=A.state.shapes.find(s=>s.id==='mv2');
+    assert.strictEqual(aS2.x, 150, 'ADR-0733: arbitrated axis keeps the remote-winning value (was: -dx split it)');
+    assert.strictEqual(aS2.y, 0, 'ADR-0733: unarbitrated axis still un-moves');
+    bfAB4.splice(0).forEach(m=>B.Net._onRecv(m));
+    const bS2=B.state.shapes.find(s=>s.id==='mv2');
+    assert.strictEqual(bS2.x, 150, 'ADR-0733: peer keeps the arbitrated x');
+    assert.strictEqual(bS2.y, 0, 'ADR-0733: peer un-moves y — converged');
+    state._lastTs=0; B.state._lastTs=0;   // the far-future race raised both HLC floors — restore them or later local commits get poisoned clocks (A IS api — shares `state`)
+    console.log('  ✓ ADR-0733: delta backward arbitrates per axis via _lwwSkip');
+
     // resize/align now LWW too (ADR-0002 follow-up): whole-shape snapshot ops gate/stamp
     // only the keys they actually changed (diff before/after). (i) concurrent resize of
     // the SAME geometry converges to the newer writer.
@@ -6976,6 +7112,29 @@ try {
       assert.ok(lk.pg==='p1',name+": locked member rehomes to the SENDER's first (p1), not the local order's (ADR-0725)");
     }
     console.log('  ✓ ADR-0725: pageDel rehome follows the wire-carried sender choice, not local page order');
+
+    // ADR-0727 (round477): pageName undo-wire must carry the RESTORED name clock
+    // (nts/ntp = bts/btp), else the undoer restores the old ts while peers stamp
+    // the fresh undo clock — a rename landing between the two wins on one side.
+    reset(A); reset(B);
+    A.state.pages=[{id:'pn1',name:'Old',nts:500,ntp:'peerC'}];
+    B.state.pages=[{id:'pn1',name:'Old',nts:500,ntp:'peerC'}];
+    A.state.curPg='pn1';B.state.curPg='pn1';
+    rAB=[];
+    A.Net.broadcast = op => rAB.push({k:'op',op:cp(op)});
+    A.Store.commit({op:'pageName',id:'pn1',before:'Old',after:'New',bts:500,btp:'peerC',clock:{peer:'peerA',seq:3,ts:1000}});
+    rAB.forEach(m=>B.Net._onRecv(m)); rAB.length=0;
+    assert.ok(B.state.pages[0].name==='New'&&B.state.pages[0].nts===1000,'precondition: rename applied on peer');
+    A.state.seq=3;
+    A.Store.undo();
+    rAB.forEach(m=>B.Net._onRecv(m));
+    for(const[X,name]of[[A,'local'],[B,'peer']]){
+      const p=X.state.pages[0];
+      assert.ok(p.name==='Old',name+': undo restores the old name');
+      assert.ok(p.nts===500,name+': name clock restored to the pre-rename ts, not the undo clock (ADR-0727)');
+      assert.ok(p.ntp==='peerC',name+': name writer restored too');
+    }
+    console.log('  ✓ ADR-0727: pageName undo-wire carries the restored nts/ntp — both sides keep the old clock');
 
     // v1.6.87: a new text/sticky is committed+broadcast with EMPTY text, then filled in
     // the editor. _syncTextFinalize must push the typed content (and a dismissed-empty
@@ -13097,7 +13256,7 @@ try {
     }
     // ADR-0705: wire pageDel/pageName drop receiver-recomputed + undo-domain fields
     assert.ok(html.includes("if(op.op==='pageDel'){const s={op:'pageDel',id:op.id,clock:op.clock};if(op.firstId!=null)s.firstId=op.firstId;if(op.unpage){s.unpage=1;s.shapes=this._slimShapes(op.shapes||[])}return s}"),'wire pageDel slims to id+firstId+unpage(+kill-set)+clock (ADR-0705/0724/0725)');
-    assert.ok(html.includes("if(op.op==='pageName')return{op:'pageName',id:op.id,after:op.after,clock:op.clock};"),'wire pageName drops undo fields (ADR-0705)');
+    assert.ok(html.includes("if(op.op==='pageName'){const s={op:'pageName',id:op.id,after:op.after,clock:op.clock};if(op.nts!=null){s.nts=op.nts;s.ntp=op.ntp}return s}"),'wire pageName drops undo fields, keeps restored nts/ntp (ADR-0705/0727)');
     console.log('  ✓ wire pageDel/pageName slim to the applied fields only (ADR-0705, 2 asserts)');
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;
     Store.applyRemote({op:'pageAdd',id:'pgA',name:'A',clock:{peer:'rp',seq:12,ts:12}});
@@ -13278,7 +13437,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1625; // prev 1624 + 1 ADR-0726 pin
+  pass += 1661; // prev 1655 + 6 ADR-0733 behavioural
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

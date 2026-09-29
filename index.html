@@ -868,7 +868,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.752';   // ADR-0726
+const V='1.7.759';   // ADR-0733
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1390,7 +1390,8 @@ function validRemotePayload(op){
       // pen pts must be array-of-[x,y] — flat arra
       if(op.after.pts!=null&&!_ptsOK(op.after.pts))return false;
       return true;}
-    case 'move':   return _iA(op.ids)&&_ln(op.ids)>0&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(_idOK)&&_iN(op.dx)&&_fin(op.dx)&&_iN(op.dy)&&_fin(op.dy)&&(op.dx!==0||op.dy!==0);
+    case 'move':   return _iA(op.ids)&&_ln(op.ids)>0&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(_idOK)&&_iN(op.dx)&&_fin(op.dx)&&_iN(op.dy)&&_fin(op.dy)&&(op.dx!==0||op.dy!==0)
+      &&(op.after==null||patches(op.after))&&(op.before==null||patches(op.before));   // ADR-0729
     case 'zorder':  // Step2 minimal-delta {changes:[{id,before,after}]} or legacy {after:[…]}
       return (_iA(op.changes)&&_ln(op.changes)<=MAX_OP_SHAPES&&op.changes.every(c=>c&&_iS(c.id)&&_ln(c.id)<=64
                 &&(c.after==null||_iS(c.after)&&_ln(c.after)<=600)&&(c.before==null||_iS(c.before)&&_ln(c.before)<=600)))   // ADR-0473/0485
@@ -1401,7 +1402,8 @@ function validRemotePayload(op){
                 &&(c.z==null||_fin(c.z))
                 &&(c.frac==null||_iS(c.frac)&&_ln(c.frac)<=600)));
     case 'style':
-    case 'resize':{const noLock=p=>!('locked' in p);
+    case 'resize':
+    case 'beautify':{const noLock=p=>!('locked' in p);
       return patches(op.after)&&op.after.every(noLock)
           &&patches(op.before)&&op.before.every(noLock);}
     case 'align':{const DIRS=_sT(['left','right','cx','top','bottom','cy','hspace','vspace','tidy','swap','gsnap','flip','rotate','lock','gresize','grot','matchw','matchh','matchwh','framefit']);
@@ -1486,7 +1488,7 @@ const Store={
     return _ln(fixes)?fixes:null;
   },
   // Apply remote op: dedup by clock; REMOTE_OP
-  REMOTE_OPS:_sT(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize','replace','pageAdd','pageDel','pageName']),   // ADR-0613: wholesale swap must converge too — 'replace' joins the wire set (older peers drop it; divergence scoped to mixed-version rooms)
+  REMOTE_OPS:_sT(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize','replace','pageAdd','pageDel','pageName','beautify']),   // ADR-0613/0730
   applyRemote(op){
     if(!op||!op.clock||!this.REMOTE_OPS.has(op.op))return;
     if(!validClock(op.clock))return;        // reject malformed clocks (wclock poisoning)
@@ -1525,7 +1527,7 @@ const Store={
   // so resize/align (whole-shape snapshots) cl
   // concurrently-edited property like stroke.
   // writes to the 'groupId' property, so overl
-  _lwwOp(op){return op.op==='upd'||op.op==='style'||op.op==='resize'||op.op==='align'||op.op==='group'||op.op==='ungroup'||op.op==='zorder'},
+  _lwwOp(op){return op.op==='upd'||op.op==='style'||op.op==='resize'||op.op==='align'||op.op==='group'||op.op==='ungroup'||op.op==='zorder'||op.op==='move'||op.op==='beautify'},   // ADR-0729/0730
   // A patch key counts for LWW only if its val
   // array) compared deeply via JSON; before ma
   _chg(before,after,key){return _JS(before?before[key]:undefined)!==_JS(after[key])},
@@ -1587,6 +1589,9 @@ const Store={
       for(const c of op.changes)if(byId(c.id)&&this._chg({frac:c.before},{frac:c.after},'frac')){
         const w=_wc()[c.id]||(_wc()[c.id]={});w.frac=C;
       }
+    }else if(op.op==='move'&&!_iA(op.after)){   // ADR-0729
+      for(const id of op.moved||op.ids||[]){const s=byId(id);if(s&&!s.locked){const w=_wc()[id]||(_wc()[id]={});
+        if(op.dx!==0)w.x=C;if(op.dy!==0)w.y=C}}
     }else if(_iA(op.after)){const bb={};if(_iA(op.before))for(const b of op.before)bb[b.id]=b;
       for(const p of op.after)stamp(p.id,p,bb[p.id]);}
   },
@@ -1714,10 +1719,20 @@ const Store={
         if(!forward)_selR(op);
         break;}
       case 'move':{
-        const d=forward?1:-1;
-        if(forward)op.moved=[];   // ADR-0548: undo un-moves only forward-moved
-        for(const id of forward?op.ids:(op.moved||op.ids)){const sh=byId(id);if(!sh)continue;if(sh.locked)continue;   // ADR-0716
-          _sT2(sh,op.dx*d,op.dy*d);if(forward)op.moved.push(id)}
+        const _mp=forward?op.after:op.before;
+        if(_iA(_mp)){   // ADR-0729/0732
+          for(const raw of _mp){const sh=byId(raw.id);if(!sh||sh.locked)continue;
+            const p=forward?raw:clone(raw);
+            if(!forward){if(p.x!=null&&_lwwSkip(raw.id,'x',op))delete p.x;if(p.y!=null&&_lwwSkip(raw.id,'y',op))delete p.y}
+            if(p.x!=null)sh.x=p.x;if(p.y!=null)sh.y=p.y}
+        }else{
+          const d=forward?1:-1;
+          if(forward)op.moved=[];   // ADR-0548: undo un-moves only forward-moved
+          for(const id of forward?op.ids:(op.moved||op.ids)){const sh=byId(id);if(!sh)continue;if(sh.locked)continue;   // ADR-0716
+            if(!forward){const ux=_lwwSkip(id,'x',op),uy=_lwwSkip(id,'y',op);   // ADR-0733
+              if(ux&&uy)continue;_sT2(sh,ux?0:op.dx*d,uy?0:op.dy*d)}
+            else{_sT2(sh,op.dx*d,op.dy*d);op.moved.push(id)}}
+        }
         if(!forward)_selR(op);
         break;}
       case 'clear':{
@@ -1803,7 +1818,11 @@ const Store={
         // while the inverse op still reverted peers -> divergence.
         const win=p.nts==null||(forward?clockNewer({ts,peer:_iS(op.clock&&op.clock.peer)?op.clock.peer:'',seq:0},{ts:p.nts,peer:_iS(p.ntp)?p.ntp:'',seq:0})
           :!clockNewer({ts:p.nts||0,peer:_iS(p.ntp)?p.ntp:'',seq:0},{ts:_iN(op.clock&&op.clock.ts)?op.clock.ts:0,peer:_iS(op.clock&&op.clock.peer)?op.clock.peer:'',seq:0}));
-        if(win){if(forward){op.bts=p.nts;op.btp=p.ntp}p.name=forward?op.after:(op.before||p.name);p.nts=ts;if(forward)p.ntp=op.clock?op.clock.peer:'';else p.ntp=op.btp!=null?op.btp:''}
+        // ADR-0727: undo-wire renames carry nts/ntp — the RESTORED clock, not the undo
+        // clock. Without it the undoer wrote bts while peers wrote the fresh undo clock
+        // into nts, and a rename landing between the two won on one side only.
+        if(win){if(forward){op.bts=p.nts;op.btp=p.ntp}p.name=forward?op.after:(op.before||p.name);p.nts=ts;if(forward)p.ntp=op.clock?op.clock.peer:'';else p.ntp=op.btp!=null?op.btp:'';
+          if(forward&&op.nts!=null){if(_iN(op.nts)&&_fin(op.nts))p.nts=op.nts;if(op.ntp!=null)p.ntp=op.ntp}}
         _pgBar();
         break;}
       case 'group':{
@@ -1858,7 +1877,7 @@ const Store={
           // apply of our undo-wire skips it → diverged props. ('locked' in raw'
           // still passes so the unlock-undo isn't dead)
           if(!sh||(sh.locked&&!('locked' in raw)))continue;
-          const p=op.op==='beautify'?clone(raw):_stripStruct(clone(raw));   // ADR-0373: beautify legitimately retypes (local-only)
+          const p=clone(raw);if(op.op!=='beautify'){delete p.type;for(const k of _ok(p))if(k[0]==='_')delete p[k];}   // ADR-0373/0730
           // Same LWW guard as 'upd' (_lwwSkip) — these
           // _stampWrites records per-property write cl
           // must not clobber a newer remote write here
@@ -8127,12 +8146,18 @@ const Net={
     if(op.op==='clear')return{op:'replace',after:[],afterWc:{},clock:op.clock};   // ADR-0626: a wholesale wipe IS an empty swap — routing through 'replace' inherits the _lastRep causal ordering + snapshot rep marker for free (inbound 'clear' stays rejected: the wire never carries it now)
     if(op.op==='add'&&op.shape)return{...op,shape:this._slimShapes([op.shape])[0]};
     if(op.op==='pageDel'){const s={op:'pageDel',id:op.id,clock:op.clock};if(op.firstId!=null)s.firstId=op.firstId;if(op.unpage){s.unpage=1;s.shapes=this._slimShapes(op.shapes||[])}return s}   // ADR-0705/0724/0725: receiver re-derives members/i/name — the undo-record fields were dead weight (~bytes×members)
-    if(op.op==='pageName')return{op:'pageName',id:op.id,after:op.after,clock:op.clock};   // ADR-0705: forward uses after+clock only — before/bts/btp are undo-domain
+    if(op.op==='pageName'){const s={op:'pageName',id:op.id,after:op.after,clock:op.clock};if(op.nts!=null){s.nts=op.nts;s.ntp=op.ntp}return s}   // ADR-0705/0727: undo-wire also carries the restored nts/ntp
     if(_iA(op.shapes)&&op.op==='addMany'){const{origSel:_o1,...r}=op;return{...r,shapes:this._slimShapes(op.shapes)}}   // ADR-0625/0721: addMany's wc is the del/clear-undo wclock restore — real wire data, not undo-domain   // ADR-0445: id/locked only
     if(_iA(op.shapes)&&(op.op==='del'||op.op==='clear'||op.op==='pageAdd')){const{wc:_wc1,origSel:_o1,...r}=op;return{...r,shapes:this._slimShapes(op.shapes)}}   // ADR-0445/0625: id/locked only; undo-only fields never ride the wire
     if(op.op==='replace')return{op:'replace',after:this._slimShapes(op.after||[]),afterWc:op.afterWc,clock:op.clock,pages:op.pages,curPg:op.curPg};   // ADR-0646/0720: pages AND the landing page ride the wire — receivers' _pgAdopt(op.pages,op.curPg) fell back to page 1 while the sender landed on op.curPg; before* stay local   // ADR-0613: strip the huge before/wc/origSel from the wire copy
     const{origSel:_o2,moved:_m2,...rest}=op;
-    if((op.op==='style'||op.op==='resize'||op.op==='align')&&op.dir!=='lock'){   // ADR-0717: ever-locked shapes keep a `locked:null` key on full-shape patch snapshots — the receiver's noLock gate rejected those ops wholesale (pre-existing silent drop on forward too); 'locked' is only meaningful on dir==='lock' ops
+    if(op.op==='move'&&_iA(op.ids)&&_iN(op.dx)&&_iN(op.dy)){   // ADR-0729
+      const after=[],before=[];
+      for(const id of op.moved||op.ids){const s=byId(id);if(!s)continue;
+        _pu(after,{id,x:s.x,y:s.y});
+        _pu(before,{id,x:s.x-op.dx,y:s.y-op.dy});}
+      return{...rest,after,before};}
+    if((op.op==='style'||op.op==='resize'||op.op==='align'||op.op==='beautify')&&op.dir!=='lock'){   // ADR-0717/0730
       const _sl=a=>_iA(a)?a.map(p=>{const{locked:_l0,...r}=p;return r}):a;
       return{...rest,before:_sl(rest.before),after:_sl(rest.after)};}
     return rest;   // ADR-0625: wc/origSel/moved are undo-domain — peers' _apply rebuilds them; wire copies were dead weight (~30B/shape on big dels) + selection-id leak
@@ -9957,9 +9982,11 @@ function _undoWire(op){
     case 'del':case 'clear':{const o=[{op:'addMany',shapes:op.shapes,wc:op.wc}];   // ADR-0721: ride the wclock snapshot too — local backward restores it; peers were dropping the shapes' clocks so later remote writes arbitrated differently
       for(const c of op.connClears||[])if(c.before)_pu(o,{op:'upd',id:c.id,after:c.before});
       return o;}
-    case 'move':   return[{op:'move',ids:op.moved||op.ids,dx:-op.dx,dy:-op.dy}];   // ADR-0719: send the forward-moved set — a selected-but-locked-at-commit id in op.ids would get negated on peers (it never moved)
-    case 'upd':case 'style':case 'resize':case 'align':
-                   return[{op:op.op,id:op.id,dir:op.dir,before:op.after,after:op.before}];   // ADR-0717: before rides too — style/resize/align wire ops are rejected without it (dead undo-wire since ADR-0443) and _lwwDrop diffs against it
+    case 'move':{const o={op:'move',ids:op.moved||op.ids,dx:-op.dx,dy:-op.dy};   // ADR-0719
+      if(_iA(op.after)&&_iA(op.before)){o.after=op.before;o.before=op.after}   // ADR-0732
+      return[o];}
+    case 'upd':case 'style':case 'resize':case 'align':case 'beautify':
+                   return[{op:op.op,id:op.id,dir:op.dir,before:op.after,after:op.before}];   // ADR-0717/0731
     case 'group':case 'ungroup':   // restore per-shape groupId via upd patches
       return _iA(op.before)?op.before.map(b=>({op:'upd',id:b.id,after:{groupId:b.groupId||null}})):null;
     case 'zorder':
@@ -9971,7 +9998,7 @@ function _undoWire(op){
     case 'pageDel':  {const o=[{op:'pageAdd',id:op.id,name:op.name,i:op.i},{op:'addMany',shapes:op.shapes||[],wc:op.wc}];   // ADR-0721/0722: member clocks ride too
       for(const c of op.connClears||[])if(c.before)_pu(o,{op:'upd',id:c.id,after:c.before});   // ADR-0707: re-bind connectors on peers too — same as 'del'
       return o;}
-    case 'pageName': return[{op:'pageName',id:op.id,after:op.before,before:op.after,bts:op.bts}];
+    case 'pageName': return[{op:'pageName',id:op.id,after:op.before,before:op.after,bts:op.bts,nts:op.bts,ntp:op.btp}];   // ADR-0727: carry the restored name clock — peers were writing the undo clock as nts while the undoer restored bts
     default:       return null;
   }}
 function _rcOp(op){const o=_selIds();Store._recordCommitted(op);_keepSel(o)}
