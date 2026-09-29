@@ -1,3 +1,10 @@
+## [1.7.737] - 2026-09-29
+
+### Fixed
+- ADR-0711: pageDel backward's connClears restore skips locked connectors like
+  del backward does — a connector locked between the del and the undo must not
+  be re-bound (remote upd also gates on locked, so peers skip identically)
+
 ## [1.7.736] - 2026-09-29
 
 ### Docs
