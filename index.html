@@ -863,7 +863,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.691';   // ADR-0664
+const V='1.7.692';   // ADR-0665
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6239,7 +6239,7 @@ function connectSelection(){
 // complement over unlocked, visible shapes (marquee/select-all rules).
 function selectInverse(){
   const inv=_sT();
-  for(const s of _sh())if(_ulv(s)&&!_hasS(s.id))inv.add(s.id);
+  for(const s of _sh())if(_ulv(s)&&_pgOk(s)&&!_hasS(s.id))inv.add(s.id);   // ADR-0665: inverse selection stays on the viewed page — an invisible cross-page shape in the selection is an op hazard
   _ss(inv);
   _aS();_iv();
 }
@@ -9563,7 +9563,7 @@ function selectFrameContents(){
   if(!_ln(frames))return;
   const inner=withFrameChildren(_sT(frames.map(f=>f.id)));
   for(const f of frames)inner.delete(f.id);
-  for(const id of inner){const s=byId(id);if(!s||!_sv(s))inner.delete(id)}   // ADR-0566: hidden members never enter selection
+  for(const id of inner){const s=byId(id);if(!s||!_sv(s)||!_pgOk(s))inner.delete(id)}   // ADR-0566/0665: hidden or off-page members never enter selection
   if(!inner.size){_wT(_ST);return}
   _ss(inner);
   _aS();_o(inner.size+' '+t(_SM));
