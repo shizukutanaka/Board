@@ -11265,6 +11265,24 @@ try {
     fire('pointerup',120,80);
     const lS=state.shapes[state.shapes.length-1];
     assert.ok(lS&&lS.type==='line'&&lS.x2===120&&lS.y2===80,'line drag commits endpoints via real events');
+    // hand pan: PD/PM/PU translates the viewport via real events
+    reset();
+    state.viewport={x:0,y:0,zoom:1};
+    state.tool='hand';
+    fire('pointerdown',100,100);
+    fire('pointermove',150,130);
+    fire('pointerup',150,130);
+    assert.ok(state.viewport.x!==0||state.viewport.y!==0,'hand drag pans the viewport via real events');
+    // pinch: two pointers + widening distance zooms in via the capture handler
+    reset();
+    state.viewport={x:0,y:0,zoom:1};
+    fire('pointerdown',100,100,{pointerId:1});
+    fire('pointerdown',200,100,{pointerId:2});
+    fire('pointermove',250,100,{pointerId:2});   // seeds _pinchPrev
+    fire('pointermove',300,100,{pointerId:2});   // applies ratio → zoom in
+    fire('pointerup',300,100,{pointerId:2});
+    fire('pointerup',100,100,{pointerId:1});
+    assert.ok(state.viewport.zoom>1,'pinch widening zooms the viewport via real events');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -11276,7 +11294,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1189; // prev 1168 + 21 event-sequence asserts (ADR-0641)
+  pass += 1191; // prev 1168 + 23 event-sequence asserts (ADR-0641)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
