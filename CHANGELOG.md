@@ -1,3 +1,8 @@
+## [1.7.708] - 2026-09-29
+
+### Fixed
+- snapshot union-heal が同 id ページ名を nts LWW でマージ (op 未達の rename 収束、ADR-0681)
+
 ## [1.7.707] - 2026-09-29
 
 ### Fixed

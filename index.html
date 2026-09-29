@@ -866,7 +866,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.707';   // ADR-0680
+const V='1.7.708';   // ADR-0681
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -8239,7 +8239,7 @@ const Net={
         }
         if(_iA(msg.pages)){   // ADR-0646: union-heal the page set — adopt outright or append unknowns, keep the local current page
           if(!state.pages)_pgAdopt(msg.pages,state.curPg);   // ADR-0672: curPg is a LOCAL view filter — a re-sync must not yank the view to the sender's page
-          else{const v=_vPages(msg.pages);if(v)for(const p of v)if(!_pgById(p.id)&&_ln(state.pages)<64)_pu(state.pages,clone(p));_pgBar()}
+          else{const v=_vPages(msg.pages);if(v)for(const p of v){const l=_pgById(p.id);if(!l){if(_ln(state.pages)<64)_pu(state.pages,clone(p))}else if((p.nts||0)>(l.nts||0)){l.name=p.name;l.nts=p.nts}}_pgBar()}   // ADR-0681: same-id page merges nts LWW too — a rename the snapshot carries but the op never reached converges here
         }
         if(msg.rep&&validClock(msg.rep)&&clockNewer(msg.rep,state._lastRep))state._lastRep=msg.rep;   // ADR-0617: the snapshot reflects a newer swap — align the marker
         break;

@@ -4598,6 +4598,11 @@ try {
       state.pages=savedP;state.curPg=savedC;
       console.log('  ✓ snapshot ingest local-view preservation (3 asserts)');
     }
+    // ADR-0681: snapshot union-heal merges same-id page names via nts LWW
+    {
+      assert.ok(html.includes("else if((p.nts||0)>(l.nts||0)){l.name=p.name;l.nts=p.nts}"),'same-id page nts LWW merge present (ADR-0681)');
+      console.log('  ✓ snapshot page-name LWW pin (1 assert)');
+    }
     // ADR-0673: per-page tab strip — direct jump, active tab renames
     {
       assert.ok(html.includes('id="pgTabs"')&&html.includes("c._pgid===state.curPg?_pgRename():switchPage(c._pgid)"),'page tab chips switch/rename (ADR-0673/0675)');
@@ -12780,7 +12785,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1516; // prev 1515 + 1 sel-presence pg pin (ADR-0680)
+  pass += 1517; // prev 1516 + 1 snapshot page-name LWW pin (ADR-0681)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
