@@ -1177,7 +1177,7 @@ const checks = [
   ['rotated resize works in local frame + world re-pin', html.includes("sp=_rotPt(wp.x,wp.y,cx0,cy0,-orig.rotate);") && html.includes("sh.x+=tgt.x-cur.x;sh.y+=tgt.y-cur.y;")],
   ['selection outline traces rotated box', html.includes("if(single&&single.rotate&&single.w!=null){")],
   // v1.6.70: keyboard resize (Alt+arrow)
-  ['resize op registered (apply, validate, remote)', html.includes("case 'resize':\n      case 'align':\n      case 'beautify':{") && html.includes("case 'resize':{const noLock=") && html.includes("'style','resize','replace','pageAdd','pageDel','pageName'])")],
+  ['resize op registered (apply, validate, remote)', html.includes("case 'resize':\n      case 'align':\n      case 'beautify':{") && html.includes("case 'beautify':{const noLock=") && html.includes("'style','resize','replace','pageAdd','pageDel','pageName','beautify'])")],
   ['Alt+arrow keyboard-resizes box shapes', html.includes("_rcOp({op:'resize',before,after});") && html.includes("sh.w=_max(4,sh.w+dw);sh.h=_max(4,sh.h+dh);")],
   // v1.6.71: image import error handling
   ['imgErr i18n key in both locales', html.includes("imgErr:'画像を読み込めませんでした'") && html.includes("imgErr:'Image failed to load'")],
@@ -1352,7 +1352,7 @@ const checks = [
     html.includes("_keepSel(origSel);")],
   // v1.7.24b: validRemotePayload must block locked key in remote style/resize ops
   ['remote style/resize ops cannot set locked (noLock guard extended)',
-    html.includes("case 'resize':{const noLock=p=>!('locked' in p);")],
+    html.includes("case 'beautify':{const noLock=p=>!('locked' in p);")],
   // v1.7.26: _apply replace backward restores origSel; importBoard/importFromHash attach it
   ['_apply replace backward restores origSel; import callers attach origSel + afterWc to op',
     html.includes("if(!forward)_selR(op);") &&
@@ -1477,8 +1477,8 @@ const checks = [
     !html.includes("if(!op.wc){op.wc={};for")&&
     html.includes("op.wc={};for(const sh of op.shapes)if(_wc()[sh.id])op.wc[sh.id]=clone(_wc()[sh.id]);")],
   // v1.7.48: 'clear' removed from REMOTE_OPS (remote peer cannot wipe board)
-  ["REMOTE_OPS excludes 'clear' but includes 'replace' (ADR-0613: wipe+write converges; pre-swap board is parked in :prev)",
-    html.includes("REMOTE_OPS:_sT(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize','replace','pageAdd','pageDel','pageName'])")],
+  ["REMOTE_OPS excludes 'clear' but includes 'replace'+'beautify' (ADR-0613/0730)",
+    html.includes("REMOTE_OPS:_sT(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize','replace','pageAdd','pageDel','pageName','beautify'])")],
   // v1.7.48/ADR-0474: _applySnapshot caps at SHARE_MAX_SHAPES — a 500-op cap truncated boards >500 shapes
   ['_applySnapshot: SHARE_MAX_SHAPES cap on snapshot shapes (board-size bound, DoS-bounded by the 24MB join cap)',
     html.includes("const valid=_s0(shapes,SHARE_MAX_SHAPES).map(s=>this._attachShape(s)).filter(validShape);")],
@@ -6696,6 +6696,30 @@ try {
     A.Net._onRecv({k:'op',op:{op:'move',ids:['mX'],dx:7,dy:0,clock:{peer:'peerB',seq:1,ts:1}}});
     assert.strictEqual(A.state.shapes.find(s=>s.id==='mX').x, 7, 'ADR-0729: legacy delta moves still apply');
     console.log('  ✓ ADR-0729: move×upd race converges on the newer clock; legacy delta still applies');
+
+    // ADR-0730: 'beautify' broadcast was dropped at the wire validator — the sender's
+    // pen→rect retype stayed local-only while every peer kept the pen (divergence).
+    // Now it validates, rides the LWW patch path, and converges.
+    reset(A); reset(B);
+    const penS={id:'pX',type:'pen',pts:[[0,0],[10,0],[10,10],[0,10]],stroke:'#000',size:2,z:1};
+    A.state.shapes.push(cp(penS)); B.state.shapes.push(cp(penS)); A._invalidateGrid(); B._invalidateGrid(); A.sortZ(); B.sortZ();
+    const bfAB=[];
+    A.Net.broadcast = op => bfAB.push({k:'op',op:cp(A.Net._slimOp(op))});
+    B.Net.broadcast = () => {};
+    const after=[{id:'pX',type:'rect',x:0,y:0,w:10,h:10}];
+    for(const p of after){const sh=A.state.shapes.find(s=>s.id===p.id);if(sh)Object.assign(sh,cp(p))}   // caller applies, as doBeautify does
+    A.Store._recordCommitted({op:'beautify',before:[{id:'pX',type:'pen',pts:cp(penS.pts)}],after,origSel:[]});
+    assert.strictEqual(A.state.shapes.find(s=>s.id==='pX').type, 'rect', 'beautify: sender retyped pen → rect');
+    bfAB.forEach(m=>B.Net._onRecv(m));
+    const bs=B.state.shapes.find(s=>s.id==='pX');
+    assert.strictEqual(bs.type, 'rect', 'ADR-0730: remote beautify applies the retype (was: dropped at the validator)');
+    assert.strictEqual(bs.w, 10, 'ADR-0730: remote beautify applies the fitted geometry');
+    // a crafted beautify carrying `locked` in after is still rejected
+    reset(A); reset(B);
+    B.state.shapes.push(cp(penS)); B._invalidateGrid();
+    B.Net._onRecv({k:'op',op:{op:'beautify',before:[cp(penS)],after:[{id:'pX',type:'rect',x:0,y:0,w:10,h:10,locked:1}],clock:{peer:'peerA',seq:1,ts:1}}});
+    assert.strictEqual(B.state.shapes.find(s=>s.id==='pX').type, 'pen', 'ADR-0730: noLock still rejects a crafted locked-setting beautify');
+    console.log('  ✓ ADR-0730: remote beautify applies + converges; crafted locked payload still rejected');
 
     // resize/align now LWW too (ADR-0002 follow-up): whole-shape snapshot ops gate/stamp
     // only the keys they actually changed (diff before/after). (i) concurrent resize of
@@ -13333,7 +13357,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1636; // prev 1625 + 4 ADR-0727 behavioural
+  pass += 1643; // prev 1625 + 4 ADR-0727 behavioural
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

@@ -868,7 +868,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.755';   // ADR-0729
+const V='1.7.756';   // ADR-0729
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1402,7 +1402,8 @@ function validRemotePayload(op){
                 &&(c.z==null||_fin(c.z))
                 &&(c.frac==null||_iS(c.frac)&&_ln(c.frac)<=600)));
     case 'style':
-    case 'resize':{const noLock=p=>!('locked' in p);
+    case 'resize':
+    case 'beautify':{const noLock=p=>!('locked' in p);
       return patches(op.after)&&op.after.every(noLock)
           &&patches(op.before)&&op.before.every(noLock);}
     case 'align':{const DIRS=_sT(['left','right','cx','top','bottom','cy','hspace','vspace','tidy','swap','gsnap','flip','rotate','lock','gresize','grot','matchw','matchh','matchwh','framefit']);
@@ -1487,7 +1488,7 @@ const Store={
     return _ln(fixes)?fixes:null;
   },
   // Apply remote op: dedup by clock; REMOTE_OP
-  REMOTE_OPS:_sT(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize','replace','pageAdd','pageDel','pageName']),   // ADR-0613: wholesale swap must converge too — 'replace' joins the wire set (older peers drop it; divergence scoped to mixed-version rooms)
+  REMOTE_OPS:_sT(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize','replace','pageAdd','pageDel','pageName','beautify']),   // ADR-0613/0730
   applyRemote(op){
     if(!op||!op.clock||!this.REMOTE_OPS.has(op.op))return;
     if(!validClock(op.clock))return;        // reject malformed clocks (wclock poisoning)
@@ -1526,7 +1527,7 @@ const Store={
   // so resize/align (whole-shape snapshots) cl
   // concurrently-edited property like stroke.
   // writes to the 'groupId' property, so overl
-  _lwwOp(op){return op.op==='upd'||op.op==='style'||op.op==='resize'||op.op==='align'||op.op==='group'||op.op==='ungroup'||op.op==='zorder'||op.op==='move'},   // ADR-0729
+  _lwwOp(op){return op.op==='upd'||op.op==='style'||op.op==='resize'||op.op==='align'||op.op==='group'||op.op==='ungroup'||op.op==='zorder'||op.op==='move'||op.op==='beautify'},   // ADR-0729/0730
   // A patch key counts for LWW only if its val
   // array) compared deeply via JSON; before ma
   _chg(before,after,key){return _JS(before?before[key]:undefined)!==_JS(after[key])},
@@ -1871,7 +1872,7 @@ const Store={
           // apply of our undo-wire skips it → diverged props. ('locked' in raw'
           // still passes so the unlock-undo isn't dead)
           if(!sh||(sh.locked&&!('locked' in raw)))continue;
-          const p=op.op==='beautify'?clone(raw):_stripStruct(clone(raw));   // ADR-0373: beautify legitimately retypes (local-only)
+          const p=clone(raw);if(op.op!=='beautify'){delete p.type;for(const k of _ok(p))if(k[0]==='_')delete p[k];}   // ADR-0373/0730
           // Same LWW guard as 'upd' (_lwwSkip) — these
           // _stampWrites records per-property write cl
           // must not clobber a newer remote write here
@@ -8151,7 +8152,7 @@ const Net={
         _pu(after,{id,x:s.x,y:s.y});
         _pu(before,{id,x:s.x-op.dx,y:s.y-op.dy});}
       return{...rest,after,before};}
-    if((op.op==='style'||op.op==='resize'||op.op==='align')&&op.dir!=='lock'){   // ADR-0717: ever-locked shapes keep a `locked:null` key on full-shape patch snapshots — the receiver's noLock gate rejected those ops wholesale (pre-existing silent drop on forward too); 'locked' is only meaningful on dir==='lock' ops
+    if((op.op==='style'||op.op==='resize'||op.op==='align'||op.op==='beautify')&&op.dir!=='lock'){   // ADR-0717/0730
       const _sl=a=>_iA(a)?a.map(p=>{const{locked:_l0,...r}=p;return r}):a;
       return{...rest,before:_sl(rest.before),after:_sl(rest.after)};}
     return rest;   // ADR-0625: wc/origSel/moved are undo-domain — peers' _apply rebuilds them; wire copies were dead weight (~30B/shape on big dels) + selection-id leak

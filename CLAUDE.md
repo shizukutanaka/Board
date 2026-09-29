@@ -778,6 +778,7 @@ Board/
 │   └── ADR-0727-pagename-undo-nts.md  # pageName undo-wire に復元 nts/ntp を同梱 (undo clock を受側が刻んで次の改名 LWW が分裂するのを解消) (実装済)
 │   └── ADR-0728-arch-sync-undowire.md  # architecture.md の undo×sync に 0717–0727 の7規則を文書化 (実装済)
 │   └── ADR-0729-move-absolute-wire.md  # wire move に絶対 after/before を同梱し LWW 化 (delta×absolute 競合の発散解消) (実装済)
+│   └── ADR-0730-beautify-wire.md  # 'beautify' を wire op 化 (REMOTE_OPS+validator+LWW — 送側のみ retype の発散解消) (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
