@@ -903,6 +903,8 @@ const checks = [
   ['shadow on text/conns canvas+SVG + gate (ADR-0211)', html.includes("s.type!=='text'&&s.type!=='line'&&s.type!=='arrow'")&&html.includes('label never shadows')&&html.includes('${dA}${a}${_sh}/>`);')],
   ['conn label honours lineH canvas+SVG (ADR-0212)', html.includes('llh=fs*(s.lineH||1.25)')&&html.includes('lh2=fs*(s.lineH||1.25)')],
   ['pin/unpin anchor via ctx for touch/keyboard (ADR-0213)', html.includes('function pinAnchor()')&&html.includes("['ctxPinAnchor','',pinAnchor]")&&html.includes('px=k===\'a\'?e.x1:e.x2')],
+  ["presence msgs carry curPg; peers on another page are not drawn (ADR-0647)",
+    html.includes("_mk('cursor',{x:wp.x,y:wp.y,pg:state.curPg})")&&html.includes("_mk('selection',{ids,pg:state.curPg})")&&html.includes("p.pg=_iS(msg.pg)?_s0(msg.pg,64):null")&&html.includes("if(_pgOn()&&p.pg&&p.pg!==state.curPg)continue")&&html.includes("return;Net.sendCursorHide();_cxO()")],
   ['_bindAt grid-accelerated candidate scan (ADR-0214)', html.includes('const cands=[..._queryGrid(_grid,{x,y})]')&&html.includes('const ok=s=>{const t=s.type;return t!==\'line\'&&t!==\'arrow\'&&t!==\'pen\'&&_sv(s)&&_pgOk(s)}')],
   ['modal focus capture/restore + summary tabbable (ADR-0215)', html.includes('_captureFocus()')&&html.includes('this._restoreFocus()')&&html.includes('select,textarea,summary,[tabindex')],
   ['labelPos drag snaps to 0/.25/.5/.75/1 slots (ADR-0216)', html.includes('for(const slot of[0,0.25,0.5,0.75,1])')],
@@ -12375,8 +12377,19 @@ try {
     Store.applyRemote({op:'pageAdd',id:'pgA',name:'A',clock:{peer:'rp',seq:12,ts:12}});
     Net._onRecv({k:'snapshot',shapes:[],ops:[],peer:'sp',pages:[{id:'pgA',name:'A',nts:0},{id:'pgB',name:'B',nts:0}]},false);
     assert.ok(!!_pgById('pgA')&&!!_pgById('pgB'),'a snapshot union-heals the page set');
+    // ADR-0647: page-scoped presence — a peer's pg is recorded and off-page cursors are skipped
+    state.peers.set('pgpeer',{lastSeen:Date.now()});
+    Net._onRecv({k:'cursor',peer:'pgpeer',x:1,y:2,pg:'pgA'},false);
+    const pp=state.peers.get('pgpeer');
+    assert.ok(pp.pg==='pgA','a cursor message records the peer page');
+    Net._onRecv({k:'selection',peer:'pgpeer',ids:[],pg:'pgB'},false);
+    assert.ok(pp.pg==='pgB','a selection message refreshes the peer page');
+    Net._onRecv({k:'cursor',peer:'pgpeer',x:1,y:2},false);
+    assert.ok(pp.pg===null,'a missing pg (older peer) clears the page scope — stays visible everywhere');
+    state.peers.delete('pgpeer');
     state.pages=null;state.curPg=null;
     console.log('  ✓ multi-page: add/switch/del+undo/name-LWW/remote heal/snapshot union (ADR-0646, 16 asserts)');
+    console.log('  ✓ page-scoped presence: pg on cursor/selection + off-page cursor skip (ADR-0647, 3 asserts)');
 
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
@@ -12384,7 +12397,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1424; // prev 1408 + 16 multi-page asserts (ADR-0646)
+  pass += 1427; // prev 1424 + 3 page-scoped presence asserts (ADR-0647)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
