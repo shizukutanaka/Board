@@ -11864,6 +11864,66 @@ try {
     fire1('drop',300,300,{dataTransfer:{files:[],getData:k=>k==='text/plain'?'drop hello':''}});
     const dtx=state.shapes[state.shapes.length-1];
     assert.ok(dtx&&dtx.text==='drop hello','text drop creates a text shape at the drop point');
+    // rotate knob drag (ADR-0057): knob above top-center → dragKind='rotate'
+    reset();
+    state.tool='select';
+    const RT1=Shape.make('rect',{x:10,y:60,w:40,h:40});
+    Store.commit({op:'add',shape:RT1});
+    state.selection=new Set([RT1.id]);
+    const rh=getRotHandle(state.shapes[0]);
+    fire1('pointerdown',rh.x,rh.y);
+    assert.strictEqual(ptr.dragKind,'rotate','PD on the rotation knob arms rotate');
+    fire1('pointermove',rh.x+30,rh.y);
+    fire1('pointerup',rh.x+30,rh.y);
+    assert.ok(state.shapes[0].rotate>0,'knob drag rotates the shape');
+    // waypoint insert on a segment midpoint (ADR-0090) → 'way' drag
+    reset();
+    state.tool='select';
+    const WP1=Shape.make('arrow',{x1:0,y1:0,x2:100,y2:100});
+    Store.commit({op:'add',shape:WP1});
+    state.selection=new Set([WP1.id]);
+    fire1('pointerdown',50,50);                        // segment midpoint → insert
+    assert.strictEqual(ptr.dragKind,'way','PD on a segment midpoint arms way-insert');
+    fire1('pointermove',80,80);
+    fire1('pointerup',80,80);
+    assert.ok(state.shapes[0].way!=null,'waypoint drag writes s.way');
+    // labelPos drag (ADR-0117): grab the conn's label position pill
+    reset();
+    state.tool='select';
+    const LP1=Shape.make('arrow',{x1:0,y1:0,x2:100,y2:100,label:'cap'});
+    Store.commit({op:'add',shape:LP1});
+    state.selection=new Set([LP1.id]);
+    const lp=_connLabelXY(state.shapes[0]);
+    fire1('pointerdown',lp.x,lp.y);
+    assert.strictEqual(ptr.dragKind,'lblpos','PD on the conn label pill arms lblpos');
+    fire1('pointermove',lp.x+30,lp.y+30);
+    fire1('pointerup',lp.x+30,lp.y+30);
+    assert.ok(state.shapes[0].labelPos!=null,'lblpos drag writes s.labelPos');
+    // group resize + group rotate (ADR-0056/0057)
+    reset();
+    state.tool='select';
+    const GR1=Shape.make('rect',{x:10,y:10,w:40,h:40});
+    const GR2=Shape.make('rect',{x:100,y:100,w:40,h:40});
+    Store.commit({op:'add',shape:GR1});Store.commit({op:'add',shape:GR2});
+    state.selection=new Set([GR1.id,GR2.id]);
+    const gb={x:10,y:10,w:130,h:130};                  // union bbox
+    fire1('pointerdown',gb.x+gb.w,gb.y+gb.h);          // group se handle
+    assert.strictEqual(ptr.dragKind,'gresize','PD on the group handle arms gresize');
+    fire1('pointermove',gb.x+gb.w+20,gb.y+gb.h+20);
+    fire1('pointerup',gb.x+gb.w+20,gb.y+gb.h+20);
+    assert.ok(state.shapes[0].w>40&&state.shapes[1].w>40,'gresize scales both members');
+    reset();
+    state.tool='select';
+    const GG1=Shape.make('rect',{x:10,y:60,w:40,h:40});
+    const GG2=Shape.make('rect',{x:100,y:160,w:40,h:40});
+    Store.commit({op:'add',shape:GG1});Store.commit({op:'add',shape:GG2});
+    state.selection=new Set([GG1.id,GG2.id]);
+    const gr=_grpRotHandle({x:10,y:60,w:130,h:140});
+    fire1('pointerdown',gr.x,gr.y);
+    assert.strictEqual(ptr.dragKind,'grot','PD on the group knob arms grot');
+    fire1('pointermove',gr.x+30,gr.y);
+    fire1('pointerup',gr.x+30,gr.y);
+    assert.ok(state.shapes[0].rotate!=null||state.shapes[1].rotate!=null,'grot rotates the members');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -11875,7 +11935,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1337; // prev 1326 + 11 event-sequence asserts (ADR-0641/0643: qconn + rebind + click-click + ⇧click + drop)
+  pass += 1347; // prev 1337 + 10 event-sequence asserts (ADR-0641: rotate/way/lblpos/gresize/grot drags)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
