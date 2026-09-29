@@ -874,7 +874,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.815';   // ADR-0788
+const V='1.7.816';   // ADR-0788
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1750,7 +1750,7 @@ const Store={
         if(op.clock)state._lastRep=op.clock;   // ADR-0614: newest applied swap marker — also covers undo (the op's clock still outranks older peers)
         const wc0=state.wclock||{},old0=_sh().map(s=>s.id);   // ADR-0736
         _sh().length=0;_scl();state.wclock=_wM();_pcC();state.pages=state.curPg=null;_pgBar();   // ADR-0646
-        for(const s of next){const wd=forward&&wc0[s.id];if(wd&&wd._del&&clockNewer(wd._del,op.clock))continue;_sh().push(Net._attachShape(clone(s)))}   // ADR-0736
+        for(const s of _uniq(next)){const wd=forward&&wc0[s.id];if(wd&&wd._del&&clockNewer(wd._del,op.clock))continue;_sh().push(Net._attachShape(clone(s)))}   // ADR-0736/0790
         _iG();   // ADR-0613: byId's size guard misses equal-length swaps — the pre-mutation index survives
         _sz();
         if(forward&&op.afterWc)state.wclock=_wM(clone(op.afterWc));
@@ -2170,7 +2170,8 @@ let _penCachePx=0;
 // wholesale `state.shapes=` replacement (clones miss the pts-identity signature
 // anyway, so old entries would sit until the global caps evict them).
 const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPending.clear()}   // ADR-0445: wholesale swap also drops parked img refs
-const _rs=arr=>{state.shapes=arr;_iG();_pcC()}   // ADR-0493: wholesale board replace (5 sites)
+const _uniq=a=>{const se=_sT();for(let i=_ln(a)-1;i>=0;i--)if(se.has(a[i].id))a.splice(i,1);else se.add(a[i].id);return a};   // ADR-0790: keep-LAST matches byId's last-wins — a dup id would phantom-render otherwise
+const _rs=arr=>{state.shapes=_uniq(arr);_iG();_pcC()}   // ADR-0493/0790: wholesale board replace (5 sites), dup-id intake
 const _pgOn=()=>!!(state.pages&&_ln(state.pages)),_pgById=id=>_pgOn()&&state.pages.find(p=>p.id===id),_pgOk=s=>!_pgOn()||(s.pg||state.pages[0].id)===state.curPg;   // ADR-0646: unpg'd shapes belong to pages[0] positionally
 const _vPages=a=>!_iA(a)||!_ln(a)||_ln(a)>64?null:(a.every(p=>p&&_iS(p.id)&&_ln(p.id)<=64&&_iS(p.name)&&_ln(p.name)<=80&&(p.nts==null||_iN(p.nts)&&_fin(p.nts))&&(p.ntp==null||_iS(p.ntp)&&_ln(p.ntp)<=64))?a:null);   // ADR-0700
 const _pgHealS=()=>{if(_pgOn())for(const s of _sh()){if(s.pg&&!_pgById(s.pg)&&_ln(state.pages)<64)_pu(state.pages,{id:s.pg,name:'?',nts:-1})}else for(const s of _sh())delete s.pg};   // ADR-0694: no page set → every s.pg is stale — scrub, else a later pageAdd's `!s.pg` heal misses them and they go invisible

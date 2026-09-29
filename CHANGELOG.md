@@ -1,3 +1,8 @@
+## [1.7.816] - 2026-09-29
+
+### Fixed
+- ADR-0790: wholesale intake (.board import・共有リンク・IDB restore・remote 'replace') が重複 id の図形を素通りさせ、byId last-wins で先出コピーが幽霊化していた実害を `_uniq` (keep-last) で解消
+
 ## [1.7.815] - 2026-09-29
 
 ### Refactor

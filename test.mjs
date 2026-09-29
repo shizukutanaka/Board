@@ -1962,6 +1962,22 @@ try {
     console.log('  ✓ concurrent replace ops converge on the newest clock (ADR-0614)');
   }
 
+  // ADR-0790: a wholesale intake carrying duplicate ids must not phantom —
+  // shapes[] would hold N entries while byId's last-wins index points at the
+  // final occurrence, leaving earlier copies rendered but unreachable by ops.
+  {
+    state.shapes.length=0;state._lastRep=null;state.seenOps=new Set();_invalidateGrid();
+    const dup=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    const d1={...dup,w:10},d2={...dup,w:99};
+    const uniq=Shape.make('ellipse',{x:20,y:20,w:5,h:5});
+    Store.applyRemote({op:'replace',after:[d1,uniq,d2],clock:{peer:'pDup',seq:1,ts:Date.now()}});
+    assert.strictEqual(state.shapes.length,2,'dup id collapses to one entry');
+    assert.strictEqual(byId(dup.id).w,99,'kept occurrence matches byId last-wins');
+    assert.ok(byId(uniq.id),'unique neighbours survive');
+    console.log('  ✓ replace intake drops duplicate ids (ADR-0790)');
+    state.shapes.length=0;_invalidateGrid();
+  }
+
   // ADR-0615: undo of 'replace' emits a restoring swap — peers must receive the
   // pre-swap board back, or the undoing side diverges alone.
   {
