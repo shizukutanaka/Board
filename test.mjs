@@ -14433,6 +14433,13 @@ try {
      Net._imgPending.clear();_oa(_ps,{img:'ky',dataUrl:'data:x'});
      assert.ok(!Net._imgPending.has('u1'),'resolved dataUrl does not park');
      Net._imgPending.clear();}
+    // ADR-0842: _imgSent gets the same byte bound as _imgIn — a long session of
+    // pasting + deleting images must not retain dead dataUrls unboundedly.
+    assert.ok(html.includes("_sb>64_000_000"),'_imgSent is byte-bounded like _imgIn');
+    {Net._imgSent.clear();const _im={id:'i1',type:'image',dataUrl:'x'.repeat(200)};
+     const _sl5=Net._slimShapes([_im]);
+     assert.ok(_sl5[0].img&&Net._imgSent.has(_sl5[0].img),'sent blob registered for imgq answers');
+     Net._imgSent.clear();Net._imgOuts.length=0;}
     console.log('  ✓ imgq re-request answered from blob store or live shape (ADR-0835)');
   }
 

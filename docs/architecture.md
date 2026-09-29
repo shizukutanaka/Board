@@ -187,6 +187,9 @@ IDB 復元 (`Persist.load`/`restoreBackup`) も `_attachShape` を通して未�
 図形への全パッチ適用は `_oa` 通過のため、そこで dangling `img` を検出して同じ駐車を
 行う (ADR-0841) — `upd`/`style`/`align`/`beautify`/snapshot マージ/`connClears`
 経由の参照も imgq 修復に乗る (`dataUrl` 同載時は駐車しない)。
+保持ストアは双方向ともバイト上限: `_imgIn` 64MB (ADR-0784) / `_imgSent` 64MB
+(ADR-0842 — 貼付→削除で死んだ dataUrl が残らない)。駐車イディオムは `_park` に
+集約し wire 駐車・パッチ駐車が同一の 256-cap+t0 規則を共有する。
 
 **反転 (flip H/V)** は専用 op を持たず、`align` op を再利用する: `doFlip(axis)` が選択 bbox 中心軸で
 各シェイプ座標をミラー (`flipShape`) し、変更前後の完全クローンを `{op:'align',dir:'flip',before,after}`
