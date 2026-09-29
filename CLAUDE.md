@@ -675,7 +675,8 @@ Board/
     │   ├── ADR-0623-selection-dead-id-hygiene.md   # 選択由来 id リストの dead-id 衛生 (実装済)
     │   ├── ADR-0624-architecture-dead-id-parity-sync.md   # architecture.md へ dead-id parity 不変条件を同期 (実装済)
     │   ├── ADR-0625-slim-op-undo-field-strip.md   # _slimOp が wire op から undo 専用フィールドを剥がす (実装済)
-    │   └── ADR-0626-clear-wire-as-replace.md   # 'clear' op を wire 上 'replace'(after:[]) へ翻訳し全消去の収束 (実装済)
+    │   ├── ADR-0626-clear-wire-as-replace.md   # 'clear' op を wire 上 'replace'(after:[]) へ翻訳し全消去の収束 (実装済)
+    │   └── ADR-0627-canvas-context-restore.md   # contextlost/restored で GPU キャッシュをパージ+再描画 (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

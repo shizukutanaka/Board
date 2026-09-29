@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.654]
+### 修正
+- canvas の GPU コンテキストロストに耐性を付与 — contextlost を preventDefault で restore 許可、contextrestored で `_penCache` (ビットマップが空転送される)・`_inkD` (デッド ctx への描画)・minimap `_scene` (stale `_sceneVer` でブランク残留) をパージして `_iv`/`_ivO` 再描画。従来は GPU リセット後に全図形がブランク化し得た (ADR-0627)。
+
 ## [1.7.653]
 ### 修正
 - ローカルの全消去 (`clear`) がピアへ伝播しなかった divergence を修正 — `_slimOp` が wire 上 `{op:'replace',after:[],afterWc:{}}` へ翻訳し、`_lastRep` 因果順序 (0613-0619) をそのまま継承。sender 側 `_apply` 'clear' forward も同じ clock を `_lastRep` に記録し marker 非対称を解消 (ADR-0626)。

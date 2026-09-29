@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.653';   // ADR-0626
+const V='1.7.654';   // ADR-0627
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -9229,6 +9229,13 @@ function wire(){
   });
   // resize
   _on(window,'resize',resize);
+  // ADR-0627: GPU resets silently wipe every raster cache — pen bitmaps blit blank,
+  // minimap scene stays a dead canvas keyed to a stale _sceneVer, the draft-ink
+  // stamp draws into a dead context. preventDefault on contextlost allows the
+  // contextrestored event; on restore, purge GPU-backed caches and repaint.
+  const _ctxUp=()=>{ctx=_g2(canvas);octx=_g2(ocanvas);_penCache.clear();_penCachePx=0;_inkD=null;Minimap.invalidateCache();_iv();_ivO()};
+  _on(canvas,'contextlost',_pd);_on(ocanvas,'contextlost',_pd);
+  _on(canvas,'contextrestored',_ctxUp);_on(ocanvas,'contextrestored',_ctxUp);
   if(window.visualViewport)_on(visualViewport,'resize',resize);   // ADR-0251: iOS url-bar/keyboard shrink doesn't fire window resize
   // devicePixelRatio change (window dragged to
   _watchDPR();
