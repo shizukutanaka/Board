@@ -4634,6 +4634,16 @@ try {
       assert.ok(html.includes('if(UI&&UI.refreshPeers)UI.refreshPeers()'),'pgBar refreshPeers hook (ADR-0686)');
       console.log('  ✓ pgBar avatar-refresh pin (1 assert)');
     }
+    // ADR-0688: local page ops respect the wire's 64-page cap
+    {
+      state.pages=[];for(let i=0;i<64;i++)state.pages.push({id:'p'+i,name:'P'+i,nts:0});state.curPg='p0';
+      _pgAdd();
+      assert.ok(state.pages.length===64,'_pgAdd caps at 64 (ADR-0688)');
+      _pgDup();
+      assert.ok(state.pages.length===64,'_pgDup caps at 64 (ADR-0688)');
+      state.pages=null;state.curPg=null;
+      console.log('  ✓ local page-op cap (2 asserts)');
+    }
     // ADR-0673: per-page tab strip — direct jump, active tab renames
     {
       assert.ok(html.includes('id="pgTabs"')&&html.includes("c._pgid===state.curPg?_pgRename():switchPage(c._pgid)"),'page tab chips switch/rename (ADR-0673/0675)');
@@ -12816,7 +12826,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1525; // prev 1517 + 1 tab aria-label pin (ADR-0682)
+  pass += 1527; // prev 1517 + 1 tab aria-label pin (ADR-0682)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
