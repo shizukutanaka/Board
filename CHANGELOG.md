@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.672] - 2026-09-28
+### Documentation
+- ADR-0645 完走表を最終状態へ同期: drop ファイル系全拡張子・レンダリング実体・
+  presence・beforeunload まで検証済みと明記。spec.md §14.2「テストの偏り」を
+  [DONE] へ更新 (P3 系列検証の残課題ゼロ)。
+
+
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [1.7.560] - 2026-09-28

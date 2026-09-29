@@ -24,12 +24,16 @@ ADR-0644 はその運用規約 (fire1 原則・reset() 境界・stale リスナ�
 | lostpointercapture | ✓ |
 | dragover/drop (text cascade: .board JSON/TSV/平文) | ✓ |
 | 長押しタイマ (500ms 実タイマ) | ✓ |
-| presence wire (sendCursor/throttle/hide、_send 境界) | ✓ |
+| presence wire (sendCursor/throttle/hide、_send 境界、selection dedup、_reapPeers) | ✓ |
+| drop ファイル系 (.board/.excalidraw/.drawio/.svg/画像) | ✓ FileReader/Image/最小DOMParser stub 経由 |
+| レンダリング実体 | ✓ 注入記録 ctx (`api._setCtx/_setOCtx`) で draw/drawOverlay 検証 |
+| beforeunload (dirty flush + 確認プロンプト) | ✓ |
 
 ## 残課題 (spec §14.3.1 P3 行に同期)
-- **レンダリング実体の composite-draw 検証** — draw() の出力内容の画素/呼出し粒度検証は系列ハーネスの範囲外
-- **FileReader 経由の drop/paste ファイル系** (`.board`/`.excalidraw`/`.drawio`/`.svg`/画像) — fake 環境に FileReader がなく設計上 deferred
+- **P3 は完走** — wire() が登録する全リスナ型・タイマ・drop 全拡張子・レンダリング実体が
+  実 dispatch/実タイマ/注入スタブで検証済み。残: `beforeinstallprompt`/`appinstalled` は
+  btnInstall 経路で既ピン、minimap IIFE 内 blur はスコープ外。
 
 ## Consequences
-- spec §14.3.1 の P3 行を「ほぼ解消」へ更新
+- spec §14.3.1 の P3 行を「解消」へ更新
 - 新規リスナを追加する実装は ADR-0644 の規約に従い系列ピンを併記すること
