@@ -2168,6 +2168,24 @@ try {
     assert.strictEqual(byId(im2.id).img,undefined,'resolved ref dropped');
     console.log('  ✓ pageAdd member attach pins img parking + resolution (ADR-0752)');
   }
+  // ADR-0753: a remote pageDel's _pcC wipes parked img refs WHOLESALE — including a
+  // SURVIVING page's member. The straggler img-scan (ADR-0629) is the safety net:
+  // the blob still resolves the parked shape when it arrives.
+  {
+    state.pages=null;state.curPg=null;state.shapes.length=0;_invalidateGrid();
+    Net._imgPending.clear();Net._imgIn.clear();
+    Store.applyRemote({op:'pageAdd',id:'pA',name:'A',shapes:[],clock:{peer:'zz',seq:50,ts:9}});
+    Store.applyRemote({op:'pageAdd',id:'pB',name:'B',shapes:[],clock:{peer:'zz',seq:51,ts:9}});
+    const im=Shape.make('image',{x:0,y:0,w:10,h:10,img:'kkP'});
+    im.pg='pA';state.shapes.push(im);_invalidateGrid();Net._imgPending.set(im.id,'kkP');
+    Store.applyRemote({op:'pageDel',id:'pB',firstId:'pA',clock:{peer:'zz',seq:52,ts:9}});
+    assert.ok(byId(im.id),'member of the surviving page stays');
+    assert.strictEqual(Net._imgPending.has(im.id),false,'pageDel _pcC wipes parked refs wholesale');
+    Net._onRecv({k:'img',key:'kkP',seq:0,n:1,data:'data:image/png;base64,DD',peer:'peerZ'},false);
+    assert.strictEqual(byId(im.id).dataUrl,'data:image/png;base64,DD','straggler resolves after the wipe');
+    assert.strictEqual(byId(im.id).img,undefined,'ref dropped on resolution');
+    console.log('  ✓ pageDel pending wipe + straggler resolution (ADR-0753)');
+  }
 
   // applyRemote does NOT enter local undo stack
   const histLen = state.history.length;
@@ -13711,7 +13729,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1710; // prev 1705 + 5 ADR-0752 pageAdd-attach asserts
+  pass += 1714; // prev 1710 + 4 ADR-0753 pageDel-pending-wipe asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

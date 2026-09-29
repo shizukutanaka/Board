@@ -1,3 +1,10 @@
+## [1.7.779] - 2026-09-28
+
+### Tests
+- ADR-0753: pin that a remote pageDel's _pcC wipes _imgPending wholesale
+  (a surviving page's parked refs included) and the ADR-0629 straggler
+  img-scan still resolves them when the blob arrives
+
 ## [1.7.778] - 2026-09-28
 
 ### Tests
