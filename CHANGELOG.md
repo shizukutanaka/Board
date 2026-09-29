@@ -1,3 +1,8 @@
+## [1.7.820] - 2026-09-29
+
+### Docs
+- ADR-0794: architecture.md の wire 検証節へ 0788–0793 期の規則を同期 (wclock null-proto / dup-id dedupe / `_tsOK` / `_xyOK` / 幾何到達 prop bounds)
+
 ## [1.7.819] - 2026-09-29
 
 ### Fixed
