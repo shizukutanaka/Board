@@ -875,7 +875,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.862';   // ADR-0836
+const V='1.7.863';   // ADR-0837
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -8124,7 +8124,7 @@ const Net={
         this._reapPeers();this._reapFrags();
         // ADR-0835: aged parked refs re-request via imgq; park drops at 60s —
         // the shape's `img:` ref still heals from any later blob with the key.
-        const _ipq=nowTs();for(const[id,e]of this._imgPending){if(_ipq-e.t0>60000)this._imgPending.delete(id);else if(_ipq-e.t0>NET_PRESENCE_INTERVAL*2)this._send(_mk('imgq',{key:e.k}))}
+        const _ipq=nowTs();for(const[id,e]of this._imgPending){if(_ipq-e.t0>60000)this._imgPending.delete(id);else if(_ipq-e.t0>NET_PRESENCE_INTERVAL*2)this._bcast(_mk('imgq',{key:e.k}))}
         // ADR-0475
         if(!this._snapRx&&this._snapRetry++<3)this._send(_mk('sync-req'));
       },NET_PRESENCE_INTERVAL);
