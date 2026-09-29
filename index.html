@@ -812,16 +812,21 @@ const _grpOf=gid=>_sh().filter(s=>s.groupId===gid).map(s=>s.id);   // ADR-0423: 
 // ADR-0423: expand a working selection by its frameOf map — add each
 // child's id as a shape (unlocked only), idempotent across callers.
 const _xFS=(sel,frameOf)=>{for(const [cid] of frameOf){if(!sel.find(s=>s.id===cid)){const ch=byId(cid);if(ch&&!ch.locked)_pu(sel,ch);}}}
+const _inR=(b,f)=>b.x>=f.x&&b.y>=f.y&&b.x+b.w<=f.x+f.w&&b.y+b.h<=f.y+f.h;   // ADR-0767: rect containment (frame membership)
 // ADR-0423: childId→frameId map for shapes fully inside any selected frame —
 // drives frame-containment expansion in delete/move/flip/rotate.
+// ADR-0767: nested frames are members too — a frame fully inside a selected
+// frame must follow it, else it detaches from its own contents on move/delete.
+// A selected frame nested in another selected frame skips its own scan: the
+// outer scan already claims every member, and outer-keying keeps doAlign units
+// / flip-rotate orbits consistent (children must not double-key to the inner).
 const _frameOf=(sel,ok)=>{const m=_mP();
-  for(const f of sel){
-    if(f.type!=='frame')continue;
-    const fb=_bb(f);
+  const fs=sel.filter(f=>f.type==='frame');
+  for(let i=0;i<_ln(fs);i++){const f=fs[i],fb=_bb(f);
+    if(fs.some((g,j)=>j!==i&&_inR(fb,_bb(g))&&(j<i||!_inR(_bb(g),fb))))continue;
     for(const s of _sh()){
-      if(s.id===f.id||_frm(s)||_lk(s)||(ok&&!ok(s))||!_pgOk(s)||m.has(s.id))continue;
-      const b=_bb(s);
-      if(b.x>=fb.x&&b.y>=fb.y&&b.x+b.w<=fb.x+fb.w&&b.y+b.h<=fb.y+fb.h)m.set(s.id,f.id);
+      if(s.id===f.id||_lk(s)||(ok&&!ok(s))||!_pgOk(s)||m.has(s.id))continue;
+      if(_inR(_bb(s),fb))m.set(s.id,f.id);
     }
   }
   return m;
@@ -868,7 +873,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.792';   // ADR-0766
+const V='1.7.793';   // ADR-0767
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1146,7 +1151,7 @@ const state={
   snap:true,        // snap-to-grid when dragging shapes
   docName:_UT,
   dirty:false,
-  pages:null,curPg:null,   // ADR-0646: pages stay null until a 2nd page exists (zero overhead single-page); curPg is a LOCAL view filter — peers may sit on different pages of one converged board
+  pages:null,curPg:null,   // ADR-0646: pages stay null until a 2nd page exists; curPg is a LOCAL view filter — peers may sit on different pages of one board
   lastSaveAt:0,
   // ---- v1.1 sync ----
   peerId:PEER_ID+'.'+uid().slice(0,6),   // ADR-0459: per-boot incarnation — seq restarts can't collide with peers' seenOps
@@ -1631,7 +1636,7 @@ const Store={
     if(_hx()>=_hi().length-1)return false;
     state.histIdx++;
     const op=_hi()[_hx()];
-    _fck(op);   // ADR-0718: restamp BEFORE the local apply — same class as ADR-0717: redo is a new competing write, so local arbitration and the wire must see the one fresh clock or the winner splits
+    _fck(op);   // ADR-0718: restamp BEFORE the local apply — redo is a new competing write (ADR-0717): arbitration and the wire must see the one fresh clock
     this._apply(op,true);
     _pgFollow(op);   // ADR-0652
     if(op.op==='replace')state._lastRep=op.clock;this._stampWrites(op);Net.broadcast(op);   // ADR-0615: redo rebroadcasts under the restamped clock
@@ -1809,7 +1814,7 @@ const Store={
           _sz();
           if(op.wc)for(const[id,w]of Object.entries(op.wc))_wc()[id]=clone(w);   // ADR-0722: restore member clocks — del backward parity
           _selR(op);
-          if(op.connClears)for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_oa(sh,p.before)}   // ADR-0707/0711: re-bind the endpoints the forward cleared — same locked parity as del backward (a connector locked between del and undo must not be written)
+          if(op.connClears)for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_oa(sh,p.before)}   // ADR-0707/0711: re-bind the endpoints the forward cleared — del-backward locked parity (a connector locked between del and undo must not be written)
           switchPage(op.id);   // ADR-0663: undo lands back on the restored page — _pgDel only deletes the viewed page, so the undo's natural view is where the deletion happened (_pgFollow skips pageDel on purpose)
         }
         _ss(_selIds());_iG();_iv();_ivO();_pgBar();
@@ -2224,7 +2229,7 @@ function _pgDel2(op,firstId,only,viewId){   // ADR-0646: remove the deleted page
   // wire-carried sender choice while the view is local and lands on the local first.
   const dead=new Set();for(const s of _sh())if((s.pg||firstId)===op.id&&!s.locked&&(!only||only.has(s.id)))dead.add(s.id);
   op.wc={};for(const id of dead)if(_wc()[id])op.wc[id]=clone(_wc()[id]);   // ADR-0722: snapshot member clocks like 'del' forward — undo must restore them or resurrected shapes arbitrate against nothing
-  for(const id of dead)_wc()[id]={_del:op.clock};   // ADR-0679/0734: tombstone, not purge — a stale in-flight add/snapshot carrying the id must lose to this delete or the member resurrects here only
+  for(const id of dead)_wc()[id]={_del:op.clock};   // ADR-0679/0734: tombstone, not purge — a stale add/snapshot carrying the id must lose to this delete or the member resurrects
   for(const s of _sh())if((s.pg||firstId)===op.id&&s.locked)s.pg=firstId;
   const cc=computeConnClears(dead);   // ADR-0707: connectors bound to a removed member lose their endpoint — same clear 'del' runs; recorded on the op for undo
   if(_ln(cc)){op.connClears=cc;for(const p of cc){const sh=byId(p.id);if(sh)_oa(sh,p.after)}}
@@ -5072,7 +5077,7 @@ function _grpMapGet(){
 function _buildGrid(shapes){
   const cells=_mP(),big=[],idx=_mP();
   let cs=_GCELL;
-  if(_ln(shapes)>64){const ab=_bA(shapes);if(ab)cs=_max(48,_min(960,_rnd(_sqr(ab.w*ab.h/_ln(shapes))*2)||_GCELL));}   // ADR-0654: density-adaptive cell — a fixed 200u cell overflows on dense boards (n shapes in a tiny region → O(n) per cell), and subdivides needlessly on sparse ones
+  if(_ln(shapes)>64){const ab=_bA(shapes);if(ab)cs=_max(48,_min(960,_rnd(_sqr(ab.w*ab.h/_ln(shapes))*2)||_GCELL));}   // ADR-0654: density-adaptive cell — a fixed 200u cell overflows on dense boards and subdivides needlessly on sparse ones
   for(let i=0;i<_ln(shapes);i++){
     const s=shapes[i];idx.set(s,i);
     const b=_bb(s);if(!b){_pu(big,s);continue;}
@@ -5288,9 +5293,8 @@ function withFrameChildren(ids){
     if(sel&&_frm(sel)){
       const fb=_bb(sel);
       for(const s of _sh()){
-        if(s.id===selId||_frm(s)||!_pgOk(s))continue;
-        const b=_bb(s);
-        if(b.x>=fb.x&&b.y>=fb.y&&b.x+b.w<=fb.x+fb.w&&b.y+b.h<=fb.y+fb.h)out.add(s.id);
+        if(s.id===selId||!_pgOk(s))continue;
+        if(_inR(_bb(s),fb))out.add(s.id);   // ADR-0767: nested frames are members
       }
     }
   }
@@ -5350,7 +5354,7 @@ function endSelect(wp,shift,alt){
   if(_dk('move')&&ptr.dragStartShapes){
     const{dx,dy}=moveDelta(wp,shift,alt);
     state.guides=null;
-    const mids=[...ptr.dragStartShapes.keys()].filter(id=>{const s=byId(id);return s&&_ul(s)});   // ADR-0621: dead ids must not ride the commit — remote del/replace mid-gesture leaves byId null, and a phantom move op would land in history + broadcast as noise (peers no-op it, so converged but polluted)
+    const mids=[...ptr.dragStartShapes.keys()].filter(id=>{const s=byId(id);return s&&_ul(s)});   // ADR-0621: dead ids must not ride the commit — remote del/replace mid-gesture leaves byId null; a phantom move op would land in history + broadcast
     if(_hp(dx,dy)>0.5&&_ln(mids)){
       _rcOp({op:'move',ids:mids,dx,dy});
       if(_dd()&&mids.every(id=>state.dupIds.has(id))){_dd().x+=dx;_dd().y+=dy}   // ADR-0080
@@ -5856,7 +5860,7 @@ function _teFollow(){
   // us (remote del/clear/replace/hide/lock, lo
   // once instead of dangling until blur. No co
   // upd anyway, so the typed text can't be applied.
-  const s=byId(_ed());if(!s||_hd(s)||_lk(s)||!_pgOk(s)){_rm(_teTa);_teTa=null;state.editing=null;_iv();return}   // ADR-0574/0709: _iv — skipped text stays undrawn otherwise; off-page reassignment (remote upd{pg}) folds too — typing at an invisible shape is silent
+  const s=byId(_ed());if(!s||_hd(s)||_lk(s)||!_pgOk(s)){_rm(_teTa);_teTa=null;state.editing=null;_iv();return}   // ADR-0574/0709: _iv — skipped text stays undrawn otherwise; off-page reassignment (remote upd{pg}) folds too
   const v=_vp(),sig=v.x+','+v.y+','+v.zoom;
   if(sig===_teVp)return;
   _teVp=sig;positionTextEditor(_teTa,s);
@@ -6925,9 +6929,8 @@ function excScene(shapes){
   for(const f of shapes)if(_frm(f)){
     const fb=_bb(f);
     for(const s of shapes){
-      if(s.id===f.id||_frm(s))continue;
-      const b=_bb(s);
-      if(b.x>=fb.x&&b.y>=fb.y&&b.x+b.w<=fb.x+fb.w&&b.y+b.h<=fb.y+fb.h)
+      if(s.id===f.id)continue;
+      if(_inR(_bb(s),fb))   // ADR-0767: nested frames emit frameId too
         for(const el of els)if(el.id===s.id||el.containerId===s.id)el.frameId=f.id;
     }
   }
@@ -7312,7 +7315,7 @@ const _dioModel=c=>{const vx=_vp().x,vy=_vp().y,vz=_vp().zoom;
   return `<mxGraphModel dx="${_rnd(-vx)}" dy="${_rnd(-vy)}" grid="${state.showGrid?1:0}" gridSize="${GRID_SIZE}" guides="1" tooltips="0" connect="0" arrows="0" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0" zoom="${vz}"><root><mxCell id="0"/><mxCell id="1" parent="0"/>${c.join('')}</root></mxGraphModel>`};   // ADR-0359
 function boardToDrawio(shapes){
   // ADR-0650: one <diagram> per Board page — re-import restores the page set.
-  const body=_pgOn()?state.pages.map(p=>`<diagram name="${_dioEsc(p.name)}">`+_dioModel(_dioCells(shapes.filter(s=>_sv(s)&&(s.pg||state.pages[0].id)===p.id)))+`</diagram>`).join('')   // ADR-0678: +_sv — hidden parity with excalidraw export (0594): drawio has no visibility concept, so a hidden shape would surface visibly in the file
+  const body=_pgOn()?state.pages.map(p=>`<diagram name="${_dioEsc(p.name)}">`+_dioModel(_dioCells(shapes.filter(s=>_sv(s)&&(s.pg||state.pages[0].id)===p.id)))+`</diagram>`).join('')   // ADR-0678: +_sv — hidden parity with excalidraw (0594): a hidden shape would surface visibly in the file
     :`<diagram name="${_dioEsc(_dn()||'Page-1')}">`+_dioModel(_dioCells(shapes))+`</diagram>`;
   return `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile compressed="false">${body}</mxfile>`;
 }
@@ -8241,7 +8244,7 @@ const Net={
   sendSelectionIfChanged(){
     if(_pr().size===0)return;
     const ids=_selIds();
-    const key=ids.join(',')+'|'+(state.curPg||'');   // ADR-0680: pg rides the key — a page switch with an unchanged selection must still resend (else peers keep our stale page for avatar-follow/sel-outline scoping)
+    const key=ids.join(',')+'|'+(state.curPg||'');   // ADR-0680: pg rides the key — a page switch with an unchanged selection must still resend (peers keep our stale page otherwise)
     if(key===this._lastSelSent)return;
     this._lastSelSent=key;
     this._bcast(_mk('selection',{ids,pg:state.curPg}));   // ADR-0647
@@ -9796,7 +9799,7 @@ function fitFrames(){
     for(const s of _sh()){
       if(s.id===f.id||_lk(s)||!_pgOk(s))continue;   // ADR-0661: geometric membership is page-scoped (withFrameChildren parity)
       const b=_bb(s);if(!b||b.w==null)continue;
-      if(b.x>=f.x&&b.y>=f.y&&b.x+b.w<=f.x+f.w&&b.y+b.h<=f.y+f.h){
+      if(_inR(b,f)){
         m=m?{x:_min(m.x,b.x),y:_min(m.y,b.y),r:_max(m.r,b.x+b.w),bt:_max(m.bt,b.y+b.h)}
             :{x:b.x,y:b.y,r:b.x+b.w,bt:b.y+b.h};
       }
@@ -10361,7 +10364,7 @@ const Minimap=(()=>{
   const _mmGo=e=>{
     const r=mc.getBoundingClientRect();
     const mx2=(e.clientX-r.left)/r.width,my2=(e.clientY-r.top)/r.height;
-    if(!_sc)return;   // ADR-0668: reuse the rendered scene transform (_sc/_ox/_oy, page-scoped) — a whole-board bbox lands taps on the wrong viewport when off-page shapes exist
+    if(!_sc)return;   // ADR-0668: reuse the rendered scene transform (_sc/_ox/_oy, page-scoped) — a whole-board bbox lands taps on the wrong viewport
     const wx=(mc.width*mx2-_ox)/_sc,wy=(mc.height*my2-_oy)/_sc;
     const _r=_cbr();
     _vp().x=wx-_r.width/_vp().zoom/2;

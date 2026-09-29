@@ -1,3 +1,8 @@
+## [1.7.793] - 2026-09-28
+
+### Fixed
+- ADR-0767: 入れ子フレームが外枠の member にならず、外枠の move/nudge/duplicate/delete で内枠だけ取り残される detach 実害を修正 — `withFrameChildren`/`_frameOf` の `_frm(s)` member 除外を解除 (両端選択時は outer-keyed の前段ガードで align unit/二重変換を防止)。excalidraw エクスポートの frameId も parity 化、`_inR` 内包判定集約
+
 ## [1.7.792] - 2026-09-28
 
 ### Fixed
