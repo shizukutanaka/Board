@@ -856,6 +856,7 @@ Board/
 │   └── ADR-0805-wheel-clamp-pin.md  # wheel パン/ctrl+wheel ズームの _xC ピン
 │   └── ADR-0806-edge-pan-clamp.md  # エッジオートパンの保存参照経由書き込みを _xC へ (監査見落とし解消)
 │   └── ADR-0807-comment-reclaim.md  # コメント尾刈り込み ~870B 回収
+│   └── ADR-0808-edge-pan-clamp-pin.md  # エッジオートパン _xC を _edgePanTick 直叩きで behavioural ピン (全書き込み経路網羅)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
