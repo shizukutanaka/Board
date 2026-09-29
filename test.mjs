@@ -4530,6 +4530,7 @@ try {
         assert.ok(healed&&healed.name==='?','unknown pg heals to a ? page (ADR-0692)');
         state.pages=null;state.curPg=null;
         Store.commit({op:'del',shapes:[{...byId(G.id)}]});
+        assert.ok(html.includes('_pgHealS();_pgBar()'),'snapshot union-heal also heals shape-carried unknown pg (ADR-0693)');
       }
       Store.commit({op:'del',shapes:[{...byId(W.id)}]});
       console.log('  ✓ _pgAdopt cancels gesture only on real page change + unknown-pg heal (5 asserts)');
@@ -12843,7 +12844,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1531; // prev 1517 + 1 tab aria-label pin (ADR-0682)
+  pass += 1532; // prev 1517 + 1 tab aria-label pin (ADR-0682)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
