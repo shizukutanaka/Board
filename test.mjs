@@ -12766,6 +12766,23 @@ try {
     const s4=Shape.make('rect',{x:0,y:0,w:5,h:5});s4.pg='pgY';
     Store.applyRemote({op:'add',shape:s4,clock:{peer:'rp',seq:11,ts:11}});
     assert.ok(!!_pgById('pgY'),'a remote shape carrying an unknown pg heals a stub page');
+    // ADR-0703: a remote pageDel applies even when it empties OUR page set —
+    // the <2 guard is local-only, or a peer behind one concurrent del diverges forever.
+    {
+      state.pages=[{id:'pgSolo',name:'S',nts:0}];state.curPg='pgSolo';
+      const mS=Shape.make('rect',{x:0,y:0,w:5,h:5});mS.pg='pgSolo';
+      state.shapes=[mS];_invalidateGrid();
+      Store.applyRemote({op:'pageDel',id:'pgSolo',clock:{peer:'zz',seq:1,ts:5}});
+      assert.ok(state.pages===null,'remote del of the last page empties the set (ADR-0703)');
+      assert.ok(state.curPg===null,'curPg cleared with the last page (ADR-0703)');
+      assert.ok(byId(mS.id)==null,'member shape removed with its page (ADR-0703)');
+      state.pages=[{id:'pgL',name:'L',nts:0}];state.curPg='pgL';
+      Store.commit({op:'pageDel',id:'pgL'});
+      assert.ok(state.pages&&state.pages.length===1,'local del still refuses the last page');
+      state.history=[];state.histIdx=-1;
+      state.pages=null;state.curPg=null;state.shapes=[];_invalidateGrid();
+      console.log('  ✓ remote last-page del converges; local guard intact (ADR-0703, 4 asserts)');
+    }
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;
     Store.applyRemote({op:'pageAdd',id:'pgA',name:'A',clock:{peer:'rp',seq:12,ts:12}});
     Net._onRecv({k:'snapshot',shapes:[],ops:[],peer:'sp',pages:[{id:'pgA',name:'A',nts:0},{id:'pgB',name:'B',nts:0}]},false);
@@ -12945,7 +12962,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1564; // prev 1517 + 1 tab aria-label pin (ADR-0682)
+  pass += 1568; // prev 1517 + 1 tab aria-label pin (ADR-0682)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

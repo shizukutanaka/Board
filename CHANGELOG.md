@@ -1,3 +1,8 @@
+## [1.7.729] - 2026-09-29
+
+### Fixed
+- ADR-0703: remote pageDel could be refused when the receiver had already applied a concurrent del (the <2 local guard rejected remote ops too) — diverging page sets; remote del now empties the set and ends page mode cleanly
+
 ## [1.7.728] - 2026-09-29
 
 ### Fixed

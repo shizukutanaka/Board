@@ -868,7 +868,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.728';   // ADR-0702
+const V='1.7.729';   // ADR-0703
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1737,13 +1737,20 @@ const Store={
         break;}
       case 'pageDel':{
         if(forward){
-          if(!state.pages||_ln(state.pages)<2)break;   // refuse to drop the last page
+          // ADR-0703: the <2 guard is LOCAL-only — a remote del must apply even when it
+          // empties our set (a peer that ran a concurrent del sees fewer pages than the
+          // sender did; refusing here diverges the page sets permanently).
+          if(!state.pages||(_ln(state.pages)<2&&(!op.clock||op.clock.peer===_pi())))break;
           const i=state.pages.findIndex(p=>p.id===op.id);if(i<0)break;
-          const firstId=state.pages.find(q=>q.id!==op.id).id;
+          const first=state.pages.find(q=>q.id!==op.id),firstId=first?first.id:null;
           op.shapes=[];op.i=i;op.name=state.pages[i].name;   // record for undo regardless of a slimmed wire copy
           for(const s of _sh())if((s.pg||state.pages[0].id)===op.id)op.shapes.push(clone(s));
           state.pages.splice(i,1);
-          _pgDel2(op,firstId);
+          if(!_ln(state.pages)){   // remote del emptied the set — page mode ends; purge members like _pgDel2 then scrub every stale pg
+            for(const s of _sh())if(s.pg===op.id)delete _wc()[s.id];
+            state.shapes=_sh().filter(s=>s.pg!==op.id);_iG();_pcC();
+            state.pages=null;state.curPg=null;_pgHealS();
+          }else _pgDel2(op,firstId);
         }else{
           if(!state.pages)state.pages=[];   // heal
           state.pages.splice(_min(op.i!=null?op.i:_ln(state.pages),_ln(state.pages)),0,{id:op.id,name:op.name!=null?op.name:'?',nts:0});
