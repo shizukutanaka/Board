@@ -248,6 +248,7 @@ const checks = [
   ["del/clear undo-wire carries wc; addMany applies it (ADR-0721)", html.includes("{op:'addMany',shapes:op.shapes,wc:op.wc}") && html.includes("if(op.wc)for(const[id,w]of Object.entries(op.wc))_wc()[id]=clone(w)")],
   ["pageDel snapshots + restores member wclocks (ADR-0722)", html.includes("op.wc={};for(const id of dead)if(_wc()[id])op.wc[id]=clone(_wc()[id])") && html.includes("op.shapes||[],wc:op.wc}")],
   ["clear undo merges op.wc, never replaces (ADR-0723)", html.includes("if(op.wc)for(const[id,w]of Object.entries(op.wc))_wc()[id]=clone(w);_selR(op)")],
+  ["pageAdd undo: unpage wire + _pgDel2 only-set (ADR-0724)", html.includes("_pgDel2(op,firstId,die)") && html.includes("unpage:state.pages?0:1") && html.includes("_pgDel2(op,firstId,only)")],
   ["_recordCommitted sets _lastRep for local 'replace' (ADR-0616)", html.includes("if(op.op==='replace')state._lastRep=op.clock;   // ADR-0616")],
   ["snapshot carries rep marker + stale-snapshot skip (ADR-0617)", html.includes("rep:state._lastRep") && html.includes("clockNewer(state._lastRep,msg.rep))break;")],
   ["snapshot docName is LWW-gated via (ts,writer) order (ADR-0618/0699)", html.includes("nameTs:_nameTs,namePeer:_namePeer") && html.includes("_nameWin(msg.nameTs,_iS(msg.namePeer)?msg.namePeer:'')")],
@@ -6926,6 +6927,33 @@ try {
       'ADR-0723: intervening clock survives locally too (merge, not replace)');
     console.log('  ✓ ADR-0723: clear undo merges op.wc — intervening clocks survive identically');
 
+    // ADR-0724 (round474): undoing the LAST pageAdd — op-carried members die;
+    // every other member (adopted, late remote adds) reverts to un-paged. The
+    // wire 'unpage' flag + kill set makes peers take the same branch — before,
+    // local kept members while _pgDel2 killed them on peers.
+    reset(A); reset(B);
+    A.state.pages=null;A.state.curPg=null;B.state.pages=null;B.state.curPg=null;   // reset doesn't clear pages
+    const uX=Shape.make('rect',{x:0,y:0,w:10,h:10});   // pre-existing, un-paged
+    A.state.shapes.push(cp(uX)); B.state.shapes.push(cp(uX)); A.sortZ(); B.sortZ();
+    const iS2=Shape.make('rect',{x:9,y:9,w:5,h:5});
+    rAB=[]; rBA=[];
+    A.Net.broadcast = op => rAB.push({k:'op',op:cp(op)});
+    B.Net.broadcast = op => rBA.push({k:'op',op:cp(op)});
+    A.Store.commit({op:'pageAdd',id:'q9',name:'Q9',shapes:[cp(iS2)],clock:{peer:'peerA',seq:1,ts:1000}});
+    rAB.forEach(m=>B.Net._onRecv(m)); rAB.length=0;
+    assert.ok(A.state.pages[0].id==='q9'&&B.state.pages[0].id==='q9','precondition: page exists both sides');
+    assert.ok(B.state.shapes.find(s=>s.id===uX.id).pg==='q9','precondition: adopted member on peer');
+    A.state.seq=1;
+    A.Store.undo();
+    rAB.forEach(m=>B.Net._onRecv(m));
+    for(const[X,name]of[[A,'local'],[B,'peer']]){
+      assert.ok(X.state.pages===null,name+': last page undone → un-paged');
+      assert.ok(!X.state.shapes.some(s=>s.id===iS2.id),name+': op-carried member dies (ADR-0724)');
+      const ux=X.state.shapes.find(s=>s.id===uX.id);
+      assert.ok(!!ux&&!ux.pg,name+': adopted member survives, reverted to un-paged (ADR-0724)');
+    }
+    console.log('  ✓ ADR-0724: last-pageAdd undo kills op-carried members, un-pages the rest on both sides');
+
     // v1.6.87: a new text/sticky is committed+broadcast with EMPTY text, then filled in
     // the editor. _syncTextFinalize must push the typed content (and a dismissed-empty
     // removal) to already-connected peers, or collaborators see a blank shape forever.
@@ -13045,7 +13073,7 @@ try {
       console.log('  ✓ wire pageAdd restores the recorded position (ADR-0704, 3 asserts)');
     }
     // ADR-0705: wire pageDel/pageName drop receiver-recomputed + undo-domain fields
-    assert.ok(html.includes("if(op.op==='pageDel')return{op:'pageDel',id:op.id,clock:op.clock};"),'wire pageDel slims to id+clock (ADR-0705)');
+    assert.ok(html.includes("if(op.op==='pageDel'){const s={op:'pageDel',id:op.id,unpage:op.unpage?1:0,clock:op.clock};if(op.unpage)s.shapes=this._slimShapes(op.shapes||[]);return s}"),'wire pageDel slims to id+unpage(+kill-set)+clock (ADR-0705/0724)');
     assert.ok(html.includes("if(op.op==='pageName')return{op:'pageName',id:op.id,after:op.after,clock:op.clock};"),'wire pageName drops undo fields (ADR-0705)');
     console.log('  ✓ wire pageDel/pageName slim to the applied fields only (ADR-0705, 2 asserts)');
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;
@@ -13227,7 +13255,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1615; // prev 1611 + 3 ADR-0723 behavioural + 1 pin
+  pass += 1621; // prev 1615 + 5 ADR-0724 behavioural + 1 pin
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

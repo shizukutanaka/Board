@@ -772,6 +772,7 @@ Board/
 │   └── ADR-0721-undo-wire-wclock.md  # del/clear undo-wire に wclock スナップを同梱 (LWW 仲裁発散を解消) (実装済)
 │   └── ADR-0722-pagedel-wclock.md  # pageDel も member wclock を記録+復元 (del parity) (実装済)
 │   └── ADR-0723-clear-wc-merge.md  # clear undo の wclock を全置換→マージへ (行き違い時計の消失を解消) (実装済)
+│   └── ADR-0724-pageadd-undo-unpage.md  # pageAdd undo を _pgDel2 現メンバー基準へ + 最終ページ undo は 'unpage' wire で op由来のみ死/残り un-page (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

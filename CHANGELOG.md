@@ -1,3 +1,13 @@
+## [1.7.750] - 2026-09-29
+
+### Fixed
+- ADR-0724: pageAdd undo purged only op-carried members — late members (a
+  peer's add on that page) survived locally while peers' _pgDel2 killed them.
+  And undoing the LAST pageAdd kept members locally while peers killed them —
+  now _pgDel2 runs for surviving pages, and the 'unpage' wire flag makes the
+  emptied-set case kill op-carried members + revert the rest to un-paged on
+  both sides
+
 ## [1.7.749] - 2026-09-29
 
 ### Fixed
