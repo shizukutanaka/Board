@@ -859,6 +859,7 @@ Board/
 │   └── ADR-0808-edge-pan-clamp-pin.md  # エッジオートパン _xC を _edgePanTick 直叩きで behavioural ピン (全書き込み経路網羅)
 │   └── ADR-0809-pan-drag-clamp-pin.md  # hand ツールドラッグパンの _xC を実ポインタ経路でピン (累積経路全網羅)
 │   └── ADR-0810-architecture-sync-pin-layer.md  # architecture.md をピン完走 + BC/RTC 単一受信経路へ同期
+│   └── ADR-0811-presence-audit-complete.md  # presence 取込監査完走 — 全フィールド intake bounded
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

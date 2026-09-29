@@ -1,3 +1,8 @@
+## [1.7.837] - 2026-09-29
+
+### Docs
+- ADR-0811: presence 取込監査完走 — peer id (MAX_PEER_ID_LEN)・cursor・selection ids・pg・docName LWW すべて intake bounded
+
 ## [1.7.836] - 2026-09-29
 
 ### Docs
