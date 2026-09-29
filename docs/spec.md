@@ -523,7 +523,7 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
 | P2 | 多ページ | spec ロードマップ唯一の未完項目 — `docs` 複数キー化 + ページ UI |
 | P3 | z/frac 一本化 | ADR-0001 Step4 — 恒久併存と決定済み (ロードマップ外) |
 | P3 | whole-doc put → delta 永続化 | flush 毎の O(board) 書込みのトレードオフ — 現状は debounce で許容 |
-| P3 | ポインタ系列の実検証 | **部分解消** — canvas リスナを `_L` へ記録し合成 PD/PM/PU を実ハンドラへ dispatch (ADR-0641)。残: レンダリング実体・複合系列 |
+| P3 | ポインタ系列の実検証 | **部分解消** — canvas リスナを `_L` へ記録し合成 PD/PM/PU を実ハンドラへ dispatch (ADR-0641)。残: レンダリング実体・タイマ系 (resize debounce/長押し)。系列側はほぼ網羅 — 運用規約は ADR-0644 |
 
 > 方針(CLAUDE.md 準拠): 各 P1/P2 は**別 ADR + 独立リリース**。一気に全部は作らない。
 > 「ゼロ秒で使える/オフライン等価/単一HTMLで小さく保つ」を破る改善は採用しない。

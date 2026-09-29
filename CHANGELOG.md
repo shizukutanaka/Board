@@ -5354,6 +5354,13 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.670]
+
+### ドキュメント
+
+- **ADR-0644**: イベント系列 harness の運用規約 — fire1/fireKey1 原則 (stale インスタンスの commit が共有 BC 経由で現行状態へ混入するモデル)、reset() の非対称 (editing/viewport/hover/measure は戻らない)、snapPt 許容、matches stub、appendChild スパイ、window リスナ直接 dispatch、ライブ参照の取り方を固定
+- spec.md §14.3.1 P3 の残をタイマ系/レンダリング実体へ絞り込み
+
 ## [1.7.669]
 ### 修正
 - **quick-connect が導入時から一切発火していなかった実害を修正** — `_qdotAt` (PD 時のドット掴み判定) が `_qconnShape` の `!ptr.down` ガードを共有しており、pointerdown で `ptr.down=true` が tool dispatch より先に立つため常に null を返し、エッジ中点ドットを掴んでも `pickOrMarquee` にフォールしていた。`_qconnShape(g)` を引数化し、`_qdotAt` は `g=1` で `ptr.down` を免除 (overlay のドット描画側は従来通りドラッグ中に非表示) (ADR-0643)。
