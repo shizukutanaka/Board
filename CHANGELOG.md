@@ -1,3 +1,10 @@
+## [1.7.747] - 2026-09-29
+
+### Fixed
+- ADR-0721: del/clear undo-wire dropped the wclock snapshot — local backward
+  restores op.wc but peers' addMany re-added shapes clock-free, so later remote
+  writes arbitrated differently. Wire addMany now carries + applies wc
+
 ## [1.7.746] - 2026-09-29
 
 ### Fixed
