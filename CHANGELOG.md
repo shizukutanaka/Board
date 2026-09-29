@@ -1,3 +1,10 @@
+## [1.7.766] - 2026-09-28
+
+### Removed
+- ADR-0740: dead wire fields — `hello.seq`/`ping.seq` (a lamport-looking field
+  no handler reads, never incremented) and `snapshot.curPg` (receivers keep
+  their own view by design, ADR-0672). Wire-compatible
+
 ## [1.7.765] - 2026-09-28
 
 ### Fixed
