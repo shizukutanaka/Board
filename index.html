@@ -875,7 +875,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.861';   // ADR-0835
+const V='1.7.862';   // ADR-0836
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -8137,7 +8137,7 @@ const Net={
   // payloads per session; snapshots pass a fre
   // is always re-emitted (late joiners). Inbou
   // whose blob hasn't landed park in _imgPendi
-  _imgSent:_mP(), _imgIn:_mP(), _imgPending:_mP(),
+  _imgSent:_mP(), _imgIn:_mP(), _imgPending:_mP(), _imgqT:_mP(),
   _imgOuts:[], _imgChunks:_mP(),
   _slimShapes(shapes,sent){
     const{slim,puts}=_imgSlim(shapes,sent||this._imgSent);
@@ -8312,10 +8312,12 @@ const Net={
         _iv();break;}
       case 'imgq':{   // ADR-0835: O(1) answer — wire refs only ever exist for
         // keys slimmed (_imgSent) or received (_imgIn); a _sh() scan would let
-        // an imgq flood cost O(board)/msg.
+        // an imgq flood cost O(board)/msg. ADR-0836: one answer per key per
+        // 10s — a tiny imgq otherwise amplifies into repeated 12MB broadcasts.
         const d0=this._imgIn.get(msg.key)||(_idOK(msg.key)?this._imgSent.get(msg.key):null);
-        if(d0)_pu(this._imgOuts,[msg.key,d0]);
-        this._flushImgOuts();break;}
+        const _t=nowTs(),_qt=this._imgqT.get(msg.key);
+        if(d0&&(!_qt||_t-_qt>10000)){this._imgqT.set(msg.key,_t);_pu(this._imgOuts,[msg.key,d0]);this._flushImgOuts()}
+        break;}
       case 'snap':case 'opc':{
         // ADR-0383/0431: chunked intake — snapshots
         // same reassembly (ops fragment only past the ~256KB SCTP ceiling).

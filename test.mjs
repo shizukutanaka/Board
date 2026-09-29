@@ -14381,7 +14381,9 @@ try {
     assert.ok(typeof kQ==='string'&&kQ.length>0,'slim emits the blob key');
     Net._onRecv({k:'imgq',key:kQ,peer:'zz'},false);
     assert.ok(sent.includes(kQ),'imgq answered from the sent-key map O(1)');
-    sent.length=0;
+    Net._onRecv({k:'imgq',key:kQ,peer:'zz'},false);
+    assert.strictEqual(sent.length,1,'imgq flood throttled per key (ADR-0836)');
+    sent.length=0;Net._imgqT.clear();
     Net._imgIn.set('kR','data:image/png;base64,RR');
     Net._onRecv({k:'imgq',key:'kR',peer:'zz'},false);
     assert.ok(sent.includes('kR'),'imgq answered from the received-blob store');
