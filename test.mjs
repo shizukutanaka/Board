@@ -12517,13 +12517,31 @@ try {
     // ADR-0656: peer avatar tooltip names the page a cross-page peer occupies
     assert.ok(html.includes("el.title=id+((p.pg&&p.pg!==state.curPg&&_pgById(p.pg))?' · '+_pgById(p.pg).name:'')"),'peer avatar title annotates the page only when it differs');
 
+    // ADR-0657: page ops ride the same re-application guarantee (0655 extension)
+    state.pages=null;state.curPg=null;
+    const pX=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    Store.applyRemote({op:'pageAdd',id:'p2',name:'P2',shapes:[{...pX,pg:'p2'}],clock:{peer:'r1',seq:5,ts:5}});
+    Store.applyRemote({op:'pageAdd',id:'p3',name:'P3',clock:{peer:'r1',seq:6,ts:6}});
+    const nP=state.pages.length,nSh=state.shapes.length;
+    state.seenOps.clear();
+    Store.applyRemote({op:'pageAdd',id:'p2',name:'P2',shapes:[{...pX,pg:'p2'}],clock:{peer:'r1',seq:5,ts:5}});
+    assert.ok(state.pages.length===nP&&state.shapes.length===nSh,'re-applied pageAdd is idempotent (_pgById + byId guards)');
+    Store.applyRemote({op:'pageName',id:'p2',after:'Renamed',clock:{peer:'r1',seq:7,ts:7}});
+    state.seenOps.clear();
+    Store.applyRemote({op:'pageName',id:'p2',after:'Renamed',clock:{peer:'r1',seq:7,ts:7}});
+    assert.ok(_pgById('p2').name==='Renamed','re-applied pageName converges on equal ts');
+    Store.applyRemote({op:'pageDel',id:'p2',clock:{peer:'r1',seq:8,ts:8}});
+    state.seenOps.clear();
+    Store.applyRemote({op:'pageDel',id:'p2',clock:{peer:'r1',seq:8,ts:8}});
+    assert.ok(!_pgById('p2')&&!!_pgById('p3'),'re-applied pageDel is a no-op (findIndex guard)');
+
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
   // asserts but actually contains 6 (recounted directly: at1.length, at2.length, and 4
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1459; // prev 1458 + 1 peer-avatar-page pin (ADR-0656)
+  pass += 1462; // prev 1459 + 3 page-op reapply asserts (ADR-0657)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
