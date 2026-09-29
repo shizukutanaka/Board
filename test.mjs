@@ -12206,6 +12206,37 @@ try {
     reset();
     for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[],getData:()=>'hello'},clientX:400,clientY:300,preventDefault(){}});
     assert.ok(state.shapes.length===1&&state.shapes[0].type==='text'&&state.shapes[0].text==='hello','a dropped plain text becomes a text shape (ADR-0044)');
+    // rendering entity: draw() composite pass through an injected recording ctx (ADR-0641 residual)
+    const mkRc=arr=>new Proxy({},{get(t,p){
+      if(p==='measureText')return()=>({width:10});
+      if(p==='createLinearGradient'||p==='createRadialGradient'||p==='createPattern')return()=>({addColorStop(){}});
+      if(p in t)return t[p];
+      return(...a)=>{arr.push([p,a])};
+    },set(t,p,v){t[p]=v;return true}});
+    reset();
+    const DR=Shape.make('rect',{x:10,y:10,w:60,h:40});
+    Store.commit({op:'add',shape:DR});
+    const d1=[];
+    const _pc=api._setCtx(mkRc(d1));
+    try{api.draw()}finally{api._setCtx(_pc)}
+    assert.ok(d1.length>5,'draw() drives the injected ctx for a visible rect');
+    assert.ok(d1.some(c=>['fill','fillRect','stroke','strokeRect','rect'].includes(c[0])),'a visible rect produces fill/stroke calls');
+    reset();
+    const DH=Shape.make('rect',{x:10,y:10,w:60,h:40});DH.visible=0;
+    Store.commit({op:'add',shape:DH});
+    const d2=[];
+    api._setCtx(mkRc(d2));
+    try{api.draw()}finally{api._setCtx(_pc)}
+    assert.ok(d2.length<d1.length,'a hidden shape contributes fewer draw calls than a visible one (hidden parity)');
+    const o1=[];
+    reset();
+    const DS=Shape.make('rect',{x:10,y:10,w:60,h:40});
+    Store.commit({op:'add',shape:DS});
+    state.selection.add(DS.id);
+    const _po=api._setOCtx(mkRc(o1));
+    try{api.drawOverlay()}finally{api._setOCtx(_po)}
+    assert.ok(o1.some(c=>['stroke','strokeRect','rect','arc','moveTo','lineTo'].includes(c[0])),'drawOverlay paints the selection outline for a selected shape');
+    state.selection.clear();
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -12217,7 +12248,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1394; // prev 1390 + 4 event-sequence asserts (ADR-0641: drop text cascade 実経路)
+  pass += 1398; // prev 1394 + 4 render-entity asserts (ADR-0641: draw/drawOverlay 注入ctx)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
