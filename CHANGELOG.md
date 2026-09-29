@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.644]
+### Fixed
+- スナップショットに送信側の最新 swap marker (`rep`) を同梱し、受信側の `_lastRep` が厳密に新しい場合はマージ/適用を棄却 — 送信側が swap 適用前に組み立てたスナップショットが受信側の post-swap 盤面へ pre-swap 図形を再追加する因果順序ホールを閉塞。等しい marker は同世代としてマージ継続、新しい `rep` は marker を採用 (ADR-0617)。
+
 ## [1.7.643]
 ### Fixed
 - ローカルの 'replace' commit (共有リンク/.board 取込) が `_recordCommitted` 経由で `_apply` を通らず `_lastRep` marker が立たず、直後に届く古いリモート全置換が棄却されず全ピアが発散する問題を修正 — `_recordCommitted` で marker を記録 (ADR-0616)。

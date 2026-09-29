@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.643';   // ADR-0616
+const V='1.7.644';   // ADR-0617
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -8042,6 +8042,10 @@ const Net={
         break;
       case 'snapshot':
         this._snapRx=true;   // ADR-0475
+        // ADR-0617: a snapshot strictly predating our newest swap carries pre-swap
+        // shapes — merging it re-adds what the winning swap removed (an equal marker
+        // is the same generation, not stale; only a newer local marker rejects it).
+        if(msg.rep&&validClock(msg.rep)&&state._lastRep&&clockNewer(state._lastRep,msg.rep))break;
         if(_nS()===0)this._applySnapshot(msg);
         // Already have shapes: merge — adopt only shapes we don't have yet.
         // Restrict to 'add' ops: _snapshotMsg() only
@@ -8050,6 +8054,7 @@ const Net={
         else if(_iA(msg.ops))for(const op of _s0(msg.ops,SHARE_MAX_SHAPES)){   // ADR-0474
           this._mergeSnapshotOp(op);   // ADR-0058: add unknown shapes, LWW-merge known ones
         }
+        if(msg.rep&&validClock(msg.rep)&&clockNewer(msg.rep,state._lastRep))state._lastRep=msg.rep;   // ADR-0617: the snapshot reflects a newer swap — align the marker
         break;
       case 'name':   // ADR-0402/0581: rename is LWW — a stale peer's slower-arriving rename can't clobber a newer local one
         if(_iS(msg.name)&&_ln(msg.name)<=80&&(_iN(msg.ts)?msg.ts>_nameTs:!0)){_nameTs=_iN(msg.ts)?msg.ts:_nameTs;_setDocName(msg.name);_ps()}
@@ -8104,7 +8109,7 @@ const Net={
     const slim=this._slimShapes(ops.map(o=>o.shape),_mP());
     ops.forEach((o,i)=>o.shape=slim[i]);
     this._flushImgOuts();
-    return {k:'snapshot',shapes:slim,ops,peer:_pi(),name:_dn()};
+    return {k:'snapshot',shapes:slim,ops,peer:_pi(),name:_dn(),rep:state._lastRep};   // ADR-0617: the causal marker — receivers holding a newer swap must not merge pre-swap shapes back
   },
   // ADR-0058: merge one snapshot add-op. Unkno
   // (unchanged); known shape → per-property LW

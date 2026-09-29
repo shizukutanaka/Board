@@ -243,6 +243,7 @@ const checks = [
   ["undo-wire emits 'replace' restoring swap (ADR-0615)", html.includes("case 'replace':   // ADR-0615") && html.includes("return _iA(op.before)?[{op:'replace',after:op.before,afterWc:op.wc}]:null;")],
   ["undo-wire swap advances _lastRep to the fresh clock (ADR-0615)", html.includes("if(w.op==='replace')state._lastRep=w.clock;") && html.includes("_fck(op);if(op.op==='replace')state._lastRep=op.clock;")],
   ["_recordCommitted sets _lastRep for local 'replace' (ADR-0616)", html.includes("if(op.op==='replace')state._lastRep=op.clock;   // ADR-0616")],
+  ["snapshot carries rep marker + stale-snapshot skip (ADR-0617)", html.includes("rep:state._lastRep") && html.includes("clockNewer(state._lastRep,msg.rep))break;")],
   ['applyRemote validates remote add shape', html.includes("case 'add':    return validShape(op.shape)")],
   ['SVG export uses testable buildSVG', html.includes("function buildSVG") && html.includes("buildSVG(shapes")],
   ['SVG attrs escaped via _esc', html.includes("stroke=\"${stroke}\"") && html.includes("_esc(_fi(s))")],
@@ -1929,6 +1930,22 @@ try {
     state._lastRep=null;state.shapes.length=0;
     for(const s of prev)state.shapes.push(s);
     console.log('  ✓ _recordCommitted sets _lastRep on local replace (ADR-0616)');
+  }
+  // ADR-0617: a snapshot whose sender predates our newest swap must not merge
+  // pre-swap shapes back in; a snapshot reflecting a newer swap adopts its marker.
+  {
+    state.shapes.length=0;state._lastRep=null;state.seenOps=new Set();
+    const s1=Shape.make('rect',{id:'x1',x:0,y:0,w:10,h:10});
+    const old={peer:'sp',seq:1,ts:10};
+    state._lastRep={peer:'me',seq:5,ts:100};   // our swap is newer
+    Net._onRecv({k:'snapshot',shapes:[s1],ops:[{op:'add',shape:s1,clock:{peer:'sp',seq:1,ts:1},wc:{}}],peer:'sp',rep:old},false);
+    assert.strictEqual(state.shapes.length,0,'stale snapshot skipped — pre-swap shapes not re-added');
+    const newer={peer:'sp',seq:2,ts:200};
+    Net._onRecv({k:'snapshot',shapes:[s1],ops:[{op:'add',shape:s1,clock:{peer:'sp',seq:1,ts:1},wc:{}}],peer:'sp',rep:newer},false);
+    assert.strictEqual(state.shapes.length,1,'newer snapshot applies');
+    assert.strictEqual(state._lastRep,newer,'snapshot marker adopted');
+    state._lastRep=null;state.shapes.length=0;state.seenOps=new Set();
+    console.log('  ✓ snapshot rep marker orders merges vs swaps (ADR-0617)');
   }
 
   // applyRemote does NOT enter local undo stack
@@ -10996,7 +11013,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1129; // prev 1122 + undo-wire 'replace' pins (4, ADR-0615)
+  pass += 1133; // prev 1122 + undo-wire 'replace' pins (4, ADR-0615)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
