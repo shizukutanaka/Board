@@ -845,6 +845,7 @@ Board/
 │   └── ADR-0794-wire-bounds-docs-sync2.md  # architecture.md へ 0788-0793 期規則を同期
 │   └── ADR-0795-viewport-bound.md  # 採用ビューポート中心を _xyOK へ (細工リンクのブランク着陸閉塞)
 │   └── ADR-0796-importer-intake-parity.md  # パーサ出力を validShape 通過へ (wire parity 発散解消)
+│   └── ADR-0797-text-editor-wire-cap.md  # テキストエディタ maxLength=5000 (wire text 上限 parity)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
