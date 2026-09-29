@@ -11230,6 +11230,24 @@ try {
     fakeDoc.visibilityState='visible';
     assert.ok(!ptr.down,'visibilitychange→hidden cancels the in-flight drag');
     assert.ok(Math.abs(byId(R4.id).x-100)<1e-6,'hidden-cancel restores the pre-gesture position');
+    // rect tool: PD/PM/PU commits a rect 'add' with the dragged size
+    reset();
+    state.tool='rect';
+    fire('pointerdown',50,50);
+    fire('pointermove',150,120);
+    fire('pointerup',150,120);
+    const rS=state.shapes[state.shapes.length-1];
+    assert.ok(rS&&rS.type==='rect'&&rS.w===100&&rS.h===70,'rect drag commits a sized rect via real events');
+    // marquee: select-drag on empty canvas selects what the rect covers
+    reset();
+    state.tool='select';
+    const M1=Shape.make('rect',{x:60,y:60,w:20,h:20}),M2=Shape.make('rect',{x:300,y:300,w:20,h:20});
+    Store.commit({op:'add',shape:M1});
+    Store.commit({op:'add',shape:M2});
+    fire('pointerdown',10,10);
+    fire('pointermove',200,200);
+    fire('pointerup',200,200);
+    assert.ok(state.selection.has(M1.id)&&!state.selection.has(M2.id),'marquee selects only the covered shape via real events');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -11241,7 +11259,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1185; // prev 1168 + 17 event-sequence asserts (ADR-0641)
+  pass += 1187; // prev 1168 + 19 event-sequence asserts (ADR-0641)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
