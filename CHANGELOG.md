@@ -1,3 +1,19 @@
+## [1.7.743] - 2026-09-29
+
+### Fixed
+- ADR-0717: undo arbitrated the local restore against the ORIGINAL commit clock
+  while peers arbitrated the undo-wire op against its fresh clock — a remote
+  write between commit and undo won locally but lost remotely (split-brain).
+  undo() now restamps op.clock fresh (same ts the wire ops carry) so both
+  sides pick the same winner — an undo is a new competing write
+- ADR-0717 (surfaced): style/resize/align undo-wire ops carried no `before` —
+  validRemotePayload rejected them wholesale; dead on the wire since ADR-0443.
+  They now carry before:op.after (also the correct _chg baseline)
+- ADR-0717 (surfaced): ever-locked shapes leave a `locked:null` key on
+  full-shape patch snapshots — the receiver's noLock gate rejected such
+  style/resize/align ops wholesale. _slimOp strips `locked` off patch arrays
+  for dir!=='lock'
+
 ## [1.7.742] - 2026-09-29
 
 ### Fixed
