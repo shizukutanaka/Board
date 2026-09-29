@@ -11375,6 +11375,19 @@ try {
     assert.ok(state.viewport.x!==vx,'arrow navigation advances to the next frame');
     fireKey('Escape');
     assert.ok(!Presentation.isActive(),'Escape leaves the presentation');
+    // ⌘A selects every visible shape (locked included); Delete removes the unlocked ones (ADR-0396)
+    reset();
+    state.tool='select';
+    const A1=Shape.make('rect',{x:10,y:10,w:40,h:40});
+    const A2=Shape.make('ellipse',{x:100,y:10,w:40,h:40});
+    const A3=Shape.make('rect',{x:200,y:10,w:40,h:40,locked:1});
+    Store.commit({op:'add',shape:A1});Store.commit({op:'add',shape:A2});Store.commit({op:'add',shape:A3});
+    state.selection.clear();
+    fireKey('a',{metaKey:true});
+    assert.strictEqual(state.selection.size,3,'⌘A selects every visible shape');
+    fireKey('Delete');
+    assert.deepStrictEqual(state.shapes.map(s=>s.id),[A3.id],'Delete removes the unlocked selection via the real key path');
+    assert.strictEqual(state.selection.size,0,'selection cleared after delete');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -11386,7 +11399,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1207; // prev 1168 + 39 event-sequence asserts (ADR-0641)
+  pass += 1210; // prev 1168 + 42 event-sequence asserts (ADR-0641)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
