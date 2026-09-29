@@ -1,3 +1,8 @@
+## [1.7.819] - 2026-09-29
+
+### Fixed
+- ADR-0793: 座標以外の幾何 prop も intake で magnitude 検証 — `size` (bbox pad: pen/conn ÷2、矢印 ×3、elbow stub ×8) を ≤1e4、`bend` (world coord) を `_xyOK`、結合フォーカス `aF/bF` を [0,1] に限定し、座標に触れない同型ブランク化経路を完走閉塞
+
 ## [1.7.818] - 2026-09-29
 
 ### Fixed

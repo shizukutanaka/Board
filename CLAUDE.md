@@ -841,6 +841,7 @@ Board/
 │   └── ADR-0790-dup-id-intake.md  # wholesale 取込の dup id dedupe (keep-last/byId parity)
 │   └── ADR-0791-future-ts-bound.md  # 全 LWW clock ts の壁時計+5分上限 (_tsOK)
 │   └── ADR-0792-coord-magnitude-bound.md  # 座標 magnitude 上限 |coord|≤1e7 (view-poison DoS 解消)
+│   └── ADR-0793-bbox-prop-bound.md  # 幾何到達 prop の magnitude 検証 (size/bend/aF/bF)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

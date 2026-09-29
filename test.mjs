@@ -14148,6 +14148,29 @@ try {
     console.log('  ✓ far-magnitude coordinates rejected at intake (ADR-0792)');
   }
 
+  // ADR-0793: non-coordinate props that feed geometry are bounded too — a huge
+  // stroke width pads every bbox (pen/conn size/2 + arrowhead×3 + elbow stub×8),
+  // an out-of-range bend/focus pushes elbow routes and bound endpoints far away —
+  // same blank-board poison without ever touching x/y.
+  {
+    state.shapes=[];state.wclock={};state.seenOps=new Set();state.seq=0;state.history=[];state.histIdx=-1;
+    const clk=p=>({peer:'p1',seq:p,ts:Date.now()+1e3});
+    Store.applyRemote({op:'add',shape:{id:'mp1',type:'pen',x:0,y:0,w:10,h:10,z:1,size:1e9,pts:[[0,0],[5,5]]},clock:clk(1)});
+    assert.ok(!byId('mp1'),'huge stroke size rejected (bbox pad poison)');
+    Store.applyRemote({op:'add',shape:{id:'mp2',type:'line',x1:0,y1:0,x2:100,y2:100,z:1,elbow:1,bend:1e9},clock:clk(2)});
+    assert.ok(!byId('mp2'),'far elbow bend coordinate rejected');
+    Store.applyRemote({op:'add',shape:{id:'mp3',type:'rect',x:0,y:0,w:10,h:10,z:1},clock:clk(3)});
+    assert.ok(!!byId('mp3'),'baseline shape accepted');
+    Store.applyRemote({op:'upd',id:'mp3',after:{aF:{fx:2,fy:0.5}},clock:clk(4)});
+    assert.ok(byId('mp3').aF==null,'out-of-range focus rejected');
+    Store.applyRemote({op:'upd',id:'mp3',after:{aF:{fx:0.7,fy:0.5}},clock:clk(5)});
+    assert.ok(!!byId('mp3').aF,'in-range focus still accepted');
+    Store.applyRemote({op:'upd',id:'mp3',after:{size:64},clock:clk(6)});
+    assert.strictEqual(byId('mp3').size,64,'in-range size still accepted');
+    state.shapes=[];state.wclock={};state.seenOps=new Set();state.seq=0;state.history=[];state.histIdx=-1;
+    console.log('  ✓ bbox-feeding props bounded at intake (ADR-0793)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
   // asserts but actually contains 6 (recounted directly: at1.length, at2.length, and 4

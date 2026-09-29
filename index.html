@@ -855,7 +855,7 @@ const _st=()=>state.style;
 const _df=()=>state.draft;
 const _wc=()=>state.wclock,_wM=x=>Object.assign(Object.create(null),x),_oe=Object.entries;   // ADR-0788: '__proto__' id must never hit a prototype-bearing map — a write would mutate the map's prototype, then every missing-id tomb read returns the planted entry (one op.wc key freezes all future adds). Null-proto keeps it a plain own key
 const _wD=(id,c)=>_wc()[id]=_wM({_del:c}),_wR=(id,w)=>_wc()[id]=_wM(clone(w)),_wTb=(rw,c,inN)=>{for(const[id,w]of _oe(rw||{}))if(w._del&&(clockNewer(w._del,c)||!inN.has(id)))_wD(id,clockNewer(w._del,c)?w._del:c)};   // ADR-0789: tomb write / clock-restore / tomb-set merge sites folded
-const MAX_TS_SKEW=3e5,_tsOK=t=>_iN(t)&&_fin(t)&&t<=_now()+MAX_TS_SKEW,_pgs=()=>state.pages,_xyOK=v=>_fin(v)&&_abs(v)<=1e7;   // ADR-0791: bound clock ts at wall+5min (nowTs ratchets on remote ts, so self-poison impossible — bounded intake self-stabilizes); ADR-0792: |coord|>1e7 poisons every bboxAll consumer (fit/minimap/export → blank board)
+const MAX_TS_SKEW=3e5,_tsOK=t=>_iN(t)&&_fin(t)&&t<=_now()+MAX_TS_SKEW,_pgs=()=>state.pages,_xyOK=v=>_fin(v)&&_abs(v)<=1e7;   // ADR-0791/0792/0793: bound wire ts/coords/props — far values poison bboxAll (blank board for all peers)
 const _tl=()=>state.tool;
 const _dn=()=>state.docName;
 let _nameTs=0,_namePeer='';
@@ -875,7 +875,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.818';   // ADR-0792
+const V='1.7.819';   // ADR-0793
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1313,13 +1313,14 @@ function validPatch(p){
   if(!p||!_iO(p))return false;   // a patch/shape must be an object
   if(!_cleanVal(p,0))return false;
   // Numeric geometry fields must be numbers, n
-  for(const k of 'x,y,w,h,x1,y1,x2,y2'.split(','))if(k in p&&p[k]!=null&&!_xyOK(p[k]))return false;   // ADR-0792: type + magnitude
-  for(const k of ['z','rotate','size','opacity','dash','labelPos','cbend','bend','spacing','lineH','fontSize','elbow','curve','hop','flip','r','visible','start','wrap']){   // ADR-0367/0369
+  for(const k of 'x,y,w,h,x1,y1,x2,y2,bend'.split(','))if(k in p&&p[k]!=null&&!_xyOK(p[k]))return false;   // ADR-0792/0793
+  for(const k of ['z','rotate','size','opacity','dash','labelPos','cbend','spacing','lineH','fontSize','elbow','curve','hop','flip','r','visible','start','wrap']){   // ADR-0367/0369
     if(k in p&&p[k]!=null&&typeof p[k]!=='number')return false;
   }
   for(const k of ['bold','italic','under','strike','locked','shadow','hl'])if(k in p&&p[k]!=null&&typeof p[k]!=='boolean'&&typeof p[k]!=='number')return false;   // ADR-0411/0413/0430: flags are true|1 (drawio writes 1; shadow writes true)
-  if(p.aF!=null&&(!_iO(p.aF)||!_fin(p.aF.fx)||!_fin(p.aF.fy)))return false;   // ADR-0367: {fx,fy} object — structural check
-  if(p.bF!=null&&(!_iO(p.bF)||!_fin(p.bF.fx)||!_fin(p.bF.fy)))return false;   // ADR-0367
+  if(p.size>1e4)return false;   // ADR-0793: size pads every bbox
+  if(p.aF!=null&&(!_iO(p.aF)||!(p.aF.fx>=0&&p.aF.fx<=1)||!(p.aF.fy>=0&&p.aF.fy<=1)))return false;   // ADR-0793: focus 0..1 — else endpoint far off-canvas
+  if(p.bF!=null&&(!_iO(p.bF)||!(p.bF.fx>=0&&p.bF.fx<=1)||!(p.bF.fy>=0&&p.bF.fy<=1)))return false;   // ADR-0793
   // ADR-0368: array-prop shape checks — upd pa
   // so a crafted {pts:[["x"]]} or {way:[{x:'a'
   if(p.pts!=null&&!(_iA(p.pts)&&_ln(p.pts)<=50000&&p.pts.every(q=>_iA(q)&&_xyOK(q[0])&&_xyOK(q[1])&&(q[2]==null||_fin(q[2])))))return false;   // ADR-0792
