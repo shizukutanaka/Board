@@ -12126,6 +12126,22 @@ try {
     assert.strictEqual(clPD,1,'contextlost preventDefaulted (contextrestored allowed)');
     assert.ok((canvas._L['contextrestored']||[]).length>0,'contextrestored cache-purge listener registered');
     for(const f of (canvas._L['contextrestored']||[]).slice(0,1))f({});
+    // wire presence: real PM → Net.sendCursor → _send (the BroadcastChannel boundary) (ADR-0010/0611)
+    reset();
+    state.viewport={x:0,y:0,zoom:1};
+    state.peers.set('fake-peer',{});
+    const sent=[];const _snSave=Net._send;Net._send=function(m){sent.push(m)};
+    Net._lastCursorSend=0;
+    fire1('pointermove',400,300);
+    assert.ok(sent.some(m=>m&&m.k==='cursor'),'pointermove broadcasts a cursor update to peers (ADR-0010)');
+    sent.length=0;
+    fire1('pointermove',410,310);
+    assert.strictEqual(sent.length,0,'a second cursor within 60ms is throttled (ADR-0010)');
+    Net._lastCursorSend=0;
+    for(const f of (canvas._L['pointerleave']||[]).slice(0,1))f({});
+    assert.ok(sent.some(m=>m&&m.k==='cursor'&&m.h===1),'pointerleave broadcasts cursor-hide (ADR-0611)');
+    Net._send=_snSave;
+    state.peers.clear();
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -12137,7 +12153,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1376; // prev 1372 + 4 event-sequence asserts (ADR-0641: resize debounce/context lifecycle)
+  pass += 1379; // prev 1376 + 3 event-sequence asserts (ADR-0641: presence wire 実経路)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
