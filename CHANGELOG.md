@@ -1,3 +1,8 @@
+## [1.7.731] - 2026-09-29
+
+### Changed
+- ADR-0705: wire pageDel/pageName now carry only the fields the receiver applies (pageDel: id+clock — members/i/name/bts/btp were dead weight the receiver recomputes; pageName: drops undo-domain before/bts/btp)
+
 ## [1.7.730] - 2026-09-29
 
 ### Fixed

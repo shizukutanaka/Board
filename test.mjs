@@ -12796,6 +12796,10 @@ try {
       state.pages=null;state.curPg=null;
       console.log('  ✓ wire pageAdd restores the recorded position (ADR-0704, 3 asserts)');
     }
+    // ADR-0705: wire pageDel/pageName drop receiver-recomputed + undo-domain fields
+    assert.ok(html.includes("if(op.op==='pageDel')return{op:'pageDel',id:op.id,clock:op.clock};"),'wire pageDel slims to id+clock (ADR-0705)');
+    assert.ok(html.includes("if(op.op==='pageName')return{op:'pageName',id:op.id,after:op.after,clock:op.clock};"),'wire pageName drops undo fields (ADR-0705)');
+    console.log('  ✓ wire pageDel/pageName slim to the applied fields only (ADR-0705, 2 asserts)');
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;
     Store.applyRemote({op:'pageAdd',id:'pgA',name:'A',clock:{peer:'rp',seq:12,ts:12}});
     Net._onRecv({k:'snapshot',shapes:[],ops:[],peer:'sp',pages:[{id:'pgA',name:'A',nts:0},{id:'pgB',name:'B',nts:0}]},false);
@@ -12975,7 +12979,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1571; // prev 1517 + 1 tab aria-label pin (ADR-0682)
+  pass += 1573; // prev 1517 + 1 tab aria-label pin (ADR-0682)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
