@@ -305,7 +305,7 @@ canvas#c[data-tool=eyedropper]{cursor:crosshair}
 .status-spacer{flex:1}
 #pgBar{gap:2px}
 #pgTabs{display:inline-flex;gap:2px;overflow-x:auto;max-width:38vw}
-.pg-t{max-width:9em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pg-t{flex:none;max-width:9em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pg-t.on{font-weight:700;text-decoration:underline}
 .pg-b{background:none;border:1px solid var(--line);border-radius:4px;color:var(--ink-2);cursor:pointer;font:500 11px/1 var(--mono-font);padding:2px 6px}
 .pg-b:hover{background:var(--ink-5)}
@@ -866,7 +866,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.702';   // ADR-0675
+const V='1.7.703';   // ADR-0676
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;

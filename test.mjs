@@ -4610,6 +4610,13 @@ try {
       assert.ok(html.includes("_pgBar();_ps()"),'switchPage schedules persist (ADR-0674)');
       console.log('  ✓ switchPage persist pin (1 assert)');
     }
+    // ADR-0676: stale research claims synced — quadtree→grid + DOM mirror implemented
+    {
+      const ri=(()=>{try{return readFileSync('docs/research-improvements.md','utf8')}catch(_){return''}})();
+      assert.ok(ri.includes('ADR-0016/0032/0654'),'quadtree claim synced to grid index (ADR-0676)');
+      assert.ok(ri.includes('実装済み (ADR-0041)'),'DOM mirror claim synced (ADR-0676)');
+      console.log('  ✓ stale research claim pins (2 asserts)');
+    }
   }
 
   // ADR-0072: elbow trunk locate + bend-override two-corner route
@@ -12757,7 +12764,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1510; // prev 1509 + 1 tab-sig-cache pin (ADR-0675)
+  pass += 1512; // prev 1510 + 2 stale-claim sync pins (ADR-0676)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

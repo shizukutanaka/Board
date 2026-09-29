@@ -1,3 +1,11 @@
+## [1.7.703] - 2026-09-29
+
+### Fixed
+- `.pg-t` チップの `flex:none` (横スクロール有効化、ADR-0676)
+
+### Documentation
+- research-improvements.md の stale 記述を同期 (quadtree→grid 索引、DOM ミラー実装済、ADR-0676)
+
 ## [1.7.702] - 2026-09-29
 
 ### Fixed

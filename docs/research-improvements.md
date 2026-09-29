@@ -49,8 +49,9 @@ replicated undo 論文群。
 - **原則整合**: 依存追加なし。SVG 出力は `<path d="…" fill="..." stroke="none"/>` 形式に変わる。
 
 ### C. **空間インデックス**(quadtree / uniform grid)でヒットテストと描画カリング
-- **現状**: `architecture.md` が >500 shape での quadtree 導入を予告済みだが未実装。hover ヒットテスト
-  (`pickTop`)が毎 pointermove で O(N)、`draw()` は全 shape を毎フレーム描画。
+- **現状 (2026-09 更新)**: uniform-grid 空間索引として実装済 (ADR-0016/0032/0654) — draw カリング・
+  pickTop/marquee 候補絞り込み・density-adaptive cell サイズ。quadtree 自体は不要と判断。
+  (旧記述: 「quadtree 未実装、hover O(N)、draw 全走査」— 解消済み)
 - **改善**: commit 毎に遅延再構築する coarse uniform-grid を持ち、`pickTop`/marquee と **画面外 shape の描画カリング**
   に使う。tldraw は culling + 空間索引で数千オブジェクトを 60fps 維持。
 - **出典**: [tldraw performance/culling (toolpick 比較)](https://www.toolpick.dev/blog/excalidraw-vs-tldraw-2026) ·
@@ -110,9 +111,9 @@ replicated undo 論文群。
   `cycleSel()` (line 1306) + `describeShape()` (line 1317) で Tab/Shift+Tab が z-order を巡回し、
   `aria-live` トースト (line 2529, 2538) で各 shape を読み上げ、`canvas` の `aria-label` も操作ヒントを
   動的更新 (line 2611)。キーボード/SR ユーザは shape を巡回・選択・移動・作成でき各操作が読み上げられる。
-- **真の残差(改善点)**: 永続的な **offscreen DOM ミラー**(全 shape を常時 DOM に反映し、ブラウズモード/
-  ランドマークで構造ナビゲーション可能に)は未実装。現在は「巡回時に1つずつ読み上げる」方式で全体の
-  一覧性が無い。外部 a11y 監査通過にはこの DOM ミラーが要る。
+- **真の残差(改善点)**: ~~DOM ミラー未実装~~ → **実装済み (ADR-0041)** — `role="region"` の
+  `shapeMirror` が offscreen `<ul>` を常時反映 (現ページのみ、ADR-0646)。残差: shape 毎の
+  ランドマーク分割 (300 件 cap のグループ化) は未実装だが一覧性は確保済み。
 - **出典**: [HTML canvas accessibility (pauljadam)](https://pauljadam.com/demos/canvas.html) ·
   [W3C WCAG 2.2 — Keyboard Accessible](https://www.w3.org/WAI/WCAG22/Understanding/keyboard-accessible.html) ·
   [MDN — Keyboard accessibility](https://developer.mozilla.org/en-US/docs/Web/Accessibility/Guides/Understanding_WCAG/Keyboard)
