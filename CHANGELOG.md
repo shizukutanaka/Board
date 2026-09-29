@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.655]
+### ドキュメント
+- architecture.md のキャッシュ節に GPU コンテキストロスト系を追記 — `_ctxUp` のパージ対象 (_penCache/_inkD/minimap _scene) と、新規 GPU ラスタキャッシュ導入時の不変条件を明文化 (ADR-0628)。
+
 ## [1.7.654]
 ### 修正
 - canvas の GPU コンテキストロストに耐性を付与 — contextlost を preventDefault で restore 許可、contextrestored で `_penCache` (ビットマップが空転送される)・`_inkD` (デッド ctx への描画)・minimap `_scene` (stale `_sceneVer` でブランク残留) をパージして `_iv`/`_ivO` 再描画。従来は GPU リセット後に全図形がブランク化し得た (ADR-0627)。

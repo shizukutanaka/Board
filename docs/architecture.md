@@ -250,6 +250,11 @@ requestAnimationFrame 1 本。ユーザー操作中も常に 60fps を目標。
   id keyed な per-shape キャッシュが増えたら `_psc` 側に追加すること。
   `_wrapCache` のキーは (text, maxWidth, fontSize, bold, italic, font, spacing)
   — measureText に影響する prop を新設したらキーにも含める (ADR-0437)。
+- **GPU コンテキストロスト** (ADR-0627): `contextlost` を preventDefault で
+  `contextrestored` を許可し、復帰で `_ctxUp` が `_penCache`/`_inkD`/minimap
+  `_scene` をパージして `_iv`/`_ivO` 再描画 — GPU リセット後のブランク残留を
+  解消。GPU 裏付けのラスタキャッシュを新設したら `_ctxUp` のパージに含める
+  (CPU 側の `_penBboxCache`/`_imgCache`/`_imgPending` は対象外)。
 
 ## DPR
 
