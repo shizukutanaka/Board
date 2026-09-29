@@ -797,7 +797,7 @@ const _keepSel=arr=>{if(_ln(arr))_hi()[_hx()].origSel=arr};   // ADR-0312
 const _pd=e=>e.preventDefault();   // ADR-0326
 const _ce=t=>document.createElement(t);   // ADR-0329
 const _selIds=()=>[..._sl()];   // ADR-0330
-const _sb=()=>_selIds().map(byId);   // ADR-0418: selected-shape objects (10 sites)
+const _sb=()=>_selIds().map(byId).filter(Boolean);   // ADR-0418/0623: selected-shape objects — drop dead ids at the source (callers' scattered `s&&` guards prove the leak); _ul/ downstream props would TypeError on undefined
 const _hasS=id=>_sl().has(id);   // ADR-0418: selection-membership predicate
 const _sel0=()=>byId(_selIds()[0]);   // ADR-0421: single-selected shape (12 sites)
 const _grpOf=gid=>_sh().filter(s=>s.groupId===gid).map(s=>s.id);   // ADR-0423: members of a group (id list)
@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.649';   // ADR-0622
+const V='1.7.650';   // ADR-0623
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -5087,7 +5087,7 @@ function withFrameChildren(ids){
 // frame (withFrameChildren) and locked shapes never
 // which filter !_lk(s)). Records one reversible `move` op for the shapes that moved.
 function nudgeSelection(dx,dy){
-  const ids=[...withFrameChildren(_sl())].filter(id=>!byId(id)?.locked);
+  const ids=[...withFrameChildren(_sl())].filter(id=>{const s=byId(id);return s&&_ul(s)});   // ADR-0621 parity
   if(!_ln(ids))return;
   for(const id of ids){const sh=byId(id);if(sh)_sT2(sh,dx,dy)}
   _rcOp({op:'move',ids,dx,dy});
@@ -6027,7 +6027,7 @@ function _zCommit(changes){
 }
 // Shared by doBringFront/doSendBack/doBring
 // take part in a z-order op (parity with doDelete/doGroup excluding locked shapes).
-function unlockedSelectionIds(){return _selIds().filter(id=>!byId(id)?.locked);}
+function unlockedSelectionIds(){return _selIds().filter(id=>{const s=byId(id);return s&&_ul(s)});}   // ADR-0623: dead ids must not leak into group/lock op id lists (phantom before-snapshots + noise broadcast)
 function _zSelShapes(){const ids=_usI(),sel=_sT(ids);return[sel,_ln(ids)?_sh().filter(s=>sel.has(s.id)):[]]}
 function doBringFront(){
   const ids=_usI();if(!_ln(ids))return;

@@ -671,7 +671,8 @@ Board/
     │   ├── ADR-0619-room-switch-marker-reset.md   # ルーム切替で因果 marker をリセット (新ルームの収束阻害を解消) (実装済)
     │   ├── ADR-0620-architecture-replace-convergence-sync.md   # architecture.md の wire 節へ 'replace' 収束系を同期 (実装済)
     │   ├── ADR-0621-move-commit-dead-ids.md   # move コミットからジェスチャ中に消えた図形を除外 (実装済)
-    │   └── ADR-0622-spec-replace-wire-sync.md   # spec.md の 'replace' wire 化を同期 (実装済)
+    │   ├── ADR-0622-spec-replace-wire-sync.md   # spec.md の 'replace' wire 化を同期 (実装済)
+    │   └── ADR-0623-selection-dead-id-hygiene.md   # 選択由来 id リストの dead-id 衛生 (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

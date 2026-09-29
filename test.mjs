@@ -247,6 +247,7 @@ const checks = [
   ["snapshot docName is LWW-gated via nameTs (ADR-0618)", html.includes("nameTs:_nameTs") && html.includes("msg.nameTs>_nameTs")],
   ["Net.init resets causal markers across rooms (ADR-0619)", html.includes("state._lastRep=null;_nameTs=0;")],
   ["move commit drops ids removed mid-gesture (ADR-0621)", html.includes("filter(id=>{const s=byId(id);return s&&_ul(s)})")],
+  ["_sb drops dead ids at source + nudgeSelection parity (ADR-0623)", html.includes("_sb=()=>_selIds().map(byId).filter(Boolean)") && html.includes("unlockedSelectionIds(){return _selIds().filter(id=>{const s=byId(id);return s&&_ul(s)});}")],
   ['applyRemote validates remote add shape', html.includes("case 'add':    return validShape(op.shape)")],
   ['SVG export uses testable buildSVG', html.includes("function buildSVG") && html.includes("buildSVG(shapes")],
   ['SVG attrs escaped via _esc', html.includes("stroke=\"${stroke}\"") && html.includes("_esc(_fi(s))")],
@@ -957,7 +958,7 @@ const checks = [
   ['doLock toggles locked via align op', html.includes("function doLock") && html.includes("op:'align',dir:'lock'")],
   ['locked shapes have no resize handles', html.includes("function getHandles(s){\n  if(_lk(s))return [];")],
   ['doMove skips locked shapes', html.includes("if(!sh||sh.locked)continue")],
-  ['endSelect move op filters out locked shapes', html.includes("filter(id=>!byId(id)?.locked)")],
+  ['move/nudge commit filters out locked+dead shapes (ADR-0621/0623)', html.includes("filter(id=>{const s=byId(id);return s&&_ul(s)})") && !html.includes("filter(id=>!byId(id)?.locked)")],
   ['locked hover shows not-allowed cursor', html.includes("top.locked?'not-allowed':'move'")],
   ['lock/unlock ctx labels in ja and en', html.includes("ctxLock:'ロック'") && html.includes("ctxLock:'Lock'")],
   ['lock context-menu entry toggles label by locked state', html.includes("?'ctxUnlock':'ctxLock','',doLock")],
@@ -1179,7 +1180,7 @@ const checks = [
   ['_placeCopies remaps sh.a and sh.b to new ids', html.includes("if(sh.a&&idMap.has(sh.a))sh.a=idMap.get(sh.a);") && html.includes("if(sh.b&&idMap.has(sh.b))sh.b=idMap.get(sh.b);")],
   // v1.6.75: keyboard nudge parity with pointer-drag (frame children follow + skip locked)
   ['withFrameChildren helper shared by drag + nudge', html.includes("function withFrameChildren(ids)") && html.includes("const dragIds=withFrameChildren(_sl());")],
-  ['nudgeSelection mirrors drag: frame children + skip locked', html.includes("function nudgeSelection(dx,dy)") && html.includes("[...withFrameChildren(_sl())].filter(id=>!byId(id)?.locked)")],
+  ['nudgeSelection mirrors drag: frame children + skip locked/dead', html.includes("function nudgeSelection(dx,dy)") && html.includes("[...withFrameChildren(_sl())].filter(id=>{const s=byId(id);return s&&_ul(s)})")],
   ['arrow-key handler delegates to nudgeSelection', html.includes("nudgeSelection(dx,dy);")],
   // v1.6.76: render rotation gated to box shapes (canvas/SVG parity, no NaN centre)
   ['shapeRot helper gates rotation to box shapes', html.includes("function shapeRot(s){return _rt(s)&&_hb(s)?_rt(s):0;}")],
@@ -1995,6 +1996,19 @@ try {
     assert.deepStrictEqual(mvOp.ids,[mv1.id],'dead id dropped from move commit');
     ptr.down=false;ptr.dragKind=null;ptr.dragStartShapes=null;state.guides=null;
     console.log('  ✓ move commit drops ids removed mid-gesture (ADR-0621)');
+  }
+  // ADR-0623: same dead-id class through keyboard nudge — a stale selection id
+  // (shape removed between selection writes) must not ride the move op.
+  {
+    state.shapes.length=0;_invalidateGrid();state.history.length=0;state.histIdx=-1;
+    const n1=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    state.shapes.push(n1);_invalidateGrid();
+    state.selection.add(n1.id);state.selection.add('dead-id-xyz');
+    nudgeSelection(5,0);
+    const nOp=state.history[state.history.length-1];
+    assert.deepStrictEqual(nOp.ids,[n1.id],'dead id dropped from nudge ids');
+    state.selection.clear();
+    console.log('  ✓ nudgeSelection drops dead ids (ADR-0623)');
   }
 
   // applyRemote does NOT enter local undo stack
@@ -11062,7 +11076,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1142; // prev 1140 + move-commit dead-id drop (1 assert + 1 pin, ADR-0621)
+  pass += 1144; // prev 1142 + selection dead-id hygiene (1 assert + 1 pin, ADR-0623)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
