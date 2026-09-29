@@ -3957,6 +3957,39 @@ try {
     console.log('  ✓ ADR-0372: snapshot merge value-gates NaN/pts/id/type (6 asserts)');
   }
 
+  // ADR-0745: _attachOp parks an incoming img ref in _imgPending unconditionally — but
+  // when 'img' loses the snapshot LWW merge the registration is spurious, and the
+  // rejected blob would still resolve into ex.dataUrl on arrival. The pending entry
+  // must be dropped; a winning img keeps its pending and resolves normally.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+    state.seq=0;state.seenOps=new Set();state.wclock={};state.peerId='B';
+    Net._imgPending.clear();Net._imgIn.clear();
+    const r={id:'I1',type:'image',z:1,x:0,y:0,w:10,h:10,dataUrl:'data:image/png;base64,OLD'};
+    Store.commit({op:'add',shape:r});
+    // local img write is newer → remote's parked ref loses
+    state.wclock['I1']={img:{peer:'B',seq:9,ts:9e12}};
+    const res=Net._mergeSnapshotOp({op:'add',shape:{...JSON.parse(JSON.stringify(r)),img:'K_REJECT',dataUrl:undefined},wc:{
+      img:{peer:'A',seq:1,ts:500},
+    }});
+    const ls=byId('I1');
+    assert.strictEqual(res,'keep','losing merge reported keep');
+    assert.ok(!Net._imgPending.has('I1'),'losing img ref drops its spurious pending');
+    // the rejected blob must never resolve into the shape
+    Net._imgIn.set('K_REJECT','data:image/png;base64,REJ');
+    Net._onRecv({k:'img',key:'K_REJECT',data:'data:image/png;base64,REJ',n:1,seq:0,peer:'A'},false);
+    assert.strictEqual(ls.dataUrl,'data:image/png;base64,OLD','rejected blob never clobbers dataUrl');
+    // winning merge keeps the pending ref and resolves on arrival
+    Net._mergeSnapshotOp({op:'add',shape:{...JSON.parse(JSON.stringify(r)),img:'K_WIN',dataUrl:undefined},wc:{
+      img:{peer:'A',seq:10,ts:9e13},
+    }});
+    assert.strictEqual(byId('I1').img,'K_WIN','winning img ref merges');
+    assert.ok(Net._imgPending.get('I1')==='K_WIN','winning img ref stays parked');
+    Net._onRecv({k:'img',key:'K_WIN',data:'data:image/png;base64,NEW',n:1,seq:0,peer:'A'},false);
+    assert.strictEqual(byId('I1').dataUrl,'data:image/png;base64,NEW','winning blob resolves into dataUrl');
+    console.log('  ✓ ADR-0745: snapshot img merge drops losing pending / resolves winner (6 asserts)');
+  }
+
   // ADR-0060: Alt+drag on a shape duplicates it (addMany commit, selection→copies,
   // move-drag starts on the copies). Unselected hit duplicates just that shape;
   // already-selected hit duplicates the whole selection.
@@ -13580,7 +13613,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1686; // prev 1691 − 9 legacy-zorder pins replaced by 2 (ADR-0742) + 2 ADR-0742 behavioural
+  pass += 1692; // prev 1686 + 6 ADR-0745 snapshot-img-merge asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
