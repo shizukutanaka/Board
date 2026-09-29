@@ -11924,6 +11924,70 @@ try {
     fire1('pointermove',gr.x+30,gr.y);
     fire1('pointerup',gr.x+30,gr.y);
     assert.ok(state.shapes[0].rotate!=null||state.shapes[1].rotate!=null,'grot rotates the members');
+    // eyedropper (ADR-0161): pick absorbs the style + reverts to _prevTool
+    reset();
+    const ED1=Shape.make('rect',{x:10,y:10,w:40,h:40,stroke:'#ff0000'});
+    Store.commit({op:'add',shape:ED1});
+    state.tool='eyedropper';fakeWin._prevTool='rect';
+    fire1('pointerdown',30,30);
+    fire1('pointerup',30,30);
+    assert.strictEqual(state.tool,'rect','eyedropper reverts to the previous tool');
+    assert.strictEqual(state.style.stroke,'#ff0000','eyedropper absorbs the picked style');
+    // ⌥drag on empty canvas = lasso (ADR-0158): centre-in-polygon selection
+    reset();
+    state.tool='select';
+    const LS1=Shape.make('rect',{x:100,y:100,w:40,h:40});
+    const LS2=Shape.make('rect',{x:400,y:400,w:40,h:40});
+    Store.commit({op:'add',shape:LS1});Store.commit({op:'add',shape:LS2});
+    fire1('pointerdown',50,50,{altKey:true});
+    assert.strictEqual(ptr.dragKind,'lasso','⌥+drag on empty canvas arms lasso');
+    fire1('pointermove',160,50,{altKey:true});
+    fire1('pointermove',160,160,{altKey:true});
+    fire1('pointermove',50,160,{altKey:true});
+    fire1('pointerup',50,50,{altKey:true});
+    assert.ok(state.selection.has(LS1.id)&&!state.selection.has(LS2.id),'lasso selects only enclosed centres');
+    // curve-bend apex drag (ADR-0132): grab the curve apex → s.cbend
+    reset();
+    state.tool='select';
+    const CB=Shape.make('arrow',{x1:0,y1:0,x2:200,y2:0,curve:1});
+    Store.commit({op:'add',shape:CB});
+    state.selection=new Set([CB.id]);
+    const ce=connEnds(state.shapes[0]),cc2=_curveCtrl(ce,state.shapes[0].cbend);
+    const ap={x:0.25*ce.x1+0.5*cc2.x+0.25*ce.x2,y:0.25*ce.y1+0.5*cc2.y+0.25*ce.y2};
+    fire1('pointerdown',ap.x,ap.y);
+    assert.strictEqual(ptr.dragKind,'cbend','PD on the curve apex arms cbend');
+    fire1('pointermove',ap.x,ap.y+40);
+    fire1('pointerup',ap.x,ap.y+40);
+    assert.ok(state.shapes[0].cbend!=null,'cbend drag writes s.cbend');
+    // ⌥click a waypoint deletes it (ADR-0141); ⌥click the label pill resets labelPos (ADR-0145)
+    reset();
+    state.tool='select';
+    const WD=Shape.make('arrow',{x1:0,y1:0,x2:100,y2:100,way:[{x:60,y:60}],label:'c',labelPos:0.3});
+    Store.commit({op:'add',shape:WD});
+    state.selection=new Set([WD.id]);
+    fire1('pointerdown',60,60,{altKey:true});
+    fire1('pointerup',60,60,{altKey:true});
+    assert.ok(state.shapes[0].way==null,'⌥click deletes the waypoint');
+    reset();
+    state.tool='select';
+    const LR=Shape.make('arrow',{x1:0,y1:0,x2:100,y2:100,label:'c',labelPos:0.3});
+    Store.commit({op:'add',shape:LR});
+    state.selection=new Set([LR.id]);
+    const lp2=_connLabelXY(state.shapes[0]);
+    fire1('pointerdown',lp2.x,lp2.y,{altKey:true});
+    fire1('pointerup',lp2.x,lp2.y,{altKey:true});
+    assert.ok(state.shapes[0].labelPos==null,'⌥click the label pill resets labelPos');
+    // frame move drags its members (withFrameChildren)
+    reset();
+    state.tool='select';
+    const FM1=Shape.make('frame',{x:10,y:10,w:100,h:100});
+    const FM2=Shape.make('rect',{x:20,y:20,w:10,h:10});
+    Store.commit({op:'add',shape:FM1});Store.commit({op:'add',shape:FM2});
+    state.selection=new Set([FM1.id]);
+    fire1('pointerdown',15,95);
+    fire1('pointermove',35,115);
+    fire1('pointerup',35,115);
+    assert.strictEqual(state.shapes[1].x,40,'frame move drags its members along');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -11935,7 +11999,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1347; // prev 1337 + 10 event-sequence asserts (ADR-0641: rotate/way/lblpos/gresize/grot drags)
+  pass += 1356; // prev 1347 + 9 event-sequence asserts (ADR-0641: eyedropper/lasso/cbend/⌥resets/frame-move)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
