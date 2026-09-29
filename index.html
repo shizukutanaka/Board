@@ -866,7 +866,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.704';   // ADR-0677
+const V='1.7.705';   // ADR-0678
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -7228,11 +7228,11 @@ const _dioModel=c=>{const vx=_vp().x,vy=_vp().y,vz=_vp().zoom;
   return `<mxGraphModel dx="${_rnd(-vx)}" dy="${_rnd(-vy)}" grid="${state.showGrid?1:0}" gridSize="${GRID_SIZE}" guides="1" tooltips="0" connect="0" arrows="0" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0" zoom="${vz}"><root><mxCell id="0"/><mxCell id="1" parent="0"/>${c.join('')}</root></mxGraphModel>`};   // ADR-0359: dx/dy/zoom viewport round-trip
 function boardToDrawio(shapes){
   // ADR-0650: one <diagram> per Board page — re-import restores the page set.
-  const body=_pgOn()?state.pages.map(p=>`<diagram name="${_dioEsc(p.name)}">`+_dioModel(_dioCells(shapes.filter(s=>(s.pg||state.pages[0].id)===p.id)))+`</diagram>`).join('')
+  const body=_pgOn()?state.pages.map(p=>`<diagram name="${_dioEsc(p.name)}">`+_dioModel(_dioCells(shapes.filter(s=>_sv(s)&&(s.pg||state.pages[0].id)===p.id)))+`</diagram>`).join('')   // ADR-0678: +_sv — hidden parity with excalidraw export (0594): drawio has no visibility concept, so a hidden shape would surface visibly in the file
     :`<diagram name="${_dioEsc(_dn()||'Page-1')}">`+_dioModel(_dioCells(shapes))+`</diagram>`;
   return `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile compressed="false">${body}</mxfile>`;
 }
-function exportDrawio(shapes=_sh()){
+function exportDrawio(shapes=_sh().filter(_sv)){   // ADR-0678
   if(!_ln(shapes)){_wT(_EM);return}
   const a=_ce('a');
   const _bu=_oURL(new Blob([boardToDrawio(shapes)],{type:'application/xml'}));

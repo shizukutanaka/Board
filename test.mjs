@@ -566,7 +566,7 @@ const checks = [
   ['sticky↔text conversion via style op (ctx)', html.includes('toggleStickyText')&&html.includes('ctxToSticky')&&html.includes("_stk(s)?'text':'sticky'")],
   ['frame select-contents (ctx)', html.includes('selectFrameContents')&&html.includes('ctxSelContents')&&html.includes('withFrameChildren(')],
   ['selection .board export (ctx)', html.includes("exportBoard(sel)")&&html.includes('ctxExportSelBoard')&&html.includes("fmt==='board'")],
-  ['selection .drawio export (ctx) (ADR-0407)', html.includes("exportDrawio(sel)")&&html.includes('ctxExportSelDrawio')&&html.includes("fmt==='drawio'")&&html.includes('function exportDrawio(shapes=_sh())')],
+  ['selection .drawio export (ctx) (ADR-0407)', html.includes("exportDrawio(sel)")&&html.includes('ctxExportSelDrawio')&&html.includes("fmt==='drawio'")&&html.includes('function exportDrawio(shapes=_sh().filter(_sv))')],
   ['selection .drawio export i18n ja+en (ADR-0407)', html.includes("ctxExportSelDrawio:'選択を.drawio書き出し'")&&html.includes("ctxExportSelDrawio:'Export selection to .drawio'")],
   ['drawio import: strikeThrough→s.strike (ADR-0407)', html.includes('if(+sty.strikeThrough)s.strike=1')],
   ['share link carries creator viewport', html.includes('viewport:_vpS()')&&html.includes('clampZoom(+data.viewport.zoom)')],
@@ -4616,6 +4616,12 @@ try {
       assert.ok(ri.includes('ADR-0016/0032/0654'),'quadtree claim synced to grid index (ADR-0676)');
       assert.ok(ri.includes('実装済み (ADR-0041)'),'DOM mirror claim synced (ADR-0676)');
       console.log('  ✓ stale research claim pins (2 asserts)');
+    }
+    // ADR-0678: .drawio export drops hidden shapes (page-filter line also _sv-gated)
+    {
+      assert.ok(html.includes("shapes.filter(s=>_sv(s)&&(s.pg||state.pages[0].id)===p.id)"),'drawio per-page filter drops hidden (ADR-0678)');
+      assert.ok(html.includes('function exportDrawio(shapes=_sh().filter(_sv))'),'drawio doc export default drops hidden (ADR-0678)');
+      console.log('  ✓ drawio hidden-parity pins (2 asserts)');
     }
   }
 
@@ -12764,7 +12770,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1512; // prev 1510 + 2 stale-claim sync pins (ADR-0676)
+  pass += 1514; // prev 1512 + 2 drawio hidden-parity pins (ADR-0678)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
