@@ -873,7 +873,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.811';   // ADR-0785
+const V='1.7.812';   // ADR-0786
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1372,7 +1372,7 @@ const _CC_KEYS=_sT(['a','aF','b','bF','x1','y1','x2','y2']);   // ADR-0377
 const _ccOk=q=>q&&_iO(q)&&!_iA(q)&&_ok(q).every(k=>_CC_KEYS.has(k))&&validPatch(q);
 function validRemotePayload(op){
   const patches=a=>_iA(a)&&_ln(a)<=MAX_OP_SHAPES&&a.every(p=>p&&_iS(p.id)&&_ln(p.id)<=64&&validPatch(p));
-  const wcOk=m=>_iO(m)&&_ln(_ok(m))<=MAX_OP_SHAPES&&_ok(m).every(k=>_iO(m[k])&&_ok(m[k]).every(p=>validClock(m[k][p])));   // ADR-0726: wclock map {id:{prop:clock}} — shared by addMany.wc + replace.afterWc
+  const wcOk=m=>_iO(m)&&_ln(_ok(m))<=MAX_OP_SHAPES&&_ok(m).every(k=>_iO(m[k])&&_ok(m[k]).every(p=>validClock(m[k][p])));   // ADR-0726
   switch(op.op){
     case 'add':    return validShape(op.shape);
     case 'addMany':    return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape)&&(op.wc==null||wcOk(op.wc));   // ADR-0721/0726: validate the clock snapshot too
@@ -1794,7 +1794,7 @@ const Store={
           // forces null (un-paged) — the undoer holds no other page; receivers with extra
           // pages must still converge on null.
           const rehome=op.unpage?null:((op.firstId!=null&&_pgById(op.firstId))?op.firstId:firstId);
-          const die=op.unpage?new Set((op.shapes||[]).map(s=>s.id)):null;   // ADR-0724: capture the wire kill-set BEFORE the record overwrite
+          const die=op.unpage?new Set((op.shapes||[]).map(s=>s.id)):null;   // ADR-0724
           op.shapes=[];op.i=i;op.name=state.pages[i].name;   // record for undo regardless of a slimmed wire copy
           for(const s of _sh())if((s.pg||state.pages[0].id)===op.id)op.shapes.push(clone(s));
           state.pages.splice(i,1);
@@ -8116,7 +8116,7 @@ const Net={
       this._send(_mk('sync-req'));
       this._presenceTimer=setInterval(()=>{
         this._send(_mk('ping'));   // ADR-0740
-        this._reapPeers();
+        this._reapPeers();this._reapFrags();
         // ADR-0475
         if(!this._snapRx&&this._snapRetry++<3)this._send(_mk('sync-req'));
       },NET_PRESENCE_INTERVAL);
@@ -8138,9 +8138,9 @@ const Net={
   _slimOp(op){
     if(op.op==='clear')return{op:'replace',after:[],afterWc:{},clock:op.clock};   // ADR-0626: wipe routes through 'replace' — inherits _lastRep ordering + rep marker
     if(op.op==='add'&&op.shape)return{...op,shape:this._slimShapes([op.shape])[0]};
-    if(op.op==='pageDel'){const s={op:'pageDel',id:op.id,clock:op.clock};if(op.firstId!=null)s.firstId=op.firstId;if(op.unpage){s.unpage=1;s.shapes=this._slimShapes(op.shapes||[])}return s}   // ADR-0705/0724/0725: receiver re-derives members/i/name — the undo-record fields were dead weight (~bytes×members)
+    if(op.op==='pageDel'){const s={op:'pageDel',id:op.id,clock:op.clock};if(op.firstId!=null)s.firstId=op.firstId;if(op.unpage){s.unpage=1;s.shapes=this._slimShapes(op.shapes||[])}return s}   // ADR-0705/0724/0725
     if(op.op==='pageName'){const s={op:'pageName',id:op.id,after:op.after,clock:op.clock};if(op.nts!=null){s.nts=op.nts;s.ntp=op.ntp}return s}   // ADR-0705/0727: undo-wire also carries the restored nts/ntp
-    if(_iA(op.shapes)&&op.op==='addMany'){const{origSel:_o1,...r}=op;return{...r,shapes:this._slimShapes(op.shapes)}}   // ADR-0625/0721: addMany's wc is the del/clear-undo wclock restore — real wire data, not undo-domain
+    if(_iA(op.shapes)&&op.op==='addMany'){const{origSel:_o1,...r}=op;return{...r,shapes:this._slimShapes(op.shapes)}}   // ADR-0625/0721
     if(_iA(op.shapes)&&(op.op==='del'||op.op==='clear'||op.op==='pageAdd')){const{wc:_wc1,origSel:_o1,...r}=op;return{...r,shapes:this._slimShapes(op.shapes)}}   // ADR-0445/0625: id/locked only; undo-only fields never ride the wire
     if(op.op==='replace')return{op:'replace',after:this._slimShapes(op.after||[]),afterWc:op.afterWc,clock:op.clock,pages:op.pages,curPg:op.curPg};   // ADR-0646/0720: pages AND the landing page ride the wire — receivers' _pgAdopt(op.pages,op.curPg) fell back to page 1 while the sender landed on op.curPg; before* stay local
     const{origSel:_o2,moved:_m2,...rest}=op;
@@ -8170,7 +8170,7 @@ const Net={
     // ADR-0448/0469/0563: n/src mismatch or seq=
     // re-sent after a partial abort must not splice old+new fragments.
     if(!sn||sn.n!==n||sn.src!==src||seq===0){sn={p:new Array(n),g:0,n,src};this[key]=sn}
-    if(!sn.p[seq]){sn.p[seq]=msg.data;sn.g++;sn.b=(sn.b||0)+_ln(msg.data)}
+    if(!sn.p[seq]){sn.p[seq]=msg.data;sn.g++;sn.b=(sn.b||0)+_ln(msg.data);sn.t=_now()}
     if(sn.b>24_000_000){this[key]=null;return}   // ADR-0782
     if(sn.g<sn.n)return;
     this[key]=null;return sn.p.join('');
@@ -8281,7 +8281,7 @@ const Net={
         let st=this._imgChunks.get(msg.key);
         // ADR-0374: bound in-flight reassemblies (64 slots, LRU).
         if(!st||st.n!==n||seq===0){if(!st&&this._imgChunks.size>=64)this._imgChunks.delete(this._imgChunks.keys().next().value);st={p:new Array(n),g:0,n};this._imgChunks.set(msg.key,st)}   // ADR-0449/0454/0563
-        if(!st.p[seq]){st.p[seq]=msg.data;st.g++;st.b=(st.b||0)+_ln(msg.data)}
+        if(!st.p[seq]){st.p[seq]=msg.data;st.g++;st.b=(st.b||0)+_ln(msg.data);st.t=_now()}
         let _tb=0;for(const v of this._imgChunks.values())_tb+=v.b||0;
         while(_tb>24_000_000&&this._imgChunks.size){const _e=this._imgChunks.keys().next().value;_tb-=(this._imgChunks.get(_e).b||0);this._imgChunks.delete(_e)}
         if(this._imgChunks.get(msg.key)!==st)break;   // ADR-0785
@@ -8294,7 +8294,7 @@ const Net={
         this._imgIn.set(msg.key,data);this._imgInB=(this._imgInB||0)+_ln(data);
         while(this._imgIn.size>256||this._imgInB>64_000_000){const k0=this._imgIn.keys().next().value;if(k0==null)break;this._imgInB-=_ln(this._imgIn.get(k0));this._imgIn.delete(k0)}   // ADR-0784: bound by bytes too — 256×12MB ≈ 3GB of retained base64 otherwise
         for(const[id,k]of this._imgPending){
-          // ADR-0747: resolve only while the shape still references this key.
+          // ADR-0747
           if(k===msg.key){const sh=byId(id);if(sh&&sh.img===msg.key){delete sh.img;sh.dataUrl=data}this._imgPending.delete(id)}
         }
         // ADR-0629: the 256-cap eviction can strand parked shapes —
@@ -8474,6 +8474,12 @@ const Net={
       this._lastSelSent=null;_iv();
       if(this._onConnChange)this._onConnChange();
     }
+  },
+  _reapFrags(){   // ADR-0786
+    const now=_now(),T=60e3;
+    for(const[k,v]of this._imgChunks)if(now-(v.t||0)>T)this._imgChunks.delete(k);
+    if(this._snapIn&&now-(this._snapIn.t||0)>T)this._snapIn=null;
+    if(this._opcIn&&now-(this._opcIn.t||0)>T)this._opcIn=null;
   },
   _reapPeers(){
     const now=_now();let changed=false;
