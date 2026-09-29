@@ -868,7 +868,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.743';   // ADR-0717
+const V='1.7.744';   // ADR-0718
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1629,9 +1629,10 @@ const Store={
     if(_hx()>=_hi().length-1)return false;
     state.histIdx++;
     const op=_hi()[_hx()];
+    _fck(op);   // ADR-0718: restamp BEFORE the local apply — same class as ADR-0717: redo is a new competing write, so local arbitration and the wire must see the one fresh clock or the winner splits
     this._apply(op,true);
     _pgFollow(op);   // ADR-0652
-    _fck(op);if(op.op==='replace')state._lastRep=op.clock;this._stampWrites(op);Net.broadcast(op);   // ADR-0615: redo rebroadcasts under the restamped clock
+    if(op.op==='replace')state._lastRep=op.clock;this._stampWrites(op);Net.broadcast(op);   // ADR-0615: redo rebroadcasts under the restamped clock
     _rdb();
     return true;
   },

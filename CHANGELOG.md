@@ -1,3 +1,11 @@
+## [1.7.744] - 2026-09-29
+
+### Changed
+- ADR-0718: redo() restamps op.clock BEFORE _apply(op,true) — same stamp-once
+  invariant as ADR-0717's undo side. Convergent either way today (forward
+  apply performs no wclock arbitration); canonicalizing the order keeps the
+  invariant structural instead of incidental
+
 ## [1.7.743] - 2026-09-29
 
 ### Fixed
