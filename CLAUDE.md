@@ -811,6 +811,7 @@ Board/
 │   └── ADR-0760-connclears-locked-survivor.md  # del の connClears が locked 生存図形の結合を剥がさないよう端点毎に判定
 │   └── ADR-0761-connclears-lifecycle-sync.md  # architecture.md へ connClears ライフサイクル規則を同期 (docs)
 │   └── ADR-0762-connclears-gap-pins.md  # connClears ギャップ/生存期間結合の behavioural ピン (tests)
+│   └── ADR-0763-spec-wire-contract-sync.md  # spec.md §8 の wire 契約を現行コードへ同期 (docs)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

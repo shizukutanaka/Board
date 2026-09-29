@@ -42,8 +42,8 @@ frame=`label`、group=`groupId`。
 | `add` | `{shape}` | delete(id 一致は idempotent) |
 | `del` | `{shapes:[]}` | re-add |
 | `upd` | `{id, before, after}` | パッチ swap(最小パッチ) |
-| `move` | `{ids:[], dx, dy}` | translate(-d)(可換 = 並行収束) |
-| `zorder` | `{changes:[{id,before,after}]}`(最小デルタ)/ 旧 `{after:[…]}` | frac 復元 + `sortZ()` |
+| `move` | wire: `{ids/after/before:[{id,x,y}]}` 絶対位置 (ADR-0729/0732) | 絶対 before 復元 + 軸毎 `_lwwSkip` (0733) |
+| `zorder` | `{changes:[{id,before,after}]}`(最小デルタのみ — 旧 `{after:[…]}` 形式は廃止、ADR-0742/0744) | frac 復元 + `sortZ()` |
 | `group` | `{ids, gid, before}` | groupId 復元 |
 | `ungroup` | `{ids, before}` | groupId 復元 |
 | `align` | `{before:[], after:[], dir}` | スナップショット復元(flip/lock/rotate も再利用) |
@@ -126,7 +126,9 @@ IndexedDB(`board`/`docs`/`main`)。保存対象=`{v,shapes,viewport,docName,save
 - **並行収束 (ADR-0002 / プロパティ単位 LWW)**: 同一図形の**同一プロパティ**への並行編集は
   `(ts,peer,seq)` の全順序 `clockNewer()` と書込クロック `state.wclock`(`shapeId→{prop:clock}`、
   図形には載せない)で**古い書込を落として決定的収束**。**互いに素なプロパティは双方生存**。
-  `move`/`zorder` は可換なので LWW 非適用。`upd`/`style`/`resize`/`align`/`group`/`ungroup` に適用。
+  `move`/`zorder`/`beautify`/`pageAdd`/`pageDel`/`pageName`/`replace` も LWW 対象 — 存在/ページ/wire-専用 op は
+  tombstone・causal marker・wc で仲裁される (0734/0716/0729/0730/0653/0613)。`upd`/`style`/`resize`/`align`/`group`/`ungroup` は
+  per-prop 適用。
 - 共有: URL fragment にスナップショット。`importFromHash` は shape を検証してから採用。
 - **ピア識別**: `peerId` は起動毎の incarnation 付き (ADR-0459) — リロードで `seq` が 0 に
   戻っても旧 `peer:seq` キーと衝突しない。`wclock` は IDB に永続化 (ADR-0460) —
