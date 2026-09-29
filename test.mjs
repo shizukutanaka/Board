@@ -415,7 +415,7 @@ const checks = [
   ['invalidateDamage accumulates world damage', html.includes("function invalidateDamage(r){_damage=_dmgU(_damage,r)") && html.includes("function invalidate(){_damage=null")],
   ['draw() clips scene pass to damage rect', html.includes("ctx.rect(dmg.x,dmg.y,dmg.w,dmg.h);ctx.clip()") && html.includes("ctx.fillRect(dmg.x,dmg.y,dmg.w,dmg.h)")],
   ['move/resize/rotate drag report damage', html.includes("let _gd=_dmgPair(_b0,_bb(rsh)") && html.includes("if(dmg)_iD(dmg);else _iv()")],
-  ['draft draw + erase report damage', html.includes("_iD(_dmgPair(_b0,_bb(d)") && html.includes("_pu(_eraseBatch,clone(hit))")],
+  ['draft draw + erase report damage', html.includes("_iD(_dmgPair(_b0,_bb(d)") && html.includes("_pu(_eraseBatch,clone(s))")],
   ['damage path force-includes gesture targets vs stale grid', html.includes("ptr.dragStartShapes.keys()") && html.includes("ptr.resizeOrig.id") && html.includes("ptr.rotOrig.id")],
   // v1.7.85: ADR-0027 op-level damage propagation
   ['_apply harvests ids + pre/post bboxes for damage', html.includes("const _ids=_opIds(op)") && html.includes("for(const id of _ids)_u(byId(id))") && html.includes("_iD(_dmg)")],
@@ -1087,7 +1087,7 @@ const checks = [
   // v1.6.64: Socratic round 4 - rotation scope + lock completeness
   ['doRotate restricted to box shapes (s.w!=null, NaN-safe)', html.includes("_selL(s=>s&&!_lk(s)&&_hb(s))")],
   ['doDelete skips locked shapes', html.includes("function doDelete(){\n  const sel=_selUL();")],
-  ['eraser skips locked shapes', html.includes("if(hit&&!hit.locked&&!_eraseBatch.some")],
+  ['eraser skips locked shapes', html.includes("if(!s||s.locked||_eraseBatch.some")],
   // v1.6.65: budget removed - deferred fixes implemented
   ['_edgePt is rotation-aware (projects to true rotated edge)', html.includes("const ub=sh.w!=null?{x:sh.x,y:sh.y,w:sh.w,h:sh.h}:_bb(sh)") && html.includes("const cx=ub.x+ub.w/2,cy=ub.y+ub.h/2,rot=sh.rotate")],
   ['rotation extends to all box types (text bbox uses envelope)', !html.includes("if(_txt(s)){\n      return{x:s.x,y:s.y,w:s.w,h:s.h};")],
@@ -9143,6 +9143,28 @@ try {
     assert.ok(state.shapes.find(s=>s.id===rB.id),'flushErase undo: erased shape restored');
     assert.strictEqual(liveArr2().a,rB.id,'flushErase undo: connector .a binding restored');
     console.log('  ✓ flushErase: connector bindings cleared atomically (eraser parity with doDelete)');
+  }
+
+  // ADR-0830: eraseAt must cascade a frame's spatial members like Delete does
+  // (withFrameChildren) — before the fix the eraser removed only the frame,
+  // orphaning members (unframed shapes left behind).
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+    const fr=Shape.make('frame',{x:100,y:100,w:300,h:200});
+    Store.commit({op:'add',shape:fr});
+    const mem=Shape.make('rect',{x:150,y:150,w:20,h:20});
+    Store.commit({op:'add',shape:mem});
+    const out=Shape.make('rect',{x:600,y:600,w:20,h:20});
+    Store.commit({op:'add',shape:out});
+    eraseAt({x:120,y:115});   // over the frame's edge, not the member
+    assert.ok(!state.shapes.find(s=>s.id===fr.id),'eraseAt: frame removed immediately');
+    assert.ok(!state.shapes.find(s=>s.id===mem.id),'eraseAt: frame member cascaded');
+    assert.ok(state.shapes.find(s=>s.id===out.id),'eraseAt: outside shape untouched');
+    flushErase();
+    assert.ok(!state.shapes.find(s=>s.id===fr.id)&&!state.shapes.find(s=>s.id===mem.id),'flushErase: frame+member deleted');
+    Store.undo();
+    assert.ok(state.shapes.find(s=>s.id===fr.id)&&state.shapes.find(s=>s.id===mem.id),'undo: frame+member restored');
+    console.log('  ✓ eraseAt cascades frame members (Delete parity, ADR-0830)');
   }
 
   // v1.6.80: remote `del` connClears must be validated (security parity with upd/style).

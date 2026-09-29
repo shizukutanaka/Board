@@ -1,3 +1,8 @@
+## [1.7.856] - 2026-09-29
+
+### Fixed
+- ADR-0830: eraser がフレームのみ除去しメンバーを孤児化していた実害を修正 — `withFrameChildren` cascade で Delete と parity (locked は残存)
+
 ## [1.7.855] - 2026-09-29
 
 ### Refactor
