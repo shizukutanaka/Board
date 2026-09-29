@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.666';   // ADR-0639
+const V='1.7.667';   // ADR-0640
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4371,6 +4371,7 @@ _on(canvas,_PC,_cancelPointerGesture);
 // stuck — cancel the gesture (no-op after a normal pointerup).
 _on(canvas,'lostpointercapture',()=>{if(ptr.down)_cancelPointerGesture()});
 _on(canvas,'contextmenu',e=>{_pd(e);
+  if(_pA())return;   // ADR-0640: no editing menu over the presentation overlay
   // ADR-0524: contextmenu mid-gesture swallows
   if(ptr.down)_cancelPointerGesture();else UI.openCtxMenu(e.clientX,e.clientY)});
 _on(canvas,'pointerleave',()=>{if(_laser){_laser=null;_ivO()}
@@ -4381,6 +4382,7 @@ _on(canvas,'pointerleave',()=>{if(_laser){_laser=null;_ivO()}
 
 // Double-click: re-edit text shapes / label boxes & connectors
 _on(canvas,'dblclick',e=>{
+  if(_pA())return;   // ADR-0640: dblclick isn't gated by the pointerdown _pA() return — the editor would open over the presentation overlay
   const wp=_o2w(e);
   const hit=pickTop(wp);
   // ADR-0122: dblclick empty canvas → new text
@@ -4695,6 +4697,7 @@ function wheelPx(e){
 }
 _on(canvas,'wheel',e=>{
   _pd(e);
+  if(_pA())return;   // ADR-0640: pan/zoom behind the overlay would unfocus the fitted frame
   const d=wheelPx(e);
   if(_mod(e)){
     // ADR-0033: ctrl+wheel (trackpad pinch on de
@@ -4727,7 +4730,7 @@ _on(canvas,_PM,e=>{
   if(!prev)return;
   _pointers.set(e.pointerId,_cPt(e));
   const pts=[..._pointers.values()];
-  if(_ln(pts)<2)return;
+  if(_ln(pts)<2||_pA())return;   // ADR-0640
   const curDist=_hp(pts[0].x-pts[1].x,pts[0].y-pts[1].y);
   if(!_pinchPrev){_pinchPrev=curDist;return}
   const ratio=curDist/_pinchPrev;
@@ -4747,9 +4750,9 @@ const _resetPinch=()=>{if(_nP()<2){_pinchPrev=0;if(_pinchSnap){_pinchSnap=null;_
 // trackpad pinch-zoom was silently unsupported there while Chrome/FF worked.
 // Unknown event names are inert elsewhere, so plain listeners are safe.
 let _gScale=1;
-_on(canvas,'gesturestart',e=>{_pd(e);_pinchSnapNow();_gScale=e.scale},{passive:false});
+_on(canvas,'gesturestart',e=>{_pd(e);if(_pA())return;_pinchSnapNow();_gScale=e.scale},{passive:false});
 _on(canvas,'gesturechange',e=>{
-  _pd(e);
+  _pd(e);if(_pA())return;   // ADR-0640
   const r=_cbr();
   zoomAt({x:e.clientX-r.left,y:e.clientY-r.top},_log(e.scale/_gScale));
   _gScale=e.scale;

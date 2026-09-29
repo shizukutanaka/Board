@@ -259,6 +259,7 @@ const checks = [
   ["gesture cancel purges touch/pinch state (ADR-0636)", html.includes("_clearTouchState();   // ADR-0636")],
   ["kbd editor cancels in-flight gesture (ADR-0637)", html.includes("if(ptr.down)_cancelPointerGesture();   // ADR-0637")],
   ["presentation announces enter/goto/exit to SR (ADR-0639)", html.includes("_ann(`${t('presEnter')}") && html.includes("_ann(t('presExit'))") && html.includes("_ann(`${_frames[_idx].label||t('frame')}")],
+  ["presentation gates dblclick/ctx/wheel/pinch (ADR-0640)", html.includes("_on(canvas,'dblclick',e=>{\n  if(_pA())return;") && html.includes("if(_pA())return;   // ADR-0640: no editing menu") && html.includes("if(_pA())return;   // ADR-0640: pan/zoom behind") && html.includes("_ln(pts)<2||_pA()") && html.includes("_pd(e);if(_pA())return;   // ADR-0640")],
   ['applyRemote validates remote add shape', html.includes("case 'add':    return validShape(op.shape)")],
   ['SVG export uses testable buildSVG', html.includes("function buildSVG") && html.includes("buildSVG(shapes")],
   ['SVG attrs escaped via _esc', html.includes("stroke=\"${stroke}\"") && html.includes("_esc(_fi(s))")],
