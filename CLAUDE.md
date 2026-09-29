@@ -796,6 +796,7 @@ Board/
 │   └── ADR-0745-snapshot-img-merge-pending.md  # snapshot merge で負けた img 参照の _imgPending 残留を除去 (実装済)
 │   └── ADR-0746-dataurl-merge-drops-stale-img.md  # dataUrl merge 勝利で parked img 参照を除去 (実装済)
 │   └── ADR-0747-img-resolve-live-ref-gate.md  # img blob 解決を live ref 一致でゲート (実装済)
+│   └── ADR-0748-pgadopt-grid-invalidate.md  # _pgAdopt で _gridVer キャッシュを無効化 (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

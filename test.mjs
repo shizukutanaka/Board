@@ -8182,6 +8182,23 @@ try {
       assert.ok(ms.some(s=>s.id===conn.id),'ADR-0381: conn found by bound-endpoint label');
       _setSq('rect');
       assert.ok(_sqMatches().some(s=>s.id===conn.id),'ADR-0381: conn found by bound-endpoint type');
+      // ADR-0748: _pgAdopt invalidates _gridVer-keyed caches — a silent curPg or
+      // membership change would otherwise serve matches from the old page.
+      {
+        state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';
+        const pa=Shape.make('rect',{x:0,y:0,w:10,h:10,label:'pagehit'});pa.pg='pA';
+        const pb=Shape.make('rect',{x:0,y:0,w:10,h:10,label:'pagehit'});pb.pg='pB';
+        Store.commit({op:'addMany',shapes:[pa,pb]});
+        _setSq('pagehit');
+        assert.strictEqual(_sqMatches().length,1,'match list scoped to viewed page');
+        _pgAdopt(state.pages,'pB');
+        const m4=_sqMatches();
+        assert.strictEqual(m4.length,1,'match list rebuilt under the new page (ADR-0748)');
+        assert.strictEqual(m4[0].id,pb.id,'match is the new page\u2019s member — stale cache would return pa');
+        state.pages=null;state.curPg=null;
+        Store.commit({op:'del',shapes:[{...byId(pa.id)},{...byId(pb.id)}]});
+        _setSq('');
+      }
       _setSq('nomatchxyz');
       assert.ok(!_sqMatches().some(s=>s.id===conn.id),'ADR-0381: unrelated query does not match conn');
       _setSq('');
@@ -13663,7 +13680,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1701; // prev 1686 + 6 ADR-0745 + 4 ADR-0746 + 5 ADR-0747 img-merge asserts
+  pass += 1706; // prev 1701 + 4 ADR-0748 page-adopt cache asserts + 1 recount adj
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
