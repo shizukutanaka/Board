@@ -863,7 +863,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.680';   // ADR-0653
+const V='1.7.681';   // ADR-0654
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4975,26 +4975,28 @@ function _grpMapGet(){
 }
 function _buildGrid(shapes){
   const cells=_mP(),big=[],idx=_mP();
+  let cs=_GCELL;
+  if(_ln(shapes)>64){const ab=_bA(shapes);if(ab)cs=_max(48,_min(960,_rnd(_sqr(ab.w*ab.h/_ln(shapes))*2)||_GCELL));}   // ADR-0654: density-adaptive cell — a fixed 200u cell overflows on dense boards (n shapes in a tiny region → O(n) per cell), and subdivides needlessly on sparse ones
   for(let i=0;i<_ln(shapes);i++){
     const s=shapes[i];idx.set(s,i);
     const b=_bb(s);if(!b){_pu(big,s);continue;}
-    const x0=_fl(_min(b.x,b.x+b.w)/_GCELL),x1=_fl(_max(b.x,b.x+b.w)/_GCELL);
-    const y0=_fl(_min(b.y,b.y+b.h)/_GCELL),y1=_fl(_max(b.y,b.y+b.h)/_GCELL);
+    const x0=_fl(_min(b.x,b.x+b.w)/cs),x1=_fl(_max(b.x,b.x+b.w)/cs);
+    const y0=_fl(_min(b.y,b.y+b.h)/cs),y1=_fl(_max(b.y,b.y+b.h)/cs);
     if(x1-x0>8||y1-y0>8){_pu(big,s);continue;}
     for(let cx=x0;cx<=x1;cx++)for(let cy=y0;cy<=y1;cy++){
       const k=cx+'|'+cy;let bk=cells.get(k);if(!bk){bk=[];cells.set(k,bk);}_pu(bk,s);
     }
   }
-  return{cells,big,idx};
+  return{cells,big,idx,cs};
 }
 // ADR-0016: rect query — every shape whose cells overlap the view rect (plus one
 // cell of margin for stroke overshoot) is a draw() candidate; inView still decides.
 // Returns a z-ORDERED array so draw() iterates candidates directly — the full
 // _sh() scan is skipped entirely.
 function _gridRectCandidates(grid,r){
-  const cands=_sT(grid.big);
-  const x0=_fl((r.x-_GCELL)/_GCELL),x1=_fl((r.x+r.w+_GCELL)/_GCELL);
-  const y0=_fl((r.y-_GCELL)/_GCELL),y1=_fl((r.y+r.h+_GCELL)/_GCELL);
+  const cands=_sT(grid.big),cs=grid.cs||_GCELL;
+  const x0=_fl((r.x-cs)/cs),x1=_fl((r.x+r.w+cs)/cs);
+  const y0=_fl((r.y-cs)/cs),y1=_fl((r.y+r.h+cs)/cs);
   for(let cx=x0;cx<=x1;cx++)for(let cy=y0;cy<=y1;cy++){
     const bk=grid.cells.get(cx+'|'+cy);if(bk)for(const s of bk)cands.add(s);
   }
@@ -5003,7 +5005,7 @@ function _gridRectCandidates(grid,r){
   return out;
 }
 function _queryGrid(grid,pt){
-  const cx=_fl(pt.x/_GCELL),cy=_fl(pt.y/_GCELL),cands=_sT(grid.big);
+  const cs=grid.cs||_GCELL,cx=_fl(pt.x/cs),cy=_fl(pt.y/cs),cands=_sT(grid.big);
   for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){
     const bk=grid.cells.get((cx+dx)+'|'+(cy+dy));if(bk)for(const s of bk)cands.add(s);
   }

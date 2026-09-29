@@ -12479,13 +12479,27 @@ try {
     Store.undo();   // undoing our older local write must not regress the converged remote win
     assert.ok(byId(zX.id).frac==='a3','_lwwSkip blocks undo from clobbering a converged remote frac write');
 
+    // ADR-0654: density-adaptive grid cell — dense boards subdivide, sparse merge
+    {const dense=[];for(let i=0;i<200;i++)dense.push(Shape.make('rect',{x:(i%10)*8,y:(i/10|0)*8,w:4,h:4}));
+     const gd=_buildGrid(dense);
+     assert.ok(gd.cs<200,'dense board subdivides the cell');
+     assert.ok(_queryGrid(gd,{x:4,y:4}).has(dense[0]),'adaptive grid still surfaces the hit shape');
+     const rr=_gridRectCandidates(gd,{x:0,y:0,w:40,h:40});
+     assert.ok(rr.includes(dense[0])&&rr.includes(dense[4]),'rect candidates cover dense-board shapes');
+     const few=[];for(let i=0;i<10;i++)few.push(Shape.make('rect',{x:i*400,y:0,w:10,h:10}));
+     assert.ok(_buildGrid(few).cs===200,'<=64 shapes keeps the default cell');
+     const sparse=[];for(let i=0;i<100;i++)sparse.push(Shape.make('rect',{x:(i%10)*2000,y:(i/10|0)*2000,w:10,h:10}));
+     assert.ok(_buildGrid(sparse).cs>200,'sparse board merges cells');}
+    assert.ok(html.includes("cs=_max(48,_min(960,_rnd(_sqr(ab.w*ab.h/_ln(shapes))*2)||_GCELL))"),'adaptive cell formula pinned');
+    assert.ok((html.match(/grid\.cs\|\|_GCELL/g)||[]).length===2,'both queries fall back to the default cell');
+
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
   // asserts but actually contains 6 (recounted directly: at1.length, at2.length, and 4
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1449; // prev 1446 + 3 zorder-frac-LWW asserts (ADR-0653)
+  pass += 1454; // prev 1449 + 5 adaptive-grid-cell asserts (ADR-0654)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
