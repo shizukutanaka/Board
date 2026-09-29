@@ -4021,7 +4021,7 @@ try {
 
   // ADR-0403: sender refuses oversized snapshots before chunking
   {
-    assert.ok(html.includes("if(_ln(_sm)>24e6){_wT('snapBig');return}"),'send-side snapshot cap');
+    assert.ok(html.includes("if(_ln(_sm)>24e6){_wT('snapBig');this.dc.close();return}"),'send-side snapshot cap');
     assert.strictEqual(api.I18N.ja.snapBig.length>0&&api.I18N.en.snapBig.length>0,true,'snapBig i18n both langs');
     console.log('  ✓ snapshot send-side 24MB fail-fast (ADR-0403)');
   }
