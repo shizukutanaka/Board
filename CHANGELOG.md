@@ -1,3 +1,8 @@
+## [1.7.822] - 2026-09-29
+
+### Fixed
+- ADR-0796: drawio/svg/excalidraw パーサ出力と複数ページ経路を `validShape` 通過へ (wire parity — ピアが棄却する図形をローカルが受理する発散を解消)。`_dioVp`/`appState` の遠方 viewport 採用も `_xyOK` で閉塞
+
 ## [1.7.821] - 2026-09-29
 
 ### Fixed
