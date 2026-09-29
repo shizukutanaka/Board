@@ -1,3 +1,8 @@
+## [1.7.803] - 2026-09-29
+
+### Docs
+- ADR-0777: wire intake 検証監査の完走記録 — `validRemotePayload` 全16 op の検証網羅性・`wc` ライフサイクル・`_undoWire`/`_slimOp` 通過・outbound↔intake 整合を確認。architecture.md の受信側検証節に ADR-0776 kill 集合規則を同期
+
 ## [1.7.802] - 2026-09-29
 
 ### Fixed

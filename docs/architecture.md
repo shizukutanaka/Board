@@ -443,6 +443,11 @@ DOM 要素は `data-t` 属性 + `UI.applyI18n()` で翻訳 (起動時に 1 回�
     検査 (0726) に加え、ページ op の付帯フィールド — `pageAdd.i`、
     `pageDel.firstId`、`pageName.nts` — も有限数/≤64文字列を要求 (0755)。
     悪意/壊損 clock・非有限値の NaN 汚染を遮断。
+  - **`pageDel` の `unpage` は kill 集合 `shapes` を必須に** (0776):
+    `unpage` は `===1` 完全一致 + `unpage` を持つ op は `shapes` 配列必須。
+    kill 集合を運ばない unpage は「メンバーを消す」でなく「un-page して
+    残す」になり送側と発散する — 非適合 op は半適用せず棄却。通常形の
+    `shapes` なし (メンバーは受信側が再導出) は従来どおり受理。
 - **frag 再起動**: `snap`/`opc`/`img` の `n` 不一致・key 衝突で旧断片を
   捨てて新ストリームを再起動、`_imgIn`/`_imgChunks` は 96KB/256-entry
   で上限化 (ADR-0448/0449/0454)。
