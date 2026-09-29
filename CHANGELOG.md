@@ -1,3 +1,9 @@
+## [1.7.772] - 2026-09-28
+
+### Fixed
+- ADR-0746: snapshot merge of a dataUrl now drops a still-parked img ref —
+  the late-arriving blob would otherwise overwrite the merged dataUrl
+
 ## [1.7.771] - 2026-09-28
 
 ### Fixed
