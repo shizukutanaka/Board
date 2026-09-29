@@ -684,7 +684,8 @@ Board/
     │   ├── ADR-0632-minimap-nav-cancel.md   # _mmNav を hidden/pagehide でもクリア (bfcache 復帰ジャンプ解消) (実装済)
     │   ├── ADR-0633-architecture-lifecycle-sync.md   # architecture.md へ resize debounce + cancelNav を同期 (実装済)
     │   ├── ADR-0634-present-cancels-gesture.md   # プレゼン突入で進行中ジェスチャをキャンセル (実装済)
-    │   └── ADR-0635-gesture-target-byid.md   # resize/rotate の対象を _sel0→byId(orig.id) (mid-gesture 選択変更で誤対象) (実装済)
+    │   ├── ADR-0635-gesture-target-byid.md   # resize/rotate の対象を _sel0→byId(orig.id) (mid-gesture 選択変更で誤対象) (実装済)
+    │   └── ADR-0636-cancel-clears-pinch.md   # _cancelPointerGesture が _pointers/ピンチ状態も掃除 (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

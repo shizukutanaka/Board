@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.663]
+### 修正
+- Esc 等のジェスチャキャンセルが `_pointers`/ピンチ状態を掃除しなかったため、二本目の指を離した瞬間に取りこぼし `pointerup` から stray ズームコミットが発火し得た問題を修正 — `_cancelPointerGesture` 末尾で `_clearTouchState()` を呼び統一掃除 (ADR-0636)。
+
 ## [1.7.662]
 ### 修正
 - resize/rotate ジェスチャ中に選択が変わると (⌘A・リモート hide/del 等)、ドラッグ適用・コミット・キャンセル復元の対象が「現在選択の先頭」にすり替わり、**別図形へ誤った before/after を書き込み得た**問題を修正 — 4 箇所全てを gesture-start の `ptr.*Orig.id` から `byId` 解決へ統一 (ADR-0635)。

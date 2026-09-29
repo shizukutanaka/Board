@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.662';   // ADR-0635
+const V='1.7.663';   // ADR-0636
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4342,7 +4342,9 @@ function _cancelPointerGesture(){
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;
   ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.rotOrig=null;ptr.dragStartShapes=null;
   ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;
-  canvas.dataset.panning='false';ptr.lineClick=false;_zR();_penPred=null;_iv();
+  canvas.dataset.panning='false';ptr.lineClick=false;_zR();_penPred=null;
+  _clearTouchState();   // ADR-0636: cancel must not leave stale _pointers/pinch state — a lifted second finger would commit a stray zoom
+  _iv();
 }
 // ADR-0006: fires after LONG_PRESS_MS. Guards: gest
 // progress (resize/rotate — a deliberate precision drag not to interrupt), and the
