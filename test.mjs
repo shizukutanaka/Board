@@ -4517,7 +4517,7 @@ try {
       ptr.down=true;ptr.dragKind='move';ptr.dragStartShapes=new Map([[W.id,JSON.parse(JSON.stringify(W))]]);
       _pgAdopt(state.pages,'pB');
       assert.ok(ptr.down===true,'same-page adopt leaves the gesture alone');
-      assert.ok(html.includes("if(nc!==state.curPg)_cancelPointerGesture()"),'_pgAdopt gesture-cancel gate');
+      assert.ok(html.includes('if(nc!==state.curPg){_cancelPointerGesture();_cxO()}'),'_pgAdopt gesture+editor-cancel gate (ADR-0664/0684)');
       state.pages=null;state.curPg=null;ptr.down=false;ptr.dragKind=null;ptr.dragStartShapes=null;
       Store.commit({op:'del',shapes:[{...byId(W.id)}]});
       console.log('  ✓ _pgAdopt cancels gesture only on real page change (3 asserts)');
@@ -4614,6 +4614,15 @@ try {
       assert.ok(html.includes('_fid=_fe&&_fe._pgid'),'focused chip recorded before rebuild (ADR-0683)');
       assert.ok(html.includes('c._pgid===_fid'),'focus restored to same page chip (ADR-0683)');
       console.log('  ✓ pgBar sig/focus pins (3 asserts)');
+    }
+    // ADR-0684: adopt falling back to first page also folds the editor
+    {
+      state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pB';
+      _pgAdopt(state.pages,'gone');
+      assert.ok(state.curPg==='pA','missing cur falls back to first page (ADR-0684)');
+      assert.ok(html.includes('{_cancelPointerGesture();_cxO()}'),'adopt page-change folds the editor');
+      state.pages=null;state.curPg=null;
+      console.log('  ✓ adopt fallback + editor fold (2 asserts)');
     }
     // ADR-0673: per-page tab strip — direct jump, active tab renames
     {
@@ -12797,7 +12806,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1521; // prev 1517 + 1 tab aria-label pin (ADR-0682)
+  pass += 1523; // prev 1517 + 1 tab aria-label pin (ADR-0682)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

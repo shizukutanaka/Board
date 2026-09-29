@@ -731,7 +731,8 @@ Board/
 │   ├── ADR-0680-sel-presence-page-key.md  # 選択プレゼンス dedup キーに curPg (実装済)
 │   ├── ADR-0681-snapshot-page-name-lww.md  # snapshot の同 id ページ名 LWW マージ (実装済)
 │   ├── ADR-0682-tab-full-name-aria.md  # ページタブ完全名 aria-label (実装済)
-│   └── ADR-0683-pgbar-sig-focus.md  # pgBar sig セパレータ+フォーカス復元 (実装済)
+│   ├── ADR-0683-pgbar-sig-focus.md  # pgBar sig セパレータ+フォーカス復元 (実装済)
+│   └── ADR-0684-adopt-editor-fold.md  # adopt ページ交代でエディタ畳む (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
