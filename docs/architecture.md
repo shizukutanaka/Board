@@ -524,6 +524,26 @@ pen/line/arrow は点ジオメトリで box 中心が無く回転中心が NaN �
   .drawio export は非表示を除外 (0678 — excalidraw 0594 と同格)、`curPg` は
   doc record で永続化 (0674)
 
+**改名/削除の収束規則** (ADR-0698–0705 の監査結論):
+
+- **改名は (ts,peer) 全順序 LWW**: `p.nts`+`p.ntp` に `clockNewer` — ts 同値の
+  並行改名は peer 文字列比較で一意化 (0698)。docName も `_nameTs`+`_namePeer`
+  で同規則 (0699)。`nts`/`nameTs` は**有限数か不在のみ**受理 — NaN/Infinity は
+  改名を永久凍結するため `_vPages`・name msg・snapshot nameTs・doc record で
+  一律棄却 (0700/0701)
+- **undo ゲートは「現行 = 自身の書込」で判定**: `bts>=nts` は永遠に不成立で
+  undo がローカル no-op だった (0702)。`!clockNewer(current, op.clock)` なら
+  復元可 — より新しい書込が立つ場合はスキップし、wire inverse op も相手側
+  LWW で負けるため両者収束
+- **ローカル限定ガードと remote 適用の分離**: `pageDel` の `<2` ガードは
+  `clock.peer===_pi()` のローカルのみ — remote は最終ページでも適用し
+  空集合はページモード終了へ整合 (0703 — 拒否するとページ集合が永続発散)
+- **wire pageAdd は `op.i` で位置復元**: pageDel undo-wire の復元がローカル
+  `splice(i)` vs peers 末尾 push で順序発散していた (0704)。`i` なしは末尾互換
+- **wire は適用フィールドのみ**: pageDel → `{id,clock}`、pageName →
+  `{id,after,clock}` — メンバー/i/name/undo-domain は受信側が再計算するため
+  dead weight (0705)
+
 ## 今後
 
 - Plugin API (iframe sandbox + postMessage)、Figma import (v2.0)

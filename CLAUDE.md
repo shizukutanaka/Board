@@ -753,7 +753,8 @@ Board/
 │   ├── ADR-0702-pagename-undo.md  # pageName undo がローカル no-op だった実害 (実装済)
 │   ├── ADR-0703-remotedel-lastpage.md  # remote 最終ページ del の収束 (実装済)
 │   ├── ADR-0704-pageadd-wire-index.md  # wire pageAdd の位置復元 (実装済)
-│   └── ADR-0705-pagewire-slim.md  # wire pageDel/pageName の適用フィールドのみ化 (実装済)
+│   ├── ADR-0705-pagewire-slim.md  # wire pageDel/pageName の適用フィールドのみ化 (実装済)
+│   └── ADR-0706-arch-sync-pagewire.md  # architecture.md へ改名/削除収束規則を同期 (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

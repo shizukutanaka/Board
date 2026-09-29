@@ -1,3 +1,8 @@
+## [1.7.732] - 2026-09-29
+
+### Docs
+- ADR-0706: architecture.md multi-page section synced with the ADR-0698–0705 convergence rules (rename (ts,peer) LWW, undo gate semantics, local-only guards, wire slimming)
+
 ## [1.7.731] - 2026-09-29
 
 ### Changed
