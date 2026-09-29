@@ -1,3 +1,11 @@
+## [1.7.756] - 2026-09-29
+
+### Fixed
+- ADR-0730: 'beautify' ops broadcast but every receiver dropped them at the
+  wire (not in REMOTE_OPS, no validator case) — the sender's pen→rect
+  retype stayed local while peers kept the pen = guaranteed divergence.
+  Now a real wire op: REMOTE_OPS + patch validation + per-property LWW
+
 ## [1.7.755] - 2026-09-29
 
 ### Fixed
