@@ -252,6 +252,7 @@ const checks = [
   ["pageDel wire carries the sender rehome target (ADR-0725)", html.includes("const rehome=op.unpage?null:((op.firstId!=null&&_pgById(op.firstId))?op.firstId:firstId)") && html.includes("s.firstId=op.firstId")],
   ["wire page-op aux fields validated (ADR-0755)", html.includes("(op.i==null||_fin(op.i))") && html.includes("(op.firstId==null||_idOK(op.firstId))") && html.includes("(op.nts==null||_fin(op.nts))")],
 ["del redo re-derives connClears (ADR-0758)", html.includes("this._remoteDelConnFix(op);if(fx)for(const p of fx)_oa(byId(p.id),p.patch)")],
+["add/addMany undo clears gap-bound conns (ADR-0759)", html.includes("this._remoteDelConnFix({op:'del',shapes:[op.shape]})")&&html.includes("this._remoteDelConnFix({op:'del',shapes:op.shapes})")],
   ["addMany validates the wc clock snapshot (ADR-0726)", html.includes("op.wc==null||wcOk(op.wc)") && html.includes("const wcOk=m=>_iO(m)")],
   ["_recordCommitted sets _lastRep for local 'replace' (ADR-0616)", html.includes("if(op.op==='replace'){state._lastRep=op.clock")],
   ["snapshot carries rep marker + stale-snapshot skip (ADR-0617)", html.includes("rep:state._lastRep") && html.includes("clockNewer(state._lastRep,msg.rep))break;")],
@@ -13731,7 +13732,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1716; // prev 1715 + 1 ADR-0758 del-redo connClears pin
+  pass += 1717; // prev 1716 + 1 ADR-0759 add-undo connClears pin
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
