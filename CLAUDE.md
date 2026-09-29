@@ -850,6 +850,7 @@ Board/
 │   └── ADR-0799-viewport-center-clamp-follow.md  # fit/centerOn の派生書き込みも _xC へ (不変完結)
 │   └── ADR-0800-viewport-bounds-docs-sync.md  # architecture.md へ 0795-0799 期規則を同期
 │   └── ADR-0801-equal-ts-test-determinism.md  # equal-ts 仲裁テストの時計を単一採取化 (フレーク解消)
+│   └── ADR-0802-viewport-clamp-pin.md  # _xC クランプの実キー経路 behavioural ピン
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

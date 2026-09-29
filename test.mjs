@@ -12760,6 +12760,14 @@ try {
     const pxx=state.viewport.x;
     fireKey('ArrowLeft');
     assert.ok(state.viewport.x<pxx,'arrow without a selection pans the view');
+    // ADR-0798: the pan accumulator stops at the coord bound — beyond ±1e7 every drawn
+    // shape would carry wire-invalid coords (divergence), so panning clamps there.
+    state.viewport.x=1e7-10;state.viewport.zoom=1;
+    for(let i=0;i<40;i++)fireKey('ArrowRight');
+    assert.ok(state.viewport.x===1e7,'repeated arrow pan clamps the viewport center at +1e7 (ADR-0798)');
+    state.viewport.x=-(1e7-10);
+    for(let i=0;i<40;i++)fireKey('ArrowLeft');
+    assert.ok(state.viewport.x===-1e7,'arrow pan clamps at -1e7 too (ADR-0798)');
     // ⌘D duplicates the selection to fresh ids; ⇧⌘Z re-applies an undone delete (real key path)
     reset();
     state.tool='select';
