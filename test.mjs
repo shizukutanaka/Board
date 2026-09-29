@@ -3990,6 +3990,31 @@ try {
     console.log('  ✓ ADR-0745: snapshot img merge drops losing pending / resolves winner (6 asserts)');
   }
 
+  // ADR-0746: a dataUrl merge settles the image — a still-parked img ref is stale, and
+  // its late-arriving blob would overwrite the merged dataUrl. The merge drops both
+  // the parked ref and its _imgPending entry.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+    state.seq=0;state.seenOps=new Set();state.wclock={};state.peerId='B';
+    Net._imgPending.clear();Net._imgIn.clear();
+    // shape exists locally with a parked img ref (blob not yet arrived)
+    const r={id:'I2',type:'image',z:1,x:0,y:0,w:10,h:10,img:'K_OLD'};
+    Store.commit({op:'add',shape:r});
+    Net._imgPending.set('I2','K_OLD');
+    // snapshot merge: dataUrl wins (no img key in this payload)
+    Net._mergeSnapshotOp({op:'add',shape:{...JSON.parse(JSON.stringify(r)),img:undefined,dataUrl:'data:image/png;base64,MERGED'},wc:{
+      dataUrl:{peer:'A',seq:1,ts:9e12},
+    }});
+    const ls=byId('I2');
+    assert.strictEqual(ls.dataUrl,'data:image/png;base64,MERGED','dataUrl merged');
+    assert.strictEqual(ls.img,undefined,'stale img ref dropped');
+    assert.ok(!Net._imgPending.has('I2'),'stale pending dropped');
+    // the old blob must never clobber the merged dataUrl
+    Net._onRecv({k:'img',key:'K_OLD',data:'data:image/png;base64,STALE',n:1,seq:0,peer:'A'},false);
+    assert.strictEqual(ls.dataUrl,'data:image/png;base64,MERGED','late blob never clobbers merged dataUrl');
+    console.log('  ✓ ADR-0746: dataUrl merge drops stale img ref + pending (4 asserts)');
+  }
+
   // ADR-0060: Alt+drag on a shape duplicates it (addMany commit, selection→copies,
   // move-drag starts on the copies). Unselected hit duplicates just that shape;
   // already-selected hit duplicates the whole selection.
@@ -13613,7 +13638,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1692; // prev 1686 + 6 ADR-0745 snapshot-img-merge asserts
+  pass += 1696; // prev 1686 + 6 ADR-0745 + 4 ADR-0746 snapshot-img-merge asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
