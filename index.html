@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.660';   // ADR-0633
+const V='1.7.661';   // ADR-0634
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -9905,6 +9905,7 @@ const Presentation=(()=>{
 
   function enter(){
     _cxO();   // ADR-0582: fold any open text/label editor — it would linger invisible under the overlay and still commit on blur
+    if(ptr.down)_cancelPointerGesture();   // ADR-0634: an in-flight drag would keep its capture under the overlay and commit invisibly on release
     _frames=_getFrames();
     if(!_ln(_frames)){_wT('noFrames');return}
     _focusTrigger=_aE();

@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.661]
+### 修正
+- ドラッグ中にプレゼンへ突入した場合、ポインタキャプチャが継続したまま overlay 裏でジェスチャが進行し、離した瞬間に不可視の move/resize op がコミットされ得た問題を修正 — `Presentation.enter()` で `_cancelPointerGesture()` を呼び進行中ジェスチャを畳んでから突入 (ADR-0634)。
+
 ## [1.7.660]
 ### ドキュメント
 - architecture.md に ADR-0631 (resize debounce) / ADR-0632 (minimap cancelNav) を同期 — ジェスチャライフサイクル節の共通掃除口 `_clearTouchState` のパージ対象と、DPR 節の再確保コスト+debounce 契約を明文化 (ADR-0633)。
