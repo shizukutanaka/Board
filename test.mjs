@@ -11358,6 +11358,23 @@ try {
     const nb=state.shapes[n0];
     assert.ok(nb&&nb.type==='text','the dblclick-empty shape is text');
     assert.strictEqual(state.editing,nb&&nb.id,'editor opened on the new text shape');
+    // The presentation key gate swallows non-nav keys; arrows nav, Escape leaves (ADR-0640 class)
+    reset();
+    state.tool='select';
+    state.editing=null;
+    const T2=Shape.make('text',{x:100,y:100,w:80,h:40,text:'k'});
+    Store.commit({op:'add',shape:T2});
+    Store.commit({op:'add',shape:Shape.make('frame',{x:0,y:0,w:400,h:300})});
+    Store.commit({op:'add',shape:Shape.make('frame',{x:500,y:0,w:400,h:300})});
+    state.selection=new Set([T2.id]);
+    Presentation.enter();
+    fireKey('Enter');
+    assert.strictEqual(state.editing,null,'presentation swallows the Enter edit key');
+    const vx=state.viewport.x;
+    fireKey('ArrowRight');
+    assert.ok(state.viewport.x!==vx,'arrow navigation advances to the next frame');
+    fireKey('Escape');
+    assert.ok(!Presentation.isActive(),'Escape leaves the presentation');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -11369,7 +11386,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1204; // prev 1168 + 36 event-sequence asserts (ADR-0641)
+  pass += 1207; // prev 1168 + 39 event-sequence asserts (ADR-0641)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
