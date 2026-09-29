@@ -863,7 +863,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.685';   // ADR-0660
+const V='1.7.686';   // ADR-0661
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -6498,7 +6498,7 @@ function doLock(){
 // accumulate locked shapes across sessions/imports with no bulk way back.
 // Same 'align' lock-dir before/after contract as doLock (single undo + sync).
 function unlockAll(){
-  const locked=_sh().filter(_lk);
+  const locked=_sh().filter(s=>_lk(s)&&_pgOk(s));   // ADR-0661: unlock-all is page-scoped like clear/show-all
   if(!_ln(locked)){_wT('nothingLocked');return}
   const before=locked.map(s=>({id:s.id,locked:_lk(s)??null}));
   for(const s of locked)s.locked=null;
@@ -9039,13 +9039,13 @@ const UI={
       has&&_selAny(s=>(_conn(s.type))&&!_lk(s)&&(s.a||s.b))&&['ctxPinAnchor','',pinAnchor],   // ADR-0213
       has&&_selAny(s=>(_conn(s.type))&&!_lk(s)&&(s.a||s.b))&&['ctxUnbind','',unbindSelection],   // ADR-0157
       has&&_sb().filter(s=>s&&!_lk(s)&&s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen').length===2&&['ctxConnect','',connectSelection],
-      _sh().some(_hd)&&['ctxShowAll','',showAllShapes],
+      _sh().some(s=>_hd(s)&&_pgOk(s))&&['ctxShowAll','',showAllShapes],   // ADR-0661: gate matches the page-scoped apply
       _nS()&&['ctxSelectInverse','⌘⇧I',selectInverse],
       // ADR-0005's flagship was ⌥B-only — invisible to touch/mouse users
       // (the exact "keyboard-only feature" trap FT-06 warned about).
       has&&_selAny(s=>_pn(s))&&['ctxBeautify','⌥B',doBeautify],
       has&&[_sel0()?.locked?'ctxUnlock':'ctxLock','',doLock],
-      _sh().some(_lk)&&['ctxUnlockAll','',unlockAll],
+      _sh().some(s=>_lk(s)&&_pgOk(s))&&['ctxUnlockAll','',unlockAll],   // ADR-0661
       has&&_selN()>1&&'sep',
       has&&_selN()>1&&['ctxAlignLeft','',()=>doAlign('left')],
       has&&_selN()>1&&['ctxAlignCX','',()=>doAlign('cx')],
@@ -9676,7 +9676,7 @@ function fitFrames(){
   for(const f of frames){
     let m=null;
     for(const s of _sh()){
-      if(s.id===f.id||_lk(s))continue;
+      if(s.id===f.id||_lk(s)||!_pgOk(s))continue;   // ADR-0661: geometric membership is page-scoped (withFrameChildren parity)
       const b=_bb(s);if(!b||b.w==null)continue;
       if(b.x>=f.x&&b.y>=f.y&&b.x+b.w<=f.x+f.w&&b.y+b.h<=f.y+f.h){
         m=m?{x:_min(m.x,b.x),y:_min(m.y,b.y),r:_max(m.r,b.x+b.w),bt:_max(m.bt,b.y+b.h)}

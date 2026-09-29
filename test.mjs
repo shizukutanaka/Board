@@ -4433,6 +4433,22 @@ try {
       Store.commit({op:'del',shapes:[P,Q].map(s=>JSON.parse(JSON.stringify(s)))});
       console.log('  ✓ show-all is page-scoped (3 asserts)');
     }
+    // ADR-0661: unlock-all + frame-fit are page-scoped too
+    {
+      const L1=Shape.make('rect',{x:0,y:0,w:10,h:10,locked:1}),L2=Shape.make('rect',{x:0,y:0,w:10,h:10,locked:1});
+      const F=Shape.make('frame',{x:-50,y:-50,w:100,h:100}),M=Shape.make('rect',{x:0,y:0,w:10,h:10}),O=Shape.make('rect',{x:30,y:30,w:20,h:20});
+      state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';
+      Store.commit({op:'addMany',shapes:[{...L1,pg:'pA'},{...L2,pg:'pB'},{...F,pg:'pA'},{...M,pg:'pA'},{...O,pg:'pB'}]});
+      unlockAll();
+      assert.ok(byId(L1.id).locked==null,'unlockAll releases current-page lock');
+      assert.ok(byId(L2.id).locked===1,'unlockAll leaves off-page lock (ADR-0661)');
+      state.selection=new Set([F.id]);fitFrames();
+      assert.ok(byId(F.id).w===34,'frame fit ignores off-page member: w=34 not 62 (ADR-0661)');
+      assert.ok(html.includes('filter(s=>_lk(s)&&_pgOk(s))')&&html.includes('_lk(s)||!_pgOk(s))continue'),'unlock/fit page-scope pins');
+      state.pages=null;state.curPg=null;state.selection=new Set();
+      Store.commit({op:'del',shapes:[L1,L2,F,M,O].map(s=>JSON.parse(JSON.stringify(s)))});
+      console.log('  ✓ unlock-all/frame-fit are page-scoped (4 asserts)');
+    }
   }
 
   // ADR-0072: elbow trunk locate + bend-override two-corner route
@@ -12580,7 +12596,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1471; // prev 1468 + 3 show-all page-scope asserts (ADR-0660)
+  pass += 1475; // prev 1471 + 4 unlock/fit page-scope asserts (ADR-0661)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
