@@ -12493,13 +12493,34 @@ try {
     assert.ok(html.includes("cs=_max(48,_min(960,_rnd(_sqr(ab.w*ab.h/_ln(shapes))*2)||_GCELL))"),'adaptive cell formula pinned');
     assert.ok((html.match(/grid\.cs\|\|_GCELL/g)||[]).length===2,'both queries fall back to the default cell');
 
+    // ADR-0655: seenOps eviction safety — every wire op re-applies harmlessly after its dedup key is trimmed
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;
+    const rX=Shape.make('rect',{x:0,y:0,w:10,h:10});rX.frac='a0';
+    Store.applyRemote({op:'add',shape:rX,clock:{peer:'r1',seq:1,ts:1}});
+    state.seenOps.clear();   // simulate _trimSeen evicting the dedup key
+    Store.applyRemote({op:'add',shape:rX,clock:{peer:'r1',seq:1,ts:1}});
+    assert.ok(state.shapes.length===1,'re-applied remote add stays idempotent (byId guard)');
+    Store.applyRemote({op:'upd',id:rX.id,after:{x:50},clock:{peer:'r1',seq:2,ts:2}});
+    state.seenOps.clear();
+    Store.applyRemote({op:'upd',id:rX.id,after:{x:50},clock:{peer:'r1',seq:2,ts:2}});
+    assert.ok(byId(rX.id).x===50,'re-applied remote upd converges to the same value');
+    Store.applyRemote({op:'zorder',changes:[{id:rX.id,before:'a0',after:'a1'}],clock:{peer:'r1',seq:3,ts:3}});
+    state.seenOps.clear();
+    Store.applyRemote({op:'zorder',changes:[{id:rX.id,before:'a0',after:'a1'}],clock:{peer:'r1',seq:3,ts:3}});
+    assert.ok(byId(rX.id).frac==='a1','re-applied remote zorder is gated by its own write clock');
+    const delSh={...byId(rX.id)};
+    Store.applyRemote({op:'del',shapes:[delSh],clock:{peer:'r1',seq:4,ts:4}});
+    state.seenOps.clear();
+    Store.applyRemote({op:'del',shapes:[delSh],clock:{peer:'r1',seq:4,ts:4}});   // valid form, exercises the real re-apply path
+    assert.ok(!byId(rX.id)&&state.shapes.length===0,'re-applied remote del is a no-op');
+
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
   // asserts but actually contains 6 (recounted directly: at1.length, at2.length, and 4
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1454; // prev 1449 + 5 adaptive-grid-cell asserts (ADR-0654)
+  pass += 1458; // prev 1454 + 4 seenOps-eviction reapply asserts (ADR-0655)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
