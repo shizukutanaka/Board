@@ -11488,6 +11488,33 @@ try {
     tb2.locked=1;
     fireKey('Tab',{shiftKey:true});
     assert.strictEqual([...state.selection][0],tb1.id,'⇧Tab skips the locked shape');
+    // zoom keys: ⌘0 resets, ⌘= / ⌘- step ×1.2 — viewport-level keyboard paths
+    reset();
+    state.viewport.zoom=2.0;
+    fireKey('0',{metaKey:true});
+    assert.strictEqual(state.viewport.zoom,1,'⌘0 resets the zoom');
+    fireKey('=',{metaKey:true});
+    assert.ok(Math.abs(state.viewport.zoom-1.2)<1e-9,'⌘= zooms in ×1.2');
+    fireKey('-',{metaKey:true});
+    assert.ok(Math.abs(state.viewport.zoom-1)<1e-9,'⌘- zooms back out');
+    // ⌘G groups / ⌘⇧G ungroups via real keys (groupId + 'group'/'ungroup' op path)
+    const G1=Shape.make('rect',{x:10,y:10,w:20,h:20});
+    const G2=Shape.make('rect',{x:60,y:10,w:20,h:20});
+    Store.commit({op:'add',shape:G1});Store.commit({op:'add',shape:G2});
+    const g1=state.shapes[0],g2=state.shapes[1];
+    state.selection=new Set([g1.id,g2.id]);
+    fireKey('g',{metaKey:true});
+    assert.ok(g1.groupId&&g1.groupId===g2.groupId,'⌘G groups the selection');
+    fireKey('g',{metaKey:true,shiftKey:true});
+    assert.ok(!g1.groupId&&!g2.groupId,'⌘⇧G ungroups');
+    // Enter on a selected text shape opens the editor via the select tool (ADR-0013)
+    const KT1=Shape.make('text',{x:10,y:200,w:80,h:40,text:'kbd'});
+    Store.commit({op:'add',shape:KT1});
+    const kt1=state.shapes[state.shapes.length-1];
+    state.selection=new Set([kt1.id]);
+    fireKey('Enter');
+    assert.strictEqual(state.editing,kt1.id,'Enter opens the text editor for the selection');
+    state.editing=null;
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -11499,7 +11526,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1234; // prev 1228 + 6 event-sequence asserts (ADR-0641: Tab/⇧Tab cycle)
+  pass += 1242; // prev 1234 + 8 event-sequence asserts (ADR-0641: zoom keys + ⌘G + Enter-edit)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
