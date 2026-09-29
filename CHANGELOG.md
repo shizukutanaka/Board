@@ -1,3 +1,15 @@
+## [1.7.762] - 2026-09-29
+
+### Fixed
+- ADR-0736: 'clear'/'replace' forward wiped `state.wclock` wholesale —
+  including tombstones — so a stale in-flight 'add' resurrected shapes the
+  swap just removed (same divergence class as del-vs-add, different path),
+  and a receiver tomb newer than the swap clock was lost entirely. Swaps now
+  tomb every removed id at the swap clock, keep prior tombs that outrank it
+  (per-id "last existence decision wins"), and filter `after` members whose
+  tomb outranks the swap — the sender converges to deleted once the del
+  lands
+
 ## [1.7.761] - 2026-09-29
 
 ### Fixed
