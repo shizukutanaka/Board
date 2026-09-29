@@ -253,6 +253,7 @@ const checks = [
   ["wire page-op aux fields validated (ADR-0755)", html.includes("(op.i==null||_fin(op.i))") && html.includes("(op.firstId==null||_idOK(op.firstId))") && html.includes("(op.nts==null||_fin(op.nts))")],
 ["del redo re-derives connClears (ADR-0758)", html.includes("this._remoteDelConnFix(op);if(fx)for(const p of fx)_oa(byId(p.id),p.patch)")],
 ["add/addMany undo clears gap-bound conns (ADR-0759)", html.includes("this._remoteDelConnFix({op:'del',shapes:[op.shape]})")&&html.includes("this._remoteDelConnFix({op:'del',shapes:op.shapes})")],
+["connClears skip locked survivors (ADR-0760)", html.includes("filter(id=>!(byId(id)||{}).locked)")&&html.includes("delIds.has(sh.a)&&!(byId(sh.a)||{}).locked")],
   ["addMany validates the wc clock snapshot (ADR-0726)", html.includes("op.wc==null||wcOk(op.wc)") && html.includes("const wcOk=m=>_iO(m)")],
   ["_recordCommitted sets _lastRep for local 'replace' (ADR-0616)", html.includes("if(op.op==='replace'){state._lastRep=op.clock")],
   ["snapshot carries rep marker + stale-snapshot skip (ADR-0617)", html.includes("rep:state._lastRep") && html.includes("clockNewer(state._lastRep,msg.rep))break;")],
@@ -1397,7 +1398,7 @@ const checks = [
     html.includes("if(!sh||(sh.locked&&!('locked' in raw)))continue;")],
   // v1.7.39: _apply del forward connClears must guard sh.locked
   ['_apply del forward connClears: if(sh&&!sh.locked) guards locked connectors',
-    html.includes("if(sh&&!sh.locked)_oa(sh,p.after);}}")],
+    html.includes("for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked){const pt={}")],
   // v1.7.40: _apply zorder forward must guard sh.locked (changes path)
   ['_apply zorder forward changes: !sh.locked guards locked shapes in BOTH directions',
     html.includes("if(sh&&!sh.locked&&!_lwwSkip(c.id,'frac',op))sh.frac=forward?c.after:c.before}")],
@@ -10967,14 +10968,15 @@ try {
   // v1.7.46c: _apply del backward connClears must respect sh.locked (parity with forward path)
   {
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
-    const connSh=Shape.make('arrow',{x1:0,y1:0,x2:100,y2:0,a1:'dummy_target'});
+    const connSh=Shape.make('arrow',{x1:0,y1:0,x2:100,y2:0});
     const targetSh=Shape.make('rect',{x:90,y:-5,w:20,h:10});
+    connSh.a=targetSh.id;
     state.shapes.push(connSh,targetSh);
-    Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(targetSh))],connClears:[{id:connSh.id,before:{a1:'dummy_target'},after:{a1:null}}]});
-    assert.strictEqual(connSh.a1,null,'v1.7.46c setup: connector binding cleared on del');
+    Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(targetSh))],connClears:[{id:connSh.id,before:{a:targetSh.id,aF:null,x1:0,y1:0},after:{a:null,aF:null,x1:9,y1:9}}]});
+    assert.strictEqual(connSh.a,null,'v1.7.46c setup: connector binding cleared on del');
     connSh.locked=true;
     Store.undo();
-    assert.strictEqual(connSh.a1,null,'v1.7.46c: locked connector binding NOT restored on del-backward (lock guard)');
+    assert.strictEqual(connSh.a,null,'v1.7.46c: locked connector binding NOT restored on del-backward (lock guard)');
     console.log('  ✓ _apply del backward connClears: locked connector not modified (v1.7.46c)');
   }
 
@@ -13732,7 +13734,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1717; // prev 1716 + 1 ADR-0759 add-undo connClears pin
+  pass += 1718; // prev 1717 + 1 ADR-0760 locked-survivor connClears pin
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

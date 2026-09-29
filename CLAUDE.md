@@ -808,6 +808,7 @@ Board/
 │   └── ADR-0757-persist-causal-markers-sync.md  # architecture.md §6 へ causal marker 永続化規則を同期 (docs)
 │   └── ADR-0758-del-redo-connclears.md  # del redo のギャップ結合コネクタ dangling を _remoteDelConnFix で解消
 │   └── ADR-0759-add-undo-connclears.md  # add/addMany undo が生存期間の結合を残す非対称を同機構で解消
+│   └── ADR-0760-connclears-locked-survivor.md  # del の connClears が locked 生存図形の結合を剥がさないよう端点毎に判定
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
