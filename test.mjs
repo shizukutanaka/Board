@@ -11,7 +11,7 @@ const readme = readFileSync('./README.md', 'utf8');
 const _codeVer = (html.match(/const V='([^']+)'/) || [])[1];
 // Size is no longer hard-capped (44KB gzip budget removed 2026-06-13). A loose raw
 // ceiling stays purely as a runaway-growth guard; gzip size is reported for visibility.
-const RAW_CEILING = 512 * 1024;
+const RAW_CEILING = 544 * 1024;   // ADR-0646: the multi-page feature set needs ~8KB — ceiling remains a runaway-growth guard, not a hard budget
 // Measured with Node's built-in zlib instead of shelling out to `gzip -9`: the CLI is
 // absent on stock Windows and on minimal CI images, and its output differed from zlib's
 // by ~750 bytes (differing memLevel defaults) — enough to swing the badge check below.
@@ -77,7 +77,7 @@ const checks = [
       .every(t => html.includes(`data-tool="${t}"`))],
   ['Keymap covers all tools',
     /KEYMAP\s*=\s*\{v:'select'[^}]+h:'hand'[^}]+p:'pen'/.test(html)],
-  ['Raw size under runaway ceiling (512KB)', _rawSize < RAW_CEILING],
+  ['Raw size under runaway ceiling (544KB)', _rawSize < RAW_CEILING],
   // v1.6.77: enforce docs-vs-reality — the README version badge must track `const V`.
   // Root cause of prior drift (README said 1.6.70 while code shipped 1.6.77): nothing
   // tied them. This check fails the build the moment a version bump forgets the README.
@@ -211,7 +211,7 @@ const checks = [
   ['Presentation on Shift+P / Ctrl+Enter', html.includes("k==='p'&&_sK(e)") && html.includes("Presentation.enter")],
   ['_sK/_aK/_mod modifier-key shorthands (ADR-0515)', html.includes('const _sK=e=>e.shiftKey')&&html.includes('_aK=e=>e.altKey')&&html.includes('_mod=e=>e.metaKey||e.ctrlKey')],
   // round 6: frame hit priority + label edit + image size guard
-  ['pickTop skips frames on first pass', html.includes("_frm(s))continue")],
+  ['pickTop skips frames on first pass', html.includes("_frm(s)||_hd(s)||!_pgOk(s))continue")],
   ['frame dblclick label edit', html.includes("_frm(hit)") && html.includes("hit.label")],
   ['image size guard 16MB', html.includes("16*1024*1024") && html.includes("大きすぎます")],
   ['SVG export frames first', html.includes("svgShapes") && html.includes("type===\"frame\"")],
@@ -240,7 +240,7 @@ const checks = [
   ['fractional index keyBetween/reindexFrac present (ADR-0001)', html.includes("function keyBetween") && html.includes("function reindexFrac")],
   ['z-step ops route through _zCommit (undoable, minimal-delta)', html.includes("_zCommit(changes)") && html.includes("function _zCommit")],
     ['applyRemote whitelists op types', html.includes("REMOTE_OPS") && html.includes("this.REMOTE_OPS.has(op.op)")],
-  ["undo-wire emits 'replace' restoring swap (ADR-0615)", html.includes("case 'replace':   // ADR-0615") && html.includes("return _iA(op.before)?[{op:'replace',after:op.before,afterWc:op.wc}]:null;")],
+  ["undo-wire emits 'replace' restoring swap (ADR-0615)", html.includes("case 'replace':   // ADR-0615") && html.includes("return _iA(op.before)?[{op:'replace',after:op.before,afterWc:op.wc,pages:op.beforePages}]:null;")],
   ["undo-wire swap advances _lastRep to the fresh clock (ADR-0615)", html.includes("if(w.op==='replace')state._lastRep=w.clock;") && html.includes("_fck(op);if(op.op==='replace')state._lastRep=op.clock;")],
   ["_recordCommitted sets _lastRep for local 'replace' (ADR-0616)", html.includes("if(op.op==='replace')state._lastRep=op.clock;   // ADR-0616")],
   ["snapshot carries rep marker + stale-snapshot skip (ADR-0617)", html.includes("rep:state._lastRep") && html.includes("clockNewer(state._lastRep,msg.rep))break;")],
@@ -544,7 +544,7 @@ const checks = [
   ['translate moves elbow bend (trunk follows connector)', html.includes('s.bend+=vert?dx:dy')&&html.includes('ADR-0147')],
   ['group resize scales elbow bend on trunk axis', html.includes('ADR-0148')&&html.includes('sh.bend=_abs(tr[1].x-tr[0].x)')],
   ['image flip mirrors pixels via s.flip bitmask', html.includes("s.flip=(s.flip||0)^(axis==='h'?1:2)")&&html.includes('ADR-0149')&&html.includes('scale(${s.flip&1?-1:1}')],
-  ['hidden shapes leave search + bindAt', html.includes("_sv(s)&&_lc((_lb(s)||'')+(_txx(s)||'')+(s.type||'')")&&html.includes("t!=='pen'&&_sv(s)")],
+  ['hidden shapes leave search + bindAt', html.includes("_sv(s)&&_pgOk(s)&&_lc((_lb(s)||'')+(_txx(s)||'')+(s.type||'')")&&html.includes("t!=='pen'&&_sv(s)")],
   ['SVG export excludes hidden shapes', html.includes('const _vis=shapes.filter(_sv)')&&html.includes('_vis.filter(s=>s.type==="frame")')],
   ['Alt+hover measure guides', html.includes('measure:null')&&html.includes('function _drawMeasure(c)')&&html.includes("_aK(e)&&_selN()&&top&&!top.locked")],
   ['measure cleared on reset/down/Alt', html.includes('state.measure=null')&&html.includes('ptr.down=true;ptr.x=ptr.x0')&&html.includes('if(e.button===2)return')&&html.includes("e.key==='Alt'&&state.measure")],
@@ -721,7 +721,7 @@ const checks = [
   ['sticky chain guards remote-deleted source (ADR-0558)', html.includes("_lk(s)||!byId(s.id))return")],
   ['text overlay closes when edited shape removed/hidden/locked (ADR-0559/0569/0572/0574)', html.includes("if(!s||_hd(s)||_lk(s)){_rm(_teTa);_teTa=null;state.editing=null;_iv();return}")],
   ['label overlay closes when labelled shape removed/hidden/locked (ADR-0559/0569/0572)', html.includes("if(!_lt||_hd(_lt)||_lk(_lt)){_rm(_lblTa.inp);_lblTa=null;return}")],
-  ['peer selection outlines skip hidden shapes (ADR-0576)', html.includes("const s=byId(id);if(!s||_hd(s))continue")],
+  ['peer selection outlines skip hidden shapes (ADR-0576)', html.includes("const s=byId(id);if(!s||_hd(s)||!_pgOk(s))continue")],
   ['fragIn ignores duplicate seq slots (ADR-0578)', html.includes("if(!sn.p[seq]){sn.p[seq]=msg.data;sn.g++}")],
   ['_dcQ requeue queue is capped at 4096 (ADR-0578)', html.includes("_ln(q)<4096&&_pu(q,m)")],
   ['Presentation.enter folds open editor first (ADR-0582)', html.includes("function enter(){\n    _cxO();")],
@@ -777,7 +777,7 @@ const checks = [
   ['i18n has shareUrlTooLong/shareExportFailed ja+en', html.includes("shareUrlTooLong:'⚠ URL が非常に長い") && html.includes("shareUrlTooLong:'⚠ This URL is very long") && html.includes("shareExportFailed:'共有リンクの生成に失敗しました'") && html.includes("shareExportFailed:'Failed to build the share link'")],
   // v1.7.99: ADR-0041 DOM mirror a11y
   ['mirror region + list exist', html.includes('id="shapeMirror"') && html.includes('id="shapeMirrorList"')],
-  ['mirror capped by MIRROR_MAX', html.includes('MIRROR_MAX') && html.includes('_min(_nS(),MIRROR_MAX)')],
+  ['mirror capped by MIRROR_MAX', html.includes('MIRROR_MAX') && html.includes('_min(_ln(_mv),MIRROR_MAX)')],
   ['mirror keyed on _gridVer', html.includes('if(_mirrorVer===_gridVer)return;')],
   ['mirror wired into frame()', html.includes('_mirrorSync();   // ADR-0041')],
   ['i18n has mirrorLabel/mirrorMore ja+en', html.includes("mirrorLabel:'ボード上の図形一覧'") && html.includes("mirrorLabel:'Shapes on the board'")],
@@ -903,7 +903,7 @@ const checks = [
   ['shadow on text/conns canvas+SVG + gate (ADR-0211)', html.includes("s.type!=='text'&&s.type!=='line'&&s.type!=='arrow'")&&html.includes('label never shadows')&&html.includes('${dA}${a}${_sh}/>`);')],
   ['conn label honours lineH canvas+SVG (ADR-0212)', html.includes('llh=fs*(s.lineH||1.25)')&&html.includes('lh2=fs*(s.lineH||1.25)')],
   ['pin/unpin anchor via ctx for touch/keyboard (ADR-0213)', html.includes('function pinAnchor()')&&html.includes("['ctxPinAnchor','',pinAnchor]")&&html.includes('px=k===\'a\'?e.x1:e.x2')],
-  ['_bindAt grid-accelerated candidate scan (ADR-0214)', html.includes('const cands=[..._queryGrid(_grid,{x,y})]')&&html.includes('const ok=s=>{const t=s.type;return t!==\'line\'&&t!==\'arrow\'&&t!==\'pen\'&&_sv(s)}')],
+  ['_bindAt grid-accelerated candidate scan (ADR-0214)', html.includes('const cands=[..._queryGrid(_grid,{x,y})]')&&html.includes('const ok=s=>{const t=s.type;return t!==\'line\'&&t!==\'arrow\'&&t!==\'pen\'&&_sv(s)&&_pgOk(s)}')],
   ['modal focus capture/restore + summary tabbable (ADR-0215)', html.includes('_captureFocus()')&&html.includes('this._restoreFocus()')&&html.includes('select,textarea,summary,[tabindex')],
   ['labelPos drag snaps to 0/.25/.5/.75/1 slots (ADR-0216)', html.includes('for(const slot of[0,0.25,0.5,0.75,1])')],
   ['ctx route-reset reachable when only labelPos/cbend set (ADR-0217)', html.includes('_lP(s)==null&&s.cbend==null)return')&&html.includes('_lP(s)!=null||s.cbend!=null')],
@@ -1164,7 +1164,7 @@ const checks = [
   ['rotated resize works in local frame + world re-pin', html.includes("sp=_rotPt(wp.x,wp.y,cx0,cy0,-orig.rotate);") && html.includes("sh.x+=tgt.x-cur.x;sh.y+=tgt.y-cur.y;")],
   ['selection outline traces rotated box', html.includes("if(single&&single.rotate&&single.w!=null){")],
   // v1.6.70: keyboard resize (Alt+arrow)
-  ['resize op registered (apply, validate, remote)', html.includes("case 'resize':\n      case 'align':\n      case 'beautify':{") && html.includes("case 'resize':{const noLock=") && html.includes("'style','resize','replace'])")],
+  ['resize op registered (apply, validate, remote)', html.includes("case 'resize':\n      case 'align':\n      case 'beautify':{") && html.includes("case 'resize':{const noLock=") && html.includes("'style','resize','replace','pageAdd','pageDel','pageName'])")],
   ['Alt+arrow keyboard-resizes box shapes', html.includes("_rcOp({op:'resize',before,after});") && html.includes("sh.w=_max(4,sh.w+dw);sh.h=_max(4,sh.h+dh);")],
   // v1.6.71: image import error handling
   ['imgErr i18n key in both locales', html.includes("imgErr:'画像を読み込めませんでした'") && html.includes("imgErr:'Image failed to load'")],
@@ -1174,8 +1174,8 @@ const checks = [
   ['doDuplicate does not clobber clipboard (uses _placeCopies, not state.clipboard=)', html.includes("_placeCopies(sel,_dd().x,_dd().y):_placeCopies(sel);   // independent of _cl()") && html.includes("function _placeCopies(srcShapes")],
   // v1.6.71: import sites clear stale selection + wclock (mirror replace op's _apply)
   ['dc.onclose drops _dcQ backlog so reconnect sends (ADR-0446)', /this\.dc\.onclose=\(\)=>\{[^}]*this\._dcQ=null/.test(html)],
-  ['importBoard clears selection+wclock on whole-board swap', html.includes("_rs(shapes.map(clone));   // ADR-0009\n      // Match the replace op's _apply") && html.includes("_scl();state.wclock={};\n      _docN(d);")],
-  ['importFromHash clears selection+wclock on whole-board swap', html.includes("_rs(valid.map(clone));_setDocName(") && /_rs\(valid\.map\(clone\)\)[\s\S]{0,900}_scl\(\);state\.wclock=\{\};/.test(html)],
+  ['importBoard clears selection+wclock on whole-board swap', html.includes("_rs(shapes.map(clone));   // ADR-0009\n      _pgAdopt(d.pages,d.curPg);") && html.includes("_scl();state.wclock={};\n      _docN(d);")],
+  ['importFromHash clears selection+wclock on whole-board swap', html.includes("_rs(valid.map(clone));_pgAdopt(data.pages,data.curPg);_setDocName(") && /_rs\(valid\.map\(clone\)\)[\s\S]{0,900}_scl\(\);state\.wclock=\{\};/.test(html)],
   // v1.6.71: presentation-mode guard precedes editing shortcuts (no undo mid-slideshow)
   ['presentation guard runs before undo/redo/select-all shortcuts', /if\(_pA\(\)\)\{[\s\S]{0,260}return;\n  \}[\s\S]{0,700}if\(meta&&k==='z'&&!_sK\(e\)\)/.test(html)],
   // v1.6.71: export canvas clamped to browser limits
@@ -1343,7 +1343,7 @@ const checks = [
   // v1.7.26: _apply replace backward restores origSel; importBoard/importFromHash attach it
   ['_apply replace backward restores origSel; import callers attach origSel + afterWc to op',
     html.includes("if(!forward)_selR(op);") &&
-    html.includes("Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(_wc()),origSel});")],
+    html.includes("_repC(before,beforeWc,origSel,_bpg,_bcp);")],
   // v1.7.28: validRemotePayload for upd must block locked key (parity with style/resize/align)
   ['remote upd op cannot set locked (noLock guard extended to upd)',
     html.includes("case 'upd':{const noLock=p=>!('locked' in p);\n      if(!_iS(op.id)||_ln(op.id)>64||!validPatch(op.after)||!noLock(op.after)")],
@@ -1465,7 +1465,7 @@ const checks = [
     html.includes("op.wc={};for(const sh of op.shapes)if(_wc()[sh.id])op.wc[sh.id]=clone(_wc()[sh.id]);")],
   // v1.7.48: 'clear' removed from REMOTE_OPS (remote peer cannot wipe board)
   ["REMOTE_OPS excludes 'clear' but includes 'replace' (ADR-0613: wipe+write converges; pre-swap board is parked in :prev)",
-    html.includes("REMOTE_OPS:_sT(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize','replace'])")],
+    html.includes("REMOTE_OPS:_sT(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize','replace','pageAdd','pageDel','pageName'])")],
   // v1.7.48/ADR-0474: _applySnapshot caps at SHARE_MAX_SHAPES — a 500-op cap truncated boards >500 shapes
   ['_applySnapshot: SHARE_MAX_SHAPES cap on snapshot shapes (board-size bound, DoS-bounded by the 24MB join cap)',
     html.includes("const valid=_s0(shapes,SHARE_MAX_SHAPES).map(s=>this._attachShape(s)).filter(validShape);")],
@@ -1685,6 +1685,7 @@ try {
              _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, 
              _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
              _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER,
+             switchPage, _pgAdd, _pgDel, _pgRename, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx,
              _getLang: () => LANG, _getT: () => T };
   `);
   const api = fn(
@@ -1710,7 +1711,8 @@ try {
           endRectLike, endLineLike, endSelect, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
           _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, 
           _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
-          _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER } = api;
+          _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER,
+          switchPage, _pgAdd, _pgDel, _pgRename, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx } = api;
 
   console.log('\n-- behavioural --');
 
@@ -7517,8 +7519,8 @@ try {
 
   // ADR-0595: minimap draws only visible shapes
   {
-    assert.ok(html.includes('const shapes=_sh().filter(_sv)'),'minimap scene filters hidden shapes');
-    assert.ok(html.includes("for(const s of _sh()){if(_gi(s)&&!_hd(s))"),'halo map filters hidden');
+    assert.ok(html.includes('const shapes=_sh().filter(s=>_sv(s)&&_pgOk(s))'),'minimap scene filters hidden+off-page shapes');
+    assert.ok(html.includes("for(const s of _sh()){if(_gi(s)&&!_hd(s)&&_pgOk(s))"),'halo map filters hidden+off-page');
     assert.ok(html.includes('_bA(shapes.filter(_sv))'),'export bbox filters hidden (PNG+SVG)');
     assert.ok(html.includes('if(_hd(s))continue;   // ADR-0594'),'excScene drops hidden');
     console.log('  ✓ minimap + hidden-parity surfaces: filters pinned (4 asserts)');
@@ -12333,13 +12335,56 @@ try {
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
   }
 
+    // ADR-0646: multi-page — wire-convergent page ops + per-page view filter
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;
+    assert.ok(state.pages===null,'a fresh board is single-page (pages null)');
+    const s1=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    Store.commit({op:'add',shape:s1});
+    _pgAdd();
+    assert.ok(Array.isArray(state.pages)&&state.pages.length===2,'first + creates pages 1+2');
+    const PG1=state.pages[0].id,PG2=state.pages[1].id;
+    assert.ok(state.curPg===PG2,'add lands on the new page');
+    assert.ok(byId(s1.id).pg===PG1,'pre-existing shape stamped onto page 1');
+    const s2=Shape.make('rect',{x:20,y:0,w:10,h:10});
+    assert.ok(s2.pg===PG2,'new shapes stamp the current page');
+    assert.ok(_pgOk(s2)&&!_pgOk(byId(s1.id)),'pgOk gates per-page membership');
+    switchPage(PG1);
+    assert.ok(state.curPg===PG1&&_pgOk(byId(s1.id))&&!_pgOk(s2),'switchPage flips the view filter');
+    Store.commit({op:'pageDel',id:PG1});
+    assert.ok(state.pages.length===1&&state.curPg===PG2&&!byId(s1.id),'pageDel drops the page and its members');
+    Store.undo();
+    assert.ok(state.pages.length===2&&!!byId(s1.id),'pageDel undo restores page + member shapes');
+    Store.redo();
+    assert.ok(!byId(s1.id),'redo re-drops the members');
+    Store.undo();
+    assert.ok(!!byId(s1.id),'undo restores the members again');
+    const p1=state.pages[0];
+    Store.commit({op:'pageName',id:p1.id,before:p1.name,after:'Alpha'});
+    assert.ok(_pgById(p1.id).name==='Alpha','pageName applies the rename');
+    Store.applyRemote({op:'pageName',id:p1.id,after:'Old',clock:{peer:'rp',seq:9,ts:1}});
+    assert.ok(_pgById(p1.id).name==='Alpha','a stale remote pageName loses to newer nts (LWW)');
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;
+    const s3=Shape.make('rect',{x:0,y:0,w:5,h:5});
+    Store.commit({op:'add',shape:s3});
+    Store.applyRemote({op:'pageAdd',id:'pgX',name:'Remote',clock:{peer:'rp',seq:10,ts:10}});
+    assert.ok(Array.isArray(state.pages)&&state.pages[0].id==='pgX'&&byId(s3.id).pg==='pgX','remote pageAdd seeds the page set and adopts local shapes');
+    const s4=Shape.make('rect',{x:0,y:0,w:5,h:5});s4.pg='pgY';
+    Store.applyRemote({op:'add',shape:s4,clock:{peer:'rp',seq:11,ts:11}});
+    assert.ok(!!_pgById('pgY'),'a remote shape carrying an unknown pg heals a stub page');
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;
+    Store.applyRemote({op:'pageAdd',id:'pgA',name:'A',clock:{peer:'rp',seq:12,ts:12}});
+    Net._onRecv({k:'snapshot',shapes:[],ops:[],peer:'sp',pages:[{id:'pgA',name:'A',nts:0},{id:'pgB',name:'B',nts:0}]},false);
+    assert.ok(!!_pgById('pgA')&&!!_pgById('pgB'),'a snapshot union-heals the page set');
+    state.pages=null;state.curPg=null;
+    console.log('  ✓ multi-page: add/switch/del+undo/name-LWW/remote heal/snapshot union (ADR-0646, 16 asserts)');
+
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
   // asserts but actually contains 6 (recounted directly: at1.length, at2.length, and 4
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1408; // prev 1406 + 2 lifecycle asserts (ADR-0641: beforeunload dirty/clean)
+  pass += 1424; // prev 1408 + 16 multi-page asserts (ADR-0646)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

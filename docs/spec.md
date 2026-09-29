@@ -483,7 +483,8 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
 - **同期の運用性**: WebRTC は手動シグナリング(URL 手渡し)。シグナリングサーバ無しは長所だが
   「URL を開くだけで共同編集」には届かない。プレゼンス(他者カーソル ADR-0010・選択状態の
   ハイライト ADR-0011)は実装済みで、残る弱点はシグナリング UX のみ。**[P2]**
-- **多ページ非対応**: 1 盤面のみ。`docs` ストアは単一 `main` 固定で、ページ追加/切替/サムネが無い。**[P2]**
+- **多ページ**: **解消済み** — ADR-0646: `pages`/`curPg` + `s.pg` 帰属、ページバー UI、
+  `pageAdd`/`pageDel`/`pageName` ワイヤ収束、undo/redo 対応 (v1.7.673)
 - **入出力の幅**: **解消済み** — 画像 + 自盤面 JSON に加え、SVG (ADR-0042:
   DOMParser walk → rect/circle/ellipse/line/polyline/polygon/path/text、
   貼付/ドロップ/ピッカー)・`.excalidraw` (ADR-0043: 拡張子+`type`内容検出、
@@ -512,7 +513,7 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
 | 優先 | 項目 | 概要 | 形態 |
 |---|---|---|---|
 | P1 | ~~DOM ミラー a11y~~ | 実装済み — ADR-0041 | DONE |
-| P2 | 多ページ | `docs` を複数キー化 + ページ切替 UI + サムネ | ADR + リリース |
+| P2 | ~~多ページ~~ | 実装済み — `pages`/`curPg` + `s.pg` + ページバー + ワイヤ収束 (0646) | DONE |
 | P2 | ~~インポート拡張~~ | 実装済み — SVG (0042) / .excalidraw (0043) / text (0044) / mxfile/.drawio (0199/0222 他) | DONE |
 | P2 | ~~コードパス・パリティ監査~~ | 実装済み — drag/keyboard/remote 差分は継続監査で消化 (nudge/ctx 到達/undo-wire 0460 等) | DONE |
 | P3 | ~~空間索引(quadtree)~~ | 実装済み — `_grid`/`_queryGrid` が描画・ヒット・ダメージ判定をカバー (ADR-0016/0032) | DONE |
@@ -521,10 +522,10 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
 ### 14.3.1 現行の残課題 (2026-09 時点)
 | 優先 | 項目 | 概要 |
 |---|---|---|
-| P2 | 多ページ | spec ロードマップ唯一の未完項目 — `docs` 複数キー化 + ページ UI |
 | P3 | z/frac 一本化 | ADR-0001 Step4 — 恒久併存と決定済み (ロードマップ外) |
 | P3 | whole-doc put → delta 永続化 | flush 毎の O(board) 書込みのトレードオフ — 現状は debounce で許容 |
 | P3 | ~~ポインタ系列の実検証~~ | **解消** — 全リスナ型・タイマ・drop 全拡張子・レンダリング実体を実 dispatch/実タイマ/注入スタブで網羅 (ADR-0641/0644/0645) |
 
+> §14.3 ロードマップの P1/P2 は全消化 (2026-09-28)。
 > 方針(CLAUDE.md 準拠): 各 P1/P2 は**別 ADR + 独立リリース**。一気に全部は作らない。
 > 「ゼロ秒で使える/オフライン等価/単一HTMLで小さく保つ」を破る改善は採用しない。

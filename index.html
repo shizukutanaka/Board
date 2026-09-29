@@ -303,6 +303,10 @@ canvas#c[data-tool=eyedropper]{cursor:crosshair}
 .status-item{display:flex;gap:4px;align-items:center}
 .status-item .lbl{color:var(--ink-3)}
 .status-spacer{flex:1}
+#pgBar{gap:2px}
+.pg-b{background:none;border:1px solid var(--line);border-radius:4px;color:var(--ink-2);cursor:pointer;font:500 11px/1 var(--mono-font);padding:2px 6px}
+.pg-b:hover{background:var(--ink-5)}
+.pg-name{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:none}
 .status-dot{width:6px;height:6px;border-radius:50%;background:var(--ok)}
 .status-dot.offline{background:var(--ink-3)}
 
@@ -693,6 +697,7 @@ body{visibility:visible}
     <div class="status-item optional"><span class="lbl" data-t="shapes">shapes</span><span id="sCount">0</span></div>
     <div class="status-item optional"><span class="lbl" aria-hidden="true">x,y</span><span id="sXY">0, 0</span></div>
     <div class="status-item optional" id="sSelWrap" hidden><span class="lbl" data-t="selDims">sel</span><span id="sSel"></span></div>
+    <div class="status-item" id="pgBar" hidden><button class="pg-b" id="pgPrev" data-t-title="pgPrev">‹</button><button class="pg-b pg-name" id="pgName" data-t-title="pgRename"></button><button class="pg-b" id="pgNext" data-t-title="pgNext">›</button><button class="pg-b" id="pgAdd" data-t-title="pgAdd">+</button><button class="pg-b" id="pgDel" data-t-title="pgDel">✕</button></div>
     <div class="status-spacer"></div>
     <div class="status-item optional"><span class="lbl" data-t="saved">saved</span><span id="sSaved">—</span></div>
     <div class="status-item"><span id="sVer">v1.0</span></div>
@@ -790,7 +795,7 @@ const _csh=(s,c)=>{if(_sh2(s)){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=1
 const _so=(b,a)=>{if(_ln(b)){_styleOp(b,a);_iv()}};   // ADR-0307
 const _selL=f=>_sb().filter(f);   // ADR-0308
 const _selUL=()=>_sb().filter(_ul);
-const _repC=(before,beforeWc,origSel)=>Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(_wc()),origSel});
+const _repC=(before,beforeWc,origSel,bp,bc)=>Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(_wc()),origSel,pages:clone(state.pages),curPg:state.curPg,beforePages:bp,beforeCurPg:bc});   // ADR-0646: the swap records the page set on both sides
 const _ctrAt=(ss,wp)=>{wp=wp||_midV();const bb=_bA(ss);if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);for(const s of ss)_sT2(s,dx,dy)}};
 const _selR=op=>{if(op.origSel)_ss(op.origSel)};   // ADR-0309/0568: _ss drops missing/hidden ids
 const _keepSel=arr=>{if(_ln(arr))_hi()[_hx()].origSel=arr};   // ADR-0312
@@ -811,14 +816,14 @@ const _frameOf=(sel,ok)=>{const m=_mP();
     if(f.type!=='frame')continue;
     const fb=_bb(f);
     for(const s of _sh()){
-      if(s.id===f.id||_frm(s)||_lk(s)||(ok&&!ok(s))||m.has(s.id))continue;
+      if(s.id===f.id||_frm(s)||_lk(s)||(ok&&!ok(s))||!_pgOk(s)||m.has(s.id))continue;
       const b=_bb(s);
       if(b.x>=fb.x&&b.y>=fb.y&&b.x+b.w<=fb.x+fb.w&&b.y+b.h<=fb.y+fb.h)m.set(s.id,f.id);
     }
   }
   return m;
 };
-const _scl=()=>_sl().clear(),_sad=id=>{const s=byId(id);if(s&&_sv(s))_sl().add(id)},_sdl=id=>_sl().delete(id);   // ADR-0419/0568: _sad enforces the hidden-se
+const _scl=()=>_sl().clear(),_sad=id=>{const s=byId(id);if(s&&_sv(s)&&_pgOk(s))_sl().add(id)},_sdl=id=>_sl().delete(id);   // ADR-0419/0568: _sad enforces the hidden-se
 const _selN=()=>_sl().size;   // ADR-0334
 const _selUnl=f=>_selAny(s=>f(s)&&!_lk(s));   // ADR-0454: unlocked-selection predicate
 const _nS=()=>_sh().length;   // ADR-0425
@@ -837,7 +842,7 @@ const _sO=()=>state.seenOps,_la=()=>state.lasso,_mq=()=>state.marquee,_dd=()=>st
 const _dpr=()=>window.devicePixelRatio,_cT=clearTimeout,_iA=Array.isArray,_iS=v=>typeof v==='string',_iN=v=>typeof v==='number',_iO=v=>typeof v==='object',_stk=v=>v.type==='sticky',_frm=v=>v.type==='frame',_pn=v=>v.type==='pen',_txt=v=>v.type==='text',_im=v=>v.type==='image',_arw=v=>v.type==='arrow',_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log,_rAF=requestAnimationFrame,_pF=parseFloat,_db=document.body,_de=document.documentElement,_wO=window.open,_lg=k=>localStorage.getItem(k),_ls=(k,v)=>localStorage.setItem(k,v),_mP=a=>new Map(a),_sT=a=>new Set(a),_eU=encodeURIComponent,_dU=decodeURIComponent,_un='undefined',_AU='arrowup',_AD='arrowdown',_AL2='arrowleft',_AR2='arrowright',_ES='escape',_RO='readonly',_RW='readwrite',_UT='Untitled',_REC='rectangle',_EN='enter',_TB='tab',_IK='#0F172A',_YW='#FEF08A',_BOX=_sT(['rect','ellipse','diamond']),_BX4=_sT([..._BOX,'sticky']),_BOXF=_sT([..._BOX,'frame','sticky']),_HF4=_sT([..._BOX,'frame']),_RD=_sT(['rect','diamond']),_RDI=_sT([..._RD,'image']),_D6=_sT([..._BOX,'frame','image']),_SH5=_sT([..._BOX,'image','text']),_TS=_sT(['text','sticky']),_TSF=_sT([..._TS,'frame']);   // ADR-0384/../0397/0453
 const _sh=()=>state.shapes;                                                // ADR-0364
 const _sl=()=>state.selection;
-const _ss=ids=>{const s=_sT();for(const id of ids){const h=byId(id);if(h&&_sv(h))s.add(id)}state.selection=s};   // ADR-0415/0568: only existing+visible ids ever enter selection
+const _ss=ids=>{const s=_sT();for(const id of ids){const h=byId(id);if(h&&_sv(h)&&_pgOk(h))s.add(id)}state.selection=s};   // ADR-0415/0568/0646: only existing+visible+current-page ids ever enter selection   // ADR-0415/0568: only existing+visible ids ever enter selection
 const _st=()=>state.style;
 const _df=()=>state.draft;
 const _wc=()=>state.wclock;
@@ -858,7 +863,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.672';   // ADR-0644
+const V='1.7.673';   // ADR-0646
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -953,6 +958,7 @@ const I18N={
     beautified:'整形しました',beautifyNone:'整形できる図形がありません(矩形・楕円・直線に近いペン描画を選択してください)',
     undone:'元に戻した',redone:'やり直した',created:'作成',editLabel:'選択中の図形を編集',
     confirmClear:'すべて削除しますか？',
+    pgPage:'ページ',pgPrev:'前のページ',pgNext:'次のページ',pgAdd:'ページを追加',pgDel:'ページを削除',pgDelQ:'このページとその図形を削除しますか',pgRename:'ページ名を変更',
     ctxCopy:'コピー',ctxPasteInPlace:'同じ位置に貼り付け',ctxPasteAt:'ここに貼り付け',ctxPaste:'貼り付け',ctxDuplicate:'複製',
     ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxCurve:'曲線',ctxHop:'ホップ (交差を飛び越す)',ctxRouteReset:'ルートをリセット (直線に戻す)',ctxReverse:'方向を反転',ctxFitText:'テキストに合わせる',ctxSelContents:'内容を選択',ctxFrameFit:'コンテンツに合わせる',ctxArrowHead:'矢印ヘッド (矢印→丸→T字→シェブロン→なし)',ctxStartHead:'開始ヘッド (なし→矢印→丸→T字→シェブロン)',ctxToArrow:'矢印に変換',ctxToLine:'直線に変換',ctxBothEnds:'両端ヘッド',ctxRrect:'角スタイル (角丸→直角)',ctxStickyColor:'付箋の色 (順送り)',ctxToText:'テキストに変換',ctxToSticky:'付箋に変換',ctxTextAlign:'テキスト揃え (左→中央→右)',ctxFillStyle:'塗りスタイル (塗り→ハッチ→斜格子)',ctxSetLink:'リンクを設定…',ctxOpenLink:'リンクを開く',ctxCopyLink:'リンクをコピー',linkPrompt:'リンク URL (https://…) — 空で解除',badUrl:'http:// または https:// の URL のみ有効です',
     ctxSelectSameType:'同じ種類を選択',ctxSelectSame:'同色を選択',ctxSearch:'検索',ctxFit:'全体を表示',ctxZoomReset:'ズーム100%',ctxGrid:'グリッド',ctxSnap:'吸着',ctxMinimap:'ミニマップ',ctxWrapFrame:'フレームで包む',ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
@@ -1032,6 +1038,7 @@ const I18N={
     beautified:'Beautified',beautifyNone:'Nothing to beautify (select a pen stroke close to a rectangle, ellipse, or line)',
     undone:'Undone',redone:'Redone',created:'Created',editLabel:'Edit selected shape',
     confirmClear:'Delete everything?',
+    pgPage:'Page',pgPrev:'Previous page',pgNext:'Next page',pgAdd:'Add page',pgDel:'Delete page',pgDelQ:'Delete this page and its shapes',pgRename:'Rename page',
     ctxCopy:'Copy',ctxPasteInPlace:'Paste in place',ctxPasteAt:'Paste here',ctxPaste:'Paste',ctxDuplicate:'Duplicate',
     ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxCurve:'Curved',ctxHop:'Jump arcs at crossings',ctxRouteReset:'Reset route (straighten)',ctxReverse:'Reverse direction',ctxFitText:'Fit to text',ctxSelContents:'Select contents',ctxFrameFit:'Fit to contents',ctxArrowHead:'Arrowhead (arrow→dot→bar→open→none)',ctxStartHead:'Start head (none→arrow→dot→bar→open)',ctxToArrow:'Convert to arrow',ctxToLine:'Convert to line',ctxBothEnds:'Arrowheads both ends',ctxRrect:'Corners (round→sharp)',ctxStickyColor:'Sticky colour (cycle)',ctxToText:'Convert to text',ctxToSticky:'Convert to sticky',ctxTextAlign:'Text align (left→center→right)',ctxFillStyle:'Fill style (solid→hatch→cross)',ctxSetLink:'Set link…',ctxOpenLink:'Open link',ctxCopyLink:'Copy link',linkPrompt:'Link URL (https://…) — empty clears',badUrl:'Only http:// or https:// URLs are allowed',
     ctxSelectSameType:'Select same type',ctxSelectSame:'Select same colour',ctxSearch:'Search',ctxFit:'Fit board',ctxZoomReset:'Zoom 100%',ctxGrid:'Grid',ctxSnap:'Snap',ctxMinimap:'Minimap',ctxWrapFrame:'Frame selection',ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
@@ -1134,6 +1141,7 @@ const state={
   snap:true,        // snap-to-grid when dragging shapes
   docName:_UT,
   dirty:false,
+  pages:null,curPg:null,   // ADR-0646: pages stay null until a 2nd page exists (zero overhead single-page); curPg is a LOCAL view filter — peers may sit on different pages of one converged board
   lastSaveAt:0,
   // ---- v1.1 sync ----
   peerId:PEER_ID+'.'+uid().slice(0,6),   // ADR-0459: per-boot incarnation — seq restarts can't collide with peers' seenOps
@@ -1306,7 +1314,7 @@ function validPatch(p){
   // ADR-0369: string props — type + length. A
   // text that every frame's wrapText then resc
   // renderers coerce weirdly.
-  for(const k of ['text','label','docName','link','groupId','img','color','stroke','fill','font','head','startHead','align','valign','type','dataUrl','fstyle','a','b','frac']){
+  for(const k of ['text','label','docName','link','groupId','img','color','stroke','fill','font','head','startHead','align','valign','type','dataUrl','fstyle','a','b','frac','pg']){
     if(k in p&&p[k]!=null&&typeof p[k]!=='string')return false;
     if(k in p&&typeof p[k]==='string'&&k!=='dataUrl'&&p[k].length>(k==='text'?5000:600))return false;
   }
@@ -1399,6 +1407,9 @@ function validRemotePayload(op){
     case 'group':  return _iA(op.ids)&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(_idOK)
                           &&_iS(op.gid)&&_ln(op.gid)>0&&_ln(op.gid)<=64   // ADR-0473
                           &&_iA(op.before)&&_ln(op.before)<=MAX_OP_SHAPES&&op.before.every(b=>b&&_iS(b.id)&&_ln(b.id)<=64);
+    case 'pageAdd':  return _idOK(op.id)&&(op.name==null||_iS(op.name)&&_ln(op.name)<=80);
+    case 'pageDel':  return _idOK(op.id)&&(op.shapes==null||_iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape));
+    case 'pageName': return _idOK(op.id)&&_iS(op.after)&&_ln(op.after)<=80;
     case 'ungroup':return _iA(op.ids)&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(_idOK)
                           &&_iA(op.gids)&&_ln(op.gids)<=MAX_OP_SHAPES&&op.gids.every(g=>_iS(g)&&_ln(g)>0&&_ln(g)<=64);   // ADR-0473
     default:       return false;
@@ -1470,7 +1481,7 @@ const Store={
     return _ln(fixes)?fixes:null;
   },
   // Apply remote op: dedup by clock; REMOTE_OP
-  REMOTE_OPS:_sT(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize','replace']),   // ADR-0613: wholesale swap must converge too — 'replace' joins the wire set (older peers drop it; divergence scoped to mixed-version rooms)
+  REMOTE_OPS:_sT(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize','replace','pageAdd','pageDel','pageName']),   // ADR-0613: wholesale swap must converge too — 'replace' joins the wire set (older peers drop it; divergence scoped to mixed-version rooms)
   applyRemote(op){
     if(!op||!op.clock||!this.REMOTE_OPS.has(op.op))return;
     if(!validClock(op.clock))return;        // reject malformed clocks (wclock poisoning)
@@ -1492,6 +1503,7 @@ const Store={
       _oT('peerReplaced');
     }
     const _connFix=this._remoteDelConnFix(op);
+    if(state.pages&&(op.shape||op.shapes)){const f=o=>{if(o&&o.pg&&!_pgById(o.pg)&&_ln(state.pages)<64)_pu(state.pages,{id:o.pg,name:'?',nts:0})};f(op.shape);if(_iA(op.shapes))for(const s of op.shapes)f(s)}   // ADR-0646: heal unknown page ids carried by remote shapes
     this._apply(op,true);
     if(_connFix)for(const f of _connFix){
       const sh=byId(f.id);
@@ -1694,13 +1706,47 @@ const Store={
         // On the wire since ADR-0613 — _lastRep orders concurrent swaps.
         const next=forward?op.after:op.before;
         if(op.clock)state._lastRep=op.clock;   // ADR-0614: newest applied swap marker — also covers undo (the op's clock still outranks older peers)
-        _sh().length=0;_scl();state.wclock={};_pcC();
+        _sh().length=0;_scl();state.wclock={};_pcC();state.pages=state.curPg=null;_pgBar();   // ADR-0646
         for(const s of next)_sh().push(Net._attachShape(clone(s)));
         _iG();   // ADR-0613: byId's size guard misses equal-length swaps — the pre-mutation index survives
         _sz();
         if(forward&&op.afterWc)state.wclock=clone(op.afterWc);
         if(!forward&&op.wc)state.wclock=clone(op.wc);
+        if(forward)_pgAdopt(op.pages,op.curPg);else _pgAdopt(op.beforePages,op.beforeCurPg);   // ADR-0646: the swap carries the page set
         if(!forward)_selR(op);
+        break;}
+      case 'pageAdd':{   // ADR-0646: multi-page
+        if(forward){
+          if(!state.pages){state.pages=[{id:op.id,name:op.name!=null?op.name:'?',nts:0}];for(const s of _sh())if(!s.pg)s.pg=op.id;state.curPg=op.id}
+          else if(!_pgById(op.id)&&_ln(state.pages)<64)_pu(state.pages,{id:op.id,name:op.name!=null?op.name:'?',nts:0});
+        }else{
+          if(state.pages){const i=state.pages.findIndex(p=>p.id===op.id);if(i>=0)state.pages.splice(i,1);if(!_ln(state.pages)){state.pages=null;state.curPg=null}
+            else{const fid=state.pages[0].id;for(const s of _sh())if(s.pg===op.id)s.pg=fid;if(state.curPg===op.id)state.curPg=fid}}
+        }
+        _ss(_selIds());_iG();_iv();_ivO();_pgBar();
+        break;}
+      case 'pageDel':{
+        if(forward){
+          if(!state.pages||_ln(state.pages)<2)break;   // refuse to drop the last page
+          const i=state.pages.findIndex(p=>p.id===op.id);if(i<0)break;
+          const firstId=state.pages.find(q=>q.id!==op.id).id;
+          op.shapes=[];op.i=i;op.name=state.pages[i].name;   // record for undo regardless of a slimmed wire copy
+          for(const s of _sh())if((s.pg||state.pages[0].id)===op.id)op.shapes.push(clone(s));
+          state.pages.splice(i,1);
+          _pgDel2(op,firstId);
+        }else{
+          if(!state.pages)state.pages=[];   // heal
+          state.pages.splice(_min(op.i!=null?op.i:_ln(state.pages),_ln(state.pages)),0,{id:op.id,name:op.name!=null?op.name:'?',nts:0});
+          for(const sh of op.shapes||[])if(!byId(sh.id))_sh().push(Net._attachShape(clone(sh)));
+          _sz();_selR(op);
+        }
+        _ss(_selIds());_iG();_iv();_ivO();_pgBar();
+        break;}
+      case 'pageName':{   // ADR-0646: LWW on p.nts — newest rename wins on every peer
+        const p=_pgById(op.id);if(!p)break;
+        const ts=forward?(op.clock&&_iN(op.clock.ts)?op.clock.ts:_now()):(op.bts!=null?op.bts:0);
+        if(p.nts==null||ts>=p.nts){if(forward)op.bts=p.nts;p.name=forward?op.after:(op.before||p.name);p.nts=ts}
+        _pgBar();
         break;}
       case 'group':{
         if(forward){
@@ -1995,6 +2041,7 @@ const Shape={
     if((_BX4.has(type))&&_st().valign!=null)base.valign=_st().valign;   // ADR-0417
     if((type==='text'||type==='sticky')&&_st().lineH!=null)base.lineH=_st().lineH;   // ADR-0189
     if((type==='text'||type==='sticky')&&_st().spacing!=null)base.spacing=_st().spacing;   // ADR-0205
+    if(state.pages)base.pg=state.curPg;   // ADR-0646
     return _oa(base,extras);
   }};
 
@@ -2046,8 +2093,21 @@ let _penCachePx=0;
 // anyway, so old entries would sit until the global caps evict them).
 const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPending.clear()}   // ADR-0445: wholesale swap also drops parked img refs
 const _rs=arr=>{state.shapes=arr;_iG();_pcC()}   // ADR-0493: wholesale board replace (5 sites)
-const _shV=()=>_sh().filter(_sv);   // ADR-0494: visible-shape subset (6 sites)
-const _ulv=s=>!_lk(s)&&_sv(s);   // ADR-0496
+const _pgOn=()=>!!(state.pages&&_ln(state.pages)),_pgById=id=>_pgOn()&&state.pages.find(p=>p.id===id),_pgOk=s=>!_pgOn()||(s.pg||state.pages[0].id)===state.curPg;   // ADR-0646: unpg'd shapes belong to pages[0] positionally
+const _vPages=a=>!_iA(a)||!_ln(a)||_ln(a)>64?null:(a.every(p=>p&&_iS(p.id)&&_ln(p.id)<=64&&_iS(p.name)&&_ln(p.name)<=80&&(p.nts==null||_iN(p.nts)))?a:null);
+function _pgAdopt(pages,cur){const v=_vPages(pages);state.pages=v?clone(v):null;state.curPg=v&&_pgById(cur)?cur:(v?v[0].id:null);_pgBar()}
+function switchPage(id){if(!_pgById(id)||state.curPg===id)return;_cxO();state.curPg=id;_iG();_zR();_ss(_selIds());_iv();_ivO();_ann(_pgById(id).name);_pgBar()}
+function _pgAdd(){if(!_pgOn())_cmt({op:'pageAdd',id:uid(),name:t('pgPage')+' 1'});const id=uid();_cmt({op:'pageAdd',id,name:t('pgPage')+' '+(_ln(state.pages)+1)});switchPage(id)}
+function _pgDel(){if(!_pgOn()||_ln(state.pages)<2)return;const p=state.pages[_pgIdx()];if(!confirm(t('pgDelQ')+': '+p.name+'?'))return;_cmt({op:'pageDel',id:p.id,i:_pgIdx(),name:p.name})}
+const _pgIdx=()=>_pgOn()?state.pages.findIndex(p=>p.id===state.curPg):-1;
+function _pgDel2(op,firstId){   // ADR-0646: remove the deleted page's members + land the view on a live page
+  state.shapes=_sh().filter(s=>(s.pg||firstId)!==op.id);_iG();_pcC();
+  if(state.curPg===op.id)state.curPg=firstId;
+}
+function _pgRename(){const p=_pgById(state.curPg);if(!p)return;const n=prompt(t('pgRename'),p.name);if(n==null||_trm(n)==='')return;_cmt({op:'pageName',id:p.id,before:p.name,after:_s0(_trm(n),80),bts:p.nts,clock:{peer:_pi(),seq:++state.seq,ts:_now()}})}
+function _pgBar(){const el=_g('pgBar');if(!el)return;_hdn(el,!_pgOn());if(!_pgOn())return;const p=_pgById(state.curPg);if(p)_tC(_g('pgName'),(_pgIdx()+1)+'/'+_ln(state.pages)+' '+p.name)}
+const _shV=()=>_sh().filter(s=>_sv(s)&&_pgOk(s));   // ADR-0494/0646: visible+current-page subset
+const _ulv=s=>!_lk(s)&&_sv(s)&&_pgOk(s);   // ADR-0496/0646
 const _ul=s=>!_lk(s);   // ADR-0506
 const _cpT=p=>p.then(ok=>_tst(t(ok?'copied':'copyFailed'),ok?'ok':'warn'));   // ADR-0507
 const _zG=()=>{state.guides=state.readout=state.bindPreview=null},_zR=()=>{state.draft=state.marquee=state.guides=state.readout=state.bindPreview=state.measure=state.lasso=null};   // ADR-0509: gesture-state reset
@@ -2445,9 +2505,10 @@ function _mirrorSync(){
   const ul=_g('shapeMirrorList');
   if(!ul)return;
   while(ul.firstChild)ul.removeChild(ul.firstChild);
-  const n=_min(_nS(),MIRROR_MAX);
+  const _mv=_sh().filter(_pgOk);   // ADR-0646: mirror lists the current page only
+  const n=_min(_ln(_mv),MIRROR_MAX);
   for(let i=0;i<n;i++){
-    const s=_sh()[i];
+    const s=_mv[i];
     const li=_ce('li');
     const b=_ce('button');
     b.type='button';
@@ -2455,9 +2516,9 @@ function _mirrorSync(){
     _oC(b,()=>_mirrorGo(s.id));
     _ap(li,b);_ap(ul,li);
   }
-  if(_nS()>MIRROR_MAX){
+  if(_ln(_mv)>MIRROR_MAX){
     const li=_ce('li');
-    _tC(li,(_nS()-MIRROR_MAX)+t('mirrorMore'));
+    _tC(li,(_ln(_mv)-MIRROR_MAX)+t('mirrorMore'));
     _ap(ul,li);
   }
 }
@@ -2552,8 +2613,8 @@ function draw(){
   const _skipScene=panned&&!(clipRects&&_ln(clipRects));
   if(!_skipScene){
     if(state.showGrid)drawGrid(W,H);
-    for(const s of _drawIter){if(_frm(s)&&inView(s,_view))try{drawShape(s)}catch(_){}}   // ADR-0601: one bad shape must not blank the rest
-    for(const s of _drawIter){if(s.type!=='frame'&&inView(s,_view))try{drawShape(s)}catch(_){}}
+    for(const s of _drawIter){if(_frm(s)&&_pgOk(s)&&inView(s,_view))try{drawShape(s)}catch(_){}}   // ADR-0601: one bad shape must not blank the rest
+    for(const s of _drawIter){if(s.type!=='frame'&&_pgOk(s)&&inView(s,_view))try{drawShape(s)}catch(_){}}
     if(_df())try{drawShape(_df())}catch(_){}
     // Predicted ink tail (ADR-0023) — one segmen
     // point, discarded when the next real sample
@@ -2673,7 +2734,7 @@ function drawPeerSelections(c){
     if(!p.sel||!_ln(p.sel))continue;
     _ssS(c,p.color);_lnW(c,1);_sD(c,[3,3]);
     for(const id of p.sel){
-      const s=byId(id);if(!s||_hd(s))continue;   // deleted or hidden (0568: never outlined)
+      const s=byId(id);if(!s||_hd(s)||!_pgOk(s))continue;   // deleted, hidden, or off-page (0568/0646: never outlined)
       const b=_bb(s);if(!b)continue;
       const p1=_w2({x:_min(b.x,b.x+b.w),y:_min(b.y,b.y+b.h)});
       const p2=_w2({x:_max(b.x,b.x+b.w),y:_max(b.y,b.y+b.h)});
@@ -3302,7 +3363,7 @@ function _qconnShape(g){
   // already armed, so an unconditional check made quick-connect unreachable.
   if(_tl()!=='select'||(!g&&ptr.down)||!state.hover)return null;
   const s=byId(state.hover);
-  if(!s||_lk(s)||_conn(s.type)||_pn(s))return null;
+  if(!s||_lk(s)||_conn(s.type)||_pn(s)||!_pgOk(s))return null;
   return s;
 }
 function _qdots(s){
@@ -3849,7 +3910,7 @@ function _sqMatches(){
   // ADR-0381: a connector is also found by its
   // "arrow into the Login button" should match
   const _bt=s=>{let o='';for(const id of [s.a,s.b]){const t=id&&byId(id);if(t)o+=(t.label||'')+(t.text||'')+(t.type||'')}return o};
-  for(const s of _sh()){if(_sv(s)&&_lc((_lb(s)||'')+(_txx(s)||'')+(s.type||'')+(s.link||'')+(_conn(s.type)?_bt(s):'')).includes(q))_pu(_sqList,s)}   // ADR-0346/0353/0381
+  for(const s of _sh()){if(_sv(s)&&_pgOk(s)&&_lc((_lb(s)||'')+(_txx(s)||'')+(s.type||'')+(s.link||'')+(_conn(s.type)?_bt(s):'')).includes(q))_pu(_sqList,s)}   // ADR-0346/0353/0381
   _sqVer=_gridVer;_sqQ=q;
   return _sqList;
 }
@@ -4866,7 +4927,7 @@ let _grpMapVer=-1,_grpMap=null;
 function _grpMapGet(){
   if(_grpMapVer===_gridVer)return _grpMap;
   _grpMap=_mP();
-  for(const s of _sh()){if(_gi(s)&&!_hd(s)){if(!_grpMap.has(_gi(s)))_grpMap.set(_gi(s),[]);_grpMap.get(_gi(s)).push(s)}}   // ADR-0592: hidden members — no halo
+  for(const s of _sh()){if(_gi(s)&&!_hd(s)&&_pgOk(s)){if(!_grpMap.has(_gi(s)))_grpMap.set(_gi(s),[]);_grpMap.get(_gi(s)).push(s)}}   // ADR-0592: hidden members — no halo
   _grpMapVer=_gridVer;
   return _grpMap;
 }
@@ -4914,18 +4975,18 @@ function pickTop(wp){
     // filtering all shapes twice — O(cells neighbourhood), not O(board).
     const cands=[..._queryGrid(_grid,wp)];
     cands.sort((a,b)=>(_grid.idx.get(b)|0)-(_grid.idx.get(a)|0));
-    for(const s of cands)if(s.type!=='frame'&&_sv(s)&&G.hit(s,wp))return s;
-    for(const s of cands)if(_frm(s)&&_sv(s)&&G.hit(s,wp))return s;
+    for(const s of cands)if(s.type!=='frame'&&_sv(s)&&_pgOk(s)&&G.hit(s,wp))return s;
+    for(const s of cands)if(_frm(s)&&_sv(s)&&_pgOk(s)&&G.hit(s,wp))return s;
     return null;
   }
   for(let i=_nS()-1;i>=0;i--){
     const s=_sh()[i];
-    if(_frm(s)||_hd(s))continue;
+    if(_frm(s)||_hd(s)||!_pgOk(s))continue;
     if(G.hit(s,wp))return s;
   }
   for(let i=_nS()-1;i>=0;i--){
     const s=_sh()[i];
-    if(_frm(s)&&_sv(s)&&G.hit(s,wp))return s;
+    if(_frm(s)&&_sv(s)&&_pgOk(s)&&G.hit(s,wp))return s;
   }
   return null;
 }
@@ -4998,7 +5059,7 @@ function _snapIndex(kind,key,exclFn){
   const slot=_snapIdx[kind];
   if(slot.ver!==_gridVer||slot.key!==key){
     const targets=[];
-    for(const s of _sh()){if(exclFn(s)||_hd(s))continue;const b=_bb(s);if(b)_pu(targets,b)}   // ADR-0153: hidden shapes attract no snap
+    for(const s of _sh()){if(exclFn(s)||_hd(s)||!_pgOk(s))continue;const b=_bb(s);if(b)_pu(targets,b)}   // ADR-0153: hidden shapes attract no snap
     slot.ver=_gridVer;slot.key=key;slot.idx=_mkSnapIdx(targets);
   }
   return slot.idx;
@@ -5087,7 +5148,7 @@ function withFrameChildren(ids){
     if(sel&&_frm(sel)){
       const fb=_bb(sel);
       for(const s of _sh()){
-        if(s.id===selId||_frm(s))continue;
+        if(s.id===selId||_frm(s)||!_pgOk(s))continue;
         const b=_bb(s);
         if(b.x>=fb.x&&b.y>=fb.y&&b.x+b.w<=fb.x+fb.w&&b.y+b.h<=fb.y+fb.h)out.add(s.id);
       }
@@ -5191,7 +5252,7 @@ function endSelect(wp,shift,alt){
     if(_ln(pts)>2){
       if(!shift)_scl();                          // ⇧lasso adds, plain replaces (marquee parity)
       for(const s of _sh()){
-        if(_lk(s)||_hd(s))continue;
+        if(_lk(s)||_hd(s)||!_pgOk(s))continue;
         const b=_bb(s);if(!b)continue;
         if(_ptInPoly(b.x+b.w/2,b.y+b.h/2,pts))_sad(s.id);   // centre-in-polygon (draw.io lasso rule)
       }
@@ -5443,7 +5504,7 @@ function _endPointBind(sh,handle,alt){
 // ADR-0214: same _queryGrid acceleration as pickTop — endpoint drags call this
 // per pointermove, so the full-board scan was the dominant cost on big boards.
 function _bindAt(x,y){
-  const ok=s=>{const t=s.type;return t!=='line'&&t!=='arrow'&&t!=='pen'&&_sv(s)};   // ADR-0150
+  const ok=s=>{const t=s.type;return t!=='line'&&t!=='arrow'&&t!=='pen'&&_sv(s)&&_pgOk(s)};   // ADR-0150/0646
   const has=s=>{const b=_bb(s);return b&&x>=b.x&&y>=b.y&&x<=b.x+b.w&&y<=b.y+b.h};
   if(_nS()>40){
     if(!_grid)_grid=_buildGrid(_sh());
@@ -5980,7 +6041,7 @@ function _placeCopies(srcShapes,dx,dy){
   let zBase=nextZ();
   for(const orig of srcShapes){
     const sh=clone(orig);
-    sh.id=idMap.get(orig.id);sh.z=zBase++;delete sh.frac;
+    sh.id=idMap.get(orig.id);sh.z=zBase++;delete sh.frac;if(state.pages)sh.pg=state.curPg;   // ADR-0646: paste lands on the current page
     if(sh.groupId){
       if(!gidMap.has(sh.groupId))gidMap.set(sh.groupId,uid());
       sh.groupId=gidMap.get(sh.groupId);
@@ -6198,6 +6259,14 @@ function doUngroup(){
 }
 function doClearAll(){
   if(!_nS())return;
+  if(_pgOn()){   // ADR-0646: clear is page-scoped when pages exist — a plain 'del' op converges the same way
+    const mine=_sh().filter(_pgOk);if(!_ln(mine))return;
+    if(!confirm(t('confirmClear')))return;
+    const origSel=_selIds();
+    Persist.saveBackup(clone(_sh()),{..._vp()},_dn());   // ADR-0004
+    _cOp({op:'del',shapes:clone(mine)});
+    _tst(t('cleared'));return;
+  }
   if(!confirm(t('confirmClear')))return;
   const origSel=_selIds();
   Persist.saveBackup(clone(_sh()),{..._vp()},_dn());   // ADR-0004
@@ -6518,7 +6587,7 @@ function exportViewportPNG(scale){
   const r=_cbr();
   const v=_vp();
   const view={x:v.x,y:v.y,w:r.width/v.zoom,h:r.height/v.zoom};
-  const shapes=_sh().filter(s=>inView(s,view));
+  const shapes=_sh().filter(s=>inView(s,view)&&_pgOk(s));
   if(!_ln(shapes)){_wT(_EM);return}
   const off=_cv();
   const sc=exportScale(view.w,view.h,scale||2);
@@ -6620,7 +6689,7 @@ function exportSVG(shapes=_sh()){
 function exportBoard(shapes=_sh()){                       // ADR-0114: optional selection subset
   if(!_ln(shapes)){_wT(_EM);return}
   const a=_ce('a');
-  const _bu=_oURL(new Blob([_JS({v:V,docName:_dn(),viewport:_vpS(),shapes:roundShapesForExport(shapes)})],{type:'application/json'}));   // ADR-0393
+  const _bu=_oURL(new Blob([_JS({v:V,docName:_dn(),viewport:_vpS(),pages:state.pages,curPg:state.curPg,shapes:roundShapesForExport(shapes)})],{type:'application/json'}));   // ADR-0393
   a.href=_bu;a.download=(_dn()||'board')+'.board';
   _clk(a);_rO(_bu);
   _oT('exportedBoard');
@@ -7433,7 +7502,7 @@ function importBoardText(txt,wp){
 // a file round-trip.
 function copyBoardJSON(shapes=_sh()){
   if(!_ln(shapes)){_wT(_EM);return}
-  _cpT(copyText(_JS({v:V,docName:_dn(),shapes:roundShapesForExport(shapes)})));
+  _cpT(copyText(_JS({v:V,docName:_dn(),pages:state.pages,curPg:state.curPg,shapes:roundShapesForExport(shapes)})));
 }
 function importExcFile(file,wp){
   if(_bigFile(file)){_wT(_IB);return}
@@ -7460,8 +7529,10 @@ function importBoard(file){
       const before=clone(_sh());
       const beforeWc=clone(_wc());
       const origSel=_selIds();
+      const _bpg=clone(state.pages),_bcp=state.curPg;   // ADR-0646
       if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());   // ADR-0004
       _rs(shapes.map(clone));   // ADR-0009
+      _pgAdopt(d.pages,d.curPg);   // ADR-0646: adopt the file's page set
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out.
       // can let a re-imported shape (same id) inherit a stale LWW clock.
@@ -7471,7 +7542,7 @@ function importBoard(file){
         _vp().x=+d.viewport.x;_vp().y=+d.viewport.y;_vp().zoom=clampZoom(+d.viewport.zoom);
       }
       _sz();_iv();
-      _repC(before,beforeWc,origSel);
+      _repC(before,beforeWc,origSel,_bpg,_bcp);
       _o(t('loadedBoard')+' ('+_ln(shapes)+')');
     }catch{_eT(_IB)}
   };
@@ -7890,8 +7961,8 @@ const Net={
   _slimOp(op){
     if(op.op==='clear')return{op:'replace',after:[],afterWc:{},clock:op.clock};   // ADR-0626: a wholesale wipe IS an empty swap — routing through 'replace' inherits the _lastRep causal ordering + snapshot rep marker for free (inbound 'clear' stays rejected: the wire never carries it now)
     if(op.op==='add'&&op.shape)return{...op,shape:this._slimShapes([op.shape])[0]};
-    if(_iA(op.shapes)&&(op.op==='addMany'||op.op==='del'||op.op==='clear')){const{wc:_wc1,origSel:_o1,...r}=op;return{...r,shapes:this._slimShapes(op.shapes)}}   // ADR-0445/0625: id/locked only; undo-only fields never ride the wire
-    if(op.op==='replace')return{op:'replace',after:this._slimShapes(op.after||[]),afterWc:op.afterWc,clock:op.clock};   // ADR-0613: strip the huge before/wc/origSel from the wire copy
+    if(_iA(op.shapes)&&(op.op==='addMany'||op.op==='del'||op.op==='clear'||op.op==='pageDel')){const{wc:_wc1,origSel:_o1,...r}=op;return{...r,shapes:this._slimShapes(op.shapes)}}   // ADR-0445/0625: id/locked only; undo-only fields never ride the wire
+    if(op.op==='replace')return{op:'replace',after:this._slimShapes(op.after||[]),afterWc:op.afterWc,clock:op.clock,pages:op.pages};   // ADR-0646: pages ride the wire; curPg/before* stay local   // ADR-0613: strip the huge before/wc/origSel from the wire copy
     const{origSel:_o2,moved:_m2,...rest}=op;return rest;   // ADR-0625: wc/origSel/moved are undo-domain — peers' _apply rebuilds them; wire copies were dead weight (~30B/shape on big dels) + selection-id leak
   },
   _fragSend(buf,k){   // ADR-0431: 64KB fragment sender for the dc-
@@ -8071,6 +8142,10 @@ const Net={
         else if(_iA(msg.ops))for(const op of _s0(msg.ops,SHARE_MAX_SHAPES)){   // ADR-0474
           this._mergeSnapshotOp(op);   // ADR-0058: add unknown shapes, LWW-merge known ones
         }
+        if(_iA(msg.pages)){   // ADR-0646: union-heal the page set — adopt outright or append unknowns, keep the local current page
+          if(!state.pages)_pgAdopt(msg.pages,msg.curPg);
+          else{const v=_vPages(msg.pages);if(v)for(const p of v)if(!_pgById(p.id)&&_ln(state.pages)<64)_pu(state.pages,clone(p));_pgBar()}
+        }
         if(msg.rep&&validClock(msg.rep)&&clockNewer(msg.rep,state._lastRep))state._lastRep=msg.rep;   // ADR-0617: the snapshot reflects a newer swap — align the marker
         break;
       case 'name':   // ADR-0402/0581: rename is LWW — a stale peer's slower-arriving rename can't clobber a newer local one
@@ -8126,7 +8201,7 @@ const Net={
     const slim=this._slimShapes(ops.map(o=>o.shape),_mP());
     ops.forEach((o,i)=>o.shape=slim[i]);
     this._flushImgOuts();
-    return {k:'snapshot',shapes:slim,ops,peer:_pi(),name:_dn(),nameTs:_nameTs,rep:state._lastRep};   // ADR-0617/0618: causal markers — swap generation + rename clock
+    return {k:'snapshot',shapes:slim,ops,peer:_pi(),name:_dn(),nameTs:_nameTs,rep:state._lastRep,pages:state.pages,curPg:state.curPg};   // ADR-0646: pages ride the snapshot   // ADR-0617/0618: causal markers — swap generation + rename clock
   },
   // ADR-0058: merge one snapshot add-op. Unkno
   // (unchanged); known shape → per-property LW
@@ -8184,6 +8259,7 @@ const Net={
     const valid=_s0(shapes,SHARE_MAX_SHAPES).map(s=>this._attachShape(s)).filter(validShape);   // ADR-0474
     _rs(clone(valid));   // ADR-0009
     _sz();
+    _pgAdopt(msg.pages,msg.curPg);   // ADR-0646
     if(_iS(msg.name)&&(_iN(msg.nameTs)?msg.nameTs>_nameTs:!0)){if(_iN(msg.nameTs))_nameTs=msg.nameTs;_setDocName(_s0(msg.name,80));}   // ADR-0618: renames are LWW — a stale snapshot's name can't clobber a newer local rename
     _iv();_ru();_ps();
   },
@@ -8341,7 +8417,7 @@ const Share={
     return{ct:Share._b64uEnc(all),k:Share._b64uEnc(raw)};
   },
   async exportToUrl(enc){
-    const data={v:V,shapes:roundShapesForExport(_sh()),name:_dn(),
+    const data={v:V,shapes:roundShapesForExport(_sh()),name:_dn(),pages:state.pages,curPg:state.curPg,
       viewport:_vpS()};   // ADR-0112: receiver opens at the sharer's view
     const json=_JS(data);
     // CompressionStream if available, else base64
@@ -8432,9 +8508,10 @@ const Share={
       const before=clone(_sh());
       const beforeWc=clone(_wc());
       const origSel=_selIds();
+      const _bpg=clone(state.pages),_bcp=state.curPg;   // ADR-0646
       // ADR-0004: survives reload/closed-tab too, not just session undo.
       if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());
-      _rs(valid.map(clone));_setDocName(_s0((_iS(data.name)&&data.name)||'Shared',80));   // ADR-0009
+      _rs(valid.map(clone));_pgAdopt(data.pages,data.curPg);_setDocName(_s0((_iS(data.name)&&data.name)||'Shared',80));   // ADR-0009/0646
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out
       if(data.viewport&&_fin(+data.viewport.x)&&_fin(+data.viewport.y)&&_fin(+data.viewport.zoom)&&data.viewport.zoom>0){
@@ -8445,7 +8522,7 @@ const Share={
       }
       _scl();state.wclock={};
       _sz();_iv();
-      _repC(before,beforeWc,origSel);
+      _repC(before,beforeWc,origSel,_bpg,_bcp);
       _g('docName').value=_dn();_syncDocTitle();
       // clean URL
       history.replaceState(null,'',location.pathname);
@@ -8545,6 +8622,7 @@ const Persist={
         shapes:slim,
         viewport:_vp(),
         docName:_dn(),
+        pages:state.pages,curPg:state.curPg,   // ADR-0646
         wc:_wc(),          // ADR-0460
         savedAt:_now()
       },DOC_KEY);
@@ -8576,6 +8654,7 @@ const Persist={
       // Validate like the other intake paths (impo
       // adopt malformed shapes from IDB (corruptio
       _rs(shapes.filter(validShape));   // ADR-0009
+      _pgAdopt(d.pages,d.curPg);   // ADR-0646
       if(d.viewport&&_fin(+d.viewport.x)&&_fin(+d.viewport.y)&&_fin(+d.viewport.zoom)&&d.viewport.zoom>0){
         // Clamp zoom to the invariant [MIN_ZOOM,MAX_
         // (wheel/fit) maintains — a corrupt/forward-
@@ -8604,7 +8683,7 @@ const Persist={
       const stored=new Map(ks.map((k,i)=>[k,kv[i]]));
       const{slim,puts}=_imgSlim(shapes,stored);
       for(const[k,d]of puts)imgs.put(d,k);
-      _oS(tx,DB_STORE).put({v:V,shapes:slim,viewport,docName,savedAt:_now()},DOC_KEY+':prev');
+      _oS(tx,DB_STORE).put({v:V,shapes:slim,viewport,docName,pages:state.pages,curPg:state.curPg,savedAt:_now()},DOC_KEY+':prev');
       await txDone(tx);
     }catch(_){}
   },
@@ -8646,14 +8725,16 @@ const Persist={
       const before=clone(_sh());
       const beforeWc=clone(_wc());
       const origSel=_selIds();
+      const _bpg=clone(state.pages),_bcp=state.curPg;   // ADR-0646
       _rs(shapes.map(clone));   // ADR-0009
+      _pgAdopt(d.pages,d.curPg);   // ADR-0646
       _scl();state.wclock={};
       _docN(d);
       if(d.viewport&&_fin(+d.viewport.x)&&_fin(+d.viewport.y)&&_fin(+d.viewport.zoom)&&d.viewport.zoom>0){
         _vp().x=+d.viewport.x;_vp().y=+d.viewport.y;_vp().zoom=clampZoom(+d.viewport.zoom);
       }
       _sz();_iv();
-      _repC(before,beforeWc,origSel);
+      _repC(before,beforeWc,origSel,_bpg,_bcp);
       await this.discardBackup();
       this.schedule();
       _oT('backupRestored');
@@ -9135,6 +9216,12 @@ function wire(){
     e.target.value='';   // allow re-selecting the same filename to re-trigger change
   };
   _oC(_g('btnPresent'),()=>Presentation.enter());
+  _oC(_g('pgPrev'),()=>switchPage(state.pages[(_pgIdx()-1+_ln(state.pages))%_ln(state.pages)].id));
+  _oC(_g('pgNext'),()=>switchPage(state.pages[(_pgIdx()+1)%_ln(state.pages)].id));
+  _oC(_g('pgAdd'),_pgAdd);
+  _oC(_g('pgDel'),_pgDel);
+  _oC(_g('pgName'),_pgRename);
+  _pgBar();
   // doc name
   const docNameEl=_g('docName');
   if(docNameEl){
@@ -9701,7 +9788,10 @@ function _undoWire(op){
       return op.changes?[{op:'zorder',changes:op.changes.map(c=>({id:c.id,before:c.after,after:c.before}))}]
                        :op.before?[{op:'zorder',after:op.before}]:null;
     case 'replace':   // ADR-0615: undo of a wholesale swap must reach peers too — rebroadcast the pre-swap board (newest clock wins via ADR-0614)
-      return _iA(op.before)?[{op:'replace',after:op.before,afterWc:op.wc}]:null;
+      return _iA(op.before)?[{op:'replace',after:op.before,afterWc:op.wc,pages:op.beforePages}]:null;
+    case 'pageAdd':  return[{op:'pageDel',id:op.id,name:op.name}];
+    case 'pageDel':  return[{op:'pageAdd',id:op.id,name:op.name,i:op.i},{op:'addMany',shapes:op.shapes||[]}];
+    case 'pageName': return[{op:'pageName',id:op.id,after:op.before,before:op.after,bts:op.bts}];
     default:       return null;
   }}
 function _rcOp(op){const o=_selIds();Store._recordCommitted(op);_keepSel(o)}
@@ -9895,7 +9985,7 @@ const Presentation=(()=>{
 
   function _getFrames(){
     return [..._sh()]
-      .filter(_frm)
+      .filter(s=>_frm(s)&&_pgOk(s))
       .sort((a,b)=>a.x-b.x||(a.y-b.y));  // left→right, then top→bottom
   }
 
@@ -10014,7 +10104,7 @@ const Minimap=(()=>{
     if(!_scene){_scene=_cv();_wh(_scene,W,H);}
     const sx=_g2(_scene);
     sx.clearRect(0,0,W,H);
-    const shapes=_sh().filter(_sv);   // ADR-0595: hidden shapes must not render or inflate the minimap
+    const shapes=_sh().filter(s=>_sv(s)&&_pgOk(s));   // ADR-0595/0646: hidden/off-page shapes must not render or inflate the minimap
     const bb=_bA(shapes);
     if(!bb){_sc=0;return;}
     const pad=20;

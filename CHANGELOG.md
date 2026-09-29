@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.7.673] - 2026-09-28
+### Added
+- **多ページ (ADR-0646, spec P2 最終項目)**: `state.pages`/`curPg` によるページ集合 —
+  ステータスバーのページバー (‹ 名前 › + ✕) で追加・切替・改名・削除。
+  `s.pg` で帰属をスタンプし `pg` 無しは先頭ページへ位置帰属 (無段階移行)。
+  `pageAdd`/`pageDel`/`pageName` がワイヤに乗り、ページ削除は図形ごと
+  undo/redo を通じてピア間収束。`'replace'`/スナップショットはページ集合を
+  同梱 (マージ時は union-heal、未知 `pg` はスタブページ修復、64 上限)。
+  `curPg` はローカルのビューフィルタ — 別ページに居るピアは同一の収束盤面を
+  各自のページで見る。`_pgOk` を全図形走査面へ適用 (draw/pickTop/snap/lasso/
+  search/halo/minimap/mirror/export/ピア輪郭)。`.board`/share URL/IDB に
+  `pages`/`curPg` を往復。
+- raw 上限を 512→544KiB に引き上げ (機能実装 +8.9KB。上限は暴走防止ガード)
+- 回帰テスト +16 (ページ add/switch/del+undo/rename LWW/リモート修復/snapshot union)
+
+
 ## [1.7.672] - 2026-09-28
 ### Documentation
 - ADR-0645 完走表を最終状態へ同期: drop ファイル系全拡張子・レンダリング実体・
