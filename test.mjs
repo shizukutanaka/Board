@@ -236,7 +236,7 @@ const checks = [
   ['applyStyleToSelection records undo', html.includes("_styleOp(before,after)")],
   // v1.6.6: reversibility + security hardening
   ['zorder op is minimal-delta changes (ADR-0001 Step2)', html.includes("op:'zorder',changes")],
-  ['zorder _apply handles changes-delta + legacy snapshot', html.includes("sh.frac=forward?c.after:c.before") && html.includes("const snap=forward?op.after:op.before")],
+  ['zorder _apply is changes-delta only — legacy snapshot apply removed (ADR-0744)', html.includes("sh.frac=forward?c.after:c.before") && !html.includes("const snap=forward?op.after:op.before") && !html.includes("op.before?[{op:'zorder',after:op.before}]")],
   ['fractional index keyBetween/reindexFrac present (ADR-0001)', html.includes("function keyBetween") && html.includes("function reindexFrac")],
   ['z-step ops route through _zCommit (undoable, minimal-delta)', html.includes("_zCommit(changes)") && html.includes("function _zCommit")],
     ['applyRemote whitelists op types', html.includes("REMOTE_OPS") && html.includes("this.REMOTE_OPS.has(op.op)")],

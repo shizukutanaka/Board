@@ -792,6 +792,7 @@ Board/
 │   └── ADR-0741-remote-move-absolute-required.md  # remote move の bare delta 形式を拒絶 (旧版ピアの raced-base 発散+clock poison 封鎖) (実装済)
 │   └── ADR-0742-legacy-zorder-rejected.md  # remote zorder の legacy wholesale form を拒絶 (LWW/stamp 無しの raced clobber 封鎖) (実装済)
 │   └── ADR-0743-wire-format-doc-sync.md  # architecture.md の wire 節を 0739-0742 契約へ同期 (実装済)
+│   └── ADR-0744-legacy-zorder-apply-removed.md  # 到達不能な legacy zorder 適用経路を削除 (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

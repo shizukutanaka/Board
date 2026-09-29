@@ -1,3 +1,10 @@
+## [1.7.770] - 2026-09-28
+
+### Removed
+- ADR-0744: delete the unreachable legacy zorder apply path — the
+  _apply wholesale {before,after} branch, the _undoWire fallback that
+  emitted a wire form every peer rejects, ~430B reclaimed
+
 ## [1.7.769] - 2026-09-28
 
 ### Docs
