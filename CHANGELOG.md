@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.660]
+### ドキュメント
+- architecture.md に ADR-0631 (resize debounce) / ADR-0632 (minimap cancelNav) を同期 — ジェスチャライフサイクル節の共通掃除口 `_clearTouchState` のパージ対象と、DPR 節の再確保コスト+debounce 契約を明文化 (ADR-0633)。
+
 ## [1.7.659]
 ### 修正
 - ミニマップのドラッグスクラブ状態 `_mmNav` が hidden/pagehide でクリアされない問題を修正 — bfcache 復帰後にポインタが離れても次の pointermove でビューポートがジャンプし得た。`_clearTouchState` から `Minimap.cancelNav()` を呼びジェスチャライフサイクル系と揃える (ADR-0632)。

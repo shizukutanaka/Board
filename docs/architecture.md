@@ -42,6 +42,9 @@ pointerup でコミット、pointercancel / `lostpointercapture` /
 と space 一時 hand ツール (`window._prevTool`) を再ベースライン化する — 別アプリで
 取りこぼされた pointerup/keyup が後続ジェスチャを壊さないための防壁
 (ADR-0534)。`pointerleave` は hover/laser のみ消去 (ドラッグは capture で継続)。
+hidden/pagehide/blur の共通掃除口は `_clearTouchState()` — `_pointers` Map・
+`_pinchPrev`/`_pinchSnap` に加えて `Minimap.cancelNav()` も呼び、ミニマップの
+ドラッグスクラブ中状態 `_mmNav` も bfcache を跨いで残存させない (ADR-0632)。
 ドラッグ中の 24px 端帯は rAF エッジオートパン (ADR-0519)。`pointerId` は
 `_pointers` Map で追跡し 2 本目でピンチ遷移。
 クリップボードの OS 橋渡しは `_cpNow`/`_osClip` + `_textCascade` (SVG →
@@ -259,6 +262,10 @@ requestAnimationFrame 1 本。ユーザー操作中も常に 60fps を目標。
 ## DPR
 
 `canvas.width = cssW * DPR` で内部解像度を確保。Retina で滑らか。DPR 変化 (マルチモニタ移動) で `resize()` 再計算。
+`resize()` 自体はバッキングストア全再確保を伴うため、window/visualViewport/
+orientation の resize リスナーは 150ms trailing-edge debounce (`_resizeSoon`)
+を通る — OS ドラッグや iOS URL バーアニメーションの連続発火を終端 1 回に
+集約する (ADR-0631)。`_watchDPR` の単発発火のみ直接呼び。
 
 **オーバーレイパスの規約 (v1.7.62 の学び)**: `draw()` 後半のオーバーレイパス
 (選択枠・ガイド・マーキー・レーザー・ピアカーソル/選択) は
