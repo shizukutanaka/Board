@@ -1,3 +1,8 @@
+## [1.7.790] - 2026-09-28
+
+### Fixed
+- ADR-0764: `abortGesture` (二本指によるピンチ中断) が `canvas.dataset.panning` を戻さず grabbing カーソルを残留させていた問題を修正 — 両ジェスチャキャンセル経路の終端状態を `_ptrReset` へ統一し、ptr フィールド全消去の網羅性を保証 (abort 側の resizeOrig/rotOrig/resizeHandle 残置、cancel 側の gAnc/rotA0/wayIdx/wayNew/lblOrig 残置も解消、~190B 回収)
+
 ## [1.7.789] - 2026-09-29
 
 ### Docs

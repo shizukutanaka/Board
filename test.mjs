@@ -357,7 +357,9 @@ const checks = [
   // v1.7.114: ADR-0056 multi-selection resize
   ['gresize dragKind wires group handles', html.includes("ptr.dragKind='gresize';") && html.includes("ptr.gOrig=new Map(sel.filter(_ul).map(s=>[s.id,clone(s)]))") && html.includes("if(!sel.some(_rt)){")],
   ['gresize reuses applyResize on a virtual box + commits one align op', html.includes("function _gresizeDrag(wp,shift,alt){") && html.includes("applyResize(vbox,ptr.resizeHandle,vorig,wp,shift,alt)") && html.includes("_mapToBox(sh,orig,ob,vbox)") && html.includes("op:'align',dir:'gresize'") && html.includes("'gresize'")],
-  ['gresize cancelled in abortGesture + pointercancel', html.includes("_dk('gresize')||_dk('grot')") && html.includes("ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;")],
+  ['gresize cancelled in abortGesture + pointercancel', html.includes("_dk('gresize')||_dk('grot')") && html.includes("ptr.gOrig=null;ptr.gAnc=null;ptr.gBox=null;ptr.gPad=null;")],
+  ['gesture-cancel terminal state unified via _ptrReset (ADR-0764)', html.includes("const _ptrReset=") && /abortGesture\(\)\{[\s\S]{0,1400}_ptrReset\(\)/.test(html) && /function _cancelPointerGesture[\s\S]{0,1800}_ptrReset\(\)/.test(html)],
+  ['_ptrReset clears every gesture field + grabbing-cursor hook (ADR-0764)', html.includes("ptr.resizeOrig=null") && html.includes("ptr.rotOrig=null") && html.includes("ptr.gAnc=null") && html.includes("ptr.rotA0=null") && html.includes("ptr.wayNew=false") && html.includes("ptr.lblOrig=null") && html.includes("canvas.dataset.panning='false'")],
   // v1.7.115: ADR-0057 rotation knob for point geometry + multi-selection
   ['getRotHandle generalised to point-geom bbox', html.includes("else{const b=_bb(s);if(!b||!(b.w>0)||!(b.h>0))return null;cx=b.x+b.w/2;") && html.includes("function _grpRotHandle(b){")],
   ['grot dragKind + delta-angle _rotShape + align commit', html.includes("ptr.dragKind='grot';") && html.includes("function _grotDrag(wp,shift){") && html.includes("_rotShape(sh,orig,ptr.rotCx,ptr.rotCy,deg)") && html.includes("op:'align',dir:'grot'") && html.includes("'grot'")],
@@ -7833,6 +7835,38 @@ try {
     console.log('  ✓ abortGesture: pinch cancels & reverts in-progress gesture (multi-touch, Qiita/Zenn)');
   }
 
+  // v1.7.790 (ADR-0764): both cancel paths must leave the SAME complete terminal state —
+  // every gesture field dead, incl. the grabbing-cursor hook (dataset.panning), which a
+  // pinch-aborted pan previously left stuck at 'true'.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+    ptr.down=true;ptr.panning=true;canvas.dataset.panning='true';
+    ptr.resizeHandle='se';ptr.resizeOrig={id:'x'};ptr.rotOrig={id:'y'};
+    ptr.gAnc=new Map();ptr.rotA0=1;ptr.wayIdx=2;ptr.wayNew=true;ptr.lblOrig={id:'z'};
+    abortGesture();
+    assert.strictEqual(canvas.dataset.panning,'false','abortGesture: grabbing-cursor hook cleared (was stuck after a pinch-aborted pan)');
+    assert.strictEqual(ptr.panning,false,'abortGesture: panning cleared');
+    assert.strictEqual(ptr.resizeOrig,null,'abortGesture: resizeOrig cleared');
+    assert.strictEqual(ptr.rotOrig,null,'abortGesture: rotOrig cleared');
+    assert.strictEqual(ptr.resizeHandle,null,'abortGesture: resizeHandle cleared');
+    assert.strictEqual(ptr.gAnc,null,'abortGesture: gAnc cleared');
+    assert.strictEqual(ptr.rotA0,null,'abortGesture: rotA0 cleared');
+    assert.strictEqual(ptr.wayIdx,null,'abortGesture: wayIdx cleared');
+    assert.strictEqual(ptr.wayNew,false,'abortGesture: wayNew cleared');
+    assert.strictEqual(ptr.lblOrig,null,'abortGesture: lblOrig cleared');
+    // identical coverage on the pointercancel path (the reverse gap)
+    ptr.down=true;ptr.panning=true;canvas.dataset.panning='true';
+    ptr.gAnc=new Map();ptr.rotA0=1;ptr.wayIdx=2;ptr.wayNew=true;ptr.lblOrig={id:'z'};
+    _cancelPointerGesture();
+    assert.strictEqual(ptr.gAnc,null,'pointercancel: gAnc cleared');
+    assert.strictEqual(ptr.rotA0,null,'pointercancel: rotA0 cleared');
+    assert.strictEqual(ptr.wayIdx,null,'pointercancel: wayIdx cleared');
+    assert.strictEqual(ptr.wayNew,false,'pointercancel: wayNew cleared');
+    assert.strictEqual(ptr.lblOrig,null,'pointercancel: lblOrig cleared');
+    assert.strictEqual(canvas.dataset.panning,'false','pointercancel: grabbing-cursor hook cleared');
+    console.log('  ✓ gesture cancel: abortGesture + pointercancel leave identical dead field state (ADR-0764)');
+  }
+
   // v1.6.81: wheelPx normalizes wheel deltas across deltaMode so Firefox's line-mode
   // mouse wheel isn't ~16× weaker than Chrome's pixel mode. Pure → directly unit-tested.
   {
@@ -13761,7 +13795,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1720; // prev 1718 + 2 v1.7.78a/b connClears gap/lifetime pins
+  pass += 1736; // prev 1720 + 16 v1.7.790 gesture-cancel terminal-state asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
