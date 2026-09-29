@@ -6721,6 +6721,30 @@ try {
     assert.strictEqual(B.state.shapes.find(s=>s.id==='pX').type, 'pen', 'ADR-0730: noLock still rejects a crafted locked-setting beautify');
     console.log('  ✓ ADR-0730: remote beautify applies + converges; crafted locked payload still rejected');
 
+    // ADR-0731: undo of a beautify had no _undoWire case — the undoer restored the
+    // pen while every peer kept the rect, re-creating the divergence ADR-0730 closed.
+    // The inverse rides the same before/after patch swap as upd/style/resize/align.
+    reset(A); reset(B);
+    const penS2={id:'pY',type:'pen',pts:[[0,0],[10,0],[10,10],[0,10]],stroke:'#000',size:2,z:1};
+    A.state.shapes.push(cp(penS2)); B.state.shapes.push(cp(penS2)); A._invalidateGrid(); B._invalidateGrid(); A.sortZ(); B.sortZ();
+    const bfAB2=[];
+    A.Net.broadcast = op => bfAB2.push({k:'op',op:cp(A.Net._slimOp(op))});
+    B.Net.broadcast = () => {};
+    const aft2=[{id:'pY',type:'rect',x:0,y:0,w:10,h:10}];
+    for(const p of aft2){const sh=A.state.shapes.find(s=>s.id===p.id);if(sh)Object.assign(sh,cp(p))}
+    A.Store._recordCommitted({op:'beautify',before:[{id:'pY',type:'pen',pts:cp(penS2.pts)}],after:aft2,origSel:[]});
+    bfAB2.splice(0).forEach(m=>B.Net._onRecv(m));
+    assert.strictEqual(B.state.shapes.find(s=>s.id==='pY').type, 'rect', 'ADR-0731: forward beautify lands first');
+    A.Store.undo();
+    assert.strictEqual(A.state.shapes.find(s=>s.id==='pY').type, 'pen', 'ADR-0731: local undo restores pen');
+    bfAB2.splice(0).forEach(m=>B.Net._onRecv(m));
+    assert.strictEqual(B.state.shapes.find(s=>s.id==='pY').type, 'pen', 'ADR-0731: undo-wire restores the pen on peers (was: peer kept rect)');
+    assert.ok(B.state.shapes.find(s=>s.id==='pY').pts.length>=4, 'ADR-0731: undo-wire restores pen pts on peers');
+    A.Store.redo();
+    bfAB2.splice(0).forEach(m=>B.Net._onRecv(m));
+    assert.strictEqual(B.state.shapes.find(s=>s.id==='pY').type, 'rect', 'ADR-0731: redo re-applies the retype on peers');
+    console.log('  ✓ ADR-0731: beautify undo/redo converge via patch-swap wire op');
+
     // resize/align now LWW too (ADR-0002 follow-up): whole-shape snapshot ops gate/stamp
     // only the keys they actually changed (diff before/after). (i) concurrent resize of
     // the SAME geometry converges to the newer writer.
@@ -13357,7 +13381,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1643; // prev 1625 + 4 ADR-0727 behavioural
+  pass += 1649; // prev 1643 + 6 ADR-0731 behavioural
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

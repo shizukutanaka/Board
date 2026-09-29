@@ -1,3 +1,10 @@
+## [1.7.757] - 2026-09-29
+
+### Fixed
+- ADR-0731: undoing a 'beautify' had no _undoWire case — the undoer restored
+  the pen while every peer kept the rect, re-creating the divergence
+  ADR-0730 closed. Inverse rides the before/after patch swap (upd family)
+
 ## [1.7.756] - 2026-09-29
 
 ### Fixed
