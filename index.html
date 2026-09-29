@@ -852,6 +852,7 @@ const _wc=()=>state.wclock;
 const _tl=()=>state.tool;
 const _dn=()=>state.docName;
 let _nameTs=0;
+const _bName=()=>Net._bcast(_mk('name',{name:state.docName,ts:_nameTs=nowTs()}));   // ADR-0696: a swap that changes docName must tell peers now — else they keep the old name until the next rename/snapshot
 const _setDocName=n=>{state.docName=n;const d=_g('docName');if(d&&d!==document.activeElement)d.value=_dn();_syncDocTitle();};   // ADR-0609: a remote rename must not clobber in-flight typing (incl. mid-IME) — the focused input keeps its text; blur resyncs the display
 const _pr=()=>state.peers;
 const _hi=()=>state.history;
@@ -866,7 +867,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.721';   // ADR-0695
+const V='1.7.722';   // ADR-0696
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -7097,7 +7098,7 @@ function importDrawioText(txt,wp){
       }
       if(selId){switchPage(selId);_scl();for(const s of selSh)_sad(s.id)}
       if(pgVp){_vp().x=pgVp.x;_vp().y=pgVp.y;_vp().zoom=pgVp.z;if(pgVp.g!=null)state.showGrid=pgVp.g}
-      if(pgNm)_setDocName(_s0(pgNm,80));
+      if(pgNm){_setDocName(_s0(pgNm,80));_bName()}
       _iv();_oT('dioImported');
       return true;
     }
@@ -7110,7 +7111,7 @@ function importDrawioText(txt,wp){
   _cOp({op:'addMany',shapes});
   _scl();for(const s of shapes)_sad(s.id);   // ADR-0568: _sad drops hidden imports
   if(_vpNull&&_dioVp){_vp().x=_dioVp.x;_vp().y=_dioVp.y;_vp().zoom=_dioVp.z;if(_dioVp.g!=null)state.showGrid=_dioVp.g}   // ADR-0359/0409: viewport+grid restore
-  if(_dioNm)_setDocName(_s0(_dioNm,80));   // ADR-0405
+  if(_dioNm){_setDocName(_s0(_dioNm,80));_bName()}   // ADR-0405
   _iv();_oT('dioImported');
   return true;
 }
@@ -7639,7 +7640,7 @@ function importBoard(file){
       // clocks from the board we just swapped out.
       // can let a re-imported shape (same id) inherit a stale LWW clock.
       _scl();state.wclock={};
-      _docN(d);
+      _docN(d);_bName();
       if(d.viewport&&_fin(+d.viewport.x)&&_fin(+d.viewport.y)&&_fin(+d.viewport.zoom)&&d.viewport.zoom>0){   // ADR-0393
         _vp().x=+d.viewport.x;_vp().y=+d.viewport.y;_vp().zoom=clampZoom(+d.viewport.zoom);
       }
@@ -8613,7 +8614,7 @@ const Share={
       const _bpg=clone(state.pages),_bcp=state.curPg;   // ADR-0646
       // ADR-0004: survives reload/closed-tab too, not just session undo.
       if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());
-      _rs(valid.map(clone));_pgAdopt(data.pages,data.curPg);_setDocName(_s0((_iS(data.name)&&data.name)||'Shared',80));   // ADR-0009/0646
+      _rs(valid.map(clone));_pgAdopt(data.pages,data.curPg);_setDocName(_s0((_iS(data.name)&&data.name)||'Shared',80));_bName();   // ADR-0009/0646/0696
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out
       if(data.viewport&&_fin(+data.viewport.x)&&_fin(+data.viewport.y)&&_fin(+data.viewport.zoom)&&data.viewport.zoom>0){
@@ -8833,7 +8834,7 @@ const Persist={
       _rs(shapes.map(clone));   // ADR-0009
       _pgAdopt(d.pages,d.curPg);   // ADR-0646
       _scl();state.wclock={};
-      _docN(d);
+      _docN(d);_bName();
       if(d.viewport&&_fin(+d.viewport.x)&&_fin(+d.viewport.y)&&_fin(+d.viewport.zoom)&&d.viewport.zoom>0){
         _vp().x=+d.viewport.x;_vp().y=+d.viewport.y;_vp().zoom=clampZoom(+d.viewport.zoom);
       }
@@ -9339,7 +9340,7 @@ function wire(){
     // (Qiita: Rapls / Zenn: spacemarket). imeSho
     // mid-composition input events keep partial
     // a parallel compositionend listener picks u
-    const _commitDocName=()=>{_setDocName(docNameEl.value);_md(!0);_ps();Net._bcast(_mk('name',{name:state.docName,ts:_nameTs=nowTs()}))};   // ADR-0402
+    const _commitDocName=()=>{_setDocName(docNameEl.value);_md(!0);_ps();_bName()};   // ADR-0402
     _on(docNameEl,'input',e=>{if(imeShouldCommit(e))_commitDocName()});
     _on(docNameEl,'compositionend',_commitDocName);
     _on(docNameEl,_CH,()=>{_setDocName(docNameEl.value||_UT);_ps()});

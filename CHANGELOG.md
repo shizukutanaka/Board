@@ -1,3 +1,8 @@
+## [1.7.722] - 2026-09-29
+
+### Fixed
+- import/restore/hash で docName が変わってもピアへ即時 broadcast されない問題を修正 (_bName 共通化) (ADR-0696)
+
 ## [1.7.721] - 2026-09-29
 
 ### Fixed
