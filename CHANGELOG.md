@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.7.679] - 2026-09-28
+### Added
+- **ADR-0652 undo/redo のページ追従**: 別ページの変更を戻す時、変更が起きた
+  ページへ view が追従 (`_pgFollow`) — ページ2の `del` をページ1で undo しても
+  復元が見えなかった問題を解消。`_opIds` へ touched-id 収穫を集約し _apply と共有。
+- **ADR-0652 同型 heal 修正**: `pageAdd` backward で閲覧中ページが畳まれた時の
+  着地を `switchPage` 経由へ (ADR-0649 と同型 — SR アナウンス・カーソル隠蔽・
+  overlay 畳みが抜けていた)
+- 回帰テスト +6 (別ページ undo で着地・同ページは留まる・除去 redo 非着地・
+  pageAdd undo の heal・ソースピン×2)
+
+
 ## [1.7.678] - 2026-09-28
 ### Added
 - **ADR-0651 ページ複製**: pgBar の ⧉ ボタンで現ページを丸ごと複製 —

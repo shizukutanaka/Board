@@ -863,7 +863,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.678';   // ADR-0651
+const V='1.7.679';   // ADR-0652
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1596,6 +1596,7 @@ const Store={
     if(_hx()<0)return false;
     const op=_hi()[_hx()];
     this._apply(op,false);
+    _pgFollow(op);   // ADR-0652
     state.histIdx--;
     for(const w of _undoWire(op)||[]){_fck(w);
       if(w.op==='replace')state._lastRep=w.clock;   // ADR-0615: the undo-wire swap produced the board — its fresh clock is the marker on all peers
@@ -1608,6 +1609,7 @@ const Store={
     state.histIdx++;
     const op=_hi()[_hx()];
     this._apply(op,true);
+    _pgFollow(op);   // ADR-0652
     _fck(op);if(op.op==='replace')state._lastRep=op.clock;this._stampWrites(op);Net.broadcast(op);   // ADR-0615: redo rebroadcasts under the restamped clock
     _rdb();
     return true;
@@ -1618,15 +1620,7 @@ const Store={
     // repaint clips to their union instead of re
     // Partial patch payloads ({id,c:'#f00'}) yie
     // finite rects only; over-covering is always safe, missing is not.
-    const _ids=_sT();
-    const _addId=v=>{if(v&&v.id!=null)_ids.add(v.id)};
-    if(op.id!=null)_ids.add(op.id);
-    if(_iA(op.ids))for(const id of op.ids)_ids.add(id);
-    for(const k of ['shape','shapes','before','after','changes','connClears']){
-      const v=op[k];
-      if(_iA(v))for(const x of v)_addId(x);
-      else _addId(v);
-    }
+    const _ids=_opIds(op);
     let _dmg=null;
     const _u=s=>{if(!s)return;let b=null;try{b=_bb(s)}catch(_){return}   // ADR-0373: pseudo-shape patches must not crash the damage estimate
     if(!b||![b.x,b.y,b.w,b.h].every(Number.isFinite))return;const m=(_szz(s)||2)/2+10;_dmg=_dmgU(_dmg,{x:b.x-m,y:b.y-m,w:b.w+2*m,h:b.h+2*m});};
@@ -1723,7 +1717,7 @@ const Store={
         }else{
           for(const sh of op.shapes||[]){const i2=_idIdx(sh.id);if(i2>=0)_sh().splice(i2,1);_sdl(sh.id);delete _wc()[sh.id];_psc(sh.id);}   // ADR-0650
           if(state.pages){const i=state.pages.findIndex(p=>p.id===op.id);if(i>=0)state.pages.splice(i,1);if(!_ln(state.pages)){state.pages=null;state.curPg=null}
-            else{const fid=state.pages[0].id;for(const s of _sh())if(s.pg===op.id)s.pg=fid;if(state.curPg===op.id)state.curPg=fid}}
+            else{const fid=state.pages[0].id;for(const s of _sh())if(s.pg===op.id)s.pg=fid;if(state.curPg===op.id)switchPage(fid)}}   // ADR-0652: same heal as _pgDel2 — route the landing through switchPage (announce/cursor-hide/overlay collapse)
         }
         _ss(_selIds());_iG();_iv();_ivO();_pgBar();
         break;}
@@ -2100,6 +2094,24 @@ const _vPages=a=>!_iA(a)||!_ln(a)||_ln(a)>64?null:(a.every(p=>p&&_iS(p.id)&&_ln(
 function _pgAdopt(pages,cur){const v=_vPages(pages);state.pages=v?clone(v):null;state.curPg=v&&_pgById(cur)?cur:(v?v[0].id:null);_pgBar()}
 function switchPage(id){if(!_pgById(id)||state.curPg===id)return;Net.sendCursorHide();_cxO();state.curPg=id;_iG();_zR();_ss(_selIds());_iv();_ivO();_ann(_pgById(id).name);_pgBar()}
 function _pgNav(d){if(!_pgOn())return;const i=_pgIdx(),n=_ln(state.pages);const j=(i+d+n)%n;if(j!==i)switchPage(state.pages[j].id)}
+const _opIds=op=>{   // ADR-0652: the touched-id harvest _apply uses — shared with _pgFollow so undo/redo can see where the change landed
+  const s=_sT(),add=v=>{if(v&&v.id!=null)s.add(v.id)};
+  if(op.id!=null)s.add(op.id);
+  if(_iA(op.ids))for(const id of op.ids)s.add(id);
+  for(const k of ['shape','shapes','before','after','changes','connClears']){const v=op[k];if(_iA(v))for(const x of v)add(x);else add(v)}
+  return s;
+};
+function _pgFollow(op){   // ADR-0652: undo/redo of a change you can't see lands the view where it happened
+  if(!_pgOn())return;
+  if(op.op==='pageAdd'||op.op==='pageName'){if(_pgById(op.id))switchPage(op.id);return}
+  if(op.op==='pageDel')return;   // landing is _pgDel2's job
+  let land=null;
+  for(const id of _opIds(op)){const s=byId(id);if(!s)continue;
+    const pg=s.pg||state.pages[0].id;
+    if(pg===state.curPg)return;   // at least one touched shape is already visible
+    land=land||pg;}
+  if(land)switchPage(land);
+}
 function _pgAdd(){if(!_pgOn())_cmt({op:'pageAdd',id:uid(),name:t('pgPage')+' 1'});const id=uid();_cmt({op:'pageAdd',id,name:t('pgPage')+' '+(_ln(state.pages)+1)});switchPage(id)}
 function _pgDup(){   // ADR-0651: duplicate the current page — pageAdd+shapes makes it one atomic op
   if(!_pgOn())_cmt({op:'pageAdd',id:uid(),name:t('pgPage')+' 1'});

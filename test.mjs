@@ -399,7 +399,7 @@ const checks = [
   ['draft draw + erase report damage', html.includes("_iD(_dmgPair(_b0,_bb(d)") && html.includes("_pu(_eraseBatch,clone(hit))")],
   ['damage path force-includes gesture targets vs stale grid', html.includes("ptr.dragStartShapes.keys()") && html.includes("ptr.resizeOrig.id") && html.includes("ptr.rotOrig.id")],
   // v1.7.85: ADR-0027 op-level damage propagation
-  ['_apply harvests ids + pre/post bboxes for damage', html.includes("const _ids=_sT()") && html.includes("for(const id of _ids)_u(byId(id))") && html.includes("_iD(_dmg)")],
+  ['_apply harvests ids + pre/post bboxes for damage', html.includes("const _ids=_opIds(op)") && html.includes("for(const id of _ids)_u(byId(id))") && html.includes("_iD(_dmg)")],
   ['_apply falls back to full invalidate on empty/huge damage', html.includes("if(!_dmg){_iv();}") && html.includes("_v.w*_v.h*0.6")],
   ['applyRemote uses op damage (no blanket invalidate)', !html.includes("this._stampWrites(op);\n    state.dirty=true;\n    UI.refreshUndo();\n    Persist.schedule();\n    _iv();") && html.includes("_iD(_dmgPair(_cb,_bb(sh)")],
   // v1.7.86: ADR-0028 pan pixel blit
@@ -12443,6 +12443,29 @@ try {
     state.pages=null;state.curPg=null;
     console.log('  ✓ pageAdd carries member shapes: local+remote attach, undo/redo (ADR-0650, 4 asserts)');
     console.log('  ✓ page duplicate: pageAdd+shapes op with remapped ids/binds/groups (ADR-0651, 4 asserts)');
+    // ADR-0652: undo/redo lands the view on the page the change touched
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;
+    _pgAdd();   // now on page2
+    const pfS=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    Store.commit({op:'del',shapes:[pfS]});
+    const pg2=state.curPg, pg1=state.pages[0].id;
+    switchPage(pg1);
+    Store.undo();   // re-adds the shape to page2 — the change is invisible from page1
+    assert.ok(state.curPg===pg2,'undo of a del on another page lands the view there');
+    const pfS2=Shape.make('rect',{x:5,y:5,w:10,h:10});
+    Store.commit({op:'del',shapes:[pfS2]});
+    Store.undo();   // re-adds on the current page — stay put
+    assert.ok(state.curPg===pg2,'undo of a del on the current page does not switch');
+    Store.commit({op:'del',shapes:[pfS2]});
+    switchPage(pg1);Store.redo();   // redo re-deletes on page2 — nothing lands on a removal
+    assert.ok(state.curPg===pg1,'redo of a removal does not land on the emptied spot');
+    _pgAdd();   // page3, becomes curPg
+    const pg3=state.curPg;
+    Store.undo();   // undoes the pageAdd while viewing it — heal must route through switchPage
+    assert.ok(state.curPg!==pg3&&state.pages.length===2,'backward pageAdd while viewing the dropped page lands on a live page');
+    state.pages=null;state.curPg=null;
+    assert.ok(html.includes("function _pgFollow(op){"),'ADR-0652 _pgFollow exists');
+    assert.ok((html.match(/_pgFollow\(op\);/g)||[]).length===2,'_pgFollow wired into undo + redo');
 
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
@@ -12450,7 +12473,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1440; // prev 1436 + 4 page-duplicate asserts (ADR-0651)
+  pass += 1446; // prev 1440 + 6 undo/redo page-follow asserts (ADR-0652)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
