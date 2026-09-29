@@ -438,7 +438,7 @@ const checks = [
   ['wheel zoom burst snapshots before first zoom', html.includes("_pinchSnapNow();\n    _cT(_wheelZoomEnd);")],
   ['wheel zoom settle timer discards snapshot + repaints', html.includes("_wheelZoomEnd=_stO(()=>{_pinchSnap=null;_pinchVp=null;_iv()},180)")],
   ['ADR-0032/0033: marquee + pickTop use the spatial grid', html.includes("_gridRectCandidates(_grid||(_grid=_buildGrid(_sh())),r)") && html.includes("cands.sort((a,b)=>(_grid.idx.get(b)|0)-(_grid.idx.get(a)|0))")],
-  ['load validates viewport finiteness', html.includes("_fin(+d.viewport.zoom)&&d.viewport.zoom>0")],
+  ['load validates viewport finiteness+range', html.includes("_vpOK=v=>v&&_xyOK(+v.x)&&_xyOK(+v.y)&&_fin(+v.zoom)&&+v.zoom>0") && html.includes("if(_vpOK(d.viewport))") && html.includes("if(_vpOK(data.viewport))")],
   ['load clamps viewport zoom to [MIN_ZOOM,MAX_ZOOM]', html.includes("_vp().zoom=clampZoom(+d.viewport.zoom)")],
   ['clampZoom is the single zoom-invariant source', html.includes("const clampZoom=z=>_max(MIN_ZOOM,_min(MAX_ZOOM,z))") && html.includes("const nz=clampZoom(") && html.includes("const z=clampZoom(")],
   // v1.6.18: deeper audit fixes
@@ -11458,6 +11458,26 @@ try {
         'v1.7.52a: restoreBackup consumes the backup slot (single-slot, single-notification per ADR-0004)');
     }finally{Persist.db=origDb;}
     console.log('  ✓ Persist.saveBackup/checkBackup/restoreBackup: round-trip, undoable, single-slot consumption (v1.7.52a, ADR-0004)');
+
+    // v1.7.821 (ADR-0795): a far viewport center (x/y >_xyOK) is rejected on restore —
+    // a crafted/corrupt record used to land the whole board blank. Sane viewports still adopt.
+    {
+      state.shapes=[Shape.make('rect',{x:0,y:0,w:10,h:10})];state.docName='Cur';
+      state.history=[];state.histIdx=-1;
+      state.viewport={x:42,y:24,zoom:1};
+      Persist.db=makeFakeIdb();
+      try{
+        const bsh=Shape.make('rect',{x:7,y:7,w:10,h:10});
+        await Persist.saveBackup([bsh],{x:1e15,y:-8e12,zoom:1},'Far');
+        assert.strictEqual(await Persist.restoreBackup(),true,'v1.7.821: far-viewport backup restores');
+        assert.strictEqual(state.viewport.x,42,'v1.7.821: |x|>1e7 viewport center rejected (board stays put)');
+        assert.strictEqual(state.viewport.y,24,'v1.7.821: |y|>1e7 viewport center rejected');
+        await Persist.saveBackup([bsh],{x:1e4,y:-1e4,zoom:2},'Near');
+        await Persist.restoreBackup();
+        assert.strictEqual(state.viewport.x,1e4,'v1.7.821: in-range viewport still adopted');
+      }finally{Persist.db=origDb;}
+      console.log('  ✓ _vpOK: far viewport center rejected, in-range adopted (v1.7.821, ADR-0795)');
+    }
   }
 
   // v1.7.52b (ADR-0004): saveBackup must no-op on an empty shape list — nothing was at risk

@@ -855,7 +855,7 @@ const _st=()=>state.style;
 const _df=()=>state.draft;
 const _wc=()=>state.wclock,_wM=x=>Object.assign(Object.create(null),x),_oe=Object.entries;   // ADR-0788: '__proto__' id must never hit a prototype-bearing map — a write would mutate the map's prototype, then every missing-id tomb read returns the planted entry (one op.wc key freezes all future adds). Null-proto keeps it a plain own key
 const _wD=(id,c)=>_wc()[id]=_wM({_del:c}),_wR=(id,w)=>_wc()[id]=_wM(clone(w)),_wTb=(rw,c,inN)=>{for(const[id,w]of _oe(rw||{}))if(w._del&&(clockNewer(w._del,c)||!inN.has(id)))_wD(id,clockNewer(w._del,c)?w._del:c)};   // ADR-0789: tomb write / clock-restore / tomb-set merge sites folded
-const MAX_TS_SKEW=3e5,_tsOK=t=>_iN(t)&&_fin(t)&&t<=_now()+MAX_TS_SKEW,_pgs=()=>state.pages,_xyOK=v=>_fin(v)&&_abs(v)<=1e7;   // ADR-0791/0792/0793: bound wire ts/coords/props — far values poison bboxAll (blank board for all peers)
+const MAX_TS_SKEW=3e5,_tsOK=t=>_iN(t)&&_fin(t)&&t<=_now()+MAX_TS_SKEW,_pgs=()=>state.pages,_xyOK=v=>_fin(v)&&_abs(v)<=1e7,_vpOK=v=>v&&_xyOK(+v.x)&&_xyOK(+v.y)&&_fin(+v.zoom)&&+v.zoom>0;   // ADR-0791/0792/0793/0795: bound wire ts/coords/props/viewport — far values poison bboxAll or land the whole board blank
 const _tl=()=>state.tool;
 const _dn=()=>state.docName;
 let _nameTs=0,_namePeer='';
@@ -875,7 +875,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.820';   // ADR-0794
+const V='1.7.821';   // ADR-0795
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -7720,7 +7720,7 @@ function importBoard(file){
       // can let a re-imported shape (same id) inherit a stale LWW clock.
       _scl();state.wclock=_wM();
       _docN(d);_bName();
-      if(d.viewport&&_fin(+d.viewport.x)&&_fin(+d.viewport.y)&&_fin(+d.viewport.zoom)&&d.viewport.zoom>0){   // ADR-0393
+      if(_vpOK(d.viewport)){   // ADR-0393/0795
         _vp().x=+d.viewport.x;_vp().y=+d.viewport.y;_vp().zoom=clampZoom(+d.viewport.zoom);
       }
       _sz();_iv();
@@ -8723,7 +8723,7 @@ const Share={
       _rs(valid.map(clone));_pgAdopt(data.pages,data.curPg);_setDocName(_s80((_iS(data.name)&&data.name)||'Shared'));_bName();   // ADR-0009/0646/0696
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out
-      if(data.viewport&&_fin(+data.viewport.x)&&_fin(+data.viewport.y)&&_fin(+data.viewport.zoom)&&data.viewport.zoom>0){
+      if(_vpOK(data.viewport)){
         // ADR-0112: adopt the sharer's viewport (sam
         // IDB restore path — corrupt/out-of-range zoom never reaches state).
         _vp().x=+data.viewport.x;_vp().y=+data.viewport.y;
@@ -8865,7 +8865,7 @@ const Persist={
       // adopt malformed shapes from IDB (corruptio
       _rs(shapes.filter(validShape));   // ADR-0009
       _pgAdopt(d.pages,d.curPg);   // ADR-0646
-      if(d.viewport&&_fin(+d.viewport.x)&&_fin(+d.viewport.y)&&_fin(+d.viewport.zoom)&&d.viewport.zoom>0){
+      if(_vpOK(d.viewport)){
         // Clamp zoom to the invariant [MIN_ZOOM,MAX_
         // (wheel/fit) maintains — a corrupt/forward-
         // out-of-range zoom would otherwise load an
@@ -8941,7 +8941,7 @@ const Persist={
       _pgAdopt(d.pages,d.curPg);   // ADR-0646
       _scl();state.wclock=_wM();
       _docN(d);_bName();
-      if(d.viewport&&_fin(+d.viewport.x)&&_fin(+d.viewport.y)&&_fin(+d.viewport.zoom)&&d.viewport.zoom>0){
+      if(_vpOK(d.viewport)){
         _vp().x=+d.viewport.x;_vp().y=+d.viewport.y;_vp().zoom=clampZoom(+d.viewport.zoom);
       }
       _sz();_iv();
