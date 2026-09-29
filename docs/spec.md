@@ -50,7 +50,7 @@ frame=`label`、group=`groupId`。
 | `style` | `{before:[], after:[]}` | スナップショット復元(色/線種/不透明度) |
 | `resize` | `{before:[], after:[]}` | スナップショット復元(w/h) |
 | `clear` | `{shapes:[]}` | re-add |
-| `replace` | `{before:[], after:[]}` | 盤面まるごと swap(共有URLインポート。**local 専用** = 非 `REMOTE_OPS`) |
+| `replace` | `{before:[], after:[], afterWc}` | 盤面まるごと swap(共有URL/ファイルインポート。wire 対応 — 並行 swap は `_lastRep` の全順序で仲裁、ADR-0613-0618) |
 
 - **MUST**: 各 op は `_apply(op,false)` で完全に逆操作できる(`test.mjs` の property-based テストで
   add/move/upd/del/zorder/align を混在生成し往復検証)。
@@ -73,6 +73,18 @@ eraser(E) / sticky(N) / frame(F)。Shift で軸拘束・正方形/正円。
 グリッドスナップ off 時)、**バインド済みコネクタ**(line/arrow 端点を図形に結合 → 図形追従、端点は実エッジへ投影)、
 **コネクタ(エッジ)ラベル**(line/arrow をダブルクリックで中点にラベル、フロー図の判断分岐等。ADR-0003)、
 フォーマットペインター(Alt+C/V)、**カスタムカラー**(`<input type=color>` ストローク/塗り)、不透明度、
+**非表示/再表示**(⌘⇧H / ctx。`visible:0` は描画・ヒット・全選択経路 — マーキー/⌘A/検索/フレーム内容選択 —
+から除外され、ctx「すべて表示」のみで復帰する。非表示図形は選択されない不変条件: ADR-0566/0568、プレゼンスのピア選択描画も同じく除外する (ADR-0576)。
+
+局所再描画 (ADR-0026/0027) のダメージ矩形は、束縛コネクタの掃引領域を含む不変条件:
+`aF`/`bF` 端点が束縛先 extent から動的解決されるため、束縛先の変形でコネクタ path が
+対象図形の bbox を越えて変化する。全ジェスチャ経路 (doMove/_gresizeDrag/_grotDrag/
+resize/rotate) と `_apply` が `(aF&&a∈対象)||(bF&&b∈対象)` のコネクタを変形前に収集し
+変形後 `_bb` と union する (ADR-0597/0598/0599)。
+派生レンダリング面も同一規則 — グループハロー (0592)・PNG/SVG エクスポート bbox (0593)・
+.excalidraw エクスポート (0594)・ミニマップ (0595) は `_sv` でフィルタし、
+不可視内容がハロー/余白/ミニマップ/第三者フォーマットへ漏洩しない。
+例外はデータ保持目的の経路: .board エクスポートは `visible` 保持、.drawio は `visible="0"` emit)。
 線種(実線/破線/点線)、コピー/貼付/切取/複製(`groupId`・コネクタ結合先を新 id へ再マップ)、
 **キーボード移動・リサイズ**(矢印=ナッジ、Alt+矢印=リサイズ。共に frame 子要素追従 + ロックスキップで
 ポインタドラッグとパリティ)、undo/redo 最大 500。
@@ -80,9 +92,11 @@ eraser(E) / sticky(N) / frame(F)。Shift で軸拘束・正方形/正円。
 ## 6. キーマップ
 `KEYMAP` が全ツールを網羅。⌘Z/⌘⇧Z=undo/redo、⌘A=全選択、⌘C/V/X/D、⌫=削除、
 ⌘±/0=ズーム、⇧1=フィット、⌘E=PNG、⌘⇧E=SVG、⌘P=PDF、⌘S=保存、`?`=ヘルプ、Esc=解除、
-矢印=ナッジ(⇧で10px)、**Alt+矢印=リサイズ**、**⇧H/⇧V=反転**、**`,`/`.`=回転 ∓15°**、
+矢印=ナッジ(⇧で10px)、**Alt+矢印=リサイズ**、**⇧H/⇧V=反転**、**⌘⇧H=非表示**、**`,`/`.`=回転 ∓15°**、
 **Tab/⇧Tab=図形巡回**、Enter=作成(`select` 以外のツール)/ 選択中の単一シェイプのラベル・
 テキストを編集(`select` ツール、ADR-0013)、**P=ペン**、**⇧P / Ctrl+Enter=プレゼン**。
+編集 overlay (テキスト/ラベル) は対象図形が削除・非表示・ロックされた瞬間に畳まれる — ローカル/リモートを
+問わず「非到達化した図形への編集」は成立しない (ADR-0559/0569/0572)。
 Esc は コンテキストメニュー → 開いているモーダル → 選択解除 の順で閉じる。
 
 ## 7. 永続化
@@ -93,16 +107,32 @@ IndexedDB(`board`/`docs`/`main`)。保存対象=`{v,shapes,viewport,docName,save
 - 同一ブラウザ=BroadcastChannel、端末間=WebRTC DataChannel(手動シグナリング)。
 - op エンベロープに CRDT clock `{peer, seq, ts}`、`peer:seq` で dedup(`seenOps`、上限 `MAX_SEEN_OPS`)。
 - **MUST(受信検証)**: `applyRemote` は (a) op 型 allow-list(`REMOTE_OPS` =
-  add/del/upd/move/clear/group/ungroup/zorder/align/style/resize)、(b) **ペイロード検証**
+  add/addMany/del/upd/move/group/ungroup/zorder/align/style/resize/replace)、(b) **ペイロード検証**
   (`validRemotePayload`: 各 forward-apply が参照するフィールドの型 + move の有限数、`validPatch` で
   NaN/Inf・prototype 汚染キーを再帰的に排除)、(c) **クロック検証**(`validClock`)を通った op のみ適用。
-  remote op は local undo に入れない。`replace`(盤面まるごと swap)は `REMOTE_OPS` に**含めない** —
-  悪意ある peer が盤面を消せないように local 専用。
+  remote op は local undo に入れない。
+  `clear` は wire にはそのまま乗らない — `_slimOp` が `{op:'replace',after:[],afterWc:{}}` へ
+  翻訳する (ADR-0626)。全消去が 'replace' として届くことで `_lastRep` の因果順序
+  (0613-0619) をそのまま継承し、sender 側も同じ clock を `_lastRep` に記録する。
+- **`replace` の収束規則 (ADR-0613-0619)**: 全置換は `{op:'replace',after,afterWc}` で送信 —
+  `after` は `validShape` 配列、`afterWc` は prop clock マップとして受信検証。
+  `state._lastRep` (最新適用 swap の clock) が全順序を仲裁: 古い swap は適用前に棄却
+  (equal = 同世代で棄却しない)、undo/redo は `_undoWire` が pre-swap 盤面を新 clock で
+  再ブロードキャスト、`commit`/`_recordCommitted` 経路も marker を記録。
+  snapshot は `rep:_lastRep` を同梱 — 受信側 marker が厳密に新しい snapshot は
+  棄却 (pre-swap 図形の再追加を防止)、新しい `rep` は採用後に marker を整合。
+  docName は `nameTs` LWW (0609/0618)。これら causal marker は wire ドメインの状態 —
+  `Net.init` で `seenOps` と同じくリセット (0619)。
 - **並行収束 (ADR-0002 / プロパティ単位 LWW)**: 同一図形の**同一プロパティ**への並行編集は
   `(ts,peer,seq)` の全順序 `clockNewer()` と書込クロック `state.wclock`(`shapeId→{prop:clock}`、
   図形には載せない)で**古い書込を落として決定的収束**。**互いに素なプロパティは双方生存**。
   `move`/`zorder` は可換なので LWW 非適用。`upd`/`style`/`resize`/`align`/`group`/`ungroup` に適用。
 - 共有: URL fragment にスナップショット。`importFromHash` は shape を検証してから採用。
+- **ピア識別**: `peerId` は起動毎の incarnation 付き (ADR-0459) — リロードで `seq` が 0 に
+  戻っても旧 `peer:seq` キーと衝突しない。`wclock` は IDB に永続化 (ADR-0460) —
+  リロードを跨いでもプロパティ単位 LWW の仲裁履歴が保持される。
+- **チャンク再組立**: `snap`/`opc`/`img` の分割受信は `n`/`src` 不一致または `seq===0` で
+  assembly を再起動 (ADR-0448/0469/0563) — 同一送信元の中断→再送で新旧断片が混結合しない。
 
 ## 9. エクスポート
 - **PNG**: 2x、可視領域クロップ + 32px パディング。`toBlob` null ガード。
@@ -446,32 +476,56 @@ canvas に `role="application"` + 詳細 `aria-label` + `tabindex=0`。選択/�
 - **表示=出力パリティ**: pen 可変線幅・破線・テキスト折返しを canvas と SVG が同一ヘルパで描画。
 
 ### 14.2 短所(既知の弱み)
-- **a11y の天井**: canvas は単一の `role=application`。図形ごとの DOM ミラーが無く、スクリーン
-  リーダーは個々の図形を木構造として辿れない(巡回トーストで緩和するのみ)。**[P1]**
+- **a11y の天井**: **段階解消** — ADR-0041 で視覚的に隠した `#shapeMirror` region に
+  図形一覧の DOM ミラーを生成 (`_gridVer` 連動再構築、`MIRROR_MAX=300` 上限+末尾
+  「N個未掲載」明示)。SR は一覧を走査し Enter で選択+中央寄せ+アナウンスできる。
+  巡回トースト (§短所の記載どおり) と併用。**[DONE]** (v1.7.99)
 - **同期の運用性**: WebRTC は手動シグナリング(URL 手渡し)。シグナリングサーバ無しは長所だが
   「URL を開くだけで共同編集」には届かない。プレゼンス(他者カーソル ADR-0010・選択状態の
   ハイライト ADR-0011)は実装済みで、残る弱点はシグナリング UX のみ。**[P2]**
-- **多ページ非対応**: 1 盤面のみ。`docs` ストアは単一 `main` 固定で、ページ追加/切替/サムネが無い。**[P2]**
-- **入出力の幅**: インポートは画像 + 自盤面 JSON のみ。`.excalidraw` / SVG 取込 / Markdown 貼付は無い。**[P2]**
-- **大規模スケール**: viewport カリングは有るが空間索引は pickTop のグリッドのみ。>2000 図形での
-  全描画・bbox 再計算は線形。quadtree / ダーティ矩形再描画は未着手。**[P3]**
+- **多ページ**: **解消済み** — ADR-0646: `pages`/`curPg` + `s.pg` 帰属、ページバー UI、
+  `pageAdd`/`pageDel`/`pageName` ワイヤ収束、undo/redo 対応 (v1.7.673)
+- **入出力の幅**: **解消済み** — 画像 + 自盤面 JSON に加え、SVG (ADR-0042:
+  DOMParser walk → rect/circle/ellipse/line/polyline/polygon/path/text、
+  貼付/ドロップ/ピッカー)・`.excalidraw` (ADR-0043: 拡張子+`type`内容検出、
+  tombstone/未知要素スキップ)・`text/plain` ペースト (ADR-0044、Markdown は
+  平文として取込) の3形式を追加。それぞれ `SVG_MAX_*`/`EXC_MAX_*`/
+  `PASTE_MAX_CHARS` の天井付き。**[DONE]** (v1.7.100-102)
+- **大規模スケール**: **解消済み** — 空間索引は `_grid`/`_queryGrid` として draw() の可視列挙
+  (ADR-0016)・マーキー/pickTop (ADR-0032)・ダメージ矩形交差判定に拡張済み。dirty-rect も
+  ADR-0026/0027/0028/0030/0033 のダメージ矩形+スナップショットプレビュー経路として実装済み
+  (v1.7.83-91)。bbox 再計算は O(1) シグネチャメモ化 (ADR-0019)。**[DONE]**
 - **z 順序の二重管理**: `frac`(正準)と整数 `z`(レガシーボードの移行アンカー兼 back-compat
   フォールバック)が併存。ADR-0001 Step4 で**恒久的に併存させる**と決定済み(未完の作業では
   ない)— 完全な単一正準化は高リスク・低価値と判断されたため、ロードマップからは除外。**[P3]**
-- **画像の肥大**: dataURL を state にインライン保持 → 大画像で盤面 JSON / IDB が膨張。
-  参照分離・再圧縮は無い。**[P3]**
-- **テストの偏り**: 多くが文字列プレゼンス検査。behavioral 比率は上がったが、レンダリング実体や
-  ポインタ操作シーケンスの検証は薄い。**[P3]**
+- **画像の肥大**: **解消済み** — 永続化層は ADR-0031 で IDB v2 `imgs` ストアに
+  content-hash キーの blob 分離済み (doc レコードは `img` 参照のみ、`:prev` と共有、
+  孤児は save 時 GC)。インポート時 2048px 超は条件付き WebP 縮退 (ADR-0022、
+  事前キャップは ADR-0527 で 16MB)。段階2 も完了: op/snapshot/共有リンクの
+  ワイヤーレベル `img` 参照化 (ADR-0069) + チャンク送信 (96KB、ADR-0379) で
+  dataURL インラインは解消。**[DONE]**
+- **テストの偏り**: 解消 — 単一世界 + 2ピア収束ハーネス + Share E2E +
+  wire-guard 実動作テスト (ADR-0470/0480 等) に加え、ADR-0641 系列検証で
+  全リスナ型・タイマ・drop 全拡張子・レンダリング実体 (注入記録 ctx) まで
+  実 dispatch 検証済み (ADR-0645 完走表)。**[DONE]**
 
 ### 14.3 改善点(ロードマップ)
 | 優先 | 項目 | 概要 | 形態 |
 |---|---|---|---|
-| P1 | DOM ミラー a11y | 図形ごとの off-screen DOM ノードで SR ネイティブ対応 | 大型 ADR |
-| P2 | 多ページ | `docs` を複数キー化 + ページ切替 UI + サムネ | ADR + リリース |
-| P2 | インポート拡張 | `.excalidraw` / SVG / Markdown 取込 | 段階実装 |
-| P2 | コードパス・パリティ監査の継続 | drag/keyboard/remote の機能差を埋める(本リリースで nudge を解消) | 継続監査 |
-| P3 | 空間索引(quadtree) | >2000 図形の描画/ヒット/bbox を準対数化 | ADR |
-| P3 | 画像参照分離 | dataURL を CAS 的に分離し state を軽量化 | ADR |
+| P1 | ~~DOM ミラー a11y~~ | 実装済み — ADR-0041 | DONE |
+| P2 | ~~多ページ~~ | 実装済み — `pages`/`curPg` + `s.pg` + ページバー + ワイヤ収束 (0646) | DONE |
+| P2 | ~~インポート拡張~~ | 実装済み — SVG (0042) / .excalidraw (0043) / text (0044) / mxfile/.drawio (0199/0222 他) | DONE |
+| P2 | ~~コードパス・パリティ監査~~ | 実装済み — drag/keyboard/remote 差分は継続監査で消化 (nudge/ctx 到達/undo-wire 0460 等) | DONE |
+| P3 | ~~空間索引(quadtree)~~ | 実装済み — `_grid`/`_queryGrid` が描画・ヒット・ダメージ判定をカバー (ADR-0016/0032) | DONE |
+| P3 | ~~画像参照分離 段階2~~ | 実装済み — ADR-0069 wire `img` 参照 + ADR-0379 96KB チャンク | DONE |
 
+### 14.3.1 現行の残課題 (2026-09 時点)
+| 優先 | 項目 | 概要 |
+|---|---|---|
+| P3 | z/frac 一本化 | ADR-0001 Step4 — 恒久併存と決定済み (ロードマップ外) |
+| P3 | whole-doc put → delta 永続化 | flush 毎の O(board) 書込みのトレードオフ — 現状は debounce で許容 |
+| P3 | ~~ポインタ系列の実検証~~ | **解消** — 全リスナ型・タイマ・drop 全拡張子・レンダリング実体を実 dispatch/実タイマ/注入スタブで網羅 (ADR-0641/0644/0645) |
+
+> §14.3 ロードマップの P1/P2 は全消化 (2026-09-28)。
 > 方針(CLAUDE.md 準拠): 各 P1/P2 は**別 ADR + 独立リリース**。一気に全部は作らない。
 > 「ゼロ秒で使える/オフライン等価/単一HTMLで小さく保つ」を破る改善は採用しない。

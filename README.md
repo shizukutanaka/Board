@@ -4,8 +4,8 @@
 単一HTMLファイル。ダブルクリックで動く。アカウント不要。広告なし。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-00C4CC.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.7.73-00C4CC.svg)](CHANGELOG.md)
-[![Size](https://img.shields.io/badge/size-~85KB%20gzip-00C4CC.svg)](index.html)
+[![Version](https://img.shields.io/badge/version-1.7.765-00C4CC.svg)](CHANGELOG.md)
+[![Size](https://img.shields.io/badge/size-~178KB%20gzip-00C4CC.svg)](index.html)
 [![Offline](https://img.shields.io/badge/offline-first-00C4CC.svg)](#offline)
 [![A11y](https://img.shields.io/badge/WCAG-AAA-00C4CC.svg)](#accessibility)
 
@@ -21,14 +21,14 @@
 | 単一ファイル配布 | ✗ | ✗ | ✗ | **✓** |
 | E2E 暗号化 | ✗ | 部分 | ✗ | **✓ AES-256-GCM (ADR-0015)** |
 | 完全オフライン | 部分 | ✓ | ✓ | **✓ PWA** |
-| サイズ | 数MB | ~1MB | ~2MB | **単一HTML 268KB (gzip 85KB)** |
+| サイズ | 数MB | ~1MB | ~2MB | **単一HTML 539KB (gzip 178KB)** |
 | 広告・トラッキング | あり | なし | なし | **ゼロ** |
 | 料金 | $10-16/月 | 無料 + Plus | SDK商用有料 | **完全無料** |
 
 Board は `index.html` 一枚。自分のドメイン、USB、社内ネット、オフライン PC — どこでも動く。
 
-> **サイズの基準**: 他社列は非圧縮のアプリバンドル概算のため、Board も非圧縮 (268KB) を併記した。
-> 実際の転送量は静的ホストが brotli を返すので **約 71KB**。
+> **サイズの基準**: 他社列は非圧縮のアプリバンドル概算のため、Board も非圧縮 (523KB) を併記した。
+> 実際の転送量は静的ホストが brotli を返すので **約 146KB**。
 > [HTTP Archive Web Almanac 2025](https://almanac.httparchive.org/en/2025/page-weight) が報告する
 > モバイルページ重量の中央値 2,362KB に対し、およそ **1/33**。
 > 数値は `node test.mjs` が実測し、この README のバッジと ±10% 以内で一致することを検証している。
@@ -103,6 +103,9 @@ start index.html      # Windows
 - Undo/Redo 最大 500 段 — **全 op が完全可逆** (z 順序・グループ・整列も含む)
 - コピー / ペースト / 切り取り / 複製 (Ctrl+C/V/X/D)
 - 削除 (Del/Backspace)、全選択 (Ctrl+A)、右クリックコンテキストメニュー
+- 図形リンク (`s.link`): ctx「リンクを設定…」で https?:// URL を付与 — 🔗 バッジ表示、
+  ⌘+click (Win/Linux は Ctrl+click) または ctx「リンクを開く」で別タブ表示。
+  リンクのコピーも ctx から。drawio の Edit Link・excalidraw `link` と往復
 
 ### コラボレーション / Sync
 - 同一ブラウザのタブ間: BroadcastChannel で即時同期
@@ -273,7 +276,7 @@ npx serve .
 - 外部依存の追加は慎重に (単一ファイル原則 — 外部 `<script src>` / `<link href>` は不可)
 - サイズはハード上限なし (2026-06-13 に gzip 44KB 予算を撤去)。指針として小さく保つが、
   整合性・正しさを優先してよい。暴走防止に raw 512KB の緩い上限のみ残す
-  (現状 raw ~268KB / gzip ~85KB / brotli ~71KB)。サイズが動いたら上のバッジも更新すること —
+  (現状 raw ~523KB / gzip ~160KB / brotli ~131KB)。サイズが動いたら上のバッジも更新すること —
   ±10% を超えると `test.mjs` が落ちる
 - `node test.mjs` を通すこと (CI が presence + behavioural テストを実行)
 

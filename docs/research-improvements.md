@@ -49,8 +49,9 @@ replicated undo 論文群。
 - **原則整合**: 依存追加なし。SVG 出力は `<path d="…" fill="..." stroke="none"/>` 形式に変わる。
 
 ### C. **空間インデックス**(quadtree / uniform grid)でヒットテストと描画カリング
-- **現状**: `architecture.md` が >500 shape での quadtree 導入を予告済みだが未実装。hover ヒットテスト
-  (`pickTop`)が毎 pointermove で O(N)、`draw()` は全 shape を毎フレーム描画。
+- **現状 (2026-09 更新)**: uniform-grid 空間索引として実装済 (ADR-0016/0032/0654) — draw カリング・
+  pickTop/marquee 候補絞り込み・density-adaptive cell サイズ。quadtree 自体は不要と判断。
+  (旧記述: 「quadtree 未実装、hover O(N)、draw 全走査」— 解消済み)
 - **改善**: commit 毎に遅延再構築する coarse uniform-grid を持ち、`pickTop`/marquee と **画面外 shape の描画カリング**
   に使う。tldraw は culling + 空間索引で数千オブジェクトを 60fps 維持。
 - **出典**: [tldraw performance/culling (toolpick 比較)](https://www.toolpick.dev/blog/excalidraw-vs-tldraw-2026) ·
@@ -110,9 +111,9 @@ replicated undo 論文群。
   `cycleSel()` (line 1306) + `describeShape()` (line 1317) で Tab/Shift+Tab が z-order を巡回し、
   `aria-live` トースト (line 2529, 2538) で各 shape を読み上げ、`canvas` の `aria-label` も操作ヒントを
   動的更新 (line 2611)。キーボード/SR ユーザは shape を巡回・選択・移動・作成でき各操作が読み上げられる。
-- **真の残差(改善点)**: 永続的な **offscreen DOM ミラー**(全 shape を常時 DOM に反映し、ブラウズモード/
-  ランドマークで構造ナビゲーション可能に)は未実装。現在は「巡回時に1つずつ読み上げる」方式で全体の
-  一覧性が無い。外部 a11y 監査通過にはこの DOM ミラーが要る。
+- **真の残差(改善点)**: ~~DOM ミラー未実装~~ → **実装済み (ADR-0041)** — `role="region"` の
+  `shapeMirror` が offscreen `<ul>` を常時反映 (現ページのみ、ADR-0646)。残差: shape 毎の
+  ランドマーク分割 (300 件 cap のグループ化) は未実装だが一覧性は確保済み。
 - **出典**: [HTML canvas accessibility (pauljadam)](https://pauljadam.com/demos/canvas.html) ·
   [W3C WCAG 2.2 — Keyboard Accessible](https://www.w3.org/WAI/WCAG22/Understanding/keyboard-accessible.html) ·
   [MDN — Keyboard accessibility](https://developer.mozilla.org/en-US/docs/Web/Accessibility/Guides/Understanding_WCAG/Keyboard)
@@ -401,9 +402,9 @@ replicated undo 論文群。
   非対応は隣接点間距離(速度プロキシ)で幅を推定、3点移動平均でスムージング済み。
   pts は [x,y,pressure] トリプルで格納し、RDP 間引きも圧力を保持、SVG 出力も同一アルゴリズム。
 
-未実装の改善案: filled-outline パス(ストローク輪郭を閉じた path で塗り、テーパーエンドも自然)。
-  現在は per-segment lineWidth を変えているだけなので、区間境界に僅かなギャップが見える可能性がある。
-  perfect-freehand の本来の意義は outline 化にあり、これが本当の「体感品質の向上」になる。
+~~未実装の改善案: filled-outline パス~~ → **実装済み (ADR-0046)**。
+  ストローク輪郭を台形+円盤の union-of-primitives として閉じた path で塗り、
+  テーパーエンドも自然になった。per-segment lineWidth の区間ギャップは解消。
 ```
 
 ---
@@ -453,8 +454,9 @@ undo はそれらを代替しない。
 **このカテゴリ錯誤が生む二つの誤解**:
 
 1. **開発者への誤解**: 「history に非可逆 op を push するな」は *session 内の* 正しさを守る。
-   しかし *session 間の* 正しさは別の機構が必要だ。現在それは無い(§3.9 の `DOC_KEY:prev` が部分的に
-   埋める予定だが未実装)。
+   しかし *session 間の* 正しさは別の機構が必要だ。→ **その後実装済み (ADR-0004)**:
+   全消去/インポート直前のボードを `saveBackup` で自動バックアップする self-overwrite 保護が
+   セッション間の安全網になった。
 2. **ユーザへの誤解**: 「保存済み」と「undo可能」が同時に成立すると思っている。実際には
    保存後のリロードで後者は消える。UI はこれを知らせない。
 
@@ -543,9 +545,9 @@ undo はそれらを代替しない。
   aria-live トースト読み上げ + 動的 canvas aria-label を実装済み。キーボード/SR
   ユーザは shape を巡回・選択・移動・作成でき、各操作が読み上げられる。
 
-真の残差: 永続的な offscreen DOM ミラー (全 shape を常時 DOM に反映し、ブラウズモードや
-  ランドマークで構造ナビゲーション可能にする) は未実装。現在は「巡回時に1つずつ読み上げる」
-  方式で、全体構造の一覧性は無い。外部 a11y 監査通過にはこの DOM ミラーが必要。
+~~真の残差: 永続的な offscreen DOM ミラー…は未実装~~ → **実装済み (ADR-0041)**。
+  全 shape を常時 DOM に反映するオフスクリーン DOM ミラーが追加され、
+  ブラウズモードでの一覧ナビゲーションが可能になった。
 ```
 
 > 帰結: §3.10 と §3.12 を合わせると、Board の自己記述の問題は「ある文書が間違っている」ではなく

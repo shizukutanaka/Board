@@ -29,6 +29,60 @@
 ### 1. Input
 `canvas.addEventListener` と `window.addEventListener` で pointer / keyboard / wheel を受ける。ここでは **状態を変更しない**。ツールハンドラに委譲。
 
+#### ジェスチャライフサイクル (v1.7.55x–562 — ADR-0516..0534)
+`ptr` (down/dragKind/dragStartShapes/resizeOrig/… の単一構造体) が全ドラッグの
+唯一の状態。pointerdown で `setPointerCapture` + (右ボタン以外のときのみ)
+`ptr.down=true` — 右 down は即 return (ADR-0532: macOS/Linux の contextmenu は
+mousedown 時点で発火するため、arm するとメニューガードが誤発動した)。
+pointerup でコミット、pointercancel / `lostpointercapture` /
+`visibilitychange`→hidden / `pagehide` / ドラッグ中の
+`contextmenu` / touch long-press / Esc / window `blur` で
+`_cancelPointerGesture()` — いずれも dragKind 別に部分変更を復元する統一
+キャンセル経路。blur は同時に `_pointers.clear()` と `_pinchPrev`/`_pinchSnap`
+と space 一時 hand ツール (`window._prevTool`) を再ベースライン化する — 別アプリで
+取りこぼされた pointerup/keyup が後続ジェスチャを壊さないための防壁
+(ADR-0534)。`pointerleave` は hover/laser のみ消去 (ドラッグは capture で継続)。
+hidden/pagehide/blur の共通掃除口は `_clearTouchState()` — `_pointers` Map・
+`_pinchPrev`/`_pinchSnap` に加えて `Minimap.cancelNav()` も呼び、ミニマップの
+ドラッグスクラブ中状態 `_mmNav` も bfcache を跨いで残存させない (ADR-0632)。
+`_cancelPointerGesture` 末尾でも同掃除口を呼び、Esc 等の cancel でもピンチ状態を
+残存させない (ADR-0636: 残ると二本目の指の pointerup が stray ズームを発火)。
+ドラッグ中の 24px 端帯は rAF エッジオートパン (ADR-0519)。`pointerId` は
+`_pointers` Map で追跡し 2 本目でピンチ遷移。
+
+**ジェスチャ×外部変化の不変条件 (v1.7.66x — ADR-0634..0637):**
+- **overlay/モーダル突入はキャンセル先行**: `Presentation.enter()`・
+  `editSelectedShapeKbd` (Enter) は冒頭で `if(ptr.down)_cancelPointerGesture()`
+  — capture 継続のドラッグが overlay 裏で進行し不可視コミットするのを防ぐ。
+- **ジェスチャ対象は _sel0 ではなく orig.id 解決**: resize/rotate の
+  ドラッグ適用・コミット・キャンセル復元は全て `byId(ptr.*Orig.id)`
+  (ADR-0635)。ジェスチャ中に選択が変わり得る (⌘A・リモート op・undo) ため
+  「現在選択の先頭」参照は別図形への誤コミット/誤復元を招く。
+- **mid-gesture 変化キー**: ⌘Z/⌘Y は先に cancel (ADR-0574)。他のキー変化
+  (⌘D/⌘X/del/paste/⌘A) は dragStartShapes の id-map と byId ガードで
+  自己整合 — cancel は不要。
+クリップボードの OS 橋渡しは `_cpNow`/`_osClip` + `_textCascade` (SVG →
+.board → .excalidraw → mxfile → TSV → 平文) が paste/drop 双方に効く
+(ADR-0516/0518)。Safari の GestureEvent は gesturestart/change/end で
+`_gScale` 比ズームに変換 (ADR-0517)。
+
+`openTextEditor` は `byId(s.id)` で live 図形を再解決してから bind する
+(ADR-0533) — `add` コミットは `_sh()` に clone を載せるため、呼び出し側が
+持つ clone 前参照へ書き込むと live 図形だけが `text:''` のまま残る
+(ローカルのみ不可視化・ピアは `upd` で正しいテキストを得ていた)。
+
+#### 編集 overlay のライフサイクル (v1.7.58x — ADR-0556..0561)
+text (textarea) / label (input) overlay は blur/Enter で commit、Escape で破棄。
+コミット側は `byId` ガードで orphan 化 (remote del mid-edit) 時に phantom
+upd/del を撃たない (ADR-0556/0557)。発生元が消えた付箋 ⌘Enter 連鎖も同様に
+遮断 (ADR-0558)。毎フレームの `_teFollow`/`_lblFollow` が対象削除を検知して
+**proactive close** するため del/clear/replace/snapshot/undo の全経路で overlay
+が残らない (ADR-0559)。`_cxO()` が新規 editor オープン前に旧 overlay を blur
+→ commit させ、`state.editing` の clobber (新 editor の follow 死亡 + 本文の
+canvas/overlay 二重描画) を防ぐ (ADR-0560)。resize は canvas rect を動かすが
+follow sig (x,y,zoom) が不変のため、`resize()` で sig をリセットして即再配置
+(ADR-0561)。
+
 ### 2. Tools
 現在のツール (`state.tool`) に応じて `begin* / cont* / end*` の三段階で gesture を処理。途中状態は `state.draft` に置く (undo に入れない)。`end*` で Store.commit。
 
@@ -50,9 +104,11 @@ op 型 (全て可逆; `_apply(op, false)` で完全に戻る):
   push しない。`_applySnapshot` は seenOps を埋めずに shapes を差し替えるため、スナップショットが
   ライブ add op を追い越すと dedup を素通りする — 冪等性でその二重化を塞ぐ。ローカル commit は
   毎回新規 uid なので阻害されず、redo は undo が消した後なので再 push される)
-- `{op:'del', shapes:[...]}` — 複数削除を1つに
+- `{op:'del', shapes:[...], connClears?}` — 複数削除を1つに。forward は `sh.locked` をスキップし、
+  undo は `byId` 冪等ガードでスキップ分を再 push しない (ADR-0547: さもないと同一 id 二重登録)
 - `{op:'upd', id, before, after}` — 汎用プロパティ変更
-- `{op:'move', ids:[...], dx, dy}` — 平行移動
+- `{op:'move', ids:[...], dx, dy}` — 平行移動。forward は実際に動かした id を `op.moved` に記録し、
+  undo は `moved` のみを逆移動 (ADR-0548: locked スキップ分が逆方向にずれるのを防止)
 - `{op:'zorder', before:[{id,z},...], after:[{id,z},...]}` — z 順序スナップショット差分
 - `{op:'style', before:[{id,...},...], after:[{id,...},...]}` — マルチ選択スタイル一括変更 (スライダーコアレス)
 - `{op:'align', before:[{id,...},...], after:[{id,...},...]}` — 整列
@@ -62,6 +118,41 @@ op 型 (全て可逆; `_apply(op, false)` で完全に戻る):
 - `{op:'clear', shapes:[...]}` — 全消去
 
 **全 op が可逆**。`_apply(op, false)` で完全に戻せる。`test.mjs` のプロパティベーステストで30シナリオ往復検証。
+
+**locked parity**: 全 mutating op の forward は `sh.locked` をスキップする (ローカル/リモート共通)。
+undo 経路では op 型ごとに対称性が異なる — 絶対パッチ系 (upd/style/align/resize/beautify/zorder/
+group/ungroup) は per-shape `before` の書き戻しが冪等なため no-op で安全だが、存在を復元する `del`
+と差分を適用する `move` はスキップ集合を backward に伝える必要がある (それぞれ `byId` ガードと
+`op.moved` で対応 — ADR-0547/0548/0549)。
+
+**hidden parity**: 「非表示図形は選択されない」不変条件は**チョークポイント集約**で保つ
+(ADR-0566/0568)。selection への入口は `_ss(ids)` / `_sad(id)` の2つだけで、両者が
+`byId`+`_sv` でフィルタする — 存在しない・非表示の id は ⌘A・マーキー・検索・undo 復元・
+paste/duplicate/import どの経路でも選択に入らない。遷移方向 (既に選択済みの図形が `_hd` 化)
+は `_apply` が prop-patch の後処理で `_sdl` する (style/upd/align/resize/beautify の
+remote/redo をカバー)。hide 時に編集中 overlay があれば畳む — local hide は `hideSelection`
+冒頭の `_cxO()`、remote/undo 経由は `_teFollow`/`_lblFollow` の `_hd` ガードが次フレームで
+畳む (ADR-0569)。描画系でも同規則を守る — ピアの `p.sel` プレゼンスは
+`drawPeerSelections` が `_hd` で落とす (ADR-0576: 非表示図形の位置を他者へ漏らさない)。
+direct `state.selection.add` や新たな `_ss` バイパスを増やさないこと。
+
+派生レンダリング面も同規則 (ADR-0592–0595): `_grpMapGet` のハロー集約・`_renderPngBlob`/
+`buildSVG` の bbox 計算・`excScene` の要素 emit・Minimap の scene 描画はいずれも `_sv` で
+フィルタする — 不可視内容がハロー・エクスポート余白・ミニマップ・第三者フォーマットへ
+漏洩しない。例外はデータ保持が目的の経路のみ: `.board` エクスポートは `visible` prop を
+保持し、`boardToDrawio` は `visible="0"` を emit して往復可能にする。
+
+**dead-id parity** (ADR-0621/0623): 選択由来の id/shape リストは **dead id を含まない**。
+remote del/replace と選択書込みの間には選択が stale id を持つ窓が残るため、派生リストは
+出口側で `id=>{const s=byId(id);return s&&_ul(s)}` (live+unlocked) で濾す: `endSelect`/
+`nudgeSelection` の `move` ids、`unlockedSelectionIds` (group op の `before` スナップショット
+まで含む)。`_sb()` は `map(byId).filter(Boolean)` で供給源閉塞 — `undefined` を残すと
+`_ul` の `.locked` 参照で TypeError となる (呼出し側の `s&&` 防御は downstream で残す)。
+
+**img 参照の再解決**: 形状を復元する全経路 (del/clear/replace の backward、replace の forward) は
+`_sh().push(Net._attachShape(clone(s)))` を通す。`img:` 参照を抱えた図形が undo で戻る際に
+`_imgIn` の到達済み blob から `dataUrl` を再解決し、未到達なら `_imgPending` に再駐留する
+(ADR-0551)。直接 `push(clone(s))` すると削除中に blob が到達した図形が永久 placeholder になる。
 
 **反転 (flip H/V)** は専用 op を持たず、`align` op を再利用する: `doFlip(axis)` が選択 bbox 中心軸で
 各シェイプ座標をミラー (`flipShape`) し、変更前後の完全クローンを `{op:'align',dir:'flip',before,after}`
@@ -91,23 +182,41 @@ op 型 (全て可逆; `_apply(op, false)` で完全に戻る):
 }
 ```
 
-### 5. Render
-RAF ループ。`needsRender` フラグで再描画をゲート。毎フレーム `draw()` を呼ぶわけではない — `invalidate()` が立ってる時だけ。
+### 5. Render (v1.7.x — ADR-0024〜0033 で再構築)
 
-描画順:
-1. 背景クリア
+RAF ループ。`needsRender`/`needsOverlay` フラグで再描画をゲート。**2 層キャンバス**:
+`draw()` (シーン, `#c`) と `drawOverlay()` (選択枠・ガイド・マーキー・ピアカーソル等の
+エフェメラル chrome, `#ov`) を分離し、オーバーレイのみの変化でシーン全面再描画を
+回避する (ADR-0024)。
+
+`draw()` の経路は優先順でフォールバック:
+1. **ズームプレビュー** (ADR-0030/0033): ピンチ/ctrl+wheel 中は `_pinchVp` の
+   スナップショット bitmap をスケール blit。シーン再走査なし。
+2. **パン blit** (ADR-0028): パン中は前フレームの自己 drawImage でピクセルを
+   ずらし、露出した帯だけ `_dmgPair` clip で再描画。
+3. **ダメージ矩形** (ADR-0026/0027): ドラッグ系ジェスチャや `_apply`/`applyRemote`
+   由来の world 空間汚れ矩形を clip して局所再描画。交差判定は `_queryGrid`。
+   **束縛コネクタ規則** (ADR-0597/0598/0599): 図形の変形に追従する束縛コネクタ
+   (`aF`/`bF` が束縛先 extent から端点を動的解決) の掃引領域は、対象図形の bbox だけ
+   では覆えない。ダメージを構成する全経路 (doMove/_gresizeDrag/_grotDrag/resize/
+   rotate/`_apply`) は `(aF&&a∈対象)||(bF&&b∈対象)` のコネクタを変形前に収集し、
+   変形後 `_bb` との `_dmgPair` union を合流する。
+4. **全量**: 上記いずれでもない通常フレーム。
+
+シーン側の描画順:
+1. 背景クリア (ダメージ経路では clip 内のみ)
 2. world→screen transform 設定
 3. グリッド (zoom が十分なら)
-4. フレーム (最初に描画して他の shape が上に乗る)
-5. 全 shape (z順、viewport culling で範囲外スキップ)
-6. draft (if any)
-7. スマート整列ガイド (drag 中のみ)
-8. screen space で選択枠 + 8 handle (line/arrow は端点 2 つ)
-9. marquee (if any)
-10. ミニマップ (独立 canvas)
+4. `_grid` 空間索引で可視 shape を列挙 (ADR-0016) → z順にソート → `drawShape`
+   - ペンは `_penCache` ビットマップ (ADR-0018)、bbox は O(1) シグネチャメモ化 (ADR-0019)
+   - 下書きペンは `_inkCv` に確定セグメントを増分スタンプ + 生きた末尾だけベクトル (ADR-0029)
+   - 画像は `_imgCache` — O(1) フィンガープリントキー (ADR-0021/0035)
+5. オーバーレイ canvas (`#ov`) 側に: 選択枠 + 8 handle、整列ガイド、マーキー、
+   レーザー、ピアカーソル/選択 (ADR-0024)
+6. ミニマップ (独立 canvas) — 中身は `_gridVer` 連動ビットマップキャッシュ (ADR-0025)
 
 ### 6. Persist
-IndexedDB (`board` / `docs` / `main`)。500ms デバウンス。`beforeunload` で最終セーブ。`Ctrl+S` で即時保存。読み込み時に `validShape` で全 shape を検証。
+IndexedDB (`board` / stores `docs` + `imgs`, DB_VER=2)。500ms デバウンス。`visibilitychange`→hidden で最終セーブ (`beforeunload` はモバイルで不可靠)。`Ctrl+S` で即時保存。読み込み時に `validShape` で全 shape を検証。ADR-0031 で画像バイトは `dataUrl` から content-hash キーの `imgs` blob ストアへ分離 — doc レコードは `img` 参照のみ保持し、`DOC_KEY`/`DOC_KEY+':prev'` が blob を共有 (重複書き込みなし、孤児は save 時 GC)。save 失敗は `_saveErrMsg` で `QuotaExceededError` を識別してトースト。
 
 ## 座標系
 
@@ -130,25 +239,47 @@ bbox 先置き (quick reject) → shape 型別詳細。`tol = 6/zoom` でズー�
 未回転で描画されるので当たり判定も未回転にしないと `s.x/s.w=undefined` で中心が NaN になり
 永久に当たらなくなる(表示=当たり判定パリティ)。
 
-ペンは line segments の距離チェック。エンドポイント: Ramer-Douglas-Peucker (ε=0.5px) で commit 時に decimation。
+ペンは line segments の距離チェック。エンドポイント: Ramer-Douglas-Peucker で commit 時に decimation — ε は `0.5/zoom` のズーム適応 (ADR-0034: ズームイン時の精密筆跡を保持)。実装はスタック駆動の反復形 (再帰でないので長ストロークでスタック溢れしない)。
 
-**Spatial index** (`v1.6.11`): board に 40+ shape 以上ある場合、`pickTop` は `_buildGrid` でグリッドセルインデックスを構築し `_queryGrid` で候補を絞る。`_apply` ごとに `_invalidateGrid()` で無効化、次の `pickTop` で再構築。
+**Spatial index** (`v1.6.11` 導入、v1.7.x で拡張): board に 40+ shape 以上ある場合、`pickTop`・マーキー選択 (ADR-0032)・draw() の可視列挙 (ADR-0016)・ダメージ矩形の交差判定が `_buildGrid` で構築したグリッドセル索引を `_queryGrid` で使う。`_apply` ごとに `_invalidateGrid()` で無効化 (`_gridVer` 加算)、次のクエリで再構築。`_gridVer` はミニマップキャッシュ (ADR-0025) やスナップ索引 (ADR-0020) の無効化キーとしても共有される。
 
 ## フレームレート
 
 DPR キャップ 3 (Retina 2x が実効上限)。
 requestAnimationFrame 1 本。ユーザー操作中も常に 60fps を目標。
 
-重い場合の緩和:
-- `needsRender` でスキップ
+重い場合の緩和 (累積する施策の上位層):
+- `needsRender`/`needsOverlay` でスキップ — アイドル時の描画コストはゼロ
+- **2 層キャンバス** (ADR-0024): overlay-only 変化はシーンを触らない
+- **プレビュービットマップ** (ADR-0028/0030/0033): パン/ズーム中はシーン再走査せず
+  スナップショットを合成
+- **ダメージ矩形** (ADR-0026/0027): ドラッグ/外部 op は汚れ矩形のみ再描画
+- **空間索引** (ADR-0016): 可視列挙が `_grid` ベース (線形走査ではない)
+- **ビットマップキャッシュ** (ADR-0018/0025): ペンストロークとミニマップ中身は
+  rasterize 済みを再利用
 - グリッドは `gsZ<6` で描画スキップ + `opacity` で fade
 - 選択枠は screen space で描画 (transform 切替 1 回のみ)
-- Viewport culling: `inView(s, visibleWorldRect())` で範囲外 shape をスキップ
 - getCSS: `_cssCache` でテーマカラーを memoize (テーマ変更時に `clearCSSCache`)
+- `_penCache` ペン bbox メモ化 (ADR-0019)、`_imgKey` O(1) 画像キー (ADR-0021)、
+  `_snapIndex` ソート済みスナップ索引 (ADR-0020) でイベント駆動の線形走査を解消
+- **キャッシュ不変条件**: シェイプ削除系は全て `_psc(id)`/`_pcC()` 経由で
+  `_penBboxCache`/`_penCache`/`Net._imgPending` をパージ (ADR-0424/0427/0435) —
+  id keyed な per-shape キャッシュが増えたら `_psc` 側に追加すること。
+  `_wrapCache` のキーは (text, maxWidth, fontSize, bold, italic, font, spacing)
+  — measureText に影響する prop を新設したらキーにも含める (ADR-0437)。
+- **GPU コンテキストロスト** (ADR-0627): `contextlost` を preventDefault で
+  `contextrestored` を許可し、復帰で `_ctxUp` が `_penCache`/`_inkD`/minimap
+  `_scene` をパージして `_iv`/`_ivO` 再描画 — GPU リセット後のブランク残留を
+  解消。GPU 裏付けのラスタキャッシュを新設したら `_ctxUp` のパージに含める
+  (CPU 側の `_penBboxCache`/`_imgCache`/`_imgPending` は対象外)。
 
 ## DPR
 
 `canvas.width = cssW * DPR` で内部解像度を確保。Retina で滑らか。DPR 変化 (マルチモニタ移動) で `resize()` 再計算。
+`resize()` 自体はバッキングストア全再確保を伴うため、window/visualViewport/
+orientation の resize リスナーは 150ms trailing-edge debounce (`_resizeSoon`)
+を通る — OS ドラッグや iOS URL バーアニメーションの連続発火を終端 1 回に
+集約する (ADR-0631)。`_watchDPR` の単発発火のみ直接呼び。
 
 **オーバーレイパスの規約 (v1.7.62 の学び)**: `draw()` 後半のオーバーレイパス
 (選択枠・ガイド・マーキー・レーザー・ピアカーソル/選択) は
@@ -192,8 +323,115 @@ DOM 要素は `data-t` 属性 + `UI.applyI18n()` で翻訳 (起動時に 1 回�
 ### WebRTC DataChannel (端末間)
 手動シグナリング (offer/answer をコピーして交換)。DTLS 暗号化。
 
+**ワイヤプロトコル (v1.7.4xx)**: 全メッセージは JSON 文字列。SCTP 単一
+メッセージ上限 (~256KiB) に収まらないペイロードは断片化される:
+
+- `op` — 通常の op ブロードキャスト (`broadcast`)。>200KB は `opc` 断片化
+  (ADR-0431)。
+- `snap` / `opc` — 64KB 断片 `{k,seq,n,data}`、受信は `_fragIn` が
+  `{p,g,n}` 再構成。重複 `seq` は `!p[seq]` で棄却、n 不一致も棄却、
+  完了時に join して元メッセージとして `_onRecv` に流す (24MB 上限)。
+  宣言 `n>384` (24MB÷64KB) は受理不能として明示棄却、送信側 `_fragSend`
+  も超過時に `syncTooLarge` トーストで中止 (ADR-0603) — 両側一致で
+  「送ったが届かない」分岐を排除。切断時 `_snapIn/_opcIn` をリセット (ADR-0385)。
+- `img` — 画像 blob の `{k,key,seq,n,data}` 断片。op/snapshot 内の画像は
+  `_slimOp` で `img:<key>` 参照に痩身化され、バイト本体は別経路
+  (`_imgOuts` → 64KB chunks → `_imgChunks` 再構成 → `_imgIn`)。
+  参照先不明の shape は `_imgPending` に駐車し blob 到着で attach
+  (ADR-0069/0374/0379)。削除済み shape の駐車エントリは `_psc` が除去
+  (ADR-0435)。
+- 送信は `_sendDC` 単一漏斗 — SCTP バッファ満杯の throw を
+  `onbufferedamountlow` 再送キュー (`_dcQ`) に変換 (ADR-0432)。
+  >256KiB の単一メッセージは永久に送れないため即 drop (ADR-0438)。
+- `hello`/`sync-req`/`ping`/`cursor`/`selection`/`name` — BroadcastChannel
+  経路のみ (RTC ピアは `_rtcPeerId` 合成 id で追跡、ADR-0010/0011)。
+  snapshot 要求は 1 秒 throttle (安価要求×高価応答の増幅防止)。
+
+### ライフサイクル (v1.7.49x)
+- **incarnation**: peer id は `peerId+'.'+nonce` で起動毎に一意 — `seenOps`
+  の `peer:seq` キーとリロード毎の seq リセットの衝突を解消 (ADR-0459)。
+- **応答選出**: snapshot/sync-req の応答者は `_loResp` (最小 id ピア) で
+  N→1 応答を抑止 (ADR-0455)。asker は選出から除外 — 最小 id の joiner が
+  応答者 0 人になる飢餓を防止 (ADR-0465)。
+- **throttle 再送**: `_sendSnapshot` が throttle で棄却した要求は 1.1s で
+  遅延再送 (`_snapT`) — joiner が応答を得られない窓を解消 (ADR-0452)。
+- **有界再送**: joiner は `_snapRx`/`_snapRetry` で応答未達を検出し、
+  presence tick で sync-req を 3 回まで再送 (ADR-0475) — 応答喪失時の
+  空盤面待機を解消。`Net.init` で両フラグをリセット。
+- **離脱**: `pagehide` で flush+bye、bye 受信でピア即時除去 (ADR-0457)。
+- **ルーム切替 hygiene** (ADR-0458/0464/0466/0467/0619): `Net.init` は
+  旧チャンネルへ bye → `seenOps`・`_snapT`・非RTC `state.peers`・
+  `_imgSent/_imgChunks/_imgOuts`・`_snapIn/_opcIn`・`_pCt` と因果
+  marker (`state._lastRep`・`_nameTs`) をリセット。
+  room-scoped 状態の持ち越しによる ghost カーソル・blob 未到達・
+  ストリーム継ぎ接ぎ・phantom announce を全て防ぎ、wire ドメインの
+  marker 持ち越しで新ルームの snapshot/改名が「古い」と永久棄却
+  されるのを防ぐ (ADR-0619)。
+- **'replace' 収束** (ADR-0613..0618): 全置換 (import/share 取込) は
+  `{op:'replace',after,afterWc}` を wire に乗せる。`after` は
+  `validShape` 配列、`afterWc` は prop clock マップとして検証。
+  `state._lastRep` = 最新適用 swap clock で全順序を仲裁 — 並行 swap は
+  `clockNewer` で勝者一意化 (0614)、undo/redo は `_undoWire` が
+  pre-swap 盤面を再ブロードキャスト (0615)、`_recordCommitted` 経路も
+  marker を記録 (0616)。snapshot は `rep:state._lastRep` を同梱し、
+  受信側は「自身の marker より古い世代の snapshot」を棄却、より新しい
+  `rep` は採用後に marker を整合 (0617)。snapshot の docName は
+  `nameTs` で LWW — focused input 中のユーザー入力を保護しつつ
+  改名を収束 (0609/0618)。
+- **undo×sync**: undo/redo は逆 op (del→add、add→del、upd→逆patch) を
+  ワイヤに乗せピア側も復元 (ADR-0443/0444)。del/clear の送信は
+  `_slimOp` で画像バイトを痩身化 (ADR-0445)。
+
+  undo-wire の収束規則 (ADR-0717–0727):
+  - **undo は新規の競合書込**: `undo()`/`redo()` は適用前に
+    `{peer,seq,ts}` を再刻印し、逆 op にも同一の (ts,peer) を付す —
+    ローカル仲裁とワイヤで勝者が割れない (0717/0718)。
+  - **復元対象は「元の時計」で戻る**: undo の新規 clock は op 自体の
+    勝敗に使うが、復活する *状態* の時計は生前の値を輸送する —
+    del/clear/pageDel の `wc` スナップ (0721/0722、clear は merge、
+    全置換は行き違い時計を消す)、pageName の `nts/ntp` (0727)。
+    さもないと undo clock を刻んだ側だけ「次の書込の勝者」が変わる。
+  - **メンバー/効果は op 添付物でなく現状態で決める**: pageAdd undo は
+    `op.shapes` ではなく `_pgDel2` の現メンバー基準 (0724)。後から
+    `pg=op.id` を得た図形も op が死んで追う — ワイヤ pageDel と同じ
+    セマンティクス。最終ページの undo は `unpage:1` wire で
+    op 由来のみ死・残り un-page。
+  - **帰属先は送側の選択を輸送**: pageDel の locked メンバー再帰属は
+    `firstId` をワイヤに乗せる (0725) — ページ順が発散したピアで
+    ローカル順から算出すると `pg` が永久分裂する (LWW 非対象)。
+  - **locked ゲートは forward 側と対称**: upd/style/move/group/zorder/
+    pageDel(connClears)/add の backward も `locked` を skip
+    (0711–0716)。
+  - **`_slimOp` は undo-domain を剥がし wire-domain を残す**: `bts/
+    origSel/moved/connClears` は落とすが `wc/unpage+shapes/firstId/
+    nts,ntp` はワイヤに必要なため残す (0705/0721–0727)。
+  - **受信側検証**: `addMany.wc` は `replace.afterWc` と同じ `wcOk`
+    検査 (0726) — 悪意/壊損 clock の NaN 汚染を遮断。
+- **frag 再起動**: `snap`/`opc`/`img` の `n` 不一致・key 衝突で旧断片を
+  捨てて新ストリームを再起動、`_imgIn`/`_imgChunks` は 96KB/256-entry
+  で上限化 (ADR-0448/0449/0454)。
+- **切断**: `dc.onclose` で `_dcQ` 破棄 + 再組立スロット掃除
+  (ADR-0446/0448)。
+- **wire キャップ整合** (ADR-0473/0479): zorder `changes`/`after` の
+  frac ≤600・id ≤64、group/ungroup の gid ≤64 — 敵性ピアの巨大
+  文字列注入を `validRemotePayload` で遮断。スナップショット取込は
+  `SHARE_MAX_SHAPES` (200k) まで許容し >500 図形盤面の切捨てを解消
+  (ADR-0474)。
+- **op 配列上限 = 盤面上限** (ADR-0602): `addMany`/`del`/`zorder`/
+  `group`/`ungroup`/`connClears` の配列キャップは旧 ~500 固定から
+  `MAX_OP_SHAPES=SHARE_MAX_SHAPES` へ統一 — 「一つの op が盤面の
+  全図形をアドレスできる」上限で、501+ 一括 op が受信側だけ
+  無通知棄却されて分岐していた問題を解消。実効の DoS 上限は
+  配列数でなくワイヤサイズ (生 op ≤256KiB、断片化経路 ≤24MB)
+  にある — それ超過は `_fragSend`/`_fragIn` の明示ガード (ADR-0603)。
+
 ### CRDT clock
-各 op は `{peer, seq}` clock を持ち、`seenOps` (Set) で重複排除。スナップショット sync は `seq:'snap'+i` で個別 clock を割当。
+各 op は `{peer, seq}` clock を持ち、`seenOps` (Set) で重複排除。スナップショット
+sync は `seq:'snap:<shapeId>'` で shape 単位の clock を割当 (配列 index ではなく
+グローバル一意な id キー — 再 snapshot での dedup 衝突を回避)。`wc` に
+per-shape プロパティ単位 LWW 時計を同梱し、受信側 `_mergeSnapshotOp` が
+既存図形を property merge (ADR-0058)。マージする値自体も `validPatch`
+でゲート (ADR-0372/0373)。
 
 ## 回転 (v1.6.62-65 — ソクラテス問答監査)
 
@@ -226,21 +464,124 @@ pen/line/arrow は点ジオメトリで box 中心が無く回転中心が NaN �
   `_rotPt` で 4 角をなぞる。Shift (比率)・Alt (中心固定) も回転シェイプで機能。
 
 ### 残る軽微な非対応
-- **回転リサイズのカーソル向き**: `handleCursor` は軸並行の向きを返すため、回転シェイプでは
-  カーソルの矢印向きが実際の伸縮方向と一致しない (機能は正しい、見た目のみ)。
-- **マーキー選択はロックシェイプも選ぶ**: 選択はされるが `doMove` が移動をスキップするため、
-  群移動でロックシェイプだけ取り残される (技術的に整合だが UX 上は分かりにくい)。
 - **整列は回転後 bbox 基準**: `doAlign` は `G.bbox` (包絡矩形) で整列する。回転シェイプは
   見かけより大きい bbox を持つため、整列結果が直感と異なる場合がある。
+
+> 解消済み: 回転リサイズのカーソル向き (v1.7.392 / ADR-0341)、
+> マーキー選択のロック除外 (ADR-0127)。
+
+## コネクタ束縛と変換 (v1.7.61x — ADR-0209/0377/0583–0588)
+
+コネクタ (`line`/`arrow`) は `a`/`b` (結合先 id)、`aF`/`bF` (結合先の回転込み extent
+`_bb` 上の比率座標 {fx,fy})、`labelPos` (経路パラメタ t∈0..1)、`way`/`bend`/`cbend`
+(経路形状) を持つ。`connEnds` が `a`/`b`/`aF`/`bF` を優先解決し、非結合時は `x1..y2`。
+
+**変換ごとの不変条件**:
+
+| 変換 | `x1..y2`/`way`/`bend` | `cbend` | `labelPos` | `aF`/`bF` |
+|---|---|---|---|---|
+| translate | 平行移動 | 不変 (符号付き垂距) | 不変 (パラメタ) | 不変 (extent 追随) |
+| flip | 鏡映 (bend は trunk 軸のみ) | 符号反転 (chirality) | `1−t` (0583) | `1−f` — 結合先が反転した場合のみ (0584/0588) |
+| reverse | 端点交換+way 逆順 | 符号反転 (0585) | `1−t` | `a`↔`b` swap 保持 |
+| rotate/grot | 軌道+自転 (_rotBend) | 不変 (方向に追従) | 不変 | 軌道+自転で再正規化 (0586/0587) |
+| gresize/resize | `_mapToBox` 写像 | スケール | 不変 | 比率なので extent 追随 |
+
+- **`connClears`** (del 系 op 同梱): 結合先削除時に `a`/`b`/`aF`/`bF` をクリアし
+  端点を現在値に凍結 (`computeConnClears`)。locked コネクタは清書しない。
+- **選択外コネクタ**も結合先が変換対象なら before/after に同梱して変換
+  (0586 doRotate / 0588 doFlip / 0587 grot は `ptr.gAnc` で原値退避・再計算 — ドリフト防止)。
 
 ## 検索ハイライトの描画 (v1.6.61)
 
 `_sq` にマッチするシェイプはワールド変換ブロック内で `strokeRect` され、
 `lineWidth=3/zoom` でズーム補正して一定の視覚太さを保つ (スクリーン空間描画の代替)。
 
+## 外部フォーマット相互運用 (v1.7.2xx–1.7.3xx)
+
+`.excalidraw` / `.drawio` の双方向変換は「往復で Board モデルが保存される」を設計目標にする。
+- `.drawio` import は非圧縮 + deflate-raw+base64 の両形式を `importDrawioText` /
+  `_dioInflate` (8MB 爆弾ガード ADR-0325) が処理。`<UserObject>` ラッパー (ADR-0328)、
+  複数 `<diagram>` ページの横並び平坦化 (ADR-0311/0324)、`parent` チェーンの
+  座標解決 (ADR-0240) と `style="group;"` ↔ `s.groupId` 往復 (ADR-0336) を含む。
+- `.drawio` export は `_dioStyEmit` にスタイル属性を集約 (ADR-0263)。
+- `.excalidraw` は `excScene`/`excToShapes` が containerId ラベル・boundElements・
+  arrowhead enum (ADR-0338) を往復。
+- セキュリティ: `validPatch` が全 intake パスの共有ゲート (dataUrl/link のスキーム
+  検証 ADR-0327)。
+
+## マルチページ (v1.7.67x — ADR-0646–0670)
+
+`state.pages=[{id,name,nts}]` (null = ページ機構未起動)、`state.curPg`=閲覧中ページ、
+図形 `s.pg` は帰属ページ (未設定は `pages[0].id` へ位置づけ帰属)。
+`pageAdd/pageDel/pageName` op が wire 収束 — `pageAdd` は `op.shapes` でメンバーを
+同梱 (0650)、`pageDel` は forward が `op.shapes`+`op.i` を記録して undo 可能、
+`pageName` は `p.nts` の LWW。
+
+**ページスコープ不変条件** (0658–0669 の監査結論):
+
+| 層 | スコープ | 例 |
+|---|---|---|
+| 表示/選択/入力 | `_pgOk` (閲覧ページ) | draw 反復、pickTop、marquee (`_sad`/`_ss` チョークポイント)、検索 `_sqMatches`、Tab チェーン、selectInverse/frame contents、showAll/unlockAll、fitFrames、ホップ候補、空ヒント、ミニマップナビ、ステータス図形数 |
+| 単一シーン export | `_shV` (可視+ページ) | PNG/SVG/.excalidraw — 明示引数にも同じ制約 (0666) |
+| 永続化/全ドキュメント | `_sh()` グローバル | `.board`/.drawio export、Persist、snapshot、`replace`/`clear` |
+| 幾何不変条件 | `_sh()` グローバル | 結合コネクタ掃引 (`ptr.gAnc`/`_bc`/`_rc`/`computeConnClears`)、z 空間、`_buildGrid` 候補生成 |
+
+- **遷移はジェスチャを殺す**: `switchPage`/`_pgAdopt` が `_cancelPointerGesture`
+  (0664) — 別ページ図形への不可視コミットを防ぐ。`_pgAdopt` は `_cxO` で
+  編集エディタも畳む (0684)
+- **プレゼンス**: `cursor`/`selection` wire に `pg` 同梱、別ページカーソルは非描画
+  (0647)、アバターツールチップ+クリック follow (0656/0670)。送出 dedup 鍵に
+  `curPg` 同梱 (0680 — 選択不変のページ切替でも再送)
+- **帰属ヒール**: 未知 `pg` を持つ remote 図形は `?` ページを自動生成 (0646)、
+  `pageAdd` backward の最終ページ→残部へ再帰属、`pageDel` 系は switchPage 経由で
+  ビュー着地 (0649/0663)。`pageDel` はメンバー wclock も削除 (0679)
+- **スナップショット**: 受信側の `curPg` を保持 (0672)、同一 id ページ名は
+  `nts` LWW で union-heal (0681)
+- **送出順不変条件**: `pg` 同梱の presence 送信は `curPg` 代入の**後**に行う
+  — 逆順だと hide/sel が旧ページを指しピア側のアバタ/follow が誤着する
+  (`switchPage` 0689、`_pgAdopt` 0690)。ページ交代が起こり得る経路はすべて
+  cursorHide を送る (ピアカーソル残存の防止)
+- **タブ UI** (`_pgBar`, 0673–0686): `#pgTabs` の chip 再構築は `_pgSig`
+  (id+`\x1f`+name join) 変化時のみ — フォーカス chip を `_pgid` で復元
+  (0683)。chip は完全名 `aria-label` (0682)、アクティブは `aria-current`+
+  `scrollIntoView` 追従 (0675/0685)。ページ集合変化でアバターツールチップも
+  更新 (0686)
+- **派生面**: プレゼン `_goto` はページ切替でオフページフレームを prune (0677)、
+  .drawio export は非表示を除外 (0678 — excalidraw 0594 と同格)、`curPg` は
+  doc record で永続化 (0674)
+
+**改名/削除の収束規則** (ADR-0698–0705 の監査結論):
+
+- **改名は (ts,peer) 全順序 LWW**: `p.nts`+`p.ntp` に `clockNewer` — ts 同値の
+  並行改名は peer 文字列比較で一意化 (0698)。docName も `_nameTs`+`_namePeer`
+  で同規則 (0699)。`nts`/`nameTs` は**有限数か不在のみ**受理 — NaN/Infinity は
+  改名を永久凍結するため `_vPages`・name msg・snapshot nameTs・doc record で
+  一律棄却 (0700/0701)
+- **undo ゲートは「現行 = 自身の書込」で判定**: `bts>=nts` は永遠に不成立で
+  undo がローカル no-op だった (0702)。`!clockNewer(current, op.clock)` なら
+  復元可 — より新しい書込が立つ場合はスキップし、wire inverse op も相手側
+  LWW で負けるため両者収束
+- **ローカル限定ガードと remote 適用の分離**: `pageDel` の `<2` ガードは
+  `clock.peer===_pi()` のローカルのみ — remote は最終ページでも適用し
+  空集合はページモード終了へ整合 (0703 — 拒否するとページ集合が永続発散)
+- **wire pageAdd は `op.i` で位置復元**: pageDel undo-wire の復元がローカル
+  `splice(i)` vs peers 末尾 push で順序発散していた (0704)。`i` なしは末尾互換
+- **wire は適用フィールドのみ**: pageDel → `{id,clock}`、pageName →
+  `{id,after,clock}` — メンバー/i/name/undo-domain は受信側が再計算するため
+  dead weight (0705)
+- **pageDel は 'del' parity**: locked メンバーは除去せず `firstId` へ再帰属
+  (空集合経路では un-paged → `_pgHealS`)、結合コネクタは
+  `computeConnClears` で端点凍結+`op.connClears` 記録 (backward は
+  `before` 復元、undo-wire はピアへ `upd{before}` で再結合) (0707)
+- **pageAdd のメンバーは `pg=op.id` 強制**: wire `shapes` の `pg` を信頼しない
+  — op が帰属を定義し全ピアで同値正規化 (0708)
+- **編集 overlay は off-page で畳む**: `_teFollow`/`_lblFollow` の畳み条件に
+  `!_pgOk` — remote `upd{pg}` の再帰属で不可視図形へ沈黙入力しない (0709)
+
 ## 今後
 
-- マルチページ、スレッドコメント (v1.7+)
-- z 順序の fractional indexing 化 (ADR 予定 — P0 可逆性/sync に触れる)
 - Plugin API (iframe sandbox + postMessage)、Figma import (v2.0)
-- AES-GCM E2E 暗号化 (URL fragment key + WebRTC DataChannel)
+
+> 完了済み: z 順序の fractional indexing (ADR-0001)、AES-GCM E2E 暗号化
+> (ADR-0015)、マルチページ (ADR-0646–0686)。
+> スレッドコメントは scratchpad 製品判断で対象外 (CLAUDE.md「100点への距離」)。

@@ -148,8 +148,13 @@ Opus/Sonnet が文脈なしで着手できる形式に変換していなかっ�
 - Effort: -(人間側のアクションのみ)
 - Depends on: none
 
-## FT-10 — axe-core による本格自動 a11y 監査(npm install の許可待ち)
-- Verdict: `FIX`
+## FT-10 — axe-core による本格自動 a11y 監査(npm install の許可待ち) — ✅ 実施済み (v1.7.74)
+- Verdict: `DONE`(2026-09-23)。Playwright(システム Chrome, headless)+ `axe.run()` を
+  6 状態(初期/ヘルプ/Share/ctx/エクスポート/ダーク)で実行 → 4 ルールの違反を検出、
+  すべて修正して再実行で **violations = 0**。詳細は
+  `docs/a11y-audit-2026-07.md`「axe-core 追監査」。残る incomplete は kbd 字形類の
+  `color-contrast`(axe がテキスト判定不能、親 aria-label あり = 実害なし)のみ。
+- Verdict(当初): `FIX`
 - Evidence: `docs/a11y-audit-2026-07.md`「残作業」。依存ゼロの静的検証(コントラスト比の
   直接計算)は実施済みで実害のあるバグ(フォーカスリング・canvas UI指標のコントラスト
   未達)を発見・修正済みだが、ARIA ロール整合性・DOM構造・実レンダリング後の計算済み
@@ -194,8 +199,20 @@ Opus/Sonnet が文脈なしで着手できる形式に変換していなかっ�
   (c) ロック図形も対象)を出した上で実装。送信は mutation 箇所への配線でなく
   `frame()` での変化検出1箇所に集約した点が設計の要。
 
-## FT-13 — dirty-rect(差分再描画)によるレンダリング最適化
-- Verdict: `FIX`(ただし高リスク、実装は慎重に)
+## FT-13 — dirty-rect(差分再描画)によるレンダリング最適化 — ✅ 実装済み (v1.7.83-91)
+- Verdict: `DONE`(2026-09-23)。dirty-rect 本体は ADR-0026(ドラッグ系ジェスチャの
+  world 空間 damage rect 累積 union→clip 再描画)・ADR-0027(`_apply`/`applyRemote`
+  の op 単位ダメージ伝播)・ADR-0028(パンの自己 blit+露出帯再描画)・
+  ADR-0030/0033(ピンチ/wheel ズームのスナップショットプレビューで再走査回避)で
+  実装済み。これに先行して v1.7.77 ADR-0018 のペンストローク形状レベル
+  ビットマップキャッシュが支配コストを解消済み(全可視 4000 ペンで
+  draw() p50 175→15ms)。
+- Verdict(途中経過): `FIX`(ただし高リスク、実装は慎重に) — **部分緩和済み** (v1.7.77,
+  ADR-0018): ペンストロークの形状レベルビットマップキャッシュで支配コストを解消
+  (全可視 4000 ペンで draw() p50 175→15ms)。このチケットが要求した検証前提
+  (スクリーンショット差分ハーネス)も今回構築済み — old/new PNG 比較で差分
+  0.009% を確認。なお dirty-rect 本体もその後 ADR-0026/0027/0028/0030/0033 で
+  実装済み (v1.7.83-91)。
 - Evidence: `docs/spec.md` §14.2「大規模スケール…quadtree / ダーティ矩形再描画は
   未着手」。CLAUDE.md の「100点への距離」にも byId 解消と対で残存項目として明記。
 - Action: レンダーループ(`draw()`)の核心に触れる変更。この Claude セッションでは
@@ -206,8 +223,11 @@ Opus/Sonnet が文脈なしで着手できる形式に変換していなかっ�
 - Effort: L — レンダーループの再設計、影響範囲が広い。
 - Depends on: 実ブラウザでの検証手段(このセッションには無い)
 
-## FT-14 — 空間索引(quadtree)を pickTop 以外(全描画・bbox再計算)にも拡張
-- Verdict: `FIX`
+## FT-14 — 空間索引(quadtree)を pickTop 以外(全描画・bbox再計算)にも拡張 — ✅ 実装済み (v1.7.75, ADR-0016)
+- Verdict: `DONE`(2026-09-23)。`draw()` が `_gridRectCandidates(grid,view)` で
+  粗選し `inView()` が精密判定する2段構成。`big` は bbox 無し/巨大シェイプの
+  常時候補として機能。実ブラウザ計測の値は ADR-0016「計測」節を参照。
+- Verdict(当初): `FIX`
 - Evidence: `_buildGrid`/`_queryGrid`(`pickTop` のヒットテスト高速化)は実装済みだが、
   `draw()` の `for(const s of state.shapes)` は依然として全図形を毎フレーム走査する
   線形処理。2000図形超の盤面で顕在化。
@@ -219,8 +239,14 @@ Opus/Sonnet が文脈なしで着手できる形式に変換していなかっ�
 - Depends on: none(FT-13 と独立に実装可能、ただし FT-13 をやるなら先にこちらを
   済ませた方が設計がシンプルになる)
 
-## FT-15 — 画像 dataURL の参照分離(state 肥大化の緩和)
-- Verdict: `FIX`
+## FT-15 — 画像 dataURL の参照分離(state 肥大化の緩和) — ✅ 実装済み (v1.7.89 + v1.7.125+, ADR-0031/0069/0379)
+- Verdict: `DONE`(2026-09-28 同期)。段階1(永続化層)は ADR-0031 で実装済み: IDB v2 の
+  `imgs` オブジェクトストアに content-hash キーで blob 分離し、doc レコードは
+  `img` 参照のみ保持。`:prev` バックアップが blob を共有し孤児は save 時 GC。
+  段階2(ワイヤーレベル参照化)も完了: ADR-0069 で op/snapshot を `k:'img'` 参照 +
+  64KB チャンクへ分離し、ADR-0379 で 96KB チャンク + 16MB 受信天井に引き上げ。
+  ワイヤ上の dataURL インラインは解消済み。
+- Verdict(当初): `FIX`
 - Evidence: `docs/spec.md` §14.2「画像の肥大: dataURL を state にインライン保持 →
   大画像で盤面 JSON / IDB が膨張。参照分離・再圧縮は無い」。
 - Action: dataURL を content-addressable(ハッシュキー)な別ストア
@@ -251,7 +277,7 @@ Opus/Sonnet が文脈なしで着手できる形式に変換していなかっ�
 
 依存関係の無い FT-09〜FT-16 のうち、コードで前に進められるのは **FT-12(選択ハイライト)**
 と **FT-14(空間索引の描画パスへの拡張)** の2つのみ — どちらも ADR を書いてから着手。
-**FT-10(axe-core)** はユーザーの明示的な npm install 許可を待つ。**FT-09・FT-11** は
+**FT-10(axe-core)** は v1.7.74 で実施済み(6 状態 violations = 0)。**FT-09・FT-11** は
 そもそも人間側のアクション(コミット権限・実機確認)でありコードでは解決しない。
 **FT-13(dirty-rect)・FT-15(画像参照分離)** は影響範囲が大きく高リスクなため、
 着手前にユーザーとスコープ・検証手段を確認すること — 特に FT-13 はこのセッションに
@@ -309,8 +335,14 @@ Opus/Sonnet が文脈なしで着手できる形式に変換していなかっ�
   `_openLabelEditorFor` として抽出・共有し、キーボード経路と目視経路が構造的に
   同期するようにした。
 
-## FT-20 — WebRTC 接続失敗時のユーザーフィードバック欠如(第4弾, v1.7.68 後の未監査領域レビューで発見)
-- Verdict: `FIX`(ただし実ブラウザ検証が前提 — このセッションでは実装しない)
+## FT-20 — WebRTC 接続失敗時のユーザーフィードバック欠如(第4弾, v1.7.68 後の未監査領域レビューで発見) — ✅ 実装済み (v1.7.76, ADR-0017)
+- Verdict: `DONE`(2026-09-23)。`rtc.onconnectionstatechange` を `_wrtcInit` で配線し
+  `connectionState==='failed'` で `connectFailed` トースト + ピア掃除。`_rtcConnFailed`
+  フラグで open 後失敗経路の `disconnected` 二重トーストを抑制。実ブラウザ検証は
+  playwright + `--disable-features=WebRtcHideLocalIpsWithMdns`(headless では mDNS
+  難読化候補 `.local` が解決できず ICE checking が停止するため実IP候補に切替)の
+  同機2ページ loopback DataChannel で3ケース(connected/failed 単発/通常 close)を確認。
+- Verdict(当初): `FIX`(ただし実ブラウザ検証が前提 — このセッションでは実装しない)
 - Evidence: `Net._wireDC` の `dc.onclose` は接続の切断を `t('disconnected')` でトースト
   するが、これは**一度 open した DataChannel が閉じたとき**しか発火しない。手動
   シグナリングの WebRTC は NAT/ファイアウォール越えの失敗で**そもそも open しない**

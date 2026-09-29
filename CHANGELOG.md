@@ -1,6 +1,4155 @@
+## [1.7.765] - 2026-09-28
+
+### Fixed
+- ADR-0739: the two addMany compat broadcasts and `_pgRename` stamped op clocks
+  with raw `Date.now()` — after a remote op ratcheted `_lastTs` upward those
+  ops ordered below the remote writes they actually followed (convergent but
+  unfair). Every stamped clock now goes through the HLC floor `nowTs()`
+
+## [1.7.764] - 2026-09-29
+
+### Fixed
+- ADR-0738: the 8192-entry wclock flood cap wiped tombstones along with prop
+  clocks — under hostile flood a stale in-flight 'add' could resurrect deleted
+  shapes again. The cap now preserves `{_del}` entries (existence state is not
+  self-healing) and drops only prop clocks (which are)
+
+## [1.7.763] - 2026-09-29
+
+### Fixed
+- ADR-0737: the three local import swaps (`.board`/`.drawio`/backup-restore)
+  bypass `_apply` — they wipe `wclock` themselves and record the 'replace' via
+  `_recordCommitted` — so their removed shapes carried no tomb on the
+  importer's own board and prior tombs were lost. `_recordCommitted` now
+  performs the same tomb write as `_apply` for 'replace': every before-not-in-
+  after id tombed at the swap clock, prior `{_del}` entries survive max'd
+
+## [1.7.762] - 2026-09-29
+
+### Fixed
+- ADR-0736: 'clear'/'replace' forward wiped `state.wclock` wholesale —
+  including tombstones — so a stale in-flight 'add' resurrected shapes the
+  swap just removed (same divergence class as del-vs-add, different path),
+  and a receiver tomb newer than the swap clock was lost entirely. Swaps now
+  tomb every removed id at the swap clock, keep prior tombs that outrank it
+  (per-id "last existence decision wins"), and filter `after` members whose
+  tomb outranks the swap — the sender converges to deleted once the del
+  lands
+
+## [1.7.761] - 2026-09-29
+
+### Fixed
+- ADR-0735: residual tomb gaps — the wholesale `_applySnapshot` adopt (empty
+  board, `_nS()===0`) never consulted tombstones, so a pre-delete snapshot
+  arriving after a del that emptied the board resurrected every tombed shape
+  on the receiver only. Adopt now filters `!(_wc()[s.id]||{})._del` — a
+  lingering tomb means the last observed existence decision was delete, and
+  snapshot adds (ts:0 clocks) carry no ordering evidence to overturn it.
+  Also gives pageAdd members the 'add' parity `delete wd._del` on a winning
+  push (was: tomb persisted after the member landed)
+
+## [1.7.760] - 2026-09-29
+
+### Fixed
+- ADR-0734: existence arbitration via wclock-embedded tombstones — del/add
+  reorder and in-flight snapshot union-heals could resurrect a deleted shape
+  on one peer only (arrival order, not causality, decided existence).
+  del/'add'-backward/_pgDel2 now leave `{_del:clock}` in wclock instead of
+  purging; 'add'/'addMany'/pageAdd gates skip tomb-outranked adds (snapshot
+  `!ex` heals route through the same gate). Hostile-del flood capped at 8192
+  wclock entries; stale tombs on live shapes are inert by design
+
+## [1.7.759] - 2026-09-29
+
+ADR-0733: delta-path move undo arbitrated per axis — the real recorded form (ids+dx+dy only) un-moved -dx/-dy unconditionally, so a remote write whose clock beat the undo's fresh clock split an axis (peers' _lwwDrop removed that axis on the wire while the undoer had already moved it). Backward now _lwwSkip-gates x/y independently: arbitrated axes keep the remote-winning value, the rest still un-move — and the wire's derived absolute mirrors the outcome on every peer.
+
+## [1.7.758] - 2026-09-29
+
+### Fixed
+- ADR-0732: move's undo-wire was the pre-0729 delta form — a peer where the
+  forward move lost LWW (kept a racing write) applied -dx off a different
+  position = divergence. The inverse now rides the absolute path both ways:
+  local backward restores the recorded positions and the wire op's derived
+  after = the restored position
+
+## [1.7.757] - 2026-09-29
+
+### Fixed
+- ADR-0731: undoing a 'beautify' had no _undoWire case — the undoer restored
+  the pen while every peer kept the rect, re-creating the divergence
+  ADR-0730 closed. Inverse rides the before/after patch swap (upd family)
+
+## [1.7.756] - 2026-09-29
+
+### Fixed
+- ADR-0730: 'beautify' ops broadcast but every receiver dropped them at the
+  wire (not in REMOTE_OPS, no validator case) — the sender's pen→rect
+  retype stayed local while peers kept the pen = guaranteed divergence.
+  Now a real wire op: REMOTE_OPS + patch validation + per-property LWW
+
+## [1.7.755] - 2026-09-29
+
+### Fixed
+- ADR-0729: move racing an absolute write diverged (delta+upd don't
+  commute) — wire moves carry absolute after/before positions and join
+  the per-property LWW path; legacy delta moves still apply
+
+## [1.7.754] - 2026-09-29
+
+### Docs
+- ADR-0728: architecture.md undo×sync — the seven convergence rules of
+  the undo-wire family (0717–0727) documented inline
+
+## [1.7.753] - 2026-09-29
+
+### Fixed
+- ADR-0727: pageName undo-wire reverted the NAME but peers stamped the
+  fresh undo clock into nts while the undoer restored bts — a rename
+  between the two won on one side only. Wire now carries nts/ntp (the
+  restored bts/btp) — same class as ADR-0721's wclock snapshot
+
+## [1.7.752] - 2026-09-29
+
+### Fixed
+- ADR-0726: addMany's wc clock snapshot (carried by del/clear/pageDel
+  undo-wires since 0721) was un-validated — malformed clocks NaN-poisoned
+  wclock arbitration. wcOk now shared with replace.afterWc
+
+## [1.7.751] - 2026-09-29
+
+### Fixed
+- ADR-0725: pageDel rehomed locked survivors to each peer's OWN first page —
+  under divergent page order (concurrent pageAdds) member pg attribution
+  split permanently since pg isn't LWW-arbitrated. The wire op now carries
+  the sender's firstId; view landing stays local
+
+## [1.7.750] - 2026-09-29
+
+### Fixed
+- ADR-0724: pageAdd undo purged only op-carried members — late members (a
+  peer's add on that page) survived locally while peers' _pgDel2 killed them.
+  And undoing the LAST pageAdd kept members locally while peers killed them —
+  now _pgDel2 runs for surviving pages, and the 'unpage' wire flag makes the
+  emptied-set case kill op-carried members + revert the rest to un-paged on
+  both sides
+
+## [1.7.749] - 2026-09-29
+
+### Fixed
+- ADR-0723: clear undo replaced the whole wclock map — clocks written between
+  the clear and its undo were wiped locally while peers' wc-carrying addMany
+  only merged. Backward now merges per id (del parity)
+
+## [1.7.748] - 2026-09-29
+
+### Fixed
+- ADR-0722: pageDel purged member wclocks but never recorded them — undoing a
+  page delete resurrected members clock-free on every side, so a write older
+  than the pre-delete clock could win afterward. _pgDel2 now snapshots op.wc,
+  backward restores it, and the undo-wire addMany carries it (ADR-0721 idiom)
+
+## [1.7.747] - 2026-09-29
+
+### Fixed
+- ADR-0721: del/clear undo-wire dropped the wclock snapshot — local backward
+  restores op.wc but peers' addMany re-added shapes clock-free, so later remote
+  writes arbitrated differently. Wire addMany now carries + applies wc
+
+## [1.7.746] - 2026-09-29
+
+### Fixed
+- ADR-0720: 'replace' wire dropped curPg — receivers' _pgAdopt fell back to
+  page 1 on every remote swap while the sender landed on their own page;
+  _undoWire had the same hole for beforeCurPg. Both wire paths now carry the
+  landing page
+
+## [1.7.745] - 2026-09-29
+
+### Fixed
+- ADR-0719: move undo-wire sent op.ids (the whole selected set) while local
+  undo iterates op.moved (the actually-moved set) — a member locked at commit
+  but unlocked since got negated on peers only. Wire now carries
+  ids:op.moved||op.ids
+
+## [1.7.744] - 2026-09-29
+
+### Changed
+- ADR-0718: redo() restamps op.clock BEFORE _apply(op,true) — same stamp-once
+  invariant as ADR-0717's undo side. Convergent either way today (forward
+  apply performs no wclock arbitration); canonicalizing the order keeps the
+  invariant structural instead of incidental
+
+## [1.7.743] - 2026-09-29
+
+### Fixed
+- ADR-0717: undo arbitrated the local restore against the ORIGINAL commit clock
+  while peers arbitrated the undo-wire op against its fresh clock — a remote
+  write between commit and undo won locally but lost remotely (split-brain).
+  undo() now restamps op.clock fresh (same ts the wire ops carry) so both
+  sides pick the same winner — an undo is a new competing write
+- ADR-0717 (surfaced): style/resize/align undo-wire ops carried no `before` —
+  validRemotePayload rejected them wholesale; dead on the wire since ADR-0443.
+  They now carry before:op.after (also the correct _chg baseline)
+- ADR-0717 (surfaced): ever-locked shapes leave a `locked:null` key on
+  full-shape patch snapshots — the receiver's noLock gate rejected such
+  style/resize/align ops wholesale. _slimOp strips `locked` off patch arrays
+  for dir!=='lock'
+
+## [1.7.742] - 2026-09-29
+
+### Fixed
+- ADR-0716: undo of move/group/ungroup/zorder on a shape locked since the
+  forward applied the restore locally while peers' remote apply of the
+  undo-wire op skipped it — same divergence class as ADR-0712. The locked
+  gate now covers backward on every op kind (these ops can never carry a
+  legitimate 'locked' write)
+
+## [1.7.741] - 2026-09-29
+
+### Fixed
+- ADR-0715: undo of clear pushed every recorded shape unconditionally — a shape
+  re-added since the clear got a duplicate id registration (byId ambiguity,
+  count divergence). Backward now skips already-present ids like add does
+
+## [1.7.740] - 2026-09-29
+
+### Fixed
+- ADR-0714: undo of pageAdd removed locked members while the undo-wire pageDel
+  kept them on peers (rehomed via _pgDel2) — membership divergence. Backward
+  now skips locked members; the existing heal refiles their pg to the first
+  page so they stay visible
+
+## [1.7.739] - 2026-09-29
+
+### Fixed
+- ADR-0713: undo of add/addMany on a shape locked since the add removed it
+  locally while peers' remote del (the undo-wire op) skipped it — existence
+  divergence. Backward now mirrors del-forward's locked gate; the surviving
+  shape keeps its caches and LWW clocks
+
+## [1.7.738] - 2026-09-29
+
+### Fixed
+- ADR-0712: undo of upd/style/resize/align/beautify on a shape locked since the
+  forward restored its props locally while peers' remote apply of the undo-wire
+  op skipped them (their forward path gates on locked) — diverged props. The
+  locked gate now applies in both directions; patches carrying 'locked' still
+  pass so unlocking-by-undo keeps working
+
+## [1.7.737] - 2026-09-29
+
+### Fixed
+- ADR-0711: pageDel backward's connClears restore skips locked connectors like
+  del backward does — a connector locked between the del and the undo must not
+  be re-bound (remote upd also gates on locked, so peers skip identically)
+
+## [1.7.736] - 2026-09-29
+
+### Docs
+- ADR-0710: architecture.md multi-page convergence rules synced with
+  ADR-0707–0709 (pageDel del-parity, member pg normalization, off-page
+  editor fold)
+
+## [1.7.735] - 2026-09-29
+
+### Fixed
+- ADR-0709: text/label editors fold when the edited shape leaves the viewed page —
+  a remote upd{pg} reassignment used to leave the overlay open typing silently
+  into an invisible shape (same fold family as del/hide/lock)
+
+## [1.7.734] - 2026-09-29
+
+### Fixed
+- ADR-0708: remote pageAdd forces member shapes' pg to op.id — the op defines
+  membership, so a malformed or absent wire pg can't mis-file the member on
+  another page (all peers normalize identically → convergent)
+
+## [1.7.733] - 2026-09-29
+
+### Fixed
+- ADR-0707: pageDel reaches 'del' parity — locked members survive and rehome to the
+  surviving page (all peers apply it uniformly), and connectors bound to a removed
+  member run computeConnClears (endpoint freeze + recorded for undo) instead of
+  dangling on dead ids. Undo and the undo-wire re-bind the cleared endpoints on
+  local peers and remote peers alike
+
+## [1.7.732] - 2026-09-29
+
+### Docs
+- ADR-0706: architecture.md multi-page section synced with the ADR-0698–0705 convergence rules (rename (ts,peer) LWW, undo gate semantics, local-only guards, wire slimming)
+
+## [1.7.731] - 2026-09-29
+
+### Changed
+- ADR-0705: wire pageDel/pageName now carry only the fields the receiver applies (pageDel: id+clock — members/i/name/bts/btp were dead weight the receiver recomputes; pageName: drops undo-domain before/bts/btp)
+
+## [1.7.730] - 2026-09-29
+
+### Fixed
+- ADR-0704: wire pageAdd ignored its recorded index — pageDel's undo-wire restored the page at the end on peers while locally splicing it back at op.i (page-order divergence)
+
+## [1.7.729] - 2026-09-29
+
+### Fixed
+- ADR-0703: remote pageDel could be refused when the receiver had already applied a concurrent del (the <2 local guard rejected remote ops too) — diverging page sets; remote del now empties the set and ends page mode cleanly
+
+## [1.7.728] - 2026-09-29
+
+### Fixed
+- ADR-0702: page rename undo was a local no-op while the inverse op still reverted peers (bts>=nts gate could never hold) — divergence; undo now gates on clockNewer(current, own op)
+- doc-record restore `d.nts` also rejects non-finite values
+
+## [1.7.727] - 2026-09-29
+
+### Fixed
+- ADR-0701: non-finite rename ts rejected on both docName paths (Infinity/NaN would freeze the doc name on every peer)
+
+## [1.7.726] - 2026-09-29
+
+### Fixed
+- ADR-0700: `_vPages` rejects Infinity/NaN `nts` (page-name freeze DoS) and non-string/oversized `ntp` (tie-order poisoning)
+
+## [1.7.725] - 2026-09-29
+
+### Fixed
+- ADR-0699: docName renames converging via (ts,writer) total order — equal-ts concurrent renames diverged on strict > (name msg + snapshot namePeer)
+
+## [1.7.724] - 2026-09-29
+
+### Fixed
+- ADR-0698: pageName renames converging via (ts,peer) total order — equal-ts ties diverged on both the op (>=) and union-heal (>) paths
+
+## [1.7.723] - 2026-09-29
+
+### Fixed
+- ADR-0697: page-bar buttons expose aria-labels (was title-attribute fallback only)
+
+## [1.7.722] - 2026-09-29
+
+### Fixed
+- import/restore/hash で docName が変わってもピアへ即時 broadcast されない問題を修正 (_bName 共通化) (ADR-0696)
+
+## [1.7.721] - 2026-09-29
+
+### Fixed
+- _lastRep/_nameTs を doc record で永続化 + Net.init のリセットを実 room 切替時のみへ (リロード後の stale snapshot/rename 巻き戻しを解消) (ADR-0695)
+
+## [1.7.720] - 2026-09-29
+
+### Fixed
+- ページ集合が null になる全経路で stale s.pg を一括 scrub (後続 pageAdd で不可視化していた) (ADR-0694)
+
+## [1.7.719] - 2026-09-29
+
+### Fixed
+- snapshot union-heal でも図形が運ぶ未知 pg を `?` ページへヒール (0692 の同型穴) (ADR-0693)
+
+## [1.7.718] - 2026-09-29
+
+### Fixed
+- _pgAdopt 経路 (import/share/snapshot/replace) で未知 pg を `?` ページへヒール (全ページ不可視の図形喪失を解消) (ADR-0692)
+
+## [1.7.717] - 2026-09-29
+
+### Docs
+- architecture.md に presence 送出順不変条件 (0689/0690) を同期 (ADR-0691)
+
+## [1.7.716] - 2026-09-29
+
+### Fixed
+- _pgAdopt のページ交代でも cursorHide を送出 (ピアの残存カーソル/古いページ表示を解消) (ADR-0690)
+
+## [1.7.715] - 2026-09-29
+
+### Fixed
+- switchPage の cursorHide が旧ページの pg をピアへ送信していた問題を修正 (ADR-0689)
+
+## [1.7.714] - 2026-09-29
+
+### Fixed
+- ローカル pageAdd/Dup が 64 ページ上限で silent no-op op をコミットしていた問題を修正 (pgMax トーストで早期 return、ADR-0688)
+
+## [1.7.713] - 2026-09-29
+
+### Fixed
+- ページ集合変化でピアアバターの `· ページ名` ツールチップが陳腐化していた問題を修正 (ADR-0686)
+
+## [1.7.712] - 2026-09-29
+
+### Fixed
+- アクティブなページタブが strip のスクロール域外に残る問題を修正 (scrollIntoView で追従、ADR-0685)
+
+## [1.7.711] - 2026-09-29
+
+### Fixed
+- スナップショット等で閲覧ページが消えた時、不可視図形のエディタが開いたまま残る問題を修正 (ADR-0684)
+
+## [1.7.710] - 2026-09-29
+
+### Fixed
+- ページ sig の無セパレータ結合衝突 + chip 再構築でフォーカス喪失していた問題を修正 (ADR-0683)
+
+## [1.7.709] - 2026-09-29
+
+### Fixed
+- ページタブ chip に完全名の aria-label (切詰表示でも SR は完全名を読み上げ、ADR-0682)
+
+## [1.7.708] - 2026-09-29
+
+### Fixed
+- snapshot union-heal が同 id ページ名を nts LWW でマージ (op 未達の rename 収束、ADR-0681)
+
+## [1.7.707] - 2026-09-29
+
+### Fixed
+- 選択プレゼンスの dedup キーに curPg (選択不変のページ切替でも pg を再送、ADR-0680)
+
+## [1.7.706] - 2026-09-29
+
+### Fixed
+- pageDel がメンバーの wclock を `del` 同様に削除 (復活図形の LWW 仲裁衛生、ADR-0679)
+
+## [1.7.705] - 2026-09-29
+
+### Fixed
+- .drawio エクスポートから非表示図形を除外 (excalidraw 0594 と同規則、再取込での片方向可視化リーク解消、ADR-0678)
+
+## [1.7.704] - 2026-09-29
+
+### Fixed
+- プレゼン中のページ切替で旧ページの幻影フレームが残らない (`_goto` prune に `_pgOk`、ADR-0677)
+
+## [1.7.703] - 2026-09-29
+
+### Fixed
+- `.pg-t` チップの `flex:none` (横スクロール有効化、ADR-0676)
+
+### Documentation
+- research-improvements.md の stale 記述を同期 (quadtree→grid 索引、DOM ミラー実装済、ADR-0676)
+
+## [1.7.702] - 2026-09-29
+
+### Fixed
+- ページタブ: 集合変更時のみ chip 再構築 (フォーカス保持) + `aria-current` 付与 (ADR-0675)
+
+## [1.7.701] - 2026-09-29
+
+### Fixed
+- ページ切替で保存をスケジュール (ビューのみのセッションでも最終ページがリロード後に復元、ADR-0674)
+
+## [1.7.700] - 2026-09-29
+
+### Added
+- ページタブストリップ: 各ページ chip 直接ジャンプ、アクティブ chip で改名 (ADR-0673)
+
+## [1.7.699] - 2026-09-29
+
+### Fixed
+- スナップショット再同期で閲覧ページが送信者側へ飛ばない (ローカルビュー維持、ADR-0672)
+
+## [1.7.698] - 2026-09-29
+
+### Documentation
+- architecture.md にページスコープ不変条件 (4層分類) を追加、stale な「マルチページ対象外」を除去 (ADR-0671)
+
+## [1.7.697] - 2026-09-29
+
+### Added
+- ピアアバタークリックでそのピアのページへ追従 (ADR-0670)
+
+## [1.7.696] - 2026-09-29
+
+### Fixed
+- ステータスバーの図形カウントを閲覧ページのメンバー数へ (ADR-0669)
+
+## [1.7.695] - 2026-09-29
+
+### Fixed
+- ミニマップタップが別ページ図形で誤着陸する問題を修正 (ADR-0668)
+- 空ページでオンボーディングヒントが出ない問題を修正 (ADR-0668)
+
+## [1.7.694] - 2026-09-29
+
+### Fixed
+- 別ページの線との交差で幻影ホップマークが描かれた問題を修正 (ADR-0667)
+- フレーム命名をページ毎の採番へ (ADR-0667)
+
+## [1.7.693] - 2026-09-29
+
+### Fixed
+- ctx メニューの PNG 1x/4x エクスポートが全ページを重畳していた問題を修正 (ADR-0666)
+
+## [1.7.692] - 2026-09-29
+
+### Fixed
+- 逆選択が別ページの不可視図形を選択し得た問題を修正 (ADR-0665)
+- フレーム内容選択も閲覧ページへスコープ (ADR-0665)
+
+## [1.7.691] - 2026-09-29
+
+### Fixed
+- スナップショット/import 起因のページ切替でもライブジェスチャをキャンセル (ADR-0664)
+
+## [1.7.690] - 2026-09-29
+
+### Fixed
+- ページ遷移でライブジェスチャがキャンセルされず別ページ図形へ move がコミットされ得た問題を修正 (ADR-0664)
+- README サイズバッジの gzip 実測ドリフトを更新 (~178KB)
+
+## [1.7.689] - 2026-09-29
+
+### Fixed
+- ページ削除の undo でビューが復元ページに戻らない問題を修正 (ADR-0663)
+
+## [1.7.688] - 2026-09-29
+
+### Fixed
+- 最終ページの undo で dead id の帰属が残り、再ページ追加で全図形が不可視化する問題を修正 (ADR-0663)
+
+## [1.7.687] - 2026-09-29
+
+### Fixed
+- Tab 選択サイクルが別ページ図形へカメラを飛ばしていた問題を修正 (ADR-0662)
+- ラベル/テキストエディタの Tab 連鎖が別ページ図形へジャンプしていた問題を修正 (ADR-0662)
+
+## [1.7.686] - 2026-09-29
+
+### Fixed
+- 「すべて解除」が別ページのロックを剥がしていた問題を修正 (ADR-0661)
+- フレームフィットが別ページ図形をコンテンツに誤算していた問題を修正 (ADR-0661)
+
+## [1.7.685] - 2026-09-29
+
+### Fixed
+- 「すべて表示」が別ページの非表示図形まで復帰していた問題を修正 — ページスコープ化 (clear-all と同規則) (ADR-0660)
+
+## [1.7.684] - 2026-09-29
+
+### Fixed
+- 等間隔スナップ (_eqGapSnap) が非表示・別ページの図形に吸着していた問題を修正 — 見えない幾何への不可解なジャンプを解消 (ADR-0659)
+
+## [1.7.683] - 2026-09-29
+
+### Fixed
+- 単一シーンのエクスポート (.excalidraw / PNG / SVG / PDF / copyPNG / copySVG) をカレントページ限定に — 複数ページの図形が同一座標で重畳して書き出されていた (ADR-0658)
+
 # Changelog
 
+## [1.7.682]
+- ADR-0656: ピアアバターの tooltip に別ページ在席時のページ名を表示
+
+## [1.7.681]
+- ADR-0654: 空間グリッドのセルサイズを密度適応化 (密盤面で細分・疎盤面で統合、quadtree の実用的代替)
+
+## [1.7.680] - 2026-09-28
+### Fixed
+- **ADR-0653 zorder frac LWW**: 同一図形を2ピアが同時に並べ替えると `sh.frac`
+  が無条件上書きで到着順依存に発散していた — `frac` を wclock 仲裁対象に追加
+  (`_lwwOp`/`_lwwDrop`/`_stampWrites` + `_apply` に `_lwwSkip` ゲート)。並行
+  reorder は clockNewer 全順序で一意の勝者へ収束し、undo が収束済みリモート
+  書き込みを退行させることも防止。legacy after 形式は従来どおり無条件適用。
+- 回帰テスト +3 (古いリモート負け・新しいリモート勝ち収束・undo 退行防止)
+
+
+## [1.7.679] - 2026-09-28
+### Added
+- **ADR-0652 undo/redo のページ追従**: 別ページの変更を戻す時、変更が起きた
+  ページへ view が追従 (`_pgFollow`) — ページ2の `del` をページ1で undo しても
+  復元が見えなかった問題を解消。`_opIds` へ touched-id 収穫を集約し _apply と共有。
+- **ADR-0652 同型 heal 修正**: `pageAdd` backward で閲覧中ページが畳まれた時の
+  着地を `switchPage` 経由へ (ADR-0649 と同型 — SR アナウンス・カーソル隠蔽・
+  overlay 畳みが抜けていた)
+- 回帰テスト +6 (別ページ undo で着地・同ページは留まる・除去 redo 非着地・
+  pageAdd undo の heal・ソースピン×2)
+
+
+## [1.7.678] - 2026-09-28
+### Added
+- **ADR-0651 ページ複製**: pgBar の ⧉ ボタンで現ページを丸ごと複製 —
+  ADR-0650 の `pageAdd`+shapes op によりページ作成とメンバー複製が1つの
+  原子 op (undo もページ単位)。図形 id・コネクタ束縛 `a`/`b`・`groupId` は
+  `_placeCopies` と同じ規則でリマップ。pre-0650 ピア向けに `addMany` 同伴
+  送出で収束互換を維持。
+- 回帰テスト +4 (新ページ作成・id/束縛/groupId リマップの検証)
+
+
+## [1.7.677] - 2026-09-28
+### Changed
+- **ADR-0650 .drawio 複数ページ ↔ 真のページ**: 複数 `<diagram>` の mxfile を
+  ページ毎に実 Board ページとして取込む (従来は全ページを横並びフラット化)。
+  ワイヤの `pageAdd` op が `op.shapes` でメンバーを同梱可能に (1ページ=1 op、
+  undo もページ単位)。旧ピア向けに `addMany` を同伴送出して収束互換を維持。
+  エクスポートは `_pgOn()` 時にページ毎 `<diagram>` を生成 — 往復でページ構造
+  が復元される。空ページは従来通りスキップ。
+- 回帰テスト +4 (pageAdd+shapes のローカル/リモート適用と undo/redo)
+
+
+## [1.7.676] - 2026-09-28
+### Fixed
+- **ADR-0649 pageDel の着地点**: 閲覧中ページの削除 (ローカル/リモート問わず)
+  が素の代入で `curPg` を移していたのを `switchPage` 経由に変更 — 通常切替と
+  同じ副作用 (SR アナウンス・ピアカーソル hide・overlay 畳み・fit リセット)
+  がページ削除でも発火するよう統一。
+- 回帰テスト +1 (リモート pageDel で curPg が生存ページへ着陸)
+
+
+## [1.7.675] - 2026-09-28
+### Added
+- **ADR-0648 キーボードページナビ**: `PgUp`/`PgDn` でページを巡回 (末尾で
+  ループバック)。pgBar がポインタ専用だったためキーボード/SR ユーザーは
+  ページを切替えられなかった — `switchPage` の `_ann` がページ名を
+  アナウンス。ヘルプ (? のショートカット一覧) に `PgUp / PgDn` 行を追加。
+- 回帰テスト +4 (実 keydown リスナ経路、ラップ検証)
+
+
+## [1.7.674] - 2026-09-28
+### Fixed
+- **ADR-0647 ページ別プレゼンス**: multi-page 導入後、別ページに居るピアの
+  カーソルが自ページに残り続ける不整合を修正。`cursor`/`selection` メッセージが
+  `pg` (送り手の curPg) を同梱し、受信側は `p.pg` に記録 — 別ページのピア
+  カーソルは描かない。`pg` 未同梱の旧ピアは全ページで可視 (後方互換)。
+  `switchPage` で自カーソルを `h:1` 送出 (移動前の座標が古いページに残らない)。
+  ピア選択輪郭は図形の `_pgOk` 経路で既にページ連動済み。
+- 回帰テスト +4 (presence ピン + pg 記録/更新/未同梱クリア)
+
+
+## [1.7.673] - 2026-09-28
+### Added
+- **多ページ (ADR-0646, spec P2 最終項目)**: `state.pages`/`curPg` によるページ集合 —
+  ステータスバーのページバー (‹ 名前 › + ✕) で追加・切替・改名・削除。
+  `s.pg` で帰属をスタンプし `pg` 無しは先頭ページへ位置帰属 (無段階移行)。
+  `pageAdd`/`pageDel`/`pageName` がワイヤに乗り、ページ削除は図形ごと
+  undo/redo を通じてピア間収束。`'replace'`/スナップショットはページ集合を
+  同梱 (マージ時は union-heal、未知 `pg` はスタブページ修復、64 上限)。
+  `curPg` はローカルのビューフィルタ — 別ページに居るピアは同一の収束盤面を
+  各自のページで見る。`_pgOk` を全図形走査面へ適用 (draw/pickTop/snap/lasso/
+  search/halo/minimap/mirror/export/ピア輪郭)。`.board`/share URL/IDB に
+  `pages`/`curPg` を往復。
+- raw 上限を 512→544KiB に引き上げ (機能実装 +8.9KB。上限は暴走防止ガード)
+- 回帰テスト +16 (ページ add/switch/del+undo/rename LWW/リモート修復/snapshot union)
+
+
+## [1.7.672] - 2026-09-28
+### Documentation
+- ADR-0645 完走表を最終状態へ同期: drop ファイル系全拡張子・レンダリング実体・
+  presence・beforeunload まで検証済みと明記。spec.md §14.2「テストの偏り」を
+  [DONE] へ更新 (P3 系列検証の残課題ゼロ)。
+
+
 All notable changes to Board follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.7.560] - 2026-09-28
+
+### ドキュメント
+
+- spec.md §14.2/14.3 を実装状況に同期 — DOM ミラー・インポート拡張・パリティ監査・画像ワイヤ参照を DONE へ、§14.3.1 に真の残課題 (多ページのみ未完) を集約 (ADR-0531)
+
+## [1.7.559] - 2026-09-28
+
+### テスト
+
+- SW ok ゲートのピン追加 — `n.ok` なし `c.put` への回帰を防ぐ (ADR-0530)
+
+## [1.7.558] - 2026-09-28
+
+### 修正
+
+- **SW が ok 応答のみキャッシュ** — navigate (network-first) と GET (cache-first) の両 `c.put` が `Response.ok` を見ず、一時的な 404/500 応答が永続キャッシュに混入しオフライン時にエラーページを返し続け得た。両経路を `n.ok` でゲート (ADR-0529)
+
+### ドキュメント
+
+- architecture.md の Input 節にジェスチャライフサイクル節を追加 (ADR-0516..0526 同期)
+
+## [1.7.557] - 2026-09-28
+
+### 修正
+
+- **画像取込の事前キャップを 4MB → 16MB** — 12MP 級のスマホ写真 (~5-6MB base64) が 2048px WebP 縮退で ~300KB に収まるのに decode 前の 4MB ゲートで弾かれていた。ガードの目的は保存ペイロード量であり、下流の ADR-0379 16M キャップと整合させた (ADR-0527)
+- `isPan` の dead 節 (`&&false`) 除去 (ADR-0528)
+
+### 変更
+
+- `_fc`/`_clk`/`_aE`/`_csr` shorthand 化 (focus/click/activeElement/canvas cursor、~110B) (ADR-0528)
+
+## [1.7.556] - 2026-09-28
+
+### 修正
+
+- **pointerleave で hover をクリア** — ポインタがキャンバスを離れた後も `state.hover` が残り、端にあった図形の quick-connect ドットが滞留していた。既存の `_laser` クリアと同じハンドラで `state.hover` も消去 (ADR-0526)
+
+## [1.7.555] - 2026-09-28
+
+### 修正
+
+- **ドラッグ中の contextmenu でジェスチャキャンセル** — 右クリック/ペンのバレルボタンがドラッグ中にコンテキストメニューを開くと、メニューが本来の pointerup を呑み込みポインタを離したのにドラッグが継続し得た。`ptr.down` 中は `_cancelPointerGesture` でジェスチャを正常終了しメニューを開かない (ADR-0524)
+
+### 変更
+
+- `_tC` textContent setter shorthand 化 (21 サイト) — 追加分を相殺 (ADR-0523)
+- `_spL` `.split('\n')` 活性化 (9 サイト) (ADR-0525)
+
+## [1.7.554] - 2026-09-28
+
+### 修正
+
+- **`lostpointercapture` でジェスチャキャンセル** — ブラウザが pointer capture を pointercancel なしに取り消す経路 (ジェスチャ横取り等) で `ptr.down` が残りポインタが論理的に永続 down し得た。通常経路では pointerup が先に落とすため no-op (ADR-0521)
+
+### 変更
+
+- `_cPt`/`_nP`/`_osp`/`_rm`/`_nc` shorthand 化 (input 座標・ピア数・DOM 除去・clipboard) — edge-pan/lostpointercapture の追加分を相殺し 512KB 天井内に収容 (ADR-0522)
+
+## [1.7.553] - 2026-09-28
+
+### 変更
+
+- canvas プロパティ代入の shorthand 化 — `_fsS`/`_ssS`/`_lnW`/`_gaS`/`_taS`/`_tbS` (fillStyle/strokeStyle/lineWidth/globalAlpha/textAlign/textBaseline) で単純値サイト 79 箇所を畳み込み ~340B 回収。複合式サイトは値境界が曖昧なため残置 (ADR-0520)
+
+## [1.7.552] - 2026-09-28
+
+### 修正
+
+- **ドラッグ中のエッジオートパン** — 移動/リサイズ/マーキー/描画/waypoint 等のコンテンツドラッグでポインタがキャンバス端 24px 内に入ると rAF で viewport を連続パン。静止ポインタでも pan が継続し、次の pointermove が成長した viewport から wp を再導出するため全ドラッグ種が正しく延長される (Figma/draw.io 慣例) (ADR-0519)。併せて `_s2({x:e.offsetX,y:e.offsetY})` を `_o2w` に集約 (~120B)
+
+## [1.7.551] - 2026-09-28
+
+### 修正
+
+- **テキスト/URL のキャンバスドロップ** — 従来 drop は `dataTransfer.files` のみ処理し、テキスト選択範囲やリンクのドラッグは無反応だった。貼付カスケードを `_textCascade(s,wp)` に共通化し、drop でも SVG マークアップ / .board JSON / .excalidraw / mxfile / TSV / 平文が**ドロップ地点**に配置される (`text/uri-list` フォールバック込み) (ADR-0518)
+
+## [1.7.550] - 2026-09-28
+
+### 修正
+
+- Safari (macOS/iPadOS) のトラックパッド pinch-zoom に対応 — Safari は ctrl+wheel ではなく独自の GestureEvent (`gesturestart`/`gesturechange`/`gestureend`, `e.scale`) を発火するため、ピンチが無反応だった。`_pinchSnapNow` プレビューを共有して滑らかさも揃えた (ADR-0517)
+
+## [1.7.549] - 2026-09-28
+
+### 修正
+
+- ⌘C/⌘X が OS クリップボードへ .board JSON (text/plain) を書き込むように — 別タブ/別インスタンスへのキーボード貼り付けが動作。従来は keydown の preventDefault が 'paste' イベントを抑止し、外部クリップボードの内容はメニューペースト経由でのみ到達可能だった (ADR-0516)
+- ペースト時に自分が書いた clipboard エコー (同一 JSON) は内部 doPaste パスへ振り分け、_pasteCount カスケードを維持。OS クリップボードが空/無内容のときは内部 clipboard へフォールバック (ADR-0516)
+
+## [1.7.548] - 2026-09-28
+
+### リファクタ
+
+- 修飾キー読み取りを `_sK`/`_aK`/`_mod` shorthand 化 (86 サイト、~280B 回収) (ADR-0515)
+
+## [1.7.547] - 2026-09-28
+
+### リファクタ
+
+- `Shape.make`/`Shape.translate`/`X.push`/`UI.refreshZoom`/`this.db.transaction`/`c.fillText` を shorthand 化 (264 サイト、~489B 回収) (ADR-0514)
+
+## [1.7.546] - 2026-09-28
+
+### リファクタ
+
+- canvas `setLineDash`/`measureText`/`strokeRect`/`translate`/`setTransform` と `Store.commit`/`UI.announce`/`URL.createObjectURL`/`tx.objectStore`/`Presentation.isActive` を shorthand 化 (161 サイト、~746B 回収) (ADR-0513)
+
+## [1.7.545] - 2026-09-23
+
+### リファクタ
+
+- `c.save()`/`c.restore()`/`c.closePath()`/`c.quadraticCurveTo(...)` を `_sv2`/`_rs2`/`_cP`/`_qC` shorthand に集約 (43 サイト、~200B 回収) (ADR-0512)
+
+## [1.7.544] - 2026-09-23
+
+### リファクタ
+
+- `c.moveTo(x,y)`/`c.lineTo(x,y)` を `_mT`/`_lT` shorthand に集約 (69 サイト、~140B 回収) (ADR-0511)
+
+## [1.7.543] - 2026-09-23
+
+### リファクタ
+
+- `c.beginPath()`/`c.stroke()`/`c.fill()` を `_bp`/`_st2`/`_fil` shorthand に集約 (118 サイト、~600B 回収) (ADR-0510)
+
+## [1.7.542] - 2026-09-23
+
+### リファクタ
+
+- ジェスチャ状態 reset cluster を `_zR` (7-field) / `_zG` (3-field) shorthand に集約 (9 サイト、~280B 回収) (ADR-0509)
+
+## [1.7.541] - 2026-09-23
+
+### リファクタ
+
+- `X.trim()` を `_trm(X)` shorthand に拡大 fold (14 サイト、~60B 回収) (ADR-0508)
+
+## [1.7.540] - 2026-09-23
+
+### リファクタ
+
+- `copyText(...).then(ok=>_tst(...))` を `_cpT` shorthand に集約 (3 サイト、~90B 回収) (ADR-0507)
+
+## [1.7.539] - 2026-09-23
+
+### リファクタ
+
+- `s=>!_lk(s)` を `_ul` shorthand に集約 (6 サイト、~40B 回収) (ADR-0506)
+
+## [1.7.538] - 2026-09-23
+
+### リファクタ
+
+- `filter`/`some`/`find`/`every`/`map` の単一述語 arrow 包みを一括 point-free 化 (18 サイト、~130B 回収) (ADR-0505)
+
+## [1.7.537] - 2026-09-23
+
+### リファクタ
+
+- `.map(x=>X(x))` を point-free `.map(X)` 化 (6 サイト、~50B 回収) (ADR-0504)
+
+## [1.7.536] - 2026-09-23
+
+### リファクタ
+
+- `.every(id=>X(id))` を point-free `.every(X)` 化 (5 サイト、~40B 回収) (ADR-0503)
+
+## [1.7.535] - 2026-09-23
+
+### リファクタ
+
+- `_iS(id)&&_ln(id)<=64` を `_idOK` shorthand に集約 (4 サイト、~40B 回収) (ADR-0502)
+
+## [1.7.534] - 2026-09-23
+
+### リファクタ
+
+- `s.w!=null` を `_hb` shorthand に集約 (15 サイト、~30B 回収) (ADR-0501)
+
+## [1.7.533] - 2026-09-23
+
+### リファクタ
+
+- `broadcast()` の `op` メッセージを `_mk` envelope に統一 (`peer` 同梱の一貫性) (ADR-0500)
+
+## [1.7.532] - 2026-09-23
+
+### リファクタ
+
+- `_mk` — wire メッセージ envelope (`{k,peer:_pi(),...}`) を 9 サイトに集約、−47B (ADR-0499)
+
+## [1.7.531] - 2026-09-23
+
+### リファクタ
+
+- `_pk` — RTC/BC ピアキー振分け (`viaRtc?this._rtcPeerId:msg.peer`) を bye/cursor/selection 3 サイトに集約 (ADR-0498)
+
+## [1.7.530] - 2026-09-23
+
+### リファクタ
+
+- `_idIdx` — id による図形 index 検索を undo/del/addMany/eraser 4 サイトに集約、語彙化 (ADR-0497)
+
+## [1.7.529] - 2026-09-23
+
+### リファクタ
+
+- `_ulv` — unlocked+visible 判定 (`!_lk(s)&&_sv(s)`) を 4 サイトに集約、微減 (ADR-0496)
+
+## [1.7.528] - 2026-09-23
+
+### リファクタ
+
+- zoomToSelection — 既存 `_selShapes()` を再利用 (素の filter を置換)、−16B (ADR-0495)
+
+## [1.7.527] - 2026-09-23
+
+### リファクタ
+
+- `_shV()` — 可視図形 subset (`_sh().filter(s=>_sv(s))`) を 6 サイトに集約、~50B 回収 (ADR-0494)
+
+## [1.7.526] - 2026-09-23
+
+### リファクタ
+
+- `_rs(arr)` — 盤面総取替えイディオム (`state.shapes=X;_iG();_pcC();`) を import/restore/snapshot 5 サイトに集約、−41B (ADR-0493)
+
+## [1.7.525] - 2026-09-23
+
+### リファクタ
+
+- `_pL(pts)` — 末尾点アクセス (`pts[_ln(pts)-1]`) を 16 サイトに集約、−32B (ADR-0492)
+
+## [1.7.524] - 2026-09-23
+
+### リファクタ
+
+- `_mid(pts)` — 中間ウェイポイント抽出 (`slice(1,-1)`) を drawio emit/import 3 サイトに集約、−36B (ADR-0491)
+
+## [1.7.523] - 2026-09-23
+
+### リファクタ
+
+- `_ss([id])` — `_scl();_sad(id)` の単一 id selection 置換を `_ss` 集約 (6 サイト、−36B) (ADR-0490)
+
+## [1.7.522] - 2026-09-23
+
+### リファクタ
+
+- `_rcOp` fold — 残直書きの `_recordCommitted + _keepSel` (way style op・doGroup・frameFit) を `_rcOp` に集約、−205B (ADR-0489)
+
+## [1.7.521] - 2026-09-23
+
+### リファクタ
+
+- `_snapBest` — snap edge の「|e.v−v| 最小を選ぶ」for-of ループ (resizeSnap 縦/横、_snapBoxIdx mX/mY 4 サイト) を集約、−64B (ADR-0488)
+
+## [1.7.520] - 2026-09-23
+
+### リファクタ
+
+- `_gV`/`_gH` — スナップガイド push の 4 サイト (resizeSnap 縦/横、_snapBoxIdx 縦/横) の min/max union 4点 push を pair ヘルパに集約、−98B (ADR-0487)
+
+## [1.7.519] - 2026-09-23
+
+### 修正
+
+- presence `selection` メッセージの `ids` に ≤64 キャップを追加 (ADR-0486)。`_s0(ids,MAX_OP_SHAPES)` は配列長を抑止していたが、各 id 文字列長は未検証 — wire 層の全 id フィールドに同一規約を適用し ADR-0485 の網羅を完結
+
+## [1.7.518] - 2026-09-23
+
+### 修正
+
+- validRemotePayload の全 op レベル id フィールドに ≤64 キャップ — upd.id / move.ids[] / zorder changes[].id / connClears[].id / patches() 共通 id / group・ungroup の ids+before (ADR-0485)。従来は `_iS()` の型チェックのみで validShape の ≤64 規約が op 側に及んでおらず、敵性ピアが長大 id を byId 探索・Map キー・`_stampWrites` 連結に供給できた
+
+## [1.7.517] - 2026-09-23
+
+### ドキュメント
+
+- architecture.md の wire 節を ADR-0475 (有界 sync-req 再送)・0473/0479 (wire cap 整合)・0474 (SHARE_MAX_SHAPES) に同期 (ADR-0484)
+
+## [1.7.516] - 2026-09-23
+
+### リファクタ
+
+- `Store._recordCommitted({op:'replace',…})` の3重複を `_repC` に集約 (−79B、ADR-0483)
+
+## [1.7.515] - 2026-09-23
+
+### リファクタ
+
+- インポート3経路の「wp 中央配置」ブロックを `_ctrAt(ss,wp)` に集約 (−108B、ADR-0482)
+
+## [1.7.514] - 2026-09-23
+
+### リファクタ
+
+- `const sel=_selL(s=>s&&!_lk(s))` を `_selUL()` shorthand に畳み込み (5 箇所、ADR-0481)
+
+## [1.7.513] - 2026-09-23
+
+### テスト
+
+- ADR-0479 の非空虚テスト追加: zorder legacy `after` の frac ≤600 / id ≤64 境界を harness で実拒否検証 (ADR-0480)
+
+## [1.7.512] - 2026-09-23
+
+### 修正
+
+- zorder op の legacy `after` ブランチで `c.frac`/`c.id` の長さキャップ欠落を修正 (≤600/≤64、ADR-0479) — ADR-0473 の wire キャップ整合の残穴で、1MB 級文字列の注入を遮断
+
+## [1.7.511] - 2026-09-23
+
+### リファクタ
+
+- `ptr.dragKind==='X'` を `_dk('X')` shorthand に畳み込み (44 箇所、−445B、ADR-0478)
+
+## [1.7.510] - 2026-09-23
+
+### リファクタ
+
+- `a.indexOf(b)` → `_ix(a,b)`、`x.trim()` → `_trm(x)` shorthand 畳み込み (ADR-0477)
+
+## [1.7.509] - 2026-09-23
+
+### リファクタ
+
+- `x.slice(0,n)` を `_s0(x,n)` shorthand に畳み込み (46 箇所、−146B、ADR-0476) — 余白回復
+
+## [1.7.508] - 2026-09-23
+
+### 修正
+
+- join 時の `sync-req` をスナップショット受領まで有界再送 (presence 間隔で ≤3 回) — 応答が SCTP ドロップ/スロットルで失われると joiner が空盤面のまま永遠に待機していた経路を閉塞。受領は `_snapRx` で記録し部屋切替でリセット (ADR-0475)
+
+## [1.7.507] - 2026-09-23
+
+### 修正
+
+- スナップショット取込のキャップを `MAX_OP_SHAPES=500` から `SHARE_MAX_SHAPES` (200k) へ — **500 図形超の盤面で join すると末尾の図形が静かに切捨てられていた実害を解消** (空盤面の `_applySnapshot` 置換パスと非空盤面の `msg.ops` merge パスの双方)。外縁は従来通り 24MB join キャップ (ADR-0474)
+
+## [1.7.506] - 2026-09-23
+
+### 修正
+
+- `validRemotePayload` の wire キャップを `validPatch` と整合 — `zorder` の `changes[].before/after` に frac 上限 (600) が無く remote が巨大キーを `s.frac` へ注入できた経路、`group.gid` / `ungroup.gids` の無上限文字列も遮断 (ADR-0473)
+
+## [1.7.505] - 2026-09-23
+
+### 修正
+
+- `_zCommit` の compaction を盤面全体のキー長で検出 — 未移動図形に残った >48 キーも任意の z 操作で self-heal (ADR-0472)。compaction 時の `before` を mover の**移行前キー**に修正し undo が旧順序を正確に復元 (従来は新キーが入り undo が no-op 化し得た)
+
+### リファクタ
+
+- `doBringForward`/`doSendBackward` を `_zStep(dir)` に統合 (−442B、ADR-0472)
+
+## [1.7.504] - 2026-09-23
+
+### 修正
+
+- `_zCommit` で frac キー >48 文字で canonical 再採番 (`reindexFrac`) — 深い挿入によるキー増大がリモートの 600 文字 validPatch キャップで静かに棄却され発散する経路を閉塞 (ADR-0471)。doBringFront/doSendBack の共有プリアンブルも `_zSelShapes` に集約
+
+## [1.7.503] - 2026-09-23
+
+### 変更
+
+- `_fragIn` の送信者タグ付けに実動作テストを追加 — 2送信者の並行ストリームが継ぎ接ぎせず、同一送信者ストリームが完全 join することを検証 (ADR-0470)
+
+## [1.7.502] - 2026-09-23
+
+### 修正
+
+- `_fragIn` 再組立を送信者タグ付け — 2ピアの並行 snap/opc ストリームが seq 空間で衝突して JSON が継ぎ接ぎされるのを防止 (ADR-0469)
+
+## [1.7.501] - 2026-09-23
+
+### 変更
+
+- `docs/architecture.md` に wire ライフサイクル節を追加 — incarnation id / 応答選出 / throttle 再送 / bye 配送 / ルーム切替 hygiene / undo×sync / frag 再起動を ADR 参照付きで体系化 (ADR-0468)
+
+## [1.7.500] - 2026-09-23
+
+### 修正
+
+- `_pCt` (ピア数 SR デルタ追跡) をルーム切替で再ベースライン化 — 旧ルームのカウントが残って次の announce が phantom デルタを鳴らすのを防止 (ADR-0467)
+
+## [1.7.499] - 2026-09-23
+
+### 修正
+
+- ルーム切替で `_snapIn`/`_opcIn` (受信再組立スロット) もリセット — 旧ルームの部分ストリームが新ストリームと継ぎ接ぎする窓を排除 (ADR-0466、ADR-0464 の同根残件)
+
+## [1.7.498] - 2026-09-23
+
+### 修正
+
+- **最小 id の joiner へ snapshot が届かない飢餓** — ADR-0455 の応答選出が `_pr()` 内の asker 自身を数え、joiner が最小 id を持つと応答者 0 人になっていた。`_loResp(pk)` で asker を除外し「asker 以外の最小 id ピア」が一意に応答 (ADR-0465)
+
+## [1.7.497] - 2026-09-23
+
+### 修正
+
+- **ルーム切替で画像が届かなくなるバグ** — `_imgSent`/`_imgChunks`/`_imgOuts` が room-scoped なのに持ち越され、新ルームのピアへ `img` 参照のみ届いて blob が来ず `_imgPending` に滞留していた。init で3状態をクリア (ADR-0464)
+
+## [1.7.496] - 2026-09-23
+
+### 追加
+
+- ピア参加/退出をスクリーンリーダーへアナウンス — `Net._onConnChange` で `_pr().size` の増減を追跡し `UI.announce` (polite)。hello/cursor/RTC onopen から bye/reap/dc.onclose まで全経路を1フックで網羅 (ADR-0463)
+
+## [1.7.495] - 2026-09-23
+
+### 変更
+
+- 図形型判定 shorthand `_stk`/`_frm`/`_pn`/`_txt`/`_im`/`_arw` — `X.type==='T'` を 73 箇所畳み込み (~520B 回収) (ADR-0462)
+
+## [1.7.494] - 2026-09-23
+
+### 修正
+
+- **wclock (per-prop LWW) の IndexedDB 永続化** — 仲裁テーブルがメモリのみでリロード毎に消失し、相手ピアの古い op 再送でプロパティが退行し得た。doc record に `wc` を同梱・復元時 `validClock` で検証 (ADR-0460)
+
+### 変更
+
+- toast 呼び出し shorthand `_oT`/`_wT`/`_eT` — `t(...)` 単一引数形を 99 箇所畳み込み (~250B 回収) + 文字列 consts `_RO`/`_RW`/`_UT`/`_REC` (ADR-0461)
+
+## [1.7.493] - 2026-09-23
+
+### 修正
+
+- **ピア incarnation id** — `peerId` を `PEER_ID+'.'+nonce` (起動毎) に変更。`seq` がリロード毎に 0 リセットされるため、従来はリロード後の op がピアの `seenOps` 残留キーと衝突して静かに棄却されていた。同一ブラウザ複数タブが PEER_ID を共有し自己エコー判定で互いのメッセージを捨てていた問題も解消 (ADR-0459)
+- **ルーム切替の掃除拡充** — `seenOps` クリア + deferred snapshot resend (`_snapT`) の部屋横断発火を停止 (ADR-0459)
+
+### 変更
+
+- `_cT` (clearTimeout) shorthand (ADR-0459)
+
+## [1.7.492] - 2026-09-23
+
+### 修正
+
+- **ルーム切替時のプレゼンス掃除** — `Net.init` が旧ルームの `state.peers` を掃除せず、別ルームのゴーストカーソル/選択ハロー/接続数が 15 秒持ち越されていた。切替前に旧チャンネルへ `bye` を送信 + `rtc:` 以外のピアを即時削除 (RTC DataChannel は切替で閉じないため保持) (ADR-0458)
+
+## [1.7.491] - 2026-09-23
+
+### 修正
+
+- **ピア離脱の `bye` メッセージ** — `pagehide` で `{k:'bye',peer:_pi()}` を `_bcast` し、残ピアがカーソル/選択ハロー/接続数を即時に除去。従来は `NET_PRESENCE_TIMEOUT` (15s) の reap までゴーストが残った。RTC 経路では合成 id `_rtcPeerId` を消去 (ADR-0457)
+
+### 変更
+
+- `typeof` 型ガード shorthand `_iS`/`_iN`/`_iO` — 74 箇所畳み込みで ~933B 回収 (ADR-0456)
+
+## [1.7.490] - 2026-09-23
+
+### 修正
+
+- **snapshot 応答の最小 id ピア限定** — `hello`/`sync-req` で `_pi()<msg.peer` が joiner より小さい全ピアの応答を許していたため 3+ ピア部屋で N-1 重複 snapshot が飛んでいた。`_pr()` の既知ピアで最小 id のピアのみ応答 (`_rtcPeerId` 合成 id は BC 経路ではないため除外) (ADR-0455)
+
+### 変更
+
+- `_selUnl` を mid-predicate `!_lk(s)&&EXPR` 形へ拡大 + prop shorthand `_szz`/`_txx`/`_ftt`/`_coo` (~230B 回収) (ADR-0455)
+
+## [1.7.489] - 2026-09-23
+
+### 修正
+
+- **`_imgChunks` n-mismatch 再スタート** — 同 key で異なるチャンク総数 `n` のメッセージを棄却していたため stale partial が新ストリームを永遠にブロックし得た (`_fragIn` の ADR-0448 と同種)。fresh stream wins に統一 (ADR-0454)
+
+### 変更
+
+- `_selUnl` 述語畳み込み (17 箇所の `_selAny(s=>X&&!_lk(s))` → `_selUnl(s=>X)`、~74B 回収) (ADR-0454)
+
+## [1.7.488] - 2026-09-23
+
+### 変更
+
+- **図形型メンバーシップの Set 化** — 17 箇所の `type==='x'||...` 列挙チェーンを共有定数 `_BOX`/`_BX4`/`_BOXF`/`_HF4`/`_RD`/`_RDI`/`_D6`/`_SH5`/`_TS`/`_TSF` の `.has` に畳み込み (~300B 回収、部分列マッチしていた test.mjs 脆弱性も解消) (ADR-0453)
+- **`pagehide` flush** — iOS Safari のスワイプ離脱・frozen-tab 退避で `visibilitychange`/`beforeunload` が発火しない経路を `_on(window,'pagehide')` → `Persist.flushIfHidden('hidden')` で網羅 (web.dev 推奨の両イベント併用) (ADR-0453)
+
+## [1.7.487] - 2026-09-23
+
+### Fixed
+- `_sendSnapshot` throttle 超過時に deferred resend を1件予約 — join 直後の
+  hello/sync-req が throttle window に被ると 2ピア room で盤面が届かない
+  飢餓バグを解消 (ADR-0452)
+
+## [1.7.486] - 2026-09-23
+
+### Changed
+- `_mP`/`_sT` を引数取り形に再定義し `new Map(a)`/`new Set(a)` 37 箇所を
+  fold (~150B 回収) (ADR-0451)
+
+## [1.7.485] - 2026-09-23
+
+### Changed
+- member-expr レシーバの `.length` も `_ln()` fold — `a.b.length`→`_ln(a.b)`
+  46 箇所、~92B 追加回収 (ADR-0450)
+
+## [1.7.484] - 2026-09-23
+
+### Fixed
+- `_imgIn` 受信 blob ストアを 256 件上限化 — 受信 blob が無制限に滞留していた
+  メモリリーク (ADR-0449)
+- `_imgChunks` cap 到達時は最古 stalled key を eviction — 64 個の未完 key で
+  画像転送が永続ブロックされる DoS 面を緩和 (ADR-0449)
+
+## [1.7.483] - 2026-09-23
+
+### Fixed
+- `_fragIn` が n-mismatch で assembly を再起動 — stale partial が異なる
+  チャンク数の新ストリームを永久ブロックするデッドロックを解消 (ADR-0448)
+- `dc.onclose` で `_snapIn`/`_opcIn` もリセット — 半受信 assembly の残存 (ADR-0448)
+
+## [1.7.482] - 2026-09-23
+
+### Changed
+- `X.length` 読み取り 364 箇所を `_ln(X)` へ一括 fold — 精密な書込み除外
+  lookahead で比較・算術読み取りを残したまま ~700B 回収 (ADR-0447)
+
+## [1.7.481] - 2026-09-23
+
+### Fixed
+- `dc.onclose` で `_dcQ` をリセット — チャネル単体 close でキューが残り
+  再接続後の送信が全て滞留するバグ (ADR-0446)
+
+## [1.7.480] - 2026-09-23
+
+### Fixed
+- `_slimOp` を del/clear にも拡張 — 画像を含む削除 op の dataUrl が
+  `img:` 参照にスリム化され wire バイト数が大幅縮小 (ADR-0445)
+- `_pcC` が `_imgPending` もパージ — clear/replace 後の駐車参照リーク (ADR-0445)
+
+### Changed
+- `_docN`/`_fs2`/`_sh2`/`_usI`/`_oa` 集約 (~350B 回収)
+
+## [1.7.479] - 2026-09-23
+
+### Fixed
+- `_undoWire` に group/ungroup/zorder の逆写像を追加 — group/ungroup は
+  per-shape `upd{groupId}` パッチ列、zorder は changes スワップで wire 伝搬。
+  残る非伝搬は replace/beautify のみ (ADR-0444)
+
+### Changed
+- `_lP`/`_sp`/`_el`/`_va` prop fold + `_rdb`/`_fck` 集約 (~360B 回収)
+
+## [1.7.478] - 2026-09-23
+
+### Fixed
+- undo/redo をピアへ伝搬 — `_undoWire` が可逆 op を wire 安全な逆 op に写像し
+  新しい peer 時計で broadcast (group/replace 等の非写像 op はローカルのみ) (ADR-0443)
+
+### Changed
+- `_forConn`/`_forTxt`/`_noSh`/`_rO`/`_midV` 集約 (~830B 回収)
+
+## [1.7.477] - 2026-09-23
+
+### Changed
+- `_pp` before/after patch push 集約 — 15サイトを単一プロパティペア push ヘルパに (~340B 回収) (ADR-0442)
+
+## [1.7.476] - 2026-09-23
+
+### Changed
+- wire ガード系 (ADR-0435..0438) の行動テスト追加 + architecture.md の P2P/キャッシュ節を現況同期 (ADR-0441)
+
+## [1.7.475] - 2026-09-23
+
+### Fixed
+- 完全透明 (opacity=0) シェイプも SR で「非表示」と announce — `_hd` の flag 意味論は不変 (ADR-0440)
+
+### Changed
+- `_g2` getContext('2d') shorthand、10サイト fold (ADR-0440)
+
+## [1.7.474] - 2026-09-23
+
+### Changed
+- `_oP`/`_cv` shorthand fold — s.opacity 読みサイト・canvas 生成を集約 (~150B 回収) (ADR-0439)
+
+## [1.7.473] - 2026-09-23
+
+### Fixed
+- `_sendDC` に SCTP 256KiB ドロップガード — 送れない巨大メッセージが再送ループでキューを閉塞するのを防止 (ADR-0438)
+
+## [1.7.472] - 2026-09-23
+
+### Fixed
+- `_wrapCache` キーに `s.spacing` 追加 — letter-spacing 変更で折返しが追従 (ADR-0437)
+
+## [1.7.471] - 2026-09-23
+
+### Fixed
+- pen `pts` 検証を `_ptsOK` に統一 — add/import 経路でも全要素の型を網羅 (ADR-0436)
+
+## [1.7.470] - 2026-09-23
+
+### Fixed
+- `_psc` が `Net._imgPending` もパージ — blob 未到着間に削除された shape の駐車エントリ解放 (ADR-0435)
+
+## [1.7.469] - 2026-09-23
+
+### Refactored
+- `_rt`/`_du`/`_gi` prop read fold (~130B 追加回収 — `delete s.X` は参照のため除外保護)
+
+## [1.7.468] - 2026-09-23
+
+### Refactored
+- `_sk`/`_fi`/`_lb` prop read shorthand fold (s.stroke/s.fill/s.label、~250B 回収)
+
+## [1.7.467] - 2026-09-23
+
+### Fixed
+- `dc.send` バックプレッシャ再キュー `_sendDC` — SCTP バッファ満杯時のメッセージ静寂消失を解消 (ADR-0432)
+
+### Refactored
+- `_hd`/`_fS`/`_wh` shorthand fold
+
+## [1.7.466] - 2026-09-23
+
+### Fixed
+- 256KB SCTP 上限超過の op を 'opc' 64KB フラグメントで送信 — 巨大ペン/ペースト op の静寂消失 (ピア間発散) を解消、`_fragSend`/`_fragIn` で snapshot と共有化
+
+## [1.7.465] - 2026-09-23
+
+### Fixed
+- `hl` フラグを validPatch のフラグ型ホワイトリストに追加 — marker prop のリモート intake を他フラグと同一水準に
+
+## [1.7.464] - 2026-09-23
+
+### Fixed
+- describeShape が marker ストロークを「ペン」ではなく「マーカー」と announce — ツール名称と SR 読み上げの一致
+
+## [1.7.463] - 2026-09-23
+
+### Internal
+- `_recordCommitted` の inline seenOps トリムを `_trimSeen()` に統一 + `_ck` op-clock キー helper (~85B)
+
+## [1.7.462] - 2026-09-23
+
+### Fixed
+- per-shape キャッシュパージを全削除経路に拡大 (`_psc` helper) — `add`/`addMany` undo・`clear`/`replace`・イレーサー即時削除でも `_penCache`/`_penBboxCache` を解放
+
+## [1.7.461] - 2026-09-23
+
+### Fixed
+- `_penRender` 失敗時に stale px と解像度を記録 — `_penCachePx` の会計リークと毎フレーム再試行 churn を解消
+
+## [1.7.460] - 2026-09-23
+
+### Internal
+- `_nS`/`_sv`/`_lk` shorthand (~460B 回収) — `_sh().length`/`s.visible`/`s.locked` 読みサイトの predicate 化
+
+## [1.7.459] - 2026-09-23
+
+### Fixed
+- del op・全形状置換時に `_penCache`/`_penBboxCache` の per-shape エントリをパージ — 削除ペンの bitmap が px キャップまで滞留するリークを解消
+
+## [1.7.458] - 2026-09-23
+
+### Internal
+- `_frameOf`/`_xFS`/`_grpOf` fold (~800B 回収) — frame 拡張ロジックの 4 重複を単一 helper 化
+
+## [1.7.457] - 2026-09-23
+
+### Fixed
+- `_zoomToFrame` が `clampZoom` 未経由で degenerate frame 時 NaN zoom → viewport blank になる実害を修正
+
+## [1.7.456] - 2026-09-23
+
+### Internal
+- `_sel0`/`_ivp` shorthand 追加 + `_selAny`/`unlockedSelectionIds` の素形複写解消 (~280B 回収)
+
+## [1.7.455] - 2026-09-23
+
+### Fixed
+- `image` を T.k に追加 — describeShape/DOM mirror が ja で「画像」と読み上げるよう修正 (従来は英字フォールバック)
+
+## [1.7.454] - 2026-09-23
+
+### Internal
+- `_scl`/`_sad`/`_sdl` shorthand 追加 (~120B 回収) — selection 書込み経路を _ss とあわせて完全集約
+
+## [1.7.453] - 2026-09-23
+
+### Internal
+- `_sb()`/`_hasS()` shorthand 追加 (~90B 回収)
+
+## [1.7.452] - 2026-09-23
+
+### Fixed
+- `cycleVAlign` が `_st().valign` を persist しない抜けを修正 — 新規 box/sticky に最後使用の縦揃えが適用される (style cycle parity 完結)
+
+## [1.7.451] - 2026-09-23
+
+### Internal
+- dead const `SNAP_THRESHOLD` 削除 + `_setSq` 活性化・`_ss` 完全統一 (~146B 回収)
+
+## [1.7.450] - 2026-09-23
+
+### Fixed
+- describeShape に fstyle (hatch/cross) / hop を追加 — ADR-0414 の見送り分を完結
+
+### Internal
+- `_selConnL`/`_selTxtL`/`_selArrowL`/`_ss`/`_md` shorthand 追加 (~340B 回収)
+
+## [1.7.449] - 2026-09-23
+
+### Fixed
+- describeShape が flip/shadow/elbow/curve を announce — canvas/SVG のみの視覚情報を SR チャンネルにも (WCAG パリティ)
+
+## [1.7.448] - 2026-09-23
+
+### Fixed
+- `s.shadow` を validPatch 数値リストからフラグ検証へ移動 — `shadow:true` の style/add op・`.board`/共有 import が棄却・沈黙 drop されていた同期バグを修正
+
+### Internal
+- `_db`/`_de`/`_wO` shorthand 追加 (~105B 回収)
+
+## [1.7.447] - 2026-09-23
+
+### Fixed
+- text wrap を drawio/excalidraw で完全往復 — `whiteSpace=wrap|nowrap` を常時 emit、excalidraw `autoResize:!s.wrap`、bound text は `autoResize:false`、import 側で wrap 復元
+
+### Internal
+- `_rAF`/`_pF`/`_lg`/`_ls` shorthand 追加 (~190B 回収)
+
+## [1.7.446] - 2026-09-23
+
+### Fixed
+- `s.wrap` OFF を `null`→`0` に正規化 — トグルで折返し OFF にした text が .drawio で折返し復活する不整合を修正
+- validPatch に `wrap` (数値) + `bold/italic/under/strike/locked` (boolean|number) を追加
+
+## [1.7.445] - 2026-09-23
+
+### Changed
+- `_bA` (G.bboxAll, 30箇所) + `_gC` (getCSS, 19箇所) shorthand 化 (~320B 回収)
+
+## [1.7.444] - 2026-09-23
+
+### Fixed
+- .excalidraw `appState` (scrollX/scrollY/zoom + gridSize) を import で復元 — 視点とグリッドの往復 (drawio と同等に)
+- .drawio `grid` フラグを import で復元 (`state.showGrid` 往復)
+
+## [1.7.443] - 2026-09-23
+
+### Added
+- .drawio 選択範囲書き出し (ctx メニュー「選択を.drawio書き出し」、exportSelection に drawio 経路)
+- drawio `strikeThrough=1` 往復 — `s.strike` が export/import で消失していたのを修正
+
+### Changed
+- トースト種別 shorthand `_w/_o/_e` + `_trimSeen` 集約 (~1.3KB 回収)
+
+## [1.7.442] - 2026-09-23
+### 変更
+- ADR-0406: `_ES`/`_EN`/`_TB` キー名 + `_IK`/`_YW` 色 + `!==_un` 否定形統一 (~330B 回収) + drawio docName 往復テスト
+
+## [1.7.441] - 2026-09-23
+### 追加
+- ADR-0405: .drawio `<diagram name>` ↔ docName 往復 (emit で `_esc` 済み名、import で `_dioNm` ハンドオフ採用) — 全フォーマットで名前任せた往復が完結
+### 変更
+- `_un`/`_AU`/`_AD`/`_AL2`/`_AR2` 定数化 (~170B 回収)
+
+## [1.7.440] - 2026-09-23
+### 変更
+- ADR-0404: `_mP`/`_sT`/`_eU`/`_dU` shorthand (~230B 回収) + round116-117 の wire メタ (`k:'name'`/snapshot.name/`snapBig`) に存在ガードと実動作テストを追加
+
+## [1.7.439] - 2026-09-23
+### 修正
+- ADR-0403: RTC スナップショットが受信側上限 (24MiB) を超える場合、送信前に `snapBig` トーストで fail-fast — 全チャンク送出後に棄却される浪費を解消
+### 変更
+- `_cos`/`_sin`/`_rN`/`_log` Math shorthand (~180B 回収)
+
+## [1.7.438] - 2026-09-23
+### 追加
+- ADR-0402: ドキュメント名をピア同期 — リネームが `k:'name'` ブロードキャストで即時伝播し、snapshot に `name` を同梱して遅れて参加するピアも引き継ぐ (空ボード参加時のみ採用・既存ボードはローカル名維持)
+### 変更
+- ADR-0401: `Net._bcast` (BC+RTC 二重送信) と `_setDocName` ヘルパー化、`_dpr`/`_PM`/`_PU`/`_PC`/`_lc` shorthand (~230B 回収)
+
+## [1.7.437] - 2026-09-23
+### 修正
+- ADR-0400: RTC スナップショット送信が >256KB で SCTP 天井に静かに死んでいた実害を修正 — ADR-0383 は受信側のみコミットされており送信側のチャンク化が欠落していた。`dc.onopen` のスナップショットを常時 64KB の 'snap' チャンク送出に統一 (1 チャンク盤面も同じ経路)
+### 変更
+- ADR-0399: `_ap` (appendChild) / `_stO` (setTimeout) / `_KD`/`_CH`/`_CK` (keydown/change/click) / `_vpS` (viewport emit) の shorthand 化 (~280B 回収)
+
+## [1.7.436] - 2026-09-23
+### 修正
+- ADR-0398: ファイル取込4経路 (.board/.excalidraw/.svg/.drawio) に 32MB 上限 — 巨大ファイルで JSON/XML parse がメインスレッドをハングさせる経路を遮断 (dataUrl 16M / snap 24M の既存 cap と同系統)
+
+## [1.7.435] - 2026-09-23
+### 変更
+- ADR-0397: `_St`(String)/`_PD`(pointerdown) + 残りトーストキー5件 (`_NS/_ST/_PA/_EF/_SM`) の定数化 — 計 ~220B 回収
+
+## [1.7.434] - 2026-09-23
+### 修正
+- ADR-0396: 全選択がロック済みのとき Delete/Backspace が無言だった — `lockedNoop` トーストで解除方法 (⌘⇧L) を案内
+### 変更
+- ADR-0395: `_IB`/`_EM`/`_CF` トーストキー定数化 (~190B 回収)
+
+## [1.7.433] - 2026-09-23
+### 修正
+- ADR-0393: .board ファイルが `viewport` を往復 — 保存時の視点位置/ズームを再読込で復元 (ADR-0112 共有リンクと同一の意味論・同じ有限値+clampZoom 検証)
+### 変更
+- ADR-0392/0394: `_sa()`/`_AL`/`_AP` shorthand (~340B 回収)
+
+## [1.7.432] - 2026-09-23
+### 追加
+- ADR-0390: .excalidraw 書き出しで `frameId` を空間内包から付与 — Board の frame メンバーシップを Excalidraw 側で再現。bound ラベル text も containerId 経由で継承
+### 変更
+- ADR-0391: shorthand 追加 (`_TR`/`_ud`/`_now`) — およそ 280B 回収。`nowTs` はテストの `Date.now` モンキーパッチ維持のためリテラルのまま
+
+## [1.7.431] - 2026-09-23
+
+### 修正
+- 同一トーストを再付け替えに (ADR-0389) — 連発してもスタックが増殖せず、aria-live の再通知は維持
+
+## [1.7.430] - 2026-09-23
+
+### 修正
+- `validShape` に型ホワイトリスト (ADR-0387) — リモート/インポート経由の未知型が `_apply` を通り抜けて描画不能のゴースト図形になるのを棄却 (NaN bbox → スナップ/ヒット判定伝播を防止)
+- shape id を `typeof==='string'` + 64 文字上限に (ADR-0388) — 数値 id の Map キー分裂を棄却
+
+## [1.7.429] - 2026-09-23
+
+### 変更
+- `Object.keys` → `_ok`、`X.addEventListener` → `_on` の shorthand 適用サイト拡大 (ADR-0386) — ~130B 回収
+
+## [1.7.428] - 2026-09-23
+
+### 修正
+- RTC 切断時に半受信スナップショット組立を破棄 (ADR-0385) — 再接続時の新旧チャンク混入を防止
+- `Array.isArray` → `_iA` shorthand で ~500B 回収 (ADR-0384)
+
+## [1.7.426] - 2026-09-23
+
+### 追加
+- ⌘F 検索でコネクタが結合先の名前でもヒット (ADR-0381) — 「Loginボタンへの矢印」が "login" で見つかるように、コネクタのみ結合先の label/text/type を検索対象に追加
+
+## [1.7.427] - 2026-09-23
+
+### 修正
+- RTC スナップショットを 64KB チャンク化 (ADR-0383) — ~256KB の SCTP メッセージ上限を超える大盤面で参加側が静かに同期失敗していたのを解消
+- `state.seenOps/lasso/marquee/dupDelta`・`G.w2s/s2w`・`connEnds` の shorthand (ADR-0382)
+
+## [1.7.425] - 2026-09-23
+
+### 追加
+- スクリーンリーダーの図形説明にグループ所属とコネクタ結合先を追加 (ADR-0380) — `describeShape` が `(グループ)` と `結合: 矩形→付箋` 形式で視覚的ハロー/結合ドットの情報を音声化
+
+## [1.7.424] - 2026-09-23
+
+### 修正
+- 画像ワイヤチャンクに per-chunk 96KB 上限 (ADR-0379) — 結合後12MB上限は全パーツ着信後にしか走らず、巨大チャンクのバッファ洪水を防止
+- `dataUrl` に16M文字上限 (ADR-0379) — add/upd/snapshot 経由の巨大画像文字列が `img.src` に直行する経路を閉塞
+
+## [1.7.423] - 2026-09-23
+
+### 変更
+- 追加 shorthand 一括化 (ADR-0378): `_pi`/`_ro`/`_gd`/`_cl` の live-read と `_bb`(G.bbox)/`_oa`(Object.assign) — 約650B削減
+
+## [1.7.422] - 2026-09-23
+
+### 修正
+- コネクタのバウンディングボックスにオフボックス経路点を含める (ADR-0376)。曲線の制御点 (`cbend`) とエルボーの trunk (`bend`) が終端矩形の外に出るケースで、damage rect 欠落によるゴースト描画、および viewport 内の apex が `inView` で誤カリングされる問題を解消
+- `del` op の `connClears` パッチを8プロパティのホワイトリストに制限 (ADR-0377)。リモートピアが `locked`/`type`/`id`/`_` 系キーを経由して生きたコネクタへ注入する経路を閉塞
+
+## [1.7.421] - 2026-09-24
+
+### Added
+- テキストエディタの Tab/⇧Tab 連鎖 — コミット後に次の text/sticky の
+  エディタへ遷移 (ラベルエディタ ADR-0196 と同等、Figma Tab→next cell
+  フロー) (ADR-0375)
+
+## [1.7.420] - 2026-09-24
+
+### Fixed
+- 画像チャンク経路に容量上限: `_imgPending` ≤256 (最古 evict)、`_imgChunks`
+  ≤64 keys — slim ref 送信後に chunk を送らない敵対ピアで待ち列/再組立て
+  Map が無限成長していた (ADR-0374)
+
+## [1.7.419] - 2026-09-24
+
+### Fixed
+- リモート patch の構造キー差替えを剥がす `_stripStruct` — `upd:{type:'pen'}`
+  で renderer クラッシュ、`{id:'X'}` で byId 索引破壊、`_` 接頭辞で内部
+  キャッシュ上書きが可能だった (beautify はローカル専用のため除外)
+  + `_u` payload bbox を try/catch — `{type:'pen'}` patch で `_apply` が
+  assign 前にクラッシュしていた (ADR-0373)
+
+## [1.7.418] - 2026-09-24
+
+### Fixed
+- snapshot LWW マージが値を `validPatch` せず `ex[k]=v` していた実害を修正 —
+  敵対ピアが snapshot op で NaN 座標/非配列 pts/id・type 差替え/`__proto__`
+  汚染を注入可能だった (構造キー id/type は merge 不可 + 値ゲート、`frac`
+  を文字列リストに追加) (ADR-0372)
+
+## [1.7.417] - 2026-09-24
+
+### Fixed
+- `describeShape` が hidden (`visible===0`) 状態を `tagHidden` でアナウンス —
+  origSel 復元 / RTC 経由の hidden 選択を SR ユーザーが判別可能に (ADR-0371)
+
+### Changed
+- `Persist.schedule`/`Minimap.schedule`/`UI.refreshUndo` を `_ps`/`_ms`/`_ru`
+  shorthand 化 — ~300B 回収 (ADR-0370)
+
+## [1.7.416] - 2026-09-24
+
+### Fixed
+- `validPatch` に文字列 prop の型 + 長さチェックを追加 (text≤5000、その他≤600)
+  + 数値フラグ `elbow/curve/hop/flip/shadow/r/visible/start` を網羅 — 巨大
+  text 注入によるフレーム毎 wrapText 暴走や非文字列 prop の破損を遮断
+  (ADR-0369)
+
+## [1.7.415] - 2026-09-24
+
+### Fixed
+- `validPatch` に `pts`/`way` の配列構造チェックを追加 — `upd` パッチ経由の
+  NaN 注入を遮断 (`pts` は `[]` を許容、要素は `[x,y,p?]` finite、
+  `way` は `{x,y}` object 形式必須・≤200) (ADR-0368)
+
+## [1.7.414] - 2026-09-24
+
+### Fixed
+- `validPatch` の数値フィールド一覧に `labelPos/cbend/bend/spacing/lineH/
+  fontSize` を追加 + `aF/bF` を {fx,fy} 構造チェック — crafted op/インポート
+  経由の NaN 注入を遮断 (ADR-0367)
+
+## [1.7.413] - 2026-09-24
+
+### Changed
+- `invalidate()`/`UI.toast`/`sortZ` 等の長名関数を `_iv()/_tst()/_sz()` 等に
+  一括 shorthand 化 (~1.8KB) — function 定義サイトは本名を保持 (ADR-0366)
+
+## [1.7.412] - 2026-09-24
+
+### Changed
+- `state.*` の全フィールドを `_sl()/_st()/_df()/…` live-read shorthand に
+  一括集約 (~1.7KB) — 再代入サイトは literal のまま保持 (ADR-0365)
+
+## [1.7.411] - 2026-09-24
+
+### Fixed
+- .excalidraw 再インポートでラベル/付箋の横揃え (`textAlign`) を復元
+  — bound text の fold-back が `align` を読み戻していなかった (ADR-0363)
+
+### Changed
+- `state.shapes` の全参照を `_sh()` live-read shorthand に集約 (~1KB)
+  — 配列再代入サイトは literal のまま保持 (ADR-0364)
+
+## [1.7.410] - 2026-09-24
+
+### Changed
+- `state.viewport` の全参照を `_vp()` live-read shorthand に集約
+  (~810B) — オブジェクト差替え耐性を保持 (ADR-0362)
+
+## [1.7.409] - 2026-09-24
+
+### Added
+- .drawio で curve コネクタの制御点を `<Array>` waypoint として emit、
+  import は単一 waypoint から `s.cbend` を法線逆算で復元 (ADR-0360)
+
+### Fixed
+- drawio import の `s.way` がタプル形式で書き込まれレンダラが
+  NaN 化していた実バグを `{x,y}` オブジェクト形式に修正 (ADR-0361)
+
+## [1.7.408] - 2026-09-24
+
+### Added
+- .drawio emit に `dx/dy/zoom` viewport + `grid`/`gridSize` を出力、
+  import はドキュメント取込時に視点を復元 (ADR-0359)
+
+## [1.7.407] - 2026-09-24
+
+### Added
+- .drawio emit で elbow コネクタのルート角点を `<Array>` waypoint
+  として出力 — draw.io 側で同一 Manhattan 経路が再現・編集可能に
+  (ADR-0358)
+
+## [1.7.406] - 2026-09-24
+
+### Fixed
+- drawio import の `off()` が parent 循環で無限再帰するクラッシュを
+  暫定値先行登録で修正 (ADR-0357)
+
+## [1.7.405] - 2026-09-24
+
+### Changed
+- `_on` addEventListener shorthand で ~750B 回収 (62箇所、SW・
+  ドット連鎖 receiver は除外) (ADR-0356)
+
+## [1.7.404] - 2026-09-24
+
+### Fixed
+- .drawio emit でペンストロークが消失していた — polyline edge として
+  出力 (reimport は line+way、画素保存) (ADR-0354)
+
+### Changed
+- Math 系 shorthand `_hp/_PI/_fl/_at2/_ceil/_sgn/_sqr` で ~900B
+  回収 (180箇所) (ADR-0355)
+
+## [1.7.403] - 2026-09-24
+
+### Fixed
+- 画像キャプション往復を実 prop `s.label` で完結 — ADR-0351/0352
+  が仮定した `s.cap`/`s.frameLabel` は setter/render の無いファントム
+  prop だったため撤去、exc emit は `bLabel` bound text、drawio は
+  `value`+`verticalAlign=bottom` (ADR-0353)
+
+## [1.7.402] - 2026-09-24
+
+### Fixed
+- .drawio 画像ラベル往復 — emit で `s.cap` を `value`+
+  `verticalAlign=bottom`、import で `shape=image` の label を
+  `s.cap` へ (従来は未描画の `s.label` に入り不可視化) (ADR-0352)
+
+## [1.7.401] - 2026-09-24
+
+### Added
+- .excalidraw 画像キャプション往復 — `s.cap` を画像下端帯の bound
+  text + `bCap:1` で emit、import で `s.cap` 復元 (ADR-0351)
+
+## [1.7.400] - 2026-09-24
+
+### Changed
+- `_qsa`/`_JS`/`_JP` shorthand で ~400B 回収 (querySelectorAll 21 +
+  JSON.stringify 23 + JSON.parse 8) (ADR-0350)
+
+## [1.7.399] - 2026-09-24
+
+### Added
+- .excalidraw emit で elbow/curve のルートを points に焼き込み —
+  視覚経路が excalidraw に保存される (reimport は way 付き直線、受理)
+  (ADR-0349)
+
+## [1.7.398] - 2026-09-24
+
+### Changed
+- `_rnd`/`_qs` shorthand で ~650B 回収 (Math.round 59箇所 +
+  querySelector 23箇所) (ADR-0348)
+
+## [1.7.397] - 2026-09-24
+
+### Added
+- ⌘F 検索が link / frameLabel / cap も照合 (ADR-0346)
+- .drawio emit でコネクタが `parent=g_<gid>` + 相対座標 — import 側に
+  edge の group 原点オフセット解決を追加 (ADR-0347)
+
+## [1.7.396] - 2026-09-24
+
+### Added
+- .drawio emit で frame 内包を `parent=<swimlane id>` + 相対座標で
+  出力 — draw.io 側の lane ドラッグに子が追従 (vertex id 事前割当、
+  group 優先) (ADR-0345)
+
+## [1.7.395] - 2026-09-24
+
+### Fixed
+- .excalidraw 画像 emit に `roundness`/`strokeSharpness` を追加
+  (`s.r` 付き画像の角丸が失われていた) (ADR-0344)
+
+## [1.7.394] - 2026-09-24
+
+### Added
+- .drawio `lineHeight` ↔ `s.lineH` 往復 (emit `_dioStyEmit`、import
+  `_dioStyApply`、0.5..4 clamp) (ADR-0343)
+
+## [1.7.393] - 2026-09-24
+
+### Changed
+- `canvas.getBoundingClientRect()` ×21 → `_cbr()` (~440B 回収) (ADR-0342)
+
+## [1.7.392] - 2026-09-24
+
+### Fixed
+- 回転シェイプのリサイズカーソルが `s.rotate` に追従 (8方位量子化)
+  (ADR-0341)
+
+## [1.7.391] - 2026-09-24
+
+### Changed
+- `.getAttribute(` ×73 → `_ga(e,n)` shorthand (~600B 回収) (ADR-0340)
+
+## [1.7.390] - 2026-09-24
+
+### Added
+- SVG 書き出しの 🔗 バッジを `<a href target=_blank rel=noopener>` で
+  ラップしクリッカブル化 (draw.io/Excalidraw SVG 相当) (ADR-0339)
+
+## [1.7.389] - 2026-09-24
+
+### Fixed
+- excalidraw アローヘッド列挙を双方向マップ (`open`↔`crowfoot`、
+  `triangle`/`diamond` 等の輸入値を正規化) (ADR-0338)
+
+## [1.7.388] - 2026-09-24
+
+### Changed
+- `Math.min/max/abs` → `_min/_max/_abs` shorthand で ~1.5KB 回収 (ADR-0337)
+
+## [1.7.387] - 2026-09-24
+
+### Added
+- .drawio グループ往復 — Board groupId ↔ `style="group;"` ラッパー
+  cell + parent 参照 (メンバー座標はグループ相対)。import は group
+  wrapper をスキップして s.groupId を復元 (ADR-0336)
+
+## [1.7.386] - 2026-09-24
+
+### Fixed
+- `t('styleApplied')` 未定義キーのトーストを既存 `stylePasted` に修正
+- test.mjs に `t()` キーの ja/en 網羅ガードを追加 (ADR-0335)
+
+## [1.7.385] - 2026-09-24
+
+### Changed
+- `state.selection.size`/`Number.isFinite` を `_selN()`/`_fin()` に
+  集約 (~1.3KB 削減、ADR-0334)
+
+## [1.7.384] - 2026-09-24
+
+### Added
+- コネクタ (line/arrow/pen) にもリンクバッジを描画 — canvas + SVG
+  両経路 (ADR-0333)
+
+## [1.7.383] - 2026-09-24
+
+### Fixed
+- diamond/image の角丸を drawio emit で `rounded=1` 補完
+  (従来は rect のみ、ADR-0332)
+
+## [1.7.382] - 2026-09-24
+
+### Added
+- drawio `fillStyle` ハッチ往復 (hachure/cross-hatch ↔ fstyle、
+  ADR-0331)
+
+## [1.7.381] - 2026-09-24
+
+### Changed
+- `[...state.selection]` を `_selIds()` に集約 (~0.5KB 削減、ADR-0330)
+
+## [1.7.380] - 2026-09-24
+
+### Changed
+- `createElement` を `_ce()` に集約 (~0.65KB 削減、ADR-0329)
+
+## [1.7.379] - 2026-09-24
+
+### Fixed
+- `<UserObject>` ラッパー内セルの label/link を復元 (drawio の
+  ハイパーリンク付き図形、ADR-0328)
+
+## [1.7.378] - 2026-09-24
+
+### Security
+- `s.link` を `validPatch` で http(s) 限定に — .board/RTC upd 経路で
+  `javascript:`/`data:` URL が window.open に到達する XSS 経路を閉塞
+  (ADR-0327)
+
+## [1.7.377] - 2026-09-24
+
+### Changed
+- `preventDefault` を `_pd()` に集約 (~0.9KB 削減、ADR-0326)
+
+## [1.7.376] - 2026-09-24
+
+### Fixed
+- `.drawio` 展開を 8MB で打ち切る deflate bomb ガードを追加
+  (`getReader` 逐次デコード、ADR-0325)
+
+## [1.7.375] - 2026-09-24
+
+### Fixed
+- 圧縮 .drawio も全 `<diagram>` ページを展開して横並び取込
+  (従来は先頭ページのみ、ADR-0324)
+
+## [1.7.374] - 2026-09-24
+
+### Added
+- excalidraw コネクタバインドテキストの `lineHeight` を `s.lineH`
+  に復元 (conn label 行間、ADR-0323)
+
+## [1.7.373] - 2026-09-24
+
+### Fixed
+- .drawio 書出に `html=1;` を付与 — draw.io で多行ラベルが
+  リテラル `<br>` 表示になっていた実害バグを修正 (ADR-0322)
+
+## [1.7.372] - 2026-09-24
+
+### Added
+- drawio `whiteSpace=nowrap` を `s.wrap` と往復 (テキスト折返し抑止、ADR-0321)
+
+## [1.7.371] - 2026-09-24
+
+### Added
+- drawio `labelPosition`/`verticalLabelPosition` を `s.align`/`s.valign`
+  と往復 (ラベルスロット位置、ADR-0320)
+
+## [1.7.370] - 2026-09-24
+
+### Fixed
+- ポップアップブロックでリンクが開けない時に警告トーストを表示
+  (ctx・⌘+click 両経路、ADR-0319)
+
+## [1.7.369] - 2026-09-24
+
+### Added
+- ctx メニュー「リンクをコピー」で `s.link` をクリップボードへ
+  (Figma parity、ADR-0318)
+
+## [1.7.368] - 2026-09-24
+
+### Added
+- excalidraw コネクタの `roundness` を `s.curve` にマップし、
+  丸み矢印が曲線のまま往復 (輸入 curve=1 / 書出 roundness type 2、ADR-0317)
+
+## [1.7.367] - 2026-09-24
+
+### Added
+- SVG 書き出しでも 🔗 リンクバッジを描画 (canvas parity、ADR-0316)
+
+## [1.7.366] - 2026-09-24
+
+### Added
+- `describeShape` の選択通知に 🔗 を付加し、リンクバッジを
+  スクリーンリーダーにも通知 (ADR-0315)
+
+## [1.7.365] - 2026-09-24
+
+### Added
+- リンク付き図形を ⌘+click (Windows/Linux は Ctrl+click) で直接開く
+  (Figma parity、ADR-0314)
+
+## [1.7.364] - 2026-09-24
+
+### Added
+- drawio `link` 属性 (Edit Link) の輸入+書出で `s.link` と往復 (ADR-0313)
+
+## [1.7.363] - 2026-09-24
+
+### Changed
+- origSel 書き戻し `if(origSel.length)…origSel=origSel` 15 箇所を
+  `_keepSel(arr)` に集約 (raw ~525B、ADR-0312)
+
+## [1.7.362] - 2026-09-24
+
+### Added
+- drawio 複数ページ (`<diagram>` 複数) を pageWidth+200 間隔で横並び
+  展開して取り込み (従来は全ページが同一座標に重畳、ADR-0311)
+
+## [1.7.361] - 2026-09-24
+
+### Added
+- `s.link` 保持図形の右上に 🔗 バッジを描画 (ADR-0310)
+
+## [1.7.360] - 2026-09-24
+
+### Changed
+- `_apply` 内の origSel 復元 11 箇所を `_selR(op)` に集約
+  (raw ~550B、ADR-0309)
+
+## [1.7.359] - 2026-09-24
+
+### Changed
+- `const sel=[...state.selection].map(byId).filter(f)` 18 箇所を
+  `_selL(f)` に集約 (raw ~500B、ADR-0308)
+
+## [1.7.358] - 2026-09-24
+
+### Changed
+- style op コミット末尾 `if(before.length){_styleOp…}` を `_so(b,a)`
+  に集約 (24 箇所、raw ~700B、ADR-0307)
+
+## [1.7.357] - 2026-09-24
+
+### Changed
+- canvas drop-shadow 3属性の適用を `_csh(s,c)` に集約 (8 箇所、
+  raw -393B、ADR-0306)
+
+## [1.7.356] - 2026-09-24
+
+### Fixed
+- SVG export のフレームラベルが canvas 側の常時 600 weight と
+  一致するよう修正 (ADR-0305)
+
+## [1.7.355] - 2026-09-24
+
+### Added
+- ctx「リンクを設定…/リンクを開く」— `s.link` を prompt で設定
+  (https? 検証、空で解除) し別タブで開ける (ADR-0304)
+
+## [1.7.354] - 2026-09-24
+
+### Changed
+- 選択ループ `for(const id of state.selection){byId…}` 26 箇所を
+  `_forSel((s,id)=>…)` に集約 (raw ~1KB、ADR-0303)
+
+## [1.7.353] - 2026-09-24
+
+### Changed
+- ctx メニューゲートの `[...state.selection].some(…)` 29 箇所を
+  `_selAny(s=>…)` ヘルパーに集約 (raw -1.3KB、ADR-0302)
+
+## [1.7.352] - 2026-09-24
+
+### Added
+- excalidraw line/arrow の `angle` を端点+waypoints の中点中心回転
+  として輸入 (従来は w!=null の矩形のみ、ADR-0300)
+- excalidraw `link` を `s.link` に往復 (ADR-0301)
+
+## [1.7.351] - 2026-09-24
+
+### Added
+- excalidraw export の text / container-text に `autoResize:true` を
+  emit (Board text の auto-fit 挙動と一致する spec 値、ADR-0299)
+
+## [1.7.350] - 2026-09-24
+
+### Added
+- フレームラベルの fontSize を `s.fontSize` に従わせ、⌘⇧,/. で
+  変更可能に (canvas+SVG 一致、ADR-0298)
+
+## [1.7.349] - 2026-09-24
+
+### Changed
+- conn 型判定を `_conn(t)` ヘルパーに集約 (24 箇所、raw -442B、ADR-0297)
+
+## [1.7.348] - 2026-09-24
+
+### Added
+- excalidraw `startBinding.focus`/`endBinding.focus` を `s.aF`/`s.bF`
+  固定アンカー近似として輸入 (往復完成、ADR-0296)
+
+## [1.7.347] - 2026-09-24
+
+### Changed
+- `Math.min(1,Math.max(0,X))` ×11 を `_c01(X)` に集約 (raw -143B、
+  ADR-0295)
+
+## [1.7.346] - 2026-09-24
+
+### Added
+- 'bar' (T字) 矢印ヘッド — excalidraw `bar` / drawio `dash` と往復、
+  ctx ヘッド巡回にも追加 (ER 図記法対応、ADR-0294)
+
+## [1.7.345] - 2026-09-24
+
+### Changed
+- 開始ヘッドのスタイルを `state.style.startHead`/`state.style.start`
+  に永続化し新規矢印へ引き継ぎ (ADR-0293)
+
+## [1.7.344] - 2026-09-24
+
+### Changed
+- `getCSS('--paper'/'--accent-contrast')` を `_p()`/`_ac()` に集約
+  (raw -355B、ADR-0292)
+
+## [1.7.343] - 2026-09-24
+
+### Added
+- ctx メニュー「開始ヘッド」— 矢印の始端ヘッドを なし→矢印→丸→
+  シェブロン で巡回 (`s.startHead` の UI 化、ADR-0291)
+
+## [1.7.342] - 2026-09-24
+
+### Fixed
+- drawio `strokeColor=none` (罫線なし) を透明色として輸入し、export 側で
+  `strokeColor=none`/`fillColor=none` を正しく emit — 枠・塗りの透過が
+  往復 (ADR-0290)
+- excalidraw `strokeColor/backgroundColor='transparent'` も同様に
+  不可視化して輸入 (ADR-0290 追補)
+
+## [1.7.341] - 2026-09-24
+
+### Changed
+- `document.getElementById` を `_g()` ヘルパに集約 (raw -1.7KB、
+  ADR-0289)
+
+## [1.7.340] - 2026-09-24
+
+### Fixed
+- drawio `fillColor=none` を真の透過塗りとして輸入し、`s.fill='none'`
+  が canvas `fillStyle` を汚染する潜在バグも修正 (ADR-0288)
+
+## [1.7.339] - 2026-09-24
+
+### Fixed
+- drawio `endFill=0`/`startFill=0` (未塗り classic 表記) を open ヘッドと
+  して輸入 — UML 白抜き矢印の誤表示を修正 (ADR-0287)
+
+## [1.7.338] - 2026-09-24
+
+### Added
+- 矢印開始ヘッドを `s.startHead` (dot|open) で独立 — drawio
+  `startArrow=oval|diamond|open` と excalidraw `startArrowhead` の
+  往復 (UML 集約記法対応、ADR-0286)
+
+## [1.7.337] - 2026-09-24
+
+### Changed
+- ツールバー icon を `<symbol>`+`<use>` sprite に集約 (raw -710B、
+  ADR-0285)
+- README サイズ表記を現状値へ修正 (gzip 160KB / brotli 131KB)
+
+## [1.7.336] - 2026-09-24
+
+### Added
+- .drawio: letterSpacing ↔ s.spacing 往復 (drawio ネイティブ属性、
+  ADR-0284)
+- SVG gradient の stop-color を style 属性内からも解決 (ADR-0283 追補)
+
+## [1.7.335] - 2026-09-24
+
+### Added
+- SVG import: fill/stroke の url(#id) グラデーション参照を先頭
+  stop-color に近似解決 (ADR-0283)
+
+## [1.7.334] - 2026-09-24
+
+### Changed
+- drawio: fontStyle/locked 出力を `_dioStyEmit(s,edge)` に畳み込み
+  (edge 判定フラグで resizable/ラベル条件を維持、ADR-0282)
+
+## [1.7.333] - 2026-09-24
+
+### Fixed
+- .drawio: ラベル付き box の fontColor (ラベル色) が往復しないのを修正
+  (export 発行 + import 適用、ADR-0281)
+
+## [1.7.332] - 2026-09-24
+
+### Added
+- .excalidraw export: 親要素へ boundElements 逆リンクを付与
+  (containerId と双方向一致、ADR-0280)
+
+## [1.7.331] - 2026-09-24
+
+### Fixed
+- .drawio: sticky の紙色 s.color が fillColor として export されず
+  往復で失われていたのを修正 (ADR-0279)
+
+## [1.7.330] - 2026-09-24
+
+### Fixed
+- SVG export: rect/ellipse/pen の drop-shadow 欠落と sticky 常時
+  アンビエント影の未反映を canvas parity に修正 (ADR-0278)
+
+## [1.7.329] - 2026-09-24
+
+### Added
+- .excalidraw: fillStyle dots → hatch 近似 (ADR-0277)
+
+## [1.7.328] - 2026-09-24
+
+### Added
+- .excalidraw: scale 反転を全要素へ一般化 (import 共通 tail + E() 常設
+  scale、ADR-0276)
+
+## [1.7.327] - 2026-09-24
+
+### Fixed
+- .drawio export: `<mxfile>` に `compressed="false"` を明記 (非圧縮XML、
+  ADR-0275)
+
+## [1.7.326] - 2026-09-24
+
+### Added
+- .drawio: shape=cylinder/cloud を ellipse に近似マップ (ADR-0274)
+
+## [1.7.325] - 2026-09-24
+
+### Added
+- タブ区切り (TSV) テキストのペーストでセルを付箋グリッドに展開
+  (スプレッドシートのコピー、ADR-0273)
+
+## [1.7.324] - 2026-09-24
+
+### Added
+- クリップボードの image/svg+xml アイテムをベクター図形として取込
+  (draw.io/Figma からのコピー、ADR-0272)
+
+## [1.7.323] - 2026-09-24
+
+### Added
+- .drawio: strokeOpacity/fillOpacity の個別指定 → s.opacity に近似受容
+  (ADR-0271)
+
+## [1.7.322] - 2026-09-24
+
+### Changed
+- SVG export: conn パス/ポリライン/ラベル出力を `_sp`/`_po`/`_cL` に
+  集約 + dead `lm` 変数6件削除 (~1.9KB 回収、ADR-0270)
+
+## [1.7.321] - 2026-09-24
+
+### Fixed
+- .drawio: edge の rounded=1 が import されずエルボー角丸が往復で
+  失われていたのを修正 (ADR-0269)
+
+## [1.7.320] - 2026-09-24
+
+### Added
+- .excalidraw: freedraw pressures → p[2] 復元、fillStyle zigzag → hatch
+  近似マップ (ADR-0268)
+
+## [1.7.319] - 2026-09-24
+
+### Added
+- .excalidraw: strokeSharpness (現行 spec) ↔ s.r 往復 (ADR-0267)
+
+## [1.7.318] - 2026-09-24
+
+### Added
+- .excalidraw: コネクタラベル ↔ s.label 往復 (矢印/線の bound text、
+  `_ct` に ov オーバーライド追加、ADR-0266)
+
+## [1.7.317] - 2026-09-24
+
+### Added
+- .excalidraw: elbowed ↔ s.elbow 往復 (arrow/line、ADR-0265)
+
+## [1.7.316] - 2026-09-24
+
+### Added
+- .drawio: edge の mxGeometry@x (−1..1 相対座標) ↔ s.labelPos を往復
+  (ADR-0264)
+
+## [1.7.315] - 2026-09-24
+
+### Changed
+- drawio export の共通 style キー出力を `_dioStyEmit` に集約 (ADR-0263)
+
+## [1.7.314] - 2026-09-24
+
+### Fixed
+- .drawio export: edge の opacity= 出力漏れを修正 (往復の非対称、
+  ADR-0262)
+
+## [1.7.313] - 2026-09-24
+
+### Added
+- .drawio: rotation= ↔ s.rotate を vertex で往復 (ADR-0261)
+
+## [1.7.312] - 2026-09-24
+
+### Added
+- .drawio: flipH/flipV ↔ s.flip ビットマスク往復 (vertex+edge、ADR-0260)
+
+## [1.7.311] - 2026-09-24
+
+### Added
+- .drawio: 画像シェイプを shape=image;image=<url> として往復 (ADR-0259)。
+  data URL は `;base64,` を含むため末尾配置 + raw style 抽出で対応
+
+## [1.7.310] - 2026-09-24
+
+### Changed
+- drawio import の共通 style キー適用を `_dioStyApply` に集約 (ADR-0258)。
+  edge の opacity 適用漏れも解消
+
+## [1.7.309] - 2026-09-24
+
+### Added
+- .excalidraw export: appState に scrollX/scrollY/zoom を同梱し開いた
+  時点の表示位置を復元 (ADR-0257)
+
+## [1.7.308] - 2026-09-24
+
+### Added
+- .drawio: endArrow タイプ (oval|open|none) ↔ s.head 往復、startArrow の
+  独立判定で line+start-head を復元 (ADR-0256)
+
+## [1.7.307] - 2026-09-24
+
+### Added
+- .drawio: dotted 線を dashed=1+dashPattern として往復 (vertex+edge、
+  ADR-0255)
+
+## [1.7.306] - 2026-09-24
+
+### Added
+- .drawio: s.locked を editable/deletable/movable=0 として往復
+  (vertex+edge、ADR-0254)
+
+## [1.7.305] - 2026-09-24
+
+### Added
+- .drawio: vertex の fontFamily を mono/serif カテゴリへマップし往復
+  (ADR-0253)
+
+## [1.7.304] - 2026-09-24
+
+### Performance
+- コネクタ/ボックスラベルの行幅 measureText を WeakMap でメモ化 — 定常
+  フレームの計測コストを解消 (ADR-0252)
+
+## [1.7.303] - 2026-09-24
+
+### Fixed
+- iOS Safari の URL バー収縮/ソフトキーボードでキャンバスが再サイズ
+  されない問題を visualViewport.resize で修正 (ADR-0251)
+
+## [1.7.302] - 2026-09-24
+
+### Added
+- .drawio: 圧縮 (deflate-raw+base64) ファイルを DecompressionStream で
+  インポート — 既定保存の .drawio がそのまま開ける (ADR-0250)
+
+## [1.7.301] - 2026-09-24
+
+### Added
+- .drawio: edge ラベルの labelBackgroundColor/fontSize/fontStyle を往復
+  (ADR-0249)。edge の fontColor は線色とラベル色を分離できないため未対応
+
+## [1.7.300] - 2026-09-24
+
+### Changed
+- commit+origSel の3行イディオムを `_rcOp`/`_cOp` ヘルパーに集約 (39サイト、
+  ~3.5KB 回収、ADR-0248)
+
+## [1.7.299] - 2026-09-24
+
+### Added
+- .drawio 書き出し/読み込み: visible="0"・shadow=1・fontColor を往復
+  (ADR-0245..0247)。非表示図形は除外せず visible="0" で保持するよう変更
+
+## [1.7.298] - 2026-09-24
+
+### Added
+- .excalidraw 書き出し/読み込み: locked・lineHeight・fontFamily・
+  verticalAlign を往復 (ADR-0241..0244)
+
+## [1.7.297] - 2026-09-24
+
+### Fixed
+- .drawio インポートが出荷時からランタイムで動作しなかった致命的バグを修復
+  (excScene の閉じ括弧欠落により drawioToShapes 系がネストされていた、ADR-0240)
+
+### Added
+- .drawio インポート: グループ/スイムレーン内の子セルの親相対座標を解決し、
+  正しい世界座標へ配置 (ADR-0240)
+
+## [1.7.296]
+
+### 内部変更
+- **style op 共有化** (ADR-0239)。27箇所に重複した
+  `{op:'style'}` コミット定型文を `_styleOp()` へ —
+  約3.1KB削減 (挙動不変、512KB上限内に余裕回復)。
+
+## [1.7.295]
+
+### 修正
+- **drawio verticalAlign 往復** (ADR-0238)。import で
+  `verticalAlign`→`s.valign`、export で逆出力 —
+  値域一致により縦揃えが完全往復。
+
+## [1.7.294]
+
+### 追加
+- **ラベル入力中の装飾キー** (ADR-0237)。ラベル input
+  でも ⌘B/I/U/⇧X が図形ラベルの装飾をトグル —
+  Tab 巡回による連続ラベリングの手を止めない。
+
+## [1.7.293]
+
+### 追加
+- **編集中の装飾キー** (ADR-0236)。インラインエディタ
+  内で ⌘B/I/U/⇧X が図形の bold/italic/under/strike を
+  トグル — グローバルキーは textarea で止まるため
+  ローカルに配線。オーバーレイ表示も即時反映。
+
+## [1.7.292]
+
+### 修正
+- **SVG `<image>` インポート** (ADR-0235)。`href`/
+  `xlink:href` の `data:image/` を image 図形へ復元 —
+  Board 自身の SVG 出力が往復する。
+- excalidraw コンテナtext と SVG font 属性束を
+  `_ct()`/`_svgFont()` に共有化 (~1.7KB 削減、
+  512KB 上限内へ復帰)。
+
+## [1.7.291]
+
+### 修正
+- **excalidraw ラベル往復** (ADR-0234)。ラベル付き
+  図形がコンテナtext (`bLabel` マーカー) として出力
+  され、取込時に `label` へ復元 — sticky fold と
+  判別できるため型も正しく往復する。
+
+## [1.7.290]
+
+### 追加
+- **矢印ヘッド巡回に 'none'** (ADR-0233)。ctx メニュー
+  のヘッド巡回が arrow→dot→open→none の4値に —
+  ヘッドを消すのに型変換が不要になった。
+
+## [1.7.289]
+
+### 追加
+- **クリップボード mxfile 受付** (ADR-0232)。drawio で
+  ⌘C した図形 (非圧縮 `<mxfile>` XML) をペーストで
+  drawio インポートへルーティング — 従来はテキスト
+  図形に落ちていた。
+
+## [1.7.288]
+
+### 修正
+- **excalidraw エクスポートfidelity** (ADR-0231)。
+  `fstyle`→hachure/cross-hatch、head/start→arrowhead
+  スタイル、flip→scale を出力。インポートは
+  `type:'image'` を `files` マップから復元 (`scale`
+  →flip) — 画像が往復で保存される。
+
+## [1.7.287]
+
+### 修正
+- **excalidraw 装飾fidelity** (ADR-0230)。インポートで
+  hachure/cross-hatch→fstyle、roundness→r、textAlign→
+  align、endArrowhead→head、startArrowhead→start に
+  復元。ヘッドなし矢印 (`endArrowhead:null`) は新値
+  `head:'none'` で表現し両レンダラが描画を省略。
+
+## [1.7.286]
+
+### 修正
+- **excalidraw groupIds 往復** (ADR-0229)。インポートで
+  `groupIds[0]` を `groupId` に復元 (ネストは最外へ
+  平坦化) — エクスポートしたグループが取込時に保持。
+- container text の `angle` を親 rect の回転に揃えた
+  (回転した付箋が本物の excalidraw で正しく表示)。
+
+## [1.7.285]
+
+### 修正
+- **drawio ラベル装飾往復** (ADR-0228)。インポートで
+  `align`→`s.align`、`fontStyle` ビットマスク→
+  bold/italic/under に復元。エクスポートも対称出力し
+  中央揃え・太字・斜体・下線が drawio 往復で保存。
+
+## [1.7.284]
+
+### 追加
+- **ストレージ残量警告** (ADR-0227)。保存後に
+  `storage.estimate()` を参照し、使用量が 80% 超で
+  エクスポート誘導トーストを表示 — 保存失敗の前に
+  気づける (5分クールダウン、非対応環境は no-op)。
+
+## [1.7.283]
+
+### 修正
+- **drawio note/swimlane 逆マップ** (ADR-0226)。インポート
+  で `shape=note`→sticky (`fillColor`→`color`)、
+  `swimlane`→frame に復元 — ADR-0220 エクスポートとの
+  往復で sticky/frame が保存される。
+
+## [1.7.282]
+
+### 修正
+- **excalidraw sticky 往復** (ADR-0225)。export が text に
+  `containerId` を出力し rect の `boundElements` に登録 —
+  import は container text を親に fold して sticky を復元
+  (従来は rect+text に分解したまま)。
+
+## [1.7.281]
+
+### 修正
+- **excalidraw 往復** (ADR-0223)。import が `start/endBinding`
+  を `s.a/s.b` に復元 + export が rect を正しい型名
+  `rectangle` で出力 (従来は往復で矩形が消失)。
+- **drawio import fidelity** (ADR-0224)。`endArrow=none`→
+  直線、`startArrow`→始点ヘッド、`curved`/`jumpStyle` を
+  フラグにマップ — エッジが往復保存される。
+
+## [1.7.280]
+
+### 修正
+- **excalidraw 結合修復** (ADR-0222)。エクスポートが
+  存在しない `bind1/bind2` を読み常に unbound だった
+  バグを `s.a/s.b` に修正 + `boundElements` 出力と
+  aF/bF → focus 近似。
+
+## [1.7.279]
+
+### 追加
+- **drawio 固定アンカー往復** (ADR-0221)。`exitX/exitY` /
+  `entryX/entryY` を aF/bF 固定エッジアンカーと双方向
+  マップ — drawio↔Board で固定ポートが保存される。
+
+## [1.7.278]
+
+### 追加
+- **.drawio エクスポート** (ADR-0220)。エクスポートメニューに
+  drawio 形式を追加 — ADR-0203 インポートとの往復。
+  bound 端点・waypoints・orthogonal routing・curve/hop・
+  共有スタイル語彙を mxGraphModel にマップ。
+
+## [1.7.277]
+
+### 追加
+- **⌥ 中心基点描画** (ADR-0219)。rect/ellipse/diamond/
+  sticky/frame のドラッグ中に ⌥ でアンカーを中心に拡大
+  (Figma/draw.io 慣例)。⇧ 併用で中心+正方形/真円。
+
+## [1.7.276]
+
+### 追加
+- **コネクタのホップ (交差ジャンプアーク)** (ADR-0218)。
+  ctx メニューでトグル — 交差点を半円で飛び越す回路図/
+  draw.io "jump" スタイル。直線・ウェイポイント・エルボー
+  に対応、canvas/SVG 同一幾何。
+
+## [1.7.275]
+
+### 修正
+- **ルートリセットの ctx 到達性** (ADR-0217)。`labelPos` /
+  `cbend` だけが残ったコネクタにも「ルートをリセット」が
+  出るようゲートを拡張 (⌥click の代替到達)。
+
+## [1.7.274]
+
+### 改善
+- **ラベル位置のスロット吸着** (ADR-0216)。コネクタラベルの
+  ドラッグ位置が 0/0.25/0.5/0.75/1 に磁石吸着
+  (draw.io の start/center/end 系)。
+
+## [1.7.273]
+
+### 改善
+- **モーダルのフォーカストラップ** (ADR-0215、a11y)。help/share
+  ダイアログで Tab が内部を巡回 (外への抜け防止 + 閉鎖時に
+  呼び出し元へフォーカス復帰、WCAG 2.1.2/2.4.3)。
+
+## [1.7.272]
+
+### 改善
+- **端点結合先探索のグリッド索引化** (ADR-0214)。`_bindAt` の
+  全図形走査を pickTop と同じ `_queryGrid` 3×3 近傍+逆 z に
+  (>40 図形時)。端点ドラッグごとの O(n) を解消。
+
+## [1.7.271]
+
+### 追加
+- **ctx「アンカー固定/解除」** (ADR-0213)。結合済みコネクタの
+  固定アンカーをタッチ/キーボードからも操作可能
+  (現在の接触点を保存して固定、再実行で解除)。
+
+## [1.7.270]
+
+### 修正
+- **コネクタラベルの行間反映** (ADR-0212)。ctx「行間」で設定した
+  `s.lineH` が描画に反映 (canvas+SVG、`fs*1.25` ハードコードを
+  ボックスラベルと同じフォールバック式に)。
+
+## [1.7.269]
+
+### 追加
+- **テキスト・コネクタのドロップシャドウ** (ADR-0211)。ctx「影」が
+  text/line/arrow でも有効化 (canvas+SVG 同一、ラベル pill は
+  二重影を回避、epilogue に防御クリア追加)。
+
+## [1.7.268]
+
+### 修正
+- **コネクタラベルの複数行描画** (ADR-0210)。インポート由来の
+  `\n` 入りラベルを canvas/SVG とも行スタックで表示
+  (pill は全行包含、下線/取消線は行毎、`<tspan dy>` 対応)。
+
+## [1.7.267]
+
+### 追加
+- **コネクタ固定エッジアンカー** (ADR-0209)。端点を ⌥+ドロップで
+  結合すると draw.io exitX/exitY 相当の固定アンカー (bbox 分数
+  座標、最近接エッジへクランプ) になり、図形移動で接続点が
+  回り込まない。⌥無しは従来のフローティング。
+
+## [1.7.266]
+
+### 追加
+- **テキストの幅折返し** (ADR-0208)。ctx「テキスト折返し」で text
+  図形を `s.w` 幅で word-wrap (draw.io wordWrap=1 相当、付箋と同一
+  禁則処理、canvas+SVG 同一行生成、リサイズでリフロー)。
+
+## [1.7.265]
+
+### 追加
+- **エルボーコネクタの角丸** (ADR-0207)。ctx「角丸を切替」で
+  elbow 経路のジョイントを 8/16/24px 半径で角丸化 (draw.io
+  rounded edgeStyle 相当、canvas+SVG 同一数学、矢印ヘッド方向保持)。
+
+## [1.7.264]
+
+### 追加
+- **コネクタ端点ドラッグの 45° 拘束** (ADR-0206)。端点掴み中に
+  Shift で固定端から 45° 刻み (新規描画の Shift 拘束と同一規約)。
+
+### 修正
+- ラベルエディタの入力フォントを `s.fontSize`/`s.italic` に一致
+  (従来は常に 12px 通常体)。
+
+## [1.7.263]
+
+### 追加
+- **字間 (letter-spacing)** (ADR-0205)。ctx メニュー「字間」で
+  text/sticky/フレーム/ラベル系の字送りを 標準→1px→2px に巡回
+  (canvas `ctx.letterSpacing` + SVG `letter-spacing`、継承・
+  eyedropper・style-copy・付箋連鎖 対応)。
+
+## [1.7.262]
+
+### 追加
+- **フレームラベルの装飾** (ADR-0204)。フレーム名に italic・下線・
+  取消線を適用 (⌘I/⌘U/⌘⇧X、canvas+SVG、600 ウェイト維持)。
+
+## [1.7.261]
+
+### 追加
+- **.drawio インポート** (ADR-0203)。draw.io (非圧縮 mxGraphModel)
+  のドロップ/ファイルピッカー対応 — vertex→図形、edge→結合矢印
+  (orthogonal→elbow、waypoints、ラベル)、色/線幅/破線/opacity/角丸
+  を対応プロップへ。圧縮ペイロードは警告表示。
+
+## [1.7.260]
+
+### 追加
+- **描画中の寸法/線長ピル** (ADR-0202)。rect/ellipse/diamond/
+  sticky/frame のドラッグ描画で W×H、line/arrow で ↔長さ をライブ
+  表示 — 既存図形のリサイズ表示と同一形式。
+
+## [1.7.259]
+
+### 追加
+- **移動中の X,Y リードアウト** (ADR-0201)。選択ドラッグ中に選択群
+  bbox の左上座標をライブピル表示 (回転角/寸法/線長の既存表示と
+  揃い、Figma の X/Y パネル相当)。
+
+## [1.7.258]
+
+### 追加
+- **Shift でペン直線モード** (ADR-0200)。ストローク中に Shift を
+  押すと始点からの直線に拘束 (Excalidraw parity)、離すとその点から
+  フリーハンド継続。marker も同様。
+
+## [1.7.257]
+
+### 追加
+- **付箋をテキストに合わせる** (ADR-0199)。ctx メニューで付箋の
+  幅を最長行に縮め、高さを折返し行数へ自動調整 (draw.io Autosize
+  相当、長文のクリップ溢れを解消)。
+
+## [1.7.256]
+
+### 追加
+- **コネクタ方向の反転** (ADR-0198)。ctx メニュー「方向を反転」で
+  line/arrow の端点・結合先・ウェイポイント順を一括入替
+  (draw.io "Reverse" 相当、labelPos も鏡像化)。
+
+## [1.7.255]
+
+### 追加
+- **フレームラベルの文字揃え** (ADR-0197)。フレーム名が
+  cycleTextAlign/ctxTextAlign で左→中央→右に揃え可能
+  (canvas+SVG、ラベル未設定フレームにも到達)。
+
+## [1.7.254]
+
+### 追加
+- **ラベル編集の Tab 巡回** (ADR-0196)。ラベルエディタで Tab /
+  Shift+Tab がコミットして次/前のラベル対応図形に移動 — 連続
+  ラベリングが一発化。
+
+## [1.7.253]
+
+### 追加
+- **画像キャプション帯に s.fill** (ADR-0195)。キャプションの帯
+  背景が fill スウォッチに追随 (canvas+SVG、透過0.85規約維持)
+  — fill 系到達経路が全種で整合。
+
+## [1.7.252]
+
+### 追加
+- **ドロップシャドウ** (ADR-0194)。ctx メニュー「影」で rect/
+  ellipse/diamond/image にシャドウをトグル — canvas の
+  shadow* プロパティ + SVG 共有 `feDropShadow` フィルタ。
+  last-used 継承・スタイルコピー・スポイトも一貫。
+
+## [1.7.251]
+
+### 追加
+- **コネクタラベル背景に s.fill** (ADR-0193)。エッジラベルの pill
+  背景が fill スウォッチに追随 (canvas+SVG、透過0.9規約維持) —
+  「設定可能だが描画されない」監査完結。
+
+## [1.7.250]
+
+### 追加
+- **付箋の文字色** (ADR-0192)。`s.stroke` が付箋本文・下線/取消線
+  の色に反映 (canvas+SVG) — stroke スウォッチ/スタイルコピーが
+  付箋でも有効に。
+
+## [1.7.249]
+
+### 追加
+- **テキストの背景塗り** (ADR-0191)。fill スウォッチ等で設定した
+  `s.fill` がテキスト背面のハイライトプレートとして描画 (align
+  各モード対応、canvas+SVG)。従来は設定のみ可能で描画されない
+  隙間だった。
+
+## [1.7.248]
+
+### 修正
+- **付箋チェーンの全タイポグラフィ継承** (ADR-0190)。⌘Enter 連鎖の
+  新付箋が font/lineH/bold/italic/under/strike/valign も引き継ぐ —
+  連続メモの見た目がばらけない。
+
+## [1.7.247]
+
+### 追加
+- **行間 (line-height) 巡回** (ADR-0189)。ctx メニュー「行間」で
+  標準→狭い (1.0)→広い (1.5) を巡回 — text/sticky/全ラベルの
+  canvas+SVG、テキスト編集後の自動高さ、スタイルコピー/スポイト/
+  last-used 継承まで一貫。
+
+## [1.7.246]
+
+### 追加
+- **フレームラベルの書体巡回** (ADR-0188)。cycleFont/ctxFont が
+  フレームに効き、`Shape.make` も font を継承 — フレーム名を
+  mono/serif に切替可能。
+
+## [1.7.245]
+
+### 追加
+- **付箋本文の縦揃え** (ADR-0187)。ctx メニュー「縦揃え」が付箋にも
+  効き、上→中央→下を巡回。canvas と SVG export の両方に実装
+  (下線/取消線も追従)。ctxVAlign の名称を「縦揃え」に汎用化。
+
+## [1.7.244]
+
+### 修正
+- **フレームラベル/ラベルエディタが s.font を反映** (ADR-0186)。
+  フレーム名とラベル編集入力が `_fontFam` に対応 — 600 ウェイト
+  規約は維持しファミリのみ継承。ラベル付きフレームで cycleFont が
+  完結する。
+
+## [1.7.243]
+
+### 追加
+- **スポイトの全ルックプロパティ吸収** (ADR-0185)。スポイトが
+  font/head/elbow/curve/r/fstyle/align/fontSize など `state.style`
+  に永続化される全キーを吸収 — 拾った見た目が次の図形に継承
+  (Figma parity)。両端ヘッド `start` も継承対象に追加。
+
+## [1.7.242]
+
+### 追加
+- **r/fstyle/align の last-used 継承** (ADR-0184)。角丸・ハッチ・
+  文字揃えの最終適用値が `state.style` に残り、次に作る同種図形に
+  継承 (ADR-0180/0181/0183 と同一規則)。
+
+## [1.7.241]
+
+### 追加
+- **コネクタルートの last-used 継承** (ADR-0183)。ctx エルボー/曲線
+  トグルの結果が `state.style` に残り、次に引くコネクタに継承 —
+  フローチャートで毎回切替不要に。「ルートをリセット」で継承も解除。
+
+## [1.7.240]
+
+### 追加
+- **ラベルエディタの viewport 追従** (ADR-0182)。ラベル編集 input が
+  pan/zoom で図形に追従 (テキストエディタと同一規則、ADR-0053)。
+
+## [1.7.239]
+
+### 追加
+- **head/font の last-used 継承** (ADR-0181)。矢印ヘッドスタイルと
+  書体の最終使用値が `state.style` に残り、次に作る同種図形に継承。
+
+## [1.7.238]
+
+### 追加
+- **fontSize の last-used 継承** (ADR-0180)。⌘⇧,/. で設定した
+  fontSize が `state.style` に残り、次に作る text/sticky に継承
+  (stroke/fill/size と同じ規則)。
+
+## [1.7.237]
+
+### 追加
+- **画像キャプションの上下位置** (ADR-0179)。`s.valign` がラベル所持
+  の画像にも適用 — キャプション帯を画像上部へ (draw.io parity)。
+
+## [1.7.236]
+
+### 追加
+- **フレーム/画像ボーダーの破線** (ADR-0178)。dash スタイルが
+  フレーム枠と画像ボーダーにも適用 (canvas/SVG 一致)。
+
+## [1.7.235]
+
+### 追加
+- **消しゴムホバーハイライト** (ADR-0177)。消しゴムで図形をホバー
+  すると赤破線枠で消去対象を予告 (Excalidraw parity) — 誤削除を防ぐ。
+
+## [1.7.234]
+
+### 追加
+- **画像のボーダー** (ADR-0176)。`s.stroke`+`s.size` で画像に角丸
+  ボーダーを描画 (canvas/SVG) — 設定可能だったが描画されていなかった
+  スタイルを視覚化。
+
+## [1.7.233]
+
+### 追加
+- **フレームの塗り色** (ADR-0175)。`s.fill` が canvas/SVG 両経路で
+  描画される — 塗りボタン/スタイルコピーで設定できていた値が
+  視覚化。未設定フレームは従来の半透明のまま。
+
+## [1.7.232]
+
+### 追加
+- **ctx 不透明度巡回** (ADR-0174)。ctx「不透明度 (巡回)」で選択の
+  不透明度を 1→0.7→0.4→0.1 に巡回 — 数字キー (0-9) と同じ style op
+  経路をタッチ/ctx からも到達可能に。
+
+## [1.7.231]
+
+### 追加
+- **書体ファミリ巡回** (ADR-0173)。ctx「書体」で system→等幅→serif を
+  巡回 (text/sticky/ラベル保持図形)。canvas/SVG/テキストエディタで
+  一貫、オフライン安全なシステムスタックのみ使用。
+
+## [1.7.230]
+
+### 追加
+- **ロック選択に鍵バッジ** (ADR-0172)。ロック済み図形の選択枠に
+  padlock アイコンを表示 (draw.io parity) — 破線のみだった「動かせ
+  ない」状態の視認性を改善。
+
+## [1.7.229]
+
+### 追加
+- **ボックス/画像ラベルの水平揃え** (ADR-0171)。ctx「文字揃え」が
+  ラベル保持図形にも適用 — canvas/SVG ともに `s.align` で左/中央/右
+  (コネクタラベルは中点ピルのため対象外)。
+
+## [1.7.228]
+
+### 追加
+- **ラベルの太字/斜体/下線/取消線** (ADR-0170)。⌘B/⌘I/⌘U/⌘⇧X が
+  ラベル保持図形にも適用 — canvas は `_fontStr` + 手動ストローク、
+  SVG は font-weight/style/text-decoration 属性で一致。
+
+## [1.7.227]
+
+### 追加
+- **ラベルのフォントサイズ** (ADR-0169)。コネクタ (既定12px)、
+  ボックス/画像キャプション (既定14px) のラベルが `s.fontSize` を
+  尊重 — ⌘⇧,/⌘⇧. がラベル所持図形にも適用。
+
+## [1.7.226]
+
+### 追加
+- **画像の角丸** (ADR-0168)。ctx「角丸」巡回が画像にも適用 —
+  canvas は roundRect クリップ、SVG は clipPath、フリップ/回転と
+  独立に合成。
+
+## [1.7.225]
+
+### 追加
+- **数字キーで不透明度設定** (ADR-0167)。選択中に `0-9` のベア
+  数字キーで不透明度を直接設定 (`5`→50%、`0`→100%、Figma
+  parity)。
+
+## [1.7.224]
+
+### 追加
+- **⇧X で塗り↔線色スワップ** (ADR-0166)。Illustrator parity —
+  rect/ellipse/diamond/frame/sticky (付箋は color を塗りとして交換)、
+  単一 style op で undo 1回。
+
+## [1.7.223]
+
+### 追加
+- **非選択時の矢印キーでビューポートをパン** (ADR-0165)。40px 相当
+  (⇧で200px) のスクロール (Excalidraw parity) — 選択がある場合は
+  従来の nudge を維持。
+
+## [1.7.222]
+
+### 追加
+- **ステータスバーに選択寸法を表示** (ADR-0164)。選択 bbox の
+  W×H を常時表示 (Figma parity) — 非選択時は折り畳み、署名
+  ゲートで DOM 書き換えは変化時のみ。
+
+## [1.7.221]
+
+### 修正
+- **Tab サイクルから非表示図形を除外** (ADR-0163)。ポインタで触れ
+  ない図形がキーボードで選択できる不整合を解消 — 全経路の
+  `visible!==0` 監査を完結。
+
+## [1.7.220]
+
+### 追加
+- **ダブルクリックでグループ潜り** (ADR-0162)。グループ選択状態での
+  dblclick がクリックしたメンバー単体に絞り込み (Figma parity)、
+  再度の dblclick でラベル編集に到達。
+
+## [1.7.219]
+
+### 追加
+- **スポイトツール (I)** (ADR-0161)。クリックした図形の見た目属性を
+  既定スタイル + スタイルクリップボードへ取得し前ツールへ自動復帰
+  (Figma parity)。⌥V で選択にも適用可能。
+
+## [1.7.218]
+
+### 修正
+- **WebRTC 招待トークンの近代化** (ADR-0160)。廃止済み
+  `escape/unescape` を UTF-8 安全な base64url (`_b64uEnc`) に
+  置換 — デコーダは旧形式をフォールバック受理 (後方互換)。
+
+## [1.7.217]
+
+### 追加
+- **ボックスラベルの縦揃え** (ADR-0159)。ctx「ラベル縦揃え」で
+  中央→上→下を巡回 — rect/ellipse/diamond のラベルを `s.valign`
+  で上揃え/下揃えに (canvas+SVG+styleClipboard)。
+
+## [1.7.216]
+
+### 追加
+- **⌥+ドラッグのラッソ選択** (ADR-0158)。空キャンバス上の
+  Alt ドラッグでフリーハンド選択 — bbox 中心の点包含判定、
+  ⇧で加算、ロック/非表示は除外。
+
+## [1.7.215]
+
+### 追加
+- **ctx「結合を解除」** (ADR-0157)。選択したコネクタの端点結合
+  (a/b) を一括クリア — フローチャート部分複製時の解除作業を
+  1操作に集約。undo 完全対応。
+- README サイズバッジを実測に更新 (~144KB gzip)。
+
+## [1.7.214]
+
+### 追加
+- **ダイヤの角丸** (ADR-0156)。ctx「角丸を切替」が diamond にも
+  適用 — 各頂点を二次ベジエで丸める `_diamondPath` (canvas/
+  SVG 両経路)。既定は尖ったまま (r=0 で後方互換)。
+
+## [1.7.213]
+
+### 修正
+- **⇧1 / 起動時フィットが非表示図形を含むバグ** (ADR-0155)。
+  可視図形のみにフィット — 全件非表示時のみ全図形に
+  フォールバック。
+
+## [1.7.212]
+
+### 修正
+- **DOM ミラー (SR 図形一覧) で非表示図形に `(非表示)` タグ**
+  (ADR-0154)。除外すると発見経路が消えるため、状態表示で対応。
+
+## [1.7.211]
+
+### 修正
+- **非表示図形がスナップを引き寄せるバグ** (ADR-0153)。
+  `_snapIndex` のターゲット収集から `s.visible===0` を除外 — 
+  移動・リサイズ・等間隔スナップの全経路で不可視エッジへの
+  吸着を解消。
+
+## [1.7.210]
+
+### 修正
+- **グループリサイズで曲線ベンドが取り残されるバグ** (ADR-0152)。
+  `s.cbend` をアフィン写像 `sx·sy·len/len'` で再計算 — ハンドル
+  跨ぎフリップではキラリティも正しく反転。
+
+## [1.7.209]
+
+### 追加
+- **Alt+hover 距離ガイド** (ADR-0151)。図形選択中に Alt を押して
+  別図形にホバーすると、選択エンベロープとの軸ギャップを実線+
+  ティック+pxピルで表示 (Figma measure mode parity)。
+
+## [1.7.208]
+
+### 修正
+- **SVG エクスポートに非表示図形が混入するバグ** (ADR-0150 追補)。
+  buildSVG は drawShape を通らず独自に要素を構築するため、
+  `s.visible===0` のフィルタを追加。
+
+## [1.7.207]
+
+### 修正
+- **非表示図形が検索ヒット・バインド対象になる残存経路**
+  (ADR-0150)。検索リスト構築と `_bindAt` の候補走査が
+  `s.visible===0` をスキップするよう統一。
+
+## [1.7.206]
+
+### 修正
+- **画像フリップが効かないバグ** (ADR-0149)。`s.flip` ビット
+  マスクを追加し canvas/SVG/ミニマップの全3経路でピクセルを
+  実反転 — 従来は対称箱の鏡像のみで見た目が変わらなかった。
+
+## [1.7.205]
+
+### 修正
+- **複数選択リサイズでエルボー trunk が残るバグ** (ADR-0148)。
+  `_mapToBox` が `s.bend` をスケール対象に追加 — 軸平行
+  スケールで trunk 向きは不変のため座標を再導出。
+
+## [1.7.204]
+
+### 修正
+- **エルボー移動で trunk が取り残されるバグ** (ADR-0147)。
+  `Shape.translate` が `s.bend` を平行移動しなかった問題を修正
+  — ドラッグ/ナッジ/整列/複製の全経路で trunk が追従。
+
+## [1.7.203]
+
+### 修正
+- **エルボー回転で trunk が旧位置に残るバグ** (ADR-0146)。
+  キーボード回転・回転ノブ両経路で `s.bend` を trunk 線分の
+  剛体回転で追従させるよう修正 — 軸平行を維持する場合は新座標
+  を導出、斜めなら自動中央に復帰。
+
+## [1.7.202]
+
+### 追加
+- **Alt+click でコネクタラベルを中点へ** (ADR-0145)。選択中
+  コネクタのラベル位置を ⌥クリックで `labelPos` 解除し既定の
+  中点に復帰。
+
+## [1.7.201]
+
+### 追加
+- **Alt+click でカーブを自動ボウへ** (ADR-0144)。選択中カーブの
+  apex を ⌥クリックで手動 `cbend` を解除し自動計算に復帰。
+  waypoint/elbow/curve の全ルート修整が ⌥click で統一。
+
+## [1.7.200]
+
+### 追加
+- **Alt+click でエルボー trunk を中央へ** (ADR-0143)。選択中
+  elbow の中間セグメントを ⌥クリックで `s.bend` を解除し自動
+  中央位置に復帰 (ルートリセットせずに trunk だけ戻せる)。
+
+## [1.7.199]
+
+### 修正
+- **回転図形の水平フリップで角度が誤るバグ** (ADR-0142)。'h'
+  ミラーは `180−θ` が正解 (30°→150°) のところ `360−θ` を
+  適用していた — テキスト等の向きがある図形で倒置していた。
+
+## [1.7.198]
+
+### 追加
+- **Alt+click でウェイポイント削除** (ADR-0141)。選択中の直線/
+  矢印の既存中間頂点を ⌥クリックで個別削除 (Figma 式)。ルート
+  リセットせずに1点だけ消せる。
+
+## [1.7.197]
+
+### 追加
+- **選択2図形のコネクタ接続** (ADR-0140)。未選択中の2図形に対し
+  ctx「2図形をコネクタで接続」が両端バインド矢印を一発生成。
+
+## [1.7.196]
+
+### 追加
+- **選択の反転** (ADR-0139)。⌘⇧I または ctx「選択を反転」で
+  未選択の図形を選択 (ロック・非表示は除外)。
+
+## [1.7.195]
+
+### 変更
+- **スタイルコピーの対象拡大** (ADR-0138)。⌥C がテキスト揃え・
+  フォントサイズ・下線/取消線・角丸・矢印ヘッド・ルート
+  (elbow/curve/cbend) も拾うよう拡大。付箋色は fill として
+  読み出され矩形等へも貼付可能。
+
+## [1.7.194]
+
+### 追加
+- **図形の非表示 / すべて表示** (ADR-0137)。選択を ⌘⇧H または
+  ctx「非表示」で隠す — 描画・ヒット・マーキー・⌘A・export の
+  全経路から除外。ctx「すべて表示」で一括復帰。
+
+## [1.7.193]
+
+### 追加
+- **矩形の角丸サイクル** (ADR-0136)。ctx メニュー「角丸を切替」で
+  選択中の矩形の角丸を 0→8→16→24 に巡回 — 描画経路に存在した
+  `s.r` を実際に編集可能に。
+
+## [1.7.192]
+
+### 追加
+- **ビュー系トグルの ctx メニュー項目** (ADR-0135)。全体を表示 /
+  ズーム100% / グリッド / 吸着 / ミニマップをコンテキスト
+  メニューから — キーボード限定だった表示操作がタッチでも到達。
+
+## [1.7.191]
+
+### 追加
+- **検索ボックスの ctx メニュー項目** (ADR-0134)。⌘F 限定だった
+  図形検索を `toggleSq()` に集約し、コンテキストメニューからも
+  呼び出し可能に (タッチの長押し経路で到達)。
+
+## [1.7.190]
+
+### 修正
+- **elbow コネクタのフリップ** (ADR-0133)。trunk のワールド座標
+  `s.bend` が鏡像化されず反転後の経路が元位置を横断していた —
+  trunk 走行軸とフリップ軸が一致する時に `s.bend` も鏡像化。
+
+## [1.7.189]
+
+### 追加
+- **曲線コネクタのベンドドラッグ** (ADR-0132)。選択中の曲線の頂点を
+  ドラッグすると `s.cbend` (弦法線方向の符号付きオフセット) で
+  カーブの強さ/向きを調整 — ラベル位置ドラッグも自動追従。
+  リセットルートで解除、フリップで符号反転。
+
+## [1.7.188]
+
+### 追加
+- **90°回転** (ADR-0131)。ctx「90°回転」+ `⇧R` で選択を直行回転
+  (draw.io parity、選択が無い時は従来通り rect ツール)。
+
+## [1.7.187]
+
+### 追加
+- **⇧マーキーで加算選択** (ADR-0130)。⇧+領域ドラッグが既存選択を
+  保持してヒットを追加 (Figma parity)。方向付きマーキーと組合わせ可。
+
+## [1.7.186]
+
+### 追加
+- **⇧click で選択解除** (ADR-0129)。選択済み図形への ⇧click は
+  選択から外す (Figma/draw.io のトグル選択、グループはまとめて)。
+
+## [1.7.185]
+
+### 追加
+- **Alt 押下で全スナップ抑制** (ADR-0128)。移動ドラッグ中に Alt を
+  押すとグリッド/オブジェクト両方の吸着が素通しになる
+  (draw.io parity)。離すとコミット時にスナップが再び効く。
+
+## [1.7.184]
+
+### 変更
+- **マーキー選択はロック形状を除外** (ADR-0127)。領域ドラッグで
+  ロック済み図形が選択に混ざらない (Figma/draw.io parity)。
+  ロック解除は従来通りクリック選択 + ctx、または「全てロック解除」。
+
+## [1.7.183]
+
+### 追加
+- **クリック-クリック式 line/arrow** (ADR-0126)。ドラッグせず
+  1クリック目で始点・2クリック目で終点を指定 (Excalidraw parity、
+  結合バインド/⇧角度拘束も通常通り動作)。Esc/ツール切替でキャンセル。
+
+## [1.7.182]
+
+### 追加
+- **マーカー (ハイライター) ツール** (ADR-0125)。ツールバー + `K` キー、
+  幅8・透明度0.4・圧力フラットの太い半透明線で手書きの強調に最適 —
+  pen シェイプ + `hl` フラグなので全レンダ経路は変更不要。
+
+## [1.7.181]
+
+### 変更
+- **方向付きマーキー** (ADR-0124)。左→右ドラッグは従来通り完全包含、
+  右→左ドラッグは bbox 交差 (touch) 選択 — CAD/draw.io の crossing/
+  window 慣例。密集盤面の重なり形状が一括選択できる。
+
+## [1.7.180]
+
+### 追加
+- **全てロック解除** (ADR-0123)。ctx「全てロック解除」でボード上の
+  全ロック形状を一括解除 (`align` op dir:'lock' で単一 undo・同期、
+  選択と独立に動作)。
+
+## [1.7.179]
+
+### 追加
+- **空キャンバス dblclick でテキスト作成** (ADR-0122)。ヒット無しの
+  dblclick は `beginText(wp)` でその点にテキストを新規作成し
+  エディタを開く (Excalidraw parity、全ツールで有効)。
+
+## [1.7.178]
+
+### 追加
+- **表示範囲を PNG 書き出し** (ADR-0121)。export メニューに
+  「表示範囲を PNG 書き出し」— コンテンツ bbox ではなく現在の
+  ビューポート矩形を既定 2x でクロップ (余白・部分切りを含む
+  見たまま、exportScale 上限適用)。
+
+## [1.7.177]
+
+### 追加
+- **同じ種類を選択** (ADR-0120)。ctx「同じ種類を選択」で単一選択の
+  shape.type と同じ全形状を一括選択 (全コネクタ・全付箋など、
+  selectSamePaint のタイプ版)。
+
+## [1.7.176]
+
+### 追加
+- **矢印ヘッドスタイル** (ADR-0119)。ctx「矢印ヘッド」で矢印→丸→
+  シェブロンを巡回 (`s.head`、両端に適用)。canvas・SVG export 共通
+  ヘルパーで描画、`style` op で undo/同期。
+
+## [1.7.175]
+
+### 追加
+- **PNG 書き出しスケール選択** (ADR-0118)。export メニューに
+  @1x/@4x を追加 (既定は従来通り 2x、exportScale の寸法/面積
+  キャップは全スケールで有効)。非2x はファイル名に @Nx 付与。
+
+## [1.7.174]
+
+### 追加
+- **コネクタラベル位置ドラッグ** (ADR-0117)。ラベル付き単一コネクタ
+  選択で中点ドットをドラッグ→弧長 `s.labelPos` (0..1) に配置
+  (way/elbow/curve 全経路・中点磁吸)。`style` op で undo/同期、
+  ルートリセットで初期化、SVG export も一致。
+
+## [1.7.173]
+
+### 追加
+- **選択をグリッドに吸着** (ADR-0116)。ctx「グリッドに吸着」で選択
+  各形状の bbox 左上を最寄りグリッド点へ平行移動 (幾何は不変、
+  `align` op dir:'gsnap' で一括 undo・同期)。
+
+## [1.7.172]
+
+### 追加
+- **クリップボード経由の .board 転送** (ADR-0115)。export メニュー
+  「ボードJSONをコピー」で `.board` JSON をクリップボードへ。
+  ペースト側は `"shapes":[` を検出して `_placeCopies` (id 再割当)
+  でビューポート中央に追加 — ファイル往復なしにボード間転送。
+
+## [1.7.171]
+
+### 追加
+- **同じ位置に貼り付け ⌘⇧V** (ADR-0113)。クリップボードの図形を
+  コピー元と同じ座標に複製 (Figma Paste-in-place parity)。
+  ctx メニューにも「同じ位置に貼り付け」。⌘⇧V が従来の ⌘V
+  バインドに吸収されないよう shift 判定を分割。
+- **選択を .board 書き出し** (ADR-0114)。`exportBoard(shapes)` に
+  shapes 引数を追加し、ctx メニューに「選択を.board書き出し」を
+  追加 (選択PNG/SVGの .board 版、形式は全面書き出しと同一)。
+
+## [1.7.170]
+
+### 追加
+- **共有リンクにビューポート同梱** (ADR-0112)。`exportToUrl` が
+  `{x,y,zoom}` を含め、`importFromHash` が同じ数値ゲート
+  (`clampZoom` 込み) で採用 — 受け手は送り手の景色で開く
+  (旧リンクは従来通り)。
+
+## [1.7.169]
+
+### 追加
+- **フレームの内容を選択** (ADR-0111)。frame 選択時の ctx
+  「内容を選択」で `withFrameChildren` の包含判定 (ドラッグ/
+  nudge と同一ルール) に一致する内包形状だけを選択に置換。
+  フレーム自身は外れるため後続 op が内容へ効く。
+
+## [1.7.168]
+
+### 追加
+- **付箋↔テキスト変換** (ADR-0110)。ctx メニューで `s.type` を
+  sticky↔text に反転 (text/align/fontSize/装飾全保持、色属性も
+  残るため往復変換はロスレス、style op で undo・同期対応)。
+
+## [1.7.167]
+
+### 追加
+- **直線↔矢印の型変換** (ADR-0109)。ctx メニューで `s.type` を
+  line↔arrow に反転 (bindings/way/label/route 全保持、style op
+  で undo・共有同期対応、ラベル動的切替)。
+
+## [1.7.166]
+
+### 追加
+- **位置を入れ替え** (ADR-0108)。選択2の ctx「位置を入れ替え」で
+  両 unit を相手の bbox 中心へ平行移動する `align` op
+  (Figma Swap positions parity)。
+
+## [1.7.165]
+
+### 追加
+- **グリッドに整列 (Tidy up)** (ADR-0107)。ctx メニューで選択群を
+  読み順の近方形グリッドにリフロー — 列ピッチ=列最大幅・行ピッチ
+  =行最大高+32px、frame/group を1単位として扱う `align` op。
+
+## [1.7.164]
+
+### 追加
+- **起動時の空ビュー自動フィット** (ADR-0106)。復元された viewport
+  に形状が1つも見えていない (= 空白ボード＝消失誤認) 場合のみ
+  `fitToContent()` で案内。永続ビューの復元は従来通り優先。
+
+## [1.7.163]
+
+### 追加
+- **付箋 ⌘Enter 連鎖** (ADR-0105)。付箋の編集中に ⌘Enter で確定後、
+  同スタイルの付箋を右隣に生成して即編集継続 (FigJam 式の連続
+  ノート入力。text 形状は従来通り確定のみ)。
+
+## [1.7.162]
+
+### 追加
+- **同色を選択** (ADR-0104)。単一選択時の ctx メニュー「同色を選択」で
+  同じ paint (sticky=color、その他=fill) を持つ全形状を選択
+  (Figma Select Same parity、ロック含む、件数トースト)。
+
+## [1.7.161]
+
+### 追加
+- **ここに貼り付け** (ADR-0103)。ctx メニュー開放点へクリップ
+  ボード内容を中心配置する「ここに貼り付け」を追加 (カスケード
+  無しの確定位置。⌘V のビューポート中央ペーストと併存)。
+
+## [1.7.160]
+
+### 追加
+- **選択をフレームで包む ⌘⌥G** (ADR-0102)。選択群の union bbox
+  +16px を覆うフレームを生成 (Figma parity、ctx メニューにも)。
+  z を最下位メンバ直下へ分数配置し中身を覆わない。`e.code` 経由で
+  macOS の ⌥ 修飾キー化けを回避。
+
+## [1.7.159]
+
+### 追加
+- **付箋色クイックサイクル** (ADR-0101)。ctx メニュー「付箋の色」で
+  `STICKY_COLORS` 6色を順送り (style op、複数選択可、パレット外の
+  色からも先頭色へ復帰)。
+
+## [1.7.158]
+
+### 追加
+- **取り消し線** (ADR-0100)。`⌘⇧X` で `s.strike` トグル (style op)。
+  canvas は各行中央に手動ライン、SVG は `text-decoration` を
+  `"underline line-through"` 連結に一般化、編集 overlay も同期。
+  4装飾 (太字/斜体/下線/取消線) が完結。
+
+## [1.7.157]
+
+### 追加
+- **クリップボード .excalidraw のペースト取り込み** (ADR-0099)。
+  Excalidraw でコピーした JSON をそのままペーストでシーン
+  インポート — 従来は巨大なテキスト形状になっていた。パース
+  失敗時は従来のテキスト形状化へフォールバック。
+
+## [1.7.156]
+
+### 追加
+- **.excalidraw エクスポート** (ADR-0098)。エクスポートメニューに
+  「Excalidraw」追加 — 全図形を excalidraw 要素へ変換
+  (sticky→rect+text、line/arrow→points+way、image→files 辞書、
+  binding/groupIds 維持)。id 保持により ADR-0097 経路で再
+  インポート可能なラウンドトリップをテスト担保。
+
+## [1.7.155]
+
+### 変更
+- **.excalidraw 多点コネクタの実インポート** (ADR-0097)。3点以上の
+  line/arrow が `pen` 化していたのを、真のコネクタ + `s.way`
+  中間点へマッピング — elbowed 矢印が矢印のまま編集可能に復元
+  (矢印ヘッド・バインド・ルート編集すべて有効)。`freedraw` は
+  従来通り `pen`。
+
+## [1.7.154]
+
+### 追加
+- **等サイズスナップ** (ADR-0096)。リサイズ中、新しい幅/高さが
+  他図形の `w`/`h` と近いとき一致側へ吸着 (draw.io スマート寸法)。
+  edge スナップと共存、ガイドは対象図形の該当辺に表示。lock/alt/
+  グリッドスナップ時は従来通り非適用。
+
+## [1.7.153]
+
+### 追加
+- **テキスト/付箋の下線** (ADR-0095)。`⌘U` トグル (`s.under`、
+  style op で undo/複数選択可)。canvas は各行 measureText 幅の
+  手動ライン (align 3種)、SVG は `text-decoration="underline"`、
+  編集 overlay も同期。ヘルプを `⌘B / ⌘I / ⌘U` に更新。
+- README サイズバッジを実測に同期 (113→126KB gzip)。
+
+## [1.7.152]
+
+### 追加
+- **Esc でドラッグキャンセル** (ADR-0094)。move/resize/marquee/
+  erase 進行中の Esc が `_cancelPointerGesture` を呼び、in-place
+  変異を巻き戻す — 従来は pointerup まで変位が残り意図しない
+  commit になった。選択は維持。
+
+## [1.7.151]
+
+### 追加
+- **⇧+ホイール水平パン** (ADR-0093)。マウスホイールの縦回転を
+  ⇧で横パンに変換 (Figma/draw.io 慣例)。トラックパッドの deltaX
+  は素通し、ctrl+wheel ズーム経路は無影響。
+
+## [1.7.150]
+
+### 追加
+- **矩形の角スタイル** (ADR-0092)。ctx メニュー「角スタイル」で
+  適応角丸 (min(8,w/4,h/4)) ↔ 直角 (`s.r=0`) を切替 — style op で
+  undo/共有対応、複数選択可。canvas・SVG `<rect rx>` とも反映。
+
+## [1.7.149]
+
+### 追加
+- **検索結果の全選択** (ADR-0091)。検索ボックス内で `⌘Enter` /
+  `Ctrl+Enter` — 全マッチを一括選択してボックスを閉じる
+  (一括移動/スタイル変更の前段)。SR 通知と件数トースト付き。
+
+## [1.7.148]
+
+### 追加
+- **複数ウェイポイント** (ADR-0090)。直線コネクタの `s.way` を
+  `{x,y}` 単体から `[{x,y},…]` 配列へ格上げ — 各セグメント中点
+  ドラッグで頂点挿入、頂点ドラッグで移動、中点6pxで削除、
+  全変換・SVG・ミニマップ・ヒット・bbox・ラベル(総延長の中点)が追従。
+  `_wayArr` が旧 object 形式を後方互換で正規化。
+
+## [1.7.147]
+
+### 追加
+- **画像差替え** (ADR-0089)。画像単一選択の ctx「画像を差替え」で
+  位置・幅を保持したままバイトを置換 (高さは新アスペクトに追従)。
+  `_imgImportFile` 既存経路 (4MB上限・2048px縮退)、style op で undo 可。
+
+## [1.7.146]
+
+### 修正
+- **ウェイポイント/エルボートランクのドラッグがグリッドスナップに従う**
+  (ADR-0088)。全配置ジェスチャで唯一スナップを通らなかった2経路を
+  `snapPt`/`snapV` に統一。way の6pxクリア判定は生座標のまま
+  (グリッドに吸われて削除不能にならないよう)。
+
+## [1.7.145]
+
+### 追加
+- **選択 SVG をクリップボードへコピー** (ADR-0087)。選択 ctx に
+  「選択のSVGをコピー」— `buildSVG` 出力を `copyText` で送る
+  (ClipboardItem の SVG MIME はブラウザ差が大きいため text コピー)。
+
+## [1.7.144]
+
+### 追加
+- **クリック単発で box 図形をスタンプ** (ADR-0086)。rect/ellipse/
+  diamond ツールの非ドラッグクリックで既定 120×80 (center-stamp
+  と同寸) を配置。従来は sticky/frame のみ既定サイズ化だった。
+
+## [1.7.143]
+
+### 追加
+- **フレームをコンテンツに合わせる** (ADR-0085)。ctx メニュー
+  「コンテンツに合わせる」で選択 frame を完全内包シェイプの union
+  bbox + 12px にリサイズ (draw.io コンテナ parity)。複数 frame を
+  1 align op で原子化。空 frame は no-op。
+
+## [1.7.142]
+
+### 追加
+- **ルートリセット** (ADR-0084)。ctx メニュー「ルートをリセット」で
+  コネクタの way/bend/elbow/curve を一括クリアし直線に戻す
+  (draw.io Clear Waypoints)。1つの style op で原子化、undo 一発。
+
+## [1.7.141]
+
+### 追加
+- **画像キャプション** (ADR-0083)。image にも dblclick/Enter でラベル
+  編集が開き、内側下端に paper 帯 + 折返しテキストで描画 (draw.io式)。
+  画像高でクリップし溢れは '…'。SVG 書き出しにも同様に emit。
+
+## [1.7.140]
+
+### 修正
+- **付箋の色変更** (ADR-0082)。fill スウォッチ/カラーピッカーを sticky
+  では `s.color` にマップ — 生成時ランダム固定だった付箋色が変更可能に。
+  `applyStyleToSelection` の before パッチを `??null` にし、未設定
+  プロパティでも undo が確実に戻るよう修正 (clone が undefined を落とす
+  潜在的な undo 欠損を同時に解消)。
+
+## [1.7.139]
+
+### 修正
+- **ラベル編集オーバレイの正位置化** (ADR-0081)。diamond でダブル
+  クリック/Enter のラベル編集が開かなかった抜けを解消し、
+  elbow/curve/waypoint コネクタではラベル描画位置と同じアンカー
+  (`_connLabelXY` で canvas/editor の位置計算を単一化) に開く。
+
+## [1.7.138]
+
+### 追加
+- **スマート複製 (反復変換)** (ADR-0080)。複製したシェイプを移動して
+  もう一度 ⌘D で**同じベクトルが反復**され、等間隔の行/列/グリッドが
+  一発で並ぶ (Figma/draw.io parity)。`dupIds`/`dupDelta` で複製
+  チェーンを追跡し、move/nudge コミットでネット変位を累積。
+  既存 op で undo・同期は無料。
+
+## [1.7.137]
+
+### 追加
+- **幅 / 高さ揃え (match size)** (ADR-0079)。ctx メニューに
+  「幅を揃える」「高さを揃える」「幅と高さを揃える」— 最初に選択した
+  シェイプを基準に box 型の寸法を揃える (draw.io parity)。`align` op
+  で一括 undo、位置は不変 (top-left アンカー相当)。
+
+## [1.7.136]
+
+### 追加
+- **テキストの太字 / 斜体** (ADR-0078)。⌘B/⌘I で選択中 text/sticky の
+  `s.bold`/`s.italic` を `style` op トグル (Figma/draw.io parity)。
+  `_fontStr` が canvas フォント宣言を単一化、編集オーバレイと
+  SVG 書き出し (`font-weight`/`font-style`) も一致。copyStyle で伝搬。
+
+## [1.7.135]
+
+### 追加
+- **ハッチ / 斜格子フィル** (ADR-0077)。rect/ellipse/diamond に
+  `s.fstyle` ('hatch'|'cross') — ctx メニュー「塗りスタイル」で
+  塗り→ハッチ→斜格子を巡回 (Excalidraw parity)。fill 色と直交で
+  fill=null でも線のみ描画、canvas `clip()` と SVG `<clipPath>` が
+  `_hatchSegs` の線分列を共用。copyStyle/pasteStyle でも伝搬。
+
+## [1.7.134]
+
+### 追加
+- **直線コネクタの中間ウェイポイント** (ADR-0076)。選択中の直線 line/arrow
+  の中点ハンドルをドラッグで `s.way` を作成・移動 (draw.io parity) —
+  直線中点 ±6px に戻すと自動削除。`_linePts` が draw/hit/bbox/SVG/
+  minimap/label の共通経路源で、translate/flip/rotate/gresize/grot の
+  全変換経路で追従。`style` op で undo・同期は既存経路。
+
+## [1.7.133]
+
+### 追加
+- **フォントサイズのキーボード増減** (ADR-0075)。⌘⇧, / ⌘⇧. で選択中の
+  text/sticky の fontSize を ±2 (8–64 clamp)、Figma/draw.io parity。
+  `style` op で undo・同期は既存経路。help grid 追記。
+
+## [1.7.132]
+
+### 修正
+- **ボックスラベルの折返し** (ADR-0074)。rect/ellipse/diamond のラベルが
+  図形幅からはみ出していた問題を解消 — `wrapTextCached` (禁則処理付き) で
+  `w-8` に wrap し中央揃えで複数行描画。SVG export も同幅で wrap し
+  `<tspan>` 複数行化 (表示=出力パリティ)。長いラベルがフロー図で
+  読めるようになる。
+
+## [1.7.131]
+
+### 追加
+- **テキスト揃え** (ADR-0073)。ctx メニュー「テキスト揃え」で text/sticky
+  本文の揃えを左→中央→右に巡回 (`s.align`、Excalidraw parity)。
+  canvas・SVG export (`text-anchor`)・インライン editor の全経路で一貫。
+  `style` op で undo・同期は既存経路。既存図形は left で見た目同一。
+
+## [1.7.130]
+
+### 追加
+- **elbow trunk ドラッグ** (ADR-0072)。選択中のエルボーコネクタで中間
+  trunk セグメント (ハンドル表示あり) をドラッグして経路位置を調整 —
+  `s.bend` に絶対座標で永続化、`style` op で undo・同期は既存経路。
+  未設定時は従来の自動経路で視覚退行なし。
+
+## [1.7.129]
+
+### 追加
+- **等間隔スナップ** (ADR-0071)。移動ドラッグでエッジ吸着が無い位置でも、
+  同一行/列の連続図形ペアの既存間隔と同じ隙間を作る位置に吸着し
+  等しい2区間をガイド表示 (draw.io スマートガイド parity)。
+  行末端・行内挿入とも対応。エッジ吸着優先、未成立軸のみ評価。
+
+## [1.7.128]
+
+### 追加
+- **quick-connect** (ADR-0070)。選択ツールで図形にホバーすると4辺中点に
+  接続ドットを表示 (draw.io parity) — ドットからドラッグで始点結合済み
+  矢印を一発作成。locked/connector/pen 除外、hover 変化時は overlay のみ
+  再描画 (ADR-0024 層分離でシーンコストゼロ)。commit は `add` op で
+  undo・同期は既存経路。
+
+## [1.7.127]
+
+### 変更
+- **ワイヤーレベル画像参照** (ADR-0069)。`add`/`addMany` op と snapshot
+  の画像バイトを `img` 参照 + 別メッセージ `{k:'img'}` (64KB チャンク、
+  op 先行送信) に分離 — ピア間で画像を含む op のワイヤーサイズが大幅減、
+  RTCDataChannel ~256KB/メッセージ上限による静的失敗も解消。受信側は
+  `_imgChunks` 再構成→`_imgIn` 格納、未着参照は `_imgPending` に保留して
+  blob 到着時に補完。共有リンクは URL 自体が輸送路のため対象外。
+  実ブラウザ loopback で 200KB 画像の chunked 復元を実測。
+
+## [1.7.126]
+
+### 追加
+- **曲線コネクタ** (ADR-0068)。ctx メニュー「曲線」で line/arrow を二次
+  ベジエ化 (制御点 = 中点 + 法線 × min(0.25·len,80))。elbow と排他トグル
+  (style op 1エントリで両 prop)、両端ヘッド・結合・ラベル (ベジエ中点)
+  ・SVG/ミニマップ全経路対応。
+
+## [1.7.125]
+
+### 修正
+- **コネクタ結合点が真の輪郭に着地** (ADR-0067)。`_edgePt` が従来 bbox
+  辺に投影していたため diamond では輪郭の無い bbox 角に矢が刺さって
+  いた。diamond は `|dx|/rx+|dy|/ry=1`、ellipse は `hypot(dx/rx,dy/ry)=1`
+  のコンター式で解決 — 直線・elbow 両方の `connEnds` 経路すべてに反映。
+
+## [1.7.124]
+
+### 追加
+- **Shift+ドラッグの軸拘束移動** (ADR-0066)。移動ドラッグ中に Shift を
+  押すと支配軸 (水平 or 垂直) に拘束 — draw.io/Figma と同じ。拘束中は
+  objectSnap をスキップ、readout が `+N, 0` で拘束を可視化。
+
+## [1.7.123]
+
+### 追加
+- **コネクタ端点の再結合 / 解除** (ADR-0065)。選択中の line/arrow の
+  p1/p2 ハンドルを結合済みでも常時表示 — 結合端を掴むと即座にフリー化し
+  プレビューがポインタに追従、図形上にドロップで再結合 (破線ハイライト)、
+  空白ドロップで解除。自分自身・他端の結合先には結合しない。1 `upd` op
+  で undo・同期は既存経路のまま。
+
+## [1.7.122]
+
+### 追加
+- **ジェスチャー中のライブ寸法表示** (ADR-0064)。リサイズ中は `W × H`、
+  移動中はスナップ適用後の `±dx, ±dy`、回転中は角度 (`N°` / `±N°`) が
+  対象の直下にピル表示 — draw.io/Figma と同じ。複数選択のグループ
+  リサイズ・回転、pen pts・接続長 (`↔ N`) も同一経路。render-only で
+  undo/同期に無関与。
+
+## [1.7.121]
+
+### 追加
+- **双方向矢印 (始点側ヘッド)** (ADR-0063)。選択した arrow をコンテキスト
+  メニュー「両端ヘッド」で始点側にもヘッドを描画 — 相関・対称関係・寸法線を
+  1本で表現 (Excalidraw startArrowhead 相当)。肘経路との合成も動作
+  (始端ヘッドは stub 法線に沿う)。`style` op で undo/同期が既存経路。
+
+## [1.7.120]
+
+### 追加
+- **エルボー (直角) コネクタ** (ADR-0062)。選択した line/arrow をコンテキスト
+  メニュー「エルボー (直角)」で折れ線化 — 結合端はエッジ法線方向のスタブを
+  出し、中間点で直交結合 (Manhattan 経路)。arrow のヘッドは最終セグメント
+  方向、ヒット判定は折れ線全セグメント、ラベルはスタブ先端の中点、SVG は
+  `<polyline>` 出力。`style` op 記録で undo/同期/property-LWW が既存経路で
+  動作。diamond (ADR-0061) と合わせてフローチャートが Board 内で完結。
+
+## [1.7.119]
+
+### 追加
+- **diamond (ひし形) ツール** (ADR-0061)。Excalidraw 標準パレットで唯一欠けていた
+  図形種別 — ツールバーまたは 'D' キーでドラッグ描画。ボックス型なので
+  fill/dash/label/リサイズ/回転/複製/整列/接続点/undo/同期/SVG/ミニマップが
+  すべて既存経路で動作。`.excalidraw` インポートの diamond も pen 近似から
+  真の型に変更 (round-trip 忠実性向上)。
+
+## [1.7.118]
+
+### 追加
+- **Alt(⌥)+ドラッグで複製** (ADR-0060)。選択図形 (または未選択ヒット図形/グループ) を
+  Alt を押しながらドラッグするとコピーが作られ、そのままドラッグで移動できる —
+  Figma/Excalidraw/draw.io と同じ慣例。複製は `_placeCopies` (addMany 単一 op) で
+  atomic undo、ロック図形は対象外、フレームは中身ごと複製。
+
+## [1.7.117]
+
+### 追加
+- **スタイルパネルが選択図形の値を反映** (ADR-0059)。図形を選ぶとストローク/フィル/
+  破線/サイズ/不透明度のコントロールがその値を表示 — 従来は常にグローバル既定を
+  表示し続けていた (audit §8 の残課題)。選択内で値が混在するプロパティは据置、
+  空選択は現状維持。`state.style` も同期するため次の新規図形は選択図形の
+  スタイルを継承する (Excalidraw と同じ挙動)。
+
+## [1.7.116]
+
+### 追加
+- **スナップショットマージを per-property LWW で収束** (ADR-0058)。hello/sync-req 応答の
+  snapshot op に `wc`(shape ごとの wclock) を同梱し、既存図形をプロパティ単位で
+  マージ — 従来は「未保有図形のみ取込」で、両ピアが同一図形を編集すると内容が
+  発散したままだった。旧版ピア (wc なし) は従来どおり keep。undo 履歴には積まない
+  (収束動作)。
+
+## [1.7.115] - 2026-09-23
+
+**ADR-0057: 回転ノブの点ジオメトリ / 複数選択対応** — `getRotHandle` を
+`G.bbox` 経由に一般化し、pen/line/arrow 単一選択でもノブが出るように。
+複数選択では `_grpRotHandle(gb)` が選択群 bbox にノブを出す (回転は合成
+できるため ADR-0056 と違い回転メンバ混在でも可)。新 `dragKind='grot'`
+は掴み時の atan2 を基点とする**デルタ角**で `_rotShape` が orig→live を
+毎フレーム再計算: 箱形は中心 orbit + `rotate+=deg`、pts/端点は剛体回転、
+Shift=15°スナップ。コミットは `align` op (`dir:'grot'`) で undo 一括復元。
+箱形単一は従来の絶対角 `dragKind='rotate'` パスを維持 (upd op)。
+
+併せて修正: 回転を持たないシェイプのキャンセル復元で `rotate` が残存する
+既存バグ (Object.assign は orig に無いキーを消せない) — rotOrig/gOrig の
+restore で `delete sh.rotate` / orig 正規化を追加。`getRotHandle` の
+bbox ガードを `w>0&&h>0` に堅牢化 (空 pts の NaN bbox を排除)。
+
+## [1.7.114] - 2026-09-23
+
+**ADR-0056: 複数選択リサイズ** — 複数選択時に選択群 bbox に8ハンドルを
+出して一括スケール (Excalidraw / Figma parity)。ADR-0051 の仮想ボックス
+再帰を拡張: `ptr.dragKind='gresize'`、開始 bbox を `vorig` として共有の
+`applyResize` に通すため Shift=縦横比・Alt=中心対称・オブジェクトスナップが
+そのまま効き、`_mapToBox` が各メンバの幾何 (box/pen pts/line 端点) を
+アフィン写像。`resizeSnap` の除外を `state.selection` 化して自己スナップを
+排除。undo は `align` op (`dir:'gresize'`) で一括復元、キャンセルは
+abortGesture/_cancelPointerGesture 両経路で復元。回転メンバ混在時は
+skew を生まないようハンドル非表示。
+
+併せて修正: 複数選択の4隅に描画されていたハンドル表示は初期版から
+ヒット判定未配線の死んだ UI だった — 実際に動く8ハンドルに置き換え。
+README サイズバッジを実測値に同期 (raw ~349KB / gzip ~113KB)。
+
+## [1.7.113] - 2026-09-23
+
+**ADR-0055: 点ジオメトリの回転 (`ペン・線・矢印`)** — `doRotate` が
+`s.w!=null` の箱形のみ対象だったのを、`_rotatable` (w OR pts OR x1) に
+拡張。点ジオメトリは `rotate` フィールドを持たないため、`_rotPtsAbout`
+で全点を選択群 bbox 中心に剛体回転 — 単一ペンは自身の中心でその場で
+回る。doFlip (flipShape 全型対応) と対の設計。`,`/`.` キー経路のみ
+(回転ノブの逐次ドラッグは別 ADR)。コネクタ端点の binding は connEnds
+再計算で自動追従。undo は既存 `align` op で完結。
+
+## [1.7.112] - 2026-09-23
+
+**ADR-0054: ズーム境界での純粋 no-op** — min/max ズームに達した状態でも
+`zoomAt` がアンカー再計算で viewport を微小に滑らせていた (audit-2026-06
+残課題の最終項目)。`nz===v.zoom` で早期 return — `_pinchSnapNow`・
+`UI.refreshZoom`・`invalidate` も含めて完全 no-op。
+
+## [1.7.111] - 2026-09-23
+
+**ADR-0053: テキスト編集中の pan/zoom 追従** — 編集中の textarea は DOM
+アンカーのため、編集を閉じずにパン/ズームすると図形から取り残されていた
+(audit-2026-06 の残課題)。`frame()` の最後に `_teFollow()` を追加 —
+viewport 署名 (x,y,zoom) が変わったフレームだけ `positionTextEditor` を
+再実行し、エディタを図形に追従させる (fontSize の zoom 乗算込み)。
+ADR-0011/0041 と同じ「frame 境界で追従」パターン。新 op なし。
+
+## [1.7.110] - 2026-09-23
+
+**ADR-0052: 選択図形のみのエクスポート** — 選択コンテキストメニューに
+「選択をPNG書き出し / 選択のPNGをコピー / 選択をSVG書き出し」を追加
+(Excalidraw parity)。`exportPNG`/`copyPNG`/`exportSVG`/`_renderPngBlob`
+に shapes 引数を導入 (既定 `state.shapes` で後方互換) — 全面・選択の
+両経路が同一レンダラを共有するため、出力は常に同一生成経路由来。
+選択 bbox + pad 32 で切り出し、空選択は `noSelection` トースト。
+
+## [1.7.109] - 2026-09-23
+
+**ADR-0051: ペンストロークの真のリサイズ** — ペンが従来「リサイズ不可」
+だったものを、pts を orig bbox→リサイズ後 bbox へアフィン写像する方式で
+実現 (Excalidraw parity)。`getHandles` のペン分岐は 8 ハンドルを発行、
+`applyResize` は仮想ボックスに既存ハンドル数式 (Shift 縦横比・Alt 対称・
+スナップ) を丸ごと適用してから `sx/sy` で pts を写像 — 圧力値 `p[2]` は保持、
+1点ドットは不可 (スケール不能)。undo は既存 `upd` op で完結。
+
+## [1.7.108] - 2026-09-23
+
+**ADR-0050: クリップボードへの PNG コピー** — Export メニューに
+「PNGをクリップボードにコピー」を追加 (Excalidraw parity)。
+`exportPNG` の描画パスを `_renderPngBlob()` に切り出して共有 —
+download と clipboard が同一の PNG 生成を経る。API 非対応環境は
+`copyUnsupported`、write 拒否は `copyFailed` トースト (ショートカット
+なし — ⌘⇧C は DevTools と衝突)。
+
+## [1.7.107] - 2026-09-23
+
+**ADR-0049: 選択にズーム (`⇧2`)** — Excalidraw パリティ。選択 bbox を
+pad 60/cap 4 でフィット (fit-all の cap 2 より深く寄るので小さい選択が
+実際に大きく見える)。選択空 → `noSelection` トースト。合わせて 3 箇所目の
+複製になった viewport-fit 数式を `_fitViewport(b,pad,cap)` に集約 —
+`fitToContent`/`_mirrorGo`/`zoomToSelection` が同一路径を共有。
+
+## [1.7.106] - 2026-09-23
+
+**ADR-0048: 検索ハイライトのマッチリストキャッシュ** — 検索ボックスに文字が
+入っている間、overlay リペイントのたびに全形状の `label|text|type` を
+`toLowerCase().includes()` で再走査していたのを `{_gridVer, _sq}` 連動の
+`_sqMatches()` 化 (ADR-0047 と同イディオム)。検索を開いたままの
+マーキードラッグ/カーソル移動で O(matches) に。`_sqAdvance` (Enter ナビ) も
+同じ順序付きリストを共有するよう統一。現在マッチ強調 (`_sqNav.idx`) は
+メンバーシップに影響しないためキー外・毎フレーム評価のまま。
+
+## [1.7.105] - 2026-09-23
+
+**ADR-0047: グループハローのキャッシュ** — `drawOverlay` が毎フレーム全形状を
+走査して構築していた `Map<groupId, shapes[]>` を `_gridVer` 連動の
+`_grpMapGet()` 化。グルーピングは group/ungroup op 経由でしか変わらないため
+全コミットの dirty key と一致 — overlay-only リペイント (マーキードラッグ、
+ピアカーソル、選択更新) が O(n) 走査なしで済む。bbox は従来どおり毎回
+`G.bboxAll` で再評価 (translate の in-place 変異に追従)。
+
+## [1.7.104] - 2026-09-23
+
+**ADR-0046: ペンのアウトライン塗り** — 可変線幅を「セグメント台形 + 頂点円盤の
+和集合」として 1 回の fill で描画。従来のセグメントごと stroke 描画が抱えた
+区間境界の僅かなギャップを構造的に解消し、両端 `PEN_TAPER=8` サンプルの
+ランプで自然に細る筆跡に (perfect-freehand 式)。全プリミティブは凸かつ同一
+巻き方向なので急カーブでの自己交差は原理的に発生しない。ドラフトの増分
+スタンプ (ADR-0029) は append-only プリミティブ設計によりそのまま継続 —
+末端テーパー区間のみ生 tail に残し、コミット済み/ドラフト/SVG エクスポート
+の3経路が同一幾何を共有 (display=output パリティ維持)。実ブラウザで内部
+網羅性 (holes 0) と先端テーパーを検証。
+
+## [1.7.103] - 2026-09-23
+
+**ADR-0045: 招待リンク** — WebRTC 手動シグナリングの受け手側手順を一段削減。
+招待コードを `#s=<offer>` として URL に埋め込み「招待リンクをコピー」ボタンで
+発行。受け手はリンクを開くだけで Share モーダルが開き招待欄が充填される
+(貼り付け不要)。プライバシーのため自動接続はしない — 「応答コード作成」の
+クリックは従来どおり必須。
+
+## [1.7.102] - 2026-09-23
+
+**ADR-0044: テキストのペースト** — OS クリップボードの `text/plain` が
+何も起きなかったギャップを解消。トリム後非空のテキストを viewport 中央に
+`text` shape として貼付 (改行保持、幅は最長行で決定、`PASTE_MAX_CHARS=4000`
+で切り詰め)。優先順位は `image/*` > `<svg` markup > `text/plain`。
+Markdown は構文解釈せず平文として置く (リッチ表現の受け皿がないため)。
+
+## [1.7.101] - 2026-09-23
+
+**ADR-0043: .excalidraw インポート** — `JSON.parse` で scene を走査し
+rectangle/ellipse/diamond/line/arrow/freedraw/text/frame を Board 図形に写像
+(diamond は polygon pen、3点以上の line/arrow は pen)。`points` の相対座標を
+絶対化、`strokeColor/backgroundColor/strokeWidth/opacity/strokeStyle/angle` を
+Board スタイルへ対応付け、`isDeleted` tombstone は読まない。検出は
+`.excalidraw` 拡張子 + `"type":"excalidraw"` 内容マーカー (中身優先)。
+`EXC_MAX_ELEMS=50000`/`EXC_MAX_PTS=10000` の天井、`addMany` 単一 op。
+
+## [1.7.100] - 2026-09-23
+
+**ADR-0042: SVG インポート** — DOMParser で SVG を走査し対応要素
+(rect/circle/ellipse/line/polyline/polygon/path/text) を Board 図形に写像。
+`<svg` で始まるテキストのペースト、`.svg`/`image/svg+xml` のドロップと
+ファイルピッカーの3入口。transform 累積行列で座標に焼き込み、viewBox は
+最大幅 800px に正規化、path 曲線は固定分割の polyline 近似。
+非対応要素 (use/defs/filter/gradient/外部参照) はスキップ、
+`SVG_MAX_ELEMS=5000`/`SVG_MAX_PTS=2000` の天井で巨大 SVG も安全。
+`addMany` 単一 op で挿入 (undo 一発)。
+
+## [1.7.99] - 2026-09-23
+
+**ADR-0041: 図形の DOM ミラー (spec P1 ギャップ解消)** — スクリーンリーダーが
+盤面の図形を「一覧」として走査できるよう、視覚的に隠した `#shapeMirror`
+region に `<ul>` を生成 (各 `<li><button>` = `インデックス. describeShape`)。
+Enter でその図形を選択+中央寄せ+アナウンス。再構築は `_gridVer` 連動のみ
+(フレーム毎の DOM 更新なし)、`MIRROR_MAX=300` で上限、超過時は末尾に
+「N 個は一覧に未掲載」を明示。innerHTML は使わない。
+
+## [1.7.98] - 2026-09-23
+
+**ADR-0040: 共有リンクの長さ警告と生成失敗フィードバック** — `exportToUrl` の
+reject を `.catch(()=>{})` で握り潰して古い URL がフィールドに残っていた問題を
+修正 (失敗時はフィールドクリア + `shareExportFailed` toast)。また 32KB 超の
+共有リンクに「チャットで切り詰められる恐れ、.board エクスポート推奨」の
+警告を追加。
+
+## [1.7.97] - 2026-09-23
+
+**ADR-0039: 共有リンクペイロードのリソース上限** — `z:` リンクの展開+parse は
+confirm より先に走るため、巨大な deflate ボムでタブがフリーズし得た。
+展開後 128MB・形状数 200,000 の天井を設け、超過は `invalidBoard` toast +
+ハッシュクリアで拒否 (ADR-0038 と同じ経路)。.board ファイル取り込みは
+ユーザー自身の選択なので対象外。
+
+## [1.7.96] - 2026-09-23
+
+**ADR-0038: 共有リンク拒否経路のフィードバック統一** — 未知の kind・非ボード JSON・
+全形状無効の 3 経路が無言 `return false` でハッシュも残留だった問題を、
+鍵経路と同じく `invalidBoard` toast + ハッシュクリアに統一。decode/parse 失敗の
+catch でもハッシュをクリア。ユーザー自身が confirm でキャンセルした場合のみ
+従来どおりハッシュを残す。
+
+## [1.7.95] - 2026-09-23
+
+**ADR-0037: ポインタ選択のスクリーンリーダーアナウンス** — クリック/グループ選択、
+マーキー結果、⌘A、Escape 解除がスクリーンリーダーに無音だった非対称を解消。
+`_announceSel()` が `UI.toast` (aria-live) 経由で `選択を解除` / 1件は
+`describeShape` / N件は `N個を選択` を通知 (ja/en 対応、WCAG 4.1.3)。
+
+## [1.7.94] - 2026-09-23
+
+**ADR-0036: ミニマップのドラッグスクローブ** — クリック単発ナビゲートを
+`pointerdown`/`pointermove`/`pointerup` へ移行。ボタンを押したまま動かすと
+viewport が連続追従 (Figma/tldraw 標準)。`setPointerCapture` でポインタが
+ミニマップ外にはみ出てもドラッグ継続。単発クリックは従来どおり1回移動。
+
+## [1.7.93] - 2026-09-23
+
+**ADR-0035: 画像参照の輸出入ハイジーン** — ADR-0031 の後始末3件。
+`_imgKey` を 3 セグメント指紋 (mime+長さ+先頭/中間/末尾各48文字) に強化 —
+同一長・同一末尾の別画像がキャッシュ上誤表示され得る隙を塞ぐ。
+`roundShapesForExport` で内部 blob 参照 `img` を輸出から遮断。
+dataUrl 欠落の画像 (細工された import) が `drawShape`→`getImg` で
+TypeError となり draw() 全体が停止する経路を、プレースホルダ描画 + 
+`getImg` の `data:` ガードで解消。
+
+## [1.7.92] - 2026-09-23
+
+**ADR-0034: ペンコミット時 RDP — 反復インデックス実装 + ズーム適応 eps** —
+再帰 `pts.slice()` 版は長いストロークで O(n log n) の配列コピーを行っていたのを、
+`[lo,hi)` レンジをスタックで回る反復版へ (出力は再帰版と完全一致を検証:
+21ストローク×4eps)。`eps` を固定 0.5 から `0.5/state.viewport.zoom` へ —
+`contPen` の採点分解能 (~1/zoom) と揃え、ズームインで描いた精密ストロークの
+詳細がコミット時に消えないようになった。
+
+## [1.7.91] - 2026-09-23
+
+**ADR-0033: ctrl+wheel ズームのスナップショットプレビュー** — トラックパッドの
+2本指ピンチはデスクトップブラウザで `ctrl+wheel` として届く経路であり、
+ADR-0030 でタッチピンチに入れたスナップショット・スケールプレビューが
+未適用だった。バースト先頭で `_pinchSnapNow()` (0030 と同一機構を共有)、
+最後のイベントから 180ms のクワイエットタイマーで破棄→高精細へ settle。
+通常ホイール(パン)は非干渉。settle 後フレームは直接描画とピクセル一致
+(実測 diff=0)。
+
+## [1.7.90] - 2026-09-23
+
+**ADR-0032: ヒットテスト/マーキーのグリッド索引流用** — ADR-0016 の空間索引を
+pointer イベント駆動の2経路へ適用。マーキー選択は `pointermove` 毎の全走査を
+矩形近傍候補へ縮退 (完全包含シェイプのセルは必ず矩形内 → 結果は全走査と一致、
+3061シェイプ盤面で 200 ステップ **14.6ms→2.0ms、7.3×**)。`pickTop` は候補を
+`_grid.idx` 降順反復に置き換え、全シェイプ2回のフィルタ走査を解消。
+
+## [1.7.89] - 2026-09-23
+
+**ADR-0031: 画像バイト列の永続化層分離 (FT-15 ステージ1)** — `dataUrl.length>128`
+の画像を IDB レコードから切り離し、content-hash キーの `imgs` ストアへ
+(content-addressable, Git blob/tree と同型)。doc + `:prev` バックアップは
+同一 blob を共有し重複コピーを解消、doc レコード自体も画像分だけ縮小。
+衝突は `:1`,`:2` … の決定論チェーンで上書き不可能、孤立 blob は save 毎に GC。
+**ワイヤ形式 (ops/共有リンク/.board/history) は不変** — live shape は常に
+`dataUrl` を保持し、load/restoreBackup 時に再装着してから validShape を通す。
+注意: DB_VER 1→2 — 旧ビルドで開くと VersionError で空ボードに見える
+(データは残り、新ビルドで復元)。
+
+## [1.7.88] - 2026-09-23
+
+**ADR-0030: ピンチズームのスケールプレビュー** — 連続ピンチ中に残っていた最後の
+全面再描画発生源を解消。2 本指での最初の `zoomAt` が canvas を一度だけ
+スナップショット(`_pinchSnap` + 開始 viewport)し、以降のピンチフレームは
+シーン走査なしにジェスチャ蓄積変換でのスケール blit のみで即応答
+(地図/写真アプリの blurry-preview→crisp-settle 定石)。開始時のプリスティン
+バッファから毎回 blit するためブラーは累積しない。終了時
+(`_resetPinch` で指が 2 本未満)に破棄+全面再描画 — 終了フレームは直接描画と
+ピクセル完全一致(実測 diff=0)。
+
+## [1.7.87] - 2026-09-23
+
+**ADR-0029: 下書きペンの増分インクスタンプ** — ペン入力中の下書きがポインタ
+イベント毎に全点をベクトル再ストロークしていたのを、確定済みセグメントのみを
+オフスクリーン bitmap に焼き付けて blit + 末尾の生きている数セグメントのみ
+ベクトル描画に分割 (Excalidraw freedraw / Perfect Freehand 系の定石)。幅が
+安定したセグメントのみコミット (i ≤ n-4) するため見た目は不変、n=2000
+ストロークの追記フレームが ~0ms に。
+
+- `drawPenMaybeCached` が draft を `drawPenDraft` へ振り分け
+- `_inkSegDraw`/`_inkRebuild`/`_inkGrow`: 確定セグメントの単発スタンプ、
+  圧力極値更新・モードフリップ時のみ全体再構築、矩形拡張時は旧 bitmap を
+  `drawImage` 移植
+- ラスタ原点をデバイスグリッドへスナップ + 1:1 blit で AA レベル一致
+  (実測 diff=2px / 600点ストローク)
+
+## [1.7.86] - 2026-09-23
+
+**ADR-0028: パンのピクセル blit (露出帯のみ再描画)** — 世界座標系が一様に
+シフトするパンは ADR-0026/0027 の局所 damage では表現できず、各 pointermove に
+全面再描画が必要だった最後の大きな操作。`_lastVp` (前フレームの effective
+viewport) を記録し、zoom 不変の x/y 変化を検出したら `canvas` 自己 drawImage で
+保持ピクセルを device px 単位に丸めてシフトし、新たに露出する端の帯
+(最大2矩形) + 保留 damage のみ clip 再描画。
+
+実機検証 (400 rect + 10 pen, 15px/回 × 8 連続パン): blit+帯描画 ~0.1–0.2ms/
+フレーム (同盤面の全面再走査 ~2–6ms)。全面再描画との差分 0.31% は全て丸めに
+よる ≤0.5px のサブピクセル AA 縁差で、欠落・ゴースト・シームはなし (effective
+viewport が設計上 ≤0.5px ずれ、次の全面再描画で自然に精緻化される)。
+リサイズ時は `_lastVp=null` — バッキングストア再割当で保持ピクセルが消えるため。
+
+## [1.7.85] - 2026-09-23
+
+**ADR-0027: op 単位のダメージ伝播 (Store._apply / applyRemote の局所再描画)** —
+コラボレーション中の受信 op 一つ一つが `invalidate()` (= 全面再走査+全面再描画)
+を発行し、重い盤面ではピアの連続操作が受信側フレームを律速していた。
+`_apply` の冒頭で op が触り得る全 id/ペイロード図形の変異前 bbox、switch 後に
+変異後 bbox を収穫し、union を `invalidateDamage` へ (ADR-0026 の機構をそのまま
+利用)。`applyRemote` 末尾の `invalidate()` を除去 — リモート op が矩形 clip で
+局所再描画される。
+
+実機検証 (400 rect 盤面): `applyRemote(upd 移動)` → 542×432wu clip,
+`applyRemote(del)` → 142×132wu clip, いずれも全面再描画とのピクセル差分 **0**。
+union が viewport の 60% を超える op は全面再描画にフォールバック、収穫が空なら
+`invalidate()` — 「取りこぼしが絶対にない」側に倒した設計。undo/redo・ローカル
+commit も `_apply` 経由で damage を得る (呼び出し側の `invalidate()` は保守的に残置)。
+
+## [1.7.84] - 2026-09-23
+
+**ADR-0026: ドラッグ系ジェスチャの局所再描画 (drag-local damage rect)** —
+移動/リサイズ/回転/下書き(矩形系・線系・ペン)/消去ジェスチャの各 pointermove が
+全面再走査付き再描画を発行していた。Canvas2D はピクセルを保持するため、
+「変わった領域」を clip+局所再描画すればジェスチャ中は小矩形のみを更新すればよい。
+新 `invalidateDamage(worldRect)` が `_damage` へ累積 union (ジェスチャ中は縮小しない
+= 高速テレポートでも旧位置のゴーストなし) し、`draw()` はその矩形に clip して
+背景fill+シーンを局部再描画。damage は世界座標のため vp/zoom/DPR 変化は無関係
+(これらは全て `invalidate()` 経由で全面再描画+リセット)。
+
+実機検証 (400 rect + 15 pen の盤面, headless Chrome, `frame()` 同期駆動):
+move-drag 20 回の damage 描画が ~0.1ms/frame、ジェスチャ末尾の damage フレームと
+直後の全面再描画のピクセル差分 **0**。グリッドがドラッグ中 stale (ADR-0009) の
+ため、damage パスではドラッグ対象シェイプを `_drawIter` に強制 include
+(z 順は `state.shapes` 走査で保持)。FT-13 (dirty-rect) の主流派生導。
+
+## [1.7.83] - 2026-09-23
+
+**ADR-0025: ミニマップのコンテンツビットマップキャッシュ** — `Minimap.draw()` が
+呼ばれるたびに全シェイプを縮小レンダリングし直していた (重い盤面では
+パン/ズーム毎に全ペン点再走査)。シェイプ描画部分は `_gridVer` でメモ化された
+160×100 オフスクリーンビットマップへ、ビューポート矩形のみ毎回描画へ分離。
+パン/ズーム・ホバー等 `_gridVer` 不変のフレームでは全シェイプ走査が消え、
+`drawImage + strokeRect` のみになる。無効化経路は `_gridVer` (シェイプ変更)、
+`applyTheme` (配色)、`img.onload` (非同期ロード完了) の3系統を網羅。
+
+### Changed
+- ミニマップ描画を `_renderScene()` (キャッシュ) + ビューポート矩形に分割
+
+## [1.7.82] - 2026-09-23
+
+**ADR-0024: レイヤードキャンバス — オーバーレイ層の分離** — シーン (#c) と
+エフェメラルな UI クローム (選択枠・ハンドル・マーキー・ガイド・ピアカーソル/
+選択・レーザー・検索ハイライト・空盤面ヒント) を別キャンバス #ov に分離
+(Excalidraw の static/interactive 2 層と同型)。クロームだけの更新で全シーン
+再ラスタライズが走っていた無駄を解消: マーキードラッグ・ピアカーソル・
+レーザーは `invalidateOverlay()` でオーバーレイのみ再描画。実測: 重い盤面での
+マーキードラッグ 30 move でシーン描画 30→0 回。プレゼン時は #ov も #c と共に
+fixed 昇格しレーザーが背面に隠れない。描画に影響しない `state.hover` 変更の
+再描画要求も除去。
+
+### Changed
+- 描画を `draw()` (シーン) / `drawOverlay()` (クローム) に分割、フレームは
+  2 フラグ (`needsRender`/`needOverlay`) で駆動
+
+## [1.7.81] - 2026-09-23
+
+**ADR-0023: ペン入力の predicted-events 先行インク** — 下書きストロークの末尾に
+`getPredictedEvents()` の最後の予測点への1セグメントを描画し、スタイラスの
+見た目ラグを ~1フレーム短縮。予測点は `_penPred` (render-only のモジュール
+変数) に保持し `draft.pts` を汚染しない — Store/IDB/共有ペイロードに混入
+しない。非対応ブラウザでは完全な no-op。
+
+### Added
+- `getPredictedEvents` による予測インクテール (Chrome; 他ブラウザは無視)
+
+## [1.7.80] - 2026-09-23
+
+**ADR-0021: 画像キャッシュの O(1) フィンガープリントキー** — `_imgCache` が
+dataURL 本体 (最大 ~4MB) を Map キーにしていたため、可視画像ごとに毎フレーム
+文字列全体のハッシュが走っていた (メイン+ミニマップ)。mimeヘッド+長さ+末尾64
+文字の `_imgKey()` に置換 — キー計算が入力長に依らず一定 (~100 chars)。LRU
+セマンティクスと dedup 効果は不変。
+
+**ADR-0022: 画像インポートの条件付きダウンスケール** — ドロップ/ペーストの
+2経路に重複していた ingest ロジックを `_imgImportFile(f, cb)` に統合し、
+2048px 超の画像を `image/webp` q0.85 に縮退。WebP 非対応・元より増大する
+場合は元の dataURL を維持 (劣化しない条件付き最適化)。表示サイズ 400wu に
+対して数 MB のフル解像度が IDB・op history・共有リンクに乗っていた問題を
+緩和。実測: 4000×3000 JPEG の dataURL 1.63MB → 364KB (4.5×)。
+
+### Performance
+- `_imgKey`: per-frame の multi-MB 文字列ハッシュを排除 (画像ボードで最大
+  数ms/frame)
+
+### Fixed
+- 画像取り込み2経路 (drag-drop / paste) のコード重複を解消
+
+## [1.7.79] - 2026-09-23
+
+**ADR-0020: オブジェクトスナップのエッジ索引** — `objectSnap` (move) と
+`resizeSnap` (resize) が毎 pointermove に `state.shapes` を全走査してスナップ
+対象エッジ (左/中央/右 × 上/中央/下) を構築していた。
+
+### Performance
+- `_snapIndex`: エッジ座標を x/y 軸それぞれソートした索引を `_gridVer`
+  (新設の変異カウンタ — 全変異が通る `_invalidateGrid` でインクリメント) +
+  除外キーで有効性判定し、ジェスチャ/変異ごとに1回だけ構築。照会は二分探索
+  `_snapNear` で O(log n)
+- `snapBox` の公開インターフェースは維持 (内部で索引化)。move/resize 両
+  ドラッグ経路が索引経路に
+- 実測 (pen 4000 + rect 1000): resizeSnap **1.08ms → 0.002ms** (≈540×)、
+  総当たり結果と 40/40 一致
+
+## [1.7.78] - 2026-09-23
+
+**ADR-0019: ペン bbox のメモ化** — `G.bbox` がペンシェイプの包絡矩形を毎回全点
+走査 (O(pts)) していた。`inView()` の可視判定とミニマップで ~9,700 コール/
+フレームに達し、ADR-0018 適用後の draw() で支配コストになっていた。
+
+### Performance
+- `_penBboxCache`: ADR-0018 と同じ O(1) シグネチャ (pts 参照 + 長さ +
+  先頭/中央/末尾の絶対座標 + size) で包絡をメモ化。in-place 変異
+  (translate/flip) も検知、観測上純粋で `state` 不変
+- 実測 (pen 4000 + rect 1000、全可視ズーム): draw() p50 **15.6ms → 6.9ms**。
+  ADR-0018 適用前から累計 **175ms → 6.9ms (≈25×)**
+- ミニマップ描画 (全シェイプの bbox 走査) も同じ恩恵を受ける
+
+## [1.7.77] - 2026-09-23
+
+**ADR-0018: ペンストロークのビットマップキャッシュ** — `drawPen` は可変幅インクのため
+毎フレーム全ポイントを再ラスタライズしていた (penWidths + セグメント毎 stroke)。
+コミット済みストロークは op 間で不変なので、オフスクリーン canvas に一度描き
+`drawImage` で使い回す。
+
+### Performance
+- `drawPenMaybeCached`: メイン canvas のペン描画をビットマップ経路に
+  (Excalidraw/Konva の shape レベルラスタライズ先例)。実測 draw() p50:
+  4000 ペン全可視で **175ms → 15ms (11.5×)**
+- 有効性は O(1) シグネチャ (pts 参照 + 長さ + 先頭/中央/末尾の絶対座標 +
+  stroke + size) で判定 — `Shape.translate`/`flipShape` の in-place 変異も検知。
+  ミス時はそのフレームはベクトル描画にフォールバックし、シグネチャが安定した
+  次フレームで一度だけ再ラスタライズ (ドラッグ中の canvas churn を回避)
+- ラスタライズ解像度は zoom 連動 (`zoom*DPR` を 0.25..2 にクランプ) —
+  縮小表示で余分なピクセルを食わない。連続ズームでは 1.5× バケット単位でのみ
+  再レンダー
+- LRU + ピクセル予算 12M px (≈48MB RGBA)。エクスポート・ミニマップ・
+  高倍率 (zoom*DPR>4)・draft は従来のベクトル経路で忠実性維持
+- 同一盤面のスクリーンショット差分 (zoom 0.8): 差分画素 66/737,280 = **0.009%**
+  (ストローク縁 AA リサンプルのみ)
+
+## [1.7.76] - 2026-09-23
+
+**FT-20 (ADR-0017): WebRTC 接続失敗のユーザーフィードバック** — 手動シグナリングで
+トークン交換後に ICE が失敗しても、DataChannel が一度も `open` しない場合は
+`onclose` も発火しないためユーザーは無反応で待ち続けていた。
+
+### Fixed
+- `_wrtcInit` で `rtc.onconnectionstatechange` を配線し、`connectionState==='failed'`
+  で `connectFailed` トースト(ja/en)を表示 + ピアを掃除
+- open 後の failed → `dc.onclose` が続く経路では `_rtcConnFailed` フラグで
+  `disconnected` の二重トーストを抑制。`disconnected` 状態(一過性 ICE 再試行)は
+  トースト対象外
+- 実ブラウザ検証(playwright, 同機2ページ loopback DataChannel): 接続→
+  `Connected`、failed 注入→`Connection failed` 単発、通常 close→`Disconnected`
+  の3ケースを確認
+
+## [1.7.75] - 2026-09-23
+
+**FT-14 (ADR-0016): 空間索引を描画パスに拡張** — `draw()` が毎フレーム全シェイプを
+走査していた O(n) 処理を、`pickTop` と同じ均一グリッドのビューポート矩形クエリで
+粗選する2段構成に変更。2000 図形超で顕在化する走査コストを解消。
+
+### Changed
+- `_buildGrid` が `idx`(shape→z位置)を併せて構築し、`_gridRectCandidates` が
+  z順ソート済みの候補配列を返す。`draw()` は候補のみを走査(`_drawIter`)し、
+  `inView()` が最終判定 — 描画結果は従来と完全に同一
+- `G.bbox` を持たないシェイプ・8セル超の巨大シェイプは `big` で常時候補に
+- 小盤面(`state.shapes.length<=40`)は従来通り線形走査(`pickTop` と同閾値)
+
+### Fixed
+- ⇧1 (fitToContent) が US/JIS 配列で一度も発火していなかった — Shift 押下時の
+  `e.key` は `'1'` ではなく `'!'` を返すため。`k==='1'||k==='!'` で両対応
+
+### Performance
+- 走査コスト: 5000 図形(rect+pen 混在)で 2.90ms → 0.004ms / frame
+  (マイクロベンチ ~727×)。`_buildGrid` は変異時に1回のみ(9.75ms)。
+- 実ブラウザ計測(file:// headless Chrome, rAF 計時): 可視描画なし領域で
+  frame() 平均 4.90 → 3.75ms
+
+## [1.7.74] - 2026-09-23
+
+**FT-10: axe-core による本格自動 a11y 監査を実施し、検出された全違反を修正** —
+依存ゼロの静的検証では届かなかった ARIA ロール整合性・計算済みスタイルの領域を
+カバー。初期 / ヘルプ / Share / コンテキストメニュー / エクスポートメニュー /
+ダークテーマの 6 状態で Playwright(システム Chrome, headless) + `axe.run()`
+を実行。検出 4 ルールをすべて修正し再実行で **violations = 0**。
+
+### Fixed (a11y, axe-core 検出)
+- `<nav class="toolbar">` の `role="toolbar"` を除去 — nav に許可されないロールで、
+  ランドマーク性も失わせていた(`aria-allowed-role` + `region` 双方の原因)
+- ステータスバー `.lbl` の `opacity:.7` を除去 — 実効コントラストが 2.71:1 に
+  低下していた(本来の `--ink-3` = 4.7:1 AA に復帰)
+- `meta viewport` から `user-scalable=no` を削除 + body の `touch-action:none` を
+  除去 — ピンチズーム禁止の解除。canvas#c 側の `touch-action:none` は保持し、
+  盤面ジェスチャは従来通りアプリ内ズームが担う
+- ランドマーク漏れを解消: `#minimapWrap` に `role="navigation"`、`#ctx` を
+  `<main>` 内へ移動(`region` ルール対応)
+- `.brand` の冗長 `aria-label` を除去(可視テキストあり)、`#peerStack` に
+  `role="group"` を付与(`aria-prohibited-attr` incomplete の解消)
+
+### Docs
+- `docs/a11y-audit-2026-07.md` に「axe-core 追監査」節を追記(検出・修正・再実行
+  結果、残る incomplete = kbd 字形類のレビュー判断)。FT-10 を DONE 化。
 
 ## [1.7.73] - 2026-09-23
 
@@ -1840,6 +5989,498 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
   userChoice 後クリア、null 時 no-op を各々失敗→成功で確認。
 
 ## [Unreleased]
+
+## [1.7.671]
+
+- **docs**: spec §14.3.1 P3 行を系列検証の完走状態へ同期 (タイマ系/drop text cascade 消化、残はレンダリング実体+FileReader のみ) (ADR-0645)
+
+## [1.7.670]
+
+### ドキュメント
+
+- **ADR-0644**: イベント系列 harness の運用規約 — fire1/fireKey1 原則 (stale インスタンスの commit が共有 BC 経由で現行状態へ混入するモデル)、reset() の非対称 (editing/viewport/hover/measure は戻らない)、snapPt 許容、matches stub、appendChild スパイ、window リスナ直接 dispatch、ライブ参照の取り方を固定
+- spec.md §14.3.1 P3 の残をタイマ系/レンダリング実体へ絞り込み
+
+## [1.7.669]
+### 修正
+- **quick-connect が導入時から一切発火していなかった実害を修正** — `_qdotAt` (PD 時のドット掴み判定) が `_qconnShape` の `!ptr.down` ガードを共有しており、pointerdown で `ptr.down=true` が tool dispatch より先に立つため常に null を返し、エッジ中点ドットを掴んでも `pickOrMarquee` にフォールしていた。`_qconnShape(g)` を引数化し、`_qdotAt` は `g=1` で `ptr.down` を免除 (overlay のドット描画側は従来通りドラッグ中に非表示) (ADR-0643)。
+
+### テスト
+- 実イベント経路で quick-connect 双端束縛・p2 端点再結合・click-click ラインモード・⇧click 選択トグル・テキストドロップを固定 — qconn の実害回帰を検出したものと同じ系列検証の継続 (ADR-0641)。`fire1` で現インスタンスのみ dispatch し、stale リスナのブロードキャスト逆流を隔離。
+
+## [1.7.668]
+### テスト
+- spec §14.3.1 P3「ポインタ系列の実検証」を前進 — fake DOM の canvas 要素を per-id シングルトン化し `addEventListener` を `_L` マップに記録、合成 `pointerdown/move/up` を実リスナ (capture→bubble 順) へディスパッチするハーネスを新設。ペンストローク・選択ドラッグ・右ボタン非 arm ガードを実イベント経路で検証 (ADR-0641)。
+
+## [1.7.667]
+### 修正
+- プレゼン中の入力経路が pointerdown/keydown しかゲートされていなかった問題を修正 — `dblclick` (編集 overlay が開く)、`contextmenu` (編集メニューが開く)、`wheel` / タッチピンチ / Safari gesture 系 (フィット済みフレームをずらす) 全てに `_pA()` ゲートを追加 (ADR-0640)。
+
+## [1.7.666]
+### 修正
+- プレゼンテーションが視覚のみで SR へ何も通知しなかった問題を修正 — 突入 (`presEnter` + フレーム数)、各フレーム遷移 (ラベル + `i/n` カウンタ)、終了 (`presExit`) を `UI.announce` でライブリージョンへ (ADR-0639)。
+
+## [1.7.665]
+### ドキュメント
+- architecture.md のジェスチャライフサイクル節に「ジェスチャ×外部変化の不変条件」節を追加 — overlay 突入のキャンセル先行 (ADR-0634/0637)、orig.id による対象解決 (ADR-0635)、cancel 時のピンチ掃除 (ADR-0636) を規則として明文化 (ADR-0638)。
+
+## [1.7.664]
+### 修正
+- ジェスチャ中に Enter でテキスト/ラベル編集 overlay が開くと、ドラッグが overlay 裏で継続しリリース時に不可視のコミットが発火し得た問題を修正 — `editSelectedShapeKbd` 冒頭で `_cancelPointerGesture()` (ADR-0634 と同型経路) (ADR-0637)。
+
+## [1.7.663]
+### 修正
+- Esc 等のジェスチャキャンセルが `_pointers`/ピンチ状態を掃除しなかったため、二本目の指を離した瞬間に取りこぼし `pointerup` から stray ズームコミットが発火し得た問題を修正 — `_cancelPointerGesture` 末尾で `_clearTouchState()` を呼び統一掃除 (ADR-0636)。
+
+## [1.7.662]
+### 修正
+- resize/rotate ジェスチャ中に選択が変わると (⌘A・リモート hide/del 等)、ドラッグ適用・コミット・キャンセル復元の対象が「現在選択の先頭」にすり替わり、**別図形へ誤った before/after を書き込み得た**問題を修正 — 4 箇所全てを gesture-start の `ptr.*Orig.id` から `byId` 解決へ統一 (ADR-0635)。
+
+## [1.7.661]
+### 修正
+- ドラッグ中にプレゼンへ突入した場合、ポインタキャプチャが継続したまま overlay 裏でジェスチャが進行し、離した瞬間に不可視の move/resize op がコミットされ得た問題を修正 — `Presentation.enter()` で `_cancelPointerGesture()` を呼び進行中ジェスチャを畳んでから突入 (ADR-0634)。
+
+## [1.7.660]
+### ドキュメント
+- architecture.md に ADR-0631 (resize debounce) / ADR-0632 (minimap cancelNav) を同期 — ジェスチャライフサイクル節の共通掃除口 `_clearTouchState` のパージ対象と、DPR 節の再確保コスト+debounce 契約を明文化 (ADR-0633)。
+
+## [1.7.659]
+### 修正
+- ミニマップのドラッグスクラブ状態 `_mmNav` が hidden/pagehide でクリアされない問題を修正 — bfcache 復帰後にポインタが離れても次の pointermove でビューポートがジャンプし得た。`_clearTouchState` から `Minimap.cancelNav()` を呼びジェスチャライフサイクル系と揃える (ADR-0632)。
+
+## [1.7.658]
+### 修正
+- window/visualViewport/orientation の resize を 150ms trailing-edge debounce 化 — OS ウィンドウドラッグや iOS URL バーアニメーションのイベント嵐で、canvas バッキングストア (4K で ~33MB×2) がピクセル毎に再確保されていた (ADR-0631)。
+
+## [1.7.657]
+### テスト
+- ADR-0629 の実動作検証を追加 — `_onRecv` の img 経路で (a) `_imgPending` 外の parked 図形 (evicted straggler) が `s.img===key` で解決、(b) pending 追跡中の図形が主経路で解決+クリア、の4 assert (ADR-0630)。
+
+## [1.7.656]
+### 修正
+- `_imgPending` の 256 上限で追い出された parked 図形が、blob 到着後も永続プレースホルダーになる問題を修正 — 画像 blob 到着時に盤面を `s.img===key` で直接走査し、保留リスト外の参照も解決 (ADR-0629)。
+
+## [1.7.655]
+### ドキュメント
+- architecture.md のキャッシュ節に GPU コンテキストロスト系を追記 — `_ctxUp` のパージ対象 (_penCache/_inkD/minimap _scene) と、新規 GPU ラスタキャッシュ導入時の不変条件を明文化 (ADR-0628)。
+
+## [1.7.654]
+### 修正
+- canvas の GPU コンテキストロストに耐性を付与 — contextlost を preventDefault で restore 許可、contextrestored で `_penCache` (ビットマップが空転送される)・`_inkD` (デッド ctx への描画)・minimap `_scene` (stale `_sceneVer` でブランク残留) をパージして `_iv`/`_ivO` 再描画。従来は GPU リセット後に全図形がブランク化し得た (ADR-0627)。
+
+## [1.7.653]
+### 修正
+- ローカルの全消去 (`clear`) がピアへ伝播しなかった divergence を修正 — `_slimOp` が wire 上 `{op:'replace',after:[],afterWc:{}}` へ翻訳し、`_lastRep` 因果順序 (0613-0619) をそのまま継承。sender 側 `_apply` 'clear' forward も同じ clock を `_lastRep` に記録し marker 非対称を解消 (ADR-0626)。
+### ドキュメント
+- spec.md の REMOTE_OPS 列挙を実装へ同期 (addMany 欠落・clear の誤記載を修正) + replace 節の stale コメント2件を除去 (ADR-0626)。
+
+## [1.7.652]
+### 修正
+- `_slimOp` が wire op から undo 専用フィールドを剥離 — `wc` (del/clear の clock マップ、受信側が再構築するためデッドウェイト ~30B/図形)、`origSel` (ungroup/beautify 経由の選択 id 漏洩)、`moved` (move の undo 補助) を除去 (ADR-0625)。
+
+## [1.7.651]
+### ドキュメント
+- architecture.md の選択不変条件に **dead-id parity** を追記 — 選択由来リストは dead id を含まない (`id=>{const s=byId(id);return s&&_ul(s)}` フィルタ形、`_sb()` の `map(byId).filter(Boolean)` 供給源閉塞、ADR-0624)。
+
+## [1.7.650]
+### 修正
+- 選択由来 id リストの dead-id 衛生 — `_sb()` が `map(byId)` で残していた `undefined` を供給源で `filter(Boolean)` 除去 (`_selUL()` の `_ul(undefined)` TypeError 経路を閉塞)、`unlockedSelectionIds`/`nudgeSelection` の `!byId(id)?.locked` フィルタを `s&&_ul(s)` 形へ統一 (group/nudge op へのファントム id・before スナップショット混入を排除、ADR-0623)。
+
+## [1.7.649]
+### ドキュメント
+- spec.md の op 表・受信検証 MUST を ADR-0613-0619 に同期 — `replace` を「local 専用・非 REMOTE_OPS」とする旧規定を wire 収束規則 (`_lastRep`/`rep`/`nameTs` causal marker) へ置換 (ADR-0622)。
+
+## [1.7.648]
+### Fixed
+- ジェスチャ中に remote del/clear/replace で消えた図形が `move` コミットに残り、phantom history エントリ + 無意味なピア送信が発生していた問題を修正 — コミット集合を「生存 + 非ロック」で構成 (`_gresizeCommit`/`_grotCommit` と同じ整合) (ADR-0621)。
+
+## [1.7.647]
+### ドキュメント
+- architecture.md の wire ライフサイクル節に 'replace' 収束系 (`_lastRep` 全順序 marker・snapshot `rep`/`nameTs` 因果順序・undo 再ブロードキャスト) を同期し、ルーム切替 hygiene の持ち越し禁止リストに causal marker を追記 (ADR-0620)。
+
+## [1.7.646]
+### Fixed
+- ルーム切替 (`Net.init`) で因果 marker (`_lastRep`/`_nameTs`) が持ち越され、新ルームのスナップショット/改名が旧ルームの時計より「古い」として永久に棄却されてしまう問題を修正 — wire ドメイン状態として `seenOps` と同じくリセット (ADR-0619)。
+
+## [1.7.645]
+### Fixed
+- スナップショットに改名時計 `nameTs` を同梱し、採用側で LWW ゲート — ローカル改名より古い世代のスナップショットが空盤面採用経路で docName を上書きする残穴を閉塞 ('name' メッセージと同じ収束規則に統一) (ADR-0618)。
+
+## [1.7.644]
+### Fixed
+- スナップショットに送信側の最新 swap marker (`rep`) を同梱し、受信側の `_lastRep` が厳密に新しい場合はマージ/適用を棄却 — 送信側が swap 適用前に組み立てたスナップショットが受信側の post-swap 盤面へ pre-swap 図形を再追加する因果順序ホールを閉塞。等しい marker は同世代としてマージ継続、新しい `rep` は marker を採用 (ADR-0617)。
+
+## [1.7.643]
+### Fixed
+- ローカルの 'replace' commit (共有リンク/.board 取込) が `_recordCommitted` 経由で `_apply` を通らず `_lastRep` marker が立たず、直後に届く古いリモート全置換が棄却されず全ピアが発散する問題を修正 — `_recordCommitted` で marker を記録 (ADR-0616)。
+
+## [1.7.642]
+### Fixed
+- 'replace' (共有リンク/.board 取込の全置換) の undo がピアへ伝播せず、undo した側だけ旧盤面へ戻り永久に発散する問題を修正 — `_undoWire` が `{op:'replace',after:op.before,afterWc:op.wc}` を返し、ADR-0614 の新 clock 勝者規則で全ピアが復元盤面へ収束。undo/redo の `_lastRep` marker も新 clock へ進めローカル/リモートの不一致を防止 (ADR-0615)。
+
+## [1.7.641]
+### Fixed
+- 2ピアが同時に全置換 (共有リンク/.board 取込) すると各々が相手の盤面を適用して交差発散する問題を修正 — 最後に適用した 'replace' の clock を `state._lastRep` に保持し、到着したリモート swap がそれより新しくない限り棄却。`clockNewer` の (ts,peer,seq) 全順序で全ピアが到着順に関わらず同一の勝者を選ぶ (ADR-0614)。
+
+## [1.7.640]
+### Fixed
+- 共有リンク/.board/excalidraw 取込の全置換 op ('replace') が `REMOTE_OPS` で棄却され、接続中のピアへ届かず盤面が永久に発散していた問題を修正 — 'replace' を wire 許可集合へ追加し、`after`/`afterWc` の payload 検証・`_slimOp` (before/wc/origSel を帯域外へ)・`_attachOp` (img 参照の復元)・適用直前の `Persist.saveBackup` + `peerReplaced` トーストで wipe 安全性を確保 (ADR-0613)。
+- 同数の全置換 (before/after の図形数一致) で `byId` のサイズガードが stale index を返し続ける潜在バグを修正 — 'replace' 適用後に `_iG()` で id index/空間グリッドを再無効化 (同 ADR)。'clear' は引き続き wire 拒否。
+
+## [1.7.639]
+### Fixed
+- Alt-Tab 等のウィンドウ blur / モバイルのバックグラウンド移行 (pointerleave 非発火) でもピアカーソルが凍結残存していた問題を修正 — blur / visibilitychange→hidden の両経路で `sendCursorHide` (ADR-0612)。
+
+## [1.7.638]
+### Fixed
+- ポインタがキャンバスを離れてもリモート盤面にピアカーソルが最終位置で凍結残存していた問題を修正 — `pointerleave` で `cursor h:1` を送出し受信側で `p.cursor` をクリア (ADR-0611)。
+
+## [1.7.637]
+### Changed
+- `roundShapesForExport` の `o.pts` 丸め二重処理 (デッド重複) を除去 — ~90B 回収 + エクスポート経路の不要走査を解消 (ADR-0610)。
+
+## [1.7.636]
+### Fixed
+- リモートのドキュメント改名が #docName 入力中の文字列 (IME 合成中含む) を上書きして消失させる問題を修正 — フォーカス中は input 表示を保持し、blur で LWW 解決値へ同期 (ADR-0609)。
+
+## [1.7.635]
+### Fixed
+- bfcache 復帰/バックグラウンド往復で `_pointers` の stale エントリが残り、復帰後の初タッチがピンチと誤判定されていた問題を修正 — `_pointers`/pinch 状態の掃除を `_clearTouchState()` に集約し hidden/pagehide 経路へも適用 (ADR-0608)。
+
+## [1.7.634]
+### Fixed
+- モバイル長押しでコンテキストメニューを開いた際、指を離した合成 click が真下の項目を誤発火したり、下端クランプ時に合成 mousedown がメニューを即座に閉じる問題を修正 — オープン直後 400ms のゴーストイベントを呑む (ADR-0607)。
+
+## [1.7.633]
+### Fixed
+- プレゼン中のウィンドウリサイズ/モバイル回転/DPR 変化でフレームのズームフィットが外れていた問題を修正 — `Presentation.refit()` がリサイズ毎に現在フレームへ再フィット (ADR-0606)。
+
+## [1.7.632]
+### Changed
+- architecture.md を ADR-0602/0603/0604 の不変条件へ同期 — op 配列上限=盤面上限規則、frag ストリーム n>384 両端ガード、hidden/pagehide のジェスチャ取消経路を文書化 (ADR-0605)。
+
+## [1.7.631]
+### Fixed
+- モバイルのバックグラウンド化/bfcache 退避で pointerup を喪失し、ドラッグ状態 (ptr.down) が復帰後も残存していた問題を修正 — visibilitychange→hidden と pagehide で window blur と同じく `_cancelPointerGesture` を flush 前に実行 (ADR-0604)。
+
+## [1.7.630]
+### Fixed
+- 24MB 結合上限 (384 フラグメント) を超える巨大 op/スナップショットを送信側が無警告で送出し、全受信者が無通知棄却して分岐していた問題を修正 — 送信時は `syncTooLarge` トーストで警告、受信側は宣言 n>384 を明示棄却 (ADR-0603)。
+
+## [1.7.629]
+### Fixed
+- 501 図形超の一括 op (全選択削除・整列・グループ等) がリモート受信側の `MAX_OP_SHAPES=500` ガードで無通知棄却され、送信者と受信者が永久分岐していた問題を修正 — op 配列上限を盤面上限 `SHARE_MAX_SHAPES` に一本化、DoS バウンドは従来通り 24MB wire 上限 (ADR-0602)。
+
+## [1.7.628]
+### Fixed
+- 1図形の描画例外が z 順で後続の全図形を毎フレーム描画不能にしていた問題を修正 — draw() の両ループ (frame/非frame) と下書きで per-shape try/catch (ADR-0601)。
+
+## [1.7.627]
+### Changed
+- architecture.md / spec.md に束縛コネクタ×ダメージ矩形の不変条件を追記 — 変形に追従するコネクタの掃引領域を全ダメージ経路が含める規則を文書化 (ADR-0600)。
+
+## [1.7.626]
+### Fixed
+- 単一形状のリサイズ/回転ドラッグで束縛コネクタが残像を残す問題を修正 — ADR-0597 と同型で、単一ドラッグ経路のダメージ矩形にも束縛コネクタの掃引領域を含めた (ADR-0599)。
+
+## [1.7.625]
+### Fixed
+- リモート op で束縛コネクタが残像を残す問題を修正 — `applyRemote`→`_apply` のダメージ収穫が op 対象 id のみで、束縛先図形が動いた際に追従変形するコネクタの掃引領域が含まれていなかった (ADR-0598)。ローカル側は ADR-0597 で対応済。
+
+## [1.7.624]
+### Fixed
+- 束縛コネクタがドラッグ中に残像を残す問題を修正 — 移動/群リサイズ/回転のダメージ矩形が対象図形のみで、束縛端が追従して変化するコネクタの掃引領域が含まれていなかった (ADR-0597)。
+
+## [1.7.623]
+### Docs
+- hidden parity 規則を architecture.md/spec.md に拡張同期 — 派生レンダリング面 (グループハロー・エクスポート bbox・excalidraw・ミニマップ) は `_sv` フィルタ、データ保持経路 (.board/.drawio) は例外 (ADR-0592–0595) (ADR-0596)。
+
+## [1.7.622]
+### Fixed
+- ミニマップが非表示図形を描画していた問題を修正 — キャンバスで見えない内容がミニマップにレンダリングされ、bbox も膨らませていた (ADR-0595)。
+
+## [1.7.621]
+### Fixed
+- .excalidraw エクスポートが非表示図形を含めていた問題を修正 — excalidraw に非表示概念がなく、不可視内容が可視要素として漏洩していた (ADR-0594)。
+
+## [1.7.620]
+### Fixed
+- PNG/SVG エクスポートの viewBox/bbox が非表示図形を含んでいた問題を修正 — 見えない内容の位置が余白として漏洩していた。可視図形のみで包絡を計算 (ADR-0593)。
+
+## [1.7.619]
+### Fixed
+- 全メンバー非表示のグループにもハロー (点線枠) が描かれていた問題を修正 — `_grpMapGet` で非表示メンバーを除外し、可視メンバーのみの包絡に (ADR-0592)。
+
+## [1.7.618]
+### Fixed
+- 「結合を解除」で端点がジャンプする問題を修正 — 束縛中の `x1`/`y1` は束縛先の移動・gsnap/align 等で乖離したままなのに、unbind が生の格納座標を残していた。`_cE` で解決済み端点へ凍結するよう変更し、解除後も見た目位置を維持 (ADR-0591)。
+
+## [1.7.617]
+### Test
+- `exportScale` の実動作テスト — 小盤面は所望スケール維持、巨大盤面は 16384px 辺上限/面積上限でクランプ (空白化しない)、退化 bbox で NaN にならないことを assert (ADR-0590)。
+
+## [1.7.616]
+### Docs+Test
+- architecture.md に「コネクタ束縛と変換」節 — `a`/`b`/`aF`/`bF`/`labelPos`/`way`/`bend`/`cbend` × translate/flip/reverse/rotate/grot/gresize の不変条件行列 + `connClears`・選択外コネクタ同梱規則を文書化 (ADR-0589)。
+- 各変換経路が担当するアンカー prop のリマップ実装を assert するソースピン (9件) — 将来の変換追加がアンカーを壊すのを防ぐ。
+
+## [1.7.615]
+### Fixed
+- 選択外のコネクタが結合先(選択内)を持つ場合、結合先 extent の反転でアンカー比率 f→1−f の意味が変わるのに `aF`/`bF` が未ミラーで反対辺へ跳ぶ問題を修正 — ADR-0584 の `flipIds` ゲートを拡張し、選択外コネクタも分数ミラー + before/after に同梱 (ADR-0588)。
+
+## [1.7.614]
+### Fixed
+- 回転ノブのドラッグ (grot) で結合先を回転しても `aF`/`bF` が未リマップのまま端点が別辺へ滑る問題を、ADR-0586 と同じ変換で修正 — ジェスチャ開始時にアンカー原値を `ptr.gAnc` へ保存し毎フレーム原値から再計算してドリフト防止、コミットは before/after にコネクタ分を同梱、キャンセルも原値復元 (ADR-0587)。
+
+## [1.7.613]
+### Fixed
+- 結合先図形の回転で `aF`/`bF` (端点アンカーの結合先 extent 内比率座標) が未リマップのまま、端点が結合先の別の辺へ滑る問題を修正 — アンカー点を図形と同じ変換 (中心軌道+自転) で回転し新 extent へ再正規化 (ADR-0586)。
+
+## [1.7.612]
+### Fixed
+- コネクタの方向反転 (reverseConn) で `cbend` (曲線の垂直符号オフセット) が未変換のまま、弓なりが反対側へ映る問題を修正 — 方向反転では垂直オフセットの向きが逆転するため符号反転して同一曲線を保持。way/labelPos と同じ見た目保持の方針に統一 (ADR-0585)。
+
+## [1.7.611]
+### Fixed
+- コネクタと結合先を同時に反転すると `aF`/`bF` (結合点の結合先 bbox 内比率座標) が未ミラーのまま、端点が結合先の反対辺へ飛ぶ問題を修正 — 結合先が実際に反転される (選択内・非ロック) 時のみ比率を 1−f へ変換 (ADR-0584)。
+
+## [1.7.610]
+### Fixed
+- コネクタの水平/垂直反転で `labelPos` (経路パラメータ t) が未変換のまま、ラベルが反対端へ映る問題を修正 — flipShape で `1-t` へ反転し見た目の位置を保持 (ADR-0583)。
+
+## [1.7.609]
+### Fixed
+- テキスト/ラベル編集中にプレゼンを開始すると、overlay の下に見えないエディタが残り blur 時に入力が裏でコミットされる問題を修正 — `Presentation.enter()` 冒頭で `_cxO()` (ADR-0582)。
+
+## [1.7.608]
+### Fixed
+- ドキュメント名の同時改名が着順依存で収束しなかった問題を LWW 化 — `name` メッセージに `ts` を同梱し `_nameTs` 未満の遅到着 rename を棄却 (ADR-0581)。旧形式メッセージ (ts なし) は従来通り受理して後方互換を維持。
+
+## [1.7.607]
+### Refactor
+- コメント尾のガード付き一括刈り込みで ~17.9KB 回収 (raw 524,269→506,241B、余白 ~18KB) — ピン済み文字列・URL・バナー・今季 ADR 参照を除外して長い説明コメントのみ短縮 (ADR-0580)。
+
+## [1.7.606]
+### Docs
+- research-improvements.md の陳腐化した「未実装」記述3件を実装済み ADR 参照へ同期 — filled-outline パス (ADR-0046)、`DOC_KEY:prev` 系のセッション間安全網 (ADR-0004)、offscreen DOM ミラー (ADR-0041) (ADR-0579)。
+
+## [1.7.605]
+### Tests
+- wire 層の残存未ピンガードを回帰固定 — `_fragIn` の重複 seq スロット無視と `_dcQ` requeue 4096 上限 (ADR-0578)。wire 監査スイープの結論として全受信経路のガードがピン済みになった。
+
+## [1.7.604]
+### Docs/Tests
+- architecture.md / spec.md にプレゼンス描画の hidden parity (ピア選択アウトラインも `visible:0` を除外) を同期 + ADR-0576 ソースピン追加 (ADR-0577)。
+
+## [1.7.603]
+### Fixed
+- ピア選択アウトラインが `visible:0` 図形の位置/サイズを他者へ可視化していたのを修正 (ADR-0576) — `drawPeerSelections` の byId ガードに `_hd` を追加し hidden parity をプレゼンスにも適用。
+
+## [1.7.602]
+### Fixed
+- ドラッグ中の ⌘Z/⌘Y で undo/redo がジェスチャを跨いで適用され、`dragStartShapes` の before スナップショットと実状態が食い違う op が記録され得たのを修正 (ADR-0574) — Esc と同じく先に `_cancelPointerGesture()`。
+- `_teFollow` が hide/lock で overlay を畳む際 `_iv()` 未呼出で、編集中 skip されていた本文が次の無効化まで描画されなかったのを修正 (ADR-0575、Devin Review 指摘)。
+
+## [1.7.601]
+### Docs
+- spec.md §5 に編集 overlay の非到達化規則を追記 — 対象図形の del/hide/lock で overlay が畳まれる (ADR-0573、0559/0569/0572 の仕様化)。
+
+## [1.7.600]
+### Fixed
+- 編集中図形が remote lock / ⌘⇧L でロックされても overlay が残り、続けて打った文字が upd の locked-skip で沈黙消失していたのを修正 (ADR-0572) — `_teFollow`/`_lblFollow` のガードに `_lk` を追加し次フレームで畳む。
+
+## [1.7.599]
+### Docs/Tests
+- architecture.md の Store 節に hidden parity (選択不変条件のチョークポイント集約 + 遷移方向 `_sdl` + hide→overlay畳み) を追記 (ADR-0571)。
+- `_sl().add`/`state.selection=` が各1箇所のみの否定形ピンを追加 — `_ss`/`_sad` バイパスの恒久的遮断。
+
+## [1.7.598]
+### Tests
+- ADR-0569/0570 のソースピン追加 — hide→overlay畳みと lockedNoop トーストの回帰検出。
+
+## [1.7.597]
+### Fixed
+- 全てロック済みの選択に対する ⌘⇧H (hide) が沈黙していたのを `lockedNoop` トーストに修正 (ADR-0570) — doDelete と同じ慣例。
+
+## [1.7.596]
+### Fixed
+- 編集中図形を hide した際に overlay が不可視のまま残っていたのを修正 (ADR-0569) — `hideSelection` で `_cxO()` 先行し、`_teFollow`/`_lblFollow` のガードに `_hd` を追加して remote hide/hide redo でも次フレームで畳む。
+
+## [1.7.595]
+### Fixed
+- リモートの hide (style op `visible:0`) や hide の redo で、選択中の図形が非表示のまま選択に残り続けていたのを修正 (ADR-0568) — `_apply` の prop-patch 経路で `_hd` になった選択 id を `_sdl` で落とす。併せて `_selR` (undo の origSel 復元) でも `_sv` フィルタし、削除後に非表示化された図形の選択復帰を遮断。さらに `_placeCopies` (paste/duplicate) と drawio/SVG/excalidraw import が `visible:0` を含む集合を無条件選択していたのも修正。これらを個別に塞ぐ代わり、不変条件を `_ss`/`_sad` (選択への唯一の入口) に集約 — 存在しない・非表示の id はどの経路でも選択に入らない。コピーは hiddenness を保って生成し選択のみ可視に限定。
+
+## [1.7.594]
+### Fixed
+- selectFrameContents が hidden メンバーを選択に含めていたのを修正 (ADR-0566) — ⌘A/マーキーは `_sv` で可視のみにするため、見えない図形が選択され後続の move/delete が不可視のまま作用し得た。
+
+## [1.7.593] - 2026-09-28
+### 修正
+- ADR-0565: `frame()` の `draw()`/`drawOverlay()` を try/catch で囲み、描画例外が `needsRender=true` + `_rafId=0` のままループを停止させる経路を塞いだ — draw 中の一過性 throw が外部 `_iv()` が来るまで描画を止めていた。post-draw フック群 (presence 送信・DOM ミラー・overlay follow・style パネル同期) も同じ try/catch で保護。
+
+## [1.7.592] - 2026-09-28
+### ドキュメント
+- ADR-0564: spec.md §8 (同期プロトコル) に incarnation peerId (ADR-0459)・wclock 永続化 (ADR-0460)・チャンク再組立の seq0 再起動 (ADR-0563) を追記 — wire 層の収束保証が仕様書レベルでも読めるようにした。
+
+## [1.7.591] - 2026-09-28
+### 修正
+- ADR-0563: `_fragIn` が同送信元・同 n の再送ストリームを `seq===0` で強制再起動 — 部分組立中に送信側が中断→再送した際、旧チャンクが残り新ストリームと混結合して JSON 破損する穴を塞いだ (RTC `send` の中断後失敗で発生し得た)。
+
+## [1.7.590] - 2026-09-28
+### ドキュメント
+- ADR-0562: architecture.md の Input 節に編集 overlay ライフサイクル段落を追加 (ADR-0556..0561 クラスタの同期 — commit 側 byId ガード / follow 側 proactive close / `_cxO` 順序化 / resize sig リセット)。
+
+## [1.7.589] - 2026-09-28
+### 修正
+- ADR-0561: window/fullscreen resize で canvas rect が動いても editor overlay の follow sig (x,y,zoom) が不変なため次の pan/zoom までズレ続けていたのを、`resize()` で `_teVp`/`_lblVp` をリセットして即再配置。
+
+## [1.7.588] - 2026-09-28
+### 修正
+- ADR-0560: editor 二重オープンで旧 overlay の blur が `state.editing` を clobber — 新 editor の `_teFollow` 死亡 + 本文が canvas/overlay で二重描画される実害。`_cxO()` で先行 commit。
+
+## [1.7.587] - 2026-09-28
+### 修正
+- ADR-0559: 編集中図形が消えた (remote del/clear/replace/undo) 際、テキスト・ラベル overlay が blur まで開いたまま残っていたのを、`_teFollow`/`_lblFollow` の毎フレーム follow に proactive close を載せて即座に畳む。全削除経路をカバー。
+
+## [1.7.586] - 2026-09-28
+### 修正
+- ADR-0558: `_stickyChain` に remote-del ガード — 編集中にピアが付箋を削除した状態で ⌘Enter すると orphan から新付箋が復活していた。`byId` 確認で抑止。
+
+## [1.7.585] - 2026-09-28
+### 修正
+- ADR-0557: ラベル編集 (openLabelEditor) にも同型の remote-del ガード — 編集中にピアが図形を消すと orphan へ `hit.label` 書込み + phantom upd commit していた。
+
+## [1.7.584] - 2026-09-28
+### 修正
+- ADR-0556: リモートの del がテキスト編集中に図形を消した場合、blur で phantom upd/del op を commit していた。`byId` ガードで editor を閉じるだけに (履歴汚染 + 無駄 broadcast を解消)。
+
+## [1.7.583] - 2026-09-28
+### 追加 (テスト/ドキュメント)
+- ADR-0552/0553/0554 (ctx キー呑み込み・メニュー max-height・プレゼン stale フレーム) のソースピンを追加 + architecture.md の Store 節に img 参照再解決規則を追記 (ADR-0555)。
+
+## [1.7.582] - 2026-09-28
+### 修正
+- プレゼン中にリモートピアがフレームを削除すると `_frames` スナップショットが stale 参照を残し、削除済みフレームへズーム/全消失時に黒 overlay のデッド状態になる問題を修正。遷移毎に byId 存在フィルタ + 全消失時 leave() (ADR-0554)。
+
+## [1.7.581] - 2026-09-28
+### 修正
+- 多選択時の ctx メニューがビューポートより縦長になり、上端項目 (Copy/Paste/Delete) が画面外クリップで到達不能だった問題を修正。`.ctx-menu` に max-height + overflow-y、top クランプに下限 (ADR-0553)。
+
+## [1.7.580] - 2026-09-28
+### 修正
+- ctx メニュー表示中の未処理キーがメニューを閉じた上で canvas ショートカットにバブルし、Backspace がメニュー越しに選択図形を削除する実害を修正。ネイティブメニューと同様、未処理キーは閉じる+呑み込みに (ADR-0552)。
+
+## [1.7.579] - 2026-09-28
+### 修正
+- del/clear/replace の undo で復元される図形が `img` 参照 (blob 転送中の画像) を抱えたまま戻り、blob 到達済みでもプレースホルダのまま残るバグを修正。復元経路は `Net._attachShape` を通し `_imgIn` から再解決、未到達なら `_imgPending` に再駐留 (ADR-0551)。
+
+## [1.7.578]
+
+### ドキュメント
+
+- **ADR-0550**: architecture.md の Store 節に locked parity を同期 — `del` の `byId` 冪等ガード、`move` の `op.moved` 記録、および「絶対パッチ系は冪等 / 存在・差分系はスキップ集合を backward に伝える」分類を追記。
+
+## [1.7.577]
+
+### テスト
+
+- **ADR-0549**: locked parity 監査の結論をピン — style/group の undo が forward でスキップした locked 図形に対し冪等 no-op であることを behavioural テストで固定 (ADR-0547/0548 の残経路)。
+
+## [1.7.576]
+
+### 修正
+
+- **ADR-0548**: locked 図形を含む move の undo が、forward で移動しなかった locked 図形に `-dx,-dy` を掛けて**勝手に逆移動**する実害を修正 — forward が実際に動かした id を `op.moved` に記録し、undo はそれだけを逆移動。
+
+## [1.7.575]
+
+### 修正
+
+- **ADR-0547**: locked 図形を含む del の undo が、forward で削除されなかった locked 図形を再 push して**同一 id で二重登録**する実害を修正 — `byId` 冪等ガードを付与 (add 系 op と同パターン)。
+
+## [1.7.574]
+
+### 修正
+
+- **ADR-0546**: スタイルパネルの同期署名が選択 id のみを見ていたため、リモート op・undo/redo・style/upd/align/resize/beautify 経由で選択中図形の prop が変わってもパネル表示が古いまま残る staleness を修正 — `_apply` で prop 系 op が選択中の図形に触れたら `_selSig` を無効化。
+
+## [1.7.573]
+
+### テスト・内部
+
+- **ADR-0545**: カバレッジ第三弾 — ペン内部プリミティブ (`_penTaperI`/`_penTaperE` テーパー飽和、`_penQuad` 台形セグメント、`_penDisc`、`_penFillRange`) をレコーディング ctx で検証 + `_svgBoxLabel` (label エスケープ、valign/align → text-anchor)。
+
+## [1.7.572]
+
+### テスト・内部
+
+- **ADR-0544**: 未テスト残件の第二弾 — `importBoardText` (reject 経路 + wp 中央配置)、`doPasteAt` (指定点センタリング)、`_connPathPts` (直線/elbow/curve 3経路)、`_grpRotHandle` (bbox 上辺中央の上)、`_fitIfEmptyView` (空盤面 no-op + 迷子コンテンツの回収)。
+
+## [1.7.571]
+
+### テスト・内部
+
+- **ADR-0543**: export 済みだが behavioural で未実行だった関数12件にカバレッジ (`unlockAll`/`selectSameType`/`selectFrameContents`/`toggleStickyText`/`toggleLineArrow`/`cycleArrowHead`/`cycleStickyColor`/`snapSelToGrid`/`doPasteInPlace`/`_imgNextKey`/`_mapToBox`/`_fitViewport`)。`_keepSel` が `origSel` を履歴に退避する契約を pin 化。コメント刈りで raw 残量 ~218B に回復。
+
+## [1.7.570]
+
+### 機能・i18n
+
+- **ADR-0542**: `data-t-ph` placeholder 翻訳機構を `applyI18n` に追加し、RTC ペースト欄 (`rtcOfferIn`/`rtcAnswerIn`) に ja/en ヒントを付与。言語切替で追従。コメント刈りで帳尻合わせ (raw 残量 ~51B)。
+
+## [1.7.569]
+
+### 修正
+
+- **ADR-0541**: ctx メニュー表示中の未処理キーでメニューを閉じる — 従来 `v`/`Delete`/`⌘Z` が開いたままのメニュー背後で発火し古いメニューが宙に残った。Space/Enter は APG の項目アクティベーションを維持。ハーネス assert 4件追加。
+
+## [1.7.568]
+
+### 修正
+
+- **ADR-0540**: グローバル input Escape が IME 合成中に blur するのを修正 — `#docName` (日本語名) や RTC ペースト欄で変換キャンセルの Esc がフォーカスを奪っていた。`!e.isComposing` ゲートでネイティブキャンセルへ委譲。併せてコメント尾 ~90B 刈り込み。
+
+## [1.7.567]
+
+### 修正・保守
+
+- **ADR-0539**: `.onclick=` 代入を `_oC` ヘルパーに畳み込み (27 サイト、~55B 回収) + プレゼン `leave()` の `_focusTrigger` が null (フォーカス未確立のドキュメント) で落ちる経路を `?.focus()` でガード。回帰ピン2件追加。
+
+## [1.7.566]
+
+### テスト・保守
+
+- **ADR-0538**: helper メソッド誤用の総当たりガード — 宣言済み `_name` 397 件に対し `recv._name(` 形 (this./Net. 等の正規メソッド及び spread を除く) を走査し誤用を遮断 (ADR-0536 クラスの恒久防止。mutant 検証済)。併せてコメント尾を ~350B 刈り込み。
+
+## [1.7.565]
+
+### 修正
+- **ADR-0536**: `_trm` メソッド誤用修正 — RTC の「接続」「応答作成」ボタンが TypeError で動作不能だったリグレッション (ADR-0508 由来) を解消。同一クラスの誤用監査も実施 (他に該当なし)。回帰ピン追加。
+- **ADR-0537**: DOM プロパティ残サイト畳み込み — `_sw`/`_ew`/`_dsp`/`_hdn` 新設 + `_ix` 追畳みで ~85B 回収 (raw 残量 14B→99B)。
+
+## [1.7.564] - 2026-09-28
+### Fixed
+- ミニマップドラッグ中の blur で `_mmNav` が残存し次のホバーが無押下スクラブになる問題を修正 (ADR-0534/0535)
+
+### Changed
+- `_tC`/`_fc` shorthand の適用完了 — `.textContent=`×5 / `.focus()`×8 の残サイトを畳み込み ~61B 回収 (ADR-0535)
+
+## [1.7.563] - 2026-09-28
+### Docs
+- architecture.md のジェスチャライフサイクル節を ADR-0532/0533/0534 に同期 (右 down の早期 return・openTextEditor の live 再解決・blur リセット防壁)
+
+## [1.7.562] - 2026-09-28
+### Fixed
+- ウィンドウ blur で取りこぼされた pointerup が後続ジェスチャを壊す問題を修正 (ADR-0534) — `ptr.down`/`_pointers`/`_pinchPrev`/`_pinchSnap` を blur で再ベースライン化。ジェスチャ中の ⌘Tab / OS オーバーレイ後にドラッグが失敗し続ける固着を解消
+- space 押下中の blur で一時 hand ツールが固着する問題を修正 (ADR-0534) — 別アプリで keyup が取りこぼされ `window._prevTool` が残存。blur 時に元ツールへ復元
+
+## [1.7.561] - 2026-09-28
+### Fixed
+- macOS/Linux でコンテキストメニューが開かない回帰を修正 (ADR-0532) — 右ボタンの pointerdown が `ptr.down` を立て、mousedown 時点で発火する contextmenu のガードを誤発動させていた。右ボタン down は即 return し ptr 状態を立てない
+- 新規テキスト/付箋がタイプ内容を失うバグを修正 (ADR-0533) — `openTextEditor` が `add` commit の clone 前オブジェクトに bind しており、ブラー時のコミットが分離オブジェクトへ書き込まれていた。`byId` で live 図形を再解決
+
+### Added
+- 上記2件の test.mjs ピン
 
 ### Security
 - **リモート `del` op の `connClears` を検証(upd/style とのセキュリティパリティ)**:

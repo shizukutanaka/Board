@@ -20,7 +20,7 @@ Board は 4 つ全部を否定する: **単一HTML、ゼロ登録、完全無料
 
 ```
 Board/
-├── index.html             # 本体 (単一ファイル、~268KB raw / ~85KB gzip / ~71KB brotli)
+├── index.html             # 本体 (単一ファイル、~349KB raw / ~113KB gzip / ~93KB brotli)
 │   ├── <style>            # デザイントークン + レイアウト + モーション
 │   └── <script>
 │       ├── CONSTANTS      # atomic config
@@ -29,7 +29,7 @@ Board/
 │       ├── GEOM           # pure geometry, hit test
 │       ├── Store          # op-log, undo/redo (Command)
 │       ├── Shape          # shape factories, translate
-│       ├── RENDER         # RAF loop, drawShape, drawSelection
+│       ├── RENDER         # RAF loop, drawShape, draw (シーン) / drawOverlay (クローム、ADR-0024), 局所再描画 (ADR-0026)
 │       ├── INPUT          # pointer + keyboard + wheel
 │       ├── tool handlers  # beginPen / beginRectLike / ...
 │       ├── Persist        # IndexedDB
@@ -64,7 +64,731 @@ Board/
 │   ├── ADR-0012-theme-toggle.md  # テーマ手動トグル (FT-18、言語トグルは FT-18b に分離・見送り、実装済)
 │   ├── ADR-0013-keyboard-label-edit.md  # Enter でラベル/テキスト再編集 (FT-19、_openLabelEditorFor共有、実装済)
 │   └── ADR-0014-language-toggle.md  # 言語手動トグル (FT-18b、LANG/T を let 化、実装済)
-└── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
+│   ├── ADR-0015-share-link-e2e-encryption.md  # 共有リンクの AES-256-GCM E2E 暗号化 (FT-21)
+│   ├── ADR-0016-spatial-index-draw-culling.md  # draw() の可視判定を空間索引化 (FT-14)
+│   ├── ADR-0017-webrtc-failure-feedback.md  # WebRTC 接続失敗のトースト通知 (FT-20)
+│   ├── ADR-0018-pen-bitmap-cache.md  # ペン stroke のオフスクリーン rasterize キャッシュ
+│   ├── ADR-0019-pen-bbox-memoization.md  # G.bbox ペン包絡の O(1) シグネチャメモ化
+│   ├── ADR-0020-snap-edge-index.md  # オブジェクトスナップのソート済みエッジ索引
+│   ├── ADR-0021-image-cache-key.md  # 画像キャッシュの O(1) フィンガープリントキー
+│   ├── ADR-0022-image-import-downscale.md  # 2048px 超過画像の WebP 縮退 (ドロップ/ペースト統合)
+│   ├── ADR-0023-predicted-ink-tail.md  # ペン入力の getPredictedEvents 先行インク
+│   ├── ADR-0024-layered-overlay-canvas.md  # シーン/オーバーレイの 2 層キャンバス分離
+│   ├── ADR-0025-minimap-content-cache.md  # ミニマップの _gridVer 連動ビットマップキャッシュ
+│   ├── ADR-0026-drag-damage-rect.md  # ドラッグ系ジェスチャの局所再描画 (accumulated world damage rect)
+│   ├── ADR-0027-op-level-damage.md  # _apply/applyRemote の op 単位ダメージ伝播
+│   ├── ADR-0028-pan-pixel-blit.md  # パンの自己 drawImage blit + 露出帯のみ再描画
+│   ├── ADR-0029-draft-ink-stamp.md  # 下書きペンの増分インクスタンプ (確定セグメント bitmap + 生きた末尾ベクトル)
+│   ├── ADR-0030-pinch-zoom-preview.md  # ピンチズームのスナップショット・スケールプレビュー
+│   ├── ADR-0031-image-blob-separation.md  # 画像 dataUrl を content-hash の imgs ストアへ分離 (FT-15 stage1、IDB v2)
+│   ├── ADR-0032-grid-accelerated-hit-testing.md  # マーキー選択・pickTop の空間索引流用 (per-pointermove 全走査の解消)
+│   ├── ADR-0033-wheel-zoom-preview.md  # ctrl+wheel (トラックパッドピンチ) ズームのスナップショットプレビュー
+│   ├── ADR-0034-pen-rdp-zoom.md  # ペン RDP 反復化 + ズーム適応 eps (精密筆跡の保持)
+│   ├── ADR-0035-img-ref-hygiene.md  # 画像参照ハイジーン (_imgKey 3点指紋, img 輸出遮断, 欠落画像クラッシュ防止)
+│   ├── ADR-0036-minimap-drag-scrub.md  # ミニマップ押下ドラッグで連続ナビゲート
+│   ├── ADR-0037-sr-selection-announce.md  # ポインタ選択の SR アナウンス (クリック/マーキー/⌘A/Esc)
+│   ├── ADR-0038-share-link-reject-feedback.md  # 共有リンク拒否経路を toast+ハッシュクリアで統一
+│   ├── ADR-0039-share-payload-ceiling.md  # 共有リンクの展開後サイズ/形状数の上限 (deflate ボム対策)
+│   ├── ADR-0040-share-url-length-feedback.md  # 長い共有リンクの警告 + 生成失敗の可視化
+│   ├── ADR-0041-dom-mirror-a11y.md  # 図形の DOM ミラー (SR ナビゲーション、spec P1)
+│   ├── ADR-0042-svg-import.md  # SVG → Board 図形 (貼付/ドロップ/ピッカー、spec P2)
+│   ├── ADR-0043-excalidraw-import.md  # .excalidraw → Board 図形 (拡張子+内容検出、spec P2)
+│   ├── ADR-0044-text-paste.md  # OS テキストペースト → text shape (Markdown 平文取込)
+│   ├── ADR-0045-invite-link.md  # 招待コードを #s=<offer> URL 化 (受け手の貼り付けを省略)
+│   ├── ADR-0046-pen-outline-fill.md  # ペンの union-of-primitives アウトライン塗り (テーパー端)
+│   ├── ADR-0047-group-halo-index.md  # グループハロー Map の _gridVer キャッシュ (overlay 全走査解消)
+│   ├── ADR-0048-search-match-index.md  # 検索マッチリストの {_gridVer, _sq} キャッシュ
+│   ├── ADR-0049-zoom-to-selection.md  # ⇧2 選択ズーム + _fitViewport 共通化
+│   ├── ADR-0050-copy-png-clipboard.md  # PNG のクリップボードコピー (_renderPngBlob 共有)
+│   ├── ADR-0051-pen-resize.md  # ペンの真のリサイズ (pts アフィン写像、仮想ボックス経由)
+│   ├── ADR-0052-export-selection.md  # 選択図形のみのエクスポート (shapes 引数で共有レンダラ)
+│   ├── ADR-0053-text-editor-follows-viewport.md  # テキスト編集中の pan/zoom 追従 (frame 境界 _teFollow)
+│   ├── ADR-0054-zoom-bound-noop.md  # ズーム境界での純粋 no-op (micro-pan 解消)
+│   ├── ADR-0055-rotate-point-geometry.md  # pen/line/arrow の回転 (点剛体回転、群中心)
+│   ├── ADR-0056-multi-selection-resize.md  # 複数選択の8ハンドル群リサイズ (align op)
+│   └── ADR-0057-rotation-knob-point-geometry.md  # 回転ノブを pen/群選択にも (デルタ角 grot)
+- [ADR-0058](docs/ADR-0058-snapshot-lww-merge.md) スナップショットマージを per-property LWW で収束 (snapshot op に wclock 同梱、既存図形のプロパティ単位マージ)
+- [ADR-0059](docs/ADR-0059-style-panel-selection-sync.md) スタイルパネルを選択図形に同期 (選択署名で per-property 同期、混在 prop は据置)
+- [ADR-0060](docs/ADR-0060-alt-drag-duplicate.md) Alt+ドラッグ複製 (_placeCopies 再利用、selection→コピーで move-drag)
+- [ADR-0061](docs/ADR-0061-diamond-shape.md) diamond シェイプ (Excalidraw-parity、ボックス型で全既存経路対応)
+- [ADR-0062](docs/ADR-0062-elbow-connector.md) エルボー (直角) コネクタ (スタブ+中間点の Manhattan 経路、ctx トグル=style op)
+- [ADR-0063](docs/ADR-0063-bidirectional-arrow.md) 双方向矢印 (`start` prop、ctx トグル=style op、elbow 合成可)
+- [ADR-0064](docs/ADR-0064-gesture-readout.md) 変換中ライブ寸法ピル (state.readout、applyResize/moveDelta/rotate で設定、ptr.down でゲート)
+- [ADR-0065](docs/ADR-0065-connector-rebind.md) 端点の再結合/解除 (p1/p2 常時ハンドル、bindPreview、_endPointBind)
+- [ADR-0066](docs/ADR-0066-shift-axis-move.md) Shift+drag 軸拘束移動 (moveDelta 支配軸ゼロ化、objectSnap スキップ)
+- [ADR-0067](docs/ADR-0067-shape-edge-projection.md) 結合点の輪郭投影 (diamond/ellipse コンター式、_edgePt)
+- [ADR-0068](docs/ADR-0068-curved-connector.md) 曲線コネクタ (s.curve 排他フラグ、二次ベジエ、_curveCtrl/Segs)
+- [ADR-0069](docs/ADR-0069-wire-image-refs.md) ワイヤー画像参照 (_imgSlim を op/snapshot に適用、k:'img' 64KB チャンク)
+- [ADR-0070](docs/ADR-0070-quick-connect.md) quick-connect (hover 図形の4辺中点ドット、qline→endLineLike)
+- [ADR-0071](docs/ADR-0071-equal-gap-snap.md) 等間隔スナップ (同一行連続ペアの間隔 g へ吸着、エッジ優先)
+- [ADR-0072](docs/ADR-0072-elbow-bend-drag.md) elbow trunk ドラッグ (s.bend 絶対座標、ebend→style op)
+- [ADR-0073](docs/ADR-0073-text-align.md) テキスト揃え (s.align、ctx メニュー巡回、canvas/SVG/editor 一致)
+- [ADR-0074](docs/ADR-0074-box-label-wrap.md) ボックスラベル折返し (wrapTextCached、SVG tspan 複数行)
+- [ADR-0075](docs/ADR-0075-font-size-keys.md) フォントサイズキー (⌘⇧,/.、fontSizeStep ±2 clamp)
+- [ADR-0076](docs/ADR-0076-connector-waypoint.md) 直線ウェイポイント (s.way、_linePts、中点ドラッグ)
+- [ADR-0077](docs/ADR-0077-hatch-fill.md) ハッチ/斜格子フィル (s.fstyle、_hatchSegs、ctx巡回)
+- [ADR-0078](docs/ADR-0078-text-bold-italic.md) 太字/斜体 (⌘B/⌘I、s.bold/italic、_fontStr)
+- [ADR-0079](docs/ADR-0079-match-size.md) 幅/高さ揃え (doMatchSize、align op、ctx3項目)
+- [ADR-0080](docs/ADR-0080-smart-duplicate.md) スマート複製 (dupIds/dupDelta、反復ベクトル)
+- [ADR-0081](docs/ADR-0081-label-editor-position.md) ラベル編集位置 (_connLabelXY、diamond/経路対応)
+- [ADR-0082](docs/ADR-0082-sticky-recolor.md) 付箋色変更 (fill→color マップ、undo 堅牢化)
+- [ADR-0083](docs/ADR-0083-image-caption.md) 画像キャプション (paper 帯+クリップ、SVG 対応)
+- [ADR-0084](docs/ADR-0084-route-reset.md) ルートリセット (Clear Waypoints、style op)
+- [ADR-0085](docs/ADR-0085-frame-fit-contents.md) フレームをコンテンツに合わせる (union bbox+pad、align op)
+- [ADR-0086](docs/ADR-0086-click-stamp-shapes.md) クリック単発で box 図形をスタンプ (既定 120x80)
+- [ADR-0087](docs/ADR-0087-copy-svg-clipboard.md) 選択 SVG のクリップボードコピー (copyText 経由)
+- [ADR-0088](docs/ADR-0088-snap-waypoint-bend.md) waypoint/ebend ドラッグのグリッドスナップ統一
+- [ADR-0089](docs/ADR-0089-replace-image.md) 画像差替え (位置/幅保持、style op)
+- [ADR-0090](docs/ADR-0090-multi-waypoints.md) 複数ウェイポイント (s.way 配列化、_wayArr 後方互換)
+- [ADR-0091](docs/ADR-0091-search-select-all.md) 検索結果の全選択 (⌘Enter)
+- [ADR-0092](docs/ADR-0092-rounded-rect.md) 矩形角丸/直角トグル (s.r)
+- [ADR-0093](docs/ADR-0093-shift-wheel-pan.md) ⇧+ホイール水平パン
+- [ADR-0094](docs/ADR-0094-escape-cancel-gesture.md) Esc でジェスチャキャンセル
+- [ADR-0095](docs/ADR-0095-text-underline.md) テキスト/付箋下線 (⌘U)
+- [ADR-0096](docs/ADR-0096-equal-size-snap.md) リサイズ等サイズスナップ
+- [ADR-0097](docs/ADR-0097-excalidraw-multi-segment.md) excalidraw 多点コネクタ→way
+- [ADR-0098](docs/ADR-0098-excalidraw-export.md) .excalidraw エクスポート (双方向)
+- [ADR-0099](docs/ADR-0099-paste-excalidraw.md) クリップボード excalidraw ペースト
+- [ADR-0100](docs/ADR-0100-strikethrough.md) 取り消し線 (⌘⇧X)
+- [ADR-0101](docs/ADR-0101-sticky-color-cycle.md) 付箋色クイックサイクル
+- [ADR-0102](docs/ADR-0102-wrap-in-frame.md) 選択をフレームで包む (⌘⌥G)
+- [ADR-0103](docs/ADR-0103-paste-at-cursor.md) カーソル位置に貼り付け
+- [ADR-0104](docs/ADR-0104-select-same-paint.md) 同色を選択
+- [ADR-0105](docs/ADR-0105-sticky-chain.md) 付箋 ⌘Enter 連鎖
+- [ADR-0106](docs/ADR-0106-boot-empty-view-fit.md) 起動時の空ビュー自動フィット
+- [ADR-0107](docs/ADR-0107-tidy-grid.md) グリッドに整列
+- [ADR-0108](docs/ADR-0108-swap-positions.md) 位置を入れ替え
+- [ADR-0109](docs/ADR-0109-line-arrow-convert.md) 直線↔矢印の型変換
+- [ADR-0110](docs/ADR-0110-sticky-text-convert.md) 付箋↔テキスト変換
+- [ADR-0111](docs/ADR-0111-select-frame-contents.md) フレームの内容を選択
+- [ADR-0112](docs/ADR-0112-share-viewport.md) 共有リンクのビューポート同梱
+- [ADR-0113](docs/ADR-0113-paste-in-place.md) 同じ位置に貼り付け (⌘⇧V)
+- [ADR-0114](docs/ADR-0114-selection-board-export.md) 選択を .board 書き出し
+- [ADR-0115](docs/ADR-0115-clipboard-board-transfer.md) クリップボード .board 転送
+- [ADR-0116](docs/ADR-0116-snap-to-grid.md) 選択をグリッドに吸着
+- [ADR-0117](docs/ADR-0117-label-position.md) コネクタラベル位置ドラッグ
+- [ADR-0118](docs/ADR-0118-png-export-scale.md) PNG 書き出しスケール選択
+- [ADR-0119](docs/ADR-0119-arrowhead-styles.md) 矢印ヘッドスタイル
+- [ADR-0120](docs/ADR-0120-select-same-type.md) 同じ種類を選択
+- [ADR-0121](docs/ADR-0121-export-viewport-png.md) 表示範囲を PNG 書き出し
+- [ADR-0122](docs/ADR-0122-dblclick-create-text.md) 空キャンバス dblclick でテキスト作成
+- [ADR-0123](docs/ADR-0123-unlock-all.md) 全てロック解除
+- [ADR-0124](docs/ADR-0124-directional-marquee.md) 方向付きマーキー
+- [ADR-0125](docs/ADR-0125-marker-tool.md) マーカーツール
+- [ADR-0126](docs/ADR-0126-click-click-line.md) クリック-クリック式線/矢印
+- [ADR-0127](docs/ADR-0127-marquee-skips-locked.md) マーキーはロック形状を除外
+- [ADR-0128](docs/ADR-0128-alt-disables-snap.md) ドラッグ中 Alt で全スナップ抑制
+- [ADR-0129](docs/ADR-0129-shift-click-deselect.md) ⇧click で選択解除
+- [ADR-0130](docs/ADR-0130-shift-marquee-add.md) ⇧マーキーで加算選択
+- [ADR-0131](docs/ADR-0131-rotate-90.md) 90°回転
+- [ADR-0132](docs/ADR-0132-curve-bend-drag.md) 曲線ベンドドラッグ
+- [ADR-0133](docs/ADR-0133-elbow-bend-flip.md) elbow bend のフリップ鏡像化
+- [ADR-0134](docs/ADR-0134-search-ctx-item.md) 検索の ctx 項目
+- [ADR-0135](docs/ADR-0135-view-toggles-ctx.md) ビュー系トグルの ctx 項目
+- [ADR-0136](docs/ADR-0136-corner-radius-cycle.md) 矩形の角丸サイクル
+- [ADR-0137](docs/ADR-0137-hide-show-shapes.md) 図形の非表示/すべて表示
+- [ADR-0138](docs/ADR-0138-style-copy-widened.md) スタイルコピーの対象拡大
+- [ADR-0139](docs/ADR-0139-select-inverse.md) 選択の反転
+- [ADR-0140](docs/ADR-0140-connect-two-shapes.md) 選択2図形のコネクタ接続
+- [ADR-0141](docs/ADR-0141-waypoint-alt-delete.md) Alt+click でウェイポイント削除
+- [ADR-0142](docs/ADR-0142-flip-rotation-per-axis.md) フリップ回転角の軸別修正
+- [ADR-0143](docs/ADR-0143-elbow-bend-alt-reset.md) Alt+click でエルボー trunk リセット
+- [ADR-0144](docs/ADR-0144-curve-bend-alt-reset.md) Alt+click でカーブ自動ボウ
+- [ADR-0145](docs/ADR-0145-label-pos-alt-reset.md) Alt+click でラベル位置リセット
+- [ADR-0146](docs/ADR-0146-rotate-elbow-bend.md) 回転時のエルボー trunk 追従
+- [ADR-0147](docs/ADR-0147-translate-elbow-bend.md) 移動時のエルボー trunk 追従
+- [ADR-0148](docs/ADR-0148-gresize-elbow-bend.md) グループリサイズ時の trunk 追従
+- [ADR-0149](docs/ADR-0149-image-flip-pixels.md) 画像フリップのピクセル反転
+- [ADR-0150](docs/ADR-0150-hidden-consistency.md) 非表示図形の検索/バインド除外
+- [ADR-0151](docs/ADR-0151-alt-hover-measure.md) Alt+hover 距離ガイド
+- [ADR-0152](docs/ADR-0152-cbend-gresize.md) gresize で cbend をアフィン再計算
+- [ADR-0153](docs/ADR-0153-snap-hidden.md) スナップ索引から非表示を除外
+- [ADR-0154](docs/ADR-0154-mirror-hidden-tag.md) DOM ミラーの非表示タグ
+- [ADR-0155](docs/ADR-0155-fit-visible.md) fitToContent は可視のみ
+- [ADR-0156](docs/ADR-0156-diamond-corners.md) ダイヤの角丸
+- [ADR-0157](docs/ADR-0157-unbind-selection.md) コネクタ結合一括解除
+- [ADR-0158](docs/ADR-0158-lasso-select.md) ⌥drag ラッソ選択
+- [ADR-0159](docs/ADR-0159-label-valign.md) ボックスラベル縦揃え
+- [ADR-0160](docs/ADR-0160-rtc-token-modern.md) RTC 招待トークン近代化
+- [ADR-0161](docs/ADR-0161-eyedropper.md) スポイトツール (I)
+- [ADR-0162](docs/ADR-0162-dblclick-group-descend.md) dblclick でグループ潜り
+- [ADR-0163](docs/ADR-0163-tab-skip-hidden.md) Tab で非表示を飛ばす
+- [ADR-0164](docs/ADR-0164-statusbar-sel-dims.md) 選択寸法の常時表示
+- [ADR-0165](docs/ADR-0165-arrow-pan-empty.md) 非選択時の矢印パン
+- [ADR-0166](docs/ADR-0166-swap-fill-stroke.md) ⇧X 塗り↔線スワップ
+- [ADR-0167](docs/ADR-0167-digit-opacity.md) 数字キー不透明度
+- [ADR-0168](docs/ADR-0168-image-corner-radius.md) 画像の角丸
+- [ADR-0169](docs/ADR-0169-label-fontsize.md) ラベル fontSize
+- [ADR-0170](docs/ADR-0170-label-typography.md) ラベル太字斜体下線取消線
+- [ADR-0171](docs/ADR-0171-label-align.md) ラベル水平揃え
+- [ADR-0172](docs/ADR-0172-lock-badge.md) ロック選択の鍵バッジ
+- [ADR-0173](docs/ADR-0173-font-family.md) 書体ファミリ巡回
+- [ADR-0174](docs/ADR-0174-ctx-opacity.md) ctx 不透明度巡回
+- [ADR-0175](docs/ADR-0175-frame-fill.md) フレームの塗り色
+- [ADR-0176](docs/ADR-0176-image-border.md) 画像のボーダー
+- [ADR-0177](docs/ADR-0177-eraser-hover.md) 消しゴムホバー
+- [ADR-0178](docs/ADR-0178-frame-image-dash.md) フレーム/画像ボーダー破線
+- [ADR-0179](docs/ADR-0179-img-caption-valign.md) 画像キャプション上下
+- [ADR-0180](docs/ADR-0180-fontsize-persistence.md) fontSize 継承
+- [ADR-0181](docs/ADR-0181-style-persistence-2.md) head/font 継承
+- [ADR-0182](docs/ADR-0182-label-editor-follow.md) ラベルエディタ追従
+- [ADR-0183](docs/ADR-0183-route-persistence.md) コネクタルート継承
+- [ADR-0184](docs/ADR-0184-style-persistence-3.md) 角丸/ハッチ/揃え継承
+- [ADR-0185](docs/ADR-0185-eyedropper-style.md) スポイト全吸収
+- [ADR-0186](docs/ADR-0186-frame-label-font.md) フレームラベル書体
+- [ADR-0187](docs/ADR-0187-sticky-valign.md) 付箋本文縦揃え
+- [ADR-0188](docs/ADR-0188-frame-font.md) フレーム書体巡回
+- [ADR-0189](docs/ADR-0189-line-height.md) 行間巡回
+- [ADR-0190](docs/ADR-0190-sticky-chain-typography.md) チェーン書式継承
+- [ADR-0191](docs/ADR-0191-text-bg-fill.md) テキスト背景塗り
+- [ADR-0192](docs/ADR-0192-sticky-text-color.md) 付箋文字色
+- [ADR-0193](docs/ADR-0193-conn-label-fill.md) ラベルpill背景
+- [ADR-0194](docs/ADR-0194-drop-shadow.md) ドロップシャドウ
+- [ADR-0195](docs/ADR-0195-img-label-fill.md) キャプション帯色
+- [ADR-0196](docs/ADR-0196-label-tab-chain.md) ラベルTab巡回
+- [ADR-0197](docs/ADR-0197-frame-label-align.md) フレームラベル揃え
+- [ADR-0198](docs/ADR-0198-conn-reverse.md) コネクタ方向反転
+- [ADR-0199](docs/ADR-0199-sticky-fit-text.md) 付箋テキストフィット
+- [ADR-0200](docs/ADR-0200-pen-shift-straight.md) Shiftペン直線
+- [ADR-0201](docs/ADR-0201-move-readout.md) 移動中XY表示
+- [ADR-0202](docs/ADR-0202-draft-readout.md) 描画中寸法表示
+- [ADR-0203](docs/ADR-0203-drawio-import.md) .drawioインポート
+- [ADR-0204](docs/ADR-0204-frame-label-decoration.md) フレームラベル装飾
+- [ADR-0205](docs/ADR-0205-letter-spacing.md) 字間
+- [ADR-0206](docs/ADR-0206-endpoint-shift-constrain.md) 端点45°拘束+ラベルエディタ一致
+- [ADR-0207](docs/ADR-0207-elbow-rounded-corners.md) エルボー角丸
+- [ADR-0208](docs/ADR-0208-text-word-wrap.md) テキスト幅折返し
+- [ADR-0209](docs/ADR-0209-fixed-edge-anchors.md) 端点固定アンカー
+- [ADR-0210](docs/ADR-0210-multiline-conn-label.md) コネクタラベル複数行
+- [ADR-0211](docs/ADR-0211-shadow-text-conns.md) 影をtext/connへ
+- [ADR-0212](docs/ADR-0212-conn-label-lineheight.md) connラベル行間
+- [ADR-0213](docs/ADR-0213-pin-anchor-ctx.md) ctxアンカー固定
+- [ADR-0214](docs/ADR-0214-bindat-grid.md) _bindAtグリッド化
+- [ADR-0215](docs/ADR-0215-modal-focus-trap.md) モーダルfocus復帰
+- [ADR-0216](docs/ADR-0216-labelpos-slots.md) ラベル位置スロット
+- [ADR-0217](docs/ADR-0217-route-reset-reach.md) ルートリセット到達性
+- [ADR-0218](docs/ADR-0218-conn-hop-arcs.md) コネクタホップ
+- [ADR-0219](docs/ADR-0219-center-draw.md) ⌥中心基点描画
+- [ADR-0220](docs/ADR-0220-drawio-export.md) .drawioエクスポート
+- [ADR-0221](docs/ADR-0221-drawio-anchor-roundtrip.md) drawioアンカー往復
+- [ADR-0222](docs/ADR-0222-exc-binding-fix.md) excalidraw結合修復
+- [ADR-0223](docs/ADR-0223-exc-roundtrip-fixes.md) exc往復修復
+- [ADR-0224](docs/ADR-0224-drawio-import-fidelity.md) drawioインポートfidelity
+- [ADR-0225](docs/ADR-0225-exc-sticky-roundtrip.md) exc sticky往復
+- [ADR-0226](docs/ADR-0226-drawio-note-swimlane.md) drawio note/swimlane逆マップ
+- [ADR-0227](docs/ADR-0227-storage-quota-warn.md) ストレージ残量警告
+- [ADR-0228](docs/ADR-0228-drawio-label-style.md) drawioラベル装飾往復
+- [ADR-0229](docs/ADR-0229-exc-groupids.md) exc groupIds往復
+- [ADR-0230](docs/ADR-0230-exc-style-fidelity.md) exc装飾fidelity
+- [ADR-0231](docs/ADR-0231-exc-export-fidelity.md) excエクスポートfidelity+image
+- [ADR-0232](docs/ADR-0232-paste-mxfile.md) ペーストmxfile
+- [ADR-0233](docs/ADR-0233-arrowhead-none-cycle.md) ヘッドnone巡回
+- [ADR-0234](docs/ADR-0234-exc-label-roundtrip.md) excラベル往復
+- [ADR-0235](docs/ADR-0235-svg-image-import.md) SVG image+共有化
+- [ADR-0236](docs/ADR-0236-editor-type-keys.md) 編集中装飾キー
+- [ADR-0237](docs/ADR-0237-label-type-keys.md) ラベル装飾キー
+- [ADR-0238](docs/ADR-0238-drawio-valign.md) drawio縦揃え往復
+- [ADR-0239](docs/ADR-0239-style-op-dedupe.md) style op共有化
+│   ├── ADR-0240-drawio-parent-relative-coords.md  # drawio グループ内の親相対座標解決 + excScene 未閉鎖修復 (実装済)
+│   ├── ADR-0241-excalidraw-locked-roundtrip.md  # excalidraw locked 往復 (実装済)
+│   ├── ADR-0242-excalidraw-lineheight.md  # excalidraw lineHeight ↔ s.lineH (実装済)
+│   ├── ADR-0243-excalidraw-fontfamily.md  # excalidraw fontFamily ↔ s.font (実装済)
+│   └── ADR-0244-excalidraw-valign.md  # excalidraw verticalAlign ↔ s.valign (実装済)
+│   ├── ADR-0245-drawio-visible-attr.md  # drawio visible="0" ↔ s.visible===0 (実装済)
+│   ├── ADR-0246-drawio-shadow.md  # drawio shadow=1 ↔ s.shadow (実装済)
+│   └── ADR-0247-drawio-fontcolor.md  # drawio fontColor ↔ text/sticky s.stroke (実装済)
+│   ├── ADR-0248-commit-origsel-helpers.md  # commit+origSel イディオムを _rcOp/_cOp 集約 (実装済)
+│   ├── ADR-0249-drawio-edge-label-styling.md  # drawio edge ラベルスタイル往復 (実装済)
+│   ├── ADR-0250-drawio-compressed-import.md  # 圧縮 .drawio の DecompressionStream インポート (実装済)
+│   ├── ADR-0251-visual-viewport-resize.md  # visualViewport.resize でキャンバス再サイズ (実装済)
+│   ├── ADR-0252-conn-label-measure-cache.md  # コネクタ/ボックスラベルの measureText メモ化 (実装済)
+│   ├── ADR-0253-drawio-fontfamily.md  # drawio fontFamily ↔ s.font カテゴリ (実装済)
+│   ├── ADR-0254-drawio-locked.md  # drawio locked ↔ editable/deletable/movable=0 (実装済)
+│   ├── ADR-0255-drawio-dotted.md  # drawio dotted ↔ dashPattern (実装済)
+│   ├── ADR-0256-drawio-arrowhead-types.md  # drawio endArrow タイプ ↔ s.head (実装済)
+│   ├── ADR-0257-exc-export-viewport.md  # .excalidraw export に viewport 同梱 (実装済)
+│   ├── ADR-0258-dio-sty-apply.md  # drawio 共通 sty 適用の _dioStyApply 集約 (実装済)
+│   ├── ADR-0259-drawio-image.md  # drawio shape=image ↔ 画像シェイプ往復 (実装済)
+│   ├── ADR-0260-drawio-flip.md  # drawio flipH/flipV ↔ s.flip (実装済)
+│   ├── ADR-0261-drawio-rotation.md  # drawio rotation= ↔ s.rotate (実装済)
+│   ├── ADR-0262-drawio-edge-opacity.md  # drawio edge opacity export 対称化 (実装済)
+│   ├── ADR-0263-dio-sty-emit.md  # drawio 共通 sty 出力の _dioStyEmit 集約 (実装済)
+│   ├── ADR-0264-drawio-edge-labelpos.md  # drawio edge mxGeometry@x ↔ s.labelPos (実装済)
+│   ├── ADR-0265-exc-elbowed.md  # excalidraw elbowed ↔ s.elbow (実装済)
+│   ├── ADR-0266-exc-conn-label.md  # excalidraw conn ラベル ↔ s.label (実装済)
+│   ├── ADR-0267-exc-strokesharpness.md  # excalidraw strokeSharpness ↔ s.r (実装済)
+│   ├── ADR-0268-exc-fidelity-tail.md  # excalidraw pressures/zigzag 受容 (実装済)
+│   ├── ADR-0269-drawio-edge-rounded.md  # drawio edge rounded=1 → s.r (実装済)
+│   ├── ADR-0270-svg-conn-emit-dedupe.md  # SVG conn パス/ラベル集約 _sp/_po/_cL (実装済)
+│   ├── ADR-0271-drawio-split-opacity.md  # drawio 分割 opacity → s.opacity 近似 (実装済)
+│   ├── ADR-0272-paste-svg-mime.md  # clipboard image/svg+xml → vector import (実装済)
+│   ├── ADR-0273-paste-tsv-grid.md  # TSV ペースト → 付箋グリッド (実装済)
+│   ├── ADR-0274-drawio-shape-approx.md  # drawio cylinder/cloud → ellipse 近似 (実装済)
+│   ├── ADR-0275-drawio-compressed-flag.md  # drawio export compressed=false 明記 (実装済)
+│   ├── ADR-0276-exc-scale-flip.md  # excalidraw scale 反転を全要素へ (実装済)
+│   ├── ADR-0277-exc-fillstyle-dots.md  # excalidraw fillStyle dots → hatch (実装済)
+│   ├── ADR-0278-svg-shadow-parity.md  # SVG rect/ellipse/pen/sticky 影 parity (実装済)
+│   ├── ADR-0279-drawio-sticky-fillcolor.md  # drawio sticky fillColor ↔ s.color (実装済)
+│   ├── ADR-0280-exc-boundelements.md  # excalidraw boundElements 逆リンク export (実装済)
+│   ├── ADR-0281-drawio-label-fontcolor.md  # drawio labeled box fontColor ↔ s.stroke (実装済)
+│   ├── ADR-0282-dio-emit-fold.md  # _dioStyEmit に fontStyle/locked 畳み込み (実装済)
+│   ├── ADR-0283-svg-gradient-stop.md  # SVG gradient → 先頭 stop-color 近似 (実装済)
+│   ├── ADR-0284-drawio-letterspacing.md  # drawio letterSpacing ↔ s.spacing (実装済)
+│   ├── ADR-0285-icon-sprite.md  # toolbar icon を SVG sprite 化 (実装済)
+│   ├── ADR-0286-start-head-style.md  # 開始ヘッド s.startHead 独立 (実装済)
+│   ├── ADR-0287-drawio-open-head-fill.md  # endFill=0 → open head (実装済)
+│   ├── ADR-0288-transparent-fill.md  # fillColor=none → 透過塗り (実装済)
+│   ├── ADR-0289-getel-shorthand.md  # getElementById → _g() 集約 (実装済)
+│   ├── ADR-0290-transparent-stroke.md  # strokeColor/fillColor=none 往復 (実装済)
+│   ├── ADR-0291-start-head-ui.md  # 開始ヘッド ctx 巡回 (実装済)
+│   ├── ADR-0292-css-token-shorthand.md  # getCSS トークン短縮 (実装済)
+│   ├── ADR-0293-starthead-persistence.md  # startHead スタイル永続化 (実装済)
+│   ├── ADR-0294-bar-head.md  # 'bar' (T字) ヘッド (実装済)
+│   ├── ADR-0295-clamp01-helper.md  # _c01 clamp01 helper (実装済)
+│   ├── ADR-0296-binding-focus.md  # exc binding.focus → aF/bF (実装済)
+│   ├── ADR-0297-conn-type-shorthand.md  # conn 型判定 `_conn(t)` 集約 (実装済)
+│   ├── ADR-0298-frame-label-fontsize.md  # frame ラベル fontSize (実装済)
+│   ├── ADR-0299-excalidraw-autoresize.md  # exc autoResize emit (実装済)
+│   ├── ADR-0300-exc-conn-angle.md  # exc conn angle → 端点回転 (実装済)
+│   ├── ADR-0301-exc-link.md  # exc link 往復 (実装済)
+│   ├── ADR-0302-selany-helper.md  # ctx ゲート `_selAny` 集約 (実装済)
+│   ├── ADR-0303-forsel-helper.md  # apply ループ `_forSel` 集約 (実装済)
+│   ├── ADR-0304-link-ui.md  # s.link ctx UI (実装済)
+│   ├── ADR-0305-svg-frame-weight.md  # SVG frame ラベル weight parity (実装済)
+│   ├── ADR-0306-csh-helper.md  # canvas shadow `_csh` 集約 (実装済)
+│   ├── ADR-0307-so-helper.md  # style op コミット `_so` 集約 (実装済)
+│   ├── ADR-0308-sell-helper.md  # `_selL` selection リスト集約 (実装済)
+│   ├── ADR-0309-selr-helper.md  # origSel 復元 `_selR` 集約 (実装済)
+│   ├── ADR-0310-link-badge.md  # リンク 🔗 バッジ (実装済)
+│   ├── ADR-0311-dio-multipage.md  # drawio 複数ページ横並び輸入 (実装済)
+│   ├── ADR-0312-keepsel-helper.md  # origSel 書き戻し `_keepSel` 集約 (実装済)
+│   ├── ADR-0313-dio-link-attr.md  # drawio link 属性往復 (実装済)
+│   ├── ADR-0314-modclick-link.md  # ⌘/Ctrl+click でリンク直接オープン (実装済)
+│   ├── ADR-0315-sr-link-announce.md  # 🔗 バッジの SR 通知 (実装済)
+│   ├── ADR-0316-svg-link-badge.md  # SVG 書き出しの 🔗 バッジ (実装済)
+│   ├── ADR-0317-exc-conn-roundness.md  # exc コネクタ roundness→curve (実装済)
+│   ├── ADR-0318-ctx-copy-link.md  # ctx リンクコピー (実装済)
+│   ├── ADR-0319-popup-blocked.md  # リンクオープンの popup ブロック通知 (実装済)
+│   ├── ADR-0320-dio-labelposition.md  # drawio ラベルスロット往復 (実装済)
+│   ├── ADR-0321-dio-whitespace-nowrap.md  # drawio nowrap→s.wrap 往復 (実装済)
+│   ├── ADR-0322-dio-html-flag.md  # drawio 書出 html=1 修正 (実装済)
+│   ├── ADR-0323-exc-conn-label-lineheight.md  # exc conn ラベル行間復元 (実装済)
+│   ├── ADR-0324-dio-compressed-multipage.md  # 圧縮 drawio 全ページ展開 (実装済)
+│   ├── ADR-0325-dio-inflate-cap.md  # drawio 展開 8MB ガード (実装済)
+│   ├── ADR-0326-pd-shorthand.md  # preventDefault 短縮 (実装済)
+│   ├── ADR-0327-link-scheme-gate.md  # s.link http(s) 限定 (XSS 経路閉塞, 実装済)
+│   ├── ADR-0328-userobject-label-link.md  # UserObject label/link 復元 (実装済)
+│   ├── ADR-0329-ce-shorthand.md  # createElement 短縮 (実装済)
+│   ├── ADR-0330-selids-shorthand.md  # selection ids 短縮 (実装済)
+│   ├── ADR-0331-dio-hatch-fillstyle.md  # drawio ハッチ往復 (実装済)
+│   ├── ADR-0332-dio-diamond-image-rounded-emit.md  # diamond/image rounded emit (実装済)
+│   ├── ADR-0333-conn-link-badge.md  # conn リンクバッジ (実装済)
+│   ├── ADR-0334-seln-fin-shorthand.md  # _selN/_fin 短縮 (実装済)
+│   ├── ADR-0335-i18n-key-coverage.md  # t() キー網羅ガード (実装済)
+│   ├── ADR-0336-drawio-group-roundtrip.md  # drawio グループ往復 (実装済)
+│   ├── ADR-0337-minmax-abs-shorthand.md  # _min/_max/_abs (実装済)
+│   ├── ADR-0338-excalidraw-arrowhead-map.md  # exc head 列挙マップ (実装済)
+│   ├── ADR-0339-svg-clickable-link-badge.md  # SVG リンクバッジ a 化 (実装済)
+│   ├── ADR-0340-getattribute-shorthand.md  # _ga() (実装済)
+│   ├── ADR-0341-rotated-resize-cursor.md  # 回転カーソル追従 (実装済)
+│   ├── ADR-0342-canvas-rect-shorthand.md  # _cbr() (実装済)
+│   ├── ADR-0343-drawio-lineheight-roundtrip.md  # lineHeight 往復 (実装済)
+│   ├── ADR-0344-exc-image-roundness.md  # exc 画像 roundness (実装済)
+│   ├── ADR-0345-drawio-frame-containment.md  # drawio frame 内包 emit (実装済)
+│   ├── ADR-0346-search-more-fields.md        # ⌘F 検索拡大 (実装済)
+│   ├── ADR-0347-drawio-edge-group-parent.md  # drawio edge group parent (実装済)
+│   ├── ADR-0348-qs-rnd-shorthand.md          # _rnd/_qs shorthand ~650B (実装済)
+│   ├── ADR-0349-exc-route-bake.md            # exc elbow/curve ルート焼込み (実装済)
+│   ├── ADR-0350-qsa-json-shorthand.md        # _qsa/_JS/_JP ~400B (実装済)
+│   ├── ADR-0351-exc-image-caption.md         # exc 画像キャプション往復 (実装済)
+│   ├── ADR-0352-drawio-image-caption.md      # drawio 画像キャプション往復 (実装済)
+│   ├── ADR-0353-image-caption-prop-corr.md   # caption prop 訂正 s.cap→s.label (実装済)
+│   ├── ADR-0354-drawio-pen-polyline.md       # drawio ペン polyline emit (実装済)
+│   ├── ADR-0355-math-shorthand.md            # Math shorthand ~900B (実装済)
+│   ├── ADR-0356-on-shorthand.md              # _on addEventListener ~750B (実装済)
+│   ├── ADR-0357-drawio-parent-cycle-guard.md # drawio parent cycle 耐性 (実装済)
+│   ├── ADR-0358-drawio-elbow-waypoints.md    # drawio elbow waypoint emit (実装済)
+│   ├── ADR-0359-drawio-viewport-roundtrip.md # drawio viewport 往復 (実装済)
+│   ├── ADR-0360-drawio-curve-cbend-roundtrip.md # drawio curve 制御点往復 (実装済)
+│   ├── ADR-0361-drawio-waypoint-object-form.md  # drawio waypoint 形式修正 (実装済)
+│   ├── ADR-0362-vp-live-read-shorthand.md    # _vp() live-read shorthand (実装済)
+│   ├── ADR-0363-excalidraw-textalign-fold.md  # exc textAlign → s.align 復元 (実装済)
+│   ├── ADR-0364-sh-live-read-shorthand.md    # _sh() live-read shorthand (実装済)
+│   ├── ADR-0365-state-field-shorthands.md    # state.X 全フィールド shorthand 一括化 (実装済)
+│   ├── ADR-0366-fn-shorthands.md             # 関数 shorthand 一括化 (実装済)
+│   ├── ADR-0367-validpatch-numeric-whitelist.md  # validPatch 数値網羅+aF/bF構造 (実装済)
+│   ├── ADR-0368-validpatch-array-props.md    # validPatch pts/way 配列構造 (実装済)
+│   ├── ADR-0369-validpatch-string-props.md   # validPatch 文字列型/長さ+数値フラグ (実装済)
+│   ├── ADR-0370-schedule-refreshundo-shorthands.md  # _ps/_ms/_ru shorthand (実装済)
+│   ├── ADR-0371-describeshape-hidden.md   # describeShape hidden アナウンス (実装済)
+│   ├── ADR-0372-snapshot-merge-value-gate.md   # snapshot merge 値ゲート (実装済)
+│   ├── ADR-0373-patch-structural-keys.md   # patch 構造キー剥がし+_u 防御 (実装済)
+│   ├── ADR-0374-img-channel-bounds.md   # img チャンク経路の容量上限 (実装済)
+│   ├── ADR-0375-text-editor-tab-chain.md   # テキストエディタ Tab 連鎖 (実装済)
+│   ├── ADR-0376-conn-bbox-offbox-routes.md   # コネクタbboxがcurve制御点/elbow trunkを包含 (実装済)
+│   ├── ADR-0377-connclears-whitelist.md   # del connClears を8propホワイトリスト化 (実装済)
+│   ├── ADR-0378-more-shorthands.md   # _pi/_ro/_gd/_cl/_bb/_oa shorthand (実装済)
+│   ├── ADR-0379-img-channel-length-caps.md   # imgチャンク96KB + dataUrl 16M 上限 (実装済)
+│   ├── ADR-0380-sr-group-bound-announce.md   # describeShape グループ/結合先アナウンス (実装済)
+│   ├── ADR-0381-search-bound-endpoints.md   # ⌘F で結合先名検索 (実装済)
+│   ├── ADR-0382-more-state-fn-shorthands.md  # seenOps/lasso/marquee/dupDelta/w2s/s2w/connEnds shorthand (実装済)
+│   ├── ADR-0383-chunked-snapshot.md   # RTC snapshot 64KB チャンク化 (実装済)
+│   ├── ADR-0384-isarray-shorthand.md   # Array.isArray→_iA (~500B 回収、実装済)
+│   ├── ADR-0385-snapin-reset.md   # 切断時 _snapIn 破棄 (実装済)
+│   ├── ADR-0386-ok-on-sites.md   # _ok + _on サイト拡大 (実装済)
+│   ├── ADR-0387-shape-type-whitelist.md   # validShape 型ホワイトリスト (実装済)
+│   ├── ADR-0388-shape-id-type.md   # shape id string/長さ検査 (実装済)
+│   ├── ADR-0389-toast-dedupe.md   # 同一トースト再付け替え (実装済)
+│   ├── ADR-0390-exc-frameid-emit.md   # exc frameId 空間内包 emit (実装済)
+│   ├── ADR-0391-more-literal-shorthands.md   # _TR/_ud/_now (実装済)
+│   ├── ADR-0392-sa-al-ap-shorthands.md   # _sa/_AL/_AP (実装済)
+│   ├── ADR-0393-board-viewport-roundtrip.md   # .board viewport 往復 (実装済)
+│   ├── ADR-0394-more-dom-shorthands.md   # DOM shorthand 追加 (実装済)
+│   ├── ADR-0395-toast-key-consts.md   # トーストキー定数化 (実装済)
+│   ├── ADR-0396-locked-delete-toast.md   # ロック済削除トースト (実装済)
+│   ├── ADR-0397-st-pd-consts.md   # _St/_PD + 残トーストキー (実装済)
+│   ├── ADR-0398-file-import-32mb-guard.md   # 全取込 32MB ガード (実装済)
+│   ├── ADR-0399-ap-sto-kd-ch-ck-shorthands.md   # _ap/_stO/_KD/_CH/_CK/_vpS (実装済)
+│   ├── ADR-0400-snap-sender-chunks.md   # RTC snapshot 送信側チャンク化 (実装済)
+│   ├── ADR-0401-dual-send-bcast-helper.md   # _bcast/_setDocName/_dpr/_PM/_PU/_PC/_lc (実装済)
+│   ├── ADR-0402-docname-sync.md   # ドキュメント名ピア同期 (実装済)
+│   ├── ADR-0403-snap-size-cap.md   # snapshot 送信側 24MB fail-fast (実装済)
+│   ├── ADR-0404-map-set-uri-shorthands.md   # _mP/_sT/_eU/_dU + wire メタガード (実装済)
+│   ├── ADR-0405-drawio-docname-roundtrip.md   # .drawio diagram name ↔ docName (実装済)
+│   ├── ADR-0406-keyname-color-consts.md   # _ES/_EN/_TB/_IK/_YW + !==_un (実装済)
+│   ├── ADR-0407-drawio-strike-sel-export.md   # strikeThrough 往復 + 選択 .drawio 書き出し (実装済)
+│   ├── ADR-0408-toast-kind-shorthands.md   # _w/_o/_e + _trimSeen (実装済)
+│   ├── ADR-0409-file-viewport-grid-restore.md   # exc appState + drawio grid 往復 (実装済)
+│   ├── ADR-0410-bboxall-getcss-shorthands.md   # _bA + _gC shorthand (実装済)
+│   ├── ADR-0411-wrap-flag-validation.md   # s.wrap=0 正規化 + フラグ prop 検証 (実装済)
+│   ├── ADR-0412-wrap-autoresize-roundtrip.md   # text wrap の drawio/exc 完全往復 (実装済)
+│   ├── ADR-0413-shadow-flag-validation.md   # s.shadow フラグ検証化 + _db/_de/_wO (実装済)
+│   ├── ADR-0414-describe-visual-props.md   # describeShape flip/shadow/route announce (実装済)
+│   ├── ADR-0415-sel-write-shorthands.md   # _sel*/_ss/_md fold + fstyle/hop 完結 (実装済)
+│   ├── ADR-0416-dead-code-sweep.md   # SNAP_THRESHOLD 除去 + _setSq/_ss 活性化 (実装済)
+│   ├── ADR-0417-valign-persistence.md   # _st().valign last-used 永続化 (実装済)
+│   ├── ADR-0418-sb-hass-shorthands.md   # _sb/_hasS fold (実装済)
+│   ├── ADR-0419-selection-mutation-shorthands.md   # _scl/_sad/_sdl (実装済)
+│   ├── ADR-0420-image-i18n-key.md   # image を T.k に追加 (実装済)
+│   ├── ADR-0421-sel0-ivp-shorthands.md   # _sel0/_ivp fold + _selAny 重複解消 (実装済)
+│   ├── ADR-0422-framezoom-clamp.md   # _zoomToFrame zoom clamp + 退化 frame ガード (実装済)
+│   ├── ADR-0423-frameexpansion-dedupe.md   # _frameOf/_xFS/_grpOf fold + map(clone) (実装済)
+│   ├── ADR-0424-cache-purge-on-delete.md   # per-shape キャッシュの削除時パージ (実装済)
+│   ├── ADR-0425-locked-visible-len-folds.md   # _nS/_sv/_lk shorthand fold (実装済)
+│   ├── ADR-0426-penrender-failure-accounting.md   # _penRender 失敗時の px 会計/再試行制御 (実装済)
+│   ├── ADR-0427-cache-purge-complete.md   # per-shape キャッシュパージの網羅化 (実装済)
+│   ├── ADR-0428-seenops-trim-consistency.md   # _trimSeen 統一 + _ck helper (実装済)
+│   ├── ADR-0429-marker-sr-announce.md   # marker ストロークの SR announce (実装済)
+│   ├── ADR-0430-hl-flag-validation.md   # hl フラグの validPatch 網羅 (実装済)
+│   ├── ADR-0431-chunked-ops.md          # 上限超過 op のチャンク送信 (実装済)
+│   ├── ADR-0432-senddc-backpressure.md  # dc.send バックプレッシャ再キュー (実装済)
+│   ├── ADR-0433-prop-read-folds.md      # _sk/_fi/_lb prop read 一括 fold (実装済)
+│   ├── ADR-0434-more-prop-folds.md      # _rt/_du/_gi prop read fold 第2弾 (実装済)
+│   ├── ADR-0435-psc-img-pending.md      # _psc が _imgPending もパージ (実装済)
+│   ├── ADR-0436-ptsok-unify.md          # pen pts 検証の統一 (実装済)
+│   ├── ADR-0437-wrapcache-spacing.md    # _wrapCache キーに spacing (実装済)
+│   ├── ADR-0438-senddc-size-cap.md      # _sendDC SCTP 上限ガード (実装済)
+│   ├── ADR-0439-op-cv-folds.md          # _oP/_cv フォールド (実装済)
+│   ├── ADR-0440-g2-fold-opacity-announce.md # _g2 fold + 透明シェイプの SR announce (実装済)
+│   ├── ADR-0441-wire-guard-tests.md     # wire ガード行動テスト + architecture.md 同期 (実装済)
+│   ├── ADR-0442-pp-fold.md              # _pp before/after push 集約 (実装済)
+│   ├── ADR-0443-undo-wire.md            # undo/redo 逆 op wire 伝搬 (実装済)
+│   ├── ADR-0444-undo-wire-group-zorder.md  # group/ungroup/zorder 逆写像追加 (実装済)
+│   ├── ADR-0445-slim-del-pending-purge.md  # del/clear スリム化 + _imgPending パージ (実装済)
+│   ├── ADR-0446-dcq-onclose.md             # dc.onclose の _dcQ リセット (実装済)
+│   ├── ADR-0447-ln-fold.md                 # X.length → _ln(X) 一括 fold (実装済)
+│   ├── ADR-0448-fragin-restart.md          # _fragIn n-mismatch 再起動 + onclose リセット (実装済)
+│   ├── ADR-0449-img-intake-bounds.md       # _imgIn/_imgChunks 上限化 (実装済)
+│   ├── ADR-0450-ln-fold-memberexpr.md      # X.Y.length も _ln fold (実装済)
+│   ├── ADR-0451-mp-st-argfold.md           # _mP/_sT 引数取り化 + new Map/Set(a) fold (実装済)
+│   ├── ADR-0452-snapshot-throttle-resend.md # _sendSnapshot throttle 超過の deferred resend (実装済)
+│   ├── ADR-0453-type-sets-pagehide-flush.md # 図形型メンバーシップSet化 + pagehide flush (実装済)
+│   ├── ADR-0454-imgchunk-restart-selunl.md # _imgChunks n-mismatch 再スタート + _selUnl 畳み込み (実装済)
+│   ├── ADR-0455-lowest-peer-snapshot.md # snapshot応答を最小idピアのみへ + prop畳み込み (実装済)
+│   ├── ADR-0456-typeof-shorthands.md    # _iS/_iN/_iO で typeof ガード畳み込み (実装済)
+│   ├── ADR-0457-peer-bye-message.md     # pagehide で bye を配信、離脱ピア即時除去 (実装済)
+│   ├── ADR-0458-room-switch-presence.md # ルーム切替で bye 送信 + BC ピア掃除 (実装済)
+│   ├── ADR-0459-peer-incarnation.md     # 起動毎 peerId nonce — seq/dedup 衝突 + タブ間同期解消 (実装済)
+│   ├── ADR-0460-wclock-persist.md       # LWW 仲裁テーブルを IDB 永続化 (実装済)
+│   ├── ADR-0461-toast-fold-consts.md    # _oT/_wT/_eT fold + 文字列 consts (実装済)
+│   ├── ADR-0462-type-check-shorthands.md # 図形型判定 shorthand (_stk/_frm/_pn/_txt/_im/_arw) (実装済)
+│   ├── ADR-0463-peer-announce.md          # ピア出入りの SR announce (実装済)
+│   ├── ADR-0464-img-state-room-switch.md   # ルーム切替で画像転送状態をリセット (実装済)
+│   ├── ADR-0465-snapshot-responder-election.md # snapshot 応答者=最小 non-asker (starvation 修正、実装済)
+│   ├── ADR-0466-assembly-room-switch.md    # ルーム切替で受信再組立スロットもリセット (実装済)
+│   ├── ADR-0467-pct-rebaseline.md          # _pCt をルーム切替で再ベースライン (実装済)
+│   ├── ADR-0468-architecture-wire-lifecycle.md # architecture.md の wire ライフサイクル節 (実装済)
+│   ├── ADR-0469-frag-sender-tagging.md    # _fragIn を送信者タグ付け (並行ストリーム継ぎ接ぎ防止、実装済)
+│   ├── ADR-0470-frag-sender-test.md       # _fragIn sender タグの実動作テスト (実装済)
+│   ├── ADR-0471-frac-key-compaction.md    # frac キー >48 で canonical 再採番 (キー増大・発散防止、実装済)
+│   ├── ADR-0472-zstep-fold-undo-correctness.md  # _zStep 統合 + compaction undo の before 正確性 (実装済)
+│   ├── ADR-0473-wire-cap-parity.md    # zorder frac/gid 長の wire キャップ整合 (実装済)
+│   ├── ADR-0474-snapshot-size-cap.md  # スナップショット全盤面キャップを SHARE_MAX_SHAPES へ (切捨て修正、実装済)
+│   ├── ADR-0475-sync-req-retry.md     # join 時 sync-req の有界再送 (応答喪失時の空盤面待機解消、実装済)
+│   ├── ADR-0476-slice0-fold.md        # _s0 slice(0,n) shorthand 化 (実装済)
+│   ├── ADR-0477-indexof-trim-fold.md  # _ix/_trm shorthand 化 (実装済)
+│   ├── ADR-0478-dragkind-fold.md      # _dk dragKind 判定 shorthand 化 (実装済)
+│   ├── ADR-0479-zorder-legacy-cap.md  # zorder legacy after の frac/id 長さキャップ (実装済)
+│   ├── ADR-0480-zorder-cap-tests.md   # ADR-0479 境界テスト (実装済)
+│   ├── ADR-0481-selul-fold.md         # _selUL unlocked-selection shorthand (実装済)
+│   ├── ADR-0482-ctrat-fold.md         # _ctrAt import 中央配置の集約 (実装済)
+│   ├── ADR-0483-repc-fold.md          # _repC replace-op commit 集約 (実装済)
+│   ├── ADR-0484-arch-wire-sync.md     # architecture.md wire 節を最新化 (実装済)
+│   ├── ADR-0485-wire-id-len-caps.md   # wire の op レベル id ≤64 キャップ網羅 (実装済)
+│   ├── ADR-0486-selection-ids-cap.md  # presence selection の ids ≤64 完結 (実装済)
+│   ├── ADR-0487-guide-fold.md         # _gV/_gH スナップガイド push fold (実装済)
+│   ├── ADR-0488-snapbest-fold.md      # _snapBest snap 最近傍ループ集約 (実装済)
+│   ├── ADR-0489-rcop-fold.md          # _rcOp 残直書きサイト集約 (実装済)
+│   ├── ADR-0490-ss-single-fold.md     # _ss([id]) 単一 selection 置換集約 (実装済)
+│   ├── ADR-0491-mid-fold.md           # _mid(pts) 中間 waypoint 集約 (実装済)
+│   ├── ADR-0492-pl-fold.md            # _pL(pts) 末尾点集約 (実装済)
+│   ├── ADR-0493-rs-fold.md            # _rs 盤面総取替え集約 (実装済)
+│   ├── ADR-0494-shv-fold.md           # _shV 可視図形 subset 集約 (実装済)
+│   ├── ADR-0495-selshapes-reuse.md    # _selShapes 再利用漏れ (実装済)
+│   ├── ADR-0496-ulv-fold.md           # _ulv unlocked+visible 判定集約 (実装済)
+│   ├── ADR-0497-ididx-fold.md         # _idIdx id での index 検索集約 (実装済)
+│   ├── ADR-0498-pk-fold.md            # _pk ピアキー振分け集約 (実装済)
+│   ├── ADR-0499-mk-fold.md            # _mk wire メッセージ組立て集約 (実装済)
+│   ├── ADR-0500-mk-op-envelope.md     # op メッセージを _mk envelope へ統一 (実装済)
+│   ├── ADR-0501-hb-fold.md            # _hb box-shape 判定 shorthand (実装済)
+│   ├── ADR-0502-idok-fold.md          # _idOK wire id キャップ shorthand (実装済)
+│   ├── ADR-0503-pointfree-every.md    # .every(id=>X) を point-free 化 (実装済)
+│   ├── ADR-0504-pointfree-map.md      # .map(x=>X(x)) を point-free 化 (実装済)
+│   ├── ADR-0505-pointfree-bulk.md     # filter/some/find/every/map arrow 包み一括 point-free 化 (実装済)
+│   ├── ADR-0506-ul-fold.md            # _ul unlocked 判定 shorthand (実装済)
+│   ├── ADR-0507-cpt-fold.md           # _cpT copyText+toast shorthand (実装済)
+│   ├── ADR-0508-trm-fold.md           # .trim() を _trm shorthand 化 (実装済)
+│   ├── ADR-0509-gesture-reset-fold.md # _zR/_zG gesture reset shorthand (実装済)
+│   ├── ADR-0510-canvas-path-fold.md   # _bp/_st2/_fil canvas path shorthand (実装済)
+│   ├── ADR-0511-mt-lt-fold.md         # _mT/_lT canvas moveTo/lineTo shorthand (実装済)
+│   ├── ADR-0512-canvas-state-fold.md  # _sv2/_rs2/_cP/_qC canvas state/curve shorthand (実装済)
+│   ├── ADR-0513-bulk-shorthand.md     # canvas/Store/UI/Persist 一括 shorthand (実装済)
+│   ├── ADR-0514-second-bulk-fold.md   # make/translate/push/refreshZoom/transaction/fillText shorthand (実装済)
+│   ├── ADR-0515-modifier-key-fold.md  # shiftKey/altKey/metaKey||ctrlKey shorthand (実装済)
+│   ├── ADR-0516-os-clipboard-bridge.md # ⌘C/⌘X → OS clipboard .board JSON、⌘V を paste イベント経由化 (実装済)
+│   ├── ADR-0517-safari-gesture-pinch.md # Safari GestureEvent pinch-zoom (実装済)
+│   ├── ADR-0518-text-drop-cascade.md # 非ファイル drop を共有テキストカスケードへ (実装済)
+│   ├── ADR-0519-edge-auto-pan.md # ドラッグ中のエッジオートパン + _o2w 集約 (実装済)
+│   ├── ADR-0520-canvas-prop-setters.md # canvas prop 代入 shorthand (_fsS/_ssS/_lnW/_gaS/_taS/_tbS) (実装済)
+│   ├── ADR-0521-lost-pointer-capture.md # lostpointercapture でジェスチャキャンセル (実装済)
+│   ├── ADR-0522-input-coord-folds.md # _cPt/_nP/_osp/_rm/_nc shorthand (実装済)
+│   ├── ADR-0523-textcontent-fold.md # _tC textContent setter shorthand (実装済)
+│   ├── ADR-0524-contextmenu-drag-guard.md # ドラッグ中 contextmenu でジェスチャキャンセル (実装済)
+│   ├── ADR-0525-split-lines-fold.md # _spL split('\n') 活性化 (実装済)
+│   ├── ADR-0526-pointerleave-hover-clear.md # pointerleave で state.hover クリア (実装済)
+│   ├── ADR-0527-image-import-cap-16mb.md # 画像取込事前キャップ 4MB→16MB (実装済)
+│   ├── ADR-0528-dom-method-folds.md # _fc/_clk/_aE/_csr shorthand + dead isPan 節除去 (実装済)
+│   ├── ADR-0529-sw-cache-ok-only.md # SW c.put を n.ok でゲート (実装済)
+│   ├── ADR-0530-sw-ok-gate-pin.md # SW ok ゲートの test.mjs ピン (実装済)
+│   ├── ADR-0531-spec-roadmap-sync.md # spec.md ロードマップ現況同期 (実装済)
+│   ├── ADR-0532-right-down-no-arm.md # 右 down は ptr.down 不立て — macOS ctx menu 回帰修正 (実装済)
+│   ├── ADR-0533-text-editor-live-binding.md # openTextEditor が byId で live 図形に bind (実装済)
+│   ├── ADR-0534-blur-gesture-reset.md # window blur でジェスチャ/ポインタ状態を再ベースライン化 (実装済)
+│   ├── ADR-0535-tc-fc-fold-completion.md # _tC/_fc 畳み込み完結 + ミニマップ blur リセット (実装済)
+│   ├── ADR-0536-trm-method-call-misuse.md # _trm メソッド誤用修正 — RTC 接続/応答ボタンの TypeError 回帰 (実装済)
+│   ├── ADR-0537-dom-prop-stragglers.md # _sw/_ew/_dsp/_hdn + _ix 残サイト畳み込み ~85B (実装済)
+│   ├── ADR-0538-helper-method-misuse-sweep.md # _helper のメソッド形誤呼び総当たりガード (test.mjs) + コメント刈り ~350B (実装済)
+│   ├── ADR-0539-onclick-fold.md # .onclick= を _oC へ畳み込み ~55B + プレゼン leave() null トリガーガード (実装済)
+│   ├── ADR-0540-global-escape-ime.md # グローバル input Escape の IME 合成ガード (docName/RTC 欄) (実装済)
+│   ├── ADR-0541-ctx-menu-unhandled-keys.md # ctx メニュー未処理キーでメニューを閉じる (実装済)
+│   ├── ADR-0542-placeholder-i18n.md # data-t-ph placeholder 翻訳機構 + RTC ペースト欄ヒント (実装済)
+│   ├── ADR-0543-export-coverage-sweep.md # export 済み未テスト関数のカバレッジ一掃 (実装済)
+│   ├── ADR-0544-import-coverage-sweep.md # import/paste/conn-path/rot-handle/fit のカバレッジ第二弾 (実装済)
+│   ├── ADR-0545-pen-primitive-coverage.md # ペン内部プリミティブ + _svgBoxLabel のカバレッジ (実装済)
+│   ├── ADR-0546-style-panel-resync.md # prop 変化 op で選択中図形のパネル再同期 (実装済)
+│   ├── ADR-0547-del-undo-locked-dedup.md # del undo で locked 図形の二重登録を防止 (実装済)
+│   ├── ADR-0548-move-undo-moved-set.md # move undo で locked 図形の逆移動を防止 (実装済)
+│   ├── ADR-0549-locked-parity-audit.md # locked parity undo 監査の結論ピン (実装済)
+│   ├── ADR-0550-architecture-undo-parity-sync.md # architecture.md の locked parity 同期 (実装済)
+│   ├── ADR-0551-img-ref-undo-restore.md # del undo の img 参照再解決 (実装済)
+    │   ├── ADR-0552-ctx-menu-key-swallow.md # ctx メニュー未処理キーを呑み込み (実装済)
+    │   ├── ADR-0553-ctx-menu-max-height.md # ctx メニューの max-height+scroll (実装済)
+    │   ├── ADR-0554-pres-frames-stale.md # プレゼン中のフレーム削除で stale 参照 (実装済)
+    │   ├── ADR-0555-ctx-pres-pins.md # 0552-0554 ピン + architecture.md img 参照節 (実装済)
+    │   ├── ADR-0556-text-edit-remote-del.md # 編集中図形のリモート削除で phantom op 防止 (実装済)
+    │   ├── ADR-0557-label-edit-remote-del.md # ラベル編集の remote-del orphan ガード (実装済)
+    │   ├── ADR-0558-sticky-chain-remote-del.md # ⌘Enter 連鎖の remote-del orphan ガード (実装済)
+    │   ├── ADR-0559-editor-follow-remote-del.md # 編集 overlay の削除時 proactive close (実装済)
+    │   ├── ADR-0560-editor-double-open.md # editor 二重オープンの editing clobber 修正 (実装済)
+    │   ├── ADR-0561-overlay-resize-follow.md # resize で overlay follow sig リセット (実装済)
+    │   ├── ADR-0562-architecture-editor-lifecycle.md # architecture.md 編集 overlay 節同期 (実装済)
+    │   ├── ADR-0563-fragin-seq0-restart.md  # _fragIn seq0 での同 src ストリーム再起動 (実装済)
+    │   ├── ADR-0564-spec-wire-sync.md      # spec.md §8 へ wire 収束保証の同期 (実装済)
+    │   ├── ADR-0565-frame-throw-resilience.md # frame() の draw throw で rAF を殺さない (実装済)
+    │   ├── ADR-0566-select-frame-contents-visible.md # フレーム内容選択は可視のみ (実装済)
+    │   ├── ADR-0567-spec-hidden-invariant.md # spec へ非表示の選択不変条件 (実装済)
+    │   ├── ADR-0568-remote-hide-deselect.md  # 非表示化された図形を選択から落とす (実装済)
+    │   ├── ADR-0569-hide-folds-editor.md     # hide 時に編集 overlay を畳む (実装済)
+    │   ├── ADR-0570-locked-hide-toast.md     # 全ロック選択の hide で lockedNoop トースト (実装済)
+    │   ├── ADR-0571-hidden-parity-doc.md     # architecture.md に hidden parity 節 (実装済)
+    │   ├── ADR-0572-lock-folds-editor.md     # lock 時に編集 overlay を畳む (実装済)
+    │   ├── ADR-0573-spec-overlay-fold.md     # spec.md に overlay 非到達化規則 (実装済)
+    │   ├── ADR-0574-undo-cancels-gesture.md  # ドラッグ中の ⌘Z/⌘Y はジェスチャを先キャンセル (実装済)
+    │   ├── ADR-0575-overlay-close-repaint.md # overlay 畳み後に _iv() で再描画 (実装済)
+    │   ├── ADR-0576-peer-sel-hidden-skip.md  # ピア選択アウトラインが hidden を描かない (実装済)
+    │   ├── ADR-0577-presence-hidden-parity-doc.md # architecture/spec へ presence hidden parity 同期 (実装済)
+    │   ├── ADR-0578-wire-guard-pins.md          # _fragIn dup スロット + _dcQ cap のピン (実装済)
+    │   ├── ADR-0579-research-doc-sync.md        # research-improvements.md の stale 未実装3件を同期 (実装済)
+    │   ├── ADR-0580-comment-tail-reclaim.md     # コメント尾一括刈り ~17.9KB 回収 (実装済)
+    │   ├── ADR-0581-docname-lww.md              # ドキュメント名の改名を ts ベース LWW で収束 (実装済)
+    │   ├── ADR-0582-pres-enter-folds-editor.md  # プレゼン開始で編集 overlay を畳む (実装済)
+    │   ├── ADR-0583-flip-mirrors-labelpos.md    # コネクタ反転で labelPos を 1-t へミラー (実装済)
+    │   ├── ADR-0584-flip-mirrors-bound-anchor.md# 結合先同時反転で aF/bF を 1-f へミラー (実装済)
+    │   ├── ADR-0585-reverse-negates-cbend.md    # reverseConn で cbend 符号反転 (実装済)
+    │   ├── ADR-0586-rotate-remaps-bound-anchor.md# 結合先回転で aF/bF を extent へ再正規化 (実装済)
+    │   ├── ADR-0587-grot-remaps-bound-anchor.md # 回転ノブでも aF/bF を extent へ再正規化 (実装済)
+    │   ├── ADR-0588-flip-mirrors-unselected-anchor.md# 選択外コネクタの結合先反転でも aF/bF をミラー (実装済)
+    │   ├── ADR-0589-anchor-transform-matrix.md  # コネクタ束縛×変換の不変条件文書化+ピン (実装済)
+    │   ├── ADR-0590-exportscale-behavioral-pin.md# exportScale のクランプ実動作テスト (実装済)
+    │   ├── ADR-0591-unbind-freezes-endpoint.md  # 結合解除で端点を解決済み位置へ凍結 (実装済)
+    │   ├── ADR-0592-group-halo-visible-only.md  # 非表示メンバーをグループハローから除外 (実装済)
+    │   ├── ADR-0593-export-bbox-visible-only.md # PNG/SVG エクスポートの bbox を可視図形のみに (実装済)
+    │   ├── ADR-0594-excalidraw-export-visible-only.md  # .excalidraw エクスポートから非表示図形を除外 (実装済)
+    │   ├── ADR-0595-minimap-visible-only.md     # ミニマップから非表示図形を除外 (実装済)
+    │   ├── ADR-0596-hidden-parity-docs.md       # hidden parity 派生面規則の文書同期+ピン (実装済)
+    │   ├── ADR-0597-drag-damage-bound-conn.md   # ドラッグのダメージ矩形に束縛コネクタの掃引領域を含める (実装済)
+    │   ├── ADR-0598-apply-damage-bound-conn.md  # _apply のダメージ収穫に束縛コネクタの掃引領域を含める (実装済)
+    │   ├── ADR-0599-resize-rotate-damage-conn.md # 単一リサイズ/回転ドラッグにも束縛コネクタ掃引を含める (実装済)
+    │   ├── ADR-0600-damage-conn-invariant-docs.md # 束縛コネクタ×ダメージ矩形の不変条件を文書化 (実装済)
+    │   ├── ADR-0601-per-shape-draw-isolation.md  # 1図形の描画例外が後続全図形を殺さない per-shape 隔離 (実装済)
+    │   ├── ADR-0602-op-array-cap-board-ceiling.md # wire op の図形/id 配列上限を盤面上限へ (501+ 一括 op の無通知棄却→分岐を解消) (実装済)
+    │   ├── ADR-0603-frag-undeliverable-stream.md  # 24MB 結合上限超のフラグメントストリーム: 送信側 toast 警告 + 受信側明示棄却 (実装済)
+    │   ├── ADR-0604-hidden-gesture-cancel.md      # visibilitychange→hidden / pagehide でのジェスチャ取消 (stuck ptr.down 解消) (実装済)
+    │   ├── ADR-0605-wire-bound-docs-sync.md       # ワイヤ境界・ジェスチャライフサイクルの文書同期 (0602/0603/0604) (実装済)
+    │   ├── ADR-0606-present-resize-refit.md       # プレゼン中のビューポートリサイズで現在フレームを再フィット (実装済)
+    │   ├── ADR-0607-longpress-ghost-click.md      # 長押し ctx メニューのゴースト click/mousedown 抑止 (実装済)
+    │   ├── ADR-0608-touchstate-hidden-cleanup.md  # hidden/pagehide でタッチ状態 (_pointers/pinch) も掃除 (実装済)
+    │   ├── ADR-0609-docname-focus-clobber.md      # フォーカス中の docName input をリモート改名が上書きしない (実装済)
+    │   ├── ADR-0610-pts-round-dedup.md            # roundShapesForExport の pts 丸め二重処理を除去 (実装済)
+    │   ├── ADR-0611-cursor-hide-on-leave.md       # pointerleave でピアカーソルを隠す (凍結残存の解消) (実装済)
+    │   ├── ADR-0612-cursor-hide-blur-hidden.md    # blur/hidden でもピアカーソルを隠す (実装済)
+    │   ├── ADR-0613-remote-replace-converge.md    # 'replace' op を wire 収束 (全置換のピア同期 + 同数 stale-index 修正) (実装済)
+    │   ├── ADR-0614-concurrent-replace-lww.md     # 並行 'replace' の勝者を clockNewer 全順序で一意化 (実装済)
+    │   ├── ADR-0615-replace-undo-wire.md          # 'replace' の undo を wire へ (pre-swap 盤面の復元をピア同期) (実装済)
+    │   ├── ADR-0616-replace-commit-marker.md      # ローカル 'replace' commit で _lastRep marker を記録 (古いリモート swap の棄却) (実装済)
+    │   ├── ADR-0617-snapshot-rep-marker.md        # スナップショットに swap marker 同梱 (古い世代の再混入を因果順序で棄却) (実装済)
+    │   ├── ADR-0618-snapshot-name-lww.md          # スナップショットの docName を nameTs で LWW 化 (古い世代の上書き防止) (実装済)
+    │   ├── ADR-0619-room-switch-marker-reset.md   # ルーム切替で因果 marker をリセット (新ルームの収束阻害を解消) (実装済)
+    │   ├── ADR-0620-architecture-replace-convergence-sync.md   # architecture.md の wire 節へ 'replace' 収束系を同期 (実装済)
+    │   ├── ADR-0621-move-commit-dead-ids.md   # move コミットからジェスチャ中に消えた図形を除外 (実装済)
+    │   ├── ADR-0622-spec-replace-wire-sync.md   # spec.md の 'replace' wire 化を同期 (実装済)
+    │   ├── ADR-0623-selection-dead-id-hygiene.md   # 選択由来 id リストの dead-id 衛生 (実装済)
+    │   ├── ADR-0624-architecture-dead-id-parity-sync.md   # architecture.md へ dead-id parity 不変条件を同期 (実装済)
+    │   ├── ADR-0625-slim-op-undo-field-strip.md   # _slimOp が wire op から undo 専用フィールドを剥がす (実装済)
+    │   ├── ADR-0626-clear-wire-as-replace.md   # 'clear' op を wire 上 'replace'(after:[]) へ翻訳し全消去の収束 (実装済)
+    │   ├── ADR-0627-canvas-context-restore.md   # contextlost/restored で GPU キャッシュをパージ+再描画 (実装済)
+    │   ├── ADR-0628-architecture-context-restore-sync.md   # architecture.md へ GPU キャッシュ不変条件を同期 (実装済)
+    │   ├── ADR-0629-img-blob-stragglers.md   # 追い出された parked 図形も blob 到着時に解決 (実装済)
+    │   ├── ADR-0630-img-stragglers-test.md   # ADR-0629 の実動作ピン (evicted+pending 両経路) (実装済)
+    │   ├── ADR-0631-resize-debounce.md   # resize を trailing-edge debounce 化 (canvas 再確保の嵐解消) (実装済)
+    │   ├── ADR-0632-minimap-nav-cancel.md   # _mmNav を hidden/pagehide でもクリア (bfcache 復帰ジャンプ解消) (実装済)
+    │   ├── ADR-0633-architecture-lifecycle-sync.md   # architecture.md へ resize debounce + cancelNav を同期 (実装済)
+    │   ├── ADR-0634-present-cancels-gesture.md   # プレゼン突入で進行中ジェスチャをキャンセル (実装済)
+    │   ├── ADR-0635-gesture-target-byid.md   # resize/rotate の対象を _sel0→byId(orig.id) (mid-gesture 選択変更で誤対象) (実装済)
+    │   ├── ADR-0636-cancel-clears-pinch.md   # _cancelPointerGesture が _pointers/ピンチ状態も掃除 (実装済)
+    │   ├── ADR-0637-kbd-editor-cancels-gesture.md   # Enter 編集オープンも mid-gesture キャンセル (実装済)
+    │   ├── ADR-0638-architecture-gesture-sync.md   # architecture.md へジェスチャ×外部変化の不変条件を同期 (実装済)
+    │   ├── ADR-0639-presentation-sr-announce.md   # プレゼン突入/遷移/終了を SR announce (実装済)
+    │   ├── ADR-0640-presentation-input-gates.md   # プレゼン中の dblclick/contextmenu/wheel/pinch を _pA ゲート (実装済)
+    │   ├── ADR-0641-pointer-sequence-testing.md   # 合成 PD/PM/PU を canvas 実リスナへ dispatch (spec P3 前進) (実装済)
+    │   ├── ADR-0643-qconn-ptrdown-gate.md         # quick-connect の ptr.down ゲート共有を解消 — 導入時から死んでいた実害を復旧 (実装済)
+    │   ├── ADR-0644-sequence-harness-rules.md       # イベント系列 harness 運用規約 (fire1/stale混入/reset境界) (実装済)
+    │   ├── ADR-0645-sequence-verification-complete.md  # 系列検証の完走状態 — 全リスナ型網羅、残: レンダリング実体+FileReader (実装済)
+│   ├── ADR-0646-multi-page.md                      # 多ページ — pages/curPg + s.pg 帰属、ページバー、ワイヤ収束 (実装済)
+│   ├── ADR-0647-page-scoped-presence.md            # ページ別プレゼンス — presence msg に pg 同梱、別ページピア非描画 (実装済)
+│   ├── ADR-0648-page-nav-keys.md                   # PgUp/PgDn ページ巡回 — キーボード/SR 到達経路 (実装済)
+│   ├── ADR-0649-pagedel-lands-via-switchpage.md    # 閲覧ページ削除の着地点を switchPage 化 (実装済)
+│   ├── ADR-0650-drawio-real-pages.md               # .drawio 複数ページ ↔ Board 真のページ — pageAdd+shapes op (実装済)
+│   ├── ADR-0651-page-duplicate.md                  # ページ複製 (⧉) — pageAdd+shapes で一括コピー (実装済)
+│   ├── ADR-0652-undo-page-follow.md                # undo/redo のページ追従 + pageAdd backward heal (実装済)
+│   ├── ADR-0653-zorder-frac-lww.md
+│   ├── ADR-0654-adaptive-grid-cell.md
+│   ├── ADR-0655-seenops-eviction-safety.md
+│   ├── ADR-0656-peer-avatar-page.md
+│   ├── ADR-0657-page-ops-reapply-safety.md                 # zorder frac の per-shape LWW 収束 (実装済)
+│   ├── ADR-0658-page-scoped-exports.md  # 単一シーンエクスポートをカレントページ限定 (PNG/SVG/PDF/excalidraw の全ページ重畳修正)
+│   ├── ADR-0659-equal-gap-snap-page-scope.md  # 等間隔スナップを可視・現ページ図形に限定 (実装済)
+│   ├── ADR-0660-show-all-page-scope.md  # 「すべて表示」を現ページに限定 (実装済)
+│   ├── ADR-0661-unlock-fit-page-scope.md  # 「すべて解除」/フレームフィットを現ページに限定 (実装済)
+│   ├── ADR-0662-tab-chain-page-scope.md  # Tab 連鎖を現ページに限定 (実装済)
+│   ├── ADR-0663-last-page-undo-heal.md  # 最終ページ undo で帰属掃除 (実装済)
+│   ├── ADR-0664-page-switch-cancels-gesture.md  # ページ遷移でジェスチャキャンセル (実装済)
+│   ├── ADR-0665-page-scoped-selection-bulk.md  # 一括選択系のページスコープ (実装済)
+│   ├── ADR-0666-ctx-png-page-scope.md  # ctx PNG 固定倍率のページスコープ (実装済)
+│   ├── ADR-0667-hop-frame-naming-page-scope.md  # ホップ/フレーム採番のページスコープ (実装済)
+│   ├── ADR-0668-minimap-nav-empty-hint.md  # ミニマップナビ/空ヒントのページスコープ (実装済)
+│   ├── ADR-0669-status-count-page-scope.md  # ステータスバー図形数のページスコープ (実装済)
+│   ├── ADR-0670-peer-avatar-follow.md  # ピアアバターでページ追従 (実装済)
+│   ├── ADR-0671-page-scope-invariant.md  # ページスコープ不変条件の文書化
+│   ├── ADR-0672-snapshot-local-view.md  # snapshot 取込でビュー維持 (実装済)
+│   ├── ADR-0673-page-tab-strip.md  # ページタブストリップ (実装済)
+│   ├── ADR-0674-curpg-persist-on-switch.md  # ページ切替で persist (実装済)
+│   ├── ADR-0675-tab-rebuild-signature.md  # タブ sig キャッシュ + aria-current (実装済)
+│   ├── ADR-0676-stale-research-sync.md  # stale 調査記述の同期 (実装済)
+│   ├── ADR-0677-pres-page-switch-frames.md  # プレゼン中ページ切替の幻影フレーム (実装済)
+│   ├── ADR-0678-drawio-hidden-parity.md  # .drawio エクスポートの hidden parity (実装済)
+│   ├── ADR-0679-pagedel-wclock-purge.md  # pageDel の member wclock purge (実装済)
+│   ├── ADR-0680-sel-presence-page-key.md  # 選択プレゼンス dedup キーに curPg (実装済)
+│   ├── ADR-0681-snapshot-page-name-lww.md  # snapshot の同 id ページ名 LWW マージ (実装済)
+│   ├── ADR-0682-tab-full-name-aria.md  # ページタブ完全名 aria-label (実装済)
+│   ├── ADR-0683-pgbar-sig-focus.md  # pgBar sig セパレータ+フォーカス復元 (実装済)
+│   ├── ADR-0684-adopt-editor-fold.md  # adopt ページ交代でエディタ畳む (実装済)
+│   ├── ADR-0685-live-tab-into-view.md  # アクティブタブを scrollIntoView 追従 (実装済)
+│   ├── ADR-0686-avatar-page-refresh.md  # ページ変化でアバターツールチップ更新 (実装済)
+│   ├── ADR-0687-arch-multi-page-sync.md  # architecture.md マルチページ節同期 (ドキュメント)
+│   ├── ADR-0688-local-page-cap.md  # ローカル pageAdd/Dup の 64 cap (実装済)
+│   ├── ADR-0689-switchpage-pg-order.md  # cursorHide を curPg 移動後に (実装済)
+│   ├── ADR-0690-adopt-cursor-hide.md  # _pgAdopt のページ交代でも cursorHide (実装済)
+│   ├── ADR-0691-sendorder-invariant.md  # presence送出順の文書同期 (実装済)
+│   ├── ADR-0692-adopt-unknown-pg-heal.md  # _pgAdopt の未知 pg ヒール (実装済)
+│   ├── ADR-0693-union-heal-pg.md  # union-heal 側も未知 pg を拾う (実装済)
+│   ├── ADR-0694-null-pages-scrub.md  # ページ集合 null 移行の s.pg scrub (実装済)
+│   ├── ADR-0695-causal-marker-persistence.md  # _lastRep/_nameTs の IDB 永続化 (実装済)
+│   ├── ADR-0696-swap-name-broadcast.md  # swap 経路の name 即時 broadcast (実装済)
+│   ├── ADR-0697-pgbar-aria-labels.md  # ページバーボタンの aria-label (実装済)
+│   ├── ADR-0698-pagename-tie-order.md  # pageName の (ts,peer) 総順序化 (実装済)
+│   ├── ADR-0699-docname-tie-order.md  # docName の (ts,writer) 総順序化 (実装済)
+│   ├── ADR-0700-vpages-finite.md  # _vPages が nts/ntp を厳格検証 (実装済)
+│   ├── ADR-0701-rename-finite-ts.md  # 改名 ts の非有限値を棄却 (実装済)
+│   ├── ADR-0702-pagename-undo.md  # pageName undo がローカル no-op だった実害 (実装済)
+│   ├── ADR-0703-remotedel-lastpage.md  # remote 最終ページ del の収束 (実装済)
+│   ├── ADR-0704-pageadd-wire-index.md  # wire pageAdd の位置復元 (実装済)
+│   ├── ADR-0705-pagewire-slim.md  # wire pageDel/pageName の適用フィールドのみ化 (実装済)
+│   ├── ADR-0706-arch-sync-pagewire.md  # architecture.md へ改名/削除収束規則を同期 (実装済)
+│   ├── ADR-0707-pagedel-del-parity.md  # pageDel の locked 生存 + connClears 束縛解除 (実装済)
+│   ├── ADR-0708-pageadd-member-pg.md  # remote pageAdd メンバーの pg を op.id へ正規化 (実装済)
+│   ├── ADR-0709-editor-fold-offpage.md  # 編集中図形の off-page 化で overlay を畳む (実装済)
+│   ├── ADR-0710-arch-sync-pgparity.md  # architecture.md へ pageDel parity/member-pg/fold 規則を同期 (実装済)
+│   ├── ADR-0711-pagedel-connclock.md  # pageDel backward connClears 復元の locked skip (実装済)
+│   ├── ADR-0712-locked-backward-parity.md  # upd/style 系 undo も locked skip (wire 収束) (実装済)
+│   ├── ADR-0713-add-locked-backward.md  # add/addMany undo も locked skip (存在収束) (実装済)
+│   ├── ADR-0714-pageadd-locked-backward.md  # pageAdd undo も locked member を残す (実装済)
+│   ├── ADR-0715-clear-undo-idempotent.md  # clear undo の idempotent 化 (重複登録防止) (実装済)
+│   └── ADR-0716-allops-locked-backward.md  # move/group/ungroup/zorder undo も locked skip (実装済)
+│   └── ADR-0717-undo-fresh-clock.md  # undo は fresh clock で仲裁 (旧 clock の発散解消) + style系 undo-wire の before 同梱 + patch locked 除去 (実装済)
+│   └── ADR-0718-redo-stamp-before-apply.md  # redo も stamp-once 不変条件へ統一 (実装済)
+│   └── ADR-0719-move-undo-moved-ids.md  # move undo-wire は op.moved 集合を送る (phantom 逆移動解消) (実装済)
+│   └── ADR-0720-replace-wire-curpg.md  # 'replace' ワイヤに着陸ページを同梱 (受信側 page1 固定化を解消) (実装済)
+│   └── ADR-0721-undo-wire-wclock.md  # del/clear undo-wire に wclock スナップを同梱 (LWW 仲裁発散を解消) (実装済)
+│   └── ADR-0722-pagedel-wclock.md  # pageDel も member wclock を記録+復元 (del parity) (実装済)
+│   └── ADR-0723-clear-wc-merge.md  # clear undo の wclock を全置換→マージへ (行き違い時計の消失を解消) (実装済)
+│   └── ADR-0724-pageadd-undo-unpage.md  # pageAdd undo を _pgDel2 現メンバー基準へ + 最終ページ undo は 'unpage' wire で op由来のみ死/残り un-page (実装済)
+│   └── ADR-0725-pagedel-wire-firstid.md  # pageDel の rehome 先を wire で送側の firstId に統一 (ページ順発散時のメンバー帰属分裂を解消) (実装済)
+│   └── ADR-0726-addmany-wc-validate.md  # addMany.wc (undo-wire の wclock スナップ) を validRemotePayload で検証 (NaN 時計の仲裁汚染を閉塞) (実装済)
+│   └── ADR-0727-pagename-undo-nts.md  # pageName undo-wire に復元 nts/ntp を同梱 (undo clock を受側が刻んで次の改名 LWW が分裂するのを解消) (実装済)
+│   └── ADR-0728-arch-sync-undowire.md  # architecture.md の undo×sync に 0717–0727 の7規則を文書化 (実装済)
+│   └── ADR-0729-move-absolute-wire.md  # wire move に絶対 after/before を同梱し LWW 化 (delta×absolute 競合の発散解消) (実装済)
+│   └── ADR-0730-beautify-wire.md  # 'beautify' を wire op 化 (REMOTE_OPS+validator+LWW — 送側のみ retype の発散解消) (実装済)
+│   └── ADR-0731-beautify-undo-wire.md  # 'beautify' undo-wire を patch-swap 化 (ADR-0730 の発散が undo で再燃していた) (実装済)
+│   ├── ADR-0732-move-undo-absolute.md  # move undo-wire を絶対値化 + backward 絶対復元 (ADR-0729 残 delta の発散解消) (実装済)
+│   └── ADR-0733-move-delta-undo-axis-arbitration.md  # delta backward を _lwwSkip で軸毎仲裁 (racing write 保有軸の発散解消) (実装済)
+│   └── ADR-0734-wclock-delete-tombstones.md  # 存在仲裁: del/addMany 逆写/pageDel が wclock に {_del:clock} 墓標を残し add 系 push が墓標下位の遅延 add を棄却 (実装済)
+│   └── ADR-0735-snapshot-adopt-tomb-filter.md  # 残存墓標穴: 空盤面の snapshot 一括採用も墓標フィルタ (del 前 snapshot の復活閉塞) + pageAdd tomb クリア parity (実装済)
+│   └── ADR-0736-clear-replace-tombstones.md  # clear/'replace' が wclock 全消去で墓標を喪失 → swap 除去 id を tomb 化 + 上位 tomb 生存 (実装済)
+│   └── ADR-0737-import-swap-tombstones.md  # ローカル import 3経路 (_recordCommitted 経由) の wclock wipe にも墓標書込み (実装済)
+│   └── ADR-0738-wclock-cap-keeps-tombs.md  # 8192 flood cap が墓標ごと wipe → 墓標のみ保持 (存在状態は自己修復しない) (実装済)
+│   └── ADR-0739-hlc-floor-everywhere.md  # 生 Date.now() で stamp されていた 3 サイトを HLC floor (nowTs) へ統一 (実装済)
+    └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
     # 追加する必要がある。内容は git 履歴でなくローカル/セッション成果物として存在。
@@ -82,7 +806,24 @@ Board/
     付箋テキストの毎フレーム再計算 (measureText) を避けるための純粋なメモ化キャッシュで、
     `state` は変更しない。shape オブジェクト参照は Store が in-place で mutate するため
     キー (text/maxWidth/fontSize) が変わらない限りキャッシュは有効なまま安全。
+  - 例外: `drawPenMaybeCached()` / `_penCached()` は `_penCache` (id → オフスクリーン
+    canvas + シグネチャ, LRU, ピクセル予算 12M px) を書き換える。コミット済みペン
+    ストロークの毎フレーム再ラスタライズ (ADR-0018) を避けるためのキャッシュで、
+    `state` は変更しない。有効性は O(1) シグネチャ (pts 参照 + 長さ + 先頭/中央/
+    末尾の絶対座標 + stroke + size) で判定し、in-place 変異 (translate / flip) も
+    検知される。ミス時はそのフレームはベクトル描画にフォールバックする。
+  - 例外: `G.bbox()` はペンシェイプで `_penBboxCache` (id → 包絡 + シグネチャ,
+    FIFO 8,192) を書き換える (ADR-0019)。O(pts) 包絡走査の毎フレーム再計算を避ける
+    観測上純粋なメモ化で、`state` は変更しない。シグネチャ構成は ADR-0018 と同一。
   - `drawShape()` に新たな副作用を追加する前に、この例外リストを更新すること。
+  - ADR-0024: 描画は draw() (シーン, #c) / drawOverlay() (chrome, #ov) の 2 層。
+    `invalidate()` は両層、`invalidateOverlay()` は上層のみ再描画 — シーン変更に
+    後者を使うと選択枠等がズレる。プレゼン時は #ov も #c と一緒に fixed 昇格する。
+  - ADR-0026: `_damage` はドラッグ系ジェスチャの world 空間の汚れ矩形 (累積union)。
+    ジェスチャ系ハンドラのみ `invalidateDamage(r)` を呼び、draw() はその union に
+    clip+局部再描画。それ以外の全経路は `invalidate()` (=_damage リセット+全面再描画)
+    を必ず使うこと — `invalidateDamage` 化の判断は「ジンペル・ナン・ピクセルが
+    変わる範囲を厳密に列挙できるか」のみに依存する。
 
 ## RULES — やっていいこと / ダメなこと
 
