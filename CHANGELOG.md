@@ -1,3 +1,10 @@
+## [1.7.749] - 2026-09-29
+
+### Fixed
+- ADR-0723: clear undo replaced the whole wclock map — clocks written between
+  the clear and its undo were wiped locally while peers' wc-carrying addMany
+  only merged. Backward now merges per id (del parity)
+
 ## [1.7.748] - 2026-09-29
 
 ### Fixed

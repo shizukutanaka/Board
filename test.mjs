@@ -247,6 +247,7 @@ const checks = [
   ["move undo-wire sends op.moved, not op.ids (ADR-0719)", html.includes("ids:op.moved||op.ids,dx:-op.dx,dy:-op.dy")],
   ["del/clear undo-wire carries wc; addMany applies it (ADR-0721)", html.includes("{op:'addMany',shapes:op.shapes,wc:op.wc}") && html.includes("if(op.wc)for(const[id,w]of Object.entries(op.wc))_wc()[id]=clone(w)")],
   ["pageDel snapshots + restores member wclocks (ADR-0722)", html.includes("op.wc={};for(const id of dead)if(_wc()[id])op.wc[id]=clone(_wc()[id])") && html.includes("op.shapes||[],wc:op.wc}")],
+  ["clear undo merges op.wc, never replaces (ADR-0723)", html.includes("if(op.wc)for(const[id,w]of Object.entries(op.wc))_wc()[id]=clone(w);_selR(op)")],
   ["_recordCommitted sets _lastRep for local 'replace' (ADR-0616)", html.includes("if(op.op==='replace')state._lastRep=op.clock;   // ADR-0616")],
   ["snapshot carries rep marker + stale-snapshot skip (ADR-0617)", html.includes("rep:state._lastRep") && html.includes("clockNewer(state._lastRep,msg.rep))break;")],
   ["snapshot docName is LWW-gated via (ts,writer) order (ADR-0618/0699)", html.includes("nameTs:_nameTs,namePeer:_namePeer") && html.includes("_nameWin(msg.nameTs,_iS(msg.namePeer)?msg.namePeer:'')")],
@@ -6894,6 +6895,37 @@ try {
       'ADR-0722: peer restores the page member’s wclock — later arbitration stays identical');
     console.log('  ✓ ADR-0722: pageDel undo restores member wclocks on both sides');
 
+    // ADR-0723 (round473): clear's undo must MERGE op.wc, not replace the map —
+    // a shape created between the clear and the undo has clocks that a whole-map
+    // overwrite wiped locally while peers' wc-carrying addMany only merges.
+    reset(A); reset(B);
+    const c1=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    A.state.shapes.push(cp(c1)); B.state.shapes.push(cp(c1)); A.sortZ(); B.sortZ();
+    rAB=[]; rBA=[];
+    A.Net.broadcast = op => rAB.push({k:'op',op:cp(op)});
+    B.Net.broadcast = op => rBA.push({k:'op',op:cp(op)});
+    A.Store.commit({op:'style',before:[{id:c1.id,stroke:null}],after:[{id:c1.id,stroke:'#000'}],clock:{peer:'peerA',seq:1,ts:1000}});
+    A.Store.commit({op:'clear',shapes:A.state.shapes.map(s=>cp(s)),wc:cp(A.state.wclock),clock:{peer:'peerA',seq:2,ts:2000}});
+    const c2=Shape.make('rect',{x:50,y:0,w:10,h:10});
+    rAB.forEach(m=>B.Net._onRecv(m)); rAB.length=0;
+    // c2’s clock arrives as REMOTE ops (remote ops never enter history — undo stays on the clear)
+    A.Net._onRecv({k:'op',op:{op:'add',shape:cp(c2),clock:{peer:'peerC',seq:1,ts:3000}}});
+    B.Net._onRecv({k:'op',op:{op:'add',shape:cp(c2),clock:{peer:'peerC',seq:1,ts:3000}}});
+    const rm2={k:'op',op:{op:'style',before:[{id:c2.id,stroke:null}],after:[{id:c2.id,stroke:'#00f'}],clock:{peer:'peerC',seq:2,ts:4000}}};
+    A.Net._onRecv(cp(rm2)); B.Net._onRecv(cp(rm2));
+    assert.ok(B.state.wclock[c2.id],'precondition: post-clear shape has a clock on the peer');
+    assert.ok(A.state.wclock[c2.id],'precondition: post-clear shape has a clock locally');
+    A.state.seq=4;
+    A.Store.undo();
+    rAB.forEach(m=>B.Net._onRecv(m));
+    assert.strictEqual(B.state.wclock[c1.id]&&B.state.wclock[c1.id].stroke&&B.state.wclock[c1.id].stroke.ts,1000,
+      'ADR-0723: cleared shape’s clock restored on the peer');
+    assert.ok(B.state.wclock[c2.id]&&B.state.wclock[c2.id].stroke.ts===4000,
+      'ADR-0723: intervening clock survives on the peer');
+    assert.ok(A.state.wclock[c2.id]&&A.state.wclock[c2.id].stroke.ts===4000,
+      'ADR-0723: intervening clock survives locally too (merge, not replace)');
+    console.log('  ✓ ADR-0723: clear undo merges op.wc — intervening clocks survive identically');
+
     // v1.6.87: a new text/sticky is committed+broadcast with EMPTY text, then filled in
     // the editor. _syncTextFinalize must push the typed content (and a dismissed-empty
     // removal) to already-connected peers, or collaborators see a blank shape forever.
@@ -13195,7 +13227,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1611; // prev 1607 + 3 ADR-0722 behavioural + 1 pin
+  pass += 1615; // prev 1611 + 3 ADR-0723 behavioural + 1 pin
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
