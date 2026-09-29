@@ -501,17 +501,29 @@ pen/line/arrow は点ジオメトリで box 中心が無く回転中心が NaN �
 | 幾何不変条件 | `_sh()` グローバル | 結合コネクタ掃引 (`ptr.gAnc`/`_bc`/`_rc`/`computeConnClears`)、z 空間、`_buildGrid` 候補生成 |
 
 - **遷移はジェスチャを殺す**: `switchPage`/`_pgAdopt` が `_cancelPointerGesture`
-  (0664) — 別ページ図形への不可視コミットを防ぐ
+  (0664) — 別ページ図形への不可視コミットを防ぐ。`_pgAdopt` は `_cxO` で
+  編集エディタも畳む (0684)
 - **プレゼンス**: `cursor`/`selection` wire に `pg` 同梱、別ページカーソルは非描画
-  (0647)、アバターツールチップ+クリック follow (0656/0670)
+  (0647)、アバターツールチップ+クリック follow (0656/0670)。送出 dedup 鍵に
+  `curPg` 同梱 (0680 — 選択不変のページ切替でも再送)
 - **帰属ヒール**: 未知 `pg` を持つ remote 図形は `?` ページを自動生成 (0646)、
   `pageAdd` backward の最終ページ→残部へ再帰属、`pageDel` 系は switchPage 経由で
-  ビュー着地 (0649/0663)
+  ビュー着地 (0649/0663)。`pageDel` はメンバー wclock も削除 (0679)
+- **スナップショット**: 受信側の `curPg` を保持 (0672)、同一 id ページ名は
+  `nts` LWW で union-heal (0681)
+- **タブ UI** (`_pgBar`, 0673–0686): `#pgTabs` の chip 再構築は `_pgSig`
+  (id+`\x1f`+name join) 変化時のみ — フォーカス chip を `_pgid` で復元
+  (0683)。chip は完全名 `aria-label` (0682)、アクティブは `aria-current`+
+  `scrollIntoView` 追従 (0675/0685)。ページ集合変化でアバターツールチップも
+  更新 (0686)
+- **派生面**: プレゼン `_goto` はページ切替でオフページフレームを prune (0677)、
+  .drawio export は非表示を除外 (0678 — excalidraw 0594 と同格)、`curPg` は
+  doc record で永続化 (0674)
 
 ## 今後
 
 - Plugin API (iframe sandbox + postMessage)、Figma import (v2.0)
 
 > 完了済み: z 順序の fractional indexing (ADR-0001)、AES-GCM E2E 暗号化
-> (ADR-0015)、マルチページ (ADR-0646–0670)。
+> (ADR-0015)、マルチページ (ADR-0646–0686)。
 > スレッドコメントは scratchpad 製品判断で対象外 (CLAUDE.md「100点への距離」)。

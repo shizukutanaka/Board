@@ -734,7 +734,8 @@ Board/
 │   ├── ADR-0683-pgbar-sig-focus.md  # pgBar sig セパレータ+フォーカス復元 (実装済)
 │   ├── ADR-0684-adopt-editor-fold.md  # adopt ページ交代でエディタ畳む (実装済)
 │   ├── ADR-0685-live-tab-into-view.md  # アクティブタブを scrollIntoView 追従 (実装済)
-│   └── ADR-0686-avatar-page-refresh.md  # ページ変化でアバターツールチップ更新 (実装済)
+│   ├── ADR-0686-avatar-page-refresh.md  # ページ変化でアバターツールチップ更新 (実装済)
+│   └── ADR-0687-arch-multi-page-sync.md  # architecture.md マルチページ節同期 (ドキュメント)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
