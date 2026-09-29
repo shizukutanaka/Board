@@ -717,7 +717,8 @@ Board/
 │   ├── ADR-0666-ctx-png-page-scope.md  # ctx PNG 固定倍率のページスコープ (実装済)
 │   ├── ADR-0667-hop-frame-naming-page-scope.md  # ホップ/フレーム採番のページスコープ (実装済)
 │   ├── ADR-0668-minimap-nav-empty-hint.md  # ミニマップナビ/空ヒントのページスコープ (実装済)
-│   └── ADR-0669-status-count-page-scope.md  # ステータスバー図形数のページスコープ (実装済)
+│   ├── ADR-0669-status-count-page-scope.md  # ステータスバー図形数のページスコープ (実装済)
+│   └── ADR-0670-peer-avatar-follow.md  # ピアアバターでページ追従 (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
