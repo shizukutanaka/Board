@@ -11434,6 +11434,39 @@ try {
     assert.strictEqual(state.shapes.length,4,'⌘Z restores the deleted duplicates');
     fireKey1('z',{metaKey:true,shiftKey:true});
     assert.strictEqual(state.shapes.length,2,'⇧⌘Z re-applies the delete');
+    // ⌥+arrow = keyboard resize (top-left anchored, box shapes only, ⇧×10, locked skipped,
+    // 4px floor) — the pointer-free a11y resize path; [/] z-order keys step/front/back
+    reset();
+    state.tool='select';
+    const W1=Shape.make('rect',{x:10,y:10,w:40,h:40});
+    const W2=Shape.make('rect',{x:200,y:10,w:40,h:40});
+    Store.commit({op:'add',shape:W1});Store.commit({op:'add',shape:W2});
+    const w1=state.shapes[state.shapes.length-2],w2=state.shapes[state.shapes.length-1];
+    w2.locked=1;
+    state.selection=new Set([w1.id,w2.id]);
+    fireKey('ArrowRight',{altKey:true});
+    assert.strictEqual(w1.w,41,'⌥arrow resizes the selection by 1');
+    assert.strictEqual(w2.w,40,'locked shape skipped by ⌥arrow resize');
+    fireKey('ArrowRight',{altKey:true,shiftKey:true});
+    assert.strictEqual(w1.w,51,'⇧⌥arrow resizes by 10');
+    w1.h=4;
+    fireKey('ArrowUp',{altKey:true});
+    assert.strictEqual(w1.h,4,'⌥arrow resize clamps at the 4px floor');
+    reset();
+    state.tool='select';
+    const Z1=Shape.make('rect',{x:10,y:10,w:20,h:20});
+    const Z2=Shape.make('rect',{x:100,y:10,w:20,h:20});
+    Store.commit({op:'add',shape:Z1});Store.commit({op:'add',shape:Z2});
+    const z1=state.shapes[0];
+    state.selection=new Set([z1.id]);
+    fireKey(']');
+    assert.strictEqual(state.shapes[1].id,z1.id,'] brings the selection one step forward');
+    fireKey('[');
+    assert.strictEqual(state.shapes[0].id,z1.id,'[ sends it one step back');
+    fireKey(']',{shiftKey:true});
+    assert.strictEqual(state.shapes[state.shapes.length-1].id,z1.id,'⇧] brings to front');
+    fireKey('[',{shiftKey:true});
+    assert.strictEqual(state.shapes[0].id,z1.id,'⇧[ sends to back');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -11445,7 +11478,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1219; // prev 1214 + 5 event-sequence asserts (ADR-0641: ⌘D/Delete/⌘Z/⇧⌘Z)
+  pass += 1228; // prev 1219 + 9 event-sequence asserts (ADR-0641: ⌥arrow resize + [/] z-order)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
