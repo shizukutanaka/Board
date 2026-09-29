@@ -1,3 +1,8 @@
+## [1.7.854] - 2026-09-29
+
+### Docs
+- ADR-0828: `rtc:` presence 行の provenance 規則を architecture.md へ同期 — 生成は自 `dc.onopen` のみ・viaRtc のみ `_pk` 振分・他経路は棄却 (0827)
+
 ## [1.7.853] - 2026-09-29
 
 ### Fixed

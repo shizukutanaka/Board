@@ -388,6 +388,11 @@ DOM 要素は `data-t` 属性 + `UI.applyI18n()` で翻訳 (起動時に 1 回�
   presence tick で sync-req を 3 回まで再送 (ADR-0475) — 応答喪失時の
   空盤面待機を解消。`Net.init` で両フラグをリセット。
 - **離脱**: `pagehide` で flush+bye、bye 受信でピア即時除去 (ADR-0457)。
+- **`rtc:` 行は local-only** (ADR-0822/0827): 合成 id は自 `dc.onopen`
+  でのみ生成され、`_pk` が viaRtc msg をその行へ振り分ける。
+  `_reapPeers` は `rtc:` 行を免除するため、BC 経路で同接頭辞を名乗る
+  peer id は `_onRecv` 先頭で棄却 — 偽装行は reaper 免除を悪用して
+  永久残存+MAX_PEERS 枠を恒常占有し得た。
 - **ルーム切替 hygiene** (ADR-0458/0464/0466/0467/0619): `Net.init` は
   旧チャンネルへ bye → `seenOps`・`_snapT`・非RTC `state.peers`・
   `_imgSent/_imgChunks/_imgOuts`・`_snapIn/_opcIn`・`_pCt` と因果
