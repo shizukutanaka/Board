@@ -1,3 +1,8 @@
+## [1.7.842] - 2026-09-29
+
+### Docs
+- ADR-0816: 送信ファネル・キューライフサイクル監査完走 — _sendDC 棄却/キューキャップ・onclose/失敗リセット・room 切替・localStorage/validClock 全経路 clean
+
 ## [1.7.841] - 2026-09-29
 
 ### Fixed
