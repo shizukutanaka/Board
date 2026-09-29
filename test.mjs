@@ -12032,6 +12032,43 @@ try {
     assert.ok(state.bindPreview!=null,'endpoint drag over a shape previews the binding');
     fire1('pointerup',320,320);
     assert.strictEqual(state.shapes[1].b,BP1.id,'endpoint drop on a shape binds it');
+    // ⇧+wheel pans horizontally (ADR-0093)
+    reset();
+    state.viewport={x:0,y:0,zoom:1};
+    fire1('wheel',0,0,{deltaY:40,deltaX:0,deltaMode:0,shiftKey:true});
+    assert.ok(state.viewport.x!==0&&state.viewport.y===0,'⇧+wheel pans horizontally');
+    // ⌥hover over a non-selected shape shows gap-measure guides (ADR-0151)
+    reset();
+    state.viewport={x:0,y:0,zoom:1};
+    state.tool='select';
+    const MS1=Shape.make('rect',{x:10,y:10,w:40,h:40});
+    const MS2=Shape.make('rect',{x:100,y:10,w:40,h:40});
+    Store.commit({op:'add',shape:MS1});Store.commit({op:'add',shape:MS2});
+    state.selection=new Set([MS1.id]);
+    fire1('pointermove',120,30,{altKey:true});
+    assert.ok(state.measure!=null,'⌥hover shows gap-measure guides');
+    for(const f of (fakeWin._L['keyup']||[]).slice(0,1))f({key:'Alt'});
+    assert.strictEqual(state.measure,null,'Alt keyup clears the measure guides');
+    // dblclick on a frame opens its name editor (ADR-0081)
+    reset();
+    state.viewport={x:0,y:0,zoom:1};
+    const FD1=Shape.make('frame',{x:10,y:10,w:100,h:100,label:'fr'});
+    Store.commit({op:'add',shape:FD1});
+    const appd2=[];fakeDoc.body.appendChild=el=>{appd2.push(el)};
+    fire1('dblclick',60,60);
+    assert.ok(appd2.some(el=>el.tagName==='INPUT'&&el.value==='fr'),'dblclick on frame opens the name editor');
+    fakeDoc.body.appendChild=()=>{};
+    // Enter on a selected conn opens the label editor (ADR-0013)
+    reset();
+    state.viewport={x:0,y:0,zoom:1};
+    state.tool='select';
+    const EN1=Shape.make('arrow',{x1:0,y1:0,x2:100,y2:100,label:'c'});
+    Store.commit({op:'add',shape:EN1});
+    state.selection=new Set([EN1.id]);
+    const appd3=[];fakeDoc.body.appendChild=el=>{appd3.push(el)};
+    fireKey1('keydown',{key:'Enter'});
+    assert.ok(appd3.some(el=>el.tagName==='INPUT'&&el.value==='c'),'Enter on conn opens the label editor');
+    fakeDoc.body.appendChild=()=>{};
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -12043,7 +12080,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1362; // prev 1356 + 6 event-sequence asserts (ADR-0641: ebend/dblclick-label/⇧axis/bindPreview)
+  pass += 1367; // prev 1362 + 5 event-sequence asserts (ADR-0641: ⇧wheel/⌥measure/frame-dblclick/Enter-conn)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
