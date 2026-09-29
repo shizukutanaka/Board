@@ -799,6 +799,22 @@ Board/
 │   └── ADR-0748-pgadopt-grid-invalidate.md  # _pgAdopt で _gridVer キャッシュを無効化 (実装済)
 │   └── ADR-0749-pgadopt-sel-revalidate.md  # _pgAdopt で選択を _pgOk 再検証 (実装済)
 │   └── ADR-0750-pgadopt-sr-announce.md  # _pgAdopt でページ切替を SR アナウンス (実装済)
+│   └── ADR-0751-page-transition-audit.md  # ページ遷移不変条件の監査完走 (ドキュメント化)
+│   └── ADR-0752-pageadd-member-attach.md  # リモート pageAdd のメンバー図形は _attachShape 経由 (ピン)
+│   └── ADR-0753-pagedel-pending-wipe.md  # pageDel の _pcC は駐車 img 参照を全域 wipe → straggler が解決 (ピン)
+│   └── ADR-0754-img-lifecycle-sync.md  # architecture.md の img 参照ライフサイクル節へ 0752/0753 同期 (docs)
+│   └── ADR-0755-pageop-wire-fields.md  # validRemotePayload が pageAdd.i / pageDel.firstId / pageName.nts を検証
+│   └── ADR-0756-wire-convergence-sync.md  # architecture.md の undo-wire 収束節を 0729-0755 へ同期 (docs)
+│   └── ADR-0757-persist-causal-markers-sync.md  # architecture.md §6 へ causal marker 永続化規則を同期 (docs)
+│   └── ADR-0758-del-redo-connclears.md  # del redo のギャップ結合コネクタ dangling を _remoteDelConnFix で解消
+│   └── ADR-0759-add-undo-connclears.md  # add/addMany undo が生存期間の結合を残す非対称を同機構で解消
+│   └── ADR-0760-connclears-locked-survivor.md  # del の connClears が locked 生存図形の結合を剥がさないよう端点毎に判定
+│   └── ADR-0761-connclears-lifecycle-sync.md  # architecture.md へ connClears ライフサイクル規則を同期 (docs)
+│   └── ADR-0762-connclears-gap-pins.md  # connClears ギャップ/生存期間結合の behavioural ピン (tests)
+│   └── ADR-0763-spec-wire-contract-sync.md  # spec.md §8 の wire 契約を現行コードへ同期 (docs)
+│   └── ADR-0764-gesture-cancel-terminal-state.md  # 両キャンセル経路の終端 ptr 状態を _ptrReset 統一 (dataset.panning 残留 fix)
+│   └── ADR-0765-presentation-frame-reresolve.md  # プレゼン _goto が死んだ clone 参照へ zoom していた — _frames を id 再解決 (stale rect/pg fix)
+│   └── ADR-0766-gesture-geometry-restore.md  # ジェスチャ orig 復元を幾何限定 _geoR へ — mid-drag リモート書込みの沈黙消失を解消 (16サイト)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

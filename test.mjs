@@ -250,6 +250,10 @@ const checks = [
   ["clear undo merges op.wc, never replaces (ADR-0723)", html.includes("if(op.wc)for(const[id,w]of Object.entries(op.wc))_wc()[id]=clone(w);_selR(op)")],
   ["pageAdd undo: unpage wire + _pgDel2 only-set (ADR-0724)", html.includes("_pgDel2(op,null,die,firstId)") && html.includes("unpage:state.pages?0:1") && html.includes("_pgDel2(op,firstId,only,viewId)")],
   ["pageDel wire carries the sender rehome target (ADR-0725)", html.includes("const rehome=op.unpage?null:((op.firstId!=null&&_pgById(op.firstId))?op.firstId:firstId)") && html.includes("s.firstId=op.firstId")],
+  ["wire page-op aux fields validated (ADR-0755)", html.includes("(op.i==null||_fin(op.i))") && html.includes("(op.firstId==null||_idOK(op.firstId))") && html.includes("(op.nts==null||_fin(op.nts))")],
+["del redo re-derives connClears (ADR-0758)", html.includes("this._remoteDelConnFix(op);if(fx)for(const p of fx)_oa(byId(p.id),p.patch)")],
+["add/addMany undo clears gap-bound conns (ADR-0759)", html.includes("this._remoteDelConnFix({op:'del',shapes:[op.shape]})")&&html.includes("this._remoteDelConnFix({op:'del',shapes:op.shapes})")],
+["connClears skip locked survivors (ADR-0760)", html.includes("filter(id=>!(byId(id)||{}).locked)")&&html.includes("delIds.has(sh.a)&&!(byId(sh.a)||{}).locked")],
   ["addMany validates the wc clock snapshot (ADR-0726)", html.includes("op.wc==null||wcOk(op.wc)") && html.includes("const wcOk=m=>_iO(m)")],
   ["_recordCommitted sets _lastRep for local 'replace' (ADR-0616)", html.includes("if(op.op==='replace'){state._lastRep=op.clock")],
   ["snapshot carries rep marker + stale-snapshot skip (ADR-0617)", html.includes("rep:state._lastRep") && html.includes("clockNewer(state._lastRep,msg.rep))break;")],
@@ -270,6 +274,8 @@ const checks = [
   ["gesture cancel purges touch/pinch state (ADR-0636)", html.includes("_clearTouchState();   // ADR-0636")],
   ["kbd editor cancels in-flight gesture (ADR-0637)", html.includes("if(ptr.down)_cancelPointerGesture();   // ADR-0637")],
   ["presentation announces enter/goto/exit to SR (ADR-0639)", html.includes("_ann(`${t('presEnter')}") && html.includes("_ann(t('presExit'))") && html.includes("_ann(`${_frames[_idx].label||t('frame')}")],
+  ["presentation _goto re-resolves frames by id (ADR-0765)", html.includes("_frames=_frames.map(f=>byId(f.id)).filter(f=>f&&_pgOk(f))")],
+  ["gesture orig-restores are geometry-scoped via _geoR (ADR-0766)", html.includes("const _geoR=(s,o)=>{for(const k of['x','y','w','h','rotate','x1','y1','x2','y2','pts','way','bend','cbend','a','b','aF','bF'])if(k in o)s[k]=clone(o[k])}") && !html.includes("_oa(sh,clone(orig))") && !html.includes("_oa(sh,clone(ptr.") && !html.includes("_oa(rsh,clone(ptr.")],
   ["presentation gates dblclick/ctx/wheel/pinch (ADR-0640)", html.includes("_on(canvas,'dblclick',e=>{\n  if(_pA())return;") && html.includes("if(_pA())return;   // ADR-0640: no editing menu") && html.includes("if(_pA())return;   // ADR-0640: pan/zoom behind") && html.includes("_ln(pts)<2||_pA()") && html.includes("_pd(e);if(_pA())return;   // ADR-0640")],
   ['applyRemote validates remote add shape', html.includes("case 'add':    return validShape(op.shape)")],
   ['SVG export uses testable buildSVG', html.includes("function buildSVG") && html.includes("buildSVG(shapes")],
@@ -353,7 +359,9 @@ const checks = [
   // v1.7.114: ADR-0056 multi-selection resize
   ['gresize dragKind wires group handles', html.includes("ptr.dragKind='gresize';") && html.includes("ptr.gOrig=new Map(sel.filter(_ul).map(s=>[s.id,clone(s)]))") && html.includes("if(!sel.some(_rt)){")],
   ['gresize reuses applyResize on a virtual box + commits one align op', html.includes("function _gresizeDrag(wp,shift,alt){") && html.includes("applyResize(vbox,ptr.resizeHandle,vorig,wp,shift,alt)") && html.includes("_mapToBox(sh,orig,ob,vbox)") && html.includes("op:'align',dir:'gresize'") && html.includes("'gresize'")],
-  ['gresize cancelled in abortGesture + pointercancel', html.includes("_dk('gresize')||_dk('grot')") && html.includes("ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;")],
+  ['gresize cancelled in abortGesture + pointercancel', html.includes("_dk('gresize')||_dk('grot')") && html.includes("ptr.gOrig=null;ptr.gAnc=null;ptr.gBox=null;ptr.gPad=null;")],
+  ['gesture-cancel terminal state unified via _ptrReset (ADR-0764)', html.includes("const _ptrReset=") && /abortGesture\(\)\{[\s\S]{0,1400}_ptrReset\(\)/.test(html) && /function _cancelPointerGesture[\s\S]{0,1800}_ptrReset\(\)/.test(html)],
+  ['_ptrReset clears every gesture field + grabbing-cursor hook (ADR-0764)', html.includes("ptr.resizeOrig=null") && html.includes("ptr.rotOrig=null") && html.includes("ptr.gAnc=null") && html.includes("ptr.rotA0=null") && html.includes("ptr.wayNew=false") && html.includes("ptr.lblOrig=null") && html.includes("canvas.dataset.panning='false'")],
   // v1.7.115: ADR-0057 rotation knob for point geometry + multi-selection
   ['getRotHandle generalised to point-geom bbox', html.includes("else{const b=_bb(s);if(!b||!(b.w>0)||!(b.h>0))return null;cx=b.x+b.w/2;") && html.includes("function _grpRotHandle(b){")],
   ['grot dragKind + delta-angle _rotShape + align commit', html.includes("ptr.dragKind='grot';") && html.includes("function _grotDrag(wp,shift){") && html.includes("_rotShape(sh,orig,ptr.rotCx,ptr.rotCy,deg)") && html.includes("op:'align',dir:'grot'") && html.includes("'grot'")],
@@ -725,7 +733,7 @@ const checks = [
   // v1.7.580 (ADR-0552): unhandled ctx-menu keys are swallowed, not bubbled
   ['ctx menu swallows unhandled keys (ADR-0552)', html.includes("e.key!==' '&&e.key!=='Enter'){_pd(e);e.stopPropagation();UI.closeCtxMenu()}")],
   // v1.7.582 (ADR-0554): presentation frame navigation drops deleted frames
-  ['presentation _goto filters stale+off-page frames (ADR-0554/0677)', html.includes('_frames=_frames.filter(f=>byId(f.id)&&_pgOk(f))')],
+  ['presentation _goto filters stale+off-page frames (ADR-0554/0677)', html.includes('_frames=_frames.map(f=>byId(f.id)).filter(f=>f&&_pgOk(f))')],
   // v1.7.584 (ADR-0556): blur on a remotely-deleted shape must not commit a phantom op
   ['text editor blur guards remote-deleted shape (ADR-0556)', html.includes("if(!byId(s.id)){state.editing=null;_teTa=null;_rm(ta);_iv();return}")],
   ['label editor commit guards remote-deleted shape (ADR-0557)', html.includes("if(!byId(hit.id)){_lblTa=null;_rm(inp);_iv();return}")],
@@ -1394,7 +1402,7 @@ const checks = [
     html.includes("if(!sh||(sh.locked&&!('locked' in raw)))continue;")],
   // v1.7.39: _apply del forward connClears must guard sh.locked
   ['_apply del forward connClears: if(sh&&!sh.locked) guards locked connectors',
-    html.includes("if(sh&&!sh.locked)_oa(sh,p.after);}}")],
+    html.includes("for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked){const pt={}")],
   // v1.7.40: _apply zorder forward must guard sh.locked (changes path)
   ['_apply zorder forward changes: !sh.locked guards locked shapes in BOTH directions',
     html.includes("if(sh&&!sh.locked&&!_lwwSkip(c.id,'frac',op))sh.frac=forward?c.after:c.before}")],
@@ -1686,7 +1694,7 @@ try {
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, cycleStickyColor, wrapInFrame, doPasteAt, doPasteInPlace, selectSamePaint, selectSameType, showAllShapes, _stickyChain, _fitIfEmptyView, toggleCurve, toggleLineArrow, toggleStickyText, selectFrameContents, selectInverse, unlockAll, exportViewportPNG, cycleArrowHead, _connPathPts, _pathAt, _pathNearestT, snapSelToGrid, importBoardText, copyBoardJSON, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
              _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, _frameOf, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa: () => _teTa, zoomAt, reverseConn, unbindSelection,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
              exportPNG, copyPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
@@ -1714,7 +1722,7 @@ try {
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, cycleStickyColor, wrapInFrame, doPasteAt, doPasteInPlace, selectSamePaint, selectSameType, showAllShapes, _stickyChain, _fitIfEmptyView, toggleCurve, toggleLineArrow, toggleStickyText, selectFrameContents, selectInverse, unlockAll, exportViewportPNG, cycleArrowHead, _connPathPts, _pathAt, _pathNearestT, snapSelToGrid, importBoardText, copyBoardJSON, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
           _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, _frameOf, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa, zoomAt, reverseConn, unbindSelection,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
           exportPNG, copyPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
@@ -2149,6 +2157,42 @@ try {
     assert.strictEqual(s3.dataUrl,'data:image/png;base64,BB','pending shape resolves');
     assert.strictEqual(Net._imgPending.has(s3.id),false,'pending entry cleared');
     console.log('  ✓ img blob resolves evicted + pending shapes (ADR-0629)');
+  }
+  // ADR-0752: a remote pageAdd's member shapes ride Net._attachShape — an img ref
+  // parks in _imgPending (or resolves immediately when the blob already arrived).
+  // Regression would leave images broken on duplicated/imported/remote pages.
+  {
+    state.pages=null;state.curPg=null;state.shapes.length=0;_invalidateGrid();
+    Net._imgPending.clear();Net._imgIn.clear();
+    const im1=Shape.make('image',{x:0,y:0,w:10,h:10,img:'kk9'});
+    Store.applyRemote({op:'pageAdd',id:'pI',name:'I',shapes:[JSON.parse(JSON.stringify(im1))],clock:{peer:'zz',seq:41,ts:9}});
+    const g1=byId(im1.id);
+    assert.ok(g1&&g1.pg==='pI','pageAdd member lands on its page');
+    assert.strictEqual(Net._imgPending.get(im1.id),'kk9','unresolved img parks via _attachShape');
+    Net._imgIn.set('kk8','data:image/png;base64,CC');
+    const im2=Shape.make('image',{x:0,y:0,w:10,h:10,img:'kk8'});
+    Store.applyRemote({op:'pageAdd',id:'pJ',name:'J',shapes:[JSON.parse(JSON.stringify(im2))],clock:{peer:'zz',seq:42,ts:9}});
+    assert.strictEqual(byId(im2.id).dataUrl,'data:image/png;base64,CC','blob already present → dataUrl resolved');
+    assert.strictEqual(byId(im2.id).img,undefined,'resolved ref dropped');
+    console.log('  ✓ pageAdd member attach pins img parking + resolution (ADR-0752)');
+  }
+  // ADR-0753: a remote pageDel's _pcC wipes parked img refs WHOLESALE — including a
+  // SURVIVING page's member. The straggler img-scan (ADR-0629) is the safety net:
+  // the blob still resolves the parked shape when it arrives.
+  {
+    state.pages=null;state.curPg=null;state.shapes.length=0;_invalidateGrid();
+    Net._imgPending.clear();Net._imgIn.clear();
+    Store.applyRemote({op:'pageAdd',id:'pA',name:'A',shapes:[],clock:{peer:'zz',seq:50,ts:9}});
+    Store.applyRemote({op:'pageAdd',id:'pB',name:'B',shapes:[],clock:{peer:'zz',seq:51,ts:9}});
+    const im=Shape.make('image',{x:0,y:0,w:10,h:10,img:'kkP'});
+    im.pg='pA';state.shapes.push(im);_invalidateGrid();Net._imgPending.set(im.id,'kkP');
+    Store.applyRemote({op:'pageDel',id:'pB',firstId:'pA',clock:{peer:'zz',seq:52,ts:9}});
+    assert.ok(byId(im.id),'member of the surviving page stays');
+    assert.strictEqual(Net._imgPending.has(im.id),false,'pageDel _pcC wipes parked refs wholesale');
+    Net._onRecv({k:'img',key:'kkP',seq:0,n:1,data:'data:image/png;base64,DD',peer:'peerZ'},false);
+    assert.strictEqual(byId(im.id).dataUrl,'data:image/png;base64,DD','straggler resolves after the wipe');
+    assert.strictEqual(byId(im.id).img,undefined,'ref dropped on resolution');
+    console.log('  ✓ pageDel pending wipe + straggler resolution (ADR-0753)');
   }
 
   // applyRemote does NOT enter local undo stack
@@ -7614,6 +7658,47 @@ try {
     console.log('  ✓ nudgeSelection: frame children follow + locked shapes stay (drag parity)');
   }
 
+  // ADR-0767: nested frames are frame-members — a frame fully inside a selected
+  // frame follows it, else it detaches from its own contents on move/delete.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.seq=0;state.seenOps=new Set();
+    const outer=Shape.make('frame',{x:0,y:0,w:300,h:300});
+    const inner=Shape.make('frame',{x:40,y:40,w:120,h:120});
+    const kid=Shape.make('rect',{x:60,y:60,w:20,h:20});
+    const out2=Shape.make('rect',{x:600,y:600,w:30,h:30});
+    Store.commit({op:'add',shape:outer});
+    Store.commit({op:'add',shape:inner});
+    Store.commit({op:'add',shape:kid});
+    Store.commit({op:'add',shape:out2});
+    const ID2=id=>state.shapes.find(s=>s.id===id);
+
+    // withFrameChildren: the nested frame + its contents are members of the outer
+    const exp=withFrameChildren(new Set([outer.id]));
+    assert.ok(exp.has(inner.id),'0767: nested frame is a member of the outer frame');
+    assert.ok(exp.has(kid.id),'0767: nested frame contents are members of the outer frame');
+    assert.ok(!exp.has(out2.id),'0767: outsider stays out');
+
+    // _frameOf outer-keying: inner's children key to the OUTER when both are selected
+    const fm=_frameOf([outer,inner]);
+    assert.strictEqual(fm.get(inner.id),outer.id,'0767: nested frame keys to the outer frame');
+    assert.strictEqual(fm.get(kid.id),outer.id,'0767: grandchild keys to the outer frame, not the inner');
+    const fmB=_frameOf([inner]);
+    assert.strictEqual(fmB.get(kid.id),inner.id,'0767: inner alone claims its own children');
+
+    // nudge the outer frame: inner frame AND its contents follow (previously inner detached)
+    const ix=inner.x,kx=kid.x;
+    state.selection=new Set([outer.id]);
+    nudgeSelection(10,0);
+    assert.strictEqual(ID2(inner.id).x,ix+10,'0767: nudge moves the nested frame too');
+    assert.strictEqual(ID2(kid.id).x,kx+10,'0767: nudge moves the nested contents too');
+    // delete the outer: nested frame + contents die with it
+    doDelete();
+    assert.ok(!byId(outer.id)&&!byId(inner.id)&&!byId(kid.id),'0767: delete removes the nested frame + contents');
+    assert.ok(byId(out2.id),'0767: outsider survives');
+    console.log('  ✓ ADR-0767: nested frames are members (move/delete/align parity)');
+  }
+
   // v1.6.76: render rotation gated to box shapes — line/arrow/pen ignore a stray
   // rotate (only reachable via remote upd), keeping canvas (NaN-centre avoided) and
   // SVG export in agreement. shapeRot is the shared source of truth.
@@ -7791,6 +7876,89 @@ try {
     // with no op — i.e. after.x would be 150, not 100. The revert is what the test proves.
     assert.notStrictEqual(150,after.x,'non-vacuity: reverted x (100) differs from the dragged x (150)');
     console.log('  ✓ abortGesture: pinch cancels & reverts in-progress gesture (multi-touch, Qiita/Zenn)');
+  }
+
+  // v1.7.790 (ADR-0764): both cancel paths must leave the SAME complete terminal state —
+  // every gesture field dead, incl. the grabbing-cursor hook (dataset.panning), which a
+  // pinch-aborted pan previously left stuck at 'true'.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+    ptr.down=true;ptr.panning=true;canvas.dataset.panning='true';
+    ptr.resizeHandle='se';ptr.resizeOrig={id:'x'};ptr.rotOrig={id:'y'};
+    ptr.gAnc=new Map();ptr.rotA0=1;ptr.wayIdx=2;ptr.wayNew=true;ptr.lblOrig={id:'z'};
+    abortGesture();
+    assert.strictEqual(canvas.dataset.panning,'false','abortGesture: grabbing-cursor hook cleared (was stuck after a pinch-aborted pan)');
+    assert.strictEqual(ptr.panning,false,'abortGesture: panning cleared');
+    assert.strictEqual(ptr.resizeOrig,null,'abortGesture: resizeOrig cleared');
+    assert.strictEqual(ptr.rotOrig,null,'abortGesture: rotOrig cleared');
+    assert.strictEqual(ptr.resizeHandle,null,'abortGesture: resizeHandle cleared');
+    assert.strictEqual(ptr.gAnc,null,'abortGesture: gAnc cleared');
+    assert.strictEqual(ptr.rotA0,null,'abortGesture: rotA0 cleared');
+    assert.strictEqual(ptr.wayIdx,null,'abortGesture: wayIdx cleared');
+    assert.strictEqual(ptr.wayNew,false,'abortGesture: wayNew cleared');
+    assert.strictEqual(ptr.lblOrig,null,'abortGesture: lblOrig cleared');
+    // identical coverage on the pointercancel path (the reverse gap)
+    ptr.down=true;ptr.panning=true;canvas.dataset.panning='true';
+    ptr.gAnc=new Map();ptr.rotA0=1;ptr.wayIdx=2;ptr.wayNew=true;ptr.lblOrig={id:'z'};
+    _cancelPointerGesture();
+    assert.strictEqual(ptr.gAnc,null,'pointercancel: gAnc cleared');
+    assert.strictEqual(ptr.rotA0,null,'pointercancel: rotA0 cleared');
+    assert.strictEqual(ptr.wayIdx,null,'pointercancel: wayIdx cleared');
+    assert.strictEqual(ptr.wayNew,false,'pointercancel: wayNew cleared');
+    assert.strictEqual(ptr.lblOrig,null,'pointercancel: lblOrig cleared');
+    assert.strictEqual(canvas.dataset.panning,'false','pointercancel: grabbing-cursor hook cleared');
+    console.log('  ✓ gesture cancel: abortGesture + pointercancel leave identical dead field state (ADR-0764)');
+  }
+
+  // v1.7.791 (ADR-0765): presentation _goto must re-resolve frames by id — a wholesale
+  // swap (remote 'replace', del/add undo-redo) replaces the shape object under a live
+  // id, and zooming the stale captured clone would land on the pre-swap rect.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+    const pf1=Shape.make('frame',{x:0,y:0,w:200,h:100});
+    const pf2=Shape.make('frame',{x:400,y:0,w:200,h:100});
+    Store.commit({op:'addMany',shapes:[pf1,pf2]});
+    Presentation.enter();
+    assert.ok(Presentation.isActive(),'pres enters with 2 frames');
+    // wholesale swap: same ids, NEW clones, f2 moved from x=400 to x=900
+    const nf1=JSON.parse(JSON.stringify(pf1)),nf2=JSON.parse(JSON.stringify(pf2));nf2.x=900;
+    state.shapes=[nf1,nf2];_invalidateGrid();
+    Presentation.next();   // frame 2 — must zoom to the LIVE clone (cx=1000), not the stale captured one (cx=500)
+    // vW=800,pad=40: zoom=min((800-80)/200,(600-80)/100,4)=3.6; x=cx-vW/(2*zoom)
+    const expX=1000-800/7.2,staleX=500-800/7.2;
+    assert.ok(Math.abs(state.viewport.x-expX)<0.001,`stale-clone guard: zoom lands on the live frame rect (expected x≈${expX.toFixed(2)}, got ${state.viewport.x.toFixed(2)})`);
+    assert.ok(Math.abs(state.viewport.x-staleX)>1,'non-vacuity: differs from the stale-rect landing');
+    Presentation.leave();
+    console.log('  ✓ presentation _goto re-resolves frames by id under wholesale swaps (ADR-0765, 3 asserts)');
+  }
+
+  // v1.7.792 (ADR-0766): gesture orig-restores must be geometry-scoped — _oa(clone(orig))
+  // reverts EVERY prop to the drag-start snapshot, so a remote style/upd landing on a
+  // dragged shape mid-gesture was locally stomped (wclock keeps the remote clock →
+  // nothing re-heals → divergence). _geoR restores geometry keys only.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.tool='select';
+    const M1=Shape.make('rect',{x:10,y:10,w:40,h:40});
+    Store.commit({op:'add',shape:M1});
+    state.selection=new Set([M1.id]);
+    // fire1 lives in a later block scope — replicate its index-0 dispatch here
+    const fireP=(t,x,y,o={})=>{const ev={pointerId:1,pointerType:'mouse',button:0,isPrimary:true,clientX:x,clientY:y,offsetX:x,offsetY:y,ctrlKey:false,metaKey:false,shiftKey:false,altKey:false,preventDefault(){},stopPropagation(){},...o};for(const f of (canvas._L[t+'|c']||[]).slice(0,1))f(ev);for(const f of (canvas._L[t]||[]).slice(0,1))f(ev);};
+    fireP('pointerdown',20,20);                       // inside the rect → arms 'move' + dragStartShapes
+    byId(M1.id).fill='#112233';                       // remote style write lands mid-drag
+    fireP('pointermove',40,40);                       // doMove re-bases from orig — fill must survive
+    assert.strictEqual(byId(M1.id).fill,'#112233','mid-drag remote prop write survives the per-frame re-base');
+    assert.ok(byId(M1.id).x>10,'geometry still dragged (non-vacuous re-base)');
+    fireP('pointerup',40,40);                         // commit path keeps it too
+    assert.strictEqual(byId(M1.id).fill,'#112233','remote prop write survives move commit');
+    // same stomp class on the cancel path: geometry reverts, remote props stay
+    const oc=JSON.parse(JSON.stringify(byId(M1.id))); // drag-start snapshot (x already committed)
+    byId(M1.id).x=999;byId(M1.id).fill='#445566';     // dragged + remote write mid-gesture
+    ptr.down=true;ptr.dragKind='move';ptr.dragStartShapes=new Map([[M1.id,oc]]);
+    abortGesture();
+    assert.strictEqual(byId(M1.id).x,oc.x,'cancel reverts geometry to the drag-start snapshot');
+    assert.strictEqual(byId(M1.id).fill,'#445566','cancel does not stomp the mid-drag remote prop write');
+    console.log('  ✓ gesture orig-restores are geometry-scoped — remote prop writes survive (ADR-0766, 5 asserts)');
   }
 
   // v1.6.81: wheelPx normalizes wheel deltas across deltaMode so Firefox's line-mode
@@ -10928,14 +11096,15 @@ try {
   // v1.7.46c: _apply del backward connClears must respect sh.locked (parity with forward path)
   {
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
-    const connSh=Shape.make('arrow',{x1:0,y1:0,x2:100,y2:0,a1:'dummy_target'});
+    const connSh=Shape.make('arrow',{x1:0,y1:0,x2:100,y2:0});
     const targetSh=Shape.make('rect',{x:90,y:-5,w:20,h:10});
+    connSh.a=targetSh.id;
     state.shapes.push(connSh,targetSh);
-    Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(targetSh))],connClears:[{id:connSh.id,before:{a1:'dummy_target'},after:{a1:null}}]});
-    assert.strictEqual(connSh.a1,null,'v1.7.46c setup: connector binding cleared on del');
+    Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(targetSh))],connClears:[{id:connSh.id,before:{a:targetSh.id,aF:null,x1:0,y1:0},after:{a:null,aF:null,x1:9,y1:9}}]});
+    assert.strictEqual(connSh.a,null,'v1.7.46c setup: connector binding cleared on del');
     connSh.locked=true;
     Store.undo();
-    assert.strictEqual(connSh.a1,null,'v1.7.46c: locked connector binding NOT restored on del-backward (lock guard)');
+    assert.strictEqual(connSh.a,null,'v1.7.46c: locked connector binding NOT restored on del-backward (lock guard)');
     console.log('  ✓ _apply del backward connClears: locked connector not modified (v1.7.46c)');
   }
 
@@ -12468,6 +12637,12 @@ try {
     const vx=state.viewport.x;
     fireKey('ArrowRight');
     assert.ok(state.viewport.x!==vx,'arrow navigation advances to the next frame');
+    // ADR-0768: PgDn/PgUp nav like every deck tool (they were swallowed before)
+    const vx2=state.viewport.x;
+    fireKey('PageDown');   // already on the last frame — next() clamps
+    assert.strictEqual(state.viewport.x,vx2,'PgDn on the last slide is a no-op');
+    fireKey('PageUp');
+    assert.ok(state.viewport.x!==vx2,'PgUp navigates back to the previous slide');
     fireKey('Escape');
     assert.ok(!Presentation.isActive(),'Escape leaves the presentation');
     // ⌘A selects every visible shape (locked included); Delete removes the unlocked ones (ADR-0396)
@@ -13687,13 +13862,40 @@ try {
     assert.ok(html.includes('excScene(_shV())'),'exportExc scopes to the current page');
     assert.ok((html.match(/shapes=_shV\(\)/g)||[]).length>=4,'PNG/SVG export+copy defaults are page-scoped');
 
+  // v1.7.78a: del→undo→(gap rebind)→redo clears the gap-bound connector (ADR-0758)
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const t2=Shape.make('rect',{x:90,y:-5,w:20,h:10});
+    const c2=Shape.make('arrow',{x1:0,y1:0,x2:100,y2:0});
+    state.shapes.push(t2,c2);
+    Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(t2))]});
+    Store.undo();
+    c2.a=t2.id;   // gap: connector binds to the restored target BEFORE the redo
+    Store.redo(); // del forward re-runs — _remoteDelConnFix must clear the gap-bound endpoint
+    assert.strictEqual(c2.a,null,'v1.7.78a: gap-bound connector cleared on del redo');
+    console.log('  ✓ _apply del forward: _remoteDelConnFix clears gap-bound conns on redo (v1.7.78a)');
+  }
+
+  // v1.7.78b: add undo clears a connector bound while the added shape existed (ADR-0759)
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const t3=Shape.make('rect',{x:90,y:-5,w:20,h:10});
+    const c3=Shape.make('arrow',{x1:0,y1:0,x2:100,y2:0});
+    state.shapes.push(t3,c3);
+    Store.commit({op:'add',shape:JSON.parse(JSON.stringify(t3))});
+    c3.a=t3.id;   // bind during the add's lifetime
+    Store.undo(); // inverse del — _remoteDelConnFix must clear the binding like a real del
+    assert.strictEqual(c3.a,null,'v1.7.78b: add undo clears connector bound during add lifetime');
+    console.log('  ✓ _apply add backward: _remoteDelConnFix clears lifetime-bound conns (v1.7.78b)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
   // asserts but actually contains 6 (recounted directly: at1.length, at2.length, and 4
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1705; // prev 1701 + 3 ADR-0748 + 1 ADR-0749 page-adopt asserts
+  pass += 1744; // prev 1739 + 5 v1.7.792 geometry-scoped restore asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

@@ -1,3 +1,107 @@
+## [1.7.794] - 2026-09-28
+
+### Fixed
+- ADR-0768: プレゼン中の PgDn/PgUp がナビキー未登録のまま全入力抑止で呑まれていた — Keynote/PowerPoint parity で next/prev に割当て (マルチページの `!meta` PgDn/PgUp と排他: プレゼンはスライド、通常モードはページナビのまま)
+
+## [1.7.793] - 2026-09-28
+
+### Fixed
+- ADR-0767: 入れ子フレームが外枠の member にならず、外枠の move/nudge/duplicate/delete で内枠だけ取り残される detach 実害を修正 — `withFrameChildren`/`_frameOf` の `_frm(s)` member 除外を解除 (両端選択時は outer-keyed の前段ガードで align unit/二重変換を防止)。excalidraw エクスポートの frameId も parity 化、`_inR` 内包判定集約
+
+## [1.7.792] - 2026-09-28
+
+### Fixed
+- ADR-0766: ジェスチャの orig 復元を幾何プロップ限定の `_geoR` へ — `_oa(sh,clone(orig))` がドラッグ開始スナップショットの全プロップを書き戻していたため、move/resize/rotate/gresize/grot/ebend/cbend/way 中に着地したリモート style/upd をローカルで沈黙消失させていた (wclock はリモート側時計を保持するため再治癒も起きず、ピアと発散)。移動 per-frame re-base と両キャンセル経路の計16サイトを変換
+
+## [1.7.791] - 2026-09-28
+
+### Fixed
+- ADR-0765: プレゼン `_goto` が生存確認した `byId` を捨てて stale clone へ zoom していた問題を修正 — `_frames` を `map(f=>byId(f.id)).filter(f=>f&&_pgOk(f))` で live 参照へ再解決 (リモート 'replace'/undo でフレームが同 id の別インスタンスへ交換されると、交換前の rect/pg へ着陸していた)
+
+## [1.7.790] - 2026-09-28
+
+### Fixed
+- ADR-0764: `abortGesture` (二本指によるピンチ中断) が `canvas.dataset.panning` を戻さず grabbing カーソルを残留させていた問題を修正 — 両ジェスチャキャンセル経路の終端状態を `_ptrReset` へ統一し、ptr フィールド全消去の網羅性を保証 (abort 側の resizeOrig/rotOrig/resizeHandle 残置、cancel 側の gAnc/rotA0/wayIdx/wayNew/lblOrig 残置も解消、~190B 回収)
+
+## [1.7.789] - 2026-09-29
+
+### Docs
+- ADR-0763: spec.md §8 の wire 契約を現行コードへ同期 (move 絶対位置 / zorder 旧形式廃止 / LWW 対象列挙)
+
+## [1.7.788] - 2026-09-29
+
+### Tests
+- ADR-0762: connClears ギャップ/生存期間結合の behavioural ピン (v1.7.78a/b)
+
+## [1.7.787] - 2026-09-29
+
+### Docs
+- ADR-0761: architecture.md の connClears 節へコネクタ binding ライフサイクル規則 (再導出 / locked 生存者判定) を同期
+
+## [1.7.786] - 2026-09-29
+
+### Fixed
+- ADR-0760: `del` が locked で実際には削除されない図形を含む場合、`connClears`/`_remoteDelConnFix` がその**生存図形への結合**までクリアする問題を修正 — 端点毎に生存者を判定し、生存側の binding は保持
+
+## [1.7.785] - 2026-09-29
+
+### Fixed
+- ADR-0759: `add`/`addMany` の undo が図形の生存期間に結合されたコネクタをピアと非対称に残す問題を修正 — backward 適用でも `_remoteDelConnFix` を走らせ、ピアが受ける `del` 逆 op と同じクリアを実行
+
+## [1.7.784] - 2026-09-29
+
+### Fixed
+- ADR-0758: del の redo が undo 空白期に新規結合されたコネクタをピアと非対称に残す問題を修正 — forward apply で `_remoteDelConnFix` を走らせ、記録済み `connClears` に含まれない現行バインドも消去 (受信側と同じ走査)
+
+## [1.7.783] - 2026-09-29
+
+### Docs
+- ADR-0757: architecture.md §6 Persist へ causal marker 永続化規則を同期 — doc レコードが `wc`/`rep`/`nts`/`ntp` を同梱し、リロード時リセットによる stale snapshot/旧 rename 復活を防ぐ (ADR-0460/0695/0699/0701 系)。監査により `_rdb` 永続化カバレッジ・`:prev` バックアップ・hidden フラッシュの不整合なしを確認
+
+## [1.7.782] - 2026-09-28
+
+### Docs
+- ADR-0756: architecture.md's undo-wire convergence section synced to
+  ADR-0729-0755 — absolute move both ways, per-axis `_lwwSkip`, beautify/
+  clear wire ops, tombstone persistence across wipes/caps/adopts, and the
+  page-op aux-field wire validation added this round
+
+## [1.7.781] - 2026-09-28
+
+### Fixed
+- ADR-0755: validRemotePayload now validates the wire-carried page-op fields —
+  pageAdd `i` (finite), pageDel `firstId` (<=64-char string), pageName `nts`
+  (finite) — a hostile non-finite value no longer reaches the apply path
+
+## [1.7.780] - 2026-09-28
+
+### Docs
+- ADR-0754: architecture.md img-reference lifecycle section synced — pageAdd
+  members ride _attachShape (0752); pageDel's _pcC wipes _imgPending wholesale
+  and the 0629 straggler scan is the safety net (0753)
+
+## [1.7.779] - 2026-09-28
+
+### Tests
+- ADR-0753: pin that a remote pageDel's _pcC wipes _imgPending wholesale
+  (a surviving page's parked refs included) and the ADR-0629 straggler
+  img-scan still resolves them when the blob arrives
+
+## [1.7.778] - 2026-09-28
+
+### Tests
+- ADR-0752: pin that remote pageAdd member shapes ride Net._attachShape —
+  unresolved img refs park in _imgPending, already-arrived blobs resolve
+  to dataUrl immediately (a dropped attach leaves page images broken)
+
+## [1.7.777] - 2026-09-28
+
+### Docs
+- ADR-0751: page-transition audit complete — the `_pgAdopt` ↔ `switchPage`
+  invariant set (gesture kill, cursor hide order, _gridVer invalidate,
+  selection re-validation, SR announce, _pgBar) is now documented in
+  architecture.md; every curPg write site verified against it
+
 ## [1.7.776] - 2026-09-28
 
 ### Fixed

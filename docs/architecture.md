@@ -157,6 +157,13 @@ remote del/replace と選択書込みの間には選択が stale id を持つ窓
 `_sh().push(Net._attachShape(clone(s)))` を通す。`img:` 参照を抱えた図形が undo で戻る際に
 `_imgIn` の到達済み blob から `dataUrl` を再解決し、未到達なら `_imgPending` に再駐留する
 (ADR-0551)。直接 `push(clone(s))` すると削除中に blob が到達した図形が永久 placeholder になる。
+同じ attach は `pageAdd` forward のメンバー図形にも適用される (ADR-0752 — page duplicate・
+.drawio multi-page・undo-wire addMany の image メンバーが参照のみで届くため)。
+`_pgDel2` は末尾で `_pcC()` を呼び `_penCache`+`_imgPending` を**全域** purge する
+(ADR-0753 — 生き残るページの駐車参照も巻き込む)。この wholesale wipe は安全:
+`_imgPending` はあくまで fast index であり、blob 到着時の straggler 走査
+(`for(const s of _sh())if(s.img===key)…`、ADR-0629) が全域を救済する。straggler 経路を
+除去/弱化すると pageDel が他ページの画像を永久破壊する — test が両側面を固定する。
 
 **反転 (flip H/V)** は専用 op を持たず、`align` op を再利用する: `doFlip(axis)` が選択 bbox 中心軸で
 各シェイプ座標をミラー (`flipShape`) し、変更前後の完全クローンを `{op:'align',dir:'flip',before,after}`
@@ -221,6 +228,8 @@ RAF ループ。`needsRender`/`needsOverlay` フラグで再描画をゲート�
 
 ### 6. Persist
 IndexedDB (`board` / stores `docs` + `imgs`, DB_VER=2)。500ms デバウンス。`visibilitychange`→hidden で最終セーブ (`beforeunload` はモバイルで不可靠)。`Ctrl+S` で即時保存。読み込み時に `validShape` で全 shape を検証。ADR-0031 で画像バイトは `dataUrl` から content-hash キーの `imgs` blob ストアへ分離 — doc レコードは `img` 参照のみ保持し、`DOC_KEY`/`DOC_KEY+':prev'` が blob を共有 (重複書き込みなし、孤児は save 時 GC)。save 失敗は `_saveErrMsg` で `QuotaExceededError` を識別してトースト。
+
+**因果マーカーも永続化する** (ADR-0460/0695/0699/0701): doc レコードは `shapes`/`viewport`/`pages`/`curPg` に加えて `wc` (per-prop 書込みクロック) と `rep`/`nts`/`ntp` (最後の replace マーカー・改名クロック) を同梱する。リロードでこれらが null/0 に戻ると、ピアの古い pre-swap スナップショットや旧 rename が wipe 済み内容を復活させ得るため。読み込み側は `validClock`/`_fin` で検証してから採用する (0864/0700/0701 の非有限値拒否と同一規則)。`:prev` バックアップ (ADR-0004) はスコープ外 — 復元自体が replace op として commit され新しい causal marker を立てる。
 
 ## 座標系
 
@@ -409,8 +418,20 @@ DOM 要素は `data-t` 属性 + `UI.applyI18n()` で翻訳 (起動時に 1 回�
   - **`_slimOp` は undo-domain を剥がし wire-domain を残す**: `bts/
     origSel/moved/connClears` は落とすが `wc/unpage+shapes/firstId/
     nts,ntp` はワイヤに必要なため残す (0705/0721–0727)。
+  - **move は絶対位置で双方向**: 送信側・undo-wire とも `after`/`before`
+    は絶対 {x,y} ペア — bare delta は raced 基準で非収束 (0729/0731/0732)。
+    delta 経路の undo は軸毎 `_lwwSkip` でピア新規書込を保護 (0733)。
+  - **`beautify`/`replace`/`clear` も wire op**: beautify は patch-swap
+    (0730/0731)、clear は `{op:'replace',after:[],afterWc:{}}` に翻訳され
+    `_lastRep` 因果順序と snapshot rep marker を共有 (0626)。
+  - **墓標は世代を超えて残る**: del/clear/replace/pageDel の tombstone
+    `{_del:clock}` は `_imgPending` wipe・wclock 洪水 cap (0738)・
+    snapshot 空盤面採用 (0735) でも保持 — stale add/snapshot が
+    削除済み図形を復活させない (0734–0737)。
   - **受信側検証**: `addMany.wc` は `replace.afterWc` と同じ `wcOk`
-    検査 (0726) — 悪意/壊損 clock の NaN 汚染を遮断。
+    検査 (0726) に加え、ページ op の付帯フィールド — `pageAdd.i`、
+    `pageDel.firstId`、`pageName.nts` — も有限数/≤64文字列を要求 (0755)。
+    悪意/壊損 clock・非有限値の NaN 汚染を遮断。
 - **frag 再起動**: `snap`/`opc`/`img` の `n` 不一致・key 衝突で旧断片を
   捨てて新ストリームを再起動、`_imgIn`/`_imgChunks` は 96KB/256-entry
   で上限化 (ADR-0448/0449/0454)。
@@ -497,6 +518,13 @@ pen/line/arrow は点ジオメトリで box 中心が無く回転中心が NaN �
 
 - **`connClears`** (del 系 op 同梱): 結合先削除時に `a`/`b`/`aF`/`bF` をクリアし
   端点を現在値に凍結 (`computeConnClears`)。locked コネクタは清書しない。
+  - **記録ではなく再導出も併用**: `del` forward は記録 `connClears` 適用の後で
+    `_remoteDelConnFix(op)` を走査 — undo↔redo ギャップ中の新規結合も消去し
+    受信側と同一結果になる (0758)。`add`/`addMany` backward も同機構を合成
+    del op で実行 — 生存期間の結合がピア側 `del` 逆 op と同じく消える (0759)
+  - **locked 生存者の binding は保持**: `del` が locked で splice を skip する
+    図形を含む場合、その図形への結合は消さない — `goneIds`/`delIds` の判定に
+    `!(byId(id)||{}).locked`、wire 記録適用は端点毎に生存者判定 (0760)
 - **選択外コネクタ**も結合先が変換対象なら before/after に同梱して変換
   (0586 doRotate / 0588 doFlip / 0587 grot は `ptr.gAnc` で原値退避・再計算 — ドリフト防止)。
 
@@ -537,7 +565,10 @@ pen/line/arrow は点ジオメトリで box 中心が無く回転中心が NaN �
 
 - **遷移はジェスチャを殺す**: `switchPage`/`_pgAdopt` が `_cancelPointerGesture`
   (0664) — 別ページ図形への不可視コミットを防ぐ。`_pgAdopt` は `_cxO` で
-  編集エディタも畳む (0684)
+  編集エディタも畳む (0684)。adopt 時はさらに `_iG` で `_gridVer` 系キャッシュ
+  を無効化 (0748 — `_sqMatches` 等が旧帰属のまま返るのを防ぐ)、`_ss(_selIds())`
+  で選択を `_pgOk` 再検証 (0749 — 旧ページ図形が不可視のまま選択に残るのを防ぐ)、
+  ページ交代なら `_ann` で着陸ページ名を SR アナウンス (0750 — switchPage 同格)
 - **プレゼンス**: `cursor`/`selection` wire に `pg` 同梱、別ページカーソルは非描画
   (0647)、アバターツールチップ+クリック follow (0656/0670)。送出 dedup 鍵に
   `curPg` 同梱 (0680 — 選択不変のページ切替でも再送)
