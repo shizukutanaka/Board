@@ -1566,7 +1566,7 @@ const fakeDoc = {
     }),
     width: 800, height: 600, value: '', textContent: '',
     querySelectorAll: () => [],
-    querySelector: () => null,
+    querySelector: () => ({focus(){}, click(){}, style:{}}),
     focus(){}, blur(){}, click(){}, contains(){ return false; },
     hidden: false,
     onclick: null, oninput: null,
@@ -1581,7 +1581,9 @@ const fakeDoc = {
     value:'', textContent:'', innerHTML:'',
     scrollWidth: 50, scrollHeight: 20, spellcheck: false,
     focus(){}, blur(){}, select(){}, setSelectionRange(){},
-    click(){}
+    click(){},
+    querySelector: () => ({focus(){}, click(){}, style:{}}),
+    querySelectorAll: () => [],
   }),
   body: { appendChild(){}, removeChild(){} },
   documentElement: { setAttribute(){}, getAttribute(){}, dataset:{} },
@@ -1623,6 +1625,9 @@ const fakeWin = {
   parseInt, parseFloat, isNaN, isFinite,
 };
 fakeWin.window = fakeWin; fakeWin.document = fakeDoc; fakeWin.self = fakeWin;
+// Bare global lookups (e.g. `innerWidth` in openCtxMenu) resolve to globalThis
+// in the Function scope — mirror the fake window metrics there.
+globalThis.innerWidth = 800; globalThis.innerHeight = 600;
 
 // Minimal working fake of the IndexedDB request/transaction async-callback shape, used to
 // exercise Persist.saveBackup/checkBackup/restoreBackup for real (not just call-counting).
@@ -11295,6 +11300,33 @@ try {
     fireKey('z',{metaKey:true});
     assert.ok(!ptr.down,'⌘Z mid-gesture cancels the drag first');
     assert.ok(!byId(R5.id),'⌘Z then undoes the previous committed op');
+    // contextmenu opens the menu; presentation suppresses ctx menu + wheel (ADR-0640).
+    // fn() is re-invoked on the shared fakes in earlier blocks — each re-run of wire()
+    // appends another listener to _L, so dispatch to index 0 (the `api` instance under
+    // test) or the stale modules' handlers answer with their own _pA()/state.
+    const fire1=(t,x,y,o={})=>{
+      const ev={pointerId:1,pointerType:'mouse',button:0,isPrimary:true,
+        clientX:x,clientY:y,offsetX:x,offsetY:y,
+        ctrlKey:false,metaKey:false,shiftKey:false,altKey:false,
+        preventDefault(){},stopPropagation(){},...o};
+      for(const f of (canvas._L[t+'|c']||[]).slice(0,1))f(ev);
+      for(const f of (canvas._L[t]||[]).slice(0,1))f(ev);
+      return ev;};
+    reset();
+    state.tool='select';
+    _els.ctx.dataset.open='false';
+    fire1('contextmenu',300,300);
+    assert.strictEqual(_els.ctx.dataset.open,'true','real contextmenu opens the ctx menu');
+    UI.closeCtxMenu();
+    const F=Shape.make('frame',{x:0,y:0,w:400,h:300});
+    Store.commit({op:'add',shape:F});
+    Presentation.enter();
+    fire1('contextmenu',300,300);
+    assert.strictEqual(_els.ctx.dataset.open,'false','presentation suppresses the ctx menu');
+    const z0=state.viewport.zoom;
+    fire1('wheel',100,100,{deltaY:-120,deltaX:0,deltaMode:0,ctrlKey:true});
+    assert.strictEqual(state.viewport.zoom,z0,'presentation swallows wheel zoom');
+    Presentation.leave();
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -11306,7 +11338,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1194; // prev 1168 + 26 event-sequence asserts (ADR-0641)
+  pass += 1197; // prev 1168 + 29 event-sequence asserts (ADR-0641)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
