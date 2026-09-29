@@ -1,3 +1,8 @@
+## [1.7.872] - 2026-09-29
+
+### Test
+- ADR-0846: `_mergeSnapshotOp` の 'add'-only ゲートを behavioural ピン — 細工 'del' op が snapshot 経路で実行されないことを固定
+
 ## [1.7.871] - 2026-09-29
 
 ### Test
