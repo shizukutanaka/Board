@@ -518,6 +518,13 @@ pen/line/arrow は点ジオメトリで box 中心が無く回転中心が NaN �
 
 - **`connClears`** (del 系 op 同梱): 結合先削除時に `a`/`b`/`aF`/`bF` をクリアし
   端点を現在値に凍結 (`computeConnClears`)。locked コネクタは清書しない。
+  - **記録ではなく再導出も併用**: `del` forward は記録 `connClears` 適用の後で
+    `_remoteDelConnFix(op)` を走査 — undo↔redo ギャップ中の新規結合も消去し
+    受信側と同一結果になる (0758)。`add`/`addMany` backward も同機構を合成
+    del op で実行 — 生存期間の結合がピア側 `del` 逆 op と同じく消える (0759)
+  - **locked 生存者の binding は保持**: `del` が locked で splice を skip する
+    図形を含む場合、その図形への結合は消さない — `goneIds`/`delIds` の判定に
+    `!(byId(id)||{}).locked`、wire 記録適用は端点毎に生存者判定 (0760)
 - **選択外コネクタ**も結合先が変換対象なら before/after に同梱して変換
   (0586 doRotate / 0588 doFlip / 0587 grot は `ptr.gAnc` で原値退避・再計算 — ドリフト防止)。
 

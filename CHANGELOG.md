@@ -1,3 +1,8 @@
+## [1.7.787] - 2026-09-29
+
+### Docs
+- ADR-0761: architecture.md の connClears 節へコネクタ binding ライフサイクル規則 (再導出 / locked 生存者判定) を同期
+
 ## [1.7.786] - 2026-09-29
 
 ### Fixed
