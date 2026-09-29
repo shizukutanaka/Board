@@ -11988,6 +11988,50 @@ try {
     fire1('pointermove',35,115);
     fire1('pointerup',35,115);
     assert.strictEqual(state.shapes[1].x,40,'frame move drags its members along');
+    // ebend: grab the elbow trunk → dragKind='ebend' → s.bend (ADR-0072)
+    reset();
+    state.tool='select';
+    const EB1=Shape.make('arrow',{x1:0,y1:0,x2:200,y2:200,elbow:1});
+    Store.commit({op:'add',shape:EB1});
+    state.selection=new Set([EB1.id]);
+    const tr=_elbowTrunk(state.shapes[0]);
+    const tm={x:(tr[0].x+tr[1].x)/2,y:(tr[0].y+tr[1].y)/2};
+    fire1('pointerdown',tm.x,tm.y);
+    assert.strictEqual(ptr.dragKind,'ebend','PD on the elbow trunk arms ebend');
+    fire1('pointermove',tm.x,tm.y+30);
+    fire1('pointerup',tm.x,tm.y+30);
+    assert.ok(state.shapes[0].bend!=null,'ebend drag writes s.bend');
+    // dblclick on a conn opens the label editor (ADR-0081): input appended with the label
+    reset();
+    state.tool='select';
+    const DL1=Shape.make('arrow',{x1:0,y1:0,x2:100,y2:100,label:'c'});
+    Store.commit({op:'add',shape:DL1});
+    const appd=[];fakeDoc.body.appendChild=el=>{appd.push(el)};
+    fire1('dblclick',50,50);
+    assert.ok(appd.some(el=>el.tagName==='INPUT'&&el.value==='c'),'dblclick on conn opens the label editor');
+    fakeDoc.body.appendChild=()=>{};
+    // ⇧drag constrains the move to the dominant axis (ADR-0066)
+    reset();
+    state.tool='select';
+    const AX1=Shape.make('rect',{x:10,y:10,w:40,h:40});
+    Store.commit({op:'add',shape:AX1});
+    state.selection=new Set([AX1.id]);
+    fire1('pointerdown',30,30);
+    fire1('pointermove',70,50,{shiftKey:true});
+    fire1('pointerup',70,50,{shiftKey:true});
+    assert.ok(state.shapes[0].x>10&&state.shapes[0].y===10,'⇧drag moves only the dominant axis');
+    // endpoint drag over a shape previews the binding, then binds on drop (ADR-0065)
+    reset();
+    state.tool='select';
+    const BP1=Shape.make('rect',{x:300,y:300,w:60,h:60});
+    const BP2=Shape.make('arrow',{x1:0,y1:0,x2:100,y2:100});
+    Store.commit({op:'add',shape:BP1});Store.commit({op:'add',shape:BP2});
+    state.selection=new Set([BP2.id]);
+    fire1('pointerdown',100,100);
+    fire1('pointermove',320,320);
+    assert.ok(state.bindPreview!=null,'endpoint drag over a shape previews the binding');
+    fire1('pointerup',320,320);
+    assert.strictEqual(state.shapes[1].b,BP1.id,'endpoint drop on a shape binds it');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -11999,7 +12043,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1356; // prev 1347 + 9 event-sequence asserts (ADR-0641: eyedropper/lasso/cbend/⌥resets/frame-move)
+  pass += 1362; // prev 1356 + 6 event-sequence asserts (ADR-0641: ebend/dblclick-label/⇧axis/bindPreview)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
