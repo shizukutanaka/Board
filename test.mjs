@@ -468,7 +468,7 @@ const checks = [
   ['img wire refs: slim op + 64KB chunk msgs + snapshot re-emit', html.includes("this._slimOp(op);this._flushImgOuts()")&&html.includes('k:\'img\',key,seq:i,n,data:d.slice')&&html.includes('this._slimShapes(ops.map(o=>o.shape),_mP())')],
   ['img inbound: chunk reassembly + pending drain + attach paths', html.includes("this._imgChunks.get(msg.key)")&&html.includes("delete sh.img;sh.dataUrl=data")&&html.includes('op=this._attachOp(op)')&&html.includes('const op=this._attachOp(msg.op)')],
   // v1.7.128: ADR-0070 quick-connect
-  ['qconn: hover dots + _qdotAt + qline→endLineLike', html.includes('function _qconnShape()')&&html.includes("ptr.dragKind='qline';")&&html.includes("else if(_dk('qline'))")&&html.includes('_ivO()}   // ADR-0070')],
+  ['qconn: hover dots + _qdotAt + qline→endLineLike', html.includes('_qconnShape(1)')&&html.includes("ptr.dragKind='qline';")&&html.includes("else if(_dk('qline'))")&&html.includes('_ivO()}   // ADR-0070')],
   // v1.7.129: ADR-0071 equal-gap snap
   ['eqGap snap: same-row gaps → candidate slots + edge-snap priority', html.includes('function _eqGapSnap(mov,excl,tol)')&&html.includes('for(const cand of[a[L]-g-mov[D], b[L]+b[D]+g, a[L]+a[D]+g, b[L]-g-mov[D]])')&&html.includes('const eq=_eqGapSnap(mov,excl')],
   ['elbow bend: s.bend two-corner route + trunk hit + ebend dragKind', html.includes('if(s.bend){')&&html.includes('function _elbowTrunk(s)')&&html.includes("ptr.dragKind='ebend'")&&html.includes('ptr.ebendOrig=clone(onlySel)')],
@@ -11810,6 +11810,60 @@ try {
     assert.strictEqual(itgt._b,1,'Esc inside an input blurs it');
     fireKey1('Escape',{target:itgt,isComposing:true});
     assert.strictEqual(itgt._b,1,'composing Esc does not blur (IME cancel wins)');
+    // quick-connect (ADR-0070): hover a shape, grab an edge-midpoint dot,
+    // drop on another shape → conn bound both ends
+    reset();
+    state.tool='select';
+    const QC1=Shape.make('rect',{x:10,y:10,w:40,h:40});
+    const QC2=Shape.make('rect',{x:200,y:200,w:40,h:40});
+    Store.commit({op:'add',shape:QC1});Store.commit({op:'add',shape:QC2});
+    fire1('pointermove',30,30);                        // hover → state.hover + qdots
+    assert.strictEqual(state.hover,QC1.id,'hover sets the quick-connect source');
+    fire1('pointerdown',50,30);                        // right-edge midpoint dot
+    fire1('pointermove',220,220);
+    fire1('pointerup',220,220);
+    const qc=state.shapes[state.shapes.length-1];
+    assert.ok(qc&&qc.a===QC1.id&&qc.b===QC2.id,'quick-connect binds both endpoints');
+    // endpoint rebind (ADR-0065): drag a connector's p2 handle onto a shape
+    reset();
+    state.tool='select';
+    const RB1=Shape.make('arrow',{x1:0,y1:0,x2:100,y2:100});
+    const RB2=Shape.make('rect',{x:200,y:200,w:40,h:40});
+    Store.commit({op:'add',shape:RB1});Store.commit({op:'add',shape:RB2});
+    state.selection=new Set([RB1.id]);
+    fire1('pointerdown',100,100);                      // p2 handle at the x2,y2 end
+    fire1('pointermove',220,220);
+    fire1('pointerup',220,220);
+    const rb=state.shapes[0];
+    assert.strictEqual(rb.b,RB2.id,'p2 handle drag rebinds the b endpoint');
+    // click-click line mode (ADR-0126): click arms a preview, second click commits
+    reset();
+    state.tool='line';
+    fire1('pointerdown',50,50);
+    fire1('pointerup',50,50);
+    assert.strictEqual(ptr.lineClick,true,'first click enters pick-point mode');
+    fire1('pointermove',150,150);
+    fire1('pointerdown',150,150);
+    const cc=state.shapes[state.shapes.length-1];
+    assert.ok(cc&&cc.type==='line'&&cc.x2>140,'second click commits the line at the pick point');
+    // ⇧click toggles membership without clearing the rest (ADR-0129/0128)
+    reset();
+    state.tool='select';
+    const SC1=Shape.make('rect',{x:10,y:10,w:40,h:40});
+    const SC2=Shape.make('rect',{x:100,y:100,w:40,h:40});
+    Store.commit({op:'add',shape:SC1});Store.commit({op:'add',shape:SC2});
+    state.selection=new Set([SC1.id]);
+    fire1('pointerdown',120,120,{shiftKey:true});
+    fire1('pointerup',120,120,{shiftKey:true});
+    assert.ok(state.selection.has(SC1.id)&&state.selection.has(SC2.id),'⇧click adds to the selection');
+    fire1('pointerdown',30,30,{shiftKey:true});
+    fire1('pointerup',30,30,{shiftKey:true});
+    assert.ok(!state.selection.has(SC1.id)&&state.selection.has(SC2.id),'⇧click on a selected shape removes it');
+    // drop of dragged text runs the text cascade (ADR-0518)
+    reset();
+    fire1('drop',300,300,{dataTransfer:{files:[],getData:k=>k==='text/plain'?'drop hello':''}});
+    const dtx=state.shapes[state.shapes.length-1];
+    assert.ok(dtx&&dtx.text==='drop hello','text drop creates a text shape at the drop point');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -11821,7 +11875,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1326; // prev 1315 + 11 event-sequence asserts (ADR-0641: handle/tool drags + group descend + input gate)
+  pass += 1337; // prev 1326 + 11 event-sequence asserts (ADR-0641/0643: qconn + rebind + click-click + ⇧click + drop)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

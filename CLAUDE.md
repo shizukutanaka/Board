@@ -690,7 +690,8 @@ Board/
     │   ├── ADR-0638-architecture-gesture-sync.md   # architecture.md へジェスチャ×外部変化の不変条件を同期 (実装済)
     │   ├── ADR-0639-presentation-sr-announce.md   # プレゼン突入/遷移/終了を SR announce (実装済)
     │   ├── ADR-0640-presentation-input-gates.md   # プレゼン中の dblclick/contextmenu/wheel/pinch を _pA ゲート (実装済)
-    │   └── ADR-0641-pointer-sequence-testing.md   # 合成 PD/PM/PU を canvas 実リスナへ dispatch (spec P3 前進) (実装済)
+    │   ├── ADR-0641-pointer-sequence-testing.md   # 合成 PD/PM/PU を canvas 実リスナへ dispatch (spec P3 前進) (実装済)
+    │   └── ADR-0643-qconn-ptrdown-gate.md         # quick-connect の ptr.down ゲート共有を解消 — 導入時から死んでいた実害を復旧 (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

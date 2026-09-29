@@ -5354,6 +5354,13 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.669]
+### 修正
+- **quick-connect が導入時から一切発火していなかった実害を修正** — `_qdotAt` (PD 時のドット掴み判定) が `_qconnShape` の `!ptr.down` ガードを共有しており、pointerdown で `ptr.down=true` が tool dispatch より先に立つため常に null を返し、エッジ中点ドットを掴んでも `pickOrMarquee` にフォールしていた。`_qconnShape(g)` を引数化し、`_qdotAt` は `g=1` で `ptr.down` を免除 (overlay のドット描画側は従来通りドラッグ中に非表示) (ADR-0643)。
+
+### テスト
+- 実イベント経路で quick-connect 双端束縛・p2 端点再結合・click-click ラインモード・⇧click 選択トグル・テキストドロップを固定 — qconn の実害回帰を検出したものと同じ系列検証の継続 (ADR-0641)。`fire1` で現インスタンスのみ dispatch し、stale リスナのブロードキャスト逆流を隔離。
+
 ## [1.7.668]
 ### テスト
 - spec §14.3.1 P3「ポインタ系列の実検証」を前進 — fake DOM の canvas 要素を per-id シングルトン化し `addEventListener` を `_L` マップに記録、合成 `pointerdown/move/up` を実リスナ (capture→bubble 順) へディスパッチするハーネスを新設。ペンストローク・選択ドラッグ・右ボタン非 arm ガードを実イベント経路で検証 (ADR-0641)。
