@@ -1,3 +1,11 @@
+## [1.7.745] - 2026-09-29
+
+### Fixed
+- ADR-0719: move undo-wire sent op.ids (the whole selected set) while local
+  undo iterates op.moved (the actually-moved set) — a member locked at commit
+  but unlocked since got negated on peers only. Wire now carries
+  ids:op.moved||op.ids
+
 ## [1.7.744] - 2026-09-29
 
 ### Changed

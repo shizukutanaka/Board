@@ -243,6 +243,7 @@ const checks = [
   ["undo-wire emits 'replace' restoring swap (ADR-0615)", html.includes("case 'replace':   // ADR-0615") && html.includes("return _iA(op.before)?[{op:'replace',after:op.before,afterWc:op.wc,pages:op.beforePages}]:null;")],
   ["undo-wire swap advances _lastRep to the fresh clock (ADR-0615)", html.includes("if(w.op==='replace')state._lastRep=w.clock;") && html.includes("if(op.op==='replace')state._lastRep=op.clock;this._stampWrites(op)")],
   ["redo restamps before the local apply (ADR-0718)", html.includes("_fck(op);   // ADR-0718") && html.includes("this._apply(op,true);")],
+  ["move undo-wire sends op.moved, not op.ids (ADR-0719)", html.includes("ids:op.moved||op.ids,dx:-op.dx,dy:-op.dy")],
   ["_recordCommitted sets _lastRep for local 'replace' (ADR-0616)", html.includes("if(op.op==='replace')state._lastRep=op.clock;   // ADR-0616")],
   ["snapshot carries rep marker + stale-snapshot skip (ADR-0617)", html.includes("rep:state._lastRep") && html.includes("clockNewer(state._lastRep,msg.rep))break;")],
   ["snapshot docName is LWW-gated via (ts,writer) order (ADR-0618/0699)", html.includes("nameTs:_nameTs,namePeer:_namePeer") && html.includes("_nameWin(msg.nameTs,_iS(msg.namePeer)?msg.namePeer:'')")],
@@ -6808,6 +6809,27 @@ try {
     assert.strictEqual(B.state.wclock['rX'].stroke.peer, 'peerA', 'ADR-0717: peer wclock records the undo writer — no split arbitration');
     console.log('  ✓ ADR-0717: undo arbitrates via the fresh undo-wire clock — identical winner on both sides');
 
+    // ADR-0719 (round469): the move undo-wire must send the forward-moved set
+    // (op.moved), not op.ids — a shape locked at commit (never moved) but unlocked
+    // since would otherwise get negated on peers while local undo leaves it alone.
+    reset(A); reset(B);
+    const m1=Shape.make('rect',{x:0,y:0,w:10,h:10}), m2=Shape.make('rect',{x:50,y:0,w:10,h:10});
+    m2.locked=1;
+    A.state.shapes.push(cp(m1),cp(m2)); B.state.shapes.push(cp(m1),cp(m2)); A.sortZ(); B.sortZ();
+    rAB=[]; rBA=[];
+    A.Net.broadcast = op => rAB.push({k:'op',op:cp(op)});
+    B.Net.broadcast = op => rBA.push({k:'op',op:cp(op)});
+    A.Store.commit({op:'move',ids:[m1.id,m2.id],dx:5,dy:0,clock:{peer:'peerA',seq:1,ts:1000}});
+    rAB.forEach(m=>B.Net._onRecv(m));
+    assert.strictEqual(A.state.shapes.find(s=>s.id===m1.id).x, 5, 'ADR-0719 precondition: unlocked member moved');
+    assert.strictEqual(A.state.shapes.find(s=>s.id===m2.id).x, 50, 'ADR-0719 precondition: locked member did not move');
+    A.state.shapes.find(s=>s.id===m2.id).locked=null; B.state.shapes.find(s=>s.id===m2.id).locked=null;   // unlocked since
+    A.Store.undo();
+    rAB.forEach(m=>B.Net._onRecv(m));
+    assert.strictEqual(B.state.shapes.find(s=>s.id===m2.id).x, 50, 'ADR-0719: peer does not negate the never-moved (locked-at-commit) shape');
+    assert.strictEqual(B.state.shapes.find(s=>s.id===m1.id).x, 0, 'ADR-0719: moved member converges back to origin');
+    console.log('  ✓ ADR-0719: move undo-wire sends the forward-moved set — no phantom negation');
+
     // v1.6.87: a new text/sticky is committed+broadcast with EMPTY text, then filled in
     // the editor. _syncTextFinalize must push the typed content (and a dismissed-empty
     // removal) to already-connected peers, or collaborators see a blank shape forever.
@@ -13109,7 +13131,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1596; // prev 1595 + 1 ADR-0718 pin
+  pass += 1601; // prev 1596 + 4 ADR-0719 behavioural + 1 pin
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
