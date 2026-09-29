@@ -1481,7 +1481,7 @@ const checks = [
     html.includes("REMOTE_OPS:_sT(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize','replace','pageAdd','pageDel','pageName','beautify'])")],
   // v1.7.48/ADR-0474: _applySnapshot caps at SHARE_MAX_SHAPES — a 500-op cap truncated boards >500 shapes
   ['_applySnapshot: SHARE_MAX_SHAPES cap on snapshot shapes (board-size bound, DoS-bounded by the 24MB join cap)',
-    html.includes("const valid=_s0(shapes,SHARE_MAX_SHAPES).map(s=>this._attachShape(s)).filter(validShape);")],
+    html.includes("const valid=_s0(shapes,SHARE_MAX_SHAPES).map(s=>this._attachShape(s)).filter(s=>validShape(s)&&!(_wc()[s.id]||{})._del);")],
   // v1.7.48: sticky shadow set before fill (renders correctly)
   ['sticky note shadow set before fill (not after)',
     html.includes("c.shadowColor='rgba(0,0,0,.08)';c.shadowBlur=8;c.shadowOffsetY=2;\n      _bp(c);roundRect(")],
@@ -6827,6 +6827,33 @@ try {
     assert.ok(!B.state.wclock.tm1._del,'ADR-0734: tomb cleared on the winning add');
     state._lastTs=0; B.state._lastTs=0;   // far-future add raised the HLC floors — restore (A IS api — shares `state`)
     console.log('  ✓ ADR-0734: del tombstones gate stale adds (snapshot/reorder resurrection fix)');
+
+    // ADR-0735: residual tomb gaps — (a) the WHOLESALE _applySnapshot adopt
+    // (empty board) never consulted tombs: B deleted its last shape, then a
+    // stale snapshot carrying it resurrected it while the sender applies the
+    // del -> divergence. (b) pageAdd members didn't clear a winning tomb like
+    // 'add' does — an inconsistency, not a divergence.
+    reset(A); reset(B);
+    const keep={id:'keep1',type:'rect',x:0,y:0,w:10,h:10,z:1};
+    B.state.shapes.push(cp(keep)); B._invalidateGrid(); B.sortZ();
+    B.Net._onRecv({k:'op',op:{op:'del',shapes:[{id:'tm2',type:'rect',x:0,y:0,w:10,h:10,z:1}],clock:{peer:'peerX',seq:1,ts:1000}}});
+    assert.ok(B.state.wclock.tm2&&B.state.wclock.tm2._del,'ADR-0735: del for an unseen id still tombstones (del-first ordering)');
+    B.Net._onRecv({k:'snapshot',peer:'peerX',shapes:[{id:'tm2',type:'rect',x:0,y:0,w:10,h:10,z:1},{id:'keep1',type:'rect',x:0,y:0,w:10,h:10,z:1}],ops:[{op:'add',shape:{id:'tm2',type:'rect',x:0,y:0,w:10,h:10,z:1},wc:{},clock:{peer:'peerX',seq:'snap:tm2',ts:0,_snap:true}}]});
+    assert.ok(!B.state.shapes.find(s=>s.id==='tm2'),'ADR-0735: merge-path snapshot cannot resurrect a tombed shape');
+    B.state.shapes.length=0; B._invalidateGrid();
+    B.Net._onRecv({k:'snapshot',peer:'peerX',shapes:[{id:'tm2',type:'rect',x:0,y:0,w:10,h:10,z:1}]});
+    assert.ok(!B.state.shapes.find(s=>s.id==='tm2'),'ADR-0735: wholesale snapshot adopt filters tombed ids (was: resurrection)');
+    B.Net._onRecv({k:'op',op:{op:'add',shape:{id:'tm2',type:'rect',x:0,y:0,w:10,h:10,z:1},clock:{peer:'peerX',seq:9,ts:Date.now()+1e6}}});
+    assert.ok(!!B.state.shapes.find(s=>s.id==='tm2'),'ADR-0735: a newer add wins over the tomb');
+    state._lastTs=0; B.state._lastTs=0;
+    reset(A); reset(B);
+    const pm={id:'pm1',type:'rect',x:0,y:0,w:10,h:10,z:1};
+    B.state.wclock.pm1={_del:{peer:'peerX',seq:1,ts:1}};
+    B.Net._onRecv({k:'op',op:{op:'pageAdd',id:'q9',name:'P9',shapes:[cp(pm)],clock:{peer:'peerA',seq:1,ts:Date.now()+1e6}}});
+    assert.ok(!!B.state.shapes.find(s=>s.id==='pm1'),'ADR-0735: pageAdd member with a winning clock lands');
+    assert.ok(!B.state.wclock.pm1._del,'ADR-0735: winning pageAdd member clears the tomb like add (was: inconsistent)');
+    state._lastTs=0; B.state._lastTs=0;
+    console.log('  ✓ ADR-0735: snapshot-adopt tomb filter + del-first ordering + pageAdd tomb-clear parity');
 
     // resize/align now LWW too (ADR-0002 follow-up): whole-shape snapshot ops gate/stamp
     // only the keys they actually changed (diff before/after). (i) concurrent resize of
@@ -13464,7 +13491,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1667; // prev 1661 + 6 ADR-0734 behavioural
+  pass += 1673; // prev 1667 + 6 ADR-0735 behavioural
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
