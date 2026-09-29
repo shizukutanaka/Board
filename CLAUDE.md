@@ -892,6 +892,7 @@ Board/
 │   └── ADR-0841-patch-imgref-park.md  # パッチ適用経由の img 参照を _oa 単一ゲートで駐車
 │   └── ADR-0842-imgsent-byte-bound.md  # _imgSent を 64MB バイト上限化 + 駐車イディオム _park 集約
 │   └── ADR-0843-rtc-snapbig-close.md  # snapBig 時に RTC リンクを閉じて joiner へ可視通知
+│   └── ADR-0844-img-wire-audit-complete.md  # img/wire サブシステム監査完走の記録
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
