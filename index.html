@@ -868,7 +868,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.745';   // ADR-0719
+const V='1.7.746';   // ADR-0720
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -8111,7 +8111,7 @@ const Net={
     if(op.op==='pageDel')return{op:'pageDel',id:op.id,clock:op.clock};   // ADR-0705: receiver re-derives members/i/name — the undo-record fields were dead weight (~bytes×members)
     if(op.op==='pageName')return{op:'pageName',id:op.id,after:op.after,clock:op.clock};   // ADR-0705: forward uses after+clock only — before/bts/btp are undo-domain
     if(_iA(op.shapes)&&(op.op==='addMany'||op.op==='del'||op.op==='clear'||op.op==='pageAdd')){const{wc:_wc1,origSel:_o1,...r}=op;return{...r,shapes:this._slimShapes(op.shapes)}}   // ADR-0445/0625: id/locked only; undo-only fields never ride the wire
-    if(op.op==='replace')return{op:'replace',after:this._slimShapes(op.after||[]),afterWc:op.afterWc,clock:op.clock,pages:op.pages};   // ADR-0646: pages ride the wire; curPg/before* stay local   // ADR-0613: strip the huge before/wc/origSel from the wire copy
+    if(op.op==='replace')return{op:'replace',after:this._slimShapes(op.after||[]),afterWc:op.afterWc,clock:op.clock,pages:op.pages,curPg:op.curPg};   // ADR-0646/0720: pages AND the landing page ride the wire — receivers' _pgAdopt(op.pages,op.curPg) fell back to page 1 while the sender landed on op.curPg; before* stay local   // ADR-0613: strip the huge before/wc/origSel from the wire copy
     const{origSel:_o2,moved:_m2,...rest}=op;
     if((op.op==='style'||op.op==='resize'||op.op==='align')&&op.dir!=='lock'){   // ADR-0717: ever-locked shapes keep a `locked:null` key on full-shape patch snapshots — the receiver's noLock gate rejected those ops wholesale (pre-existing silent drop on forward too); 'locked' is only meaningful on dir==='lock' ops
       const _sl=a=>_iA(a)?a.map(p=>{const{locked:_l0,...r}=p;return r}):a;
@@ -9947,7 +9947,7 @@ function _undoWire(op){
       return op.changes?[{op:'zorder',changes:op.changes.map(c=>({id:c.id,before:c.after,after:c.before}))}]
                        :op.before?[{op:'zorder',after:op.before}]:null;
     case 'replace':   // ADR-0615: undo of a wholesale swap must reach peers too — rebroadcast the pre-swap board (newest clock wins via ADR-0614)
-      return _iA(op.before)?[{op:'replace',after:op.before,afterWc:op.wc,pages:op.beforePages}]:null;
+      return _iA(op.before)?[{op:'replace',after:op.before,afterWc:op.wc,pages:op.beforePages,curPg:op.beforeCurPg}]:null;   // ADR-0720: same landing-page carry as the forward wire — local backward lands on beforeCurPg, peers were falling back to page 1
     case 'pageAdd':  return[{op:'pageDel',id:op.id,name:op.name}];
     case 'pageDel':  {const o=[{op:'pageAdd',id:op.id,name:op.name,i:op.i},{op:'addMany',shapes:op.shapes||[]}];
       for(const c of op.connClears||[])if(c.before)_pu(o,{op:'upd',id:c.id,after:c.before});   // ADR-0707: re-bind connectors on peers too — same as 'del'

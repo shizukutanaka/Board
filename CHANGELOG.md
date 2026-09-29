@@ -1,3 +1,11 @@
+## [1.7.746] - 2026-09-29
+
+### Fixed
+- ADR-0720: 'replace' wire dropped curPg — receivers' _pgAdopt fell back to
+  page 1 on every remote swap while the sender landed on their own page;
+  _undoWire had the same hole for beforeCurPg. Both wire paths now carry the
+  landing page
+
 ## [1.7.745] - 2026-09-29
 
 ### Fixed

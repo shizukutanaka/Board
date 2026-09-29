@@ -240,7 +240,8 @@ const checks = [
   ['fractional index keyBetween/reindexFrac present (ADR-0001)', html.includes("function keyBetween") && html.includes("function reindexFrac")],
   ['z-step ops route through _zCommit (undoable, minimal-delta)', html.includes("_zCommit(changes)") && html.includes("function _zCommit")],
     ['applyRemote whitelists op types', html.includes("REMOTE_OPS") && html.includes("this.REMOTE_OPS.has(op.op)")],
-  ["undo-wire emits 'replace' restoring swap (ADR-0615)", html.includes("case 'replace':   // ADR-0615") && html.includes("return _iA(op.before)?[{op:'replace',after:op.before,afterWc:op.wc,pages:op.beforePages}]:null;")],
+  ["undo-wire emits 'replace' restoring swap (ADR-0615)", html.includes("case 'replace':   // ADR-0615") && html.includes("pages:op.beforePages,curPg:op.beforeCurPg")],
+  ["replace wire carries the landing page (ADR-0720)", html.includes("pages:op.pages,curPg:op.curPg")],
   ["undo-wire swap advances _lastRep to the fresh clock (ADR-0615)", html.includes("if(w.op==='replace')state._lastRep=w.clock;") && html.includes("if(op.op==='replace')state._lastRep=op.clock;this._stampWrites(op)")],
   ["redo restamps before the local apply (ADR-0718)", html.includes("_fck(op);   // ADR-0718") && html.includes("this._apply(op,true);")],
   ["move undo-wire sends op.moved, not op.ids (ADR-0719)", html.includes("ids:op.moved||op.ids,dx:-op.dx,dy:-op.dy")],
@@ -6830,6 +6831,19 @@ try {
     assert.strictEqual(B.state.shapes.find(s=>s.id===m1.id).x, 0, 'ADR-0719: moved member converges back to origin');
     console.log('  ✓ ADR-0719: move undo-wire sends the forward-moved set — no phantom negation');
 
+    // ADR-0720 (round470): a remote 'replace' lands receivers on the sender's
+    // landing page via op.curPg — the wire dropped the field, so _pgAdopt fell
+    // back to page 1 while the sender landed on their own curPg (view divergence).
+    reset(A); reset(B);
+    const pg1={id:'p1',name:'P1',nts:0}, pg2={id:'p2',name:'P2',nts:0};
+    A.state.pages=[cp(pg1),cp(pg2)]; A.state.curPg='p2';
+    B.state.pages=[cp(pg1),cp(pg2)]; B.state.curPg='p1';
+    A.state._lastRep=null; B.state._lastRep=null;   // reset() keeps the causal marker — clear it so the op isn't rejected as a stale swap
+    A.Net.broadcast = op => B.Net._onRecv({k:'op',op:cp(op)});
+    A.Store.commit({op:'replace',before:[],after:[],pages:[cp(pg1),cp(pg2)],curPg:'p2',clock:{peer:'peerA',seq:1,ts:1000}});
+    assert.strictEqual(B.state.curPg,'p2','ADR-0720: remote replace lands peers on the sender’s curPg (was: page 1 fallback)');
+    console.log('  ✓ ADR-0720: replace wire carries curPg — receivers land on the sender’s page');
+
     // v1.6.87: a new text/sticky is committed+broadcast with EMPTY text, then filled in
     // the editor. _syncTextFinalize must push the typed content (and a dismissed-empty
     // removal) to already-connected peers, or collaborators see a blank shape forever.
@@ -13131,7 +13145,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1601; // prev 1596 + 4 ADR-0719 behavioural + 1 pin
+  pass += 1603; // prev 1601 + 1 ADR-0720 behavioural + 1 pin
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
