@@ -182,6 +182,8 @@ RTC-only ピアに届かず、mid-flush 切断が最も起きやすい WebRTC �
 機能しないため。応答側は `_imgIn`/`_imgSent` の O(1) Map 参照で blob を即時再送する
 (盤面走査を挟まない)。応答は `_imgqT` の per-key 10s スロットルで増幅を抑止し
 (ADR-0836)、`_imgqT` は `Net.init` のルーム切替リセット群に含まれる。
+IDB 復元 (`Persist.load`/`restoreBackup`) も `_attachShape` を通して未解決参照を
+駐車する (ADR-0840) — 送信途中切断→永続化→リロードの参照が imgq 修復に乗る。
 
 **反転 (flip H/V)** は専用 op を持たず、`align` op を再利用する: `doFlip(axis)` が選択 bbox 中心軸で
 各シェイプ座標をミラー (`flipShape`) し、変更前後の完全クローンを `{op:'align',dir:'flip',before,after}`
