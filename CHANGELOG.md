@@ -1,3 +1,11 @@
+## [1.7.817] - 2026-09-29
+
+### Fixed
+- ADR-0791: 遠未来 ts (`ts:1e15` 等) が LWW 仲裁に永久勝利して全 prop/改名/replace 収束を乗っ取る実害を、全 clock 取込に壁時計 +5分上限 `_tsOK` で解消 (op.clock/wc/rep/name ts/nts/IDB 一括)
+
+### Refactor
+- `state.pages` 参照を `_pgs()` アクセサへ集約 (~310B 回収)
+
 ## [1.7.816] - 2026-09-29
 
 ### Fixed
