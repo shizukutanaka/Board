@@ -713,7 +713,8 @@ Board/
 │   ├── ADR-0662-tab-chain-page-scope.md  # Tab 連鎖を現ページに限定 (実装済)
 │   ├── ADR-0663-last-page-undo-heal.md  # 最終ページ undo で帰属掃除 (実装済)
 │   ├── ADR-0664-page-switch-cancels-gesture.md  # ページ遷移でジェスチャキャンセル (実装済)
-│   └── ADR-0665-page-scoped-selection-bulk.md  # 一括選択系のページスコープ (実装済)
+│   ├── ADR-0665-page-scoped-selection-bulk.md  # 一括選択系のページスコープ (実装済)
+│   └── ADR-0666-ctx-png-page-scope.md  # ctx PNG 固定倍率のページスコープ (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

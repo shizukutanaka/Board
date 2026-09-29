@@ -863,7 +863,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.692';   // ADR-0665
+const V='1.7.693';   // ADR-0666
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -9105,8 +9105,8 @@ const UI={
   openExportMenu(x,y){
     this.openCtxMenu(x,y,[
       ['ctxExportPNG','⌘E',exportPNG],
-      ['ctxExportPNG1x','',()=>exportPNG(_sh(),1)],
-      ['ctxExportPNG4x','',()=>exportPNG(_sh(),4)],
+      ['ctxExportPNG1x','',()=>exportPNG(_shV(),1)],   // ADR-0658/0666: single-scene exports are page-scoped — explicit _sh() smeared every page into one image
+      ['ctxExportPNG4x','',()=>exportPNG(_shV(),4)],
       ['ctxExportViewPNG','',()=>exportViewportPNG(2)],
       ['ctxCopyPNG','',copyPNG],
       ['ctxExportSVG','⌘⇧E',exportSVG],

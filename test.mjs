@@ -4542,6 +4542,13 @@ try {
       Store.commit({op:'del',shapes:[{...byId(V1.id)},{...byId(V2.id)},{...byId(F.id)},{...byId(M.id)}]});
       console.log('  ✓ inverse/frame-contents selection is page-scoped (2 asserts)');
     }
+    // ADR-0666: ctx fixed-scale PNG exports are page-scoped like the default
+    {
+      const hits=(html.match(/exportPNG\(_sh\(\),[14]/g)||[]).length;
+      assert.ok(hits===0,'no explicit _sh() PNG export sites remain (ADR-0666)');
+      assert.ok(html.includes("exportPNG(_shV(),1)"),'ctx 1x PNG export uses _shV');
+      console.log('  ✓ ctx PNG export page-scope pins (2 asserts)');
+    }
   }
 
   // ADR-0072: elbow trunk locate + bend-override two-corner route
@@ -12689,7 +12696,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1492; // prev 1490 + 2 page-scoped selection asserts (ADR-0665)
+  pass += 1494; // prev 1492 + 2 ctx-PNG-page-scope pins (ADR-0666)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
