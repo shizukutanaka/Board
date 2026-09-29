@@ -858,7 +858,7 @@ const _tl=()=>state.tool;
 const _dn=()=>state.docName;
 let _nameTs=0,_namePeer='';
 const _bName=()=>Net._bcast(_mk('name',{name:state.docName,ts:_nameTs=nowTs()}));   // ADR-0696: a swap that changes docName must tell peers now — else they keep the old name until the next rename/snapshot
-const _nameWin=(ts,peer)=>clockNewer({ts,peer,seq:0},{ts:_nameTs,peer:_namePeer});   // ADR-0699: equal-ts renames used strict > on both paths — concurrent renames diverged; (ts,writer) total order matches pageName (ADR-0698)
+const _nameWin=(ts,peer)=>clockNewer({ts,peer,seq:0},{ts:_nameTs,peer:_namePeer});   // ADR-0699: (ts,writer) total order like pageName (ADR-0698) — equal-ts renames converged
 const _setDocName=n=>{state.docName=n;const d=_g('docName');if(d&&d!==document.activeElement)d.value=_dn();_syncDocTitle();};   // ADR-0609
 const _pr=()=>state.peers;
 const _hi=()=>state.history;
@@ -873,7 +873,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.793';   // ADR-0767
+const V='1.7.794';   // ADR-0768
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -5945,8 +5945,8 @@ _on(window,_KD,e=>{
   // This guard precedes the editing shortcuts
   // mid-slideshow before the early return.
   if(_pA()){
-    if(k===_AR2||k===_AD||k===' '){_pd(e);Presentation.next()}
-    else if(k===_AL2||k===_AU){_pd(e);Presentation.prev()}
+    if(k===_AR2||k===_AD||k===' '||k==='pagedown'){_pd(e);Presentation.next()}
+    else if(k===_AL2||k===_AU||k==='pageup'){_pd(e);Presentation.prev()}   // ADR-0768
     else if(k===_ES){Presentation.leave()}
     return;
   }

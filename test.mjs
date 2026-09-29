@@ -12637,6 +12637,12 @@ try {
     const vx=state.viewport.x;
     fireKey('ArrowRight');
     assert.ok(state.viewport.x!==vx,'arrow navigation advances to the next frame');
+    // ADR-0768: PgDn/PgUp nav like every deck tool (they were swallowed before)
+    const vx2=state.viewport.x;
+    fireKey('PageDown');   // already on the last frame — next() clamps
+    assert.strictEqual(state.viewport.x,vx2,'PgDn on the last slide is a no-op');
+    fireKey('PageUp');
+    assert.ok(state.viewport.x!==vx2,'PgUp navigates back to the previous slide');
     fireKey('Escape');
     assert.ok(!Presentation.isActive(),'Escape leaves the presentation');
     // ⌘A selects every visible shape (locked included); Delete removes the unlocked ones (ADR-0396)
