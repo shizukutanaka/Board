@@ -326,11 +326,25 @@ DOM 要素は `data-t` 属性 + `UI.applyI18n()` で翻訳 (起動時に 1 回�
   presence tick で sync-req を 3 回まで再送 (ADR-0475) — 応答喪失時の
   空盤面待機を解消。`Net.init` で両フラグをリセット。
 - **離脱**: `pagehide` で flush+bye、bye 受信でピア即時除去 (ADR-0457)。
-- **ルーム切替 hygiene** (ADR-0458/0464/0466/0467): `Net.init` は
+- **ルーム切替 hygiene** (ADR-0458/0464/0466/0467/0619): `Net.init` は
   旧チャンネルへ bye → `seenOps`・`_snapT`・非RTC `state.peers`・
-  `_imgSent/_imgChunks/_imgOuts`・`_snapIn/_opcIn`・`_pCt` をリセット。
+  `_imgSent/_imgChunks/_imgOuts`・`_snapIn/_opcIn`・`_pCt` と因果
+  marker (`state._lastRep`・`_nameTs`) をリセット。
   room-scoped 状態の持ち越しによる ghost カーソル・blob 未到達・
-  ストリーム継ぎ接ぎ・phantom announce を全て防ぐ。
+  ストリーム継ぎ接ぎ・phantom announce を全て防ぎ、wire ドメインの
+  marker 持ち越しで新ルームの snapshot/改名が「古い」と永久棄却
+  されるのを防ぐ (ADR-0619)。
+- **'replace' 収束** (ADR-0613..0618): 全置換 (import/share 取込) は
+  `{op:'replace',after,afterWc}` を wire に乗せる。`after` は
+  `validShape` 配列、`afterWc` は prop clock マップとして検証。
+  `state._lastRep` = 最新適用 swap clock で全順序を仲裁 — 並行 swap は
+  `clockNewer` で勝者一意化 (0614)、undo/redo は `_undoWire` が
+  pre-swap 盤面を再ブロードキャスト (0615)、`_recordCommitted` 経路も
+  marker を記録 (0616)。snapshot は `rep:state._lastRep` を同梱し、
+  受信側は「自身の marker より古い世代の snapshot」を棄却、より新しい
+  `rep` は採用後に marker を整合 (0617)。snapshot の docName は
+  `nameTs` で LWW — focused input 中のユーザー入力を保護しつつ
+  改名を収束 (0609/0618)。
 - **undo×sync**: undo/redo は逆 op (del→add、add→del、upd→逆patch) を
   ワイヤに乗せピア側も復元 (ADR-0443/0444)。del/clear の送信は
   `_slimOp` で画像バイトを痩身化 (ADR-0445)。

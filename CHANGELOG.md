@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.647]
+### ドキュメント
+- architecture.md の wire ライフサイクル節に 'replace' 収束系 (`_lastRep` 全順序 marker・snapshot `rep`/`nameTs` 因果順序・undo 再ブロードキャスト) を同期し、ルーム切替 hygiene の持ち越し禁止リストに causal marker を追記 (ADR-0620)。
+
 ## [1.7.646]
 ### Fixed
 - ルーム切替 (`Net.init`) で因果 marker (`_lastRep`/`_nameTs`) が持ち越され、新ルームのスナップショット/改名が旧ルームの時計より「古い」として永久に棄却されてしまう問題を修正 — wire ドメイン状態として `seenOps` と同じくリセット (ADR-0619)。
