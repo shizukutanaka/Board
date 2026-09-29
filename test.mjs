@@ -4405,6 +4405,21 @@ try {
     assert.ok(r2.guides.length===2,'two equal-interval guides');
     Store.commit({op:'del',shapes:[A,B,M].map(s=>JSON.parse(JSON.stringify(s)))});
     console.log('  ✓ equal-gap snap: slot match + nearby snap + guides (3 asserts)');
+    // ADR-0659: equal-gap snap ignores hidden + off-page shapes
+    {
+      const C=Shape.make('rect',{x:0,y:0,w:100,h:50}),D=Shape.make('rect',{x:150,y:0,w:100,h:50});
+      state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';
+      Store.commit({op:'addMany',shapes:[{...C,pg:'pA'},{...D,pg:'pB'}]});
+      const offR=_eqGapSnap({x:295,y:0,w:100,h:50},()=>false,8);
+      assert.ok(offR.dx===0&&offR.dy===0,'off-page shape forms no equal-gap attraction (ADR-0659)');
+      byId(D.id).pg='pA';byId(D.id).visible=0;
+      const hidR=_eqGapSnap({x:295,y:0,w:100,h:50},()=>false,8);
+      assert.ok(hidR.dx===0&&hidR.dy===0,'hidden shape forms no equal-gap attraction (ADR-0153 parity)');
+      assert.ok(html.includes('excl(s)||_hd(s)||!_pgOk(s)'),'_eqGapSnap filters hidden+off-page');
+      state.pages=null;state.curPg=null;
+      Store.commit({op:'del',shapes:[C,D].map(s=>JSON.parse(JSON.stringify(s)))});
+      console.log('  ✓ equal-gap snap: hidden/off-page excluded (3 asserts)');
+    }
   }
 
   // ADR-0072: elbow trunk locate + bend-override two-corner route
@@ -12552,7 +12567,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1465; // prev 1462 + 3 page-scoped-export asserts (ADR-0658)
+  pass += 1468; // prev 1465 + 3 eqGap hidden/off-page asserts (ADR-0659)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

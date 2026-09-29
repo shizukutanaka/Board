@@ -863,7 +863,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.683';   // ADR-0658
+const V='1.7.684';   // ADR-0659
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -5144,7 +5144,7 @@ function _eqGapSnap(mov,excl,tol){
     const L=ax==='x'?'x':'y',D=ax==='x'?'w':'h',O=ax==='x'?'y':'x',OD=ax==='x'?'h':'w';
     const row=[];
     for(const s of _sh()){
-      if(excl(s))continue;
+      if(excl(s)||_hd(s)||!_pgOk(s))continue;   // ADR-0153/0659: hidden/off-page shapes form no snap gaps
       const b=_bb(s);if(!b)continue;
       if(b[O]<mov[O]+mov[OD]&&b[O]+b[OD]>mov[O])_pu(row,b);
     }
