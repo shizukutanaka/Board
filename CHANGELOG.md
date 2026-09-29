@@ -1,3 +1,11 @@
+## [1.7.739] - 2026-09-29
+
+### Fixed
+- ADR-0713: undo of add/addMany on a shape locked since the add removed it
+  locally while peers' remote del (the undo-wire op) skipped it — existence
+  divergence. Backward now mirrors del-forward's locked gate; the surviving
+  shape keeps its caches and LWW clocks
+
 ## [1.7.738] - 2026-09-29
 
 ### Fixed

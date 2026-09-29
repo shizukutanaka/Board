@@ -4820,6 +4820,22 @@ try {
         state.shapes=[];state._lastTs=0;
         console.log('  ✓ locked-backward parity (2 asserts)');
       }
+      // ADR-0713: add/addMany backward mirrors del-forward's locked gate — the
+      // shape locked since the add survives our undo, matching the peers' skip
+      // of the undo-wire del (existence convergence).
+      {
+        state.pages=null;state.shapes=[];
+        const s=Shape.make('rect',{x:0,y:0,w:10,h:10});
+        Store._apply({op:'add',shape:s,clock:{peer:'zz',seq:34,ts:7}},true);
+        byId(s.id).locked=1;
+        Store._apply({op:'add',shape:s,clock:{peer:'zz',seq:34,ts:7}},false);
+        assert.ok(byId(s.id),'add undo keeps a since-locked shape (ADR-0713)');
+        byId(s.id).locked=0;
+        Store._apply({op:'add',shape:s,clock:{peer:'zz',seq:34,ts:7}},false);
+        assert.ok(!byId(s.id),'add undo still removes unlocked shape (ADR-0713)');
+        state.shapes=[];state._lastTs=0;
+        console.log('  ✓ add-backward locked parity (2 asserts)');
+      }
       assert.ok(html.includes("ids.join(',')+'|'+(state.curPg||'')"),'sel presence key includes page (ADR-0680)');
       console.log('  ✓ sel-presence pg key pin (1 assert)');
     }
@@ -13032,7 +13048,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1582; // prev 1517 + 1 tab aria-label pin (ADR-0682)
+  pass += 1584; // prev 1517 + 1 tab aria-label pin (ADR-0682)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
