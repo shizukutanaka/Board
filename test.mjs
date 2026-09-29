@@ -4462,6 +4462,21 @@ try {
       Store.commit({op:'del',shapes:[C1,C2].map(s=>JSON.parse(JSON.stringify(s)))});
       console.log('  ✓ Tab chains are page-scoped (3 asserts)');
     }
+    // ADR-0663: undoing the last page clears stale pg membership
+    {
+      const X=Shape.make('rect',{x:0,y:0,w:10,h:10});
+      Store.commit({op:'add',shape:X});
+      Store.commit({op:'pageAdd',id:'pA',name:'P1'});
+      Store.commit({op:'pageAdd',id:'pB',name:'P2'});
+      assert.ok(byId(X.id).pg==='pA',"unpg'd shapes adopt onto the first page");
+      Store.undo();Store.undo();
+      assert.ok(byId(X.id).pg==null,'stale pg cleared when the last page is undone (ADR-0663)');
+      Store.commit({op:'pageAdd',id:'pC',name:'P3'});
+      assert.ok(byId(X.id).pg==='pC'&&_pgOk(byId(X.id)),'fresh page set re-adopts the shape — visible');
+      state.pages=null;state.curPg=null;
+      Store.commit({op:'del',shapes:[{...byId(X.id)}]});
+      console.log('  ✓ last-page undo clears pg membership (3 asserts)');
+    }
   }
 
   // ADR-0072: elbow trunk locate + bend-override two-corner route
@@ -12609,7 +12624,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1478; // prev 1475 + 3 Tab-chain page-scope asserts (ADR-0662)
+  pass += 1481; // prev 1478 + 3 last-page-undo asserts (ADR-0663)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
