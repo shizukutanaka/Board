@@ -868,7 +868,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.758';   // ADR-0729
+const V='1.7.759';   // ADR-0733
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1729,7 +1729,9 @@ const Store={
           const d=forward?1:-1;
           if(forward)op.moved=[];   // ADR-0548: undo un-moves only forward-moved
           for(const id of forward?op.ids:(op.moved||op.ids)){const sh=byId(id);if(!sh)continue;if(sh.locked)continue;   // ADR-0716
-            _sT2(sh,op.dx*d,op.dy*d);if(forward)op.moved.push(id)}
+            if(!forward){const ux=_lwwSkip(id,'x',op),uy=_lwwSkip(id,'y',op);   // ADR-0733
+              if(ux&&uy)continue;_sT2(sh,ux?0:op.dx*d,uy?0:op.dy*d)}
+            else{_sT2(sh,op.dx*d,op.dy*d);op.moved.push(id)}}
         }
         if(!forward)_selR(op);
         break;}
