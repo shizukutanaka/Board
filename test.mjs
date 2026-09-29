@@ -13957,6 +13957,22 @@ try {
     assert.ok(_pgById('pZ').name==='Zed','the real pageAdd upgrades the stub (0775 parity)');
     console.log('  ✓ op-carried unknown pg heals via stub / stays forward-compatible (ADR-0778)');
   }
+  // ADR-0779: clock.peer/seq feed seenOps keys and the persisted wclock map — an
+  // unbounded string floods both (and bloats the IDB record). validClock caps
+  // peer ≤64 and string seq ≤80; oversized forms are rejected before poisoning.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;
+    const s=Shape.make('rect',{x:0,y:0,w:10,h:10,stroke:'#000'});
+    Store.commit({op:'add',shape:s});
+    Store.applyRemote({op:'upd',id:s.id,before:{stroke:'#000'},after:{stroke:'red'},clock:{peer:'X'.repeat(200),seq:1,ts:1}});
+    assert.strictEqual(byId(s.id).stroke,'#000','oversized clock.peer rejected');
+    Store.applyRemote({op:'upd',id:s.id,before:{stroke:'#000'},after:{stroke:'red'},clock:{peer:'r1',seq:'snap:'.padEnd(200,'x'),ts:2}});
+    assert.strictEqual(byId(s.id).stroke,'#000','oversized string clock.seq rejected');
+    Store.applyRemote({op:'upd',id:s.id,before:{stroke:'#000'},after:{stroke:'red'},clock:{peer:'r1',seq:'snap:'+'x'.repeat(40),ts:3}});
+    assert.strictEqual(byId(s.id).stroke,'red','a valid string-seq clock still lands');
+    assert.ok(!state.wclock[s.id]||!state.wclock[s.id].stroke||state.wclock[s.id].stroke.peer==='r1','no oversized-peer wclock entry was written');
+    console.log('  ✓ validClock bounds peer/seq string lengths (ADR-0779)');
+  }
 
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
@@ -13964,7 +13980,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1752; // prev 1748 + 4 ADR-0778 unknown-pg heal asserts
+  pass += 1756; // prev 1752 + 4 ADR-0779 validClock length-cap asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

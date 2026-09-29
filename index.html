@@ -873,7 +873,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.804';   // ADR-0778
+const V='1.7.805';   // ADR-0779
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1425,13 +1425,12 @@ function validRemotePayload(op){
 // (a.ts||0) > (b.ts||0), so a non-number ts coerces to NaN in the comparison and
 // returns false BOTH ways — once such a clock poisons wclock[id][key], NO future
 // legitimate write can ever win, freezing that property forever across all peers
-// (denial-of-edit). Distinct from the documented "huge but valid ts" griefing that
-// needs op-signing (§3.8). seq is a finite number for live ops OR a non-empty string
-// for snapshot adds ('snap:<id>'); ts is optional but, if present, must be finite.
+// (denial-of-edit). seq is a finite number for live ops OR a non-empty string for
+// snapshot adds ('snap:<id>'); ts is optional but, if present, must be finite.
 function validClock(c){
   if(!c||!_iO(c))return false;
-  if(!_iS(c.peer)||!c.peer)return false;
-  if(!((_iN(c.seq)&&_fin(c.seq))||(_iS(c.seq)&&c.seq)))return false;
+  if(!_iS(c.peer)||!c.peer||_ln(c.peer)>MAX_PEER_ID_LEN)return false;   // ADR-0779
+  if(!((_iN(c.seq)&&_fin(c.seq))||(_iS(c.seq)&&c.seq&&_ln(c.seq)<=80)))return false;   // ADR-0779: 'snap:'+id ≤69 — bound the string
   if(c.ts!=null&&!(_iN(c.ts)&&_fin(c.ts)))return false;
   return true;
 }
@@ -1888,7 +1887,7 @@ const Store={
     // ADR-0568: a remote hide (or redo of one) l
     // shapes must not stay in selection (0566 in
     if(/^(?:style|upd|align|resize|beautify)$/.test(op.op))for(const id of _ids)if(_sl().has(id)){_selSig=null;const _s=byId(id);if(_s&&_hd(_s))_sdl(id)}
-    if(_pgOn()){_pgHealS();_pgBar()}   // ADR-0778: unknown op-carried pg gets the '?' stub — no permanent invisible orphan
+    if(_pgOn()){_pgHealS();_pgBar()}   // ADR-0778: unknown op-carried pg materializes the '?' stub
     // ADR-0027: post-mutation bboxes of the same
     // a union covering most of the viewport isn't worth clipping for.
     for(const id of _ids)_u(byId(id));
