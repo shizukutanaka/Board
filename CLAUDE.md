@@ -806,6 +806,7 @@ Board/
 │   └── ADR-0755-pageop-wire-fields.md  # validRemotePayload が pageAdd.i / pageDel.firstId / pageName.nts を検証
 │   └── ADR-0756-wire-convergence-sync.md  # architecture.md の undo-wire 収束節を 0729-0755 へ同期 (docs)
 │   └── ADR-0757-persist-causal-markers-sync.md  # architecture.md §6 へ causal marker 永続化規則を同期 (docs)
+│   └── ADR-0758-del-redo-connclears.md  # del redo のギャップ結合コネクタ dangling を _remoteDelConnFix で解消
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
