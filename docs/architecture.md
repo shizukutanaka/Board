@@ -416,8 +416,20 @@ DOM 要素は `data-t` 属性 + `UI.applyI18n()` で翻訳 (起動時に 1 回�
   - **`_slimOp` は undo-domain を剥がし wire-domain を残す**: `bts/
     origSel/moved/connClears` は落とすが `wc/unpage+shapes/firstId/
     nts,ntp` はワイヤに必要なため残す (0705/0721–0727)。
+  - **move は絶対位置で双方向**: 送信側・undo-wire とも `after`/`before`
+    は絶対 {x,y} ペア — bare delta は raced 基準で非収束 (0729/0731/0732)。
+    delta 経路の undo は軸毎 `_lwwSkip` でピア新規書込を保護 (0733)。
+  - **`beautify`/`replace`/`clear` も wire op**: beautify は patch-swap
+    (0730/0731)、clear は `{op:'replace',after:[],afterWc:{}}` に翻訳され
+    `_lastRep` 因果順序と snapshot rep marker を共有 (0626)。
+  - **墓標は世代を超えて残る**: del/clear/replace/pageDel の tombstone
+    `{_del:clock}` は `_imgPending` wipe・wclock 洪水 cap (0738)・
+    snapshot 空盤面採用 (0735) でも保持 — stale add/snapshot が
+    削除済み図形を復活させない (0734–0737)。
   - **受信側検証**: `addMany.wc` は `replace.afterWc` と同じ `wcOk`
-    検査 (0726) — 悪意/壊損 clock の NaN 汚染を遮断。
+    検査 (0726) に加え、ページ op の付帯フィールド — `pageAdd.i`、
+    `pageDel.firstId`、`pageName.nts` — も有限数/≤64文字列を要求 (0755)。
+    悪意/壊損 clock・非有限値の NaN 汚染を遮断。
 - **frag 再起動**: `snap`/`opc`/`img` の `n` 不一致・key 衝突で旧断片を
   捨てて新ストリームを再起動、`_imgIn`/`_imgChunks` は 96KB/256-entry
   で上限化 (ADR-0448/0449/0454)。

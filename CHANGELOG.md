@@ -1,3 +1,11 @@
+## [1.7.782] - 2026-09-28
+
+### Docs
+- ADR-0756: architecture.md's undo-wire convergence section synced to
+  ADR-0729-0755 — absolute move both ways, per-axis `_lwwSkip`, beautify/
+  clear wire ops, tombstone persistence across wipes/caps/adopts, and the
+  page-op aux-field wire validation added this round
+
 ## [1.7.781] - 2026-09-28
 
 ### Fixed
