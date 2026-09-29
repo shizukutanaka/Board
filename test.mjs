@@ -12290,6 +12290,12 @@ try {
         for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[sfile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
         await new Promise(r=>setTimeout(r,30));
         assert.ok(state.shapes.length===1&&state.shapes[0].type==='rect'&&state.shapes[0].w===30,'a dropped .svg file converts markup to board shapes via DOMParser (ADR-0042)');
+        reset();
+        const dio='<mxfile><diagram><mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/><mxCell id="c1" value="Hi" style="rounded=0;" vertex="1" parent="1"><mxGeometry x="10" y="10" width="120" height="60" as="geometry"/></mxCell></root></mxGraphModel></diagram></mxfile>';
+        const dfile2={name:'d.drawio',type:'',size:dio.length,text:()=>Promise.resolve(dio)};
+        for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[dfile2],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
+        await new Promise(r=>setTimeout(r,30));
+        assert.ok(state.shapes.length>=1&&state.shapes.some(s=>s.type==='rect'),'a dropped .drawio file imports mxCell vertices via DOMParser (ADR-0199)');
       }finally{globalThis.DOMParser=_DP}
     }finally{globalThis.FileReader=_FR}
     // selection presence broadcast + peer reaping (ADR-0011 / peer lifecycle)
@@ -12323,7 +12329,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1405; // prev 1404 + 1 svg-drop assert (ADR-0042/0641: mini-DOMParser stub)
+  pass += 1406; // prev 1404 + 2 DOM-drop asserts (ADR-0042/0199: mini-DOMParser stub)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
