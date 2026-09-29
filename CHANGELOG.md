@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.668]
+### テスト
+- spec §14.3.1 P3「ポインタ系列の実検証」を前進 — fake DOM の canvas 要素を per-id シングルトン化し `addEventListener` を `_L` マップに記録、合成 `pointerdown/move/up` を実リスナ (capture→bubble 順) へディスパッチするハーネスを新設。ペンストローク・選択ドラッグ・右ボタン非 arm ガードを実イベント経路で検証 (ADR-0641)。
+
 ## [1.7.667]
 ### 修正
 - プレゼン中の入力経路が pointerdown/keydown しかゲートされていなかった問題を修正 — `dblclick` (編集 overlay が開く)、`contextmenu` (編集メニューが開く)、`wheel` / タッチピンチ / Safari gesture 系 (フィット済みフレームをずらす) 全てに `_pA()` ゲートを追加 (ADR-0640)。

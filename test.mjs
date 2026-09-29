@@ -1538,9 +1538,16 @@ const jsMatch = html.match(/<script>([\s\S]*?)<\/script>/);
 const js = jsMatch[1];
 
 // Fake the DOM-touching APIs so the script can load without crashing
+// Per-id element cache: listeners bound via addEventListener are recorded in el._L
+// (key `${type}` or `${type}|c` for capture) so tests can fire synthetic DOM events
+// through the real handlers (pointer-sequence coverage, spec §14.3.1 P3).
+const _els = {};
 const fakeDoc = {
-  getElementById: () => ({
-    addEventListener(){}, removeEventListener(){},
+  getElementById: (id) => (_els[id] ||= {
+    id,
+    _L: {},
+    addEventListener(t, f, o){ (this._L[t + (o && o.capture ? '|c' : '')] ||= []).push(f); }, removeEventListener(){},
+    setPointerCapture(){}, releasePointerCapture(){},
     setAttribute(){}, getAttribute(){}, removeAttribute(){},
     appendChild(){}, removeChild(){}, remove(){},
     dataset: {}, style: {}, classList: { add(){}, remove(){}, toggle(){} },
@@ -11134,13 +11141,60 @@ try {
     console.log('  ✓ coverage sweep3: pen taper/quad/disc/fill primitives + _svgBoxLabel');
   }
 
+  // ---- pointer-sequence coverage (spec §14.3.1 P3): synthetic DOM events through the REAL listeners ----
+  {
+    const fire=(t,x,y,o={})=>{
+      const ev={pointerId:1,pointerType:'mouse',button:0,isPrimary:true,
+        clientX:x,clientY:y,offsetX:x,offsetY:y,
+        ctrlKey:false,metaKey:false,shiftKey:false,altKey:false,
+        preventDefault(){},stopPropagation(){},...o};
+      for(const f of canvas._L[t+'|c']||[])f(ev);   // capture first (pinch recorder)
+      for(const f of canvas._L[t]||[])f(ev);       // then bubble handlers in bind order
+      return ev;
+    };
+    const reset=()=>{state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.draft=null;ptr.down=false;};
+    reset();
+    state.viewport={x:0,y:0,zoom:1};
+    // pen stroke: PD arms ptr.down + draft, PM appends pts, PU commits an 'add'
+    state.tool='pen';
+    fire('pointerdown',10,10);
+    assert.ok(ptr.down,'real PD arms ptr.down');
+    assert.ok(state.draft&&state.draft.type==='pen','real PD begins a pen draft');
+    fire('pointermove',40,30);
+    fire('pointermove',80,10);
+    fire('pointerup',80,10);
+    assert.ok(!ptr.down,'real PU releases ptr.down');
+    const pen=state.shapes[state.shapes.length-1];
+    assert.ok(pen&&pen.type==='pen','PD/PM/PU sequence commits a pen shape');
+    assert.ok(pen.pts.length>=2,'committed pen kept ≥2 pts');
+    // select-drag: PD on the shape arms a move; PM translates; PU commits 'move'
+    reset();
+    state.tool='select';
+    const R=Shape.make('rect',{x:100,y:100,w:50,h:50});
+    Store.commit({op:'add',shape:R});
+    state.selection=new Set([R.id]);
+    fire('pointerdown',120,120);
+    fire('pointermove',160,150);
+    fire('pointerup',160,150);
+    const moved=byId(R.id);
+    assert.ok(moved.x>100&&moved.y>100,'select-drag moves the shape via real events');
+    assert.strictEqual(state.history[state.histIdx].op,'move','select-drag commits a move op');
+    // right-button PD never arms (ADR-0532), and PU without PD is inert
+    reset();
+    fire('pointerdown',50,50,{button:2});
+    assert.ok(!ptr.down,'right-button PD does not arm ptr.down');
+    fire('pointerup',50,50);
+    assert.strictEqual(state.shapes.length,0,'no phantom shape from right-click');
+    console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
   // asserts but actually contains 6 (recounted directly: at1.length, at2.length, and 4
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1168; // prev 1167 + presentation-SR pin (ADR-0639)
+  pass += 1177; // prev 1168 + 9 pointer-sequence asserts (ADR-0641)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
