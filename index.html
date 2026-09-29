@@ -873,7 +873,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.809';   // ADR-0783
+const V='1.7.810';   // ADR-0784
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1392,7 +1392,7 @@ function validRemotePayload(op){
       if(op.after.pts!=null&&!_ptsOK(op.after.pts))return false;
       return true;}
     case 'move':   return _iA(op.ids)&&_ln(op.ids)>0&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(_idOK)&&_iN(op.dx)&&_fin(op.dx)&&_iN(op.dy)&&_fin(op.dy)&&(op.dx!==0||op.dy!==0)
-      &&patches(op.after)&&(op.before==null||patches(op.before));   // ADR-0729/0741: absolute positions are REQUIRED on the wire — a bare delta applied on a raced base diverges unrecoverably
+      &&patches(op.after)&&(op.before==null||patches(op.before));   // ADR-0729/0741
     case 'zorder':  // Step2 minimal-delta {changes:[{id,before,after}]} only — ADR-0742: the legacy {after:[…]}
                     // wholesale snapshot applied z+frac unconditionally on every entry (no per-shape LWW gate,
                     // no clock stamp) so a pre-Step2 peer's raced reorder clobbered newer frac writes with no
@@ -1502,7 +1502,7 @@ const Store={
     // (it is already deduped). move/zorder are c
     if(!this._lwwDrop(op))return;
     if(op.op==='replace'){   // ADR-0613: same wipe-safety as 'clear'
-      if(state._lastRep&&!clockNewer(op.clock,state._lastRep))return;   // ADR-0614: two peers swapping at once — newest clock wins on every peer regardless of arrival order
+      if(state._lastRep&&!clockNewer(op.clock,state._lastRep))return;   // ADR-0614
       if(_ln(_sh()))Persist.saveBackup(clone(_sh()),{..._vp()},_dn());
       _oT('peerReplaced');
     }
@@ -8287,8 +8287,9 @@ const Net={
         this._imgChunks.delete(msg.key);
         const data=st.p.join('');
         if(_ln(data)>12_000_000)break;
-        if(this._imgIn.size>=256&&!this._imgIn.has(msg.key))this._imgIn.delete(this._imgIn.keys().next().value);   // ADR-0449
-        this._imgIn.set(msg.key,data);
+        if(this._imgIn.has(msg.key))this._imgInB-=_ln(this._imgIn.get(msg.key));
+        this._imgIn.set(msg.key,data);this._imgInB=(this._imgInB||0)+_ln(data);
+        while(this._imgIn.size>256||this._imgInB>64_000_000){const k0=this._imgIn.keys().next().value;if(k0==null)break;this._imgInB-=_ln(this._imgIn.get(k0));this._imgIn.delete(k0)}   // ADR-0784: bound by bytes too — 256×12MB ≈ 3GB of retained base64 otherwise
         for(const[id,k]of this._imgPending){
           // ADR-0747: resolve only while the shape still references this key.
           if(k===msg.key){const sh=byId(id);if(sh&&sh.img===msg.key){delete sh.img;sh.dataUrl=data}this._imgPending.delete(id)}
