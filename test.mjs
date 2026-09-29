@@ -12109,6 +12109,23 @@ try {
     fire1('dblclick',50,50);
     assert.ok(appd4.some(el=>el.tagName==='INPUT'),'dblclick on a label-less conn opens the editor');
     fakeDoc.body.appendChild=()=>{};
+    // resize debounce (ADR-0631): trailing-edge 150ms — collapses a resize burst into one apply
+    canvas.getBoundingClientRect=()=>({left:0,top:0,width:777,height:555,right:777,bottom:555});
+    const w0=canvas.width;
+    for(const f of (fakeWin._L['resize']||[]).slice(0,1))f({});
+    for(const f of (fakeWin._L['resize']||[]).slice(0,1))f({});
+    assert.strictEqual(canvas.width,w0,'resize is debounced — no synchronous canvas resize');
+    await new Promise(r=>setTimeout(r,240));
+    assert.strictEqual(canvas.width,777,'trailing-edge resize() applied once (ADR-0631)');
+    canvas.getBoundingClientRect=()=>({left:0,top:0,width:800,height:600,right:800,bottom:600});
+    for(const f of (fakeWin._L['resize']||[]).slice(0,1))f({});
+    await new Promise(r=>setTimeout(r,240));
+    // GPU context lifecycle (ADR-0627): contextlost is prevented, restored re-arms caches
+    let clPD=0;
+    for(const f of (canvas._L['contextlost']||[]).slice(0,1))f({preventDefault(){clPD=1}});
+    assert.strictEqual(clPD,1,'contextlost preventDefaulted (contextrestored allowed)');
+    assert.ok((canvas._L['contextrestored']||[]).length>0,'contextrestored cache-purge listener registered');
+    for(const f of (canvas._L['contextrestored']||[]).slice(0,1))f({});
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -12120,7 +12137,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1372; // prev 1367 + 5 event-sequence asserts (ADR-0641: directional marquee/⇧marquee/無ラベルconn dblclick)
+  pass += 1376; // prev 1372 + 4 event-sequence asserts (ADR-0641: resize debounce/context lifecycle)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
