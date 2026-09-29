@@ -1,3 +1,8 @@
+## [1.7.838] - 2026-09-29
+
+### Test
+- ADR-0812: presence ゲートを `Net._onRecv` 直叩きで behavioural ピン (cursor 棄却/h:1/peer id 上限)
+
 ## [1.7.837] - 2026-09-29
 
 ### Docs
