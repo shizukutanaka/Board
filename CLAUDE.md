@@ -727,7 +727,8 @@ Board/
 │   ├── ADR-0676-stale-research-sync.md  # stale 調査記述の同期 (実装済)
 │   ├── ADR-0677-pres-page-switch-frames.md  # プレゼン中ページ切替の幻影フレーム (実装済)
 │   ├── ADR-0678-drawio-hidden-parity.md  # .drawio エクスポートの hidden parity (実装済)
-│   └── ADR-0679-pagedel-wclock-purge.md  # pageDel の member wclock purge (実装済)
+│   ├── ADR-0679-pagedel-wclock-purge.md  # pageDel の member wclock purge (実装済)
+│   └── ADR-0680-sel-presence-page-key.md  # 選択プレゼンス dedup キーに curPg (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

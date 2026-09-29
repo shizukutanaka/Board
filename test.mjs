@@ -4628,6 +4628,11 @@ try {
       assert.ok(html.includes("for(const s of _sh())if((s.pg||firstId)===op.id)delete _wc()[s.id]"),'_pgDel2 purges member wclocks (ADR-0679)');
       console.log('  ✓ pageDel wclock purge pin (1 assert)');
     }
+    // ADR-0680: selection-presence dedup key carries curPg
+    {
+      assert.ok(html.includes("ids.join(',')+'|'+(state.curPg||'')"),'sel presence key includes page (ADR-0680)');
+      console.log('  ✓ sel-presence pg key pin (1 assert)');
+    }
   }
 
   // ADR-0072: elbow trunk locate + bend-override two-corner route
@@ -12775,7 +12780,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1515; // prev 1514 + 1 pageDel wclock pin (ADR-0679)
+  pass += 1516; // prev 1515 + 1 sel-presence pg pin (ADR-0680)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
