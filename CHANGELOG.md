@@ -1,3 +1,8 @@
+## [1.7.840] - 2026-09-29
+
+### Docs
+- ADR-0814: 非同期 rejection 監査完走 — Persist/clipboard/wrtc/wake lock 全経路 catch 済み
+
 ## [1.7.839] - 2026-09-29
 
 ### Fixed

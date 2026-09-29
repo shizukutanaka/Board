@@ -862,6 +862,7 @@ Board/
 │   └── ADR-0811-presence-audit-complete.md  # presence 取込監査完走 — 全フィールド intake bounded
 │   └── ADR-0812-presence-gate-pins.md  # presence ゲートを Net._onRecv 直叩きで behavioural ピン
 │   └── ADR-0813-sw-blob-url-revoke.md  # SW 登録の blob URL を登録完了後に解放 (_oURL 全サイト parity)
+│   └── ADR-0814-rejection-audit-complete.md  # 非同期 rejection 監査完走 — 全 promise 経路 catch 済み
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
