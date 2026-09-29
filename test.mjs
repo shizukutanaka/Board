@@ -4549,6 +4549,13 @@ try {
       assert.ok(html.includes("exportPNG(_shV(),1)"),'ctx 1x PNG export uses _shV');
       console.log('  ✓ ctx PNG export page-scope pins (2 asserts)');
     }
+    // ADR-0667: hop-mark candidates + frame numbering are page-scoped
+    {
+      assert.ok(html.includes('if(o===s||o.visible===0||!_pgOk(o))continue;'),'hop scan ignores off-page lines (ADR-0667)');
+      assert.ok(!html.includes('const n=_sh().filter(_frm).length+1'),'frame numbering no longer counts every page');
+      assert.ok((html.match(/_sh\(\)\.filter\(s=>_frm\(s\)&&_pgOk\(s\)\)\.length\+1/g)||[]).length===2,'both frame-name sites page-scoped');
+      console.log('  ✓ hop/frame-name page-scope pins (3 asserts)');
+    }
   }
 
   // ADR-0072: elbow trunk locate + bend-override two-corner route
@@ -12696,7 +12703,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1494; // prev 1492 + 2 ctx-PNG-page-scope pins (ADR-0666)
+  pass += 1497; // prev 1494 + 3 hop/frame-name page-scope pins (ADR-0667)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

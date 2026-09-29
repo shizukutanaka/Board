@@ -863,7 +863,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.693';   // ADR-0666
+const V='1.7.694';   // ADR-0667
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3280,7 +3280,7 @@ function _segIntT(ax,ay,bx,by,cx,cy,dx,dy){
 function _hopsFor(s,pts){
   const hops=[];                                   // packed i*1e6+t, sorted
   for(const o of _sh()){
-    if(o===s||o.visible===0)continue;
+    if(o===s||o.visible===0||!_pgOk(o))continue;   // ADR-0667: hop marks come only from crossings visible on this page — an off-page line would mint phantom arcs
     const t=o.type;if(t!=='line'&&t!=='arrow')continue;
     const op=_connPathPts(o);if(!op||_ln(op)<2)continue;
     for(let i=0;i<_ln(pts)-1;i++){
@@ -5458,7 +5458,7 @@ function beginRectLike(wp){
     extras.color=STICKY_COLORS[_fl(_rN()*_ln(STICKY_COLORS))];
     extras.text='';extras.fontSize=_st().fontSize||14;          // ADR-0180
   }else if(_tl()==='frame'){
-    const n=_sh().filter(_frm).length+1;
+    const n=_sh().filter(s=>_frm(s)&&_pgOk(s)).length+1;   // ADR-0667: frame numbering is per-page — "Frame 1" on page 2 isn't "Frame 5"
     extras.label=`Frame ${n}`;
     extras.stroke=_gC('--brand')||'#00C4CC';
     extras.fill=null;extras.size=1.5;
@@ -5605,7 +5605,7 @@ function createShapeKbd(){
     s=_smk('sticky',{x:cx-80,y:cy-80,w:160,h:160,
       color:STICKY_COLORS[_fl(_rN()*_ln(STICKY_COLORS))],text:'',fontSize:_st().fontSize||14});   // ADR-0180
   }else if(tool==='frame'){
-    const n=_sh().filter(_frm).length+1;
+    const n=_sh().filter(s=>_frm(s)&&_pgOk(s)).length+1;   // ADR-0667
     s=_smk('frame',{x:cx-400,y:cy-250,w:800,h:500,
       label:`Frame ${n}`,stroke:_gC('--brand')||'#00C4CC',fill:null,size:1.5});
   }else if(tool==='text'){
