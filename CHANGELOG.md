@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.641]
+### Fixed
+- 2ピアが同時に全置換 (共有リンク/.board 取込) すると各々が相手の盤面を適用して交差発散する問題を修正 — 最後に適用した 'replace' の clock を `state._lastRep` に保持し、到着したリモート swap がそれより新しくない限り棄却。`clockNewer` の (ts,peer,seq) 全順序で全ピアが到着順に関わらず同一の勝者を選ぶ (ADR-0614)。
+
 ## [1.7.640]
 ### Fixed
 - 共有リンク/.board/excalidraw 取込の全置換 op ('replace') が `REMOTE_OPS` で棄却され、接続中のピアへ届かず盤面が永久に発散していた問題を修正 — 'replace' を wire 許可集合へ追加し、`after`/`afterWc` の payload 検証・`_slimOp` (before/wc/origSel を帯域外へ)・`_attachOp` (img 参照の復元)・適用直前の `Persist.saveBackup` + `peerReplaced` トーストで wipe 安全性を確保 (ADR-0613)。
