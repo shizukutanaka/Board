@@ -11327,6 +11327,19 @@ try {
     fire1('wheel',100,100,{deltaY:-120,deltaX:0,deltaMode:0,ctrlKey:true});
     assert.strictEqual(state.viewport.zoom,z0,'presentation swallows wheel zoom');
     Presentation.leave();
+    // dblclick opens the text editor; presentation suppresses it too (ADR-0640)
+    reset();
+    state.tool='select';
+    const T1=Shape.make('text',{x:100,y:100,w:80,h:40,text:'dbl'});
+    Store.commit({op:'add',shape:T1});
+    Store.commit({op:'add',shape:Shape.make('frame',{x:0,y:0,w:400,h:300})});
+    state.editing=null;
+    Presentation.enter();
+    fire1('dblclick',110,110);
+    assert.strictEqual(state.editing,null,'presentation suppresses dblclick editing');
+    Presentation.leave();
+    fire1('dblclick',110,110);
+    assert.strictEqual(state.editing,T1.id,'dblclick on a text shape opens the editor');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -11338,7 +11351,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1197; // prev 1168 + 29 event-sequence asserts (ADR-0641)
+  pass += 1199; // prev 1168 + 31 event-sequence asserts (ADR-0641)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
