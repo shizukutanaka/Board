@@ -2252,8 +2252,8 @@ try {
   assert.strictEqual(state.shapes[0].x, mx0, 'remote move with non-finite dx is dropped');
   Store.applyRemote({op:'upd', id:123, after:'evil', clock:{peer:'attacker', seq:4, ts:1}});
   assert.ok(Number.isFinite(state.shapes[0].x), 'remote upd with bad id/after is dropped');
-  Store.applyRemote({op:'move', ids:[mvId], dx:5, dy:0, clock:{peer:'peerB', seq:2, ts:1}});
-  assert.strictEqual(state.shapes[0].x, mx0 + 5, 'well-formed remote move is applied');
+  Store.applyRemote({op:'move', ids:[mvId], dx:5, dy:0, after:[{id:mvId, x:mx0+5, y:state.shapes[0].y}], clock:{peer:'peerB', seq:2, ts:1}});
+  assert.strictEqual(state.shapes[0].x, mx0 + 5, 'well-formed remote move (absolute, ADR-0741) is applied');
   console.log('  ✓ applyRemote validates op payloads (move/upd) and applies valid move');
 
   // §3-2: value-level payload guard - NaN/Infinity injection and prototype
@@ -3794,9 +3794,11 @@ try {
     assert.ok(validRemotePayload({op:'zorder',after:[{id:'a',frac:'a'.repeat(600)}]}),'legacy frac =600 accepted');
     assert.ok(!validRemotePayload({op:'zorder',after:[{id:'a'.repeat(65)}]}),'legacy id >64 rejected');
     assert.ok(validRemotePayload({op:'zorder',after:[{id:'a'.repeat(64)}]}),'legacy id =64 accepted');
-    // move: ids must be strings (consistent with group/ungroup fix)
-    assert.ok(validRemotePayload({op:'move',ids:['s1','s2'],dx:5,dy:3}),'move with string ids accepted');
-    assert.ok(!validRemotePayload({op:'move',ids:[{id:'s1'}],dx:5,dy:3}),'move with object ids rejected');
+    // move: ids must be strings (consistent with group/ungroup fix); ADR-0741:
+    // absolute `after` positions are required — the bare delta form is rejected.
+    assert.ok(validRemotePayload({op:'move',ids:['s1','s2'],dx:5,dy:3,after:[{id:'s1',x:5,y:3},{id:'s2',x:5,y:3}]}),'move with string ids + absolute after accepted');
+    assert.ok(!validRemotePayload({op:'move',ids:['s1','s2'],dx:5,dy:3}),'bare-delta move rejected (ADR-0741)');
+    assert.ok(!validRemotePayload({op:'move',ids:[{id:'s1'}],dx:5,dy:3,after:[{id:'s1',x:5,y:3}]}),'move with object ids rejected');
     console.log('  ✓ Step3 validRemotePayload: zorder legacy validates z/frac; move validates string ids');
   }
 
@@ -6654,8 +6656,8 @@ try {
     const mX = {id:'mX',type:'rect',x:0,y:0,w:10,h:10,z:1,frac:null,stroke:'#000',size:2,opacity:1};
     A.state.shapes.push(cp(mX)); B.state.shapes.push(cp(mX)); A.sortZ(); B.sortZ();
     const mAB=[], mBA=[];
-    A.Net.broadcast = op => mAB.push({k:'op',op:cp(op)});
-    B.Net.broadcast = op => mBA.push({k:'op',op:cp(op)});
+    A.Net.broadcast = op => mAB.push({k:'op',op:cp(A.Net._slimOp(op))});   // _slimOp adds after/before — the real wire form
+    B.Net.broadcast = op => mBA.push({k:'op',op:cp(B.Net._slimOp(op))});
     A.Store.commit({op:'move',ids:['mX'],dx:10,dy:0});   // A nudges +10x
     B.Store.commit({op:'move',ids:['mX'],dx:0,dy:5});    // B nudges +5y, concurrently
     mAB.forEach(m=>B.Net._onRecv(m)); mBA.forEach(m=>A.Net._onRecv(m));
@@ -6690,12 +6692,13 @@ try {
     assert.strictEqual(A.state.shapes.find(s=>s.id==='mX').x, 50, 'ADR-0729: newer upd wins on A');
     assert.strictEqual(B.state.shapes.find(s=>s.id==='mX').x, 50, 'ADR-0729: B converged on the same x');
 
-    // (iii) a legacy delta-form move (no after) still applies the delta — pre-0729 peers.
+    // (iii) a legacy delta-form move (no after) is REJECTED — ADR-0741: pre-0729
+    // peers can't be distinguished from a raced-base poison source.
     reset(A); reset(B);
     A.state.shapes.push(cp(mX));
     A.Net._onRecv({k:'op',op:{op:'move',ids:['mX'],dx:7,dy:0,clock:{peer:'peerB',seq:1,ts:1}}});
-    assert.strictEqual(A.state.shapes.find(s=>s.id==='mX').x, 7, 'ADR-0729: legacy delta moves still apply');
-    console.log('  ✓ ADR-0729: move×upd race converges on the newer clock; legacy delta still applies');
+    assert.strictEqual(A.state.shapes.find(s=>s.id==='mX').x, 0, 'ADR-0741: legacy delta moves are dropped');
+    console.log('  ✓ ADR-0729/0741: move×upd race converges on the newer clock; legacy delta dropped');
 
     // ADR-0730: 'beautify' broadcast was dropped at the wire validator — the sender's
     // pen→rect retype stayed local-only while every peer kept the pen (divergence).
@@ -6923,6 +6926,18 @@ try {
     assert.ok(/_send\(_mk\('hello'\)\)/.test(html)&&/_send\(_mk\('ping'\)\)/.test(html),'ADR-0740: hello/ping carry no dead seq field');
     assert.ok(!/k:'snapshot'[^}]*curPg/.test(html),'ADR-0740: snapshot drops the sender-side curPg field');
     console.log('  ✓ ADR-0740: dead wire fields removed');
+
+    // ADR-0741: a bare-delta remote 'move' (pre-0729 wire form — still sendable by a
+    // stale-SW old-version peer) applies dx on a possibly-raced base → unrecoverable
+    // divergence + w.x clock poison. Remote move now REQUIRES absolute after positions.
+    reset(A); reset(B);
+    state.shapes.push({id:'mv1',type:'rect',x:100,y:100,w:10,h:10,z:1});A._invalidateGrid();A.sortZ();
+    B.state.shapes.push({id:'mv1',type:'rect',x:100,y:100,w:10,h:10,z:1});B._invalidateGrid();B.sortZ();
+    B.Net._onRecv({k:'op',op:{op:'move',ids:['mv1'],dx:5,dy:0,clock:{peer:'peerA',seq:1,ts:10}}});
+    assert.ok(B.byId('mv1').x===100,'ADR-0741: bare-delta remote move dropped');
+    B.Net._onRecv({k:'op',op:{op:'move',ids:['mv1'],dx:5,dy:0,after:[{id:'mv1',x:105,y:100}],clock:{peer:'peerA',seq:2,ts:11}}});
+    assert.ok(B.byId('mv1').x===105,'ADR-0741: absolute remote move applies');
+    console.log('  ✓ ADR-0741: remote move requires absolute positions');
 
     // resize/align now LWW too (ADR-0002 follow-up): whole-shape snapshot ops gate/stamp
     // only the keys they actually changed (diff before/after). (i) concurrent resize of
@@ -10859,12 +10874,12 @@ try {
 
   // v1.7.48c: validRemotePayload move must reject string dx/dy (type coercion bypass)
   {
-    assert.ok(!validRemotePayload({op:'move',ids:['s1'],dx:'42',dy:0}),
+    assert.ok(!validRemotePayload({op:'move',ids:['s1'],dx:'42',dy:0,after:[{id:'s1',x:42,y:0}]}),
       'v1.7.48c: move with string dx rejected (was coerced via +op.dx)');
-    assert.ok(!validRemotePayload({op:'move',ids:['s1'],dx:0,dy:'10'}),
+    assert.ok(!validRemotePayload({op:'move',ids:['s1'],dx:0,dy:'10',after:[{id:'s1',x:0,y:10}]}),
       'v1.7.48c: move with string dy rejected');
-    assert.ok(validRemotePayload({op:'move',ids:['s1'],dx:5,dy:3}),
-      'v1.7.48c: move with numeric dx/dy still accepted');
+    assert.ok(validRemotePayload({op:'move',ids:['s1'],dx:5,dy:3,after:[{id:'s1',x:5,y:3}]}),
+      'v1.7.48c: move with numeric dx/dy + absolute after still accepted');
     console.log('  ✓ validRemotePayload move: string dx/dy rejected (typeof check, v1.7.48c)');
   }
 
@@ -13560,7 +13575,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1688; // prev 1686 + 2 ADR-0740 source
+  pass += 1691; // prev 1688 + 2 ADR-0741 behavioural + 1 ADR-0741 payload pin
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

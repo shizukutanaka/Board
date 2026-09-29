@@ -1,3 +1,11 @@
+## [1.7.767] - 2026-09-28
+
+### Fixed
+- ADR-0741: remote 'move' still accepted the bare pre-0729 delta form — a
+  stale-SW old-version peer's `{dx,dy}` applied on a raced base diverges
+  positions unrecoverably and stamps `wclock[id].x` with poison. Wire move now
+  requires absolute `after` positions (current peers always send them)
+
 ## [1.7.766] - 2026-09-28
 
 ### Removed
