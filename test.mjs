@@ -4627,6 +4627,7 @@ try {
     {
       assert.ok(html.includes("for(const s of _sh())if((s.pg||firstId)===op.id)delete _wc()[s.id]"),'_pgDel2 purges member wclocks (ADR-0679)');
       console.log('  ✓ pageDel wclock purge pin (1 assert)');
+    }
   }
 
   // ADR-0072: elbow trunk locate + bend-override two-corner route
