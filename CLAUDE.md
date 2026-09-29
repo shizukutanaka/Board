@@ -722,7 +722,8 @@ Board/
 │   ├── ADR-0671-page-scope-invariant.md  # ページスコープ不変条件の文書化
 │   ├── ADR-0672-snapshot-local-view.md  # snapshot 取込でビュー維持 (実装済)
 │   ├── ADR-0673-page-tab-strip.md  # ページタブストリップ (実装済)
-│   └── ADR-0674-curpg-persist-on-switch.md  # ページ切替で persist (実装済)
+│   ├── ADR-0674-curpg-persist-on-switch.md  # ページ切替で persist (実装済)
+│   └── ADR-0675-tab-rebuild-signature.md  # タブ sig キャッシュ + aria-current (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

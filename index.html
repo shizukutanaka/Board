@@ -866,7 +866,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.701';   // ADR-0674
+const V='1.7.702';   // ADR-0675
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2150,11 +2150,15 @@ function _pgDel2(op,firstId){   // ADR-0646: remove the deleted page's members +
   if(state.curPg===op.id)switchPage(firstId);   // ADR-0649: land via switchPage so the page change is announced + cursors hidden
 }
 function _pgRename(){const p=_pgById(state.curPg);if(!p)return;const n=prompt(t('pgRename'),p.name);if(n==null||_trm(n)==='')return;_cmt({op:'pageName',id:p.id,before:p.name,after:_s0(_trm(n),80),bts:p.nts,clock:{peer:_pi(),seq:++state.seq,ts:_now()}})}
+let _pgSig='';
 function _pgBar(){const el=_g('pgBar');if(!el)return;_hdn(el,!_pgOn());if(!_pgOn())return;
-const tb=_g('pgTabs');if(!tb)return;_tC(tb,'');   // ADR-0673: per-page tab chips — direct jump replaces ‹› stepping (imported docs can reach the 64-page cap)
-for(const p of state.pages){const c=_ce('button');c.className='pg-b pg-t'+(p.id===state.curPg?' on':'');c.title=p.name;_tC(c,_s0(p.name,12));
-_oC(c,()=>p.id===state.curPg?_pgRename():switchPage(p.id));   // click the live tab to rename — keeps 0646's rename path one click away
+const tb=_g('pgTabs');if(!tb)return;
+const sig=state.pages.map(p=>p.id+''+p.name).join();   // ADR-0675: rebuild chips only when the page SET changes — a remote rename/switch used to recreate every button and drop keyboard focus
+if(sig!==_pgSig){_pgSig=sig;_tC(tb,'');
+for(const p of state.pages){const c=_ce('button');c.className='pg-b pg-t';c.title=p.name;c._pgid=p.id;_tC(c,_s0(p.name,12));
+_oC(c,()=>c._pgid===state.curPg?_pgRename():switchPage(c._pgid));   // click the live tab to rename — keeps 0646's rename path one click away
 _ap(tb,c)}}
+for(const c of tb.children||[]){const on=c._pgid===state.curPg;c.classList.toggle('on',on);if(on)c.setAttribute('aria-current','page');else c.removeAttribute('aria-current')}}
 const _shV=()=>_sh().filter(s=>_sv(s)&&_pgOk(s));   // ADR-0494/0646: visible+current-page subset
 const _ulv=s=>!_lk(s)&&_sv(s)&&_pgOk(s);   // ADR-0496/0646
 const _ul=s=>!_lk(s);   // ADR-0506

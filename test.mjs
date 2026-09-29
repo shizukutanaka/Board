@@ -4600,9 +4600,10 @@ try {
     }
     // ADR-0673: per-page tab strip — direct jump, active tab renames
     {
-      assert.ok(html.includes('id="pgTabs"')&&html.includes("p.id===state.curPg?_pgRename():switchPage(p.id)"),'page tab chips switch/rename (ADR-0673)');
+      assert.ok(html.includes('id="pgTabs"')&&html.includes("c._pgid===state.curPg?_pgRename():switchPage(c._pgid)"),'page tab chips switch/rename (ADR-0673/0675)');
       assert.ok(html.includes('.pg-t.on'),'active tab styling pinned');
-      console.log('  ✓ page tab strip pins (2 asserts)');
+      assert.ok(html.includes('aria-current')&&html.includes('_pgSig'),'tab rebuild signature cache + aria-current (ADR-0675)');
+      console.log('  ✓ page tab strip pins (3 asserts)');
     }
     // ADR-0674: page switch schedules a save so curPg survives reload
     {
@@ -12756,7 +12757,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1509; // prev 1508 + 1 switchPage persist pin (ADR-0674)
+  pass += 1510; // prev 1509 + 1 tab-sig-cache pin (ADR-0675)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
