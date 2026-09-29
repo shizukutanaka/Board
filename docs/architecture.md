@@ -61,6 +61,17 @@ hidden/pagehide/blur の共通掃除口は `_clearTouchState()` — `_pointers` 
 - **mid-gesture 変化キー**: ⌘Z/⌘Y は先に cancel (ADR-0574)。他のキー変化
   (⌘D/⌘X/del/paste/⌘A) は dragStartShapes の id-map と byId ガードで
   自己整合 — cancel は不要。
+- **終端状態は _ptrReset 統一**: 両キャンセル経路 (Esc/hidden の
+  `_cancelPointerGesture` と pointercancel) の終端は `_ptrReset()` で ptr 状態
+  (`down`/`dragKind`/`moveStart`/`dataset.panning`/`readout`) を一括クリアする
+  (ADR-0764 — pan 中断で grabbing カーソルが残った実害を再発させない)。
+- **orig 復元は幾何限定**: ジェスチャキャンセルの「orig 書き戻し」は全フィールド
+  clone ではなく `_geoR()` で幾何キー (x/y/w/h/x1..y2/pts/way/z/rotate) のみ
+  復元する (ADR-0766、16サイト)。mid-drag で届いたリモートの style/label 書込
+  がキャンセルのたびに沈黙消失しない。
+- **プレゼンはスライドナビキーのみ通過**: プレゼン中の `_pA` ゲートが全入力を
+  呑む (0640)。例外はナビキー — ←→↑↓/Space/Enter/Esc に加えて PgDn/PgUp が
+  前後スライドへ動く (0768 — deck-tool parity)。
 クリップボードの OS 橋渡しは `_cpNow`/`_osClip` + `_textCascade` (SVG →
 .board → .excalidraw → mxfile → TSV → 平文) が paste/drop 双方に効く
 (ADR-0516/0518)。Safari の GestureEvent は gesturestart/change/end で
@@ -528,6 +539,23 @@ pen/line/arrow は点ジオメトリで box 中心が無く回転中心が NaN �
 - **選択外コネクタ**も結合先が変換対象なら before/after に同梱して変換
   (0586 doRotate / 0588 doFlip / 0587 grot は `ptr.gAnc` で原値退避・再計算 — ドリフト防止)。
 
+## フレームとメンバーシップ (v1.7.79x — ADR-0767)
+
+frame のメンバーシップは `s.grp` ではなく**幾何**で決まる — 図形の回転込み
+外接 `_bb` がフレーム `_bb` に `_inR` 完全内包されればメンバー。コンテインメント
+は `_pgOk` でページスコープ。
+
+- **`withFrameChildren(ids)`**: 選択へメンバーを拡張する唯一のチョークポイント。
+  delete/nudge/align/dup/placeCopies/ステータス対象集合が全てこれを通る。
+  **入れ子フレームもメンバー** (0767) — 旧 `_frm` 除外だと外枠の move/delete で
+  内枠が取り残され detached なまま残った。
+- **`_frameOf(sel, ok)`**: メンバー→フレームの unitMap。入れ子時は**最外枠**が
+  主張する (outer-keyed: 自分外包の内側フレームをスキップする `j<i||!contains`
+  選択)。図形のフレームは1つだけ (`m.has` 先着)、`ok` 述語で対象フィルタ
+  (`_rotatable` 等)。align/rotate/grot の「フレームごとにまとめて変換」が使う。
+- **excalidraw parity**: emit の `frameId` も同じ主張規則 — 内側フレーム図形にも
+  `frameId=外枠` を書く (0767)。
+
 ## 検索ハイライトの描画 (v1.6.61)
 
 `_sq` にマッチするシェイプはワールド変換ブロック内で `strokeRect` され、
@@ -571,7 +599,9 @@ pen/line/arrow は点ジオメトリで box 中心が無く回転中心が NaN �
   ページ交代なら `_ann` で着陸ページ名を SR アナウンス (0750 — switchPage 同格)
 - **プレゼンス**: `cursor`/`selection` wire に `pg` 同梱、別ページカーソルは非描画
   (0647)、アバターツールチップ+クリック follow (0656/0670)。送出 dedup 鍵に
-  `curPg` 同梱 (0680 — 選択不変のページ切替でも再送)
+  `curPg` 同梱 (0680 — 選択不変のページ切替でも再送)。ピアの `pg` 変化は
+  `_refreshPeers` を即時呼んでツールチップのページ名を遅れなく更新する
+  (0769 — presence ではなく `frame()` の presence 検出間隔に依存させない)
 - **帰属ヒール**: 未知 `pg` を持つ remote 図形は `?` ページを自動生成 (0646)、
   `pageAdd` backward の最終ページ→残部へ再帰属、`pageDel` 系は switchPage 経由で
   ビュー着地 (0649/0663)。`pageDel` はメンバー wclock も削除 (0679)
