@@ -4604,6 +4604,11 @@ try {
       assert.ok(html.includes('.pg-t.on'),'active tab styling pinned');
       console.log('  ✓ page tab strip pins (2 asserts)');
     }
+    // ADR-0674: page switch schedules a save so curPg survives reload
+    {
+      assert.ok(html.includes("_pgBar();_ps()"),'switchPage schedules persist (ADR-0674)');
+      console.log('  ✓ switchPage persist pin (1 assert)');
+    }
   }
 
   // ADR-0072: elbow trunk locate + bend-override two-corner route
@@ -12751,7 +12756,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1508; // prev 1506 + 2 page-tab strip pins (ADR-0673)
+  pass += 1509; // prev 1508 + 1 switchPage persist pin (ADR-0674)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
