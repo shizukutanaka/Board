@@ -255,6 +255,7 @@ const checks = [
   ["resize handlers debounced (ADR-0631)", html.includes("_on(window,'resize',_resizeSoon)") && html.includes("_on(visualViewport,'resize',_resizeSoon)") && html.includes("_on(screen.orientation,_CH,_resizeSoon)")],
   ["minimap nav cancels on hidden/pagehide (ADR-0632)", html.includes("cancelNav(){_mmNav=false}") && html.includes("Minimap.cancelNav()")],
   ["presentation cancels in-flight gesture (ADR-0634)", html.includes("if(ptr.down)_cancelPointerGesture();   // ADR-0634")],
+  ["resize/rotate resolve gesture target by orig.id not _sel0 (ADR-0635)", html.includes("const rsh=byId(ptr.resizeOrig.id)") && html.includes("const rsh=byId(ptr.rotOrig.id)")],
   ['applyRemote validates remote add shape', html.includes("case 'add':    return validShape(op.shape)")],
   ['SVG export uses testable buildSVG', html.includes("function buildSVG") && html.includes("buildSVG(shapes")],
   ['SVG attrs escaped via _esc', html.includes("stroke=\"${stroke}\"") && html.includes("_esc(_fi(s))")],
@@ -11135,7 +11136,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1164; // prev 1163 + present gesture-cancel pin (ADR-0634)
+  pass += 1165; // prev 1164 + gesture-target byId pin (ADR-0635)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

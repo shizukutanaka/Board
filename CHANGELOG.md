@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.662]
+### 修正
+- resize/rotate ジェスチャ中に選択が変わると (⌘A・リモート hide/del 等)、ドラッグ適用・コミット・キャンセル復元の対象が「現在選択の先頭」にすり替わり、**別図形へ誤った before/after を書き込み得た**問題を修正 — 4 箇所全てを gesture-start の `ptr.*Orig.id` から `byId` 解決へ統一 (ADR-0635)。
+
 ## [1.7.661]
 ### 修正
 - ドラッグ中にプレゼンへ突入した場合、ポインタキャプチャが継続したまま overlay 裏でジェスチャが進行し、離した瞬間に不可視の move/resize op がコミットされ得た問題を修正 — `Presentation.enter()` で `_cancelPointerGesture()` を呼び進行中ジェスチャを畳んでから突入 (ADR-0634)。

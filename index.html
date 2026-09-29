@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.661';   // ADR-0634
+const V='1.7.662';   // ADR-0635
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4140,7 +4140,7 @@ _on(canvas,_PM,e=>{
   switch(_tl()){
     case 'select':
       if(_dk('resize')){
-        const rsh=_sel0();
+        const rsh=byId(ptr.resizeOrig.id);   // ADR-0635
         if(rsh){
           const _b0=_bb(ptr.resizeOrig);
           const _rc=[];for(const s of _sh())if(_conn(s.type)&&((s.aF&&s.a===rsh.id)||(s.bF&&s.b===rsh.id)))_pu(_rc,{s,b:_bb(s)});   // ADR-0599
@@ -4155,7 +4155,7 @@ _on(canvas,_PM,e=>{
       }else if(_dk('grot')){
         _grotDrag(wp,_sK(e));                                      // ADR-0057
       }else if(_dk('rotate')){
-        const rsh=_sel0();
+        const rsh=byId(ptr.rotOrig.id);   // ADR-0635
         if(rsh){
           const _b0=_bb(rsh);
           const _rc=[];for(const s of _sh())if(_conn(s.type)&&((s.aF&&s.a===rsh.id)||(s.bF&&s.b===rsh.id)))_pu(_rc,{s,b:_bb(s)});   // ADR-0599
@@ -4245,7 +4245,7 @@ _on(canvas,_PU,e=>{
     switch(_tl()){
     case 'select':
       if(_dk('resize')){
-        const rsh=_sel0();
+        const rsh=byId(ptr.resizeOrig.id);   // ADR-0635: selection may change mid-gesture — _sel0() could bind/commit onto a different shape
         if(rsh){
           _endPointBind(rsh,ptr.resizeHandle,_aK(e));           // ADR-0065/0209
           const after=clone(rsh);
@@ -4263,7 +4263,7 @@ _on(canvas,_PU,e=>{
         if(_selN()===1){const s=_sel0();if(s)_tst(describeShape(s));}
         ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;_zG();
       }else if(_dk('rotate')){
-        const rsh=_sel0();
+        const rsh=byId(ptr.rotOrig.id);   // ADR-0635
         if(rsh){
           const after=clone(rsh),before=ptr.rotOrig;
           if(_JS(before)!==_JS(after)){
@@ -4321,13 +4321,13 @@ function _cancelPointerGesture(){
   _clearLongPress();   // ADR-0006: covers both the native pointercancel path and our own
   // Restore partial resize/move/erase on cance
   if(_dk('resize')&&ptr.resizeOrig){
-    const rsh=_sel0();
+    const rsh=byId(ptr.resizeOrig.id);   // ADR-0635: selection may change mid-gesture — _sel0() could restore onto a different shape
     if(rsh)_oa(rsh,clone(ptr.resizeOrig));
   }else if((_dk('gresize')||_dk('grot'))&&ptr.gOrig){
     for(const [id,orig] of ptr.gOrig){const sh=byId(id);if(sh)_oa(sh,clone(orig));}
     if(ptr.gAnc)for(const [cid,oc] of ptr.gAnc){const sh=byId(cid);if(sh)_oa(sh,clone(oc));}   // ADR-0587
   }else if(_dk('rotate')&&ptr.rotOrig){
-    const rsh=_sel0();
+    const rsh=byId(ptr.rotOrig.id);   // ADR-0635
     if(rsh){if(ptr.rotOrig.rotate==null)delete rsh.rotate;_oa(rsh,clone(ptr.rotOrig));}
   }else if(_dk('ebend')&&ptr.ebendOrig){                // ADR-0072
     const sh=byId(ptr.ebendOrig.id);if(sh){if(ptr.ebendOrig.bend==null)delete sh.bend;_oa(sh,clone(ptr.ebendOrig));}
