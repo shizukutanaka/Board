@@ -1,3 +1,16 @@
+## [1.7.755] - 2026-09-29
+
+### Fixed
+- ADR-0729: move racing an absolute write diverged (delta+upd don't
+  commute) — wire moves carry absolute after/before positions and join
+  the per-property LWW path; legacy delta moves still apply
+
+## [1.7.754] - 2026-09-29
+
+### Docs
+- ADR-0728: architecture.md undo×sync — the seven convergence rules of
+  the undo-wire family (0717–0727) documented inline
+
 ## [1.7.753] - 2026-09-29
 
 ### Fixed

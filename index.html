@@ -868,7 +868,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.753';   // ADR-0727
+const V='1.7.755';   // ADR-0729
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1390,7 +1390,8 @@ function validRemotePayload(op){
       // pen pts must be array-of-[x,y] — flat arra
       if(op.after.pts!=null&&!_ptsOK(op.after.pts))return false;
       return true;}
-    case 'move':   return _iA(op.ids)&&_ln(op.ids)>0&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(_idOK)&&_iN(op.dx)&&_fin(op.dx)&&_iN(op.dy)&&_fin(op.dy)&&(op.dx!==0||op.dy!==0);
+    case 'move':   return _iA(op.ids)&&_ln(op.ids)>0&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(_idOK)&&_iN(op.dx)&&_fin(op.dx)&&_iN(op.dy)&&_fin(op.dy)&&(op.dx!==0||op.dy!==0)
+      &&(op.after==null||patches(op.after))&&(op.before==null||patches(op.before));   // ADR-0729
     case 'zorder':  // Step2 minimal-delta {changes:[{id,before,after}]} or legacy {after:[…]}
       return (_iA(op.changes)&&_ln(op.changes)<=MAX_OP_SHAPES&&op.changes.every(c=>c&&_iS(c.id)&&_ln(c.id)<=64
                 &&(c.after==null||_iS(c.after)&&_ln(c.after)<=600)&&(c.before==null||_iS(c.before)&&_ln(c.before)<=600)))   // ADR-0473/0485
@@ -1525,7 +1526,7 @@ const Store={
   // so resize/align (whole-shape snapshots) cl
   // concurrently-edited property like stroke.
   // writes to the 'groupId' property, so overl
-  _lwwOp(op){return op.op==='upd'||op.op==='style'||op.op==='resize'||op.op==='align'||op.op==='group'||op.op==='ungroup'||op.op==='zorder'},
+  _lwwOp(op){return op.op==='upd'||op.op==='style'||op.op==='resize'||op.op==='align'||op.op==='group'||op.op==='ungroup'||op.op==='zorder'||op.op==='move'},   // ADR-0729
   // A patch key counts for LWW only if its val
   // array) compared deeply via JSON; before ma
   _chg(before,after,key){return _JS(before?before[key]:undefined)!==_JS(after[key])},
@@ -1587,6 +1588,9 @@ const Store={
       for(const c of op.changes)if(byId(c.id)&&this._chg({frac:c.before},{frac:c.after},'frac')){
         const w=_wc()[c.id]||(_wc()[c.id]={});w.frac=C;
       }
+    }else if(op.op==='move'&&!_iA(op.after)){   // ADR-0729
+      for(const id of op.moved||op.ids||[]){const s=byId(id);if(s&&!s.locked){const w=_wc()[id]||(_wc()[id]={});
+        if(op.dx!==0)w.x=C;if(op.dy!==0)w.y=C}}
     }else if(_iA(op.after)){const bb={};if(_iA(op.before))for(const b of op.before)bb[b.id]=b;
       for(const p of op.after)stamp(p.id,p,bb[p.id]);}
   },
@@ -1714,10 +1718,15 @@ const Store={
         if(!forward)_selR(op);
         break;}
       case 'move':{
-        const d=forward?1:-1;
-        if(forward)op.moved=[];   // ADR-0548: undo un-moves only forward-moved
-        for(const id of forward?op.ids:(op.moved||op.ids)){const sh=byId(id);if(!sh)continue;if(sh.locked)continue;   // ADR-0716
-          _sT2(sh,op.dx*d,op.dy*d);if(forward)op.moved.push(id)}
+        if(forward&&_iA(op.after)){   // ADR-0729
+          for(const p of op.after){const sh=byId(p.id);if(!sh||sh.locked)continue;
+            if(p.x!=null)sh.x=p.x;if(p.y!=null)sh.y=p.y}
+        }else{
+          const d=forward?1:-1;
+          if(forward)op.moved=[];   // ADR-0548: undo un-moves only forward-moved
+          for(const id of forward?op.ids:(op.moved||op.ids)){const sh=byId(id);if(!sh)continue;if(sh.locked)continue;   // ADR-0716
+            _sT2(sh,op.dx*d,op.dy*d);if(forward)op.moved.push(id)}
+        }
         if(!forward)_selR(op);
         break;}
       case 'clear':{
@@ -8136,6 +8145,12 @@ const Net={
     if(_iA(op.shapes)&&(op.op==='del'||op.op==='clear'||op.op==='pageAdd')){const{wc:_wc1,origSel:_o1,...r}=op;return{...r,shapes:this._slimShapes(op.shapes)}}   // ADR-0445/0625: id/locked only; undo-only fields never ride the wire
     if(op.op==='replace')return{op:'replace',after:this._slimShapes(op.after||[]),afterWc:op.afterWc,clock:op.clock,pages:op.pages,curPg:op.curPg};   // ADR-0646/0720: pages AND the landing page ride the wire — receivers' _pgAdopt(op.pages,op.curPg) fell back to page 1 while the sender landed on op.curPg; before* stay local   // ADR-0613: strip the huge before/wc/origSel from the wire copy
     const{origSel:_o2,moved:_m2,...rest}=op;
+    if(op.op==='move'&&_iA(op.ids)&&_iN(op.dx)&&_iN(op.dy)){   // ADR-0729
+      const after=[],before=[];
+      for(const id of op.moved||op.ids){const s=byId(id);if(!s)continue;
+        _pu(after,{id,x:s.x,y:s.y});
+        _pu(before,{id,x:s.x-op.dx,y:s.y-op.dy});}
+      return{...rest,after,before};}
     if((op.op==='style'||op.op==='resize'||op.op==='align')&&op.dir!=='lock'){   // ADR-0717: ever-locked shapes keep a `locked:null` key on full-shape patch snapshots — the receiver's noLock gate rejected those ops wholesale (pre-existing silent drop on forward too); 'locked' is only meaningful on dir==='lock' ops
       const _sl=a=>_iA(a)?a.map(p=>{const{locked:_l0,...r}=p;return r}):a;
       return{...rest,before:_sl(rest.before),after:_sl(rest.after)};}

@@ -381,6 +381,32 @@ DOM 要素は `data-t` 属性 + `UI.applyI18n()` で翻訳 (起動時に 1 回�
 - **undo×sync**: undo/redo は逆 op (del→add、add→del、upd→逆patch) を
   ワイヤに乗せピア側も復元 (ADR-0443/0444)。del/clear の送信は
   `_slimOp` で画像バイトを痩身化 (ADR-0445)。
+
+  undo-wire の収束規則 (ADR-0717–0727):
+  - **undo は新規の競合書込**: `undo()`/`redo()` は適用前に
+    `{peer,seq,ts}` を再刻印し、逆 op にも同一の (ts,peer) を付す —
+    ローカル仲裁とワイヤで勝者が割れない (0717/0718)。
+  - **復元対象は「元の時計」で戻る**: undo の新規 clock は op 自体の
+    勝敗に使うが、復活する *状態* の時計は生前の値を輸送する —
+    del/clear/pageDel の `wc` スナップ (0721/0722、clear は merge、
+    全置換は行き違い時計を消す)、pageName の `nts/ntp` (0727)。
+    さもないと undo clock を刻んだ側だけ「次の書込の勝者」が変わる。
+  - **メンバー/効果は op 添付物でなく現状態で決める**: pageAdd undo は
+    `op.shapes` ではなく `_pgDel2` の現メンバー基準 (0724)。後から
+    `pg=op.id` を得た図形も op が死んで追う — ワイヤ pageDel と同じ
+    セマンティクス。最終ページの undo は `unpage:1` wire で
+    op 由来のみ死・残り un-page。
+  - **帰属先は送側の選択を輸送**: pageDel の locked メンバー再帰属は
+    `firstId` をワイヤに乗せる (0725) — ページ順が発散したピアで
+    ローカル順から算出すると `pg` が永久分裂する (LWW 非対象)。
+  - **locked ゲートは forward 側と対称**: upd/style/move/group/zorder/
+    pageDel(connClears)/add の backward も `locked` を skip
+    (0711–0716)。
+  - **`_slimOp` は undo-domain を剥がし wire-domain を残す**: `bts/
+    origSel/moved/connClears` は落とすが `wc/unpage+shapes/firstId/
+    nts,ntp` はワイヤに必要なため残す (0705/0721–0727)。
+  - **受信側検証**: `addMany.wc` は `replace.afterWc` と同じ `wcOk`
+    検査 (0726) — 悪意/壊損 clock の NaN 汚染を遮断。
 - **frag 再起動**: `snap`/`opc`/`img` の `n` 不一致・key 衝突で旧断片を
   捨てて新ストリームを再起動、`_imgIn`/`_imgChunks` は 96KB/256-entry
   で上限化 (ADR-0448/0449/0454)。

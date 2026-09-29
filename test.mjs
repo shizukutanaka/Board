@@ -6665,6 +6665,38 @@ try {
     assert.ok(A_mX.x===10 && A_mX.y===5, 'commute: both deltas applied (sum), order-independent');
     console.log('  ✓ two-peer commute: concurrent MOVES converge (delta ops commute) - §3.16');
 
+    // ADR-0729: a move racing an ABSOLUTE write (upd x=…) can't commute — the wire
+    // move now carries absolute after/before positions so it joins the LWW path.
+    // (i) move newer than upd → the move's absolute pos wins on both sides
+    //     (pre-0729: A computed 50+10=60, B stayed 10 — diverged).
+    reset(A); reset(B);
+    A.state.shapes.push(cp(mX)); B.state.shapes.push(cp(mX)); A.sortZ(); B.sortZ();
+    const wAB=[], wBA=[];
+    A.Net.broadcast = op => wAB.push({k:'op',op:cp(op)});
+    B.Net.broadcast = op => wBA.push({k:'op',op:cp(B.Net._slimOp(op))});   // _slimOp adds after/before — the real wire form
+    A.Store.commit({op:'upd',id:'mX',before:{x:0},after:{x:50},clock:{peer:'peerA',seq:1,ts:1000}});
+    B.Store.commit({op:'move',ids:['mX'],dx:10,dy:0,clock:{peer:'peerB',seq:1,ts:2000}});   // move newer
+    wAB.forEach(m=>B.Net._onRecv(m)); wBA.forEach(m=>A.Net._onRecv(m));
+    assert.strictEqual(A.state.shapes.find(s=>s.id==='mX').x, 10, 'ADR-0729: newer move pos wins on A');
+    assert.strictEqual(B.state.shapes.find(s=>s.id==='mX').x, 10, 'ADR-0729: B converged on the same x');
+
+    // (ii) upd newer than move → upd's x wins on both sides (the move's keys drop in _lwwDrop).
+    reset(A); reset(B);
+    A.state.shapes.push(cp(mX)); B.state.shapes.push(cp(mX)); A.sortZ(); B.sortZ();
+    wAB.length=0; wBA.length=0;
+    A.Store.commit({op:'upd',id:'mX',before:{x:0},after:{x:50},clock:{peer:'peerA',seq:1,ts:3000}});   // upd newer
+    B.Store.commit({op:'move',ids:['mX'],dx:10,dy:0,clock:{peer:'peerB',seq:1,ts:2000}});
+    wAB.forEach(m=>B.Net._onRecv(m)); wBA.forEach(m=>A.Net._onRecv(m));
+    assert.strictEqual(A.state.shapes.find(s=>s.id==='mX').x, 50, 'ADR-0729: newer upd wins on A');
+    assert.strictEqual(B.state.shapes.find(s=>s.id==='mX').x, 50, 'ADR-0729: B converged on the same x');
+
+    // (iii) a legacy delta-form move (no after) still applies the delta — pre-0729 peers.
+    reset(A); reset(B);
+    A.state.shapes.push(cp(mX));
+    A.Net._onRecv({k:'op',op:{op:'move',ids:['mX'],dx:7,dy:0,clock:{peer:'peerB',seq:1,ts:1}}});
+    assert.strictEqual(A.state.shapes.find(s=>s.id==='mX').x, 7, 'ADR-0729: legacy delta moves still apply');
+    console.log('  ✓ ADR-0729: move×upd race converges on the newer clock; legacy delta still applies');
+
     // resize/align now LWW too (ADR-0002 follow-up): whole-shape snapshot ops gate/stamp
     // only the keys they actually changed (diff before/after). (i) concurrent resize of
     // the SAME geometry converges to the newer writer.
@@ -13301,7 +13333,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1629; // prev 1625 + 4 ADR-0727 behavioural
+  pass += 1636; // prev 1625 + 4 ADR-0727 behavioural
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
