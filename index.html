@@ -868,7 +868,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.769';   // ADR-0743
+const V='1.7.770';   // ADR-0744
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1552,7 +1552,7 @@ const Store={
       return _ln(op.ids)>0;
     }
     if(op.op==='zorder'){   // ADR-0653: per-shape frac LWW — concurrent reorders of the same shape converge on the newest write
-      if(!_iA(op.changes))return true;   // legacy after-snapshot: pre-Step2 peers don't clock frac — apply unconditionally
+      if(!_iA(op.changes))return true;   // non-changes forms can't arrive (ADR-0742) — defensive
       op.changes=op.changes.filter(c=>byId(c.id)&&this._chg({frac:c.before},{frac:c.after},'frac')&&clockNewer(C,_wc()[c.id]&&_wc()[c.id].frac));
       return _ln(op.changes)>0;
     }
@@ -1850,20 +1850,11 @@ const Store={
           _selR(op);}
         break;}
       case 'zorder':{
+        // minimal-delta only (ADR-0744): locals commit {changes} and ADR-0742 rejects every
+        // other wire form, so the legacy {before,after} snapshot apply is unreachable.
         if(op.changes){
-          // minimal-delta (ADR-0001 Step 2): set moved
           for(const c of op.changes){const sh=byId(c.id);if(sh&&!sh.locked&&!_lwwSkip(c.id,'frac',op))sh.frac=forward?c.after:c.before}   // ADR-0653
           _sz();
-        }else{
-          // legacy full-snapshot format (pre-Step2 his
-          const snap=forward?op.after:op.before;
-          if(snap){
-            const map=_mP(_sh().map(s=>[s.id,s]));
-            const next=[];
-            for(const p of snap){const sh=map.get(p.id);if(sh){if(!sh.locked){sh.z=p.z;if(p.frac!=null)sh.frac=p.frac;}_pu(next,sh);map.delete(p.id)}}
-            for(const sh of map.values())_pu(next,sh);   // keep any extras (defensive)
-            _sh().length=0;Array.prototype.push.apply(_sh(),next);
-          }
         }
         if(!forward)_selR(op);
         break;}
@@ -9993,8 +9984,7 @@ function _undoWire(op){
     case 'group':case 'ungroup':   // restore per-shape groupId via upd patches
       return _iA(op.before)?op.before.map(b=>({op:'upd',id:b.id,after:{groupId:b.groupId||null}})):null;
     case 'zorder':
-      return op.changes?[{op:'zorder',changes:op.changes.map(c=>({id:c.id,before:c.after,after:c.before}))}]
-                       :op.before?[{op:'zorder',after:op.before}]:null;
+      return op.changes?[{op:'zorder',changes:op.changes.map(c=>({id:c.id,before:c.after,after:c.before}))}]:null;   // ADR-0744: history only ever holds {changes} — the legacy fallback produced a wire form peers reject
     case 'replace':   // ADR-0615: undo of a wholesale swap must reach peers too — rebroadcast the pre-swap board (newest clock wins via ADR-0614)
       return _iA(op.before)?[{op:'replace',after:op.before,afterWc:op.wc,pages:op.beforePages,curPg:op.beforeCurPg}]:null;   // ADR-0720: same landing-page carry as the forward wire — local backward lands on beforeCurPg, peers were falling back to page 1
     case 'pageAdd':{const o={op:'pageDel',id:op.id,name:op.name,unpage:state.pages?0:1};if(o.unpage){o.shapes=op.shapes}else o.firstId=state.pages[0].id;return[o]}   // ADR-0724/0725: emptied set → unpage wire; else carry the undoer's rehome target
