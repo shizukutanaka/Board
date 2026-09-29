@@ -11283,6 +11283,18 @@ try {
     fire('pointerup',300,100,{pointerId:2});
     fire('pointerup',100,100,{pointerId:1});
     assert.ok(state.viewport.zoom>1,'pinch widening zooms the viewport via real events');
+    // ⌘Z mid-gesture cancels the drag first, then undoes the last committed op (ADR-0574)
+    reset();
+    state.tool='select';
+    const R5=Shape.make('rect',{x:100,y:100,w:50,h:50});
+    Store.commit({op:'add',shape:R5});
+    state.selection=new Set([R5.id]);
+    fire('pointerdown',120,120);
+    fire('pointermove',160,150);
+    assert.ok(ptr.down,'drag in flight before ⌘Z');
+    fireKey('z',{metaKey:true});
+    assert.ok(!ptr.down,'⌘Z mid-gesture cancels the drag first');
+    assert.ok(!byId(R5.id),'⌘Z then undoes the previous committed op');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -11294,7 +11306,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1191; // prev 1168 + 23 event-sequence asserts (ADR-0641)
+  pass += 1194; // prev 1168 + 26 event-sequence asserts (ADR-0641)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
