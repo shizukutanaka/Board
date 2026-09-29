@@ -4506,6 +4506,22 @@ try {
       Store.commit({op:'del',shapes:[{...byId(Z.id)}]});
       console.log('  ✓ page switch cancels live gesture (3 asserts)');
     }
+    // ADR-0664: wholesale page-set adoption cancels the gesture too
+    {
+      const W=Shape.make('rect',{x:0,y:0,w:10,h:10});
+      Store.commit({op:'add',shape:W});
+      state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';
+      ptr.down=true;ptr.dragKind='move';ptr.dragStartShapes=new Map([[W.id,JSON.parse(JSON.stringify(W))]]);
+      _pgAdopt(state.pages,'pB');
+      assert.ok(ptr.down===false&&state.curPg==='pB','adopted page change cancels live gesture (ADR-0664)');
+      ptr.down=true;ptr.dragKind='move';ptr.dragStartShapes=new Map([[W.id,JSON.parse(JSON.stringify(W))]]);
+      _pgAdopt(state.pages,'pB');
+      assert.ok(ptr.down===true,'same-page adopt leaves the gesture alone');
+      assert.ok(html.includes("if(nc!==state.curPg)_cancelPointerGesture()"),'_pgAdopt gesture-cancel gate');
+      state.pages=null;state.curPg=null;ptr.down=false;ptr.dragKind=null;ptr.dragStartShapes=null;
+      Store.commit({op:'del',shapes:[{...byId(W.id)}]});
+      console.log('  ✓ _pgAdopt cancels gesture only on real page change (3 asserts)');
+    }
   }
 
   // ADR-0072: elbow trunk locate + bend-override two-corner route
@@ -12653,7 +12669,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1487; // prev 1484 + 3 page-switch-gesture-cancel asserts (ADR-0664)
+  pass += 1490; // prev 1487 + 3 _pgAdopt gesture-cancel asserts (ADR-0664)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
