@@ -1,3 +1,12 @@
+## [1.7.758] - 2026-09-29
+
+### Fixed
+- ADR-0732: move's undo-wire was the pre-0729 delta form — a peer where the
+  forward move lost LWW (kept a racing write) applied -dx off a different
+  position = divergence. The inverse now rides the absolute path both ways:
+  local backward restores the recorded positions and the wire op's derived
+  after = the restored position
+
 ## [1.7.757] - 2026-09-29
 
 ### Fixed

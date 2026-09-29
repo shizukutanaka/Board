@@ -6745,6 +6745,32 @@ try {
     assert.strictEqual(B.state.shapes.find(s=>s.id==='pY').type, 'rect', 'ADR-0731: redo re-applies the retype on peers');
     console.log('  ✓ ADR-0731: beautify undo/redo converge via patch-swap wire op');
 
+    // ADR-0732: move's undo-wire was the pre-0729 delta form — a peer where the
+    // forward move lost LWW (kept a racing write) applied -dx off a different
+    // position = divergence. The inverse now rides the absolute path both ways:
+    // local backward restores the recorded positions and the wire op's derived
+    // after = the restored position, so both sides converge.
+    reset(A); reset(B);
+    A.state.peerId='peerA';
+    const mvS={id:'mv',type:'rect',x:100,y:0,w:10,h:10,z:1};
+    A.state.shapes.push(cp(mvS)); B.state.shapes.push(cp(mvS)); A._invalidateGrid(); B._invalidateGrid(); A.sortZ(); B.sortZ();
+    const bfAB3=[];
+    A.Net.broadcast = op => bfAB3.push({k:'op',op:cp(A.Net._slimOp(op))});
+    B.Net.broadcast = () => {};
+    B.Net._onRecv({k:'op',op:{op:'upd',id:'mv',after:{x:150},clock:{peer:'peerX',seq:1,ts:200}}});
+    assert.strictEqual(B.state.shapes.find(s=>s.id==='mv').x, 150, 'ADR-0732: racing upd lands at the peer');
+    const mv={op:'move',ids:['mv'],dx:10,dy:0,before:[{id:'mv',x:100,y:0}],after:[{id:'mv',x:110,y:0}],clock:{peer:'peerA',seq:1,ts:100}};
+    A.Store._apply(mv,true);
+    A.Store._recordCommitted(mv);
+    assert.strictEqual(A.state.shapes.find(s=>s.id==='mv').x, 110, 'ADR-0732: sender applied its move');
+    bfAB3.splice(0).forEach(m=>B.Net._onRecv(m));
+    assert.strictEqual(B.state.shapes.find(s=>s.id==='mv').x, 150, 'ADR-0732: forward move lost LWW at the peer (kept 150)');
+    A.Store.undo();
+    assert.strictEqual(A.state.shapes.find(s=>s.id==='mv').x, 100, 'ADR-0732: local undo restores the recorded x (was: -delta off whatever raced in)');
+    bfAB3.splice(0).forEach(m=>B.Net._onRecv(m));
+    assert.strictEqual(B.state.shapes.find(s=>s.id==='mv').x, 100, 'ADR-0732: absolute undo-wire converges the peer (was: -delta left it at 140)');
+    console.log('  ✓ ADR-0732: move undo-wire absolute swap + backward absolute restore');
+
     // resize/align now LWW too (ADR-0002 follow-up): whole-shape snapshot ops gate/stamp
     // only the keys they actually changed (diff before/after). (i) concurrent resize of
     // the SAME geometry converges to the newer writer.
@@ -13381,7 +13407,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1649; // prev 1643 + 6 ADR-0731 behavioural
+  pass += 1655; // prev 1649 + 6 ADR-0732 behavioural
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
