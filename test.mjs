@@ -11594,6 +11594,49 @@ try {
     state.selection=new Set([h1.id]);
     fireKey('i',{metaKey:true,shiftKey:true});
     assert.ok(state.selection.has(h2.id)&&state.selection.has(h3.id)&&!state.selection.has(h1.id),'⌘⇧I selects the inverse');
+    // text-modifier keys: ⌘B/I/U + ⌘⇧X strike via style op on _forTxt selection;
+    // ⌘⇧,/. fontSizeStep ±2; ⌘⇧L toggles locked; ⌘⌥G (e.code) wraps in a frame
+    reset();
+    state.tool='select';
+    const TX1=Shape.make('text',{x:10,y:10,w:100,h:40,text:'a'});
+    Store.commit({op:'add',shape:TX1});
+    const tx1=state.shapes[0];
+    state.selection=new Set([tx1.id]);
+    fireKey('b',{metaKey:true});
+    assert.strictEqual(tx1.bold,true,'⌘B toggles bold');
+    fireKey('b',{metaKey:true});
+    assert.ok(!tx1.bold,'⌘B toggles bold back off');
+    fireKey('i',{metaKey:true});
+    assert.strictEqual(tx1.italic,true,'⌘I toggles italic');
+    fireKey('u',{metaKey:true});
+    assert.strictEqual(tx1.under,true,'⌘U toggles underline');
+    fireKey('x',{metaKey:true,shiftKey:true});
+    assert.strictEqual(tx1.strike,true,'⌘⇧X toggles strikethrough');
+    fireKey('.',{metaKey:true,shiftKey:true});
+    assert.strictEqual(tx1.fontSize,16,'⌘⇧. steps font size up to 16');
+    fireKey(',',{metaKey:true,shiftKey:true});
+    assert.strictEqual(tx1.fontSize,14,'⌘⇧, steps font size back down');
+    // ⌘⇧L locks then unlocks the same selection (toggle on first shape's state)
+    reset();
+    state.tool='select';
+    const LK1=Shape.make('rect',{x:10,y:10,w:40,h:40});
+    Store.commit({op:'add',shape:LK1});
+    const lk1=state.shapes[0];
+    state.selection=new Set([lk1.id]);
+    fireKey('l',{metaKey:true,shiftKey:true});
+    assert.ok(lk1.locked,'⌘⇧L locks the selection');
+    state.selection=new Set([lk1.id]);
+    fireKey('l',{metaKey:true,shiftKey:true});
+    assert.ok(!lk1.locked,'⌘⇧L unlocks it again');
+    // ⌘⌥G (e.code KeyG — ⌥ alters e.key on macOS) wraps the selection in a frame
+    reset();
+    state.tool='select';
+    const WF1=Shape.make('rect',{x:10,y:10,w:40,h:40});
+    Store.commit({op:'add',shape:WF1});
+    state.selection=new Set([state.shapes[0].id]);
+    const wf0=state.shapes.length;
+    fireKey('g',{metaKey:true,altKey:true,code:'KeyG'});
+    assert.ok(state.shapes.length===wf0+1&&state.shapes[state.shapes.length-1].type==='frame','⌘⌥G wraps the selection in a frame');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -11605,7 +11648,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1265; // prev 1254 + 11 event-sequence asserts (ADR-0641: view toggles + hide/inverse)
+  pass += 1276; // prev 1265 + 11 event-sequence asserts (ADR-0641: text modifiers + lock + wrapInFrame)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
