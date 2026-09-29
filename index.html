@@ -857,7 +857,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.599';
+const V='1.7.600';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3533,7 +3533,7 @@ function _mapToBox(sh,orig,ob,vb){
   else if(orig.x!=null){const a=M(orig.x,orig.y),b=M(orig.x+orig.w,orig.y+orig.h);sh.x=a.x;sh.y=a.y;sh.w=b.x-a.x;sh.h=b.y-a.y}
 }
 // Apply resize given handle id, original shape, new world point, Shift and Alt state.
-// Shift on a corner = lock the original aspect ratio. Alt = resize about the original
+// Shift on a corner = lock the original
 // centre (opposite edge mirrors). Shift+Alt = symmetric AND proportional.
 function applyResize(sh,handle,orig,wp,shift,alt){
   const corner=_ln(handle)===2;                // nw/ne/se/sw
@@ -4373,7 +4373,7 @@ function _openLabelEditorFor(hit){
 }
 // ADR-0013 (FT-19): the only entry point above was
 // never edit a connector or frame label. Enter is unused with the select tool
-// active (createShapeKbd() no-ops for select/hand/eraser/pen) — see the keydown Enter
+// active (createShapeKbd() no-ops for s
 // branch, which only calls this when _tl()==='select'.
 function editSelectedShapeKbd(){
   if(_selN()!==1)return false;
@@ -4437,8 +4437,9 @@ let _lblTa=null,_lblVp='';
 const _cxO=()=>{if(_teTa)_teTa.blur();if(_lblTa)_lblTa.inp.blur()};
 function _lblFollow(){
   if(!_lblTa)return;
-  // ADR-0559/0569: same proactive close when the labelled shape is gone or hidden.
-  const _lt=byId(_lblTa.hit.id);if(!_lt||_hd(_lt)){_rm(_lblTa.inp);_lblTa=null;return}
+  // ADR-0559/0569/0572: close when the labelled shape is gone, hidden or locked
+  // (locked skips upd — the edit would be silently discarded on commit anyway).
+  const _lt=byId(_lblTa.hit.id);if(!_lt||_hd(_lt)||_lk(_lt)){_rm(_lblTa.inp);_lblTa=null;return}
   const v=_vp(),sig=v.x+'|'+v.y+'|'+v.z;
   if(sig===_lblVp)return;
   _lblVp=sig;
@@ -5582,10 +5583,11 @@ function openTextEditor(s,isNew){
 let _teTa=null,_teVp='';
 function _teFollow(){
   if(!_teTa||!_ed())return;
-  // ADR-0559/0569: the edited shape was removed OR hidden under us (remote
-  // del/clear/replace/hide, local undo) — close the overlay at once instead of
-  // dangling until blur. No commit: the hidden shape can't be edited to anyway.
-  const s=byId(_ed());if(!s||_hd(s)){_rm(_teTa);_teTa=null;state.editing=null;return}
+  // ADR-0559/0569/0572: the edited shape was removed, hidden OR locked under
+  // us (remote del/clear/replace/hide/lock, local undo) — close the overlay at
+  // once instead of dangling until blur. No commit: a locked shape rejects the
+  // upd anyway, so the typed text can't be applied.
+  const s=byId(_ed());if(!s||_hd(s)||_lk(s)){_rm(_teTa);_teTa=null;state.editing=null;return}
   const v=_vp(),sig=v.x+','+v.y+','+v.zoom;
   if(sig===_teVp)return;
   _teVp=sig;positionTextEditor(_teTa,s);
@@ -6303,7 +6305,7 @@ function unlockAll(){
   _ivp();
   _ann(t('ctxUnlockAll'));
 }
-// ADR-0005: replace confidently-recognized pen strokes in selection with clean shapes
+// ADR-0005: replace confidently-recogni
 // (Alt+B). Local-only (not in REMOTE_OPS, like replace/clear) — converting a peer's
 // pen stroke to a rectangle behind their back would be confusing, not helpful.
 function doBeautify(){

@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.600]
+### Fixed
+- 編集中図形が remote lock / ⌘⇧L でロックされても overlay が残り、続けて打った文字が upd の locked-skip で沈黙消失していたのを修正 (ADR-0572) — `_teFollow`/`_lblFollow` のガードに `_lk` を追加し次フレームで畳む。
+
 ## [1.7.599]
 ### Docs/Tests
 - architecture.md の Store 節に hidden parity (選択不変条件のチョークポイント集約 + 遷移方向 `_sdl` + hide→overlay畳み) を追記 (ADR-0571)。
