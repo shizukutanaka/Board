@@ -250,6 +250,7 @@ const checks = [
   ["clear undo merges op.wc, never replaces (ADR-0723)", html.includes("if(op.wc)for(const[id,w]of Object.entries(op.wc))_wc()[id]=clone(w);_selR(op)")],
   ["pageAdd undo: unpage wire + _pgDel2 only-set (ADR-0724)", html.includes("_pgDel2(op,null,die,firstId)") && html.includes("unpage:state.pages?0:1") && html.includes("_pgDel2(op,firstId,only,viewId)")],
   ["pageDel wire carries the sender rehome target (ADR-0725)", html.includes("const rehome=op.unpage?null:((op.firstId!=null&&_pgById(op.firstId))?op.firstId:firstId)") && html.includes("s.firstId=op.firstId")],
+  ["addMany validates the wc clock snapshot (ADR-0726)", html.includes("op.wc==null||wcOk(op.wc)") && html.includes("const wcOk=m=>_iO(m)")],
   ["_recordCommitted sets _lastRep for local 'replace' (ADR-0616)", html.includes("if(op.op==='replace')state._lastRep=op.clock;   // ADR-0616")],
   ["snapshot carries rep marker + stale-snapshot skip (ADR-0617)", html.includes("rep:state._lastRep") && html.includes("clockNewer(state._lastRep,msg.rep))break;")],
   ["snapshot docName is LWW-gated via (ts,writer) order (ADR-0618/0699)", html.includes("nameTs:_nameTs,namePeer:_namePeer") && html.includes("_nameWin(msg.nameTs,_iS(msg.namePeer)?msg.namePeer:'')")],
@@ -13277,7 +13278,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1624; // prev 1622 + 2 ADR-0725 behavioural
+  pass += 1625; // prev 1624 + 1 ADR-0726 pin
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

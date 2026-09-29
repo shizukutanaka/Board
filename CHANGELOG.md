@@ -1,3 +1,10 @@
+## [1.7.752] - 2026-09-29
+
+### Fixed
+- ADR-0726: addMany's wc clock snapshot (carried by del/clear/pageDel
+  undo-wires since 0721) was un-validated — malformed clocks NaN-poisoned
+  wclock arbitration. wcOk now shared with replace.afterWc
+
 ## [1.7.751] - 2026-09-29
 
 ### Fixed
