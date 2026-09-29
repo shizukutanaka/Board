@@ -868,7 +868,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.737';   // ADR-0711
+const V='1.7.738';   // ADR-0712
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1687,7 +1687,10 @@ const Store={
         break;}
       case 'upd':{
         const sh=byId(op.id);if(!sh)break;
-        if(forward&&sh.locked)break;
+        // ADR-0712: locked gate in BOTH directions — upd patches can never carry
+        // 'locked' (noLock validation), so backward has no legitimate write to a
+        // locked shape; applying anyway diverged from peers' undo-wire skip.
+        if(sh.locked)break;
         const raw=forward?op.after:op.before;
         if(!raw)break;
         const p=_stripStruct(clone(raw),1);   // ADR-0373
@@ -1821,7 +1824,11 @@ const Store={
         if(!_iA(patches))break;
         for(const raw of patches){
           const sh=byId(raw.id);
-          if(!sh||(forward&&sh.locked&&!('locked' in raw)))continue;
+          // ADR-0712: the locked gate applies in BOTH directions — backward used to
+          // restore props on a shape locked since the forward, while peers' remote
+          // apply of our undo-wire skips it → diverged props. ('locked' in raw'
+          // still passes so the unlock-undo isn't dead)
+          if(!sh||(sh.locked&&!('locked' in raw)))continue;
           const p=op.op==='beautify'?clone(raw):_stripStruct(clone(raw));   // ADR-0373: beautify legitimately retypes (local-only)
           // Same LWW guard as 'upd' (_lwwSkip) — these
           // _stampWrites records per-property write cl
