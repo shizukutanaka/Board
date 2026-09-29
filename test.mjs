@@ -251,7 +251,7 @@ const checks = [
   ["pageAdd undo: unpage wire + _pgDel2 only-set (ADR-0724)", html.includes("_pgDel2(op,null,die,firstId)") && html.includes("unpage:state.pages?0:1") && html.includes("_pgDel2(op,firstId,only,viewId)")],
   ["pageDel wire carries the sender rehome target (ADR-0725)", html.includes("const rehome=op.unpage?null:((op.firstId!=null&&_pgById(op.firstId))?op.firstId:firstId)") && html.includes("s.firstId=op.firstId")],
   ["addMany validates the wc clock snapshot (ADR-0726)", html.includes("op.wc==null||wcOk(op.wc)") && html.includes("const wcOk=m=>_iO(m)")],
-  ["_recordCommitted sets _lastRep for local 'replace' (ADR-0616)", html.includes("if(op.op==='replace')state._lastRep=op.clock;   // ADR-0616")],
+  ["_recordCommitted sets _lastRep for local 'replace' (ADR-0616)", html.includes("if(op.op==='replace'){state._lastRep=op.clock")],
   ["snapshot carries rep marker + stale-snapshot skip (ADR-0617)", html.includes("rep:state._lastRep") && html.includes("clockNewer(state._lastRep,msg.rep))break;")],
   ["snapshot docName is LWW-gated via (ts,writer) order (ADR-0618/0699)", html.includes("nameTs:_nameTs,namePeer:_namePeer") && html.includes("_nameWin(msg.nameTs,_iS(msg.namePeer)?msg.namePeer:'')")],
   ["Net.init resets causal markers across rooms (ADR-0619/0699)", html.includes("state.roomId&&state.roomId!==(roomId||DOC_KEY)){state._lastRep=null;_nameTs=0;_namePeer=''}")],
@@ -6876,6 +6876,25 @@ try {
     state._lastTs=0; B.state._lastTs=0;
     console.log('  ✓ ADR-0736: clear/replace tomb the swap-removed ids + keep newer tombs');
 
+    // ADR-0737: the three LOCAL import swaps (importBoard/drawio/backup-restore)
+    // bypass _apply — they wipe wclock themselves and record the 'replace' via
+    // _recordCommitted — so their tomb write lives in _recordCommitted.
+    reset(A); reset(B);
+    const ib1={id:'ib1',type:'rect',x:0,y:0,w:10,h:10,z:1};
+    B.state.shapes.push(cp(ib1)); B._invalidateGrid(); B.sortZ();
+    const ib2={id:'ib2',type:'rect',x:5,y:5,w:10,h:10,z:2};
+    const tomb7={peer:'peerX',seq:1,ts:Date.now()+1e6};
+    B.state.wclock.tm7={_del:tomb7};
+    const before0=[cp(ib1)],beforeWc={ib1:{x:{peer:'peerB',seq:1,ts:5}},tm7:{_del:tomb7}};
+    B.state.shapes.length=0;B.state.shapes.push(cp(ib2));B._invalidateGrid();B.state.wclock={};   // caller's manual swap+wipe
+    B.Store._recordCommitted({op:'replace',before:before0,after:[cp(ib2)],wc:beforeWc,afterWc:{},clock:{peer:'peerB',seq:9,ts:Date.now()}});
+    assert.ok(B.state.wclock.ib1&&B.state.wclock.ib1._del,'ADR-0737: import-swap removed id tombed at the swap clock');
+    assert.ok(B.state.wclock.tm7&&B.state.wclock.tm7._del===tomb7,'ADR-0737: prior tomb newer than the swap survives the record path');
+    B.Net._onRecv({k:'op',op:{op:'add',shape:{id:'ib1',type:'rect',x:0,y:0,w:10,h:10,z:1},clock:{peer:'peerX',seq:2,ts:1}}});
+    assert.ok(!B.state.shapes.find(s=>s.id==='ib1'),'ADR-0737: stale in-flight add cannot resurrect an import-removed shape (was: resurrection)');
+    state._lastTs=0; B.state._lastTs=0;
+    console.log('  ✓ ADR-0737: _recordCommitted tombs local-import removed ids');
+
     // resize/align now LWW too (ADR-0002 follow-up): whole-shape snapshot ops gate/stamp
     // only the keys they actually changed (diff before/after). (i) concurrent resize of
     // the SAME geometry converges to the newer writer.
@@ -9537,7 +9556,7 @@ try {
     const imported=Shape.make('rect',{x:200,y:0,w:50,h:50});
     state.shapes=[JSON.parse(JSON.stringify(imported))];state.wclock={};
     Store._recordCommitted({op:'replace',before:beforeShapes,after:JSON.parse(JSON.stringify(state.shapes)),wc:beforeWc});
-    assert.strictEqual(Object.keys(state.wclock).length, 0, 'replace undo wclock: wclock empty after replace (import)');
+    assert.ok(state.wclock[R.id]&&state.wclock[R.id]._del,'replace wclock: import-removed id tombed at the swap clock (ADR-0737)');
     // Undo: shapes restored; BEFORE fix wclock stays {}, AFTER fix wclock restored
     Store.undo();
     assert.ok(Object.keys(state.wclock).includes(R.id), 'replace undo wclock: original wclock restored after undo of import');
@@ -13512,7 +13531,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1678; // prev 1673 + 5 ADR-0736 behavioural
+  pass += 1681; // prev 1678 + 3 ADR-0737 behavioural
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
