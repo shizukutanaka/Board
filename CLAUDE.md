@@ -709,7 +709,8 @@ Board/
 │   ├── ADR-0658-page-scoped-exports.md  # 単一シーンエクスポートをカレントページ限定 (PNG/SVG/PDF/excalidraw の全ページ重畳修正)
 │   ├── ADR-0659-equal-gap-snap-page-scope.md  # 等間隔スナップを可視・現ページ図形に限定 (実装済)
 │   ├── ADR-0660-show-all-page-scope.md  # 「すべて表示」を現ページに限定 (実装済)
-│   └── ADR-0661-unlock-fit-page-scope.md  # 「すべて解除」/フレームフィットを現ページに限定 (実装済)
+│   ├── ADR-0661-unlock-fit-page-scope.md  # 「すべて解除」/フレームフィットを現ページに限定 (実装済)
+│   └── ADR-0662-tab-chain-page-scope.md  # Tab 連鎖を現ページに限定 (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

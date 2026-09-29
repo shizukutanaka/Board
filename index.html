@@ -863,7 +863,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.686';   // ADR-0661
+const V='1.7.687';   // ADR-0662
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4585,7 +4585,7 @@ function openLabelEditor(hit,leftPx,topPx,bold){
       const cur=_ix(_sh(),hit),dir=_sK(ev)?-1:1;
       for(let k=1;k<=_nS();k++){
         const nx=_sh()[(cur+dir*k+_nS())%_nS()];
-        if(nx&&!nx.locked&&nx.visible!==0&&_lblAnchor(nx)){
+        if(nx&&!nx.locked&&nx.visible!==0&&_pgOk(nx)&&_lblAnchor(nx)){   // ADR-0662: Tab chain never lands off-page
           _ss([nx.id]);_aS();
           inp.removeEventListener('blur',commit);commit();
           if(_openLabelEditorFor(nx))return;
@@ -5739,7 +5739,7 @@ function openTextEditor(s,isNew){
       const cur=_ix(_sh(),s),dir=_sK(ev)?-1:1;
       for(let k=1;k<=_nS();k++){
         const nx=_sh()[(cur+dir*k+_nS())%_nS()];
-        if(nx&&(_txt(nx)||_stk(nx))&&!nx.locked&&nx.visible!==0){
+        if(nx&&(_txt(nx)||_stk(nx))&&!nx.locked&&nx.visible!==0&&_pgOk(nx)){   // ADR-0662
           ta.blur();_ss([nx.id]);_aS();openTextEditor(nx,false);return;
         }
       }
@@ -5891,7 +5891,7 @@ _on(window,_KD,e=>{
   else if(k===_TB){
     // Cycle selection (z-order) for keyboard/SR
     _pd(e);
-    const ids=_sh().filter(_ulv).map(s=>s.id);   // ADR-0163: hidden shapes are unreachable by
+    const ids=_sh().filter(s=>_ulv(s)&&_pgOk(s)).map(s=>s.id);   // ADR-0163/0662: hidden + off-page shapes are unreachable by Tab
     if(!_ln(ids))return;
     const id=cycleSel(ids,_selIds()[0],_sK(e)?-1:1);
     _ss([id]);

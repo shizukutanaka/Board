@@ -1018,7 +1018,7 @@ const checks = [
     ['labels honor bold/italic/under/strike (ADR-0170)', html.includes('c.font=_fontStr(s,fs)')&&html.includes('font-weight="600"')&&html.includes('text-decoration=')],
   ['box/image labels honour s.align (ADR-0171)', html.includes("const al=s.align||'center';")&&html.includes('anc3=')&&html.includes("_forTxt((s,id)=>{")],
   ['locked selection shows a padlock badge', html.includes('c.arc(lx+8,ly,4,_PI,0)')&&html.includes("if(lockedSel){")],
-  ['Tab cycling excludes locked+hidden shapes (filter before cycleSel)', html.includes("const ids=_sh().filter(_ulv).map(s=>s.id)")],
+  ['Tab cycling excludes locked+hidden+off-page shapes (filter before cycleSel, ADR-0662)', html.includes("const ids=_sh().filter(s=>_ulv(s)&&_pgOk(s)).map(s=>s.id)")],
   // v1.6.60: bound connectors - arrow/line endpoints follow bound shapes
   ['connEnds helper derives bound endpoints', html.includes("function connEnds") && html.includes("function _edgePt")],
   ['G.bbox line uses connEnds', html.includes("const e=_cE(s);\n      let x=_min(e.x1,e.x2)")&&html.includes('for(const w of _wayArr(s))')],
@@ -4448,6 +4448,19 @@ try {
       state.pages=null;state.curPg=null;state.selection=new Set();
       Store.commit({op:'del',shapes:[L1,L2,F,M,O].map(s=>JSON.parse(JSON.stringify(s)))});
       console.log('  ✓ unlock-all/frame-fit are page-scoped (4 asserts)');
+    }
+    // ADR-0662: Tab chain predicates are page-scoped
+    {
+      assert.ok(html.includes('visible!==0&&_pgOk(nx)&&_lblAnchor(nx)'),'label-editor Tab chain keeps on-page');
+      assert.ok(html.includes('!nx.locked&&nx.visible!==0&&_pgOk(nx)'),'text-editor Tab chain keeps on-page');
+      state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';
+      const C1=Shape.make('rect',{x:0,y:0,w:10,h:10}),C2=Shape.make('rect',{x:0,y:0,w:10,h:10});
+      Store.commit({op:'addMany',shapes:[{...C1,pg:'pA'},{...C2,pg:'pB'}]});
+      const ids=state.shapes.filter(s=>s.visible!==0&&!s.locked&&(s.pg||'pA')===state.curPg).map(s=>s.id);
+      assert.ok(ids.includes(C1.id)&&!ids.includes(C2.id),'Tab cycle candidate set excludes off-page shape');
+      state.pages=null;state.curPg=null;
+      Store.commit({op:'del',shapes:[C1,C2].map(s=>JSON.parse(JSON.stringify(s)))});
+      console.log('  ✓ Tab chains are page-scoped (3 asserts)');
     }
   }
 
@@ -12596,7 +12609,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1475; // prev 1471 + 4 unlock/fit page-scope asserts (ADR-0661)
+  pass += 1478; // prev 1475 + 3 Tab-chain page-scope asserts (ADR-0662)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
