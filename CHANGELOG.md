@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.664]
+### 修正
+- ジェスチャ中に Enter でテキスト/ラベル編集 overlay が開くと、ドラッグが overlay 裏で継続しリリース時に不可視のコミットが発火し得た問題を修正 — `editSelectedShapeKbd` 冒頭で `_cancelPointerGesture()` (ADR-0634 と同型経路) (ADR-0637)。
+
 ## [1.7.663]
 ### 修正
 - Esc 等のジェスチャキャンセルが `_pointers`/ピンチ状態を掃除しなかったため、二本目の指を離した瞬間に取りこぼし `pointerup` から stray ズームコミットが発火し得た問題を修正 — `_cancelPointerGesture` 末尾で `_clearTouchState()` を呼び統一掃除 (ADR-0636)。
