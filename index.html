@@ -873,7 +873,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.810';   // ADR-0784
+const V='1.7.811';   // ADR-0785
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1674,7 +1674,7 @@ const Store={
         // 'add' (idempotent on id); reverse mirrors
         if(forward){for(const sh of op.shapes){const wd=_wc()[sh.id];if(wd&&wd._del&&clockNewer(wd._del,op.clock||{}))continue;   // ADR-0734: tombstone beats a stale add
           if(wd)delete wd._del;if(!byId(sh.id))_sh().push(clone(sh));}_sz();
-          if(op.wc)for(const[id,w]of Object.entries(op.wc))_wc()[id]=clone(w);}   // ADR-0721: del/clear undo-wire carries the sender's wclock restore — apply it or later LWW diverges
+          if(op.wc)for(const[id,w]of Object.entries(op.wc))_wc()[id]=clone(w);}   // ADR-0721
         else{for(const sh of op.shapes){const cur=byId(sh.id);if(cur&&cur.locked)continue;   // ADR-0713
           const i=_idIdx(sh.id);if(i>=0)_sh().splice(i,1);_sdl(sh.id);_wc()[sh.id]={_del:op.clock};_psc(sh.id);}_selR(op);const fx=this._remoteDelConnFix({op:'del',shapes:op.shapes});if(fx)for(const p of fx)_oa(byId(p.id),p.patch);}   // ADR-0734/0759
         break;}
@@ -1776,7 +1776,7 @@ const Store={
           // 'unpage' flag below — the sender keeps them too).
           if(state.pages){const i=state.pages.findIndex(p=>p.id===op.id);if(i>=0)state.pages.splice(i,1);
             if(_ln(state.pages))_pgDel2(op,state.pages[0].id);
-            else{const die=new Set((op.shapes||[]).map(s=>s.id));_pgDel2(op,null,die);for(const s of _sh())if(s.pg===op.id)s.pg=null;state.pages=null;state.curPg=null;_pgHealS()}}   // ADR-0663/0724: last page undone — op-carried members die, the rest revert to un-paged
+            else{const die=new Set((op.shapes||[]).map(s=>s.id));_pgDel2(op,null,die);for(const s of _sh())if(s.pg===op.id)s.pg=null;state.pages=null;state.curPg=null;_pgHealS()}}   // ADR-0663/0724
         }
         _ss(_selIds());_iG();_iv();_ivO();_pgBar();
         break;}
@@ -1814,7 +1814,7 @@ const Store={
         }
         _ss(_selIds());_iG();_iv();_ivO();_pgBar();
         break;}
-      case 'pageName':{   // ADR-0646/0698/0702: LWW on (p.nts,p.ntp) — clockNewer total order, else equal-ts concurrent renames diverge (>= applies on both, > skips on both)
+      case 'pageName':{   // ADR-0646/0698/0702
         const p=_pgById(op.id);if(!p)break;
         const ts=forward?(op.clock&&_iN(op.clock.ts)?op.clock.ts:_now()):(op.bts!=null?op.bts:0);
         // ADR-0702: undo gate must compare the CURRENT name's write against OUR op's clock —
@@ -8282,6 +8282,9 @@ const Net={
         // ADR-0374: bound in-flight reassemblies (64 slots, LRU).
         if(!st||st.n!==n||seq===0){if(!st&&this._imgChunks.size>=64)this._imgChunks.delete(this._imgChunks.keys().next().value);st={p:new Array(n),g:0,n};this._imgChunks.set(msg.key,st)}   // ADR-0449/0454/0563
         if(!st.p[seq]){st.p[seq]=msg.data;st.g++;st.b=(st.b||0)+_ln(msg.data)}
+        let _tb=0;for(const v of this._imgChunks.values())_tb+=v.b||0;
+        while(_tb>24_000_000&&this._imgChunks.size){const _e=this._imgChunks.keys().next().value;_tb-=(this._imgChunks.get(_e).b||0);this._imgChunks.delete(_e)}
+        if(this._imgChunks.get(msg.key)!==st)break;   // ADR-0785
         if(st.b>12_000_000){this._imgChunks.delete(msg.key);break}   // ADR-0781
         if(st.g<st.n)break;
         this._imgChunks.delete(msg.key);

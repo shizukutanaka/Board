@@ -14048,6 +14048,20 @@ try {
     Net._imgIn.clear();Net._imgInB=0;
     console.log('  ✓ _imgIn bounded by bytes as well as count (ADR-0784)');
   }
+  // ADR-0785: the 64-slot reassembly map had only a per-slot 12MB cap — a peer
+  // dribbling chunks across many keys could hold ~768MB in flight. An
+  // aggregate 24MB budget now evicts oldest slots first.
+  {
+    Net._imgChunks.clear();
+    Net._imgChunks.set('a',{p:['x'.repeat(12_000_000)],g:1,n:2,b:12_000_000});
+    Net._imgChunks.set('b',{p:['x'.repeat(12_000_000)],g:1,n:2,b:12_000_000});
+    Net._onRecv({k:'img',key:'c',seq:0,n:2,data:'x'.repeat(96*1024),peer:'pz'},false);
+    assert.ok(!Net._imgChunks.has('a')&&Net._imgChunks.has('b')&&Net._imgChunks.has('c'),'aggregate cap evicts the oldest slot only');
+    Net._onRecv({k:'img',key:'c',seq:1,n:2,data:'data:image/png;base64,AA',peer:'pz'},false);
+    assert.strictEqual(Net._imgIn.get('c'),'x'.repeat(96*1024)+'data:image/png;base64,AA','surviving slot still completes');
+    Net._imgChunks.clear();
+    console.log('  ✓ img reassembly bounded by aggregate bytes too (ADR-0785)');
+  }
 
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
@@ -14055,7 +14069,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1771; // prev 1768 + 3 ADR-0784 _imgIn byte-cap asserts
+  pass += 1773; // prev 1771 + 2 ADR-0785 _imgChunks aggregate-cap asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

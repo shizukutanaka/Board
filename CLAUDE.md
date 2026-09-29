@@ -833,6 +833,7 @@ Board/
 │   └── ADR-0782-fragin-reassembly-byte-cap.md  # snap/opc 再組立て中間バイト 24MB 早期中断
 │   └── ADR-0783-dcq-byte-cap.md  # _dcQ 送信キューに 32MB バイト上限
 │   └── ADR-0784-imgin-byte-cap.md  # _imgIn 受信 blob ストアに 64MB バイト上限
+│   └── ADR-0785-imgchunks-aggregate-cap.md  # _imgChunks 集計バイト予算 24MB
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
