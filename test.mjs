@@ -7581,7 +7581,7 @@ try {
   {
     assert.ok(html.includes("_clearTouchState();Net.sendCursorHide()}Persist.flushIfHidden"),'hidden cancels gesture + clears touch state + hides cursor');
     assert.ok(html.includes("pagehide',()=>{if(ptr.down)_cancelPointerGesture();_clearTouchState();Persist.flushIfHidden('hidden')"),'pagehide cancels gesture + clears touch state before flush');
-    assert.ok(html.includes("function _clearTouchState(){_pointers.clear();_pinchPrev=0;if(_pinchSnap){_pinchSnap=null;_pinchVp=null;_iv()}}"),'shared touch-state cleanup (ADR-0608)');
+    assert.ok(html.includes("function _clearTouchState(){_pointers.clear();_pinchPrev=0;if(_pinchSnap){_pinchSnap=null;_pinchVp=null;_iv()}Minimap.cancelNav()}"),'shared touch-state cleanup (ADR-0608/0632)');
     console.log('  ✓ hidden/pagehide gesture cancel pinned (2 asserts)');
   }
 
