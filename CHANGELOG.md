@@ -1,3 +1,8 @@
+## [1.7.846] - 2026-09-29
+
+### Docs
+- ADR-0820: RTC/history/img queue/pinch/fonts 残余ライフサイクル監査完走 + spec backlog 空 (P3 は決定済み保留) を確認
+
 ## [1.7.845] - 2026-09-29
 
 ### Docs
