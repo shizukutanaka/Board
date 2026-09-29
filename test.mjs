@@ -11704,6 +11704,33 @@ try {
     assert.ok(Presentation.isActive(),'⇧P enters presentation when a frame exists');
     fireKey('Escape');
     assert.ok(!Presentation.isActive(),'Esc leaves presentation');
+    // contextmenu mid-gesture cancels instead of opening the menu (ADR-0524,
+    // fire1 — later listeners would see ptr.down cleared and open it);
+    // ctrl+wheel zooms at the cursor, plain wheel pans; pointermove sets
+    // hover, pointerleave clears it
+    reset();
+    state.tool='pen';
+    _els.ctx.dataset.open='false';
+    fire1('pointerdown',10,10);
+    fire1('contextmenu',200,150);
+    assert.ok(!ptr.down,'contextmenu mid-gesture cancels the gesture');
+    assert.strictEqual(_els.ctx.dataset.open,'false','mid-gesture contextmenu does not open the menu');
+    reset();
+    const wv0={...state.viewport};
+    fire('wheel',400,300,{ctrlKey:true,deltaY:-100});
+    assert.ok(state.viewport.zoom!==wv0.zoom,'ctrl+wheel zooms at the cursor');
+    const wv1={...state.viewport};
+    fire('wheel',400,300,{deltaY:50});
+    assert.ok(state.viewport.x!==wv1.x||state.viewport.y!==wv1.y,'plain wheel pans');
+    reset();
+    state.tool='select';
+    state.viewport={x:0,y:0,zoom:1};   // ⇧2 above left the view fitted — restore identity so world coords are known
+    const HV1=Shape.make('rect',{x:10,y:10,w:50,h:50});
+    Store.commit({op:'add',shape:HV1});
+    fire('pointermove',20,20);
+    assert.ok(state.hover,'pointermove over a shape sets hover');
+    fire('pointerleave',20,20);
+    assert.ok(!state.hover,'pointerleave clears hover');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -11715,7 +11742,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1303; // prev 1294 + 9 event-sequence asserts (ADR-0641: ⌘F + fit + presentation keys)
+  pass += 1310; // prev 1303 + 7 event-sequence asserts (ADR-0641: ctx mid-gesture + wheel + hover)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
