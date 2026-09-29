@@ -1124,7 +1124,7 @@ const checks = [
     html.includes("_sa(canvas,_AL,(T.k[tool]||tool)+' — '+t('canvasHint'))")],
   // v1.7.64 (FT-17)
   ['empty-board hint: draws only when blank, reads emptyHint i18n key',
-    html.includes('function drawEmptyHint(') && html.includes("if(_nS()===0&&!_df())drawEmptyHint(c,W,H);")
+    html.includes('function drawEmptyHint(') && html.includes("if(!_ln(_shV())&&!_df())drawEmptyHint(c,W,H);")
     && html.includes("_fT(c,t('emptyHint'),")],
   // v1.7.65 (ADR-0012)
   ['theme toggle: applyTheme/toggleTheme/refreshThemeBtn wired, boot restores persisted mode',
@@ -4555,6 +4555,12 @@ try {
       assert.ok(!html.includes('const n=_sh().filter(_frm).length+1'),'frame numbering no longer counts every page');
       assert.ok((html.match(/_sh\(\)\.filter\(s=>_frm\(s\)&&_pgOk\(s\)\)\.length\+1/g)||[]).length===2,'both frame-name sites page-scoped');
       console.log('  ✓ hop/frame-name page-scope pins (3 asserts)');
+    }
+    // ADR-0668: minimap nav reuses the page-scoped scene transform; empty hint is per-page
+    {
+      assert.ok(html.includes('if(!_sc)return;')&&!html.includes('const shapes=_sh();const bb=_bA(shapes);'),'minimap nav uses the rendered page-scoped transform (ADR-0668)');
+      assert.ok(html.includes('if(!_ln(_shV())&&!_df())drawEmptyHint(c,W,H);'),'empty hint gates on the viewed page');
+      console.log('  ✓ minimap-nav + empty-hint page-scope pins (2 asserts)');
     }
   }
 
@@ -12703,7 +12709,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1497; // prev 1494 + 3 hop/frame-name page-scope pins (ADR-0667)
+  pass += 1499; // prev 1497 + 2 minimap/empty-hint page-scope pins (ADR-0668)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

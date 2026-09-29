@@ -863,7 +863,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.694';   // ADR-0667
+const V='1.7.695';   // ADR-0668
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2697,7 +2697,7 @@ function drawOverlay(){
     }
   }
   _sTF(c,DPR,0,0,DPR,0,0);
-  if(_nS()===0&&!_df())drawEmptyHint(c,W,H);   // FT-17: onboarding for a blank board
+  if(!_ln(_shV())&&!_df())drawEmptyHint(c,W,H);   // FT-17 + ADR-0668: onboarding when the viewed page has nothing visible — not only when the whole board is empty
   for(const[,members] of _grpMapGet()){
     const b=_bA(members);if(!b)continue;
     const p1=_w2({x:b.x-4,y:b.y-4}),p2=_w2({x:b.x+b.w+4,y:b.y+b.h+4});
@@ -10241,10 +10241,8 @@ const Minimap=(()=>{
   const _mmGo=e=>{
     const r=mc.getBoundingClientRect();
     const mx2=(e.clientX-r.left)/r.width,my2=(e.clientY-r.top)/r.height;
-    const shapes=_sh();const bb=_bA(shapes);if(!bb)return;
-    const pad=20,sc=_min(W/(bb.w+pad*2),H/(bb.h+pad*2),1);
-    const ox=-bb.x*sc+(W-bb.w*sc)/2,oy=-bb.y*sc+(H-bb.h*sc)/2;
-    const wx=(mc.width*mx2-ox)/sc,wy=(mc.height*my2-oy)/sc;
+    if(!_sc)return;   // ADR-0668: reuse the rendered scene transform (_sc/_ox/_oy, page-scoped) — a whole-board bbox lands taps on the wrong viewport when off-page shapes exist
+    const wx=(mc.width*mx2-_ox)/_sc,wy=(mc.height*my2-_oy)/_sc;
     const _r=_cbr();
     _vp().x=wx-_r.width/_vp().zoom/2;
     _vp().y=wy-_r.height/_vp().zoom/2;
