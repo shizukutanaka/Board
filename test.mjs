@@ -11248,6 +11248,23 @@ try {
     fire('pointermove',200,200);
     fire('pointerup',200,200);
     assert.ok(state.selection.has(M1.id)&&!state.selection.has(M2.id),'marquee selects only the covered shape via real events');
+    // eraser: drag over a shape deletes it via real events
+    reset();
+    state.tool='eraser';
+    const E1=Shape.make('rect',{x:60,y:60,w:40,h:40});
+    Store.commit({op:'add',shape:E1});
+    fire('pointerdown',10,10);
+    fire('pointermove',80,80);
+    fire('pointerup',80,80);
+    assert.ok(!byId(E1.id),'eraser drag deletes the covered shape via real events');
+    // line tool: drag commits a line with real endpoints
+    reset();
+    state.tool='line';
+    fire('pointerdown',20,20);
+    fire('pointermove',120,80);
+    fire('pointerup',120,80);
+    const lS=state.shapes[state.shapes.length-1];
+    assert.ok(lS&&lS.type==='line'&&lS.x2===120&&lS.y2===80,'line drag commits endpoints via real events');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -11259,7 +11276,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1187; // prev 1168 + 19 event-sequence asserts (ADR-0641)
+  pass += 1189; // prev 1168 + 21 event-sequence asserts (ADR-0641)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
