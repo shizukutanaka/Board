@@ -923,7 +923,7 @@ const checks = [
   ['conn label honours lineH canvas+SVG (ADR-0212)', html.includes('llh=fs*(s.lineH||1.25)')&&html.includes('lh2=fs*(s.lineH||1.25)')],
   ['pin/unpin anchor via ctx for touch/keyboard (ADR-0213)', html.includes('function pinAnchor()')&&html.includes("['ctxPinAnchor','',pinAnchor]")&&html.includes('px=k===\'a\'?e.x1:e.x2')],
   ["presence msgs carry curPg; peers on another page are not drawn (ADR-0647)",
-    html.includes("_mk('cursor',{x:wp.x,y:wp.y,pg:state.curPg})")&&html.includes("_mk('selection',{ids,pg:state.curPg})")&&html.includes("p.pg=_iS(msg.pg)?_s0(msg.pg,64):null")&&html.includes("if(_pgOn()&&p.pg&&p.pg!==state.curPg)continue")&&html.includes("return;_cxO()")&&html.includes("state.curPg=id;Net.sendCursorHide()")],
+    html.includes("_mk('cursor',{x:wp.x,y:wp.y,pg:state.curPg})")&&html.includes("_mk('selection',{ids,pg:state.curPg})")&&html.includes("p.pg=npg")&&html.includes("if(_pgOn()&&p.pg&&p.pg!==state.curPg)continue")&&html.includes("return;_cxO()")&&html.includes("state.curPg=id;Net.sendCursorHide()")],
   ['_bindAt grid-accelerated candidate scan (ADR-0214)', html.includes('const cands=[..._queryGrid(_grid,{x,y})]')&&html.includes('const ok=s=>{const t=s.type;return t!==\'line\'&&t!==\'arrow\'&&t!==\'pen\'&&_sv(s)&&_pgOk(s)}')],
   ['modal focus capture/restore + summary tabbable (ADR-0215)', html.includes('_captureFocus()')&&html.includes('this._restoreFocus()')&&html.includes('select,textarea,summary,[tabindex')],
   ['labelPos drag snaps to 0/.25/.5/.75/1 slots (ADR-0216)', html.includes('for(const slot of[0,0.25,0.5,0.75,1])')],
@@ -6269,6 +6269,26 @@ try {
       assert.strictEqual(B.state.peers.get('peerA').cursor,undefined,'ADR-0010e: a non-finite x/y is rejected, no cursor is set');
 
       console.log('  ✓ ADR-0010 peer cursor presence: BC routing, throttle, viaRtc→_rtcPeerId, unknown-peer no-op, non-finite rejected');
+    }
+
+    // ---- ADR-0769: a peer's pg flip repaints the avatar '· page' tooltip ----
+    // p.pg arrives on cursor/selection presence, but refreshPeers previously ran only on
+    // join/leave/page-set changes — the tooltip (the sole cross-page signal) went stale.
+    {
+      B.state.peers.clear();
+      B.state.peers.set('peerA',{color:'#222',lastSeen:Date.now(),pg:null});
+      let rpCalls=0;const _rp=B.UI.refreshPeers;B.UI.refreshPeers=()=>{rpCalls++};
+      try{
+        B.Net._onRecv({k:'cursor',peer:'peerA',x:1,y:2,pg:'p2'});
+        assert.strictEqual(rpCalls,1,'ADR-0769: cursor carrying a pg change repaints the avatars');
+        B.Net._onRecv({k:'cursor',peer:'peerA',x:3,y:4,pg:'p2'});
+        assert.strictEqual(rpCalls,1,'ADR-0769: same pg again does not repaint');
+        B.Net._onRecv({k:'selection',peer:'peerA',ids:[],pg:'p3'});
+        assert.strictEqual(rpCalls,2,'ADR-0769: selection carrying a pg change repaints the avatars');
+        B.Net._onRecv({k:'selection',peer:'peerA',ids:[],pg:'p3'});
+        assert.strictEqual(rpCalls,2,'ADR-0769: unchanged pg on selection does not repaint');
+      }finally{B.UI.refreshPeers=_rp;}
+      console.log('  ✓ peer pg flip repaints avatar tooltip on both presence paths (ADR-0769, 4 asserts)');
     }
 
     // ---- ADR-0011: peer selection presence — change-detected at the frame boundary ----

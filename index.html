@@ -857,7 +857,7 @@ const _wc=()=>state.wclock;
 const _tl=()=>state.tool;
 const _dn=()=>state.docName;
 let _nameTs=0,_namePeer='';
-const _bName=()=>Net._bcast(_mk('name',{name:state.docName,ts:_nameTs=nowTs()}));   // ADR-0696: a swap that changes docName must tell peers now — else they keep the old name until the next rename/snapshot
+const _bName=()=>Net._bcast(_mk('name',{name:state.docName,ts:_nameTs=nowTs()}));   // ADR-0696: a swap that changes docName must tell peers now
 const _nameWin=(ts,peer)=>clockNewer({ts,peer,seq:0},{ts:_nameTs,peer:_namePeer});   // ADR-0699: (ts,writer) total order like pageName (ADR-0698) — equal-ts renames converged
 const _setDocName=n=>{state.docName=n;const d=_g('docName');if(d&&d!==document.activeElement)d.value=_dn();_syncDocTitle();};   // ADR-0609
 const _pr=()=>state.peers;
@@ -873,7 +873,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.794';   // ADR-0768
+const V='1.7.795';   // ADR-0769
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1666,7 +1666,7 @@ const Store={
         // but doesn't populate seenOps, so the live
         // a duplicate. Local commits use fresh uids
         // re-pushes because undo removed the shape first.
-        if(forward){const wid=op.shape.id,wd=_wc()[wid];   // ADR-0734: a delete tombstone outranks a stale add — skip it or a del/add reorder resurrects the shape on this side only
+        if(forward){const wid=op.shape.id,wd=_wc()[wid];   // ADR-0734: tombstone outranks a stale add — skip it
           if(wd&&wd._del&&clockNewer(wd._del,op.clock||{})){/*del wins — stay deleted*/}
           else{if(!byId(wid)){_sh().push(clone(op.shape));_sz()}if(wd)delete wd._del}}
         // ADR-0713: backward mirrors del-forward's locked gate — a shape locked
@@ -8363,7 +8363,7 @@ const Net={
         if(!_iN(msg.x)||!_fin(msg.x)||!_iN(msg.y)||!_fin(msg.y))break;
         const peerKey=this._pk(msg,viaRtc);
         const p=peerKey&&_pr().get(peerKey);
-        if(p){p.cursor=msg.h===1?null:{x:msg.x,y:msg.y};p.pg=_iS(msg.pg)?_s0(msg.pg,64):null;_ivO();}   // ADR-0611/0647: h:1 hides; pg scopes the cursor to the peer's own page
+        if(p){const npg=_iS(msg.pg)?_s0(msg.pg,64):null,ch=p.pg!==npg;p.cursor=msg.h===1?null:{x:msg.x,y:msg.y};p.pg=npg;_ivO();if(ch)UI.refreshPeers()}   // ADR-0611/0647/0769: pg change repaints the avatar '· page' tooltip
         break;}
       case 'selection':{
         // ADR-0011: same _rtcPeerId routing as 'curs
@@ -8373,7 +8373,7 @@ const Net={
         const ids=_s0(msg.ids,MAX_OP_SHAPES).filter(_idOK);   // ADR-0485: same ≤64 cap as every other wire id field
         const peerKey=this._pk(msg,viaRtc);
         const p=peerKey&&_pr().get(peerKey);
-        if(p){p.sel=ids;p.pg=_iS(msg.pg)?_s0(msg.pg,64):null;_ivO();}   // ADR-0647
+        if(p){const npg=_iS(msg.pg)?_s0(msg.pg,64):null,ch=p.pg!==npg;p.sel=ids;p.pg=npg;_ivO();if(ch)UI.refreshPeers()}   // ADR-0647/0769
         break;}
     }
   },
