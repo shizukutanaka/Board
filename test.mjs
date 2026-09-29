@@ -11340,6 +11340,24 @@ try {
     Presentation.leave();
     fire1('dblclick',110,110);
     assert.strictEqual(state.editing,T1.id,'dblclick on a text shape opens the editor');
+    // Escape closes an open ctx menu via the real window keydown listener (before gesture handling)
+    reset();
+    state.tool='select';
+    _els.ctx.dataset.open='false';
+    fire1('contextmenu',300,300);
+    assert.strictEqual(_els.ctx.dataset.open,'true','ctx menu open before Escape');
+    fireKey('Escape');
+    assert.strictEqual(_els.ctx.dataset.open,'false','Escape closes the ctx menu via the real key listener');
+    // dblclick on empty canvas → beginText adds a text shape + opens its editor (ADR-0122)
+    reset();
+    state.tool='select';
+    state.editing=null;
+    const n0=state.shapes.length;
+    fire1('dblclick',150,150);
+    assert.strictEqual(state.shapes.length,n0+1,'dblclick empty canvas adds a shape');
+    const nb=state.shapes[n0];
+    assert.ok(nb&&nb.type==='text','the dblclick-empty shape is text');
+    assert.strictEqual(state.editing,nb&&nb.id,'editor opened on the new text shape');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -11351,7 +11369,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1199; // prev 1168 + 31 event-sequence asserts (ADR-0641)
+  pass += 1204; // prev 1168 + 36 event-sequence asserts (ADR-0641)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
