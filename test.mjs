@@ -12783,6 +12783,19 @@ try {
       state.pages=null;state.curPg=null;state.shapes=[];_invalidateGrid();
       console.log('  ✓ remote last-page del converges; local guard intact (ADR-0703, 4 asserts)');
     }
+    // ADR-0704: a wire pageAdd honors its recorded index — pageDel's undo-wire
+    // restores the page at its original position on every peer, not the end.
+    {
+      state.pages=[{id:'p1',name:'1',nts:0},{id:'p2',name:'2',nts:0},{id:'p3',name:'3',nts:0}];state.curPg='p1';
+      Store.applyRemote({op:'pageAdd',id:'px',name:'X',i:1,clock:{peer:'zz',seq:21,ts:3}});
+      assert.strictEqual(state.pages[1].id,'px','wire pageAdd inserts at op.i (ADR-0704)');
+      Store.applyRemote({op:'pageAdd',id:'py',name:'Y',i:99,clock:{peer:'zz',seq:22,ts:4}});
+      assert.strictEqual(state.pages[4].id,'py','op.i clamps to the end (ADR-0704)');
+      Store.applyRemote({op:'pageAdd',id:'pz',name:'Z',clock:{peer:'zz',seq:23,ts:5}});
+      assert.strictEqual(state.pages[5].id,'pz','no op.i still appends');
+      state.pages=null;state.curPg=null;
+      console.log('  ✓ wire pageAdd restores the recorded position (ADR-0704, 3 asserts)');
+    }
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;
     Store.applyRemote({op:'pageAdd',id:'pgA',name:'A',clock:{peer:'rp',seq:12,ts:12}});
     Net._onRecv({k:'snapshot',shapes:[],ops:[],peer:'sp',pages:[{id:'pgA',name:'A',nts:0},{id:'pgB',name:'B',nts:0}]},false);
@@ -12962,7 +12975,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1568; // prev 1517 + 1 tab aria-label pin (ADR-0682)
+  pass += 1571; // prev 1517 + 1 tab aria-label pin (ADR-0682)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

@@ -1,3 +1,8 @@
+## [1.7.730] - 2026-09-29
+
+### Fixed
+- ADR-0704: wire pageAdd ignored its recorded index — pageDel's undo-wire restored the page at the end on peers while locally splicing it back at op.i (page-order divergence)
+
 ## [1.7.729] - 2026-09-29
 
 ### Fixed

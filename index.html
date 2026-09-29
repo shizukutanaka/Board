@@ -868,7 +868,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.729';   // ADR-0703
+const V='1.7.730';   // ADR-0704
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1726,7 +1726,12 @@ const Store={
       case 'pageAdd':{   // ADR-0646: multi-page
         if(forward){
           if(!state.pages){state.pages=[{id:op.id,name:op.name!=null?op.name:'?',nts:0}];for(const s of _sh())if(!s.pg)s.pg=op.id;state.curPg=op.id}
-          else if(!_pgById(op.id)&&_ln(state.pages)<64)_pu(state.pages,{id:op.id,name:op.name!=null?op.name:'?',nts:0});
+          else if(!_pgById(op.id)&&_ln(state.pages)<64){
+            // ADR-0704: honor op.i — pageDel's undo-wire carries the recorded index;
+            // pushing to the end left the restored page at a different position on peers.
+            const at=_iN(op.i)&&_fin(op.i)?_max(0,_min(op.i|0,_ln(state.pages))):_ln(state.pages);
+            state.pages.splice(at,0,{id:op.id,name:op.name!=null?op.name:'?',nts:0});
+          }
           if(_iA(op.shapes)){for(const sh of op.shapes)if(!byId(sh.id))_sh().push(Net._attachShape(clone(sh)));_sz()}   // ADR-0650: pageAdd carries its members (one op per imported page)
         }else{
           for(const sh of op.shapes||[]){const i2=_idIdx(sh.id);if(i2>=0)_sh().splice(i2,1);_sdl(sh.id);delete _wc()[sh.id];_psc(sh.id);}   // ADR-0650
