@@ -13940,6 +13940,23 @@ try {
     assert.ok(byId(u2.id)&&u2.pg==null,'members outside the kill-set survive un-paged');
     console.log('  ✓ pageDel unpage requires the wire kill-set (ADR-0776)');
   }
+  // ADR-0778: an op carrying s.pg for a page this side lacks must not leave a
+  // permanent invisible orphan — paged boards materialize the '?' stub;
+  // pageless boards keep the pg (a later pageAdd resolves it — 0663 semantics).
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;
+    const o1=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    Store.applyRemote({op:'add',shape:{...o1,pg:'pX'},clock:{peer:'r1',seq:1,ts:1}});
+    assert.ok(byId(o1.id)&&byId(o1.id).pg==='pX','pageless board keeps op-carried pg (forward-compat)');
+    state.pages=[{id:'pA',name:'A',nts:0}];state.curPg='pA';
+    const o2=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    Store.applyRemote({op:'add',shape:{...o2,pg:'pZ'},clock:{peer:'r1',seq:2,ts:2}});
+    assert.ok(!!_pgById('pZ'),"unknown op-carried pg materializes the '?' stub page");
+    assert.ok(byId(o2.id)&&byId(o2.id).pg==='pZ','member keeps its page attribution for the stub');
+    Store.applyRemote({op:'pageAdd',id:'pZ',name:'Zed',clock:{peer:'r1',seq:3,ts:3}});
+    assert.ok(_pgById('pZ').name==='Zed','the real pageAdd upgrades the stub (0775 parity)');
+    console.log('  ✓ op-carried unknown pg heals via stub / stays forward-compatible (ADR-0778)');
+  }
 
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
@@ -13947,7 +13964,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1748; // prev 1744 + 4 ADR-0776 unpage kill-set asserts
+  pass += 1752; // prev 1748 + 4 ADR-0778 unknown-pg heal asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

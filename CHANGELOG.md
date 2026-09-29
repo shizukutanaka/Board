@@ -1,3 +1,8 @@
+## [1.7.804] - 2026-09-29
+
+### Fixed
+- ADR-0778: 個別 op が運ぶ未知 `s.pg` が永久不可視 orphan を残していた — `_pgHealS` が wholesale イベント (pageAdopt/snapshot/pageDel) に限定されていたため。`_apply` テールで `_pgOn()` 時に heal+bar を走らせ `'?'` スタブへ着地 (ページなし盤面は pg 保持の forward-compat を維持)
+
 ## [1.7.803] - 2026-09-29
 
 ### Docs

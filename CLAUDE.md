@@ -826,6 +826,7 @@ Board/
 │   └── ADR-0775-page-stub-upgrade.md  # '?'スタブ恒久化の解消 — nts:-1 で全 LWW に負ける + pageAdd がスタブを昇格
 │   └── ADR-0776-pagedel-unpage-killset.md  # pageDel 'unpage' はワイヤーの kill 集合を必須に (un-page≠kill の発散閉塞)
 │   └── ADR-0777-wire-intake-audit-complete.md  # wire intake 検証監査の完走記録 (16 op 網羅 + wc ライフサイクル)
+│   └── ADR-0778-op-pg-stub-heal.md  # 個別 op の未知 s.pg を '?' スタブへ即時 heal (永久不可視 orphan の閉塞)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

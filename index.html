@@ -858,7 +858,7 @@ const _tl=()=>state.tool;
 const _dn=()=>state.docName;
 let _nameTs=0,_namePeer='';
 const _bName=()=>Net._bcast(_mk('name',{name:state.docName,ts:_nameTs=nowTs()}));   // ADR-0696: a swap that changes docName must tell peers now
-const _nameWin=(ts,peer)=>clockNewer({ts,peer,seq:0},{ts:_nameTs,peer:_namePeer});   // ADR-0699: (ts,writer) total order like pageName (ADR-0698) — equal-ts renames converged
+const _nameWin=(ts,peer)=>clockNewer({ts,peer,seq:0},{ts:_nameTs,peer:_namePeer});   // ADR-0699: (ts,writer) total order — equal-ts renames converge
 const _setDocName=n=>{state.docName=n;const d=_g('docName');if(d&&d!==document.activeElement)d.value=_dn();_syncDocTitle();};   // ADR-0609
 const _pr=()=>state.peers;
 const _hi=()=>state.history;
@@ -873,7 +873,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.803';   // ADR-0777
+const V='1.7.804';   // ADR-0778
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1151,7 +1151,7 @@ const state={
   snap:true,        // snap-to-grid when dragging shapes
   docName:_UT,
   dirty:false,
-  pages:null,curPg:null,   // ADR-0646: pages stay null until a 2nd page exists; curPg is a LOCAL view filter — peers may sit on different pages of one board
+  pages:null,curPg:null,   // ADR-0646: curPg is a LOCAL view filter — peers may sit on different pages
   lastSaveAt:0,
   // ---- v1.1 sync ----
   peerId:PEER_ID+'.'+uid().slice(0,6),   // ADR-0459: per-boot incarnation — seq restarts can't collide with peers' seenOps
@@ -1469,7 +1469,7 @@ const Store={
   // a double-clobber). Remote-only view fix: n
   _remoteDelConnFix(op){
     if(op.op!=='del'||!_iA(op.shapes))return null;
-    const goneIds=_sT(op.shapes.map(s=>s.id).filter(id=>!(byId(id)||{}).locked));   // ADR-0760: locked ids survive the splice — don't clear their bindings
+    const goneIds=_sT(op.shapes.map(s=>s.id).filter(id=>!(byId(id)||{}).locked));   // ADR-0760: locked ids survive — keep their bindings
     const handled=_sT((op.connClears||[]).map(p=>p.id));
     const fixes=[];
     for(const sh of _sh()){
@@ -1888,6 +1888,7 @@ const Store={
     // ADR-0568: a remote hide (or redo of one) l
     // shapes must not stay in selection (0566 in
     if(/^(?:style|upd|align|resize|beautify)$/.test(op.op))for(const id of _ids)if(_sl().has(id)){_selSig=null;const _s=byId(id);if(_s&&_hd(_s))_sdl(id)}
+    if(_pgOn()){_pgHealS();_pgBar()}   // ADR-0778: unknown op-carried pg gets the '?' stub — no permanent invisible orphan
     // ADR-0027: post-mutation bboxes of the same
     // a union covering most of the viewport isn't worth clipping for.
     for(const id of _ids)_u(byId(id));
