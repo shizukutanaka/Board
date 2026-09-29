@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.651]
+### ドキュメント
+- architecture.md の選択不変条件に **dead-id parity** を追記 — 選択由来リストは dead id を含まない (`id=>{const s=byId(id);return s&&_ul(s)}` フィルタ形、`_sb()` の `map(byId).filter(Boolean)` 供給源閉塞、ADR-0624)。
+
 ## [1.7.650]
 ### 修正
 - 選択由来 id リストの dead-id 衛生 — `_sb()` が `map(byId)` で残していた `undefined` を供給源で `filter(Boolean)` 除去 (`_selUL()` の `_ul(undefined)` TypeError 経路を閉塞)、`unlockedSelectionIds`/`nudgeSelection` の `!byId(id)?.locked` フィルタを `s&&_ul(s)` 形へ統一 (group/nudge op へのファントム id・before スナップショット混入を排除、ADR-0623)。

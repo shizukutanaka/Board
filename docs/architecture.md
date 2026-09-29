@@ -125,6 +125,13 @@ direct `state.selection.add` や新たな `_ss` バイパスを増やさない�
 漏洩しない。例外はデータ保持が目的の経路のみ: `.board` エクスポートは `visible` prop を
 保持し、`boardToDrawio` は `visible="0"` を emit して往復可能にする。
 
+**dead-id parity** (ADR-0621/0623): 選択由来の id/shape リストは **dead id を含まない**。
+remote del/replace と選択書込みの間には選択が stale id を持つ窓が残るため、派生リストは
+出口側で `id=>{const s=byId(id);return s&&_ul(s)}` (live+unlocked) で濾す: `endSelect`/
+`nudgeSelection` の `move` ids、`unlockedSelectionIds` (group op の `before` スナップショット
+まで含む)。`_sb()` は `map(byId).filter(Boolean)` で供給源閉塞 — `undefined` を残すと
+`_ul` の `.locked` 参照で TypeError となる (呼出し側の `s&&` 防御は downstream で残す)。
+
 **img 参照の再解決**: 形状を復元する全経路 (del/clear/replace の backward、replace の forward) は
 `_sh().push(Net._attachShape(clone(s)))` を通す。`img:` 参照を抱えた図形が undo で戻る際に
 `_imgIn` の到達済み blob から `dataUrl` を再解決し、未到達なら `_imgPending` に再駐留する
