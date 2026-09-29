@@ -863,7 +863,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.676';   // ADR-0649
+const V='1.7.677';   // ADR-0650
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1407,7 +1407,7 @@ function validRemotePayload(op){
     case 'group':  return _iA(op.ids)&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(_idOK)
                           &&_iS(op.gid)&&_ln(op.gid)>0&&_ln(op.gid)<=64   // ADR-0473
                           &&_iA(op.before)&&_ln(op.before)<=MAX_OP_SHAPES&&op.before.every(b=>b&&_iS(b.id)&&_ln(b.id)<=64);
-    case 'pageAdd':  return _idOK(op.id)&&(op.name==null||_iS(op.name)&&_ln(op.name)<=80);
+    case 'pageAdd':  return _idOK(op.id)&&(op.name==null||_iS(op.name)&&_ln(op.name)<=80)&&(op.shapes==null||_iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape));   // ADR-0650
     case 'pageDel':  return _idOK(op.id)&&(op.shapes==null||_iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape));
     case 'pageName': return _idOK(op.id)&&_iS(op.after)&&_ln(op.after)<=80;
     case 'ungroup':return _iA(op.ids)&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(_idOK)
@@ -1719,7 +1719,9 @@ const Store={
         if(forward){
           if(!state.pages){state.pages=[{id:op.id,name:op.name!=null?op.name:'?',nts:0}];for(const s of _sh())if(!s.pg)s.pg=op.id;state.curPg=op.id}
           else if(!_pgById(op.id)&&_ln(state.pages)<64)_pu(state.pages,{id:op.id,name:op.name!=null?op.name:'?',nts:0});
+          if(_iA(op.shapes)){for(const sh of op.shapes)if(!byId(sh.id))_sh().push(Net._attachShape(clone(sh)));_sz()}   // ADR-0650: pageAdd carries its members (one op per imported page)
         }else{
+          for(const sh of op.shapes||[]){const i2=_idIdx(sh.id);if(i2>=0)_sh().splice(i2,1);_sdl(sh.id);delete _wc()[sh.id];_psc(sh.id);}   // ADR-0650
           if(state.pages){const i=state.pages.findIndex(p=>p.id===op.id);if(i>=0)state.pages.splice(i,1);if(!_ln(state.pages)){state.pages=null;state.curPg=null}
             else{const fid=state.pages[0].id;for(const s of _sh())if(s.pg===op.id)s.pg=fid;if(state.curPg===op.id)state.curPg=fid}}
         }
@@ -7011,6 +7013,35 @@ function importDrawioText(txt,wp){
       importDrawioText('<mxfile>'+ok.map(x=>`<diagram>${x}</diagram>`).join('')+'</mxfile>',wp)});
     return true;
   }
+  // ADR-0650: ≥2 non-empty <diagram> pages import as real Board pages —
+  // pageAdd carries its member shapes (one op per page); the companion
+  // addMany broadcast keeps pre-0650 peers converged (idempotent byId guard).
+  const _dgs=[..._St(txt||'').matchAll(/<diagram\b[^>]*>[\s\S]*?<\/diagram>/g)];
+  if(_ln(_dgs)>1){
+    const per=[];let pgVp=null,pgNm=null;
+    for(const dm of _dgs.slice(0,64)){
+      let sh=null;try{sh=drawioToShapes('<mxfile>'+dm[0]+'</mxfile>')}catch(_){sh=null}
+      if(pgVp==null&&_dioVp)pgVp=_dioVp;
+      if(pgNm==null)pgNm=_dioNm;
+      _pu(per,sh&&_ln(sh)?{sh,nm:_dioNm}:null);
+    }
+    if(_ln(per.filter(Boolean))>=2){
+      let selId=null,selSh=null;
+      for(const p of per){
+        if(!p)continue;
+        _ctrAt(p.sh,wp);
+        const id=uid();for(const s of p.sh)s.pg=id;
+        _cmt({op:'pageAdd',id,name:p.nm||t('pgPage'),shapes:p.sh});
+        Net.broadcast({op:'addMany',shapes:p.sh,clock:{peer:_pi(),seq:++state.seq,ts:_now()}});
+        if(!selId){selId=id;selSh=p.sh}
+      }
+      if(selId){switchPage(selId);_scl();for(const s of selSh)_sad(s.id)}
+      if(pgVp){_vp().x=pgVp.x;_vp().y=pgVp.y;_vp().zoom=pgVp.z;if(pgVp.g!=null)state.showGrid=pgVp.g}
+      if(pgNm)_setDocName(_s0(pgNm,80));
+      _iv();_oT('dioImported');
+      return true;
+    }
+  }
   let shapes=null;
   try{shapes=drawioToShapes(txt)}catch(_){shapes=null}
   if(!shapes||!_ln(shapes)){_wT(_IB);return false}
@@ -7046,8 +7077,9 @@ function exportExc(){
 // ends, waypoints, orthogonal routing, curved, jump arcs, and the shared style
 // vocabulary (fill/stroke/size/dash/opacity/fontSize). pens are skipped (no
 // drawio freeform equivalent); hidden shapes stay home.
-function boardToDrawio(shapes){
-  const esc=v=>_St(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const _dioEsc=v=>_St(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function _dioCells(shapes){
+  const esc=_dioEsc;
   const nl=v=>esc(v).replace(/\n/g,'&lt;br&gt;');
   const cells=[],idOf=_mP();
   let i=0;
@@ -7138,8 +7170,15 @@ function boardToDrawio(shapes){
     geo+='</mxGeometry>';
     _pu(cells,`<mxCell id="${id}" value="${nl(_lb(s)||'')}" style="${esc(sty)}" edge="1" parent="${_gc2?`g_${_gi(s)}`:'1'}"${src}${tgt}${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0245/0347
   }
-  const vx=_vp().x,vy=_vp().y,vz=_vp().zoom;
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile compressed="false"><diagram name="${_esc(_dn()||'Page-1')}"><mxGraphModel dx="${_rnd(-vx)}" dy="${_rnd(-vy)}" grid="${state.showGrid?1:0}" gridSize="${GRID_SIZE}" guides="1" tooltips="0" connect="0" arrows="0" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0" zoom="${vz}"><root><mxCell id="0"/><mxCell id="1" parent="0"/>${cells.join('')}</root></mxGraphModel></diagram></mxfile>`;   // ADR-0359: dx/dy/zoom viewport round-trip
+  return cells;
+}
+const _dioModel=c=>{const vx=_vp().x,vy=_vp().y,vz=_vp().zoom;
+  return `<mxGraphModel dx="${_rnd(-vx)}" dy="${_rnd(-vy)}" grid="${state.showGrid?1:0}" gridSize="${GRID_SIZE}" guides="1" tooltips="0" connect="0" arrows="0" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0" zoom="${vz}"><root><mxCell id="0"/><mxCell id="1" parent="0"/>${c.join('')}</root></mxGraphModel>`};   // ADR-0359: dx/dy/zoom viewport round-trip
+function boardToDrawio(shapes){
+  // ADR-0650: one <diagram> per Board page — re-import restores the page set.
+  const body=_pgOn()?state.pages.map(p=>`<diagram name="${_dioEsc(p.name)}">`+_dioModel(_dioCells(shapes.filter(s=>(s.pg||state.pages[0].id)===p.id)))+`</diagram>`).join('')
+    :`<diagram name="${_dioEsc(_dn()||'Page-1')}">`+_dioModel(_dioCells(shapes))+`</diagram>`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile compressed="false">${body}</mxfile>`;
 }
 function exportDrawio(shapes=_sh()){
   if(!_ln(shapes)){_wT(_EM);return}
@@ -7964,7 +8003,7 @@ const Net={
   _slimOp(op){
     if(op.op==='clear')return{op:'replace',after:[],afterWc:{},clock:op.clock};   // ADR-0626: a wholesale wipe IS an empty swap — routing through 'replace' inherits the _lastRep causal ordering + snapshot rep marker for free (inbound 'clear' stays rejected: the wire never carries it now)
     if(op.op==='add'&&op.shape)return{...op,shape:this._slimShapes([op.shape])[0]};
-    if(_iA(op.shapes)&&(op.op==='addMany'||op.op==='del'||op.op==='clear'||op.op==='pageDel')){const{wc:_wc1,origSel:_o1,...r}=op;return{...r,shapes:this._slimShapes(op.shapes)}}   // ADR-0445/0625: id/locked only; undo-only fields never ride the wire
+    if(_iA(op.shapes)&&(op.op==='addMany'||op.op==='del'||op.op==='clear'||op.op==='pageDel'||op.op==='pageAdd')){const{wc:_wc1,origSel:_o1,...r}=op;return{...r,shapes:this._slimShapes(op.shapes)}}   // ADR-0445/0625: id/locked only; undo-only fields never ride the wire
     if(op.op==='replace')return{op:'replace',after:this._slimShapes(op.after||[]),afterWc:op.afterWc,clock:op.clock,pages:op.pages};   // ADR-0646: pages ride the wire; curPg/before* stay local   // ADR-0613: strip the huge before/wc/origSel from the wire copy
     const{origSel:_o2,moved:_m2,...rest}=op;return rest;   // ADR-0625: wc/origSel/moved are undo-domain — peers' _apply rebuilds them; wire copies were dead weight (~30B/shape on big dels) + selection-id leak
   },

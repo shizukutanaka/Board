@@ -3807,7 +3807,7 @@ try {
   // ADR-0405: drawio diagram name <-> docName round-trip
   assert.ok(html.includes("_dioNm=_ga(dg,'name')"),'first diagram name captured');
   assert.ok(html.includes("_setDocName(_s0(_dioNm,80))"),'name adopted on import');
-  assert.ok(html.includes('name="${_esc(_dn()'),'emit escapes docName into diagram name');
+  assert.ok(html.includes('name="${_dioEsc(_dn()'),'emit escapes docName into diagram name');
   console.log('  ✓ drawio diagram name <-> docName round-trip (ADR-0405)');
 
   // Re-snapshot after the sender's shape set changed must still merge new shapes.
@@ -12410,7 +12410,20 @@ try {
     assert.ok(state.curPg===dp2,'remote pageDel of the viewed page falls onto a survivor via switchPage');
     state.pages=null;state.curPg=null;
     console.log('  ✓ page nav: PgUp/PgDn through the real key listener, wraps (ADR-0648, 4 asserts)');
+    // ADR-0650: pageAdd carries member shapes — one op creates the page + its content
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;
+    const iSh=Shape.make('rect',{x:1,y:1,w:9,h:9});iSh.pg='pgI';
+    Store.commit({op:'pageAdd',id:'pgI',name:'Imported',shapes:[iSh]});
+    assert.ok(!!_pgById('pgI')&&!!byId(iSh.id),'pageAdd creates the page and attaches its members');
+    Store.undo();
+    assert.ok(!_pgById('pgI')&&!byId(iSh.id),'undo of pageAdd drops the page and its members together');
+    Store.redo();
+    assert.ok(!!_pgById('pgI')&&!!byId(iSh.id),'redo re-attaches the page and members');
+    Store.applyRemote({op:'pageAdd',id:'pgJ',name:'RJ',shapes:[{...iSh,id:'rj1',pg:'pgJ'}],clock:{peer:'rp',seq:15,ts:15}});
+    assert.ok(!!_pgById('pgJ')&&!!byId('rj1'),'remote pageAdd attaches its member shapes');
+    state.pages=null;state.curPg=null;
     console.log('  ✓ pageDel of the viewed page lands via switchPage — curPg healed (ADR-0649, 1 assert)');
+    console.log('  ✓ pageAdd carries member shapes: local+remote attach, undo/redo (ADR-0650, 4 asserts)');
 
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
@@ -12418,7 +12431,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1432; // prev 1431 + 1 pageDel lands-via-switchPage assert (ADR-0649)
+  pass += 1436; // prev 1432 + 4 pageAdd-shapes asserts (ADR-0650)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
