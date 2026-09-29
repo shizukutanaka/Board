@@ -11637,6 +11637,44 @@ try {
     const wf0=state.shapes.length;
     fireKey('g',{metaKey:true,altKey:true,code:'KeyG'});
     assert.ok(state.shapes.length===wf0+1&&state.shapes[state.shapes.length-1].type==='frame','⌘⌥G wraps the selection in a frame');
+    // clipboard keys: ⌘C fills state.clipboard, ⌘⇧V pastes in place at 0-offset,
+    // ⌘X fills the clipboard AND deletes; locked-only copies are a no-op
+    reset();
+    state.tool='select';
+    const CP1=Shape.make('rect',{x:10,y:10,w:40,h:40});
+    const CP2=Shape.make('rect',{x:100,y:10,w:40,h:40});
+    Store.commit({op:'add',shape:CP1});Store.commit({op:'add',shape:CP2});
+    const cp1=state.shapes[0];
+    state.selection=new Set([cp1.id]);
+    fireKey('c',{metaKey:true});
+    assert.ok(state.clipboard&&state.clipboard.shapes.length===1,'⌘C copies the selection');
+    fireKey('v',{metaKey:true,shiftKey:true});
+    assert.strictEqual(state.shapes.length,3,'⌘⇧V pastes in place');
+    const pp2=state.shapes[2];
+    assert.ok(Math.abs(pp2.x-cp1.x)<1e-6&&Math.abs(pp2.y-cp1.y)<1e-6,'in-place paste keeps the position');
+    assert.ok(state.selection.has(pp2.id),'in-place paste selects the pasted copy');
+    state.selection=new Set([cp1.id]);
+    fireKey('x',{metaKey:true});
+    assert.ok(state.clipboard.shapes.length===1&&!byId(cp1.id),'⌘X cuts the selection');
+    // locked-only selection: doCopy returns early — clipboard untouched
+    const cp2=state.shapes[0];
+    cp2.locked=1;
+    state.selection=new Set([cp2.id]);
+    const cl0=state.clipboard.shapes.length;
+    fireKey('c',{metaKey:true});
+    assert.strictEqual(state.clipboard.shapes.length,cl0,'⌘C with locked-only selection copies nothing');
+    cp2.locked=0;
+    // remaining KEYMAP tool keys dispatch pickTool through the real listener
+    reset();
+    state.tool='select';
+    const toolKeys={h:'hand',r:'rect',o:'ellipse',a:'arrow',l:'line',t:'text',n:'sticky',f:'frame',e:'eraser',d:'diamond',k:'marker'};
+    for(const kk in toolKeys){
+      fireKey(kk);
+      assert.strictEqual(state.tool,toolKeys[kk],`'${kk}' picks the ${toolKeys[kk]} tool`);
+    }
+    fireKey('i');
+    assert.strictEqual(state.tool,'eyedropper',"'i' picks the eyedropper (temporary)");
+    fakeWin._prevTool=null;
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -11648,7 +11686,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1276; // prev 1265 + 11 event-sequence asserts (ADR-0641: text modifiers + lock + wrapInFrame)
+  pass += 1294; // prev 1276 + 18 event-sequence asserts (ADR-0641: clipboard + tool keys)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
