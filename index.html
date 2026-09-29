@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.640';   // ADR-0613
+const V='1.7.641';   // ADR-0614
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1137,6 +1137,7 @@ const state={
   peerId:PEER_ID+'.'+uid().slice(0,6),   // ADR-0459: per-boot incarnation — seq restarts can't collide with peers' seenOps
   seq:0,                    // monotonic op counter for CRDT clock
   _lastTs:0,                // monotonic-clock floor: local clocks never regress (HLC-lite)
+  _lastRep:null,            // clock of the newest applied 'replace' — concurrent swaps pick one winner (ADR-0614)
   seenOps:_sT(),        // "peer:seq" set for dedup
   wclock:{},                // shapeId → {prop: clock} for per-property LWW (ADR-0002)
   peers:_mP(),          // peerId → {color, lastSeen, name, cursor?:{x,y}} (ADR-0010)
@@ -1484,6 +1485,7 @@ const Store={
     // (it is already deduped). move/zorder are c
     if(!this._lwwDrop(op))return;
     if(op.op==='replace'){   // ADR-0613: same wipe-safety as 'clear' — keep the pre-swap board recoverable (:prev slot, boot-time restore prompt) and tell the user who did it
+      if(state._lastRep&&!clockNewer(op.clock,state._lastRep))return;   // ADR-0614: two peers swapping at once — newest clock wins on every peer regardless of arrival order
       if(_ln(_sh()))Persist.saveBackup(clone(_sh()),{..._vp()},_dn());
       _oT('peerReplaced');
     }
@@ -1687,6 +1689,7 @@ const Store={
         // shape arrays so Ctrl+Z restores the board import overwrote.
         // Local-only by design — NOT in REMOTE_OPS,
         const next=forward?op.after:op.before;
+        if(op.clock)state._lastRep=op.clock;   // ADR-0614: newest applied swap marker — also covers undo (the op's clock still outranks older peers)
         _sh().length=0;_scl();state.wclock={};_pcC();
         for(const s of next)_sh().push(Net._attachShape(clone(s)));
         _iG();   // ADR-0613: byId's size guard misses equal-length swaps — the pre-mutation index survives

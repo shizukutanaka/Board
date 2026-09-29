@@ -1886,6 +1886,24 @@ try {
     console.log('  ✓ remote replace converges wholesale swap (clear stays local-only)');
   }
 
+  // ADR-0614: concurrent wholesale swaps converge on the newest clock — the
+  // older 'replace' is dropped once a newer one landed, in either arrival order.
+  {
+    state.shapes.length = 0;_invalidateGrid();state.wclock={};state._lastRep=null;state.seenOps=new Set();
+    const a=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    const b=Shape.make('ellipse',{x:5,y:5,w:8,h:8});
+    const ck=(p,s,ts)=>({peer:p,seq:s,ts});
+    Store.applyRemote({op:'replace',after:[b],clock:ck('peerB',1,200)});
+    assert.strictEqual(state.shapes[0].type,'ellipse','newer replace applied');
+    Store.applyRemote({op:'replace',after:[a],clock:ck('peerA',1,100)});
+    assert.strictEqual(state.shapes[0].type,'ellipse','stale concurrent replace dropped');
+    state._lastRep=null;state.seenOps=new Set();
+    Store.applyRemote({op:'replace',after:[a],clock:ck('peerA',2,300)});
+    Store.applyRemote({op:'replace',after:[b],clock:ck('peerB',2,400)});
+    assert.strictEqual(state.shapes[0].type,'ellipse','later-arriving newer replace still wins');
+    console.log('  ✓ concurrent replace ops converge on the newest clock (ADR-0614)');
+  }
+
   // applyRemote does NOT enter local undo stack
   const histLen = state.history.length;
   const remoteOp2 = {
@@ -4685,7 +4703,7 @@ try {
   // ADR-0613: remote 'replace' now converges (was local-only before v1.7.640); a peer's
   // wholesale import swaps the board. 'clear' stays rejected — wipe without content is still refused.
   {
-    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state._lastRep=null;
     const keep=Shape.make('rect',{x:0,y:0,w:50,h:50});
     state.shapes.push(keep);
     const fresh=Shape.make('ellipse',{x:9,y:9,w:8,h:8});
@@ -10951,7 +10969,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1119; // prev 1113 + remote 'replace' convergence/reject pins (6, ADR-0613)
+  pass += 1122; // prev 1119 + concurrent 'replace' newest-clock pins (3, ADR-0614)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
