@@ -868,7 +868,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.751';   // ADR-0725
+const V='1.7.752';   // ADR-0726
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1367,9 +1367,10 @@ const _CC_KEYS=_sT(['a','aF','b','bF','x1','y1','x2','y2']);   // ADR-0377
 const _ccOk=q=>q&&_iO(q)&&!_iA(q)&&_ok(q).every(k=>_CC_KEYS.has(k))&&validPatch(q);
 function validRemotePayload(op){
   const patches=a=>_iA(a)&&_ln(a)<=MAX_OP_SHAPES&&a.every(p=>p&&_iS(p.id)&&_ln(p.id)<=64&&validPatch(p));
+  const wcOk=m=>_iO(m)&&_ln(_ok(m))<=MAX_OP_SHAPES&&_ok(m).every(k=>_iO(m[k])&&_ok(m[k]).every(p=>validClock(m[k][p])));   // ADR-0726: wclock map {id:{prop:clock}} — shared by addMany.wc + replace.afterWc
   switch(op.op){
     case 'add':    return validShape(op.shape);
-    case 'addMany':    return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape);
+    case 'addMany':    return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape)&&(op.wc==null||wcOk(op.wc));   // ADR-0721/0726: validate the clock snapshot too
     case 'del':
       // connClears (binding-cleanup deltas, v1.6.7
       // connectors by _apply — validate each befor
@@ -1381,10 +1382,9 @@ function validRemotePayload(op){
           p&&_iS(p.id)&&_ln(p.id)<=64&&(p.before==null||_ccOk(p.before))&&(p.after==null||_ccOk(p.after)))))return false;
       return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape);
     case 'clear':  return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape);
-    case 'replace':{   // ADR-0613: like 'clear' but carries the whole after-board + its write-clock map
-      const wcOk=m=>_iO(m)&&_ln(_ok(m))<=MAX_OP_SHAPES&&_ok(m).every(k=>_iO(m[k])&&_ok(m[k]).every(p=>validClock(m[k][p])));
+    case 'replace':   // ADR-0613: like 'clear' but carries the whole after-board + its write-clock map
       return _iA(op.after)&&_ln(op.after)<=MAX_OP_SHAPES&&op.after.every(validShape)
-        &&(op.afterWc==null||wcOk(op.afterWc));}
+        &&(op.afterWc==null||wcOk(op.afterWc));
     case 'upd':{const noLock=p=>!('locked' in p);
       if(!_iS(op.id)||_ln(op.id)>64||!validPatch(op.after)||!noLock(op.after)||(op.before!=null&&!validPatch(op.before)))return false;
       // pen pts must be array-of-[x,y] — flat arra
