@@ -887,6 +887,7 @@ Board/
 │   └── ADR-0836-imgq-answer-throttle.md  # imgq 応答の per-key 10s スロットル (再送増幅の抑止)
 │   └── ADR-0837-imgq-broadcast.md  # imgq を _bcast 化 (RTC-only ピアへも到達)
 │   └── ADR-0838-send-transport-audit.md  # wire 送出トランスポート監査完走 (imgq のみ誤配)
+│   └── ADR-0839-room-switch-rtc-close.md  # 部屋切替で RTC リンクを閉じる (cross-room op 混入の防止)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

@@ -258,7 +258,7 @@ const checks = [
   ["_recordCommitted sets _lastRep for local 'replace' (ADR-0616)", html.includes("if(op.op==='replace'){state._lastRep=op.clock")],
   ["snapshot carries rep marker + stale-snapshot skip (ADR-0617)", html.includes("rep:state._lastRep") && html.includes("clockNewer(state._lastRep,msg.rep))break;")],
   ["snapshot docName is LWW-gated via (ts,writer) order (ADR-0618/0699)", html.includes("nameTs:_nameTs,namePeer:_namePeer") && html.includes("_nameWin(msg.nameTs,_iS(msg.namePeer)?msg.namePeer:'')")],
-  ["Net.init resets causal markers across rooms (ADR-0619/0699)", html.includes("state.roomId&&state.roomId!==(roomId||DOC_KEY)){state._lastRep=null;_nameTs=0;_namePeer=''}")],
+  ["Net.init resets causal markers across rooms (ADR-0619/0699/0839)", html.includes("state.roomId&&state.roomId!==(roomId||DOC_KEY)){state._lastRep=null;_nameTs=0;_namePeer='';try{this.dc&&this.dc.close();this.rtc&&this.rtc.close()}catch(_){}}")],
   ["move commit drops ids removed mid-gesture (ADR-0621)", html.includes("filter(id=>{const s=byId(id);return s&&_ul(s)})")],
   ["_sb drops dead ids at source + nudgeSelection parity (ADR-0623)", html.includes("_sb=()=>_selIds().map(byId).filter(Boolean)") && html.includes("unlockedSelectionIds(){return _selIds().filter(id=>{const s=byId(id);return s&&_ul(s)});}")],
   ["_slimOp strips undo-only fields from wire ops (ADR-0625)", html.includes("const{origSel:_o2,moved:_m2,...rest}=op;") && html.includes("const{wc:_wc1,origSel:_o1,...r}=op;")],
@@ -2095,6 +2095,22 @@ try {
     clearInterval(Net._presenceTimer);
     if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}
     console.log('  ✓ Net.init resets imgq throttle stamps (ADR-0836)');
+  }
+  // ADR-0839: ops carry no room tag — a live RTC link kept across a real room
+  // switch would bleed the old room's ops into the new room. init must close it.
+  {
+    let dcClosed=false,pcClosed=false;
+    const _dc=Net.dc,_rtc=Net.rtc;
+    Net.dc={readyState:'open',close(){dcClosed=true}};
+    Net.rtc={close(){pcClosed=true}};
+    state.roomId='roomE';
+    Net.init('roomF');
+    assert.ok(dcClosed,'room switch closes the DataChannel');
+    assert.ok(pcClosed,'room switch closes the RTCPeerConnection');
+    Net.dc=_dc;Net.rtc=_rtc;
+    clearInterval(Net._presenceTimer);
+    if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}
+    console.log('  ✓ Net.init closes the RTC link on a real room switch (ADR-0839)');
   }
   // ADR-0822: a superseded DataChannel must not clobber the live link — its
   // stale onclose purges only its own presence row.
