@@ -1,3 +1,11 @@
+## [1.7.777] - 2026-09-28
+
+### Docs
+- ADR-0751: page-transition audit complete — the `_pgAdopt` ↔ `switchPage`
+  invariant set (gesture kill, cursor hide order, _gridVer invalidate,
+  selection re-validation, SR announce, _pgBar) is now documented in
+  architecture.md; every curPg write site verified against it
+
 ## [1.7.776] - 2026-09-28
 
 ### Fixed
