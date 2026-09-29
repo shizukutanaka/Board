@@ -1,3 +1,10 @@
+## [1.7.735] - 2026-09-29
+
+### Fixed
+- ADR-0709: text/label editors fold when the edited shape leaves the viewed page —
+  a remote upd{pg} reassignment used to leave the overlay open typing silently
+  into an invisible shape (same fold family as del/hide/lock)
+
 ## [1.7.734] - 2026-09-29
 
 ### Fixed
