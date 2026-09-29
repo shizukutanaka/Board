@@ -12193,6 +12193,19 @@ try {
     nav.onLine=true;
     for(const f of (fakeWin._L['online']||[]).slice(0,1))f({});
     assert.strictEqual(_els.sConn.textContent,api.I18N[api._getLang()].online,'online event restores the status line');
+    // drop: non-file payload → _textCascade (dragover must claim copy effect first) (ADR-0044/0273/0518)
+    reset();
+    const dt={files:[],getData:()=>null};
+    for(const f of (canvas._L['dragover']||[]).slice(0,1))f({dataTransfer:dt,preventDefault(){}});
+    assert.strictEqual(dt.dropEffect,'copy','dragover claims the copy drop effect');
+    for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[],getData:()=>'{"v":"1","shapes":[{"id":"dp1","type":"rect","x":1,"y":2,"w":30,"h":20,"z":0}]}'},clientX:400,clientY:300,preventDefault(){}});
+    assert.ok(state.shapes.length===1&&state.shapes[0].type==='rect','a dropped .board JSON imports its shapes through the real drop listener (ADR-0518)');
+    reset();
+    for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[],getData:()=>'a\tb\nc\td'},clientX:400,clientY:300,preventDefault(){}});
+    assert.ok(state.shapes.length>=3&&state.shapes.every(x=>x.type==='sticky'),'a dropped TSV builds a sticky grid (ADR-0273)');
+    reset();
+    for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[],getData:()=>'hello'},clientX:400,clientY:300,preventDefault(){}});
+    assert.ok(state.shapes.length===1&&state.shapes[0].type==='text'&&state.shapes[0].text==='hello','a dropped plain text becomes a text shape (ADR-0044)');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -12204,7 +12217,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1390; // prev 1383 + 7 event-sequence asserts (ADR-0641: pagehide/lostpc/mousedown-outside/online 実経路)
+  pass += 1394; // prev 1390 + 4 event-sequence asserts (ADR-0641: drop text cascade 実経路)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
