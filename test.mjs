@@ -11758,6 +11758,58 @@ try {
     fire('gesturechange',400,300,{scale:2});
     assert.ok(state.viewport.zoom>1.5,'gesturechange pinch zooms');
     fire('gestureend',400,300);
+    // handle/tool drags through real listeners: se-handle resize, Alt+drag
+    // duplicate, arrow tool binds endpoints, dblclick descends into a group
+    reset();
+    state.tool='select';
+    state.viewport={x:0,y:0,zoom:1};
+    const RS1=Shape.make('rect',{x:10,y:10,w:50,h:50});
+    Store.commit({op:'add',shape:RS1});
+    state.selection=new Set([RS1.id]);
+    const rs1=state.shapes[0];
+    fire('pointerdown',60,60);
+    assert.strictEqual(ptr.dragKind,'resize','PD on the se handle arms resize');
+    fire('pointermove',80,80);
+    fire('pointerup',80,80);
+    assert.ok(rs1.w>60&&rs1.h>60,'se-handle drag resizes the shape');
+    reset();
+    state.tool='select';
+    const AD1=Shape.make('rect',{x:10,y:10,w:50,h:50});
+    Store.commit({op:'add',shape:AD1});
+    state.selection=new Set([AD1.id]);
+    fire('pointerdown',30,30,{altKey:true});
+    fire('pointermove',60,60);
+    fire('pointerup',60,60);
+    assert.strictEqual(state.shapes.length,2,'Alt+drag duplicates the selection');
+    assert.ok(state.shapes[1].x>10&&state.shapes[1].y>10,'the copy is dragged, not the original');
+    reset();
+    state.tool='arrow';
+    const CA1=Shape.make('rect',{x:10,y:10,w:40,h:40});
+    const CB1=Shape.make('rect',{x:200,y:200,w:40,h:40});
+    Store.commit({op:'add',shape:CA1});Store.commit({op:'add',shape:CB1});
+    fire('pointerdown',30,30);
+    fire('pointermove',220,220);
+    fire('pointerup',220,220);
+    const cn=state.shapes[state.shapes.length-1];
+    assert.ok(cn&&cn.type==='arrow'&&cn.a===CA1.id&&cn.b===CB1.id,'arrow drag binds endpoints to the shapes');
+    reset();
+    state.tool='select';
+    const GD1=Shape.make('rect',{x:10,y:10,w:40,h:40,groupId:'gd'});
+    const GD2=Shape.make('rect',{x:100,y:10,w:40,h:40,groupId:'gd'});
+    Store.commit({op:'add',shape:GD1});Store.commit({op:'add',shape:GD2});
+    state.selection=new Set([GD1.id,GD2.id]);
+    fire('dblclick',30,30);
+    assert.ok(state.selection.size===1&&state.selection.has(GD1.id),'dblclick descends into the group member');
+    // keys inside inputs never reach the canvas handler; Esc blurs unless composing
+    reset();
+    state.tool='select';
+    const itgt={_b:0,matches:s=>/input|textarea/.test(s),blur(){this._b++}};
+    fireKey('r',{target:itgt});
+    assert.strictEqual(state.tool,'select','keys inside inputs do not reach the canvas handler');
+    fireKey1('Escape',{target:itgt});
+    assert.strictEqual(itgt._b,1,'Esc inside an input blurs it');
+    fireKey1('Escape',{target:itgt,isComposing:true});
+    assert.strictEqual(itgt._b,1,'composing Esc does not blur (IME cancel wins)');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -11769,7 +11821,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1315; // prev 1310 + 5 event-sequence asserts (ADR-0641: paste + blur + cancel + webkit pinch)
+  pass += 1326; // prev 1315 + 11 event-sequence asserts (ADR-0641: handle/tool drags + group descend + input gate)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
