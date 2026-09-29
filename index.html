@@ -863,7 +863,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.698';   // ADR-0671
+const V='1.7.699';   // ADR-0672
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -8226,7 +8226,7 @@ const Net={
           this._mergeSnapshotOp(op);   // ADR-0058: add unknown shapes, LWW-merge known ones
         }
         if(_iA(msg.pages)){   // ADR-0646: union-heal the page set — adopt outright or append unknowns, keep the local current page
-          if(!state.pages)_pgAdopt(msg.pages,msg.curPg);
+          if(!state.pages)_pgAdopt(msg.pages,state.curPg);   // ADR-0672: curPg is a LOCAL view filter — a re-sync must not yank the view to the sender's page
           else{const v=_vPages(msg.pages);if(v)for(const p of v)if(!_pgById(p.id)&&_ln(state.pages)<64)_pu(state.pages,clone(p));_pgBar()}
         }
         if(msg.rep&&validClock(msg.rep)&&clockNewer(msg.rep,state._lastRep))state._lastRep=msg.rep;   // ADR-0617: the snapshot reflects a newer swap — align the marker
@@ -8342,7 +8342,7 @@ const Net={
     const valid=_s0(shapes,SHARE_MAX_SHAPES).map(s=>this._attachShape(s)).filter(validShape);   // ADR-0474
     _rs(clone(valid));   // ADR-0009
     _sz();
-    _pgAdopt(msg.pages,msg.curPg);   // ADR-0646
+    _pgAdopt(msg.pages,state.curPg);   // ADR-0672: curPg is a LOCAL view filter — a re-sync must not yank the view to the sender's page
     if(_iS(msg.name)&&(_iN(msg.nameTs)?msg.nameTs>_nameTs:!0)){if(_iN(msg.nameTs))_nameTs=msg.nameTs;_setDocName(_s0(msg.name,80));}   // ADR-0618: renames are LWW — a stale snapshot's name can't clobber a newer local rename
     _iv();_ru();_ps();
   },

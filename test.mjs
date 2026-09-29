@@ -4579,6 +4579,25 @@ try {
       assert.ok(!arch.includes('マルチページ/スレッドコメントは'),'stale "multi-page out of scope" claim removed');
       console.log('  ✓ page-scope invariant doc sync pins (2 asserts)');
     }
+    // ADR-0672: snapshot ingest must not yank the view to the sender's page
+    {
+      const mkS=(id,pg)=>({id,type:'R',x:0,y:0,w:10,h:10,pts:null,color:'#000',width:2,pg});
+      const savedP=JSON.parse(JSON.stringify(state.pages)),savedC=state.curPg;
+      // re-sync: local view survives when the page still exists
+      state.pages=[{id:'p1',name:'a',nts:0},{id:'p2',name:'b',nts:0}];state.curPg='p2';
+      Net._applySnapshot({shapes:[mkS('s1','p1')],pages:[{id:'p1',name:'a',nts:0},{id:'p2',name:'b',nts:0},{id:'p3',name:'c',nts:0}],curPg:'p3'});
+      assert.strictEqual(state.curPg,'p2','re-sync keeps the local page (ADR-0672)');
+      // re-sync: vanished page lands on pages[0], not the sender's
+      state.curPg='p9';
+      Net._applySnapshot({shapes:[mkS('s2','p1')],pages:[{id:'p1',name:'a',nts:0},{id:'p3',name:'c',nts:0}],curPg:'p3'});
+      assert.strictEqual(state.curPg,'p1','vanished local page falls to pages[0], not the sender page (ADR-0672)');
+      // new joiner: no view yet -> pages[0], not wherever the sender was
+      state.pages=null;state.curPg=null;
+      Net._applySnapshot({shapes:[mkS('s3','p1')],pages:[{id:'p1',name:'a',nts:0},{id:'p3',name:'c',nts:0}],curPg:'p3'});
+      assert.strictEqual(state.curPg,'p1','new joiner lands on pages[0] (ADR-0672)');
+      state.pages=savedP;state.curPg=savedC;
+      console.log('  ✓ snapshot ingest local-view preservation (3 asserts)');
+    }
   }
 
   // ADR-0072: elbow trunk locate + bend-override two-corner route
@@ -12726,7 +12745,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1503; // prev 1501 + 2 page-scope doc-sync pins (ADR-0671)
+  pass += 1506; // prev 1503 + 3 snapshot local-view pins (ADR-0672)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
