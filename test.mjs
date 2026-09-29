@@ -4652,8 +4652,21 @@ try {
       ptr.down=true;ptr.dragKind='move';ptr.dragStartShapes=new Map([[W.id,JSON.parse(JSON.stringify(W))]]);
       _pgAdopt(state.pages,'pB');
       assert.ok(ptr.down===true,'same-page adopt leaves the gesture alone');
+      // ADR-0749: a selection made on the old page must not survive an adopt —
+      // the shapes go invisible yet ops would still hit them.
+      {
+        state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';
+        const S=Shape.make('rect',{x:0,y:0,w:10,h:10});S.pg='pA';
+        Store.commit({op:'add',shape:S});
+        state.selection=new Set([S.id]);
+        _pgAdopt(state.pages,'pB');
+        assert.strictEqual(state.selection.size,0,'adopted page change drops off-page selection (ADR-0749)');
+        state.pages=null;state.curPg=null;
+        Store.commit({op:'del',shapes:[{...byId(S.id)}]});
+      }
+      state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';
       assert.ok(html.includes('if(nc!==oc){_cancelPointerGesture();_cxO()}'),'_pgAdopt gesture+editor-cancel gate (ADR-0664/0684)');
-      assert.ok(html.includes('if(nc!==oc)Net.sendCursorHide()'),'_pgAdopt hides cursor on page move (ADR-0690)');
+      assert.ok(html.includes('if(nc!==oc){Net.sendCursorHide();_ss(_selIds())}'),'_pgAdopt hides cursor + re-validates selection on page move (ADR-0690/0749)');
       assert.ok(html.includes('for(const s of _sh()){if(s.pg&&!_pgById(s.pg)&&_ln(state.pages)<64)_pu(state.pages'),'_pgAdopt heals unknown pg → ? page (ADR-0692)');
       state.pages=null;state.curPg=null;ptr.down=false;ptr.dragKind=null;ptr.dragStartShapes=null;
       // ADR-0692: a shape carrying an unknown pg spawns a ? page on adopt
@@ -13680,7 +13693,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1706; // prev 1701 + 4 ADR-0748 page-adopt cache asserts + 1 recount adj
+  pass += 1705; // prev 1701 + 3 ADR-0748 + 1 ADR-0749 page-adopt asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
