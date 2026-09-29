@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.652';   // ADR-0625
+const V='1.7.653';   // ADR-0626
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1683,13 +1683,13 @@ const Store={
         if(!forward)_selR(op);
         break;}
       case 'clear':{
-        if(forward){_sh().length=0;_scl();state.wclock={};_pcC();}
+        if(forward){if(op.clock)state._lastRep=op.clock;_sh().length=0;_scl();state.wclock={};_pcC();}   // ADR-0626: wire form is 'replace' — receivers stamp this clock on _lastRep, so the sender must too or a staler swap applies only here
         else{for(const s of op.shapes)_sh().push(Net._attachShape(clone(s)));_sz();if(op.wc)state.wclock=clone(op.wc);_selR(op);}
         break;}
       case 'replace':{
         // Whole-board swap (shared-link import). Rev
         // shape arrays so Ctrl+Z restores the board import overwrote.
-        // Local-only by design — NOT in REMOTE_OPS,
+        // On the wire since ADR-0613 — _lastRep orders concurrent swaps.
         const next=forward?op.after:op.before;
         if(op.clock)state._lastRep=op.clock;   // ADR-0614: newest applied swap marker — also covers undo (the op's clock still outranks older peers)
         _sh().length=0;_scl();state.wclock={};_pcC();
@@ -6382,7 +6382,7 @@ function unlockAll(){
   _ann(t('ctxUnlockAll'));
 }
 // ADR-0005: replace confidently-recogni
-// (Alt+B). Local-only (not in REMOTE_OPS, like replace/clear) — converting a peer's
+// (Alt+B). Local-only (not in REMOTE_OPS — unlike replace/clear-rewrites) — converting a peer's
 // pen stroke to a rectangle behind their back would be confusing, not helpful.
 function doBeautify(){
   const sel=_selL(s=>s&&!_lk(s)&&_pn(s));
@@ -7876,6 +7876,7 @@ const Net={
     return slim;
   },
   _slimOp(op){
+    if(op.op==='clear')return{op:'replace',after:[],afterWc:{},clock:op.clock};   // ADR-0626: a wholesale wipe IS an empty swap — routing through 'replace' inherits the _lastRep causal ordering + snapshot rep marker for free (inbound 'clear' stays rejected: the wire never carries it now)
     if(op.op==='add'&&op.shape)return{...op,shape:this._slimShapes([op.shape])[0]};
     if(_iA(op.shapes)&&(op.op==='addMany'||op.op==='del'||op.op==='clear')){const{wc:_wc1,origSel:_o1,...r}=op;return{...r,shapes:this._slimShapes(op.shapes)}}   // ADR-0445/0625: id/locked only; undo-only fields never ride the wire
     if(op.op==='replace')return{op:'replace',after:this._slimShapes(op.after||[]),afterWc:op.afterWc,clock:op.clock};   // ADR-0613: strip the huge before/wc/origSel from the wire copy

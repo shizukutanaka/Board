@@ -107,10 +107,13 @@ IndexedDB(`board`/`docs`/`main`)。保存対象=`{v,shapes,viewport,docName,save
 - 同一ブラウザ=BroadcastChannel、端末間=WebRTC DataChannel(手動シグナリング)。
 - op エンベロープに CRDT clock `{peer, seq, ts}`、`peer:seq` で dedup(`seenOps`、上限 `MAX_SEEN_OPS`)。
 - **MUST(受信検証)**: `applyRemote` は (a) op 型 allow-list(`REMOTE_OPS` =
-  add/del/upd/move/clear/group/ungroup/zorder/align/style/resize/replace)、(b) **ペイロード検証**
+  add/addMany/del/upd/move/group/ungroup/zorder/align/style/resize/replace)、(b) **ペイロード検証**
   (`validRemotePayload`: 各 forward-apply が参照するフィールドの型 + move の有限数、`validPatch` で
   NaN/Inf・prototype 汚染キーを再帰的に排除)、(c) **クロック検証**(`validClock`)を通った op のみ適用。
   remote op は local undo に入れない。
+  `clear` は wire にはそのまま乗らない — `_slimOp` が `{op:'replace',after:[],afterWc:{}}` へ
+  翻訳する (ADR-0626)。全消去が 'replace' として届くことで `_lastRep` の因果順序
+  (0613-0619) をそのまま継承し、sender 側も同じ clock を `_lastRep` に記録する。
 - **`replace` の収束規則 (ADR-0613-0619)**: 全置換は `{op:'replace',after,afterWc}` で送信 —
   `after` は `validShape` 配列、`afterWc` は prop clock マップとして受信検証。
   `state._lastRep` (最新適用 swap の clock) が全順序を仲裁: 古い swap は適用前に棄却

@@ -249,6 +249,7 @@ const checks = [
   ["move commit drops ids removed mid-gesture (ADR-0621)", html.includes("filter(id=>{const s=byId(id);return s&&_ul(s)})")],
   ["_sb drops dead ids at source + nudgeSelection parity (ADR-0623)", html.includes("_sb=()=>_selIds().map(byId).filter(Boolean)") && html.includes("unlockedSelectionIds(){return _selIds().filter(id=>{const s=byId(id);return s&&_ul(s)});}")],
   ["_slimOp strips undo-only fields from wire ops (ADR-0625)", html.includes("const{origSel:_o2,moved:_m2,...rest}=op;return rest;") && html.includes("const{wc:_wc1,origSel:_o1,...r}=op;")],
+  ["'clear' rides the wire as empty 'replace' + sender marker parity (ADR-0626)", html.includes("if(op.op==='clear')return{op:'replace',after:[],afterWc:{},clock:op.clock};") && html.includes("if(forward){if(op.clock)state._lastRep=op.clock;_sh().length=0")],
   ['applyRemote validates remote add shape', html.includes("case 'add':    return validShape(op.shape)")],
   ['SVG export uses testable buildSVG', html.includes("function buildSVG") && html.includes("buildSVG(shapes")],
   ['SVG attrs escaped via _esc', html.includes("stroke=\"${stroke}\"") && html.includes("_esc(_fi(s))")],
@@ -2023,6 +2024,28 @@ try {
     assert.strictEqual(slim2.moved,undefined);assert.strictEqual(slim2.origSel,undefined);
     assert.deepStrictEqual([slim2.dx,slim2.dy],[1,2]);
     console.log('  ✓ _slimOp strips undo-only fields (ADR-0625)');
+  }
+  // ADR-0626: outbound 'clear' is translated to an empty 'replace' on the wire —
+  // inheriting _lastRep ordering — while the sender stamps the same marker.
+  {
+    const ck={peer:'A',seq:9,ts:111};
+    const slim=Net._slimOp({op:'clear',shapes:[{id:'a'},{id:'b'}],wc:{a:{x:1}},origSel:['a'],clock:ck});
+    assert.strictEqual(slim.op,'replace','clear translates to replace');
+    assert.strictEqual(slim.after.length,0,'empty after = wipe');
+    assert.strictEqual(slim.clock,ck,'clock preserved');
+    // receiver applies it as a wholesale swap: board wiped + marker stamped
+    state.shapes.length=0;_invalidateGrid();state.wclock={};state._lastRep=null;state.seenOps=new Set();
+    state.shapes.push(Shape.make('rect',{x:0,y:0,w:10,h:10}));_invalidateGrid();
+    Store.applyRemote(slim);
+    assert.strictEqual(state.shapes.length,0,'remote empty-swap wipes board');
+    assert.deepStrictEqual(state._lastRep,ck,'receiver stamps _lastRep');
+    // sender stamps the same marker on its own local clear
+    state.shapes.length=0;_invalidateGrid();state.wclock={};state._lastRep=null;state.history.length=0;state.histIdx=-1;
+    const s1=Shape.make('rect',{x:0,y:0,w:10,h:10});state.shapes.push(s1);_invalidateGrid();
+    Store.commit({op:'clear',shapes:[JSON.parse(JSON.stringify(s1))],wc:{}});
+    assert.strictEqual(state.shapes.length,0,'local clear applies');
+    assert.strictEqual(state._lastRep,state.history[state.history.length-1].clock,'sender stamps same marker');
+    console.log('  ✓ clear rides the wire as empty replace, sender/receiver marker parity (ADR-0626)');
   }
 
   // applyRemote does NOT enter local undo stack
@@ -11090,7 +11113,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1146; // prev 1144 + _slimOp undo-field strip (1 assert + 1 pin, ADR-0625)
+  pass += 1155; // prev 1146 + clear→replace wire translation (8 asserts + 1 pin, ADR-0626)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

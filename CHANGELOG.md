@@ -5354,6 +5354,12 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.653]
+### 修正
+- ローカルの全消去 (`clear`) がピアへ伝播しなかった divergence を修正 — `_slimOp` が wire 上 `{op:'replace',after:[],afterWc:{}}` へ翻訳し、`_lastRep` 因果順序 (0613-0619) をそのまま継承。sender 側 `_apply` 'clear' forward も同じ clock を `_lastRep` に記録し marker 非対称を解消 (ADR-0626)。
+### ドキュメント
+- spec.md の REMOTE_OPS 列挙を実装へ同期 (addMany 欠落・clear の誤記載を修正) + replace 節の stale コメント2件を除去 (ADR-0626)。
+
 ## [1.7.652]
 ### 修正
 - `_slimOp` が wire op から undo 専用フィールドを剥離 — `wc` (del/clear の clock マップ、受信側が再構築するためデッドウェイト ~30B/図形)、`origSel` (ungroup/beautify 経由の選択 id 漏洩)、`moved` (move の undo 補助) を除去 (ADR-0625)。
