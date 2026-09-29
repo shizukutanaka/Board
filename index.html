@@ -850,10 +850,10 @@ const _sO=()=>state.seenOps,_la=()=>state.lasso,_mq=()=>state.marquee,_dd=()=>st
 const _dpr=()=>window.devicePixelRatio,_cT=clearTimeout,_iA=Array.isArray,_iS=v=>typeof v==='string',_iN=v=>typeof v==='number',_iO=v=>typeof v==='object',_stk=v=>v.type==='sticky',_frm=v=>v.type==='frame',_pn=v=>v.type==='pen',_txt=v=>v.type==='text',_im=v=>v.type==='image',_arw=v=>v.type==='arrow',_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log,_rAF=requestAnimationFrame,_pF=parseFloat,_db=document.body,_de=document.documentElement,_wO=window.open,_lg=k=>localStorage.getItem(k),_ls=(k,v)=>localStorage.setItem(k,v),_mP=a=>new Map(a),_sT=a=>new Set(a),_eU=encodeURIComponent,_dU=decodeURIComponent,_un='undefined',_AU='arrowup',_AD='arrowdown',_AL2='arrowleft',_AR2='arrowright',_ES='escape',_RO='readonly',_RW='readwrite',_UT='Untitled',_REC='rectangle',_EN='enter',_TB='tab',_IK='#0F172A',_YW='#FEF08A',_BOX=_sT(['rect','ellipse','diamond']),_BX4=_sT([..._BOX,'sticky']),_BOXF=_sT([..._BOX,'frame','sticky']),_HF4=_sT([..._BOX,'frame']),_RD=_sT(['rect','diamond']),_RDI=_sT([..._RD,'image']),_D6=_sT([..._BOX,'frame','image']),_SH5=_sT([..._BOX,'image','text']),_TS=_sT(['text','sticky']),_TSF=_sT([..._TS,'frame']);   // ADR-0384/../0397/0453
 const _sh=()=>state.shapes;                                                // ADR-0364
 const _sl=()=>state.selection;
-const _ss=ids=>{const s=_sT();for(const id of ids){const h=byId(id);if(h&&_sv(h)&&_pgOk(h))s.add(id)}state.selection=s};   // ADR-0415/0568/0646: only existing+visible+current-page ids ever enter selection
+const _ss=ids=>{const s=_sT();for(const id of ids){const h=byId(id);if(h&&_sv(h)&&_pgOk(h))s.add(id)}state.selection=s};   // ADR-0415/0568/0646
 const _st=()=>state.style;
 const _df=()=>state.draft;
-const _wc=()=>state.wclock;
+const _wc=()=>state.wclock,_wM=x=>Object.assign(Object.create(null),x);   // ADR-0788: '__proto__' id must never hit a prototype-bearing map — a write would mutate the map's prototype, then every missing-id tomb read returns the planted entry (one op.wc key freezes all future adds). Null-proto keeps it a plain own key
 const _tl=()=>state.tool;
 const _dn=()=>state.docName;
 let _nameTs=0,_namePeer='';
@@ -873,7 +873,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.813';   // ADR-0787
+const V='1.7.814';   // ADR-0788
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1151,7 +1151,7 @@ const state={
   snap:true,        // snap-to-grid when dragging shapes
   docName:_UT,
   dirty:false,
-  pages:null,curPg:null,   // ADR-0646: curPg is a LOCAL view filter — peers may sit on different pages
+  pages:null,curPg:null,   // ADR-0646
   lastSaveAt:0,
   // ---- v1.1 sync ----
   peerId:PEER_ID+'.'+uid().slice(0,6),   // ADR-0459: per-boot incarnation — seq restarts can't collide with peers' seenOps
@@ -1159,7 +1159,7 @@ const state={
   _lastTs:0,                // monotonic-clock floor: local clocks never regress (HLC-lite)
   _lastRep:null,            // clock of the newest applied 'replace' — concurrent swaps pick one winner (ADR-0614)
   seenOps:_sT(),        // "peer:seq" set for dedup
-  wclock:{},                // shapeId → {prop: clock} for per-property LWW (ADR-0002)
+  wclock:_wM(),                // shapeId → {prop: clock} for per-property LWW (ADR-0002)
   peers:_mP(),          // peerId → {color, lastSeen, name, cursor?:{x,y}} (ADR-0010)
   roomId:null               // doc room id (BroadcastChannel name suffix)
 };
@@ -1571,7 +1571,7 @@ const Store={
     // shape no-ops in _apply but would create a
     // ever cleans (del/clear/replace clean live
     // session. Array/group paths are pre-filtere
-    const stamp=(id,after,before)=>{if(!after||!byId(id))return;const w=_wc()[id]||(_wc()[id]={});
+    const stamp=(id,after,before)=>{if(!after||!byId(id))return;const w=_wc()[id]||(_wc()[id]=_wM());
       for(const key of _ok(after)){if(key==='id')continue;if(this._chg(before,after,key))w[key]=C;}};
     if(op.op==='upd')stamp(op.id,op.after,op.before);
     else if(op.op==='group'||op.op==='ungroup'){
@@ -1579,7 +1579,7 @@ const Store={
       const gval=op.op==='group'?op.gid:undefined;
       for(const id of op.ids){
         if(byId(id)&&this._chg({groupId:(bmap[id]||{}).groupId},{groupId:gval},'groupId')){
-          const w=_wc()[id]||(_wc()[id]={});w['groupId']=C;
+          const w=_wc()[id]||(_wc()[id]=_wM());w['groupId']=C;
         }
       }
     }else if(op.op==='zorder'&&_iA(op.changes)){   // ADR-0653
@@ -1587,7 +1587,7 @@ const Store={
         const w=_wc()[c.id]||(_wc()[c.id]={});w.frac=C;
       }
     }else if(op.op==='move'&&!_iA(op.after)){   // ADR-0729
-      for(const id of op.moved||op.ids||[]){const s=byId(id);if(s&&!s.locked){const w=_wc()[id]||(_wc()[id]={});
+      for(const id of op.moved||op.ids||[]){const s=byId(id);if(s&&!s.locked){const w=_wc()[id]||(_wc()[id]=_wM());
         if(op.dx!==0)w.x=C;if(op.dy!==0)w.y=C}}
     }else if(_iA(op.after)){const bb={};if(_iA(op.before))for(const b of op.before)bb[b.id]=b;
       for(const p of op.after)stamp(p.id,p,bb[p.id]);}
@@ -1599,7 +1599,7 @@ const Store={
     if(_sO().has(k))return;
     _sO().add(k);
     _trimSeen();                           // ADR-0428: same helper as commit/applyRemote
-    if(op.op==='replace'){state._lastRep=op.clock;const inN=_sT(op.after.map(s=>s.id));for(const s of op.before)if(!inN.has(s.id))_wc()[s.id]={_del:op.clock};for(const[id,w]of Object.entries(op.wc||{}))if(w._del&&(clockNewer(w._del,op.clock)||!inN.has(id)))_wc()[id]={_del:clockNewer(w._del,op.clock)?w._del:op.clock}}   // ADR-0616/0736
+    if(op.op==='replace'){state._lastRep=op.clock;const inN=_sT(op.after.map(s=>s.id));for(const s of op.before)if(!inN.has(s.id))_wc()[s.id]=_wM({_del:op.clock});for(const[id,w]of Object.entries(op.wc||{}))if(w._del&&(clockNewer(w._del,op.clock)||!inN.has(id)))_wc()[id]=_wM({_del:clockNewer(w._del,op.clock)?w._del:op.clock})}   // ADR-0616/0736
     this._stampWrites(op);                 // change already applied by caller; record clock
     _hi().length=_hx()+1;
     _hi().push(op);
@@ -1667,30 +1667,30 @@ const Store={
         // ADR-0713: backward mirrors del-forward's locked gate — a shape locked
         // since the add must survive our undo just as it survives the peers'
         // remote del (existence convergence); keep its caches/clocks alive too.
-        else{const cur=byId(op.shape.id);if(cur&&cur.locked){_selR(op);break}const i=_idIdx(op.shape.id);if(i>=0)_sh().splice(i,1);_sdl(op.shape.id);_wc()[op.shape.id]={_del:op.clock};_psc(op.shape.id);_selR(op);const fx=this._remoteDelConnFix({op:'del',shapes:[op.shape]});if(fx)for(const p of fx)_oa(byId(p.id),p.patch);}   // ADR-0734/0759
+        else{const cur=byId(op.shape.id);if(cur&&cur.locked){_selR(op);break}const i=_idIdx(op.shape.id);if(i>=0)_sh().splice(i,1);_sdl(op.shape.id);_wc()[op.shape.id]=_wM({_del:op.clock});_psc(op.shape.id);_selR(op);const fx=this._remoteDelConnFix({op:'del',shapes:[op.shape]});if(fx)for(const p of fx)_oa(byId(p.id),p.patch);}   // ADR-0734/0759
         break;}
       case 'addMany':{
         // Atomic multi-add (paste/duplicate): N copi
         // 'add' (idempotent on id); reverse mirrors
         if(forward){for(const sh of op.shapes){const wd=_wc()[sh.id];if(wd&&wd._del&&clockNewer(wd._del,op.clock||{}))continue;   // ADR-0734: tombstone beats a stale add
           if(wd)delete wd._del;if(!byId(sh.id))_sh().push(clone(sh));}_sz();
-          if(op.wc)for(const[id,w]of Object.entries(op.wc))_wc()[id]=clone(w);}   // ADR-0721
+          if(op.wc)for(const[id,w]of Object.entries(op.wc))_wc()[id]=_wM(clone(w));}   // ADR-0721
         else{for(const sh of op.shapes){const cur=byId(sh.id);if(cur&&cur.locked)continue;   // ADR-0713
-          const i=_idIdx(sh.id);if(i>=0)_sh().splice(i,1);_sdl(sh.id);_wc()[sh.id]={_del:op.clock};_psc(sh.id);}_selR(op);const fx=this._remoteDelConnFix({op:'del',shapes:op.shapes});if(fx)for(const p of fx)_oa(byId(p.id),p.patch);}   // ADR-0734/0759
+          const i=_idIdx(sh.id);if(i>=0)_sh().splice(i,1);_sdl(sh.id);_wc()[sh.id]=_wM({_del:op.clock});_psc(sh.id);}_selR(op);const fx=this._remoteDelConnFix({op:'del',shapes:op.shapes});if(fx)for(const p of fx)_oa(byId(p.id),p.patch);}   // ADR-0734/0759
         break;}
       case 'del':{
         if(forward){
           // Snapshot wclock before deletion so undo can restore LWW clocks
-          op.wc={};for(const sh of op.shapes)if(_wc()[sh.id])op.wc[sh.id]=clone(_wc()[sh.id]);
+          op.wc=_wM();for(const sh of op.shapes)if(_wc()[sh.id])op.wc[sh.id]=clone(_wc()[sh.id]);
           for(const sh of op.shapes){
             if(byId(sh.id)?.locked)continue;   // parity with every other remote op: a peer
             const i=_idIdx(sh.id);
             if(i>=0)_sh().splice(i,1);
             _sdl(sh.id);
-            _wc()[sh.id]={_del:op.clock};   // ADR-0734
+            _wc()[sh.id]=_wM({_del:op.clock});   // ADR-0734
             _psc(sh.id);                     // ADR-0424/0427
           }
-          if(_ok(_wc()).length>8192){const t={};for(const[id,w]of Object.entries(_wc()))if(w._del)t[id]={_del:w._del};state.wclock=t}   // ADR-0734/0738: cap keeps tombs — prop clocks self-heal, existence doesn't
+          if(_ok(_wc()).length>8192){const t=_wM();for(const[id,w]of Object.entries(_wc()))if(w._del)t[id]={_del:w._del};state.wclock=t}   // ADR-0734/0738: cap keeps tombs — prop clocks self-heal, existence doesn't
           // connector clears after shapes are gone
           if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked){const pt={},pb=p.before||{};for(const e of['a','b'])if(pb[e]!=null&&!(byId(pb[e])||{}).locked){const x=e==='a'?['x1','y1']:['x2','y2'];pt[e]=null;pt[e+'F']=null;pt[x[0]]=p.after[x[0]];pt[x[1]]=p.after[x[1]]}_oa(sh,pt)}}}   // ADR-0760
           const fx=this._remoteDelConnFix(op);if(fx)for(const p of fx)_oa(byId(p.id),p.patch);   // ADR-0758: gap-bound conns — same scan peers run
@@ -1701,7 +1701,7 @@ const Store={
           _sz();
           // connector binds restored after shapes are back
           if(op.connClears)for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_oa(sh,p.before)}
-          if(op.wc)for(const [id,w] of Object.entries(op.wc))_wc()[id]=clone(w);
+          if(op.wc)for(const [id,w] of Object.entries(op.wc))_wc()[id]=_wM(clone(w));
           _selR(op);
         }
         break;}
@@ -1738,8 +1738,8 @@ const Store={
         if(!forward)_selR(op);
         break;}
       case 'clear':{
-        if(forward){if(op.clock)state._lastRep=op.clock;const wc0=state.wclock||{},dead=_sh().map(s=>s.id);_sh().length=0;_scl();state.wclock={};for(const id of dead)_wc()[id]={_del:op.clock};for(const[id,w]of Object.entries(wc0))if(w._del)_wc()[id]={_del:clockNewer(w._del,op.clock)?w._del:op.clock};_pcC();}   // ADR-0626/0736
-        else{for(const s of op.shapes)if(!byId(s.id))_sh().push(Net._attachShape(clone(s)));_sz();if(op.wc)for(const[id,w]of Object.entries(op.wc))_wc()[id]=clone(w);_selR(op);}   // ADR-0723
+        if(forward){if(op.clock)state._lastRep=op.clock;const wc0=state.wclock||{},dead=_sh().map(s=>s.id);_sh().length=0;_scl();state.wclock=_wM();for(const id of dead)_wc()[id]=_wM({_del:op.clock});for(const[id,w]of Object.entries(wc0))if(w._del)_wc()[id]=_wM({_del:clockNewer(w._del,op.clock)?w._del:op.clock});_pcC();}   // ADR-0626/0736
+        else{for(const s of op.shapes)if(!byId(s.id))_sh().push(Net._attachShape(clone(s)));_sz();if(op.wc)for(const[id,w]of Object.entries(op.wc))_wc()[id]=_wM(clone(w));_selR(op);}   // ADR-0723
         break;}
       case 'replace':{
         // Whole-board swap (shared-link import). Rev
@@ -1748,13 +1748,13 @@ const Store={
         const next=forward?op.after:op.before;
         if(op.clock)state._lastRep=op.clock;   // ADR-0614: newest applied swap marker — also covers undo (the op's clock still outranks older peers)
         const wc0=state.wclock||{},old0=_sh().map(s=>s.id);   // ADR-0736
-        _sh().length=0;_scl();state.wclock={};_pcC();state.pages=state.curPg=null;_pgBar();   // ADR-0646
+        _sh().length=0;_scl();state.wclock=_wM();_pcC();state.pages=state.curPg=null;_pgBar();   // ADR-0646
         for(const s of next){const wd=forward&&wc0[s.id];if(wd&&wd._del&&clockNewer(wd._del,op.clock))continue;_sh().push(Net._attachShape(clone(s)))}   // ADR-0736
         _iG();   // ADR-0613: byId's size guard misses equal-length swaps — the pre-mutation index survives
         _sz();
-        if(forward&&op.afterWc)state.wclock=clone(op.afterWc);
-        if(!forward&&op.wc)state.wclock=clone(op.wc);
-        if(forward){const inN=_sT(next.map(s=>s.id));for(const id of old0)if(!inN.has(id))_wc()[id]={_del:op.clock};for(const[id,w]of Object.entries(wc0))if(w._del&&(clockNewer(w._del,op.clock)||!inN.has(id)))_wc()[id]={_del:clockNewer(w._del,op.clock)?w._del:op.clock}}   // ADR-0736
+        if(forward&&op.afterWc)state.wclock=_wM(clone(op.afterWc));
+        if(!forward&&op.wc)state.wclock=_wM(clone(op.wc));
+        if(forward){const inN=_sT(next.map(s=>s.id));for(const id of old0)if(!inN.has(id))_wc()[id]=_wM({_del:op.clock});for(const[id,w]of Object.entries(wc0))if(w._del&&(clockNewer(w._del,op.clock)||!inN.has(id)))_wc()[id]=_wM({_del:clockNewer(w._del,op.clock)?w._del:op.clock})}   // ADR-0736
         if(forward)_pgAdopt(op.pages,op.curPg);else _pgAdopt(op.beforePages,op.beforeCurPg);   // ADR-0646: the swap carries the page set
         if(!forward)_selR(op);
         break;}
@@ -1807,7 +1807,7 @@ const Store={
           state.pages.splice(_min(op.i!=null?op.i:_ln(state.pages),_ln(state.pages)),0,{id:op.id,name:op.name!=null?op.name:'?',nts:0});
           for(const sh of op.shapes||[])if(!byId(sh.id))_sh().push(Net._attachShape(clone(sh)));
           _sz();
-          if(op.wc)for(const[id,w]of Object.entries(op.wc))_wc()[id]=clone(w);   // ADR-0722: restore member clocks — del backward parity
+          if(op.wc)for(const[id,w]of Object.entries(op.wc))_wc()[id]=_wM(clone(w));   // ADR-0722: restore member clocks — del backward parity
           _selR(op);
           if(op.connClears)for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_oa(sh,p.before)}   // ADR-0707/0711: re-bind the endpoints the forward cleared — del-backward locked parity (a connector locked between del and undo must not be written)
           switchPage(op.id);   // ADR-0663: undo lands back on the restored page — _pgDel only deletes the viewed page, so the undo's natural view is where the deletion happened (_pgFollow skips pageDel on purpose)
@@ -2224,8 +2224,8 @@ function _pgDel2(op,firstId,only,viewId){   // ADR-0646: remove the deleted page
   // ADR-0725: `viewId` is the local view landing — member rehome (firstId) follows the
   // wire-carried sender choice while the view is local and lands on the local first.
   const dead=new Set();for(const s of _sh())if((s.pg||firstId)===op.id&&!s.locked&&(!only||only.has(s.id)))dead.add(s.id);
-  op.wc={};for(const id of dead)if(_wc()[id])op.wc[id]=clone(_wc()[id]);   // ADR-0722: snapshot member clocks like 'del' forward — undo must restore them or resurrected shapes arbitrate against nothing
-  for(const id of dead)_wc()[id]={_del:op.clock};   // ADR-0679/0734: tombstone, not purge — a stale add/snapshot carrying the id must lose to this delete or the member resurrects
+  op.wc=_wM();for(const id of dead)if(_wc()[id])op.wc[id]=clone(_wc()[id]);   // ADR-0722e 'del' forward — undo must restore them or resurrected shapes arbitrate against nothing
+  for(const id of dead)_wc()[id]=_wM({_del:op.clock});   // ADR-0679/0734: tombstone, not purge — a stale add/snapshot carrying the id must lose to this delete or the member resurrects
   for(const s of _sh())if((s.pg||firstId)===op.id&&s.locked)s.pg=firstId;
   const cc=computeConnClears(dead);   // ADR-0707: connectors bound to a removed member lose their endpoint — same clear 'del' runs; recorded on the op for undo
   if(_ln(cc)){op.connClears=cc;for(const p of cc){const sh=byId(p.id);if(sh)_oa(sh,p.after)}}
@@ -7713,7 +7713,7 @@ function importBoard(file){
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out.
       // can let a re-imported shape (same id) inherit a stale LWW clock.
-      _scl();state.wclock={};
+      _scl();state.wclock=_wM();
       _docN(d);_bName();
       if(d.viewport&&_fin(+d.viewport.x)&&_fin(+d.viewport.y)&&_fin(+d.viewport.zoom)&&d.viewport.zoom>0){   // ADR-0393
         _vp().x=+d.viewport.x;_vp().y=+d.viewport.y;_vp().zoom=clampZoom(+d.viewport.zoom);
@@ -8156,13 +8156,13 @@ const Net={
     return rest;   // ADR-0625: wc/origSel/moved are undo-domain — peers' _apply rebuilds them; wire copies were dead weight (~30B/shape on big dels) + selection-id leak
   },
   _fragSend(buf,k){   // ADR-0431: 64KB fragment sender for the dc-
-    const n=_ceil(_ln(buf)/65536);   // ADR-0603: >384 chunks overflows the intake join bound — undeliverable; tell the sender instead of emitting doomed fragments
+    const n=_ceil(_ln(buf)/65536);   // ADR-0603
     if(n>384){_wT('syncTooLarge');return}
     for(let i=0;i<n;i++)this._sendDC(_JS({k,seq:i,n,data:buf.slice(i*65536,(i+1)*65536)}))
   },
   _fragIn(msg,key,src){   // shared single-assembly intake for 'snap'/'
     if(!_iS(msg.data)||_ln(msg.data)>96*1024)return;
-    if(_iN(msg.n)&&msg.n>384)return;   // ADR-0603: undeliverable stream — reject outright, not a bogus 1-chunk "complete" join
+    if(_iN(msg.n)&&msg.n>384)return;   // ADR-0603
     const n=_iN(msg.n)&&msg.n>=1&&msg.n<=384?_fl(msg.n):1;
     const seq=_iN(msg.seq)&&msg.seq>=0?_fl(msg.seq):0;
     if(seq>=n)return;
@@ -8249,7 +8249,7 @@ const Net={
   _sendDC(m){   // ADR-0432: single dc funnel — full SCTP buf
     if(_ln(m)>262144)return;   // ADR-0438: >SCTP max can never send — drop
     const q=this._dcQ,d=this.dc;
-    if(q){if(_ln(q)<4096&&(this._dcQB||0)+_ln(m)<=33554432)_pu(q,m),this._dcQB=(this._dcQB||0)+_ln(m);return}   // ADR-0783: count cap alone allows ~1GB of ≤256KB strings — bound by bytes too (one max frag burst is ~24MB)
+    if(q){if(_ln(q)<4096&&(this._dcQB||0)+_ln(m)<=33554432)_pu(q,m),this._dcQB=(this._dcQB||0)+_ln(m);return}   // ADR-0783
     if(!d||d.readyState!=='open')return;
     try{d.send(m)}catch(_){this._dcQ=[m];this._dcQB=_ln(m);d.bufferedAmountLowThreshold=65536;
       d.onbufferedamountlow=()=>{const b=this._dcQ;this._dcQ=null;this._dcQB=0;for(const x of b)this._sendDC(x)}}
@@ -8292,7 +8292,7 @@ const Net={
         if(_ln(data)>12_000_000)break;
         if(this._imgIn.has(msg.key))this._imgInB-=_ln(this._imgIn.get(msg.key));
         this._imgIn.set(msg.key,data);this._imgInB=(this._imgInB||0)+_ln(data);
-        while(this._imgIn.size>256||this._imgInB>64_000_000){const k0=this._imgIn.keys().next().value;if(k0==null)break;this._imgInB-=_ln(this._imgIn.get(k0));this._imgIn.delete(k0)}   // ADR-0784: bound by bytes too — 256×12MB ≈ 3GB of retained base64 otherwise
+        while(this._imgIn.size>256||this._imgInB>64_000_000){const k0=this._imgIn.keys().next().value;if(k0==null)break;this._imgInB-=_ln(this._imgIn.get(k0));this._imgIn.delete(k0)}   // ADR-0784
         for(const[id,k]of this._imgPending){
           // ADR-0747
           if(k===msg.key){const sh=byId(id);if(sh&&sh.img===msg.key){delete sh.img;sh.dataUrl=data}this._imgPending.delete(id)}
@@ -8409,7 +8409,7 @@ const Net={
     if(!ex){Store.applyRemote(op);return 'add';}
     const rw=(op.wc&&_iO(op.wc))?op.wc:null;
     if(!rw)return 'skip';
-    const lw=_wc()[ex.id]||(_wc()[ex.id]={});
+    const lw=_wc()[ex.id]||(_wc()[ex.id]=_wM());
     let dirty=false,duNew=false;
     for(const k in rw){
       const rc=rw[k];
@@ -8724,7 +8724,7 @@ const Share={
         _vp().x=+data.viewport.x;_vp().y=+data.viewport.y;
         _vp().zoom=clampZoom(+data.viewport.zoom);
       }
-      _scl();state.wclock={};
+      _scl();state.wclock=_wM();
       _sz();_iv();
       _repC(before,beforeWc,origSel,_bpg,_bcp);
       _g('docName').value=_dn();_syncDocTitle();
@@ -8869,7 +8869,7 @@ const Persist={
         _vp().zoom=clampZoom(+d.viewport.zoom);
       }
       _docN(d);
-      if(d.wc&&_iO(d.wc))for(const k in d.wc){const m=d.wc[k];if(_iO(m))for(const p in m)if(validClock(m[p]))(state.wclock[k]=state.wclock[k]||{})[p]=m[p]}   // ADR-0460
+      if(d.wc&&_iO(d.wc))for(const k in d.wc){const m=d.wc[k];if(_iO(m))for(const p in m)if(validClock(m[p]))(state.wclock[k]=state.wclock[k]||_wM())[p]=m[p]}   // ADR-0460
       if(validClock(d.rep))state._lastRep=d.rep;if(_iN(d.nts)&&_fin(d.nts))_nameTs=d.nts;if(_idOK(d.ntp))_namePeer=d.ntp;   // ADR-0695/0699/0701/0780
       state.lastSaveAt=d.savedAt||0;
       _sz();
@@ -8934,7 +8934,7 @@ const Persist={
       const _bpg=clone(state.pages),_bcp=state.curPg;   // ADR-0646
       _rs(shapes.map(clone));   // ADR-0009
       _pgAdopt(d.pages,d.curPg);   // ADR-0646
-      _scl();state.wclock={};
+      _scl();state.wclock=_wM();
       _docN(d);_bName();
       if(d.viewport&&_fin(+d.viewport.x)&&_fin(+d.viewport.y)&&_fin(+d.viewport.zoom)&&d.viewport.zoom>0){
         _vp().x=+d.viewport.x;_vp().y=+d.viewport.y;_vp().zoom=clampZoom(+d.viewport.zoom);
