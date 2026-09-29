@@ -868,7 +868,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.791';   // ADR-0765
+const V='1.7.792';   // ADR-0766
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4083,21 +4083,25 @@ let _longPressTimer=null;   // ADR-0006
 // restores the shapes it had optimistically removed, and an uncommitted draft (which
 // never touched _sh()) is simply dropped. (Qiita/Zenn: multi-touch + pointer)
 const _ptrReset=()=>{ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.dragStartShapes=null;ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.rotOrig=null;ptr.gOrig=null;ptr.gAnc=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;ptr.wayIdx=null;ptr.wayNew=false;ptr.lblOrig=null;ptr.lineClick=false;canvas.dataset.panning='false'};   // ADR-0764
+// ADR-0766: gesture orig-restores must not stomp non-geometry props — a remote
+// style/upd landing mid-gesture on a dragged shape would otherwise be reverted
+// locally (wclock keeps the remote clock, so nothing re-heals → divergence).
+const _geoR=(s,o)=>{for(const k of['x','y','w','h','rotate','x1','y1','x2','y2','pts','way','bend','cbend','a','b','aF','bF'])if(k in o)s[k]=clone(o[k])};
 function abortGesture(){
   if(_dk('move')&&ptr.dragStartShapes){
-    for(const [id,orig] of ptr.dragStartShapes){const sh=byId(id);if(sh)_oa(sh,clone(orig))}
+    for(const [id,orig] of ptr.dragStartShapes){const sh=byId(id);if(sh)_geoR(sh,orig)}
   }else if(_dk('resize')&&ptr.resizeOrig){
-    const sh=byId(ptr.resizeOrig.id);if(sh)_oa(sh,clone(ptr.resizeOrig));
+    const sh=byId(ptr.resizeOrig.id);if(sh)_geoR(sh,ptr.resizeOrig);
   }else if((_dk('gresize')||_dk('grot'))&&ptr.gOrig){
-    for(const [id,orig] of ptr.gOrig){const sh=byId(id);if(sh)_oa(sh,clone(orig))}
+    for(const [id,orig] of ptr.gOrig){const sh=byId(id);if(sh)_geoR(sh,orig)}
   }else if(_dk('rotate')&&ptr.rotOrig){
-    const sh=byId(ptr.rotOrig.id);if(sh){if(ptr.rotOrig.rotate==null)delete sh.rotate;_oa(sh,clone(ptr.rotOrig));}
+    const sh=byId(ptr.rotOrig.id);if(sh){if(ptr.rotOrig.rotate==null)delete sh.rotate;_geoR(sh,ptr.rotOrig);}
   }else if(_dk('ebend')&&ptr.ebendOrig){                // ADR-0072
-    const sh=byId(ptr.ebendOrig.id);if(sh){if(ptr.ebendOrig.bend==null)delete sh.bend;_oa(sh,clone(ptr.ebendOrig));}
+    const sh=byId(ptr.ebendOrig.id);if(sh){if(ptr.ebendOrig.bend==null)delete sh.bend;_geoR(sh,ptr.ebendOrig);}
   }else if(_dk('cbend')&&ptr.cbendOrig){                // ADR-0132
-    const sh=byId(ptr.cbendOrig.id);if(sh){if(ptr.cbendOrig.cbend==null)delete sh.cbend;_oa(sh,clone(ptr.cbendOrig));}
+    const sh=byId(ptr.cbendOrig.id);if(sh){if(ptr.cbendOrig.cbend==null)delete sh.cbend;_geoR(sh,ptr.cbendOrig);}
   }else if(_dk('way')&&ptr.wayOrig){                     // ADR-0076
-    const sh=byId(ptr.wayOrig.id);if(sh){delete sh.way;_oa(sh,clone(ptr.wayOrig));}
+    const sh=byId(ptr.wayOrig.id);if(sh){delete sh.way;_geoR(sh,ptr.wayOrig);}
   }
   if(_ln(_eraseBatch)){for(const s of _eraseBatch)_sh().push(s);_eraseBatch=[];_sz();_iG();}   // ADR-0009
   _penPred=null;_zR();_ptrReset();
@@ -4347,7 +4351,7 @@ _on(canvas,_PM,e=>{
         if(rsh){
           const _b0=_bb(ptr.resizeOrig);
           const _rc=[];for(const s of _sh())if(_conn(s.type)&&((s.aF&&s.a===rsh.id)||(s.bF&&s.b===rsh.id)))_pu(_rc,{s,b:_bb(s)});   // ADR-0599
-          _oa(rsh,clone(ptr.resizeOrig));
+          _geoR(rsh,ptr.resizeOrig);
           applyResize(rsh,ptr.resizeHandle,ptr.resizeOrig,wp,_sK(e),_aK(e));
           let _gd=_dmgPair(_b0,_bb(rsh),(rsh.size||2)+16);
           for(const d of _rc)_gd=_dmgU(_gd,_dmgPair(d.b,_bb(d.s),(d.s.size||2)+16));
@@ -4525,21 +4529,21 @@ function _cancelPointerGesture(){
   // Restore partial resize/move/erase on cance
   if(_dk('resize')&&ptr.resizeOrig){
     const rsh=byId(ptr.resizeOrig.id);   // ADR-0635: selection may change mid-gesture — _sel0() could restore onto a different shape
-    if(rsh)_oa(rsh,clone(ptr.resizeOrig));
+    if(rsh)_geoR(rsh,ptr.resizeOrig);
   }else if((_dk('gresize')||_dk('grot'))&&ptr.gOrig){
-    for(const [id,orig] of ptr.gOrig){const sh=byId(id);if(sh)_oa(sh,clone(orig));}
-    if(ptr.gAnc)for(const [cid,oc] of ptr.gAnc){const sh=byId(cid);if(sh)_oa(sh,clone(oc));}   // ADR-0587
+    for(const [id,orig] of ptr.gOrig){const sh=byId(id);if(sh)_geoR(sh,orig);}
+    if(ptr.gAnc)for(const [cid,oc] of ptr.gAnc){const sh=byId(cid);if(sh)_geoR(sh,oc);}   // ADR-0587
   }else if(_dk('rotate')&&ptr.rotOrig){
     const rsh=byId(ptr.rotOrig.id);   // ADR-0635
-    if(rsh){if(ptr.rotOrig.rotate==null)delete rsh.rotate;_oa(rsh,clone(ptr.rotOrig));}
+    if(rsh){if(ptr.rotOrig.rotate==null)delete rsh.rotate;_geoR(rsh,ptr.rotOrig);}
   }else if(_dk('ebend')&&ptr.ebendOrig){                // ADR-0072
-    const sh=byId(ptr.ebendOrig.id);if(sh){if(ptr.ebendOrig.bend==null)delete sh.bend;_oa(sh,clone(ptr.ebendOrig));}
+    const sh=byId(ptr.ebendOrig.id);if(sh){if(ptr.ebendOrig.bend==null)delete sh.bend;_geoR(sh,ptr.ebendOrig);}
   }else if(_dk('cbend')&&ptr.cbendOrig){                // ADR-0132
-    const sh=byId(ptr.cbendOrig.id);if(sh){if(ptr.cbendOrig.cbend==null)delete sh.cbend;_oa(sh,clone(ptr.cbendOrig));}
+    const sh=byId(ptr.cbendOrig.id);if(sh){if(ptr.cbendOrig.cbend==null)delete sh.cbend;_geoR(sh,ptr.cbendOrig);}
   }else if(_dk('way')&&ptr.wayOrig){                     // ADR-0076
-    const sh=byId(ptr.wayOrig.id);if(sh){delete sh.way;_oa(sh,clone(ptr.wayOrig));}
+    const sh=byId(ptr.wayOrig.id);if(sh){delete sh.way;_geoR(sh,ptr.wayOrig);}
   }else if(_dk('move')&&ptr.dragStartShapes){
-    for(const[id,orig] of ptr.dragStartShapes){const sh=byId(id);if(sh)_oa(sh,clone(orig));}
+    for(const[id,orig] of ptr.dragStartShapes){const sh=byId(id);if(sh)_geoR(sh,orig);}
   }
   if(_ln(_eraseBatch)){for(const s of _eraseBatch)_sh().push(s);_eraseBatch=[];_sz();_iG();}   // ADR-0009
   _ptrReset();_zR();_penPred=null;
@@ -5326,7 +5330,7 @@ function doMove(wp,shift,alt){
   for(const [id,orig] of ptr.dragStartShapes){
     const sh=byId(id);if(!sh||sh.locked)continue;
     const b0=_bb(orig),m=(sh.size||2)+16;   // orig-bbox + same bbox shifted by (dx,dy) c
-    _oa(sh,clone(orig));
+    _geoR(sh,orig);
     _sT2(sh,dx,dy);
     const x0=_min(b0.x,b0.x+dx)-m,y0=_min(b0.y,b0.y+dy)-m;
     dmg=_dmgU(dmg,{x:x0,y:y0,w:_max(b0.x+b0.w,b0.x+b0.w+dx)-x0+m,h:_max(b0.y+b0.h,b0.y+b0.h+dy)-y0+m});

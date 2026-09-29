@@ -1,3 +1,8 @@
+## [1.7.792] - 2026-09-28
+
+### Fixed
+- ADR-0766: ジェスチャの orig 復元を幾何プロップ限定の `_geoR` へ — `_oa(sh,clone(orig))` がドラッグ開始スナップショットの全プロップを書き戻していたため、move/resize/rotate/gresize/grot/ebend/cbend/way 中に着地したリモート style/upd をローカルで沈黙消失させていた (wclock はリモート側時計を保持するため再治癒も起きず、ピアと発散)。移動 per-frame re-base と両キャンセル経路の計16サイトを変換
+
 ## [1.7.791] - 2026-09-28
 
 ### Fixed

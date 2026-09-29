@@ -275,6 +275,7 @@ const checks = [
   ["kbd editor cancels in-flight gesture (ADR-0637)", html.includes("if(ptr.down)_cancelPointerGesture();   // ADR-0637")],
   ["presentation announces enter/goto/exit to SR (ADR-0639)", html.includes("_ann(`${t('presEnter')}") && html.includes("_ann(t('presExit'))") && html.includes("_ann(`${_frames[_idx].label||t('frame')}")],
   ["presentation _goto re-resolves frames by id (ADR-0765)", html.includes("_frames=_frames.map(f=>byId(f.id)).filter(f=>f&&_pgOk(f))")],
+  ["gesture orig-restores are geometry-scoped via _geoR (ADR-0766)", html.includes("const _geoR=(s,o)=>{for(const k of['x','y','w','h','rotate','x1','y1','x2','y2','pts','way','bend','cbend','a','b','aF','bF'])if(k in o)s[k]=clone(o[k])}") && !html.includes("_oa(sh,clone(orig))") && !html.includes("_oa(sh,clone(ptr.") && !html.includes("_oa(rsh,clone(ptr.")],
   ["presentation gates dblclick/ctx/wheel/pinch (ADR-0640)", html.includes("_on(canvas,'dblclick',e=>{\n  if(_pA())return;") && html.includes("if(_pA())return;   // ADR-0640: no editing menu") && html.includes("if(_pA())return;   // ADR-0640: pan/zoom behind") && html.includes("_ln(pts)<2||_pA()") && html.includes("_pd(e);if(_pA())return;   // ADR-0640")],
   ['applyRemote validates remote add shape', html.includes("case 'add':    return validShape(op.shape)")],
   ['SVG export uses testable buildSVG', html.includes("function buildSVG") && html.includes("buildSVG(shapes")],
@@ -7890,6 +7891,35 @@ try {
     console.log('  ✓ presentation _goto re-resolves frames by id under wholesale swaps (ADR-0765, 3 asserts)');
   }
 
+  // v1.7.792 (ADR-0766): gesture orig-restores must be geometry-scoped — _oa(clone(orig))
+  // reverts EVERY prop to the drag-start snapshot, so a remote style/upd landing on a
+  // dragged shape mid-gesture was locally stomped (wclock keeps the remote clock →
+  // nothing re-heals → divergence). _geoR restores geometry keys only.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.tool='select';
+    const M1=Shape.make('rect',{x:10,y:10,w:40,h:40});
+    Store.commit({op:'add',shape:M1});
+    state.selection=new Set([M1.id]);
+    // fire1 lives in a later block scope — replicate its index-0 dispatch here
+    const fireP=(t,x,y,o={})=>{const ev={pointerId:1,pointerType:'mouse',button:0,isPrimary:true,clientX:x,clientY:y,offsetX:x,offsetY:y,ctrlKey:false,metaKey:false,shiftKey:false,altKey:false,preventDefault(){},stopPropagation(){},...o};for(const f of (canvas._L[t+'|c']||[]).slice(0,1))f(ev);for(const f of (canvas._L[t]||[]).slice(0,1))f(ev);};
+    fireP('pointerdown',20,20);                       // inside the rect → arms 'move' + dragStartShapes
+    byId(M1.id).fill='#112233';                       // remote style write lands mid-drag
+    fireP('pointermove',40,40);                       // doMove re-bases from orig — fill must survive
+    assert.strictEqual(byId(M1.id).fill,'#112233','mid-drag remote prop write survives the per-frame re-base');
+    assert.ok(byId(M1.id).x>10,'geometry still dragged (non-vacuous re-base)');
+    fireP('pointerup',40,40);                         // commit path keeps it too
+    assert.strictEqual(byId(M1.id).fill,'#112233','remote prop write survives move commit');
+    // same stomp class on the cancel path: geometry reverts, remote props stay
+    const oc=JSON.parse(JSON.stringify(byId(M1.id))); // drag-start snapshot (x already committed)
+    byId(M1.id).x=999;byId(M1.id).fill='#445566';     // dragged + remote write mid-gesture
+    ptr.down=true;ptr.dragKind='move';ptr.dragStartShapes=new Map([[M1.id,oc]]);
+    abortGesture();
+    assert.strictEqual(byId(M1.id).x,oc.x,'cancel reverts geometry to the drag-start snapshot');
+    assert.strictEqual(byId(M1.id).fill,'#445566','cancel does not stomp the mid-drag remote prop write');
+    console.log('  ✓ gesture orig-restores are geometry-scoped — remote prop writes survive (ADR-0766, 5 asserts)');
+  }
+
   // v1.6.81: wheelPx normalizes wheel deltas across deltaMode so Firefox's line-mode
   // mouse wheel isn't ~16× weaker than Chrome's pixel mode. Pure → directly unit-tested.
   {
@@ -13818,7 +13848,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1739; // prev 1736 + 3 v1.7.791 presentation stale-frame asserts
+  pass += 1744; // prev 1739 + 5 v1.7.792 geometry-scoped restore asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
