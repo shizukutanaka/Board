@@ -11515,6 +11515,49 @@ try {
     fireKey('Enter');
     assert.strictEqual(state.editing,kt1.id,'Enter opens the text editor for the selection');
     state.editing=null;
+    // transform keys: ⇧H/⇧V flip (aF/bF + conn mirroring ride the same op), ,/. rotate ∓15°,
+    // ⇧R rotate 90°, ⇧X swap fill/stroke, digit keys set opacity (ADR-0167)
+    reset();
+    state.tool='select';
+    const F1=Shape.make('rect',{x:0,y:0,w:40,h:40});
+    const F2=Shape.make('rect',{x:200,y:0,w:40,h:40});
+    Store.commit({op:'add',shape:F1});Store.commit({op:'add',shape:F2});
+    const f1=state.shapes[0],f2=state.shapes[1];
+    state.selection=new Set([f1.id,f2.id]);
+    const f1x0=f1.x,f2x0=f2.x;
+    fireKey('h',{shiftKey:true});
+    assert.ok(f1.x>f1x0&&f2.x<f2x0,'⇧H flips the selection about the group centre');
+    const IM1=Shape.make('image',{x:10,y:200,w:50,h:50});
+    Store.commit({op:'add',shape:IM1});
+    const im1=state.shapes[state.shapes.length-1];
+    state.selection=new Set([im1.id]);
+    fireKey('h',{shiftKey:true});
+    assert.strictEqual(im1.flip,1,'⇧H sets the image h-flip bit');
+    fireKey('v',{shiftKey:true});
+    assert.strictEqual(im1.flip,3,'⇧V toggles the v-flip bit');
+    reset();
+    state.tool='select';
+    const R9=Shape.make('rect',{x:10,y:10,w:40,h:20});
+    Store.commit({op:'add',shape:R9});
+    const r9=state.shapes[0];
+    state.selection=new Set([r9.id]);
+    fireKey('.');
+    assert.strictEqual(r9.rotate,15,'. rotates the selection +15°');
+    fireKey(',');
+    assert.strictEqual(r9.rotate,0,', rotates the selection −15°');
+    fireKey('r',{shiftKey:true});
+    assert.strictEqual(r9.rotate,90,'⇧R rotates the selection +90°');
+    // ⇧X swaps stroke/fill on BOXF shapes; digit keys set opacity
+    const X1=Shape.make('rect',{x:10,y:10,w:40,h:40,stroke:'#FF0000',fill:'#00FF00'});
+    Store.commit({op:'add',shape:X1});
+    const x1=state.shapes[state.shapes.length-1];
+    state.selection=new Set([x1.id]);
+    fireKey('x',{shiftKey:true});
+    assert.ok(x1.stroke==='#00FF00'&&x1.fill==='#FF0000','⇧X swaps stroke and fill');
+    fireKey('5');
+    assert.strictEqual(x1.opacity,0.5,'digit 5 sets 50% opacity');
+    fireKey('0');
+    assert.strictEqual(x1.opacity,1,'digit 0 restores full opacity');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -11526,7 +11569,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1242; // prev 1234 + 8 event-sequence asserts (ADR-0641: zoom keys + ⌘G + Enter-edit)
+  pass += 1254; // prev 1242 + 12 event-sequence asserts (ADR-0641: transform keys)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
