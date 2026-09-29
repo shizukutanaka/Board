@@ -851,8 +851,9 @@ const _df=()=>state.draft;
 const _wc=()=>state.wclock;
 const _tl=()=>state.tool;
 const _dn=()=>state.docName;
-let _nameTs=0;
+let _nameTs=0,_namePeer='';
 const _bName=()=>Net._bcast(_mk('name',{name:state.docName,ts:_nameTs=nowTs()}));   // ADR-0696: a swap that changes docName must tell peers now — else they keep the old name until the next rename/snapshot
+const _nameWin=(ts,peer)=>clockNewer({ts,peer,seq:0},{ts:_nameTs,peer:_namePeer});   // ADR-0699: equal-ts renames used strict > on both paths — concurrent renames diverged; (ts,writer) total order matches pageName (ADR-0698)
 const _setDocName=n=>{state.docName=n;const d=_g('docName');if(d&&d!==document.activeElement)d.value=_dn();_syncDocTitle();};   // ADR-0609: a remote rename must not clobber in-flight typing (incl. mid-IME) — the focused input keeps its text; blur resyncs the display
 const _pr=()=>state.peers;
 const _hi=()=>state.history;
@@ -867,7 +868,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.724';   // ADR-0698
+const V='1.7.725';   // ADR-0699
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -8029,7 +8030,7 @@ const Net={
     if(this.bc){try{this._send(_mk('bye'));this.bc.close()}catch(_){}}   // ADR-0458
     // ADR-0458: drop old-room presence (RTC entr
     _sO().clear();_cT(this._snapT);this._snapT=0;this._lastSnapAt=0;this._snapRx=false;this._snapRetry=0;   // ADR-0459/0475
-    if(state.roomId&&state.roomId!==(roomId||DOC_KEY)){state._lastRep=null;_nameTs=0}   // ADR-0619/0695: reset only on a real room switch (non-null → different) — boot re-init must not wipe the markers Persist.load just restored
+    if(state.roomId&&state.roomId!==(roomId||DOC_KEY)){state._lastRep=null;_nameTs=0;_namePeer=''}   // ADR-0619/0695: reset only on a real room switch (non-null → different) — boot re-init must not wipe the markers Persist.load just restored
     this._imgSent.clear();this._imgChunks.clear();this._imgOuts.length=0;this._snapIn=null;this._opcIn=null;   // ADR-0464/0466
     for(const id of _pr().keys())if(!_sw(id,'rtc:'))_pr().delete(id);this._pCt=_pr().size;_ivO();   // ADR-0467
     clearInterval(this._presenceTimer);   // re-init (room switch) must not leak the old heartbeat
@@ -8253,7 +8254,7 @@ const Net={
         if(msg.rep&&validClock(msg.rep)&&clockNewer(msg.rep,state._lastRep))state._lastRep=msg.rep;   // ADR-0617: the snapshot reflects a newer swap — align the marker
         break;
       case 'name':   // ADR-0402/0581: rename is LWW — a stale peer's slower-arriving rename can't clobber a newer local one
-        if(_iS(msg.name)&&_ln(msg.name)<=80&&(_iN(msg.ts)?msg.ts>_nameTs:!0)){_nameTs=_iN(msg.ts)?msg.ts:_nameTs;_setDocName(msg.name);_ps()}
+        if(_iS(msg.name)&&_ln(msg.name)<=80&&(_iN(msg.ts)?_nameWin(msg.ts,_iS(msg.peer)?msg.peer:''):!0)){_nameTs=_iN(msg.ts)?msg.ts:_nameTs;if(_iS(msg.peer))_namePeer=msg.peer;_setDocName(msg.name);_ps()}
         break;
       case 'bye':{   // ADR-0456: peer left — drop presence now, don't wait for the 15s reap
         const pk=this._pk(msg,viaRtc);
@@ -8305,7 +8306,7 @@ const Net={
     const slim=this._slimShapes(ops.map(o=>o.shape),_mP());
     ops.forEach((o,i)=>o.shape=slim[i]);
     this._flushImgOuts();
-    return {k:'snapshot',shapes:slim,ops,peer:_pi(),name:_dn(),nameTs:_nameTs,rep:state._lastRep,pages:state.pages,curPg:state.curPg};   // ADR-0646: pages ride the snapshot   // ADR-0617/0618: causal markers — swap generation + rename clock
+    return {k:'snapshot',shapes:slim,ops,peer:_pi(),name:_dn(),nameTs:_nameTs,namePeer:_namePeer,rep:state._lastRep,pages:state.pages,curPg:state.curPg};   // ADR-0646: pages ride the snapshot   // ADR-0617/0618/0699: causal markers — swap generation + rename (ts,writer) pair
   },
   // ADR-0058: merge one snapshot add-op. Unkno
   // (unchanged); known shape → per-property LW
@@ -8364,7 +8365,7 @@ const Net={
     _rs(clone(valid));   // ADR-0009
     _sz();
     _pgAdopt(msg.pages,state.curPg);   // ADR-0672: curPg is a LOCAL view filter — a re-sync must not yank the view to the sender's page
-    if(_iS(msg.name)&&(_iN(msg.nameTs)?msg.nameTs>_nameTs:!0)){if(_iN(msg.nameTs))_nameTs=msg.nameTs;_setDocName(_s0(msg.name,80));}   // ADR-0618: renames are LWW — a stale snapshot's name can't clobber a newer local rename
+    if(_iS(msg.name)&&(_iN(msg.nameTs)?_nameWin(msg.nameTs,_iS(msg.namePeer)?msg.namePeer:''):!0)){if(_iN(msg.nameTs))_nameTs=msg.nameTs;if(_iS(msg.namePeer))_namePeer=msg.namePeer;_setDocName(_s0(msg.name,80));}   // ADR-0618/0699: rename (ts,writer) total order — a stale snapshot's name can't clobber a newer local rename; the writer peer (not the sender) decides ties
     _iv();_ru();_ps();
   },
   _touchPeer(peerId){
@@ -8728,7 +8729,7 @@ const Persist={
         docName:_dn(),
         pages:state.pages,curPg:state.curPg,   // ADR-0646
         wc:_wc(),          // ADR-0460
-        rep:state._lastRep,nts:_nameTs,   // ADR-0695: causal markers ride the doc record too — a reload resetting them to null/0 would let a peer's stale pre-swap snapshot or older rename resurrect wiped content
+        rep:state._lastRep,nts:_nameTs,ntp:_namePeer,   // ADR-0695/0699: causal markers ride the doc record too — a reload resetting them to null/0 would let a peer's stale pre-swap snapshot or older rename resurrect wiped content
         savedAt:_now()
       },DOC_KEY);
       await txDone(tx);
@@ -8770,7 +8771,7 @@ const Persist={
       }
       _docN(d);
       if(d.wc&&_iO(d.wc))for(const k in d.wc){const m=d.wc[k];if(_iO(m))for(const p in m)if(validClock(m[p]))(state.wclock[k]=state.wclock[k]||{})[p]=m[p]}   // ADR-0460
-      if(validClock(d.rep))state._lastRep=d.rep;if(_iN(d.nts))_nameTs=d.nts;   // ADR-0695
+      if(validClock(d.rep))state._lastRep=d.rep;if(_iN(d.nts))_nameTs=d.nts;if(_iS(d.ntp))_namePeer=d.ntp;   // ADR-0695/0699
       state.lastSaveAt=d.savedAt||0;
       _sz();
     }

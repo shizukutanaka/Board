@@ -1,3 +1,8 @@
+## [1.7.725] - 2026-09-29
+
+### Fixed
+- ADR-0699: docName renames converging via (ts,writer) total order — equal-ts concurrent renames diverged on strict > (name msg + snapshot namePeer)
+
 ## [1.7.724] - 2026-09-29
 
 ### Fixed

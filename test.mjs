@@ -244,8 +244,8 @@ const checks = [
   ["undo-wire swap advances _lastRep to the fresh clock (ADR-0615)", html.includes("if(w.op==='replace')state._lastRep=w.clock;") && html.includes("_fck(op);if(op.op==='replace')state._lastRep=op.clock;")],
   ["_recordCommitted sets _lastRep for local 'replace' (ADR-0616)", html.includes("if(op.op==='replace')state._lastRep=op.clock;   // ADR-0616")],
   ["snapshot carries rep marker + stale-snapshot skip (ADR-0617)", html.includes("rep:state._lastRep") && html.includes("clockNewer(state._lastRep,msg.rep))break;")],
-  ["snapshot docName is LWW-gated via nameTs (ADR-0618)", html.includes("nameTs:_nameTs") && html.includes("msg.nameTs>_nameTs")],
-  ["Net.init resets causal markers across rooms (ADR-0619)", html.includes("state.roomId&&state.roomId!==(roomId||DOC_KEY)){state._lastRep=null;_nameTs=0}")],
+  ["snapshot docName is LWW-gated via (ts,writer) order (ADR-0618/0699)", html.includes("nameTs:_nameTs,namePeer:_namePeer") && html.includes("_nameWin(msg.nameTs,_iS(msg.namePeer)?msg.namePeer:'')")],
+  ["Net.init resets causal markers across rooms (ADR-0619/0699)", html.includes("state.roomId&&state.roomId!==(roomId||DOC_KEY)){state._lastRep=null;_nameTs=0;_namePeer=''}")],
   ["move commit drops ids removed mid-gesture (ADR-0621)", html.includes("filter(id=>{const s=byId(id);return s&&_ul(s)})")],
   ["_sb drops dead ids at source + nudgeSelection parity (ADR-0623)", html.includes("_sb=()=>_selIds().map(byId).filter(Boolean)") && html.includes("unlockedSelectionIds(){return _selIds().filter(id=>{const s=byId(id);return s&&_ul(s)});}")],
   ["_slimOp strips undo-only fields from wire ops (ADR-0625)", html.includes("const{origSel:_o2,moved:_m2,...rest}=op;return rest;") && html.includes("const{wc:_wc1,origSel:_o1,...r}=op;")],
@@ -2017,6 +2017,27 @@ try {
     clearInterval(Net._presenceTimer);
     if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}
     console.log('  ✓ Net.init resets _lastRep/_nameTs across rooms (ADR-0619/0695)');
+  }
+  // ADR-0699: docName renames order on (ts, writer-peer) — equal-ts concurrent
+  // renames must pick one winner on every peer, not diverge on strict >.
+  {
+    state.roomId='roomOld';
+    Net.init('roomTie');
+    Net._onRecv({k:'name',name:'Hi',ts:7,peer:'zz'},false);
+    assert.strictEqual(state.docName,'Hi','equal-ts rename: first writer installs');
+    Net._onRecv({k:'name',name:'Lo',ts:7,peer:'aa'},false);
+    assert.strictEqual(state.docName,'Hi','equal-ts rename: lower peer loses');
+    Net._onRecv({k:'name',name:'Hi2',ts:7,peer:'zzz'},false);
+    assert.strictEqual(state.docName,'Hi2','equal-ts rename: higher peer wins');
+    const sT=Shape.make('rect',{id:'x3',x:0,y:0,w:10,h:10});
+    state.shapes.length=0;
+    Net._onRecv({k:'snapshot',shapes:[sT],ops:[],peer:'sp',name:'SnapHi',nameTs:9,namePeer:'zz'},false);
+    assert.strictEqual(state.docName,'SnapHi','snapshot name installs its writer');
+    state.shapes.length=0;
+    Net._onRecv({k:'snapshot',shapes:[sT],ops:[],peer:'sp',name:'SnapLo',nameTs:9,namePeer:'aa'},false);
+    assert.strictEqual(state.docName,'SnapHi','equal-ts snapshot name: lower writer loses');
+    state.docName='';
+    console.log('  ✓ docName + snapshot equal-ts tie order (ADR-0699, 5 asserts)');
   }
   // ADR-0621: a shape removed mid-gesture (remote del/replace) must not ride the
   // move commit — byId is null there, and a phantom op would land in history +
@@ -3793,7 +3814,7 @@ try {
     assert.strictEqual(msg.name,'WireName','snapshot carries docName for late joiners');
     assert.ok(html.includes("case 'name'"),"receiver has a 'name' case");
     assert.ok(html.includes("Net._bcast(_mk('name',{name:state.docName,ts:_nameTs=nowTs()}))"),'rename broadcasts k:name + LWW ts (ADR-0581)');
-    assert.ok(html.includes("(_iN(msg.ts)?msg.ts>_nameTs:!0)"),'stale remote rename dropped (ADR-0581)');
+    assert.ok(html.includes("(_iN(msg.ts)?_nameWin(msg.ts,_iS(msg.peer)?msg.peer:''):!0)"),'stale remote rename dropped (ADR-0581/0699)');
     assert.ok(html.includes("_iS(msg.name)"),'receiver type-guards name');
     state.docName='';
     console.log('  ✓ doc name propagates via k:name broadcast + snapshot.name (ADR-0402)');
@@ -12869,7 +12890,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1546; // prev 1517 + 1 tab aria-label pin (ADR-0682)
+  pass += 1551; // prev 1517 + 1 tab aria-label pin (ADR-0682)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
