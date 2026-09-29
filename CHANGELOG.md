@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.658]
+### 修正
+- window/visualViewport/orientation の resize を 150ms trailing-edge debounce 化 — OS ウィンドウドラッグや iOS URL バーアニメーションのイベント嵐で、canvas バッキングストア (4K で ~33MB×2) がピクセル毎に再確保されていた (ADR-0631)。
+
 ## [1.7.657]
 ### テスト
 - ADR-0629 の実動作検証を追加 — `_onRecv` の img 経路で (a) `_imgPending` 外の parked 図形 (evicted straggler) が `s.img===key` で解決、(b) pending 追跡中の図形が主経路で解決+クリア、の4 assert (ADR-0630)。

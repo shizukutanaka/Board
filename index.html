@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.657';   // ADR-0630
+const V='1.7.658';   // ADR-0631
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2292,6 +2292,7 @@ function drawPenDraft(s){
 let needsRender=true,needOverlay=true,_rafId=0;
 let _damage=null;   // ADR-0026: accumulated world-space dirty re
 let _pinchSnap=null,_pinchVp=null;   // ADR-0030: pinch-start canvas copy + viewport for scaled preview
+let _rszT=0;   // ADR-0631: pending debounced window resize
 function invalidate(){_damage=null;needsRender=true;needOverlay=true;if(!_rafId)_rafId=_rAF(frame);_ms()}
 // ADR-0026: gesture-local repaint — producers report the world-space rect they
 // dirtied and frame() clips the scene pass to its accumulated union (never
@@ -9230,8 +9231,11 @@ function wire(){
     const btn=_g('btnInstall');
     if(btn)_hdn(btn,!0);
   });
-  // resize
-  _on(window,'resize',resize);
+  // resize — ADR-0631: each event reallocates both canvas backing stores
+  // (a 4K buffer ~33MB); an OS window-drag storms realloc-per-pixel.
+  // Debounce to the trailing edge so the resize settles once.
+  const _resizeSoon=()=>{_cT(_rszT);_rszT=_stO(resize,150)};
+  _on(window,'resize',_resizeSoon);
   // ADR-0627: GPU resets silently wipe every raster cache — pen bitmaps blit blank,
   // minimap scene stays a dead canvas keyed to a stale _sceneVer, the draft-ink
   // stamp draws into a dead context. preventDefault on contextlost allows the
@@ -9239,11 +9243,11 @@ function wire(){
   const _ctxUp=()=>{ctx=_g2(canvas);octx=_g2(ocanvas);_penCache.clear();_penCachePx=0;_inkD=null;Minimap.invalidateCache();_iv();_ivO()};
   _on(canvas,'contextlost',_pd);_on(ocanvas,'contextlost',_pd);
   _on(canvas,'contextrestored',_ctxUp);_on(ocanvas,'contextrestored',_ctxUp);
-  if(window.visualViewport)_on(visualViewport,'resize',resize);   // ADR-0251: iOS url-bar/keyboard shrink doesn't fire window resize
+  if(window.visualViewport)_on(visualViewport,'resize',_resizeSoon);   // ADR-0251: iOS url-bar/keyboard shrink doesn't fire window resize
   // devicePixelRatio change (window dragged to
   _watchDPR();
   // some Android devices fire orientationchange separately from resize
-  if('orientation' in screen)_on(screen.orientation,_CH,resize);
+  if('orientation' in screen)_on(screen.orientation,_CH,_resizeSoon);
   // theme / high-contrast switches change desi
   if(window.matchMedia)for(const q of ['(prefers-color-scheme:dark)','(forced-colors:active)','(prefers-contrast:more)']){
     try{_on(matchMedia(q),_CH,clearCSSCache)}catch(_){}
