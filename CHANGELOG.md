@@ -1,3 +1,8 @@
+## [1.7.858] - 2026-09-29
+
+### Docs
+- ADR-0832: hover/hit 系のページスコープ監査完走 — 未ゲートは `_ehov` のみ (0831 済)、`_qconnShape`/pickTop/snap/⌥measure は全経路 safe と確認し architecture.md の表へ行追加
+
 ## [1.7.857] - 2026-09-29
 
 ### Fixed

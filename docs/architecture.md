@@ -648,6 +648,7 @@ frame のメンバーシップは `s.grp` ではなく**幾何**で決まる —
 | 単一シーン export | `_shV` (可視+ページ) | PNG/SVG/.excalidraw — 明示引数にも同じ制約 (0666) |
 | 永続化/全ドキュメント | `_sh()` グローバル | `.board`/.drawio export、Persist、snapshot、`replace`/`clear` |
 | 幾何不変条件 | `_sh()` グローバル | 結合コネクタ掃引 (`ptr.gAnc`/`_bc`/`_rc`/`computeConnClears`)、z 空間、`_buildGrid` 候補生成 |
+| hover/プレビュー残影 | `_pgOk` or `_zR` | eraser hover `_ehov` は draw で `_pgOk` (0831)、quick-connect は `_qconnShape` 内ゲート、`state.hover` は上記2経路のみ供給、⌥measure は `switchPage` の `_zR` で消去 |
 
 - **遷移はジェスチャを殺す**: `switchPage`/`_pgAdopt` が `_cancelPointerGesture`
   (0664) — 別ページ図形への不可視コミットを防ぐ。`_pgAdopt` は `_cxO` で
