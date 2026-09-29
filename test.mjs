@@ -12237,6 +12237,24 @@ try {
     try{api.drawOverlay()}finally{api._setOCtx(_po)}
     assert.ok(o1.some(c=>['stroke','strokeRect','rect','arc','moveTo','lineTo'].includes(c[0])),'drawOverlay paints the selection outline for a selected shape');
     state.selection.clear();
+    // drop: .board file path via a fake FileReader — atomic whole-board replace (ADR-0518 residual closed)
+    const _FR=globalThis.FileReader;
+    globalThis.FileReader=class{
+      readAsText(f){Promise.resolve(typeof f.text==='function'?f.text():'').then(t=>{this.result=t;if(this.onload)this.onload()})}
+      readAsDataURL(f){Promise.resolve('data:,stub').then(t=>{this.result=t;if(this.onload)this.onload()})}
+    };
+    try{
+      reset();
+      const dfile={name:'b.board',type:'',size:200,text:()=>Promise.resolve('{"v":"1","shapes":[{"id":"fb9","type":"rect","x":1,"y":2,"w":30,"h":20,"z":0}]}')};
+      for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[dfile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
+      await new Promise(r=>setTimeout(r,30));
+      assert.ok(state.shapes.length===1&&state.shapes[0].id==='fb9','a dropped .board file atomically replaces the board via FileReader');
+      reset();
+      const efile={name:'e.excalidraw',type:'',size:200,text:()=>Promise.resolve('{"type":"excalidraw","elements":[{"id":"ex9","type":"rectangle","x":5,"y":5,"width":40,"height":30}]}')};
+      for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[efile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
+      await new Promise(r=>setTimeout(r,30));
+      assert.ok(state.shapes.length>=1,'a dropped .excalidraw file imports its elements via FileReader (ADR-0043)');
+    }finally{globalThis.FileReader=_FR}
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -12248,7 +12266,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1398; // prev 1394 + 4 render-entity asserts (ADR-0641: draw/drawOverlay 注入ctx)
+  pass += 1400; // prev 1398 + 2 event-sequence asserts (ADR-0641: drop file via FileReader stub)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
