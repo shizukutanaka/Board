@@ -782,6 +782,7 @@ Board/
 │   └── ADR-0731-beautify-undo-wire.md  # 'beautify' undo-wire を patch-swap 化 (ADR-0730 の発散が undo で再燃していた) (実装済)
 │   ├── ADR-0732-move-undo-absolute.md  # move undo-wire を絶対値化 + backward 絶対復元 (ADR-0729 残 delta の発散解消) (実装済)
 │   └── ADR-0733-move-delta-undo-axis-arbitration.md  # delta backward を _lwwSkip で軸毎仲裁 (racing write 保有軸の発散解消) (実装済)
+│   └── ADR-0734-wclock-delete-tombstones.md  # 存在仲裁: del/addMany 逆写/pageDel が wclock に {_del:clock} 墓標を残し add 系 push が墓標下位の遅延 add を棄却 (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

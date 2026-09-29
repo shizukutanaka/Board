@@ -1,3 +1,14 @@
+## [1.7.760] - 2026-09-29
+
+### Fixed
+- ADR-0734: existence arbitration via wclock-embedded tombstones — del/add
+  reorder and in-flight snapshot union-heals could resurrect a deleted shape
+  on one peer only (arrival order, not causality, decided existence).
+  del/'add'-backward/_pgDel2 now leave `{_del:clock}` in wclock instead of
+  purging; 'add'/'addMany'/pageAdd gates skip tomb-outranked adds (snapshot
+  `!ex` heals route through the same gate). Hostile-del flood capped at 8192
+  wclock entries; stale tombs on live shapes are inert by design
+
 ## [1.7.759] - 2026-09-29
 
 ADR-0733: delta-path move undo arbitrated per axis — the real recorded form (ids+dx+dy only) un-moved -dx/-dy unconditionally, so a remote write whose clock beat the undo's fresh clock split an axis (peers' _lwwDrop removed that axis on the wire while the undoer had already moved it). Backward now _lwwSkip-gates x/y independently: arbitrated axes keep the remote-winning value, the rest still un-move — and the wire's derived absolute mirrors the outcome on every peer.

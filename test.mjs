@@ -4773,7 +4773,7 @@ try {
     }
     // ADR-0679: pageDel drops member write-clocks like del
     {
-      assert.ok(html.includes("for(const id of dead)delete _wc()[id];"),'_pgDel2 purges member wclocks (ADR-0679/0707)');
+      assert.ok(html.includes("for(const id of dead)_wc()[id]={_del:op.clock};"),'_pgDel2 tombstones member wclocks (ADR-0679/0707/0734)');
       console.log('  ✓ pageDel wclock purge pin (1 assert)');
     }
     // ADR-0680: selection-presence dedup key carries curPg
@@ -6640,9 +6640,9 @@ try {
     // Without the byId guard in _stampWrites this entry leaks unbounded over a session.
     A.Store.commit({op:'del', shapes:[cp(A.state.shapes.find(s=>s.id==='dX'))]});
     assert.ok(!A.state.shapes.some(s=>s.id==='dX'), 'wclock hygiene: dX deleted on A');
-    assert.strictEqual(A.state.wclock['dX'], undefined, 'wclock hygiene: del cleared wclock[dX]');
+    assert.ok(A.state.wclock['dX']&&A.state.wclock['dX']._del, 'wclock hygiene: del tombstoned wclock[dX] (ADR-0734)');
     A.Net._onRecv({k:'op',op:{op:'upd',id:'dX',before:{stroke:'green'},after:{stroke:'red'},clock:{peer:'peerB',seq:99,ts:9e9}}});
-    assert.strictEqual(A.state.wclock['dX'], undefined, 'wclock hygiene: late upd for deleted shape leaves NO stale wclock entry');
+    assert.deepStrictEqual(Object.keys(A.state.wclock['dX']), ['_del'], 'wclock hygiene: late upd for deleted shape stamps NO value keys on the tomb');
     console.log('  ✓ two-peer LWW: late upd for a deleted shape leaks no wclock entry (_stampWrites byId guard)');
 
     // §3.16: but concurrent MOVES of the same shape CONVERGE - move is a delta
@@ -6800,6 +6800,33 @@ try {
     assert.strictEqual(bS2.y, 0, 'ADR-0733: peer un-moves y — converged');
     state._lastTs=0; B.state._lastTs=0;   // the far-future race raised both HLC floors — restore them or later local commits get poisoned clocks (A IS api — shares `state`)
     console.log('  ✓ ADR-0733: delta backward arbitrates per axis via _lwwSkip');
+
+    // ADR-0734: wclock-embedded tombstones — a delete must outrank a stale
+    // in-flight add carrying the same id. The gap existed on two routes: a
+    // del/add reorder across peers (arrival order decided existence), and the
+    // snapshot union-heal's `!ex` add resurrecting a shape deleted while the
+    // snapshot was in flight (the sender later applies the del too -> permanent
+    // split). 'del'/'add'-backward/_pgDel2 now leave {_del:clock} in wclock
+    // instead of purging; 'add'/'addMany'/pageAdd gates skip tomb-outranked adds.
+    reset(A); reset(B);
+    A.state.peerId='peerA';
+    const tm={id:'tm1',type:'rect',x:0,y:0,w:10,h:10,z:1};
+    A.state.shapes.push(cp(tm)); B.state.shapes.push(cp(tm)); A._invalidateGrid(); B._invalidateGrid(); A.sortZ(); B.sortZ();
+    const bf5=[];
+    A.Net.broadcast = op => bf5.push({k:'op',op:cp(A.Net._slimOp(op))});
+    B.Net.broadcast = () => {};
+    A.Store.commit({op:'del',shapes:[cp(A.state.shapes.find(s=>s.id==='tm1'))]});
+    assert.ok(!A.state.shapes.find(s=>s.id==='tm1'),'ADR-0734: sender deleted tm1');
+    assert.ok(A.state.wclock.tm1&&A.state.wclock.tm1._del,'ADR-0734: sender tombstoned the id');
+    bf5.splice(0).forEach(m=>B.Net._onRecv(m));
+    assert.ok(!B.state.shapes.find(s=>s.id==='tm1')&&B.state.wclock.tm1&&B.state.wclock.tm1._del,'ADR-0734: peer tombstoned too');
+    B.Net._onRecv({k:'op',op:{op:'add',shape:{id:'tm1',type:'rect',x:0,y:0,w:10,h:10,z:1},clock:{peer:'peerX',seq:1,ts:1}}});
+    assert.ok(!B.state.shapes.find(s=>s.id==='tm1'),'ADR-0734: stale add loses to the tombstone (was: resurrection divergence)');
+    B.Net._onRecv({k:'op',op:{op:'add',shape:{id:'tm1',type:'rect',x:0,y:0,w:10,h:10,z:1},clock:{peer:'peerX',seq:2,ts:Date.now()+1e6}}});
+    assert.ok(!!B.state.shapes.find(s=>s.id==='tm1'),'ADR-0734: a newer add wins — shape restored');
+    assert.ok(!B.state.wclock.tm1._del,'ADR-0734: tomb cleared on the winning add');
+    state._lastTs=0; B.state._lastTs=0;   // far-future add raised the HLC floors — restore (A IS api — shares `state`)
+    console.log('  ✓ ADR-0734: del tombstones gate stale adds (snapshot/reorder resurrection fix)');
 
     // resize/align now LWW too (ADR-0002 follow-up): whole-shape snapshot ops gate/stamp
     // only the keys they actually changed (diff before/after). (i) concurrent resize of
@@ -7001,7 +7028,7 @@ try {
     assert.ok(B.state.wclock[w1.id],'precondition: wclock propagated to peer');
     A.Store.commit({op:'del',shapes:[cp(w1)],clock:{peer:'peerA',seq:2,ts:2000}});
     rAB.forEach(m=>B.Net._onRecv(m)); rAB.length=0;
-    assert.ok(!B.state.wclock[w1.id],'precondition: del purged the clock on both sides');
+    assert.ok(B.state.wclock[w1.id]&&B.state.wclock[w1.id]._del,'precondition: del tombstoned the clock on both sides (ADR-0734)');
     A.state.seq=2;
     A.Store.undo();
     rAB.forEach(m=>B.Net._onRecv(m));
@@ -7025,7 +7052,7 @@ try {
     rAB.forEach(m=>B.Net._onRecv(m)); rAB.length=0;
     A.Store.commit({op:'pageDel',id:'q2',clock:{peer:'peerA',seq:2,ts:2000}});
     rAB.forEach(m=>B.Net._onRecv(m)); rAB.length=0;
-    assert.ok(!B.state.wclock[w2.id],'precondition: pageDel purged member clocks on both sides');
+    assert.ok(B.state.wclock[w2.id]&&B.state.wclock[w2.id]._del,'precondition: pageDel tombstoned member clocks on both sides (ADR-0734)');
     A.state.seq=2;
     A.Store.undo();
     rAB.forEach(m=>B.Net._onRecv(m));
@@ -9348,7 +9375,7 @@ try {
     assert.ok(Object.keys(state.wclock).includes(DA.id),'del undo wclock: wclock seeded for DA');
     // Delete DA: forward cleans wclock
     Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(state.shapes.find(s=>s.id===DA.id)))]});
-    assert.ok(!Object.keys(state.wclock).includes(DA.id),'del undo wclock: wclock cleared after del');
+    assert.ok(state.wclock[DA.id]&&state.wclock[DA.id]._del,'del undo wclock: wclock tombstoned after del (ADR-0734)');
     // Undo: DA restored; BEFORE fix wclock stays empty, AFTER fix wclock restored
     Store.undo();
     assert.ok(Object.keys(state.wclock).includes(DA.id),'del undo wclock: wclock restored after undo');
@@ -9417,7 +9444,7 @@ try {
     assert.ok(Object.keys(state.wclock).includes(X.id),'add undo wclock: wclock seeded for X');
     // Undo: shape removed; BEFORE fix wclock[X.id] remains, AFTER fix it is deleted
     Store.undo();
-    assert.strictEqual(Object.keys(state.wclock).length,0,'add undo wclock: stale entry cleaned up after undo');
+    assert.ok(state.wclock[X.id]&&state.wclock[X.id]._del,'add undo wclock: tombstone left after undo (ADR-0734 — ordering evidence, not a ghost clock)');
     console.log('  ✓ add undo: wclock entry deleted for removed shape (parity with addMany undo)');
   }
 
@@ -9440,7 +9467,7 @@ try {
     // Undo: shapes removed; BEFORE fix wclock retains stale entries, AFTER fix they're deleted
     Store.undo();
     assert.strictEqual(state.shapes.length, 0, 'addMany wclock: shapes gone after undo');
-    assert.strictEqual(Object.keys(state.wclock).length, 0, 'addMany wclock: stale wclock entries cleaned up after undo');
+    assert.ok(state.wclock[P.id]&&state.wclock[P.id]._del&&state.wclock[Q.id]&&state.wclock[Q.id]._del,'addMany wclock: tombstones left after undo (ADR-0734)');
     console.log('  ✓ addMany undo: wclock entries deleted for removed shapes (no ghost LWW clocks)');
   }
 
@@ -13437,7 +13464,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1661; // prev 1655 + 6 ADR-0733 behavioural
+  pass += 1667; // prev 1661 + 6 ADR-0734 behavioural
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
