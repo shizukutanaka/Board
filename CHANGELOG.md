@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.665]
+### ドキュメント
+- architecture.md のジェスチャライフサイクル節に「ジェスチャ×外部変化の不変条件」節を追加 — overlay 突入のキャンセル先行 (ADR-0634/0637)、orig.id による対象解決 (ADR-0635)、cancel 時のピンチ掃除 (ADR-0636) を規則として明文化 (ADR-0638)。
+
 ## [1.7.664]
 ### 修正
 - ジェスチャ中に Enter でテキスト/ラベル編集 overlay が開くと、ドラッグが overlay 裏で継続しリリース時に不可視のコミットが発火し得た問題を修正 — `editSelectedShapeKbd` 冒頭で `_cancelPointerGesture()` (ADR-0634 と同型経路) (ADR-0637)。

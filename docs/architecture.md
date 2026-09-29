@@ -45,8 +45,22 @@ pointerup でコミット、pointercancel / `lostpointercapture` /
 hidden/pagehide/blur の共通掃除口は `_clearTouchState()` — `_pointers` Map・
 `_pinchPrev`/`_pinchSnap` に加えて `Minimap.cancelNav()` も呼び、ミニマップの
 ドラッグスクラブ中状態 `_mmNav` も bfcache を跨いで残存させない (ADR-0632)。
+`_cancelPointerGesture` 末尾でも同掃除口を呼び、Esc 等の cancel でもピンチ状態を
+残存させない (ADR-0636: 残ると二本目の指の pointerup が stray ズームを発火)。
 ドラッグ中の 24px 端帯は rAF エッジオートパン (ADR-0519)。`pointerId` は
 `_pointers` Map で追跡し 2 本目でピンチ遷移。
+
+**ジェスチャ×外部変化の不変条件 (v1.7.66x — ADR-0634..0637):**
+- **overlay/モーダル突入はキャンセル先行**: `Presentation.enter()`・
+  `editSelectedShapeKbd` (Enter) は冒頭で `if(ptr.down)_cancelPointerGesture()`
+  — capture 継続のドラッグが overlay 裏で進行し不可視コミットするのを防ぐ。
+- **ジェスチャ対象は _sel0 ではなく orig.id 解決**: resize/rotate の
+  ドラッグ適用・コミット・キャンセル復元は全て `byId(ptr.*Orig.id)`
+  (ADR-0635)。ジェスチャ中に選択が変わり得る (⌘A・リモート op・undo) ため
+  「現在選択の先頭」参照は別図形への誤コミット/誤復元を招く。
+- **mid-gesture 変化キー**: ⌘Z/⌘Y は先に cancel (ADR-0574)。他のキー変化
+  (⌘D/⌘X/del/paste/⌘A) は dragStartShapes の id-map と byId ガードで
+  自己整合 — cancel は不要。
 クリップボードの OS 橋渡しは `_cpNow`/`_osClip` + `_textCascade` (SVG →
 .board → .excalidraw → mxfile → TSV → 平文) が paste/drop 双方に効く
 (ADR-0516/0518)。Safari の GestureEvent は gesturestart/change/end で
