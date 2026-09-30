@@ -1,3 +1,8 @@
+## [1.7.726] - 2026-09-29
+
+### Fixed
+- ADR-0700: `_vPages` rejects Infinity/NaN `nts` (page-name freeze DoS) and non-string/oversized `ntp` (tie-order poisoning)
+
 ## [1.7.725] - 2026-09-29
 
 ### Fixed

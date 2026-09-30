@@ -4653,6 +4653,23 @@ try {
       assert.ok(html.includes("else if(clockNewer({ts:p.nts||0,peer:_iS(p.ntp)?p.ntp:'',seq:0}"),'same-id page nts LWW merge via (ts,peer) total order (ADR-0681/0698)');
       console.log('  ✓ snapshot page-name LWW pin (1 assert)');
     }
+    // ADR-0700: _vPages rejects poisoned tie-order fields — an Infinity nts wins
+    // every compare (name frozen on all peers) and a non-string/oversized ntp
+    // poisons the (ts,peer) order. The whole set is refused, like any bad page.
+    {
+      const savedP=JSON.parse(JSON.stringify(state.pages)),savedC=state.curPg;
+      state.pages=null;state.curPg=null;
+      const ok={id:'p1',name:'a',nts:1,ntp:'zz'};
+      assert.strictEqual(_vPages([ok])!=null,true,'a valid page set passes');
+      for(const bad of [
+        [{id:'p1',name:'a',nts:Infinity}],
+        [{id:'p1',name:'a',nts:NaN}],
+        [{id:'p1',name:'a',nts:0,ntp:{}}],
+        [{id:'p1',name:'a',nts:0,ntp:'x'.repeat(65)}],
+      ])assert.strictEqual(_vPages(bad),null,'poisoned page set rejected: '+JSON.stringify(bad).slice(0,60));
+      state.pages=savedP;state.curPg=savedC;
+      console.log('  ✓ _vPages rejects Infinity/NaN nts + non-string/oversized ntp (ADR-0700, 4 asserts)');
+    }
     // ADR-0682: page tab chips expose the full name to AT
     {
       assert.ok(html.includes("c.setAttribute('aria-label',p.name)"),'tab chip carries full-name aria-label (ADR-0682)');
@@ -12890,7 +12907,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1551; // prev 1517 + 1 tab aria-label pin (ADR-0682)
+  pass += 1556; // prev 1517 + 1 tab aria-label pin (ADR-0682)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
