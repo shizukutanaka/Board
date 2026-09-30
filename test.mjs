@@ -413,6 +413,8 @@ const checks = [
   ['minimap cache cleared on theme + image load', html.includes("Minimap.invalidateCache();") && html.includes("function invalidateCache(){_sceneVer=-1")],
   // v1.7.878: ADR-0852 OS scheme/contrast flips must drop the minimap scene too — _tTk shared by applyTheme + the matchMedia watchers
   ['theme-token refresh covers matchMedia watchers (ADR-0852)', html.includes("const _tTk=()=>{clearCSSCache();Minimap.invalidateCache()}") && html.includes("_on(matchMedia(q),_CH,_tTk)") && !html.includes("_on(matchMedia(q),_CH,clearCSSCache)")],
+  // v1.7.879: ADR-0853 compressed <diagram> inflations capped at the 64-page bound like the uncompressed _dgs path
+  ['drawio inflate page-cap parity (ADR-0853)', html.includes("_dms.slice(0,64)")],
   // v1.7.84: ADR-0026 drag damage rect
   ['invalidateDamage accumulates world damage', html.includes("function invalidateDamage(r){_damage=_dmgU(_damage,r)") && html.includes("function invalidate(){_damage=null")],
   ['draw() clips scene pass to damage rect', html.includes("ctx.rect(dmg.x,dmg.y,dmg.w,dmg.h);ctx.clip()") && html.includes("ctx.fillRect(dmg.x,dmg.y,dmg.w,dmg.h)")],
@@ -852,7 +854,7 @@ const checks = [
   ['s.link scheme gate in validPatch (ADR-0327)', html.includes("'link' in p&&p.link!=null")&&html.includes('ADR-0327')],
   ['_pd() preventDefault shorthand (ADR-0326)', html.includes("const _pd=e=>e.preventDefault()")],
   ['deflate bomb guard in _dioInflate (ADR-0325)', html.includes("getReader(),dec=new TextDecoder")&&html.includes("_ln(txt)>8e6")],
-  ['compressed drawio inflates every page (ADR-0324)', html.includes("Promise.all(_dms.map(m=>_dioInflate(m[1])))")&&html.includes("matchAll(/<diagram[^>]*>([^<]+)<\\/diagram>/g)")],
+  ['compressed drawio inflates every page (ADR-0324)', html.includes("Promise.all(_dms.slice(0,64).map(m=>_dioInflate(m[1]))")&&html.includes("matchAll(/<diagram[^>]*>([^<]+)<\\/diagram>/g)")],
   ['exc conn-label lineHeight restore (ADR-0323)', html.includes("e.lineHeight!==1.25)p.lineH=")],
   ['drawio export emits html=1 (ADR-0322)', html.includes("let sty='html=1;';")&&html.includes("'html=1;'+(s.start")],
   ['drawio whiteSpace nowrap|wrap ↔ s.wrap (ADR-0321/0412)', html.includes("_txt(s)&&sty.whiteSpace==='nowrap')s.wrap=0")&&html.includes("s.wrap?'whiteSpace=wrap;':'whiteSpace=nowrap;'")&&html.includes("sty.whiteSpace==='wrap')s.wrap=1")],

@@ -1,3 +1,11 @@
+## [1.7.879] - 2026-09-30
+
+### Fixed
+- ADR-0853: 圧縮 .drawio の `<diagram>` 展開が件数無制限だった実害を解消 — 数千個の `<diagram>` を持つ細工ファイルが無制限の並行 DecompressionStream を生成し得たため、非圧縮パスと同じ 64 頁上限へ
+
+### Docs
+- import 残分岐監査 (svg/exc/drawio/TSV cascade) を完走 + 切断コメント残片 2 箇所を修復 (raw 557,007B)
+
 ## [1.7.878] - 2026-09-30
 
 ### Fixed
