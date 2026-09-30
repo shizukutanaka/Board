@@ -1,3 +1,8 @@
+## [1.7.917] - 2026-09-30
+
+### Docs
+- extent 除算・数値ドメイン監査の完走を記録 — `_pathAt`/`_edgePt`/`applyResize`/`_mapToBox`/`_grotDrag` の全除算サイトが `||1`・`1e-6`・early-return・`>0` ガードのいずれかを持ち、`_log`/`_sqr`/`exp` のドメインエラー経路も全て clampZoom/`_xC` 内に着地すると確認 (ADR-0891)
+
 ## [1.7.916] - 2026-09-30
 
 ### Tests
