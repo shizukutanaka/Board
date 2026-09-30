@@ -1,3 +1,9 @@
+## [1.7.911] - 2026-09-30
+
+### Test
+- `Persist.open` の blocked→in-memory 解決と `onversionchange` 譲渡をフェイク IDB リクエストで実動作ピン (handler 装着・resolve・db null 化・close 呼出を全確認, ADR-0885)
+- IDB トランザクションエラー面の監査完走を記録: 全書込 tx は `txDone` (complete/error/abort)、全 request は `reqDone` (error→reject) で完結、`bc.onmessageerror` は構造体クローン送信のみで到達不能 (ADR-0885)
+
 ## [1.7.910] - 2026-09-30
 
 ### Fixed

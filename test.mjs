@@ -8014,6 +8014,34 @@ try {
     console.log('  ✓ Persist._saveErrMsg: QuotaExceededError → actionable toast (Zenn/PWA research)');
   }
 
+  // v1.7.910: Persist.open blocked-open resolves in-memory + versionchange yields (ADR-0884).
+  {
+    const origOpen = fakeWin.indexedDB.open;
+    // blocked: a stale tab holds the older version — open resolves instead of hanging
+    const reqB = { addEventListener(){}, onsuccess:null, onerror:null, onupgradeneeded:null, onblocked:null };
+    fakeWin.indexedDB.open = () => reqB;
+    const pBlocked = Persist.open();
+    assert.strictEqual(reqB.onblocked != null, true, 'ADR-0884: onblocked handler installed');
+    reqB.onblocked();
+    await pBlocked;   // hangs forever without the handler
+    assert.strictEqual(Persist.db, null, 'blocked open → in-memory (db stays null)');
+    // success + yield: a live connection closes itself when a newer tab asks to upgrade
+    const reqS = { addEventListener(){}, onsuccess:null, onerror:null, onupgradeneeded:null };
+    fakeWin.indexedDB.open = () => reqS;
+    const pOk = Persist.open();
+    reqS.result = { _closed: false, close(){ this._closed = true } };
+    reqS.onsuccess();
+    await pOk;
+    assert.ok(Persist.db === reqS.result, 'onsuccess → db bound to the connection');
+    assert.strictEqual(typeof Persist.db.onversionchange, 'function', 'ADR-0884: onversionchange handler installed');
+    const conn = Persist.db;
+    Persist.db.onversionchange();
+    assert.strictEqual(conn._closed, true, 'versionchange → connection closed (yields to newer tab)');
+    assert.strictEqual(Persist.db, null, 'versionchange → db cleared so saves no-op safely');
+    fakeWin.indexedDB.open = origOpen;
+    console.log('  ✓ Persist.open: blocked→in-memory resolve + versionchange yield (ADR-0884)');
+  }
+
   // v1.6.78: coalescedSamples + pen multi-sample capture (high-rate stylus smoothness).
   // Without getCoalescedEvents the pen keeps one point per 60Hz frame; a 240Hz stylus
   // coalesces ~4 samples/frame, so 3/4 of the pen path (and its pressure) is lost.
