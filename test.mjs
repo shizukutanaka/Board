@@ -258,7 +258,7 @@ const checks = [
   ["_recordCommitted sets _lastRep for local 'replace' (ADR-0616)", html.includes("if(op.op==='replace'){state._lastRep=op.clock")],
   ["snapshot carries rep marker + stale-snapshot skip (ADR-0617)", html.includes("rep:state._lastRep") && html.includes("clockNewer(state._lastRep,msg.rep))break;")],
   ["snapshot docName is LWW-gated via (ts,writer) order (ADR-0618/0699)", html.includes("nameTs:_nameTs,namePeer:_namePeer") && html.includes("_nameWin(msg.nameTs,_iS(msg.namePeer)?msg.namePeer:'')")],
-  ["Net.init resets causal markers across rooms (ADR-0619/0699)", html.includes("state.roomId&&state.roomId!==(roomId||DOC_KEY)){state._lastRep=null;_nameTs=0;_namePeer=''}")],
+  ["Net.init resets causal markers across rooms (ADR-0619/0699/0839)", html.includes("state.roomId&&state.roomId!==(roomId||DOC_KEY)){state._lastRep=null;_nameTs=0;_namePeer='';try{this.dc&&this.dc.close();this.rtc&&this.rtc.close()}catch(_){}}")],
   ["move commit drops ids removed mid-gesture (ADR-0621)", html.includes("filter(id=>{const s=byId(id);return s&&_ul(s)})")],
   ["_sb drops dead ids at source + nudgeSelection parity (ADR-0623)", html.includes("_sb=()=>_selIds().map(byId).filter(Boolean)") && html.includes("unlockedSelectionIds(){return _selIds().filter(id=>{const s=byId(id);return s&&_ul(s)});}")],
   ["_slimOp strips undo-only fields from wire ops (ADR-0625)", html.includes("const{origSel:_o2,moved:_m2,...rest}=op;") && html.includes("const{wc:_wc1,origSel:_o1,...r}=op;")],
@@ -411,11 +411,15 @@ const checks = [
   // v1.7.83: ADR-0025 minimap content cache
   ['minimap caches scene bitmap keyed on _gridVer', html.includes("_sceneVer!==_gridVer") && html.includes("mx.drawImage(_scene,0,0)")],
   ['minimap cache cleared on theme + image load', html.includes("Minimap.invalidateCache();") && html.includes("function invalidateCache(){_sceneVer=-1")],
+  // v1.7.878: ADR-0852 OS scheme/contrast flips must drop the minimap scene too — _tTk shared by applyTheme + the matchMedia watchers
+  ['theme-token refresh covers matchMedia watchers (ADR-0852)', html.includes("const _tTk=()=>{clearCSSCache();Minimap.invalidateCache();_penCache.clear();_penCachePx=0}") && html.includes("_on(matchMedia(q),_CH,_tTk)") && !html.includes("_on(matchMedia(q),_CH,clearCSSCache)")],
+  // v1.7.879: ADR-0853 compressed <diagram> inflations capped at the 64-page bound like the uncompressed _dgs path
+  ['drawio inflate page-cap parity (ADR-0853)', html.includes("_dms.slice(0,64)")],
   // v1.7.84: ADR-0026 drag damage rect
   ['invalidateDamage accumulates world damage', html.includes("function invalidateDamage(r){_damage=_dmgU(_damage,r)") && html.includes("function invalidate(){_damage=null")],
   ['draw() clips scene pass to damage rect', html.includes("ctx.rect(dmg.x,dmg.y,dmg.w,dmg.h);ctx.clip()") && html.includes("ctx.fillRect(dmg.x,dmg.y,dmg.w,dmg.h)")],
   ['move/resize/rotate drag report damage', html.includes("let _gd=_dmgPair(_b0,_bb(rsh)") && html.includes("if(dmg)_iD(dmg);else _iv()")],
-  ['draft draw + erase report damage', html.includes("_iD(_dmgPair(_b0,_bb(d)") && html.includes("_pu(_eraseBatch,clone(hit))")],
+  ['draft draw + erase report damage', html.includes("_iD(_dmgPair(_b0,_bb(d)") && html.includes("_pu(_eraseBatch,clone(s))")],
   ['damage path force-includes gesture targets vs stale grid', html.includes("ptr.dragStartShapes.keys()") && html.includes("ptr.resizeOrig.id") && html.includes("ptr.rotOrig.id")],
   // v1.7.85: ADR-0027 op-level damage propagation
   ['_apply harvests ids + pre/post bboxes for damage', html.includes("const _ids=_opIds(op)") && html.includes("for(const id of _ids)_u(byId(id))") && html.includes("_iD(_dmg)")],
@@ -850,7 +854,7 @@ const checks = [
   ['s.link scheme gate in validPatch (ADR-0327)', html.includes("'link' in p&&p.link!=null")&&html.includes('ADR-0327')],
   ['_pd() preventDefault shorthand (ADR-0326)', html.includes("const _pd=e=>e.preventDefault()")],
   ['deflate bomb guard in _dioInflate (ADR-0325)', html.includes("getReader(),dec=new TextDecoder")&&html.includes("_ln(txt)>8e6")],
-  ['compressed drawio inflates every page (ADR-0324)', html.includes("Promise.all(_dms.map(m=>_dioInflate(m[1])))")&&html.includes("matchAll(/<diagram[^>]*>([^<]+)<\\/diagram>/g)")],
+  ['compressed drawio inflates every page (ADR-0324)', html.includes("Promise.all(_dms.slice(0,64).map(m=>_dioInflate(m[1]))")&&html.includes("matchAll(/<diagram[^>]*>([^<]+)<\\/diagram>/g)")],
   ['exc conn-label lineHeight restore (ADR-0323)', html.includes("e.lineHeight!==1.25)p.lineH=")],
   ['drawio export emits html=1 (ADR-0322)', html.includes("let sty='html=1;';")&&html.includes("'html=1;'+(s.start")],
   ['drawio whiteSpace nowrap|wrap ↔ s.wrap (ADR-0321/0412)', html.includes("_txt(s)&&sty.whiteSpace==='nowrap')s.wrap=0")&&html.includes("s.wrap?'whiteSpace=wrap;':'whiteSpace=nowrap;'")&&html.includes("sty.whiteSpace==='wrap')s.wrap=1")],
@@ -968,6 +972,8 @@ const checks = [
   ['i18n has invite-link keys ja+en', html.includes("shareCopyInviteLink:'招待リンクをコピー'") && html.includes("shareCopyInviteLink:'Copy invite link'") && html.includes("inviteLinkOpened:") && html.includes("inviteLinkNoCode:")],
   // v1.6.44: x,y decorative label is aria-hidden
   ['x,y status label is aria-hidden (decorative)', html.includes('<span class="lbl" aria-hidden="true">x,y</span>')],
+  // ADR-0848: buttons' decorative svg/kbd children hidden from AT (1 VO stop per control — VoiceOver spot-check found ~60 phantom items)
+  ['button decorative children aria-hidden (FT-11)', html.includes("_qsa(document,'button svg,button kbd'))_sa(c,'aria-hidden','true')")],
   // v1.6.45: connection status is aria-live (announces online/offline to SR)
   ['sConn has aria-live=polite (online/offline announces to SR)', html.includes('id="sConn" aria-live="polite"')],
   // v1.6.45: zoom badge has role=group for semantic grouping
@@ -1087,7 +1093,7 @@ const checks = [
   // v1.6.64: Socratic round 4 - rotation scope + lock completeness
   ['doRotate restricted to box shapes (s.w!=null, NaN-safe)', html.includes("_selL(s=>s&&!_lk(s)&&_hb(s))")],
   ['doDelete skips locked shapes', html.includes("function doDelete(){\n  const sel=_selUL();")],
-  ['eraser skips locked shapes', html.includes("if(hit&&!hit.locked&&!_eraseBatch.some")],
+  ['eraser skips locked shapes', html.includes("if(!s||s.locked||_eraseBatch.some")],
   // v1.6.65: budget removed - deferred fixes implemented
   ['_edgePt is rotation-aware (projects to true rotated edge)', html.includes("const ub=sh.w!=null?{x:sh.x,y:sh.y,w:sh.w,h:sh.h}:_bb(sh)") && html.includes("const cx=ub.x+ub.w/2,cy=ub.y+ub.h/2,rot=sh.rotate")],
   ['rotation extends to all box types (text bbox uses envelope)', !html.includes("if(_txt(s)){\n      return{x:s.x,y:s.y,w:s.w,h:s.h};")],
@@ -1541,11 +1547,11 @@ const checks = [
   // v1.7.60 (a11y-audit-2026-07 follow-up): canvas UI-indicator strokes (selection box,
   // rotation tether, alignment guides, marquee, minimap viewport) also use the
   // theme-aware token, not raw --brand — same contrast fix, extended past CSS to canvas.
-  // Shape-drawing DEFAULT colors (new frame/sticky stroke fallbacks) are deliberately left
+  // Shape-drawing DEFAULT colors (frame/sticky/pen stroke fallbacks) are deliberately left
   // on raw --brand: that's a style choice, not an accessibility-critical indicator.
   ["canvas UI-indicator strokes (selection/guides/marquee/rotation-tether/minimap-viewport) use --accent-contrast",
     (html.match(/_ac\(\)/g)||[]).length===11 &&
-    (html.match(/_gC\('--brand'\)/g)||[]).length===5],
+    (html.match(/_gC\('--brand'\)/g)||[]).length===7],
   ['frame label editor text color uses --accent-contrast (real text, needs the 4.5:1 floor too)',
     html.includes("_gC(bold?'--accent-contrast':'--ink')")],
   ['floating search box border uses --accent-contrast, not raw --brand',
@@ -1708,9 +1714,9 @@ try {
              _getPasteCount: () => _pasteCount, _resetPasteClipboard: () => { _lastClipboard = null; },
              endRectLike, endLineLike, endSelect, I18N, applyTheme, editSelectedShapeKbd, Share,
              draw, drawOverlay, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; }, _setOCtx: (c) => { const p = octx; octx = c; return p; },
-             _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, 
+             _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, _oa,
              _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
-             _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER,
+             _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure,
              switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx,
              _getLang: () => LANG, _getT: () => T };
   `);
@@ -1735,9 +1741,9 @@ try {
           _onSwUpdate, _ctxMenuKeyNav,
           _getPasteCount, _resetPasteClipboard,
           endRectLike, endLineLike, endSelect, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
-          _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, 
+          _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, _oa,
           _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
-          _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER,
+          _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure,
           switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx } = api;
 
   console.log('\n-- behavioural --');
@@ -2085,6 +2091,33 @@ try {
     if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}
     console.log('  ✓ Net.init preserves rtc: presence across rooms (ADR-0820)');
   }
+  // ADR-0836: stale _imgqT throttle stamps must not cross rooms — a key answered
+  // in the old room would suppress a valid answer in the new one.
+  {
+    state.roomId='roomC';
+    Net._imgqT.set('kk',nowTs());
+    Net.init('roomD');
+    assert.strictEqual(Net._imgqT.size,0,'imgq throttle map reset on room switch');
+    clearInterval(Net._presenceTimer);
+    if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}
+    console.log('  ✓ Net.init resets imgq throttle stamps (ADR-0836)');
+  }
+  // ADR-0839: ops carry no room tag — a live RTC link kept across a real room
+  // switch would bleed the old room's ops into the new room. init must close it.
+  {
+    let dcClosed=false,pcClosed=false;
+    const _dc=Net.dc,_rtc=Net.rtc;
+    Net.dc={readyState:'open',close(){dcClosed=true}};
+    Net.rtc={close(){pcClosed=true}};
+    state.roomId='roomE';
+    Net.init('roomF');
+    assert.ok(dcClosed,'room switch closes the DataChannel');
+    assert.ok(pcClosed,'room switch closes the RTCPeerConnection');
+    Net.dc=_dc;Net.rtc=_rtc;
+    clearInterval(Net._presenceTimer);
+    if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}
+    console.log('  ✓ Net.init closes the RTC link on a real room switch (ADR-0839)');
+  }
   // ADR-0822: a superseded DataChannel must not clobber the live link — its
   // stale onclose purges only its own presence row.
   {
@@ -2255,7 +2288,7 @@ try {
     assert.strictEqual(s2.img,undefined,'img ref dropped');
     // and a pending-tracked shape resolves via the primary path
     const s3=Shape.make('image',{x:0,y:0,w:10,h:10,img:'kk2'});
-    state.shapes.push(s3);_invalidateGrid();Net._imgPending.set(s3.id,'kk2');
+    state.shapes.push(s3);_invalidateGrid();Net._imgPending.set(s3.id,{k:'kk2',t0:nowTs()});
     Net._onRecv({k:'img',key:'kk2',seq:0,n:1,data:'data:image/png;base64,BB',peer:'peerZ'},false);
     assert.strictEqual(s3.dataUrl,'data:image/png;base64,BB','pending shape resolves');
     assert.strictEqual(Net._imgPending.has(s3.id),false,'pending entry cleared');
@@ -2271,7 +2304,7 @@ try {
     Store.applyRemote({op:'pageAdd',id:'pI',name:'I',shapes:[JSON.parse(JSON.stringify(im1))],clock:{peer:'zz',seq:41,ts:9}});
     const g1=byId(im1.id);
     assert.ok(g1&&g1.pg==='pI','pageAdd member lands on its page');
-    assert.strictEqual(Net._imgPending.get(im1.id),'kk9','unresolved img parks via _attachShape');
+    assert.strictEqual(Net._imgPending.get(im1.id).k,'kk9','unresolved img parks via _attachShape');
     Net._imgIn.set('kk8','data:image/png;base64,CC');
     const im2=Shape.make('image',{x:0,y:0,w:10,h:10,img:'kk8'});
     Store.applyRemote({op:'pageAdd',id:'pJ',name:'J',shapes:[JSON.parse(JSON.stringify(im2))],clock:{peer:'zz',seq:42,ts:9}});
@@ -2288,7 +2321,7 @@ try {
     Store.applyRemote({op:'pageAdd',id:'pA',name:'A',shapes:[],clock:{peer:'zz',seq:50,ts:9}});
     Store.applyRemote({op:'pageAdd',id:'pB',name:'B',shapes:[],clock:{peer:'zz',seq:51,ts:9}});
     const im=Shape.make('image',{x:0,y:0,w:10,h:10,img:'kkP'});
-    im.pg='pA';state.shapes.push(im);_invalidateGrid();Net._imgPending.set(im.id,'kkP');
+    im.pg='pA';state.shapes.push(im);_invalidateGrid();Net._imgPending.set(im.id,{k:'kkP',t0:nowTs()});
     Store.applyRemote({op:'pageDel',id:'pB',firstId:'pA',clock:{peer:'zz',seq:52,ts:9}});
     assert.ok(byId(im.id),'member of the surviving page stays');
     assert.strictEqual(Net._imgPending.has(im.id),false,'pageDel _pcC wipes parked refs wholesale');
@@ -2962,6 +2995,19 @@ try {
     assert.strictEqual(rec.img, 2, 'draft ink: reuses stamp bitmap on append');
     assert.ok(rec.n < 8, 'draft ink: live tail is O(1) segments, not O(n)');
     state.draft = null; _setCtx(prevCtx);
+    // ADR-0857: a stroke-less pen must not leak the leftover fillStyle —
+    // drawPen resolves the --brand fallback for both paths (dot + union).
+    // The union path restores oldFill on return, so sample the colour at fill time.
+    const recF = { ...rec, used:undefined, fill(){ this.used=this.fillStyle;this.n++ } };
+    recF.fillStyle = 'SENTINEL';
+    drawPen({ id:'pn1', type:'pen', z:0, pts:[[0,0],[9,4],[18,0]] }, recF);
+    assert.notStrictEqual(recF.used, 'SENTINEL', 'stroke-less pen assigns the --brand fallback');
+    assert.notStrictEqual(recF.used, undefined, 'stroke-less pen fill ran');
+    recF.fillStyle = 'SENTINEL'; recF.used = undefined;
+    drawPen({ id:'pn2', type:'pen', z:0, pts:[[5,5]] }, recF);
+    assert.notStrictEqual(recF.used, 'SENTINEL', 'stroke-less dot assigns the --brand fallback');
+    // token flip must purge the pen bitmaps — they bake the resolved colour.
+    assert.ok(html.includes('_penCache.clear();_penCachePx=0'), 'ADR-0857: _tTk purges the pen bitmap cache');
     console.log('  ✓ pen bitmap cache: miss/settle/hit, translate+flip+style invalidation, vector fallbacks');
   }
 
@@ -3211,6 +3257,14 @@ try {
     // the gate is shared, so the remote-sync vectors close too:
     assert.ok(!validRemotePayload({op:'add',shape:{id:'i',type:'image',z:0,dataUrl:'https://evil.example/x'}}), 'remote add of an image with an external dataUrl rejected (malicious-peer vector)');
     assert.ok(!validRemotePayload({op:'upd',id:'i',after:{dataUrl:'https://evil.example/x'}}), 'remote upd setting an external dataUrl on an existing image rejected');
+    // ADR-0858: junk-prop flood — patches/shapes carry only known keys upstream of
+    // validPatch/validShape, but UNKNOWN keys were let through, landing on the shape
+    // (_oa assign) AND stamping per-shape wclock with attacker-named props; one op can
+    // carry ~1M keys that then propagate into every peer's wclock via snapshots.
+    {const flood={};for(let i=0;i<65;i++)flood['k'+i]=1;
+     assert.ok(!validRemotePayload({op:'upd',id:'a',after:flood}), 'ADR-0858: >64-key junk patch rejected at wire intake');
+     const fs={id:'a',type:'rect',z:0};for(let i=0;i<65;i++)fs['k'+i]=1;
+     assert.ok(!validShape(fs), 'ADR-0858: >64-key junk shape rejected at wire intake');}
     // non-image shapes never carry dataUrl, so nothing regresses:
     assert.ok(validShape({id:'r',type:'rect',z:0}), 'rect without dataUrl still accepted (no regression)');
     console.log('  ✓ validShape: rejects malformed pens + external-URL image dataUrls (no-external-resources gate, v1.7.69)');
@@ -3994,7 +4048,7 @@ try {
 
   // ADR-0403: sender refuses oversized snapshots before chunking
   {
-    assert.ok(html.includes("if(_ln(_sm)>24e6){_wT('snapBig');return}"),'send-side snapshot cap');
+    assert.ok(html.includes("if(_ln(_sm)>24e6){_wT('snapBig');this.dc.close();return}"),'send-side snapshot cap');
     assert.strictEqual(api.I18N.ja.snapBig.length>0&&api.I18N.en.snapBig.length>0,true,'snapBig i18n both langs');
     console.log('  ✓ snapshot send-side 24MB fail-fast (ADR-0403)');
   }
@@ -4077,6 +4131,12 @@ try {
     assert.strictEqual(Net._mergeSnapshotOp({op:'add',shape:snapShape}),'skip','missing wc → keep (legacy)');
     // unknown shape → add path
     assert.strictEqual(Net._mergeSnapshotOp({op:'add',shape:{...snapShape,id:'NEW'},clock:{peer:'A',seq:'snap:NEW',ts:0}}),'add','unknown shape adopted');
+    // ADR-0846: a crafted snapshot carrying a non-'add' op must not execute it
+    // under the snapshot path — the 'add'-only gate rejects before LWW merging.
+    {const before=byId(snapShape.id)?.x;
+     const res=Net._mergeSnapshotOp({op:'del',ids:[snapShape.id],wc:{x:{peer:'A',seq:1,ts:9e15}}});
+     assert.strictEqual(res,'skip','non-add op rejected at merge path');
+     assert.ok(byId(snapShape.id)&&byId(snapShape.id).x===before,'shape untouched by rejected op');}
     console.log('  ✓ snapshot LWW merge: per-prop convergence, no history (6 asserts)');
   }
 
@@ -4131,7 +4191,7 @@ try {
       img:{peer:'A',seq:10,ts:Date.now()+1e3},
     }});
     assert.strictEqual(byId('I1').img,'K_WIN','winning img ref merges');
-    assert.ok(Net._imgPending.get('I1')==='K_WIN','winning img ref stays parked');
+    assert.ok(Net._imgPending.get('I1')?.k==='K_WIN','winning img ref stays parked');
     Net._onRecv({k:'img',key:'K_WIN',data:'data:image/png;base64,NEW',n:1,seq:0,peer:'A'},false);
     assert.strictEqual(byId('I1').dataUrl,'data:image/png;base64,NEW','winning blob resolves into dataUrl');
     console.log('  ✓ ADR-0745: snapshot img merge drops losing pending / resolves winner (6 asserts)');
@@ -4147,7 +4207,7 @@ try {
     // shape exists locally with a parked img ref (blob not yet arrived)
     const r={id:'I2',type:'image',z:1,x:0,y:0,w:10,h:10,img:'K_OLD'};
     Store.commit({op:'add',shape:r});
-    Net._imgPending.set('I2','K_OLD');
+    Net._imgPending.set('I2',{k:'K_OLD',t0:nowTs()});
     // snapshot merge: dataUrl wins (no img key in this payload)
     Net._mergeSnapshotOp({op:'add',shape:{...JSON.parse(JSON.stringify(r)),img:undefined,dataUrl:'data:image/png;base64,MERGED'},wc:{
       dataUrl:{peer:'A',seq:1,ts:Date.now()+1e3},
@@ -4172,7 +4232,7 @@ try {
     // shape parked on K_OLD; a remote upd rewrote it to a new ref + merged dataUrl
     const r={id:'I3',type:'image',z:1,x:0,y:0,w:10,h:10,img:'K_OLD'};
     Store.commit({op:'add',shape:r});
-    Net._imgPending.set('I3','K_OLD');
+    Net._imgPending.set('I3',{k:'K_OLD',t0:nowTs()});
     const ls=byId('I3');
     ls.img='K_NEW';ls.dataUrl='data:image/png;base64,CUR';   // as an upd/merge would leave it
     Net._onRecv({k:'img',key:'K_OLD',data:'data:image/png;base64,STALE',n:1,seq:0,peer:'A'},false);
@@ -4180,7 +4240,7 @@ try {
     assert.strictEqual(ls.dataUrl,'data:image/png;base64,CUR','stale blob never clobbers dataUrl');
     assert.ok(!Net._imgPending.has('I3'),'stale pending drained');
     // a shape still referencing the resolved key resolves normally
-    Net._imgPending.set('I3','K_NEW');
+    Net._imgPending.set('I3',{k:'K_NEW',t0:nowTs()});
     Net._onRecv({k:'img',key:'K_NEW',data:'data:image/png;base64,NW',n:1,seq:0,peer:'A'},false);
     assert.strictEqual(ls.dataUrl,'data:image/png;base64,NW','live ref resolves');
     assert.strictEqual(ls.img,undefined,'resolved ref deleted');
@@ -4488,7 +4548,7 @@ try {
     assert.ok(att.shape.dataUrl===big&&!att.shape.img,'attach resolves dataUrl');
     const miss={op:'add',shape:{id:'zz',type:'image',img:'kX',x:0,y:0,w:1,h:1}};
     Net._attachOp(miss);
-    assert.ok(Net._imgPending.get('zz')==='kX','missing blob parks');
+    assert.ok(Net._imgPending.get('zz')?.k==='kX','missing blob parks');
     Net._onRecv({k:'img',key:'kX',seq:0,n:1,data:'DATA'},false);
     assert.ok(Net._imgIn.get('kX')==='DATA','chunk reassembles into _imgIn');
     assert.ok(!Net._imgPending.has('zz'),'pending drained on blob arrival');
@@ -4548,7 +4608,7 @@ try {
   {
     // _psc purges _imgPending — a shape deleted while its blob chunks are in
     // flight must not leave a parked entry behind.
-    Net._imgPending.set('zzp','kZ');
+    Net._imgPending.set('zzp',{k:'kZ',t0:nowTs()});
     _psc('zzp');
     assert.ok(!Net._imgPending.has('zzp'),'ADR-0435: _psc purges _imgPending');
     // _sendDC drops a >256KiB message outright — it can never send, and the
@@ -4577,7 +4637,17 @@ try {
     ws.spacing=2;
     const l2=wrapTextCached(ws,ws.text,40,10,t=>t.length*10);
     assert.ok(l1!==l2,'ADR-0437: spacing change invalidates wrap cache');
-    console.log('  ✓ ADR-0435/0436/0437/0438 wire+validation guards (6 asserts)');
+    // _connLabelMeasure: spacing belongs in the memo key too — ctx.letterSpacing
+    // alters measureText widths, so a spacing-only change must recompute or the
+    // label pill/underline extent stays at the old width (ADR-0850).
+    let _mc=0;
+    const _cc={measureText:t=>{_mc++;return{width:t.length*10}}};
+    const _ls={spacing:0};
+    const _m1=_connLabelMeasure(_ls,_cc,['lab'],12);
+    _ls.spacing=2;
+    const _m2=_connLabelMeasure(_ls,_cc,['lab'],12);
+    assert.ok(_mc===2&&_m1!==_m2,'ADR-0850: spacing change invalidates conn-label measure cache');
+    console.log('  ✓ ADR-0435/0436/0437/0438/0850 wire+validation guards (7 asserts)');
     // ADR-0443: _undoWire maps each reversible op to fresh wire ops — add/del swap
     // direction, upd-family swaps before/after, move negates, exotics stay local.
     {
@@ -4604,7 +4674,7 @@ try {
       const big='data:image/png;base64,'+'x'.repeat(60000);
       const slim=Net._slimOp({op:'del',shapes:[{id:'i1',type:'image',z:1,x:0,y:0,w:10,h:10,dataUrl:big}]});
       assert.ok(slim.shapes[0].dataUrl===undefined&&typeof slim.shapes[0].img==='string','del shapes slim to img refs');
-      Net._imgPending.set('zz','k');_pcC();
+      Net._imgPending.set('zz',{k:'k',t0:nowTs()});_pcC();
       assert.strictEqual(Net._imgPending.size,0,'_pcC clears _imgPending');
       // ADR-0448: a stale partial with a different chunk count must not block new streams
       Net._fragIn({data:'aa',n:2,seq:0},'_snapIn');
@@ -9143,6 +9213,28 @@ try {
     assert.ok(state.shapes.find(s=>s.id===rB.id),'flushErase undo: erased shape restored');
     assert.strictEqual(liveArr2().a,rB.id,'flushErase undo: connector .a binding restored');
     console.log('  ✓ flushErase: connector bindings cleared atomically (eraser parity with doDelete)');
+  }
+
+  // ADR-0830: eraseAt must cascade a frame's spatial members like Delete does
+  // (withFrameChildren) — before the fix the eraser removed only the frame,
+  // orphaning members (unframed shapes left behind).
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+    const fr=Shape.make('frame',{x:100,y:100,w:300,h:200});
+    Store.commit({op:'add',shape:fr});
+    const mem=Shape.make('rect',{x:150,y:150,w:20,h:20});
+    Store.commit({op:'add',shape:mem});
+    const out=Shape.make('rect',{x:600,y:600,w:20,h:20});
+    Store.commit({op:'add',shape:out});
+    eraseAt({x:120,y:115});   // over the frame's edge, not the member
+    assert.ok(!state.shapes.find(s=>s.id===fr.id),'eraseAt: frame removed immediately');
+    assert.ok(!state.shapes.find(s=>s.id===mem.id),'eraseAt: frame member cascaded');
+    assert.ok(state.shapes.find(s=>s.id===out.id),'eraseAt: outside shape untouched');
+    flushErase();
+    assert.ok(!state.shapes.find(s=>s.id===fr.id)&&!state.shapes.find(s=>s.id===mem.id),'flushErase: frame+member deleted');
+    Store.undo();
+    assert.ok(state.shapes.find(s=>s.id===fr.id)&&state.shapes.find(s=>s.id===mem.id),'undo: frame+member restored');
+    console.log('  ✓ eraseAt cascades frame members (Delete parity, ADR-0830)');
   }
 
   // v1.6.80: remote `del` connClears must be validated (security parity with upd/style).
@@ -14310,13 +14402,101 @@ try {
     console.log('  ✓ bbox-feeding props bounded at intake (ADR-0793)');
   }
 
+  // ADR-0833: _placeCopies stamps sh.pg=curPg — duplicating or pasting a
+  // page-1 shape while viewing page 2 must land the copy on page 2, or it
+  // becomes an invisible shape the user can't see or select (paste "does
+  // nothing" from their point of view). Single-page mode leaves pg unset.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';
+    const src=Shape.make('rect',{x:10,y:10,w:50,h:50});src.pg='pA';Store.commit({op:'add',shape:src});
+    state.curPg='pB';
+    const added=_placeCopies([src],0,0);
+    assert.strictEqual(added.length,1,'copy produced');
+    assert.strictEqual(byId(added[0]).pg,'pB','copy lands on the viewed page, not the source page');
+    state.shapes=[];_invalidateGrid();state.pages=null;state.curPg=null;
+    const src2=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    const added2=_placeCopies([src2],0,0);
+    assert.ok(byId(added2[0]).pg==null,'single-page mode leaves pg unset');
+    state.shapes=[];_invalidateGrid();state.selection=new Set();state.dupIds=new Set();state.dupDelta=null;
+    console.log('  ✓ _placeCopies lands copies on the viewed page (ADR-0833)');
+  }
+
+  // ADR-0834: a remote pageAdd rejected at the 64-page cap used to still push
+  // its member shapes with pg=op.id — invisible shapes pointing at a page we
+  // don't have, unhealable because _pgHealS won't stub past the cap either.
+  // Members now apply only when the page actually landed.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.pages=Array.from({length:64},(_,i)=>({id:'pp'+i,name:'P'+i,nts:0}));state.curPg='pp0';
+    const member={id:'m65',type:'rect',x:0,y:0,w:10,h:10,z:1};
+    Store.applyRemote({op:'pageAdd',id:'p65',name:'P65',shapes:[member],clock:{peer:'r1',seq:1,ts:1}});
+    assert.ok(!state.pages.find(p=>p.id==='p65'),'pageAdd over the 64 cap is dropped');
+    assert.ok(!byId('m65'),'dropped pageAdd leaves no invisible member shapes');
+    // and the page that DOES land keeps its members
+    state.pages=[{id:'pp0',name:'P0',nts:0}];state.curPg='pp0';
+    Store.applyRemote({op:'pageAdd',id:'pOk',name:'POk',shapes:[{id:'mOk',type:'rect',x:0,y:0,w:10,h:10,z:1}],clock:{peer:'r1',seq:2,ts:2}});
+    assert.ok(byId('mOk')&&byId('mOk').pg==='pOk','landed pageAdd keeps its members');
+    state.shapes=[];_invalidateGrid();state.pages=null;state.curPg=null;
+    console.log('  ✓ over-cap pageAdd drops its members too (ADR-0834)');
+  }
+  // ADR-0835: a parked img ref asks {k:'imgq',key} once it ages past two
+  // heartbeat intervals; a peer holding the blob (received or own shape) answers.
+  {
+    Net._imgPending.clear();Net._imgIn.clear();Net._imgOuts.length=0;
+    const sent=[];const _os=Net._send;Net._send=m=>{if(m&&m.k==='img')sent.push(m.key);};
+    const s0=Shape.make('image',{x:0,y:0,w:10,h:10});
+    s0.dataUrl='data:image/png;base64,'+'Q'.repeat(200);
+    const kQ=Net._slimShapes([s0])[0].img;Net._imgOuts.length=0;
+    assert.ok(typeof kQ==='string'&&kQ.length>0,'slim emits the blob key');
+    Net._onRecv({k:'imgq',key:kQ,peer:'zz'},false);
+    assert.ok(sent.includes(kQ),'imgq answered from the sent-key map O(1)');
+    Net._onRecv({k:'imgq',key:kQ,peer:'zz'},false);
+    assert.strictEqual(sent.length,1,'imgq flood throttled per key (ADR-0836)');
+    sent.length=0;Net._imgqT.clear();
+    Net._imgIn.set('kR','data:image/png;base64,RR');
+    Net._onRecv({k:'imgq',key:'kR',peer:'zz'},false);
+    assert.ok(sent.includes('kR'),'imgq answered from the received-blob store');
+    sent.length=0;
+    Net._onRecv({k:'imgq',key:'x'.repeat(65),peer:'zz'},false);   // oversized key → dropped
+    assert.strictEqual(sent.length,0,'oversized imgq key ignored');
+    Net._send=_os;
+    state.shapes=[];_invalidateGrid();Net._imgIn.clear();
+    // ADR-0837: the parked-ref sweep must broadcast — _send is BC-only and would
+    // never reach an RTC-only peer (the link where mid-flush disconnects live).
+    assert.ok(html.includes("this._bcast(_mk('imgq',{key:e.k}))"),'imgq sweep rides _bcast');
+    // ADR-0840: IDB-restored shapes with dangling img refs must park too —
+    // both load() and restoreBackup() route through Net._attachShape.
+    assert.strictEqual((html.match(/shapes\.map\(s=>Net\._attachShape\(s\)\)/g)||[]).length,2,
+      'both IDB img-attach paths park unresolved refs');
+    // ADR-0841: a patch-carried img ref (remote upd/style/align/snapshot-merge)
+    // must park too — _oa is the single gate for shape-level patch applies.
+    {Net._imgPending.clear();const _ps={id:'u1'};_oa(_ps,{img:'kx'});
+     assert.strictEqual(Net._imgPending.get('u1').k,'kx','_oa parks a patch-carried img ref');
+     Net._imgPending.clear();_oa(_ps,{img:'ky',dataUrl:'data:x'});
+     assert.ok(!Net._imgPending.has('u1'),'resolved dataUrl does not park');
+     Net._imgPending.clear();}
+    // ADR-0842: _imgSent gets the same byte bound as _imgIn — a long session of
+    // pasting + deleting images must not retain dead dataUrls unboundedly.
+    assert.ok(html.includes("_sb>64_000_000"),'_imgSent is byte-bounded like _imgIn');
+    {Net._imgSent.clear();const _im={id:'i1',type:'image',dataUrl:'x'.repeat(200)};
+     const _sl5=Net._slimShapes([_im]);
+     assert.ok(_sl5[0].img&&Net._imgSent.has(_sl5[0].img),'sent blob registered for imgq answers');
+     Net._imgSent.clear();Net._imgOuts.length=0;}
+    {Net._imgSent.clear();Net._imgSent.set('k1','x'.repeat(33e6));Net._imgSent.set('k2','y'.repeat(33e6));
+     Net._slimShapes([{id:'i9',type:'image',dataUrl:'z'.repeat(200)}]);
+     assert.ok(!Net._imgSent.has('k1')&&Net._imgSent.has('k2'),'byte bound evicts oldest entry first');
+     Net._imgSent.clear();Net._imgOuts.length=0;}
+    console.log('  ✓ imgq re-request answered from blob store or live shape (ADR-0835)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
   // asserts but actually contains 6 (recounted directly: at1.length, at2.length, and 4
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1780; // prev 1776 + 4 ADR-0788 wclock __proto__-poison asserts
+  pass += 1787; // prev 1781 + 4 ADR-0857 stroke-less-pen/_tTk asserts + 2 ADR-0858 junk-prop-flood asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
