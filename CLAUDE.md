@@ -742,7 +742,8 @@ Board/
 │   ├── ADR-0691-sendorder-invariant.md  # presence送出順の文書同期 (実装済)
 │   ├── ADR-0692-adopt-unknown-pg-heal.md  # _pgAdopt の未知 pg ヒール (実装済)
 │   ├── ADR-0693-union-heal-pg.md  # union-heal 側も未知 pg を拾う (実装済)
-│   └── ADR-0694-null-pages-scrub.md  # ページ集合 null 移行の s.pg scrub (実装済)
+│   ├── ADR-0694-null-pages-scrub.md  # ページ集合 null 移行の s.pg scrub (実装済)
+│   └── ADR-0695-causal-marker-persistence.md  # _lastRep/_nameTs の IDB 永続化 (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

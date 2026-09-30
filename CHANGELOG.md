@@ -1,3 +1,8 @@
+## [1.7.721] - 2026-09-29
+
+### Fixed
+- _lastRep/_nameTs を doc record で永続化 + Net.init のリセットを実 room 切替時のみへ (リロード後の stale snapshot/rename 巻き戻しを解消) (ADR-0695)
+
 ## [1.7.720] - 2026-09-29
 
 ### Fixed
