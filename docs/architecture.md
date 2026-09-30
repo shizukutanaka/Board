@@ -206,6 +206,8 @@ IDB 復元 (`Persist.load`/`restoreBackup`) も `_attachShape` を通して未�
   `validPatch` 内では patch/shape のキー件数 ≤64 (ADR-0858) に加え、
   全 prop の serialize 重量 ≤6KB (ADR-0865) — `pts`/`dataUrl`/`text` は
   固有の大きめ上限を維持しつつ、未知キーの MB 級ペイロードを閉塞する。
+  ローカル入力側も同上限を共有する (ADR-0866): 超過分はローカル append/insert
+  で停止し、「ローカル受理・ピア棄却」の発散を防ぐ (0796/0797 と同規則)。
 
 ### 4. State
 唯一の真実。以下しか存在しない:

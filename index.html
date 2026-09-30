@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.891';   // ADR-0865
+const V='1.7.892';   // ADR-0866
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4328,7 +4328,7 @@ _on(canvas,_PM,e=>{
         const sh=byId(ptr.wayOrig.id);
         if(sh){
           const wa=_wayArr(sh),i=ptr.wayIdx|0;
-          if(ptr.wayNew){wa.splice(i,0,snapPt(wp));sh.way=wa;ptr.wayNew=false;}   // first move inserts the vertex
+          if(ptr.wayNew){if(_ln(wa)<200){wa.splice(i,0,snapPt(wp));sh.way=wa}ptr.wayNew=false;}   // first move inserts the vertex; ADR-0866: stay under the 200-waypoint wire bound
           else{
             const pts=_linePts(sh),mx=(pts[i].x+pts[i+1].x)/2,my=(pts[i].y+pts[i+1].y)/2;
             if(_hp(wp.x-mx,wp.y-my)<6/_vp().zoom){wa.splice(i,1);if(_ln(wa))sh.way=wa;else delete sh.way}   // ADR-0088: RAW point keeps the clear gesture reachable
@@ -5369,7 +5369,9 @@ function contPen(wp,e){
   const last=_pL(pts);
   // decimate by min distance for smoothness
   const d=_hp(wp.x-last[0],wp.y-last[1]);
-  if(d>1/_vp().zoom)_pu(pts,[wp.x,wp.y,_df().hl?0.5:_penPr(e)]);
+  // ADR-0866: pts is wire-bounded at 50000 tuples — stop growing locally too;
+  // an over-cap stroke would commit here yet be rejected by every peer (divergence).
+  if(d>1/_vp().zoom&&_ln(pts)<50000)_pu(pts,[wp.x,wp.y,_df().hl?0.5:_penPr(e)]);
   const _m=(_df().size||2)+16;   // ADR-0026: ink corridor — accumulated union covers the whole stroke
   _iD({x:_min(wp.x,last[0])-_m,y:_min(wp.y,last[1])-_m,w:_abs(wp.x-last[0])+2*_m,h:_abs(wp.y-last[1])+2*_m});
 }

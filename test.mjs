@@ -12734,6 +12734,23 @@ try {
     assert.ok(!ptr.down,'right-button PD does not arm ptr.down');
     fire('pointerup',50,50);
     assert.strictEqual(state.shapes.length,0,'no phantom shape from right-click');
+    // ADR-0866: local inputs share the wire caps — an over-cap pen stroke or
+    // waypoint array would commit locally yet be rejected by every peer
+    // (same divergence class as the text-editor maxLength, ADR-0797).
+    reset();state.viewport={x:0,y:0,zoom:1};state.tool='pen';
+    fire('pointerdown',10,10);
+    state.draft.pts=new Array(50000).fill(0).map((_,i)=>[i,0,0.5]);
+    fire('pointermove',60000,0);                       // 1px decimate would append
+    assert.strictEqual(state.draft.pts.length,50000,'ADR-0866: contPen stops appending at the 50000-tuple wire cap');
+    fire('pointerup',60000,0);
+    reset();state.viewport={x:0,y:0,zoom:1};state.tool='select';
+    const wL={id:'w',type:'line',x1:0,y1:0,x2:1000,y2:0,z:0,way:new Array(200).fill(0).map((_,i)=>({x:i*5,y:1}))};
+    state.shapes=[wL];_invalidateGrid();state.selection=new Set([wL.id]);
+    ptr.dragKind='way';ptr.wayOrig=wL;ptr.wayIdx=100;ptr.wayNew=true;ptr.down=true;
+    fire('pointermove',600,40);                        // first move would insert a vertex
+    assert.strictEqual(wL.way.length,200,'ADR-0866: waypoint insert stops at the 200-object wire cap');
+    assert.strictEqual(ptr.wayNew,false,'ADR-0866: insert slot still consumed (gesture continues as a move)');
+    ptr.down=false;ptr.dragKind=null;ptr.wayOrig=null;ptr.wayNew=false;
     // keydown through the real window listener: tool keys, ⌘Z undo, Esc cancels
     const fireKey=(key,o={})=>{
       const ev={key,ctrlKey:false,metaKey:false,shiftKey:false,altKey:false,
@@ -14619,7 +14636,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1814; // prev 1809 + 5 ADR-0865 prop-weight bound asserts
+  pass += 1817; // prev 1814 + 3 ADR-0866 local-input wire-cap asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
