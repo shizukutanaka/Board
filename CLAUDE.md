@@ -903,6 +903,7 @@ Board/
 │   └── ADR-0852-minimap-theme-token-stale.md  # OS テーマ/コントラスト切替でミニマップシーン未無効化 → _tTk で統一 + 残片6箇所修復
 │   └── ADR-0853-drawio-inflate-page-cap.md  # 圧縮 <diagram> 展開の件数無制限 → 非圧縮パスと同じ 64 頁上限へ (並行 DecompressionStream の無制限生成を阻止)
 │   └── ADR-0854-insession-growth-audit.md  # セッション内蓄積監査完走 (undo/seenOps/pages/peers/caches 全て bounded) + 切断コメント修復スイープ#4
+│   └── ADR-0855-invalidation-funnel-audit.md  # 無効化網羅性監査完走 (全変更経路が _iG/_iv/_ivO/_ms/_ps/_pgBar 到達)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
