@@ -376,6 +376,9 @@ DOM 要素は `data-t` 属性 + `UI.applyI18n()` で翻訳 (起動時に 1 回�
 - `img` — 画像 blob の `{k,key,seq,n,data}` 断片。op/snapshot 内の画像は
   `_slimOp` で `img:<key>` 参照に痩身化され、バイト本体は別経路
   (`_imgOuts` → 64KB chunks → `_imgChunks` 再構成 → `_imgIn`)。
+  再構成完了時に `hash(blob)===key のベース` (`:N` チェーン slot 前) を
+  必須とする — 送信者申告キーでの `_imgIn` 上書き (parked ref 解決・
+  imgq 再配信経由のフォージ供給 → 恒久発散) を閉塞 (ADR-0864)。
   参照先不明の shape は `_imgPending` に駐車し blob 到着で attach
   (ADR-0069/0374/0379)。削除済み shape の駐車エントリは `_psc` が除去
   (ADR-0435)。
