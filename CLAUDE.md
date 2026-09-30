@@ -917,6 +917,20 @@ Board/
 │   └── ADR-0866-local-input-wire-caps.md  # ローカル入力も wire 上限を共有 — pen pts>50000 / waypoint>200 がローカル commit・全ピア棄却で発散していた実害を閉塞
 │   └── ADR-0867-dataurl-wire-bound-parity.md  # dataUrl 取込上限を wire 境界へ一致 — 16*1024*1024 vs 16_000_000 の ~777KB 窓でローカル受理・全ピア棄却の発散を閉塞
 │   └── ADR-0868-numeric-range-bounds.md  # opacity/size/fontSize の値域ゲート — 範囲外代入を無視する canvas 仕様で前 shape の描画状態が漏れる非決定描画を閉塞
+│   └── ADR-0869-session-accumulation-audit.md  # セッション内蓄積監査完走 — 全キュー/マップ bounded;総図形数ゲートは到着順序依存で恒久発散のため非採用
+│   └── ADR-0870-color-prop-format.md  # stroke/fill/color の書式検証 — 無効 CSS 色は canvas が代入無視し前 shape の色漏れ;CSS.supports+非DOMフォールバック、fill:'none' 保護
+│   └── ADR-0871-render-prop-format-audit.md  # 描画消費 prop の書式監査完走 — 全 sink がゲート/whitelist写像/ローカル定数で決定的;enum gate は後方互換で非採用
+│   └── ADR-0872-intake-parity-audit.md  # wire 取込 parity 監査完走 — op whitelist・aux・構造鍵・wholesale・生産者全網羅;「intake検証or消費安全」が全フィールドの規則に
+│   └── ADR-0873-editor-typography-parity.md  # テキスト編集 overlay に letterSpacing/lineHeight を適用 — canvas 描画との WYSIWYG 乖離を解消
+│   └── ADR-0874-label-editor-typography.md  # ラベルエディタ cssText に letter-spacing/text-decoration 追加 — 0873 同型のラベル側 WYSIWYG 乖離を解消
+│   └── ADR-0875-producer-parity-audit.md  # ローカル生産者 bound 監査完走 — 全入力が wire 上限以下 (0872 intake と対の producer 側)
+│   └── ADR-0876-paste-producer-pins.md  # ペースト生産者 bound の behavioural ピン — >4000 平文・>2000 TSV セル・生成図形の validShape 受理を実経路で固定
+│   └── ADR-0877-img-import-pre-read-guard.md  # 画像取込に _bigFile 事前ガード — 巨大ファイルを全読みしてから棄却していたメモリスパイクを閉塞 + FileReader ピン
+│   └── ADR-0878-degenerate-image-guard.md  # 0×0 デジェネレート画像の棄却 — 不可視図形着地 / NaN 高さ書込み発散を img.onload ゲートで閉塞
+│   └── ADR-0879-toast-stack-bound.md  # トーストスタック上限4枚 — バースト時の無制限 DOM 積算を最古落としで閉塞
+│   └── ADR-0880-toast-stack-cap-pins.md  # トースト上限の behavioural ピン — 実スタブ DOM で上限4・最古優先・dedup 非双出を固定
+│   └── ADR-0881-storage-cache-dialog-audit.md  # ホストAPI エラーパス監査完走 — localStorage/IDB/crypto/encoding/window/dialog 全経路 fail-closed 確認
+│   └── ADR-0882-sr-style-identity-announce.md  # SR アナウンスに dash/align/valign/bold 系を追加 — スタイル身分 prop の読み上げ非対称を解消
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

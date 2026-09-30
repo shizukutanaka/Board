@@ -211,6 +211,25 @@ IDB 復元 (`Persist.load`/`restoreBackup`) も `_attachShape` を通して未�
   (0796/0797 と同規則)。`dataUrl` は intake が 16_000_000 で byte-for-byte 一致。
   値域ゲート (ADR-0868): `opacity∈[0,1]`、`size`/`fontSize` ∈(0,1e4] —
   範囲外代入を無視する canvas 仕様による前 shape 状態漏れを閉塞する。
+  書式ゲート (ADR-0870): `color`/`stroke`/`fill` は `CSS.supports('color',v)`
+  (`fill:'none'` センチネル保護) — 無効 CSS 色の代入無視による色漏れを閉塞。
+  描画消費 prop の sink 監査は ADR-0871 で完走: enum 系 (head/startHead/
+  fstyle/align/valign/font) は全経路で確定的 fallback を持ち、後方互換の
+  ため intake ゲートは非採用 (旧値を持つ実ボードを棄却しない)。
+  取込 parity 監査は ADR-0872 で完走: op 種別は whitelist+default 棄却、
+  構造鍵は `_stripStruct` で除去、wholesale/インポータは `validShape` 通過、
+  ローカル生産者は全て wire ゲート内 — 全フィールドは「intake 検証か
+  消費側安全」のいずれかを満たす。
+  生産者側 parity は ADR-0875 で完走: docName/label/pageName/text/link 等
+  全12系統のローカル入力が入口 bound で wire 上限以下 — 受理された値は
+  ピアでも受理される (0872 の intake 側と対)。ペースト系は ADR-0876 が
+  実経路ピン: `PASTE_MAX_CHARS=4000`・TSV セル 2000・生成図形の
+  validShape 受理まで固定。
+  編集 overlay の typography parity: text editor は letterSpacing/lineHeight
+  (ADR-0873)、label editor は letter-spacing/text-decoration (ADR-0874) —
+  WYSIWYG 乖離を両経路で解消。
+  蓄積上限は全キュー/マップで完備 (ADR-0869); 総図形数の累積ゲートは
+  到着順序依存で恒久発散するため、収束安全な op 単位検証のみを採る。
 
 ### 4. State
 唯一の真実。以下しか存在しない:

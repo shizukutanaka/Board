@@ -1,3 +1,88 @@
+## [1.7.908] - 2026-09-30
+
+### Fixed
+- `describeShape` の SR アナウンスにスタイル身分 prop を追加: dash (破線/点線)、text align (中央/右)、valign (中央/下)、bold/italic/underline/strike — 設定は可能でも読み上げ経路がなかった視覚情報の非対称を解消 (ADR-0882)
+
+### Test
+- dash/align/valign/text-flag の announce を実 `describeShape` 両ロケールで behavioural ピン (ADR-0882)
+
+## [1.7.907] - 2026-09-30
+
+### Docs
+- ホストAPI エラーパス監査の完走を記録: localStorage/IndexedDB/crypto.subtle/encoding/window/document シンク/ブロッキング dialog の全経路が fail-closed (toast+安全既定、静黙発散なし) と確認 (ADR-0881)
+
+## [1.7.906] - 2026-09-30
+
+### Test
+- トーストスタック上限の behavioural ピン: 記録型スタブ DOM で 6件バースト時に上限4・最古優先エビクト・同一文 dedup 非双出を実動作で固定 (ADR-0880)
+
+## [1.7.905] - 2026-09-30
+
+### Fix
+- トーストスタックを最大4枚に制限: 同一文重複のみ除去だったためバースト時 (リモート op 集中・連続エラー) に ~1.8s の自動除去まで div が無制限積算し画面を覆い尽くす実害を、最古落としで閉塞 (ADR-0879)
+
+### Test
+- スタック上限パターンをソースピンで固定 (ADR-0879)
+
+## [1.7.904] - 2026-09-30
+
+### Fix
+- 0×0 のデジェネレート画像を `img.onload` 先頭で棄却: `naturalWidth=0` でも onload が発火し `cb(…,0,0)` から不可視図形 (w:0) 着地や `s.w*nh/nw`=NaN 高さ書込み (wire gate でピア棄却→発散) に至り得た (ADR-0878)
+
+### Docs
+- drop cascade 直上の切断コメント断片4行を文法修復 (ADR-0878)
+
+### Test
+- FileReader→Image stub (width=0) で cb 未到達 + エラートーストを実経路で固定 (ADR-0878)
+
+## [1.7.903] - 2026-09-30
+
+### Fix
+- 画像取込 (`_imgImportFile`、drop/paste 共有経路) に事前サイズガード: 32MB 超の画像を `readAsDataURL` で全読みしてから棄却していたメモリスパイク経路を、他インポータと同じ `_bigFile` 事前棄却で閉塞 (16MB dataUrl 精密ガードは据置の二段構え) (ADR-0877)
+
+### Test
+- 巨大画像が `readAsDataURL` を一度も呼ばず `cb` 未到達・拒否トースト発火を fake FileReader で固定 (ADR-0877)
+
+## [1.7.902] - 2026-09-30
+
+### Test
+- ペースト生産者 bound を実経路でピン: >PASTE_MAX_CHARS 平文 → text 4000 打切り、過長 TSV セル → 2000 打切り、生成図形が全て validShape (wire gate) 受理 — producer parity の結論を機能経路で固定 (ADR-0876)
+
+## [1.7.901] - 2026-09-30
+
+### Docs
+- ローカル生産者 bound 監査完走: docName 80・link 500+scheme・text 5000・label 80・pageName 80・数値系・pts/way/dataUrl — 全12系統の入力が wire 上限以下。「受理された値はピアでも受理される」producer parity 規則を確定 (ADR-0872 intake 側と対) (ADR-0875)
+
+## [1.7.900] - 2026-09-30
+
+### Fix
+- ラベルエディタの typography parity: ラベル `<input>` が `letter-spacing`/`text-decoration` を未適用で、spacing/under/strike 付きラベルが編集中に描画と乖離していた WYSIWYG 欠陥を `openLabelEditor` cssText への宣言追加で解消 (ADR-0873 同型のラベル側 sibling、ADR-0874)
+
+## [1.7.899] - 2026-09-30
+
+### Fix
+- テキスト編集 overlay の typography parity: `letterSpacing`/`lineHeight` が canvas 描画側のみ適用され、spacing/lineH 付きテキストが編集中に描画と乖離していた WYSIWYG 欠陥を `positionTextEditor` への両値適用で解消 (ADR-0873)
+
+## [1.7.898] - 2026-09-30
+
+### Docs
+- wire 取込 parity 監査完走: op 種別 whitelist・aux フィールド・構造鍵除去・wholesale 経路・ローカル生産者の全てが検証済/消費側安全。「validate at intake か verify-safe at consume」が全フィールドの必須規則として確定 (ADR-0872)
+
+## [1.7.897] - 2026-09-30
+
+### Docs
+- 描画消費 prop の書式監査完走: canvas/DOM sink 全てが 0868/0870 ゲート・whitelist 写像・ローカル定数のいずれかで決定的 (state 漏れなし)。enum prop の intake gate は旧値を持つ実ボード保護のため fallback 維持・非採用 (ADR-0871)
+
+## [1.7.896] - 2026-09-30
+
+### Fix
+- `stroke`/`fill`/`color` の wire 書式検証: 無効 CSS 色は canvas が静黙に代入無視し、前 shape の色が被害 shape に漏れる実害を `_colOK` (`CSS.supports('color',v)`、非 DOM フォールバック付き) で閉塞。`fill:'none'` センチネル保護 + SVG/drawio/excalidraw インポータ経路も同ゲート (ADR-0870)
+
+## [1.7.895] - 2026-09-30
+
+### Docs
+- セッション内蓄積監査の完走記録: `Net.peers` ≤32・`_imgqT` は保持キーのみ・`_imgOuts` 同期ドレイン・`_imgPending` は形状 id 単位+60s TTL・`seenOps`/`wclock`/`_dcQ`/再組立スロット全て既上限済。総図形数ゲートは到着順序依存で恒久発散するため非採用 (ADR-0869)
+
 ## [1.7.894] - 2026-09-30
 
 ### Fix
