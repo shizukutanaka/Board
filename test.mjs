@@ -12961,6 +12961,17 @@ try {
       assert.ok(!ptr.down&&state.shapes.length===0,`button ${b} PD arms no gesture (ADR-0896)`);
       fire('pointerup',50,50);
     }
+    // ADR-0898: minimap scrub is primary-only too — a side-button PD on the
+    // minimap canvas must not arm _mmNav (nor move the viewport)
+    {
+      const mmc=_els.minimap;
+      for(const b of [2,3]){
+        reset();state.viewport={x:11,y:22,zoom:1};state.showMinimap=true;
+        for(const f of mmc._L.pointerdown||[])f({button:b,pointerId:9,clientX:80,clientY:50,preventDefault(){},stopPropagation(){}});
+        for(const f of mmc._L.pointermove||[])f({button:b,pointerId:9,clientX:120,clientY:80,preventDefault(){},stopPropagation(){}});
+        assert.ok(state.viewport.x===11&&state.viewport.y===22,`minimap button ${b} PD/PM does not scrub (ADR-0898)`);
+      }
+    }
     // ADR-0866: local inputs share the wire caps — an over-cap pen stroke or
     // waypoint array would commit locally yet be rejected by every peer
     // (same divergence class as the text-editor maxLength, ADR-0797).

@@ -1,3 +1,8 @@
+## [1.7.924] - 2026-09-30
+
+### Fixed
+- minimap の pointerdown にボタンゲートがなく、X1/X2 サイドボタンや stylus barrel が `_mmNav` をアームしてビューポートスクラブを追従し得た — `e.button>1` で閉塞 (ADR-0896 parity、ADR-0898) + 実イベント経路ピン
+
 ## [1.7.923] - 2026-09-30
 
 ### Tests

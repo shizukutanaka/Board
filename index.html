@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.923';   // ADR-0897
+const V='1.7.924';   // ADR-0898
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -10267,9 +10267,7 @@ const Minimap=(()=>{
 
   function schedule(){if(!state.showMinimap||_raf)return;_raf=_rAF(draw)}
 
-  // ADR-0036: click navigates once; holding the button scrubs while
-  // the pointer moves (Figma/tldraw convention)
-  // a plain click still lands on the first _mm
+  // ADR-0036: click navigates once; holding scrubs on move (Figma/tldraw)
   let _mmNav=false;
   const _mmGo=e=>{
     const r=mc.getBoundingClientRect();
@@ -10281,7 +10279,7 @@ const Minimap=(()=>{
     _vp().y=wy-_r.height/_vp().zoom/2;
     _iv();
   };
-  _on(mc,_PD,e=>{_mmNav=true;mc.setPointerCapture(e.pointerId);_mmGo(e)});
+  _on(mc,_PD,e=>{if(e.button>1)return;_mmNav=true;mc.setPointerCapture(e.pointerId);_mmGo(e)});   // ADR-0898: side/barrel buttons arm no scrub (0896 parity)
   _on(mc,_PM,e=>{if(_mmNav)_mmGo(e)});
   _on(mc,_PU,e=>{_mmNav=false;try{mc.releasePointerCapture(e.pointerId)}catch(_){}});
   _on(mc,_PC,()=>{_mmNav=false});
