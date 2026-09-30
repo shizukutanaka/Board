@@ -635,7 +635,8 @@ Board/
     │   ├── ADR-0583-flip-mirrors-labelpos.md    # コネクタ反転で labelPos を 1-t へミラー (実装済)
     │   ├── ADR-0584-flip-mirrors-bound-anchor.md# 結合先同時反転で aF/bF を 1-f へミラー (実装済)
     │   ├── ADR-0585-reverse-negates-cbend.md    # reverseConn で cbend 符号反転 (実装済)
-    │   └── ADR-0586-rotate-remaps-bound-anchor.md# 結合先回転で aF/bF を extent へ再正規化 (実装済)
+    │   ├── ADR-0586-rotate-remaps-bound-anchor.md# 結合先回転で aF/bF を extent へ再正規化 (実装済)
+    │   └── ADR-0587-grot-remaps-bound-anchor.md # 回転ノブでも aF/bF を extent へ再正規化 (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
