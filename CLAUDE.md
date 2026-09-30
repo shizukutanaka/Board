@@ -898,6 +898,7 @@ Board/
 │   └── ADR-0847-comment-fragment-repair.md  # 切断コメント残片5箇所の文法修復
 │   └── ADR-0848-tool-children-aria-hidden.md  # ツールボタンの装飾子要素を a11y ツリーから除外 (1 ツール=1 VO 項目、FT-11 実機検証で検出)
 │   └── ADR-0849-comment-fragment-repair-2.md  # 切断コメント残片の第二スイープ (~55箇所修復 + 26 ブロック圧縮で相殺)
+│   └── ADR-0850-conn-label-measure-spacing.md  # _connLabelMeasure のメモ化キーへ s.spacing 追加 (ctx.letterSpacing → measureText 幅)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

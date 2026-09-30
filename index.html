@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.875';   // ADR-0849
+const V='1.7.876';   // ADR-0850
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3012,7 +3012,7 @@ function _pathNearestT(pts,p){
 // memoize per shape so every frame doesn't pay _ln(lns) measureText calls.
 const _clCache=new WeakMap();
 function _connLabelMeasure(s,c,lns,fs){
-  const key=lns.join('\n')+'|'+fs+'|'+(s.bold?1:0)+(s.italic?1:0)+(_ftt(s)||'');
+  const key=lns.join('\n')+'|'+fs+'|'+(s.bold?1:0)+(s.italic?1:0)+(_ftt(s)||'')+'|'+(_sp(s)||0);   // ADR-0850: spacing shifts measureText width
   let m=_clCache.get(s);
   if(m&&m.key===key)return m;
   let w=0;const ws=lns.map(l=>{const lw=_mTX(c,l).width;if(lw>w)w=lw;return lw});
@@ -10123,7 +10123,7 @@ const Presentation=(()=>{
   // v1.6.90: Screen Wake Lock — prevent the display sleeping during presentation.
   // Zenn/Qiita: "プレゼンテーション中にスクリーンがオフになる問題" / Screen Wake Lock API.
   // Silent best-effort; browsers without it (Safari, Firefox) skip it.
-  // The browser auto-releases the lock when th
+  // The browser auto-releases the lock when the tab goes hidden (visibilitychange
   // → hidden), so we re-acquire it when the tab becomes visible again.
   let _wakeLock=null;
   async function _acquireWakeLock(){

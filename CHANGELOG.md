@@ -1,3 +1,8 @@
+## [1.7.876] - 2026-09-30
+
+### Fixed
+- ADR-0850: `_connLabelMeasure` のメモ化キーへ `s.spacing` を追加 — ctx "Letter spacing" 巡回後もラベルピル/下線/取消線/背景プレート幅が変更前の値で張り付く実害を修正 (ctx.letterSpacing は measureText 幅に反映されるがキー未含だった)
+
 ## [1.7.875] - 2026-09-30
 
 ### Docs

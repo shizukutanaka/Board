@@ -1712,7 +1712,7 @@ try {
              draw, drawOverlay, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; }, _setOCtx: (c) => { const p = octx; octx = c; return p; },
              _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, _oa,
              _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
-             _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER,
+             _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure,
              switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx,
              _getLang: () => LANG, _getT: () => T };
   `);
@@ -1739,7 +1739,7 @@ try {
           endRectLike, endLineLike, endSelect, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
           _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, _oa,
           _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
-          _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER,
+          _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure,
           switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx } = api;
 
   console.log('\n-- behavioural --');
@@ -4612,7 +4612,17 @@ try {
     ws.spacing=2;
     const l2=wrapTextCached(ws,ws.text,40,10,t=>t.length*10);
     assert.ok(l1!==l2,'ADR-0437: spacing change invalidates wrap cache');
-    console.log('  ✓ ADR-0435/0436/0437/0438 wire+validation guards (6 asserts)');
+    // _connLabelMeasure: spacing belongs in the memo key too — ctx.letterSpacing
+    // alters measureText widths, so a spacing-only change must recompute or the
+    // label pill/underline extent stays at the old width (ADR-0850).
+    let _mc=0;
+    const _cc={measureText:t=>{_mc++;return{width:t.length*10}}};
+    const _ls={spacing:0};
+    const _m1=_connLabelMeasure(_ls,_cc,['lab'],12);
+    _ls.spacing=2;
+    const _m2=_connLabelMeasure(_ls,_cc,['lab'],12);
+    assert.ok(_mc===2&&_m1!==_m2,'ADR-0850: spacing change invalidates conn-label measure cache');
+    console.log('  ✓ ADR-0435/0436/0437/0438/0850 wire+validation guards (7 asserts)');
     // ADR-0443: _undoWire maps each reversible op to fresh wire ops — add/del swap
     // direction, upd-family swaps before/after, move negates, exotics stay local.
     {
@@ -14461,7 +14471,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1780; // prev 1776 + 4 ADR-0788 wclock __proto__-poison asserts
+  pass += 1781; // prev 1780 + 1 ADR-0850 conn-label spacing-key assert
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
