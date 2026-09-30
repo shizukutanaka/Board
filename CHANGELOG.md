@@ -1,3 +1,18 @@
+## [1.7.853] - 2026-09-29
+
+### Fixed
+- ADR-0827: BC 経路で偽装された `rtc:` peer id が reaper 免除を悪用して永久幽霊行化する実害を閉塞 — 合成 id は local-only、非 RTC 経路で棄却
+
+## [1.7.852] - 2026-09-29
+
+### Test
+- ADR-0826: `_loResp` の snapshot 応答選出を behavioural pin で固定 — 最小 id 勝者・asker 除外 (0465)・live rtc: 行除外 (0455) の3不変を検出可能に
+
+## [1.7.851] - 2026-09-29
+
+### Test
+- ADR-0825: `_pk` の viaRtc 振分け + RTC `bye` の `_rtcPeerId` クリアを behavioural pin で固定 — 合成行と実 id 行の分裂を検出可能に
+
 ## [1.7.850] - 2026-09-29
 
 ### Docs
