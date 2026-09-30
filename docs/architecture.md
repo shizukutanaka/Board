@@ -177,8 +177,19 @@ remote del/replace と選択書込みの間には選択が stale id を持つ窓
 除去/弱化すると pageDel が他ページの画像を永久破壊する — test が両側面を固定する。
 駐車エントリは `{k,t0}` を持ち、presence heartbeat が 10s 超の滞留に `{k:'imgq',key}` を
 再要求して 60s で解放する (ADR-0835 — 送信側の flush 途中切断で永久 placeholder 化する
-経路を自己修復)。応答側は `_imgIn`/`_imgSent` の O(1) Map 参照で blob を即時再送する
-(盤面走査を挟まない)。
+経路を自己修復)。再要求は `_bcast` (BC+DC 両経路、ADR-0837) で送る — `_send` 単独では
+RTC-only ピアに届かず、mid-flush 切断が最も起きやすい WebRTC リンクで修復経路が
+機能しないため。応答側は `_imgIn`/`_imgSent` の O(1) Map 参照で blob を即時再送する
+(盤面走査を挟まない)。応答は `_imgqT` の per-key 10s スロットルで増幅を抑止し
+(ADR-0836)、`_imgqT` は `Net.init` のルーム切替リセット群に含まれる。
+IDB 復元 (`Persist.load`/`restoreBackup`) も `_attachShape` を通して未解決参照を
+駐車する (ADR-0840) — 送信途中切断→永続化→リロードの参照が imgq 修復に乗る。
+図形への全パッチ適用は `_oa` 通過のため、そこで dangling `img` を検出して同じ駐車を
+行う (ADR-0841) — `upd`/`style`/`align`/`beautify`/snapshot マージ/`connClears`
+経由の参照も imgq 修復に乗る (`dataUrl` 同載時は駐車しない)。
+保持ストアは双方向ともバイト上限: `_imgIn` 64MB (ADR-0784) / `_imgSent` 64MB
+(ADR-0842 — 貼付→削除で死んだ dataUrl が残らない)。駐車イディオムは `_park` に
+集約し wire 駐車・パッチ駐車が同一の 256-cap+t0 規則を共有する。
 
 **反転 (flip H/V)** は専用 op を持たず、`align` op を再利用する: `doFlip(axis)` が選択 bbox 中心軸で
 各シェイプ座標をミラー (`flipShape`) し、変更前後の完全クローンを `{op:'align',dir:'flip',before,after}`
@@ -397,14 +408,17 @@ DOM 要素は `data-t` 属性 + `UI.applyI18n()` で翻訳 (起動時に 1 回�
   `_reapPeers` は `rtc:` 行を免除するため、BC 経路で同接頭辞を名乗る
   peer id は `_onRecv` 先頭で棄却 — 偽装行は reaper 免除を悪用して
   永久残存+MAX_PEERS 枠を恒常占有し得た。
-- **ルーム切替 hygiene** (ADR-0458/0464/0466/0467/0619): `Net.init` は
+- **ルーム切替 hygiene** (ADR-0458/0464/0466/0467/0619/0836/0839): `Net.init` は
   旧チャンネルへ bye → `seenOps`・`_snapT`・非RTC `state.peers`・
-  `_imgSent/_imgChunks/_imgOuts`・`_snapIn/_opcIn`・`_pCt` と因果
+  `_imgSent/_imgChunks/_imgOuts`・`_snapIn/_opcIn`・`_imgqT`・`_pCt` と因果
   marker (`state._lastRep`・`_nameTs`) をリセット。
   room-scoped 状態の持ち越しによる ghost カーソル・blob 未到達・
   ストリーム継ぎ接ぎ・phantom announce を全て防ぎ、wire ドメインの
   marker 持ち越しで新ルームの snapshot/改名が「古い」と永久棄却
-  されるのを防ぐ (ADR-0619)。
+  されるのを防ぐ (ADR-0619)。**実部屋切替では RTC リンクも閉じる**
+  (ADR-0839) — op はルームタグを持たないため、接続を保ったまま部屋を
+  変えると旧部屋の ops が新部屋へ・新部屋の ops がリモートの旧部屋へ
+  双方向に混入する。`dc.onclose` の既存 cleanup が両端で正常終了を担う。
 - **'replace' 収束** (ADR-0613..0618): 全置換 (import/share 取込) は
   `{op:'replace',after,afterWc}` を wire に乗せる。`after` は
   `validShape` 配列、`afterWc` は prop clock マップとして検証。

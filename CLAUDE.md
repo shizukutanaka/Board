@@ -886,6 +886,27 @@ Board/
 │   └── ADR-0835-imgq-re-request.md  # parked img 参照の imgq 再要求 (heartbeat sweep + 60s 解放)
 │   └── ADR-0836-imgq-answer-throttle.md  # imgq 応答の per-key 10s スロットル (再送増幅の抑止)
 │   └── ADR-0837-imgq-broadcast.md  # imgq を _bcast 化 (RTC-only ピアへも到達)
+│   └── ADR-0838-send-transport-audit.md  # wire 送出トランスポート監査完走 (imgq のみ誤配)
+│   └── ADR-0839-room-switch-rtc-close.md  # 部屋切替で RTC リンクを閉じる (cross-room op 混入の防止)
+│   └── ADR-0840-idb-imgref-park.md  # IDB 復元のぶら下がり img 参照を _imgPending へ駐車
+│   └── ADR-0841-patch-imgref-park.md  # パッチ適用経由の img 参照を _oa 単一ゲートで駐車
+│   └── ADR-0842-imgsent-byte-bound.md  # _imgSent を 64MB バイト上限化 + 駐車イディオム _park 集約
+│   └── ADR-0843-rtc-snapbig-close.md  # snapBig 時に RTC リンクを閉じて joiner へ可視通知
+│   └── ADR-0844-img-wire-audit-complete.md  # img/wire サブシステム監査完走の記録
+│   └── ADR-0845-imgsent-evict-pin.md  # _imgSent バイト上限の最古 evict を behavioural ピン
+│   └── ADR-0846-snapshot-addonly-pin.md  # _mergeSnapshotOp の 'add'-only ゲートを behavioural ピン
+│   └── ADR-0847-comment-fragment-repair.md  # 切断コメント残片5箇所の文法修復
+│   └── ADR-0848-tool-children-aria-hidden.md  # ツールボタンの装飾子要素を a11y ツリーから除外 (1 ツール=1 VO 項目、FT-11 実機検証で検出)
+│   └── ADR-0849-comment-fragment-repair-2.md  # 切断コメント残片の第二スイープ (~55箇所修復 + 26 ブロック圧縮で相殺)
+│   └── ADR-0850-conn-label-measure-spacing.md  # _connLabelMeasure のメモ化キーへ s.spacing 追加 (ctx.letterSpacing → measureText 幅)
+│   └── ADR-0851-comment-fragment-repair-3.md  # 切断コメント残片の第三スイープ (~80箇所修復 + 長ブロック圧縮で帳尻)
+│   └── ADR-0852-minimap-theme-token-stale.md  # OS テーマ/コントラスト切替でミニマップシーン未無効化 → _tTk で統一 + 残片6箇所修復
+│   └── ADR-0853-drawio-inflate-page-cap.md  # 圧縮 <diagram> 展開の件数無制限 → 非圧縮パスと同じ 64 頁上限へ (並行 DecompressionStream の無制限生成を阻止)
+│   └── ADR-0854-insession-growth-audit.md  # セッション内蓄積監査完走 (undo/seenOps/pages/peers/caches 全て bounded) + 切断コメント修復スイープ#4
+│   └── ADR-0855-invalidation-funnel-audit.md  # 無効化網羅性監査完走 (全変更経路が _iG/_iv/_ivO/_ms/_ps/_pgBar 到達)
+│   └── ADR-0856-dead-code-selection-error-audit.md  # dead-code/選択 repaint/エラーパス 3 軸監査完走 (shorthand 全 live、選択 55 サイト repaint、catch partial-mutation なし)
+│   └── ADR-0857-stroke-less-pen-fallback.md  # stroke 未設定 pen の描画色を --brand へ解決 + _tTk が pen ビットマップもパージ (テーマ反転で焼き付け色が残留しない)
+│   └── ADR-0858-bounded-prop-keys.md  # wire patch/shape のキー数上限 64 (未知キーの図形+wclock 着地・snapshot 伝播の閉塞)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

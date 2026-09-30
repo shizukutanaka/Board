@@ -258,7 +258,7 @@ const checks = [
   ["_recordCommitted sets _lastRep for local 'replace' (ADR-0616)", html.includes("if(op.op==='replace'){state._lastRep=op.clock")],
   ["snapshot carries rep marker + stale-snapshot skip (ADR-0617)", html.includes("rep:state._lastRep") && html.includes("clockNewer(state._lastRep,msg.rep))break;")],
   ["snapshot docName is LWW-gated via (ts,writer) order (ADR-0618/0699)", html.includes("nameTs:_nameTs,namePeer:_namePeer") && html.includes("_nameWin(msg.nameTs,_iS(msg.namePeer)?msg.namePeer:'')")],
-  ["Net.init resets causal markers across rooms (ADR-0619/0699)", html.includes("state.roomId&&state.roomId!==(roomId||DOC_KEY)){state._lastRep=null;_nameTs=0;_namePeer=''}")],
+  ["Net.init resets causal markers across rooms (ADR-0619/0699/0839)", html.includes("state.roomId&&state.roomId!==(roomId||DOC_KEY)){state._lastRep=null;_nameTs=0;_namePeer='';try{this.dc&&this.dc.close();this.rtc&&this.rtc.close()}catch(_){}}")],
   ["move commit drops ids removed mid-gesture (ADR-0621)", html.includes("filter(id=>{const s=byId(id);return s&&_ul(s)})")],
   ["_sb drops dead ids at source + nudgeSelection parity (ADR-0623)", html.includes("_sb=()=>_selIds().map(byId).filter(Boolean)") && html.includes("unlockedSelectionIds(){return _selIds().filter(id=>{const s=byId(id);return s&&_ul(s)});}")],
   ["_slimOp strips undo-only fields from wire ops (ADR-0625)", html.includes("const{origSel:_o2,moved:_m2,...rest}=op;") && html.includes("const{wc:_wc1,origSel:_o1,...r}=op;")],
@@ -411,6 +411,10 @@ const checks = [
   // v1.7.83: ADR-0025 minimap content cache
   ['minimap caches scene bitmap keyed on _gridVer', html.includes("_sceneVer!==_gridVer") && html.includes("mx.drawImage(_scene,0,0)")],
   ['minimap cache cleared on theme + image load', html.includes("Minimap.invalidateCache();") && html.includes("function invalidateCache(){_sceneVer=-1")],
+  // v1.7.878: ADR-0852 OS scheme/contrast flips must drop the minimap scene too — _tTk shared by applyTheme + the matchMedia watchers
+  ['theme-token refresh covers matchMedia watchers (ADR-0852)', html.includes("const _tTk=()=>{clearCSSCache();Minimap.invalidateCache();_penCache.clear();_penCachePx=0}") && html.includes("_on(matchMedia(q),_CH,_tTk)") && !html.includes("_on(matchMedia(q),_CH,clearCSSCache)")],
+  // v1.7.879: ADR-0853 compressed <diagram> inflations capped at the 64-page bound like the uncompressed _dgs path
+  ['drawio inflate page-cap parity (ADR-0853)', html.includes("_dms.slice(0,64)")],
   // v1.7.84: ADR-0026 drag damage rect
   ['invalidateDamage accumulates world damage', html.includes("function invalidateDamage(r){_damage=_dmgU(_damage,r)") && html.includes("function invalidate(){_damage=null")],
   ['draw() clips scene pass to damage rect', html.includes("ctx.rect(dmg.x,dmg.y,dmg.w,dmg.h);ctx.clip()") && html.includes("ctx.fillRect(dmg.x,dmg.y,dmg.w,dmg.h)")],
@@ -850,7 +854,7 @@ const checks = [
   ['s.link scheme gate in validPatch (ADR-0327)', html.includes("'link' in p&&p.link!=null")&&html.includes('ADR-0327')],
   ['_pd() preventDefault shorthand (ADR-0326)', html.includes("const _pd=e=>e.preventDefault()")],
   ['deflate bomb guard in _dioInflate (ADR-0325)', html.includes("getReader(),dec=new TextDecoder")&&html.includes("_ln(txt)>8e6")],
-  ['compressed drawio inflates every page (ADR-0324)', html.includes("Promise.all(_dms.map(m=>_dioInflate(m[1])))")&&html.includes("matchAll(/<diagram[^>]*>([^<]+)<\\/diagram>/g)")],
+  ['compressed drawio inflates every page (ADR-0324)', html.includes("Promise.all(_dms.slice(0,64).map(m=>_dioInflate(m[1]))")&&html.includes("matchAll(/<diagram[^>]*>([^<]+)<\\/diagram>/g)")],
   ['exc conn-label lineHeight restore (ADR-0323)', html.includes("e.lineHeight!==1.25)p.lineH=")],
   ['drawio export emits html=1 (ADR-0322)', html.includes("let sty='html=1;';")&&html.includes("'html=1;'+(s.start")],
   ['drawio whiteSpace nowrap|wrap ↔ s.wrap (ADR-0321/0412)', html.includes("_txt(s)&&sty.whiteSpace==='nowrap')s.wrap=0")&&html.includes("s.wrap?'whiteSpace=wrap;':'whiteSpace=nowrap;'")&&html.includes("sty.whiteSpace==='wrap')s.wrap=1")],
@@ -968,6 +972,8 @@ const checks = [
   ['i18n has invite-link keys ja+en', html.includes("shareCopyInviteLink:'招待リンクをコピー'") && html.includes("shareCopyInviteLink:'Copy invite link'") && html.includes("inviteLinkOpened:") && html.includes("inviteLinkNoCode:")],
   // v1.6.44: x,y decorative label is aria-hidden
   ['x,y status label is aria-hidden (decorative)', html.includes('<span class="lbl" aria-hidden="true">x,y</span>')],
+  // ADR-0848: buttons' decorative svg/kbd children hidden from AT (1 VO stop per control — VoiceOver spot-check found ~60 phantom items)
+  ['button decorative children aria-hidden (FT-11)', html.includes("_qsa(document,'button svg,button kbd'))_sa(c,'aria-hidden','true')")],
   // v1.6.45: connection status is aria-live (announces online/offline to SR)
   ['sConn has aria-live=polite (online/offline announces to SR)', html.includes('id="sConn" aria-live="polite"')],
   // v1.6.45: zoom badge has role=group for semantic grouping
@@ -1541,11 +1547,11 @@ const checks = [
   // v1.7.60 (a11y-audit-2026-07 follow-up): canvas UI-indicator strokes (selection box,
   // rotation tether, alignment guides, marquee, minimap viewport) also use the
   // theme-aware token, not raw --brand — same contrast fix, extended past CSS to canvas.
-  // Shape-drawing DEFAULT colors (new frame/sticky stroke fallbacks) are deliberately left
+  // Shape-drawing DEFAULT colors (frame/sticky/pen stroke fallbacks) are deliberately left
   // on raw --brand: that's a style choice, not an accessibility-critical indicator.
   ["canvas UI-indicator strokes (selection/guides/marquee/rotation-tether/minimap-viewport) use --accent-contrast",
     (html.match(/_ac\(\)/g)||[]).length===11 &&
-    (html.match(/_gC\('--brand'\)/g)||[]).length===5],
+    (html.match(/_gC\('--brand'\)/g)||[]).length===7],
   ['frame label editor text color uses --accent-contrast (real text, needs the 4.5:1 floor too)',
     html.includes("_gC(bold?'--accent-contrast':'--ink')")],
   ['floating search box border uses --accent-contrast, not raw --brand',
@@ -1708,9 +1714,9 @@ try {
              _getPasteCount: () => _pasteCount, _resetPasteClipboard: () => { _lastClipboard = null; },
              endRectLike, endLineLike, endSelect, I18N, applyTheme, editSelectedShapeKbd, Share,
              draw, drawOverlay, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; }, _setOCtx: (c) => { const p = octx; octx = c; return p; },
-             _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, 
+             _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, _oa,
              _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
-             _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER,
+             _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure,
              switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx,
              _getLang: () => LANG, _getT: () => T };
   `);
@@ -1735,9 +1741,9 @@ try {
           _onSwUpdate, _ctxMenuKeyNav,
           _getPasteCount, _resetPasteClipboard,
           endRectLike, endLineLike, endSelect, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
-          _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, 
+          _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, _oa,
           _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
-          _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER,
+          _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure,
           switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx } = api;
 
   console.log('\n-- behavioural --');
@@ -2095,6 +2101,22 @@ try {
     clearInterval(Net._presenceTimer);
     if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}
     console.log('  ✓ Net.init resets imgq throttle stamps (ADR-0836)');
+  }
+  // ADR-0839: ops carry no room tag — a live RTC link kept across a real room
+  // switch would bleed the old room's ops into the new room. init must close it.
+  {
+    let dcClosed=false,pcClosed=false;
+    const _dc=Net.dc,_rtc=Net.rtc;
+    Net.dc={readyState:'open',close(){dcClosed=true}};
+    Net.rtc={close(){pcClosed=true}};
+    state.roomId='roomE';
+    Net.init('roomF');
+    assert.ok(dcClosed,'room switch closes the DataChannel');
+    assert.ok(pcClosed,'room switch closes the RTCPeerConnection');
+    Net.dc=_dc;Net.rtc=_rtc;
+    clearInterval(Net._presenceTimer);
+    if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}
+    console.log('  ✓ Net.init closes the RTC link on a real room switch (ADR-0839)');
   }
   // ADR-0822: a superseded DataChannel must not clobber the live link — its
   // stale onclose purges only its own presence row.
@@ -2973,6 +2995,19 @@ try {
     assert.strictEqual(rec.img, 2, 'draft ink: reuses stamp bitmap on append');
     assert.ok(rec.n < 8, 'draft ink: live tail is O(1) segments, not O(n)');
     state.draft = null; _setCtx(prevCtx);
+    // ADR-0857: a stroke-less pen must not leak the leftover fillStyle —
+    // drawPen resolves the --brand fallback for both paths (dot + union).
+    // The union path restores oldFill on return, so sample the colour at fill time.
+    const recF = { ...rec, used:undefined, fill(){ this.used=this.fillStyle;this.n++ } };
+    recF.fillStyle = 'SENTINEL';
+    drawPen({ id:'pn1', type:'pen', z:0, pts:[[0,0],[9,4],[18,0]] }, recF);
+    assert.notStrictEqual(recF.used, 'SENTINEL', 'stroke-less pen assigns the --brand fallback');
+    assert.notStrictEqual(recF.used, undefined, 'stroke-less pen fill ran');
+    recF.fillStyle = 'SENTINEL'; recF.used = undefined;
+    drawPen({ id:'pn2', type:'pen', z:0, pts:[[5,5]] }, recF);
+    assert.notStrictEqual(recF.used, 'SENTINEL', 'stroke-less dot assigns the --brand fallback');
+    // token flip must purge the pen bitmaps — they bake the resolved colour.
+    assert.ok(html.includes('_penCache.clear();_penCachePx=0'), 'ADR-0857: _tTk purges the pen bitmap cache');
     console.log('  ✓ pen bitmap cache: miss/settle/hit, translate+flip+style invalidation, vector fallbacks');
   }
 
@@ -3222,6 +3257,14 @@ try {
     // the gate is shared, so the remote-sync vectors close too:
     assert.ok(!validRemotePayload({op:'add',shape:{id:'i',type:'image',z:0,dataUrl:'https://evil.example/x'}}), 'remote add of an image with an external dataUrl rejected (malicious-peer vector)');
     assert.ok(!validRemotePayload({op:'upd',id:'i',after:{dataUrl:'https://evil.example/x'}}), 'remote upd setting an external dataUrl on an existing image rejected');
+    // ADR-0858: junk-prop flood — patches/shapes carry only known keys upstream of
+    // validPatch/validShape, but UNKNOWN keys were let through, landing on the shape
+    // (_oa assign) AND stamping per-shape wclock with attacker-named props; one op can
+    // carry ~1M keys that then propagate into every peer's wclock via snapshots.
+    {const flood={};for(let i=0;i<65;i++)flood['k'+i]=1;
+     assert.ok(!validRemotePayload({op:'upd',id:'a',after:flood}), 'ADR-0858: >64-key junk patch rejected at wire intake');
+     const fs={id:'a',type:'rect',z:0};for(let i=0;i<65;i++)fs['k'+i]=1;
+     assert.ok(!validShape(fs), 'ADR-0858: >64-key junk shape rejected at wire intake');}
     // non-image shapes never carry dataUrl, so nothing regresses:
     assert.ok(validShape({id:'r',type:'rect',z:0}), 'rect without dataUrl still accepted (no regression)');
     console.log('  ✓ validShape: rejects malformed pens + external-URL image dataUrls (no-external-resources gate, v1.7.69)');
@@ -4005,7 +4048,7 @@ try {
 
   // ADR-0403: sender refuses oversized snapshots before chunking
   {
-    assert.ok(html.includes("if(_ln(_sm)>24e6){_wT('snapBig');return}"),'send-side snapshot cap');
+    assert.ok(html.includes("if(_ln(_sm)>24e6){_wT('snapBig');this.dc.close();return}"),'send-side snapshot cap');
     assert.strictEqual(api.I18N.ja.snapBig.length>0&&api.I18N.en.snapBig.length>0,true,'snapBig i18n both langs');
     console.log('  ✓ snapshot send-side 24MB fail-fast (ADR-0403)');
   }
@@ -4088,6 +4131,12 @@ try {
     assert.strictEqual(Net._mergeSnapshotOp({op:'add',shape:snapShape}),'skip','missing wc → keep (legacy)');
     // unknown shape → add path
     assert.strictEqual(Net._mergeSnapshotOp({op:'add',shape:{...snapShape,id:'NEW'},clock:{peer:'A',seq:'snap:NEW',ts:0}}),'add','unknown shape adopted');
+    // ADR-0846: a crafted snapshot carrying a non-'add' op must not execute it
+    // under the snapshot path — the 'add'-only gate rejects before LWW merging.
+    {const before=byId(snapShape.id)?.x;
+     const res=Net._mergeSnapshotOp({op:'del',ids:[snapShape.id],wc:{x:{peer:'A',seq:1,ts:9e15}}});
+     assert.strictEqual(res,'skip','non-add op rejected at merge path');
+     assert.ok(byId(snapShape.id)&&byId(snapShape.id).x===before,'shape untouched by rejected op');}
     console.log('  ✓ snapshot LWW merge: per-prop convergence, no history (6 asserts)');
   }
 
@@ -4588,7 +4637,17 @@ try {
     ws.spacing=2;
     const l2=wrapTextCached(ws,ws.text,40,10,t=>t.length*10);
     assert.ok(l1!==l2,'ADR-0437: spacing change invalidates wrap cache');
-    console.log('  ✓ ADR-0435/0436/0437/0438 wire+validation guards (6 asserts)');
+    // _connLabelMeasure: spacing belongs in the memo key too — ctx.letterSpacing
+    // alters measureText widths, so a spacing-only change must recompute or the
+    // label pill/underline extent stays at the old width (ADR-0850).
+    let _mc=0;
+    const _cc={measureText:t=>{_mc++;return{width:t.length*10}}};
+    const _ls={spacing:0};
+    const _m1=_connLabelMeasure(_ls,_cc,['lab'],12);
+    _ls.spacing=2;
+    const _m2=_connLabelMeasure(_ls,_cc,['lab'],12);
+    assert.ok(_mc===2&&_m1!==_m2,'ADR-0850: spacing change invalidates conn-label measure cache');
+    console.log('  ✓ ADR-0435/0436/0437/0438/0850 wire+validation guards (7 asserts)');
     // ADR-0443: _undoWire maps each reversible op to fresh wire ops — add/del swap
     // direction, upd-family swaps before/after, move negates, exotics stay local.
     {
@@ -14406,6 +14465,28 @@ try {
     // ADR-0837: the parked-ref sweep must broadcast — _send is BC-only and would
     // never reach an RTC-only peer (the link where mid-flush disconnects live).
     assert.ok(html.includes("this._bcast(_mk('imgq',{key:e.k}))"),'imgq sweep rides _bcast');
+    // ADR-0840: IDB-restored shapes with dangling img refs must park too —
+    // both load() and restoreBackup() route through Net._attachShape.
+    assert.strictEqual((html.match(/shapes\.map\(s=>Net\._attachShape\(s\)\)/g)||[]).length,2,
+      'both IDB img-attach paths park unresolved refs');
+    // ADR-0841: a patch-carried img ref (remote upd/style/align/snapshot-merge)
+    // must park too — _oa is the single gate for shape-level patch applies.
+    {Net._imgPending.clear();const _ps={id:'u1'};_oa(_ps,{img:'kx'});
+     assert.strictEqual(Net._imgPending.get('u1').k,'kx','_oa parks a patch-carried img ref');
+     Net._imgPending.clear();_oa(_ps,{img:'ky',dataUrl:'data:x'});
+     assert.ok(!Net._imgPending.has('u1'),'resolved dataUrl does not park');
+     Net._imgPending.clear();}
+    // ADR-0842: _imgSent gets the same byte bound as _imgIn — a long session of
+    // pasting + deleting images must not retain dead dataUrls unboundedly.
+    assert.ok(html.includes("_sb>64_000_000"),'_imgSent is byte-bounded like _imgIn');
+    {Net._imgSent.clear();const _im={id:'i1',type:'image',dataUrl:'x'.repeat(200)};
+     const _sl5=Net._slimShapes([_im]);
+     assert.ok(_sl5[0].img&&Net._imgSent.has(_sl5[0].img),'sent blob registered for imgq answers');
+     Net._imgSent.clear();Net._imgOuts.length=0;}
+    {Net._imgSent.clear();Net._imgSent.set('k1','x'.repeat(33e6));Net._imgSent.set('k2','y'.repeat(33e6));
+     Net._slimShapes([{id:'i9',type:'image',dataUrl:'z'.repeat(200)}]);
+     assert.ok(!Net._imgSent.has('k1')&&Net._imgSent.has('k2'),'byte bound evicts oldest entry first');
+     Net._imgSent.clear();Net._imgOuts.length=0;}
     console.log('  ✓ imgq re-request answered from blob store or live shape (ADR-0835)');
   }
 
@@ -14415,7 +14496,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1780; // prev 1776 + 4 ADR-0788 wclock __proto__-poison asserts
+  pass += 1787; // prev 1781 + 4 ADR-0857 stroke-less-pen/_tTk asserts + 2 ADR-0858 junk-prop-flood asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
