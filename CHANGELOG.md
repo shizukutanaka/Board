@@ -1,3 +1,11 @@
+## [1.7.878] - 2026-09-30
+
+### Fixed
+- ADR-0852: OS のダークモード/高コントラスト切替 (auto テーマ時) でミニマップシーンビットマップが旧テーマ色のまま残存 — `_tTk` で applyTheme と matchMedia 監視のトークン更新を統一し minimap も即時無効化
+
+### Docs
+- render キャッシュ署名監査を完走 (pen bbox/bitmap・img 指紋・wrap・connLabel・_gridVer 連動全経路 clean) + 監査中に発見した切断コメント残片 6 箇所を修復 (raw 557,025B)
+
 ## [1.7.877] - 2026-09-30
 
 ### Docs

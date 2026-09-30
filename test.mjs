@@ -411,6 +411,8 @@ const checks = [
   // v1.7.83: ADR-0025 minimap content cache
   ['minimap caches scene bitmap keyed on _gridVer', html.includes("_sceneVer!==_gridVer") && html.includes("mx.drawImage(_scene,0,0)")],
   ['minimap cache cleared on theme + image load', html.includes("Minimap.invalidateCache();") && html.includes("function invalidateCache(){_sceneVer=-1")],
+  // v1.7.878: ADR-0852 OS scheme/contrast flips must drop the minimap scene too — _tTk shared by applyTheme + the matchMedia watchers
+  ['theme-token refresh covers matchMedia watchers (ADR-0852)', html.includes("const _tTk=()=>{clearCSSCache();Minimap.invalidateCache()}") && html.includes("_on(matchMedia(q),_CH,_tTk)") && !html.includes("_on(matchMedia(q),_CH,clearCSSCache)")],
   // v1.7.84: ADR-0026 drag damage rect
   ['invalidateDamage accumulates world damage', html.includes("function invalidateDamage(r){_damage=_dmgU(_damage,r)") && html.includes("function invalidate(){_damage=null")],
   ['draw() clips scene pass to damage rect', html.includes("ctx.rect(dmg.x,dmg.y,dmg.w,dmg.h);ctx.clip()") && html.includes("ctx.fillRect(dmg.x,dmg.y,dmg.w,dmg.h)")],
