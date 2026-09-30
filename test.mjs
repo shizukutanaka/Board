@@ -13924,13 +13924,30 @@ try {
     console.log('  ✓ _apply add backward: _remoteDelConnFix clears lifetime-bound conns (v1.7.78b)');
   }
 
+  // ADR-0776: pageDel 'unpage' requires the wire kill-set — without it the receiver
+  // un-pages members instead of deleting them and diverges from the sender.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;
+    const u1=Shape.make('rect',{x:0,y:0,w:10,h:10}),u2=Shape.make('rect',{x:20,y:0,w:10,h:10});
+    Store.applyRemote({op:'pageAdd',id:'pU',name:'U',shapes:[{...u1,pg:'pU'},{...u2,pg:'pU'}],clock:{peer:'r1',seq:1,ts:1}});
+    Store.applyRemote({op:'pageAdd',id:'pV',name:'V',clock:{peer:'r1',seq:2,ts:2}});
+    Store.applyRemote({op:'pageDel',id:'pU',unpage:1,clock:{peer:'r1',seq:3,ts:3}});   // non-conforming: no kill-set
+    assert.ok(!!_pgById('pU')&&byId(u1.id)&&byId(u2.id),'unpage pageDel without shapes is dropped, not half-applied');
+    Store.applyRemote({op:'pageDel',id:'pU',unpage:'yes',shapes:[{...u1,pg:'pU'}],clock:{peer:'r1',seq:4,ts:4}});   // non-1 flag
+    assert.ok(!!_pgById('pU')&&byId(u1.id)&&byId(u2.id),'non-1 unpage flag is dropped');
+    Store.applyRemote({op:'pageDel',id:'pU',unpage:1,shapes:[{...u1,pg:'pU'}],clock:{peer:'r1',seq:5,ts:5}});   // conforming kill-set
+    assert.ok(!_pgById('pU')&&!byId(u1.id),'unpage kill-set deletes the named members');
+    assert.ok(byId(u2.id)&&u2.pg==null,'members outside the kill-set survive un-paged');
+    console.log('  ✓ pageDel unpage requires the wire kill-set (ADR-0776)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
   // asserts but actually contains 6 (recounted directly: at1.length, at2.length, and 4
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1744; // prev 1739 + 5 v1.7.792 geometry-scoped restore asserts
+  pass += 1748; // prev 1744 + 4 ADR-0776 unpage kill-set asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
