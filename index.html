@@ -857,7 +857,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.590';
+const V='1.7.591';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4285,7 +4285,7 @@ function _cancelPointerGesture(){
   ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;
   canvas.dataset.panning='false';ptr.lineClick=false;_zR();_penPred=null;_iv();
 }
-// ADR-0006: fires after LONG_PRESS_MS. Guards: gesture still active, handle-drag not in
+// ADR-0006: fires after LONG_PRESS_MS. Guards: gest
 // progress (resize/rotate — a deliberate precision drag not to interrupt), and the
 // pointer hasn't travelled past LONG_PRESS_MOVE_TOL (a real move/marquee exceeds
 // this well before the timer fires — no separate pointermove cancellation needed).
@@ -4364,7 +4364,7 @@ function _openLabelEditorFor(hit){
   openLabelEditor(hit,a.left,a.top,a.bold);
   return true;
 }
-// ADR-0013 (FT-19): the only entry point above was dblclick, so keyboard/SR users could
+// ADR-0013 (FT-19): the only entry point above was
 // never edit a connector or frame label. Enter is unused with the select tool
 // active (createShapeKbd() no-ops for select/hand/eraser/pen) — see the keydown Enter
 // branch, which only calls this when _tl()==='select'.
@@ -5022,7 +5022,7 @@ function withFrameChildren(ids){
   return out;
 }
 // Keyboard arrow-key nudge. Mirrors pointer-drag move: frame contents follow the
-// frame (withFrameChildren) and locked shapes never move (parity with doMove/endSelect)
+// frame (withFrameChildren) and locked shapes never
 // which filter !_lk(s)). Records one reversible `move` op for the shapes that moved.
 function nudgeSelection(dx,dy){
   const ids=[...withFrameChildren(_sl())].filter(id=>!byId(id)?.locked);
@@ -7782,7 +7782,9 @@ const Net={
     const seq=_iN(msg.seq)&&msg.seq>=0?_fl(msg.seq):0;
     if(seq>=n)return;
     let sn=this[key];
-    if(!sn||sn.n!==n||sn.src!==src){sn={p:new Array(n),g:0,n,src};this[key]=sn}   // ADR-0448/0469: n/src mismatch restarts — untagged senders would splice streams
+    // ADR-0448/0469/0563: n/src mismatch or seq===0 restarts — a same-src stream
+    // re-sent after a partial abort must not splice old+new fragments.
+    if(!sn||sn.n!==n||sn.src!==src||seq===0){sn={p:new Array(n),g:0,n,src};this[key]=sn}
     if(!sn.p[seq]){sn.p[seq]=msg.data;sn.g++}
     if(sn.g<sn.n)return;
     this[key]=null;return sn.p.join('');
@@ -7889,7 +7891,7 @@ const Net={
         let st=this._imgChunks.get(msg.key);
         // ADR-0374: bound in-flight reassemblies — a peer opening thousands of
         // keys mid-transfer and never finishing would grow the map unboundedly.
-        if(!st||st.n!==n){if(!st&&this._imgChunks.size>=64)this._imgChunks.delete(this._imgChunks.keys().next().value);st={p:new Array(n),g:0,n};this._imgChunks.set(msg.key,st)}   // ADR-0449/0454: evict oldest stalled key; n-mismatch restarts the stream
+        if(!st||st.n!==n||seq===0){if(!st&&this._imgChunks.size>=64)this._imgChunks.delete(this._imgChunks.keys().next().value);st={p:new Array(n),g:0,n};this._imgChunks.set(msg.key,st)}   // ADR-0449/0454/0563: evict oldest stalled key; n-mismatch or seq0 restarts the stream
         if(!st.p[seq]){st.p[seq]=msg.data;st.g++}
         if(st.g<st.n)break;
         this._imgChunks.delete(msg.key);
