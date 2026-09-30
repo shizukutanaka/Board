@@ -1,3 +1,12 @@
+## [1.7.888] - 2026-09-30
+
+### Fixed
+- ADR-0862: label エディタがリモート制御の `s.stroke` を `style.cssText` にそのまま補間 — `'red;position:fixed;inset:0;background:url(e)'` で任意 CSS 宣言 (外部 url() フェッチ含む) を注入可能。`cssText` から color 値を排除し `inp.style.color/borderColor` のプロパティ代入 (値型・宣言注入不可・不正色はブラウザが無視) へ変更して閉塞
+
+### Tests
+- behavioural ピン 5 件 — 敵性 stroke で開いたラベル入力の cssText に注入宣言がなく、悪性文字列が value-typed property にのみ到達することを固定 (test.mjs 1810 件内訳 +5)
+- 同型 ADR-0861: `frame label honors s.font family` ソースピンを新フォーマットへ同期
+
 ## [1.7.887] - 2026-09-30
 
 ### Fixed
