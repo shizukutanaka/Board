@@ -853,6 +853,8 @@ Board/
 │   └── ADR-0802-viewport-clamp-pin.md  # _xC クランプの実キー経路 behavioural ピン
 │   └── ADR-0803-viewport-clamp-zoomtoframe.md  # プレゼン _zoomToFrame の中心も _xC へ (全書き込み完結)
 │   └── ADR-0804-viewport-write-audit-complete.md  # viewport 書き込み監査完走 — 全経路 bounded
+│   └── ADR-0805-wheel-clamp-pin.md  # wheel パン/ctrl+wheel ズームの _xC ピン
+│   └── ADR-0806-edge-pan-clamp.md  # エッジオートパンの保存参照経由書き込みを _xC へ (監査見落とし解消)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
