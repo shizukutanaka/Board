@@ -412,7 +412,7 @@ const checks = [
   ['minimap caches scene bitmap keyed on _gridVer', html.includes("_sceneVer!==_gridVer") && html.includes("mx.drawImage(_scene,0,0)")],
   ['minimap cache cleared on theme + image load', html.includes("Minimap.invalidateCache();") && html.includes("function invalidateCache(){_sceneVer=-1")],
   // v1.7.878: ADR-0852 OS scheme/contrast flips must drop the minimap scene too — _tTk shared by applyTheme + the matchMedia watchers
-  ['theme-token refresh covers matchMedia watchers (ADR-0852)', html.includes("const _tTk=()=>{clearCSSCache();Minimap.invalidateCache()}") && html.includes("_on(matchMedia(q),_CH,_tTk)") && !html.includes("_on(matchMedia(q),_CH,clearCSSCache)")],
+  ['theme-token refresh covers matchMedia watchers (ADR-0852)', html.includes("const _tTk=()=>{clearCSSCache();Minimap.invalidateCache();_penCache.clear();_penCachePx=0}") && html.includes("_on(matchMedia(q),_CH,_tTk)") && !html.includes("_on(matchMedia(q),_CH,clearCSSCache)")],
   // v1.7.879: ADR-0853 compressed <diagram> inflations capped at the 64-page bound like the uncompressed _dgs path
   ['drawio inflate page-cap parity (ADR-0853)', html.includes("_dms.slice(0,64)")],
   // v1.7.84: ADR-0026 drag damage rect
@@ -1547,11 +1547,11 @@ const checks = [
   // v1.7.60 (a11y-audit-2026-07 follow-up): canvas UI-indicator strokes (selection box,
   // rotation tether, alignment guides, marquee, minimap viewport) also use the
   // theme-aware token, not raw --brand — same contrast fix, extended past CSS to canvas.
-  // Shape-drawing DEFAULT colors (new frame/sticky stroke fallbacks) are deliberately left
+  // Shape-drawing DEFAULT colors (frame/sticky/pen stroke fallbacks) are deliberately left
   // on raw --brand: that's a style choice, not an accessibility-critical indicator.
   ["canvas UI-indicator strokes (selection/guides/marquee/rotation-tether/minimap-viewport) use --accent-contrast",
     (html.match(/_ac\(\)/g)||[]).length===11 &&
-    (html.match(/_gC\('--brand'\)/g)||[]).length===5],
+    (html.match(/_gC\('--brand'\)/g)||[]).length===7],
   ['frame label editor text color uses --accent-contrast (real text, needs the 4.5:1 floor too)',
     html.includes("_gC(bold?'--accent-contrast':'--ink')")],
   ['floating search box border uses --accent-contrast, not raw --brand',
@@ -2995,6 +2995,19 @@ try {
     assert.strictEqual(rec.img, 2, 'draft ink: reuses stamp bitmap on append');
     assert.ok(rec.n < 8, 'draft ink: live tail is O(1) segments, not O(n)');
     state.draft = null; _setCtx(prevCtx);
+    // ADR-0857: a stroke-less pen must not leak the leftover fillStyle —
+    // drawPen resolves the --brand fallback for both paths (dot + union).
+    // The union path restores oldFill on return, so sample the colour at fill time.
+    const recF = { ...rec, used:undefined, fill(){ this.used=this.fillStyle;this.n++ } };
+    recF.fillStyle = 'SENTINEL';
+    drawPen({ id:'pn1', type:'pen', z:0, pts:[[0,0],[9,4],[18,0]] }, recF);
+    assert.notStrictEqual(recF.used, 'SENTINEL', 'stroke-less pen assigns the --brand fallback');
+    assert.notStrictEqual(recF.used, undefined, 'stroke-less pen fill ran');
+    recF.fillStyle = 'SENTINEL'; recF.used = undefined;
+    drawPen({ id:'pn2', type:'pen', z:0, pts:[[5,5]] }, recF);
+    assert.notStrictEqual(recF.used, 'SENTINEL', 'stroke-less dot assigns the --brand fallback');
+    // token flip must purge the pen bitmaps — they bake the resolved colour.
+    assert.ok(html.includes('_penCache.clear();_penCachePx=0'), 'ADR-0857: _tTk purges the pen bitmap cache');
     console.log('  ✓ pen bitmap cache: miss/settle/hit, translate+flip+style invalidation, vector fallbacks');
   }
 
@@ -3244,6 +3257,14 @@ try {
     // the gate is shared, so the remote-sync vectors close too:
     assert.ok(!validRemotePayload({op:'add',shape:{id:'i',type:'image',z:0,dataUrl:'https://evil.example/x'}}), 'remote add of an image with an external dataUrl rejected (malicious-peer vector)');
     assert.ok(!validRemotePayload({op:'upd',id:'i',after:{dataUrl:'https://evil.example/x'}}), 'remote upd setting an external dataUrl on an existing image rejected');
+    // ADR-0858: junk-prop flood — patches/shapes carry only known keys upstream of
+    // validPatch/validShape, but UNKNOWN keys were let through, landing on the shape
+    // (_oa assign) AND stamping per-shape wclock with attacker-named props; one op can
+    // carry ~1M keys that then propagate into every peer's wclock via snapshots.
+    {const flood={};for(let i=0;i<65;i++)flood['k'+i]=1;
+     assert.ok(!validRemotePayload({op:'upd',id:'a',after:flood}), 'ADR-0858: >64-key junk patch rejected at wire intake');
+     const fs={id:'a',type:'rect',z:0};for(let i=0;i<65;i++)fs['k'+i]=1;
+     assert.ok(!validShape(fs), 'ADR-0858: >64-key junk shape rejected at wire intake');}
     // non-image shapes never carry dataUrl, so nothing regresses:
     assert.ok(validShape({id:'r',type:'rect',z:0}), 'rect without dataUrl still accepted (no regression)');
     console.log('  ✓ validShape: rejects malformed pens + external-URL image dataUrls (no-external-resources gate, v1.7.69)');
@@ -14475,7 +14496,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1781; // prev 1780 + 1 ADR-0850 conn-label spacing-key assert
+  pass += 1787; // prev 1781 + 4 ADR-0857 stroke-less-pen/_tTk asserts + 2 ADR-0858 junk-prop-flood asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
