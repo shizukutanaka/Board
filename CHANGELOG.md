@@ -1,3 +1,13 @@
+## [1.7.718] - 2026-09-29
+
+### Fixed
+- _pgAdopt 経路 (import/share/snapshot/replace) で未知 pg を `?` ページへヒール (全ページ不可視の図形喪失を解消) (ADR-0692)
+
+## [1.7.717] - 2026-09-29
+
+### Docs
+- architecture.md に presence 送出順不変条件 (0689/0690) を同期 (ADR-0691)
+
 ## [1.7.716] - 2026-09-29
 
 ### Fixed

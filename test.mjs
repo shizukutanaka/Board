@@ -4519,9 +4519,20 @@ try {
       assert.ok(ptr.down===true,'same-page adopt leaves the gesture alone');
       assert.ok(html.includes('if(nc!==oc){_cancelPointerGesture();_cxO()}'),'_pgAdopt gesture+editor-cancel gate (ADR-0664/0684)');
       assert.ok(html.includes('if(nc!==oc)Net.sendCursorHide()'),'_pgAdopt hides cursor on page move (ADR-0690)');
+      assert.ok(html.includes('for(const s of _sh())if(s.pg&&!_pgById(s.pg)&&_ln(state.pages)<64)_pu(state.pages'),'_pgAdopt heals unknown pg → ? page (ADR-0692)');
       state.pages=null;state.curPg=null;ptr.down=false;ptr.dragKind=null;ptr.dragStartShapes=null;
+      // ADR-0692: a shape carrying an unknown pg spawns a ? page on adopt
+      {
+        const G=Shape.make('rect',{x:0,y:0,w:10,h:10});G.pg='ghostPg';
+        Store.commit({op:'add',shape:G});
+        _pgAdopt([{id:'p1',name:'A',nts:0}],'p1');
+        const healed=state.pages.find(p=>p.id==='ghostPg');
+        assert.ok(healed&&healed.name==='?','unknown pg heals to a ? page (ADR-0692)');
+        state.pages=null;state.curPg=null;
+        Store.commit({op:'del',shapes:[{...byId(G.id)}]});
+      }
       Store.commit({op:'del',shapes:[{...byId(W.id)}]});
-      console.log('  ✓ _pgAdopt cancels gesture only on real page change (3 asserts)');
+      console.log('  ✓ _pgAdopt cancels gesture only on real page change + unknown-pg heal (5 asserts)');
     }
     // ADR-0665: selectInverse + selectFrameContents stay on the viewed page
     {
@@ -12832,7 +12843,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1529; // prev 1517 + 1 tab aria-label pin (ADR-0682)
+  pass += 1531; // prev 1517 + 1 tab aria-label pin (ADR-0682)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

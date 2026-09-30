@@ -511,6 +511,10 @@ pen/line/arrow は点ジオメトリで box 中心が無く回転中心が NaN �
   ビュー着地 (0649/0663)。`pageDel` はメンバー wclock も削除 (0679)
 - **スナップショット**: 受信側の `curPg` を保持 (0672)、同一 id ページ名は
   `nts` LWW で union-heal (0681)
+- **送出順不変条件**: `pg` 同梱の presence 送信は `curPg` 代入の**後**に行う
+  — 逆順だと hide/sel が旧ページを指しピア側のアバタ/follow が誤着する
+  (`switchPage` 0689、`_pgAdopt` 0690)。ページ交代が起こり得る経路はすべて
+  cursorHide を送る (ピアカーソル残存の防止)
 - **タブ UI** (`_pgBar`, 0673–0686): `#pgTabs` の chip 再構築は `_pgSig`
   (id+`\x1f`+name join) 変化時のみ — フォーカス chip を `_pgid` で復元
   (0683)。chip は完全名 `aria-label` (0682)、アクティブは `aria-current`+

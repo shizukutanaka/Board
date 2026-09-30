@@ -738,7 +738,9 @@ Board/
 │   ├── ADR-0687-arch-multi-page-sync.md  # architecture.md マルチページ節同期 (ドキュメント)
 │   ├── ADR-0688-local-page-cap.md  # ローカル pageAdd/Dup の 64 cap (実装済)
 │   ├── ADR-0689-switchpage-pg-order.md  # cursorHide を curPg 移動後に (実装済)
-│   └── ADR-0690-adopt-cursor-hide.md  # _pgAdopt のページ交代でも cursorHide (実装済)
+│   ├── ADR-0690-adopt-cursor-hide.md  # _pgAdopt のページ交代でも cursorHide (実装済)
+│   ├── ADR-0691-sendorder-invariant.md  # presence送出順の文書同期 (実装済)
+│   └── ADR-0692-adopt-unknown-pg-heal.md  # _pgAdopt の未知 pg ヒール (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
