@@ -1,3 +1,8 @@
+## [1.7.869] - 2026-09-29
+
+### Fixed
+- ADR-0843: RTC `dc.onopen` でスナップショット >24MB の場合、送信側のみ `snapBig` toast で joiner は「connected」のまま空盤面に永続待機していた。送信失敗時にリンクを閉じ、joiner 側へ正直な 'disconnected' を通知
+
 ## [1.7.868] - 2026-09-29
 
 ### Fixed
