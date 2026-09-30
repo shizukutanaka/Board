@@ -879,6 +879,7 @@ Board/
 │   └── ADR-0828-rtc-provenance-rule.md  # rtc: 行の provenance 規則を architecture.md へ同期
 │   └── ADR-0829-comment-tail-sweep2.md  # 未完括弧コメント残滓の第2刈り込み (~1.3KB)
 │   └── ADR-0830-eraser-frame-cascade.md  # eraser のフレーム cascade — withFrameChildren で Delete と parity
+│   └── ADR-0831-eraser-hover-pagescope.md  # 別ページ eraser hover の赤破線ゴーストを _pgOk で解消
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

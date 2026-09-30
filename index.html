@@ -875,7 +875,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.856';   // ADR-0830
+const V='1.7.857';   // ADR-0831
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2808,7 +2808,8 @@ function drawOverlay(){
   }
   // ADR-0177: eraser hover target (red dashed
   if(state._ehov&&_tl()==='eraser'){
-    const es=byId(state._ehov);
+    let es=byId(state._ehov);
+    if(es&&!_pgOk(es))es=null;   // ADR-0831: hover target lives on another page — don't ghost its box here
     if(es){const eb=_bb(es),ep1=_w2({x:eb.x-3,y:eb.y-3}),ep2=_w2({x:eb.x+eb.w+3,y:eb.y+eb.h+3});
       _ssS(c,'#EF4444');_lnW(c,1.5);_sD(c,[5,4]);
       _sR2(c,ep1.x,ep1.y,ep2.x-ep1.x,ep2.y-ep1.y);_sD(c,[]);}
