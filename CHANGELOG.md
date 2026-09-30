@@ -1,3 +1,8 @@
+## [1.7.899] - 2026-09-30
+
+### Fix
+- テキスト編集 overlay の typography parity: `letterSpacing`/`lineHeight` が canvas 描画側のみ適用され、spacing/lineH 付きテキストが編集中に描画と乖離していた WYSIWYG 欠陥を `positionTextEditor` への両値適用で解消 (ADR-0873)
+
 ## [1.7.898] - 2026-09-30
 
 ### Docs
