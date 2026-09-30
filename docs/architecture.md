@@ -203,6 +203,9 @@ IDB 復元 (`Persist.load`/`restoreBackup`) も `_attachShape` を通して未�
 - `validRemotePayload(op)` — リモート op の payload を `_apply` 到達前に検証。ローカル op は in-process 生成で
   信頼するが、remote op (BroadcastChannel/WebRTC) は各 op 型が参照する正確なフィールドと有限な数値デルタを
   要求する (例: `move` の `dx={}` は全シェイプを NaN 化しうる)。構造的に健全な op にのみ true。
+  `validPatch` 内では patch/shape のキー件数 ≤64 (ADR-0858) に加え、
+  全 prop の serialize 重量 ≤6KB (ADR-0865) — `pts`/`dataUrl`/`text` は
+  固有の大きめ上限を維持しつつ、未知キーの MB 級ペイロードを閉塞する。
 
 ### 4. State
 唯一の真実。以下しか存在しない:

@@ -3267,6 +3267,15 @@ try {
      assert.ok(!validRemotePayload({op:'upd',id:'a',after:flood}), 'ADR-0858: >64-key junk patch rejected at wire intake');
      const fs={id:'a',type:'rect',z:0};for(let i=0;i<65;i++)fs['k'+i]=1;
      assert.ok(!validShape(fs), 'ADR-0858: >64-key junk shape rejected at wire intake');}
+    // ADR-0865: the 64-key cap bounded COUNT only — a single unknown key could
+    // still carry an MB-scale value onto the shape (relayed by every snapshot).
+    // Now any prop's serialized weight is bounded (6e3) — except the props with
+    // their own legitimate caps (pts 50k tuples, dataUrl 16MB, text 5000).
+    {assert.ok(!validRemotePayload({op:'upd',id:'a',after:{junk:'x'.repeat(7e3)}}), 'ADR-0865: >6KB unknown-key value rejected');
+     assert.ok(validRemotePayload({op:'upd',id:'a',after:{junk:'x'.repeat(5e3)}}), 'ADR-0865: small unknown-key value still allowed (forward-compat)');
+     assert.ok(!validShape({id:'r',type:'rect',z:0,junk:new Array(4000).fill(1)}), 'ADR-0865: >6KB serialized array value rejected');
+     assert.ok(validShape({id:'t',type:'text',z:0,text:'x'.repeat(5000)}), 'ADR-0865: text stays under its own 5000-char cap');
+     assert.ok(validShape({id:'i',type:'image',z:0,dataUrl:'data:image/png;base64,'+'A'.repeat(7e3)}), 'ADR-0865: dataUrl stays under its own 16MB cap');}
     // non-image shapes never carry dataUrl, so nothing regresses:
     assert.ok(validShape({id:'r',type:'rect',z:0}), 'rect without dataUrl still accepted (no regression)');
     console.log('  ✓ validShape: rejects malformed pens + external-URL image dataUrls (no-external-resources gate, v1.7.69)');
@@ -14610,7 +14619,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1809; // prev 1804 + 5 ADR-0864 label-editor cssText-injection asserts
+  pass += 1814; // prev 1809 + 5 ADR-0865 prop-weight bound asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
