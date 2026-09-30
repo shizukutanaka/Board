@@ -741,8 +741,8 @@ const checks = [
   ['text overlay closes when edited shape removed/hidden/locked/off-page (ADR-0559/0569/0572/0574/0709)', html.includes("if(!s||_hd(s)||_lk(s)||!_pgOk(s)){_rm(_teTa);_teTa=null;state.editing=null;_iv();return}")],
   ['label overlay closes when labelled shape removed/hidden/locked/off-page (ADR-0559/0569/0572/0709)', html.includes("if(!_lt||_hd(_lt)||_lk(_lt)||!_pgOk(_lt)){_rm(_lblTa.inp);_lblTa=null;return}")],
   ['peer selection outlines skip hidden shapes (ADR-0576)', html.includes("const s=byId(id);if(!s||_hd(s)||!_pgOk(s))continue")],
-  ['fragIn ignores duplicate seq slots (ADR-0578)', html.includes("if(!sn.p[seq]){sn.p[seq]=msg.data;sn.g++}")],
-  ['_dcQ requeue queue is capped at 4096 (ADR-0578)', html.includes("_ln(q)<4096&&_pu(q,m)")],
+  ['fragIn ignores duplicate seq slots (ADR-0578)', html.includes("if(!sn.p[seq]){sn.p[seq]=msg.data;sn.g++;sn.b=(sn.b||0)+_ln(msg.data)}")],
+  ['_dcQ requeue queue is capped at 4096 (ADR-0578)', html.includes("if(_ln(q)<4096&&(this._dcQB||0)+_ln(m)<=33554432)")],
   ['Presentation.enter folds open editor first (ADR-0582)', html.includes("function enter(){\n    _cxO();")],
   ['editors close a still-open overlay first (ADR-0560)', html.includes("const _cxO=()=>{if(_teTa)_teTa.blur();if(_lblTa)_lblTa.inp.blur()}")],
   ['resize resets overlay follow sigs (ADR-0561)', html.includes("_teVp=_lblVp=''")],
@@ -13988,6 +13988,52 @@ try {
     assert.strictEqual(Net._snapshotMsg().namePeer,'ok','valid namePeer still stored');
     console.log('  ✓ snapshot namePeer bounded like every wire id (ADR-0780)');
   }
+  // ADR-0781: img reassembly tracked per-part count only — the 12MB joined check
+  // ran AFTER all n parts landed, so a stream of 96KB chunks could accumulate
+  // ~384MB mid-flight. st.b now aborts the slot the moment assembled bytes cross
+  // the same cap the join would apply.
+  {
+    Net._imgChunks.clear();
+    const chunk='x'.repeat(96*1024);
+    for(let i=0;i<130;i++)Net._onRecv({k:'img',key:'big1',seq:i,n:200,data:chunk,peer:'pz'},false);
+    // abort fires at ~123 chunks; later seqs legitimately open a fresh slot
+    // (out-of-order reassembly), so assert the byte counter restarted instead.
+    assert.ok(Net._imgChunks.has('big1'),'post-abort stream opens a fresh slot');
+    assert.ok(Net._imgChunks.get('big1').b<1_000_000,'aborted accumulation is gone — only post-abort bytes counted');
+    Net._onRecv({k:'img',key:'ok1',seq:0,n:1,data:'data:image/png;base64,AA',peer:'pz'},false);
+    assert.strictEqual(Net._imgIn.get('ok1'),'data:image/png;base64,AA','normal stream unaffected');
+    console.log('  ✓ img reassembly aborts at the joined cap mid-flight (ADR-0781)');
+  }
+  // ADR-0782: _fragIn ('snap'/'opc') had the same gap — 384×96KB ≈ 37MB could
+  // accumulate before the post-join 24MB check ran. sn.b aborts mid-flight.
+  {
+    Net._snapIn=null;
+    const chunk='x'.repeat(96*1024);
+    for(let i=0;i<260;i++)Net._onRecv({k:'snap',seq:i,n:300,data:chunk,peer:'pz'},false);
+    // abort fires at ~251 chunks; later seqs open a fresh slot, so the counter restarted.
+    assert.ok(Net._snapIn,'post-abort stream opens a fresh slot');
+    assert.ok(Net._snapIn.b<1_500_000,'aborted accumulation is gone — byte counter restarted');
+    Net._onRecv({k:'snap',seq:0,n:1,data:'{"k":"x"}',peer:'pz'},false);
+    assert.strictEqual(Net._snapIn,null,'normal 1-chunk snap completes and clears');
+    console.log('  ✓ frag reassembly aborts at the joined cap mid-flight (ADR-0782)');
+  }
+  // ADR-0783: _dcQ's only bound was the 4096-message count — with ≤256KB
+  // messages a stalled channel could queue ~1GB. The queue now also caps at
+  // 32MB of string bytes (one max 'snap' burst is ~24MB, so legit bursts pass).
+  {
+    const od=Net.dc;
+    Net.dc={readyState:'open',send(){throw new Error('full')}};
+    Net._dcQ=null;Net._dcQB=0;
+    const big='x'.repeat(200000);
+    Net._sendDC(big);   // send throws → queue starts (first msg + its bytes)
+    for(let i=0;i<300;i++)Net._sendDC(big);
+    assert.ok(Net._dcQ.length<=167,'byte cap stops the queue far below the 4096 count cap');
+    const qLen=Net._dcQ.length;
+    Net._sendDC(big);Net._sendDC(big);
+    assert.strictEqual(Net._dcQ.length,qLen,'messages past the byte cap are dropped');
+    Net._dcQ=null;Net._dcQB=0;Net.dc=od;
+    console.log('  ✓ _dcQ bounded by bytes as well as count (ADR-0783)');
+  }
 
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
@@ -13995,7 +14041,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1760; // prev 1756 + 4 ADR-0780 snapshot namePeer cap asserts
+  pass += 1768; // prev 1766 + 2 ADR-0783 _dcQ byte-cap asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
