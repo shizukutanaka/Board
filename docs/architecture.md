@@ -367,8 +367,13 @@ DOM 要素は `data-t` 属性 + `UI.applyI18n()` で翻訳 (起動時に 1 回�
 - 送信は `_sendDC` 単一漏斗 — SCTP バッファ満杯の throw を
   `onbufferedamountlow` 再送キュー (`_dcQ`) に変換 (ADR-0432)。
   >256KiB の単一メッセージは永久に送れないため即 drop (ADR-0438)。
-- `hello`/`sync-req`/`ping`/`cursor`/`selection`/`name` — BroadcastChannel
-  経路のみ (RTC ピアは `_rtcPeerId` 合成 id で追跡、ADR-0010/0011)。
+- `hello`/`sync-req`/`ping` — BroadcastChannel 経路のみ (`_send`)。
+- `op`/`cursor`/`selection`/`name`/`bye`/`img`/`snapshot` — dual-transport
+  (BC + DataChannel)。`_bcast` = `_send` + `_sendDC` の fold; `op` は
+  `broadcast()` 内の dc 分岐 (>200KB → `opc`)、snapshot は BC では raw
+  object・dc では `snap` 断片、`img` は両経路で chunk object の別
+  packaging。RTC ピアは `_rtcPeerId` 合成 id で追跡、`_pk` が viaRtc
+  メッセージをその合成行へ振り分ける (ADR-0010/0011/0456/0498)。
   snapshot 要求は 1 秒 throttle (安価要求×高価応答の増幅防止)。
 
 ### ライフサイクル (v1.7.49x)
@@ -504,6 +509,11 @@ DOM 要素は `data-t` 属性 + `UI.applyI18n()` で翻訳 (起動時に 1 回�
   `zoomAt`、`centerOn`、`_fitViewport`、プレゼン `_zoomToFrame`、エッジオートパン) は `_xC(v)=clamp(v,±1e7)` を通る — 境界の
   外には wire-valid な図形が存在し得ないため、中心が外に出ると描く図形が全て
   ピア棄却となる発散クラスだった (境界ではパンが停止、届く表示は失われない)。
+  全書き込み形式は監査済み (リテラル `_vp().x=`・保存参照 `v.x=`・`+=`) で、
+  各累積経路は behavioural ピンが固定: 矢印キー (0802)・wheel パンと ctrl+wheel
+  zoomAt (0805)・`_edgePanTick` (0808)・hand ドラッグ (0809)、サイト数ピン
+  `>=16` が単発サイトを守る。BC/RTC 受信は単一 `_onRecv` 経路で transport 別の
+  検証穴なし、presence は peer が匿名 (name フィールド非保持) で文字列攻撃面なし。
 - **ローカル取込も wire 上限に揃える** (ADR-0796/0797): drawio/svg/excalidraw
   パーサ出力と複数ページ経路は `validShape` を通り (ピアが棄却する図形を
   ローカルが受理しない)、テキストエディタは `maxLength=5000` で wire の
