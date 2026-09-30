@@ -1,3 +1,107 @@
+## [1.7.928] - 2026-09-30
+
+### Docs
+- SR ミラー・検索・announce・ステータスバー監査完走 — mirror は `_gridVer` キー再構築+MIRROR_MAX+ページ帰属、検索は `_sv`+`_pgOk` スコープ、announce は末尾空白再読上げ、status は sig ゲート (ADR-0902)
+
+## [1.7.927] - 2026-09-30
+
+### Docs
+- UI 配線監査完走 — 全94要素 id・92 ctx 項目・13 export 項目・13 ツールボタン・data-t i18n キーが「宣言→参照→リスナ/文言」3段階で網羅、dead control なし (ADR-0901)
+
+## [1.7.926] - 2026-09-30
+
+### Docs
+- 取込経路監査完走 — hash #b=/#s=・ファイル/drop/paste 全カスケードが validShape+要素上限+32MB+dataUrl cap で clean (ADR-0900)
+
+## [1.7.925] - 2026-09-30
+
+### Docs
+- 入力経路監査完走 — dblclick→エディタ/jest 終端/eraser flush/measure・hover/イレーザーhover/pointercancel・lostcapture・blur・hidden・pagehide/click-click ラインを全軸 clean で記録 (ADR-0899)
+
+## [1.7.924] - 2026-09-30
+
+### Fixed
+- minimap の pointerdown にボタンゲートがなく、X1/X2 サイドボタンや stylus barrel が `_mmNav` をアームしてビューポートスクラブを追従し得た — `e.button>1` で閉塞 (ADR-0896 parity、ADR-0898) + 実イベント経路ピン
+
+## [1.7.923] - 2026-09-30
+
+### Tests
+- ADR-0896 の実イベント経路ピン — `fire('pointerdown',{button:3/4})` が `ptr.down` をアームせず図形も生成しないことを固定 + 周辺入力経路 (pointerup/cancel/wheel/dblclick/drop/pinch/capture) 監査 clean (ADR-0897)
+
+## [1.7.922] - 2026-09-30
+
+### Fixed
+- pointerdown が右ボタンのみを弾いていたため、マウス X1/X2 サイドボタン (button 3/4) や stylus barrel が `ptr.down` をアームして pen/marquee ジェスチャを開始し得た — `e.button>1` で非プライマリを一括閉塞 (ADR-0896)
+
+## [1.7.921] - 2026-09-30
+
+### Tests
+- `_teFollow` の `_gridVer` 追従を実経路ピン — viewport 不変でも `Store.commit` upd で overlay が再配置 (x:300→500px) + 再スタイル (bold→600) されることを固定 (ADR-0895)
+
+## [1.7.920] - 2026-09-30
+
+### Docs
+- 編集 overlay ライフサイクル監査の完走を記録 — open/blur-commit/Escape/Tab 連鎖/`_cxO` 強制畳み (ページ切替・hide・プレゼン突入)/follow 自己畳み/sig リセットの全経路を網羅確認、実害なし (ADR-0894)
+
+## [1.7.919] - 2026-09-30
+
+### Fixed
+- ラベルエディタの追従 sig が `v.z` (未定義) を参照し zoom で再配置されない潜在バグを `v.zoom` へ修正 — ズーム中もラベル overlay が正しい位置に追従する (ADR-0893)。viewport 別名の `v.<prop>` タイポ sweep は clean
+
+## [1.7.918] - 2026-09-30
+
+### Fixed
+- 編集 overlay が viewport 変化でのみ追従していたため、他ピアの upd で shape が移動/リサイズ/スタイル変更されても overlay が旧位置・旧スタイルに留まる実害を解消 — follow sig に `_gridVer` を追加 (shape 変化で必ず bump) + label editor は live shape から anchor と font/spacing/decoration/color を再適用 (ADR-0892)
+
+## [1.7.917] - 2026-09-30
+
+### Docs
+- extent 除算・数値ドメイン監査の完走を記録 — `_pathAt`/`_edgePt`/`applyResize`/`_mapToBox`/`_grotDrag` の全除算サイトが `||1`・`1e-6`・early-return・`>0` ガードのいずれかを持ち、`_log`/`_sqr`/`exp` のドメインエラー経路も全て clampZoom/`_xC` 内に着地すると確認 (ADR-0891)
+
+## [1.7.916] - 2026-09-30
+
+### Tests
+- ADR-0888 修正の behavioural ピン — `_mapToBox` を 0 幅 gBox (`{w:0}`: 同一 x の垂直線群) で直叩きし、pen pts/line 端点が NaN/Infinity を出さず vb 境界へ縮退することを固定。`_grotDrag`/`_grpMapGet`/overlay ライフサイクル/render キャッシュの監査は clean (ADR-0890)
+
+## [1.7.915] - 2026-09-30
+
+### Fixed
+- SVG エクスポートのリンクバッジ3サイトが未定義の `esc()` を呼び (`esc=_dioEsc` は drawio emit スコープのローカル)、リンク付き図形を含む盤面のエクスポートが ReferenceError で全滅する実害を `_esc` 化で閉塞 — 発生当初から dead だった機能を復旧 (ADR-0889)
+
+## [1.7.914] - 2026-09-30
+
+### Fixed
+- 群リサイズの gBox が 0 幅/高さ (例: 同一 x の垂直線2本) のとき `_mapToBox` の `vb.w/ob.w` が Infinity 化し、メンバー座標が NaN/Infinity に破壊される実害を修正 — cbend 内の同式と同じ `||1` ガードで全メンバーを vb 境界へ縮退 (ADR-0888)
+
+## [1.7.913] - 2026-09-30
+
+### Fixed
+- ミニマップシーンが図形描画 throw で半描画のまま「最新」とマークされ、次の盤面変更まで壊れ続けた実害を修正 — per-shape try で throw 図形のみ除外 + `_sceneVer` を成功完了時のみ更新 (0601 と同じ隔離規則) (ADR-0887)
+
+## [1.7.912] - 2026-09-30
+
+### Docs
+- architecture.md を 0877–0885 群へ同期: Persist の open ライフサイクル (blocked/yield)・tx エラー完結・画像取込 32MB/0×0 ガード・SR スタイルアナウンス・トースト上限4・i18n 監査完走を各節へ反映 (ADR-0886)
+
+## [1.7.911] - 2026-09-30
+
+### Test
+- `Persist.open` の blocked→in-memory 解決と `onversionchange` 譲渡をフェイク IDB リクエストで実動作ピン (handler 装着・resolve・db null 化・close 呼出を全確認, ADR-0885)
+- IDB トランザクションエラー面の監査完走を記録: 全書込 tx は `txDone` (complete/error/abort)、全 request は `reqDone` (error→reject) で完結、`bc.onmessageerror` は構造体クローン送信のみで到達不能 (ADR-0885)
+
+## [1.7.910] - 2026-09-30
+
+### Fixed
+- 別タブが旧バージョンの IndexedDB を保持すると `Persist.open()` が永久 pending で boot が暗黙停止 (render loop 未達・canvas 空白) する実害を解消: `onblocked` は toast+in-memory 継続、`onversionchange` は接続を閉じて新版タブのアップグレードを通す (ADR-0884)
+
+### Test
+- Persist.open の blocked/yield ハンドラと saveBlocked i18n キーをソースピン (ADR-0884)
+
+## [1.7.909] - 2026-09-30
+
+### Docs
+- i18n/ラベル面監査の完走を記録: t() callsite は両ロケール網羅をテスト固定済・4系 data-t 機構 (text/aria/ph/title) が全 document を走査・動的ラベル (btnLang/btnTheme/canvas/ctx 再構築) も全て t() 経由 — 未ローカライズ経路なし (ADR-0883)
+
 ## [1.7.908] - 2026-09-30
 
 ### Fixed
