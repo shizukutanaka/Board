@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.898';   // ADR-0872
+const V='1.7.899';   // ADR-0873
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -5792,6 +5792,7 @@ function positionTextEditor(ta,s){
   ta.style.textAlign=s.align==='center'?'center':s.align==='right'?'right':'left';   // ADR-0073
   ta.style.fontWeight=s.bold?'600':'';ta.style.fontStyle=s.italic?'italic':'';ta.style.textDecoration=[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ');   // ADR-0078/0095/0100
   ta.style.fontFamily=_fontFam(s);                                          // ADR-0173
+  ta.style.letterSpacing=(_sp(s)||0)+'px';ta.style.lineHeight=s.lineH||'';   // ADR-0873: match canvas's _fontStr/lh — without these the editor drifts from the render
   ta.style.minWidth='20px';
 }
 
@@ -10342,10 +10343,7 @@ if('serviceWorker' in navigator){
     });`;
   const bl=new Blob([sw],{type:'text/javascript'});
   const _swu=_oURL(bl);navigator.serviceWorker.register(_swu).then(()=>URL.revokeObjectURL(_swu),()=>URL.revokeObjectURL(_swu));
-  // v1.6.93: SW update notification. skipWaiting()+clients.claim() in the SW means a
-  // new version activates immediately, but the page still runs the old code:
-  // controllerchange (fires when a new SW takes control) prompts the reload.
-  // Pattern: web.dev/service-worker-lifecycle / Zenn「SW更新時にリロードを促す」.
+  // v1.6.93: controllerchange fires when a new SW takes control → prompt reload.
   _on(navigator.serviceWorker,'controllerchange',_onSwUpdate);
 }
 
