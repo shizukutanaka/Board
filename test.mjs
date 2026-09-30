@@ -14130,6 +14130,24 @@ try {
     console.log('  ✓ far-future clock ts rejected at intake (ADR-0791)');
   }
 
+  // ADR-0792: coordinate magnitudes are bounded at intake — a far-off shape
+  // poisons every bboxAll consumer (fit-view/minimap/exports → the whole board
+  // renders sub-pixel = a blank board for every peer, persistently).
+  {
+    state.shapes=[];state.wclock={};state.seenOps=new Set();state.seq=0;state.history=[];state.histIdx=-1;
+    const clk=p=>({peer:'p1',seq:p,ts:Date.now()+1e3});
+    Store.applyRemote({op:'add',shape:{id:'mc1',type:'rect',x:9e9,y:0,w:10,h:10,z:1},clock:clk(1)});
+    assert.ok(!byId('mc1'),'out-of-bound coordinate add rejected (view-poison DoS)');
+    Store.applyRemote({op:'add',shape:{id:'mc2',type:'rect',x:-9e9,y:0,w:10,h:10,z:1},clock:clk(2)});
+    assert.ok(!byId('mc2'),'negative far coordinate rejected too');
+    Store.applyRemote({op:'add',shape:{id:'mc3',type:'rect',x:9e6,y:0,w:10,h:10,z:1},clock:clk(3)});
+    assert.ok(!!byId('mc3'),'in-bound far coordinate still accepted');
+    Store.applyRemote({op:'add',shape:{id:'mc4',type:'pen',x:0,y:0,w:10,h:10,z:1,pts:[[0,0],[1e9,0]]},clock:clk(4)});
+    assert.ok(!byId('mc4'),'pen pts magnitudes bounded too');
+    state.shapes=[];state.wclock={};state.seenOps=new Set();state.seq=0;state.history=[];state.histIdx=-1;
+    console.log('  ✓ far-magnitude coordinates rejected at intake (ADR-0792)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
   // asserts but actually contains 6 (recounted directly: at1.length, at2.length, and 4
