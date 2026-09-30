@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.877';   // ADR-0851
+const V='1.7.878';   // ADR-0852
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -935,8 +935,7 @@ let _themeCache=(()=>{try{return _lg(THEME_KEY)}catch(_){return null}})();
 function applyTheme(mode){   // mode: 'light'|'dark'|null (auto = follow prefers-color-scheme)
   if(mode)_de.dataset.theme=mode;
   else delete _de.dataset.theme;
-  clearCSSCache();
-  Minimap.invalidateCache();   // minimap scene bitmap embeds --ink/--brand colors (ADR-0025)
+  _tTk();   // minimap scene bitmap embeds --ink/--brand colors (ADR-0025)
 }
 
 // ====================== I18N ======================
@@ -1177,11 +1176,11 @@ const G={
   s2w(p){const v=_vp();return{x:p.x/v.zoom+v.x,y:p.y/v.zoom+v.y}},
   bbox(s){
     if(_pn(s)){
-      // Memoize the O(pts) envelope walk: per fram
-      // in inView() and once per pen in the minima
-      // after the bitmap cache (ADR-0019). Same O(
-      // every in-place point mutation moves p0/mid
-      // swaps the array — observationally pure, `state` untouched.
+      // Memoize the O(pts) envelope walk: it runs per frame in
+      // inView() and once per pen in the minimap — the same lazy
+      // trick as the bitmap cache (ADR-0019). Same O(1) signature:
+      // every in-place point mutation moves p0/mid/end, any other
+      // edit swaps the array — observationally pure, `state` untouched.
       const p=s.pts,n=_ln(p),e=n&&_penBboxCache.get(s.id);
       if(e&&e.pts===p&&e.n===n&&e.size===_szz(s)
         &&e.p0x===p[0][0]&&e.p0y===p[0][1]&&e.pMx===p[n>>1][0]&&e.pMy===p[n>>1][1]
@@ -1514,8 +1513,8 @@ const Store={
   _lwwOp(op){return op.op==='upd'||op.op==='style'||op.op==='resize'||op.op==='align'||op.op==='group'||op.op==='ungroup'||op.op==='zorder'||op.op==='move'||op.op==='beautify'},   // ADR-0729/0730
   // A patch key counts for LWW only if its value differs (pts/way compared deeply via JSON)
   _chg(before,after,key){return _JS(before?before[key]:undefined)!==_JS(after[key])},
-  // Returns false if `op` has no changed props left after the clock filter —
-  // mutates op in place so a stale snapshot op can't overwrite a concurrent write.
+  // False when the clock filter leaves no changed props — mutates op in place
+  // so a stale snapshot op can't overwrite a concurrent write.
   _lwwDrop(op){
     if(!this._lwwOp(op))return true;
     const C=op.clock;
@@ -1554,7 +1553,7 @@ const Store={
     // Only stamp shapes that actually exist: a late
     // add for a dead shape no-ops in _apply but would create a wclock nobody
     // ever cleans (del/clear/replace clean live shapes only) for the
-    // session. Array/group paths are pre-filtered
+    // session's lifetime. Array/group paths pre-filter byId in their branches.
     const stamp=(id,after,before)=>{if(!after||!byId(id))return;const w=_wc()[id]||(_wc()[id]=_wM());
       for(const key of _ok(after)){if(key==='id')continue;if(this._chg(before,after,key))w[key]=C;}};
     if(op.op==='upd')stamp(op.id,op.after,op.before);
@@ -2108,7 +2107,7 @@ function getImg(dataUrl){
   let img=_imgCache.get(k);
   if(img){_imgCache.delete(k);_imgCache.set(k,img);return img}
   img=new Image();
-  img.onload=()=>{_iv();Minimap.invalidateCache();};   // minimap cache keys on _gridVer — image loa
+  img.onload=()=>{_iv();Minimap.invalidateCache();};   // minimap cache keys on _gridVer — image loads don't bump it, so invalidate explicitly
   img.src=dataUrl;
   if(_imgCache.size>=IMG_CACHE_MAX)_imgCache.delete(_imgCache.keys().next().value);
   _imgCache.set(k,img);
@@ -2178,11 +2177,10 @@ function _pgDup(){   // ADR-0651: duplicate the current page — pageAdd+shapes 
 function _pgDel(){if(!_pgOn()||_ln(_pgs())<2)return;const p=_pgs()[_pgIdx()];if(!confirm(t('pgDelQ')+': '+p.name+'?'))return;_cmt({op:'pageDel',id:p.id,i:_pgIdx(),name:p.name})}
 const _pgIdx=()=>_pgOn()?_pgs().findIndex(p=>p.id===state.curPg):-1;
 function _pgDel2(op,firstId,only,viewId){   // ADR-0646: remove the deleted page's members + land the view on a live page
-  // ADR-0707: 'del' parity — locked members SURVIVE the page delete and rehome to firstId
-  // (null firstId = single-page mode → un-paged, then _pgHealS scrubs the stale value).
-  // ADR-0724: `only` restricts the kill set to op-carried members (unpage path).
-  // ADR-0725: `viewId` is the local view landing — member rehome (firstId) follows the
-  // wire-carried sender choice while the view is local and lands on the local first.
+  // ADR-0707: 'del' parity — locked members SURVIVE and rehome to firstId (null
+  // = single-page → _pgHealS scrubs it). ADR-0724: `only` caps the kill set to
+  // op-carried members (unpage). ADR-0725: `viewId` = local view landing;
+  // member rehome follows the wire's sender choice, the view the local first.
   const dead=new Set();for(const s of _sh())if((s.pg||firstId)===op.id&&!s.locked&&(!only||only.has(s.id)))dead.add(s.id);
   op.wc=_wM();for(const id of dead)if(_wc()[id])op.wc[id]=clone(_wc()[id]);   // ADR-0722e 'del' forward — undo must restore them or resurrected shapes arbitrate against nothing
   for(const id of dead)_wc()[id]=_wM({_del:op.clock});   // ADR-0679/0734: tombstone, not purge — a stale add/snapshot carrying the id must lose to this delete or the member resurrects
@@ -2883,6 +2881,7 @@ function _drawMeasure(c){
 let _cssCache=Object.create(null);
 function _gC(v){let x=_cssCache[v];if(x===_ud){x=_trm(getComputedStyle(_de).getPropertyValue(v));_cssCache[v]=x}return x}
 function clearCSSCache(){_cssCache=Object.create(null);_iv()}
+const _tTk=()=>{clearCSSCache();Minimap.invalidateCache()}   // ADR-0852: OS scheme/contrast flips change the same tokens — drop the minimap scene too
 function drawGrid(W,H){
   const v=_vp();
   const gs=GRID_SIZE;
@@ -3496,7 +3495,7 @@ function drawPen(s,c){
     _bp(c);c.arc(p[0][0],p[0][1],(_szz(s)||2)/2,0,PI2);_fil(c);
     return;
   }
-  // ADR-0046: union fill of trapezoid+disc pri
+  // ADR-0046: union fill of trapezoid+disc primitives gives
   // naturally tapered ends; identical primitives to the live tail
   const w=penWidths(p,_szz(s)),oldFill=c.fillStyle;
   c.fillStyle=_sk(s);
@@ -7988,7 +7987,7 @@ function wrapTextCached(s,text,maxWidth,fontSize,measure){
 // The char-break path applies 禁則処理 so punctuation can't head or close a line
 function wrapText(text,maxWidth,measure){
   const out=[];
-  // v1.6.97: normalize Windows (\r\n) and old
+  // v1.6.97: normalize Windows (\r\n) and old-Mac (\r) endings
   // so measureText doesn't see a trailing \r skewing wrap-width.
   const norm=_St(text==null?'':text).replace(/\r\n/g,'\n').replace(/\r/g,'\n');
   for(const para of _spL(norm)){
@@ -8003,8 +8002,8 @@ function wrapText(text,maxWidth,measure){
       let chunk='';                                         // single token longer than the line → char-break
       for(const ch of tok){
         if(chunk===''||measure(chunk+ch)<=maxWidth){chunk+=ch;continue;}
-        // 禁則: a line-start-prohibited char must not
-        // the current line (ぶら下げ) so the break falls after it instead.
+        // 禁則: a line-start-prohibited char must not open a line — it
+        // stays on the current line (ぶら下げ) so the break falls after it instead.
         if(KINSOKU_START.has(ch)){chunk+=ch;continue;}
         // 禁則: opening brackets must not end a line —
         let carry='';
@@ -9499,7 +9498,7 @@ function wire(){
   if('orientation' in screen)_on(screen.orientation,_CH,_resizeSoon);
   // theme / high-contrast switches change design tokens — re-render
   if(window.matchMedia)for(const q of ['(prefers-color-scheme:dark)','(forced-colors:active)','(prefers-contrast:more)']){
-    try{_on(matchMedia(q),_CH,clearCSSCache)}catch(_){}
+    try{_on(matchMedia(q),_CH,_tTk)}catch(_){}
   }
   // close ctx on click outside
   _on(document,'mousedown',e=>{
@@ -10104,11 +10103,9 @@ const Presentation=(()=>{
   let _overlay=null;
   let _savedVp=null;   // viewport before entering, restored on leave
   let _focusTrigger=null;  // element to restore focus to on leave (WCAG SC 2.4.3)
-  // v1.6.90: Screen Wake Lock — prevent the display sleeping during presentation.
-  // Zenn/Qiita: "プレゼンテーション中にスクリーンがオフになる問題" / Screen Wake Lock API.
-  // Silent best-effort; browsers without it (Safari, Firefox) skip it.
-  // The browser auto-releases the lock when the tab goes hidden (visibilitychange
-  // → hidden), so we re-acquire it when the tab becomes visible again.
+  // v1.6.90: Screen Wake Lock keeps the display on during presentation (Zenn/Qiita).
+  // Best-effort — unsupported browsers skip. The browser auto-releases the lock
+  // when the tab hides, so we re-acquire it when it becomes visible again.
   let _wakeLock=null;
   async function _acquireWakeLock(){
     if(!navigator.wakeLock)return;
