@@ -1,3 +1,13 @@
+## [1.7.897] - 2026-09-30
+
+### Docs
+- 描画消費 prop の書式監査完走: canvas/DOM sink 全てが 0868/0870 ゲート・whitelist 写像・ローカル定数のいずれかで決定的 (state 漏れなし)。enum prop の intake gate は旧値を持つ実ボード保護のため fallback 維持・非採用 (ADR-0871)
+
+## [1.7.896] - 2026-09-30
+
+### Fix
+- `stroke`/`fill`/`color` の wire 書式検証: 無効 CSS 色は canvas が静黙に代入無視し、前 shape の色が被害 shape に漏れる実害を `_colOK` (`CSS.supports('color',v)`、非 DOM フォールバック付き) で閉塞。`fill:'none'` センチネル保護 + SVG/drawio/excalidraw インポータ経路も同ゲート (ADR-0870)
+
 ## [1.7.895] - 2026-09-30
 
 ### Docs
