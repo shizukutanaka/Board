@@ -12953,6 +12953,14 @@ try {
     assert.ok(!ptr.down,'right-button PD does not arm ptr.down');
     fire('pointerup',50,50);
     assert.strictEqual(state.shapes.length,0,'no phantom shape from right-click');
+    // ADR-0896: X1/X2 side buttons and stylus barrel (3/4) are also inert —
+    // they used to fall through to the tool switch and arm a gesture
+    for(const b of [3,4]){
+      reset();state.tool='pen';
+      fire('pointerdown',50,50,{button:b});
+      assert.ok(!ptr.down&&state.shapes.length===0,`button ${b} PD arms no gesture (ADR-0896)`);
+      fire('pointerup',50,50);
+    }
     // ADR-0866: local inputs share the wire caps — an over-cap pen stroke or
     // waypoint array would commit locally yet be rejected by every peer
     // (same divergence class as the text-editor maxLength, ADR-0797).
