@@ -4491,6 +4491,21 @@ try {
       Store.commit({op:'del',shapes:[{...byId(Y.id)}]});
       console.log('  ✓ page-del undo lands on restored page (3 asserts)');
     }
+    // ADR-0664: switching pages cancels a live pointer gesture
+    {
+      const Z=Shape.make('rect',{x:0,y:0,w:10,h:10});
+      Store.commit({op:'add',shape:Z});
+      state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';
+      const zs=byId(Z.id);zs.x=40;   // mid-drag position
+      ptr.down=true;ptr.dragKind='move';ptr.dragStartShapes=new Map([[Z.id,JSON.parse(JSON.stringify(Z))]]);
+      switchPage('pB');
+      assert.ok(ptr.down===false&&ptr.dragKind===null,'live gesture cancelled on page switch');
+      assert.ok(zs.x===0,'drag start position restored, not committed (ADR-0664)');
+      assert.ok(state.curPg==='pB','view still lands on the target page');
+      state.pages=null;state.curPg=null;
+      Store.commit({op:'del',shapes:[{...byId(Z.id)}]});
+      console.log('  ✓ page switch cancels live gesture (3 asserts)');
+    }
   }
 
   // ADR-0072: elbow trunk locate + bend-override two-corner route
@@ -12638,7 +12653,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1484; // prev 1481 + 3 pageDel-undo-landing asserts (ADR-0663)
+  pass += 1487; // prev 1484 + 3 page-switch-gesture-cancel asserts (ADR-0664)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
