@@ -14034,6 +14034,20 @@ try {
     Net._dcQ=null;Net._dcQB=0;Net.dc=od;
     console.log('  ✓ _dcQ bounded by bytes as well as count (ADR-0783)');
   }
+  // ADR-0784: _imgIn's only bound was 256 entries — a peer spamming 12MB blobs
+  // could pin ~3GB of base64 in the session. Retained bytes now cap at 64MB
+  // with the same oldest-first eviction direction as the count cap.
+  {
+    Net._imgIn.clear();Net._imgInB=0;
+    const blob='y'.repeat(11_000_000);
+    for(let i=0;i<6;i++){Net._imgIn.set('seed'+i,blob);Net._imgInB+=blob.length}
+    Net._onRecv({k:'img',key:'live1',seq:0,n:1,data:'data:image/png;base64,AA',peer:'pz'},false);
+    assert.ok(Net._imgInB<=64_000_000,'retained blob bytes bounded by the cap');
+    assert.ok(!Net._imgIn.has('seed0')&&Net._imgIn.has('seed1'),'only as many oldest evicted as needed');
+    assert.strictEqual(Net._imgIn.get('live1'),'data:image/png;base64,AA','the live blob still lands');
+    Net._imgIn.clear();Net._imgInB=0;
+    console.log('  ✓ _imgIn bounded by bytes as well as count (ADR-0784)');
+  }
 
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
@@ -14041,7 +14055,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1768; // prev 1766 + 2 ADR-0783 _dcQ byte-cap asserts
+  pass += 1771; // prev 1768 + 3 ADR-0784 _imgIn byte-cap asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
