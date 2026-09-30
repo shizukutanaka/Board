@@ -855,7 +855,7 @@ const _st=()=>state.style;
 const _df=()=>state.draft;
 const _wc=()=>state.wclock,_wM=x=>Object.assign(Object.create(null),x),_oe=Object.entries;   // ADR-0788: '__proto__' id must never hit a prototype-bearing map — a write would mutate the map's prototype, then every missing-id tomb read returns the planted entry (one op.wc key freezes all future adds). Null-proto keeps it a plain own key
 const _wD=(id,c)=>_wc()[id]=_wM({_del:c}),_wR=(id,w)=>_wc()[id]=_wM(clone(w)),_wTb=(rw,c,inN)=>{for(const[id,w]of _oe(rw||{}))if(w._del&&(clockNewer(w._del,c)||!inN.has(id)))_wD(id,clockNewer(w._del,c)?w._del:c)};   // ADR-0789: tomb write / clock-restore / tomb-set merge sites folded
-const MAX_TS_SKEW=3e5,_tsOK=t=>_iN(t)&&_fin(t)&&t<=_now()+MAX_TS_SKEW,_pgs=()=>state.pages,_xyOK=v=>_fin(v)&&_abs(v)<=1e7,_vpOK=v=>v&&_xyOK(+v.x)&&_xyOK(+v.y)&&_fin(+v.zoom)&&+v.zoom>0;   // ADR-0791/0792/0793/0795: bound wire ts/coords/props/viewport — far values poison bboxAll or land the whole board blank
+const MAX_TS_SKEW=3e5,_tsOK=t=>_iN(t)&&_fin(t)&&t<=_now()+MAX_TS_SKEW,_pgs=()=>state.pages,_xyOK=v=>_fin(v)&&_abs(v)<=1e7,_xC=v=>_max(-1e7,_min(1e7,v)),_vpOK=v=>v&&_xyOK(+v.x)&&_xyOK(+v.y)&&_fin(+v.zoom)&&+v.zoom>0;   // ADR-0791/0792/0793/0795/0798
 const _tl=()=>state.tool;
 const _dn=()=>state.docName;
 let _nameTs=0,_namePeer='';
@@ -875,7 +875,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.822';   // ADR-0796
+const V='1.7.825';   // ADR-0799
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2599,8 +2599,8 @@ function cycleSel(ids,cur,dir){
 }
 function centerOn(sh){
   const b=_bb(sh),v=_vp();
-  v.x=b.x+b.w/2-(canvas.width/(v.zoom*DPR))/2;
-  v.y=b.y+b.h/2-(canvas.height/(v.zoom*DPR))/2;
+  v.x=_xC(b.x+b.w/2-(canvas.width/(v.zoom*DPR))/2);
+  v.y=_xC(b.y+b.h/2-(canvas.height/(v.zoom*DPR))/2);
 }
 function describeShape(s){
   const b=_bb(s);
@@ -4346,8 +4346,8 @@ _on(canvas,_PM,e=>{
   }
   const dx=sp.x-ptr.x0,dy=sp.y-ptr.y0;
   if(ptr.panning){
-    _vp().x-=(sp.x-ptr.x)/_vp().zoom;
-    _vp().y-=(sp.y-ptr.y)/_vp().zoom;
+    _vp().x=_xC(_vp().x-(sp.x-ptr.x)/_vp().zoom);
+    _vp().y=_xC(_vp().y-(sp.y-ptr.y)/_vp().zoom);
     ptr.x=sp.x;ptr.y=sp.y;_iv();return;
   }
   switch(_tl()){
@@ -4919,8 +4919,8 @@ _on(canvas,'wheel',e=>{
     // ADR-0093: ⇧+wheel pans horizontally (mouse
     // pass through real deltaX so trackpads keep
     const dx=_sK(e)&&!d.x?d.y:d.x,dy=_sK(e)&&!d.x?0:d.y;
-    _vp().x+=dx/_vp().zoom;
-    _vp().y+=dy/_vp().zoom;
+    _vp().x=_xC(_vp().x+dx/_vp().zoom);
+    _vp().y=_xC(_vp().y+dy/_vp().zoom);
     _iv();
   }
 },{passive:false});
@@ -5005,8 +5005,8 @@ function zoomAt(sp,delta){
   if(nz===v.zoom)return;
   if(_nP()>=2)_pinchSnapNow();
   const wp=_s2(sp);
-  v.x=wp.x-sp.x/nz;
-  v.y=wp.y-sp.y/nz;
+  v.x=_xC(wp.x-sp.x/nz);
+  v.y=_xC(wp.y-sp.y/nz);
   v.zoom=nz;
   _rZ();
   _iv();
@@ -5027,8 +5027,8 @@ function _fitViewport(b,pad,cap){
   const r=_cbr();
   const z=clampZoom(_min((r.width-pad*2)/b.w,(r.height-pad*2)/b.h,cap));
   _vp().zoom=z;
-  _vp().x=b.x+b.w/2-r.width/(2*z);
-  _vp().y=b.y+b.h/2-r.height/(2*z);
+  _vp().x=_xC(b.x+b.w/2-r.width/(2*z));
+  _vp().y=_xC(b.y+b.h/2-r.height/(2*z));
   _rZ();_iv();
   return z;
 }
@@ -5770,7 +5770,7 @@ function openTextEditor(s,isNew){
   const origText=_txx(s)||'';
   const orig=clone(s);
   ta.value=origText;
-  ta.spellcheck=false;
+  ta.spellcheck=false;ta.maxLength=5e3;   // ADR-0797
   positionTextEditor(ta,s);
   _ap(_db,ta);
   _fc(ta);
@@ -6041,8 +6041,8 @@ _on(window,_KD,e=>{
     else{                                   // ADR-0165: no selection → arrows pan the view
       _pd(e);                    // (Excalidraw scroll parity; keyboard-only nav)
       const step=(_sK(e)?200:40)/_vp().zoom;
-      _vp().x+=k===_AL2?-step:k===_AR2?step:0;
-      _vp().y+=k===_AU?-step:k===_AD?step:0;
+      _vp().x=_xC(_vp().x+(k===_AL2?-step:k===_AR2?step:0));
+      _vp().y=_xC(_vp().y+(k===_AU?-step:k===_AD?step:0));
       _iv();
     }
   }
@@ -7020,7 +7020,7 @@ function drawioToShapes(txt){
       const m=_qs(dg,'mxGraphModel'),pw=+(m&&_ga(m,'pageWidth'))||850;
       if(!_dioNm)_dioNm=_ga(dg,'name');   // ADR-0405: first page's name → docName
       if(!_dioVp&&m){const ddx=+_ga(m,'dx'),ddy=+_ga(m,'dy'),dz=+_ga(m,'zoom');
-        if(_xyOK(ddx)&&_xyOK(ddy))_dioVp={x:-ddx,y:-ddy,z:_fin(dz)?clampZoom(dz):1,g:+_ga(m,'grid')===1}}   // ADR-0359/0409/0796: viewport + grid restore, bounded
+        if(_xyOK(ddx)&&_xyOK(ddy))_dioVp={x:-ddx,y:-ddy,z:_fin(dz)?clampZoom(dz):1,g:+_ga(m,'grid')===1}}   // ADR-0359/0409/0796
       for(const c2 of _qsa(dg,'mxCell'))_doff.set(c2,_dx);
       _dx+=pw+200;
     }}
@@ -7184,7 +7184,7 @@ function importDrawioText(txt,wp){
   }
   let shapes=null;
   try{shapes=drawioToShapes(txt)}catch(_){shapes=null}
-  if(!shapes||!_ln(shapes=shapes.filter(validShape))){_wT(_IB);return false}   // ADR-0796: intake parity — peers reject what locals must not accept
+  if(!shapes||!_ln(shapes=shapes.filter(validShape))){_wT(_IB);return false}   // ADR-0796: wire parity
   const _vpNull=wp==null;
   _ctrAt(shapes,wp)
   _cOp({op:'addMany',shapes});
