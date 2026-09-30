@@ -1,3 +1,8 @@
+## [1.7.845] - 2026-09-29
+
+### Docs
+- ADR-0819: storage・quota・img 送信キュー監査完走 — _imgOuts drain/room 切替・quotaExceeded/quotaWarn・estimate catch 全経路 clean
+
 ## [1.7.844] - 2026-09-29
 
 ### Docs
