@@ -46,3 +46,7 @@ for(const k of['color','stroke','fill'])if(p[k]!=null&&!_colOK(p[k]))return fals
 `test.mjs` に `globalThis.CSS` スタブ (正しい色構文=受理、junk=棄却を mirror) と
 9 behavioural asserts: url()/非色語/malformed rgb()/宣言注入の棄却 +
 hex/rgba()/transparent/none/named の受理 (`validRemotePayload({op:'upd',...})` 経由)。
+
+## 追記: draw.io `default` キーワード
+
+draw.io は `fillColor=default` / `strokeColor=default` を書き出す (drawioToShapes がそのまま s.fill/s.stroke に載せる)。CSS color ではないため validShape が shape ごと拒否し、import で図形が消える・既存 doc の load で図形が消える回帰になる。`none` と同じく Board 側の既知トークンとして `_colOK` で通す。
