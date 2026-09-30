@@ -787,6 +787,8 @@ const checks = [
   ['non-array shapes toasts + clears', html.includes("if(!_iA(data.shapes)||_ln(data.shapes)>SHARE_MAX_SHAPES){_eT(_IB);clearHash();return false}")],
   ['all-invalid shapes toasts + clears', html.includes("if(!_ln(valid)){_eT(_IB);clearHash();return false}")],
   ['decode-throw catch also clears hash', html.includes("}catch{_eT(_IB);clearHash();return false}")],
+  // v1.7.849 / ADR-0823: '#s=' invite link gets the same malformed-% toast parity as '#b='
+  ['#s= invite decode-throw toasts invalidBoard', html.includes("try{code=_dU(h.slice(3))}catch{_eT(_IB);return false}")],
   // v1.7.97: ADR-0039 share-link resource-bomb guard
   ['share payload ceilings defined', html.includes('SHARE_MAX_BYTES') && html.includes('SHARE_MAX_SHAPES')],
   ['decompressed payload byte cap before parse', html.includes('_ln(json)>SHARE_MAX_BYTES')],
@@ -1197,7 +1199,7 @@ const checks = [
   ['context menu deduplicates consecutive separators', html.includes(".filter((it,i,a)=>!(it==='sep'&&(i===0||i===_ln(a)-1||a[i-1]==='sep')))")],
   ['doDuplicate does not clobber clipboard (uses _placeCopies, not state.clipboard=)', html.includes("_placeCopies(sel,_dd().x,_dd().y):_placeCopies(sel);   // independent of _cl()") && html.includes("function _placeCopies(srcShapes")],
   // v1.6.71: import sites clear stale selection + wclock (mirror replace op's _apply)
-  ['dc.onclose drops _dcQ backlog so reconnect sends (ADR-0446)', /this\.dc\.onclose=\(\)=>\{[^}]*this\._dcQ=null/.test(html)],
+  ['dc.onclose drops _dcQ backlog so reconnect sends (ADR-0446)', /dcRef\.onclose=\(\)=>\{[\s\S]*?this\._dcQ=null/.test(html)],
   ['importBoard clears selection+wclock on whole-board swap', html.includes("_rs(shapes.map(clone));   // ADR-0009\n      _pgAdopt(d.pages,d.curPg);") && html.includes("_scl();state.wclock=_wM();\n      _docN(d);")],
   ['importFromHash clears selection+wclock on whole-board swap', html.includes("_rs(valid.map(clone));_pgAdopt(data.pages,data.curPg);_setDocName(") && /_rs\(valid\.map\(clone\)\)[\s\S]{0,900}_scl\(\);state\.wclock=_wM\(\);/.test(html)],
   // v1.6.71: presentation-mode guard precedes editing shortcuts (no undo mid-slideshow)
@@ -1270,11 +1272,11 @@ const checks = [
   ['Net.init clears prior presence timer', html.includes("clearInterval(this._presenceTimer);   // re-init (room switch) must not leak the old heartbeat")],
   // v1.6.85: WebRTC peers lifecycle-managed (not heartbeat-reaped after 15s)
   ['_reapPeers exempts rtc: peers from timeout reaping', html.includes("if(_sw(id,'rtc:'))continue;   // WebRTC peers are lifecycle-managed")],
-  ['dc.onclose removes the rtc peer', html.includes("if(this._rtcPeerId){_pr().delete(this._rtcPeerId);this._rtcPeerId=null;_ivO();}")],
-  ['dc.onopen stores _rtcPeerId for lifecycle management', html.includes("this._rtcPeerId='rtc:'+uid().slice(0,4);")],
+  ['dc.onclose removes the rtc peer', html.includes("if(dcRef._pid){_pr().delete(dcRef._pid);if(this._rtcPeerId===dcRef._pid)this._rtcPeerId=null;_ivO();}")],
+  ['dc.onopen stores _rtcPeerId for lifecycle management', html.includes("dcRef._pid='rtc:'+uid().slice(0,4);")],
   // v1.7.76 / ADR-0017 (FT-20): ICE failure without an open channel showed nothing —
   // connectionState failed toasts once and suppresses the trailing dc.onclose toast
-  ['rtc.onconnectionstatechange wired in _wrtcInit', html.includes("this.rtc.onconnectionstatechange=()=>{")],
+  ['rtc.onconnectionstatechange wired in _wrtcInit', html.includes("pcRef.onconnectionstatechange=()=>{")],
   ['connection failure toasts and stamps _rtcConnFailed', html.includes("connectionState!=='failed'") && html.includes("this._rtcConnFailed=true;") && html.includes("T('connectFailed')")],
   ['dc.onclose suppresses disconnect toast after a failure', html.includes("if(!this._rtcConnFailed)_wT('disconnected');")],
   ['_wrtcInit resets the failure flag for reconnects', html.includes("this._rtcConnFailed=false;")],
@@ -2067,6 +2069,41 @@ try {
     clearInterval(Net._presenceTimer);
     if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}
     console.log('  ✓ Net.init resets _lastRep/_nameTs across rooms (ADR-0619/0695)');
+  }
+  // ADR-0820: Net.init preserves 'rtc:' presence rows — the WebRTC link is a
+  // manual 1:1 invite pair that deliberately survives a BroadcastChannel room
+  // switch; only BC presence gets swept.
+  {
+    state.roomId='roomA';
+    state.peers.set('rtc:xyz',{color:'#111',lastSeen:Date.now()});
+    state.peers.set('peerQ',{color:'#222',lastSeen:Date.now()});
+    Net.init('roomB');
+    assert.ok(state.peers.has('rtc:xyz'),'rtc: row survives the room switch');
+    assert.ok(!state.peers.has('peerQ'),'BC-only row dropped on room switch');
+    state.peers.delete('rtc:xyz');
+    clearInterval(Net._presenceTimer);
+    if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}
+    console.log('  ✓ Net.init preserves rtc: presence across rooms (ADR-0820)');
+  }
+  // ADR-0822: a superseded DataChannel must not clobber the live link — its
+  // stale onclose purges only its own presence row.
+  {
+    const mkDc=()=>({readyState:'open',send(){},bufferedAmount:0});
+    const oldDc=mkDc(),newDc=mkDc();
+    Net.dc=oldDc;Net._wireDC();
+    oldDc.onopen();
+    const oldPid=Net._rtcPeerId;
+    assert.ok(oldPid&&state.peers.has(oldPid),'old channel installs its rtc: row');
+    Net.dc=newDc;Net._wireDC();
+    newDc.onopen();
+    const newPid=Net._rtcPeerId;
+    assert.notStrictEqual(newPid,oldPid,'new channel gets a fresh peer id');
+    oldDc.onclose();
+    assert.strictEqual(Net._rtcPeerId,newPid,'stale close preserves the live peer id');
+    assert.ok(state.peers.has(newPid),'live row kept');
+    assert.ok(!state.peers.has(oldPid),'stale channel purges its own row');
+    state.peers.delete(newPid);Net._rtcPeerId=null;Net.dc=null;
+    console.log('  ✓ superseded dc purges own row, preserves live link (ADR-0822)');
   }
   // ADR-0699: docName renames order on (ts, writer-peer) — equal-ts concurrent
   // renames must pick one winner on every peer, not diverge on strict >.

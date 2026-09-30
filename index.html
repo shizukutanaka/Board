@@ -875,7 +875,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.846';   // ADR-0820
+const V='1.7.849';   // ADR-0823
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -8531,8 +8531,9 @@ const Net={
     // ADR-0017: a channel that never opens fires
     // failure would be invisible. 'disconnected'
     // only 'failed' is worth telling the user about.
-    this.rtc.onconnectionstatechange=()=>{
-      if(this.rtc.connectionState!=='failed')return;
+    const pcRef=this.rtc;   // ADR-0822: a closed pc still fires — its handler must read its own state, not the new link's
+    pcRef.onconnectionstatechange=()=>{
+      if(this.rtc!==pcRef||pcRef.connectionState!=='failed')return;
       this._rtcConnFailed=true;
       _wT('connectFailed');
       if(this._rtcPeerId){_pr().delete(this._rtcPeerId);this._rtcPeerId=null;_ivO();}
@@ -8551,26 +8552,31 @@ const Net={
     });
   },
   _wireDC(){
-    this.dc.onopen=()=>{
+    const dcRef=this.dc;   // ADR-0822: a superseded channel still fires — gate stale events on identity
+    dcRef.onopen=()=>{
+      if(this.dc!==dcRef)return;
       _oT('connected');
       // WebRTC peers don't ride the BroadcastChann
       // the DataChannel lifecycle (added here, rem
       // 15s reaper — else a live idle connection's
-      this._rtcPeerId='rtc:'+uid().slice(0,4);
-      this._touchPeer(this._rtcPeerId);
+      dcRef._pid='rtc:'+uid().slice(0,4);
+      this._rtcPeerId=dcRef._pid;
+      this._touchPeer(dcRef._pid);
       // snapshot to new peer (ops for merge); ADR-
       try{const _sm=_JS(this._snapshotMsg());
         if(_ln(_sm)>24e6){_wT('snapBig');return} // ADR-0403
         this._fragSend(_sm,'snap')
       }catch(_){}
     };
-    this.dc.onmessage=e=>{
+    dcRef.onmessage=e=>{
+      if(this.dc!==dcRef)return;   // superseded channel: ignore its stragglers
       try{this._onRecv(_JP(e.data),true)}catch(_){}   // ADR-0010: viaRtc=true
     };
-    this.dc.onclose=()=>{
+    dcRef.onclose=()=>{
+      if(dcRef._pid){_pr().delete(dcRef._pid);if(this._rtcPeerId===dcRef._pid)this._rtcPeerId=null;_ivO();}   // purge THIS channel's row even when superseded
+      if(this.dc!==dcRef)return;   // stale close must not clobber the live link's state
       this._dcQ=null;this._snapIn=null;this._opcIn=null;this._dcQB=0;   // ADR-0446/0448
       if(!this._rtcConnFailed)_wT('disconnected');
-      if(this._rtcPeerId){_pr().delete(this._rtcPeerId);this._rtcPeerId=null;_ivO();}
       if(this._onConnChange)this._onConnChange();
     };
   },
@@ -8660,7 +8666,8 @@ const Share={
     const h=location.hash;
     if(!_sw(h,'#s='))return false;
     try{history.replaceState(null,'',location.pathname)}catch(_){}
-    const code=_dU(h.slice(3));
+    let code;
+    try{code=_dU(h.slice(3))}catch{_eT(_IB);return false}   // ADR-0823: hash is already cleared — toast is the only feedback needed
     if(!code)return false;
     UI.openShare();
     _g('rtcOfferIn').value=code;

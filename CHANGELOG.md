@@ -1,3 +1,18 @@
+## [1.7.849] - 2026-09-29
+
+### Fixed
+- ADR-0823: `#s=` 招待リンクの malformed `%` が silent no-op だった parity 穴を閉塞 — `#b=` (0815) と同じ `_eT(_IB)` ガード
+
+## [1.7.848] - 2026-09-29
+
+### Fixed
+- ADR-0822: RTC 再接続で superseded channel/pc の遅延イベントが live link を破壊する race を修正 — per-channel `_pid` で自前の presence 行のみ purge、stale pc ハンドラは自 pc の状態を参照
+
+## [1.7.847] - 2026-09-29
+
+### Test
+- ADR-0821: `Net.init` の `rtc:` presence 維持不変を behavioural pin で固定 — room 切替でも live WebRTC link が落ちないことを実検証
+
 ## [1.7.846] - 2026-09-29
 
 ### Docs
