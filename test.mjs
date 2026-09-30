@@ -2130,6 +2130,16 @@ try {
     state.peers.clear();Net._rtcPeerId=null;state.peerId='B';
     console.log('  ✓ _loResp election pins (ADR-0826)');
   }
+  // ADR-0827: a forged 'rtc:' peer id on BC must not dodge the reaper —
+  // synthetic ids are local-only; viaRtc rows are exempt by construction.
+  {
+    Net._onRecv({k:'hello',peer:'rtc:evil'},false);
+    assert.ok(!state.peers.has('rtc:evil'),'forged rtc: id rejected on BC');
+    Net._onRecv({k:'hello',peer:'ok-peer'},false);
+    assert.ok(state.peers.has('ok-peer'),'normal id still installs');
+    state.peers.delete('ok-peer');
+    console.log('  ✓ forged rtc: presence id rejected (ADR-0827)');
+  }
   // ADR-0699: docName renames order on (ts, writer-peer) — equal-ts concurrent
   // renames must pick one winner on every peer, not diverge on strict >.
   {
