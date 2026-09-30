@@ -1,3 +1,8 @@
+## [1.7.907] - 2026-09-30
+
+### Docs
+- ホストAPI エラーパス監査の完走を記録: localStorage/IndexedDB/crypto.subtle/encoding/window/document シンク/ブロッキング dialog の全経路が fail-closed (toast+安全既定、静黙発散なし) と確認 (ADR-0881)
+
 ## [1.7.906] - 2026-09-30
 
 ### Test
