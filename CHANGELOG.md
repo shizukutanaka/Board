@@ -1,3 +1,9 @@
+## [1.7.880] - 2026-09-30
+
+### Docs
+- ADR-0854: セッション内蓄積監査を完走 — undo ≤500 / seenOps ≤2000 / pages ≤64 / peers capped / toast auto-remove / memo caches は live id keyed + `_psc` purge で全て bounded
+- 切断コメント残片の第四スイープ — ~20 箇所を文法修復 (hit()/wire intake/persistence/UI 系)、ファイル全体で paren 切断・語切れスキャンが clean に (raw 556,751B)
+
 ## [1.7.879] - 2026-09-30
 
 ### Fixed
