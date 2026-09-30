@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.913';   // ADR-0887
+const V='1.7.914';   // ADR-0888
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3698,12 +3698,11 @@ function resizeSnap(orig,handle,wp){
 // pressure kept) and line/arrow (x1..y2). Orig-clone → live writes every frame,
 // so no float error accumulates across the drag.
 function _mapToBox(sh,orig,ob,vb){
-  const sx=vb.w/ob.w,sy=vb.h/ob.h;
+  const sx=vb.w/(ob.w||1),sy=vb.h/(ob.h||1);   // ADR-0888: zero-extent gBox → collapse, not NaN
   const M=(px,py)=>({x:vb.x+(px-ob.x)*sx,y:vb.y+(py-ob.y)*sy});
   if(orig.pts)sh.pts=orig.pts.map(p=>{const q=M(p[0],p[1]);return[q.x,q.y,p[2]]});
   else if(orig.x1!=null){const a=M(orig.x1,orig.y1),b=M(orig.x2,orig.y2);sh.x1=a.x;sh.y1=a.y;sh.x2=b.x;sh.y2=b.y;if(orig.way)sh.way=_wayArr(orig).map(p=>M(p.x,p.y));   // ADR-0090
-    // ADR-0148: s.bend is a world coord — remap the trunk anchor like the
-    // endpoints so the elbow keeps its offset under group resize.
+    // ADR-0148: remap the trunk anchor so the elbow keeps its offset.
     if(orig.bend!=null){const tr=_elbowTrunk(orig);if(tr){const ta=M(tr[0].x,tr[0].y),tb=M(tr[1].x,tr[1].y);
       sh.bend=_abs(tr[1].x-tr[0].x)<_abs(tr[1].y-tr[0].y)?ta.x:ta.y}}
     // ADR-0152: cbend is a signed PERPENDICULAR offset — the affine map
