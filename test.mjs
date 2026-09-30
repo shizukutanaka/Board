@@ -741,7 +741,7 @@ const checks = [
   ['text overlay closes when edited shape removed/hidden/locked/off-page (ADR-0559/0569/0572/0574/0709)', html.includes("if(!s||_hd(s)||_lk(s)||!_pgOk(s)){_rm(_teTa);_teTa=null;state.editing=null;_iv();return}")],
   ['label overlay closes when labelled shape removed/hidden/locked/off-page (ADR-0559/0569/0572/0709)', html.includes("if(!_lt||_hd(_lt)||_lk(_lt)||!_pgOk(_lt)){_rm(_lblTa.inp);_lblTa=null;return}")],
   ['peer selection outlines skip hidden shapes (ADR-0576)', html.includes("const s=byId(id);if(!s||_hd(s)||!_pgOk(s))continue")],
-  ['fragIn ignores duplicate seq slots (ADR-0578)', html.includes("if(!sn.p[seq]){sn.p[seq]=msg.data;sn.g++;sn.b=(sn.b||0)+_ln(msg.data)}")],
+  ['fragIn ignores duplicate seq slots (ADR-0578)', html.includes("if(!sn.p[seq]){sn.p[seq]=msg.data;sn.g++;sn.b=(sn.b||0)+_ln(msg.data);sn.t=_now()}")],
   ['_dcQ requeue queue is capped at 4096 (ADR-0578)', html.includes("if(_ln(q)<4096&&(this._dcQB||0)+_ln(m)<=33554432)")],
   ['Presentation.enter folds open editor first (ADR-0582)', html.includes("function enter(){\n    _cxO();")],
   ['editors close a still-open overlay first (ADR-0560)', html.includes("const _cxO=()=>{if(_teTa)_teTa.blur();if(_lblTa)_lblTa.inp.blur()}")],
@@ -14062,6 +14062,22 @@ try {
     Net._imgChunks.clear();
     console.log('  ✓ img reassembly bounded by aggregate bytes too (ADR-0785)');
   }
+  // ADR-0786: reassembly slots had byte caps but no lifetime — a peer dribbling
+  // one chunk per presence interval (or simply leaving) kept ~24MB in flight
+  // indefinitely. _reapFrags now evicts slots idle >60s alongside stale peers.
+  {
+    Net._imgChunks.clear();Net._snapIn=null;Net._opcIn=null;
+    Net._imgChunks.set('old',{p:['x'],g:1,n:2,b:1,t:Date.now()-70e3});
+    Net._imgChunks.set('new',{p:['y'],g:1,n:2,b:1,t:Date.now()});
+    Net._snapIn={p:['z'],g:1,n:2,src:'rtc',t:Date.now()-70e3};
+    Net._opcIn={p:['w'],g:1,n:2,src:'rtc',t:Date.now()};
+    Net._reapFrags();
+    assert.ok(!Net._imgChunks.has('old')&&Net._imgChunks.has('new'),'stale img slot reaped, fresh kept');
+    assert.strictEqual(Net._snapIn,null,'stale snap slot reaped');
+    assert.ok(Net._opcIn,'fresh opc slot kept');
+    Net._imgChunks.clear();
+    console.log('  ✓ reassembly slots reaped on idle age too (ADR-0786)');
+  }
 
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
@@ -14069,7 +14085,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1773; // prev 1771 + 2 ADR-0785 _imgChunks aggregate-cap asserts
+  pass += 1776; // prev 1773 + 3 ADR-0786 reassembly TTL asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
