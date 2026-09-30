@@ -1,3 +1,14 @@
+## [1.7.728] - 2026-09-29
+
+### Fixed
+- ADR-0702: page rename undo was a local no-op while the inverse op still reverted peers (bts>=nts gate could never hold) — divergence; undo now gates on clockNewer(current, own op)
+- doc-record restore `d.nts` also rejects non-finite values
+
+## [1.7.727] - 2026-09-29
+
+### Fixed
+- ADR-0701: non-finite rename ts rejected on both docName paths (Infinity/NaN would freeze the doc name on every peer)
+
 ## [1.7.726] - 2026-09-29
 
 ### Fixed
