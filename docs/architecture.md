@@ -284,6 +284,8 @@ IndexedDB (`board` / stores `docs` + `imgs`, DB_VER=2)。500ms デバウンス�
 
 **因果マーカーも永続化する** (ADR-0460/0695/0699/0701): doc レコードは `shapes`/`viewport`/`pages`/`curPg` に加えて `wc` (per-prop 書込みクロック) と `rep`/`nts`/`ntp` (最後の replace マーカー・改名クロック) を同梱する。リロードでこれらが null/0 に戻ると、ピアの古い pre-swap スナップショットや旧 rename が wipe 済み内容を復活させ得るため。読み込み側は `validClock`/`_fin` で検証してから採用する (0864/0700/0701 の非有限値拒否と同一規則)。`:prev` バックアップ (ADR-0004) はスコープ外 — 復元自体が replace op として commit され新しい causal marker を立てる。
 
+**open ライフサイクル** (ADR-0884/0885): 別タブが旧バージョンを保持する間 `indexedDB.open` は永久 pending になるため、`onblocked` は toast+in-memory 継続 (boot ハング解消)、`onversionchange` は接続を閉じて新版タブのアップグレードを通す。tx エラー面は監査完走 — 全書込 tx は `txDone` (complete/error/abort; abort は onerror を発火しないため両者必須)、全 request は `reqDone` (error→reject) で完結、quota/サイズ超過は `save()` try/catch → `_saveErrMsg` トースト。両ハンドラは fake IDB リクエストで実動作ピン済み (0885)。ホスト API エラーパス監査は 0881 で完走 (localStorage/IDB/crypto/encoding/window/dialog 全経路 fail-closed)。
+
 ## 座標系
 
 - **world**: shape が持つ座標 (無限)
@@ -361,6 +363,9 @@ orientation の resize リスナーは 150ms trailing-edge debounce (`_resizeSoo
 `I18N` オブジェクトに ja / en を併記。`navigator.language` で起動時判定。`T = I18N[LANG]`。
 DOM 要素は `data-t` 属性 + `UI.applyI18n()` で翻訳 (起動時に 1 回走査)。
 `t(key)` = `T[key] || I18N.en[key] || key` (キー名フォールバックで破綻しない)。
+ラベル面は ADR-0883 で監査完走: 全 `t()` callsite が両ロケールで定義済み (テスト固定)、
+`data-t`/`data-t-aria`/`data-t-ph`/`data-t-title` の4系機構が全 document を走査、
+動的ラベル (btnLang/btnTheme/canvas/ctx 再構築) も全て `t()` 経由 — 未ローカライズ経路なし。
 
 ## セキュリティ
 
@@ -380,6 +385,8 @@ DOM 要素は `data-t` 属性 + `UI.applyI18n()` で翻訳 (起動時に 1 回�
 - 全インタラクティブ要素: `aria-label`, `aria-pressed`
 - WCAG AAA: テキスト 18:1+, ブランドカラー `--brand-ink` (#003B40) で 7.5:1 非テキスト
 - `prefers-reduced-motion` / `prefers-color-scheme` / `forced-colors` / `prefers-contrast` 対応
+- SR アナウンスは `describeShape` が dash/align/valign/bold/italic/underline/strike を含む (ADR-0882)
+- トーストは同時表示 4 枚上限 (ADR-0879/0880) — 連続エラーでも SR 読み上げが収束し画面を埋め尽くさない
 
 ## P2P 同期
 
@@ -677,6 +684,9 @@ frame のメンバーシップは `s.grp` ではなく**幾何**で決まる —
 - `.drawio` export は `_dioStyEmit` にスタイル属性を集約 (ADR-0263)。
 - `.excalidraw` は `excScene`/`excToShapes` が containerId ラベル・boundElements・
   arrowhead enum (ADR-0338) を往復。
+- 画像取込 (`_imgImportFile`) は読込前に 32MB ガード (ADR-0877: FileReader 化
+  自体がメモリスパイク) と 0×0 デジェネレート拒否 (ADR-0878: 不可視図形/NaN 寸法の
+  流入を遮断)。dataUrl 上限 16MB (ADR-0527/0867)、寸法縮退 2048px (ADR-0022)。
 - セキュリティ: `validPatch` が全 intake パスの共有ゲート (dataUrl/link のスキーム
   検証 ADR-0327)。
 
