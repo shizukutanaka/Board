@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.885';   // ADR-0859
+const V='1.7.886';   // ADR-0860
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3674,7 +3674,7 @@ function resizeSnap(orig,handle,wp){
   const tol=SNAP_OBJ/_vp().zoom;
   const movesX=/[ew]/.test(handle),movesY=/[ns]/.test(handle);
   let x=wp.x,y=wp.y;const guides=[];
-  const idx=_snapIndex('resize',_selIds().sort().join(','),s=>_hasS(s.id));   // ADR-0056: exclude the whole dragged set
+  const idx=_snapIndex('resize',_JS(_selIds().sort()),s=>_hasS(s.id));   // ADR-0056/0860
   if(movesX){const best=_snapBest(idx.xs,wp.x,tol);
     if(best){x=best.at;_pu(guides,_gV(best.at,orig,best.b));}}
   if(movesY){const best=_snapBest(idx.ys,wp.y,tol);
@@ -5195,7 +5195,7 @@ function objectSnap(dx,dy){
   const bb=_bA([...ptr.dragStartShapes.values()]);
   if(!bb)return{dx:0,dy:0,guides:[]};
   const mov={x:bb.x+dx,y:bb.y+dy,w:bb.w,h:bb.h};
-  const key=[...ptr.dragStartShapes.keys()].join(',');
+  const key=_JS([...ptr.dragStartShapes.keys()].sort());
   const idx=_snapIndex('move',key,s=>ptr.dragStartShapes.has(s.id));
   const base=_snapBoxIdx(mov,idx,SNAP_OBJ/_vp().zoom);
   if(base.dx!==0&&base.dy!==0)return base;
@@ -8154,7 +8154,7 @@ const Net={
   sendSelectionIfChanged(){
     if(_pr().size===0)return;
     const ids=_selIds();
-    const key=ids.join(',')+'|'+(state.curPg||'');   // ADR-0680: pg rides the key — a page switch with an unchanged selection must still resend (peers keep our stale page otherwise)
+    const key=_JS(ids.sort())+'|'+(state.curPg||'');   // ADR-0680/0860: pg rides the key — a page switch with an unchanged selection must still resend (peers keep our stale page otherwise)
     if(key===this._lastSelSent)return;
     this._lastSelSent=key;
     this._bcast(_mk('selection',{ids,pg:state.curPg}));   // ADR-0647
@@ -9527,7 +9527,7 @@ function wire(){
 // changes are detected by a sorted-id signature compared once per frame.
 let _selSig=null;
 function _syncStylePanelIfChanged(){
-  const sig=_selN()+'|'+_selIds().sort().join(',');
+  const sig=_selN()+'|'+_JS(_selIds().sort());   // ADR-0860
   if(sig===_selSig)return;
   _selSig=sig;
   _syncStylePanel();

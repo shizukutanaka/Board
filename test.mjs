@@ -461,7 +461,7 @@ const checks = [
   ['snapshot ops carry per-shape wclock', html.includes("wc:clone(_wc()[s.id]||{})")],
   ['_mergeSnapshotOp: LWW per-property merge on known shapes', html.includes("function _mergeSnapshotOp(op)")===false&&html.includes("_mergeSnapshotOp(op){") && html.includes("clockNewer(rc,lc)") && html.includes("return 'merge';")],
   // v1.7.117: ADR-0059 style panel ← selection sync
-  ['style panel syncs on selection signature change', html.includes("_syncStylePanelIfChanged();   // ADR-0059")&&html.includes("_selIds().sort().join(',')")],
+  ['style panel syncs on selection signature change', html.includes("_syncStylePanelIfChanged();   // ADR-0059")&&html.includes("_JS(_selIds().sort())")],
   ['_syncStylePanel adopts only uniform props (mixed skipped)', html.includes("sel.every(s=>(s[k]??null)===v)")&&html.includes("if(v!==_ud){_st().fill")],
   // v1.7.118: ADR-0060 Alt+drag duplicate
   ['alt+drag duplicates picked shape then drags copies', html.includes("if(_aK(e)&&!hit.locked){")&&html.includes("_placeCopies(srcShapes,0,0)")&&html.includes("dupSet=alreadySel")],
@@ -5180,7 +5180,7 @@ try {
         state.shapes=[];state._lastTs=0;
         console.log('  ✓ clear-backward idempotency (1 assert)');
       }
-      assert.ok(html.includes("ids.join(',')+'|'+(state.curPg||'')"),'sel presence key includes page (ADR-0680)');
+      assert.ok(html.includes("_JS(ids.sort())+'|'+(state.curPg||'')"),'sel presence key includes page (ADR-0680)');
       console.log('  ✓ sel-presence pg key pin (1 assert)');
     }
   }
@@ -13795,6 +13795,29 @@ try {
       const ld=d9.filter(c=>c[0]==='setLineDash').pop();
       assert.ok(ld&&ld[1][0].length===0,'ADR-0859: dash pattern restored to []');
     }
+    // ADR-0860: sig keys over id sets must be injective — a ','-carrying remote id
+    // used to collide with a different set's join(',') key. The sites now _JS-
+    // encode sorted id arrays; pin both the index slot and the presence dedup.
+    {
+      reset();
+      const sA=Shape.make('rect',{x:0,y:0,w:10,h:10});sA.id='a';
+      const sB=Shape.make('rect',{x:100,y:0,w:10,h:10});sB.id='b';
+      const sC=Shape.make('rect',{x:200,y:0,w:10,h:10});sC.id='a,b';
+      Store.commit({op:'addMany',shapes:[sA,sB,sC]});
+      const i1=_snapIndex('resize','["a","b"]',s=>s.id==='a'||s.id==='b');
+      const i2=_snapIndex('resize','["a,b"]',s=>s.id==='a,b');
+      assert.ok(i2.xs.length>i1.xs.length,'ADR-0860: distinct snap-index keys hit distinct exclusion sets');
+      Net._onRecv({k:'hello',peer:'sig-t'},false);
+      Net._lastSelSent='';
+      state.selection.add('a');state.selection.add('b');
+      Net.sendSelectionIfChanged();
+      const k1=Net._lastSelSent;
+      state.selection.clear();state.selection.add('a,b');
+      Net.sendSelectionIfChanged();
+      assert.notEqual(Net._lastSelSent,k1,'ADR-0860: presence dedup key distinguishes {a,b} from {"a,b"} — resend happens');
+      assert.ok(k1.indexOf('"a","b"')>=0,'ADR-0860: presence dedup key is the _JS-encoded sorted id set');
+      state.selection.clear();
+    }
     // drop: .board file path via a fake FileReader — atomic whole-board replace (ADR-0518 residual closed)
     const _FR=globalThis.FileReader;
     globalThis.FileReader=class{
@@ -14518,7 +14541,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1791; // prev 1787 + 4 ADR-0859 ctx-state-restore asserts
+  pass += 1794; // prev 1791 + 3 ADR-0860 injective sig-key asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
