@@ -5354,6 +5354,10 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.650]
+### 修正
+- 選択由来 id リストの dead-id 衛生 — `_sb()` が `map(byId)` で残していた `undefined` を供給源で `filter(Boolean)` 除去 (`_selUL()` の `_ul(undefined)` TypeError 経路を閉塞)、`unlockedSelectionIds`/`nudgeSelection` の `!byId(id)?.locked` フィルタを `s&&_ul(s)` 形へ統一 (group/nudge op へのファントム id・before スナップショット混入を排除、ADR-0623)。
+
 ## [1.7.649]
 ### ドキュメント
 - spec.md の op 表・受信検証 MUST を ADR-0613-0619 に同期 — `replace` を「local 専用・非 REMOTE_OPS」とする旧規定を wire 収束規則 (`_lastRep`/`rep`/`nameTs` causal marker) へ置換 (ADR-0622)。
