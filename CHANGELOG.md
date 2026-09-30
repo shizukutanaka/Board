@@ -1,3 +1,18 @@
+## [1.7.749] - 2026-09-29
+
+### Fixed
+- ADR-0723: clear undo replaced the whole wclock map — clocks written between
+  the clear and its undo were wiped locally while peers' wc-carrying addMany
+  only merged. Backward now merges per id (del parity)
+
+## [1.7.748] - 2026-09-29
+
+### Fixed
+- ADR-0722: pageDel purged member wclocks but never recorded them — undoing a
+  page delete resurrected members clock-free on every side, so a write older
+  than the pre-delete clock could win afterward. _pgDel2 now snapshots op.wc,
+  backward restores it, and the undo-wire addMany carries it (ADR-0721 idiom)
+
 ## [1.7.747] - 2026-09-29
 
 ### Fixed

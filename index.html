@@ -868,7 +868,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.747';   // ADR-0721
+const V='1.7.749';   // ADR-0723
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1722,7 +1722,7 @@ const Store={
         break;}
       case 'clear':{
         if(forward){if(op.clock)state._lastRep=op.clock;_sh().length=0;_scl();state.wclock={};_pcC();}   // ADR-0626: wire form is 'replace' — receivers stamp this clock on _lastRep, so the sender must too or a staler swap applies only here
-        else{for(const s of op.shapes)if(!byId(s.id))_sh().push(Net._attachShape(clone(s)));_sz();if(op.wc)state.wclock=clone(op.wc);_selR(op);}   // ADR-0715: idempotent like 'add' — a shape re-present since the clear must not double-register
+        else{for(const s of op.shapes)if(!byId(s.id))_sh().push(Net._attachShape(clone(s)));_sz();if(op.wc)for(const[id,w]of Object.entries(op.wc))_wc()[id]=clone(w);_selR(op);}   // ADR-0723: MERGE, not replace — a whole-map overwrite wiped clocks written between the clear and its undo (peers' wc-carrying addMany only merges)   // ADR-0715: idempotent like 'add' — a shape re-present since the clear must not double-register
         break;}
       case 'replace':{
         // Whole-board swap (shared-link import). Rev
@@ -1776,7 +1776,9 @@ const Store={
           if(!state.pages)state.pages=[];   // heal
           state.pages.splice(_min(op.i!=null?op.i:_ln(state.pages),_ln(state.pages)),0,{id:op.id,name:op.name!=null?op.name:'?',nts:0});
           for(const sh of op.shapes||[])if(!byId(sh.id))_sh().push(Net._attachShape(clone(sh)));
-          _sz();_selR(op);
+          _sz();
+          if(op.wc)for(const[id,w]of Object.entries(op.wc))_wc()[id]=clone(w);   // ADR-0722: restore member clocks — del backward parity
+          _selR(op);
           if(op.connClears)for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_oa(sh,p.before)}   // ADR-0707/0711: re-bind the endpoints the forward cleared — same locked parity as del backward (a connector locked between del and undo must not be written)
           switchPage(op.id);   // ADR-0663: undo lands back on the restored page — _pgDel only deletes the viewed page, so the undo's natural view is where the deletion happened (_pgFollow skips pageDel on purpose)
         }
@@ -2193,6 +2195,7 @@ function _pgDel2(op,firstId){   // ADR-0646: remove the deleted page's members +
   // ADR-0707: 'del' parity — locked members SURVIVE the page delete and rehome to firstId
   // (null firstId = single-page mode → un-paged, then _pgHealS scrubs the stale value).
   const dead=new Set();for(const s of _sh())if((s.pg||firstId)===op.id&&!s.locked)dead.add(s.id);
+  op.wc={};for(const id of dead)if(_wc()[id])op.wc[id]=clone(_wc()[id]);   // ADR-0722: snapshot member clocks like 'del' forward — undo must restore them or resurrected shapes arbitrate against nothing
   for(const id of dead)delete _wc()[id];   // ADR-0679: drop member write-clocks like 'del' does — a resurrected shape must not arbitrate against a clock from its previous life
   for(const s of _sh())if((s.pg||firstId)===op.id&&s.locked)s.pg=firstId;
   const cc=computeConnClears(dead);   // ADR-0707: connectors bound to a removed member lose their endpoint — same clear 'del' runs; recorded on the op for undo
@@ -9951,7 +9954,7 @@ function _undoWire(op){
     case 'replace':   // ADR-0615: undo of a wholesale swap must reach peers too — rebroadcast the pre-swap board (newest clock wins via ADR-0614)
       return _iA(op.before)?[{op:'replace',after:op.before,afterWc:op.wc,pages:op.beforePages,curPg:op.beforeCurPg}]:null;   // ADR-0720: same landing-page carry as the forward wire — local backward lands on beforeCurPg, peers were falling back to page 1
     case 'pageAdd':  return[{op:'pageDel',id:op.id,name:op.name}];
-    case 'pageDel':  {const o=[{op:'pageAdd',id:op.id,name:op.name,i:op.i},{op:'addMany',shapes:op.shapes||[]}];
+    case 'pageDel':  {const o=[{op:'pageAdd',id:op.id,name:op.name,i:op.i},{op:'addMany',shapes:op.shapes||[],wc:op.wc}];   // ADR-0721/0722: member clocks ride too
       for(const c of op.connClears||[])if(c.before)_pu(o,{op:'upd',id:c.id,after:c.before});   // ADR-0707: re-bind connectors on peers too — same as 'del'
       return o;}
     case 'pageName': return[{op:'pageName',id:op.id,after:op.before,before:op.after,bts:op.bts}];
