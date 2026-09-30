@@ -10436,6 +10436,14 @@ try {
     console.log('  ✓ ADR-0873: text editor applies letterSpacing/lineHeight');
   }
 
+  // ADR-0874: same drift class on the label <input> — labels render with
+  // letterSpacing + under/strike decorations, so the editor must too.
+  {
+    assert.ok(html.includes("letter-spacing:${_sp(hit)||0}px"),'ADR-0874: label editor applies letter-spacing');
+    assert.ok(html.includes("hit.strike?'line-through'"),'ADR-0874: label editor applies text-decoration');
+    console.log('  ✓ ADR-0874: label editor applies letter-spacing/text-decoration');
+  }
+
 
   // v1.7.447a (ADR-0413): flag props accept true|1|null — {shadow:true} in a style op
   // (toggleShadow writes true) was rejected by the numeric whitelist, silently dropping
@@ -14692,7 +14700,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1836; // prev 1834 + 2 ADR-0873 editor typography asserts
+  pass += 1838; // prev 1836 + 2 ADR-0874 label-editor typography asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

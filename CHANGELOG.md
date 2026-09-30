@@ -1,3 +1,8 @@
+## [1.7.900] - 2026-09-30
+
+### Fix
+- ラベルエディタの typography parity: ラベル `<input>` が `letter-spacing`/`text-decoration` を未適用で、spacing/under/strike 付きラベルが編集中に描画と乖離していた WYSIWYG 欠陥を `openLabelEditor` cssText への宣言追加で解消 (ADR-0873 同型のラベル側 sibling、ADR-0874)
+
 ## [1.7.899] - 2026-09-30
 
 ### Fix
