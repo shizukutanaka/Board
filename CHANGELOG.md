@@ -1,3 +1,8 @@
+## [1.7.925] - 2026-09-30
+
+### Docs
+- 入力経路監査完走 — dblclick→エディタ/jest 終端/eraser flush/measure・hover/イレーザーhover/pointercancel・lostcapture・blur・hidden・pagehide/click-click ラインを全軸 clean で記録 (ADR-0899)
+
 ## [1.7.924] - 2026-09-30
 
 ### Fixed
