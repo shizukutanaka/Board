@@ -5354,6 +5354,27 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.644]
+### Fixed
+- スナップショットに送信側の最新 swap marker (`rep`) を同梱し、受信側の `_lastRep` が厳密に新しい場合はマージ/適用を棄却 — 送信側が swap 適用前に組み立てたスナップショットが受信側の post-swap 盤面へ pre-swap 図形を再追加する因果順序ホールを閉塞。等しい marker は同世代としてマージ継続、新しい `rep` は marker を採用 (ADR-0617)。
+
+## [1.7.643]
+### Fixed
+- ローカルの 'replace' commit (共有リンク/.board 取込) が `_recordCommitted` 経由で `_apply` を通らず `_lastRep` marker が立たず、直後に届く古いリモート全置換が棄却されず全ピアが発散する問題を修正 — `_recordCommitted` で marker を記録 (ADR-0616)。
+
+## [1.7.642]
+### Fixed
+- 'replace' (共有リンク/.board 取込の全置換) の undo がピアへ伝播せず、undo した側だけ旧盤面へ戻り永久に発散する問題を修正 — `_undoWire` が `{op:'replace',after:op.before,afterWc:op.wc}` を返し、ADR-0614 の新 clock 勝者規則で全ピアが復元盤面へ収束。undo/redo の `_lastRep` marker も新 clock へ進めローカル/リモートの不一致を防止 (ADR-0615)。
+
+## [1.7.641]
+### Fixed
+- 2ピアが同時に全置換 (共有リンク/.board 取込) すると各々が相手の盤面を適用して交差発散する問題を修正 — 最後に適用した 'replace' の clock を `state._lastRep` に保持し、到着したリモート swap がそれより新しくない限り棄却。`clockNewer` の (ts,peer,seq) 全順序で全ピアが到着順に関わらず同一の勝者を選ぶ (ADR-0614)。
+
+## [1.7.640]
+### Fixed
+- 共有リンク/.board/excalidraw 取込の全置換 op ('replace') が `REMOTE_OPS` で棄却され、接続中のピアへ届かず盤面が永久に発散していた問題を修正 — 'replace' を wire 許可集合へ追加し、`after`/`afterWc` の payload 検証・`_slimOp` (before/wc/origSel を帯域外へ)・`_attachOp` (img 参照の復元)・適用直前の `Persist.saveBackup` + `peerReplaced` トーストで wipe 安全性を確保 (ADR-0613)。
+- 同数の全置換 (before/after の図形数一致) で `byId` のサイズガードが stale index を返し続ける潜在バグを修正 — 'replace' 適用後に `_iG()` で id index/空間グリッドを再無効化 (同 ADR)。'clear' は引き続き wire 拒否。
+
 ## [1.7.639]
 ### Fixed
 - Alt-Tab 等のウィンドウ blur / モバイルのバックグラウンド移行 (pointerleave 非発火) でもピアカーソルが凍結残存していた問題を修正 — blur / visibilitychange→hidden の両経路で `sendCursorHide` (ADR-0612)。
