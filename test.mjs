@@ -10393,6 +10393,20 @@ try {
     console.log('  ✓ validPatch: string values in numeric geometry fields rejected (v1.7.17b)');
   }
 
+  // ADR-0868: canvas ignores out-of-range globalAlpha/lineWidth and invalid font
+  // strings — a remote opacity>1/size<=0/fontSize<=0 would silently leak the
+  // previously-drawn shape's state into this shape's render.
+  {
+    const mk=prop=>({op:'upd',id:'x',after:prop});
+    assert.ok(!validRemotePayload(mk({opacity:1.5})),'ADR-0868: opacity>1 rejected at validPatch');
+    assert.ok(!validRemotePayload(mk({opacity:-0.1})),'ADR-0868: opacity<0 rejected at validPatch');
+    assert.ok(!validRemotePayload(mk({size:0})),'ADR-0868: size<=0 rejected at validPatch');
+    assert.ok(!validRemotePayload(mk({fontSize:0})),'ADR-0868: fontSize<=0 rejected at validPatch');
+    assert.ok(!validRemotePayload(mk({fontSize:2e4})),'ADR-0868: fontSize>1e4 rejected at validPatch');
+    assert.ok(validRemotePayload(mk({opacity:0.5,size:2,fontSize:16})),'ADR-0868: in-range values still accepted');
+    console.log('  ✓ ADR-0868: out-of-range opacity/size/fontSize rejected at validPatch');
+  }
+
 
   // v1.7.447a (ADR-0413): flag props accept true|1|null — {shadow:true} in a style op
   // (toggleShadow writes true) was rejected by the numeric whitelist, silently dropping
@@ -14649,7 +14663,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1819; // prev 1817 + 2 ADR-0867 dataUrl-bound parity asserts
+  pass += 1825; // prev 1819 + 6 ADR-0868 range-bound asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

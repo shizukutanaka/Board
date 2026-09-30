@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.893';   // ADR-0867
+const V='1.7.894';   // ADR-0868
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1301,26 +1301,24 @@ function validPatch(p){
     if(k in p&&p[k]!=null&&typeof p[k]!=='number')return false;
   }
   for(const k of ['bold','italic','under','strike','locked','shadow','hl'])if(k in p&&p[k]!=null&&typeof p[k]!=='boolean'&&typeof p[k]!=='number')return false;   // ADR-0411/0413/0430: flags are true|1 (drawio writes 1; shadow writes true)
-  if(p.size>1e4)return false;   // ADR-0793: size pads every bbox
+  // ADR-0868: range bounds — canvas ignores out-of-range globalAlpha/lineWidth
+  // and invalid font strings, so hostile values leak the previous shape's state.
+  for(const k of['size','fontSize'])if(p[k]!=null&&!(p[k]>0&&p[k]<=1e4))return false;
+  if(p.opacity!=null&&(p.opacity<0||p.opacity>1))return false;
   if(p.aF!=null&&(!_iO(p.aF)||!(p.aF.fx>=0&&p.aF.fx<=1)||!(p.aF.fy>=0&&p.aF.fy<=1)))return false;   // ADR-0793: focus 0..1 — else endpoint far off-canvas
   if(p.bF!=null&&(!_iO(p.bF)||!(p.bF.fx>=0&&p.bF.fx<=1)||!(p.bF.fy>=0&&p.bF.fy<=1)))return false;   // ADR-0793
   // ADR-0368: array-prop shape checks on upd patches —
   // a crafted {pts:[["x"]]} or {way:[{x:'a'}]} is rejected
   if(p.pts!=null&&!(_iA(p.pts)&&_ln(p.pts)<=50000&&p.pts.every(q=>_iA(q)&&_xyOK(q[0])&&_xyOK(q[1])&&(q[2]==null||_fin(q[2])))))return false;   // ADR-0792
   if(p.way!=null&&!(_iA(p.way)&&_ln(p.way)<=200&&p.way.every(w=>w&&_iO(w)&&_xyOK(w.x)&&_xyOK(w.y))))return false;   // ADR-0792
-  // ADR-0369: string props — type + length; a text
-  // so long that every frame's wrapText explodes is rejected.
-  // renderers coerce weirdly.
+  // ADR-0369: string props — type + length (a wrapText-exploding text is rejected).
   for(const k of ['text','label','docName','link','groupId','img','color','stroke','fill','font','head','startHead','align','valign','type','dataUrl','fstyle','a','b','frac','pg']){
     if(k in p&&p[k]!=null&&typeof p[k]!=='string')return false;
     if(k in p&&typeof p[k]==='string'&&k!=='dataUrl'&&p[k].length>(k==='text'?5000:600))return false;
   }
-  // ADR-0865: any prop's serialized weight bounded — the 64-key cap alone still
-  // let unknown keys carry MB payloads onto the shape, relayed by every snapshot.
+  // ADR-0865: serialized weight ≤6KB/prop — else unknown keys carry MB payloads onto shapes, relayed by snapshots.
   for(const k of _ok(p))if(k!=='pts'&&k!=='dataUrl'&&k!=='text'&&_ln(_JS(p[k]))>6e3)return false;
-  // dataUrl flows into <img> — a non-data: URL is a tracking-pixel /
-  // IP-deanonymization vector via peer/.board/IDB intake (data: svg is safe:
-  // <img>-loaded SVG can't run scripts or fetch subresources).
+  // dataUrl → <img>: a non-data: URL is a deanonymization vector (img-loaded SVG can't run scripts or fetch).
   if('dataUrl' in p&&p.dataUrl!=null&&!(_iS(p.dataUrl)&&_ln(p.dataUrl)<=16_000_000&&/^data:image\//.test(p.dataUrl)))return false;   // ADR-0379: length cap
   // ADR-0327: s.link flows into window.open —
   // a javascript:/data: URL; only http(s) is openable.
