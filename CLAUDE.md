@@ -931,6 +931,7 @@ Board/
 │   └── ADR-0880-toast-stack-cap-pins.md  # トースト上限の behavioural ピン — 実スタブ DOM で上限4・最古優先・dedup 非双出を固定
 │   └── ADR-0881-storage-cache-dialog-audit.md  # ホストAPI エラーパス監査完走 — localStorage/IDB/crypto/encoding/window/dialog 全経路 fail-closed 確認
 │   └── ADR-0882-sr-style-identity-announce.md  # SR アナウンスに dash/align/valign/bold 系を追加 — スタイル身分 prop の読み上げ非対称を解消
+│   └── ADR-0883-i18n-label-surface-audit.md  # i18n/ラベル面監査完走 — callsite 両ロケール網羅・4系 data-t 機構・動的ラベル全経路 t() 化確認
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

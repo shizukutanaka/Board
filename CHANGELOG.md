@@ -1,3 +1,8 @@
+## [1.7.909] - 2026-09-30
+
+### Docs
+- i18n/ラベル面監査の完走を記録: t() callsite は両ロケール網羅をテスト固定済・4系 data-t 機構 (text/aria/ph/title) が全 document を走査・動的ラベル (btnLang/btnTheme/canvas/ctx 再構築) も全て t() 経由 — 未ローカライズ経路なし (ADR-0883)
+
 ## [1.7.908] - 2026-09-30
 
 ### Fixed
