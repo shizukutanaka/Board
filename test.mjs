@@ -442,7 +442,7 @@ const checks = [
   ['load clamps viewport zoom to [MIN_ZOOM,MAX_ZOOM]', html.includes("_vp().zoom=clampZoom(+d.viewport.zoom)")],
   ['importer intake parity (ADR-0796)', (html.match(/_ln\(shapes=shapes\.filter\(validShape\)\)/g)||[]).length>=3 && html.includes("p.sh=p.sh.filter(validShape)") && html.includes("_xyOK(ddx)&&_xyOK(ddy)") && html.includes("_xyOK(+ap.scrollX)")],
   ['text editor capped at the wire text bound (ADR-0797)', html.includes("ta.maxLength=5e3")],
-  ['viewport center clamped at the coord bound (ADR-0798)', html.includes("_xC=v=>_max(-1e7,_min(1e7,v))") && (html.match(/_xC\(/g)||[]).length>=12],
+  ['viewport center clamped at the coord bound (ADR-0798)', html.includes("_xC=v=>_max(-1e7,_min(1e7,v))") && (html.match(/_xC\(/g)||[]).length>=16],
   ['clampZoom is the single zoom-invariant source', html.includes("const clampZoom=z=>_max(MIN_ZOOM,_min(MAX_ZOOM,z))") && html.includes("const nz=clampZoom(") && html.includes("const z=clampZoom(")],
   // v1.6.18: deeper audit fixes
   ['P selects pen, Shift+P presents', html.includes("k==='p'&&_sK(e)&&!meta&&!_aK(e)")],
@@ -12760,6 +12760,14 @@ try {
     const pxx=state.viewport.x;
     fireKey('ArrowLeft');
     assert.ok(state.viewport.x<pxx,'arrow without a selection pans the view');
+    // ADR-0798: the pan accumulator stops at the coord bound — beyond ±1e7 every drawn
+    // shape would carry wire-invalid coords (divergence), so panning clamps there.
+    state.viewport.x=1e7-10;state.viewport.zoom=1;
+    for(let i=0;i<40;i++)fireKey('ArrowRight');
+    assert.ok(state.viewport.x===1e7,'repeated arrow pan clamps the viewport center at +1e7 (ADR-0798)');
+    state.viewport.x=-(1e7-10);
+    for(let i=0;i<40;i++)fireKey('ArrowLeft');
+    assert.ok(state.viewport.x===-1e7,'arrow pan clamps at -1e7 too (ADR-0798)');
     // ⌘D duplicates the selection to fresh ids; ⇧⌘Z re-applies an undone delete (real key path)
     reset();
     state.tool='select';
@@ -13382,6 +13390,15 @@ try {
     state.viewport={x:0,y:0,zoom:1};
     fire1('wheel',0,0,{deltaY:40,deltaX:0,deltaMode:0,shiftKey:true});
     assert.ok(state.viewport.x!==0&&state.viewport.y===0,'⇧+wheel pans horizontally');
+    // ADR-0798: wheel pan clamps the viewport center at the coord bound
+    state.viewport.x=1e7-10;state.viewport.zoom=1;
+    for(let i=0;i<40;i++)fire1('wheel',0,0,{deltaY:0,deltaX:120,deltaMode:0});
+    assert.ok(state.viewport.x===1e7,'wheel pan clamps the viewport center at +1e7 (ADR-0798)');
+    // zoomAt toward a far cursor also clamps the derived center
+    state.viewport={x:0,y:0,zoom:1};
+    state.selection.clear();
+    for(let i=0;i<120;i++)fire1('wheel',9e9,9e9,{deltaY:-8000,deltaX:0,deltaMode:0,ctrlKey:true});
+    assert.ok(Math.abs(state.viewport.x)<=1e7&&Math.abs(state.viewport.y)<=1e7,'ctrl+wheel zoomAt keeps the viewport center in the coord domain (ADR-0798)');
     // ⌥hover over a non-selected shape shows gap-measure guides (ADR-0151)
     reset();
     state.viewport={x:0,y:0,zoom:1};
@@ -13706,13 +13723,14 @@ try {
     assert.ok(_pgById(p1.id).name==='Alpha','pageName applies the rename');
     Store.applyRemote({op:'pageName',id:p1.id,after:'Old',clock:{peer:'rp',seq:9,ts:1}});
     assert.ok(_pgById(p1.id).name==='Alpha','a stale remote pageName loses to newer nts (LWW)');
-    Store.applyRemote({op:'pageName',id:p1.id,after:'Hi',clock:{peer:'zz',seq:1,ts:Date.now()+1e3}});
+    const T0=Date.now()+1e3;   // ADR-0698: sample once — a ms tick between Date.now() calls broke the equal-ts arbitration premise (flake)
+    Store.applyRemote({op:'pageName',id:p1.id,after:'Hi',clock:{peer:'zz',seq:1,ts:T0}});
     assert.ok(_pgById(p1.id).name==='Hi','a strictly newer remote pageName wins');
-    Store.applyRemote({op:'pageName',id:p1.id,after:'Lo',clock:{peer:'aa',seq:1,ts:Date.now()+1e3}});
+    Store.applyRemote({op:'pageName',id:p1.id,after:'Lo',clock:{peer:'aa',seq:1,ts:T0}});
     assert.ok(_pgById(p1.id).name==='Hi','equal-ts pageName: lower peer id loses (ADR-0698)');
-    Store.applyRemote({op:'pageName',id:p1.id,after:'Hi2',clock:{peer:'zzz',seq:1,ts:Date.now()+1e3}});
+    Store.applyRemote({op:'pageName',id:p1.id,after:'Hi2',clock:{peer:'zzz',seq:1,ts:T0}});
     assert.ok(_pgById(p1.id).name==='Hi2','equal-ts pageName: higher peer id wins (ADR-0698)');
-    Store.applyRemote({op:'pageName',id:p1.id,after:'Bad',clock:{peer:'zz',seq:2,ts:Date.now()+1e3}});
+    Store.applyRemote({op:'pageName',id:p1.id,after:'Bad',clock:{peer:'zz',seq:2,ts:T0}});
     assert.ok(_pgById(p1.id).name==='Hi2','equal-ts pageName: a mid peer still loses (ADR-0698)');
     state._lastTs=0;   // my far-future remote ts raised the HLC floor — restore it or later local commits get poisoned clocks
     // ADR-0702: undo of a page rename actually restores the name — the bts>=nts gate
