@@ -1393,9 +1393,9 @@ const checks = [
   // v1.7.43: _zCommit captures origSel before zorder _recordCommitted
   ['_zCommit: origSel captured before zorder commit and patched onto history entry',
     html.includes("_rcOp({op:'zorder',changes});")],
-  // v1.7.44: MAX_OP_SHAPES constant defined (DoS guard for remote ops)
-  ['MAX_OP_SHAPES constant defined (remote array size cap)',
-    html.includes("const MAX_OP_SHAPES=500;")],
+  // v1.7.44→1.7.629: MAX_OP_SHAPES == board ceiling (ADR-0602: 500-cap silently dropped bulk ops >500 shapes)
+  ['MAX_OP_SHAPES equals SHARE_MAX_SHAPES (ops may address the whole board)',
+    html.includes("const MAX_OP_SHAPES=SHARE_MAX_SHAPES;")],
   // v1.7.44: nextZ uses reduce to avoid spread RangeError on large boards
   ['nextZ uses reduce (safe for >65K shapes, no spread RangeError)',
     html.includes("function nextZ(){return _nS()?_sh().reduce((m,s)=>_max(m,s.z||0),0)+1:1}")],
@@ -2009,6 +2009,20 @@ try {
     assert.strictEqual(ls.type,'rect','batch-patch type rebind stripped');
     assert.strictEqual(ls.stroke,'#123456','batch-patch legit prop applied');
     console.log('  ✓ ADR-0373: remote patches cannot rebind id/type or write _-keys (7 asserts)');
+  }
+
+  // ADR-0602: an op may address every shape on the board — a >500-shape del
+  // used to fail MAX_OP_SHAPES=500 and be SILENTLY dropped at applyRemote,
+  // diverging the sender (deleted) from every receiver (kept). Cap is now
+  // SHARE_MAX_SHAPES; the 24MB wire bound is the real DoS bound.
+  {
+    const base=state.shapes.length;
+    const bulk=[];
+    for(let i=0;i<600;i++){const s={id:'B0602_'+i,type:'rect',z:1,x:0,y:0,w:10,h:10,stroke:'#0F172A',size:2,opacity:1};bulk.push(s);state.shapes.push(s);}
+    _invalidateGrid();
+    Store.applyRemote({op:'del', shapes:bulk, clock:{peer:'peerB', seq:97, ts:9}});
+    assert.strictEqual(state.shapes.length, base, 'del op addressing 600 shapes applies (no silent drop)');
+    console.log('  ✓ ADR-0602: >500-shape bulk op applies instead of silently dropping');
   }
 
   // §3.17 follow-up: group/ungroup payload validation. A non-string gid would
@@ -9444,17 +9458,19 @@ try {
     console.log('  ✓ _apply upd backward: origSel restored on undo (v1.7.43b)');
   }
 
-  // v1.7.44a: validRemotePayload('addMany') has no size cap — 501 shapes pass validation,
-  // freezing the UI thread and exhausting memory.
+  // v1.7.44a → ADR-0602: MAX_OP_SHAPES was raised to SHARE_MAX_SHAPES. The old
+  // 500-cap SILENTLY DROPPED legal bulk ops (select-all+del on a 501+ board),
+  // diverging the sender from every receiver. >200k is still rejected; the
+  // 24MB wire/join bound remains the real DoS bound.
   {
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const bigShapes=Array.from({length:501},(_,i)=>Shape.make('rect',{x:i*15,y:0,w:10,h:10}));
-    Store.applyRemote({op:'addMany',shapes:bigShapes,clock:{peer:'evil44a',seq:1,ts:1}});
-    assert.strictEqual(state.shapes.length,0,
-      'v1.7.44a: remote addMany with 501 shapes must be rejected');
-    assert.ok(!state.seenOps.has('evil44a:1'),
-      'v1.7.44a: oversized addMany op must not be added to seenOps');
-    console.log('  ✓ validRemotePayload addMany: >MAX_OP_SHAPES shapes rejected (v1.7.44a)');
+    Store.applyRemote({op:'addMany',shapes:bigShapes,clock:{peer:'peer44a',seq:1,ts:1}});
+    assert.strictEqual(state.shapes.length,501,
+      'ADR-0602: remote addMany with 501 shapes applies (was silently dropped)');
+    assert.ok(!validRemotePayload({op:'addMany',shapes:Array(200001).fill(bigShapes[0])}),
+      'ADR-0602: addMany above SHARE_MAX_SHAPES still rejected');
+    console.log('  ✓ validRemotePayload addMany: 501 applies, >SHARE_MAX_SHAPES rejected (ADR-0602)');
   }
 
   // v1.7.44b: _apply replace forward does not restore op.afterWc on redo —
@@ -9473,17 +9489,23 @@ try {
     console.log('  ✓ _apply replace forward: afterWc restored on redo (v1.7.44b)');
   }
 
-  // v1.7.45a: validRemotePayload zorder/group/ungroup must cap array sizes at MAX_OP_SHAPES
+  // v1.7.45a → ADR-0602: zorder/group/ungroup arrays cap at SHARE_MAX_SHAPES —
+  // a 501-element bulk op is legal on a whole-board gesture; >200k rejected.
   {
-    // Before fix: zorder.changes had no length cap — 501-element array was accepted
-    assert.ok(!validRemotePayload({op:'zorder',changes:Array(501).fill({id:'x',before:'a',after:'b'})}),
-      'v1.7.45a: zorder with 501 changes rejected (DoS cap)');
-    // Before fix: group.ids had no length cap
-    assert.ok(!validRemotePayload({op:'group',ids:Array(501).fill('s1'),gid:'g1',before:[{id:'s1'}]}),
-      'v1.7.45a: group with 501 ids rejected (DoS cap)');
-    // Before fix: ungroup.ids had no length cap
-    assert.ok(!validRemotePayload({op:'ungroup',ids:Array(501).fill('s1'),gids:['g1']}),
-      'v1.7.45a: ungroup with 501 ids rejected (DoS cap)');
+    // ADR-0602: 501-element ops now valid (whole-board ops may address every shape)
+    assert.ok(validRemotePayload({op:'zorder',changes:Array(501).fill({id:'x',before:'a',after:'b'})}),
+      'ADR-0602: zorder with 501 changes accepted (was rejected)');
+    assert.ok(validRemotePayload({op:'group',ids:Array(501).fill('s1'),gid:'g1',before:[{id:'s1'}]}),
+      'ADR-0602: group with 501 ids accepted (was rejected)');
+    assert.ok(validRemotePayload({op:'ungroup',ids:Array(501).fill('s1'),gids:['g1']}),
+      'ADR-0602: ungroup with 501 ids accepted (was rejected)');
+    // Above the board ceiling still rejected
+    assert.ok(!validRemotePayload({op:'zorder',changes:Array(200001).fill({id:'x',before:'a',after:'b'})}),
+      'ADR-0602: zorder >SHARE_MAX_SHAPES rejected');
+    assert.ok(!validRemotePayload({op:'group',ids:Array(200001).fill('s1'),gid:'g1',before:[{id:'s1'}]}),
+      'ADR-0602: group >SHARE_MAX_SHAPES rejected');
+    assert.ok(!validRemotePayload({op:'ungroup',ids:Array(200001).fill('s1'),gids:['g1']}),
+      'ADR-0602: ungroup >SHARE_MAX_SHAPES rejected');
     // Reasonable sizes must still be accepted
     assert.ok(validRemotePayload({op:'zorder',changes:[{id:'x',before:'a',after:'b'}]}),
       'v1.7.45a: zorder with 1 change still accepted');
@@ -9491,7 +9513,7 @@ try {
       'v1.7.45a: group with 2 ids still accepted');
     assert.ok(validRemotePayload({op:'ungroup',ids:['s1','s2'],gids:['g1']}),
       'v1.7.45a: ungroup with 2 ids still accepted');
-    console.log('  ✓ validRemotePayload zorder/group/ungroup: >MAX_OP_SHAPES arrays rejected (v1.7.45a)');
+    console.log('  ✓ validRemotePayload zorder/group/ungroup: board-ceiling bound (v1.7.45a/ADR-0602)');
   }
 
   // v1.7.45b: applyStyleToSelection must capture origSel so style undo restores selection
@@ -9508,15 +9530,18 @@ try {
     console.log('  ✓ applyStyleToSelection: origSel captured so undo restores selection (v1.7.45b)');
   }
 
-  // v1.7.46a: validRemotePayload del connClears must be capped at MAX_OP_SHAPES
+  // v1.7.46a → ADR-0602: del connClears capped at SHARE_MAX_SHAPES — a bulk del
+  // of 501+ shapes legitimately clears that many connectors; >200k rejected.
   {
-    // 501-entry connClears must be rejected (before fix: accepted with no length check)
-    assert.ok(!validRemotePayload({op:'del',shapes:[],connClears:Array(501).fill({id:'c1'})}),
-      'v1.7.46a: del with 501 connClears rejected (DoS cap)');
+    // ADR-0602: 501-entry connClears now valid (whole-board del sweeps every conn)
+    assert.ok(validRemotePayload({op:'del',shapes:[],connClears:Array(501).fill({id:'c1'})}),
+      'ADR-0602: del with 501 connClears accepted (was rejected)');
+    assert.ok(!validRemotePayload({op:'del',shapes:[],connClears:Array(200001).fill({id:'c1'})}),
+      'ADR-0602: del connClears >SHARE_MAX_SHAPES rejected');
     // Small connClears still accepted
     assert.ok(validRemotePayload({op:'del',shapes:[],connClears:[{id:'c1',before:{a:'t'},after:{a:null}}]}),
       'v1.7.46a: del with 1 valid connClear still accepted');
-    console.log('  ✓ validRemotePayload del connClears: >MAX_OP_SHAPES rejected (v1.7.46a)');
+    console.log('  ✓ validRemotePayload del connClears: board-ceiling bound (v1.7.46a/ADR-0602)');
     // ADR-0377: connClears patches are whitelisted to the 8 binding-cleanup props —
     // structural/lock keys (type/id/locked/_x) are Object.assign'd into live connectors
     // by _apply and must not pass remote validation.
