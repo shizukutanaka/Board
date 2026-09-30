@@ -1020,7 +1020,7 @@ const checks = [
   ['route style persists via _st().elbow/curve into Shape.make', html.includes("_st().elbow=_el(s);_st().curve=0")&&html.includes('if(_st().elbow)base.elbow=_st().elbow;')],
   ['corner/hatch/align persist via _st() into Shape.make', html.includes("_st().r!=null")&&html.includes("_st().align=nxt")&&html.includes("_st().fstyle=nxt||null")],
   ['eyedropper absorbs persisted look-props + start persists', html.includes("'elbow','curve','hop','r','fstyle','align','valign','fontSize','lineH','cbend'")&&html.includes("_st().start=s.start")],
-  ['frame label honors s.font family', html.includes('${_svgFont(s.bold?s:{...s,bold:true},_fS(s)||12)}')&&html.includes('${_fontFam(hit)};color')],
+  ['frame label honors s.font family', html.includes('${_svgFont(s.bold?s:{...s,bold:true},_fS(s)||12)}')&&html.includes('${_fontFam(hit)};')&&html.includes('inp.style.color=col')],
   ['sticky body valign via s.valign (ctxVAlign gate + canvas/SVG)', html.includes("seqS=[null,'middle','bottom']")&&html.includes("const sty=_va(s)==='middle'")&&html.includes("const sy2v=_va(s)==='middle'")],
   ['frame font via cycleFont gate + make() inheritance', html.includes("s.type!=='frame'&&!_lb(s)")&&html.includes("_frm(s)||_lb(s)")&&html.includes("_TSF.has(type)")],
   ['line-height cycle — canvas/SVG/resize + style-copy/eyedropper', html.includes("function cycleLineH()")&&html.includes("fs*(s.lineH||1.3)")&&html.includes("'fontSize','lineH','cbend'")],
@@ -1744,7 +1744,7 @@ try {
           _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, _oa,
           _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure,
-          switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx } = api;
+          switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx, editSelectedShapeKbd } = api;
 
   console.log('\n-- behavioural --');
 
@@ -13832,6 +13832,29 @@ try {
       assert.ok(xml.indexOf('parent="g_x&quot;')>=0,'ADR-0861: member parent escapes the remote gid');
       assert.ok(xml.indexOf('g_x"')<0,'ADR-0861: raw gid cannot break the drawio attribute');
     }
+    // ADR-0862: the label editor interpolated a remote s.stroke into style.cssText —
+    // 'red;position:fixed;inset:0;background:url(e)' injected arbitrary CSS declarations
+    // (including external url() fetches) into the stylesheet string. Color/border now
+    // assigned per-property, which can't inject declarations.
+    {
+      reset();
+      const appended=[];
+      const _origAppend=fakeDoc.body.appendChild;
+      fakeDoc.body.appendChild=el=>{appended.push(el);};
+      try{
+        const s=Shape.make('rect',{x:0,y:0,w:20,h:20,label:'x'});
+        const evil='red;position:fixed;inset:0;background:url(evil)';
+        s.stroke=evil;
+        Store.commit({op:'add',shape:s});
+        state.selection=new Set([s.id]);
+        assert.ok(editSelectedShapeKbd(),'ADR-0862: label editor opens for the injected-stroke shape');
+        const inp=appended[0];
+        assert.ok(inp&&inp.tagName==='INPUT','ADR-0862: label editor input exists');
+        assert.ok(inp.style.cssText.indexOf('inset')<0&&inp.style.cssText.indexOf('url(evil)')<0,'ADR-0862: remote stroke cannot inject declarations into cssText');
+        assert.strictEqual(inp.style.color,evil,'ADR-0862: hostile color reaches only a value-typed property (browser ignores it as invalid)');
+        assert.strictEqual(inp.style.borderColor,evil,'ADR-0862: border color assigned per-property, not via cssText');
+      }finally{fakeDoc.body.appendChild=_origAppend}
+    }
     // drop: .board file path via a fake FileReader — atomic whole-board replace (ADR-0518 residual closed)
     const _FR=globalThis.FileReader;
     globalThis.FileReader=class{
@@ -14555,7 +14578,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1799; // prev 1791 + 5 ADR-0860 sig-key + 3 ADR-0861 drawio gid-escape asserts
+  pass += 1804; // prev 1799 + 5 ADR-0862 label-editor cssText-injection asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
