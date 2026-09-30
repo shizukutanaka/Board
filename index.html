@@ -863,7 +863,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.690';   // ADR-0664
+const V='1.7.691';   // ADR-0664
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2101,7 +2101,7 @@ const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPe
 const _rs=arr=>{state.shapes=arr;_iG();_pcC()}   // ADR-0493: wholesale board replace (5 sites)
 const _pgOn=()=>!!(state.pages&&_ln(state.pages)),_pgById=id=>_pgOn()&&state.pages.find(p=>p.id===id),_pgOk=s=>!_pgOn()||(s.pg||state.pages[0].id)===state.curPg;   // ADR-0646: unpg'd shapes belong to pages[0] positionally
 const _vPages=a=>!_iA(a)||!_ln(a)||_ln(a)>64?null:(a.every(p=>p&&_iS(p.id)&&_ln(p.id)<=64&&_iS(p.name)&&_ln(p.name)<=80&&(p.nts==null||_iN(p.nts)))?a:null);
-function _pgAdopt(pages,cur){const v=_vPages(pages);state.pages=v?clone(v):null;state.curPg=v&&_pgById(cur)?cur:(v?v[0].id:null);_pgBar()}
+function _pgAdopt(pages,cur){const v=_vPages(pages);state.pages=v?clone(v):null;const nc=v&&_pgById(cur)?cur:(v?v[0].id:null);if(nc!==state.curPg)_cancelPointerGesture();state.curPg=nc;_pgBar()}   // ADR-0664: a wholesale page-set swap can move curPg — same live-gesture hazard as switchPage
 function switchPage(id){if(!_pgById(id)||state.curPg===id)return;Net.sendCursorHide();_cxO();_cancelPointerGesture();state.curPg=id;_iG();_zR();_ss(_selIds());_iv();_ivO();_ann(_pgById(id).name);_pgBar()}   // ADR-0664: page change cancels a live pointer gesture — otherwise the drag continues on the new page and commits moves to shapes you can't see
 function _pgNav(d){if(!_pgOn())return;const i=_pgIdx(),n=_ln(state.pages);const j=(i+d+n)%n;if(j!==i)switchPage(state.pages[j].id)}
 const _opIds=op=>{   // ADR-0652: the touched-id harvest _apply uses — shared with _pgFollow so undo/redo can see where the change landed
