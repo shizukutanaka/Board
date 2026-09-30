@@ -1344,7 +1344,7 @@ const _TYPES=_sT(['rect','ellipse','diamond','pen','line','arrow','text','sticky
 const _ptsOK=a=>_iA(a)&&a.every(p=>_iA(p)&&_ln(p)>=2&&p.every(n=>_iN(n)&&_fin(n)));   // ADR-0436: shared pen-pts tuple check
 const _CSS=typeof CSS!=='undefined'?CSS:null;
 // 'none' is a Board sentinel (fill:'none' = no fill, ADR-0288), not a CSS color.
-const _colOK=v=>v==='none'||(_CSS?_CSS.supports('color',v):/^#[0-9a-fA-F]{3,8}$|^[a-zA-Z]+\([^)]{0,80}\)$|^[a-zA-Z]{1,20}$/.test(v));   // ADR-0870
+const _colOK=v=>v==='none'||v==='default'||(_CSS?_CSS.supports('color',v):/^#[0-9a-fA-F]{3,8}$|^[a-zA-Z]+\([^)]{0,80}\)$|^[a-zA-Z]{1,20}$/.test(v));   // ADR-0870
 function validShape(s){
   if(!s||!_iO(s)||_ok(s).length>64||!_iS(s.id)||_ln(s.id)>64||!_TYPES.has(s.type)||!_iN(s.z))return false;   // ADR-0387/0388/0858
   if(!validPatch(s))return false;                  // no NaN/Inf coords, no pollution keys
