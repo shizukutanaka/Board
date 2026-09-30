@@ -213,7 +213,7 @@ const checks = [
   // round 6: frame hit priority + label edit + image size guard
   ['pickTop skips frames on first pass', html.includes("_frm(s)||_hd(s)||!_pgOk(s))continue")],
   ['frame dblclick label edit', html.includes("_frm(hit)") && html.includes("hit.label")],
-  ['image size guard 16MB', html.includes("16*1024*1024") && html.includes("大きすぎます")],
+  ['image size guard 16MB', html.includes("16_000_000") && html.includes("大きすぎます")],
   ['SVG export frames first', html.includes("svgShapes") && html.includes("type===\"frame\"")],
   // round 7: _apply completeness + opacity UI
   ['_apply handles group op', html.includes("case 'group':") && html.includes("sh.groupId=op.gid")],
@@ -10486,6 +10486,27 @@ try {
     console.log('  ✓ ADR-0877: _imgImportFile rejects oversized files pre-read');
   }
 
+  // ADR-0878: a degenerate image decoding to 0x0 must toast + never reach cb —
+  // callers would otherwise mint an invisible w:0/h:0 shape or NaN sizes.
+  {
+    const seen=[];const _origToast=UI.toast;UI.toast=(m,k)=>{seen.push({m,k});};
+    const _hFR=Object.prototype.hasOwnProperty.call(globalThis,'FileReader');const _pFR=globalThis.FileReader;
+    const _hIm=Object.prototype.hasOwnProperty.call(globalThis,'Image');const _pIm=globalThis.Image;
+    try{
+      globalThis.FileReader=class{ readAsDataURL(){ this.result='data:image/png;base64,AA=='; this.onload&&this.onload(); } };
+      globalThis.Image=class{ set src(v){ this.width=0;this.height=0; this.onload&&this.onload(); } };
+      let called=false;
+      _imgImportFile({size:100,name:'z.png'},()=>called=true);
+      assert.strictEqual(called,false,'degenerate image: cb never invoked');
+      assert.ok(seen.length>=1,'degenerate image: rejection toasts');
+    }finally{
+      UI.toast=_origToast;
+      if(_hFR)globalThis.FileReader=_pFR;else delete globalThis.FileReader;
+      if(_hIm)globalThis.Image=_pIm;else delete globalThis.Image;
+    }
+    console.log('  ✓ ADR-0878: _imgImportFile rejects 0x0 degenerate images');
+  }
+
 
   // v1.7.447a (ADR-0413): flag props accept true|1|null — {shadow:true} in a style op
   // (toggleShadow writes true) was rejected by the numeric whitelist, silently dropping
@@ -14742,7 +14763,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1850; // prev 1838 + 9 ADR-0876 + 3 ADR-0877 oversized-image pre-read asserts
+  pass += 1853; // prev 1838 + 9 ADR-0876 + 3 ADR-0877 + 3 ADR-0878 degenerate-image asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

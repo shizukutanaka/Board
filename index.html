@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.903';   // ADR-0877
+const V='1.7.904';   // ADR-0878
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4649,8 +4649,8 @@ function _imgImportFile(f,cb){
   if(_bigFile(f)){_wT(_IB);return}   // ADR-0877: pre-read guard, parity with the other importers
   const reader=new FileReader();
   reader.onload=()=>{
-    // ADR-0527/0867: reject early at the wire dataUrl bound exactly — a value
-    // in (16e6, 16*1024*1024) would land locally yet be rejected by every peer.
+    // ADR-0527/0867: reject at the wire dataUrl bound exactly — larger lands
+    // locally yet is rejected by every peer.
     if(_ln(reader.result) > 16_000_000){
       _w(t('imgBig')+' ('+_rnd(_ln(reader.result)/1024)+'KB)');return;
     }
@@ -4658,6 +4658,7 @@ function _imgImportFile(f,cb){
     img.onload=()=>{
       let dataUrl=reader.result;
       const nw=img.width,nh=img.height;
+      if(!nw||!nh){_wT('imgErr');return}   // ADR-0878
       if(nw>IMG_IMPORT_MAX_DIM||nh>IMG_IMPORT_MAX_DIM){
         const r=_min(IMG_IMPORT_MAX_DIM/nw,IMG_IMPORT_MAX_DIM/nh);
         const cv=_cv();
@@ -4744,10 +4745,8 @@ _on(canvas,'drop',e=>{
     return;
   }
   const wp=_o2w(e);
-  // Cascade multiple dropped images by index —
-  // per-iteration (forEach's `i`), not a share
-  // reader.onload is async, so a shared counte
-  // (20×N) by the time any onload fires — stack too deep to defer all
+  // Cascade dropped images by per-iteration index — reader.onload is async,
+  // so the placement offset must come from forEach's `i`, not a shared counter.
   files.forEach((f,i)=>{
     _imgImportFile(f,(dataUrl,nw,nh)=>{
       const maxDim=400;

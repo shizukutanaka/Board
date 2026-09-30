@@ -1,3 +1,14 @@
+## [1.7.904] - 2026-09-30
+
+### Fix
+- 0×0 のデジェネレート画像を `img.onload` 先頭で棄却: `naturalWidth=0` でも onload が発火し `cb(…,0,0)` から不可視図形 (w:0) 着地や `s.w*nh/nw`=NaN 高さ書込み (wire gate でピア棄却→発散) に至り得た (ADR-0878)
+
+### Docs
+- drop cascade 直上の切断コメント断片4行を文法修復 (ADR-0878)
+
+### Test
+- FileReader→Image stub (width=0) で cb 未到達 + エラートーストを実経路で固定 (ADR-0878)
+
 ## [1.7.903] - 2026-09-30
 
 ### Fix
