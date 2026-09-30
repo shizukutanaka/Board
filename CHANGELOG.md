@@ -1,3 +1,18 @@
+## [1.7.845] - 2026-09-29
+
+### Docs
+- ADR-0819: storage・quota・img 送信キュー監査完走 — _imgOuts drain/room 切替・quotaExceeded/quotaWarn・estimate catch 全経路 clean
+
+## [1.7.844] - 2026-09-29
+
+### Docs
+- ADR-0818: リスナ・rAF スロット監査完走 — _on 一回性/要素 GC/once 再アーム/dc・bc・rtc 代入差し替え/単一アーム rAF 全経路 clean
+
+## [1.7.843] - 2026-09-29
+
+### Docs
+- ADR-0817: タイマー・インターバルのライフサイクル監査完走 — 長押し/ズーム終端/resize/snap/heartbeat/save/revoke 全てクリア・再アーム・単一スロット化済み
+
 ## [1.7.842] - 2026-09-29
 
 ### Docs
