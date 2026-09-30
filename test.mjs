@@ -1720,9 +1720,10 @@ try {
              endRectLike, endLineLike, endSelect, I18N, applyTheme, editSelectedShapeKbd, Share,
              draw, drawOverlay, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; }, _setOCtx: (c) => { const p = octx; octx = c; return p; },
              _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, _oa,
-             _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
+             _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate,
              _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure,
              switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx,
+             _textCascade,
              _getLang: () => LANG, _getT: () => T };
   `);
   const api = fn(
@@ -1749,7 +1750,7 @@ try {
           _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, _oa,
           _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure,
-          switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx, editSelectedShapeKbd } = api;
+          switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx, _textCascade, editSelectedShapeKbd } = api;
 
   console.log('\n-- behavioural --');
 
@@ -10444,6 +10445,25 @@ try {
     console.log('  ✓ ADR-0874: label editor applies letter-spacing/text-decoration');
   }
 
+  // ADR-0876: paste producers honour the wire bounds — a >PASTE_MAX_CHARS dump
+  // and an overlong TSV cell must land inside what peers accept, or the add
+  // would be locally committed and remotely dropped (0797-class divergence).
+  {
+    state.shapes.length = 0;_invalidateGrid(); state.history.length = 0; state.histIdx = -1;
+    assert.strictEqual(_textCascade('a'.repeat(6000),{x:0,y:0}),true,'text cascade consumes plain text');
+    const tp=state.shapes[state.shapes.length-1];
+    assert.ok(tp&&tp.type==='text','plain paste creates a text shape');
+    assert.strictEqual(tp.text.length,4000,'PASTE_MAX_CHARS truncation applied');
+    assert.ok(validShape(tp),'produced shape passes the wire gate');
+    state.shapes.length = 0;_invalidateGrid(); state.history.length = 0; state.histIdx = -1;
+    assert.strictEqual(_textCascade('x'.repeat(3000)+'\tB\nC\tD',{x:0,y:0}),true,'tsv cascade consumes');
+    const cells=state.shapes.filter(s=>s.type==='sticky');
+    assert.ok(cells.length>=1,'tsv creates sticky cells');
+    assert.ok(cells.every(s=>s.text.length<=2000),'TSV cells capped at 2000');
+    assert.ok(cells.every(validShape),'tsv stickies pass the wire gate');
+    console.log('  ✓ ADR-0876: paste producers bounded within the wire gate');
+  }
+
 
   // v1.7.447a (ADR-0413): flag props accept true|1|null — {shadow:true} in a style op
   // (toggleShadow writes true) was rejected by the numeric whitelist, silently dropping
@@ -14700,7 +14720,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1838; // prev 1836 + 2 ADR-0874 label-editor typography asserts
+  pass += 1847; // prev 1838 + 9 ADR-0876 paste-producer bound asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

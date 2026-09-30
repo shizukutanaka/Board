@@ -1,3 +1,8 @@
+## [1.7.902] - 2026-09-30
+
+### Test
+- ペースト生産者 bound を実経路でピン: >PASTE_MAX_CHARS 平文 → text 4000 打切り、過長 TSV セル → 2000 打切り、生成図形が全て validShape (wire gate) 受理 — producer parity の結論を機能経路で固定 (ADR-0876)
+
 ## [1.7.901] - 2026-09-30
 
 ### Docs
