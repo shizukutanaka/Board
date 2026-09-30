@@ -12656,6 +12656,21 @@ try {
       assert.strictEqual(sh.pts[1][0],210,'_mapToBox pt1 x');
       assert.strictEqual(sh.pts[1][1],120,'_mapToBox pt1 y');
     }
+    // ADR-0888: zero-extent gBox — ob.w===0 must collapse members onto the vb
+    // corner, not produce Infinity/NaN coordinates.
+    {
+      const sh={type:'pen',pts:[]};
+      const orig={type:'pen',pts:[[50,0],[50,60]]};
+      _mapToBox(sh,orig,{x:50,y:0,w:0,h:60},{x:10,y:20,w:30,h:120});
+      for(const p of sh.pts){assert.ok(Number.isFinite(p[0])&&Number.isFinite(p[1]),'zero-width gBox: no NaN/Infinity member coords');}
+      assert.strictEqual(sh.pts[0][0],10,'zero-width gBox: members collapse onto vb.x');
+    }
+    {
+      const sh={type:'line',x1:0,y1:0,x2:0,y2:0};
+      const orig={type:'line',x1:50,y1:0,x2:50,y2:60};
+      _mapToBox(sh,orig,{x:50,y:0,w:0,h:60},{x:10,y:20,w:30,h:120});
+      assert.ok(Number.isFinite(sh.x1)&&Number.isFinite(sh.y2),'zero-width gBox: endpoints stay finite');
+    }
     // _fitViewport: returns zoom, centres bbox in the fake 800x600 canvas rect
     {
       state.viewport={x:0,y:0,zoom:1};

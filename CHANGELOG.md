@@ -1,3 +1,8 @@
+## [1.7.916] - 2026-09-30
+
+### Tests
+- ADR-0888 修正の behavioural ピン — `_mapToBox` を 0 幅 gBox (`{w:0}`: 同一 x の垂直線群) で直叩きし、pen pts/line 端点が NaN/Infinity を出さず vb 境界へ縮退することを固定。`_grotDrag`/`_grpMapGet`/overlay ライフサイクル/render キャッシュの監査は clean (ADR-0890)
+
 ## [1.7.915] - 2026-09-30
 
 ### Fixed
