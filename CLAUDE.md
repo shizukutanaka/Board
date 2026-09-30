@@ -893,6 +893,9 @@ Board/
 │   └── ADR-0842-imgsent-byte-bound.md  # _imgSent を 64MB バイト上限化 + 駐車イディオム _park 集約
 │   └── ADR-0843-rtc-snapbig-close.md  # snapBig 時に RTC リンクを閉じて joiner へ可視通知
 │   └── ADR-0844-img-wire-audit-complete.md  # img/wire サブシステム監査完走の記録
+│   └── ADR-0845-imgsent-evict-pin.md  # _imgSent バイト上限の最古 evict を behavioural ピン
+│   └── ADR-0846-snapshot-addonly-pin.md  # _mergeSnapshotOp の 'add'-only ゲートを behavioural ピン
+│   └── ADR-0847-comment-fragment-repair.md  # 切断コメント残片5箇所の文法修復
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

@@ -4104,6 +4104,12 @@ try {
     assert.strictEqual(Net._mergeSnapshotOp({op:'add',shape:snapShape}),'skip','missing wc → keep (legacy)');
     // unknown shape → add path
     assert.strictEqual(Net._mergeSnapshotOp({op:'add',shape:{...snapShape,id:'NEW'},clock:{peer:'A',seq:'snap:NEW',ts:0}}),'add','unknown shape adopted');
+    // ADR-0846: a crafted snapshot carrying a non-'add' op must not execute it
+    // under the snapshot path — the 'add'-only gate rejects before LWW merging.
+    {const before=byId(snapShape.id)?.x;
+     const res=Net._mergeSnapshotOp({op:'del',ids:[snapShape.id],wc:{x:{peer:'A',seq:1,ts:9e15}}});
+     assert.strictEqual(res,'skip','non-add op rejected at merge path');
+     assert.ok(byId(snapShape.id)&&byId(snapShape.id).x===before,'shape untouched by rejected op');}
     console.log('  ✓ snapshot LWW merge: per-prop convergence, no history (6 asserts)');
   }
 
@@ -14439,6 +14445,10 @@ try {
     {Net._imgSent.clear();const _im={id:'i1',type:'image',dataUrl:'x'.repeat(200)};
      const _sl5=Net._slimShapes([_im]);
      assert.ok(_sl5[0].img&&Net._imgSent.has(_sl5[0].img),'sent blob registered for imgq answers');
+     Net._imgSent.clear();Net._imgOuts.length=0;}
+    {Net._imgSent.clear();Net._imgSent.set('k1','x'.repeat(33e6));Net._imgSent.set('k2','y'.repeat(33e6));
+     Net._slimShapes([{id:'i9',type:'image',dataUrl:'z'.repeat(200)}]);
+     assert.ok(!Net._imgSent.has('k1')&&Net._imgSent.has('k2'),'byte bound evicts oldest entry first');
      Net._imgSent.clear();Net._imgOuts.length=0;}
     console.log('  ✓ imgq re-request answered from blob store or live shape (ADR-0835)');
   }
