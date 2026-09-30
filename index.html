@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.899';   // ADR-0873
+const V='1.7.900';   // ADR-0874
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4574,16 +4574,16 @@ function editSelectedShapeKbd(){
   if(_txt(sh)||_stk(sh)){openTextEditor(sh,false);return true}
   return _openLabelEditorFor(sh);
 }
-// Shared inline label editor for boxes (rect/
-// the generic `upd` op (reversible + synced). bold = frame styling. IME-safe; Enter
-// commits, Escape discards (detaching blur so remove() doesn't re-commit).
+// Shared inline label editor — commits via `upd` op (reversible + synced).
+// bold = frame styling. IME-safe; Enter commits, Escape discards (blur detached).
 function openLabelEditor(hit,leftPx,topPx,bold){
   _cxO();   // ADR-0560
   const inp=_ce('input');
   inp.value=hit.label||'';inp.maxLength=80;
-  const col=hit.stroke||_gC(bold?'--accent-contrast':'--ink');   // a11y-audit-2026-07: label-editor text needs the 4.5:1 floor
+  const col=hit.stroke||_gC(bold?'--accent-contrast':'--ink');   // a11y-audit-2026-07: text needs the 4.5:1 floor
   inp.style.cssText=`position:fixed;left:${leftPx}px;top:${topPx}px;`+
     `font:${hit.italic?'italic ':''}${bold?'600 ':''}${hit.fontSize||12}px ${_fontFam(hit)};`+   // ADR-0186/0206/0862
+    `letter-spacing:${_sp(hit)||0}px;text-decoration:${[hit.under?'underline':'',hit.strike?'line-through':''].filter(Boolean).join(' ')};`+   // ADR-0874
     `background:${_p()};border:1px solid;`+
     `padding:2px 6px;outline:none;z-index:9500;min-width:80px;`;
   inp.style.color=col;inp.style.borderColor=col;
