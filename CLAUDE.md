@@ -917,6 +917,7 @@ Board/
 │   └── ADR-0866-local-input-wire-caps.md  # ローカル入力も wire 上限を共有 — pen pts>50000 / waypoint>200 がローカル commit・全ピア棄却で発散していた実害を閉塞
 │   └── ADR-0867-dataurl-wire-bound-parity.md  # dataUrl 取込上限を wire 境界へ一致 — 16*1024*1024 vs 16_000_000 の ~777KB 窓でローカル受理・全ピア棄却の発散を閉塞
 │   └── ADR-0868-numeric-range-bounds.md  # opacity/size/fontSize の値域ゲート — 範囲外代入を無視する canvas 仕様で前 shape の描画状態が漏れる非決定描画を閉塞
+│   └── ADR-0869-session-accumulation-audit.md  # セッション内蓄積監査完走 — 全キュー/マップ bounded;総図形数ゲートは到着順序依存で恒久発散のため非採用
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

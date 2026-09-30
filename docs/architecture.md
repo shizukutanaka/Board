@@ -211,6 +211,8 @@ IDB 復元 (`Persist.load`/`restoreBackup`) も `_attachShape` を通して未�
   (0796/0797 と同規則)。`dataUrl` は intake が 16_000_000 で byte-for-byte 一致。
   値域ゲート (ADR-0868): `opacity∈[0,1]`、`size`/`fontSize` ∈(0,1e4] —
   範囲外代入を無視する canvas 仕様による前 shape 状態漏れを閉塞する。
+  蓄積上限は全キュー/マップで完備 (ADR-0869); 総図形数の累積ゲートは
+  到着順序依存で恒久発散するため、収束安全な op 単位検証のみを採る。
 
 ### 4. State
 唯一の真実。以下しか存在しない:
