@@ -1,3 +1,43 @@
+## [1.7.853] - 2026-09-29
+
+### Fixed
+- ADR-0827: BC 経路で偽装された `rtc:` peer id が reaper 免除を悪用して永久幽霊行化する実害を閉塞 — 合成 id は local-only、非 RTC 経路で棄却
+
+## [1.7.852] - 2026-09-29
+
+### Test
+- ADR-0826: `_loResp` の snapshot 応答選出を behavioural pin で固定 — 最小 id 勝者・asker 除外 (0465)・live rtc: 行除外 (0455) の3不変を検出可能に
+
+## [1.7.851] - 2026-09-29
+
+### Test
+- ADR-0825: `_pk` の viaRtc 振分け + RTC `bye` の `_rtcPeerId` クリアを behavioural pin で固定 — 合成行と実 id 行の分裂を検出可能に
+
+## [1.7.850] - 2026-09-29
+
+### Docs
+- ADR-0824: architecture.md の transport×kind 表をコードへ同期 — `cursor`/`selection`/`name`/`bye`/`img`/`op`/`snapshot` は dual-transport、BC-only は `hello`/`sync-req`/`ping` のみ
+
+## [1.7.849] - 2026-09-29
+
+### Fixed
+- ADR-0823: `#s=` 招待リンクの malformed `%` が silent no-op だった parity 穴を閉塞 — `#b=` (0815) と同じ `_eT(_IB)` ガード
+
+## [1.7.848] - 2026-09-29
+
+### Fixed
+- ADR-0822: RTC 再接続で superseded channel/pc の遅延イベントが live link を破壊する race を修正 — per-channel `_pid` で自前の presence 行のみ purge、stale pc ハンドラは自 pc の状態を参照
+
+## [1.7.847] - 2026-09-29
+
+### Test
+- ADR-0821: `Net.init` の `rtc:` presence 維持不変を behavioural pin で固定 — room 切替でも live WebRTC link が落ちないことを実検証
+
+## [1.7.846] - 2026-09-29
+
+### Docs
+- ADR-0820: RTC/history/img queue/pinch/fonts 残余ライフサイクル監査完走 + spec backlog 空 (P3 は決定済み保留) を確認
+
 ## [1.7.845] - 2026-09-29
 
 ### Docs

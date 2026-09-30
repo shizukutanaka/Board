@@ -868,6 +868,14 @@ Board/
 │   └── ADR-0817-timer-lifecycle-audit.md  # タイマー・インターバルのライフサイクル監査完走 — 全クリア/再アーム/単一スロット
 │   └── ADR-0818-listener-raf-audit.md  # リスナ・rAF スロット監査完走 — 一回性/GC/once 再アーム/代入差し替え/単一アーム
 │   └── ADR-0819-storage-quota-audit.md  # storage・quota・img 送信キュー監査完走 — drain/room 切替/quota toast/estimate catch
+│   └── ADR-0820-misc-lifecycle-audit.md  # RTC/history/img queue/pinch/fonts 残余監査完走 + spec backlog 空を確認
+│   └── ADR-0821-rtc-presence-pin.md  # Net.init の rtc: presence 維持不変を behavioural pin で固定
+│   └── ADR-0822-superseded-channel-guard.md  # RTC 再接続の stale-channel race — per-channel _pid + superseded ガード
+│   └── ADR-0823-invite-hash-decode-guard.md  # #s= 招待リンクの malformed % も _eT(_IB) へ (#b= parity)
+│   └── ADR-0824-transport-matrix-sync.md  # architecture.md の transport×kind 表を dual-transport 実態へ同期
+│   └── ADR-0825-rtc-peerkey-pin.md  # _pk viaRtc 振分け + rtc bye の _rtcPeerId クリアを behavioural pin で固定
+│   └── ADR-0826-loresp-election-pin.md  # _loResp snapshot 応答選出 (最小id・asker/rtc 除外) を behavioural pin で固定
+│   └── ADR-0827-forged-rtc-peerid.md  # BC 経路の偽装 rtc: peer id 棄却 (reaper 免除悪用の幽霊行を閉塞)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
