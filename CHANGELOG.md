@@ -1,3 +1,11 @@
+## [1.7.885] - 2026-09-30
+
+### Docs
+- ADR-0859: 描画系ステートリーク監査完走 — `drawShape` が alpha/letterSpacing/shadow/dash を終端で必ず復元することを確認 (回転は save/restore 閉域、dash は `_D6`+conn 限定で pen 署名不要)。動的 `innerHTML` 代入ゼロ・DOM ミラー/aria-live/toast 全て textContent 経由で XSS 面 clean、`_imgIn` のルーム跨ぎ保持はコンテンツ指紋キーのため by-design、受信側図形数キャップは収束を壊すため不採用を記録
+
+### Tests
+- behavioural ピン 4 件 — shadow/dash/spacing/opacity 全装飾の図形を注入 ctx で `draw()` した後、alpha/letterSpacing/shadow が復元され dash が `[]` に戻ることを固定
+
 ## [1.7.884] - 2026-09-30
 
 ### Fixed

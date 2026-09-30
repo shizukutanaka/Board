@@ -13773,6 +13773,28 @@ try {
     try{api.drawOverlay()}finally{api._setOCtx(_po)}
     assert.ok(o1.some(c=>['stroke','strokeRect','rect','arc','moveTo','lineTo'].includes(c[0])),'drawOverlay paints the selection outline for a selected shape');
     state.selection.clear();
+    // ADR-0859: drawShape restores ctx state per shape — a fully-styled shape
+    // (opacity/dash/letterSpacing/shadow) must not bleed any of them into the
+    // next shape's draw. Proxy target keeps the last SET value of each field.
+    {
+      const t0={},d9=[];
+      const rc=new Proxy(t0,{get(t,p){
+        if(p==='measureText')return()=>({width:10});
+        if(p==='createLinearGradient'||p==='createRadialGradient'||p==='createPattern')return()=>({addColorStop(){}});
+        if(p in t)return t[p];
+        return(...a)=>{d9.push([p,a])};
+      },set(t,p,v){t[p]=v;return true}});
+      reset();
+      const DSX=Shape.make('rect',{x:10,y:10,w:100,h:80});DSX.shadow=1;DSX.dash=1;DSX.spacing=8;DSX.opacity=.4;
+      Store.commit({op:'add',shape:DSX});
+      const _pcx=api._setCtx(rc);
+      try{api.draw()}finally{api._setCtx(_pcx)}
+      assert.equal(t0.globalAlpha,1,'ADR-0859: ctx alpha restored after a styled shape');
+      assert.equal(t0.letterSpacing,'0px','ADR-0859: ctx letterSpacing restored');
+      assert.equal(t0.shadowBlur,0,'ADR-0859: ctx shadow restored');
+      const ld=d9.filter(c=>c[0]==='setLineDash').pop();
+      assert.ok(ld&&ld[1][0].length===0,'ADR-0859: dash pattern restored to []');
+    }
     // drop: .board file path via a fake FileReader — atomic whole-board replace (ADR-0518 residual closed)
     const _FR=globalThis.FileReader;
     globalThis.FileReader=class{
@@ -14496,7 +14518,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1787; // prev 1781 + 4 ADR-0857 stroke-less-pen/_tTk asserts + 2 ADR-0858 junk-prop-flood asserts
+  pass += 1791; // prev 1787 + 4 ADR-0859 ctx-state-restore asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
