@@ -2085,6 +2085,17 @@ try {
     if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}
     console.log('  ✓ Net.init preserves rtc: presence across rooms (ADR-0820)');
   }
+  // ADR-0836: stale _imgqT throttle stamps must not cross rooms — a key answered
+  // in the old room would suppress a valid answer in the new one.
+  {
+    state.roomId='roomC';
+    Net._imgqT.set('kk',nowTs());
+    Net.init('roomD');
+    assert.strictEqual(Net._imgqT.size,0,'imgq throttle map reset on room switch');
+    clearInterval(Net._presenceTimer);
+    if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}
+    console.log('  ✓ Net.init resets imgq throttle stamps (ADR-0836)');
+  }
   // ADR-0822: a superseded DataChannel must not clobber the live link — its
   // stale onclose purges only its own presence row.
   {
@@ -14381,7 +14392,9 @@ try {
     assert.ok(typeof kQ==='string'&&kQ.length>0,'slim emits the blob key');
     Net._onRecv({k:'imgq',key:kQ,peer:'zz'},false);
     assert.ok(sent.includes(kQ),'imgq answered from the sent-key map O(1)');
-    sent.length=0;
+    Net._onRecv({k:'imgq',key:kQ,peer:'zz'},false);
+    assert.strictEqual(sent.length,1,'imgq flood throttled per key (ADR-0836)');
+    sent.length=0;Net._imgqT.clear();
     Net._imgIn.set('kR','data:image/png;base64,RR');
     Net._onRecv({k:'imgq',key:'kR',peer:'zz'},false);
     assert.ok(sent.includes('kR'),'imgq answered from the received-blob store');
