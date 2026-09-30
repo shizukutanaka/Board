@@ -248,7 +248,9 @@ const checks = [
   ["Net.init resets causal markers across rooms (ADR-0619/0699)", html.includes("state.roomId&&state.roomId!==(roomId||DOC_KEY)){state._lastRep=null;_nameTs=0;_namePeer=''}")],
   ["move commit drops ids removed mid-gesture (ADR-0621)", html.includes("filter(id=>{const s=byId(id);return s&&_ul(s)})")],
   ["_sb drops dead ids at source + nudgeSelection parity (ADR-0623)", html.includes("_sb=()=>_selIds().map(byId).filter(Boolean)") && html.includes("unlockedSelectionIds(){return _selIds().filter(id=>{const s=byId(id);return s&&_ul(s)});}")],
-  ["_slimOp strips undo-only fields from wire ops (ADR-0625)", html.includes("const{origSel:_o2,moved:_m2,...rest}=op;return rest;") && html.includes("const{wc:_wc1,origSel:_o1,...r}=op;")],
+  ["_slimOp strips undo-only fields from wire ops (ADR-0625)", html.includes("const{origSel:_o2,moved:_m2,...rest}=op;") && html.includes("const{wc:_wc1,origSel:_o1,...r}=op;")],
+  ["undo restamps op.clock fresh before the backward apply (ADR-0717)", html.includes("const _ut=nowTs();op.clock={peer:_pi(),seq:++state.seq,ts:_ut};")],
+  ["undo-wire carries before for style/resize/align (ADR-0717)", html.includes("before:op.after,after:op.before}")],
   ["'clear' rides the wire as empty 'replace' + sender marker parity (ADR-0626)", html.includes("if(op.op==='clear')return{op:'replace',after:[],afterWc:{},clock:op.clock};") && html.includes("if(forward){if(op.clock)state._lastRep=op.clock;_sh().length=0")],
   ["contextlost purges GPU caches on restore (ADR-0627)", html.includes("_on(canvas,'contextlost',_pd)") && html.includes("_on(canvas,'contextrestored',_ctxUp)") && html.includes("_penCache.clear();_penCachePx=0;_inkD=null;Minimap.invalidateCache()")],
   ["img blob resolves evicted pending stragglers (ADR-0629)", html.includes("for(const s of _sh())if(s.img===msg.key){delete s.img;s.dataUrl=data;this._imgPending.delete(s.id)}")],
@@ -6706,9 +6708,15 @@ try {
     B.Store.commit({op:'resize',before:[cp(rX)],after:[{...cp(rX),w:99}],clock:{peer:'peerB',seq:1,ts:2000}}); // B newer
     rAB.forEach(m=>B.Net._onRecv(m)); rBA.forEach(m=>A.Net._onRecv(m));
     assert.strictEqual(A.state.shapes.find(s=>s.id==='rX').w, 99, 'undo-clobber precondition: A converged to the newer remote w=99');
-    A.Store.undo();   // undo A's OWN local resize op (the only entry in A's local history)
-    assert.strictEqual(A.state.shapes.find(s=>s.id==='rX').w, 99,
-      'ADR-0002 gap fix: undoing a superseded local resize does not clobber the newer converged remote write (was: regressed to w=10)');
+    A.state.seq=1;   // test-env: commits carried explicit seq:1 without bumping the counter — mirror production _fck ordering so the undo-wire's ++state.seq stays unique vs seenOps dedup
+    A.Store.undo();   // undo A's OWN local resize op — ADR-0717: the undo is a NEW
+    // competing write stamped fresh, so it wins LWW on BOTH sides (the old semantic
+    // skipped locally while the undo-wire still won on peers → split-brain w=99 vs 10)
+    assert.strictEqual(A.state.shapes.find(s=>s.id==='rX').w, 10,
+      'ADR-0717: undo restores locally under its fresh clock (was: split w=99 vs peers 10)');
+    rAB.forEach(m=>B.Net._onRecv(m));   // deliver the undo-wire to B
+    assert.strictEqual(B.state.shapes.find(s=>s.id==='rX').w, 10,
+      'ADR-0717: peers apply the same undo-wire → converged on w=10');
 
     // (iv) non-regression: with NO concurrent remote write, undo of a local resize must
     // still restore the prior value exactly as before this fix.
@@ -6770,9 +6778,34 @@ try {
     hAB.forEach(m=>B.Net._onRecv(m)); hBA.forEach(m=>A.Net._onRecv(m));
     assert.strictEqual(A.state.shapes.find(s=>s.id==='gs2').groupId, 'GB2', 'undo-clobber precondition: A converged to the newer remote groupId GB2');
     A.Store.undo();   // undo A's OWN local group op
-    assert.strictEqual(A.state.shapes.find(s=>s.id==='gs2').groupId, 'GB2',
-      'ADR-0002 gap fix: undoing a superseded local group op does not clobber the newer converged remote groupId (was: regressed to ungrouped)');
-    console.log('  ✓ ADR-0002 gap fix: undo no longer clobbers a newer converged remote groupId write (group)');
+    assert.ok(!A.state.shapes.find(s=>s.id==='gs2').groupId,
+      'ADR-0717: group undo restores locally under its fresh clock (was: split GB2 vs ungrouped)');
+    hAB.forEach(m=>B.Net._onRecv(m));   // deliver the undo-wire to B
+    assert.ok(!B.state.shapes.find(s=>s.id==='gs2').groupId,
+      'ADR-0717: peers apply the same undo-wire → converged on ungrouped');
+    console.log('  ✓ ADR-0717: group undo converges both sides under the fresh clock (was: local skipped, peers applied)');
+
+    // ADR-0717 (round467): undo is itself a NEW competing write — the backward apply
+    // must arbitrate under the SAME fresh clock the peers see on the undo-wire ops.
+    // Feeding _lwwSkip the ORIGINAL commit clock while the wire carried a fresh _fck
+    // clock split arbitration: a remote write landing between commit and undo won
+    // locally but lost remotely → per-property split-brain (local x=99, peers x=0).
+    reset(A); reset(B);
+    A.state.shapes.push(cp(rX)); B.state.shapes.push(cp(rX)); A.sortZ(); B.sortZ();
+    rAB=[]; rBA=[];
+    A.Net.broadcast = op => rAB.push({k:'op',op:cp(op)});
+    B.Net.broadcast = op => rBA.push({k:'op',op:cp(op)});
+    A.Store.commit({op:'upd',id:'rX',before:{stroke:'#000'},after:{stroke:'#f00'},clock:{peer:'peerA',seq:1,ts:1000}});
+    B.Store.commit({op:'upd',id:'rX',before:{stroke:'#000'},after:{stroke:'#00f'},clock:{peer:'peerB',seq:1,ts:2000}});   // B newer — converges on both sides
+    rAB.forEach(m=>B.Net._onRecv(m)); rBA.forEach(m=>A.Net._onRecv(m));
+    assert.strictEqual(A.state.shapes.find(s=>s.id==='rX').stroke, '#00f', 'ADR-0717 precondition: stroke converged to the newer write');
+    A.state.seq=1;   // explicit-clock commits don't bump the counter in the test env — mirror _fck ordering so the undo-wire seq stays unique vs seenOps
+    A.Store.undo();
+    assert.strictEqual(A.state.shapes.find(s=>s.id==='rX').stroke, '#000', 'ADR-0717: undo restores locally under the fresh clock');
+    rAB.forEach(m=>B.Net._onRecv(m));
+    assert.strictEqual(B.state.shapes.find(s=>s.id==='rX').stroke, '#000', 'ADR-0717: peers apply the same undo-wire → converged on the undo');
+    assert.strictEqual(B.state.wclock['rX'].stroke.peer, 'peerA', 'ADR-0717: peer wclock records the undo writer — no split arbitration');
+    console.log('  ✓ ADR-0717: undo arbitrates via the fresh undo-wire clock — identical winner on both sides');
 
     // v1.6.87: a new text/sticky is committed+broadcast with EMPTY text, then filled in
     // the editor. _syncTextFinalize must push the typed content (and a dismissed-empty
@@ -9707,11 +9740,13 @@ try {
     // state.wclock[lwwSh.id].stroke === c2 (newer than c1)
     // Alice undoes: must NOT restore '#000000' — wclock says c2 owns stroke
     Store.undo();
-    // BEFORE fix: stroke === '#000000' (undo ignores wclock, clobbers peer's newer blue).
-    // AFTER fix:  stroke === '#0000ff' (stroke skipped in backward patch; wclock c2 > c1).
-    assert.strictEqual(liveLww().stroke,'#0000ff',
-      'v1.7.27: undo must not regress properties already superseded by a remote peer with newer clock');
-    console.log('  ✓ _apply upd backward: wclock-protected properties skipped in undo (v1.7.27)');
+    // ADR-0717: the undo restamps the op with a FRESH clock before the backward apply —
+    // it IS a new write competing under LWW, so it wins vs bob's older c2 and restores
+    // '#000000' locally; the undo-wire carries the same fresh (ts,peer) so peers apply
+    // the same value → converged (the old skip-here/apply-there split was the bug).
+    assert.strictEqual(liveLww().stroke,'#000000',
+      'ADR-0717: undo restores under its fresh clock — converged on both sides');
+    console.log('  ✓ _apply upd backward: undo arbitrates via the fresh wire clock (ADR-0717)');
   }
 
   // v1.7.28: validRemotePayload for 'upd' must block 'locked' key in op.after.
@@ -13073,7 +13108,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1587; // prev 1517 + 1 tab aria-label pin (ADR-0682)
+  pass += 1595; // prev 1587 + 4 ADR-0717 behavioural + 2 pins + 2 net convergence asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
