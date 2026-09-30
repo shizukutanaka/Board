@@ -3673,6 +3673,23 @@ try {
       assert.ok(!free.includes(api.I18N.ja.srBound)&&!free.includes(api.I18N.en.srBound),'unbound connector has no bound tag');
       console.log('  ✓ ADR-0380: describeShape group + bound-endpoint announce (3 asserts)');
     }
+    // ADR-0882: dash/align/valign/text-flags are style identity a SR user can
+    // otherwise never discover — announced with the same ctx tags the menus use.
+    {
+      const d1=describeShape({type:'rect',x:0,y:0,w:10,h:10,dash:1});
+      assert.ok(d1.includes(api.I18N.ja.dashed)||d1.includes(api.I18N.en.dashed),'dash=1 announces dashed');
+      const d2=describeShape({type:'rect',x:0,y:0,w:10,h:10,dash:2});
+      assert.ok(d2.includes(api.I18N.ja.dotted)||d2.includes(api.I18N.en.dotted),'dash=2 announces dotted');
+      const al=describeShape({type:'rect',x:0,y:0,w:10,h:10,align:'right'});
+      assert.ok(al.includes(api.I18N.ja.ctxAlignRight)||al.includes(api.I18N.en.ctxAlignRight),'align:right announces right-align');
+      const va=describeShape({type:'sticky',x:0,y:0,w:100,h:100,valign:'middle'});
+      assert.ok(va.includes(api.I18N.ja.ctxAlignCY)||va.includes(api.I18N.en.ctxAlignCY),'valign:middle announces center-vertical');
+      const fl=describeShape({type:'text',x:0,y:0,w:10,h:10,bold:true,strike:true});
+      assert.ok((fl.includes(api.I18N.ja.tagBold)||fl.includes(api.I18N.en.tagBold))&&(fl.includes(api.I18N.ja.tagStrike)||fl.includes(api.I18N.en.tagStrike)),'text flags announce bold+strike');
+      const plain=describeShape({type:'rect',x:0,y:0,w:10,h:10});
+      assert.ok(!plain.includes(api.I18N.ja.tagBold)&&!plain.includes(api.I18N.en.tagBold),'absent flags stay silent');
+      console.log('  ✓ ADR-0882: describeShape dash/align/valign/text-flag announce (6 asserts)');
+    }
     assert.ok(long.includes('…')&&!long.includes('x'.repeat(40)),'describeShape: long content truncated to ~30 chars + …');
     // unlabeled shapes are unchanged (backward compatible — no quotes added)
     assert.ok(!describeShape({type:'rect',x:10,y:20,w:100,h:50}).includes('“'),'describeShape: unlabeled shape adds no content quote');
