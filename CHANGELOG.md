@@ -1,3 +1,8 @@
+## [1.7.897] - 2026-09-30
+
+### Docs
+- 描画消費 prop の書式監査完走: canvas/DOM sink 全てが 0868/0870 ゲート・whitelist 写像・ローカル定数のいずれかで決定的 (state 漏れなし)。enum prop の intake gate は旧値を持つ実ボード保護のため fallback 維持・非採用 (ADR-0871)
+
 ## [1.7.896] - 2026-09-30
 
 ### Fix

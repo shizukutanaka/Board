@@ -213,6 +213,9 @@ IDB 復元 (`Persist.load`/`restoreBackup`) も `_attachShape` を通して未�
   範囲外代入を無視する canvas 仕様による前 shape 状態漏れを閉塞する。
   書式ゲート (ADR-0870): `color`/`stroke`/`fill` は `CSS.supports('color',v)`
   (`fill:'none'` センチネル保護) — 無効 CSS 色の代入無視による色漏れを閉塞。
+  描画消費 prop の sink 監査は ADR-0871 で完走: enum 系 (head/startHead/
+  fstyle/align/valign/font) は全経路で確定的 fallback を持ち、後方互換の
+  ため intake ゲートは非採用 (旧値を持つ実ボードを棄却しない)。
   蓄積上限は全キュー/マップで完備 (ADR-0869); 総図形数の累積ゲートは
   到着順序依存で恒久発散するため、収束安全な op 単位検証のみを採る。
 
