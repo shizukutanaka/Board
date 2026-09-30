@@ -1,3 +1,13 @@
+## [1.7.839] - 2026-09-29
+
+### Fixed
+- ADR-0813: SW 登録の blob URL を登録完了後に解放 — `_oURL` 全サイトの revoke parity
+
+## [1.7.838] - 2026-09-29
+
+### Test
+- ADR-0812: presence ゲートを `Net._onRecv` 直叩きで behavioural ピン (cursor 棄却/h:1/peer id 上限)
+
 ## [1.7.837] - 2026-09-29
 
 ### Docs
