@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.892';   // ADR-0866
+const V='1.7.893';   // ADR-0867
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4649,8 +4649,9 @@ const IMG_IMPORT_MAX_DIM=2048;
 function _imgImportFile(f,cb){
   const reader=new FileReader();
   reader.onload=()=>{
-    // ADR-0527: the 2048px downscale below already caps memory — reject early
-    if(_ln(reader.result) > 16*1024*1024){
+    // ADR-0527/0867: reject early at the wire dataUrl bound exactly — a value
+    // in (16e6, 16*1024*1024) would land locally yet be rejected by every peer.
+    if(_ln(reader.result) > 16_000_000){
       _w(t('imgBig')+' ('+_rnd(_ln(reader.result)/1024)+'KB)');return;
     }
     const img=new Image();
