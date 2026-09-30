@@ -835,6 +835,12 @@ Board/
 │   └── ADR-0784-imgin-byte-cap.md  # _imgIn 受信 blob ストアに 64MB バイト上限
 │   └── ADR-0785-imgchunks-aggregate-cap.md  # _imgChunks 集計バイト予算 24MB
 │   └── ADR-0786-reassembly-ttl.md  # 再組立てスロットに 60s アイドル TTL
+│   └── ADR-0787-wire-bounds-docs-sync.md  # architecture.md へ 0775-0786 期規則を同期
+│   └── ADR-0788-wclock-null-proto.md  # wclock の null-proto 化 — __proto__ 汚染による盤面凍結を解消
+│   └── ADR-0789-wclock-fold.md  # wclock write/merge 全サイトを _wD/_wR/_wTb へ集約
+│   └── ADR-0790-dup-id-intake.md  # wholesale 取込の dup id dedupe (keep-last/byId parity)
+│   └── ADR-0791-future-ts-bound.md  # 全 LWW clock ts の壁時計+5分上限 (_tsOK)
+│   └── ADR-0792-coord-magnitude-bound.md  # 座標 magnitude 上限 |coord|≤1e7 (view-poison DoS 解消)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

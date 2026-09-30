@@ -470,6 +470,23 @@ DOM 要素は `data-t` 属性 + `UI.applyI18n()` で翻訳 (起動時に 1 回�
   無通知棄却されて分岐していた問題を解消。実効の DoS 上限は
   配列数でなくワイヤサイズ (生 op ≤256KiB、断片化経路 ≤24MB)
   にある — それ超過は `_fragSend`/`_fragIn` の明示ガード (ADR-0603)。
+- **clock 本体も bounded** (ADR-0779/0780): `validClock` は `peer ≤MAX_PEER_ID_LEN`・
+  `seq ≤80` を要求し、snapshot ヘッダの `namePeer`/`ntp` も `_idOK` で縛る —
+  文字列長の自由だった残窓を閉塞。`pageDel 'unpage'` は wire kill-set (`kill[]`)
+  が無ければ棄却 (ADR-0776)。op が運ぶ未知の `s.pg` は `'?'` スタブ heal で
+  表示崩壊させず、`pageAdd` が到着した時点で昇格解消する (ADR-0775/0778)。
+- **蓄積量は件数ではなくバイトで縛る** (ADR-0781–0785): 再組立て・送信
+  キュー・受信 blob 保持の全経路に per-slot + 集計のバイト予算:
+  `img` スロット ≤12MB 且つ `_imgChunks` 集計 ≤24MB (最古 LRU 退避)、
+  `snap`/`opc` スロット ≤24MB 早期中断、`_dcQ` ≤4096件 且つ ≤32MB (`_dcQB`)、
+  保持側 `_imgIn` ≤256件 且つ ≤64MB。件数上限だけの時代は「最大チャンク
+  ×件数」で GB 級に膨らみ得た — 現在の攻撃者駆動保持量の実効上限は合計
+  ~112MB。
+- **再組立てに TTL** (ADR-0786): 容量だけでなく寿命も縛る — presence タイマで
+  `_reapPeers` と並走する `_reapFrags` が 60s アイドルの `_imgChunks`/
+  `_snapIn`/`_opcIn` スロットを退避 (各チャンク格納時の `t` スタンプで
+  最終活動判定 — 生きたストリームは殺さない)。後続チャンクは seq:0/
+  out-of-order で自然に再開される。
 
 ### CRDT clock
 各 op は `{peer, seq}` clock を持ち、`seenOps` (Set) で重複排除。スナップショット

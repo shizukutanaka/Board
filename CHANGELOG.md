@@ -1,3 +1,36 @@
+## [1.7.818] - 2026-09-29
+
+### Fixed
+- ADR-0792: `{x:1e15}` の遠方図形が bboxAll 系全消費者 (fit/minimap/エクスポート) を 1e15-ワールドに潰し全ピアを永続ブランク化する 1-op DoS を、座標 magnitude 上限 `_xyOK` (|coord|≤1e7) で解消
+
+## [1.7.817] - 2026-09-29
+
+### Fixed
+- ADR-0791: 遠未来 ts (`ts:1e15` 等) が LWW 仲裁に永久勝利して全 prop/改名/replace 収束を乗っ取る実害を、全 clock 取込に壁時計 +5分上限 `_tsOK` で解消 (op.clock/wc/rep/name ts/nts/IDB 一括)
+
+### Refactor
+- `state.pages` 参照を `_pgs()` アクセサへ集約 (~310B 回収)
+
+## [1.7.816] - 2026-09-29
+
+### Fixed
+- ADR-0790: wholesale intake (.board import・共有リンク・IDB restore・remote 'replace') が重複 id の図形を素通りさせ、byId last-wins で先出コピーが幽霊化していた実害を `_uniq` (keep-last) で解消
+
+## [1.7.815] - 2026-09-29
+
+### Refactor
+- ADR-0789: wclock write/merge の全サイトを `_wD`/`_wR`/`_wTb` + `Object.entries`→`_oe` へ集約 (~226B 回収) — tomb merge の採択規則を単一定義化
+
+## [1.7.814] - 2026-09-29
+
+### Fixed
+- ADR-0788: `wclock` プロトタイプ汚染による盤面凍結 — リモート 'addMany' が `wc:{"__proto__":{_del:clock}}` を運ぶと、プロトタイプ保持の `{}` への書き込みがマップの PROTOTYPE を変異させ、以後の全 add が「墓標あり」と誤判定され沈黙棄却される実害 (1 メッセージで全図形追加が死ぬ)。`wclock`・内側の per-prop マップ・`op.wc`/`afterWc` 採用・墓標書込みの全サイトを `_wM` (null-proto) 化し、`'__proto__'` を正規の own key として扱う
+
+## [1.7.813] - 2026-09-29
+
+### Docs
+- ADR-0787: architecture.md の wire 境界節へ ADR-0775–0786 期の規則を同期 — clock の文字列長 bound・kill-set 必須化・'?' スタブ heal・全経路バイト予算・再組立て TTL
+
 ## [1.7.812] - 2026-09-29
 
 ### Fixed
