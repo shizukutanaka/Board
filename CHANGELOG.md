@@ -1,3 +1,8 @@
+## [1.7.923] - 2026-09-30
+
+### Tests
+- ADR-0896 の実イベント経路ピン — `fire('pointerdown',{button:3/4})` が `ptr.down` をアームせず図形も生成しないことを固定 + 周辺入力経路 (pointerup/cancel/wheel/dblclick/drop/pinch/capture) 監査 clean (ADR-0897)
+
 ## [1.7.922] - 2026-09-30
 
 ### Fixed

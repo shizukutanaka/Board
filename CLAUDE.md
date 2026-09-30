@@ -945,6 +945,7 @@ Board/
 │   └── ADR-0894-overlay-lifecycle-audit.md  # 編集 overlay ライフサイクル監査完走 — open/close/forced-fold/sig-reset 全経路網羅、実害なし
 │   └── ADR-0895-follow-shape-pins.md  # _teFollow の _gridVer 追従を実経路ピン — viewport 不変でも shape upd で overlay 再配置+再スタイルを固定
 │   └── ADR-0896-non-primary-buttons.md  # サイドボタン (X1/X2) ・スタイラスバレルがジェスチャをアームする実害を `e.button>1` で一括閉塞 (0532 の右ボタン限定を拡張)
+│   └── ADR-0897-button-pins.md  # 0896 の実イベント経路ピン (button 3/4 がアームしない) + 周辺入力経路監査 clean
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
