@@ -4104,6 +4104,12 @@ try {
     assert.strictEqual(Net._mergeSnapshotOp({op:'add',shape:snapShape}),'skip','missing wc → keep (legacy)');
     // unknown shape → add path
     assert.strictEqual(Net._mergeSnapshotOp({op:'add',shape:{...snapShape,id:'NEW'},clock:{peer:'A',seq:'snap:NEW',ts:0}}),'add','unknown shape adopted');
+    // ADR-0846: a crafted snapshot carrying a non-'add' op must not execute it
+    // under the snapshot path — the 'add'-only gate rejects before LWW merging.
+    {const before=byId(snapShape.id)?.x;
+     const res=Net._mergeSnapshotOp({op:'del',ids:[snapShape.id],wc:{x:{peer:'A',seq:1,ts:9e15}}});
+     assert.strictEqual(res,'skip','non-add op rejected at merge path');
+     assert.ok(byId(snapShape.id)&&byId(snapShape.id).x===before,'shape untouched by rejected op');}
     console.log('  ✓ snapshot LWW merge: per-prop convergence, no history (6 asserts)');
   }
 
