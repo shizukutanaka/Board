@@ -14403,6 +14403,9 @@ try {
     assert.strictEqual(sent.length,0,'oversized imgq key ignored');
     Net._send=_os;
     state.shapes=[];_invalidateGrid();Net._imgIn.clear();
+    // ADR-0837: the parked-ref sweep must broadcast — _send is BC-only and would
+    // never reach an RTC-only peer (the link where mid-flush disconnects live).
+    assert.ok(html.includes("this._bcast(_mk('imgq',{key:e.k}))"),'imgq sweep rides _bcast');
     console.log('  ✓ imgq re-request answered from blob store or live shape (ADR-0835)');
   }
 
