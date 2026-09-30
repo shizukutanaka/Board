@@ -1,3 +1,11 @@
+## [1.7.883] - 2026-09-30
+
+### Fixed
+- ADR-0857: stroke 未設定の pen (細工 .board / stroke 属性なし SVG import 等) が描画コンテキストの残色で塗られる実害を解消 — drawPen が `--brand` フォールバックを解決 (box/frame と同規約)。同時に `_tTk` が `_penCache` もパージし、OS テーマ反転でトークン色を焼き付けた筆跡ビットマップが残留しない
+
+### Tests
+- behavioural ピン 3 件 — 1 点/多点ペンの fill 時色サンプリング + `_tTk` パージのソースピン
+
 ## [1.7.882] - 2026-09-30
 
 ### Docs

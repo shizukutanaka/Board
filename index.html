@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.882';   // ADR-0856
+const V='1.7.883';   // ADR-0857
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2872,7 +2872,7 @@ function _drawMeasure(c){
 let _cssCache=Object.create(null);
 function _gC(v){let x=_cssCache[v];if(x===_ud){x=_trm(getComputedStyle(_de).getPropertyValue(v));_cssCache[v]=x}return x}
 function clearCSSCache(){_cssCache=Object.create(null);_iv()}
-const _tTk=()=>{clearCSSCache();Minimap.invalidateCache()}   // ADR-0852: OS scheme/contrast flips change the same tokens — drop the minimap scene too
+const _tTk=()=>{clearCSSCache();Minimap.invalidateCache();_penCache.clear();_penCachePx=0}   // ADR-0852/0857: token flips also stale the pen bitmaps (drawPen resolves unset stroke to --brand at rasterize time)
 function drawGrid(W,H){
   const v=_vp();
   const gs=GRID_SIZE;
@@ -3482,14 +3482,14 @@ function drawPen(s,c){
   c=c||ctx;
   const p=s.pts,n=_ln(p);
   if(n<2){
-    c.fillStyle=_sk(s);
+    c.fillStyle=_sk(s)||_gC('--brand');   // ADR-0857: stroke-less pen must not leak the leftover fillStyle
     _bp(c);c.arc(p[0][0],p[0][1],(_szz(s)||2)/2,0,PI2);_fil(c);
     return;
   }
   // ADR-0046: union fill of trapezoid+disc primitives gives
   // naturally tapered ends; identical primitives to the live tail
   const w=penWidths(p,_szz(s)),oldFill=c.fillStyle;
-  c.fillStyle=_sk(s);
+  c.fillStyle=_sk(s)||_gC('--brand');     // ADR-0857
   _penFillRange(c,p,w,n,0,n-1);
   _fsS(c,oldFill);
 }
