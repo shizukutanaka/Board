@@ -968,6 +968,8 @@ const checks = [
   ['i18n has invite-link keys ja+en', html.includes("shareCopyInviteLink:'招待リンクをコピー'") && html.includes("shareCopyInviteLink:'Copy invite link'") && html.includes("inviteLinkOpened:") && html.includes("inviteLinkNoCode:")],
   // v1.6.44: x,y decorative label is aria-hidden
   ['x,y status label is aria-hidden (decorative)', html.includes('<span class="lbl" aria-hidden="true">x,y</span>')],
+  // ADR-0848: buttons' decorative svg/kbd children hidden from AT (1 VO stop per control — VoiceOver spot-check found ~60 phantom items)
+  ['button decorative children aria-hidden (FT-11)', html.includes("_qsa(document,'button svg,button kbd'))_sa(c,'aria-hidden','true')")],
   // v1.6.45: connection status is aria-live (announces online/offline to SR)
   ['sConn has aria-live=polite (online/offline announces to SR)', html.includes('id="sConn" aria-live="polite"')],
   // v1.6.45: zoom badge has role=group for semantic grouping

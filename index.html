@@ -875,7 +875,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.873';   // ADR-0847
+const V='1.7.874';   // ADR-0848
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2630,7 +2630,6 @@ function describeShape(s){
   return d;
 }
 // ADR-0037: announce pointer-path selection changes — marquee, click/group select,
-// ⌘A and Escape were SR-silent while keyboard cycleSel already announced each shape.
 // Announcement goes through UI.toast (aria-live) like the other status messages.
 function _announceSel(){
   const n=_selN();
@@ -2860,8 +2859,7 @@ function drawOverlay(){
   drawPeerSelections(c);   // ADR-0011 (before cursors: pointer renders on top of frames)
   drawPeerCursors(c);   // ADR-0010
 }
-// FT-17: a blank board previously gave zero on-canvas guidance — the only discovery
-// path was the '?' help modal. Draw-only (reads state, no mutation); disappears the
+// FT-17: draw-only empty-board hint (reads state, no mutation); disappears the
 // instant a shape is added (_nS() check at the call site).
 function drawEmptyHint(c,W,H){
   c.fillStyle=_gC('--ink-3');   // tertiary text token: 4.7:1 AA, deliberately muted
@@ -9430,6 +9428,7 @@ function wire(){
   // tool buttons
   for(const b of _qsa(document,'.tool'))
     _on(b,_CK,()=>pickTool(b.dataset.tool));
+  for(const c of _qsa(document,'button svg,button kbd'))_sa(c,'aria-hidden','true');   // ADR-0848
   // topbar
   _oC(_g('btnUndo'),()=>Store.undo()&&_tst(t('undone')));
   _oC(_g('btnRedo'),()=>Store.redo()&&_tst(t('redone')));
