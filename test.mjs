@@ -1660,6 +1660,11 @@ fakeWin.window = fakeWin; fakeWin.document = fakeDoc; fakeWin.self = fakeWin;
 // Bare global lookups (e.g. `innerWidth` in openCtxMenu) resolve to globalThis
 // in the Function scope — mirror the fake window metrics there.
 globalThis.innerWidth = 800; globalThis.innerHeight = 600;
+// Stand-in for the platform CSS parser consulted by _colOK (ADR-0870): mirrors
+// browsers on the pin's cases — real color syntax accepted, junk rejected.
+globalThis.CSS={supports:(k,v)=>{v=String(v).toLowerCase();
+  if(/^(#[0-9a-f]{3,8}|rgba?\([^)]{0,80}\)|hsla?\([^)]{0,80}\))$/.test(v))return true;
+  return /^(red|blue|green|white|black|grey|gray|yellow|orange|purple|pink|brown|cyan|magenta|navy|teal|olive|maroon|lime|aqua|silver|gold|indigo|violet|crimson|rebeccapurple|transparent|currentcolor)$/.test(v)}};
 
 // Minimal working fake of the IndexedDB request/transaction async-callback shape, used to
 // exercise Persist.saveBackup/checkBackup/restoreBackup for real (not just call-counting).
@@ -10407,6 +10412,22 @@ try {
     console.log('  ✓ ADR-0868: out-of-range opacity/size/fontSize rejected at validPatch');
   }
 
+  // ADR-0870: canvas silently ignores an invalid CSS color assignment — a remote
+  // stroke/fill/color that doesn't parse would leak the previous shape's color.
+  {
+    const mk=prop=>({op:'upd',id:'x',after:prop});
+    assert.ok(!validRemotePayload(mk({stroke:'url(evil)'})),'ADR-0870: url() stroke rejected');
+    assert.ok(!validRemotePayload(mk({stroke:'notacolor'})),'ADR-0870: non-color word rejected');
+    assert.ok(!validRemotePayload(mk({fill:'rgb('})),'ADR-0870: malformed rgb() rejected');
+    assert.ok(!validRemotePayload(mk({color:';x:#fff'})),'ADR-0870: declaration junk rejected');
+    assert.ok(validRemotePayload(mk({stroke:'#1e293b'})),'ADR-0870: hex accepted');
+    assert.ok(validRemotePayload(mk({fill:'rgba(0,196,204,.08)'})),'ADR-0870: rgba() accepted');
+    assert.ok(validRemotePayload(mk({fill:'transparent'})),'ADR-0870: transparent accepted');
+    assert.ok(validRemotePayload(mk({fill:'none'})),'ADR-0870: none sentinel accepted');
+    assert.ok(validRemotePayload(mk({stroke:'red'})),'ADR-0870: named color accepted');
+    console.log('  ✓ ADR-0870: invalid CSS colors rejected at validPatch');
+  }
+
 
   // v1.7.447a (ADR-0413): flag props accept true|1|null — {shadow:true} in a style op
   // (toggleShadow writes true) was rejected by the numeric whitelist, silently dropping
@@ -14663,7 +14684,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1825; // prev 1819 + 6 ADR-0868 range-bound asserts
+  pass += 1834; // prev 1825 + 9 ADR-0870 color-format asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

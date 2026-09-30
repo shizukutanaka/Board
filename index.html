@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.895';   // ADR-0869
+const V='1.7.896';   // ADR-0870
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1301,27 +1301,26 @@ function validPatch(p){
     if(k in p&&p[k]!=null&&typeof p[k]!=='number')return false;
   }
   for(const k of ['bold','italic','under','strike','locked','shadow','hl'])if(k in p&&p[k]!=null&&typeof p[k]!=='boolean'&&typeof p[k]!=='number')return false;   // ADR-0411/0413/0430: flags are true|1 (drawio writes 1; shadow writes true)
-  // ADR-0868: range bounds — canvas ignores out-of-range globalAlpha/lineWidth
-  // and invalid font strings, so hostile values leak the previous shape's state.
+  // ADR-0868: range bounds — canvas ignores out-of-range globalAlpha/lineWidth/font, leaking the previous shape's state.
   for(const k of['size','fontSize'])if(p[k]!=null&&!(p[k]>0&&p[k]<=1e4))return false;
   if(p.opacity!=null&&(p.opacity<0||p.opacity>1))return false;
-  if(p.aF!=null&&(!_iO(p.aF)||!(p.aF.fx>=0&&p.aF.fx<=1)||!(p.aF.fy>=0&&p.aF.fy<=1)))return false;   // ADR-0793: focus 0..1 — else endpoint far off-canvas
+  if(p.aF!=null&&(!_iO(p.aF)||!(p.aF.fx>=0&&p.aF.fx<=1)||!(p.aF.fy>=0&&p.aF.fy<=1)))return false;   // ADR-0793
   if(p.bF!=null&&(!_iO(p.bF)||!(p.bF.fx>=0&&p.bF.fx<=1)||!(p.bF.fy>=0&&p.bF.fy<=1)))return false;   // ADR-0793
-  // ADR-0368: array-prop shape checks on upd patches —
-  // a crafted {pts:[["x"]]} or {way:[{x:'a'}]} is rejected
+  // ADR-0368: array-prop shape checks on upd patches.
   if(p.pts!=null&&!(_iA(p.pts)&&_ln(p.pts)<=50000&&p.pts.every(q=>_iA(q)&&_xyOK(q[0])&&_xyOK(q[1])&&(q[2]==null||_fin(q[2])))))return false;   // ADR-0792
   if(p.way!=null&&!(_iA(p.way)&&_ln(p.way)<=200&&p.way.every(w=>w&&_iO(w)&&_xyOK(w.x)&&_xyOK(w.y))))return false;   // ADR-0792
-  // ADR-0369: string props — type + length (a wrapText-exploding text is rejected).
+  // ADR-0369: string props — type + length.
   for(const k of ['text','label','docName','link','groupId','img','color','stroke','fill','font','head','startHead','align','valign','type','dataUrl','fstyle','a','b','frac','pg']){
     if(k in p&&p[k]!=null&&typeof p[k]!=='string')return false;
     if(k in p&&typeof p[k]==='string'&&k!=='dataUrl'&&p[k].length>(k==='text'?5000:600))return false;
   }
-  // ADR-0865: serialized weight ≤6KB/prop — else unknown keys carry MB payloads onto shapes, relayed by snapshots.
+  // ADR-0865: serialized weight ≤6KB/prop.
   for(const k of _ok(p))if(k!=='pts'&&k!=='dataUrl'&&k!=='text'&&_ln(_JS(p[k]))>6e3)return false;
-  // dataUrl → <img>: a non-data: URL is a deanonymization vector (img-loaded SVG can't run scripts or fetch).
-  if('dataUrl' in p&&p.dataUrl!=null&&!(_iS(p.dataUrl)&&_ln(p.dataUrl)<=16_000_000&&/^data:image\//.test(p.dataUrl)))return false;   // ADR-0379: length cap
-  // ADR-0327: s.link flows into window.open —
-  // a javascript:/data: URL; only http(s) is openable.
+  // ADR-0870: invalid CSS colors are silently ignored by canvas, leaking the previous shape's color.
+  for(const k of['color','stroke','fill'])if(p[k]!=null&&!_colOK(p[k]))return false;
+  // dataUrl → <img>: a non-data: URL is a deanonymization vector.
+  if('dataUrl' in p&&p.dataUrl!=null&&!(_iS(p.dataUrl)&&_ln(p.dataUrl)<=16_000_000&&/^data:image\//.test(p.dataUrl)))return false;   // ADR-0379
+  // ADR-0327: s.link flows into window.open — only http(s) is openable.
   if('link' in p&&p.link!=null&&!(_iS(p.link)&&/^https?:\/\//.test(p.link)))return false;
   return true;
 }
@@ -1343,6 +1342,9 @@ function _cleanVal(v,depth){
 }
 const _TYPES=_sT(['rect','ellipse','diamond','pen','line','arrow','text','sticky','image','frame']);   // ADR-0387
 const _ptsOK=a=>_iA(a)&&a.every(p=>_iA(p)&&_ln(p)>=2&&p.every(n=>_iN(n)&&_fin(n)));   // ADR-0436: shared pen-pts tuple check
+const _CSS=typeof CSS!=='undefined'?CSS:null;
+// 'none' is a Board sentinel (fill:'none' = no fill, ADR-0288), not a CSS color.
+const _colOK=v=>v==='none'||(_CSS?_CSS.supports('color',v):/^#[0-9a-fA-F]{3,8}$|^[a-zA-Z]+\([^)]{0,80}\)$|^[a-zA-Z]{1,20}$/.test(v));   // ADR-0870
 function validShape(s){
   if(!s||!_iO(s)||_ok(s).length>64||!_iS(s.id)||_ln(s.id)>64||!_TYPES.has(s.type)||!_iN(s.z))return false;   // ADR-0387/0388/0858: non-string/huge id — byId misses, Map keys diverge
   if(!validPatch(s))return false;                  // no NaN/Inf coords, no pollution keys
@@ -8058,7 +8060,7 @@ const Net={
     if(op.op==='pageName'){const s={op:'pageName',id:op.id,after:op.after,clock:op.clock};if(op.nts!=null){s.nts=op.nts;s.ntp=op.ntp}return s}   // ADR-0705/0727: undo-wire also carries the restored nts/ntp
     if(_iA(op.shapes)&&op.op==='addMany'){const{origSel:_o1,...r}=op;return{...r,shapes:this._slimShapes(op.shapes)}}   // ADR-0625/0721
     if(_iA(op.shapes)&&(op.op==='del'||op.op==='clear'||op.op==='pageAdd')){const{wc:_wc1,origSel:_o1,...r}=op;return{...r,shapes:this._slimShapes(op.shapes)}}   // ADR-0445/0625: id/locked only; undo-only fields never ride the wire
-    if(op.op==='replace')return{op:'replace',after:this._slimShapes(op.after||[]),afterWc:op.afterWc,clock:op.clock,pages:op.pages,curPg:op.curPg};   // ADR-0646/0720: pages AND the landing page ride the wire — receivers' _pgAdopt(op.pages,op.curPg) fell back to page 1 while the sender landed on op.curPg; before* stay local
+    if(op.op==='replace')return{op:'replace',after:this._slimShapes(op.after||[]),afterWc:op.afterWc,clock:op.clock,pages:op.pages,curPg:op.curPg};   // ADR-0646/0720: pages + landing page ride the wire
     const{origSel:_o2,moved:_m2,...rest}=op;
     if(op.op==='move'&&_iA(op.ids)&&_iN(op.dx)&&_iN(op.dy)){   // ADR-0729
       const after=[],before=[];
