@@ -3257,6 +3257,14 @@ try {
     // the gate is shared, so the remote-sync vectors close too:
     assert.ok(!validRemotePayload({op:'add',shape:{id:'i',type:'image',z:0,dataUrl:'https://evil.example/x'}}), 'remote add of an image with an external dataUrl rejected (malicious-peer vector)');
     assert.ok(!validRemotePayload({op:'upd',id:'i',after:{dataUrl:'https://evil.example/x'}}), 'remote upd setting an external dataUrl on an existing image rejected');
+    // ADR-0858: junk-prop flood — patches/shapes carry only known keys upstream of
+    // validPatch/validShape, but UNKNOWN keys were let through, landing on the shape
+    // (_oa assign) AND stamping per-shape wclock with attacker-named props; one op can
+    // carry ~1M keys that then propagate into every peer's wclock via snapshots.
+    {const flood={};for(let i=0;i<65;i++)flood['k'+i]=1;
+     assert.ok(!validRemotePayload({op:'upd',id:'a',after:flood}), 'ADR-0858: >64-key junk patch rejected at wire intake');
+     const fs={id:'a',type:'rect',z:0};for(let i=0;i<65;i++)fs['k'+i]=1;
+     assert.ok(!validShape(fs), 'ADR-0858: >64-key junk shape rejected at wire intake');}
     // non-image shapes never carry dataUrl, so nothing regresses:
     assert.ok(validShape({id:'r',type:'rect',z:0}), 'rect without dataUrl still accepted (no regression)');
     console.log('  ✓ validShape: rejects malformed pens + external-URL image dataUrls (no-external-resources gate, v1.7.69)');
@@ -14488,7 +14496,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1784; // prev 1781 + 3 ADR-0857 stroke-less-pen fallback + _tTk purge asserts
+  pass += 1787; // prev 1781 + 4 ADR-0857 stroke-less-pen/_tTk asserts + 2 ADR-0858 junk-prop-flood asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

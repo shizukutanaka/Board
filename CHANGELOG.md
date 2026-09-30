@@ -1,3 +1,11 @@
+## [1.7.884] - 2026-09-30
+
+### Fixed
+- ADR-0858: wire の patch/shape は既知キーのみ検査されるため、未知キーが `validPatch`/`validShape` を素通り — `_oa` で図形本体へ着地し per-shape wclock にも攻撃者命名キーが刻まれ、1 op で ~1M 鍵を注入し snapshot の `w` フィールド経由で全ピアへ伝播し得た実害を、両 intake の 64 鍵上限 (実プロップ集合 ~57 + 余裕) で閉塞
+
+### Tests
+- behavioural ピン 2 件 — 65 鍵の junk upd patch / junk shape を実 intake 経路 (`validRemotePayload`/`validShape`) で棄却を固定
+
 ## [1.7.883] - 2026-09-30
 
 ### Fixed
