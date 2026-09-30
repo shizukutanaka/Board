@@ -935,6 +935,7 @@ Board/
 │   └── ADR-0884-idb-blocked-yield.md  # IDB blocked-open → in-memory 継続 + versionchange で接続譲渡 — タブ間デッドロック/boot ハング解消
 │   └── ADR-0885-idb-open-lifecycle-pin.md  # Persist.open blocked/yield を behavioural ピン化 + IDB tx エラー面監査完走 (txDone/reqDone 完備・onmessageerror 到達不能)
 │   └── ADR-0886-arch-sync-0877-0885.md  # architecture.md を 0877–0885 群へ同期 — Persist open ライフサイクル・画像取込ガード・SR/トースト/i18n 節
+│   └── ADR-0887-minimap-scene-isolation.md  # ミニマップシーンを per-shape try で隔離 + _sceneVer を成功時のみ更新 — 1図形 throw で半描画シーンが残存する実害を解消
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

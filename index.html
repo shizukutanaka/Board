@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.912';   // ADR-0886
+const V='1.7.913';   // ADR-0887
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -10215,7 +10215,6 @@ const Minimap=(()=>{
   // (cursor, _iv() causes) no longer re-walk every shape.
   let _scene=null,_sceneVer=-1,_sc=0,_ox=0,_oy=0;
   function _renderScene(){
-    _sceneVer=_gridVer;
     if(!_scene){_scene=_cv();_wh(_scene,W,H);}
     const sx=_g2(_scene);
     sx.clearRect(0,0,W,H);
@@ -10234,7 +10233,7 @@ const Minimap=(()=>{
       sx.lineWidth=_max(0.5,(_szz(s)||1)*sc);
       const _mr=_rt(s)&&_hb(s);
       if(_mr){const ccx=(s.x+s.w/2)*sc+ox,ccy=(s.y+s.h/2)*sc+oy;_sv2(sx);_tr2(sx,ccx,ccy);sx.rotate(_rt(s)*_PI/180);_tr2(sx,-ccx,-ccy);}
-      switch(s.type){
+      try{switch(s.type){   // ADR-0887: one bad shape must not truncate the cached scene
         case 'frame':
         case 'rect':{const rx=s.x*sc+ox,ry=s.y*sc+oy,rw=s.w*sc,rh=s.h*sc;if(_fi(s))sx.fillRect(rx,ry,rw,rh);_sR2(sx,rx,ry,rw,rh);break}
         case 'ellipse':_bp(sx);sx.ellipse(s.x*sc+ox+s.w*sc/2,s.y*sc+oy+s.h*sc/2,_abs(s.w*sc/2),_abs(s.h*sc/2),0,0,_PI*2);if(_fi(s))_fil(sx);_st2(sx);break;
@@ -10243,9 +10242,10 @@ const Minimap=(()=>{
         case 'pen':if(_ln(s.pts)<2)break;_bp(sx);_mT(sx,s.pts[0][0]*sc+ox,s.pts[0][1]*sc+oy);for(let i=1;i<_ln(s.pts);i++)_lT(sx,s.pts[i][0]*sc+ox,s.pts[i][1]*sc+oy);_st2(sx);break;
         case 'text':case 'sticky':{const rx2=s.x*sc+ox,ry2=s.y*sc+oy,rw2=_max(2,s.w*sc),rh2=_max(2,s.h*sc);sx.fillStyle=_stk(s)?(_coo(s)||_YW):(_fi(s)||_gC('--brand'));sx.fillRect(rx2,ry2,rw2,rh2);break}
         case 'image':{const rx3=s.x*sc+ox,ry3=s.y*sc+oy,rw3=_max(2,s.w*sc),rh3=_max(2,s.h*sc);const img=_du(s)?_imgCache.get(_imgKey(_du(s))):null;if(img&&img.complete&&img.naturalWidth){if(s.flip){const fx3=rx3+rw3/2,fy3=ry3+rh3/2;_sv2(sx);_tr2(sx,fx3,fy3);sx.scale(s.flip&1?-1:1,s.flip&2?-1:1);_tr2(sx,-fx3,-fy3);sx.drawImage(img,rx3,ry3,rw3,rh3);_rs2(sx)}else sx.drawImage(img,rx3,ry3,rw3,rh3)}else{_fsS(sx,'#CBD5E1');sx.fillRect(rx3,ry3,rw3,rh3)}break}
-      }
+      }}catch(_){}
       if(_mr)_rs2(sx);
     }
+    _sceneVer=_gridVer;
     _gaS(sx,1);
   }
   function draw(){
