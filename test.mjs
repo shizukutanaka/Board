@@ -214,6 +214,7 @@ const checks = [
   ['pickTop skips frames on first pass', html.includes("_frm(s)||_hd(s)||!_pgOk(s))continue")],
   ['frame dblclick label edit', html.includes("_frm(hit)") && html.includes("hit.label")],
   ['image size guard 16MB', html.includes("16_000_000") && html.includes("大きすぎます")],
+  ['toast stack capped at 4 (ADR-0879)', html.includes("st.children&&st.children.length>=4")],
   ['SVG export frames first', html.includes("svgShapes") && html.includes("type===\"frame\"")],
   // round 7: _apply completeness + opacity UI
   ['_apply handles group op', html.includes("case 'group':") && html.includes("sh.groupId=op.gid")],
@@ -14763,7 +14764,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1853; // prev 1838 + 9 ADR-0876 + 3 ADR-0877 + 3 ADR-0878 degenerate-image asserts
+  pass += 1854; // prev 1838 + 9 ADR-0876 + 3 ADR-0877 + 3 ADR-0878 + 1 ADR-0879 toast-cap pin
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

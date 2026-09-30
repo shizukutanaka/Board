@@ -927,6 +927,7 @@ Board/
 │   └── ADR-0876-paste-producer-pins.md  # ペースト生産者 bound の behavioural ピン — >4000 平文・>2000 TSV セル・生成図形の validShape 受理を実経路で固定
 │   └── ADR-0877-img-import-pre-read-guard.md  # 画像取込に _bigFile 事前ガード — 巨大ファイルを全読みしてから棄却していたメモリスパイクを閉塞 + FileReader ピン
 │   └── ADR-0878-degenerate-image-guard.md  # 0×0 デジェネレート画像の棄却 — 不可視図形着地 / NaN 高さ書込み発散を img.onload ゲートで閉塞
+│   └── ADR-0879-toast-stack-bound.md  # トーストスタック上限4枚 — バースト時の無制限 DOM 積算を最古落としで閉塞
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
