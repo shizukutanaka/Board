@@ -873,7 +873,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.799';   // ADR-0773
+const V='1.7.802';   // ADR-0776
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1377,12 +1377,8 @@ function validRemotePayload(op){
     case 'add':    return validShape(op.shape);
     case 'addMany':    return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape)&&(op.wc==null||wcOk(op.wc));   // ADR-0721/0726: validate the clock snapshot too
     case 'del':
-      // connClears (binding-cleanup deltas, v1.6.7
-      // connectors by _apply — validate each befor
-      // hostile peer can't NaN-poison/pollute a co
-      // ADR-0377: whitelist the 8 binding-cleanup
-      // `locked`/`type`/`id`/`_x` through (noLock
-      // _stripStruct isn't applied at the connClears assign sites).
+      // ADR-0377: connClears whitelist — a hostile peer could otherwise inject
+      // any prop through `before`/`after` (no _stripStruct at the assign sites).
       if(op.connClears!=null&&!(_iA(op.connClears)&&_ln(op.connClears)<=MAX_OP_SHAPES&&op.connClears.every(p=>
           p&&_iS(p.id)&&_ln(p.id)<=64&&(p.before==null||_ccOk(p.before))&&(p.after==null||_ccOk(p.after)))))return false;
       return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape);
@@ -1417,7 +1413,7 @@ function validRemotePayload(op){
                           &&_iS(op.gid)&&_ln(op.gid)>0&&_ln(op.gid)<=64   // ADR-0473
                           &&_iA(op.before)&&_ln(op.before)<=MAX_OP_SHAPES&&op.before.every(b=>b&&_iS(b.id)&&_ln(b.id)<=64);
     case 'pageAdd':  return _idOK(op.id)&&(op.name==null||_iS(op.name)&&_ln(op.name)<=80)&&(op.i==null||_fin(op.i))&&(op.shapes==null||_iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape));   // ADR-0755
-    case 'pageDel':  return _idOK(op.id)&&(op.firstId==null||_idOK(op.firstId))&&(op.shapes==null||_iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape));
+    case 'pageDel':  return _idOK(op.id)&&(op.firstId==null||_idOK(op.firstId))&&(op.unpage==null||op.unpage===1)&&(!op.unpage||_iA(op.shapes))&&(op.shapes==null||_iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape));   // ADR-0776: unpage needs op.shapes — the wire kill-set
     case 'pageName': return _idOK(op.id)&&_iS(op.after)&&_ln(op.after)<=80&&(op.nts==null||_fin(op.nts));
     case 'ungroup':return _iA(op.ids)&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(_idOK)
                           &&_iA(op.gids)&&_ln(op.gids)<=MAX_OP_SHAPES&&op.gids.every(g=>_iS(g)&&_ln(g)>0&&_ln(g)<=64);   // ADR-0473
@@ -1512,7 +1508,7 @@ const Store={
       _oT('peerReplaced');
     }
     const _connFix=this._remoteDelConnFix(op);
-    if(state.pages&&(op.shape||op.shapes)){const f=o=>{if(o&&o.pg&&!_pgById(o.pg)&&_ln(state.pages)<64)_pu(state.pages,{id:o.pg,name:'?',nts:0})};f(op.shape);if(_iA(op.shapes))for(const s of op.shapes)f(s)}   // ADR-0646: heal unknown page ids carried by remote shapes
+    if(state.pages&&(op.shape||op.shapes)){const f=o=>{if(o&&o.pg&&!_pgById(o.pg)&&_ln(state.pages)<64)_pu(state.pages,{id:o.pg,name:'?',nts:-1})};f(op.shape);if(_iA(op.shapes))for(const s of op.shapes)f(s)}   // ADR-0646/0775: heal unknown pg — nts:-1 marks a stub any real write upgrades
     this._apply(op,true);
     if(_connFix)for(const f of _connFix){
       const sh=byId(f.id);
@@ -1766,12 +1762,12 @@ const Store={
       case 'pageAdd':{   // ADR-0646: multi-page
         if(forward){
           if(!state.pages){state.pages=[{id:op.id,name:op.name!=null?op.name:'?',nts:0}];for(const s of _sh())if(!s.pg)s.pg=op.id;state.curPg=op.id}
-          else if(!_pgById(op.id)&&_ln(state.pages)<64){
-            // ADR-0704: honor op.i — pageDel's undo-wire carries the recorded index;
-            // pushing to the end left the restored page at a different position on peers.
+          else{const l=_pgById(op.id);if(l&&l.nts<0){l.name=op.name!=null?op.name:l.name;l.nts=0}   // ADR-0775
+          else if(!l&&_ln(state.pages)<64){
+            // ADR-0704: honor op.i — pageDel's undo-wire carries the recorded index.
             const at=_iN(op.i)&&_fin(op.i)?_max(0,_min(op.i|0,_ln(state.pages))):_ln(state.pages);
             state.pages.splice(at,0,{id:op.id,name:op.name!=null?op.name:'?',nts:0});
-          }
+          }}
           if(_iA(op.shapes)){for(const sh of op.shapes){const wd=_wc()[sh.id];if(wd&&wd._del&&clockNewer(wd._del,op.clock||{}))continue;if(wd)delete wd._del;if(!byId(sh.id)){const c2=Net._attachShape(clone(sh));c2.pg=op.id;_sh().push(c2)}}_sz()}   // ADR-0650/0708/0734/0735
         }else{
           // ADR-0724: purge by CURRENT membership via _pgDel2, not op.shapes — a shape
@@ -2176,7 +2172,7 @@ const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPe
 const _rs=arr=>{state.shapes=arr;_iG();_pcC()}   // ADR-0493: wholesale board replace (5 sites)
 const _pgOn=()=>!!(state.pages&&_ln(state.pages)),_pgById=id=>_pgOn()&&state.pages.find(p=>p.id===id),_pgOk=s=>!_pgOn()||(s.pg||state.pages[0].id)===state.curPg;   // ADR-0646: unpg'd shapes belong to pages[0] positionally
 const _vPages=a=>!_iA(a)||!_ln(a)||_ln(a)>64?null:(a.every(p=>p&&_iS(p.id)&&_ln(p.id)<=64&&_iS(p.name)&&_ln(p.name)<=80&&(p.nts==null||_iN(p.nts)&&_fin(p.nts))&&(p.ntp==null||_iS(p.ntp)&&_ln(p.ntp)<=64))?a:null);   // ADR-0700
-const _pgHealS=()=>{if(_pgOn())for(const s of _sh()){if(s.pg&&!_pgById(s.pg)&&_ln(state.pages)<64)_pu(state.pages,{id:s.pg,name:'?',nts:0})}else for(const s of _sh())delete s.pg};   // ADR-0694: no page set → every s.pg is stale — scrub, else a later pageAdd's `!s.pg` heal misses them and they go invisible
+const _pgHealS=()=>{if(_pgOn())for(const s of _sh()){if(s.pg&&!_pgById(s.pg)&&_ln(state.pages)<64)_pu(state.pages,{id:s.pg,name:'?',nts:-1})}else for(const s of _sh())delete s.pg};   // ADR-0694: no page set → every s.pg is stale — scrub, else a later pageAdd's `!s.pg` heal misses them and they go invisible
 function _pgAdopt(pages,cur){const v=_vPages(pages);state.pages=v?clone(v):null;_pgHealS();
 const nc=v&&_pgById(cur)?cur:(v?v[0].id:null);const oc=state.curPg;if(nc!==oc){_cancelPointerGesture();_cxO()}   // ADR-0684
 state.curPg=nc;if(nc!==oc){Net.sendCursorHide();_ss(_selIds());if(nc)_ann(_pgById(nc).name)}_pgBar();_iG()}   // ADR-0664/0690/0748/0749/0750
