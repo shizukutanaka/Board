@@ -360,7 +360,7 @@ const checks = [
   ['_imgKey uses three-segment fingerprint', html.includes("_s0(u,48)+':'+u.slice(m-24,m+24)+':'+u.slice(-48)")],
   ['export strips internal img blob ref', html.includes("delete o.img;        // ADR-0035")],
   ['drawShape guards dataUrl-less image', html.includes("const img=_du(s)?getImg(_du(s)):null;")],
-  ['getImg rejects non-dataUrl input', html.includes("!dataUrl.startsWith('data:'))return null;")],
+  ['getImg rejects non-dataUrl input', html.includes("!_sw(dataUrl,'data:'))return null;")],
   ['image ingest shared + oversized import downscales via webp', html.includes("function _imgImportFile(") && html.includes("IMG_IMPORT_MAX_DIM") && html.includes("toDataURL('image/webp'")],
   // v1.7.81: ADR-0023
   ['pen predicted-events ink tail', html.includes("getPredictedEvents") && html.includes("_penPred") && html.includes("function _predTail(")],
@@ -563,6 +563,7 @@ const checks = [
   ['right-down does not arm ptr.down — macOS ctx menu fix (ADR-0532)', html.indexOf('if(e.button===2)return')<html.indexOf('ptr.down=true')&&html.indexOf('if(e.button===2)return')>0],
   ['openTextEditor binds the live shape, not the pre-clone (ADR-0533)', html.includes('s=byId(s.id)||s')],
   ['window blur re-bases pointer/gesture state (ADR-0534)', html.includes("_on(window,'blur'")&&html.includes('_pointers.clear()')&&html.includes('window._prevTool=null')],
+  ['rtc answer/offer trim uses _trm free fn, not a DOM method (ADR-0536)', html.includes("_trm(_g('rtcAnswerIn').value)")&&html.includes("_trm(_g('rtcOfferIn').value)")&&!html.includes('._trm(')],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
@@ -614,7 +615,7 @@ const checks = [
     html.includes("if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());\n      _rs(valid.map(clone));")],
   ['ADR-0004: main() offers a one-time restore prompt when a backup exists at boot',
     html.includes("if(await Persist.checkBackup()){") && html.includes("if(confirm(t('backupAvailable')))await Persist.restoreBackup();") && html.includes("else await Persist.discardBackup();")],
-  ['drag-drop accepts .board files', html.includes(".endsWith('.board')")],
+  ['drag-drop accepts .board files', html.includes("_ew(f.name,'.board')")],
   // v1.6.27: SVG export renders single-point pen as circle dot
   ['SVG export handles single-point pen shape', html.includes('_ln(s.pts)===1')],
   ['SVG export emits circle for single-point pen', html.includes('<circle cx=')],
@@ -722,7 +723,7 @@ const checks = [
   ['svgToShapes parses via DOMParser and rejects parsererror', html.includes("new DOMParser().parseFromString(txt,'image/svg+xml')") && html.includes("_qs(doc,'parsererror')")],
   ['svg path flattener exists', html.includes('function _svgPathPts(d,m)')],
   ['svg transform matrix accumulator', html.includes('function _svgMOf(t)') && html.includes('function _svgMMul(P,Q)')],
-  ['svg claimed before image branch on drop', html.includes("f.name.endsWith('.svg')||f.type==='image/svg+xml')")],
+  ['svg claimed before image branch on drop', html.includes("_ew(f.name,'.svg')||f.type==='image/svg+xml')")],
   ['svg markup paste hook', html.includes("i.type==='text/plain'") && html.includes('importSvgText(s)')],
   ['file picker accepts svg + excalidraw', html.includes('accept=".board,.svg,image/svg+xml,.excalidraw,.drawio,.dio"')],
   ['i18n has svgImported ja+en', html.includes("svgImported:'SVG を取り込みました'") && html.includes("svgImported:'SVG imported'")],
@@ -732,7 +733,7 @@ const checks = [
   ['isDeleted tombstones skipped', html.includes('e.isDeleted')],
   ['relative points absolutised', html.includes('_pu(pts,[e.x+p[0],e.y+p[1]])')],
   ['content beats extension routing', html.includes("d.type==='excalidraw'){importExcText(r.result);return}")],
-  ['.excalidraw file entry points', html.includes("f.name.endsWith('.excalidraw')") && html.includes('.excalidraw,.drawio')],
+  ['.excalidraw file entry points', html.includes("_ew(f.name,'.excalidraw')") && html.includes('.excalidraw,.drawio')],
   ['.drawio file entry points + parser (ADR-0203)', html.includes("f=>/\\.(drawio|dio)$/i.test(f.name)")&&html.includes('function drawioToShapes')],
   ['excalidraw lineHeight/fontFamily/verticalAlign round-trip (ADR-0242..0244)', html.includes("lineHeight:s.lineH||1.25")&&html.includes("o.lineH=_min(4,_max(0.5,e.lineHeight))")&&html.includes("fontFamily:_ftt(s)==='mono'?3:2")&&html.includes("verticalAlign:_va(s)||'middle'")],
   ['excalidraw locked round-trips s.locked (ADR-0241)', html.includes("locked:!!_lk(s)},over)")&&html.includes("if(e.locked)s.locked=1")],
@@ -873,8 +874,8 @@ const checks = [
   ['i18n has textPasted ja+en', html.includes("textPasted:'テキストを貼り付けました'") && html.includes("textPasted:'Text pasted'")],
   // v1.7.103: ADR-0045 invite link — offer rides the URL hash
   ['invite link button wired', html.includes('id="rtcInviteLinkBtn"') && html.includes("'#s='")],
-  ['inviteFromHash consumes #s=', html.includes('inviteFromHash()') && html.includes("h.startsWith('#s=')")],
-  ['invite hash cleared on consume', html.includes("inviteFromHash()") && html.includes("h.startsWith('#s=')") && html.includes("_dU(h.slice(3))")],
+  ['inviteFromHash consumes #s=', html.includes('inviteFromHash()') && html.includes("_sw(h,'#s=')")],
+  ['invite hash cleared on consume', html.includes("inviteFromHash()") && html.includes("_sw(h,'#s=')") && html.includes("_dU(h.slice(3))")],
   ['i18n has invite-link keys ja+en', html.includes("shareCopyInviteLink:'招待リンクをコピー'") && html.includes("shareCopyInviteLink:'Copy invite link'") && html.includes("inviteLinkOpened:") && html.includes("inviteLinkNoCode:")],
   // v1.6.44: x,y decorative label is aria-hidden
   ['x,y status label is aria-hidden (decorative)', html.includes('<span class="lbl" aria-hidden="true">x,y</span>')],
@@ -1073,7 +1074,7 @@ const checks = [
   ['help grid documents Enter\'s dual meaning (create / edit label)', html.includes("k.create+' / '+t('editLabel')")],
   // v1.7.67 (ADR-0014, FT-18b)
   ['language toggle: LANG/T are reassignable lets, boot restore reads board.lang before deriving T',
-    html.includes("let LANG=(navigator.language||'en').startsWith('ja')?'ja':'en';")
+    html.includes("let LANG=_sw(navigator.language||'en','ja')?'ja':'en';")
     && html.includes("const LANG_KEY='board.lang';") && html.includes('let T=I18N[LANG];')
     && html.includes("if(_savedLang==='ja'||_savedLang==='en')LANG=_savedLang;")],
   ['language toggle: toggleLang resyncs applyI18n/fillHelp/updateOnline/search-box/canvas, wired to btnLang',
@@ -1146,7 +1147,7 @@ const checks = [
   ['visibilitychange listener wires document.visibilityState to flushIfHidden', html.includes("_on(document,'visibilitychange',()=>Persist.flushIfHidden(document.visibilityState));")],
   ['pagehide routes through flushIfHidden — iOS swipe-away durable (ADR-0453)', html.includes("_on(window,'pagehide',()=>{Persist.flushIfHidden('hidden');Net._bcast(_mk('bye'))})")],
   ['peer bye drops presence immediately — no 15s ghost (ADR-0457)', html.includes("case 'bye':{") && html.includes("if(pk&&_pr().delete(pk)){_ivO()")],
-  ['room switch sends bye + clears BC peers (ADR-0458)', html.includes("this._send(_mk('bye'));this.bc.close()") && html.includes("if(!id.startsWith('rtc:'))_pr().delete(id)")],
+  ['room switch sends bye + clears BC peers (ADR-0458)', html.includes("this._send(_mk('bye'));this.bc.close()") && html.includes("if(!_sw(id,'rtc:'))_pr().delete(id)")],
   ['peer id carries a per-boot incarnation nonce (ADR-0459)', html.includes("peerId:PEER_ID+'.'+uid().slice(0,6)") && html.includes("_sO().clear();_cT(this._snapT)")],
   ['wclock ships inside the IDB doc record (ADR-0460)', html.includes('wc:_wc()') && html.includes("validClock(m[p]))(state.wclock[k]")],
   ['peer join/leave is SR-announced via _pCt delta (ADR-0463)', html.includes('Net._pCt') && html.includes("'peerJoined'") && html.includes("'peerLeft'")],
@@ -1175,7 +1176,7 @@ const checks = [
   // v1.6.84: Net.init clears prior presence timer on re-init (no leaked heartbeat)
   ['Net.init clears prior presence timer', html.includes("clearInterval(this._presenceTimer);   // re-init (room switch) must not leak the old heartbeat")],
   // v1.6.85: WebRTC peers lifecycle-managed (not heartbeat-reaped after 15s)
-  ['_reapPeers exempts rtc: peers from timeout reaping', html.includes("if(id.startsWith('rtc:'))continue;   // WebRTC peers are lifecycle-managed")],
+  ['_reapPeers exempts rtc: peers from timeout reaping', html.includes("if(_sw(id,'rtc:'))continue;   // WebRTC peers are lifecycle-managed")],
   ['dc.onclose removes the rtc peer', html.includes("if(this._rtcPeerId){_pr().delete(this._rtcPeerId);this._rtcPeerId=null;_ivO();}")],
   ['dc.onopen stores _rtcPeerId for lifecycle management', html.includes("this._rtcPeerId='rtc:'+uid().slice(0,4);")],
   // v1.7.76 / ADR-0017 (FT-20): ICE failure without an open channel showed nothing —
@@ -1228,9 +1229,9 @@ const checks = [
   ['copyFailed i18n key in ja and en', (html.match(/copyFailed:/g)||[]).length>=2],
   // v1.6.92: PWA install button (beforeinstallprompt)
   ['beforeinstallprompt handler stores deferred prompt and shows button',
-    html.includes('beforeinstallprompt')&&html.includes('_pd(e)')&&html.includes('_installPrompt=e')&&html.includes("btn.hidden=false")],
+    html.includes('beforeinstallprompt')&&html.includes('_pd(e)')&&html.includes('_installPrompt=e')&&html.includes("_hdn(btn,!1)")],
   ['appinstalled handler clears prompt and hides button',
-    html.includes('appinstalled')&&html.includes('_installPrompt=null')&&html.includes("btn.hidden=true")],
+    html.includes('appinstalled')&&html.includes('_installPrompt=null')&&html.includes("_hdn(btn,!0)")],
   ['btnInstall hidden by default (no unsolicited install prompt)',
     html.includes('id="btnInstall"')&&html.includes('hidden')],
   ['_onBtnInstall exported for testing',
