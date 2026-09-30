@@ -880,6 +880,12 @@ Board/
 │   └── ADR-0829-comment-tail-sweep2.md  # 未完括弧コメント残滓の第2刈り込み (~1.3KB)
 │   └── ADR-0830-eraser-frame-cascade.md  # eraser のフレーム cascade — withFrameChildren で Delete と parity
 │   └── ADR-0831-eraser-hover-pagescope.md  # 別ページ eraser hover の赤破線ゴーストを _pgOk で解消
+│   └── ADR-0832-hover-hit-pagescope-audit.md  # hover/hit 系のページスコープ監査完走 (未ゲートは _ehov のみ)
+│   └── ADR-0833-placecopies-page-pin.md  # _placeCopies の閲覧ページ着地 behavioural pin
+│   └── ADR-0834-pageadd-member-gate.md  # 上限棄却 pageAdd の member をページ存在にゲート
+│   └── ADR-0835-imgq-re-request.md  # parked img 参照の imgq 再要求 (heartbeat sweep + 60s 解放)
+│   └── ADR-0836-imgq-answer-throttle.md  # imgq 応答の per-key 10s スロットル (再送増幅の抑止)
+│   └── ADR-0837-imgq-broadcast.md  # imgq を _bcast 化 (RTC-only ピアへも到達)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

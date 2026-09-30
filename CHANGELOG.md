@@ -1,3 +1,33 @@
+## [1.7.863] - 2026-09-29
+
+### Fixed
+- ADR-0837: imgq 再要求が `_send` (BroadcastChannel のみ) で送られ RTC 専用ピアへ届かず、送信途中切断の修復経路が WebRTC リンクで機能しなかった実害を `_bcast` 化で解消 — 切替えが最も起きやすいリンクこそ imgq が必要だった
+
+## [1.7.862] - 2026-09-29
+
+### Fixed
+- ADR-0836: imgq 要求が同一キーを再送されると 12MB blob の broadcast が無制限に増幅する実害を修正 — `_imgqT` per-key 最終応答時刻で 10s スロットル、保持キー集合の自然な小ささに依存して追加境界は不要
+
+## [1.7.861] - 2026-09-29
+
+### Fixed
+- ADR-0835: 送信側が img flush 途中に切断すると parked `img:` 参照がスナップショット再送まで永久 pending になり画像が空白のまま残る実害を修正 — parked 参照を `{k,t0}` 化し heartbeat で `{k:'imgq'}` を再要求 (10s 超で要求・60s で park 解放)、保持ピアが blob を再送
+
+## [1.7.860] - 2026-09-29
+
+### Fixed
+- ADR-0834: 64 件上限で棄却された remote pageAdd の member 図形が無所属ページを指す不可視図形として残る実害を修正 — member 適用を `_pgById(op.id)` にゲート
+
+## [1.7.859] - 2026-09-29
+
+### Tests
+- ADR-0833: `_placeCopies` が閲覧ページへ着地する behavioural pin (⌘D/ペーストの不可視化退行防止)
+
+## [1.7.858] - 2026-09-29
+
+### Docs
+- ADR-0832: hover/hit 系のページスコープ監査完走 — 未ゲートは `_ehov` のみ (0831 済)、`_qconnShape`/pickTop/snap/⌥measure は全経路 safe と確認し architecture.md の表へ行追加
+
 ## [1.7.857] - 2026-09-29
 
 ### Fixed

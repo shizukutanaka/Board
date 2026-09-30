@@ -2085,6 +2085,17 @@ try {
     if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}
     console.log('  ✓ Net.init preserves rtc: presence across rooms (ADR-0820)');
   }
+  // ADR-0836: stale _imgqT throttle stamps must not cross rooms — a key answered
+  // in the old room would suppress a valid answer in the new one.
+  {
+    state.roomId='roomC';
+    Net._imgqT.set('kk',nowTs());
+    Net.init('roomD');
+    assert.strictEqual(Net._imgqT.size,0,'imgq throttle map reset on room switch');
+    clearInterval(Net._presenceTimer);
+    if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}
+    console.log('  ✓ Net.init resets imgq throttle stamps (ADR-0836)');
+  }
   // ADR-0822: a superseded DataChannel must not clobber the live link — its
   // stale onclose purges only its own presence row.
   {
@@ -2255,7 +2266,7 @@ try {
     assert.strictEqual(s2.img,undefined,'img ref dropped');
     // and a pending-tracked shape resolves via the primary path
     const s3=Shape.make('image',{x:0,y:0,w:10,h:10,img:'kk2'});
-    state.shapes.push(s3);_invalidateGrid();Net._imgPending.set(s3.id,'kk2');
+    state.shapes.push(s3);_invalidateGrid();Net._imgPending.set(s3.id,{k:'kk2',t0:nowTs()});
     Net._onRecv({k:'img',key:'kk2',seq:0,n:1,data:'data:image/png;base64,BB',peer:'peerZ'},false);
     assert.strictEqual(s3.dataUrl,'data:image/png;base64,BB','pending shape resolves');
     assert.strictEqual(Net._imgPending.has(s3.id),false,'pending entry cleared');
@@ -2271,7 +2282,7 @@ try {
     Store.applyRemote({op:'pageAdd',id:'pI',name:'I',shapes:[JSON.parse(JSON.stringify(im1))],clock:{peer:'zz',seq:41,ts:9}});
     const g1=byId(im1.id);
     assert.ok(g1&&g1.pg==='pI','pageAdd member lands on its page');
-    assert.strictEqual(Net._imgPending.get(im1.id),'kk9','unresolved img parks via _attachShape');
+    assert.strictEqual(Net._imgPending.get(im1.id).k,'kk9','unresolved img parks via _attachShape');
     Net._imgIn.set('kk8','data:image/png;base64,CC');
     const im2=Shape.make('image',{x:0,y:0,w:10,h:10,img:'kk8'});
     Store.applyRemote({op:'pageAdd',id:'pJ',name:'J',shapes:[JSON.parse(JSON.stringify(im2))],clock:{peer:'zz',seq:42,ts:9}});
@@ -2288,7 +2299,7 @@ try {
     Store.applyRemote({op:'pageAdd',id:'pA',name:'A',shapes:[],clock:{peer:'zz',seq:50,ts:9}});
     Store.applyRemote({op:'pageAdd',id:'pB',name:'B',shapes:[],clock:{peer:'zz',seq:51,ts:9}});
     const im=Shape.make('image',{x:0,y:0,w:10,h:10,img:'kkP'});
-    im.pg='pA';state.shapes.push(im);_invalidateGrid();Net._imgPending.set(im.id,'kkP');
+    im.pg='pA';state.shapes.push(im);_invalidateGrid();Net._imgPending.set(im.id,{k:'kkP',t0:nowTs()});
     Store.applyRemote({op:'pageDel',id:'pB',firstId:'pA',clock:{peer:'zz',seq:52,ts:9}});
     assert.ok(byId(im.id),'member of the surviving page stays');
     assert.strictEqual(Net._imgPending.has(im.id),false,'pageDel _pcC wipes parked refs wholesale');
@@ -4131,7 +4142,7 @@ try {
       img:{peer:'A',seq:10,ts:Date.now()+1e3},
     }});
     assert.strictEqual(byId('I1').img,'K_WIN','winning img ref merges');
-    assert.ok(Net._imgPending.get('I1')==='K_WIN','winning img ref stays parked');
+    assert.ok(Net._imgPending.get('I1')?.k==='K_WIN','winning img ref stays parked');
     Net._onRecv({k:'img',key:'K_WIN',data:'data:image/png;base64,NEW',n:1,seq:0,peer:'A'},false);
     assert.strictEqual(byId('I1').dataUrl,'data:image/png;base64,NEW','winning blob resolves into dataUrl');
     console.log('  ✓ ADR-0745: snapshot img merge drops losing pending / resolves winner (6 asserts)');
@@ -4147,7 +4158,7 @@ try {
     // shape exists locally with a parked img ref (blob not yet arrived)
     const r={id:'I2',type:'image',z:1,x:0,y:0,w:10,h:10,img:'K_OLD'};
     Store.commit({op:'add',shape:r});
-    Net._imgPending.set('I2','K_OLD');
+    Net._imgPending.set('I2',{k:'K_OLD',t0:nowTs()});
     // snapshot merge: dataUrl wins (no img key in this payload)
     Net._mergeSnapshotOp({op:'add',shape:{...JSON.parse(JSON.stringify(r)),img:undefined,dataUrl:'data:image/png;base64,MERGED'},wc:{
       dataUrl:{peer:'A',seq:1,ts:Date.now()+1e3},
@@ -4172,7 +4183,7 @@ try {
     // shape parked on K_OLD; a remote upd rewrote it to a new ref + merged dataUrl
     const r={id:'I3',type:'image',z:1,x:0,y:0,w:10,h:10,img:'K_OLD'};
     Store.commit({op:'add',shape:r});
-    Net._imgPending.set('I3','K_OLD');
+    Net._imgPending.set('I3',{k:'K_OLD',t0:nowTs()});
     const ls=byId('I3');
     ls.img='K_NEW';ls.dataUrl='data:image/png;base64,CUR';   // as an upd/merge would leave it
     Net._onRecv({k:'img',key:'K_OLD',data:'data:image/png;base64,STALE',n:1,seq:0,peer:'A'},false);
@@ -4180,7 +4191,7 @@ try {
     assert.strictEqual(ls.dataUrl,'data:image/png;base64,CUR','stale blob never clobbers dataUrl');
     assert.ok(!Net._imgPending.has('I3'),'stale pending drained');
     // a shape still referencing the resolved key resolves normally
-    Net._imgPending.set('I3','K_NEW');
+    Net._imgPending.set('I3',{k:'K_NEW',t0:nowTs()});
     Net._onRecv({k:'img',key:'K_NEW',data:'data:image/png;base64,NW',n:1,seq:0,peer:'A'},false);
     assert.strictEqual(ls.dataUrl,'data:image/png;base64,NW','live ref resolves');
     assert.strictEqual(ls.img,undefined,'resolved ref deleted');
@@ -4488,7 +4499,7 @@ try {
     assert.ok(att.shape.dataUrl===big&&!att.shape.img,'attach resolves dataUrl');
     const miss={op:'add',shape:{id:'zz',type:'image',img:'kX',x:0,y:0,w:1,h:1}};
     Net._attachOp(miss);
-    assert.ok(Net._imgPending.get('zz')==='kX','missing blob parks');
+    assert.ok(Net._imgPending.get('zz')?.k==='kX','missing blob parks');
     Net._onRecv({k:'img',key:'kX',seq:0,n:1,data:'DATA'},false);
     assert.ok(Net._imgIn.get('kX')==='DATA','chunk reassembles into _imgIn');
     assert.ok(!Net._imgPending.has('zz'),'pending drained on blob arrival');
@@ -4548,7 +4559,7 @@ try {
   {
     // _psc purges _imgPending — a shape deleted while its blob chunks are in
     // flight must not leave a parked entry behind.
-    Net._imgPending.set('zzp','kZ');
+    Net._imgPending.set('zzp',{k:'kZ',t0:nowTs()});
     _psc('zzp');
     assert.ok(!Net._imgPending.has('zzp'),'ADR-0435: _psc purges _imgPending');
     // _sendDC drops a >256KiB message outright — it can never send, and the
@@ -4604,7 +4615,7 @@ try {
       const big='data:image/png;base64,'+'x'.repeat(60000);
       const slim=Net._slimOp({op:'del',shapes:[{id:'i1',type:'image',z:1,x:0,y:0,w:10,h:10,dataUrl:big}]});
       assert.ok(slim.shapes[0].dataUrl===undefined&&typeof slim.shapes[0].img==='string','del shapes slim to img refs');
-      Net._imgPending.set('zz','k');_pcC();
+      Net._imgPending.set('zz',{k:'k',t0:nowTs()});_pcC();
       assert.strictEqual(Net._imgPending.size,0,'_pcC clears _imgPending');
       // ADR-0448: a stale partial with a different chunk count must not block new streams
       Net._fragIn({data:'aa',n:2,seq:0},'_snapIn');
@@ -14330,6 +14341,72 @@ try {
     assert.strictEqual(byId('mp3').size,64,'in-range size still accepted');
     state.shapes=[];state.wclock={};state.seenOps=new Set();state.seq=0;state.history=[];state.histIdx=-1;
     console.log('  ✓ bbox-feeding props bounded at intake (ADR-0793)');
+  }
+
+  // ADR-0833: _placeCopies stamps sh.pg=curPg — duplicating or pasting a
+  // page-1 shape while viewing page 2 must land the copy on page 2, or it
+  // becomes an invisible shape the user can't see or select (paste "does
+  // nothing" from their point of view). Single-page mode leaves pg unset.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';
+    const src=Shape.make('rect',{x:10,y:10,w:50,h:50});src.pg='pA';Store.commit({op:'add',shape:src});
+    state.curPg='pB';
+    const added=_placeCopies([src],0,0);
+    assert.strictEqual(added.length,1,'copy produced');
+    assert.strictEqual(byId(added[0]).pg,'pB','copy lands on the viewed page, not the source page');
+    state.shapes=[];_invalidateGrid();state.pages=null;state.curPg=null;
+    const src2=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    const added2=_placeCopies([src2],0,0);
+    assert.ok(byId(added2[0]).pg==null,'single-page mode leaves pg unset');
+    state.shapes=[];_invalidateGrid();state.selection=new Set();state.dupIds=new Set();state.dupDelta=null;
+    console.log('  ✓ _placeCopies lands copies on the viewed page (ADR-0833)');
+  }
+
+  // ADR-0834: a remote pageAdd rejected at the 64-page cap used to still push
+  // its member shapes with pg=op.id — invisible shapes pointing at a page we
+  // don't have, unhealable because _pgHealS won't stub past the cap either.
+  // Members now apply only when the page actually landed.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    state.pages=Array.from({length:64},(_,i)=>({id:'pp'+i,name:'P'+i,nts:0}));state.curPg='pp0';
+    const member={id:'m65',type:'rect',x:0,y:0,w:10,h:10,z:1};
+    Store.applyRemote({op:'pageAdd',id:'p65',name:'P65',shapes:[member],clock:{peer:'r1',seq:1,ts:1}});
+    assert.ok(!state.pages.find(p=>p.id==='p65'),'pageAdd over the 64 cap is dropped');
+    assert.ok(!byId('m65'),'dropped pageAdd leaves no invisible member shapes');
+    // and the page that DOES land keeps its members
+    state.pages=[{id:'pp0',name:'P0',nts:0}];state.curPg='pp0';
+    Store.applyRemote({op:'pageAdd',id:'pOk',name:'POk',shapes:[{id:'mOk',type:'rect',x:0,y:0,w:10,h:10,z:1}],clock:{peer:'r1',seq:2,ts:2}});
+    assert.ok(byId('mOk')&&byId('mOk').pg==='pOk','landed pageAdd keeps its members');
+    state.shapes=[];_invalidateGrid();state.pages=null;state.curPg=null;
+    console.log('  ✓ over-cap pageAdd drops its members too (ADR-0834)');
+  }
+  // ADR-0835: a parked img ref asks {k:'imgq',key} once it ages past two
+  // heartbeat intervals; a peer holding the blob (received or own shape) answers.
+  {
+    Net._imgPending.clear();Net._imgIn.clear();Net._imgOuts.length=0;
+    const sent=[];const _os=Net._send;Net._send=m=>{if(m&&m.k==='img')sent.push(m.key);};
+    const s0=Shape.make('image',{x:0,y:0,w:10,h:10});
+    s0.dataUrl='data:image/png;base64,'+'Q'.repeat(200);
+    const kQ=Net._slimShapes([s0])[0].img;Net._imgOuts.length=0;
+    assert.ok(typeof kQ==='string'&&kQ.length>0,'slim emits the blob key');
+    Net._onRecv({k:'imgq',key:kQ,peer:'zz'},false);
+    assert.ok(sent.includes(kQ),'imgq answered from the sent-key map O(1)');
+    Net._onRecv({k:'imgq',key:kQ,peer:'zz'},false);
+    assert.strictEqual(sent.length,1,'imgq flood throttled per key (ADR-0836)');
+    sent.length=0;Net._imgqT.clear();
+    Net._imgIn.set('kR','data:image/png;base64,RR');
+    Net._onRecv({k:'imgq',key:'kR',peer:'zz'},false);
+    assert.ok(sent.includes('kR'),'imgq answered from the received-blob store');
+    sent.length=0;
+    Net._onRecv({k:'imgq',key:'x'.repeat(65),peer:'zz'},false);   // oversized key → dropped
+    assert.strictEqual(sent.length,0,'oversized imgq key ignored');
+    Net._send=_os;
+    state.shapes=[];_invalidateGrid();Net._imgIn.clear();
+    // ADR-0837: the parked-ref sweep must broadcast — _send is BC-only and would
+    // never reach an RTC-only peer (the link where mid-flush disconnects live).
+    assert.ok(html.includes("this._bcast(_mk('imgq',{key:e.k}))"),'imgq sweep rides _bcast');
+    console.log('  ✓ imgq re-request answered from blob store or live shape (ADR-0835)');
   }
 
   console.log('\n✓ All behavioural tests passed');

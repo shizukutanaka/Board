@@ -175,6 +175,10 @@ remote del/replace と選択書込みの間には選択が stale id を持つ窓
 `_imgPending` はあくまで fast index であり、blob 到着時の straggler 走査
 (`for(const s of _sh())if(s.img===key)…`、ADR-0629) が全域を救済する。straggler 経路を
 除去/弱化すると pageDel が他ページの画像を永久破壊する — test が両側面を固定する。
+駐車エントリは `{k,t0}` を持ち、presence heartbeat が 10s 超の滞留に `{k:'imgq',key}` を
+再要求して 60s で解放する (ADR-0835 — 送信側の flush 途中切断で永久 placeholder 化する
+経路を自己修復)。応答側は `_imgIn`/`_imgSent` の O(1) Map 参照で blob を即時再送する
+(盤面走査を挟まない)。
 
 **反転 (flip H/V)** は専用 op を持たず、`align` op を再利用する: `doFlip(axis)` が選択 bbox 中心軸で
 各シェイプ座標をミラー (`flipShape`) し、変更前後の完全クローンを `{op:'align',dir:'flip',before,after}`
@@ -648,6 +652,7 @@ frame のメンバーシップは `s.grp` ではなく**幾何**で決まる —
 | 単一シーン export | `_shV` (可視+ページ) | PNG/SVG/.excalidraw — 明示引数にも同じ制約 (0666) |
 | 永続化/全ドキュメント | `_sh()` グローバル | `.board`/.drawio export、Persist、snapshot、`replace`/`clear` |
 | 幾何不変条件 | `_sh()` グローバル | 結合コネクタ掃引 (`ptr.gAnc`/`_bc`/`_rc`/`computeConnClears`)、z 空間、`_buildGrid` 候補生成 |
+| hover/プレビュー残影 | `_pgOk` or `_zR` | eraser hover `_ehov` は draw で `_pgOk` (0831)、quick-connect は `_qconnShape` 内ゲート、`state.hover` は上記2経路のみ供給、⌥measure は `switchPage` の `_zR` で消去 |
 
 - **遷移はジェスチャを殺す**: `switchPage`/`_pgAdopt` が `_cancelPointerGesture`
   (0664) — 別ページ図形への不可視コミットを防ぐ。`_pgAdopt` は `_cxO` で
