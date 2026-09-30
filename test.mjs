@@ -10508,6 +10508,41 @@ try {
     console.log('  ✓ ADR-0878: _imgImportFile rejects 0x0 degenerate images');
   }
 
+  // ADR-0879: the toast stack is bounded — a burst evicts the oldest entries
+  // before appending so the visible stack never exceeds the cap. The fake
+  // stack element records appends/splices realistically so the eviction loop
+  // terminates only when the cap logic actually runs.
+  {
+    const st=_els['toasts'],kids=[];
+    const _hadKids=st.children!==undefined,_prevKids=st.children;
+    const _hadApp=st.appendChild!==undefined,_prevApp=st.appendChild;
+    const _hadLast=st.lastElementChild!==undefined,_prevLast=st.lastElementChild;
+    const _ce0=fakeDoc.createElement;
+    try{
+      st.children=kids;
+      st.appendChild=el=>{kids.push(el)};
+      Object.defineProperty(st,'lastElementChild',{get:()=>kids[kids.length-1],configurable:true});
+      fakeDoc.createElement=tag=>{
+        const el=_ce0(tag);
+        const _r=el.remove;
+        el.remove=()=>{const j=kids.indexOf(el);if(j>=0)kids.splice(j,1);_r&&_r.call(el)};
+        return el;
+      };
+      for(let i=0;i<6;i++)UI.toast('t'+i);
+      assert.strictEqual(kids.length,4,'toast: stack bounded at 4 under a burst');
+      assert.ok(kids[0].textContent==='t2'&&kids[3].textContent==='t5','toast: eviction is oldest-first');
+      UI.toast('dup');UI.toast('dup');   // ADR-0389 dedup still re-appends, no twin
+      assert.strictEqual(kids.filter(el=>el.textContent==='dup').length,1,'toast: identical text does not twin');
+    }finally{
+      fakeDoc.createElement=_ce0;
+      if(_hadKids)st.children=_prevKids;else delete st.children;
+      if(_hadApp)st.appendChild=_prevApp;else delete st.appendChild;
+      delete st.lastElementChild;
+      if(_hadLast)st.lastElementChild=_prevLast;
+    }
+    console.log('  ✓ ADR-0879: toast stack bounded at 4, oldest evicted first');
+  }
+
 
   // v1.7.447a (ADR-0413): flag props accept true|1|null — {shadow:true} in a style op
   // (toggleShadow writes true) was rejected by the numeric whitelist, silently dropping
@@ -14764,7 +14799,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1854; // prev 1838 + 9 ADR-0876 + 3 ADR-0877 + 3 ADR-0878 + 1 ADR-0879 toast-cap pin
+  pass += 1857; // prev 1838 + 9 ADR-0876 + 3 ADR-0877 + 3 ADR-0878 + 4 ADR-0879 (1 static + 3 behavioural)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
