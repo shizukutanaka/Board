@@ -13821,6 +13821,17 @@ try {
       assert.equal(elA.map(p=>p.id+'\x1f'+p.name).join(),elB.map(p=>p.id+'\x1f'+p.name).join(),'ADR-0860: crafted vs real page sets collided under the old join sig');
       assert.notEqual(JSON.stringify(elA.map(p=>p.id+'\x1f'+p.name)),JSON.stringify(elB.map(p=>p.id+'\x1f'+p.name)),'ADR-0860: _JS keeps page-set sigs injective');
     }
+    // ADR-0861: a remote-controlled groupId flowed raw into the drawio group
+    // cell's id/parent attributes — `x" style="evil` broke the XML attribute and
+    // could inject markup into the exported file. gid is now _dioEsc'd everywhere.
+    {
+      reset();
+      const s=Shape.make('rect',{x:0,y:0,w:10,h:10});s.groupId='x" style="evil';
+      const xml=boardToDrawio([s]);
+      assert.ok(xml.indexOf('id="g_x&quot;')>=0,'ADR-0861: group cell id escapes the remote gid');
+      assert.ok(xml.indexOf('parent="g_x&quot;')>=0,'ADR-0861: member parent escapes the remote gid');
+      assert.ok(xml.indexOf('g_x"')<0,'ADR-0861: raw gid cannot break the drawio attribute');
+    }
     // drop: .board file path via a fake FileReader — atomic whole-board replace (ADR-0518 residual closed)
     const _FR=globalThis.FileReader;
     globalThis.FileReader=class{
@@ -14544,7 +14555,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1796; // prev 1791 + 5 ADR-0860 injective sig-key asserts
+  pass += 1799; // prev 1791 + 5 ADR-0860 sig-key + 3 ADR-0861 drawio gid-escape asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

@@ -1,3 +1,11 @@
+## [1.7.887] - 2026-09-30
+
+### Fixed
+- ADR-0861: drawio エクスポートでリモート制御の `groupId` が無エスケープで XML 属性へ流れ込み (`x" style="evil"` が属性ブレイク→ファイル内 markup 注入可能)、エクスポート済み .drawio の stored 攻撃経路 — `g_${gid}` の id/parent 4サイトを `_dioEsc` 化して閉塞
+
+### Tests
+- behavioural ピン 3 件 — `"` 含有 gid で group セル id/parent が `&quot;` 化し生 `"` が属性を破らないことを固定
+
 ## [1.7.886] - 2026-09-30
 
 ### Fixed

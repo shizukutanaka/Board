@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.886';   // ADR-0860
+const V='1.7.887';   // ADR-0861
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -7143,7 +7143,7 @@ function _dioCells(shapes){
   const _gbx={};for(const s of shapes)if(_gi(s)&&_hb(s)){const g=_gbx[_gi(s)]||(_gbx[_gi(s)]={x:1/0,y:1/0,x2:-1/0,y2:-1/0});
     g.x=_min(g.x,s.x);g.y=_min(g.y,s.y);g.x2=_max(g.x2,s.x+s.w);g.y2=_max(g.y2,s.y+(s.h||0))}
   for(const gid in _gbx){const g=_gbx[gid];
-    _pu(cells,`<mxCell id="g_${gid}" value="" style="group;" vertex="1" parent="1"><mxGeometry x="${g.x}" y="${g.y}" width="${g.x2-g.x}" height="${g.y2-g.y}" as="geometry"/></mxCell>`)}
+    _pu(cells,`<mxCell id="g_${_dioEsc(gid)}" value="" style="group;" vertex="1" parent="1"><mxGeometry x="${g.x}" y="${g.y}" width="${g.x2-g.x}" height="${g.y2-g.y}" as="geometry"/></mxCell>`)}
   // ADR-0345: pre-assign vertex ids up-front so a member can reference
   // its containing frame's swimlane cell id regardless of z-order
   for(const s of shapes)if(s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen')idOf.set(s.id,'b'+(i++));
@@ -7181,7 +7181,7 @@ function _dioCells(shapes){
     if(t==='image'&&_lb(s))sty+='verticalAlign=bottom;';                 // ADR-0353
     const _gc=_gbx[_gi(s)];                                          // ADR-0336
     const _pf=_gc?null:_fOf(s);                                         // ADR-0345: frame containment (group wins)
-    _pu(cells,`<mxCell id="${id}" value="${nl(lbl||'')}" style="${esc(sty)}" vertex="1" parent="${_gc?`g_${_gi(s)}`:_pf?idOf.get(_pf.id):'1'}"${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}><mxGeometry x="${(s.x||0)-(_gc?_gc.x:_pf?_pf.x:0)}" y="${(s.y||0)-(_gc?_gc.y:_pf?_pf.y:0)}" width="${s.w||120}" height="${s.h||80}" as="geometry"/></mxCell>`);   // ADR-0245/0336/0345
+    _pu(cells,`<mxCell id="${id}" value="${nl(lbl||'')}" style="${esc(sty)}" vertex="1" parent="${_gc?`g_${_dioEsc(_gi(s))}`:_pf?idOf.get(_pf.id):'1'}"${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}><mxGeometry x="${(s.x||0)-(_gc?_gc.x:_pf?_pf.x:0)}" y="${(s.y||0)-(_gc?_gc.y:_pf?_pf.y:0)}" width="${s.w||120}" height="${s.h||80}" as="geometry"/></mxCell>`);   // ADR-0245/0336/0345
   }
   // ADR-0354: pen strokes export as polyline edges; one
   // mxPoint per stroke point keeps the ink visible in draw.io.
@@ -7195,7 +7195,7 @@ function _dioCells(shapes){
     let geo=`<mxGeometry relative="1" as="geometry"><mxPoint x="${s.pts[0][0]-(_gp?_gp.x:0)}" y="${s.pts[0][1]-(_gp?_gp.y:0)}" as="sourcePoint"/><mxPoint x="${s.pts[_ln(s.pts)-1][0]-(_gp?_gp.x:0)}" y="${s.pts[_ln(s.pts)-1][1]-(_gp?_gp.y:0)}" as="targetPoint"/>`;
     if(_ln(s.pts)>2)geo+='<Array as="points">'+_mid(s.pts).map(p=>`<mxPoint x="${p[0]-(_gp?_gp.x:0)}" y="${p[1]-(_gp?_gp.y:0)}"/>`).join('')+'</Array>';
     geo+='</mxGeometry>';
-    _pu(cells,`<mxCell id="${id}" value="" style="${esc(sty)}" edge="1" parent="${_gp?`g_${_gi(s)}`:'1'}"${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0354
+    _pu(cells,`<mxCell id="${id}" value="" style="${esc(sty)}" edge="1" parent="${_gp?`g_${_dioEsc(_gi(s))}`:'1'}"${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0354
   }
   for(const s of shapes){
     const t=s.type;
@@ -7223,7 +7223,7 @@ function _dioCells(shapes){
     const wa=_el(s)?_mid(_elbowPts(s)):s.curve?[_curveCtrl(_cE(s),s.cbend)]:_wayArr(s);   // ADR-0358/0360
     if(_ln(wa))geo+='<Array as="points">'+wa.map(p=>`<mxPoint x="${p.x-(_gc2?_gc2.x:0)}" y="${p.y-(_gc2?_gc2.y:0)}"/>`).join('')+'</Array>';
     geo+='</mxGeometry>';
-    _pu(cells,`<mxCell id="${id}" value="${nl(_lb(s)||'')}" style="${esc(sty)}" edge="1" parent="${_gc2?`g_${_gi(s)}`:'1'}"${src}${tgt}${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0245/0347
+    _pu(cells,`<mxCell id="${id}" value="${nl(_lb(s)||'')}" style="${esc(sty)}" edge="1" parent="${_gc2?`g_${_dioEsc(_gi(s))}`:'1'}"${src}${tgt}${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0245/0347
   }
   return cells;
 }
