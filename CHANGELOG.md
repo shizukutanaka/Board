@@ -1,3 +1,11 @@
+## [1.7.910] - 2026-09-30
+
+### Fixed
+- 別タブが旧バージョンの IndexedDB を保持すると `Persist.open()` が永久 pending で boot が暗黙停止 (render loop 未達・canvas 空白) する実害を解消: `onblocked` は toast+in-memory 継続、`onversionchange` は接続を閉じて新版タブのアップグレードを通す (ADR-0884)
+
+### Test
+- Persist.open の blocked/yield ハンドラと saveBlocked i18n キーをソースピン (ADR-0884)
+
 ## [1.7.909] - 2026-09-30
 
 ### Docs

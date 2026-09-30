@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.909';   // ADR-0883
+const V='1.7.910';   // ADR-0884
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -952,7 +952,7 @@ const I18N={
     imgBig:'画像が大きすぎます。縮小してください',snapBig:'ボードが大きすぎて共有できません',imgErr:'画像を読み込めませんでした',
     emptyHint:'クリックまたはツールバーから描き始める · ? でショートカット一覧',
     themeAuto:'テーマ: 自動(OS 追従)',themeLight:'テーマ: ライト',themeDark:'テーマ: ダーク',
-    popupBlocked:'ポップアップをブロックしてください',invalidBoard:'ボードファイルが無効です',lockedNoop:'ロック済み — ⌘⇧L で解除',exportFailed:'書き出し失敗',saveFailed:'保存失敗',quotaExceeded:'保存容量が逼迫しています — ⌘E/⌘⇧E で書き出しを推奨',
+    popupBlocked:'ポップアップをブロックしてください',invalidBoard:'ボードファイルが無効です',lockedNoop:'ロック済み — ⌘⇧L で解除',exportFailed:'書き出し失敗',saveFailed:'保存失敗',saveBlocked:'別タブが旧版を保持 — 今回は保存されません',quotaExceeded:'保存容量が逼迫しています — ⌘E/⌘⇧E で書き出しを推奨',
     quotaWarn:'保存容量の 8 割超を使用中です — ⌘E/⌘⇧E で書き出しておくと安全です',
     snap:'スナップ',grid:'グリッド',minimap:'ミニマップ',on:'オン',off:'オフ',online:'オンライン',offline:'オフライン',shapes:'図形',selDims:'選択',
     selCount:'個を選択',selNone:'選択を解除',
@@ -1035,7 +1035,7 @@ const I18N={
     imgBig:'Image too large — please resize',snapBig:'Board too large to share',imgErr:'Image failed to load',
     emptyHint:'Click or pick a tool to start drawing · Press ? for shortcuts',
     themeAuto:'Theme: Auto (follows OS)',themeLight:'Theme: Light',themeDark:'Theme: Dark',
-    popupBlocked:'Pop-up blocked — please allow pop-ups for PDF export',invalidBoard:'Invalid .board file',lockedNoop:'Locked — ⌘⇧L to unlock',exportFailed:'Export failed',saveFailed:'Save failed',quotaExceeded:'Storage quota exceeded — export locally with ⌘E/⌘⇧E',
+    popupBlocked:'Pop-up blocked — please allow pop-ups for PDF export',invalidBoard:'Invalid .board file',lockedNoop:'Locked — ⌘⇧L to unlock',exportFailed:'Export failed',saveFailed:'Save failed',saveBlocked:'Another tab holds an older board — this session won\'t persist',quotaExceeded:'Storage quota exceeded — export locally with ⌘E/⌘⇧E',
     quotaWarn:'Storage is over 80% full — exporting via ⌘E/⌘⇧E is recommended',
     copied:'Copied',pasted:'Pasted',deleted:'Deleted',cleared:'Cleared',
     beautified:'Beautified',beautifyNone:'Nothing to beautify (select a pen stroke close to a rectangle, ellipse, or line)',
@@ -8694,7 +8694,8 @@ const Persist={
       r.onupgradeneeded=()=>{const d=r.result;
         if(!d.objectStoreNames.contains(DB_STORE))d.createObjectStore(DB_STORE);
         if(!d.objectStoreNames.contains(DB_IMG_STORE))d.createObjectStore(DB_IMG_STORE);};
-      r.onsuccess=()=>{this.db=r.result;res()};
+      r.onblocked=()=>{_oT('saveBlocked');res()};   // ADR-0884
+      r.onsuccess=()=>{this.db=r.result;this.db.onversionchange=()=>{try{this.db.close()}catch(_){}this.db=null};res()};   // ADR-0884
       r.onerror=()=>rej(r.error);
     });
   },

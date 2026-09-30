@@ -1240,6 +1240,10 @@ const checks = [
   ['pen pointermove iterates coalesced samples', html.includes("case 'pen':{") && html.includes("for(const ce of coalescedSamples(e))contPen(_s2({x:ce.offsetX,y:ce.offsetY}),ce);")],
   // v1.6.79: Persist.flushIfHidden — visibilitychange→hidden as mobile-reliable durability signal
   ['Persist.flushIfHidden gates on vis===hidden && _dt()', html.includes("flushIfHidden(vis){") && html.includes("if(vis==='hidden'&&_dt()){")],
+  // v1.7.910: Persist.open blocked/yield lifecycle (ADR-0884)
+  ['Persist.open resolves on onblocked (stale-tab hold → in-memory, no boot hang)', html.includes("r.onblocked=()=>{_oT('saveBlocked');res()}")],
+  ['Persist.open yields on versionchange (newer tab can upgrade)', html.includes("this.db.onversionchange=()=>{try{this.db.close()}catch(_){}this.db=null}")],
+  ['saveBlocked i18n key in both locales', html.includes("saveBlocked:'別タブが旧版を保持") && html.includes("saveBlocked:'Another tab holds an older board")],
   ['Persist.flushIfHidden cancels pending debounce + calls save', html.includes("_cT(this._saveT);\n      this.save();")],
   ['visibilitychange listener wires document.visibilityState to flushIfHidden (ADR-0604/0608/0611: cancels gesture + clears touch state + hides cursor first)', html.includes("document.visibilityState==='hidden'){if(ptr.down)_cancelPointerGesture();_clearTouchState();Net.sendCursorHide()}Persist.flushIfHidden(document.visibilityState)")],
   ['pagehide routes through flushIfHidden — iOS swipe-away durable (ADR-0453/0604/0608)', html.includes("'pagehide',()=>{if(ptr.down)_cancelPointerGesture();_clearTouchState();Persist.flushIfHidden('hidden');Net._bcast(_mk('bye'))}")],
