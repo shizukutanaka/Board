@@ -1,3 +1,91 @@
+## [1.7.884] - 2026-09-30
+
+### Fixed
+- ADR-0858: wire の patch/shape は既知キーのみ検査されるため、未知キーが `validPatch`/`validShape` を素通り — `_oa` で図形本体へ着地し per-shape wclock にも攻撃者命名キーが刻まれ、1 op で ~1M 鍵を注入し snapshot の `w` フィールド経由で全ピアへ伝播し得た実害を、両 intake の 64 鍵上限 (実プロップ集合 ~57 + 余裕) で閉塞
+
+### Tests
+- behavioural ピン 2 件 — 65 鍵の junk upd patch / junk shape を実 intake 経路 (`validRemotePayload`/`validShape`) で棄却を固定
+
+## [1.7.883] - 2026-09-30
+
+### Fixed
+- ADR-0857: stroke 未設定の pen (細工 .board / stroke 属性なし SVG import 等) が描画コンテキストの残色で塗られる実害を解消 — drawPen が `--brand` フォールバックを解決 (box/frame と同規約)。同時に `_tTk` が `_penCache` もパージし、OS テーマ反転でトークン色を焼き付けた筆跡ビットマップが残留しない
+
+### Tests
+- behavioural ピン 3 件 — 1 点/多点ペンの fill 時色サンプリング + `_tTk` パージのソースピン
+
+## [1.7.882] - 2026-09-30
+
+### Docs
+- ADR-0856: dead-code/選択 repaint/エラーパスの 3 軸監査を完走 — shorthand ~236 個・関数 ~169 個・オブジェクトメンバー全て live、選択変更 55 サイト全て repaint 到達、catch 59 サイトで partial-mutation 経路なし、切断コメント残りゼロを記録
+
+## [1.7.881] - 2026-09-30
+
+### Docs
+- ADR-0855: 無効化網羅性監査を完走 — 全状態変更経路 (`_apply`/`_recordCommitted`/`applyRemote`/`_rs`/`_pgAdopt`/`_pgDel2`/`switchPage`/import 各系) が `_iG`・`_iv`/`_iD`・`_ivO`・`_ms`・`_ps`・`_pgBar`・`_sz`・`_pcC` を漏れなく到達することを検証、ジェスチャ内直接変更は ADR-0026 の意図的 carve-out と確認
+
+## [1.7.880] - 2026-09-30
+
+### Docs
+- ADR-0854: セッション内蓄積監査を完走 — undo ≤500 / seenOps ≤2000 / pages ≤64 / peers capped / toast auto-remove / memo caches は live id keyed + `_psc` purge で全て bounded
+- 切断コメント残片の第四スイープ — ~20 箇所を文法修復 (hit()/wire intake/persistence/UI 系)、ファイル全体で paren 切断・語切れスキャンが clean に (raw 556,751B)
+
+## [1.7.879] - 2026-09-30
+
+### Fixed
+- ADR-0853: 圧縮 .drawio の `<diagram>` 展開が件数無制限だった実害を解消 — 数千個の `<diagram>` を持つ細工ファイルが無制限の並行 DecompressionStream を生成し得たため、非圧縮パスと同じ 64 頁上限へ
+
+### Docs
+- import 残分岐監査 (svg/exc/drawio/TSV cascade) を完走 + 切断コメント残片 2 箇所を修復 (raw 557,007B)
+
+## [1.7.878] - 2026-09-30
+
+### Fixed
+- ADR-0852: OS のダークモード/高コントラスト切替 (auto テーマ時) でミニマップシーンビットマップが旧テーマ色のまま残存 — `_tTk` で applyTheme と matchMedia 監視のトークン更新を統一し minimap も即時無効化
+
+### Docs
+- render キャッシュ署名監査を完走 (pen bbox/bitmap・img 指紋・wrap・connLabel・_gridVer 連動全経路 clean) + 監査中に発見した切断コメント残片 6 箇所を修復 (raw 557,025B)
+
+## [1.7.877] - 2026-09-30
+
+### Docs
+- ADR-0851: 切断コメント残片の第三修復スイープ — 中語切れスタブと頭なし節 ~80 箇所を文法修復 (LWW/wire/undo/presence/import 収束コメントを含む) + 長大コメント 10 ブロックを圧縮し増分を相殺 (raw 557,053B)
+
+## [1.7.876] - 2026-09-30
+
+### Fixed
+- ADR-0850: `_connLabelMeasure` のメモ化キーへ `s.spacing` を追加 — ctx "Letter spacing" 巡回後もラベルピル/下線/取消線/背景プレート幅が変更前の値で張り付く実害を修正 (ctx.letterSpacing は measureText 幅に反映されるがキー未含だった)
+
+## [1.7.875] - 2026-09-30
+
+### Docs
+- ADR-0849: 切断コメント残片の第二修復スイープ — バイト刈り込み跡の真の中語断片 ~55 箇所を文法修復 (LWW/wire/undo 収束コメントを含む) + 長大コメント 26 ブロックを圧縮し増分を相殺 (raw 556,327B)
+
+## [1.7.874] - 2026-09-30
+
+### Fixed
+- ADR-0848: ツールボタンの装飾子要素 (svg アイコン + kbd) を aria-hidden 化 — VoiceOver でツール 1 つにつき 3 項目に分裂していた実害を修正 (FT-11 macOS VoiceOver 実機検証で検出、ツール 14 個 × 3 = ~42 項目のノイズを 1 項目/ツールへ)
+
+## [1.7.873] - 2026-09-29
+
+### Docs
+- ADR-0847: 切断コメント残片の文法修復 (ADR-0617/0703/0712/0717/0724 の5箇所 — 節途中で切れていた橋渡し句を補完)
+
+## [1.7.872] - 2026-09-29
+
+### Test
+- ADR-0846: `_mergeSnapshotOp` の 'add'-only ゲートを behavioural ピン — 細工 'del' op が snapshot 経路で実行されないことを固定
+
+## [1.7.871] - 2026-09-29
+
+### Test
+- ADR-0845: `_imgSent` のバイト上限を実スケール (66MB) で behavioural ピン — 最古エントリから evict する順序を固定
+
+## [1.7.870] - 2026-09-29
+
+### Docs
+- ADR-0844: img/wire サブシステム監査の完走記録 — 受信・送信・駐車・修復・応答・join の全経路が byte-bounded + 5駐車経路統一を確認、残存なし
+
 ## [1.7.869] - 2026-09-29
 
 ### Fixed
