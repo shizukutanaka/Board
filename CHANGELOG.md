@@ -1,3 +1,20 @@
+## [1.7.888] - 2026-09-30
+
+### Fixed
+- ADR-0862: label エディタがリモート制御の `s.stroke` を `style.cssText` にそのまま補間 — `'red;position:fixed;inset:0;background:url(e)'` で任意 CSS 宣言 (外部 url() フェッチ含む) を注入可能。`cssText` から color 値を排除し `inp.style.color/borderColor` のプロパティ代入 (値型・宣言注入不可・不正色はブラウザが無視) へ変更して閉塞
+
+### Tests
+- behavioural ピン 5 件 — 敵性 stroke で開いたラベル入力の cssText に注入宣言がなく、悪性文字列が value-typed property にのみ到達することを固定 (test.mjs 1810 件内訳 +5)
+- 同型 ADR-0861: `frame label honors s.font family` ソースピンを新フォーマットへ同期
+
+## [1.7.887] - 2026-09-30
+
+### Fixed
+- ADR-0861: drawio エクスポートでリモート制御の `groupId` が無エスケープで XML 属性へ流れ込み (`x" style="evil"` が属性ブレイク→ファイル内 markup 注入可能)、エクスポート済み .drawio の stored 攻撃経路 — `g_${gid}` の id/parent 4サイトを `_dioEsc` 化して閉塞
+
+### Tests
+- behavioural ピン 3 件 — `"` 含有 gid で group セル id/parent が `&quot;` 化し生 `"` が属性を破らないことを固定
+
 ## [1.7.886] - 2026-09-30
 
 ### Fixed
