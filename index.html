@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.612';
+const V='1.7.614';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3466,6 +3466,20 @@ function _grotDrag(wp,shift){
   let deg=_at2(wp.y-ptr.rotCy,wp.x-ptr.rotCx)*180/_PI-ptr.rotA0;
   if(shift)deg=_rnd(deg/15)*15;
   for(const [id,orig] of ptr.gOrig){const sh=byId(id);if(sh)_rotShape(sh,orig,ptr.rotCx,ptr.rotCy,deg);}
+  if(ptr.gAnc){const r2=deg*_PI/180,c2=_cos(r2),sn2=_sin(r2);
+    for(const [cid,oc] of ptr.gAnc){
+      const sh=byId(cid);if(!sh)continue;
+      for(const [k,fk] of[['a','aF'],['b','bF']]){
+        const ob0=ptr.gOrig.get(oc[k]),f0=oc[fk];if(!ob0||!f0)continue;
+        const A=byId(oc[k]);if(!A)continue;
+        const ob=_bb(ob0),cx0=ob.x+ob.w/2,cy0=ob.y+ob.h/2;
+        const ocx=ptr.rotCx+(cx0-ptr.rotCx)*c2-(cy0-ptr.rotCy)*sn2,ocy=ptr.rotCy+(cx0-ptr.rotCx)*sn2+(cy0-ptr.rotCy)*c2;
+        const ppx=ob.x+ob.w*f0.fx,ppy=ob.y+ob.h*f0.fy;
+        const spx=ocx+(ppx-cx0)*c2-(ppy-cy0)*sn2,spy=ocy+(ppx-cx0)*sn2+(ppy-cy0)*c2;
+        const nb=_bb(A);if(!sh[fk])sh[fk]={fx:0,fy:0};
+        sh[fk].fx=_c01((spx-nb.x)/(nb.w||1));sh[fk].fy=_c01((spy-nb.y)/(nb.h||1));
+      }
+    }}                                                       // ADR-0587: anchors ride the rotated bound shape
   const _nb=_bA(live);
   if(_nb&&deg)state.readout={x:_nb.x+_nb.w/2,y:_nb.y+_nb.h,label:`${deg>0?'+':''}${_rnd(deg)}°`};
   _iD(_dmgPair(_b0,_nb,ptr.gPad||40));                 // ADR-0026
@@ -3474,6 +3488,7 @@ function _grotCommit(){
   const after=[...ptr.gOrig.keys()].map(byId).filter(Boolean).map(clone);
   if(_ln(after)){
     const before=after.map(a=>ptr.gOrig.get(a.id));
+    if(ptr.gAnc)for(const [cid,oc] of ptr.gAnc){const sh=byId(cid);if(sh){before.push(oc);after.push(clone(sh));}}
     if(before.some((b,i)=>_JS(b)!==_JS(after[i]))){
       _rcOp({op:'align',dir:'grot',before,after});
     }
@@ -3855,7 +3870,7 @@ function abortGesture(){
   _penPred=null;ptr.lineClick=false;
   _zR();
   ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.dragStartShapes=null;
-  ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;ptr.wayIdx=null;ptr.wayNew=false;ptr.lblOrig=null;
+  ptr.gOrig=null;ptr.gAnc=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;ptr.wayIdx=null;ptr.wayNew=false;ptr.lblOrig=null;
   _iv();
 }
 
@@ -3897,6 +3912,7 @@ _on(canvas,_PD,e=>{
             }else{                          // ADR-0057: point geometry → delta path
               ptr.dragKind='grot';
               ptr.gOrig=_mP([[onlySel.id,clone(onlySel)]]);
+              ptr.gAnc=_mP();for(const s of _sh())if(_conn(s.type)&&((s.aF&&s.a===onlySel.id)||(s.bF&&s.b===onlySel.id)))ptr.gAnc.set(s.id,clone(s));   // ADR-0587
               ptr.rotCx=rh.cx;ptr.rotCy=rh.cy;
               ptr.rotA0=_at2(wp.y-rh.cy,wp.x-rh.cx)*180/_PI;
               ptr.gPad=(onlySel.size||2)+16;
@@ -3975,6 +3991,7 @@ _on(canvas,_PD,e=>{
             // on boxes, and Object.assign restore can only overwrite keys that
             // exist — an absent rotate would stay stale after cancel/undo.
             ptr.gOrig=new Map(sel.filter(_ul).map(s=>{const o=clone(s);if(o.w!=null&&o.rotate==null)o.rotate=0;return[s.id,o]}));
+            ptr.gAnc=_mP();for(const s of _sh())if(_conn(s.type)&&((s.aF&&ptr.gOrig.has(s.a))||(s.bF&&ptr.gOrig.has(s.b))))ptr.gAnc.set(s.id,clone(s));   // ADR-0587
             ptr.rotCx=gr.cx;ptr.rotCy=gr.cy;
             ptr.rotA0=_at2(wp.y-gr.cy,wp.x-gr.cx)*180/_PI;
             ptr.gPad=_max(...sel.map(s=>_szz(s)||2))+16;
@@ -4275,6 +4292,7 @@ function _cancelPointerGesture(){
     if(rsh)_oa(rsh,clone(ptr.resizeOrig));
   }else if((_dk('gresize')||_dk('grot'))&&ptr.gOrig){
     for(const [id,orig] of ptr.gOrig){const sh=byId(id);if(sh)_oa(sh,clone(orig));}
+    if(ptr.gAnc)for(const [cid,oc] of ptr.gAnc){const sh=byId(cid);if(sh)_oa(sh,clone(oc));}   // ADR-0587
   }else if(_dk('rotate')&&ptr.rotOrig){
     const rsh=_sel0();
     if(rsh){if(ptr.rotOrig.rotate==null)delete rsh.rotate;_oa(rsh,clone(ptr.rotOrig));}
@@ -6366,6 +6384,12 @@ function doRotate(d){
   _xFS(sel,frameOf)
   const r=d*_PI/180,cs=_cos(r),sn=_sin(r);
   const before=sel.map(s=>clone({...s,rotate:_rt(s)||0}));
+  // ADR-0586: conns whose bound shapes rotate must re-derive aF/bF — the
+  // fraction lives on the bound shape's (rotated) extent, so pin the anchor
+  // at the same material point: orbit+spin it like the shape, re-normalize.
+  const selIds=_sT(sel.map(s=>s.id)),extB=_mP();for(const s of sel)extB.set(s.id,_bb(s));
+  const _bC=[];for(const s of _sh())if(_conn(s.type)&&((s.aF&&selIds.has(s.a))||(s.bF&&selIds.has(s.b))))_bC.push(s);
+  for(const c of _bC)if(!selIds.has(c.id))before.push(clone(c));
   for(const s of sel){
     if(!_hb(s)){_rotPtsAbout(s,gx,gy,cs,sn);continue}   // ADR-0055: point geometry
     const b=_bb(s),cx=b.x+b.w/2,cy=b.y+b.h/2;
@@ -6373,7 +6397,18 @@ function doRotate(d){
     _sT2(s,nx-cx,ny-cy);
     s.rotate=((_rt(s)||0)+d+360)%360;
   }
+  for(const c of _bC){
+    for(const [k,fk] of[['a','aF'],['b','bF']]){
+      const A=byId(c[k]),f=c[fk];if(!A||!f||!selIds.has(A.id))continue;
+      const ob=extB.get(A.id),c0x=ob.x+ob.w/2,c0y=ob.y+ob.h/2;
+      const ocx=gx+(c0x-gx)*cs-(c0y-gy)*sn,ocy=gy+(c0x-gx)*sn+(c0y-gy)*cs;
+      const spx=ocx+(ob.x+ob.w*f.fx-c0x)*cs-(ob.y+ob.h*f.fy-c0y)*sn;
+      const spy=ocy+(ob.x+ob.w*f.fx-c0x)*sn+(ob.y+ob.h*f.fy-c0y)*cs;
+      const nb=_bb(A);f.fx=_c01((spx-nb.x)/(nb.w||1));f.fy=_c01((spy-nb.y)/(nb.h||1));
+    }
+  }
   const after=sel.map(clone);
+  for(const c of _bC)if(!selIds.has(c.id))after.push(clone(c));
   _rcOp({op:'align',dir:'rotate',before,after});
   _ivp();
   _ann(_ln(sel)===1?describeShape(sel[0]):d+'°');   // ,/. keyboard rotate announce; point-geom selections have no .rotate (ADR-0055)
