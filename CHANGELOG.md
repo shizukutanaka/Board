@@ -1,3 +1,8 @@
+## [1.7.805] - 2026-09-29
+
+### Fixed
+- ADR-0779: `validClock` の `peer`/`seq` に長さ上限 — `msg.peer` は intake で ≤64 ガード済みだが `op.clock.peer`/`wclock` 内 clock は無制限文字列を seenOps キーと IDB 永続化 wclock マップへ格納でき、敵性ピアによるメモリ/永続化肥大が可能だった。一点修正 (peer ≤64・文字列 seq ≤80) で op・snapshot rep・wc マップ全経路を閉塞
+
 ## [1.7.804] - 2026-09-29
 
 ### Fixed
