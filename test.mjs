@@ -245,9 +245,9 @@ const checks = [
   ["undo-wire swap advances _lastRep to the fresh clock (ADR-0615)", html.includes("if(w.op==='replace')state._lastRep=w.clock;") && html.includes("if(op.op==='replace')state._lastRep=op.clock;this._stampWrites(op)")],
   ["redo restamps before the local apply (ADR-0718)", html.includes("_fck(op);   // ADR-0718") && html.includes("this._apply(op,true);")],
   ["move undo-wire sends op.moved, not op.ids (ADR-0719)", html.includes("ids:op.moved||op.ids,dx:-op.dx,dy:-op.dy")],
-  ["del/clear undo-wire carries wc; addMany applies it (ADR-0721)", html.includes("{op:'addMany',shapes:op.shapes,wc:op.wc}") && html.includes("if(op.wc)for(const[id,w]of Object.entries(op.wc))_wc()[id]=clone(w)")],
-  ["pageDel snapshots + restores member wclocks (ADR-0722)", html.includes("op.wc={};for(const id of dead)if(_wc()[id])op.wc[id]=clone(_wc()[id])") && html.includes("op.shapes||[],wc:op.wc}")],
-  ["clear undo merges op.wc, never replaces (ADR-0723)", html.includes("if(op.wc)for(const[id,w]of Object.entries(op.wc))_wc()[id]=clone(w);_selR(op)")],
+  ["del/clear undo-wire carries wc; addMany applies it (ADR-0721)", html.includes("{op:'addMany',shapes:op.shapes,wc:op.wc}") && html.includes("if(op.wc)for(const[id,w]of Object.entries(op.wc))_wc()[id]=_wM(clone(w))")],
+  ["pageDel snapshots + restores member wclocks (ADR-0722)", html.includes("op.wc=_wM();for(const id of dead)if(_wc()[id])op.wc[id]=clone(_wc()[id])") && html.includes("op.shapes||[],wc:op.wc}")],
+  ["clear undo merges op.wc, never replaces (ADR-0723)", html.includes("if(op.wc)for(const[id,w]of Object.entries(op.wc))_wc()[id]=_wM(clone(w));_selR(op)")],
   ["pageAdd undo: unpage wire + _pgDel2 only-set (ADR-0724)", html.includes("_pgDel2(op,null,die,firstId)") && html.includes("unpage:state.pages?0:1") && html.includes("_pgDel2(op,firstId,only,viewId)")],
   ["pageDel wire carries the sender rehome target (ADR-0725)", html.includes("const rehome=op.unpage?null:((op.firstId!=null&&_pgById(op.firstId))?op.firstId:firstId)") && html.includes("s.firstId=op.firstId")],
   ["wire page-op aux fields validated (ADR-0755)", html.includes("(op.i==null||_fin(op.i))") && html.includes("(op.firstId==null||_idOK(op.firstId))") && html.includes("(op.nts==null||_fin(op.nts))")],
@@ -1195,8 +1195,8 @@ const checks = [
   ['doDuplicate does not clobber clipboard (uses _placeCopies, not state.clipboard=)', html.includes("_placeCopies(sel,_dd().x,_dd().y):_placeCopies(sel);   // independent of _cl()") && html.includes("function _placeCopies(srcShapes")],
   // v1.6.71: import sites clear stale selection + wclock (mirror replace op's _apply)
   ['dc.onclose drops _dcQ backlog so reconnect sends (ADR-0446)', /this\.dc\.onclose=\(\)=>\{[^}]*this\._dcQ=null/.test(html)],
-  ['importBoard clears selection+wclock on whole-board swap', html.includes("_rs(shapes.map(clone));   // ADR-0009\n      _pgAdopt(d.pages,d.curPg);") && html.includes("_scl();state.wclock={};\n      _docN(d);")],
-  ['importFromHash clears selection+wclock on whole-board swap', html.includes("_rs(valid.map(clone));_pgAdopt(data.pages,data.curPg);_setDocName(") && /_rs\(valid\.map\(clone\)\)[\s\S]{0,900}_scl\(\);state\.wclock=\{\};/.test(html)],
+  ['importBoard clears selection+wclock on whole-board swap', html.includes("_rs(shapes.map(clone));   // ADR-0009\n      _pgAdopt(d.pages,d.curPg);") && html.includes("_scl();state.wclock=_wM();\n      _docN(d);")],
+  ['importFromHash clears selection+wclock on whole-board swap', html.includes("_rs(valid.map(clone));_pgAdopt(data.pages,data.curPg);_setDocName(") && /_rs\(valid\.map\(clone\)\)[\s\S]{0,900}_scl\(\);state\.wclock=_wM\(\);/.test(html)],
   // v1.6.71: presentation-mode guard precedes editing shortcuts (no undo mid-slideshow)
   ['presentation guard runs before undo/redo/select-all shortcuts', /if\(_pA\(\)\)\{[\s\S]{0,260}return;\n  \}[\s\S]{0,700}if\(meta&&k==='z'&&!_sK\(e\)\)/.test(html)],
   // v1.6.71: export canvas clamped to browser limits
@@ -1442,7 +1442,7 @@ const checks = [
     html.includes("function nextZ(){return _nS()?_sh().reduce((m,s)=>_max(m,s.z||0),0)+1:1}")],
   // v1.7.44: _apply replace forward restores afterWc on redo
   ['_apply replace forward: if(forward&&op.afterWc) restores wclock on redo',
-    html.includes("if(forward&&op.afterWc)state.wclock=clone(op.afterWc);")],
+    html.includes("if(forward&&op.afterWc)state.wclock=_wM(clone(op.afterWc));")],
   // v1.7.43: _apply zorder backward restores origSel (mirrors move/align/group/ungroup)
   ['_apply zorder backward: if(!forward&&op.origSel) restores selection',
     html.includes("if(!forward)_selR(op);\n        break;}\n      case 'style':")],
@@ -1482,8 +1482,8 @@ const checks = [
     html.includes("const _r=_cbr();\n    _vp().x=wx-_r.width/")],
   // v1.7.47: del op.wc refreshed on every forward apply (not lazy)
   ['_apply del: op.wc refreshed on every forward apply (if(!op.wc) guard removed)',
-    !html.includes("if(!op.wc){op.wc={};for")&&
-    html.includes("op.wc={};for(const sh of op.shapes)if(_wc()[sh.id])op.wc[sh.id]=clone(_wc()[sh.id]);")],
+    !html.includes("if(!op.wc){op.wc=_wM();for")&&
+    html.includes("op.wc=_wM();for(const sh of op.shapes)if(_wc()[sh.id])op.wc[sh.id]=clone(_wc()[sh.id]);")],
   // v1.7.48: 'clear' removed from REMOTE_OPS (remote peer cannot wipe board)
   ["REMOTE_OPS excludes 'clear' but includes 'replace'+'beautify' (ADR-0613/0730)",
     html.includes("REMOTE_OPS:_sT(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize','replace','pageAdd','pageDel','pageName','beautify'])")],
@@ -4920,7 +4920,7 @@ try {
     }
     // ADR-0679: pageDel drops member write-clocks like del
     {
-      assert.ok(html.includes("for(const id of dead)_wc()[id]={_del:op.clock};"),'_pgDel2 tombstones member wclocks (ADR-0679/0707/0734)');
+      assert.ok(html.includes("for(const id of dead)_wc()[id]=_wM({_del:op.clock});"),'_pgDel2 tombstones member wclocks (ADR-0679/0707/0734)');
       console.log('  ✓ pageDel wclock purge pin (1 assert)');
     }
     // ADR-0680: selection-presence dedup key carries curPg
@@ -9905,7 +9905,7 @@ try {
   // the original wclock. After undoing a whole-board import, the pre-import shapes are back
   // but their LWW clocks are gone — a subsequent remote upd would win unconditionally.
   // Fix: importBoard/importFromHash snapshot wc:clone(state.wclock) into the op;
-  // _apply replace reverse restores if(!forward && op.wc) state.wclock=clone(op.wc).
+  // _apply replace reverse restores if(!forward && op.wc) state.wclock=_wM(clone(op.wc)).
   {
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const R=Shape.make('rect',{x:0,y:0,w:50,h:50});
@@ -14078,6 +14078,27 @@ try {
     Net._imgChunks.clear();
     console.log('  ✓ reassembly slots reaped on idle age too (ADR-0786)');
   }
+  // ADR-0788: a remote addMany could carry wc['__proto__'] — writing it into a
+  // prototype-bearing wclock mutated the map's PROTOTYPE, so every missing-id
+  // tomb read returned the planted {_del:clock} and future adds were silently
+  // skipped (a one-message board freeze). wclock + inner maps are now
+  // Object.create(null) via _wM — '__proto__' is a plain own key.
+  {
+    state.shapes=[];state.wclock=Object.create(null);state.seenOps=new Set();state.seq=0;state.history=[];state.histIdx=-1;   // null-proto — the prod _wM() shape
+    const wc=JSON.parse('{"__proto__":{"_del":{"peer":"zz","seq":9e9,"ts":9e18}}}');   // own '__proto__' key (literal {} would set the proto instead)
+    Store.applyRemote({op:'addMany',shapes:[],wc,clock:{peer:'p1',seq:1,ts:1}});
+    assert.strictEqual(Object.getPrototypeOf(state.wclock),null,'wclock is a null-prototype map — __proto__ write stored as own key, not proto mutation');
+    Store.applyRemote({op:'addMany',shapes:[{id:'victim',type:'rect',z:1,x:0,y:0,w:10,h:10,stroke:'#0F172A',size:2,opacity:1}],clock:{peer:'p1',seq:2,ts:2}});
+    assert.ok(byId('victim'),'planted __proto__ tomb does not freeze future adds');
+    // a shape literally id'd '__proto__' still gets a correct own-key tomb
+    // (the planted ts:9e18 tomb beats the add below at ts:3 — a NEWER clock lands it)
+    Store.applyRemote({op:'add',shape:{id:'__proto__',type:'rect',z:1,x:0,y:0,w:1,h:1,stroke:'#0F172A',size:2,opacity:1},clock:{peer:'p1',seq:3,ts:9e19}});
+    assert.ok(byId('__proto__'),'literal __proto__ id shape lands as a real shape');
+    Store.applyRemote({op:'del',shapes:[{id:'__proto__',type:'rect',z:1,x:0,y:0,w:1,h:1,stroke:'#0F172A',size:2,opacity:1}],clock:{peer:'p1',seq:4,ts:9e20}});
+    assert.ok(!byId('__proto__')&&state.wclock['__proto__']&&state.wclock['__proto__']._del,'__proto__ tomb is a real own-key entry');
+    state.shapes=[];state.wclock={};state.seenOps=new Set();state.seq=0;state.history=[];state.histIdx=-1;
+    console.log('  ✓ wclock null-proto — __proto__ keys cannot poison the tomb map (ADR-0788)');
+  }
 
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
@@ -14085,7 +14106,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1776; // prev 1773 + 3 ADR-0786 reassembly TTL asserts
+  pass += 1780; // prev 1776 + 4 ADR-0788 wclock __proto__-poison asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
