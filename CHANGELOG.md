@@ -1,3 +1,8 @@
+## [1.7.841] - 2026-09-29
+
+### Fixed
+- ADR-0815: `#b=` ハッシュの decodeURIComponent を try 内へ — malformed % が pinned URL+無通知になる小穴を閉塞
+
 ## [1.7.840] - 2026-09-29
 
 ### Docs
