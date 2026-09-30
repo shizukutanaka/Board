@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.885';   // ADR-0859
+const V='1.7.888';   // ADR-0862
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2186,7 +2186,7 @@ function _pgRename(){const p=_pgById(state.curPg);if(!p)return;const n=prompt(t(
 let _pgSig='';
 function _pgBar(){const el=_g('pgBar');if(!el)return;_hdn(el,!_pgOn());if(!_pgOn())return;
 const tb=_g('pgTabs');if(!tb)return;
-const sig=_pgs().map(p=>p.id+'\x1f'+p.name).join();let _fid;   // ADR-0683: unit-separator join — ('p1','12') vs ('p11','2') used to collide and skip the chip rebuild
+const sig=_JS(_pgs().map(p=>p.id+'\x1f'+p.name));let _fid;   // ADR-0683/0860: _JS keeps the sig injective across element boundaries
 if(sig!==_pgSig){_pgSig=sig;const _fe=_aE();_fid=_fe&&_fe._pgid;_tC(tb,'');   // ADR-0683: remember the focused chip before the wipe
 for(const p of _pgs()){const c=_ce('button');c.className='pg-b pg-t';c.title=p.name;c._pgid=p.id;c.setAttribute('aria-label',p.name);_tC(c,_s0(p.name,12));   // ADR-0682: visible text truncates at 12 chars — SR users still get the full page name
 _oC(c,()=>c._pgid===state.curPg?_pgRename():switchPage(c._pgid));   // click the live tab to rename — keeps 0646's rename path one click away
@@ -3674,7 +3674,7 @@ function resizeSnap(orig,handle,wp){
   const tol=SNAP_OBJ/_vp().zoom;
   const movesX=/[ew]/.test(handle),movesY=/[ns]/.test(handle);
   let x=wp.x,y=wp.y;const guides=[];
-  const idx=_snapIndex('resize',_selIds().sort().join(','),s=>_hasS(s.id));   // ADR-0056: exclude the whole dragged set
+  const idx=_snapIndex('resize',_JS(_selIds().sort()),s=>_hasS(s.id));   // ADR-0056/0860
   if(movesX){const best=_snapBest(idx.xs,wp.x,tol);
     if(best){x=best.at;_pu(guides,_gV(best.at,orig,best.b));}}
   if(movesY){const best=_snapBest(idx.ys,wp.y,tol);
@@ -4587,9 +4587,10 @@ function openLabelEditor(hit,leftPx,topPx,bold){
   inp.value=hit.label||'';inp.maxLength=80;
   const col=hit.stroke||_gC(bold?'--accent-contrast':'--ink');   // a11y-audit-2026-07: label-editor text needs the 4.5:1 floor
   inp.style.cssText=`position:fixed;left:${leftPx}px;top:${topPx}px;`+
-    `font:${hit.italic?'italic ':''}${bold?'600 ':''}${hit.fontSize||12}px ${_fontFam(hit)};color:${col};`+   // ADR-0186/0206
-    `background:${_p()};border:1px solid ${col};`+
+    `font:${hit.italic?'italic ':''}${bold?'600 ':''}${hit.fontSize||12}px ${_fontFam(hit)};`+   // ADR-0186/0206/0862
+    `background:${_p()};border:1px solid;`+
     `padding:2px 6px;outline:none;z-index:9500;min-width:80px;`;
+  inp.style.color=col;inp.style.borderColor=col;
   _ap(_db,inp);inp.select();
   _lblTa={inp,hit};_lblVp='';   // ADR-0182: follow the viewport while editing
   const commit=()=>{
@@ -5195,7 +5196,7 @@ function objectSnap(dx,dy){
   const bb=_bA([...ptr.dragStartShapes.values()]);
   if(!bb)return{dx:0,dy:0,guides:[]};
   const mov={x:bb.x+dx,y:bb.y+dy,w:bb.w,h:bb.h};
-  const key=[...ptr.dragStartShapes.keys()].join(',');
+  const key=_JS([...ptr.dragStartShapes.keys()].sort());
   const idx=_snapIndex('move',key,s=>ptr.dragStartShapes.has(s.id));
   const base=_snapBoxIdx(mov,idx,SNAP_OBJ/_vp().zoom);
   if(base.dx!==0&&base.dy!==0)return base;
@@ -7143,7 +7144,7 @@ function _dioCells(shapes){
   const _gbx={};for(const s of shapes)if(_gi(s)&&_hb(s)){const g=_gbx[_gi(s)]||(_gbx[_gi(s)]={x:1/0,y:1/0,x2:-1/0,y2:-1/0});
     g.x=_min(g.x,s.x);g.y=_min(g.y,s.y);g.x2=_max(g.x2,s.x+s.w);g.y2=_max(g.y2,s.y+(s.h||0))}
   for(const gid in _gbx){const g=_gbx[gid];
-    _pu(cells,`<mxCell id="g_${gid}" value="" style="group;" vertex="1" parent="1"><mxGeometry x="${g.x}" y="${g.y}" width="${g.x2-g.x}" height="${g.y2-g.y}" as="geometry"/></mxCell>`)}
+    _pu(cells,`<mxCell id="g_${_dioEsc(gid)}" value="" style="group;" vertex="1" parent="1"><mxGeometry x="${g.x}" y="${g.y}" width="${g.x2-g.x}" height="${g.y2-g.y}" as="geometry"/></mxCell>`)}
   // ADR-0345: pre-assign vertex ids up-front so a member can reference
   // its containing frame's swimlane cell id regardless of z-order
   for(const s of shapes)if(s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen')idOf.set(s.id,'b'+(i++));
@@ -7181,7 +7182,7 @@ function _dioCells(shapes){
     if(t==='image'&&_lb(s))sty+='verticalAlign=bottom;';                 // ADR-0353
     const _gc=_gbx[_gi(s)];                                          // ADR-0336
     const _pf=_gc?null:_fOf(s);                                         // ADR-0345: frame containment (group wins)
-    _pu(cells,`<mxCell id="${id}" value="${nl(lbl||'')}" style="${esc(sty)}" vertex="1" parent="${_gc?`g_${_gi(s)}`:_pf?idOf.get(_pf.id):'1'}"${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}><mxGeometry x="${(s.x||0)-(_gc?_gc.x:_pf?_pf.x:0)}" y="${(s.y||0)-(_gc?_gc.y:_pf?_pf.y:0)}" width="${s.w||120}" height="${s.h||80}" as="geometry"/></mxCell>`);   // ADR-0245/0336/0345
+    _pu(cells,`<mxCell id="${id}" value="${nl(lbl||'')}" style="${esc(sty)}" vertex="1" parent="${_gc?`g_${_dioEsc(_gi(s))}`:_pf?idOf.get(_pf.id):'1'}"${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}><mxGeometry x="${(s.x||0)-(_gc?_gc.x:_pf?_pf.x:0)}" y="${(s.y||0)-(_gc?_gc.y:_pf?_pf.y:0)}" width="${s.w||120}" height="${s.h||80}" as="geometry"/></mxCell>`);   // ADR-0245/0336/0345
   }
   // ADR-0354: pen strokes export as polyline edges; one
   // mxPoint per stroke point keeps the ink visible in draw.io.
@@ -7195,7 +7196,7 @@ function _dioCells(shapes){
     let geo=`<mxGeometry relative="1" as="geometry"><mxPoint x="${s.pts[0][0]-(_gp?_gp.x:0)}" y="${s.pts[0][1]-(_gp?_gp.y:0)}" as="sourcePoint"/><mxPoint x="${s.pts[_ln(s.pts)-1][0]-(_gp?_gp.x:0)}" y="${s.pts[_ln(s.pts)-1][1]-(_gp?_gp.y:0)}" as="targetPoint"/>`;
     if(_ln(s.pts)>2)geo+='<Array as="points">'+_mid(s.pts).map(p=>`<mxPoint x="${p[0]-(_gp?_gp.x:0)}" y="${p[1]-(_gp?_gp.y:0)}"/>`).join('')+'</Array>';
     geo+='</mxGeometry>';
-    _pu(cells,`<mxCell id="${id}" value="" style="${esc(sty)}" edge="1" parent="${_gp?`g_${_gi(s)}`:'1'}"${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0354
+    _pu(cells,`<mxCell id="${id}" value="" style="${esc(sty)}" edge="1" parent="${_gp?`g_${_dioEsc(_gi(s))}`:'1'}"${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0354
   }
   for(const s of shapes){
     const t=s.type;
@@ -7223,7 +7224,7 @@ function _dioCells(shapes){
     const wa=_el(s)?_mid(_elbowPts(s)):s.curve?[_curveCtrl(_cE(s),s.cbend)]:_wayArr(s);   // ADR-0358/0360
     if(_ln(wa))geo+='<Array as="points">'+wa.map(p=>`<mxPoint x="${p.x-(_gc2?_gc2.x:0)}" y="${p.y-(_gc2?_gc2.y:0)}"/>`).join('')+'</Array>';
     geo+='</mxGeometry>';
-    _pu(cells,`<mxCell id="${id}" value="${nl(_lb(s)||'')}" style="${esc(sty)}" edge="1" parent="${_gc2?`g_${_gi(s)}`:'1'}"${src}${tgt}${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0245/0347
+    _pu(cells,`<mxCell id="${id}" value="${nl(_lb(s)||'')}" style="${esc(sty)}" edge="1" parent="${_gc2?`g_${_dioEsc(_gi(s))}`:'1'}"${src}${tgt}${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}>${geo}</mxCell>`);   // ADR-0245/0347
   }
   return cells;
 }
@@ -8154,7 +8155,7 @@ const Net={
   sendSelectionIfChanged(){
     if(_pr().size===0)return;
     const ids=_selIds();
-    const key=ids.join(',')+'|'+(state.curPg||'');   // ADR-0680: pg rides the key — a page switch with an unchanged selection must still resend (peers keep our stale page otherwise)
+    const key=_JS(ids.sort())+'|'+(state.curPg||'');   // ADR-0680/0860: pg rides the key — a page switch with an unchanged selection must still resend (peers keep our stale page otherwise)
     if(key===this._lastSelSent)return;
     this._lastSelSent=key;
     this._bcast(_mk('selection',{ids,pg:state.curPg}));   // ADR-0647
@@ -9527,7 +9528,7 @@ function wire(){
 // changes are detected by a sorted-id signature compared once per frame.
 let _selSig=null;
 function _syncStylePanelIfChanged(){
-  const sig=_selN()+'|'+_selIds().sort().join(',');
+  const sig=_selN()+'|'+_JS(_selIds().sort());   // ADR-0860
   if(sig===_selSig)return;
   _selSig=sig;
   _syncStylePanel();
