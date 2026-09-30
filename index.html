@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.879';   // ADR-0853
+const V='1.7.880';   // ADR-0854
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1199,9 +1199,8 @@ const G={
       let x=_min(e.x1,e.x2),y=_min(e.y1,e.y2),x2=_max(e.x1,e.x2),y2=_max(e.y1,e.y2);   // ADR-0090
       for(const w of _wayArr(s)){x=_min(x,w.x);y=_min(y,w.y);x2=_max(x2,w.x);y2=_max(y2,w.y)}
       // ADR-0376: off-box route points — a curve's
-      // chord and an elbow's trunk can be dragged
-      // them made the damage rect skip the apex (g
-      // inView cull a curve still inside the viewport.
+      // chord and an elbow's trunk can drag past the box; skipping them
+      // made damage miss the apex and let inView cull a live curve.
       if(s.curve){const cc=_curveCtrl(e,s.cbend);x=_min(x,cc.x);y=_min(y,cc.y);x2=_max(x2,cc.x);y2=_max(y2,cc.y)}
       else if(_el(s))for(const q of _elbowPts(s)){x=_min(x,q.x);y=_min(y,q.y);x2=_max(x2,q.x);y2=_max(y2,q.y)}
       const p=(_szz(s)||1)/2+(_arw(s)?_szz(s)*3:0);
@@ -1221,19 +1220,16 @@ const G={
     return{x:mnx,y:mny,w:mxx-mnx,h:mxy-mny};
   },
   hit(s,p){
-    // Quick-reject the WORLD point against G.bbo
-    // axis-aligned envelope, so it MUST run befo
-    // compares an un-rotated local point against
-    // rejects large parts of rotated non-square
+    // Quick-reject the WORLD point against G.bbox's axis-aligned envelope —
+    // it runs before the un-rotation below, so a rotated shape's bigger AABB
+    // still drops most misses cheaply.
     const b=_bb(s);
     const tol=_max(6/_vp().zoom,(_szz(s)||0)/2);
     if(p.x<b.x-tol||p.y<b.y-tol||p.x>b.x+b.w+tol||p.y>b.y+b.h+tol)return false;
-    // Rotation is box-only (x/y/w/h). shapeRot()
-    // hit-testing identically: un-rotate the poi
-    // per-type check below (which uses s.x/s.w).
-    // (crafted import/remote op — validPatch per
-    // UNrotated; without the `_hb(s)` guard its
-    // NaN, un-rotating p to {NaN,NaN} and making
+    // Rotation is box-only (x/y/w/h): un-rotate the point about the shape's
+    // centre and the per-type check below (reads s.x/s.w) works identically.
+    // `_hb(s)` guards crafted non-box shapes carrying rot — their missing s.w
+    // would un-rotate p to {NaN,NaN} and kill hit-testing.
     if(_rt(s)&&_hb(s)){const _cx=s.x+s.w/2,_cy=s.y+(s.h||0)/2,_r=-_rt(s)*_PI/180,_c=_cos(_r),_si=_sin(_r),_dx=p.x-_cx,_dy=p.y-_cy;p={x:_cx+_dx*_c-_dy*_si,y:_cy+_dx*_si+_dy*_c};}
     switch(s.type){
       case 'rect':
@@ -1334,11 +1330,10 @@ function validPatch(p){
   if('link' in p&&p.link!=null&&!(_iS(p.link)&&/^https?:\/\//.test(p.link)))return false;
   return true;
 }
-// ADR-0373: patches may carry structural/internal keys a remote peer can abuse —
-// `id` rebinds break the byId index, `type` rebinds send a shape into a renderer
-// case it doesn't satisfy …
-// frame, persisted), `_`-prefixed writes clobber cache fields (_penSig/_bmp).
-// Batch patches keep `id` only for the byId lookup; it's stripped pre-assign.
+// ADR-0373: remote patches may carry structural keys — `id` rebinds break byId,
+// `type` rebinds send a shape into a renderer case it can't satisfy, `frac`
+// scrambles z-order, `pg` exiles it off-page, `_`-prefixed writes clobber
+// caches (_penSig/_bmp). `id` is kept only for the byId lookup then stripped.
 function _stripStruct(p,idToo){delete p.type;if(idToo)delete p.id;for(const k of _ok(p))if(k[0]==='_')delete p[k];return p}
 function _cleanVal(v,depth){
   if(depth>8)return false;
@@ -1387,9 +1382,9 @@ function validRemotePayload(op){
     case 'move':   return _iA(op.ids)&&_ln(op.ids)>0&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(_idOK)&&_iN(op.dx)&&_fin(op.dx)&&_iN(op.dy)&&_fin(op.dy)&&(op.dx!==0||op.dy!==0)
       &&patches(op.after)&&(op.before==null||patches(op.before));   // ADR-0729/0741
     case 'zorder':  // Step2 minimal-delta {changes:[{id,before,after}]} only — ADR-0742: the legacy {after:[…]}
-                    // wholesale snapshot applied z+frac unconditionally on every entry …
-                    // no clock stamp) so a pre-Step2 peer's raced reorder clobbered newer frac writes with no
-                    // convergence path to heal. No current producer emits it.
+                    // wholesale snapshot applied z+frac unconditionally on every entry (with no clock stamp),
+                    // so a pre-Step2 peer's raced reorder clobbered newer frac writes with no convergence path
+                    // to heal. No current producer emits it.
       return _iA(op.changes)&&_ln(op.changes)<=MAX_OP_SHAPES&&op.changes.every(c=>c&&_iS(c.id)&&_ln(c.id)<=64
                 &&(c.after==null||_iS(c.after)&&_ln(c.after)<=600)&&(c.before==null||_iS(c.before)&&_ln(c.before)<=600));   // ADR-0473/0485
     case 'style':
@@ -1750,9 +1745,8 @@ const Store={
         }else{
           // ADR-0724: purge by CURRENT membership via _pgDel2, not op.shapes — a shape
           // that acquired pg=op.id after the commit (a peer's add on that page)
-          // survived locally while peers' wire pageDel removed it. When the undo
-          // empties the page set the members revert to un-paged (the
-          // 'unpage' flag below — the sender keeps them too).
+          // survived locally while peers' wire pageDel removed it. Undo emptying
+          // the page set reverts members to un-paged — 'unpage' keeps the sender's too.
           if(_pgs()){const i=_pgs().findIndex(p=>p.id===op.id);if(i>=0)_pgs().splice(i,1);
             if(_ln(_pgs()))_pgDel2(op,_pgs()[0].id);
             else{const die=new Set((op.shapes||[]).map(s=>s.id));_pgDel2(op,null,die);for(const s of _sh())if(s.pg===op.id)s.pg=null;state.pages=null;state.curPg=null;_pgHealS()}}   // ADR-0663/0724
@@ -1779,7 +1773,7 @@ const Store={
           _pgs().splice(i,1);
           op.firstId=rehome;   // ADR-0725: wire + redo-wire carry the resolved target
           if(op.unpage){_pgDel2(op,null,die,firstId);for(const s of _sh())if((s.pg||firstId)===op.id)s.pg=null}   // ADR-0724/0725
-          else _pgDel2(op,rehome,null,firstId);   // ADR-0707/0725: member rehome follows the wire choice; the view lands on the local first
+          else _pgDel2(op,rehome,null,firstId);   // ADR-0707/0725: member rehome follows the wire choice; the view lands on the local firstId
           if(!_ln(_pgs())){state.pages=null;state.curPg=null;_pgHealS()}   // ADR-0703: remote del emptied the set — page mode ends
         }else{
           if(!_pgs())state.pages=[];   // heal
@@ -4845,8 +4839,8 @@ _on(canvas,'wheel',e=>{
     _wheelZoomEnd=_stO(()=>{_pinchSnap=null;_pinchVp=null;_iv()},180);
     zoomAt({x:e.offsetX,y:e.offsetY},-d.y*0.005);
   }else{
-    // ADR-0093: ⇧+wheel pans horizontally (mouse
-    // pass through real deltaX so trackpads keep horizontal pan
+    // ADR-0093: ⇧+wheel pans horizontally (mouse deltaY→X); real deltaX
+    // passes through so trackpads keep horizontal pan
     const dx=_sK(e)&&!d.x?d.y:d.x,dy=_sK(e)&&!d.x?0:d.y;
     _vp().x=_xC(_vp().x+dx/_vp().zoom);
     _vp().y=_xC(_vp().y+dy/_vp().zoom);
@@ -5212,9 +5206,8 @@ function objectSnap(dx,dy){
   return base;
 }
 // Expand a set of selected ids to include shapes fully contained in any selected
-// frame, so moving a frame moves its contents. Other frames are never captured as
-// children. Shared by pointer-drag (pic
-// so both move paths agree. Pure read of _sh(); returns a fresh Set.
+// frame, so moving a frame moves its contents (other frames never capture as
+// children). Shared by pointer-drag + marquee paths. Pure read; fresh Set.
 function withFrameChildren(ids){
   const out=_sT(ids);
   for(const selId of ids){
@@ -5243,9 +5236,8 @@ function nudgeSelection(dx,dy){
 // Shared by live drag (doMove) and commit (endSelect) so they agree exactly.
 // Grid snap (⇧G) takes precedence; otherwise snap to nearby objects.
 function moveDelta(wp,shift,alt){
-  // ADR-0128: held Alt suppresses every snap source
-  // (snapPt/snapV) and object snap alike (draw
-  // dragging to disable all snap functions").
+  // ADR-0128: held Alt suppresses every snap source (snapPt/snapV) and object
+  // snap alike — "hold Alt while dragging to disable all snap functions".
   const sp=alt?wp:snapPt(wp),sx0=alt?ptr.wx0:snapV(ptr.wx0),sy0=alt?ptr.wy0:snapV(ptr.wy0);
   let dx=sp.x-sx0,dy=sp.y-sy0;
   if(shift){                            // ADR-0066: Shift+drag constrains to the dominant axis
@@ -6380,8 +6372,8 @@ function doAlign(dir){
       const gap2=(_max(...units.map(({b})=>b.y+b.h))-_min(...units.map(({b})=>b.y))-totalH)/(_ln(units)-1);
       let y0=units[0].b.y;for(const u of units){mv(u,0,y0-u.b.y);y0+=u.b.h+gap2}break}
     // ADR-0107: reflow units into a compact grid (Figma «Tidy up»).
-    // Reading order (y then x), cols=ceil(sqrt(n
-    // row's max height + 32 gap, each column's pitch
+    // Reading order (y then x), cols=ceil(sqrt(n)); row pitch = max height +32,
+    // column pitch = max width +32.
     case 'tidy':{
       units.sort((a,b)=>(a.b.y-b.b.y)||(a.b.x-b.b.x));
       const GAP=32,cols=_ceil(_sqr(_ln(units)));
@@ -6397,7 +6389,7 @@ function doAlign(dir){
         yy+=rowH[ri]+GAP;
       }
       break}
-    // ADR-0108: two units swap positions (centre
+    // ADR-0108: two units swap positions (centres)
     case 'swap':{
       if(_ln(units)!==2)break;
       const [a,b]=units;
@@ -7879,9 +7871,8 @@ function buildSVG(shapes,paper){
         const fr=_min(4,W/10,H/10);
         const clr=_esc(_sk(s)||'#00C4CC');
         // drawShape renders frames at (_oP(s)??1)*0.9 and falls back to the
-        // literal label 'Frame' when unlabeled — bot
-        // or default-opacity frame rendered wrong (f
-        // export, not canvas/PNG/PDF (deep-audit fix).
+        // literal label 'Frame' when unlabeled — SVG export must match both,
+        // not canvas/PNG/PDF (deep-audit fix).
         const fa=` opacity="${(_oP(s)==null?1:_num(_oP(s)))*0.9}"`;
         _pu(els,`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${fr}" fill="${_fi(s)||'rgba(248,250,252,0.6)'}" stroke="${clr}" stroke-width="${SZ||1.5}"${dA}${fa}${rT}/>`);   // ADR-0178
         const alF2=s.align||'left',txF=alF2==='right'?X+ox+W-6:alF2==='center'?X+ox+W/2:X+ox+6;   // ADR-0197
@@ -8049,12 +8040,10 @@ const Net={
       },NET_PRESENCE_INTERVAL);
     }catch{}
   },
-  // ADR-0069: wire-level image refs. add/addMa
-  // key); blob bytes ride as {k:'img'} message
-  // BEFORE the referencing op on both ordered
-  // payloads per session; snapshots pass a fre
-  // is always re-emitted (late joiners). Inbou
-  // whose blob hasn't landed park in _imgPending
+  // ADR-0069: wire image refs — ops carry {img:key}; blob bytes ride {k:'img'}
+  // msgs sent BEFORE the referencing op on both ordered channels; snapshots
+  // re-emit every key (fresh `sent` set, late joiners). Inbound shapes whose
+  // blob hasn't landed park in _imgPending.
   _imgSent:_mP(), _imgIn:_mP(), _imgPending:_mP(), _imgqT:_mP(),
   _imgOuts:[], _imgChunks:_mP(),
   _slimShapes(shapes,sent){
@@ -8142,9 +8131,8 @@ const Net={
       }catch(_){}
     }
   },
-  // ADR-0010: ephemeral peer cursor presence —
-  // Same dual-transport pattern as broadcast()
-  // BroadcastChannel-only via _send): cursors
+  // ADR-0010: ephemeral peer cursor presence — same dual-transport pattern
+  // as broadcast() (BC-only via _send): cursors
   _lastCursorSend:0,
   sendCursor(wp){
     if(_pr().size===0)return;   // nobody to tell
@@ -8160,9 +8148,8 @@ const Net={
   },
   // ADR-0011: ephemeral peer selection presenc
   // NOT draw() — render must stay side-effect-
-  // when the serialized selection differs from
-  // (selection changes are discrete). null forces a resend — set
-  // _touchPeer when a new peer joins, so latec
+  // resend only when the serialized selection differs (selection changes are
+  // discrete). null forces a resend — set on _touchPeer for latecomers.
   _lastSelSent:'',
   sendSelectionIfChanged(){
     if(_pr().size===0)return;
@@ -8192,9 +8179,8 @@ const Net={
   },
   _onRecv(msg,viaRtc){
     if(!msg||!_iO(msg)||msg.peer===_pi())return;
-    // Defensive intake for the peer id itself (p
-    // id feeds _touchPeer/_pr() directly). WebRT
-    // unfiltered — "hello/ping never ride the Da
+    // Defensive intake: the peer id feeds _touchPeer/_pr() directly; WebRTC is
+    // unfiltered — hello/ping never ride the DataChannel.
     if(msg.peer!==_ud&&(!_iS(msg.peer)||_ln(msg.peer)>MAX_PEER_ID_LEN||(!viaRtc&&_sw(msg.peer,'rtc:'))))return;   // ADR-0827
     switch(msg.k){
       case 'img':{
@@ -8299,9 +8285,8 @@ const Net={
         if(p){const npg=_iS(msg.pg)?_s0(msg.pg,64):null,ch=p.pg!==npg;p.cursor=msg.h===1?null:{x:msg.x,y:msg.y};p.pg=npg;_ivO();if(ch)UI.refreshPeers()}   // ADR-0611/0647/0769: pg change repaints the avatar '· page' tooltip
         break;}
       case 'selection':{
-        // ADR-0011: same _rtcPeerId routing as 'curs
-        // so an RTC peer lives under a synthetic id,
-        // string ids only, capped — a bad peer can't
+        // ADR-0011: same _rtcPeerId routing as 'curs'/'sel' (RTC peers live
+        // under synthetic rtc: ids); string ids only, capped at 64.
         if(!_iA(msg.ids))break;
         const ids=_s0(msg.ids,MAX_OP_SHAPES).filter(_idOK);   // ADR-0485: same ≤64 cap as every other wire id field
         const peerKey=this._pk(msg,viaRtc);
@@ -8688,7 +8673,7 @@ const Persist={
   // Move the autosave out of the browser's bes
   // board survives storage pressure — the local copy is the authority.
   // Requested lazily (only once the user has reached for persistence) — the
-  // prompt taxing the blank first-load. Silent
+  // prompt taxes the blank first-load. Silent failure tolerated.
   async requestDurable(){
     if(this._durableAsked)return; this._durableAsked=true;
     try{
@@ -8712,12 +8697,10 @@ const Persist={
     _cT(this._saveT);
     this._saveT=_stO(()=>this.save(),SAVE_DEBOUNCE);
   },
-  // PWA durability: beforeunload is unreliable
-  // on app-switch / swipe-away; Chrome Android
-  // eviction). visibilitychange→hidden is the
-  // signal — flush any dirty state immediately
-  // so we don't double-write right after. A pure function of visibility,
-  // testable without dispatching real events through fake DOM.
+  // PWA durability: beforeunload is unreliable on app-switch / swipe-away
+  // (Android may evict without firing it); visibilitychange→hidden is the
+  // signal — flush dirty state so we don't double-write. Pure function of
+  // visibility, testable without dispatching real events through fake DOM.
   flushIfHidden(vis){
     if(vis==='hidden'&&_dt()){
       _cT(this._saveT);
@@ -8936,9 +8919,8 @@ const UI={
   refreshZoom(){
     _tC(_g('zoomVal'),_rnd(_vp().zoom*100)+'%');
   },
-  // §3.18: minimap has no dismiss affordance —
-  // board. `M` toggles it; persists (localStor
-  // on next reload. Hidden draw is also skipped (Minimap.schedule)
+  // §3.18: minimap has no dismiss affordance — `M` toggles it, persisted via
+  // localStorage; hidden draws are skipped (Minimap.schedule)
   refreshMinimapVis(){
     _qs(document,'.minimap-wrap')?.style.setProperty('display',state.showMinimap?'':'none');
   },
@@ -9002,7 +8984,7 @@ const UI={
   },
   toast(msg,kind){
     const st=_g('toasts'),last=st.lastElementChild;
-    if(last&&last.textContent===msg)_rm(last);   // ADR-0389: identical toast — re-append (mov
+    if(last&&last.textContent===msg)_rm(last);   // ADR-0389: identical toast re-appends to the end
     const div=_ce('div');
     div.className='toast'+(kind?' '+kind:'');
     _sa(div,'role',kind==='err'||kind==='warn'?'alert':'status');
@@ -9019,9 +9001,8 @@ const UI={
     const el=_g('sr');if(!el)return;
     _tC(el,el.textContent===msg?msg+' ':msg);
   },
-  // ADR-0215: focus capture/restore around dia
-  // (window keydown) already traps Tab in the
-  // missing half: remember the invoker, return focus on close.
+  // ADR-0215: focus capture/restore around dialogs — the window keydown Tab
+  // trap already keeps focus inside; this half refocuses the invoker on close.
   _prevFocus:null,
   _captureFocus(){this._prevFocus=_aE()},
   _restoreFocus(){const p=this._prevFocus;this._prevFocus=null;if(p&&p.focus)_fc(p)},
@@ -9522,8 +9503,7 @@ function wire(){
   _oC(_g('rtcCreateOffer'),async()=>{try{_g('rtcOffer').value=await Net.wrtcCreateOffer()}catch(e){_e(_St(e))}});
   _oC(_g('rtcConnect'),async()=>{const a=_trm(_g('rtcAnswerIn').value);if(!a)return;try{await Net.wrtcConsumeAnswer(a);_oT('connected')}catch(e){_e(_St(e))}});
   _oC(_g('rtcCreateAnswer'),async()=>{const o=_trm(_g('rtcOfferIn').value);if(!o)return;try{_g('rtcAnswer').value=await Net.wrtcAcceptOffer(o)}catch(e){_e(_St(e))}});
-  // ADR-0008 (FT-05): copy buttons for the sig
-  // avoids the earlier select-in-a-readonly-te
+  // ADR-0008 (FT-05): copy buttons for the signal textareas
   const _copyCode=async(taId)=>{const v=_g(taId).value;if(!v)return;const ok=await copyText(v);_tst(ok?t('shareCodeCopied'):t(_CF),ok?'ok':'warn')};
   _oC(_g('rtcOfferCopyBtn'),()=>_copyCode('rtcOffer'));
   _oC(_g('rtcAnswerCopyBtn'),()=>_copyCode('rtcAnswer'));
@@ -9588,7 +9568,7 @@ function applyStyleToSelection(patch){
     const b={id},a={id},eff={};
     for(const k of _ok(patch)){
       const ek=_stk(sh)&&k==='fill'?'color':k;   // ADR-0082: sticky recolors via color
-      b[ek]=sh[ek]??null;a[ek]=patch[k]??null;eff[ek]=patch[k];   // ADR-0082: ??null keeps before JSON-safe (c
+      b[ek]=sh[ek]??null;a[ek]=patch[k]??null;eff[ek]=patch[k];   // ADR-0082: ??null keeps before JSON-safe (clone drops undef)
     }
     _oa(sh,eff);
     _pu(before,b);_pu(after,a);
