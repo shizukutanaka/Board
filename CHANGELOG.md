@@ -1,3 +1,8 @@
+## [1.7.921] - 2026-09-30
+
+### Tests
+- `_teFollow` の `_gridVer` 追従を実経路ピン — viewport 不変でも `Store.commit` upd で overlay が再配置 (x:300→500px) + 再スタイル (bold→600) されることを固定 (ADR-0895)
+
 ## [1.7.920] - 2026-09-30
 
 ### Docs

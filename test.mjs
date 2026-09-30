@@ -8761,9 +8761,14 @@ try {
     assert.ok(ta.style.left==='100px'&&ta.style.top==='160px','overlay follows pan');
     ta.style.left='999px';_teFollow();
     assert.strictEqual(ta.style.left,'999px','unchanged viewport signature → no reposition');
+    // ADR-0892: a shape mutation bumps _gridVer — the follow sig must change even
+    // with the viewport untouched, so a peer move/restyle repositions the overlay.
+    Store.commit({op:'upd',id:s.id,before:{x:300,bold:null},after:{x:300,bold:true}});
+    _teFollow();
+    assert.ok(ta.style.left==='500px'&&ta.style.fontWeight==='600','shape change (_gridVer) repositions + restyles the overlay at a fixed viewport');
     state.editing=null;state.viewport.zoom=3;_teFollow();
-    assert.strictEqual(ta.style.left,'999px','editor closed → no follow');
-    console.log('  ✓ _teFollow: zoom+pan follow, signature no-op, closed-editor guard (4 asserts)');
+    assert.strictEqual(ta.style.left,'500px','editor closed → no follow');
+    console.log('  ✓ _teFollow: zoom+pan+shape follow, signature no-op, closed-editor guard (5 asserts)');
   }
 
   // ADR-0054: a clamped zoom must be a pure no-op — before the fix, a wheel
