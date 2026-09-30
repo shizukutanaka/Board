@@ -213,7 +213,8 @@ const checks = [
   // round 6: frame hit priority + label edit + image size guard
   ['pickTop skips frames on first pass', html.includes("_frm(s)||_hd(s)||!_pgOk(s))continue")],
   ['frame dblclick label edit', html.includes("_frm(hit)") && html.includes("hit.label")],
-  ['image size guard 16MB', html.includes("16*1024*1024") && html.includes("大きすぎます")],
+  ['image size guard 16MB', html.includes("16_000_000") && html.includes("大きすぎます")],
+  ['toast stack capped at 4 (ADR-0879)', html.includes("st.children&&st.children.length>=4")],
   ['SVG export frames first', html.includes("svgShapes") && html.includes("type===\"frame\"")],
   // round 7: _apply completeness + opacity UI
   ['_apply handles group op', html.includes("case 'group':") && html.includes("sh.groupId=op.gid")],
@@ -1720,9 +1721,10 @@ try {
              endRectLike, endLineLike, endSelect, I18N, applyTheme, editSelectedShapeKbd, Share,
              draw, drawOverlay, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; }, _setOCtx: (c) => { const p = octx; octx = c; return p; },
              _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, _oa,
-             _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
+             _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate,
              _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure,
              switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx,
+             _textCascade, _imgImportFile,
              _getLang: () => LANG, _getT: () => T };
   `);
   const api = fn(
@@ -1749,7 +1751,7 @@ try {
           _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, _oa,
           _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure,
-          switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx, editSelectedShapeKbd } = api;
+          switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx, _textCascade, _imgImportFile, editSelectedShapeKbd } = api;
 
   console.log('\n-- behavioural --');
 
@@ -3670,6 +3672,23 @@ try {
       const free=describeShape({type:'arrow',x1:0,y1:0,x2:100,y2:0});
       assert.ok(!free.includes(api.I18N.ja.srBound)&&!free.includes(api.I18N.en.srBound),'unbound connector has no bound tag');
       console.log('  ✓ ADR-0380: describeShape group + bound-endpoint announce (3 asserts)');
+    }
+    // ADR-0882: dash/align/valign/text-flags are style identity a SR user can
+    // otherwise never discover — announced with the same ctx tags the menus use.
+    {
+      const d1=describeShape({type:'rect',x:0,y:0,w:10,h:10,dash:1});
+      assert.ok(d1.includes(api.I18N.ja.dashed)||d1.includes(api.I18N.en.dashed),'dash=1 announces dashed');
+      const d2=describeShape({type:'rect',x:0,y:0,w:10,h:10,dash:2});
+      assert.ok(d2.includes(api.I18N.ja.dotted)||d2.includes(api.I18N.en.dotted),'dash=2 announces dotted');
+      const al=describeShape({type:'rect',x:0,y:0,w:10,h:10,align:'right'});
+      assert.ok(al.includes(api.I18N.ja.ctxAlignRight)||al.includes(api.I18N.en.ctxAlignRight),'align:right announces right-align');
+      const va=describeShape({type:'sticky',x:0,y:0,w:100,h:100,valign:'middle'});
+      assert.ok(va.includes(api.I18N.ja.ctxAlignCY)||va.includes(api.I18N.en.ctxAlignCY),'valign:middle announces center-vertical');
+      const fl=describeShape({type:'text',x:0,y:0,w:10,h:10,bold:true,strike:true});
+      assert.ok((fl.includes(api.I18N.ja.tagBold)||fl.includes(api.I18N.en.tagBold))&&(fl.includes(api.I18N.ja.tagStrike)||fl.includes(api.I18N.en.tagStrike)),'text flags announce bold+strike');
+      const plain=describeShape({type:'rect',x:0,y:0,w:10,h:10});
+      assert.ok(!plain.includes(api.I18N.ja.tagBold)&&!plain.includes(api.I18N.en.tagBold),'absent flags stay silent');
+      console.log('  ✓ ADR-0882: describeShape dash/align/valign/text-flag announce (6 asserts)');
     }
     assert.ok(long.includes('…')&&!long.includes('x'.repeat(40)),'describeShape: long content truncated to ~30 chars + …');
     // unlabeled shapes are unchanged (backward compatible — no quotes added)
@@ -10444,6 +10463,103 @@ try {
     console.log('  ✓ ADR-0874: label editor applies letter-spacing/text-decoration');
   }
 
+  // ADR-0876: paste producers honour the wire bounds — a >PASTE_MAX_CHARS dump
+  // and an overlong TSV cell must land inside what peers accept, or the add
+  // would be locally committed and remotely dropped (0797-class divergence).
+  {
+    state.shapes.length = 0;_invalidateGrid(); state.history.length = 0; state.histIdx = -1;
+    assert.strictEqual(_textCascade('a'.repeat(6000),{x:0,y:0}),true,'text cascade consumes plain text');
+    const tp=state.shapes[state.shapes.length-1];
+    assert.ok(tp&&tp.type==='text','plain paste creates a text shape');
+    assert.strictEqual(tp.text.length,4000,'PASTE_MAX_CHARS truncation applied');
+    assert.ok(validShape(tp),'produced shape passes the wire gate');
+    state.shapes.length = 0;_invalidateGrid(); state.history.length = 0; state.histIdx = -1;
+    assert.strictEqual(_textCascade('x'.repeat(3000)+'\tB\nC\tD',{x:0,y:0}),true,'tsv cascade consumes');
+    const cells=state.shapes.filter(s=>s.type==='sticky');
+    assert.ok(cells.length>=1,'tsv creates sticky cells');
+    assert.ok(cells.every(s=>s.text.length<=2000),'TSV cells capped at 2000');
+    assert.ok(cells.every(validShape),'tsv stickies pass the wire gate');
+    console.log('  ✓ ADR-0876: paste producers bounded within the wire gate');
+  }
+
+  // ADR-0877: _imgImportFile must reject oversized files BEFORE FileReader —
+  // every other importer has the _bigFile pre-read gate; a giant image was
+  // readAsDataURL'd into memory first and only then rejected.
+  {
+    const seen=[];const _origToast=UI.toast;UI.toast=(m,k)=>{seen.push({m,k});};
+    const _hadFR=Object.prototype.hasOwnProperty.call(globalThis,'FileReader');
+    const _prevFR=globalThis.FileReader;
+    let reads=0;
+    try{
+      globalThis.FileReader=class{ readAsDataURL(){reads++} };
+      let called=false;
+      _imgImportFile({size:33554433,name:'big.png'},()=>called=true);
+      assert.strictEqual(reads,0,'oversized image: no FileReader read issued');
+      assert.strictEqual(called,false,'oversized image: cb never invoked');
+      assert.ok(seen.length>=1,'oversized image: rejection toasts');
+    }finally{
+      UI.toast=_origToast;
+      if(_hadFR)globalThis.FileReader=_prevFR;else delete globalThis.FileReader;
+    }
+    console.log('  ✓ ADR-0877: _imgImportFile rejects oversized files pre-read');
+  }
+
+  // ADR-0878: a degenerate image decoding to 0x0 must toast + never reach cb —
+  // callers would otherwise mint an invisible w:0/h:0 shape or NaN sizes.
+  {
+    const seen=[];const _origToast=UI.toast;UI.toast=(m,k)=>{seen.push({m,k});};
+    const _hFR=Object.prototype.hasOwnProperty.call(globalThis,'FileReader');const _pFR=globalThis.FileReader;
+    const _hIm=Object.prototype.hasOwnProperty.call(globalThis,'Image');const _pIm=globalThis.Image;
+    try{
+      globalThis.FileReader=class{ readAsDataURL(){ this.result='data:image/png;base64,AA=='; this.onload&&this.onload(); } };
+      globalThis.Image=class{ set src(v){ this.width=0;this.height=0; this.onload&&this.onload(); } };
+      let called=false;
+      _imgImportFile({size:100,name:'z.png'},()=>called=true);
+      assert.strictEqual(called,false,'degenerate image: cb never invoked');
+      assert.ok(seen.length>=1,'degenerate image: rejection toasts');
+    }finally{
+      UI.toast=_origToast;
+      if(_hFR)globalThis.FileReader=_pFR;else delete globalThis.FileReader;
+      if(_hIm)globalThis.Image=_pIm;else delete globalThis.Image;
+    }
+    console.log('  ✓ ADR-0878: _imgImportFile rejects 0x0 degenerate images');
+  }
+
+  // ADR-0879: the toast stack is bounded — a burst evicts the oldest entries
+  // before appending so the visible stack never exceeds the cap. The fake
+  // stack element records appends/splices realistically so the eviction loop
+  // terminates only when the cap logic actually runs.
+  {
+    const st=_els['toasts'],kids=[];
+    const _hadKids=st.children!==undefined,_prevKids=st.children;
+    const _hadApp=st.appendChild!==undefined,_prevApp=st.appendChild;
+    const _hadLast=st.lastElementChild!==undefined,_prevLast=st.lastElementChild;
+    const _ce0=fakeDoc.createElement;
+    try{
+      st.children=kids;
+      st.appendChild=el=>{kids.push(el)};
+      Object.defineProperty(st,'lastElementChild',{get:()=>kids[kids.length-1],configurable:true});
+      fakeDoc.createElement=tag=>{
+        const el=_ce0(tag);
+        const _r=el.remove;
+        el.remove=()=>{const j=kids.indexOf(el);if(j>=0)kids.splice(j,1);_r&&_r.call(el)};
+        return el;
+      };
+      for(let i=0;i<6;i++)UI.toast('t'+i);
+      assert.strictEqual(kids.length,4,'toast: stack bounded at 4 under a burst');
+      assert.ok(kids[0].textContent==='t2'&&kids[3].textContent==='t5','toast: eviction is oldest-first');
+      UI.toast('dup');UI.toast('dup');   // ADR-0389 dedup still re-appends, no twin
+      assert.strictEqual(kids.filter(el=>el.textContent==='dup').length,1,'toast: identical text does not twin');
+    }finally{
+      fakeDoc.createElement=_ce0;
+      if(_hadKids)st.children=_prevKids;else delete st.children;
+      if(_hadApp)st.appendChild=_prevApp;else delete st.appendChild;
+      delete st.lastElementChild;
+      if(_hadLast)st.lastElementChild=_prevLast;
+    }
+    console.log('  ✓ ADR-0879: toast stack bounded at 4, oldest evicted first');
+  }
+
 
   // v1.7.447a (ADR-0413): flag props accept true|1|null — {shadow:true} in a style op
   // (toggleShadow writes true) was rejected by the numeric whitelist, silently dropping
@@ -14700,7 +14816,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1838; // prev 1836 + 2 ADR-0874 label-editor typography asserts
+  pass += 1857; // prev 1838 + 9 ADR-0876 + 3 ADR-0877 + 3 ADR-0878 + 4 ADR-0879 (1 static + 3 behavioural)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
