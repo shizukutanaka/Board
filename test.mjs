@@ -442,6 +442,7 @@ const checks = [
   ['load clamps viewport zoom to [MIN_ZOOM,MAX_ZOOM]', html.includes("_vp().zoom=clampZoom(+d.viewport.zoom)")],
   ['importer intake parity (ADR-0796)', (html.match(/_ln\(shapes=shapes\.filter\(validShape\)\)/g)||[]).length>=3 && html.includes("p.sh=p.sh.filter(validShape)") && html.includes("_xyOK(ddx)&&_xyOK(ddy)") && html.includes("_xyOK(+ap.scrollX)")],
   ['text editor capped at the wire text bound (ADR-0797)', html.includes("ta.maxLength=5e3")],
+  ['viewport center clamped at the coord bound (ADR-0798)', html.includes("_xC=v=>_max(-1e7,_min(1e7,v))") && (html.match(/_xC\(/g)||[]).length>=8],
   ['clampZoom is the single zoom-invariant source', html.includes("const clampZoom=z=>_max(MIN_ZOOM,_min(MAX_ZOOM,z))") && html.includes("const nz=clampZoom(") && html.includes("const z=clampZoom(")],
   // v1.6.18: deeper audit fixes
   ['P selects pen, Shift+P presents', html.includes("k==='p'&&_sK(e)&&!meta&&!_aK(e)")],
@@ -1031,7 +1032,7 @@ const checks = [
   ['draw drafts show dims/length readout (ADR-0202)', html.includes("_rnd(d.h)}`")&&html.includes("x2-ptr.wx0")],
   // v1.7.05: Tab cycling excludes locked shapes (parity with doMove/doDelete/doRotate/doFlip)
   ['statusbar selection dims readout', html.includes('id="sSel"')&&html.includes('_statusSel()')&&html.includes('_rnd(b.w)')],
-  ['empty-selection arrows pan viewport', html.includes("_vp().x+=k===_AL2?-step:k===_AR2?step:0")],
+  ['empty-selection arrows pan viewport', html.includes("_xC(_vp().x+(k===_AL2?-step:k===_AR2?step:0))")],
   ['swapFillStroke: ⇧X swaps stroke↔fill via style op', html.includes('function swapFillStroke')&&html.includes("k==='x'&&_sK(e)&&!meta")&&html.includes("const fk=_stk(s)?'color':'fill'")],
   ['digit keys set opacity (Figma)', html.includes("/^[0-9]$/.test(k)&&_selN()")&&html.includes("opacity:k==='0'?1:+k/10")],
   ['image corner radius via cycleCorner + clips', html.includes("if(!boxOk&&!connOk)return;")&&html.includes('clip-path="url(#irc')&&html.includes('roundRect(c,s.x,s.y,s.w,s.h,_cr);c.clip()')],
