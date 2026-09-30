@@ -1127,7 +1127,7 @@ const checks = [
   ['importBoard: FileReader onerror toasts instead of failing silently',
     html.includes("r.onerror=()=>_eT(_IB);")],
   ['docName clamped to 80 chars on all four intake paths (import/IDB/backup/hash)',
-    (html.match(/_s0\([^,]+,80\)/g)||[]).length>=4],
+    (html.match(/_s80\(/g)||[]).length>=4],
   // v1.7.63 UX/i18n audit
   ['ctxBeautify: sketch beautification reachable from the context menu (was ⌥B-only)',
     html.includes("['ctxBeautify','⌥B',doBeautify]") && html.includes("ctxBeautify:'図形に整形'") && html.includes("ctxBeautify:'Beautify to shape'")],
@@ -3902,7 +3902,7 @@ try {
 
   // ADR-0405: drawio diagram name <-> docName round-trip
   assert.ok(html.includes("_dioNm=_ga(dg,'name')"),'first diagram name captured');
-  assert.ok(html.includes("_setDocName(_s0(_dioNm,80))"),'name adopted on import');
+  assert.ok(html.includes("_setDocName(_s80(_dioNm))"),'name adopted on import');
   assert.ok(html.includes('name="${_dioEsc(_dn()'),'emit escapes docName into diagram name');
   console.log('  ✓ drawio diagram name <-> docName round-trip (ADR-0405)');
 
@@ -4815,7 +4815,7 @@ try {
     }
     // ADR-0681: snapshot union-heal merges same-id page names via nts LWW
     {
-      assert.ok(html.includes("else if(clockNewer({ts:p.nts||0,peer:_iS(p.ntp)?p.ntp:'',seq:0}"),'same-id page nts LWW merge via (ts,peer) total order (ADR-0681/0698)');
+      assert.ok(html.includes("clockNewer({ts:p.nts||0,peer:_iS(p.ntp)?p.ntp:'',seq:0}"),'same-id page nts LWW merge via (ts,peer) total order (ADR-0681/0698)');
       console.log('  ✓ snapshot page-name LWW pin (1 assert)');
     }
     // ADR-0700: _vPages rejects poisoned tie-order fields — an Infinity nts wins
@@ -13767,9 +13767,12 @@ try {
     const dpC=Shape.make('arrow',{x1:0,y1:0,x2:30,y2:0});dpC.a=dpA.id;dpC.b=dpB.id;
     dpA.groupId='g1';dpB.groupId='g1';
     Store.commit({op:'addMany',shapes:[dpA,dpB,dpC]});
-    const dupSrcPg=state.curPg;
+    const dupSrcPg=state.curPg,dupSrcIdx=state.pages.findIndex(p=>p.id===dupSrcPg);
+    state.pages[dupSrcIdx].name='N'.repeat(80);   // a cap-length source name must still produce a wire-valid op (ADR-0772)
     _pgDup();
     assert.ok(state.pages.length===3&&state.curPg!==dupSrcPg,'_pgDup creates a new page and lands on it');
+    assert.ok(state.pages[dupSrcIdx+1]&&state.pages[dupSrcIdx+1].id===state.curPg,'_pgDup lands the copy right after its source (ADR-0771)');
+    assert.ok(_pgById(state.curPg).name.length<=80,'_pgDup name stays within the wire 80-char cap or peers reject the op and the page sets diverge (ADR-0772)');
     const dupSh=state.shapes.filter(s=>(s.pg||state.pages[0].id)===state.curPg);
     assert.ok(dupSh.length===3&&dupSh.every(s=>s.pg===state.curPg&&s.id!==dpA.id&&s.id!==dpB.id&&s.id!==dpC.id),'duplicate carries 3 fresh-id copies stamped to the new page');
     const dupConn=dupSh.find(s=>s.type==='arrow');
