@@ -939,6 +939,7 @@ Board/
 │   └── ADR-0888-gresize-zero-extent.md  # 群リサイズ gBox 0 幅/高さで _mapToBox が Infinity 化 → メンバー NaN 破壊を ||1 ガードで閉塞
 │   └── ADR-0889-svg-export-esc-scope.md  # SVG エクスポートの `<a href>` が未定義 esc() 呼出でリンク付き盤面全滅 → _esc 化で閉塞
 │   └── ADR-0890-gresize-zero-extent-pins.md  # 0888 の behavioural ピン (0 幅 gBox で NaN 非発生) + 群ジェスチャ/overlay/キャッシュ監査 clean
+│   └── ADR-0891-extent-division-audit.md  # extent 除算・数値ドメイン監査完走 — 全除算サイトの `||1`/`1e-6`/early-return/`>0` ガードと `_log`/`_sqr` のクランプ着地を確認
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
