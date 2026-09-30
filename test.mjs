@@ -10393,6 +10393,20 @@ try {
     console.log('  ✓ validPatch: string values in numeric geometry fields rejected (v1.7.17b)');
   }
 
+  // ADR-0868: canvas ignores out-of-range globalAlpha/lineWidth and invalid font
+  // strings — a remote opacity>1/size<=0/fontSize<=0 would silently leak the
+  // previously-drawn shape's state into this shape's render.
+  {
+    const mk=prop=>({op:'upd',id:'x',after:prop});
+    assert.ok(!validRemotePayload(mk({opacity:1.5})),'ADR-0868: opacity>1 rejected at validPatch');
+    assert.ok(!validRemotePayload(mk({opacity:-0.1})),'ADR-0868: opacity<0 rejected at validPatch');
+    assert.ok(!validRemotePayload(mk({size:0})),'ADR-0868: size<=0 rejected at validPatch');
+    assert.ok(!validRemotePayload(mk({fontSize:0})),'ADR-0868: fontSize<=0 rejected at validPatch');
+    assert.ok(!validRemotePayload(mk({fontSize:2e4})),'ADR-0868: fontSize>1e4 rejected at validPatch');
+    assert.ok(validRemotePayload(mk({opacity:0.5,size:2,fontSize:16})),'ADR-0868: in-range values still accepted');
+    console.log('  ✓ ADR-0868: out-of-range opacity/size/fontSize rejected at validPatch');
+  }
+
 
   // v1.7.447a (ADR-0413): flag props accept true|1|null — {shadow:true} in a style op
   // (toggleShadow writes true) was rejected by the numeric whitelist, silently dropping
@@ -13914,7 +13928,7 @@ try {
     const _FR=globalThis.FileReader;
     globalThis.FileReader=class{
       readAsText(f){Promise.resolve(typeof f.text==='function'?f.text():'').then(t=>{this.result=t;if(this.onload)this.onload()})}
-      readAsDataURL(f){Promise.resolve('data:,stub').then(t=>{this.result=t;if(this.onload)this.onload()})}
+      readAsDataURL(f){Promise.resolve(f.__dataUrl||'data:,stub').then(t=>{this.result=t;if(this.onload)this.onload()})}
     };
     try{
       reset();
@@ -13935,6 +13949,19 @@ try {
         for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[ifile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
         await new Promise(r=>setTimeout(r,30));
         assert.ok(state.shapes.length===1&&state.shapes[0].type==='image'&&state.shapes[0].w>0,'a dropped image file decodes and adds an image shape (ADR-0022)');
+        // ADR-0867: local intake shares the wire dataUrl bound exactly —
+        // a dataUrl between 16_000_001 and the old 16*1024*1024 would land
+        // locally yet be rejected by every peer (local-accept/peer-reject).
+        reset();
+        const big={name:'big.png',type:'image/png',size:100,__dataUrl:'data:image/png;base64,'+'A'.repeat(16_000_001-'data:image/png;base64,'.length)};
+        for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[big],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
+        await new Promise(r=>setTimeout(r,30));
+        assert.strictEqual(state.shapes.length,0,'ADR-0867: >16_000_000 dataUrl rejected at local intake (wire parity)');
+        reset();
+        const ok={name:'ok.png',type:'image/png',size:100,__dataUrl:'data:image/png;base64,'+'A'.repeat(16_000_000-'data:image/png;base64,'.length)};
+        for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[ok],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
+        await new Promise(r=>setTimeout(r,30));
+        assert.strictEqual(state.shapes.length,1,'ADR-0867: exactly-16_000_000 dataUrl still accepted');
       }finally{globalThis.Image=_IM}
       const _DP=globalThis.DOMParser;
       const _miniDom=s=>{
@@ -14636,7 +14663,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1817; // prev 1814 + 3 ADR-0866 local-input wire-cap asserts
+  pass += 1825; // prev 1819 + 6 ADR-0868 range-bound asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
