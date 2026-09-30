@@ -487,6 +487,17 @@ DOM 要素は `data-t` 属性 + `UI.applyI18n()` で翻訳 (起動時に 1 回�
   `_snapIn`/`_opcIn` スロットを退避 (各チャンク格納時の `t` スタンプで
   最終活動判定 — 生きたストリームは殺さない)。後続チャンクは seq:0/
   out-of-order で自然に再開される。
+- **wclock は null-proto マップ** (ADR-0788/0789): `__proto__` という id を持つ
+  wire `wc` キーがマップ原型を変異させ、墓標判定が全図形を「削除済み」と誤読して
+  全 add を凍結する 1-op 実害があった。`_wM` (Object.create(null)) / `_wD`/`_wR`/
+  `_wTb` が全書込・復元・墓標マージを集約し、dup-id 図形は wholesale 取込で
+  keep-last dedupe (byId last-wins parity、0790)。
+- **LWW 時計と幾何値も bounded** (ADR-0791–0793): `validClock`/wc/name/IDB の全
+  ts を `_tsOK` (壁時計+5分) に — 遠未来 ts は LWW に永久勝利して収束を乗っ取る
+  (`nowTs` が remote ts に単調追従するので bounded 取込は自己修復的)。座標は
+  `_xyOK` (|v|≤1e7) に、非座標 prop も `size≤1e4` (bbox pad: pen/conn÷2、矢印×3、
+  elbow stub×8)、`bend` (world coord) `_xyOK`、結合フォーカス `aF/bF∈[0,1]` に —
+  座標に触れない遠方値でも bboxAll を汚染し得た経路を完走閉塞。
 
 ### CRDT clock
 各 op は `{peer, seq}` clock を持ち、`seenOps` (Set) で重複排除。スナップショット
