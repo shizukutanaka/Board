@@ -5354,6 +5354,18 @@ v1.7.50 に続く監査パス。CHANGELOG の直近履歴を踏まえ、既出�
 
 ## [Unreleased]
 
+## [1.7.576]
+
+### 修正
+
+- **ADR-0548**: locked 図形を含む move の undo が、forward で移動しなかった locked 図形に `-dx,-dy` を掛けて**勝手に逆移動**する実害を修正 — forward が実際に動かした id を `op.moved` に記録し、undo はそれだけを逆移動。
+
+## [1.7.575]
+
+### 修正
+
+- **ADR-0547**: locked 図形を含む del の undo が、forward で削除されなかった locked 図形を再 push して**同一 id で二重登録**する実害を修正 — `byId` 冪等ガードを付与 (add 系 op と同パターン)。
+
 ## [1.7.574]
 
 ### 修正

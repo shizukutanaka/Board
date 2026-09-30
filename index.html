@@ -855,7 +855,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.574';
+const V='1.7.576';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -900,7 +900,7 @@ const PEER_ID=(()=>{try{
   return id;
 }catch(_){return uid()}})();
 // minimap visibility: persisted across reloads (§3.18 — small boards get zero value from
-// an always-on minimap with no way to dismiss; a session toggle would just nag
+// an always-on minimap with no dismiss; a session toggle would just nag
 // on every reload).
 const MINIMAP_ON=(()=>{try{return _lg('board.minimap')!=='off'}catch(_){return true}})();
 // ADR-0012: theme is a DOM attribute + localStorage setting, not board state — it's
@@ -914,7 +914,7 @@ const THEME_KEY='board.theme';
 // to null, so toggleTheme()/refreshThemeBtn() could never observe what applyTheme() had
 // actually just set on the DOM: the cycle got stuck re-applying 'light' forever while the
 // button permanently displayed/announced 'auto'. Mirrors ADR-0014's LANG/T fix: keep the
-// current mode in memory (read from storage once at load); persistence becomes best-effort
+// current mode in memory (read from storage once); persistence becomes best-effort
 // rather than the source of truth for what's currently applied.
 let _themeCache=(()=>{try{return _lg(THEME_KEY)}catch(_){return null}})();
 function applyTheme(mode){   // mode: 'light'|'dark'|null (auto = follow prefers-color-scheme)
@@ -1620,7 +1620,7 @@ const Store={
         break;}
       case 'del':{
         if(forward){
-          // Snapshot wclock before deletion so undo can restore LWW clocks (mirrors add undo)
+          // Snapshot wclock before deletion so undo can restore LWW clocks
           op.wc={};for(const sh of op.shapes)if(_wc()[sh.id])op.wc[sh.id]=clone(_wc()[sh.id]);
           for(const sh of op.shapes){
             if(byId(sh.id)?.locked)continue;   // parity with every other remote op: a peer cannot delete a locally-locked shape
@@ -1630,13 +1630,14 @@ const Store={
             delete _wc()[sh.id];        // drop per-property write clocks
             _psc(sh.id);                     // ADR-0424/0427
           }
-          // Apply connector binding clears after shapes are gone (connectors still live)
+          // Apply connector binding clears after shapes are gone
           if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_oa(sh,p.after);}}
         }else{
-          for(const sh of op.shapes)_sh().push(clone(sh));
+          // ADR-0547: forward skipped locked shapes — undo must not re-push (dup ids).
+          for(const sh of op.shapes)if(!byId(sh.id))_sh().push(clone(sh));
           _sz();
-          // Restore connector bindings after shapes are back so references are valid
-          if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_oa(sh,p.before);}}
+          // Restore connector bindings after shapes are back
+          if(op.connClears)for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_oa(sh,p.before)}
           if(op.wc)for(const [id,w] of Object.entries(op.wc))_wc()[id]=clone(w);
           _selR(op);
         }
@@ -1655,8 +1656,9 @@ const Store={
         break;}
       case 'move':{
         const d=forward?1:-1;
-        for(const id of op.ids){const sh=byId(id);if(!sh)continue;if(forward&&sh.locked)continue;
-          _sT2(sh,op.dx*d,op.dy*d);}
+        if(forward)op.moved=[];   // ADR-0548: undo un-moves only forward-moved ids (locked-skipped must not shift)
+        for(const id of forward?op.ids:(op.moved||op.ids)){const sh=byId(id);if(!sh)continue;if(forward&&sh.locked)continue;
+          _sT2(sh,op.dx*d,op.dy*d);if(forward)op.moved.push(id)}
         if(!forward)_selR(op);
         break;}
       case 'clear':{
@@ -2321,7 +2323,7 @@ function resize(){
 }
 // devicePixelRatio can change with NO resize event — dragging the window between monitors
 // of different density (Retina ↔ external 1×) or an OS display-scaling change. A
-// `(resolution: Xdppx)` media query matches only the current ratio and fires `change` once
+// `(resolution: Xdppx)` media query matches the current ratio and fires `change` once
 // when it stops matching; re-arm a fresh query to keep tracking. Without this the
 // canvas backing store keeps the stale DPR and renders blurry on the new screen.
 function _watchDPR(){
@@ -2909,7 +2911,7 @@ function drawShape(s,c){
     case 'text':
       drawText(s,c);break;
     case 'image':{
-      const img=_du(s)?getImg(_du(s)):null;   // ADR-0035: dataUrl-less image renders placeholder, never throws (getImg guards non-data:)
+      const img=_du(s)?getImg(_du(s)):null;   // ADR-0035: dataUrl-less image renders placeholder (getImg guards non-data:)
       if(img&&img.complete&&img.naturalWidth){
         const _cr=_min(s.r||0,_abs(s.w)/2,_abs(s.h)/2);   // ADR-0168
         _csh(s,c)   // ADR-0194
@@ -3389,7 +3391,7 @@ function getHandles(s){
     ];
   }
   if(s.w==null)return [];
-  // v1.6.96: text size is purely content-driven (resizeAfterTextEdit overwrites w/h on edit);
+  // v1.6.96: text size is content-driven (resizeAfterTextEdit overwrites w/h);
   // resize handles conflict with auto-fit; rotation still works via getRotHandle.
   if(_txt(s))return [];
   const x=s.x,y=s.y,w=s.w,h=s.h;
@@ -3855,7 +3857,7 @@ _on(canvas,_PD,e=>{
   const sp=_osp(e);
   const wp=_s2(sp);
   state.measure=null;
-  // ADR-0532: right-down must not arm ptr.down — macOS/Linux contextmenu fires at mousedown.
+  // ADR-0532: right-down must not arm ptr.down — contextmenu fires at mousedown.
   if(e.button===2)return;
   ptr.down=true;ptr.x=ptr.x0=sp.x;ptr.y=ptr.y0=sp.y;
   ptr.wx=ptr.wx0=wp.x;ptr.wy=ptr.wy0=wp.y;
@@ -5183,10 +5185,10 @@ function _rdp(pts,eps){
   return out;
 }
 // ADR-0005: geometric-heuristic shape recognition for the "beautify" feature (Alt+B).
-// Pure, deterministic, dependency-free — classifies a rough pen stroke as line/rect/ellipse
+// Pure, deterministic, dependency-free — classifies a rough stroke as line/rect/ellipse
 // if it closely matches that shape's geometry (size-relative thresholds + absolute floors,
 // so a tiny sketch and a huge one use a proportionally similar "how wobbly is too wobbly"
-// bar), else returns null. Triangle/other shapes are intentionally unsupported: Board has no
+// bar), else returns null. Triangle/other shapes are unsupported: Board has no
 // drawing tool to convert them into.
 function recognizeStroke(pts){
   if(!_iA(pts)||_ln(pts)<3)return null;
@@ -5227,7 +5229,7 @@ function recognizeStroke(pts){
     if(maxEdgeDist<=tol)return{type:'rect',x:mnx,y:mny,w:bw,h:bh};
   }
 
-  // ---- ellipse: radius from centroid, normalized by bbox half-extents, has low variance ----
+  // ---- ellipse: radius from centroid, normalized by bbox half-extents ----
   {
     let cx=0,cy=0;for(const p of pts){cx+=p[0];cy+=p[1]}cx/=_ln(pts);cy/=_ln(pts);
     const rx=bw/2||1,ry=bh/2||1;
@@ -6272,7 +6274,7 @@ function unlockAll(){
   _ann(t('ctxUnlockAll'));
 }
 // ADR-0005: replace confidently-recognized pen strokes in the selection with clean shapes
-// (Alt+B). Local-only (not in REMOTE_OPS, like replace/clear) — converting a collaborator's
+// (Alt+B). Local-only (not in REMOTE_OPS, like replace/clear) — converting a peer's
 // pen stroke to a rectangle behind their back would be confusing, not helpful.
 function doBeautify(){
   const sel=_selL(s=>s&&!_lk(s)&&_pn(s));
@@ -7627,7 +7629,7 @@ function _esc(s){return _St(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&l
 // Coerce to finite number; prevents string geometry breaking SVG numeric attributes.
 function _num(v){const n=+v;return _fin(n)?n:0}
 // Copy text to the clipboard with a non-secure-context fallback. _nc() is
-// undefined on file:// and plain http:// — Board's primary "just open index.html" use case —
+// undefined on file:// and plain http:// — Board's primary "just open it" use case —
 // so prefer it only in a secure context and otherwise fall back to a temporary textarea +
 // execCommand('copy'), which still works there. Returns Promise<boolean> for UI feedback.
 async function copyText(text){
@@ -7841,7 +7843,7 @@ const Net={
   _send(msg){
     if(this.bc){try{this.bc.postMessage(msg)}catch(_){}}
   },
-  _pk(msg,viaRtc){   // ADR-0498: peer-key routing — RTC peers live under a synthetic id, BC peers under msg.peer
+  _pk(msg,viaRtc){   // ADR-0498: peer-key routing — RTC peers use a synthetic id, BC peers msg.peer
     return viaRtc?this._rtcPeerId:msg.peer;
   },
   _bcast(msg){   // ADR-0401: dual-transport fold — BroadcastChannel + RTC DataChannel
@@ -8049,7 +8051,7 @@ const Net={
   },
   peerCount(){return _pr().size},
 
-  // ---- WebRTC manual signaling (no server): createOffer → exchange tokens → DataChannel ----
+  // ---- WebRTC manual signaling (no server): offer → tokens → DataChannel ----
   async wrtcCreateOffer(){
     this._wrtcInit();
     this.dc=this.rtc.createDataChannel('board',{ordered:true});
@@ -8556,7 +8558,7 @@ const UI={
   },
   // §3.18: minimap has no dismiss affordance — always-on is pure visual noise on a small
   // board. `M` toggles it; the preference persists (localStorage) so it doesn't reappear
-  // on next reload. Draw is also skipped while hidden (Minimap.schedule), not just CSS-hidden.
+  // on next reload. Hidden draw is also skipped (Minimap.schedule).
   refreshMinimapVis(){
     _qs(document,'.minimap-wrap')?.style.setProperty('display',state.showMinimap?'':'none');
   },
@@ -8935,7 +8937,7 @@ function _ctxMenuKeyNav(m,e){
 }
 
 // ====================== WIRE-UP ======================
-// PWA install prompt deferred event reference (v1.6.92). Captured in 'beforeinstallprompt',
+// PWA install deferred-event reference (v1.6.92). Captured in 'beforeinstallprompt',
 // cleared after install or dismissal. null = browser hasn't signalled installability yet.
 let _installPrompt=null;
 // Install-button click handler — exported so test.mjs can call it directly.
@@ -9065,7 +9067,7 @@ function wire(){
   _on(window,'online',UI.updateOnline);
   _on(window,'offline',UI.updateOnline);
   // PWA install button (v1.6.92): show on installable; hide after install.
-  // `beforeinstallprompt` fires on Chrome/Edge/Samsung Internet when all install criteria are
+  // `beforeinstallprompt` fires on Chrome/Edge/Samsung Internet when install criteria are
   // met. Safari/Firefox never fire it — the button stays hidden there (progressive).
   // We call _pd(e) to suppress the browser's ambient mini-infobar prompt so that
   // install is fully user-initiated via our button. Ref: web.dev/customize-install/
