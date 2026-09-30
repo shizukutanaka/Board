@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.902';   // ADR-0876
+const V='1.7.903';   // ADR-0877
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4641,12 +4641,12 @@ function _lblFollow(){
 }
 
 // ---- Image import: drag-drop ----
-// Shared image ingest for drop+paste (ADR-0022): FileReader → guard → decode →
-// optional downscale → cb(dataUrl,naturalW,naturalH). Phone photos are MBs of
-// base64 sitting in IDB/history/share links while displaying ~400wu — re-encode
-// past IMG_IMPORT_MAX_DIM as WebP; falls back to original bytes if not smaller.
+// Shared image ingest for drop+paste (ADR-0022): guard → FileReader → decode →
+// optional downscale → cb(dataUrl,w,h). >2048px images re-encode as WebP
+// (base64 in IDB/history/links while displaying ~400wu) only when smaller.
 const IMG_IMPORT_MAX_DIM=2048;
 function _imgImportFile(f,cb){
+  if(_bigFile(f)){_wT(_IB);return}   // ADR-0877: pre-read guard, parity with the other importers
   const reader=new FileReader();
   reader.onload=()=>{
     // ADR-0527/0867: reject early at the wire dataUrl bound exactly — a value

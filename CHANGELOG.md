@@ -1,3 +1,11 @@
+## [1.7.903] - 2026-09-30
+
+### Fix
+- 画像取込 (`_imgImportFile`、drop/paste 共有経路) に事前サイズガード: 32MB 超の画像を `readAsDataURL` で全読みしてから棄却していたメモリスパイク経路を、他インポータと同じ `_bigFile` 事前棄却で閉塞 (16MB dataUrl 精密ガードは据置の二段構え) (ADR-0877)
+
+### Test
+- 巨大画像が `readAsDataURL` を一度も呼ばず `cb` 未到達・拒否トースト発火を fake FileReader で固定 (ADR-0877)
+
 ## [1.7.902] - 2026-09-30
 
 ### Test
