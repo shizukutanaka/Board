@@ -925,6 +925,7 @@ Board/
 │   └── ADR-0874-label-editor-typography.md  # ラベルエディタ cssText に letter-spacing/text-decoration 追加 — 0873 同型のラベル側 WYSIWYG 乖離を解消
 │   └── ADR-0875-producer-parity-audit.md  # ローカル生産者 bound 監査完走 — 全入力が wire 上限以下 (0872 intake と対の producer 側)
 │   └── ADR-0876-paste-producer-pins.md  # ペースト生産者 bound の behavioural ピン — >4000 平文・>2000 TSV セル・生成図形の validShape 受理を実経路で固定
+│   └── ADR-0877-img-import-pre-read-guard.md  # 画像取込に _bigFile 事前ガード — 巨大ファイルを全読みしてから棄却していたメモリスパイクを閉塞 + FileReader ピン
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
