@@ -1,3 +1,8 @@
+## [1.7.848] - 2026-09-29
+
+### Fixed
+- ADR-0822: RTC 再接続で superseded channel/pc の遅延イベントが live link を破壊する race を修正 — per-channel `_pid` で自前の presence 行のみ purge、stale pc ハンドラは自 pc の状態を参照
+
 ## [1.7.847] - 2026-09-29
 
 ### Test
