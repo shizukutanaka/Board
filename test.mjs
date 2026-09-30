@@ -787,6 +787,8 @@ const checks = [
   ['non-array shapes toasts + clears', html.includes("if(!_iA(data.shapes)||_ln(data.shapes)>SHARE_MAX_SHAPES){_eT(_IB);clearHash();return false}")],
   ['all-invalid shapes toasts + clears', html.includes("if(!_ln(valid)){_eT(_IB);clearHash();return false}")],
   ['decode-throw catch also clears hash', html.includes("}catch{_eT(_IB);clearHash();return false}")],
+  // v1.7.849 / ADR-0823: '#s=' invite link gets the same malformed-% toast parity as '#b='
+  ['#s= invite decode-throw toasts invalidBoard', html.includes("try{code=_dU(h.slice(3))}catch{_eT(_IB);return false}")],
   // v1.7.97: ADR-0039 share-link resource-bomb guard
   ['share payload ceilings defined', html.includes('SHARE_MAX_BYTES') && html.includes('SHARE_MAX_SHAPES')],
   ['decompressed payload byte cap before parse', html.includes('_ln(json)>SHARE_MAX_BYTES')],
