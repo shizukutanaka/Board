@@ -875,7 +875,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.849';   // ADR-0823
+const V='1.7.853';   // ADR-0827
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -8274,7 +8274,7 @@ const Net={
     // Defensive intake for the peer id itself (p
     // id feeds _touchPeer/_pr() directly). WebRT
     // unfiltered — "hello/ping never ride the Da
-    if(msg.peer!==_ud&&(!_iS(msg.peer)||_ln(msg.peer)>MAX_PEER_ID_LEN))return;
+    if(msg.peer!==_ud&&(!_iS(msg.peer)||_ln(msg.peer)>MAX_PEER_ID_LEN||(!viaRtc&&_sw(msg.peer,'rtc:'))))return;   // ADR-0827
     switch(msg.k){
       case 'img':{
         // ADR-0069: blob chunks → _imgIn, then drain parked shape refs.

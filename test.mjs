@@ -2105,6 +2105,41 @@ try {
     state.peers.delete(newPid);Net._rtcPeerId=null;Net.dc=null;
     console.log('  ✓ superseded dc purges own row, preserves live link (ADR-0822)');
   }
+  // ADR-0825: _pk routes viaRtc presence msgs onto the synthetic rtc: row and
+  // 'bye' clears _rtcPeerId — a stale link must not keep shadowing.
+  {
+    Net._rtcPeerId='rtc:test';
+    assert.strictEqual(Net._pk({peer:'q'},true),'rtc:test','viaRtc routes to the synthetic row');
+    assert.strictEqual(Net._pk({peer:'q'},false),'q','BC keeps the sender id');
+    Net._onRecv({k:'bye',peer:'zzz'},true);
+    assert.strictEqual(Net._rtcPeerId,null,'rtc bye clears the live peer id');
+    console.log('  ✓ _pk viaRtc routing + rtc bye peer-id clear (ADR-0825)');
+  }
+  // ADR-0826: snapshot responder election — lowest non-asker, non-rtc peer id
+  // answers (ADR-0455/0465). A regression starves or storms joiners.
+  {
+    state.peerId='m';state.peers.clear();
+    state.peers.set('zzz',{});
+    assert.ok(Net._loResp('zzz'),'higher id only: we are the responder');
+    state.peers.set('aaa',{});
+    assert.ok(!Net._loResp('zzz'),'a lower id wins the election');
+    assert.ok(Net._loResp('aaa'),'the asker is excluded — no starvation');
+    state.peerId='z';state.peers.clear();Net._rtcPeerId='rtc:x';
+    state.peers.set('rtc:x',{});
+    assert.ok(Net._loResp('q'),'the live rtc: row is excluded from election');
+    state.peers.clear();Net._rtcPeerId=null;state.peerId='B';
+    console.log('  ✓ _loResp election pins (ADR-0826)');
+  }
+  // ADR-0827: a forged 'rtc:' peer id on BC must not dodge the reaper —
+  // synthetic ids are local-only; viaRtc rows are exempt by construction.
+  {
+    Net._onRecv({k:'hello',peer:'rtc:evil'},false);
+    assert.ok(!state.peers.has('rtc:evil'),'forged rtc: id rejected on BC');
+    Net._onRecv({k:'hello',peer:'ok-peer'},false);
+    assert.ok(state.peers.has('ok-peer'),'normal id still installs');
+    state.peers.delete('ok-peer');
+    console.log('  ✓ forged rtc: presence id rejected (ADR-0827)');
+  }
   // ADR-0699: docName renames order on (ts, writer-peer) — equal-ts concurrent
   // renames must pick one winner on every peer, not diverge on strict >.
   {
