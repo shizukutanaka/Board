@@ -209,6 +209,8 @@ IDB 復元 (`Persist.load`/`restoreBackup`) も `_attachShape` を通して未�
   ローカル入力側も同上限を共有する (ADR-0866/0867): 超過分はローカル
   append/insert/棄却で止め、「ローカル受理・ピア棄却」の発散を防ぐ
   (0796/0797 と同規則)。`dataUrl` は intake が 16_000_000 で byte-for-byte 一致。
+  値域ゲート (ADR-0868): `opacity∈[0,1]`、`size`/`fontSize` ∈(0,1e4] —
+  範囲外代入を無視する canvas 仕様による前 shape 状態漏れを閉塞する。
 
 ### 4. State
 唯一の真実。以下しか存在しない:

@@ -1,3 +1,8 @@
+## [1.7.894] - 2026-09-30
+
+### Fix
+- `validPatch` に値域ゲート追加: `opacity∉[0,1]`、`size≤0||>1e4`、`fontSize≤0||>1e4` を棄却 — canvas は範囲外の globalAlpha/lineWidth・無効 font 文字列を黙って無視するため、前の shape の描画状態が漏れて非決定描画となる実害を閉塞 (ADR-0868)
+
 ## [1.7.893] - 2026-09-30
 
 ### Fix
