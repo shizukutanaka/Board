@@ -442,7 +442,7 @@ const checks = [
   ['load clamps viewport zoom to [MIN_ZOOM,MAX_ZOOM]', html.includes("_vp().zoom=clampZoom(+d.viewport.zoom)")],
   ['importer intake parity (ADR-0796)', (html.match(/_ln\(shapes=shapes\.filter\(validShape\)\)/g)||[]).length>=3 && html.includes("p.sh=p.sh.filter(validShape)") && html.includes("_xyOK(ddx)&&_xyOK(ddy)") && html.includes("_xyOK(+ap.scrollX)")],
   ['text editor capped at the wire text bound (ADR-0797)', html.includes("ta.maxLength=5e3")],
-  ['viewport center clamped at the coord bound (ADR-0798)', html.includes("_xC=v=>_max(-1e7,_min(1e7,v))") && (html.match(/_xC\(/g)||[]).length>=12],
+  ['viewport center clamped at the coord bound (ADR-0798)', html.includes("_xC=v=>_max(-1e7,_min(1e7,v))") && (html.match(/_xC\(/g)||[]).length>=14],
   ['clampZoom is the single zoom-invariant source', html.includes("const clampZoom=z=>_max(MIN_ZOOM,_min(MAX_ZOOM,z))") && html.includes("const nz=clampZoom(") && html.includes("const z=clampZoom(")],
   // v1.6.18: deeper audit fixes
   ['P selects pen, Shift+P presents', html.includes("k==='p'&&_sK(e)&&!meta&&!_aK(e)")],
@@ -12760,6 +12760,14 @@ try {
     const pxx=state.viewport.x;
     fireKey('ArrowLeft');
     assert.ok(state.viewport.x<pxx,'arrow without a selection pans the view');
+    // ADR-0798: the pan accumulator stops at the coord bound — beyond ±1e7 every drawn
+    // shape would carry wire-invalid coords (divergence), so panning clamps there.
+    state.viewport.x=1e7-10;state.viewport.zoom=1;
+    for(let i=0;i<40;i++)fireKey('ArrowRight');
+    assert.ok(state.viewport.x===1e7,'repeated arrow pan clamps the viewport center at +1e7 (ADR-0798)');
+    state.viewport.x=-(1e7-10);
+    for(let i=0;i<40;i++)fireKey('ArrowLeft');
+    assert.ok(state.viewport.x===-1e7,'arrow pan clamps at -1e7 too (ADR-0798)');
     // ⌘D duplicates the selection to fresh ids; ⇧⌘Z re-applies an undone delete (real key path)
     reset();
     state.tool='select';
