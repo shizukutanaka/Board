@@ -1,3 +1,8 @@
+## [1.7.928] - 2026-09-30
+
+### Docs
+- SR ミラー・検索・announce・ステータスバー監査完走 — mirror は `_gridVer` キー再構築+MIRROR_MAX+ページ帰属、検索は `_sv`+`_pgOk` スコープ、announce は末尾空白再読上げ、status は sig ゲート (ADR-0902)
+
 ## [1.7.927] - 2026-09-30
 
 ### Docs
