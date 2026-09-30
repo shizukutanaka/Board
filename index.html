@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.918';   // ADR-0892
+const V='1.7.919';   // ADR-0893
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4636,7 +4636,7 @@ function _lblFollow(){
   // ADR-0559/0569/0572: close when the labelle
   // (locked skips upd — the edit would be silently dropped)
   const _lt=byId(_lblTa.hit.id);if(!_lt||_hd(_lt)||_lk(_lt)||!_pgOk(_lt)){_rm(_lblTa.inp);_lblTa=null;return}
-  const v=_vp(),sig=v.x+'|'+v.y+'|'+v.z+'|'+_gridVer;   // ADR-0892: _gridVer covers peer upds — a move/restyle repositions+restyles the overlay
+  const v=_vp(),sig=v.x+'|'+v.y+'|'+v.zoom+'|'+_gridVer;   // ADR-0892/0893: _gridVer covers peer upds; zoom via v.zoom (v.z was undefined — the sig never changed on zoom)
   if(sig===_lblVp)return;
   _lblVp=sig;
   const a=_lblAnchor(_lt),inp=_lblTa.inp;   // ADR-0892: anchor+style from the live shape, not the stale hit
