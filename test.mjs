@@ -245,12 +245,12 @@ const checks = [
   ["undo-wire swap advances _lastRep to the fresh clock (ADR-0615)", html.includes("if(w.op==='replace')state._lastRep=w.clock;") && html.includes("if(op.op==='replace')state._lastRep=op.clock;this._stampWrites(op)")],
   ["redo restamps before the local apply (ADR-0718)", html.includes("_fck(op);   // ADR-0718") && html.includes("this._apply(op,true);")],
   ["move undo-wire sends op.moved, not op.ids (ADR-0719)", html.includes("ids:op.moved||op.ids,dx:-op.dx,dy:-op.dy")],
-  ["del/clear undo-wire carries wc; addMany applies it (ADR-0721)", html.includes("{op:'addMany',shapes:op.shapes,wc:op.wc}") && html.includes("if(op.wc)for(const[id,w]of Object.entries(op.wc))_wc()[id]=_wM(clone(w))")],
+  ["del/clear undo-wire carries wc; addMany applies it (ADR-0721)", html.includes("{op:'addMany',shapes:op.shapes,wc:op.wc}") && html.includes("if(op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w)")],
   ["pageDel snapshots + restores member wclocks (ADR-0722)", html.includes("op.wc=_wM();for(const id of dead)if(_wc()[id])op.wc[id]=clone(_wc()[id])") && html.includes("op.shapes||[],wc:op.wc}")],
-  ["clear undo merges op.wc, never replaces (ADR-0723)", html.includes("if(op.wc)for(const[id,w]of Object.entries(op.wc))_wc()[id]=_wM(clone(w));_selR(op)")],
-  ["pageAdd undo: unpage wire + _pgDel2 only-set (ADR-0724)", html.includes("_pgDel2(op,null,die,firstId)") && html.includes("unpage:state.pages?0:1") && html.includes("_pgDel2(op,firstId,only,viewId)")],
+  ["clear undo merges op.wc, never replaces (ADR-0723)", html.includes("if(op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);_selR(op)")],
+  ["pageAdd undo: unpage wire + _pgDel2 only-set (ADR-0724)", html.includes("_pgDel2(op,null,die,firstId)") && html.includes("unpage:_pgs()?0:1") && html.includes("_pgDel2(op,firstId,only,viewId)")],
   ["pageDel wire carries the sender rehome target (ADR-0725)", html.includes("const rehome=op.unpage?null:((op.firstId!=null&&_pgById(op.firstId))?op.firstId:firstId)") && html.includes("s.firstId=op.firstId")],
-  ["wire page-op aux fields validated (ADR-0755)", html.includes("(op.i==null||_fin(op.i))") && html.includes("(op.firstId==null||_idOK(op.firstId))") && html.includes("(op.nts==null||_fin(op.nts))")],
+  ["wire page-op aux fields validated (ADR-0755)", html.includes("(op.i==null||_fin(op.i))") && html.includes("(op.firstId==null||_idOK(op.firstId))") && html.includes("(op.nts==null||_tsOK(op.nts))")],
 ["del redo re-derives connClears (ADR-0758)", html.includes("this._remoteDelConnFix(op);if(fx)for(const p of fx)_oa(byId(p.id),p.patch)")],
 ["add/addMany undo clears gap-bound conns (ADR-0759)", html.includes("this._remoteDelConnFix({op:'del',shapes:[op.shape]})")&&html.includes("this._remoteDelConnFix({op:'del',shapes:op.shapes})")],
 ["connClears skip locked survivors (ADR-0760)", html.includes("filter(id=>!(byId(id)||{}).locked)")&&html.includes("delIds.has(sh.a)&&!(byId(sh.a)||{}).locked")],
@@ -1962,6 +1962,22 @@ try {
     console.log('  ✓ concurrent replace ops converge on the newest clock (ADR-0614)');
   }
 
+  // ADR-0790: a wholesale intake carrying duplicate ids must not phantom —
+  // shapes[] would hold N entries while byId's last-wins index points at the
+  // final occurrence, leaving earlier copies rendered but unreachable by ops.
+  {
+    state.shapes.length=0;state._lastRep=null;state.seenOps=new Set();_invalidateGrid();
+    const dup=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    const d1={...dup,w:10},d2={...dup,w:99};
+    const uniq=Shape.make('ellipse',{x:20,y:20,w:5,h:5});
+    Store.applyRemote({op:'replace',after:[d1,uniq,d2],clock:{peer:'pDup',seq:1,ts:Date.now()}});
+    assert.strictEqual(state.shapes.length,2,'dup id collapses to one entry');
+    assert.strictEqual(byId(dup.id).w,99,'kept occurrence matches byId last-wins');
+    assert.ok(byId(uniq.id),'unique neighbours survive');
+    console.log('  ✓ replace intake drops duplicate ids (ADR-0790)');
+    state.shapes.length=0;_invalidateGrid();
+  }
+
   // ADR-0615: undo of 'replace' emits a restoring swap — peers must receive the
   // pre-swap board back, or the undoing side diverges alone.
   {
@@ -2010,7 +2026,7 @@ try {
     Net._onRecv({k:'name',name:'LocalNew',ts:1000,peer:'sp'},false);
     Net._onRecv({k:'snapshot',shapes:[s1],ops:[],peer:'sp',name:'OldName',nameTs:1},false);
     assert.strictEqual(state.docName,'LocalNew','stale snapshot name rejected');
-    const big=Date.now()+1e6;
+    const big=Date.now()+1e3;   // inside the ADR-0791 skew bound but newer than the local rename clock
     state.shapes.length=0;   // name adoption lives on the empty-board path
     Net._onRecv({k:'snapshot',shapes:[s1],ops:[],peer:'sp',name:'NewerName',nameTs:big},false);
     assert.strictEqual(state.docName,'NewerName','newer snapshot name adopted');
@@ -3895,7 +3911,7 @@ try {
     assert.strictEqual(msg.name,'WireName','snapshot carries docName for late joiners');
     assert.ok(html.includes("case 'name'"),"receiver has a 'name' case");
     assert.ok(html.includes("Net._bcast(_mk('name',{name:state.docName,ts:_nameTs=nowTs()}))"),'rename broadcasts k:name + LWW ts (ADR-0581)');
-    assert.ok(html.includes("(_iN(msg.ts)?_fin(msg.ts)&&_nameWin(msg.ts,_iS(msg.peer)?msg.peer:''):!0)"),'stale remote rename dropped; non-finite ts rejected (ADR-0581/0699/0701)');
+    assert.ok(html.includes("(_iN(msg.ts)?_tsOK(msg.ts)&&_nameWin(msg.ts,_iS(msg.peer)?msg.peer:''):!0)"),'stale remote rename dropped; non-finite/future ts rejected (ADR-0581/0699/0701/0791)');
     assert.ok(html.includes("_iS(msg.name)"),'receiver type-guards name');
     state.docName='';
     console.log('  ✓ doc name propagates via k:name broadcast + snapshot.name (ADR-0402)');
@@ -3951,7 +3967,7 @@ try {
     assert.strictEqual(state.shapes.length,1,'baseline: one shape present');
     // Forge a snapshot message carrying a 'clear' op alongside a legitimate add
     const forged={k:'snapshot',peer:'evil',ops:[
-      {op:'clear',shapes:[],clock:{peer:'evil',seq:1,ts:9e15}},
+      {op:'clear',shapes:[],clock:{peer:'evil',seq:1,ts:Date.now()+1e3}},
       {op:'add',shape:Shape.make('rect',{x:0,y:0,w:5,h:5}),clock:{peer:'evil',seq:2,ts:1}},
     ]};
     Net._onRecv(forged);
@@ -4024,7 +4040,7 @@ try {
     const r={id:'I1',type:'image',z:1,x:0,y:0,w:10,h:10,dataUrl:'data:image/png;base64,OLD'};
     Store.commit({op:'add',shape:r});
     // local img write is newer → remote's parked ref loses
-    state.wclock['I1']={img:{peer:'B',seq:9,ts:9e12}};
+    state.wclock['I1']={img:{peer:'B',seq:9,ts:600}};
     const res=Net._mergeSnapshotOp({op:'add',shape:{...JSON.parse(JSON.stringify(r)),img:'K_REJECT',dataUrl:undefined},wc:{
       img:{peer:'A',seq:1,ts:500},
     }});
@@ -4037,7 +4053,7 @@ try {
     assert.strictEqual(ls.dataUrl,'data:image/png;base64,OLD','rejected blob never clobbers dataUrl');
     // winning merge keeps the pending ref and resolves on arrival
     Net._mergeSnapshotOp({op:'add',shape:{...JSON.parse(JSON.stringify(r)),img:'K_WIN',dataUrl:undefined},wc:{
-      img:{peer:'A',seq:10,ts:9e13},
+      img:{peer:'A',seq:10,ts:Date.now()+1e3},
     }});
     assert.strictEqual(byId('I1').img,'K_WIN','winning img ref merges');
     assert.ok(Net._imgPending.get('I1')==='K_WIN','winning img ref stays parked');
@@ -4059,7 +4075,7 @@ try {
     Net._imgPending.set('I2','K_OLD');
     // snapshot merge: dataUrl wins (no img key in this payload)
     Net._mergeSnapshotOp({op:'add',shape:{...JSON.parse(JSON.stringify(r)),img:undefined,dataUrl:'data:image/png;base64,MERGED'},wc:{
-      dataUrl:{peer:'A',seq:1,ts:9e12},
+      dataUrl:{peer:'A',seq:1,ts:Date.now()+1e3},
     }});
     const ls=byId('I2');
     assert.strictEqual(ls.dataUrl,'data:image/png;base64,MERGED','dataUrl merged');
@@ -4723,7 +4739,7 @@ try {
       state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';
       assert.ok(html.includes('if(nc!==oc){_cancelPointerGesture();_cxO()}'),'_pgAdopt gesture+editor-cancel gate (ADR-0664/0684)');
       assert.ok(html.includes('if(nc!==oc){Net.sendCursorHide();_ss(_selIds());if(nc)_ann(_pgById(nc).name)}'),'_pgAdopt hides cursor + re-validates selection + announces on page move (ADR-0690/0749/0750)');
-      assert.ok(html.includes('for(const s of _sh()){if(s.pg&&!_pgById(s.pg)&&_ln(state.pages)<64)_pu(state.pages'),'_pgAdopt heals unknown pg → ? page (ADR-0692)');
+      assert.ok(html.includes('for(const s of _sh()){if(s.pg&&!_pgById(s.pg)&&_ln(_pgs())<64)_pu(_pgs()'),'_pgAdopt heals unknown pg → ? page (ADR-0692)');
       state.pages=null;state.curPg=null;ptr.down=false;ptr.dragKind=null;ptr.dragStartShapes=null;
       // ADR-0692: a shape carrying an unknown pg spawns a ? page on adopt
       {
@@ -4914,7 +4930,7 @@ try {
     }
     // ADR-0678: .drawio export drops hidden shapes (page-filter line also _sv-gated)
     {
-      assert.ok(html.includes("shapes.filter(s=>_sv(s)&&(s.pg||state.pages[0].id)===p.id)"),'drawio per-page filter drops hidden (ADR-0678)');
+      assert.ok(html.includes("shapes.filter(s=>_sv(s)&&(s.pg||_pgs()[0].id)===p.id)"),'drawio per-page filter drops hidden (ADR-0678)');
       assert.ok(html.includes('function exportDrawio(shapes=_sh().filter(_sv))'),'drawio doc export default drops hidden (ADR-0678)');
       console.log('  ✓ drawio hidden-parity pins (2 asserts)');
     }
@@ -6955,7 +6971,7 @@ try {
     A.Store._apply(mv3,true);
     A.Store._recordCommitted(mv3);
     assert.deepStrictEqual([A.state.shapes.find(s=>s.id==='mv2').x,A.state.shapes.find(s=>s.id==='mv2').y],[110,5],'ADR-0733: sender applied its move');
-    const race={k:'op',op:{op:'upd',id:'mv2',after:{x:150},clock:{peer:'peerX',seq:99,ts:9e15}}};
+    const race={k:'op',op:{op:'upd',id:'mv2',after:{x:150},clock:{peer:'peerX',seq:99,ts:Date.now()+1e3}}};
     A.Net._onRecv(cp(race)); B.Net._onRecv(cp(race));
     assert.strictEqual(A.state.shapes.find(s=>s.id==='mv2').x, 150, 'ADR-0733: racing upd lands at the undoer too');
     A.Store.undo();
@@ -6990,7 +7006,7 @@ try {
     assert.ok(!B.state.shapes.find(s=>s.id==='tm1')&&B.state.wclock.tm1&&B.state.wclock.tm1._del,'ADR-0734: peer tombstoned too');
     B.Net._onRecv({k:'op',op:{op:'add',shape:{id:'tm1',type:'rect',x:0,y:0,w:10,h:10,z:1},clock:{peer:'peerX',seq:1,ts:1}}});
     assert.ok(!B.state.shapes.find(s=>s.id==='tm1'),'ADR-0734: stale add loses to the tombstone (was: resurrection divergence)');
-    B.Net._onRecv({k:'op',op:{op:'add',shape:{id:'tm1',type:'rect',x:0,y:0,w:10,h:10,z:1},clock:{peer:'peerX',seq:2,ts:Date.now()+1e6}}});
+    B.Net._onRecv({k:'op',op:{op:'add',shape:{id:'tm1',type:'rect',x:0,y:0,w:10,h:10,z:1},clock:{peer:'peerX',seq:2,ts:Date.now()+1e3}}});
     assert.ok(!!B.state.shapes.find(s=>s.id==='tm1'),'ADR-0734: a newer add wins — shape restored');
     assert.ok(!B.state.wclock.tm1._del,'ADR-0734: tomb cleared on the winning add');
     state._lastTs=0; B.state._lastTs=0;   // far-future add raised the HLC floors — restore (A IS api — shares `state`)
@@ -7011,13 +7027,13 @@ try {
     B.state.shapes.length=0; B._invalidateGrid();
     B.Net._onRecv({k:'snapshot',peer:'peerX',shapes:[{id:'tm2',type:'rect',x:0,y:0,w:10,h:10,z:1}]});
     assert.ok(!B.state.shapes.find(s=>s.id==='tm2'),'ADR-0735: wholesale snapshot adopt filters tombed ids (was: resurrection)');
-    B.Net._onRecv({k:'op',op:{op:'add',shape:{id:'tm2',type:'rect',x:0,y:0,w:10,h:10,z:1},clock:{peer:'peerX',seq:9,ts:Date.now()+1e6}}});
+    B.Net._onRecv({k:'op',op:{op:'add',shape:{id:'tm2',type:'rect',x:0,y:0,w:10,h:10,z:1},clock:{peer:'peerX',seq:9,ts:Date.now()+1e3}}});
     assert.ok(!!B.state.shapes.find(s=>s.id==='tm2'),'ADR-0735: a newer add wins over the tomb');
     state._lastTs=0; B.state._lastTs=0;
     reset(A); reset(B);
     const pm={id:'pm1',type:'rect',x:0,y:0,w:10,h:10,z:1};
     B.state.wclock.pm1={_del:{peer:'peerX',seq:1,ts:1}};
-    B.Net._onRecv({k:'op',op:{op:'pageAdd',id:'q9',name:'P9',shapes:[cp(pm)],clock:{peer:'peerA',seq:1,ts:Date.now()+1e6}}});
+    B.Net._onRecv({k:'op',op:{op:'pageAdd',id:'q9',name:'P9',shapes:[cp(pm)],clock:{peer:'peerA',seq:1,ts:Date.now()+1e3}}});
     assert.ok(!!B.state.shapes.find(s=>s.id==='pm1'),'ADR-0735: pageAdd member with a winning clock lands');
     assert.ok(!B.state.wclock.pm1._del,'ADR-0735: winning pageAdd member clears the tomb like add (was: inconsistent)');
     state._lastTs=0; B.state._lastTs=0;
@@ -7112,7 +7128,7 @@ try {
     B.state.shapes.push({id:'z1',type:'rect',x:0,y:0,w:10,h:10,z:1,frac:'a0'});B._invalidateGrid();B.sortZ();
     B.Net._onRecv({k:'op',op:{op:'zorder',changes:[{id:'z1',before:'a0',after:'k1'}],clock:{peer:'peerA',seq:1,ts:10}}});
     assert.ok(B.byId('z1').frac==='k1','ADR-0742: changes-form zorder applies');
-    B.Net._onRecv({k:'op',op:{op:'zorder',after:[{id:'z1',z:5,frac:'zz'}],clock:{peer:'peerX',seq:1,ts:9e15}}});
+    B.Net._onRecv({k:'op',op:{op:'zorder',after:[{id:'z1',z:5,frac:'zz'}],clock:{peer:'peerX',seq:1,ts:Date.now()+1e3}}});
     assert.ok(B.byId('z1').frac==='k1','ADR-0742: legacy wholesale zorder dropped (was: unguarded clobber)');
     console.log('  ✓ ADR-0742: legacy zorder wholesale form rejected');
 
@@ -13651,13 +13667,13 @@ try {
     assert.ok(_pgById(p1.id).name==='Alpha','pageName applies the rename');
     Store.applyRemote({op:'pageName',id:p1.id,after:'Old',clock:{peer:'rp',seq:9,ts:1}});
     assert.ok(_pgById(p1.id).name==='Alpha','a stale remote pageName loses to newer nts (LWW)');
-    Store.applyRemote({op:'pageName',id:p1.id,after:'Hi',clock:{peer:'zz',seq:1,ts:9e15}});
+    Store.applyRemote({op:'pageName',id:p1.id,after:'Hi',clock:{peer:'zz',seq:1,ts:Date.now()+1e3}});
     assert.ok(_pgById(p1.id).name==='Hi','a strictly newer remote pageName wins');
-    Store.applyRemote({op:'pageName',id:p1.id,after:'Lo',clock:{peer:'aa',seq:1,ts:9e15}});
+    Store.applyRemote({op:'pageName',id:p1.id,after:'Lo',clock:{peer:'aa',seq:1,ts:Date.now()+1e3}});
     assert.ok(_pgById(p1.id).name==='Hi','equal-ts pageName: lower peer id loses (ADR-0698)');
-    Store.applyRemote({op:'pageName',id:p1.id,after:'Hi2',clock:{peer:'zzz',seq:1,ts:9e15}});
+    Store.applyRemote({op:'pageName',id:p1.id,after:'Hi2',clock:{peer:'zzz',seq:1,ts:Date.now()+1e3}});
     assert.ok(_pgById(p1.id).name==='Hi2','equal-ts pageName: higher peer id wins (ADR-0698)');
-    Store.applyRemote({op:'pageName',id:p1.id,after:'Bad',clock:{peer:'zz',seq:2,ts:9e15}});
+    Store.applyRemote({op:'pageName',id:p1.id,after:'Bad',clock:{peer:'zz',seq:2,ts:Date.now()+1e3}});
     assert.ok(_pgById(p1.id).name==='Hi2','equal-ts pageName: a mid peer still loses (ADR-0698)');
     state._lastTs=0;   // my far-future remote ts raised the HLC floor — restore it or later local commits get poisoned clocks
     // ADR-0702: undo of a page rename actually restores the name — the bts>=nts gate
@@ -13672,7 +13688,7 @@ try {
       Store.redo();
       assert.strictEqual(_pgById('pgU').name,'Renamed','redo re-applies the rename');
       // a newer concurrent remote write is NOT clobbered by the undo
-      Store.applyRemote({op:'pageName',id:'pgU',after:'Newer',clock:{peer:'zz',seq:1,ts:9e15}});
+      Store.applyRemote({op:'pageName',id:'pgU',after:'Newer',clock:{peer:'zz',seq:1,ts:Date.now()+1e3}});
       Store.undo();
       assert.strictEqual(_pgById('pgU').name,'Newer','undo skips when a newer write stands (ADR-0702)');
       state._lastTs=0;
@@ -13825,7 +13841,7 @@ try {
     Store.commit({op:'zorder',changes:[{id:zX.id,before:'a0',after:'a1'}]});
     Store.applyRemote({op:'zorder',changes:[{id:zX.id,before:'a0',after:'a2'}],clock:{peer:'zz',seq:1,ts:1}});
     assert.ok(byId(zX.id).frac==='a1','staler remote zorder loses to the recorded local write');
-    Store.applyRemote({op:'zorder',changes:[{id:zX.id,before:'a1',after:'a3'}],clock:{peer:'zz',seq:2,ts:9e12}});
+    Store.applyRemote({op:'zorder',changes:[{id:zX.id,before:'a1',after:'a3'}],clock:{peer:'zz',seq:2,ts:Date.now()+1e3}});
     assert.ok(byId(zX.id).frac==='a3','newer remote zorder wins — both peers converge to the same order');
     Store.undo();   // undoing our older local write must not regress the converged remote win
     assert.ok(byId(zX.id).frac==='a3','_lwwSkip blocks undo from clobbering a converged remote frac write');
@@ -14085,19 +14101,51 @@ try {
   // Object.create(null) via _wM — '__proto__' is a plain own key.
   {
     state.shapes=[];state.wclock=Object.create(null);state.seenOps=new Set();state.seq=0;state.history=[];state.histIdx=-1;   // null-proto — the prod _wM() shape
-    const wc=JSON.parse('{"__proto__":{"_del":{"peer":"zz","seq":9e9,"ts":9e18}}}');   // own '__proto__' key (literal {} would set the proto instead)
+    const wc={["__proto__"]:{_del:{peer:'zz',seq:9e9,ts:Date.now()+1e3}}};   // own '__proto__' key (literal {} would set the proto instead); ts inside the ADR-0791 skew bound
     Store.applyRemote({op:'addMany',shapes:[],wc,clock:{peer:'p1',seq:1,ts:1}});
     assert.strictEqual(Object.getPrototypeOf(state.wclock),null,'wclock is a null-prototype map — __proto__ write stored as own key, not proto mutation');
     Store.applyRemote({op:'addMany',shapes:[{id:'victim',type:'rect',z:1,x:0,y:0,w:10,h:10,stroke:'#0F172A',size:2,opacity:1}],clock:{peer:'p1',seq:2,ts:2}});
     assert.ok(byId('victim'),'planted __proto__ tomb does not freeze future adds');
     // a shape literally id'd '__proto__' still gets a correct own-key tomb
-    // (the planted ts:9e18 tomb beats the add below at ts:3 — a NEWER clock lands it)
-    Store.applyRemote({op:'add',shape:{id:'__proto__',type:'rect',z:1,x:0,y:0,w:1,h:1,stroke:'#0F172A',size:2,opacity:1},clock:{peer:'p1',seq:3,ts:9e19}});
+    // (the planted tomb is older than the add below — a NEWER clock lands it)
+    Store.applyRemote({op:'add',shape:{id:'__proto__',type:'rect',z:1,x:0,y:0,w:1,h:1,stroke:'#0F172A',size:2,opacity:1},clock:{peer:'p1',seq:3,ts:Date.now()+2e3}});
     assert.ok(byId('__proto__'),'literal __proto__ id shape lands as a real shape');
-    Store.applyRemote({op:'del',shapes:[{id:'__proto__',type:'rect',z:1,x:0,y:0,w:1,h:1,stroke:'#0F172A',size:2,opacity:1}],clock:{peer:'p1',seq:4,ts:9e20}});
+    Store.applyRemote({op:'del',shapes:[{id:'__proto__',type:'rect',z:1,x:0,y:0,w:1,h:1,stroke:'#0F172A',size:2,opacity:1}],clock:{peer:'p1',seq:4,ts:Date.now()+3e3}});
     assert.ok(!byId('__proto__')&&state.wclock['__proto__']&&state.wclock['__proto__']._del,'__proto__ tomb is a real own-key entry');
     state.shapes=[];state.wclock={};state.seenOps=new Set();state.seq=0;state.history=[];state.histIdx=-1;
     console.log('  ✓ wclock null-proto — __proto__ keys cannot poison the tomb map (ADR-0788)');
+  }
+
+  // ADR-0791: a far-future clock must not hijack LWW — op.clock/wc/nts/rep ts are
+  // bounded to wall-now+5min at intake; beyond that the op is dropped outright.
+  {
+    state.shapes=[];state.wclock={};state.seenOps=new Set();state.seq=0;state.history=[];state.histIdx=-1;
+    const s1=Shape.make('rect',{id:'ft1',x:0,y:0,w:5,h:5});
+    Store.commit({op:'add',shape:s1});
+    Store.applyRemote({op:'upd',id:'ft1',after:{x:99},clock:{peer:'evil',seq:1,ts:Date.now()+1e9}});
+    assert.strictEqual(byId('ft1').x,0,'far-future op clock rejected — no LWW hijack');
+    Store.applyRemote({op:'upd',id:'ft1',after:{x:7},clock:{peer:'p1',seq:1,ts:Date.now()+1e3}});
+    assert.strictEqual(byId('ft1').x,7,'in-bound remote clock applies');
+    state.shapes=[];state.wclock={};state.seenOps=new Set();state.seq=0;state.history=[];state.histIdx=-1;
+    console.log('  ✓ far-future clock ts rejected at intake (ADR-0791)');
+  }
+
+  // ADR-0792: coordinate magnitudes are bounded at intake — a far-off shape
+  // poisons every bboxAll consumer (fit-view/minimap/exports → the whole board
+  // renders sub-pixel = a blank board for every peer, persistently).
+  {
+    state.shapes=[];state.wclock={};state.seenOps=new Set();state.seq=0;state.history=[];state.histIdx=-1;
+    const clk=p=>({peer:'p1',seq:p,ts:Date.now()+1e3});
+    Store.applyRemote({op:'add',shape:{id:'mc1',type:'rect',x:9e9,y:0,w:10,h:10,z:1},clock:clk(1)});
+    assert.ok(!byId('mc1'),'out-of-bound coordinate add rejected (view-poison DoS)');
+    Store.applyRemote({op:'add',shape:{id:'mc2',type:'rect',x:-9e9,y:0,w:10,h:10,z:1},clock:clk(2)});
+    assert.ok(!byId('mc2'),'negative far coordinate rejected too');
+    Store.applyRemote({op:'add',shape:{id:'mc3',type:'rect',x:9e6,y:0,w:10,h:10,z:1},clock:clk(3)});
+    assert.ok(!!byId('mc3'),'in-bound far coordinate still accepted');
+    Store.applyRemote({op:'add',shape:{id:'mc4',type:'pen',x:0,y:0,w:10,h:10,z:1,pts:[[0,0],[1e9,0]]},clock:clk(4)});
+    assert.ok(!byId('mc4'),'pen pts magnitudes bounded too');
+    state.shapes=[];state.wclock={};state.seenOps=new Set();state.seq=0;state.history=[];state.histIdx=-1;
+    console.log('  ✓ far-magnitude coordinates rejected at intake (ADR-0792)');
   }
 
   console.log('\n✓ All behavioural tests passed');
