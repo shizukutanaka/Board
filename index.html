@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.904';   // ADR-0878
+const V='1.7.905';   // ADR-0879
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -8990,14 +8990,13 @@ const UI={
     div.className='toast'+(kind?' '+kind:'');
     _sa(div,'role',kind==='err'||kind==='warn'?'alert':'status');
     _tC(div,msg);
+    while(st.children&&st.children.length>=4)_rm(st.children[0]);   // ADR-0879: cap the stack
     _g('toasts').appendChild(div);
     _stO(()=>{div.style.opacity='0';div.style.transform='translateY(4px)';
       _stO(()=>_rm(div),240)},1600);
   },
-  // SR-only announcement: for frequent state changes (e.g.
-  // keyboard rotate) a toast per keypress would spam the stack,
-  // but silence is an a11y asymmetry — undo/group already toast.
-  // Same-text repeats (V pressed twice) need a trailing space to refire.
+  // SR-only announcement — toasts would spam on every keypress, but silence is
+  // an a11y asymmetry (undo/group toast). Same text needs a trailing space.
   announce(msg){
     const el=_g('sr');if(!el)return;
     _tC(el,el.textContent===msg?msg+' ':msg);
