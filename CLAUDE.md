@@ -938,6 +938,14 @@ Board/
 │   └── ADR-0887-minimap-scene-isolation.md  # ミニマップシーンを per-shape try で隔離 + _sceneVer を成功時のみ更新 — 1図形 throw で半描画シーンが残存する実害を解消
 │   └── ADR-0888-gresize-zero-extent.md  # 群リサイズ gBox 0 幅/高さで _mapToBox が Infinity 化 → メンバー NaN 破壊を ||1 ガードで閉塞
 │   └── ADR-0889-svg-export-esc-scope.md  # SVG エクスポートの `<a href>` が未定義 esc() 呼出でリンク付き盤面全滅 → _esc 化で閉塞
+│   └── ADR-0890-gresize-zero-extent-pins.md  # 0888 の behavioural ピン (0 幅 gBox で NaN 非発生) + 群ジェスチャ/overlay/キャッシュ監査 clean
+│   └── ADR-0891-extent-division-audit.md  # extent 除算・数値ドメイン監査完走 — 全除算サイトの `||1`/`1e-6`/early-return/`>0` ガードと `_log`/`_sqr` のクランプ着地を確認
+│   └── ADR-0892-overlay-shape-follow.md  # 編集 overlay の follow sig に _gridVer を追加 — 他ピア upd で shape が移動/再スタイルされても旧位置・旧スタイルに留まる実害を解消
+│   └── ADR-0893-lblfollow-zoom-sig.md  # _lblFollow の `v.z` (未定義→zoom 非追従) を `v.zoom` へ修正 + viewport 別名プロパティ名タイポ sweep clean
+│   └── ADR-0894-overlay-lifecycle-audit.md  # 編集 overlay ライフサイクル監査完走 — open/close/forced-fold/sig-reset 全経路網羅、実害なし
+│   └── ADR-0895-follow-shape-pins.md  # _teFollow の _gridVer 追従を実経路ピン — viewport 不変でも shape upd で overlay 再配置+再スタイルを固定
+│   └── ADR-0896-non-primary-buttons.md  # サイドボタン (X1/X2) ・スタイラスバレルがジェスチャをアームする実害を `e.button>1` で一括閉塞 (0532 の右ボタン限定を拡張)
+│   └── ADR-0897-button-pins.md  # 0896 の実イベント経路ピン (button 3/4 がアームしない) + 周辺入力経路監査 clean
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

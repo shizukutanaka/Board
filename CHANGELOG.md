@@ -1,3 +1,43 @@
+## [1.7.923] - 2026-09-30
+
+### Tests
+- ADR-0896 の実イベント経路ピン — `fire('pointerdown',{button:3/4})` が `ptr.down` をアームせず図形も生成しないことを固定 + 周辺入力経路 (pointerup/cancel/wheel/dblclick/drop/pinch/capture) 監査 clean (ADR-0897)
+
+## [1.7.922] - 2026-09-30
+
+### Fixed
+- pointerdown が右ボタンのみを弾いていたため、マウス X1/X2 サイドボタン (button 3/4) や stylus barrel が `ptr.down` をアームして pen/marquee ジェスチャを開始し得た — `e.button>1` で非プライマリを一括閉塞 (ADR-0896)
+
+## [1.7.921] - 2026-09-30
+
+### Tests
+- `_teFollow` の `_gridVer` 追従を実経路ピン — viewport 不変でも `Store.commit` upd で overlay が再配置 (x:300→500px) + 再スタイル (bold→600) されることを固定 (ADR-0895)
+
+## [1.7.920] - 2026-09-30
+
+### Docs
+- 編集 overlay ライフサイクル監査の完走を記録 — open/blur-commit/Escape/Tab 連鎖/`_cxO` 強制畳み (ページ切替・hide・プレゼン突入)/follow 自己畳み/sig リセットの全経路を網羅確認、実害なし (ADR-0894)
+
+## [1.7.919] - 2026-09-30
+
+### Fixed
+- ラベルエディタの追従 sig が `v.z` (未定義) を参照し zoom で再配置されない潜在バグを `v.zoom` へ修正 — ズーム中もラベル overlay が正しい位置に追従する (ADR-0893)。viewport 別名の `v.<prop>` タイポ sweep は clean
+
+## [1.7.918] - 2026-09-30
+
+### Fixed
+- 編集 overlay が viewport 変化でのみ追従していたため、他ピアの upd で shape が移動/リサイズ/スタイル変更されても overlay が旧位置・旧スタイルに留まる実害を解消 — follow sig に `_gridVer` を追加 (shape 変化で必ず bump) + label editor は live shape から anchor と font/spacing/decoration/color を再適用 (ADR-0892)
+
+## [1.7.917] - 2026-09-30
+
+### Docs
+- extent 除算・数値ドメイン監査の完走を記録 — `_pathAt`/`_edgePt`/`applyResize`/`_mapToBox`/`_grotDrag` の全除算サイトが `||1`・`1e-6`・early-return・`>0` ガードのいずれかを持ち、`_log`/`_sqr`/`exp` のドメインエラー経路も全て clampZoom/`_xC` 内に着地すると確認 (ADR-0891)
+
+## [1.7.916] - 2026-09-30
+
+### Tests
+- ADR-0888 修正の behavioural ピン — `_mapToBox` を 0 幅 gBox (`{w:0}`: 同一 x の垂直線群) で直叩きし、pen pts/line 端点が NaN/Infinity を出さず vb 境界へ縮退することを固定。`_grotDrag`/`_grpMapGet`/overlay ライフサイクル/render キャッシュの監査は clean (ADR-0890)
+
 ## [1.7.915] - 2026-09-30
 
 ### Fixed
