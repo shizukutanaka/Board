@@ -875,7 +875,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.860';   // ADR-0834
+const V='1.7.863';   // ADR-0837
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -8106,11 +8106,10 @@ const Net={
   _rtcPeerId:null,            // synthetic peer id for the WebRTC link (lifecycle-managed)
   init(roomId){
     if(this.bc){try{this._send(_mk('bye'));this.bc.close()}catch(_){}}   // ADR-0458
-    // ADR-0458: drop old-room presence (RTC entr
     _sO().clear();_cT(this._snapT);this._snapT=0;this._lastSnapAt=0;this._snapRx=false;this._snapRetry=0;   // ADR-0459/0475
     if(state.roomId&&state.roomId!==(roomId||DOC_KEY)){state._lastRep=null;_nameTs=0;_namePeer=''}   // ADR-0619/0695: reset only on a real room switch (non-null → different) — boot re-init must not wipe the markers Persist.load just restored
-    this._imgSent.clear();this._imgChunks.clear();this._imgOuts.length=0;this._snapIn=null;this._opcIn=null;   // ADR-0464/0466
-    for(const id of _pr().keys())if(!_sw(id,'rtc:'))_pr().delete(id);this._pCt=_pr().size;_ivO();   // ADR-0467
+    this._imgSent.clear();this._imgChunks.clear();this._imgOuts.length=0;this._snapIn=null;this._opcIn=null;this._imgqT.clear();   // ADR-0464/0466/0836
+    for(const id of _pr().keys())if(!_sw(id,'rtc:'))_pr().delete(id);this._pCt=_pr().size;_ivO();   // ADR-0458/0467: drop old-room presence
     clearInterval(this._presenceTimer);   // re-init (room switch) must not leak the old heartbeat
     state.roomId=roomId||DOC_KEY;
     if(typeof BroadcastChannel===_un)return;     // not supported
@@ -8123,6 +8122,9 @@ const Net={
       this._presenceTimer=setInterval(()=>{
         this._send(_mk('ping'));   // ADR-0740
         this._reapPeers();this._reapFrags();
+        // ADR-0835: aged parked refs re-request via imgq; park drops at 60s —
+        // the shape's `img:` ref still heals from any later blob with the key.
+        const _ipq=nowTs();for(const[id,e]of this._imgPending){if(_ipq-e.t0>60000)this._imgPending.delete(id);else if(_ipq-e.t0>NET_PRESENCE_INTERVAL*2)this._bcast(_mk('imgq',{key:e.k}))}
         // ADR-0475
         if(!this._snapRx&&this._snapRetry++<3)this._send(_mk('sync-req'));
       },NET_PRESENCE_INTERVAL);
@@ -8134,7 +8136,7 @@ const Net={
   // payloads per session; snapshots pass a fre
   // is always re-emitted (late joiners). Inbou
   // whose blob hasn't landed park in _imgPendi
-  _imgSent:_mP(), _imgIn:_mP(), _imgPending:_mP(),
+  _imgSent:_mP(), _imgIn:_mP(), _imgPending:_mP(), _imgqT:_mP(),
   _imgOuts:[], _imgChunks:_mP(),
   _slimShapes(shapes,sent){
     const{slim,puts}=_imgSlim(shapes,sent||this._imgSent);
@@ -8200,7 +8202,7 @@ const Net={
       // leaves without chunks would grow _imgPending unboundedly.
       if(_iS(s.id)){
         if(this._imgPending.size>=256&&!this._imgPending.has(s.id))this._imgPending.delete(this._imgPending.keys().next().value);
-        this._imgPending.set(s.id,s.img);
+        this._imgPending.set(s.id,{k:s.img,t0:nowTs()});   // ADR-0835: {key, parked-at} for the imgq re-request sweep
       }
     }
     return s;
@@ -8299,14 +8301,22 @@ const Net={
         if(this._imgIn.has(msg.key))this._imgInB-=_ln(this._imgIn.get(msg.key));
         this._imgIn.set(msg.key,data);this._imgInB=(this._imgInB||0)+_ln(data);
         while(this._imgIn.size>256||this._imgInB>64_000_000){const k0=this._imgIn.keys().next().value;if(k0==null)break;this._imgInB-=_ln(this._imgIn.get(k0));this._imgIn.delete(k0)}   // ADR-0784
-        for(const[id,k]of this._imgPending){
+        for(const[id,e]of this._imgPending){
           // ADR-0747
-          if(k===msg.key){const sh=byId(id);if(sh&&sh.img===msg.key){delete sh.img;sh.dataUrl=data}this._imgPending.delete(id)}
+          if(e.k===msg.key){const sh=byId(id);if(sh&&sh.img===msg.key){delete sh.img;sh.dataUrl=data}this._imgPending.delete(id)}
         }
         // ADR-0629: the 256-cap eviction can strand parked shapes —
         // resolve any board shape still holding this ref directly.
         for(const s of _sh())if(s.img===msg.key){delete s.img;s.dataUrl=data;this._imgPending.delete(s.id)}
         _iv();break;}
+      case 'imgq':{   // ADR-0835: O(1) answer — wire refs only ever exist for
+        // keys slimmed (_imgSent) or received (_imgIn); a _sh() scan would let
+        // an imgq flood cost O(board)/msg. ADR-0836: one answer per key per
+        // 10s — a tiny imgq otherwise amplifies into repeated 12MB broadcasts.
+        const d0=this._imgIn.get(msg.key)||(_idOK(msg.key)?this._imgSent.get(msg.key):null);
+        const _t=nowTs(),_qt=this._imgqT.get(msg.key);
+        if(d0&&(!_qt||_t-_qt>10000)){this._imgqT.set(msg.key,_t);_pu(this._imgOuts,[msg.key,d0]);this._flushImgOuts()}
+        break;}
       case 'snap':case 'opc':{
         // ADR-0383/0431: chunked intake — snapshots
         // same reassembly (ops fragment only past the ~256KB SCTP ceiling).
@@ -8431,8 +8441,8 @@ const Net={
     }
     // ADR-0745/0746: drop parked img refs the merge didn't adopt — a late blob
     // would still clobber the surviving dataUrl.
-    if(_iS(op.shape.img)&&ex.img!==op.shape.img&&this._imgPending.get(ex.id)===op.shape.img)this._imgPending.delete(ex.id);
-    if(duNew&&_iS(ex.img)&&this._imgPending.get(ex.id)===ex.img){this._imgPending.delete(ex.id);delete ex.img;}
+    if(_iS(op.shape.img)&&ex.img!==op.shape.img&&this._imgPending.get(ex.id)?.k===op.shape.img)this._imgPending.delete(ex.id);
+    if(duNew&&_iS(ex.img)&&this._imgPending.get(ex.id)?.k===ex.img){this._imgPending.delete(ex.id);delete ex.img;}
     if(dirty){
       _md(!0);_iG();
       _iv();_ru();_ps();
