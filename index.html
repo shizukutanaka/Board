@@ -875,7 +875,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.855';   // ADR-0829
+const V='1.7.856';   // ADR-0830
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -5883,15 +5883,15 @@ function positionTextEditor(ta,s){
 let _eraseBatch=[];    // shapes collected during one eraser stroke
 function eraseAt(wp){
   const hit=pickTop(wp);
-  if(hit&&!hit.locked&&!_eraseBatch.some(s=>s.id===hit.id)){
-    // Remove from rendering immediately for feedback
-    const i=_idIdx(hit.id);
-    if(i>=0){
-      const _eb=_bb(hit);
-      _sh().splice(i,1);_iG();_psc(hit.id);   // ADR-0009/0427
-      _iD(_dmgPair(_eb,null,(hit.size||2)+16));   // ADR-0026: reveal under-shapes inside the erased bbox only
+  if(hit&&!hit.locked){
+    for(const id of withFrameChildren([hit.id])){   // ADR-0830: frames cascade like Delete — members aren't orphaned
+      const s=byId(id);
+      if(!s||s.locked||_eraseBatch.some(e=>e.id===id))continue;
+      const i=_idIdx(id);
+      if(i>=0){const _eb=_bb(s);_sh().splice(i,1);_iD(_dmgPair(_eb,null,(s.size||2)+16));_psc(id);}   // ADR-0009/0427/0026
+      _pu(_eraseBatch,clone(s));
     }
-    _pu(_eraseBatch,clone(hit));
+    _iG();
   }
 }
 function flushErase(){
