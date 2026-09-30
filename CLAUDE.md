@@ -667,7 +667,8 @@ Board/
     │   ├── ADR-0615-replace-undo-wire.md          # 'replace' の undo を wire へ (pre-swap 盤面の復元をピア同期) (実装済)
     │   ├── ADR-0616-replace-commit-marker.md      # ローカル 'replace' commit で _lastRep marker を記録 (古いリモート swap の棄却) (実装済)
     │   ├── ADR-0617-snapshot-rep-marker.md        # スナップショットに swap marker 同梱 (古い世代の再混入を因果順序で棄却) (実装済)
-    │   └── ADR-0618-snapshot-name-lww.md          # スナップショットの docName を nameTs で LWW 化 (古い世代の上書き防止) (実装済)
+    │   ├── ADR-0618-snapshot-name-lww.md          # スナップショットの docName を nameTs で LWW 化 (古い世代の上書き防止) (実装済)
+    │   └── ADR-0619-room-switch-marker-reset.md   # ルーム切替で因果 marker をリセット (新ルームの収束阻害を解消) (実装済)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
