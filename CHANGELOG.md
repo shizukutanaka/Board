@@ -1,3 +1,12 @@
+## [1.7.738] - 2026-09-29
+
+### Fixed
+- ADR-0712: undo of upd/style/resize/align/beautify on a shape locked since the
+  forward restored its props locally while peers' remote apply of the undo-wire
+  op skipped them (their forward path gates on locked) — diverged props. The
+  locked gate now applies in both directions; patches carrying 'locked' still
+  pass so unlocking-by-undo keeps working
+
 ## [1.7.737] - 2026-09-29
 
 ### Fixed

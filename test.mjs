@@ -1373,14 +1373,14 @@ const checks = [
   ['flushErase del: origSel captured before commit and patched after (parity with doDelete)',
     html.includes("const origSel=_selIds();\n  const op={op:'del',shapes:clone(_eraseBatch)};")],
   // v1.7.38: _apply('upd', forward) must guard sh.locked (parity with move forward)
-  ['_apply upd forward: if(forward&&sh.locked)break guards locked shapes',
-    html.includes("const sh=byId(op.id);if(!sh)break;\n        if(forward&&sh.locked)break;")],
+  ['_apply upd: if(sh.locked)break guards locked shapes in BOTH directions',
+    html.includes("const sh=byId(op.id);if(!sh)break;\n        // ADR-0712: locked gate in BOTH directions")],
   // v1.7.38: _apply style/resize/align forward must guard sh.locked per patch
   // v1.7.68/ADR-0002-gap-fix: restructured to a loop so undo can also apply the _lwwSkip
   // guard (below) — the locked-shape guard itself is unchanged, just reshaped from the
   // original single-expression form to an equivalent early-continue.
   ['_apply style/resize/align forward: !(forward&&sh.locked&&!locked-in-p) guards locked shapes per patch',
-    html.includes("if(!sh||(forward&&sh.locked&&!('locked' in raw)))continue;")],
+    html.includes("if(!sh||(sh.locked&&!('locked' in raw)))continue;")],
   // v1.7.39: _apply del forward connClears must guard sh.locked
   ['_apply del forward connClears: if(sh&&!sh.locked) guards locked connectors',
     html.includes("if(sh&&!sh.locked)_oa(sh,p.after);}}")],
@@ -4803,6 +4803,22 @@ try {
         assert.ok(landed&&landed.pg==='pB','member pg forced to op.id (ADR-0708)');
         state.pages=null;state.curPg=null;state.shapes=[];
         console.log('  ✓ pageAdd member pg normalization (2 asserts)');
+      }
+      // ADR-0712: undo of upd/style on a shape locked since the forward skips the
+      // restore — matching the peers' remote-apply skip on our undo-wire op (the
+      // divergent alternative wrote props locally that peers dropped).
+      {
+        state.pages=null;state.shapes=[];
+        const s=Shape.make('rect',{x:0,y:0,w:10,h:10});state.shapes=[s];
+        Store._apply({op:'upd',id:s.id,before:{x:0},after:{x:50},clock:{peer:'zz',seq:32,ts:7}},true);
+        byId(s.id).locked=1;   // lock arrives between forward and undo
+        Store._apply({op:'upd',id:s.id,before:{x:0},after:{x:50},clock:{peer:'zz',seq:32,ts:7}},false);
+        assert.ok(byId(s.id).x===50,'upd undo skips locked shape — convergent w/ peers (ADR-0712)');
+        // the lock op itself (patch carries 'locked') still undoes: 'locked' in raw passes the gate
+        Store._apply({op:'style',changes:undefined,after:[{id:s.id,locked:1}],before:[{id:s.id,locked:0}],clock:{peer:'zz',seq:33,ts:7}},false);
+        assert.ok(byId(s.id).locked===0,'lock-undo still applies — locked in raw bypasses gate (ADR-0712)');
+        state.shapes=[];state._lastTs=0;
+        console.log('  ✓ locked-backward parity (2 asserts)');
       }
       assert.ok(html.includes("ids.join(',')+'|'+(state.curPg||'')"),'sel presence key includes page (ADR-0680)');
       console.log('  ✓ sel-presence pg key pin (1 assert)');
@@ -13016,7 +13032,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1580; // prev 1517 + 1 tab aria-label pin (ADR-0682)
+  pass += 1582; // prev 1517 + 1 tab aria-label pin (ADR-0682)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
