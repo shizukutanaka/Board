@@ -222,7 +222,9 @@ IDB 復元 (`Persist.load`/`restoreBackup`) も `_attachShape` を通して未�
   消費側安全」のいずれかを満たす。
   生産者側 parity は ADR-0875 で完走: docName/label/pageName/text/link 等
   全12系統のローカル入力が入口 bound で wire 上限以下 — 受理された値は
-  ピアでも受理される (0872 の intake 側と対)。
+  ピアでも受理される (0872 の intake 側と対)。ペースト系は ADR-0876 が
+  実経路ピン: `PASTE_MAX_CHARS=4000`・TSV セル 2000・生成図形の
+  validShape 受理まで固定。
   編集 overlay の typography parity: text editor は letterSpacing/lineHeight
   (ADR-0873)、label editor は letter-spacing/text-decoration (ADR-0874) —
   WYSIWYG 乖離を両経路で解消。
