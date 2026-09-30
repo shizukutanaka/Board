@@ -901,6 +901,7 @@ Board/
 │   └── ADR-0850-conn-label-measure-spacing.md  # _connLabelMeasure のメモ化キーへ s.spacing 追加 (ctx.letterSpacing → measureText 幅)
 │   └── ADR-0851-comment-fragment-repair-3.md  # 切断コメント残片の第三スイープ (~80箇所修復 + 長ブロック圧縮で帳尻)
 │   └── ADR-0852-minimap-theme-token-stale.md  # OS テーマ/コントラスト切替でミニマップシーン未無効化 → _tTk で統一 + 残片6箇所修復
+│   └── ADR-0853-drawio-inflate-page-cap.md  # 圧縮 <diagram> 展開の件数無制限 → 非圧縮パスと同じ 64 頁上限へ (並行 DecompressionStream の無制限生成を阻止)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.878';   // ADR-0852
+const V='1.7.879';   // ADR-0853
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1449,12 +1449,10 @@ const Store={
     _rdb();
     if(op.clock.peer===_pi())Net.broadcast(op);   // outbound only
   },
-  // A remote del removes shapes, but the SENDER only ships connClears for
-  // connectors it knew about. A missed connector (drawn locally, not yet
-  // synced; or a concurrent add) whose target dies would dangle — snap it to
-  // its resolved endpoint BEFORE _apply spreads the del so the caller can
-  // sever the binding. Skips connectors already in op.connClears.
-  // Remote-only view fix: no wire change.
+  // A remote del ships connClears only for connectors the sender knew about;
+  // a missed connector (local draw not yet synced, or a concurrent add) whose
+  // target dies snaps to its resolved endpoint BEFORE _apply spreads the del
+  // (skips op.connClears entries). Remote-only view fix: no wire change.
   _remoteDelConnFix(op){
     if(op.op!=='del'||!_iA(op.shapes))return null;
     const goneIds=_sT(op.shapes.map(s=>s.id).filter(id=>!(byId(id)||{}).locked));   // ADR-0760: locked ids survive — keep their bindings
@@ -2317,12 +2315,11 @@ function _penFillRange(c,p,w,n,lo,hi){
   for(let i=lo;i<=hi;i++)_penDisc(c,p[i][0],p[i][1],_penR(w,i,n));
   _fil(c);
 }
-// The live pen draft used to re-stroke all n points every frame — O(n) per
-// pointermove. Each new sample only affects the last few primitives (the start
-// settles once i<=n-3; the end taper stays live for n-1-i<PEN_TAPER), so stamp
-// committed primitives onto an offscreen bitmap and draw only the ~PEN_TAPER
-// live tail (stamp bound n-9). Pressure mode: widths use GLOBAL extrema, so a
-// new mn/mx rebuilds every committed width (rare).
+// The live pen draft re-stroked all n points per pointermove — O(n). A new
+// sample only touches the last few primitives (start settles at i<=n-3; the
+// tail stays live for n-1-i<PEN_TAPER), so committed primitives stamp onto an
+// offscreen bitmap and only the ~PEN_TAPER tail draws live (bound n-9);
+// pressure widths use global extrema so a new mn/mx rebuilds them (rare).
 let _inkD=null;
 function _inkSegDraw(cc,p,w,i){
   // bake disc(i-1) + quad(i-1→i) — index i's disc
@@ -4653,11 +4650,10 @@ function _lblFollow(){
 }
 
 // ---- Image import: drag-drop ----
-// Shared image ingest for drop + paste (ADR-0022): FileReader → guard → decode →
-// optional downscale → cb(dataUrl,naturalW,naturalH). A pasted phone photo is
-// several MB of base64 that sits in IndexedDB, history clones and share links
-// while displaying ~400wu — re-encode past IMG_IMPORT_MAX_DIM as WebP
-// (universal since Safari 14); falls back to the original bytes if not smaller.
+// Shared image ingest for drop+paste (ADR-0022): FileReader → guard → decode →
+// optional downscale → cb(dataUrl,naturalW,naturalH). Phone photos are MBs of
+// base64 sitting in IDB/history/share links while displaying ~400wu — re-encode
+// past IMG_IMPORT_MAX_DIM as WebP; falls back to original bytes if not smaller.
 const IMG_IMPORT_MAX_DIM=2048;
 function _imgImportFile(f,cb){
   const reader=new FileReader();
@@ -7013,8 +7009,8 @@ function drawioToShapes(txt){
     if(sa){const bs=shapes.find(s2=>s2.id===sa),bb=bs&&_bb(bs);if(bb){x1=bb.x+bb.w/2;y1=bb.y+bb.h/2}}
     if(sb){const bs=shapes.find(s2=>s2.id===sb),bb=bs&&_bb(bs);if(bb){x2=bb.x+bb.w/2;y2=bb.y+bb.h/2}}
     const s=_smk('arrow',{x1,y1,x2,y2,a:sa,b:sb});
-    // ADR-0224: fidelity — a drawn line (endArro
-    // at the source end maps to s.start, curved/
+    // ADR-0224: fidelity — a drawn line (endArrow='none') maps to type:'line';
+    // an arrowhead at the source end maps to s.start, curved/elbow to route flags.
     if(sty.endArrow==='none')s.type='line';
     else if(sty.endArrow==='oval'||sty.endArrow==='diamond')s.head='dot';   // ADR-0256
     else if(sty.endArrow==='open')s.head='open';
@@ -7069,13 +7065,13 @@ async function _dioInflate(b64){
   }catch(_){return null}
 }
 function importDrawioText(txt,wp){
-  // ADR-0324: every <diagram> page carries its
-  // inflate ALL of them and re-wrap into one uncompressed mxfile — the
-  // multi-page path (ADR-0311) flattens every page, not just page 1.
+  // ADR-0324: every <diagram> page carries its own deflate payload — inflate ALL
+  // of them and re-wrap into one uncompressed mxfile — the multi-page path
+  // (ADR-0311) flattens every page, not just page 1.
   const _dms=[..._St(txt||'').matchAll(/<diagram[^>]*>([^<]+)<\/diagram>/g)];
   if(_ln(_dms)&&!txt.includes('<mxGraphModel')){
     if(typeof DecompressionStream===_un){_wT('dioCompressed');return false}
-    Promise.all(_dms.map(m=>_dioInflate(m[1]))).then(xs=>{
+    Promise.all(_dms.slice(0,64).map(m=>_dioInflate(m[1]))).then(xs=>{   // ADR-0853: same 64-page bound as _dgs — unbounded <diagram> tags would spawn unbounded parallel DecompressionStreams
       const ok=xs.filter(Boolean);
       if(!_ln(ok)){_wT('dioCompressed');return}
       importDrawioText('<mxfile>'+ok.map(x=>`<diagram>${x}</diagram>`).join('')+'</mxfile>',wp)});
