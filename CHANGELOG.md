@@ -1,3 +1,8 @@
+## [1.7.881] - 2026-09-30
+
+### Docs
+- ADR-0855: 無効化網羅性監査を完走 — 全状態変更経路 (`_apply`/`_recordCommitted`/`applyRemote`/`_rs`/`_pgAdopt`/`_pgDel2`/`switchPage`/import 各系) が `_iG`・`_iv`/`_iD`・`_ivO`・`_ms`・`_ps`・`_pgBar`・`_sz`・`_pcC` を漏れなく到達することを検証、ジェスチャ内直接変更は ADR-0026 の意図的 carve-out と確認
+
 ## [1.7.880] - 2026-09-30
 
 ### Docs
