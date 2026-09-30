@@ -1,3 +1,18 @@
+## [1.7.869] - 2026-09-29
+
+### Fixed
+- ADR-0843: RTC `dc.onopen` でスナップショット >24MB の場合、送信側のみ `snapBig` toast で joiner は「connected」のまま空盤面に永続待機していた。送信失敗時にリンクを閉じ、joiner 側へ正直な 'disconnected' を通知
+
+## [1.7.868] - 2026-09-29
+
+### Fixed
+- ADR-0842: `_imgSent` (imgq 応答ソースの送信側 blob ストア) に 64MB バイト上限 — 貼付→削除を繰り返す長時間セッションで死んだ dataUrl が無界保持されていた。`_imgIn` (0784) と同じ最古 evict。駐車イディオムを `_park` へ集約 (~130B 回収) も同梱
+
+## [1.7.867] - 2026-09-29
+
+### Fixed
+- ADR-0841: パッチ適用 (`upd`/`style`/`align`/`beautify`/snapshot マージ/`connClears`) で図形へ書き込まれる `img:` 参照が `_imgPending` 未登録だった残穴を、`_oa` を shape パッチ適用の単一ゲートにして閉塞 — 参照が dangling なら 256-cap 駐車で imgq 修復へ乗せる。`dataUrl` 同載時は駐車しない
+
 ## [1.7.866] - 2026-09-29
 
 ### Fixed
