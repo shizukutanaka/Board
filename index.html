@@ -873,7 +873,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.805';   // ADR-0779
+const V='1.7.810';   // ADR-0784
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1392,7 +1392,7 @@ function validRemotePayload(op){
       if(op.after.pts!=null&&!_ptsOK(op.after.pts))return false;
       return true;}
     case 'move':   return _iA(op.ids)&&_ln(op.ids)>0&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(_idOK)&&_iN(op.dx)&&_fin(op.dx)&&_iN(op.dy)&&_fin(op.dy)&&(op.dx!==0||op.dy!==0)
-      &&patches(op.after)&&(op.before==null||patches(op.before));   // ADR-0729/0741: absolute positions are REQUIRED on the wire — a bare delta applied on a raced base diverges unrecoverably
+      &&patches(op.after)&&(op.before==null||patches(op.before));   // ADR-0729/0741
     case 'zorder':  // Step2 minimal-delta {changes:[{id,before,after}]} only — ADR-0742: the legacy {after:[…]}
                     // wholesale snapshot applied z+frac unconditionally on every entry (no per-shape LWW gate,
                     // no clock stamp) so a pre-Step2 peer's raced reorder clobbered newer frac writes with no
@@ -1501,8 +1501,8 @@ const Store={
     // target shape already recorded. If the op b
     // (it is already deduped). move/zorder are c
     if(!this._lwwDrop(op))return;
-    if(op.op==='replace'){   // ADR-0613: same wipe-safety as 'clear' — keep the pre-swap board recoverable (:prev slot, boot-time restore prompt) and tell the user who did it
-      if(state._lastRep&&!clockNewer(op.clock,state._lastRep))return;   // ADR-0614: two peers swapping at once — newest clock wins on every peer regardless of arrival order
+    if(op.op==='replace'){   // ADR-0613: same wipe-safety as 'clear'
+      if(state._lastRep&&!clockNewer(op.clock,state._lastRep))return;   // ADR-0614
       if(_ln(_sh()))Persist.saveBackup(clone(_sh()),{..._vp()},_dn());
       _oT('peerReplaced');
     }
@@ -1631,7 +1631,7 @@ const Store={
     if(_hx()>=_hi().length-1)return false;
     state.histIdx++;
     const op=_hi()[_hx()];
-    _fck(op);   // ADR-0718: restamp BEFORE the local apply — redo is a new competing write (ADR-0717): arbitration and the wire must see the one fresh clock
+    _fck(op);   // ADR-0718
     this._apply(op,true);
     _pgFollow(op);   // ADR-0652
     if(op.op==='replace')state._lastRep=op.clock;this._stampWrites(op);Net.broadcast(op);   // ADR-0615: redo rebroadcasts under the restamped clock
@@ -8170,7 +8170,8 @@ const Net={
     // ADR-0448/0469/0563: n/src mismatch or seq=
     // re-sent after a partial abort must not splice old+new fragments.
     if(!sn||sn.n!==n||sn.src!==src||seq===0){sn={p:new Array(n),g:0,n,src};this[key]=sn}
-    if(!sn.p[seq]){sn.p[seq]=msg.data;sn.g++}
+    if(!sn.p[seq]){sn.p[seq]=msg.data;sn.g++;sn.b=(sn.b||0)+_ln(msg.data)}
+    if(sn.b>24_000_000){this[key]=null;return}   // ADR-0782
     if(sn.g<sn.n)return;
     this[key]=null;return sn.p.join('');
   },
@@ -8248,10 +8249,10 @@ const Net={
   _sendDC(m){   // ADR-0432: single dc funnel — full SCTP buf
     if(_ln(m)>262144)return;   // ADR-0438: >SCTP max can never send — drop
     const q=this._dcQ,d=this.dc;
-    if(q){_ln(q)<4096&&_pu(q,m);return}
+    if(q){if(_ln(q)<4096&&(this._dcQB||0)+_ln(m)<=33554432)_pu(q,m),this._dcQB=(this._dcQB||0)+_ln(m);return}   // ADR-0783: count cap alone allows ~1GB of ≤256KB strings — bound by bytes too (one max frag burst is ~24MB)
     if(!d||d.readyState!=='open')return;
-    try{d.send(m)}catch(_){this._dcQ=[m];d.bufferedAmountLowThreshold=65536;
-      d.onbufferedamountlow=()=>{const b=this._dcQ;this._dcQ=null;for(const x of b)this._sendDC(x)}}
+    try{d.send(m)}catch(_){this._dcQ=[m];this._dcQB=_ln(m);d.bufferedAmountLowThreshold=65536;
+      d.onbufferedamountlow=()=>{const b=this._dcQ;this._dcQ=null;this._dcQB=0;for(const x of b)this._sendDC(x)}}
   },
   _send(msg){
     if(this.bc){try{this.bc.postMessage(msg)}catch(_){}}
@@ -8272,24 +8273,23 @@ const Net={
     switch(msg.k){
       case 'img':{
         // ADR-0069: blob chunks → _imgIn, then drain parked shape refs.
-        // ADR-0379: cap each chunk too — the wire fo
-        // 12MB post-assembly check runs only after A
-        // msg.data × up to 4096 slots per key × 64 k
+        // ADR-0379: cap each chunk too.
         if(!_iS(msg.key)||_ln(msg.key)>64||!_iS(msg.data)||_ln(msg.data)>96*1024)break;
         const n=_iN(msg.n)&&msg.n>=1&&msg.n<=4096?_fl(msg.n):1;
         const seq=_iN(msg.seq)&&msg.seq>=0?_fl(msg.seq):0;
         if(seq>=n)break;
         let st=this._imgChunks.get(msg.key);
-        // ADR-0374: bound in-flight reassemblies — a
-        // keys mid-transfer and never finishing woul
-        if(!st||st.n!==n||seq===0){if(!st&&this._imgChunks.size>=64)this._imgChunks.delete(this._imgChunks.keys().next().value);st={p:new Array(n),g:0,n};this._imgChunks.set(msg.key,st)}   // ADR-0449/0454/0563: evict oldest stal
-        if(!st.p[seq]){st.p[seq]=msg.data;st.g++}
+        // ADR-0374: bound in-flight reassemblies (64 slots, LRU).
+        if(!st||st.n!==n||seq===0){if(!st&&this._imgChunks.size>=64)this._imgChunks.delete(this._imgChunks.keys().next().value);st={p:new Array(n),g:0,n};this._imgChunks.set(msg.key,st)}   // ADR-0449/0454/0563
+        if(!st.p[seq]){st.p[seq]=msg.data;st.g++;st.b=(st.b||0)+_ln(msg.data)}
+        if(st.b>12_000_000){this._imgChunks.delete(msg.key);break}   // ADR-0781
         if(st.g<st.n)break;
         this._imgChunks.delete(msg.key);
         const data=st.p.join('');
         if(_ln(data)>12_000_000)break;
-        if(this._imgIn.size>=256&&!this._imgIn.has(msg.key))this._imgIn.delete(this._imgIn.keys().next().value);   // ADR-0449: bound received-blob store — ever
-        this._imgIn.set(msg.key,data);
+        if(this._imgIn.has(msg.key))this._imgInB-=_ln(this._imgIn.get(msg.key));
+        this._imgIn.set(msg.key,data);this._imgInB=(this._imgInB||0)+_ln(data);
+        while(this._imgIn.size>256||this._imgInB>64_000_000){const k0=this._imgIn.keys().next().value;if(k0==null)break;this._imgInB-=_ln(this._imgIn.get(k0));this._imgIn.delete(k0)}   // ADR-0784: bound by bytes too — 256×12MB ≈ 3GB of retained base64 otherwise
         for(const[id,k]of this._imgPending){
           // ADR-0747: resolve only while the shape still references this key.
           if(k===msg.key){const sh=byId(id);if(sh&&sh.img===msg.key){delete sh.img;sh.dataUrl=data}this._imgPending.delete(id)}
@@ -8455,7 +8455,7 @@ const Net={
     _rs(clone(valid));   // ADR-0009
     _sz();
     _pgAdopt(msg.pages,state.curPg);   // ADR-0672: curPg is a LOCAL view filter — a re-sync must not yank the view to the sender's page
-    if(_iS(msg.name)&&(_iN(msg.nameTs)?_fin(msg.nameTs)&&_nameWin(msg.nameTs,_iS(msg.namePeer)?msg.namePeer:''):!0)){if(_iN(msg.nameTs)&&_fin(msg.nameTs))_nameTs=msg.nameTs;if(_iS(msg.namePeer))_namePeer=msg.namePeer;_setDocName(_s80(msg.name));}   // ADR-0618/0699
+    if(_iS(msg.name)&&(_iN(msg.nameTs)?_fin(msg.nameTs)&&_nameWin(msg.nameTs,_iS(msg.namePeer)?msg.namePeer:''):!0)){if(_iN(msg.nameTs)&&_fin(msg.nameTs))_nameTs=msg.nameTs;if(_idOK(msg.namePeer))_namePeer=msg.namePeer;_setDocName(_s80(msg.name));}   // ADR-0618/0699/0780
     _iv();_ru();_ps();
   },
   _touchPeer(peerId){
@@ -8522,7 +8522,7 @@ const Net={
       this._rtcConnFailed=true;
       _wT('connectFailed');
       if(this._rtcPeerId){_pr().delete(this._rtcPeerId);this._rtcPeerId=null;_ivO();}
-      this._snapIn=null;this._opcIn=null;this._dcQ=null;   // ADR-0385/0431/0432: drop half-received ass
+      this._snapIn=null;this._opcIn=null;this._dcQ=null;this._dcQB=0;   // ADR-0385/0431/0432
       if(this._onConnChange)this._onConnChange();
     };
   },
@@ -8554,7 +8554,7 @@ const Net={
       try{this._onRecv(_JP(e.data),true)}catch(_){}   // ADR-0010: viaRtc=true
     };
     this.dc.onclose=()=>{
-      this._dcQ=null;this._snapIn=null;this._opcIn=null;   // ADR-0446/0448: dead-channel queue + partia
+      this._dcQ=null;this._snapIn=null;this._opcIn=null;this._dcQB=0;   // ADR-0446/0448
       if(!this._rtcConnFailed)_wT('disconnected');
       if(this._rtcPeerId){_pr().delete(this._rtcPeerId);this._rtcPeerId=null;_ivO();}
       if(this._onConnChange)this._onConnChange();
@@ -8861,7 +8861,7 @@ const Persist={
       }
       _docN(d);
       if(d.wc&&_iO(d.wc))for(const k in d.wc){const m=d.wc[k];if(_iO(m))for(const p in m)if(validClock(m[p]))(state.wclock[k]=state.wclock[k]||{})[p]=m[p]}   // ADR-0460
-      if(validClock(d.rep))state._lastRep=d.rep;if(_iN(d.nts)&&_fin(d.nts))_nameTs=d.nts;if(_iS(d.ntp))_namePeer=d.ntp;   // ADR-0695/0699/0701
+      if(validClock(d.rep))state._lastRep=d.rep;if(_iN(d.nts)&&_fin(d.nts))_nameTs=d.nts;if(_idOK(d.ntp))_namePeer=d.ntp;   // ADR-0695/0699/0701/0780
       state.lastSaveAt=d.savedAt||0;
       _sz();
     }
