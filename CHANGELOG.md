@@ -1,3 +1,8 @@
+## [1.7.901] - 2026-09-30
+
+### Docs
+- ローカル生産者 bound 監査完走: docName 80・link 500+scheme・text 5000・label 80・pageName 80・数値系・pts/way/dataUrl — 全12系統の入力が wire 上限以下。「受理された値はピアでも受理される」producer parity 規則を確定 (ADR-0872 intake 側と対) (ADR-0875)
+
 ## [1.7.900] - 2026-09-30
 
 ### Fix

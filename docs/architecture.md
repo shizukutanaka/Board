@@ -220,6 +220,12 @@ IDB 復元 (`Persist.load`/`restoreBackup`) も `_attachShape` を通して未�
   構造鍵は `_stripStruct` で除去、wholesale/インポータは `validShape` 通過、
   ローカル生産者は全て wire ゲート内 — 全フィールドは「intake 検証か
   消費側安全」のいずれかを満たす。
+  生産者側 parity は ADR-0875 で完走: docName/label/pageName/text/link 等
+  全12系統のローカル入力が入口 bound で wire 上限以下 — 受理された値は
+  ピアでも受理される (0872 の intake 側と対)。
+  編集 overlay の typography parity: text editor は letterSpacing/lineHeight
+  (ADR-0873)、label editor は letter-spacing/text-decoration (ADR-0874) —
+  WYSIWYG 乖離を両経路で解消。
   蓄積上限は全キュー/マップで完備 (ADR-0869); 総図形数の累積ゲートは
   到着順序依存で恒久発散するため、収束安全な op 単位検証のみを採る。
 

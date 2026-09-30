@@ -923,6 +923,7 @@ Board/
 │   └── ADR-0872-intake-parity-audit.md  # wire 取込 parity 監査完走 — op whitelist・aux・構造鍵・wholesale・生産者全網羅;「intake検証or消費安全」が全フィールドの規則に
 │   └── ADR-0873-editor-typography-parity.md  # テキスト編集 overlay に letterSpacing/lineHeight を適用 — canvas 描画との WYSIWYG 乖離を解消
 │   └── ADR-0874-label-editor-typography.md  # ラベルエディタ cssText に letter-spacing/text-decoration 追加 — 0873 同型のラベル側 WYSIWYG 乖離を解消
+│   └── ADR-0875-producer-parity-audit.md  # ローカル生産者 bound 監査完走 — 全入力が wire 上限以下 (0872 intake と対の producer 側)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
