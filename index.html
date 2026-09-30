@@ -844,7 +844,7 @@ const _wc=()=>state.wclock;
 const _tl=()=>state.tool;
 const _dn=()=>state.docName;
 let _nameTs=0;
-const _setDocName=n=>{state.docName=n;const d=_g('docName');if(d)d.value=_dn();_syncDocTitle();};
+const _setDocName=n=>{state.docName=n;const d=_g('docName');if(d&&d!==document.activeElement)d.value=_dn();_syncDocTitle();};   // ADR-0609: a remote rename must not clobber in-flight typing (incl. mid-IME) — the focused input keeps its text; blur resyncs the display
 const _pr=()=>state.peers;
 const _hi=()=>state.history;
 const _hx=()=>state.histIdx;
@@ -858,7 +858,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.635';
+const V='1.7.636';
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -9104,6 +9104,7 @@ function wire(){
     _on(docNameEl,'input',e=>{if(imeShouldCommit(e))_commitDocName()});
     _on(docNameEl,'compositionend',_commitDocName);
     _on(docNameEl,_CH,()=>{_setDocName(docNameEl.value||_UT);_ps()});
+    _on(docNameEl,'blur',()=>{docNameEl.value=_dn()});   // ADR-0609: after the edit ends, the display reflects the LWW-resolved name
   }
   _oC(_g('btnInstall'),_onBtnInstall);
   _oC(_g('btnLang'),()=>UI.toggleLang());
