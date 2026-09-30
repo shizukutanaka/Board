@@ -10424,6 +10424,7 @@ try {
     assert.ok(validRemotePayload(mk({fill:'rgba(0,196,204,.08)'})),'ADR-0870: rgba() accepted');
     assert.ok(validRemotePayload(mk({fill:'transparent'})),'ADR-0870: transparent accepted');
     assert.ok(validRemotePayload(mk({fill:'none'})),'ADR-0870: none sentinel accepted');
+    assert.ok(validRemotePayload(mk({fill:'default',stroke:'default'})),'ADR-0870: draw.io default keyword accepted');
     assert.ok(validRemotePayload(mk({stroke:'red'})),'ADR-0870: named color accepted');
     console.log('  ✓ ADR-0870: invalid CSS colors rejected at validPatch');
   }
@@ -14684,7 +14685,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1834; // prev 1825 + 9 ADR-0870 color-format asserts
+  pass += 1835; // prev 1825 + 10 ADR-0870 color-format asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
