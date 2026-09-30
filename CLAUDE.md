@@ -948,6 +948,7 @@ Board/
 │   └── ADR-0897-button-pins.md  # 0896 の実イベント経路ピン (button 3/4 がアームしない) + 周辺入力経路監査 clean
 │   └── ADR-0898-minimap-button-gate.md  # minimap PD にも `e.button>1` — サイド/バレルボタンのスクラブアームを閉塞 (0896 parity)
 │   └── ADR-0899-input-path-audit.md  # 入力経路監査完走 — dblclick→エディタ/ジェスチャ終端/eraser/cancel/hidden 系全軸 clean
+│   └── ADR-0900-intake-path-audit.md  # 取込経路監査完走 — hash/ファイル/drop/paste 全インポータのゲート網羅を記録
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

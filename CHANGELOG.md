@@ -1,3 +1,8 @@
+## [1.7.926] - 2026-09-30
+
+### Docs
+- 取込経路監査完走 — hash #b=/#s=・ファイル/drop/paste 全カスケードが validShape+要素上限+32MB+dataUrl cap で clean (ADR-0900)
+
 ## [1.7.925] - 2026-09-30
 
 ### Docs
