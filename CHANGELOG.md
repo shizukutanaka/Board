@@ -1,3 +1,8 @@
+## [1.7.918] - 2026-09-30
+
+### Fixed
+- 編集 overlay が viewport 変化でのみ追従していたため、他ピアの upd で shape が移動/リサイズ/スタイル変更されても overlay が旧位置・旧スタイルに留まる実害を解消 — follow sig に `_gridVer` を追加 (shape 変化で必ず bump) + label editor は live shape から anchor と font/spacing/decoration/color を再適用 (ADR-0892)
+
 ## [1.7.917] - 2026-09-30
 
 ### Docs
