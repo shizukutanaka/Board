@@ -400,14 +400,17 @@ DOM 要素は `data-t` 属性 + `UI.applyI18n()` で翻訳 (起動時に 1 回�
   `_reapPeers` は `rtc:` 行を免除するため、BC 経路で同接頭辞を名乗る
   peer id は `_onRecv` 先頭で棄却 — 偽装行は reaper 免除を悪用して
   永久残存+MAX_PEERS 枠を恒常占有し得た。
-- **ルーム切替 hygiene** (ADR-0458/0464/0466/0467/0619): `Net.init` は
+- **ルーム切替 hygiene** (ADR-0458/0464/0466/0467/0619/0836/0839): `Net.init` は
   旧チャンネルへ bye → `seenOps`・`_snapT`・非RTC `state.peers`・
-  `_imgSent/_imgChunks/_imgOuts`・`_snapIn/_opcIn`・`_pCt` と因果
+  `_imgSent/_imgChunks/_imgOuts`・`_snapIn/_opcIn`・`_imgqT`・`_pCt` と因果
   marker (`state._lastRep`・`_nameTs`) をリセット。
   room-scoped 状態の持ち越しによる ghost カーソル・blob 未到達・
   ストリーム継ぎ接ぎ・phantom announce を全て防ぎ、wire ドメインの
   marker 持ち越しで新ルームの snapshot/改名が「古い」と永久棄却
-  されるのを防ぐ (ADR-0619)。
+  されるのを防ぐ (ADR-0619)。**実部屋切替では RTC リンクも閉じる**
+  (ADR-0839) — op はルームタグを持たないため、接続を保ったまま部屋を
+  変えると旧部屋の ops が新部屋へ・新部屋の ops がリモートの旧部屋へ
+  双方向に混入する。`dc.onclose` の既存 cleanup が両端で正常終了を担う。
 - **'replace' 収束** (ADR-0613..0618): 全置換 (import/share 取込) は
   `{op:'replace',after,afterWc}` を wire に乗せる。`after` は
   `validShape` 配列、`afterWc` は prop clock マップとして検証。
