@@ -1,3 +1,8 @@
+## [1.7.898] - 2026-09-30
+
+### Docs
+- wire 取込 parity 監査完走: op 種別 whitelist・aux フィールド・構造鍵除去・wholesale 経路・ローカル生産者の全てが検証済/消費側安全。「validate at intake か verify-safe at consume」が全フィールドの必須規則として確定 (ADR-0872)
+
 ## [1.7.897] - 2026-09-30
 
 ### Docs

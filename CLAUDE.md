@@ -920,6 +920,7 @@ Board/
 │   └── ADR-0869-session-accumulation-audit.md  # セッション内蓄積監査完走 — 全キュー/マップ bounded;総図形数ゲートは到着順序依存で恒久発散のため非採用
 │   └── ADR-0870-color-prop-format.md  # stroke/fill/color の書式検証 — 無効 CSS 色は canvas が代入無視し前 shape の色漏れ;CSS.supports+非DOMフォールバック、fill:'none' 保護
 │   └── ADR-0871-render-prop-format-audit.md  # 描画消費 prop の書式監査完走 — 全 sink がゲート/whitelist写像/ローカル定数で決定的;enum gate は後方互換で非採用
+│   └── ADR-0872-intake-parity-audit.md  # wire 取込 parity 監査完走 — op whitelist・aux・構造鍵・wholesale・生産者全網羅;「intake検証or消費安全」が全フィールドの規則に
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

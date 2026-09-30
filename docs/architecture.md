@@ -216,6 +216,10 @@ IDB 復元 (`Persist.load`/`restoreBackup`) も `_attachShape` を通して未�
   描画消費 prop の sink 監査は ADR-0871 で完走: enum 系 (head/startHead/
   fstyle/align/valign/font) は全経路で確定的 fallback を持ち、後方互換の
   ため intake ゲートは非採用 (旧値を持つ実ボードを棄却しない)。
+  取込 parity 監査は ADR-0872 で完走: op 種別は whitelist+default 棄却、
+  構造鍵は `_stripStruct` で除去、wholesale/インポータは `validShape` 通過、
+  ローカル生産者は全て wire ゲート内 — 全フィールドは「intake 検証か
+  消費側安全」のいずれかを満たす。
   蓄積上限は全キュー/マップで完備 (ADR-0869); 総図形数の累積ゲートは
   到着順序依存で恒久発散するため、収束安全な op 単位検証のみを採る。
 
