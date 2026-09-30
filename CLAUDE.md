@@ -597,6 +597,7 @@ Board/
 │   ├── ADR-0545-pen-primitive-coverage.md # ペン内部プリミティブ + _svgBoxLabel のカバレッジ (実装済)
 │   ├── ADR-0546-style-panel-resync.md # prop 変化 op で選択中図形のパネル再同期 (実装済)
 │   ├── ADR-0547-del-undo-locked-dedup.md # del undo で locked 図形の二重登録を防止 (実装済)
+│   ├── ADR-0548-move-undo-moved-set.md # move undo で locked 図形の逆移動を防止 (実装済)
 └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
