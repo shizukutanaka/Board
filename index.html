@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.883';   // ADR-0857
+const V='1.7.884';   // ADR-0858
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1296,7 +1296,7 @@ function distToSeg(p,a,b){
 // validPatch alone (not validShape), so {pts:[[1,NaN]]} must be caught here.
 // Depth-capped to bound a hostile deeply-nested object (stack-overflow guard).
 function validPatch(p){
-  if(!p||!_iO(p))return false;   // a patch/shape must be an object
+  if(!p||!_iO(p)||_ok(p).length>64)return false;   // ADR-0858: bounded keys — junk floods land on the shape + wclock and propagate via snapshots
   if(!_cleanVal(p,0))return false;
   // Numeric geometry fields must be finite, in-bounds numbers
   for(const k of 'x,y,w,h,x1,y1,x2,y2,bend'.split(','))if(k in p&&p[k]!=null&&!_xyOK(p[k]))return false;   // ADR-0792/0793
@@ -1350,7 +1350,7 @@ function _cleanVal(v,depth){
 const _TYPES=_sT(['rect','ellipse','diamond','pen','line','arrow','text','sticky','image','frame']);   // ADR-0387
 const _ptsOK=a=>_iA(a)&&a.every(p=>_iA(p)&&_ln(p)>=2&&p.every(n=>_iN(n)&&_fin(n)));   // ADR-0436: shared pen-pts tuple check
 function validShape(s){
-  if(!s||!_iO(s)||!_iS(s.id)||_ln(s.id)>64||!_TYPES.has(s.type)||!_iN(s.z))return false;   // ADR-0387/0388: non-string/huge id — byId misses, Map keys diverge
+  if(!s||!_iO(s)||_ok(s).length>64||!_iS(s.id)||_ln(s.id)>64||!_TYPES.has(s.type)||!_iN(s.z))return false;   // ADR-0387/0388/0858: non-string/huge id — byId misses, Map keys diverge
   if(!validPatch(s))return false;                  // no NaN/Inf coords, no pollution keys
   if(_pn(s))return _ptsOK(s.pts)&&_ln(s.pts)>0;
   return true;

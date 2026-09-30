@@ -906,6 +906,7 @@ Board/
 │   └── ADR-0855-invalidation-funnel-audit.md  # 無効化網羅性監査完走 (全変更経路が _iG/_iv/_ivO/_ms/_ps/_pgBar 到達)
 │   └── ADR-0856-dead-code-selection-error-audit.md  # dead-code/選択 repaint/エラーパス 3 軸監査完走 (shorthand 全 live、選択 55 サイト repaint、catch partial-mutation なし)
 │   └── ADR-0857-stroke-less-pen-fallback.md  # stroke 未設定 pen の描画色を --brand へ解決 + _tTk が pen ビットマップもパージ (テーマ反転で焼き付け色が残留しない)
+│   └── ADR-0858-bounded-prop-keys.md  # wire patch/shape のキー数上限 64 (未知キーの図形+wclock 着地・snapshot 伝播の閉塞)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
