@@ -574,7 +574,7 @@ const checks = [
   ['hidden shapes leave search + bindAt', html.includes("_sv(s)&&_pgOk(s)&&_lc((_lb(s)||'')+(_txx(s)||'')+(s.type||'')")&&html.includes("t!=='pen'&&_sv(s)")],
   ['SVG export excludes hidden shapes', html.includes('const _vis=shapes.filter(_sv)')&&html.includes('_vis.filter(s=>s.type==="frame")')],
   ['Alt+hover measure guides', html.includes('measure:null')&&html.includes('function _drawMeasure(c)')&&html.includes("_aK(e)&&_selN()&&top&&!top.locked")],
-  ['measure cleared on reset/down/Alt', html.includes('state.measure=null')&&html.includes('ptr.down=true;ptr.x=ptr.x0')&&html.includes('if(e.button===2)return')&&html.includes("e.key==='Alt'&&state.measure")],
+  ['measure cleared on reset/down/Alt', html.includes('state.measure=null')&&html.includes('ptr.down=true;ptr.x=ptr.x0')&&html.includes('if(e.button>1)return')&&html.includes("e.key==='Alt'&&state.measure")],
   ['gresize scales curve cbend affinely', html.includes('sh.cbend=orig.cbend*sx*sy*ol/nl')],
   ['snap index skips hidden shapes', html.includes('exclFn(s)||_hd(s)')],
   ['DOM mirror marks hidden shapes', html.includes("tagHidden:'(非表示)'")&&html.includes("_hd(s)||_oP(s)===0?' '+t('tagHidden')")],
@@ -607,7 +607,7 @@ const checks = [
   ['pointerleave clears hover + laser (ADR-0526)', html.includes("'pointerleave'")&&html.includes('state.hover=null')],
   ['contextmenu cancels mid-gesture (ADR-0524)', html.includes("'contextmenu'")&&html.includes('if(ptr.down)_cancelPointerGesture();else UI.openCtxMenu')],
   ['SW caches only ok responses (ADR-0529)', html.includes('if(n.ok)c.put(e.request,n.clone())')&&html.includes("e.request.method==='GET'&&n.ok")],
-  ['right-down does not arm ptr.down — macOS ctx menu fix (ADR-0532)', html.indexOf('if(e.button===2)return')<html.indexOf('ptr.down=true')&&html.indexOf('if(e.button===2)return')>0],
+  ['non-primary buttons do not arm ptr.down — right/X1/X2/stylus-barrel (ADR-0532/0896)', html.indexOf('if(e.button>1)return')<html.indexOf('ptr.down=true')&&html.indexOf('if(e.button>1)return')>0],
   ['openTextEditor binds the live shape, not the pre-clone (ADR-0533)', html.includes('s=byId(s.id)||s')],
   ['window blur re-bases pointer/gesture state (ADR-0534)', html.includes("_on(window,'blur'")&&html.includes('_pointers.clear()')&&html.includes('window._prevTool=null')],
   ['rtc answer/offer trim uses _trm free fn, not a DOM method (ADR-0536)', html.includes("_trm(_g('rtcAnswerIn').value)")&&html.includes("_trm(_g('rtcOfferIn').value)")&&!html.includes('._trm(')],
@@ -846,7 +846,7 @@ const checks = [
   ['drawio multi-page side-by-side import (ADR-0311)', html.includes("for(const dg of _qsa(doc,'diagram'))")],
   ['link badge 🔗 on linked shapes (ADR-0310)', html.includes("_fT(c,'🔗',s.x+_abs(s.w)-3,s.y+3)")],
   ['_selN/_fin shorthands (ADR-0334)', html.includes("const _selN=()=>_sl().size")&&html.includes("const _fin=Number.isFinite")],
-  ['conn link badge canvas+SVG (ADR-0333)', html.includes("if(s.link&&_conn(s.type)){const lp=_connLabelXY(s)")&&html.includes('if(s.link)_pu(els,`<a href="${esc(s.link)}"')&&html.split('`<a href="${esc(s.link)}"').length===4],
+  ['conn link badge canvas+SVG (ADR-0333)', html.includes("if(s.link&&_conn(s.type)){const lp=_connLabelXY(s)")&&html.includes('if(s.link)_pu(els,`<a href="${_esc(s.link)}"')&&html.split('`<a href="${_esc(s.link)}"').length===4],
   ['drawio rounded emit on diamond/image (ADR-0332)', html.includes("if(s.r>0&&(t==='diamond'||t==='image'))sty+='rounded=1;'")],
   ['drawio fillStyle hachure round-trip (ADR-0331)', html.includes("sty.fillStyle||'')")&&html.includes("fillStyle='+(_fs2(s)==='cross'?'cross-hatch':'hachure')")],
   ['_selIds() selection-ids shorthand (ADR-0330)', html.includes("const _selIds=()=>[..._sl()]")],
@@ -1240,6 +1240,10 @@ const checks = [
   ['pen pointermove iterates coalesced samples', html.includes("case 'pen':{") && html.includes("for(const ce of coalescedSamples(e))contPen(_s2({x:ce.offsetX,y:ce.offsetY}),ce);")],
   // v1.6.79: Persist.flushIfHidden — visibilitychange→hidden as mobile-reliable durability signal
   ['Persist.flushIfHidden gates on vis===hidden && _dt()', html.includes("flushIfHidden(vis){") && html.includes("if(vis==='hidden'&&_dt()){")],
+  // v1.7.910: Persist.open blocked/yield lifecycle (ADR-0884)
+  ['Persist.open resolves on onblocked (stale-tab hold → in-memory, no boot hang)', html.includes("r.onblocked=()=>{_oT('saveBlocked');res()}")],
+  ['Persist.open yields on versionchange (newer tab can upgrade)', html.includes("this.db.onversionchange=()=>{try{this.db.close()}catch(_){}this.db=null}")],
+  ['saveBlocked i18n key in both locales', html.includes("saveBlocked:'別タブが旧版を保持") && html.includes("saveBlocked:'Another tab holds an older board")],
   ['Persist.flushIfHidden cancels pending debounce + calls save', html.includes("_cT(this._saveT);\n      this.save();")],
   ['visibilitychange listener wires document.visibilityState to flushIfHidden (ADR-0604/0608/0611: cancels gesture + clears touch state + hides cursor first)', html.includes("document.visibilityState==='hidden'){if(ptr.down)_cancelPointerGesture();_clearTouchState();Net.sendCursorHide()}Persist.flushIfHidden(document.visibilityState)")],
   ['pagehide routes through flushIfHidden — iOS swipe-away durable (ADR-0453/0604/0608)', html.includes("'pagehide',()=>{if(ptr.down)_cancelPointerGesture();_clearTouchState();Persist.flushIfHidden('hidden');Net._bcast(_mk('bye'))}")],
@@ -8010,6 +8014,34 @@ try {
     console.log('  ✓ Persist._saveErrMsg: QuotaExceededError → actionable toast (Zenn/PWA research)');
   }
 
+  // v1.7.910: Persist.open blocked-open resolves in-memory + versionchange yields (ADR-0884).
+  {
+    const origOpen = fakeWin.indexedDB.open;
+    // blocked: a stale tab holds the older version — open resolves instead of hanging
+    const reqB = { addEventListener(){}, onsuccess:null, onerror:null, onupgradeneeded:null, onblocked:null };
+    fakeWin.indexedDB.open = () => reqB;
+    const pBlocked = Persist.open();
+    assert.strictEqual(reqB.onblocked != null, true, 'ADR-0884: onblocked handler installed');
+    reqB.onblocked();
+    await pBlocked;   // hangs forever without the handler
+    assert.strictEqual(Persist.db, null, 'blocked open → in-memory (db stays null)');
+    // success + yield: a live connection closes itself when a newer tab asks to upgrade
+    const reqS = { addEventListener(){}, onsuccess:null, onerror:null, onupgradeneeded:null };
+    fakeWin.indexedDB.open = () => reqS;
+    const pOk = Persist.open();
+    reqS.result = { _closed: false, close(){ this._closed = true } };
+    reqS.onsuccess();
+    await pOk;
+    assert.ok(Persist.db === reqS.result, 'onsuccess → db bound to the connection');
+    assert.strictEqual(typeof Persist.db.onversionchange, 'function', 'ADR-0884: onversionchange handler installed');
+    const conn = Persist.db;
+    Persist.db.onversionchange();
+    assert.strictEqual(conn._closed, true, 'versionchange → connection closed (yields to newer tab)');
+    assert.strictEqual(Persist.db, null, 'versionchange → db cleared so saves no-op safely');
+    fakeWin.indexedDB.open = origOpen;
+    console.log('  ✓ Persist.open: blocked→in-memory resolve + versionchange yield (ADR-0884)');
+  }
+
   // v1.6.78: coalescedSamples + pen multi-sample capture (high-rate stylus smoothness).
   // Without getCoalescedEvents the pen keeps one point per 60Hz frame; a 240Hz stylus
   // coalesces ~4 samples/frame, so 3/4 of the pen path (and its pressure) is lost.
@@ -8729,9 +8761,14 @@ try {
     assert.ok(ta.style.left==='100px'&&ta.style.top==='160px','overlay follows pan');
     ta.style.left='999px';_teFollow();
     assert.strictEqual(ta.style.left,'999px','unchanged viewport signature → no reposition');
+    // ADR-0892: a shape mutation bumps _gridVer — the follow sig must change even
+    // with the viewport untouched, so a peer move/restyle repositions the overlay.
+    Store.commit({op:'upd',id:s.id,before:{x:300,bold:null},after:{x:300,bold:true}});
+    _teFollow();
+    assert.ok(ta.style.left==='500px'&&ta.style.fontWeight==='600','shape change (_gridVer) repositions + restyles the overlay at a fixed viewport');
     state.editing=null;state.viewport.zoom=3;_teFollow();
-    assert.strictEqual(ta.style.left,'999px','editor closed → no follow');
-    console.log('  ✓ _teFollow: zoom+pan follow, signature no-op, closed-editor guard (4 asserts)');
+    assert.strictEqual(ta.style.left,'500px','editor closed → no follow');
+    console.log('  ✓ _teFollow: zoom+pan+shape follow, signature no-op, closed-editor guard (5 asserts)');
   }
 
   // ADR-0054: a clamped zoom must be a pure no-op — before the fix, a wheel
@@ -12624,6 +12661,21 @@ try {
       assert.strictEqual(sh.pts[1][0],210,'_mapToBox pt1 x');
       assert.strictEqual(sh.pts[1][1],120,'_mapToBox pt1 y');
     }
+    // ADR-0888: zero-extent gBox — ob.w===0 must collapse members onto the vb
+    // corner, not produce Infinity/NaN coordinates.
+    {
+      const sh={type:'pen',pts:[]};
+      const orig={type:'pen',pts:[[50,0],[50,60]]};
+      _mapToBox(sh,orig,{x:50,y:0,w:0,h:60},{x:10,y:20,w:30,h:120});
+      for(const p of sh.pts){assert.ok(Number.isFinite(p[0])&&Number.isFinite(p[1]),'zero-width gBox: no NaN/Infinity member coords');}
+      assert.strictEqual(sh.pts[0][0],10,'zero-width gBox: members collapse onto vb.x');
+    }
+    {
+      const sh={type:'line',x1:0,y1:0,x2:0,y2:0};
+      const orig={type:'line',x1:50,y1:0,x2:50,y2:60};
+      _mapToBox(sh,orig,{x:50,y:0,w:0,h:60},{x:10,y:20,w:30,h:120});
+      assert.ok(Number.isFinite(sh.x1)&&Number.isFinite(sh.y2),'zero-width gBox: endpoints stay finite');
+    }
     // _fitViewport: returns zoom, centres bbox in the fake 800x600 canvas rect
     {
       state.viewport={x:0,y:0,zoom:1};
@@ -12901,6 +12953,25 @@ try {
     assert.ok(!ptr.down,'right-button PD does not arm ptr.down');
     fire('pointerup',50,50);
     assert.strictEqual(state.shapes.length,0,'no phantom shape from right-click');
+    // ADR-0896: X1/X2 side buttons and stylus barrel (3/4) are also inert —
+    // they used to fall through to the tool switch and arm a gesture
+    for(const b of [3,4]){
+      reset();state.tool='pen';
+      fire('pointerdown',50,50,{button:b});
+      assert.ok(!ptr.down&&state.shapes.length===0,`button ${b} PD arms no gesture (ADR-0896)`);
+      fire('pointerup',50,50);
+    }
+    // ADR-0898: minimap scrub is primary-only too — a side-button PD on the
+    // minimap canvas must not arm _mmNav (nor move the viewport)
+    {
+      const mmc=_els.minimap;
+      for(const b of [2,3]){
+        reset();state.viewport={x:11,y:22,zoom:1};state.showMinimap=true;
+        for(const f of mmc._L.pointerdown||[])f({button:b,pointerId:9,clientX:80,clientY:50,preventDefault(){},stopPropagation(){}});
+        for(const f of mmc._L.pointermove||[])f({button:b,pointerId:9,clientX:120,clientY:80,preventDefault(){},stopPropagation(){}});
+        assert.ok(state.viewport.x===11&&state.viewport.y===22,`minimap button ${b} PD/PM does not scrub (ADR-0898)`);
+      }
+    }
     // ADR-0866: local inputs share the wire caps — an over-cap pen stroke or
     // waypoint array would commit locally yet be rejected by every peer
     // (same divergence class as the text-editor maxLength, ADR-0797).
