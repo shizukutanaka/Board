@@ -203,6 +203,9 @@ IDB 復元 (`Persist.load`/`restoreBackup`) も `_attachShape` を通して未�
 - `validRemotePayload(op)` — リモート op の payload を `_apply` 到達前に検証。ローカル op は in-process 生成で
   信頼するが、remote op (BroadcastChannel/WebRTC) は各 op 型が参照する正確なフィールドと有限な数値デルタを
   要求する (例: `move` の `dx={}` は全シェイプを NaN 化しうる)。構造的に健全な op にのみ true。
+  `validPatch` 内では patch/shape のキー件数 ≤64 (ADR-0858) に加え、
+  全 prop の serialize 重量 ≤6KB (ADR-0865) — `pts`/`dataUrl`/`text` は
+  固有の大きめ上限を維持しつつ、未知キーの MB 級ペイロードを閉塞する。
 
 ### 4. State
 唯一の真実。以下しか存在しない:
@@ -376,6 +379,9 @@ DOM 要素は `data-t` 属性 + `UI.applyI18n()` で翻訳 (起動時に 1 回�
 - `img` — 画像 blob の `{k,key,seq,n,data}` 断片。op/snapshot 内の画像は
   `_slimOp` で `img:<key>` 参照に痩身化され、バイト本体は別経路
   (`_imgOuts` → 64KB chunks → `_imgChunks` 再構成 → `_imgIn`)。
+  再構成完了時に `hash(blob)===key のベース` (`:N` チェーン slot 前) を
+  必須とする — 送信者申告キーでの `_imgIn` 上書き (parked ref 解決・
+  imgq 再配信経由のフォージ供給 → 恒久発散) を閉塞 (ADR-0864)。
   参照先不明の shape は `_imgPending` に駐車し blob 到着で attach
   (ADR-0069/0374/0379)。削除済み shape の駐車エントリは `_psc` が除去
   (ADR-0435)。
