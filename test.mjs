@@ -741,8 +741,8 @@ const checks = [
   ['text overlay closes when edited shape removed/hidden/locked/off-page (ADR-0559/0569/0572/0574/0709)', html.includes("if(!s||_hd(s)||_lk(s)||!_pgOk(s)){_rm(_teTa);_teTa=null;state.editing=null;_iv();return}")],
   ['label overlay closes when labelled shape removed/hidden/locked/off-page (ADR-0559/0569/0572/0709)', html.includes("if(!_lt||_hd(_lt)||_lk(_lt)||!_pgOk(_lt)){_rm(_lblTa.inp);_lblTa=null;return}")],
   ['peer selection outlines skip hidden shapes (ADR-0576)', html.includes("const s=byId(id);if(!s||_hd(s)||!_pgOk(s))continue")],
-  ['fragIn ignores duplicate seq slots (ADR-0578)', html.includes("if(!sn.p[seq]){sn.p[seq]=msg.data;sn.g++}")],
-  ['_dcQ requeue queue is capped at 4096 (ADR-0578)', html.includes("_ln(q)<4096&&_pu(q,m)")],
+  ['fragIn ignores duplicate seq slots (ADR-0578)', html.includes("if(!sn.p[seq]){sn.p[seq]=msg.data;sn.g++;sn.b=(sn.b||0)+_ln(msg.data)}")],
+  ['_dcQ requeue queue is capped at 4096 (ADR-0578)', html.includes("if(_ln(q)<4096&&(this._dcQB||0)+_ln(m)<=33554432)")],
   ['Presentation.enter folds open editor first (ADR-0582)', html.includes("function enter(){\n    _cxO();")],
   ['editors close a still-open overlay first (ADR-0560)', html.includes("const _cxO=()=>{if(_teTa)_teTa.blur();if(_lblTa)_lblTa.inp.blur()}")],
   ['resize resets overlay follow sigs (ADR-0561)', html.includes("_teVp=_lblVp=''")],
@@ -13940,6 +13940,114 @@ try {
     assert.ok(byId(u2.id)&&u2.pg==null,'members outside the kill-set survive un-paged');
     console.log('  ✓ pageDel unpage requires the wire kill-set (ADR-0776)');
   }
+  // ADR-0778: an op carrying s.pg for a page this side lacks must not leave a
+  // permanent invisible orphan — paged boards materialize the '?' stub;
+  // pageless boards keep the pg (a later pageAdd resolves it — 0663 semantics).
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;
+    const o1=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    Store.applyRemote({op:'add',shape:{...o1,pg:'pX'},clock:{peer:'r1',seq:1,ts:1}});
+    assert.ok(byId(o1.id)&&byId(o1.id).pg==='pX','pageless board keeps op-carried pg (forward-compat)');
+    state.pages=[{id:'pA',name:'A',nts:0}];state.curPg='pA';
+    const o2=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    Store.applyRemote({op:'add',shape:{...o2,pg:'pZ'},clock:{peer:'r1',seq:2,ts:2}});
+    assert.ok(!!_pgById('pZ'),"unknown op-carried pg materializes the '?' stub page");
+    assert.ok(byId(o2.id)&&byId(o2.id).pg==='pZ','member keeps its page attribution for the stub');
+    Store.applyRemote({op:'pageAdd',id:'pZ',name:'Zed',clock:{peer:'r1',seq:3,ts:3}});
+    assert.ok(_pgById('pZ').name==='Zed','the real pageAdd upgrades the stub (0775 parity)');
+    console.log('  ✓ op-carried unknown pg heals via stub / stays forward-compatible (ADR-0778)');
+  }
+  // ADR-0779: clock.peer/seq feed seenOps keys and the persisted wclock map — an
+  // unbounded string floods both (and bloats the IDB record). validClock caps
+  // peer ≤64 and string seq ≤80; oversized forms are rejected before poisoning.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;
+    const s=Shape.make('rect',{x:0,y:0,w:10,h:10,stroke:'#000'});
+    Store.commit({op:'add',shape:s});
+    Store.applyRemote({op:'upd',id:s.id,before:{stroke:'#000'},after:{stroke:'red'},clock:{peer:'X'.repeat(200),seq:1,ts:1}});
+    assert.strictEqual(byId(s.id).stroke,'#000','oversized clock.peer rejected');
+    Store.applyRemote({op:'upd',id:s.id,before:{stroke:'#000'},after:{stroke:'red'},clock:{peer:'r1',seq:'snap:'.padEnd(200,'x'),ts:2}});
+    assert.strictEqual(byId(s.id).stroke,'#000','oversized string clock.seq rejected');
+    Store.applyRemote({op:'upd',id:s.id,before:{stroke:'#000'},after:{stroke:'red'},clock:{peer:'r1',seq:'snap:'+'x'.repeat(40),ts:3}});
+    assert.strictEqual(byId(s.id).stroke,'red','a valid string-seq clock still lands');
+    assert.ok(!state.wclock[s.id]||!state.wclock[s.id].stroke||state.wclock[s.id].stroke.peer==='r1','no oversized-peer wclock entry was written');
+    console.log('  ✓ validClock bounds peer/seq string lengths (ADR-0779)');
+  }
+  // ADR-0780: snapshot `namePeer` flows into `_namePeer` — persisted to the IDB doc
+  // record as `ntp`. An oversized value must be rejected at intake (same 64-cap as
+  // every other wire id) or it bloats storage forever; the outbound namePeer of a
+  // freshly built snapshot exposes the stored value.
+  {
+    state.shapes=[];_invalidateGrid();state.pages=null;state.curPg=null;state.docName='';
+    Net._onRecv({k:'name',name:'Base',ts:Date.now()+5000,peer:'base'},false);
+    assert.strictEqual(Net._snapshotMsg().namePeer,'base','baseline namePeer stored');
+    Net._onRecv({k:'snapshot',shapes:[],ops:[],peer:'sp',name:'SnapName',nameTs:Date.now()+6000,namePeer:'A'.repeat(200)},false);
+    assert.strictEqual(state.docName,'SnapName','snapshot name still applies on ts win');
+    assert.strictEqual(Net._snapshotMsg().namePeer,'base','oversized namePeer rejected at intake');
+    Net._onRecv({k:'snapshot',shapes:[],ops:[],peer:'sp',name:'Snap2',nameTs:Date.now()+7000,namePeer:'ok'},false);
+    assert.strictEqual(Net._snapshotMsg().namePeer,'ok','valid namePeer still stored');
+    console.log('  ✓ snapshot namePeer bounded like every wire id (ADR-0780)');
+  }
+  // ADR-0781: img reassembly tracked per-part count only — the 12MB joined check
+  // ran AFTER all n parts landed, so a stream of 96KB chunks could accumulate
+  // ~384MB mid-flight. st.b now aborts the slot the moment assembled bytes cross
+  // the same cap the join would apply.
+  {
+    Net._imgChunks.clear();
+    const chunk='x'.repeat(96*1024);
+    for(let i=0;i<130;i++)Net._onRecv({k:'img',key:'big1',seq:i,n:200,data:chunk,peer:'pz'},false);
+    // abort fires at ~123 chunks; later seqs legitimately open a fresh slot
+    // (out-of-order reassembly), so assert the byte counter restarted instead.
+    assert.ok(Net._imgChunks.has('big1'),'post-abort stream opens a fresh slot');
+    assert.ok(Net._imgChunks.get('big1').b<1_000_000,'aborted accumulation is gone — only post-abort bytes counted');
+    Net._onRecv({k:'img',key:'ok1',seq:0,n:1,data:'data:image/png;base64,AA',peer:'pz'},false);
+    assert.strictEqual(Net._imgIn.get('ok1'),'data:image/png;base64,AA','normal stream unaffected');
+    console.log('  ✓ img reassembly aborts at the joined cap mid-flight (ADR-0781)');
+  }
+  // ADR-0782: _fragIn ('snap'/'opc') had the same gap — 384×96KB ≈ 37MB could
+  // accumulate before the post-join 24MB check ran. sn.b aborts mid-flight.
+  {
+    Net._snapIn=null;
+    const chunk='x'.repeat(96*1024);
+    for(let i=0;i<260;i++)Net._onRecv({k:'snap',seq:i,n:300,data:chunk,peer:'pz'},false);
+    // abort fires at ~251 chunks; later seqs open a fresh slot, so the counter restarted.
+    assert.ok(Net._snapIn,'post-abort stream opens a fresh slot');
+    assert.ok(Net._snapIn.b<1_500_000,'aborted accumulation is gone — byte counter restarted');
+    Net._onRecv({k:'snap',seq:0,n:1,data:'{"k":"x"}',peer:'pz'},false);
+    assert.strictEqual(Net._snapIn,null,'normal 1-chunk snap completes and clears');
+    console.log('  ✓ frag reassembly aborts at the joined cap mid-flight (ADR-0782)');
+  }
+  // ADR-0783: _dcQ's only bound was the 4096-message count — with ≤256KB
+  // messages a stalled channel could queue ~1GB. The queue now also caps at
+  // 32MB of string bytes (one max 'snap' burst is ~24MB, so legit bursts pass).
+  {
+    const od=Net.dc;
+    Net.dc={readyState:'open',send(){throw new Error('full')}};
+    Net._dcQ=null;Net._dcQB=0;
+    const big='x'.repeat(200000);
+    Net._sendDC(big);   // send throws → queue starts (first msg + its bytes)
+    for(let i=0;i<300;i++)Net._sendDC(big);
+    assert.ok(Net._dcQ.length<=167,'byte cap stops the queue far below the 4096 count cap');
+    const qLen=Net._dcQ.length;
+    Net._sendDC(big);Net._sendDC(big);
+    assert.strictEqual(Net._dcQ.length,qLen,'messages past the byte cap are dropped');
+    Net._dcQ=null;Net._dcQB=0;Net.dc=od;
+    console.log('  ✓ _dcQ bounded by bytes as well as count (ADR-0783)');
+  }
+  // ADR-0784: _imgIn's only bound was 256 entries — a peer spamming 12MB blobs
+  // could pin ~3GB of base64 in the session. Retained bytes now cap at 64MB
+  // with the same oldest-first eviction direction as the count cap.
+  {
+    Net._imgIn.clear();Net._imgInB=0;
+    const blob='y'.repeat(11_000_000);
+    for(let i=0;i<6;i++){Net._imgIn.set('seed'+i,blob);Net._imgInB+=blob.length}
+    Net._onRecv({k:'img',key:'live1',seq:0,n:1,data:'data:image/png;base64,AA',peer:'pz'},false);
+    assert.ok(Net._imgInB<=64_000_000,'retained blob bytes bounded by the cap');
+    assert.ok(!Net._imgIn.has('seed0')&&Net._imgIn.has('seed1'),'only as many oldest evicted as needed');
+    assert.strictEqual(Net._imgIn.get('live1'),'data:image/png;base64,AA','the live blob still lands');
+    Net._imgIn.clear();Net._imgInB=0;
+    console.log('  ✓ _imgIn bounded by bytes as well as count (ADR-0784)');
+  }
 
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
@@ -13947,7 +14055,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1748; // prev 1744 + 4 ADR-0776 unpage kill-set asserts
+  pass += 1771; // prev 1768 + 3 ADR-0784 _imgIn byte-cap asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
