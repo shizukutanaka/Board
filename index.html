@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.914';   // ADR-0888
+const V='1.7.915';   // ADR-0889
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -7706,7 +7706,7 @@ function buildSVG(shapes,paper){
     const _sp=(d,j)=>`<path d="${d}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round"${j?' stroke-linejoin="round"':''}${dA}${a}${_sh}/>`;
     const _po=pt=>`<polyline points="${pt}" fill="none" stroke="${stroke}" stroke-width="${SZ||1}" stroke-linecap="round" stroke-linejoin="round"${dA}${a}${_sh}/>`;
     const _cL=()=>{const lp=_connLabelXY(s);_pu(els,_connLabelSVG(s,lp.x,lp.y,lp.x,lp.y,ox,oy,stroke,paper));
-      if(s.link)_pu(els,`<a href="${esc(s.link)}" target="_blank" rel="noopener"><text x="${lp.x+10+ox}" y="${lp.y-10+oy}" text-anchor="middle" dominant-baseline="middle" font-size="10" font-family="sans-serif"${a}>🔗</text></a>`)};   // ADR-0333/0339
+      if(s.link)_pu(els,`<a href="${_esc(s.link)}" target="_blank" rel="noopener"><text x="${lp.x+10+ox}" y="${lp.y-10+oy}" text-anchor="middle" dominant-baseline="middle" font-size="10" font-family="sans-serif"${a}>🔗</text></a>`)};   // ADR-0333/0339/0889
     const rT=shapeRot(s)?` transform="rotate(${_num(_rt(s))},${X+W/2+ox},${Y+H/2+oy})"`:''
     switch(s.type){
       case 'rect':{
@@ -7845,7 +7845,7 @@ function buildSVG(shapes,paper){
         }
         for(let i=0;i<n;i++)circles+=`<circle cx="${r(P[i][0])}" cy="${r(P[i][1])}" r="${r(Rr(i))}"/>`;
         _pu(els,`<g fill="${stroke}"${a}${_sh}><path d="${d}"/>${circles}</g>`);   // ADR-0278
-        if(s.link)_pu(els,`<a href="${esc(s.link)}" target="_blank" rel="noopener"><text x="${P[0][0]+4}" y="${P[0][1]-2}" font-size="10" font-family="sans-serif"${a}>🔗</text></a>`);   // ADR-0333/0339
+        if(s.link)_pu(els,`<a href="${_esc(s.link)}" target="_blank" rel="noopener"><text x="${P[0][0]+4}" y="${P[0][1]-2}" font-size="10" font-family="sans-serif"${a}>🔗</text></a>`);   // ADR-0333/0339/0889
         break;}
       case 'text':{
         const fs=_num(_fS(s))||16;
@@ -7898,7 +7898,7 @@ function buildSVG(shapes,paper){
           _pu(els,'</text>');
         }break;}
     }
-    if(s.link&&_hb(s))_pu(els,`<a href="${esc(s.link)}" target="_blank" rel="noopener"><text x="${X+_abs(W)+ox-3}" y="${Y+oy+3}" text-anchor="end" dominant-baseline="hanging" font-size="10" font-family="sans-serif"${a}>🔗</text></a>`);   // ADR-0316/0339
+    if(s.link&&_hb(s))_pu(els,`<a href="${_esc(s.link)}" target="_blank" rel="noopener"><text x="${X+_abs(W)+ox-3}" y="${Y+oy+3}" text-anchor="end" dominant-baseline="hanging" font-size="10" font-family="sans-serif"${a}>🔗</text></a>`);   // ADR-0316/0339/0889
   }
   _pu(els,'</svg>');
   return els.join('\n');

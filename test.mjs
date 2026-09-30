@@ -846,7 +846,7 @@ const checks = [
   ['drawio multi-page side-by-side import (ADR-0311)', html.includes("for(const dg of _qsa(doc,'diagram'))")],
   ['link badge 🔗 on linked shapes (ADR-0310)', html.includes("_fT(c,'🔗',s.x+_abs(s.w)-3,s.y+3)")],
   ['_selN/_fin shorthands (ADR-0334)', html.includes("const _selN=()=>_sl().size")&&html.includes("const _fin=Number.isFinite")],
-  ['conn link badge canvas+SVG (ADR-0333)', html.includes("if(s.link&&_conn(s.type)){const lp=_connLabelXY(s)")&&html.includes('if(s.link)_pu(els,`<a href="${esc(s.link)}"')&&html.split('`<a href="${esc(s.link)}"').length===4],
+  ['conn link badge canvas+SVG (ADR-0333)', html.includes("if(s.link&&_conn(s.type)){const lp=_connLabelXY(s)")&&html.includes('if(s.link)_pu(els,`<a href="${_esc(s.link)}"')&&html.split('`<a href="${_esc(s.link)}"').length===4],
   ['drawio rounded emit on diamond/image (ADR-0332)', html.includes("if(s.r>0&&(t==='diamond'||t==='image'))sty+='rounded=1;'")],
   ['drawio fillStyle hachure round-trip (ADR-0331)', html.includes("sty.fillStyle||'')")&&html.includes("fillStyle='+(_fs2(s)==='cross'?'cross-hatch':'hachure')")],
   ['_selIds() selection-ids shorthand (ADR-0330)', html.includes("const _selIds=()=>[..._sl()]")],
