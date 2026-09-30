@@ -875,7 +875,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.839';   // ADR-0813
+const V='1.7.845';   // ADR-0819
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -8670,7 +8670,8 @@ const Share={
   async importFromHash(){
     const h=location.hash;
     if(!_sw(h,'#b='))return false;
-    const enc=_dU(h.slice(3));
+    let enc;
+    try{enc=_dU(h.slice(3))}catch{_eT(_IB);try{history.replaceState(null,'',location.pathname)}catch(_){}return false}
     const parts=enc.split('&'),opt={};
     for(const p of parts.slice(1)){const i=_ix(p,'=');if(i>0)opt[_s0(p,i)]=p.slice(i+1)}
     // ADR-0038: every reject path toasts and cle
