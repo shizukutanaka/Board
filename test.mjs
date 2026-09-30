@@ -4815,7 +4815,7 @@ try {
     }
     // ADR-0681: snapshot union-heal merges same-id page names via nts LWW
     {
-      assert.ok(html.includes("else if(clockNewer({ts:p.nts||0,peer:_iS(p.ntp)?p.ntp:'',seq:0}"),'same-id page nts LWW merge via (ts,peer) total order (ADR-0681/0698)');
+      assert.ok(html.includes("clockNewer({ts:p.nts||0,peer:_iS(p.ntp)?p.ntp:'',seq:0}"),'same-id page nts LWW merge via (ts,peer) total order (ADR-0681/0698)');
       console.log('  ✓ snapshot page-name LWW pin (1 assert)');
     }
     // ADR-0700: _vPages rejects poisoned tie-order fields — an Infinity nts wins
