@@ -1,3 +1,11 @@
+## [1.7.908] - 2026-09-30
+
+### Fixed
+- `describeShape` の SR アナウンスにスタイル身分 prop を追加: dash (破線/点線)、text align (中央/右)、valign (中央/下)、bold/italic/underline/strike — 設定は可能でも読み上げ経路がなかった視覚情報の非対称を解消 (ADR-0882)
+
+### Test
+- dash/align/valign/text-flag の announce を実 `describeShape` 両ロケールで behavioural ピン (ADR-0882)
+
 ## [1.7.907] - 2026-09-30
 
 ### Docs
