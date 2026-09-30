@@ -1,3 +1,9 @@
+## [1.7.889] - 2026-09-30
+
+### Docs
+- ADR-0863: リモート文字列→DOM シンク監査完走 — eval/insertAdjacentHTML/outerHTML 不在、innerHTML は静的クリアのみ、cssText の残サイトは全て静的/数値のみ (label エディタは ADR-0862 で閉塞済)、href は blob/download のみ・s.link は http(s) ゲート、img.src はローカル blob、title/dataset/document.write は value-typed/esc 済、`__proto__` 系は `_cleanVal` が intake 棄却、エクスポートは 16384px/16MP bounded — 実害なし、侵入面を文書化
+- dialog/focus/pointer-capture 対称性も検証 — 2 つの role=dialog (help/share) は `_captureFocus`/`_restoreFocus` 済、プレゼン overlay は `_focusTrigger` 復帰、編集 overlay は対象消滅時に畳む、pointer capture は lostpointercapture/_PU で解除
+
 ## [1.7.888] - 2026-09-30
 
 ### Fixed

@@ -911,6 +911,7 @@ Board/
 │   └── ADR-0860-injective-sig-keys.md  # id/name 集合 sig キーの _JS 化 — ','/'\x1f' 含有リモート値が join キーを衝突させる実害を5サイトで解消
 │   └── ADR-0861-drawio-gid-escape.md  # drawio emit の groupId を _dioEsc 化 — '"' 含有リモート gid の XML 属性注入 (エクスポート artifact 経由) を閉塞
 │   └── ADR-0862-label-editor-csstext-injection.md  # label エディタの cssText からリモート stroke を排除 — ';' による CSS 宣言注入 (外部 url() フェッチ含む) を value-typed property 代入で閉塞
+│   └── ADR-0863-remote-dom-sink-audit.md  # リモート文字列→DOM シンク監査完走 (eval/innerHTML/cssText/href/src/title/dataset/location/storage 全 clean) + dialog/focus/pointer-capture 対称性検証
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
