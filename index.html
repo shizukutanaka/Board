@@ -875,7 +875,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.865';   // ADR-0839
+const V='1.7.866';   // ADR-0840
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -8872,23 +8872,17 @@ const Persist={
     const rq=_oS(tx,DB_STORE).get(DOC_KEY);
     const d=await reqDone(rq);
     if(d&&_iA(d.shapes)){
-      // ADR-0031: v2 records store image bytes in
-      // them BEFORE validation so image shapes loo
+      // ADR-0031
       let shapes=d.shapes;
       if(shapes.some(s=>s.img)){
         const kv=await reqDone(_oS(tx,DB_IMG_STORE).getAll());
         const ks=await reqDone(_oS(tx,DB_IMG_STORE).getAllKeys());
         shapes=_imgAttach(shapes,new Map(ks.map((k,i)=>[k,kv[i]])));
+        shapes=shapes.map(s=>Net._attachShape(s));   // ADR-0840
       }
-      // Validate like the other intake paths (impo
-      // adopt malformed shapes from IDB (corruptio
       _rs(shapes.filter(validShape));   // ADR-0009
       _pgAdopt(d.pages,d.curPg);   // ADR-0646
       if(_vpOK(d.viewport)){
-        // Clamp zoom to the invariant [MIN_ZOOM,MAX_
-        // (wheel/fit) maintains — a corrupt/forward-
-        // out-of-range zoom would otherwise load an
-        // canvas with no recovery. Assign explicitly
         _vp().x=+d.viewport.x; _vp().y=+d.viewport.y;
         _vp().zoom=clampZoom(+d.viewport.zoom);
       }
@@ -8948,6 +8942,7 @@ const Persist={
         const kv=await reqDone(tx2.objectStore(DB_IMG_STORE).getAll());
         const ks=await reqDone(tx2.objectStore(DB_IMG_STORE).getAllKeys());
         shapes=_imgAttach(shapes,new Map(ks.map((k,i)=>[k,kv[i]])));
+        shapes=shapes.map(s=>Net._attachShape(s));   // ADR-0840
       }
       shapes=shapes.filter(validShape);
       if(!_ln(shapes)){await this.discardBackup();return false}

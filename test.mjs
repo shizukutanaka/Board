@@ -14422,6 +14422,10 @@ try {
     // ADR-0837: the parked-ref sweep must broadcast — _send is BC-only and would
     // never reach an RTC-only peer (the link where mid-flush disconnects live).
     assert.ok(html.includes("this._bcast(_mk('imgq',{key:e.k}))"),'imgq sweep rides _bcast');
+    // ADR-0840: IDB-restored shapes with dangling img refs must park too —
+    // both load() and restoreBackup() route through Net._attachShape.
+    assert.strictEqual((html.match(/shapes\.map\(s=>Net\._attachShape\(s\)\)/g)||[]).length,2,
+      'both IDB img-attach paths park unresolved refs');
     console.log('  ✓ imgq re-request answered from blob store or live shape (ADR-0835)');
   }
 
