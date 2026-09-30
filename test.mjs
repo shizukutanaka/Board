@@ -4762,11 +4762,35 @@ try {
     }
     // ADR-0679: pageDel drops member write-clocks like del
     {
-      assert.ok(html.includes("for(const s of _sh())if((s.pg||firstId)===op.id)delete _wc()[s.id]"),'_pgDel2 purges member wclocks (ADR-0679)');
+      assert.ok(html.includes("for(const id of dead)delete _wc()[id];"),'_pgDel2 purges member wclocks (ADR-0679/0707)');
       console.log('  ✓ pageDel wclock purge pin (1 assert)');
     }
     // ADR-0680: selection-presence dedup key carries curPg
     {
+      // ADR-0707: pageDel gets 'del' parity — locked members survive (rehomed) and
+      // bound connectors get connClears endpoints + undo/wire restore.
+      {
+        state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';
+        const victim=Shape.make('rect',{x:0,y:0,w:10,h:10});victim.pg='pB';
+        const lk=Shape.make('rect',{x:20,y:0,w:10,h:10});lk.pg='pB';lk.locked=true;
+        const conn=Shape.make('line',{x1:0,y1:0,x2:50,y2:50});conn.pg='pA';conn.a=victim.id;conn.aF=0.5;
+        state.shapes=[victim,lk,conn];
+        Store.applyRemote({op:'pageDel',id:'pB',clock:{peer:'zz',seq:30,ts:6}});
+        assert.ok(!byId(victim.id),'unlocked member removed (ADR-0707)');
+        assert.ok(byId(lk.id)&&byId(lk.id).pg==='pA','locked member survives, rehomed to firstId (ADR-0707)');
+        assert.ok(conn.a===null&&conn.aF==null,'bound connector endpoint cleared (ADR-0707)');
+        // undo re-binds via the recorded connClears (local path)
+        state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';
+        const v2=Shape.make('rect',{x:0,y:0,w:10,h:10});v2.pg='pB';
+        const c2=Shape.make('line',{x1:0,y1:0,x2:50,y2:50});c2.pg='pA';c2.a=v2.id;c2.aF=0.5;
+        state.shapes=[v2,c2];
+        Store.commit({op:'pageDel',id:'pB'});state._lastTs=0;
+        assert.ok(!byId(v2.id)&&c2.a===null,'local del cleared binding (ADR-0707)');
+        Store.undo();
+        assert.ok(_pgById('pB')&&byId(v2.id)&&c2.a===v2.id,'undo re-adds member + re-binds connector (ADR-0707)');
+        state.pages=null;state.curPg=null;state.shapes=[];
+        console.log('  ✓ pageDel locked parity + connClears (5 asserts)');
+      }
       assert.ok(html.includes("ids.join(',')+'|'+(state.curPg||'')"),'sel presence key includes page (ADR-0680)');
       console.log('  ✓ sel-presence pg key pin (1 assert)');
     }
@@ -12979,7 +13003,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1573; // prev 1517 + 1 tab aria-label pin (ADR-0682)
+  pass += 1578; // prev 1517 + 1 tab aria-label pin (ADR-0682)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

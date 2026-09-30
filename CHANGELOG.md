@@ -1,3 +1,12 @@
+## [1.7.733] - 2026-09-29
+
+### Fixed
+- ADR-0707: pageDel reaches 'del' parity — locked members survive and rehome to the
+  surviving page (all peers apply it uniformly), and connectors bound to a removed
+  member run computeConnClears (endpoint freeze + recorded for undo) instead of
+  dangling on dead ids. Undo and the undo-wire re-bind the cleared endpoints on
+  local peers and remote peers alike
+
 ## [1.7.732] - 2026-09-29
 
 ### Docs
