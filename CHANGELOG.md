@@ -1,3 +1,8 @@
+## [1.7.922] - 2026-09-30
+
+### Fixed
+- pointerdown が右ボタンのみを弾いていたため、マウス X1/X2 サイドボタン (button 3/4) や stylus barrel が `ptr.down` をアームして pen/marquee ジェスチャを開始し得た — `e.button>1` で非プライマリを一括閉塞 (ADR-0896)
+
 ## [1.7.921] - 2026-09-30
 
 ### Tests

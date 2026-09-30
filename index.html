@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.921';   // ADR-0895
+const V='1.7.922';   // ADR-0896
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4050,8 +4050,9 @@ _on(canvas,_PD,e=>{
   const sp=_osp(e);
   const wp=_s2(sp);
   state.measure=null;
-  // ADR-0532: right-down must not arm ptr.down
-  if(e.button===2)return;
+  // ADR-0532/0896: non-primary buttons must not arm ptr.down — right (2) plus
+  // mouse X1/X2 side buttons and stylus barrels (3/4/5) reach here too.
+  if(e.button>1)return;
   ptr.down=true;ptr.x=ptr.x0=sp.x;ptr.y=ptr.y0=sp.y;
   ptr.wx=ptr.wx0=wp.x;ptr.wy=ptr.wy0=wp.y;
   // middle click or hand tool => pan
