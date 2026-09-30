@@ -13817,6 +13817,9 @@ try {
       assert.notEqual(Net._lastSelSent,k1,'ADR-0860: presence dedup key distinguishes {a,b} from {"a,b"} — resend happens');
       assert.ok(k1.indexOf('"a","b"')>=0,'ADR-0860: presence dedup key is the _JS-encoded sorted id set');
       state.selection.clear();
+      const elA=[{id:'a',name:'b,c\x1fd'}],elB=[{id:'a',name:'b'},{id:'c',name:'d'}];
+      assert.equal(elA.map(p=>p.id+'\x1f'+p.name).join(),elB.map(p=>p.id+'\x1f'+p.name).join(),'ADR-0860: crafted vs real page sets collided under the old join sig');
+      assert.notEqual(JSON.stringify(elA.map(p=>p.id+'\x1f'+p.name)),JSON.stringify(elB.map(p=>p.id+'\x1f'+p.name)),'ADR-0860: _JS keeps page-set sigs injective');
     }
     // drop: .board file path via a fake FileReader — atomic whole-board replace (ADR-0518 residual closed)
     const _FR=globalThis.FileReader;
@@ -14541,7 +14544,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1794; // prev 1791 + 3 ADR-0860 injective sig-key asserts
+  pass += 1796; // prev 1791 + 5 ADR-0860 injective sig-key asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

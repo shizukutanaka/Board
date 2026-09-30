@@ -2186,7 +2186,7 @@ function _pgRename(){const p=_pgById(state.curPg);if(!p)return;const n=prompt(t(
 let _pgSig='';
 function _pgBar(){const el=_g('pgBar');if(!el)return;_hdn(el,!_pgOn());if(!_pgOn())return;
 const tb=_g('pgTabs');if(!tb)return;
-const sig=_pgs().map(p=>p.id+'\x1f'+p.name).join();let _fid;   // ADR-0683: unit-separator join — ('p1','12') vs ('p11','2') used to collide and skip the chip rebuild
+const sig=_JS(_pgs().map(p=>p.id+'\x1f'+p.name));let _fid;   // ADR-0683/0860: _JS keeps the sig injective across element boundaries
 if(sig!==_pgSig){_pgSig=sig;const _fe=_aE();_fid=_fe&&_fe._pgid;_tC(tb,'');   // ADR-0683: remember the focused chip before the wipe
 for(const p of _pgs()){const c=_ce('button');c.className='pg-b pg-t';c.title=p.name;c._pgid=p.id;c.setAttribute('aria-label',p.name);_tC(c,_s0(p.name,12));   // ADR-0682: visible text truncates at 12 chars — SR users still get the full page name
 _oC(c,()=>c._pgid===state.curPg?_pgRename():switchPage(c._pgid));   // click the live tab to rename — keeps 0646's rename path one click away

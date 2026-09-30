@@ -1,10 +1,10 @@
 ## [1.7.886] - 2026-09-30
 
 ### Fixed
-- ADR-0860: 図形 id は 64 文字以内なら文字種無制限のため、リモートが `,` を含む id を発行可能 — `join(',')` で作る sig/索引キーが `{a,b}` と `{"a,b"}` で衝突する実害を、resize/move の snap 索引キー・選択署名・presence dedup キーの4サイトを `_JS`(JSON.stringify) エンコードへ置き換えて解消 (スナップ索引の誤共有→self-snap、スタイルパネル/ピア選択ハイライトの古いまま表示)
+- ADR-0860: 図形 id は 64 文字以内なら文字種無制限のため、リモートが `,` を含む id/name を発行可能 — `join` で作る sig/索引キーが `{a,b}` と `{"a,b"}` 等で衝突する実害を、resize/move の snap 索引キー・選択署名・presence dedup キー・ページ集合 sig の5サイトを `_JS`(JSON.stringify) エンコードへ置き換えて解消 (スナップ索引の誤共有→self-snap、スタイルパネル/ピア選択ハイライト/ページタブの古いまま表示)
 
 ### Tests
-- behavioural ピン 3 件 — `,` 含有 id で異なる除外集合が別 `_snapIndex` を得ること、選択 `{a,b}`→`{"a,b"}` で presence dedup キーが反転し再送が起こることを固定
+- behavioural ピン 5 件 — `,` 含有 id で異なる除外集合が別 `_snapIndex` を得ること、選択 `{a,b}`→`{"a,b"}` で presence dedup キーが反転し再送が起こること、細工ページ名と実ページ集合が旧 join sig で衝突し `_JS` では区別されることを固定
 
 ## [1.7.885] - 2026-09-30
 
