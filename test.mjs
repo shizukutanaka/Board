@@ -2112,6 +2112,49 @@ try {
     for(const s of prev)state.shapes.push(s);
     console.log('  ✓ _recordCommitted sets _lastRep on local replace (ADR-0616)');
   }
+  // ADR-0974: a remote 'replace' back-stops the pre-swap board into the backup
+  // slot (ADR-0004/0613) — a peer's wholesale import must not strand the local
+  // board if the tab closes before a restore/undo. Empty boards back up nothing.
+  {
+    state.shapes.length=0;state._lastRep=null;state.seenOps=new Set();state.wclock={};_invalidateGrid();
+    const a=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    state.shapes=[a];state.docName='D';
+    const calls=[];
+    const _sb=Persist.saveBackup;
+    Persist.saveBackup=(s,v,n)=>{calls.push({s,v,n});return Promise.resolve()};
+    try{
+      Store.applyRemote({op:'replace',after:[Shape.make('ellipse',{x:1,y:1,w:5,h:5})],afterWc:{},clock:{peer:'pr',seq:1,ts:100}});
+      assert.strictEqual(calls.length,1,'remote replace snapshots the pre-swap board once');
+      assert.ok(calls[0].s.length===1&&calls[0].s[0].id===a.id,'backup holds the pre-swap shapes');
+      assert.strictEqual(calls[0].n,'D','backup carries the docName');
+      state._lastRep=null;state.seenOps=new Set();state.shapes.length=0;_invalidateGrid();
+      calls.length=0;
+      Store.applyRemote({op:'replace',after:[a],clock:{peer:'pr',seq:2,ts:200}});
+      assert.strictEqual(calls.length,0,'empty board backs up nothing (nothing to lose)');
+    }finally{Persist.saveBackup=_sb;state.shapes.length=0;_invalidateGrid();}
+    console.log('  ✓ remote replace back-stops the pre-swap board (ADR-0974)');
+  }
+  // ADR-0974: a remote 'replace' keeps locally-alive shapes whose _born clock
+  // outranks the swap (ADR-0926) — keep/tomb/born restamping stays symmetric
+  // with the sender-side _recordCommitted bookkeeping.
+  {
+    state.shapes.length=0;state._lastRep=null;state.seenOps=new Set();state.wclock={};_invalidateGrid();
+    const old=Shape.make('rect',{id:'oldX',x:0,y:0,w:10,h:10});
+    const keep=Shape.make('ellipse',{id:'keepY',x:2,y:2,w:4,h:4});
+    state.shapes=[old,keep];_invalidateGrid();
+    const swap={peer:'pk',seq:1,ts:1000};
+    state.wclock={oldX:{},keepY:{_born:{peer:'px',seq:1,ts:2000}}};   // keepY (re)born after the swap clock
+    const nw=Shape.make('diamond',{id:'newZ',x:5,y:5,w:3,h:3});
+    Store.applyRemote({op:'replace',after:[nw],afterWc:{},clock:swap});
+    const ids=state.shapes.map(s=>s.id);
+    assert.ok(ids.includes('keepY')&&ids.includes('newZ'),'newer-born survivor kept + after-shape adopted');
+    assert.ok(!ids.includes('oldX'),'old shape without a newer born is removed');
+    assert.strictEqual(state.wclock.keepY._born.ts,2000,'keep shape preserves its newer _born clock');
+    assert.strictEqual(state.wclock.newZ._born.ts,1000,'after shape stamped with the swap clock');
+    assert.ok(state.wclock.oldX._del&&state.wclock.oldX._del.ts===1000,'removed id tombed with the swap clock');
+    state.shapes.length=0;state.wclock={};_invalidateGrid();
+    console.log('  ✓ replace keep-scan: newer-born survives the swap (ADR-0926/0974)');
+  }
   // ADR-0617: a snapshot whose sender predates our newest swap must not merge
   // pre-swap shapes back in; a snapshot reflecting a newer swap adopts its marker.
   {
@@ -16222,6 +16265,7 @@ pass += 8; // ADR-0965 mid-run lock/missing member partition (3 blocks: 7 assert
 pass += 5; // ADR-0966 pending-op×mid-run audit pins + own-lock exemption block
 pass += 6; // ADR-0967 mid-edit remote-lock blur/commit fold (text+label)
 pass += 3; // ADR-0968 remote-killed selection → ctx family no-op block
+pass += 9; // ADR-0974 remote-replace saveBackup + newer-born keep pins
 pass += 3; // ADR-0973 schedule()-marks-dirty + snapshot-heal/name-adopt arm pins
 pass += 3; // ADR-0972 envelope/fragment/commit-choke dedup pins
 pass += 12; // ADR-0969/0970/0971 mid-run remote writes survive restore; arrival-order reborn marks

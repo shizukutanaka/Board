@@ -1,3 +1,8 @@
+## [1.8.000] - 2026-10-01
+
+### Docs / Test
+- 全置換スワップ (`'replace'`) の収束対称性 × バックアップスロット監査が clean 完走 (ADR-0974): ローカル `_repC` swap 4入口が同一形 (`_rs`→wclock wipe→`_repC`)、`_recordCommitted` (墓標 `_wD`+墓標保全 `_wTb`+`_bT`) と remote `_apply` (keep `_bN` スキャン+`wc0` 復元+墓標ループ) の再刻印集合が対称 (`_stampWrites` は replace を `_lwwOp` 外で prop 時計非対称なし)。破壊的入口 5系統 (doClearAll 両分岐/importBoard/importFromHash/applyRemote 'replace'/restoreBackup=消費側) が saveBackup でカバー済み。ブート順序は restore→Net.init で broadcast 前でも墓標 commit 済みのため snapshot heal で収束。behavioural ピン2ブロック9 assert (remote-replace→saveBackup guard、newer-born keep 存続+墓標)
+
 ## [1.7.999] - 2026-10-01
 
 ### Fixed
