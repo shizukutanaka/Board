@@ -990,6 +990,7 @@ Board/
 │   └── ADR-0939-hatch-segment-bound.md     # hatch gap 下限クランプ — 巨大 extent のセグメント爆発/描画凍結を閉塞
 │   └── ADR-0940-merge-hide-selection.md    # snapshot merge hide で選択 id 残留 — _sdl 落とし (0568 parity)
 │   └── ADR-0941-clock-envelope-pins.md     # 0931/0932 clock↔envelope binding の behavioural ピン (両到達経路)
+│   └── ADR-0942-mid-gesture-tool-lock.md   # ジェスチャ中のツール切替無効化 (move/up が live tool で dispatch されるため)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

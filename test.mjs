@@ -14585,6 +14585,44 @@ try {
     let pd2=0;
     for(const f of (fakeWin._L['beforeunload']||[]).slice(0,1))f({preventDefault(){pd2++}});
     assert.strictEqual(pd2,0,'a clean board leaves quietly on beforeunload');
+    // ADR-0942: tool hotkeys are a no-op while a pointer gesture is live —
+    // pointermove/pointerup dispatch on state.tool, so a mid-gesture switch
+    // lands the armed drag's commit on the WRONG tool: rect→'p' feeds contPen
+    // a pts-less rect draft (TypeError per move + stuck ptr.down); move→'r'
+    // ends in endRectLike's early return — the drag never commits, leaving an
+    // unbroadcast mutation (divergence). The gesture owns the tool until PU.
+    reset();
+    state.snap=false;
+    state.tool='rect';state.viewport={x:0,y:0,zoom:1};
+    fire('pointerdown',10,10);
+    fire('pointermove',60,50);
+    fireKey('p');
+    assert.strictEqual(state.tool,'rect','a tool key mid-rect-drag is ignored');
+    fire('pointerup',80,70);
+    const _dg=state.shapes[state.shapes.length-1];
+    assert.ok(_dg&&_dg.type==='rect'&&_dg.w===50,'the rect gesture still commits on the armed tool');
+    // move-drag: mid-drag 'r' must not strand the drag uncommitted either
+    reset();
+    state.snap=false;
+    state.tool='select';
+    const TSW=Shape.make('rect',{x:100,y:100,w:60,h:60});
+    Store.commit({op:'add',shape:TSW});
+    state.selection=new Set([TSW.id]);
+    fire('pointerdown',130,130);   // interior — 20px shapes put the nw handle on this point
+    fire('pointermove',170,160,{altKey:true});   // Alt suppresses every snap source (ADR-0128)
+    fireKey('r');
+    assert.strictEqual(state.tool,'select','a tool key mid-move is ignored');
+    fire('pointerup',170,160,{altKey:true});
+    assert.strictEqual(byId(TSW.id).x,140,'the move still commits on the armed tool');
+    // space temp-hand mid-drag is ignored too — _prevTool must not be armed
+    reset();
+    state.tool='pen';
+    fire('pointerdown',10,10);
+    fireKey(' ');
+    assert.strictEqual(state.tool,'pen','space mid-pen-drag is ignored');
+    assert.ok(!fakeWin._prevTool,'ignored space leaves _prevTool unset');
+    fire('pointerup',10,10);
+    state.snap=true;
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -15294,6 +15332,7 @@ pass += 2; // ADR-0940 merge-hide selection pin
   state._lastTs=_oldTs;
 }
 pass += 3; // ADR-0941 clock-envelope binding pins
+pass += 6; // ADR-0942 mid-gesture tool-key pins
 pass += 4; // ADR-0936 absolute-writer pins
   pass += 4; // ADR-0935 producer-bound pins
   pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin

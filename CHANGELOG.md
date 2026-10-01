@@ -1,3 +1,8 @@
+## [1.7.968] - 2026-10-01
+
+### Fixed
+- ジェスチャ中のツール切替を無効化 (ADR-0942): `pointermove`/`pointerup` は `state.tool` で dispatch するのに、ツールホットキー (`pickTool`) に `ptr.down` ガードがなく、ドラッグ中の `p`/`r`/space 等が move/up を wrong-tool ブランチへ飛ばしていた。rect ドラッグ中 `p` → `contPen` が pts 非保有 draft を読み TypeError+`ptr.down` 残留、select-move 中 `r` → `endRectLike` 早期 return で drag の位置変更が未 commit 残留 (broadcast されない発散)。`pickTool` 内部は不変 (commit 後の 'select' 復帰を守る) 、dispatch 3サイト (KEYMAP/space/ツールボタン) を `!ptr.down` でゲート。実イベントハーネスで mid-drag 無視→正規 commit をピン
+
 ## [1.7.967] - 2026-10-01
 
 ### Tests

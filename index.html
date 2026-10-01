@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.967';   // ADR-0941
+const V='1.7.968';   // ADR-0942
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -5985,8 +5985,8 @@ _on(window,_KD,e=>{
   else if(k==='h'&&_sK(e)&&meta&&!_aK(e)){_pd(e);hideSelection()}   // ADR-0137: ⌘⇧H
   else if(k==='i'&&_sK(e)&&meta&&!_aK(e)){_pd(e);selectInverse()}   // ADR-0139: ⌘⇧I
   else if(!meta&&!_sK(e)&&/^[0-9]$/.test(k)&&_selN()){_pd(e);applyStyleToSelection({opacity:k==='0'?1:+k/10})}   // ADR-0167: Figma digit-opacity
-  else if(!meta&&KEYMAP[k]){pickTool(KEYMAP[k],k==='i')}
-  else if(k===' '&&!meta){_pd(e);pickTool('hand',true)}
+  else if(!meta&&KEYMAP[k]&&!ptr.down){pickTool(KEYMAP[k],k==='i')}   // ADR-0942
+  else if(k===' '&&!meta){_pd(e);if(!ptr.down)pickTool('hand',true)}   // ADR-0942
 });
 _on(window,'keyup',e=>{
   if(e.key===' '&&_tl()==='hand'&&window._prevTool){
@@ -9310,7 +9310,7 @@ function wire(){
     }else _sqAdvance(_sK(ev)?-1:1);}});}
   // tool buttons
   for(const b of _qsa(document,'.tool'))
-    _on(b,_CK,()=>pickTool(b.dataset.tool));
+    _on(b,_CK,()=>{if(!ptr.down)pickTool(b.dataset.tool)});   // ADR-0942
   for(const c of _qsa(document,'button svg,button kbd'))_sa(c,'aria-hidden','true');   // ADR-0848
   // topbar
   _oC(_g('btnUndo'),()=>Store.undo()&&_tst(t('undone')));
