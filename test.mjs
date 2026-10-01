@@ -1985,6 +1985,27 @@ try {
   assert.strictEqual(state.shapes.length, before2, 'dedup prevents double-add');
   console.log('  ✓ applyRemote deduplicates by peer:seq');
 
+  // ADR-0972: dedup holds at every intake surface — the wire envelope, the
+  // 'opc' fragment path (reassembly re-enters _onRecv), and the local commit
+  // choke point (a re-submitted op carrying an already-seen clock is dropped
+  // entirely: no apply, no history, no broadcast).
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const sD=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    Net._onRecv({k:'op',peer:'p9',op:{op:'add',shape:sD,clock:{peer:'p9',seq:1,ts:1}}},false);
+    // dedup keys on the clock, not the payload — a re-delivered key drops even a different op
+    Net._onRecv({k:'op',peer:'p9',op:{op:'add',shape:Shape.make('ellipse',{x:5,y:5,w:5,h:5}),clock:{peer:'p9',seq:1,ts:1}}},false);
+    assert.strictEqual(state.shapes.length,1,'dedup keys on clock — same-key different-payload dropped');
+    const js=JSON.stringify({k:'op',peer:'p9',op:{op:'upd',id:sD.id,after:{x:77},clock:{peer:'p9',seq:2,ts:2}}});
+    const sendOpc=()=>{Net._onRecv({k:'opc',peer:'p9',seq:0,n:2,data:js.slice(0,js.length>>1)},false);Net._onRecv({k:'opc',peer:'p9',seq:1,n:2,data:js.slice(js.length>>1)},false)};
+    sendOpc();sendOpc();
+    assert.strictEqual(byId(sD.id).x,77,'fragment-delivered op applies once');
+    const nH=state.history.length;
+    Store.commit({op:'upd',id:sD.id,after:{x:99},clock:{peer:'p9',seq:2,ts:2}});   // clock already consumed remotely
+    assert.ok(byId(sD.id).x===77&&state.history.length===nH,'commit choke point dedups a seen clock');
+    console.log('  ✓ ADR-0972: dedup holds across direct/fragment envelopes + local commit');
+  }
+
   // applyRemote from different peer
   const remoteOp = {
     op: 'add',
@@ -16179,6 +16200,7 @@ pass += 8; // ADR-0965 mid-run lock/missing member partition (3 blocks: 7 assert
 pass += 5; // ADR-0966 pending-op×mid-run audit pins + own-lock exemption block
 pass += 6; // ADR-0967 mid-edit remote-lock blur/commit fold (text+label)
 pass += 3; // ADR-0968 remote-killed selection → ctx family no-op block
+pass += 3; // ADR-0972 envelope/fragment/commit-choke dedup pins
 pass += 12; // ADR-0969/0970/0971 mid-run remote writes survive restore; arrival-order reborn marks
 pass += 15; // ADR-0964 mid-gesture lock restore/commit-gate pins
 pass += 7; // ADR-0943 second-pointer abort pins
