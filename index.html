@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.005';   // ADR-0979
+const V='1.8.006';   // ADR-0980
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -9433,7 +9433,7 @@ function wire(){
   }
   // close ctx on click outside
   _on(document,'mousedown',e=>{
-    if(!e.target.closest('.ctx-menu')&&_now()-(UI._ctxEat||0)>=400)UI.closeCtxMenu();   // ADR-0607: clamped menu sits off the finger — lift-off mousedown would dismiss it
+    if(!e.target.closest?.('.ctx-menu')&&_now()-(UI._ctxEat||0)>=400)UI.closeCtxMenu();   // ADR-0607: clamped menu sits off the finger — lift-off mousedown would dismiss it
   });
   // v1.6.95: Arrow-key navigation inside the ctx menu
   _on(_g('ctx'),_KD,e=>_ctxMenuKeyNav(_g('ctx'),e));
