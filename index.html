@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.948';   // ADR-0922
+const V='1.7.949';   // ADR-0923
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1791,7 +1791,7 @@ const Store={
           for(const id of op.ids){const sh=byId(id);if(sh&&!sh.locked)sh.groupId=op.gid}   // ADR-0716
         }else{
           if(op.before)for(const b of op.before){
-            const sh=byId(b.id);if(!sh)continue;
+            const sh=byId(b.id);if(!sh||sh.locked)continue;   // ADR-0923: forward skips locked too
             if(_lwwSkip(b.id,'groupId',op))continue;   // a remote peer's newer groupId write wins over this undo
             if(b.groupId)sh.groupId=b.groupId;else delete sh.groupId;}
           _selR(op);}
@@ -1800,11 +1800,10 @@ const Store={
         if(forward){
           for(const id of op.ids){const sh=byId(id);if(sh&&!sh.locked)delete sh.groupId}   // ADR-0716
         }else{
-          if(op.before){for(const b of op.before){
-            const sh=byId(b.id);if(!sh)continue;
+          if(op.before)for(const b of op.before){
+            const sh=byId(b.id);if(!sh||sh.locked)continue;   // ADR-0923: forward skips locked too
             if(_lwwSkip(b.id,'groupId',op))continue;
-            if(b.groupId)sh.groupId=b.groupId;else delete sh.groupId;}}
-          else{const gid=op.gids?.[0];for(const id of op.ids){const sh=byId(id);if(sh&&gid)sh.groupId=gid}}
+            if(b.groupId)sh.groupId=b.groupId;else delete sh.groupId;}
           _selR(op);}
         break;}
       case 'zorder':{

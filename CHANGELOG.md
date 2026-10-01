@@ -1,3 +1,8 @@
+## [1.7.949] - 2026-10-01
+
+### Fixed
+- `group`/`ungroup` 逆適用が `sh.locked` を未検査だった非対称を閉塞 (ADR-0923): 前進適用と undo-wire でピアが走る forward 経路は `!sh.locked` ゲート済みだが、ローカルの逆適用はロック済み図形にも `groupId` を復元/削除していた — コミット後にロックされたメンバーが undo でローカルだけグループ帰属を失い (または復元され) ピアと発散。両 backward loop に `sh.locked` ゲートを追加 + 到達不能の `op.gids` else-fallback を除去
+
 ## [1.7.948] - 2026-10-01
 
 ### Fixed

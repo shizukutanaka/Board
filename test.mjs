@@ -697,7 +697,7 @@ const checks = [
   ['SVG export emits circle for single-point pen', html.includes('<circle cx=')],
   // v1.6.28: ungroup undo preserves per-shape groupId across multi-group ungroup
   ['doUngroup captures before snapshot', html.includes('_pu(before,{id:s.id,groupId:_gi(s)})')],
-  ['ungroup backward uses before snapshot when available', html.includes('if(op.before){for(const b of op.before)')],
+  ['ungroup backward uses before snapshot when available', html.includes('if(op.before)for(const b of op.before)')],
   // v1.6.29: slider undo coalescing - single op per drag, not per input event
   ['slider before-capture helper _sfbCapture defined', html.includes('function _sfbCapture(p)')],
   ['slider flush helper _sfbFlush defined', html.includes('function _sfbFlush(p,v)')],
@@ -1406,9 +1406,11 @@ const checks = [
   // v1.7.34: validRemotePayload ungroup must require gids array
   ['validRemotePayload ungroup: requires gids array with string elements',
     html.includes("&&_iA(op.gids)&&_ln(op.gids)<=MAX_OP_SHAPES&&op.gids.every(g=>_iS(g)&&_ln(g)>0&&_ln(g)<=64)")],
-  // v1.7.34: _apply ungroup backward must use optional chaining on op.gids
-  ['_apply ungroup backward: op.gids?.[0] optional chaining null guard',
-    html.includes("const gid=op.gids?.[0];")],
+  // ADR-0923: _apply ungroup backward — the unguarded op.gids else-fallback was
+  // removed; the single remaining path is the if(op.before) loop (graceful no-op
+  // when before/gids are absent — the old crash vector is gone entirely).
+  ['_apply ungroup backward: if(op.before) guarded loop only (ADR-0923)',
+    html.includes("if(_lwwSkip(b.id,'groupId',op))continue;\n            if(b.groupId)")],
   // v1.7.35: validRemotePayload style/resize/align must require before (before==null previously allowed)
   ['validRemotePayload style/resize/align: before required (op.before==null removed from fallback)',
     !html.includes("(op.before==null||(patches(op.before)&&op.before.every(noLock)))")],
@@ -1454,7 +1456,7 @@ const checks = [
   // v1.7.68/ADR-0002-gap-fix: the loop body gained the same _lwwSkip guard group/ungroup
   // now share (below); the op.before/origSel structure itself is unchanged.
   ['_apply group backward: if(op.before) guard added (parity with ungroup)',
-    html.includes("if(op.before)for(const b of op.before){\n            const sh=byId(b.id);if(!sh)continue;\n            if(_lwwSkip(b.id,'groupId',op))continue;")],
+    html.includes("if(op.before)for(const b of op.before){\n            const sh=byId(b.id);if(!sh||sh.locked)continue;")],
   // v1.7.31: endRectLike/endLineLike/beginText attach origSel (parity with createShapeKbd)
   ['endRectLike/endLineLike/beginText attach origSel before shape add commit',
     (html.match(/_cOp\(\{op:'add',shape:d\}\)/g)||[]).length >= 2 &&
@@ -7571,6 +7573,20 @@ try {
     assert.ok(B.state.shapes.find(s=>s.id==='gs2'),'un-tombed sibling still restores');
     assert.ok(B.state.wclock.gs1&&B.state.wclock.gs1._del,'the outranking tomb survives');
     console.log('  ✓ ADR-0922: del backward tomb-gates shape restores');
+
+    // ADR-0923: group/ungroup backward restored groupId on shapes locked since
+    // the commit — the forward apply and the undo-wire path peers run both skip
+    // locked shapes, so a member locked after grouping un-grouped locally while
+    // peers kept it → group-membership split-brain.
+    reset(B);
+    const gA={...cp(gsh1),id:'gs1',groupId:'g7',locked:1},gB={...cp(gsh1),id:'gs2',groupId:'g7'};
+    B.state.shapes.push(cp(gA),cp(gB));B.sortZ();
+    B.Store._apply({op:'group',ids:['gs1','gs2'],gid:'g7',
+      before:[{id:'gs1',groupId:null},{id:'gs2',groupId:null}],
+      clock:{peer:'peerU',seq:5,ts:Date.now()}},false);
+    assert.strictEqual(B.state.shapes.find(s=>s.id==='gs1').groupId,'g7','locked member keeps groupId — was un-grouped locally while peers kept it');
+    assert.ok(!B.state.shapes.find(s=>s.id==='gs2').groupId,'unlocked sibling still un-groups');
+    console.log('  ✓ ADR-0923: group backward skips locked members');
 
     // ADR-0717 (round467): undo is itself a NEW competing write — the backward apply
     // must arbitrate under the SAME fresh clock the peers see on the undo-wire ops.
@@ -15070,7 +15086,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1886; // prev 1883 + 3 ADR-0922 backward tomb-gate pins
+  pass += 1888; // prev 1886 + 2 ADR-0923 group/ungroup backward locked-gate pins
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
