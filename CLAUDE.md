@@ -992,6 +992,7 @@ Board/
 │   └── ADR-0941-clock-envelope-pins.md     # 0931/0932 clock↔envelope binding の behavioural ピン (両到達経路)
 │   └── ADR-0942-mid-gesture-tool-lock.md   # ジェスチャ中のツール切替無効化 (move/up が live tool で dispatch されるため)
 │   └── ADR-0943-second-pointer-abort.md    # 2本目 PD → abortGesture の behavioural ピン (draft 破棄+_geoR 復元+非再開)
+│   └── ADR-0944-derived-state-lifecycle.md  # 派生/参照状態ライフサイクル監査完走 — 9不変条件 (hover/選択/reset/type/幾何)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

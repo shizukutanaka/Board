@@ -1,3 +1,8 @@
+## [1.7.970] - 2026-10-01
+
+### Documentation
+- 派生/参照状態ライフサイクル監査完走 ADR-0944 (docs のみ): ①型カバレッジ行列 (`_TYPES` 閉集合 vs 全 `switch(s.type)` 消費サイトの網羅)、②`state.hover`/`_laser` の byId 再検証+pointerleave クリア、③選択の全除去経路 (`_sdl`/`_scl`/`_pcC`/pg exile) 再フィルタ、④ジェスチャリセット面 (`_zR`/`_ptrReset`/`abortGesture`) の全キャンセル経路到達、⑤`_frameOf` 包含ベース決定性、⑥`frame()` RAF フラグ規律、⑦退化幾何 (`distToSeg`/`_polylineRd` ゼロ長ガード)、⑧`_oa` ターゲット解決全サイトガード、⑨id 集合 op の byId-miss skip — 全軸 clean。不変条件を契約として文書化
+
 ## [1.7.969] - 2026-10-01
 
 ### Tests
