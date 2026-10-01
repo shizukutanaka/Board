@@ -1,3 +1,8 @@
+## [1.7.959] - 2026-10-01
+
+### Documentation
+- op-clock↔envelope-peer binding 網羅監査 (ADR-0933): applyRemote の wire 入口は 'op' case と `_mergeSnapshotOp` の2サイト — 両方で binding 完走、'opc'/'snap' 再組立も `_onRecv` 再投入でゲート迂回なし。第三者 id 詐称は unauthenticated envelope の設計前提 (受信者自身への詐称のみ局所判定可能で閉塞済み) と文書化
+
 ## [1.7.958] - 2026-10-01
 
 ### Fixed

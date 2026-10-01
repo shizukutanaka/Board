@@ -470,6 +470,7 @@ const checks = [
   // v1.6.19: sync + PWA fixes
   ['snapshot ops get distinct, stable clock keys (id-based)', html.includes("seq:'snap:'+s.id")],
   ['snapshot merge accepts only add ops (non-add ops rejected at merge path)', html.includes("if(!op||op.op!=='add'||!op.shape)return 'skip'")&&html.includes("this._mergeSnapshotOp(op)")],
+  ['op frag reassembly re-enters _onRecv so intake gates apply (ADR-0933)', html.includes("this._onRecv(_JP(joined),viaRtc)")],
   // v1.7.116: ADR-0058 snapshot LWW merge
   ['snapshot ops carry per-shape wclock', html.includes("wc:clone(_wc()[s.id]||{})")],
   ['_mergeSnapshotOp: LWW per-property merge on known shapes', html.includes("function _mergeSnapshotOp(op)")===false&&html.includes("_mergeSnapshotOp(op){") && html.includes("clockNewer(rc,lc)") && html.includes("return 'merge';")],
@@ -15227,7 +15228,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1920; // prev 1918 + 2 ADR-0932 snapshot-embedded peer binding pins
+  pass += 1921; // prev 1920 + 1 ADR-0933 frag re-entry source pin
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
