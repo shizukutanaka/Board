@@ -5166,7 +5166,7 @@ try {
     }
     // ADR-0679: pageDel drops member write-clocks like del
     {
-      assert.ok(html.includes("for(const id of dead)_wc()[id]=_wM({_del:op.clock});"),'_pgDel2 tombstones member wclocks (ADR-0679/0707/0734)');
+      assert.ok(html.includes("for(const id of dead){_wc()[id]=_wM({_del:op.clock});_sdl(id)}"),'_pgDel2 tombstones member wclocks (ADR-0679/0707/0734/0954)');
       console.log('  ✓ pageDel wclock purge pin (1 assert)');
     }
     // ADR-0680: selection-presence dedup key carries curPg
@@ -14814,6 +14814,33 @@ try {
     fireWin('blur');
     assert.ok(!byId(E13.id),'snapshot wholesale adopt drops the pending erase batch');
     console.log('  ✓ erase-batch window × wholesale ops: replace/clear/snapshot converge the batched member (ADR-0953)');
+    // ADR-0954: _pgDel2's member kill must drop ids from selection — 'del' forward
+    // parity (_sdl). The reachable hole: a remote pageDel that EMPTIES the page
+    // set lands no switchPage (land=null), so killed members' ids stayed
+    // selected forever — count over-read + ghost ids in origSel/presence.
+    reset();
+    const Q1=Shape.make('rect',{x:0,y:0,w:10,h:10,fill:'#000'});
+    Store.commit({op:'add',shape:Q1});
+    _pgAdd();   // P1 adopts Q1, P2 added, view lands on P2
+    switchPage(state.pages[0].id);   // view P1 where Q1 lives
+    state.selection.add(Q1.id);
+    Store.applyRemote({op:'pageDel',id:state.pages[1].id,clock:{peer:'p9',seq:1,ts:Date.now()+60000}});
+    Store.applyRemote({op:'pageDel',id:state.pages[0].id,clock:{peer:'p9',seq:2,ts:Date.now()+60001}});
+    assert.ok(!byId(Q1.id),'remote pageDel emptying the set kills the member');
+    assert.ok(!state.selection.has(Q1.id),'killed member leaves selection — del parity (ADR-0954)');
+    reset();
+    const Q2=Shape.make('rect',{x:0,y:0,w:10,h:10,fill:'#000'});
+    Q2.locked=true;
+    Store.commit({op:'add',shape:Q2});
+    _pgAdd();
+    switchPage(state.pages[0].id);
+    state.selection.add(Q2.id);
+    Store.applyRemote({op:'pageDel',id:state.pages[1].id,clock:{peer:'p9',seq:1,ts:Date.now()+60000}});
+    Store.applyRemote({op:'pageDel',id:state.pages[0].id,clock:{peer:'p9',seq:2,ts:Date.now()+60001}});
+    assert.ok(byId(Q2.id),'locked member survives the set emptying (rehome to null)');
+    assert.ok(state.selection.has(Q2.id),'surviving member keeps selection — drop is dead-only');
+    state._lastTs=0;   // far-future remote ts raised the HLC floor — restore or later local commits get poisoned clocks
+    console.log('  ✓ pageDel member kill drops selection ids — del parity; survivors keep theirs (ADR-0954)');
   }
 
     // ADR-0646: multi-page — wire-convergent page ops + per-page view filter
@@ -15573,6 +15600,7 @@ pass += 3; // ADR-0950 pointer bookkeeping leak pins
 pass += 4; // ADR-0951 lblpos cancel-restore pins
 pass += 4; // ADR-0952 erase-batch remote-op window pins
 pass += 3; // ADR-0953 erase-batch wholesale-op pins
+pass += 4; // ADR-0954 pageDel selection-drop pins
 pass += 7; // ADR-0943 second-pointer abort pins
 pass += 8; // ADR-0945 mid-gesture overlay-open cancel pins
 pass += 8; // ADR-0948 mid-gesture button-path cancel pins

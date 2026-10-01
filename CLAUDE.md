@@ -1002,6 +1002,7 @@ Board/
 │   └── ADR-0951-lblpos-cancel-restore.md  # lblpos cancel 復元欠落閉塞 (labelPos を orig から save-set 復元、mid-gesture cancel 半mutation 解消)
 │   └── ADR-0952-erase-batch-remote-window.md  # 消しゴム窓のリモート op 収束 (byId に batch フォールバック + cancel-restore へ _tmb 墓標ゲート、ghost 復活と stale clone 復元を閉塞)
 │   └── ADR-0953-erase-batch-wholesale-ops.md  # 消しゴム窓 × wholesale op 収束 (_unB で clear/replace/pageDel 走査前にバッチをシーンへ戻す + _rs 採用でバッチ破棄)
+│   └── ADR-0954-pagedel-selection-drop.md  # _pgDel2 メンバー kill が選択 id を残す非対称を閉塞 ('del' parity — kill ループへ _sdl、集合空化 remote pageDel で残存し得た ghost id 解消)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

@@ -1,3 +1,11 @@
+## [1.7.980] - 2026-10-01
+
+### Fixed
+- `pageDel` メンバー kill の選択衛生を 'del' parity へ (ADR-0954): `_pgDel2` は kill するメンバーの id を `state.selection` から落とさず、リモート pageDel がページ集合を空にする経路 (ADR-0703, land=null) では switchPage の再検証も走らないため kill 済み id が選択に残存 — ステータス/アナウンスの過大カウント・presence への ghost id 送出・origSel 記録への混入。kill ループに `_sdl` を追加し全 `_pgDel2` 呼出側を一括閉塞 (locked/_bN 生存メンバーは 'del' と同様に選択維持)
+
+### Tests
+- pageDel 選択ピン4件 (空化 remote pageDel で kill メンバーの選択解除、locked 生存メンバーの選択維持、0679 tombstone ピンのリテラル更新)
+
 ## [1.7.979] - 2026-10-01
 
 ### Fixed
