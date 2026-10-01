@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.947';   // ADR-0921
+const V='1.7.948';   // ADR-0922
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1620,7 +1620,7 @@ const Store={
         // bypass seenOps, so the live add would land a duplicate. Local commits
         // use fresh uids; undo re-pushes because undo removed the shape first.
         if(forward){const wid=op.shape.id,wd=_wc()[wid];   // ADR-0734: tombstone outranks a stale add — skip it
-          if(wd&&wd._del&&clockNewer(wd._del,op.clock||{})){/*del wins — stay deleted*/}
+          if(_tmb(wid,op)){/*del wins — stay deleted*/}
           else{if(!byId(wid)){_sh().push(clone(op.shape));_sz()}if(wd)delete wd._del}}
         // ADR-0713: backward mirrors del-forward's locked gate — a shape locked
         // since the add must survive our undo just as it survives the peers'
@@ -1630,7 +1630,7 @@ const Store={
       case 'addMany':{
         // Atomic multi-add (paste/duplicate): N copies → one 'addMany'; undo is
         // 'add' (idempotent on id); reverse mirrors del.
-        if(forward){for(const sh of op.shapes){const wd=_wc()[sh.id];if(wd&&wd._del&&clockNewer(wd._del,op.clock||{}))continue;   // ADR-0734: tombstone beats a stale add
+        if(forward){for(const sh of op.shapes){const wd=_wc()[sh.id];if(_tmb(sh.id,op))continue;   // ADR-0734: tombstone beats a stale add
           if(wd)delete wd._del;if(!byId(sh.id))_sh().push(clone(sh));}_sz();
           if(op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);}   // ADR-0721
         else{for(const sh of op.shapes){const cur=byId(sh.id);if(cur&&cur.locked)continue;   // ADR-0713
@@ -1655,7 +1655,7 @@ const Store={
         }else{
           // ADR-0547: forward skipped locked shapes —
           // ADR-0551: re-resolve parked img refs (else stale placeholder).
-          for(const sh of op.shapes)if(!byId(sh.id))_sh().push(Net._attachShape(clone(sh)));
+          for(const sh of op.shapes)if(!byId(sh.id)&&!_tmb(sh.id,op))_sh().push(Net._attachShape(clone(sh)));   // ADR-0922
           _sz();
           // connector binds restored after shapes are back
           if(op.connClears)for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_ccRest(sh,p.before,op)}   // ADR-0921
@@ -1697,7 +1697,7 @@ const Store={
         break;}
       case 'clear':{
         if(forward){if(op.clock)state._lastRep=op.clock;const wc0=state.wclock||{},dead=_sh().map(s=>s.id);_sh().length=0;_scl();state.wclock=_wM();for(const id of dead)_wD(id,op.clock);_wTb(wc0,op.clock,_sT());_pcC();}   // ADR-0626/0736
-        else{for(const s of op.shapes)if(!byId(s.id))_sh().push(Net._attachShape(clone(s)));_sz();if(op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);_selR(op);}   // ADR-0723
+        else{for(const s of op.shapes)if(!byId(s.id)&&!_tmb(s.id,op))_sh().push(Net._attachShape(clone(s)));_sz();if(op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);_selR(op);}   // ADR-0723/0922
         break;}
       case 'replace':{
         // Whole-board swap (shared-link import). Rev
@@ -1707,7 +1707,7 @@ const Store={
         if(op.clock)state._lastRep=op.clock;   // ADR-0614: newest applied swap marker — also covers undo (the op's clock still outranks older peers)
         const wc0=state.wclock||{},old0=_sh().map(s=>s.id);   // ADR-0736
         _sh().length=0;_scl();state.wclock=_wM();_pcC();state.pages=state.curPg=null;_pgBar();   // ADR-0646
-        for(const s of _uniq(next)){const wd=forward&&wc0[s.id];if(wd&&wd._del&&clockNewer(wd._del,op.clock))continue;_sh().push(Net._attachShape(clone(s)))}   // ADR-0736/0790
+        for(const s of _uniq(next)){const wd=wc0[s.id];if(wd&&wd._del&&clockNewer(wd._del,op.clock))continue;_sh().push(Net._attachShape(clone(s)))}   // ADR-0736/0790/0922
         _iG();   // ADR-0613
         _sz();
         if(forward&&op.afterWc)state.wclock=_wM(clone(op.afterWc));
@@ -1762,7 +1762,7 @@ const Store={
         }else{
           if(!_pgs())state.pages=[];   // heal
           _pgs().splice(_min(op.i!=null?op.i:_ln(_pgs()),_ln(_pgs())),0,{id:op.id,name:op.name!=null?op.name:'?',nts:0});
-          for(const sh of op.shapes||[])if(!byId(sh.id))_sh().push(Net._attachShape(clone(sh)));
+          for(const sh of op.shapes||[])if(!byId(sh.id)&&!_tmb(sh.id,op))_sh().push(Net._attachShape(clone(sh)));   // ADR-0922
           _sz();
           if(op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);   // ADR-0722: restore member clocks — del backward parity
           _selR(op);
@@ -1890,6 +1890,7 @@ function _lwwSkip(id,key,op){
   return !!(wc&&wc[key]&&wc[key].peer!==_pi()&&clockNewer(wc[key],op.clock));
 }
 function _ccRest(sh,b,op){const pb=clone(b);for(const k of _ok(pb))if(_lwwSkip(sh.id,k,op))delete pb[k];_oa(sh,pb)}   // ADR-0921
+function _tmb(id,op){const wd=_wc()[id];return !!(wd&&wd._del&&clockNewer(wd._del,op.clock||{}))}   // ADR-0922: newer remote tomb outranks the restore — wire-side addMany gates the same way
 // Bound connectors: line/arrow endpoints (s.a/s.b = shape id) derive from the bound
 // shape's edge at render/hit/export so the connector follows. Stored = fallback.
 // Where a ray from shape centre toward (fx,fy) exits the shape's true edge.
