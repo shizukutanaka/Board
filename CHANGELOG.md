@@ -1,3 +1,8 @@
+## [1.7.954] - 2026-10-01
+
+### Fixed
+- 'replace' backward (全置換の undo) が `_bT` を刻まない実害を閉塞 (ADR-0928): ローカル復元図形の `_born` が pre-swap 時計 B0 のまま残る一方、undo-wire 'replace' を forward-apply するピアは undo 時計 U を刻印 — `B0 < D < U` に落ちる第三者の del が undo 側だけ図形を殺す一方向発散。`_bT` の刻印を forward ブロックから両方向へ移し、undo 側も U を刻印。behavioural ピン +3 (`pass += 1906`)
+
 ## [1.7.953] - 2026-10-01
 
 ### Fixed
