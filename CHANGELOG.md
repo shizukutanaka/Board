@@ -1,3 +1,8 @@
+## [1.7.944] - 2026-10-01
+
+### Documentation
+- wire op 適用側監査完走 (ADR-0918): `applyRemote`→`_lwwDrop`→`_apply`→`_stampWrites` の全 op 型を走査 — 全配列 `MAX_OP_SHAPES`+要素検証、clock スナップショットは墓標+member clock 復元専用、`add`/`addMany`/`replace` は intake `_attachOp`→`_attachShape` で img parking 済み、group/zorder の before/after は ≤64/≤600 消費値のみ — 実害なし、構造キー strip cluster 完結
+
 ## [1.7.943] - 2026-10-01
 
 ### Fixed
