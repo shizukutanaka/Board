@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.977';   // ADR-0951
+const V='1.7.978';   // ADR-0952
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1651,7 +1651,7 @@ const Store={
           // Snapshot wclock before deletion so undo can restore LWW clocks
           op.wc=_wM();for(const sh of op.shapes)if(_wc()[sh.id])op.wc[sh.id]=clone(_wc()[sh.id]);
           for(const sh of op.shapes){
-            if(byId(sh.id)?.locked||_bN(sh.id,op.clock))continue;   // ADR-0926: a newer existence outranks this del — parity with every other remote op: a peer
+            if(byId(sh.id)?.locked||_bN(sh.id,op.clock))continue;   // ADR-0926: newer born outranks this del
             const i=_idIdx(sh.id);
             if(i>=0)_sh().splice(i,1);
             _sdl(sh.id);
@@ -1724,7 +1724,7 @@ const Store={
         if(forward&&op.afterWc)state.wclock=_wM(clone(op.afterWc));
         if(!forward&&op.wc)state.wclock=_wM(clone(op.wc));
         if(forward){for(const s of keep)_wR(s.id,wc0[s.id]);for(const id of old0)if(!inN.has(id)&&!(wc0[id]&&wc0[id]._born&&clockNewer(wc0[id]._born,op.clock)))_wD(id,op.clock);_wTb(wc0,op.clock,inN)}   // ADR-0736/0926
-        for(const s of _sh())_bT(s.id,op.clock);   // ADR-0926/0928: the undo-wire lands on peers as a forward apply that stamps U — stamp it here too or restored borns stay pre-swap and a mid-window del kills locally only
+        for(const s of _sh())_bT(s.id,op.clock);   // ADR-0926/0928: stamp U as _born locally — peers' forward apply does it
         if(forward)_pgAdopt(op.pages,op.curPg);else _pgAdopt(op.beforePages,op.beforeCurPg);   // ADR-0646: the swap carries the page set
         if(!forward)_selR(op);
         break;}
@@ -1869,7 +1869,7 @@ const Store={
 let _idIndex=null;
 function byId(id){
   if(!_idIndex||_idIndex.size!==_nS()){_idIndex=_mP();for(const s of _sh())_idIndex.set(s.id,s);}
-  return _idIndex.get(id);
+  return _idIndex.get(id)||_eraseBatch.find(s=>s.id===id);   // ADR-0952: erase-batch ids stay addressable — remote writes land on the restorable clone
 }
 function clone(o){return _JP(_JS(o))}
 // Monotonic local timestamp (HLC-lite) — clockNewer orders ts first, so a
@@ -4017,7 +4017,7 @@ function abortGesture(){
   }else if(_dk('way')&&ptr.wayOrig){                     // ADR-0076
     const sh=byId(ptr.wayOrig.id);if(sh){delete sh.way;_geoR(sh,ptr.wayOrig);}
   }else if(_dk('lblpos')&&ptr.lblOrig){const sh=byId(ptr.lblOrig.id);if(sh)ptr.lblOrig.labelPos==null?delete sh.labelPos:sh.labelPos=ptr.lblOrig.labelPos}
-  if(_ln(_eraseBatch)){for(const s of _eraseBatch)_sh().push(s);_eraseBatch=[];_sz();_iG();}   // ADR-0009
+  if(_ln(_eraseBatch)){for(const s of _eraseBatch)if(!_tmb(s.id,{}))_sh().push(s);_eraseBatch=[];_sz();_iG();}   // ADR-0009/0952
   _penPred=null;_zR();_ptrReset();
   _iv();
 }
@@ -4459,7 +4459,7 @@ function _cancelPointerGesture(){
   else if(_dk('move')&&ptr.dragStartShapes){
     for(const[id,orig] of ptr.dragStartShapes){const sh=byId(id);if(sh)_geoR(sh,orig);}
   }
-  if(_ln(_eraseBatch)){for(const s of _eraseBatch)_sh().push(s);_eraseBatch=[];_sz();_iG();}   // ADR-0009
+  if(_ln(_eraseBatch)){for(const s of _eraseBatch)if(!_tmb(s.id,{}))_sh().push(s);_eraseBatch=[];_sz();_iG();}   // ADR-0009/0952
   _ptrReset();_zR();_penPred=null;
   _clearTouchState();   // ADR-0636
   _iv();

@@ -1,3 +1,11 @@
+## [1.7.978] - 2026-10-01
+
+### Fixed
+- 消しゴムジェスチャ窓のリモート op 収束を閉塞 (ADR-0952): `_eraseBatch` ライフサイクルは消去対象を commit 前に `state.shapes` から外すため、ジェスチャ中に届いたリモート op が2系統で喪失していた — ①リモート `del` は `_del` 墓標を刻むのに cancel-restore が無条件 push-back で墓標を無視 → ローカルだけ図形が復活する ghost 発散 (union-heal snapshot で治癒不能)、②`byId` 未解決で prop patch が wclock 未刻印で drop → cancel が古い clone を復元。`byId` に `_eraseBatch` フォールバックを追加してリモート書込を復元対象の clone へ着地させ、両 cancel-restore サイトに `_tmb` 墓標ゲート (ADR-0922 同規則) で墓標済みメンバーは非復元化
+
+### Tests
+- 消しゴムバッチ窓ピン4件 (batch splice 検証・remote del 墓標で cancel 非復活・remote patch が clone へ着地・ジェスチャ終端一致) + v1.7.58e ピンを新契約へ更新
+
 ## [1.7.977] - 2026-10-01
 
 ### Fixed
