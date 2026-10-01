@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.989';   // ADR-0963
+const V='1.7.990';   // ADR-0964
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -3632,10 +3632,12 @@ function _grotDrag(wp,shift){
   _iD(_gd);                 // ADR-0026
 }
 function _grotCommit(){
-  const after=[...ptr.gOrig.keys()].map(byId).filter(Boolean).map(clone);
+  for(const[id,orig]of ptr.gOrig){const sh=byId(id);if(sh&&sh.locked){_geoR(sh,orig);_iv()}}   // ADR-0964
+  if(ptr.gAnc)for(const [cid,oc] of ptr.gAnc){const sh=byId(cid);if(sh&&sh.locked){_geoR(sh,oc);_iv()}}   // ADR-0964
+  const after=[...ptr.gOrig.keys()].map(byId).filter(s=>s&&!s.locked).map(clone);
   if(_ln(after)){
     const before=after.map(a=>ptr.gOrig.get(a.id));
-    if(ptr.gAnc)for(const [cid,oc] of ptr.gAnc){const sh=byId(cid);if(sh){before.push(oc);after.push(clone(sh));}}
+    if(ptr.gAnc)for(const [cid,oc] of ptr.gAnc){const sh=byId(cid);if(sh&&!sh.locked){before.push(oc);after.push(clone(sh));}}
     if(before.some((b,i)=>_JS(b)!==_JS(after[i]))){
       _rcOp({op:'align',dir:'grot',before,after});
     }
@@ -3800,7 +3802,8 @@ function _gresizeDrag(wp,shift,alt){
 // Commit: one 'align' op batches all member before/after — a single undo
 // restores the whole group (same mechanism flip/rotate/lock already use).
 function _gresizeCommit(){
-  const after=[...ptr.gOrig.keys()].map(byId).filter(Boolean).map(clone);
+  for(const[id,orig]of ptr.gOrig){const sh=byId(id);if(sh&&sh.locked){_geoR(sh,orig);_iv()}}   // ADR-0964: locked members' writes drop on peers — restore instead
+  const after=[...ptr.gOrig.keys()].map(byId).filter(s=>s&&!s.locked).map(clone);
   if(_ln(after)){
     const before=after.map(a=>ptr.gOrig.get(a.id));
     if(before.some((b,i)=>_JS(b)!==_JS(after[i]))){
@@ -3999,13 +4002,17 @@ const _ptrReset=()=>{ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.drag
 // style/upd landing mid-gesture on a dragged shape would otherwise be reverted
 // locally (wclock keeps the remote clock, so nothing re-heals → divergence).
 const _geoR=(s,o)=>{for(const k of['x','y','w','h','rotate','x1','y1','x2','y2','pts','way','bend','cbend','a','b','aF','bF'])if(k in o)s[k]=clone(o[k])};
-function abortGesture(){
+// ADR-0964: shared per-kind orig-restore matrix. Cancel paths run it for the
+// live gesture; the commit gate runs it when the target got locked mid-gesture
+// — peers drop writes to locked shapes, so restoring is the converging choice.
+const _gRst=()=>{
   if(_dk('move')&&ptr.dragStartShapes){
     for(const [id,orig] of ptr.dragStartShapes){const sh=byId(id);if(sh)_geoR(sh,orig)}
   }else if(_dk('resize')&&ptr.resizeOrig){
     const sh=byId(ptr.resizeOrig.id);if(sh)_geoR(sh,ptr.resizeOrig);
   }else if((_dk('gresize')||_dk('grot'))&&ptr.gOrig){
     for(const [id,orig] of ptr.gOrig){const sh=byId(id);if(sh)_geoR(sh,orig)}
+    if(ptr.gAnc)for(const [cid,oc] of ptr.gAnc){const sh=byId(cid);if(sh)_geoR(sh,oc)}   // ADR-0587
   }else if(_dk('rotate')&&ptr.rotOrig){
     const sh=byId(ptr.rotOrig.id);if(sh){if(ptr.rotOrig.rotate==null)delete sh.rotate;_geoR(sh,ptr.rotOrig);}
   }else if(_dk('ebend')&&ptr.ebendOrig){                // ADR-0072
@@ -4015,6 +4022,10 @@ function abortGesture(){
   }else if(_dk('way')&&ptr.wayOrig){                     // ADR-0076
     const sh=byId(ptr.wayOrig.id);if(sh){delete sh.way;_geoR(sh,ptr.wayOrig);}
   }else if(_dk('lblpos')&&ptr.lblOrig){const sh=byId(ptr.lblOrig.id);if(sh)ptr.lblOrig.labelPos==null?delete sh.labelPos:sh.labelPos=ptr.lblOrig.labelPos}
+  _iv();
+};
+function abortGesture(){
+  _gRst();
   if(_ln(_eraseBatch)){for(const s of _eraseBatch)if(!_tmb(s.id,{}))_sh().push(s);_eraseBatch=[];_sz();_iG();}   // ADR-0009/0952
   _penPred=null;_zR();_ptrReset();
   _iv();
@@ -4364,7 +4375,8 @@ _on(canvas,_PU,e=>{
     case 'select':
       if(_dk('resize')){
         const rsh=byId(ptr.resizeOrig.id);   // ADR-0635: sel may change mid-gesture — _sel0() could commit another shape
-        if(rsh){
+        if(rsh)if(rsh.locked)_gRst();   // ADR-0964: mid-gesture lock — peers drop the write, restore to converge
+        else{
           _endPointBind(rsh,ptr.resizeHandle,_aK(e));           // ADR-0065/0209
           const after=clone(rsh);
           const before=ptr.resizeOrig;
@@ -4382,7 +4394,8 @@ _on(canvas,_PU,e=>{
         ptr.gOrig=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;_zG();
       }else if(_dk('rotate')){
         const rsh=byId(ptr.rotOrig.id);   // ADR-0635
-        if(rsh){
+        if(rsh)if(rsh.locked)_gRst();   // ADR-0964
+        else{
           const after=clone(rsh),before=ptr.rotOrig;
           if(_JS(before)!==_JS(after)){
             _rcOp({op:'upd',id:rsh.id,before,after});
@@ -4394,23 +4407,27 @@ _on(canvas,_PU,e=>{
         endLineLike();                                             // ADR-0070
       }else if(_dk('cbend')&&ptr.cbendOrig){            // ADR-0132
         const sh=byId(ptr.cbendOrig.id);
-        if(sh&&(sh.cbend||0)!==(ptr.cbendOrig.cbend||0)){
+        if(sh)if(sh.locked)_gRst();   // ADR-0964
+        else if((sh.cbend||0)!==(ptr.cbendOrig.cbend||0)){
           _rcOp({op:'style',before:[{id:sh.id,cbend:ptr.cbendOrig.cbend||0}],after:[{id:sh.id,cbend:sh.cbend||0}]});
         }
       }else if(_dk('ebend')&&ptr.ebendOrig){            // ADR-0072
         const sh=byId(ptr.ebendOrig.id);
-        if(sh&&(sh.bend||0)!==(ptr.ebendOrig.bend||0)){
+        if(sh)if(sh.locked)_gRst();   // ADR-0964
+        else if((sh.bend||0)!==(ptr.ebendOrig.bend||0)){
           _rcOp({op:'style',before:[{id:sh.id,bend:ptr.ebendOrig.bend||0}],after:[{id:sh.id,bend:sh.bend||0}]});
         }
       }else if(_dk('way')&&ptr.wayOrig){                 // ADR-0076
         const sh=byId(ptr.wayOrig.id),ow=ptr.wayOrig.way||null,nw=sh&&sh.way||null;
-        if(sh&&_JS(ow)!==_JS(nw)){
+        if(sh)if(sh.locked)_gRst();   // ADR-0964
+        else if(_JS(ow)!==_JS(nw)){
           _rcOp({op:'style',before:[{id:sh.id,way:clone(ow)}],after:[{id:sh.id,way:clone(nw)}]});   // ADR-0090: arrays clone whole
         }
         ptr.wayIdx=null;ptr.wayNew=false;
       }else if(_dk('lblpos')&&ptr.lblOrig){               // ADR-0117
         const sh=byId(ptr.lblOrig.id),ol=ptr.lblOrig.labelPos??null,nl=sh?(sh.labelPos??null):null;
-        if(sh&&ol!==nl){
+        if(sh)if(sh.locked)_gRst();   // ADR-0964
+        else if(ol!==nl){
           _rcOp({op:'style',before:[{id:sh.id,labelPos:ol}],after:[{id:sh.id,labelPos:nl}]});
         }
         ptr.lblOrig=null;
@@ -4437,26 +4454,8 @@ _on(canvas,_PU,e=>{
 //        gesture takeover; (2) _eraseBatch not restored → data loss mid-erase.
 function _cancelPointerGesture(){
   _clearLongPress();   // ADR-0006: covers both the native pointercancel path and our own
-  // Restore partial resize/move/erase on cancel
-  if(_dk('resize')&&ptr.resizeOrig){
-    const rsh=byId(ptr.resizeOrig.id);   // ADR-0635: sel may change mid-gesture — _sel0() could restore another shape
-    if(rsh)_geoR(rsh,ptr.resizeOrig);
-  }else if((_dk('gresize')||_dk('grot'))&&ptr.gOrig){
-    for(const [id,orig] of ptr.gOrig){const sh=byId(id);if(sh)_geoR(sh,orig);}
-    if(ptr.gAnc)for(const [cid,oc] of ptr.gAnc){const sh=byId(cid);if(sh)_geoR(sh,oc);}   // ADR-0587
-  }else if(_dk('rotate')&&ptr.rotOrig){
-    const rsh=byId(ptr.rotOrig.id);   // ADR-0635
-    if(rsh){if(ptr.rotOrig.rotate==null)delete rsh.rotate;_geoR(rsh,ptr.rotOrig);}
-  }else if(_dk('ebend')&&ptr.ebendOrig){                // ADR-0072
-    const sh=byId(ptr.ebendOrig.id);if(sh){if(ptr.ebendOrig.bend==null)delete sh.bend;_geoR(sh,ptr.ebendOrig);}
-  }else if(_dk('cbend')&&ptr.cbendOrig){                // ADR-0132
-    const sh=byId(ptr.cbendOrig.id);if(sh){if(ptr.cbendOrig.cbend==null)delete sh.cbend;_geoR(sh,ptr.cbendOrig);}
-  }else if(_dk('way')&&ptr.wayOrig){                     // ADR-0076
-    const sh=byId(ptr.wayOrig.id);if(sh){delete sh.way;_geoR(sh,ptr.wayOrig);}
-  }else if(_dk('lblpos')&&ptr.lblOrig){const sh=byId(ptr.lblOrig.id);if(sh)ptr.lblOrig.labelPos==null?delete sh.labelPos:sh.labelPos=ptr.lblOrig.labelPos}
-  else if(_dk('move')&&ptr.dragStartShapes){
-    for(const[id,orig] of ptr.dragStartShapes){const sh=byId(id);if(sh)_geoR(sh,orig);}
-  }
+  _gRst();   // ADR-0764/0964: shared orig-restore matrix
+
   if(_ln(_eraseBatch)){for(const s of _eraseBatch)if(!_tmb(s.id,{}))_sh().push(s);_eraseBatch=[];_sz();_iG();}   // ADR-0009/0952
   _ptrReset();_zR();_penPred=null;
   _clearTouchState();   // ADR-0636
@@ -5794,18 +5793,22 @@ function eraseAt(wp){
 }
 function flushErase(){
   if(!_ln(_eraseBatch))return;
+  // ADR-0964: a mid-stroke remote lock lands on the batch clone — peers drop a
+  // del for locked shapes, so excluded members stay kept like peers see them.
+  const live=_eraseBatch.filter(s=>!s.locked);
   // Restore shapes so Store.commit's _apply finds & removes them
   for(const s of _eraseBatch)_sh().push(s);
   _sz();_iG();   // ADR-0009: connEnds below calls byId, must see the restored shapes
+  _eraseBatch=[];
+  if(!_ln(live))return;
   // Resolve connector bindings once erased shapes are out
-  const delIds=_sT(_eraseBatch.map(s=>s.id));
+  const delIds=_sT(live.map(s=>s.id));
   const connClears=computeConnClears(delIds);
   const origSel=_selIds();
-  const op={op:'del',shapes:clone(_eraseBatch)};
+  const op={op:'del',shapes:clone(live)};
   if(_ln(connClears))op.connClears=connClears;
   _cmt(op);
   _keepSel(origSel);
-  _eraseBatch=[];
 }
 
 // ====================== KEYBOARD ======================

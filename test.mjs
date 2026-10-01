@@ -1420,9 +1420,21 @@ const checks = [
   ['text-blur del: origSel captured and patched before and after Store.commit del',
     html.includes("const origSel=_selIds();\n        const connClears=computeConnClears(_sT([orig.id]));")&&
     html.includes("_cmt(delOp);\n        _keepSel(origSel);")],
-  // v1.7.36: flushErase must capture origSel before del commit and patch after
+  // v1.7.36/ADR-0964: flushErase must capture origSel before del commit and patch after
   ['flushErase del: origSel captured before commit and patched after (parity with doDelete)',
-    html.includes("const origSel=_selIds();\n  const op={op:'del',shapes:clone(_eraseBatch)};")],
+    html.includes("const origSel=_selIds();\n  const op={op:'del',shapes:clone(live)};")],
+  // ADR-0964 source pins: six single-shape commit gates + shared restore matrix
+  // wiring + the gresize/grot/flushErase member partitions.
+  ['ADR-0964: shared _gRst restore matrix wired into abortGesture and _cancelPointerGesture',
+    html.includes("const _gRst=()=>")&&
+    html.includes("function abortGesture(){\n  _gRst();")&&
+    html.includes("_gRst();   // ADR-0764/0964: shared orig-restore matrix")],
+  ['ADR-0964: six locked-gate commit sites (resize/rotate/cbend/ebend/way/lblpos)',
+    html.split("locked)_gRst();   // ADR-0964").length-1===6],
+  ['ADR-0964: gresize/grot restore+exclude locked members; flushErase partitions live members',
+    html.includes("for(const[id,orig]of ptr.gOrig){const sh=byId(id);if(sh&&sh.locked){_geoR(sh,orig);_iv()}}")&&
+    html.includes("filter(s=>s&&!s.locked).map(clone)")&&
+    html.includes("const live=_eraseBatch.filter(s=>!s.locked);")],
   // v1.7.38: _apply('upd', forward) must guard sh.locked (parity with move forward)
   ['_apply upd: if(sh.locked)break guards locked shapes in BOTH directions',
     html.includes("const sh=byId(op.id);if(!sh)break;\n        // ADR-0712: locked gate in BOTH directions")],
@@ -2460,6 +2472,77 @@ try {
     assert.ok(!state.peers.has('bcpeer'),'stale BC peer reaped');
     assert.ok(state.peers.has('rtc:x'),'rtc: peer kept — lifecycle-managed via onclose');
     console.log('  ✓ ADR-0963: lifecycle×boundedness audit pins (5 asserts)');
+  }
+  // ADR-0964: a remote lock landing mid-gesture — the commit gate restores the
+  // orig instead of committing (peers' _apply drops writes to locked shapes,
+  // so committing the drift would diverge one way).
+  {
+    const fireC=(t,x,y,o={})=>{
+      const ev={pointerId:1,pointerType:'mouse',button:0,isPrimary:true,
+        clientX:x,clientY:y,offsetX:x,offsetY:y,
+        ctrlKey:false,metaKey:false,shiftKey:false,altKey:false,
+        preventDefault(){},stopPropagation(){},...o};
+      for(const f of fakeWin._L[t+'|c']||[])f(ev);
+      for(const f of canvas._L[t+'|c']||[])f(ev);
+      for(const f of canvas._L[t]||[])f(ev);
+      for(const f of fakeWin._L[t]||[])f(ev);
+      return ev;
+    };
+    // real-sequence resize: PD on the se handle arms, PM mutates, lock lands, PU restores
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.viewport={x:0,y:0,zoom:1};state.tool='select';ptr.down=false;ptr.dragKind=null;
+    const Rk=Shape.make('rect',{x:0,y:0,w:60,h:40});
+    Store.commit({op:'add',shape:Rk});
+    const lRk=byId(Rk.id);                             // committed clone — Rk is the source object
+    state.selection=new Set([Rk.id]);
+    const seH=getHandles(lRk).find(h=>h.id==='se');
+    fireC('pointerdown',seH.x,seH.y);
+    assert.strictEqual(ptr.dragKind,'resize','ADR-0964: PD on se handle arms resize');
+    fireC('pointermove',seH.x+30,seH.y+30);
+    assert.ok(lRk.w>60,'PM resized the shape');
+    lRk.locked=1;                                      // remote lock lands mid-gesture
+    const histLen0=state.history.length;
+    fireC('pointerup',seH.x+30,seH.y+30);
+    assert.strictEqual(lRk.w,60,'ADR-0964: locked resize target restored to orig, not committed');
+    assert.strictEqual(state.history.length,histLen0,'no op committed for a locked target');
+    // gresize partition: locked member restores + excluded; unlocked commits alone
+    const s1=Shape.make('rect',{x:0,y:0,w:10,h:10}),s2=Shape.make('rect',{x:20,y:0,w:10,h:10});
+    Store.commit({op:'add',shape:s1});Store.commit({op:'add',shape:s2});
+    const l1=byId(s1.id),l2=byId(s2.id);
+    ptr.gOrig=new Map([[s1.id,JSON.parse(JSON.stringify(l1))],[s2.id,JSON.parse(JSON.stringify(l2))]]);
+    l1.w=40;l2.w=40;l2.locked=1;                       // both mapped during PM; l2 locked mid-gesture
+    _gresizeCommit();
+    assert.strictEqual(l2.w,10,'ADR-0964: locked gresize member restored');
+    const gTip=state.history[state.histIdx];
+    assert.strictEqual(gTip.op,'align');assert.strictEqual(gTip.after.length,1,'locked member excluded from the op');
+    ptr.gOrig=null;
+    // grot: locked gAnc connector excluded from the op and restored
+    const a1=Shape.make('rect',{x:0,y:0,w:10,h:10}),c1=Shape.make('arrow',{x1:0,y1:0,x2:20,y2:0,a:a1.id,aF:1});
+    Store.commit({op:'add',shape:a1});Store.commit({op:'add',shape:c1});
+    const la1=byId(a1.id),lc1=byId(c1.id);
+    ptr.gOrig=new Map([[a1.id,JSON.parse(JSON.stringify(la1))]]);
+    ptr.gAnc=new Map([[c1.id,JSON.parse(JSON.stringify(lc1))]]);
+    la1.w=30;lc1.x2=50;lc1.locked=1;
+    _grotCommit();
+    assert.strictEqual(lc1.x2,20,'ADR-0964: locked gAnc connector restored to orig');
+    const gTip2=state.history[state.histIdx];
+    assert.strictEqual(gTip2.after.length,1,'locked connector excluded from the op');
+    ptr.gOrig=null;ptr.gAnc=null;
+    // flushErase: a batch clone that got locked mid-stroke survives the del op
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+    const sE=Shape.make('rect',{x:0,y:0,w:5,h:5}),sF=Shape.make('rect',{x:9,y:0,w:5,h:5});
+    Store.commit({op:'add',shape:sE});Store.commit({op:'add',shape:sF});
+    const cE=JSON.parse(JSON.stringify(sE)),cF=JSON.parse(JSON.stringify(sF));
+    cF.locked=1;                                       // remote lock lands on the batch clone (ADR-0952)
+    _pushEraseBatch(cE);_pushEraseBatch(cF);
+    state.shapes.splice(state.shapes.findIndex(s=>s.id===sE.id),1);
+    state.shapes.splice(state.shapes.findIndex(s=>s.id===sF.id),1);
+    _invalidateGrid();
+    flushErase();
+    assert.ok(byId(sF.id),'ADR-0964: locked erase-batch member survives the del');
+    assert.ok(!byId(sE.id),'unlocked erase-batch member deleted');
+    assert.strictEqual(state.history[state.histIdx].shapes.length,1,'del op carries only the live member');
+    console.log('  ✓ ADR-0964: mid-gesture lock restore/commit-gate pins (12 asserts)');
   }
   // ADR-0625: wc/origSel/moved are undo-domain — _slimOp strips them from the
   // wire copy while preserving the fields peers actually consume.
@@ -15839,6 +15922,7 @@ pass += 8; // ADR-0960 zorder/style coalescing + commit-head flush pins
 pass += 10; // ADR-0961 held-key coalescing wave-2 + net-zero discard pins
 pass += 7; // ADR-0962 slider before-buffer boundary-flush + prune pins
 pass += 5; // ADR-0963 lifecycle×boundedness audit pins
+pass += 15; // ADR-0964 mid-gesture lock restore/commit-gate pins
 pass += 7; // ADR-0943 second-pointer abort pins
 pass += 8; // ADR-0945 mid-gesture overlay-open cancel pins
 pass += 8; // ADR-0948 mid-gesture button-path cancel pins
