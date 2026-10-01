@@ -15255,7 +15255,13 @@ try {
   const _rR={id:'rR',type:'line',x1:1e7-1,y1:0,x2:1e7,y2:0,z:1};
   _rotPtsAbout(_rR,0,0,0,1);
   assert.ok(_rR.x2<=1e7,'ADR-0936: _rotPtsAbout clamps rotated coords at the wire bound');
-  pass += 4; // ADR-0936 absolute-writer pins
+  // ADR-0939: hatch segment generation is bounded — a forged huge-extent shape
+// (w,h up to the 1e7 wire bound) would otherwise emit ~3.3M segments per shape
+// per frame (freeze) and ~100MB of <line> nodes on SVG export.
+assert.ok(_hatchSegs(0,0,1e7,1e7,6,false).length<=2100,'ADR-0939: hatch segs bounded at huge extents');
+assert.ok(_hatchSegs(0,0,100,100,6,true).length<100,'ADR-0939: small extents keep the natural gap');
+pass += 2; // ADR-0939 hatch-bound pins
+pass += 4; // ADR-0936 absolute-writer pins
   pass += 4; // ADR-0935 producer-bound pins
   pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
