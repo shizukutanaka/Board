@@ -881,9 +881,9 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.985';   // ADR-0959
+const V='1.7.986';   // ADR-0960
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
-const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
+const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
 const MAX_HISTORY=500;
 const MAX_SEEN_OPS=2000; // cap seenOps to prevent unbounded growth
@@ -902,7 +902,7 @@ const SVG_MAX_ELEMS=5000,SVG_MAX_PTS=2000;   // ADR-0042: SVG import ceilings (s
 const EXC_MAX_ELEMS=50000,EXC_MAX_PTS=10000;   // ADR-0043: .excalidraw import ceilings
 const PASTE_MAX_CHARS=4000;                    // ADR-0044: cap a clipboard text dump
 const LONG_PRESS_MS=500;        // ADR-0006: long-press duration before opening the context menu
-const LONG_PRESS_MOVE_TOL=10;   // px; movement beyond this before firing = a drag, not a hold
+const LONG_PRESS_MOVE_TOL=10;   // px; beyond before firing = drag not hold
 const MIN_ZOOM=0.1, MAX_ZOOM=16;
 const clampZoom=z=>_max(MIN_ZOOM,_min(MAX_ZOOM,z)); // single source for the zoom invariant
 const GRID_SIZE=20;
@@ -916,7 +916,7 @@ const NET_CHANNEL_PREFIX='board:';      // BroadcastChannel name prefix
 const NET_PRESENCE_INTERVAL=5000;       // 5s heartbeat
 const NET_PRESENCE_TIMEOUT=15000;       // 15s drop
 const CURSOR_THROTTLE_MS=60;            // ADR-0010: peer cursor broadcast rate cap (~16/s)
-const MAX_PEERS=32;                     // presence-map cap: a flooding peer can't grow _pr()/DOM unboundedly
+const MAX_PEERS=32;                     // presence-map cap vs flooding peers
 const MAX_PEER_ID_LEN=64;               // real ids are 32-char uids; longer is garbage
 const PEER_COLORS=['#00C4CC','#7C3AED','#DC2626','#F59E0B','#16A34A','#2563EB','#DB2777','#EA580C'];
 const uid=()=>typeof crypto!==_un&&crypto.randomUUID
@@ -940,10 +940,10 @@ const THEME_KEY='board.theme';
 // Mode lives in memory (storage is best-effort): reading localStorage every
 // call can throw under blocked cookies/partitioning and desync the UI.
 let _themeCache=(()=>{try{const v=_lg(THEME_KEY);return v==='light'||v==='dark'?v:null}catch(_){return null}})();
-function applyTheme(mode){   // mode: 'light'|'dark'|null (auto = follow prefers-color-scheme)
+function applyTheme(mode){   // mode: light|dark|null (auto=prefers-color-scheme)
   if(mode)_de.dataset.theme=mode;
   else delete _de.dataset.theme;
-  _tTk();   // minimap scene bitmap embeds --ink/--brand colors (ADR-0025)
+  _tTk();   // minimap bitmap embeds --ink/--brand (0025)
 }
 
 // ====================== I18N ======================
@@ -1157,11 +1157,11 @@ const state={
   // ---- v1.1 sync ----
   peerId:PEER_ID+'.'+uid().slice(0,6),   // ADR-0459: per-boot incarnation — seq restarts can't collide
   seq:0,                    // monotonic op counter for CRDT clock
-  _lastTs:0,                // monotonic-clock floor: local clocks never regress (HLC-lite)
-  _lastRep:null,            // clock of the newest applied 'replace' — concurrent swaps pick one winner (ADR-0614)
+  _lastTs:0,                // monotonic floor (HLC-lite)
+  _lastRep:null,            // newest 'replace' clock — swaps pick one winner (0614)
   seenOps:_sT(),        // "peer:seq" set for dedup
-  wclock:_wM(),                // shapeId → {prop: clock} for per-property LWW (ADR-0002)
-  peers:_mP(),          // peerId → {color, lastSeen, name, cursor?:{x,y}} (ADR-0010)
+  wclock:_wM(),                // shapeId→{prop:clock} LWW (0002)
+  peers:_mP(),          // peerId→{color,lastSeen,name,cursor?} (0010)
   roomId:null               // doc room id (BroadcastChannel name suffix)
 };
 
@@ -1421,6 +1421,7 @@ function validClock(c){
 const Store={
   // Op types + reversibility: see docs/architecture.md
   commit(op){
+    _nugEnd();   // ADR-0960: pending nudge/zorder predates any later commit — flush first (0958 parity)
     // Stamp CRDT clock; local-origin only — remote ops arrive stamped
     if(!op.clock)_fck(op);
     const k=_ck(op);
@@ -1591,7 +1592,7 @@ const Store={
     this._apply(op,false);
     _pgFollow(op);   // ADR-0652
     state.histIdx--;
-    for(const w of _undoWire(op)||[]){w.clock={peer:_pi(),seq:++state.seq,ts:_ut};   // distinct seqs for dedup; identical (ts,peer) → identical arbitration
+    for(const w of _undoWire(op)||[]){w.clock={peer:_pi(),seq:++state.seq,ts:_ut};   // distinct seqs for dedup; same (ts,peer) arbitration
       if(w.op==='replace')state._lastRep=w.clock;   // ADR-0615
       this._stampWrites(w);Net.broadcast(w)}
     _rdb();
@@ -1807,7 +1808,7 @@ const Store={
         }else{
           if(op.before)for(const b of op.before){
             const sh=byId(b.id);if(!sh||sh.locked)continue;   // ADR-0923: forward skips locked too
-            if(_lwwSkip(b.id,'groupId',op))continue;   // a remote peer's newer groupId write wins over this undo
+            if(_lwwSkip(b.id,'groupId',op))continue;   // remote newer groupId wins over undo
             if(b.groupId)sh.groupId=b.groupId;else delete sh.groupId;}
           _selR(op);}
         break;}
@@ -2093,7 +2094,7 @@ function getImg(dataUrl){
   let img=_imgCache.get(k);
   if(img){_imgCache.delete(k);_imgCache.set(k,img);return img}
   img=new Image();
-  img.onload=()=>{_iv();Minimap.invalidateCache();};   // minimap cache keys on _gridVer — image loads don't bump it, so invalidate explicitly
+  img.onload=()=>{_iv();Minimap.invalidateCache();};   // minimap cache keys on _gridVer — img loads don't bump it
   img.src=dataUrl;
   if(_imgCache.size>=IMG_CACHE_MAX)_imgCache.delete(_imgCache.keys().next().value);
   _imgCache.set(k,img);
@@ -2179,7 +2180,7 @@ const tb=_g('pgTabs');if(!tb)return;
 const sig=_JS(_pgs().map(p=>p.id+'\x1f'+p.name));let _fid;   // ADR-0683/0860: _JS keeps the sig injective across boundaries
 if(sig!==_pgSig){_pgSig=sig;const _fe=_aE();_fid=_fe&&_fe._pgid;_tC(tb,'');   // ADR-0683: remember the focused chip before the wipe
 for(const p of _pgs()){const c=_ce('button');c.className='pg-b pg-t';c.title=p.name;c._pgid=p.id;c.setAttribute('aria-label',p.name);_tC(c,_s0(p.name,12));   // ADR-0682: text truncates at 12 — SR still gets the full page name
-_oC(c,()=>c._pgid===state.curPg?_pgRename():switchPage(c._pgid));   // click the live tab to rename — keeps 0646's rename path one click away
+_oC(c,()=>c._pgid===state.curPg?_pgRename():switchPage(c._pgid));   // click live tab to rename (0646 path)
 _ap(tb,c)}}
 for(const c of tb.children||[]){const on=c._pgid===state.curPg;c.classList.toggle('on',on);if(on)c.setAttribute('aria-current','page');else c.removeAttribute('aria-current')}
 if(_fid)for(const c of tb.children||[])if(c._pgid===_fid){c.focus();break}
@@ -2480,7 +2481,7 @@ function resize(){
   canvas.width=_rnd(r.width*DPR);
   canvas.height=_rnd(r.height*DPR);
   _wh(ocanvas,canvas.width,canvas.height);
-  _lastVp=null;   // backing-store reallocation drops all retained pixels (0028)
+  _lastVp=null;   // backing-store realloc drops pixels (0028)
   _pinchSnap=null;_pinchVp=null;   // ADR-0030: stale-sized snapshot must not blit
   _teVp=_lblVp='';   // ADR-0561: canvas rect moved — force overlay reposition
   if(_pA())Presentation.refit();   // ADR-0606: keep the current frame zoom-fitted across viewport resizes
@@ -2723,7 +2724,7 @@ function drawOverlay(){
     }
   }
   _sTF(c,DPR,0,0,DPR,0,0);
-  if(!_ln(_shV())&&!_df())drawEmptyHint(c,W,H);   // FT-17 + ADR-0668: onboarding is page-scoped — empty viewed page, not just empty board
+  if(!_ln(_shV())&&!_df())drawEmptyHint(c,W,H);   // FT-17/0668: onboarding is page-scoped
   for(const[,members] of _grpMapGet()){
     const b=_bA(members);if(!b)continue;
     const p1=_w2({x:b.x-4,y:b.y-4}),p2=_w2({x:b.x+b.w+4,y:b.y+b.h+4});
@@ -3539,7 +3540,7 @@ function _rotPt(px,py,cx,cy,deg){
 function getHandles(s){
   if(_lk(s))return [];
   if(_conn(s.type)){
-    const e=_cE(s),h=[];   // bound endpoints follow their shape, so no drag handle
+    const e=_cE(s),h=[];   // bound endpoints follow shape — no handle
     _pu(h,{id:'p1',x:e.x1,y:e.y1});       // ADR-0065: bound ends are draggable too (rebind)
     _pu(h,{id:'p2',x:e.x2,y:e.y2});
     return h;
@@ -3984,7 +3985,7 @@ function _sqAdvance(dir){
   if(!_sq)return;
   const q=_lc(_sq);
   if(q!==_sqNav.lastQ){_sqNav.idx=-1;_sqNav.lastQ=q;}
-  const matches=_sqMatches();   // same ordered list the overlay highlights use (ADR-0048)
+  const matches=_sqMatches();   // same list overlay highlights use (0048)
   if(!_ln(matches))return;
   _sqNav.idx=((_sqNav.idx<0&&dir<0?_ln(matches):_sqNav.idx)+dir+_ln(matches))%_ln(matches);
   const sh=matches[_sqNav.idx];
@@ -4206,7 +4207,7 @@ _on(canvas,_PM,e=>{
   const sp=_osp(e);
   const wp=_s2(sp);
   if(_pA()){_laser=wp;_ivO();return;}
-  if(_nP()>=2)return;   // pinch in progress — the pinch handler owns the gesture
+  if(_nP()>=2)return;   // pinch in progress — handler owns gesture
   Net.sendCursor(wp);   // ADR-0010
   UI.setStatusXY(_rnd(wp.x),_rnd(wp.y));
   if(!ptr.down){
@@ -4321,7 +4322,7 @@ _on(canvas,_PM,e=>{
         const sh=byId(ptr.wayOrig.id);
         if(sh){
           const wa=_wayArr(sh),i=ptr.wayIdx|0;
-          if(ptr.wayNew){if(_ln(wa)<200){wa.splice(i,0,snapPt(wp));sh.way=wa}ptr.wayNew=false;}   // first move inserts the vertex; ADR-0866: stay under the 200-waypoint wire bound
+          if(ptr.wayNew){if(_ln(wa)<200){wa.splice(i,0,snapPt(wp));sh.way=wa}ptr.wayNew=false;}   // first move inserts the vertex; stay under the wire bound (0866)
           else{
             const pts=_linePts(sh),mx=(pts[i].x+pts[i+1].x)/2,my=(pts[i].y+pts[i+1].y)/2;
             if(_hp(wp.x-mx,wp.y-my)<6/_vp().zoom){wa.splice(i,1);if(_ln(wa))sh.way=wa;else delete sh.way}   // ADR-0088: RAW point keeps the clear gesture reachable
@@ -4924,7 +4925,7 @@ function zoomAt(sp,delta){
 function zoomBy(f){
   const r=_cbr();
   zoomAt({x:r.width/2,y:r.height/2},_log(f));
-  _ann(_rnd(_vp().zoom*100)+'%');   // discrete zoom is SR-silent otherwise (wheel zoom stays quiet by design)
+  _ann(_rnd(_vp().zoom*100)+'%');   // discrete zoom is SR-silent otherwise
 }
 function zoomReset(){
   _vp().zoom=1;
@@ -5407,7 +5408,7 @@ function recognizeStroke(pts){
   // ---- line: low perpendicular deviation from the chord
   {
     const dx=lx-fx,dy=ly-fy,len=_hp(dx,dy);
-    if(len>diag*0.6){    // must span most of the bbox diagonal, not just wobble near one end
+    if(len>diag*0.6){    // must span most of the bbox diagonal
       let maxDev=0;
       for(const p of pts){
         const t=len>0?((p[0]-fx)*dx+(p[1]-fy)*dy)/(len*len):0;
@@ -5618,7 +5619,7 @@ function createShapeKbd(){
     beginText({x:cx-60,y:cy-12});   // opens editor + switches to select
     return true;
   }else{
-    return false;   // pen/select/hand/eraser — nothing to create from the keyboard
+    return false;   // pen/select/hand/eraser create nothing from kbd
   }
   _cOp({op:'add',shape:s});
   pickTool('select');
@@ -6016,7 +6017,7 @@ function pickTool(tool,temporary){
   if(ptr.lineClick&&tool!=='line'&&tool!=='arrow'){ptr.lineClick=false;state.draft=null;_iv()}   // ADR-0126
   state.tool=tool;canvas.dataset.tool=tool;
   _sa(canvas,_AL,(T.k[tool]||tool)+' — '+t('canvasHint'));   // localized (was hardcoded English)
-  _ann(T.k[tool]||tool);   // tool switches were SR-silent (undo/group等 toast, this never spoke)
+  _ann(T.k[tool]||tool);   // tool switches were SR-silent
   for(const b of _qsa(document,'.tool'))_sa(b,_AP,b.dataset.tool===tool);
   // hide style panel for select/hand
   const sp=_g('stylePanel');
@@ -6147,7 +6148,7 @@ function _zCommit(changes){
   if(!_ln(changes)){_iv();return}
   if(_sh().some(s=>_ln(s.frac)>48)){const m=_mP(changes.map(c=>[c.id,c.before])),o=_sh().map(s=>s.frac);reindexFrac();changes=_sh().map((s,i)=>({id:s.id,before:m.has(s.id)?m.get(s.id):o[i],after:s.frac}))}   // ADR-0471: undo keeps the mover's ORIGINAL before-frac
   _sz();
-  _rcOp({op:'zorder',changes});
+  _nugPush({op:'zorder',changes});   // ADR-0960: held [ ] folds into one zorder op
   _ivp();
 }
 // Shared by doBringFront/doSendBack/doBring
@@ -6590,7 +6591,7 @@ function doRotate(d){
   for(const c of _bC)if(!selIds.has(c.id))after.push(clone(c));
   _rcOp({op:'align',dir:'rotate',before,after});
   _ivp();
-  _ann(_ln(sel)===1?describeShape(sel[0]):d+'°');   // ,/. keyboard rotate announce; point-geom selections have no .rotate (ADR-0055)
+  _ann(_ln(sel)===1?describeShape(sel[0]):d+'°');   // ,/. rotate announce; point-geom has no .rotate (0055)
 }
 // ====================== EXPORT ======================
 // Browsers cap a canvas's dimension (~16384px) and area — a fixed scale silently
@@ -6761,7 +6762,7 @@ function excScene(shapes){
     isDeleted:false,boundElements:null,updated:0,link:s.link||null,locked:!!_lk(s)},over);   // ADR-0241
   const gids={};for(const s of shapes)if(_gi(s))(gids[s.id]=gids[s.id]||[]).push(_gi(s));
   const _excTid=_mP();   // ADR-0225: sticky rect id → its container text id
-  const _ct=(s,tid,txt,bL,fs,ov)=>{   // shared container-text element (sticky body / box label)
+  const _ct=(s,tid,txt,bL,fs,ov)=>{   // shared container text (sticky body/box label)
     _excTid.set(s.id,tid);
     return{id:tid,type:'text',x:ov?ov.x:s.x+4,y:ov?ov.y:s.y+4,
     width:ov?ov.w:_abs(s.w||120)-8,height:ov?ov.h:_abs(s.h||80)-8,text:txt,originalText:txt,autoResize:false,   // ADR-0412: bound text wraps to the container
@@ -7311,7 +7312,7 @@ function _svgPathPts(d,m){
     else if(C==='V'){y=ay+num();push(x,y);}
     else if(C==='Z'){x=x0;y=y0;push(x,y);}
     else if(C==='C'){const x1=ax+num(),y1=ay+num(),x2=ax+num(),y2=ay+num(),ex=ax+num(),ey=ay+num();cubic(x1,y1,x2,y2,ex,ey);}
-    else if(C==='S'){const x2=ax+num(),y2=ay+num(),ex=ax+num(),ey=ay+num();cubic(x,y,x2,y2,ex,ey);}   // S's reflected ctrl point is approximated by the current point
+    else if(C==='S'){const x2=ax+num(),y2=ay+num(),ex=ax+num(),ey=ay+num();cubic(x,y,x2,y2,ex,ey);}   // S's ctrl point approximated by current point
     else if(C==='Q'){const x1=ax+num(),y1=ay+num(),ex=ax+num(),ey=ay+num();quad(x1,y1,ex,ey);}
     else if(C==='T'){const ex=ax+num(),ey=ay+num();quad(x,y,ex,ey);}   // T's reflected ctrl point likewise
     else if(C==='A'){num();num();num();num();num();x=ax+num();y=ay+num();push(x,y);}   // arc → endpoint chord approximation
@@ -7921,7 +7922,7 @@ function _esc(s){return _St(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&l
 // Coerce to finite number; prevents string geometry breaking SVG numeric attributes.
 function _num(v){const n=+v;return _fin(n)?n:0}
 // Copy text to the clipboard with a non-secure-context fallback. _nc() is
-// undefined on file:// and plain http:// — Board's primary "just open it" use case —
+// undefined on file:// and plain http:// — the primary "just open it" case —
 // so prefer it in a secure context, else textarea + execCommand('copy') fallback.
 // Returns Promise<boolean> for UI feedback.
 async function copyText(text){
@@ -8001,14 +8002,14 @@ const Net={
   dc:null,                    // RTCDataChannel
   _presenceTimer:0,
   _onConnChange:null,         // UI callback
-  _rtcPeerId:null,            // synthetic peer id for the WebRTC link (lifecycle-managed)
+  _rtcPeerId:null,            // synthetic peer id for the RTC link
   init(roomId){
     if(this.bc){try{this._send(_mk('bye'));this.bc.close()}catch(_){}}   // ADR-0458
     _sO().clear();_cT(this._snapT);this._snapT=0;this._lastSnapAt=0;this._snapRx=false;this._snapRetry=0;   // ADR-0459/0475
     if(state.roomId&&state.roomId!==(roomId||DOC_KEY)){state._lastRep=null;_nameTs=0;_namePeer='';try{this.dc&&this.dc.close();this.rtc&&this.rtc.close()}catch(_){}}   // ADR-0619/0695/0839
     this._imgSent.clear();this._imgChunks.clear();this._imgOuts.length=0;this._snapIn=null;this._opcIn=null;this._imgqT.clear();   // ADR-0464/0466/0836
     for(const id of _pr().keys())if(!_sw(id,'rtc:'))_pr().delete(id);this._pCt=_pr().size;_ivO();   // ADR-0458/0467: drop old-room presence
-    clearInterval(this._presenceTimer);   // re-init (room switch) must not leak the old heartbeat
+    clearInterval(this._presenceTimer);   // re-init must not leak old heartbeat
     state.roomId=roomId||DOC_KEY;
     if(typeof BroadcastChannel===_un)return;     // not supported
     try{
@@ -8371,7 +8372,7 @@ const Net={
     const existing=_pr().get(peerId);
     if(existing){existing.lastSeen=_now()}
     else{
-      if(_pr().size>=MAX_PEERS)return;   // flood cap: known peers keep refreshing, new ones wait for a reap
+      if(_pr().size>=MAX_PEERS)return;   // flood cap: new peers wait for a reap
       const colorIdx=[..._pr().keys()].length%_ln(PEER_COLORS);
       _pr().set(peerId,{color:PEER_COLORS[colorIdx],lastSeen:_now()});
       // ADR-0011: a latecomer would otherwise not
@@ -8389,7 +8390,7 @@ const Net={
   _reapPeers(){
     const now=_now();let changed=false;
     for(const [id,p] of _pr()){
-      if(_sw(id,'rtc:'))continue;   // WebRTC peers are lifecycle-managed (onclose), not heartbeat-reaped
+      if(_sw(id,'rtc:'))continue;   // RTC peers are lifecycle-managed (onclose)
       if(now-p.lastSeen>NET_PRESENCE_TIMEOUT){_pr().delete(id);changed=true}
     }
     if(changed){_ivO();if(this._onConnChange)this._onConnChange()}
@@ -8949,15 +8950,15 @@ const UI={
     LANG=LANG==='ja'?'en':'ja';T=I18N[LANG];
     try{_ls(LANG_KEY,LANG)}catch(_){}
     UI.applyI18n();
-    UI.fillHelp();       // built once in main(); the modal doesn't rebuild it on open/close
+    UI.fillHelp();       // built once in main()
     UI.updateOnline();   // only re-runs on connectivity change otherwise
-    UI.refreshPeers();   // self-avatar title ('You'/'自分') was hardcoded English before
+    UI.refreshPeers();   // self-avatar title
     _mirrorVer=-1;_mirrorSync();
     const sq=_g('sqinput');
     if(sq){sq.placeholder=T.k.search;_sa(sq,_AL,T.k.search);}
     if(canvas.dataset.tool)_sa(canvas,_AL,(T.k[canvas.dataset.tool]||canvas.dataset.tool)+' — '+t('canvasHint'));
     UI.refreshLangBtn();
-    _ann(LANG==='ja'?'日本語':'English');   // language names are invariant proper nouns, not i18n keys
+    _ann(LANG==='ja'?'日本語':'English');   // language names are proper nouns, not i18n
   },
   refreshLangBtn(){
     const b=_g('btnLang');if(!b)return;
@@ -9294,7 +9295,7 @@ function _ctxMenuKeyNav(m,e){
 
 // ====================== WIRE-UP ======================
 // PWA install deferred-event reference (v1.6.92). Captured in 'beforeinstallprompt',
-// cleared after install or dismissal. null = browser hasn't signalled installability.
+// cleared after install or dismissal.
 let _installPrompt=null;
 // Install-button click handler — exported so test.mjs can call it directly.
 async function _onBtnInstall(){
@@ -9330,7 +9331,7 @@ function wire(){
   _g('fileImport').onchange=e=>{
     const f=e.target.files[0];
     if(f)/\.(drawio|dio)$/i.test(f.name)?importDrawioFile(f):_ew(f.name,'.excalidraw')?importExcFile(f):(_ew(f.name,'.svg')||f.type==='image/svg+xml')?importSvgFile(f):importBoard(f);   // ADR-0203
-    e.target.value='';   // allow re-selecting the same filename to re-trigger change
+    e.target.value='';   // re-select same filename re-triggers change
   };
   _oC(_g('btnPresent'),()=>Presentation.enter());
   _oC(_g('pgPrev'),()=>switchPage(_pgs()[(_pgIdx()-1+_ln(_pgs()))%_ln(_pgs())].id));
@@ -9856,7 +9857,7 @@ function fontSizeStep(d){
     _pp(before,after,id,'fontSize',cur,nxt);s.fontSize=nxt;
     _st().fontSize=nxt;                                 // ADR-0180: last-used persists to the next shape
   })
-  _so(before,after)
+  if(_ln(before)){_nugPush({op:'style',before,after});_iv()}   // ADR-0960: held ⌘⇧,/. folds into one style op
 }
 // ADR-0078: ⌘B/⌘I toggles bold/italic on selected text/sticky via style op.
 const _rdb=()=>{_md(!0);_ru();_ps()},
@@ -9885,7 +9886,7 @@ function _undoWire(op){
       return[o];}
     case 'upd':case 'style':case 'resize':case 'align':case 'beautify':
                    return[{op:op.op,id:op.id,dir:op.dir,before:op.after,after:op.before}];   // ADR-0717/0731
-    case 'group':case 'ungroup':   // dedicated ops — groupId is stripped from patches (ADR-0916)
+    case 'group':case 'ungroup':   // groupId stripped from patches (0916)
       return _iA(op.before)?(()=>{const o=[],reg={};for(const b of op.before)b.groupId?(reg[b.groupId]=reg[b.groupId]||[]).push(b.id):op.op==='group'&&_pu(o,{op:'ungroup',ids:[b.id],gids:[op.gid],before:[{id:b.id,groupId:op.gid}]});
         for(const g in reg)_pu(o,{op:'group',ids:reg[g],gid:g,before:reg[g].map(id=>({id}))});return o})():null;
     case 'zorder':
@@ -9901,9 +9902,16 @@ function _undoWire(op){
   }}
 let _nug=null;
 function _nugEnd(){const n=_nug;_nug=null;if(n){_cT(n.t);Store._recordCommitted(n.op);_keepSel(n.sel)}}
-function _nugPush(op){   // ADR-0957: a held arrow key repeats ~30/s — fold the run into one op
-  const k=op.op+':'+(op.ids||op.after.map(a=>a.id)).join(','),arm=()=>{_cT(_nug&&_nug.t);_nug.t=_stO(_nugEnd,400)};
-  if(_nug&&_nug.k===k){if(op.op==='move'){_nug.op.dx+=op.dx;_nug.op.dy+=op.dy}else _nug.op.after=op.after;arm();return}
+function _mg(dst,src,f){for(const c of src){const e=dst.find(x=>x.id===c.id);if(e)f(e,c);else dst.push(c)}}   // ADR-0960: per-id merge for zorder/style sessions
+function _nugPush(op){   // ADR-0957/0960: a held key repeats ~30/s — fold the run into one op
+  const k=op.op+':'+(op.ids||(op.after||op.changes).map(a=>a.id)).join(',')+(op.op==='style'?':'+[...new Set(op.after.flatMap(Object.keys))].sort().join(','):''),arm=()=>{_cT(_nug&&_nug.t);_nug.t=_stO(_nugEnd,400)};
+  if(_nug&&_nug.k===k){
+    if(op.op==='move'){_nug.op.dx+=op.dx;_nug.op.dy+=op.dy}
+    else if(op.op==='zorder'){_mg(_nug.op.changes,op.changes,(e,c)=>e.after=c.after);_nug.op.changes=_nug.op.changes.filter(c=>c.before!==c.after);if(!_ln(_nug.op.changes)){_cT(_nug.t);_nug=null;return}}
+    else if(op.op==='style'){_mg(_nug.op.before,op.before,(e,c)=>{for(const p in c)if(!(p in e))e[p]=c[p]});_mg(_nug.op.after,op.after,_oa)}
+    else _nug.op.after=op.after;
+    arm();return
+  }
   _nugEnd();
   _nug={k,op,sel:_selIds()};arm();
 }

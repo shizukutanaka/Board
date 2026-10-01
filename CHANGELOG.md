@@ -1,3 +1,8 @@
+## [1.7.986] - 2026-10-01
+
+### Fixed
+- `[ ]` / `⌘⇧,/.` 長押しを1 op へ集約 + `Store.commit` 先頭 flush (ADR-0960): 連打 `[` / `]` z-order と `⌘⇧,/.` フォントサイズステップが押下毎に1 op (history 汚染・wire 増幅・undo が1歩ずつしか戻らない) だった実害を、`_nug` コアレッサへ zorder/style マージを拡張して閉塞 — 「押下停止から400ms の遅延 commit」は 0957 ナッジと同規則。併せて `_recordCommitted` と並列だった `Store.commit` (del/clear/page 系・`_cmt` 経路) にも `_nugEnd()` を追加 — pending zorder が del commit を跨いで後着し、undo で図形が wrong frac のまま残る時系列反転 (fuzz seed-7) を解消
+
 ## [1.7.985] - 2026-10-01
 
 ### Fixed

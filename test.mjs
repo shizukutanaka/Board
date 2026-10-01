@@ -1294,9 +1294,9 @@ const checks = [
   ['share export rounds shapes', html.includes("shapes:roundShapesForExport(_sh()),name:_dn()")],
   ['.board export rounds shapes', html.includes("shapes:roundShapesForExport(shapes)})],{type:'application/json'})")],
   // v1.6.84: Net.init clears prior presence timer on re-init (no leaked heartbeat)
-  ['Net.init clears prior presence timer', html.includes("clearInterval(this._presenceTimer);   // re-init (room switch) must not leak the old heartbeat")],
+  ['Net.init clears prior presence timer', html.includes("clearInterval(this._presenceTimer);   // re-init must not leak old heartbeat")],
   // v1.6.85: WebRTC peers lifecycle-managed (not heartbeat-reaped after 15s)
-  ['_reapPeers exempts rtc: peers from timeout reaping', html.includes("if(_sw(id,'rtc:'))continue;   // WebRTC peers are lifecycle-managed")],
+  ['_reapPeers exempts rtc: peers from timeout reaping', html.includes("if(_sw(id,'rtc:'))continue;   // RTC peers are lifecycle-managed")],
   ['dc.onclose removes the rtc peer', html.includes("if(dcRef._pid){_pr().delete(dcRef._pid);if(this._rtcPeerId===dcRef._pid)this._rtcPeerId=null;_ivO();}")],
   ['dc.onopen stores _rtcPeerId for lifecycle management', html.includes("dcRef._pid='rtc:'+uid().slice(0,4);")],
   // v1.7.76 / ADR-0017 (FT-20): ICE failure without an open channel showed nothing —
@@ -1463,9 +1463,9 @@ const checks = [
   ['endRectLike/endLineLike/beginText attach origSel before shape add commit',
     (html.match(/_cOp\(\{op:'add',shape:d\}\)/g)||[]).length >= 2 &&
     html.includes("_cOp({op:'add',shape:s});\n  openTextEditor")],
-  // v1.7.43: _zCommit captures origSel before zorder _recordCommitted
+  // v1.7.43→1.7.986: _zCommit captures origSel; the op commits through the _nug coalescer (ADR-0960)
   ['_zCommit: origSel captured before zorder commit and patched onto history entry',
-    html.includes("_rcOp({op:'zorder',changes});")],
+    html.includes("_nugPush({op:'zorder',changes});")&&html.includes("Store._recordCommitted(n.op);_keepSel(n.sel)")],
   // v1.7.44→1.7.629: MAX_OP_SHAPES == board ceiling (ADR-0602: 500-cap silently dropped bulk ops >500 shapes)
   ['MAX_OP_SHAPES equals SHARE_MAX_SHAPES (ops may address the whole board)',
     html.includes("const MAX_OP_SHAPES=SHARE_MAX_SHAPES;")],
@@ -2321,6 +2321,43 @@ try {
       assert.strictEqual(state.history.at(-1).dx,3,'accumulated delta survives');
     }
     console.log('  ✓ ADR-0959: hidden/pagehide/beforeunload flush a pending nudge (3 routes)');
+  }
+  // ADR-0960: held [ ] / ⌘⇧,/. presses coalesce into one op per session, and
+  // Store.commit — the parallel chokepoint to _recordCommitted — also flushes a
+  // pending op first, so history order can never invert real-time order.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const a=Shape.make('rect',{x:0,y:0,w:20,h:20});
+    const b=Shape.make('rect',{x:50,y:0,w:20,h:20});
+    const c=Shape.make('rect',{x:100,y:0,w:20,h:20});
+    Store.commit({op:'addMany',shapes:[a,b,c]});state.history.length=0;state.histIdx=-1;
+    const aFrac=byId(a.id).frac;
+    state.selection=new Set([a.id]);
+    doBringForward();doBringForward();   // held [ ] run — a→middle, then middle→front
+    assert.strictEqual(state.history.length,0,'zorder presses stay pending');
+    _nugEnd();
+    const zo=state.history.filter(o=>o.op==='zorder');
+    assert.strictEqual(zo.length,1,'held [ ] folds into ONE zorder op');
+    const ch=Object.fromEntries(zo[0].changes.map(x=>[x.id,x]));
+    assert.strictEqual(ch[a.id].before,aFrac,'merged before keeps the ORIGINAL key');
+    state.selection=new Set([b.id]);
+    doBringForward();_nugEnd();          // a different id set → a new session (0957 parity)
+    assert.strictEqual(state.history.filter(o=>o.op==='zorder').length,2,'a different selection starts a second zorder op');
+    // style: held ⌘⇧. folds into one op, original before kept
+    const T=Shape.make('text',{x:0,y:50,w:100,h:20,text:'x',fontSize:14});
+    Store.commit({op:'add',shape:T});state.history.length=0;state.histIdx=-1;
+    state.selection=new Set([T.id]);
+    fontSizeStep(1);fontSizeStep(1);fontSizeStep(1);
+    _nugEnd();
+    const st=state.history.filter(o=>o.op==='style');
+    assert.strictEqual(st.length,1,'held ⌘⇧. folds into ONE style op');
+    assert.strictEqual(st[0].before[0].fontSize,14,'merged before = 14');assert.strictEqual(st[0].after[0].fontSize,20,'merged after = 20');
+    // Store.commit head flush: a pending zorder lands BEFORE a bypassing commit —
+    // without it the del records post-nudge state and undo order inverts (seed-7 fuzz).
+    state.selection=new Set([a.id]);doSendBack();   // a is at top — a real pending session
+    Store.commit({op:'upd',id:a.id,before:{x:0},after:{x:1}});
+    assert.deepStrictEqual(state.history.slice(-2).map(o=>o.op),['zorder','upd'],'Store.commit flushes the pending zorder first');
+    console.log('  ✓ ADR-0960: [ ]/⌘⇧,/. coalesce + Store.commit flush ordering (8 asserts)');
   }
   // ADR-0625: wc/origSel/moved are undo-domain — _slimOp strips them from the
   // wire copy while preserving the fields peers actually consume.
@@ -4041,7 +4078,7 @@ try {
     const a=mk(),b=mk(),c=mk(),d=mk();          // bottom→top: a,b,c,d
     // single bring-forward touches exactly one shape's key
     state.selection=new Set([b.id]);
-    doBringForward();
+    doBringForward();_nugEnd();   // ADR-0960: flush the coalesced session before asserting history
     let op=state.history[state.histIdx];
     assert.strictEqual(op.op,'zorder','records a zorder op');
     assert.strictEqual(op.changes.length,1,'single forward = 1-shape delta');
@@ -4051,7 +4088,7 @@ try {
     assert.deepStrictEqual(state.shapes.map(s=>s.id),[a.id,b.id,c.id,d.id],'undo restores order');
     // multi-select bring-front preserves relative order, moves both to the top
     state.selection=new Set([a.id,c.id]);
-    doBringFront();
+    doBringFront();_nugEnd();   // ADR-0960
     op=state.history[state.histIdx];
     assert.strictEqual(op.changes.length,2,'two selected = 2-shape delta (others untouched)');
     assert.deepStrictEqual(state.shapes.map(s=>s.id),[b.id,d.id,a.id,c.id],'a,c on top in relative order');
@@ -8713,7 +8750,7 @@ try {
     const preOrder=state.shapes.map(s=>s.id).join(',');
     const preFrac=byId(x1.id).frac;
     state.selection=new Set([x1.id]);
-    doSendBack();
+    doSendBack();_nugEnd();   // ADR-0960: flush the coalesced session before asserting history
     const zo=state.history[state.history.length-1];
     assert.strictEqual(zo&&zo.op,'zorder','a zorder op was recorded');
     // compaction emits before/after for ALL shapes so every board converges identically
@@ -15691,6 +15728,7 @@ pass += 4; // ADR-0956 mirror focus-preservation pins
 pass += 4; // ADR-0957 held-key nudge coalescing pins
 pass += 1; // ADR-0958 commit-order flush pin
 pass += 9; // ADR-0959 tab-hide/close nudge flush pins
+pass += 8; // ADR-0960 zorder/style coalescing + commit-head flush pins
 pass += 7; // ADR-0943 second-pointer abort pins
 pass += 8; // ADR-0945 mid-gesture overlay-open cancel pins
 pass += 8; // ADR-0948 mid-gesture button-path cancel pins
