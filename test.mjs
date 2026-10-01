@@ -2236,6 +2236,36 @@ try {
     console.log('  ✓ sortZ total order — frac then id, deterministic across input orders (ADR-0978)');
   }
   pass += 4; // ADR-0978 sortZ total-order pins
+  // ADR-0979: every LWW arbitration domain shares clockNewer's (ts,peer,seq)
+  // total order — prop wclock, _born/_del, _lastRep, docName (_nameWin), page
+  // names (nts/ntp). The name domains use seq:0 clocks on BOTH sides of each
+  // comparison, so the order stays consistent.
+  {
+    const c=(ts,peer,seq)=>({ts,peer,seq});
+    assert.ok(clockNewer(c(2,'a',0),c(1,'z',9)),'ts dominates the order');
+    assert.ok(clockNewer(c(1,'b',0),c(1,'a',9))&&!clockNewer(c(1,'a',9),c(1,'b',0)),'equal ts falls to peer');
+    assert.ok(clockNewer(c(1,'a',2),c(1,'a',1)),'equal (ts,peer) falls to seq');
+    assert.ok(!clockNewer(null,c(1,'a',1))&&clockNewer(c(1,'a',1),null),'null bounds the order');
+    // (the 'name' intake path mutates module-level _nameTs/_namePeer and is
+    // already pinned live by the ADR-0618 snapshot-name test below)
+    const T0=nowTs();
+    // pageName op: incoming rename compares {ts,peer} vs stored {nts,ntp}.
+    state.pages=[{id:'pg1',name:'keep',nts:T0,ntp:'z'}];state.curPg='pg1';
+    const s9=Shape.make('rect',{id:'s9',x:0,y:0,w:5,h:5});state.shapes=[s9];state.seenOps=new Set();
+    Net._onRecv({k:'op',peer:'p9',op:{op:'pageName',id:'pg1',after:'steal',clock:{peer:'p9',seq:1,ts:T0}}},false);
+    assert.strictEqual(state.pages[0].name,'keep','equal-ts pageName by a lower writer loses');
+    Net._onRecv({k:'op',peer:'zz',op:{op:'pageName',id:'pg1',after:'steal',clock:{peer:'zz',seq:1,ts:T0}}},false);
+    assert.strictEqual(state.pages[0].name,'steal','equal-ts pageName by a higher writer wins');
+    // snapshot union-heal merges page names via the same (ts,ntp) order.
+    state.pages=[{id:'pg1',name:'keep2',nts:T0,ntp:'z'}];
+    Net._onRecv({k:'snapshot',peer:'p9',ops:[],pages:[{id:'pg1',name:'steal',nts:T0,ntp:'a'}]},false);
+    assert.strictEqual(state.pages[0].name,'keep2','equal-nts snapshot page rename by a lower peer loses');
+    Net._onRecv({k:'snapshot',peer:'p9',ops:[],pages:[{id:'pg1',name:'won',nts:T0,ntp:'zz'}]},false);
+    assert.strictEqual(state.pages[0].name,'won','equal-nts snapshot page rename by a higher peer wins');
+    state.shapes.length=0;state.pages=null;state.curPg=null;state.wclock={};state.seenOps=new Set();_invalidateGrid();
+    console.log('  ✓ every LWW arbitration domain shares clockNewer\'s total order (ADR-0979)');
+  }
+  pass += 9; // ADR-0979 arbitration comparator uniformity pins
   // ADR-0617: a snapshot whose sender predates our newest swap must not merge
   // pre-swap shapes back in; a snapshot reflecting a newer swap adopts its marker.
   {

@@ -1,3 +1,8 @@
+## [1.8.005] - 2026-10-01
+
+### Docs / Test
+- LWW 仲裁比較子の統一性監査が clean 完走 (ADR-0979): prop wclock・`_born`/`_del`・`_lastRep` は全て `clockNewer` の (ts,peer,seq) 全順序、docName (`_nameWin`) と page 名 (`nts`/`ntp`) は両側 seq:0 の同一序 — 生 ts 比較の残存なし、`_tsOK` の wall+5min bound が全ドメインに先行。behavioural ピン9 assert (clockNewer 順序4件 + pageName op 仲裁 + snapshot union-heal 仲裁、実経路)
+
 ## [1.8.004] - 2026-10-01
 
 ### Docs / Test
