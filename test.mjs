@@ -272,9 +272,9 @@ const checks = [
   ["snapshot carries rep marker + stale-snapshot skip (ADR-0617)", html.includes("rep:state._lastRep") && html.includes("clockNewer(state._lastRep,msg.rep))break;")],
   ["snapshot docName is LWW-gated via (ts,writer) order (ADR-0618/0699)", html.includes("nameTs:_nameTs,namePeer:_namePeer") && html.includes("_nameWin(msg.nameTs,_iS(msg.namePeer)?msg.namePeer:'')")],
   ["Net.init resets causal markers across rooms (ADR-0619/0699/0839)", html.includes("state.roomId&&state.roomId!==(roomId||DOC_KEY)){state._lastRep=null;_nameTs=0;_namePeer='';try{this.dc&&this.dc.close();this.rtc&&this.rtc.close()}catch(_){}}")],
-  ["move commit drops ids removed mid-gesture (ADR-0621)", html.includes("filter(id=>{const s=byId(id);return s&&_ul(s)})")],
+  ["move commit drops ids removed mid-gesture + restores members locked mid-gesture (ADR-0621/0965)", html.includes("_gRL(ptr.dragStartShapes);") && html.includes("const orig={};") && html.includes("_nugPush({op:'move',ids,dx,dy,orig})")],
   ["_sb drops dead ids at source + nudgeSelection parity (ADR-0623)", html.includes("_sb=()=>_selIds().map(byId).filter(Boolean)") && html.includes("unlockedSelectionIds(){return _selIds().filter(id=>{const s=byId(id);return s&&_ul(s)});}")],
-  ["_slimOp strips undo-only fields from wire ops (ADR-0625)", html.includes("const{origSel:_o2,moved:_m2,...rest}=op;") && html.includes("const{wc:_wc1,origSel:_o1,...r}=op;")],
+  ["_slimOp strips undo-only fields from wire ops (ADR-0625/0965)", html.includes("const{origSel:_o2,moved:_m2,orig:_o3,...rest}=op;") && html.includes("const{wc:_wc1,origSel:_o1,...r}=op;")],
   ["undo restamps op.clock fresh before the backward apply (ADR-0717)", html.includes("const _ut=nowTs();op.clock={peer:_pi(),seq:++state.seq,ts:_ut};")],
   ["undo-wire carries before for style/resize/align (ADR-0717)", html.includes("before:op.after,after:op.before}")],
   ["'clear' rides the wire as empty 'replace' + sender marker parity (ADR-0626)", html.includes("if(op.op==='clear')return{op:'replace',after:[],afterWc:{},clock:op.clock};") && html.includes("if(forward){_unB();if(op.clock)state._lastRep=op.clock;const wc0=state.wclock||{},dead=[],keep=[]")],
@@ -648,7 +648,7 @@ const checks = [
   ['service worker purges stale caches', html.includes("caches.keys()") && html.includes("k!==C")],
   // v1.6.20: fourth audit pass
   ['drawShape opacity uses nullish coalescing (opacity=0 invisible, not opaque)', html.includes('c.globalAlpha=_oP(s)??1')],
-  ['pointercancel restores in-progress resize/move shapes', html.includes("_dk('resize')&&ptr.resizeOrig")],
+  ['pointercancel restores in-progress resize/move shapes', html.includes("_dk('resize'))_gR2(ptr.resizeOrig)") && html.includes("_dk('move'))_gR1(ptr.dragStartShapes)")],
   ['frame label Escape removes blur listener before cancelling', html.includes("inp.removeEventListener('blur',commit)")],
   ['context menu items have role=menuitem (WCAG 4.1.2)', html.includes("_sa(b,'role','menuitem')")],
   ['context menu separators have role=separator', html.includes("_sa(s,'role','separator')")],
@@ -1432,9 +1432,17 @@ const checks = [
   ['ADR-0964: six locked-gate commit sites (resize/rotate/cbend/ebend/way/lblpos)',
     html.split("locked)_gRst();   // ADR-0964").length-1===6],
   ['ADR-0964: gresize/grot restore+exclude locked members; flushErase partitions live members',
-    html.includes("for(const[id,orig]of ptr.gOrig){const sh=byId(id);if(sh&&sh.locked){_geoR(sh,orig);_iv()}}")&&
+    html.includes("_gRL(ptr.gOrig);_gRL(ptr.gAnc);")&&html.includes("const _gRL=M=>{if(M)for(const[id,o]of M){const s=byId(id);if(s&&s.locked){_geoR(s,o);_iv()}}};")&&
     html.includes("filter(s=>s&&!s.locked).map(clone)")&&
     html.includes("const live=_eraseBatch.filter(s=>!s.locked);")],
+  // ADR-0965 source pins: _nugLock partitions mid-run locked/missing members
+  // out of a pending op — restores run-start + filters every member list.
+  ['ADR-0965: _nugEnd partitions mid-run locked/missing members before the commit',
+    html.includes("_nugLock(o);")&&
+    html.includes("A.some(a=>a.id===id&&a.locked)")&&
+    html.includes("if(op.op==='move'){const o=op.orig[id];if(o)_geoR(s,o)}")&&
+    html.includes("if(c)s.frac=c.before")&&
+    html.includes("for(const k of['ids','before','after','changes'])if(op[k])op[k]=op[k].filter(m=>!gone.has(m.id||m));")],
   // v1.7.38: _apply('upd', forward) must guard sh.locked (parity with move forward)
   ['_apply upd: if(sh.locked)break guards locked shapes in BOTH directions',
     html.includes("const sh=byId(op.id);if(!sh)break;\n        // ADR-0712: locked gate in BOTH directions")],
@@ -1477,7 +1485,7 @@ const checks = [
     html.includes("_cOp({op:'add',shape:s});\n  openTextEditor")],
   // v1.7.43→1.7.986: _zCommit captures origSel; the op commits through the _nug coalescer (ADR-0960)
   ['_zCommit: origSel captured before zorder commit and patched onto history entry',
-    html.includes("_nugPush({op:'zorder',changes});")&&html.includes("Store._recordCommitted(n.op);_keepSel(n.sel)")],
+    html.includes("_nugPush({op:'zorder',changes});")&&html.includes("Store._recordCommitted(o);_keepSel(n.sel)")],
   // v1.7.44→1.7.629: MAX_OP_SHAPES == board ceiling (ADR-0602: 500-cap silently dropped bulk ops >500 shapes)
   ['MAX_OP_SHAPES equals SHARE_MAX_SHAPES (ops may address the whole board)',
     html.includes("const MAX_OP_SHAPES=SHARE_MAX_SHAPES;")],
@@ -1492,7 +1500,7 @@ const checks = [
     html.includes("if(!forward)_selR(op);\n        break;}\n      case 'style':")],
   // v1.7.43: keyboard resize (Alt+Arrow) captures origSel around resize _recordCommitted
   ['keyboard resize (Alt+Arrow): origSel captured before resize commit',
-    html.includes("_nugPush({op:'resize',before,after});")&&html.includes("Store._recordCommitted(n.op);_keepSel(n.sel)")],
+    html.includes("_nugPush({op:'resize',before,after});")&&html.includes("Store._recordCommitted(o);_keepSel(n.sel)")],
   // v1.7.43: drag-resize upd captures origSel (mirrors endSelect/nudgeSelection pattern)
   ['drag-resize: origSel captured before upd _recordCommitted (ptr.resizeOrig path)',
     html.includes("_rcOp({op:'upd',id:rsh.id,before,after});")],
@@ -10820,8 +10828,65 @@ try {
     const ugcLive=state.shapes.find(s=>s.id===UGC.id);
     assert.ok(!ugaLive.groupId,'doUngroup locked: unlocked shape A is ungrouped (no groupId)');
     assert.ok(!ugbLive.groupId,'doUngroup locked: unlocked shape B is ungrouped (no groupId)');
-    assert.ok(ugcLive.groupId,'doUngroup locked: locked shape C keeps its groupId');
-    console.log('  ✓ doUngroup: locked shapes excluded (groupId preserved)');
+    // ADR-0965: C was locked mid-run while its group op was still pending — peers
+    // gate the member write, so the converging outcome restores run-start (ungrouped)
+    // and drops C from the committed op. The doUngroup !_lk skip lands the same state.
+    assert.ok(!ugcLive.groupId,'doUngroup+0965: member locked mid-run restores run-start (ungrouped, peers never saw it grouped)');
+    console.log('  ✓ doUngroup: locked member converges via pending-op restore (ADR-0965)');
+  }
+
+  // ADR-0965: a member locked mid-run while its pending _nug op lives — peers
+  // gate the member write, so the flush restores run-start and drops it.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const NA=Shape.make('rect',{x:100,y:100,w:50,h:50});
+    const NB=Shape.make('rect',{x:200,y:100,w:50,h:50});
+    Store.commit({op:'add',shape:NA});Store.commit({op:'add',shape:NB});
+    state.selection=new Set([NA.id,NB.id]);
+    nudgeSelection(5,0);                 // pending move op; live-mutated x
+    byId(NA.id).locked=true;             // a remote lock lands mid-run
+    _nugEnd();
+    assert.strictEqual(byId(NA.id).x,100,'_nugLock: locked member restores run-start x');
+    assert.strictEqual(byId(NB.id).x,205,'_nugLock: unlocked member keeps the nudge');
+    assert.deepStrictEqual(state.history[state.histIdx].ids,[NB.id],'_nugLock: locked member dropped from committed ids');
+    console.log('  ✓ _nugLock: mid-run lock restores + drops the member (move)');
+  }
+  // Missing member + all-gone flush: dropped from the op; nothing commits
+  // when every member list empties (the _keepSel-on-empty crash path).
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const NA=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    const NB=Shape.make('rect',{x:60,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:NA});Store.commit({op:'add',shape:NB});
+    state.selection=new Set([NA.id,NB.id]);
+    nudgeSelection(5,0);
+    state.shapes=state.shapes.filter(s=>s.id!==NA.id);_invalidateGrid();   // member deleted mid-run
+    _nugEnd();
+    assert.deepStrictEqual(state.history[state.histIdx].ids,[NB.id],'_nugLock: missing member dropped from committed ids');
+    state.selection=new Set([NB.id]);
+    nudgeSelection(3,0);state.shapes=[];_invalidateGrid();
+    const hb=state.history.length;
+    _nugEnd();
+    assert.strictEqual(state.history.length,hb,'_nugLock: all-gone flush commits nothing');
+    console.log('  ✓ _nugLock: missing/all-gone members (no commit, no crash)');
+  }
+  // zorder member locked mid-run — frac restored to the change's `before`.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const NA=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    const NB=Shape.make('rect',{x:60,y:0,w:50,h:50});
+    const NC=Shape.make('rect',{x:120,y:0,w:50,h:50});
+    const ND=Shape.make('rect',{x:180,y:0,w:50,h:50});
+    Store.commit({op:'addMany',shapes:[NA,NB,NC,ND]});
+    const f0=byId(NC.id).frac;
+    state.selection=new Set([NA.id,NC.id]);   // non-adjacent: both members move
+    doBringForward();                    // pending {op:'zorder',changes}
+    byId(NC.id).locked=true;             // a remote lock lands mid-run
+    _nugEnd();
+    assert.strictEqual(byId(NC.id).frac,f0,'_nugLock: locked zorder member restores run-start frac');
+    const ch=state.history[state.histIdx].changes;
+    assert.ok(ch&&!ch.some(c=>c.id===NC.id),'_nugLock: locked member dropped from zorder changes');
+    console.log('  ✓ _nugLock: mid-run lock restores + drops the member (zorder)');
   }
 
   // v1.7.13b: doDuplicate must skip locked shapes (parity with nudgeSelection/doDelete).
@@ -15922,6 +15987,7 @@ pass += 8; // ADR-0960 zorder/style coalescing + commit-head flush pins
 pass += 10; // ADR-0961 held-key coalescing wave-2 + net-zero discard pins
 pass += 7; // ADR-0962 slider before-buffer boundary-flush + prune pins
 pass += 5; // ADR-0963 lifecycle×boundedness audit pins
+pass += 8; // ADR-0965 mid-run lock/missing member partition (3 blocks: 7 asserts + 1 pin)
 pass += 15; // ADR-0964 mid-gesture lock restore/commit-gate pins
 pass += 7; // ADR-0943 second-pointer abort pins
 pass += 8; // ADR-0945 mid-gesture overlay-open cancel pins
