@@ -1,3 +1,11 @@
+## [1.7.974] - 2026-10-01
+
+### Fixed
+- mid-gesture 到達可能なコマンド経路が live ジェスチャをキャンセルしない残穴を閉塞 (ADR-0948): pointer capture は捕獲ポインタのみを再送するため、タッチの第2指がドラッグ中にツールバーボタンへ到達可能 — ①`UI.openShare()` (share モーダル、0945 parity)、②`UI.openCtxMenu()` (btnExportMenu 経路、contextmenu イベント側は既に取消)、③`Store.undo()/redo()` (btnUndo/btnRedo 経路、⌘Z キー側は 0574 で取消) の4サイトに `if(ptr.down)_cancelPointerGesture()` を関数側へ内蔵。オーバーレイ下での不可視 commit と stale before-snapshot での undo を解消。コメント尾3件+ADR-0519 コメント圧縮で帳尻
+
+### Tests
+- mid-gesture 取消の実経路ピン 8件: rect ジェスチャ中に `UI.openShare()`→取消+dialog 開放、`UI.openExportMenu()`→取消+menu 開放、`Store.undo()`→取消+undo 適用
+
 ## [1.7.973] - 2026-10-01
 
 ### Documentation

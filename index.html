@@ -852,7 +852,7 @@ const _st=()=>state.style;
 const _df=()=>state.draft;
 const _wc=()=>state.wclock,_wM=x=>Object.assign(Object.create(null),x),_oe=Object.entries;   // ADR-0788
 const _wD=(id,c)=>_wc()[id]=_wM({_del:c}),_wR=(id,w)=>_wc()[id]=_wM(clone(w)),_wTb=(rw,c,inN)=>{for(const[id,w]of _oe(rw||{}))if(w._del&&(clockNewer(w._del,c)||!inN.has(id)))_wD(id,clockNewer(w._del,c)?w._del:c)};   // ADR-0789
-const _bT=(id,c)=>{const w=_wc()[id]||(_wc()[id]=_wM());if(!w._born||clockNewer(c,w._born))w._born=c},_bN=(id,c)=>{const w=_wc()[id];return!!(w&&w._born&&clockNewer(w._born,c))};   // ADR-0926: existence clock — a kill op loses to any newer (re)introduction
+const _bT=(id,c)=>{const w=_wc()[id]||(_wc()[id]=_wM());if(!w._born||clockNewer(c,w._born))w._born=c},_bN=(id,c)=>{const w=_wc()[id];return!!(w&&w._born&&clockNewer(w._born,c))};   // ADR-0926
 const _wAdopt=(id,rw)=>{   // ADR-0927: adopt a snapshot-carried wclock — the sender's real clocks
   if(!rw||!_iO(rw))return;
   const ks=_ok(rw);if(_ln(ks)>64)return;
@@ -860,13 +860,13 @@ const _wAdopt=(id,rw)=>{   // ADR-0927: adopt a snapshot-carried wclock — the 
   for(const k of ks){if(k==='id'||k==='type'||k==='pg'||k==='frac'||k==='groupId'||k==='__proto__'||k==='constructor'||k==='prototype'||(k[0]==='_'&&k!=='_born'&&k!=='_del'))continue;
     const rc=rw[k];if(!validClock(rc))continue;if(!w[k]||clockNewer(rc,w[k]))w[k]=clone(rc)}
 };
-const _tAlive=(id,rw)=>{const w=_wc()[id];return!!(w&&w._del&&!(w._born&&clockNewer(w._born,w._del))&&!(rw&&rw._born&&validClock(rw._born)&&clockNewer(rw._born,w._del)))};   // ADR-0927: a live tomb — no newer birth supersedes it
+const _tAlive=(id,rw)=>{const w=_wc()[id];return!!(w&&w._del&&!(w._born&&clockNewer(w._born,w._del))&&!(rw&&rw._born&&validClock(rw._born)&&clockNewer(rw._born,w._del)))};   // ADR-0927
 const MAX_TS_SKEW=3e5,_tsOK=t=>_iN(t)&&_fin(t)&&t<=_now()+MAX_TS_SKEW,_pgs=()=>state.pages,_xyOK=v=>_fin(v)&&_abs(v)<=1e7,_xC=v=>_max(-1e7,_min(1e7,v)),_vpOK=v=>v&&_xyOK(+v.x)&&_xyOK(+v.y)&&_fin(+v.zoom)&&+v.zoom>0;   // ADR-0791/0792/0793/0795/0798
 const _tl=()=>state.tool;
 const _dn=()=>state.docName;
 let _nameTs=0,_namePeer='';
 const _bName=()=>{const ts=nowTs();_nameTs=ts;_namePeer=_pi();Net._bcast(_mk('name',{name:state.docName,ts}))};   // ADR-0696/0938
-const _nameWin=(ts,peer)=>clockNewer({ts,peer,seq:0},{ts:_nameTs,peer:_namePeer});   // ADR-0699: (ts,writer) total order — equal-ts renames converge
+const _nameWin=(ts,peer)=>clockNewer({ts,peer,seq:0},{ts:_nameTs,peer:_namePeer});   // ADR-0699
 const _setDocName=n=>{state.docName=n;const d=_g('docName');if(d&&d!==document.activeElement)d.value=_dn();_syncDocTitle();};   // ADR-0609
 const _pr=()=>state.peers;
 const _hi=()=>state.history;
@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.973';   // ADR-0947
+const V='1.7.974';   // ADR-0948
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1580,6 +1580,7 @@ const Store={
     if(op.clock.peer===_pi())Net.broadcast(op);
   },
   undo(){
+    if(ptr.down)_cancelPointerGesture();   // ADR-0948
     if(_hx()<0)return false;
     const op=_hi()[_hx()];
     // ADR-0717: an undo is a NEW competing write — arbitrating on the original
@@ -1595,6 +1596,7 @@ const Store={
     return true;
   },
   redo(){
+    if(ptr.down)_cancelPointerGesture();   // ADR-0948
     if(_hx()>=_hi().length-1)return false;
     state.histIdx++;
     const op=_hi()[_hx()];
@@ -4337,9 +4339,7 @@ _on(canvas,_PM,e=>{
   ptr.x=sp.x;ptr.y=sp.y;ptr.wx=wp.x;ptr.wy=wp.y;
   _edgePanKick();
 });
-// ADR-0519: edge auto-pan — a held pointer within 24px of an edge pans the
-// viewport so the drag can reach beyond the visible region (Figma/draw.io).
-// rAF-driven (no pointermove while stationary); drags re-derive wp per move.
+// ADR-0519: edge auto-pan — held pointer near an edge rAF-pans the viewport.
 let _edgeRaf=0;
 function _edgePanTick(){
   _edgeRaf=0;
@@ -8996,6 +8996,7 @@ const UI={
     else this._restoreFocus();
   },
   openCtxMenu(x,y,customItems){
+    if(ptr.down)_cancelPointerGesture();   // ADR-0948
     const m=_g('ctx');
     const _cr=_cbr(),_wp=_s2({x:x-_cr.left,y:y-_cr.top});
     m._wx=_wp.x;m._wy=_wp.y;   // ADR-0103: paste-at-cursor anchor
@@ -9206,6 +9207,7 @@ const UI={
     }
   },
   openShare(){
+    if(ptr.down)_cancelPointerGesture();   // ADR-0948
     const m=_g('share');
     m.dataset.open='true';
     // ADR-0015: encrypted by default where crypt

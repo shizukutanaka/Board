@@ -14681,6 +14681,37 @@ try {
     assert.strictEqual(state.shapes.length,0,'nothing commits under the help overlay');
     fire('pointerup',10,10);
     _els.help.dataset.open='false';   // cleanup for later tests
+    // ADR-0948: button/reachable paths cancel mid-gesture too — a second finger
+    // can tap a toolbar control while the first still holds the drag.
+    reset();
+    state.snap=false;
+    state.tool='rect';
+    fire('pointerdown',10,10);
+    fire('pointermove',60,50,{altKey:true});
+    UI.openShare();
+    assert.ok(!ptr.down,'share-open mid-drag cancels the live gesture');
+    assert.strictEqual(_els.share.dataset.open,'true','the share dialog did open');
+    assert.strictEqual(state.shapes.length,0,'nothing commits under the share dialog');
+    fire('pointerup',10,10);
+    _els.share.dataset.open='false';
+    reset();
+    state.tool='rect';
+    fire('pointerdown',10,10);
+    fire('pointermove',60,50,{altKey:true});
+    UI.openExportMenu(10,10);
+    assert.ok(!ptr.down,'export-menu open mid-drag cancels the live gesture');
+    assert.strictEqual(_els.ctx.dataset.open,'true','the export menu did open');
+    fire('pointerup',10,10);
+    _els.ctx.dataset.open='false';
+    reset();
+    state.tool='rect';
+    const US=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    Store.commit({op:'add',shape:US});
+    fire('pointerdown',10,10);
+    fire('pointermove',60,50,{altKey:true});
+    Store.undo();
+    assert.ok(!ptr.down,'undo mid-drag cancels the live gesture');
+    assert.strictEqual(state.shapes.length,0,'the undo still applies');
     state.snap=true;
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
@@ -15425,6 +15456,7 @@ pass += 4; // ADR-0946 negative-extent intake pins
 pass += 3; // ADR-0947 labelPos domain-clamp pins
 pass += 7; // ADR-0943 second-pointer abort pins
 pass += 8; // ADR-0945 mid-gesture overlay-open cancel pins
+pass += 8; // ADR-0948 mid-gesture button-path cancel pins
 pass += 6; // ADR-0942 mid-gesture tool-key pins
 pass += 4; // ADR-0936 absolute-writer pins
   pass += 4; // ADR-0935 producer-bound pins
