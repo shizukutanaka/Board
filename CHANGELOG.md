@@ -1,3 +1,9 @@
+## [1.7.987] - 2026-10-01
+
+### Fixed
+- held-key 共合体 第二波 (ADR-0961): `,`/`.`+⇧R 回転・⇧H/⇧V 反転・⌘⇧L ロック・⌘B/⌘I/⌘U/⌘⇧X テキストフラグ・⇧X スワップ・⌘G グループの長押しが押下毎に1 op を即時 commit していた残存経路を `_nug` へ接続 — セッションキーへ `dir` 接尾辞を追加して rotate/flip/lock の異種マージを防止、style/align/else マージに **net-zero 破棄** (lock→unlock や swap×2 は op 0 件で着地)、group マージは「最初の before + 最新 gid」。併せて `applyStyleToSelection` に no-change フィルタを追加し、数字キー長押し・同一 swatch 再クリックが op を一切産まない産出側閉塞に
+- テスト追随: `state.history` 直読3サイトへ `_nugEnd()`、doLock undo 対称性テストは各押下を独立 op 化 (仕様変更への正当な追随)
+
 ## [1.7.986] - 2026-10-01
 
 ### Fixed

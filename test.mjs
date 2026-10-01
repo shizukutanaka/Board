@@ -960,7 +960,7 @@ const checks = [
   ['excalidraw import restores bindings to s.a/s.b (ADR-0223)', html.includes('_pu(_excBnd,[s,e])')&&html.includes('idOf.get(sb.elementId)')],
   ['drawio import keeps line-vs-arrow/curved/jump/start-head (ADR-0224)', html.includes("sty.endArrow==='none'")&&html.includes('s.hop=1')],
   ['drawio import note→sticky / swimlane→frame (ADR-0226)', html.includes("sty.shape==='note'){s=_smk('sticky'")&&html.includes("sty.shape==='swimlane')s=_smk('frame'")],
-  ['storage quota pressure warns proactively via estimate() (ADR-0227)', html.includes('navigator.storage.estimate')&&html.includes('this._quotaWarn()')&&html.includes("T('quotaWarn')")],
+  ['storage quota pressure warns proactively via estimate() (ADR-0227)', html.includes('nav.storage.estimate')&&html.includes('this._quotaWarn()')&&html.includes("T('quotaWarn')")],
   ['drawio import maps align + fontStyle bitmask (ADR-0228)', html.includes("sty.align==='center'||sty.align==='right'")&&html.includes('_fs&4)s.under=1')&&html.includes("'align='+s.align")&&html.includes("fontStyle='+_fs")],
   ['excalidraw import restores groupIds → groupId (ADR-0229)', html.includes("e.groupIds[0]")&&html.includes('s.groupId=e.groupIds')],
   ['excalidraw import maps fillStyle/roundness/align/arrowheads (ADR-0230)', html.includes("e.fillStyle==='hachure'")&&html.includes("e.strokeSharpness==='round')o.r=8")&&html.includes("e.endArrowhead===null)s.head='none'")&&html.includes("style==='none')return")],
@@ -1446,7 +1446,7 @@ const checks = [
     html.includes("if(sh&&!sh.locked)delete sh.groupId}")],
   // v1.7.37: doGroup/_apply group backward must carry and restore origSel
   ['doGroup: origSel patched onto history entry after _recordCommitted',
-    html.includes("_rcOp({op:'group',ids,gid,before});")],
+    html.includes("_nugPush({op:'group',ids,gid,before});")],
   ['_apply group backward: if(op.origSel) restores selection',
     html.includes("_selR(op);}\n        break;}\n      case 'ungroup':")],
   // v1.7.37: doUngroup/_apply ungroup backward must carry and restore origSel
@@ -2358,6 +2358,46 @@ try {
     Store.commit({op:'upd',id:a.id,before:{x:0},after:{x:1}});
     assert.deepStrictEqual(state.history.slice(-2).map(o=>o.op),['zorder','upd'],'Store.commit flushes the pending zorder first');
     console.log('  ✓ ADR-0960: [ ]/⌘⇧,/. coalesce + Store.commit flush ordering (8 asserts)');
+  }
+  // ADR-0961: the same held-key flood ran through six more paths — rotate (,/.+⇧R),
+  // flip (⇧H/⇧V), lock (⌘⇧L), group (⌘G), text flags (⌘B/⌘I/⌘U/⌘⇧X), swap (⇧X).
+  // The session key carries the op's dir so rotate/flip/lock never cross-merge,
+  // toggles that net out commit NOTHING, and applyStyleToSelection filters
+  // no-change shapes so held digit keys emit no noise ops at all.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const r=Shape.make('rect',{x:0,y:0,w:20,h:20});
+    Store.commit({op:'add',shape:r});state.history.length=0;state.histIdx=-1;
+    state.selection=new Set([r.id]);
+    doRotate(15);doRotate(15);doRotate(15);doRotate(90);   // held ,/.+⇧R run — same dir session
+    _nugEnd();
+    const al=state.history.filter(o=>o.op==='align');
+    assert.strictEqual(al.length,1,'ADR-0961: held rotate presses fold into ONE align op');
+    assert.strictEqual(al[0].dir,'rotate','rotate session keyed on dir');
+    state.selection=new Set([r.id]);
+    doFlip('h');_nugEnd();
+    assert.strictEqual(state.history.filter(o=>o.op==='align').length,2,'ADR-0961: flip does not merge into the rotate op');
+    state.selection=new Set([r.id]);
+    doLock();doLock();_nugEnd();
+    assert.strictEqual(state.history.filter(o=>o.op==='align').length,2,'ADR-0961: a lock→unlock run nets out — no op commits');
+    assert.strictEqual(byId(r.id).locked,null,'live state still toggled twice');
+    const g1=Shape.make('rect',{x:60,y:0,w:20,h:20}),g2=Shape.make('rect',{x:90,y:0,w:20,h:20});
+    Store.commit({op:'addMany',shapes:[g1,g2]});state.history.length=0;state.histIdx=-1;
+    state.selection=new Set([g1.id,g2.id]);
+    doGroup();doGroup();_nugEnd();
+    const go=state.history.filter(o=>o.op==='group');
+    assert.strictEqual(go.length,1,'ADR-0961: held ⌘G folds into ONE group op');
+    assert.strictEqual(go[0].gid,byId(g1.id).groupId,'merged gid matches the live one');
+    assert.ok(!go[0].before.find(b=>b.id===g1.id).groupId,'before keeps the first press state');
+    state.selection=new Set([r.id]);
+    applyStyleToSelection({opacity:.5});applyStyleToSelection({opacity:.5});
+    assert.strictEqual(state.history.filter(o=>o.op==='style').length,1,'ADR-0961: repeated digit opacity emits no second op');
+    const T=Shape.make('text',{x:0,y:60,w:100,h:20,text:'x'});
+    Store.commit({op:'add',shape:T});state.history.length=0;state.histIdx=-1;
+    state.selection=new Set([T.id]);
+    toggleTextFlag('bold');toggleTextFlag('bold');_nugEnd();
+    assert.strictEqual(state.history.filter(o=>o.op==='style').length,0,'ADR-0961: ⌘B on+off nets out — no style op commits');
+    console.log('  ✓ ADR-0961: held-key coalescing wave-2 + net-zero discard (10 asserts)');
   }
   // ADR-0625: wc/origSel/moved are undo-domain — _slimOp strips them from the
   // wire copy while preserving the fields peers actually consume.
@@ -6139,6 +6179,7 @@ try {
     state.selection=new Set([ln.id]);
     const hlen=state.history.length;
     doRotate(90);   // bbox {−1,−1,102,2} → centre (50,0): (x,y)→(50−y, x−50)
+    _nugEnd();   // ADR-0961: coalesced align op commits on flush
     assert.strictEqual(state.history.length,hlen+1,'doRotate commits an align op for a line');
     const rl=state.shapes.find(s=>s.id===ln.id);
     assert.ok(Math.abs(rl.x1-50)<1e-6&&Math.abs(rl.y1-(-50))<1e-6&&Math.abs(rl.x2-50)<1e-6&&Math.abs(rl.y2-50)<1e-6,
@@ -9577,9 +9618,11 @@ try {
     // lock
     doLock();
     assert.ok(live().locked===true,'lock: doLock() sets locked=true');
+    _nugEnd();   // ADR-0961: make this press its own op (a held key coalesces)
     // toggle → unlock
     doLock();
     assert.ok(live().locked===null,'lock: second doLock() clears locked to null');
+    _nugEnd();   // ADR-0961
     // undo unlock → locked again
     Store.undo();
     assert.ok(live().locked===true,'lock: undo of unlock restores locked=true');
@@ -11725,7 +11768,9 @@ try {
     state.shapes.push(lb);
     state.selection=new Set([lb.id]);
     doLock();   // lock: locked=true
+    _nugEnd();   // ADR-0961: each press is its own op when not coalesced
     doLock();   // unlock: locked=null
+    _nugEnd();   // ADR-0961
     Store.undo(); // undo unlock → re-locks shape
     assert.strictEqual(state.shapes.find(s=>s.id===lb.id).locked,true,
       'v1.7.41b setup: undo of unlock re-locks shape');
@@ -15729,6 +15774,7 @@ pass += 4; // ADR-0957 held-key nudge coalescing pins
 pass += 1; // ADR-0958 commit-order flush pin
 pass += 9; // ADR-0959 tab-hide/close nudge flush pins
 pass += 8; // ADR-0960 zorder/style coalescing + commit-head flush pins
+pass += 10; // ADR-0961 held-key coalescing wave-2 + net-zero discard pins
 pass += 7; // ADR-0943 second-pointer abort pins
 pass += 8; // ADR-0945 mid-gesture overlay-open cancel pins
 pass += 8; // ADR-0948 mid-gesture button-path cancel pins
