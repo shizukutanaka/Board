@@ -1,3 +1,8 @@
+## [1.7.952] - 2026-10-01
+
+### Fixed
+- 存在レベルの LWW 非対称を閉塞 (ADR-0926): kill 経路 (`del`/`clear`/`replace`/`pageDel`) は `{_del}` 墓標を無条件で刻み効果を適用していたため、因果順序に負けた del が「新しい再導入の後」に到着すると受信側だけ図形が消え送信側と発散 — 到着順が存在を決めていた。全導入サイトが `wclock[id]._born` を同一 `clockNewer` 全順序で刻印するようにし、kill 経路は `_bN` で born>kill を検査 — 負けた del は墓標も刻まず削除もしない (OR-set add-wins)。`nowTs` は `max(wall,_lastTs+1)` の strict HLC 化 — 観測したリモート書込みの後に発行したローカル op は必ずそれを上回る (equal-ts peer tiebreak で因果逆転していた ⌘⌥G 二重フレームの根因も解消)。two-world テストに teardown を追加 (world B の deferred `_snapT`/残存 `_send` wire が単一世界テストの `await` 中に snapshot を流し込む flake を解消)。`pass += 1895` (+7)
+
 ## [1.7.951] - 2026-10-01
 
 ### Docs

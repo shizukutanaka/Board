@@ -277,7 +277,7 @@ const checks = [
   ["_slimOp strips undo-only fields from wire ops (ADR-0625)", html.includes("const{origSel:_o2,moved:_m2,...rest}=op;") && html.includes("const{wc:_wc1,origSel:_o1,...r}=op;")],
   ["undo restamps op.clock fresh before the backward apply (ADR-0717)", html.includes("const _ut=nowTs();op.clock={peer:_pi(),seq:++state.seq,ts:_ut};")],
   ["undo-wire carries before for style/resize/align (ADR-0717)", html.includes("before:op.after,after:op.before}")],
-  ["'clear' rides the wire as empty 'replace' + sender marker parity (ADR-0626)", html.includes("if(op.op==='clear')return{op:'replace',after:[],afterWc:{},clock:op.clock};") && html.includes("if(forward){if(op.clock)state._lastRep=op.clock;const wc0=state.wclock||{},dead=_sh().map(s=>s.id);_sh().length=0")],
+  ["'clear' rides the wire as empty 'replace' + sender marker parity (ADR-0626)", html.includes("if(op.op==='clear')return{op:'replace',after:[],afterWc:{},clock:op.clock};") && html.includes("if(forward){if(op.clock)state._lastRep=op.clock;const wc0=state.wclock||{},dead=[],keep=[]")],
   ["contextlost purges GPU caches on restore (ADR-0627)", html.includes("_on(canvas,'contextlost',_pd)") && html.includes("_on(canvas,'contextrestored',_ctxUp)") && html.includes("_penCache.clear();_penCachePx=0;_inkD=null;Minimap.invalidateCache()")],
   ["img blob resolves evicted pending stragglers (ADR-0629)", html.includes("for(const s of _sh())if(s.img===msg.key){delete s.img;s.dataUrl=data;this._imgPending.delete(s.id)}")],
   ["resize handlers debounced (ADR-0631)", html.includes("_on(window,'resize',_resizeSoon)") && html.includes("_on(visualViewport,'resize',_resizeSoon)") && html.includes("_on(screen.orientation,_CH,_resizeSoon)")],
@@ -1966,10 +1966,10 @@ try {
   // ADR-0613: remote 'replace' converges a peer's wholesale import —
   // shapes absent from `after` are removed (not merged), wclock ← afterWc.
   {
-    state.shapes.length = 0;_invalidateGrid();state.wclock={};
+    state.shapes.length = 0;_invalidateGrid();state.wclock={};state._lastRep=null;state.seenOps=new Set();
     Store.commit({op:'add', shape: Shape.make('rect',{x:0,y:0,w:10,h:10})});
     const kept = Shape.make('ellipse',{x:1,y:1,w:5,h:5});
-    Store.applyRemote({op:'replace',after:[kept],afterWc:{[kept.id]:{x:{peer:'p',seq:1,ts:1}}},clock:{peer:'peer-rep',seq:2,ts:Date.now()}});
+    Store.applyRemote({op:'replace',after:[kept],afterWc:{[kept.id]:{x:{peer:'p',seq:1,ts:1}}},clock:{peer:'peer-rep',seq:2,ts:state._lastTs+1}});
     assert.strictEqual(state.shapes.length,1,'remote replace drops absent shapes');
     assert.strictEqual(byId(kept.id).type,'ellipse','after-board applied');
     assert.ok(state.wclock[kept.id]&&state.wclock[kept.id].x,'afterWc adopted');
@@ -5186,7 +5186,7 @@ try {
         const v2=Shape.make('rect',{x:0,y:0,w:10,h:10});v2.pg='pB';
         const c2=Shape.make('line',{x1:0,y1:0,x2:50,y2:50});c2.pg='pA';c2.a=v2.id;c2.aF=0.5;
         state.shapes=[v2,c2];
-        Store.commit({op:'pageDel',id:'pB'});state._lastTs=0;
+        Store.commit({op:'pageDel',id:'pB'});
         assert.ok(!byId(v2.id)&&c2.a===null,'local del cleared binding (ADR-0707)');
         Store.undo();
         assert.ok(_pgById('pB')&&byId(v2.id)&&c2.a===v2.id,'undo re-adds member + re-binds connector (ADR-0707)');
@@ -5845,7 +5845,7 @@ try {
       Date.now=()=>990;
       Store._recordCommitted({op:'upd',id:nx.id,before:{stroke:'red'},after:{stroke:'blue'}});
       const c2=state.history[state.history.length-1].clock;
-      assert.strictEqual(c2.ts,1000,'nowTs clamps regressed ts up to the prior floor (not 990)');
+      assert.strictEqual(c2.ts,1002,'nowTs clamps regressed ts to floor+1 — strictly newer than the prior clocks (not 990)');
       assert.ok(c2.seq>c1.seq,'second edit has the higher seq');
       assert.strictEqual(clockNewer(c2,c1),true,"peer's newer edit wins despite backwards wall clock");
     }finally{Date.now=realNow}
@@ -5934,7 +5934,7 @@ try {
     const rd=Shape.make('rect',{x:0,y:0,w:10,h:10});
     Store.commit({op:'add',shape:rd});
     assert.strictEqual(state.shapes.length,1,'remote del setup: shape present');
-    Store.applyRemote({op:'del',shapes:[JSON.parse(JSON.stringify(rd))],clock:{peer:'remoteD',seq:1,ts:1}});
+    Store.applyRemote({op:'del',shapes:[JSON.parse(JSON.stringify(rd))],clock:{peer:'remoteD',seq:1,ts:state._lastTs+1}});
     assert.strictEqual(state.shapes.length,0,'remote del op: shape removed');
     console.log('  ✓ Store.applyRemote del op removes the targeted shape');
   }
@@ -6420,7 +6420,7 @@ try {
     );
     const cp = o => JSON.parse(JSON.stringify(o));
     A.state.peerId='peerA'; B.state.peerId='peerB';
-    const reset = W => { W.state.shapes.length=0;_invalidateGrid(); W.state.history.length=0; W.state.histIdx=-1; W.state.seq=0; W.state.seenOps=new Set(); W.state.wclock={}; };
+    const reset = W => { W.state.shapes.length=0;_invalidateGrid(); W.state.history.length=0; W.state.histIdx=-1; W.state.seq=0; W.state.seenOps=new Set(); W.state.wclock={}; W.state._lastRep=null; };
     reset(A); reset(B);
     // wire each peer's outbound to the other's _onRecv (deep-copied, like a real wire)
     A.Net.broadcast = op => B.Net._onRecv({k:'op',op:cp(op)});
@@ -7204,11 +7204,11 @@ try {
     assert.strictEqual(A.state.shapes.find(s=>s.id==='mv2').x, 150, 'ADR-0733: racing upd lands at the undoer too');
     A.Store.undo();
     const aS2=A.state.shapes.find(s=>s.id==='mv2');
-    assert.strictEqual(aS2.x, 150, 'ADR-0733: arbitrated axis keeps the remote-winning value (was: -dx split it)');
+    assert.strictEqual(aS2.x, 140, 'ADR-0733/0926: undo observed the remote write first → strictly-newer undo clock wins the axis back (HLC +1)');
     assert.strictEqual(aS2.y, 0, 'ADR-0733: unarbitrated axis still un-moves');
     bfAB4.splice(0).forEach(m=>B.Net._onRecv(m));
     const bS2=B.state.shapes.find(s=>s.id==='mv2');
-    assert.strictEqual(bS2.x, 150, 'ADR-0733: peer keeps the arbitrated x');
+    assert.strictEqual(bS2.x, 140, 'ADR-0926: peer applies the same arbitration — converged on the undo');
     assert.strictEqual(bS2.y, 0, 'ADR-0733: peer un-moves y — converged');
     state._lastTs=0; B.state._lastTs=0;   // the far-future race raised both HLC floors — restore them or later local commits get poisoned clocks (A IS api — shares `state`)
     console.log('  ✓ ADR-0733: delta backward arbitrates per axis via _lwwSkip');
@@ -7266,6 +7266,28 @@ try {
     assert.ok(!B.state.wclock.pm1._del,'ADR-0735: winning pageAdd member clears the tomb like add (was: inconsistent)');
     state._lastTs=0; B.state._lastTs=0;
     console.log('  ✓ ADR-0735: snapshot-adopt tomb filter + del-first ordering + pageAdd tomb-clear parity');
+
+    // ADR-0926: kill paths stamped only {_del} unconditionally, so a del that
+    // LOST the causal ordering still applied when it arrived after a newer
+    // (re)introduction — the shape vanished on the receiving peer while the
+    // sender kept it (arrival order decided existence → divergence). Birth
+    // sites now stamp w._born under the same clockNewer total order and kill
+    // paths gate on _bN: a del loses to a newer introduction on every peer.
+    reset(A); reset(B);
+    const aw={id:'aw1',type:'rect',x:0,y:0,w:10,h:10,z:1};
+    B.Net._onRecv({k:'op',op:{op:'add',shape:cp(aw),clock:{peer:'peerX',seq:1,ts:Date.now()+1e3}}});
+    assert.ok(!!B.state.shapes.find(s=>s.id==='aw1'),'ADR-0926: remote add lands');
+    assert.ok(B.state.wclock.aw1&&B.state.wclock.aw1._born,'ADR-0926: a winning add stamps the born clock');
+    B.Net._onRecv({k:'op',op:{op:'del',shapes:[cp(aw)],clock:{peer:'peerX',seq:2,ts:1}}});
+    assert.ok(!!B.state.shapes.find(s=>s.id==='aw1'),'ADR-0926: stale del loses to the newer born (was: vanished on one peer)');
+    assert.ok(!B.state.wclock.aw1._del,'ADR-0926: a losing del stamps no tomb');
+    B.Net._onRecv({k:'op',op:{op:'del',shapes:[cp(aw)],clock:{peer:'peerX',seq:3,ts:Date.now()+1e3}}});
+    assert.ok(!B.state.shapes.find(s=>s.id==='aw1'),'ADR-0926: a newer del wins — shape dies');
+    assert.ok(B.state.wclock.aw1._del,'ADR-0926: winning del tombstones');
+    B.Net._onRecv({k:'op',op:{op:'add',shape:cp(aw),clock:{peer:'peerX',seq:4,ts:1}}});
+    assert.ok(!B.state.shapes.find(s=>s.id==='aw1'),'ADR-0926: stale re-add still loses to the tomb (symmetric order)');
+    state._lastTs=0; B.state._lastTs=0;
+    console.log('  ✓ ADR-0926: existence clock — a del loses to a newer (re)introduction on every peer');
 
     // ADR-0736: clear/'replace' wiped wclock WHOLESALE — including tombstones —
     // so a stale in-flight 'add' could resurrect a shape the swap just removed,
@@ -7822,6 +7844,11 @@ try {
     A._syncTextFinalize(tA2, '', true);   // dismissed empty → removal broadcast
     assert.ok(!B.state.shapes.some(s=>s.id===tA2.id), 'text sync: B drops the blank shape after empty-dismiss (no lingering hitbox)');
     console.log('  ✓ two-peer: new text/sticky finalize syncs typed content + empty-dismiss removal (§collab)');
+    // two-world teardown (determinism): B is a real second eval — its deferred
+    // _snapT throttle and lingering _send/broadcast wires can still deliver a
+    // snapshot into api long after the collab blocks end (a mid-sleep _pgAdopt
+    // cancels a live gesture — the ADR-0006 long-press flake). B goes inert here.
+    B.Net._send=B.Net.broadcast=()=>{};clearTimeout(B.Net._snapT);B.Net._snapT=0;
 
     // ---- ADR-0015: share-link E2E encryption (FT-21) --------------------------------
     // location/history are Function params (fakeWin.location/history) — previously they
@@ -9534,7 +9561,7 @@ try {
     Store.commit({op:'add',shape:A});Store.commit({op:'add',shape:C});
     const liveC=()=>state.shapes.find(s=>s.id===C.id);
     // Remote peer deletes A but does NOT include C in connClears (C is local-only to us).
-    Store.applyRemote({op:'del',shapes:[JSON.parse(JSON.stringify(A))],clock:{peer:'remote',seq:1,ts:1}});
+    Store.applyRemote({op:'del',shapes:[JSON.parse(JSON.stringify(A))],clock:{peer:'remote',seq:1,ts:state._lastTs+1}});
     assert.ok(liveC(),'remote del: receiver-local connector survives');
     assert.strictEqual(liveC().a,null,'remote del: receiver-local connector binding cleared');
     assert.notStrictEqual(liveC().x1,140,'remote del: connector x1 resolved to bound-shape edge (not stale draw-time)');
@@ -9548,7 +9575,7 @@ try {
     C2.a=A2.id;
     Store.commit({op:'add',shape:A2});Store.commit({op:'add',shape:C2});
     Store.applyRemote({op:'del',shapes:[JSON.parse(JSON.stringify(A2))],
-      connClears:[{id:C2.id,before:{a:A2.id,x1:5,y1:5},after:{a:null,x1:20,y1:20}}],clock:{peer:'remote',seq:2,ts:1}});
+      connClears:[{id:C2.id,before:{a:A2.id,x1:5,y1:5},after:{a:null,x1:20,y1:20}}],clock:{peer:'remote',seq:2,ts:state._lastTs+1}});
     const liveC2=state.shapes.find(s=>s.id===C2.id);
     assert.strictEqual(liveC2.a,null,'remote del w/ connClears: shared connector still severed');
     assert.strictEqual(liveC2.x1,20,'remote del w/ connClears: sender-provided endpoint applied (not double-clobbered)');
@@ -12817,7 +12844,7 @@ try {
   // v1.7.571: cover previously-untested exports — ctx ops, frame/convert helpers,
   // key/geom utilities. Behaviour-level: set state, call, assert op+mutation.
   {
-    const reset=()=>{state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();};
+    const reset=()=>{state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state._lastRep=null;};
     // _imgNextKey: image-key rotation used by _imgAttach for duplicate dataUrls
     assert.strictEqual(_imgNextKey('abc'),'abc:1','_imgNextKey seeds :1');
     assert.strictEqual(_imgNextKey('abc:1'),'abc:2','_imgNextKey bumps suffix');
@@ -13637,6 +13664,7 @@ try {
     state.selection=new Set([state.shapes[0].id]);
     const wf0=state.shapes.length;
     fireKey('g',{metaKey:true,altKey:true,code:'KeyG'});
+
     assert.ok(state.shapes.length===wf0+1&&state.shapes[state.shapes.length-1].type==='frame','⌘⌥G wraps the selection in a frame');
     // clipboard keys: ⌘C fills state.clipboard, ⌘⇧V pastes in place at 0-offset,
     // ⌘X fills the clipboard AND deletes; locked-only copies are a no-op
@@ -14497,10 +14525,11 @@ try {
       assert.strictEqual(_pgById('pgU').name,'Orig','undo restores the pre-rename name (ADR-0702)');
       Store.redo();
       assert.strictEqual(_pgById('pgU').name,'Renamed','redo re-applies the rename');
-      // a newer concurrent remote write is NOT clobbered by the undo
+      // ADR-0926: an observed remote write is still beaten by the undo issued after
+      // it (the undo clock is strictly newer under the strict HLC) — converged 'Orig'.
       Store.applyRemote({op:'pageName',id:'pgU',after:'Newer',clock:{peer:'zz',seq:1,ts:Date.now()+1e3}});
       Store.undo();
-      assert.strictEqual(_pgById('pgU').name,'Newer','undo skips when a newer write stands (ADR-0702)');
+      assert.strictEqual(_pgById('pgU').name,'Orig','ADR-0926: undo issued after observing the remote write outranks it — both peers converge on Orig (strict HLC)');
       state._lastTs=0;
       state.history=[];state.histIdx=-1;
       console.log('  ✓ pageName undo restores the name without clobbering newer writes (ADR-0702, 4 asserts)');
@@ -14653,8 +14682,8 @@ try {
     assert.ok(byId(zX.id).frac==='a1','staler remote zorder loses to the recorded local write');
     Store.applyRemote({op:'zorder',changes:[{id:zX.id,before:'a1',after:'a3'}],clock:{peer:'zz',seq:2,ts:Date.now()+1e3}});
     assert.ok(byId(zX.id).frac==='a3','newer remote zorder wins — both peers converge to the same order');
-    Store.undo();   // undoing our older local write must not regress the converged remote win
-    assert.ok(byId(zX.id).frac==='a3','_lwwSkip blocks undo from clobbering a converged remote frac write');
+    Store.undo();   // ADR-0926: undo issued after observing the remote write outranks it (strict HLC) — converged 'a0'
+    assert.ok(byId(zX.id).frac==='a0','_lwwSkip: a post-observation undo outranks the converged remote frac write (ADR-0926)');
 
     // ADR-0654: density-adaptive grid cell — dense boards subdivide, sparse merge
     {const dense=[];for(let i=0;i<200;i++)dense.push(Shape.make('rect',{x:(i%10)*8,y:(i/10|0)*8,w:4,h:4}));
@@ -15086,7 +15115,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1888; // prev 1886 + 2 ADR-0923 group/ungroup backward locked-gate pins
+  pass += 1895; // prev 1886 + 2 ADR-0923 group/ungroup backward locked-gate pins + 7 ADR-0926 existence-clock pins
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
