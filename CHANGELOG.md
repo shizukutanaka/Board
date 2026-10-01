@@ -1,3 +1,8 @@
+## [1.7.936] - 2026-10-01
+
+### Docs
+- ライフサイクル再アーム + クリップボード経路監査完走 (ADR-0910): wake lock は `_active` gated で visible 復帰時再取得、copyText は secure-context/fallback/rejection 全網羅、copyPNG は ClipboardItem 検出+toast、error surface (onerror/unhandledrejection) は設計上意図的に未設置を記録。実害なし
+
 ## [1.7.935] - 2026-10-01
 
 ### Fixed
