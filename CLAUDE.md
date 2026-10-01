@@ -1021,6 +1021,7 @@ Board/
 │   └── ADR-0970-reborn-arrival-order.md  # `_rb` の clock 比較を skew-免疫の到着順マーキング (`ptr.reborn`) へ置換 — 前進 skew の誤スキップ発散・後進 skew の clobber を閉塞
 │   └── ADR-0971-pending-nug-remote-write.md  # pending `_nug` op の復元ドメインが remote 書込を巻き戻す発散 — `_gTouch` を nug 復元域へ拡張、remote 再誕生は `_nug.reborn` で復元スキップ
 │   └── ADR-0972-seenops-dedup-convergence-audit.md  # seenOps dedup×収束監査完走 — 3チョークポイント (commit/applyRemote/_recordCommitted)・eviction 後再適用・全 intake の clock キー dedup が clean。envelope/fragment/commit 実経路ピン追加
+│   └── ADR-0973-schedule-marks-dirty.md  # `_ps()` のみの変異が hidden/unload フラッシュをすり抜ける実害 — `Persist.schedule()` が dirty を刻み全サイト一括閉塞 + 'snapshot' union-heal/rep 採用に `_ps()` 追加
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
