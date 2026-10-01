@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.983';   // ADR-0957
+const V='1.7.984';   // ADR-0958
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1564,6 +1564,7 @@ const Store={
       for(const p of op.after)stamp(p.id,p,bb[p.id]);}
   },
   _recordCommitted(op){
+    _nugEnd();   // ADR-0958: pending nudge predates any later commit — flush first
     _iG();
     if(!op.clock)_fck(op);
     const k=_ck(op);
@@ -1581,7 +1582,7 @@ const Store={
   },
   undo(){
     if(ptr.down)_cancelPointerGesture();   // ADR-0948
-    _nugEnd();   // ADR-0957: commit the in-flight nudge first so this undo lands on it
+    _nugEnd();   // ADR-0957: commit an in-flight nudge so undo lands
     if(_hx()<0)return false;
     const op=_hi()[_hx()];
     // ADR-0717: an undo is a NEW competing write — arbitrating on the original
@@ -2110,7 +2111,7 @@ let _penCachePx=0;
 // until the global caps evict them.
 const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPending.clear()}   // ADR-0445: wholesale swap also drops parked img refs
 const _uniq=a=>{const se=_sT();for(let i=_ln(a)-1;i>=0;i--)if(se.has(a[i].id))a.splice(i,1);else se.add(a[i].id);return a};   // ADR-0790: keep-LAST matches byId's last-wins
-const _rs=arr=>{_eraseBatch=[];state.shapes=_uniq(arr);_iG();_pcC()}   // ADR-0493/0790/0953: wholesale replace — dup ids; a pending erase batch dies
+const _rs=arr=>{_eraseBatch=[];state.shapes=_uniq(arr);_iG();_pcC()}   // ADR-0493/0790/0953: wholesale replace — dup ids; a live erase batch dies
 const _pgOn=()=>!!(_pgs()&&_ln(_pgs())),_pgById=id=>_pgOn()&&_pgs().find(p=>p.id===id),_pgOk=s=>!_pgOn()||(s.pg||_pgs()[0].id)===state.curPg;   // ADR-0646: unpg'd shapes belong to pages[0] positionally
 const _vPages=a=>!_iA(a)||!_ln(a)||_ln(a)>64?null:(a.every(p=>p&&_iS(p.id)&&_ln(p.id)<=64&&_iS(p.name)&&_ln(p.name)<=80&&(p.nts==null||_tsOK(p.nts))&&(p.ntp==null||_iS(p.ntp)&&_ln(p.ntp)<=64))?a:null);   // ADR-0700/0791
 const _pgHealS=()=>{if(_pgOn())for(const s of _sh()){if(s.pg&&!_pgById(s.pg)&&_ln(_pgs())<64)_pu(_pgs(),{id:s.pg,name:'?',nts:-1})}else for(const s of _sh())delete s.pg};   // ADR-0694: no page set → every s.pg is stale — scrub, else a heal misses them
@@ -2158,7 +2159,7 @@ function _pgDup(){   // ADR-0651: duplicate the current page — pageAdd+shapes 
 }
 function _pgDel(){if(!_pgOn()||_ln(_pgs())<2)return;const p=_pgs()[_pgIdx()];if(!confirm(t('pgDelQ')+': '+p.name+'?'))return;_cmt({op:'pageDel',id:p.id,i:_pgIdx(),name:p.name})}
 const _pgIdx=()=>_pgOn()?_pgs().findIndex(p=>p.id===state.curPg):-1;
-function _pgDel2(op,firstId,only,viewId){   // ADR-0646: remove the deleted page's members + land the view on a live page
+function _pgDel2(op,firstId,only,viewId){   // ADR-0646: remove the page's members + land the view on a live page
   _unB();   // ADR-0953
   // ADR-0707: 'del' parity — locked members survive + rehome to firstId. ADR-0724:
   // `only` caps the kill set (unpage). ADR-0725: members rehome to the wire's choice.
@@ -2169,7 +2170,7 @@ function _pgDel2(op,firstId,only,viewId){   // ADR-0646: remove the deleted page
   const cc=computeConnClears(dead);   // ADR-0707: connectors on a removed member unbind — recorded for undo
   if(_ln(cc)){op.connClears=cc;for(const p of cc){const sh=byId(p.id);if(sh)_oa(sh,p.after)}}
   state.shapes=_sh().filter(s=>!dead.has(s.id));_iG();_pcC();
-  const land=(viewId!==undefined?viewId:firstId);if(state.curPg===op.id&&land!=null)switchPage(land);   // ADR-0649/0725: land via switchPage — announced + cursors hidden
+  const land=(viewId!==undefined?viewId:firstId);if(state.curPg===op.id&&land!=null)switchPage(land);   // ADR-0649/0725: land via switchPage — announced + cursor hidden
 }
 function _pgRename(){const p=_pgById(state.curPg);if(!p)return;const n=prompt(t('pgRename'),p.name);if(n==null||_trm(n)==='')return;_cmt({op:'pageName',id:p.id,before:p.name,after:_s80(_trm(n)),bts:p.nts,clock:{peer:_pi(),seq:++state.seq,ts:nowTs()}})}
 let _pgSig='';
@@ -4624,7 +4625,7 @@ function _lblFollow(){
   // ADR-0559/0569/0572: close when the labelle
   // (locked skips upd — the edit would be silently dropped)
   const _lt=byId(_lblTa.hit.id);if(!_lt||_hd(_lt)||_lk(_lt)||!_pgOk(_lt)){_rm(_lblTa.inp);_lblTa=null;return}
-  const v=_vp(),sig=v.x+'|'+v.y+'|'+v.zoom+'|'+_gridVer;   // ADR-0892/0893: _gridVer covers peer upds; zoom via v.zoom (v.z was a dead key)
+  const v=_vp(),sig=v.x+'|'+v.y+'|'+v.zoom+'|'+_gridVer;   // ADR-0892/0893: _gridVer covers peer upds; zoom via v.zoom (v.z dead)
   if(sig===_lblVp)return;
   _lblVp=sig;
   const a=_lblAnchor(_lt),inp=_lblTa.inp;   // ADR-0892: anchor+style from the live shape, not the stale hit
@@ -5764,7 +5765,7 @@ function _teFollow(){
   // us (remote del/clear/replace/hide/lock, local del) — fold
   // once instead of dangling until blur. No commit;
   // upd anyway, so the typed text can't be applied.
-  const s=byId(_ed());if(!s||_hd(s)||_lk(s)||!_pgOk(s)){_rm(_teTa);_teTa=null;state.editing=null;_iv();return}   // ADR-0574/0709: _iv or skipped text stays undrawn; off-page reassign folds too
+  const s=byId(_ed());if(!s||_hd(s)||_lk(s)||!_pgOk(s)){_rm(_teTa);_teTa=null;state.editing=null;_iv();return}   // ADR-0574/0709: _iv-less text stays undrawn; off-page reassign folds too
   const v=_vp(),sig=v.x+','+v.y+','+v.zoom+','+_gridVer;   // ADR-0892: _gridVer covers peer upds — move/restyle repositions+restyles it
   if(sig===_teVp)return;
   _teVp=sig;positionTextEditor(_teTa,s);
@@ -10114,7 +10115,7 @@ const Presentation=(()=>{
   }
 
   function enter(){
-    _cxO();   // ADR-0582: fold open editors — they'd linger invisible under the overlay and commit on blur
+    _cxO();   // ADR-0582: fold open editors — they'd linger invisible and commit on blur
     if(ptr.down)_cancelPointerGesture();   // ADR-0634: a live drag would keep capture under the overlay and commit invisibly
     _frames=_getFrames();
     if(!_ln(_frames)){_wT('noFrames');return}

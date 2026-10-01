@@ -2287,6 +2287,20 @@ try {
     assert.strictEqual(state.history.filter(o=>o.op==='move').length,2,'ADR-0957: a different selection starts a second op');
     console.log('  ✓ ADR-0957: held-arrow nudge coalesces to one op per key session');
   }
+  // ADR-0958: _recordCommitted flushes a pending nudge first — every commit path
+  // (incl. ungroup/unlockAll/beautify/_repC which bypass _rcOp) preserves the
+  // real-time order: the nudge run lands in history BEFORE the later commit.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const r=Shape.make('rect',{x:0,y:0,w:20,h:20});
+    state.shapes.push(r);_invalidateGrid();
+    state.selection=new Set([r.id]);
+    nudgeSelection(3,0);   // live-mutates x; the op stays pending in _nug
+    Store._recordCommitted({op:'upd',id:r.id,before:{x:0},after:{x:1}});   // bypasses _rcOp like ungroup/beautify do
+    const tail=state.history.slice(-2).map(o=>o.op);
+    assert.deepStrictEqual(tail,['move','upd'],'ADR-0958: pending nudge commits before a bypassing commit');
+    console.log('  ✓ ADR-0958: _recordCommitted flushes a pending nudge on every commit path');
+  }
   // ADR-0625: wc/origSel/moved are undo-domain — _slimOp strips them from the
   // wire copy while preserving the fields peers actually consume.
   {
@@ -15654,6 +15668,7 @@ pass += 4; // ADR-0954 pageDel selection-drop pins
 pass += 2; // ADR-0955 wholesale-swap id-resolution pins
 pass += 4; // ADR-0956 mirror focus-preservation pins
 pass += 4; // ADR-0957 held-key nudge coalescing pins
+pass += 1; // ADR-0958 commit-order flush pin
 pass += 7; // ADR-0943 second-pointer abort pins
 pass += 8; // ADR-0945 mid-gesture overlay-open cancel pins
 pass += 8; // ADR-0948 mid-gesture button-path cancel pins
