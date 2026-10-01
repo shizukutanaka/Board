@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.984';   // ADR-0958
+const V='1.7.985';   // ADR-0959
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -917,7 +917,7 @@ const NET_PRESENCE_INTERVAL=5000;       // 5s heartbeat
 const NET_PRESENCE_TIMEOUT=15000;       // 15s drop
 const CURSOR_THROTTLE_MS=60;            // ADR-0010: peer cursor broadcast rate cap (~16/s)
 const MAX_PEERS=32;                     // presence-map cap: a flooding peer can't grow _pr()/DOM unboundedly
-const MAX_PEER_ID_LEN=64;               // real ids are 32-char uids; anything longer is garbage
+const MAX_PEER_ID_LEN=64;               // real ids are 32-char uids; longer is garbage
 const PEER_COLORS=['#00C4CC','#7C3AED','#DC2626','#F59E0B','#16A34A','#2563EB','#DB2777','#EA580C'];
 const uid=()=>typeof crypto!==_un&&crypto.randomUUID
   ?crypto.randomUUID().replace(/-/g,'')  // 122-bit UUID v4; no collision concern
@@ -1155,7 +1155,7 @@ const state={
   pages:null,curPg:null,   // ADR-0646
   lastSaveAt:0,
   // ---- v1.1 sync ----
-  peerId:PEER_ID+'.'+uid().slice(0,6),   // ADR-0459: per-boot incarnation — seq restarts can't collide in seenOps
+  peerId:PEER_ID+'.'+uid().slice(0,6),   // ADR-0459: per-boot incarnation — seq restarts can't collide
   seq:0,                    // monotonic op counter for CRDT clock
   _lastTs:0,                // monotonic-clock floor: local clocks never regress (HLC-lite)
   _lastRep:null,            // clock of the newest applied 'replace' — concurrent swaps pick one winner (ADR-0614)
@@ -2802,7 +2802,7 @@ function drawPeerSelections(c){
     if(!p.sel||!_ln(p.sel))continue;
     _ssS(c,p.color);_lnW(c,1);_sD(c,[3,3]);
     for(const id of p.sel){
-      const s=byId(id);if(!s||_hd(s)||!_pgOk(s))continue;   // deleted, hidden, or off-page (0568/0646: never outlined)
+      const s=byId(id);if(!s||_hd(s)||!_pgOk(s))continue;   // deleted, hidden, or off-page (0568/0646)
       const b=_bb(s);if(!b)continue;
       const p1=_w2({x:_min(b.x,b.x+b.w),y:_min(b.y,b.y+b.h)});
       const p2=_w2({x:_max(b.x,b.x+b.w),y:_max(b.y,b.y+b.h)});
@@ -4480,7 +4480,7 @@ function _longPressFire(cx,cy){
   if(!ptr.down||_dk('resize')||_dk('gresize')||_dk('grot')||_dk('rotate'))return;
   if(_hp(ptr.x-ptr.x0,ptr.y-ptr.y0)>LONG_PRESS_MOVE_TOL)return;
   _cancelPointerGesture();
-  UI._ctxEat=_now();   // ADR-0607: menu opens under the finger — lift-off click would fire the landed item
+  UI._ctxEat=_now();   // ADR-0607: menu opens under the finger — lift-off click would fire it
   UI.openCtxMenu(cx,cy);
 }
 function _armLongPress(cx,cy){
@@ -4572,7 +4572,7 @@ function openLabelEditor(hit,leftPx,topPx,bold){
   _cxO();   // ADR-0560
   const inp=_ce('input');
   inp.value=hit.label||'';inp.maxLength=80;
-  const col=hit.stroke||_gC(bold?'--accent-contrast':'--ink');   // a11y-audit-2026-07: text needs the 4.5:1 floor
+  const col=hit.stroke||_gC(bold?'--accent-contrast':'--ink');   // text needs the 4.5:1 floor
   inp.style.cssText=`position:fixed;left:${leftPx}px;top:${topPx}px;`+
     `font:${hit.italic?'italic ':''}${bold?'600 ':''}${hit.fontSize||12}px ${_fontFam(hit)};`+   // ADR-0186/0206/0862
     `letter-spacing:${_sp(hit)||0}px;text-decoration:${[hit.under?'underline':'',hit.strike?'line-through':''].filter(Boolean).join(' ')};`+   // ADR-0874
@@ -4884,7 +4884,7 @@ _on(window,'blur',()=>{
   if(ptr.down)_cancelPointerGesture();
   _clearTouchState();
   Net.sendCursorHide();   // ADR-0611: blur doesn't fire pointerleave — hide our cursor on peers too
-  if(window._prevTool){pickTool(window._prevTool);window._prevTool=null}   // space keyup lost to blur
+  if(window._prevTool){pickTool(window._prevTool);window._prevTool=null}   // space keyup lost to a blur
 });
 
 let _wheelZoomEnd=0;
@@ -8889,13 +8889,14 @@ function _imgAttach(shapes,imgs){
 }
 function reqDone(rq){return new Promise((r,j)=>{rq.onsuccess=()=>r(rq.result);rq.onerror=()=>j(rq.error)})}
 _on(window,'beforeunload',e=>{
+  _nugEnd();   // ADR-0959: commit a pending nudge so the dirty check sees it
   if(_dt()){Persist.save();_pd(e);e.returnValue=''}
 });
 // Mobile-reliable durability flush — see Persist.flushIfHidden for context.
-_on(document,'visibilitychange',()=>{if(document.visibilityState==='hidden'){if(ptr.down)_cancelPointerGesture();_clearTouchState();Net.sendCursorHide()}Persist.flushIfHidden(document.visibilityState)});   // ADR-0604/0608/0611
+_on(document,'visibilitychange',()=>{if(document.visibilityState==='hidden'){_nugEnd();if(ptr.down)_cancelPointerGesture();_clearTouchState();Net.sendCursorHide()}Persist.flushIfHidden(document.visibilityState)});   // ADR-0604/0608/0611/0959
 // pagehide is iOS Safari's last reliable signal …
 // swipe-away / frozen-tab eviction); route it through the same tested flush.
-_on(window,'pagehide',()=>{if(ptr.down)_cancelPointerGesture();_clearTouchState();Persist.flushIfHidden('hidden');Net._bcast(_mk('bye'))});   // ADR-0453+0456/0604/0608: same cancel + pointer-state cleanup on bfcache
+_on(window,'pagehide',()=>{_nugEnd();if(ptr.down)_cancelPointerGesture();_clearTouchState();Persist.flushIfHidden('hidden');Net._bcast(_mk('bye'))});   // ADR-0453+0456/0604/0608/0959
 
 // ====================== UI ======================
 const UI={

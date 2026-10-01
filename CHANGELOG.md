@@ -1,3 +1,8 @@
+## [1.7.985] - 2026-10-01
+
+### Fixed
+- タブ非表示/終了で pending ナッジを flush (ADR-0959): ナッジラン中に hidden/pagehide/beforeunload すると、live mutation は IDB に永続化されるのに蓄積 op が未 commit で broadcast されず、再読込後ローカルだけナッジ後位置を示す一方向発散が起き得た実害を閉塞。3 ハンドラ先頭に `_nugEnd()` を追加 — beforeunload では `_dt()` 判定前に flush して dirty 検査が新 commit を正しく捉える
+
 ## [1.7.984] - 2026-10-01
 
 ### Fixed
