@@ -1,3 +1,8 @@
+## [1.8.008] - 2026-10-01
+
+### Fixed
+- モーダル/プレゼン中にフォーカス復帰先要素が remote op で再構築され detached 化した際、`focus()` の silent no-op で body へ脱力する実害を `isConnected===false` → canvas フォールバックで閉塞 (ADR-0982)。適用範囲は dialog `_restoreFocus` と presentation `leave()` の2経路。同監査で blob-URL revoke 網羅 (`_rO`/settle 全8サイト)、`innerHTML=`/`insertAdjacentHTML` ゼロ、`_focusables(_dlg)` の query-per-Tab 動的安全を検証。behavioural ピン4 assert + ソースピン2件
+
 ## [1.8.007] - 2026-10-01
 
 ### Docs / Test
