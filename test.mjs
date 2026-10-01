@@ -1443,6 +1443,16 @@ const checks = [
     html.includes("if(op.op==='move'){const o=op.orig[id];if(o)_geoR(s,o)}")&&
     html.includes("if(c)s.frac=c.before")&&
     html.includes("for(const k of['ids','before','after','changes'])if(op[k])op[k]=op[k].filter(m=>!gone.has(m.id||m));")],
+  // ADR-0966 source pins: pending-op × mid-run convergence — every later commit
+  // funnel flushes first; the own-lock exemption reads the LIVE flag, not the
+  // op's intent, so unlock (null) skips and own-lock (after.locked) exempts.
+  ['ADR-0966: pending-op flush coverage — _nugEnd at every later commit funnel',
+    html.includes("_nugEnd();   // ADR-0958: pending nudge predates any later commit")&&
+    html.includes("_nugEnd();   // ADR-0960: pending nudge/zorder predates any later commit")&&
+    html.includes("_nugEnd();   // ADR-0957: commit an in-flight nudge so undo lands")&&
+    html.includes("function _nugEnd(){const n=_nug;_nug=null;if(n){_cT(n.t);const o=n.op;_nugLock(o);")&&
+    html.includes("if(!s.locked||A.some(a=>a.id===id&&a.locked))continue;   // own-lock")&&
+    html.includes("s.locked=lk||null;")],
   // v1.7.38: _apply('upd', forward) must guard sh.locked (parity with move forward)
   ['_apply upd: if(sh.locked)break guards locked shapes in BOTH directions',
     html.includes("const sh=byId(op.id);if(!sh)break;\n        // ADR-0712: locked gate in BOTH directions")],
@@ -10888,6 +10898,30 @@ try {
     assert.ok(ch&&!ch.some(c=>c.id===NC.id),'_nugLock: locked member dropped from zorder changes');
     console.log('  ✓ _nugLock: mid-run lock restores + drops the member (zorder)');
   }
+  // ADR-0966: own-lock exemption direction — a member the pending op UNLOCKED
+  // (live s.locked=false at flush) must not be partitioned as remote-locked,
+  // and a member the op locked that then vanished mid-run drops cleanly.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const LA=Shape.make('rect',{x:0,y:0,w:50,h:50});LA.locked=true;
+    Store.commit({op:'add',shape:LA});
+    state.selection=new Set([LA.id]);
+    doLock();                          // live-unlocks LA; pending op carries locked:true→false
+    _nugEnd();
+    assert.ok(!byId(LA.id).locked,'_nugLock exemption: own-unlock survives the partition (stays unlocked)');
+    const lop=state.history[state.histIdx];
+    assert.ok(lop.after[0].locked==null,'own-unlock commits after.locked=null');
+    // same op, but the locked member is deleted mid-run → dropped, no commit
+    const LB=Shape.make('rect',{x:60,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:LB});
+    state.selection=new Set([LB.id]);
+    doLock();                          // live-locks LB; pending {before:unlocked,after:locked}
+    state.shapes=state.shapes.filter(s=>s.id!==LB.id);_invalidateGrid();   // remote del lands mid-run
+    const hb2=state.history.length;
+    _nugEnd();
+    assert.strictEqual(state.history.length,hb2,'_nugLock: gone lock-member commits nothing');
+    console.log('  ✓ _nugLock: own-lock exemption direction (unlock kept, gone lock-member dropped)');
+  }
 
   // v1.7.13b: doDuplicate must skip locked shapes (parity with nudgeSelection/doDelete).
   // Bug: withFrameChildren expands the frame selection to include all contained children
@@ -15988,6 +16022,7 @@ pass += 10; // ADR-0961 held-key coalescing wave-2 + net-zero discard pins
 pass += 7; // ADR-0962 slider before-buffer boundary-flush + prune pins
 pass += 5; // ADR-0963 lifecycle×boundedness audit pins
 pass += 8; // ADR-0965 mid-run lock/missing member partition (3 blocks: 7 asserts + 1 pin)
+pass += 5; // ADR-0966 pending-op×mid-run audit pins + own-lock exemption block
 pass += 15; // ADR-0964 mid-gesture lock restore/commit-gate pins
 pass += 7; // ADR-0943 second-pointer abort pins
 pass += 8; // ADR-0945 mid-gesture overlay-open cancel pins
