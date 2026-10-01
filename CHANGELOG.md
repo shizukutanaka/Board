@@ -1,3 +1,8 @@
+## [1.7.950] - 2026-10-01
+
+### Docs
+- backward-apply 収束監査の完走記録 (ADR-0924): 履歴に載る全17 op の `_undoWire` 網羅・redo の restamped 再送・connClears `upd` 再束縛・`_stampWrites` 対称・`_selR`/`_pgFollow`/`_opIds` 衛生を検証 — 実害なし
+
 ## [1.7.949] - 2026-10-01
 
 ### Fixed
