@@ -15275,6 +15275,25 @@ pass += 2; // ADR-0939 hatch-bound pins
   assert.ok(!state.selection.has('M1'),'merge-hidden shape dropped from selection');
 }
 pass += 2; // ADR-0940 merge-hide selection pin
+// ADR-0941: the op clock's peer must equal the wire envelope peer (0931/0932)
+// — ops/snapshots are never relayed, so a clock naming a third party is forged:
+// it could seq-squat a victim's seenOps window and stamp attacker wclocks under
+// the victim's id. Pins the real _onRecv intake for both arrival paths.
+{
+  const _oldTs=state._lastTs;state._lastTs=0;   // isolate the HLC floor — earlier tests leave it far ahead
+  const s={id:'E1',type:'rect',z:1,x:0,y:0,w:10,h:10,stroke:'#000',size:2,opacity:1};
+  Store.commit({op:'add',shape:s});
+  Net._onRecv({k:'op',peer:'envPeer',op:{op:'upd',id:'E1',after:{x:5},clock:{peer:'envPeer',seq:1,ts:Date.now()+5000}}},false);
+  assert.strictEqual(byId('E1').x,5,'envelope-matched op applies');
+  Net._onRecv({k:'op',peer:'envPeer',op:{op:'upd',id:'E1',after:{x:999},clock:{peer:'victim',seq:2,ts:Date.now()}}},false);
+  assert.strictEqual(byId('E1').x,5,'op with clock.peer != envelope peer rejected (0931)');
+  // 0932: snapshot-embedded ops carry the same binding at the merge gate.
+  const evil={id:'E2',type:'rect',z:1,x:0,y:0,w:10,h:10,stroke:'#000',size:2,opacity:1};
+  Net._onRecv({k:'snapshot',shapes:[],ops:[{op:'add',shape:evil,clock:{peer:'victim',seq:1,ts:1},wc:{}}],peer:'envPeer'},false);
+  assert.ok(!byId('E2'),'snapshot op with forged clock.peer not merged (0932)');
+  state._lastTs=_oldTs;
+}
+pass += 3; // ADR-0941 clock-envelope binding pins
 pass += 4; // ADR-0936 absolute-writer pins
   pass += 4; // ADR-0935 producer-bound pins
   pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin

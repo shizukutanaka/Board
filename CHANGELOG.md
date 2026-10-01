@@ -1,3 +1,8 @@
+## [1.7.967] - 2026-10-01
+
+### Tests
+- 0931/0932 clock↔envelope binding の behavioural ピン (ADR-0941、test のみ): ①envelope 一致 op が `applyRemote` まで到達し適用 (過剰棄却しない正規 traffic の sanity)、②`clock.peer` ≠ envelope peer の op を棄却 (victim の seenOps seq-squat / wclock 詐称を遮断)、③snapshot 内蔵 op でも同一 binding を merge gate で棄却。ソースピンのみだった両到達経路を実 intake で固定
+
 ## [1.7.966] - 2026-10-01
 ### Fixed
 - スナップショット merge で `visible:0` に反転した選択済み図形が選択に残留し、以後の選択操作が不可視図形を対象に含める実害を `_sdl` 落としで閉塞 (0568 parity、ADR-0940)
