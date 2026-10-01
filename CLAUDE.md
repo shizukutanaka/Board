@@ -979,6 +979,7 @@ Board/
 │   └── ADR-0928-replace-backward-born.md  # replace backward の _bT 未刻印で復元図形 born が pre-swap のまま (remote は U) — 狭間 del の一方向発散を両方向刻印で閉塞
 │   └── ADR-0929-undo-wire-audit.md        # undo-wire×backward 収束監査 — 全14 op+redo の対称表・発散なし完走
 │   └── ADR-0930-undo-wire-pins.md         # 対称契約ピン — born=B0両側一致/_lwwSkip⇔_lwwDrop/_slimOp収束フィールド
+│   └── ADR-0931-clock-peer-binding.md     # clock.peer→エンベロープpeer拘束 — seq-squat/impersonation閉塞
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

@@ -1,3 +1,8 @@
+## [1.7.957] - 2026-10-01
+
+### Fixed
+- op の `clock.peer` をエンベロープ `peer` へ拘束 (ADR-0931): op は中継されず常に生産者直送のため `clock.peer===msg.peer` が不変条件 — 違反は鍛造として棄却。受信者自身の peerId を名乗る op による seq-squat (相手の全 commit が seenOps dedup で死ぬ) と wclock 詐称を閉塞。RTC 'op' エンベロープに `peer` を同梱 (従来は省略、旧ビルドからの op は棄却 = 0739-0742 と同方針)
+
 ## [1.7.956] - 2026-10-01
 
 ### Tests

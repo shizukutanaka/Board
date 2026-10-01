@@ -6423,6 +6423,9 @@ try {
     const reset = W => { W.state.shapes.length=0;_invalidateGrid(); W.state.history.length=0; W.state.histIdx=-1; W.state.seq=0; W.state.seenOps=new Set(); W.state.wclock={}; W.state._lastRep=null; };
     reset(A); reset(B);
     // wire each peer's outbound to the other's _onRecv (deep-copied, like a real wire)
+    // ADR-0931: the real 'op' envelope carries peer:_pi() matching clock.peer —
+    // wrap _onRecv so crafted ops get the same envelope shape.
+    for(const W of[A,B]){const _r=W.Net._onRecv.bind(W.Net);W.Net._onRecv=(m,v)=>{if(m&&m.k==='op'&&m.peer===undefined&&m.op&&m.op.clock)m.peer=m.op.clock.peer;return _r(m,v)}}
     A.Net.broadcast = op => B.Net._onRecv({k:'op',op:cp(op)});
     B.Net.broadcast = op => A.Net._onRecv({k:'op',op:cp(op)});
     A.Net._send = msg => B.Net._onRecv(cp(msg));
@@ -7368,6 +7371,22 @@ try {
     assert.ok(so4.afterWc&&so4.pages&&so4.curPg==='p1'&&!so4.before&&!so4.origSel,'ADR-0930: replace keeps the adopt map + landing page');
     state._lastTs=0;B.state._lastTs=0;
     console.log('  ✓ ADR-0930: undo-wire × backward symmetric contract pins');
+
+    // ADR-0931: op clock.peer must equal the envelope peer — ops are never
+    // relayed, so a mismatch is definitionally forged. The envelope gate
+    // (msg.peer===_pi()) already rejects ops claiming OUR id at msg level;
+    // without the equality a forger could still claim our id in clock.peer
+    // alone and squat our "peer:seq" seenOps space (bricking local commits)
+    // or stamp wclock writes under our identity.
+    reset(B);B.state.wclock={};
+    const fS={id:'f1',type:'rect',x:0,y:0,w:10,h:10,z:1};
+    B.Net._onRecv({k:'op',op:{op:'add',shape:cp(fS),clock:{peer:'peerV',seq:1,ts:1}},peer:'peerX'});   // mismatched: forged attribution
+    assert.ok(!B.state.shapes.find(s=>s.id==='f1'),'ADR-0931: op with clock.peer ≠ envelope peer is dropped (was: applied → seq-squat)');
+    B.Net._onRecv({k:'op',op:{op:'add',shape:cp(fS),clock:{peer:'peerV',seq:1,ts:1}},peer:'peerV'});
+    assert.ok(!!B.state.shapes.find(s=>s.id==='f1'),'ADR-0931: matching clock/envelope peer applies normally');
+    B.Net._onRecv({k:'op',op:{op:'add',shape:{id:'f2',type:'rect',x:0,y:0,w:10,h:10,z:1},clock:{peer:B.state.peerId,seq:1,ts:1}},peer:B.state.peerId});   // self-impersonation (msg gate also catches it)
+    assert.ok(!B.state.shapes.find(s=>s.id==='f2'),'ADR-0931: op claiming our own peer id is dropped (was: impersonation + commit bricking)');
+    console.log('  ✓ ADR-0931: clock.peer bound to the envelope peer');
 
     // ADR-0736: clear/'replace' wiped wclock WHOLESALE — including tombstones —
     // so a stale in-flight 'add' could resurrect a shape the swap just removed,
@@ -15195,7 +15214,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1915; // prev 1906 + 9 ADR-0930 undo-wire symmetric-contract pins
+  pass += 1918; // prev 1915 + 3 ADR-0931 clock.peer binding pins
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
