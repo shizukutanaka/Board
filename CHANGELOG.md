@@ -1,3 +1,8 @@
+## [1.7.941] - 2026-10-01
+
+### Documentation
+- wire 補助データ取込監査完走 (ADR-0915): clock マップ (`wc`/`afterWc`/`d.wc`)・`zorder` changes・ページ集合・presence/aux 全経路が `wcOk`/`validClock`/`_vPages`/`_pgById`/`validPatch` で gated と検証 — 構造キー cluster 含め全 auxiliary フィールド bounded、実害なし
+
 ## [1.7.940] - 2026-10-01
 
 ### Fixed
