@@ -7502,6 +7502,23 @@ try {
     assert.strictEqual(bf.type,'rect','non-_TYPES type dropped — shape keeps prior type');
     console.log('  ✓ ADR-0917: forged beautify stripped (pg/frac/groupId/_ + non-_TYPES type)');
 
+    // ADR-0919: snapshot LWW merge skip list now covers pg — a forged snapshot
+    // op's wc:{pg:clock} + shape.pg can't exile an existing shape off the page.
+    // pg is never a stamped wc key (0914), so it can only arrive forged.
+    reset(B);
+    B.state.pages=[{id:'p1',name:'Page 1'}];B.state.curPg='p1';
+    B.state.shapes.push(cp(gsh1));B.state.shapes[0].pg='p1';
+    B._invalidateGrid();B.sortZ();
+    const mrg=B.Net._mergeSnapshotOp({op:'add',shape:{id:'gs1',type:'rect',pg:'pX',x:88},
+      wc:{pg:{peer:'peerF',seq:1,ts:Date.now()},x:{peer:'peerF',seq:1,ts:Date.now()}},
+      clock:{peer:'peerF',seq:'snap:gs1',ts:Date.now()}});
+    const mgs=B.state.shapes.find(s=>s.id==='gs1');
+    assert.strictEqual(mrg,'merge','legit props still merge (x)');
+    assert.strictEqual(mgs.x,88,'x merged');
+    assert.strictEqual(mgs.pg,'p1','forged wc:{pg} did not exile the shape to pX');
+    assert.ok(!((B.state.wclock||{})['gs1']||{}).pg,'forged pg key did not stamp a wclock entry either');
+    console.log('  ✓ ADR-0919: forged snapshot wc:{pg} does not merge pg — page exile closed');
+
     // ADR-0717 (round467): undo is itself a NEW competing write — the backward apply
     // must arbitrate under the SAME fresh clock the peers see on the undo-wire ops.
     // Feeding _lwwSkip the ORIGINAL commit clock while the wire carried a fresh _fck
@@ -15000,7 +15017,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1872; // prev 1868 + 4 ADR-0917 forged-beautify structural-strip pins
+  pass += 1876; // prev 1872 + 4 ADR-0919 forged-snapshot-wc-pg merge-exile pins
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

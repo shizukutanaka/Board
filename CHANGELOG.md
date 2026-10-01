@@ -1,3 +1,8 @@
+## [1.7.945] - 2026-10-01
+
+### Fixed
+- snapshot LWW merge の `pg` スキップ欠落を閉塞 (ADR-0919): `_mergeSnapshotOp` の merge 対象キー絞り込みが `id`/`type`/`_`/proto/`validPatch` で `pg` 欠落しており、鍛造 snapshot op の `wc:{pg:clock}`+`shape.pg` が既存図形を表示ページから追放し得た経路を解消 (ADR-0912 page exile と同族の merge 経路版、`pg` は stamp しない構造キーのため wc に正当な来歴がない)
+
 ## [1.7.944] - 2026-10-01
 
 ### Documentation
