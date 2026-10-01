@@ -1,3 +1,8 @@
+## [1.7.989] - 2026-10-01
+
+### Docs / Test
+- ライフサイクル×有界性監査完走 (ADR-0963): undo スタック `MAX_HISTORY=500` が `_recordCommitted`/`_recordRemote` 両経路で強制され shift 時の `histIdx` 整合も正しい (先頭削除後も tip を指す)、pending `_nug.sel` は `_selIds()` 配列スナップショット (後続の選択変更が pending op の origSel を書き換えない)、docName は keystroke 毎 LWW (設計意図 — 実値の直後追従)、`dupDelta` スマート複製チェーンは dead-id/空選択を全ルートで遮断、テキストエディタは blur で1 op (per-gesture commit)、presence は `NET_PRESENCE_TIMEOUT=15s` reap + `MAX_PEERS` cap + rtc: は onclose 管理 — 実害なし。監査結論を5ピンで固定
+
 ## [1.7.988] - 2026-10-01
 
 ### Fixed
