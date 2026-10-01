@@ -13228,8 +13228,10 @@ try {
         clientX:x,clientY:y,offsetX:x,offsetY:y,
         ctrlKey:false,metaKey:false,shiftKey:false,altKey:false,
         preventDefault(){},stopPropagation(){},...o};
-      for(const f of canvas._L[t+'|c']||[])f(ev);   // capture first (pinch recorder)
-      for(const f of canvas._L[t]||[])f(ev);       // then bubble handlers in bind order
+      for(const f of fakeWin._L[t+'|c']||[])f(ev); // window capture first
+      for(const f of canvas._L[t+'|c']||[])f(ev);  // then canvas capture (pinch recorder)
+      for(const f of canvas._L[t]||[])f(ev);       // canvas bubble in bind order
+      for(const f of fakeWin._L[t]||[])f(ev);      // window bubble last — real propagation
       return ev;
     };
     const reset=()=>{state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.draft=null;ptr.down=false;};
@@ -14716,6 +14718,33 @@ try {
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
+    // ADR-0950: pointer bookkeeping must not leak ghost entries — hover moves
+    // (buttons===0) seed nothing, and a release off-canvas still clears, so a
+    // stale id can never pair with the next real pointer as a phantom pinch.
+    reset();state.viewport={x:0,y:0,zoom:1};state.tool='select';
+    fireWin('blur');   // clean _pointers/_pinchPrev slate
+    fire('pointermove',100,100,{pointerId:9,buttons:0});   // pure hover
+    fire('pointerdown',10,10,{pointerId:1});
+    fire('pointermove',30,30,{pointerId:1});
+    fire('pointermove',60,60,{pointerId:1});
+    assert.strictEqual(state.viewport.zoom,1,'a hover entry can no longer pair as a phantom pinch');
+    fire('pointerup',60,60,{pointerId:1});
+    // off-canvas release: only a window-level up arrives — the entry must still clear
+    fire('pointerdown',10,10,{pointerId:1});
+    fireWin('pointerup',{pointerId:1});
+    fire('pointerdown',100,100,{pointerId:2});
+    fire('pointermove',120,120,{pointerId:2});
+    fire('pointermove',140,140,{pointerId:2});
+    assert.strictEqual(state.viewport.zoom,1,'an off-canvas release leaves no ghost pinch partner');
+    // a real two-pointer pinch still zooms (no regression)
+    fire('pointerdown',10,10,{pointerId:1});
+    fire('pointerdown',100,100,{pointerId:2});
+    fire('pointermove',110,110,{pointerId:2});
+    fire('pointermove',130,130,{pointerId:2});
+    assert.ok(state.viewport.zoom!==1,'a genuine two-pointer move still pinches');
+    fire('pointerup',10,10,{pointerId:1});
+    fire('pointerup',130,130,{pointerId:2});
+    console.log('  ✓ pointer bookkeeping: no hover seed + off-canvas release clears (ADR-0950)');
   }
 
     // ADR-0646: multi-page — wire-convergent page ops + per-page view filter
@@ -15471,6 +15500,7 @@ pass += 3; // ADR-0947 labelPos domain-clamp pins
   Net.dc=_odc;Net._dcQ=_oq;Net._dcQB=_oqb;
 }
 pass += 4; // ADR-0949 send-funnel exception-safety pins
+pass += 3; // ADR-0950 pointer bookkeeping leak pins
 pass += 7; // ADR-0943 second-pointer abort pins
 pass += 8; // ADR-0945 mid-gesture overlay-open cancel pins
 pass += 8; // ADR-0948 mid-gesture button-path cancel pins

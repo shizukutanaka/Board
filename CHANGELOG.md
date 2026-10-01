@@ -1,3 +1,15 @@
+## [1.7.976] - 2026-10-01
+
+### Fixed
+- `_pointers` 簿記の ghost エントリによる phantom pinch-zoom を閉塞 (ADR-0950): エントリ削除が canvas `_PU`/`_PC` のみで、capture 無しポインタの canvas 外リリースや hover (`buttons===0`) move が残存 → stale id が次の実ポインタと ghost ペア化し、単指 move で偽 `zoomAt` が発火し得た。削除と `_resetPinch` を window へ移し全リリース経路を網羅、`_PM` は `buttons!==0` のみ記録 (hover は pinch 候補外)。`_pinchPrev` の stale 持越しによる1回分の zoom jump も同時解消
+- テスト harness `fire` が window リスナを実 DOM 順 (window capture→canvas capture→canvas bubble→window bubble) で dispatch するよう修正 — 実ブラウザの伝播を忠実化
+
+### Tests
+- ポインタ簿記リークピン 3件: hover (buttons===0) が記録を生まない、window-level up が canvas イベント無しでもエントリを掃除、実2ポインタ pinch は不変に zoom
+
+### Documentation
+- ADR-0950: ポインタ簿記の ghost エントリ規則 (window-level 削除 + hover 非記録の不変条件)
+
 ## [1.7.975] - 2026-10-01
 
 ### Documentation

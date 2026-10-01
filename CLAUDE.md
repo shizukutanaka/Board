@@ -998,6 +998,7 @@ Board/
 │   └── ADR-0947-numeric-prop-domain-audit.md # 数値 prop ドメイン監査完走 — 18 prop が intake-bound か消費側 clamp のいずれかを満たす規則
 │   └── ADR-0948-mid-gesture-button-paths.md  # mid-gesture 到達コマンド経路の取消内蔵 (openShare/openCtxMenu/undo/redo — 第2指ボタン到達残穴を閉塞)
 │   └── ADR-0949-send-funnel-exception-safety.md # 送信 funnel 例外安全監査完走+ピン (_send/_sendDC/_bcast/fragSend は transport throw を伝播しない)
+│   └── ADR-0950-pointer-bookkeeping-leak.md  # _pointers ghost エントリ閉塞 (window-level 削除+hover 非記録で phantom pinch 解消)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
