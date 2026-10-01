@@ -15410,6 +15410,19 @@ pass += 3; // ADR-0941 clock-envelope binding pins
   assert.ok(!byId('N2'),'add with negative extent rejected at intake');
 }
 pass += 4; // ADR-0946 negative-extent intake pins
+// ADR-0947: out-of-domain labelPos never leaves the path — every consumer
+// funnels through _pathAt, which clamps t=_c01(t). A wire-forged
+// labelPos:9/-2 lands the label at the path ends, not at extrapolated
+// world coordinates.
+{
+  const pts=[{x:0,y:0},{x:100,y:0}];
+  assert.deepStrictEqual(_pathAt(pts,7),{x:100,y:0},'labelPos>1 clamps to path end');
+  assert.deepStrictEqual(_pathAt(pts,-2),{x:0,y:0},'labelPos<0 clamps to path start');
+  const conn={id:'L9',type:'line',z:1,x1:0,y1:0,x2:100,y2:0,labelPos:9,stroke:'#000',size:2,opacity:1};
+  const lp=_connLabelXY(conn);
+  assert.ok(lp.x<=100&&lp.x>=0,'conn labelPos:9 stays on the path');
+}
+pass += 3; // ADR-0947 labelPos domain-clamp pins
 pass += 7; // ADR-0943 second-pointer abort pins
 pass += 8; // ADR-0945 mid-gesture overlay-open cancel pins
 pass += 6; // ADR-0942 mid-gesture tool-key pins

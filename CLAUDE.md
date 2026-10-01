@@ -995,6 +995,7 @@ Board/
 │   └── ADR-0944-derived-state-lifecycle.md  # 派生/参照状態ライフサイクル監査完走 — 9不変条件 (hover/選択/reset/type/幾何)
 │   └── ADR-0945-mid-gesture-overlay-open.md  # overlay 開放でライブジェスチャをキャンセル (?/⌘F が ptr.down 未処理→overlay 下不可視 commit を閉塞)
 │   └── ADR-0946-negative-extent-intake.md    # 負 w/h extent を validPatch で棄却 (hit-test 空区間+frame 誤帰属の poison 図形を閉塞)
+│   └── ADR-0947-numeric-prop-domain-audit.md # 数値 prop ドメイン監査完走 — 18 prop が intake-bound か消費側 clamp のいずれかを満たす規則
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

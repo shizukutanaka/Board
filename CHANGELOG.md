@@ -1,3 +1,11 @@
+## [1.7.973] - 2026-10-01
+
+### Documentation
+- ADR-0947: 数値 prop ドメイン監査完走 — `validPatch` の数値ホワイトリスト18項目を全消費サイトまで追跡。規則を明文化: 全 prop は「(a) intake で bound」か「(b) 消費側で clamp/gate」のいずれかを満たす (`r`→`_max(0)`、`labelPos`→`_c01`、`dash`→enum fallback、`flip`→bitmask、flags→truthy)。`spacing`/`lineH` は cosmetic のみで意図的に非拘束。コード変更なし
+
+### Tests
+- `labelPos` ドメイン外値の消費側クランプ 3件 (`_pathAt` t>1→path 端 / t<0→始点 / conn `labelPos:9` が経路上に留まることを固定)
+
 ## [1.7.972] - 2026-10-01
 
 ### Fixed
