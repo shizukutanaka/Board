@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.942';   // ADR-0916
+const V='1.7.943';   // ADR-0917
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1834,7 +1834,7 @@ const Store={
           // apply of our undo-wire skips it → diverged props. The forward
           // gate still applies so an unlock-undo isn't dead)
           if(!sh||(sh.locked&&!('locked' in raw)))continue;
-          const p=clone(raw);if(op.op!=='beautify'){delete p.type;delete p.pg;delete p.frac;delete p.groupId;for(const k of _ok(p))if(k[0]==='_')delete p[k];}   // ADR-0373/0730/0912/0913/0916
+          const p=clone(raw);delete p.pg;delete p.frac;delete p.groupId;if(p.type!=null&&(op.op!=='beautify'||!_TYPES.has(p.type)))delete p.type;for(const k of _ok(p))if(k[0]==='_')delete p[k];   // ADR-0373/0730/0912/0913/0916/0917
           // Same LWW guard as 'upd' (_lwwSkip) — since
           // _stampWrites records per-property write clocks — undo
           // must not clobber a newer remote write here
@@ -6524,8 +6524,8 @@ function unlockAll(){
   _ann(t('ctxUnlockAll'));
 }
 // ADR-0005: replace confidently-recogni
-// (Alt+B). Local-only (not in REMOTE_OPS — unlike replace/clear-rewrites) — converting a peer's
-// pen stroke to a rectangle behind their back would be confusing, not helpful.
+// (Alt+B). Wire-broadcast since ADR-0730 — peers apply the patch set with
+// structural keys stripped on intake (0917).
 function doBeautify(){
   const sel=_selL(s=>s&&!_lk(s)&&_pn(s));
   if(!_ln(sel)){_wT('beautifyNone');return}

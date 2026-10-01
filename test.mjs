@@ -7487,6 +7487,21 @@ try {
       'ADR-0717: peers apply the same undo-wire → converged on ungrouped');
     console.log('  ✓ ADR-0717: group undo converges both sides under the fresh clock (was: local skipped, peers applied)');
 
+    // ADR-0917: a forged remote 'beautify' op can't land structural props — the
+    // style-family apply now strips pg/frac/groupId/_keys for every op and drops
+    // a non-_TYPES type (beautify legitimately carries type: pen→rect etc.).
+    reset(B);
+    B.state.shapes.push(cp(gsh1)); B._invalidateGrid(); B.sortZ();
+    B.Net._onRecv({k:'op',op:{op:'beautify',before:[{id:'gs1',type:'rect'}],
+      after:[{id:'gs1',type:'bogus',pg:'pX',frac:'zzz',groupId:'gH',_evil:1,x:77}],
+      clock:{peer:'peerF',seq:1,ts:Date.now()}}});
+    const bf=B.state.shapes.find(s=>s.id==='gs1');
+    assert.strictEqual(bf.x,77,'legit beautify prop still applied');
+    assert.ok(!bf.pg&&!bf.groupId&&!bf._evil,'forged structural keys stripped on beautify');
+    assert.strictEqual(bf.frac,'V','forged frac stripped on beautify — sortZ key survives');
+    assert.strictEqual(bf.type,'rect','non-_TYPES type dropped — shape keeps prior type');
+    console.log('  ✓ ADR-0917: forged beautify stripped (pg/frac/groupId/_ + non-_TYPES type)');
+
     // ADR-0717 (round467): undo is itself a NEW competing write — the backward apply
     // must arbitrate under the SAME fresh clock the peers see on the undo-wire ops.
     // Feeding _lwwSkip the ORIGINAL commit clock while the wire carried a fresh _fck
@@ -14985,7 +15000,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1868; // prev 1867 + 1 ADR-0916 groupId structural-strip pin
+  pass += 1872; // prev 1868 + 4 ADR-0917 forged-beautify structural-strip pins
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

@@ -1,3 +1,8 @@
+## [1.7.943] - 2026-10-01
+
+### Fixed
+- `beautify` op の構造除去免除を閉塞 (ADR-0917): style ファミリ適用サイトが `beautify` を全 strip から免除していたため、鍛造 remote `beautify` 1 op で `pg` (ページ追放)・`frac` (z-order 攪乱)・`groupId` (幻影 halo)・`_` キャッシュ鍵・非 `_TYPES` type が着地し 0912-0916 の strip を全迂回できた実害を解消 — beauty が正当に運ぶ `type` のみ `_TYPES` enum ゲートで保持、他の構造鍵は全 op で除去
+
 ## [1.7.942] - 2026-10-01
 
 ### Fixed
