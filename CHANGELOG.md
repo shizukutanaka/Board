@@ -1,3 +1,8 @@
+## [1.7.960] - 2026-10-01
+
+### Documentation
+- wire op 補助フィールド bounds 監査 (ADR-0934): ids/shapes/changes/connClears/wc/gids/patches 全 aux フィールドが validOp で MAX_OP_SHAPES・id≤64・validPatch/validClock bounded。`move` の delta 分岐は 0741 の絶対値必須で wire 到達不可 (ローカル undo 専用) — 絶対値要求をピン化
+
 ## [1.7.959] - 2026-10-01
 
 ### Documentation

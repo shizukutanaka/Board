@@ -982,6 +982,7 @@ Board/
 │   └── ADR-0931-clock-peer-binding.md     # clock.peer→エンベロープpeer拘束 — seq-squat/impersonation閉塞
 │   └── ADR-0932-snapshot-peer-binding.md  # snapshot内蔵op.clock.peer→エンベロープpeer拘束 — 内蔵seq-squat閉塞
 │   └── ADR-0933-peer-binding-coverage.md  # clock↔envelope binding監査完走 — 全applyRemote入口拘束、frag再投入迂回なし
+│   └── ADR-0934-op-aux-bounds.md          # 補助フィールドbounds監査 — 全aux MAX_OP_SHAPES bounded、move delta不可達
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
