@@ -1,3 +1,8 @@
+## [1.7.955] - 2026-10-01
+
+### Docs
+- undo-wire × backward-apply 収束監査を完走記録 (ADR-0929、docs のみ): 全14 op 種 + redo の「ローカル逆適用 vs 受信側 forward apply」の対称性を検証 — `_bT`/`_del`/wc merge/`_stampWrites`/`_lwwSkip`⇔`_lwwDrop` 全時計ドメイン一致、発散なし。del/pageDel backward の `_bT`→`_wR` 順序は remote addMany-forward と同順で born=B0 に両側一致 (意図的: 旧存在の復元)。replace backward のみ U (ADR-0928 閉塞済み)。実害なし
+
 ## [1.7.954] - 2026-10-01
 
 ### Fixed
