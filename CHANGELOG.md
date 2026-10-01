@@ -1,3 +1,7 @@
+## [1.7.963] - 2026-10-01
+### Documentation
+- ホットパス仕事量監査 (ADR-0937): per-frame/per-event の全経路が memo (_gridVer/WeakMap/シグネチャ)、throttle (cursor 60ms)、dedup (selection シリアライズキー)、または設計 bounded (MAX_HISTORY/seenOps/peers/pen+img LRU) — 実害なし
+
 ## [1.7.962] - 2026-10-01
 ### Fixed
 - ADR-0936: absolute coordinate writers bound at the wire bound (0935 residual closed) — `applyResize` (se-grow/Alt-mirror/aspect-lock/rotated re-pin tail + p1/p2 endpoints + pen pts map), `_mapToBox` `M` output (group-resize member affine), `_rotPtsAbout` `rot` output (rotate knob, grot drag) all clamp at ±1e7. Every local coordinate writer now stays inside the domain `validPatch` (0792) accepts — a locally-applied op can never emit a patch a peer drops.
