@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.971';   // ADR-0945
+const V='1.7.972';   // ADR-0946
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1304,6 +1304,7 @@ function validPatch(p){
   if(!_cleanVal(p,0))return false;
   // Numeric geometry fields must be finite, in-bounds numbers
   for(const k of 'x,y,w,h,x1,y1,x2,y2,bend'.split(','))if(k in p&&p[k]!=null&&!_xyOK(p[k]))return false;   // ADR-0792/0793
+  if(p.w<0||p.h<0)return false;   // ADR-0946: extents can't be negative
   for(const k of ['z','rotate','size','opacity','dash','labelPos','cbend','spacing','lineH','fontSize','elbow','curve','hop','flip','r','visible','start','wrap']){   // ADR-0367/0369
     if(k in p&&p[k]!=null&&typeof p[k]!=='number')return false;
   }
@@ -2439,8 +2440,7 @@ function frame(){
     // ADR-0011: selection presence rides the frame edge — senders run
     // in 40+ places, but every change invalidates a frame, so this hook
     // catches them all. Change-detection inside sendSelectionIfChanged.
-    // ADR-0565: a hook throw must not strand the rAF loop —
-    // same try/catch discipline as the draw calls above.
+    // ADR-0565: same try/catch discipline as the draw calls above
     try{
       Net.sendSelectionIfChanged();
       _mirrorSync();   // ADR-0041: DOM mirror rebuilds only on _gridVer change

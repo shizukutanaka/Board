@@ -15391,6 +15391,25 @@ pass += 2; // ADR-0940 merge-hide selection pin
   state._lastTs=_oldTs;
 }
 pass += 3; // ADR-0941 clock-envelope binding pins
+// ADR-0946: remote patches may not carry negative extents — every local
+// producer normalizes/clamps w,h ≥ 0, so w<0/h<0 can only arrive via
+// wire/import/IDB. A negative extent draws mirrored but hit-tests empty
+// (x+w < x): a visible shape no peer can select/move, and frame
+// containment `_fOf` trivially includes it — permanent interaction-dead
+// poison geometry. pinned through the real _onRecv intake.
+{
+  const s2={id:'N1',type:'rect',z:1,x:0,y:0,w:10,h:10,stroke:'#000',size:2,opacity:1};
+  Store.commit({op:'add',shape:s2});
+  Net._onRecv({k:'op',peer:'envPeer',op:{op:'upd',id:'N1',after:{w:-50},clock:{peer:'envPeer',seq:2,ts:Date.now()}}},false);
+  assert.strictEqual(byId('N1').w,10,'upd after{w:-50} rejected at intake');
+  Net._onRecv({k:'op',peer:'envPeer',op:{op:'upd',id:'N1',after:{h:-1},clock:{peer:'envPeer',seq:3,ts:Date.now()}}},false);
+  assert.strictEqual(byId('N1').h,10,'upd after{h:-1} rejected at intake');
+  Net._onRecv({k:'op',peer:'envPeer',op:{op:'upd',id:'N1',after:{w:0},clock:{peer:'envPeer',seq:4,ts:Date.now()}}},false);
+  assert.strictEqual(byId('N1').w,0,'w:0 still accepted (degenerate but normalized)');
+  Net._onRecv({k:'op',peer:'envPeer',op:{op:'add',shape:{id:'N2',type:'rect',z:1,x:0,y:0,w:-10,h:10,stroke:'#000',size:2,opacity:1},clock:{peer:'envPeer',seq:5,ts:Date.now()}}},false);
+  assert.ok(!byId('N2'),'add with negative extent rejected at intake');
+}
+pass += 4; // ADR-0946 negative-extent intake pins
 pass += 7; // ADR-0943 second-pointer abort pins
 pass += 8; // ADR-0945 mid-gesture overlay-open cancel pins
 pass += 6; // ADR-0942 mid-gesture tool-key pins
