@@ -1,3 +1,7 @@
+## [1.7.962] - 2026-10-01
+### Fixed
+- ADR-0936: absolute coordinate writers bound at the wire bound (0935 residual closed) — `applyResize` (se-grow/Alt-mirror/aspect-lock/rotated re-pin tail + p1/p2 endpoints + pen pts map), `_mapToBox` `M` output (group-resize member affine), `_rotPtsAbout` `rot` output (rotate knob, grot drag) all clamp at ±1e7. Every local coordinate writer now stays inside the domain `validPatch` (0792) accepts — a locally-applied op can never emit a patch a peer drops.
+
 ## [1.7.961] - 2026-10-01
 ### Fixed
 - ADR-0935: local coordinate producers bound at the wire bound — `Shape.translate` (deltas: drags, nudges, align offsets) and `s2w` (pointer-derived absolutes: resize/rotate/pen/bend/drop targets) clamp destination coords at ±1e7 via `_xC`. A local patch carrying `|coord|>1e7` dies at remote `validPatch` (ADR-0792) — local applies, remote drops the whole op, divergence. Producer-side clamp keeps local and wire values identical.

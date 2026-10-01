@@ -1731,7 +1731,7 @@ try {
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, cycleStickyColor, wrapInFrame, doPasteAt, doPasteInPlace, selectSamePaint, selectSameType, showAllShapes, _stickyChain, _fitIfEmptyView, toggleCurve, toggleLineArrow, toggleStickyText, selectFrameContents, selectInverse, unlockAll, exportViewportPNG, cycleArrowHead, _connPathPts, _pathAt, _pathNearestT, snapSelToGrid, importBoardText, copyBoardJSON, importDrawioText, importSvgText, importExcText, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
              _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, _frameOf, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _edgePanTick, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, _frameOf, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _edgePanTick, _gresizeDrag, _gresizeCommit, _mapToBox, _rotPtsAbout, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa: () => _teTa, zoomAt, reverseConn, unbindSelection,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
              exportPNG, copyPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
@@ -1760,7 +1760,7 @@ try {
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, cycleStickyColor, wrapInFrame, doPasteAt, doPasteInPlace, selectSamePaint, selectSameType, showAllShapes, _stickyChain, _fitIfEmptyView, toggleCurve, toggleLineArrow, toggleStickyText, selectFrameContents, selectInverse, unlockAll, exportViewportPNG, cycleArrowHead, _connPathPts, _pathAt, _pathNearestT, snapSelToGrid, importBoardText, copyBoardJSON, importDrawioText, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
           _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, _frameOf, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _edgePanTick, _gresizeDrag, _gresizeCommit, _mapToBox, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, _frameOf, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _edgePanTick, _gresizeDrag, _gresizeCommit, _mapToBox, _rotPtsAbout, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa, zoomAt, reverseConn, unbindSelection,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
           exportPNG, copyPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
@@ -15240,6 +15240,22 @@ try {
   assert.ok(_s2l.x2===1e7&&_s2l.y2===1e7,'ADR-0935: conn endpoints clamp at the wire bound');
   const _s2w=G.s2w({x:9e9,y:9e9});
   assert.ok(_s2w.x===1e7&&_s2w.y===1e7,'ADR-0935: s2w clamps pointer-derived world coords at the wire bound');
+  // ADR-0936: the same bound on the absolute writers — applyResize (se-handle
+  // growth, p1/p2 endpoints, pen pts map), _mapToBox (group affine) and
+  // _rotPtsAbout output all clamp at ±1e7.
+  const _rA={id:'rA',type:'rect',x:-1e7,y:0,w:10,h:10,z:1};
+  applyResize(_rA,'se',{x:-1e7,y:0,w:10,h:10},{x:1e7,y:50},false,false);
+  assert.ok(_rA.w<=1e7,'ADR-0936: applyResize clamps w at the wire bound');
+  const _rL={id:'rL',type:'line',x1:0,y1:0,x2:5,y2:5,z:1};
+  applyResize(_rL,'p2',{x1:0,y1:0,x2:5,y2:5},{x:9e9,y:9e9},false,false);
+  assert.ok(_rL.x2===1e7&&_rL.y2===1e7,'ADR-0936: applyResize endpoint clamp at the wire bound');
+  const _rP={id:'rP',type:'pen',pts:[[9e9,9e9,1]],z:1};
+  _mapToBox(_rP,{pts:[[1,1,1]],x:0,y:0},{x:0,y:0,w:10,h:10},{x:-9e9,y:-9e9,w:1,h:1});
+  assert.ok(_rP.pts[0][0]>=-1e7,'ADR-0936: _mapToBox clamps member coords at the wire bound');
+  const _rR={id:'rR',type:'line',x1:1e7-1,y1:0,x2:1e7,y2:0,z:1};
+  _rotPtsAbout(_rR,0,0,0,1);
+  assert.ok(_rR.x2<=1e7,'ADR-0936: _rotPtsAbout clamps rotated coords at the wire bound');
+  pass += 4; // ADR-0936 absolute-writer pins
   pass += 4; // ADR-0935 producer-bound pins
   pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
