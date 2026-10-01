@@ -1,3 +1,8 @@
+## [1.7.937] - 2026-10-01
+
+### Docs
+- architecture.md を ADR-0887–0910 クラスタへ同期 (ADR-0911): ランタイム入力面 (capture guard・primary-only arm・`matches?.`・3条件監査)、per-shape 隔離 (`_dS`+minimap)、degenerate 描画面、editor overlay 追従、IDB intake ゲート、ブート・外部入力検証の新節 (peer/theme gate・wake lock・clipboard・error surface 設計)
+
 ## [1.7.936] - 2026-10-01
 
 ### Docs

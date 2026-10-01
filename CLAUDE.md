@@ -959,6 +959,7 @@ Board/
 │   └── ADR-0908-event-gesture-gates-audit.md  # passive/preventDefault/touch-action 監査完走 — 全入力リスナで3条件網羅を記録
 │   └── ADR-0909-event-target-guards.md  # paste/keydown の e.target.matches() を `?.` ガード — Image ライフサイクル監査完走
 │   └── ADR-0910-lifecycle-rearm-clipboard-audit.md  # wake lock 再取得・clipboard 経路監査完走 — 実害なし
+│   └── ADR-0911-architecture-sync-runtime-input.md  # architecture.md を ADR-0887–0910 クラスタへ同期 — 入力面・隔離・boot 検証の規則を記録
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
