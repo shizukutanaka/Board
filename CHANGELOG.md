@@ -1,3 +1,8 @@
+## [1.7.993] - 2026-10-01
+
+### Fixed
+- mid-edit remote lock で収束が崩れる実害を閉塞 (ADR-0967): テキスト/ラベルエディタの blur commit は `!byId` のみ検査 (del のみ fold、0556) だったため、remote `locked` が編集中に着地すると `_teFollow`/`_lblFollow` の `_lk` fold と blur commit が同一フレームで競合 — blur 発火時に `_rcOp(upd)`/`_cmt(del)`/`resizeAfterTextEdit`/`hit.label=` がローカルだけ進み、ピアは locked gate で drop する一方向発散 (0964/0965 同型)。両 commit ハンドラを `!byId(id)||_lk(obj)` へ拡張し live mutation・全 commit 経路を省略 (typed 文字は破棄で remote と一致)。スライダー系は 0962 で gated 済みと確認
+
 ## [1.7.992] - 2026-10-01
 
 ### Docs / Test

@@ -757,8 +757,8 @@ const checks = [
   // v1.7.582 (ADR-0554): presentation frame navigation drops deleted frames
   ['presentation _goto filters stale+off-page frames (ADR-0554/0677)', html.includes('_frames=_frames.map(f=>byId(f.id)).filter(f=>f&&_pgOk(f))')],
   // v1.7.584 (ADR-0556): blur on a remotely-deleted shape must not commit a phantom op
-  ['text editor blur guards remote-deleted shape (ADR-0556)', html.includes("if(!byId(s.id)){state.editing=null;_teTa=null;_rm(ta);_iv();return}")],
-  ['label editor commit guards remote-deleted shape (ADR-0557)', html.includes("if(!byId(hit.id)){_lblTa=null;_rm(inp);_iv();return}")],
+  ['text editor blur guards remote-deleted/locked shape (ADR-0556/0967)', html.includes("if(!byId(s.id)||_lk(s)){state.editing=null;_teTa=null;_rm(ta);_iv();return}")],
+  ['label editor commit guards remote-deleted/locked shape (ADR-0557/0967)', html.includes("if(!byId(hit.id)||_lk(hit)){_lblTa=null;_rm(inp);_iv();return}")],
   ['sticky chain guards remote-deleted source (ADR-0558)', html.includes("_lk(s)||!byId(s.id))return")],
   ['text overlay closes when edited shape removed/hidden/locked/off-page (ADR-0559/0569/0572/0574/0709)', html.includes("if(!s||_hd(s)||_lk(s)||!_pgOk(s)){_rm(_teTa);_teTa=null;state.editing=null;_iv();return}")],
   ['label overlay closes when labelled shape removed/hidden/locked/off-page (ADR-0559/0569/0572/0709)', html.includes("if(!_lt||_hd(_lt)||_lk(_lt)||!_pgOk(_lt)){_rm(_lblTa.inp);_lblTa=null;return}")],
@@ -10922,6 +10922,51 @@ try {
     assert.strictEqual(state.history.length,hb2,'_nugLock: gone lock-member commits nothing');
     console.log('  ✓ _nugLock: own-lock exemption direction (unlock kept, gone lock-member dropped)');
   }
+  // ADR-0967: remote lock mid-edit — the blur/commit handlers must fold like
+  // remote del. Peers gate 'upd'/'del' on locked, so a commit here diverges
+  // one-way; the follow-loop's fold races the same frame — the handler is the gate.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const TE=Shape.make('text',{x:0,y:0,w:50,h:20,text:'orig'});
+    Store.commit({op:'add',shape:TE});
+    const kids=[];const _ceA=fakeDoc.createElement;
+    fakeDoc.createElement=tag=>{const el=_ceA(tag);el._L={};el.addEventListener=(t,f)=>{(el._L[t]||=[]).push(f)};el.blur=()=>{(el._L.blur||[]).forEach(f=>f())};return el};
+    const _abA=fakeDoc.body.appendChild;fakeDoc.body.appendChild=el=>{kids.push(el)};
+    try{
+      openTextEditor(TE,false);
+      const ta=kids[kids.length-1];ta.value='typed newer text';
+      const h0=state.history.length;
+      byId(TE.id).locked=true;                       // remote lock lands mid-edit
+      ta.blur();
+      assert.strictEqual(state.history.length,h0,'mid-edit lock: text blur commits nothing');
+      assert.strictEqual(byId(TE.id).text,'orig','mid-edit lock: live shape text untouched');
+      assert.strictEqual(state.editing,null,'mid-edit lock: editing cleared on fold');
+      const TE2=Shape.make('text',{x:0,y:30,w:50,h:20,text:'a'});   // unlocked control
+      Store.commit({op:'add',shape:TE2});
+      openTextEditor(TE2,false);
+      const ta2=kids[kids.length-1];ta2.value='b';
+      const h1=state.history.length;
+      ta2.blur();
+      assert.ok(state.history.length>h1&&byId(TE2.id).text==='b','unlocked control: blur commits the upd');
+    }finally{fakeDoc.createElement=_ceA;fakeDoc.body.appendChild=_abA;}
+    const LB=Shape.make('rect',{x:0,y:60,w:50,h:40,label:'l0'});
+    Store.commit({op:'add',shape:LB});
+    state.selection=new Set([LB.id]);
+    const kids2=[];const _ceB=fakeDoc.createElement;
+    fakeDoc.createElement=tag=>{const el=_ceB(tag);el._L={};el.addEventListener=(t,f)=>{(el._L[t]||=[]).push(f)};el.blur=()=>{(el._L.blur||[]).forEach(f=>f())};return el};
+    const _abB=fakeDoc.body.appendChild;fakeDoc.body.appendChild=el=>{kids2.push(el)};
+    try{
+      editSelectedShapeKbd();                        // opens the label editor
+      const inp=kids2[kids2.length-1];inp.value='l1';
+      const h2=state.history.length;
+      byId(LB.id).locked=true;                       // remote lock lands mid-edit
+      inp.blur();
+      assert.strictEqual(state.history.length,h2,'mid-edit lock: label commit folds');
+      assert.strictEqual(byId(LB.id).label,'l0','mid-edit lock: label untouched');
+    }finally{fakeDoc.createElement=_ceB;fakeDoc.body.appendChild=_abB;}
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    console.log('  ✓ mid-edit remote lock: text/label blur commits fold, controls pass (ADR-0967)');
+  }
 
   // v1.7.13b: doDuplicate must skip locked shapes (parity with nudgeSelection/doDelete).
   // Bug: withFrameChildren expands the frame selection to include all contained children
@@ -16023,6 +16068,7 @@ pass += 7; // ADR-0962 slider before-buffer boundary-flush + prune pins
 pass += 5; // ADR-0963 lifecycle×boundedness audit pins
 pass += 8; // ADR-0965 mid-run lock/missing member partition (3 blocks: 7 asserts + 1 pin)
 pass += 5; // ADR-0966 pending-op×mid-run audit pins + own-lock exemption block
+pass += 6; // ADR-0967 mid-edit remote-lock blur/commit fold (text+label)
 pass += 15; // ADR-0964 mid-gesture lock restore/commit-gate pins
 pass += 7; // ADR-0943 second-pointer abort pins
 pass += 8; // ADR-0945 mid-gesture overlay-open cancel pins
