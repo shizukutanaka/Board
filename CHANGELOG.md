@@ -1,3 +1,8 @@
+## [1.7.931] - 2026-10-01
+
+### Docs
+- IndexedDB 取込監査完走 — `load`/`restoreBackup`/`checkBackup` 全読込経路で shapes `validShape`・pages `_vPages`・viewport `_vpOK`+`clampZoom`・docName `_s80`・wclock `validClock`+null-proto・因果マーカー各ゲートを検証 (ADR-0905)
+
 ## [1.7.930] - 2026-10-01
 
 ### Fixed
