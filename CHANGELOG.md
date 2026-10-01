@@ -1,3 +1,8 @@
+## [1.7.934] - 2026-10-01
+
+### Docs
+- イベントジェスチャ監査完走 (ADR-0908): passive/preventDefault/touch-action の3条件を全入力リスナで検証 — wheel・Safari gesture は `{passive:false}`+`_pd`、contextmenu/dragover/drop/copy/paste 全 gated、pinch bookkeeping の capture/reset 順序を記録。実害なし
+
 ## [1.7.933] - 2026-10-01
 
 ### Fixed

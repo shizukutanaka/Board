@@ -956,6 +956,7 @@ Board/
 │   └── ADR-0905-idb-intake-audit.md  # IndexedDB 取込監査完走 — load/restore/checkBackup 全読込のゲート網羅を記録
 │   └── ADR-0906-pointer-capture-guards.md  # setPointerCapture の try/catch 化 — 実行時 API 機能検出監査完走
 │   └── ADR-0907-export-render-isolation.md  # エクスポート描画ループの per-shape 隔離 (_dS) — fail-fast 監査完走
+│   └── ADR-0908-event-gesture-gates-audit.md  # passive/preventDefault/touch-action 監査完走 — 全入力リスナで3条件網羅を記録
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
