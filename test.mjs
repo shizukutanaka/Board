@@ -15261,6 +15261,20 @@ try {
 assert.ok(_hatchSegs(0,0,1e7,1e7,6,false).length<=2100,'ADR-0939: hatch segs bounded at huge extents');
 assert.ok(_hatchSegs(0,0,100,100,6,true).length<100,'ADR-0939: small extents keep the natural gap');
 pass += 2; // ADR-0939 hatch-bound pins
+
+// ADR-0940: a snapshot merge that hides a selected shape drops its selection
+// id — ADR-0568 parity; the op apply paths do this, the merge path was the gap.
+{
+  const r={id:'M1',type:'rect',z:1,x:0,y:0,w:10,h:10,stroke:'#000',size:2,opacity:1};
+  Store.commit({op:'add',shape:r});
+  state.selection=new Set(['M1']);
+  const res=Net._mergeSnapshotOp({op:'add',shape:{...JSON.parse(JSON.stringify(r)),visible:0},wc:{
+    visible:{peer:'A',seq:1,ts:Date.now()},
+  }});
+  assert.strictEqual(res,'merge','hide merge applies');
+  assert.ok(!state.selection.has('M1'),'merge-hidden shape dropped from selection');
+}
+pass += 2; // ADR-0940 merge-hide selection pin
 pass += 4; // ADR-0936 absolute-writer pins
   pass += 4; // ADR-0935 producer-bound pins
   pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin

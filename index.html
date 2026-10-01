@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.965';   // ADR-0939
+const V='1.7.966';   // ADR-0940
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -8300,7 +8300,6 @@ const Net={
   // ADR-0058: merge one snapshot add-op. Unknown shape → plain add;
   // known shape → per-property LWW so concurrent edits on both
   // peers converge instead of split-braining (loser reports 'skip').
-  // The previous keep-everything union was convergence, not a user action.
   _mergeSnapshotOp(op){
     op=this._attachOp(op);                            // ADR-0069
     if(!op||op.op!=='add'||!op.shape)return 'skip';   // snapshot ops are adds only
@@ -8316,8 +8315,6 @@ const Net={
       if(k==='_born'||k==='_del'){if(!lw[k]||clockNewer(rc,lw[k])){lw[k]=clone(rc);_ps()}continue}   // ADR-0927: existence clocks merge too
       // ADR-0372: gate the merged VALUE too — before a stale field
       // LWW-merges {x:NaN, pts:'bad', id:'x', __proto__}
-      // shape (render NaN / drawPen crash / id-ind
-      // id/type are never mergeable; pollution keys are rejected upstream
       const v=op.shape[k];
       if(v===_ud||k==='id'||k==='type'||k==='pg'||k[0]==='_'||k==='__proto__'||k==='constructor'||k==='prototype'||!validPatch({[k]:v}))continue;   // ADR-0919
       const lc=lw[k];
@@ -8328,6 +8325,7 @@ const Net={
     if(_iS(op.shape.img)&&ex.img!==op.shape.img&&this._imgPending.get(ex.id)?.k===op.shape.img)this._imgPending.delete(ex.id);
     if(duNew&&_iS(ex.img)&&this._imgPending.get(ex.id)?.k===ex.img){this._imgPending.delete(ex.id);delete ex.img;}
     if(dirty){
+      if(_hd(ex))_sdl(ex.id);   // ADR-0940: merge-hidden shape can't stay selected (0568 parity)
       _md(!0);_iG();
       _iv();_ru();_ps();
       return 'merge';

@@ -988,6 +988,7 @@ Board/
 │   └── ADR-0937-hot-path-work-bounds.md     # ホットパス仕事量監査完走 — memo/throttle/dedup/bound 網羅、実害なし
 │   └── ADR-0938-docname-writer-stamp.md    # docName 自側 writer 刻印 — 同 ts 改名の双方向採用発散を閉塞
 │   └── ADR-0939-hatch-segment-bound.md     # hatch gap 下限クランプ — 巨大 extent のセグメント爆発/描画凍結を閉塞
+│   └── ADR-0940-merge-hide-selection.md    # snapshot merge hide で選択 id 残留 — _sdl 落とし (0568 parity)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
