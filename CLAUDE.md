@@ -964,6 +964,7 @@ Board/
 │   └── ADR-0913-frac-structural-strip.md  # frac を patch 適用から構造除去 — 鍛造 patch の z-order 攪乱を閉塞 (0912 同型)
 │   └── ADR-0914-stampwrites-structural-keys.md  # 構造キーに wclock を刻まない — 鍛造 frac 刻印による正規 zorder 棄却を閉塞
 │   └── ADR-0915-wire-aux-clock-audit.md  # wire 補助データ取込監査完走 — clock マップ・ページ集合・presence 全経路 gated
+│   └── ADR-0916-groupid-structural.md  # groupId を patch 適用から構造除去 — undo-wire は専用 group/ungroup op emit へ移行 (0912/0913 同型、0373 防衛対象の完結)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

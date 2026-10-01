@@ -96,12 +96,14 @@ const checks = [
   ['export render loops isolate drawShape', html.includes('_dS=(s,c)=>{try{drawShape(s,c)}catch(_){}}')],
   // ADR-0909: non-Element event targets can't TypeError the paste/keydown gates
   ['paste/keydown target guard uses optional matches', (html.match(/e\.target\.matches\?\.\(/g)||[]).length>=2],
-  // ADR-0912/0913: pg + frac are structural — patches can't exile shapes or scramble z-order
+  // ADR-0912/0913/0916: pg + frac + groupId are structural — patches can't exile
+  // shapes, scramble z-order, or forge group membership (halo/selection clobber)
   ['patch strips drop pg (upd + style paths)', (html.match(/delete p\.pg;/g)||[]).length>=2],
   ['patch strips drop frac (upd + style paths)', (html.match(/delete p\.frac;/g)||[]).length>=2],
+  ['patch strips drop groupId (upd + style paths)', (html.match(/delete p\.groupId;/g)||[]).length>=2],
   // ADR-0914: structural keys get no wclock either — a forged frac/pg stamp would
   // still suppress legit zorder/pg writes via _lwwSkip even though _apply strips them
-  ['stampWrites skips structural keys', html.includes("key==='id'||key==='type'||key==='pg'||key==='frac'")],
+  ['stampWrites skips structural keys', html.includes("key==='id'||key==='type'||key==='pg'||key==='frac'||key==='groupId'")],
   // v1.1: op validation in _onRecv
   ['_onRecv validates op.clock', html.includes("!_iS(op.clock.peer)")],
   // v1.1: import validates shapes
@@ -4733,12 +4735,15 @@ try {
       assert.strictEqual(d[1].after.a,'a','connClears restores binding');
       assert.strictEqual(uw({op:'move',ids:['a'],dx:5,dy:-3})[0].dx,-5,'move negates');
       assert.strictEqual(uw({op:'upd',id:'a',before:{x:1},after:{x:2}})[0].after.x,1,'upd swaps before/after');
-      // ADR-0444: group/ungroup restore per-shape groupId via upd patches;
-      // zorder swaps changes[].before/after; replace/beautify stay local.
+      // ADR-0444/0916: group/ungroup restore per-shape groupId via dedicated
+      // ops (groupId is structural — never patch-carried); zorder swaps
+      // changes[].before/after; replace/beautify stay local.
       const g=uw({op:'group',ids:['a','b'],gid:'g',before:[{id:'a',groupId:'old'},{id:'b'}]});
-      assert.strictEqual(g.length,2,'group undo emits per-shape upd');
-      assert.strictEqual(g[0].after.groupId,'old','prior groupId restored');
-      assert.strictEqual(g[1].after.groupId,null,'no prior group -> null');
+      assert.strictEqual(g.length,2,'group undo emits dedicated group/ungroup ops');
+      assert.strictEqual(g[0].op,'ungroup','no prior groupId -> ungroup op');
+      assert.strictEqual(g[0].ids[0],'b','ungroup restores the empty member');
+      assert.strictEqual(g[1].op,'group','prior groupId restored via group op');
+      assert.strictEqual(g[1].gid,'old','group op carries the prior gid');
       const z=uw({op:'zorder',changes:[{id:'a',before:'f1',after:'f2'}]});
       assert.strictEqual(z[0].changes[0].after,'f1','zorder changes swapped');
       assert.strictEqual(uw({op:'replace'}),null,'replace stays local-only');
@@ -14980,7 +14985,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1867; // prev 1866 + 1 ADR-0914 stampWrites structural-key pin
+  pass += 1868; // prev 1867 + 1 ADR-0916 groupId structural-strip pin
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

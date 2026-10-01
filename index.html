@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.941';   // ADR-0915
+const V='1.7.942';   // ADR-0916
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1300,7 +1300,7 @@ function validPatch(p){
     if(k in p&&p[k]!=null&&typeof p[k]!=='number')return false;
   }
   for(const k of ['bold','italic','under','strike','locked','shadow','hl'])if(k in p&&p[k]!=null&&typeof p[k]!=='boolean'&&typeof p[k]!=='number')return false;   // ADR-0411/0413/0430: flags are true|1 (drawio writes 1; shadow writes true)
-  // ADR-0868: range bounds — canvas ignores out-of-range globalAlpha/lineWidth/font, leaking the previous shape's state.
+  // ADR-0868: canvas ignores out-of-range alpha/width/font — leaks the previous shape's state.
   for(const k of['size','fontSize'])if(p[k]!=null&&!(p[k]>0&&p[k]<=1e4))return false;
   if(p.opacity!=null&&(p.opacity<0||p.opacity>1))return false;
   if(p.aF!=null&&(!_iO(p.aF)||!(p.aF.fx>=0&&p.aF.fx<=1)||!(p.aF.fy>=0&&p.aF.fy<=1)))return false;   // ADR-0793
@@ -1324,8 +1324,8 @@ function validPatch(p){
   return true;
 }
 // ADR-0373: remote patches may carry structural keys — `id`/`type` rebinds,
-// `frac` z-order scrambles, `pg` exile, `_`-prefixed cache clobbers.
-function _stripStruct(p,idToo){delete p.type;delete p.pg;delete p.frac;if(idToo)delete p.id;for(const k of _ok(p))if(k[0]==='_')delete p[k];return p}
+// `frac` z-order scrambles, `pg`/`groupId` membership forgery, `_`-prefixed cache clobbers.
+function _stripStruct(p,idToo){delete p.type;delete p.pg;delete p.frac;delete p.groupId;if(idToo)delete p.id;for(const k of _ok(p))if(k[0]==='_')delete p[k];return p}
 function _cleanVal(v,depth){
   if(depth>8)return false;
   if(typeof v==='function')return false;
@@ -1359,8 +1359,7 @@ function validRemotePayload(op){
     case 'add':    return validShape(op.shape);
     case 'addMany':    return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape)&&(op.wc==null||wcOk(op.wc));   // ADR-0721/0726: validate the clock snapshot too
     case 'del':
-      // ADR-0377: connClears whitelist — a hostile peer could otherwise inject
-      // any prop through `before`/`after` (no _stripStruct at the assign sites).
+      // ADR-0377: connClears whitelist — else any prop could ride before/after.
       if(op.connClears!=null&&!(_iA(op.connClears)&&_ln(op.connClears)<=MAX_OP_SHAPES&&op.connClears.every(p=>
           p&&_iS(p.id)&&_ln(p.id)<=64&&(p.before==null||_ccOk(p.before))&&(p.after==null||_ccOk(p.after)))))return false;
       return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape);
@@ -1370,15 +1369,14 @@ function validRemotePayload(op){
         &&(op.afterWc==null||wcOk(op.afterWc));
     case 'upd':{const noLock=p=>!('locked' in p);
       if(!_iS(op.id)||_ln(op.id)>64||!validPatch(op.after)||!noLock(op.after)||(op.before!=null&&!validPatch(op.before)))return false;
-      // pen pts must be array-of-[x,y] — flat arrays or NaN entries die here
+      // pen pts must be [x,y] tuples — flat arrays or NaN entries die here
       if(op.after.pts!=null&&!_ptsOK(op.after.pts))return false;
       return true;}
     case 'move':   return _iA(op.ids)&&_ln(op.ids)>0&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(_idOK)&&_iN(op.dx)&&_fin(op.dx)&&_iN(op.dy)&&_fin(op.dy)&&(op.dx!==0||op.dy!==0)
       &&patches(op.after)&&(op.before==null||patches(op.before));   // ADR-0729/0741
     case 'zorder':  // Step2 minimal-delta {changes:[{id,before,after}]} only — ADR-0742: the legacy {after:[…]}
-                    // wholesale snapshot applied z+frac unconditionally on every entry (with no clock stamp),
-                    // so a pre-Step2 peer's raced reorder clobbered newer frac writes with no convergence path
-                    // to heal. No current producer emits it.
+                    // wholesale applied z+frac unconditionally (no clock stamp) — a raced reorder clobbered newer frac
+                    // writes with no heal path. No current producer emits it.
       return _iA(op.changes)&&_ln(op.changes)<=MAX_OP_SHAPES&&op.changes.every(c=>c&&_iS(c.id)&&_ln(c.id)<=64
                 &&(c.after==null||_iS(c.after)&&_ln(c.after)<=600)&&(c.before==null||_iS(c.before)&&_ln(c.before)<=600));   // ADR-0473/0485
     case 'style':
@@ -1539,7 +1537,7 @@ const Store={
     const C=op.clock;if(!C)return;
     // stamp live shapes only — a clock for a dead id outlives wclock cleanup
     const stamp=(id,after,before)=>{if(!after||!byId(id))return;const w=_wc()[id]||(_wc()[id]=_wM());
-      for(const key of _ok(after)){if(key==='id'||key==='type'||key==='pg'||key==='frac'||key[0]==='_')continue;if(this._chg(before,after,key))w[key]=C;}};   // ADR-0914
+      for(const key of _ok(after)){if(key==='id'||key==='type'||key==='pg'||key==='frac'||key==='groupId'||key[0]==='_')continue;if(this._chg(before,after,key))w[key]=C;}};   // ADR-0914/0916
     if(op.op==='upd')stamp(op.id,op.after,op.before);
     else if(op.op==='group'||op.op==='ungroup'){
       const bmap={};for(const b of (op.before||[]))bmap[b.id]=b;
@@ -1836,7 +1834,7 @@ const Store={
           // apply of our undo-wire skips it → diverged props. The forward
           // gate still applies so an unlock-undo isn't dead)
           if(!sh||(sh.locked&&!('locked' in raw)))continue;
-          const p=clone(raw);if(op.op!=='beautify'){delete p.type;delete p.pg;delete p.frac;for(const k of _ok(p))if(k[0]==='_')delete p[k];}   // ADR-0373/0730/0912/0913
+          const p=clone(raw);if(op.op!=='beautify'){delete p.type;delete p.pg;delete p.frac;delete p.groupId;for(const k of _ok(p))if(k[0]==='_')delete p[k];}   // ADR-0373/0730/0912/0913/0916
           // Same LWW guard as 'upd' (_lwwSkip) — since
           // _stampWrites records per-property write clocks — undo
           // must not clobber a newer remote write here
@@ -9829,7 +9827,7 @@ function cycleVAlign(){
   })
   _so(before,after)
 }
-// ADR-0189/0205/0208: line-height/letter-spacing/word-wrap cycles — null restores per-type defaults; style ops keep defaults off.
+// ADR-0189/0205/0208: line-height/letter-spacing/word-wrap cycles — null restores per-type defaults.
 function toggleWrap(){
   const before=[],after=[];
   _forSel((s,id)=>{if(s.type!=='text'||_lk(s))return;
@@ -9897,8 +9895,9 @@ function _undoWire(op){
       return[o];}
     case 'upd':case 'style':case 'resize':case 'align':case 'beautify':
                    return[{op:op.op,id:op.id,dir:op.dir,before:op.after,after:op.before}];   // ADR-0717/0731
-    case 'group':case 'ungroup':   // restore per-shape groupId via upd patches
-      return _iA(op.before)?op.before.map(b=>({op:'upd',id:b.id,after:{groupId:b.groupId||null}})):null;
+    case 'group':case 'ungroup':   // dedicated ops — groupId is stripped from patches (ADR-0916)
+      return _iA(op.before)?(()=>{const o=[],reg={};for(const b of op.before)b.groupId?(reg[b.groupId]=reg[b.groupId]||[]).push(b.id):op.op==='group'&&_pu(o,{op:'ungroup',ids:[b.id],gids:[op.gid],before:[{id:b.id,groupId:op.gid}]});
+        for(const g in reg)_pu(o,{op:'group',ids:reg[g],gid:g,before:reg[g].map(id=>({id}))});return o})():null;
     case 'zorder':
       return op.changes?[{op:'zorder',changes:op.changes.map(c=>({id:c.id,before:c.after,after:c.before}))}]:null;   // ADR-0744: history only ever holds {changes} — the legacy fallback produced a wire form peers reject
     case 'replace':   // ADR-0615: undo of a wholesale swap must reach peers too — rebroadcast the pre-swap board (newest clock wins via ADR-0614)

@@ -1,3 +1,8 @@
+## [1.7.942] - 2026-10-01
+
+### Fixed
+- `groupId` (グループメンバシップ) を `upd`/`style` patch 適用から構造除去 (ADR-0916): 鍛造 patch が幻影 halo/選択カスケードを生じ、刻印された `w.groupId` が正規 group/ungroup を `clockNewer`/`_lwwSkip` で棄却する2系統の実害を閉塞 — `_undoWire` の group/ungroup 逆操作を `upd{groupId}` patch から専用 op emit へ移行 (ADR-0473 `gids` 必須に適合、旧コードでも適用可能で wire interop safe) した上で strip+刻印スキップを対称化
+
 ## [1.7.941] - 2026-10-01
 
 ### Documentation
