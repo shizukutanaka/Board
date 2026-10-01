@@ -975,6 +975,7 @@ Board/
 │   └── ADR-0924-backward-apply-audit.md  # backward-apply 収束監査完走 — 全17 op の _undoWire 網羅・redo・connClears 再束縛・_stampWrites/_selR/_pgFollow/_opIds 対称を検証、実害なし
 │   └── ADR-0925-persist-broadcast-reach.md  # 永続化・broadcast 到達監査完走 — 全 mutation 経路が _ps+wire 送信へ到達、リロード消失/ピア発散なし
 │   └── ADR-0926-existence-clock.md  # 存在クロック — kill 経路の無条件墓標で到着順が存在を決めた非対称を _born+_bN (OR-set add-wins) で閉塞、nowTs strict HLC 化
+│   └── ADR-0927-born-parity.md    # born parity — snapshot 採用/merge/ローカル全置換の _born 未刻印3系統を _wAdopt+tomb supersession+wire 同等刻印で閉塞
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

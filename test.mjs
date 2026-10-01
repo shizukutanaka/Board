@@ -1519,7 +1519,7 @@ const checks = [
     html.includes("REMOTE_OPS:_sT(['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize','replace','pageAdd','pageDel','pageName','beautify'])")],
   // v1.7.48/ADR-0474: _applySnapshot caps at SHARE_MAX_SHAPES — a 500-op cap truncated boards >500 shapes
   ['_applySnapshot: SHARE_MAX_SHAPES cap on snapshot shapes (board-size bound, DoS-bounded by the 24MB join cap)',
-    html.includes("const valid=_s0(shapes,SHARE_MAX_SHAPES).map(s=>this._attachShape(s)).filter(s=>validShape(s)&&!(_wc()[s.id]||{})._del);")],
+    html.includes("_s0(shapes,SHARE_MAX_SHAPES).map(s=>this._attachShape(s)).filter(s=>validShape(s)&&!_tAlive(s.id,wm.get(s.id)))")],
   // v1.7.48: sticky shadow set before fill (renders correctly)
   ['sticky note shadow set before fill (not after)',
     html.includes("c.shadowColor='rgba(0,0,0,.08)';c.shadowBlur=8;c.shadowOffsetY=2;\n      _bp(c);roundRect(")],
@@ -7288,6 +7288,35 @@ try {
     assert.ok(!B.state.shapes.find(s=>s.id==='aw1'),'ADR-0926: stale re-add still loses to the tomb (symmetric order)');
     state._lastTs=0; B.state._lastTs=0;
     console.log('  ✓ ADR-0926: existence clock — a del loses to a newer (re)introduction on every peer');
+
+    // ADR-0927: three (re)introduction routes stamped no real born — snapshot
+    // adopt carried no wclock at all, snapshot-merge stamped the snap's own
+    // ts:0 clock instead of the sender's, and a local wholesale swap
+    // (_recordCommitted 'replace') never stamped _born while every remote
+    // receiver did. A stale del then deleted on exactly one side → divergence.
+    // Snapshot intake now adopts the sender's wclock (keep-newer, _born/_del
+    // included), a birth newer than a tomb supersedes it (_tAlive/_tmb), and
+    // the local swap records born under the swap clock like the wire path.
+    reset(B);B.state.wclock={};
+    const sx={id:'sa1',type:'rect',x:0,y:0,w:10,h:10,z:1},bc={peer:'sp',seq:9,ts:Date.now()+1e3};
+    B.Net._onRecv({k:'snapshot',shapes:[cp(sx)],ops:[{op:'add',shape:cp(sx),clock:{peer:'sp',seq:'snap:sa1',ts:0},wc:{_born:bc}}],peer:'sp'});
+    assert.ok(!!B.state.shapes.find(s=>s.id==='sa1'),'ADR-0927: snapshot-adopted shape lands');
+    assert.ok(B.state.wclock.sa1&&B.state.wclock.sa1._born&&B.state.wclock.sa1._born.ts===bc.ts,"ADR-0927: adopt stamps the sender's born clock (was: none)");
+    B.Net._onRecv({k:'op',op:{op:'del',shapes:[cp(sx)],clock:{peer:'peerX',seq:3,ts:1}}});
+    assert.ok(!!B.state.shapes.find(s=>s.id==='sa1'),'ADR-0927: stale del loses to the adopted born (was: died on the joiner only)');
+    reset(B);B.state.wclock={'sb':{_del:{peer:'q',seq:1,ts:Date.now()+1}}};
+    const sy={id:'sb',type:'rect',x:0,y:0,w:10,h:10,z:1};
+    B.Net._onRecv({k:'snapshot',shapes:[cp(sy)],ops:[{op:'add',shape:cp(sy),clock:{peer:'sp',seq:'snap:sb',ts:0},wc:{_born:{peer:'sp',seq:2,ts:Date.now()+1e3}}}],peer:'sp'});
+    assert.ok(!!B.state.shapes.find(s=>s.id==='sb'),'ADR-0927: a newer birth supersedes our stale tomb (was: adopt filter dropped it → divergence)');
+    state.wclock={};state.shapes=[];_invalidateGrid();
+    const sd={id:'sd1',type:'rect',x:0,y:0,w:10,h:10,z:1};
+    state.shapes=[cp(sd)];_invalidateGrid();
+    Store._recordCommitted({op:'replace',before:[],after:[cp(sd)],wc:{}});
+    assert.ok(state.wclock.sd1&&state.wclock.sd1._born,'ADR-0927: local wholesale swap stamps _born like the wire path (was: none)');
+    Store.applyRemote({op:'del',shapes:[cp(sd)],clock:{peer:'peerX',seq:7,ts:1}});
+    assert.ok(!!byId('sd1'),"ADR-0927: stale remote del loses on the swap's own peer too (was: died locally, kept everywhere else)");
+    state._lastTs=0;B.state._lastTs=0;state._lastRep=null;
+    console.log('  ✓ ADR-0927: born parity on snapshot adopt/merge + local wholesale swaps');
 
     // ADR-0736: clear/'replace' wiped wclock WHOLESALE — including tombstones —
     // so a stale in-flight 'add' could resurrect a shape the swap just removed,
@@ -15115,7 +15144,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1895; // prev 1886 + 2 ADR-0923 group/ungroup backward locked-gate pins + 7 ADR-0926 existence-clock pins
+  pass += 1903; // prev 1895 + 8 ADR-0927 born-parity pins (snapshot adopt/merge + local swap + tomb supersession)
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
