@@ -1,3 +1,11 @@
+## [1.7.971] - 2026-10-01
+
+### Fixed
+- ジェスチャ中の overlay 開放でもライブドラッグをキャンセル (ADR-0945): `?`/`⇧/` → `UI.toggleHelp()` と `⌘F` → `toggleSq()` が `ptr.down` を未処理のままモーダルを開き、`setPointerCapture` で残ったドラッグが overlay 下へ不可視 commit し得た (ADR-0634/0637 と同型の残穴)。両 open 関数の open 分岐に `if(ptr.down)_cancelPointerGesture()` を内蔵 — dispatch サイトではなく関数側ゲートなので ctx メニュー/ボタン等の現行・将来経路も一括で担保 (0634 の `Presentation.enter()` 型)
+
+### Tests
+- mid-gesture overlay 開放キャンセルの behavioural ピン 8件 (実 dispatch で rect ジェスチャ arm → `fireKey('f',{metaKey:true})`/`fireKey('?',{shiftKey:true})` → `ptr.down`/`state.draft` クリア・図形非 commit・overlay 開放を固定)
+
 ## [1.7.970] - 2026-10-01
 
 ### Documentation

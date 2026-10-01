@@ -14655,6 +14655,33 @@ try {
     fire('pointerup',320,320,{pointerId:1});
     assert.strictEqual(byId(MP.id).x,100,'the lifted finger never resumes the aborted move');
     state.snap=true;
+    // ADR-0945: opening an overlay mid-gesture cancels it — parity with
+    // presentation (0634) and Enter-edit (0637): without the cancel the
+    // captured pointer's release commits invisibly under the modal.
+    reset();
+    state.snap=false;
+    state.tool='rect';state.viewport={x:0,y:0,zoom:1};
+    fire('pointerdown',10,10);
+    fire('pointermove',60,50,{altKey:true});
+    assert.ok(ptr.down&&state.draft,'precondition: rect gesture armed');
+    fireKey('f',{metaKey:true});   // ⌘F opens the search box
+    assert.ok(!ptr.down,'⌘F mid-drag cancels the live gesture');
+    assert.ok(!state.draft,'the uncommitted draft is dropped');
+    assert.strictEqual(state.shapes.length,0,'nothing commits under the search overlay');
+    fire('pointerup',10,10);
+    fakeDoc.getElementById('sqinput').style.display='none';   // close the search box for later tests
+    reset();
+    state.snap=false;
+    state.tool='rect';
+    fire('pointerdown',10,10);
+    fire('pointermove',60,50,{altKey:true});
+    fireKey('?',{shiftKey:true});  // ? opens help
+    assert.ok(!ptr.down,'? mid-drag cancels the live gesture');
+    assert.ok(!state.draft,'the uncommitted draft is dropped');
+    assert.strictEqual(state.shapes.length,0,'nothing commits under the help overlay');
+    fire('pointerup',10,10);
+    _els.help.dataset.open='false';   // cleanup for later tests
+    state.snap=true;
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -15365,6 +15392,7 @@ pass += 2; // ADR-0940 merge-hide selection pin
 }
 pass += 3; // ADR-0941 clock-envelope binding pins
 pass += 7; // ADR-0943 second-pointer abort pins
+pass += 8; // ADR-0945 mid-gesture overlay-open cancel pins
 pass += 6; // ADR-0942 mid-gesture tool-key pins
 pass += 4; // ADR-0936 absolute-writer pins
   pass += 4; // ADR-0935 producer-bound pins

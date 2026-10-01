@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.970';   // ADR-0944
+const V='1.7.971';   // ADR-0945
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2433,8 +2433,7 @@ function invalidateOverlay(){needOverlay=true;if(!_rafId)_rafId=_rAF(frame)}
 function frame(){
   _rafId=0;
   if(needsRender||needOverlay){
-    // ADR-0565: a draw() throw must not strand needsRender;
-    // swallow it so the next _iv() reschedules it
+    // ADR-0565: a draw throw must not strand needsRender
     try{if(needsRender)draw();if(needOverlay)drawOverlay()}catch(_){}
     needsRender=false;needOverlay=false;
     // ADR-0011: selection presence rides the frame edge — senders run
@@ -6003,7 +6002,7 @@ function toggleSnapMode(){state.snap=!state.snap;_tst(`${t('snap')} ${state.snap
 function toggleSq(){
   const sq=_g('sqinput');if(!sq)return;
   _dsp(sq,sq.style.display==='none'?'block':'none');
-  if(sq.style.display!=='none'){_fc(sq);sq.select();}
+  if(sq.style.display!=='none'){if(ptr.down)_cancelPointerGesture();_fc(sq);sq.select();}
   else{_setSq('');_ivO();}
 }
 function pickTool(tool,temporary){
@@ -8993,7 +8992,7 @@ const UI={
   toggleHelp(){
     const h=_g('help'),open=h.dataset.open!=='true';
     h.dataset.open=open;
-    if(open){this._captureFocus();_fc(_g('helpClose'))}
+    if(open){if(ptr.down)_cancelPointerGesture();this._captureFocus();_fc(_g('helpClose'))}
     else this._restoreFocus();
   },
   openCtxMenu(x,y,customItems){
