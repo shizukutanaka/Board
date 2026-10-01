@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.928';   // ADR-0902
+const V='1.7.929';   // ADR-0903
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3989,15 +3989,14 @@ function _sqMatches(){
 }
 // Step through Ctrl+F search matches. dir=+1 next, -1 prev; wraps; selects + centres.
 // A new query resets the index so the first Enter always starts from match 0.
-// Announces WHICH shape was found via describ
-// searches by content, so "2/7" without the matched shape is uninformative.
+// Announce includes the shape name — "2/7" alone is uninformative.
 function _sqAdvance(dir){
   if(!_sq)return;
   const q=_lc(_sq);
   if(q!==_sqNav.lastQ){_sqNav.idx=-1;_sqNav.lastQ=q;}
   const matches=_sqMatches();   // same ordered list the overlay highlights use (ADR-0048)
   if(!_ln(matches))return;
-  _sqNav.idx=(_sqNav.idx+dir+_ln(matches))%_ln(matches);
+  _sqNav.idx=((_sqNav.idx<0&&dir<0?_ln(matches):_sqNav.idx)+dir+_ln(matches))%_ln(matches);
   const sh=matches[_sqNav.idx];
   _ss([sh.id]);
   centerOn(sh);
@@ -8972,6 +8971,7 @@ const UI={
     UI.fillHelp();       // built once in main(); the modal doesn't rebuild it on open/close
     UI.updateOnline();   // only re-runs on connectivity change otherwise
     UI.refreshPeers();   // self-avatar title ('You'/'自分') was hardcoded English before
+    _mirrorVer=-1;_mirrorSync();
     const sq=_g('sqinput');
     if(sq){sq.placeholder=T.k.search;_sa(sq,_AL,T.k.search);}
     if(canvas.dataset.tool)_sa(canvas,_AL,(T.k[canvas.dataset.tool]||canvas.dataset.tool)+' — '+t('canvasHint'));
