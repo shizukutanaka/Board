@@ -1,3 +1,7 @@
+## [1.7.964] - 2026-10-01
+### Fixed
+- `_bName` が `_namePeer` を自側 peerId に刻まず、同 ts の並行 docName 改名で両ピアが互いの名を採用する「入替わり」恒久発散を解消 (ADR-0938)
+
 ## [1.7.963] - 2026-10-01
 ### Documentation
 - ホットパス仕事量監査 (ADR-0937): per-frame/per-event の全経路が memo (_gridVer/WeakMap/シグネチャ)、throttle (cursor 60ms)、dedup (selection シリアライズキー)、または設計 bounded (MAX_HISTORY/seenOps/peers/pen+img LRU) — 実害なし

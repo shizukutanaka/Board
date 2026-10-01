@@ -865,7 +865,7 @@ const MAX_TS_SKEW=3e5,_tsOK=t=>_iN(t)&&_fin(t)&&t<=_now()+MAX_TS_SKEW,_pgs=()=>s
 const _tl=()=>state.tool;
 const _dn=()=>state.docName;
 let _nameTs=0,_namePeer='';
-const _bName=()=>Net._bcast(_mk('name',{name:state.docName,ts:_nameTs=nowTs()}));   // ADR-0696
+const _bName=()=>{const ts=nowTs();_nameTs=ts;_namePeer=_pi();Net._bcast(_mk('name',{name:state.docName,ts}))};   // ADR-0696/0938
 const _nameWin=(ts,peer)=>clockNewer({ts,peer,seq:0},{ts:_nameTs,peer:_namePeer});   // ADR-0699: (ts,writer) total order — equal-ts renames converge
 const _setDocName=n=>{state.docName=n;const d=_g('docName');if(d&&d!==document.activeElement)d.value=_dn();_syncDocTitle();};   // ADR-0609
 const _pr=()=>state.peers;
@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.963';   // ADR-0937
+const V='1.7.964';   // ADR-0938
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -3680,7 +3680,7 @@ function resizeSnap(orig,handle,wp){
 // so no float error accumulates across the drag.
 function _mapToBox(sh,orig,ob,vb){
   const sx=vb.w/(ob.w||1),sy=vb.h/(ob.h||1);   // ADR-0888: zero-extent gBox → collapse, not NaN
-  const M=(px,py)=>({x:_xC(vb.x+(px-ob.x)*sx),y:_xC(vb.y+(py-ob.y)*sy)});   // ADR-0936
+  const M=(px,py)=>({x:_xC(vb.x+(px-ob.x)*sx),y:_xC(vb.y+(py-ob.y)*sy)});
   if(orig.pts)sh.pts=orig.pts.map(p=>{const q=M(p[0],p[1]);return[q.x,q.y,p[2]]});
   else if(orig.x1!=null){const a=M(orig.x1,orig.y1),b=M(orig.x2,orig.y2);sh.x1=a.x;sh.y1=a.y;sh.x2=b.x;sh.y2=b.y;if(orig.way)sh.way=_wayArr(orig).map(p=>M(p.x,p.y));   // ADR-0090
     // ADR-0148: remap the trunk anchor so the elbow keeps its offset.
@@ -3777,7 +3777,7 @@ function applyResize(sh,handle,orig,wp,shift,alt){
       sh.x+=tgt.x-cur.x;sh.y+=tgt.y-cur.y;                            // translate to re-pin
     }
   }
-  for(const k of 'x,y,w,h'.split(','))sh[k]=_xC(sh[k]);   // ADR-0936
+  for(const k of 'x,y,w,h'.split(','))sh[k]=_xC(sh[k]);
   const _rb=_bb(sh);
   state.readout={x:_rb.x+_rb.w/2,y:_rb.y+_rb.h,label:`${_rnd(_abs(_rb.w))} × ${_rnd(_abs(_rb.h))}`};
 }
@@ -6544,7 +6544,7 @@ function _rotBend(s,tr,rot){
   else s.bend=null;
 }
 function _rotPtsAbout(s,gx,gy,cs,sn){
-  const rot=(px,py)=>({x:_xC(gx+(px-gx)*cs-(py-gy)*sn),y:_xC(gy+(px-gx)*sn+(py-gy)*cs)});   // ADR-0936
+  const rot=(px,py)=>({x:_xC(gx+(px-gx)*cs-(py-gy)*sn),y:_xC(gy+(px-gx)*sn+(py-gy)*cs)});
   if(s.pts)for(const p of s.pts){const q=rot(p[0],p[1]);p[0]=q.x;p[1]=q.y}
   else if(s.x1!=null){const tr=s.bend!=null?_elbowTrunk(s):null;const a=rot(s.x1,s.y1),b=rot(s.x2,s.y2);s.x1=a.x;s.y1=a.y;s.x2=b.x;s.y2=b.y;if(s.way){s.way=_wayArr(s).map(p=>rot(p.x,p.y))}   // ADR-0090
     if(tr)_rotBend(s,tr,rot);}

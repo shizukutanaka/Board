@@ -4094,7 +4094,7 @@ try {
     const msg=Net._snapshotMsg();
     assert.strictEqual(msg.name,'WireName','snapshot carries docName for late joiners');
     assert.ok(html.includes("case 'name'"),"receiver has a 'name' case");
-    assert.ok(html.includes("Net._bcast(_mk('name',{name:state.docName,ts:_nameTs=nowTs()}))"),'rename broadcasts k:name + LWW ts (ADR-0581)');
+    assert.ok(html.includes("_nameTs=ts;_namePeer=_pi();Net._bcast(_mk('name',{name:state.docName,ts})"),'rename stamps its own writer clock + broadcasts k:name (ADR-0581/0938)');
     assert.ok(html.includes("(_iN(msg.ts)?_tsOK(msg.ts)&&_nameWin(msg.ts,_iS(msg.peer)?msg.peer:''):!0)"),'stale remote rename dropped; non-finite/future ts rejected (ADR-0581/0699/0701/0791)');
     assert.ok(html.includes("_iS(msg.name)"),'receiver type-guards name');
     state.docName='';
