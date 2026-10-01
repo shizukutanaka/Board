@@ -1,3 +1,8 @@
+## [1.7.947] - 2026-10-01
+
+### Fixed
+- `del`/`pageDel` 逆方向 connClears 復元の `_lwwSkip` 欠落を閉塞 (ADR-0921): `del`/`pageDel` の逆適用で接続クリアされた束縛キー (`a`/`b`/`x1`/`y1` 等) を `_oa(sh,p.before)` で無条件復元していた — 他の全逆適用経路 (upd/move/zorder/group) は `_lwwSkip` で per-key LWW ゲートするため非対称。undo クロックより ts が先のリモート書込みはピア側では `_lwwDrop` が undo-wire upd キーを落として存続するのに、ローカルでは生復元が潰して束縛が発散。共通 `_ccRest` helper 畳みで両サイトを per-key ゲート化
+
 ## [1.7.946] - 2026-10-01
 
 ### Fixed

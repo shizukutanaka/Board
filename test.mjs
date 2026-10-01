@@ -1497,7 +1497,7 @@ const checks = [
     !html.includes("if((s.type==='rect'||s.type==='ellipse')&&_lb(s)){\n    const cx=s.x+s.w/2")],
   // v1.7.46: _apply del backward connClears must respect sh.locked (parity with forward)
   ['_apply del backward connClears: if(sh&&!sh.locked) lock guard added (parity with forward path)',
-    html.includes("if(op.connClears)for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_oa(sh,p.before)}")],
+    html.includes("if(op.connClears)for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_ccRest(sh,p.before,op)}")],
   // v1.7.47: validRemotePayload align must validate dir against a whitelist
   ['validRemotePayload align: dir whitelist (DIRS Set) prevents unknown dir values',
     html.includes("const DIRS=_sT(['left','right','cx','top','bottom','cy','hspace','vspace','tidy','swap','gsnap','flip'")],
@@ -7536,6 +7536,26 @@ try {
     assert.strictEqual(cn9.a,null,'gap-bound endpoint detached by the local rescan');
     assert.strictEqual((B.state.wclock||{})['cn1'],undefined,'no partial crash — op completed without stamping forged endpoint clocks');
     console.log('  ✓ ADR-0920: forged connClears after:null no longer crashes del apply');
+
+    // ADR-0921: connClears backward apply used _oa(sh,p.before) unconditionally —
+    // every other backward path (upd/move/zorder/group) LWW-gates via _lwwSkip,
+    // so a remote write whose clock is skewed ahead of the undo clock kept its
+    // value on peers (_lwwDrop drops the undo-wire upd keys) but was clobbered
+    // locally by the raw restore → divergent bindings.
+    reset(B);
+    B.state.pages=null;B.state.curPg=null;
+    B.state.shapes.push({id:'gs2',type:'rect',x:50,y:50,w:5,h:5,z:2,frac:null},
+      {id:'cn1',type:'line',x1:0,y1:0,x2:9,y2:9,a:'gs2',aF:{fx:.5,fy:.5},b:null,bF:null});
+    B._invalidateGrid();B.sortZ();
+    B.state.wclock={cn1:{a:{peer:'peerQ',seq:9,ts:Date.now()+999999}}};
+    B.Store._apply({op:'del',shapes:[cp(gsh1)],
+      connClears:[{id:'cn1',before:{a:'gs1',x1:3,y1:4},after:null}],
+      clock:{peer:'peerU',seq:3,ts:Date.now()}},false);
+    const cnA=B.state.shapes.find(s=>s.id==='cn1');
+    assert.strictEqual(cnA.a,'gs2','newer remote binding survives connClears backward — was clobbered pre-0921');
+    assert.strictEqual(cnA.x1,3,'un-skewed keys still restore');
+    assert.strictEqual(cnA.y1,4,'un-skewed keys still restore');
+    console.log('  ✓ ADR-0921: connClears backward LWW-gates per-key restores');
 
     // ADR-0717 (round467): undo is itself a NEW competing write — the backward apply
     // must arbitrate under the SAME fresh clock the peers see on the undo-wire ops.
@@ -15035,7 +15055,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1880; // prev 1876 + 4 ADR-0920 forged connClears after:null pins
+  pass += 1883; // prev 1880 + 3 ADR-0921 connClears backward LWW-gate pins
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

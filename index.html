@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.946';   // ADR-0920
+const V='1.7.947';   // ADR-0921
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1374,9 +1374,7 @@ function validRemotePayload(op){
       return true;}
     case 'move':   return _iA(op.ids)&&_ln(op.ids)>0&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(_idOK)&&_iN(op.dx)&&_fin(op.dx)&&_iN(op.dy)&&_fin(op.dy)&&(op.dx!==0||op.dy!==0)
       &&patches(op.after)&&(op.before==null||patches(op.before));   // ADR-0729/0741
-    case 'zorder':  // Step2 minimal-delta {changes:[{id,before,after}]} only — ADR-0742: the legacy {after:[…]}
-                    // wholesale applied z+frac unconditionally (no clock stamp) — a raced reorder clobbered newer frac
-                    // writes with no heal path. No current producer emits it.
+    case 'zorder':  // ADR-0742: minimal-delta {changes} only — legacy wholesale clobbered newer frac (no clock stamp)
       return _iA(op.changes)&&_ln(op.changes)<=MAX_OP_SHAPES&&op.changes.every(c=>c&&_iS(c.id)&&_ln(c.id)<=64
                 &&(c.after==null||_iS(c.after)&&_ln(c.after)<=600)&&(c.before==null||_iS(c.before)&&_ln(c.before)<=600));   // ADR-0473/0485
     case 'style':
@@ -1576,11 +1574,8 @@ const Store={
   undo(){
     if(_hx()<0)return false;
     const op=_hi()[_hx()];
-    // ADR-0717: an undo is itself a NEW competing write — arbitrate the local
-    // restore against a fresh clock stamped with the same (ts,peer) the peers
-    // see on the undo-wire ops. Arbitrating on the ORIGINAL commit clock
-    // diverged: a remote write between commit and undo won locally
-    // (clockNewer(remote, oldClock)) yet lost on peers (fresh wire clock).
+    // ADR-0717: an undo is a NEW competing write — arbitrating on the original
+    // commit clock diverged (remote write between commit+undo won locally, lost on peers).
     const _ut=nowTs();op.clock={peer:_pi(),seq:++state.seq,ts:_ut};
     this._apply(op,false);
     _pgFollow(op);   // ADR-0652
@@ -1663,7 +1658,7 @@ const Store={
           for(const sh of op.shapes)if(!byId(sh.id))_sh().push(Net._attachShape(clone(sh)));
           _sz();
           // connector binds restored after shapes are back
-          if(op.connClears)for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_oa(sh,p.before)}
+          if(op.connClears)for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_ccRest(sh,p.before,op)}   // ADR-0921
           if(op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);
           _selR(op);
         }
@@ -1771,7 +1766,7 @@ const Store={
           _sz();
           if(op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);   // ADR-0722: restore member clocks — del backward parity
           _selR(op);
-          if(op.connClears)for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_oa(sh,p.before)}   // ADR-0707/0711
+          if(op.connClears)for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_ccRest(sh,p.before,op)}   // ADR-0707/0711/0921
           switchPage(op.id);   // ADR-0663
         }
         _ss(_selIds());_iG();_iv();_ivO();_pgBar();
@@ -1894,6 +1889,7 @@ function _lwwSkip(id,key,op){
   const wc=_wc()[id];
   return !!(wc&&wc[key]&&wc[key].peer!==_pi()&&clockNewer(wc[key],op.clock));
 }
+function _ccRest(sh,b,op){const pb=clone(b);for(const k of _ok(pb))if(_lwwSkip(sh.id,k,op))delete pb[k];_oa(sh,pb)}   // ADR-0921
 // Bound connectors: line/arrow endpoints (s.a/s.b = shape id) derive from the bound
 // shape's edge at render/hit/export so the connector follows. Stored = fallback.
 // Where a ray from shape centre toward (fx,fy) exits the shape's true edge.
