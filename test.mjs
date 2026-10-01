@@ -1438,7 +1438,7 @@ const checks = [
   // ADR-0965 source pins: _nugLock partitions mid-run locked/missing members
   // out of a pending op — restores run-start + filters every member list.
   ['ADR-0965: _nugEnd partitions mid-run locked/missing members before the commit',
-    html.includes("_nugLock(o);")&&
+    html.includes("_nugLock(o,n.reborn);")&&
     html.includes("A.some(a=>a.id===id&&a.locked)")&&
     html.includes("if(op.op==='move'){const o=op.orig[id];if(o)_geoR(s,o)}")&&
     html.includes("if(c)s.frac=c.before")&&
@@ -1447,10 +1447,10 @@ const checks = [
   // funnel flushes first; the own-lock exemption reads the LIVE flag, not the
   // op's intent, so unlock (null) skips and own-lock (after.locked) exempts.
   ['ADR-0966: pending-op flush coverage — _nugEnd at every later commit funnel',
-    html.includes("_nugEnd();   // ADR-0958: pending nudge predates any later commit")&&
-    html.includes("_nugEnd();   // ADR-0960: pending nudge/zorder predates any later commit")&&
+    html.includes("_nugEnd();   // ADR-0958")&&
+    html.includes("_nugEnd();   // ADR-0958/0960")&&
     html.includes("_nugEnd();   // ADR-0957: commit an in-flight nudge so undo lands")&&
-    html.includes("function _nugEnd(){const n=_nug;_nug=null;if(n){_cT(n.t);const o=n.op;_nugLock(o);")&&
+    html.includes("function _nugEnd(){const n=_nug;_nug=null;if(n){_cT(n.t);const o=n.op;_nugLock(o,n.reborn);")&&
     html.includes("if(!s.locked||A.some(a=>a.id===id&&a.locked))continue;   // own-lock")&&
     html.includes("s.locked=lk||null;")],
   // v1.7.38: _apply('upd', forward) must guard sh.locked (parity with move forward)
@@ -1467,13 +1467,13 @@ const checks = [
     html.includes("for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked){const pt={}")],
   // v1.7.40: _apply zorder forward must guard sh.locked (changes path)
   ['_apply zorder forward changes: !sh.locked guards locked shapes in BOTH directions',
-    html.includes("if(sh&&!sh.locked&&!_lwwSkip(c.id,'frac',op))sh.frac=forward?c.after:c.before}")],
+    html.includes("if(sh&&!sh.locked&&!_lwwSkip(c.id,'frac',op)){sh.frac=forward?c.after:c.before;_gTouch(c.id,['frac'])}")],
   // v1.7.40: _apply group forward must guard sh.locked
   ['_apply group forward: !sh.locked guards locked shapes in BOTH directions',
-    html.includes("if(sh&&!sh.locked)sh.groupId=op.gid}")],
+    html.includes("if(sh&&!sh.locked){sh.groupId=op.gid;_gTouch(id,['groupId'])}")],
   // v1.7.40: _apply ungroup forward must guard sh.locked
   ['_apply ungroup forward: !sh.locked guards locked shapes in BOTH directions',
-    html.includes("if(sh&&!sh.locked)delete sh.groupId}")],
+    html.includes("if(sh&&!sh.locked){delete sh.groupId;_gTouch(id,['groupId'])}")],
   // v1.7.37: doGroup/_apply group backward must carry and restore origSel
   ['doGroup: origSel patched onto history entry after _recordCommitted',
     html.includes("_nugPush({op:'group',ids,gid,before});")],
@@ -11038,6 +11038,44 @@ try {
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state._lastTs=0;
     console.log('  ✓ mid-gesture remote writes survive orig-restore; reborn skips it (ADR-0969/0970)');
   }
+  // ADR-0971: the pending _nug op's restore domain merges remote writes too —
+  // a remote write landing mid-run on a member that then gets locked would
+  // otherwise be rolled back to arm values → one-way divergence (0969 on the
+  // keyboard-nug path). Plus a remote (re)birth during the run skips restore
+  // entirely — the op must not resurrect arm state over the remote object.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state._lastTs=0;
+    const MA=Shape.make('rect',{x:100,y:100,w:50,h:50});
+    const MB=Shape.make('rect',{x:200,y:100,w:50,h:50});
+    Store.commit({op:'addMany',shapes:[MA,MB]});
+    state.selection=new Set([MA.id,MB.id]);
+    nudgeSelection(5,0);                 // pending move; MA orig.x=100, live 105
+    Net._onRecv({k:'op',op:{op:'move',ids:[MA.id],dx:1,dy:1,after:[{id:MA.id,x:500,y:520}],clock:{peer:'p9',seq:1,ts:nowTs()}},peer:'p9'},false);   // remote move lands mid-run
+    byId(MA.id).locked=true;             // a remote lock lands on the same member
+    _nugEnd();
+    assert.strictEqual(byId(MA.id).x,500,'_nugLock: remote move survives the locked-member restore');
+    assert.strictEqual(byId(MB.id).x,205,'_nugLock: unlocked member keeps the nudge');
+    // style op: a remote style write merges into the pending op's before-entry
+    const MC=Shape.make('rect',{x:0,y:300,w:50,h:50});
+    Store.commit({op:'add',shape:MC});
+    state.selection=new Set([MC.id]);
+    applyStyleToSelection('stroke','#111111');      // pending style; before.stroke=orig
+    Net._onRecv({k:'op',op:{op:'style',after:[{id:MC.id,fill:'#ff0000'}],before:[],clock:{peer:'p9',seq:2,ts:nowTs()}},peer:'p9'},false);   // remote fill lands mid-run
+    byId(MC.id).locked=true;
+    _nugEnd();
+    assert.strictEqual(byId(MC.id).fill,'#ff0000','_nugLock: remote style prop survives the locked-member restore');
+    // reborn: remote kill+resurrect mid-run — restore must not clobber it
+    const MD=Shape.make('rect',{x:100,y:300,w:50,h:50});
+    Store.commit({op:'add',shape:MD});
+    state.selection=new Set([MD.id]);
+    nudgeSelection(5,0);
+    Net._onRecv({k:'op',op:{op:'del',shapes:[JSON.parse(JSON.stringify(byId(MD.id)))],clock:{peer:'p9',seq:3,ts:nowTs()}},peer:'p9'},false);
+    Net._onRecv({k:'op',op:{op:'add',shape:{...JSON.parse(JSON.stringify(MD)),x:900,y:950},clock:{peer:'p9',seq:4,ts:nowTs()}},peer:'p9'},false);
+    _nugEnd();
+    assert.strictEqual(byId(MD.id).x,900,'_nugLock: remote reborn skips the restore');
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state._lastTs=0;
+    console.log('  ✓ _nugLock merges mid-run remote writes into the restore domain; reborn skips (ADR-0971)');
+  }
 
   // v1.7.13b: doDuplicate must skip locked shapes (parity with nudgeSelection/doDelete).
   // Bug: withFrameChildren expands the frame selection to include all contained children
@@ -16141,7 +16179,7 @@ pass += 8; // ADR-0965 mid-run lock/missing member partition (3 blocks: 7 assert
 pass += 5; // ADR-0966 pending-op×mid-run audit pins + own-lock exemption block
 pass += 6; // ADR-0967 mid-edit remote-lock blur/commit fold (text+label)
 pass += 3; // ADR-0968 remote-killed selection → ctx family no-op block
-pass += 9; // ADR-0969/0970 mid-gesture remote write survives + skew-immune reborn mark
+pass += 12; // ADR-0969/0970/0971 mid-run remote writes survive restore; arrival-order reborn marks
 pass += 15; // ADR-0964 mid-gesture lock restore/commit-gate pins
 pass += 7; // ADR-0943 second-pointer abort pins
 pass += 8; // ADR-0945 mid-gesture overlay-open cancel pins

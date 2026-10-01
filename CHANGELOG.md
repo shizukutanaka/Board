@@ -1,3 +1,8 @@
+## [1.7.997] - 2026-10-01
+
+### Fixed
+- `_nug` pending op (キーボードナッジ/長押し共合セッション) の `_nugLock` 復元ドメイン (`op.orig`/`op.before`/`op.changes[].before`) が arm 時クローンのまま remote 書込を取り込まず、run 中に remote 書込→lock が着地したメンバーを arm 値へ巻き戻す一方向発散を閉塞 (ADR-0971、0969 のキーボード版同型): `_gTouch` を `_nug` 復元ドメインへ拡張し remote が触れたキーの live 値を pending op の復元値へマージ。`_oa` の `ptr.down` ゲート撤去 (キーボードセッションも対象化)、`zorder`/`group`/`ungroup` 適用サイトにも `_gTouch` 追加 (`frac`/`groupId`)。remote (re)birth は `_bT` で `_nug.reborn` へ刻印し `_nugLock` が復元スキップ (到着順、skew 免疫 — 0970 parity)。behavioural ピン3件追加
+
 ## [1.7.996] - 2026-10-01
 
 ### Fixed

@@ -1019,6 +1019,7 @@ Board/
 │   └── ADR-0968-remote-killed-selection-actions.md  # ctx/キーアクション×remote 消滅監査完走 — 全ハンドラが act 時に live 再解決 (stale メニューは cosmetic)、dead/空集合で op を産まない契約をピン化
 │   └── ADR-0969-gesture-orig-remote-write.md  # mid-gesture remote 書込が orig-restore に巻き戻される発散 — `_gTouch` で touched-key live 値を gesture orig へマージ、remote 再誕生は `_rb` で復元スキップ
 │   └── ADR-0970-reborn-arrival-order.md  # `_rb` の clock 比較を skew-免疫の到着順マーキング (`ptr.reborn`) へ置換 — 前進 skew の誤スキップ発散・後進 skew の clobber を閉塞
+│   └── ADR-0971-pending-nug-remote-write.md  # pending `_nug` op の復元ドメインが remote 書込を巻き戻す発散 — `_gTouch` を nug 復元域へ拡張、remote 再誕生は `_nug.reborn` で復元スキップ
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
