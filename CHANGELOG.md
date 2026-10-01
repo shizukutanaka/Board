@@ -1,3 +1,8 @@
+## [1.7.958] - 2026-10-01
+
+### Fixed
+- snapshot 内蔵 op の `clock.peer` をエンベロープ `peer` へ拘束 (ADR-0932): merge 経路 (`_mergeSnapshotOp`) で鍛造 `victim:snap:*` 時計が seenOps へ記録され正規 snapshot heal を dedup 阻止、`applyRemote`/`_wAdopt` で wclock を詐称する実害を閉塞 (0931 の内蔵 op 版。送信側は `_snapshotMsg` が `peer:_pi()` を刻印済みのため正規 traffic は全て通過)
+
 ## [1.7.957] - 2026-10-01
 
 ### Fixed

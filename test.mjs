@@ -469,7 +469,7 @@ const checks = [
   ['help i18n keys in ja and en', html.includes("present:'プレゼン'") && html.includes("present:'Present'")],
   // v1.6.19: sync + PWA fixes
   ['snapshot ops get distinct, stable clock keys (id-based)', html.includes("seq:'snap:'+s.id")],
-  ['snapshot merge accepts only add ops (non-add ops rejected at merge path)', html.includes("if(!op||op.op!=='add'||!op.shape)return 'skip'")&&html.includes("this._mergeSnapshotOp(op);")],
+  ['snapshot merge accepts only add ops (non-add ops rejected at merge path)', html.includes("if(!op||op.op!=='add'||!op.shape)return 'skip'")&&html.includes("this._mergeSnapshotOp(op)")],
   // v1.7.116: ADR-0058 snapshot LWW merge
   ['snapshot ops carry per-shape wclock', html.includes("wc:clone(_wc()[s.id]||{})")],
   ['_mergeSnapshotOp: LWW per-property merge on known shapes', html.includes("function _mergeSnapshotOp(op)")===false&&html.includes("_mergeSnapshotOp(op){") && html.includes("clockNewer(rc,lc)") && html.includes("return 'merge';")],
@@ -7387,6 +7387,19 @@ try {
     B.Net._onRecv({k:'op',op:{op:'add',shape:{id:'f2',type:'rect',x:0,y:0,w:10,h:10,z:1},clock:{peer:B.state.peerId,seq:1,ts:1}},peer:B.state.peerId});   // self-impersonation (msg gate also catches it)
     assert.ok(!B.state.shapes.find(s=>s.id==='f2'),'ADR-0931: op claiming our own peer id is dropped (was: impersonation + commit bricking)');
     console.log('  ✓ ADR-0931: clock.peer bound to the envelope peer');
+
+    // ADR-0932: the same binding inside a 'snapshot' — embedded ops take the
+    // merge path when the receiver is non-empty, hitting applyRemote/seenOps
+    // under their self-declared clock.peer. A forged victim:snap:* clock
+    // squats the victim's snapshot seq namespace + stamps wclocks.
+    reset(B);B.state.wclock={};
+    B.state.shapes.push(cp({id:'keep1',type:'rect',x:0,y:0,w:10,h:10,z:1}));B._invalidateGrid();B.sortZ();   // non-empty → merge path
+    const snapOps=(cp2,peer)=>({k:'snapshot',peer,shapes:[],ops:[cp2],pages:null});
+    B.Net._onRecv(snapOps({op:'add',shape:{id:'fS1',type:'rect',x:0,y:0,w:10,h:10,z:1},clock:{peer:'peerV',seq:'snap:fS1',ts:0,_snap:true}},'peerX'));
+    assert.ok(!B.state.shapes.find(s=>s.id==='fS1'),'ADR-0932: snapshot op with clock.peer ≠ envelope peer is dropped');
+    B.Net._onRecv(snapOps({op:'add',shape:{id:'fS2',type:'rect',x:0,y:0,w:10,h:10,z:1},clock:{peer:'peerV',seq:'snap:fS2',ts:0,_snap:true}},'peerV'));
+    assert.ok(!!B.state.shapes.find(s=>s.id==='fS2'),'ADR-0932: matching clock/envelope peer snapshot op applies');
+    console.log('  ✓ ADR-0932: snapshot-embedded ops bound to the envelope peer');
 
     // ADR-0736: clear/'replace' wiped wclock WHOLESALE — including tombstones —
     // so a stale in-flight 'add' could resurrect a shape the swap just removed,
@@ -15214,7 +15227,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1918; // prev 1915 + 3 ADR-0931 clock.peer binding pins
+  pass += 1920; // prev 1918 + 2 ADR-0932 snapshot-embedded peer binding pins
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

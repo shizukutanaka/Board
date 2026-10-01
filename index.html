@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.957';   // ADR-0931
+const V='1.7.958';   // ADR-0932
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -8240,9 +8240,7 @@ const Net={
         // Restrict to 'add' ops: _snapshotMsg() only
         // op types here would let a malicious peer embed 'clear'/'del' inside a
         // snapshot message and execute them under the snapshot path.
-        else if(_iA(msg.ops))for(const op of _s0(msg.ops,SHARE_MAX_SHAPES)){   // ADR-0474
-          this._mergeSnapshotOp(op);   // ADR-0058: add unknown shapes, LWW-merge known ones
-        }
+        else if(_iA(msg.ops))for(const op of _s0(msg.ops,SHARE_MAX_SHAPES)){if(op.clock?.peer===msg.peer)this._mergeSnapshotOp(op)}   // ADR-0474/0932
         if(_iA(msg.pages)){   // ADR-0773: union-heal the page set+order, keep local curPg
           if(!_pgs())_pgAdopt(msg.pages,state.curPg);   // ADR-0672: curPg is a LOCAL view filter — a re-sync must not yank the view to the sender's page
           else{const v=_vPages(msg.pages);if(v){const lm=_mP(_pgs().map(p=>[p.id,p])),np=[];for(const p of v){const l=lm.get(p.id);lm.delete(p.id);if(l&&clockNewer({ts:p.nts||0,peer:_iS(p.ntp)?p.ntp:'',seq:0},{ts:l.nts||0,peer:_iS(l.ntp)?l.ntp:'',seq:0})){l.name=p.name;l.nts=p.nts;l.ntp=_iS(p.ntp)?p.ntp:''}if(_ln(np)<64)_pu(np,l||clone(p))}for(const p of lm.values())if(_ln(np)<64)_pu(np,p);state.pages=np}_pgHealS();_pgBar()}   // ADR-0773
