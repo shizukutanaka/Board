@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.978';   // ADR-0952
+const V='1.7.979';   // ADR-0953
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1706,7 +1706,7 @@ const Store={
         if(!forward)_selR(op);
         break;}
       case 'clear':{
-        if(forward){if(op.clock)state._lastRep=op.clock;const wc0=state.wclock||{},dead=[],keep=[];for(const s of _sh())if(_bN(s.id,op.clock))keep.push(s);else dead.push(s.id);_sh().length=0;for(const s of keep)_sh().push(s);_scl();state.wclock=_wM();for(const s of keep)_wR(s.id,wc0[s.id]);for(const id of dead)_wD(id,op.clock);_wTb(wc0,op.clock,_sT());_pcC();}   // ADR-0626/0736/0926
+        if(forward){_unB();if(op.clock)state._lastRep=op.clock;const wc0=state.wclock||{},dead=[],keep=[];for(const s of _sh())if(_bN(s.id,op.clock))keep.push(s);else dead.push(s.id);_sh().length=0;for(const s of keep)_sh().push(s);_scl();state.wclock=_wM();for(const s of keep)_wR(s.id,wc0[s.id]);for(const id of dead)_wD(id,op.clock);_wTb(wc0,op.clock,_sT());_pcC();}   // ADR-0626/0736/0926/0953
         else{for(const s of op.shapes)if(!byId(s.id)&&!_tmb(s.id,op)){_sh().push(Net._attachShape(clone(s)));_bT(s.id,op.clock)}_sz();if(op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);_selR(op);}   // ADR-0723/0922/0926
         break;}
       case 'replace':{
@@ -1714,6 +1714,7 @@ const Store={
         // shape arrays so Ctrl+Z restores the board import overwrote.
         // On the wire since ADR-0613 — _lastRep orders concurrent swaps.
         const next=forward?op.after:op.before;
+        _unB();   // ADR-0953: batched members join the swap's tomb-or-keep scan like peers see them
         if(op.clock)state._lastRep=op.clock;   // ADR-0614: newest applied swap marker — covers undo too
         const wc0=state.wclock||{},old0=_sh().map(s=>s.id),inN=_sT(next.map(s=>s.id)),keep=_sh().filter(s=>!inN.has(s.id)&&_bN(s.id,op.clock));   // ADR-0736/0926
         _sh().length=0;_scl();state.wclock=_wM();_pcC();state.pages=state.curPg=null;_pgBar();   // ADR-0646
@@ -2106,8 +2107,8 @@ let _penCachePx=0;
 // wholesale `state.shapes=` replacement — dead entries would otherwise sit
 // until the global caps evict them.
 const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPending.clear()}   // ADR-0445: wholesale swap also drops parked img refs
-const _uniq=a=>{const se=_sT();for(let i=_ln(a)-1;i>=0;i--)if(se.has(a[i].id))a.splice(i,1);else se.add(a[i].id);return a};   // ADR-0790: keep-LAST matches byId's last-wins — a dup id would phantom-render otherwise
-const _rs=arr=>{state.shapes=_uniq(arr);_iG();_pcC()}   // ADR-0493/0790: wholesale board replace, dup-id intake
+const _uniq=a=>{const se=_sT();for(let i=_ln(a)-1;i>=0;i--)if(se.has(a[i].id))a.splice(i,1);else se.add(a[i].id);return a};   // ADR-0790: keep-LAST matches byId's last-wins
+const _rs=arr=>{_eraseBatch=[];state.shapes=_uniq(arr);_iG();_pcC()}   // ADR-0493/0790/0953: wholesale replace — dup-id intake; a pending erase batch dies with the old scene
 const _pgOn=()=>!!(_pgs()&&_ln(_pgs())),_pgById=id=>_pgOn()&&_pgs().find(p=>p.id===id),_pgOk=s=>!_pgOn()||(s.pg||_pgs()[0].id)===state.curPg;   // ADR-0646: unpg'd shapes belong to pages[0] positionally
 const _vPages=a=>!_iA(a)||!_ln(a)||_ln(a)>64?null:(a.every(p=>p&&_iS(p.id)&&_ln(p.id)<=64&&_iS(p.name)&&_ln(p.name)<=80&&(p.nts==null||_tsOK(p.nts))&&(p.ntp==null||_iS(p.ntp)&&_ln(p.ntp)<=64))?a:null);   // ADR-0700/0791
 const _pgHealS=()=>{if(_pgOn())for(const s of _sh()){if(s.pg&&!_pgById(s.pg)&&_ln(_pgs())<64)_pu(_pgs(),{id:s.pg,name:'?',nts:-1})}else for(const s of _sh())delete s.pg};   // ADR-0694: no page set → every s.pg is stale — scrub, else a later heal misses them
@@ -2156,6 +2157,7 @@ function _pgDup(){   // ADR-0651: duplicate the current page — pageAdd+shapes 
 function _pgDel(){if(!_pgOn()||_ln(_pgs())<2)return;const p=_pgs()[_pgIdx()];if(!confirm(t('pgDelQ')+': '+p.name+'?'))return;_cmt({op:'pageDel',id:p.id,i:_pgIdx(),name:p.name})}
 const _pgIdx=()=>_pgOn()?_pgs().findIndex(p=>p.id===state.curPg):-1;
 function _pgDel2(op,firstId,only,viewId){   // ADR-0646: remove the deleted page's members + land the view on a live page
+  _unB();   // ADR-0953
   // ADR-0707: 'del' parity — locked members survive + rehome to firstId. ADR-0724:
   // `only` caps the kill set (unpage). ADR-0725: members rehome to the wire's choice.
   const dead=new Set();for(const s of _sh())if((s.pg||firstId)===op.id&&!s.locked&&(!only||only.has(s.id))&&!_bN(s.id,op.clock))dead.add(s.id);
@@ -2857,7 +2859,7 @@ function _drawMeasure(c){
 let _cssCache=Object.create(null);
 function _gC(v){let x=_cssCache[v];if(x===_ud){x=_trm(getComputedStyle(_de).getPropertyValue(v));_cssCache[v]=x}return x}
 function clearCSSCache(){_cssCache=Object.create(null);_iv()}
-const _tTk=()=>{clearCSSCache();Minimap.invalidateCache();_penCache.clear();_penCachePx=0}   // ADR-0852/0857: token flips stale the pen bitmaps too (unset stroke resolves --brand at rasterize)
+const _tTk=()=>{clearCSSCache();Minimap.invalidateCache();_penCache.clear();_penCachePx=0}   // ADR-0852/0857: token flips stale the pen bitmaps too
 function drawGrid(W,H){
   const v=_vp();
   const gs=GRID_SIZE;
@@ -4872,7 +4874,7 @@ _on(canvas,'gesturechange',e=>{
 _on(canvas,'gestureend',()=>{_pinchSnap=null;_pinchVp=null;_iv()});
 _on(window,_PU,_resetPinch);_on(window,_PC,_resetPinch);   // ADR-0950
 // ADR-0534: blur can lose pointerup — re-base gesture/pointer state.
-function _clearTouchState(){_pointers.clear();_pinchPrev=0;if(_pinchSnap){_pinchSnap=null;_pinchVp=null;_iv()}Minimap.cancelNav()}   // ADR-0608/0632: shared across blur / hidden / pagehide — stale pointer ids must not survive
+function _clearTouchState(){_pointers.clear();_pinchPrev=0;if(_pinchSnap){_pinchSnap=null;_pinchVp=null;_iv()}Minimap.cancelNav()}   // ADR-0608/0632: shared blur/hidden/pagehide — stale pointer ids must not survive
 _on(window,'blur',()=>{
   if(ptr.down)_cancelPointerGesture();
   _clearTouchState();
@@ -5758,7 +5760,7 @@ function _teFollow(){
   // us (remote del/clear/replace/hide/lock, local del) — fold
   // once instead of dangling until blur. No commit;
   // upd anyway, so the typed text can't be applied.
-  const s=byId(_ed());if(!s||_hd(s)||_lk(s)||!_pgOk(s)){_rm(_teTa);_teTa=null;state.editing=null;_iv();return}   // ADR-0574/0709: _iv — skipped text stays undrawn otherwise; off-page reassignment (remote upd{pg}) folds too
+  const s=byId(_ed());if(!s||_hd(s)||_lk(s)||!_pgOk(s)){_rm(_teTa);_teTa=null;state.editing=null;_iv();return}   // ADR-0574/0709: _iv or skipped text stays undrawn; off-page reassign folds too
   const v=_vp(),sig=v.x+','+v.y+','+v.zoom+','+_gridVer;   // ADR-0892: _gridVer covers peer upds — a move/restyle repositions+restyles the overlay
   if(sig===_teVp)return;
   _teVp=sig;positionTextEditor(_teTa,s);
@@ -5779,6 +5781,8 @@ function positionTextEditor(ta,s){
 
 // ---- eraser ----
 let _eraseBatch=[];    // shapes collected during one eraser stroke
+// Unbatch: wholesale tomb-or-keep scans must see erase-window members like peers do (ADR-0953).
+const _unB=()=>{for(const s of _eraseBatch)_sh().push(s);_eraseBatch=[]};
 function eraseAt(wp){
   const hit=pickTop(wp);
   if(hit&&!hit.locked){
@@ -7210,7 +7214,7 @@ const _dioModel=c=>{const vx=_vp().x,vy=_vp().y,vz=_vp().zoom;
   return `<mxGraphModel dx="${_rnd(-vx)}" dy="${_rnd(-vy)}" grid="${state.showGrid?1:0}" gridSize="${GRID_SIZE}" guides="1" tooltips="0" connect="0" arrows="0" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0" zoom="${vz}"><root><mxCell id="0"/><mxCell id="1" parent="0"/>${c.join('')}</root></mxGraphModel>`};   // ADR-0359
 function boardToDrawio(shapes){
   // ADR-0650: one <diagram> per Board page — re-import restores the page set.
-  const body=_pgOn()?_pgs().map(p=>`<diagram name="${_dioEsc(p.name)}">`+_dioModel(_dioCells(shapes.filter(s=>_sv(s)&&(s.pg||_pgs()[0].id)===p.id)))+`</diagram>`).join('')   // ADR-0678: +_sv — hidden parity with excalidraw (0594): a hidden shape would surface visibly in the file
+  const body=_pgOn()?_pgs().map(p=>`<diagram name="${_dioEsc(p.name)}">`+_dioModel(_dioCells(shapes.filter(s=>_sv(s)&&(s.pg||_pgs()[0].id)===p.id)))+`</diagram>`).join('')   // ADR-0678: +_sv — hidden parity with excalidraw (0594)
     :`<diagram name="${_dioEsc(_dn()||'Page-1')}">`+_dioModel(_dioCells(shapes))+`</diagram>`;
   return `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile compressed="false">${body}</mxfile>`;
 }
@@ -9254,7 +9258,7 @@ const UI={
       el.className='peer-avatar';
       el.style.background=p.color;
       _tC(el,_s0(id,2).toUpperCase());
-      el.title=id+((p.pg&&p.pg!==state.curPg&&_pgById(p.pg))?' · '+_pgById(p.pg).name:'');   // ADR-0656: cursors hide cross-page (0647) — the avatar tooltip is the remaining signal of which page a peer occupies
+      el.title=id+((p.pg&&p.pg!==state.curPg&&_pgById(p.pg))?' · '+_pgById(p.pg).name:'');   // ADR-0656/0647: cursors hide cross-page — the tooltip is the remaining page signal
       _oC(el,()=>{if(p.pg&&p.pg!==state.curPg&&_pgById(p.pg)){el.style.cursor='';switchPage(p.pg)}});   // ADR-0670: click a peer avatar to follow them to their page (live p.pg read at click)
       if(p.pg&&p.pg!==state.curPg&&_pgById(p.pg))el.style.cursor='pointer';
       _ap(stack,el);
@@ -9460,7 +9464,7 @@ function wire(){
   }
   // close ctx on click outside
   _on(document,'mousedown',e=>{
-    if(!e.target.closest('.ctx-menu')&&_now()-(UI._ctxEat||0)>=400)UI.closeCtxMenu();   // ADR-0607: a clamped menu sits off the finger — the lift-off ghost mousedown would dismiss it instantly
+    if(!e.target.closest('.ctx-menu')&&_now()-(UI._ctxEat||0)>=400)UI.closeCtxMenu();   // ADR-0607: clamped menu sits off the finger — lift-off ghost mousedown would dismiss it
   });
   // v1.6.95: Arrow-key navigation inside the ctx menu
   _on(_g('ctx'),_KD,e=>_ctxMenuKeyNav(_g('ctx'),e));
@@ -9879,14 +9883,14 @@ function _undoWire(op){
       return _iA(op.before)?(()=>{const o=[],reg={};for(const b of op.before)b.groupId?(reg[b.groupId]=reg[b.groupId]||[]).push(b.id):op.op==='group'&&_pu(o,{op:'ungroup',ids:[b.id],gids:[op.gid],before:[{id:b.id,groupId:op.gid}]});
         for(const g in reg)_pu(o,{op:'group',ids:reg[g],gid:g,before:reg[g].map(id=>({id}))});return o})():null;
     case 'zorder':
-      return op.changes?[{op:'zorder',changes:op.changes.map(c=>({id:c.id,before:c.after,after:c.before}))}]:null;   // ADR-0744: history only ever holds {changes} — the legacy fallback produced a wire form peers reject
+      return op.changes?[{op:'zorder',changes:op.changes.map(c=>({id:c.id,before:c.after,after:c.before}))}]:null;   // ADR-0744: history holds {changes} only — the legacy form was rejected by peers
     case 'replace':   // ADR-0615: undo of a wholesale swap must reach peers too — rebroadcast the pre-swap board (newest clock wins via ADR-0614)
-      return _iA(op.before)?[{op:'replace',after:op.before,afterWc:op.wc,pages:op.beforePages,curPg:op.beforeCurPg}]:null;   // ADR-0720: same landing-page carry as the forward wire — local backward lands on beforeCurPg, peers were falling back to page 1
+      return _iA(op.before)?[{op:'replace',after:op.before,afterWc:op.wc,pages:op.beforePages,curPg:op.beforeCurPg}]:null;   // ADR-0720: backward wire carries the landing page too — peers fell back to page 1
     case 'pageAdd':{const o={op:'pageDel',id:op.id,name:op.name,unpage:_pgs()?0:1};if(o.unpage){o.shapes=op.shapes}else o.firstId=_pgs()[0].id;return[o]}   // ADR-0724/0725: emptied set → unpage wire; else carry the undoer's rehome target
     case 'pageDel':  {const o=[{op:'pageAdd',id:op.id,name:op.name,i:op.i},{op:'addMany',shapes:op.shapes||[],wc:op.wc}];   // ADR-0721/0722: member clocks ride too
       for(const c of op.connClears||[])if(c.before)_pu(o,{op:'upd',id:c.id,after:c.before});   // ADR-0707: re-bind connectors on peers too — same as 'del'
       return o;}
-    case 'pageName': return[{op:'pageName',id:op.id,after:op.before,before:op.after,bts:op.bts,nts:op.bts,ntp:op.btp}];   // ADR-0727: carry the restored name clock — peers were writing the undo clock as nts while the undoer restored bts
+    case 'pageName': return[{op:'pageName',id:op.id,after:op.before,before:op.after,bts:op.bts,nts:op.bts,ntp:op.btp}];   // ADR-0727: carry the restored name clock, not the undo clock
     default:       return null;
   }}
 function _rcOp(op){const o=_selIds();Store._recordCommitted(op);_keepSel(o)}
@@ -10163,7 +10167,7 @@ const Presentation=(()=>{
 
   function _goto(i){
     // ADR-0554: drop frames deleted mid-presentation
-    _frames=_frames.map(f=>byId(f.id)).filter(f=>f&&_pgOk(f));if(!_ln(_frames)){leave();return}   // ADR-0677/0765: re-resolve — a wholesale swap can replace the shape object under a live id (stale rect + stale pg)
+    _frames=_frames.map(f=>byId(f.id)).filter(f=>f&&_pgOk(f));if(!_ln(_frames)){leave();return}   // ADR-0677/0765: re-resolve — a swap can replace the object under a live id
     _idx=_max(0,_min(_ln(_frames)-1,i));
     _zoomToFrame(_frames[_idx]);
     const c=_g('presCounter');

@@ -1,3 +1,11 @@
+## [1.7.979] - 2026-10-01
+
+### Fixed
+- 消しゴムジェスチャ窓 × wholesale op の発散を閉塞 (ADR-0953): `_eraseBatch` 内メンバーが `_sh()` のみ走査する集合経路で「存在しない図形」扱いとなり、`'clear'`/`'replace'` の tomb-or-keep・`_pgDel2` のメンバー kill/rehome・`_rs` 全置換を素通りして cancel が ghost を復活させていた。`_unB` (wholesale 走査前の一括シーン戻し) でバッチメンバーをピア視点と同じ live 図形として通常ゲートへ通し、`_rs` 採用はペンディングバッチを旧盤と共に破棄
+
+### Tests
+- 消しゴム窓 × wholesale ピン3件 (remote replace swap-out・local clear・snapshot `_rs` 採用が cancel 後も `!byId` を維持)
+
 ## [1.7.978] - 2026-10-01
 
 ### Fixed
