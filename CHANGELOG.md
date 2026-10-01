@@ -1,3 +1,14 @@
+## [1.7.977] - 2026-10-01
+
+### Fixed
+- `lblpos` (コネクタラベル位置ドラッグ) の cancel 復元欠落を閉塞 (ADR-0951): pointermove で `sh.labelPos` を live mutation するのに、`_cancelPointerGesture`/`abortGesture` 両方の復元チェーンに分岐がなく、mid-gesture cancel (⌘Z/blur/hidden/第2ポインタ等) で labelPos がドラッグ途中値のまま残存 — commit op 未発行のためピアと発散 + undo が残留値を拾えなかった。`labelPos` は `_geoR` キー外のため orig から明示 save-set 復元
+
+### Tests
+- lblpos cancel ピン 4件: in-flight labelPos 変異、`_cancelPointerGesture` (blur) 復元、`abortGesture` 復元、再 arm 健全性
+
+### Documentation
+- ADR-0951: dragKind 12系統の cancel 復元網羅監査結果 + lblpos 復元規則
+
 ## [1.7.976] - 2026-10-01
 
 ### Fixed

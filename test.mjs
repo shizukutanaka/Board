@@ -14745,6 +14745,27 @@ try {
     fire('pointerup',10,10,{pointerId:1});
     fire('pointerup',130,130,{pointerId:2});
     console.log('  ✓ pointer bookkeeping: no hover seed + off-canvas release clears (ADR-0950)');
+
+    // ADR-0951: an lblpos drag mutates s.labelPos in-flight but both cancel
+    // paths (pointer-gesture cancel + abortGesture) had no restore branch —
+    // a mid-gesture cancel left the shape half-mutated with no commit op.
+    reset();state.viewport={x:0,y:0,zoom:1};state.tool='select';
+    const C9=Shape.make('line',{x1:100,y1:100,x2:300,y2:100});
+    C9.label='x';C9.labelPos=0.2;
+    Store.commit({op:'add',shape:C9});
+    state.selection=new Set([C9.id]);
+    const lp9=_connLabelXY(C9);
+    fire('pointerdown',lp9.x,lp9.y);
+    fire('pointermove',lp9.x+80,lp9.y);
+    assert.ok(byId(C9.id).labelPos!==0.2,'lblpos move mutates labelPos in-flight');
+    fireWin('blur');
+    assert.strictEqual(byId(C9.id).labelPos,0.2,'pointer-gesture cancel restores the orig labelPos');
+    fire('pointerdown',lp9.x,lp9.y);
+    fire('pointermove',lp9.x+80,lp9.y);
+    assert.ok(byId(C9.id).labelPos!==0.2,'in-flight labelPos mutates again');
+    abortGesture();
+    assert.strictEqual(byId(C9.id).labelPos,0.2,'abortGesture restores the orig labelPos');
+    console.log('  ✓ lblpos cancel restores labelPos on both cancel paths (ADR-0951)');
   }
 
     // ADR-0646: multi-page — wire-convergent page ops + per-page view filter
@@ -15501,6 +15522,7 @@ pass += 3; // ADR-0947 labelPos domain-clamp pins
 }
 pass += 4; // ADR-0949 send-funnel exception-safety pins
 pass += 3; // ADR-0950 pointer bookkeeping leak pins
+pass += 4; // ADR-0951 lblpos cancel-restore pins
 pass += 7; // ADR-0943 second-pointer abort pins
 pass += 8; // ADR-0945 mid-gesture overlay-open cancel pins
 pass += 8; // ADR-0948 mid-gesture button-path cancel pins

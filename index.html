@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.976';   // ADR-0950
+const V='1.7.977';   // ADR-0951
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4016,7 +4016,7 @@ function abortGesture(){
     const sh=byId(ptr.cbendOrig.id);if(sh){if(ptr.cbendOrig.cbend==null)delete sh.cbend;_geoR(sh,ptr.cbendOrig);}
   }else if(_dk('way')&&ptr.wayOrig){                     // ADR-0076
     const sh=byId(ptr.wayOrig.id);if(sh){delete sh.way;_geoR(sh,ptr.wayOrig);}
-  }
+  }else if(_dk('lblpos')&&ptr.lblOrig){const sh=byId(ptr.lblOrig.id);if(sh)ptr.lblOrig.labelPos==null?delete sh.labelPos:sh.labelPos=ptr.lblOrig.labelPos}
   if(_ln(_eraseBatch)){for(const s of _eraseBatch)_sh().push(s);_eraseBatch=[];_sz();_iG();}   // ADR-0009
   _penPred=null;_zR();_ptrReset();
   _iv();
@@ -4455,12 +4455,13 @@ function _cancelPointerGesture(){
     const sh=byId(ptr.cbendOrig.id);if(sh){if(ptr.cbendOrig.cbend==null)delete sh.cbend;_geoR(sh,ptr.cbendOrig);}
   }else if(_dk('way')&&ptr.wayOrig){                     // ADR-0076
     const sh=byId(ptr.wayOrig.id);if(sh){delete sh.way;_geoR(sh,ptr.wayOrig);}
-  }else if(_dk('move')&&ptr.dragStartShapes){
+  }else if(_dk('lblpos')&&ptr.lblOrig){const sh=byId(ptr.lblOrig.id);if(sh)ptr.lblOrig.labelPos==null?delete sh.labelPos:sh.labelPos=ptr.lblOrig.labelPos}
+  else if(_dk('move')&&ptr.dragStartShapes){
     for(const[id,orig] of ptr.dragStartShapes){const sh=byId(id);if(sh)_geoR(sh,orig);}
   }
   if(_ln(_eraseBatch)){for(const s of _eraseBatch)_sh().push(s);_eraseBatch=[];_sz();_iG();}   // ADR-0009
   _ptrReset();_zR();_penPred=null;
-  _clearTouchState();   // ADR-0636: cancel must not leave stale _pointers/pinch state
+  _clearTouchState();   // ADR-0636
   _iv();
 }
 // ADR-0006: fires after LONG_PRESS_MS. Guards: gest
@@ -4857,7 +4858,6 @@ _on(canvas,_PM,e=>{
   }
 },{capture:true,passive:true});
 let _pinchPrev=0;
-// Reset pinch state when fewer than 2 pointers
 const _resetPinch=()=>{if(_nP()<2){_pinchPrev=0;if(_pinchSnap){_pinchSnap=null;_pinchVp=null;_iv();}}};
 
 // ADR-0517: Safari trackpad pinch — proprietary GestureEvent instead of ctrl+wheel; inert elsewhere.
