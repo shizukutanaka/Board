@@ -12683,9 +12683,12 @@ try {
   { // v1.7.99: ADR-0041 DOM mirror — SR-navigable shape list
     const fakeUl={children:[],firstChild:null,
       appendChild(c){this.children.push(c);this.firstChild=this.children[0];},
-      removeChild(c){const i=this.children.indexOf(c);if(i>=0)this.children.splice(i,1);this.firstChild=this.children[0]||null;}};
+      removeChild(c){const i=this.children.indexOf(c);if(i>=0)this.children.splice(i,1);this.firstChild=this.children[0]||null;},
+      contains(x){const w=e=>e===x||e.children.some(w);return w(this)},
+      querySelectorAll(s){const r=[];(function w(e){for(const c of e.children){if(c.tagName==='BUTTON')r.push(c);w(c)}})(this);return r}};
     const mk=tag=>({tagName:tag.toUpperCase(),children:[],textContent:'',onclick:null,type:'',
-      appendChild(c){this.children.push(c);}});
+      appendChild(c){this.children.push(c);},
+      focus(){fakeDoc.activeElement=this}});
     const _origGet=fakeDoc.getElementById,_origCE=fakeDoc.createElement;
     fakeDoc.getElementById=id=>id==='shapeMirrorList'?fakeUl:_origGet(id);
     fakeDoc.createElement=mk;
@@ -12709,6 +12712,20 @@ try {
     const before=fakeUl.children.length;
     _mirrorSync();
     assert.ok(fakeUl.children.length===before,'mirror skips rebuild when _gridVer unchanged');
+    // ADR-0956: focus survives a _gridVer rebuild — remote-op churn can't drop SR position
+    state.shapes.length=0;
+    for(let i=0;i<3;i++)state.shapes.push(Shape.make('rect',{x:i*100,y:0,w:50,h:40}));
+    _invalidateGrid();_mirrorSync();
+    const fb=fakeUl.children[1].children[0];fb.focus();
+    assert.strictEqual(fakeDoc.activeElement,fb,'mirror button holds focus pre-rebuild');
+    state.shapes[0].x=999;_invalidateGrid();_mirrorSync();
+    const nb=fakeUl.children[1].children[0];
+    assert.notStrictEqual(nb,fb,'rebuild replaces the button node');
+    assert.strictEqual(fakeDoc.activeElement,nb,'focus restored to the same slot after rebuild (ADR-0956)');
+    fakeUl.children[2].children[0].focus();
+    state.shapes.length=2;_invalidateGrid();_mirrorSync();
+    assert.strictEqual(fakeDoc.activeElement,fakeUl.children[1].children[0],'focus clamps to the last slot when the list shrinks (ADR-0956)');
+    fakeDoc.activeElement=null;
     fakeDoc.getElementById=_origGet;fakeDoc.createElement=_origCE;
     state.shapes.length=0;state.selection.clear();_invalidateGrid();
     console.log('  ✓ DOM mirror: per-shape buttons, select+recentre, MIRROR_MAX cap + truncation, _gridVer gating');
@@ -15617,6 +15634,7 @@ pass += 4; // ADR-0952 erase-batch remote-op window pins
 pass += 3; // ADR-0953 erase-batch wholesale-op pins
 pass += 4; // ADR-0954 pageDel selection-drop pins
 pass += 2; // ADR-0955 wholesale-swap id-resolution pins
+pass += 4; // ADR-0956 mirror focus-preservation pins
 pass += 7; // ADR-0943 second-pointer abort pins
 pass += 8; // ADR-0945 mid-gesture overlay-open cancel pins
 pass += 8; // ADR-0948 mid-gesture button-path cancel pins
