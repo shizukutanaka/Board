@@ -88,10 +88,12 @@ const checks = [
   ['No innerHTML anywhere (XSS-safe)', !/innerHTML\s*=/.test(html)],
   // v1.1: ctx must be let (not const) for exportPNG swap
   ['ctx declared as let (not const)', /let ctx=canvas\.getContext/.test(html)],
-  // v1.1: exportPNG passes ctx as parameter (no global swap)
-  ['exportPNG passes ctx as parameter', html.includes('drawShape(s,oc)')],
+  // v1.1: exportPNG passes ctx as parameter (no global swap); ADR-0907: via _dS isolation
+  ['exportPNG passes ctx as parameter', html.includes('_dS(s,oc)')],
   // v1.1: toBlob null guard
   ['toBlob has null guard', html.includes("if(!bl){_eT(_EF)")],
+  // ADR-0907: export render loops isolate per-shape drawShape (0601/0887 parity)
+  ['export render loops isolate drawShape', html.includes('_dS=(s,c)=>{try{drawShape(s,c)}catch(_){}}')],
   // v1.1: op validation in _onRecv
   ['_onRecv validates op.clock', html.includes("!_iS(op.clock.peer)")],
   // v1.1: import validates shapes
@@ -14970,7 +14972,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1862; // prev 1860 + 2 ADR-0906 pointer-capture pins
+  pass += 1863; // prev 1862 + 1 ADR-0907 export-isolation pin
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

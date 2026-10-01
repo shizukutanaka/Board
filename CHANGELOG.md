@@ -1,3 +1,8 @@
+## [1.7.933] - 2026-10-01
+
+### Fixed
+- エクスポート描画ループ (`_renderPngBlob`/`exportViewportPNG`/copyPNG) が `drawShape` を隔離なしで直列呼出し — 1図形の例外で PNG 生成全体が無通知に落ちる実害を `_dS` shorthand で per-shape 隔離 (ADR-0601/0887 parity)。fail-fast 監査は clean 完走: `_JP`/`atob`/`DOMParser`/`decodeURIComponent`/`replaceState`/`toBlob` 全サイト try/catch 内または棄却 gated (ADR-0907)
+
 ## [1.7.932] - 2026-10-01
 
 ### Fixed
