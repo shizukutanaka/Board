@@ -1188,7 +1188,7 @@ const checks = [
     html.includes("self.title=t('you');") && html.includes('UI.refreshPeers();   // self-avatar title')
     && html.includes("you:'自分'") && html.includes("you:'You'")],
   ['theme mode cached in memory (_themeCache), not re-read from localStorage on every call (deep-audit fix)',
-    html.includes('let _themeCache=(()=>{try{return _lg(THEME_KEY)}catch(_){return null}})();')
+    html.includes('let _themeCache=(()=>{try{const v=_lg(THEME_KEY);return v===\'light\'||v===\'dark\'?v:null}catch(_){return null}})();')
     && html.includes('_themeMode(){return _themeCache;},') && html.includes('_themeCache=next;')],
   // v1.6.68: Alt resize-from-centre
   ['Alt resizes about original centre', html.includes("function applyResize(sh,handle,orig,wp,shift,alt)") && html.includes("if(alt){sh.x=cx0-sh.w/2;sh.y=cy0-sh.h/2;}") && html.includes("applyResize(rsh,ptr.resizeHandle,ptr.resizeOrig,wp,_sK(e),_aK(e));")],
@@ -14936,13 +14936,21 @@ try {
     console.log('  ✓ imgq re-request answered from blob store or live shape (ADR-0835)');
   }
 
+  // ADR-0904: persisted boot values are gated before use — a corrupted or
+  // hand-edited localStorage entry must not reach the peer-id or theme paths.
+  {
+    assert.ok(html.includes("/^[a-z0-9-]{8,64}$/i.test(id)"),'ADR-0904: board.peer gated to a bounded id shape');
+    assert.ok(html.includes("v==='light'||v==='dark'?v:null"),'ADR-0904: board.theme gated to the enum');
+    console.log('  ✓ ADR-0904: persisted boot values gated (peer id shape, theme enum)');
+  }
+
   console.log('\n✓ All behavioural tests passed');
   // deep-audit fix: the HiDPI recording-canvas block (commit af5c0e2) was tallied as 7
   // asserts but actually contains 6 (recounted directly: at1.length, at2.length, and 4
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1858; // prev 1838 + 1 ADR-0870 default + 9 ADR-0876 + 3 ADR-0877 + 3 ADR-0878 + 4 ADR-0879 (1 static + 3 behavioural)
+  pass += 1860; // prev 1858 + 2 ADR-0904 source pins
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

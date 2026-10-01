@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.929';   // ADR-0903
+const V='1.7.930';   // ADR-0904
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -916,22 +916,21 @@ const uid=()=>typeof crypto!==_un&&crypto.randomUUID
 // peerId: persistent per browser, used to dedup CRDT ops
 const PEER_ID=(()=>{try{
   let id=_lg('board.peer');
-  if(!id){id=uid();_ls('board.peer',id)}
+  // Regenerate malformed persisted ids: unbounded/'rtc:'-prefixed values would
+  // bloat every outbound op and confuse the rtc:/BC peer split (ADR-0827).
+  if(!_iS(id)||!/^[a-z0-9-]{8,64}$/i.test(id)){id=uid();_ls('board.peer',id)}
   return id;
 }catch(_){return uid()}})();
 // minimap visibility: persisted across reloads (the alternative —
 // an always-on minimap with no dismiss — would nag a toggle user
 // on every reload).
 const MINIMAP_ON=(()=>{try{return _lg('board.minimap')!=='off'}catch(_){return true}})();
-// ADR-0012: theme is a DOM attribute + localStorage setting, not board state — it's
-// purely visual and doesn't affect board data or sync. Not undo-tracked.
+// ADR-0012: theme is a DOM attribute + localStorage setting — visual only,
+// not board state, not synced, not undo-tracked.
 const THEME_KEY='board.theme';
-// deep-audit fix: the mode used to live only in storage (UI._themeMode() read
-// localStorage every call). If storage access throws on EVERY call — blocked
-// cookies, storage partitioning, a sandboxed iframe — it collapsed to null, so
-// the toggle/button never saw what applyTheme() set: stuck on 'light' while
-// announcing 'auto'. Keep the mode in memory; storage is best-effort.
-let _themeCache=(()=>{try{return _lg(THEME_KEY)}catch(_){return null}})();
+// Mode lives in memory (storage is best-effort): reading localStorage every
+// call can throw under blocked cookies/partitioning and desync the UI.
+let _themeCache=(()=>{try{const v=_lg(THEME_KEY);return v==='light'||v==='dark'?v:null}catch(_){return null}})();
 function applyTheme(mode){   // mode: 'light'|'dark'|null (auto = follow prefers-color-scheme)
   if(mode)_de.dataset.theme=mode;
   else delete _de.dataset.theme;
