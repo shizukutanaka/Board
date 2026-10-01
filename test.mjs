@@ -947,7 +947,7 @@ const checks = [
   ['conn label honours lineH canvas+SVG (ADR-0212)', html.includes('llh=fs*(s.lineH||1.25)')&&html.includes('lh2=fs*(s.lineH||1.25)')],
   ['pin/unpin anchor via ctx for touch/keyboard (ADR-0213)', html.includes('function pinAnchor()')&&html.includes("['ctxPinAnchor','',pinAnchor]")&&html.includes('px=k===\'a\'?e.x1:e.x2')],
   ["presence msgs carry curPg; peers on another page are not drawn (ADR-0647)",
-    html.includes("_mk('cursor',{x:wp.x,y:wp.y,pg:state.curPg})")&&html.includes("_mk('selection',{ids,pg:state.curPg})")&&html.includes("p.pg=npg")&&html.includes("if(_pgOn()&&p.pg&&p.pg!==state.curPg)continue")&&html.includes("return;_cxO()")&&html.includes("state.curPg=id;Net.sendCursorHide()")],
+    html.includes("_mk('cursor',{x:wp.x,y:wp.y,pg:state.curPg})")&&html.includes("_mk('selection',{ids,pg:state.curPg})")&&html.includes("p.pg=npg")&&html.includes("if(_pgOn()&&p.pg&&p.pg!==state.curPg)continue")&&html.includes("return;_nugEnd();_cxO()")&&html.includes("state.curPg=id;Net.sendCursorHide()")],
   ['_bindAt grid-accelerated candidate scan (ADR-0214)', html.includes('const cands=[..._queryGrid(_grid,{x,y})]')&&html.includes('const ok=s=>{const t=s.type;return t!==\'line\'&&t!==\'arrow\'&&t!==\'pen\'&&_sv(s)&&_pgOk(s)}')],
   ['modal focus capture/restore + summary tabbable (ADR-0215)', html.includes('_captureFocus()')&&html.includes('this._restoreFocus()')&&html.includes('select,textarea,summary,[tabindex')],
   ['labelPos drag snaps to 0/.25/.5/.75/1 slots (ADR-0216)', html.includes('for(const slot of[0,0.25,0.5,0.75,1])')],
@@ -1212,7 +1212,7 @@ const checks = [
   ['selection outline traces rotated box', html.includes("if(single&&single.rotate&&single.w!=null){")],
   // v1.6.70: keyboard resize (Alt+arrow)
   ['resize op registered (apply, validate, remote)', html.includes("case 'resize':\n      case 'align':\n      case 'beautify':{") && html.includes("case 'beautify':{const noLock=") && html.includes("'style','resize','replace','pageAdd','pageDel','pageName','beautify'])")],
-  ['Alt+arrow keyboard-resizes box shapes', html.includes("_rcOp({op:'resize',before,after});") && html.includes("sh.w=_max(4,sh.w+dw);sh.h=_max(4,sh.h+dh);")],
+  ['Alt+arrow keyboard-resizes box shapes', html.includes("_nugPush({op:'resize',before,after});") && html.includes("sh.w=_max(4,sh.w+dw);sh.h=_max(4,sh.h+dh);")],
   // v1.6.71: image import error handling
   ['imgErr i18n key in both locales', html.includes("imgErr:'画像を読み込めませんでした'") && html.includes("imgErr:'Image failed to load'")],
   ['drag-drop image import has img.onerror toast', html.includes("img.onerror=()=>_wT('imgErr');") ],
@@ -1480,7 +1480,7 @@ const checks = [
     html.includes("if(!forward)_selR(op);\n        break;}\n      case 'style':")],
   // v1.7.43: keyboard resize (Alt+Arrow) captures origSel around resize _recordCommitted
   ['keyboard resize (Alt+Arrow): origSel captured before resize commit',
-    html.includes("_rcOp({op:'resize',before,after});")],
+    html.includes("_nugPush({op:'resize',before,after});")&&html.includes("Store._recordCommitted(n.op);_keepSel(n.sel)")],
   // v1.7.43: drag-resize upd captures origSel (mirrors endSelect/nudgeSelection pattern)
   ['drag-resize: origSel captured before upd _recordCommitted (ptr.resizeOrig path)',
     html.includes("_rcOp({op:'upd',id:rsh.id,before,after});")],
@@ -1731,7 +1731,7 @@ try {
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, cycleStickyColor, wrapInFrame, doPasteAt, doPasteInPlace, selectSamePaint, selectSameType, showAllShapes, _stickyChain, _fitIfEmptyView, toggleCurve, toggleLineArrow, toggleStickyText, selectFrameContents, selectInverse, unlockAll, exportViewportPNG, cycleArrowHead, _connPathPts, _pathAt, _pathNearestT, snapSelToGrid, importBoardText, copyBoardJSON, importDrawioText, importSvgText, importExcText, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
              _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, _frameOf, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _edgePanTick, _gresizeDrag, _gresizeCommit, _mapToBox, _rotPtsAbout, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
+             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, _nugEnd, _frameOf, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _edgePanTick, _gresizeDrag, _gresizeCommit, _mapToBox, _rotPtsAbout, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa: () => _teTa, zoomAt, reverseConn, unbindSelection,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
              exportPNG, copyPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
@@ -1760,7 +1760,7 @@ try {
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, cycleStickyColor, wrapInFrame, doPasteAt, doPasteInPlace, selectSamePaint, selectSameType, showAllShapes, _stickyChain, _fitIfEmptyView, toggleCurve, toggleLineArrow, toggleStickyText, selectFrameContents, selectInverse, unlockAll, exportViewportPNG, cycleArrowHead, _connPathPts, _pathAt, _pathNearestT, snapSelToGrid, importBoardText, copyBoardJSON, importDrawioText, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
           _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, _frameOf, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _edgePanTick, _gresizeDrag, _gresizeCommit, _mapToBox, _rotPtsAbout, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
+          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, _nugEnd, _frameOf, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _edgePanTick, _gresizeDrag, _gresizeCommit, _mapToBox, _rotPtsAbout, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa, zoomAt, reverseConn, unbindSelection,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
           exportPNG, copyPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
@@ -2263,11 +2263,29 @@ try {
     const n1=Shape.make('rect',{x:0,y:0,w:10,h:10});
     state.shapes.push(n1);_invalidateGrid();
     state.selection.add(n1.id);state.selection.add('dead-id-xyz');
-    nudgeSelection(5,0);
+    nudgeSelection(5,0);_nugEnd();   // ADR-0957: the held-key session commits on flush
     const nOp=state.history[state.history.length-1];
     assert.deepStrictEqual(nOp.ids,[n1.id],'dead id dropped from nudge ids');
     state.selection.clear();
     console.log('  ✓ nudgeSelection drops dead ids (ADR-0623)');
+  }
+  // ADR-0957: a held arrow key repeats ~30/s — the run folds into ONE op per key
+  // session (key = op kind + id set) instead of one op per repeat. Flush points:
+  // the 400ms trailing timer, the next real commit (_rcOp), undo/redo, switchPage.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const r=Shape.make('rect',{x:0,y:0,w:20,h:20}),r2=Shape.make('rect',{x:60,y:0,w:20,h:20});
+    state.shapes.push(r,r2);_invalidateGrid();
+    state.selection=new Set([r.id]);
+    nudgeSelection(1,0);nudgeSelection(1,0);nudgeSelection(1,0);   // a held-key run
+    assert.strictEqual(state.history.filter(o=>o.op==='move').length,0,'ADR-0957: no commit while the run is live');
+    _nugEnd();   // trailing-edge flush (the 400ms timer in production)
+    const ops=state.history.filter(o=>o.op==='move');
+    assert.strictEqual(ops.length,1,'ADR-0957: the held-key run commits a single move op');
+    assert.strictEqual(ops[0].dx,3,'ADR-0957: repeats accumulate into the single op');
+    state.selection=new Set([r2.id]);nudgeSelection(0,2);_nugEnd();   // different id set → a new session
+    assert.strictEqual(state.history.filter(o=>o.op==='move').length,2,'ADR-0957: a different selection starts a second op');
+    console.log('  ✓ ADR-0957: held-arrow nudge coalesces to one op per key session');
   }
   // ADR-0625: wc/origSel/moved are undo-domain — _slimOp strips them from the
   // wire copy while preserving the fields peers actually consume.
@@ -6422,7 +6440,7 @@ try {
     );
     const cp = o => JSON.parse(JSON.stringify(o));
     A.state.peerId='peerA'; B.state.peerId='peerB';
-    const reset = W => { W.state.shapes.length=0;_invalidateGrid(); W.state.history.length=0; W.state.histIdx=-1; W.state.seq=0; W.state.seenOps=new Set(); W.state.wclock={}; W.state._lastRep=null; };
+    const reset = W => { _nugEnd(); W.state.shapes.length=0;_invalidateGrid(); W.state.history.length=0; W.state.histIdx=-1; W.state.seq=0; W.state.seenOps=new Set(); W.state.wclock={}; W.state._lastRep=null; };
     reset(A); reset(B);
     // wire each peer's outbound to the other's _onRecv (deep-copied, like a real wire)
     // ADR-0931: the real 'op' envelope carries peer:_pi() matching clock.peer —
@@ -8156,7 +8174,7 @@ try {
     // nudge the frame right by 10: frame + unlocked child move; locked child + outsider stay
     const fx=fr.x, cx=child.x, lx=lockedChild.x, ox=outsider.x;
     state.selection=new Set([fr.id]);
-    nudgeSelection(10,0);
+    nudgeSelection(10,0);_nugEnd();   // ADR-0957 flush
     assert.strictEqual(ID(fr.id).x, fx+10, 'nudge: frame moved by 10');
     assert.strictEqual(ID(child.id).x, cx+10, 'nudge: unlocked child followed the frame');
     assert.strictEqual(ID(lockedChild.id).x, lx, 'nudge: LOCKED child did not move');
@@ -12976,7 +12994,7 @@ try {
   // v1.7.571: cover previously-untested exports — ctx ops, frame/convert helpers,
   // key/geom utilities. Behaviour-level: set state, call, assert op+mutation.
   {
-    const reset=()=>{state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state._lastRep=null;};
+    const reset=()=>{_nugEnd();state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state._lastRep=null;};
     // _imgNextKey: image-key rotation used by _imgAttach for duplicate dataUrls
     assert.strictEqual(_imgNextKey('abc'),'abc:1','_imgNextKey seeds :1');
     assert.strictEqual(_imgNextKey('abc:1'),'abc:2','_imgNextKey bumps suffix');
@@ -13252,7 +13270,7 @@ try {
       for(const f of fakeWin._L[t]||[])f(ev);      // window bubble last — real propagation
       return ev;
     };
-    const reset=()=>{state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.draft=null;ptr.down=false;};
+    const reset=()=>{_nugEnd();state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.draft=null;ptr.down=false;};
     reset();
     state.viewport={x:0,y:0,zoom:1};
     // pen stroke: PD arms ptr.down + draft, PM appends pts, PU commits an 'add'
@@ -15635,6 +15653,7 @@ pass += 3; // ADR-0953 erase-batch wholesale-op pins
 pass += 4; // ADR-0954 pageDel selection-drop pins
 pass += 2; // ADR-0955 wholesale-swap id-resolution pins
 pass += 4; // ADR-0956 mirror focus-preservation pins
+pass += 4; // ADR-0957 held-key nudge coalescing pins
 pass += 7; // ADR-0943 second-pointer abort pins
 pass += 8; // ADR-0945 mid-gesture overlay-open cancel pins
 pass += 8; // ADR-0948 mid-gesture button-path cancel pins

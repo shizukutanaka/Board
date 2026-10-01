@@ -1005,6 +1005,7 @@ Board/
 │   └── ADR-0954-pagedel-selection-drop.md  # _pgDel2 メンバー kill が選択 id を残す非対称を閉塞 ('del' parity — kill ループへ _sdl、集合空化 remote pageDel で残存し得た ghost id 解消)
 │   └── ADR-0955-wholesale-swap-id-resolution.md  # 派生参照 id キー化契約の監査完走+ピン (全置換オブジェクト差替え後も connEnds 等が id 再解決、stale-clone 不発)
 │   └── ADR-0956-mirror-focus-restore.md  # SR ミラー再構築のフォーカス保存 (focused button index を save/restore、縮小時末尾クランプ — 0675 ページタブ parity のミラー側残穴)
+│   └── ADR-0957-nudge-coalescing.md  # 矢印長押しナッジの共合体 (_nugPush/_nugEnd trailing-edge 400ms、キー=op+id 集合 — キーリピート毎の commit 溢流を閉塞、v1.6.29 スライダー共合体 parity)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

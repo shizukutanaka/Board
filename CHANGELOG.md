@@ -1,3 +1,9 @@
+## [1.7.983] - 2026-10-01
+
+### Fixed
+- 長押し矢印キーのナッジ共合体 (ADR-0957): `nudgeSelection` / ⌥arrow リサイズがキーリピート (~30/s) 毎に `move`/`resize` op を commit し、400 ops/13s で履歴を溢流 (実エントリの圧出・⌘Z が 1px 単位・wire フラッド) していた実害を閉塞。`_nugPush`/`_nugEnd` の trailing-edge セッション (400ms、キー=op 種+id 集合) でランを単一 op へ共合 — v1.6.29 `_sfbFlush` スライダー共合体のキー側 parity。flush 点は timer + `_rcOp` (次の真 commit) + undo/redo + `switchPage`。delta `move`/`resize` は arbitration 上等価 (収束は x/y の prop LWW、刻印回数が減るだけ)。remote 側はラン中 ~30Hz の live delta を失う代わりに、終了時に累積 delta を一度だけ受信 — 最終 state は同一に収束
+- origSel はセッション開始時に捕捉 (v1.7.42a parity: undo はナッジ前の選択へ復帰)
+
 ## [1.7.982] - 2026-10-01
 
 ### Fixed
