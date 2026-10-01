@@ -1,3 +1,8 @@
+## [1.8.004] - 2026-10-01
+
+### Docs / Test
+- `sortZ` 全順序性 × 反復順序収束監査が clean 完走 (ADR-0978): comparator は frac (base62 文字列辞書順) → id tie-break の strict total order で 0 は同一 id のみ (0790 dedupe で不成立)、keyless 図形は sort 前に stamp 済み、`z` NaN は `_cleanVal` で wire 拒否、keyBetween の alphabet 外文字 + prefix 尽き guard で終端。`connClears`/`group`/`del` 等の Set/Map 反復から生まれる op 配列は per-id 冪等で順序に意味を持たない。実害なし。behavioural ピン4 assert (同 frac→id 順・逆入力順同結果・legacy z-seed stamp・出力が comparator 順を遵守)
+
 ## [1.8.003] - 2026-10-01
 
 ### Docs / Test

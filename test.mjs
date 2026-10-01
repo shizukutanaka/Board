@@ -2216,6 +2216,26 @@ try {
     console.log('  ✓ proto-key pollution gated at every parse path (ADR-0977)');
   }
   pass += 6; // ADR-0977 proto-key gate pins
+  // ADR-0978: sortZ is a strict total order — frac (string lexicographic)
+  // then id tie-break; equal fracs can't leave order to input order, and
+  // legacy z-seeding reindexes deterministically off the z sort.
+  {
+    const sA=Shape.make('rect',{id:'a1',x:0,y:0,w:5,h:5}),sB=Shape.make('rect',{id:'b1',x:5,y:0,w:5,h:5});
+    sA.frac='k0';sB.frac='k0';
+    state.shapes=[sB,sA];sortZ();
+    assert.deepStrictEqual(state.shapes.map(s=>s.id),['a1','b1'],'equal fracs order by id (input order irrelevant)');
+    state.shapes=[sA,sB];sortZ();
+    assert.deepStrictEqual(state.shapes.map(s=>s.id),['a1','b1'],'same total order from the other input order');
+    // legacy seed: keyless shapes take z order then get stamped keys.
+    const sC=Shape.make('rect',{id:'c1',x:0,y:0,w:5,h:5}),sD=Shape.make('rect',{id:'d1',x:0,y:0,w:5,h:5});
+    sC.frac=null;sD.frac=null;sC.z=2;sD.z=1;
+    state.shapes=[sC,sD];sortZ();
+    assert.ok(state.shapes[0].id==='d1'&&state.shapes.every(s=>typeof s.frac==='string'),'keyless shapes seed from z then get stamped');
+    assert.ok(state.shapes.every((s,i,a)=>i===0||a[i-1].frac<s.frac||(a[i-1].frac===s.frac&&a[i-1].id<s.id)),'sorted output respects the comparator total order');
+    state.shapes.length=0;state.wclock={};_invalidateGrid();
+    console.log('  ✓ sortZ total order — frac then id, deterministic across input orders (ADR-0978)');
+  }
+  pass += 4; // ADR-0978 sortZ total-order pins
   // ADR-0617: a snapshot whose sender predates our newest swap must not merge
   // pre-swap shapes back in; a snapshot reflecting a newer swap adopts its marker.
   {
