@@ -1432,7 +1432,7 @@ const checks = [
   ['ADR-0964: six locked-gate commit sites (resize/rotate/cbend/ebend/way/lblpos)',
     html.split("locked)_gRst();   // ADR-0964").length-1===6],
   ['ADR-0964: gresize/grot restore+exclude locked members; flushErase partitions live members',
-    html.includes("_gRL(ptr.gOrig);_gRL(ptr.gAnc);")&&html.includes("const _gRL=M=>{if(M)for(const[id,o]of M){const s=byId(id);if(s&&s.locked){_geoR(s,o);_iv()}}};")&&
+    html.includes("_gRL(ptr.gOrig);_gRL(ptr.gAnc);")&&html.includes("const _gRL=M=>{if(M)for(const[id,o]of M){const s=byId(id);if(s&&s.locked&&!_rb(id)){_geoR(s,o);_iv()}}};")&&
     html.includes("filter(s=>s&&!s.locked).map(clone)")&&
     html.includes("const live=_eraseBatch.filter(s=>!s.locked);")],
   // ADR-0965 source pins: _nugLock partitions mid-run locked/missing members
@@ -10990,6 +10990,40 @@ try {
     console.log('  ✓ ctx action family no-ops after remote del empties selection (ADR-0968)');
   }
 
+  // ADR-0969: remote writes landing mid-gesture must survive orig-restore —
+  // _gTouch merges their touched keys into the gesture origs, and a shape
+  // (re)born past the arm clock (kill+resurrect, wholesale swap) is never
+  // restored at all. Without this the local _gRst wrote stale orig geometry
+  // back over the remote value — peers kept it, we lost it: one-way divergence.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const RA=Shape.make('rect',{x:0,y:0,w:50,h:40});
+    Store.commit({op:'addMany',shapes:[RA]});
+    const RAorig=JSON.parse(JSON.stringify(byId(RA.id)));
+    const arm=()=>{ptr.down=true;ptr.armC={ts:nowTs(),peer:'',seq:0};ptr.dragKind='move';ptr.dragStartShapes=new Map([[RA.id,JSON.parse(JSON.stringify(byId(RA.id)))]])};
+    arm();byId(RA.id).x+=30;   // in-flight local delta
+    Net._onRecv({k:'op',op:{op:'style',after:[{id:RA.id,stroke:'#ff0000'}],before:[],clock:{peer:'p9',seq:1,ts:nowTs()}},peer:'p9'},false);
+    assert.strictEqual(byId(RA.id).stroke,'#ff0000','remote prop write lands mid-gesture');
+    _cancelPointerGesture();
+    assert.strictEqual(byId(RA.id).stroke,'#ff0000','cancel keeps the remote prop write');
+    assert.strictEqual(byId(RA.id).x,RAorig.x,'cancel still rolls back the local drag delta');
+    arm();   // remote 'move' absolute — the non-_oa write surface merges too
+    Net._onRecv({k:'op',op:{op:'move',ids:[RA.id],dx:1,dy:1,after:[{id:RA.id,x:777,y:333}],clock:{peer:'p9',seq:2,ts:nowTs()}},peer:'p9'},false);
+    _cancelPointerGesture();
+    assert.deepStrictEqual([byId(RA.id).x,byId(RA.id).y],[777,333],'remote move survives cancel (orig merged)');
+    arm();   // kill+resurrect mid-gesture: born passes armC → restore must skip it
+    Net._onRecv({k:'op',op:{op:'del',shapes:[JSON.parse(JSON.stringify(byId(RA.id)))],clock:{peer:'p9',seq:3,ts:nowTs()}},peer:'p9'},false);
+    assert.strictEqual(byId(RA.id),undefined,'remote del lands mid-gesture');
+    const resurrected={...JSON.parse(JSON.stringify(RA)),x:500,y:600,stroke:'#00ff00'};
+    Net._onRecv({k:'op',op:{op:'add',shape:resurrected,clock:{peer:'p9',seq:4,ts:nowTs()}},peer:'p9'},false);
+    _cancelPointerGesture();
+    assert.strictEqual(byId(RA.id).x,500,'reborn shape keeps remote geometry (born-guard skips restore)');
+    assert.strictEqual(byId(RA.id).stroke,'#00ff00','reborn shape keeps remote props');
+    ptr.down=false;ptr.dragKind=null;ptr.dragStartShapes=null;ptr.armC={ts:1/0,peer:'',seq:0};
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    console.log('  ✓ mid-gesture remote writes survive orig-restore; reborn skips it (ADR-0969)');
+  }
+
   // v1.7.13b: doDuplicate must skip locked shapes (parity with nudgeSelection/doDelete).
   // Bug: withFrameChildren expands the frame selection to include all contained children
   // (locked or not), but doDuplicate's .filter(Boolean) does not filter locked shapes out.
@@ -13422,7 +13456,7 @@ try {
   // v1.7.571: cover previously-untested exports — ctx ops, frame/convert helpers,
   // key/geom utilities. Behaviour-level: set state, call, assert op+mutation.
   {
-    const reset=()=>{_nugEnd();state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state._lastRep=null;};
+    const reset=()=>{_nugEnd();state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state._lastRep=null;state._lastTs=0;};   // ADR-0969: _lastTs leaks across sections — else a future-dated clock poisons born<del orderings
     // _imgNextKey: image-key rotation used by _imgAttach for duplicate dataUrls
     assert.strictEqual(_imgNextKey('abc'),'abc:1','_imgNextKey seeds :1');
     assert.strictEqual(_imgNextKey('abc:1'),'abc:2','_imgNextKey bumps suffix');
@@ -13698,7 +13732,7 @@ try {
       for(const f of fakeWin._L[t]||[])f(ev);      // window bubble last — real propagation
       return ev;
     };
-    const reset=()=>{_nugEnd();state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.draft=null;ptr.down=false;};
+    const reset=()=>{_nugEnd();state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.draft=null;ptr.down=false;state._lastTs=0;};   // ADR-0969: _lastTs leak — a future-dated clock poisons born<del orderings
     reset();
     state.viewport={x:0,y:0,zoom:1};
     // pen stroke: PD arms ptr.down + draft, PM appends pts, PU commits an 'add'
@@ -16092,6 +16126,7 @@ pass += 8; // ADR-0965 mid-run lock/missing member partition (3 blocks: 7 assert
 pass += 5; // ADR-0966 pending-op×mid-run audit pins + own-lock exemption block
 pass += 6; // ADR-0967 mid-edit remote-lock blur/commit fold (text+label)
 pass += 3; // ADR-0968 remote-killed selection → ctx family no-op block
+pass += 7; // ADR-0969 mid-gesture remote write survives orig-restore block
 pass += 15; // ADR-0964 mid-gesture lock restore/commit-gate pins
 pass += 7; // ADR-0943 second-pointer abort pins
 pass += 8; // ADR-0945 mid-gesture overlay-open cancel pins
