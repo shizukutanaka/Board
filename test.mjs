@@ -2155,6 +2155,24 @@ try {
     state.shapes.length=0;state.wclock={};_invalidateGrid();
     console.log('  ✓ replace keep-scan: newer-born survives the swap (ADR-0926/0974)');
   }
+  // ADR-0975: id/groupId keys shaped like JS builtins must not poison or crash
+  // plain-object stores — all four sites are null-proto.
+  {
+    const s=Shape.make('rect',{id:'__proto__',x:0,y:0,w:10,h:10});s.groupId='g1';
+    let ok=true;try{excScene([s])}catch(_){ok=false}
+    assert.ok(ok,'excScene survives a __proto__-named shape id');
+    const s2=Shape.make('rect',{id:'b1',x:1,y:2,w:3,h:4});s2.groupId='__proto__';
+    boardToDrawio([s2]);
+    assert.strictEqual(Object.prototype.x,undefined,'drawio group boxes never touch Object.prototype');
+    let ok2=true;try{_undoWire({op:'ungroup',ids:['m1'],gid:'__proto__',before:[{id:'m1',groupId:'__proto__'}]})}catch(_){ok2=false}
+    assert.ok(ok2,'undo-wire regroup survives a __proto__ groupId');
+    state.shapes.length=0;state.wclock={};_invalidateGrid();
+    const z=Shape.make('rect',{id:'z1',x:0,y:0,w:5,h:5});state.shapes=[z];_invalidateGrid();
+    Store._stampWrites({op:'zorder',changes:[{id:'z1',before:'a0',after:'a1'}],clock:{peer:'p',seq:1,ts:1}});
+    assert.strictEqual(Object.getPrototypeOf(state.wclock.z1),null,'zorder wclock bucket is null-proto');
+    state.shapes.length=0;state.wclock={};_invalidateGrid();
+    console.log('  ✓ builtin-named id/groupId cannot poison plain-object stores (ADR-0975)');
+  }
   // ADR-0617: a snapshot whose sender predates our newest swap must not merge
   // pre-swap shapes back in; a snapshot reflecting a newer swap adopts its marker.
   {
@@ -16265,6 +16283,7 @@ pass += 8; // ADR-0965 mid-run lock/missing member partition (3 blocks: 7 assert
 pass += 5; // ADR-0966 pending-op×mid-run audit pins + own-lock exemption block
 pass += 6; // ADR-0967 mid-edit remote-lock blur/commit fold (text+label)
 pass += 3; // ADR-0968 remote-killed selection → ctx family no-op block
+pass += 4; // ADR-0975 builtin-named id/groupId null-proto store pins
 pass += 9; // ADR-0974 remote-replace saveBackup + newer-born keep pins
 pass += 3; // ADR-0973 schedule()-marks-dirty + snapshot-heal/name-adopt arm pins
 pass += 3; // ADR-0972 envelope/fragment/commit-choke dedup pins
