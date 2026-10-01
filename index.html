@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.931';   // ADR-0905
+const V='1.7.932';   // ADR-0906
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4044,7 +4044,7 @@ _on(canvas,_PD,e=>{
   // it doesn't keep drawing/moving under the zoom
   // capture-phase listener that runs before this bubble-phase one.
   if(_nP()>=2){abortGesture();return;}
-  canvas.setPointerCapture(e.pointerId);
+  try{canvas.setPointerCapture(e.pointerId)}catch(_){}
   const sp=_osp(e);
   const wp=_s2(sp);
   state.measure=null;
@@ -10278,7 +10278,7 @@ const Minimap=(()=>{
     _vp().y=wy-_r.height/_vp().zoom/2;
     _iv();
   };
-  _on(mc,_PD,e=>{if(e.button>1)return;_mmNav=true;mc.setPointerCapture(e.pointerId);_mmGo(e)});   // ADR-0898: side/barrel buttons arm no scrub (0896 parity)
+  _on(mc,_PD,e=>{if(e.button>1)return;_mmNav=true;try{mc.setPointerCapture(e.pointerId)}catch(_){}_mmGo(e)});   // ADR-0898: side/barrel buttons arm no scrub (0896 parity)
   _on(mc,_PM,e=>{if(_mmNav)_mmGo(e)});
   _on(mc,_PU,e=>{_mmNav=false;try{mc.releasePointerCapture(e.pointerId)}catch(_){}});
   _on(mc,_PC,()=>{_mmNav=false});

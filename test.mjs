@@ -13027,6 +13027,26 @@ try {
         assert.ok(state.viewport.x===11&&state.viewport.y===22,`minimap button ${b} PD/PM does not scrub (ADR-0898)`);
       }
     }
+    // ADR-0906: a throwing setPointerCapture (stale/inactive pointerId →
+    // NotFoundError) previously propagated out of the PD listener and
+    // aborted gesture arming for that stroke; now guarded.
+    reset();state.tool='pen';
+    const _spc=canvas.setPointerCapture;canvas.setPointerCapture=()=>{throw new Error('inactive')};
+    fire('pointerdown',10,10);
+    assert.ok(ptr.down&&state.draft&&state.draft.type==='pen','PD still arms the gesture when setPointerCapture throws (ADR-0906)');
+    canvas.setPointerCapture=_spc;fire('pointerup',10,10);
+    {
+      const mmc=_els.minimap,_msp=mmc.setPointerCapture;
+      reset();state.showMinimap=true;
+      Store.commit({op:'add',shape:Shape.make('rect',{x:0,y:0,w:100,h:100})});
+      Minimap.draw();                                   // populate _sc/_ox/_oy — _mmGo no-ops before the first scene render
+      const vx0=state.viewport.x;
+      mmc.setPointerCapture=()=>{throw new Error('inactive')};
+      for(const f of mmc._L.pointerdown||[])f({button:0,pointerId:9,clientX:80,clientY:50,preventDefault(){},stopPropagation(){}});
+      for(const f of mmc._L.pointermove||[])f({button:0,pointerId:9,clientX:120,clientY:80,preventDefault(){},stopPropagation(){}});
+      assert.ok(state.viewport.x!==vx0,'minimap scrub survives a throwing setPointerCapture (ADR-0906)');
+      mmc.setPointerCapture=_msp;
+    }
     // ADR-0866: local inputs share the wire caps — an over-cap pen stroke or
     // waypoint array would commit locally yet be rejected by every peer
     // (same divergence class as the text-editor maxLength, ADR-0797).
@@ -14950,7 +14970,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1860; // prev 1858 + 2 ADR-0904 source pins
+  pass += 1862; // prev 1860 + 2 ADR-0906 pointer-capture pins
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

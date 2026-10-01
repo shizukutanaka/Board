@@ -1,3 +1,8 @@
+## [1.7.932] - 2026-10-01
+
+### Fixed
+- `setPointerCapture` の NotFoundError (inactive pointerId) が canvas/minimap の pointerdown リスナを貫通しジェスチャ開始を落とし得た実害を try/catch で閉塞 — release 側と parity (ADR-0906)。実行時 API 監査はこれで完走: DecompressionStream/CompressionStream/crypto.subtle/BroadcastChannel/RTC/OffscreenCanvas/randomUUID/matchMedia/getPredictedEvents/clipboard/storage/wakeLock 全 gated
+
 ## [1.7.931] - 2026-10-01
 
 ### Docs

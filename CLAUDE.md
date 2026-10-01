@@ -954,6 +954,7 @@ Board/
 │   └── ADR-0903-search-nav-and-mirror-lang-resync.md  # 検索逆ナビ初手修正 + toggleLang でミラー再構築 — 0902 監査面の実害2件を閉塞
 │   └── ADR-0904-persisted-boot-value-gates.md  # localStorage ブート値の検証 — board.peer を bounded 形式へ、board.theme を enum へ制限
 │   └── ADR-0905-idb-intake-audit.md  # IndexedDB 取込監査完走 — load/restore/checkBackup 全読込のゲート網羅を記録
+│   └── ADR-0906-pointer-capture-guards.md  # setPointerCapture の try/catch 化 — 実行時 API 機能検出監査完走
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
