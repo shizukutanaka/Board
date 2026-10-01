@@ -11000,7 +11000,7 @@ try {
     const RA=Shape.make('rect',{x:0,y:0,w:50,h:40});
     Store.commit({op:'addMany',shapes:[RA]});
     const RAorig=JSON.parse(JSON.stringify(byId(RA.id)));
-    const arm=()=>{ptr.down=true;ptr.armC={ts:nowTs(),peer:'',seq:0};ptr.dragKind='move';ptr.dragStartShapes=new Map([[RA.id,JSON.parse(JSON.stringify(byId(RA.id)))]])};
+    const arm=()=>{ptr.down=true;ptr.reborn=null;ptr.dragKind='move';ptr.dragStartShapes=new Map([[RA.id,JSON.parse(JSON.stringify(byId(RA.id)))]])};
     arm();byId(RA.id).x+=30;   // in-flight local delta
     Net._onRecv({k:'op',op:{op:'style',after:[{id:RA.id,stroke:'#ff0000'}],before:[],clock:{peer:'p9',seq:1,ts:nowTs()}},peer:'p9'},false);
     assert.strictEqual(byId(RA.id).stroke,'#ff0000','remote prop write lands mid-gesture');
@@ -11011,17 +11011,32 @@ try {
     Net._onRecv({k:'op',op:{op:'move',ids:[RA.id],dx:1,dy:1,after:[{id:RA.id,x:777,y:333}],clock:{peer:'p9',seq:2,ts:nowTs()}},peer:'p9'},false);
     _cancelPointerGesture();
     assert.deepStrictEqual([byId(RA.id).x,byId(RA.id).y],[777,333],'remote move survives cancel (orig merged)');
-    arm();   // kill+resurrect mid-gesture: born passes armC → restore must skip it
+    arm();   // kill+resurrect mid-gesture: remote-born arrival marks reborn → restore must skip it
     Net._onRecv({k:'op',op:{op:'del',shapes:[JSON.parse(JSON.stringify(byId(RA.id)))],clock:{peer:'p9',seq:3,ts:nowTs()}},peer:'p9'},false);
     assert.strictEqual(byId(RA.id),undefined,'remote del lands mid-gesture');
     const resurrected={...JSON.parse(JSON.stringify(RA)),x:500,y:600,stroke:'#00ff00'};
     Net._onRecv({k:'op',op:{op:'add',shape:resurrected,clock:{peer:'p9',seq:4,ts:nowTs()}},peer:'p9'},false);
     _cancelPointerGesture();
-    assert.strictEqual(byId(RA.id).x,500,'reborn shape keeps remote geometry (born-guard skips restore)');
+    assert.strictEqual(byId(RA.id).x,500,'reborn shape keeps remote geometry (arrival-mark skips restore)');
     assert.strictEqual(byId(RA.id).stroke,'#00ff00','reborn shape keeps remote props');
-    ptr.down=false;ptr.dragKind=null;ptr.dragStartShapes=null;ptr.armC={ts:1/0,peer:'',seq:0};
-    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
-    console.log('  ✓ mid-gesture remote writes survive orig-restore; reborn skips it (ADR-0969)');
+    // ADR-0970: the mark is arrival-order, not the remote clock — a peer clock
+    // running AHEAD could push a pre-arm born past armC (spurious skip → dragged
+    // value persists → divergence); a peer clock BEHIND hid a mid-gesture born
+    // under armC (restore clobbers). Neither skew mode can express itself now.
+    Net._onRecv({k:'op',op:{op:'del',shapes:[JSON.parse(JSON.stringify(byId(RA.id)))],clock:{peer:'p9',seq:5,ts:nowTs()}},peer:'p9'},false);
+    Net._onRecv({k:'op',op:{op:'add',shape:{...JSON.parse(JSON.stringify(RA)),x:40,y:60},clock:{peer:'p9',seq:6,ts:nowTs()+500}},peer:'p9'},false);   // skewed-ahead born lands BEFORE the arm
+    arm();byId(RA.id).x+=30;
+    _cancelPointerGesture();
+    assert.strictEqual(byId(RA.id).x,40,'born before the arm still restores the orig — skewed clock cannot fake arrival order');
+    state.wclock[RA.id]._born={ts:nowTs()-1000,peer:'me',seq:0};   // age the local born so a trailing-skew del can win
+    arm();
+    Net._onRecv({k:'op',op:{op:'del',shapes:[JSON.parse(JSON.stringify(byId(RA.id)))],clock:{peer:'p9',seq:7,ts:nowTs()-20}},peer:'p9'},false);
+    Net._onRecv({k:'op',op:{op:'add',shape:{...JSON.parse(JSON.stringify(RA)),x:900},clock:{peer:'p9',seq:8,ts:nowTs()-10}},peer:'p9'},false);   // born ts trails the arm — arrival mark still applies
+    _cancelPointerGesture();
+    assert.strictEqual(byId(RA.id).x,900,'trailing-skew remote reborn still skips restore');
+    ptr.down=false;ptr.dragKind=null;ptr.dragStartShapes=null;ptr.reborn=null;
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state._lastTs=0;
+    console.log('  ✓ mid-gesture remote writes survive orig-restore; reborn skips it (ADR-0969/0970)');
   }
 
   // v1.7.13b: doDuplicate must skip locked shapes (parity with nudgeSelection/doDelete).
@@ -16126,7 +16141,7 @@ pass += 8; // ADR-0965 mid-run lock/missing member partition (3 blocks: 7 assert
 pass += 5; // ADR-0966 pending-op×mid-run audit pins + own-lock exemption block
 pass += 6; // ADR-0967 mid-edit remote-lock blur/commit fold (text+label)
 pass += 3; // ADR-0968 remote-killed selection → ctx family no-op block
-pass += 7; // ADR-0969 mid-gesture remote write survives orig-restore block
+pass += 9; // ADR-0969/0970 mid-gesture remote write survives + skew-immune reborn mark
 pass += 15; // ADR-0964 mid-gesture lock restore/commit-gate pins
 pass += 7; // ADR-0943 second-pointer abort pins
 pass += 8; // ADR-0945 mid-gesture overlay-open cancel pins
