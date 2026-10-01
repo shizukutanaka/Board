@@ -96,8 +96,9 @@ const checks = [
   ['export render loops isolate drawShape', html.includes('_dS=(s,c)=>{try{drawShape(s,c)}catch(_){}}')],
   // ADR-0909: non-Element event targets can't TypeError the paste/keydown gates
   ['paste/keydown target guard uses optional matches', (html.match(/e\.target\.matches\?\.\(/g)||[]).length>=2],
-  // ADR-0912: pg is structural — patches can't exile shapes off the viewed page
+  // ADR-0912/0913: pg + frac are structural — patches can't exile shapes or scramble z-order
   ['patch strips drop pg (upd + style paths)', (html.match(/delete p\.pg;/g)||[]).length>=2],
+  ['patch strips drop frac (upd + style paths)', (html.match(/delete p\.frac;/g)||[]).length>=2],
   // v1.1: op validation in _onRecv
   ['_onRecv validates op.clock', html.includes("!_iS(op.clock.peer)")],
   // v1.1: import validates shapes
@@ -14976,7 +14977,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1865; // prev 1864 + 1 ADR-0912 pg-strip pin
+  pass += 1866; // prev 1865 + 1 ADR-0913 frac-strip pin
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

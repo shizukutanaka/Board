@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.938';   // ADR-0912
+const V='1.7.939';   // ADR-0913
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1325,7 +1325,7 @@ function validPatch(p){
 }
 // ADR-0373: remote patches may carry structural keys — `id`/`type` rebinds,
 // `frac` z-order scrambles, `pg` exile, `_`-prefixed cache clobbers.
-function _stripStruct(p,idToo){delete p.type;delete p.pg;if(idToo)delete p.id;for(const k of _ok(p))if(k[0]==='_')delete p[k];return p}
+function _stripStruct(p,idToo){delete p.type;delete p.pg;delete p.frac;if(idToo)delete p.id;for(const k of _ok(p))if(k[0]==='_')delete p[k];return p}
 function _cleanVal(v,depth){
   if(depth>8)return false;
   if(typeof v==='function')return false;
@@ -1839,7 +1839,7 @@ const Store={
           // apply of our undo-wire skips it → diverged props. The forward
           // gate still applies so an unlock-undo isn't dead)
           if(!sh||(sh.locked&&!('locked' in raw)))continue;
-          const p=clone(raw);if(op.op!=='beautify'){delete p.type;delete p.pg;for(const k of _ok(p))if(k[0]==='_')delete p[k];}   // ADR-0373/0730/0912
+          const p=clone(raw);if(op.op!=='beautify'){delete p.type;delete p.pg;delete p.frac;for(const k of _ok(p))if(k[0]==='_')delete p[k];}   // ADR-0373/0730/0912/0913
           // Same LWW guard as 'upd' (_lwwSkip) — since
           // _stampWrites records per-property write clocks — undo
           // must not clobber a newer remote write here

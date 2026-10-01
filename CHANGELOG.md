@@ -1,3 +1,8 @@
+## [1.7.939] - 2026-10-01
+
+### Fixed
+- `frac` (z-order キー) を `upd`/`style` patch 適用から構造除去 (ADR-0913): 鍛造 patch が `clockNewer`/`_lwwSkip` 収束を迂回して z-order を攪乱し得た経路を閉塞 — ADR-0373 の防衛対象2番目の未実装を修復 (0912 `pg` 同型)
+
 ## [1.7.938] - 2026-10-01
 
 ### Fixed
