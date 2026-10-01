@@ -14622,6 +14622,38 @@ try {
     assert.strictEqual(state.tool,'pen','space mid-pen-drag is ignored');
     assert.ok(!fakeWin._prevTool,'ignored space leaves _prevTool unset');
     fire('pointerup',10,10);
+    // ADR-0943: a second pointerdown mid-gesture aborts AND reverts via real
+    // dispatch — the bubble PD sees _nP()>=2 → abortGesture() drops the
+    // uncommitted draft and _geoR-restores in-place mutations; the lifted
+    // primary finger must never resume the dead gesture.
+    reset();
+    state.snap=false;
+    state.tool='rect';state.viewport={x:0,y:0,zoom:1};
+    fire('pointerdown',10,10,{pointerId:1});
+    fire('pointermove',60,50,{pointerId:1});
+    fire('pointerdown',200,200,{pointerId:2});   // second finger → abortGesture
+    assert.ok(!ptr.down,'a second finger aborts the live gesture');
+    assert.ok(!state.draft,'aborting drops the uncommitted draft');
+    fire('pointerup',200,200,{pointerId:2});
+    fire('pointerup',10,10,{pointerId:1});
+    assert.strictEqual(state.shapes.length,0,'the aborted gesture commits nothing');
+    // move-drag: the in-place mutation is reverted, not left uncommitted
+    reset();
+    state.snap=false;
+    state.tool='select';
+    const MP=Shape.make('rect',{x:100,y:100,w:60,h:60});
+    Store.commit({op:'add',shape:MP});
+    state.selection=new Set([MP.id]);
+    fire('pointerdown',130,130,{pointerId:1});
+    fire('pointermove',170,160,{pointerId:1,altKey:true});
+    assert.strictEqual(byId(MP.id).x,140,'precondition: the drag moved the shape in place');
+    fire('pointerdown',300,300,{pointerId:2});
+    assert.strictEqual(byId(MP.id).x,100,'a second finger reverts the in-flight move');
+    assert.strictEqual(state.history.length,1,'the reverted move never commits an op');
+    fire('pointerup',300,300,{pointerId:2});
+    fire('pointermove',320,320,{pointerId:1});
+    fire('pointerup',320,320,{pointerId:1});
+    assert.strictEqual(byId(MP.id).x,100,'the lifted finger never resumes the aborted move');
     state.snap=true;
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
@@ -15332,6 +15364,7 @@ pass += 2; // ADR-0940 merge-hide selection pin
   state._lastTs=_oldTs;
 }
 pass += 3; // ADR-0941 clock-envelope binding pins
+pass += 7; // ADR-0943 second-pointer abort pins
 pass += 6; // ADR-0942 mid-gesture tool-key pins
 pass += 4; // ADR-0936 absolute-writer pins
   pass += 4; // ADR-0935 producer-bound pins

@@ -1,3 +1,8 @@
+## [1.7.969] - 2026-10-01
+
+### Tests
+- 2本目のポインタによるジェスチャ中断の behavioural ピン (ADR-0943、test のみ): 実 dispatch で ①2本目 PD が進行中 rect ジェスチャを abort (`ptr.down` クリア + 未 commit draft 破棄 + shapes 非増加)、②move-drag の in-place 変異を `_geoR` で復元し 'move' op が commit されないこと、③主指の離脱まで中断ジェスチャが再開しないことを固定。multi-touch abort 経路は直接呼出テストのみだった空白を実経路で閉塞
+
 ## [1.7.968] - 2026-10-01
 
 ### Fixed
