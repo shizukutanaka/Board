@@ -997,6 +997,7 @@ Board/
 │   └── ADR-0946-negative-extent-intake.md    # 負 w/h extent を validPatch で棄却 (hit-test 空区間+frame 誤帰属の poison 図形を閉塞)
 │   └── ADR-0947-numeric-prop-domain-audit.md # 数値 prop ドメイン監査完走 — 18 prop が intake-bound か消費側 clamp のいずれかを満たす規則
 │   └── ADR-0948-mid-gesture-button-paths.md  # mid-gesture 到達コマンド経路の取消内蔵 (openShare/openCtxMenu/undo/redo — 第2指ボタン到達残穴を閉塞)
+│   └── ADR-0949-send-funnel-exception-safety.md # 送信 funnel 例外安全監査完走+ピン (_send/_sendDC/_bcast/fragSend は transport throw を伝播しない)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

@@ -15454,6 +15454,23 @@ pass += 4; // ADR-0946 negative-extent intake pins
   assert.ok(lp.x<=100&&lp.x>=0,'conn labelPos:9 stays on the path');
 }
 pass += 3; // ADR-0947 labelPos domain-clamp pins
+// ADR-0949: every send funnel swallows transport errors — a throwing
+// BroadcastChannel or DataChannel must never propagate into a commit path.
+{
+  const _odc=Net.dc,_oq=Net._dcQ,_oqb=Net._dcQB;
+  Net._dcQ=null;Net._dcQB=0;
+  Net.dc={readyState:'open',send(){throw new Error('dc dead')}};
+  assert.doesNotThrow(()=>Net._sendDC('{"k":"x"}'),'a throwing dc.send never escapes the funnel');
+  assert.ok(Net._dcQ&&Net._dcQ.length===1,'a dc.send throw queues the message for the low-water retry');
+  Net._dcQ=null;Net._dcQB=0;
+  let sent=null;
+  Net.dc={readyState:'open',send(m){sent=m}};
+  Net._bcast({k:'cursor',x:1,y:2});
+  assert.ok(sent&&sent.includes('"k":"cursor"'),'a live dc still receives the envelope via _bcast');
+  assert.ok(!Net._dcQ,'a successful send leaves no backlog');
+  Net.dc=_odc;Net._dcQ=_oq;Net._dcQB=_oqb;
+}
+pass += 4; // ADR-0949 send-funnel exception-safety pins
 pass += 7; // ADR-0943 second-pointer abort pins
 pass += 8; // ADR-0945 mid-gesture overlay-open cancel pins
 pass += 8; // ADR-0948 mid-gesture button-path cancel pins

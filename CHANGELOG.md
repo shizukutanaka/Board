@@ -1,3 +1,11 @@
+## [1.7.975] - 2026-10-01
+
+### Documentation
+- ADR-0949: 送信 funnel 例外安全監査完走 — `Net.broadcast` は `Store.commit` の適用後に走るため、transport の同期 throw が伝播すれば「ローカル適用済み・ピア未通知・コミットスタック汚染」の三重害。全 funnel を検証: `_send` (bc.postMessage try/catch)、`_sendDC` (dc.send→catch→`_dcQ` キュー+low-water retry、>262144 drop、4096/32MB cap)、`_fragSend`→`_sendDC`、`_bcast`=`_send`+`_sendDC(_JS)`、`_JS` は `broadcast` 内の try 内、`._slimOp` は純粋。presence `peer.pg` ゲート (カーソル skip/avatar `_pgById`) と `_imgPending` bounds (256 cap+60s TTL+10s/key throttle) も clean — 実害なし
+
+### Tests
+- 送信 funnel 例外安全ピン 4件: `dc.send` throw が `_sendDC` を脱出しない、throw が `_dcQ` にキューされる、`_bcast` が live channel へ到達、成功送信が backlog を残さない
+
 ## [1.7.974] - 2026-10-01
 
 ### Fixed
