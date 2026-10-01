@@ -582,7 +582,7 @@ const checks = [
   ['Alt+click apex restores auto curve bow', html.includes('ADR-0144')&&html.includes('cbend:onlySel.cbend')&&html.includes('delete onlySel.cbend')],
   ['Alt+click label dot resets labelPos', html.includes('ADR-0145')&&html.includes('labelPos:onlySel.labelPos')&&html.includes('delete onlySel.labelPos')],
   ['rotate keeps elbow bend glued to trunk', html.includes('function _rotBend')&&html.includes('_rotBend(s,tr,rot)')&&html.includes('_rotBend(sh,tr,R)')],
-  ['translate moves elbow bend (trunk follows connector)', html.includes('s.bend+=vert?dx:dy')&&html.includes('ADR-0147')],
+  ['translate moves elbow bend (trunk follows connector)', html.includes('s.bend=_xC(s.bend+(vert?dx:dy))')&&html.includes('ADR-0147')],
   ['group resize scales elbow bend on trunk axis', html.includes('ADR-0148')&&html.includes('sh.bend=_abs(tr[1].x-tr[0].x)')],
   ['image flip mirrors pixels via s.flip bitmask', html.includes("s.flip=(s.flip||0)^(axis==='h'?1:2)")&&html.includes('ADR-0149')&&html.includes('scale(${s.flip&1?-1:1}')],
   ['hidden shapes leave search + bindAt', html.includes("_sv(s)&&_pgOk(s)&&_lc((_lb(s)||'')+(_txx(s)||'')+(s.type||'')")&&html.includes("t!=='pen'&&_sv(s)")],
@@ -15229,6 +15229,18 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
+  // ADR-0935: local coordinate producers bound at the wire bound — a patch
+  // with |coord|>1e7 dies at remote validPatch (0792), so a local writer
+  // producing one diverges (local applies, remote drops the whole op).
+  const _s2c={id:'s2c',type:'rect',x:1e7-10,y:0,w:10,h:10,z:1};
+  Shape.translate(_s2c,100,0);
+  assert.ok(_s2c.x===1e7,'ADR-0935: translate clamps destination x at the wire bound');
+  const _s2l={id:'s2l',type:'line',x1:0,y1:0,x2:1e7-10,y2:1e7-10,z:1};
+  Shape.translate(_s2l,100,100);
+  assert.ok(_s2l.x2===1e7&&_s2l.y2===1e7,'ADR-0935: conn endpoints clamp at the wire bound');
+  const _s2w=G.s2w({x:9e9,y:9e9});
+  assert.ok(_s2w.x===1e7&&_s2w.y===1e7,'ADR-0935: s2w clamps pointer-derived world coords at the wire bound');
+  pass += 4; // ADR-0935 producer-bound pins
   pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {

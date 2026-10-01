@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.960';   // ADR-0934
+const V='1.7.961';   // ADR-0935
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1181,7 +1181,7 @@ let DPR=_max(1,_min(3,_dpr()||1));
 const _penBboxCache=_mP();
 const G={
   w2s(p){const v=_vp();return{x:(p.x-v.x)*v.zoom,y:(p.y-v.y)*v.zoom}},
-  s2w(p){const v=_vp();return{x:p.x/v.zoom+v.x,y:p.y/v.zoom+v.y}},
+  s2w(p){const v=_vp();return{x:_xC(p.x/v.zoom+v.x),y:_xC(p.y/v.zoom+v.y)}},   // ADR-0935
   bbox(s){
     if(_pn(s)){
       // Memoize the O(pts) envelope walk (per frame in inView() and once per
@@ -2035,15 +2035,13 @@ function nextZ(){return _nS()?_sh().reduce((m,s)=>_max(m,s.z||0),0)+1:1}
 // ====================== SHAPE helpers ======================
 const Shape={
   translate(s,dx,dy){
-    if(_pn(s)){for(const p of s.pts){p[0]+=dx;p[1]+=dy}}
+    if(_pn(s)){for(const p of s.pts){p[0]=_xC(p[0]+dx);p[1]=_xC(p[1]+dy)}}
     else if(_conn(s.type)){
-      // ADR-0147: s.bend is a world coordinate — translate it with the
-      // connector or the trunk stays behind (same class as ADR-0146).
-      // Trunk orientation survives translation, so read it first.
+      // ADR-0147: bend is world-coord — translate with the conn; trunk orientation survives translation so read it first.
       const tr=s.bend!=null?_elbowTrunk(s):null;
-      s.x1+=dx;s.y1+=dy;s.x2+=dx;s.y2+=dy;const wa=_wayArr(s);if(_ln(wa)){for(const w of wa){w.x+=dx;w.y+=dy}s.way=wa}   // ADR-0090
-      if(tr){const vert=_abs(tr[1].x-tr[0].x)<_abs(tr[1].y-tr[0].y);s.bend+=vert?dx:dy}}
-    else{s.x+=dx;s.y+=dy}  // rect, ellipse, text, image, sticky — all have x/y
+      s.x1=_xC(s.x1+dx);s.y1=_xC(s.y1+dy);s.x2=_xC(s.x2+dx);s.y2=_xC(s.y2+dy);const wa=_wayArr(s);if(_ln(wa)){for(const w of wa){w.x=_xC(w.x+dx);w.y=_xC(w.y+dy)}s.way=wa}   // ADR-0090/0935
+      if(tr){const vert=_abs(tr[1].x-tr[0].x)<_abs(tr[1].y-tr[0].y);s.bend=_xC(s.bend+(vert?dx:dy))}}
+    else{s.x=_xC(s.x+dx);s.y=_xC(s.y+dy)}  // rect, ellipse, text, image, sticky — all have x/y
   },
   make(type,extras){
     const base={id:uid(),type,z:nextZ(),
