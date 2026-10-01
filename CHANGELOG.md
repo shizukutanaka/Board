@@ -1,3 +1,8 @@
+## [1.7.951] - 2026-10-01
+
+### Docs
+- 永続化・broadcast 到達監査の完走記録 (ADR-0925): commit・_recordCommitted・applyRemote・undo/redo・snapshot 採用・`_rs`/`_pgAdopt` 全経路が `_ps` (Persist.schedule) と wire 送信へ到達することを検証 — リロード消失・ピア発散の経路なし、実害なし
+
 ## [1.7.950] - 2026-10-01
 
 ### Docs
