@@ -968,6 +968,7 @@ Board/
 │   └── ADR-0917-beautify-structural.md  # beautify の構造除去免除を閉塞 — type は _TYPES enum ゲートで保持 (0912-0916 strip 迂回の同族穴)
 │   └── ADR-0918-wire-apply-audit.md  # wire op 適用側監査完走 — 全配列 bounded・clock スナップショット復元専用・`_attachOp` img parking 全経路 clean、構造キー cluster 完結
 │   └── ADR-0919-snapshot-merge-pg.md  # snapshot LWW merge の pg スキップ欠落を閉塞 — 鍛造 wc:{pg} による既存図形のページ追放 (0912 同族の merge 経路版)
+│   └── ADR-0920-connClears-after-null.md  # connClears after:null 鍛造を閉塞 — mid-apply TypeError による墓碑+部分適用、rescan 抑止による束縛残存を2点ガードで解消
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

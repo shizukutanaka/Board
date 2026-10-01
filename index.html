@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.945';   // ADR-0919
+const V='1.7.946';   // ADR-0920
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1442,8 +1442,8 @@ const Store={
   // (skips op.connClears entries). Remote-only view fix: no wire change.
   _remoteDelConnFix(op){
     if(op.op!=='del'||!_iA(op.shapes))return null;
-    const goneIds=_sT(op.shapes.map(s=>s.id).filter(id=>!(byId(id)||{}).locked));   // ADR-0760: locked ids survive — keep their bindings
-    const handled=_sT((op.connClears||[]).map(p=>p.id));
+    const goneIds=_sT(op.shapes.map(s=>s.id).filter(id=>!(byId(id)||{}).locked));   // ADR-0760: locked ids survive
+    const handled=_sT((op.connClears||[]).filter(p=>p.after).map(p=>p.id));   // ADR-0920
     const fixes=[];
     for(const sh of _sh()){
       if(sh.type!=='line'&&sh.type!=='arrow')continue;
@@ -1655,7 +1655,7 @@ const Store={
           }
           if(_ok(_wc()).length>8192){const t=_wM();for(const[id,w]of _oe(_wc()))if(w._del)t[id]={_del:w._del};state.wclock=t}   // ADR-0734/0738
           // connector clears after shapes are gone
-          if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked){const pt={},pb=p.before||{};for(const e of['a','b'])if(pb[e]!=null&&!(byId(pb[e])||{}).locked){const x=e==='a'?['x1','y1']:['x2','y2'];pt[e]=null;pt[e+'F']=null;pt[x[0]]=p.after[x[0]];pt[x[1]]=p.after[x[1]]}_oa(sh,pt)}}}   // ADR-0760
+          if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked){const pt={},pb=p.before||{};for(const e of['a','b'])if(pb[e]!=null&&p.after&&!(byId(pb[e])||{}).locked){const x=e==='a'?['x1','y1']:['x2','y2'];pt[e]=null;pt[e+'F']=null;pt[x[0]]=p.after[x[0]];pt[x[1]]=p.after[x[1]]}_oa(sh,pt)}}}
           const fx=this._remoteDelConnFix(op);if(fx)for(const p of fx)_oa(byId(p.id),p.patch);   // ADR-0758: gap-bound conns — same scan peers run
         }else{
           // ADR-0547: forward skipped locked shapes —

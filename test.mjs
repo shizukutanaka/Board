@@ -7519,6 +7519,24 @@ try {
     assert.ok(!((B.state.wclock||{})['gs1']||{}).pg,'forged pg key did not stamp a wclock entry either');
     console.log('  ✓ ADR-0919: forged snapshot wc:{pg} does not merge pg — page exile closed');
 
+    // ADR-0920: a forged 'del' connClears entry with before:{a:<live-id>} but
+    // after:null used to hit p.after['x1'] → TypeError mid-apply — tombstones
+    // already written, _stampWrites/_rdb never ran → wclock stamp asymmetry.
+    // The p.after guard skips the cleared-endpoint write instead of throwing.
+    reset(B);
+    B.state.pages=null;B.state.curPg=null;
+    B.state.shapes.push(cp(gsh1),{id:'cn1',type:'line',x1:0,y1:0,x2:9,y2:9,a:'gs1',aF:.5,b:null,bF:null});
+    B._invalidateGrid();B.sortZ();
+    B.Net._onRecv({k:'op',op:{op:'del',shapes:[{id:'gs1',type:'rect',x:0,y:0,w:5,h:5,z:1}],
+      connClears:[{id:'cn1',before:{a:'gs1'},after:null}],
+      clock:{peer:'peerCC',seq:1,ts:Date.now()}}});
+    assert.ok(!B.state.shapes.find(s=>s.id==='gs1'),'del applied: member removed');
+    const cn9=B.state.shapes.find(s=>s.id==='cn1');
+    assert.ok(cn9,'conn survivor still present');
+    assert.strictEqual(cn9.a,null,'gap-bound endpoint detached by the local rescan');
+    assert.strictEqual((B.state.wclock||{})['cn1'],undefined,'no partial crash — op completed without stamping forged endpoint clocks');
+    console.log('  ✓ ADR-0920: forged connClears after:null no longer crashes del apply');
+
     // ADR-0717 (round467): undo is itself a NEW competing write — the backward apply
     // must arbitrate under the SAME fresh clock the peers see on the undo-wire ops.
     // Feeding _lwwSkip the ORIGINAL commit clock while the wire carried a fresh _fck
@@ -15017,7 +15035,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1876; // prev 1872 + 4 ADR-0919 forged-snapshot-wc-pg merge-exile pins
+  pass += 1880; // prev 1876 + 4 ADR-0920 forged connClears after:null pins
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

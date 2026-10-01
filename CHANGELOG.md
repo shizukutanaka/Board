@@ -1,3 +1,8 @@
+## [1.7.946] - 2026-10-01
+
+### Fixed
+- `del`/`connClears` の `after:null` 鍛造を閉塞 (ADR-0920): `del` 適用の connClears 書込みが `p.after` 無検査で `p.after[x]` を読み、鍛造 `after:null`+`before:{a:<live>}` が mid-apply TypeError → 墓碑済み+`_stampWrites`/`_rdb`/connFix 未到達の部分適用・wclock 非対称に。`p.after` ガードで書込みスキップし、さらに `_remoteDelConnFix` の `handled` を `after` 持ち要素に限定 — `after:null` 要素が rescan 抑止して gap-bound 束縛が生き残る第二の穴も解消
+
 ## [1.7.945] - 2026-10-01
 
 ### Fixed
