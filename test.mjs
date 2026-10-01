@@ -14841,6 +14841,21 @@ try {
     assert.ok(state.selection.has(Q2.id),'surviving member keeps selection — drop is dead-only');
     state._lastTs=0;   // far-future remote ts raised the HLC floor — restore or later local commits get poisoned clocks
     console.log('  ✓ pageDel member kill drops selection ids — del parity; survivors keep theirs (ADR-0954)');
+    // ADR-0955: every derived reference is id-keyed, so wholesale object swaps are
+    // transparent — connEnds resolves the NEW object, never the stale clone.
+    reset();state._lastRep=null;
+    const RBz=Shape.make('rect',{x:0,y:0,w:20,h:20,fill:'#000'});
+    Store.commit({op:'add',shape:RBz});
+    const RCz=Shape.make('arrow',{x1:50,y1:50,x2:10,y2:10,a:RBz.id});
+    Store.commit({op:'add',shape:RCz});
+    const e0=connEnds(byId(RCz.id));
+    const RBpre=byId(RBz.id);
+    const RBs=JSON.parse(JSON.stringify(RBz));RBs.x=100;RBs.y=100;
+    Store.applyRemote({op:'replace',after:[RBs,RCz],clock:{peer:'p9',seq:1,ts:Date.now()+100}});
+    assert.notStrictEqual(byId(RBz.id),RBpre,'wholesale replace swaps the bound shape for a new object');
+    const e1=connEnds(byId(RCz.id));
+    assert.ok(e1.x1!==e0.x1||e1.y1!==e0.y1,'connEnds re-resolves the swapped object by id — no stale reference (ADR-0955)');
+    console.log('  ✓ wholesale object swap: bound connector re-resolves by id (ADR-0955)');
   }
 
     // ADR-0646: multi-page — wire-convergent page ops + per-page view filter
@@ -15601,6 +15616,7 @@ pass += 4; // ADR-0951 lblpos cancel-restore pins
 pass += 4; // ADR-0952 erase-batch remote-op window pins
 pass += 3; // ADR-0953 erase-batch wholesale-op pins
 pass += 4; // ADR-0954 pageDel selection-drop pins
+pass += 2; // ADR-0955 wholesale-swap id-resolution pins
 pass += 7; // ADR-0943 second-pointer abort pins
 pass += 8; // ADR-0945 mid-gesture overlay-open cancel pins
 pass += 8; // ADR-0948 mid-gesture button-path cancel pins

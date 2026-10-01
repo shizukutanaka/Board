@@ -1,3 +1,8 @@
+## [1.7.981] - 2026-10-01
+
+### Tests
+- 派生参照の id キー化契約を実ピン (ADR-0955): 全置換 (`'replace'` によるシーンオブジェクト差替え) 後も `connEnds` が新オブジェクトへ id 解決することを検証 — stale-clone 参照が生じない契約を固定。監査: selection/editing/bindPreview/gAnc/connEnds/presence/eraseBatch/_img/frame 全て id または _gridVer キーで clean 完走
+
 ## [1.7.980] - 2026-10-01
 
 ### Fixed
