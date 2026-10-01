@@ -1,3 +1,8 @@
+## [1.7.940] - 2026-10-01
+
+### Fixed
+- `_stampWrites` が未 strip の生 `after` で構造キー (`type`/`pg`/`frac`/`_`-prefixed) の wclock を刻印する残留を閉塞 (ADR-0914): 鍛造 `upd{frac}` は適用されなくても `w.frac` が刻まれ、正規 zorder が `_lwwSkip`/`clockNewer` で棄却され ~5分窓で z-order が恒久発散し得た — 0912/0913 の strip と対称化
+
 ## [1.7.939] - 2026-10-01
 
 ### Fixed

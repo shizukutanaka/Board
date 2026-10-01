@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.939';   // ADR-0913
+const V='1.7.940';   // ADR-0914
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1537,12 +1537,9 @@ const Store={
   _stampWrites(op){
     if(!this._lwwOp(op))return;
     const C=op.clock;if(!C)return;
-    // Only stamp shapes that actually exist: a late
-    // add for a dead shape no-ops in _apply but would create a wclock nobody
-    // ever cleans (del/clear/replace clean live shapes only) for the
-    // session's lifetime. Array/group paths pre-filter byId in their branches.
+    // stamp live shapes only — a clock for a dead id outlives wclock cleanup
     const stamp=(id,after,before)=>{if(!after||!byId(id))return;const w=_wc()[id]||(_wc()[id]=_wM());
-      for(const key of _ok(after)){if(key==='id')continue;if(this._chg(before,after,key))w[key]=C;}};
+      for(const key of _ok(after)){if(key==='id'||key==='type'||key==='pg'||key==='frac'||key[0]==='_')continue;if(this._chg(before,after,key))w[key]=C;}};   // ADR-0914
     if(op.op==='upd')stamp(op.id,op.after,op.before);
     else if(op.op==='group'||op.op==='ungroup'){
       const bmap={};for(const b of (op.before||[]))bmap[b.id]=b;

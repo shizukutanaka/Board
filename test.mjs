@@ -99,6 +99,9 @@ const checks = [
   // ADR-0912/0913: pg + frac are structural — patches can't exile shapes or scramble z-order
   ['patch strips drop pg (upd + style paths)', (html.match(/delete p\.pg;/g)||[]).length>=2],
   ['patch strips drop frac (upd + style paths)', (html.match(/delete p\.frac;/g)||[]).length>=2],
+  // ADR-0914: structural keys get no wclock either — a forged frac/pg stamp would
+  // still suppress legit zorder/pg writes via _lwwSkip even though _apply strips them
+  ['stampWrites skips structural keys', html.includes("key==='id'||key==='type'||key==='pg'||key==='frac'")],
   // v1.1: op validation in _onRecv
   ['_onRecv validates op.clock', html.includes("!_iS(op.clock.peer)")],
   // v1.1: import validates shapes
@@ -14977,7 +14980,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1866; // prev 1865 + 1 ADR-0913 frac-strip pin
+  pass += 1867; // prev 1866 + 1 ADR-0914 stampWrites structural-key pin
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
