@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.987';   // ADR-0961
+const V='1.7.988';   // ADR-0962
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -9380,6 +9380,7 @@ function wire(){
       if(_selN())_iv();
     });
     _on(cp,_CH,()=>{_sfbFlush(k,cp.value);_sfbCapture(k);});
+    _on(cp,'blur',()=>_sfbBlur(k));   // ADR-0962
   }
   const rng=_g('rngSize');
   const opacRng=_g('rngOpacity');
@@ -9393,6 +9394,7 @@ function wire(){
     if(_selN())_iv();
   });
   _on(rng,_CH,()=>{_sfbFlush('size',_st().size);_sfbCapture('size');});
+  _on(rng,'blur',()=>_sfbBlur('size'));   // ADR-0962
   if(opacRng){
     _on(opacRng,'focus',()=>_sfbCapture('opacity'));
     _on(opacRng,_PD,()=>_sfbCapture('opacity'));
@@ -9404,6 +9406,7 @@ function wire(){
       if(_selN())_iv();
     });
     _on(opacRng,_CH,()=>{_sfbFlush('opacity',_st().opacity);_sfbCapture('opacity');});
+    _on(opacRng,'blur',()=>_sfbBlur('opacity'));   // ADR-0962
   }
   // zoom
   _oC(_g('btnZoomIn'),()=>zoomBy(1.2));
@@ -9550,7 +9553,8 @@ function applyStyleToSelection(patch){
 // style op on change. Multiple input events during a drag never hit the undo stack.
 const _sbf={};
 function _sfbCapture(p){for(const id of _sl()){const s=byId(id);if(s&&!_lk(s)&&!(id+p in _sbf))_sbf[id+p]=s[p]}}
-function _sfbFlush(p,v){const b=[],a=[];for(const id of _sl()){const k=id+p;if(k in _sbf){const s=byId(id);if(s&&!_lk(s)){_pu(b,{id,[p]:_sbf[k]});_pu(a,{id,[p]:v});}delete _sbf[k];}}if(_ln(b)&&b.some(x=>x[p]!==v)){_styleOp(b,a)}}
+function _sfbBlur(p){const b=[],a=[];for(const k in _sbf)if(_ew(k,p)){const s=byId(k.slice(0,-p.length));if(s&&!_lk(s)&&_sbf[k]!==s[p])_pp(b,a,s.id,p,_sbf[k],s[p]);delete _sbf[k]}if(_ln(b))_styleOp(b,a)}   // ADR-0962: gesture boundary — commit preview drift as one op, then clear
+function _sfbFlush(p,v){const b=[],a=[],sel=_sT(_sl());for(const k in _sbf)if(_ew(k,p)&&!sel.has(k.slice(0,-p.length)))delete _sbf[k];for(const id of sel){const k=id+p;if(k in _sbf){const s=byId(id);if(s&&!_lk(s)){_pu(b,{id,[p]:_sbf[k]});_pu(a,{id,[p]:v});}delete _sbf[k];}}if(_ln(b)&&b.some(x=>x[p]!==v)){_styleOp(b,a)}}   // ADR-0962: prune keys whose id left the selection
 
 // ADR-0062: per-connector elbow toggle via style op — undo + wclock sync free.
 function toggleElbow(){
