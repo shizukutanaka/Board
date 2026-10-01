@@ -1,3 +1,8 @@
+## [1.8.002] - 2026-10-01
+
+### Fixed
+- `connEnds` が結合先図形の bbox を `_bb(a)` で解決する際、結合先が conn 自身または conn↔conn 循環だと `_cE`→`byId`→`_bb`→`_cE` の無限再帰で RangeError (stack overflow) となり、毎フレーム `_dS` で巻き戻し負荷＋図形非描画＋ヒットテスト/エクスポート不安定の DoS となる実害を閉塞 (ADR-0976): `_ceD` 再帰深度カウンタ (cap 15) + `s.a===s.id` 自己結合スキップで、循環は raw 端点 (x1/y1/x2/y2) へ縮退 — remote `add`/patch や import で `a:'self'` を鍛造可能だった経路を遮断。canvas 数値ドメイン監査も併走 clean (roundRect は `_max(0,_min(r,w/2,h/2))` 自衛、`_penR` は taper×size/2 で非負、ellipse `_abs`、setLineDash は `dashArr` マップ経由のみ)。behavioural ピン4件 (循環停止/自己結合 raw fallback/正当結合の contour 解決/深度カウンタ復帰)
+
 ## [1.8.001] - 2026-10-01
 
 ### Fixed

@@ -2173,6 +2173,27 @@ try {
     state.shapes.length=0;state.wclock={};_invalidateGrid();
     console.log('  ✓ builtin-named id/groupId cannot poison plain-object stores (ADR-0975)');
   }
+  // ADR-0976: bound-endpoint resolution caps recursion — self-binds and
+  // conn↔conn cycles fall back to raw ends instead of overflowing the stack.
+  {
+    const r=Shape.make('rect',{id:'r1',x:0,y:0,w:20,h:20});
+    const c1=Shape.make('line',{id:'c1',x1:0,y1:0,x2:50,y2:0});
+    const c2=Shape.make('line',{id:'c2',x1:0,y1:0,x2:50,y2:0});
+    state.shapes=[r,c1,c2];_invalidateGrid();
+    c1.a='c2';c2.a='c1';c2.b='r1';
+    let e=null,ok=true;try{e=connEnds(c1)}catch(_){ok=false}
+    assert.ok(ok&&e&&Number.isFinite(e.x1)&&Number.isFinite(e.x2),'conn↔conn bound cycle terminates at the depth cap');
+    c1.a='c1';c1.b='c1';
+    e=null;ok=true;try{e=connEnds(c1)}catch(_){ok=false}
+    assert.ok(ok&&e&&e.x1===0&&e.x2===50,'self-bound connector falls back to raw endpoints');
+    c1.a='r1';c1.b=null;
+    const e2=connEnds(c1);
+    assert.ok(Number.isFinite(e2.x1)&&e2.x1===20,'a real bound endpoint still resolves to the contour after cycle calls');
+    const e3=connEnds(c2);
+    assert.ok(e3&&Number.isFinite(e3.x2),'depth counter resets between calls');
+    state.shapes.length=0;state.wclock={};_invalidateGrid();
+    console.log('  ✓ connector bound chains capped — cycles/self-binds degrade to raw ends (ADR-0976)');
+  }
   // ADR-0617: a snapshot whose sender predates our newest swap must not merge
   // pre-swap shapes back in; a snapshot reflecting a newer swap adopts its marker.
   {
@@ -16284,6 +16305,7 @@ pass += 5; // ADR-0966 pending-op×mid-run audit pins + own-lock exemption block
 pass += 6; // ADR-0967 mid-edit remote-lock blur/commit fold (text+label)
 pass += 3; // ADR-0968 remote-killed selection → ctx family no-op block
 pass += 4; // ADR-0975 builtin-named id/groupId null-proto store pins
+pass += 4; // ADR-0976 connector bound-chain recursion-cap pins
 pass += 9; // ADR-0974 remote-replace saveBackup + newer-born keep pins
 pass += 3; // ADR-0973 schedule()-marks-dirty + snapshot-heal/name-adopt arm pins
 pass += 3; // ADR-0972 envelope/fragment/commit-choke dedup pins
