@@ -10967,6 +10967,28 @@ try {
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     console.log('  ✓ mid-edit remote lock: text/label blur commits fold, controls pass (ADR-0967)');
   }
+  // ADR-0968: ctx/key action family on a remote-killed selection must no-op.
+  // Menu items are captured at open time, but every handler re-derives live —
+  // after a remote del empties the selection nothing may commit (the stale
+  // menu can still LOOK wrong, but it can never emit a junk op).
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const RA=Shape.make('rect',{x:0,y:0,w:50,h:40});
+    const RB=Shape.make('rect',{x:60,y:0,w:50,h:40});
+    Store.commit({op:'addMany',shapes:[RA,RB]});
+    state.selection=new Set([RA.id,RB.id]);
+    Net._onRecv({k:'op',op:{op:'del',shapes:[JSON.parse(JSON.stringify(byId(RA.id))),JSON.parse(JSON.stringify(byId(RB.id)))],clock:{peer:'p9',seq:1,ts:nowTs()}},peer:'p9'},false);
+    assert.strictEqual(byId(RA.id),undefined,'remote del applied through the real intake');
+    assert.strictEqual(state.selection.size,0,'remote del drops the selection ids (0568/0954)');
+    const h0=state.history.length;
+    for(const fn of [doDelete,doDuplicate,doGroup,doUngroup,doLock,doBeautify])fn();
+    doFlip('h');doRotate(90);doAlign('left');doMatchSize('w');
+    doBringFront();doSendBack();doBringForward();doSendBackward();doClearAll();
+    exportSelection('png');
+    assert.strictEqual(state.history.length,h0,'ctx action family emits no op on a dead/empty selection');
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    console.log('  ✓ ctx action family no-ops after remote del empties selection (ADR-0968)');
+  }
 
   // v1.7.13b: doDuplicate must skip locked shapes (parity with nudgeSelection/doDelete).
   // Bug: withFrameChildren expands the frame selection to include all contained children
@@ -16069,6 +16091,7 @@ pass += 5; // ADR-0963 lifecycle×boundedness audit pins
 pass += 8; // ADR-0965 mid-run lock/missing member partition (3 blocks: 7 asserts + 1 pin)
 pass += 5; // ADR-0966 pending-op×mid-run audit pins + own-lock exemption block
 pass += 6; // ADR-0967 mid-edit remote-lock blur/commit fold (text+label)
+pass += 3; // ADR-0968 remote-killed selection → ctx family no-op block
 pass += 15; // ADR-0964 mid-gesture lock restore/commit-gate pins
 pass += 7; // ADR-0943 second-pointer abort pins
 pass += 8; // ADR-0945 mid-gesture overlay-open cancel pins

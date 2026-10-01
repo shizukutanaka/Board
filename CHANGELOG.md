@@ -1,3 +1,8 @@
+## [1.7.994] - 2026-10-01
+
+### Docs / Test
+- ctx/キーアクション × remote 消滅監査が clean 完走 (ADR-0968): `openCtxMenu` は open 時に項目・述語をスナップショット (stale 表示は cosmetic) するが、全ハンドラが act 時に live 再解決 (`_selUL`/`_usI`/`_selL`/`_forSel`/`_forConn` + `_lk`/`_hd`/`_sv`/`_pgOk`/`byId` ゲート) し、remote del は `_sdl` で選択 id を除去するため stale メニューからも junk op を産まない。選択由来アクションの「dead/空集合で op を産まない」契約を `Net._onRecv` 実経路 del + 14関数スイープで behavioural ピン化
+
 ## [1.7.993] - 2026-10-01
 
 ### Fixed
