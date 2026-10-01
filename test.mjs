@@ -7334,6 +7334,41 @@ try {
     state._lastTs=0;state._lastRep=null;
     console.log('  ✓ ADR-0928: backward replace stamps the undo clock as _born');
 
+    // ADR-0930: undo-wire × backward symmetric-contract pins (the round678
+    // audit table). (1) del/pageDel backward's _bT→_wR order reverts born to
+    // the recorded B0 on BOTH sides — receivers' addMany forward uses the
+    // identical order. (2) _lwwSkip (undoer backward) and _lwwDrop (receiver
+    // intake) are one rule on each peer's own wclock — a newer remote write
+    // is kept identically. (3) _slimOp drops undo-domain fields but carries
+    // every field a receiver's forward apply needs.
+    reset(A); reset(B);
+    const ds={id:'ds1',type:'rect',x:0,y:0,w:10,h:10,z:1};
+    const dsB0={peer:'b',seq:1,ts:1};
+    for(const W of[A,B]){W.state.shapes=[];W._invalidateGrid();W.state.wclock={ds1:{_del:{peer:'f',seq:1,ts:5}}}}
+    A.Store._apply({op:'del',shapes:[cp(ds)],wc:{ds1:{_born:cp(dsB0)}},clock:{peer:'u',seq:1,ts:100}},false);   // undoer backward
+    B.Store.applyRemote({op:'addMany',shapes:[cp(ds)],wc:{ds1:{_born:cp(dsB0)}},clock:{peer:'u',seq:1,ts:100}});   // receiver forward of the undo-wire
+    assert.ok(!!A.byId('ds1')&&!!B.state.shapes.find(s=>s.id==='ds1'),'ADR-0930: del-undo restores the shape on both sides');
+    assert.ok(A.state.wclock.ds1._born.ts===1&&B.state.wclock.ds1._born.ts===1&&!A.state.wclock.ds1._del&&!B.state.wclock.ds1._del,'ADR-0930: born reverts to the recorded B0 + tomb wiped identically on both sides');
+    reset(A); reset(B);
+    const us={id:'us1',type:'rect',x:5,y:5,w:10,h:10,z:1};
+    for(const W of[A,B]){W.state.shapes=[cp(us)];W._invalidateGrid();W.state.wclock={us1:{x:{peer:'peerC',seq:1,ts:200}}}}   // remote-peer write newer than U
+    A.Store._apply({op:'upd',id:'us1',before:{x:1},after:{x:9},clock:{peer:'u',seq:1,ts:100}},false);
+    B.Store.applyRemote({op:'upd',id:'us1',after:{x:1},before:{x:9},clock:{peer:'u',seq:1,ts:100}});
+    const usXA=A.state.shapes.find(s=>s.id==='us1').x,usXB=B.state.shapes.find(s=>s.id==='us1').x;
+    assert.strictEqual(usXA,5,'ADR-0930: backward skips keys a newer remote write owns (was: reverted to before)');
+    assert.strictEqual(usXB,5,'ADR-0930: _lwwDrop drops the same key at intake (was: applied → divergence)');
+    assert.strictEqual(usXA,usXB,'ADR-0930: undo keeps the newest remote write on both sides');
+    const so=Net._slimOp({op:'addMany',shapes:[cp(ds)],wc:{ds1:{_born:{ts:1}}},origSel:['ds1'],clock:{peer:'p',seq:1,ts:1}});
+    assert.ok(so.wc&&!so.origSel,'ADR-0930: addMany keeps wc (receiver merges member clocks), drops origSel');
+    const so2=Net._slimOp({op:'del',shapes:[cp(ds)],wc:{ds1:{}},connClears:[{id:'c',before:{a:'ds1'},after:{a:null}}],clock:{peer:'p',seq:1,ts:1}});
+    assert.ok(!so2.wc&&!!so2.connClears,'ADR-0930: del drops wc (receiver re-records), keeps connClears');
+    const so3=Net._slimOp({op:'pageName',id:'p1',after:'N',before:'O',bts:3,ntp:'a',nts:7,clock:{peer:'p',seq:1,ts:1}});
+    assert.ok(so3.nts===7&&so3.ntp==='a'&&!so3.before&&!so3.bts,'ADR-0930: pageName carries only the restored name clock');
+    const so4=Net._slimOp({op:'replace',after:[cp(ds)],afterWc:{ds1:{}},pages:[{id:'p1'}],curPg:'p1',before:[cp(ds)],beforePages:[],beforeCurPg:'p0',origSel:['ds1'],clock:{peer:'p',seq:1,ts:1}});
+    assert.ok(so4.afterWc&&so4.pages&&so4.curPg==='p1'&&!so4.before&&!so4.origSel,'ADR-0930: replace keeps the adopt map + landing page');
+    state._lastTs=0;B.state._lastTs=0;
+    console.log('  ✓ ADR-0930: undo-wire × backward symmetric contract pins');
+
     // ADR-0736: clear/'replace' wiped wclock WHOLESALE — including tombstones —
     // so a stale in-flight 'add' could resurrect a shape the swap just removed,
     // and a receiver tomb newer than the swap clock was lost entirely.
@@ -15160,7 +15195,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1906; // prev 1903 + 3 ADR-0928 backward-replace born-stamp pins
+  pass += 1915; // prev 1906 + 9 ADR-0930 undo-wire symmetric-contract pins
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

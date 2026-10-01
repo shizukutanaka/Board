@@ -1,3 +1,8 @@
+## [1.7.956] - 2026-10-01
+
+### Tests
+- undo-wire × backward 対称契約の behavioural ピン (ADR-0930、test のみ): ①del-undo で復元図形の born が記録 B0 に両側一致 (`_bT`→`_wR` 順序の対称)、②`_lwwSkip`⇔`_lwwDrop` で remote 新規書込を両側保持、③`_slimOp` が収束必須フィールド (addMany.wc/del.connClears/pageName.nts/replace.afterWc+pages+curPg) を保持して undo 専用フィールドのみ除去。round678 監査表を実経路で固定
+
 ## [1.7.955] - 2026-10-01
 
 ### Docs
