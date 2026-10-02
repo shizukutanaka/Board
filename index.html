@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.001';   // ADR-0975
+const V='1.8.002';   // ADR-0976
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1910,19 +1910,21 @@ function _edgePt(sh,fx,fy){
   if(rot){const a=rot*_PI/180,c=_cos(a),sn=_sin(a),dX=ex-cx,dY=ey-cy;ex=cx+dX*c-dY*sn;ey=cy+dX*sn+dY*c;}
   return{x:ex,y:ey};
 }
+let _ceD=0;
 function connEnds(s){
-  if(!s.a&&!s.b)return s;
-  const a=s.a&&byId(s.a),b=s.b&&byId(s.b);
+  if(_ceD>15||(!s.a&&!s.b))return s;   // ADR-0976
+  _ceD++;
+  try{
+  const a=s.a&&s.a!==s.id&&byId(s.a),b=s.b&&s.b!==s.id&&byId(s.b);
   const ba=a&&_bb(a),bb=b&&_bb(b);
   const ac=ba?{x:ba.x+ba.w/2,y:ba.y+ba.h/2}:{x:s.x1,y:s.y1};
   const bc=bb?{x:bb.x+bb.w/2,y:bb.y+bb.h/2}:{x:s.x2,y:s.y2};
   const p1=a?(s.aF?{x:ba.x+ba.w*s.aF.fx,y:ba.y+ba.h*s.aF.fy}:_edgePt(a,bc.x,bc.y)):{x:s.x1,y:s.y1};   // ADR-0209
   const p2=b?(s.bF?{x:bb.x+bb.w*s.bF.fx,y:bb.y+bb.h*s.bF.fy}:_edgePt(b,ac.x,ac.y)):{x:s.x2,y:s.y2};
   return{x1:p1.x,y1:p1.y,x2:p2.x,y2:p2.y};
+  }finally{_ceD--}
 }
-// ADR-0090: s.way is an ARRAY of interior vertices [{x,y},…] …
-// point in ADR-0076). _wayArr normalizes reads so legacy object-form boards
-// and ops still load — writers re-store the normalized array on mutation.
+// ADR-0090: _wayArr normalizes s.way to [{x,y},…]; writers re-store on mutation.
 function _wayArr(s){const w=s.way;return _iA(w)?w:(w?[w]:[])}
 // ADR-0076: straight connector polyline — inserts the s.way vertices.
 function _linePts(s){
