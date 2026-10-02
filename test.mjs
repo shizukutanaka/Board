@@ -648,7 +648,8 @@ const checks = [
     return bad.length===0;
   })()],
   ['.onclick= assignments folded to _oC helper (ADR-0539)', html.includes("_oC=(e,f)=>e.onclick=f")&&html.split('.onclick=').length-1===1],
-  ['presentation leave() tolerates null focus trigger (ADR-0539)', html.includes('_focusTrigger?.focus();_focusTrigger=null;')],
+  ['presentation leave() tolerates null focus trigger (ADR-0539)', html.includes('_focusTrigger&&_fc(_focusTrigger.isConnected===false?canvas:_focusTrigger);_focusTrigger=null;')],
+  ['dialog focus restore falls back for detached targets (ADR-0982)', html.includes('p.isConnected===false?canvas:p')],
   ['global input Escape respects IME composition (ADR-0540)', html.includes("e.key==='Escape'&&!e.isComposing")],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
@@ -2313,6 +2314,28 @@ try {
     console.log('  ✓ Net.init re-init releases the prior channel/timer (ADR-0981)');
   }
   pass += 4; // ADR-0981 listener lifecycle pins
+  // ADR-0982: focus-restore targets detached mid-modal/mid-presentation (a
+  // page-tab chip rebuilt by a remote op) — focus() on a detached node is a
+  // silent no-op leaving focus on <body>; the restore must fall back to canvas.
+  {
+    const _of=canvas.focus;let cvF=0;canvas.focus=()=>{cvF++};
+    const det={focus(){det.f=true},isConnected:false};
+    UI._prevFocus=det;
+    UI._restoreFocus();
+    assert.strictEqual(cvF,1,'dialog restore: detached target → canvas');
+    assert.ok(!det.f,'dialog restore: detached target is not focused');
+    const con={focus(){con.f=true},isConnected:true};
+    UI._prevFocus=con;
+    UI._restoreFocus();
+    assert.ok(con.f,'dialog restore: connected target refocused');
+    cvF=0;
+    Presentation._setTestState(true,{focus(){},isConnected:false});
+    Presentation.leave();
+    assert.strictEqual(cvF,1,'presentation leave: detached trigger → canvas');
+    canvas.focus=_of;
+    console.log('  ✓ detached focus-restore targets fall back to canvas (ADR-0982)');
+  }
+  pass += 4; // ADR-0982 detached focus restore pins
   // ADR-0617: a snapshot whose sender predates our newest swap must not merge
   // pre-swap shapes back in; a snapshot reflecting a newer swap adopts its marker.
   {

@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.007';   // ADR-0981
+const V='1.8.008';   // ADR-0982
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -8956,11 +8956,10 @@ const UI={
     const el=_g('sr');if(!el)return;
     _tC(el,el.textContent===msg?msg+' ':msg);
   },
-  // ADR-0215: focus capture/restore around dialogs — the window keydown Tab
-  // trap already keeps focus inside; this half refocuses the invoker on close.
+  // ADR-0215/0982: capture/restore focus around dialogs; a target rebuilt mid-open is detached → canvas.
   _prevFocus:null,
   _captureFocus(){this._prevFocus=_aE()},
-  _restoreFocus(){const p=this._prevFocus;this._prevFocus=null;if(p&&p.focus)_fc(p)},
+  _restoreFocus(){const p=this._prevFocus;this._prevFocus=null;if(p&&p.focus)_fc(p.isConnected===false?canvas:p)},
   toggleHelp(){
     const h=_g('help'),open=h.dataset.open!=='true';
     h.dataset.open=open;
@@ -10165,7 +10164,7 @@ const Presentation=(()=>{
     if(_savedVp){_oa(_vp(),_savedVp);_savedVp=null;_rZ()}
     _iv();
     _ann(t('presExit'));   // ADR-0639
-    _focusTrigger?.focus();_focusTrigger=null;
+    _focusTrigger&&_fc(_focusTrigger.isConnected===false?canvas:_focusTrigger);_focusTrigger=null;   // ADR-0982
   }
 
   function _goto(i){
