@@ -98,6 +98,12 @@ const checks = [
   ['paste/keydown target guard uses optional matches', (html.match(/e\.target\.matches\?\.\(/g)||[]).length>=2],
   // ADR-0980: same for the document-level ctx-menu outside-click guard
   ['mousedown target guard uses optional closest', html.includes("e.target.closest?.('.ctx-menu')")],
+  // ADR-0981: every queried element's onclick is bound exactly once (repeat
+  // registration on one element would silently replace or duplicate handlers)
+  ['each _oC(_g(id)) binds its element exactly once', (()=>{const ids=[...html.matchAll(/_oC\(_g\('([a-zA-Z]+)'/g)].map(m=>m[1]);return new Set(ids).size===ids.length})()],
+  ['window-level keydown listener registered once', (html.match(/_on\(window,_KD/g)||[]).length===1],
+  ['document-level mousedown listener registered once', (html.match(/_on\(document,'mousedown'/g)||[]).length===1],
+  ['dpr watcher re-arms with once:true', html.includes('_on(mq,_CH,onChange,{once:true})')],
   // ADR-0912/0913/0916: pg + frac + groupId are structural — patches can't exile
   // shapes, scramble z-order, or forge group membership (halo/selection clobber)
   ['patch strips drop pg (upd + style paths)', (html.match(/delete p\.pg;/g)||[]).length>=2],
@@ -2284,6 +2290,29 @@ try {
     console.log('  ✓ non-Element mousedown target survives the ctx guard (ADR-0980)');
   }
   pass += 3; // ADR-0980 mousedown target guard pins
+  // ADR-0981: listener-registration lifecycle — no repeat-path duplicates.
+  // Net.init re-init: prior channel closed + bye sent + presence timer
+  // cleared; app-level _on sites are all init/wire-time (editors bind to
+  // per-session elements that die with them).
+  {
+    let byes=0;
+    const _osend=Net._send;
+    Net._send=m=>{if(m&&m.k==='bye')byes++;return _osend.call(Net,m)};
+    Net.init('roomA');
+    const bc1=Net.bc;
+    let closed=false;
+    if(bc1){const oc=bc1.close;bc1.close=function(){closed=true;return oc.apply(bc1,arguments)}}
+    const t1=Net._presenceTimer;
+    Net.init('roomB');
+    Net._send=_osend;
+    assert.ok(closed,'re-init closes the previous BroadcastChannel');
+    assert.ok(Net.bc&&Net.bc!==bc1,'a fresh channel is created per room');
+    assert.ok(byes>=1,'re-init sends bye to the old room');
+    assert.ok(!t1||t1._destroyed,'re-init clears the prior presence timer');
+    if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}Net.bc=null;
+    console.log('  ✓ Net.init re-init releases the prior channel/timer (ADR-0981)');
+  }
+  pass += 4; // ADR-0981 listener lifecycle pins
   // ADR-0617: a snapshot whose sender predates our newest swap must not merge
   // pre-swap shapes back in; a snapshot reflecting a newer swap adopts its marker.
   {

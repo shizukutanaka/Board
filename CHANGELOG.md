@@ -1,3 +1,8 @@
+## [1.8.007] - 2026-10-01
+
+### Docs / Test
+- リスナ登録ライフサイクル監査が clean 完走 (ADR-0981): `_on` 全サイトは init/wire 一回または要素と同一生存期 (エディタ生成要素) のいずれか、`_oC(_g(id))` は id 毎に唯一、`_watchDPR` は `{once:true}` + 再アーム、`Net.init` は旧チャネル close + bye + presence timer clear を確認。重複登録・累積ハンドラなし。behavioural ピン4 assert + ソースピン4件
+
 ## [1.8.006] - 2026-10-01
 
 ### Fixed
