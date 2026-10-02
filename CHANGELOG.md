@@ -1,3 +1,8 @@
+## [1.7.998] - 2026-10-01
+
+### Docs / Test
+- seenOps dedup × 収束監査が clean 完走 (ADR-0972): 3チョークポイント (`commit`/`applyRemote`/`_recordCommitted`) の同一 `_ck` dedup 規則、eviction 後の再適用冪等性 (全16 op が `_tmb`/`_lwwDrop`/`_pgById` 等でガード済み)、snapshot merge/undo-wire/`_slimOp` の downstream 収束機械を全検証。実害なし — dedup が clock キー (payload 非依存) で全到達経路に効くことを `Net._onRecv` 実経路 (direct + 'opc' fragment) と `commit` choke point で behavioural ピン化 (3 asserts)
+
 ## [1.7.997] - 2026-10-01
 
 ### Fixed
