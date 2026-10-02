@@ -96,6 +96,8 @@ const checks = [
   ['export render loops isolate drawShape', html.includes('_dS=(s,c)=>{try{drawShape(s,c)}catch(_){}}')],
   // ADR-0909: non-Element event targets can't TypeError the paste/keydown gates
   ['paste/keydown target guard uses optional matches', (html.match(/e\.target\.matches\?\.\(/g)||[]).length>=2],
+  // ADR-0980: same for the document-level ctx-menu outside-click guard
+  ['mousedown target guard uses optional closest', html.includes("e.target.closest?.('.ctx-menu')")],
   // ADR-0912/0913/0916: pg + frac + groupId are structural — patches can't exile
   // shapes, scramble z-order, or forge group membership (halo/selection clobber)
   ['patch strips drop pg (upd + style paths)', (html.match(/delete p\.pg;/g)||[]).length>=2],
@@ -2266,6 +2268,22 @@ try {
     console.log('  ✓ every LWW arbitration domain shares clockNewer\'s total order (ADR-0979)');
   }
   pass += 9; // ADR-0979 arbitration comparator uniformity pins
+  // ADR-0980: a document-level mousedown whose target is a non-Element (the
+  // Document node itself, e.g. clicks on document chrome or synthetic events)
+  // must not TypeError the ctx-menu outside-click guard.
+  {
+    const ctx=(_els.ctx||={dataset:{}});ctx.dataset.open='true';
+    let threw=false;
+    for(const f of fakeDoc._L['mousedown']||[]){try{f({target:{}})}catch(e){threw=true}}
+    assert.ok(!threw,'non-Element mousedown target does not throw');
+    assert.strictEqual(ctx.dataset.open,'false','outside mousedown still closes the ctx menu');
+    ctx.dataset.open='true';
+    for(const f of fakeDoc._L['mousedown']||[])f({target:{closest:s=>s==='.ctx-menu'?{}:null}});
+    assert.strictEqual(ctx.dataset.open,'true','mousedown inside the ctx menu does not close it');
+    ctx.dataset.open='false';
+    console.log('  ✓ non-Element mousedown target survives the ctx guard (ADR-0980)');
+  }
+  pass += 3; // ADR-0980 mousedown target guard pins
   // ADR-0617: a snapshot whose sender predates our newest swap must not merge
   // pre-swap shapes back in; a snapshot reflecting a newer swap adopts its marker.
   {
@@ -9888,7 +9906,7 @@ try {
   {
     assert.ok(html.includes("UI._ctxEat=_now()"),'long-press stamps the eat window');
     assert.ok(html.includes("if(_now()-(UI._ctxEat||0)<400){UI._ctxEat=0;return}fn();this.closeCtxMenu()"),'item clicks swallowed inside the window');
-    assert.ok(html.includes("!e.target.closest('.ctx-menu')&&_now()-(UI._ctxEat||0)>=400"),'outside-close deferred past the window');
+    assert.ok(html.includes("!e.target.closest?.('.ctx-menu')&&_now()-(UI._ctxEat||0)>=400"),'outside-close deferred past the window');
     console.log('  ✓ long-press ghost-click guard pinned (3 asserts)');
   }
 

@@ -1,3 +1,8 @@
+## [1.8.006] - 2026-10-01
+
+### Fixed
+- ctx メニュー外クリックリスナの `e.target.closest()` を `?.` 化 (ADR-0980): 非 Element ターゲット (Document ノード — ドキュメント枠クリック・AT 合成イベント) で TypeError が document mousedown リスナを貫通し得た 0909 同型の残穴を閉塞。`e.target`/`currentTarget` 全サイトの raw アクセス走査で確認した唯一の未ガードサイト
+
 ## [1.8.005] - 2026-10-01
 
 ### Docs / Test

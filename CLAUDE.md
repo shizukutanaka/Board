@@ -1028,6 +1028,7 @@ Board/
 │   └── ADR-0977-proto-key-pollution-gate.md  # proto-key 汚染監査完走 — JSON.parse の `__proto__` own-key が Object.assign/for..in で setter を叩く全経路が `_cleanVal`/`validPatch`+null-proto store で gated。ピン6 assert
 │   └── ADR-0978-sortz-total-order-audit.md  # sortZ 全順序性監査完走 — frac (base62 lexicographic)→id tie-break の strict total order、keyless stamp 前置、NaN z は _cleanVal 拒否。ピン4 assert
 │   └── ADR-0979-arbitration-comparator-uniformity.md  # 全 LWW 仲裁ドメインが clockNewer (ts,peer,seq) 全順序を共有する監査完走 — docName/page 名は両側 seq:0、生 ts 比較残存なし。ピン9 assert
+│   └── ADR-0980-mousedown-target-closest-guard.md  # ctx 外クリックの `e.target.closest` を `?.` 化 — 非 Element ターゲットで TypeError 貫通する 0909 同型。raw `e.target`/`currentTarget` 全サイト走査で唯一の残穴
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
