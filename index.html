@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.990';   // ADR-0964
+const V='1.7.991';   // ADR-0965
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -3632,8 +3632,7 @@ function _grotDrag(wp,shift){
   _iD(_gd);                 // ADR-0026
 }
 function _grotCommit(){
-  for(const[id,orig]of ptr.gOrig){const sh=byId(id);if(sh&&sh.locked){_geoR(sh,orig);_iv()}}   // ADR-0964
-  if(ptr.gAnc)for(const [cid,oc] of ptr.gAnc){const sh=byId(cid);if(sh&&sh.locked){_geoR(sh,oc);_iv()}}   // ADR-0964
+  _gRL(ptr.gOrig);_gRL(ptr.gAnc);   // ADR-0964: locked members' writes drop on peers — restore instead
   const after=[...ptr.gOrig.keys()].map(byId).filter(s=>s&&!s.locked).map(clone);
   if(_ln(after)){
     const before=after.map(a=>ptr.gOrig.get(a.id));
@@ -3802,7 +3801,7 @@ function _gresizeDrag(wp,shift,alt){
 // Commit: one 'align' op batches all member before/after — a single undo
 // restores the whole group (same mechanism flip/rotate/lock already use).
 function _gresizeCommit(){
-  for(const[id,orig]of ptr.gOrig){const sh=byId(id);if(sh&&sh.locked){_geoR(sh,orig);_iv()}}   // ADR-0964: locked members' writes drop on peers — restore instead
+  _gRL(ptr.gOrig);   // ADR-0964: locked members' writes drop on peers — restore instead
   const after=[...ptr.gOrig.keys()].map(byId).filter(s=>s&&!s.locked).map(clone);
   if(_ln(after)){
     const before=after.map(a=>ptr.gOrig.get(a.id));
@@ -4002,26 +4001,19 @@ const _ptrReset=()=>{ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.drag
 // style/upd landing mid-gesture on a dragged shape would otherwise be reverted
 // locally (wclock keeps the remote clock, so nothing re-heals → divergence).
 const _geoR=(s,o)=>{for(const k of['x','y','w','h','rotate','x1','y1','x2','y2','pts','way','bend','cbend','a','b','aF','bF'])if(k in o)s[k]=clone(o[k])};
-// ADR-0964: shared per-kind orig-restore matrix. Cancel paths run it for the
-// live gesture; the commit gate runs it when the target got locked mid-gesture
-// — peers drop writes to locked shapes, so restoring is the converging choice.
+// ADR-0964: orig-restore — cancel paths + the locked-mid-gesture gate.
+const _gR1=M=>{if(M)for(const[id,o]of M){const s=byId(id);if(s)_geoR(s,o)}};
+const _gR2=(o,k)=>{const s=o&&byId(o.id);if(s){if(k&&o[k]==null)delete s[k];_geoR(s,o)}};
+const _gRL=M=>{if(M)for(const[id,o]of M){const s=byId(id);if(s&&s.locked){_geoR(s,o);_iv()}}};
 const _gRst=()=>{
-  if(_dk('move')&&ptr.dragStartShapes){
-    for(const [id,orig] of ptr.dragStartShapes){const sh=byId(id);if(sh)_geoR(sh,orig)}
-  }else if(_dk('resize')&&ptr.resizeOrig){
-    const sh=byId(ptr.resizeOrig.id);if(sh)_geoR(sh,ptr.resizeOrig);
-  }else if((_dk('gresize')||_dk('grot'))&&ptr.gOrig){
-    for(const [id,orig] of ptr.gOrig){const sh=byId(id);if(sh)_geoR(sh,orig)}
-    if(ptr.gAnc)for(const [cid,oc] of ptr.gAnc){const sh=byId(cid);if(sh)_geoR(sh,oc)}   // ADR-0587
-  }else if(_dk('rotate')&&ptr.rotOrig){
-    const sh=byId(ptr.rotOrig.id);if(sh){if(ptr.rotOrig.rotate==null)delete sh.rotate;_geoR(sh,ptr.rotOrig);}
-  }else if(_dk('ebend')&&ptr.ebendOrig){                // ADR-0072
-    const sh=byId(ptr.ebendOrig.id);if(sh){if(ptr.ebendOrig.bend==null)delete sh.bend;_geoR(sh,ptr.ebendOrig);}
-  }else if(_dk('cbend')&&ptr.cbendOrig){                // ADR-0132
-    const sh=byId(ptr.cbendOrig.id);if(sh){if(ptr.cbendOrig.cbend==null)delete sh.cbend;_geoR(sh,ptr.cbendOrig);}
-  }else if(_dk('way')&&ptr.wayOrig){                     // ADR-0076
-    const sh=byId(ptr.wayOrig.id);if(sh){delete sh.way;_geoR(sh,ptr.wayOrig);}
-  }else if(_dk('lblpos')&&ptr.lblOrig){const sh=byId(ptr.lblOrig.id);if(sh)ptr.lblOrig.labelPos==null?delete sh.labelPos:sh.labelPos=ptr.lblOrig.labelPos}
+  if(_dk('move'))_gR1(ptr.dragStartShapes);
+  else if(_dk('resize'))_gR2(ptr.resizeOrig);
+  else if((_dk('gresize')||_dk('grot'))){_gR1(ptr.gOrig);_gR1(ptr.gAnc)}   // ADR-0587
+  else if(_dk('rotate'))_gR2(ptr.rotOrig,'rotate');
+  else if(_dk('ebend'))_gR2(ptr.ebendOrig,'bend');       // ADR-0072
+  else if(_dk('cbend'))_gR2(ptr.cbendOrig,'cbend');      // ADR-0132
+  else if(_dk('way')&&ptr.wayOrig){const sh=byId(ptr.wayOrig.id);if(sh){delete sh.way;_geoR(sh,ptr.wayOrig);}}   // ADR-0076
+  else if(_dk('lblpos')&&ptr.lblOrig){const sh=byId(ptr.lblOrig.id);if(sh)ptr.lblOrig.labelPos==null?delete sh.labelPos:sh.labelPos=ptr.lblOrig.labelPos}
   _iv();
 };
 function abortGesture(){
@@ -5199,14 +5191,13 @@ function withFrameChildren(ids){
   }
   return out;
 }
-// Keyboard arrow-key nudge. Mirrors pointer-drag move: frame contents follow the
-// frame (withFrameChildren) and locked shapes never
-// which filter !_lk(s)). Records one reversible `move` op for the shapes that moved.
+// Arrow-key nudge: frame children follow (withFrameChildren), locked filtered (_ul), one reversible 'move' op.
 function nudgeSelection(dx,dy){
   const ids=[...withFrameChildren(_sl())].filter(id=>{const s=byId(id);return s&&_ul(s)});   // ADR-0621 parity
   if(!_ln(ids))return;
-  for(const id of ids){const sh=byId(id);if(sh)_sT2(sh,dx,dy)}
-  _nugPush({op:'move',ids,dx,dy});
+  const orig={};   // ADR-0965
+  for(const id of ids){const sh=byId(id);if(sh){orig[id]=clone(sh);_sT2(sh,dx,dy)}}
+  _nugPush({op:'move',ids,dx,dy,orig});
   if(_dd()&&ids.every(id=>state.dupIds.has(id))){_dd().x+=dx;_dd().y+=dy}     // ADR-0080
   _iv();
 }
@@ -5252,7 +5243,8 @@ function endSelect(wp,shift,alt){
   if(_dk('move')&&ptr.dragStartShapes){
     const{dx,dy}=moveDelta(wp,shift,alt);
     state.guides=null;
-    const mids=[...ptr.dragStartShapes.keys()].filter(id=>{const s=byId(id);return s&&_ul(s)});   // ADR-0621: dead ids must not ride the commit
+    _gRL(ptr.dragStartShapes);   // ADR-0621/0965
+    const mids=[...ptr.dragStartShapes.keys()].filter(id=>{const s=byId(id);return s&&_ul(s)});
     if(_hp(dx,dy)>0.5&&_ln(mids)){
       _rcOp({op:'move',ids:mids,dx,dy});
       if(_dd()&&mids.every(id=>state.dupIds.has(id))){_dd().x+=dx;_dd().y+=dy}   // ADR-0080
@@ -8043,7 +8035,7 @@ const Net={
     if(_iA(op.shapes)&&op.op==='addMany'){const{origSel:_o1,...r}=op;return{...r,shapes:this._slimShapes(op.shapes)}}   // ADR-0625/0721
     if(_iA(op.shapes)&&(op.op==='del'||op.op==='clear'||op.op==='pageAdd')){const{wc:_wc1,origSel:_o1,...r}=op;return{...r,shapes:this._slimShapes(op.shapes)}}   // ADR-0445/0625: id/locked only; undo-only fields never ride the wire
     if(op.op==='replace')return{op:'replace',after:this._slimShapes(op.after||[]),afterWc:op.afterWc,clock:op.clock,pages:op.pages,curPg:op.curPg};   // ADR-0646/0720: pages + landing page ride the wire
-    const{origSel:_o2,moved:_m2,...rest}=op;
+    const{origSel:_o2,moved:_m2,orig:_o3,...rest}=op;   // ADR-0965: orig is restore-domain, never wire
     if(op.op==='move'&&_iA(op.ids)&&_iN(op.dx)&&_iN(op.dy)){   // ADR-0729
       const after=[],before=[];
       for(const id of op.moved||op.ids){const s=byId(id);if(!s)continue;
@@ -9886,7 +9878,21 @@ function _undoWire(op){
     default:       return null;
   }}
 let _nug=null;
-function _nugEnd(){const n=_nug;_nug=null;if(n){_cT(n.t);Store._recordCommitted(n.op);_keepSel(n.sel)}}
+function _nugEnd(){const n=_nug;_nug=null;if(n){_cT(n.t);const o=n.op;_nugLock(o);if(!((o.ids&&!_ln(o.ids))||(o.after&&!_ln(o.after))||(o.changes&&!_ln(o.changes)))){Store._recordCommitted(o);_keepSel(n.sel)}}}
+function _nugLock(op){   // ADR-0965: locked/missing mid-run — restore + drop
+  const gone=_sT(),B=op.before||[],A=op.after||[];
+  for(const id of(op.ids||(B.length?B:op.changes).map(b=>b.id))){
+    const s=byId(id);
+    if(!s){gone.add(id);continue}
+    if(!s.locked||A.some(a=>a.id===id&&a.locked))continue;   // own-lock
+    if(op.op==='move'){const o=op.orig[id];if(o)_geoR(s,o)}
+    else if(op.op==='zorder'){const c=op.changes.find(c=>c.id===id);if(c)s.frac=c.before}
+    else{const b=B.find(b=>b.id===id),a=A.find(a=>a.id===id);if(b)for(const p in b)if(p!=='id'&&p!=='locked'&&(!a||_JS(a[p])!==_JS(b[p])))b[p]===_ud?delete s[p]:s[p]=clone(b[p])}
+    gone.add(id);
+  }
+  if(gone.size)_iv();
+  for(const k of['ids','before','after','changes'])if(op[k])op[k]=op[k].filter(m=>!gone.has(m.id||m));
+}
 function _mg(dst,src,f){for(const c of src){const e=dst.find(x=>x.id===c.id);if(e)f(e,c);else dst.push(c)}}   // ADR-0960: per-id merge for zorder/style sessions
 function _nugPush(op){   // ADR-0957/0960: a held key repeats ~30/s — fold the run into one op
   const k=op.op+(op.dir?':'+op.dir:'')+':'+(op.ids||(op.after||op.changes).map(a=>a.id)).join(',')+(op.op==='style'?':'+[...new Set(op.after.flatMap(Object.keys))].sort().join(','):''),arm=()=>{_cT(_nug&&_nug.t);_nug.t=_stO(_nugEnd,400)};

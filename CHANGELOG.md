@@ -1,3 +1,8 @@
+## [1.7.991] - 2026-10-01
+
+### Fixed
+- pending op 中の mid-run lock/missing で収束が崩れる実害を閉塞 (ADR-0965): `_nug` 共合体の pending op は、ラン中に remote `locked` (またはリモート del による消滅) がメンバーに着地しても全リストのまま `_nugEnd` で flush し、ピアがメンバー書込を gate-drop するのにローカルだけ commit が通る一方向発散。`_nugLock` を `_nugEnd` 先頭へ内蔵 — 消滅メンバーは除外、locked メンバーは run-start 復元 (move は `op.orig` クローン、zorder は `changes.before`、他は before↔after 差分の触れた prop のみ、`locked`/未触 prop は不変) して全メンバーリストから除外、自己 op が書いた `after.locked` は remote と区別して除外対象にしない、全リスト空化で commit 自体を省略 (空 op + `_keepSel` 誤刻印を防ぐ)。併せて `endSelect` の move commit は `_ul` フィルタが除外だけで復元しなかった欠落を `_gRL(ptr.dragStartShapes)` 先置きで閉塞。`_slimOp` は restore 専用の `orig` を wire から剥がす。二重化していた復元行列を `_gR1`/`_gR2`/`_gRL` へ抽出 (~1.2KB 回収)。ピン/テストは新コード形へ追随 (doUngroup は 0965 の「mid-run lock は run-start 復元が収束」意味へ)
+
 ## [1.7.990] - 2026-10-01
 
 ### Fixed
