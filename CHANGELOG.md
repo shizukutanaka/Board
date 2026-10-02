@@ -1,3 +1,8 @@
+## [1.7.992] - 2026-10-01
+
+### Docs / Test
+- pending op × mid-run 状態変化の収束監査完走 (ADR-0966): 盤面総取替え `_rs` 全5サイトが commit-head flush (`_repC`/`_recordCommitted`) または boot/remote 経路で時系列反転なし、undo/redo を含む全チョークポイントで pending が先に着地 (0957–0960 再確認)、own-lock exemption は live `s.locked` で判定し op 自身の unlock (`null` 書込) は partition 対象外・own-lock (`after.locked`) は exempt・remote re-lock は drop で収束 — 実害なし。exemption 方向の退行ガード (own-unlock 存続、lock 後消滅で commit 省略) + flush サイト契約ピンで固定
+
 ## [1.7.991] - 2026-10-01
 
 ### Fixed
