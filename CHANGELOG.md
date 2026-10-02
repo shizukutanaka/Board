@@ -1,3 +1,8 @@
+## [1.7.988] - 2026-10-01
+
+### Fixed
+- スライダー before バッファのライフサイクル (ADR-0962): `_sbf` エントリが「capture 後 `change` 未発火」で永久残留し、(a) 間に図形値が外部変化すると次ジェスチャの op `before` が古い値を拾い undo が誤値を復元、(b) 選択外れした id のキーが flush で消費されずリーク — の2欠陥を閉塞。`blur` をジェスチャ境界とし `_sfbBlur` で「ドリフト済み (input プレビューで live が動いたが change 未発火)」エントリを1 style op として commit してからバッファ全消去 — カラーピッカー等の「プレビューのみ走り commit されない」派生収束欠陥も併せて解消。`_sfbFlush` は開始時に選択外 id の同 prop キーを破棄 (合成キー `id+p` の suffix プルーン、消費不能キーは残留させない)。capture の within-gesture スキップは維持 (focus→pointerdown→input 連鎖で before を汚さないため)
+
 ## [1.7.987] - 2026-10-01
 
 ### Fixed
