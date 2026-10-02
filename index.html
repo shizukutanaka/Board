@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.000';   // ADR-0974
+const V='1.8.001';   // ADR-0975
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1549,7 +1549,7 @@ const Store={
       }
     }else if(op.op==='zorder'&&_iA(op.changes)){   // ADR-0653
       for(const c of op.changes)if(byId(c.id)&&this._chg({frac:c.before},{frac:c.after},'frac')){
-        const w=_wc()[c.id]||(_wc()[c.id]={});w.frac=C;
+        const w=_wc()[c.id]||(_wc()[c.id]=_wM());w.frac=C;   // ADR-0975
       }
     }else if(op.op==='move'&&!_iA(op.after)){   // ADR-0729
       for(const id of op.moved||op.ids||[]){const s=byId(id);if(s&&!s.locked){const w=_wc()[id]||(_wc()[id]=_wM());
@@ -6727,7 +6727,7 @@ function excScene(shapes){
     angle:(_rt(s)||0)*_PI/180,seed:0,version:1,versionNonce:0,
     scale:[s.flip&1?-1:1,s.flip&2?-1:1],                                            // ADR-0276
     isDeleted:false,boundElements:null,updated:0,link:s.link||null,locked:!!_lk(s)},over);   // ADR-0241
-  const gids={};for(const s of shapes)if(_gi(s))(gids[s.id]=gids[s.id]||[]).push(_gi(s));
+  const gids=_wM();for(const s of shapes)if(_gi(s))(gids[s.id]=gids[s.id]||[]).push(_gi(s));   // ADR-0975
   const _excTid=_mP();   // ADR-0225: sticky rect id → its container text id
   const _ct=(s,tid,txt,bL,fs,ov)=>{   // shared container text (sticky body/box label)
     _excTid.set(s.id,tid);
@@ -7096,7 +7096,7 @@ function _dioCells(shapes){
   let i=0;
   // ADR-0336: Board groupId → drawio group cell (one level —
   // child geometry stored relative to the group origin).
-  const _gbx={};for(const s of shapes)if(_gi(s)&&_hb(s)){const g=_gbx[_gi(s)]||(_gbx[_gi(s)]={x:1/0,y:1/0,x2:-1/0,y2:-1/0});
+  const _gbx=_wM();for(const s of shapes)if(_gi(s)&&_hb(s)){const g=_gbx[_gi(s)]||(_gbx[_gi(s)]={x:1/0,y:1/0,x2:-1/0,y2:-1/0});   // ADR-0975
     g.x=_min(g.x,s.x);g.y=_min(g.y,s.y);g.x2=_max(g.x2,s.x+s.w);g.y2=_max(g.y2,s.y+(s.h||0))}
   for(const gid in _gbx){const g=_gbx[gid];
     _pu(cells,`<mxCell id="g_${_dioEsc(gid)}" value="" style="group;" vertex="1" parent="1"><mxGeometry x="${g.x}" y="${g.y}" width="${g.x2-g.x}" height="${g.y2-g.y}" as="geometry"/></mxCell>`)}
@@ -9848,7 +9848,7 @@ function _undoWire(op){
     case 'upd':case 'style':case 'resize':case 'align':case 'beautify':
                    return[{op:op.op,id:op.id,dir:op.dir,before:op.after,after:op.before}];   // ADR-0717/0731
     case 'group':case 'ungroup':   // groupId stripped from patches (0916)
-      return _iA(op.before)?(()=>{const o=[],reg={};for(const b of op.before)b.groupId?(reg[b.groupId]=reg[b.groupId]||[]).push(b.id):op.op==='group'&&_pu(o,{op:'ungroup',ids:[b.id],gids:[op.gid],before:[{id:b.id,groupId:op.gid}]});
+      return _iA(op.before)?(()=>{const o=[],reg=_wM();for(const b of op.before)b.groupId?(reg[b.groupId]=reg[b.groupId]||[]).push(b.id):op.op==='group'&&_pu(o,{op:'ungroup',ids:[b.id],gids:[op.gid],before:[{id:b.id,groupId:op.gid}]});   // ADR-0975
         for(const g in reg)_pu(o,{op:'group',ids:reg[g],gid:g,before:reg[g].map(id=>({id}))});return o})():null;
     case 'zorder':
       return op.changes?[{op:'zorder',changes:op.changes.map(c=>({id:c.id,before:c.after,after:c.before}))}]:null;   // ADR-0744: history holds {changes} only — the legacy form was rejected

@@ -1,3 +1,8 @@
+## [1.8.001] - 2026-10-01
+
+### Fixed
+- JS 予約名キー (`'__proto__'`/`'constructor'`/`'toString'` 等) による素 `{}` ストア汚染3実害+1整合を null-proto 化で閉塞 (ADR-0975): ①`excScene` の `gids` (id-keyed) が `id='__proto__'` で `Object.prototype` を返し `.push` で excalidraw エクスポートが TypeError クラッシュ、②`_dioCells` の `_gbx` (groupId-keyed) が `groupId='__proto__'` で **`Object.prototype.x` へ書込** — 全プロトタイプ不在 `.x` が NaN 化する静かな腐敗、③`_undoWire` の `reg` が同 groupId で undo 自体が TypeError クラッシュ (リモート 'group' gid=`'__proto__'` は `_idOK` で正当通過するため remote-reachable)、④`_stampWrites` の zorder バケットだけが素 `{}` で proto 読み取り窓を残す不整合を `_wM()` 統一。id-keyed 素 `{}` を網羅監査 — `bmap`/`bb` は `.groupId` 単一読みで benign、`_sbf`/`files` は prefix で不一致、`peers`/`_img*`/`_grpMap` は Map、`wclock` は 0788 済み — 残面なし。behavioural ピン4件 (excScene 不投げ/`Object.prototype` untouched/`_undoWire` 不投げ/zorder バケット null-proto)
+
 ## [1.8.000] - 2026-10-01
 
 ### Docs / Test
