@@ -1012,6 +1012,7 @@ Board/
 │   └── ADR-0961-held-key-wave2.md  # 残存6経路 (rotate/flip/lock/group/text-flags/swap) を `_nug` へ — `dir` キー接尾辞で異種マージ防止、net-zero 破棄 (toggle×2 は op 0 件)、`applyStyleToSelection` no-change フィルタで数字長押しが op を産まない産出側閉塞
 │   └── ADR-0962-sfb-lifecycle.md  # スライダー `_sbf` のジェスチャ境界 — blur でドリフトを1 op 化して全消去 (stale-before undo + cp プレビュー未 commit を閉塞) + `_sfbFlush` の選択外プルーン
 │   └── ADR-0963-lifecycle-bounds-audit.md  # ライフサイクル×有界性監査 — MAX_HISTORY+histIdx、`_nug.sel` スナップショット、docName keystroke-LWW、dupDelta チェーン、テキスト blur commit、presence TTL/cap 全 clean、5ピン化
+│   └── ADR-0964-mid-gesture-lock.md  # ジェスチャ中 remote lock の収束 — `_gRst()` 共有復元行列 + PU commit 6サイトの locked ゲート + gresize/grot/flushErase のメンバー仕分け (一方向発散を閉塞)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

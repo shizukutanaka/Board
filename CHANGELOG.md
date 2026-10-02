@@ -1,3 +1,8 @@
+## [1.7.990] - 2026-10-01
+
+### Fixed
+- ジェスチャ中のリモート lock で収束が崩れる実害を閉塞 (ADR-0964): ピア側の forward apply は全 prop-op で `sh.locked` をゲートするため、ドラッグ中に remote `locked` が着地した図形へローカル commit だけが通り一方向発散。PU commit 6サイト (resize/rotate/cbend/ebend/way/lblpos) に `if(sh.locked)_gRst()` ゲートを置き「commit せず orig へ復元」でピアと同じ見えへ収束。`_gresizeCommit`/`_grotCommit` は locked メンバーを `_geoR`+`_iv()` で復元し `after` から除外、gAnc コネクタも同型。`flushErase` は `_eraseBatch` クローン (byId fallback で remote lock が届く、ADR-0952) を `live`/`kept` に仕分けして locked メンバーを del 対象から除外。abort/cancel 二重化していた復元行列は `_gRst()` へ抽出 (abortGesture が gAnc 復元も拾うようになる副次修正含む)
+
 ## [1.7.989] - 2026-10-01
 
 ### Docs / Test
