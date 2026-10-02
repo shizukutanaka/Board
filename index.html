@@ -852,7 +852,7 @@ const _st=()=>state.style;
 const _df=()=>state.draft;
 const _wc=()=>state.wclock,_wM=x=>Object.assign(Object.create(null),x),_oe=Object.entries;   // ADR-0788
 const _wD=(id,c)=>_wc()[id]=_wM({_del:c}),_wR=(id,w)=>_wc()[id]=_wM(clone(w)),_wTb=(rw,c,inN)=>{for(const[id,w]of _oe(rw||{}))if(w._del&&(clockNewer(w._del,c)||!inN.has(id)))_wD(id,clockNewer(w._del,c)?w._del:c)};   // ADR-0789
-const _bT=(id,c)=>{const w=_wc()[id]||(_wc()[id]=_wM());if(!w._born||clockNewer(c,w._born))w._born=c},_bN=(id,c)=>{const w=_wc()[id];return!!(w&&w._born&&clockNewer(w._born,c))};   // ADR-0926
+const _bT=(id,c)=>{const w=_wc()[id]||(_wc()[id]=_wM());if(!w._born||clockNewer(c,w._born))w._born=c;if(ptr.down&&c.peer!==_pi())(ptr.reborn||(ptr.reborn=new Set())).add(id)},_bN=(id,c)=>{const w=_wc()[id];return!!(w&&w._born&&clockNewer(w._born,c))};   // ADR-0926/0970
 const _wAdopt=(id,rw)=>{   // ADR-0927: adopt a snapshot-carried wclock — the sender's real clocks
   if(!rw||!_iO(rw))return;
   const ks=_ok(rw);if(_ln(ks)>64)return;
@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.995';   // ADR-0969
+const V='1.7.996';   // ADR-0970
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -3973,20 +3973,20 @@ function _sqAdvance(dir){
 }
 let ptr={down:false,x:0,y:0,x0:0,y0:0,wx:0,wy:0,wx0:0,wy0:0,
   panning:false,dragKind:null,dragStartShapes:null,
-  gOrig:null,gBox:null,gPad:null,rotA0:null,armC:{ts:1/0,peer:'',seq:0}};   // ADR-0056/0057/0969: group gesture state — armC never-expired until a PD arms it
+  gOrig:null,gBox:null,gPad:null,rotA0:null,reborn:null};   // ADR-0056/0057/0970: group gesture state — reborn marks remote births that arrived while ptr.down
 let _longPressTimer=null;   // ADR-0006
 
 // Revert any in-progress single-pointer gesture without committing — used when
 // a second finger lands and a pinch-zoom takes over. Restores the pre-gesture
 // snapshot from pointerdown: move/resize/rotate roll back, and an uncommitted
 // draft (never touched _sh()) is simply dropped. (Qiita/Zenn multi-touch.)
-const _ptrReset=()=>{ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.dragStartShapes=null;ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.rotOrig=null;ptr.gOrig=null;ptr.gAnc=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;ptr.wayIdx=null;ptr.wayNew=false;ptr.lblOrig=null;ptr.lineClick=false;ptr.armC={ts:1/0,peer:'',seq:0};canvas.dataset.panning='false'};   // ADR-0764/0969
+const _ptrReset=()=>{ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.dragStartShapes=null;ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.rotOrig=null;ptr.gOrig=null;ptr.gAnc=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;ptr.wayIdx=null;ptr.wayNew=false;ptr.lblOrig=null;ptr.lineClick=false;ptr.reborn=null;canvas.dataset.panning='false'};   // ADR-0764/0970
 // ADR-0766: gesture orig-restores must not stomp non-geometry props — a remote
 // style/upd landing mid-gesture on a dragged shape would otherwise be reverted
 // locally (wclock keeps the remote clock, so nothing re-heals → divergence).
 const _geoR=(s,o)=>{for(const k of['x','y','w','h','rotate','x1','y1','x2','y2','pts','way','bend','cbend','a','b','aF','bF'])if(k in o)s[k]=clone(o[k])};
 // ADR-0964: orig-restore — cancel paths + the locked-mid-gesture gate.
-const _rb=id=>{const b=(_wc()[id]||{})._born;return!!(b&&b.peer!==_pi()&&clockNewer(b,ptr.armC))};   // ADR-0969: (re)born by a REMOTE clock past the arm clock — local births (alt-drag copies, own adds) still restore
+const _rb=id=>!!(ptr.reborn&&ptr.reborn.has(id));   // ADR-0970: (re)born by a REMOTE peer while this gesture was live — exact arrival order, immune to clock skew; local births (alt-drag copies, own adds) still restore
 const _gR1=M=>{if(M)for(const[id,o]of M){const s=byId(id);if(s&&!_rb(id))_geoR(s,o)}};
 const _gR2=(o,k)=>{const s=o&&byId(o.id);if(s&&!_rb(o.id)){if(k&&o[k]==null)delete s[k];_geoR(s,o)}};
 const _gRL=M=>{if(M)for(const[id,o]of M){const s=byId(id);if(s&&s.locked&&!_rb(id)){_geoR(s,o);_iv()}}};
@@ -4024,7 +4024,7 @@ _on(canvas,_PD,e=>{
   // ADR-0532/0896: non-primary buttons must not arm ptr.down — right (2) plus
   // mouse X1/X2 side buttons and stylus barrels (3/4/5) reach here too.
   if(e.button>1)return;
-  ptr.down=true;ptr.x=ptr.x0=sp.x;ptr.y=ptr.y0=sp.y;ptr.armC={ts:nowTs(),peer:'',seq:0};   // ADR-0969
+  ptr.down=true;ptr.x=ptr.x0=sp.x;ptr.y=ptr.y0=sp.y;   // ADR-0969
   ptr.wx=ptr.wx0=wp.x;ptr.wy=ptr.wy0=wp.y;
   // middle click or hand tool => pan
   const isPan=e.button===1||_tl()==='hand';

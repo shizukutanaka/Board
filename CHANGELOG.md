@@ -1,3 +1,8 @@
+## [1.7.996] - 2026-10-01
+
+### Fixed
+- `_rb` の born 判定を remote 時計比較 (`clockNewer(w._born, ptr.armC)`) から到着順マーキング (`ptr.reborn`) へ置換 (ADR-0970): ピア時計が前進 skew の場合、ジェスチャ arm 前に到着した born が armC を超過し復元が誤スキップされドラッグ途中値が cancel 後も残存 → 恒久発散; 後進 skew ではジェスチャ中到着の born が armC を下回り復元で remote 再誕生を clobber (0969 の residual)。「remote (re)birth がジェスチャ中に到着したか」は局所観測可能な事実のため、`_bT` で `ptr.down && c.peer!==_pi()` のみ `ptr.reborn` へ刻印し skew 両方向を閉塞。`ptr.armC` 機構を撤去 (~80B 節約)。local 誕生 (`c.peer===_pi()`: alt-drag 複製等) は従来通り復元対象 (0964 契約不変)。skew 両方向の behavioural ピン追加
+
 ## [1.7.995] - 2026-10-01
 
 ### Fixed
