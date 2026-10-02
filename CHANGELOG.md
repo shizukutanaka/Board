@@ -1,3 +1,8 @@
+## [1.7.995] - 2026-10-01
+
+### Fixed
+- mid-gesture remote 書込が orig-restore に巻き戻される実害を閉塞 (ADR-0969): `_gRst` 系 (Esc/blur/abort/remote-lock cancel) が pre-gesture orig へ丸ごと復元するため、ジェスチャ中に着地した remote `style`/`upd`/`move`/snapshot merge 値をローカルだけ上書きする一方向発散。`_gTouch(id,ks)` で remote が触れたキーの live 値を全 live ジェスチャ orig (`dragStartShapes`/`gOrig`/`gAnc`+6 オブジェクト orig) へ遅延マージし、`_oa`/`'move'` forward/snapshot merge の各 remote 書込面から呼ぶ。さらに remote kill+resurrect/wholesale swap がジェスチャ中に着地した場合は PD 時刻の `ptr.armC` と `w._born` の remote peer 判定 (`_rb`) で復元自体をスキップ — local 誕生 (alt-drag 複製/自分の add) は peer 識別で従来通り復元対象。test.mjs は `_lastTs` 漏出 (先行未来日付 clock が後続の born<del 順序を反転) を `reset()` で遮断、0964 `_gRL` ピンを新ガード形へ追随
+
 ## [1.7.994] - 2026-10-01
 
 ### Docs / Test

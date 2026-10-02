@@ -842,7 +842,7 @@ const _qs=(e,s)=>e.querySelector(s);                                  // ADR-034
 const _qsa=(e,s)=>e.querySelectorAll(s);                                // ADR-0350
 const _on=(e,t,f,o)=>e.addEventListener(t,f,o);                          // ADR-0356
 const _vp=()=>state.viewport,_vpS=()=>({x:+_vp().x.toFixed(2),y:+_vp().y.toFixed(2),zoom:+_vp().zoom.toFixed(4)});                                              // ADR-0362
-const _mk=(k,x)=>({k,peer:_pi(),...x}),_pi=()=>state.peerId,_ro=()=>state.readout,_gd=()=>state.guides,_cl=()=>state.clipboard,_bb=s=>G.bbox(s),_bA=s=>G.bboxAll(s),_oa=(o,p)=>{const r=Object.assign(o,p);if(r.img&&!r.dataUrl&&_iS(r.id))_park(Net._imgPending,r.id,r.img);return r};   // ADR-0378/0841
+const _mk=(k,x)=>({k,peer:_pi(),...x}),_pi=()=>state.peerId,_ro=()=>state.readout,_gd=()=>state.guides,_cl=()=>state.clipboard,_bb=s=>G.bbox(s),_bA=s=>G.bboxAll(s),_oa=(o,p)=>{const r=Object.assign(o,p);if(r.img&&!r.dataUrl&&_iS(r.id))_park(Net._imgPending,r.id,r.img);if(ptr.down&&byId(o.id)===o)_gTouch(o.id,_ok(p));return r};   // ADR-0378/0841/0969
 const _sO=()=>state.seenOps,_la=()=>state.lasso,_mq=()=>state.marquee,_dd=()=>state.dupDelta,_w2=p=>G.w2s(p),_s2=p=>G.s2w(p),_cE=connEnds,_o2w=e=>_s2({x:e.offsetX,y:e.offsetY});   // ADR-0382
 const _dpr=()=>window.devicePixelRatio,_cT=clearTimeout,_iA=Array.isArray,_iS=v=>typeof v==='string',_iN=v=>typeof v==='number',_iO=v=>typeof v==='object',_stk=v=>v.type==='sticky',_frm=v=>v.type==='frame',_pn=v=>v.type==='pen',_txt=v=>v.type==='text',_im=v=>v.type==='image',_arw=v=>v.type==='arrow',_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log,_rAF=requestAnimationFrame,_pF=parseFloat,_db=document.body,_de=document.documentElement,_wO=window.open,_lg=k=>localStorage.getItem(k),_ls=(k,v)=>localStorage.setItem(k,v),_mP=a=>new Map(a),_sT=a=>new Set(a),_eU=encodeURIComponent,_dU=decodeURIComponent,_un='undefined',_AU='arrowup',_AD='arrowdown',_AL2='arrowleft',_AR2='arrowright',_ES='escape',_RO='readonly',_RW='readwrite',_UT='Untitled',_REC='rectangle',_EN='enter',_TB='tab',_IK='#0F172A',_YW='#FEF08A',_BOX=_sT(['rect','ellipse','diamond']),_BX4=_sT([..._BOX,'sticky']),_BOXF=_sT([..._BOX,'frame','sticky']),_HF4=_sT([..._BOX,'frame']),_RD=_sT(['rect','diamond']),_RDI=_sT([..._RD,'image']),_D6=_sT([..._BOX,'frame','image']),_SH5=_sT([..._BOX,'image','text']),_TS=_sT(['text','sticky']),_TSF=_sT([..._TS,'frame']);   // ADR-0384/../0397/0453
 const _sh=()=>state.shapes;                                                // ADR-0364
@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.994';   // ADR-0968
+const V='1.7.995';   // ADR-0969
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1688,7 +1688,7 @@ const Store={
           for(const raw of _mp){const sh=byId(raw.id);if(!sh||sh.locked)continue;
             const p=forward?raw:clone(raw);
             if(!forward){if(p.x!=null&&_lwwSkip(raw.id,'x',op))delete p.x;if(p.y!=null&&_lwwSkip(raw.id,'y',op))delete p.y}
-            if(p.x!=null)sh.x=p.x;if(p.y!=null)sh.y=p.y}
+            if(p.x!=null)sh.x=p.x;if(p.y!=null)sh.y=p.y;_gTouch(sh.id,['x','y'])}   // ADR-0969
         }else{
           const d=forward?1:-1;
           if(forward)op.moved=[];   // ADR-0548: undo un-moves only forward-moved
@@ -1882,10 +1882,7 @@ function clockNewer(a,b){
   if(a.peer!==b.peer)return a.peer>b.peer;
   return (a.seq||0)>(b.seq||0);
 }
-// ADR-0002 gap fix: skip restoring `key` on `id` during undo when a remote peer
-// wrote it more recently. Originally gated inside 'upd' — other ops shared
-// forward stamping but not this reverse-apply guard, so a local undo clobbered
-// a converged remote write. Shared across every LWW op type.
+// ADR-0002: undo-side LWW guard shared across every LWW op type — never restore over a newer remote write.
 function _lwwSkip(id,key,op){
   if(!op.clock)return false;
   const wc=_wc()[id];
@@ -1977,10 +1974,7 @@ function computeConnClears(delIds){
   return connClears;
 }
 // ---- fractional z-index (ADR-0001 Step 1) ----------------------------------
-// keyBetween(a,b): a string key strictly ordered between a and b (a shorter
-// prefix compares 0-padded); null = open end. Pure, no deps. Foundation for
-// minimal-delta z-order ops (Step 2); keys are *derived* from array order
-// (see reindexFrac) and z stays as a back-compat fallback.
+// keyBetween(a,b): strictly-ordered string key between a and b; null = open end. Keys derive from array order (reindexFrac).
 const FRAC_DIGITS='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 function keyBetween(a,b){
   const N=_ln(FRAC_DIGITS), di=c=>{const k=_ix(FRAC_DIGITS,c);return k<0?0:k};
@@ -2262,10 +2256,7 @@ function drawPenMaybeCached(s,c){
 }
 
 // ====================== DRAFT INK STAMP (ADR-0029) ======================
-// ADR-0046: variable-width ink is a union fill of convex primitives — one
-// trapezoid per segment + one disc per vertex, same winding so a nonzero fill
-// covers the union with no joint gaps. Ends taper over PEN_TAPER samples —
-// the live end-taper primitives must stay in the live tail.
+// ADR-0046: variable-width ink = trapezoid-per-segment + disc-per-vertex union fill; ends taper over PEN_TAPER samples (live tail keeps them).
 const PEN_TAPER=8,PEN_TAPER_LO=0.15;
 function _penTaperI(i){return i>=PEN_TAPER?1:PEN_TAPER_LO+(1-PEN_TAPER_LO)*i/PEN_TAPER}
 function _penTaperE(d){return d>=PEN_TAPER?1:PEN_TAPER_LO+(1-PEN_TAPER_LO)*d/PEN_TAPER}
@@ -2409,10 +2400,7 @@ function drawPenDraft(s){
 }
 
 // ====================== RENDER ======================
-// On-demand RAF: only schedule a frame when there is work to do — an always-
-// running loop burns ~60 draw calls/second on an idle board (Qiita/Zenn).
-// _iv() restarts the loop only when it isn't already running; frame() clears
-// the pending id on entry so a mid-frame _iv() reschedules once.
+// On-demand RAF: _iv() schedules a frame only when needed; frame() clears the pending id so mid-frame _iv() reschedules once.
 let needsRender=true,needOverlay=true,_rafId=0;
 let _damage=null;   // ADR-0026: accumulated world-space dirty rect
 let _pinchSnap=null,_pinchVp=null;   // ADR-0030: pinch-start canvas copy + viewport for scaled preview
@@ -2782,11 +2770,7 @@ function drawEmptyHint(c,W,H){
   c.font='14px '+(_gC('--ui-font')||'system-ui,sans-serif');
   _fT(c,t('emptyHint'),W/(2*DPR),H/(2*DPR));
 }
-// ADR-0011: ephemeral peer selection outlines — bbox frame only, in the peer's color,
-// thin [3,3] dashes. Deliberately distinct on two
-// axes (color / --accent-contrast, dash / solid, no handles) and from the locked-
-// selection dash pattern [5,4]. _pr()[].sel is set only by Net's 'selection'
-// handler and vanishes with the peer entry on reap/disconnect.
+// ADR-0011: ephemeral peer selection outlines — peer-colored thin [3,3] dash bbox, distinct from the locked [5,4] dash. _pr()[].sel dies with the peer entry.
 function drawPeerSelections(c){
   if(_pA())return;   // same rationale as drawPeerCursors
   for(const p of _pr().values()){
@@ -3989,22 +3973,26 @@ function _sqAdvance(dir){
 }
 let ptr={down:false,x:0,y:0,x0:0,y0:0,wx:0,wy:0,wx0:0,wy0:0,
   panning:false,dragKind:null,dragStartShapes:null,
-  gOrig:null,gBox:null,gPad:null,rotA0:null};   // ADR-0056/0057: group gesture state
+  gOrig:null,gBox:null,gPad:null,rotA0:null,armC:{ts:1/0,peer:'',seq:0}};   // ADR-0056/0057/0969: group gesture state — armC never-expired until a PD arms it
 let _longPressTimer=null;   // ADR-0006
 
 // Revert any in-progress single-pointer gesture without committing — used when
 // a second finger lands and a pinch-zoom takes over. Restores the pre-gesture
 // snapshot from pointerdown: move/resize/rotate roll back, and an uncommitted
 // draft (never touched _sh()) is simply dropped. (Qiita/Zenn multi-touch.)
-const _ptrReset=()=>{ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.dragStartShapes=null;ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.rotOrig=null;ptr.gOrig=null;ptr.gAnc=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;ptr.wayIdx=null;ptr.wayNew=false;ptr.lblOrig=null;ptr.lineClick=false;canvas.dataset.panning='false'};   // ADR-0764
+const _ptrReset=()=>{ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.dragStartShapes=null;ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.rotOrig=null;ptr.gOrig=null;ptr.gAnc=null;ptr.gBox=null;ptr.gPad=null;ptr.rotA0=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;ptr.wayIdx=null;ptr.wayNew=false;ptr.lblOrig=null;ptr.lineClick=false;ptr.armC={ts:1/0,peer:'',seq:0};canvas.dataset.panning='false'};   // ADR-0764/0969
 // ADR-0766: gesture orig-restores must not stomp non-geometry props — a remote
 // style/upd landing mid-gesture on a dragged shape would otherwise be reverted
 // locally (wclock keeps the remote clock, so nothing re-heals → divergence).
 const _geoR=(s,o)=>{for(const k of['x','y','w','h','rotate','x1','y1','x2','y2','pts','way','bend','cbend','a','b','aF','bF'])if(k in o)s[k]=clone(o[k])};
 // ADR-0964: orig-restore — cancel paths + the locked-mid-gesture gate.
-const _gR1=M=>{if(M)for(const[id,o]of M){const s=byId(id);if(s)_geoR(s,o)}};
-const _gR2=(o,k)=>{const s=o&&byId(o.id);if(s){if(k&&o[k]==null)delete s[k];_geoR(s,o)}};
-const _gRL=M=>{if(M)for(const[id,o]of M){const s=byId(id);if(s&&s.locked){_geoR(s,o);_iv()}}};
+const _rb=id=>{const b=(_wc()[id]||{})._born;return!!(b&&b.peer!==_pi()&&clockNewer(b,ptr.armC))};   // ADR-0969: (re)born by a REMOTE clock past the arm clock — local births (alt-drag copies, own adds) still restore
+const _gR1=M=>{if(M)for(const[id,o]of M){const s=byId(id);if(s&&!_rb(id))_geoR(s,o)}};
+const _gR2=(o,k)=>{const s=o&&byId(o.id);if(s&&!_rb(o.id)){if(k&&o[k]==null)delete s[k];_geoR(s,o)}};
+const _gRL=M=>{if(M)for(const[id,o]of M){const s=byId(id);if(s&&s.locked&&!_rb(id)){_geoR(s,o);_iv()}}};
+// ADR-0969: writes landing mid-gesture merge into the live gesture origs so _gRst
+// keeps remote values; a shape (re)born past the arm clock isn't restored at all.
+const _gTouch=(id,ks)=>{if(!ptr.down)return;const s=byId(id);if(!s)return;const cp=o=>{for(const k of ks)o[k]=clone(s[k])};for(const m of[ptr.dragStartShapes,ptr.gOrig,ptr.gAnc]){const o=m&&m.get(id);if(o)cp(o)}for(const o of[ptr.resizeOrig,ptr.rotOrig,ptr.ebendOrig,ptr.cbendOrig,ptr.wayOrig,ptr.lblOrig])if(o&&o.id===id)cp(o)};
 const _gRst=()=>{
   if(_dk('move'))_gR1(ptr.dragStartShapes);
   else if(_dk('resize'))_gR2(ptr.resizeOrig);
@@ -4012,8 +4000,8 @@ const _gRst=()=>{
   else if(_dk('rotate'))_gR2(ptr.rotOrig,'rotate');
   else if(_dk('ebend'))_gR2(ptr.ebendOrig,'bend');       // ADR-0072
   else if(_dk('cbend'))_gR2(ptr.cbendOrig,'cbend');      // ADR-0132
-  else if(_dk('way')&&ptr.wayOrig){const sh=byId(ptr.wayOrig.id);if(sh){delete sh.way;_geoR(sh,ptr.wayOrig);}}   // ADR-0076
-  else if(_dk('lblpos')&&ptr.lblOrig){const sh=byId(ptr.lblOrig.id);if(sh)ptr.lblOrig.labelPos==null?delete sh.labelPos:sh.labelPos=ptr.lblOrig.labelPos}
+  else if(_dk('way')&&ptr.wayOrig){const sh=byId(ptr.wayOrig.id);if(sh&&!_rb(sh.id)){delete sh.way;_geoR(sh,ptr.wayOrig);}}   // ADR-0076/0969
+  else if(_dk('lblpos')&&ptr.lblOrig){const sh=byId(ptr.lblOrig.id);if(sh&&!_rb(sh.id))ptr.lblOrig.labelPos==null?delete sh.labelPos:sh.labelPos=ptr.lblOrig.labelPos}   // ADR-0969
   _iv();
 };
 function abortGesture(){
@@ -4036,7 +4024,7 @@ _on(canvas,_PD,e=>{
   // ADR-0532/0896: non-primary buttons must not arm ptr.down — right (2) plus
   // mouse X1/X2 side buttons and stylus barrels (3/4/5) reach here too.
   if(e.button>1)return;
-  ptr.down=true;ptr.x=ptr.x0=sp.x;ptr.y=ptr.y0=sp.y;
+  ptr.down=true;ptr.x=ptr.x0=sp.x;ptr.y=ptr.y0=sp.y;ptr.armC={ts:nowTs(),peer:'',seq:0};   // ADR-0969
   ptr.wx=ptr.wx0=wp.x;ptr.wy=ptr.wy0=wp.y;
   // middle click or hand tool => pan
   const isPan=e.button===1||_tl()==='hand';
@@ -5077,10 +5065,7 @@ function pickOrMarquee(wp,e){
   }
 }
 // ---- snap-target edge index (ADR-0020) ----
-// objectSnap/resizeSnap rebuilt the "all other shapes' edges" list on EVERY
-// pointermove — O(shapes) per event. The board can't change under the snap
-// path without _invalidateGrid, so key the index on _gridVer + the caller's
-// exclusion key: one rebuild per gesture/mutation instead of per pointermove.
+// Snap edge index keyed on _gridVer + caller exclusion key — one rebuild per mutation, not per pointermove.
 const _snapIdx={move:{ver:-1,key:'',idx:null},resize:{ver:-1,key:'',idx:null}};
 function _mkSnapIdx(targets){
   const xs=[],ys=[];
@@ -8303,7 +8288,7 @@ const Net={
       const v=op.shape[k];
       if(v===_ud||k==='id'||k==='type'||k==='pg'||k[0]==='_'||k==='__proto__'||k==='constructor'||k==='prototype'||!validPatch({[k]:v}))continue;   // ADR-0919
       const lc=lw[k];
-      if(!lc||clockNewer(rc,lc)){ex[k]=v;lw[k]=clone(rc);dirty=true;if(k==='dataUrl')duNew=true;}
+      if(!lc||clockNewer(rc,lc)){ex[k]=v;lw[k]=clone(rc);dirty=true;_gTouch(ex.id,[k]);if(k==='dataUrl')duNew=true;}   // ADR-0969
     }
     // ADR-0745/0746: drop parked img refs the merge didn't adopt — a late blob
     // would still clobber the surviving dataUrl.
