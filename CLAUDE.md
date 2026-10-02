@@ -1009,6 +1009,13 @@ Board/
 │   └── ADR-0958-commit-order-flush.md  # `_recordCommitted` 先頭の `_nugEnd()` — `_rcOp` 迂回経路でも pending nudge が常に先に着地する時系列不変条件
 │   └── ADR-0959-nudge-lifecycle-flush.md  # hidden/pagehide/beforeunload でも `_nugEnd()` — タブ終了で永続化だけ先行し op が broadcast されない一方向発散を閉塞
 │   └── ADR-0960-zorder-style-coalescing.md  # `[ ]`/`⌘⇧,/.` 長押しを `_nugPush` 共合へ拡張 (zorder/style マージ、prop 認識キー) + `Store.commit` 先頭 `_nugEnd()` — 押下毎 commit 溢流と del 跨ぎ時系列反転 (seed-7) を閉塞
+│   └── ADR-0961-held-key-wave2.md  # 残存6経路 (rotate/flip/lock/group/text-flags/swap) を `_nug` へ — `dir` キー接尾辞で異種マージ防止、net-zero 破棄 (toggle×2 は op 0 件)、`applyStyleToSelection` no-change フィルタで数字長押しが op を産まない産出側閉塞
+│   └── ADR-0962-sfb-lifecycle.md  # スライダー `_sbf` のジェスチャ境界 — blur でドリフトを1 op 化して全消去 (stale-before undo + cp プレビュー未 commit を閉塞) + `_sfbFlush` の選択外プルーン
+│   └── ADR-0963-lifecycle-bounds-audit.md  # ライフサイクル×有界性監査 — MAX_HISTORY+histIdx、`_nug.sel` スナップショット、docName keystroke-LWW、dupDelta チェーン、テキスト blur commit、presence TTL/cap 全 clean、5ピン化
+│   └── ADR-0964-mid-gesture-lock.md  # ジェスチャ中 remote lock の収束 — `_gRst()` 共有復元行列 + PU commit 6サイトの locked ゲート + gresize/grot/flushErase のメンバー仕分け (一方向発散を閉塞)
+│   └── ADR-0965-mid-run-lock.md  # pending op 中の mid-run lock/missing — `_nugLock` で消滅メンバー除外 + locked メンバー run-start 復元 (自己 lock は exempt) + `endSelect` move の `_gRL` 先置き (一方向発散を閉塞)
+│   └── ADR-0966-pending-op-mid-run-audit.md  # pending op × mid-run 監査完走 — `_rs` 全5サイト commit-head flush、own-lock exemption の方向検証 (live 値判定で unlock は存続)、4ピン化
+│   └── ADR-0967-mid-edit-lock-fold.md  # mid-edit remote lock — text/label の blur/commit が `!byId` のみで fold+commit が同フレーム競合 (locked gate drop で一方向発散)、`_lk` ゲート拡張で全 commit 経路を省略
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

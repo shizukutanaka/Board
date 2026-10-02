@@ -1,3 +1,39 @@
+## [1.7.993] - 2026-10-01
+
+### Fixed
+- mid-edit remote lock で収束が崩れる実害を閉塞 (ADR-0967): テキスト/ラベルエディタの blur commit は `!byId` のみ検査 (del のみ fold、0556) だったため、remote `locked` が編集中に着地すると `_teFollow`/`_lblFollow` の `_lk` fold と blur commit が同一フレームで競合 — blur 発火時に `_rcOp(upd)`/`_cmt(del)`/`resizeAfterTextEdit`/`hit.label=` がローカルだけ進み、ピアは locked gate で drop する一方向発散 (0964/0965 同型)。両 commit ハンドラを `!byId(id)||_lk(obj)` へ拡張し live mutation・全 commit 経路を省略 (typed 文字は破棄で remote と一致)。スライダー系は 0962 で gated 済みと確認
+
+## [1.7.992] - 2026-10-01
+
+### Docs / Test
+- pending op × mid-run 状態変化の収束監査完走 (ADR-0966): 盤面総取替え `_rs` 全5サイトが commit-head flush (`_repC`/`_recordCommitted`) または boot/remote 経路で時系列反転なし、undo/redo を含む全チョークポイントで pending が先に着地 (0957–0960 再確認)、own-lock exemption は live `s.locked` で判定し op 自身の unlock (`null` 書込) は partition 対象外・own-lock (`after.locked`) は exempt・remote re-lock は drop で収束 — 実害なし。exemption 方向の退行ガード (own-unlock 存続、lock 後消滅で commit 省略) + flush サイト契約ピンで固定
+
+## [1.7.991] - 2026-10-01
+
+### Fixed
+- pending op 中の mid-run lock/missing で収束が崩れる実害を閉塞 (ADR-0965): `_nug` 共合体の pending op は、ラン中に remote `locked` (またはリモート del による消滅) がメンバーに着地しても全リストのまま `_nugEnd` で flush し、ピアがメンバー書込を gate-drop するのにローカルだけ commit が通る一方向発散。`_nugLock` を `_nugEnd` 先頭へ内蔵 — 消滅メンバーは除外、locked メンバーは run-start 復元 (move は `op.orig` クローン、zorder は `changes.before`、他は before↔after 差分の触れた prop のみ、`locked`/未触 prop は不変) して全メンバーリストから除外、自己 op が書いた `after.locked` は remote と区別して除外対象にしない、全リスト空化で commit 自体を省略 (空 op + `_keepSel` 誤刻印を防ぐ)。併せて `endSelect` の move commit は `_ul` フィルタが除外だけで復元しなかった欠落を `_gRL(ptr.dragStartShapes)` 先置きで閉塞。`_slimOp` は restore 専用の `orig` を wire から剥がす。二重化していた復元行列を `_gR1`/`_gR2`/`_gRL` へ抽出 (~1.2KB 回収)。ピン/テストは新コード形へ追随 (doUngroup は 0965 の「mid-run lock は run-start 復元が収束」意味へ)
+
+## [1.7.990] - 2026-10-01
+
+### Fixed
+- ジェスチャ中のリモート lock で収束が崩れる実害を閉塞 (ADR-0964): ピア側の forward apply は全 prop-op で `sh.locked` をゲートするため、ドラッグ中に remote `locked` が着地した図形へローカル commit だけが通り一方向発散。PU commit 6サイト (resize/rotate/cbend/ebend/way/lblpos) に `if(sh.locked)_gRst()` ゲートを置き「commit せず orig へ復元」でピアと同じ見えへ収束。`_gresizeCommit`/`_grotCommit` は locked メンバーを `_geoR`+`_iv()` で復元し `after` から除外、gAnc コネクタも同型。`flushErase` は `_eraseBatch` クローン (byId fallback で remote lock が届く、ADR-0952) を `live`/`kept` に仕分けして locked メンバーを del 対象から除外。abort/cancel 二重化していた復元行列は `_gRst()` へ抽出 (abortGesture が gAnc 復元も拾うようになる副次修正含む)
+
+## [1.7.989] - 2026-10-01
+
+### Docs / Test
+- ライフサイクル×有界性監査完走 (ADR-0963): undo スタック `MAX_HISTORY=500` が `_recordCommitted`/`_recordRemote` 両経路で強制され shift 時の `histIdx` 整合も正しい (先頭削除後も tip を指す)、pending `_nug.sel` は `_selIds()` 配列スナップショット (後続の選択変更が pending op の origSel を書き換えない)、docName は keystroke 毎 LWW (設計意図 — 実値の直後追従)、`dupDelta` スマート複製チェーンは dead-id/空選択を全ルートで遮断、テキストエディタは blur で1 op (per-gesture commit)、presence は `NET_PRESENCE_TIMEOUT=15s` reap + `MAX_PEERS` cap + rtc: は onclose 管理 — 実害なし。監査結論を5ピンで固定
+
+## [1.7.988] - 2026-10-01
+
+### Fixed
+- スライダー before バッファのライフサイクル (ADR-0962): `_sbf` エントリが「capture 後 `change` 未発火」で永久残留し、(a) 間に図形値が外部変化すると次ジェスチャの op `before` が古い値を拾い undo が誤値を復元、(b) 選択外れした id のキーが flush で消費されずリーク — の2欠陥を閉塞。`blur` をジェスチャ境界とし `_sfbBlur` で「ドリフト済み (input プレビューで live が動いたが change 未発火)」エントリを1 style op として commit してからバッファ全消去 — カラーピッカー等の「プレビューのみ走り commit されない」派生収束欠陥も併せて解消。`_sfbFlush` は開始時に選択外 id の同 prop キーを破棄 (合成キー `id+p` の suffix プルーン、消費不能キーは残留させない)。capture の within-gesture スキップは維持 (focus→pointerdown→input 連鎖で before を汚さないため)
+
+## [1.7.987] - 2026-10-01
+
+### Fixed
+- held-key 共合体 第二波 (ADR-0961): `,`/`.`+⇧R 回転・⇧H/⇧V 反転・⌘⇧L ロック・⌘B/⌘I/⌘U/⌘⇧X テキストフラグ・⇧X スワップ・⌘G グループの長押しが押下毎に1 op を即時 commit していた残存経路を `_nug` へ接続 — セッションキーへ `dir` 接尾辞を追加して rotate/flip/lock の異種マージを防止、style/align/else マージに **net-zero 破棄** (lock→unlock や swap×2 は op 0 件で着地)、group マージは「最初の before + 最新 gid」。併せて `applyStyleToSelection` に no-change フィルタを追加し、数字キー長押し・同一 swatch 再クリックが op を一切産まない産出側閉塞に
+- テスト追随: `state.history` 直読3サイトへ `_nugEnd()`、doLock undo 対称性テストは各押下を独立 op 化 (仕様変更への正当な追随)
+
 ## [1.7.986] - 2026-10-01
 
 ### Fixed

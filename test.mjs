@@ -272,9 +272,9 @@ const checks = [
   ["snapshot carries rep marker + stale-snapshot skip (ADR-0617)", html.includes("rep:state._lastRep") && html.includes("clockNewer(state._lastRep,msg.rep))break;")],
   ["snapshot docName is LWW-gated via (ts,writer) order (ADR-0618/0699)", html.includes("nameTs:_nameTs,namePeer:_namePeer") && html.includes("_nameWin(msg.nameTs,_iS(msg.namePeer)?msg.namePeer:'')")],
   ["Net.init resets causal markers across rooms (ADR-0619/0699/0839)", html.includes("state.roomId&&state.roomId!==(roomId||DOC_KEY)){state._lastRep=null;_nameTs=0;_namePeer='';try{this.dc&&this.dc.close();this.rtc&&this.rtc.close()}catch(_){}}")],
-  ["move commit drops ids removed mid-gesture (ADR-0621)", html.includes("filter(id=>{const s=byId(id);return s&&_ul(s)})")],
+  ["move commit drops ids removed mid-gesture + restores members locked mid-gesture (ADR-0621/0965)", html.includes("_gRL(ptr.dragStartShapes);") && html.includes("const orig={};") && html.includes("_nugPush({op:'move',ids,dx,dy,orig})")],
   ["_sb drops dead ids at source + nudgeSelection parity (ADR-0623)", html.includes("_sb=()=>_selIds().map(byId).filter(Boolean)") && html.includes("unlockedSelectionIds(){return _selIds().filter(id=>{const s=byId(id);return s&&_ul(s)});}")],
-  ["_slimOp strips undo-only fields from wire ops (ADR-0625)", html.includes("const{origSel:_o2,moved:_m2,...rest}=op;") && html.includes("const{wc:_wc1,origSel:_o1,...r}=op;")],
+  ["_slimOp strips undo-only fields from wire ops (ADR-0625/0965)", html.includes("const{origSel:_o2,moved:_m2,orig:_o3,...rest}=op;") && html.includes("const{wc:_wc1,origSel:_o1,...r}=op;")],
   ["undo restamps op.clock fresh before the backward apply (ADR-0717)", html.includes("const _ut=nowTs();op.clock={peer:_pi(),seq:++state.seq,ts:_ut};")],
   ["undo-wire carries before for style/resize/align (ADR-0717)", html.includes("before:op.after,after:op.before}")],
   ["'clear' rides the wire as empty 'replace' + sender marker parity (ADR-0626)", html.includes("if(op.op==='clear')return{op:'replace',after:[],afterWc:{},clock:op.clock};") && html.includes("if(forward){_unB();if(op.clock)state._lastRep=op.clock;const wc0=state.wclock||{},dead=[],keep=[]")],
@@ -648,7 +648,7 @@ const checks = [
   ['service worker purges stale caches', html.includes("caches.keys()") && html.includes("k!==C")],
   // v1.6.20: fourth audit pass
   ['drawShape opacity uses nullish coalescing (opacity=0 invisible, not opaque)', html.includes('c.globalAlpha=_oP(s)??1')],
-  ['pointercancel restores in-progress resize/move shapes', html.includes("_dk('resize')&&ptr.resizeOrig")],
+  ['pointercancel restores in-progress resize/move shapes', html.includes("_dk('resize'))_gR2(ptr.resizeOrig)") && html.includes("_dk('move'))_gR1(ptr.dragStartShapes)")],
   ['frame label Escape removes blur listener before cancelling', html.includes("inp.removeEventListener('blur',commit)")],
   ['context menu items have role=menuitem (WCAG 4.1.2)', html.includes("_sa(b,'role','menuitem')")],
   ['context menu separators have role=separator', html.includes("_sa(s,'role','separator')")],
@@ -757,8 +757,8 @@ const checks = [
   // v1.7.582 (ADR-0554): presentation frame navigation drops deleted frames
   ['presentation _goto filters stale+off-page frames (ADR-0554/0677)', html.includes('_frames=_frames.map(f=>byId(f.id)).filter(f=>f&&_pgOk(f))')],
   // v1.7.584 (ADR-0556): blur on a remotely-deleted shape must not commit a phantom op
-  ['text editor blur guards remote-deleted shape (ADR-0556)', html.includes("if(!byId(s.id)){state.editing=null;_teTa=null;_rm(ta);_iv();return}")],
-  ['label editor commit guards remote-deleted shape (ADR-0557)', html.includes("if(!byId(hit.id)){_lblTa=null;_rm(inp);_iv();return}")],
+  ['text editor blur guards remote-deleted/locked shape (ADR-0556/0967)', html.includes("if(!byId(s.id)||_lk(s)){state.editing=null;_teTa=null;_rm(ta);_iv();return}")],
+  ['label editor commit guards remote-deleted/locked shape (ADR-0557/0967)', html.includes("if(!byId(hit.id)||_lk(hit)){_lblTa=null;_rm(inp);_iv();return}")],
   ['sticky chain guards remote-deleted source (ADR-0558)', html.includes("_lk(s)||!byId(s.id))return")],
   ['text overlay closes when edited shape removed/hidden/locked/off-page (ADR-0559/0569/0572/0574/0709)', html.includes("if(!s||_hd(s)||_lk(s)||!_pgOk(s)){_rm(_teTa);_teTa=null;state.editing=null;_iv();return}")],
   ['label overlay closes when labelled shape removed/hidden/locked/off-page (ADR-0559/0569/0572/0709)', html.includes("if(!_lt||_hd(_lt)||_lk(_lt)||!_pgOk(_lt)){_rm(_lblTa.inp);_lblTa=null;return}")],
@@ -960,7 +960,7 @@ const checks = [
   ['excalidraw import restores bindings to s.a/s.b (ADR-0223)', html.includes('_pu(_excBnd,[s,e])')&&html.includes('idOf.get(sb.elementId)')],
   ['drawio import keeps line-vs-arrow/curved/jump/start-head (ADR-0224)', html.includes("sty.endArrow==='none'")&&html.includes('s.hop=1')],
   ['drawio import note→sticky / swimlane→frame (ADR-0226)', html.includes("sty.shape==='note'){s=_smk('sticky'")&&html.includes("sty.shape==='swimlane')s=_smk('frame'")],
-  ['storage quota pressure warns proactively via estimate() (ADR-0227)', html.includes('navigator.storage.estimate')&&html.includes('this._quotaWarn()')&&html.includes("T('quotaWarn')")],
+  ['storage quota pressure warns proactively via estimate() (ADR-0227)', html.includes('nav.storage.estimate')&&html.includes('this._quotaWarn()')&&html.includes("T('quotaWarn')")],
   ['drawio import maps align + fontStyle bitmask (ADR-0228)', html.includes("sty.align==='center'||sty.align==='right'")&&html.includes('_fs&4)s.under=1')&&html.includes("'align='+s.align")&&html.includes("fontStyle='+_fs")],
   ['excalidraw import restores groupIds → groupId (ADR-0229)', html.includes("e.groupIds[0]")&&html.includes('s.groupId=e.groupIds')],
   ['excalidraw import maps fillStyle/roundness/align/arrowheads (ADR-0230)', html.includes("e.fillStyle==='hachure'")&&html.includes("e.strokeSharpness==='round')o.r=8")&&html.includes("e.endArrowhead===null)s.head='none'")&&html.includes("style==='none')return")],
@@ -1420,9 +1420,39 @@ const checks = [
   ['text-blur del: origSel captured and patched before and after Store.commit del',
     html.includes("const origSel=_selIds();\n        const connClears=computeConnClears(_sT([orig.id]));")&&
     html.includes("_cmt(delOp);\n        _keepSel(origSel);")],
-  // v1.7.36: flushErase must capture origSel before del commit and patch after
+  // v1.7.36/ADR-0964: flushErase must capture origSel before del commit and patch after
   ['flushErase del: origSel captured before commit and patched after (parity with doDelete)',
-    html.includes("const origSel=_selIds();\n  const op={op:'del',shapes:clone(_eraseBatch)};")],
+    html.includes("const origSel=_selIds();\n  const op={op:'del',shapes:clone(live)};")],
+  // ADR-0964 source pins: six single-shape commit gates + shared restore matrix
+  // wiring + the gresize/grot/flushErase member partitions.
+  ['ADR-0964: shared _gRst restore matrix wired into abortGesture and _cancelPointerGesture',
+    html.includes("const _gRst=()=>")&&
+    html.includes("function abortGesture(){\n  _gRst();")&&
+    html.includes("_gRst();   // ADR-0764/0964: shared orig-restore matrix")],
+  ['ADR-0964: six locked-gate commit sites (resize/rotate/cbend/ebend/way/lblpos)',
+    html.split("locked)_gRst();   // ADR-0964").length-1===6],
+  ['ADR-0964: gresize/grot restore+exclude locked members; flushErase partitions live members',
+    html.includes("_gRL(ptr.gOrig);_gRL(ptr.gAnc);")&&html.includes("const _gRL=M=>{if(M)for(const[id,o]of M){const s=byId(id);if(s&&s.locked){_geoR(s,o);_iv()}}};")&&
+    html.includes("filter(s=>s&&!s.locked).map(clone)")&&
+    html.includes("const live=_eraseBatch.filter(s=>!s.locked);")],
+  // ADR-0965 source pins: _nugLock partitions mid-run locked/missing members
+  // out of a pending op — restores run-start + filters every member list.
+  ['ADR-0965: _nugEnd partitions mid-run locked/missing members before the commit',
+    html.includes("_nugLock(o);")&&
+    html.includes("A.some(a=>a.id===id&&a.locked)")&&
+    html.includes("if(op.op==='move'){const o=op.orig[id];if(o)_geoR(s,o)}")&&
+    html.includes("if(c)s.frac=c.before")&&
+    html.includes("for(const k of['ids','before','after','changes'])if(op[k])op[k]=op[k].filter(m=>!gone.has(m.id||m));")],
+  // ADR-0966 source pins: pending-op × mid-run convergence — every later commit
+  // funnel flushes first; the own-lock exemption reads the LIVE flag, not the
+  // op's intent, so unlock (null) skips and own-lock (after.locked) exempts.
+  ['ADR-0966: pending-op flush coverage — _nugEnd at every later commit funnel',
+    html.includes("_nugEnd();   // ADR-0958: pending nudge predates any later commit")&&
+    html.includes("_nugEnd();   // ADR-0960: pending nudge/zorder predates any later commit")&&
+    html.includes("_nugEnd();   // ADR-0957: commit an in-flight nudge so undo lands")&&
+    html.includes("function _nugEnd(){const n=_nug;_nug=null;if(n){_cT(n.t);const o=n.op;_nugLock(o);")&&
+    html.includes("if(!s.locked||A.some(a=>a.id===id&&a.locked))continue;   // own-lock")&&
+    html.includes("s.locked=lk||null;")],
   // v1.7.38: _apply('upd', forward) must guard sh.locked (parity with move forward)
   ['_apply upd: if(sh.locked)break guards locked shapes in BOTH directions',
     html.includes("const sh=byId(op.id);if(!sh)break;\n        // ADR-0712: locked gate in BOTH directions")],
@@ -1446,7 +1476,7 @@ const checks = [
     html.includes("if(sh&&!sh.locked)delete sh.groupId}")],
   // v1.7.37: doGroup/_apply group backward must carry and restore origSel
   ['doGroup: origSel patched onto history entry after _recordCommitted',
-    html.includes("_rcOp({op:'group',ids,gid,before});")],
+    html.includes("_nugPush({op:'group',ids,gid,before});")],
   ['_apply group backward: if(op.origSel) restores selection',
     html.includes("_selR(op);}\n        break;}\n      case 'ungroup':")],
   // v1.7.37: doUngroup/_apply ungroup backward must carry and restore origSel
@@ -1465,7 +1495,7 @@ const checks = [
     html.includes("_cOp({op:'add',shape:s});\n  openTextEditor")],
   // v1.7.43→1.7.986: _zCommit captures origSel; the op commits through the _nug coalescer (ADR-0960)
   ['_zCommit: origSel captured before zorder commit and patched onto history entry',
-    html.includes("_nugPush({op:'zorder',changes});")&&html.includes("Store._recordCommitted(n.op);_keepSel(n.sel)")],
+    html.includes("_nugPush({op:'zorder',changes});")&&html.includes("Store._recordCommitted(o);_keepSel(n.sel)")],
   // v1.7.44→1.7.629: MAX_OP_SHAPES == board ceiling (ADR-0602: 500-cap silently dropped bulk ops >500 shapes)
   ['MAX_OP_SHAPES equals SHARE_MAX_SHAPES (ops may address the whole board)',
     html.includes("const MAX_OP_SHAPES=SHARE_MAX_SHAPES;")],
@@ -1480,7 +1510,7 @@ const checks = [
     html.includes("if(!forward)_selR(op);\n        break;}\n      case 'style':")],
   // v1.7.43: keyboard resize (Alt+Arrow) captures origSel around resize _recordCommitted
   ['keyboard resize (Alt+Arrow): origSel captured before resize commit',
-    html.includes("_nugPush({op:'resize',before,after});")&&html.includes("Store._recordCommitted(n.op);_keepSel(n.sel)")],
+    html.includes("_nugPush({op:'resize',before,after});")&&html.includes("Store._recordCommitted(o);_keepSel(n.sel)")],
   // v1.7.43: drag-resize upd captures origSel (mirrors endSelect/nudgeSelection pattern)
   ['drag-resize: origSel captured before upd _recordCommitted (ptr.resizeOrig path)',
     html.includes("_rcOp({op:'upd',id:rsh.id,before,after});")],
@@ -1731,7 +1761,7 @@ try {
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, cycleStickyColor, wrapInFrame, doPasteAt, doPasteInPlace, selectSamePaint, selectSameType, showAllShapes, _stickyChain, _fitIfEmptyView, toggleCurve, toggleLineArrow, toggleStickyText, selectFrameContents, selectInverse, unlockAll, exportViewportPNG, cycleArrowHead, _connPathPts, _pathAt, _pathNearestT, snapSelToGrid, importBoardText, copyBoardJSON, importDrawioText, importSvgText, importExcText, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
              _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, _nugEnd, _frameOf, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _edgePanTick, _gresizeDrag, _gresizeCommit, _mapToBox, _rotPtsAbout, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
+             _sfbCapture, _sfbFlush, _sbf, _sfbBlur, MAX_HISTORY, _now, NET_PRESENCE_TIMEOUT, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, _nugEnd, _frameOf, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _edgePanTick, _gresizeDrag, _gresizeCommit, _mapToBox, _rotPtsAbout, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa: () => _teTa, zoomAt, reverseConn, unbindSelection,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
              exportPNG, copyPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
@@ -1760,7 +1790,7 @@ try {
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, cycleStickyColor, wrapInFrame, doPasteAt, doPasteInPlace, selectSamePaint, selectSameType, showAllShapes, _stickyChain, _fitIfEmptyView, toggleCurve, toggleLineArrow, toggleStickyText, selectFrameContents, selectInverse, unlockAll, exportViewportPNG, cycleArrowHead, _connPathPts, _pathAt, _pathNearestT, snapSelToGrid, importBoardText, copyBoardJSON, importDrawioText, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
           _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, _nugEnd, _frameOf, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _edgePanTick, _gresizeDrag, _gresizeCommit, _mapToBox, _rotPtsAbout, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
+          _sfbCapture, _sfbFlush, _sbf, _sfbBlur, MAX_HISTORY, _now, NET_PRESENCE_TIMEOUT, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, _nugEnd, _frameOf, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _edgePanTick, _gresizeDrag, _gresizeCommit, _mapToBox, _rotPtsAbout, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa, zoomAt, reverseConn, unbindSelection,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
           exportPNG, copyPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
@@ -2358,6 +2388,179 @@ try {
     Store.commit({op:'upd',id:a.id,before:{x:0},after:{x:1}});
     assert.deepStrictEqual(state.history.slice(-2).map(o=>o.op),['zorder','upd'],'Store.commit flushes the pending zorder first');
     console.log('  ✓ ADR-0960: [ ]/⌘⇧,/. coalesce + Store.commit flush ordering (8 asserts)');
+  }
+  // ADR-0961: the same held-key flood ran through six more paths — rotate (,/.+⇧R),
+  // flip (⇧H/⇧V), lock (⌘⇧L), group (⌘G), text flags (⌘B/⌘I/⌘U/⌘⇧X), swap (⇧X).
+  // The session key carries the op's dir so rotate/flip/lock never cross-merge,
+  // toggles that net out commit NOTHING, and applyStyleToSelection filters
+  // no-change shapes so held digit keys emit no noise ops at all.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const r=Shape.make('rect',{x:0,y:0,w:20,h:20});
+    Store.commit({op:'add',shape:r});state.history.length=0;state.histIdx=-1;
+    state.selection=new Set([r.id]);
+    doRotate(15);doRotate(15);doRotate(15);doRotate(90);   // held ,/.+⇧R run — same dir session
+    _nugEnd();
+    const al=state.history.filter(o=>o.op==='align');
+    assert.strictEqual(al.length,1,'ADR-0961: held rotate presses fold into ONE align op');
+    assert.strictEqual(al[0].dir,'rotate','rotate session keyed on dir');
+    state.selection=new Set([r.id]);
+    doFlip('h');_nugEnd();
+    assert.strictEqual(state.history.filter(o=>o.op==='align').length,2,'ADR-0961: flip does not merge into the rotate op');
+    state.selection=new Set([r.id]);
+    doLock();doLock();_nugEnd();
+    assert.strictEqual(state.history.filter(o=>o.op==='align').length,2,'ADR-0961: a lock→unlock run nets out — no op commits');
+    assert.strictEqual(byId(r.id).locked,null,'live state still toggled twice');
+    const g1=Shape.make('rect',{x:60,y:0,w:20,h:20}),g2=Shape.make('rect',{x:90,y:0,w:20,h:20});
+    Store.commit({op:'addMany',shapes:[g1,g2]});state.history.length=0;state.histIdx=-1;
+    state.selection=new Set([g1.id,g2.id]);
+    doGroup();doGroup();_nugEnd();
+    const go=state.history.filter(o=>o.op==='group');
+    assert.strictEqual(go.length,1,'ADR-0961: held ⌘G folds into ONE group op');
+    assert.strictEqual(go[0].gid,byId(g1.id).groupId,'merged gid matches the live one');
+    assert.ok(!go[0].before.find(b=>b.id===g1.id).groupId,'before keeps the first press state');
+    state.selection=new Set([r.id]);
+    applyStyleToSelection({opacity:.5});applyStyleToSelection({opacity:.5});
+    assert.strictEqual(state.history.filter(o=>o.op==='style').length,1,'ADR-0961: repeated digit opacity emits no second op');
+    const T=Shape.make('text',{x:0,y:60,w:100,h:20,text:'x'});
+    Store.commit({op:'add',shape:T});state.history.length=0;state.histIdx=-1;
+    state.selection=new Set([T.id]);
+    toggleTextFlag('bold');toggleTextFlag('bold');_nugEnd();
+    assert.strictEqual(state.history.filter(o=>o.op==='style').length,0,'ADR-0961: ⌘B on+off nets out — no style op commits');
+    console.log('  ✓ ADR-0961: held-key coalescing wave-2 + net-zero discard (10 asserts)');
+  }
+  // ADR-0962: the slider before-buffer kept entries forever — a focus/press
+  // capture without a change left stale values that a later gesture reused as
+  // the op's undo-before. _sfbBlur commits preview drift as one op at the
+  // gesture boundary (blur), then clears; _sfbFlush prunes keys for ids that
+  // left the selection.
+  {
+    const s1=Shape.make('rect',{x:0,y:0,w:20,h:20,size:2});
+    Store.commit({op:'add',shape:s1});state.history.length=0;state.histIdx=-1;
+    state.selection=new Set([s1.id]);
+    _sfbCapture('size');                 // focus — records the live value
+    _sfbBlur('size');                    // blur — quiescent entry cleared
+    assert.ok(!(s1.id+'size' in _sbf),'ADR-0962: blur clears a quiescent capture');
+    byId(s1.id).size=9;                  // shape mutates between gestures
+    _sfbCapture('size');                 // next gesture must take the live value
+    _sfbFlush('size',12);
+    const sop=state.history.filter(o=>o.op==='style').pop();
+    assert.strictEqual(sop.before[0].size,9,'ADR-0962: gesture before is the live value, not a stale capture');
+    // input-drift without change commits as one op at the gesture boundary
+    state.selection=new Set([s1.id]);
+    _sfbCapture('size');
+    byId(s1.id).size=7;                  // input-event preview mutation, change never fired
+    const hlen=state.history.length;
+    _sfbBlur('size');
+    const sop2=state.history.filter(o=>o.op==='style').pop();
+    assert.strictEqual(state.history.length,hlen+1,'ADR-0962: blur commits preview drift as one op');
+    assert.strictEqual(sop2.before[0].size,9,'drift op before is the gesture-start value');
+    assert.strictEqual(sop2.after[0].size,7,'drift op after is the live value');
+    assert.ok(!(s1.id+'size' in _sbf),'buffer cleared after the boundary flush');
+    _sbf[s1.id+'dash']=1;state.selection=new Set();
+    _sfbFlush('dash',2);
+    assert.ok(!(s1.id+'dash' in _sbf),'ADR-0962: keys for deselected ids are pruned on flush');
+    console.log('  ✓ ADR-0962: slider before-buffer boundary flush + prune (7 asserts)');
+  }
+  // ADR-0963: lifecycle×boundedness audit — MAX_HISTORY bound + histIdx
+  // integrity, _nug's origSel is an id-array snapshot (later selection edits
+  // can't rewrite a pending op's restore set), presence reap drops stale BC
+  // rows but keeps lifecycle-managed rtc: rows.
+  {
+    // history cap: pushing past MAX_HISTORY shifts the oldest and keeps the
+    // index on the freshly committed op
+    const s9=Shape.make('rect',{x:0,y:0,w:5,h:5});
+    state.history.length=MAX_HISTORY;state.histIdx=MAX_HISTORY-1;
+    Store.commit({op:'add',shape:s9});
+    assert.strictEqual(state.history.length,MAX_HISTORY,'ADR-0963: history capped at MAX_HISTORY');
+    assert.strictEqual(state.histIdx,MAX_HISTORY-1,'histIdx still on the tip after a cap shift');
+    // _nug.sel snapshot: a selection change must not rewrite a pending op's origSel
+    state.history.length=0;state.histIdx=-1;
+    const sA=Shape.make('rect',{x:0,y:0,w:10,h:10}),sB=Shape.make('rect',{x:30,y:0,w:10,h:10});
+    Store.commit({op:'add',shape:sA});Store.commit({op:'add',shape:sB});
+    state.selection=new Set([sA.id]);
+    nudgeSelection(1,0);                       // pending nudge captures origSel=[sA]
+    state.selection=new Set([sB.id]);          // selection changes before the flush
+    _nugEnd();
+    assert.deepStrictEqual(state.history[state.histIdx].origSel,[sA.id],'ADR-0963: pending op origSel is the capture-time set');
+    // presence reap: stale BC rows drop; rtc: rows are lifecycle-managed
+    state.peers.set('bcpeer',{color:0,lastSeen:_now()-NET_PRESENCE_TIMEOUT-1});
+    state.peers.set('rtc:x',{color:0,lastSeen:_now()-NET_PRESENCE_TIMEOUT-1});
+    Net._reapPeers();
+    assert.ok(!state.peers.has('bcpeer'),'stale BC peer reaped');
+    assert.ok(state.peers.has('rtc:x'),'rtc: peer kept — lifecycle-managed via onclose');
+    console.log('  ✓ ADR-0963: lifecycle×boundedness audit pins (5 asserts)');
+  }
+  // ADR-0964: a remote lock landing mid-gesture — the commit gate restores the
+  // orig instead of committing (peers' _apply drops writes to locked shapes,
+  // so committing the drift would diverge one way).
+  {
+    const fireC=(t,x,y,o={})=>{
+      const ev={pointerId:1,pointerType:'mouse',button:0,isPrimary:true,
+        clientX:x,clientY:y,offsetX:x,offsetY:y,
+        ctrlKey:false,metaKey:false,shiftKey:false,altKey:false,
+        preventDefault(){},stopPropagation(){},...o};
+      for(const f of fakeWin._L[t+'|c']||[])f(ev);
+      for(const f of canvas._L[t+'|c']||[])f(ev);
+      for(const f of canvas._L[t]||[])f(ev);
+      for(const f of fakeWin._L[t]||[])f(ev);
+      return ev;
+    };
+    // real-sequence resize: PD on the se handle arms, PM mutates, lock lands, PU restores
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.viewport={x:0,y:0,zoom:1};state.tool='select';ptr.down=false;ptr.dragKind=null;
+    const Rk=Shape.make('rect',{x:0,y:0,w:60,h:40});
+    Store.commit({op:'add',shape:Rk});
+    const lRk=byId(Rk.id);                             // committed clone — Rk is the source object
+    state.selection=new Set([Rk.id]);
+    const seH=getHandles(lRk).find(h=>h.id==='se');
+    fireC('pointerdown',seH.x,seH.y);
+    assert.strictEqual(ptr.dragKind,'resize','ADR-0964: PD on se handle arms resize');
+    fireC('pointermove',seH.x+30,seH.y+30);
+    assert.ok(lRk.w>60,'PM resized the shape');
+    lRk.locked=1;                                      // remote lock lands mid-gesture
+    const histLen0=state.history.length;
+    fireC('pointerup',seH.x+30,seH.y+30);
+    assert.strictEqual(lRk.w,60,'ADR-0964: locked resize target restored to orig, not committed');
+    assert.strictEqual(state.history.length,histLen0,'no op committed for a locked target');
+    // gresize partition: locked member restores + excluded; unlocked commits alone
+    const s1=Shape.make('rect',{x:0,y:0,w:10,h:10}),s2=Shape.make('rect',{x:20,y:0,w:10,h:10});
+    Store.commit({op:'add',shape:s1});Store.commit({op:'add',shape:s2});
+    const l1=byId(s1.id),l2=byId(s2.id);
+    ptr.gOrig=new Map([[s1.id,JSON.parse(JSON.stringify(l1))],[s2.id,JSON.parse(JSON.stringify(l2))]]);
+    l1.w=40;l2.w=40;l2.locked=1;                       // both mapped during PM; l2 locked mid-gesture
+    _gresizeCommit();
+    assert.strictEqual(l2.w,10,'ADR-0964: locked gresize member restored');
+    const gTip=state.history[state.histIdx];
+    assert.strictEqual(gTip.op,'align');assert.strictEqual(gTip.after.length,1,'locked member excluded from the op');
+    ptr.gOrig=null;
+    // grot: locked gAnc connector excluded from the op and restored
+    const a1=Shape.make('rect',{x:0,y:0,w:10,h:10}),c1=Shape.make('arrow',{x1:0,y1:0,x2:20,y2:0,a:a1.id,aF:1});
+    Store.commit({op:'add',shape:a1});Store.commit({op:'add',shape:c1});
+    const la1=byId(a1.id),lc1=byId(c1.id);
+    ptr.gOrig=new Map([[a1.id,JSON.parse(JSON.stringify(la1))]]);
+    ptr.gAnc=new Map([[c1.id,JSON.parse(JSON.stringify(lc1))]]);
+    la1.w=30;lc1.x2=50;lc1.locked=1;
+    _grotCommit();
+    assert.strictEqual(lc1.x2,20,'ADR-0964: locked gAnc connector restored to orig');
+    const gTip2=state.history[state.histIdx];
+    assert.strictEqual(gTip2.after.length,1,'locked connector excluded from the op');
+    ptr.gOrig=null;ptr.gAnc=null;
+    // flushErase: a batch clone that got locked mid-stroke survives the del op
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+    const sE=Shape.make('rect',{x:0,y:0,w:5,h:5}),sF=Shape.make('rect',{x:9,y:0,w:5,h:5});
+    Store.commit({op:'add',shape:sE});Store.commit({op:'add',shape:sF});
+    const cE=JSON.parse(JSON.stringify(sE)),cF=JSON.parse(JSON.stringify(sF));
+    cF.locked=1;                                       // remote lock lands on the batch clone (ADR-0952)
+    _pushEraseBatch(cE);_pushEraseBatch(cF);
+    state.shapes.splice(state.shapes.findIndex(s=>s.id===sE.id),1);
+    state.shapes.splice(state.shapes.findIndex(s=>s.id===sF.id),1);
+    _invalidateGrid();
+    flushErase();
+    assert.ok(byId(sF.id),'ADR-0964: locked erase-batch member survives the del');
+    assert.ok(!byId(sE.id),'unlocked erase-batch member deleted');
+    assert.strictEqual(state.history[state.histIdx].shapes.length,1,'del op carries only the live member');
+    console.log('  ✓ ADR-0964: mid-gesture lock restore/commit-gate pins (12 asserts)');
   }
   // ADR-0625: wc/origSel/moved are undo-domain — _slimOp strips them from the
   // wire copy while preserving the fields peers actually consume.
@@ -6139,6 +6342,7 @@ try {
     state.selection=new Set([ln.id]);
     const hlen=state.history.length;
     doRotate(90);   // bbox {−1,−1,102,2} → centre (50,0): (x,y)→(50−y, x−50)
+    _nugEnd();   // ADR-0961: coalesced align op commits on flush
     assert.strictEqual(state.history.length,hlen+1,'doRotate commits an align op for a line');
     const rl=state.shapes.find(s=>s.id===ln.id);
     assert.ok(Math.abs(rl.x1-50)<1e-6&&Math.abs(rl.y1-(-50))<1e-6&&Math.abs(rl.x2-50)<1e-6&&Math.abs(rl.y2-50)<1e-6,
@@ -9577,9 +9781,11 @@ try {
     // lock
     doLock();
     assert.ok(live().locked===true,'lock: doLock() sets locked=true');
+    _nugEnd();   // ADR-0961: make this press its own op (a held key coalesces)
     // toggle → unlock
     doLock();
     assert.ok(live().locked===null,'lock: second doLock() clears locked to null');
+    _nugEnd();   // ADR-0961
     // undo unlock → locked again
     Store.undo();
     assert.ok(live().locked===true,'lock: undo of unlock restores locked=true');
@@ -10632,8 +10838,134 @@ try {
     const ugcLive=state.shapes.find(s=>s.id===UGC.id);
     assert.ok(!ugaLive.groupId,'doUngroup locked: unlocked shape A is ungrouped (no groupId)');
     assert.ok(!ugbLive.groupId,'doUngroup locked: unlocked shape B is ungrouped (no groupId)');
-    assert.ok(ugcLive.groupId,'doUngroup locked: locked shape C keeps its groupId');
-    console.log('  ✓ doUngroup: locked shapes excluded (groupId preserved)');
+    // ADR-0965: C was locked mid-run while its group op was still pending — peers
+    // gate the member write, so the converging outcome restores run-start (ungrouped)
+    // and drops C from the committed op. The doUngroup !_lk skip lands the same state.
+    assert.ok(!ugcLive.groupId,'doUngroup+0965: member locked mid-run restores run-start (ungrouped, peers never saw it grouped)');
+    console.log('  ✓ doUngroup: locked member converges via pending-op restore (ADR-0965)');
+  }
+
+  // ADR-0965: a member locked mid-run while its pending _nug op lives — peers
+  // gate the member write, so the flush restores run-start and drops it.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const NA=Shape.make('rect',{x:100,y:100,w:50,h:50});
+    const NB=Shape.make('rect',{x:200,y:100,w:50,h:50});
+    Store.commit({op:'add',shape:NA});Store.commit({op:'add',shape:NB});
+    state.selection=new Set([NA.id,NB.id]);
+    nudgeSelection(5,0);                 // pending move op; live-mutated x
+    byId(NA.id).locked=true;             // a remote lock lands mid-run
+    _nugEnd();
+    assert.strictEqual(byId(NA.id).x,100,'_nugLock: locked member restores run-start x');
+    assert.strictEqual(byId(NB.id).x,205,'_nugLock: unlocked member keeps the nudge');
+    assert.deepStrictEqual(state.history[state.histIdx].ids,[NB.id],'_nugLock: locked member dropped from committed ids');
+    console.log('  ✓ _nugLock: mid-run lock restores + drops the member (move)');
+  }
+  // Missing member + all-gone flush: dropped from the op; nothing commits
+  // when every member list empties (the _keepSel-on-empty crash path).
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const NA=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    const NB=Shape.make('rect',{x:60,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:NA});Store.commit({op:'add',shape:NB});
+    state.selection=new Set([NA.id,NB.id]);
+    nudgeSelection(5,0);
+    state.shapes=state.shapes.filter(s=>s.id!==NA.id);_invalidateGrid();   // member deleted mid-run
+    _nugEnd();
+    assert.deepStrictEqual(state.history[state.histIdx].ids,[NB.id],'_nugLock: missing member dropped from committed ids');
+    state.selection=new Set([NB.id]);
+    nudgeSelection(3,0);state.shapes=[];_invalidateGrid();
+    const hb=state.history.length;
+    _nugEnd();
+    assert.strictEqual(state.history.length,hb,'_nugLock: all-gone flush commits nothing');
+    console.log('  ✓ _nugLock: missing/all-gone members (no commit, no crash)');
+  }
+  // zorder member locked mid-run — frac restored to the change's `before`.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const NA=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    const NB=Shape.make('rect',{x:60,y:0,w:50,h:50});
+    const NC=Shape.make('rect',{x:120,y:0,w:50,h:50});
+    const ND=Shape.make('rect',{x:180,y:0,w:50,h:50});
+    Store.commit({op:'addMany',shapes:[NA,NB,NC,ND]});
+    const f0=byId(NC.id).frac;
+    state.selection=new Set([NA.id,NC.id]);   // non-adjacent: both members move
+    doBringForward();                    // pending {op:'zorder',changes}
+    byId(NC.id).locked=true;             // a remote lock lands mid-run
+    _nugEnd();
+    assert.strictEqual(byId(NC.id).frac,f0,'_nugLock: locked zorder member restores run-start frac');
+    const ch=state.history[state.histIdx].changes;
+    assert.ok(ch&&!ch.some(c=>c.id===NC.id),'_nugLock: locked member dropped from zorder changes');
+    console.log('  ✓ _nugLock: mid-run lock restores + drops the member (zorder)');
+  }
+  // ADR-0966: own-lock exemption direction — a member the pending op UNLOCKED
+  // (live s.locked=false at flush) must not be partitioned as remote-locked,
+  // and a member the op locked that then vanished mid-run drops cleanly.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const LA=Shape.make('rect',{x:0,y:0,w:50,h:50});LA.locked=true;
+    Store.commit({op:'add',shape:LA});
+    state.selection=new Set([LA.id]);
+    doLock();                          // live-unlocks LA; pending op carries locked:true→false
+    _nugEnd();
+    assert.ok(!byId(LA.id).locked,'_nugLock exemption: own-unlock survives the partition (stays unlocked)');
+    const lop=state.history[state.histIdx];
+    assert.ok(lop.after[0].locked==null,'own-unlock commits after.locked=null');
+    // same op, but the locked member is deleted mid-run → dropped, no commit
+    const LB=Shape.make('rect',{x:60,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:LB});
+    state.selection=new Set([LB.id]);
+    doLock();                          // live-locks LB; pending {before:unlocked,after:locked}
+    state.shapes=state.shapes.filter(s=>s.id!==LB.id);_invalidateGrid();   // remote del lands mid-run
+    const hb2=state.history.length;
+    _nugEnd();
+    assert.strictEqual(state.history.length,hb2,'_nugLock: gone lock-member commits nothing');
+    console.log('  ✓ _nugLock: own-lock exemption direction (unlock kept, gone lock-member dropped)');
+  }
+  // ADR-0967: remote lock mid-edit — the blur/commit handlers must fold like
+  // remote del. Peers gate 'upd'/'del' on locked, so a commit here diverges
+  // one-way; the follow-loop's fold races the same frame — the handler is the gate.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const TE=Shape.make('text',{x:0,y:0,w:50,h:20,text:'orig'});
+    Store.commit({op:'add',shape:TE});
+    const kids=[];const _ceA=fakeDoc.createElement;
+    fakeDoc.createElement=tag=>{const el=_ceA(tag);el._L={};el.addEventListener=(t,f)=>{(el._L[t]||=[]).push(f)};el.blur=()=>{(el._L.blur||[]).forEach(f=>f())};return el};
+    const _abA=fakeDoc.body.appendChild;fakeDoc.body.appendChild=el=>{kids.push(el)};
+    try{
+      openTextEditor(TE,false);
+      const ta=kids[kids.length-1];ta.value='typed newer text';
+      const h0=state.history.length;
+      byId(TE.id).locked=true;                       // remote lock lands mid-edit
+      ta.blur();
+      assert.strictEqual(state.history.length,h0,'mid-edit lock: text blur commits nothing');
+      assert.strictEqual(byId(TE.id).text,'orig','mid-edit lock: live shape text untouched');
+      assert.strictEqual(state.editing,null,'mid-edit lock: editing cleared on fold');
+      const TE2=Shape.make('text',{x:0,y:30,w:50,h:20,text:'a'});   // unlocked control
+      Store.commit({op:'add',shape:TE2});
+      openTextEditor(TE2,false);
+      const ta2=kids[kids.length-1];ta2.value='b';
+      const h1=state.history.length;
+      ta2.blur();
+      assert.ok(state.history.length>h1&&byId(TE2.id).text==='b','unlocked control: blur commits the upd');
+    }finally{fakeDoc.createElement=_ceA;fakeDoc.body.appendChild=_abA;}
+    const LB=Shape.make('rect',{x:0,y:60,w:50,h:40,label:'l0'});
+    Store.commit({op:'add',shape:LB});
+    state.selection=new Set([LB.id]);
+    const kids2=[];const _ceB=fakeDoc.createElement;
+    fakeDoc.createElement=tag=>{const el=_ceB(tag);el._L={};el.addEventListener=(t,f)=>{(el._L[t]||=[]).push(f)};el.blur=()=>{(el._L.blur||[]).forEach(f=>f())};return el};
+    const _abB=fakeDoc.body.appendChild;fakeDoc.body.appendChild=el=>{kids2.push(el)};
+    try{
+      editSelectedShapeKbd();                        // opens the label editor
+      const inp=kids2[kids2.length-1];inp.value='l1';
+      const h2=state.history.length;
+      byId(LB.id).locked=true;                       // remote lock lands mid-edit
+      inp.blur();
+      assert.strictEqual(state.history.length,h2,'mid-edit lock: label commit folds');
+      assert.strictEqual(byId(LB.id).label,'l0','mid-edit lock: label untouched');
+    }finally{fakeDoc.createElement=_ceB;fakeDoc.body.appendChild=_abB;}
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    console.log('  ✓ mid-edit remote lock: text/label blur commits fold, controls pass (ADR-0967)');
   }
 
   // v1.7.13b: doDuplicate must skip locked shapes (parity with nudgeSelection/doDelete).
@@ -11725,7 +12057,9 @@ try {
     state.shapes.push(lb);
     state.selection=new Set([lb.id]);
     doLock();   // lock: locked=true
+    _nugEnd();   // ADR-0961: each press is its own op when not coalesced
     doLock();   // unlock: locked=null
+    _nugEnd();   // ADR-0961
     Store.undo(); // undo unlock → re-locks shape
     assert.strictEqual(state.shapes.find(s=>s.id===lb.id).locked,true,
       'v1.7.41b setup: undo of unlock re-locks shape');
@@ -15729,6 +16063,13 @@ pass += 4; // ADR-0957 held-key nudge coalescing pins
 pass += 1; // ADR-0958 commit-order flush pin
 pass += 9; // ADR-0959 tab-hide/close nudge flush pins
 pass += 8; // ADR-0960 zorder/style coalescing + commit-head flush pins
+pass += 10; // ADR-0961 held-key coalescing wave-2 + net-zero discard pins
+pass += 7; // ADR-0962 slider before-buffer boundary-flush + prune pins
+pass += 5; // ADR-0963 lifecycle×boundedness audit pins
+pass += 8; // ADR-0965 mid-run lock/missing member partition (3 blocks: 7 asserts + 1 pin)
+pass += 5; // ADR-0966 pending-op×mid-run audit pins + own-lock exemption block
+pass += 6; // ADR-0967 mid-edit remote-lock blur/commit fold (text+label)
+pass += 15; // ADR-0964 mid-gesture lock restore/commit-gate pins
 pass += 7; // ADR-0943 second-pointer abort pins
 pass += 8; // ADR-0945 mid-gesture overlay-open cancel pins
 pass += 8; // ADR-0948 mid-gesture button-path cancel pins
