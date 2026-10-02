@@ -1,3 +1,43 @@
+## [1.8.004] - 2026-10-01
+
+### Docs / Test
+- `sortZ` 全順序性 × 反復順序収束監査が clean 完走 (ADR-0978): comparator は frac (base62 文字列辞書順) → id tie-break の strict total order で 0 は同一 id のみ (0790 dedupe で不成立)、keyless 図形は sort 前に stamp 済み、`z` NaN は `_cleanVal` で wire 拒否、keyBetween の alphabet 外文字 + prefix 尽き guard で終端。`connClears`/`group`/`del` 等の Set/Map 反復から生まれる op 配列は per-id 冪等で順序に意味を持たない。実害なし。behavioural ピン4 assert (同 frac→id 順・逆入力順同結果・legacy z-seed stamp・出力が comparator 順を遵守)
+
+## [1.8.003] - 2026-10-01
+
+### Docs / Test
+- プロトタイプ汚染 (proto-key) 監査が clean 完走 (ADR-0977): `JSON.parse` が `'__proto__'` を own enumerable data prop として生成するため、`Object.assign`/`for..in` 書き込みが plain-proto ターゲットの `__proto__` setter を叩き得る全経路を走査 — patch 系は `validPatch`→`_cleanVal` (任意深度 ≤8 で `__proto__`/`constructor`/`prototype` own key 拒否) gated、shape 系は `validShape` 経由、clock-map 書込は `_wM()` null-proto バケット (0788) + clock-merge ループの明示スキップ (8291)、id/groupId ストアは 0975 で null-proto 化済み、spread/`Shape.make` は CreateDataProperty で setter 不発。実害なし。behavioural ピン6 assert (JSON.parse own 化/validShape top+nested 拒否/鍛造 upd `_onRecv` 棄却/prototype untouched/legit upd 適用)
+
+## [1.8.002] - 2026-10-01
+
+### Fixed
+- `connEnds` が結合先図形の bbox を `_bb(a)` で解決する際、結合先が conn 自身または conn↔conn 循環だと `_cE`→`byId`→`_bb`→`_cE` の無限再帰で RangeError (stack overflow) となり、毎フレーム `_dS` で巻き戻し負荷＋図形非描画＋ヒットテスト/エクスポート不安定の DoS となる実害を閉塞 (ADR-0976): `_ceD` 再帰深度カウンタ (cap 15) + `s.a===s.id` 自己結合スキップで、循環は raw 端点 (x1/y1/x2/y2) へ縮退 — remote `add`/patch や import で `a:'self'` を鍛造可能だった経路を遮断。canvas 数値ドメイン監査も併走 clean (roundRect は `_max(0,_min(r,w/2,h/2))` 自衛、`_penR` は taper×size/2 で非負、ellipse `_abs`、setLineDash は `dashArr` マップ経由のみ)。behavioural ピン4件 (循環停止/自己結合 raw fallback/正当結合の contour 解決/深度カウンタ復帰)
+
+## [1.8.001] - 2026-10-01
+
+### Fixed
+- JS 予約名キー (`'__proto__'`/`'constructor'`/`'toString'` 等) による素 `{}` ストア汚染3実害+1整合を null-proto 化で閉塞 (ADR-0975): ①`excScene` の `gids` (id-keyed) が `id='__proto__'` で `Object.prototype` を返し `.push` で excalidraw エクスポートが TypeError クラッシュ、②`_dioCells` の `_gbx` (groupId-keyed) が `groupId='__proto__'` で **`Object.prototype.x` へ書込** — 全プロトタイプ不在 `.x` が NaN 化する静かな腐敗、③`_undoWire` の `reg` が同 groupId で undo 自体が TypeError クラッシュ (リモート 'group' gid=`'__proto__'` は `_idOK` で正当通過するため remote-reachable)、④`_stampWrites` の zorder バケットだけが素 `{}` で proto 読み取り窓を残す不整合を `_wM()` 統一。id-keyed 素 `{}` を網羅監査 — `bmap`/`bb` は `.groupId` 単一読みで benign、`_sbf`/`files` は prefix で不一致、`peers`/`_img*`/`_grpMap` は Map、`wclock` は 0788 済み — 残面なし。behavioural ピン4件 (excScene 不投げ/`Object.prototype` untouched/`_undoWire` 不投げ/zorder バケット null-proto)
+
+## [1.8.000] - 2026-10-01
+
+### Docs / Test
+- 全置換スワップ (`'replace'`) の収束対称性 × バックアップスロット監査が clean 完走 (ADR-0974): ローカル `_repC` swap 4入口が同一形 (`_rs`→wclock wipe→`_repC`)、`_recordCommitted` (墓標 `_wD`+墓標保全 `_wTb`+`_bT`) と remote `_apply` (keep `_bN` スキャン+`wc0` 復元+墓標ループ) の再刻印集合が対称 (`_stampWrites` は replace を `_lwwOp` 外で prop 時計非対称なし)。破壊的入口 5系統 (doClearAll 両分岐/importBoard/importFromHash/applyRemote 'replace'/restoreBackup=消費側) が saveBackup でカバー済み。ブート順序は restore→Net.init で broadcast 前でも墓標 commit 済みのため snapshot heal で収束。behavioural ピン2ブロック9 assert (remote-replace→saveBackup guard、newer-born keep 存続+墓標)
+
+## [1.7.999] - 2026-10-01
+
+### Fixed
+- dirty 追跡監査で実害: `_ps()` (save 予約) のみで `state.dirty` を刻まない変異サイトは `flushIfHidden`/`beforeunload` の `_dt()` ゲートをすり抜け、タブの hide/kill (500ms debounce 未発射) で無通知消失していた (ADR-0973): `switchPage` の curPg・リモート 'name' 改名・`_mergeSnapshotOp` 存在時計マージ・`_applySnapshot` 全盤採用・docName `_CH` ・share-hash import が該当。『snapshot』 union-heal (`state.pages`/`_lastRep`/page名 nts-LWW/`_pgHealS` pg 修復) は `_ps()` すら無く shape merge が採用しない限り永続化されなかった。`Persist.schedule()` 先頭に `_md(!0)` (保存予約=未保存状態の同値化、全サイト一括閉塞) + `'snapshot'` ケース末尾に `_ps()` を追加。viewport の連続変異は「次のコンテンツ保存へ便乗」契約を維持 (意図的)。behavioural ピン3件 (schedule→dirty、snapshot union-heal→dirty、switchPage→dirty)
+
+## [1.7.998] - 2026-10-01
+
+### Docs / Test
+- seenOps dedup × 収束監査が clean 完走 (ADR-0972): 3チョークポイント (`commit`/`applyRemote`/`_recordCommitted`) の同一 `_ck` dedup 規則、eviction 後の再適用冪等性 (全16 op が `_tmb`/`_lwwDrop`/`_pgById` 等でガード済み)、snapshot merge/undo-wire/`_slimOp` の downstream 収束機械を全検証。実害なし — dedup が clock キー (payload 非依存) で全到達経路に効くことを `Net._onRecv` 実経路 (direct + 'opc' fragment) と `commit` choke point で behavioural ピン化 (3 asserts)
+
+## [1.7.997] - 2026-10-01
+
+### Fixed
+- `_nug` pending op (キーボードナッジ/長押し共合セッション) の `_nugLock` 復元ドメイン (`op.orig`/`op.before`/`op.changes[].before`) が arm 時クローンのまま remote 書込を取り込まず、run 中に remote 書込→lock が着地したメンバーを arm 値へ巻き戻す一方向発散を閉塞 (ADR-0971、0969 のキーボード版同型): `_gTouch` を `_nug` 復元ドメインへ拡張し remote が触れたキーの live 値を pending op の復元値へマージ。`_oa` の `ptr.down` ゲート撤去 (キーボードセッションも対象化)、`zorder`/`group`/`ungroup` 適用サイトにも `_gTouch` 追加 (`frac`/`groupId`)。remote (re)birth は `_bT` で `_nug.reborn` へ刻印し `_nugLock` が復元スキップ (到着順、skew 免疫 — 0970 parity)。behavioural ピン3件追加
+
 ## [1.7.996] - 2026-10-01
 
 ### Fixed

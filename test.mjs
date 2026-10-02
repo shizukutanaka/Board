@@ -1438,7 +1438,7 @@ const checks = [
   // ADR-0965 source pins: _nugLock partitions mid-run locked/missing members
   // out of a pending op — restores run-start + filters every member list.
   ['ADR-0965: _nugEnd partitions mid-run locked/missing members before the commit',
-    html.includes("_nugLock(o);")&&
+    html.includes("_nugLock(o,n.reborn);")&&
     html.includes("A.some(a=>a.id===id&&a.locked)")&&
     html.includes("if(op.op==='move'){const o=op.orig[id];if(o)_geoR(s,o)}")&&
     html.includes("if(c)s.frac=c.before")&&
@@ -1447,10 +1447,10 @@ const checks = [
   // funnel flushes first; the own-lock exemption reads the LIVE flag, not the
   // op's intent, so unlock (null) skips and own-lock (after.locked) exempts.
   ['ADR-0966: pending-op flush coverage — _nugEnd at every later commit funnel',
-    html.includes("_nugEnd();   // ADR-0958: pending nudge predates any later commit")&&
-    html.includes("_nugEnd();   // ADR-0960: pending nudge/zorder predates any later commit")&&
+    html.includes("_nugEnd();   // ADR-0958")&&
+    html.includes("_nugEnd();   // ADR-0958/0960")&&
     html.includes("_nugEnd();   // ADR-0957: commit an in-flight nudge so undo lands")&&
-    html.includes("function _nugEnd(){const n=_nug;_nug=null;if(n){_cT(n.t);const o=n.op;_nugLock(o);")&&
+    html.includes("function _nugEnd(){const n=_nug;_nug=null;if(n){_cT(n.t);const o=n.op;_nugLock(o,n.reborn);")&&
     html.includes("if(!s.locked||A.some(a=>a.id===id&&a.locked))continue;   // own-lock")&&
     html.includes("s.locked=lk||null;")],
   // v1.7.38: _apply('upd', forward) must guard sh.locked (parity with move forward)
@@ -1467,13 +1467,13 @@ const checks = [
     html.includes("for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked){const pt={}")],
   // v1.7.40: _apply zorder forward must guard sh.locked (changes path)
   ['_apply zorder forward changes: !sh.locked guards locked shapes in BOTH directions',
-    html.includes("if(sh&&!sh.locked&&!_lwwSkip(c.id,'frac',op))sh.frac=forward?c.after:c.before}")],
+    html.includes("if(sh&&!sh.locked&&!_lwwSkip(c.id,'frac',op)){sh.frac=forward?c.after:c.before;_gTouch(c.id,['frac'])}")],
   // v1.7.40: _apply group forward must guard sh.locked
   ['_apply group forward: !sh.locked guards locked shapes in BOTH directions',
-    html.includes("if(sh&&!sh.locked)sh.groupId=op.gid}")],
+    html.includes("if(sh&&!sh.locked){sh.groupId=op.gid;_gTouch(id,['groupId'])}")],
   // v1.7.40: _apply ungroup forward must guard sh.locked
   ['_apply ungroup forward: !sh.locked guards locked shapes in BOTH directions',
-    html.includes("if(sh&&!sh.locked)delete sh.groupId}")],
+    html.includes("if(sh&&!sh.locked){delete sh.groupId;_gTouch(id,['groupId'])}")],
   // v1.7.37: doGroup/_apply group backward must carry and restore origSel
   ['doGroup: origSel patched onto history entry after _recordCommitted',
     html.includes("_nugPush({op:'group',ids,gid,before});")],
@@ -1985,6 +1985,49 @@ try {
   assert.strictEqual(state.shapes.length, before2, 'dedup prevents double-add');
   console.log('  ✓ applyRemote deduplicates by peer:seq');
 
+  // ADR-0972: dedup holds at every intake surface — the wire envelope, the
+  // 'opc' fragment path (reassembly re-enters _onRecv), and the local commit
+  // choke point (a re-submitted op carrying an already-seen clock is dropped
+  // entirely: no apply, no history, no broadcast).
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const sD=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    Net._onRecv({k:'op',peer:'p9',op:{op:'add',shape:sD,clock:{peer:'p9',seq:1,ts:1}}},false);
+    // dedup keys on the clock, not the payload — a re-delivered key drops even a different op
+    Net._onRecv({k:'op',peer:'p9',op:{op:'add',shape:Shape.make('ellipse',{x:5,y:5,w:5,h:5}),clock:{peer:'p9',seq:1,ts:1}}},false);
+    assert.strictEqual(state.shapes.length,1,'dedup keys on clock — same-key different-payload dropped');
+    const js=JSON.stringify({k:'op',peer:'p9',op:{op:'upd',id:sD.id,after:{x:77},clock:{peer:'p9',seq:2,ts:2}}});
+    const sendOpc=()=>{Net._onRecv({k:'opc',peer:'p9',seq:0,n:2,data:js.slice(0,js.length>>1)},false);Net._onRecv({k:'opc',peer:'p9',seq:1,n:2,data:js.slice(js.length>>1)},false)};
+    sendOpc();sendOpc();
+    assert.strictEqual(byId(sD.id).x,77,'fragment-delivered op applies once');
+    const nH=state.history.length;
+    Store.commit({op:'upd',id:sD.id,after:{x:99},clock:{peer:'p9',seq:2,ts:2}});   // clock already consumed remotely
+    assert.ok(byId(sD.id).x===77&&state.history.length===nH,'commit choke point dedups a seen clock');
+    console.log('  ✓ ADR-0972: dedup holds across direct/fragment envelopes + local commit');
+  }
+
+  // ADR-0973: an armed save must mark the doc dirty — flushIfHidden gates on
+  // _dt(), so a _ps()-only mutation (curPg switch, remote rename, snapshot
+  // adopt/heal) was skipped by the hidden/unload flush and lost on tab kill.
+  {
+    state.dirty=false;clearTimeout(Persist._saveT);Persist._saveT=0;
+    Persist.schedule();
+    assert.strictEqual(state.dirty,true,'schedule() marks dirty (flush gate sees the armed save)');
+    clearTimeout(Persist._saveT);Persist._saveT=0;
+    // snapshot union-heal on the merge path mutates persisted fields with no save arm
+    const _keepShapes=state.shapes;
+    state.shapes=[Shape.make('rect',{x:0,y:0,w:10,h:10})];_invalidateGrid();state.pages=null;state.curPg=null;state.dirty=false;
+    Net._onRecv({k:'snapshot',peer:'p9',shapes:[],ops:[],pages:[{id:'pgX',name:'Adopted',nts:1}],rep:null},false);
+    assert.ok(state.pages&&state.pages[0].id==='pgX'&&state.dirty===true,'snapshot union-heal arms a dirty save');
+    state.shapes=_keepShapes;state.pages=null;state.curPg=null;_invalidateGrid();
+    // page switch (ADR-0674: last page survives reload) arms a save
+    state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';state.dirty=false;
+    switchPage('pB');
+    assert.ok(state.curPg==='pB'&&state.dirty===true,'page switch arms a dirty save');
+    state.pages=null;state.curPg=null;state.dirty=false;clearTimeout(Persist._saveT);Persist._saveT=0;
+    console.log('  ✓ ADR-0973: schedule() marks dirty — heal/rename mutations flush on hide');
+  }
+
   // applyRemote from different peer
   const remoteOp = {
     op: 'add',
@@ -2069,6 +2112,130 @@ try {
     for(const s of prev)state.shapes.push(s);
     console.log('  ✓ _recordCommitted sets _lastRep on local replace (ADR-0616)');
   }
+  // ADR-0974: a remote 'replace' back-stops the pre-swap board into the backup
+  // slot (ADR-0004/0613) — a peer's wholesale import must not strand the local
+  // board if the tab closes before a restore/undo. Empty boards back up nothing.
+  {
+    state.shapes.length=0;state._lastRep=null;state.seenOps=new Set();state.wclock={};_invalidateGrid();
+    const a=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    state.shapes=[a];state.docName='D';
+    const calls=[];
+    const _sb=Persist.saveBackup;
+    Persist.saveBackup=(s,v,n)=>{calls.push({s,v,n});return Promise.resolve()};
+    try{
+      Store.applyRemote({op:'replace',after:[Shape.make('ellipse',{x:1,y:1,w:5,h:5})],afterWc:{},clock:{peer:'pr',seq:1,ts:100}});
+      assert.strictEqual(calls.length,1,'remote replace snapshots the pre-swap board once');
+      assert.ok(calls[0].s.length===1&&calls[0].s[0].id===a.id,'backup holds the pre-swap shapes');
+      assert.strictEqual(calls[0].n,'D','backup carries the docName');
+      state._lastRep=null;state.seenOps=new Set();state.shapes.length=0;_invalidateGrid();
+      calls.length=0;
+      Store.applyRemote({op:'replace',after:[a],clock:{peer:'pr',seq:2,ts:200}});
+      assert.strictEqual(calls.length,0,'empty board backs up nothing (nothing to lose)');
+    }finally{Persist.saveBackup=_sb;state.shapes.length=0;_invalidateGrid();}
+    console.log('  ✓ remote replace back-stops the pre-swap board (ADR-0974)');
+  }
+  // ADR-0974: a remote 'replace' keeps locally-alive shapes whose _born clock
+  // outranks the swap (ADR-0926) — keep/tomb/born restamping stays symmetric
+  // with the sender-side _recordCommitted bookkeeping.
+  {
+    state.shapes.length=0;state._lastRep=null;state.seenOps=new Set();state.wclock={};_invalidateGrid();
+    const old=Shape.make('rect',{id:'oldX',x:0,y:0,w:10,h:10});
+    const keep=Shape.make('ellipse',{id:'keepY',x:2,y:2,w:4,h:4});
+    state.shapes=[old,keep];_invalidateGrid();
+    const swap={peer:'pk',seq:1,ts:1000};
+    state.wclock={oldX:{},keepY:{_born:{peer:'px',seq:1,ts:2000}}};   // keepY (re)born after the swap clock
+    const nw=Shape.make('diamond',{id:'newZ',x:5,y:5,w:3,h:3});
+    Store.applyRemote({op:'replace',after:[nw],afterWc:{},clock:swap});
+    const ids=state.shapes.map(s=>s.id);
+    assert.ok(ids.includes('keepY')&&ids.includes('newZ'),'newer-born survivor kept + after-shape adopted');
+    assert.ok(!ids.includes('oldX'),'old shape without a newer born is removed');
+    assert.strictEqual(state.wclock.keepY._born.ts,2000,'keep shape preserves its newer _born clock');
+    assert.strictEqual(state.wclock.newZ._born.ts,1000,'after shape stamped with the swap clock');
+    assert.ok(state.wclock.oldX._del&&state.wclock.oldX._del.ts===1000,'removed id tombed with the swap clock');
+    state.shapes.length=0;state.wclock={};_invalidateGrid();
+    console.log('  ✓ replace keep-scan: newer-born survives the swap (ADR-0926/0974)');
+  }
+  // ADR-0975: id/groupId keys shaped like JS builtins must not poison or crash
+  // plain-object stores — all four sites are null-proto.
+  {
+    const s=Shape.make('rect',{id:'__proto__',x:0,y:0,w:10,h:10});s.groupId='g1';
+    let ok=true;try{excScene([s])}catch(_){ok=false}
+    assert.ok(ok,'excScene survives a __proto__-named shape id');
+    const s2=Shape.make('rect',{id:'b1',x:1,y:2,w:3,h:4});s2.groupId='__proto__';
+    boardToDrawio([s2]);
+    assert.strictEqual(Object.prototype.x,undefined,'drawio group boxes never touch Object.prototype');
+    let ok2=true;try{_undoWire({op:'ungroup',ids:['m1'],gid:'__proto__',before:[{id:'m1',groupId:'__proto__'}]})}catch(_){ok2=false}
+    assert.ok(ok2,'undo-wire regroup survives a __proto__ groupId');
+    state.shapes.length=0;state.wclock={};_invalidateGrid();
+    const z=Shape.make('rect',{id:'z1',x:0,y:0,w:5,h:5});state.shapes=[z];_invalidateGrid();
+    Store._stampWrites({op:'zorder',changes:[{id:'z1',before:'a0',after:'a1'}],clock:{peer:'p',seq:1,ts:1}});
+    assert.strictEqual(Object.getPrototypeOf(state.wclock.z1),null,'zorder wclock bucket is null-proto');
+    state.shapes.length=0;state.wclock={};_invalidateGrid();
+    console.log('  ✓ builtin-named id/groupId cannot poison plain-object stores (ADR-0975)');
+  }
+  // ADR-0976: bound-endpoint resolution caps recursion — self-binds and
+  // conn↔conn cycles fall back to raw ends instead of overflowing the stack.
+  {
+    const r=Shape.make('rect',{id:'r1',x:0,y:0,w:20,h:20});
+    const c1=Shape.make('line',{id:'c1',x1:0,y1:0,x2:50,y2:0});
+    const c2=Shape.make('line',{id:'c2',x1:0,y1:0,x2:50,y2:0});
+    state.shapes=[r,c1,c2];_invalidateGrid();
+    c1.a='c2';c2.a='c1';c2.b='r1';
+    let e=null,ok=true;try{e=connEnds(c1)}catch(_){ok=false}
+    assert.ok(ok&&e&&Number.isFinite(e.x1)&&Number.isFinite(e.x2),'conn↔conn bound cycle terminates at the depth cap');
+    c1.a='c1';c1.b='c1';
+    e=null;ok=true;try{e=connEnds(c1)}catch(_){ok=false}
+    assert.ok(ok&&e&&e.x1===0&&e.x2===50,'self-bound connector falls back to raw endpoints');
+    c1.a='r1';c1.b=null;
+    const e2=connEnds(c1);
+    assert.ok(Number.isFinite(e2.x1)&&e2.x1===20,'a real bound endpoint still resolves to the contour after cycle calls');
+    const e3=connEnds(c2);
+    assert.ok(e3&&Number.isFinite(e3.x2),'depth counter resets between calls');
+    state.shapes.length=0;state.wclock={};_invalidateGrid();
+    console.log('  ✓ connector bound chains capped — cycles/self-binds degrade to raw ends (ADR-0976)');
+  }
+  // ADR-0977: proto-key pollution — JSON.parse produces '__proto__' as an own
+  // enumerable data prop, and Object.assign/for..in writes would invoke the
+  // __proto__ setter on a plain (non-null-proto) target. Every remote/local
+  // parse path funnels through _cleanVal/validPatch, which rejects
+  // '__proto__'/'constructor'/'prototype' own keys at any depth.
+  {
+    const forged=JSON.parse('{"x":1,"__proto__":{"evil":1}}');
+    assert.strictEqual(Object.keys(forged)[1],'__proto__','JSON.parse produces an own enumerable __proto__ key');
+    assert.strictEqual(validShape(JSON.parse('{"id":"p1","type":"rect","z":1,"x":0,"y":0,"w":10,"h":10,"__proto__":{"a":1}}')),false,'validShape rejects a shape carrying a proto key');
+    assert.strictEqual(validShape(JSON.parse('{"id":"p2","type":"rect","z":1,"x":0,"y":0,"w":5,"h":5,"aF":{"fx":0.5,"fy":0.5,"__proto__":{"a":1}}}')),false,'validShape rejects a nested proto key inside aF');
+    // Real intake path: a forged upd whose patch carries a proto key is
+    // rejected at the gate — the shape's prototype survives untouched.
+    const r=Shape.make('rect',{id:'r1',x:0,y:0,w:10,h:10});state.shapes=[r];state.seenOps=new Set();_invalidateGrid();
+    Net._onRecv({k:'op',peer:'p9',op:{op:'upd',id:'r1',after:forged,before:{x:0},clock:{peer:'p9',seq:1,ts:1}}},false);
+    assert.strictEqual(r.x,0,'forged proto-key upd rejected at intake — shape untouched');
+    assert.strictEqual(Object.getPrototypeOf(r),Object.prototype,'shape prototype unpolluted');
+    Net._onRecv({k:'op',peer:'p9',op:{op:'upd',id:'r1',after:{x:5},before:{x:0},clock:{peer:'p9',seq:2,ts:2}}},false);
+    assert.strictEqual(r.x,5,'legit upd applies after proto-key rejection');
+    state.shapes.length=0;state.wclock={};state.seenOps=new Set();_invalidateGrid();
+    console.log('  ✓ proto-key pollution gated at every parse path (ADR-0977)');
+  }
+  pass += 6; // ADR-0977 proto-key gate pins
+  // ADR-0978: sortZ is a strict total order — frac (string lexicographic)
+  // then id tie-break; equal fracs can't leave order to input order, and
+  // legacy z-seeding reindexes deterministically off the z sort.
+  {
+    const sA=Shape.make('rect',{id:'a1',x:0,y:0,w:5,h:5}),sB=Shape.make('rect',{id:'b1',x:5,y:0,w:5,h:5});
+    sA.frac='k0';sB.frac='k0';
+    state.shapes=[sB,sA];sortZ();
+    assert.deepStrictEqual(state.shapes.map(s=>s.id),['a1','b1'],'equal fracs order by id (input order irrelevant)');
+    state.shapes=[sA,sB];sortZ();
+    assert.deepStrictEqual(state.shapes.map(s=>s.id),['a1','b1'],'same total order from the other input order');
+    // legacy seed: keyless shapes take z order then get stamped keys.
+    const sC=Shape.make('rect',{id:'c1',x:0,y:0,w:5,h:5}),sD=Shape.make('rect',{id:'d1',x:0,y:0,w:5,h:5});
+    sC.frac=null;sD.frac=null;sC.z=2;sD.z=1;
+    state.shapes=[sC,sD];sortZ();
+    assert.ok(state.shapes[0].id==='d1'&&state.shapes.every(s=>typeof s.frac==='string'),'keyless shapes seed from z then get stamped');
+    assert.ok(state.shapes.every((s,i,a)=>i===0||a[i-1].frac<s.frac||(a[i-1].frac===s.frac&&a[i-1].id<s.id)),'sorted output respects the comparator total order');
+    state.shapes.length=0;state.wclock={};_invalidateGrid();
+    console.log('  ✓ sortZ total order — frac then id, deterministic across input orders (ADR-0978)');
+  }
+  pass += 4; // ADR-0978 sortZ total-order pins
   // ADR-0617: a snapshot whose sender predates our newest swap must not merge
   // pre-swap shapes back in; a snapshot reflecting a newer swap adopts its marker.
   {
@@ -11038,6 +11205,44 @@ try {
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state._lastTs=0;
     console.log('  ✓ mid-gesture remote writes survive orig-restore; reborn skips it (ADR-0969/0970)');
   }
+  // ADR-0971: the pending _nug op's restore domain merges remote writes too —
+  // a remote write landing mid-run on a member that then gets locked would
+  // otherwise be rolled back to arm values → one-way divergence (0969 on the
+  // keyboard-nug path). Plus a remote (re)birth during the run skips restore
+  // entirely — the op must not resurrect arm state over the remote object.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state._lastTs=0;
+    const MA=Shape.make('rect',{x:100,y:100,w:50,h:50});
+    const MB=Shape.make('rect',{x:200,y:100,w:50,h:50});
+    Store.commit({op:'addMany',shapes:[MA,MB]});
+    state.selection=new Set([MA.id,MB.id]);
+    nudgeSelection(5,0);                 // pending move; MA orig.x=100, live 105
+    Net._onRecv({k:'op',op:{op:'move',ids:[MA.id],dx:1,dy:1,after:[{id:MA.id,x:500,y:520}],clock:{peer:'p9',seq:1,ts:nowTs()}},peer:'p9'},false);   // remote move lands mid-run
+    byId(MA.id).locked=true;             // a remote lock lands on the same member
+    _nugEnd();
+    assert.strictEqual(byId(MA.id).x,500,'_nugLock: remote move survives the locked-member restore');
+    assert.strictEqual(byId(MB.id).x,205,'_nugLock: unlocked member keeps the nudge');
+    // style op: a remote style write merges into the pending op's before-entry
+    const MC=Shape.make('rect',{x:0,y:300,w:50,h:50});
+    Store.commit({op:'add',shape:MC});
+    state.selection=new Set([MC.id]);
+    applyStyleToSelection('stroke','#111111');      // pending style; before.stroke=orig
+    Net._onRecv({k:'op',op:{op:'style',after:[{id:MC.id,fill:'#ff0000'}],before:[],clock:{peer:'p9',seq:2,ts:nowTs()}},peer:'p9'},false);   // remote fill lands mid-run
+    byId(MC.id).locked=true;
+    _nugEnd();
+    assert.strictEqual(byId(MC.id).fill,'#ff0000','_nugLock: remote style prop survives the locked-member restore');
+    // reborn: remote kill+resurrect mid-run — restore must not clobber it
+    const MD=Shape.make('rect',{x:100,y:300,w:50,h:50});
+    Store.commit({op:'add',shape:MD});
+    state.selection=new Set([MD.id]);
+    nudgeSelection(5,0);
+    Net._onRecv({k:'op',op:{op:'del',shapes:[JSON.parse(JSON.stringify(byId(MD.id)))],clock:{peer:'p9',seq:3,ts:nowTs()}},peer:'p9'},false);
+    Net._onRecv({k:'op',op:{op:'add',shape:{...JSON.parse(JSON.stringify(MD)),x:900,y:950},clock:{peer:'p9',seq:4,ts:nowTs()}},peer:'p9'},false);
+    _nugEnd();
+    assert.strictEqual(byId(MD.id).x,900,'_nugLock: remote reborn skips the restore');
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state._lastTs=0;
+    console.log('  ✓ _nugLock merges mid-run remote writes into the restore domain; reborn skips (ADR-0971)');
+  }
 
   // v1.7.13b: doDuplicate must skip locked shapes (parity with nudgeSelection/doDelete).
   // Bug: withFrameChildren expands the frame selection to include all contained children
@@ -16141,7 +16346,12 @@ pass += 8; // ADR-0965 mid-run lock/missing member partition (3 blocks: 7 assert
 pass += 5; // ADR-0966 pending-op×mid-run audit pins + own-lock exemption block
 pass += 6; // ADR-0967 mid-edit remote-lock blur/commit fold (text+label)
 pass += 3; // ADR-0968 remote-killed selection → ctx family no-op block
-pass += 9; // ADR-0969/0970 mid-gesture remote write survives + skew-immune reborn mark
+pass += 4; // ADR-0975 builtin-named id/groupId null-proto store pins
+pass += 4; // ADR-0976 connector bound-chain recursion-cap pins
+pass += 9; // ADR-0974 remote-replace saveBackup + newer-born keep pins
+pass += 3; // ADR-0973 schedule()-marks-dirty + snapshot-heal/name-adopt arm pins
+pass += 3; // ADR-0972 envelope/fragment/commit-choke dedup pins
+pass += 12; // ADR-0969/0970/0971 mid-run remote writes survive restore; arrival-order reborn marks
 pass += 15; // ADR-0964 mid-gesture lock restore/commit-gate pins
 pass += 7; // ADR-0943 second-pointer abort pins
 pass += 8; // ADR-0945 mid-gesture overlay-open cancel pins

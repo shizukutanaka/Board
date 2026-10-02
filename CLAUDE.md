@@ -1019,6 +1019,14 @@ Board/
 │   └── ADR-0968-remote-killed-selection-actions.md  # ctx/キーアクション×remote 消滅監査完走 — 全ハンドラが act 時に live 再解決 (stale メニューは cosmetic)、dead/空集合で op を産まない契約をピン化
 │   └── ADR-0969-gesture-orig-remote-write.md  # mid-gesture remote 書込が orig-restore に巻き戻される発散 — `_gTouch` で touched-key live 値を gesture orig へマージ、remote 再誕生は `_rb` で復元スキップ
 │   └── ADR-0970-reborn-arrival-order.md  # `_rb` の clock 比較を skew-免疫の到着順マーキング (`ptr.reborn`) へ置換 — 前進 skew の誤スキップ発散・後進 skew の clobber を閉塞
+│   └── ADR-0971-pending-nug-remote-write.md  # pending `_nug` op の復元ドメインが remote 書込を巻き戻す発散 — `_gTouch` を nug 復元域へ拡張、remote 再誕生は `_nug.reborn` で復元スキップ
+│   └── ADR-0972-seenops-dedup-convergence-audit.md  # seenOps dedup×収束監査完走 — 3チョークポイント (commit/applyRemote/_recordCommitted)・eviction 後再適用・全 intake の clock キー dedup が clean。envelope/fragment/commit 実経路ピン追加
+│   └── ADR-0973-schedule-marks-dirty.md  # `_ps()` のみの変異が hidden/unload フラッシュをすり抜ける実害 — `Persist.schedule()` が dirty を刻み全サイト一括閉塞 + 'snapshot' union-heal/rep 採用に `_ps()` 追加
+│   └── ADR-0974-wholesale-swap-backup-audit.md  # 全置換スワップ監査完走 — ローカル `_repC`/`_recordCommitted` と remote `_apply` の wclock 再刻印が対称、saveBackup 入口5系統カバー、keep/tomb/born ピン2件
+│   └── ADR-0975-builtin-key-null-proto-stores.md  # JS 予約名キーによる素 {} 汚染 — excScene gids クラッシュ / _dioCells _gbx が Object.prototype.x 書込 / _undoWire reg クラッシュを _wM() null-proto で閉塞 (+zorder バケット整合)
+│   └── ADR-0976-conn-bound-cycle-recursion.md  # connEnds の conn↔conn 結合循環/自己結合が _bb→_cE 無限再帰で stack overflow → _ceD 深度キャップ (15) + self-id スキップで raw 端点へ縮退 (canvas 数値ドメイン監査併走 clean)
+│   └── ADR-0977-proto-key-pollution-gate.md  # proto-key 汚染監査完走 — JSON.parse の `__proto__` own-key が Object.assign/for..in で setter を叩く全経路が `_cleanVal`/`validPatch`+null-proto store で gated。ピン6 assert
+│   └── ADR-0978-sortz-total-order-audit.md  # sortZ 全順序性監査完走 — frac (base62 lexicographic)→id tie-break の strict total order、keyless stamp 前置、NaN z は _cleanVal 拒否。ピン4 assert
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
