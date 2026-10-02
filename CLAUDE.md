@@ -1025,6 +1025,7 @@ Board/
 │   └── ADR-0974-wholesale-swap-backup-audit.md  # 全置換スワップ監査完走 — ローカル `_repC`/`_recordCommitted` と remote `_apply` の wclock 再刻印が対称、saveBackup 入口5系統カバー、keep/tomb/born ピン2件
 │   └── ADR-0975-builtin-key-null-proto-stores.md  # JS 予約名キーによる素 {} 汚染 — excScene gids クラッシュ / _dioCells _gbx が Object.prototype.x 書込 / _undoWire reg クラッシュを _wM() null-proto で閉塞 (+zorder バケット整合)
 │   └── ADR-0976-conn-bound-cycle-recursion.md  # connEnds の conn↔conn 結合循環/自己結合が _bb→_cE 無限再帰で stack overflow → _ceD 深度キャップ (15) + self-id スキップで raw 端点へ縮退 (canvas 数値ドメイン監査併走 clean)
+│   └── ADR-0977-proto-key-pollution-gate.md  # proto-key 汚染監査完走 — JSON.parse の `__proto__` own-key が Object.assign/for..in で setter を叩く全経路が `_cleanVal`/`validPatch`+null-proto store で gated。ピン6 assert
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

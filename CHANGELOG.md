@@ -1,3 +1,8 @@
+## [1.8.003] - 2026-10-01
+
+### Docs / Test
+- プロトタイプ汚染 (proto-key) 監査が clean 完走 (ADR-0977): `JSON.parse` が `'__proto__'` を own enumerable data prop として生成するため、`Object.assign`/`for..in` 書き込みが plain-proto ターゲットの `__proto__` setter を叩き得る全経路を走査 — patch 系は `validPatch`→`_cleanVal` (任意深度 ≤8 で `__proto__`/`constructor`/`prototype` own key 拒否) gated、shape 系は `validShape` 経由、clock-map 書込は `_wM()` null-proto バケット (0788) + clock-merge ループの明示スキップ (8291)、id/groupId ストアは 0975 で null-proto 化済み、spread/`Shape.make` は CreateDataProperty で setter 不発。実害なし。behavioural ピン6 assert (JSON.parse own 化/validShape top+nested 拒否/鍛造 upd `_onRecv` 棄却/prototype untouched/legit upd 適用)
+
 ## [1.8.002] - 2026-10-01
 
 ### Fixed

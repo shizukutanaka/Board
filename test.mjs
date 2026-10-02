@@ -2194,6 +2194,28 @@ try {
     state.shapes.length=0;state.wclock={};_invalidateGrid();
     console.log('  ✓ connector bound chains capped — cycles/self-binds degrade to raw ends (ADR-0976)');
   }
+  // ADR-0977: proto-key pollution — JSON.parse produces '__proto__' as an own
+  // enumerable data prop, and Object.assign/for..in writes would invoke the
+  // __proto__ setter on a plain (non-null-proto) target. Every remote/local
+  // parse path funnels through _cleanVal/validPatch, which rejects
+  // '__proto__'/'constructor'/'prototype' own keys at any depth.
+  {
+    const forged=JSON.parse('{"x":1,"__proto__":{"evil":1}}');
+    assert.strictEqual(Object.keys(forged)[1],'__proto__','JSON.parse produces an own enumerable __proto__ key');
+    assert.strictEqual(validShape(JSON.parse('{"id":"p1","type":"rect","z":1,"x":0,"y":0,"w":10,"h":10,"__proto__":{"a":1}}')),false,'validShape rejects a shape carrying a proto key');
+    assert.strictEqual(validShape(JSON.parse('{"id":"p2","type":"rect","z":1,"x":0,"y":0,"w":5,"h":5,"aF":{"fx":0.5,"fy":0.5,"__proto__":{"a":1}}}')),false,'validShape rejects a nested proto key inside aF');
+    // Real intake path: a forged upd whose patch carries a proto key is
+    // rejected at the gate — the shape's prototype survives untouched.
+    const r=Shape.make('rect',{id:'r1',x:0,y:0,w:10,h:10});state.shapes=[r];state.seenOps=new Set();_invalidateGrid();
+    Net._onRecv({k:'op',peer:'p9',op:{op:'upd',id:'r1',after:forged,before:{x:0},clock:{peer:'p9',seq:1,ts:1}}},false);
+    assert.strictEqual(r.x,0,'forged proto-key upd rejected at intake — shape untouched');
+    assert.strictEqual(Object.getPrototypeOf(r),Object.prototype,'shape prototype unpolluted');
+    Net._onRecv({k:'op',peer:'p9',op:{op:'upd',id:'r1',after:{x:5},before:{x:0},clock:{peer:'p9',seq:2,ts:2}}},false);
+    assert.strictEqual(r.x,5,'legit upd applies after proto-key rejection');
+    state.shapes.length=0;state.wclock={};state.seenOps=new Set();_invalidateGrid();
+    console.log('  ✓ proto-key pollution gated at every parse path (ADR-0977)');
+  }
+  pass += 6; // ADR-0977 proto-key gate pins
   // ADR-0617: a snapshot whose sender predates our newest swap must not merge
   // pre-swap shapes back in; a snapshot reflecting a newer swap adopts its marker.
   {
