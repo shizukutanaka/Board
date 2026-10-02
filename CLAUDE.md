@@ -1015,6 +1015,7 @@ Board/
 │   └── ADR-0964-mid-gesture-lock.md  # ジェスチャ中 remote lock の収束 — `_gRst()` 共有復元行列 + PU commit 6サイトの locked ゲート + gresize/grot/flushErase のメンバー仕分け (一方向発散を閉塞)
 │   └── ADR-0965-mid-run-lock.md  # pending op 中の mid-run lock/missing — `_nugLock` で消滅メンバー除外 + locked メンバー run-start 復元 (自己 lock は exempt) + `endSelect` move の `_gRL` 先置き (一方向発散を閉塞)
 │   └── ADR-0966-pending-op-mid-run-audit.md  # pending op × mid-run 監査完走 — `_rs` 全5サイト commit-head flush、own-lock exemption の方向検証 (live 値判定で unlock は存続)、4ピン化
+│   └── ADR-0967-mid-edit-lock-fold.md  # mid-edit remote lock — text/label の blur/commit が `!byId` のみで fold+commit が同フレーム競合 (locked gate drop で一方向発散)、`_lk` ゲート拡張で全 commit 経路を省略
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
