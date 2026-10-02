@@ -2006,6 +2006,28 @@ try {
     console.log('  ✓ ADR-0972: dedup holds across direct/fragment envelopes + local commit');
   }
 
+  // ADR-0973: an armed save must mark the doc dirty — flushIfHidden gates on
+  // _dt(), so a _ps()-only mutation (curPg switch, remote rename, snapshot
+  // adopt/heal) was skipped by the hidden/unload flush and lost on tab kill.
+  {
+    state.dirty=false;clearTimeout(Persist._saveT);Persist._saveT=0;
+    Persist.schedule();
+    assert.strictEqual(state.dirty,true,'schedule() marks dirty (flush gate sees the armed save)');
+    clearTimeout(Persist._saveT);Persist._saveT=0;
+    // snapshot union-heal on the merge path mutates persisted fields with no save arm
+    const _keepShapes=state.shapes;
+    state.shapes=[Shape.make('rect',{x:0,y:0,w:10,h:10})];_invalidateGrid();state.pages=null;state.curPg=null;state.dirty=false;
+    Net._onRecv({k:'snapshot',peer:'p9',shapes:[],ops:[],pages:[{id:'pgX',name:'Adopted',nts:1}],rep:null},false);
+    assert.ok(state.pages&&state.pages[0].id==='pgX'&&state.dirty===true,'snapshot union-heal arms a dirty save');
+    state.shapes=_keepShapes;state.pages=null;state.curPg=null;_invalidateGrid();
+    // page switch (ADR-0674: last page survives reload) arms a save
+    state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';state.dirty=false;
+    switchPage('pB');
+    assert.ok(state.curPg==='pB'&&state.dirty===true,'page switch arms a dirty save');
+    state.pages=null;state.curPg=null;state.dirty=false;clearTimeout(Persist._saveT);Persist._saveT=0;
+    console.log('  ✓ ADR-0973: schedule() marks dirty — heal/rename mutations flush on hide');
+  }
+
   // applyRemote from different peer
   const remoteOp = {
     op: 'add',
@@ -16200,6 +16222,7 @@ pass += 8; // ADR-0965 mid-run lock/missing member partition (3 blocks: 7 assert
 pass += 5; // ADR-0966 pending-op×mid-run audit pins + own-lock exemption block
 pass += 6; // ADR-0967 mid-edit remote-lock blur/commit fold (text+label)
 pass += 3; // ADR-0968 remote-killed selection → ctx family no-op block
+pass += 3; // ADR-0973 schedule()-marks-dirty + snapshot-heal/name-adopt arm pins
 pass += 3; // ADR-0972 envelope/fragment/commit-choke dedup pins
 pass += 12; // ADR-0969/0970/0971 mid-run remote writes survive restore; arrival-order reborn marks
 pass += 15; // ADR-0964 mid-gesture lock restore/commit-gate pins

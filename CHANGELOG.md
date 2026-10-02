@@ -1,3 +1,8 @@
+## [1.7.999] - 2026-10-01
+
+### Fixed
+- dirty 追跡監査で実害: `_ps()` (save 予約) のみで `state.dirty` を刻まない変異サイトは `flushIfHidden`/`beforeunload` の `_dt()` ゲートをすり抜け、タブの hide/kill (500ms debounce 未発射) で無通知消失していた (ADR-0973): `switchPage` の curPg・リモート 'name' 改名・`_mergeSnapshotOp` 存在時計マージ・`_applySnapshot` 全盤採用・docName `_CH` ・share-hash import が該当。『snapshot』 union-heal (`state.pages`/`_lastRep`/page名 nts-LWW/`_pgHealS` pg 修復) は `_ps()` すら無く shape merge が採用しない限り永続化されなかった。`Persist.schedule()` 先頭に `_md(!0)` (保存予約=未保存状態の同値化、全サイト一括閉塞) + `'snapshot'` ケース末尾に `_ps()` を追加。viewport の連続変異は「次のコンテンツ保存へ便乗」契約を維持 (意図的)。behavioural ピン3件 (schedule→dirty、snapshot union-heal→dirty、switchPage→dirty)
+
 ## [1.7.998] - 2026-10-01
 
 ### Docs / Test
