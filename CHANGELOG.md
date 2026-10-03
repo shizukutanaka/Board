@@ -1,3 +1,68 @@
+## [1.7.954] - 2026-10-01
+
+### Fixed
+- 'replace' backward (全置換の undo) が `_bT` を刻まない実害を閉塞 (ADR-0928): ローカル復元図形の `_born` が pre-swap 時計 B0 のまま残る一方、undo-wire 'replace' を forward-apply するピアは undo 時計 U を刻印 — `B0 < D < U` に落ちる第三者の del が undo 側だけ図形を殺す一方向発散。`_bT` の刻印を forward ブロックから両方向へ移し、undo 側も U を刻印。behavioural ピン +3 (`pass += 1906`)
+
+## [1.7.953] - 2026-10-01
+
+### Fixed
+- born parity: (再)導入経路3系統が有効な `_born` を刻まない実害を閉塞 (ADR-0927)。①空盤 snapshot 採用は `msg.ops[].wc` を無視し `_born` 皆無 → stale del が joiner だけを削る、②merge の未知図形は sender の時計でなく snap 自身の `ts:0` を刻印 → 真の墓標に勝てない `_born`、③ローカル全置換 (`_recordCommitted` 'replace'、.board/リンク/バックアップ import) は wclock を吹き飛ばすのに `_born` 未刻印 → swap 時計より古い del が importer 側だけ図形を殺す。`_wAdopt` で snapshot 持込 wclock を keep-newer 採用 (`_born`/`_del` 含む ≤64鍵+構造鍵除去)、`_tAlive`/`_tmb` に「新しい `_born` が `_del` を上回れば墓標失効」の上書き規則を追加 (tomb+birth 同居の解消)、merge は `_born`/`_del` をプロパティ時計と同じ LWW で併合、ローカル swap はワイヤ側と同じ `_bT` を `op.after` へ刻印。behavioural ピン +8 (`pass += 1903`)、コメント刈りで raw 帳尻
+
+## [1.7.952] - 2026-10-01
+
+### Fixed
+- 存在レベルの LWW 非対称を閉塞 (ADR-0926): kill 経路 (`del`/`clear`/`replace`/`pageDel`) は `{_del}` 墓標を無条件で刻み効果を適用していたため、因果順序に負けた del が「新しい再導入の後」に到着すると受信側だけ図形が消え送信側と発散 — 到着順が存在を決めていた。全導入サイトが `wclock[id]._born` を同一 `clockNewer` 全順序で刻印するようにし、kill 経路は `_bN` で born>kill を検査 — 負けた del は墓標も刻まず削除もしない (OR-set add-wins)。`nowTs` は `max(wall,_lastTs+1)` の strict HLC 化 — 観測したリモート書込みの後に発行したローカル op は必ずそれを上回る (equal-ts peer tiebreak で因果逆転していた ⌘⌥G 二重フレームの根因も解消)。two-world テストに teardown を追加 (world B の deferred `_snapT`/残存 `_send` wire が単一世界テストの `await` 中に snapshot を流し込む flake を解消)。`pass += 1895` (+7)
+
+## [1.7.951] - 2026-10-01
+
+### Docs
+- 永続化・broadcast 到達監査の完走記録 (ADR-0925): commit・_recordCommitted・applyRemote・undo/redo・snapshot 採用・`_rs`/`_pgAdopt` 全経路が `_ps` (Persist.schedule) と wire 送信へ到達することを検証 — リロード消失・ピア発散の経路なし、実害なし
+
+## [1.7.950] - 2026-10-01
+
+### Docs
+- backward-apply 収束監査の完走記録 (ADR-0924): 履歴に載る全17 op の `_undoWire` 網羅・redo の restamped 再送・connClears `upd` 再束縛・`_stampWrites` 対称・`_selR`/`_pgFollow`/`_opIds` 衛生を検証 — 実害なし
+
+## [1.7.949] - 2026-10-01
+
+### Fixed
+- `group`/`ungroup` 逆適用が `sh.locked` を未検査だった非対称を閉塞 (ADR-0923): 前進適用と undo-wire でピアが走る forward 経路は `!sh.locked` ゲート済みだが、ローカルの逆適用はロック済み図形にも `groupId` を復元/削除していた — コミット後にロックされたメンバーが undo でローカルだけグループ帰属を失い (または復元され) ピアと発散。両 backward loop に `sh.locked` ゲートを追加 + 到達不能の `op.gids` else-fallback を除去
+
+## [1.7.948] - 2026-10-01
+
+### Fixed
+- `del`/`clear`/`pageDel`/`replace` 逆適用の shape 復元が `_del` 墓標を未検査だった非対称を閉塞 (ADR-0922): 逆適用は `!byId` のみで図形を復元していたが、対応する wire 側経路 (undo-wire の `addMany`、`replace` 前進適用の `wc0` 墓標チェック) は `clockNewer` で墓標ゲート済み — skew 下で undo クロックより ts が先のリモート削除墓標があると、ピアは墓標を維持して復元を棄却するのにローカルだけ図形を復活させ存在発散。`_tmb` helper で4サイトを wire parity の墓標ゲート化
+
+## [1.7.947] - 2026-10-01
+
+### Fixed
+- `del`/`pageDel` 逆方向 connClears 復元の `_lwwSkip` 欠落を閉塞 (ADR-0921): `del`/`pageDel` の逆適用で接続クリアされた束縛キー (`a`/`b`/`x1`/`y1` 等) を `_oa(sh,p.before)` で無条件復元していた — 他の全逆適用経路 (upd/move/zorder/group) は `_lwwSkip` で per-key LWW ゲートするため非対称。undo クロックより ts が先のリモート書込みはピア側では `_lwwDrop` が undo-wire upd キーを落として存続するのに、ローカルでは生復元が潰して束縛が発散。共通 `_ccRest` helper 畳みで両サイトを per-key ゲート化
+
+## [1.7.946] - 2026-10-01
+
+### Fixed
+- `del`/`connClears` の `after:null` 鍛造を閉塞 (ADR-0920): `del` 適用の connClears 書込みが `p.after` 無検査で `p.after[x]` を読み、鍛造 `after:null`+`before:{a:<live>}` が mid-apply TypeError → 墓碑済み+`_stampWrites`/`_rdb`/connFix 未到達の部分適用・wclock 非対称に。`p.after` ガードで書込みスキップし、さらに `_remoteDelConnFix` の `handled` を `after` 持ち要素に限定 — `after:null` 要素が rescan 抑止して gap-bound 束縛が生き残る第二の穴も解消
+
+## [1.7.945] - 2026-10-01
+
+### Fixed
+- snapshot LWW merge の `pg` スキップ欠落を閉塞 (ADR-0919): `_mergeSnapshotOp` の merge 対象キー絞り込みが `id`/`type`/`_`/proto/`validPatch` で `pg` 欠落しており、鍛造 snapshot op の `wc:{pg:clock}`+`shape.pg` が既存図形を表示ページから追放し得た経路を解消 (ADR-0912 page exile と同族の merge 経路版、`pg` は stamp しない構造キーのため wc に正当な来歴がない)
+
+## [1.7.944] - 2026-10-01
+
+### Documentation
+- wire op 適用側監査完走 (ADR-0918): `applyRemote`→`_lwwDrop`→`_apply`→`_stampWrites` の全 op 型を走査 — 全配列 `MAX_OP_SHAPES`+要素検証、clock スナップショットは墓標+member clock 復元専用、`add`/`addMany`/`replace` は intake `_attachOp`→`_attachShape` で img parking 済み、group/zorder の before/after は ≤64/≤600 消費値のみ — 実害なし、構造キー strip cluster 完結
+
+## [1.7.943] - 2026-10-01
+
+### Fixed
+- `beautify` op の構造除去免除を閉塞 (ADR-0917): style ファミリ適用サイトが `beautify` を全 strip から免除していたため、鍛造 remote `beautify` 1 op で `pg` (ページ追放)・`frac` (z-order 攪乱)・`groupId` (幻影 halo)・`_` キャッシュ鍵・非 `_TYPES` type が着地し 0912-0916 の strip を全迂回できた実害を解消 — beauty が正当に運ぶ `type` のみ `_TYPES` enum ゲートで保持、他の構造鍵は全 op で除去
+
+## [1.7.942] - 2026-10-01
+
+### Fixed
+- `groupId` (グループメンバシップ) を `upd`/`style` patch 適用から構造除去 (ADR-0916): 鍛造 patch が幻影 halo/選択カスケードを生じ、刻印された `w.groupId` が正規 group/ungroup を `clockNewer`/`_lwwSkip` で棄却する2系統の実害を閉塞 — `_undoWire` の group/ungroup 逆操作を `upd{groupId}` patch から専用 op emit へ移行 (ADR-0473 `gids` 必須に適合、旧コードでも適用可能で wire interop safe) した上で strip+刻印スキップを対称化
+
 ## [1.7.941] - 2026-10-01
 
 ### Documentation
