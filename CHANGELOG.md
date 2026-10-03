@@ -1,3 +1,8 @@
+## [1.8.024] - 2026-10-01
+
+### Docs + Test
+- **ピア時計一意性×seenOps dedup 衝突監査** (ADR-0998): `(peer,seq)` dedup キーの再利用による silent op ドロップ (リロードで `state.seq` が巻き戻るとピア側 seenOps が新 op を全棄却する収束破壊クラス) を検証 — `peerId = 永続base + per-boot 6文字 suffix` (ADR-0459) で `clock.peer` が起動毎にユニークのため再起動衝突は構造的に不存在、wire op 全サイトが `++state.seq` 単調、`seq:0` リテラルは全て `_nameWin`/pageName/snapshot-heal の仲裁専用比較オブジェクトで op clock として送出されず、`seq:i` はフラグメント index、永続 wclock の旧 incarnation 値も (ts,peer,seq) 全順序で正しく仲裁。実害なし — 実経路ピン 6 assert (suffix 有、commit 毎 fresh seq、dedup キー incarnation 束縛、undo fresh seq)
+
 ## [1.8.023] - 2026-10-01
 
 ### Docs + Test
