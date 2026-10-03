@@ -2678,6 +2678,47 @@ try {
     state.shapes.length=0;state.wclock={};state.history=[];state.histIdx=-1;_invalidateGrid();
     console.log('  ✓ undo × remote-removal symmetry (ADR-0993)');
   }
+  // ADR-0994: undo-wire × peer forward-apply symmetry — locked gates drop on
+  // both sides, the pageDel 'unpage' kill-set caps identically, and the wire
+  // ops carry the fields peers need (wc snapshot + connClears upds).
+  {
+    state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.history=[];state.histIdx=-1;state.seenOps=new Set();_invalidateGrid();
+    const ob=Net.broadcast;let sent=[];
+    const s1=Shape.make('rect',{x:0,y:0,w:10,h:10,c:'#111'});s1.id='v1';
+    Store.commit({op:'add',shape:s1});
+    Store.commit({op:'style',dir:'lock',before:[{id:'v1'}],after:[{id:'v1',locked:1}]});
+    Store.commit({op:'upd',id:'v1',before:{c:'#111'},after:{c:'#f00'}});   // recorded but a locked no-op
+    assert.ok(byId('v1').locked&&byId('v1').c==='#111','precondition: locked shape kept its colour');
+    Net.broadcast=w=>{sent.push(w)};Store.undo();Net.broadcast=ob;
+    assert.strictEqual(byId('v1').c,'#111','undo of upd on a locked shape is a no-op locally');
+    assert.ok(sent.some(w=>w.op==='upd'&&w.id==='v1'),'the undo-wire upd is still emitted');
+    for(const w of sent)Store.applyRemote(Net._slimOp(w));
+    assert.strictEqual(byId('v1').c,'#111','the same locked gate drops it on the wire — symmetric');
+    sent=[];const a=Shape.make('rect',{x:0,y:0,w:10,h:10});a.id='a1';
+    const c=Shape.make('line',{x1:0,y1:0,x2:50,y2:50});c.id='c1';c.a='a1';
+    Store.commit({op:'addMany',shapes:[a,c]});
+    Store.commit({op:'del',shapes:[{...a}],connClears:computeConnClears(new Set(['a1']))});
+    Net.broadcast=w=>{sent.push(w)};Store.undo();Net.broadcast=ob;
+    assert.ok(sent.some(w=>w.op==='addMany'&&w.wc&&w.wc['a1']),'del-undo wire carries the wclock snapshot');
+    assert.ok(sent.some(w=>w.op==='upd'&&w.id==='c1'&&w.after&&w.after.a==='a1'),'connClears re-bind rides the undo-wire');
+    sent=[];state.pages=[{id:'p9',name:'P9',nts:0}];state.curPg='p9';
+    const m=Shape.make('rect',{x:0,y:0,w:5,h:5});m.id='m1';m.pg='p9';
+    const f=Shape.make('rect',{x:20,y:0,w:5,h:5});f.id='f1';f.pg='p9';
+    state.shapes=[m,f];
+    state.history=[{op:'pageAdd',id:'p9',name:'P9',shapes:[{...m}],clock:{peer:state.peerId,seq:1,ts:nowTs()}}];state.histIdx=0;
+    Net.broadcast=w=>{sent.push(w)};Store.undo();Net.broadcast=ob;
+    assert.ok(!state.pages&&!byId('m1'),'unpage undo removes the page + the kill-set member');
+    assert.ok(byId('f1')&&!byId('f1').pg,'a foreign member survives un-paged');
+    state.shapes=[{...m},{...f}];state.pages=[{id:'p9',name:'P9',nts:0}];state.curPg='p9';state.wclock={};state.seenOps=new Set();_invalidateGrid();
+    const _pid=state.peerId;state.peerId='zz';   // remote pageDel needs a foreign sender
+    for(const w of sent)Store.applyRemote(Net._slimOp(w));
+    state.peerId=_pid;
+    assert.ok(!state.pages&&!byId('m1'),'the wire kill-set caps the peer identically');
+    assert.ok(byId('f1')&&!byId('f1').pg,'the peer leaves foreign members un-paged too — symmetric');
+    state.shapes.length=0;state.wclock={};state.pages=null;state.curPg=null;state.history=[];state.histIdx=-1;_invalidateGrid();
+    console.log('  ✓ undo-wire × peer-apply symmetry (ADR-0994)');
+  }
+  pass += 10; // ADR-0994 undo-wire × peer-apply pins
   // ADR-0826: snapshot responder election — lowest non-asker, non-rtc peer id
   // answers (ADR-0455/0465). A regression starves or storms joiners.
   {
