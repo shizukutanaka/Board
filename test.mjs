@@ -1279,7 +1279,7 @@ const checks = [
   ['snapshot responder = lowest non-asker peer (ADR-0465)', html.includes('this._loResp(msg.peer)') && html.includes('k!==pk&&k<_pi()')],
   ['room switch also clears inbound assemblies (ADR-0466)', html.includes('this._snapIn=null;this._opcIn=null') && html.indexOf('this._snapIn=null;this._opcIn=null')<html.indexOf('new BroadcastChannel')],
   ['_pCt rebaselines after peer purge (ADR-0467)', html.includes('this._pCt=_pr().size')],
-  ['_fragIn tags assembly by sender (ADR-0469)', html.includes('sn.src!==src') && html.includes("viaRtc?'rtc':msg.peer")],
+  ['_fragIn tags assembly by sender (ADR-0469)', html.includes('sn.src!==src') && html.includes("'_snapIn':'_opcIn','rtc'")],
   ['_fragIn/imgChunks restart on seq 0 (ADR-0563)', html.includes('sn.src!==src||seq===0') && html.includes('st.n!==n||seq===0')],
   ['frame() draw throw cannot kill the loop (ADR-0565)', html.includes('try{if(needsRender)draw();if(needOverlay)drawOverlay()}catch')],
   ['remote hide drops selected id (ADR-0568)', html.includes('if(_s&&_hd(_s))_sdl(id)')],
@@ -2006,7 +2006,7 @@ try {
     Net._onRecv({k:'op',peer:'p9',op:{op:'add',shape:Shape.make('ellipse',{x:5,y:5,w:5,h:5}),clock:{peer:'p9',seq:1,ts:1}}},false);
     assert.strictEqual(state.shapes.length,1,'dedup keys on clock — same-key different-payload dropped');
     const js=JSON.stringify({k:'op',peer:'p9',op:{op:'upd',id:sD.id,after:{x:77},clock:{peer:'p9',seq:2,ts:2}}});
-    const sendOpc=()=>{Net._onRecv({k:'opc',peer:'p9',seq:0,n:2,data:js.slice(0,js.length>>1)},false);Net._onRecv({k:'opc',peer:'p9',seq:1,n:2,data:js.slice(js.length>>1)},false)};
+    const sendOpc=()=>{Net._onRecv({k:'opc',peer:'p9',seq:0,n:2,data:js.slice(0,js.length>>1)},true);Net._onRecv({k:'opc',peer:'p9',seq:1,n:2,data:js.slice(js.length>>1)},true)};   // ADR-0987: frag msgs are DC-only
     sendOpc();sendOpc();
     assert.strictEqual(byId(sD.id).x,77,'fragment-delivered op applies once');
     const nH=state.history.length;
@@ -2482,6 +2482,21 @@ try {
     assert.ok(state.peers.has('ok2'),'BC ping still installs its row');
     state.peers.delete('rtc:test');state.peers.delete('ok2');Net._rtcPeerId=null;
     console.log('  ✓ _pk viaRtc routing + DC kind gate + presence resurrection (ADR-0825/0986)');
+  }
+  // ADR-0987: frag streams are DC-only — a BC-forged 'snap'/'opc' chunk must
+  // not touch the single reassembly slot (wedge DoS vs a real RTC stream).
+  {
+    Net._onRecv({k:'snap',peer:'x',seq:0,n:2,data:'{"a":'},false);
+    assert.strictEqual(Net._snapIn,null,'BC snap chunk ignored (ADR-0987)');
+    Net._onRecv({k:'opc',peer:'x',seq:0,n:2,data:'{"b":'},false);
+    assert.strictEqual(Net._opcIn,null,'BC opc chunk ignored');
+    Net._onRecv({k:'snap',peer:'z',seq:0,n:2,data:'{"k":"'},true);
+    assert.ok(Net._snapIn,'RTC stream slot opened');
+    Net._onRecv({k:'snap',peer:'x',seq:1,n:2,data:'junk'},false);
+    assert.ok(Net._snapIn,'BC chunk cannot clobber the RTC slot');
+    Net._onRecv({k:'snap',peer:'z',seq:1,n:2,data:'x"}'},true);
+    assert.strictEqual(Net._snapIn,null,'RTC stream completed and freed the slot');
+    console.log('  ✓ frag streams gated to the DC (ADR-0987)');
   }
   // ADR-0826: snapshot responder election — lowest non-asker, non-rtc peer id
   // answers (ADR-0455/0465). A regression starves or storms joiners.
@@ -5225,15 +5240,15 @@ try {
       const sh=Shape.make('rect',{x:0,y:0,w:10,h:10,label:'snapCh'});
       const snap=JSON.stringify({k:'snapshot',peer:'pS',shapes:[sh],ops:[{op:'add',shape:sh,clock:{peer:'pS',seq:'snap:'+sh.id,ts:0},wc:{}}]});
       const half=Math.floor(snap.length/2);
-      Net._onRecv({k:'snap',seq:0,n:2,data:snap.slice(0,half)},false);
+      Net._onRecv({k:'snap',seq:0,n:2,data:snap.slice(0,half)},true);   // ADR-0987: frags are DC-only
       assert.ok(!byId(sh.id),'ADR-0383: partial snapshot not applied');
-      Net._onRecv({k:'snap',seq:1,n:2,data:snap.slice(half)},false);
+      Net._onRecv({k:'snap',seq:1,n:2,data:snap.slice(half)},true);
       assert.ok(byId(sh.id),'ADR-0383: reassembled snapshot applies');
-      Net._onRecv({k:'snap',seq:0,n:1,data:'x'.repeat(97*1024)},false);
+      Net._onRecv({k:'snap',seq:0,n:1,data:'x'.repeat(97*1024)},true);
       assert.ok(Net._snapIn==null,'ADR-0383: oversized snap chunk never buffers');
       // ADR-0385: dc.onclose clears a half-received assembly — stale parts
       // must not poison the next join's chunks.
-      Net._onRecv({k:'snap',seq:0,n:2,data:'{"k":"snapshot'},false);
+      Net._onRecv({k:'snap',seq:0,n:2,data:'{"k":"snapshot'},true);
       assert.ok(Net._snapIn,'partial assembly parked');
       Net._snapIn=null;
       console.log('  ✓ ADR-0383: chunked snapshot reassembly (3 asserts)');
@@ -5273,8 +5288,8 @@ try {
     // _fragIn: a duplicate seq must not double-count g — replay seq 0 twice,
     // then complete; a buggy g++ would join with an empty slot (JSON.parse
     // throws → op silently lost).
-    Net._onRecv({k:'opc',seq:0,n:2,data:'{"k":'},false);
-    Net._onRecv({k:'opc',seq:0,n:2,data:'{"k":'},false);
+    Net._onRecv({k:'opc',seq:0,n:2,data:'{"k":'},true);
+    Net._onRecv({k:'opc',seq:0,n:2,data:'{"k":'},true);
     assert.ok(Net._opcIn&&Net._opcIn.g===1,'ADR-0431: duplicate chunk not counted');
     Net._opcIn=null;
     // _ptsOK: pen pts tuples must be all-number — [x,y,'x'] pressure is rejected
@@ -16152,11 +16167,11 @@ try {
   {
     Net._snapIn=null;
     const chunk='x'.repeat(96*1024);
-    for(let i=0;i<260;i++)Net._onRecv({k:'snap',seq:i,n:300,data:chunk,peer:'pz'},false);
+    for(let i=0;i<260;i++)Net._onRecv({k:'snap',seq:i,n:300,data:chunk,peer:'pz'},true);   // ADR-0987: frags are DC-only
     // abort fires at ~251 chunks; later seqs open a fresh slot, so the counter restarted.
     assert.ok(Net._snapIn,'post-abort stream opens a fresh slot');
     assert.ok(Net._snapIn.b<1_500_000,'aborted accumulation is gone — byte counter restarted');
-    Net._onRecv({k:'snap',seq:0,n:1,data:'{"k":"x"}',peer:'pz'},false);
+    Net._onRecv({k:'snap',seq:0,n:1,data:'{"k":"x"}',peer:'pz'},true);
     assert.strictEqual(Net._snapIn,null,'normal 1-chunk snap completes and clears');
     console.log('  ✓ frag reassembly aborts at the joined cap mid-flight (ADR-0782)');
   }

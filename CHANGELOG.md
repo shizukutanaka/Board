@@ -1,3 +1,8 @@
+## [1.8.013] - 2026-10-01
+
+### Fixed
+- frag ストリームを DC 限定へ閉塞 (ADR-0987): `_fragIn` は kind 毎単一スロットで src/n 不一致リスタートのため、**BC ピアが断片を不定期送信するだけで実 RTC ストリームと slot を相互奪い合い、両方とも完結しない永久 wedge DoS**。送信側は `_sendDC`/`_fragSend` 経由で frag は DC-only のため、intake も viaRtc 必須化 (src は定数 'rtc' へ畳込)。'snapshot' 全体型は 'snap' と等価能力のため許容として文書化。0987 ピン追加 + 0972/0383/0431/0782 の frag ピンを実ワイヤ形式 (viaRtc) へ更新
+
 ## [1.8.012] - 2026-10-01
 
 ### Fixed
