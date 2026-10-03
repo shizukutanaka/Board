@@ -16160,6 +16160,18 @@ try {
     Net._applySnapshot({shapes:[]});
     assert.strictEqual(state.selection.size,0,'snapshot adopt drops stale selection ids');
     console.log('  ✓ snapshot adopt drops stale selection (ADR-1010)');
+    // ADR-1011: the sticky-wrap memo key must cover every prop that changes
+    // the measured lines — a missed prop poisons the cache across edits.
+    reset();
+    const SW=Shape.make('sticky',{x:0,y:0,w:200,h:100,text:'aa bb cc'});
+    let mCalls=0;const mN=()=>{mCalls++;return 5};
+    wrapTextCached(SW,'aa bb',60,16,mN);const mC0=mCalls;
+    wrapTextCached(SW,'aa bb',60,16,mN);
+    assert.strictEqual(mCalls,mC0,'same wrap inputs hit the memo — no remeasure');
+    SW.spacing=4;
+    wrapTextCached(SW,'aa bb',60,16,mN);
+    assert.ok(mCalls>mC0,'a spacing change remeasures');
+    console.log('  ✓ wrap memo key covers spacing — stale-hit poison blocked (ADR-1011)');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
