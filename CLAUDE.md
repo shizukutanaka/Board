@@ -969,6 +969,14 @@ Board/
 │   └── ADR-0918-wire-apply-audit.md  # wire op 適用側監査完走 — 全配列 bounded・clock スナップショット復元専用・`_attachOp` img parking 全経路 clean、構造キー cluster 完結
 │   └── ADR-0919-snapshot-merge-pg.md  # snapshot LWW merge の pg スキップ欠落を閉塞 — 鍛造 wc:{pg} による既存図形のページ追放 (0912 同族の merge 経路版)
 │   └── ADR-0920-connClears-after-null.md  # connClears after:null 鍛造を閉塞 — mid-apply TypeError による墓碑+部分適用、rescan 抑止による束縛残存を2点ガードで解消
+│   └── ADR-0921-connclears-backward-lww.md  # del/pageDel 逆方向 connClears 復元の _lwwSkip 欠落 — 他逆適用経路と非対称で skew 下の束縛発散、_ccRest helper で per-key LWW ゲート化
+│   └── ADR-0922-backward-tomb-gate.md  # del/clear/pageDel/replace 逆適用 shape 復元の _del 墓標未検査 — wire 側 addMany/replace との非対称で skew 下の存在発散、_tmb helper で墓標ゲート化
+│   └── ADR-0923-group-ungroup-backward-locked.md  # group/ungroup 逆適用の sh.locked 未検査 — 前進+undo-wire は locked skip、ローカルだけ帰属変更で発散。到達不能の gids fallback も除去
+│   └── ADR-0924-backward-apply-audit.md  # backward-apply 収束監査完走 — 全17 op の _undoWire 網羅・redo・connClears 再束縛・_stampWrites/_selR/_pgFollow/_opIds 対称を検証、実害なし
+│   └── ADR-0925-persist-broadcast-reach.md  # 永続化・broadcast 到達監査完走 — 全 mutation 経路が _ps+wire 送信へ到達、リロード消失/ピア発散なし
+│   └── ADR-0926-existence-clock.md  # 存在クロック — kill 経路の無条件墓標で到着順が存在を決めた非対称を _born+_bN (OR-set add-wins) で閉塞、nowTs strict HLC 化
+│   └── ADR-0927-born-parity.md    # born parity — snapshot 採用/merge/ローカル全置換の _born 未刻印3系統を _wAdopt+tomb supersession+wire 同等刻印で閉塞
+│   └── ADR-0928-replace-backward-born.md  # replace backward の _bT 未刻印で復元図形 born が pre-swap のまま (remote は U) — 狭間 del の一方向発散を両方向刻印で閉塞
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
