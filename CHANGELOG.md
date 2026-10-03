@@ -1,3 +1,8 @@
+## [1.8.039] - 2026-10-01
+
+### Docs + Pin
+- **armed pending-op × 全置換スワップ不変条件監査が clean 完走** (ADR-1013): `_nug` 連結 op は `_nugLock` の `gone` フィルタが死 id を剥離し空 op を棄却 (0965/0971 の merge 設計で `applyRemote` が flush しないのは意図)、`_sbf` スライダ buffer は byId ゲートで自己浄化、`_eraseBatch` は `_rs` リセット+ストローク生涯限定、ジェスチャ状態は `_ptrReset` 漏斗。armed nudge + remote del → 後続 commit が履歴へ残すのは実 op のみ (junk op+phantom undo 不存在) を実経路ピンで固定
+
 ## [1.8.038] - 2026-10-01
 
 ### Docs + Pin

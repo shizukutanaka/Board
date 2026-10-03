@@ -16175,14 +16175,29 @@ try {
     // ADR-1012: byId must not serve a stale entry across a same-count
     // wholesale swap — size-equal replacement only heals via _iG.
     reset();
-    const A1=Shape.make('rect',{x:0,y:0,w:10,h:10}),A2=Shape.make('rect',{x:20,y:0,w:10,h:10});
-    Store.commit({op:'add',shape:A1});Store.commit({op:'add',shape:A2});
+    const SWA=Shape.make('rect',{x:0,y:0,w:10,h:10}),SWB=Shape.make('rect',{x:20,y:0,w:10,h:10});
+    Store.commit({op:'add',shape:SWA});Store.commit({op:'add',shape:SWB});
     const B1=Shape.make('rect',{x:5,y:5,w:10,h:10}),B2=Shape.make('rect',{x:60,y:5,w:10,h:10});
     Store.applyRemote({op:'replace',after:[B1,B2],afterWc:{[B1.id]:{x:{peer:'p9',seq:1,ts:1}},[B2.id]:{x:{peer:'p9',seq:1,ts:1}}},clock:{peer:'p9',seq:9,ts:Date.now()+100}});
     assert.strictEqual(state.shapes.length,2,'same-count swap sanity');
     assert.strictEqual(byId(B1.id),state.shapes[0],'byId resolves a same-count-swapped id');
-    assert.ok(!byId(A1.id),'byId no longer resolves the swapped-out id');
+    assert.ok(!byId(SWA.id),'byId no longer resolves the swapped-out id');
     console.log('  ✓ byId survives a same-count wholesale swap (ADR-1012)');
+    // ADR-1013: an armed pending op must not commit against a board generation
+    // that killed its shapes — _nugLock strips dead ids at flush.
+    reset();
+    state.tool='select';
+    const NG1=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    Store.commit({op:'add',shape:NG1});
+    state.selection=new Set([NG1.id]);
+    fireKey('ArrowRight');   // arms the coalesced-move pending op (_nug)
+    Store.applyRemote({op:'del',shapes:[JSON.parse(JSON.stringify(NG1))],clock:{peer:'p9',seq:1,ts:Date.now()+1}});
+    assert.ok(!byId(NG1.id),'remote del kills the nudged shape');
+    const hx1=state.histIdx;
+    Store.commit({op:'add',shape:Shape.make('rect',{x:99,y:99,w:10,h:10})});   // commit funnel flushes _nug first
+    assert.strictEqual(state.histIdx,hx1+1,'only the real commit enters history — the stale pending op is discarded');
+    assert.strictEqual(state.history[state.histIdx].op,'add','the stale pending move produced no history entry');
+    console.log('  ✓ armed pending op strips dead ids at flush — no phantom commit (ADR-1013)');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
