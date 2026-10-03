@@ -1047,6 +1047,7 @@ Board/
 │   └── ADR-0996-wholesale-swap-derived-state.md  # 全置換スワップ×派生状態監査 — 7系統全 clean (_idIndex/_grpMap 等は _iG チョークポイント、pen 系は e.pts===p 参照 sig、_wrapCache は WeakMap、_imgPending は _pcR 再パーク、エディタは per-frame live 再解決)
 │   └── ADR-0997-live-op-aliasing.md  # live↔stored-op 参照エイリアシング監査 — 8系統全 clean (_apply 全 push clone、producer は clone/リテラル、_attachShape 読み取り専用、_undoWire 共有は send のみ)
 │   └── ADR-0998-peer-clock-uniqueness.md  # ピア時計一意性監査 — (peer,seq) dedup 衝突 clean: peerId は per-boot suffix 付きで seq 巻き戻り衝突なし、wire op は全 ++state.seq、seq:0 は仲裁専用オブジェクト
+│   └── ADR-0999-reborn-mark-lifecycle.md  # reborn マークのライフサイクル監査 — _ptrReset/_nugEnd で終了時クリア、後続ジェスチャへの漏洩なし + dead snapBox 除去 ~150B
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
