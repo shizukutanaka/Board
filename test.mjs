@@ -1270,8 +1270,8 @@ const checks = [
   ['Persist.open yields on versionchange (newer tab can upgrade)', html.includes("this.db.onversionchange=()=>{try{this.db.close()}catch(_){}this.db=null}")],
   ['saveBlocked i18n key in both locales', html.includes("saveBlocked:'別タブが旧版を保持") && html.includes("saveBlocked:'Another tab holds an older board")],
   ['Persist.flushIfHidden cancels pending debounce + calls save', html.includes("_cT(this._saveT);\n      this.save();")],
-  ['visibilitychange listener wires document.visibilityState to flushIfHidden (ADR-0604/0608/0611/0959: commits nudge + cancels gesture + clears touch state + hides cursor first)', html.includes("document.visibilityState==='hidden'){_nugEnd();if(ptr.down)_cancelPointerGesture();_clearTouchState();Net.sendCursorHide()}Persist.flushIfHidden(document.visibilityState)")],
-  ['pagehide routes through flushIfHidden — iOS swipe-away durable (ADR-0453/0604/0608/0959)', html.includes("'pagehide',()=>{_nugEnd();if(ptr.down)_cancelPointerGesture();_clearTouchState();Persist.flushIfHidden('hidden');Net._bcast(_mk('bye'))}")],
+  ['visibilitychange listener wires document.visibilityState to flushIfHidden (ADR-0604/0608/0611/0959: commits nudge + cancels gesture + clears touch state + hides cursor first)', html.includes("document.visibilityState==='hidden'){_nugEnd();_cxO();if(ptr.down)_cancelPointerGesture();_clearTouchState();Net.sendCursorHide()}Persist.flushIfHidden(document.visibilityState)")],
+  ['pagehide routes through flushIfHidden — iOS swipe-away durable (ADR-0453/0604/0608/0959)', html.includes("'pagehide',()=>{_nugEnd();_cxO();if(ptr.down)_cancelPointerGesture();_clearTouchState();Persist.flushIfHidden('hidden');Net._bcast(_mk('bye'))}")],
   ['peer bye drops presence immediately — no 15s ghost (ADR-0457)', html.includes("case 'bye':{") && html.includes("if(pk&&_pr().delete(pk)){_ivO()")],
   ['room switch sends bye + clears BC peers (ADR-0458)', html.includes("this._send(_mk('bye'));this.bc.close()") && html.includes("if(!_sw(id,'rtc:'))_pr().delete(id)")],
   ['peer id carries a per-boot incarnation nonce (ADR-0459)', html.includes("peerId:PEER_ID+'.'+uid().slice(0,6)") && html.includes("_sO().clear();_cT(this._snapT)")],
@@ -10489,7 +10489,7 @@ try {
   // cancel runs BEFORE flushIfHidden so the restored state is what persists.
   {
     assert.ok(html.includes("_clearTouchState();Net.sendCursorHide()}Persist.flushIfHidden"),'hidden cancels gesture + clears touch state + hides cursor');
-    assert.ok(html.includes("pagehide',()=>{_nugEnd();if(ptr.down)_cancelPointerGesture();_clearTouchState();Persist.flushIfHidden('hidden')"),'pagehide commits the pending nudge + cancels gesture + clears touch state before flush (ADR-0959)');
+    assert.ok(html.includes("pagehide',()=>{_nugEnd();_cxO();if(ptr.down)_cancelPointerGesture();_clearTouchState();Persist.flushIfHidden('hidden')"),'pagehide commits the pending nudge + cancels gesture + clears touch state before flush (ADR-0959)');
     assert.ok(html.includes("function _clearTouchState(){_pointers.clear();_pinchPrev=0;if(_pinchSnap){_pinchSnap=null;_pinchVp=null;_iv()}Minimap.cancelNav();state.measure=state.hover=state._ehov=null}"),'shared touch-state cleanup (ADR-0608/0632/1008)');
     console.log('  ✓ hidden/pagehide gesture cancel pinned (2 asserts)');
   }
@@ -16302,6 +16302,34 @@ try {
       flushErase();   // drain via the real commit path; the next block reset()s anyway
       console.log('  ✓ mid-erase members still serialize (ADR-1021)');
     }
+    // ADR-1022: lifecycle flushes fold open editors — text/label editors
+    // commit only on blur, so a hidden/pagehide/beforeunload mid-edit saved
+    // the doc while the typed text was still uncommitted (silent loss; for
+    // isNew the blank shape persisted with content never synced). _cxO()
+    // blurs both editors before the dirty flush sees the commit.
+    {
+      reset();
+      const kids22=[];const _ce22=fakeDoc.createElement;
+      fakeDoc.createElement=tag=>{const el=_ce22(tag);el._L={};el.addEventListener=(t,f)=>{(el._L[t]||=[]).push(f)};el.blur=()=>{(el._L.blur||[]).forEach(f=>f())};return el};
+      const _ab22=fakeDoc.body.appendChild;fakeDoc.body.appendChild=el=>{kids22.push(el)};
+      try{
+        const ed1=Shape.make('sticky',{x:0,y:0,w:100,h:80,text:'orig'});
+        Store.commit({op:'add',shape:ed1});
+        openTextEditor(byId(ed1.id),false);
+        const ta=kids22[kids22.length-1];
+        assert.ok(ta&&state.editing===ed1.id,'text editor open');
+        ta.value='typed uncommitted';
+        fakeDoc.visibilityState='hidden';
+        for(const f of fakeDoc._L['visibilitychange']||[])f({});
+        fakeDoc.visibilityState='visible';
+        assert.ok(byId(ed1.id).text==='typed uncommitted','hidden flush commits the in-flight edit');
+        assert.ok(state.editing===null,'editor folded by _cxO');
+        assert.ok(html.includes("_nugEnd();_cxO();if(ptr.down)"),'hidden+pagehide fold editors before the flush');
+        assert.ok(html.includes("_nugEnd();_cxO();   // ADR-0959/1022"),'beforeunload folds editors before the save');
+      }finally{fakeDoc.createElement=_ce22;fakeDoc.body.appendChild=_ab22;}
+      state.editing=null;
+      console.log('  ✓ lifecycle flushes fold open editors (ADR-1022)');
+    }
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -17235,6 +17263,7 @@ pass += 4; // ADR-0936 absolute-writer pins
   pass += 5; // ADR-0992 stale-reference × removal completeness pins
   pass += 6; // ADR-1020 viewport-persist pins
 pass += 7; // ADR-1021 erase-batch serialization pins
+pass += 5; // ADR-1022 editor-fold flush pins
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
