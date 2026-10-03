@@ -16141,6 +16141,16 @@ try {
     assert.strictEqual(state.hover,null,'blur drops the quick-conn hover id');
     assert.strictEqual(state._ehov,null,'blur drops the eraser hover box');
     console.log('  ✓ blur clears transient hover/measure chrome (ADR-1008)');
+    // ADR-1009: wholesale swaps invalidate the stored measure geometry — the
+    // only transient chrome state that isn't a dead-id-safe lookup.
+    reset();
+    state.measure={a:{x:0,y:0,w:1,h:1},b:{x:2,y:2,w:1,h:1}};
+    Store.applyRemote({op:'replace',after:[],afterWc:{},clock:{peer:'p9',seq:1,ts:Date.now()+1}});
+    assert.strictEqual(state.measure,null,'remote replace drops stale measure guides');
+    state.measure={a:{x:0,y:0,w:1,h:1},b:{x:2,y:2,w:1,h:1}};
+    Store.commit({op:'clear'});
+    assert.strictEqual(state.measure,null,'local clear drops stale measure guides');
+    console.log('  ✓ wholesale swap clears stale measure chrome (ADR-1009)');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');

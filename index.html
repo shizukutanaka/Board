@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.034';   // ADR-1008
+const V='1.8.035';   // ADR-1009
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1698,7 +1698,7 @@ const Store={
         if(!forward)_selR(op);
         break;}
       case 'clear':{
-        if(forward){_unB();if(op.clock)state._lastRep=op.clock;const wc0=state.wclock||{},dead=[],keep=[];for(const s of _sh())if(_bN(s.id,op.clock))keep.push(s);else dead.push(s.id);_sh().length=0;for(const s of keep)_sh().push(s);_scl();state.wclock=_wM();for(const s of keep)_wR(s.id,wc0[s.id]);for(const id of dead)_wD(id,op.clock);_wTb(wc0,op.clock,_sT());_pcC();_pcR()}   // ADR-0626/0736/0926/0953/0985
+        if(forward){_unB();if(op.clock)state._lastRep=op.clock;const wc0=state.wclock||{},dead=[],keep=[];for(const s of _sh())if(_bN(s.id,op.clock))keep.push(s);else dead.push(s.id);_sh().length=0;for(const s of keep)_sh().push(s);_scl();state.measure=null;state.wclock=_wM();for(const s of keep)_wR(s.id,wc0[s.id]);for(const id of dead)_wD(id,op.clock);_wTb(wc0,op.clock,_sT());_pcC();_pcR()}   // ADR-0626/0736/0926/0953/0985/1009
         else{for(const s of op.shapes)if(!byId(s.id)&&!_tmb(s.id,op)){_sh().push(Net._attachShape(clone(s)));_bT(s.id,op.clock)}_sz();if(op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);_selR(op);}   // ADR-0723/0922/0926
         break;}
       case 'replace':{
@@ -1709,7 +1709,7 @@ const Store={
         _unB();   // ADR-0953: batched members join the swap's tomb-or-keep scan like peers see them
         if(op.clock)state._lastRep=op.clock;   // ADR-0614: newest applied swap marker — covers undo too
         const wc0=state.wclock||{},old0=_sh().map(s=>s.id),inN=_sT(next.map(s=>s.id)),keep=_sh().filter(s=>!inN.has(s.id)&&_bN(s.id,op.clock));   // ADR-0736/0926
-        _sh().length=0;_scl();state.wclock=_wM();_pcC();state.pages=state.curPg=null;_pgBar();   // ADR-0646
+        _sh().length=0;_scl();state.measure=null;state.wclock=_wM();_pcC();state.pages=state.curPg=null;_pgBar();   // ADR-0646/1009
         for(const s of _uniq(next)){const wd=wc0[s.id];if(wd&&wd._del&&clockNewer(wd._del,op.clock))continue;_sh().push(Net._attachShape(clone(s)))}   // ADR-0736/0790/0922
         for(const s of keep)_sh().push(s);_pcR();   // ADR-0926/0985: a newer re-add outranks the swap's removal
         _iG();   // ADR-0613
@@ -2094,7 +2094,7 @@ let _penCachePx=0;
 // until the global caps evict them.
 const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPending.clear()},_pcR=()=>{for(const s of _sh())if(_iS(s.img)&&!_du(s))_park(Net._imgPending,s.id,s.img)};   // ADR-0445/0985
 const _uniq=a=>{const se=_sT();for(let i=_ln(a)-1;i>=0;i--)if(se.has(a[i].id))a.splice(i,1);else se.add(a[i].id);return a};   // ADR-0790
-const _rs=arr=>{_eraseBatch=[];state.shapes=_uniq(arr);_iG();_pcC();_pcR()}   // ADR-0493/0790/0953/0985
+const _rs=arr=>{_eraseBatch=[];state.measure=null;state.shapes=_uniq(arr);_iG();_pcC();_pcR()}   // ADR-0493/0790/0953/0985/1009
 const _pgOn=()=>!!(_pgs()&&_ln(_pgs())),_pgById=id=>_pgOn()&&_pgs().find(p=>p.id===id),_pgOk=s=>!_pgOn()||(s.pg||_pgs()[0].id)===state.curPg;   // ADR-0646: unpg'd shapes belong to pages[0] positionally
 const _vPages=a=>!_iA(a)||!_ln(a)||_ln(a)>64?null:(a.every(p=>p&&_iS(p.id)&&_ln(p.id)<=64&&_iS(p.name)&&_ln(p.name)<=80&&(p.nts==null||_tsOK(p.nts))&&(p.ntp==null||_iS(p.ntp)&&_ln(p.ntp)<=64))?a:null);   // ADR-0700/0791
 const _pgHealS=()=>{if(_pgOn())for(const s of _sh()){if(s.pg&&!_pgById(s.pg)&&_ln(_pgs())<64)_pu(_pgs(),{id:s.pg,name:'?',nts:-1})}else for(const s of _sh())delete s.pg};   // ADR-0694

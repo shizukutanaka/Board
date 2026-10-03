@@ -1057,6 +1057,7 @@ Board/
 │   └── ADR-1006-timer-lifecycle-audit.md  # 遅延コールバック (setTimeout/interval/Promise) 全サイト監査 clean — fire 時 self-guard または cancel 漏斗網羅を規則化
 │   └── ADR-1007-key-repeat-gate.md  # e.repeat ゲート — discrete (トグル/エクスポート/スタンプ) 遮断、continuous (undo/nudge/zoom/rotate/cascade) 通過
 │   └── ADR-1008-transient-input-state-blur.md  # transient 入力由来状態 (measure/hover/_ehov) の blur 喪失 — _clearTouchState 漏斗で閉塞
+│   └── ADR-1009-measure-swap-invalidation.md  # 全置換スワップで stale measure 幾何が残存 — _rs+_apply 3サイトでクリア (armed 状態監査完走)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
