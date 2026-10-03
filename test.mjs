@@ -94,6 +94,8 @@ const checks = [
   ['toBlob has null guard', html.includes("if(!bl){_eT(_EF)")],
   // ADR-0907: export render loops isolate per-shape drawShape (0601/0887 parity)
   ['export render loops isolate drawShape', html.includes('_dS=(s,c)=>{try{drawShape(s,c)}catch(_){}}')],
+  // ADR-0909: non-Element event targets can't TypeError the paste/keydown gates
+  ['paste/keydown target guard uses optional matches', (html.match(/e\.target\.matches\?\.\(/g)||[]).length>=2],
   // v1.1: op validation in _onRecv
   ['_onRecv validates op.clock', html.includes("!_iS(op.clock.peer)")],
   // v1.1: import validates shapes
@@ -14972,7 +14974,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1863; // prev 1862 + 1 ADR-0907 export-isolation pin
+  pass += 1864; // prev 1863 + 1 ADR-0909 target-guard pin
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

@@ -1,3 +1,8 @@
+## [1.7.935] - 2026-10-01
+
+### Fixed
+- paste/keydown の window ハンドラで `e.target.matches()` が unguarded — 非 Element ターゲット (document 等) で TypeError がリスナを貫通し paste 全死/全キー操作死し得た非対称を `matches?.` で閉塞 (copy/cut の `_osCopy` 防御と parity) (ADR-0909)。Image ライフサイクル監査は clean 完走 — 壊れた dataUrl は全 drawImage サイトで `complete&&naturalWidth` ゲート→placeholder 化、cache/error 経路全網羅
+
 ## [1.7.934] - 2026-10-01
 
 ### Docs
