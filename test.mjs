@@ -96,6 +96,14 @@ const checks = [
   ['export render loops isolate drawShape', html.includes('_dS=(s,c)=>{try{drawShape(s,c)}catch(_){}}')],
   // ADR-0909: non-Element event targets can't TypeError the paste/keydown gates
   ['paste/keydown target guard uses optional matches', (html.match(/e\.target\.matches\?\.\(/g)||[]).length>=2],
+  // ADR-0980: same for the document-level ctx-menu outside-click guard
+  ['mousedown target guard uses optional closest', html.includes("e.target.closest?.('.ctx-menu')")],
+  // ADR-0981: every queried element's onclick is bound exactly once (repeat
+  // registration on one element would silently replace or duplicate handlers)
+  ['each _oC(_g(id)) binds its element exactly once', (()=>{const ids=[...html.matchAll(/_oC\(_g\('([a-zA-Z]+)'/g)].map(m=>m[1]);return new Set(ids).size===ids.length})()],
+  ['window-level keydown listener registered once', (html.match(/_on\(window,_KD/g)||[]).length===1],
+  ['document-level mousedown listener registered once', (html.match(/_on\(document,'mousedown'/g)||[]).length===1],
+  ['dpr watcher re-arms with once:true', html.includes('_on(mq,_CH,onChange,{once:true})')],
   // ADR-0912/0913/0916: pg + frac + groupId are structural — patches can't exile
   // shapes, scramble z-order, or forge group membership (halo/selection clobber)
   ['patch strips drop pg (upd + style paths)', (html.match(/delete p\.pg;/g)||[]).length>=2],
@@ -272,12 +280,12 @@ const checks = [
   ["snapshot carries rep marker + stale-snapshot skip (ADR-0617)", html.includes("rep:state._lastRep") && html.includes("clockNewer(state._lastRep,msg.rep))break;")],
   ["snapshot docName is LWW-gated via (ts,writer) order (ADR-0618/0699)", html.includes("nameTs:_nameTs,namePeer:_namePeer") && html.includes("_nameWin(msg.nameTs,_iS(msg.namePeer)?msg.namePeer:'')")],
   ["Net.init resets causal markers across rooms (ADR-0619/0699/0839)", html.includes("state.roomId&&state.roomId!==(roomId||DOC_KEY)){state._lastRep=null;_nameTs=0;_namePeer='';try{this.dc&&this.dc.close();this.rtc&&this.rtc.close()}catch(_){}}")],
-  ["move commit drops ids removed mid-gesture (ADR-0621)", html.includes("filter(id=>{const s=byId(id);return s&&_ul(s)})")],
+  ["move commit drops ids removed mid-gesture + restores members locked mid-gesture (ADR-0621/0965)", html.includes("_gRL(ptr.dragStartShapes);") && html.includes("const orig={};") && html.includes("_nugPush({op:'move',ids,dx,dy,orig})")],
   ["_sb drops dead ids at source + nudgeSelection parity (ADR-0623)", html.includes("_sb=()=>_selIds().map(byId).filter(Boolean)") && html.includes("unlockedSelectionIds(){return _selIds().filter(id=>{const s=byId(id);return s&&_ul(s)});}")],
-  ["_slimOp strips undo-only fields from wire ops (ADR-0625)", html.includes("const{origSel:_o2,moved:_m2,...rest}=op;") && html.includes("const{wc:_wc1,origSel:_o1,...r}=op;")],
+  ["_slimOp strips undo-only fields from wire ops (ADR-0625/0965)", html.includes("const{origSel:_o2,moved:_m2,orig:_o3,...rest}=op;") && html.includes("const{wc:_wc1,origSel:_o1,...r}=op;")],
   ["undo restamps op.clock fresh before the backward apply (ADR-0717)", html.includes("const _ut=nowTs();op.clock={peer:_pi(),seq:++state.seq,ts:_ut};")],
   ["undo-wire carries before for style/resize/align (ADR-0717)", html.includes("before:op.after,after:op.before}")],
-  ["'clear' rides the wire as empty 'replace' + sender marker parity (ADR-0626)", html.includes("if(op.op==='clear')return{op:'replace',after:[],afterWc:{},clock:op.clock};") && html.includes("if(forward){if(op.clock)state._lastRep=op.clock;const wc0=state.wclock||{},dead=[],keep=[]")],
+  ["'clear' rides the wire as empty 'replace' + sender marker parity (ADR-0626)", html.includes("if(op.op==='clear')return{op:'replace',after:[],afterWc:{},clock:op.clock};") && html.includes("if(forward){_unB();if(op.clock)state._lastRep=op.clock;const wc0=state.wclock||{},dead=[],keep=[]")],
   ["contextlost purges GPU caches on restore (ADR-0627)", html.includes("_on(canvas,'contextlost',_pd)") && html.includes("_on(canvas,'contextrestored',_ctxUp)") && html.includes("_penCache.clear();_penCachePx=0;_inkD=null;Minimap.invalidateCache()")],
   ["img blob resolves evicted pending stragglers (ADR-0629)", html.includes("for(const s of _sh())if(s.img===msg.key){delete s.img;s.dataUrl=data;this._imgPending.delete(s.id)}")],
   ["resize handlers debounced (ADR-0631)", html.includes("_on(window,'resize',_resizeSoon)") && html.includes("_on(visualViewport,'resize',_resizeSoon)") && html.includes("_on(screen.orientation,_CH,_resizeSoon)")],
@@ -640,7 +648,8 @@ const checks = [
     return bad.length===0;
   })()],
   ['.onclick= assignments folded to _oC helper (ADR-0539)', html.includes("_oC=(e,f)=>e.onclick=f")&&html.split('.onclick=').length-1===1],
-  ['presentation leave() tolerates null focus trigger (ADR-0539)', html.includes('_focusTrigger?.focus();_focusTrigger=null;')],
+  ['presentation leave() tolerates null focus trigger (ADR-0539)', html.includes('_focusTrigger&&_fc(_focusTrigger.isConnected===false?canvas:_focusTrigger);_focusTrigger=null;')],
+  ['dialog focus restore falls back for detached targets (ADR-0982)', html.includes('p.isConnected===false?canvas:p')],
   ['global input Escape respects IME composition (ADR-0540)', html.includes("e.key==='Escape'&&!e.isComposing")],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
@@ -648,7 +657,7 @@ const checks = [
   ['service worker purges stale caches', html.includes("caches.keys()") && html.includes("k!==C")],
   // v1.6.20: fourth audit pass
   ['drawShape opacity uses nullish coalescing (opacity=0 invisible, not opaque)', html.includes('c.globalAlpha=_oP(s)??1')],
-  ['pointercancel restores in-progress resize/move shapes', html.includes("_dk('resize')&&ptr.resizeOrig")],
+  ['pointercancel restores in-progress resize/move shapes', html.includes("_dk('resize'))_gR2(ptr.resizeOrig)") && html.includes("_dk('move'))_gR1(ptr.dragStartShapes)")],
   ['frame label Escape removes blur listener before cancelling', html.includes("inp.removeEventListener('blur',commit)")],
   ['context menu items have role=menuitem (WCAG 4.1.2)', html.includes("_sa(b,'role','menuitem')")],
   ['context menu separators have role=separator', html.includes("_sa(s,'role','separator')")],
@@ -757,8 +766,8 @@ const checks = [
   // v1.7.582 (ADR-0554): presentation frame navigation drops deleted frames
   ['presentation _goto filters stale+off-page frames (ADR-0554/0677)', html.includes('_frames=_frames.map(f=>byId(f.id)).filter(f=>f&&_pgOk(f))')],
   // v1.7.584 (ADR-0556): blur on a remotely-deleted shape must not commit a phantom op
-  ['text editor blur guards remote-deleted shape (ADR-0556)', html.includes("if(!byId(s.id)){state.editing=null;_teTa=null;_rm(ta);_iv();return}")],
-  ['label editor commit guards remote-deleted shape (ADR-0557)', html.includes("if(!byId(hit.id)){_lblTa=null;_rm(inp);_iv();return}")],
+  ['text editor blur guards remote-deleted/locked shape (ADR-0556/0967)', html.includes("if(!byId(s.id)||_lk(s)){state.editing=null;_teTa=null;_rm(ta);_iv();return}")],
+  ['label editor commit guards remote-deleted/locked shape (ADR-0557/0967)', html.includes("if(!byId(hit.id)||_lk(hit)){_lblTa=null;_rm(inp);_iv();return}")],
   ['sticky chain guards remote-deleted source (ADR-0558)', html.includes("_lk(s)||!byId(s.id))return")],
   ['text overlay closes when edited shape removed/hidden/locked/off-page (ADR-0559/0569/0572/0574/0709)', html.includes("if(!s||_hd(s)||_lk(s)||!_pgOk(s)){_rm(_teTa);_teTa=null;state.editing=null;_iv();return}")],
   ['label overlay closes when labelled shape removed/hidden/locked/off-page (ADR-0559/0569/0572/0709)', html.includes("if(!_lt||_hd(_lt)||_lk(_lt)||!_pgOk(_lt)){_rm(_lblTa.inp);_lblTa=null;return}")],
@@ -947,7 +956,7 @@ const checks = [
   ['conn label honours lineH canvas+SVG (ADR-0212)', html.includes('llh=fs*(s.lineH||1.25)')&&html.includes('lh2=fs*(s.lineH||1.25)')],
   ['pin/unpin anchor via ctx for touch/keyboard (ADR-0213)', html.includes('function pinAnchor()')&&html.includes("['ctxPinAnchor','',pinAnchor]")&&html.includes('px=k===\'a\'?e.x1:e.x2')],
   ["presence msgs carry curPg; peers on another page are not drawn (ADR-0647)",
-    html.includes("_mk('cursor',{x:wp.x,y:wp.y,pg:state.curPg})")&&html.includes("_mk('selection',{ids,pg:state.curPg})")&&html.includes("p.pg=npg")&&html.includes("if(_pgOn()&&p.pg&&p.pg!==state.curPg)continue")&&html.includes("return;_cxO()")&&html.includes("state.curPg=id;Net.sendCursorHide()")],
+    html.includes("_mk('cursor',{x:wp.x,y:wp.y,pg:state.curPg})")&&html.includes("_mk('selection',{ids,pg:state.curPg})")&&html.includes("p.pg=npg")&&html.includes("if(_pgOn()&&p.pg&&p.pg!==state.curPg)continue")&&html.includes("return;_nugEnd();_cxO()")&&html.includes("state.curPg=id;Net.sendCursorHide()")],
   ['_bindAt grid-accelerated candidate scan (ADR-0214)', html.includes('const cands=[..._queryGrid(_grid,{x,y})]')&&html.includes('const ok=s=>{const t=s.type;return t!==\'line\'&&t!==\'arrow\'&&t!==\'pen\'&&_sv(s)&&_pgOk(s)}')],
   ['modal focus capture/restore + summary tabbable (ADR-0215)', html.includes('_captureFocus()')&&html.includes('this._restoreFocus()')&&html.includes('select,textarea,summary,[tabindex')],
   ['labelPos drag snaps to 0/.25/.5/.75/1 slots (ADR-0216)', html.includes('for(const slot of[0,0.25,0.5,0.75,1])')],
@@ -960,7 +969,7 @@ const checks = [
   ['excalidraw import restores bindings to s.a/s.b (ADR-0223)', html.includes('_pu(_excBnd,[s,e])')&&html.includes('idOf.get(sb.elementId)')],
   ['drawio import keeps line-vs-arrow/curved/jump/start-head (ADR-0224)', html.includes("sty.endArrow==='none'")&&html.includes('s.hop=1')],
   ['drawio import note→sticky / swimlane→frame (ADR-0226)', html.includes("sty.shape==='note'){s=_smk('sticky'")&&html.includes("sty.shape==='swimlane')s=_smk('frame'")],
-  ['storage quota pressure warns proactively via estimate() (ADR-0227)', html.includes('navigator.storage.estimate')&&html.includes('this._quotaWarn()')&&html.includes("T('quotaWarn')")],
+  ['storage quota pressure warns proactively via estimate() (ADR-0227)', html.includes('nav.storage.estimate')&&html.includes('this._quotaWarn()')&&html.includes("T('quotaWarn')")],
   ['drawio import maps align + fontStyle bitmask (ADR-0228)', html.includes("sty.align==='center'||sty.align==='right'")&&html.includes('_fs&4)s.under=1')&&html.includes("'align='+s.align")&&html.includes("fontStyle='+_fs")],
   ['excalidraw import restores groupIds → groupId (ADR-0229)', html.includes("e.groupIds[0]")&&html.includes('s.groupId=e.groupIds')],
   ['excalidraw import maps fillStyle/roundness/align/arrowheads (ADR-0230)', html.includes("e.fillStyle==='hachure'")&&html.includes("e.strokeSharpness==='round')o.r=8")&&html.includes("e.endArrowhead===null)s.head='none'")&&html.includes("style==='none')return")],
@@ -1212,7 +1221,7 @@ const checks = [
   ['selection outline traces rotated box', html.includes("if(single&&single.rotate&&single.w!=null){")],
   // v1.6.70: keyboard resize (Alt+arrow)
   ['resize op registered (apply, validate, remote)', html.includes("case 'resize':\n      case 'align':\n      case 'beautify':{") && html.includes("case 'beautify':{const noLock=") && html.includes("'style','resize','replace','pageAdd','pageDel','pageName','beautify'])")],
-  ['Alt+arrow keyboard-resizes box shapes', html.includes("_rcOp({op:'resize',before,after});") && html.includes("sh.w=_max(4,sh.w+dw);sh.h=_max(4,sh.h+dh);")],
+  ['Alt+arrow keyboard-resizes box shapes', html.includes("_nugPush({op:'resize',before,after});") && html.includes("sh.w=_max(4,sh.w+dw);sh.h=_max(4,sh.h+dh);")],
   // v1.6.71: image import error handling
   ['imgErr i18n key in both locales', html.includes("imgErr:'画像を読み込めませんでした'") && html.includes("imgErr:'Image failed to load'")],
   ['drag-drop image import has img.onerror toast', html.includes("img.onerror=()=>_wT('imgErr');") ],
@@ -1259,8 +1268,8 @@ const checks = [
   ['Persist.open yields on versionchange (newer tab can upgrade)', html.includes("this.db.onversionchange=()=>{try{this.db.close()}catch(_){}this.db=null}")],
   ['saveBlocked i18n key in both locales', html.includes("saveBlocked:'別タブが旧版を保持") && html.includes("saveBlocked:'Another tab holds an older board")],
   ['Persist.flushIfHidden cancels pending debounce + calls save', html.includes("_cT(this._saveT);\n      this.save();")],
-  ['visibilitychange listener wires document.visibilityState to flushIfHidden (ADR-0604/0608/0611: cancels gesture + clears touch state + hides cursor first)', html.includes("document.visibilityState==='hidden'){if(ptr.down)_cancelPointerGesture();_clearTouchState();Net.sendCursorHide()}Persist.flushIfHidden(document.visibilityState)")],
-  ['pagehide routes through flushIfHidden — iOS swipe-away durable (ADR-0453/0604/0608)', html.includes("'pagehide',()=>{if(ptr.down)_cancelPointerGesture();_clearTouchState();Persist.flushIfHidden('hidden');Net._bcast(_mk('bye'))}")],
+  ['visibilitychange listener wires document.visibilityState to flushIfHidden (ADR-0604/0608/0611/0959: commits nudge + cancels gesture + clears touch state + hides cursor first)', html.includes("document.visibilityState==='hidden'){_nugEnd();if(ptr.down)_cancelPointerGesture();_clearTouchState();Net.sendCursorHide()}Persist.flushIfHidden(document.visibilityState)")],
+  ['pagehide routes through flushIfHidden — iOS swipe-away durable (ADR-0453/0604/0608/0959)', html.includes("'pagehide',()=>{_nugEnd();if(ptr.down)_cancelPointerGesture();_clearTouchState();Persist.flushIfHidden('hidden');Net._bcast(_mk('bye'))}")],
   ['peer bye drops presence immediately — no 15s ghost (ADR-0457)', html.includes("case 'bye':{") && html.includes("if(pk&&_pr().delete(pk)){_ivO()")],
   ['room switch sends bye + clears BC peers (ADR-0458)', html.includes("this._send(_mk('bye'));this.bc.close()") && html.includes("if(!_sw(id,'rtc:'))_pr().delete(id)")],
   ['peer id carries a per-boot incarnation nonce (ADR-0459)', html.includes("peerId:PEER_ID+'.'+uid().slice(0,6)") && html.includes("_sO().clear();_cT(this._snapT)")],
@@ -1294,9 +1303,9 @@ const checks = [
   ['share export rounds shapes', html.includes("shapes:roundShapesForExport(_sh()),name:_dn()")],
   ['.board export rounds shapes', html.includes("shapes:roundShapesForExport(shapes)})],{type:'application/json'})")],
   // v1.6.84: Net.init clears prior presence timer on re-init (no leaked heartbeat)
-  ['Net.init clears prior presence timer', html.includes("clearInterval(this._presenceTimer);   // re-init (room switch) must not leak the old heartbeat")],
+  ['Net.init clears prior presence timer', html.includes("clearInterval(this._presenceTimer);   // re-init must not leak old heartbeat")],
   // v1.6.85: WebRTC peers lifecycle-managed (not heartbeat-reaped after 15s)
-  ['_reapPeers exempts rtc: peers from timeout reaping', html.includes("if(_sw(id,'rtc:'))continue;   // WebRTC peers are lifecycle-managed")],
+  ['_reapPeers exempts rtc: peers from timeout reaping', html.includes("if(_sw(id,'rtc:'))continue;   // RTC peers are lifecycle-managed")],
   ['dc.onclose removes the rtc peer', html.includes("if(dcRef._pid){_pr().delete(dcRef._pid);if(this._rtcPeerId===dcRef._pid)this._rtcPeerId=null;_ivO();}")],
   ['dc.onopen stores _rtcPeerId for lifecycle management', html.includes("dcRef._pid='rtc:'+uid().slice(0,4);")],
   // v1.7.76 / ADR-0017 (FT-20): ICE failure without an open channel showed nothing —
@@ -1420,9 +1429,39 @@ const checks = [
   ['text-blur del: origSel captured and patched before and after Store.commit del',
     html.includes("const origSel=_selIds();\n        const connClears=computeConnClears(_sT([orig.id]));")&&
     html.includes("_cmt(delOp);\n        _keepSel(origSel);")],
-  // v1.7.36: flushErase must capture origSel before del commit and patch after
+  // v1.7.36/ADR-0964: flushErase must capture origSel before del commit and patch after
   ['flushErase del: origSel captured before commit and patched after (parity with doDelete)',
-    html.includes("const origSel=_selIds();\n  const op={op:'del',shapes:clone(_eraseBatch)};")],
+    html.includes("const origSel=_selIds();\n  const op={op:'del',shapes:clone(live)};")],
+  // ADR-0964 source pins: six single-shape commit gates + shared restore matrix
+  // wiring + the gresize/grot/flushErase member partitions.
+  ['ADR-0964: shared _gRst restore matrix wired into abortGesture and _cancelPointerGesture',
+    html.includes("const _gRst=()=>")&&
+    html.includes("function abortGesture(){\n  _gRst();")&&
+    html.includes("_gRst();   // ADR-0764/0964: shared orig-restore matrix")],
+  ['ADR-0964: six locked-gate commit sites (resize/rotate/cbend/ebend/way/lblpos)',
+    html.split("locked)_gRst();   // ADR-0964").length-1===6],
+  ['ADR-0964: gresize/grot restore+exclude locked members; flushErase partitions live members',
+    html.includes("_gRL(ptr.gOrig);_gRL(ptr.gAnc);")&&html.includes("const _gRL=M=>{if(M)for(const[id,o]of M){const s=byId(id);if(s&&s.locked&&!_rb(id)){_geoR(s,o);_iv()}}};")&&
+    html.includes("filter(s=>s&&!s.locked).map(clone)")&&
+    html.includes("const live=_eraseBatch.filter(s=>!s.locked);")],
+  // ADR-0965 source pins: _nugLock partitions mid-run locked/missing members
+  // out of a pending op — restores run-start + filters every member list.
+  ['ADR-0965: _nugEnd partitions mid-run locked/missing members before the commit',
+    html.includes("_nugLock(o,n.reborn);")&&
+    html.includes("A.some(a=>a.id===id&&a.locked)")&&
+    html.includes("if(op.op==='move'){const o=op.orig[id];if(o)_geoR(s,o)}")&&
+    html.includes("if(c)s.frac=c.before")&&
+    html.includes("for(const k of['ids','before','after','changes'])if(op[k])op[k]=op[k].filter(m=>!gone.has(m.id||m));")],
+  // ADR-0966 source pins: pending-op × mid-run convergence — every later commit
+  // funnel flushes first; the own-lock exemption reads the LIVE flag, not the
+  // op's intent, so unlock (null) skips and own-lock (after.locked) exempts.
+  ['ADR-0966: pending-op flush coverage — _nugEnd at every later commit funnel',
+    html.includes("_nugEnd();   // ADR-0958")&&
+    html.includes("_nugEnd();   // ADR-0958/0960")&&
+    html.includes("_nugEnd();   // ADR-0957: commit an in-flight nudge so undo lands")&&
+    html.includes("function _nugEnd(){const n=_nug;_nug=null;if(n){_cT(n.t);const o=n.op;_nugLock(o,n.reborn);")&&
+    html.includes("if(!s.locked||A.some(a=>a.id===id&&a.locked))continue;   // own-lock")&&
+    html.includes("s.locked=lk||null;")],
   // v1.7.38: _apply('upd', forward) must guard sh.locked (parity with move forward)
   ['_apply upd: if(sh.locked)break guards locked shapes in BOTH directions',
     html.includes("const sh=byId(op.id);if(!sh)break;\n        // ADR-0712: locked gate in BOTH directions")],
@@ -1437,16 +1476,16 @@ const checks = [
     html.includes("for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked){const pt={}")],
   // v1.7.40: _apply zorder forward must guard sh.locked (changes path)
   ['_apply zorder forward changes: !sh.locked guards locked shapes in BOTH directions',
-    html.includes("if(sh&&!sh.locked&&!_lwwSkip(c.id,'frac',op))sh.frac=forward?c.after:c.before}")],
+    html.includes("if(sh&&!sh.locked&&!_lwwSkip(c.id,'frac',op)){sh.frac=forward?c.after:c.before;_gTouch(c.id,['frac'])}")],
   // v1.7.40: _apply group forward must guard sh.locked
   ['_apply group forward: !sh.locked guards locked shapes in BOTH directions',
-    html.includes("if(sh&&!sh.locked)sh.groupId=op.gid}")],
+    html.includes("if(sh&&!sh.locked){sh.groupId=op.gid;_gTouch(id,['groupId'])}")],
   // v1.7.40: _apply ungroup forward must guard sh.locked
   ['_apply ungroup forward: !sh.locked guards locked shapes in BOTH directions',
-    html.includes("if(sh&&!sh.locked)delete sh.groupId}")],
+    html.includes("if(sh&&!sh.locked){delete sh.groupId;_gTouch(id,['groupId'])}")],
   // v1.7.37: doGroup/_apply group backward must carry and restore origSel
   ['doGroup: origSel patched onto history entry after _recordCommitted',
-    html.includes("_rcOp({op:'group',ids,gid,before});")],
+    html.includes("_nugPush({op:'group',ids,gid,before});")],
   ['_apply group backward: if(op.origSel) restores selection',
     html.includes("_selR(op);}\n        break;}\n      case 'ungroup':")],
   // v1.7.37: doUngroup/_apply ungroup backward must carry and restore origSel
@@ -1463,9 +1502,9 @@ const checks = [
   ['endRectLike/endLineLike/beginText attach origSel before shape add commit',
     (html.match(/_cOp\(\{op:'add',shape:d\}\)/g)||[]).length >= 2 &&
     html.includes("_cOp({op:'add',shape:s});\n  openTextEditor")],
-  // v1.7.43: _zCommit captures origSel before zorder _recordCommitted
+  // v1.7.43→1.7.986: _zCommit captures origSel; the op commits through the _nug coalescer (ADR-0960)
   ['_zCommit: origSel captured before zorder commit and patched onto history entry',
-    html.includes("_rcOp({op:'zorder',changes});")],
+    html.includes("_nugPush({op:'zorder',changes});")&&html.includes("Store._recordCommitted(o);_keepSel(n.sel)")],
   // v1.7.44→1.7.629: MAX_OP_SHAPES == board ceiling (ADR-0602: 500-cap silently dropped bulk ops >500 shapes)
   ['MAX_OP_SHAPES equals SHARE_MAX_SHAPES (ops may address the whole board)',
     html.includes("const MAX_OP_SHAPES=SHARE_MAX_SHAPES;")],
@@ -1480,7 +1519,7 @@ const checks = [
     html.includes("if(!forward)_selR(op);\n        break;}\n      case 'style':")],
   // v1.7.43: keyboard resize (Alt+Arrow) captures origSel around resize _recordCommitted
   ['keyboard resize (Alt+Arrow): origSel captured before resize commit',
-    html.includes("_rcOp({op:'resize',before,after});")],
+    html.includes("_nugPush({op:'resize',before,after});")&&html.includes("Store._recordCommitted(o);_keepSel(n.sel)")],
   // v1.7.43: drag-resize upd captures origSel (mirrors endSelect/nudgeSelection pattern)
   ['drag-resize: origSel captured before upd _recordCommitted (ptr.resizeOrig path)',
     html.includes("_rcOp({op:'upd',id:rsh.id,before,after});")],
@@ -1731,7 +1770,7 @@ try {
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, cycleStickyColor, wrapInFrame, doPasteAt, doPasteInPlace, selectSamePaint, selectSameType, showAllShapes, _stickyChain, _fitIfEmptyView, toggleCurve, toggleLineArrow, toggleStickyText, selectFrameContents, selectInverse, unlockAll, exportViewportPNG, cycleArrowHead, _connPathPts, _pathAt, _pathNearestT, snapSelToGrid, importBoardText, copyBoardJSON, importDrawioText, importSvgText, importExcText, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
              _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
-             _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, _frameOf, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _edgePanTick, _gresizeDrag, _gresizeCommit, _mapToBox, _rotPtsAbout, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
+             _sfbCapture, _sfbFlush, _sbf, _sfbBlur, MAX_HISTORY, _now, NET_PRESENCE_TIMEOUT, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, _nugEnd, _frameOf, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _edgePanTick, _gresizeDrag, _gresizeCommit, _mapToBox, _rotPtsAbout, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa: () => _teTa, zoomAt, reverseConn, unbindSelection,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
              exportPNG, copyPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
@@ -1760,7 +1799,7 @@ try {
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, cycleStickyColor, wrapInFrame, doPasteAt, doPasteInPlace, selectSamePaint, selectSameType, showAllShapes, _stickyChain, _fitIfEmptyView, toggleCurve, toggleLineArrow, toggleStickyText, selectFrameContents, selectInverse, unlockAll, exportViewportPNG, cycleArrowHead, _connPathPts, _pathAt, _pathNearestT, snapSelToGrid, importBoardText, copyBoardJSON, importDrawioText, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
           _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
-          _sfbCapture, _sfbFlush, _sbf, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, _frameOf, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _edgePanTick, _gresizeDrag, _gresizeCommit, _mapToBox, _rotPtsAbout, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
+          _sfbCapture, _sfbFlush, _sbf, _sfbBlur, MAX_HISTORY, _now, NET_PRESENCE_TIMEOUT, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, _nugEnd, _frameOf, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _edgePanTick, _gresizeDrag, _gresizeCommit, _mapToBox, _rotPtsAbout, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa, zoomAt, reverseConn, unbindSelection,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
           exportPNG, copyPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
@@ -1955,6 +1994,49 @@ try {
   assert.strictEqual(state.shapes.length, before2, 'dedup prevents double-add');
   console.log('  ✓ applyRemote deduplicates by peer:seq');
 
+  // ADR-0972: dedup holds at every intake surface — the wire envelope, the
+  // 'opc' fragment path (reassembly re-enters _onRecv), and the local commit
+  // choke point (a re-submitted op carrying an already-seen clock is dropped
+  // entirely: no apply, no history, no broadcast).
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const sD=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    Net._onRecv({k:'op',peer:'p9',op:{op:'add',shape:sD,clock:{peer:'p9',seq:1,ts:1}}},false);
+    // dedup keys on the clock, not the payload — a re-delivered key drops even a different op
+    Net._onRecv({k:'op',peer:'p9',op:{op:'add',shape:Shape.make('ellipse',{x:5,y:5,w:5,h:5}),clock:{peer:'p9',seq:1,ts:1}}},false);
+    assert.strictEqual(state.shapes.length,1,'dedup keys on clock — same-key different-payload dropped');
+    const js=JSON.stringify({k:'op',peer:'p9',op:{op:'upd',id:sD.id,after:{x:77},clock:{peer:'p9',seq:2,ts:2}}});
+    const sendOpc=()=>{Net._onRecv({k:'opc',peer:'p9',seq:0,n:2,data:js.slice(0,js.length>>1)},false);Net._onRecv({k:'opc',peer:'p9',seq:1,n:2,data:js.slice(js.length>>1)},false)};
+    sendOpc();sendOpc();
+    assert.strictEqual(byId(sD.id).x,77,'fragment-delivered op applies once');
+    const nH=state.history.length;
+    Store.commit({op:'upd',id:sD.id,after:{x:99},clock:{peer:'p9',seq:2,ts:2}});   // clock already consumed remotely
+    assert.ok(byId(sD.id).x===77&&state.history.length===nH,'commit choke point dedups a seen clock');
+    console.log('  ✓ ADR-0972: dedup holds across direct/fragment envelopes + local commit');
+  }
+
+  // ADR-0973: an armed save must mark the doc dirty — flushIfHidden gates on
+  // _dt(), so a _ps()-only mutation (curPg switch, remote rename, snapshot
+  // adopt/heal) was skipped by the hidden/unload flush and lost on tab kill.
+  {
+    state.dirty=false;clearTimeout(Persist._saveT);Persist._saveT=0;
+    Persist.schedule();
+    assert.strictEqual(state.dirty,true,'schedule() marks dirty (flush gate sees the armed save)');
+    clearTimeout(Persist._saveT);Persist._saveT=0;
+    // snapshot union-heal on the merge path mutates persisted fields with no save arm
+    const _keepShapes=state.shapes;
+    state.shapes=[Shape.make('rect',{x:0,y:0,w:10,h:10})];_invalidateGrid();state.pages=null;state.curPg=null;state.dirty=false;
+    Net._onRecv({k:'snapshot',peer:'p9',shapes:[],ops:[],pages:[{id:'pgX',name:'Adopted',nts:1}],rep:null},false);
+    assert.ok(state.pages&&state.pages[0].id==='pgX'&&state.dirty===true,'snapshot union-heal arms a dirty save');
+    state.shapes=_keepShapes;state.pages=null;state.curPg=null;_invalidateGrid();
+    // page switch (ADR-0674: last page survives reload) arms a save
+    state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';state.dirty=false;
+    switchPage('pB');
+    assert.ok(state.curPg==='pB'&&state.dirty===true,'page switch arms a dirty save');
+    state.pages=null;state.curPg=null;state.dirty=false;clearTimeout(Persist._saveT);Persist._saveT=0;
+    console.log('  ✓ ADR-0973: schedule() marks dirty — heal/rename mutations flush on hide');
+  }
+
   // applyRemote from different peer
   const remoteOp = {
     op: 'add',
@@ -2039,6 +2121,221 @@ try {
     for(const s of prev)state.shapes.push(s);
     console.log('  ✓ _recordCommitted sets _lastRep on local replace (ADR-0616)');
   }
+  // ADR-0974: a remote 'replace' back-stops the pre-swap board into the backup
+  // slot (ADR-0004/0613) — a peer's wholesale import must not strand the local
+  // board if the tab closes before a restore/undo. Empty boards back up nothing.
+  {
+    state.shapes.length=0;state._lastRep=null;state.seenOps=new Set();state.wclock={};_invalidateGrid();
+    const a=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    state.shapes=[a];state.docName='D';
+    const calls=[];
+    const _sb=Persist.saveBackup;
+    Persist.saveBackup=(s,v,n)=>{calls.push({s,v,n});return Promise.resolve()};
+    try{
+      Store.applyRemote({op:'replace',after:[Shape.make('ellipse',{x:1,y:1,w:5,h:5})],afterWc:{},clock:{peer:'pr',seq:1,ts:100}});
+      assert.strictEqual(calls.length,1,'remote replace snapshots the pre-swap board once');
+      assert.ok(calls[0].s.length===1&&calls[0].s[0].id===a.id,'backup holds the pre-swap shapes');
+      assert.strictEqual(calls[0].n,'D','backup carries the docName');
+      state._lastRep=null;state.seenOps=new Set();state.shapes.length=0;_invalidateGrid();
+      calls.length=0;
+      Store.applyRemote({op:'replace',after:[a],clock:{peer:'pr',seq:2,ts:200}});
+      assert.strictEqual(calls.length,0,'empty board backs up nothing (nothing to lose)');
+    }finally{Persist.saveBackup=_sb;state.shapes.length=0;_invalidateGrid();}
+    console.log('  ✓ remote replace back-stops the pre-swap board (ADR-0974)');
+  }
+  // ADR-0974: a remote 'replace' keeps locally-alive shapes whose _born clock
+  // outranks the swap (ADR-0926) — keep/tomb/born restamping stays symmetric
+  // with the sender-side _recordCommitted bookkeeping.
+  {
+    state.shapes.length=0;state._lastRep=null;state.seenOps=new Set();state.wclock={};_invalidateGrid();
+    const old=Shape.make('rect',{id:'oldX',x:0,y:0,w:10,h:10});
+    const keep=Shape.make('ellipse',{id:'keepY',x:2,y:2,w:4,h:4});
+    state.shapes=[old,keep];_invalidateGrid();
+    const swap={peer:'pk',seq:1,ts:1000};
+    state.wclock={oldX:{},keepY:{_born:{peer:'px',seq:1,ts:2000}}};   // keepY (re)born after the swap clock
+    const nw=Shape.make('diamond',{id:'newZ',x:5,y:5,w:3,h:3});
+    Store.applyRemote({op:'replace',after:[nw],afterWc:{},clock:swap});
+    const ids=state.shapes.map(s=>s.id);
+    assert.ok(ids.includes('keepY')&&ids.includes('newZ'),'newer-born survivor kept + after-shape adopted');
+    assert.ok(!ids.includes('oldX'),'old shape without a newer born is removed');
+    assert.strictEqual(state.wclock.keepY._born.ts,2000,'keep shape preserves its newer _born clock');
+    assert.strictEqual(state.wclock.newZ._born.ts,1000,'after shape stamped with the swap clock');
+    assert.ok(state.wclock.oldX._del&&state.wclock.oldX._del.ts===1000,'removed id tombed with the swap clock');
+    state.shapes.length=0;state.wclock={};_invalidateGrid();
+    console.log('  ✓ replace keep-scan: newer-born survives the swap (ADR-0926/0974)');
+  }
+  // ADR-0975: id/groupId keys shaped like JS builtins must not poison or crash
+  // plain-object stores — all four sites are null-proto.
+  {
+    const s=Shape.make('rect',{id:'__proto__',x:0,y:0,w:10,h:10});s.groupId='g1';
+    let ok=true;try{excScene([s])}catch(_){ok=false}
+    assert.ok(ok,'excScene survives a __proto__-named shape id');
+    const s2=Shape.make('rect',{id:'b1',x:1,y:2,w:3,h:4});s2.groupId='__proto__';
+    boardToDrawio([s2]);
+    assert.strictEqual(Object.prototype.x,undefined,'drawio group boxes never touch Object.prototype');
+    let ok2=true;try{_undoWire({op:'ungroup',ids:['m1'],gid:'__proto__',before:[{id:'m1',groupId:'__proto__'}]})}catch(_){ok2=false}
+    assert.ok(ok2,'undo-wire regroup survives a __proto__ groupId');
+    state.shapes.length=0;state.wclock={};_invalidateGrid();
+    const z=Shape.make('rect',{id:'z1',x:0,y:0,w:5,h:5});state.shapes=[z];_invalidateGrid();
+    Store._stampWrites({op:'zorder',changes:[{id:'z1',before:'a0',after:'a1'}],clock:{peer:'p',seq:1,ts:1}});
+    assert.strictEqual(Object.getPrototypeOf(state.wclock.z1),null,'zorder wclock bucket is null-proto');
+    state.shapes.length=0;state.wclock={};_invalidateGrid();
+    console.log('  ✓ builtin-named id/groupId cannot poison plain-object stores (ADR-0975)');
+  }
+  // ADR-0976: bound-endpoint resolution caps recursion — self-binds and
+  // conn↔conn cycles fall back to raw ends instead of overflowing the stack.
+  {
+    const r=Shape.make('rect',{id:'r1',x:0,y:0,w:20,h:20});
+    const c1=Shape.make('line',{id:'c1',x1:0,y1:0,x2:50,y2:0});
+    const c2=Shape.make('line',{id:'c2',x1:0,y1:0,x2:50,y2:0});
+    state.shapes=[r,c1,c2];_invalidateGrid();
+    c1.a='c2';c2.a='c1';c2.b='r1';
+    let e=null,ok=true;try{e=connEnds(c1)}catch(_){ok=false}
+    assert.ok(ok&&e&&Number.isFinite(e.x1)&&Number.isFinite(e.x2),'conn↔conn bound cycle terminates at the depth cap');
+    c1.a='c1';c1.b='c1';
+    e=null;ok=true;try{e=connEnds(c1)}catch(_){ok=false}
+    assert.ok(ok&&e&&e.x1===0&&e.x2===50,'self-bound connector falls back to raw endpoints');
+    c1.a='r1';c1.b=null;
+    const e2=connEnds(c1);
+    assert.ok(Number.isFinite(e2.x1)&&e2.x1===20,'a real bound endpoint still resolves to the contour after cycle calls');
+    const e3=connEnds(c2);
+    assert.ok(e3&&Number.isFinite(e3.x2),'depth counter resets between calls');
+    state.shapes.length=0;state.wclock={};_invalidateGrid();
+    console.log('  ✓ connector bound chains capped — cycles/self-binds degrade to raw ends (ADR-0976)');
+  }
+  // ADR-0977: proto-key pollution — JSON.parse produces '__proto__' as an own
+  // enumerable data prop, and Object.assign/for..in writes would invoke the
+  // __proto__ setter on a plain (non-null-proto) target. Every remote/local
+  // parse path funnels through _cleanVal/validPatch, which rejects
+  // '__proto__'/'constructor'/'prototype' own keys at any depth.
+  {
+    const forged=JSON.parse('{"x":1,"__proto__":{"evil":1}}');
+    assert.strictEqual(Object.keys(forged)[1],'__proto__','JSON.parse produces an own enumerable __proto__ key');
+    assert.strictEqual(validShape(JSON.parse('{"id":"p1","type":"rect","z":1,"x":0,"y":0,"w":10,"h":10,"__proto__":{"a":1}}')),false,'validShape rejects a shape carrying a proto key');
+    assert.strictEqual(validShape(JSON.parse('{"id":"p2","type":"rect","z":1,"x":0,"y":0,"w":5,"h":5,"aF":{"fx":0.5,"fy":0.5,"__proto__":{"a":1}}}')),false,'validShape rejects a nested proto key inside aF');
+    // Real intake path: a forged upd whose patch carries a proto key is
+    // rejected at the gate — the shape's prototype survives untouched.
+    const r=Shape.make('rect',{id:'r1',x:0,y:0,w:10,h:10});state.shapes=[r];state.seenOps=new Set();_invalidateGrid();
+    Net._onRecv({k:'op',peer:'p9',op:{op:'upd',id:'r1',after:forged,before:{x:0},clock:{peer:'p9',seq:1,ts:1}}},false);
+    assert.strictEqual(r.x,0,'forged proto-key upd rejected at intake — shape untouched');
+    assert.strictEqual(Object.getPrototypeOf(r),Object.prototype,'shape prototype unpolluted');
+    Net._onRecv({k:'op',peer:'p9',op:{op:'upd',id:'r1',after:{x:5},before:{x:0},clock:{peer:'p9',seq:2,ts:2}}},false);
+    assert.strictEqual(r.x,5,'legit upd applies after proto-key rejection');
+    state.shapes.length=0;state.wclock={};state.seenOps=new Set();_invalidateGrid();
+    console.log('  ✓ proto-key pollution gated at every parse path (ADR-0977)');
+  }
+  pass += 6; // ADR-0977 proto-key gate pins
+  // ADR-0978: sortZ is a strict total order — frac (string lexicographic)
+  // then id tie-break; equal fracs can't leave order to input order, and
+  // legacy z-seeding reindexes deterministically off the z sort.
+  {
+    const sA=Shape.make('rect',{id:'a1',x:0,y:0,w:5,h:5}),sB=Shape.make('rect',{id:'b1',x:5,y:0,w:5,h:5});
+    sA.frac='k0';sB.frac='k0';
+    state.shapes=[sB,sA];sortZ();
+    assert.deepStrictEqual(state.shapes.map(s=>s.id),['a1','b1'],'equal fracs order by id (input order irrelevant)');
+    state.shapes=[sA,sB];sortZ();
+    assert.deepStrictEqual(state.shapes.map(s=>s.id),['a1','b1'],'same total order from the other input order');
+    // legacy seed: keyless shapes take z order then get stamped keys.
+    const sC=Shape.make('rect',{id:'c1',x:0,y:0,w:5,h:5}),sD=Shape.make('rect',{id:'d1',x:0,y:0,w:5,h:5});
+    sC.frac=null;sD.frac=null;sC.z=2;sD.z=1;
+    state.shapes=[sC,sD];sortZ();
+    assert.ok(state.shapes[0].id==='d1'&&state.shapes.every(s=>typeof s.frac==='string'),'keyless shapes seed from z then get stamped');
+    assert.ok(state.shapes.every((s,i,a)=>i===0||a[i-1].frac<s.frac||(a[i-1].frac===s.frac&&a[i-1].id<s.id)),'sorted output respects the comparator total order');
+    state.shapes.length=0;state.wclock={};_invalidateGrid();
+    console.log('  ✓ sortZ total order — frac then id, deterministic across input orders (ADR-0978)');
+  }
+  pass += 4; // ADR-0978 sortZ total-order pins
+  // ADR-0979: every LWW arbitration domain shares clockNewer's (ts,peer,seq)
+  // total order — prop wclock, _born/_del, _lastRep, docName (_nameWin), page
+  // names (nts/ntp). The name domains use seq:0 clocks on BOTH sides of each
+  // comparison, so the order stays consistent.
+  {
+    const c=(ts,peer,seq)=>({ts,peer,seq});
+    assert.ok(clockNewer(c(2,'a',0),c(1,'z',9)),'ts dominates the order');
+    assert.ok(clockNewer(c(1,'b',0),c(1,'a',9))&&!clockNewer(c(1,'a',9),c(1,'b',0)),'equal ts falls to peer');
+    assert.ok(clockNewer(c(1,'a',2),c(1,'a',1)),'equal (ts,peer) falls to seq');
+    assert.ok(!clockNewer(null,c(1,'a',1))&&clockNewer(c(1,'a',1),null),'null bounds the order');
+    // (the 'name' intake path mutates module-level _nameTs/_namePeer and is
+    // already pinned live by the ADR-0618 snapshot-name test below)
+    const T0=nowTs();
+    // pageName op: incoming rename compares {ts,peer} vs stored {nts,ntp}.
+    state.pages=[{id:'pg1',name:'keep',nts:T0,ntp:'z'}];state.curPg='pg1';
+    const s9=Shape.make('rect',{id:'s9',x:0,y:0,w:5,h:5});state.shapes=[s9];state.seenOps=new Set();
+    Net._onRecv({k:'op',peer:'p9',op:{op:'pageName',id:'pg1',after:'steal',clock:{peer:'p9',seq:1,ts:T0}}},false);
+    assert.strictEqual(state.pages[0].name,'keep','equal-ts pageName by a lower writer loses');
+    Net._onRecv({k:'op',peer:'zz',op:{op:'pageName',id:'pg1',after:'steal',clock:{peer:'zz',seq:1,ts:T0}}},false);
+    assert.strictEqual(state.pages[0].name,'steal','equal-ts pageName by a higher writer wins');
+    // snapshot union-heal merges page names via the same (ts,ntp) order.
+    state.pages=[{id:'pg1',name:'keep2',nts:T0,ntp:'z'}];
+    Net._onRecv({k:'snapshot',peer:'p9',ops:[],pages:[{id:'pg1',name:'steal',nts:T0,ntp:'a'}]},false);
+    assert.strictEqual(state.pages[0].name,'keep2','equal-nts snapshot page rename by a lower peer loses');
+    Net._onRecv({k:'snapshot',peer:'p9',ops:[],pages:[{id:'pg1',name:'won',nts:T0,ntp:'zz'}]},false);
+    assert.strictEqual(state.pages[0].name,'won','equal-nts snapshot page rename by a higher peer wins');
+    state.shapes.length=0;state.pages=null;state.curPg=null;state.wclock={};state.seenOps=new Set();_invalidateGrid();
+    console.log('  ✓ every LWW arbitration domain shares clockNewer\'s total order (ADR-0979)');
+  }
+  pass += 9; // ADR-0979 arbitration comparator uniformity pins
+  // ADR-0980: a document-level mousedown whose target is a non-Element (the
+  // Document node itself, e.g. clicks on document chrome or synthetic events)
+  // must not TypeError the ctx-menu outside-click guard.
+  {
+    const ctx=(_els.ctx||={dataset:{}});ctx.dataset.open='true';
+    let threw=false;
+    for(const f of fakeDoc._L['mousedown']||[]){try{f({target:{}})}catch(e){threw=true}}
+    assert.ok(!threw,'non-Element mousedown target does not throw');
+    assert.strictEqual(ctx.dataset.open,'false','outside mousedown still closes the ctx menu');
+    ctx.dataset.open='true';
+    for(const f of fakeDoc._L['mousedown']||[])f({target:{closest:s=>s==='.ctx-menu'?{}:null}});
+    assert.strictEqual(ctx.dataset.open,'true','mousedown inside the ctx menu does not close it');
+    ctx.dataset.open='false';
+    console.log('  ✓ non-Element mousedown target survives the ctx guard (ADR-0980)');
+  }
+  pass += 3; // ADR-0980 mousedown target guard pins
+  // ADR-0981: listener-registration lifecycle — no repeat-path duplicates.
+  // Net.init re-init: prior channel closed + bye sent + presence timer
+  // cleared; app-level _on sites are all init/wire-time (editors bind to
+  // per-session elements that die with them).
+  {
+    let byes=0;
+    const _osend=Net._send;
+    Net._send=m=>{if(m&&m.k==='bye')byes++;return _osend.call(Net,m)};
+    Net.init('roomA');
+    const bc1=Net.bc;
+    let closed=false;
+    if(bc1){const oc=bc1.close;bc1.close=function(){closed=true;return oc.apply(bc1,arguments)}}
+    const t1=Net._presenceTimer;
+    Net.init('roomB');
+    Net._send=_osend;
+    assert.ok(closed,'re-init closes the previous BroadcastChannel');
+    assert.ok(Net.bc&&Net.bc!==bc1,'a fresh channel is created per room');
+    assert.ok(byes>=1,'re-init sends bye to the old room');
+    assert.ok(!t1||t1._destroyed,'re-init clears the prior presence timer');
+    if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}Net.bc=null;
+    console.log('  ✓ Net.init re-init releases the prior channel/timer (ADR-0981)');
+  }
+  pass += 4; // ADR-0981 listener lifecycle pins
+  // ADR-0982: focus-restore targets detached mid-modal/mid-presentation (a
+  // page-tab chip rebuilt by a remote op) — focus() on a detached node is a
+  // silent no-op leaving focus on <body>; the restore must fall back to canvas.
+  {
+    const _of=canvas.focus;let cvF=0;canvas.focus=()=>{cvF++};
+    const det={focus(){det.f=true},isConnected:false};
+    UI._prevFocus=det;
+    UI._restoreFocus();
+    assert.strictEqual(cvF,1,'dialog restore: detached target → canvas');
+    assert.ok(!det.f,'dialog restore: detached target is not focused');
+    const con={focus(){con.f=true},isConnected:true};
+    UI._prevFocus=con;
+    UI._restoreFocus();
+    assert.ok(con.f,'dialog restore: connected target refocused');
+    cvF=0;
+    Presentation._setTestState(true,{focus(){},isConnected:false});
+    Presentation.leave();
+    assert.strictEqual(cvF,1,'presentation leave: detached trigger → canvas');
+    canvas.focus=_of;
+    console.log('  ✓ detached focus-restore targets fall back to canvas (ADR-0982)');
+  }
+  pass += 4; // ADR-0982 detached focus restore pins
   // ADR-0617: a snapshot whose sender predates our newest swap must not merge
   // pre-swap shapes back in; a snapshot reflecting a newer swap adopts its marker.
   {
@@ -2263,11 +2560,274 @@ try {
     const n1=Shape.make('rect',{x:0,y:0,w:10,h:10});
     state.shapes.push(n1);_invalidateGrid();
     state.selection.add(n1.id);state.selection.add('dead-id-xyz');
-    nudgeSelection(5,0);
+    nudgeSelection(5,0);_nugEnd();   // ADR-0957: the held-key session commits on flush
     const nOp=state.history[state.history.length-1];
     assert.deepStrictEqual(nOp.ids,[n1.id],'dead id dropped from nudge ids');
     state.selection.clear();
     console.log('  ✓ nudgeSelection drops dead ids (ADR-0623)');
+  }
+  // ADR-0957: a held arrow key repeats ~30/s — the run folds into ONE op per key
+  // session (key = op kind + id set) instead of one op per repeat. Flush points:
+  // the 400ms trailing timer, the next real commit (_rcOp), undo/redo, switchPage.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const r=Shape.make('rect',{x:0,y:0,w:20,h:20}),r2=Shape.make('rect',{x:60,y:0,w:20,h:20});
+    state.shapes.push(r,r2);_invalidateGrid();
+    state.selection=new Set([r.id]);
+    nudgeSelection(1,0);nudgeSelection(1,0);nudgeSelection(1,0);   // a held-key run
+    assert.strictEqual(state.history.filter(o=>o.op==='move').length,0,'ADR-0957: no commit while the run is live');
+    _nugEnd();   // trailing-edge flush (the 400ms timer in production)
+    const ops=state.history.filter(o=>o.op==='move');
+    assert.strictEqual(ops.length,1,'ADR-0957: the held-key run commits a single move op');
+    assert.strictEqual(ops[0].dx,3,'ADR-0957: repeats accumulate into the single op');
+    state.selection=new Set([r2.id]);nudgeSelection(0,2);_nugEnd();   // different id set → a new session
+    assert.strictEqual(state.history.filter(o=>o.op==='move').length,2,'ADR-0957: a different selection starts a second op');
+    console.log('  ✓ ADR-0957: held-arrow nudge coalesces to one op per key session');
+  }
+  // ADR-0958: _recordCommitted flushes a pending nudge first — every commit path
+  // (incl. ungroup/unlockAll/beautify/_repC which bypass _rcOp) preserves the
+  // real-time order: the nudge run lands in history BEFORE the later commit.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const r=Shape.make('rect',{x:0,y:0,w:20,h:20});
+    state.shapes.push(r);_invalidateGrid();
+    state.selection=new Set([r.id]);
+    nudgeSelection(3,0);   // live-mutates x; the op stays pending in _nug
+    Store._recordCommitted({op:'upd',id:r.id,before:{x:0},after:{x:1}});   // bypasses _rcOp like ungroup/beautify do
+    const tail=state.history.slice(-2).map(o=>o.op);
+    assert.deepStrictEqual(tail,['move','upd'],'ADR-0958: pending nudge commits before a bypassing commit');
+    console.log('  ✓ ADR-0958: _recordCommitted flushes a pending nudge on every commit path');
+  }
+  // ADR-0959: tab-hide/close flushes a pending nudge — without it the live
+  // mutation persists locally but the accumulated op never broadcasts → peers
+  // keep the pre-nudge position forever (one-way divergence).
+  {
+    for(const[evt,fire]of[
+      ['visibilitychange→hidden',()=>{fakeDoc.visibilityState='hidden';for(const f of fakeDoc._L['visibilitychange']||[])f({});fakeDoc.visibilityState='visible'}],
+      ['pagehide',()=>{for(const f of (fakeWin._L['pagehide']||[]).slice(0,1))f({})}],
+      ['beforeunload',()=>{for(const f of (fakeWin._L['beforeunload']||[]).slice(0,1))f({preventDefault(){}})}],
+    ]){
+      state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+      const r=Shape.make('rect',{x:0,y:0,w:20,h:20});
+      state.shapes.push(r);_invalidateGrid();
+      state.selection=new Set([r.id]);
+      nudgeSelection(3,0);
+      assert.strictEqual(state.history.length,0,`nudge stays pending before ${evt}`);
+      fire();
+      assert.strictEqual(state.history.at(-1).op,'move',`ADR-0959: ${evt} commits the pending nudge`);
+      assert.strictEqual(state.history.at(-1).dx,3,'accumulated delta survives');
+    }
+    console.log('  ✓ ADR-0959: hidden/pagehide/beforeunload flush a pending nudge (3 routes)');
+  }
+  // ADR-0960: held [ ] / ⌘⇧,/. presses coalesce into one op per session, and
+  // Store.commit — the parallel chokepoint to _recordCommitted — also flushes a
+  // pending op first, so history order can never invert real-time order.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const a=Shape.make('rect',{x:0,y:0,w:20,h:20});
+    const b=Shape.make('rect',{x:50,y:0,w:20,h:20});
+    const c=Shape.make('rect',{x:100,y:0,w:20,h:20});
+    Store.commit({op:'addMany',shapes:[a,b,c]});state.history.length=0;state.histIdx=-1;
+    const aFrac=byId(a.id).frac;
+    state.selection=new Set([a.id]);
+    doBringForward();doBringForward();   // held [ ] run — a→middle, then middle→front
+    assert.strictEqual(state.history.length,0,'zorder presses stay pending');
+    _nugEnd();
+    const zo=state.history.filter(o=>o.op==='zorder');
+    assert.strictEqual(zo.length,1,'held [ ] folds into ONE zorder op');
+    const ch=Object.fromEntries(zo[0].changes.map(x=>[x.id,x]));
+    assert.strictEqual(ch[a.id].before,aFrac,'merged before keeps the ORIGINAL key');
+    state.selection=new Set([b.id]);
+    doBringForward();_nugEnd();          // a different id set → a new session (0957 parity)
+    assert.strictEqual(state.history.filter(o=>o.op==='zorder').length,2,'a different selection starts a second zorder op');
+    // style: held ⌘⇧. folds into one op, original before kept
+    const T=Shape.make('text',{x:0,y:50,w:100,h:20,text:'x',fontSize:14});
+    Store.commit({op:'add',shape:T});state.history.length=0;state.histIdx=-1;
+    state.selection=new Set([T.id]);
+    fontSizeStep(1);fontSizeStep(1);fontSizeStep(1);
+    _nugEnd();
+    const st=state.history.filter(o=>o.op==='style');
+    assert.strictEqual(st.length,1,'held ⌘⇧. folds into ONE style op');
+    assert.strictEqual(st[0].before[0].fontSize,14,'merged before = 14');assert.strictEqual(st[0].after[0].fontSize,20,'merged after = 20');
+    // Store.commit head flush: a pending zorder lands BEFORE a bypassing commit —
+    // without it the del records post-nudge state and undo order inverts (seed-7 fuzz).
+    state.selection=new Set([a.id]);doSendBack();   // a is at top — a real pending session
+    Store.commit({op:'upd',id:a.id,before:{x:0},after:{x:1}});
+    assert.deepStrictEqual(state.history.slice(-2).map(o=>o.op),['zorder','upd'],'Store.commit flushes the pending zorder first');
+    console.log('  ✓ ADR-0960: [ ]/⌘⇧,/. coalesce + Store.commit flush ordering (8 asserts)');
+  }
+  // ADR-0961: the same held-key flood ran through six more paths — rotate (,/.+⇧R),
+  // flip (⇧H/⇧V), lock (⌘⇧L), group (⌘G), text flags (⌘B/⌘I/⌘U/⌘⇧X), swap (⇧X).
+  // The session key carries the op's dir so rotate/flip/lock never cross-merge,
+  // toggles that net out commit NOTHING, and applyStyleToSelection filters
+  // no-change shapes so held digit keys emit no noise ops at all.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const r=Shape.make('rect',{x:0,y:0,w:20,h:20});
+    Store.commit({op:'add',shape:r});state.history.length=0;state.histIdx=-1;
+    state.selection=new Set([r.id]);
+    doRotate(15);doRotate(15);doRotate(15);doRotate(90);   // held ,/.+⇧R run — same dir session
+    _nugEnd();
+    const al=state.history.filter(o=>o.op==='align');
+    assert.strictEqual(al.length,1,'ADR-0961: held rotate presses fold into ONE align op');
+    assert.strictEqual(al[0].dir,'rotate','rotate session keyed on dir');
+    state.selection=new Set([r.id]);
+    doFlip('h');_nugEnd();
+    assert.strictEqual(state.history.filter(o=>o.op==='align').length,2,'ADR-0961: flip does not merge into the rotate op');
+    state.selection=new Set([r.id]);
+    doLock();doLock();_nugEnd();
+    assert.strictEqual(state.history.filter(o=>o.op==='align').length,2,'ADR-0961: a lock→unlock run nets out — no op commits');
+    assert.strictEqual(byId(r.id).locked,null,'live state still toggled twice');
+    const g1=Shape.make('rect',{x:60,y:0,w:20,h:20}),g2=Shape.make('rect',{x:90,y:0,w:20,h:20});
+    Store.commit({op:'addMany',shapes:[g1,g2]});state.history.length=0;state.histIdx=-1;
+    state.selection=new Set([g1.id,g2.id]);
+    doGroup();doGroup();_nugEnd();
+    const go=state.history.filter(o=>o.op==='group');
+    assert.strictEqual(go.length,1,'ADR-0961: held ⌘G folds into ONE group op');
+    assert.strictEqual(go[0].gid,byId(g1.id).groupId,'merged gid matches the live one');
+    assert.ok(!go[0].before.find(b=>b.id===g1.id).groupId,'before keeps the first press state');
+    state.selection=new Set([r.id]);
+    applyStyleToSelection({opacity:.5});applyStyleToSelection({opacity:.5});
+    assert.strictEqual(state.history.filter(o=>o.op==='style').length,1,'ADR-0961: repeated digit opacity emits no second op');
+    const T=Shape.make('text',{x:0,y:60,w:100,h:20,text:'x'});
+    Store.commit({op:'add',shape:T});state.history.length=0;state.histIdx=-1;
+    state.selection=new Set([T.id]);
+    toggleTextFlag('bold');toggleTextFlag('bold');_nugEnd();
+    assert.strictEqual(state.history.filter(o=>o.op==='style').length,0,'ADR-0961: ⌘B on+off nets out — no style op commits');
+    console.log('  ✓ ADR-0961: held-key coalescing wave-2 + net-zero discard (10 asserts)');
+  }
+  // ADR-0962: the slider before-buffer kept entries forever — a focus/press
+  // capture without a change left stale values that a later gesture reused as
+  // the op's undo-before. _sfbBlur commits preview drift as one op at the
+  // gesture boundary (blur), then clears; _sfbFlush prunes keys for ids that
+  // left the selection.
+  {
+    const s1=Shape.make('rect',{x:0,y:0,w:20,h:20,size:2});
+    Store.commit({op:'add',shape:s1});state.history.length=0;state.histIdx=-1;
+    state.selection=new Set([s1.id]);
+    _sfbCapture('size');                 // focus — records the live value
+    _sfbBlur('size');                    // blur — quiescent entry cleared
+    assert.ok(!(s1.id+'size' in _sbf),'ADR-0962: blur clears a quiescent capture');
+    byId(s1.id).size=9;                  // shape mutates between gestures
+    _sfbCapture('size');                 // next gesture must take the live value
+    _sfbFlush('size',12);
+    const sop=state.history.filter(o=>o.op==='style').pop();
+    assert.strictEqual(sop.before[0].size,9,'ADR-0962: gesture before is the live value, not a stale capture');
+    // input-drift without change commits as one op at the gesture boundary
+    state.selection=new Set([s1.id]);
+    _sfbCapture('size');
+    byId(s1.id).size=7;                  // input-event preview mutation, change never fired
+    const hlen=state.history.length;
+    _sfbBlur('size');
+    const sop2=state.history.filter(o=>o.op==='style').pop();
+    assert.strictEqual(state.history.length,hlen+1,'ADR-0962: blur commits preview drift as one op');
+    assert.strictEqual(sop2.before[0].size,9,'drift op before is the gesture-start value');
+    assert.strictEqual(sop2.after[0].size,7,'drift op after is the live value');
+    assert.ok(!(s1.id+'size' in _sbf),'buffer cleared after the boundary flush');
+    _sbf[s1.id+'dash']=1;state.selection=new Set();
+    _sfbFlush('dash',2);
+    assert.ok(!(s1.id+'dash' in _sbf),'ADR-0962: keys for deselected ids are pruned on flush');
+    console.log('  ✓ ADR-0962: slider before-buffer boundary flush + prune (7 asserts)');
+  }
+  // ADR-0963: lifecycle×boundedness audit — MAX_HISTORY bound + histIdx
+  // integrity, _nug's origSel is an id-array snapshot (later selection edits
+  // can't rewrite a pending op's restore set), presence reap drops stale BC
+  // rows but keeps lifecycle-managed rtc: rows.
+  {
+    // history cap: pushing past MAX_HISTORY shifts the oldest and keeps the
+    // index on the freshly committed op
+    const s9=Shape.make('rect',{x:0,y:0,w:5,h:5});
+    state.history.length=MAX_HISTORY;state.histIdx=MAX_HISTORY-1;
+    Store.commit({op:'add',shape:s9});
+    assert.strictEqual(state.history.length,MAX_HISTORY,'ADR-0963: history capped at MAX_HISTORY');
+    assert.strictEqual(state.histIdx,MAX_HISTORY-1,'histIdx still on the tip after a cap shift');
+    // _nug.sel snapshot: a selection change must not rewrite a pending op's origSel
+    state.history.length=0;state.histIdx=-1;
+    const sA=Shape.make('rect',{x:0,y:0,w:10,h:10}),sB=Shape.make('rect',{x:30,y:0,w:10,h:10});
+    Store.commit({op:'add',shape:sA});Store.commit({op:'add',shape:sB});
+    state.selection=new Set([sA.id]);
+    nudgeSelection(1,0);                       // pending nudge captures origSel=[sA]
+    state.selection=new Set([sB.id]);          // selection changes before the flush
+    _nugEnd();
+    assert.deepStrictEqual(state.history[state.histIdx].origSel,[sA.id],'ADR-0963: pending op origSel is the capture-time set');
+    // presence reap: stale BC rows drop; rtc: rows are lifecycle-managed
+    state.peers.set('bcpeer',{color:0,lastSeen:_now()-NET_PRESENCE_TIMEOUT-1});
+    state.peers.set('rtc:x',{color:0,lastSeen:_now()-NET_PRESENCE_TIMEOUT-1});
+    Net._reapPeers();
+    assert.ok(!state.peers.has('bcpeer'),'stale BC peer reaped');
+    assert.ok(state.peers.has('rtc:x'),'rtc: peer kept — lifecycle-managed via onclose');
+    console.log('  ✓ ADR-0963: lifecycle×boundedness audit pins (5 asserts)');
+  }
+  // ADR-0964: a remote lock landing mid-gesture — the commit gate restores the
+  // orig instead of committing (peers' _apply drops writes to locked shapes,
+  // so committing the drift would diverge one way).
+  {
+    const fireC=(t,x,y,o={})=>{
+      const ev={pointerId:1,pointerType:'mouse',button:0,isPrimary:true,
+        clientX:x,clientY:y,offsetX:x,offsetY:y,
+        ctrlKey:false,metaKey:false,shiftKey:false,altKey:false,
+        preventDefault(){},stopPropagation(){},...o};
+      for(const f of fakeWin._L[t+'|c']||[])f(ev);
+      for(const f of canvas._L[t+'|c']||[])f(ev);
+      for(const f of canvas._L[t]||[])f(ev);
+      for(const f of fakeWin._L[t]||[])f(ev);
+      return ev;
+    };
+    // real-sequence resize: PD on the se handle arms, PM mutates, lock lands, PU restores
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+    state.viewport={x:0,y:0,zoom:1};state.tool='select';ptr.down=false;ptr.dragKind=null;
+    const Rk=Shape.make('rect',{x:0,y:0,w:60,h:40});
+    Store.commit({op:'add',shape:Rk});
+    const lRk=byId(Rk.id);                             // committed clone — Rk is the source object
+    state.selection=new Set([Rk.id]);
+    const seH=getHandles(lRk).find(h=>h.id==='se');
+    fireC('pointerdown',seH.x,seH.y);
+    assert.strictEqual(ptr.dragKind,'resize','ADR-0964: PD on se handle arms resize');
+    fireC('pointermove',seH.x+30,seH.y+30);
+    assert.ok(lRk.w>60,'PM resized the shape');
+    lRk.locked=1;                                      // remote lock lands mid-gesture
+    const histLen0=state.history.length;
+    fireC('pointerup',seH.x+30,seH.y+30);
+    assert.strictEqual(lRk.w,60,'ADR-0964: locked resize target restored to orig, not committed');
+    assert.strictEqual(state.history.length,histLen0,'no op committed for a locked target');
+    // gresize partition: locked member restores + excluded; unlocked commits alone
+    const s1=Shape.make('rect',{x:0,y:0,w:10,h:10}),s2=Shape.make('rect',{x:20,y:0,w:10,h:10});
+    Store.commit({op:'add',shape:s1});Store.commit({op:'add',shape:s2});
+    const l1=byId(s1.id),l2=byId(s2.id);
+    ptr.gOrig=new Map([[s1.id,JSON.parse(JSON.stringify(l1))],[s2.id,JSON.parse(JSON.stringify(l2))]]);
+    l1.w=40;l2.w=40;l2.locked=1;                       // both mapped during PM; l2 locked mid-gesture
+    _gresizeCommit();
+    assert.strictEqual(l2.w,10,'ADR-0964: locked gresize member restored');
+    const gTip=state.history[state.histIdx];
+    assert.strictEqual(gTip.op,'align');assert.strictEqual(gTip.after.length,1,'locked member excluded from the op');
+    ptr.gOrig=null;
+    // grot: locked gAnc connector excluded from the op and restored
+    const a1=Shape.make('rect',{x:0,y:0,w:10,h:10}),c1=Shape.make('arrow',{x1:0,y1:0,x2:20,y2:0,a:a1.id,aF:1});
+    Store.commit({op:'add',shape:a1});Store.commit({op:'add',shape:c1});
+    const la1=byId(a1.id),lc1=byId(c1.id);
+    ptr.gOrig=new Map([[a1.id,JSON.parse(JSON.stringify(la1))]]);
+    ptr.gAnc=new Map([[c1.id,JSON.parse(JSON.stringify(lc1))]]);
+    la1.w=30;lc1.x2=50;lc1.locked=1;
+    _grotCommit();
+    assert.strictEqual(lc1.x2,20,'ADR-0964: locked gAnc connector restored to orig');
+    const gTip2=state.history[state.histIdx];
+    assert.strictEqual(gTip2.after.length,1,'locked connector excluded from the op');
+    ptr.gOrig=null;ptr.gAnc=null;
+    // flushErase: a batch clone that got locked mid-stroke survives the del op
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+    const sE=Shape.make('rect',{x:0,y:0,w:5,h:5}),sF=Shape.make('rect',{x:9,y:0,w:5,h:5});
+    Store.commit({op:'add',shape:sE});Store.commit({op:'add',shape:sF});
+    const cE=JSON.parse(JSON.stringify(sE)),cF=JSON.parse(JSON.stringify(sF));
+    cF.locked=1;                                       // remote lock lands on the batch clone (ADR-0952)
+    _pushEraseBatch(cE);_pushEraseBatch(cF);
+    state.shapes.splice(state.shapes.findIndex(s=>s.id===sE.id),1);
+    state.shapes.splice(state.shapes.findIndex(s=>s.id===sF.id),1);
+    _invalidateGrid();
+    flushErase();
+    assert.ok(byId(sF.id),'ADR-0964: locked erase-batch member survives the del');
+    assert.ok(!byId(sE.id),'unlocked erase-batch member deleted');
+    assert.strictEqual(state.history[state.histIdx].shapes.length,1,'del op carries only the live member');
+    console.log('  ✓ ADR-0964: mid-gesture lock restore/commit-gate pins (12 asserts)');
   }
   // ADR-0625: wc/origSel/moved are undo-domain — _slimOp strips them from the
   // wire copy while preserving the fields peers actually consume.
@@ -3988,7 +4548,7 @@ try {
     const a=mk(),b=mk(),c=mk(),d=mk();          // bottom→top: a,b,c,d
     // single bring-forward touches exactly one shape's key
     state.selection=new Set([b.id]);
-    doBringForward();
+    doBringForward();_nugEnd();   // ADR-0960: flush the coalesced session before asserting history
     let op=state.history[state.histIdx];
     assert.strictEqual(op.op,'zorder','records a zorder op');
     assert.strictEqual(op.changes.length,1,'single forward = 1-shape delta');
@@ -3998,7 +4558,7 @@ try {
     assert.deepStrictEqual(state.shapes.map(s=>s.id),[a.id,b.id,c.id,d.id],'undo restores order');
     // multi-select bring-front preserves relative order, moves both to the top
     state.selection=new Set([a.id,c.id]);
-    doBringFront();
+    doBringFront();_nugEnd();   // ADR-0960
     op=state.history[state.histIdx];
     assert.strictEqual(op.changes.length,2,'two selected = 2-shape delta (others untouched)');
     assert.deepStrictEqual(state.shapes.map(s=>s.id),[b.id,d.id,a.id,c.id],'a,c on top in relative order');
@@ -5166,7 +5726,7 @@ try {
     }
     // ADR-0679: pageDel drops member write-clocks like del
     {
-      assert.ok(html.includes("for(const id of dead)_wc()[id]=_wM({_del:op.clock});"),'_pgDel2 tombstones member wclocks (ADR-0679/0707/0734)');
+      assert.ok(html.includes("for(const id of dead){_wc()[id]=_wM({_del:op.clock});_sdl(id)}"),'_pgDel2 tombstones member wclocks (ADR-0679/0707/0734/0954)');
       console.log('  ✓ pageDel wclock purge pin (1 assert)');
     }
     // ADR-0680: selection-presence dedup key carries curPg
@@ -6049,6 +6609,7 @@ try {
     state.selection=new Set([ln.id]);
     const hlen=state.history.length;
     doRotate(90);   // bbox {−1,−1,102,2} → centre (50,0): (x,y)→(50−y, x−50)
+    _nugEnd();   // ADR-0961: coalesced align op commits on flush
     assert.strictEqual(state.history.length,hlen+1,'doRotate commits an align op for a line');
     const rl=state.shapes.find(s=>s.id===ln.id);
     assert.ok(Math.abs(rl.x1-50)<1e-6&&Math.abs(rl.y1-(-50))<1e-6&&Math.abs(rl.x2-50)<1e-6&&Math.abs(rl.y2-50)<1e-6,
@@ -6422,7 +6983,7 @@ try {
     );
     const cp = o => JSON.parse(JSON.stringify(o));
     A.state.peerId='peerA'; B.state.peerId='peerB';
-    const reset = W => { W.state.shapes.length=0;_invalidateGrid(); W.state.history.length=0; W.state.histIdx=-1; W.state.seq=0; W.state.seenOps=new Set(); W.state.wclock={}; W.state._lastRep=null; };
+    const reset = W => { _nugEnd(); W.state.shapes.length=0;_invalidateGrid(); W.state.history.length=0; W.state.histIdx=-1; W.state.seq=0; W.state.seenOps=new Set(); W.state.wclock={}; W.state._lastRep=null; };
     reset(A); reset(B);
     // wire each peer's outbound to the other's _onRecv (deep-copied, like a real wire)
     // ADR-0931: the real 'op' envelope carries peer:_pi() matching clock.peer —
@@ -8156,7 +8717,7 @@ try {
     // nudge the frame right by 10: frame + unlocked child move; locked child + outsider stay
     const fx=fr.x, cx=child.x, lx=lockedChild.x, ox=outsider.x;
     state.selection=new Set([fr.id]);
-    nudgeSelection(10,0);
+    nudgeSelection(10,0);_nugEnd();   // ADR-0957 flush
     assert.strictEqual(ID(fr.id).x, fx+10, 'nudge: frame moved by 10');
     assert.strictEqual(ID(child.id).x, cx+10, 'nudge: unlocked child followed the frame');
     assert.strictEqual(ID(lockedChild.id).x, lx, 'nudge: LOCKED child did not move');
@@ -8660,7 +9221,7 @@ try {
     const preOrder=state.shapes.map(s=>s.id).join(',');
     const preFrac=byId(x1.id).frac;
     state.selection=new Set([x1.id]);
-    doSendBack();
+    doSendBack();_nugEnd();   // ADR-0960: flush the coalesced session before asserting history
     const zo=state.history[state.history.length-1];
     assert.strictEqual(zo&&zo.op,'zorder','a zorder op was recorded');
     // compaction emits before/after for ALL shapes so every board converges identically
@@ -9397,7 +9958,7 @@ try {
   {
     assert.ok(html.includes("UI._ctxEat=_now()"),'long-press stamps the eat window');
     assert.ok(html.includes("if(_now()-(UI._ctxEat||0)<400){UI._ctxEat=0;return}fn();this.closeCtxMenu()"),'item clicks swallowed inside the window');
-    assert.ok(html.includes("!e.target.closest('.ctx-menu')&&_now()-(UI._ctxEat||0)>=400"),'outside-close deferred past the window');
+    assert.ok(html.includes("!e.target.closest?.('.ctx-menu')&&_now()-(UI._ctxEat||0)>=400"),'outside-close deferred past the window');
     console.log('  ✓ long-press ghost-click guard pinned (3 asserts)');
   }
 
@@ -9425,7 +9986,7 @@ try {
   // cancel runs BEFORE flushIfHidden so the restored state is what persists.
   {
     assert.ok(html.includes("_clearTouchState();Net.sendCursorHide()}Persist.flushIfHidden"),'hidden cancels gesture + clears touch state + hides cursor');
-    assert.ok(html.includes("pagehide',()=>{if(ptr.down)_cancelPointerGesture();_clearTouchState();Persist.flushIfHidden('hidden')"),'pagehide cancels gesture + clears touch state before flush');
+    assert.ok(html.includes("pagehide',()=>{_nugEnd();if(ptr.down)_cancelPointerGesture();_clearTouchState();Persist.flushIfHidden('hidden')"),'pagehide commits the pending nudge + cancels gesture + clears touch state before flush (ADR-0959)');
     assert.ok(html.includes("function _clearTouchState(){_pointers.clear();_pinchPrev=0;if(_pinchSnap){_pinchSnap=null;_pinchVp=null;_iv()}Minimap.cancelNav()}"),'shared touch-state cleanup (ADR-0608/0632)');
     console.log('  ✓ hidden/pagehide gesture cancel pinned (2 asserts)');
   }
@@ -9487,9 +10048,11 @@ try {
     // lock
     doLock();
     assert.ok(live().locked===true,'lock: doLock() sets locked=true');
+    _nugEnd();   // ADR-0961: make this press its own op (a held key coalesces)
     // toggle → unlock
     doLock();
     assert.ok(live().locked===null,'lock: second doLock() clears locked to null');
+    _nugEnd();   // ADR-0961
     // undo unlock → locked again
     Store.undo();
     assert.ok(live().locked===true,'lock: undo of unlock restores locked=true');
@@ -9840,17 +10403,45 @@ try {
     let requested=null;
     const sentinel={released:false,release:async()=>{sentinel.released=true;}};
     fakeWin.navigator.wakeLock={request:async(type)=>{requested=type;return sentinel;}};
+    Presentation._setTestState(true,null);   // ADR-0983: lock only stores while active
     await Presentation._acquireWakeLock();
     assert.strictEqual(requested,'screen','_acquireWakeLock requests "screen" lock');
+    assert.strictEqual(sentinel.released,false,'active acquire holds the sentinel (non-vacuous)');
     Presentation._releaseWakeLock();
     await Promise.resolve();  // allow the sentinel.release() micro-task to settle
     assert.strictEqual(sentinel.released,true,'_releaseWakeLock calls sentinel.release()');
+    Presentation._setTestState(false,null);
     // graceful no-op when wakeLock is unsupported
     fakeWin.navigator.wakeLock=undefined;
     assert.doesNotThrow(()=>Presentation._acquireWakeLock(),'_acquireWakeLock: safe no-op when navigator.wakeLock absent');
     fakeWin.navigator.wakeLock=undefined;
     console.log('  ✓ Presentation._acquireWakeLock/release: screen stays on during slides (Screen Wake Lock API)');
+    pass += 1; // ADR-0983 non-vacuous hold assert
   }
+
+  // ADR-0983: a wake-lock request resolving after leave() must not leak — the
+  // browser keeps the screen on for a sentinel nobody can release; and a second
+  // acquire must not orphan the first sentinel's handle.
+  {
+    let rel=0;const s1={release:async()=>{rel++}};
+    fakeWin.navigator.wakeLock={request:async()=>s1};
+    Presentation._setTestState(false,null);      // leave() already ran
+    await Presentation._acquireWakeLock();
+    assert.strictEqual(rel,1,'stale acquire: sentinel released when presentation already left');
+    let rel2=0;const s2={release:async()=>{rel2++}},s3={release:async()=>{rel2++}};
+    const ss=[s2,s3];let i=0;
+    fakeWin.navigator.wakeLock={request:async()=>ss[i++]};
+    Presentation._setTestState(true,null);
+    await Presentation._acquireWakeLock();       // stores s2
+    await Presentation._acquireWakeLock();       // stores s3, releases s2
+    assert.strictEqual(rel2,1,'superseded sentinel released exactly once (s2)');
+    Presentation._releaseWakeLock();
+    assert.strictEqual(rel2,2,'held sentinel released on leave (s3)');
+    Presentation._setTestState(false,null);
+    fakeWin.navigator.wakeLock=undefined;
+    console.log('  ✓ wake-lock: stale/superseded sentinels released, never orphaned (ADR-0983)');
+  }
+  pass += 3; // ADR-0983 stale/superseded wake-lock pins
 
   // v1.6.92: PWA install button (beforeinstallprompt) — progressive enhancement,
   // only shows when the browser fires the event. Tests: prompt() called on click,
@@ -10542,8 +11133,243 @@ try {
     const ugcLive=state.shapes.find(s=>s.id===UGC.id);
     assert.ok(!ugaLive.groupId,'doUngroup locked: unlocked shape A is ungrouped (no groupId)');
     assert.ok(!ugbLive.groupId,'doUngroup locked: unlocked shape B is ungrouped (no groupId)');
-    assert.ok(ugcLive.groupId,'doUngroup locked: locked shape C keeps its groupId');
-    console.log('  ✓ doUngroup: locked shapes excluded (groupId preserved)');
+    // ADR-0965: C was locked mid-run while its group op was still pending — peers
+    // gate the member write, so the converging outcome restores run-start (ungrouped)
+    // and drops C from the committed op. The doUngroup !_lk skip lands the same state.
+    assert.ok(!ugcLive.groupId,'doUngroup+0965: member locked mid-run restores run-start (ungrouped, peers never saw it grouped)');
+    console.log('  ✓ doUngroup: locked member converges via pending-op restore (ADR-0965)');
+  }
+
+  // ADR-0965: a member locked mid-run while its pending _nug op lives — peers
+  // gate the member write, so the flush restores run-start and drops it.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const NA=Shape.make('rect',{x:100,y:100,w:50,h:50});
+    const NB=Shape.make('rect',{x:200,y:100,w:50,h:50});
+    Store.commit({op:'add',shape:NA});Store.commit({op:'add',shape:NB});
+    state.selection=new Set([NA.id,NB.id]);
+    nudgeSelection(5,0);                 // pending move op; live-mutated x
+    byId(NA.id).locked=true;             // a remote lock lands mid-run
+    _nugEnd();
+    assert.strictEqual(byId(NA.id).x,100,'_nugLock: locked member restores run-start x');
+    assert.strictEqual(byId(NB.id).x,205,'_nugLock: unlocked member keeps the nudge');
+    assert.deepStrictEqual(state.history[state.histIdx].ids,[NB.id],'_nugLock: locked member dropped from committed ids');
+    console.log('  ✓ _nugLock: mid-run lock restores + drops the member (move)');
+  }
+  // Missing member + all-gone flush: dropped from the op; nothing commits
+  // when every member list empties (the _keepSel-on-empty crash path).
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const NA=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    const NB=Shape.make('rect',{x:60,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:NA});Store.commit({op:'add',shape:NB});
+    state.selection=new Set([NA.id,NB.id]);
+    nudgeSelection(5,0);
+    state.shapes=state.shapes.filter(s=>s.id!==NA.id);_invalidateGrid();   // member deleted mid-run
+    _nugEnd();
+    assert.deepStrictEqual(state.history[state.histIdx].ids,[NB.id],'_nugLock: missing member dropped from committed ids');
+    state.selection=new Set([NB.id]);
+    nudgeSelection(3,0);state.shapes=[];_invalidateGrid();
+    const hb=state.history.length;
+    _nugEnd();
+    assert.strictEqual(state.history.length,hb,'_nugLock: all-gone flush commits nothing');
+    console.log('  ✓ _nugLock: missing/all-gone members (no commit, no crash)');
+  }
+  // zorder member locked mid-run — frac restored to the change's `before`.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const NA=Shape.make('rect',{x:0,y:0,w:50,h:50});
+    const NB=Shape.make('rect',{x:60,y:0,w:50,h:50});
+    const NC=Shape.make('rect',{x:120,y:0,w:50,h:50});
+    const ND=Shape.make('rect',{x:180,y:0,w:50,h:50});
+    Store.commit({op:'addMany',shapes:[NA,NB,NC,ND]});
+    const f0=byId(NC.id).frac;
+    state.selection=new Set([NA.id,NC.id]);   // non-adjacent: both members move
+    doBringForward();                    // pending {op:'zorder',changes}
+    byId(NC.id).locked=true;             // a remote lock lands mid-run
+    _nugEnd();
+    assert.strictEqual(byId(NC.id).frac,f0,'_nugLock: locked zorder member restores run-start frac');
+    const ch=state.history[state.histIdx].changes;
+    assert.ok(ch&&!ch.some(c=>c.id===NC.id),'_nugLock: locked member dropped from zorder changes');
+    console.log('  ✓ _nugLock: mid-run lock restores + drops the member (zorder)');
+  }
+  // ADR-0966: own-lock exemption direction — a member the pending op UNLOCKED
+  // (live s.locked=false at flush) must not be partitioned as remote-locked,
+  // and a member the op locked that then vanished mid-run drops cleanly.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const LA=Shape.make('rect',{x:0,y:0,w:50,h:50});LA.locked=true;
+    Store.commit({op:'add',shape:LA});
+    state.selection=new Set([LA.id]);
+    doLock();                          // live-unlocks LA; pending op carries locked:true→false
+    _nugEnd();
+    assert.ok(!byId(LA.id).locked,'_nugLock exemption: own-unlock survives the partition (stays unlocked)');
+    const lop=state.history[state.histIdx];
+    assert.ok(lop.after[0].locked==null,'own-unlock commits after.locked=null');
+    // same op, but the locked member is deleted mid-run → dropped, no commit
+    const LB=Shape.make('rect',{x:60,y:0,w:50,h:50});
+    Store.commit({op:'add',shape:LB});
+    state.selection=new Set([LB.id]);
+    doLock();                          // live-locks LB; pending {before:unlocked,after:locked}
+    state.shapes=state.shapes.filter(s=>s.id!==LB.id);_invalidateGrid();   // remote del lands mid-run
+    const hb2=state.history.length;
+    _nugEnd();
+    assert.strictEqual(state.history.length,hb2,'_nugLock: gone lock-member commits nothing');
+    console.log('  ✓ _nugLock: own-lock exemption direction (unlock kept, gone lock-member dropped)');
+  }
+  // ADR-0967: remote lock mid-edit — the blur/commit handlers must fold like
+  // remote del. Peers gate 'upd'/'del' on locked, so a commit here diverges
+  // one-way; the follow-loop's fold races the same frame — the handler is the gate.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const TE=Shape.make('text',{x:0,y:0,w:50,h:20,text:'orig'});
+    Store.commit({op:'add',shape:TE});
+    const kids=[];const _ceA=fakeDoc.createElement;
+    fakeDoc.createElement=tag=>{const el=_ceA(tag);el._L={};el.addEventListener=(t,f)=>{(el._L[t]||=[]).push(f)};el.blur=()=>{(el._L.blur||[]).forEach(f=>f())};return el};
+    const _abA=fakeDoc.body.appendChild;fakeDoc.body.appendChild=el=>{kids.push(el)};
+    try{
+      openTextEditor(TE,false);
+      const ta=kids[kids.length-1];ta.value='typed newer text';
+      const h0=state.history.length;
+      byId(TE.id).locked=true;                       // remote lock lands mid-edit
+      ta.blur();
+      assert.strictEqual(state.history.length,h0,'mid-edit lock: text blur commits nothing');
+      assert.strictEqual(byId(TE.id).text,'orig','mid-edit lock: live shape text untouched');
+      assert.strictEqual(state.editing,null,'mid-edit lock: editing cleared on fold');
+      const TE2=Shape.make('text',{x:0,y:30,w:50,h:20,text:'a'});   // unlocked control
+      Store.commit({op:'add',shape:TE2});
+      openTextEditor(TE2,false);
+      const ta2=kids[kids.length-1];ta2.value='b';
+      const h1=state.history.length;
+      ta2.blur();
+      assert.ok(state.history.length>h1&&byId(TE2.id).text==='b','unlocked control: blur commits the upd');
+    }finally{fakeDoc.createElement=_ceA;fakeDoc.body.appendChild=_abA;}
+    const LB=Shape.make('rect',{x:0,y:60,w:50,h:40,label:'l0'});
+    Store.commit({op:'add',shape:LB});
+    state.selection=new Set([LB.id]);
+    const kids2=[];const _ceB=fakeDoc.createElement;
+    fakeDoc.createElement=tag=>{const el=_ceB(tag);el._L={};el.addEventListener=(t,f)=>{(el._L[t]||=[]).push(f)};el.blur=()=>{(el._L.blur||[]).forEach(f=>f())};return el};
+    const _abB=fakeDoc.body.appendChild;fakeDoc.body.appendChild=el=>{kids2.push(el)};
+    try{
+      editSelectedShapeKbd();                        // opens the label editor
+      const inp=kids2[kids2.length-1];inp.value='l1';
+      const h2=state.history.length;
+      byId(LB.id).locked=true;                       // remote lock lands mid-edit
+      inp.blur();
+      assert.strictEqual(state.history.length,h2,'mid-edit lock: label commit folds');
+      assert.strictEqual(byId(LB.id).label,'l0','mid-edit lock: label untouched');
+    }finally{fakeDoc.createElement=_ceB;fakeDoc.body.appendChild=_abB;}
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    console.log('  ✓ mid-edit remote lock: text/label blur commits fold, controls pass (ADR-0967)');
+  }
+  // ADR-0968: ctx/key action family on a remote-killed selection must no-op.
+  // Menu items are captured at open time, but every handler re-derives live —
+  // after a remote del empties the selection nothing may commit (the stale
+  // menu can still LOOK wrong, but it can never emit a junk op).
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const RA=Shape.make('rect',{x:0,y:0,w:50,h:40});
+    const RB=Shape.make('rect',{x:60,y:0,w:50,h:40});
+    Store.commit({op:'addMany',shapes:[RA,RB]});
+    state.selection=new Set([RA.id,RB.id]);
+    Net._onRecv({k:'op',op:{op:'del',shapes:[JSON.parse(JSON.stringify(byId(RA.id))),JSON.parse(JSON.stringify(byId(RB.id)))],clock:{peer:'p9',seq:1,ts:nowTs()}},peer:'p9'},false);
+    assert.strictEqual(byId(RA.id),undefined,'remote del applied through the real intake');
+    assert.strictEqual(state.selection.size,0,'remote del drops the selection ids (0568/0954)');
+    const h0=state.history.length;
+    for(const fn of [doDelete,doDuplicate,doGroup,doUngroup,doLock,doBeautify])fn();
+    doFlip('h');doRotate(90);doAlign('left');doMatchSize('w');
+    doBringFront();doSendBack();doBringForward();doSendBackward();doClearAll();
+    exportSelection('png');
+    assert.strictEqual(state.history.length,h0,'ctx action family emits no op on a dead/empty selection');
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    console.log('  ✓ ctx action family no-ops after remote del empties selection (ADR-0968)');
+  }
+
+  // ADR-0969: remote writes landing mid-gesture must survive orig-restore —
+  // _gTouch merges their touched keys into the gesture origs, and a shape
+  // (re)born past the arm clock (kill+resurrect, wholesale swap) is never
+  // restored at all. Without this the local _gRst wrote stale orig geometry
+  // back over the remote value — peers kept it, we lost it: one-way divergence.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+    const RA=Shape.make('rect',{x:0,y:0,w:50,h:40});
+    Store.commit({op:'addMany',shapes:[RA]});
+    const RAorig=JSON.parse(JSON.stringify(byId(RA.id)));
+    const arm=()=>{ptr.down=true;ptr.reborn=null;ptr.dragKind='move';ptr.dragStartShapes=new Map([[RA.id,JSON.parse(JSON.stringify(byId(RA.id)))]])};
+    arm();byId(RA.id).x+=30;   // in-flight local delta
+    Net._onRecv({k:'op',op:{op:'style',after:[{id:RA.id,stroke:'#ff0000'}],before:[],clock:{peer:'p9',seq:1,ts:nowTs()}},peer:'p9'},false);
+    assert.strictEqual(byId(RA.id).stroke,'#ff0000','remote prop write lands mid-gesture');
+    _cancelPointerGesture();
+    assert.strictEqual(byId(RA.id).stroke,'#ff0000','cancel keeps the remote prop write');
+    assert.strictEqual(byId(RA.id).x,RAorig.x,'cancel still rolls back the local drag delta');
+    arm();   // remote 'move' absolute — the non-_oa write surface merges too
+    Net._onRecv({k:'op',op:{op:'move',ids:[RA.id],dx:1,dy:1,after:[{id:RA.id,x:777,y:333}],clock:{peer:'p9',seq:2,ts:nowTs()}},peer:'p9'},false);
+    _cancelPointerGesture();
+    assert.deepStrictEqual([byId(RA.id).x,byId(RA.id).y],[777,333],'remote move survives cancel (orig merged)');
+    arm();   // kill+resurrect mid-gesture: remote-born arrival marks reborn → restore must skip it
+    Net._onRecv({k:'op',op:{op:'del',shapes:[JSON.parse(JSON.stringify(byId(RA.id)))],clock:{peer:'p9',seq:3,ts:nowTs()}},peer:'p9'},false);
+    assert.strictEqual(byId(RA.id),undefined,'remote del lands mid-gesture');
+    const resurrected={...JSON.parse(JSON.stringify(RA)),x:500,y:600,stroke:'#00ff00'};
+    Net._onRecv({k:'op',op:{op:'add',shape:resurrected,clock:{peer:'p9',seq:4,ts:nowTs()}},peer:'p9'},false);
+    _cancelPointerGesture();
+    assert.strictEqual(byId(RA.id).x,500,'reborn shape keeps remote geometry (arrival-mark skips restore)');
+    assert.strictEqual(byId(RA.id).stroke,'#00ff00','reborn shape keeps remote props');
+    // ADR-0970: the mark is arrival-order, not the remote clock — a peer clock
+    // running AHEAD could push a pre-arm born past armC (spurious skip → dragged
+    // value persists → divergence); a peer clock BEHIND hid a mid-gesture born
+    // under armC (restore clobbers). Neither skew mode can express itself now.
+    Net._onRecv({k:'op',op:{op:'del',shapes:[JSON.parse(JSON.stringify(byId(RA.id)))],clock:{peer:'p9',seq:5,ts:nowTs()}},peer:'p9'},false);
+    Net._onRecv({k:'op',op:{op:'add',shape:{...JSON.parse(JSON.stringify(RA)),x:40,y:60},clock:{peer:'p9',seq:6,ts:nowTs()+500}},peer:'p9'},false);   // skewed-ahead born lands BEFORE the arm
+    arm();byId(RA.id).x+=30;
+    _cancelPointerGesture();
+    assert.strictEqual(byId(RA.id).x,40,'born before the arm still restores the orig — skewed clock cannot fake arrival order');
+    state.wclock[RA.id]._born={ts:nowTs()-1000,peer:'me',seq:0};   // age the local born so a trailing-skew del can win
+    arm();
+    Net._onRecv({k:'op',op:{op:'del',shapes:[JSON.parse(JSON.stringify(byId(RA.id)))],clock:{peer:'p9',seq:7,ts:nowTs()-20}},peer:'p9'},false);
+    Net._onRecv({k:'op',op:{op:'add',shape:{...JSON.parse(JSON.stringify(RA)),x:900},clock:{peer:'p9',seq:8,ts:nowTs()-10}},peer:'p9'},false);   // born ts trails the arm — arrival mark still applies
+    _cancelPointerGesture();
+    assert.strictEqual(byId(RA.id).x,900,'trailing-skew remote reborn still skips restore');
+    ptr.down=false;ptr.dragKind=null;ptr.dragStartShapes=null;ptr.reborn=null;
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state._lastTs=0;
+    console.log('  ✓ mid-gesture remote writes survive orig-restore; reborn skips it (ADR-0969/0970)');
+  }
+  // ADR-0971: the pending _nug op's restore domain merges remote writes too —
+  // a remote write landing mid-run on a member that then gets locked would
+  // otherwise be rolled back to arm values → one-way divergence (0969 on the
+  // keyboard-nug path). Plus a remote (re)birth during the run skips restore
+  // entirely — the op must not resurrect arm state over the remote object.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state._lastTs=0;
+    const MA=Shape.make('rect',{x:100,y:100,w:50,h:50});
+    const MB=Shape.make('rect',{x:200,y:100,w:50,h:50});
+    Store.commit({op:'addMany',shapes:[MA,MB]});
+    state.selection=new Set([MA.id,MB.id]);
+    nudgeSelection(5,0);                 // pending move; MA orig.x=100, live 105
+    Net._onRecv({k:'op',op:{op:'move',ids:[MA.id],dx:1,dy:1,after:[{id:MA.id,x:500,y:520}],clock:{peer:'p9',seq:1,ts:nowTs()}},peer:'p9'},false);   // remote move lands mid-run
+    byId(MA.id).locked=true;             // a remote lock lands on the same member
+    _nugEnd();
+    assert.strictEqual(byId(MA.id).x,500,'_nugLock: remote move survives the locked-member restore');
+    assert.strictEqual(byId(MB.id).x,205,'_nugLock: unlocked member keeps the nudge');
+    // style op: a remote style write merges into the pending op's before-entry
+    const MC=Shape.make('rect',{x:0,y:300,w:50,h:50});
+    Store.commit({op:'add',shape:MC});
+    state.selection=new Set([MC.id]);
+    applyStyleToSelection('stroke','#111111');      // pending style; before.stroke=orig
+    Net._onRecv({k:'op',op:{op:'style',after:[{id:MC.id,fill:'#ff0000'}],before:[],clock:{peer:'p9',seq:2,ts:nowTs()}},peer:'p9'},false);   // remote fill lands mid-run
+    byId(MC.id).locked=true;
+    _nugEnd();
+    assert.strictEqual(byId(MC.id).fill,'#ff0000','_nugLock: remote style prop survives the locked-member restore');
+    // reborn: remote kill+resurrect mid-run — restore must not clobber it
+    const MD=Shape.make('rect',{x:100,y:300,w:50,h:50});
+    Store.commit({op:'add',shape:MD});
+    state.selection=new Set([MD.id]);
+    nudgeSelection(5,0);
+    Net._onRecv({k:'op',op:{op:'del',shapes:[JSON.parse(JSON.stringify(byId(MD.id)))],clock:{peer:'p9',seq:3,ts:nowTs()}},peer:'p9'},false);
+    Net._onRecv({k:'op',op:{op:'add',shape:{...JSON.parse(JSON.stringify(MD)),x:900,y:950},clock:{peer:'p9',seq:4,ts:nowTs()}},peer:'p9'},false);
+    _nugEnd();
+    assert.strictEqual(byId(MD.id).x,900,'_nugLock: remote reborn skips the restore');
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state._lastTs=0;
+    console.log('  ✓ _nugLock merges mid-run remote writes into the restore domain; reborn skips (ADR-0971)');
   }
 
   // v1.7.13b: doDuplicate must skip locked shapes (parity with nudgeSelection/doDelete).
@@ -11635,7 +12461,9 @@ try {
     state.shapes.push(lb);
     state.selection=new Set([lb.id]);
     doLock();   // lock: locked=true
+    _nugEnd();   // ADR-0961: each press is its own op when not coalesced
     doLock();   // unlock: locked=null
+    _nugEnd();   // ADR-0961
     Store.undo(); // undo unlock → re-locks shape
     assert.strictEqual(state.shapes.find(s=>s.id===lb.id).locked,true,
       'v1.7.41b setup: undo of unlock re-locks shape');
@@ -12637,7 +13465,8 @@ try {
     state.shapes=[es];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     state.viewport.zoom=1;state.viewport.x=0;state.viewport.y=0;   // undo any zoom left by an earlier test (pickTop tolerance is zoom-dependent)
     eraseAt({x:5,y:5});
-    assert.strictEqual(byId(es.id),undefined,'v1.7.58e: byId no longer resolves a shape immediately after eraseAt splices it out');
+    assert.ok(!state.shapes.some(s=>s.id===es.id),'v1.7.58e: eraseAt splices the shape out of the scene list');
+    assert.strictEqual(byId(es.id)?.id,es.id,'ADR-0952: batched ids stay addressable to remote ops via the restorable clone');
     abortGesture();
     assert.strictEqual(byId(es.id)?.id,es.id,'v1.7.58e: abortGesture restores the erased shape and byId resolves it again');
     console.log('  ✓ byId: eraseAt splice + abortGesture restore both correctly invalidate the id index (v1.7.58e, ADR-0009)');
@@ -12682,9 +13511,12 @@ try {
   { // v1.7.99: ADR-0041 DOM mirror — SR-navigable shape list
     const fakeUl={children:[],firstChild:null,
       appendChild(c){this.children.push(c);this.firstChild=this.children[0];},
-      removeChild(c){const i=this.children.indexOf(c);if(i>=0)this.children.splice(i,1);this.firstChild=this.children[0]||null;}};
+      removeChild(c){const i=this.children.indexOf(c);if(i>=0)this.children.splice(i,1);this.firstChild=this.children[0]||null;},
+      contains(x){const w=e=>e===x||e.children.some(w);return w(this)},
+      querySelectorAll(s){const r=[];(function w(e){for(const c of e.children){if(c.tagName==='BUTTON')r.push(c);w(c)}})(this);return r}};
     const mk=tag=>({tagName:tag.toUpperCase(),children:[],textContent:'',onclick:null,type:'',
-      appendChild(c){this.children.push(c);}});
+      appendChild(c){this.children.push(c);},
+      focus(){fakeDoc.activeElement=this}});
     const _origGet=fakeDoc.getElementById,_origCE=fakeDoc.createElement;
     fakeDoc.getElementById=id=>id==='shapeMirrorList'?fakeUl:_origGet(id);
     fakeDoc.createElement=mk;
@@ -12708,6 +13540,20 @@ try {
     const before=fakeUl.children.length;
     _mirrorSync();
     assert.ok(fakeUl.children.length===before,'mirror skips rebuild when _gridVer unchanged');
+    // ADR-0956: focus survives a _gridVer rebuild — remote-op churn can't drop SR position
+    state.shapes.length=0;
+    for(let i=0;i<3;i++)state.shapes.push(Shape.make('rect',{x:i*100,y:0,w:50,h:40}));
+    _invalidateGrid();_mirrorSync();
+    const fb=fakeUl.children[1].children[0];fb.focus();
+    assert.strictEqual(fakeDoc.activeElement,fb,'mirror button holds focus pre-rebuild');
+    state.shapes[0].x=999;_invalidateGrid();_mirrorSync();
+    const nb=fakeUl.children[1].children[0];
+    assert.notStrictEqual(nb,fb,'rebuild replaces the button node');
+    assert.strictEqual(fakeDoc.activeElement,nb,'focus restored to the same slot after rebuild (ADR-0956)');
+    fakeUl.children[2].children[0].focus();
+    state.shapes.length=2;_invalidateGrid();_mirrorSync();
+    assert.strictEqual(fakeDoc.activeElement,fakeUl.children[1].children[0],'focus clamps to the last slot when the list shrinks (ADR-0956)');
+    fakeDoc.activeElement=null;
     fakeDoc.getElementById=_origGet;fakeDoc.createElement=_origCE;
     state.shapes.length=0;state.selection.clear();_invalidateGrid();
     console.log('  ✓ DOM mirror: per-shape buttons, select+recentre, MIRROR_MAX cap + truncation, _gridVer gating');
@@ -12958,7 +13804,7 @@ try {
   // v1.7.571: cover previously-untested exports — ctx ops, frame/convert helpers,
   // key/geom utilities. Behaviour-level: set state, call, assert op+mutation.
   {
-    const reset=()=>{state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state._lastRep=null;};
+    const reset=()=>{_nugEnd();state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state._lastRep=null;state._lastTs=0;};   // ADR-0969: _lastTs leaks across sections — else a future-dated clock poisons born<del orderings
     // _imgNextKey: image-key rotation used by _imgAttach for duplicate dataUrls
     assert.strictEqual(_imgNextKey('abc'),'abc:1','_imgNextKey seeds :1');
     assert.strictEqual(_imgNextKey('abc:1'),'abc:2','_imgNextKey bumps suffix');
@@ -13228,11 +14074,13 @@ try {
         clientX:x,clientY:y,offsetX:x,offsetY:y,
         ctrlKey:false,metaKey:false,shiftKey:false,altKey:false,
         preventDefault(){},stopPropagation(){},...o};
-      for(const f of canvas._L[t+'|c']||[])f(ev);   // capture first (pinch recorder)
-      for(const f of canvas._L[t]||[])f(ev);       // then bubble handlers in bind order
+      for(const f of fakeWin._L[t+'|c']||[])f(ev); // window capture first
+      for(const f of canvas._L[t+'|c']||[])f(ev);  // then canvas capture (pinch recorder)
+      for(const f of canvas._L[t]||[])f(ev);       // canvas bubble in bind order
+      for(const f of fakeWin._L[t]||[])f(ev);      // window bubble last — real propagation
       return ev;
     };
-    const reset=()=>{state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.draft=null;ptr.down=false;};
+    const reset=()=>{_nugEnd();state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.draft=null;ptr.down=false;state._lastTs=0;};   // ADR-0969: _lastTs leak — a future-dated clock poisons born<del orderings
     reset();
     state.viewport={x:0,y:0,zoom:1};
     // pen stroke: PD arms ptr.down + draft, PM appends pts, PU commits an 'add'
@@ -14716,6 +15564,143 @@ try {
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
+    // ADR-0950: pointer bookkeeping must not leak ghost entries — hover moves
+    // (buttons===0) seed nothing, and a release off-canvas still clears, so a
+    // stale id can never pair with the next real pointer as a phantom pinch.
+    reset();state.viewport={x:0,y:0,zoom:1};state.tool='select';
+    fireWin('blur');   // clean _pointers/_pinchPrev slate
+    fire('pointermove',100,100,{pointerId:9,buttons:0});   // pure hover
+    fire('pointerdown',10,10,{pointerId:1});
+    fire('pointermove',30,30,{pointerId:1});
+    fire('pointermove',60,60,{pointerId:1});
+    assert.strictEqual(state.viewport.zoom,1,'a hover entry can no longer pair as a phantom pinch');
+    fire('pointerup',60,60,{pointerId:1});
+    // off-canvas release: only a window-level up arrives — the entry must still clear
+    fire('pointerdown',10,10,{pointerId:1});
+    fireWin('pointerup',{pointerId:1});
+    fire('pointerdown',100,100,{pointerId:2});
+    fire('pointermove',120,120,{pointerId:2});
+    fire('pointermove',140,140,{pointerId:2});
+    assert.strictEqual(state.viewport.zoom,1,'an off-canvas release leaves no ghost pinch partner');
+    // a real two-pointer pinch still zooms (no regression)
+    fire('pointerdown',10,10,{pointerId:1});
+    fire('pointerdown',100,100,{pointerId:2});
+    fire('pointermove',110,110,{pointerId:2});
+    fire('pointermove',130,130,{pointerId:2});
+    assert.ok(state.viewport.zoom!==1,'a genuine two-pointer move still pinches');
+    fire('pointerup',10,10,{pointerId:1});
+    fire('pointerup',130,130,{pointerId:2});
+    console.log('  ✓ pointer bookkeeping: no hover seed + off-canvas release clears (ADR-0950)');
+
+    // ADR-0951: an lblpos drag mutates s.labelPos in-flight but both cancel
+    // paths (pointer-gesture cancel + abortGesture) had no restore branch —
+    // a mid-gesture cancel left the shape half-mutated with no commit op.
+    reset();state.viewport={x:0,y:0,zoom:1};state.tool='select';
+    const C9=Shape.make('line',{x1:100,y1:100,x2:300,y2:100});
+    C9.label='x';C9.labelPos=0.2;
+    Store.commit({op:'add',shape:C9});
+    state.selection=new Set([C9.id]);
+    const lp9=_connLabelXY(C9);
+    fire('pointerdown',lp9.x,lp9.y);
+    fire('pointermove',lp9.x+80,lp9.y);
+    assert.ok(byId(C9.id).labelPos!==0.2,'lblpos move mutates labelPos in-flight');
+    fireWin('blur');
+    assert.strictEqual(byId(C9.id).labelPos,0.2,'pointer-gesture cancel restores the orig labelPos');
+    fire('pointerdown',lp9.x,lp9.y);
+    fire('pointermove',lp9.x+80,lp9.y);
+    assert.ok(byId(C9.id).labelPos!==0.2,'in-flight labelPos mutates again');
+    abortGesture();
+    assert.strictEqual(byId(C9.id).labelPos,0.2,'abortGesture restores the orig labelPos');
+    console.log('  ✓ lblpos cancel restores labelPos on both cancel paths (ADR-0951)');
+
+    // ADR-0952: the erase stroke removes shapes from the scene before the del
+    // commits. Remote ops in that window: a del tombstones the id (cancel must
+    // NOT resurrect it — ghost divergence) and prop patches land on the
+    // restorable clone via the byId fallback (cancel restores the newer value).
+    reset();state.viewport={x:0,y:0,zoom:1};state.tool='eraser';
+    const E9=Shape.make('rect',{x:0,y:0,w:10,h:10,fill:'#000'});
+    Store.commit({op:'add',shape:E9});
+    fire('pointerdown',5,5);
+    assert.ok(!state.shapes.some(s=>s.id===E9.id),'erase stroke batches the shape out of the scene');
+    Store.applyRemote({op:'del',shapes:[JSON.parse(JSON.stringify(E9))],clock:{peer:'peer9',seq:1,ts:Date.now()+10}});
+    fireWin('blur');
+    assert.ok(!byId(E9.id),'cancel after a remote del keeps the shape deleted — no ghost');
+    reset();state.viewport={x:0,y:0,zoom:1};state.tool='eraser';
+    const E10=Shape.make('rect',{x:0,y:0,w:10,h:10,fill:'#000'});
+    Store.commit({op:'add',shape:E10});
+    fire('pointerdown',5,5);
+    Store.applyRemote({op:'upd',id:E10.id,before:{id:E10.id},after:{id:E10.id,stroke:'#123456'},clock:{peer:'peer9',seq:2,ts:Date.now()+20}});
+    fireWin('blur');
+    assert.strictEqual(byId(E10.id)?.stroke,'#123456','cancel restores the clone carrying the remote patch');
+    assert.strictEqual(state.tool,'eraser','gesture state stays consistent through cancel');
+    console.log('  ✓ erase-batch window: remote del survives cancel, remote patch lands on the clone (ADR-0952)');
+    // ADR-0953: wholesale mutations must see erase-window members like peers do —
+    // _unB returns them to the scene before the tomb-or-keep scan, and _rs
+    // wholesale adopts drop the pending batch with the old scene.
+    reset();state.viewport={x:0,y:0,zoom:1};state.tool='eraser';state._lastRep=null;
+    const E11=Shape.make('rect',{x:0,y:0,w:10,h:10,fill:'#000'});
+    Store.commit({op:'add',shape:E11});
+    fire('pointerdown',5,5);
+    Store.applyRemote({op:'replace',before:[],after:[],clock:{peer:'peer9',seq:3,ts:Date.now()+30}});
+    fireWin('blur');
+    assert.ok(!byId(E11.id),'remote replace swaps the batched id away — cancel resurrects nothing');
+    reset();state.viewport={x:0,y:0,zoom:1};state.tool='eraser';
+    const E12=Shape.make('rect',{x:0,y:0,w:10,h:10,fill:'#000'});
+    Store.commit({op:'add',shape:E12});
+    fire('pointerdown',5,5);
+    Store.commit({op:'clear'});
+    fireWin('blur');
+    assert.ok(!byId(E12.id),'local clear during the window tombs the batched id — cancel resurrects nothing');
+    reset();state.viewport={x:0,y:0,zoom:1};state.tool='eraser';
+    const E13=Shape.make('rect',{x:0,y:0,w:10,h:10,fill:'#000'});
+    Store.commit({op:'add',shape:E13});
+    fire('pointerdown',5,5);
+    Net._onRecv({k:'snapshot',shapes:[],ops:[],peer:'sp'},false);
+    fireWin('blur');
+    assert.ok(!byId(E13.id),'snapshot wholesale adopt drops the pending erase batch');
+    console.log('  ✓ erase-batch window × wholesale ops: replace/clear/snapshot converge the batched member (ADR-0953)');
+    // ADR-0954: _pgDel2's member kill must drop ids from selection — 'del' forward
+    // parity (_sdl). The reachable hole: a remote pageDel that EMPTIES the page
+    // set lands no switchPage (land=null), so killed members' ids stayed
+    // selected forever — count over-read + ghost ids in origSel/presence.
+    reset();
+    const Q1=Shape.make('rect',{x:0,y:0,w:10,h:10,fill:'#000'});
+    Store.commit({op:'add',shape:Q1});
+    _pgAdd();   // P1 adopts Q1, P2 added, view lands on P2
+    switchPage(state.pages[0].id);   // view P1 where Q1 lives
+    state.selection.add(Q1.id);
+    Store.applyRemote({op:'pageDel',id:state.pages[1].id,clock:{peer:'p9',seq:1,ts:Date.now()+60000}});
+    Store.applyRemote({op:'pageDel',id:state.pages[0].id,clock:{peer:'p9',seq:2,ts:Date.now()+60001}});
+    assert.ok(!byId(Q1.id),'remote pageDel emptying the set kills the member');
+    assert.ok(!state.selection.has(Q1.id),'killed member leaves selection — del parity (ADR-0954)');
+    reset();
+    const Q2=Shape.make('rect',{x:0,y:0,w:10,h:10,fill:'#000'});
+    Q2.locked=true;
+    Store.commit({op:'add',shape:Q2});
+    _pgAdd();
+    switchPage(state.pages[0].id);
+    state.selection.add(Q2.id);
+    Store.applyRemote({op:'pageDel',id:state.pages[1].id,clock:{peer:'p9',seq:1,ts:Date.now()+60000}});
+    Store.applyRemote({op:'pageDel',id:state.pages[0].id,clock:{peer:'p9',seq:2,ts:Date.now()+60001}});
+    assert.ok(byId(Q2.id),'locked member survives the set emptying (rehome to null)');
+    assert.ok(state.selection.has(Q2.id),'surviving member keeps selection — drop is dead-only');
+    state._lastTs=0;   // far-future remote ts raised the HLC floor — restore or later local commits get poisoned clocks
+    console.log('  ✓ pageDel member kill drops selection ids — del parity; survivors keep theirs (ADR-0954)');
+    // ADR-0955: every derived reference is id-keyed, so wholesale object swaps are
+    // transparent — connEnds resolves the NEW object, never the stale clone.
+    reset();state._lastRep=null;
+    const RBz=Shape.make('rect',{x:0,y:0,w:20,h:20,fill:'#000'});
+    Store.commit({op:'add',shape:RBz});
+    const RCz=Shape.make('arrow',{x1:50,y1:50,x2:10,y2:10,a:RBz.id});
+    Store.commit({op:'add',shape:RCz});
+    const e0=connEnds(byId(RCz.id));
+    const RBpre=byId(RBz.id);
+    const RBs=JSON.parse(JSON.stringify(RBz));RBs.x=100;RBs.y=100;
+    Store.applyRemote({op:'replace',after:[RBs,RCz],clock:{peer:'p9',seq:1,ts:Date.now()+100}});
+    assert.notStrictEqual(byId(RBz.id),RBpre,'wholesale replace swaps the bound shape for a new object');
+    const e1=connEnds(byId(RCz.id));
+    assert.ok(e1.x1!==e0.x1||e1.y1!==e0.y1,'connEnds re-resolves the swapped object by id — no stale reference (ADR-0955)');
+    console.log('  ✓ wholesale object swap: bound connector re-resolves by id (ADR-0955)');
   }
 
     // ADR-0646: multi-page — wire-convergent page ops + per-page view filter
@@ -15454,6 +16439,48 @@ pass += 4; // ADR-0946 negative-extent intake pins
   assert.ok(lp.x<=100&&lp.x>=0,'conn labelPos:9 stays on the path');
 }
 pass += 3; // ADR-0947 labelPos domain-clamp pins
+// ADR-0949: every send funnel swallows transport errors — a throwing
+// BroadcastChannel or DataChannel must never propagate into a commit path.
+{
+  const _odc=Net.dc,_oq=Net._dcQ,_oqb=Net._dcQB;
+  Net._dcQ=null;Net._dcQB=0;
+  Net.dc={readyState:'open',send(){throw new Error('dc dead')}};
+  assert.doesNotThrow(()=>Net._sendDC('{"k":"x"}'),'a throwing dc.send never escapes the funnel');
+  assert.ok(Net._dcQ&&Net._dcQ.length===1,'a dc.send throw queues the message for the low-water retry');
+  Net._dcQ=null;Net._dcQB=0;
+  let sent=null;
+  Net.dc={readyState:'open',send(m){sent=m}};
+  Net._bcast({k:'cursor',x:1,y:2});
+  assert.ok(sent&&sent.includes('"k":"cursor"'),'a live dc still receives the envelope via _bcast');
+  assert.ok(!Net._dcQ,'a successful send leaves no backlog');
+  Net.dc=_odc;Net._dcQ=_oq;Net._dcQB=_oqb;
+}
+pass += 4; // ADR-0949 send-funnel exception-safety pins
+pass += 3; // ADR-0950 pointer bookkeeping leak pins
+pass += 4; // ADR-0951 lblpos cancel-restore pins
+pass += 4; // ADR-0952 erase-batch remote-op window pins
+pass += 3; // ADR-0953 erase-batch wholesale-op pins
+pass += 4; // ADR-0954 pageDel selection-drop pins
+pass += 2; // ADR-0955 wholesale-swap id-resolution pins
+pass += 4; // ADR-0956 mirror focus-preservation pins
+pass += 4; // ADR-0957 held-key nudge coalescing pins
+pass += 1; // ADR-0958 commit-order flush pin
+pass += 9; // ADR-0959 tab-hide/close nudge flush pins
+pass += 8; // ADR-0960 zorder/style coalescing + commit-head flush pins
+pass += 10; // ADR-0961 held-key coalescing wave-2 + net-zero discard pins
+pass += 7; // ADR-0962 slider before-buffer boundary-flush + prune pins
+pass += 5; // ADR-0963 lifecycle×boundedness audit pins
+pass += 8; // ADR-0965 mid-run lock/missing member partition (3 blocks: 7 asserts + 1 pin)
+pass += 5; // ADR-0966 pending-op×mid-run audit pins + own-lock exemption block
+pass += 6; // ADR-0967 mid-edit remote-lock blur/commit fold (text+label)
+pass += 3; // ADR-0968 remote-killed selection → ctx family no-op block
+pass += 4; // ADR-0975 builtin-named id/groupId null-proto store pins
+pass += 4; // ADR-0976 connector bound-chain recursion-cap pins
+pass += 9; // ADR-0974 remote-replace saveBackup + newer-born keep pins
+pass += 3; // ADR-0973 schedule()-marks-dirty + snapshot-heal/name-adopt arm pins
+pass += 3; // ADR-0972 envelope/fragment/commit-choke dedup pins
+pass += 12; // ADR-0969/0970/0971 mid-run remote writes survive restore; arrival-order reborn marks
+pass += 15; // ADR-0964 mid-gesture lock restore/commit-gate pins
 pass += 7; // ADR-0943 second-pointer abort pins
 pass += 8; // ADR-0945 mid-gesture overlay-open cancel pins
 pass += 8; // ADR-0948 mid-gesture button-path cancel pins
