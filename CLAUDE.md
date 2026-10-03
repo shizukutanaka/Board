@@ -1031,6 +1031,7 @@ Board/
 │   └── ADR-0980-mousedown-target-closest-guard.md  # ctx 外クリックの `e.target.closest` を `?.` 化 — 非 Element ターゲットで TypeError 貫通する 0909 同型。raw `e.target`/`currentTarget` 全サイト走査で唯一の残穴
 │   └── ADR-0981-listener-registration-lifecycle.md  # リスナ登録の重複/累積監査 clean — `_on` 全サイトは init 一回 or 要素同寿命、`_oC` id 一意、`Net.init` は旧チャネル/timer 解放。ピン8 assert
 │   └── ADR-0982-detached-focus-restore-fallback.md  # detached 化したフォーカス復帰先 (再構築チップ/ミラー) は `isConnected===false` で canvas へ退避 — dialog `_restoreFocus` + presentation `leave()` の2経路。ピン6 assert
+│   └── ADR-0983-wakelock-stale-sentinel.md  # wake-lock sentinel リーク閉塞 — pending 中 leave()・supersede で release 不能なハンドルが残り画面点灯し続ける2経路を `_active` ゲート+両 sentinel 解放で閉塞。ピン3 assert
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

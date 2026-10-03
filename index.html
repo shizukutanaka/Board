@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.008';   // ADR-0982
+const V='1.8.009';   // ADR-0983
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1438,9 +1438,8 @@ const Store={
     _rdb();
     if(op.clock.peer===_pi())Net.broadcast(op);   // outbound only
   },
-  // A remote del ships connClears only for connectors the sender knew; a missed
-  // one snaps to its resolved endpoint BEFORE _apply spreads the del (skips
-  // op.connClears entries). Remote-only view fix: no wire change.
+  // Remote del connClears covers only sender-known connectors; a missed one
+  // snaps to its resolved endpoint before _apply spreads the del. View-only fix.
   _remoteDelConnFix(op){
     if(op.op!=='del'||!_iA(op.shapes))return null;
     const goneIds=_sT(op.shapes.map(s=>s.id).filter(id=>!(byId(id)||{}).locked));   // ADR-0760: locked ids survive
@@ -3401,9 +3400,8 @@ function _curveLabelXY(s){
 }
 // ADR-0070: quick-connect dots on the hovered shape's 4 edge midpoints.
 function _qconnShape(g){
-  // ADR-0643: g=1 skips the ptr.down gate — the overlay (dot render) needs it
-  // so dots hide mid-drag, but the PD-time _qdotAt grab runs after ptr.down is
-  // already armed, so an unconditional check made quick-connect unreachable.
+  // ADR-0643: g=1 skips the ptr.down gate — PD-time _qdotAt runs after ptr.down
+  // is armed; an unconditional check made quick-connect unreachable.
   if(_tl()!=='select'||(!g&&ptr.down)||!state.hover)return null;
   const s=byId(state.hover);
   if(!s||_lk(s)||_conn(s.type)||_pn(s)||!_pgOk(s))return null;
@@ -5318,15 +5316,13 @@ function beginPen(wp,e){
 function contPen(wp,e){
   if(!_df())return;
   const pts=_df().pts;
-  // ADR-0200: Shift held = straight-line mode (Excalidraw). The stroke
-  // collapses to [start, current] while held;
-  // from that point. Full invalidate — the shrink path can't reuse the index
+  // ADR-0200: Shift held = straight-line mode — stroke collapses to [start,
+  // current]. Full invalidate — the shrink path can't reuse the index
   if(_sK(e)&&_ln(pts)){pts.length=1;_pu(pts,[wp.x,wp.y,_df().hl?0.5:_penPr(e)]);_iv();return}
   const last=_pL(pts);
   // decimate by min distance for smoothness
   const d=_hp(wp.x-last[0],wp.y-last[1]);
-  // ADR-0866: pts is wire-bounded at 50000 tuples — stop growing locally too;
-  // an over-cap stroke would commit here yet be rejected by every peer (divergence).
+  // ADR-0866: pts caps at 50000 (wire bound) — else peers reject the commit.
   if(d>1/_vp().zoom&&_ln(pts)<50000)_pu(pts,[wp.x,wp.y,_df().hl?0.5:_penPr(e)]);
   const _m=(_df().size||2)+16;   // ADR-0026: ink corridor — accumulated union covers the whole stroke
   _iD({x:_min(wp.x,last[0])-_m,y:_min(wp.y,last[1])-_m,w:_abs(wp.x-last[0])+2*_m,h:_abs(wp.y-last[1])+2*_m});
@@ -10067,13 +10063,16 @@ const Presentation=(()=>{
   let _overlay=null;
   let _savedVp=null;   // viewport before entering, restored on leave
   let _focusTrigger=null;  // element to restore focus to on leave (WCAG SC 2.4.3)
-  // v1.6.90: Screen Wake Lock keeps the display on during presentation (Zenn/Qiita).
-  // Best-effort — unsupported browsers skip. The browser auto-releases the lock
-  // when the tab hides, so we re-acquire it when it becomes visible again.
+  // v1.6.90: Screen Wake Lock — display stays on during presentation; auto-
+  // released on tab hide and re-acquired on visible (unsupported: skip).
   let _wakeLock=null;
+  // ADR-0983: the request resolves on a later turn — a leave() meanwhile
+  // would store a sentinel that never gets released, and a second request
+  // would orphan the first sentinel's handle.
   async function _acquireWakeLock(){
     if(!navigator.wakeLock)return;
-    try{_wakeLock=await navigator.wakeLock.request('screen')}catch(_){}
+    try{const l=await navigator.wakeLock.request('screen'),o=_wakeLock;
+      _active?_wakeLock=l:l.release().catch(()=>{});o&&o.release().catch(()=>{})}catch(_){}
   }
   function _releaseWakeLock(){
     if(_wakeLock){_wakeLock.release().catch(()=>{});_wakeLock=null;}

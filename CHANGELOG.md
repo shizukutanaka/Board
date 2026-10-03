@@ -1,3 +1,8 @@
+## [1.8.009] - 2026-10-01
+
+### Fixed
+- Screen Wake Lock の sentinel リークを閉塞 (ADR-0983): `wakeLock.request` が後続ターンで resolve する際 ①pending 中の `leave()` で `_releaseWakeLock` が null を見て解放を逃し resolve 後の sentinel が永続保持 (タブ非表示まで画面点灯)、②保持中の2回目 acquire で旧 sentinel ハンドルが孤立 — の2経路。格納を `_active` ゲート化し、非アクティブ resolve・旧保持 sentinel の双方を `release()` で解放。同監査で `Persist.save` の put 時点 live 読み・WebRTC offer/answer の torn-read throw 表面化・import cascade の commit 時点 `pg` 刻印を確認。behavioural ピン3 assert + 既存ピンの非 vacuous 化
+
 ## [1.8.008] - 2026-10-01
 
 ### Fixed

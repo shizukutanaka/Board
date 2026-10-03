@@ -10403,17 +10403,45 @@ try {
     let requested=null;
     const sentinel={released:false,release:async()=>{sentinel.released=true;}};
     fakeWin.navigator.wakeLock={request:async(type)=>{requested=type;return sentinel;}};
+    Presentation._setTestState(true,null);   // ADR-0983: lock only stores while active
     await Presentation._acquireWakeLock();
     assert.strictEqual(requested,'screen','_acquireWakeLock requests "screen" lock');
+    assert.strictEqual(sentinel.released,false,'active acquire holds the sentinel (non-vacuous)');
     Presentation._releaseWakeLock();
     await Promise.resolve();  // allow the sentinel.release() micro-task to settle
     assert.strictEqual(sentinel.released,true,'_releaseWakeLock calls sentinel.release()');
+    Presentation._setTestState(false,null);
     // graceful no-op when wakeLock is unsupported
     fakeWin.navigator.wakeLock=undefined;
     assert.doesNotThrow(()=>Presentation._acquireWakeLock(),'_acquireWakeLock: safe no-op when navigator.wakeLock absent');
     fakeWin.navigator.wakeLock=undefined;
     console.log('  ✓ Presentation._acquireWakeLock/release: screen stays on during slides (Screen Wake Lock API)');
+    pass += 1; // ADR-0983 non-vacuous hold assert
   }
+
+  // ADR-0983: a wake-lock request resolving after leave() must not leak — the
+  // browser keeps the screen on for a sentinel nobody can release; and a second
+  // acquire must not orphan the first sentinel's handle.
+  {
+    let rel=0;const s1={release:async()=>{rel++}};
+    fakeWin.navigator.wakeLock={request:async()=>s1};
+    Presentation._setTestState(false,null);      // leave() already ran
+    await Presentation._acquireWakeLock();
+    assert.strictEqual(rel,1,'stale acquire: sentinel released when presentation already left');
+    let rel2=0;const s2={release:async()=>{rel2++}},s3={release:async()=>{rel2++}};
+    const ss=[s2,s3];let i=0;
+    fakeWin.navigator.wakeLock={request:async()=>ss[i++]};
+    Presentation._setTestState(true,null);
+    await Presentation._acquireWakeLock();       // stores s2
+    await Presentation._acquireWakeLock();       // stores s3, releases s2
+    assert.strictEqual(rel2,1,'superseded sentinel released exactly once (s2)');
+    Presentation._releaseWakeLock();
+    assert.strictEqual(rel2,2,'held sentinel released on leave (s3)');
+    Presentation._setTestState(false,null);
+    fakeWin.navigator.wakeLock=undefined;
+    console.log('  ✓ wake-lock: stale/superseded sentinels released, never orphaned (ADR-0983)');
+  }
+  pass += 3; // ADR-0983 stale/superseded wake-lock pins
 
   // v1.6.92: PWA install button (beforeinstallprompt) — progressive enhancement,
   // only shows when the browser fires the event. Tests: prompt() called on click,
