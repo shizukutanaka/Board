@@ -1,3 +1,12 @@
+## [1.8.059]
+- **Fix: foreign img ordinal persisted verbatim (ADR-1033)** — a peer's
+  parked `img:k:N` ref is store-relative: `:N` is a collision ordinal in
+  *that* store's keyspace. Persisted as-is, reload could attach a different
+  local `k:N` occupant — silent wrong-image restore with no imgq heal.
+  `_imgSlim`'s persist call sites now '@'-mark `/:\d+$/` refs; `_imgAttach`
+  strips the mark and keeps them parked for imgq heal only. Base-hash refs
+  stay locally resolvable (content-faithful). 11 behavioural pins.
+
 ## [1.8.058]
 - **Fix: dual-connected presence merge (ADR-1032)** — a link partner who is
   also a room peer counted as two: `_pk` routed every viaRtc presence

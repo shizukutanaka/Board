@@ -16296,8 +16296,8 @@ try {
       const sm=Net._snapshotMsg();
       assert.ok(sm.shapes.some(x=>x.id===eba.id),'snapshot reply includes erase-batch members');
       assert.ok(html.includes("const _shWB=()=>_ln(_eraseBatch)?_sh().concat(_eraseBatch):_sh();"),'whole-board union helper exists');
-      assert.ok(html.includes("_imgSlim(_shWB(),stored)"),'doc save unions the erase batch');
-      assert.ok(html.includes("_imgSlim(shapes.concat(_eraseBatch),stored)"),':prev backup unions the erase batch');
+      assert.ok(html.includes("_imgSlim(_shWB(),stored,1)"),'doc save unions the erase batch');
+      assert.ok(html.includes("_imgSlim(shapes.concat(_eraseBatch),stored,1)"),':prev backup unions the erase batch');
       assert.ok(html.includes("const ops=_shWB().map(s=>({"),'snapshot ops include the batch');
       assert.ok(html.includes("shapes=_shWB()"),'board/clipboard export defaults union the batch');
       flushErase();   // drain via the real commit path; the next block reset()s anyway
@@ -16527,6 +16527,28 @@ try {
       assert.strictEqual(Net._pk({peer:'p-real'},false),'p-real','BC path unchanged');
       Net._rtcPeerId=null;state.peers.clear();
       console.log('  ✓ rtc×room presence merge (ADR-1032)');
+    }
+    {
+      // ADR-1033: ':'-chained img keys are per-store ordinals — a foreign
+      // parked ref persisted verbatim could resolve against a different
+      // local ':N' occupant on reload. Persist '@'-marks them; _imgAttach
+      // strips the mark and keeps the ref parked for imgq heal only.
+      assert.ok(html.includes("img:'@'+s.img"),'persist marks foreign chained img refs');
+      assert.ok(html.includes("img:s.img.slice(1)"),'_imgAttach strips the foreign mark without attaching');
+      const st=new Map([['i1x1','data:image/png;base64,AAAA'],['i2x9','data:image/png;base64,BBBB']]);
+      const fA={id:'imA',type:'image',x:0,y:0,w:10,h:10,z:1,img:'i1x1:1'},
+            fB={id:'imB',type:'image',x:0,y:0,w:10,h:10,z:1,img:'i2x9'},
+            fC={id:'imC',type:'image',x:0,y:0,w:10,h:10,z:1,img:'i3x3:2'};
+      const slp=_imgSlim([fA,fB,fC],st,1);
+      assert.strictEqual(slp.slim[0].img,'@i1x1:1','chained foreign ref @-marked at persist');
+      assert.strictEqual(slp.slim[1].img,'i2x9','base-hash key stays unmarked (content-faithful)');
+      assert.strictEqual(slp.slim[2].img,'@i3x3:2','second chained ref marked too');
+      const att=_imgAttach(slp.slim,st);
+      assert.strictEqual(att[0].img,'i1x1:1','mark stripped — parked ref heals via imgq');
+      assert.strictEqual(att[0].dataUrl,undefined,'marked ref never attaches the local :N occupant');
+      assert.strictEqual(att[1].dataUrl,'data:image/png;base64,BBBB','base-hash ref resolves locally');
+      assert.strictEqual(_imgSlim([fA],new Map()).slim[0].img,'i1x1:1','wire path unmarked — keyspace is shared');
+      console.log('  ✓ foreign img-ref persistence marking (ADR-1033)');
     }
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
@@ -17472,6 +17494,7 @@ pass += 9; // ADR-1029 stamp×drop symmetry pins
 pass += 8; // ADR-1030 join×room-switch lifecycle pins
 pass += 7; // ADR-1031 presence-signature lifecycle pins
 pass += 6; // ADR-1032 rtc×room presence merge pins
+pass += 11; // ADR-1033 foreign img-ref marking pins
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
