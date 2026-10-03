@@ -852,7 +852,15 @@ const _st=()=>state.style;
 const _df=()=>state.draft;
 const _wc=()=>state.wclock,_wM=x=>Object.assign(Object.create(null),x),_oe=Object.entries;   // ADR-0788
 const _wD=(id,c)=>_wc()[id]=_wM({_del:c}),_wR=(id,w)=>_wc()[id]=_wM(clone(w)),_wTb=(rw,c,inN)=>{for(const[id,w]of _oe(rw||{}))if(w._del&&(clockNewer(w._del,c)||!inN.has(id)))_wD(id,clockNewer(w._del,c)?w._del:c)};   // ADR-0789
-const _bT=(id,c)=>{const w=_wc()[id]||(_wc()[id]=_wM());if(!w._born||clockNewer(c,w._born))w._born=c},_bN=(id,c)=>{const w=_wc()[id];return!!(w&&w._born&&clockNewer(w._born,c))};   // ADR-0926: existence clock — a kill op loses to any newer (re)introduction (OR-set add-wins)
+const _bT=(id,c)=>{const w=_wc()[id]||(_wc()[id]=_wM());if(!w._born||clockNewer(c,w._born))w._born=c},_bN=(id,c)=>{const w=_wc()[id];return!!(w&&w._born&&clockNewer(w._born,c))};   // ADR-0926: existence clock — a kill op loses to any newer (re)introduction
+const _wAdopt=(id,rw)=>{   // ADR-0927: adopt a snapshot-carried wclock — the sender's real clocks
+  if(!rw||!_iO(rw))return;
+  const ks=_ok(rw);if(_ln(ks)>64)return;
+  const w=_wc()[id]||(_wc()[id]=_wM());
+  for(const k of ks){if(k==='id'||k==='type'||k==='pg'||k==='frac'||k==='groupId'||k==='__proto__'||k==='constructor'||k==='prototype'||(k[0]==='_'&&k!=='_born'&&k!=='_del'))continue;
+    const rc=rw[k];if(!validClock(rc))continue;if(!w[k]||clockNewer(rc,w[k]))w[k]=clone(rc)}
+};
+const _tAlive=(id,rw)=>{const w=_wc()[id];return!!(w&&w._del&&!(w._born&&clockNewer(w._born,w._del))&&!(rw&&rw._born&&validClock(rw._born)&&clockNewer(rw._born,w._del)))};   // ADR-0927: a live tomb — no newer birth supersedes it
 const MAX_TS_SKEW=3e5,_tsOK=t=>_iN(t)&&_fin(t)&&t<=_now()+MAX_TS_SKEW,_pgs=()=>state.pages,_xyOK=v=>_fin(v)&&_abs(v)<=1e7,_xC=v=>_max(-1e7,_min(1e7,v)),_vpOK=v=>v&&_xyOK(+v.x)&&_xyOK(+v.y)&&_fin(+v.zoom)&&+v.zoom>0;   // ADR-0791/0792/0793/0795/0798
 const _tl=()=>state.tool;
 const _dn=()=>state.docName;
@@ -873,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.952';   // ADR-0926
+const V='1.7.954';   // ADR-0928
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1374,7 +1382,7 @@ function validRemotePayload(op){
       return true;}
     case 'move':   return _iA(op.ids)&&_ln(op.ids)>0&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(_idOK)&&_iN(op.dx)&&_fin(op.dx)&&_iN(op.dy)&&_fin(op.dy)&&(op.dx!==0||op.dy!==0)
       &&patches(op.after)&&(op.before==null||patches(op.before));   // ADR-0729/0741
-    case 'zorder':  // ADR-0742: minimal-delta {changes} only — legacy wholesale clobbered newer frac (no clock stamp)
+    case 'zorder':  // ADR-0742: minimal-delta {changes} only — legacy wholesale clobbered newer frac
       return _iA(op.changes)&&_ln(op.changes)<=MAX_OP_SHAPES&&op.changes.every(c=>c&&_iS(c.id)&&_ln(c.id)<=64
                 &&(c.after==null||_iS(c.after)&&_ln(c.after)<=600)&&(c.before==null||_iS(c.before)&&_ln(c.before)<=600));   // ADR-0473/0485
     case 'style':
@@ -1517,7 +1525,7 @@ const Store={
       if(op.before)op.before=op.before.filter(b=>op.ids.includes(b.id));
       return _ln(op.ids)>0;
     }
-    if(op.op==='zorder'){   // ADR-0653: per-shape frac LWW — concurrent reorders of the same shape converge on the newest write
+    if(op.op==='zorder'){   // ADR-0653: per-shape frac LWW — concurrent reorders converge on the newest write
       if(!_iA(op.changes))return true;   // non-changes forms can't arrive (ADR-0742) — defensive
       op.changes=op.changes.filter(c=>byId(c.id)&&this._chg({frac:c.before},{frac:c.after},'frac')&&clockNewer(C,_wc()[c.id]&&_wc()[c.id].frac));
       return _ln(op.changes)>0;
@@ -1561,7 +1569,7 @@ const Store={
     if(_sO().has(k))return;
     _sO().add(k);
     _trimSeen();                           // ADR-0428: same helper as commit/applyRemote
-    if(op.op==='replace'){state._lastRep=op.clock;const inN=_sT(op.after.map(s=>s.id));for(const s of op.before)if(!inN.has(s.id))_wD(s.id,op.clock);_wTb(op.wc,op.clock,inN)}   // ADR-0616/0736
+    if(op.op==='replace'){state._lastRep=op.clock;const inN=_sT(op.after.map(s=>s.id));for(const s of op.before)if(!inN.has(s.id))_wD(s.id,op.clock);_wTb(op.wc,op.clock,inN);for(const s of op.after)_bT(s.id,op.clock)}   // ADR-0616/0736/0927
     this._stampWrites(op);                 // change already applied by caller; record clock
     _hi().length=_hx()+1;
     _hi().push(op);
@@ -1703,7 +1711,7 @@ const Store={
         // shape arrays so Ctrl+Z restores the board import overwrote.
         // On the wire since ADR-0613 — _lastRep orders concurrent swaps.
         const next=forward?op.after:op.before;
-        if(op.clock)state._lastRep=op.clock;   // ADR-0614: newest applied swap marker — also covers undo (the op's clock still outranks older peers)
+        if(op.clock)state._lastRep=op.clock;   // ADR-0614: newest applied swap marker — covers undo too
         const wc0=state.wclock||{},old0=_sh().map(s=>s.id),inN=_sT(next.map(s=>s.id)),keep=_sh().filter(s=>!inN.has(s.id)&&_bN(s.id,op.clock));   // ADR-0736/0926
         _sh().length=0;_scl();state.wclock=_wM();_pcC();state.pages=state.curPg=null;_pgBar();   // ADR-0646
         for(const s of _uniq(next)){const wd=wc0[s.id];if(wd&&wd._del&&clockNewer(wd._del,op.clock))continue;_sh().push(Net._attachShape(clone(s)))}   // ADR-0736/0790/0922
@@ -1712,7 +1720,8 @@ const Store={
         _sz();
         if(forward&&op.afterWc)state.wclock=_wM(clone(op.afterWc));
         if(!forward&&op.wc)state.wclock=_wM(clone(op.wc));
-        if(forward){for(const s of keep)_wR(s.id,wc0[s.id]);for(const id of old0)if(!inN.has(id)&&!(wc0[id]&&wc0[id]._born&&clockNewer(wc0[id]._born,op.clock)))_wD(id,op.clock);_wTb(wc0,op.clock,inN);for(const s of _sh())_bT(s.id,op.clock)}   // ADR-0736/0926
+        if(forward){for(const s of keep)_wR(s.id,wc0[s.id]);for(const id of old0)if(!inN.has(id)&&!(wc0[id]&&wc0[id]._born&&clockNewer(wc0[id]._born,op.clock)))_wD(id,op.clock);_wTb(wc0,op.clock,inN)}   // ADR-0736/0926
+        for(const s of _sh())_bT(s.id,op.clock);   // ADR-0926/0928: the undo-wire lands on peers as a forward apply that stamps U — stamp it here too or restored borns stay pre-swap and a mid-window del kills locally only
         if(forward)_pgAdopt(op.pages,op.curPg);else _pgAdopt(op.beforePages,op.beforeCurPg);   // ADR-0646: the swap carries the page set
         if(!forward)_selR(op);
         break;}
@@ -1860,11 +1869,9 @@ function byId(id){
   return _idIndex.get(id);
 }
 function clone(o){return _JP(_JS(o))}
-// Monotonic local timestamp (HLC-lite). clockNewer compares ts BEFORE seq, so a
-// backwards wall-clock jump between two same-peer edits would make the newer
-// edit LOSE on remotes → divergence. ADR-0926: the clock also ticks strictly
-// past every ts ever stamped or observed — a write issued after seeing clock C
-// always outranks C (a del beats the born it saw; _bN/_tmb stay symmetric).
+// Monotonic local timestamp (HLC-lite) — clockNewer orders ts first, so a
+// backwards wall jump between same-peer edits diverges. ADR-0926: it also
+// strictly outranks every ts ever stamped or observed (a del beats the born it saw).
 function nowTs(){state._lastTs=_max(Date.now(),state._lastTs+1);return state._lastTs}   // ADR-0926
 // Total order on op clocks for per-property LWW (ADR-0002): "newer" = larger by
 // (ts, then peer, then seq). Every peer compares identical clock triples, so the
@@ -1887,7 +1894,7 @@ function _lwwSkip(id,key,op){
   return !!(wc&&wc[key]&&wc[key].peer!==_pi()&&clockNewer(wc[key],op.clock));
 }
 function _ccRest(sh,b,op){const pb=clone(b);for(const k of _ok(pb))if(_lwwSkip(sh.id,k,op))delete pb[k];_oa(sh,pb)}   // ADR-0921
-function _tmb(id,op){const wd=_wc()[id];return !!(wd&&wd._del&&clockNewer(wd._del,op.clock||{}))}   // ADR-0922: newer remote tomb outranks the restore — wire-side addMany gates the same way
+function _tmb(id,op){const wd=_wc()[id];return !!(wd&&wd._del&&clockNewer(wd._del,op.clock||{})&&!(wd._born&&clockNewer(wd._born,wd._del)))}   // ADR-0922/0927: newer tomb outranks the restore — unless a newer birth superseded it
 // Bound connectors: line/arrow endpoints (s.a/s.b = shape id) derive from the bound
 // shape's edge at render/hit/export so the connector follows. Stored = fallback.
 // Where a ray from shape centre toward (fx,fy) exits the shape's true edge.
@@ -2006,11 +2013,9 @@ function keyBetween(a,b){
 // The keyBetween(null,…) chain is prefix-stable …
 // total count), so add/del splices that don't reindex still leave canonical keys.
 function reindexFrac(){let p=null;for(const s of _sh()){p=keyBetween(p,null);s.frac=p;}}
-// sortZ: order shapes by fractional key. Keyless shapes reconcile first: a
-// fully-legacy board migrates from integer z; else a new keyless shape lands
-// above the current top key (the old nextZ() "front"). Established frac keys
-// never reshuffle; same-gap concurrent inserts break on the unique shape id,
-// so every peer converges to one order. (ADR-0001 Steps 1+3)
+// sortZ: order shapes by fractional key. Keyless shapes reconcile first
+// (legacy integer-z migration / land above the top key). Established keys
+// never reshuffle; same-gap concurrent inserts converge on shape id (ADR-0001 Steps 1+3).
 function sortZ(){
   if(!_nS())return;
   if(_sh().some(s=>s.frac==null)){
@@ -2091,10 +2096,8 @@ function getImg(dataUrl){
 const STICKY_COLORS=[_YW,'#FBCFE8','#BBF7D0','#BFDBFE','#DDD6FE','#FED7AA'];
 
 // ====================== PEN BITMAP CACHE (ADR-0018) ======================
-// Committed strokes are immutable between ops — rasterize each stroke once into
-// an offscreen canvas (bbox-relative, supersample R) and drawImage it; a moved
-// pen just draws at its new origin. Validity is an O(1) signature: array ref +
-// length + first/middle/last points + stroke + size.
+// Committed strokes are immutable — rasterize once (bbox-relative, supersample R),
+// drawImage at the origin. Validity: O(1) signature of ref+len+first/mid/last pts+stroke+size.
 const _penCache=_mP(),PEN_CACHE_MAX_PX=12e6,PEN_CACHE_MAX_DIM=4096;
 let _penCachePx=0;
 // ADR-0424: per-shape caches keyed by shape id die with the shape — purge on
@@ -2111,7 +2114,7 @@ const nc=v&&_pgById(cur)?cur:(v?v[0].id:null);const oc=state.curPg;if(nc!==oc){_
 state.curPg=nc;if(nc!==oc){Net.sendCursorHide();_ss(_selIds());if(nc)_ann(_pgById(nc).name)}_pgBar();_iG()}   // ADR-0664/0690/0748/0749/0750
 function switchPage(id){if(!_pgById(id)||state.curPg===id)return;_cxO();_cancelPointerGesture();state.curPg=id;Net.sendCursorHide();_iG();_zR();_ss(_selIds());_iv();_ivO();_ann(_pgById(id).name);_pgBar();_ps()}   // ADR-0664/0674/0689
 function _pgNav(d){if(!_pgOn())return;const i=_pgIdx(),n=_ln(_pgs());const j=(i+d+n)%n;if(j!==i)switchPage(_pgs()[j].id)}
-const _opIds=op=>{   // ADR-0652: the touched-id harvest _apply uses — shared with _pgFollow so undo/redo can see where the change landed
+const _opIds=op=>{   // ADR-0652: touched-id harvest — shared with _pgFollow so undo/redo lands the view
   const s=_sT(),add=v=>{if(v&&v.id!=null)s.add(v.id)};
   if(op.id!=null)s.add(op.id);
   if(_iA(op.ids))for(const id of op.ids)s.add(id);
@@ -2151,15 +2154,13 @@ function _pgDup(){   // ADR-0651: duplicate the current page — pageAdd+shapes 
 function _pgDel(){if(!_pgOn()||_ln(_pgs())<2)return;const p=_pgs()[_pgIdx()];if(!confirm(t('pgDelQ')+': '+p.name+'?'))return;_cmt({op:'pageDel',id:p.id,i:_pgIdx(),name:p.name})}
 const _pgIdx=()=>_pgOn()?_pgs().findIndex(p=>p.id===state.curPg):-1;
 function _pgDel2(op,firstId,only,viewId){   // ADR-0646: remove the deleted page's members + land the view on a live page
-  // ADR-0707: 'del' parity — locked members SURVIVE and rehome to firstId (null
-  // = single-page → _pgHealS scrubs it). ADR-0724: `only` caps the kill set to
-  // op-carried members (unpage). ADR-0725: `viewId` = local view landing;
-  // member rehome follows the wire's sender choice, the view the local first.
+  // ADR-0707: 'del' parity — locked members survive + rehome to firstId. ADR-0724:
+  // `only` caps the kill set (unpage). ADR-0725: members rehome to the wire's choice.
   const dead=new Set();for(const s of _sh())if((s.pg||firstId)===op.id&&!s.locked&&(!only||only.has(s.id))&&!_bN(s.id,op.clock))dead.add(s.id);
   op.wc=_wM();for(const id of dead)if(_wc()[id])op.wc[id]=clone(_wc()[id]);   // ADR-0722e 'del' forward — undo must restore them or resurrected shapes arbitrate against nothing
   for(const id of dead)_wc()[id]=_wM({_del:op.clock});   // ADR-0679/0734: tombstone — a stale add/snapshot must lose to this delete
   for(const s of _sh())if((s.pg||firstId)===op.id&&(s.locked||_bN(s.id,op.clock)))s.pg=firstId;
-  const cc=computeConnClears(dead);   // ADR-0707: connectors bound to a removed member lose their endpoint — same clear 'del' runs; recorded on the op for undo
+  const cc=computeConnClears(dead);   // ADR-0707: connectors bound to a removed member lose their endpoint — recorded for undo
   if(_ln(cc)){op.connClears=cc;for(const p of cc){const sh=byId(p.id);if(sh)_oa(sh,p.after)}}
   state.shapes=_sh().filter(s=>!dead.has(s.id));_iG();_pcC();
   const land=(viewId!==undefined?viewId:firstId);if(state.curPg===op.id&&land!=null)switchPage(land);   // ADR-0649/0725: land via switchPage so the page change is announced + cursors hidden
@@ -2697,10 +2698,9 @@ function draw(){
   _lastVp={x:ev.x,y:ev.y,zoom:v.zoom};
 }
 // ====================== OVERLAY LAYER (ADR-0024) ======================
-// Second stacked canvas (#ov): all ephemeral chrome — selection outlines, snap
-// guides, marquee, peer cursors/selections, laser, search highlights — repaints
-// without touching the scene pass; _ivO() drives it, _iv() marks both. All
-// coords convert through G.w2s (the transform supplies DPR).
+// Second stacked canvas (#ov) for ephemeral chrome — selection outlines, guides,
+// marquee, peer cursors, laser, search — repaints skip the scene; _ivO() drives it.
+// Coords via G.w2s (transform supplies DPR).
 function drawOverlay(){
   const c=octx,W=ocanvas.width,H=ocanvas.height;
   _sTF(c,1,0,0,1,0,0);
@@ -2716,7 +2716,7 @@ function drawOverlay(){
     }
   }
   _sTF(c,DPR,0,0,DPR,0,0);
-  if(!_ln(_shV())&&!_df())drawEmptyHint(c,W,H);   // FT-17 + ADR-0668: onboarding when the viewed page has nothing visible — not only when the whole board is empty
+  if(!_ln(_shV())&&!_df())drawEmptyHint(c,W,H);   // FT-17 + ADR-0668: onboarding is page-scoped — empty viewed page, not just empty board
   for(const[,members] of _grpMapGet()){
     const b=_bA(members);if(!b)continue;
     const p1=_w2({x:b.x-4,y:b.y-4}),p2=_w2({x:b.x+b.w+4,y:b.y+b.h+4});
@@ -2857,7 +2857,7 @@ function _drawMeasure(c){
 let _cssCache=Object.create(null);
 function _gC(v){let x=_cssCache[v];if(x===_ud){x=_trm(getComputedStyle(_de).getPropertyValue(v));_cssCache[v]=x}return x}
 function clearCSSCache(){_cssCache=Object.create(null);_iv()}
-const _tTk=()=>{clearCSSCache();Minimap.invalidateCache();_penCache.clear();_penCachePx=0}   // ADR-0852/0857: token flips also stale the pen bitmaps (drawPen resolves unset stroke to --brand at rasterize time)
+const _tTk=()=>{clearCSSCache();Minimap.invalidateCache();_penCache.clear();_penCachePx=0}   // ADR-0852/0857: token flips stale the pen bitmaps too (unset stroke resolves --brand at rasterize)
 function drawGrid(W,H){
   const v=_vp();
   const gs=GRID_SIZE;
@@ -2927,11 +2927,9 @@ function _drawImgLabel(s,c){
   for(let i=0;i<_ln(lines);i++)_fT(c,lines[i],tx2,sy+2+lh/2+i*lh);
   _rs2(c);
 }
-// Connector (edge) label at the bound endpoints' midpoint (ADR-0003); a paper-
-// coloured pill keeps the line from striking through the text, scaled with zoom.
-// ADR-0081: single source for the label's world position — canvas and the
-// inline editor both anchor here. ADR-0117: path points for arc-length
-// positioning — elbow → polyline, curve → 16-sample bezier, else _linePts.
+// Connector label at the bound endpoints' midpoint (ADR-0003) — a paper-coloured
+// pill stops the strike-through, zoom-scaled. ADR-0081: the shared anchor for
+// canvas + inline editor. ADR-0117: arc-length path points (elbow→polyline, curve→bezier16, else _linePts).
 function _connPathPts(s){
   if(_el(s))return _elbowPts(s);
   if(s.curve){const e=_cE(s),cc=_curveCtrl(e,s.cbend),pts=[];
@@ -3298,7 +3296,7 @@ function _segIntT(ax,ay,bx,by,cx,cy,dx,dy){
 function _hopsFor(s,pts){
   const hops=[];                                   // packed i*1e6+t, sorted
   for(const o of _sh()){
-    if(o===s||o.visible===0||!_pgOk(o))continue;   // ADR-0667: hop marks come only from crossings visible on this page — an off-page line would mint phantom arcs
+    if(o===s||o.visible===0||!_pgOk(o))continue;   // ADR-0667: hop marks only from crossings visible on this page — off-page lines would mint phantom arcs
     const t=o.type;if(t!=='line'&&t!=='arrow')continue;
     const op=_connPathPts(o);if(!op||_ln(op)<2)continue;
     for(let i=0;i<_ln(pts)-1;i++){
@@ -4369,7 +4367,7 @@ _on(canvas,_PU,e=>{
     switch(_tl()){
     case 'select':
       if(_dk('resize')){
-        const rsh=byId(ptr.resizeOrig.id);   // ADR-0635: selection may change mid-gesture — _sel0() could bind/commit onto a different shape
+        const rsh=byId(ptr.resizeOrig.id);   // ADR-0635: selection may change mid-gesture — _sel0() could commit a different shape
         if(rsh){
           _endPointBind(rsh,ptr.resizeHandle,_aK(e));           // ADR-0065/0209
           const after=clone(rsh);
@@ -4445,7 +4443,7 @@ function _cancelPointerGesture(){
   _clearLongPress();   // ADR-0006: covers both the native pointercancel path and our own
   // Restore partial resize/move/erase on cancel
   if(_dk('resize')&&ptr.resizeOrig){
-    const rsh=byId(ptr.resizeOrig.id);   // ADR-0635: selection may change mid-gesture — _sel0() could restore onto a different shape
+    const rsh=byId(ptr.resizeOrig.id);   // ADR-0635: selection may change mid-gesture — _sel0() could restore a different shape
     if(rsh)_geoR(rsh,ptr.resizeOrig);
   }else if((_dk('gresize')||_dk('grot'))&&ptr.gOrig){
     for(const [id,orig] of ptr.gOrig){const sh=byId(id);if(sh)_geoR(sh,orig);}
@@ -4464,7 +4462,7 @@ function _cancelPointerGesture(){
   }
   if(_ln(_eraseBatch)){for(const s of _eraseBatch)_sh().push(s);_eraseBatch=[];_sz();_iG();}   // ADR-0009
   _ptrReset();_zR();_penPred=null;
-  _clearTouchState();   // ADR-0636: cancel must not leave stale _pointers/pinch state — a lifted second finger would commit a stray zoom
+  _clearTouchState();   // ADR-0636: cancel must not leave stale _pointers/pinch state
   _iv();
 }
 // ADR-0006: fires after LONG_PRESS_MS. Guards: gest
@@ -4476,7 +4474,7 @@ function _longPressFire(cx,cy){
   if(!ptr.down||_dk('resize')||_dk('gresize')||_dk('grot')||_dk('rotate'))return;
   if(_hp(ptr.x-ptr.x0,ptr.y-ptr.y0)>LONG_PRESS_MOVE_TOL)return;
   _cancelPointerGesture();
-  UI._ctxEat=_now();   // ADR-0607: menu opens under the finger — the lift-off synthesized click would fire the item it lands on
+  UI._ctxEat=_now();   // ADR-0607: menu opens under the finger — lift-off click would fire the landed item
   UI.openCtxMenu(cx,cy);
 }
 function _armLongPress(cx,cy){
@@ -4501,7 +4499,7 @@ _on(canvas,'pointerleave',()=>{if(_laser){_laser=null;_ivO()}
 
 // Double-click: re-edit text shapes / label boxes & connectors
 _on(canvas,'dblclick',e=>{
-  if(_pA())return;   // ADR-0640: dblclick isn't gated by the pointerdown _pA() return — the editor would open over the presentation overlay
+  if(_pA())return;   // ADR-0640: dblclick isn't _pA-gated — the editor would open over the presentation overlay
   const wp=_o2w(e);
   const hit=pickTop(wp);
   // ADR-0122: dblclick empty canvas → new text
@@ -4555,7 +4553,7 @@ function _openLabelEditorFor(hit){
 // active (createShapeKbd() no-ops for select)
 // branch, which only calls this when _tl()==='select'.
 function editSelectedShapeKbd(){
-  if(ptr.down)_cancelPointerGesture();   // ADR-0637: opening the editor mid-gesture would leave the drag committing invisibly under the overlay
+  if(ptr.down)_cancelPointerGesture();   // ADR-0637: opening the editor mid-gesture would leave the drag committing invisibly
   if(_selN()!==1)return false;
   const sh=_sel0();
   if(!sh||sh.locked)return false;
@@ -6151,7 +6149,7 @@ function _zCommit(changes){
 }
 // Shared by doBringFront/doSendBack/doBring
 // take part in a z-order op (parity with doDelete/doGroup excluding locked shapes).
-function unlockedSelectionIds(){return _selIds().filter(id=>{const s=byId(id);return s&&_ul(s)});}   // ADR-0623: dead ids must not leak into group/lock op id lists (phantom before-snapshots + noise broadcast)
+function unlockedSelectionIds(){return _selIds().filter(id=>{const s=byId(id);return s&&_ul(s)});}   // ADR-0623: dead ids must not leak into op id lists
 function _zSelShapes(){const ids=_usI(),sel=_sT(ids);return[sel,_ln(ids)?_sh().filter(s=>sel.has(s.id)):[]]}
 function doBringFront(){
   const ids=_usI();if(!_ln(ids))return;
@@ -6251,7 +6249,7 @@ function selectInverse(){
 function showAllShapes(){
   const before=[],after=[];
   for(const s of _sh()){
-    if(_sv(s)||!_pgOk(s))continue;   // ADR-0660: show-all is page-scoped like clear-all — off-page hidden shapes are the owner's business
+    if(_sv(s)||!_pgOk(s))continue;   // ADR-0660: show-all is page-scoped — off-page hidden shapes are the owner's
     _pu(before,{id:s.id,visible:0});_pu(after,{id:s.id,visible:null});
     delete s.visible;
   }
@@ -6592,10 +6590,9 @@ function doRotate(d){
   _ann(_ln(sel)===1?describeShape(sel[0]):d+'°');   // ,/. keyboard rotate announce; point-geom selections have no .rotate (ADR-0055)
 }
 // ====================== EXPORT ======================
-// Browsers cap a canvas's single dimension (~16384px on most) and its total area.
-// At a fixed export scale a large board silently exceeds these limits: toBlob yields
-// null (or a blank/truncated image). Clamp the scale so width, height, area fit,
-// degrading resolution rather than failing. Pure → unit-tested.
+// Browsers cap a canvas's dimension (~16384px) and area — a fixed scale silently
+// exceeds them (toBlob → null/truncated). Clamp the scale so w/h/area fit,
+// degrading resolution instead of failing. Pure → unit-tested.
 const EXPORT_MAX_DIM=16384, EXPORT_MAX_AREA=16384*16384;
 function exportScale(w,h,desired){
   if(!(w>0&&h>0))return desired;
@@ -7052,7 +7049,7 @@ function importDrawioText(txt,wp){
   const _dms=[..._St(txt||'').matchAll(/<diagram[^>]*>([^<]+)<\/diagram>/g)];
   if(_ln(_dms)&&!txt.includes('<mxGraphModel')){
     if(typeof DecompressionStream===_un){_wT('dioCompressed');return false}
-    Promise.all(_dms.slice(0,64).map(m=>_dioInflate(m[1]))).then(xs=>{   // ADR-0853: same 64-page bound as _dgs — unbounded <diagram> tags would spawn unbounded parallel DecompressionStreams
+    Promise.all(_dms.slice(0,64).map(m=>_dioInflate(m[1]))).then(xs=>{   // ADR-0853: same 64-page bound as _dgs
       const ok=xs.filter(Boolean);
       if(!_ln(ok)){_wT('dioCompressed');return}
       importDrawioText('<mxfile>'+ok.map(x=>`<diagram>${x}</diagram>`).join('')+'</mxfile>',wp)});
@@ -7110,17 +7107,16 @@ function importDrawioFile(file,wp){
 function exportExc(){
   if(!_nS()){_wT(_EM);return}
   const a=_ce('a');
-  const _bu=_oURL(new Blob([_JS(excScene(_shV()))],{type:'application/json'}));   // ADR-0658: single-scene formats export the current page — _sh() would overlap every page at identical coords
+  const _bu=_oURL(new Blob([_JS(excScene(_shV()))],{type:'application/json'}));   // ADR-0658: single-scene exports scope to the viewed page
   a.href=_bu;a.download=(_dn()||'board')+'.excalidraw';
   _clk(a);_rO(_bu);
   _oT('exportedExc');
 }
 
 // ---- ADR-0220: .drawio export ------------------------------------------------
-// Round-trip with ADR-0203's import: uncompressed mxGraphModel — vertices for
-// box shapes, edges for line/arrow with bound ends, waypoints, orthogonal
-// routing, curved, jump arcs, and the shared style vocabulary. Pens skipped
-// (no drawio freeform equivalent); hidden shapes stay home.
+// Uncompressed mxGraphModel round-trip with ADR-0203 import: vertices for boxes,
+// edges for line/arrow (bound ends, waypoints, orthogonal/curved/jump routing,
+// shared style vocabulary). Pens skipped (no freeform); hidden stay home.
 const _dioEsc=v=>_St(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 function _dioCells(shapes){
   const esc=_dioEsc;
@@ -8311,7 +8307,7 @@ const Net={
     op=this._attachOp(op);                            // ADR-0069
     if(!op||op.op!=='add'||!op.shape)return 'skip';   // snapshot ops are adds only
     const ex=byId(op.shape.id);
-    if(!ex){Store.applyRemote(op);return 'add';}
+    if(!ex){_wAdopt(op.shape.id,op.wc);Store.applyRemote(op);return 'add';}   // ADR-0927
     const rw=(op.wc&&_iO(op.wc))?op.wc:null;
     if(!rw)return 'skip';
     const lw=_wc()[ex.id]||(_wc()[ex.id]=_wM());
@@ -8319,6 +8315,7 @@ const Net={
     for(const k in rw){
       const rc=rw[k];
       if(!validClock(rc))continue;
+      if(k==='_born'||k==='_del'){if(!lw[k]||clockNewer(rc,lw[k])){lw[k]=clone(rc);_ps()}continue}   // ADR-0927: existence clocks merge too
       // ADR-0372: gate the merged VALUE too — before a stale field
       // LWW-merges {x:NaN, pts:'bad', id:'x', __proto__}
       // shape (render NaN / drawPen crash / id-ind
@@ -8359,9 +8356,12 @@ const Net={
     // Validate snapshot shapes before adopting
     const shapes=msg.shapes;
     if(!_iA(shapes))return;
-    const valid=_s0(shapes,SHARE_MAX_SHAPES).map(s=>this._attachShape(s)).filter(s=>validShape(s)&&!(_wc()[s.id]||{})._del);   // ADR-0474/0735
+    const wm=_mP();
+    if(_iA(msg.ops))for(const o of _s0(msg.ops,SHARE_MAX_SHAPES))if(o&&o.shape&&_iS(o.shape.id))wm.set(o.shape.id,o.wc);
+    const valid=_s0(shapes,SHARE_MAX_SHAPES).map(s=>this._attachShape(s)).filter(s=>validShape(s)&&!_tAlive(s.id,wm.get(s.id)));   // ADR-0474/0735/0927
     _rs(clone(valid));   // ADR-0009
     _sz();
+    for(const s of valid)_wAdopt(s.id,wm.get(s.id));   // ADR-0927
     _pgAdopt(msg.pages,state.curPg);   // ADR-0672: curPg is a LOCAL view filter — a re-sync must not yank the view to the sender's page
     if(_iS(msg.name)&&(_iN(msg.nameTs)?_tsOK(msg.nameTs)&&_nameWin(msg.nameTs,_iS(msg.namePeer)?msg.namePeer:''):!0)){if(_tsOK(msg.nameTs))_nameTs=msg.nameTs;if(_idOK(msg.namePeer))_namePeer=msg.namePeer;_setDocName(_s80(msg.name));}   // ADR-0618/0699/0780/0791
     _iv();_ru();_ps();
