@@ -992,6 +992,46 @@ Board/
 │   └── ADR-0941-clock-envelope-pins.md     # 0931/0932 clock↔envelope binding の behavioural ピン (両到達経路)
 │   └── ADR-0942-mid-gesture-tool-lock.md   # ジェスチャ中のツール切替無効化 (move/up が live tool で dispatch されるため)
 │   └── ADR-0943-second-pointer-abort.md    # 2本目 PD → abortGesture の behavioural ピン (draft 破棄+_geoR 復元+非再開)
+│   └── ADR-0944-derived-state-lifecycle.md  # 派生/参照状態ライフサイクル監査完走 — 9不変条件 (hover/選択/reset/type/幾何)
+│   └── ADR-0945-mid-gesture-overlay-open.md  # overlay 開放でライブジェスチャをキャンセル (?/⌘F が ptr.down 未処理→overlay 下不可視 commit を閉塞)
+│   └── ADR-0946-negative-extent-intake.md    # 負 w/h extent を validPatch で棄却 (hit-test 空区間+frame 誤帰属の poison 図形を閉塞)
+│   └── ADR-0947-numeric-prop-domain-audit.md # 数値 prop ドメイン監査完走 — 18 prop が intake-bound か消費側 clamp のいずれかを満たす規則
+│   └── ADR-0948-mid-gesture-button-paths.md  # mid-gesture 到達コマンド経路の取消内蔵 (openShare/openCtxMenu/undo/redo — 第2指ボタン到達残穴を閉塞)
+│   └── ADR-0949-send-funnel-exception-safety.md # 送信 funnel 例外安全監査完走+ピン (_send/_sendDC/_bcast/fragSend は transport throw を伝播しない)
+│   └── ADR-0950-pointer-bookkeeping-leak.md  # _pointers ghost エントリ閉塞 (window-level 削除+hover 非記録で phantom pinch 解消)
+│   └── ADR-0951-lblpos-cancel-restore.md  # lblpos cancel 復元欠落閉塞 (labelPos を orig から save-set 復元、mid-gesture cancel 半mutation 解消)
+│   └── ADR-0952-erase-batch-remote-window.md  # 消しゴム窓のリモート op 収束 (byId に batch フォールバック + cancel-restore へ _tmb 墓標ゲート、ghost 復活と stale clone 復元を閉塞)
+│   └── ADR-0953-erase-batch-wholesale-ops.md  # 消しゴム窓 × wholesale op 収束 (_unB で clear/replace/pageDel 走査前にバッチをシーンへ戻す + _rs 採用でバッチ破棄)
+│   └── ADR-0954-pagedel-selection-drop.md  # _pgDel2 メンバー kill が選択 id を残す非対称を閉塞 ('del' parity — kill ループへ _sdl、集合空化 remote pageDel で残存し得た ghost id 解消)
+│   └── ADR-0955-wholesale-swap-id-resolution.md  # 派生参照 id キー化契約の監査完走+ピン (全置換オブジェクト差替え後も connEnds 等が id 再解決、stale-clone 不発)
+│   └── ADR-0956-mirror-focus-restore.md  # SR ミラー再構築のフォーカス保存 (focused button index を save/restore、縮小時末尾クランプ — 0675 ページタブ parity のミラー側残穴)
+│   └── ADR-0957-nudge-coalescing.md  # 矢印長押しナッジの共合体 (_nugPush/_nugEnd trailing-edge 400ms、キー=op+id 集合 — キーリピート毎の commit 溢流を閉塞、v1.6.29 スライダー共合体 parity)
+│   └── ADR-0958-commit-order-flush.md  # `_recordCommitted` 先頭の `_nugEnd()` — `_rcOp` 迂回経路でも pending nudge が常に先に着地する時系列不変条件
+│   └── ADR-0959-nudge-lifecycle-flush.md  # hidden/pagehide/beforeunload でも `_nugEnd()` — タブ終了で永続化だけ先行し op が broadcast されない一方向発散を閉塞
+│   └── ADR-0960-zorder-style-coalescing.md  # `[ ]`/`⌘⇧,/.` 長押しを `_nugPush` 共合へ拡張 (zorder/style マージ、prop 認識キー) + `Store.commit` 先頭 `_nugEnd()` — 押下毎 commit 溢流と del 跨ぎ時系列反転 (seed-7) を閉塞
+│   └── ADR-0961-held-key-wave2.md  # 残存6経路 (rotate/flip/lock/group/text-flags/swap) を `_nug` へ — `dir` キー接尾辞で異種マージ防止、net-zero 破棄 (toggle×2 は op 0 件)、`applyStyleToSelection` no-change フィルタで数字長押しが op を産まない産出側閉塞
+│   └── ADR-0962-sfb-lifecycle.md  # スライダー `_sbf` のジェスチャ境界 — blur でドリフトを1 op 化して全消去 (stale-before undo + cp プレビュー未 commit を閉塞) + `_sfbFlush` の選択外プルーン
+│   └── ADR-0963-lifecycle-bounds-audit.md  # ライフサイクル×有界性監査 — MAX_HISTORY+histIdx、`_nug.sel` スナップショット、docName keystroke-LWW、dupDelta チェーン、テキスト blur commit、presence TTL/cap 全 clean、5ピン化
+│   └── ADR-0964-mid-gesture-lock.md  # ジェスチャ中 remote lock の収束 — `_gRst()` 共有復元行列 + PU commit 6サイトの locked ゲート + gresize/grot/flushErase のメンバー仕分け (一方向発散を閉塞)
+│   └── ADR-0965-mid-run-lock.md  # pending op 中の mid-run lock/missing — `_nugLock` で消滅メンバー除外 + locked メンバー run-start 復元 (自己 lock は exempt) + `endSelect` move の `_gRL` 先置き (一方向発散を閉塞)
+│   └── ADR-0966-pending-op-mid-run-audit.md  # pending op × mid-run 監査完走 — `_rs` 全5サイト commit-head flush、own-lock exemption の方向検証 (live 値判定で unlock は存続)、4ピン化
+│   └── ADR-0967-mid-edit-lock-fold.md  # mid-edit remote lock — text/label の blur/commit が `!byId` のみで fold+commit が同フレーム競合 (locked gate drop で一方向発散)、`_lk` ゲート拡張で全 commit 経路を省略
+│   └── ADR-0968-remote-killed-selection-actions.md  # ctx/キーアクション×remote 消滅監査完走 — 全ハンドラが act 時に live 再解決 (stale メニューは cosmetic)、dead/空集合で op を産まない契約をピン化
+│   └── ADR-0969-gesture-orig-remote-write.md  # mid-gesture remote 書込が orig-restore に巻き戻される発散 — `_gTouch` で touched-key live 値を gesture orig へマージ、remote 再誕生は `_rb` で復元スキップ
+│   └── ADR-0970-reborn-arrival-order.md  # `_rb` の clock 比較を skew-免疫の到着順マーキング (`ptr.reborn`) へ置換 — 前進 skew の誤スキップ発散・後進 skew の clobber を閉塞
+│   └── ADR-0971-pending-nug-remote-write.md  # pending `_nug` op の復元ドメインが remote 書込を巻き戻す発散 — `_gTouch` を nug 復元域へ拡張、remote 再誕生は `_nug.reborn` で復元スキップ
+│   └── ADR-0972-seenops-dedup-convergence-audit.md  # seenOps dedup×収束監査完走 — 3チョークポイント (commit/applyRemote/_recordCommitted)・eviction 後再適用・全 intake の clock キー dedup が clean。envelope/fragment/commit 実経路ピン追加
+│   └── ADR-0973-schedule-marks-dirty.md  # `_ps()` のみの変異が hidden/unload フラッシュをすり抜ける実害 — `Persist.schedule()` が dirty を刻み全サイト一括閉塞 + 'snapshot' union-heal/rep 採用に `_ps()` 追加
+│   └── ADR-0974-wholesale-swap-backup-audit.md  # 全置換スワップ監査完走 — ローカル `_repC`/`_recordCommitted` と remote `_apply` の wclock 再刻印が対称、saveBackup 入口5系統カバー、keep/tomb/born ピン2件
+│   └── ADR-0975-builtin-key-null-proto-stores.md  # JS 予約名キーによる素 {} 汚染 — excScene gids クラッシュ / _dioCells _gbx が Object.prototype.x 書込 / _undoWire reg クラッシュを _wM() null-proto で閉塞 (+zorder バケット整合)
+│   └── ADR-0976-conn-bound-cycle-recursion.md  # connEnds の conn↔conn 結合循環/自己結合が _bb→_cE 無限再帰で stack overflow → _ceD 深度キャップ (15) + self-id スキップで raw 端点へ縮退 (canvas 数値ドメイン監査併走 clean)
+│   └── ADR-0977-proto-key-pollution-gate.md  # proto-key 汚染監査完走 — JSON.parse の `__proto__` own-key が Object.assign/for..in で setter を叩く全経路が `_cleanVal`/`validPatch`+null-proto store で gated。ピン6 assert
+│   └── ADR-0978-sortz-total-order-audit.md  # sortZ 全順序性監査完走 — frac (base62 lexicographic)→id tie-break の strict total order、keyless stamp 前置、NaN z は _cleanVal 拒否。ピン4 assert
+│   └── ADR-0979-arbitration-comparator-uniformity.md  # 全 LWW 仲裁ドメインが clockNewer (ts,peer,seq) 全順序を共有する監査完走 — docName/page 名は両側 seq:0、生 ts 比較残存なし。ピン9 assert
+│   └── ADR-0980-mousedown-target-closest-guard.md  # ctx 外クリックの `e.target.closest` を `?.` 化 — 非 Element ターゲットで TypeError 貫通する 0909 同型。raw `e.target`/`currentTarget` 全サイト走査で唯一の残穴
+│   └── ADR-0981-listener-registration-lifecycle.md  # リスナ登録の重複/累積監査 clean — `_on` 全サイトは init 一回 or 要素同寿命、`_oC` id 一意、`Net.init` は旧チャネル/timer 解放。ピン8 assert
+│   └── ADR-0982-detached-focus-restore-fallback.md  # detached 化したフォーカス復帰先 (再構築チップ/ミラー) は `isConnected===false` で canvas へ退避 — dialog `_restoreFocus` + presentation `leave()` の2経路。ピン6 assert
+│   └── ADR-0983-wakelock-stale-sentinel.md  # wake-lock sentinel リーク閉塞 — pending 中 leave()・supersede で release 不能なハンドルが残り画面点灯し続ける2経路を `_active` ゲート+両 sentinel 解放で閉塞。ピン3 assert
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
