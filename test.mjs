@@ -16392,6 +16392,27 @@ try {
       assert.ok(html.includes("controllerchange"),'the update-notification listener survives');
       console.log('  ✓ service worker registers a real sw.js (ADR-1025)');
     }
+    {
+      // ADR-1026: the dedup key is stamped BEFORE the op applies — a throw
+      // mid-apply would wedge the op forever (never re-delivered). On failure
+      // applyRemote evicts the key so a later heal re-enters the apply.
+      state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seenOps=new Set();state.wclock={};
+      const _oA=Store._apply;
+      let threw=0;
+      Store._apply=()=>{threw++;throw new Error('boom')};
+      const op={op:'del',shapes:[],ids:[],clock:{peer:'pQ',seq:777}};
+      Store.applyRemote(op);
+      Store._apply=_oA;
+      assert.strictEqual(threw,1,'the first apply threw once');
+      Store._apply=()=>{threw++};
+      Store.applyRemote({...op});
+      Store._apply=_oA;
+      assert.strictEqual(threw,2,'a failed apply is retried, not permanently deduped');
+      assert.ok(html.includes('catch(_){_sO().delete(k)}'),'applyRemote evicts the dedup key on a failed apply');
+      assert.ok(html.includes("this.bc.onmessage=e=>{try{this._onRecv(e.data)}catch(_){}}"),'BC intake matches the guarded DC path');
+      assert.ok(!html.includes('this.bc.onmessage=e=>this._onRecv(e.data)'),'no unguarded BC onmessage remains');
+      console.log('  ✓ apply-remote failure evicts the dedup key (ADR-1026)');
+    }
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -17329,6 +17350,7 @@ pass += 5; // ADR-1022 editor-fold flush pins
 pass += 8; // ADR-1023 wire-buffer lifecycle pins
 pass += 6; // ADR-1024 docName empty-write pins
 pass += 6; // ADR-1025 real sw.js registration pins
+pass += 5; // ADR-1026 apply-failure dedup-evict pins
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {

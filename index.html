@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.051';   // ADR-1025
+const V='1.8.052';   // ADR-1026
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1475,23 +1475,28 @@ const Store={
     // Per-property LWW (ADR-0002): drop writes losing to the shape's clock.
     // Bail when the op empties
     // of changed keys. move/zorder are covered the same way.
-    if(!this._lwwDrop(op))return;
-    if(op.op==='replace'){   // ADR-0613: same wipe-safety as 'clear'
-      if(state._lastRep&&!clockNewer(op.clock,state._lastRep))return;   // ADR-0614
-      if(_ln(_sh()))Persist.saveBackup(clone(_sh()),{..._vp()},_dn());
-      _oT('peerReplaced');
-    }
-    const _connFix=this._remoteDelConnFix(op);
-    if(_pgs()&&(op.shape||op.shapes)){const f=o=>{if(o&&o.pg&&!_pgById(o.pg)&&_ln(_pgs())<64)_pu(_pgs(),{id:o.pg,name:'?',nts:-1})};f(op.shape);if(_iA(op.shapes))for(const s of op.shapes)f(s)}   // ADR-0646/0775: heal unknown pg — nts:-1 stub; a real write upgrades
-    this._apply(op,true);
-    if(_connFix)for(const f of _connFix){
-      const sh=byId(f.id);
-      // ADR-0027: endpoint re-dock mutates a connector — harvest
-      // its own damage (the old endpoint sat inside the damaged rect)
-      if(sh){const _cb=_bb(sh);_oa(sh,f.patch);_iD(_dmgPair(_cb,_bb(sh),(sh.size||2)+16));}
-    }
-    this._stampWrites(op);
-    _rdb();
+    // ADR-1026: the dedup stamp precedes the apply, so a throw below would
+    // wedge the op forever (never re-delivered, never retried) — evict the
+    // key on failure so the next snapshot heal can retry it.
+    try{
+      if(!this._lwwDrop(op))return;
+      if(op.op==='replace'){   // ADR-0613: same wipe-safety as 'clear'
+        if(state._lastRep&&!clockNewer(op.clock,state._lastRep))return;   // ADR-0614
+        if(_ln(_sh()))Persist.saveBackup(clone(_sh()),{..._vp()},_dn());
+        _oT('peerReplaced');
+      }
+      const _connFix=this._remoteDelConnFix(op);
+      if(_pgs()&&(op.shape||op.shapes)){const f=o=>{if(o&&o.pg&&!_pgById(o.pg)&&_ln(_pgs())<64)_pu(_pgs(),{id:o.pg,name:'?',nts:-1})};f(op.shape);if(_iA(op.shapes))for(const s of op.shapes)f(s)}   // ADR-0646/0775: heal unknown pg — nts:-1 stub; a real write upgrades
+      this._apply(op,true);
+      if(_connFix)for(const f of _connFix){
+        const sh=byId(f.id);
+        // ADR-0027: endpoint re-dock mutates a connector — harvest
+        // its own damage (the old endpoint sat inside the damaged rect)
+        if(sh){const _cb=_bb(sh);_oa(sh,f.patch);_iD(_dmgPair(_cb,_bb(sh),(sh.size||2)+16));}
+      }
+      this._stampWrites(op);
+      _rdb();
+    }catch(_){_sO().delete(k)}
   },
   // Per-property write clocks live in _wc() (side-channel, not in clones). LWW
   // stamps only changed keys — snapshots can't clobber a concurrent write;
@@ -7978,7 +7983,7 @@ const Net={
     if(typeof BroadcastChannel===_un)return;     // not supported
     try{
       this.bc=new BroadcastChannel(NET_CHANNEL_PREFIX+state.roomId);
-      this.bc.onmessage=e=>this._onRecv(e.data);
+      this.bc.onmessage=e=>{try{this._onRecv(e.data)}catch(_){}};   // ADR-1026: same guard as the DC path — one bad message can't wedge intake
       // announce arrival + request snapshot
       this._send(_mk('hello'));   // ADR-0740
       this._send(_mk('sync-req'));
