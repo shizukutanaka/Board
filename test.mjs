@@ -1259,8 +1259,8 @@ const checks = [
   ['Persist.open yields on versionchange (newer tab can upgrade)', html.includes("this.db.onversionchange=()=>{try{this.db.close()}catch(_){}this.db=null}")],
   ['saveBlocked i18n key in both locales', html.includes("saveBlocked:'別タブが旧版を保持") && html.includes("saveBlocked:'Another tab holds an older board")],
   ['Persist.flushIfHidden cancels pending debounce + calls save', html.includes("_cT(this._saveT);\n      this.save();")],
-  ['visibilitychange listener wires document.visibilityState to flushIfHidden (ADR-0604/0608/0611: cancels gesture + clears touch state + hides cursor first)', html.includes("document.visibilityState==='hidden'){if(ptr.down)_cancelPointerGesture();_clearTouchState();Net.sendCursorHide()}Persist.flushIfHidden(document.visibilityState)")],
-  ['pagehide routes through flushIfHidden — iOS swipe-away durable (ADR-0453/0604/0608)', html.includes("'pagehide',()=>{if(ptr.down)_cancelPointerGesture();_clearTouchState();Persist.flushIfHidden('hidden');Net._bcast(_mk('bye'))}")],
+  ['visibilitychange listener wires document.visibilityState to flushIfHidden (ADR-0604/0608/0611/0959: commits nudge + cancels gesture + clears touch state + hides cursor first)', html.includes("document.visibilityState==='hidden'){_nugEnd();if(ptr.down)_cancelPointerGesture();_clearTouchState();Net.sendCursorHide()}Persist.flushIfHidden(document.visibilityState)")],
+  ['pagehide routes through flushIfHidden — iOS swipe-away durable (ADR-0453/0604/0608/0959)', html.includes("'pagehide',()=>{_nugEnd();if(ptr.down)_cancelPointerGesture();_clearTouchState();Persist.flushIfHidden('hidden');Net._bcast(_mk('bye'))}")],
   ['peer bye drops presence immediately — no 15s ghost (ADR-0457)', html.includes("case 'bye':{") && html.includes("if(pk&&_pr().delete(pk)){_ivO()")],
   ['room switch sends bye + clears BC peers (ADR-0458)', html.includes("this._send(_mk('bye'));this.bc.close()") && html.includes("if(!_sw(id,'rtc:'))_pr().delete(id)")],
   ['peer id carries a per-boot incarnation nonce (ADR-0459)', html.includes("peerId:PEER_ID+'.'+uid().slice(0,6)") && html.includes("_sO().clear();_cT(this._snapT)")],
@@ -2300,6 +2300,27 @@ try {
     const tail=state.history.slice(-2).map(o=>o.op);
     assert.deepStrictEqual(tail,['move','upd'],'ADR-0958: pending nudge commits before a bypassing commit');
     console.log('  ✓ ADR-0958: _recordCommitted flushes a pending nudge on every commit path');
+  }
+  // ADR-0959: tab-hide/close flushes a pending nudge — without it the live
+  // mutation persists locally but the accumulated op never broadcasts → peers
+  // keep the pre-nudge position forever (one-way divergence).
+  {
+    for(const[evt,fire]of[
+      ['visibilitychange→hidden',()=>{fakeDoc.visibilityState='hidden';for(const f of fakeDoc._L['visibilitychange']||[])f({});fakeDoc.visibilityState='visible'}],
+      ['pagehide',()=>{for(const f of (fakeWin._L['pagehide']||[]).slice(0,1))f({})}],
+      ['beforeunload',()=>{for(const f of (fakeWin._L['beforeunload']||[]).slice(0,1))f({preventDefault(){}})}],
+    ]){
+      state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+      const r=Shape.make('rect',{x:0,y:0,w:20,h:20});
+      state.shapes.push(r);_invalidateGrid();
+      state.selection=new Set([r.id]);
+      nudgeSelection(3,0);
+      assert.strictEqual(state.history.length,0,`nudge stays pending before ${evt}`);
+      fire();
+      assert.strictEqual(state.history.at(-1).op,'move',`ADR-0959: ${evt} commits the pending nudge`);
+      assert.strictEqual(state.history.at(-1).dx,3,'accumulated delta survives');
+    }
+    console.log('  ✓ ADR-0959: hidden/pagehide/beforeunload flush a pending nudge (3 routes)');
   }
   // ADR-0625: wc/origSel/moved are undo-domain — _slimOp strips them from the
   // wire copy while preserving the fields peers actually consume.
@@ -9457,7 +9478,7 @@ try {
   // cancel runs BEFORE flushIfHidden so the restored state is what persists.
   {
     assert.ok(html.includes("_clearTouchState();Net.sendCursorHide()}Persist.flushIfHidden"),'hidden cancels gesture + clears touch state + hides cursor');
-    assert.ok(html.includes("pagehide',()=>{if(ptr.down)_cancelPointerGesture();_clearTouchState();Persist.flushIfHidden('hidden')"),'pagehide cancels gesture + clears touch state before flush');
+    assert.ok(html.includes("pagehide',()=>{_nugEnd();if(ptr.down)_cancelPointerGesture();_clearTouchState();Persist.flushIfHidden('hidden')"),'pagehide commits the pending nudge + cancels gesture + clears touch state before flush (ADR-0959)');
     assert.ok(html.includes("function _clearTouchState(){_pointers.clear();_pinchPrev=0;if(_pinchSnap){_pinchSnap=null;_pinchVp=null;_iv()}Minimap.cancelNav()}"),'shared touch-state cleanup (ADR-0608/0632)');
     console.log('  ✓ hidden/pagehide gesture cancel pinned (2 asserts)');
   }
@@ -15669,6 +15690,7 @@ pass += 2; // ADR-0955 wholesale-swap id-resolution pins
 pass += 4; // ADR-0956 mirror focus-preservation pins
 pass += 4; // ADR-0957 held-key nudge coalescing pins
 pass += 1; // ADR-0958 commit-order flush pin
+pass += 9; // ADR-0959 tab-hide/close nudge flush pins
 pass += 7; // ADR-0943 second-pointer abort pins
 pass += 8; // ADR-0945 mid-gesture overlay-open cancel pins
 pass += 8; // ADR-0948 mid-gesture button-path cancel pins

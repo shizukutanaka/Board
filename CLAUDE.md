@@ -1007,6 +1007,7 @@ Board/
 │   └── ADR-0956-mirror-focus-restore.md  # SR ミラー再構築のフォーカス保存 (focused button index を save/restore、縮小時末尾クランプ — 0675 ページタブ parity のミラー側残穴)
 │   └── ADR-0957-nudge-coalescing.md  # 矢印長押しナッジの共合体 (_nugPush/_nugEnd trailing-edge 400ms、キー=op+id 集合 — キーリピート毎の commit 溢流を閉塞、v1.6.29 スライダー共合体 parity)
 │   └── ADR-0958-commit-order-flush.md  # `_recordCommitted` 先頭の `_nugEnd()` — `_rcOp` 迂回経路でも pending nudge が常に先に着地する時系列不変条件
+│   └── ADR-0959-nudge-lifecycle-flush.md  # hidden/pagehide/beforeunload でも `_nugEnd()` — タブ終了で永続化だけ先行し op が broadcast されない一方向発散を閉塞
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
