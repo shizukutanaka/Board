@@ -1,3 +1,15 @@
+## [1.8.056]
+- **Docs+pin: join-handshake × room-switch + restore-path lifecycle audit
+  (clean)** — verified `Net.init` resets every in-flight join artifact on a
+  room switch (deferred snapshot resend `_snapT`, sync-req retry counter,
+  inbound `snap`/`opc` reassembly slots, img transfer state, non-rtc
+  presence, heartbeat) while causal markers (`_lastRep`/`_nameTs`) and the
+  rtc link reset only on a *real* room change; `restoreBackup` commits via
+  `_repC` as a normal 'replace' (undo + broadcast + born stamps ride) and
+  always runs before `Net.init`; every op broadcast funnels through
+  `_slimOp` + `_mk('op')` + BC/DC(fragment). Contract pins + behavioural
+  init-reset test (ADR-1030).
+
 ## [1.8.055]
 - **Docs+pin: stamp×drop coverage symmetry audit (clean)** — per-property
   LWW arbitration audited end-to-end: `_lwwDrop` (drop stale writes) and
