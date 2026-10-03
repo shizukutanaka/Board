@@ -1,3 +1,8 @@
+## [1.8.025] - 2026-10-01
+
+### Fix + Docs
+- **reborn マークのライフサイクル監査 + デッドコード除去** (ADR-0999): ジェスチャ中 remote (再)誕生マーク (`ptr.reborn`/`_nug.reborn`) がリークすると後続ジェスチャの orig 復元を誤抑制する一方向発散経路を検証 — `ptr.reborn` は `_ptrReset` (0764 のジェスチャ終端統一) で毎回クリア、`_nug.reborn` は `_nugEnd` で flush と共に死滅、両者とも `c.peer!==_pi()` ゲートで own 誕生は混入しない。clean 完走。併せて dead wrapper `snapBox` を除去 (~150B 回収 — 全呼出は `_snapBoxIdx`+`_mkSnapIdx` キャッシュ経路へ移行済み)。ソースピン 5 assert
+
 ## [1.8.024] - 2026-10-01
 
 ### Docs + Test
