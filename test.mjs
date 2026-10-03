@@ -2498,6 +2498,25 @@ try {
     assert.strictEqual(Net._snapIn,null,'RTC stream completed and freed the slot');
     console.log('  ✓ frag streams gated to the DC (ADR-0987)');
   }
+  // ADR-0988: the accepted side of the kind×transport matrix — dual-legit
+  // kinds still process through the real _onRecv path on BOTH transports.
+  {
+    Net._rtcPeerId='rtc:m1';state.peers.set('rtc:m1',{color:'#abc'});
+    Net._onRecv({k:'cursor',peer:'z',x:1,y:2},true);
+    assert.deepStrictEqual(state.peers.get('rtc:m1').cursor,{x:1,y:2},'DC cursor enriches the rtc row');
+    Net._onRecv({k:'selection',peer:'z',ids:['a']},true);
+    assert.deepStrictEqual(state.peers.get('rtc:m1').sel,['a'],'DC selection enriches the rtc row');
+    Net._onRecv({k:'name',name:'dc-doc',ts:nowTs()+4000,peer:'z'},true);
+    assert.strictEqual(state.docName,'dc-doc','DC name applies via LWW');
+    Net._onRecv({k:'bye',peer:'z'},true);
+    assert.ok(!state.peers.has('rtc:m1'),'DC bye drops the rtc row');
+    state.peers.set('b1',{});Net._onRecv({k:'bye',peer:'b1'});
+    assert.ok(!state.peers.has('b1'),'BC bye drops its row');
+    Net._onRecv({k:'name',name:'bc-doc',ts:nowTs()+5000,peer:'b1'});
+    assert.strictEqual(state.docName,'bc-doc','BC name applies via LWW');
+    Net._rtcPeerId=null;state.docName='';
+    console.log('  ✓ kind×transport acceptance matrix (ADR-0988)');
+  }
   // ADR-0826: snapshot responder election — lowest non-asker, non-rtc peer id
   // answers (ADR-0455/0465). A regression starves or storms joiners.
   {
@@ -16530,6 +16549,7 @@ pass += 3; // ADR-0947 labelPos domain-clamp pins
   assert.ok(!Net._dcQ,'a successful send leaves no backlog');
   Net.dc=_odc;Net._dcQ=_oq;Net._dcQB=_oqb;
 }
+pass += 6; // ADR-0988 kind×transport acceptance matrix pins
 pass += 4; // ADR-0949 send-funnel exception-safety pins
 pass += 3; // ADR-0950 pointer bookkeeping leak pins
 pass += 4; // ADR-0951 lblpos cancel-restore pins

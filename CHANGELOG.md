@@ -1,3 +1,8 @@
+## [1.8.014] - 2026-10-01
+
+### Docs + Test
+- kind×transport 行列の監査完走を文書化 (ADR-0988): BC/DC 両トランスポートの全 kind を走査 — BC-only (hello/ping/sync-req、0986 で閉塞)・DC-only (snap/opc、0987 で閉塞)・dual-legit (op/cursor/selection/bye/img/imgq/name、部分 fan-out なし)・'snapshot' は 'snap' 等価能力で許容。`_lastSelSent`/`_imgInB`/reassembly 寿命・seenOps 冪等も全 clean。dual-legit 側の受理契約を6 assert でピン化 (退行時に検出可能に)
+
 ## [1.8.013] - 2026-10-01
 
 ### Fixed
