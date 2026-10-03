@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.016';   // ADR-0990
+const V='1.8.017';   // ADR-0991
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -5605,10 +5605,9 @@ function resizeAfterTextEdit(s,text,c){
     s.w=_max(20,mw);s.h=_max(fs*(s.lineH||1.25),_ln(lines)*fs*(s.lineH||1.25));
   }
 }
-// New text/sticky shapes are committed and broadcast with empty text up front,
-// then filled in the editor — collaborators would otherwise see a blank shape
-// forever (an invisible hitbox on peers). Bridge with a broadcast-ONLY op for
-// the finalize delta: stamped for LWW, but OUT of local history — undo = 1 step.
+// New text/sticky shapes commit+broadcast empty up front, then fill in the editor —
+// peers would otherwise see a blank shape forever (invisible hitbox). Bridge with
+// a broadcast-ONLY op for the finalize delta: LWW-stamped, OUT of local history.
 function _syncTextFinalize(s,before,deleted){
   if(typeof Net===_un||typeof Net.broadcast!=='function')return;
   const op=deleted
@@ -5622,7 +5621,8 @@ function _syncTextFinalize(s,before,deleted){
     if(_ln(cc)){op.connClears=cc;for(const p of cc){const sh=byId(p.id);if(sh)_oa(sh,p.after);}}
   }
   _fck(op);
-  if(!deleted)Store._stampWrites(op);
+  if(deleted)_bN(s.id,op.clock)||_wD(s.id,op.clock);   // ADR-0991: tomb parity with peers' del-apply
+  else Store._stampWrites(op);
   Net.broadcast(op);
 }
 function openTextEditor(s,isNew){

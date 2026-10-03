@@ -2588,6 +2588,32 @@ try {
     state.shapes.length=0;state.wclock={};_invalidateGrid();
     console.log('  ✓ type conversions converge — wire apply + stamp + snapshot merge (ADR-0990)');
   }
+  // ADR-0991: the _syncTextFinalize del bridge restamps the local tomb to the
+  // broadcast clock — without it the undo-backward tomb (undo clock) and every
+  // peer's del-apply tomb (broadcast clock) disagree, so a shape-carrying op
+  // arriving between the two clocks is adopted locally but tombed on peers.
+  {
+    const ob=Net.broadcast;let sent=null;Net.broadcast=o=>{sent=o};
+    const s=Shape.make('text',{x:0,y:0,w:10,h:10});s.id='fz1';s.text='';
+    state.shapes=[];_invalidateGrid();
+    state.wclock={fz1:{_del:{peer:state.peerId,seq:1,ts:1}}};   // the undo-backward tomb (old clock)
+    _syncTextFinalize(s,'x',true);Net.broadcast=ob;
+    assert.ok(sent&&sent.op==='del'&&sent.shapes[0].id==='fz1','the finalize bridge still broadcasts the del');
+    const t=state.wclock['fz1']._del;
+    assert.ok(t&&t.peer===state.peerId&&t.ts>1,'local tomb restamps to the broadcast clock — parity with peers');
+    Net._mergeSnapshotOp({op:'add',shape:{id:'fz1',type:'text',x:0,y:0,w:10,h:10,z:1,text:'x'},wc:{},clock:{peer:'pz',seq:1,ts:1}});
+    assert.ok(!byId('fz1'),'a shape-carrying op older than the tomb is tomb-blocked here as on peers');
+    state.wclock={fz2:{_born:{peer:'px',seq:1,ts:nowTs()+60000}}};
+    const s2=Shape.make('text',{x:0,y:0,w:10,h:10});s2.id='fz2';
+    Net.broadcast=o=>{sent=o};_syncTextFinalize(s2,'x',true);Net.broadcast=ob;
+    assert.ok(!state.wclock['fz2']._del,'a newer _born outranks the finalize del — tomb not written');
+    const s3=Shape.make('text',{x:0,y:0,w:10,h:10});s3.id='fz3';s3.text='typed';state.shapes=[s3];_invalidateGrid();
+    state.wclock={};
+    Net.broadcast=o=>{sent=o};_syncTextFinalize(s3,'',false);Net.broadcast=ob;
+    assert.strictEqual(state.wclock['fz3'].text.peer,state.peerId,'the upd finalize still stamps the local wclock');
+    state.shapes.length=0;state.wclock={};_invalidateGrid();
+    console.log('  ✓ finalize-bridge tomb parity (ADR-0991)');
+  }
   // ADR-0826: snapshot responder election — lowest non-asker, non-rtc peer id
   // answers (ADR-0455/0465). A regression starves or storms joiners.
   {
@@ -16655,6 +16681,7 @@ pass += 8; // ADR-0948 mid-gesture button-path cancel pins
 pass += 6; // ADR-0942 mid-gesture tool-key pins
 pass += 4; // ADR-0936 absolute-writer pins
   pass += 4; // ADR-0935 producer-bound pins
+  pass += 5; // ADR-0991 finalize-bridge tomb parity pins
   pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
