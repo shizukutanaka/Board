@@ -1,3 +1,8 @@
+## [1.8.022] - 2026-10-01
+
+### Docs + Test
+- **全置換スワップ×派生状態のキャッシュ無効化完備性監査** (ADR-0996): remote 'replace'/'clear'/snapshot adopt/import が同一 id のオブジェクトを丸ごと差し替えたとき、by-id キャッシュが stale hit を返さないかを全派生状態で検証 — 7系統全て clean (`_idIndex`/`_grpMap`/halo/search/minimap/DOM mirror は `_apply`→`_iG` チョークポイントで再構築、`_penCache`/`_penBboxCache` は `e.pts===p` 参照等価 sig で stale 検出、`_wrapCache` は WeakMap で新キー miss、`Net._imgPending` は `_pcR` 生存者再パーク、エディタ系は per-frame `byId` live 再解決)。特筆: 同数スワップは `_idIndex.size===_nS()` を満たすため `_iG` による null 化が唯一の防御。実経路 'replace' ピン 6 assert (同数 swap の id index 再構築・新旧 bbox・bitmap 再バインド・grpMap live 解決・wrap 再計算)
+
 ## [1.8.021] - 2026-10-01
 
 ### Fixed
