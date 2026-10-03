@@ -1073,6 +1073,7 @@ Board/
 │   └── ADR-1022-editor-fold-flush.md  # ライフサイクル flush のエディタ畳み込み — hidden/pagehide/beforeunload が `_cxO()` で blur commit を先に走らせ未コミット編集の喪失を閉塞
 │   └── ADR-1023-wire-buffer-lifecycle.md  # wire バッファの room-vs-doc ライフサイクル完備性監査 — room-scoped は init で reset、doc/content-scoped は survive (clean 完走)
 │   └── ADR-1024-docname-empty-write.md  # docName 空書込の収束 — `_setDocName` 単一サイトで `n\|\|_UT` 正規化、'' の wire 送出/ピア空白表示/等時計永久発散を閉塞
+│   └── ADR-1025-real-service-worker.md  # SW blob-URL 登録は spec 上 reject (scriptURL は http/https 必須) — v1.6.5 以来オフライン層は dead code。実ファイル sw.js + `register('sw.js')` で修理
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
