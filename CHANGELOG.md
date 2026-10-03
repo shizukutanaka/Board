@@ -1,3 +1,8 @@
+## [1.8.047] - 2026-10-01
+
+### Fixed
+- Persistence, sync and export paths now serialize the mid-erase batch: a hidden/tab-close save, snapshot reply, or export fired while an erase stroke was in flight dropped the batched shapes — board members still live (no del op yet) that would vanish from the saved doc or the joiner's adopt with no record anywhere (ADR-1021).
+
 ## [1.8.046] - 2026-10-01
 
 ### Fixed

@@ -617,7 +617,7 @@ const checks = [
   ['sticky↔text conversion via style op (ctx)', html.includes('toggleStickyText')&&html.includes('ctxToSticky')&&html.includes("_stk(s)?'text':'sticky'")],
   ['frame select-contents (ctx)', html.includes('selectFrameContents')&&html.includes('ctxSelContents')&&html.includes('withFrameChildren(')],
   ['selection .board export (ctx)', html.includes("exportBoard(sel)")&&html.includes('ctxExportSelBoard')&&html.includes("fmt==='board'")],
-  ['selection .drawio export (ctx) (ADR-0407)', html.includes("exportDrawio(sel)")&&html.includes('ctxExportSelDrawio')&&html.includes("fmt==='drawio'")&&html.includes('function exportDrawio(shapes=_sh().filter(_sv))')],
+  ['selection .drawio export (ctx) (ADR-0407)', html.includes("exportDrawio(sel)")&&html.includes('ctxExportSelDrawio')&&html.includes("fmt==='drawio'")&&html.includes('function exportDrawio(shapes=_shWB().filter(_sv))')],
   ['selection .drawio export i18n ja+en (ADR-0407)', html.includes("ctxExportSelDrawio:'選択を.drawio書き出し'")&&html.includes("ctxExportSelDrawio:'Export selection to .drawio'")],
   ['drawio import: strikeThrough→s.strike (ADR-0407)', html.includes('if(+sty.strikeThrough)s.strike=1')],
   ['share link carries creator viewport', html.includes('viewport:_vpS()')&&html.includes('clampZoom(+data.viewport.zoom)')],
@@ -1302,7 +1302,7 @@ const checks = [
   // v1.6.83: coordinate rounding at serialization boundaries (Zenn float-precision bloat)
   ['_round helper sheds float noise', html.includes("function _round(n,dp){return _iN(n)&&_fin(n)?_rnd(n*10**dp)/10**dp:n;}")],
   ['roundShapesForExport rounds coord/dim fields', html.includes("function roundShapesForExport(shapes,dp=2)") && html.includes("['x','y','w','h','x1','y1','x2','y2','rotate']")],
-  ['share export rounds shapes', html.includes("shapes:roundShapesForExport(_sh()),name:_dn()")],
+  ['share export rounds shapes', html.includes("shapes:roundShapesForExport(_shWB()),name:_dn()")],
   ['.board export rounds shapes', html.includes("shapes:roundShapesForExport(shapes)})],{type:'application/json'})")],
   // v1.6.84: Net.init clears prior presence timer on re-init (no leaked heartbeat)
   ['Net.init clears prior presence timer', html.includes("clearInterval(this._presenceTimer);   // re-init must not leak old heartbeat")],
@@ -6125,7 +6125,7 @@ try {
     // ADR-0678: .drawio export drops hidden shapes (page-filter line also _sv-gated)
     {
       assert.ok(html.includes("shapes.filter(s=>_sv(s)&&(s.pg||_pgs()[0].id)===p.id)"),'drawio per-page filter drops hidden (ADR-0678)');
-      assert.ok(html.includes('function exportDrawio(shapes=_sh().filter(_sv))'),'drawio doc export default drops hidden (ADR-0678)');
+      assert.ok(html.includes('function exportDrawio(shapes=_shWB().filter(_sv))'),'drawio doc export default drops hidden (ADR-0678)');
       console.log('  ✓ drawio hidden-parity pins (2 asserts)');
     }
     // ADR-0679: pageDel drops member write-clocks like del
@@ -16281,6 +16281,27 @@ try {
     assert.ok(html.includes("_savedVp=null;_rZ();_ps()}"),'presentation leave persists the restored viewport');
     assert.ok(html.includes("(canvas.height/(v.zoom*DPR))/2);\n  _ps();"),'centerOn persists');
     console.log('  ✓ viewport mutations schedule persist (ADR-1020)');
+    // ADR-1021: mid-erase members are still live board state — the del op
+    // only exists at flushErase commit. Every _sh()-serializing path unions
+    // the batch so a hidden-flush save, snapshot reply or export can't
+    // drop members that no op/backup ever recorded.
+    {
+      reset();
+      const eba=Shape.make('rect',{x:0,y:0,w:10,h:10}),ebb=Shape.make('rect',{x:50,y:0,w:10,h:10});
+      Store.commit({op:'add',shape:eba});
+      Store.commit({op:'add',shape:ebb});
+      const staged=state.shapes.splice(state.shapes.findIndex(s=>s.id===eba.id),1)[0];   // eraseAt's mid-stroke splice
+      _pushEraseBatch(staged);
+      const sm=Net._snapshotMsg();
+      assert.ok(sm.shapes.some(x=>x.id===eba.id),'snapshot reply includes erase-batch members');
+      assert.ok(html.includes("const _shWB=()=>_ln(_eraseBatch)?_sh().concat(_eraseBatch):_sh();"),'whole-board union helper exists');
+      assert.ok(html.includes("_imgSlim(_shWB(),stored)"),'doc save unions the erase batch');
+      assert.ok(html.includes("_imgSlim(shapes.concat(_eraseBatch),stored)"),':prev backup unions the erase batch');
+      assert.ok(html.includes("const ops=_shWB().map(s=>({"),'snapshot ops include the batch');
+      assert.ok(html.includes("shapes=_shWB()"),'board/clipboard export defaults union the batch');
+      flushErase();   // drain via the real commit path; the next block reset()s anyway
+      console.log('  ✓ mid-erase members still serialize (ADR-1021)');
+    }
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -16696,7 +16717,7 @@ try {
     Store.applyRemote({op:'pageAdd',id:'pC',name:'C',shapes:[{...ec,pg:'pC'}],clock:{peer:'r1',seq:2,ts:2}});
     const exs=excScene(state.shapes.filter(s=>s.visible!==0&&_pgOk(s))).elements;
     assert.ok(exs.length===2&&exs.every(e=>e.id!==ec.id),'page-scoped export excludes other-page shapes (same coords would overlap)');
-    assert.ok(html.includes('excScene(_shV())'),'exportExc scopes to the current page');
+    assert.ok(html.includes('excScene(_shWB().filter(s=>_sv(s)&&_pgOk(s)))'),'exportExc scopes to the current page');
     assert.ok((html.match(/shapes=_shV\(\)/g)||[]).length>=4,'PNG/SVG export+copy defaults are page-scoped');
 
   // v1.7.78a: del→undo→(gap rebind)→redo clears the gap-bound connector (ADR-0758)
@@ -17213,6 +17234,7 @@ pass += 4; // ADR-0936 absolute-writer pins
   pass += 5; // ADR-0991 finalize-bridge tomb parity pins
   pass += 5; // ADR-0992 stale-reference × removal completeness pins
   pass += 6; // ADR-1020 viewport-persist pins
+pass += 7; // ADR-1021 erase-batch serialization pins
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
