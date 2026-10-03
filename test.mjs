@@ -88,10 +88,12 @@ const checks = [
   ['No innerHTML anywhere (XSS-safe)', !/innerHTML\s*=/.test(html)],
   // v1.1: ctx must be let (not const) for exportPNG swap
   ['ctx declared as let (not const)', /let ctx=canvas\.getContext/.test(html)],
-  // v1.1: exportPNG passes ctx as parameter (no global swap)
-  ['exportPNG passes ctx as parameter', html.includes('drawShape(s,oc)')],
+  // v1.1: exportPNG passes ctx as parameter (no global swap); ADR-0907: via _dS isolation
+  ['exportPNG passes ctx as parameter', html.includes('_dS(s,oc)')],
   // v1.1: toBlob null guard
   ['toBlob has null guard', html.includes("if(!bl){_eT(_EF)")],
+  // ADR-0907: export render loops isolate per-shape drawShape (0601/0887 parity)
+  ['export render loops isolate drawShape', html.includes('_dS=(s,c)=>{try{drawShape(s,c)}catch(_){}}')],
   // v1.1: op validation in _onRecv
   ['_onRecv validates op.clock', html.includes("!_iS(op.clock.peer)")],
   // v1.1: import validates shapes
@@ -13027,6 +13029,26 @@ try {
         assert.ok(state.viewport.x===11&&state.viewport.y===22,`minimap button ${b} PD/PM does not scrub (ADR-0898)`);
       }
     }
+    // ADR-0906: a throwing setPointerCapture (stale/inactive pointerId →
+    // NotFoundError) previously propagated out of the PD listener and
+    // aborted gesture arming for that stroke; now guarded.
+    reset();state.tool='pen';
+    const _spc=canvas.setPointerCapture;canvas.setPointerCapture=()=>{throw new Error('inactive')};
+    fire('pointerdown',10,10);
+    assert.ok(ptr.down&&state.draft&&state.draft.type==='pen','PD still arms the gesture when setPointerCapture throws (ADR-0906)');
+    canvas.setPointerCapture=_spc;fire('pointerup',10,10);
+    {
+      const mmc=_els.minimap,_msp=mmc.setPointerCapture;
+      reset();state.showMinimap=true;
+      Store.commit({op:'add',shape:Shape.make('rect',{x:0,y:0,w:100,h:100})});
+      Minimap.draw();                                   // populate _sc/_ox/_oy — _mmGo no-ops before the first scene render
+      const vx0=state.viewport.x;
+      mmc.setPointerCapture=()=>{throw new Error('inactive')};
+      for(const f of mmc._L.pointerdown||[])f({button:0,pointerId:9,clientX:80,clientY:50,preventDefault(){},stopPropagation(){}});
+      for(const f of mmc._L.pointermove||[])f({button:0,pointerId:9,clientX:120,clientY:80,preventDefault(){},stopPropagation(){}});
+      assert.ok(state.viewport.x!==vx0,'minimap scrub survives a throwing setPointerCapture (ADR-0906)');
+      mmc.setPointerCapture=_msp;
+    }
     // ADR-0866: local inputs share the wire caps — an over-cap pen stroke or
     // waypoint array would commit locally yet be rejected by every peer
     // (same divergence class as the text-editor maxLength, ADR-0797).
@@ -14950,7 +14972,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1860; // prev 1858 + 2 ADR-0904 source pins
+  pass += 1863; // prev 1862 + 1 ADR-0907 export-isolation pin
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

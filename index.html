@@ -872,7 +872,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.931';   // ADR-0905
+const V='1.7.933';   // ADR-0907
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -2198,7 +2198,7 @@ const _zG=()=>{state.guides=state.readout=state.bindPreview=null},_zR=()=>{state
 const _bp=c=>c.beginPath(),_st2=c=>c.stroke(),_fil=c=>c.fill();   // ADR-0510: canvas path shorthand
 const _mT=(c,x,y)=>c.moveTo(x,y),_lT=(c,x,y)=>c.lineTo(x,y);   // ADR-0511
 const _sv2=c=>c.save(),_rs2=c=>c.restore(),_cP=c=>c.closePath(),_qC=(c,x,y,cx,cy)=>c.quadraticCurveTo(x,y,cx,cy);   // ADR-0512
-const _sD=(c,d)=>c.setLineDash(d),_mTX=(c,s)=>c.measureText(s),_sR2=(c,x,y,w,h)=>c.strokeRect(x,y,w,h),_tr2=(c,x,y)=>c.translate(x,y),_sTF=(c,a,b,d,e,f,g)=>c.setTransform(a,b,d,e,f,g);   // ADR-0513
+const _sD=(c,d)=>c.setLineDash(d),_mTX=(c,s)=>c.measureText(s),_sR2=(c,x,y,w,h)=>c.strokeRect(x,y,w,h),_tr2=(c,x,y)=>c.translate(x,y),_sTF=(c,a,b,d,e,f,g)=>c.setTransform(a,b,d,e,f,g),_dS=(s,c)=>{try{drawShape(s,c)}catch(_){}};   // ADR-0513/0907
 const _cmt=o=>Store.commit(o),_ann=m=>UI.announce(m),_oURL=b=>URL.createObjectURL(b),_oS=(tx,n)=>tx.objectStore(n),_pA=()=>Presentation.isActive();   // ADR-0513
 const _smk=(t,x)=>Shape.make(t,x),_sT2=(s,dx,dy)=>Shape.translate(s,dx,dy),_rZ=()=>UI.refreshZoom(),_trx=(db,t,n)=>db.transaction(t,n),_fT=(c,s,x,y)=>c.fillText(s,x,y),_pu=(a,...v)=>a.push(...v);   // ADR-0514
 const _sK=e=>e.shiftKey,_aK=e=>e.altKey,_mod=e=>e.metaKey||e.ctrlKey;   // ADR-0515: modifier-key reads
@@ -4044,7 +4044,7 @@ _on(canvas,_PD,e=>{
   // it doesn't keep drawing/moving under the zoom
   // capture-phase listener that runs before this bubble-phase one.
   if(_nP()>=2){abortGesture();return;}
-  canvas.setPointerCapture(e.pointerId);
+  try{canvas.setPointerCapture(e.pointerId)}catch(_){}
   const sp=_osp(e);
   const wp=_s2(sp);
   state.measure=null;
@@ -6631,7 +6631,7 @@ function _renderPngBlob(shapes,cb,desired){
   oc.fillStyle=_p();
   oc.fillRect(0,0,off.width,off.height);
   oc.setTransform(scale,0,0,scale,-b.x*scale+pad*scale,-b.y*scale+pad*scale);
-  for(const s of shapes)drawShape(s,oc);
+  for(const s of shapes)_dS(s,oc);
   off.toBlob(cb,'image/png');
 }
 // ADR-0052: selection-scoped exports share the whole-board renderers — the
@@ -6662,7 +6662,7 @@ function exportViewportPNG(scale){
   const oc=_g2(off);
   oc.fillStyle=_p();oc.fillRect(0,0,off.width,off.height);
   oc.setTransform(sc,0,0,sc,-view.x*sc,-view.y*sc);
-  for(const s of shapes)drawShape(s,oc);
+  for(const s of shapes)_dS(s,oc);
   off.toBlob(bl=>{
     if(!bl){_eT(_EF);return}
     const url=_oURL(bl);
@@ -6730,7 +6730,7 @@ function exportPDF(){
   const oc=_g2(off);
   oc.fillStyle=_p()||'#fff';oc.fillRect(0,0,W*dpr,H*dpr);
   oc.setTransform(dpr,0,0,dpr,(-b.x+pad)*dpr,(-b.y+pad)*dpr);
-  for(const s of _shV())drawShape(s,oc);   // ADR-0658
+  for(const s of _shV())_dS(s,oc);   // ADR-0658
   const fin=bl=>{
     if(!bl){_eT(_EF);return}
     const url=_oURL(bl);
@@ -10278,7 +10278,7 @@ const Minimap=(()=>{
     _vp().y=wy-_r.height/_vp().zoom/2;
     _iv();
   };
-  _on(mc,_PD,e=>{if(e.button>1)return;_mmNav=true;mc.setPointerCapture(e.pointerId);_mmGo(e)});   // ADR-0898: side/barrel buttons arm no scrub (0896 parity)
+  _on(mc,_PD,e=>{if(e.button>1)return;_mmNav=true;try{mc.setPointerCapture(e.pointerId)}catch(_){}_mmGo(e)});   // ADR-0898: side/barrel buttons arm no scrub (0896 parity)
   _on(mc,_PM,e=>{if(_mmNav)_mmGo(e)});
   _on(mc,_PU,e=>{_mmNav=false;try{mc.releasePointerCapture(e.pointerId)}catch(_){}});
   _on(mc,_PC,()=>{_mmNav=false});
